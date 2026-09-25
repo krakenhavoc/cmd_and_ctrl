@@ -483,7 +483,7 @@ func TestRampagingCeratopsAgainstTwoCreaturesOwesNoDecision(t *testing.T) {
 	}
 }
 
-// --- BlockRuleUntilEOT: Gingerbrute -------------------------------
+// --- CantBeBlockedThisTurnExceptBy: Gingerbrute -------------------
 
 // gingerbruteActivate pays {1} and resolves the evasion ability.
 func gingerbruteActivate(t *testing.T, g *game.Game, controller, brute uuid.UUID) {
@@ -507,8 +507,8 @@ func TestGingerbruteCantBeBlockedExceptByHasteThisTurn(t *testing.T) {
 	fast := brCreature(g, opp.ID, "Raging Goblin", "Creature — Goblin", 1, 1, "haste")
 	advanceTo(t, g, game.StepPrecombatMain)
 	gingerbruteActivate(t, g, me.ID, brute)
-	if len(g.TurnScopedBlockRules) != 1 {
-		t.Fatalf("the ability registers one turn-scoped rule, got %d", len(g.TurnScopedBlockRules))
+	if n := scopedBlockRuleCount(g); n != 1 {
+		t.Fatalf("the ability registers one scoped block rule, got %d", n)
 	}
 	brAttack(t, g, brute)
 
@@ -534,8 +534,8 @@ func TestGingerbruteRuleEndsWithTheTurn(t *testing.T) {
 	advanceTo(t, g, game.StepPrecombatMain)
 	gingerbruteActivate(t, g, me.ID, brute)
 	advanceToUpkeepOf(t, g, 1)
-	if n := len(g.TurnScopedBlockRules); n != 0 {
-		t.Errorf("%d turn-scoped rules outlived the turn", n)
+	if n := scopedBlockRuleCount(g); n != 0 {
+		t.Errorf("%d scoped block rules outlived the turn", n)
 	}
 }
 

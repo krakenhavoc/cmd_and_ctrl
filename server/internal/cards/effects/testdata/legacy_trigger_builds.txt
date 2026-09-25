@@ -12,52 +12,12 @@
 # which deletes stale lines and never adds one. A new hand-written Build
 # fails the test instead of being added here.
 
-Aang, Airbending Master | f3176779-74f7-4136-a701-438feeead7a0 | 0
-Aang, Swift Savior | cbf09050-39d0-463b-96db-9e22011ae0d8 | 0
-Aang, the Last Airbender | 70564c3a-858f-498e-8b92-acb3ca54ae7e | 0
-Abraded Bluffs | ca7d093c-0533-493f-9ad3-8af30118fbfc | 0
-Abyssal Nightstalker | 10733767-1c97-4e2e-b02b-54bf346f6583 | 0
-Acidic Slime | 21f45043-5419-4019-8b6c-e5294bd5f549 | 0
-Aerial Extortionist | 7e7d7f4d-2c22-4803-ba5e-5eb653c25b5e | 0
-Agent of Treachery | 4cd82c7a-86df-4d29-b578-c009208c0d4b | 0
 Akoum Refuge | 354fecd1-2371-49e3-81c6-7e47728dbb1f | 0
-Alela, Cunning Conqueror | 1cae5752-b4af-4a8f-8c8c-2493e163083b | 1
-All Will Be One | 477374dc-042c-48f7-9ebe-99c15d8ae04f | 0
-Amulet of Vigor | dba16032-66c1-4ccb-9d65-d41ac550d182 | 0
-Angel of Serenity | f4ce6078-8c7b-4f68-b324-13130c63a983 | 0
-Appa, Steadfast Guardian | 03c141ca-11e4-4927-a6bd-980ee1203c73 | 0
-Archaeomancer | a91a3266-cadd-47a0-9b20-160307f14c07 | 0
-Archfiend of Depravity | af247e2f-b271-4f5b-ab98-4579d2c17c21 | 0
-Archon of Cruelty | aa1a6646-c1e6-4bff-9092-43ee3e137914 | 0
-Argentum Armor | d0a1f39b-cda4-4925-83f8-2161f575edfb | 0
-Assemble the Legion | 6f81bef3-6ca0-4cf4-aa99-7b2813eeef04 | 0
-Aura Shards | 8d03d050-391c-4311-8c42-4ee632d40fdc | 0
-Avatar Yangchen | 521a63cf-5e83-4649-9800-c62b2fc474d6#1 | 0
-Aven Interrupter | d31fd12f-b4dd-4bc3-ace4-703dabd0f607 | 0
-Bag of Holding | 63c04040-e109-494e-baa6-c639a6c9a996 | 0
-Balefire Dragon | 3d783beb-9ca6-4681-9276-fc3ad13b993f | 0
-Bane of Progress | 51f9a6cc-8eb2-44ed-a2d9-913ac514ad67 | 0
-Barrowgoyf | 74c0164c-130f-4572-9066-626c77f6e2ff | 0
-Berserkers' Onslaught | 85d2948c-1a79-418d-80c4-bc1012a4d313 | 0
 Binding the Old Gods | 4050e5b3-07c2-461c-9852-a2c081c0198d | 0
 Binding the Old Gods | 4050e5b3-07c2-461c-9852-a2c081c0198d | 1
 Binding the Old Gods | 4050e5b3-07c2-461c-9852-a2c081c0198d | 2
-Blade Historian | 314f0a96-5e91-42a3-9d75-3f641f22a9ee | 0
-Blood Artist | 310f141c-7f37-4729-aed6-dd9c09db448d | 0
-Blood Seeker | 41087db6-34c4-4e2b-9f54-5e4488ca9c0b | 0
-Bloodchief Ascension | d5ea905b-4bb6-48d0-9082-c472703db550 | 1
 Bloodfell Caves | 64e29bfc-9313-4e8c-808c-bc27f6b018a6 | 0
-Bloodforged Battle-Axe | 81a7f559-5edd-47ec-91f7-51e5ee998ed0 | 0
-Bloodgift Demon | e64b184d-9746-4723-a928-d459b5c3ee6c | 0
-Bloodthirsty Conqueror | fd505c02-c59e-476d-8e88-35da862ddc23 | 0
 Blossoming Sands | 45429b2c-be3b-4b2e-9bab-a059ccbda8cd | 0
-Blossoming Tortoise | 5e1bf23b-7fb0-45ff-8544-fce9fa3eba00 | 0
-Blowfly Infestation | 3859873f-2a0f-463b-8ed9-7f2ab5ed393a | 0
-Boggart Trawler | 727f3201-1cfc-4ab2-9dfe-be4f7251f42f | 0
-Bojuka Bog | 04b7362d-0490-4cb0-b5d7-2a7732f659ce | 0
-Bonecrusher Giant | d6d72f5f-8f5d-4180-b514-f22ff5482902 | 0
-Breeches, Brazen Plunderer | eb77f7dc-e9e4-44ef-8616-9f4e737e8ca5 | 0
-Breeches, the Blastmaker | 8514f20a-50c7-4319-84cb-2bf263548234 | 0
 Cool but Rude | 1f076303-d160-4e02-aa1e-9ed6040c3735 | 2
 Creosote Heath | c116b787-5f7e-47ef-a694-58709770dd32 | 0
 Dismal Backwater | 865a2194-fca0-446e-aae3-ca475cd66e00 | 0

@@ -25,7 +25,7 @@ func init() {
 		Name:         "Abyssal Nightstalker",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			WhenAttacksAndIsNotBlocked("Abyssal Nightstalker — defending player discards a card", defendingPlayerDiscardsACard),
+			WhenAttacksAndIsNotBlockedEffect("Abyssal Nightstalker — defending player discards a card", defendingPlayerDiscardsACard),
 		},
 	})
 }

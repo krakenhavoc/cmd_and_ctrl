@@ -341,31 +341,32 @@ func TestBlockOptionsRespectsAMaximum(t *testing.T) {
 	}
 }
 
-// TurnScopedBlockRules is an until-end-of-turn registry (Decision 11):
-// its rules bind while the turn lasts and the cleanup sweep empties it.
-func TestTurnScopedBlockRuleBindsThenSweepsAtEndOfTurn(t *testing.T) {
+// A block-rule ScopedEffect record is an until-end-of-turn effect
+// (ADR 0041 phase 3 tier 3b, #1497, ADR 0045 addendum Decision 11):
+// it binds while the turn lasts, the cleanup sweep empties it, and —
+// unlike the closure registry it replaced — the game is a restore
+// point while it holds one.
+func TestScopedBlockRuleBindsThenSweepsAtEndOfTurn(t *testing.T) {
 	g := newActiveGame(t)
 	attacker := pushCombatant(t, g, g.Seats[0], "Gingerbrute", 1, 1)
 	blocker := pushCombatant(t, g, g.Seats[1], "Blocker", 2, 2)
 	g.WithWriteLock(func() {
-		g.RegisterTurnScopedBlockRuleLocked(BlockRule{
-			Reason: BlockReasonCantBeBlockedExceptBy,
-			Label:  "creatures with haste",
-			Pair: func(g *Game, atk, blk, source *Card) bool {
-				return atk != nil && atk.Effective().Name == "Gingerbrute"
-			},
-		})
+		if !g.RegisterScopedEffectForEffect(uuid.Nil, g.PinnedObjectsLocked(attacker),
+			[]Mod{CantBeBlockedExceptByMod([]string{"haste"}, nil, "creatures with haste")},
+			g.UntilEndOfTurnDuration(), "Gingerbrute — can't be blocked except by creatures with haste") {
+			t.Fatal("setup: registered nothing")
+		}
 	})
-	if n := g.CaptureSnapshot().Continuations.TurnScopedBlockRules; n != 1 {
-		t.Errorf("the census counts %d turn-scoped block rules, want 1", n)
+	if snap := g.CaptureSnapshot(); !snap.Restorable() {
+		t.Errorf("a block-rule ScopedEffect is data now; the game should be a restore point: %+v", snap.Continuations)
 	}
 	declareAttacks(t, g, attacker)
 	if err := g.DeclareBlocker(blocker, attacker); !errors.Is(err, ErrIllegalBlock) {
-		t.Fatalf("a turn-scoped rule did not refuse the block: %v", err)
+		t.Fatalf("the rule did not refuse the block: %v", err)
 	}
 
-	g.WithWriteLock(func() { g.ClearTurnScopedBlockRulesLocked() })
-	if len(g.TurnScopedBlockRules) != 0 {
+	g.WithWriteLock(func() { g.ClearEndOfTurnScopedStaticsLocked() })
+	if len(g.ScopedEffects) != 0 {
 		t.Error("the cleanup sweep did not empty the registry")
 	}
 	if err := g.DeclareBlocker(blocker, attacker); err != nil {

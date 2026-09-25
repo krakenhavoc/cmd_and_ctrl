@@ -42,25 +42,22 @@ func init() {
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return ev.CardID == source.InstanceID
 			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				self := source.InstanceID
-				return game.NewTriggeredItem(source, "Bane of Progress — destroy all artifacts and enchantments",
-					func(g *game.Game, item *game.StackItem) error {
-						ctx := NewContext(g, item)
-						return DestroyAllMatching{
-							Match: Or(Artifact(), Enchantment()),
-							Then: func(ctx *Context, _ []game.Card, destroyed int) error {
-								if destroyed <= 0 {
-									return nil
-								}
-								return AddCounter{
-									Target: self,
-									Kind:   game.CounterPlusOne,
-									N:      destroyed,
-								}.Apply(ctx)
-							},
+			Key: "Bane of Progress — destroy all artifacts and enchantments",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				ctx := NewContext(g, item)
+				return DestroyAllMatching{
+					Match: Or(Artifact(), Enchantment()),
+					Then: func(ctx *Context, _ []game.Card, destroyed int) error {
+						if destroyed <= 0 {
+							return nil
+						}
+						return AddCounter{
+							Target: item.SourceCardID,
+							Kind:   game.CounterPlusOne,
+							N:      destroyed,
 						}.Apply(ctx)
-					})
+					},
+				}.Apply(ctx)
 			},
 		}},
 	})

@@ -1492,6 +1492,7 @@ scopedEffects[].mods[].power	number:int
 scopedEffects[].mods[].restrictions	number:uint8
 scopedEffects[].mods[].subtypes	array
 scopedEffects[].mods[].subtypes[]	string
+scopedEffects[].mods[].text	string
 scopedEffects[].mods[].then	string
 scopedEffects[].mods[].toughness	number:int
 scopedEffects[].mods[].types	array

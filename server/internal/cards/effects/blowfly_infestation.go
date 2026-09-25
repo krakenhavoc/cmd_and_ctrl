@@ -29,18 +29,16 @@ func init() {
 				return b29CreatureWithMinusCounterDied(ev, g)
 			},
 			Targets: TargetCreature("target creature"),
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Blowfly Infestation — put a -1/-1 counter on target creature",
-					func(g *game.Game, item *game.StackItem) error {
-						ctx := NewContext(g, item)
-						for _, t := range ctx.LegalTargets() {
-							if t.Kind != game.TargetCard {
-								continue
-							}
-							return AddCounter{Target: t.ID, Kind: "-1/-1", N: 1}.Apply(ctx)
-						}
-						return nil
-					})
+			Key:     "Blowfly Infestation — put a -1/-1 counter on target creature",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				ctx := NewContext(g, item)
+				for _, t := range ctx.LegalTargets() {
+					if t.Kind != game.TargetCard {
+						continue
+					}
+					return AddCounter{Target: t.ID, Kind: "-1/-1", N: 1}.Apply(ctx)
+				}
+				return nil
 			},
 		}},
 	})

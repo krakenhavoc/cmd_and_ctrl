@@ -72,10 +72,14 @@ func init() {
 		Triggered: []game.TriggeredAbility{{
 			Watches:   []game.EventKind{game.EventDealDamage},
 			AppliesTo: ThisDealtCombatDamageToAPlayer,
+			Key:       "Barrowgoyf — you may mill that many cards",
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source,
-					"Barrowgoyf — you may mill that many cards",
-					barrowgoyfMill(ev.Amount))
+				item := game.NewTriggeredItem(source, "Barrowgoyf — you may mill that many cards", nil)
+				item.Params.Amount = ev.Amount
+				return item
+			},
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				return barrowgoyfMill(item.Params.Amount)(g, item)
 			},
 		}},
 	})

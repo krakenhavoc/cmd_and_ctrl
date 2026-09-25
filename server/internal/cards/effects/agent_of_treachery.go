@@ -47,20 +47,17 @@ func init() {
 					return ev.CardID == source.InstanceID
 				},
 				Targets: TargetPermanent("target permanent"),
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source,
-						"Agent of Treachery — gain control of target permanent",
-						func(g *game.Game, item *game.StackItem) error {
-							if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
-								return nil
-							}
-							return GainControl{
-								Target:     item.Targets[0].ID,
-								Controller: item.Controller,
-								Duration:   game.IndefiniteDuration(),
-								Label:      "Agent of Treachery — gain control (no stated duration)",
-							}.Apply(NewContext(g, item))
-						})
+				Key:     "Agent of Treachery — gain control of target permanent",
+				Effect: func(g *game.Game, item *game.StackItem) error {
+					if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
+						return nil
+					}
+					return GainControl{
+						Target:     item.Targets[0].ID,
+						Controller: item.Controller,
+						Duration:   game.IndefiniteDuration(),
+						Label:      "Agent of Treachery — gain control (no stated duration)",
+					}.Apply(NewContext(g, item))
 				},
 			},
 			On(game.EventBeginEndStep, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {

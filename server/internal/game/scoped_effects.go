@@ -123,6 +123,29 @@ const (
 	ModExileInsteadOfGraveyard ModKind = "exileInsteadOfGraveyard"
 )
 
+// The block-rule kinds (ADR 0041 P8, tier 3b, #1497). These are not
+// layer operations either: each one is a CR 509.1b block restriction a
+// resolving spell or ability created, read by the block-rule walk
+// (forEachBlockRuleLocked's third pass) rather than by the layer pass.
+// See scoped_block_rules.go for what each one does and the
+// registration functions that write them.
+const (
+	// ModCantBeBlockedExceptBy is "<creature> can't be blocked this
+	// turn except by <keyword-or-subtype>" (Gingerbrute's activated
+	// ability, Departed Deckhand's granted evasion). Reads Keywords and
+	// Subtypes, each an any-of — a blocker matching either is allowed —
+	// and Text, the allowed set as the card prints it, which the
+	// refusal sentence reads. The pinned attacker(s).
+	ModCantBeBlockedExceptBy ModKind = "cantBeBlockedExceptBy"
+	// ModLimitBlockersPerDefender is "each opponent can't block with
+	// more than N creatures this combat" (Mirri, Weatherlight Duelist's
+	// attack trigger). Reads Amount. Scope ScopeOpponentsCreatures,
+	// read live against the record's Controller (#1571's style: the
+	// rule is about players, not a characteristic, so CR 611.2c does
+	// not lock it).
+	ModLimitBlockersPerDefender ModKind = "limitBlockersPerDefender"
+)
+
 // AffectedScope is a ScopedEffect's affected set as a RULE read live at
 // every layer pass, instead of a set of objects locked when the effect
 // began (#1571). CR 611.2c locks the set only for an effect that
@@ -194,6 +217,10 @@ type Mod struct {
 	// card the replacement redirects. A restore point naming a body
 	// this binary has not registered is refused (ErrUnknownEffectKey).
 	Then string `json:"then,omitempty"`
+	// Text is ModCantBeBlockedExceptBy's printed parameter — "creatures
+	// with haste", "Spirits" — read by the refusal sentence
+	// (BlockRule.Label).
+	Text string `json:"text,omitempty"`
 }
 
 // AffectedObject is one member of a ScopedEffect's affected set: the
@@ -313,12 +340,14 @@ type ScopedEffect struct {
 
 // modReader is which part of the engine interprets a kind (ADR 0041
 // P8): the layer pass, or — for the tier 3b kinds — the replacement
-// gather. The layer adapter skips every kind that is not its own.
+// gather or the block-rule walk. The layer adapter skips every kind
+// that is not its own.
 type modReader uint8
 
 const (
 	readerLayer modReader = iota
 	readerReplacement
+	readerBlockRule
 )
 
 // modKindSpec is where a kind lives: its reader, and for a layer kind
@@ -355,6 +384,9 @@ var modKinds = map[ModKind]modKindSpec{
 	ModPreventDamage:           {reader: readerReplacement},
 	ModExileInsteadOfLeaving:   {reader: readerReplacement},
 	ModExileInsteadOfGraveyard: {reader: readerReplacement},
+	// Tier 3b (ADR 0041 P8): block-rule effects, not layer operations.
+	ModCantBeBlockedExceptBy:    {reader: readerBlockRule},
+	ModLimitBlockersPerDefender: {reader: readerBlockRule},
 }
 
 // KnownModKind reports whether this binary can interpret k.
@@ -547,6 +579,9 @@ func (g *Game) appendScopedEffectLocked(sourceID uuid.UUID, affected []AffectedO
 			panic(fmt.Sprintf("game: scoped effect %q grants no ability bundle", label))
 		}
 		if problem := replacementModProblem(m); problem != "" {
+			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
+		}
+		if problem := blockRuleModProblem(m); problem != "" {
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
 		if modKinds[m.Kind].reader != readerLayer {

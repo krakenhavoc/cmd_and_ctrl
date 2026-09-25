@@ -781,32 +781,35 @@ func b33ClearListedGoads(g *game.Game, item *game.StackItem) error {
 	return nil
 }
 
-// b33GoadChosenIfControlledBy is Alela's body: the chosen creature is
-// goaded by the controller if it is still legal and still controlled
-// by `victim`, the player the Faeries hit, and a delayed trigger
-// clears the marker at the beginning of the controller's next turn
-// (CR 701.15a's "until your next turn"). A pick under some other
-// player's control — possible when Faeries connected with two
-// players in one combat and the clause offered both players'
-// creatures — does nothing.
-func b33GoadChosenIfControlledBy(victim uuid.UUID) func(g *game.Game, item *game.StackItem) error {
-	return func(g *game.Game, item *game.StackItem) error {
-		ctx := NewContext(g, item)
-		id, ok := b16FirstLegalTargetCard(ctx)
-		if !ok {
-			return nil
-		}
-		c, found := g.LookupCardForEffect(id)
-		if !found || c.Controller != victim || !onBattlefield(g, id) {
-			return nil
-		}
-		b33Goad(g, id, item.Controller)
-		return ScheduleDelayedTrigger{
-			At:                 game.StepUpkeep,
-			ControllerTurnOnly: true,
-			Label:              "Alela, Cunning Conqueror — the goad ends",
-			Cards:              []uuid.UUID{id},
-			Body:               clearListedGoadsBody,
-		}.Apply(ctx)
+// b33AlelaGoadChosen is Alela's body: the chosen creature is goaded
+// by the controller if it is still legal and still controlled by the
+// player the Faeries hit — read back off the item's carried trigger
+// event (item.Trigger, #1379, ADR 0041 P9) rather than captured at
+// trigger time — and a delayed trigger clears the marker at the
+// beginning of the controller's next turn (CR 701.15a's "until your
+// next turn"). A pick under some other player's control — possible
+// when Faeries connected with two players in one combat and the
+// clause offered both players' creatures — does nothing.
+func b33AlelaGoadChosen(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	id, ok := b16FirstLegalTargetCard(ctx)
+	if !ok {
+		return nil
 	}
+	var victim uuid.UUID
+	if item.Trigger != nil {
+		victim = item.Trigger.Event.Target
+	}
+	c, found := g.LookupCardForEffect(id)
+	if !found || c.Controller != victim || !onBattlefield(g, id) {
+		return nil
+	}
+	b33Goad(g, id, item.Controller)
+	return ScheduleDelayedTrigger{
+		At:                 game.StepUpkeep,
+		ControllerTurnOnly: true,
+		Label:              "Alela, Cunning Conqueror — the goad ends",
+		Cards:              []uuid.UUID{id},
+		Body:               clearListedGoadsBody,
+	}.Apply(ctx)
 }
