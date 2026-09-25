@@ -55,6 +55,25 @@ func returnExiledCardsToOwners(g *game.Game, item *game.StackItem) error {
 	return nil
 }
 
+// flickerFirstLegalTarget is the immediate-blink trigger body shared
+// by every "exile [up to one] target creature [you control], then
+// return that card to the battlefield under your control" — Thassa,
+// Deep-Dwelling's end step and Conjurer's Closet's. The target clause
+// (whose it must be, "other" or not, "up to one" or not) is the only
+// thing that differs between printings and lives on the TargetSpec,
+// not here.
+//
+// A target that left legality in response (CR 608.2b) or an "up to
+// one" left unfilled is a no-op, not an error.
+func flickerFirstLegalTarget(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	id, ok := b16FirstLegalTargetCard(ctx)
+	if !ok {
+		return nil
+	}
+	return Flicker{Target: id, Controller: item.Controller}.Apply(ctx)
+}
+
 // exileTargetsThenScheduleReturn exiles every still-legal card target
 // on the resolving item as ONE event and, from that exile's
 // continuation, schedules the delayed trigger that returns the cards
@@ -87,10 +106,10 @@ func exileTargetsThenScheduleReturn(ctx *Context, label string) error {
 			return nil
 		}
 		return ScheduleDelayedTrigger{
-			At:     game.StepEnd,
-			Label:  label,
-			Cards:  exiled,
-			Effect: returnExiledCardsToOwners,
+			At:    game.StepEnd,
+			Label: label,
+			Cards: exiled,
+			Body:  returnExiledToOwnersBody,
 		}.Apply(NewContext(g, item))
 	})
 }

@@ -74,14 +74,15 @@ import (
 // affected set is keyed on {instance, battlefield-entry stamp} so the
 // effect stops applying the instant the land leaves, and the pin
 // makes `durationExpiredLocked` drop the registry entry at the next
-// sweep rather than leaving three husks per earthbend in the
-// snapshot census for the rest of the game.
+// sweep rather than leaving a husk per earthbend for the rest of the
+// game.
 //
-// All three statics share ONE timestamp and ONE duration, which is
-// what makes them one continuous effect for CR 613.7 and what makes
-// "the haste and the animation end together" a fact about the data
-// rather than a coincidence. Two effects created by one spell sharing
-// a timestamp is the shape `ExchangeControlForEffect` already uses.
+// The animation is ONE data record (ADR 0041 phase 3, #1497) with a mod
+// in each of its three layers, so ONE timestamp and ONE duration are a
+// fact about the data: that is what makes it one continuous effect for
+// CR 613.7, and "the haste and the animation end together" something
+// that cannot come apart. Being data, it is carried by a restore point
+// rather than blocking one.
 
 // EarthbendForEffect takes the earthbend keyword action on behalf of
 // `actor`: it opens the CR 614 window on the action and, once the
@@ -191,7 +192,7 @@ func (g *Game) applyEarthbendLocked(actor, source, land uuid.UUID, n int, then f
 		// counters is the one part that does not happen.
 		return rest(g)
 	}
-	// The animation above only REGISTERED three layer effects; the
+	// The animation above only REGISTERED its layer effects; the
 	// cached characteristic still says "Land" and not "Land Creature"
 	// until something recomputes. A counter replacement that asks "is
 	// this a creature you control" — Hardened Scales, Branching
@@ -205,88 +206,62 @@ func (g *Game) applyEarthbendLocked(actor, source, land uuid.UUID, n int, then f
 	})
 }
 
-// earthbendLabel is the attribution the three continuous effects and
+// earthbendLabel is the attribution the continuous effect and
 // the delayed trigger share. One string so a stall dump, the layer
 // census and a test failure all name the same verb.
 const earthbendLabel = "earthbend"
 
-// animateEarthbentLandLocked registers the three continuous effects
-// that make up "becomes a 0/0 creature with haste that's still a
-// land": layer 4 (add Creature), layer 7b (base P/T 0/0), layer 6
-// (haste).
+// animateEarthbentLandLocked registers the continuous effect that
+// makes up "becomes a 0/0 creature with haste that's still a land":
+// ONE data record (ADR 0041 phase 3, #1497) with a mod in each of
+// three layers — layer 4 (add Creature), layer 6 (haste) and layer 7b
+// (base P/T 0/0).
 //
-// One timestamp and one duration across all three (CR 613.7, CR
-// 611.2a + CR 400.7 — see the file comment), and one affected-set
-// predicate, pinned to {instance, entry stamp} so a land that leaves
-// and returns is correctly a different object (CR 611.2c, CR 400.7).
+// One record is one timestamp and one duration across all three
+// (CR 613.7, CR 611.2a + CR 400.7 — see the file comment), and one
+// affected set, pinned to {instance, entry stamp} so a land that
+// leaves and returns is correctly a different object (CR 611.2c,
+// CR 400.7). It is data, so the animation no longer keeps its table
+// off the restore path for as long as the land lives. (The delayed
+// return below still does, until ADR 0041 phase 3's tier 2.)
+//
+// The layers, and why each is where it is:
+//
+//   - Layer 4 (CR 613.1d): Creature is ADDED. Land is not touched —
+//     "that's still a land" is the reminder text spelling out what
+//     adding a type already means, and it is load-bearing: the land
+//     keeps its mana ability and still counts for landfall, land
+//     counts and "lands you control".
+//   - Layer 7b (CR 613.4b): base power and toughness become 0/0. The
+//     +1/+1 counters apply at 7d over the top, which is why an
+//     earthbend 4 is a 4/4 and why a -1/-1 counter from elsewhere
+//     still shrinks it. 7b and not 7a: 7a is for characteristic-
+//     defining abilities, and this is an effect from a resolved spell
+//     or ability setting a specific value. Setting P/T here is also
+//     what makes the land's toughness KNOWN (`Characteristic.PTDefined`,
+//     #690), which is what lets the CR 704.5f state-based action see a
+//     0/0 with no counters and kill it — the whole point of earthbend 0.
+//   - Layer 6 (CR 613.1f): haste. The grant has no stated duration of
+//     its own, so it takes the animation's: the land can attack the
+//     turn it was earthbent (CR 302.6 would otherwise forbid it,
+//     because it has not been controlled continuously as a CREATURE
+//     since the turn began — #537) and it can still attack four turns
+//     later, which an until-end-of-turn grant would not give it.
 //
 // Registering it TWICE on the same object is harmless and is what a
-// second earthbend does: each Apply is idempotent (the type and the
+// second earthbend does: each mod is idempotent (the type and the
 // keyword are appended only when absent, the base P/T is set to the
-// same 0/0), and the layer pass sorts the two sets by timestamp with
-// the same result either way.
+// same 0/0), and the layer pass sorts the two records by timestamp
+// with the same result either way.
 //
 // Caller must hold g.mu.
 func (g *Game) animateEarthbentLandLocked(source, land uuid.UUID, stamp int64) {
-	applies := func(t *Card, _ *Game, _ *Card) bool {
-		return t.InstanceID == land && t.EnteredBattlefieldAt == stamp
-	}
-	d := g.PinnedTo(IndefiniteDuration(), land)
-	ts := timeNowUnixNano()
-
-	// Layer 4 (CR 613.1d): Creature is ADDED. Land is not touched —
-	// "that's still a land" is the reminder text spelling out what
-	// adding a type already means, and it is load-bearing: the land
-	// keeps its mana ability and still counts for landfall, land
-	// counts and "lands you control".
-	g.registerScopedStaticLocked(StaticAbility{
-		Layer:     Layer4Type,
-		AppliesTo: applies,
-		Apply: func(ch *Characteristic, _ *Card, _ *Game, _ *Card) {
-			if !typeListHas(ch.Types, "Creature") {
-				ch.Types = append(ch.Types, "Creature")
-			}
-		},
-	}, source, earthbendLabel+" — becomes a creature that's still a land", d, ts)
-
-	// Layer 7b (CR 613.4b): base power and toughness become 0/0. The
-	// +1/+1 counters apply at 7d over the top, which is why an
-	// earthbend 4 is a 4/4 and why a -1/-1 counter from elsewhere
-	// still shrinks it.
-	//
-	// 7b and not 7a: 7a is for characteristic-defining abilities, and
-	// this is an effect from a resolved spell or ability setting a
-	// specific value. `BecomeCreatureUntilEOT` puts the same clause in
-	// the same sub-layer.
-	//
-	// Setting P/T here is also what makes the land's toughness KNOWN
-	// (`Characteristic.PTDefined`, #690), which is what lets the
-	// CR 704.5f state-based action see a 0/0 with no counters and kill
-	// it — the whole point of earthbend 0.
-	g.registerScopedStaticLocked(StaticAbility{
-		Layer:     Layer7PT,
-		SubLayer:  SubLayer7B_Set,
-		AppliesTo: applies,
-		Apply: func(ch *Characteristic, _ *Card, _ *Game, _ *Card) {
-			ch.Power, ch.Toughness = 0, 0
-		},
-	}, source, earthbendLabel+" — base power and toughness 0/0", d, ts)
-
-	// Layer 6 (CR 613.1f): haste. The grant has no stated duration of
-	// its own, so it takes the animation's: the land can attack the
-	// turn it was earthbent (CR 302.6 would otherwise forbid it,
-	// because it has not been controlled continuously as a CREATURE
-	// since the turn began — #537) and it can still attack four turns
-	// later, which an until-end-of-turn grant would not give it.
-	g.registerScopedStaticLocked(StaticAbility{
-		Layer:     Layer6Ability,
-		AppliesTo: applies,
-		Apply: func(ch *Characteristic, _ *Card, _ *Game, _ *Card) {
-			if !containsFold(ch.Abilities, "haste") {
-				ch.Abilities = append(ch.Abilities, "haste")
-			}
-		},
-	}, source, earthbendLabel+" — haste", d, ts)
+	mods := []Mod{AddTypesMod("Creature"), AddKeywordsMod("haste")}
+	mods = append(mods, SetBasePTMods(0, 0)...)
+	g.RegisterScopedEffectForEffect(source,
+		[]AffectedObject{PinObject(land, stamp)}, mods,
+		g.PinnedTo(IndefiniteDuration(), land),
+		earthbendLabel+" — becomes a 0/0 creature with haste that's still a land")
 }
 
 // earthbendReturnNamespace seeds the deterministic ID every earthbend
@@ -384,11 +359,29 @@ func (g *Game) scheduleEarthbendReturnLocked(actor, source, land uuid.UUID, stam
 		SourceCardID: source,
 		Label:        earthbendLabel + " — when it dies or is exiled, return it to the battlefield tapped",
 		On:           []EventKind{EventLTB},
-		AppliesTo:    earthbendReturnMatches,
+		Condition:    earthbendReturnCondition,
 		Cards:        []uuid.UUID{land},
 		Duration:     &d,
-		Effect:       returnEarthbentLandTapped,
+		Body:         earthbendReturnBody,
 	})
+}
+
+// The return's condition and body, as registered keys (ADR 0041 phase
+// 3, #1497): an earthbent land is data all the way down, so it no
+// longer keeps its table off the restore path.
+// Assigned in init: a var initialiser would be an initialisation cycle
+// through the battlefield-entry primitives.
+var (
+	earthbendReturnCondition ConditionRef
+	earthbendReturnBody      BodyRef
+)
+
+func init() {
+	earthbendReturnCondition = DelayedCondition("earthbend/this-object-left",
+		func(ev Event, dt *DelayedTrigger, g *Game, _ EffectParams) bool {
+			return earthbendReturnMatches(ev, dt, g)
+		})
+	earthbendReturnBody = SimpleDelayedBody("earthbend/return-tapped", returnEarthbentLandTapped)
 }
 
 // earthbendReturnMatches is the event condition: this object leaving

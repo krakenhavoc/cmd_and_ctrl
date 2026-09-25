@@ -52,8 +52,9 @@ import (
 //  4. the restored game round-trips exactly through this binary;
 //  5. it is a working game: layers recompute and it accepts an action.
 //
-// Fixtures are APPEND-ONLY. The generated set for a version is written
-// once, by TestWriteSnapshotCorpus, and never regenerated: rewriting a
+// Fixtures are APPEND-ONLY. Each generated file is written once, by
+// TestWriteSnapshotCorpus, and never regenerated (a later board under
+// the same version may ADD a file, never change one): rewriting a
 // fixture to make this test pass converts the guard back into the
 // comment it replaced (ADR 0044 decision 7). A schema bump gets a NEW
 // directory; the old ones stay and keep being restored.
@@ -114,7 +115,8 @@ const (
 )
 
 // corpusBoards is the generated half of the corpus. A board added here
-// is written into the NEXT version's set, never into a frozen one.
+// is written as a NEW file in the current version's set, or in the next
+// version's; a file already written is never touched.
 func corpusBoards() []corpusBoard {
 	return []corpusBoard{
 		{"fresh", func(t *testing.T) *game.Game { return newCorpusGame(t) }},
@@ -125,6 +127,26 @@ func corpusBoards() []corpusBoard {
 		{"attached", corpusAttached},
 		{"combat", corpusCombat},
 		{"clone", corpusClone},
+		// v7 (#1497): ADR 0041 phase 3's data-backed scoped effects.
+		{"control", corpusControl},
+		{"amass", corpusAmass},
+		{"scoped_effect_kinds", corpusScopedEffectKinds},
+		{"mass_diminish", corpusMassDiminish},
+		// v7, added by tier 2 (#1497) as new files: delayed triggers as data.
+		{"earthbend", corpusEarthbend},
+		{"suspend_haste", corpusSuspendHaste},
+		// v7, added by the #1568 review as new files: params, condParams
+		// and a fired keyed item on disk.
+		{"queued_mana_drain", corpusQueuedManaDrain},
+		{"queued_doublecast", corpusQueuedDoublecast},
+		{"fired_arcane_denial", corpusFiredArcaneDenial},
+		// v7, added by tier 3a (#1497) as new files: until-end-of-turn
+		// effects, which only became restore points with it.
+		{"until_eot_pump", corpusUntilEOTPump},
+		{"crewed_vehicle", corpusCrewedVehicle},
+		// v7, added by ADR 0093 PR 4 (#1584) as a new file: duration
+		// grants — the grantAbilities mod on disk.
+		{"duration_grants", corpusDurationGrants},
 	}
 }
 
@@ -288,6 +310,327 @@ func corpusClone(t *testing.T) *game.Game {
 }
 
 // ---------------------------------------------------------------
+// v7 boards: ADR 0041 phase 3's data-backed scoped effects (#1497)
+// ---------------------------------------------------------------
+
+// corpusControl is the two control shapes: a Sower-of-Temptation-style
+// theft that lasts while its source remains, and a Switcheroo exchange
+// (two records, one timestamp, indefinite and pinned).
+func corpusControl(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me, opp := g.Seats[0].ID, g.Seats[1].ID
+	sower := pushBattlefieldCardWithTimestamp(g, corpusCreature(me, "Sower of Temptation", 2, 2))
+	stolen := pushBattlefieldCardWithTimestamp(g, corpusCreature(opp, "Grizzly Bears", 2, 2))
+	mine := pushBattlefieldCardWithTimestamp(g, corpusCreature(me, "Runeclaw Bear", 2, 2))
+	theirs := pushBattlefieldCardWithTimestamp(g, corpusCreature(opp, "Balduvian Bears", 2, 2))
+	g.WithWriteLock(func() {
+		d, ok := g.ForAsLongAsOnBattlefieldDuration(sower)
+		if !ok {
+			t.Fatal("setup: the Sower is not on the battlefield")
+		}
+		if !g.GainControlForEffect(sower, stolen, me, d, "Sower of Temptation — gain control") {
+			t.Fatal("GainControlForEffect registered nothing")
+		}
+		if !g.ExchangeControlForEffect(uuid.Nil, mine, theirs, "Switcheroo — exchange control") {
+			t.Fatal("ExchangeControlForEffect registered nothing")
+		}
+	})
+	return g
+}
+
+// corpusAmass is amass's "it's also an Orc" on a Zombie Army: the
+// indefinite, pinned addSubtypes record.
+func corpusAmass(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[0].ID
+	g.WithWriteLock(func() {
+		for _, subtype := range []string{"Zombie", "Orc"} {
+			if err := g.AmassForEffect(me, uuid.Nil, ArmyToken("Zombie"), subtype, 1, nil); err != nil {
+				t.Fatalf("amass %s: %v", subtype, err)
+			}
+		}
+	})
+	if len(g.ScopedEffects) != 1 {
+		t.Fatalf("setup: the Orc amass registered %d scoped effects, want 1", len(g.ScopedEffects))
+	}
+	return g
+}
+
+// corpusScopedEffectKinds freezes every mod kind and every duration
+// kind the v7 vocabulary has, registered through the one write path so
+// the file is exactly what a live game would write. One record per
+// kind, all on one creature; the suspend-shaped member (EnteredAt 0,
+// a controller) is on a second.
+func corpusScopedEffectKinds(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me, opp := g.Seats[0].ID, g.Seats[1].ID
+	target := pushBattlefieldCardWithTimestamp(g, corpusCreature(me, "Grizzly Bears", 2, 2))
+	hasty := pushBattlefieldCardWithTimestamp(g, corpusCreature(me, "Rift Bolt Bear", 3, 3))
+	g.WithWriteLock(func() {
+		pinned := g.PinnedObjectsLocked(target)
+		type entry struct {
+			mods []game.Mod
+			d    game.Duration
+		}
+		whileOnBattlefield, ok := g.ForAsLongAsOnBattlefieldDuration(target)
+		if !ok {
+			t.Fatal("setup: the target is not on the battlefield")
+		}
+		entries := []entry{
+			{[]game.Mod{game.SetControllerMod(opp)}, g.UntilEndOfTurnDuration()},
+			{[]game.Mod{game.AddTypesMod("Artifact")}, g.UntilYourNextTurnDuration(me)},
+			{[]game.Mod{game.RemoveTypesMod("Creature")}, whileOnBattlefield},
+			{[]game.Mod{game.AddSubtypesMod("Island")}, g.PinnedTo(game.IndefiniteDuration(), target)},
+			{[]game.Mod{game.AllCreatureTypesMod()}, g.UntilEndOfYourNextTurnDuration(me)},
+			{[]game.Mod{game.SetColorsMod("U")}, g.UntilEndOfTurnDuration()},
+			{[]game.Mod{game.AddKeywordsMod("flying", "toxic 1")}, g.UntilEndOfTurnDuration()},
+			{[]game.Mod{game.RemoveKeywordsMod("hexproof")}, g.UntilEndOfTurnDuration()},
+			{[]game.Mod{game.LoseAllAbilitiesMod("defender")}, g.UntilEndOfTurnDuration()},
+			{[]game.Mod{game.AddRestrictionsMod(game.CantAttackOrBlock)}, g.UntilEndOfTurnDuration()},
+			{game.SetBasePTMods(0, 2), g.UntilEndOfTurnDuration()},
+			{[]game.Mod{game.ModifyPTMod(3, -1)}, g.UntilEndOfTurnDuration()},
+		}
+		for i, e := range entries {
+			if !g.RegisterScopedEffectForEffect(uuid.Nil, pinned, e.mods, e.d,
+				fmt.Sprintf("corpus scoped effect %d", i)) {
+				t.Fatalf("entry %d registered nothing", i)
+			}
+		}
+		// Suspend's shape: any entry of the object, while its caster
+		// controls it.
+		if !g.RegisterScopedEffectForEffect(hasty,
+			[]game.AffectedObject{{ID: hasty, Controller: me}},
+			[]game.Mod{game.AddKeywordsMod("haste")},
+			game.UntilYouLoseControlOfDuration(hasty, me), "Suspend — haste (CR 702.62a)") {
+			t.Fatal("the suspend-shaped entry registered nothing")
+		}
+	})
+	return g
+}
+
+// corpusMassDiminish casts the real card, so the file holds what the
+// catalog writes rather than what a test registered by hand.
+func corpusMassDiminish(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	other := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	pushBattlefieldCardWithTimestamp(g, corpusCreature(other.ID, "Craw Wurm", 6, 4))
+	pushBattlefieldCardWithTimestamp(g, corpusCreature(other.ID, "Grizzly Bears", 2, 2))
+	castCatalogSpell(t, g, "Mass Diminish", "Sorcery", massDiminishOracle,
+		[]game.TargetRef{{Kind: game.TargetPlayer, ID: other.ID}})
+	passPriorityAroundTable(t, g)
+	if len(g.ScopedEffects) != 1 {
+		t.Fatalf("setup: Mass Diminish registered %d scoped effects, want 1", len(g.ScopedEffects))
+	}
+	return g
+}
+
+// ---------------------------------------------------------------
+// v7 boards added by ADR 0041 phase 3's tier 2 (#1497)
+// ---------------------------------------------------------------
+//
+// NEW files in v7/, under the narrowed rule: the writer never touches
+// an existing file. Both shapes only became restore points with tier 2.
+
+// corpusEarthbend is a real earthbend: the animation record AND the
+// "return it tapped when it dies or is exiled" delayed trigger, whose
+// body and event condition are registered keys.
+func corpusEarthbend(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[0].ID
+	land := pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Forest", TypeLine: "Basic Land — Forest",
+		Owner: me, Controller: me,
+	})
+	g.WithWriteLock(func() {
+		if err := g.EarthbendForEffect(me, uuid.Nil, land, 2); err != nil {
+			t.Fatalf("EarthbendForEffect: %v", err)
+		}
+	})
+	if len(g.DelayedTriggers) != 1 || len(g.ScopedEffects) != 1 {
+		t.Fatalf("setup: earthbend left %d delayed triggers and %d scoped effects, want 1 and 1",
+			len(g.DelayedTriggers), len(g.ScopedEffects))
+	}
+	return g
+}
+
+// corpusSuspendHaste is a real suspend cast (#1558 item 6): Judoon
+// Enforcers suspended, its countdown run to the last counter, the free
+// cast taken, and the creature on the battlefield with CR 702.62a's
+// haste — the record whose member follows the card from the stack
+// (EnteredAt 0) while its caster controls it.
+func corpusSuspendHaste(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	active := g.Seats[g.Turn.ActiveSeat]
+	for g.Turn.Step != game.StepPrecombatMain {
+		if _, err := g.AdvanceStep(); err != nil {
+			t.Fatalf("AdvanceStep: %v", err)
+		}
+	}
+	id := uuid.New()
+	active.Hand.PushTop(game.Card{
+		InstanceID: id, Name: "Judoon Enforcers", TypeLine: "Creature — Rhino Soldier",
+		OracleID: corpusJudoonOracle, ManaCost: "{3}{R}{W}", Power: 5, Toughness: 5,
+		Owner: active.ID, Controller: active.ID,
+	})
+	for _, c := range []string{"C", "R", "W"} {
+		active.ManaPool.AddMana(game.ManaToken{Color: c})
+	}
+	if err := g.PerformSpecialAction(active.ID, id, game.SpecialActionSuspend, game.SpecialActionParams{Strict: true}); err != nil {
+		t.Fatalf("suspend Judoon Enforcers: %v", err)
+	}
+	// Six counters is six turns of draws from an eleven-card library;
+	// take all but the last off by effect, so the next upkeep's tick is
+	// the one that offers the cast.
+	g.WithWriteLock(func() {
+		if err := g.AddCounterForEffect(id, game.CounterTime, -5); err != nil {
+			t.Fatalf("AddCounterForEffect: %v", err)
+		}
+	})
+	passPriorityAroundTable(t, g)
+	advanceToUpkeepOf(t, g, g.Turn.ActiveSeat)
+	passPriorityAroundTable(t, g)
+	offer := latestChoiceOfKind(g, game.PendingChoiceMayCast)
+	if offer == nil {
+		t.Fatal("setup: the last time counter offered no cast")
+	}
+	if err := g.ResolveMayCast(offer.ID, active.ID, true); err != nil {
+		t.Fatalf("ResolveMayCast: %v", err)
+	}
+	if err := g.CastSpell(active.ID, id, game.CastSpellParams{Strict: true, FromZone: "exile"}); err != nil {
+		t.Fatalf("the free cast: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if len(g.ScopedEffects) != 1 {
+		t.Fatalf("setup: the suspended creature carries %d scoped effects, want its haste", len(g.ScopedEffects))
+	}
+	return g
+}
+
+// corpusQueuedManaDrain is a queued Mana Drain refund: a delayed trigger
+// whose body reads PARAMS (the mana value), waiting for its controller's
+// next main phase (#1568 review).
+func corpusQueuedManaDrain(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat].ID
+	g.WithWriteLock(func() {
+		g.ScheduleDelayedTriggerForEffect(game.DelayedTrigger{
+			Controller: me, Label: "Mana Drain — add {C} × 3",
+			At: game.StepPrecombatMain, ControllerTurnOnly: true,
+			Body: manaDrainRefundBody, Params: game.EffectParams{Amount: 3},
+		})
+	})
+	return g
+}
+
+// corpusQueuedDoublecast is a queued Doublecast: an event-conditioned
+// delayed trigger whose condition reads CONDPARAMS (the spell filter).
+func corpusQueuedDoublecast(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat].ID
+	g.WithWriteLock(func() {
+		g.ScheduleDelayedTriggerForEffect(game.DelayedTrigger{
+			Controller: me, Label: "Doublecast — copy that spell",
+			On:         []game.EventKind{game.EventCast},
+			Condition:  youNextCastCondition,
+			CondParams: game.EffectParams{Filter: game.CastFilter{Types: []string{"Instant", "Sorcery"}}},
+			Body:       copyTheSpellBody,
+		})
+	})
+	return g
+}
+
+// corpusFiredArcaneDenial is a FIRED keyed trigger waiting on the stack:
+// Arcane Denial's upkeep draws, with its victim as params, put on the
+// stack by the upkeep that fires it — so the file holds a stack item
+// with `body` and `params`.
+func corpusFiredArcaneDenial(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat].ID
+	victim := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)].ID
+	g.WithWriteLock(func() {
+		g.ScheduleDelayedTriggerForEffect(game.DelayedTrigger{
+			Controller: me, Label: "Arcane Denial — its controller draws two cards, you draw a card",
+			At: game.StepEnd, Body: arcaneDenialDrawsBody, Params: game.EffectParams{Player: victim},
+		})
+	})
+	for g.Turn.Step != game.StepEnd {
+		if _, err := g.AdvanceStep(); err != nil {
+			t.Fatalf("AdvanceStep: %v", err)
+		}
+	}
+	if len(g.StackMeta)+len(g.PendingTriggers) == 0 {
+		t.Fatal("setup: the delayed trigger did not fire at the end step")
+	}
+	return g
+}
+
+// corpusDurationGrants is two real duration grants (ADR 0093 PR 4,
+// #1584): Feign Death's lone grantAbilities mod, and Fake Your Own
+// Death's "+2/+0 and gains …" — a modifyPT and a grantAbilities mod in
+// one record. The file holds `grants` keys a restore must resolve.
+func corpusDurationGrants(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat].ID
+	bear := pushBattlefieldCardWithTimestamp(g, corpusCreature(me, "Grizzly Bears", 2, 2))
+	wurm := pushBattlefieldCardWithTimestamp(g, corpusCreature(me, "Craw Wurm", 6, 4))
+	castCatalogSpell(t, g, "Feign Death", "Instant", feignDeathOracle, dgCardRef(bear))
+	passPriorityAroundTable(t, g)
+	castCatalogSpell(t, g, "Fake Your Own Death", "Instant", fakeYourOwnDeathOracle, dgCardRef(wurm))
+	passPriorityAroundTable(t, g)
+	if len(g.ScopedEffects) != 2 {
+		t.Fatalf("setup: the two spells registered %d scoped effects, want 2", len(g.ScopedEffects))
+	}
+	return g
+}
+
+const corpusJudoonOracle = "ca04089c-24b6-465e-9303-ea28c0d6f3c7"
+
+// ---------------------------------------------------------------
+// v7 boards added by ADR 0041 phase 3's tier 3a (#1497)
+// ---------------------------------------------------------------
+//
+// NEW files in v7/: an until-end-of-turn effect held the restore point
+// back until cleanup before tier 3a, so neither shape could be a
+// fixture until now.
+
+// corpusUntilEOTPump is a real Giant Growth cast on a prowess creature:
+// the spell's +3/+3 and the prowess trigger's +1/+1, two modifyPT
+// records ending at this turn's cleanup — what the catalog and the
+// engine write, not what a test registered by hand.
+func corpusUntilEOTPump(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat].ID
+	monk := pushProwessCreature(g, me, "Monastery Swiftspear", 1, 2)
+	castCatalogSpell(t, g, "Giant Growth", "Instant", giantGrowthOracle,
+		[]game.TargetRef{{Kind: game.TargetCard, ID: monk}})
+	passPriorityAroundTable(t, g)
+	if len(g.ScopedEffects) != 2 {
+		t.Fatalf("setup: Giant Growth on a prowess creature registered %d scoped effects, want 2", len(g.ScopedEffects))
+	}
+	return g
+}
+
+// corpusCrewedVehicle is a real crew activation: Smuggler's Copter
+// crewed, one record adding Artifact Creature until end of turn.
+func corpusCrewedVehicle(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat].ID
+	copter := pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Smuggler's Copter", OracleID: smugglersCopterOracle,
+		TypeLine: "Artifact — Vehicle", Power: 3, Toughness: 3, Owner: me, Controller: me,
+	})
+	crewer := pushBattlefieldCardWithTimestamp(g, corpusCreature(me, "Grizzly Bears", 2, 2))
+	if err := g.ActivateCatalogAbility(me, copter, 0, game.ActivateAbilityParams{CrewIDs: []uuid.UUID{crewer}}); err != nil {
+		t.Fatalf("crew: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if len(g.ScopedEffects) != 1 {
+		t.Fatalf("setup: crew registered %d scoped effects, want 1", len(g.ScopedEffects))
+	}
+	return g
+}
+
+// ---------------------------------------------------------------
 // Rendering a board deterministically
 // ---------------------------------------------------------------
 
@@ -359,10 +702,15 @@ func firstDifferingLine(a, b []byte) string {
 //
 //	go test ./internal/cards/effects -run TestWriteSnapshotCorpus -args -write-corpus
 //
-// A version's set is written ONCE. If the directory already exists the
-// writer does not touch it: it re-renders every board and fails if any
-// would come out different, because a frozen set is never rewritten —
-// a changed shape is a new version, in a new directory.
+// The writer NEVER TOUCHES AN EXISTING FILE (ADR 0041's 2026-09-24
+// phase 3 amendment, owner decision 6 — narrowed from "never touches an
+// existing directory"). For a version whose directory already exists it
+// re-renders every board and fails if any file already there would come
+// out different, because a fixture is never rewritten: a changed shape
+// is a new version, in a new directory. A board with no file yet — one a
+// later change under the same version added — is written beside the
+// others, which is how a shape that becomes a restore point after its
+// version was introduced gets frozen without a bump.
 func TestWriteSnapshotCorpus(t *testing.T) {
 	if !*writeCorpus {
 		t.Skip("writes fixtures; run with -args -write-corpus")
@@ -378,21 +726,21 @@ func TestWriteSnapshotCorpus(t *testing.T) {
 		rendered[b.name] = first
 	}
 
-	if _, err := os.Stat(dir); err == nil {
-		var changed []string
-		for name, raw := range rendered {
-			existing, err := os.ReadFile(filepath.Join(dir, name+".json"))
-			if err != nil {
-				changed = append(changed, name+".json (not in the frozen set)")
-				continue
-			}
-			if !bytes.Equal(existing, raw) {
-				changed = append(changed, name+".json: "+firstDifferingLine(existing, raw))
-			}
+	var changed []string
+	fresh := map[string][]byte{}
+	for name, raw := range rendered {
+		existing, err := os.ReadFile(filepath.Join(dir, name+".json"))
+		if err != nil {
+			fresh[name] = raw
+			continue
 		}
-		if len(changed) > 0 {
-			sort.Strings(changed)
-			t.Fatalf(`%s is frozen: it was written by an earlier build of schema v%d and
+		if !bytes.Equal(existing, raw) {
+			changed = append(changed, name+".json: "+firstDifferingLine(existing, raw))
+		}
+	}
+	if len(changed) > 0 {
+		sort.Strings(changed)
+		t.Fatalf(`%s holds fixtures written by an earlier build of schema v%d, and
 fixtures are never rewritten. The writer would now produce:
 
   %s
@@ -400,22 +748,35 @@ fixtures are never rewritten. The writer would now produce:
 If the snapshot's shape changed, that is a new schema version: bump
 SnapshotSchemaVersion (see its comment for when that is required) and
 run this again to write v%d beside the old set. If only the scripted
-boards changed, nothing needs doing — the frozen set is still the
-fixture, and the new boards go in the next version's set.`,
-				dir, game.SnapshotSchemaVersion, strings.Join(changed, "\n  "), game.SnapshotSchemaVersion+1)
-		}
+boards changed, nothing needs doing — the file on disk is still the
+fixture. Nothing was written.`,
+			dir, game.SnapshotSchemaVersion, strings.Join(changed, "\n  "), game.SnapshotSchemaVersion+1)
+	}
+	if len(fresh) == 0 {
 		t.Logf("%s already holds this build's output; nothing to write", dir)
 		return
 	}
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	for name, raw := range rendered {
-		if err := os.WriteFile(filepath.Join(dir, name+".json"), raw, 0o644); err != nil {
+	for name, raw := range fresh {
+		path := filepath.Join(dir, name+".json")
+		// O_EXCL: the one guarantee this function makes is that it
+		// never overwrites a fixture, so it asks the filesystem to
+		// refuse rather than trusting the read above.
+		f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := f.Write(raw); err != nil {
+			f.Close()
+			t.Fatal(err)
+		}
+		if err := f.Close(); err != nil {
 			t.Fatal(err)
 		}
 	}
-	t.Logf("wrote %d fixtures to %s", len(rendered), dir)
+	t.Logf("wrote %d new fixtures to %s", len(fresh), dir)
 }
 
 // TestSnapshotCorpusBoardsStillBuild keeps the writer honest between

@@ -218,28 +218,10 @@ func TestAnEarthbentLandPlayedThisTurnIsSickWithoutTheHaste(t *testing.T) {
 // the test above, built from the same predicate the real thing uses so
 // the only difference is the grant.
 func (g *Game) animateLandWithoutHasteForTest(land uuid.UUID, stamp int64) {
-	applies := func(t *Card, _ *Game, _ *Card) bool {
-		return t.InstanceID == land && t.EnteredBattlefieldAt == stamp
-	}
 	d := g.PinnedTo(IndefiniteDuration(), land)
-	ts := timeNowUnixNano()
-	g.registerScopedStaticLocked(StaticAbility{
-		Layer:     Layer4Type,
-		AppliesTo: applies,
-		Apply: func(ch *Characteristic, _ *Card, _ *Game, _ *Card) {
-			if !typeListHas(ch.Types, "Creature") {
-				ch.Types = append(ch.Types, "Creature")
-			}
-		},
-	}, uuid.Nil, "probe — animate without haste", d, ts)
-	g.registerScopedStaticLocked(StaticAbility{
-		Layer:     Layer7PT,
-		SubLayer:  SubLayer7B_Set,
-		AppliesTo: applies,
-		Apply: func(ch *Characteristic, _ *Card, _ *Game, _ *Card) {
-			ch.Power, ch.Toughness = 0, 0
-		},
-	}, uuid.Nil, "probe — animate without haste (base P/T)", d, ts)
+	g.RegisterScopedEffectForEffect(uuid.Nil, []AffectedObject{PinObject(land, stamp)},
+		append([]Mod{AddTypesMod("Creature")}, SetBasePTMods(0, 0)...), d,
+		"probe — animate without haste")
 }
 
 // TestEarthbendCountersGoThroughThePlacementWindow: the counters are
@@ -286,8 +268,8 @@ func hardenedScalesForTest() ReplacementEffect {
 
 // --- the duration ----------------------------------------------------
 
-// TestTheHasteAndTheAnimationEndTogether: all three continuous effects
-// share one duration pinned to the object, so there is no window in
+// TestTheHasteAndTheAnimationEndTogether: the animation is one record
+// with one duration pinned to the object, so there is no window in
 // which the land is a creature without haste or hasty without being a
 // creature. Once it has left and come back it is neither, and the
 // registry has dropped all three rather than carrying dead entries.
@@ -297,16 +279,19 @@ func TestTheHasteAndTheAnimationEndTogether(t *testing.T) {
 	land := earthbendTestLand(t, g, me, "Forest")
 
 	earthbend(t, g, me, land, 2)
-	if n := len(g.ScopedStatics); n != 3 {
-		t.Fatalf("earthbend registered %d continuous effects, want 3 (type, base P/T, haste)", n)
+	// ONE record (ADR 0041 phase 3, #1497): one timestamp and one
+	// duration by construction, with a mod in each of three layers.
+	if n := len(g.ScopedEffects); n != 1 {
+		t.Fatalf("earthbend registered %d scoped effects, want 1", n)
 	}
-	first := g.ScopedStatics[0]
-	for _, s := range g.ScopedStatics[1:] {
-		if s.Timestamp != first.Timestamp {
-			t.Errorf("the three halves of one printed sentence have different CR 613.7 timestamps")
-		}
-		if s.Duration != first.Duration {
-			t.Errorf("the three halves have different durations: %+v vs %+v", s.Duration, first.Duration)
+	first := g.ScopedEffects[0]
+	kinds := map[ModKind]bool{}
+	for _, m := range first.Mods {
+		kinds[m.Kind] = true
+	}
+	for _, want := range []ModKind{ModAddTypes, ModAddKeywords, ModSetBasePower, ModSetBaseToughness} {
+		if !kinds[want] {
+			t.Errorf("the earthbend record has no %s mod; mods = %+v", want, first.Mods)
 		}
 	}
 	if first.Duration.Kind != Indefinite {
@@ -317,7 +302,7 @@ func TestTheHasteAndTheAnimationEndTogether(t *testing.T) {
 	}
 
 	// Kill it. The return is a new object, so nothing applies any more
-	// — and the pin drops all three registry entries at the next sweep.
+	// — and the pin drops the record at the next sweep.
 	killEarthbentLand(t, g, land)
 
 	c := earthbentView(t, g, land)
@@ -328,8 +313,8 @@ func TestTheHasteAndTheAnimationEndTogether(t *testing.T) {
 		t.Error("the returned land still has haste; the grant outlived the animation")
 	}
 	g.WithWriteLock(func() { g.ClearExpiredScopedStaticsLocked() })
-	if n := len(g.ScopedStatics); n != 0 {
-		t.Errorf("%d continuous effects survived the object they were pinned to", n)
+	if n := len(g.ScopedEffects); n != 0 {
+		t.Errorf("%d scoped effects survived the object they were pinned to", n)
 	}
 }
 
@@ -679,7 +664,7 @@ func TestACancelledEarthbendDoesNothing(t *testing.T) {
 	if n := len(g.DelayedTriggers); n != 0 {
 		t.Errorf("a cancelled earthbend queued %d delayed returns", n)
 	}
-	if n := len(g.ScopedStatics); n != 0 {
+	if n := len(g.ScopedEffects); n != 0 {
 		t.Errorf("a cancelled earthbend registered %d continuous effects", n)
 	}
 }
@@ -701,7 +686,7 @@ func TestEarthbendingALandThatHasLeftIsANoOp(t *testing.T) {
 
 	earthbend(t, g, me, land, 4)
 
-	if n := len(g.ScopedStatics); n != 0 {
+	if n := len(g.ScopedEffects); n != 0 {
 		t.Errorf("%d continuous effects registered against a land that is not on the battlefield", n)
 	}
 	if n := len(g.DelayedTriggers); n != 0 {

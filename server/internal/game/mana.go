@@ -43,6 +43,14 @@ type ManaToken struct {
 	// nothing and a lookup would answer no. Zero for a mana that came
 	// from something that is not a permanent.
 	SourceKinds ManaSourceKinds
+
+	// Riders are what this mana does WHEN IT IS SPENT (#1547,
+	// mana_spend_rider.go): Cavern of Souls' "that spell can't be
+	// countered", Pyromancer's Goggles' copy, Hall of the Bandit Lord's
+	// haste. Copied from the ability at mint, fired when the token pays
+	// for a spell or ability its filter admits, and stamped Applied on
+	// the copy in StackItem.Paid.Mana. Nil for ordinary mana.
+	Riders []ManaSpendRider `json:"riders,omitempty"`
 }
 
 // ManaPool is a player's current mana pool. Order matters — see the

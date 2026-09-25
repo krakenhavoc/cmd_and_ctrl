@@ -503,8 +503,9 @@ func (f Flicker) Apply(ctx *Context) error {
 // returns the permanent a whole turn later.
 //
 // Cards is the payload, stamped onto the fired stack item's Targets;
-// Effect reads it back from item.Targets rather than closing over it,
-// which is what keeps the trigger correct across a Clone / undo.
+// the body reads it back from item.Targets. What the trigger DOES is a
+// registered key (Body) plus plain Params — data, so the trigger
+// survives a Clone, an undo and a restore point alike.
 type ScheduleDelayedTrigger struct {
 	// At is the step whose beginning fires the trigger. Zero means
 	// game.StepEnd — "the next end step" is the overwhelmingly
@@ -529,11 +530,15 @@ type ScheduleDelayedTrigger struct {
 	// Cards is the instance IDs the effect acts on.
 	Cards []uuid.UUID
 
-	// Effect runs when the trigger's stack item resolves. Same
-	// contract as a triggered ability's: read everything off `item`
-	// and the `g` handed in, capture neither a *Game nor a pointer
-	// into a zone slice.
-	Effect func(g *game.Game, item *game.StackItem) error
+	// Body is what the trigger does when its stack item resolves: a
+	// registered body (delayed_bodies.go, ADR 0041 phase 3, #1497).
+	// A game.BodyRef, not a function, so a func literal here does not
+	// compile — which is what keeps a waiting delayed trigger data, and
+	// its table a restore point.
+	Body game.BodyRef
+
+	// Params is the body's plain data — what a closure used to capture.
+	Params game.EffectParams
 }
 
 func (s ScheduleDelayedTrigger) Apply(ctx *Context) error {
@@ -552,7 +557,8 @@ func (s ScheduleDelayedTrigger) Apply(ctx *Context) error {
 		At:                 at,
 		ControllerTurnOnly: s.ControllerTurnOnly,
 		Cards:              s.Cards,
-		Effect:             s.Effect,
+		Body:               s.Body,
+		Params:             s.Params,
 	})
 	return nil
 }

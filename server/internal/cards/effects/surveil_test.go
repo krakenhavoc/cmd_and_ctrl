@@ -76,6 +76,42 @@ func TestSurveilLandEntersTappedAndSurveils(t *testing.T) {
 	}
 }
 
+// TestRaucousTheaterAndThunderingFallsEnterTappedAndSurveil pins the
+// two newest rows in the table — same shape as
+// TestSurveilLandEntersTappedAndSurveils, the risk being the row's own
+// oracle ID and colours rather than the shared machinery.
+func TestRaucousTheaterAndThunderingFallsEnterTappedAndSurveil(t *testing.T) {
+	for _, tc := range []struct {
+		name, oracle string
+	}{
+		{"Raucous Theater", "04e5e84f-8fd4-43ab-8f9d-5b24646f7ae5"},
+		{"Thundering Falls", "d2bcff58-7a8a-46ef-b6b3-39501d4c8e6e"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			g := newCatalogGame(t)
+			me := g.Seats[g.Turn.ActiveSeat]
+			seedLibrary(me, "Next Draw")
+
+			id := playLandFromHand(t, g, tc.name, tc.oracle)
+			passPriorityAroundTable(t, g)
+
+			card, ok := battlefieldCard(g, id)
+			if !ok {
+				t.Fatal("the land isn't on the battlefield")
+			}
+			if !card.Tapped {
+				t.Error("the surveil land entered untapped")
+			}
+			if n := tapEventsFor(g, id); n != 0 {
+				t.Errorf("%d tap events; the land should have ENTERED tapped", n)
+			}
+			if surveilChoiceFor(g, me.ID) == nil {
+				t.Fatal("playing the surveil land did not queue a surveil")
+			}
+		})
+	}
+}
+
 // TestSurveilBinsToGraveyardNotBottom is the assertion the whole
 // primitive exists for.
 func TestSurveilBinsToGraveyardNotBottom(t *testing.T) {

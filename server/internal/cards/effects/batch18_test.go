@@ -337,12 +337,34 @@ func TestB18SpringleafParadeMakesXChangelingsThatTapForAnyColour(t *testing.T) {
 	if err := g.ActivateManaAbility(me.ID, token, 0, game.ManaAbilityParams{}); err == nil {
 		t.Error("without a Springleaf Parade the token has no mana ability")
 	}
-	// #1357: the ETB tokens now come from a real trigger reading
-	// CastX(), so only the own-tokens-only mana-ability grant remains
-	// a declared caveat.
+	// #1357 made the ETB a real trigger reading CastX(), and ADR 0093
+	// made the grant a real layer-6 grant to EVERY creature token you
+	// control, so nothing is declared.
 	spec, _ := Lookup(b18SpringleafParadeOracle)
-	if spec.Completeness != CompletenessCaveats || len(spec.Caveats) != 1 {
-		t.Error("the own-tokens-only grant must be declared")
+	if spec.Completeness != CompletenessFull || len(spec.Caveats) != 0 {
+		t.Error("Springleaf Parade has no simplification left — CompletenessFull")
+	}
+}
+
+// ADR 0093: the grant reaches a creature token the Parade did not make.
+func TestB18SpringleafParadeGrantsEveryCreatureTokenYouControl(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	parade := game.NewCard("Springleaf Parade", me.ID)
+	parade.TypeLine = "Enchantment"
+	parade.OracleID = b18SpringleafParadeOracle
+	pushBattlefieldCardWithTimestamp(g, parade)
+	goblin := TokenCard("1/1 red Goblin")
+	goblin.InstanceID, goblin.Owner, goblin.Controller = uuid.New(), me.ID, me.ID
+	pushBattlefieldCardWithTimestamp(g, goblin)
+	theirs := TokenCard("1/1 red Goblin")
+	theirs.InstanceID, theirs.Owner, theirs.Controller = uuid.New(), opp.ID, opp.ID
+	pushBattlefieldCardWithTimestamp(g, theirs)
+	if n := grantedManaRowsOf(g, goblin.InstanceID); n != 1 {
+		t.Errorf("your Goblin token has %d granted mana rows, want 1", n)
+	}
+	if n := grantedManaRowsOf(g, theirs.InstanceID); n != 0 {
+		t.Errorf("an opponent's Goblin token has %d granted mana rows, want 0", n)
 	}
 }
 

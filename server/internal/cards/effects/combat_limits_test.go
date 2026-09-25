@@ -211,15 +211,8 @@ func TestSilentArbiterWithNoAbilitiesLimitsNothing(t *testing.T) {
 	a := b12Creature(g, me.ID, "Bear A", "Creature — Bear", 2, 2)
 	b := b12Creature(g, me.ID, "Bear B", "Creature — Bear", 2, 2)
 	g.WithWriteLock(func() {
-		g.RegisterScopedStaticForEffect(game.StaticAbility{
-			Layer: game.Layer6Ability,
-			AppliesTo: func(target *game.Card, _ *game.Game, _ *game.Card) bool {
-				return target.InstanceID == arbiter
-			},
-			Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
-				c.AbilitiesRemoved = true
-			},
-		}, uuid.Nil, "loses all abilities", g.UntilEndOfTurnDuration())
+		g.RegisterScopedEffectForEffect(uuid.Nil, g.PinnedObjectsLocked(arbiter),
+			[]game.Mod{game.LoseAllAbilitiesMod()}, g.UntilEndOfTurnDuration(), "loses all abilities")
 	})
 	advanceTo(t, g, game.StepDeclareAttackers)
 	for _, id := range []uuid.UUID{a, b} {

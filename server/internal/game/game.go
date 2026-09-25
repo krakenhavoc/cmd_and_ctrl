@@ -347,6 +347,14 @@ type Game struct {
 	// an empty slot and the first view refolds from event 0.
 	logProjection ProjectionCache
 
+	// cardIndex is the instance-ID → zone-and-position hint table
+	// every card lookup goes through (#1479, ADR 0094). A HINT: every
+	// answer is checked against the live zone before it is returned,
+	// so nothing invalidates it — not a move, not RestoreFrom. Not
+	// cloned, not snapshotted: a new *Game builds its own on its first
+	// lookup. See card_index.go.
+	cardIndex cardLocationIndex
+
 	// eventBatch is the monotonic counter stamped into Event.Batch on
 	// each EmitEvent: the identity of the run of events the engine is
 	// emitting as ONE occurrence (CR 603.2c). It advances at exactly
@@ -459,6 +467,21 @@ type Game struct {
 	// defender had chosen, and one that dropped it would reopen a
 	// declaration whose triggers have already fired.
 	blocksDeclared map[uuid.UUID]bool
+
+	// attacksDeclared is the ATTACK side's completion point for CR
+	// 508.1d (#1571, attack_requirements.go): true once the active
+	// player's declaration this combat has passed its requirement
+	// checkpoint — their pass in declare_attackers, or AdvanceStep
+	// leaving the step. After it nothing re-judges the declaration, so
+	// a creature that arrives, or is goaded, once the declaration is
+	// over is never asked to attack late.
+	//
+	// Cleared with the rest of combat, and carried by Clone /
+	// RestoreFrom and the persisted snapshot for blocksDeclared's
+	// reason: an undo across the pass that kept it would let the
+	// re-made declaration skip its requirements, and one that dropped
+	// it would re-judge a declaration whose triggers have already fired.
+	attacksDeclared bool
 
 	// firstStrikeStepParticipants is THIS combat's CR 510.4 / 702.7c
 	// participation record: the attacking and blocking creatures that
@@ -715,16 +738,24 @@ type Game struct {
 	// See ADR 0045 addendum Decision 11 and block_rules.go.
 	TurnScopedBlockRules []BlockRule
 
-	// ScopedStatics is the CONTINUOUS-EFFECT slot for effects whose
+	// ScopedEffects is the CONTINUOUS-EFFECT slot for effects whose
 	// lifetime is a duration rather than a battlefield source: Giant
-	// Growth's +3/+3, Overrun's mass pump and trample grant, Act of
-	// Treason's theft, Agent of Treachery's. Consulted by
-	// activeStaticAbilitiesLocked alongside the battlefield walk and
-	// swept by the one duration sweep (CR 611.2). See
-	// scoped_statics.go and duration.go. Added in S32 as
-	// TurnScopedStatics; renamed in S38 when it stopped being
-	// turn-scoped (ADR 0063).
-	ScopedStatics []ScopedStatic
+	// Growth's +3/+3, Overrun's mass pump and trample grant, a crewed
+	// Vehicle, Act of Treason's theft, Agent of Treachery's (CR 611.2).
+	// Each is DATA (ADR 0041 phase 3, #1497): an affected set, a list
+	// of operations from a closed vocabulary and a duration, so the
+	// snapshot carries it and a game holding one is still a restore
+	// point. Adapted into the layer pass by activeStaticAbilitiesLocked
+	// and swept by the one duration sweep. See scoped_effects.go and
+	// duration.go. Tier 3a retired the closure-bearing ScopedStatics
+	// registry it used to sit beside (S32's TurnScopedStatics).
+	ScopedEffects []ScopedEffect
+
+	// scopedEffectMemo is the layer-pass adapter's output for
+	// ScopedEffects, reused while the records it was built from are
+	// the records still here (#1558). Derived, never persisted, never
+	// cloned: see scopedEffectAdapterMemo.
+	scopedEffectMemo scopedEffectAdapterMemo
 
 	// testReplacements is the test-only replacement injection slot
 	// populated by RegisterReplacementForTest. Unexported so
@@ -1128,6 +1159,16 @@ func (g *Game) AdvanceStep() (Turn, error) {
 	defer g.mu.Unlock()
 	if g.State != StateActive {
 		return Turn{}, ErrGameNotActive
+	}
+	// #1571 / CR 508.1d: leaving declare_attackers ends the attack
+	// declaration, so it runs the same requirement checkpoint as the
+	// active player's pass. The sandbox's skip-ahead is not a way to
+	// wave off Zurgo or a goad: refused while a free addition would
+	// still obey a requirement, with the requirement named.
+	if g.Turn.Step == StepDeclareAttackers {
+		if err := g.attackCheckpointLocked(); err != nil {
+			return g.Turn, err
+		}
 	}
 	// #830 / CR 509.2a, and #859 / CR 508.2: leaving a step completes
 	// whatever turn-based action was staged in it. A combat
@@ -1865,16 +1906,11 @@ func (g *Game) PlayerByID(id uuid.UUID) *Player {
 func (g *Game) ControllerOfCard(instanceID uuid.UUID) (uuid.UUID, bool) {
 	g.mu.RLock()
 	defer g.mu.RUnlock()
-	z := g.findCardZoneLocked(instanceID)
+	z, pos := g.locateCardLocked(instanceID)
 	if z == nil {
 		return uuid.Nil, false
 	}
-	for _, c := range z.Cards {
-		if c.InstanceID == instanceID {
-			return c.Controller, true
-		}
-	}
-	return uuid.Nil, false
+	return z.Cards[pos].Controller, true
 }
 
 // playerByIDLocked is the unlocked variant of PlayerByID. The caller

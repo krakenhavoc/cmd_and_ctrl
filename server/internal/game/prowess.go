@@ -107,18 +107,11 @@ func resolveProwess(g *Game, item *StackItem) error {
 	if src == nil {
 		return nil
 	}
-	id, stamp := src.InstanceID, src.EnteredBattlefieldAt
-	g.RegisterScopedStaticForEffect(StaticAbility{
-		Layer:    Layer7PT,
-		SubLayer: SubLayer7C_Modify,
-		AppliesTo: func(target *Card, _ *Game, _ *Card) bool {
-			return target.InstanceID == id && target.EnteredBattlefieldAt == stamp
-		},
-		Apply: func(c *Characteristic, _ *Card, _ *Game, _ *Card) {
-			c.Power++
-			c.Toughness++
-		},
-	}, id, prowessLabel, g.UntilEndOfTurnDuration())
+	// A data record (ADR 0041 phase 3, tier 3a): a table holding a
+	// prowess pump is still a restore point.
+	g.RegisterScopedEffectForEffect(src.InstanceID,
+		[]AffectedObject{PinObject(src.InstanceID, src.EnteredBattlefieldAt)},
+		[]Mod{ModifyPTMod(1, 1)}, g.UntilEndOfTurnDuration(), prowessLabel)
 	return nil
 }
 

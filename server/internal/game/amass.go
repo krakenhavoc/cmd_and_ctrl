@@ -379,18 +379,13 @@ func (g *Game) grantAmassSubtypeLocked(source, army uuid.UUID, subtype string) {
 	if !ok || c.HasSubtype(subtype) {
 		return
 	}
-	stamp := c.EnteredBattlefieldAt
-	g.registerScopedStaticLocked(StaticAbility{
-		Layer: Layer4Type,
-		AppliesTo: func(t *Card, _ *Game, _ *Card) bool {
-			return t.InstanceID == army && t.EnteredBattlefieldAt == stamp
-		},
-		Apply: func(ch *Characteristic, _ *Card, _ *Game, _ *Card) {
-			if !typeListHas(ch.Subtypes, subtype) {
-				ch.Subtypes = append(ch.Subtypes, subtype)
-			}
-		},
-	}, source, amassLabel+" — it's also a "+subtype, g.PinnedTo(IndefiniteDuration(), army), timeNowUnixNano())
+	// A data record (ADR 0041 phase 3, #1497): an amassed Army can sit
+	// on the battlefield for the rest of the game, and as a closure
+	// this grant kept its table off the restore path for all of it.
+	g.RegisterScopedEffectForEffect(source,
+		[]AffectedObject{PinObject(army, c.EnteredBattlefieldAt)},
+		[]Mod{AddSubtypesMod(subtype)}, g.PinnedTo(IndefiniteDuration(), army),
+		amassLabel+" — it's also a "+subtype)
 }
 
 // runAmassThenLocked runs CR 701.47c's "the Army you amassed" clause,

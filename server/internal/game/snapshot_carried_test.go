@@ -142,10 +142,17 @@ func carriedProbes() []carriedProbe {
 				return reflect.ValueOf(g.PendingChoices[0]).Elem()
 			},
 		},
-		// ScopedStatic has no probe on purpose: the whole entry is
-		// `dropped` and censused, so its one `carried` row (Duration) is
-		// carried by CLONE and not by the snapshot — see
-		// carriedNotRoundTrippable.
+		{
+			typeName: "ScopedEffect", plan: scopedEffectFields,
+			capture: "captureSnapshotLocked (deepCopyScopedEffects)", restore: "restoreGame (deepCopyScopedEffects)",
+			at: func(t *testing.T, g *Game) reflect.Value {
+				t.Helper()
+				if len(g.ScopedEffects) != 1 {
+					t.Fatalf("the probe wants exactly one scoped effect, the fixture has %d", len(g.ScopedEffects))
+				}
+				return reflect.ValueOf(&g.ScopedEffects[0]).Elem()
+			},
+		},
 	}
 }
 
@@ -179,6 +186,77 @@ var carriedFixture = map[string]any{
 	"DelayedTrigger.At": StepEnd,
 	// The prompt kind, which decides which Resolve* call may answer it.
 	"PendingChoice.Kind": PendingChoiceDiscardFromHand,
+	// A mod's kind is a closed vocabulary, and restore REFUSES a kind
+	// it does not know (ErrUnknownEffectKey, ADR 0041 P4) — so an
+	// invented one would fail the restore, not test the carry.
+	// Effect keys are a closed, REGISTERED set (#1497): restore refuses
+	// a key it has no body or condition for, so an invented one would
+	// fail the restore rather than test the carry.
+	"DelayedTrigger.Body": carriedTestBodyKey,
+	// The two containers holding keyed elements: a generated element
+	// would carry an invented key and be refused.
+	"Game.DelayedTriggers": func(g *Game) any {
+		return []*DelayedTrigger{{
+			ID: uuid.NewSHA1(uuid.Nil, []byte("Game.DelayedTriggers")), Controller: g.Seats[0].ID,
+			Label: "drift-Game.DelayedTriggers", At: StepEnd, CreatedSeq: 4848,
+			Body: carriedTestBodyKey, Params: EffectParams{Amount: 48},
+		}}
+	},
+	"Game.PendingTriggers": func(g *Game) any {
+		return []*StackItem{{
+			ID: uuid.NewSHA1(uuid.Nil, []byte("Game.PendingTriggers")), Kind: StackItemTriggered,
+			Controller: g.Seats[0].ID, Label: "drift-Game.PendingTriggers", Seq: 4949,
+			// No Body: a keyed item comes back with an Effect derived
+			// from it, which a value comparison cannot see past. Its
+			// Body and Params rows are probed on the StackItem probe.
+			Params: EffectParams{Amount: 49},
+		}}
+	},
+	"DelayedTrigger.Condition": carriedTestConditionKey,
+	// A spell filter's types are CR 205.2a's closed list (#1568
+	// review), refused at restore otherwise; every other param field is
+	// generated-distinct by hand so a dropped one still shows.
+	"DelayedTrigger.Params":     carriedTestParams("DelayedTrigger.Params", "Sorcery"),
+	"DelayedTrigger.CondParams": carriedTestParams("DelayedTrigger.CondParams", "Instant"),
+	"StackItem.Params":          carriedTestParams("StackItem.Params", "Artifact"),
+	"StackItem.Body":            carriedTestBodyKey.Key(),
+	"ScopedEffect.Mods":         []Mod{AddSubtypesMod("drift-ScopedEffect.Mods"), ModifyPTMod(4, 2)},
+	// #1571: a scope is a closed vocabulary too, refused when unknown.
+	"ScopedEffect.Scope": ScopeOpponentsCreatures,
+	// A duration's kind and condition are closed sets too (#1497
+	// review): restore refuses an unknown one, so an invented 4242
+	// would fail the restore rather than test the carry. Every other
+	// field is non-zero, so a projection dropping any of them shows.
+	"ScopedEffect.Duration": Duration{
+		Kind: ForAsLongAs, Condition: WhileSourceRemainsTapped,
+		Player:              uuid.NewSHA1(uuid.Nil, []byte("ScopedEffect.Duration/player")),
+		ExpiresAtTurnsBegun: 7, ExpiresAfterTurnsBegun: 6,
+		Source:          uuid.NewSHA1(uuid.Nil, []byte("ScopedEffect.Duration/source")),
+		SourceEnteredAt: 4444,
+		Pinned:          uuid.NewSHA1(uuid.Nil, []byte("ScopedEffect.Duration/pinned")),
+		PinnedEnteredAt: 4545,
+	},
+	"DelayedTrigger.Duration": &Duration{
+		Kind: UntilYourNextTurn, Condition: WhileYouControlSource,
+		Player:              uuid.NewSHA1(uuid.Nil, []byte("DelayedTrigger.Duration/player")),
+		ExpiresAtTurnsBegun: 9, ExpiresAfterTurnsBegun: 8,
+		Source:          uuid.NewSHA1(uuid.Nil, []byte("DelayedTrigger.Duration/source")),
+		SourceEnteredAt: 4646,
+		Pinned:          uuid.NewSHA1(uuid.Nil, []byte("DelayedTrigger.Duration/pinned")),
+		PinnedEnteredAt: 4747,
+	},
+	"Game.ScopedEffects": func(g *Game) any {
+		c := g.Battlefield.Cards[0]
+		return []ScopedEffect{{
+			Affected:   []AffectedObject{{ID: c.InstanceID, EnteredAt: c.EnteredBattlefieldAt}},
+			Mods:       []Mod{SetColorsMod("U")},
+			Source:     ObjectRef{ID: uuid.NewSHA1(uuid.Nil, []byte("Game.ScopedEffects")), Epoch: 3},
+			SourceName: "drift-Game.ScopedEffects",
+			Timestamp:  4343,
+			Duration:   Duration{Kind: Indefinite},
+			Label:      "drift-Game.ScopedEffects",
+		}}
+	},
 	// The zone a spell was cast from (CR 400.7g / ADR 0066).
 	"StackItem.CastFromZone": ZoneGraveyard,
 	// ADR 0069's face-down rule. An invented kind has no viewers row.
@@ -245,11 +323,6 @@ var carriedNotRoundTrippable = map[string]string{
 		"its characteristics instead of serving the cache it dropped (restoreGame). " +
 		"TestSnapshotRoundTripIsExact asserts the bump, and TestSnapshotRoundTripKeepsGameUsable " +
 		"asserts the recompute it buys.",
-	"ScopedStatic.Duration": "ScopedStatic is `dropped` as a whole — it is two closures, counted in " +
-		"ContinuationCensus.ScopedStatics — so nothing about it reaches a snapshot. `Duration` is " +
-		"marked carried because it is plain data that CLONE carries (undo) and that the snapshot " +
-		"could carry the day #515 makes the ability re-derivable. TestUndoKeepsScopedStatics is " +
-		"the coverage it has today.",
 }
 
 // TestEveryCarriedFieldSurvivesTheSnapshot is the enforcement.
@@ -344,11 +417,10 @@ func TestCarriedExemptionsAreLiveAndExplained(t *testing.T) {
 // NOT probe, with the reason. Everything else in driftPlans must have a
 // probe, so a domain type added to the drift plan cannot arrive with its
 // `carried` rows unenforced.
-var carriedProbeless = map[string]string{
-	"ScopedStatic": "the whole entry is `dropped` and counted in ContinuationCensus.ScopedStatics — " +
-		"it never reaches a snapshot at all. Its one `carried` row, Duration, is carried by CLONE; " +
-		"see carriedNotRoundTrippable.",
-}
+//
+// Empty since ADR 0041 phase 3 tier 3a deleted ScopedStatic, the one
+// type it used to name.
+var carriedProbeless = map[string]string{}
 
 // TestEveryPlannedTypeHasACarriedProbe is the half of the enforcement
 // that survives somebody adding a domain type rather than a field.
@@ -459,8 +531,6 @@ func planFor(rt reflect.Type) fieldPlan {
 		return delayedTriggerFields
 	case reflect.TypeOf(PendingChoice{}):
 		return pendingChoiceFields
-	case reflect.TypeOf(ScopedStatic{}):
-		return scopedStaticFields
 	}
 	return nil
 }
@@ -668,4 +738,24 @@ func render(v reflect.Value) string {
 		return s
 	}
 	return fmt.Sprintf("%v", v.Interface())
+}
+
+// The keys the carried probes use for the effect-key fields: registered
+// once, in the test namespace the ledger ignores.
+var (
+	carriedTestBodyKey      = testBody(func(*Game, *StackItem) error { return nil })
+	carriedTestConditionKey = testCondition(func(Event, *DelayedTrigger, *Game) bool { return false })
+)
+
+// carriedTestParams is a fully populated EffectParams whose filter is
+// valid, for the carried probes.
+func carriedTestParams(seed, cardType string) EffectParams {
+	return EffectParams{
+		Player: uuid.NewSHA1(uuid.Nil, []byte(seed+"/player")),
+		Object: ObjectRef{ID: uuid.NewSHA1(uuid.Nil, []byte(seed+"/object")), Epoch: 7},
+		Amount: 42,
+		Cost:   "{" + seed + "}",
+		Name:   seed,
+		Filter: CastFilter{Types: []string{cardType}},
+	}
 }

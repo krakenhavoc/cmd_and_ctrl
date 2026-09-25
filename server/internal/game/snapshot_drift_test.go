@@ -140,6 +140,10 @@ var gameFields = plan(
 	// Events from scratch, so there is nothing to serialise.
 	"eventLogGen", rebuilt, "names this *Game's log history; a restored game is a new receiver and starts a new one",
 	"logProjection", rebuilt, "derived cache of the public log; the first view of a restored game refolds Events",
+	// #1479: the card-location hint table. Every answer it gives is
+	// checked against the live zones, so a restored game's first lookup
+	// simply builds a new one.
+	"cardIndex", rebuilt, "derived hint table over the zones; the first lookup of a restored game builds it",
 	// #829 event batches. Carried for the same reason the per-turn
 	// tallies are, and carried TOGETHER: the counter names the batch
 	// the marks are recorded against, so a restore that kept one and
@@ -176,6 +180,11 @@ var gameFields = plan(
 	// invented it would read an attacker unblocked before the
 	// defender chose.
 	"blocksDeclared", carried, "",
+	// #1571: the attack declaration's CR 508.1d checkpoint. Carried
+	// with blocksDeclared: a restore that dropped it would re-judge a
+	// declaration whose triggers have fired, and one that invented it
+	// would let a re-made declaration skip its requirements.
+	"attacksDeclared", carried, "",
 	// #716 combat damage step participation. Carried for the reason
 	// the three above are, and for one more: the window between the
 	// two combat damage steps is a priority window, so an undo or a
@@ -212,7 +221,8 @@ var gameFields = plan(
 	"BuiltinReplacements", rebuilt, "registered by NewGame, not per-game state",
 	"mu", rebuilt, "a fresh receiver owns its own lock, exactly as Clone does",
 
-	"ScopedStatics", dropped, "StaticAbility is two closures; counted in ContinuationCensus.ScopedStatics",
+	"ScopedEffects", carried, "GameSnapshot.ScopedEffects — ADR 0041 phase 3's data record for a continuous effect with a duration (#1497)",
+	"scopedEffectMemo", rebuilt, "the layer-pass adapter's memo over ScopedEffects (#1558); a restored game's first recompute builds it",
 	"TurnScopedReplacements", dropped, "ReplacementEffect is three closures; counted in ContinuationCensus.TurnScopedReplacements",
 	"TurnScopedBlockRules", dropped, "BlockRule is two closures; counted in ContinuationCensus.TurnScopedBlockRules",
 	"testReplacements", dropped, "test-only injection slot; production has no path to it",
@@ -473,19 +483,22 @@ var playerFields = plan(
 	"Statics", carried, "",
 )
 
-// scopedStaticFields classifies game.ScopedStatic — the floating
-// continuous-effect registry's entry type. It was not classified
-// before S38, so a field added to it used to vanish across a restore
-// with nothing complaining. The whole entry is dropped and censused;
-// `Duration` is the half of it that is plain data and could be
-// carried the day #515 makes the ability re-derivable, which is why
-// it is classified `carried` rather than sharing the closure's fate.
-var scopedStaticFields = plan(
-	"Ability", dropped, "two closures; counted by ContinuationCensus.ScopedStatics",
-	"Source", dropped, "rides with the ability; counted by ContinuationCensus.ScopedStatics",
-	"Timestamp", dropped, "rides with the ability; counted by ContinuationCensus.ScopedStatics",
-	"Duration", carried, "plain data (duration.go); carried by Clone and ready for #515",
-	"Label", dropped, "reaches the operator through ContinuationCensus.Labels",
+// scopedEffectFields classifies ADR 0041 phase 3's data record
+// (#1497). Every field is carried: the record exists precisely so that
+// nothing about a continuous effect from a resolution has to be
+// dropped.
+var scopedEffectFields = plan(
+	"Affected", carried, "",
+	// #1571: a live-rule affected set ("creatures your opponents
+	// control") instead of Affected.
+	"Scope", carried, "",
+	"Mods", carried, "",
+	"Source", carried, "",
+	"SourceName", carried, "",
+	"Controller", carried, "",
+	"Timestamp", carried, "",
+	"Duration", carried, "",
+	"Label", carried, "",
 )
 
 var zoneFields = plan(
@@ -495,6 +508,10 @@ var zoneFields = plan(
 )
 
 var stackItemFields = plan(
+	// A fired delayed trigger's data twin of Effect (#1497): restore
+	// re-derives Effect from Body through the running binary.
+	"Body", carried, "",
+	"Params", carried, "",
 	"ID", carried, "",
 	"Kind", carried, "",
 	"Controller", carried, "",
@@ -557,6 +574,9 @@ var stackItemFields = plan(
 	// as though it were a card, putting a phantom Twincast in
 	// somebody's yard where Tarmogoyf can count it.
 	"IsCopy", carried, "",
+	// #1574: "this ability can't be copied". Carried: a restore that
+	// lost it would let a copy effect copy Gogo's activation.
+	"Uncopyable", carried, "",
 	"Seq", carried, "",
 	"Ordered", carried, "",
 	// #1511: which pending triggers may skip the CR 603.3b prompt.
@@ -598,9 +618,15 @@ var delayedTriggerFields = plan(
 	"On", carried, "",
 	"Duration", carried, "",
 
-	"Effect", dropped, "a closure; counted in ContinuationCensus.DelayedTriggerEffects",
-	"AppliesTo", dropped, "a closure; its trigger is counted once in ContinuationCensus.DelayedTriggerEffects through Effect beside it",
-	"Optional", dropped, "a prompt declaration holding a Chooser closure; its trigger is counted once in ContinuationCensus.DelayedTriggerEffects through Effect beside it",
+	// ADR 0041 phase 3, tier 2 (#1497): what the trigger does and
+	// which event fires it are registered KEYS plus plain params, so the
+	// whole trigger is carried. ContinuationCensus.DelayedTriggerEffects
+	// is retired for every real path.
+	"Body", carried, "",
+	"Params", carried, "",
+	"Condition", carried, "",
+	"CondParams", carried, "",
+	"OptionalQuestion", carried, "",
 )
 
 var pendingChoiceFields = plan(
@@ -623,6 +649,10 @@ var pendingChoiceFields = plan(
 	// game would let the player spend restricted mana on anything.
 	"ManaRestrictions", carried, "",
 	"ManaSourceKinds", carried, "",
+	// #1547: the spend riders the pick's token will carry (Cavern of
+	// Souls' "that spell can't be countered"). Without it a restored
+	// pick mints mana that does nothing when it is spent.
+	"ManaRiders", carried, "",
 	// #742: how many tokens each colour of a one-pick-N-mana choice
 	// mints (Gilded Lotus). Without it a restored pick adds one.
 	"ManaAmounts", carried, "",
@@ -750,7 +780,7 @@ var driftPlans = []struct {
 	{StackItem{}, stackItemFields},
 	{DelayedTrigger{}, delayedTriggerFields},
 	{PendingChoice{}, pendingChoiceFields},
-	{ScopedStatic{}, scopedStaticFields},
+	{ScopedEffect{}, scopedEffectFields},
 }
 
 // driftPlanName is the type name a plan is keyed and reported under.

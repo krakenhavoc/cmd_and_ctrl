@@ -330,20 +330,15 @@ func (g *Game) grantSuspendedFreeCastLocked(player, cardID uuid.UUID) {
 //
 // Caller must hold g.mu (write).
 func (g *Game) grantHasteForCastLocked(player, cardID uuid.UUID) {
-	g.RegisterScopedStaticForEffect(StaticAbility{
-		Layer: Layer6Ability,
-		AppliesTo: func(target *Card, _ *Game, _ *Card) bool {
-			return target != nil && target.InstanceID == cardID && target.Controller == player
-		},
-		Apply: func(ch *Characteristic, _ *Card, _ *Game, _ *Card) {
-			for _, kw := range ch.Abilities {
-				if kw == "haste" {
-					return
-				}
-			}
-			ch.Abilities = append(ch.Abilities, "haste")
-		},
-	}, cardID, "Suspend — haste (CR 702.62a)", UntilYouLoseControlOfDuration(cardID, player))
+	// A data record (ADR 0041 phase 3, #1497). EnteredAt 0 because the
+	// card is still a spell on the stack and gets its entry stamp only
+	// as it lands; Controller because the haste applies only while that
+	// player controls it. The duration ends the record when control
+	// goes; the member test keeps the pass exact until the sweep does.
+	g.RegisterScopedEffectForEffect(cardID,
+		[]AffectedObject{{ID: cardID, Controller: player}},
+		[]Mod{AddKeywordsMod("haste")},
+		UntilYouLoseControlOfDuration(cardID, player), "Suspend — haste (CR 702.62a)")
 }
 
 // SuspendLabel is the printed keyword line — "Suspend 3—{R}" — built

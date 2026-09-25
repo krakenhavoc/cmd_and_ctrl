@@ -461,6 +461,17 @@ func destroyChosenPermanent(g *game.Game, item *game.StackItem) error {
 	return DestroyTarget{Target: item.Targets[0].ID}.Apply(NewContext(g, item))
 }
 
+// sourceDealsOneToFirstTarget is "{T}: this creature deals 1 damage to
+// any target" — Goblin Sharpshooter's own ping and the ping Thornbite
+// Staff GRANTS (ADR 0093), where the source is the equipped host. The
+// ability's source deals 1 damage to the first chosen target.
+func sourceDealsOneToFirstTarget(g *game.Game, item *game.StackItem) error {
+	if len(item.Targets) == 0 {
+		return nil
+	}
+	return DealDamage{Source: item.SourceCardID, Target: item.Targets[0].ID, Amount: 1}.Apply(NewContext(g, item))
+}
+
 // destroyFirstLegalCardTarget is the whole Effect of an activated
 // ability whose printed text is "Destroy target [permanent]." — it
 // re-checks legality through ctx.LegalTargets() (CR 608.2b) rather
@@ -918,6 +929,25 @@ func destroyEachLegalTarget(_ *game.StackItem, ctx *Context) error {
 	return nil
 }
 
+// putPlusOneCounterOnEachLegalTarget places one +1/+1 counter on each
+// still-legal target, skipping one that left or stopped qualifying in
+// response (CR 608.2b). Shared by Phyrexian Scriptures ("put a +1/+1
+// counter on each of X target creatures") and Rishkar, Peema Renegade
+// ("put a +1/+1 counter on each of up to two target creatures") — the
+// same loop as destroyEachLegalTarget, one primitive over.
+func putPlusOneCounterOnEachLegalTarget(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	for _, t := range ctx.LegalTargets() {
+		if t.Kind != game.TargetCard {
+			continue
+		}
+		if err := (AddCounter{Target: t.ID, Kind: game.CounterPlusOne, N: 1}).Apply(ctx); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // plusOneCounterPlacementOnYourCreature is Hardened Scales' and
 // Branching Evolution's shared predicate: "if one or more +1/+1
 // counters would be PUT ON a creature you control" (CR 122.6 / CR
@@ -943,4 +973,38 @@ func plusOneCounterPlacementOnYourCreature(ev *game.ReplacementEvent, g *game.Ga
 		return false
 	}
 	return target.Controller == src.Controller
+}
+
+// drawOnePerPicked is the "if you do, draw that many cards" tail of a
+// resolution-time sacrifice pick: `player` draws one card for each
+// permanent chosen, and nothing when none was. God-Eternal Bontu's and
+// Sephiroth's shared Then (the clone gate found the second copy).
+func drawOnePerPicked(player uuid.UUID) func(ctx *Context, picked game.PromptedPicks) error {
+	return func(ctx *Context, picked game.PromptedPicks) error {
+		n := picked.Count()
+		if n == 0 {
+			return nil
+		}
+		return DrawCards{Player: player, N: n}.Apply(ctx)
+	}
+}
+
+// drainTargetOpponentOne is "target opponent loses 1 life and you gain
+// 1 life" as a trigger's resolution: the first still-legal player
+// target loses 1, then the item's controller gains 1. A target that
+// left the game has already countered the ability (CR 608.2b), so
+// nothing happens. Shared by Vengeful Bloodwitch, Sephiroth, Fabled
+// SOLDIER and Sephiroth's Super Nova emblem.
+func drainTargetOpponentOne(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	for _, t := range ctx.LegalTargets() {
+		if t.Kind != game.TargetPlayer {
+			continue
+		}
+		if err := g.ChangePlayerLifeForEffect(item.SourceCardID, t.ID, -1); err != nil {
+			return err
+		}
+		return GainLife{Player: item.Controller, Amount: 1}.Apply(ctx)
+	}
+	return nil
 }

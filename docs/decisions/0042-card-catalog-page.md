@@ -208,7 +208,8 @@ Three decisions:
 
 - **The oracle text is a checked-in, generated fixture.** CI has no
   Scryfall dump. `testdata/oracle_text.json` holds the printed text of
-  every catalogued oracle ID, one card per line (~520 KB). It is
+  every catalogued oracle ID, one card per line (~520 KB; one file per
+  card since the #1542 amendment below). It is
   generated through `cards.Index.FindByOracleID`, the join the server
   itself uses, so placeholder printings never win. The regen command is
   `CMDCTRL_SCRYFALL_DUMP=… go test ./internal/cards/coverage/ -run
@@ -237,3 +238,39 @@ printed line. The other 11 are pinned. One is Heart of Kiran's
 alternative crew, which the card prints as prose. Ten are unregistered
 abilities on caveated cards. Five of those have a cost shape that
 now exists (#1381).
+
+## Amendment (2026-09-24, #1542): one oracle-text file per card
+
+The fixture is no longer one file. It is a directory,
+`server/internal/cards/coverage/testdata/oracle/`, with one generated
+`<oracle_id>.json` per catalogued base oracle ID. Each file holds exactly
+the row `oracle_text.json` held for that card, plus a newline. The split
+was converted byte for byte, and the loaded map was checked to be
+identical.
+
+Why it changed: since #1496, every catalogued card needs text, so every
+card PR regenerated the one file. Two PRs adding different cards touched
+the same path. They had to merge one at a time, each regenerated on the
+tip (#1491, #1496, #1509). Per-card files remove that conflict. A PR adds
+only its own cards' files.
+
+What each test does now:
+
+- `TestOracleFixtureIsCurrent` is still dump-gated and nightly. It reports
+  a missing, changed or non-canonical file, and a file for a card no
+  longer catalogued. `-update-oracle` writes every file and deletes those
+  stale ones. It never deletes the file of a catalogued card the dump
+  doesn't know. A new flag, `-oracle-ids=<id>,…`, narrows both the check
+  and the write to the named cards. That is the command a card PR runs,
+  so it cannot touch another card's file.
+- `TestOracleFixtureCoversRegistry` still runs without the dump. It fails
+  when a registered card has no file, and it prints the exact
+  `-oracle-ids` command for the missing IDs.
+- The loader rejects any file that is not `<lower-case uuid>.json`. A
+  skipped file would be a card whose text silently stopped being checked.
+- `coverage.PrintedOracle()` embeds the directory (`testdata/oracle/*.json`).
+
+Cost, measured on 2,430 files: loading from disk takes about 23 ms in
+tests, against about 4 ms for the single file. The embedded parse takes
+about 6 ms once per binary. We did not shard by ID prefix, because a
+shard is a file that two card PRs can still share.

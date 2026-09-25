@@ -90,6 +90,24 @@ func ManaRestrictSubtype(t string) string { return "subtype:" + t }
 // — ManaRestrictSupertype("Legendary") for Delighted Halfling.
 func ManaRestrictSupertype(t string) string { return "supertype:" + t }
 
+// ManaRestrictColor builds a "the object is this colour" tag —
+// ManaRestrictColor("R") for Pyromancer's Goggles' "a red instant or
+// sorcery spell" (#1547). Uppercase WUBRG, the ManaSpendContext.Colors
+// alphabet.
+func ManaRestrictColor(c string) string { return "color:" + c }
+
+// ManaRestrictAnyType builds a "the object has ANY of these card types"
+// tag — ManaRestrictAnyType("Instant", "Sorcery") for "an instant or
+// sorcery spell" (Pyromancer's Goggles, Boseiju, #1547).
+//
+// One tag with a `|`-joined value rather than two tags, because tags AND
+// and this clause is an OR. The alternation works for every keyed tag
+// (type, subtype, supertype, color); nothing a Scryfall type line prints
+// contains a `|`.
+func ManaRestrictAnyType(types ...string) string {
+	return "type:" + strings.Join(types, "|")
+}
+
 // ManaSpendContext describes the object a mana payment is being made
 // for, so restricted tokens can be admitted or refused. Built once
 // per payment at the top of the spend path and threaded down into
@@ -203,6 +221,19 @@ func (ctx ManaSpendContext) matchesRestriction(r string) bool {
 	if !ok || value == "" || ctx.Purpose == SpendPurposeUnknown {
 		return false
 	}
+	// #1547: a `|` in the value is an alternation — "an instant OR
+	// sorcery spell". Any alternative satisfying the key satisfies the
+	// tag; an empty alternative is a card-file bug and matches nothing.
+	for _, alt := range strings.Split(value, "|") {
+		if alt != "" && ctx.matchesKeyed(key, alt) {
+			return true
+		}
+	}
+	return false
+}
+
+// matchesKeyed decides one `key:value` tag with a single value.
+func (ctx ManaSpendContext) matchesKeyed(key, value string) bool {
 	switch key {
 	case "type":
 		return containsFold(ctx.Types, value)
@@ -216,6 +247,10 @@ func (ctx ManaSpendContext) matchesRestriction(r string) bool {
 		return ctx.AllCreatureTypes && IsCreatureType(value)
 	case "supertype":
 		return containsFold(ctx.Supertypes, value)
+	case "color":
+		// #1547: "a red instant or sorcery spell". The object's
+		// colours, uppercase WUBRG; a colourless object has none.
+		return containsFold(ctx.Colors, value)
 	}
 	return false
 }

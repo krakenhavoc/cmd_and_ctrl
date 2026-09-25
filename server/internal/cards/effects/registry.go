@@ -56,6 +56,12 @@ func Register(spec Spec) {
 	checkPlayerKeywords(spec)
 	for _, a := range spec.Activated {
 		checkFlatClauses(spec.Name, a.Targets)
+		checkNoXBound(spec.Name, "an activated ability's", a.Targets)
+		if a.Modes != nil {
+			for _, o := range a.Modes.Options {
+				checkNoXBound(spec.Name, "an activated mode's", o.Targets)
+			}
+		}
 		if a.Modes != nil {
 			if a.Targets != nil {
 				panic(fmt.Sprintf("effects.Register: %q declares an activated ability with both Targets and Modes — put the target clause on the mode", spec.Name))
@@ -71,6 +77,12 @@ func Register(spec Spec) {
 	}
 	for _, t := range spec.Triggered {
 		checkFlatClauses(spec.Name, t.Targets)
+		checkNoXBound(spec.Name, "a trigger's", t.Targets)
+		if t.Modes != nil {
+			for _, o := range t.Modes.Options {
+				checkNoXBound(spec.Name, "a trigger mode's", o.Targets)
+			}
+		}
 		if t.Modes != nil && t.Targets != nil {
 			panic(fmt.Sprintf("effects.Register: %q declares a trigger with both Targets and Modes — put the target clause on the mode", spec.Name))
 		}
@@ -335,6 +347,15 @@ func Register(spec Spec) {
 	for _, cv := range spec.Caveats {
 		if cv == "" {
 			panic(fmt.Sprintf("effects.Register: %q declares an empty caveat", spec.Name))
+		}
+	}
+	// #1547: a spend rider that could never fire is a card that says
+	// something the engine silently does not do.
+	for i, ma := range spec.ManaAbilities {
+		for _, r := range ma.SpendRiders {
+			if err := validateManaSpendRider(r); err != nil {
+				panic(fmt.Sprintf("effects.Register: %q mana ability %d: %v", spec.Name, i, err))
+			}
 		}
 	}
 	// ADR 0071 decision 3: the Room door gate is RESERVED, not built.
@@ -929,6 +950,25 @@ func checkFlatClauses(name string, spec *game.TargetSpec) {
 	for i := range spec.Rest {
 		if len(spec.Rest[i].Rest) > 0 {
 			panic(fmt.Sprintf("effects.Register: %q target clause %d nests further clauses — the list is flat; build it with Clauses(...)", name, i+1))
+		}
+	}
+	for i := 0; i < spec.ClauseCount(); i++ {
+		if d := spec.Clause(i).Different; d != nil && (d.Key == nil || d.Label == "") {
+			panic(fmt.Sprintf("effects.Register: %q target clause %d has a set rule with no Key or no Label — build it with EachDifferentManaValue / EachDifferentController / EachDifferentName", name, i))
+		}
+	}
+}
+
+// checkNoXBound refuses ManaValueAtMostX on a clause whose owner
+// announces no X the engine binds it to (#1559). Only a SPELL's
+// clauses are bound — at cast and again from StackItem.XValue at
+// resolution. A trigger announces no X at all, and the bot's
+// activation enumerator does not bind one, so on either owner the
+// flag would be a bound nothing enforces consistently.
+func checkNoXBound(name, owner string, spec *game.TargetSpec) {
+	for i := 0; i < spec.ClauseCount(); i++ {
+		if spec.Clause(i).ManaValueAtMostX {
+			panic(fmt.Sprintf("effects.Register: %q declares \"mana value X or less\" on %s target clause %d — only a spell's clause is bound to an announced X", name, owner, i))
 		}
 	}
 }

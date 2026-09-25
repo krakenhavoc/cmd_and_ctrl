@@ -437,26 +437,3 @@ func b14PutCounters(ctx *Context, target uuid.UUID, counters map[string]int) err
 	}
 	return nil
 }
-
-// b14ReturnDistinctNamesFromGraveyard is Eerie Ultimatum's body: put
-// every still-legal target onto the battlefield under its owner's
-// control, skipping any card whose name has already come back this
-// resolution — "with different names". Announce order, so which of
-// two same-named picks returns is the one picked first.
-func b14ReturnDistinctNamesFromGraveyard(ctx *Context) error {
-	seen := map[string]bool{}
-	for _, t := range ctx.LegalTargets() {
-		if t.Kind != game.TargetCard {
-			continue
-		}
-		c, ok := ctx.Game.LookupCardForEffect(t.ID)
-		if !ok || seen[c.Name] {
-			continue
-		}
-		seen[c.Name] = true
-		if err := (ReturnFromGraveyard{Target: t.ID, Dest: game.ZoneBattlefield}).Apply(ctx); err != nil {
-			return err
-		}
-	}
-	return nil
-}

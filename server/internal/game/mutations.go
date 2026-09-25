@@ -61,31 +61,14 @@ func (g *Game) zoneFromRefLocked(ref ZoneRef) *Zone {
 // findCardZoneLocked returns the Zone currently holding the card with
 // the given instance ID, or nil if the card is not in any zone. Must
 // be called with g.mu held.
+//
+// #1479: answered by the card index (card_index.go) rather than by
+// walking every zone. The zones it covers — the battlefield, the
+// stack, exile and each seat's library, hand, graveyard and command
+// zone, not PhasedOut — are unchanged.
 func (g *Game) findCardZoneLocked(cardID uuid.UUID) *Zone {
-	if g.Battlefield.Contains(cardID) {
-		return g.Battlefield
-	}
-	if g.Stack.Contains(cardID) {
-		return g.Stack
-	}
-	if g.Exile.Contains(cardID) {
-		return g.Exile
-	}
-	for _, p := range g.Seats {
-		if p.Library.Contains(cardID) {
-			return p.Library
-		}
-		if p.Hand.Contains(cardID) {
-			return p.Hand
-		}
-		if p.Graveyard.Contains(cardID) {
-			return p.Graveyard
-		}
-		if p.Command.Contains(cardID) {
-			return p.Command
-		}
-	}
-	return nil
+	z, _ := g.locateCardLocked(cardID)
+	return z
 }
 
 // DrawCard moves the top card of the given player's library into
@@ -924,6 +907,9 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// may belong to a MODE (Heliod's Intervention); the steps hold
 	// clause copies, so nothing mutates the shared catalog entry.
 	xSteps := resolveStepCountsFromX(steps, params.XValue)
+	// #1559: "with mana value X or less" — X is announced before
+	// targets (CR 601.2b / 602.2b), so the bound is known here.
+	bindStepsX(steps, params.XValue)
 	params.Targets = assignAnnouncedSlots(steps, params.Targets)
 	for _, i := range xSteps {
 		// Max 0 reads as "unbounded" to the ordinary count check, so
@@ -1336,6 +1322,15 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		targetSpec: spec,
 		modeSpec:   modeSpec,
 	}
+	// #1547, CR 601.2h: the mana is spent, so what it does when it is
+	// spent happens now — Cavern of Souls' "that spell can't be
+	// countered", Pyromancer's Goggles' copy trigger. Against the SAME
+	// spend context applyCastCostLocked solved the payment under, so a
+	// rider's filter and the restriction that let the token pay can
+	// never disagree about what the spell is. A trigger queued here is
+	// placed by the runStateChecksLocked at the bottom of the cast,
+	// above the spell.
+	g.applyManaSpendRidersLocked(g.StackMeta[cardID], ManaSpendForCast(card), card)
 	// CR 702.62a (#659): the permanent this cast produces has haste.
 	// Registered here rather than at resolution because the grant that
 	// says so has been consumed by now — the card has left exile and
@@ -1736,7 +1731,7 @@ func (g *Game) materializePlanLocked(p *Player, plan tapPlan, cost ParsedCost) {
 		if card.Controller != p.ID {
 			continue
 		}
-		ab := g.autoTapAbilityFor(p.ID, *card, ManaAbilitiesForCard(*card))
+		ab := g.autoTapAbilityForRef(p.ID, *card, planned.Ref)
 		if ab == nil {
 			continue
 		}
@@ -1991,6 +1986,7 @@ func (g *Game) materializePlanLocked(p *Player, plan tapPlan, cost ParsedCost) {
 				p, cardID,
 				repeatColor(color, slot.AmountFor(color)),
 				restrictionsFor(g, ab, p.ID, cardID),
+				ab.SpendRiders,
 				// #1212: what the source WAS, snapshotted off the copy
 				// taken before the tap — the same copy the triggered
 				// mana abilities below use, so the two can never
@@ -2205,6 +2201,7 @@ func (g *Game) materializeExiledManaSourceLocked(
 			p, cardID,
 			repeatColor(color, slot.AmountFor(color)),
 			restrictionsFor(g, ab, p.ID, cardID),
+			ab.SpendRiders,
 			srcKinds,
 			// CR 106.12a: not a tap for mana. The card was never
 			// tapped and was never a permanent.
@@ -2445,10 +2442,11 @@ func (g *Game) printedCostLocked(p *Player, card Card, params CastSpellParams) (
 	// S21 sub-PR 6: "you may spend mana as though it were mana of any
 	// color to cast those spells" (Breeches, Brazen Plunderer). Folds
 	// the colored slots into the generic demand, which is exactly
-	// equivalent for the solver.
-	if grant != nil && grant.AnyColor {
-		cost = asAnyColorCost(cost)
-	}
+	// equivalent for the solver. #1573: "mana of any TYPE" (Hostage
+	// Taker) folds the {C} slots too — colorless is a type, not a
+	// color (CR 106.1b). Here, in the one pricer, so the payment, the
+	// auto-tapper, the preview and the view all read the same fold.
+	cost = spendAsThoughAny(grant, cost)
 	return cost, chosen, nil
 }
 
@@ -2999,7 +2997,7 @@ func spellAllTargetsIllegalLocked(g *Game, item *StackItem) bool {
 // targetStillExistsLocked performs the CR 608.2b existence check for
 // a single TargetRef: the referenced player is still seated and
 // non-eliminated, or the referenced card is still in a zone the
-// engine tracks (findCardZoneLocked walks every zone). Caller must
+// engine tracks (findCardZoneLocked covers every one). Caller must
 // hold g.mu.
 func targetStillExistsLocked(g *Game, t TargetRef) bool {
 	switch t.Kind {
@@ -6168,6 +6166,7 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 				p, cardID,
 				[]string{options[0]},
 				restrictionsFor(g, &ab, playerID, cardID),
+				ab.SpendRiders,
 				srcKinds,
 				ab.TapCost,
 				nil,
@@ -6190,6 +6189,7 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 					p, cardID,
 					repeatColor(color, slot.AmountFor(color)),
 					restrictionsFor(g, &ab, playerID, cardID),
+					ab.SpendRiders,
 					srcKinds,
 					ab.TapCost,
 					nil,
@@ -6220,6 +6220,10 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 			// one source every "mana from a Treasure" card is printed
 			// about would be the one source that records nothing.
 			ManaSourceKinds: srcKinds,
+			// #1547: and the spend riders, for the reason the
+			// restrictions ride here — a Cavern of Souls pick answered
+			// without them would mint mana whose spell CAN be countered.
+			ManaRiders: copyManaRiders(ab.SpendRiders),
 			// #742: "N mana of any one color" — one pick, N tokens.
 			ManaAmounts: copyManaAmounts(slot.Amounts),
 			// #763: this pick is part of TAPPING A PERMANENT FOR MANA
@@ -6958,6 +6962,20 @@ func (g *Game) passPriorityLocked() error {
 	if g.Turn.PriorityHolder == NoPriority {
 		return ErrNoPriority
 	}
+	// #1571 / CR 508.1d: the ACTIVE player's pass in declare_attackers
+	// is where they say their attack declaration is done, so it is the
+	// declaration's requirement checkpoint — refused, with the unmet
+	// requirement named, while a free addition would still obey one
+	// more ("Zurgo Helmsmasher attacks each combat if able"). Only
+	// once per combat: after it is accepted the declaration is judged,
+	// and priority coming back round in the step asks nothing again.
+	// A table with no requirement on the board never gets past the
+	// fast path. See attack_requirements.go.
+	if g.Turn.Step == StepDeclareAttackers && g.Turn.PriorityHolder == g.Turn.ActiveSeat {
+		if err := g.attackCheckpointLocked(); err != nil {
+			return err
+		}
+	}
 	// #1279 / CR 509.1: a defending player who passes in the
 	// declare-blockers step has finished declaring blockers — the pass
 	// is how a table that blocks by hand has always said "done". When
@@ -7102,7 +7120,10 @@ func (g *Game) stackHasItemsLocked() bool {
 // without haste (CR 302.6, 702.10), ErrDefender for a defender
 // creature (CR 702.3), and an *AttackLimitError (wrapping
 // ErrAttackLimit) when one more attacker would break a CR 508.1c
-// count limit such as Silent Arbiter's (#1507). Re-declaring the same attacker against a
+// count limit such as Silent Arbiter's (#1507), and an
+// *AttackRequirementError (wrapping ErrAttackRequirement) when the
+// declaration would make a CR 508.1d requirement unobeyable (#1571).
+// Re-declaring the same attacker against a
 // different target overwrites the previous target.
 //
 // Caller authorization (was-it-the-controller) is intentionally
@@ -7204,6 +7225,17 @@ func (g *Game) DeclareAttackerWith(attackerID, targetPlayerID uuid.UUID, params 
 			// for the sandbox's hand-forcing, for the reason
 			// "can't attack" above is not — see attack_limits.go.
 			if err := g.attackLimitRefusalLocked(decl); err != nil {
+				return err
+			}
+			// CR 508.1d, #1571: a declaration that makes a requirement
+			// that could still be obeyed unobeyable — a goaded creature
+			// at its goader while another opponent is open, a creature
+			// with no requirement into the only slot a creature that
+			// must attack needs. Not relaxed for hand-forcing either:
+			// a requirement ignored is the card played as a blank,
+			// Zurgo's drawback and goad's whole point. Before the tax,
+			// for the limit's reason. See attack_requirements.go.
+			if err := g.attackRequirementRefusalLocked(decl); err != nil {
 				return err
 			}
 			price := g.priceAttackDeclarationLocked(decl)
@@ -7382,6 +7414,13 @@ func (g *Game) DeclareAttackersWith(decls []AttackDeclaration, params DeclareAtt
 	// ADR 0080 has it for a tax the seat can only partly afford.
 	// Judged before the tax so a refused declaration is not priced.
 	if err := g.attackLimitRefusalLocked(eligible); err != nil {
+		return nil, err
+	}
+	// CR 508.1d, #1571: ALL OR NOTHING like the limit — a swing that
+	// leaves a requirement unobeyable (every creature at the goader
+	// while another opponent is open) is refused whole, and which
+	// creatures to point elsewhere is the player's choice.
+	if err := g.attackRequirementRefusalLocked(eligible); err != nil {
 		return nil, err
 	}
 	// CR 508.1a, before anything is staged and before the CR 508.1f
@@ -8502,8 +8541,9 @@ func (g *Game) SetInitiative(playerID uuid.UUID) error {
 // Pass uuid.Nil for `by` to clear the goad. The card must be on the
 // battlefield; goading a card in any other zone is meaningless.
 //
-// Sandbox-only: the must-attack-and-not-the-goader constraint is not
-// enforced — the marker is the affordance for players to remember.
+// Since #1571 the marker is enforced: the goaded creature's two
+// CR 701.15b requirements are judged with every other CR 508.1d
+// requirement (attack_requirements.go).
 func (g *Game) SetGoaded(cardID, by uuid.UUID) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()

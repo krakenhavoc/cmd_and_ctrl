@@ -1,0 +1,8 @@
+---
+title: "Set-level rule on a library-top pick"
+date: 2026-09-19
+issues: [998]
+pr: 1017
+legacy_order: 49
+---
+**Set-level rule on a library-top pick** (#998, the PROMPT half of the row above) — `game.ChooseCardsPrompt.Validate` has judged the picked SET since #624, is enforced in exactly one place (`checkChooseCardsPicksLocked`, which `ResolveChooseCards` and `internal/legal`'s `ChooseCardsPickLegalLocked` both go through) and had its own wire contract in [protocol.md](protocol.md) — but the two library-top pick primitives built their `choose_cards` prompt without forwarding it, so "any number of nonland permanent cards with **total mana value 4 or less** from among them" could not be stated over a look at the top seven. `effects.PutFromLibraryOntoBattlefield.Validate` and `effects.TakeFromLibraryToHand.Validate` are that field, forwarded verbatim; no engine change. One behaviour rides with it: a set rule switches OFF the "the only legal answer is every candidate" shortcut, because with a rule it is the rule and not the count that decides which subsets are answers, and the shortcut would otherwise perform a set the prompt would have refused. **Ao, the Dawn Sky** ships `full` on it — `WhenThisDies` + `TriggeredAbility.Modes` (#764) + `LookAtTopOfLibraryForEffect` + `b23TotalManaValueAtMost(4)`, all of which already existed. The other pick prompts were checked and need nothing: `QueueDiscardChoiceForEffect` already forwards `Validate` (#624), and every other catalog `choose_cards` over a hand, a graveyard or the battlefield is a one-card pick, where a rule about the set is a rule about the card and `Match` already says it. The COST half of the row (a sacrifice clause's set-level predicate) is untouched and still open.

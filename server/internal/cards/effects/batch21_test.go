@@ -1010,8 +1010,10 @@ func TestB21AgentOfTheIronThroneDrainsWhileYouControlYourCommander(t *testing.T)
 	if g.Seats[1].Life != before[1]-3 {
 		t.Error("an opponent's commander does not carry your Background's ability")
 	}
-	if spec, _ := Lookup(b21AgentOfTheIronThroneOracle); spec.Completeness != CompletenessCaveats {
-		t.Error("the stolen-commander gap must be declared")
+	// ADR 0093 made the grant real, so the stolen-commander gap is
+	// gone (TestAgentOfTheIronThroneStolenCommanderDrainsForTheThief).
+	if spec, _ := Lookup(b21AgentOfTheIronThroneOracle); spec.Completeness != CompletenessFull || len(spec.Caveats) != 0 {
+		t.Error("nothing is declared any more — CompletenessFull")
 	}
 }
 

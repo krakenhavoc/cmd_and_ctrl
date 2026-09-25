@@ -340,6 +340,15 @@ type CastPermission struct {
 	// any color for this card (Breeches, Brazen Plunderer).
 	AnyColor bool `json:"anyColor,omitempty"`
 
+	// AnyType is the wider clause: "mana of any TYPE can be spent to
+	// cast that spell" (Hostage Taker, Gonti, Night Minister,
+	// Outrageous Robbery). Colorless is a type of mana but not a color
+	// (CR 106.1b), so AnyColor leaves a {C} requirement standing and
+	// this does not — a stolen Thought-Knot Seer is castable off
+	// Swamps. It implies AnyColor; a permission setting both is read
+	// as this one. ADR 0066's 2026-09-24 amendment (#1573).
+	AnyType bool `json:"anyType,omitempty"`
+
 	// --- the window ------------------------------------------------
 
 	// Duration is when the permission ENDS (CR 611.2), in the one
@@ -488,7 +497,7 @@ func (g *Game) CastPermissionActiveForEffect(p *CastPermission, playerID uuid.UU
 	// `false`: this is a query, not the cleanup sweep. An
 	// UntilEndOfTurn permission is live for the whole of the turn it
 	// names and is dropped by sweepCastPermissionsLocked at that
-	// turn's cleanup step — the same split ScopedStatic lives under.
+	// turn's cleanup step — the same split ScopedEffect lives under.
 	return !g.durationExpiredLocked(p.Duration, false)
 }
 
@@ -646,6 +655,56 @@ func (g *Game) GrantCastPermissionForEffect(perm CastPermission) {
 		return
 	}
 	p.CastPermissions = append(p.CastPermissions, perm)
+	g.stampPermittedViewersLocked(perm)
+}
+
+// stampPermittedViewersLocked is FaceDownPermitted's look (#1573):
+// the holder of a permission over a card exiled face down under that
+// kind may look at it. "You may look at and play those cards" is one
+// clause, and a card you may play but cannot see is unplayable in
+// practice, so the grant is what stamps the knower — whichever
+// primitive made it. A card exiled face down under any other kind is
+// left alone: Necropotence's `exiled` card stays unreadable to a
+// permission that happens to name it.
+//
+// Only ScopeCards permissions over exile can name such a card, and the
+// epoch has to match: a card that left exile and came back is a new
+// object, and was not what the grant named (CR 400.7).
+//
+// Caller must hold g.mu (write).
+func (g *Game) stampPermittedViewersLocked(perm CastPermission) {
+	if perm.Scope == ScopeStanding || perm.Zone != ZoneExile || g.Exile == nil {
+		return
+	}
+	for i := range g.Exile.Cards {
+		c := &g.Exile.Cards[i]
+		if c.FaceDownKind == FaceDownPermitted && perm.NamesCard(*c) {
+			c.AddKnower(perm.Player)
+		}
+	}
+}
+
+// castPermissionHoldersLocked is every seat holding a stored
+// permission that names this card object — FaceDownPermitted's viewer
+// set, derived. Liveness is not asked: CR 406.3 lets a player who may
+// look keep looking until the card leaves exile, and every permission
+// that stamps this kind lasts that long anyway.
+//
+// Caller must hold g.mu.
+func (g *Game) castPermissionHoldersLocked(c Card) []uuid.UUID {
+	var out []uuid.UUID
+	for _, p := range g.Seats {
+		if p == nil {
+			continue
+		}
+		for i := range p.CastPermissions {
+			if p.CastPermissions[i].NamesCard(c) {
+				out = append(out, p.ID)
+				break
+			}
+		}
+	}
+	return out
 }
 
 // GrantCastPermissionOverCardForEffect grants `perm` over one card
@@ -1320,6 +1379,39 @@ func asAnyColorCost(cost ParsedCost) ParsedCost {
 		out.Generic++
 	}
 	return out
+}
+
+// asAnyTypeCost is asAnyColorCost without the {C} exception — "mana
+// of any TYPE can be spent" (Hostage Taker). Every requirement,
+// colorless included, folds into the generic demand, because any mana
+// in the pool can now pay any symbol. A hybrid or two-for-one hybrid
+// slot folds to one generic, the cheapest way to pay it when any mana
+// counts as its colour. A Phyrexian slot folds too and so loses its
+// "or 2 life" half — the same trade asAnyColorCost has always made,
+// and weaker than printed rather than stronger.
+func asAnyTypeCost(cost ParsedCost) ParsedCost {
+	out := cost
+	out.Required = nil
+	out.Generic += len(cost.Required)
+	return out
+}
+
+// spendAsThoughAny applies a permission's "spend mana as though"
+// clause to the cost a cast owes: the any-type fold when the grant
+// says any TYPE, the any-color fold when it says any colour, and
+// nothing otherwise (nil grant included). The one reading, so the
+// payment, the auto-tapper, the preview and the view cannot disagree
+// about which clause a grant carries.
+func spendAsThoughAny(grant *CastPermission, cost ParsedCost) ParsedCost {
+	switch {
+	case grant == nil:
+		return cost
+	case grant.AnyType:
+		return asAnyTypeCost(cost)
+	case grant.AnyColor:
+		return asAnyColorCost(cost)
+	}
+	return cost
 }
 
 // requiresColorless reports whether a requirement can only be paid

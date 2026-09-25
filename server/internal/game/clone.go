@@ -180,6 +180,9 @@ func (g *Game) cloneLocked() *Game {
 			if len(c.ManaRestrictions) > 0 {
 				cloned.ManaRestrictions = append([]string(nil), c.ManaRestrictions...)
 			}
+			// #1547: the spend riders ride the choice too, and are
+			// game state for the same reason.
+			cloned.ManaRiders = copyManaRiders(c.ManaRiders)
 			// #742: the per-colour amounts of a one-pick-N-mana
 			// choice. A map, so it needs its own copy for the same
 			// reason the slices do.
@@ -313,6 +316,7 @@ func (g *Game) cloneLocked() *Game {
 	// finish_blocks reopens it, so the attacker they had not blocked
 	// is not "unblocked" to ninjutsu until they choose again.
 	out.blocksDeclared = copyBoolMap(g.blocksDeclared)
+	out.attacksDeclared = g.attacksDeclared
 	// #716: and the combat damage steps' participation record rewinds
 	// with the combat it belongs to. An undo back into the priority
 	// window between the two steps that dropped it would let every
@@ -344,18 +348,15 @@ func (g *Game) cloneLocked() *Game {
 		out.TurnScopedBlockRules = make([]BlockRule, len(g.TurnScopedBlockRules))
 		copy(out.TurnScopedBlockRules, g.TurnScopedBlockRules)
 	}
-	// S32/S38 scoped statics — the layer-engine twin of the slice
-	// above, and the same reasoning: a ScopedStatic is written once
-	// at registration and never mutated (see the immutability
-	// contract on the type), so a fresh backing array is enough.
-	// What must not be shared is the array itself — the cleanup-step
-	// sweeps replace the slice rather than compacting in place
-	// precisely so an undo snapshot taken mid-turn still holds the
-	// grants that were live when it was taken.
-	if len(g.ScopedStatics) > 0 {
-		out.ScopedStatics = make([]ScopedStatic, len(g.ScopedStatics))
-		copy(out.ScopedStatics, g.ScopedStatics)
-	}
+	// Scoped effects (ADR 0041 phase 3) — the layer-engine twin of the
+	// slice above, and the same reasoning: a record is written once at
+	// registration and never mutated (see the immutability contract on
+	// the type), so a fresh backing array is enough. What must not be
+	// shared is the array itself — the cleanup-step sweeps replace the
+	// slice rather than compacting in place precisely so an undo
+	// snapshot taken mid-turn still holds the effects that were live
+	// when it was taken.
+	out.ScopedEffects = cloneScopedEffects(g.ScopedEffects)
 	// CR 603.10 LKI snapshots (S19). Values are Characteristic copies
 	// that are never mutated after being stored, so a per-entry value
 	// copy is sufficient. Usually empty — entries live only for the
@@ -591,11 +592,9 @@ func clonePlayer(p *Player) *Player {
 	if len(p.ManaPool) > 0 {
 		out.ManaPool = make(ManaPool, len(p.ManaPool))
 		for i, t := range p.ManaPool {
-			cloned := t
-			if len(t.Restrictions) > 0 {
-				cloned.Restrictions = append([]string(nil), t.Restrictions...)
-			}
-			out.ManaPool[i] = cloned
+			// ManaToken.clone: the restrictions and (#1547) the
+			// spend riders, each with its own backing array.
+			out.ManaPool[i] = t.clone()
 		}
 	}
 	// ADR 0066: granted cast and play permissions. Deep-copied for the
@@ -663,6 +662,7 @@ func cloneStackItem(s *StackItem) *StackItem {
 		AltCostExiles: s.AltCostExiles,
 		CastFromZone:  s.CastFromZone,
 		IsCopy:        s.IsCopy,
+		Uncopyable:    s.Uncopyable,
 		Seq:           s.Seq,
 		// #789 / #761: what the announcement paid. Deep-copied
 		// (clonePaidCost reallocates the token slice and each
@@ -675,6 +675,8 @@ func cloneStackItem(s *StackItem) *StackItem {
 		// snapshot is safe — an undo that restores this item
 		// resolves it against the restored game.
 		Effect:     s.Effect,
+		Body:       s.Body,
+		Params:     cloneEffectParams(s.Params),
 		Ordered:    s.Ordered,
 		Commutes:   s.Commutes,
 		targetSpec: s.targetSpec,
@@ -966,13 +968,14 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.announcedAttacks = src.announcedAttacks
 	g.attackDefenders = src.attackDefenders
 	g.blocksDeclared = src.blocksDeclared
+	g.attacksDeclared = src.attacksDeclared
 	g.firstStrikeStepParticipants = src.firstStrikeStepParticipants
 	g.Listeners = src.Listeners
 	g.PendingChoices = src.PendingChoices
 	g.BuiltinReplacements = src.BuiltinReplacements
 	g.TurnScopedReplacements = src.TurnScopedReplacements
 	g.TurnScopedBlockRules = src.TurnScopedBlockRules
-	g.ScopedStatics = src.ScopedStatics
+	g.ScopedEffects = src.ScopedEffects
 	g.lastKnownBattlefield = src.lastKnownBattlefield
 	g.lastKnownTriggerIdentity = src.lastKnownTriggerIdentity
 	g.lastKnownCounters = src.lastKnownCounters

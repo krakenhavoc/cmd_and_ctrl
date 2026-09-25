@@ -212,22 +212,44 @@ func (g *Game) scheduleCascadeBottomLocked(controller, source, cardID uuid.UUID,
 		Label:        "Cascade — put " + name + " on the bottom of its owner's library",
 		At:           StepEnd,
 		Cards:        []uuid.UUID{cardID},
-		Effect: func(g *Game, _ *StackItem) error {
-			c, ok := g.cardInZoneLocked(g.Exile, cardID)
-			if !ok {
-				return nil
-			}
-			perm := g.CastPermissionForLocked(controller, c, ZoneExile)
-			if perm == nil || perm.Cost != "{0}" {
-				return nil
-			}
-			// The shared random bottom (random_bottom.go) with a pile
-			// of one: it routes through the exit path, so the card
-			// goes to its OWNER's library and a commander's owner is
-			// asked about the command zone.
-			return g.PutOnBottomInRandomOrderForEffect(controller, ZoneExile, []uuid.UUID{cardID})
-		},
+		Body:         cascadeBottomBody,
 	})
+}
+
+// cascadeBottomBody is the delayed trigger's body, a registered key
+// (ADR 0041 phase 3, #1497). The card rides on the item's Targets and
+// the controller is the item's, so it reads no params.
+// cascadeBottomBody is assigned in init rather than by a var
+// initialiser: the body reaches the exit primitives, which reach the
+// scheduler, and an initialiser would be an initialisation cycle.
+var cascadeBottomBody BodyRef
+
+func init() { cascadeBottomBody = SimpleDelayedBody("cascade/bottom-if-not-cast", cascadeBottom) }
+
+func cascadeBottom(g *Game, item *StackItem) error {
+	controller := item.Controller
+	for _, t := range item.Targets {
+		if t.Kind != TargetCard || t.ID == uuid.Nil {
+			continue
+		}
+		cardID := t.ID
+		c, ok := g.cardInZoneLocked(g.Exile, cardID)
+		if !ok {
+			continue
+		}
+		perm := g.CastPermissionForLocked(controller, c, ZoneExile)
+		if perm == nil || perm.Cost != "{0}" {
+			continue
+		}
+		// The shared random bottom (random_bottom.go) with a pile
+		// of one: it routes through the exit path, so the card
+		// goes to its OWNER's library and a commander's owner is
+		// asked about the command zone.
+		if err := g.PutOnBottomInRandomOrderForEffect(controller, ZoneExile, []uuid.UUID{cardID}); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // cardInZoneLocked returns a copy of a card in the given zone.

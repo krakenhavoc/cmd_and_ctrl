@@ -2,7 +2,8 @@ package effects
 
 import (
 	"strconv"
-	"strings"
+
+	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
@@ -27,19 +28,22 @@ import (
 // exist (Arcane Denial's "the next turn's upkeep" is the opposite
 // case and leaves it unset).
 //
-// Sandbox simplification: it fires at the beginning of the
-// controller's next PRECOMBAT main phase. A Drain cast during your
-// own precombat main is printed to pay out in that turn's
-// postcombat main; here it waits for the next turn, because a
-// delayed trigger names one step and there is no "whichever main
-// phase comes first" shape. The mana arrives later, never sooner or
-// bigger — weaker than printed, and only in that one case.
+// "Your next main phase" is not always precombat: manaDrainNextMainPhaseStep
+// reads the CURRENT step at resolution and picks whichever main phase
+// is still ahead of it on the controller's own turn — this turn's
+// postcombat main when the Drain resolves at or after precombat main
+// but before postcombat, and precombat main otherwise (before combat
+// this turn, or on any turn but the controller's own, where
+// ControllerTurnOnly then waits out however many turns pass). A
+// delayed trigger only fires on a step's ENTRY (see delayed.go), so
+// scheduling AT the step already in progress would wait a full turn
+// rather than firing later this same turn — which is exactly the case
+// this picks around.
 func init() {
 	Register(Spec{
 		OracleID:     "74d3277a-38e5-4732-afed-084a56148f20",
 		Name:         "Mana Drain",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"If you cast it during your own turn the mana arrives on your next turn's first main phase, not that turn's second main phase."},
+		Completeness: CompletenessFull,
 		Targets:      TargetSpell("target spell"),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if len(item.Targets) == 0 {
@@ -59,20 +63,56 @@ func init() {
 				return nil
 			}
 			return ScheduleDelayedTrigger{
-				At:                 game.StepPrecombatMain,
+				At:                 manaDrainNextMainPhaseStep(ctx.Game, item.Controller),
 				ControllerTurnOnly: true,
 				Label:              "Mana Drain — add {C} × " + strconv.Itoa(mv),
-				Effect:             manaDrainRefund(mv),
+				Body:               manaDrainRefundBody,
+				Params:             game.EffectParams{Amount: mv},
 			}.Apply(ctx)
 		},
 	})
 }
 
-// manaDrainRefund builds the delayed trigger's effect: add mv
-// colorless mana to the controller's pool. mv is a copied int, so
-// the closure captures no game state and survives Clone / undo.
-func manaDrainRefund(mv int) func(g *game.Game, item *game.StackItem) error {
-	return func(g *game.Game, item *game.StackItem) error {
-		return AddMana{Produced: strings.Repeat("{C}", mv)}.Apply(NewContext(g, item))
+// The refund itself is manaDrainRefundBody (delayed_bodies.go): the
+// mana value it adds rides as the trigger's params (ADR 0041 phase 3,
+// #1497), not as a captured int.
+
+// manaDrainNextMainPhaseStep is "your next main phase" (CR 601 has no
+// defined term for this, but the reading every judge gives it is
+// "whichever main phase — precombat or postcombat — hasn't happened
+// yet on your current or next turn"). Reads g.Turn and g.Seats
+// directly rather than through g.ActivePlayer, which takes the read
+// lock this runs under already (IsYourTurn's own contract).
+func manaDrainNextMainPhaseStep(g *game.Game, controller uuid.UUID) game.Step {
+	if !IsYourTurn(g, controller) {
+		// Not my turn at all: the earliest main phase I can have is
+		// my next precombat main, however many turns away that is —
+		// ControllerTurnOnly does the waiting.
+		return game.StepPrecombatMain
+	}
+	seq := game.TurnSequence()
+	indexOf := func(target game.Step) int {
+		for i, s := range seq {
+			if s == target {
+				return i
+			}
+		}
+		return -1
+	}
+	cur, pre, post := indexOf(g.Turn.Step), indexOf(game.StepPrecombatMain), indexOf(game.StepPostcombatMain)
+	switch {
+	case cur < pre:
+		// Untap / upkeep / draw: this turn's precombat main hasn't
+		// begun yet.
+		return game.StepPrecombatMain
+	case cur < post:
+		// At or after precombat main, but before postcombat main
+		// (including precombat main itself, whose entry hook has
+		// already run): this turn's postcombat main is next.
+		return game.StepPostcombatMain
+	default:
+		// At or after postcombat main: wait for next turn's precombat
+		// main.
+		return game.StepPrecombatMain
 	}
 }

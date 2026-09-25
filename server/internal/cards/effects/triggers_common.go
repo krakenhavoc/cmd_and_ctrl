@@ -221,6 +221,28 @@ func ThisAttacked(ev game.Event, source *game.Card, _ game.Characteristic, _ *ga
 	return attackDeclared(ev, source)
 }
 
+// ThisBecameTapped — "whenever this creature becomes tapped" (CR
+// 701.26a). Two event kinds, for the reason b11DwarfYouControlBecameTapped
+// gives: the engine taps an attacker without an EventTapCard, so an
+// EventAttack naming the source while it is now tapped is "became
+// tapped", and a vigilance attacker did not become tapped.
+//
+// Watch both game.EventTapCard and game.EventAttack. Written for a
+// GRANTED trigger (ADR 0093 — Dionus's "this creature"), where
+// `source` is the host that has the ability.
+func ThisBecameTapped(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+	if ev.CardID != source.InstanceID {
+		return false
+	}
+	switch ev.Kind {
+	case game.EventTapCard:
+		return true
+	case game.EventAttack:
+		return source.Tapped
+	}
+	return false
+}
+
 // YouCastYourSecondSpellEachTurn — "Whenever you cast your second
 // spell each turn" (Breeches, the Blastmaker; Avatar Yangchen). The
 // cast path bumps the per-turn tally BEFORE it emits EventCast, so a
@@ -762,4 +784,22 @@ func SelfTargetedByASpell(ev game.Event, source *game.Card, _ game.Characteristi
 		return false
 	}
 	return b40TargetedByASpell(ev, g)
+}
+
+// PutChosenTargetOnTopOfLibrary is the Effect body behind "put target
+// <card> from your graveyard on top of your library" — Mystic
+// Sanctuary's instant or sorcery, Mortuary Mire's creature. It tucks
+// the chosen target to the top of its owner's library through the
+// shared exit primitive, so a commander card gets the CR 903.9 offer
+// on the way. A target that left in response (CR 608.2b) is skipped
+// rather than errored.
+func PutChosenTargetOnTopOfLibrary(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	for _, t := range ctx.LegalTargets() {
+		if t.Kind != game.TargetCard {
+			continue
+		}
+		return g.TuckToLibraryForEffect(t.ID, false)
+	}
+	return nil
 }

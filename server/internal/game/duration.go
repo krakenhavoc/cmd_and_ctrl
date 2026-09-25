@@ -21,7 +21,7 @@ import "github.com/google/uuid"
 // `Duration` is the replacement, and it is DATA — no closures, no
 // pointers into game state. That matters three times over:
 //
-//   - `Clone` copies a `ScopedStatic` by value, so a duration that
+//   - `Clone` copies a `ScopedEffect` by value, so a duration that
 //     captured a `*Card` would alias across an undo snapshot.
 //   - The snapshot census already refuses a restore point for a game
 //     holding a scoped static, because the ability is two closures
@@ -87,13 +87,24 @@ const (
 	// that has to be re-checked against a zone every query would be a
 	// second copy of that rule, and the two would drift.
 	//
-	// A ScopedStatic must not carry it: a continuous effect is about
+	// A ScopedEffect must not carry it: a continuous effect is about
 	// objects on the battlefield and has no zone-bound husk to be
 	// swept by. `durationExpiredLocked` therefore treats it exactly as
 	// Indefinite, which is the safe half of that mistake — the layer
 	// pass keeps such an effect rather than dropping it silently.
 	WhileInZone
+
+	// durationKindEnd is a sentinel, not a kind: every kind this binary
+	// knows is below it. Keep it LAST. DurationKind is persisted as a
+	// bare int (a restore point's `duration.Kind`), so a kind a newer
+	// build adds is unknown to an older one, and restore refuses it
+	// (ErrUnknownEffectKey, ADR 0041 P4) rather than restoring an
+	// effect that never ends.
+	durationKindEnd
 )
+
+// Known reports whether this binary can interpret k.
+func (k DurationKind) Known() bool { return k >= 0 && k < durationKindEnd }
 
 // DurationCondition is the re-evaluated half of a ForAsLongAs
 // duration. A small closed vocabulary rather than a predicate,
@@ -157,14 +168,28 @@ const (
 	// Appended, never inserted: the enum's integer values are written
 	// into snapshot files.
 	WhileSourceRemainsTapped
+
+	// durationConditionEnd is a sentinel, not a condition. Keep it
+	// LAST, for the reason durationKindEnd gives: an unknown condition
+	// would otherwise fall through to a bare "source on battlefield".
+	durationConditionEnd
 )
+
+// Known reports whether this binary can interpret c.
+func (c DurationCondition) Known() bool { return c >= 0 && c < durationConditionEnd }
+
+// Known reports whether this binary can interpret the duration: its
+// kind and its condition. The condition is checked whatever the kind,
+// because its zero value is a known condition and a non-zero one came
+// from somewhere.
+func (d Duration) Known() bool { return d.Kind.Known() && d.Condition.Known() }
 
 // Duration is how long one continuous effect lasts. The zero value is
 // "until end of turn" with no stamp, which the sweep treats as ending
 // at the first cleanup it sees — the pre-S38 behaviour.
 //
 // IMMUTABLE after registration, like every other field on
-// ScopedStatic: `Clone` shares the value with every undo snapshot.
+// ScopedEffect: `Clone` shares the value with every undo snapshot.
 type Duration struct {
 	// Kind selects which of the fields below mean anything.
 	Kind DurationKind
@@ -223,6 +248,15 @@ type Duration struct {
 	// the full-restore path — for the rest of the game.
 	Pinned          uuid.UUID
 	PinnedEnteredAt int64
+
+	// PinnedUnstamped is AffectedObject.Unstamped for the pin (#1558):
+	// the pinned permanent had no entry stamp, so the pin names it
+	// exactly — "still unstamped" — rather than falling back to the
+	// PinnedEnteredAt 0 wildcard, which went on matching the object's
+	// successor after a flicker. Omitted when false, so every duration
+	// written before it reads the same; an older binary that ignores
+	// it gets the pre-#1558 wildcard back.
+	PinnedUnstamped bool `json:"PinnedUnstamped,omitempty"`
 }
 
 // UntilEndOfTurnDuration is "until end of turn" (CR 514.2), stamped
@@ -364,6 +398,7 @@ func (g *Game) PinnedTo(d Duration, object uuid.UUID) Duration {
 	}
 	d.Pinned = object
 	d.PinnedEnteredAt = c.EnteredBattlefieldAt
+	d.PinnedUnstamped = c.EnteredBattlefieldAt == 0
 	return d
 }
 
@@ -376,7 +411,19 @@ func (g *Game) durationExpiredLocked(d Duration, endOfTurn bool) bool {
 	// The pin comes first and applies to every kind: an effect that
 	// exists to move one permanent is over when that permanent is
 	// gone, or has come back as a different object (CR 400.7).
-	if d.Pinned != uuid.Nil && !g.sameObjectOnBattlefieldLocked(d.Pinned, d.PinnedEnteredAt) {
+	//
+	// A PHASED-OUT permanent is neither (#1497 review): phasing is not
+	// a zone change (CR 702.26d), the object keeps its instance and
+	// its entry stamp, and an indefinite effect on it — an earthbend,
+	// Tree of Perdition's toughness, Kyoshi's Island, a theft — applies
+	// again when it phases in. While it is out the layer pass cannot
+	// see it, so the effect affects nothing in the meantime, which is
+	// CR 702.26e's exclusion from the affected set. The pin is
+	// garbage collection, not a "for as long as" duration, so it is
+	// the one check that looks in g.PhasedOut: a ForAsLongAs condition
+	// below still reads the battlefield alone, because CR 702.26f ends
+	// a duration that tracks a permanent once it phases out.
+	if d.Pinned != uuid.Nil && !g.sameObjectPresentLocked(d.Pinned, d.PinnedEnteredAt, d.PinnedUnstamped) {
 		return true
 	}
 	switch d.Kind {
@@ -439,16 +486,39 @@ func (g *Game) durationConditionHoldsLocked(d Duration) bool {
 
 // sameObjectOnBattlefieldLocked reports whether `id` is on the
 // battlefield AND is still the object that entered at `enteredAt`
-// (CR 400.7). A zero stamp means "don't care", which is what a card
-// seeded by a fixture without the zone-move event carries.
+// (CR 400.7), read by entryMatches: `enteredAt` 0 means "don't care",
+// and `unstamped` means "still the unstamped object a fixture seeded
+// without the zone-move event" (#1558).
 //
 // Caller must hold g.mu.
-func (g *Game) sameObjectOnBattlefieldLocked(id uuid.UUID, enteredAt int64) bool {
+func (g *Game) sameObjectOnBattlefieldLocked(id uuid.UUID, enteredAt int64, unstamped bool) bool {
 	c, ok := g.battlefieldCardLocked(id)
 	if !ok {
 		return false
 	}
-	return enteredAt == 0 || c.EnteredBattlefieldAt == enteredAt
+	return entryMatches(enteredAt, unstamped, c.EnteredBattlefieldAt)
+}
+
+// sameObjectPresentLocked is sameObjectOnBattlefieldLocked that also
+// accepts the same object phased out (CR 702.26d: phasing is not a
+// zone change, so a phased-out permanent is still that object). Used
+// only by the pin — see durationExpiredLocked for why the ForAsLongAs
+// conditions deliberately do not use it.
+//
+// Caller must hold g.mu.
+func (g *Game) sameObjectPresentLocked(id uuid.UUID, enteredAt int64, unstamped bool) bool {
+	if g.sameObjectOnBattlefieldLocked(id, enteredAt, unstamped) {
+		return true
+	}
+	if g.PhasedOut == nil {
+		return false
+	}
+	for _, c := range g.PhasedOut.Cards {
+		if c.InstanceID == id {
+			return entryMatches(enteredAt, unstamped, c.EnteredBattlefieldAt)
+		}
+	}
+	return false
 }
 
 // turnsBegunForLocked is a player's seat-turn count, or 0 for an

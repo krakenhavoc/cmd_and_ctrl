@@ -306,12 +306,27 @@ func b12EachOpponentMills(g *game.Game, item *game.StackItem, n int) error {
 }
 
 // b12ImpulseExileForTurn is "exile the top N cards of your library.
-// You may play them this turn" — Laelia's one and Bonehoard
-// Dracosaur's two — returning the exiled IDs so a rider can read
-// what came off. "Play", not "cast", so a land exiled this way can be
-// played as the turn's land drop.
+// You may play them this turn" — Laelia's one. "Play", not "cast", so
+// a land exiled this way can be played as the turn's land drop.
+//
+// This is the FIRE-AND-FORGET form (game.ExileTopWithPermissionForEffect):
+// its returned IDs are only the cards that landed before this call
+// returns, which is short or empty the moment one of them is a
+// commander pausing on its owner's CR 903.9 prompt (#1587). A caller
+// with a rider that reads what came off — Bonehoard Dracosaur's "if
+// you exiled a land card this way" — wants
+// b12ImpulseExileForTurnThen instead.
 func b12ImpulseExileForTurn(g *game.Game, item *game.StackItem, n int) ([]uuid.UUID, error) {
 	return g.ExileTopWithPermissionForEffect(item.Controller, item.Controller, n, game.CastPermission{})
+}
+
+// b12ImpulseExileForTurnThen is b12ImpulseExileForTurn's continuation
+// form: it exiles the same top N cards, but hands `then` the true
+// final landed list once every one of them has reached a terminal
+// outcome — the shape a rider that reads the exiled cards needs, and
+// the fire-and-forget form above cannot give it (#1587).
+func b12ImpulseExileForTurnThen(g *game.Game, item *game.StackItem, n int, then func(g *game.Game, exiled []uuid.UUID) error) error {
+	return g.ExileTopWithPermissionThenForEffect(item.Controller, item.Controller, n, game.CastPermission{}, then)
 }
 
 // b12Victim pairs a permanent Terastodon is about to destroy with

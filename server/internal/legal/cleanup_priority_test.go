@@ -30,17 +30,8 @@ func TestCleanupPriorityWindowOffersAPass(t *testing.T) {
 	clearHand(active)
 	bear := battlefieldCard(g, active, creature("Doomed Bear", "{1}{G}", 2, 2))
 	g.WithWriteLock(func() {
-		g.RegisterScopedStaticForEffect(game.StaticAbility{
-			Layer:    game.Layer7PT,
-			SubLayer: game.SubLayer7C_Modify,
-			AppliesTo: func(target *game.Card, _ *game.Game, _ *game.Card) bool {
-				return target.InstanceID == bear
-			},
-			Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
-				c.Power += 3
-				c.Toughness += 3
-			},
-		}, uuid.New(), "test — +3/+3 until end of turn", g.UntilEndOfTurnDuration())
+		g.RegisterScopedEffectForEffect(uuid.New(), g.PinnedObjectsLocked(bear),
+			[]game.Mod{game.ModifyPTMod(3, 3)}, g.UntilEndOfTurnDuration(), "test — +3/+3 until end of turn")
 	})
 	if err := g.AddCounter(bear, "-1/-1", 4); err != nil {
 		t.Fatalf("AddCounter: %v", err)

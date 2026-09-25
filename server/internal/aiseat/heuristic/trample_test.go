@@ -194,7 +194,7 @@ func TestBlockToSurviveCountsTrampleOverAChump(t *testing.T) {
 	t.Run("one chump", func(t *testing.T) {
 		bear := id(body(2, 2), "bear")
 		now, dead, blocked := p.blockToSurvive(st, &SeatEval{ID: "def", Life: 6},
-			[]*protocol.CardView{wurm}, []*protocol.CardView{bear})
+			[]*protocol.CardView{wurm}, []*protocol.CardView{bear}).parts()
 		if now != 5 {
 			t.Errorf("NOW = %d, want 5: the Bear absorbs 2 of the Wurm's 7", now)
 		}
@@ -206,7 +206,7 @@ func TestBlockToSurviveCountsTrampleOverAChump(t *testing.T) {
 	t.Run("a second chump while the overflow still kills", func(t *testing.T) {
 		b1, b2 := id(body(2, 2), "b1"), id(body(2, 2), "b2")
 		now, dead, _ := p.blockToSurvive(st, &SeatEval{ID: "def", Life: 4},
-			[]*protocol.CardView{wurm}, []*protocol.CardView{b1, b2})
+			[]*protocol.CardView{wurm}, []*protocol.CardView{b1, b2}).parts()
 		if now != 3 || !dead["b1"] || !dead["b2"] {
 			t.Errorf("NOW = %d, dead %v; want 3 with both Bears dead", now, dead)
 		}
@@ -215,7 +215,7 @@ func TestBlockToSurviveCountsTrampleOverAChump(t *testing.T) {
 	t.Run("an indestructible blocker survives and 5 still go over", func(t *testing.T) {
 		wall := id(body(2, 2, "indestructible"), "wall")
 		now, dead, _ := p.blockToSurvive(st, &SeatEval{ID: "def", Life: 3},
-			[]*protocol.CardView{wurm}, []*protocol.CardView{wall})
+			[]*protocol.CardView{wurm}, []*protocol.CardView{wall}).parts()
 		if now != 5 || dead["wall"] {
 			t.Errorf("NOW = %d, dead %v; want 5 through and the wall alive", now, dead)
 		}
@@ -225,7 +225,7 @@ func TestBlockToSurviveCountsTrampleOverAChump(t *testing.T) {
 		ogre := id(body(7, 7), "ogre")
 		bear := id(body(2, 2), "bear")
 		now, _, _ := p.blockToSurvive(st, &SeatEval{ID: "def", Life: 6},
-			[]*protocol.CardView{ogre}, []*protocol.CardView{bear})
+			[]*protocol.CardView{ogre}, []*protocol.CardView{bear}).parts()
 		if now != 0 {
 			t.Errorf("NOW = %d, want 0", now)
 		}

@@ -340,9 +340,9 @@ func TestProwessEndsWithItsObject(t *testing.T) {
 	})
 	settleProwess(t, g)
 	g.ReadSnapshot(func() {
-		for _, st := range g.ScopedStatics {
+		for _, st := range g.ScopedEffects {
 			if st.Label == "Prowess — +1/+1 until end of turn" {
-				t.Errorf("a pump was registered for a creature that had left: %+v", st.Source.Name)
+				t.Errorf("a pump was registered for a creature that had left: %+v", st.SourceName)
 			}
 		}
 	})
@@ -357,14 +357,8 @@ func TestProwessIsLostWithAllAbilities(t *testing.T) {
 	// A layer-6 removal (Kenrith's Transformation's shape), pinned to
 	// the monk.
 	g.WithWriteLock(func() {
-		g.RegisterScopedStaticForEffect(game.StaticAbility{
-			Layer:            game.Layer6Ability,
-			RemovesAbilities: true,
-			AppliesTo: func(target *game.Card, _ *game.Game, _ *game.Card) bool {
-				return target.InstanceID == monk
-			},
-			Apply: func(*game.Characteristic, *game.Card, *game.Game, *game.Card) {},
-		}, uuid.Nil, "test: loses all abilities", g.UntilEndOfTurnDuration())
+		g.RegisterScopedEffectForEffect(uuid.Nil, g.PinnedObjectsLocked(monk),
+			[]game.Mod{game.LoseAllAbilitiesMod()}, g.UntilEndOfTurnDuration(), "test: loses all abilities")
 	})
 	if n := prowessCountOf(t, g, monk); n != 0 {
 		t.Fatalf("a creature that lost all abilities still has %d prowess", n)

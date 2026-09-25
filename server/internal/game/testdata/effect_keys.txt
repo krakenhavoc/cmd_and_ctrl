@@ -1,0 +1,33 @@
+# effect_keys.txt — ADR 0041 phase 3's effect-key ledger (tier 2, #1497).
+#
+# Every delayed-trigger body, event condition and alias key a production
+# binary registers, one per line: "body <key>", "condition <key>" or
+# "alias <old> <new>". A restore point can name any of them, so they are
+# on-disk identities: APPEND-ONLY. Never delete or edit a line; rename a
+# key with game.EffectAlias(old, new), which keeps the old one resolving.
+#
+# Append new keys with:
+#   go test ./internal/cards/effects -run TestEveryPersistedEffectKeyResolves -args -update-effect-keys
+
+body arcane-denial/draws
+body cascade/bottom-if-not-cast
+body copy/the-spell-you-just-cast
+body draw/one-card
+body earthbend/return-tapped
+body exile/listed-cards
+body flicker/return-exiled-to-owners
+body goad/clear-listed
+body graveyard/return-listed-to-hand
+body madness/graveyard-if-not-cast
+body mana-drain/refund
+body necropotence/deliver-exiled
+body pact/pay-or-lose
+body phelia/return
+body portent/draw
+body sacrifice/listed-cards
+body sakashima/return-listed-to-hand
+body teferi-hero/untap-two-lands
+body warp/exile
+condition cast/you-next-cast
+condition earthbend/this-object-left
+body zara/return-to-hand

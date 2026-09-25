@@ -81,7 +81,7 @@ func (g *Game) StackItemPaidForEffect(id uuid.UUID) PaidCost {
 // power before exile; Path to Exile → read controller before
 // exile to drive the search clause).
 func (g *Game) LookupCardForEffect(cardID uuid.UUID) (Card, bool) {
-	z := g.findCardZoneLocked(cardID)
+	z, pos := g.locateCardLocked(cardID)
 	if z == nil {
 		// #762: a token whose entry window is open is in no zone at
 		// all — it is minted and not yet pushed. An entry replacement
@@ -90,12 +90,7 @@ func (g *Game) LookupCardForEffect(cardID uuid.UUID) (Card, bool) {
 		// to see one. See Game.enteringTokens.
 		return g.enteringTokenLocked(cardID)
 	}
-	for _, c := range z.Cards {
-		if c.InstanceID == cardID {
-			return c, true
-		}
-	}
-	return Card{}, false
+	return z.Cards[pos], true
 }
 
 // LastKnownCountersForEffect is the CR 603.10 LKI reader for a
@@ -1994,7 +1989,7 @@ func (g *Game) ReturnToBattlefieldForEffect(cardID, controller uuid.UUID, tapped
 //
 // Caller must hold g.mu.
 func (g *Game) returnFromGraveyardLocked(cardID uuid.UUID, dest ZoneKind, controller uuid.UUID, tapped bool) (uuid.UUID, error) {
-	return g.returnFromGraveyardFaceLocked(cardID, dest, controller, tapped, FaceDownNone, nil)
+	return g.returnFromGraveyardFaceLocked(cardID, dest, controller, tapped, FaceDownNone, nil, nil)
 }
 
 // ReturnFromGraveyardFaceDownForEffect is "return it to the
@@ -2022,13 +2017,35 @@ func (g *Game) returnFromGraveyardLocked(cardID uuid.UUID, dest ZoneKind, contro
 //
 // Caller must hold g.mu. Added for #1270.
 func (g *Game) ReturnFromGraveyardFaceDownForEffect(cardID, controller uuid.UUID, tapped bool, listed *FaceDownListing) (uuid.UUID, error) {
-	return g.returnFromGraveyardFaceLocked(cardID, ZoneBattlefield, controller, tapped, FaceDownTurned, listed)
+	return g.returnFromGraveyardFaceLocked(cardID, ZoneBattlefield, controller, tapped, FaceDownTurned, listed, nil)
+}
+
+// ReturnFromGraveyardWithCountersForEffect is "return it to the
+// battlefield [tapped] under its owner's control WITH <counters> ON
+// IT" — Feign Death's "with a +1/+1 counter on it" (#1584). The
+// counters are a CR 614.1c "enters with" clause, so they ride the
+// entry EVENT exactly as `tapped` does: a replacement that watches
+// counters (Hardened Scales, Doubling Season) sees them, an ETB
+// trigger finds them already on the permanent, and a resume after an
+// entry prompt still places them. Adding them on the line after the
+// return would do none of that.
+//
+// Same contract as ReturnFromGraveyardTappedForEffect otherwise:
+// `controller` uuid.Nil is "under its owner's control", and
+// ErrCardNotFound is the CR 400.7 answer when the card is not in a
+// graveyard any more. Returns the entering permanent's ID, uuid.Nil
+// when nothing entered or the entry paused.
+//
+// Caller must hold g.mu.
+func (g *Game) ReturnFromGraveyardWithCountersForEffect(cardID, controller uuid.UUID, tapped bool, counters map[string]int) (uuid.UUID, error) {
+	return g.returnFromGraveyardFaceLocked(cardID, ZoneBattlefield, controller, tapped, FaceDownNone, nil, counters)
 }
 
 // returnFromGraveyardFaceLocked is returnFromGraveyardLocked with the
-// face-down state a battlefield entry lands in. FaceDownNone is every
-// face-up return.
-func (g *Game) returnFromGraveyardFaceLocked(cardID uuid.UUID, dest ZoneKind, controller uuid.UUID, tapped bool, faceDown FaceDownKind, listed *FaceDownListing) (uuid.UUID, error) {
+// face-down state a battlefield entry lands in, and the counters it
+// enters with. FaceDownNone is every face-up return; nil counters is
+// every return that names none.
+func (g *Game) returnFromGraveyardFaceLocked(cardID uuid.UUID, dest ZoneKind, controller uuid.UUID, tapped bool, faceDown FaceDownKind, listed *FaceDownListing, counters map[string]int) (uuid.UUID, error) {
 	src := g.findCardZoneLocked(cardID)
 	if src == nil || src.Kind != ZoneGraveyard {
 		return uuid.Nil, ErrCardNotFound
@@ -2089,7 +2106,7 @@ func (g *Game) returnFromGraveyardFaceLocked(cardID uuid.UUID, dest ZoneKind, co
 		// the event for the third reason in that list — a resume reads
 		// ev.EntersTapped and nothing else knows what asked for the
 		// return.
-		return g.enterBattlefieldThroughPipelineLocked(&ReplacementEvent{
+		ev := &ReplacementEvent{
 			Kind:         RepEventMove,
 			Actor:        newController,
 			CardID:       cardID,
@@ -2101,7 +2118,13 @@ func (g *Game) returnFromGraveyardFaceLocked(cardID uuid.UUID, dest ZoneKind, co
 			FaceDown:       faceDown,
 			FaceDownListed: listed,
 			entryResumable: true,
-		})
+		}
+		// #1584: the effect's own "with N counters on it", seeded
+		// before the window opens so a counter replacement sees it.
+		for name, n := range counters {
+			ev.AddCounterAtETB(name, n)
+		}
+		return g.enterBattlefieldThroughPipelineLocked(ev)
 	}
 	// A hand or library destination is not an entry: no pipeline, no
 	// ETB, nothing to pause on, and nothing for `tapped` to mean.
@@ -3481,7 +3504,7 @@ func (g *Game) addManaSlotsLocked(
 			// own output (ADR 0074), and neither taps a permanent for
 			// mana, so neither is doubled by Mana Reflection. That is
 			// what the card says, not a simplification.
-			g.produceManaLocked(p, source, []string{colorOptions[0]}, nil, srcKinds, false, pending)
+			g.produceManaLocked(p, source, []string{colorOptions[0]}, nil, nil, srcKinds, false, pending)
 			continue
 		}
 		if pending != nil {
@@ -3494,7 +3517,7 @@ func (g *Game) addManaSlotsLocked(
 			for k := 1; k < slot.AmountFor(color); k++ {
 				bookColorRequirement(color, pending)
 			}
-			g.produceManaLocked(p, source, repeatColor(color, slot.AmountFor(color)), nil, srcKinds, false, pending)
+			g.produceManaLocked(p, source, repeatColor(color, slot.AmountFor(color)), nil, nil, srcKinds, false, pending)
 			continue
 		}
 		g.QueueChoiceForEffect(PendingChoice{

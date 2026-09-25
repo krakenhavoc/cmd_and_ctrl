@@ -27,8 +27,31 @@ import "github.com/google/uuid"
 
 // ExileTopWithPermissionForEffect exiles the top n cards of
 // `fromPlayer`'s library and grants `grantTo` permission to play them
-// until the end of the current turn. Returns the exiled card IDs in
-// the order they left the library.
+// until the end of the current turn. Returns the exiled card IDs that
+// have LANDED by the time this call returns — every one of them when
+// nothing paused, and fewer (possibly none) the moment a commander
+// among them raises the CR 903.9 prompt: this function does not wait
+// for the owner's answer.
+//
+// Before #1587 this moved every card with a raw MoveCard and never
+// opened the CR 614 window at all, so a commander impulse-exiled off
+// its owner's library was never offered the command zone (Ragavan,
+// Gonti's older wording, Professional Face-Breaker). It is now a thin
+// wrapper over ExileTopWithPermissionThenForEffect, which does the
+// routing and the granting; this form just doesn't wait for the
+// answer to hand its own return value back. The grant itself is NOT
+// skipped for a paused card — it is stamped from the route's
+// continuation exactly as it would be for the Then form, so a
+// commander whose owner declines still gets it once they answer, even
+// though this call has already returned. What is lost by not waiting
+// is only the caller's ability to read the final list synchronously.
+//
+// A caller that reads the exiled cards to decide what to do next
+// (Bonehoard Dracosaur's "if you exiled a land card this way…") cannot
+// trust THIS return the moment a commander is among them: the list may
+// be short or empty even though the rest of the exile is still coming.
+// Use ExileTopWithPermissionThenForEffect instead — the same routing,
+// with `then` handed the true final list once every card has settled.
 //
 // The exiled cards are revealed to everyone: they're face up in a
 // public zone, and a permission nobody can see is unplayable in
@@ -36,48 +59,177 @@ import "github.com/google/uuid"
 //
 // Caller must hold g.mu.
 func (g *Game) ExileTopWithPermissionForEffect(fromPlayer, grantTo uuid.UUID, n int, perm CastPermission) ([]uuid.UUID, error) {
+	var out []uuid.UUID
+	err := g.ExileTopWithPermissionThenForEffect(fromPlayer, grantTo, n, perm, func(_ *Game, landed []uuid.UUID) error {
+		out = landed
+		return nil
+	})
+	return out, err
+}
+
+// ExileTopWithPermissionThenForEffect is ExileTopWithPermissionForEffect's
+// CONTINUATION form (#1587): it exiles exactly the same top n cards,
+// but SEQUENCES the batch — each card is routed from the previous
+// one's continuation, exactly as ExileTopFaceDownWithPermissionForEffect
+// already does for its face-down sibling — and hands `then` the full,
+// final landed list once every card has reached a terminal outcome.
+// That is the shape a caller needs the moment it reads what was
+// exiled: Bonehoard Dracosaur's "if you exiled a land card this way,
+// create a…token" cannot be answered from the fire-and-forget form,
+// because a commander among the two cards pauses on its owner's
+// CR 903.9 prompt and the rest of the list is not knowable until they
+// answer.
+//
+// The grant is stamped from THIS continuation, per settled batch, over
+// the cards that actually landed — never before the CR 903.9 question
+// (if any) is answered, and never for a card sent to the command zone
+// instead. This is also what the fire-and-forget form above relies on
+// for its own grant: it calls this function and simply doesn't wait
+// for `then`, but the grant happens here regardless of who is
+// listening, including for a leg that pauses and is answered long
+// after the original call returned.
+//
+// Caller must hold g.mu (write).
+func (g *Game) ExileTopWithPermissionThenForEffect(fromPlayer, grantTo uuid.UUID, n int, perm CastPermission, then func(g *Game, landed []uuid.UUID) error) error {
+	if then == nil {
+		then = func(*Game, []uuid.UUID) error { return nil }
+	}
+	plan, err := g.impulseExilePlanLocked(fromPlayer, grantTo, n)
+	if err != nil {
+		return err
+	}
+	if len(plan) == 0 {
+		return then(g, nil)
+	}
+	return g.routeAllThenLocked(zoneRoute{Dst: ZoneExile, Actor: grantTo}, plan, func(g *Game, landed []uuid.UUID) error {
+		g.grantImpulseExilePermissionLocked(perm, grantTo, landed)
+		return then(g, landed)
+	})
+}
+
+// impulseExilePlanLocked chooses the up-to-n cards an impulse exile
+// will move, top of the library first — millPlanLocked's and
+// ExileTopFaceDownWithPermissionForEffect's shape, and for the same
+// reason: the set is chosen UP FRONT so a commander that pauses the
+// batch on CR 903.9 leaves its card exactly where it was rather than
+// being re-read as the new top and exiled twice.
+//
+// Caller must hold g.mu.
+func (g *Game) impulseExilePlanLocked(fromPlayer, grantTo uuid.UUID, n int) ([]uuid.UUID, error) {
 	owner := g.playerByIDLocked(fromPlayer)
 	if owner == nil {
 		return nil, ErrPlayerNotFound
 	}
-	perm.Player = grantTo
-	perm.Zone = ZoneExile
-	var out []uuid.UUID
-	var landed []Card
+	if g.Exile == nil || grantTo == uuid.Nil || n <= 0 || owner.Library == nil {
+		return nil, nil
+	}
+	avail := len(owner.Library.Cards)
+	if n > avail {
+		n = avail
+	}
+	plan := make([]uuid.UUID, 0, n)
 	for i := 0; i < n; i++ {
-		if owner.Library.Size() == 0 {
-			break
-		}
 		// The library's top is the LAST element — PopTop, and so every
 		// draw and mill, takes it from there. This used to read index
 		// 0, the bottom card, and no test caught it because they all
 		// seeded a one-card library. (Roadmap batch 01, Professional
 		// Face-Breaker.)
-		top := owner.Library.Cards[len(owner.Library.Cards)-1].InstanceID
-		if _, err := MoveCard(owner.Library, g.Exile, top); err != nil {
-			return out, err
-		}
-		for j := range g.Exile.Cards {
-			if g.Exile.Cards[j].InstanceID == top {
-				// The epoch is read AFTER the move, because the move
-				// is what made this a new object (CR 400.7) and the
-				// permission names the object that is in exile now.
-				landed = append(landed, g.Exile.Cards[j])
-				break
-			}
-		}
-		g.markCardKnownInZoneLocked(g.Exile, top)
-		g.EmitEvent(Event{
-			Kind:    EventZoneMove,
-			Actor:   grantTo,
-			CardID:  top,
-			OldZone: ZoneLibrary,
-			NewZone: ZoneExile,
-		})
-		out = append(out, top)
+		plan = append(plan, owner.Library.Cards[avail-1-i].InstanceID)
 	}
-	g.GrantCastPermissionToCardsForEffect(perm, landed)
-	return out, nil
+	return plan, nil
+}
+
+// grantImpulseExilePermissionLocked stamps `perm` over the cards that
+// actually landed in exile — CR 611.2c's fixed object set, taken AFTER
+// the move so a landed card's epoch is the one it has in exile now,
+// and taken from the LANDED list rather than the plan so a card CR
+// 903.9 sent to the command zone instead gets nothing (#1587).
+//
+// Caller must hold g.mu.
+func (g *Game) grantImpulseExilePermissionLocked(perm CastPermission, grantTo uuid.UUID, landed []uuid.UUID) {
+	if len(landed) == 0 {
+		return
+	}
+	perm.Player = grantTo
+	perm.Zone = ZoneExile
+	cards := make([]Card, 0, len(landed))
+	for _, id := range landed {
+		if c, ok := g.LookupCardForEffect(id); ok {
+			cards = append(cards, c)
+		}
+	}
+	g.GrantCastPermissionToCardsForEffect(perm, cards)
+}
+
+// ExileTopFaceDownWithPermissionForEffect is ExileTopWithPermissionForEffect
+// for the cards that exile FACE DOWN (#1573, ADR 0066's 2026-09-24
+// amendment): "its controller looks at the top card of that opponent's
+// library and exiles it face down. They may play that card for as
+// long as it remains exiled" (Gonti, Night Minister); "target opponent
+// exiles the top X cards of their library face down. You may look at
+// and play those cards" (Outrageous Robbery).
+//
+// Each card lands as FaceDownPermitted, with nobody able to look at
+// it, and is granted `perm` on the way in; the grant is what makes
+// `grantTo` its one viewer (stampPermittedViewersLocked). So the
+// table sees card backs, the owner included, and the holder sees the
+// card and a cast surface on it.
+//
+// The cards are chosen UP FRONT, top first, and moved by ID through
+// the shared exit primitive, one at a time through its continuation:
+// the millPlanLocked argument, for the same reason. A commander among
+// them is offered the command zone (CR 903.9), the question leaves it
+// ON the library, and re-reading the top would hand back the same
+// commander; the continuation also means a commander whose owner
+// declines is exiled and granted when the answer comes, rather than
+// landing with no grant at all (#1336's defect, which the face-up
+// primitive above shared until #1587 gave it the same shape). A card that went
+// anywhere but exile was not exiled "this way" and gets nothing.
+//
+// Caller must hold g.mu (write).
+func (g *Game) ExileTopFaceDownWithPermissionForEffect(fromPlayer, grantTo uuid.UUID, n int, perm CastPermission) error {
+	owner := g.playerByIDLocked(fromPlayer)
+	if owner == nil {
+		return ErrPlayerNotFound
+	}
+	if g.Exile == nil || grantTo == uuid.Nil || n <= 0 || owner.Library == nil {
+		return nil
+	}
+	avail := len(owner.Library.Cards)
+	if n > avail {
+		n = avail
+	}
+	plan := make([]uuid.UUID, 0, n)
+	for i := 0; i < n; i++ {
+		// The top is the LAST element.
+		plan = append(plan, owner.Library.Cards[avail-1-i].InstanceID)
+	}
+	perm.Player = grantTo
+	perm.Zone = ZoneExile
+	return g.exileFaceDownPermittedLocked(plan, grantTo, perm)
+}
+
+// exileFaceDownPermittedLocked moves the first card of `ids` into
+// exile face down and, from the move's continuation, grants `perm`
+// over it if it landed there and moves the rest. Caller must hold g.mu.
+func (g *Game) exileFaceDownPermittedLocked(ids []uuid.UUID, actor uuid.UUID, perm CastPermission) error {
+	if len(ids) == 0 {
+		return nil
+	}
+	id, rest := ids[0], ids[1:]
+	_, err := g.routeCardToZoneLocked(zoneRoute{
+		CardID:   id,
+		Dst:      ZoneExile,
+		Actor:    actor,
+		FaceDown: FaceDownPermitted,
+		then: func(g *Game) error {
+			if z := g.findCardZoneLocked(id); z != nil && z.Kind == ZoneExile {
+				g.GrantCastPermissionOverCardForEffect(id, perm)
+			}
+			return g.exileFaceDownPermittedLocked(rest, actor, perm)
+		},
+	})
+	return err
 }
 
 // ExileCardWithPermissionForEffect exiles one specific card —

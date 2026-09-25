@@ -3,6 +3,7 @@
 **Status:** Proposed · 2026-09-24 · S38 — Layers: dependency ordering, ability grants, ability removal
 **Amended:** 2026-09-24 — the owner answered four of the five open questions; see "Owner decisions".
 2026-09-24 — PR 1's implementation notes; see "Amendment 2026-09-24 — what PR 1 built".
+2026-09-24 — PR 4 (duration grants, #1584); see "Amendment 2026-09-24 — what PR 4 built".
 **Issue:** [#754](https://github.com/krakenhavoc/cmd_and_ctrl/issues/754) (this seam — the public roadmap's
 top missing seam, `abilities-granted-to-other-permanents` in `server/internal/roadmap/registry.go`)
 **Numbering:** swept with the AGENTS.md §4 check on 2026-09-24 — `git fetch origin`, then every
@@ -333,6 +334,13 @@ classifies every field as `carried`. The census gains no row. A grant's object s
 long as that land has a blight counter" needs one more `DurationCondition`, on the pinned object's
 counters, added in PR 4.
 
+**Amended 2026-09-24 (#1497, owner decision 1 on ADR 0041's phase 3 amendment):** `ScopedGrant` is
+not a registry of its own. It is the `grantAbilities` mod of ADR 0041 phase 3's `ScopedEffect`
+record (`server/internal/game/scoped_effects.go`), which landed first and already gives it the pinned
+set, the timestamp, the `Duration`, the sweep, the layer-pass adapter and `carried` in the drift
+plan. PR 4 adds the `grantAbilities` kind to that vocabulary; see
+[ADR 0041](0041-game-persistence.md), "Amendment, 2026-09-24 — phase 3: effects as data".
+
 **Not a delayed trigger.** The issue offered #663's event-conditioned delayed trigger as an
 alternative route for "until end of turn, target creature gains 'When this creature dies …'". It is
 the wrong model. A granted trigger is an **ability of the creature**: a later Darksteel Mutation
@@ -553,6 +561,125 @@ PR 1 (the seam, no cards) shipped as planned, with four differences.
    at #754 until the owner files an issue for each.
 
 Every other part of the PR 1 list is as written above.
+
+## Amendment 2026-09-24 — what PR 2 built
+
+PR 2 was split at its natural seam: the server half (constructors, the auto-tapper and the cards) is
+one PR, and the client picker is the next.
+
+- **Constructors:** `TribalAbilityGrant` and `GrantAbilitiesToAttached` as planned, plus two bundle
+  helpers, `AnyColorManaGrant` and `TapForManaGrant`.
+- **Auto-tapper (Decision 6):** a permanent contributes one candidate per acceptable mana ability,
+  as mutually exclusive alternatives. The plan entry carries the booked ability's ref, and the
+  executor re-finds that ability through the same picker. A creature's granted mana shares the
+  last-resort tier with sacrifice-self sources. Inside the tier it is a peer of a Treasure and
+  comes ahead of an Eldrazi Spawn. The per-ability change also finds payments for permanents that
+  already had two plannable abilities: an uncatalogued dual land, whose two intrinsic land types
+  used to plan as its first colour only.
+- **Cards:** Cryptolith Rite, Chromatic Lantern, Gemhide Sliver, Manaweft Sliver, Necrotic Sliver,
+  Rishkar, Jaheira (caveat: no Background, like Ganax), Insidious Roots, Great Divide Guide, The
+  World Tree, Paradise Mantle, Squirrel Nest, and Springleaf Parade.
+- **Springleaf Parade:** its Shapeshifter token template (slug `springleaf-shapeshifter`) is
+  deleted, and the token is now a plain row. A live game saved with one of those tokens restores it
+  flagged `AbilitiesLostOnRestore`. That path is the #522 rule; the snapshot corpus holds no such
+  token.
+- **Coverage:** a new mechanic row, "an ability granted to another permanent", with an exact probe
+  on `StaticAbility.GrantAbilities`. It is the row the roadmap seam borrows.
+
+## Amendment 2026-09-24 — what PR 3 built
+
+- **Granted triggers.** PR 1 had already wired the mechanics: the battlefield walk and the
+  simultaneous-exit walk read the composed key, and the dies harvest reads `AbilityKeyFromLKI`.
+  PR 3 pins them with engine tests:
+  - a single death and a wipe that takes the grantor with it (CR 603.10a);
+  - the trigger belongs to the host's controller.
+- **One engine change.** The trigger harvest now catches the layers up
+  (`RecomputeLayersIfStaleLocked`) before it harvests an `EventETB`.
+  - Why: a creature entering under a grant has a nil layer cache when its entry announces itself,
+    so its granted "when this creature enters" was missed. CR 603.6a looks at the permanent as it
+    exists on the battlefield.
+  - Scope: ETB events only, and only when the cache is stale. By then the entry has landed every
+    card it moves.
+  - Side effect: other ETB triggers now also see the entering permanent's layered
+    characteristics, where before they saw its printed ones. That is the rules answer.
+- **Cards.**
+  - Thornbite Staff is new, with two granted bundles: the ping and the untap-on-death trigger.
+  - Dionus, Elvish Archdruid is now a real grant to Elves you control. "Only once each turn" reads
+    the per-object trigger tally instead of walking the event log.
+  - Agent of the Iron Throne is now a real grant to commander creatures you own. Its
+    stolen-commander caveat is gone, and it is now `CompletenessFull`.
+  - Both used to carry the trigger on the grantor. The tests pin the two behaviour changes the PR
+    plan names: after a control change the trigger is the recipient controller's, and a later
+    ability removal on a recipient takes the grant.
+- **Declared, unchanged.** Two instances of one bundle share one tally key (Decision 5). This is
+  reachable for Dionus only through a legend-rule-exempt copy.
+- **Out of scope.** PR 4 (duration grants) is no longer this ADR's registry. Per the #1545
+  decision, it lands as a `grantAbilities` mod on ADR 0041 phase 3's `ScopedEffect`.
+
+## Amendment 2026-09-24 — what PR 4 built
+
+PR 4 is [#1584](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1584). Per the #1545 decision it
+is not a `ScopedGrant` registry. It is one more mod kind on ADR 0041 phase 3's `ScopedEffect`.
+
+- **The mod.** `grantAbilities` (`game.ModGrantAbilities`), layer 6, built with
+  `game.GrantAbilitiesMod(keys...)`. It reads a new `Mod.Grants []string` (JSON `grants`, omitted
+  when empty), which holds keys in `GrantKey` form. ADR 0041's sketch called the field `keys`; the
+  shipped name is `grants`, so it cannot be mistaken for keyword strings.
+  - The kind string is an on-disk identity: it is never renamed and never reused.
+  - The field is additive within v7, and the shape file records it. A v7 binary from before PR 4
+    meets an unknown kind and an unknown `grants` key, and refuses the file (ADR 0041 P4). So no
+    schema bump.
+- **The adapter.** `adaptScopedEffects` gives the record's layer-6 `StaticAbility` a
+  `GrantAbilities` list. That is the declaration a granting static makes (PR 1, amendment item 1),
+  so the engine writes `GrantedAbility{Key, Source}` in the record's timestamp slot, with the
+  record's source as the grantor. Every downstream reader is the static grant's code, unchanged:
+  - `CatalogAbilityKey` and the `grant:` refs;
+  - the ability rows and the auto-tapper's tiering;
+  - the trigger harvest, including LKI dies triggers;
+  - CR 613.6: a later removal takes the grant, an earlier one does not;
+  - CR 707.2: the copiable values never read the layered result.
+
+  The adapter memo (#1558) needs nothing new: the grant keys hang off the record's `Mods`, whose
+  address is already part of the memo key.
+- **The affected set and the duration.** Both come from the record: the set is pinned at resolution
+  (CR 611.2c), and the duration is an ADR 0063 `Duration`.
+  - A flickered or reanimated recipient is a new object without the grant (CR 400.7). Feign Death's
+    returned creature does not return again.
+  - A grant with no stated duration (CR 611.2a, Urza's Saga) is `IndefiniteDuration` pinned to its
+    object, so the record is swept when the object leaves.
+- **Validation, three places.**
+  1. At resolution, the card-side builder refuses a bundle the catalog does not register, or one
+     with a `Static` slot (Decision 10). `ScopedEffectFor` applies the same check to a hand-built
+     mod.
+  2. At build time, `TestEveryDurationGrantKeyResolves` scans the catalog's source for every
+     `GrantAbilitiesFor{Keys: …}` literal and every `game.GrantAbilitiesMod(…)` call. It resolves
+     each key from a string literal or a package-level constant and holds it to the same rule. A
+     boot-time walk cannot see these keys, because they live in `OnResolve` closures.
+  3. At restore, a `grantAbilities` mod naming an unregistered bundle, or naming none, is refused
+     with `ErrUnknownEffectKey`, and the file is kept. This is the same refusal an unknown kind gets.
+- **Card-side vocabulary.** Decision 9 planned two constructors. PR 4 ships one:
+  `effects.GrantAbilitiesFor{Target | Match, Keys, Also, Duration, Label}`.
+  - A zero `Duration` is "until end of turn".
+  - `Also` carries the rest of the same effect at the same timestamp. Fake Your Own Death's
+    "gets +2/+0 and gains …" is one record. The grant is applied after `Also`, so a removal in
+    `Also` empties the list before the grant is written (ADR 0046 §2).
+  - `game.GrantAbilitiesMod` inside a `ScopedEffectFor` works too.
+- **One engine addition.** `Game.ReturnFromGraveyardWithCountersForEffect` carries "with a +1/+1
+  counter on it" as a CR 614.1c "enters with" clause on the entry event, beside `tapped`.
+  - Why: Hardened Scales sees the counter, and an ETB trigger finds it already there.
+  - Shared body: the granted "return it to the battlefield tapped" dies trigger is
+    `effects.returnThisCreatureFromGraveyard`.
+- **Cards.** Feign Death, Fake Your Own Death, Malakir Rebirth (the spell face), Retraction Helix
+  and Urza's Saga. All are `CompletenessFull`. The corpus gains `v7/duration_grants.json`, a new
+  file holding Feign Death's grant and Fake Your Own Death's two-mod record.
+- **Not built.** Ultima, Origin of Oblivion needs two more pieces:
+  - a `DurationCondition` held by a counter on the pinned object ("for as long as that land has a
+    blight counter on it");
+  - a layer-4 "loses all land types" mod, which needs CR 205.3i's list of land types in the engine.
+
+  Both are small, but neither is a grant, so they are left for their own change. The registry's
+  `Waiting` list keeps Ultima. Teferi's Talent (granted loyalty abilities) stays out of scope per
+  Decision 10.
 
 ## Open questions for the owner
 

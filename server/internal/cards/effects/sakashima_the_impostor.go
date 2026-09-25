@@ -44,9 +44,9 @@ func init() {
 				Cost:  ManaCost("{2}{U}{U}"),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					return ScheduleDelayedTrigger{
-						Label:  "Sakashima the Impostor — return it to its owner's hand",
-						Cards:  []uuid.UUID{item.SourceCardID},
-						Effect: sakashimaReturnListedPermanentsToHand,
+						Label: "Sakashima the Impostor — return it to its owner's hand",
+						Cards: []uuid.UUID{item.SourceCardID},
+						Body:  returnListedPermanentsToHandBody,
 					}.Apply(NewContext(g, item))
 				},
 			}},

@@ -67,7 +67,7 @@ cmd_and_ctrl/
 │   │   ├── cards/       # Scryfall index (streaming load) + disk-backed image cache + /cards routes
 │   │   │   └── coverage/ # measures the live catalog; fails CI when the coverage docs or a card's Caveats stop being true
 │   │   ├── catalog/     # /catalog routes (signed-in) — what the engine automates + how completely (ADR 0042)
-│   │   ├── roadmap/     # the curated registry of keywords, mechanics and engine seams behind the public roadmap; generates docs/engine-seams.md's open table (ADR 0092)
+│   │   ├── roadmap/     # the curated registry of keywords, mechanics and engine seams behind the public roadmap; generates docs/engine-seams.md's open table (ADR 0092) and its closed list from docs/engine-seams/closed/ (#1461)
 │   │   ├── bugstore/    # bug-report artifacts: reporter screenshots (public, Camo-reachable) + pinned replays (admin-only)
 │   │   ├── deck/        # decklist parsers (Moxfield, plain text) + Commander validation
 │   │   ├── snapshotscrub/ # the scrubber behind cmd/snapshotscrub: generic-JSON rewrite, refuses snowflakes and emails (#522)
@@ -93,6 +93,7 @@ cmd_and_ctrl/
     ├── protocol.md      # v0 wire format spec
     ├── lobby.md         # lobby HTTP API reference
     ├── bot.md           # AI bot seat — user-facing guide (S31)
+    ├── engine-seams/closed/ # one fragment per closed seam; CI generates engine-seams.md's Closed list from them (#1461)
     ├── sprints.md       # sprint plan
     └── decisions/       # ADRs (0001 WS library … 0093 granted abilities) — see §4 on numbering
 ```
@@ -290,10 +291,12 @@ A restore point written by yesterday's binary has to restore in today's. Three t
 
 - **The shape guard.** `TestSnapshotShapeIsRecorded` (`internal/game`) compares the snapshot structs' JSON shape with `internal/game/testdata/snapshot_shape/v<N>.txt`. If you add a snapshot field, record it in the same change: `cd server && go test ./internal/game -run TestSnapshotShapeIsRecorded -args -update-shape`. The tool refuses a non-additive change (a key renamed, removed or retyped) under the current number. Bump `SnapshotSchemaVersion`, say why in its comment, and rerun it. It writes `v<N+1>.txt` and leaves the old file frozen.
 - **The fixture corpus.** `TestSnapshotCorpusRestores` (`internal/cards/effects`, because restoring tokens, Clones and Equipment needs the real catalog) restores every file under `internal/game/testdata/snapshots/` with `RestoreStrict`. It fails if any key or value in a fixture is missing from a fresh capture of the restored game, if a card comes back with fewer catalog abilities than the file recorded, or if the game will not round-trip or take an action.
-  - `v<N>/` is the generated set for schema N. It is written once, when N is introduced: `cd server && go test ./internal/cards/effects -run TestWriteSnapshotCorpus -args -write-corpus`. The writer never touches an existing directory. It fails if the current build would render a frozen set differently, and tells you to bump instead. CI fails if the current version has no directory.
+  - `v<N>/` is the generated set for schema N. It is written once, when N is introduced: `cd server && go test ./internal/cards/effects -run TestWriteSnapshotCorpus -args -write-corpus`. The writer never touches an existing **file** (ADR 0041 phase 3, owner decision 6): a board with no file yet is written beside the others, so a shape that becomes a restore point after its version was introduced can still be frozen without a bump. It fails if the current build would render an existing fixture differently, and tells you to bump instead. CI fails if the current version has no directory.
   - `real/` holds scrubbed restore points from cmd-dev. Add one with `cd server && go run ./cmd/snapshotscrub -in <restore/id.json> -out internal/game/testdata/snapshots/real/<name>.json`. The tool replaces names and player IDs, drops Discord IDs and avatar hashes, and refuses to write if a snowflake, an email or an original player name is left anywhere. It never overwrites a file.
   - **Never edit, regenerate or delete a fixture to make the test pass.** If a bump migrates an old shape, list the migrated paths in `corpusMigrations` in `snapshot_corpus_test.go`, with the reason. Nothing else may excuse a difference.
 - **The ability check.** A card whose catalog entry lost abilities between the writing and the reading binary is restored anyway. It is flagged `Card.AbilitiesLostOnRestore`, which shows it as `manual` for the rest of the game, and the boot log has an ERROR line naming the game, the card and the counts. More abilities than captured is not a mismatch.
+- **Effect keys (#1497, [ADR 0041](docs/decisions/0041-game-persistence.md) phase 3).** A `ScopedEffect` mod kind is an on-disk identity, like a token slug: never renamed, never reused. A restore point naming a kind (or a delayed-trigger / stack-item effect key) this binary cannot interpret is refused with `ErrUnknownEffectKey` and the file is KEPT — only a newer build can have written it, so it is the rollback case. That refusal is what lets the vocabulary grow within a schema version.
+- **The closure ratchet.** `TestClosureFieldsReachableFromGame` (`internal/game`) lists every ROUTE from `Game` to something that can hold a func or an interface — every field of every reachable struct whose type reaches one, directly or through another struct — in `internal/game/testdata/closure_fields.txt`, each classified `rebuilt`, `keyed`, `transient`, `test-only` or `census:<Counter>`. A new route fails until it is classified, including a new field whose type is a struct already on the list (#1558): `cd server && go test ./internal/game -run TestClosureFieldsReachableFromGame -args -update-closure-fields` keeps the existing classes and marks new routes `unclassified`. The number of lines in each `census:` class and in `transient` is pinned by `closureClassCeilings` in the test and may only fall: phase 3's tiers delete lines and lower the ceiling; nothing raises one.
 
 ### AI bot seat (Go, `server/internal/aiseat/`)
 
@@ -648,12 +651,32 @@ surface tiny.
    (which uses `PushBottom` so the "first match" sandbox pick is
    deterministic).
 
-6. **Verify.** `cd server && go test ./internal/cards/effects/...` and
+6. **Add the card's oracle-text file.** Every catalogued card needs its
+   own generated file, `server/internal/cards/coverage/testdata/oracle/<oracle_id>.json`
+   (one per base oracle ID, whether or not the card has an activated
+   ability). `TestAbilitiesMatchOracleText` checks ability labels
+   against it, and `TestOracleFixtureCoversRegistry` fails in plain PR CI
+   when a registered card has no file. Generate only your cards' files,
+   never by hand, with the Scryfall dump (from `server/`):
+   ```bash
+   CMDCTRL_SCRYFALL_DUMP=$PWD/../data/scryfall/default-cards.json \
+     go test ./internal/cards/coverage/ -run TestOracleFixtureIsCurrent \
+     -update-oracle -oracle-ids=<oracle_id>,<oracle_id>
+   ```
+   Commit only the files for the cards you added. Two card PRs never
+   share a file, so they no longer conflict here
+   ([#1542](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1542)).
+   Dropping `-oracle-ids` regenerates every file and deletes the files
+   of cards that left the catalog. That is the nightly's job, and a
+   card PR should not do it: if files for other cards change, your dump
+   is older or newer than the one the fixture came from.
+
+7. **Verify.** `cd server && go test ./internal/cards/effects/... ./internal/cards/coverage/...` and
    `gofmt -l internal/cards/effects/` should both be clean. The
    `TestNonCatalogSpellStaysSandbox` canary should still pass — it's the
    opt-in invariant.
 
-7. **Manual smoke-test.** `CMDCTRL_DEV_SKIP_DECK_VALIDATION=1 make server-dev`
+8. **Manual smoke-test.** `CMDCTRL_DEV_SKIP_DECK_VALIDATION=1 make server-dev`
    plus a small deck (`make dev-skip-validation` target on the top-level
    Makefile) so the library is small enough to find your card quickly.
    Cast it, verify the AUTO badge renders, verify the effect resolves.
@@ -840,6 +863,27 @@ weaker-than-printed answer. Converge counts no colours, adamant does not
 turn on, and "if no mana was spent" is false. Say so in a caveat, as
 Painful Truths and Vexing Bauble do.
 
+**Mana that does something when it's spent (#1547)** — "and that
+spell can't be countered", "if that mana is spent on a creature
+spell, it gains haste", "when that mana is spent to cast …, copy
+that spell" — goes in `ManaAbility.SpendRiders`, built with the
+constructors in
+[mana_spend_rider.go](server/internal/cards/effects/mana_spend_rider.go):
+
+```go
+SpendRiders: []game.ManaSpendRider{SpentSpellCantBeCountered(ManaRestrictCast)},         // Cavern of Souls
+SpendRiders: []game.ManaSpendRider{SpentCreatureGainsHaste()},                           // Hall of the Bandit Lord
+SpendRiders: []game.ManaSpendRider{WhenManaSpent("Pyromancer's Goggles", game.ManaSpendTrigger{
+    Label: "Pyromancer's Goggles — copy that spell", Effect: copyTheSpellYouJustCast,
+}, ManaRestrictCast, ManaRestrictColor("R"), ManaRestrictAnyType("Instant", "Sorcery"))},
+```
+
+The trailing tags are the rider's filter — whether it FIRES — and are
+not a spend restriction: Hall's {C} still pays for anything. A card
+whose mana is also restricted (Cavern) declares both. Riders fire only
+on a recorded payment, so every rider card carries the strict-mana
+caveat. See ADR 0040's 2026-09-24 amendment.
+
 For non-mana, non-static activated abilities (planeswalker +1/-1,
 equip, cycling, etc.), wait — see the deferral list below.
 
@@ -906,7 +950,7 @@ func init() {
 
 **Ability REMOVAL is a declaration, not something `Apply` does.** Set `RemovesAbilities: true` (and build it with `effects.LoseAllAbilities(keep…)`); the engine empties `Characteristic.Abilities` and stamps `AbilitiesRemoved` before your `Apply` runs, so `Apply` only has to append the keywords the same effect grants back. Clearing the slice by hand removes the keyword badges and leaves every catalogued activated, triggered, mana, static and replacement ability working underneath them, because those are read through the `Catalog*` hooks at use time — see [ADR 0046](docs/decisions/0046-layer-6-authoritative.md). If you are writing a NEW engine reader of a `Catalog*` hook that answers "what does this permanent do", key it with `game.CatalogAbilityKey`, not `game.CatalogKey`.
 
-**Durations (CR 611.2, S38).** A continuous effect a spell or ability *creates* does not live on the battlefield — it goes in `Game.ScopedStatics` with a `Duration` on it, and the duration is plain data, never a closure. Four kinds, and one function (`durationExpiredLocked` in `server/internal/game/duration.go`) decides when any of them is over:
+**Durations (CR 611.2, S38).** A continuous effect a spell or ability *creates* does not live on the battlefield — it goes in `Game.ScopedEffects` with a `Duration` on it, and the duration is plain data, never a closure. Four kinds, and one function (`durationExpiredLocked` in `server/internal/game/duration.go`) decides when any of them is over:
 
 | Oracle text | Card-side builder | Ends |
 |---|---|---|
@@ -915,9 +959,9 @@ func init() {
 | "for as long as ~ remains on the battlefield" / "for as long as you control ~" | `DurationWhileSourceRemains(ctx, src)` / `DurationWhileYouControlSource(ctx, src, p)` | when the condition goes false, checked at the top of every layer pass (CR 611.2b) |
 | no duration printed at all | `game.IndefiniteDuration()` | never (CR 611.2a) |
 
-Reach for `BoostUntilEOT` / `GrantKeywordUntilEOT` / `StaticUntilEOT` for the first row and `StaticForDuration{Ability, Duration, Label}` for the others; there is deliberately no `StaticUntilYourNextTurn` wrapper. A one-shot continuous effect from a resolving spell must pin its affected set at resolution (CR 611.2c) — use `SnapshotAffected(ctx, match)` as the `AppliesTo`, which keys on `(InstanceID, EnteredBattlefieldAt)` so a permanent flickered in response is correctly a new object (CR 400.7). The two "for as long as" builders return `(Duration, bool)` and the bool is load-bearing: CR 611.2b says an effect whose condition is already false as it would begin never begins, so register nothing. See [ADR 0063](docs/decisions/0063-durations-and-control.md) and [ADR 0035](docs/decisions/0035-until-end-of-turn-effects.md).
+Reach for `BoostUntilEOT` / `GrantKeywordUntilEOT` for the first row and `ScopedEffectFor{Target|Match, Mods, Duration, Label}` for everything else — a DATA record over the closed `game.*Mod` vocabulary (`SetBasePTMods`, `AddSubtypesMod`, `RemoveTypesMod`, `SetControllerMod`, … in `game/scoped_effects.go`), which the snapshot carries, so a table holding one is still a restore point ([ADR 0041](docs/decisions/0041-game-persistence.md) phase 3, #1497). Every other until-end-of-turn builder (`RestrictUntilEOT`, `GrantAllCreatureTypesUntilEOT`, `BecomeCreatureUntilEOT` / crew) and prowess write the same record. So does a granted ABILITY for a duration, `GrantAbilitiesFor` (the `grantAbilities` mod; see "Granting an ability to another permanent" below). The closure-taking registry (`StaticForDuration`, `StaticUntilEOT`, `RegisterScopedStaticForEffect`, `Game.ScopedStatics`) was deleted in tier 3a, so nothing accepts a closure for one any more; an effect none of the mods can say is a new mod kind, not a closure. There is deliberately no `StaticUntilYourNextTurn` wrapper. A one-shot continuous effect from a resolving spell must pin its affected set at resolution (CR 611.2c): `ScopedEffectFor` does that itself — its `Match` is resolved once, into `(InstanceID, EnteredBattlefieldAt)` pairs, so a permanent flickered in response is correctly a new object (CR 400.7). An indefinite effect pinned to its object survives that object phasing out and in (CR 702.26d); a "for as long as" duration that tracks a source ends when the source phases out (CR 702.26f). The two "for as long as" builders return `(Duration, bool)` and the bool is load-bearing: CR 611.2b says an effect whose condition is already false as it would begin never begins, so register nothing. See [ADR 0063](docs/decisions/0063-durations-and-control.md) and [ADR 0035](docs/decisions/0035-until-end-of-turn-effects.md).
 
-**Control from effects (CR 613.1b, CR 701.12, S38).** "Gain control of target permanent" is `GainControl{Target, Controller, Duration, Label}` and "exchange control" is `ExchangeControl{A, B}`. Both are layer-2 scoped statics in the same bucket Mind Control's Aura uses, which is what makes control revert by itself (`Card.BaseController`) and makes two control effects sort by timestamp (CR 613.7) with no card-side work. Do NOT write `Card.Controller`. Three things ride along and are why the printed cards look the way they do: the permanent leaves combat (CR 506.4, declaration and announcement both), it is summoning-sick under its new controller however long it has been in play (CR 302.6 — which is why Act of Treason also grants haste), and ownership never changes (CR 108.3). An exchange is ONE effect: both objects are checked before either half is registered and the two halves share a timestamp, so it fails whole (CR 701.12b). `Controller` defaults to the effect's controller; pass it explicitly for "target opponent gains control of ~" — that card still waits on the choose-a-player prompt, not on this primitive.
+**Control from effects (CR 613.1b, CR 701.12, S38).** "Gain control of target permanent" is `GainControl{Target, Controller, Duration, Label}` and "exchange control" is `ExchangeControl{A, B}`. Both are layer-2 scoped effects — data records with one `setController` mod (#1497) — in the same bucket Mind Control's Aura uses, which is what makes control revert by itself (`Card.BaseController`) and makes two control effects sort by timestamp (CR 613.7) with no card-side work. Do NOT write `Card.Controller`. Three things ride along and are why the printed cards look the way they do: the permanent leaves combat (CR 506.4, declaration and announcement both), it is summoning-sick under its new controller however long it has been in play (CR 302.6 — which is why Act of Treason also grants haste), and ownership never changes (CR 108.3). An exchange is ONE effect: both objects are checked before either half is registered and the two halves share a timestamp, so it fails whole (CR 701.12b). `Controller` defaults to the effect's controller; pass it explicitly for "target opponent gains control of ~" — that card still waits on the choose-a-player prompt, not on this primitive.
 
 ### Granting an ability to another permanent (ADR 0093, #754)
 
@@ -947,9 +991,62 @@ on the recipient takes an earlier grant and not a later one (CR
 refuses a bundle ability with `ActiveWhen` (gate the grantor's static
 instead) or a non-battlefield zone, and `TestEveryGrantKeyResolves`
 refuses a grant naming an unregistered bundle or a bundle with a
-`Static` slot. Attached / tribal constructors, the client picker and
-the auto-tapper's handling arrive with the first cards (ADR 0093 PR 2);
-duration grants from a resolving spell are PR 4 and have no shape yet.
+`Static` slot.
+
+The other constructors: `TribalAbilityGrant(TribeFilter{…}, key)` for
+"All Slivers have …" / "Sliver creatures you control have …", and
+`GrantAbilitiesToAttached(key)` for "Equipped creature has …" /
+"Enchanted land has …". `AnyColorManaGrant(key)` and
+`TapForManaGrant(key, produced, label, text)` build the common mana
+bundles. The auto-tapper plans every acceptable mana ability of a
+permanent (not only the first) and keeps a CREATURE's granted mana for
+last, so an auto-paid cast does not tap your attackers; a land's
+granted mana is an ordinary source. See `cryptolith_rite.go`,
+`chromatic_lantern.go`, `necrotic_sliver.go` and `squirrel_nest.go`.
+
+A granted TRIGGER goes in the bundle's `Triggered` slot, written with the
+ordinary trigger shapes, and `source` in its `AppliesTo` / `Build` is the
+HOST — so "this creature" is `ev.CardID == source.InstanceID`
+(`ThisBecameTapped`, `ThisDied`), "you" is the host's controller, and the
+trigger goes on the stack under the host's controller. "Only once each
+turn" is `b11TriggeredThisTurn(g, source.InstanceID, label)` with a FIXED
+label (the tally is per object and per label). A granted dies trigger
+fires from last-known information, the ETB harvest sees a grant on the
+creature that is entering, and a later ability removal on the host takes
+the grant. Never write a granted trigger on the GRANTOR watching the
+recipients: the controller, the removal and the LKI all come out wrong.
+See `dionus_elvish_archdruid.go`, `agent_of_the_iron_throne.go` and
+`thornbite_staff.go`.
+
+A grant from a RESOLVING spell or ability ("until end of turn, target
+creature gains '…'", Urza's Saga's "this Saga gains '…'") is the same
+bundle, given with `GrantAbilitiesFor` (ADR 0093 PR 4, #1584):
+
+```go
+Grants: []AbilityGrant{{Key: feignDeathReturn, Triggered: …, Text: "When this creature dies, …"}},
+OnResolve: func(_ *game.StackItem, ctx *Context) error {
+    return GrantAbilitiesFor{Target: t, Keys: []string{feignDeathReturn}, Label: "Feign Death — …"}.Apply(ctx)
+},
+// "gets +2/+0 and gains …" is ONE effect: Also: []game.Mod{game.ModifyPTMod(2, 0)}
+// no stated duration (CR 611.2a): Duration: g.PinnedTo(game.IndefiniteDuration(), id)
+```
+
+It registers ADR 0041 phase 3's ScopedEffect record with a
+`grantAbilities` mod (`game.GrantAbilitiesMod`), which the layer pass
+turns into the same layer-6 declaration a static makes — so every
+reader, ref, removal and copy rule is the static grant's. It is data, so
+the table stays a restore point. A zero `Duration` is "until end of
+turn"; the affected set is pinned at resolution (CR 611.2c), so a
+creature that dies and returns is a new object without the grant. Keys
+must name a registered bundle with no `Static` slot: `Apply` refuses
+one at resolution, `TestEveryDurationGrantKeyResolves` scans the
+catalog's source for literal and constant keys, and a restore point
+naming an unregistered bundle is refused with `ErrUnknownEffectKey`. A
+"return it to the battlefield tapped [with a counter]" dies trigger is
+`returnThisCreatureFromGraveyard`. See `feign_death.go`,
+`fake_your_own_death.go`, `retraction_helix.go` and `urzas_saga.go`.
+Still no shape: a duration that lasts "for as long as it has a <kind>
+counter on it" (Ultima, Origin of Oblivion).
 
 ### Adding a replacement effect (S17+)
 
@@ -2028,13 +2125,25 @@ BlockRules: []game.BlockRule{
   enumerator read the same check, so a bot is never offered a refused
   attack ([ADR 0045](docs/decisions/0045-combat-restrictions.md)
   Decisions 43-45).
+- **The narrower and conditional variants** (#1534, Decision 47):
+  "no more than N creatures can attack <this planeswalker>" (The
+  Eternal Wanderer) is `NoMoreThanNCanAttackThisEachCombat(n)`; "as
+  long as <this> is tapped, …" (Mirri, Weatherlight Duelist) wraps any
+  limit as `AsLongAs(ThisIsTapped, …)`, read live; "each opponent
+  can't block with more than N creatures this combat" is the
+  `EachOpponentCantBlockWithMoreThanN{N, Label}` primitive in a
+  trigger's effect, a turn-scoped `BlockRule.Limit` with
+  `LimitPerDefender`, so each defending player is counted on their
+  own.
 
 Tests: [block_rules_test.go](server/internal/cards/effects/block_rules_test.go)
 pins every shape through the verb, `legal.EnumerateFor` and
 `block_decision_seats`;
 [combat_limits_test.go](server/internal/cards/effects/combat_limits_test.go)
 pins the whole-combat limits, checking the enumerator against the verb
-on a clone for every candidate.
+on a clone for every candidate, and
+[conditional_combat_limits_test.go](server/internal/cards/effects/conditional_combat_limits_test.go)
+does the same for the #1534 variants, planeswalker targets included.
 
 ### Adding a triggered ability (S19+)
 
@@ -3588,11 +3697,31 @@ now:
 
 ```go
 ScheduleDelayedTrigger{
-    Label:  "Waterbender's Restoration — return the exiled creatures",
-    Cards:  exiled,                      // instance IDs, stamped onto the fired item's Targets
-    Effect: returnExiledCardsToOwners,   // a package-level func, NOT a closure
+    Label: "Waterbender's Restoration — return the exiled creatures",
+    Cards: exiled,                    // instance IDs, stamped onto the fired item's Targets
+    Body:  returnExiledToOwnersBody,  // a registered game.BodyRef (delayed_bodies.go)
+}.Apply(ctx)
+
+ScheduleDelayedTrigger{              // a body with data: what a factory used to capture
+    Label:  "Mana Drain — add {C} × 3", At: game.StepPrecombatMain, ControllerTurnOnly: true,
+    Body:   manaDrainRefundBody,
+    Params: game.EffectParams{Amount: mv},
 }.Apply(ctx)
 ```
+
+**What a delayed trigger does is DATA** ([ADR 0041](docs/decisions/0041-game-persistence.md)
+phase 3, tier 2, #1497). `Body` is a `game.BodyRef` — a key into the
+registry in `game/effect_bodies.go` — never a function, so a func
+literal there does not compile. Register a new body ONCE, in
+[delayed_bodies.go](server/internal/cards/effects/delayed_bodies.go),
+as `game.SimpleDelayedBody("<area>/<name>", fn)` (or `game.DelayedBody`
+for one that reads `game.EffectParams`: `Player`, `Object`, `Amount`,
+`Cost`, `Name`, `Filter`), and append the key to the ledger with
+`cd server && go test ./internal/cards/effects -run TestEveryPersistedEffectKeyResolves -args -update-effect-keys`.
+Keys are on-disk identities, like token slugs: never renamed, never
+deleted — `game.EffectAlias(old, new)` keeps an old one resolving. A
+table with a delayed trigger waiting is therefore a restore point, and
+so is one whose fired trigger is on the stack.
 
 `At` defaults to `game.StepEnd`; the queue is drained on step **entry**,
 so an ability scheduled during an end step waits for the following one.
@@ -3604,21 +3733,23 @@ upkeep at the table satisfies.
 The instruction lives on the `Game`, not on a card — the spell that
 created it is usually in a graveyard by the time it fires — and it goes
 on the stack when the step begins, so every player gets a response
-window. Declare `Effect` as a package-level func so it captures nothing:
-a delayed trigger survives `Clone` / undo by sharing its `Effect` with
-the snapshot, and reads its payload off the item it is handed.
+window. The body reads its payload off the item it is handed
+(`item.Targets`, `item.Controller`) and its data off its params, and
+captures nothing — it cannot.
 
 **Event-conditioned delayed triggers (#663, CR 603.7b):** "When you
 next cast an instant or sorcery spell this turn, copy that spell"
 (Doublecast, Galvanic Iteration) waits for a THING TO HAPPEN rather
 than for a step, and it is the same queue with a different condition —
-`WhenYouNextCast(label, pred, effect)`, or the general
-`DelayedOnEvent{Label, On, Matches, Effect}`, both in
-[delayed_on_event.go](server/internal/cards/effects/delayed_on_event.go):
+`WhenYouNextCast(label, filter, body)`, or the general
+`DelayedOnEvent{Label, On, Condition, CondParams, Body, Params}`, both in
+[delayed_on_event.go](server/internal/cards/effects/delayed_on_event.go).
+The condition is a registered `game.ConditionRef` and the spell filter is
+DATA, a `game.CastFilter` — not a `CardPredicate`, which is a closure:
 
 ```go
 return WhenYouNextCast("Doublecast — copy that spell",
-    Or(Instant(), Sorcery()), copyTheSpellYouJustCast).Apply(ctx)
+    game.CastFilter{Types: []string{"Instant", "Sorcery"}}, copyTheSpellBody).Apply(ctx)
 ```
 
 Four things it gets for free and must not re-implement. It fires
@@ -3632,8 +3763,8 @@ before the resolution that scheduled it. And the fired trigger goes
 through `dispatchTriggerLocked`, the harvester's own dispatch, so the
 CR 603.5 "you may", the CR 603.3d drop and the APNAP drain are the same
 code an ETB uses. The triggering event's object rides on the item as
-`Payload` — `ctx.PayloadCards()[0]` is "that spell" — so the `Effect`
-stays a package-level func that captures nothing. This reverses
+`Payload` — `ctx.PayloadCards()[0]` is "that spell" — so the body
+reads it off the item and captures nothing. This reverses
 [ADR 0026](docs/decisions/0026-delayed-triggers.md) §1-2 for this one
 case; the 2026-09-18 amendment there is the record.
 
@@ -4436,7 +4567,7 @@ dimmed and badged `PHASED`, with the click withheld.
 
 Still missing, and named in the ADR rather than here: CR 702.26e /
 702.26f's continuous-effect corners — a "gain control until end of
-turn" whose object phases out keeps its `ScopedStatic` registration
+turn" whose object phases out keeps its `ScopedEffect` record
 and applies again if the permanent returns inside the duration. No
 catalogued card reaches it.
 
@@ -4777,6 +4908,38 @@ disagree (Discussion #559 item 6). The same registry feeds the public
 roadmap page, so its `Summary` and `Missing` sentences are held to the
 Caveats tone rule, and a seam you close in an engine PR is flipped to
 implemented there.
+
+**Closing a seam: add a fragment, never edit the Closed list.** The
+Closed seams list in `docs/engine-seams.md` is generated from one file
+per closure in `docs/engine-seams/closed/` (#1461, Discussion #1231
+Option A), because a hand-written list that every engine PR prepended
+to made any two open PRs conflict. Your engine PR adds
+`docs/engine-seams/closed/<issue>-<slug>.md`:
+
+```
+---
+title: "Phasing"
+date: 2026-09-23
+issues: [1199]
+pr: 1251
+---
+**Phasing** (#1199, [ADR 0084](decisions/0084-phasing.md)) — what closed, and what is still open.
+```
+
+`title` is double-quoted and matches the bold heading the body starts
+with (no `- ` list marker; the generator adds it); `issues` is a list;
+`pr` is optional (add it once the PR exists, or leave it out). Links
+are relative to `docs/`. Say which issue you mean rather than "the row
+above": new fragments sort by date, not by where you would have put
+them. Do **not** regenerate the list in a PR — CI's `census-publish`
+job does it on every push to `develop` and `main`, as it does for the
+census, and a regenerated block in your diff is the conflict this
+exists to remove. `TestClosedSeamsAreCurrent` skips a stale list
+outside CI but always fails a malformed fragment or an entry written
+into the list by hand (the next refresh would delete it). To look at
+the result locally, run
+`go test ./internal/roadmap/ -run TestClosedSeamsAreCurrent -update-closed`
+and then discard the change to `docs/engine-seams.md`.
 
 - **Activated abilities whose cost has no component** — `AbilityCost`
   carries tap-this, sacrifice-this, sacrifice-another (since #747

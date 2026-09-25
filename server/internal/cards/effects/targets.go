@@ -663,6 +663,19 @@ func Legendary() CardPredicate {
 	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return c.IsLegendary() }
 }
 
+// YourCommander passes for a card that is the caster's own commander
+// (Card.IsCommander, CR 903.4) currently under the caster's control —
+// Commander's Plate's cheaper "equip commander" clause. Ownership
+// alone is not enough: what this equip clause narrows is who the
+// Equipment may move onto right now, which is a question about
+// control (CR 702.6a's "creature you control"), same as every other
+// equip target.
+func YourCommander() CardPredicate {
+	return func(_ *game.Game, caster uuid.UUID, c game.Card) bool {
+		return c.IsCommander && c.Controller == caster
+	}
+}
+
 // Clauses builds a multi-clause target statement out of the ordinary
 // single-clause constructors, in printed order (#764, ADR 0065 §1):
 //

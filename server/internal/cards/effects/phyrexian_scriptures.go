@@ -18,7 +18,7 @@ import (
 // The grant is a continuous effect with no duration — it lasts for
 // as long as the creature is on the battlefield, outliving the Saga
 // that made it — and the engine's only floating-continuous-effect
-// registry (game.TurnScopedStatics, ADR 0035) expires at cleanup.
+// registry (game.ScopedEffects, ADR 0035) expires at cleanup.
 // Registering it there would end the protection one turn later and
 // silently, which is worse than not having it; a permanent-duration
 // registry is its own piece of work.
@@ -41,26 +41,13 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			ChapterTriggerTargeting(1, "Phyrexian Scriptures — I: +1/+1 counter on up to one creature",
 				TargetCreature("up to one target creature").WithCount(0, 1),
-				scripturesCounter),
+				putPlusOneCounterOnEachLegalTarget),
 			ChapterTrigger(2, "Phyrexian Scriptures — II: destroy all nonartifact creatures",
 				scripturesWipeNonartifacts),
 			ChapterTrigger(3, "Phyrexian Scriptures — III: exile all opponents' graveyards",
 				scripturesExileOpponentGraveyards),
 		},
 	})
-}
-
-func scripturesCounter(g *game.Game, item *game.StackItem) error {
-	ctx := NewContext(g, item)
-	for _, t := range ctx.LegalTargets() {
-		if t.Kind != game.TargetCard {
-			continue
-		}
-		if err := (AddCounter{Target: t.ID, Kind: game.CounterPlusOne, N: 1}).Apply(ctx); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 func scripturesWipeNonartifacts(g *game.Game, item *game.StackItem) error {

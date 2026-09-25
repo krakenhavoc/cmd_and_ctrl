@@ -1,6 +1,7 @@
 package game
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/google/uuid"
@@ -49,7 +50,7 @@ func TestGainControlRefusesAPermanentThatIsNotThere(t *testing.T) {
 			t.Error("GainControlForEffect accepted a permanent that is not on the battlefield")
 		}
 	})
-	if n := len(g.ScopedStatics); n != 0 {
+	if n := len(g.ScopedEffects); n != 0 {
 		t.Errorf("registry holds %d entries after a refused theft", n)
 	}
 }
@@ -187,10 +188,10 @@ func TestExchangeControlIsOneEffectWithOneTimestamp(t *testing.T) {
 	g.WithWriteLock(func() {
 		g.ExchangeControlForEffect(uuid.New(), mine, theirs, "test — Switcheroo")
 	})
-	if n := len(g.ScopedStatics); n != 2 {
+	if n := len(g.ScopedEffects); n != 2 {
 		t.Fatalf("an exchange registered %d entries, want 2", n)
 	}
-	if a, b := g.ScopedStatics[0].Timestamp, g.ScopedStatics[1].Timestamp; a != b {
+	if a, b := g.ScopedEffects[0].Timestamp, g.ScopedEffects[1].Timestamp; a != b {
 		t.Errorf("the two halves have different timestamps (%d, %d); CR 701.12 makes them one effect", a, b)
 	}
 }
@@ -208,7 +209,7 @@ func TestExchangeControlFailsWholeWhenOneObjectIsGone(t *testing.T) {
 			t.Error("an exchange with a missing object reported success")
 		}
 	})
-	if n := len(g.ScopedStatics); n != 0 {
+	if n := len(g.ScopedEffects); n != 0 {
 		t.Errorf("a failed exchange registered %d entries; CR 701.12b says none", n)
 	}
 	if got := controllerOfCard(t, g, mine); got != me.ID {
@@ -253,7 +254,7 @@ func TestGainControlEndsWhenTheStolenPermanentIsFlickered(t *testing.T) {
 	if got := controllerOfCard(t, g, victim); got != opp.ID {
 		t.Errorf("a flickered permanent is still stolen: controller %s, want %s", got, opp.ID)
 	}
-	if n := len(g.ScopedStatics); n != 0 {
+	if n := len(g.ScopedEffects); n != 0 {
 		t.Errorf("the theft outlived the object it was pinned to (%d entries)", n)
 	}
 }
@@ -311,7 +312,7 @@ func TestUndoAcrossAControlChange(t *testing.T) {
 	}
 
 	g.WithWriteLock(func() { g.RestoreFrom(snap) })
-	if n := len(g.ScopedStatics); n != 0 {
+	if n := len(g.ScopedEffects); n != 0 {
 		t.Errorf("undo left %d scoped statics", n)
 	}
 	if got := controllerOfCard(t, g, victim); got != opp.ID {
@@ -337,8 +338,8 @@ func TestUndoAcrossAnExpiry(t *testing.T) {
 	if got := controllerOfCard(t, g, victim); got != opp.ID {
 		t.Fatalf("setup: the theft did not expire (controller %s)", got)
 	}
-	if len(snap.ScopedStatics) != 1 {
-		t.Fatalf("the sweep reached into the snapshot (%d entries)", len(snap.ScopedStatics))
+	if len(snap.ScopedEffects) != 1 {
+		t.Fatalf("the sweep reached into the snapshot (%d entries)", len(snap.ScopedEffects))
 	}
 
 	g.WithWriteLock(func() { g.RestoreFrom(snap) })
@@ -347,12 +348,13 @@ func TestUndoAcrossAnExpiry(t *testing.T) {
 	}
 }
 
-// TestSnapshotRoundTripKeepsTheBoardAndCensusesTheTheft — the
-// persisted snapshot cannot carry the ability (two closures), so it
-// counts the entry instead and refuses the restore point. The board
-// itself, including Card.Controller as the layer engine left it, does
-// round-trip.
-func TestSnapshotRoundTripKeepsTheBoardAndCensusesTheTheft(t *testing.T) {
+// TestSnapshotRoundTripCarriesTheTheft — since ADR 0041 phase 3
+// (#1497) a theft is a data record, so a game holding one is a restore
+// point: the snapshot carries the record, the census stays empty, and
+// the restored game still has the permanent under the thief's control
+// after its own layer pass — for the rest of the game, which is the
+// case that used to freeze the restore point for the rest of the game.
+func TestSnapshotRoundTripCarriesTheTheft(t *testing.T) {
 	g := newActiveGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
 	victim := pushScopedTestCreature(g, opp.ID, 2, 2)
@@ -364,15 +366,27 @@ func TestSnapshotRoundTripKeepsTheBoardAndCensusesTheTheft(t *testing.T) {
 	}
 
 	snap := g.CaptureSnapshot()
-	if snap.Restorable() {
-		t.Error("a game holding a closure-bearing scoped static reported itself fully restorable")
+	if !snap.Restorable() {
+		t.Fatalf("a game holding only a data-backed theft is not a restore point: %+v", snap.Continuations)
 	}
-	if snap.Continuations.ScopedStatics != 1 {
-		t.Errorf("census counted %d scoped statics, want 1", snap.Continuations.ScopedStatics)
+	if len(snap.ScopedEffects) != 1 {
+		t.Fatalf("the snapshot carried %d scoped effects, want 1", len(snap.ScopedEffects))
 	}
-	restored, err := snap.Restore()
+	raw, err := json.Marshal(snap)
 	if err != nil {
-		t.Fatalf("Restore: %v", err)
+		t.Fatalf("marshal: %v", err)
+	}
+	var decoded GameSnapshot
+	if err := json.Unmarshal(raw, &decoded); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	restored, err := decoded.RestoreStrict()
+	if err != nil {
+		t.Fatalf("RestoreStrict: %v", err)
+	}
+	restored.WithWriteLock(func() { restored.RecomputeLayersIfStaleLocked() })
+	if got := controllerOfCard(t, restored, victim); got != me.ID {
+		t.Errorf("restored controller %s, want the thief %s", got, me.ID)
 	}
 	found := false
 	restored.ReadSnapshot(func() {
@@ -390,5 +404,16 @@ func TestSnapshotRoundTripKeepsTheBoardAndCensusesTheTheft(t *testing.T) {
 	}
 	if got := restored.Seats[0].TurnsBegun; got != g.Seats[0].TurnsBegun {
 		t.Errorf("restored TurnsBegun = %d, want %d", got, g.Seats[0].TurnsBegun)
+	}
+
+	// And the restored record still ENDS: the permanent leaving takes
+	// the theft with it (the pin, CR 400.7).
+	if err := restored.MoveCardByID(ZoneRef{Kind: ZoneBattlefield},
+		ZoneRef{Kind: ZoneGraveyard, Owner: opp.ID}, victim); err != nil {
+		t.Fatalf("MoveCardByID: %v", err)
+	}
+	restored.WithWriteLock(func() { restored.RecomputeLayersIfStaleLocked() })
+	if n := len(restored.ScopedEffects); n != 0 {
+		t.Errorf("%d scoped effects survive the stolen permanent leaving the restored game, want 0", n)
 	}
 }

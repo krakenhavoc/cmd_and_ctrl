@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Delighted Halfling — Creature — Halfling Citizen {G}, 1/2:
 //
 //	"{T}: Add {C}."
@@ -32,17 +34,17 @@ package effects
 // Summoning sickness applies to both abilities — ActivateManaAbility
 // has enforced CR 302.6 on creature tap abilities since #233.
 //
-// Simplification, declared: "and that spell can't be countered" is
-// INERT. Nothing in the counter path reads a per-spell uncounterable
-// marker; that belongs to the protection / prevention family (#95).
-// The mana restriction is fully enforced, so the card is strictly
-// weaker than printed rather than stronger — the acceptable direction.
+// "And that spell can't be countered" is a spend rider (#1547) —
+// Cavern of Souls' shape exactly: the legendary spell the coloured mana
+// pays for is marked uncounterable on the stack. One declared
+// simplification, weaker than printed: with strict mana off the pool is
+// never spent (ADR 0068 §3), so the spell can still be countered.
 func init() {
 	Register(Spec{
 		OracleID:     "f9d3b046-0b95-4103-a630-4b3fb88bb60b",
 		Name:         "Delighted Halfling",
 		Completeness: CompletenessCaveats,
-		Caveats:      []string{"Spells cast with the Halfling's colored mana can still be countered."},
+		Caveats:      []string{"With strict mana off, the game doesn't see which mana you spent, so a spell cast with the Halfling's colored mana can still be countered."},
 		ManaAbilities: []ManaAbility{
 			{
 				Cost:     ManaAbilityCost{Tap: true},
@@ -61,6 +63,7 @@ func init() {
 					ManaRestrictCast,
 					ManaRestrictSupertype("Legendary"),
 				},
+				SpendRiders: []game.ManaSpendRider{SpentSpellCantBeCountered(ManaRestrictCast)},
 			},
 		},
 	})

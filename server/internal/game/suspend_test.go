@@ -653,7 +653,7 @@ func TestSuspendHasteEndsWhenControlIsLost(t *testing.T) {
 	if hasteOn(t, g, id) {
 		t.Error("the suspend haste came back with the creature; CR 702.62a ended it the first time control left")
 	}
-	for _, s := range g.ScopedStatics {
+	for _, s := range g.ScopedEffects {
 		if s.Label == "Suspend — haste (CR 702.62a)" {
 			t.Error("the ended haste grant is still in the registry")
 		}

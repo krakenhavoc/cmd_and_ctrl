@@ -1,6 +1,8 @@
 package effects
 
 import (
+	"errors"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -45,7 +47,6 @@ const (
 	b30DocksideChefOracle           = "fed12a16-8920-403c-be63-0601a9d864b0"
 	b30GrimGuardianOracle           = "c1f1babf-13d0-4fc4-b192-127d2d5db7f1"
 	b30UltimaSkipOracle             = "baa337ce-edc6-4ee5-a898-68e9dbb4ab93"
-	b30GemhideSliverSkipOracle      = "2c09ca09-8e62-4fe3-9b3d-61573dd2ffbc"
 	b30ChainOfSmogSkipOracle        = "ea14c26b-bf2f-48b4-b879-6e63069ded1f"
 	b30ZimoneParadoxSculptorSkipOID = "9dd674a7-becf-4106-b53f-bca88426d92d"
 )
@@ -171,12 +172,13 @@ func TestBatch30CardsAreRegistered(t *testing.T) {
 			t.Errorf("oracle %s registered as %q, want %q", oracle, spec.Name, name)
 		}
 	}
-	// The three declared skips must NOT be registered — each needs a
+	// The two declared skips must NOT be registered — each needs a
 	// seam the engine does not have, and a spec would ship the card
 	// stronger than printed or as something other than itself.
+	// Gemhide Sliver came off this list with ADR 0093 and ships in
+	// gemhide_sliver.go.
 	for _, skipped := range []string{
 		b30UltimaSkipOracle,             // a land losing all types and abilities and gaining a mana ability; a tap-for-{C} rider
-		b30GemhideSliverSkipOracle,      // a mana ability granted to other permanents by a static
 		b30ZimoneParadoxSculptorSkipOID, // a beginning-of-combat trigger event
 	} {
 		if _, ok := Lookup(skipped); ok {
@@ -309,21 +311,29 @@ func TestB30WindgracesJudgmentDestroysOnePermanentPerOpponent(t *testing.T) {
 	if legal[mine] || legal[bLand] || !legal[aBear] || !legal[bAura] {
 		t.Fatal("only nonland permanents opponents control are legal")
 	}
-	castCatalogSpell(t, g, "Windgrace's Judgment", "Instant", b30WindgracesJudgmentOracle, []game.TargetRef{
+	// #1559: one per opponent is the clause's set rule — two of one
+	// opponent's permanents are refused at announce (CR 601.2c).
+	err := castCatalogSpellErr(t, g, "Windgrace's Judgment", "Instant", b30WindgracesJudgmentOracle, []game.TargetRef{
 		{Kind: game.TargetCard, ID: aBear}, {Kind: game.TargetCard, ID: aRock}, {Kind: game.TargetCard, ID: bAura},
+	})
+	if !errors.Is(err, game.ErrIllegalTarget) || !strings.Contains(err.Error(), "controlled by different players") {
+		t.Fatalf("two of one opponent's permanents are refused naming the rule, got %v", err)
+	}
+	castCatalogSpell(t, g, "Windgrace's Judgment", "Instant", b30WindgracesJudgmentOracle, []game.TargetRef{
+		{Kind: game.TargetCard, ID: aBear}, {Kind: game.TargetCard, ID: bAura},
 	})
 	passPriorityAroundTable(t, g)
 	if g.Battlefield.Contains(aBear) || g.Battlefield.Contains(bAura) {
-		t.Error("the first permanent named for each opponent is destroyed")
+		t.Error("one permanent of each opponent's is destroyed")
 	}
 	if !g.Battlefield.Contains(aRock) {
-		t.Error("a second permanent of the same opponent's is skipped — one per opponent")
+		t.Error("the permanent nobody named stays")
 	}
 	if !g.Battlefield.Contains(mine) {
 		t.Error("your own permanents are untouched")
 	}
 	if spec, _ := Lookup(b30WindgracesJudgmentOracle); spec.Completeness != CompletenessCaveats {
-		t.Error("the one-per-opponent enforcement at resolution is a declared gap")
+		t.Error("judging a target by its controller at resolution, not by its bound opponent, is a declared gap")
 	}
 }
 

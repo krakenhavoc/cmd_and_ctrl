@@ -1,0 +1,1419 @@
+{
+  "seq": 1,
+  "snapshot": {
+    "schema": 7,
+    "takenAt": "2026-09-24T00:00:00Z",
+    "id": "e7e3372c-3f3d-4e32-bdbc-da467b16507c",
+    "createdAt": "2026-09-24T00:00:00Z",
+    "state": "active",
+    "seats": [
+      {
+        "id": "d4f3adf8-3d09-425c-bc12-ea12917c38a3",
+        "name": "P1",
+        "seat": 0,
+        "life": 40,
+        "poison": 0,
+        "energy": 0,
+        "library": {
+          "kind": "library",
+          "owner": "d4f3adf8-3d09-425c-bc12-ea12917c38a3",
+          "cards": [
+            {
+              "instanceId": "4d609b31-33ef-431b-8670-56d952e3cf31",
+              "name": "Forest",
+              "typeLine": "Basic Land — Forest",
+              "power": 0,
+              "toughness": 0,
+              "variableToughness": false,
+              "startingLoyalty": 0,
+              "needsEffect": false,
+              "owner": "d4f3adf8-3d09-425c-bc12-ea12917c38a3",
+              "controller": "d4f3adf8-3d09-425c-bc12-ea12917c38a3",
+              "tapped": false,
+              "battleX": 0,
+              "battleY": 0,
+              "isCommander": false,
+              "attackingTarget": "00000000-0000-0000-0000-000000000000",
+              "blockingTarget": "00000000-0000-0000-0000-000000000000",
+              "goadedBy": "00000000-0000-0000-0000-000000000000",
+              "damageMarked": 0,
+              "faceDown": false,
+              "enteredBattlefieldAt": 0,
+              "summonedThisTurn": false,
+              "markedLethalByDeathtouch": false,
+              "attachedTo": {
+                "Kind": "",
+                "ID": "00000000-0000-0000-0000-000000000000",
+                "Slot": 0,
+                "Mode": 0
+              },
+              "baseController": "00000000-0000-0000-0000-000000000000",
+              "chosenPlayer": "00000000-0000-0000-0000-000000000000",
+              "provenance": {
+                "giftOpponent": "00000000-0000-0000-0000-000000000000"
+              },
+              "preparedBy": {
+                "id": "00000000-0000-0000-0000-000000000000",
+                "epoch": 0
+              },
+              "hiddenBy": {
+                "id": "00000000-0000-0000-0000-000000000000",
+                "epoch": 0
+              },
+              "protectorPlayerId": "00000000-0000-0000-0000-000000000000",
+              "phasedOutBy": "00000000-0000-0000-0000-000000000000",
+              "phaseInLockedBy": "00000000-0000-0000-0000-000000000000"
+            },
+            {
+              "instanceId": "ba5caa9c-0592-4ec8-9de1-979f0803ce57",
+              "name": "Forest",
+              "typeLine": "Basic Land — Forest",
+              "power": 0,
+              "toughness": 0,
+              "variableToughness": false,
+              "startingLoyalty": 0,
+              "needsEffect": false,
+              "owner": "d4f3adf8-3d09-425c-bc12-ea12917c38a3",
+              "controller": "d4f3adf8-3d09-425c-bc12-ea12917c38a3",
+              "tapped": false,
+              "battleX": 0,
+              "battleY": 0,
+              "isCommander": false,
+              "attackingTarget": "00000000-0000-0000-0000-000000000000",
+              "blockingTarget": "00000000-0000-0000-0000-000000000000",
+              "goadedBy": "00000000-0000-0000-0000-000000000000",
+              "damageMarked": 0,
+              "faceDown": false,
+              "enteredBattlefieldAt": 0,
+              "summonedThisTurn": false,
+              "markedLethalByDeathtouch": false,
+              "attachedTo": {
+                "Kind": "",
+                "ID": "00000000-0000-0000-0000-000000000000",
+                "Slot": 0,
+                "Mode": 0
+              },
+              "baseController": "00000000-0000-0000-0000-000000000000",
+              "chosenPlayer": "00000000-0000-0000-0000-000000000000",
+              "provenance": {
+                "giftOpponent": "00000000-0000-0000-0000-000000000000"
+              },
+              "preparedBy": {
+                "id": "00000000-0000-0000-0000-000000000000",
+                "epoch": 0
+              },
+              "hiddenBy": {
+                "id": "00000000-0000-0000-0000-000000000000",
+                "epoch": 0
+              },
+              "protectorPlayerId": "00000000-0000-0000-0000-000000000000",
+              "phasedOutBy": "00000000-0000-0000-0000-000000000000",
+              "phaseInLockedBy": "00000000-0000-0000-0000-000000000000"
+            },
+            {
+              "instanceId": "acc2b223-7d95-435e-8ceb-549cccb6e140",
+              "name": "Forest",
+              "typeLine": "Basic Land — Forest",
+              "power": 0,
+              "toughness": 0,
+              "variableToughness": false,
+              "startingLoyalty": 0,
+              "needsEffect": false,
+              "owner": "d4f3adf8-3d09-425c-bc12-ea12917c38a3",
+              "controller": "d4f3adf8-3d09-425c-bc12-ea12917c38a3",
+              "tapped": false,
+              "battleX": 0,
+              "battleY": 0,
+              "isCommander": false,
+              "attackingTarget": "00000000-0000-0000-0000-000000000000",
+              "blockingTarget": "00000000-0000-0000-0000-000000000000",
+              "goadedBy": "00000000-0000-0000-0000-000000000000",
+              "damageMarked": 0,
+              "faceDown": false,
+              "enteredBattlefieldAt": 0,
+              "summonedThisTurn": false,
+              "markedLethalByDeathtouch": false,
+              "attachedTo": {
+                "Kind": "",
+                "ID": "00000000-0000-0000-0000-000000000000",
+                "Slot": 0,
+                "Mode": 0
+              },
+              "baseController": "00000000-0000-0000-0000-000000000000",
+              "chosenPlayer": "00000000-0000-0000-0000-000000000000",
+              "provenance": {
+                "giftOpponent": "00000000-0000-0000-0000-000000000000"
+              },
+              "preparedBy": {
+                "id": "00000000-0000-0000-0000-000000000000",
+                "epoch": 0
+              },
+              "hiddenBy": {
+                "id": "00000000-0000-0000-0000-000000000000",
+                "epoch": 0
+              },
+              "protectorPlayerId": "00000000-0000-0000-0000-000000000000",
+              "phasedOutBy": "00000000-0000-0000-0000-000000000000",
+              "phaseInLockedBy": "00000000-0000-0000-0000-000000000000"
+            },
+            {
+              "instanceId": "3b984249-0b0a-45c0-9052-36c1c09f013c",
+              "name": "Forest",
+              "typeLine": "Basic Land — Forest",
+              "power": 0,
+              "toughness": 0,
+              "variableToughness": false,
+              "startingLoyalty": 0,
+              "needsEffect": false,
+              "owner": "d4f3adf8-3d09-425c-bc12-ea12917c38a3",
+              "controller": "d4f3adf8-3d09-425c-bc12-ea12917c38a3",
+              "tapped": false,
+              "battleX": 0,
+              "battleY": 0,
+              "isCommander": false,
+              "attackingTarget": "00000000-0000-0000-0000-000000000000",
+              "blockingTarget": "00000000-0000-0000-0000-000000000000",
+              "goadedBy": "00000000-0000-0000-0000-000000000000",
+              "damageMarked": 0,
+              "faceDown": false,
+              "enteredBattlefieldAt": 0,
+              "summonedThisTurn": false,
+              "markedLethalByDeathtouch": false,
+              "attachedTo": {
+                "Kind": "",
+                "ID": "00000000-0000-0000-0000-000000000000",
+                "Slot": 0,
+                "Mode": 0
+              },
+              "baseController": "00000000-0000-0000-0000-000000000000",
+              "chosenPlayer": "00000000-0000-0000-0000-000000000000",
+              "provenance": {
+                "giftOpponent": "00000000-0000-0000-0000-000000000000"
+              },
+              "preparedBy": {
+                "id": "00000000-0000-0000-0000-000000000000",
+                "epoch": 0
+              },
+              "hiddenBy": {
+                "id": "00000000-0000-0000-0000-000000000000",
+                "epoch": 0
+              },
+              "protectorPlayerId": "00000000-0000-0000-0000-000000000000",
+              "phasedOutBy": "00000000-0000-0000-0000-000000000000",
+              "phaseInLockedBy": "00000000-0000-0000-0000-000000000000"
+            }
+          ]
+        },
+        "hand": {
+          "kind": "hand",
+          "owner": "d4f3adf8-3d09-425c-bc12-ea12917c38a3",
+          "cards": [
+            {
+              "instanceId": "e81c6979-5fdc-4f36-910c-0e32373598f7",
+              "name": "Forest",
+              "typeLine": "Basic Land — Forest",
+              "power": 0,
+              "toughness": 0,
+              "variableToughness": false,
+              "startingLoyalty": 0,
+              "needsEffect": false,
+              "owner": "d4f3adf8-3d09-425c-bc12-ea12917c38a3",
+              "controller": "d4f3adf8-3d09-425c-bc12-ea12917c38a3",
+              "tapped": false,
+              "battleX": 0,
+              "battleY": 0,
+              "isCommander": false,
+              "attackingTarget": "00000000-0000-0000-0000-000000000000",
+              "blockingTarget": "00000000-0000-0000-0000-000000000000",
+              "goadedBy": "00000000-0000-0000-0000-000000000000",
+              "damageMarked": 0,
+              "faceDown": false,
+              "knownBy": {
+                "d4f3adf8-3d09-425c-bc12-ea12917c38a3": true
+              },
+              "enteredBattlefieldAt": 0,
+              "summonedThisTurn": false,
+              "markedLethalByDeathtouch": false,
+              "attachedTo": {
+                "Kind": "",
+                "ID": "00000000-0000-0000-0000-000000000000",
+                "Slot": 0,
+                "Mode": 0
+              },
+              "baseController": "00000000-0000-0000-0000-000000000000",
+              "chosenPlayer": "00000000-0000-0000-0000-000000000000",
+              "provenance": {
+                "giftOpponent": "00000000-0000-0000-0000-000000000000"
+              },
+              "preparedBy": {
+                "id": "00000000-0000-0000-0000-000000000000",
+                "epoch": 0
+              },
+              "hiddenBy": {
+                "id": "00000000-0000-0000-0000-000000000000",
+                "epoch": 0
+              },
+              "protectorPlayerId": "00000000-0000-0000-0000-000000000000",
+              "phasedOutBy": "00000000-0000-0000-0000-000000000000",
+              "phaseInLockedBy": "00000000-0000-0000-0000-000000000000"
+            },
+            {
+              "instanceId": "66ed0d0f-c9a3-452c-8d22-0e929bcb2e80",
+              "name": "Forest",
+              "typeLine": "Basic Land — Forest",
+              "power": 0,
+              "toughness": 0,
+              "variableToughness": false,
+              "startingLoyalty": 0,
+              "needsEffect": false,
+              "owner": "d4f3adf8-3d09-425c-bc12-ea12917c38a3",
+              "controller": "d4f3adf8-3d09-425c-bc12-ea12917c38a3",
+              "tapped": false,
+              "battleX": 0,
+              "battleY": 0,
+              "isCommander": false,
+              "attackingTarget": "00000000-0000-0000-0000-000000000000",
+              "blockingTarget": "00000000-0000-0000-0000-000000000000",
+              "goadedBy": "00000000-0000-0000-0000-000000000000",
+              "damageMarked": 0,
+              "faceDown": false,
+              "knownBy": {
+                "d4f3adf8-3d09-425c-bc12-ea12917c38a3": true
+              },
+              "enteredBattlefieldAt": 0,
+              "summonedThisTurn": false,
+              "markedLethalByDeathtouch": false,
+              "attachedTo": {
+                "Kind": "",
+                "ID": "00000000-0000-0000-0000-000000000000",
+                "Slot": 0,
+                "Mode": 0
+              },
+              "baseController": "00000000-0000-0000-0000-000000000000",
+              "chosenPlayer": "00000000-0000-0000-0000-000000000000",
+              "provenance": {
+                "giftOpponent": "00000000-0000-0000-0000-000000000000"
+              },
+              "preparedBy": {
+                "id": "00000000-0000-0000-0000-000000000000",
+                "epoch": 0
+              },
+              "hiddenBy": {
+                "id": "00000000-0000-0000-0000-000000000000",
+                "epoch": 0
+              },
+              "protectorPlayerId": "00000000-0000-0000-0000-000000000000",
+              "phasedOutBy": "00000000-0000-0000-0000-000000000000",
+              "phaseInLockedBy": "00000000-0000-0000-0000-000000000000"
+            },
+            {
+              "instanceId": "c399137f-c415-43c6-8ff4-77c796595d77",
+              "name": "Forest",
+              "typeLine": "Basic Land — Forest",
+              "power": 0,
+              "toughness": 0,
+              "variableToughness": false,
+              "startingLoyalty": 0,
+              "needsEffect": false,
+              "owner": "d4f3adf8-3d09-425c-bc12-ea12917c38a3",
+              "controller": "d4f3adf8-3d09-425c-bc12-ea12917c38a3",
+              "tapped": false,
+              "battleX": 0,
+              "battleY": 0,
+              "isCommander": false,
+              "attackingTarget": "00000000-0000-0000-0000-000000000000",
+              "blockingTarget": "00000000-0000-0000-0000-000000000000",
+              "goadedBy": "00000000-0000-0000-0000-000000000000",
+              "damageMarked": 0,
+              "faceDown": false,
+              "knownBy": {
+                "d4f3adf8-3d09-425c-bc12-ea12917c38a3": true
+              },
+              "enteredBattlefieldAt": 0,
+              "summonedThisTurn": false,
+              "markedLethalByDeathtouch": false,
+              "attachedTo": {
+                "Kind": "",
+                "ID": "00000000-0000-0000-0000-000000000000",
+                "Slot": 0,
+                "Mode": 0
+              },
+              "baseController": "00000000-0000-0000-0000-000000000000",
+              "chosenPlayer": "00000000-0000-0000-0000-000000000000",
+              "provenance": {
+                "giftOpponent": "00000000-0000-0000-0000-000000000000"
+              },
+              "preparedBy": {
+                "id": "00000000-0000-0000-0000-000000000000",
+                "epoch": 0
+              },
+              "hiddenBy": {
+                "id": "00000000-0000-0000-0000-000000000000",
+                "epoch": 0
+              },
+              "protectorPlayerId": "00000000-0000-0000-0000-000000000000",
+              "phasedOutBy": "00000000-0000-0000-0000-000000000000",
+              "phaseInLockedBy": "00000000-0000-0000-0000-000000000000"
+            },
+            {
+              "instanceId": "119919b0-36ed-4fac-aa7a-7fe5bb0e7715",
+              "name": "Forest",
+              "typeLine": "Basic Land — Forest",
+              "power": 0,
+              "toughness": 0,
+              "variableToughness": false,
+              "startingLoyalty": 0,
+              "needsEffect": false,
+              "owner": "d4f3adf8-3d09-425c-bc12-ea12917c38a3",
+              "controller": "d4f3adf8-3d09-425c-bc12-ea12917c38a3",
+              "tapped": false,
+              "battleX": 0,
+              "battleY": 0,
+              "isCommander": false,
+              "attackingTarget": "00000000-0000-0000-0000-000000000000",
+              "blockingTarget": "00000000-0000-0000-0000-000000000000",
+              "goadedBy": "00000000-0000-0000-0000-000000000000",
+              "damageMarked": 0,
+              "faceDown": false,
+              "knownBy": {
+                "d4f3adf8-3d09-425c-bc12-ea12917c38a3": true
+              },
+              "enteredBattlefieldAt": 0,
+              "summonedThisTurn": false,
+              "markedLethalByDeathtouch": false,
+              "attachedTo": {
+                "Kind": "",
+                "ID": "00000000-0000-0000-0000-000000000000",
+                "Slot": 0,
+                "Mode": 0
+              },
+              "baseController": "00000000-0000-0000-0000-000000000000",
+              "chosenPlayer": "00000000-0000-0000-0000-000000000000",
+              "provenance": {
+                "giftOpponent": "00000000-0000-0000-0000-000000000000"
+              },
+              "preparedBy": {
+                "id": "00000000-0000-0000-0000-000000000000",
+                "epoch": 0
+              },
+              "hiddenBy": {
+                "id": "00000000-0000-0000-0000-000000000000",
+                "epoch": 0
+              },
+              "protectorPlayerId": "00000000-0000-0000-0000-000000000000",
+              "phasedOutBy": "00000000-0000-0000-0000-000000000000",
+              "phaseInLockedBy": "00000000-0000-0000-0000-000000000000"
+            },
+            {
+              "instanceId": "cab0536e-7212-4081-8e55-4ec0fab9fcf9",
+              "name": "Forest",
+              "typeLine": "Basic Land — Forest",
+              "power": 0,
+              "toughness": 0,
+              "variableToughness": false,
+              "startingLoyalty": 0,
+              "needsEffect": false,
+              "owner": "d4f3adf8-3d09-425c-bc12-ea12917c38a3",
+              "controller": "d4f3adf8-3d09-425c-bc12-ea12917c38a3",
+              "tapped": false,
+              "battleX": 0,
+              "battleY": 0,
+              "isCommander": false,
+              "attackingTarget": "00000000-0000-0000-0000-000000000000",
+              "blockingTarget": "00000000-0000-0000-0000-000000000000",
+              "goadedBy": "00000000-0000-0000-0000-000000000000",
+              "damageMarked": 0,
+              "faceDown": false,
+              "knownBy": {
+                "d4f3adf8-3d09-425c-bc12-ea12917c38a3": true
+              },
+              "enteredBattlefieldAt": 0,
+              "summonedThisTurn": false,
+              "markedLethalByDeathtouch": false,
+              "attachedTo": {
+                "Kind": "",
+                "ID": "00000000-0000-0000-0000-000000000000",
+                "Slot": 0,
+                "Mode": 0
+              },
+              "baseController": "00000000-0000-0000-0000-000000000000",
+              "chosenPlayer": "00000000-0000-0000-0000-000000000000",
+              "provenance": {
+                "giftOpponent": "00000000-0000-0000-0000-000000000000"
+              },
+              "preparedBy": {
+                "id": "00000000-0000-0000-0000-000000000000",
+                "epoch": 0
+              },
+              "hiddenBy": {
+                "id": "00000000-0000-0000-0000-000000000000",
+                "epoch": 0
+              },
+              "protectorPlayerId": "00000000-0000-0000-0000-000000000000",
+              "phasedOutBy": "00000000-0000-0000-0000-000000000000",
+              "phaseInLockedBy": "00000000-0000-0000-0000-000000000000"
+            },
+            {
+              "instanceId": "35beb593-6a07-49f8-9c6d-5683881d5a97",
+              "name": "Forest",
+              "typeLine": "Basic Land — Forest",
+              "power": 0,
+              "toughness": 0,
+              "variableToughness": false,
+              "startingLoyalty": 0,
+              "needsEffect": false,
+              "owner": "d4f3adf8-3d09-425c-bc12-ea12917c38a3",
+              "controller": "d4f3adf8-3d09-425c-bc12-ea12917c38a3",
+              "tapped": false,
+              "battleX": 0,
+              "battleY": 0,
+              "isCommander": false,
+              "attackingTarget": "00000000-0000-0000-0000-000000000000",
+              "blockingTarget": "00000000-0000-0000-0000-000000000000",
+              "goadedBy": "00000000-0000-0000-0000-000000000000",
+              "damageMarked": 0,
+              "faceDown": false,
+              "knownBy": {
+                "d4f3adf8-3d09-425c-bc12-ea12917c38a3": true
+              },
+              "enteredBattlefieldAt": 0,
+              "summonedThisTurn": false,
+              "markedLethalByDeathtouch": false,
+              "attachedTo": {
+                "Kind": "",
+                "ID": "00000000-0000-0000-0000-000000000000",
+                "Slot": 0,
+                "Mode": 0
+              },
+              "baseController": "00000000-0000-0000-0000-000000000000",
+              "chosenPlayer": "00000000-0000-0000-0000-000000000000",
+              "provenance": {
+                "giftOpponent": "00000000-0000-0000-0000-000000000000"
+              },
+              "preparedBy": {
+                "id": "00000000-0000-0000-0000-000000000000",
+                "epoch": 0
+              },
+              "hiddenBy": {
+                "id": "00000000-0000-0000-0000-000000000000",
+                "epoch": 0
+              },
+              "protectorPlayerId": "00000000-0000-0000-0000-000000000000",
+              "phasedOutBy": "00000000-0000-0000-0000-000000000000",
+              "phaseInLockedBy": "00000000-0000-0000-0000-000000000000"
+            },
+            {
+              "instanceId": "ad794f53-328f-43f7-9738-6b6e64151206",
+              "name": "Forest",
+              "typeLine": "Basic Land — Forest",
+              "power": 0,
+              "toughness": 0,
+              "variableToughness": false,
+              "startingLoyalty": 0,
+              "needsEffect": false,
+              "owner": "d4f3adf8-3d09-425c-bc12-ea12917c38a3",
+              "controller": "d4f3adf8-3d09-425c-bc12-ea12917c38a3",
+              "tapped": false,
+              "battleX": 0,
+              "battleY": 0,
+              "isCommander": false,
+              "attackingTarget": "00000000-0000-0000-0000-000000000000",
+              "blockingTarget": "00000000-0000-0000-0000-000000000000",
+              "goadedBy": "00000000-0000-0000-0000-000000000000",
+              "damageMarked": 0,
+              "faceDown": false,
+              "knownBy": {
+                "d4f3adf8-3d09-425c-bc12-ea12917c38a3": true
+              },
+              "enteredBattlefieldAt": 0,
+              "summonedThisTurn": false,
+              "markedLethalByDeathtouch": false,
+              "attachedTo": {
+                "Kind": "",
+                "ID": "00000000-0000-0000-0000-000000000000",
+                "Slot": 0,
+                "Mode": 0
+              },
+              "baseController": "00000000-0000-0000-0000-000000000000",
+              "chosenPlayer": "00000000-0000-0000-0000-000000000000",
+              "provenance": {
+                "giftOpponent": "00000000-0000-0000-0000-000000000000"
+              },
+              "preparedBy": {
+                "id": "00000000-0000-0000-0000-000000000000",
+                "epoch": 0
+              },
+              "hiddenBy": {
+                "id": "00000000-0000-0000-0000-000000000000",
+                "epoch": 0
+              },
+              "protectorPlayerId": "00000000-0000-0000-0000-000000000000",
+              "phasedOutBy": "00000000-0000-0000-0000-000000000000",
+              "phaseInLockedBy": "00000000-0000-0000-0000-000000000000"
+            }
+          ]
+        },
+        "graveyard": {
+          "kind": "graveyard",
+          "owner": "d4f3adf8-3d09-425c-bc12-ea12917c38a3"
+        },
+        "command": {
+          "kind": "command",
+          "owner": "d4f3adf8-3d09-425c-bc12-ea12917c38a3",
+          "cards": [
+            {
+              "instanceId": "142f7064-415b-47ba-859a-5588e89821e5",
+              "name": "Test Commander 1",
+              "typeLine": "Legendary Creature — Test",
+              "power": 3,
+              "toughness": 3,
+              "variableToughness": false,
+              "startingLoyalty": 0,
+              "needsEffect": false,
+              "owner": "d4f3adf8-3d09-425c-bc12-ea12917c38a3",
+              "controller": "d4f3adf8-3d09-425c-bc12-ea12917c38a3",
+              "tapped": false,
+              "battleX": 0,
+              "battleY": 0,
+              "isCommander": true,
+              "attackingTarget": "00000000-0000-0000-0000-000000000000",
+              "blockingTarget": "00000000-0000-0000-0000-000000000000",
+              "goadedBy": "00000000-0000-0000-0000-000000000000",
+              "damageMarked": 0,
+              "faceDown": false,
+              "knownBy": {
+                "80d53210-43d9-4bc8-8986-e2cd73aafbac": true,
+                "d4f3adf8-3d09-425c-bc12-ea12917c38a3": true
+              },
+              "enteredBattlefieldAt": 0,
+              "summonedThisTurn": false,
+              "markedLethalByDeathtouch": false,
+              "attachedTo": {
+                "Kind": "",
+                "ID": "00000000-0000-0000-0000-000000000000",
+                "Slot": 0,
+                "Mode": 0
+              },
+              "baseController": "00000000-0000-0000-0000-000000000000",
+              "chosenPlayer": "00000000-0000-0000-0000-000000000000",
+              "provenance": {
+                "giftOpponent": "00000000-0000-0000-0000-000000000000"
+              },
+              "preparedBy": {
+                "id": "00000000-0000-0000-0000-000000000000",
+                "epoch": 0
+              },
+              "hiddenBy": {
+                "id": "00000000-0000-0000-0000-000000000000",
+                "epoch": 0
+              },
+              "protectorPlayerId": "00000000-0000-0000-0000-000000000000",
+              "phasedOutBy": "00000000-0000-0000-0000-000000000000",
+              "phaseInLockedBy": "00000000-0000-0000-0000-000000000000"
+            }
+          ]
+        },
+        "emblems": {
+          "kind": "command",
+          "owner": "d4f3adf8-3d09-425c-bc12-ea12917c38a3"
+        },
+        "turnsBegun": 1,
+        "eliminated": false,
+        "handKept": true,
+        "mulligansTaken": 0,
+        "deckImported": false,
+        "undosRemaining": 1,
+        "losesAtNextSba": false,
+        "maxHandSize": 7,
+        "landDropsPerTurn": 1
+      },
+      {
+        "id": "80d53210-43d9-4bc8-8986-e2cd73aafbac",
+        "name": "P2",
+        "seat": 1,
+        "life": 40,
+        "poison": 0,
+        "energy": 0,
+        "library": {
+          "kind": "library",
+          "owner": "80d53210-43d9-4bc8-8986-e2cd73aafbac",
+          "cards": [
+            {
+              "instanceId": "68129311-b79a-48cf-9eb3-95cf9a5214e6",
+              "name": "Forest",
+              "typeLine": "Basic Land — Forest",
+              "power": 0,
+              "toughness": 0,
+              "variableToughness": false,
+              "startingLoyalty": 0,
+              "needsEffect": false,
+              "owner": "80d53210-43d9-4bc8-8986-e2cd73aafbac",
+              "controller": "80d53210-43d9-4bc8-8986-e2cd73aafbac",
+              "tapped": false,
+              "battleX": 0,
+              "battleY": 0,
+              "isCommander": false,
+              "attackingTarget": "00000000-0000-0000-0000-000000000000",
+              "blockingTarget": "00000000-0000-0000-0000-000000000000",
+              "goadedBy": "00000000-0000-0000-0000-000000000000",
+              "damageMarked": 0,
+              "faceDown": false,
+              "enteredBattlefieldAt": 0,
+              "summonedThisTurn": false,
+              "markedLethalByDeathtouch": false,
+              "attachedTo": {
+                "Kind": "",
+                "ID": "00000000-0000-0000-0000-000000000000",
+                "Slot": 0,
+                "Mode": 0
+              },
+              "baseController": "00000000-0000-0000-0000-000000000000",
+              "chosenPlayer": "00000000-0000-0000-0000-000000000000",
+              "provenance": {
+                "giftOpponent": "00000000-0000-0000-0000-000000000000"
+              },
+              "preparedBy": {
+                "id": "00000000-0000-0000-0000-000000000000",
+                "epoch": 0
+              },
+              "hiddenBy": {
+                "id": "00000000-0000-0000-0000-000000000000",
+                "epoch": 0
+              },
+              "protectorPlayerId": "00000000-0000-0000-0000-000000000000",
+              "phasedOutBy": "00000000-0000-0000-0000-000000000000",
+              "phaseInLockedBy": "00000000-0000-0000-0000-000000000000"
+            },
+            {
+              "instanceId": "e4af2d94-6b72-4ede-b4d1-ccae145fe593",
+              "name": "Forest",
+              "typeLine": "Basic Land — Forest",
+              "power": 0,
+              "toughness": 0,
+              "variableToughness": false,
+              "startingLoyalty": 0,
+              "needsEffect": false,
+              "owner": "80d53210-43d9-4bc8-8986-e2cd73aafbac",
+              "controller": "80d53210-43d9-4bc8-8986-e2cd73aafbac",
+              "tapped": false,
+              "battleX": 0,
+              "battleY": 0,
+              "isCommander": false,
+              "attackingTarget": "00000000-0000-0000-0000-000000000000",
+              "blockingTarget": "00000000-0000-0000-0000-000000000000",
+              "goadedBy": "00000000-0000-0000-0000-000000000000",
+              "damageMarked": 0,
+              "faceDown": false,
+              "enteredBattlefieldAt": 0,
+              "summonedThisTurn": false,
+              "markedLethalByDeathtouch": false,
+              "attachedTo": {
+                "Kind": "",
+                "ID": "00000000-0000-0000-0000-000000000000",
+                "Slot": 0,
+                "Mode": 0
+              },
+              "baseController": "00000000-0000-0000-0000-000000000000",
+              "chosenPlayer": "00000000-0000-0000-0000-000000000000",
+              "provenance": {
+                "giftOpponent": "00000000-0000-0000-0000-000000000000"
+              },
+              "preparedBy": {
+                "id": "00000000-0000-0000-0000-000000000000",
+                "epoch": 0
+              },
+              "hiddenBy": {
+                "id": "00000000-0000-0000-0000-000000000000",
+                "epoch": 0
+              },
+              "protectorPlayerId": "00000000-0000-0000-0000-000000000000",
+              "phasedOutBy": "00000000-0000-0000-0000-000000000000",
+              "phaseInLockedBy": "00000000-0000-0000-0000-000000000000"
+            },
+            {
+              "instanceId": "8d523ba9-2654-421f-8e73-e975b3a80f13",
+              "name": "Forest",
+              "typeLine": "Basic Land — Forest",
+              "power": 0,
+              "toughness": 0,
+              "variableToughness": false,
+              "startingLoyalty": 0,
+              "needsEffect": false,
+              "owner": "80d53210-43d9-4bc8-8986-e2cd73aafbac",
+              "controller": "80d53210-43d9-4bc8-8986-e2cd73aafbac",
+              "tapped": false,
+              "battleX": 0,
+              "battleY": 0,
+              "isCommander": false,
+              "attackingTarget": "00000000-0000-0000-0000-000000000000",
+              "blockingTarget": "00000000-0000-0000-0000-000000000000",
+              "goadedBy": "00000000-0000-0000-0000-000000000000",
+              "damageMarked": 0,
+              "faceDown": false,
+              "enteredBattlefieldAt": 0,
+              "summonedThisTurn": false,
+              "markedLethalByDeathtouch": false,
+              "attachedTo": {
+                "Kind": "",
+                "ID": "00000000-0000-0000-0000-000000000000",
+                "Slot": 0,
+                "Mode": 0
+              },
+              "baseController": "00000000-0000-0000-0000-000000000000",
+              "chosenPlayer": "00000000-0000-0000-0000-000000000000",
+              "provenance": {
+                "giftOpponent": "00000000-0000-0000-0000-000000000000"
+              },
+              "preparedBy": {
+                "id": "00000000-0000-0000-0000-000000000000",
+                "epoch": 0
+              },
+              "hiddenBy": {
+                "id": "00000000-0000-0000-0000-000000000000",
+                "epoch": 0
+              },
+              "protectorPlayerId": "00000000-0000-0000-0000-000000000000",
+              "phasedOutBy": "00000000-0000-0000-0000-000000000000",
+              "phaseInLockedBy": "00000000-0000-0000-0000-000000000000"
+            },
+            {
+              "instanceId": "c5828dd0-427d-4f35-8098-fefb8b8565f3",
+              "name": "Forest",
+              "typeLine": "Basic Land — Forest",
+              "power": 0,
+              "toughness": 0,
+              "variableToughness": false,
+              "startingLoyalty": 0,
+              "needsEffect": false,
+              "owner": "80d53210-43d9-4bc8-8986-e2cd73aafbac",
+              "controller": "80d53210-43d9-4bc8-8986-e2cd73aafbac",
+              "tapped": false,
+              "battleX": 0,
+              "battleY": 0,
+              "isCommander": false,
+              "attackingTarget": "00000000-0000-0000-0000-000000000000",
+              "blockingTarget": "00000000-0000-0000-0000-000000000000",
+              "goadedBy": "00000000-0000-0000-0000-000000000000",
+              "damageMarked": 0,
+              "faceDown": false,
+              "enteredBattlefieldAt": 0,
+              "summonedThisTurn": false,
+              "markedLethalByDeathtouch": false,
+              "attachedTo": {
+                "Kind": "",
+                "ID": "00000000-0000-0000-0000-000000000000",
+                "Slot": 0,
+                "Mode": 0
+              },
+              "baseController": "00000000-0000-0000-0000-000000000000",
+              "chosenPlayer": "00000000-0000-0000-0000-000000000000",
+              "provenance": {
+                "giftOpponent": "00000000-0000-0000-0000-000000000000"
+              },
+              "preparedBy": {
+                "id": "00000000-0000-0000-0000-000000000000",
+                "epoch": 0
+              },
+              "hiddenBy": {
+                "id": "00000000-0000-0000-0000-000000000000",
+                "epoch": 0
+              },
+              "protectorPlayerId": "00000000-0000-0000-0000-000000000000",
+              "phasedOutBy": "00000000-0000-0000-0000-000000000000",
+              "phaseInLockedBy": "00000000-0000-0000-0000-000000000000"
+            }
+          ]
+        },
+        "hand": {
+          "kind": "hand",
+          "owner": "80d53210-43d9-4bc8-8986-e2cd73aafbac",
+          "cards": [
+            {
+              "instanceId": "472d9234-0121-4cb9-9182-56a8bf321d02",
+              "name": "Forest",
+              "typeLine": "Basic Land — Forest",
+              "power": 0,
+              "toughness": 0,
+              "variableToughness": false,
+              "startingLoyalty": 0,
+              "needsEffect": false,
+              "owner": "80d53210-43d9-4bc8-8986-e2cd73aafbac",
+              "controller": "80d53210-43d9-4bc8-8986-e2cd73aafbac",
+              "tapped": false,
+              "battleX": 0,
+              "battleY": 0,
+              "isCommander": false,
+              "attackingTarget": "00000000-0000-0000-0000-000000000000",
+              "blockingTarget": "00000000-0000-0000-0000-000000000000",
+              "goadedBy": "00000000-0000-0000-0000-000000000000",
+              "damageMarked": 0,
+              "faceDown": false,
+              "knownBy": {
+                "80d53210-43d9-4bc8-8986-e2cd73aafbac": true
+              },
+              "enteredBattlefieldAt": 0,
+              "summonedThisTurn": false,
+              "markedLethalByDeathtouch": false,
+              "attachedTo": {
+                "Kind": "",
+                "ID": "00000000-0000-0000-0000-000000000000",
+                "Slot": 0,
+                "Mode": 0
+              },
+              "baseController": "00000000-0000-0000-0000-000000000000",
+              "chosenPlayer": "00000000-0000-0000-0000-000000000000",
+              "provenance": {
+                "giftOpponent": "00000000-0000-0000-0000-000000000000"
+              },
+              "preparedBy": {
+                "id": "00000000-0000-0000-0000-000000000000",
+                "epoch": 0
+              },
+              "hiddenBy": {
+                "id": "00000000-0000-0000-0000-000000000000",
+                "epoch": 0
+              },
+              "protectorPlayerId": "00000000-0000-0000-0000-000000000000",
+              "phasedOutBy": "00000000-0000-0000-0000-000000000000",
+              "phaseInLockedBy": "00000000-0000-0000-0000-000000000000"
+            },
+            {
+              "instanceId": "79e787ad-27cc-417f-b9ec-ffd6228c2244",
+              "name": "Forest",
+              "typeLine": "Basic Land — Forest",
+              "power": 0,
+              "toughness": 0,
+              "variableToughness": false,
+              "startingLoyalty": 0,
+              "needsEffect": false,
+              "owner": "80d53210-43d9-4bc8-8986-e2cd73aafbac",
+              "controller": "80d53210-43d9-4bc8-8986-e2cd73aafbac",
+              "tapped": false,
+              "battleX": 0,
+              "battleY": 0,
+              "isCommander": false,
+              "attackingTarget": "00000000-0000-0000-0000-000000000000",
+              "blockingTarget": "00000000-0000-0000-0000-000000000000",
+              "goadedBy": "00000000-0000-0000-0000-000000000000",
+              "damageMarked": 0,
+              "faceDown": false,
+              "knownBy": {
+                "80d53210-43d9-4bc8-8986-e2cd73aafbac": true
+              },
+              "enteredBattlefieldAt": 0,
+              "summonedThisTurn": false,
+              "markedLethalByDeathtouch": false,
+              "attachedTo": {
+                "Kind": "",
+                "ID": "00000000-0000-0000-0000-000000000000",
+                "Slot": 0,
+                "Mode": 0
+              },
+              "baseController": "00000000-0000-0000-0000-000000000000",
+              "chosenPlayer": "00000000-0000-0000-0000-000000000000",
+              "provenance": {
+                "giftOpponent": "00000000-0000-0000-0000-000000000000"
+              },
+              "preparedBy": {
+                "id": "00000000-0000-0000-0000-000000000000",
+                "epoch": 0
+              },
+              "hiddenBy": {
+                "id": "00000000-0000-0000-0000-000000000000",
+                "epoch": 0
+              },
+              "protectorPlayerId": "00000000-0000-0000-0000-000000000000",
+              "phasedOutBy": "00000000-0000-0000-0000-000000000000",
+              "phaseInLockedBy": "00000000-0000-0000-0000-000000000000"
+            },
+            {
+              "instanceId": "a3a940e7-d517-4082-9c8c-fb12611b7135",
+              "name": "Forest",
+              "typeLine": "Basic Land — Forest",
+              "power": 0,
+              "toughness": 0,
+              "variableToughness": false,
+              "startingLoyalty": 0,
+              "needsEffect": false,
+              "owner": "80d53210-43d9-4bc8-8986-e2cd73aafbac",
+              "controller": "80d53210-43d9-4bc8-8986-e2cd73aafbac",
+              "tapped": false,
+              "battleX": 0,
+              "battleY": 0,
+              "isCommander": false,
+              "attackingTarget": "00000000-0000-0000-0000-000000000000",
+              "blockingTarget": "00000000-0000-0000-0000-000000000000",
+              "goadedBy": "00000000-0000-0000-0000-000000000000",
+              "damageMarked": 0,
+              "faceDown": false,
+              "knownBy": {
+                "80d53210-43d9-4bc8-8986-e2cd73aafbac": true
+              },
+              "enteredBattlefieldAt": 0,
+              "summonedThisTurn": false,
+              "markedLethalByDeathtouch": false,
+              "attachedTo": {
+                "Kind": "",
+                "ID": "00000000-0000-0000-0000-000000000000",
+                "Slot": 0,
+                "Mode": 0
+              },
+              "baseController": "00000000-0000-0000-0000-000000000000",
+              "chosenPlayer": "00000000-0000-0000-0000-000000000000",
+              "provenance": {
+                "giftOpponent": "00000000-0000-0000-0000-000000000000"
+              },
+              "preparedBy": {
+                "id": "00000000-0000-0000-0000-000000000000",
+                "epoch": 0
+              },
+              "hiddenBy": {
+                "id": "00000000-0000-0000-0000-000000000000",
+                "epoch": 0
+              },
+              "protectorPlayerId": "00000000-0000-0000-0000-000000000000",
+              "phasedOutBy": "00000000-0000-0000-0000-000000000000",
+              "phaseInLockedBy": "00000000-0000-0000-0000-000000000000"
+            },
+            {
+              "instanceId": "ad130a43-1401-45a2-879d-ff8fc13c90aa",
+              "name": "Forest",
+              "typeLine": "Basic Land — Forest",
+              "power": 0,
+              "toughness": 0,
+              "variableToughness": false,
+              "startingLoyalty": 0,
+              "needsEffect": false,
+              "owner": "80d53210-43d9-4bc8-8986-e2cd73aafbac",
+              "controller": "80d53210-43d9-4bc8-8986-e2cd73aafbac",
+              "tapped": false,
+              "battleX": 0,
+              "battleY": 0,
+              "isCommander": false,
+              "attackingTarget": "00000000-0000-0000-0000-000000000000",
+              "blockingTarget": "00000000-0000-0000-0000-000000000000",
+              "goadedBy": "00000000-0000-0000-0000-000000000000",
+              "damageMarked": 0,
+              "faceDown": false,
+              "knownBy": {
+                "80d53210-43d9-4bc8-8986-e2cd73aafbac": true
+              },
+              "enteredBattlefieldAt": 0,
+              "summonedThisTurn": false,
+              "markedLethalByDeathtouch": false,
+              "attachedTo": {
+                "Kind": "",
+                "ID": "00000000-0000-0000-0000-000000000000",
+                "Slot": 0,
+                "Mode": 0
+              },
+              "baseController": "00000000-0000-0000-0000-000000000000",
+              "chosenPlayer": "00000000-0000-0000-0000-000000000000",
+              "provenance": {
+                "giftOpponent": "00000000-0000-0000-0000-000000000000"
+              },
+              "preparedBy": {
+                "id": "00000000-0000-0000-0000-000000000000",
+                "epoch": 0
+              },
+              "hiddenBy": {
+                "id": "00000000-0000-0000-0000-000000000000",
+                "epoch": 0
+              },
+              "protectorPlayerId": "00000000-0000-0000-0000-000000000000",
+              "phasedOutBy": "00000000-0000-0000-0000-000000000000",
+              "phaseInLockedBy": "00000000-0000-0000-0000-000000000000"
+            },
+            {
+              "instanceId": "20dff707-010d-49ba-8ebc-7f56c400f33a",
+              "name": "Forest",
+              "typeLine": "Basic Land — Forest",
+              "power": 0,
+              "toughness": 0,
+              "variableToughness": false,
+              "startingLoyalty": 0,
+              "needsEffect": false,
+              "owner": "80d53210-43d9-4bc8-8986-e2cd73aafbac",
+              "controller": "80d53210-43d9-4bc8-8986-e2cd73aafbac",
+              "tapped": false,
+              "battleX": 0,
+              "battleY": 0,
+              "isCommander": false,
+              "attackingTarget": "00000000-0000-0000-0000-000000000000",
+              "blockingTarget": "00000000-0000-0000-0000-000000000000",
+              "goadedBy": "00000000-0000-0000-0000-000000000000",
+              "damageMarked": 0,
+              "faceDown": false,
+              "knownBy": {
+                "80d53210-43d9-4bc8-8986-e2cd73aafbac": true
+              },
+              "enteredBattlefieldAt": 0,
+              "summonedThisTurn": false,
+              "markedLethalByDeathtouch": false,
+              "attachedTo": {
+                "Kind": "",
+                "ID": "00000000-0000-0000-0000-000000000000",
+                "Slot": 0,
+                "Mode": 0
+              },
+              "baseController": "00000000-0000-0000-0000-000000000000",
+              "chosenPlayer": "00000000-0000-0000-0000-000000000000",
+              "provenance": {
+                "giftOpponent": "00000000-0000-0000-0000-000000000000"
+              },
+              "preparedBy": {
+                "id": "00000000-0000-0000-0000-000000000000",
+                "epoch": 0
+              },
+              "hiddenBy": {
+                "id": "00000000-0000-0000-0000-000000000000",
+                "epoch": 0
+              },
+              "protectorPlayerId": "00000000-0000-0000-0000-000000000000",
+              "phasedOutBy": "00000000-0000-0000-0000-000000000000",
+              "phaseInLockedBy": "00000000-0000-0000-0000-000000000000"
+            },
+            {
+              "instanceId": "08f88398-c442-4f27-8c69-d75b38468849",
+              "name": "Forest",
+              "typeLine": "Basic Land — Forest",
+              "power": 0,
+              "toughness": 0,
+              "variableToughness": false,
+              "startingLoyalty": 0,
+              "needsEffect": false,
+              "owner": "80d53210-43d9-4bc8-8986-e2cd73aafbac",
+              "controller": "80d53210-43d9-4bc8-8986-e2cd73aafbac",
+              "tapped": false,
+              "battleX": 0,
+              "battleY": 0,
+              "isCommander": false,
+              "attackingTarget": "00000000-0000-0000-0000-000000000000",
+              "blockingTarget": "00000000-0000-0000-0000-000000000000",
+              "goadedBy": "00000000-0000-0000-0000-000000000000",
+              "damageMarked": 0,
+              "faceDown": false,
+              "knownBy": {
+                "80d53210-43d9-4bc8-8986-e2cd73aafbac": true
+              },
+              "enteredBattlefieldAt": 0,
+              "summonedThisTurn": false,
+              "markedLethalByDeathtouch": false,
+              "attachedTo": {
+                "Kind": "",
+                "ID": "00000000-0000-0000-0000-000000000000",
+                "Slot": 0,
+                "Mode": 0
+              },
+              "baseController": "00000000-0000-0000-0000-000000000000",
+              "chosenPlayer": "00000000-0000-0000-0000-000000000000",
+              "provenance": {
+                "giftOpponent": "00000000-0000-0000-0000-000000000000"
+              },
+              "preparedBy": {
+                "id": "00000000-0000-0000-0000-000000000000",
+                "epoch": 0
+              },
+              "hiddenBy": {
+                "id": "00000000-0000-0000-0000-000000000000",
+                "epoch": 0
+              },
+              "protectorPlayerId": "00000000-0000-0000-0000-000000000000",
+              "phasedOutBy": "00000000-0000-0000-0000-000000000000",
+              "phaseInLockedBy": "00000000-0000-0000-0000-000000000000"
+            },
+            {
+              "instanceId": "cae94800-3d2c-43f3-a0f3-1892c1af6557",
+              "name": "Forest",
+              "typeLine": "Basic Land — Forest",
+              "power": 0,
+              "toughness": 0,
+              "variableToughness": false,
+              "startingLoyalty": 0,
+              "needsEffect": false,
+              "owner": "80d53210-43d9-4bc8-8986-e2cd73aafbac",
+              "controller": "80d53210-43d9-4bc8-8986-e2cd73aafbac",
+              "tapped": false,
+              "battleX": 0,
+              "battleY": 0,
+              "isCommander": false,
+              "attackingTarget": "00000000-0000-0000-0000-000000000000",
+              "blockingTarget": "00000000-0000-0000-0000-000000000000",
+              "goadedBy": "00000000-0000-0000-0000-000000000000",
+              "damageMarked": 0,
+              "faceDown": false,
+              "knownBy": {
+                "80d53210-43d9-4bc8-8986-e2cd73aafbac": true
+              },
+              "enteredBattlefieldAt": 0,
+              "summonedThisTurn": false,
+              "markedLethalByDeathtouch": false,
+              "attachedTo": {
+                "Kind": "",
+                "ID": "00000000-0000-0000-0000-000000000000",
+                "Slot": 0,
+                "Mode": 0
+              },
+              "baseController": "00000000-0000-0000-0000-000000000000",
+              "chosenPlayer": "00000000-0000-0000-0000-000000000000",
+              "provenance": {
+                "giftOpponent": "00000000-0000-0000-0000-000000000000"
+              },
+              "preparedBy": {
+                "id": "00000000-0000-0000-0000-000000000000",
+                "epoch": 0
+              },
+              "hiddenBy": {
+                "id": "00000000-0000-0000-0000-000000000000",
+                "epoch": 0
+              },
+              "protectorPlayerId": "00000000-0000-0000-0000-000000000000",
+              "phasedOutBy": "00000000-0000-0000-0000-000000000000",
+              "phaseInLockedBy": "00000000-0000-0000-0000-000000000000"
+            }
+          ]
+        },
+        "graveyard": {
+          "kind": "graveyard",
+          "owner": "80d53210-43d9-4bc8-8986-e2cd73aafbac"
+        },
+        "command": {
+          "kind": "command",
+          "owner": "80d53210-43d9-4bc8-8986-e2cd73aafbac",
+          "cards": [
+            {
+              "instanceId": "2695c744-7c7a-453a-bee0-1112c963e6b0",
+              "name": "Test Commander 2",
+              "typeLine": "Legendary Creature — Test",
+              "power": 3,
+              "toughness": 3,
+              "variableToughness": false,
+              "startingLoyalty": 0,
+              "needsEffect": false,
+              "owner": "80d53210-43d9-4bc8-8986-e2cd73aafbac",
+              "controller": "80d53210-43d9-4bc8-8986-e2cd73aafbac",
+              "tapped": false,
+              "battleX": 0,
+              "battleY": 0,
+              "isCommander": true,
+              "attackingTarget": "00000000-0000-0000-0000-000000000000",
+              "blockingTarget": "00000000-0000-0000-0000-000000000000",
+              "goadedBy": "00000000-0000-0000-0000-000000000000",
+              "damageMarked": 0,
+              "faceDown": false,
+              "knownBy": {
+                "80d53210-43d9-4bc8-8986-e2cd73aafbac": true,
+                "d4f3adf8-3d09-425c-bc12-ea12917c38a3": true
+              },
+              "enteredBattlefieldAt": 0,
+              "summonedThisTurn": false,
+              "markedLethalByDeathtouch": false,
+              "attachedTo": {
+                "Kind": "",
+                "ID": "00000000-0000-0000-0000-000000000000",
+                "Slot": 0,
+                "Mode": 0
+              },
+              "baseController": "00000000-0000-0000-0000-000000000000",
+              "chosenPlayer": "00000000-0000-0000-0000-000000000000",
+              "provenance": {
+                "giftOpponent": "00000000-0000-0000-0000-000000000000"
+              },
+              "preparedBy": {
+                "id": "00000000-0000-0000-0000-000000000000",
+                "epoch": 0
+              },
+              "hiddenBy": {
+                "id": "00000000-0000-0000-0000-000000000000",
+                "epoch": 0
+              },
+              "protectorPlayerId": "00000000-0000-0000-0000-000000000000",
+              "phasedOutBy": "00000000-0000-0000-0000-000000000000",
+              "phaseInLockedBy": "00000000-0000-0000-0000-000000000000"
+            }
+          ]
+        },
+        "emblems": {
+          "kind": "command",
+          "owner": "80d53210-43d9-4bc8-8986-e2cd73aafbac"
+        },
+        "eliminated": false,
+        "handKept": true,
+        "mulligansTaken": 0,
+        "deckImported": false,
+        "undosRemaining": 1,
+        "losesAtNextSba": false,
+        "maxHandSize": 7,
+        "landDropsPerTurn": 1
+      }
+    ],
+    "battlefield": {
+      "kind": "battlefield",
+      "owner": "00000000-0000-0000-0000-000000000000"
+    },
+    "stack": {
+      "kind": "stack",
+      "owner": "00000000-0000-0000-0000-000000000000"
+    },
+    "exile": {
+      "kind": "exile",
+      "owner": "00000000-0000-0000-0000-000000000000"
+    },
+    "phasedOut": {
+      "kind": "phased_out",
+      "owner": "00000000-0000-0000-0000-000000000000"
+    },
+    "turn": {
+      "Seq": 1,
+      "Number": 1,
+      "ActiveSeat": 0,
+      "PriorityHolder": 0,
+      "Phase": "beginning",
+      "Step": "upkeep",
+      "Extra": false,
+      "ExtraRef": 0,
+      "OrderSeat": 0
+    },
+    "mulligansOpen": false,
+    "monarch": "00000000-0000-0000-0000-000000000000",
+    "initiative": "00000000-0000-0000-0000-000000000000",
+    "settings": {
+      "undoLimit": 1,
+      "undoScope": "own",
+      "startingLife": 40,
+      "commanderDamage": 21,
+      "botPace": "normal",
+      "allowSpawn": false
+    },
+    "startingSeat": 0,
+    "splitSecondActive": false,
+    "delayedTriggers": [
+      {
+        "id": "42741ea5-cfb7-4145-bd77-a5d9f06fd4a3",
+        "controller": "d4f3adf8-3d09-425c-bc12-ea12917c38a3",
+        "sourceCardId": "00000000-0000-0000-0000-000000000000",
+        "label": "Doublecast — copy that spell",
+        "at": "",
+        "controllerTurnOnly": false,
+        "createdSeq": 1,
+        "hasEffect": true,
+        "on": [
+          "cast"
+        ],
+        "duration": {
+          "Kind": 0,
+          "Player": "d4f3adf8-3d09-425c-bc12-ea12917c38a3",
+          "ExpiresAtTurnsBegun": 0,
+          "ExpiresAfterTurnsBegun": 1,
+          "Condition": 0,
+          "Source": "00000000-0000-0000-0000-000000000000",
+          "SourceEnteredAt": 0,
+          "Pinned": "00000000-0000-0000-0000-000000000000",
+          "PinnedEnteredAt": 0
+        },
+        "body": "copy/the-spell-you-just-cast",
+        "condition": "cast/you-next-cast",
+        "condParams": {
+          "player": "00000000-0000-0000-0000-000000000000",
+          "object": {
+            "id": "00000000-0000-0000-0000-000000000000",
+            "epoch": 0
+          },
+          "filter": {
+            "types": [
+              "Instant",
+              "Sorcery"
+            ]
+          }
+        }
+      }
+    ],
+    "turnTally": {},
+    "activations": {},
+    "events": [
+      {
+        "seq": 1,
+        "batch": 1,
+        "kind": "step_began",
+        "actor": "d4f3adf8-3d09-425c-bc12-ea12917c38a3",
+        "source": "00000000-0000-0000-0000-000000000000",
+        "target": "00000000-0000-0000-0000-000000000000",
+        "card_id": "00000000-0000-0000-0000-000000000000",
+        "stack_item_id": "00000000-0000-0000-0000-000000000000",
+        "amount": 1,
+        "round": 1,
+        "label": "untap",
+        "step": "untap",
+        "cause_controller": "00000000-0000-0000-0000-000000000000",
+        "cause_item": "00000000-0000-0000-0000-000000000000"
+      },
+      {
+        "seq": 2,
+        "batch": 2,
+        "kind": "step_began",
+        "actor": "d4f3adf8-3d09-425c-bc12-ea12917c38a3",
+        "source": "00000000-0000-0000-0000-000000000000",
+        "target": "00000000-0000-0000-0000-000000000000",
+        "card_id": "00000000-0000-0000-0000-000000000000",
+        "stack_item_id": "00000000-0000-0000-0000-000000000000",
+        "amount": 1,
+        "round": 1,
+        "label": "upkeep",
+        "step": "upkeep",
+        "cause_controller": "00000000-0000-0000-0000-000000000000",
+        "cause_item": "00000000-0000-0000-0000-000000000000"
+      },
+      {
+        "seq": 3,
+        "batch": 2,
+        "kind": "begin_upkeep",
+        "actor": "d4f3adf8-3d09-425c-bc12-ea12917c38a3",
+        "source": "00000000-0000-0000-0000-000000000000",
+        "target": "00000000-0000-0000-0000-000000000000",
+        "card_id": "00000000-0000-0000-0000-000000000000",
+        "stack_item_id": "00000000-0000-0000-0000-000000000000",
+        "cause_controller": "00000000-0000-0000-0000-000000000000",
+        "cause_item": "00000000-0000-0000-0000-000000000000"
+      }
+    ],
+    "eventSeq": 3,
+    "eventBatch": 2,
+    "rng": {
+      "kind": "keyed",
+      "key": "s2YZX3oQmcR5MQF3j2kEIjKrdb96A6WApjc78MqP5/M=",
+      "counters": {
+        "shuffle/seat0/00000000-0000-0000-0000-000000000000": 1,
+        "shuffle/seat1/00000000-0000-0000-0000-000000000000": 1
+      }
+    },
+    "sourceOrdinals": {
+      "08f88398-c442-4f27-8c69-d75b38468849": 65538,
+      "119919b0-36ed-4fac-aa7a-7fe5bb0e7715": 2,
+      "142f7064-415b-47ba-859a-5588e89821e5": 0,
+      "20dff707-010d-49ba-8ebc-7f56c400f33a": 65537,
+      "2695c744-7c7a-453a-bee0-1112c963e6b0": 65536,
+      "35beb593-6a07-49f8-9c6d-5683881d5a97": 8,
+      "3b984249-0b0a-45c0-9052-36c1c09f013c": 10,
+      "472d9234-0121-4cb9-9182-56a8bf321d02": 65539,
+      "4d609b31-33ef-431b-8670-56d952e3cf31": 4,
+      "66ed0d0f-c9a3-452c-8d22-0e929bcb2e80": 6,
+      "68129311-b79a-48cf-9eb3-95cf9a5214e6": 65545,
+      "79e787ad-27cc-417f-b9ec-ffd6228c2244": 65546,
+      "8d523ba9-2654-421f-8e73-e975b3a80f13": 65540,
+      "a3a940e7-d517-4082-9c8c-fb12611b7135": 65547,
+      "acc2b223-7d95-435e-8ceb-549cccb6e140": 9,
+      "ad130a43-1401-45a2-879d-ff8fc13c90aa": 65541,
+      "ad794f53-328f-43f7-9738-6b6e64151206": 1,
+      "ba5caa9c-0592-4ec8-9de1-979f0803ce57": 3,
+      "c399137f-c415-43c6-8ff4-77c796595d77": 11,
+      "c5828dd0-427d-4f35-8098-fefb8b8565f3": 65543,
+      "cab0536e-7212-4081-8e55-4ec0fab9fcf9": 5,
+      "cae94800-3d2c-43f3-a0f3-1892c1af6557": 65544,
+      "e4af2d94-6b72-4ede-b4d1-ccae145fe593": 65542,
+      "e81c6979-5fdc-4f36-910c-0e32373598f7": 7
+    },
+    "layerVersion": 0,
+    "lastResolvedVersion": 0,
+    "continuations": {}
+  }
+}

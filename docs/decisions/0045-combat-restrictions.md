@@ -2941,6 +2941,7 @@ ships with the world-rule caveat Concordant Crossroads already declares.
   attack The Eternal Wanderer") would need a third `AttackLimitScope`. Each
   is one field, and none of them is built without its card:
   [#1534](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1534).
+  **Built** with both cards, Decision 47 below.
 - **Turn-scoped attack limits.** No printed card needs one, so there is no
   `TurnScopedAttackLimits` registry.
 - **Reselection** (CR 508.7, `game/attack_reselect.go`) does not go through
@@ -3028,3 +3029,304 @@ that.
   picker. A seat that knows beforehand uses the up-front control.
 - **Spreading one swing across seats.** The picker aims at one seat, as
   attack-with-all always has (#318).
+
+## Amendment (2026-09-24, [#1534](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1534)): conditional, per-player and per-planeswalker combat limits
+
+Builds the three variants the #1507 amendment listed under "What this does NOT
+decide", each with its card. Decisions 1-46 stand, and Decisions 43-44's
+raise-the-count rule and single check are unchanged. Sprint S37 (combat
+correctness), tracker [#880](https://github.com/krakenhavoc/cmd_and_ctrl/issues/880).
+
+### The cards
+
+- **Mirri, Weatherlight Duelist**: "Whenever Mirri attacks, each opponent
+  can't block with more than one creature this combat. As long as Mirri is
+  tapped, no more than one creature can attack you each combat."
+- **The Eternal Wanderer**: "No more than one creature can attack The Eternal
+  Wanderer each combat."
+
+### Decision 47: one field per variant, read by the existing checks
+
+**`AttackLimit.While func(g *Game, source *Card) bool`** is the condition gate.
+`activeAttackLimitsLocked` skips a limit whose `While` reports false, so a
+gated limit simply does not exist while its condition is false. It is read
+live at every check, like the rest of the limit, and never cached. A condition
+that turns true after attackers are declared is a limit that arrives late,
+and Decision 44's raise-the-count rule means it unmakes nothing. Nil means
+"always", which is every card before Mirri. The card side is
+`effects.AsLongAs(ThisIsTapped, NoMoreThanNCanAttackYouEachCombat(1))`.
+
+**`AttackLimitAttackingThis`** is the third `AttackLimitScope`. It counts only
+attacks whose target is the limit's own SOURCE PERMANENT (by `InstanceID`). An
+attack on the controller, or on another planeswalker they control, does not
+count. It is appended after the other two scopes, so the zero value is still
+Decision 44's narrower "attacking you". A Wanderer that leaves and returns is
+a new object (CR 400.7) with a fresh count. The refusal sentence names the
+permanent and reads the same for every viewer: "No more than one creature can
+attack The Eternal Wanderer each combat." `AttackLimitError.Defender` is
+`uuid.Nil` for this scope, because the protected object is `Source`. The
+constructor is `effects.NoMoreThanNCanAttackThisEachCombat(n)`.
+
+**`BlockRule.LimitPerDefender bool`** splits a `Limit` rule's count by
+defending player. `blockLimitRefusalLocked` groups the counted blockers by
+their controller (`uuid.Nil` for every blocker when the flag is off, which is
+Decision 43 unchanged) and judges each group on its own: over its bound AND
+over its count before the action. One opponent's block therefore never uses
+up another's, and the Decision 38 staging order stops mattering for this
+rule. The blocker's controller is the right key because the declaration's
+`not_defending` check (#1339) has already made it the defending player whose
+block it is. The refusal names the first entry in the declaration that falls
+in a broken group.
+
+Mirri's trigger registers the rule through
+`effects.EachOpponentCantBlockWithMoreThanN{N, Label}` into
+`Game.TurnScopedBlockRules`, the registry `BlockRuleUntilEOT` uses:
+
+- **No snapshot.** The line is a rule about players, not a change to any
+  creature's characteristics, so CR 611.2c does not lock the affected set.
+  A creature an opponent flashes in after the trigger resolves is bound too,
+  which a `BlockRuleUntilEOT` snapshot would miss.
+- **"Each opponent"** is read at resolution against the ability's
+  controller: the rule's `Limit` returns 0 for that player's blockers. It
+  outlives Mirri (CR 611.2b).
+- **"This combat"** is the turn's combat, because the engine has no extra
+  combats yet ([#753](https://github.com/krakenhavoc/cmd_and_ctrl/issues/753)).
+  When extra combats land, this rule must end at the end of combat, or it will
+  bind the next combat too. The primitive's comment says so.
+- **The sentence is the rule's `Label`**, card name included, because a
+  turn-scoped rule has no source permanent to name: "Each opponent can't
+  block with more than one creature this combat (Mirri, Weatherlight
+  Duelist)."
+
+**The enumerator needs no change.** It asks `AttackLimitRefusalForEffect` of
+every candidate (attacker, target) move, and planeswalker targets are already
+among them. The block option generator, the enumerator and the #328 signal all
+run the block validator (Decision 14). So all three follow the new scope, the
+new gate and the new grouping with no new code, and a bot is never offered a
+refused move.
+
+**The room on the wire (Decision 46) follows too.**
+`AttackLimitRoomForEffect` reads the same active-limit list and the same
+counter. So The Eternal Wanderer's own `attack_targets` row carries
+`attack_limit` (and her controller's row does not), and Mirri's limit puts a
+number on her controller's row only while she is tapped.
+
+**The wire** is unchanged: the same `illegal_attack` / `attack_limit` and
+`illegal_block` / `declaration_limit` tokens, with new sentences.
+
+### Proof cards
+
+- **Mirri, Weatherlight Duelist** ships `full`.
+- **The Eternal Wanderer** ships with one caveat, on the +1 only. "Return that
+  card … at the beginning of that player's next end step" needs a CR 603.7
+  delayed trigger bound to a THIRD player's turn. `DelayedTrigger` can wait
+  for its own controller's turn (`ControllerTurnOnly`) but not for another
+  player's. Making the owner the trigger's controller would get around that,
+  but it would misstate CR 603.7d. So the card returns the exiled card at the
+  next end step: weaker than printed for an opponent's card, and exact for the
+  controller's own. The 0 (a double-strike Samurai) and the −4 (Tragic
+  Arrogance's `ChoosePermanents` shape, one pick per player, the rest
+  sacrificed as one event) are exact.
+
+### Tests
+
+- `game/conditional_combat_limits_test.go` tests the engine with the hooks
+  stubbed:
+  - The `While` gate switches on and off live, and a gate that switches on
+    late unmakes nothing.
+  - The per-permanent scope refuses only a second attack on the permanent,
+    with its controller and another planeswalker left open, a re-point onto
+    the permanent refused and one off it allowed, and the same sentence for
+    every viewer.
+  - The per-defender block limit gives each of two defenders in a four-seat
+    game their own one, and the generator and the #328 signal agree per seat.
+  - A late per-defender limit unmakes nothing.
+  - Decision 46's room follows both attack shapes: the Wanderer's row has a
+    room and her controller's does not, and a gated limit has a room only
+    while its condition holds.
+- `cards/effects/conditional_combat_limits_test.go` runs the proof cards and
+  checks at each step that the enumerator offers exactly what the verb
+  accepts. The planeswalker variant also tries every planeswalker target.
+  - Mirri's trigger limits each opponent to one blocker, counted on their
+    own, in a four-seat game.
+  - Mirri's rule is gone on the next player's turn.
+  - Tapped Mirri limits attacks on her controller, and untapped Mirri does
+    not.
+  - The Wanderer's static, 0, +1 (with and without a target) and −4.
+- `aiseat/conditional_combat_limits_test.go` drives one combat under Mirri
+  and one under the Wanderer, with the heuristic, the aggressive scripted
+  policy and a policy that aims every attack at the Wanderer first. The
+  combat ends, every enumerated move is accepted, and the limits hold.
+
+### What this does NOT decide
+
+- **A delayed trigger on a named player's turn** (the Wanderer's +1). That is
+  a `DelayedTrigger` field, not a combat-limit shape.
+- **Tomik, Orzhov Lawmage** grants the Wanderer's line to other planeswalkers.
+  It needs the granted-abilities seam as well, and it is not Commander-legal.
+- **Extra combats.** See "This combat" above.
+
+## Amendment (2026-09-24, [#1571](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1571)): attack requirements (CR 508.1d)
+
+Builds the attack-side twin of [Decision 15](#15-requirements-cr-5091c-a-slot-and-a-checkpoint-built-with-their-first-card),
+which sketched requirements for blocking. Decisions 1-47 stand; the goad
+paragraph of §"What this deliberately does not express" is superseded (goad is
+a requirement, not a restriction: CR 701.15b says "attacks … if able"). Sprint
+S37 (combat correctness), tracker [#880](https://github.com/krakenhavoc/cmd_and_ctrl/issues/880);
+found while building the Edea deck ([#1565](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1565)).
+
+### The rule
+
+CR 508.1d: the active player checks every requirement on the creatures that
+could attack, and the declaration must obey the **maximum number of
+requirements that can be obeyed without disobeying a restriction**. A cost is
+never forced: "if a creature can't attack unless a cost is paid, that player
+isn't required to pay that cost". So the count is over a complete declaration
+and over **free** attacks only. Under Silent Arbiter two creatures that must
+attack cannot both, and either alone is legal; a goaded creature (two
+requirements) wins a slot over one with a single requirement.
+
+### Decision 48: a requirement is an entry on the characteristic; goad is read off its marker
+
+`Characteristic.AttackRequirements []AttackRequirement` is `Restrictions`'
+twin, for §1's reasons: written by ordinary layer statics, only ever appended
+to, never cleared by a layer-6 ability removal. There is one entry per
+requirement, because CR 508.1d counts them. An entry is
+`{Source, SourceName, GoadedBy, OtherThan}`. With `OtherThan` unset it is
+"attacks each combat if able", obeyed by any attack. With it set it is "attacks
+a player other than P if able", obeyed only by an attack on a **player** who is
+not P; an attack on a planeswalker obeys only the plain half.
+
+Goad's pair is not on the characteristic. `Card.GoadedBy` is a per-object
+marker with its own lifetime (CR 701.15a), and `attackRequirementsOfLocked`
+adds `{GoadedBy}` and `{GoadedBy, OtherThan: goader}` from it. The marker holds
+one goader, so a creature goaded by two players keeps only the latest goad and
+CR 701.15c's second set of requirements is lost. That is weaker than printed,
+and it is declared as a caveat on the goad card.
+
+### Decision 49: the verbs refuse a drop in reach; the pass is the checkpoint
+
+The declaration here is incremental (Decision 22), so the rule is split the way
+Decision 15 split the block side:
+
+- **reach(D)** is the requirements the staged declaration D obeys plus the best
+  free, restriction-legal addition of the active player's other eligible
+  creatures (`attackRequirementReachLocked`). An empty declaration's reach is
+  CR 508.1d's maximum.
+- **`DeclareAttackerWith` and `DeclareAttackersWith`** refuse a declaration
+  that lowers reach: a goaded creature at its goader while another opponent is
+  open, a creature with no requirement in the one slot a required creature
+  needs, a re-point that obeys less. It is judged after the limit and before
+  the tax, so a refusal stages, taps and charges nothing. The bulk verb is
+  all-or-nothing, like the limit and the tax.
+- **The checkpoint** is the active player's `pass_priority` in
+  declare_attackers, and `AdvanceStep` leaving the step. It is refused while a
+  free addition would obey another requirement. Every accepted verb keeps
+  reach, so a declaration that passes the checkpoint obeys the maximum.
+  Declaring nothing is refused **only when a requirement can actually be met**.
+- The checkpoint runs **once per combat** (`Game.attacksDeclared`, carried by
+  Clone / RestoreFrom / the snapshot, cleared with combat). A creature that
+  arrives, or is goaded, after the declaration is over is never asked to
+  attack late.
+
+Judging reach rather than recomputing the maximum from scratch keeps the
+sandbox from wedging. A board that changes under a half-made declaration can
+only ask for more additions, never demand that something staged be unwound.
+
+### Decision 50: the search is a min-cost flow over the limit capacities
+
+With no attack limit every creature is independent. With one, creatures compete
+for slots. Every limit counts either every attack or the attacks on one target
+(Decisions 44, 47), so the capacities have two levels, and
+`maxRequirementAssignment` solves the maximum-weight assignment exactly as a
+small min-cost flow: source → creature (1) → target (1, cost −weight) →
+target's room → combat-wide room → sink. Only creatures that carry a
+requirement take part, and only free (untaxed) pairs that obey something. Every
+caller takes `anyAttackRequirementLocked`'s fast path first, which is false at
+nearly every table.
+
+### Decision 51: the enumerator, the bot and the wire
+
+- **Enumerator** (`legal/combat.go`, `legal/legal.go`): an attack the verb
+  would refuse is not offered (the same `AttackRequirementRefusalForEffect`).
+  The active player's `pass` is withheld while the checkpoint would refuse it.
+  The attacks that answer an owed requirement are **`AlwaysLegal`**: nothing
+  else can act in that priority window, so they are the declaration's
+  unconditional answer.
+- **Bot**: a decline with no pass on offer takes the always-legal answer
+  (`FallbackDeclineAlwaysLegal` in the runner; the heuristic does the same
+  itself), so a seat holding priority never sleeps on an owed attack.
+- **Wire**: one additive, public, omitempty field, `CardView.must_attack`. It
+  is true on a creature the active player owes an attack with right now
+  (`MustAttackForEffect`, which is the enumerator's own set of answers). Under
+  a limit that lets only one of two such creatures attack, both are marked
+  until one does. A refusal is the existing `illegal_attack` frame with the new
+  reason **`attack_requirement`**, `card_id` the creature, and a server-built
+  sentence ("Grizzly Bears is goaded by you and must attack a player other than
+  you if able."). The client badges the creature and holds autopass
+  (`owesAttackRequirement`). It derives nothing.
+
+### Decision 52: floating requirements are data, and their set is a live rule
+
+A requirement from a resolving ability (Bident of Thassa, The Akroan War) is an
+ADR 0041 data record with a new mod kind, **`addAttackRequirement`** (layer 6;
+`Player` is the "other than" player). CR 611.2c locks the affected set only for
+an effect that changes characteristics or control. A requirement "modifies the
+rules of the game", so "creatures your opponents control" must reach a creature
+an opponent casts later. `ScopedEffect.Scope` (**`opponentsCreatures`**) is
+that set as a rule read at every layer pass, used instead of `Affected`. Both
+are closed vocabularies: a restore point naming an unknown kind or scope is
+refused (`ErrUnknownEffectKey`). A requirement on one permanent (a token that
+"attacks this combat if able") is an ordinary pinned record. On the card side,
+`effects.AttacksEachCombat()` and `AttacksEachCombatWhere(…)` build statics,
+and `effects.OpponentsCreaturesAttackIfAble{OtherThanYou, Duration}` builds the
+floating form.
+
+### Proof cards
+
+- **Bident of Thassa**: the `{1}{U}, {T}` ability ships; the caveat is removed
+  and the card is `full`.
+- **The Akroan War**: new and `full`. Chapter I is Sower of Temptation's control
+  shape, II is the requirement until your next turn, and III has each tapped
+  creature damage itself.
+- **Alela, Cunning Conqueror**: goad is enforced; its caveat narrows to the
+  one-goader marker (Decision 48).
+
+### Tests
+
+- `game/attack_requirements_test.go`:
+  - A single requirement: the pass and `AdvanceStep` are refused, and declaring
+    the creature answers it. The requirement is judged once per combat.
+  - A requirement against a restriction, and a tapped creature: nothing is owed.
+  - Multiple requirements under Silent Arbiter: the creature with more
+    requirements wins the slot, and a creature with none is refused the slot.
+  - Requirement plus attack tax: the player is never forced to pay but may, and
+    a goaded creature whose only free target is its goader must attack it.
+  - Goad in four seats: an attack on the goader is refused, a bulk swing at the
+    goader is refused whole, a re-point back is refused, and another opponent
+    is accepted. Goad in two seats.
+  - `MustAttackForEffect` under a limit, and the flow on its own.
+  - `scoped_effects_test.go` covers the new mod kind.
+- `legal/attack_requirements_test.go`: the enumerator and the verb agree
+  (`dispatchAll`), the pass is withheld exactly while the engine refuses it,
+  the withheld moves really are refused, the answers are `AlwaysLegal`, and an
+  unaffected table is unchanged.
+- `aiseat/attack_requirements_test.go`: the heuristic and an aggressive policy
+  finish a four-seat combat with a goaded 1/1, which attacks and does not
+  attack its goader. `attack_requirements_internal_test.go`: a declining
+  policy takes the owed attack.
+- `cards/effects/attack_requirement_cards_test.go` covers Bident and The Akroan
+  War; `batch33_test.go` covers Alela's goad being enforced.
+- Client: `priority.test.ts`, `autopassDecision.test.ts`.
+
+### What this does NOT decide
+
+- **Blocking requirements** (Grand Melee's second line, Lure). Decision 15's
+  sketch stands, and the block completion point (Decision 38) is its
+  checkpoint.
+- **More than one goader per creature** (CR 701.15c): `GoadedBy` is one ID.
+- **Zurgo Helmsmasher, Goblin Rabblemaster, Legion Warboss, Grand Melee,
+  Kardur, Disrupt Decorum.** Each is now a constructor call away
+  (`AttacksEachCombat`, `AttacksEachCombatWhere`, a pinned
+  `addAttackRequirement` record, `OpponentsCreaturesAttackIfAble{OtherThanYou}`)
+  and is left for a card batch.

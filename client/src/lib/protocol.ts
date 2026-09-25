@@ -119,6 +119,11 @@ export const ATTACK_REFUSAL_REASONS = [
   // #1507 (ADR 0045 Decision 45): a CR 508.1c count limit refused the
   // declaration.
   "attack_limit",
+  // #1571 (ADR 0045 Decision 51): a CR 508.1d requirement ("attacks
+  // each combat if able", goad) — the declaration would make one
+  // unobeyable, or the active player's pass in declare_attackers would
+  // leave one unmet. `card_id` is the creature that carries it.
+  "attack_requirement",
 ] as const;
 export type AttackRefusalReason = (typeof ATTACK_REFUSAL_REASONS)[number];
 
@@ -1630,6 +1635,11 @@ export interface ExilePlayView {
   cast_only?: boolean;
   // "Spend mana as though it were mana of any color" (Breeches).
   any_color?: boolean;
+  // #1573: "mana of any TYPE can be spent" (Hostage Taker) — colorless
+  // counts too, so a {C} in the cost is payable with anything. Set
+  // with `any_color` alongside it. A label only: `cast_prices` and
+  // `castable_here` already reflect it.
+  any_type?: boolean;
   // S22 airbend: the mana cost the holder pays INSTEAD of the card's
   // printed one ("{2} rather than its mana cost"). Absent for
   // impulse exile, which charges the printed cost. Note that
@@ -1676,6 +1686,16 @@ export type ExileCostZone = "hand" | "graveyard";
 export interface ActivatedAbilityView {
   index: number;
   label?: string;
+  // ADR 0093 Decision 5: the row's stable ref ("own:<i>",
+  // "grant:<bundle>:<i>:<n>"). Sent back as activate_ability's `ref`
+  // so a grant that appeared or vanished since this snapshot is
+  // refused rather than fired on whatever moved to `index`. Optional
+  // only because a server older than #1551 sends none.
+  ref?: string;
+  // ADR 0093 Decision 8: present on a row ANOTHER permanent granted
+  // this one (Necrotic Sliver's "{3}, Sacrifice this permanent: …" on
+  // every Sliver). Absent on the permanent's own abilities.
+  granted_by?: GrantedByView;
   tap_cost?: boolean;
   sacrifice_self?: boolean;
   mana_cost?: string;
@@ -1938,6 +1958,27 @@ export interface LegalTargetsView {
   // #764: this clause's picks must differ from every EARLIER
   // clause's ("a second target permanent you control").
   distinct?: boolean;
+  // #1559: the clause's rule over the chosen SET (CR 601.2c) — no two
+  // picks may share a key ("that each have a different mana value",
+  // "controlled by different players"). The picker greys a candidate
+  // whose key a pick of THIS clause already holds, and says the rule.
+  // A card missing from `keys` collides with nothing.
+  different?: TargetDifferenceView;
+  // #1559: "with mana value X or less", X the announced X. Like
+  // count_from_x, the server built this legal set before X was chosen,
+  // so it is a superset: the picker drops every card whose
+  // `mana_values` entry exceeds the X collected in the cost prompts,
+  // and a card with no entry (an unreadable cost) meets no bound.
+  mana_value_at_most_x?: boolean;
+  mana_values?: Record<string, number>;
+}
+
+// TargetDifferenceView is a clause's set rule (#1559): `label`
+// completes "those targets must …", and `keys` maps each legal card
+// to the value no two picks may share.
+export interface TargetDifferenceView {
+  label: string;
+  keys?: Record<string, string>;
 }
 
 /**
@@ -2185,7 +2226,9 @@ export interface CardView extends CastSurfaceView {
   face_down?: boolean;
   // WHY it is face down (ADR 0069): "exiled" (CR 406.3, Necropotence),
   // "foretold" (CR 702.143b), "hideaway" (CR 702.75a, ADR 0091 — the
-  // controller of the permanent that hid it may look), or one of the
+  // controller of the permanent that hid it may look), "permitted"
+  // (#1573 — the holder of the cast permission over it may look:
+  // Gonti, Night Minister; Outrageous Robbery), or one of the
   // CR 708.2 permanent states
   // "manifested" / "morphed" / "disguised" / "cloaked". PUBLIC —
   // everyone can see that a permanent is a morph — so it survives the
@@ -2268,9 +2311,16 @@ export interface CardView extends CastSurfaceView {
   // by clear_combat. Added in S08.
   blocking_target?: string;
   // Player ID who goaded this creature, or omitted when not goaded.
-  // Cleared on zone exit. Sandbox marker; must-attack-not-the-goader
-  // is not enforced server-side. Added in S10.
+  // Cleared on zone exit. Added in S10; enforced server-side since
+  // #1571 (CR 701.15b — attacks each combat if able, and a player
+  // other than the goader if able).
   goaded_by?: string;
+  // #1571 (ADR 0045 Decision 51): true on a creature the active player
+  // owes an attack with right now — during declare_attackers, while the
+  // declaration could still obey a CR 508.1d requirement it does not
+  // (Zurgo, goad, Bident of Thassa). Server-computed; the client
+  // renders it and never derives a requirement. Omitted otherwise.
+  must_attack?: boolean;
   // S24 (ADR 0036): the attachment relation for an Equipment or an
   // Aura — the permanent (`kind: "card"`) or player
   // (`kind: "player"`) this card is attached to. Omitted for every
@@ -2420,6 +2470,12 @@ export interface CardView extends CastSurfaceView {
   // control, so without this the text would be invisible. Newlines
   // separate printed lines.
   token_text?: string;
+  // ADR 0093 Decision 8 — the abilities OTHER effects gave this
+  // permanent, each with the granting card's printed text: Cryptolith
+  // Rite's "{T}: Add one mana of any color." on a creature, a copy's
+  // CR 707.9a grant (no source). The one place a granted TRIGGER is
+  // visible at all — it has no menu row. One entry per grantor.
+  granted_abilities?: GrantedAbilityView[];
   // #662 — this permanent's CR 702.16 protections, already PARSED by
   // the server. The raw "protection from red" tokens are in
   // `abilities` like every other keyword; this is the same list with
@@ -2465,6 +2521,22 @@ export interface CardView extends CastSurfaceView {
 // exactly one closed grammar for it (server/internal/game/
 // protection.go); a second copy here would be free to disagree about
 // what "protection from Demons" means.
+// GrantedByView names the permanent that granted an ability row (ADR
+// 0093). `name` is absent when the grantor is no longer there to name.
+export interface GrantedByView {
+  id: string;
+  name?: string;
+}
+
+// GrantedAbilityView is one ability another effect gave a permanent,
+// as its granting card prints it (ADR 0093 Decision 8). A copy's
+// CR 707.9a grant has no source.
+export interface GrantedAbilityView {
+  text: string;
+  source_id?: string;
+  source_name?: string;
+}
+
 export interface ProtectionView {
   // The quality as the CARD prints it — "red", "Demons",
   // "artifacts", "everything". Badge tooltip text.
@@ -2493,6 +2565,14 @@ export interface ProtectionView {
 export interface ManaAbilityView {
   index: number;
   label?: string;
+  // ADR 0093 Decision 5: the row's stable ref ("own:<i>",
+  // "land:<colour>", "grant:<bundle>:<i>:<n>"), sent back as
+  // activate_mana_ability's `ref`. See ActivatedAbilityView.ref.
+  ref?: string;
+  // ADR 0093 Decision 8: present on a mana ability another permanent
+  // granted this one (Cryptolith Rite's "{T}: Add one mana of any
+  // color." on every creature you control).
+  granted_by?: GrantedByView;
   tap_cost?: boolean;
   sacrifice_cost?: boolean;
   // #1228: the "Exile this card from your hand" component of a mana

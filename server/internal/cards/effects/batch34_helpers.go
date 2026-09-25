@@ -35,7 +35,7 @@ import (
 // tokens.go, the basic-land test is b30IsBasicLandCard, "enters
 // tapped unless you control a <type>" is
 // SelfEntersTappedUnless(youControlLandTyped), the Background gate
-// is b21ControlsCommanderCreatureYouOwn, and the lord builders are
+// is commanderCreatureYouOwn (a grant since ADR 0093), and the lord builders are
 // TribalAnthem / TribalKeywordGrant.
 
 // --- tokens --------------------------------------------------------

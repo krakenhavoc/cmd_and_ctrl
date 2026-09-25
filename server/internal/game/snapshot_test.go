@@ -204,6 +204,30 @@ func enrich(t *testing.T, g *Game) {
 			Cards:              []uuid.UUID{uuid.New()},
 		}}
 
+		// --- a data-backed scoped effect (ADR 0041 phase 3) -------
+		// The first battlefield permanent stolen by seat 1 for the
+		// rest of the game, animated a little. Pure data, so the game
+		// stays a restore point and the exact round trip covers it.
+		stolen := g.Battlefield.Cards[0]
+		g.ScopedEffects = []ScopedEffect{{
+			Affected: []AffectedObject{{ID: stolen.InstanceID, EnteredAt: stolen.EnteredBattlefieldAt}},
+			Mods: []Mod{
+				SetControllerMod(p1.ID),
+				AddKeywordsMod("haste"),
+				ModifyPTMod(1, 0),
+			},
+			Source:     ObjectRef{ID: spellID, Epoch: 1},
+			SourceName: "Test Theft",
+			Controller: p1.ID,
+			Timestamp:  4242,
+			Duration: Duration{
+				Kind:            Indefinite,
+				Pinned:          stolen.InstanceID,
+				PinnedEnteredAt: stolen.EnteredBattlefieldAt,
+			},
+			Label: "test theft",
+		}}
+
 		// --- a paused choice carrying data but no continuation ----
 		g.PendingChoices = []*PendingChoice{{
 			ID:                uuid.New(),
@@ -587,10 +611,13 @@ func TestCensusCountsEveryContinuationKind(t *testing.T) {
 			expect: func(c ContinuationCensus) int { return c.StackTargetSpecs },
 		},
 		{
-			name: "delayed trigger effect",
+			// Tier 2 (#1497) retired this counter for every real path:
+			// ScheduleDelayedTriggerForEffect refuses a trigger with no
+			// body. A hand-built one with nothing to do still counts.
+			name: "delayed trigger with no body",
 			set: func(g *Game) {
 				g.DelayedTriggers = []*DelayedTrigger{
-					{ID: uuid.New(), Label: "at end step", At: StepEnd, Effect: noop},
+					{ID: uuid.New(), Label: "at end step", At: StepEnd},
 				}
 			},
 			expect: func(c ContinuationCensus) int { return c.DelayedTriggerEffects },
@@ -603,13 +630,6 @@ func TestCensusCountsEveryContinuationKind(t *testing.T) {
 				}
 			},
 			expect: func(c ContinuationCensus) int { return c.ChoiceResumeFrames },
-		},
-		{
-			name: "turn-scoped static",
-			set: func(g *Game) {
-				g.ScopedStatics = []ScopedStatic{{Label: "Giant Growth +3/+3"}}
-			},
-			expect: func(c ContinuationCensus) int { return c.ScopedStatics },
 		},
 		{
 			name: "turn-scoped replacement",

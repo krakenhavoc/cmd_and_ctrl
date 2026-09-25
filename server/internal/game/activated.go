@@ -609,6 +609,18 @@ type ActivatedAbilityShape struct {
 	// mean nothing in this slot; effects.Register refuses the last two.
 	CostModifiers []CostModifier
 
+	// Uncopyable is the ability's own "This ability can't be copied"
+	// (Gogo, Master of Mimicry). #1574, ADR 0043 amendment
+	// 2026-09-24, Decision 20.
+	//
+	// Stamped onto the stack item at activation (StackItem.Uncopyable)
+	// and read in ONE place: CopyAbilityForEffect, the only door an
+	// ability copy is made through, refuses the item. It is not a
+	// targeting restriction. "Copy target activated ability" can still
+	// target it, exactly as a counterspell can target a spell that
+	// can't be countered: the copy simply isn't made.
+	Uncopyable bool
+
 	// Effect runs at resolution against the live game. Same contract
 	// as TriggeredAbility's stack items: never capture a *Card,
 	// read what you need off the item and the game.
@@ -1188,6 +1200,9 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		return ErrInvalidParam
 	}
 	xSteps := resolveStepCountsFromX(steps, params.XValue)
+	// #1559: "with mana value X or less" — X is announced before
+	// targets (CR 601.2b / 602.2b), so the bound is known here.
+	bindStepsX(steps, params.XValue)
 	params.Targets = assignAnnouncedSlots(steps, params.Targets)
 	for _, i := range xSteps {
 		if n := stepTargetCount(steps[i], params.Targets); n != params.XValue {
@@ -1255,7 +1270,13 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// below. The effect reads the paid counter count back out of it
 	// (Context.CountersRemoved), the same way it reads X.
 	paid := PaidCost{}
+	// #1547: the object the mana paid for, as the payment saw it —
+	// taken here because a sacrifice-this cost below ends the source,
+	// and the spend riders are judged on what the payment was FOR.
+	var riderCtx ManaSpendContext
+	var riderSource Card
 	if ab.Cost.Mana != "" {
+		riderCtx, riderSource = ManaSpendForAbility(*source), *source
 		// S32 (#352): "activate abilities of colorless Eldrazi" is a
 		// restriction on the SOURCE permanent, so the spend context
 		// is built from it.
@@ -1291,7 +1312,7 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		// owed and a tap pays part of what is owed — CR 601.2f
 		// before 601.2h, the order the cast path already follows.
 		manaCost = WaterbendReduced(manaCost, params.XValue, len(params.WaterbendIDs))
-		spent, err := g.payAbilityManaCostLocked(p, cardID, source.Name, manaCost, params, ManaSpendForAbility(*source), excluded)
+		spent, err := g.payAbilityManaCostLocked(p, cardID, source.Name, manaCost, params, riderCtx, excluded)
 		if err != nil {
 			return err
 		}
@@ -1455,12 +1476,17 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		// through Context.CountersRemoved — the counters are off the
 		// board by then, so nothing downstream could recompute it.
 		Paid:       paid,
+		Uncopyable: ab.Uncopyable,
 		Effect:     ab.Effect,
 		targetSpec: ab.Targets,
 		modeSpec:   ab.Modes,
 		Seq:        g.nextStackSeqLocked(),
 	}
 	g.StackMeta[itemID] = item
+	// #1547: what the mana did when it was spent. The cast path's
+	// call, for an ability: a rider whose filter admits an activation
+	// fires here, against the context the payment was solved under.
+	g.applyManaSpendRidersLocked(item, riderCtx, riderSource)
 	// #628: activating an ability is a player decision, so it
 	// restarts the CR 726 loop run. The announce emits EventTrigger
 	// rather than an event of its own — the same kind a triggered

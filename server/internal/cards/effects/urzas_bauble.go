@@ -39,9 +39,9 @@ func init() {
 					}
 				}
 				return ScheduleDelayedTrigger{
-					At:     game.StepUpkeep,
-					Label:  "Urza's Bauble — draw a card",
-					Effect: b27DrawOne,
+					At:    game.StepUpkeep,
+					Label: "Urza's Bauble — draw a card",
+					Body:  drawOneBody,
 				}.Apply(ctx)
 			},
 		}},

@@ -1,6 +1,8 @@
 package effects
 
 import (
+	"errors"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -718,9 +720,18 @@ func TestB14EerieUltimatumReturnsOnePermanentPerName(t *testing.T) {
 	if legalCards(g, me.ID, b14EerieUltimatumOracle)[bolt] {
 		t.Error("an instant is not a permanent card")
 	}
-	castCatalogSpell(t, g, "Eerie Ultimatum", "Sorcery", b14EerieUltimatumOracle, []game.TargetRef{
+	// #1559: two cards of one name break the clause's set rule and
+	// are refused at announce, rather than the second being skipped
+	// as the spell resolves.
+	err := castCatalogSpellErr(t, g, "Eerie Ultimatum", "Sorcery", b14EerieUltimatumOracle, []game.TargetRef{
 		{Kind: game.TargetCard, ID: bearA}, {Kind: game.TargetCard, ID: bearB},
 		{Kind: game.TargetCard, ID: land}, {Kind: game.TargetCard, ID: shrine},
+	})
+	if !errors.Is(err, game.ErrIllegalTarget) || !strings.Contains(err.Error(), "different name") {
+		t.Fatalf("two Bears are refused naming the rule, got %v", err)
+	}
+	castCatalogSpell(t, g, "Eerie Ultimatum", "Sorcery", b14EerieUltimatumOracle, []game.TargetRef{
+		{Kind: game.TargetCard, ID: bearA}, {Kind: game.TargetCard, ID: land}, {Kind: game.TargetCard, ID: shrine},
 	})
 	passPriorityAroundTable(t, g)
 	for _, id := range []uuid.UUID{bearA, land, shrine} {
@@ -729,7 +740,7 @@ func TestB14EerieUltimatumReturnsOnePermanentPerName(t *testing.T) {
 		}
 	}
 	if b12ZoneOf(g, bearB) != game.ZoneGraveyard {
-		t.Error("the second Bear shares a name and stays")
+		t.Error("the Bear that was not picked stays")
 	}
 	if b12ZoneOf(g, bolt) != game.ZoneGraveyard {
 		t.Error("the instant stays")

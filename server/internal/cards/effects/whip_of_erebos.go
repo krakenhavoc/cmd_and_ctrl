@@ -32,32 +32,34 @@ import (
 //     clause the card would be stronger than printed; with it, the
 //     loop is closed as printed.
 //
-// Two sandbox gaps, both declared:
+// One sandbox gap remains, declared below; a second was closed by
+// #539 (CR 903.9's exit-primitive rework):
 //
+//   - CLOSED — a BOUNCE used to bypass the redirect.
+//     BounceToHandForEffect now moves the card through
+//     routeCardToZoneLocked / executeZoneRouteLocked, the shared exit
+//     primitive #539 gave every mover (destroy, sacrifice, bounce,
+//     tuck, mill, counter, fizzle), so it runs the same CR 614 window
+//     destroy and sacrifice always did. A whipped creature bounced to
+//     hand in response is redirected to exile, same as any other
+//     exit. See TestB06WhipOfErebosExilesInsteadOfBouncing.
 //   - The redirect lives in the turn-scoped registry, which is swept
 //     at cleanup. The end-step exile fires before cleanup, so the
 //     clause covers the whole printed window; it lapses only if the
-//     creature is somehow still on the battlefield after cleanup (the
-//     exile trigger countered — no catalog card can), which is the
-//     one way this ships weaker.
-//   - A BOUNCE bypasses the redirect. BounceToHandForEffect moves the
-//     card without running the CR 614 pipeline (destroy, sacrifice
-//     and the state-based deaths all do), so a whipped creature
-//     returned to hand in response goes to hand, not exile — the
-//     stronger direction for the Whip's controller, in the one line
-//     (bounce your own reanimated creature to keep it) paper forbids.
-//     That is an engine seam, not a card decision: every
-//     leaves-the-battlefield replacement will want the bounce path
-//     routed through the pipeline, and this card is the first to
-//     notice.
+//     creature is somehow still on the battlefield after cleanup —
+//     which now DOES have a catalog path: Stifle can counter the
+//     scheduled "exile the returned creature" delayed trigger like any
+//     other triggered ability on the stack (#1211/#1223), leaving the
+//     creature to survive past cleanup and go to the graveyard
+//     normally instead of exile. Rare, and the one way this ships
+//     weaker than printed.
 func init() {
 	Register(Spec{
 		OracleID:     "53987a39-c18c-4c13-b1ea-fd1b2a369f9e",
 		Name:         "Whip of Erebos",
 		Completeness: CompletenessCaveats,
 		Caveats: []string{
-			"A returned creature that is bounced to hand goes to hand rather than being exiled; every other way it would leave the battlefield exiles it as printed.",
-			"If the returned creature somehow survives past the end of the turn, it can later go to the graveyard instead of being exiled.",
+			"If a spell or ability counters the delayed 'exile it' trigger (Stifle, for example) before it resolves, the returned creature can survive past end of turn and later go to the graveyard instead of being exiled.",
 		},
 		Static: []game.StaticAbility{{
 			Layer: game.Layer6Ability,
@@ -102,9 +104,9 @@ func b06WhipReanimate(g *game.Game, item *game.StackItem) error {
 		return err
 	}
 	if err := (ScheduleDelayedTrigger{
-		Label:  "Whip of Erebos — exile the returned creature",
-		Cards:  []uuid.UUID{id},
-		Effect: b06ExileListedCards,
+		Label: "Whip of Erebos — exile the returned creature",
+		Cards: []uuid.UUID{id},
+		Body:  exileListedCardsBody,
 	}).Apply(ctx); err != nil {
 		return err
 	}

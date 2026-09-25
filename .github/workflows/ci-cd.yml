@@ -254,10 +254,17 @@ jobs:
       # owns the block; this package's OTHER -update consumer -- the
       # exact-clone baseline in clones_test.go -- is a separate,
       # unrelated concern and must not be regenerated here.
+      #
+      # #1461: the Closed seams list in docs/engine-seams.md is the same
+      # kind of block (generated from docs/engine-seams/closed/, one
+      # fragment per PR) and is refreshed here for the same reason, so
+      # CENSUS_ENFORCE=1 below judges it fresh too.
       - name: Census — refresh
         if: github.event_name == 'push'
         working-directory: server
-        run: go test ./internal/cards/coverage/ -run TestRoadmapCensusIsCurrent -update
+        run: |
+          go test ./internal/cards/coverage/ -run TestRoadmapCensusIsCurrent -update
+          go test ./internal/roadmap/ -run TestClosedSeamsAreCurrent -update-closed
 
       # The other half of the same contract, for a pull request instead
       # of a push: a PR is not expected to carry today's numbers
@@ -561,9 +568,6 @@ jobs:
         run: |
           set +e +o pipefail
 
-          CENSUS_FILE="docs/decklists/card-coverage-roadmap.md"
-          BEGIN_MARKER='<!-- BEGIN GENERATED CATALOG CENSUS'
-          END_MARKER='<!-- END GENERATED CATALOG CENSUS -->'
           BRANCH="${{ github.ref_name }}"
           REMOTE_URL="git@github.com:krakenhavoc/cmd_and_ctrl.git"
 
@@ -601,48 +605,70 @@ jobs:
           # jobs, it is "produce the exact bytes to commit" without
           # trusting an artifact handoff for something this cheap to
           # recompute.
+          # #1461 adds the Closed seams list in docs/engine-seams.md,
+          # generated from docs/engine-seams/closed/ the same way.
           regenerate_census() {
             (cd server && go test ./internal/cards/coverage/ -run TestRoadmapCensusIsCurrent -update)
+            (cd server && go test ./internal/roadmap/ -run TestClosedSeamsAreCurrent -update-closed)
           }
 
-          # Confirms the working tree differs from HEAD in no file
-          # other than $CENSUS_FILE, and within that file in no line
-          # outside the BEGIN/END GENERATED CATALOG CENSUS markers.
-          # Anything else means the test changed shape or the checkout
-          # is wrong, not that the catalog moved -- abort rather than
-          # publish it. Prints its own ::error:: and returns non-zero;
-          # the caller decides whether that is fatal.
-          validate_census_only_diff() {
-            local changed
+          # >>> publish-allowlist
+          # (extracted and run by server/internal/docsguard/census_publish_test.go)
+          #
+          # The allowlist: the ONLY bytes this job may publish are the
+          # generated blocks below, one per file, each named by its file,
+          # its BEGIN marker prefix and its END marker. Confirms the
+          # working tree differs from HEAD in no other file, and within
+          # each listed file in no line outside its own block (so the
+          # Open seams table in engine-seams.md, which a PR owns, is not
+          # publishable). Anything else means a test changed shape or the
+          # checkout is wrong -- abort rather than publish it. Prints its
+          # own ::error:: and returns non-zero; the caller decides whether
+          # that is fatal. Only these files are ever `git add`ed.
+          ALLOW_FILES=("docs/decklists/card-coverage-roadmap.md" "docs/engine-seams.md")
+          ALLOW_BEGIN=('<!-- BEGIN GENERATED CATALOG CENSUS' '<!-- BEGIN GENERATED CLOSED SEAMS')
+          ALLOW_END=('<!-- END GENERATED CATALOG CENSUS -->' '<!-- END GENERATED CLOSED SEAMS -->')
+
+          strip_block() {
+            awk -v b="$1" -v e="$2" '
+              index($0, b) == 1 { inblock=1; print "<<GENERATED BLOCK>>"; next }
+              index($0, e) == 1 { inblock=0; next }
+              inblock { next }
+              { print }
+              END { if (inblock) print "<<UNTERMINATED BLOCK>>" }
+            ' "$3"
+          }
+
+          validate_generated_only_diff() {
+            local changed f i idx
             changed=$(git diff --name-only -- .)
             if [ -z "${changed}" ]; then
               return 0
             fi
-            if [ "${changed}" != "${CENSUS_FILE}" ]; then
-              echo "::error::regenerating the census touched more than ${CENSUS_FILE}:"
-              echo "${changed}"
-              return 1
-            fi
-            strip_block() {
-              awk -v b="${BEGIN_MARKER}" -v e="${END_MARKER}" '
-                index($0, b) == 1 { inblock=1; print "<<CENSUS BLOCK>>"; next }
-                index($0, e) == 1 { inblock=0; next }
-                inblock { next }
-                { print }
-              ' "$1"
-            }
-            strip_block <(git show HEAD:"${CENSUS_FILE}") > "${RUNNER_TEMP}/outside-before.md"
-            strip_block "${CENSUS_FILE}" > "${RUNNER_TEMP}/outside-after.md"
-            if ! diff -q "${RUNNER_TEMP}/outside-before.md" "${RUNNER_TEMP}/outside-after.md" >/dev/null; then
-              echo "::error::regenerating the census changed ${CENSUS_FILE} outside the BEGIN/END GENERATED CATALOG CENSUS markers; refusing to publish"
-              diff "${RUNNER_TEMP}/outside-before.md" "${RUNNER_TEMP}/outside-after.md"
-              return 1
-            fi
+            while IFS= read -r f; do
+              idx=""
+              for i in "${!ALLOW_FILES[@]}"; do
+                if [ "${f}" = "${ALLOW_FILES[$i]}" ]; then idx="$i"; fi
+              done
+              if [ -z "${idx}" ]; then
+                echo "::error::regenerating touched ${f}, which holds no block this job may publish; refusing to publish:"
+                echo "${changed}"
+                return 1
+              fi
+              strip_block "${ALLOW_BEGIN[$idx]}" "${ALLOW_END[$idx]}" <(git show HEAD:"${f}") > "${RUNNER_TEMP}/outside-before.md"
+              strip_block "${ALLOW_BEGIN[$idx]}" "${ALLOW_END[$idx]}" "${f}" > "${RUNNER_TEMP}/outside-after.md"
+              if ! diff -q "${RUNNER_TEMP}/outside-before.md" "${RUNNER_TEMP}/outside-after.md" >/dev/null; then
+                echo "::error::regenerating changed ${f} outside its ${ALLOW_BEGIN[$idx]} ... ${ALLOW_END[$idx]} block; refusing to publish"
+                diff "${RUNNER_TEMP}/outside-before.md" "${RUNNER_TEMP}/outside-after.md"
+                return 1
+              fi
+            done <<< "${changed}"
             return 0
           }
+          # <<< publish-allowlist
 
           regenerate_census
-          validate_census_only_diff || exit 1
+          validate_generated_only_diff || exit 1
           changed=$(git diff --name-only -- .)
           if [ -z "${changed}" ]; then
             echo "census block unchanged; nothing to publish"
@@ -650,8 +676,8 @@ jobs:
           fi
 
           short_sha=$(git rev-parse --short HEAD)
-          git add "${CENSUS_FILE}"
-          git commit -m "chore(census): refresh the catalog census for ${short_sha} [skip ci]"
+          git add -- "${ALLOW_FILES[@]}"
+          git commit -m "chore(census): refresh the catalog census and closed seams for ${short_sha} [skip ci]"
 
           push_once() {
             git push "${REMOTE_URL}" "HEAD:${BRANCH}" 2>"${RUNNER_TEMP}/push.err"
@@ -691,15 +717,15 @@ jobs:
           git fetch origin "${BRANCH}"
           git reset --hard "origin/${BRANCH}"
           regenerate_census
-          validate_census_only_diff || exit 1
+          validate_generated_only_diff || exit 1
           changed=$(git diff --name-only -- .)
           if [ -z "${changed}" ]; then
             echo "census is already current on origin/${BRANCH} after the retry; nothing to publish"
             exit 0
           fi
           short_sha=$(git rev-parse --short HEAD)
-          git add "${CENSUS_FILE}"
-          git commit -m "chore(census): refresh the catalog census for ${short_sha} [skip ci]"
+          git add -- "${ALLOW_FILES[@]}"
+          git commit -m "chore(census): refresh the catalog census and closed seams for ${short_sha} [skip ci]"
 
           if push_once; then
             echo "census refresh pushed for ${short_sha} (after one retry)"

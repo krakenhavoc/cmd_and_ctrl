@@ -21,61 +21,6 @@ import (
 // b08FilterLand, the Guildgate is a row in guildgates.go, and the
 // tapped Treasure is tappedTreasureToken.
 
-// --- token templates ---------------------------------------------
-
-// b18SpringleafShapeshifterToken is Springleaf Parade's 1/1
-// colorless Shapeshifter with changeling. It carries the Parade's
-// grant — "{T}: Add one mana of any color" — on the template,
-// gated by a Condition that the token's controller still controls
-// a Springleaf Parade: a mana ability cannot be GRANTED to another
-// permanent by a static (ManaAbilitiesForCard reads the token's own
-// list or the catalog by oracle ID, nothing in between), so the
-// ability lives on the tokens the Parade makes and switches off when
-// the Parade leaves. See springleaf_parade.go for what that does and
-// does not cover.
-func b18SpringleafShapeshifterToken() game.Card {
-	return tokenFromCatalog(printedB18SpringleafShapeshifterToken)
-}
-
-// printedB18SpringleafShapeshifterToken is the Springleaf Parade Shapeshifter as PRINTED —
-// the ability included. It is the catalog's entry for this token
-// (token_catalog.go, #521): the ability is registered from here at
-// boot, and the template that reaches the battlefield carries the
-// key that finds it rather than the closure itself.
-func printedB18SpringleafShapeshifterToken() tokenTemplate {
-	return tokenTemplate{
-		Slug: "springleaf-shapeshifter",
-		Card: game.Card{
-			Name:      "Shapeshifter",
-			TypeLine:  "Token Creature — Shapeshifter",
-			Power:     1,
-			Toughness: 1,
-			Keywords:  []string{game.KeywordChangeling},
-		},
-		Mana: []game.ManaAbilityShape{{
-			TapCost:   true,
-			Produced:  "{W|U|B|R|G}",
-			Label:     "{T}: Add one mana of any color (while you control Springleaf Parade)",
-			Condition: b18ControlsNamed("Springleaf Parade"),
-		}},
-		Text: "Changeling (This card is every creature type.)\n" +
-			"{T}: Add one mana of any color. (Granted by Springleaf Parade.)",
-	}
-}
-
-// b18ControlsNamed is a mana-ability Condition: the activator
-// controls a permanent with the given name.
-func b18ControlsNamed(name string) func(g *game.Game, controller, source uuid.UUID) bool {
-	return func(g *game.Game, controller, _ uuid.UUID) bool {
-		for _, c := range g.BattlefieldCardsForEffect() {
-			if c.Controller == controller && c.Name == name {
-				return true
-			}
-		}
-		return false
-	}
-}
-
 // --- per-turn reads off the tally --------------------------------
 
 // b18AttackedThisTurn reports whether `player` declared at least one

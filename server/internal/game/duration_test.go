@@ -19,13 +19,8 @@ import (
 // registry, which is what the duration decides.
 func registerDurationMarker(g *Game, target uuid.UUID, d Duration, label string) {
 	g.WithWriteLock(func() {
-		g.RegisterScopedStaticForEffect(StaticAbility{
-			Layer:     Layer6Ability,
-			AppliesTo: scopedPinnedTo(target),
-			Apply: func(c *Characteristic, _ *Card, _ *Game, _ *Card) {
-				c.Abilities = append(c.Abilities, "vigilance")
-			},
-		}, uuid.New(), label, d)
+		g.RegisterScopedEffectForEffect(uuid.New(), g.PinnedObjectsLocked(target),
+			[]Mod{AddKeywordsMod("vigilance")}, d, label)
 	})
 }
 
@@ -82,7 +77,7 @@ func TestUntilYourNextTurnSurvivesEveryOpponentsTurn(t *testing.T) {
 		if g.Turn.ActiveSeat != seat {
 			t.Fatalf("expected seat %d's turn, got %d", seat, g.Turn.ActiveSeat)
 		}
-		if n := len(g.ScopedStatics); n != 1 {
+		if n := len(g.ScopedEffects); n != 1 {
 			t.Fatalf("the effect ended during seat %d's turn (%d entries left)", seat, n)
 		}
 	}
@@ -91,7 +86,7 @@ func TestUntilYourNextTurnSurvivesEveryOpponentsTurn(t *testing.T) {
 	if g.Turn.ActiveSeat != 0 {
 		t.Fatalf("expected to be back on seat 0, got %d", g.Turn.ActiveSeat)
 	}
-	if n := len(g.ScopedStatics); n != 0 {
+	if n := len(g.ScopedEffects); n != 0 {
 		t.Errorf("the effect survived its own player's next turn (%d entries)", n)
 	}
 }
@@ -119,11 +114,11 @@ func TestUntilYourNextTurnEndsAsTheTurnBegins(t *testing.T) {
 	registerDurationMarker(g, bear, d, "until your next turn")
 
 	advanceOneTurn(t, g) // opponent
-	if n := len(g.ScopedStatics); n != 1 {
+	if n := len(g.ScopedEffects); n != 1 {
 		t.Fatalf("effect ended on the opponent's turn (%d entries)", n)
 	}
 	advanceOneTurn(t, g) // back to me
-	if n := len(g.ScopedStatics); n != 0 {
+	if n := len(g.ScopedEffects); n != 0 {
 		t.Errorf("effect survived the start of its player's turn (%d entries)", n)
 	}
 	g.ReadSnapshot(func() {
@@ -152,7 +147,7 @@ func TestUntilYourNextTurnMadeOnYourOwnTurnLastsAFullRound(t *testing.T) {
 	registerDurationMarker(g, bear, d, "until your next turn")
 
 	advanceOneTurn(t, g)
-	if n := len(g.ScopedStatics); n != 1 {
+	if n := len(g.ScopedEffects); n != 1 {
 		t.Fatalf("an effect made on its own player's turn ended at the very next turn boundary")
 	}
 }
@@ -173,18 +168,18 @@ func TestUntilYourNextTurnEndsWhenADepartedPlayersTurnWouldHaveBegun(t *testing.
 	if err := g.Concede(leaver.ID); err != nil {
 		t.Fatalf("Concede: %v", err)
 	}
-	if n := len(g.ScopedStatics); n != 1 {
+	if n := len(g.ScopedEffects); n != 1 {
 		t.Fatalf("conceding ended the effect immediately; CR 800.4m says it waits")
 	}
 
 	advanceOneTurn(t, g) // seat 1
-	if n := len(g.ScopedStatics); n != 1 {
+	if n := len(g.ScopedEffects); n != 1 {
 		t.Fatalf("the effect ended on seat 1's turn (%d entries)", n)
 	}
 	// Seat 2 has left, so the cursor steps over it to seat 3 — and
 	// seat 2's never-taken turn is what ends the effect.
 	advanceOneTurn(t, g)
-	if n := len(g.ScopedStatics); n != 0 {
+	if n := len(g.ScopedEffects); n != 0 {
 		t.Errorf("the departed player's turn came and went and the effect is still live (%d entries)", n)
 	}
 }
@@ -207,7 +202,7 @@ func TestForAsLongAsEndsWhenTheSourceLeaves(t *testing.T) {
 	registerDurationMarker(g, bear, d, "for as long as the source remains")
 
 	g.ReadSnapshot(func() {})
-	if n := len(g.ScopedStatics); n != 1 {
+	if n := len(g.ScopedEffects); n != 1 {
 		t.Fatalf("the effect ended while its source was still there (%d entries)", n)
 	}
 
@@ -219,7 +214,7 @@ func TestForAsLongAsEndsWhenTheSourceLeaves(t *testing.T) {
 			OldZone: ZoneBattlefield, NewZone: ZoneGraveyard})
 	})
 	g.ReadSnapshot(func() {})
-	if n := len(g.ScopedStatics); n != 0 {
+	if n := len(g.ScopedEffects); n != 0 {
 		t.Errorf("the effect outlived its source (%d entries)", n)
 	}
 }
@@ -256,7 +251,7 @@ func TestForAsLongAsEndsWhenTheSourceIsFlickered(t *testing.T) {
 	if _, ok := g.battlefieldCardLocked(source); !ok {
 		t.Fatal("setup: the source did not come back")
 	}
-	if n := len(g.ScopedStatics); n != 0 {
+	if n := len(g.ScopedEffects); n != 0 {
 		t.Errorf("a flickered source kept the effect alive (%d entries) — CR 400.7 says it is a new object", n)
 	}
 }
@@ -290,7 +285,7 @@ func TestForAsLongAsYouControlEndsWhenControlOfTheSourceChanges(t *testing.T) {
 	}
 	registerDurationMarker(g, bear, d, "for as long as you control the source")
 	g.ReadSnapshot(func() {})
-	if n := len(g.ScopedStatics); n != 1 {
+	if n := len(g.ScopedEffects); n != 1 {
 		t.Fatalf("the effect ended while its player still controlled the source (%d entries)", n)
 	}
 
@@ -302,7 +297,7 @@ func TestForAsLongAsYouControlEndsWhenControlOfTheSourceChanges(t *testing.T) {
 		g.layerVersion.Add(1)
 	})
 	g.ReadSnapshot(func() {})
-	if n := len(g.ScopedStatics); n != 0 {
+	if n := len(g.ScopedEffects); n != 0 {
 		t.Errorf("losing control of the source left the effect live (%d entries)", n)
 	}
 }
@@ -316,7 +311,7 @@ func TestIndefiniteSurvivesManyTurns(t *testing.T) {
 
 	for i := 0; i < 9; i++ {
 		advanceOneTurn(t, g)
-		if n := len(g.ScopedStatics); n != 1 {
+		if n := len(g.ScopedEffects); n != 1 {
 			t.Fatalf("an effect with no stated duration ended after %d turns", i+1)
 		}
 	}
@@ -346,12 +341,12 @@ func TestUntilEndOfTurnStillEndsAtCleanup(t *testing.T) {
 	// Several recomputes mid-turn must not touch it.
 	for i := 0; i < 3; i++ {
 		g.ReadSnapshot(func() {})
-		if n := len(g.ScopedStatics); n != 1 {
+		if n := len(g.ScopedEffects); n != 1 {
 			t.Fatalf("the layer-pass sweep ended an until-end-of-turn effect mid-turn")
 		}
 	}
 	advancePastScopedCleanup(t, g)
-	if n := len(g.ScopedStatics); n != 0 {
+	if n := len(g.ScopedEffects); n != 0 {
 		t.Errorf("until-end-of-turn survived the cleanup step (%d entries)", n)
 	}
 }
@@ -381,31 +376,32 @@ func TestPinnedDurationEndsWhenItsObjectLeaves(t *testing.T) {
 			OldZone: ZoneBattlefield, NewZone: ZoneGraveyard})
 	})
 	g.ReadSnapshot(func() {})
-	if n := len(g.ScopedStatics); n != 0 {
+	if n := len(g.ScopedEffects); n != 0 {
 		t.Errorf("a pinned effect outlived the object it was pinned to (%d entries)", n)
 	}
 }
 
-// TestCensusLabelsNameTheDuration — a refused restore point has to
-// tell an operator what is holding it up, and "a scoped static" is not
-// an answer when the entry can now last the whole game.
-func TestCensusLabelsNameTheDuration(t *testing.T) {
+// TestADurationEffectIsCarriedNotCounted — before ADR 0041 phase 3
+// tier 3a an effect with a duration was a closure the census counted
+// and labelled, and the game was not a restore point while it lived
+// (for an Agent of Treachery, the rest of the game). Now it is a data
+// record the snapshot carries with its duration, and the census has
+// nothing to say about it.
+func TestADurationEffectIsCarriedNotCounted(t *testing.T) {
 	g := newActiveGame(t)
 	bear := pushScopedTestCreature(g, g.Seats[0].ID, 2, 2)
 	registerDurationMarker(g, bear, IndefiniteDuration(), "Agent of Treachery — gain control")
 
 	snap := g.CaptureSnapshot()
-	if snap.Continuations.ScopedStatics != 1 {
-		t.Fatalf("census counted %d scoped statics, want 1", snap.Continuations.ScopedStatics)
+	if !snap.Continuations.Empty() {
+		t.Fatalf("census is not empty: %+v", snap.Continuations)
 	}
-	found := false
-	for _, l := range snap.Continuations.Labels {
-		if containsAll(l, "no stated duration", "Agent of Treachery") {
-			found = true
-		}
+	if len(snap.ScopedEffects) != 1 {
+		t.Fatalf("snapshot carries %d scoped effects, want 1", len(snap.ScopedEffects))
 	}
-	if !found {
-		t.Errorf("census labels %v name neither the duration nor the effect", snap.Continuations.Labels)
+	if got := snap.ScopedEffects[0]; got.Duration.Kind != Indefinite ||
+		!containsAll(got.Label, "Agent of Treachery") {
+		t.Errorf("carried record = %+v, want an indefinite Agent of Treachery effect", got)
 	}
 }
 

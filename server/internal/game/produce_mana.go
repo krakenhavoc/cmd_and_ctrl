@@ -92,7 +92,8 @@ import (
 // entry per mana, every entry a settled colour. `restrictions` is the
 // spend restriction each minted token carries; it is copied per token,
 // because the catalog's slice is process-lifetime and a ManaToken is
-// game state clone.go deep-copies for undo (#259).
+// game state clone.go deep-copies for undo (#259). `riders` is the same
+// argument for the ability's spend riders (#1547, mana_spend_rider.go).
 //
 // `kinds` is #1212's snapshot of WHAT the producing permanent was when
 // it produced (`ManaToken.SourceKinds`), taken by the caller because
@@ -123,6 +124,7 @@ func (g *Game) produceManaLocked(
 	source uuid.UUID,
 	colors []string,
 	restrictions []string,
+	riders []ManaSpendRider,
 	kinds ManaSourceKinds,
 	fromTap bool,
 	pending *[]ColorRequirement,
@@ -131,6 +133,10 @@ func (g *Game) produceManaLocked(
 		return nil
 	}
 	produced := g.replaceProducedManaLocked(p.ID, source, colors, fromTap)
+	// #1547: one production, one Production id on every rider it mints —
+	// "when THAT mana is spent" is one activation's mana, however many
+	// tokens a CR 106.12b doubler turned it into.
+	riders = stampProduction(riders)
 	for _, color := range produced {
 		if color == "" {
 			continue
@@ -140,6 +146,7 @@ func (g *Game) produceManaLocked(
 			Source:       source,
 			Restrictions: copyRestrictions(restrictions),
 			SourceKinds:  kinds,
+			Riders:       copyManaRiders(riders),
 		})
 		g.EmitEvent(Event{Kind: EventManaAdded, Actor: p.ID, Source: source, Colors: []string{color}})
 	}

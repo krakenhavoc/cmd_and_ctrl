@@ -72,6 +72,15 @@ func ManaRestrictSubtype(t string) string { return game.ManaRestrictSubtype(t) }
 // Halfling.
 func ManaRestrictSupertype(t string) string { return game.ManaRestrictSupertype(t) }
 
+// ManaRestrictColor is "the object is this colour" — ManaRestrictColor("R")
+// for Pyromancer's Goggles' "a red instant or sorcery spell" (#1547).
+func ManaRestrictColor(c string) string { return game.ManaRestrictColor(c) }
+
+// ManaRestrictAnyType is "the object has ANY of these card types" —
+// ManaRestrictAnyType("Instant", "Sorcery") for "an instant or sorcery
+// spell" (#1547). One tag, because tags AND and this clause is an OR.
+func ManaRestrictAnyType(types ...string) string { return game.ManaRestrictAnyType(types...) }
+
 // orderedManaSymbols flattens a symbol set into canonical WUBRGC
 // order, so a derived pipe string is stable across activations and a
 // test can assert on it.
@@ -180,6 +189,19 @@ func ProducedFromLegendaryPermanents() func(*game.Game, uuid.UUID, uuid.UUID) st
 		}
 		return pipeString(colorsOnly(orderedManaSymbols(seen)))
 	}
+}
+
+// SourcePower is "X is this creature's power" (Mona Lisa, Science
+// Geek; Kami of Whispered Hopes) — X read at ACTIVATION from the
+// ability's own source, current power (counters and anthems
+// included). Pair with ProducedOneColor. A source that can't be found
+// or has non-positive power adds nothing.
+func SourcePower(g *game.Game, _, source uuid.UUID) int {
+	c, ok := g.LookupCardForEffect(source)
+	if !ok {
+		return 0
+	}
+	return c.CurrentPower()
 }
 
 // ProducedPerPermanent is the scaled shape: "Add {SYMBOL} for each

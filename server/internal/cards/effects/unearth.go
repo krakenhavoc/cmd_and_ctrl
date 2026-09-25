@@ -95,9 +95,9 @@ func unearthReturn(g *game.Game, item *game.StackItem) error {
 		return err
 	}
 	if err := (ScheduleDelayedTrigger{
-		Label:  "Unearth — exile the returned creature",
-		Cards:  []uuid.UUID{id},
-		Effect: b06ExileListedCards,
+		Label: "Unearth — exile the returned creature",
+		Cards: []uuid.UUID{id},
+		Body:  exileListedCardsBody,
 	}).Apply(ctx); err != nil {
 		return err
 	}

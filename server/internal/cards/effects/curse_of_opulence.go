@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Curse of Opulence — Enchantment — Aura Curse for {R}:
 //
@@ -20,34 +24,29 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // The one-red-mana political card: point it at whoever is ahead and
 // the whole table is paid to attack them.
 //
-// TWO SIMPLIFICATIONS, both strictly weaker than printed:
+// "IS ATTACKED" is once per combat in paper (CR 506.3 — one or more
+// creatures attacking that player). The engine emits one EventAttack
+// per attacker, so both bullets are batched by the OncePerBatch guard
+// Professional Face-Breaker uses: one declaration is one batch (see
+// AGENTS.md §7). Without that, three attackers would make three
+// Golds, which is STRONGER than printed and not shippable.
 //
-//   - "EACH OPPONENT ATTACKING THAT PLAYER DOES THE SAME" is not
-//     implemented. Only the Curse's controller gets a Gold token.
-//     The clause is a per-attacking-player fan-out over a batch the
-//     engine does not assemble — EventAttack is emitted once per
-//     attacking CREATURE, so counting distinct attacking players
-//     means reading the whole declared-attackers set, which is a
-//     combat-batching problem rather than an attachment one. It is
-//     also the half that makes the Curse political rather than
-//     merely good, so this is the clause to come back for.
-//   - "IS ATTACKED" is once per combat in paper (CR 506.3 — one or
-//     more creatures attacking that player). The engine emits one
-//     EventAttack per attacker, so the trigger is batched by the
-//     same OncePerBatch guard Professional Face-Breaker uses: one
-//     declaration is one batch (see AGENTS.md §7), and the second
-//     and later attackers' events are declined as later events of
-//     it. Without that, three attackers would make three Golds,
-//     which is STRONGER than printed and not shippable.
-//
-// Deferred to whichever sprint teaches the engine to see a declared
-// attack as one batch.
+// "EACH OPPONENT ATTACKING THAT PLAYER DOES THE SAME" — closed
+// (previously a declared gap). Only the active player declares
+// attackers in any one combat (CR 508.1), so "each opponent attacking
+// that player" is never more than one player per batch; the second
+// ability below fires for THAT attacker (excluding the Curse's own
+// controller, since the clause says "opponent") and hands the token
+// to them rather than to the Curse's controller, using the same
+// item.Controller override WhenYouLoseControlOfThis uses. Two
+// creatures from the same attacking player still mint that player
+// exactly one Gold (OncePerBatch, keyed by the attacker's controller
+// via BatchKey), matching the "IS ATTACKED" batching above.
 func init() {
 	Register(Spec{
 		OracleID:     "ba0d3df2-3acf-46d7-8d64-8d67d1579adc",
 		Name:         "Curse of Opulence",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"Only the Curse's controller gets a Gold token; \"each opponent attacking that player does the same\" does nothing."},
+		Completeness: CompletenessFull,
 		Targets:      EnchantPlayer(),
 		Triggered: []game.TriggeredAbility{
 			OncePerBatch(On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
@@ -57,6 +56,40 @@ func init() {
 				Template: GoldToken(),
 				N:        1,
 			}))),
+			curseOfOpulenceEachAttackingOpponent(),
 		},
 	})
+}
+
+// curseOfOpulenceEachAttackingOpponent is "each opponent attacking
+// that player does the same": a Gold token for the ATTACKING player,
+// not the Curse's controller. Key is separate from the controller's
+// own ability above so the two OncePerBatch guards don't collide, and
+// BatchKey groups by the attacker's controller so a multi-creature
+// swing from the same player still mints only one Gold.
+func curseOfOpulenceEachAttackingOpponent() game.TriggeredAbility {
+	const label = "Curse of Opulence — the attacking opponent creates a Gold token"
+	t := game.TriggeredAbility{
+		Watches: []game.EventKind{game.EventAttack},
+		Key:     label,
+		AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+			if source.AttachedTo.Kind != game.TargetPlayer || source.AttachedTo.ID != ev.Target {
+				return false
+			}
+			return ev.Actor != uuid.Nil && ev.Actor != source.Controller
+		},
+		Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
+			item := game.NewTriggeredItem(source, label, Do(CreateToken{
+				Template: GoldToken(),
+				N:        1,
+			}))
+			item.Controller, item.Owner = ev.Actor, ev.Actor
+			return item
+		},
+	}
+	t.OncePerBatch = true
+	t.BatchKey = func(ev game.Event, _ *game.Card, _ *game.Game) string {
+		return ev.Actor.String()
+	}
+	return t
 }

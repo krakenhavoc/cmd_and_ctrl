@@ -74,7 +74,7 @@ import "github.com/google/uuid"
 // battlefield slice the layer pass cannot see it, so it contributes
 // nothing and receives nothing. The corner is the RETURN: a "gain
 // control until end of turn" or a "+3/+3 until end of turn" whose
-// object phases out keeps its ScopedStatic registration and applies
+// object phases out keeps its ScopedEffect record and applies
 // again if the permanent phases back in inside the duration. No
 // catalogued card reaches it.
 

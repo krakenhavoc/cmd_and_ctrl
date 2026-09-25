@@ -41,6 +41,7 @@ func activatedShapes(in []ActivatedAbility) []game.ActivatedAbilityShape {
 			ActiveWhen:    a.ActiveWhen,
 			Exhaust:       a.Exhaust,
 			CostModifiers: a.CostModifiers,
+			Uncopyable:    a.Uncopyable,
 			Effect:        a.Effect,
 		}
 	}
@@ -84,6 +85,7 @@ func manaShapes(in []ManaAbility) []game.ManaAbilityShape {
 			DerivedColorsOnly:         a.DerivedColorsOnly,
 			Restrictions:              a.Restrictions,
 			RestrictionsFunc:          a.RestrictionsFunc,
+			SpendRiders:               a.SpendRiders,
 		}
 	}
 	return out
@@ -197,20 +199,10 @@ func buildDef(spec Spec) *game.CardDef {
 		d.Resolve = spec.Gift.wrapResolve(spec.OnResolve)
 	}
 	if asEnters := spec.AsEnters; asEnters != nil {
-		d.AsEnters = func(g *game.Game, cardID uuid.UUID) error {
-			// Find the live card so the hook reads the current state
-			// (post-move) rather than a copy captured before it.
-			zone := g.FindCardZoneForEffect(cardID)
-			if zone == nil {
-				return nil
-			}
-			for i := range zone.Cards {
-				if zone.Cards[i].InstanceID == cardID {
-					return asEnters(&zone.Cards[i], NewContext(g, nil))
-				}
-			}
-			return nil
-		}
+		d.AsEnters = liveCardHook(asEnters)
+	}
+	if asTransforms := spec.AsTransformsInto; asTransforms != nil {
+		d.AsTransformsInto = liveCardHook(asTransforms)
 	}
 	d.Activated = activatedShapes(spec.Activated)
 	d.ManaAbilities = manaShapes(spec.ManaAbilities)
@@ -233,6 +225,25 @@ func buildDef(spec Spec) *game.CardDef {
 		d.Static = nil
 	}
 	return d
+}
+
+// liveCardHook adapts a card-side "as this …" clause (AsEnters,
+// AsTransformsInto) to the engine's (game, card ID) hook. It finds the
+// live card so the clause reads the current state (post-move, or
+// post-transform) rather than a copy captured before it.
+func liveCardHook(hook func(card *game.Card, ctx *Context) error) func(g *game.Game, cardID uuid.UUID) error {
+	return func(g *game.Game, cardID uuid.UUID) error {
+		zone := g.FindCardZoneForEffect(cardID)
+		if zone == nil {
+			return nil
+		}
+		for i := range zone.Cards {
+			if zone.Cards[i].InstanceID == cardID {
+				return hook(&zone.Cards[i], NewContext(g, nil))
+			}
+		}
+		return nil
+	}
 }
 
 // standingCastPermissions normalises a Spec's declared permissions

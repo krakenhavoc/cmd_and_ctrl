@@ -344,6 +344,56 @@ type TargetSpec struct {
 	// independent. Added by #764.
 	Distinct bool
 
+	// Different is a rule over the chosen SET of this clause's picks
+	// (#1559, CR 601.2c): no two of them may share the value its Key
+	// reads — "any number of target creature cards that each have a
+	// different MANA VALUE" (Agadeem's Awakening), "two target
+	// creatures controlled by different PLAYERS" (Run Away Together),
+	// "up to six target creature cards with different NAMES".
+	//
+	// CardOK judges each candidate alone and cannot say this, because
+	// whether a pick is legal depends on the OTHER picks. Nil — every
+	// clause declared before #1559 — means no set rule.
+	//
+	// It is a declarative key rather than a predicate over the whole
+	// set because three readers have to answer the same question and
+	// only one of them is Go: the announce gate and the CR 608.2b
+	// re-check here, the enumerator in internal/legal, and the
+	// client's picker, which greys a candidate whose key is already
+	// picked. A pairwise-distinct key is something all three can
+	// evaluate from one shipped map; an arbitrary predicate is not.
+	// See docs/decisions/0019-structured-targeting.md, the 2026-09-24
+	// amendment. Build it with the effects package's Different*
+	// constructors.
+	Different *TargetDifference
+
+	// ManaValueAtMostX is "with mana value X or less", X being the X
+	// the announcement chose at CR 601.2b — which is BEFORE targets
+	// are chosen at CR 601.2c, so the bound is known by the time any
+	// pick is judged (#1559, Agadeem's Awakening).
+	//
+	// A CardOK predicate cannot say it: it is handed the game, the
+	// caster and the candidate, and the announcement being judged is
+	// not any of those. So the bound is a flag the engine resolves,
+	// exactly as CountFromX is — bindStepsX writes the announced X
+	// onto the per-announcement clause copy at announce, and again
+	// from StackItem.XValue for the CR 608.2b re-check. A clause copy
+	// with no X bound yet (the legal set shipped in a hand snapshot,
+	// computed before X is chosen) does not apply it, and the client
+	// narrows that superset by the X it collected, from the mana
+	// values the view ships beside it.
+	//
+	// Only on a clause whose announcement HAS an X: a spell's or an
+	// activated ability's. effects.Register refuses it on a trigger.
+	ManaValueAtMostX bool
+
+	// xBound is ManaValueAtMostX's X once an announcement has bound
+	// it; xBoundSet says whether it has. Unexported and never set on
+	// a catalog spec — only on the value copies AnnouncedClauses
+	// hands out — so the shared declaration is never mutated.
+	xBound    int
+	xBoundSet bool
+
 	// Rest holds clauses 2..n of a multi-clause statement, in
 	// printed order. Empty — which is every clause the catalog
 	// declared before #764, every cost-payment predicate and every
@@ -413,6 +463,21 @@ func (s *TargetSpec) Then(more ...*TargetSpec) *TargetSpec {
 		// is flat by construction everywhere it is read.
 		s.Rest = append(s.Rest, m.Rest...)
 	}
+	return s
+}
+
+// EachDifferent attaches a set rule to the clause (#1559) and returns
+// it — "that each have a different mana value". Mutates and returns
+// the receiver, as WithCount does.
+func (s *TargetSpec) EachDifferent(d *TargetDifference) *TargetSpec {
+	s.Different = d
+	return s
+}
+
+// WithManaValueAtMostX marks the clause "with mana value X or less"
+// (#1559). Mutates and returns the receiver, as WithCount does.
+func (s *TargetSpec) WithManaValueAtMostX() *TargetSpec {
+	s.ManaValueAtMostX = true
 	return s
 }
 
@@ -530,6 +595,9 @@ func (g *Game) specMatchesLocked(src TargetSource, spec *TargetSpec, targeting b
 				if spec.CardOK != nil && !spec.CardOK(g, src.Controller, c, zk) {
 					continue
 				}
+				if !spec.xBoundAdmits(c) {
+					continue
+				}
 				out.Cards = append(out.Cards, c.InstanceID)
 			}
 		}
@@ -590,7 +658,13 @@ func (g *Game) TargetStillLegalForEffect(item *StackItem, ref TargetRef) bool {
 		// item's first clause — a two-slot spell's second pick is
 		// re-checked against its OWN predicate here.
 		if clause := g.clauseForRefLocked(item, ref); clause != nil {
-			return g.targetLegalLocked(g.stackItemSourceLocked(item), clause, ref)
+			if !g.targetLegalLocked(g.stackItemSourceLocked(item), clause, ref) {
+				return false
+			}
+			// #1559: a clause with a set rule is re-judged over the
+			// picks that survived their own re-check — see
+			// setRuleConflictLocked for which reading and why.
+			return clause.Different == nil || !g.setRuleConflictLocked(item, clause, ref)
 		}
 		return targetStillExistsLocked(g, ref)
 	}
@@ -760,6 +834,9 @@ func (g *Game) specMatchLocked(src TargetSource, spec *TargetSpec, ref TargetRef
 				continue
 			}
 			if targeting && !CanBeTargetedBy(&c, z.Kind, src) {
+				return false
+			}
+			if !spec.xBoundAdmits(c) {
 				return false
 			}
 			return spec.CardOK == nil || spec.CardOK(g, src.Controller, c, z.Kind)
