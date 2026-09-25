@@ -232,3 +232,42 @@ header (ADR 0092).
 4. Create the `deck-request` label on the repo.
 
 PR 2 and PR 3 depend on PR 1's routes and can run in parallel with each other.
+
+## Implementation notes (PR 1, server)
+
+The routes are documented in [docs/lobby.md](../lobby.md), with the exact JSON shapes PR 2 and PR 3
+consume. Where PR 1 differs from, or fills in, the text above:
+
+- **Package and names.** The report lives in `server/internal/deckcoverage`, not `internal/deck`:
+  the effects package's own tests import `deck`, so `deck` cannot import `catalog` back. The types
+  are `deckcoverage.Report`, `Card` and `Bucket`. JSON fields are snake_case (`deck_name`,
+  `source_url`, `deck_key`, `oracle_id`), and the report adds `violations` (§1's validation
+  output). `deck.ParseDeckURL` derives the deck key without fetching, so a cached deck is not
+  fetched at all.
+- **Card order.** "Sorted: bucket, then name" uses the order `manual`, `unreviewed`, `caveats`,
+  `automated`, `no_effect`: the most actionable first.
+- **Buckets.** A catalogued card whose text needs no catalogue entry (Serra Angel's keywords) is
+  `no_effect`, following the table's first row. Sideboard rows are resolved and validated but not
+  bucketed. A card the engine has an entry for but the catalogue has no verdict for is
+  `unreviewed`, never `automated`.
+- **The bot's bucket on `POST /deck-coverage`.** An admin session is limited separately (1/s,
+  burst 10) instead of per IP. The bot calls from loopback for every guild member at once, and the
+  public 1-per-10-seconds bucket would starve it. PR 2 should send its admin session on this route.
+- **Fetch errors.** An unsupported link is 400, a missing deck 404, a private or unreadable deck
+  422. A Cloudflare block or an unreachable deck site is **502**, not a 4xx: the caller's link was
+  fine. Every one carries a sentence to show the player, the violation code and a `violations[]`
+  entry.
+- **What counts as an ask.** Only an ask that reaches GitHub, an issue filed or a comment added,
+  is recorded. `nothing_to_add` and a repeat ask on the same open issue are not. The limit is
+  checked before the deck is fetched, and again under the filing lock.
+- **Repeat asks.** A requester who already asked on the deck's current issue gets `joined` with
+  `already_requested: true` and no comment. "Current" means asked since the row's `created_at`,
+  so a refiled issue starts a fresh set of requesters.
+- **A deleted issue.** A 404 or 410 from GitHub for the tracked issue counts as closed: a new issue,
+  and the row repointed.
+- **Off switches.** `POST /deck-requests` answers 503 without `CMDCTRL_GITHUB_TOKEN`, and also
+  without a database (`CMDCTRL_DATA_DIR`), since the limit and the deduplication live there.
+- **The issue.** It adds a `## Names the card index could not resolve` section when the deck has
+  any. The deck name, the display name and unresolved names are redacted and kept to one line, and
+  their `@` is broken with a zero-width space so a name cannot ping anyone. With no deck name and
+  no commander, the title falls back to the deck key.
