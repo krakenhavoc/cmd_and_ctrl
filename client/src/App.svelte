@@ -16,6 +16,7 @@
   import MyGames from "./routes/MyGames.svelte";
   import Home from "./routes/Home.svelte";
   import Roadmap from "./routes/Roadmap.svelte";
+  import DeckCheck from "./routes/DeckCheck.svelte";
   import Settings from "./lib/components/Settings.svelte";
   import ShortcutLayer from "./lib/components/ShortcutLayer.svelte";
   import UpdatePrompt from "./lib/components/UpdatePrompt.svelte";
@@ -57,7 +58,11 @@
       // card art or anything else session-gated, so a signed-out
       // visitor should be able to reach both from a cold link.
       r.name === "home" ||
-      r.name === "roadmap";
+      r.name === "roadmap" ||
+      // The deck coverage checker (ADR 0095 §5): public for the same
+      // reason the roadmap is — no art, no oracle text, and the
+      // Discord bot's reply links straight here for the full report.
+      r.name === "deckCheck";
     if (!s && !isPublic) {
       navigate("#/login");
     }
@@ -131,6 +136,8 @@
   <Home />
 {:else if $route.name === "roadmap"}
   <Roadmap />
+{:else if $route.name === "deckCheck"}
+  <DeckCheck />
 {:else if $route.name === "lobby"}
   <Lobby />
 {:else if $route.name === "catalog"}

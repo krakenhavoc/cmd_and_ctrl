@@ -82,6 +82,11 @@
       href: "#/roadmap",
       description: "What's implemented, what's partial, what's missing, and what's next.",
     },
+    {
+      title: "Deck check",
+      href: "#/deck-check",
+      description: "See how much of your deck the engine automates, and request what's missing.",
+    },
   ]);
 
   const helpCards = $derived.by((): Card[] => {
