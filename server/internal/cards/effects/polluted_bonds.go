@@ -27,11 +27,14 @@ func init() {
 				_, ok := b34LandAnOpponentControlsEntered(ev, source, g)
 				return ok
 			},
+			Key: "Polluted Bonds — that player loses 2 life, you gain 2 life",
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
 				land, _ := b34LandAnOpponentControlsEntered(ev, source, g)
-				return game.NewTriggeredItem(source, "Polluted Bonds — that player loses 2 life, you gain 2 life",
-					b34ThatPlayerLosesTwoYouGainTwo(land.Controller))
+				item := game.NewTriggeredItem(source, "Polluted Bonds — that player loses 2 life, you gain 2 life", nil)
+				item.Params.Player = land.Controller
+				return item
 			},
+			Effect: b34ThatPlayerLosesTwoYouGainTwo,
 		}},
 	})
 }

@@ -26,13 +26,13 @@ func init() {
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b17OpponentsCreatureAttackedYou(ev, source, g)
 			},
+			Key: "Revenge of Ravens — the attacker's controller loses 1 life, you gain 1 life",
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				attacker := ev.Actor
-				return game.NewTriggeredItem(source, "Revenge of Ravens — the attacker's controller loses 1 life, you gain 1 life",
-					func(g *game.Game, item *game.StackItem) error {
-						return b27LoseOneAndYouGainOne(g, item, attacker)
-					})
+				item := game.NewTriggeredItem(source, "Revenge of Ravens — the attacker's controller loses 1 life, you gain 1 life", nil)
+				item.Params.Player = ev.Actor
+				return item
 			},
+			Effect: b27LoseOneAndYouGainOne,
 		}},
 	})
 }

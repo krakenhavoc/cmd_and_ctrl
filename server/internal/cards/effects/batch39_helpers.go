@@ -226,17 +226,16 @@ func b39PermanentsControlledBy(g *game.Game, controller uuid.UUID, match func(ga
 // "deals N damage to target opponent" trigger in the batch: the
 // announced player, if the target is still legal at resolution
 // (CR 608.2b), takes `amount` from the source.
-func b39DamageToFirstTargetPlayer(amount int) func(*game.Game, *game.StackItem) error {
-	return func(g *game.Game, item *game.StackItem) error {
-		ctx := NewContext(g, item)
-		for _, t := range ctx.LegalTargets() {
-			if t.Kind != game.TargetPlayer {
-				continue
-			}
-			return DealDamage{Source: item.SourceCardID, Target: t.ID, Amount: amount}.Apply(ctx)
+func b39DamageToFirstTargetPlayer(g *game.Game, item *game.StackItem) error {
+	amount := item.Params.Amount
+	ctx := NewContext(g, item)
+	for _, t := range ctx.LegalTargets() {
+		if t.Kind != game.TargetPlayer {
+			continue
 		}
-		return nil
+		return DealDamage{Source: item.SourceCardID, Target: t.ID, Amount: amount}.Apply(ctx)
 	}
+	return nil
 }
 
 // b39MayDiscardThenDraw is the "you may discard N cards. If you do,

@@ -266,22 +266,22 @@ func b31LifeBecomes(ctx *Context, player uuid.UUID, total int) error {
 }
 
 // b31ChosenOpponentLosesLife is Rapacious Guest's leave trigger: the
-// opponent chosen when the trigger went on the stack loses `amount`
-// life — the power the Guest had as it left, read in Build.
-func b31ChosenOpponentLosesLife(amount int) func(g *game.Game, item *game.StackItem) error {
-	return func(g *game.Game, item *game.StackItem) error {
-		if amount <= 0 {
-			return nil
-		}
-		ctx := NewContext(g, item)
-		for _, t := range ctx.LegalTargets() {
-			if t.Kind != game.TargetPlayer {
-				continue
-			}
-			return g.ChangePlayerLifeForEffect(item.SourceCardID, t.ID, -amount)
-		}
+// opponent chosen when the trigger went on the stack loses
+// item.Params.Amount life — the power the Guest had as it left,
+// stamped onto Params by a fill-in Build.
+func b31ChosenOpponentLosesLife(g *game.Game, item *game.StackItem) error {
+	amount := item.Params.Amount
+	if amount <= 0 {
 		return nil
 	}
+	ctx := NewContext(g, item)
+	for _, t := range ctx.LegalTargets() {
+		if t.Kind != game.TargetPlayer {
+			continue
+		}
+		return g.ChangePlayerLifeForEffect(item.SourceCardID, t.ID, -amount)
+	}
+	return nil
 }
 
 // b31MunitionsDamageChosenTarget is the body of the trigger Weapons

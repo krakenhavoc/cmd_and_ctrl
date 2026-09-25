@@ -33,16 +33,14 @@ func init() {
 				Watches:   []game.EventKind{game.EventCast},
 				AppliesTo: b10NoncreatureSpellCastByYou,
 				Targets:   TargetCreature("target creature you control", YouControl()),
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Primeval Bounty — put three +1/+1 counters on target creature you control",
-						func(g *game.Game, item *game.StackItem) error {
-							ctx := NewContext(g, item)
-							id, ok := b16FirstLegalTargetCard(ctx)
-							if !ok {
-								return nil
-							}
-							return AddCounter{Target: id, Kind: "+1/+1", N: 3}.Apply(ctx)
-						})
+				Key:       "Primeval Bounty — put three +1/+1 counters on target creature you control",
+				Effect: func(g *game.Game, item *game.StackItem) error {
+					ctx := NewContext(g, item)
+					id, ok := b16FirstLegalTargetCard(ctx)
+					if !ok {
+						return nil
+					}
+					return AddCounter{Target: id, Kind: "+1/+1", N: 3}.Apply(ctx)
 				},
 			},
 			Landfall("Primeval Bounty — gain 3 life", Do(GainLife{Amount: 3})),

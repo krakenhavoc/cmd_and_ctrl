@@ -31,11 +31,13 @@ func init() {
 		Triggered: []game.TriggeredAbility{{
 			Watches:   []game.EventKind{game.EventDealDamage},
 			AppliesTo: ThisDealtCombatDamageToAPlayer,
+			Key:       "RMS Titanic — sacrifice it and create that many Treasure tokens",
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				dealt := ev.Amount
-				return game.NewTriggeredItem(source, "RMS Titanic — sacrifice it and create that many Treasure tokens",
-					rmsTitanicSacrificeAndTreasure(dealt))
+				item := game.NewTriggeredItem(source, "RMS Titanic — sacrifice it and create that many Treasure tokens", nil)
+				item.Params.Amount = ev.Amount
+				return item
 			},
+			Effect: rmsTitanicSacrificeAndTreasure,
 		}},
 		Activated: []ActivatedAbility{{
 			Label:  "Crew 3",
@@ -45,15 +47,14 @@ func init() {
 	})
 }
 
-// rmsTitanicSacrificeAndTreasure returns the trigger's Effect: sacrifice
-// the source, then create `dealt` Treasure tokens for its controller.
-// `dealt` is a plain int captured by Build, never a *Card or *Game.
-func rmsTitanicSacrificeAndTreasure(dealt int) Effect {
-	return func(g *game.Game, item *game.StackItem) error {
-		ctx := NewContext(g, item)
-		if err := (SacrificePermanent{Target: item.SourceCardID}).Apply(ctx); err != nil {
-			return err
-		}
-		return CreateToken{Controller: item.Controller, Template: TreasureToken(), N: dealt}.Apply(ctx)
+// rmsTitanicSacrificeAndTreasure is the trigger's Effect: sacrifice the
+// source, then create as many Treasure tokens as it dealt combat
+// damage, stamped onto item.Params.Amount by a fill-in Build when the
+// trigger fired.
+func rmsTitanicSacrificeAndTreasure(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	if err := (SacrificePermanent{Target: item.SourceCardID}).Apply(ctx); err != nil {
+		return err
 	}
+	return CreateToken{Controller: item.Controller, Template: TreasureToken(), N: item.Params.Amount}.Apply(ctx)
 }

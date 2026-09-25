@@ -28,10 +28,13 @@ func init() {
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b33SmallCreatureYouControlAttacked(ev, source, g)
 			},
+			Key: "Raid Bombardment — deal 1 damage to the player that creature is attacking",
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Raid Bombardment — deal 1 damage to the player that creature is attacking",
-					b33DamageDefendingPlayerFromSource(ev.Target, 1))
+				item := game.NewTriggeredItem(source, "Raid Bombardment — deal 1 damage to the player that creature is attacking", nil)
+				item.Params.Player = ev.Target
+				return item
 			},
+			Effect: b33DamageDefendingPlayerFromSource,
 		}},
 	})
 }

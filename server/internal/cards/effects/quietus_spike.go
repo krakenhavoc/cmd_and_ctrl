@@ -41,17 +41,20 @@ func init() {
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return attachedCreatureDealtCombatDamageToPlayer(ev, source, g)
 			},
+			Key: "Quietus Spike — halve that player's life",
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				damaged := ev.Target
-				return game.NewTriggeredItem(source, "Quietus Spike — halve that player's life",
-					func(g *game.Game, item *game.StackItem) error {
-						p := g.PlayerByIDForEffect(damaged)
-						if p == nil || p.Life <= 0 {
-							return nil
-						}
-						half := (p.Life + 1) / 2
-						return GainLife{Player: damaged, Amount: -half}.Apply(NewContext(g, item))
-					})
+				item := game.NewTriggeredItem(source, "Quietus Spike — halve that player's life", nil)
+				item.Params.Player = ev.Target
+				return item
+			},
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				damaged := item.Params.Player
+				p := g.PlayerByIDForEffect(damaged)
+				if p == nil || p.Life <= 0 {
+					return nil
+				}
+				half := (p.Life + 1) / 2
+				return GainLife{Player: damaged, Amount: -half}.Apply(NewContext(g, item))
 			},
 		}},
 		Activated: []ActivatedAbility{

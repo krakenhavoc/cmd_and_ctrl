@@ -27,9 +27,8 @@ func init() {
 				return ev.CardID == source.InstanceID
 			},
 			Targets: TargetPermanent("target artifact or enchantment", Or(Artifact(), Enchantment())),
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return destroyChosenTargetTrigger(source, "Reclamation Sage — destroy target artifact or enchantment")
-			},
+			Key:     "Reclamation Sage — destroy target artifact or enchantment",
+			Effect:  destroyChosenPermanent,
 			OptionalPrompt: &game.TriggerOptionalPrompt{
 				Question: "Reclamation Sage — destroy an artifact or enchantment?",
 			},

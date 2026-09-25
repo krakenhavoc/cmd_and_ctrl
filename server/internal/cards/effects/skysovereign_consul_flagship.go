@@ -37,17 +37,15 @@ func init() {
 			},
 			Targets: TargetPermanent("target creature or planeswalker an opponent controls",
 				Or(Creature(), Planeswalker()), OpponentControls()),
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Skysovereign — 3 damage",
-					func(g *game.Game, item *game.StackItem) error {
-						if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
-							return nil
-						}
-						return DealDamage{
-							Target: item.Targets[0].ID,
-							Amount: 3,
-						}.Apply(NewContext(g, item))
-					})
+			Key: "Skysovereign — 3 damage",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
+					return nil
+				}
+				return DealDamage{
+					Target: item.Targets[0].ID,
+					Amount: 3,
+				}.Apply(NewContext(g, item))
 			},
 		}},
 	})

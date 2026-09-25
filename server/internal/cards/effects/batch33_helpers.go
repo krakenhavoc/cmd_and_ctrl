@@ -492,16 +492,16 @@ func b33UntapSelf(g *game.Game, item *game.StackItem) error {
 
 // b33DamageDefendingPlayerFromSource is Raid Bombardment's body: 1
 // damage from the enchantment to the player the attacker was
-// declared against — the event's Target, captured in Build. The
-// engine has no planeswalker defenders, so "the player or
-// planeswalker" collapses to the player.
-func b33DamageDefendingPlayerFromSource(defender uuid.UUID, n int) func(g *game.Game, item *game.StackItem) error {
-	return func(g *game.Game, item *game.StackItem) error {
-		if g.PlayerByIDForEffect(defender) == nil {
-			return nil
-		}
-		return DealDamage{Source: item.SourceCardID, Target: defender, Amount: n}.Apply(NewContext(g, item))
+// declared against — the event's Target, stamped onto
+// item.Params.Player by a fill-in Build. The engine has no
+// planeswalker defenders, so "the player or planeswalker" collapses
+// to the player.
+func b33DamageDefendingPlayerFromSource(g *game.Game, item *game.StackItem) error {
+	defender := item.Params.Player
+	if g.PlayerByIDForEffect(defender) == nil {
+		return nil
 	}
+	return DealDamage{Source: item.SourceCardID, Target: defender, Amount: 1}.Apply(NewContext(g, item))
 }
 
 // b33ReanimateChosenWithCounters is Rakdos Joins Up's entry body: the
@@ -540,28 +540,28 @@ func b33ReanimateChosenWithCounters(n int) func(g *game.Game, item *game.StackIt
 // WATCHER, not just a card's own dies-trigger: PermanentInfo.Power is
 // PowerForComparison as the legend last existed on the battlefield —
 // layers (an anthem's bonus) and counters both included, uncapped.
-// `dead` is kept only as the fallback for an item restored from a
-// snapshot written before StackItem.Trigger existed.
-func b33DamageChosenOpponentByDeadCreaturesPower(dead uuid.UUID) func(g *game.Game, item *game.StackItem) error {
-	return func(g *game.Game, item *game.StackItem) error {
-		ctx := NewContext(g, item)
-		n := 0
-		if info, ok := ctx.TriggeringPermanent(); ok {
-			n = info.Power
-		} else {
-			n = b17LastKnownPowerOffBattlefield(g, dead)
-		}
-		if n <= 0 {
-			return nil
-		}
-		for _, t := range ctx.LegalTargets() {
-			if t.Kind != game.TargetPlayer {
-				continue
-			}
-			return DealDamage{Source: item.SourceCardID, Target: t.ID, Amount: n}.Apply(ctx)
-		}
+// item.Params.Object.ID — the dead legend's instance ID, stamped by a
+// fill-in Build — is kept only as the fallback for an item whose
+// Trigger context did not carry the object (never true for a fresh
+// trigger; the safe side for anything else).
+func b33DamageChosenOpponentByDeadCreaturesPower(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	n := 0
+	if info, ok := ctx.TriggeringPermanent(); ok {
+		n = info.Power
+	} else {
+		n = b17LastKnownPowerOffBattlefield(g, item.Params.Object.ID)
+	}
+	if n <= 0 {
 		return nil
 	}
+	for _, t := range ctx.LegalTargets() {
+		if t.Kind != game.TargetPlayer {
+			continue
+		}
+		return DealDamage{Source: item.SourceCardID, Target: t.ID, Amount: n}.Apply(ctx)
+	}
+	return nil
 }
 
 // b33PutCounterOnEnteredCreature is Good-Fortune Unicorn's body: one

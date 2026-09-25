@@ -35,11 +35,8 @@ func init() {
 			// TargetsFrom, not Targets: the clause is a fact about
 			// what just died. See trigger_event.go.
 			TargetsFrom: scrapTrawlerCheaperArtifactClause,
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source,
-					"Scrap Trawler — return a cheaper artifact card to your hand",
-					b15ReturnListedCardsFromGraveyardToHand)
-			},
+			Key:         "Scrap Trawler — return a cheaper artifact card to your hand",
+			Effect:      b15ReturnListedCardsFromGraveyardToHand,
 		}},
 	})
 }

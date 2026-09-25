@@ -40,10 +40,8 @@ func init() {
 				Watches:   []game.EventKind{game.EventETB},
 				AppliesTo: b06SelfETB,
 				Targets:   TargetCardInGraveyard("target creature card in your graveyard", YouOwn(), Creature()),
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Rakdos Joins Up — return the creature card to the battlefield with two +1/+1 counters",
-						b33ReanimateChosenWithCounters(2))
-				},
+				Key:       "Rakdos Joins Up — return the creature card to the battlefield with two +1/+1 counters",
+				Effect:    b33ReanimateChosenWithCounters(2),
 			},
 			{
 				Watches: []game.EventKind{game.EventLTB},
@@ -51,10 +49,13 @@ func init() {
 					return b33LegendaryCreatureYouControlDied(ev, source, g)
 				},
 				Targets: TargetPlayer("target opponent", Opponent()),
+				Key:     "Rakdos Joins Up — deal damage equal to the legend's power to target opponent",
 				Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Rakdos Joins Up — deal damage equal to the legend's power to target opponent",
-						b33DamageChosenOpponentByDeadCreaturesPower(ev.CardID))
+					item := game.NewTriggeredItem(source, "Rakdos Joins Up — deal damage equal to the legend's power to target opponent", nil)
+					item.Params.Object.ID = ev.CardID
+					return item
 				},
+				Effect: b33DamageChosenOpponentByDeadCreaturesPower,
 			},
 		},
 	})

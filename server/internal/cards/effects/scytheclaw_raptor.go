@@ -26,12 +26,14 @@ func init() {
 			AppliesTo: func(ev game.Event, _ *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b29SpellCastOffTurn(ev, g)
 			},
+			Key: "Scytheclaw Raptor — 4 damage to the player who cast a spell on another player's turn",
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				caster := ev.Actor
-				return game.NewTriggeredItem(source, "Scytheclaw Raptor — 4 damage to the player who cast a spell on another player's turn",
-					func(g *game.Game, item *game.StackItem) error {
-						return DealDamage{Source: item.SourceCardID, Target: caster, Amount: 4}.Apply(NewContext(g, item))
-					})
+				item := game.NewTriggeredItem(source, "Scytheclaw Raptor — 4 damage to the player who cast a spell on another player's turn", nil)
+				item.Params.Player = ev.Actor
+				return item
+			},
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				return DealDamage{Source: item.SourceCardID, Target: item.Params.Player, Amount: 4}.Apply(NewContext(g, item))
 			},
 		}},
 	})

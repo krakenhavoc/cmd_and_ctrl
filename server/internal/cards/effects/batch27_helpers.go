@@ -545,9 +545,11 @@ func b27ExileChosenTarget(g *game.Game, item *game.StackItem) error {
 	return nil
 }
 
-// b27LoseOneAndYouGainOne is Revenge of Ravens' drain: `victim`
+// b27LoseOneAndYouGainOne is Revenge of Ravens' drain: the attacker's
+// controller — stamped onto item.Params.Player by a fill-in Build —
 // loses 1 life and the item's controller gains 1, in that order.
-func b27LoseOneAndYouGainOne(g *game.Game, item *game.StackItem, victim uuid.UUID) error {
+func b27LoseOneAndYouGainOne(g *game.Game, item *game.StackItem) error {
+	victim := item.Params.Player
 	ctx := NewContext(g, item)
 	if p := g.PlayerByIDForEffect(victim); p != nil && !p.Eliminated {
 		if err := g.ChangePlayerLifeForEffect(item.SourceCardID, victim, -1); err != nil {
