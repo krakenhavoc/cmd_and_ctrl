@@ -25,6 +25,14 @@
 # held to a count that may only fall. A counter a tier retires
 # (retiredCensusCounters) fails every line still charged to it.
 #
+# ADR 0041 P11: a retirement may move a line to the class of its
+# remaining route, in the same PR, and the PR lists the lines and the
+# new ceiling. That is not a new route, so it is not a raise. Tier 4's
+# first slice moved the eleven census:StackTargetSpecs lines this way:
+# every one is still reached through a resume frame
+# (pickTargetFrame.spec, modePickFrame.ability.Modes, resolving.item),
+# so census:ChoiceResumeFrames went from 98 to 109.
+#
 # Owner decision 4 (2026-09-24): census:ChoiceResumeFrames is the one
 # counter that stays allowed after tier 4 — resume frames are out of
 # scope for this sprint.
@@ -93,9 +101,9 @@ ManaAbilityShape.RestrictionsFunc            census:IntrinsicAbilityCards       
 ManaAbilityShape.Rider                       census:IntrinsicAbilityCards       # Game.simultaneousExit.ManaAbilities.Rider
 ManaAbilityShape.SacrificeOther              census:IntrinsicAbilityCards       # Game.simultaneousExit.ManaAbilities.SacrificeOther
 ManaAbilityShape.TapOthers                   census:IntrinsicAbilityCards       # Game.simultaneousExit.ManaAbilities.TapOthers
-ModeOption.Effect                            census:StackTargetSpecs            # Game.StackMeta.modeSpec.Options.Effect
-ModeOption.Targets                           census:StackTargetSpecs            # Game.StackMeta.modeSpec.Options.Targets
-ModeSpec.Options                             census:StackTargetSpecs            # Game.StackMeta.modeSpec.Options
+ModeOption.Effect                            census:ChoiceResumeFrames          # Game.StackMeta.modeSpec.Options.Effect
+ModeOption.Targets                           census:ChoiceResumeFrames          # Game.StackMeta.modeSpec.Options.Targets
+ModeSpec.Options                             census:ChoiceResumeFrames          # Game.StackMeta.modeSpec.Options
 PendingChoice.chooseCardsResume              census:ChoiceResumeFrames          # Game.PendingChoices.chooseCardsResume
 PendingChoice.chooseColorResume              census:ChoiceResumeFrames          # Game.PendingChoices.chooseColorResume
 PendingChoice.coinFlipResume                 census:ChoiceResumeFrames          # Game.PendingChoices.coinFlipResume
@@ -138,16 +146,16 @@ SearchLibrarySpec.Pred                       census:ChoiceResumeFrames          
 SearchLibrarySpec.Then                       census:ChoiceResumeFrames          # Game.PendingChoices.searchResume.spec.Then
 SearchLibrarySpec.Validate                   census:ChoiceResumeFrames          # Game.PendingChoices.searchResume.spec.Validate
 StackItem.Effect                             census:StackEffects                # Game.StackMeta.Effect
-StackItem.modeSpec                           census:StackTargetSpecs            # Game.StackMeta.modeSpec
-StackItem.targetSpec                         census:StackTargetSpecs            # Game.StackMeta.targetSpec
+StackItem.modeSpec                           census:ChoiceResumeFrames          # Game.StackMeta.modeSpec
+StackItem.targetSpec                         census:ChoiceResumeFrames          # Game.StackMeta.targetSpec
 TapOthersCost.Filter                         census:IntrinsicAbilityCards       # Game.simultaneousExit.ManaAbilities.TapOthers.Filter
 TapPermanentsCost.Spec                       census:ChoiceResumeFrames          # Game.PendingChoices.payUnlessResume.tap.Spec
-TargetDifference.Key                         census:StackTargetSpecs            # Game.StackMeta.targetSpec.Different.Key
-TargetSpec.AbilityOK                         census:StackTargetSpecs            # Game.StackMeta.targetSpec.AbilityOK
-TargetSpec.CardOK                            census:StackTargetSpecs            # Game.StackMeta.targetSpec.CardOK
-TargetSpec.Different                         census:StackTargetSpecs            # Game.StackMeta.targetSpec.Different
-TargetSpec.PlayerOK                          census:StackTargetSpecs            # Game.StackMeta.targetSpec.PlayerOK
-TargetSpec.Rest                              census:StackTargetSpecs            # Game.StackMeta.targetSpec.Rest
+TargetDifference.Key                         census:ChoiceResumeFrames          # Game.StackMeta.targetSpec.Different.Key
+TargetSpec.AbilityOK                         census:ChoiceResumeFrames          # Game.StackMeta.targetSpec.AbilityOK
+TargetSpec.CardOK                            census:ChoiceResumeFrames          # Game.StackMeta.targetSpec.CardOK
+TargetSpec.Different                         census:ChoiceResumeFrames          # Game.StackMeta.targetSpec.Different
+TargetSpec.PlayerOK                          census:ChoiceResumeFrames          # Game.StackMeta.targetSpec.PlayerOK
+TargetSpec.Rest                              census:ChoiceResumeFrames          # Game.StackMeta.targetSpec.Rest
 TokenGroup.Template                          census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.TokenGroups.Template
 TriggerOptionalPrompt.Chooser                census:ChoiceResumeFrames          # Game.PendingChoices.modePickResume.ability.OptionalPrompt.Chooser
 TriggeredAbility.AppliesTo                   census:ChoiceResumeFrames          # Game.PendingChoices.modePickResume.ability.AppliesTo

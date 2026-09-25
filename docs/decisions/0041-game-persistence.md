@@ -1878,3 +1878,117 @@ The owner took the recommendation on all five questions.
    tail (slices 4-3 to 4-10) is part of the sprint.
 5. **Q5 — A. In parallel.** M, 3b-1, 4-0 and 4-1 start together; then
    3b-2 and 4-2; then the tail and 4-final.
+
+### Implementation notes (tier 4-1)
+
+Slice 4-1 of P9 (`AbilityRef`, the catalog body, the restore lookup
+with Q2 and Q3, the stack-item field refusal, `lastKnownStack` carried,
+and the census fold). Where the code differs from the design above, the
+code wins, and each difference is listed here.
+
+- **Only activated abilities are stamped, so only `catalog/activated`
+  is registered.** `ActivateCatalogAbility` puts
+  `Body: "catalog/activated"` and `Params.Ability` on the item. It
+  names the row while the source is still the object that has it,
+  before any cost moves it. `catalog/triggered` is **not** registered
+  in this slice. A 4-1 binary cannot rebuild a trigger's `Effect`,
+  because the row has no `Effect` until 4-2. So it has to refuse a 4-2
+  file that names the key, and it does, because the key is unknown.
+  4-2 registers it.
+- **`AbilityRef.Key` is the key whose list the ref indexes, not the
+  full `CatalogAbilityKey`.** For `own:<i>` it is the object's
+  `CatalogKey`, which already includes any copy grants. For
+  `grant:<bundle>:<i>:<n>` it is the bundle's `GrantKey`. The composite
+  key cannot be split back apart: a copy grant and a layer-6 grant are
+  both `|grant:<x>`, and `own:<i>` counts only the own list. A grant
+  ref whose bundle is not its key is refused.
+- **A stamp is only written if the lookup works.** The announce path
+  checks that the running catalog returns the same row under the ref.
+  If it does not, the item is not stamped. That covers an
+  instance-carried ability (`census:IntrinsicAbilityCards`) and a
+  catalog stub that does not return rows. An unstamped item stays an
+  unkeyed closure, and the census counts it.
+- **Q3's manual item has no body and no ref.** A row that cannot be
+  found leaves the item on the stack with its announcement: label,
+  targets, modes, X and payment. Its `Effect`, target clause, mode
+  clause, body and ref are cleared, so it resolves as a
+  sandbox-announced item does. Its source card is flagged
+  `AbilitiesLostOnRestore`, and that flag is carried from then on. The
+  next capture is an ordinary restore point, so a later boot does not
+  report the item again. The report is
+  `GameSnapshot.LostStackAbilities()`. It makes the same lookup restore
+  makes, and reads only the snapshot and the catalog, as
+  `AbilityShortfalls` does. The boot path (`ws/persist.go`) logs one
+  ERROR line for each lost item, naming the game, the card, the label
+  and the ref. The summary counts these items in
+  `cards_with_lost_abilities`.
+- **Q2 applies inside the list the ref names.** For a moved row, the
+  single row with the declared label in the same list is used, and the
+  ref is rewritten to point at it. A grant ref keeps its bundle and
+  instance. An empty label never uses the fallback.
+- **The whole-record refusal applies to the current schema only.**
+  Unknown keys on a stack item, on its `params.ability`, on a
+  `lastKnownStack` entry and on that entry's item are refused
+  (`ErrUnknownEffectKey`) when the file is v7. In an older file an
+  unknown key can only be one that a later bump removed, and that is the
+  bump's migration to handle. No fixture holds such a key. The
+  existing `params` checks still apply to every schema.
+- **More refusals** (`unknownAbilityRef`):
+  - a `catalog/activated` item with no ref;
+  - a ref with an unknown slot, including `triggered`, which 4-2 adds;
+  - a ref outside the grammar;
+  - a ref under a body that does not read one;
+  - any `params.ability` on a delayed trigger.
+
+  No binary writes any of these, so each one means a newer file.
+- **The census fold.** An item is counted once, in `StackEffects`, in
+  either of two cases:
+  - its `Effect` is an unkeyed closure;
+  - it holds a target or mode clause, and has neither a spell's oracle
+    ID nor a catalog ref to rebuild the clause from.
+
+  The second case includes a tier-2 keyed item that carries a clause.
+  None does today. 4-0's reflexive bodies will, until restore can
+  rebuild their clause. `StackTargetSpecs` is on
+  `retiredCensusCounters`. The field is kept so that a census written
+  by an older binary still decodes as not restorable.
+- **P11, as applied.** The eleven `census:StackTargetSpecs` lines
+  moved to `census:ChoiceResumeFrames`, the class of the route that is
+  left to them (a resume frame reaches every one):
+  - `ModeOption.Effect`, `ModeOption.Targets`, `ModeSpec.Options`;
+  - `StackItem.modeSpec`, `StackItem.targetSpec`;
+  - `TargetDifference.Key`;
+  - `TargetSpec.AbilityOK`, `.CardOK`, `.Different`, `.PlayerOK`,
+    `.Rest`.
+
+  Its ceiling went from 98 to 109. The rule now appears in
+  `closure_fields_test.go` and in the header of `closure_fields.txt`.
+  `StackEffects` stays at 6, because `lastKnownStack`'s three lines are
+  still reached through `StackItem.Effect`.
+- **`lastKnownStack` is carried** as
+  `GameSnapshot.LastKnownStack`: a list sorted by card ID, where each
+  entry is a card mirror and a stack-item mirror. The item's oracle ID
+  is read from the recorded card, because a countered copy is in no
+  zone. The census sees each entry as it sees a live item and card, and
+  a real spell holds nothing it counts. One engine fix came with it.
+  `createSpellCopyLocked` now creates `StackMeta` when it is nil. A game
+  restored with an empty stack has no map, and a copy made from a
+  carried record can be the first item put on it.
+- **Verifying P10.** A test removes `catalog/activated` from the
+  registry, standing in for a binary from before this slice, and
+  confirms the file is refused. Another removes `lastKnownStack` from a
+  file, standing in for what an older binary writes, and confirms that
+  file still restores.
+- **Fixtures.** Three new files in `v7/`, each made by real cards:
+  - `activated_on_stack.json`: Goblin Bombardment's ping, `own:0`;
+  - `granted_activated_on_stack.json`: Squirrel Nest's granted ability,
+    `grant:squirrel-nest/make-a-squirrel:0:0`;
+  - `countered_spell_lki.json`: a Lightning Bolt countered by
+    Counterspell.
+
+  No existing fixture changed. The triggered fixtures P10 lists
+  (`etb_trigger_on_stack`, `granted_dies_trigger`, `token_trigger`,
+  `emblem_trigger`, `modal_trigger`) need 4-2's declarative `Effect`.
+  `reflexive_trigger` and `prowess_on_stack` need 4-0's body keys.
+  `storm_after_counter` needs storm's trigger to be data. None of these
+  can be a restore point in this slice.

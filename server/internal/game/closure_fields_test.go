@@ -52,6 +52,12 @@ import (
 //     the ceiling is lowered to match — that is the ratchet clicking.
 //     Tier PRs delete lines and lower ceilings; nothing raises one
 //     without a reviewer reading why in the diff.
+//   - ADR 0041 P11: a retirement may move a line to the class of its
+//     remaining route, in the same PR, and the PR lists the lines and
+//     the new ceiling. A field reachable by several routes carries the
+//     most restrictive class among them, so deleting the route that set
+//     it lets it fall to the next one — usually the resume frames. That
+//     is not a new route, and it is the one way a ceiling goes up.
 //
 // Owner decision 4 (2026-09-24): ChoiceResumeFrames is the one census
 // counter that stays allowed after tier 4 — resume frames are out of
@@ -75,6 +81,7 @@ const closureFieldsFile = "closure_fields.txt"
 var retiredCensusCounters = map[string]string{
 	"DelayedTriggerEffects": "ADR 0041 phase 3 tier 2 (#1497): a delayed trigger is a registered body key plus plain params",
 	"ScopedStatics":         "ADR 0041 phase 3 tier 3a (#1497): a continuous effect with a duration is a ScopedEffect record over the closed Mod vocabulary",
+	"StackTargetSpecs":      "ADR 0041 phase 3 tier 4 (#1497, P9): a stack item's target and mode clauses are re-derived from its oracle ID or its catalog ability ref, and an item that can be neither is counted once, in StackEffects",
 }
 
 // closureClassCeilings is the ratchet's second half (#1558): how many
@@ -84,10 +91,15 @@ var retiredCensusCounters = map[string]string{
 // and never raise one to make a new route pass: classify the route as
 // what it really is, or make it data.
 var closureClassCeilings = map[string]int{
-	"census:ChoiceResumeFrames":     98,
+	// 98 + the 11 census:StackTargetSpecs lines tier 4's first slice
+	// moved here under ADR 0041 P11 (the class of their remaining
+	// route, a resume frame): ModeOption.Effect, ModeOption.Targets,
+	// ModeSpec.Options, StackItem.modeSpec, StackItem.targetSpec,
+	// TargetDifference.Key and TargetSpec.{AbilityOK, CardOK,
+	// Different, PlayerOK, Rest}.
+	"census:ChoiceResumeFrames":     109,
 	"census:IntrinsicAbilityCards":  45,
 	"census:StackEffects":           6,
-	"census:StackTargetSpecs":       11,
 	"census:TurnScopedBlockRules":   4,
 	"census:TurnScopedReplacements": 10,
 	"transient":                     1,

@@ -935,6 +935,11 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		return ErrInvalidParam
 	}
 	ab := abilities[index]
+	// ADR 0041 P9 (#1497, tier 4): which catalog row this is, named
+	// while the source is still the object that has it — a cost below
+	// may move it. The item carries the name so a restore point taken
+	// while it waits on the stack can rebuild it (ability_ref.go).
+	abilityRef := activatedAbilityRefFor(*source, index, origins, ab)
 	// CR 113.6: an ability functions only from the zone it says it
 	// functions from. Checked after the index lookup (so the index
 	// is the one the view and the enumerator published) and before
@@ -1481,6 +1486,12 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		targetSpec: ab.Targets,
 		modeSpec:   ab.Modes,
 		Seq:        g.nextStackSeqLocked(),
+	}
+	if abilityRef != nil {
+		// Data, not only a closure: the body is the refusal token for
+		// an older binary, the ref is what restore looks up (P9/P10).
+		item.Body = CatalogActivatedBodyKey
+		item.Params = EffectParams{Ability: abilityRef}
 	}
 	g.StackMeta[itemID] = item
 	// #1547: what the mana did when it was spent. The cast path's
