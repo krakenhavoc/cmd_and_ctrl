@@ -524,5 +524,9 @@ func (g *Game) clearExpiredDelayedTriggersLocked(endOfTurn bool) {
 // cloneEffectParams copies the one slice EffectParams holds.
 func cloneEffectParams(p EffectParams) EffectParams {
 	p.Filter.Types = copyStrings(p.Filter.Types)
+	if p.Ability != nil {
+		a := *p.Ability
+		p.Ability = &a
+	}
 	return p
 }

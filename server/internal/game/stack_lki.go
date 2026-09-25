@@ -1,6 +1,10 @@
 package game
 
-import "github.com/google/uuid"
+import (
+	"sort"
+
+	"github.com/google/uuid"
+)
 
 // stack_lki.go — last-known information for a spell that has LEFT the
 // stack without resolving (#1255, CR 608.2h, CR 707.10).
@@ -49,10 +53,14 @@ import "github.com/google/uuid"
 // before the turn can end. It is bounded by the turn's cast count.
 //
 // Clone carries it (an undo across a counterspell rewinds it with the
-// spell). The snapshot does not, and says so in snapshot_drift_test.go:
-// every reader of the record is a stack item or delayed trigger whose
-// behaviour is a closure, which ContinuationCensus already counts, so
-// a snapshot that could need the record is not a restore point anyway.
+// spell), and since ADR 0041 phase 3 tier 4 (#1497, P9) so does the
+// snapshot. Before it every reader of the record was a stack item or
+// delayed trigger whose behaviour is a closure — so a snapshot that
+// could need the record was not a restore point anyway — and the
+// snapshot dropped it. Tier 4 makes those readers data, and a restore
+// that dropped the record would make a restored storm trigger miss the
+// copies of a countered spell. The card is carried like any card and
+// the item like a spell item (GameSnapshot.LastKnownStack).
 
 // lastKnownSpell is one spell as it last existed on the stack.
 type lastKnownSpell struct {
@@ -145,4 +153,54 @@ func (g *Game) CopyLastKnownSpellForEffect(spellID, controller uuid.UUID, mayCho
 	}
 	g.copySpellFromLocked(src, item, controller, mayChooseNewTargets, except)
 	return nil
+}
+
+// lastKnownSpellSnapshot is one Game.lastKnownStack entry on disk: the
+// card and its stack item, both through the ordinary mirrors.
+type lastKnownSpellSnapshot struct {
+	Card cardSnapshot      `json:"card"`
+	Item stackItemSnapshot `json:"item"`
+}
+
+// snapshotLastKnownStack is the capture half, sorted by card ID so two
+// captures of one state are byte-identical. The census sees each entry
+// the way it sees a live stack item and card: a spell has no closure of
+// its own, so an entry blocks nothing unless it holds something no
+// restore could rebuild.
+func snapshotLastKnownStack(m map[uuid.UUID]lastKnownSpell, cen *ContinuationCensus) []lastKnownSpellSnapshot {
+	if len(m) == 0 {
+		return nil
+	}
+	ids := make([]uuid.UUID, 0, len(m))
+	for id := range m {
+		ids = append(ids, id)
+	}
+	sort.Slice(ids, func(i, j int) bool { return ids[i].String() < ids[j].String() })
+	out := make([]lastKnownSpellSnapshot, 0, len(ids))
+	for _, id := range ids {
+		rec := m[id]
+		item := rec.item
+		out = append(out, lastKnownSpellSnapshot{
+			Card: snapshotCard(rec.card, cen),
+			Item: snapshotStackItemAs(&item, rec.card.OracleID, cen),
+		})
+	}
+	return out
+}
+
+// restoreLastKnownStack is the restore half. The key is the card's
+// instance ID, exactly as rememberLeavingSpellLocked files it.
+func restoreLastKnownStack(in []lastKnownSpellSnapshot) map[uuid.UUID]lastKnownSpell {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make(map[uuid.UUID]lastKnownSpell, len(in))
+	for i := range in {
+		card := restoreCard(&in[i].Card)
+		// A spell is never a stamped ability, so the Q3 flag the
+		// second result carries cannot be set here.
+		item, _ := restoreStackItem(&in[i].Item)
+		out[card.InstanceID] = lastKnownSpell{card: card, item: *item}
+	}
+	return out
 }

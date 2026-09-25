@@ -602,13 +602,16 @@ func TestCensusCountsEveryContinuationKind(t *testing.T) {
 			expect: func(c ContinuationCensus) int { return c.StackEffects },
 		},
 		{
-			name: "ability target spec",
+			// ADR 0041 P9 (#1497): the census fold. An ability's clause
+			// with no catalog ref to rebuild it from is counted once, in
+			// StackEffects; StackTargetSpecs is retired.
+			name: "ability target spec with no catalog ref",
 			set: func(g *Game) {
 				g.StackMeta = map[uuid.UUID]*StackItem{
 					{}: {ID: uuid.New(), Kind: StackItemActivated, targetSpec: &TargetSpec{}},
 				}
 			},
-			expect: func(c ContinuationCensus) int { return c.StackTargetSpecs },
+			expect: func(c ContinuationCensus) int { return c.StackEffects },
 		},
 		{
 			// Tier 2 (#1497) retired this counter for every real path:
@@ -745,7 +748,7 @@ func TestSpellTargetSpecIsRederived(t *testing.T) {
 	})
 
 	snap := g.CaptureSnapshot()
-	if snap.Continuations.StackTargetSpecs != 0 {
+	if !snap.Continuations.Empty() {
 		t.Errorf("a spell's catalog-owned target spec was censused: %+v", snap.Continuations)
 	}
 	if !snap.Restorable() {

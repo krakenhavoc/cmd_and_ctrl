@@ -1,6 +1,7 @@
 package game
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/google/uuid"
@@ -159,18 +160,41 @@ func TestTheRecordRewindsWithAnUndo(t *testing.T) {
 	})
 }
 
-// TestTheRecordIsNotSnapshotted — `dropped` in snapshot_drift_test.go:
-// every reader is a closure the census already counts, so the record
-// restores empty.
-func TestTheRecordIsNotSnapshotted(t *testing.T) {
+// TestTheRecordIsSnapshotted — `carried` in snapshot_drift_test.go
+// since ADR 0041 phase 3 tier 4 (#1497, P9): the record's readers become
+// data, so a restore point taken after a counterspell carries the
+// countered spell's last-known information, and a copy effect that names
+// it still finds it after a deploy.
+func TestTheRecordIsSnapshotted(t *testing.T) {
 	g := newActiveGame(t)
 	id := pushLKISpell(t, g, g.Seats[0].ID, "Opt")
 	counterForTest(t, g, id)
-	restored, err := g.CaptureSnapshot().Restore()
+	snap := g.CaptureSnapshot()
+	if !snap.Restorable() {
+		t.Fatalf("a countered spell's record blocks the restore point: %+v", snap.Continuations)
+	}
+	raw, err := json.Marshal(snap)
 	if err != nil {
-		t.Fatalf("Restore: %v", err)
+		t.Fatal(err)
 	}
-	if len(restored.lastKnownStack) != 0 {
-		t.Errorf("the snapshot carried %d records, want none", len(restored.lastKnownStack))
+	var decoded GameSnapshot
+	if err := json.Unmarshal(raw, &decoded); err != nil {
+		t.Fatal(err)
 	}
+	restored, err := decoded.RestoreStrict()
+	if err != nil {
+		t.Fatalf("RestoreStrict: %v", err)
+	}
+	restored.WithWriteLock(func() {
+		card, item, ok := restored.lastKnownSpellLocked(id)
+		if !ok {
+			t.Fatal("the restored game has no record of the countered spell")
+		}
+		if card.Name != "Opt" || item.XValue != 4 || item.Kind != StackItemSpell {
+			t.Errorf("record came back as %q, X=%d, kind %s", card.Name, item.XValue, item.Kind)
+		}
+		if err := restored.CopyLastKnownSpellForEffect(id, restored.Seats[0].ID, false, nil); err != nil {
+			t.Errorf("CopyLastKnownSpellForEffect after the restore: %v", err)
+		}
+	})
 }

@@ -181,6 +181,12 @@ type RestoreOutcome struct {
 	// game is restored anyway and each card is flagged as not
 	// automated; this is the census of them the summary line counts.
 	AbilityShortfalls []game.AbilityShortfall
+
+	// LostStackAbilities are the abilities on this game's stack whose
+	// catalog row this binary no longer has (ADR 0041 P9, the owner's
+	// answer to Q3, #1497). The game is restored anyway: each item stays
+	// on the stack as a manual one and its source card is flagged.
+	LostStackAbilities []game.LostStackAbility
 }
 
 // Restore-abandonment reasons. See RestoreOutcome.Reason.
@@ -340,6 +346,25 @@ func (m *RoomManager) restoreOne(path string) RestoreOutcome {
 		)
 	}
 
+	// ADR 0041 P9 / Q3 (#1497): an ability waiting on the stack whose
+	// catalog row this binary cannot find. Restored as a manual item,
+	// its source flagged — and one ERROR line each, naming the game,
+	// the card and the row, because it will not resolve by itself.
+	res.LostStackAbilities = file.Snapshot.LostStackAbilities()
+	for _, la := range res.LostStackAbilities {
+		m.log.Error("restored stack ability has no catalog row in this build; left on the stack to resolve by hand",
+			"game_id", res.GameID,
+			"item_id", la.ItemID,
+			"card_id", la.CardID,
+			"card", la.Card,
+			"label", la.Label,
+			"ability_key", la.Ref.Key,
+			"ability_slot", la.Ref.Slot,
+			"ability_ref", la.Ref.Ref,
+			"ability_name", la.Ref.Name,
+		)
+	}
+
 	room := NewRoom(g, m.log, m.dumpDir)
 	room.seq = file.Seq
 	// This IS a restore: the room this process is about to serve is
@@ -397,7 +422,7 @@ func LogRestoreSummary(log *slog.Logger, outcomes []RestoreOutcome) {
 			}
 			reasons[reason]++
 		}
-		if n := len(o.AbilityShortfalls); n > 0 {
+		if n := len(o.AbilityShortfalls) + len(o.LostStackAbilities); n > 0 {
 			degradedGames++
 			degradedCards += n
 		}

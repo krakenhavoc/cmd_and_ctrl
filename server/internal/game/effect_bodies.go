@@ -44,6 +44,11 @@ type EffectParams struct {
 	Cost   string     `json:"cost,omitempty"`
 	Name   string     `json:"name,omitempty"`
 	Filter CastFilter `json:"filter,omitempty"`
+	// Ability names the catalog row an ability's stack item came from
+	// (ADR 0041 P9, tier 4): read by the catalog/* bodies and by
+	// restore, never by a delayed trigger. A pointer so it is omitted
+	// when absent, which is every item but an ability's.
+	Ability *AbilityRef `json:"ability,omitempty"`
 }
 
 // CastFilter is a spell predicate as data: the card types a spell may
@@ -295,7 +300,7 @@ func bodyEffect(key string, p EffectParams) func(g *Game, item *StackItem) error
 // isZero reports whether p carries nothing — what the snapshot omits.
 func (p EffectParams) isZero() bool {
 	return p.Player == uuid.Nil && p.Object == (ObjectRef{}) && p.Amount == 0 &&
-		p.Cost == "" && p.Name == "" && len(p.Filter.Types) == 0
+		p.Cost == "" && p.Name == "" && len(p.Filter.Types) == 0 && p.Ability == nil
 }
 
 // effectParamsOrNil is the snapshot mirror's form: a copy, or nil when

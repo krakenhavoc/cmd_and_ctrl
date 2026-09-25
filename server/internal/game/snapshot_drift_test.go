@@ -201,11 +201,12 @@ var gameFields = plan(
 	// still be able to read how it last existed.
 	"lastKnownPermanents", carried, "",
 	// #1255: CR 608.2h LKI for spells that left the stack this turn.
-	// Its only readers are copy effects that name a spell without
-	// targeting it — a storm trigger, Thousand-Year Storm, Doublecast's
-	// delayed trigger — and every one of those is a closure the
-	// snapshot already refuses to carry. Clone copies it for undo.
-	"lastKnownStack", dropped, "read only by stack items and delayed triggers whose behaviour is a closure, counted in ContinuationCensus.StackEffects and ContinuationCensus.DelayedTriggerEffects; with no such reader the record is dead and restores empty",
+	// Its readers are copy effects that name a spell without targeting
+	// it — a storm trigger, Thousand-Year Storm, Doublecast's delayed
+	// trigger. It was dropped while every one of them was a closure;
+	// ADR 0041 phase 3 tier 4 (#1497, P9) makes them data, so it is
+	// carried (GameSnapshot.LastKnownStack). Clone copies it for undo.
+	"lastKnownStack", carried, "GameSnapshot.LastKnownStack",
 	// ADR 0054: the key and the per-turn stream counters ARE the
 	// randomness. Clone copies them (undo rewinds) and rngSnapshot
 	// carries them (a restore continues every stream).
@@ -595,14 +596,14 @@ var stackItemFields = plan(
 	// counter removed this way" ability for nothing.
 	"Paid", carried, "",
 
-	"targetSpec", rebuilt, "a spell's spec is re-derived from the catalog by oracle ID; an ability's is censused",
+	"targetSpec", rebuilt, "a spell's spec is re-derived from the catalog by oracle ID, a stamped ability's from its catalog row (ADR 0041 P9); an item that is neither is counted in ContinuationCensus.StackEffects",
 	// #764: the ModeSpec an item was announced under, so the CR
 	// 608.2b re-check can find the clause of the mode occurrence a
 	// TargetRef names. Same disposition as targetSpec and for the
-	// same reason: catalog data, keyed by oracle ID for a spell and
-	// unreachable for an ability, which is why an ability carrying
-	// one is counted in ContinuationCensus.StackTargetSpecs.
-	"modeSpec", rebuilt, "a spell's mode spec is re-derived from the catalog by oracle ID; an ability's is censused",
+	// same reason: catalog data, keyed by oracle ID for a spell and by
+	// its ability ref for a stamped ability (ADR 0041 P9, #1497); an
+	// item that has neither is counted once, in StackEffects.
+	"modeSpec", rebuilt, "a spell's mode spec is re-derived from the catalog by oracle ID, a stamped ability's from its catalog row; an item that is neither is counted in ContinuationCensus.StackEffects",
 	"Effect", dropped, "a closure; counted in ContinuationCensus.StackEffects (spells need none — they dispatch via EffectResolver)",
 )
 

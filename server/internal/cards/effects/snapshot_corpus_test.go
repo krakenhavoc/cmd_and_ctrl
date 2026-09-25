@@ -147,6 +147,13 @@ func corpusBoards() []corpusBoard {
 		// v7, added by ADR 0093 PR 4 (#1584) as a new file: duration
 		// grants — the grantAbilities mod on disk.
 		{"duration_grants", corpusDurationGrants},
+		// v7, added by tier 4's first slice (#1497, ADR 0041 P9) as new
+		// files: a stamped activated ability waiting on the stack (an
+		// own row and a granted row), and a countered spell's last-known
+		// information, which the snapshot carries from this slice on.
+		{"activated_on_stack", corpusActivatedOnStack},
+		{"granted_activated_on_stack", corpusGrantedActivatedOnStack},
+		{"countered_spell_lki", corpusCounteredSpellLKI},
 		// v7, added by tier 3b-1 (#1497) as new files: replacement
 		// effects a spell creates, which only became restore points with
 		// it — the replacement mods, ScopeGame, ScopeYourPermanents,
@@ -716,6 +723,84 @@ func corpusCrewedVehicle(t *testing.T) *game.Game {
 	}
 	return g
 }
+
+// ---------------------------------------------------------------
+// v7 boards added by ADR 0041 phase 3's tier 4, first slice (#1497)
+// ---------------------------------------------------------------
+//
+// NEW files in v7/: an ability waiting on the stack held the restore
+// point back until it resolved before this slice, so none of these
+// could be a fixture until now.
+
+// corpusActivatedOnStack is a real Goblin Bombardment activation waiting
+// on the stack: the sacrifice paid, the ping at the opponent unresolved.
+// The file holds a stack item with body catalog/activated and an own:0
+// ability ref.
+func corpusActivatedOnStack(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat].ID
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)].ID
+	bomb := pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Goblin Bombardment", OracleID: goblinBombardmentOracle,
+		TypeLine: "Enchantment", Owner: me, Controller: me,
+	})
+	fodder := pushBattlefieldCardWithTimestamp(g, corpusCreature(me, "Grizzly Bears", 2, 2))
+	if err := g.ActivateCatalogAbility(me, bomb, 0, game.ActivateAbilityParams{
+		SacrificeIDs: []uuid.UUID{fodder},
+		Targets:      []game.TargetRef{{Kind: game.TargetPlayer, ID: opp}},
+	}); err != nil {
+		t.Fatalf("activate Goblin Bombardment: %v", err)
+	}
+	if len(g.StackMeta) != 1 {
+		t.Fatalf("setup: %d stack items, want the Bombardment's ping", len(g.StackMeta))
+	}
+	return g
+}
+
+// corpusGrantedActivatedOnStack is a real Squirrel Nest's granted
+// ability, activated on the enchanted land and waiting on the stack: a
+// grant:<bundle>:<i>:<n> ability ref on disk.
+func corpusGrantedActivatedOnStack(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat].ID
+	land := pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Forest", TypeLine: "Basic Land — Forest",
+		Owner: me, Controller: me,
+	})
+	pushAuraOnLand(t, g, me, "Squirrel Nest", gaSquirrelNestOracle, land)
+	idx, ref := grantedActivatedIndex(t, g, land)
+	if idx < 0 {
+		t.Fatal("setup: the enchanted land has no granted ability")
+	}
+	if err := g.ActivateCatalogAbility(me, land, idx, game.ActivateAbilityParams{Ref: ref}); err != nil {
+		t.Fatalf("activate the granted ability: %v", err)
+	}
+	if len(g.StackMeta) != 1 {
+		t.Fatalf("setup: %d stack items, want the Squirrel", len(g.StackMeta))
+	}
+	return g
+}
+
+// corpusCounteredSpellLKI is a real Lightning Bolt countered by a real
+// Counterspell: the stack is empty, and the Bolt as it last stood on it
+// is in the game's last-known information — `lastKnownStack` on disk.
+func corpusCounteredSpellLKI(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)].ID
+	bolt := castCatalogSpell(t, g, "Lightning Bolt", "Instant", lightningBoltOracle,
+		[]game.TargetRef{{Kind: game.TargetPlayer, ID: opp}})
+	castCatalogSpell(t, g, "Counterspell", "Instant", corpusCounterspellOracle,
+		[]game.TargetRef{{Kind: game.TargetCard, ID: bolt}})
+	passPriorityAroundTable(t, g)
+	snap := g.CaptureSnapshot()
+	if len(snap.StackMeta) != 0 || len(snap.LastKnownStack) != 1 {
+		t.Fatalf("setup: %d stack items and %d last-known spells, want 0 and the Bolt",
+			len(snap.StackMeta), len(snap.LastKnownStack))
+	}
+	return g
+}
+
+const corpusCounterspellOracle = "cc187110-1148-4090-bbb8-e205694a39f5"
 
 // ---------------------------------------------------------------
 // Rendering a board deterministically

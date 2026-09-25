@@ -359,6 +359,12 @@ func (g *Game) createSpellCopyLocked(src Card, item *StackItem, controller uuid.
 	// A spell on the stack is public information, copy or not.
 	g.markCardKnownInZoneLocked(g.Stack, copyCard.InstanceID)
 
+	// A game restored with an empty stack has no StackMeta map, and
+	// since ADR 0041 P9 (#1497) a copy made from a carried
+	// lastKnownStack record can be the first thing put on it.
+	if g.StackMeta == nil {
+		g.StackMeta = make(map[uuid.UUID]*StackItem)
+	}
 	meta := &StackItem{
 		ID:           copyCard.InstanceID,
 		Kind:         StackItemSpell,
