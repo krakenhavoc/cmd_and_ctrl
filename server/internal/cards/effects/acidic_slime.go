@@ -28,10 +28,3 @@ func init() {
 		}},
 	})
 }
-
-// destroyChosenTargetTrigger builds a triggered-ability stack item
-// that destroys whatever the engine stamped into item.Targets[0]
-// (the pick_target answer). Shared by the ETB-destroy cards.
-func destroyChosenTargetTrigger(source *game.Card, label string) *game.StackItem {
-	return game.NewTriggeredItem(source, label, destroyChosenPermanent)
-}
