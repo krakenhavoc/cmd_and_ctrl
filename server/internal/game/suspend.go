@@ -161,9 +161,10 @@ func SuspendUpkeepTrigger() TriggeredAbility {
 		AppliesTo: func(ev Event, source *Card, _ Characteristic, _ *Game) bool {
 			return ev.Actor == source.Controller && CardIsSuspended(*source)
 		},
-		Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
-			return NewTriggeredItem(source, "Suspend — remove a time counter", suspendTick)
-		},
+		// ADR 0041 P9 (tier 4-2): declared, so the engine builds the
+		// item and names its catalog row — a countdown waiting on the
+		// stack is a restore point.
+		Effect: suspendTick,
 	}
 }
 
@@ -221,9 +222,7 @@ func SuspendLastCounterTrigger() TriggeredAbility {
 		AppliesTo: func(ev Event, source *Card, _ Characteristic, _ *Game) bool {
 			return ev.Target == source.InstanceID && ev.Label == CounterTime && ev.Amount == 0
 		},
-		Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
-			return NewTriggeredItem(source, SuspendFreeCastLabel, suspendLastCounterRemoved)
-		},
+		Effect: suspendLastCounterRemoved,
 	}
 }
 

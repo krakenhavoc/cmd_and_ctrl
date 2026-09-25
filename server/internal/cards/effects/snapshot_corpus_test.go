@@ -154,6 +154,19 @@ func corpusBoards() []corpusBoard {
 		{"activated_on_stack", corpusActivatedOnStack},
 		{"granted_activated_on_stack", corpusGrantedActivatedOnStack},
 		{"countered_spell_lki", corpusCounteredSpellLKI},
+		// v7, added by tier 4's second slice (#1497, ADR 0041 P9) as new
+		// files: declared triggered abilities waiting to resolve, named
+		// by their catalog row — a card's own row, a granted bundle's,
+		// a token's, an emblem's, a modal one, one whose clause is
+		// built from the trigger context, and a storm trigger over a
+		// countered spell's last-known information.
+		{"etb_trigger_on_stack", corpusETBTriggerOnStack},
+		{"granted_dies_trigger", corpusGrantedDiesTrigger},
+		{"token_trigger", corpusTokenTrigger},
+		{"emblem_trigger", corpusEmblemTrigger},
+		{"modal_trigger", corpusModalTrigger},
+		{"targets_from_trigger", corpusTargetsFromTrigger},
+		{"storm_after_counter", corpusStormAfterCounter},
 	}
 }
 
@@ -714,6 +727,193 @@ func corpusCounteredSpellLKI(t *testing.T) *game.Game {
 }
 
 const corpusCounterspellOracle = "cc187110-1148-4090-bbb8-e205694a39f5"
+
+// ---------------------------------------------------------------
+// v7 boards added by ADR 0041 phase 3's tier 4, second slice (#1497)
+// ---------------------------------------------------------------
+//
+// NEW files in v7/: a triggered ability waiting on the stack held the
+// restore point back until it resolved before this slice. Each board
+// asserts the stamp it is there to freeze, so a card that slips back to
+// a hand-written Build fails here rather than writing a fixture that
+// proves nothing.
+
+const (
+	corpusMulldrifterOracle = "24d0f5e7-0d9e-4b76-900e-a7274e80312d"
+	corpusTeferiHeroOracle  = "f2f165b6-ef0a-42ad-9352-ba68be8248b0"
+)
+
+// corpusSettleTrigger passes priority until a triggered item from
+// `source` is on the stack, and returns it.
+func corpusSettleTrigger(t *testing.T, g *game.Game, source uuid.UUID) *game.StackItem {
+	t.Helper()
+	for i := 0; i < 8; i++ {
+		if it := triggerOnStack(g, source); it != nil {
+			return it
+		}
+		if err := g.PassPriority(); err != nil {
+			t.Fatalf("PassPriority: %v", err)
+		}
+	}
+	t.Fatalf("no trigger from %s reached the stack", source)
+	return nil
+}
+
+// corpusRequireTriggeredStamp fails unless the item names a triggered
+// catalog row whose ref starts with `refPrefix`.
+func corpusRequireTriggeredStamp(t *testing.T, it *game.StackItem, refPrefix string) {
+	t.Helper()
+	if it == nil || it.Body != game.CatalogTriggeredBodyKey || it.Params.Ability == nil ||
+		it.Params.Ability.Slot != game.AbilitySlotTriggered || !strings.HasPrefix(it.Params.Ability.Ref, refPrefix) {
+		t.Fatalf("setup: the trigger is not stamped with a %s… triggered ref: %+v", refPrefix, it)
+	}
+}
+
+// corpusETBTriggerOnStack is a real Mulldrifter's "when this enters,
+// draw two cards" waiting on the stack: an own:0 triggered ref.
+func corpusETBTriggerOnStack(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	drifter := castCatalogSpell(t, g, "Mulldrifter", "Creature — Elemental", corpusMulldrifterOracle, nil)
+	corpusRequireTriggeredStamp(t, corpusSettleTrigger(t, g, drifter), "own:")
+	return g
+}
+
+// corpusGrantedDiesTrigger is Feign Death's GRANTED "when this creature
+// dies, return it" waiting on the stack: the key comes off the dead
+// creature's last-known information, and the ref names the bundle.
+func corpusGrantedDiesTrigger(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat].ID
+	bear := pushBattlefieldCardWithTimestamp(g, corpusCreature(me, "Grizzly Bears", 2, 2))
+	castCatalogSpell(t, g, "Feign Death", "Instant", feignDeathOracle, dgCardRef(bear))
+	passPriorityAroundTable(t, g)
+	g.WithWriteLock(func() { _ = g.DestroyPermanentForEffect(bear) })
+	corpusRequireTriggeredStamp(t, corpusSettleTrigger(t, g, bear), "grant:")
+	return g
+}
+
+// corpusTokenTrigger is a real Pest token's "when this token dies, you
+// gain 1 life" waiting on the stack: a token template's row, whose
+// source has ceased to exist.
+func corpusTokenTrigger(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat].ID
+	pest := PestToken()
+	pest.InstanceID, pest.Owner, pest.Controller = uuid.New(), me, me
+	id := pushBattlefieldCardWithTimestamp(g, pest)
+	g.WithWriteLock(func() { _ = g.DestroyPermanentForEffect(id) })
+	it := corpusSettleTrigger(t, g, id)
+	corpusRequireTriggeredStamp(t, it, "own:")
+	if it.Params.Ability.Key != game.TokenKey("pest") {
+		t.Fatalf("setup: the Pest's trigger names %q, want the token key", it.Params.Ability.Key)
+	}
+	return g
+}
+
+// corpusEmblemTrigger is Teferi, Hero of Dominaria's emblem —
+// "whenever you draw a card, exile target permanent an opponent
+// controls" — triggered by a draw, its target chosen, waiting on the
+// stack: an emblem's row, with a target clause.
+func corpusEmblemTrigger(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat].ID
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)].ID
+	victim := pushBattlefieldCardWithTimestamp(g, corpusCreature(opp, "Grizzly Bears", 2, 2))
+	teferi := uuid.New()
+	g.Seats[g.Turn.ActiveSeat].Graveyard.PushTop(game.Card{
+		InstanceID: teferi, Name: "Teferi, Hero of Dominaria",
+		TypeLine: "Legendary Planeswalker — Teferi", OracleID: corpusTeferiHeroOracle,
+		Owner: me, Controller: me,
+	})
+	var err error
+	g.WithWriteLock(func() {
+		if err = g.CreateEmblemForEffect(me, teferi); err == nil {
+			err = g.DrawNForEffect(me, 1)
+		}
+	})
+	if err != nil {
+		t.Fatalf("setup: %v", err)
+	}
+	pickTriggerTarget(t, g, me, victim)
+	var it *game.StackItem
+	for _, item := range g.StackMeta {
+		if item.Kind == game.StackItemTriggered {
+			it = item
+		}
+	}
+	corpusRequireTriggeredStamp(t, it, "own:")
+	if it.Params.Ability.Key != game.EmblemKey(corpusTeferiHeroOracle) {
+		t.Fatalf("setup: the emblem's trigger names %q, want the emblem key", it.Params.Ability.Key)
+	}
+	return g
+}
+
+// corpusModalTrigger is a real Gala Greeters' alliance trigger with its
+// mode chosen (CR 603.3c), waiting on the stack: the row's mode clause
+// comes back from the catalog on restore.
+func corpusModalTrigger(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat].ID
+	greeters := b12Push(g, me, "Gala Greeters", "Creature — Elf Druid", b15GalaGreetersOracle, 1, 1)
+	castCatalogSpell(t, g, "Grizzly Bears", "Creature — Bear", "", nil)
+	passPriorityAroundTable(t, g)
+	c := modePickChoiceFor(g, me)
+	if c == nil {
+		t.Fatal("setup: the alliance trigger asked for no mode")
+	}
+	if err := g.ResolveModePick(c.ID, me, []int{1}); err != nil {
+		t.Fatalf("setup: ResolveModePick: %v", err)
+	}
+	corpusRequireTriggeredStamp(t, triggerOnStack(g, greeters), "own:")
+	return g
+}
+
+// corpusTargetsFromTrigger is a real Gixian Puppeteer's dies trigger —
+// "return ANOTHER target creature card …", whose clause TargetsFrom
+// builds from the trigger's own source — with its target chosen,
+// waiting on the stack. Restore calls TargetsFrom again.
+func corpusTargetsFromTrigger(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	seat := g.Seats[g.Turn.ActiveSeat]
+	me := seat.ID
+	puppeteer := b12Push(g, me, "Gixian Puppeteer", "Creature — Phyrexian Warlock", b40GixianPuppeteerOracle, 2, 3)
+	elf := uuid.New()
+	seat.Graveyard.PushTop(game.Card{
+		InstanceID: elf, Name: "Llanowar Elves", TypeLine: "Creature — Elf Druid",
+		ManaCost: "{G}", Power: 1, Toughness: 1, Owner: me, Controller: me,
+	})
+	g.WithWriteLock(func() { _ = g.DestroyPermanentForEffect(puppeteer) })
+	pickTriggerTarget(t, g, me, elf)
+	corpusRequireTriggeredStamp(t, triggerOnStack(g, puppeteer), "own:")
+	return g
+}
+
+// corpusStormAfterCounter is a real Grapeshot's storm trigger waiting
+// on the stack after Counterspell countered the Grapeshot: the trigger
+// is data, and the spell it copies is in lastKnownStack.
+func corpusStormAfterCounter(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)].ID
+	castCatalogSpell(t, g, "Lightning Bolt", "Instant", lightningBoltOracle,
+		[]game.TargetRef{{Kind: game.TargetPlayer, ID: opp}})
+	passPriorityAroundTable(t, g)
+	shot := castCatalogSpell(t, g, "Grapeshot", "Sorcery", grapeshotOracle,
+		[]game.TargetRef{{Kind: game.TargetPlayer, ID: opp}})
+	corpusRequireTriggeredStamp(t, corpusSettleTrigger(t, g, shot), "own:")
+	counter := castCatalogSpell(t, g, "Counterspell", "Instant", corpusCounterspellOracle,
+		[]game.TargetRef{{Kind: game.TargetCard, ID: shot}})
+	for i := 0; i < 8 && g.Stack.Contains(counter); i++ {
+		if err := g.PassPriority(); err != nil {
+			t.Fatalf("PassPriority: %v", err)
+		}
+	}
+	snap := g.CaptureSnapshot()
+	if g.Stack.Contains(shot) || triggerOnStack(g, shot) == nil || len(snap.LastKnownStack) != 1 {
+		t.Fatalf("setup: grapeshot on the stack %v, storm trigger %v, %d last-known spells — want the storm trigger over a countered Grapeshot",
+			g.Stack.Contains(shot), triggerOnStack(g, shot) != nil, len(snap.LastKnownStack))
+	}
+	return g
+}
 
 // ---------------------------------------------------------------
 // Rendering a board deterministically

@@ -102,7 +102,8 @@ func unknownAbilityRef(it stackItemSnapshot) []string {
 	if it.Params != nil {
 		ref = it.Params.Ability
 	}
-	if it.Body != CatalogActivatedBodyKey {
+	slot, catalog := catalogBodySlot(it.Body)
+	if !catalog {
 		if ref != nil {
 			return []string{fmt.Sprintf("ability ref on a stack item whose body %q does not read one", it.Body)}
 		}
@@ -110,9 +111,9 @@ func unknownAbilityRef(it stackItemSnapshot) []string {
 	}
 	switch {
 	case ref == nil:
-		return []string{CatalogActivatedBodyKey + " stack item with no ability ref"}
-	case ref.Slot != AbilitySlotActivated:
-		return []string{fmt.Sprintf("ability-ref slot %q under %s", ref.Slot, CatalogActivatedBodyKey)}
+		return []string{it.Body + " stack item with no ability ref"}
+	case ref.Slot != slot:
+		return []string{fmt.Sprintf("ability-ref slot %q under %s", ref.Slot, it.Body)}
 	case !wellFormedAbilityRef(*ref):
 		return []string{fmt.Sprintf("ability ref %q of %q", ref.Ref, ref.Key)}
 	}

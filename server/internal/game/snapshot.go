@@ -1848,7 +1848,8 @@ func stackSpecsRederivable(s stackItemSnapshot) bool {
 	if spellSpecRederivable(s) {
 		return true
 	}
-	return s.Body == CatalogActivatedBodyKey && s.Params != nil && s.Params.Ability != nil
+	_, catalog := catalogBodySlot(s.Body)
+	return catalog && s.Params != nil && s.Params.Ability != nil
 }
 
 // spellSpecRederivable reports whether restore can rebuild this
@@ -2206,6 +2207,14 @@ func (s *GameSnapshot) restoreGame() *Game {
 	}
 	for _, id := range lostSources {
 		g.flagAbilitiesLostLocked(id)
+	}
+	// Tier 4-2: a stamped trigger whose row builds its clause from the
+	// trigger context gets it back now that every zone is restored.
+	for i := range s.StackMeta {
+		g.rederiveTriggerClauseLocked(g.StackMeta[s.StackMeta[i].ID], &s.StackMeta[i])
+	}
+	for i := range s.PendingTriggers {
+		g.rederiveTriggerClauseLocked(g.PendingTriggers[i], &s.PendingTriggers[i])
 	}
 	g.ScopedEffects = deepCopyScopedEffects(s.ScopedEffects)
 	if len(s.DelayedTriggers) > 0 {
@@ -2565,11 +2574,11 @@ func restoreStackItem(s *stackItemSnapshot) (*StackItem, bool) {
 		// with an unkeyed Effect is counted in the census and keeps
 		// the snapshot from being a restore point.
 	}
-	if s.Body == CatalogActivatedBodyKey {
-		// A stamped activated ability (P9): the row gives back the
-		// Effect, the target clause and the mode clause together, with
-		// the owner's Q2 name check. No row is Q3.
-		return out, restoreCatalogAbility(out)
+	if _, ok := catalogBodySlot(s.Body); ok {
+		// A stamped activated or triggered ability (P9): the row gives
+		// back the Effect, the target clause and the mode clause
+		// together, with the owner's Q2 name check. No row is Q3.
+		return out, restoreCatalogAbility(out, s)
 	}
 	if s.Body != "" {
 		out.Effect = bodyEffect(s.Body, out.Params)

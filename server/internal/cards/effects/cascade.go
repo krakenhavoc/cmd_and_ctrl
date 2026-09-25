@@ -41,16 +41,26 @@ func Cascade() game.TriggeredAbility {
 	return game.TriggeredAbility{
 		Keyword:   KeywordCascade,
 		FromStack: true,
+		Key:       cascadeKey,
 		Watches:   []game.EventKind{game.EventCast},
 		AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 			return ev.CardID == source.InstanceID
 		},
+		// A fill-in Build (ADR 0041 P9): the label, the caster and the
+		// spell's mana value are facts of the moment the spell was
+		// cast; the effect is the row's.
 		Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
 			mv, _ := g.ManaValueForEffect(*source)
 			return cascadeItem(source.Name, ev.Actor, source.InstanceID, mv)
 		},
+		Effect: cascadeEffect,
 	}
 }
+
+// cascadeKey is the Key of every cascade row — the name a restored
+// item checks its row by (ADR 0041 P9). Each item's own label names
+// the card ("Bloodbraid Elf — cascade").
+const cascadeKey = "cascade"
 
 // GrantsCascade builds the trigger for a permanent that gives cascade
 // to spells its controller casts — Maelstrom Nexus ("the first spell
@@ -72,6 +82,8 @@ func GrantsCascade(label string, when func(spell game.Card, source *game.Card, g
 		// The granted cascade is still cascade (#1258): a caveat on
 		// Maelstrom Nexus that said otherwise would be false.
 		Keyword: KeywordCascade,
+		Key:     label,
+		Effect:  cascadeEffect,
 		Watches: []game.EventKind{game.EventCast},
 		AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 			if ev.Actor != source.Controller {
@@ -93,15 +105,18 @@ func GrantsCascade(label string, when func(spell game.Card, source *game.Card, g
 	}
 }
 
-// cascadeItem is the stack item both shapes queue. `attribution` is
-// the card ID the stack overlay and the event log hang the trigger
-// off; `lessThan` is the cascading SPELL's mana value, captured at
-// trigger time because by resolution the spell may have left the
-// stack (countered, or resolved above the trigger — cascade goes on
-// the stack above its own spell, so it always resolves first, but a
-// Stifle-shaped answer is still a legal board state). Both shapes read
-// it with game.(*Game).ManaValueForEffect, so an X spell's limit
-// counts the X chosen for it (CR 202.3e).
+// cascadeItem is the stack item both shapes queue, built by their
+// fill-in Builds. `attribution` is the card ID the stack overlay and
+// the event log hang the trigger off; `lessThan` is the cascading
+// SPELL's mana value, captured at trigger time because by resolution
+// the spell may have left the stack (countered, or resolved above the
+// trigger — cascade goes on the stack above its own spell, so it
+// always resolves first, but a Stifle-shaped answer is still a legal
+// board state). Both shapes read it with
+// game.(*Game).ManaValueForEffect, so an X spell's limit counts the X
+// chosen for it (CR 202.3e). It rides the item as Params.Amount, and
+// the row's Effect (cascadeEffect) reads it back — data, so a cascade
+// waiting on the stack is a restore point (ADR 0041 P9).
 //
 // The controller is ev.Actor, the player who cast the spell, not the
 // source card's Controller field. For a spell cast out of its owner's
@@ -114,8 +129,11 @@ func cascadeItem(name string, caster, attribution uuid.UUID, lessThan int) *game
 		Owner:        caster,
 		SourceCardID: attribution,
 		Label:        name + " — cascade",
-		Effect: func(g *game.Game, item *game.StackItem) error {
-			return g.CascadeForEffect(item.Controller, item.SourceCardID, lessThan)
-		},
+		Params:       game.EffectParams{Amount: lessThan},
 	}
+}
+
+// cascadeEffect is cascade's resolution, read entirely off the item.
+func cascadeEffect(g *game.Game, item *game.StackItem) error {
+	return g.CascadeForEffect(item.Controller, item.SourceCardID, item.Params.Amount)
 }

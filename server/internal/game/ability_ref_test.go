@@ -412,14 +412,17 @@ func TestStackItemRefusals(t *testing.T) {
 			abilityJSON(t, it)["future"] = "x"
 		}, `unknown field "future" on a stack item's params ability`},
 		{"an unknown slot", func(it map[string]any) { abilityJSON(t, it)["slot"] = "static" }, `ability-ref slot "static"`},
-		{"the triggered slot, which this binary does not read yet", func(it map[string]any) { abilityJSON(t, it)["slot"] = "triggered" }, `ability-ref slot "triggered"`},
+		// Tier 4-2 reads the triggered slot, but only under its own
+		// body: an activated item naming a triggered row is a shape no
+		// binary writes.
+		{"the triggered slot under the activated body", func(it map[string]any) { abilityJSON(t, it)["slot"] = "triggered" }, `ability-ref slot "triggered" under catalog/activated`},
 		{"a ref outside the grammar", func(it map[string]any) { abilityJSON(t, it)["ref"] = "land:G" }, `ability ref "land:G"`},
 		{"a grant ref naming another bundle than its key", func(it map[string]any) {
 			abilityJSON(t, it)["ref"] = "grant:somebody/else:0:0"
 		}, `ability ref "grant:somebody/else:0:0"`},
 		{"the body with no ref", func(it map[string]any) { delete(it, "params") }, "stack item with no ability ref"},
 		{"a ref under a body that does not read one", func(it map[string]any) { it["body"] = "draw/one-card" }, "does not read one"},
-		{"the triggered body, which is 4-2's", func(it map[string]any) { it["body"] = "catalog/triggered" }, "stack-item body catalog/triggered"},
+		{"the triggered body with an activated ref", func(it map[string]any) { it["body"] = "catalog/triggered" }, `ability-ref slot "activated" under catalog/triggered`},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

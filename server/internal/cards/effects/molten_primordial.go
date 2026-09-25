@@ -45,6 +45,11 @@ import (
 func init() {
 	enters := WhenThisEnters("Molten Primordial — gain control of up to one creature each opponent controls", moltenPrimordialEffect)
 	enters.TargetsFrom = moltenPrimordialClauses
+	// ADR 0041 P9's TargetsFrom audit (tier 4-2): the clause is one
+	// per opponent SEAT, read off g.Seats — the board, not the trigger
+	// context — so restore could not rebuild it exactly. The item stays
+	// a census closure and the row is on the legacy list.
+	enters.TargetsFromReadsBoard = true
 	Register(Spec{
 		OracleID:        "8d8c9f7b-92c7-4284-ad9c-304ce42edba5",
 		Name:            "Molten Primordial",

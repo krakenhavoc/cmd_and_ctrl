@@ -220,6 +220,10 @@ func mergeCatalogParts(parts []*CardDef) *CardDef {
 		// origin (manaAbilityRows).
 		merged.ManaAbilities = concatMana(merged.ManaAbilities, g.ManaAbilities)
 	}
+	// ADR 0041 P9 (tier 4-2): a bundle granted twice contributes its
+	// triggered rows twice, and each copy is a different instance of
+	// the ability — the <n> of its ref.
+	merged.Triggered = numberTriggerRowOccurrences(merged.Triggered)
 	return &merged
 }
 

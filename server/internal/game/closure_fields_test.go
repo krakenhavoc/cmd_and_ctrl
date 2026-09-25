@@ -441,6 +441,14 @@ const closureFieldsHeader = `# closure_fields.txt — ADR 0041 phase 3's ratchet
 # held to a count that may only fall. A counter a tier retires
 # (retiredCensusCounters) fails every line still charged to it.
 #
+# ADR 0041 P11: a retirement may move a line to the class of its
+# remaining route, in the same PR, and the PR lists the lines and the
+# new ceiling. That is not a new route, so it is not a raise. Tier 4's
+# first slice moved the eleven census:StackTargetSpecs lines this way:
+# every one is still reached through a resume frame
+# (pickTargetFrame.spec, modePickFrame.ability.Modes, resolving.item),
+# so census:ChoiceResumeFrames went from 98 to 109.
+#
 # Owner decision 4 (2026-09-24): census:ChoiceResumeFrames is the one
 # counter that stays allowed after tier 4 — resume frames are out of
 # scope for this sprint.

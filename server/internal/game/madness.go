@@ -181,10 +181,12 @@ func MadnessTrigger(cost string) TriggeredAbility {
 			return source != nil && ev.CardID == source.InstanceID &&
 				ev.OldZone == ZoneHand && ev.NewZone == ZoneExile
 		},
-		Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
-			return NewTriggeredItem(source, MadnessTriggerLabel, func(g *Game, item *StackItem) error {
-				return g.offerMadnessCastLocked(item.Controller, item.SourceCardID, cost)
-			})
+		// ADR 0041 P9 (tier 4-2): declared, so the engine builds the
+		// item and names its catalog row. `cost` is the card's printed
+		// madness cost, the same for every instance, so the row the
+		// restore looks up carries it again.
+		Effect: func(g *Game, item *StackItem) error {
+			return g.offerMadnessCastLocked(item.Controller, item.SourceCardID, cost)
 		},
 	}
 }
