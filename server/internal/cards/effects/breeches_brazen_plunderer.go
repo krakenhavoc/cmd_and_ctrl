@@ -58,17 +58,17 @@ func init() {
 					dealer, ok := g.LookupCardForEffect(ev.Source)
 					return ok && isPirate(dealer)
 				},
-				Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					victim := ev.Target
-					return game.NewTriggeredItem(source, "Breeches — exile their top card, playable this turn",
-						func(g *game.Game, item *game.StackItem) error {
-							return ExileTopWithPermission{
-								From:     victim,
-								GrantTo:  item.Controller,
-								N:        1,
-								AnyColor: true,
-							}.Apply(NewContext(g, item))
-						})
+				Key: "Breeches — exile their top card, playable this turn",
+				Effect: func(g *game.Game, item *game.StackItem) error {
+					if item.Trigger == nil {
+						return nil
+					}
+					return ExileTopWithPermission{
+						From:     item.Trigger.Event.Target,
+						GrantTo:  item.Controller,
+						N:        1,
+						AnyColor: true,
+					}.Apply(NewContext(g, item))
 				},
 			}),
 		},

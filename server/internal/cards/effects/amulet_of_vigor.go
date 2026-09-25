@@ -28,18 +28,19 @@ func init() {
 				c, ok := enteredUnderYourControl(ev, source, g, false)
 				return ok && c.Tapped
 			},
-			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				entered := ev.CardID
-				return game.NewTriggeredItem(source, "Amulet of Vigor — untap it",
-					func(g *game.Game, item *game.StackItem) error {
-						if !onBattlefield(g, entered) {
-							return nil
-						}
-						if c, ok := g.LookupCardForEffect(entered); !ok || !c.Tapped {
-							return nil
-						}
-						return UntapTarget{Target: entered}.Apply(NewContext(g, item))
-					})
+			Key: "Amulet of Vigor — untap it",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				if item.Trigger == nil {
+					return nil
+				}
+				entered := item.Trigger.Event.CardID
+				if !onBattlefield(g, entered) {
+					return nil
+				}
+				if c, ok := g.LookupCardForEffect(entered); !ok || !c.Tapped {
+					return nil
+				}
+				return UntapTarget{Target: entered}.Apply(NewContext(g, item))
 			},
 		}},
 	})

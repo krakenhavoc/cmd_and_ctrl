@@ -42,10 +42,8 @@ func init() {
 			Watches:   []game.EventKind{game.EventETB},
 			AppliesTo: b06SelfETB,
 			Targets:   TargetSpell("target spell"),
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Aven Interrupter — exile target spell; it becomes plotted",
-					avenInterrupterExileAndPlot)
-			},
+			Key:       "Aven Interrupter — exile target spell; it becomes plotted",
+			Effect:    avenInterrupterExileAndPlot,
 		}},
 		CostModifiers: []game.CostModifier{
 			CostsMore(2, "Spells your opponents cast from graveyards or from exile cost {2} more to cast.",

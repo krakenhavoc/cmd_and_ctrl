@@ -28,10 +28,8 @@ func init() {
 				return ev.CardID == source.InstanceID
 			},
 			Targets: TargetPlayer("target player"),
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Boggart Trawler — exile target player's graveyard",
-					exileTargetPlayersGraveyard)
-			},
+			Key:     "Boggart Trawler — exile target player's graveyard",
+			Effect:  exileTargetPlayersGraveyard,
 		}},
 	})
 }

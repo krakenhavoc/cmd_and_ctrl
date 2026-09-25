@@ -63,10 +63,8 @@ func init() {
 					return ev.CardID == source.InstanceID
 				},
 				TargetsFrom: appaOtherNonlandPermanentsYouControl,
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Appa, Steadfast Guardian — airbend your permanents",
-						appaAirbendTargets)
-				},
+				Key:         "Appa, Steadfast Guardian — airbend your permanents",
+				Effect:      appaAirbendTargets,
 			},
 			On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return ev.Actor == source.Controller && ev.OldZone == game.ZoneExile

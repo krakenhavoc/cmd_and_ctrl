@@ -38,9 +38,8 @@ func init() {
 				return attachedCreatureAttacked(ev, source)
 			},
 			Targets: TargetPermanent("target permanent", Permanent()),
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return destroyChosenTargetTrigger(source, "Argentum Armor — destroy target permanent")
-			},
+			Key:     "Argentum Armor — destroy target permanent",
+			Effect:  destroyChosenPermanent,
 		}},
 		Activated: []ActivatedAbility{
 			EquipAbility("{6}"),

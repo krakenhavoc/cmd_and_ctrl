@@ -125,16 +125,16 @@ func b25AttackersHaveDoubleStrike(name string) game.TriggeredAbility {
 		AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 			return attackDeclaredByYou(ev, source.Controller)
 		},
-		Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-			attacker := ev.CardID
-			return game.NewTriggeredItem(source, name+" — the attacking creature has double strike",
-				func(g *game.Game, item *game.StackItem) error {
-					return GrantKeywordUntilEOT{
-						Target:   attacker,
-						Keywords: []string{"double strike"},
-						Label:    name + " — double strike",
-					}.Apply(NewContext(g, item))
-				})
+		Key: name + " — the attacking creature has double strike",
+		Effect: func(g *game.Game, item *game.StackItem) error {
+			if item.Trigger == nil {
+				return nil
+			}
+			return GrantKeywordUntilEOT{
+				Target:   item.Trigger.Event.CardID,
+				Keywords: []string{"double strike"},
+				Label:    name + " — double strike",
+			}.Apply(NewContext(g, item))
 		},
 	}
 }
