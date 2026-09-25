@@ -63,16 +63,13 @@ func init() {
 				"Vincent, Vengeful Atoner — put a +1/+1 counter on Vincent", putCounterOnSelf),
 			{
 				Watches: []game.EventKind{game.EventDealDamage},
+				Key:     "Vincent, Vengeful Atoner — Chaos: that much damage to each other opponent",
 				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 					return ThisDealtCombatDamageToAPlayer(ev, source, game.Characteristic{}, g) &&
 						ev.Target != source.Controller
 				},
-				Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					hit, amount := ev.Target, ev.Amount
-					return game.NewTriggeredItem(source, "Vincent, Vengeful Atoner — Chaos: that much damage to each other opponent",
-						func(g *game.Game, item *game.StackItem) error {
-							return b40ChaosSpillover(g, item, hit, amount, 7)
-						})
+				Effect: func(g *game.Game, item *game.StackItem) error {
+					return b40ChaosSpillover(g, item, item.Trigger.Event.Target, item.Trigger.Event.Amount, 7)
 				},
 			},
 		},

@@ -45,13 +45,11 @@ func init() {
 			}, "Vaultborn Tyrant — gain 3 life and draw a card", Do(GainLife{Amount: 3}, DrawCards{N: 1})),
 			{
 				Watches: []game.EventKind{game.EventLTB},
+				Key:     "Vaultborn Tyrant — create a token copy of it that's also an artifact",
 				AppliesTo: func(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {
 					return cardDied(ev, source) && !hasFold(lki.Supertypes, "Token")
 				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Vaultborn Tyrant — create a token copy of it that's also an artifact",
-						vaultbornTyrantArtifactCopy)
-				},
+				Effect: vaultbornTyrantArtifactCopy,
 			},
 		},
 	})

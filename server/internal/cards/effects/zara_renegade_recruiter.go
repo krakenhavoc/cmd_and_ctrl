@@ -55,12 +55,17 @@ func init() {
 			Watches:   []game.EventKind{game.EventAttack},
 			AppliesTo: ThisAttacked,
 			Key:       zaraLabel,
+			// A fill-in Build (ADR 0041 P9): the defending player is
+			// read as the attack is declared, so it is captured into
+			// Params.Player rather than a closure — a control change
+			// after the trigger fires must not retarget it.
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
-				defender := b17DefendingPlayer(g, ev)
-				return game.NewTriggeredItem(source, zaraLabel,
-					func(g *game.Game, item *game.StackItem) error {
-						return zaraLookAndPut(g, item, defender)
-					})
+				item := game.NewTriggeredItem(source, zaraLabel, nil)
+				item.Params.Player = b17DefendingPlayer(g, ev)
+				return item
+			},
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				return zaraLookAndPut(g, item, item.Params.Player)
 			},
 		}},
 	})

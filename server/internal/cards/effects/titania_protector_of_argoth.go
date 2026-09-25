@@ -28,18 +28,16 @@ func init() {
 			{
 				Watches:   []game.EventKind{game.EventETB},
 				AppliesTo: b06SelfETB,
+				Key:       "Titania — return a land card from your graveyard to the battlefield",
 				Targets:   TargetCardInGraveyard("target land card in your graveyard", YouOwn(), Land()),
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Titania — return a land card from your graveyard to the battlefield",
-						func(g *game.Game, item *game.StackItem) error {
-							if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
-								return nil
-							}
-							return ReturnFromGraveyard{
-								Target: item.Targets[0].ID,
-								Dest:   game.ZoneBattlefield,
-							}.Apply(NewContext(g, item))
-						})
+				Effect: func(g *game.Game, item *game.StackItem) error {
+					if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
+						return nil
+					}
+					return ReturnFromGraveyard{
+						Target: item.Targets[0].ID,
+						Dest:   game.ZoneBattlefield,
+					}.Apply(NewContext(g, item))
 				},
 			},
 			On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {

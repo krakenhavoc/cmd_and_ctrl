@@ -31,11 +31,9 @@ func init() {
 		Triggered: []game.TriggeredAbility{{
 			Watches:   []game.EventKind{game.EventETB},
 			AppliesTo: b06SelfETB,
+			Key:       "Venser, Shaper Savant — return target spell or permanent to its owner's hand",
 			Targets:   TargetSpellOrPermanent("target spell or permanent", nil, nil),
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Venser, Shaper Savant — return target spell or permanent to its owner's hand",
-					ReturnTargetSpellOrPermanentToHand)
-			},
+			Effect:    ReturnTargetSpellOrPermanentToHand,
 		}},
 	})
 }

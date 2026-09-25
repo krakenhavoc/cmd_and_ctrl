@@ -36,20 +36,12 @@ func init() {
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventDealDamage},
+			Key:     "Wrathful Red Dragon — the damaged Dragon deals that much damage to any non-Dragon target",
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b21DragonYouControlDealtDamage(ev, source, g)
 			},
 			Targets: b21TargetAnyNonDragon(),
-			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				dragon, amount := ev.Target, ev.Amount
-				return game.NewTriggeredItem(source, "Wrathful Red Dragon — the damaged Dragon deals that much damage to any non-Dragon target",
-					func(g *game.Game, item *game.StackItem) error {
-						if len(item.Targets) == 0 {
-							return nil
-						}
-						return DealDamage{Source: dragon, Target: item.Targets[0].ID, Amount: amount}.Apply(NewContext(g, item))
-					})
-			},
+			Effect:  damagedCreatureReflectsChosenAmount,
 		}},
 	})
 }

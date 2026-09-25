@@ -40,26 +40,23 @@ func init() {
 		}},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventETB},
+			Key:     "Valakut, the Molten Pinnacle — 3 damage to any target",
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b12MountainYouControlEntered(ev, source, g) &&
 					b12OtherMountainsControlled(g, source.Controller, ev.CardID) >= 5
 			},
 			OptionalPrompt: &game.TriggerOptionalPrompt{Question: "Valakut, the Molten Pinnacle — deal 3 damage to any target?"},
 			Targets:        TargetAny(),
-			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				entered := ev.CardID
-				return game.NewTriggeredItem(source, "Valakut, the Molten Pinnacle — 3 damage to any target",
-					func(g *game.Game, item *game.StackItem) error {
-						if len(item.Targets) == 0 {
-							return nil
-						}
-						// CR 603.4 — the intervening-if is re-checked
-						// on resolution.
-						if b12OtherMountainsControlled(g, item.Controller, entered) < 5 {
-							return nil
-						}
-						return DealDamage{Source: item.SourceCardID, Target: item.Targets[0].ID, Amount: 3}.Apply(NewContext(g, item))
-					})
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				if len(item.Targets) == 0 {
+					return nil
+				}
+				// CR 603.4 — the intervening-if is re-checked on
+				// resolution.
+				if b12OtherMountainsControlled(g, item.Controller, item.Trigger.Event.CardID) < 5 {
+					return nil
+				}
+				return DealDamage{Source: item.SourceCardID, Target: item.Targets[0].ID, Amount: 3}.Apply(NewContext(g, item))
 			},
 		}},
 	})

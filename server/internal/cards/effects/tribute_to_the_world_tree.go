@@ -27,26 +27,24 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventETB},
+			Key:     "Tribute to the World Tree — draw, or two +1/+1 counters",
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				c, ok := enteredUnderYourControl(ev, source, g, false)
 				return ok && c.IsCreature()
 			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Tribute to the World Tree — draw, or two +1/+1 counters",
-					func(g *game.Game, item *game.StackItem) error {
-						ctx := NewContext(g, item)
-						entered, ok := ctx.TriggeringPermanent()
-						if !ok {
-							return nil
-						}
-						if entered.Power >= 3 {
-							return DrawCards{Player: item.Controller, N: 1}.Apply(ctx)
-						}
-						if entered.Left {
-							return nil
-						}
-						return AddCounter{Target: ctx.Trigger().Object.ID, Kind: "+1/+1", N: 2}.Apply(ctx)
-					})
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				ctx := NewContext(g, item)
+				entered, ok := ctx.TriggeringPermanent()
+				if !ok {
+					return nil
+				}
+				if entered.Power >= 3 {
+					return DrawCards{Player: item.Controller, N: 1}.Apply(ctx)
+				}
+				if entered.Left {
+					return nil
+				}
+				return AddCounter{Target: ctx.Trigger().Object.ID, Kind: "+1/+1", N: 2}.Apply(ctx)
 			},
 		}},
 	})

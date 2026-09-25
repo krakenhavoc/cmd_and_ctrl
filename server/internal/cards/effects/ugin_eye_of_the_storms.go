@@ -69,17 +69,18 @@ func init() {
 				FromStack: true,
 				Watches:   []game.EventKind{game.EventCast},
 				AppliesTo: Self,
+				Key:       "Ugin, Eye of the Storms — exile a colored permanent",
 				Targets:   uginEyeOfTheStormsTarget(),
+				// A fill-in Build (ADR 0041 P9): this trigger fires as
+				// the spell is announced (FromStack), before the
+				// permanent exists, so the controller is the caster
+				// (ev.Actor) rather than the default source.Controller.
 				Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return &game.StackItem{
-						Kind:         game.StackItemTriggered,
-						Controller:   ev.Actor,
-						Owner:        ev.Actor,
-						SourceCardID: source.InstanceID,
-						Label:        "Ugin, Eye of the Storms — exile a colored permanent",
-						Effect:       b27ExileChosenTarget,
-					}
+					item := game.NewTriggeredItem(source, "Ugin, Eye of the Storms — exile a colored permanent", nil)
+					item.Controller, item.Owner = ev.Actor, ev.Actor
+					return item
 				},
+				Effect: b27ExileChosenTarget,
 			},
 			Targeting(
 				WheneverYouCast(Colorless(),

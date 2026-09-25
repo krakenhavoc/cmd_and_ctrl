@@ -29,15 +29,12 @@ func init() {
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventBecomesTarget},
+			Key:     "Thunderbreak Regent — 3 damage to the player who targeted your Dragon",
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b28DragonYouControlTargetedByOpponent(ev, source, g)
 			},
-			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				player := ev.Actor
-				return game.NewTriggeredItem(source, "Thunderbreak Regent — 3 damage to the player who targeted your Dragon",
-					func(g *game.Game, item *game.StackItem) error {
-						return DealDamage{Source: item.SourceCardID, Target: player, Amount: 3}.Apply(NewContext(g, item))
-					})
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				return DealDamage{Source: item.SourceCardID, Target: item.Trigger.Event.Actor, Amount: 3}.Apply(NewContext(g, item))
 			},
 		}},
 	})
