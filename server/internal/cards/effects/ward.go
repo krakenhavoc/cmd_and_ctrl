@@ -243,8 +243,20 @@ func WardGranted(cost WardCost, label string, grants func(target *game.Card, g *
 	}
 	return game.TriggeredAbility{
 		Watches: []game.EventKind{game.EventBecomesTarget},
+		// The label is the card's own, unadorned: the cost is already
+		// in it ("Hulking Raptor — ward {2}"), and the pay-or-counter
+		// wording belongs on the PROMPT, which is where the decision
+		// is actually made. It is the row's Key as well, which is the
+		// name a restored item checks the row by (ADR 0041 P9).
+		Key: label,
 		AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 			if grants == nil {
+				return false
+			}
+			// The targeting item and the payer are what the
+			// resolution reads off the triggering event; an event
+			// naming neither has nothing to charge or counter.
+			if ev.StackItemID == uuid.Nil || ev.Actor == uuid.Nil {
 				return false
 			}
 			// One zone lookup, not two: the battlefield test and the
@@ -262,22 +274,17 @@ func WardGranted(cost WardCost, label string, grants func(target *game.Card, g *
 			}
 			return false
 		},
-		Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-			// Capture the two UUIDs, never the *Card or the *Game —
-			// StackItem.Effect resolves against whichever Game it is
-			// restored into.
-			itemID, payer := ev.StackItemID, ev.Actor
-			if itemID == uuid.Nil || payer == uuid.Nil {
+		// ADR 0041 P9 (tier 4-2): declared on the row. The targeting
+		// item and the payer are read at resolution off the item's
+		// triggering event (#1223) rather than captured when the
+		// ability triggered, so a restored item charges the same
+		// player for the same spell. The cost is the row's own.
+		Effect: func(g *game.Game, item *game.StackItem) error {
+			if item.Trigger == nil {
 				return nil
 			}
-			// The label is the card's own, unadorned: the cost is
-			// already in it ("Hulking Raptor — ward {2}"), and the
-			// pay-or-counter wording belongs on the PROMPT, which is
-			// where the decision is actually made.
-			return game.NewTriggeredItem(source, label,
-				func(g *game.Game, item *game.StackItem) error {
-					return wardPayOrCounter(g, item, itemID, payer, cost)
-				})
+			ev := item.Trigger.Event
+			return wardPayOrCounter(g, item, ev.StackItemID, ev.Actor, cost)
 		},
 	}
 }

@@ -2271,3 +2271,140 @@ the catalog, move onto tier 2's body-key machinery.
   graveyard to your hand" is on the stack with its target already
   chosen) is a new file under the "never touch an existing file" rule.
   No existing fixture changed.
+
+### Implementation notes (tier 4-2)
+
+Slice 4-2 of P9: the declarative `TriggeredAbility.Effect`, the engine
+default build, the constructors, the `TargetsFrom` audit, and the
+legacy-`Build` allowlist. Where the code differs from the design above,
+the code wins, and each difference is listed here.
+
+- **The engine builds a declared row.** `buildTriggerItemLocked` is the
+  one place the harvest turns a declaration into an item, called from
+  the untargeted path and from the end of the target walk. A row with
+  an `Effect` and no `Build` becomes `NewTriggeredItem(source, Key,
+  Effect)`. A row with both keeps its `Build` as a fill-in: it sets the
+  label, a controller or `Params` and leaves `item.Effect` nil, and the
+  engine installs the row's `Effect`. A fill-in `Build` that sets
+  `item.Effect` is an `effectKeyFault`. A row with a `Build` and no
+  `Effect` is the legacy shape and is built exactly as before. A
+  `Build` whose item names a body of its own (4-0's
+  `NewKeyedTriggeredItem`) made data already, and that item is kept
+  as it is, even beside a declared `Effect`. Face-down ward is the case:
+  it is built by `effects.Ward`, which now declares an `Effect`, and 4-0
+  replaced its `Build` with a keyed one. The
+  prompt frames now carry the whole declaration: `pickTargetFrame.build`
+  became `pickTargetFrame.ability`, and `triggerResumeFrame.build` is
+  gone, because the frame already held the ability.
+- **A row's identity is stamped by the registry, not computed in the
+  harvest.** The design counted the ref in the list `TriggersForCard`
+  returns. The code instead stamps every triggered row once, when the
+  catalog files its definition (`game.IdentifyCatalogRows`, called by
+  `effects.fileDef` for a card, a face, an emblem, a token template and
+  a granted bundle). Every copy of the row the engine hands out keeps
+  that identity: through `CatalogTriggers`, a merged composite key, the
+  designation filter and the LTB and declared-zone harvests. So no
+  harvest path threads an index, and prowess and face-down ward, which
+  are not catalog rows, are never counted.
+  - `AbilityRef.Key` for a triggered row is the key it was filed under.
+    It is never a composite.
+  - A row from a granted bundle, including a #665 copy grant, is
+    `grant:<bundle>:<i>:<n>` under the bundle's `GrantKey`. This is
+    unlike 4-1's activated copy-grant rows, which are `own:<i>` under
+    the composite `CatalogKey`. Both resolve through the same lookup.
+  - `<n>` is numbered when a composite key's definition is merged
+    (`numberTriggerRowOccurrences`), so a bundle granted twice gives
+    instance 0 and instance 1.
+- **The name is the row's `Key`.** `Ward`, `Cascade`, `GrantsCascade`
+  and `Storm` now declare a `Key` so the Q2 check has one. A row with
+  an empty `Key` matches only at its exact index, with no label
+  fallback, as in 4-1.
+- **One resolver.** 4-1's lookup became the generic `resolveAbilityRow`,
+  and `resolveActivatedAbilityRef` and `resolveTriggeredAbilityRef` are
+  two thin wrappers over it. The restore, the `catalog/triggered` body,
+  `LostStackAbilities` and the refusals ask the same question for both
+  slots. `catalog/triggered` is registered and in the ledger, and the
+  refusal now checks that the ref's slot is the one its body reads.
+- **A triggered item's clauses come back only where it held one.** The
+  snapshot's `hasTargetSpec` and `hasModeSpec` decide. The activated
+  slot always restores both, because an activation always stamps the
+  row's clauses. A trigger takes its clause from the announcement,
+  which may have had none.
+- **The `TargetsFrom` audit.** 18 files use `TargetsFrom`. 17 of them
+  read only the trigger context and the source's instance ID
+  (`AnotherTarget`, `NotSelf`, `OtherThan`, and Scrap Trawler's mana
+  value). Molten Primordial reads `g.Seats`, which is the board. The
+  design had no way to keep such a row unstamped, so the row declares
+  it: `TriggeredAbility.TargetsFromReadsBoard`. A row that sets it is
+  never stamped and is on the allowlist.
+  - A stamped `TargetsFrom` clause is rebuilt after the whole game is
+    restored (`rederiveTriggerClauseLocked`). It is called with the
+    item's carried `Trigger` and with the source card as the restored
+    game has it. When the source is in no zone (a token that has
+    ceased to exist), it gets a stand-in carrying the recorded ID and
+    controller.
+- **The constructors.** `OnAny` declares its `Effect`, so every
+  constructor on it does too. A nil effect keeps a hand-built item,
+  because Forum Familiar replaces the `Build` afterwards and a row with
+  neither would never trigger.
+  - `WhenYouLoseControlOfThis` keeps a fill-in `Build` for its
+    controller.
+  - `WheneverAnOpponentActivates` reads the activator from
+    `item.Trigger` at resolution.
+  - `Ward` and `WardGranted` read the targeting item and the payer from
+    `item.Trigger`. The "no item or no payer" check moved from `Build`
+    to `AppliesTo`.
+  - `Cascade` and `GrantsCascade` carry the spell's mana value as
+    `Params.Amount`.
+  - `Storm` reads the spell off the item's source.
+  - Gift's entry trigger carries the promised opponent as
+    `Params.Player`.
+- **The `buildDef` keywords.** `buildDef` appends suspend's two
+  triggers and madness's trigger to the card's own `CardDef.Triggered`,
+  so they are catalog rows and the registry stamps them. 4-0 merged
+  while this slice was open and keyed all three with tier-2 bodies
+  (`suspend/tick`, `suspend/free-cast`, `madness/offer`). This slice
+  keeps 4-0's version, so their items name those bodies and never
+  `catalog/triggered`. Gift's entry trigger is the `buildDef` keyword
+  this slice declared.
+- **The allowlist** is
+  `server/internal/cards/effects/testdata/legacy_trigger_builds.txt`.
+  Each line is `<card name> | <catalog key> | <row index>`, sorted by
+  card name, so a tail batch that takes a run of cards deletes a
+  contiguous block. It lists 395 rows. The production catalog has 852
+  declared rows, and `TestDeclaredTriggerRowsAreStampable` holds every
+  one of them to being nameable. Ten more rows (the suspend and madness
+  rows) are keyed by a `Build` of their own.
+  - `TestLegacyTriggerBuildsOnlyShrink` fails on a listed row that no
+    longer needs listing, and on an unlisted row that has no `Effect`
+    or reads the board.
+  - It reads the production catalog as `TestMain` captured it, before
+    any test registers a fixture.
+  - A row with no `Effect` whose `Build` makes a keyed item is data and
+    is not listed. The lint finds out by calling the `Build` once on a
+    fresh game with a stand-in source. A `Build` that cannot run on a
+    stand-in stays listed, which is the safe side.
+  - `-update-legacy-triggers` deletes stale lines and never adds one.
+- **P11.** No census counter retires in this slice. The resume-frame
+  routes changed: `pickTargetFrame.build` and `triggerResumeFrame.build`
+  are gone, and `pickTargetFrame.ability` and `TriggeredAbility.Effect`
+  are new. All four are `census:ChoiceResumeFrames`, so its count is
+  unchanged at 109. `StackEffects` stays at 6 until the tail retires
+  it. The ratchet generator now writes the P11 paragraph of the file
+  header itself. 4-1 had added it by hand, and a regeneration dropped
+  it.
+- **Fixtures.** New files in `v7/`, each made by real cards. No existing
+  fixture changed.
+  - `etb_trigger_on_stack`: Mulldrifter.
+  - `granted_dies_trigger`: Feign Death's grant, keyed through LKI.
+  - `token_trigger`: a Pest.
+  - `emblem_trigger`: Teferi, Hero of Dominaria's emblem, targeted.
+  - `modal_trigger`: Gala Greeters.
+  - `targets_from_trigger`: Gixian Puppeteer's "another target".
+  - `storm_after_counter`: Grapeshot's storm trigger over a countered
+    Grapeshot in `lastKnownStack`.
+  - `prowess_on_stack`: a prowess trigger keyed by 4-0's `prowess/pump`
+    body, above the Lightning Bolt that triggered it. 4-0 merged while
+    this slice was open and added `reflexive_trigger` itself.
+
+  That is eight new files in all.
