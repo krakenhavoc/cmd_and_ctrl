@@ -62,6 +62,19 @@ func NewTriggeredItem(source *Card, label string, effect func(g *Game, item *Sta
 	}
 }
 
+// NewKeyedTriggeredItem is NewTriggeredItem for an ENGINE trigger with
+// no catalog row (ADR 0041 P9, #1497, tier 4): prowess, suspend,
+// madness, the monarch, evoke's sacrifice, face-down ward. Effect is
+// derived from the registered body rather than captured directly, and
+// Body/Params are stamped alongside it, so a table with one of these on
+// the stack is still a restore point — the same shape
+// dt.stackItem() stamps for a fired delayed trigger.
+func NewKeyedTriggeredItem(source *Card, label string, body BodyRef, params EffectParams) *StackItem {
+	item := NewTriggeredItem(source, label, bodyEffect(body.key, params))
+	item.Body, item.Params = body.key, params
+	return item
+}
+
 // TriggeredAbility declares one auto-fire trigger on a catalog card.
 // Cards declare a list (effects.Spec.Triggered) — typical creatures
 // have zero entries, ETB-trigger creatures have one or two.

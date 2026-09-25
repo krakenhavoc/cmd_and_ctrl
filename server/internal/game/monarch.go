@@ -115,6 +115,7 @@ func (g *Game) monarchCombatDamageTriggerLocked(ev Event) {
 	if claimant == nil || claimant.Eliminated {
 		return
 	}
+	params := EffectParams{Player: newMonarch}
 	g.queueHarvestedTriggerLocked(&StackItem{
 		Kind: StackItemTriggered,
 		// CR 724.2: controlled by the player who WAS the monarch when
@@ -125,12 +126,22 @@ func (g *Game) monarchCombatDamageTriggerLocked(ev Event) {
 		Controller: g.Monarch,
 		Owner:      g.Monarch,
 		Label:      "the monarch — " + claimant.Name + " becomes the monarch",
-		Effect: func(g *Game, _ *StackItem) error {
-			g.becomeMonarchLocked(newMonarch)
-			return nil
-		},
+		// ADR 0041 P9 (#1497, tier 4): the monarch's two triggers have
+		// no catalog row and no source card, so they are keyed
+		// directly. The new monarch — captured before as `newMonarch`
+		// — rides Params.Player instead.
+		Body:   monarchCrownBody.Key(),
+		Params: params,
+		Effect: bodyEffect(monarchCrownBody.Key(), params),
 	})
 }
+
+// monarchCrownBody is "monarch/crown" (ADR 0041 P9, #1497, tier 4):
+// Params.Player becomes the monarch.
+var monarchCrownBody = DelayedBody("monarch/crown", func(g *Game, _ *StackItem, p EffectParams) error {
+	g.becomeMonarchLocked(p.Player)
+	return nil
+})
 
 // monarchEndStepTriggerLocked is CR 724.2's first ability: "at the
 // beginning of the monarch's end step, that player draws a card".
@@ -151,21 +162,29 @@ func (g *Game) monarchEndStepTriggerLocked(ev Event) {
 		return
 	}
 	crowned := g.Monarch
+	params := EffectParams{Player: crowned}
 	g.queueHarvestedTriggerLocked(&StackItem{
 		Kind:       StackItemTriggered,
 		Controller: crowned,
 		Owner:      crowned,
 		Label:      "the monarch — draw a card",
-		Effect: func(g *Game, _ *StackItem) error {
-			// "That player" is the player who was the monarch when
-			// the ability triggered, so the draw is nailed to the
-			// captured ID rather than re-read off g.Monarch. Losing
-			// the crown in response to your own end-step trigger does
-			// not cost you the card.
-			return g.DrawNForEffect(crowned, 1)
-		},
+		// ADR 0041 P9 (#1497, tier 4): keyed directly, with "that
+		// player" — the monarch when the ability triggered, not
+		// whoever holds the crown at resolution — carried as
+		// Params.Player rather than captured.
+		Body:   monarchDrawBody.Key(),
+		Params: params,
+		Effect: bodyEffect(monarchDrawBody.Key(), params),
 	})
 }
+
+// monarchDrawBody is "monarch/draw" (ADR 0041 P9, #1497, tier 4):
+// Params.Player draws a card. Losing the crown in response to your own
+// end-step trigger does not cost you the card, because Params.Player
+// is fixed when the trigger was created, not re-read off g.Monarch.
+var monarchDrawBody = DelayedBody("monarch/draw", func(g *Game, _ *StackItem, p EffectParams) error {
+	return g.DrawNForEffect(p.Player, 1)
+})
 
 // monarchLeftTheGameLocked is CR 725.4: the crown never falls off the
 // table. When the monarch leaves, the active player takes it; if the

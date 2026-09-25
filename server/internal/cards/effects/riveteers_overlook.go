@@ -24,6 +24,16 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // The whole card is b08OverlookSacrifice, the shape four more New
 // Capenna lands print; this one keeps its own spec only because it
 // names its three basics in its labels.
+//
+// riveteersOverlookFetchBody is registered here rather than through
+// b08OverlookLand (ADR 0041 P9, #1497, tier 4), for the same reason
+// the spec stays its own: the printed basics live in the reflexive
+// trigger's own key and label.
+var riveteersOverlookFetchBody = game.SimpleDelayedBody("overlook/riveteers-overlook-fetch",
+	b08OverlookFetchFor("Riveteers Overlook — a basic Swamp, Mountain, or Forest", func(c game.Card) bool {
+		return IsBasicLand(c) && (c.HasSubtype("Swamp") || c.HasSubtype("Mountain") || c.HasSubtype("Forest"))
+	}))
+
 func init() {
 	Register(Spec{
 		OracleID:     "5548ff43-e5f6-4a63-8562-a2b1de06d6f5",
@@ -33,10 +43,7 @@ func init() {
 			On(game.EventETB, b06SelfETB, "Riveteers Overlook — sacrifice it",
 				b08OverlookSacrifice(
 					"Riveteers Overlook — fetch a basic Swamp, Mountain, or Forest tapped, gain 1 life",
-					"Riveteers Overlook — a basic Swamp, Mountain, or Forest",
-					func(c game.Card) bool {
-						return IsBasicLand(c) && (c.HasSubtype("Swamp") || c.HasSubtype("Mountain") || c.HasSubtype("Forest"))
-					},
+					riveteersOverlookFetchBody,
 				)),
 		},
 	})

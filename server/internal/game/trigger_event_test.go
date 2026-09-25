@@ -350,8 +350,8 @@ func TestAReflexiveTriggerCarriesNoTriggeringEvent(t *testing.T) {
 
 	g.WithWriteLock(func() {
 		ok := g.QueueReflexiveTriggerForEffect(parent, ReflexiveTrigger{
-			Label:  "when you do",
-			Effect: func(*Game, *StackItem) error { return nil },
+			Label: "when you do",
+			Body:  testBody(func(*Game, *StackItem) error { return nil }),
 		})
 		if !ok {
 			t.Fatal("QueueReflexiveTriggerForEffect refused a well-formed declaration")

@@ -137,10 +137,9 @@ func invasionOfTarkirQueueDamage(g *game.Game, item *game.StackItem, revealed []
 		}
 	}
 	return ReflexiveTrigger{
-		Label:   "Invasion of Tarkir — X plus 2 damage to any other target",
-		Targets: tarkirAnyOtherTarget(),
-		Cards:   revealed,
-		Effect:  invasionOfTarkirDamage,
+		Label: "Invasion of Tarkir — X plus 2 damage to any other target",
+		Cards: revealed,
+		Body:  tarkirDamageBody,
 	}.Apply(ctx)
 }
 

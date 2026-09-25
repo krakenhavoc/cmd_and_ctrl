@@ -24,22 +24,28 @@ import (
 //	    }
 //	    // "When you do" — it was sacrificed, so the trigger happens.
 //	    return WhenYouDo("Riveteers Overlook — fetch a basic tapped, gain 1 life",
-//	        riveteersOverlookFetch).Apply(ctx)
+//	        riveteersOverlookFetchBody).Apply(ctx)
 //	}
 //
-// The three rules for using it:
+// The four rules for using it:
 //
 //   - **Apply it only once the condition held.** "When you do" is
 //     conditional on the doing: a land that was bounced in response
 //     and could not be sacrificed never creates the trigger. Nothing
 //     in the engine re-checks that — the `if` is the card's.
-//   - **The Effect reads everything off the item**, exactly as a
+//   - **The body is registered, not written inline** (ADR 0041 P9,
+//     #1497, tier 4): every reflexive-trigger body in the catalog is a
+//     game.BodyRef from reflexive_bodies.go, registered once with
+//     game.ReflexiveBody / game.SimpleDelayedBody, so a table with a
+//     reflexive trigger waiting — or resolving on the stack — is still
+//     a restore point. A card file never writes `Body: fn` inline.
+//   - **The body reads everything off the item**, exactly as a
 //     harvested trigger's does. The trigger's own target is
 //     item.Targets (chosen when it goes on the stack, CR 603.3d, not
 //     when the parent resolved); what the parent needs to tell it
-//     rides Cards / Players and comes back as ctx.Payload().
-//     Capturing a *Card or a *Game in that closure is the same
-//     mistake it always was.
+//     rides Cards / Players and comes back as ctx.Payload(). Data the
+//     body needs beyond that — an amount, a name — is Params, read
+//     back the way any other registered body reads it.
 //   - **The "you may" usually belongs to the PARENT.** In "you may
 //     sacrifice another creature. When you do, …" the choice is the
 //     parent ability's optional prompt; the reflexive half is
@@ -53,19 +59,13 @@ import (
 // there rather than when the parent was announced.
 //
 // Applying it is a no-op outside a resolving stack item (an AsEnters
-// context has none) and for a declaration with no Label or no Effect.
+// context has none) and for a declaration with no Label or no Body.
 // It never returns an error: a trigger with no legal target is
 // removed per CR 603.3d, which is the printed outcome, not a failure.
 type ReflexiveTrigger struct {
 	// Label is the stack-overlay copy, phrased like every other
 	// trigger's: "<card> — <what happens>".
 	Label string
-
-	// Targets is the reflexive trigger's own target clause. The
-	// legal set is computed when the trigger is created and the
-	// controller picks from it then (CR 603.3d); an empty set drops
-	// the trigger with no prompt. Nil for an untargeted follow-up.
-	Targets *game.TargetSpec
 
 	// Optional is the question for a reflexive trigger whose own
 	// printed text says "you may". Empty means mandatory, which is
@@ -82,10 +82,17 @@ type ReflexiveTrigger struct {
 	// parent chose. Read back off ctx.Payload() by Kind.
 	Players []uuid.UUID
 
-	// Effect is what the trigger does on resolution. Same contract
-	// as every other trigger's: read the controller, source, targets
-	// and payload off the item, capture nothing.
-	Effect Effect
+	// Body is the registered body this trigger resolves through
+	// (reflexive_bodies.go). Its own registration — game.ReflexiveBody
+	// — is where the target clause lives, when there is one: a
+	// reflexive trigger has no catalog row to re-derive a captured
+	// clause from at restore, so the clause is declared beside the
+	// body instead of on this struct.
+	Body game.BodyRef
+
+	// Params is the body's plain data (Teferi Akosa of Zhalfir's X,
+	// Breeches' mana value). Zero for a body that reads only the item.
+	Params game.EffectParams
 }
 
 func (r ReflexiveTrigger) Apply(ctx *Context) error {
@@ -109,23 +116,24 @@ func (r ReflexiveTrigger) Apply(ctx *Context) error {
 	}
 	ctx.Game.QueueReflexiveTriggerForEffect(ctx.Item, game.ReflexiveTrigger{
 		Label:    r.Label,
-		Targets:  r.Targets,
 		Optional: optional,
 		Payload:  payload,
-		Effect:   r.Effect,
+		Body:     r.Body,
+		Params:   r.Params,
 	})
 	return nil
 }
 
 // WhenYouDo is the common shape: a mandatory, untargeted "when you
 // do, <do X>" with nothing to carry over. Sugar for a
-// ReflexiveTrigger with only Label and Effect set, so the card file
+// ReflexiveTrigger with only Label and Body set, so the card file
 // reads like the card.
 //
-// Add a clause by taking the value and setting the field —
-// `t := WhenYouDo(label, effect); t.Targets = TargetAny()` — or write
-// the struct literal, which is what a card with a target clause or a
-// payload should do anyway.
-func WhenYouDo(label string, effect Effect) ReflexiveTrigger {
-	return ReflexiveTrigger{Label: label, Effect: effect}
+// Add a clause by taking the value and setting a field —
+// `t := WhenYouDo(label, body); t.Params = game.EffectParams{Amount: n}`
+// — or write the struct literal, which is what a card with a payload
+// should do anyway. A targeted follow-up's clause lives on the body's
+// own game.ReflexiveBody registration, not here.
+func WhenYouDo(label string, body game.BodyRef) ReflexiveTrigger {
+	return ReflexiveTrigger{Label: label, Body: body}
 }

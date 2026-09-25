@@ -38,6 +38,20 @@ func testCondition(fn func(ev Event, dt *DelayedTrigger, g *Game) bool) Conditio
 	})
 }
 
+// testReflexiveBody registers a one-off test body for a CR 603.12
+// reflexive trigger (ADR 0041 P9, #1497, tier 4), with its own target
+// clause when targets is non-nil — testBody's twin for the one shape
+// it cannot cover, since a reflexive trigger's clause lives on the
+// body's own registration rather than on a field.
+func testReflexiveBody(fn func(g *Game, item *StackItem) error, targets *TargetSpec) BodyRef {
+	key := fmt.Sprintf("%sreflexive-%d", testEffectKeyPrefix, testEffectKeySeq.Add(1))
+	var targetsFrom func(uuid.UUID, EffectParams) *TargetSpec
+	if targets != nil {
+		targetsFrom = func(uuid.UUID, EffectParams) *TargetSpec { return targets }
+	}
+	return ReflexiveBody(key, func(g *Game, item *StackItem, _ EffectParams) error { return fn(g, item) }, targetsFrom)
+}
+
 var updateEffectKeys = flag.Bool("update-effect-keys", false,
 	"append newly registered effect keys to testdata/effect_keys.txt (never removes a line)")
 
