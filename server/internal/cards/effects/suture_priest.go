@@ -32,20 +32,8 @@ func init() {
 					c, ok := g.LookupCardForEffect(ev.CardID)
 					return ok && c.IsCreature() && c.Controller != source.Controller
 				},
-				Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
-					c, ok := g.LookupCardForEffect(ev.CardID)
-					if !ok {
-						return nil
-					}
-					victim := c.Controller
-					return game.NewTriggeredItem(source, "Suture Priest — that player loses 1 life",
-						func(g *game.Game, item *game.StackItem) error {
-							if g.PlayerByIDForEffect(victim) == nil {
-								return nil
-							}
-							return g.ChangePlayerLifeForEffect(item.SourceCardID, victim, -1)
-						})
-				},
+				Key:            "Suture Priest — that player loses 1 life",
+				Effect:         thatPlayerLosesOneLife,
 				OptionalPrompt: &game.TriggerOptionalPrompt{Question: "Suture Priest — that player loses 1 life?"},
 			},
 		},

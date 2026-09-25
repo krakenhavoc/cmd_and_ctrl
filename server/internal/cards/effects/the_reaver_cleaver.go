@@ -44,10 +44,8 @@ func init() {
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return dealtCombatDamageToPlayerOrPlaneswalkerByAttached(ev, source, g)
 			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "The Reaver Cleaver — create that many Treasure tokens",
-					theReaverCleaverCreateTreasures)
-			},
+			Key:    "The Reaver Cleaver — create that many Treasure tokens",
+			Effect: theReaverCleaverCreateTreasures,
 		}},
 		Activated: []ActivatedAbility{
 			EquipAbility("{3}"),

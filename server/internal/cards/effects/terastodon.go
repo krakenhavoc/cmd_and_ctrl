@@ -35,28 +35,26 @@ func init() {
 				return ev.CardID == source.InstanceID
 			},
 			Targets: TargetPermanent("up to three target noncreature permanents", Noncreature()).WithCount(0, 3),
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Terastodon — destroy up to three noncreature permanents, Elephants for their controllers",
-					func(g *game.Game, item *game.StackItem) error {
-						ctx := NewContext(g, item)
-						var victims []b12Victim
-						for _, t := range ctx.LegalTargets() {
-							if t.Kind != game.TargetCard {
-								continue
-							}
-							controller, ok := controllerOfTarget(ctx, t.ID)
-							if !ok {
-								continue
-							}
-							victims = append(victims, b12Victim{ID: t.ID, Controller: controller})
-						}
-						for _, v := range victims {
-							if err := (DestroyTarget{Target: v.ID}).Apply(ctx); err != nil {
-								return err
-							}
-						}
-						return b12ElephantsForTheDestroyed(ctx, victims)
-					})
+			Key:     "Terastodon — destroy up to three noncreature permanents, Elephants for their controllers",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				ctx := NewContext(g, item)
+				var victims []b12Victim
+				for _, t := range ctx.LegalTargets() {
+					if t.Kind != game.TargetCard {
+						continue
+					}
+					controller, ok := controllerOfTarget(ctx, t.ID)
+					if !ok {
+						continue
+					}
+					victims = append(victims, b12Victim{ID: t.ID, Controller: controller})
+				}
+				for _, v := range victims {
+					if err := (DestroyTarget{Target: v.ID}).Apply(ctx); err != nil {
+						return err
+					}
+				}
+				return b12ElephantsForTheDestroyed(ctx, victims)
 			},
 		}},
 	})

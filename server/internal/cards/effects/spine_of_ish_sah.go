@@ -28,9 +28,8 @@ func init() {
 				Watches:   []game.EventKind{game.EventETB},
 				AppliesTo: b06SelfETB,
 				Targets:   TargetPermanent("target permanent"),
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return destroyChosenTargetTrigger(source, "Spine of Ish Sah — destroy target permanent")
-				},
+				Key:       "Spine of Ish Sah — destroy target permanent",
+				Effect:    destroyChosenPermanent,
 			},
 			WhenThisDies("Spine of Ish Sah — return it to its owner's hand", func(g *game.Game, item *game.StackItem) error {
 				if z := g.FindCardZoneForEffect(item.SourceCardID); z == nil || z.Kind != game.ZoneGraveyard {

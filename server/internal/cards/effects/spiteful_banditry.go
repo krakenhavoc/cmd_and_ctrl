@@ -48,17 +48,18 @@ func init() {
 			{
 				Watches:   []game.EventKind{game.EventETB},
 				AppliesTo: Self,
+				Key:       "Spiteful Banditry — deal X damage to each creature",
+				// #1312/#1357: read once, here (ADR 0041 P9's fill-in
+				// Build), and stamp the plain int on Params.Amount
+				// rather than closing over the card, which the
+				// Effect must not capture.
 				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					// #1312/#1357: read once, here, and close over the
-					// plain int — not the card, which the Effect below
-					// must not capture (AGENTS.md: undo restores a
-					// cloned game and the closure has to resolve
-					// against that one).
-					x := source.CastX()
-					return game.NewTriggeredItem(source, "Spiteful Banditry — deal X damage to each creature",
-						func(g *game.Game, item *game.StackItem) error {
-							return damageEachMatching(NewContext(g, item), Creature(), x)
-						})
+					item := game.NewTriggeredItem(source, "Spiteful Banditry — deal X damage to each creature", nil)
+					item.Params.Amount = source.CastX()
+					return item
+				},
+				Effect: func(g *game.Game, item *game.StackItem) error {
+					return damageEachMatching(NewContext(g, item), Creature(), item.Params.Amount)
 				},
 			},
 			On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {

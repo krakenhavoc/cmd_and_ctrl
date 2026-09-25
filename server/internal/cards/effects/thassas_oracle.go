@@ -42,15 +42,11 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventETB},
-			Key:     "Thassa's Oracle — look at the top X cards",
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return ev.CardID == source.InstanceID
 			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source,
-					"Thassa's Oracle — look at the top X cards, then win if X is at least your library",
-					thassasOracleResolve)
-			},
+			Key:    "Thassa's Oracle — look at the top X cards, then win if X is at least your library",
+			Effect: thassasOracleResolve,
 		}},
 	})
 }
