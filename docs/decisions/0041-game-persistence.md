@@ -2408,3 +2408,51 @@ the code wins, and each difference is listed here.
     this slice was open and added `reflexive_trigger` itself.
 
   That is eight new files in all.
+
+### Implementation notes (tier 4 tail: design leftovers)
+
+Five rows the alphabetical tail batches left, each for a reason of its
+own.
+
+- **The Ozolith (row 0).** "Those counters" is read at resolution
+  through `ctx.TriggeringPermanent()`, the #1379 record, instead of a
+  map frozen in the `Build`. The value is the same: `battlefieldExitLocked`
+  writes the CR 603.10 counters (`lastKnownCounters`, which `AppliesTo`
+  still reads) and the record in consecutive calls, each a copy of the
+  same `Card.Counters`, and the record is keyed by the object's epoch.
+  The lifetimes differ. The record is dropped at the turn boundary and
+  when the card's owner leaves the game. A frozen map outlived both. So
+  a trigger still waiting after a sandbox `pass_turn`, or after the
+  departed creature's owner conceded, now puts nothing on The Ozolith.
+  That is the posture every #1379 reader already has (Hangarback
+  Walker), and it is the weaker answer.
+- **Valakut Exploration (row 1).** The cards exiled with the
+  enchantment, frozen as the ability triggers, ride the item's
+  `Payload`: persisted, cloned, copied with the ability, and read back
+  with `ctx.PayloadCards()`. No new `EffectParams` field.
+- **Molten Primordial (row 0).** It no longer sets
+  `TargetsFromReadsBoard`. Its clause reads two things. The first is
+  the seat list and each seat's name. Seats are permanent once the game
+  starts: `AddPlayer` and `RemovePlayer` are lobby-only, an eliminated
+  seat stays in the list, and the snapshot restores `g.Seats` in order.
+  The second is the controller "opponent" is relative to. It now comes
+  from the trigger context's snapshot of the entering permanent
+  (`tc.Object.Controller`) rather than from `source.Controller`. The two
+  agree at the harvest. At a restore, though, `source` is the live card,
+  so a Primordial stolen while its trigger waited would have shifted
+  every clause onto the wrong player. No catalog row sets the flag now.
+- **Éowyn, Shieldmaiden (row 0).** An ordinary conversion. Nothing was
+  captured.
+- **Resourceful Defense (row 0) stays listed.** Its "those counters" is
+  a walk of the event log (`b14LastKnownCounterKinds`), and the walk does
+  not agree with the record. CR 704.5q's +1/+1 / −1/−1 cancel
+  (`stateBasedActionsLocked`) rewrites `Card.Counters` and emits no
+  `EventCounterPlaced`. So the walk still reports counters the
+  permanent no longer had. Take a creature with one +1/+1 counter that
+  is given a −1/−1 counter. The pair cancels, and the creature then
+  dies with no counters. Resourceful Defense triggers anyway and puts a
+  +1/+1 counter and a −1/−1 counter on its target, and on a noncreature
+  target both stay. Reading the record, as The Ozolith does, is the
+  rules answer. The trigger would not fire at all. But it changes play,
+  so the change is left to its own PR. That PR also moves the walk out
+  of `AppliesTo`.

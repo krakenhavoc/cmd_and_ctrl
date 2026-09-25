@@ -34,7 +34,6 @@ History of Benalia | c15bb7eb-aaaa-4468-9641-8f706d6137e8 | 2
 Ignoble Hierarch | c8de43a3-ebd3-4000-b343-a6ffed11d34d | 0
 Jagged Barrens | 64ee02f1-afdb-474b-a893-31538ad7219a | 0
 Jungle Hollow | 6de714e1-446d-4fb9-9e3d-bcd3ec6af9ca | 0
-Molten Primordial | 8d8c9f7b-92c7-4284-ad9c-304ce42edba5 | 0
 Mosswort Bridge | 7cb9e29f-835f-4155-a2a5-4b778866c773 | 0
 Noble Hierarch | 98aa9424-5912-4bd6-9300-b3972a31d8af | 0
 Phyrexian Scriptures | 11173ad3-c007-478f-bce0-d756eac07ccb | 0
@@ -75,7 +74,6 @@ The Legend of Roku | 2f26f270-26d9-46d3-957f-19f52d51eb03 | 2
 The Legend of Yangchen | 521a63cf-5e83-4649-9800-c62b2fc474d6 | 0
 The Legend of Yangchen | 521a63cf-5e83-4649-9800-c62b2fc474d6 | 1
 The Legend of Yangchen | 521a63cf-5e83-4649-9800-c62b2fc474d6 | 2
-The Ozolith | 1946ded1-5f53-409f-b0a6-5433bb0357d2 | 0
 Thornwood Falls | ec96cde2-f1e6-495c-94e2-3e8ae79e556c | 0
 Tranquil Cove | 5d641bf6-0f93-4189-8dc1-ec7ea446dade | 0
 Triumph of Gerrard | 426a5f3f-f161-49b3-97d0-02cda554752b | 0
@@ -84,8 +82,6 @@ Triumph of Gerrard | 426a5f3f-f161-49b3-97d0-02cda554752b | 2
 Urza's Saga | 4c6a0c30-b547-4eff-8ff4-0ca25803c076 | 0
 Urza's Saga | 4c6a0c30-b547-4eff-8ff4-0ca25803c076 | 1
 Urza's Saga | 4c6a0c30-b547-4eff-8ff4-0ca25803c076 | 2
-Valakut Exploration | d6861319-ae16-4e6c-af87-a264f667d694 | 1
 Wind-Scarred Crag | b0af0c54-2a59-4075-8543-d41ff20c4c87 | 0
 Windbrisk Heights | 3589bcfc-42b0-414a-adce-bc690dc631c8 | 0
 Wizard Class | 36f68aa3-9955-46f1-bc87-497f16ef5222 | 0
-Éowyn, Shieldmaiden | 98a2a642-a30a-43e7-b47f-4776c22d1cb0 | 0
