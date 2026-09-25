@@ -15,7 +15,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // EACH PLAYER'S draw step, not yours — so the trigger fires four
 // times a turn cycle at a four-player table, and the drawer is the
-// event's Actor rather than the Mine's controller.
+// event's Actor, read at resolution off the item's carried trigger
+// context (item.Trigger.Event.Actor, #1223), rather than the Mine's
+// controller.
 //
 // IF THIS ARTIFACT IS UNTAPPED is a CR 603.4 intervening-if clause,
 // checked twice: once when the trigger would go on the stack, and
@@ -43,21 +45,15 @@ func init() {
 				// Mine never puts the trigger on the stack at all.
 				return !source.Tapped
 			},
-			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				// The DRAWER is the player whose draw step it is, not
-				// the Mine's controller. Captured by value, which is
-				// clone-safe.
-				drawer := ev.Actor
-				return game.NewTriggeredItem(source, "Howling Mine — draw an additional card",
-					func(g *game.Game, item *game.StackItem) error {
-						// Intervening-if, second check (CR 603.4):
-						// tapping the Mine in response is the play,
-						// and it has to stop the draw.
-						if c, ok := g.LookupCardForEffect(item.SourceCardID); !ok || c.Tapped {
-							return nil
-						}
-						return g.DrawNForEffect(drawer, 1)
-					})
+			Key: "Howling Mine — draw an additional card",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				// Intervening-if, second check (CR 603.4):
+				// tapping the Mine in response is the play,
+				// and it has to stop the draw.
+				if c, ok := g.LookupCardForEffect(item.SourceCardID); !ok || c.Tapped {
+					return nil
+				}
+				return g.DrawNForEffect(item.Trigger.Event.Actor, 1)
 			},
 		}},
 	})

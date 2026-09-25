@@ -12,12 +12,12 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // The Hydra that pays out on death. Trample rides PrintedKeywords;
 // the X counters are the printed entry clause (below); the death
-// trigger reads the Hydra's
-// last-known power — the harvester's LKI characteristic carries the
-// layer-computed P/T and the +1/+1 counters are read back off the
-// log (b13LastKnownPower, Conclave Mentor's shape), so a pumped or
-// grown Hydra pays out for what it was when it died — and gains that
-// much life, then draws that many, in printed order.
+// trigger reads the Hydra's last-known power (CR 608.2h) at
+// resolution through ctx.TriggeringPermanent() (#1379, Conclave
+// Mentor's shape) — the layer-computed P/T plus the +1/+1 counters it
+// had when it left, so a pumped or grown Hydra pays out for what it
+// was when it died — and gains that much life, then draws that many,
+// in printed order.
 //
 // The X counters are the printed CR 614.1c entry clause and ride the
 // CR 614 pipeline as one — XCounters, seeded onto the entry event off
@@ -48,13 +48,8 @@ func init() {
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return cardDied(ev, source)
 			},
-			Build: func(_ game.Event, source *game.Card, lki game.Characteristic, g *game.Game) *game.StackItem {
-				power := b13LastKnownPower(g, source.InstanceID, lki)
-				return game.NewTriggeredItem(source, "Lifeblood Hydra — gain life and draw cards equal to its power",
-					func(g *game.Game, item *game.StackItem) error {
-						return b28GainLifeAndDraw(g, item, power)
-					})
-			},
+			Key:    "Lifeblood Hydra — gain life and draw cards equal to its power",
+			Effect: b28LifebloodHydraPayout,
 		}},
 	})
 }

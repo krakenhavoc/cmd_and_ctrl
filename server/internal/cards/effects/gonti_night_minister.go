@@ -52,28 +52,27 @@ func init() {
 				Watches:   []game.EventKind{game.EventCast},
 				AppliesTo: gontiCastASpellTheyDontOwn,
 				Key:       "Gonti, Night Minister — that player creates a Treasure token",
-				Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					caster := ev.Actor
-					return game.NewTriggeredItem(source, "Gonti, Night Minister — that player creates a Treasure token",
-						func(g *game.Game, item *game.StackItem) error {
-							return CreateToken{Controller: caster, Template: TreasureToken(), N: 1}.Apply(NewContext(g, item))
-						})
+				Effect: func(g *game.Game, item *game.StackItem) error {
+					return CreateToken{Controller: item.Trigger.Event.Actor, Template: TreasureToken(), N: 1}.Apply(NewContext(g, item))
 				},
 			},
 			{
 				Watches:   []game.EventKind{game.EventDealDamage},
 				AppliesTo: gontiCombatDamageToYourOpponent,
 				Key:       "Gonti, Night Minister — exile the top card of that opponent's library",
+				// The damage source's controller ("its controller") is a
+				// board read at trigger time (ADR 0041 P9's fill-in Build):
+				// fixed when the trigger goes on the stack, not re-derived
+				// at resolution if the creature has since changed hands.
 				Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
-					victim := ev.Target
-					grantee := uuid.Nil
+					item := game.NewTriggeredItem(source, "Gonti, Night Minister — exile the top card of that opponent's library", nil)
 					if c, ok := g.LookupCardForEffect(ev.Source); ok {
-						grantee = c.Controller
+						item.Params.Player = c.Controller
 					}
-					return game.NewTriggeredItem(source, "Gonti, Night Minister — exile the top card of that opponent's library",
-						func(g *game.Game, item *game.StackItem) error {
-							return gontiExileTopForPlay(NewContext(g, item), victim, grantee, 1)
-						})
+					return item
+				},
+				Effect: func(g *game.Game, item *game.StackItem) error {
+					return gontiExileTopForPlay(NewContext(g, item), item.Trigger.Event.Target, item.Params.Player, 1)
 				},
 			},
 		},

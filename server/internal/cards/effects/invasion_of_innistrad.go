@@ -52,19 +52,17 @@ func init() {
 					return ev.CardID == source.InstanceID
 				},
 				Targets: TargetCreature("target creature an opponent controls", OpponentControls()),
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Invasion of Innistrad — -13/-13",
-						func(g *game.Game, item *game.StackItem) error {
-							if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
-								return nil
-							}
-							return BoostUntilEOT{
-								Target:    item.Targets[0].ID,
-								Power:     -13,
-								Toughness: -13,
-								Label:     "Invasion of Innistrad — -13/-13",
-							}.Apply(NewContext(g, item))
-						})
+				Key:     "Invasion of Innistrad — -13/-13",
+				Effect: func(g *game.Game, item *game.StackItem) error {
+					if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
+						return nil
+					}
+					return BoostUntilEOT{
+						Target:    item.Targets[0].ID,
+						Power:     -13,
+						Toughness: -13,
+						Label:     "Invasion of Innistrad — -13/-13",
+					}.Apply(NewContext(g, item))
 				},
 			},
 			DefeatedTrigger("Invasion of Innistrad — defeated: exile it", SiegeDefeated()),

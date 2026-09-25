@@ -20,10 +20,12 @@ import (
 //   - The dies trigger is b15AnotherCreatureDied narrowed to nontoken
 //     creatures the controller controls, and its body schedules The
 //     Locust God's CR 603.7 delayed trigger for the next end step —
-//     any player's, as printed — carrying the dead card's ID. When it
-//     fires, the card comes back to hand only if it is still in a
-//     graveyard: one reanimated or exiled in the meantime is a
-//     different object and is left alone.
+//     any player's, as printed — carrying the dead card's ID, read at
+//     resolution off the item's carried trigger context
+//     (item.Trigger.Event.CardID, #1223). When it fires, the card
+//     comes back to hand only if it is still in a graveyard: one
+//     reanimated or exiled in the meantime is a different object and
+//     is left alone.
 //   - The exile is a CR 614 replacement on the battlefield-to-
 //     graveyard move of a creature an opponent controls (Cosmic
 //     Intervention's shape, made permanent by living on Liesa). It
@@ -56,16 +58,13 @@ func init() {
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b19AnotherNontokenCreatureYouControlDied(ev, source, g)
 			},
-			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				dead := ev.CardID
-				return game.NewTriggeredItem(source, "Liesa, Forgotten Archangel — return that card to hand at the next end step",
-					func(g *game.Game, item *game.StackItem) error {
-						return ScheduleDelayedTrigger{
-							Label: "Liesa, Forgotten Archangel — return the creature card to its owner's hand",
-							Cards: []uuid.UUID{dead},
-							Body:  returnListedGraveyardToHandBody,
-						}.Apply(NewContext(g, item))
-					})
+			Key: "Liesa, Forgotten Archangel — return that card to hand at the next end step",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				return ScheduleDelayedTrigger{
+					Label: "Liesa, Forgotten Archangel — return the creature card to its owner's hand",
+					Cards: []uuid.UUID{item.Trigger.Event.CardID},
+					Body:  returnListedGraveyardToHandBody,
+				}.Apply(NewContext(g, item))
 			},
 		}},
 		Replacements: []game.ReplacementEffect{{

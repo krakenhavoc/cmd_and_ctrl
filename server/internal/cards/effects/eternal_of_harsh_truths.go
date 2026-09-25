@@ -36,15 +36,13 @@ func init() {
 				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 					return ev.Kind == game.EventBecomesBlocked && ev.CardID == source.InstanceID
 				},
-				Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					defender := ev.Actor
-					return game.NewTriggeredItem(source, "Eternal of Harsh Truths — afflict 2: defending player loses 2 life",
-						func(g *game.Game, item *game.StackItem) error {
-							if !defendingPlayerStillIn(g, defender) {
-								return nil
-							}
-							return g.ChangePlayerLifeForEffect(item.SourceCardID, defender, -2)
-						})
+				Key: "Eternal of Harsh Truths — afflict 2: defending player loses 2 life",
+				Effect: func(g *game.Game, item *game.StackItem) error {
+					defender := item.Trigger.Event.Actor
+					if !defendingPlayerStillIn(g, defender) {
+						return nil
+					}
+					return g.ChangePlayerLifeForEffect(item.SourceCardID, defender, -2)
 				},
 			},
 			WhenAttacksAndIsNotBlocked("Eternal of Harsh Truths — draw a card", func(g *game.Game, item *game.StackItem, _ uuid.UUID) error {

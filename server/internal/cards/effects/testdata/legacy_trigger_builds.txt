@@ -21,102 +21,19 @@ Blossoming Sands | 45429b2c-be3b-4b2e-9bab-a059ccbda8cd | 0
 Cool but Rude | 1f076303-d160-4e02-aa1e-9ed6040c3735 | 2
 Creosote Heath | c116b787-5f7e-47ef-a694-58709770dd32 | 0
 Dismal Backwater | 865a2194-fca0-446e-aae3-ca475cd66e00 | 0
-Duskshell Crawler | e54ad5a1-e79d-42db-a3e9-5caecae62c9f | 0
-Edea, Possessed Sorceress | 7beb7505-b765-486d-a205-78325922a10f | 2
-Edric, Spymaster of Trest | 9a1de7e4-9930-4db3-a8f3-d146d0abf38b | 0
-Emeria, the Sky Ruin | cc999cf2-c99b-4911-8c52-6cc4a99fcc7b | 0
-Enduring Tenacity | 98e698ae-1a69-469c-9cfb-0e3fedeb71d4 | 0
 Eroded Canyon | 852c6520-d148-4923-a312-05a9af821f24 | 0
-Ertai Resurrected | 3d038f7c-95fa-4b71-8f74-b9b4dd45cde0 | 0
-Esika's Chariot | 8e7b079d-9ede-421c-bd2b-f9a5126a8e6f | 1
-Esper Sentinel | 5def9f38-0a0b-4e8d-9f9d-29dcb46520b4 | 0
-Eternal Witness | 30b24e8e-3b0e-4d8e-90f3-f66eb7c1858c | 0
-Eternal of Harsh Truths | 5c09d646-afea-4fd0-9752-04820b81cc5b | 0
 Eternal of Harsh Truths | 5c09d646-afea-4fd0-9752-04820b81cc5b | 1
-Exquisite Blood | 8f933fae-6c0c-42d7-a817-14760d8285cd | 0
 Fable of the Mirror-Breaker | c0957e5e-c71b-439c-931c-9f55d2f76ace | 0
 Fable of the Mirror-Breaker | c0957e5e-c71b-439c-931c-9f55d2f76ace | 1
 Fable of the Mirror-Breaker | c0957e5e-c71b-439c-931c-9f55d2f76ace | 2
-Falkenrath Noble | 3739b179-bc81-4737-8376-66a57e16b942 | 0
-Farmer Cotton | 11f1d2b7-0c2b-40df-bf90-3c55b23449af | 0
-Fate Unraveler | 7d66f67d-3148-4636-ac5a-2cf8a51d5e50 | 0
-Fevered Visions | 70763549-4b4e-4cb8-8c02-0639ba18bb1a | 0
-Firemane Commando | ac675899-25bb-4f06-9c8c-bf188024495f | 1
-Flumph | bc328acc-8521-4581-88c3-99a7cb2c1cdb | 0
-Font of Mythos | 7194a262-5e7a-4c12-b271-2bc5e0799477 | 0
-Forbidden Orchard | cfd60d1f-9832-4408-b84e-0fd3018b015b | 0
-Forced Fruition | 448b27a5-7c0c-4ab6-bddf-bd62b920aacc | 0
-Forum Familiar | 7ea0012b-b90b-43d6-bb5b-e4e92452bea7 | 0
-Foundation Breaker | 8b7a3613-f1bd-4262-9b11-b631167c2c2d | 0
-Fury | fbf9f8c5-849f-45d5-8129-5fc683c21a04 | 0
-Garna, Bloodfist of Keld | 3fb83218-e18d-405d-91c8-46b5e4e672a9 | 0
-Gatekeeper of Malakir | 6781f8ae-2a86-4e3d-bc43-48809c9d6c26 | 0
-General Kreat, the Boltbringer | da1c1c70-c2fa-4ba7-89fe-d9af3fb353b9 | 0
-Generous Plunderer | 91c835d1-22ca-4c90-9ba6-c8e01bbc0347 | 1
-Genesis Chamber | 150ab025-5cc3-4468-a724-bbba8838445d | 0
-Gimli's Reckless Might | 824abca7-b5e2-4ddb-ac7d-b7d04758a3c9 | 0
-Gix, Yawgmoth Praetor | 928d977e-cff0-4e0e-83bb-16d73a754f35 | 0
-Goblin Sharpshooter | d81285b7-a718-411a-8be3-ecc0cfe0bcb0 | 0
-God-Eternal Bontu | 183891b0-b5ec-47f4-8d09-b9d3cfc4e7f1 | 0
-Goldspan Dragon | 716b3ea2-45b7-4a8f-af72-de7f4e510eff | 0
-Goldvein Hydra | 2b62543f-a475-457a-a96b-b5d070383d3c | 0
-Gonti, Night Minister | e16f79c1-ffbb-4893-b62a-d4e9d15e2b16 | 0
-Gonti, Night Minister | e16f79c1-ffbb-4893-b62a-d4e9d15e2b16 | 1
-Good-Fortune Unicorn | 1e0cdff3-3ec5-41fc-8053-f072bae156b3 | 0
 Graypelt Refuge | 60b36821-0fad-423c-98c4-f64d991719f3 | 0
-Grazilaxx, Illithid Scholar | d22ff377-d282-4a28-9dce-96f25913dc96 | 0
-Greenwarden of Murasa | 2facb1b3-4522-4610-a0ab-29ac53ca7fcd | 0
-Greenwarden of Murasa | 2facb1b3-4522-4610-a0ab-29ac53ca7fcd | 1
-Guild Artisan | aceac269-5100-428a-a4a3-bac57031e30b | 0
 Guiltfeeder | 0285bd20-f49e-48f7-8c8c-960f9fbe4d34 | 0
-Hammer of Nazahn | e3955573-3db5-490e-903e-65e0172a9202 | 0
-Hangarback Walker | dde55256-5259-44e7-a267-fca45a7f0d04 | 0
-Hanweir Garrison | 7cb29569-48e1-4782-9906-fad155ebfafe | 0
-Hashaton, Scarab's Fist | db266661-f783-4907-9e52-6963eec05431 | 0
-Hazel's Brewmaster | e8180024-1979-4677-9a0d-e08d4b7c825a | 0
-Heartwood Storyteller | 82e6da87-f8a4-4897-bf0f-c0f2cd06b8b1 | 0
-Hedron Crab | 7216f974-3c84-40ef-b904-82019900c204 | 0
-Hedron Detonator | 9221b29b-9351-4f70-9af4-8b9a33b43138 | 0
-Hellrider | f02557b0-f422-48cb-875e-2c814c39967d | 0
-Hero's Blade | e6bcd25d-39b6-4619-8a27-9f3d87f4a17b | 0
 History of Benalia | c15bb7eb-aaaa-4468-9641-8f706d6137e8 | 0
 History of Benalia | c15bb7eb-aaaa-4468-9641-8f706d6137e8 | 1
 History of Benalia | c15bb7eb-aaaa-4468-9641-8f706d6137e8 | 2
-Horn of Greed | b8181d53-1954-4f46-8670-8696440208e8 | 0
-Hostage Taker | c5c2d209-e3ef-4b0d-85f5-e7402dcf09eb | 0
-Howling Mine | d26b27db-a567-4631-b4b6-7294222fbdd1 | 0
-Hydra Omnivore | 8f504855-f3df-4284-a189-e799bcddf620 | 0
-Hydroid Krasis | 6bd872b2-5c40-4e11-9a7f-0136a51b0642 | 0
-Ichor Wellspring | 5b5ef43b-13fd-4461-8d2d-18be65e9a790 | 0
-Ichor Wellspring | 5b5ef43b-13fd-4461-8d2d-18be65e9a790 | 1
 Ignoble Hierarch | c8de43a3-ebd3-4000-b343-a6ffed11d34d | 0
-Ikra Shidiqi, the Usurper | a1a1761c-88e5-40b4-ba4c-60735c054b09 | 0
-Interplanar Beacon | 073169f2-da3a-4a93-8c01-b3fd8558d225 | 0
-Invasion of Innistrad | a3c1af66-63c8-41ec-a401-a3da1131dc67 | 0
-Ivy Lane Denizen | a5da5ad6-4ed2-4041-a983-76a8c87fa109 | 0
 Jagged Barrens | 64ee02f1-afdb-474b-a893-31538ad7219a | 0
 Jungle Hollow | 6de714e1-446d-4fb9-9e3d-bcd3ec6af9ca | 0
-Junk Diver | 08c595da-9305-42a9-b72f-5ccc546edc01 | 0
-Juri, Master of the Revue | 3364bad6-6d0a-4141-b410-86e3d9e1916e | 1
-Kaervek the Merciless | c7b72d38-0aa0-4e17-9dd5-9276d7cb21ec | 0
-Kambal, Consul of Allocation | 4987c458-604a-4727-b360-170616e91e67 | 0
-Kazuul, Tyrant of the Cliffs | f8bf3d91-cb50-48ce-88c6-cdcb37b64b57 | 0
-Kederekt Parasite | fc7b46af-6c07-455a-99c7-f1bccaa2a5f4 | 0
-Kediss, Emberclaw Familiar | d9c87cc2-943e-49b6-becc-748857549617 | 0
-Keeper of the Accord | 49b9a3ac-d245-431a-bf40-64d1b8dc2b91 | 0
-Keeper of the Accord | 49b9a3ac-d245-431a-bf40-64d1b8dc2b91 | 1
-Korvold, Fae-Cursed King | 9ae669dd-7e60-4649-b96e-35da28be641a | 0
-Kozilek, the Great Distortion | 4c1c1537-e519-4e2f-9bc2-d34b289d4487 | 0
-Lathiel, the Bounteous Dawn | d3c56fc4-3611-41b1-952e-4c5311b1510b | 0
-Legion Loyalty | 24e39d26-6a2b-461e-b194-bda575bcf898 | 0
-Leonin Warleader | 8b1351e6-165e-4ca3-96d5-4774b3176362 | 0
-Liesa, Forgotten Archangel | efcaadbe-24e3-4dfc-b08c-a910f003d427 | 0
-Lifeblood Hydra | b14d05c0-fe10-4079-a90e-0aea1a8fd375 | 0
-Light-Paws, Emperor's Voice | 1718a442-b878-4690-b608-a013de3d79fc | 0
-Liliana's Caress | a4aec0d6-13fa-4709-b1a9-2f483f032744 | 0
-Loran of the Third Path | b3d81980-76f2-44e2-b1c9-01e30c726312 | 0
-Lossarnach Captain | 1251691e-3c4c-4e45-9f59-f156852f2268 | 0
-Manabarbs | 0f1afedd-c60f-454f-b84a-c8117aec0128 | 0
 Manglehorn | b67db32b-30a9-49d2-b4c2-90a9f80c36eb | 0
 Mari, the Killing Quill | 5f1fdc23-9af0-41a1-aeba-7288f9642734 | 0
 Mari, the Killing Quill | 5f1fdc23-9af0-41a1-aeba-7288f9642734 | 1

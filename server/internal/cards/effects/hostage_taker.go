@@ -45,9 +45,8 @@ func init() {
 					return TargetPermanent("another target creature or artifact",
 						Or(Creature(), Artifact()), OtherThan(source.InstanceID))
 				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, hostageTakerExileLabel, hostageTakerExile)
-				},
+				Key:    hostageTakerExileLabel,
+				Effect: hostageTakerExile,
 			},
 			On(game.EventLTB, Self, "Hostage Taker — return the exiled card",
 				b41ReturnCardsExiledWithToTheBattlefield(hostageTakerExileLabel)),

@@ -33,9 +33,8 @@ func init() {
 			AppliesTo:      b06SelfETB,
 			OptionalPrompt: &game.TriggerOptionalPrompt{Question: "Foundation Breaker — destroy target artifact or enchantment?"},
 			Targets:        TargetPermanent("target artifact or enchantment", Or(Artifact(), Enchantment())),
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return destroyChosenTargetTrigger(source, "Foundation Breaker — destroy target artifact or enchantment")
-			},
+			Key:            "Foundation Breaker — destroy target artifact or enchantment",
+			Effect:         destroyChosenPermanent,
 		}},
 	})
 }

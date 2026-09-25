@@ -32,10 +32,8 @@ func init() {
 			TargetsFrom: AnotherTarget(func(other CardPredicate) *game.TargetSpec {
 				return TargetCardInGraveyard("another target artifact card in your graveyard", Artifact(), YouOwn(), other)
 			}),
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Junk Diver — return an artifact card to hand",
-					returnTargetedCardToHand)
-			},
+			Key:    "Junk Diver — return an artifact card to hand",
+			Effect: returnTargetedCardToHand,
 		}},
 	})
 }

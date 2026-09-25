@@ -454,6 +454,23 @@ func b28GainLifeAndDraw(g *game.Game, item *game.StackItem, n int) error {
 	return DrawCards{Player: item.Controller, N: n}.Apply(ctx)
 }
 
+// b28LifebloodHydraPayout is Lifeblood Hydra's declared Effect: it
+// gains life and draws cards equal to its last-known power (CR
+// 608.2h), read through ctx.TriggeringPermanent() (#1379) — the same
+// layers-applied power plus counters b13LastKnownPower would give,
+// stamped from the same live card in the same beat
+// (battlefieldExitLocked), clamped at zero since a negative power
+// pays out nothing.
+func b28LifebloodHydraPayout(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	info, _ := ctx.TriggeringPermanent()
+	power := info.Power
+	if power < 0 {
+		power = 0
+	}
+	return b28GainLifeAndDraw(g, item, power)
+}
+
 // b28ReturnChosenGraveyardCardToHandThenScions is Spawnbed
 // Protector's end-step body: the chosen graveyard card, if one was
 // chosen and it is still there, goes to hand, then two Eldrazi

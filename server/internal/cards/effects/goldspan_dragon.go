@@ -42,10 +42,8 @@ func init() {
 				}
 				return SelfTargetedByASpell(ev, source, game.Characteristic{}, g)
 			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Goldspan Dragon — create a Treasure",
-					Do(CreateToken{Template: TreasureToken(), N: 1}))
-			},
+			Key:    "Goldspan Dragon — create a Treasure",
+			Effect: Do(CreateToken{Template: TreasureToken(), N: 1}),
 		}},
 		Grants: []AbilityGrant{{
 			Key: "goldspan-dragon/treasure-two-mana",

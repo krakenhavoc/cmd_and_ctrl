@@ -43,14 +43,12 @@ func init() {
 			},
 			OptionalPrompt: &game.TriggerOptionalPrompt{Question: "Emeria, the Sky Ruin — return a creature card from your graveyard to the battlefield?"},
 			Targets:        TargetCardInGraveyard("target creature card in your graveyard", Creature(), YouOwn()),
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Emeria, the Sky Ruin — return a creature card to the battlefield",
-					func(g *game.Game, item *game.StackItem) error {
-						if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
-							return nil
-						}
-						return ReturnFromGraveyard{Target: item.Targets[0].ID, Dest: game.ZoneBattlefield}.Apply(NewContext(g, item))
-					})
+			Key:            "Emeria, the Sky Ruin — return a creature card to the battlefield",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
+					return nil
+				}
+				return ReturnFromGraveyard{Target: item.Targets[0].ID, Dest: game.ZoneBattlefield}.Apply(NewContext(g, item))
 			},
 		}},
 	})
