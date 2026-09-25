@@ -590,13 +590,26 @@ func cleanDisplayName(s string) string {
 
 // mdUserText makes a string someone else chose safe to publish in an
 // issue: secrets redacted (ADR 0017's rule for anything posted to
-// GitHub), one line, bounded, and an @ that cannot ping anybody.
+// GitHub), one line, bounded, an @ that cannot ping anybody, and
+// markdown escaped — a deck named "x](https://…)" is text in our
+// public repo, never a link, an image or a table cell break.
 func mdUserText(s string, n int) string {
 	s = redact.Secrets(s)
+	s = strings.NewReplacer("\n", " ", "\r", " ").Replace(s)
 	s = clip(s, n)
+	s = mdEscaper.Replace(s)
 	s = strings.ReplaceAll(s, "@", "@​")
 	return strings.TrimSpace(s)
 }
+
+// mdEscaper backslash-escapes the markdown characters that could turn
+// published user text into a link, an image, emphasis, code, HTML or a
+// table cell.
+var mdEscaper = strings.NewReplacer(
+	`\`, `\\`, "[", `\[`, "]", `\]`, "(", `\(`, ")", `\)`,
+	"<", `\<`, ">", `\>`, "`", "\\`", "*", `\*`, "_", `\_`,
+	"|", `\|`, "!", `\!`, "~", `\~`,
+)
 
 // deckRequestTitle is "[deck-request] <deck name>", falling back to
 // the commander when the deck has no name.
@@ -608,7 +621,17 @@ func deckRequestTitle(r *deckcoverage.Report) string {
 	if name == "" {
 		name = r.DeckKey
 	}
-	return deckRequestTitlePrefix + mdUserText(name, deckRequestTitleMax)
+	return deckRequestTitlePrefix + plainUserText(name, deckRequestTitleMax)
+}
+
+// plainUserText is mdUserText for an issue TITLE, which GitHub does not
+// render as markdown: escaping there would show the backslashes.
+func plainUserText(s string, n int) string {
+	s = redact.Secrets(s)
+	s = strings.NewReplacer("\n", " ", "\r", " ").Replace(s)
+	s = clip(s, n)
+	s = strings.ReplaceAll(s, "@", "@​")
+	return strings.TrimSpace(s)
 }
 
 // deckBucketLabels are the words a published report uses per bucket.
@@ -635,7 +658,7 @@ func renderDeckRequestIssue(who deckRequester, fromBot bool, r *deckcoverage.Rep
 	}
 	fmt.Fprintf(&b, "**Deck:** [%s](%s)\n", mdUserText(deckName, deckRequestTitleMax), redact.Secrets(r.SourceURL))
 	if len(r.Commanders) > 0 {
-		fmt.Fprintf(&b, "**Commander:** %s\n", strings.Join(r.Commanders, " / "))
+		fmt.Fprintf(&b, "**Commander:** %s\n", mdUserText(strings.Join(r.Commanders, " / "), deckRequestTitleMax))
 	}
 	fmt.Fprintf(&b, "**Requested by:** %s\n\n", mdUserText(who.DisplayName, deckRequesterNameMax))
 

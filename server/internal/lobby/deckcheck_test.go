@@ -694,3 +694,29 @@ func TestDeckReportCacheExpires(t *testing.T) {
 		t.Error("c not stored")
 	}
 }
+
+// A deck name, a commander line and a display name come from outside
+// and are published in a public repo: none of them may render as a
+// link, an image or a table break in the issue body, and the title —
+// which GitHub does not render — must not show escape backslashes.
+func TestDeckRequestIssueEscapesMarkdown(t *testing.T) {
+	r := &deckcoverage.Report{
+		DeckName:   "Aang (Precon)](https://evil.example)![x](https://evil.example/i.png)",
+		SourceURL:  "https://moxfield.com/decks/abc",
+		DeckKey:    "moxfield:abc",
+		Commanders: []string{"Evil | Cell"},
+		Counts:     map[deckcoverage.Bucket]int{},
+	}
+	body := renderDeckRequestIssue(deckRequester{DiscordID: "1", DisplayName: "[me](https://evil.example)"}, true, r)
+	for _, bad := range []string{"](https://evil.example)", "![x]", "Evil | Cell", "[me](https"} {
+		if strings.Contains(body, bad) {
+			t.Errorf("issue body renders %q as markdown:\n%s", bad, body)
+		}
+	}
+	if !strings.Contains(body, "[Aang \\(Precon\\)") {
+		t.Errorf("deck name not escaped as expected:\n%s", body)
+	}
+	if got := deckRequestTitle(r); strings.Contains(got, `\`) || !strings.HasPrefix(got, "[deck-request] Aang (Precon)") {
+		t.Errorf("title = %q, want the plain deck name without escapes", got)
+	}
+}
