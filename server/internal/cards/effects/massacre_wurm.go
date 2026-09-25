@@ -62,22 +62,24 @@ func init() {
 					dead, ok := diedCreature(ev, g)
 					return ok && dead.Controller != source.Controller
 				},
+				Key: "Massacre Wurm — that player loses 2 life",
+				// The dying creature's controller is read when the
+				// trigger is BUILT, off the card in its
+				// destination zone, because by the time the
+				// trigger resolves that card may have moved again
+				// (CR 603.10 — the ability uses last-known
+				// information about the permanent).
 				Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
-					// The dying creature's controller is read when the
-					// trigger is BUILT, off the card in its
-					// destination zone, because by the time the
-					// trigger resolves that card may have moved again
-					// (CR 603.10 — the ability uses last-known
-					// information about the permanent).
 					dead, ok := diedCreature(ev, g)
 					if !ok {
 						return nil
 					}
-					victim := dead.Controller
-					return game.NewTriggeredItem(source, "Massacre Wurm — that player loses 2 life",
-						func(g *game.Game, item *game.StackItem) error {
-							return g.ChangePlayerLifeForEffect(item.SourceCardID, victim, -2)
-						})
+					item := game.NewTriggeredItem(source, "Massacre Wurm — that player loses 2 life")
+					item.Params.Player = dead.Controller
+					return item
+				},
+				Effect: func(g *game.Game, item *game.StackItem) error {
+					return g.ChangePlayerLifeForEffect(item.SourceCardID, item.Params.Player, -2)
 				},
 			},
 		},

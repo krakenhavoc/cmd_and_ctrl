@@ -43,10 +43,11 @@ import "github.com/google/uuid"
 //     Decision 47), which counts each defending player's blocks on
 //     their own.
 //
-// Rules come from two registries, both walked on every check: the
-// battlefield, through CatalogBlockRules, and Game.TurnScopedBlockRules
-// for the until-end-of-turn ones (Gingerbrute's shape), which the
-// turn's cleanup sweep empties.
+// Rules come from two places, both walked on every check: the
+// battlefield, through CatalogBlockRules, and — since ADR 0041 phase 3
+// tier 3b (#1497) — the ScopedEffect records whose mod is a block-rule
+// kind (Gingerbrute's shape), adapted by forEachScopedBlockRuleLocked
+// in scoped_block_rules.go and swept with every other duration.
 //
 // The attack-side twin of Limit is not a BlockRule: it is
 // game.AttackLimit (attack_limits.go), because an attack has no
@@ -169,46 +170,6 @@ func (g *Game) forEachBlockRuleLocked(fn func(rule BlockRule, source *Card) bool
 	}
 }
 
-// forEachBlockRuleLocked's turn-scoped half. Walked after the
-// battlefield so a permanent's printed rule is reported first and an
-// until-end-of-turn effect cannot mask it; nothing depends on the
-// order beyond which refusal a player reads.
-//
-// Caller must hold g.mu (read or write) with fresh layers. Reads only.
-func (g *Game) forEachTurnScopedBlockRuleLocked(fn func(rule BlockRule, source *Card) bool) {
-	for i := range g.TurnScopedBlockRules {
-		// A turn-scoped rule's source is the effect that created it,
-		// which may have left the battlefield since (CR 611.2b: the
-		// effect does not end with its source). Nil is the honest
-		// answer, and every predicate takes it.
-		if !fn(g.TurnScopedBlockRules[i], nil) {
-			return
-		}
-	}
-}
-
-// RegisterTurnScopedBlockRuleLocked adds an until-end-of-turn block
-// rule (ADR 0045 addendum, Decision 11). It lives until the turn's
-// cleanup sweep empties the registry, whoever created it and whatever
-// happens to that source in the meantime.
-//
-// Caller must hold g.mu in write mode.
-func (g *Game) RegisterTurnScopedBlockRuleLocked(rule BlockRule) {
-	g.TurnScopedBlockRules = append(g.TurnScopedBlockRules, rule)
-}
-
-// ClearTurnScopedBlockRulesLocked drops every until-end-of-turn block
-// rule. A fresh slice rather than a truncation, exactly as
-// ClearTurnScopedReplacementsLocked does, so a clone taken before the
-// sweep keeps its own backing array.
-//
-// Caller must hold g.mu in write mode.
-func (g *Game) ClearTurnScopedBlockRulesLocked() {
-	if len(g.TurnScopedBlockRules) > 0 {
-		g.TurnScopedBlockRules = nil
-	}
-}
-
 // blockRuleRefusalLocked is slot 4 of BlockPairRefusalLocked: the
 // first pair rule on the battlefield that refuses this pair, or
 // BlockOK. The refusal names the permanent the rule was read from as
@@ -235,7 +196,7 @@ func (g *Game) blockRuleRefusalLocked(attacker, blocker *Card) BlockRefusal {
 	}
 	g.forEachBlockRuleLocked(refuse)
 	if out.Legal() {
-		g.forEachTurnScopedBlockRuleLocked(refuse)
+		g.forEachScopedBlockRuleLocked(refuse)
 	}
 	return out
 }
@@ -282,7 +243,7 @@ func (g *Game) blockerBoundsLocked(attacker *Card) (min, max int) {
 		return true
 	}
 	g.forEachBlockRuleLocked(bound)
-	g.forEachTurnScopedBlockRuleLocked(bound)
+	g.forEachScopedBlockRuleLocked(bound)
 	return min, max
 }
 
@@ -395,7 +356,7 @@ func (g *Game) blockLimitRefusalLocked(base, after map[uuid.UUID]uuid.UUID, decl
 	}
 	g.forEachBlockRuleLocked(check)
 	if out == nil {
-		g.forEachTurnScopedBlockRuleLocked(check)
+		g.forEachScopedBlockRuleLocked(check)
 	}
 	return out
 }

@@ -56,10 +56,8 @@ func init() {
 					return attackDeclared(ev, source)
 				},
 				Targets: b26TargetPermanentCardInYourGraveyardWithManaValueAtMostPowerOf(b26CarmenOracle),
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Carmen, Cruel Skymarcher — return a permanent card to the battlefield",
-						b26ReturnFirstLegalGraveyardTargetToBattlefield)
-				},
+				Key:     "Carmen, Cruel Skymarcher — return a permanent card to the battlefield",
+				Effect:  b26ReturnFirstLegalGraveyardTargetToBattlefield,
 			},
 		},
 	})

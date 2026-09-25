@@ -41,25 +41,42 @@ import "github.com/google/uuid"
 
 // NewTriggeredItem builds the StackItem for a triggered ability
 // whose source is `source`: Kind StackItemTriggered, controller and
-// owner = source.Controller, Label for the stack overlay, and an
-// Effect callback that runs at resolution. Targets / Modes / X are
-// left empty — a targeted trigger sets item.Targets on the returned
-// value before handing it back from Build so the CR 608.2b re-check
-// applies at resolve time.
+// owner = source.Controller, and Label for the stack overlay.
+// Targets / Modes / X are left empty — a targeted trigger sets
+// item.Targets on the returned value before handing it back from
+// Build so the CR 608.2b re-check applies at resolve time.
 //
-// The ID is left Nil; queueHarvestedTriggerLocked mints one. The
-// effect must read the controller / source / targets off the item
-// it receives (not off `source`, which is a pointer into a zone
-// slice that may have been reallocated or moved by resolve time).
-func NewTriggeredItem(source *Card, label string, effect func(g *Game, item *StackItem) error) *StackItem {
+// It takes NO effect (ADR 0041 P9, #1497, tier 4-final): what the
+// item does is always data. A catalog row declares its Effect and
+// the engine installs it and names the row on the item
+// (buildTriggerItemLocked); an engine trigger with no row names a
+// registered body (NewKeyedTriggeredItem). A catalog Build that calls
+// this is a fill-in: it sets a label, a controller or Params and
+// leaves item.Effect nil.
+//
+// The ID is left Nil; queueHarvestedTriggerLocked mints one.
+func NewTriggeredItem(source *Card, label string) *StackItem {
 	return &StackItem{
 		Kind:         StackItemTriggered,
 		Controller:   source.Controller,
 		Owner:        source.Controller,
 		SourceCardID: source.InstanceID,
 		Label:        label,
-		Effect:       effect,
 	}
+}
+
+// NewKeyedTriggeredItem is NewTriggeredItem for an ENGINE trigger with
+// no catalog row (ADR 0041 P9, #1497, tier 4): prowess, suspend,
+// madness, the monarch, evoke's sacrifice, face-down ward. Effect is
+// derived from the registered body rather than captured directly, and
+// Body/Params are stamped alongside it, so a table with one of these on
+// the stack is still a restore point — the same shape
+// dt.stackItem() stamps for a fired delayed trigger.
+func NewKeyedTriggeredItem(source *Card, label string, body BodyRef, params EffectParams) *StackItem {
+	item := NewTriggeredItem(source, label)
+	item.Effect = bodyEffect(body.key, params)
+	item.Body, item.Params = body.key, params
+	return item
 }
 
 // TriggeredAbility declares one auto-fire trigger on a catalog card.
@@ -105,7 +122,55 @@ type TriggeredAbility struct {
 	//
 	// Runs under g.mu held in write mode. MUST NOT call public
 	// locking mutators.
+	//
+	// ADR 0041 P9 (#1497, tier 4-2): a declaration that sets Effect
+	// below needs no Build at all — the engine builds the item. A Build
+	// kept beside an Effect only FILLS IN data the engine cannot know
+	// (a controller override, a computed label, Params) and must leave
+	// item.Effect nil; the engine then installs Effect itself. A Build
+	// that sets item.Effect while Effect is declared is an
+	// effectKeyFault. A Build with no Effect beside it is the legacy
+	// shape the tail of tier 4 retires (testdata/legacy_trigger_builds.txt).
 	Build func(ev Event, source *Card, sourceLKI Characteristic, g *Game) *StackItem
+
+	// Effect is what the ability does when its item resolves, declared
+	// on the row itself (ADR 0041 P9, #1497, tier 4-2). When it is set
+	// the engine builds the item — NewTriggeredItem(source, Key) with
+	// Effect installed, or Build's item with Effect installed — and, for a row
+	// the catalog registered, stamps it with the row's name
+	// (Body "catalog/triggered" plus Params.Ability), so a table with
+	// the trigger waiting on the stack is still a restore point:
+	// restore looks the row up again and takes its Effect, its target
+	// clause and its mode clause from the running binary.
+	//
+	// The contract StackItem.Effect has always had, and now it is load
+	// bearing: read everything off the item (its Trigger, Targets,
+	// Params, Payload) and the game handed in, and capture nothing
+	// that was only true when the ability triggered. A value that was
+	// is either on item.Trigger already (#1223) or goes into Params
+	// from a fill-in Build.
+	Effect func(g *Game, item *StackItem) error
+
+	// TargetsFromReadsBoard declares that TargetsFrom reads more than
+	// its trigger context and the source's identity — the board, or the
+	// source's CURRENT controller (ADR 0041 P9's TargetsFrom audit,
+	// tier 4-2). Restore re-derives a stamped trigger's clause by
+	// calling TargetsFrom again on the RESTORED board, which is exact
+	// only for a clause that reads nothing the board can change, so a
+	// row that sets this is never stamped: its item stays a census
+	// closure, and the row is on the legacy list. The seat list is not
+	// the board (a seat is permanent once the game starts), and the
+	// controller as the ability triggered is on the trigger context
+	// (tc.Object), which is how Molten Primordial's one clause per
+	// opponent stopped needing the flag. No catalog row sets it today.
+	TargetsFromReadsBoard bool
+
+	// row is the catalog identity the registry stamped on this row
+	// (IdentifyCatalogRows): the key whose Triggered list holds it and
+	// its index there. Zero for a row the catalog did not register — an
+	// engine trigger, a test stub, a reflexive trigger — which is never
+	// stamped. See ability_ref.go.
+	row catalogRowID
 
 	// OptionalPrompt is the declarative "you may" gate for CR 603.5
 	// optional triggers. When non-nil, the harvester does NOT call
@@ -600,7 +665,7 @@ func (g *Game) dispatchTriggerInstanceLocked(ev Event, source Card, lki Characte
 // mode choice happen exactly once, before targets, and never for an
 // ability that has none. Caller must hold g.mu.
 func (g *Game) buildOrPickTriggerLocked(tc TriggerContext, source Card, lki Characteristic, t TriggeredAbility, doubledBy doublerRef, modes []int) {
-	if t.Build == nil {
+	if !t.builds() {
 		return
 	}
 	// CR 603.3c: modes first. An untargeted modal trigger (Black
@@ -620,7 +685,7 @@ func (g *Game) buildOrPickTriggerLocked(tc TriggerContext, source Card, lki Char
 		g.queuePickTargetLocked(tc, source, lki, t, doubledBy, modes, steps, spec)
 		return
 	}
-	item := t.Build(tc.Event, &source, lki, g)
+	item := g.buildTriggerItemLocked(t, tc.Event, source, lki)
 	if item == nil {
 		return
 	}

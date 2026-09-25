@@ -74,10 +74,8 @@ func init() {
 			OncePerBatch: true,
 			Watches:      []game.EventKind{game.EventZoneMove, game.EventDiscardCard},
 			AppliesTo:    ranarSawAnExile,
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Ranar the Ever-Watchful — create a 1/1 Spirit",
-					Do(CreateToken{Template: TokenCard("1/1 white Spirit with flying"), N: 1}))
-			},
+			Key:          "Ranar the Ever-Watchful — create a 1/1 Spirit",
+			Effect:       Do(CreateToken{Template: TokenCard("1/1 white Spirit with flying"), N: 1}),
 		}},
 	})
 }

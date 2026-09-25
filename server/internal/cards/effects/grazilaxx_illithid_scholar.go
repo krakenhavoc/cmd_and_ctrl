@@ -48,15 +48,13 @@ func init() {
 					return ok && attacker.IsCreature() && attacker.Controller == source.Controller
 				},
 				OptionalPrompt: &game.TriggerOptionalPrompt{Question: "Grazilaxx — return the blocked creature to its owner's hand?"},
-				Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					attacker := ev.Target
-					return game.NewTriggeredItem(source, "Grazilaxx, Illithid Scholar — return the blocked creature to hand",
-						func(g *game.Game, item *game.StackItem) error {
-							if z := g.FindCardZoneForEffect(attacker); z == nil || z.Kind != game.ZoneBattlefield {
-								return nil
-							}
-							return BounceToHand{Target: attacker}.Apply(NewContext(g, item))
-						})
+				Key:            "Grazilaxx, Illithid Scholar — return the blocked creature to hand",
+				Effect: func(g *game.Game, item *game.StackItem) error {
+					attacker := item.Trigger.Event.Target
+					if z := g.FindCardZoneForEffect(attacker); z == nil || z.Kind != game.ZoneBattlefield {
+						return nil
+					}
+					return BounceToHand{Target: attacker}.Apply(NewContext(g, item))
 				},
 			},
 			WheneverOneOrMoreCreaturesYouControlDealCombatDamageToAPlayer(nil,

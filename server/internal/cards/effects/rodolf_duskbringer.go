@@ -83,9 +83,6 @@ func rodolfEndStepOffer(g *game.Game, item *game.StackItem) error {
 func rodolfReturnFromGraveyard(ctx *Context) error {
 	return ReflexiveTrigger{
 		Label: "Rodolf Duskbringer — return a creature card from your graveyard to the battlefield",
-		Targets: TargetCardInGraveyard(
-			"target creature card in your graveyard with mana value at most the life you gained this turn",
-			YouOwn(), Creature(), ManaValueAtMostLifeGainedThisTurn()),
-		Effect: returnFirstLegalGraveyardTargetToBattlefield,
+		Body:  rodolfReturnBody,
 	}.Apply(ctx)
 }

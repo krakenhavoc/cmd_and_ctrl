@@ -16,10 +16,17 @@ import (
 
 // Slash-command names. Exported as constants so tests can
 // reference them without string literals that drift.
+//
+// Every command lives under the c2- prefix (ADR 0095, #1631). The old
+// cc- names are gone entirely — RegisterCommands bulk-overwrites each
+// guild's command set, so a stale cc-* registration disappears on the
+// first boot of this binary with no separate cleanup step.
 const (
-	CmdInvite = "cc-invite"
-	CmdGames  = "cc-games"
-	CmdEnd    = "cc-end"
+	CmdInvite    = "c2-invite"
+	CmdGames     = "c2-games"
+	CmdEnd       = "c2-end"
+	CmdDeckCheck = "c2-deck-check"
+	CmdDeckReq   = "c2-deck-req"
 )
 
 // commandDefinitions returns the ApplicationCommand payload
@@ -60,25 +67,65 @@ func commandDefinitions() []*discordgo.ApplicationCommand {
 				},
 			},
 		},
+		{
+			Name:        CmdDeckCheck,
+			Description: "Check how much of a decklist the engine automates.",
+			Options: []*discordgo.ApplicationCommandOption{
+				{
+					Name:        "link",
+					Description: "Moxfield or Archidekt deck link.",
+					Type:        discordgo.ApplicationCommandOptionString,
+					Required:    true,
+					MaxLength:   300,
+				},
+			},
+		},
+		{
+			Name:        CmdDeckReq,
+			Description: "Ask for a deck's missing cards to be added to the engine.",
+			Options: []*discordgo.ApplicationCommandOption{
+				{
+					Name:        "link",
+					Description: "Moxfield or Archidekt deck link.",
+					Type:        discordgo.ApplicationCommandOptionString,
+					Required:    true,
+					MaxLength:   300,
+				},
+			},
+		},
 	}
 }
 
-// RegisterCommands registers every slash command in
-// commandDefinitions() on every guild in guildIDs. A failure on one
-// guild is logged and skipped
-// rather than aborting — a partial registration is better than
-// no registration if an operator added the bot to a guild
-// without the applications.commands scope.
-func RegisterCommands(s *discordgo.Session, appID string, guildIDs []string, log *slog.Logger) {
+// commandRegistrar is the subset of *discordgo.Session that
+// RegisterCommands needs. Defined as an interface — rather than
+// taking *discordgo.Session directly — so tests can fake the bulk
+// overwrite call without a live Discord connection or reaching into
+// discordgo's package-level endpoint variables. *discordgo.Session
+// satisfies this automatically.
+type commandRegistrar interface {
+	ApplicationCommandBulkOverwrite(appID string, guildID string, commands []*discordgo.ApplicationCommand, options ...discordgo.RequestOption) ([]*discordgo.ApplicationCommand, error)
+}
+
+// RegisterCommands overwrites the whole slash-command set on every
+// guild in guildIDs with commandDefinitions(). Bulk overwrite
+// (ApplicationCommandBulkOverwrite), not one ApplicationCommandCreate
+// per command: Discord replaces the guild's entire command list in
+// one call, so a command that existed under the old cc- names (or
+// any command dropped from commandDefinitions since the last deploy)
+// disappears the moment this runs — no separate delete step, no
+// window where both the old and new names are registered at once.
+// A failure on one guild is logged and skipped rather than aborting —
+// a partial registration is better than no registration if an
+// operator added the bot to a guild without the applications.commands
+// scope.
+func RegisterCommands(s commandRegistrar, appID string, guildIDs []string, log *slog.Logger) {
 	defs := commandDefinitions()
 	for _, gid := range guildIDs {
-		for _, cmd := range defs {
-			if _, err := s.ApplicationCommandCreate(appID, gid, cmd); err != nil {
-				log.Error("register command", "guild", gid, "command", cmd.Name, "error", err.Error())
-				continue
-			}
-			log.Info("registered command", "guild", gid, "command", cmd.Name)
+		if _, err := s.ApplicationCommandBulkOverwrite(appID, gid, defs); err != nil {
+			log.Error("register commands", "guild", gid, "error", err.Error())
+			continue
 		}
+		log.Info("registered commands", "guild", gid, "count", len(defs))
 	}
 }
 
@@ -90,21 +137,70 @@ type Handler struct {
 	client *ServerClient
 	log    *slog.Logger
 	// now is injected so tests can freeze the default-name
-	// timestamp used when /cc-invite is called without an arg, and
-	// the /cc-end confirmation-expiry clock.
+	// timestamp used when /c2-invite is called without an arg, and
+	// the /c2-end confirmation-expiry clock.
 	now func() time.Time
-	// confirmations holds outstanding /cc-end confirm/cancel
+	// confirmations holds outstanding /c2-end confirm/cancel
 	// buttons. In-memory only — same "no SIGHUP reload" trade-off
 	// ADR 0004 already accepts for the guild allow-list; a bot
 	// restart drops any confirmation mid-flight and the operator
-	// just runs /cc-end again.
+	// just runs /c2-end again.
 	confirmations *endConfirmations
+	// deckLinks holds the full deck link behind a /c2-deck-check
+	// "Request these cards" button whose URL doesn't fit in Discord's
+	// 100-character custom-ID cap (ADR 0095 §4, #1631). Same in-memory,
+	// no-SIGHUP-reload trade-off as confirmations above.
+	deckLinks *deckLinkStore
 }
 
 // NewHandler wires the bot's configuration and HTTP client into
 // a dispatcher suitable for session.AddHandler.
 func NewHandler(cfg Config, client *ServerClient, log *slog.Logger) *Handler {
-	return &Handler{cfg: cfg, client: client, log: log, now: time.Now, confirmations: newEndConfirmations()}
+	return &Handler{
+		cfg: cfg, client: client, log: log, now: time.Now,
+		confirmations: newEndConfirmations(),
+		deckLinks:     newDeckLinkStore(),
+	}
+}
+
+// defaultInteractionTimeout caps the HTTP round-trip for every
+// command except the two deck ones (see deckInteractionTimeout
+// below). Discord's interaction-response deadline is 3s; the
+// loopback admin-login + work call fits well under that on the VPS,
+// but 4s gives a slow path a deterministic error rather than a
+// discord-side "application did not respond".
+const defaultInteractionTimeout = 4 * time.Second
+
+// deckInteractionTimeout is the budget for /c2-deck-check,
+// /c2-deck-req and the "Request these cards" button (ADR 0095 §4,
+// #1631) — the first commands this bot defers. A deck fetch plus a
+// GitHub file-or-comment call can comfortably exceed the 4s default,
+// and deferring buys roughly 15 minutes; 20s is generous headroom
+// without leaving a slash command "thinking" for an awkwardly long
+// time on a slow deck host.
+const deckInteractionTimeout = 20 * time.Second
+
+// commandTimeout picks the interaction budget for a slash-command
+// name. Only the two deck commands get the longer, deferred-reply
+// budget; every other command keeps the tight, non-deferred one.
+func commandTimeout(name string) time.Duration {
+	switch name {
+	case CmdDeckCheck, CmdDeckReq:
+		return deckInteractionTimeout
+	default:
+		return defaultInteractionTimeout
+	}
+}
+
+// componentTimeout picks the interaction budget for a message
+// component click by its custom-ID namespace. Only the deck-request
+// button — which runs the same server call /c2-deck-req does — gets
+// the longer budget.
+func componentTimeout(customID string) time.Duration {
+	if strings.HasPrefix(customID, deckRequestCustomIDPrefix) {
+		return deckInteractionTimeout
+	}
+	return defaultInteractionTimeout
 }
 
 // Dispatch is the entry point called on every InteractionCreate. It
@@ -130,24 +226,24 @@ func (h *Handler) Dispatch(s *discordgo.Session, i *discordgo.InteractionCreate)
 		return
 	}
 
-	// Discord's interaction-response deadline is 3 s. The
-	// loopback admin-login + work call fits well under that on
-	// the VPS, but cap the HTTP round-trip at 4 s so a slow
-	// path still produces a deterministic error rather than a
-	// discord-side "application did not respond".
-	ctx, cancel := context.WithTimeout(context.Background(), 4*time.Second)
-	defer cancel()
-
 	switch i.Type {
 	case discordgo.InteractionApplicationCommandAutocomplete:
+		ctx, cancel := context.WithTimeout(context.Background(), defaultInteractionTimeout)
+		defer cancel()
 		h.dispatchAutocomplete(ctx, s, i)
 		return
 	case discordgo.InteractionMessageComponent:
-		h.dispatchComponent(ctx, s, i)
+		customID := i.MessageComponentData().CustomID
+		ctx, cancel := context.WithTimeout(context.Background(), componentTimeout(customID))
+		defer cancel()
+		h.dispatchComponent(ctx, s, i, customID)
 		return
 	}
 
 	data := i.ApplicationCommandData()
+	ctx, cancel := context.WithTimeout(context.Background(), commandTimeout(data.Name))
+	defer cancel()
+
 	switch data.Name {
 	case CmdInvite:
 		h.handleInvite(ctx, s, i, data)
@@ -155,13 +251,17 @@ func (h *Handler) Dispatch(s *discordgo.Session, i *discordgo.InteractionCreate)
 		h.handleGames(ctx, s, i)
 	case CmdEnd:
 		h.handleEnd(ctx, s, i, data)
+	case CmdDeckCheck:
+		h.handleDeckCheck(ctx, s, i, data)
+	case CmdDeckReq:
+		h.handleDeckReq(ctx, s, i, data)
 	default:
 		h.log.Warn("unknown command", "name", data.Name)
 		_ = s.InteractionRespond(i.Interaction, ephemeralResponse("Unknown command."))
 	}
 }
 
-// handleInvite runs /cc-invite: read the optional name,
+// handleInvite runs /c2-invite: read the optional name,
 // create a game, respond with a channel-visible invite link.
 func (h *Handler) handleInvite(ctx context.Context, s *discordgo.Session, i *discordgo.InteractionCreate, data discordgo.ApplicationCommandInteractionData) {
 	name, meta, err := h.createInviteGame(ctx, i, data)
@@ -175,10 +275,10 @@ func (h *Handler) handleInvite(ctx context.Context, s *discordgo.Session, i *dis
 	_ = s.InteractionRespond(i.Interaction, inviteSuccessResponse(meta, url))
 }
 
-// createInviteGame is /cc-invite's server call, split from the
+// createInviteGame is /c2-invite's server call, split from the
 // Discord response so it can be tested without a live session. The
 // invoking Discord user is passed as host_discord_id: whoever runs
-// /cc-invite hosts the table (ADR 0075 §2.1).
+// /c2-invite hosts the table (ADR 0075 §2.1).
 func (h *Handler) createInviteGame(ctx context.Context, i *discordgo.InteractionCreate, data discordgo.ApplicationCommandInteractionData) (string, lobby.GameMeta, error) {
 	name := stringOption(data.Options, "name")
 	if strings.TrimSpace(name) == "" {
@@ -203,7 +303,7 @@ func invokerID(i *discordgo.InteractionCreate) string {
 	return ""
 }
 
-// handleGames runs /cc-games: fetch the list (invite tokens
+// handleGames runs /c2-games: fetch the list (invite tokens
 // already stripped by the server) and respond ephemerally —
 // only the invoker needs to see the board; no need to spam
 // the channel.
@@ -226,7 +326,7 @@ func buildInviteURL(clientBase string, gameID uuid.UUID, inviteToken string) str
 		strings.TrimRight(clientBase, "/"), gameID, inviteToken)
 }
 
-// defaultGameName is used when /cc-invite is called without a
+// defaultGameName is used when /c2-invite is called without a
 // name arg. Timestamp lets the playgroup distinguish back-to-
 // back games in the lobby list.
 func defaultGameName(t time.Time) string {
@@ -236,7 +336,7 @@ func defaultGameName(t time.Time) string {
 // stringOption reads a named string option from the interaction
 // options slice. Returns "" if absent — both for "missing" and
 // for "present but empty", which is what we want for the
-// /cc-invite [name] optional-with-fallback shape.
+// /c2-invite [name] optional-with-fallback shape.
 func stringOption(opts []*discordgo.ApplicationCommandInteractionDataOption, name string) string {
 	for _, o := range opts {
 		if o.Name == name && o.Type == discordgo.ApplicationCommandOptionString {
@@ -247,7 +347,7 @@ func stringOption(opts []*discordgo.ApplicationCommandInteractionDataOption, nam
 }
 
 // inviteSuccessResponse is the channel-visible embed posted on
-// /cc-invite success. The whole playgroup needs to see the URL,
+// /c2-invite success. The whole playgroup needs to see the URL,
 // so this response is NOT ephemeral.
 func inviteSuccessResponse(meta lobby.GameMeta, url string) *discordgo.InteractionResponse {
 	return &discordgo.InteractionResponse{
@@ -262,11 +362,11 @@ func inviteSuccessResponse(meta lobby.GameMeta, url string) *discordgo.Interacti
 	}
 }
 
-// gamesListResponse is the ephemeral /cc-games output. Empty
+// gamesListResponse is the ephemeral /c2-games output. Empty
 // list gets a friendly placeholder rather than an empty embed.
 func gamesListResponse(games []lobby.GameMeta) *discordgo.InteractionResponse {
 	if len(games) == 0 {
-		return ephemeralResponse("No games right now. Run `/cc-invite` to start one.")
+		return ephemeralResponse("No games right now. Run `/c2-invite` to start one.")
 	}
 	var b strings.Builder
 	b.WriteString("**Current games:**\n")
@@ -282,7 +382,7 @@ func gamesListResponse(games []lobby.GameMeta) *discordgo.InteractionResponse {
 }
 
 // ephemeralResponse is shorthand for a flags-Ephemeral message.
-// Used for errors and the /cc-games output — both are
+// Used for errors and the /c2-games output — both are
 // low-signal for the channel at large.
 func ephemeralResponse(text string) *discordgo.InteractionResponse {
 	return &discordgo.InteractionResponse{

@@ -33,10 +33,8 @@ func init() {
 				Watches:   []game.EventKind{game.EventETB},
 				AppliesTo: b06SelfETB,
 				Targets:   TargetCreature("target creature you control", YouControl()),
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Plague Belcher — put two -1/-1 counters on target creature you control",
-						b35PutMinusCountersOnChosen(2))
-				},
+				Key:       "Plague Belcher — put two -1/-1 counters on target creature you control",
+				Effect:    b35PutMinusCountersOnChosen(2),
 			},
 			On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return anotherZombieYouControlDied(ev, source, g)

@@ -33,15 +33,13 @@ func init() {
 			Ward(WardSacrifice("a creature", Creature()), "Vein Ripper — ward, sacrifice a creature"),
 			{
 				Watches: []game.EventKind{game.EventLTB},
+				Key:     "Vein Ripper — target opponent loses 2 life and you gain 2 life",
 				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 					return b17SelfOrAnotherCreatureDied(ev, source, g)
 				},
 				Targets: TargetPlayer("target opponent", Opponent()),
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Vein Ripper — target opponent loses 2 life and you gain 2 life",
-						func(g *game.Game, item *game.StackItem) error {
-							return targetOpponentLosesAndYouGain(g, item, 2)
-						})
+				Effect: func(g *game.Game, item *game.StackItem) error {
+					return targetOpponentLosesAndYouGain(g, item, 2)
 				},
 			},
 		},

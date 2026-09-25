@@ -52,19 +52,37 @@ type fakeServer struct {
 	requireBearer string
 
 	gotAuthHeaders []string
+
+	// deckCoverageStatus/deckCoverageBody drive POST /deck-coverage.
+	// deckCoverageBody is marshalled verbatim, so it can be a
+	// DeckCoverageReport (2xx) or an error map (non-2xx).
+	deckCoverageStatus int
+	deckCoverageBody   any
+	gotDeckCoverageURL string
+
+	// deckRequestStatus/deckRequestBody drive POST /deck-requests,
+	// the same way. gotDeckRequest records the decoded request body.
+	deckRequestStatus int
+	deckRequestBody   any
+	gotDeckRequest    struct {
+		URL       string        `json:"url"`
+		Requester DeckRequester `json:"requester"`
+	}
 }
 
 func newFakeServer(t *testing.T) (*fakeServer, *ServerClient) {
 	t.Helper()
 	fs := &fakeServer{
-		t:             t,
-		loginStatus:   http.StatusOK,
-		loginToken:    "session-token",
-		createStatus:  http.StatusCreated,
-		listStatus:    http.StatusOK,
-		getStatus:     http.StatusOK,
-		archiveStatus: http.StatusOK,
-		creatorStatus: http.StatusOK,
+		t:                  t,
+		loginStatus:        http.StatusOK,
+		loginToken:         "session-token",
+		createStatus:       http.StatusCreated,
+		listStatus:         http.StatusOK,
+		getStatus:          http.StatusOK,
+		archiveStatus:      http.StatusOK,
+		creatorStatus:      http.StatusOK,
+		deckCoverageStatus: http.StatusOK,
+		deckRequestStatus:  http.StatusCreated,
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("/admin/login", fs.handleLogin)
@@ -72,11 +90,45 @@ func newFakeServer(t *testing.T) (*fakeServer, *ServerClient) {
 	mux.HandleFunc("GET /games/{id}", fs.handleGetGame)
 	mux.HandleFunc("POST /games/{id}/archive", fs.handleArchiveGame)
 	mux.HandleFunc("GET /games/{id}/creator", fs.handleIsCreator)
+	mux.HandleFunc("POST /deck-coverage", fs.handleDeckCoverage)
+	mux.HandleFunc("POST /deck-requests", fs.handleDeckRequests)
 	ts := httptest.NewServer(mux)
 	t.Cleanup(ts.Close)
 
 	c := NewServerClient(ts.URL, "admin-secret").WithHTTPClient(&http.Client{Timeout: 2 * time.Second})
 	return fs, c
+}
+
+func (fs *fakeServer) handleDeckCoverage(w http.ResponseWriter, r *http.Request) {
+	fs.gotAuthHeaders = append(fs.gotAuthHeaders, r.Header.Get("Authorization"))
+	if fs.requireBearer != "" && r.Header.Get("Authorization") != "Bearer "+fs.requireBearer {
+		http.Error(w, "stale session", http.StatusUnauthorized)
+		return
+	}
+	var body struct {
+		URL string `json:"url"`
+	}
+	_ = json.NewDecoder(r.Body).Decode(&body)
+	fs.gotDeckCoverageURL = body.URL
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(fs.deckCoverageStatus)
+	if fs.deckCoverageBody != nil {
+		_ = json.NewEncoder(w).Encode(fs.deckCoverageBody)
+	}
+}
+
+func (fs *fakeServer) handleDeckRequests(w http.ResponseWriter, r *http.Request) {
+	fs.gotAuthHeaders = append(fs.gotAuthHeaders, r.Header.Get("Authorization"))
+	if fs.requireBearer != "" && r.Header.Get("Authorization") != "Bearer "+fs.requireBearer {
+		http.Error(w, "stale session", http.StatusUnauthorized)
+		return
+	}
+	_ = json.NewDecoder(r.Body).Decode(&fs.gotDeckRequest)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(fs.deckRequestStatus)
+	if fs.deckRequestBody != nil {
+		_ = json.NewEncoder(w).Encode(fs.deckRequestBody)
+	}
 }
 
 func (fs *fakeServer) handleIsCreator(w http.ResponseWriter, r *http.Request) {
@@ -297,7 +349,7 @@ func TestGetGame_Success(t *testing.T) {
 	if meta.ID != id || meta.Name != "friday" {
 		t.Errorf("meta: got %+v", meta)
 	}
-	// GetGame must surface ArchivedAt — this is how /cc-end tells an
+	// GetGame must surface ArchivedAt — this is how /c2-end tells an
 	// already-archived game apart from an active one; ListGames
 	// would have filtered it out entirely.
 	if !meta.Archived() {
@@ -488,5 +540,156 @@ func TestSessionTokenReloginOnce401(t *testing.T) {
 	fs.requireBearer = "never-matches"
 	if _, err := c.ListGames(context.Background()); !errors.Is(err, ErrUnauthorized) {
 		t.Errorf("persistent 401: got %v, want ErrUnauthorized", err)
+	}
+}
+
+// --- DeckCoverage / DeckRequest (ADR 0095 §4, #1631) ---
+
+func TestDeckCoverage_Success(t *testing.T) {
+	fs, c := newFakeServer(t)
+	fs.deckCoverageBody = DeckCoverageReport{
+		DeckName:   "Needy Deck",
+		Source:     "moxfield",
+		SourceURL:  "https://moxfield.com/decks/AbC123",
+		DeckKey:    "moxfield:AbC123",
+		Commanders: []string{"Atraxa, Praetors' Voice"},
+		Counts:     map[DeckCoverageBucket]int{BucketManual: 12, BucketUnreviewed: 1, BucketCaveats: 6, BucketAutomated: 40, BucketNoEffect: 29},
+		Cards: []DeckCoverageCard{
+			{Name: "Doubling Season", OracleID: "oid-1", Count: 1, Bucket: BucketManual},
+		},
+		Unknown:    []string{},
+		Violations: []DeckViolation{},
+	}
+
+	report, err := c.DeckCoverage(context.Background(), "https://moxfield.com/decks/AbC123")
+	if err != nil {
+		t.Fatalf("DeckCoverage: %v", err)
+	}
+	if report.DeckName != "Needy Deck" || report.Counts[BucketManual] != 12 {
+		t.Errorf("report: got %+v", report)
+	}
+	if fs.gotDeckCoverageURL != "https://moxfield.com/decks/AbC123" {
+		t.Errorf("server saw url %q", fs.gotDeckCoverageURL)
+	}
+	if got := fs.gotAuthHeaders[0]; got != "Bearer session-token" {
+		t.Errorf("deck-coverage must carry the admin session: got %q", got)
+	}
+}
+
+func TestDeckCoverage_FetchError(t *testing.T) {
+	fs, c := newFakeServer(t)
+	fs.deckCoverageStatus = http.StatusUnprocessableEntity
+	fs.deckCoverageBody = map[string]any{
+		"error":      "That deck is private. Make it public or unlisted on the deck site, or paste the list as text.",
+		"code":       "deck_private",
+		"violations": []map[string]string{{"code": "deck_private", "card": "https://moxfield.com/decks/x", "message": "private"}},
+	}
+
+	_, err := c.DeckCoverage(context.Background(), "https://moxfield.com/decks/x")
+	var apiErr *DeckAPIError
+	if !errors.As(err, &apiErr) {
+		t.Fatalf("want *DeckAPIError, got %v (%T)", err, err)
+	}
+	if apiErr.StatusCode != http.StatusUnprocessableEntity {
+		t.Errorf("status: got %d", apiErr.StatusCode)
+	}
+	if apiErr.Code != "deck_private" {
+		t.Errorf("code: got %q", apiErr.Code)
+	}
+	if !strings.Contains(apiErr.Message, "private") {
+		t.Errorf("message: got %q", apiErr.Message)
+	}
+	if len(apiErr.Violations) != 1 || apiErr.Violations[0].Code != "deck_private" {
+		t.Errorf("violations: got %+v", apiErr.Violations)
+	}
+}
+
+func TestDeckCoverage_Unauthorized(t *testing.T) {
+	fs, c := newFakeServer(t)
+	fs.deckCoverageStatus = http.StatusUnauthorized
+	_, err := c.DeckCoverage(context.Background(), "https://moxfield.com/decks/x")
+	if !errors.Is(err, ErrUnauthorized) {
+		t.Errorf("want ErrUnauthorized, got %v", err)
+	}
+}
+
+func TestDeckCoverage_ServiceUnavailable(t *testing.T) {
+	fs, c := newFakeServer(t)
+	fs.deckCoverageStatus = http.StatusServiceUnavailable
+	fs.deckCoverageBody = map[string]any{"error": "card index not loaded"}
+	_, err := c.DeckCoverage(context.Background(), "https://moxfield.com/decks/x")
+	var apiErr *DeckAPIError
+	if !errors.As(err, &apiErr) || apiErr.StatusCode != http.StatusServiceUnavailable {
+		t.Fatalf("want a 503 *DeckAPIError, got %v", err)
+	}
+}
+
+func TestDeckRequest_Filed(t *testing.T) {
+	fs, c := newFakeServer(t)
+	fs.deckRequestStatus = http.StatusCreated
+	fs.deckRequestBody = DeckRequestResult{
+		Status: DeckRequestFiled, IssueURL: "https://github.com/krakenhavoc/cmd_and_ctrl/issues/1700", IssueNumber: 1700,
+		Report: &DeckCoverageReport{Counts: map[DeckCoverageBucket]int{BucketManual: 12}},
+	}
+
+	result, err := c.DeckRequest(context.Background(), "https://moxfield.com/decks/AbC123", DeckRequester{DiscordID: "42", DisplayName: "Alice"})
+	if err != nil {
+		t.Fatalf("DeckRequest: %v", err)
+	}
+	if result.Status != DeckRequestFiled || result.IssueNumber != 1700 {
+		t.Errorf("result: got %+v", result)
+	}
+	if fs.gotDeckRequest.URL != "https://moxfield.com/decks/AbC123" {
+		t.Errorf("server saw url %q", fs.gotDeckRequest.URL)
+	}
+	if fs.gotDeckRequest.Requester.DiscordID != "42" || fs.gotDeckRequest.Requester.DisplayName != "Alice" {
+		t.Errorf("server saw requester %+v", fs.gotDeckRequest.Requester)
+	}
+}
+
+func TestDeckRequest_RateLimited(t *testing.T) {
+	fs, c := newFakeServer(t)
+	fs.deckRequestStatus = http.StatusTooManyRequests
+	fs.deckRequestBody = DeckRequestResult{Status: DeckRequestRateLimited, RetryAfter: 3600}
+
+	result, err := c.DeckRequest(context.Background(), "https://moxfield.com/decks/x", DeckRequester{})
+	if err != nil {
+		t.Fatalf("DeckRequest: %v (rate_limited is a result, not an error)", err)
+	}
+	if result.Status != DeckRequestRateLimited || result.RetryAfter != 3600 {
+		t.Errorf("result: got %+v", result)
+	}
+}
+
+func TestDeckRequest_IPLimiterShapeIsAnError(t *testing.T) {
+	fs, c := newFakeServer(t)
+	fs.deckRequestStatus = http.StatusTooManyRequests
+	fs.deckRequestBody = map[string]string{"error": "too many requests"}
+
+	_, err := c.DeckRequest(context.Background(), "https://moxfield.com/decks/x", DeckRequester{})
+	var apiErr *DeckAPIError
+	if !errors.As(err, &apiErr) {
+		t.Fatalf("want *DeckAPIError for a status-less 429, got %v", err)
+	}
+}
+
+func TestDeckRequest_ServiceUnavailable(t *testing.T) {
+	fs, c := newFakeServer(t)
+	fs.deckRequestStatus = http.StatusServiceUnavailable
+	fs.deckRequestBody = map[string]string{"error": "deck requests need CMDCTRL_GITHUB_TOKEN"}
+
+	_, err := c.DeckRequest(context.Background(), "https://moxfield.com/decks/x", DeckRequester{})
+	var apiErr *DeckAPIError
+	if !errors.As(err, &apiErr) || apiErr.StatusCode != http.StatusServiceUnavailable {
+		t.Fatalf("want a 503 *DeckAPIError, got %v", err)
+	}
+}
+
+func TestDeckRequest_Unauthorized(t *testing.T) {
+	fs, c := newFakeServer(t)
+	fs.deckRequestStatus = http.StatusUnauthorized
+	_, err := c.DeckRequest(context.Background(), "https://moxfield.com/decks/x", DeckRequester{})
+	if !errors.Is(err, ErrUnauthorized) {
+		t.Errorf("want ErrUnauthorized, got %v", err)
 	}
 }

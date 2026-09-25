@@ -35,25 +35,28 @@ func init() {
 				return ev.Source == source.InstanceID &&
 					damagedOpponent(ev, source.Controller, g) != uuid.Nil
 			},
+			Key: "Ragavan — Treasure, and exile their top card",
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				victim := ev.Target
-				return game.NewTriggeredItem(source, "Ragavan — Treasure, and exile their top card",
-					func(g *game.Game, item *game.StackItem) error {
-						ctx := NewContext(g, item)
-						if err := (CreateToken{
-							Controller: item.Controller,
-							Template:   TreasureToken(),
-							N:          1,
-						}).Apply(ctx); err != nil {
-							return err
-						}
-						return ExileTopWithPermission{
-							From:     victim,
-							GrantTo:  item.Controller,
-							N:        1,
-							CastOnly: true,
-						}.Apply(ctx)
-					})
+				item := game.NewTriggeredItem(source, "Ragavan — Treasure, and exile their top card")
+				item.Params.Player = ev.Target
+				return item
+			},
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				victim := item.Params.Player
+				ctx := NewContext(g, item)
+				if err := (CreateToken{
+					Controller: item.Controller,
+					Template:   TreasureToken(),
+					N:          1,
+				}).Apply(ctx); err != nil {
+					return err
+				}
+				return ExileTopWithPermission{
+					From:     victim,
+					GrantTo:  item.Controller,
+					N:        1,
+					CastOnly: true,
+				}.Apply(ctx)
 			},
 		}},
 	})

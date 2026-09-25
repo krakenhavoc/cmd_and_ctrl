@@ -37,15 +37,15 @@ func init() {
 				return combatDamageToPlayerBy(ev, source.Controller, g)
 			},
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
-				victim := ev.Target
-				return game.NewTriggeredItem(source, b24NaturesWillLabel(g, victim),
-					func(g *game.Game, item *game.StackItem) error {
-						ctx := NewContext(g, item)
-						if err := b24TapAllLandsControlledBy(ctx, victim); err != nil {
-							return err
-						}
-						return b16UntapAllYouControlMatching(ctx, item.Controller, func(c game.Card) bool { return c.IsLand() })
-					})
+				return game.NewTriggeredItem(source, b24NaturesWillLabel(g, ev.Target))
+			},
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				ctx := NewContext(g, item)
+				victim := item.Trigger.Event.Target
+				if err := b24TapAllLandsControlledBy(ctx, victim); err != nil {
+					return err
+				}
+				return b16UntapAllYouControlMatching(ctx, item.Controller, func(c game.Card) bool { return c.IsLand() })
 			},
 		}},
 	})

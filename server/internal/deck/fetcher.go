@@ -73,10 +73,71 @@ func DefaultClient() *http.Client {
 // Caller supplies the http.Client so the same pool is reused across
 // requests and so tests can inject a stubbed transport.
 func FetchFromURL(ctx context.Context, client *http.Client, rawURL string) (name string, entries []Entry, err error) {
+	source, u, err := parseDeckURL(rawURL)
+	if err != nil {
+		return "", nil, err
+	}
+	switch source {
+	case SourceMoxfield:
+		return fetchMoxfield(ctx, client, u)
+	case SourceArchidekt:
+		return fetchArchidekt(ctx, client, u)
+	}
+	return "", nil, fmt.Errorf("%w: host %q", ErrUnknownSource, u.Host)
+}
+
+// The deck sources FetchFromURL understands, as they appear in a
+// SourceRef and in ADR 0095's deck keys.
+const (
+	SourceMoxfield  = "moxfield"
+	SourceArchidekt = "archidekt"
+)
+
+// SourceRef names the deck a URL points at without fetching it: which
+// builder, and that builder's deck ID.
+type SourceRef struct {
+	Source string // SourceMoxfield | SourceArchidekt
+	ID     string
+}
+
+// Key is the deck's stable identity across link spellings (ADR 0095
+// §1): "moxfield:<id>" or "archidekt:<id>". A slug, a www. prefix or a
+// query string does not change it.
+func (s SourceRef) Key() string { return s.Source + ":" + s.ID }
+
+// URL is the canonical public link for the deck — what a published
+// report or issue shows instead of whatever the caller pasted.
+func (s SourceRef) URL() string {
+	return "https://" + s.Source + ".com/decks/" + url.PathEscape(s.ID)
+}
+
+// ParseDeckURL identifies the deck a URL names, with the same host and
+// path rules FetchFromURL applies, and without touching the network.
+// Errors wrap ErrUnknownSource.
+func ParseDeckURL(rawURL string) (SourceRef, error) {
+	source, u, err := parseDeckURL(rawURL)
+	if err != nil {
+		return SourceRef{}, err
+	}
+	var id string
+	switch source {
+	case SourceMoxfield:
+		id, err = extractMoxfieldDeckID(u)
+	case SourceArchidekt:
+		id, err = extractArchidektDeckID(u)
+	}
+	if err != nil {
+		return SourceRef{}, err
+	}
+	return SourceRef{Source: source, ID: id}, nil
+}
+
+// parseDeckURL validates the scheme and maps the host to a source.
+func parseDeckURL(rawURL string) (string, *url.URL, error) {
 	if strings.TrimSpace(rawURL) == "" {
 		return "", nil, fmt.Errorf("%w: empty URL", ErrUnknownSource)
 	}
-	u, err := url.Parse(rawURL)
+	u, err := url.Parse(strings.TrimSpace(rawURL))
 	if err != nil {
 		return "", nil, fmt.Errorf("%w: %v", ErrUnknownSource, err)
 	}
@@ -92,9 +153,9 @@ func FetchFromURL(ctx context.Context, client *http.Client, rawURL string) (name
 
 	switch host {
 	case "moxfield.com":
-		return fetchMoxfield(ctx, client, u)
+		return SourceMoxfield, u, nil
 	case "archidekt.com":
-		return fetchArchidekt(ctx, client, u)
+		return SourceArchidekt, u, nil
 	}
 	return "", nil, fmt.Errorf("%w: host %q", ErrUnknownSource, u.Host)
 }

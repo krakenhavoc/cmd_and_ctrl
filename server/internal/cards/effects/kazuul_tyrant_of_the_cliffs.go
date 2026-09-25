@@ -15,8 +15,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // which is exactly this card's wording — gated on the source's
 // controller being the defending player (S27: an attack at your
 // planeswalker or your battle is an attack you defend). The "unless"
-// is the CR 118.12 PayUnless prompt addressed to the ATTACKER, and
-// the Ogre is made when they decline or cannot pay.
+// is the CR 118.12 PayUnless prompt addressed to the ATTACKER, read at
+// resolution off the item's carried trigger context
+// (item.Trigger.Event.Actor, #1223), and the Ogre is made when they
+// decline or cannot pay.
 //
 // No simplification.
 func init() {
@@ -29,19 +31,16 @@ func init() {
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b17OpponentsCreatureAttackedYou(ev, source, g)
 			},
-			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				attacker := ev.Actor
-				return game.NewTriggeredItem(source, "Kazuul — a 3/3 Ogre unless the attacker pays {3}",
-					func(g *game.Game, item *game.StackItem) error {
-						return PayUnless{
-							Chooser:  attacker,
-							Cost:     "{3}",
-							Question: "Kazuul, Tyrant of the Cliffs — pay {3} to stop the Ogre?",
-							OnDecline: func(ctx *Context) error {
-								return CreateToken{Controller: ctx.Controller(), Template: TokenCard("3/3 red Ogre"), N: 1}.Apply(ctx)
-							},
-						}.Apply(NewContext(g, item))
-					})
+			Key: "Kazuul — a 3/3 Ogre unless the attacker pays {3}",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				return PayUnless{
+					Chooser:  item.Trigger.Event.Actor,
+					Cost:     "{3}",
+					Question: "Kazuul, Tyrant of the Cliffs — pay {3} to stop the Ogre?",
+					OnDecline: func(ctx *Context) error {
+						return CreateToken{Controller: ctx.Controller(), Template: TokenCard("3/3 red Ogre"), N: 1}.Apply(ctx)
+					},
+				}.Apply(NewContext(g, item))
 			},
 		}},
 	})

@@ -26,14 +26,12 @@ func init() {
 				return b13LandYouControlEntered(ev, source, g)
 			},
 			Targets: TargetPlayer("target player"),
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Hedron Crab — target player mills three cards",
-					func(g *game.Game, item *game.StackItem) error {
-						if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetPlayer {
-							return nil
-						}
-						return MillCards{Player: item.Targets[0].ID, N: 3}.Apply(NewContext(g, item))
-					})
+			Key:     "Hedron Crab — target player mills three cards",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetPlayer {
+					return nil
+				}
+				return MillCards{Player: item.Targets[0].ID, N: 3}.Apply(NewContext(g, item))
 			},
 		}},
 	})

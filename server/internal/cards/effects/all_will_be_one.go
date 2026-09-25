@@ -46,16 +46,14 @@ func init() {
 				return ok
 			},
 			Targets: b12TargetOpponentOrTheirCreatureOrPlaneswalker(),
+			Key:     "All Will Be One — that much damage",
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
 				amount, _ := b12CountersPlacedByYou(ev, source, g)
-				return game.NewTriggeredItem(source, "All Will Be One — that much damage",
-					func(g *game.Game, item *game.StackItem) error {
-						if len(item.Targets) == 0 {
-							return nil
-						}
-						return DealDamage{Source: item.SourceCardID, Target: item.Targets[0].ID, Amount: amount}.Apply(NewContext(g, item))
-					})
+				item := game.NewTriggeredItem(source, "All Will Be One — that much damage")
+				item.Params.Amount = amount
+				return item
 			},
+			Effect: DealAmountFromParamsToFirstTarget,
 		}},
 	})
 }

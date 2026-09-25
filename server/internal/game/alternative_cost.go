@@ -798,21 +798,39 @@ func (g *Game) queueAltCostEntryTriggerLocked(card Card, item *StackItem) {
 	}
 	label := card.Name + " — " + alt.Label + ", sacrifice it"
 	pass := g.newHarvestPassLocked(Event{Kind: EventETB, Actor: item.Controller, CardID: card.InstanceID})
+	// ADR 0041 P9 (#1497, tier 4): evoke's sacrifice has no catalog
+	// row, so its item is keyed directly.
+	controller, cardID := item.Controller, card.InstanceID
 	g.harvestMatchLocked(&pass, card, card.Effective(), TriggeredAbility{Key: label, Build: func(_ Event, _ *Card, _ Characteristic, _ *Game) *StackItem {
-		return &StackItem{Kind: StackItemTriggered, Controller: item.Controller, Owner: item.Controller, SourceCardID: card.InstanceID, Label: label, Effect: func(g *Game, it *StackItem) error {
-			// The permanent may already have left — the trigger sat
-			// on the stack and anyone could answer it. Nothing to
-			// sacrifice is not an error; the ability simply does as
-			// much as it can (CR 608.2c). Left and COME BACK is the
-			// same answer (#1432, CR 400.7): an evoked creature
-			// flickered in response is a new object, cast for nothing
-			// in particular, and is not sacrificed.
-			if g.AbilitySourceGoneForEffect(it) {
-				return nil
-			}
-			return g.sacrificePermanentLocked(it.SourceCardID)
-		}}
+		return &StackItem{
+			Kind: StackItemTriggered, Controller: controller, Owner: controller,
+			SourceCardID: cardID, Label: label,
+			Body:   evokeSacrificeBody.Key(),
+			Effect: bodyEffect(evokeSacrificeBody.Key(), EffectParams{}),
+		}
 	}}, false)
+}
+
+// evokeSacrificeBody is "evoke/sacrifice" (ADR 0041 P9, #1497, tier 4):
+// the permanent may already have left — the trigger sat on the stack
+// and anyone could answer it. Nothing to sacrifice is not an error;
+// the ability simply does as much as it can (CR 608.2c). Left and COME
+// BACK is the same answer (#1432, CR 400.7): an evoked creature
+// flickered in response is a new object, cast for nothing in
+// particular, and is not sacrificed.
+//
+// Assigned in init: a var initialiser would be an initialisation
+// cycle through the exit primitives, the same shape
+// madnessGraveyardBody's comment explains.
+var evokeSacrificeBody BodyRef
+
+func init() {
+	evokeSacrificeBody = SimpleDelayedBody("evoke/sacrifice", func(g *Game, it *StackItem) error {
+		if g.AbilitySourceGoneForEffect(it) {
+			return nil
+		}
+		return g.sacrificePermanentLocked(it.SourceCardID)
+	})
 }
 
 // applyAltCostEntryCountersLocked folds "this creature escapes with

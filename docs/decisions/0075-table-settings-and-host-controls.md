@@ -2,7 +2,7 @@
 
 **Status:** Accepted · 2026-09-19 · S35 — Playtest stabilisation, round 2
 **Issues:** [#1032](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1032) (tracker); relates to
-[#614](https://github.com/krakenhavoc/cmd_and_ctrl/issues/614) (`/cc-end`, whose
+[#614](https://github.com/krakenhavoc/cmd_and_ctrl/issues/614) (`/c2-end`, whose
 open "host or admin" design point this settles) and
 [#607](https://github.com/krakenhavoc/cmd_and_ctrl/issues/607) (S34 user rows)
 **Numbering:** on 2026-09-19, after `git fetch --all --prune`, `docs/decisions/`
@@ -44,7 +44,7 @@ A table has no owner and no settings surface. What exists today:
   is broadcast. It is **not** narrated to the table.
 - **"Admin"** means only `auth.RoleAdmin`, the holder of the shared server token.
   `POST /games` is `RoleAdmin`-only, so every game is created by the operator
-  (directly or through the Discord bot's `/cc-invite`). Nothing records *which
+  (directly or through the Discord bot's `/c2-invite`). Nothing records *which
   player* the table belongs to.
 
 The owner wants a game's admin to control the table's settings, starting with
@@ -66,8 +66,8 @@ decided the following on 2026-09-19:
 `GameMeta` gains `HostPlayerID uuid.UUID` (`json:"host_player_id,omitempty"`).
 
 - **Set at creation** when the creator names one: `POST /games` accepts an
-  optional `host_discord_id`. `/cc-invite` passes the invoking Discord user, so
-  whoever runs `/cc-invite` hosts that table. When that Discord identity claims
+  optional `host_discord_id`. `/c2-invite` passes the invoking Discord user, so
+  whoever runs `/c2-invite` hosts that table. When that Discord identity claims
   a seat, `HostPlayerID` is bound to that seat's player ID.
 - **Otherwise it is the first human seat to join.** A bot seat is never host.
 - **Transferable**: `POST /games/{id}/host {player_id}` is available to the host or
@@ -234,7 +234,7 @@ players should be able to see.
    SBA check.
 2. **Host.** Add `HostPlayerID`, `host_discord_id` on create, first-human-seat
    fallback, transfer and auto-pass, `CanManageTable`, and `is_host` on the
-   wire. `/cc-invite` passes the invoker.
+   wire. `/c2-invite` passes the invoker.
 3. **Settings surfaces.** Add `PATCH /games/{id}/settings`, the
    `set_table_settings` action, and the gated `set_undo_limit` alias. Update
    `docs/protocol.md` and `docs/lobby.md`, and add the log narration.

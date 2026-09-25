@@ -25,7 +25,7 @@ func TestTriggerDoublerSnapshotJSONRestoreKeepsAttribution(t *testing.T) {
 			return nil
 		}
 		return []TriggeredAbility{{Watches: []EventKind{EventETB}, AppliesTo: func(Event, *Card, Characteristic, *Game) bool { return true }, Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
-			return NewTriggeredItem(source, "restorable", nil)
+			return NewTriggeredItem(source, "restorable")
 		}}}
 	})
 	withCatalogTriggerDoublers(t, func(key string) []TriggerDoubler {
@@ -67,7 +67,7 @@ func TestTriggerDoublersStackAndTargetPromptsAreIndependent(t *testing.T) {
 			return nil
 		}
 		return []TriggeredAbility{{Watches: []EventKind{EventDrawCard}, AppliesTo: func(Event, *Card, Characteristic, *Game) bool { return true }, Targets: &TargetSpec{Mode: "player", Players: true, Min: 1, Max: 1}, Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
-			return NewTriggeredItem(source, "targeted", nil)
+			return NewTriggeredItem(source, "targeted")
 		}}}
 	})
 	withCatalogTriggerDoublers(t, func(key string) []TriggerDoubler {
@@ -116,7 +116,7 @@ func TestTriggerDoublerEmptyTargetsDropEveryInstance(t *testing.T) {
 			return nil
 		}
 		return []TriggeredAbility{{Watches: []EventKind{EventDrawCard}, AppliesTo: func(Event, *Card, Characteristic, *Game) bool { return true }, Targets: &TargetSpec{Zones: []ZoneKind{ZoneBattlefield}, CardOK: func(*Game, uuid.UUID, Card, ZoneKind) bool { return false }, Min: 1, Max: 1}, Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
-			return NewTriggeredItem(source, "never", nil)
+			return NewTriggeredItem(source, "never")
 		}}}
 	})
 	withCatalogTriggerDoublers(t, func(key string) []TriggerDoubler {
@@ -142,7 +142,7 @@ func TestTriggerDoublerUsesBatchLKIAndDoesNotRediscoverRemovedDoubler(t *testing
 			return nil
 		}
 		return []TriggeredAbility{{Watches: []EventKind{EventLTB}, AppliesTo: func(ev Event, _ *Card, _ Characteristic, _ *Game) bool { return ev.CardID == doubler }, Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
-			return NewTriggeredItem(source, "watch", nil)
+			return NewTriggeredItem(source, "watch")
 		}}}
 	})
 	withCatalogTriggerDoublers(t, func(key string) []TriggerDoubler {
@@ -181,7 +181,7 @@ func TestTriggerDoublerReadsLivingCandidateDuringAnotherCardsLTB(t *testing.T) {
 			return nil
 		}
 		return []TriggeredAbility{{Watches: []EventKind{EventLTB}, AppliesTo: func(ev Event, _ *Card, _ Characteristic, _ *Game) bool { return ev.CardID == victim }, Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
-			return NewTriggeredItem(source, "living watch", nil)
+			return NewTriggeredItem(source, "living watch")
 		}}}
 	})
 	withCatalogTriggerDoublers(t, func(key string) []TriggerDoubler {
@@ -229,7 +229,7 @@ func TestTriggerDoublerCountsItselfWhenItDies(t *testing.T) {
 			return nil
 		}
 		return []TriggeredAbility{{Watches: []EventKind{EventLTB}, AppliesTo: func(ev Event, _ *Card, _ Characteristic, _ *Game) bool { return ev.CardID == doubler }, Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
-			return NewTriggeredItem(source, "death", nil)
+			return NewTriggeredItem(source, "death")
 		}}}
 	})
 	withCatalogTriggerDoublers(t, func(key string) []TriggerDoubler {
@@ -259,7 +259,7 @@ func TestTriggerDoublerLegendChoiceCountsSurvivorAndLeavingCopy(t *testing.T) {
 			return nil
 		}
 		return []TriggeredAbility{{Watches: []EventKind{EventLTB}, AppliesTo: func(ev Event, _ *Card, _ Characteristic, _ *Game) bool { return ev.CardID == drop }, Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
-			return NewTriggeredItem(source, "legend death", nil)
+			return NewTriggeredItem(source, "legend death")
 		}}}
 	})
 	withCatalogTriggerDoublers(t, func(key string) []TriggerDoubler {
@@ -308,7 +308,7 @@ func TestTriggerDoublerSeesBattlefieldToGraveyardZoneMoveSubjectAndLeaver(t *tes
 		return []TriggeredAbility{{Watches: []EventKind{EventZoneMove}, AppliesTo: func(ev Event, _ *Card, _ Characteristic, _ *Game) bool {
 			return ev.OldZone == ZoneBattlefield && ev.NewZone == ZoneGraveyard && ev.CardID == doubler
 		}, Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
-			return NewTriggeredItem(source, "move death", nil)
+			return NewTriggeredItem(source, "move death")
 		}}}
 	})
 	withCatalogTriggerDoublers(t, func(key string) []TriggerDoubler {
@@ -337,7 +337,7 @@ func TestTriggerDoublerSeesBattlefieldToGraveyardZoneMoveSubjectAndLeaver(t *tes
 			return nil
 		}
 		return []TriggeredAbility{{Watches: []EventKind{EventZoneMove}, AppliesTo: func(ev Event, _ *Card, _ Characteristic, _ *Game) bool { return ev.CardID == graveDoubler.InstanceID }, Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
-			return NewTriggeredItem(source, "not a death", nil)
+			return NewTriggeredItem(source, "not a death")
 		}}}
 	})
 	g.WithWriteLock(func() {
@@ -362,7 +362,7 @@ func TestTriggerDoublerUsesCopiedLeavingIdentityAndCarriesItThroughSnapshot(t *t
 		switch key {
 		case watcherOracle:
 			return []TriggeredAbility{{Watches: []EventKind{EventLTB}, AppliesTo: func(ev Event, _ *Card, _ Characteristic, _ *Game) bool { return ev.CardID == clone.InstanceID }, Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
-				return NewTriggeredItem(source, "copied death", nil)
+				return NewTriggeredItem(source, "copied death")
 			}}}
 		case doublerOracle:
 			// This source has become a printed Clone by the time EventLTB is
@@ -429,7 +429,7 @@ func TestTriggerDoublerHandlesSimultaneousLegendaryEntriesBeforeLegendChoice(t *
 			return nil
 		}
 		return []TriggeredAbility{{Watches: []EventKind{EventETB}, AppliesTo: func(ev Event, source *Card, _ Characteristic, _ *Game) bool { return ev.CardID == source.InstanceID }, Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
-			return NewTriggeredItem(source, "entry", nil)
+			return NewTriggeredItem(source, "entry")
 		}}}
 	})
 	withCatalogTriggerDoublers(t, func(key string) []TriggerDoubler {
@@ -466,7 +466,7 @@ func TestTriggerDoublerDoesNotApplyToManualOrReflexiveTriggers(t *testing.T) {
 		t.Fatal(err)
 	}
 	g.WithWriteLock(func() {
-		g.QueueReflexiveTriggerForEffect(&StackItem{SourceCardID: source, Controller: owner.ID, Label: "parent"}, ReflexiveTrigger{Label: "reflexive", Effect: func(*Game, *StackItem) error { return nil }})
+		g.QueueReflexiveTriggerForEffect(&StackItem{SourceCardID: source, Controller: owner.ID, Label: "parent"}, ReflexiveTrigger{Label: "reflexive", Body: testBody(func(*Game, *StackItem) error { return nil })})
 		g.ScheduleDelayedTriggerForEffect(DelayedTrigger{Controller: owner.ID, SourceCardID: source, Label: "delayed", At: StepEnd, Body: testBody(func(*Game, *StackItem) error { return nil })})
 		g.fireDelayedTriggersLocked(StepEnd)
 	})
@@ -503,7 +503,7 @@ func TestTriggerDoublerOncePerBatchKeepsFirstMatchingInstance(t *testing.T) {
 			return nil
 		}
 		return []TriggeredAbility{{Key: "one-or-more", OncePerBatch: true, Watches: []EventKind{EventAttack}, AppliesTo: func(Event, *Card, Characteristic, *Game) bool { return true }, Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
-			return NewTriggeredItem(source, "one-or-more", nil)
+			return NewTriggeredItem(source, "one-or-more")
 		}}}
 	})
 	withCatalogTriggerDoublers(t, func(key string) []TriggerDoubler {
@@ -535,7 +535,7 @@ func TestTriggerDoublerCoversStackSpellSagaAndEvokeHarvests(t *testing.T) {
 				return nil
 			}
 			return []TriggeredAbility{{FromStack: true, Watches: []EventKind{EventCast}, AppliesTo: func(Event, *Card, Characteristic, *Game) bool { return true }, Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
-				return NewTriggeredItem(source, "cast", nil)
+				return NewTriggeredItem(source, "cast")
 			}}}
 		})
 		withCatalogTriggerDoublers(t, func(key string) []TriggerDoubler {
@@ -560,7 +560,7 @@ func TestTriggerDoublerCoversStackSpellSagaAndEvokeHarvests(t *testing.T) {
 				return nil
 			}
 			return []TriggeredAbility{{Watches: []EventKind{EventSagaChapter}, AppliesTo: func(ev Event, source *Card, _ Characteristic, _ *Game) bool { return ev.Source == source.InstanceID }, Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
-				return NewTriggeredItem(source, "chapter", nil)
+				return NewTriggeredItem(source, "chapter")
 			}}}
 		})
 		withCatalogTriggerDoublers(t, func(key string) []TriggerDoubler {
@@ -614,7 +614,7 @@ func TestTriggerDoublerQueuesIndependentInstances(t *testing.T) {
 			return nil
 		}
 		return []TriggeredAbility{{Watches: []EventKind{EventETB}, AppliesTo: func(ev Event, source *Card, _ Characteristic, _ *Game) bool { return ev.CardID == source.InstanceID }, Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
-			return NewTriggeredItem(source, "draw", nil)
+			return NewTriggeredItem(source, "draw")
 		}}}
 	})
 	withCatalogTriggerDoublers(t, func(key string) []TriggerDoubler {
@@ -663,7 +663,7 @@ func TestTriggerDoublerOncePerBatchChecksMatchNotInstance(t *testing.T) {
 			return nil
 		}
 		return []TriggeredAbility{{Key: "attack", OncePerBatch: true, Watches: []EventKind{EventAttack}, AppliesTo: func(_ Event, _ *Card, _ Characteristic, _ *Game) bool { return true }, Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
-			return NewTriggeredItem(source, "attack", nil)
+			return NewTriggeredItem(source, "attack")
 		}}}
 	})
 	withCatalogTriggerDoublers(t, func(key string) []TriggerDoubler {
@@ -703,7 +703,7 @@ func TestTriggerDoublerOptionalPromptsAreIndependent(t *testing.T) {
 			return nil
 		}
 		return []TriggeredAbility{{Watches: []EventKind{EventDrawCard}, OptionalPrompt: &TriggerOptionalPrompt{Question: "draw?"}, AppliesTo: func(_ Event, _ *Card, _ Characteristic, _ *Game) bool { return true }, Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
-			return NewTriggeredItem(source, "optional", nil)
+			return NewTriggeredItem(source, "optional")
 		}}}
 	})
 	withCatalogTriggerDoublers(t, func(key string) []TriggerDoubler {

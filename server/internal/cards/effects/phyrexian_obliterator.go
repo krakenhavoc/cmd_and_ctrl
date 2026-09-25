@@ -36,14 +36,17 @@ func init() {
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return b17SourceDealtDamageToSelf(ev, source)
 			},
+			Key: "Phyrexian Obliterator — the source's controller sacrifices that many permanents",
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
-				victim, amount := b17DamageSourceController(ev, g), ev.Amount
-				return game.NewTriggeredItem(source, "Phyrexian Obliterator — the source's controller sacrifices that many permanents",
-					func(g *game.Game, item *game.StackItem) error {
-						b17PlayerSacrificesN(g, item.SourceCardID, victim, amount,
-							"Phyrexian Obliterator — sacrifice a permanent")
-						return nil
-					})
+				item := game.NewTriggeredItem(source, "Phyrexian Obliterator — the source's controller sacrifices that many permanents")
+				item.Params.Player = b17DamageSourceController(ev, g)
+				item.Params.Amount = ev.Amount
+				return item
+			},
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				b17PlayerSacrificesN(g, item.SourceCardID, item.Params.Player, item.Params.Amount,
+					"Phyrexian Obliterator — sacrifice a permanent")
+				return nil
 			},
 		}},
 	})

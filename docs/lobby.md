@@ -278,6 +278,114 @@ once. `Cache-Control: public, max-age=300`, the same as `/catalog`.
   decision record's file name. Either may be absent, as may `rules`,
   `pin` and `unblocks`.
 
+### `POST /deck-coverage`
+
+The deck coverage checker ([ADR 0095](decisions/0095-deck-coverage-and-deck-requests.md)
+§1–§2): how much of a decklist the engine automates. The site's
+`#/deck-check` page and the bot's `/c2-deck-check` both render this
+response. No session is needed.
+
+**Request** — exactly one of:
+
+```json
+{ "url": "https://moxfield.com/decks/AbC123" }
+{ "text": "1 Atraxa, Praetors' Voice *CMDR*\n1 Sol Ring\n..." }
+```
+
+`url` must be a Moxfield or Archidekt deck link. The server fetches it
+itself, with `deck.FetchFromURL`'s 10-second timeout and 2 MiB cap, and
+always fetches the deck's canonical link, never the caller's query
+string. `text` is the same plain-text list `POST /games/{id}/decks`
+accepts. Nothing else is fetched: an unsupported host is refused before
+any outbound request.
+
+**Limits.** The route fetches a third-party URL for anonymous callers,
+so it is limited per client IP to about one check every 10 seconds,
+with a burst of 3 (429 past that; the key follows
+`CMDCTRL_TRUST_FORWARDED`). An **admin** session has its own bucket of
+1/s, burst 10, because the bot calls from loopback on behalf of every
+guild member at once. Any other session is ignored. A link report is
+cached for 10 minutes under its deck key, so a second check of the same
+deck, however the link is spelled, fetches nothing. A pasted list is
+never cached.
+
+**Response 200**
+
+```json
+{
+  "deck_name": "Needy Deck",
+  "source": "moxfield",
+  "source_url": "https://moxfield.com/decks/AbC123",
+  "deck_key": "moxfield:AbC123",
+  "commanders": ["Atraxa, Praetors' Voice"],
+  "counts": { "manual": 12, "unreviewed": 1, "caveats": 6, "automated": 40, "no_effect": 29 },
+  "cards": [
+    { "name": "Doubling Season", "oracle_id": "…", "count": 1, "bucket": "manual" },
+    { "name": "Abzan Charm", "oracle_id": "…", "count": 1, "bucket": "caveats",
+      "caveats": ["…"] },
+    { "name": "Forest", "oracle_id": "…", "count": 7, "bucket": "no_effect" }
+  ],
+  "unknown": ["Some Misspelled Card"],
+  "violations": [
+    { "code": "wrong_card_count", "message": "deck has 99 cards; expected 100" }
+  ]
+}
+```
+
+- `bucket` is one of five, decided in one place
+  (`server/internal/deckcoverage`):
+  - `manual`: prints rules the engine will not run. Exactly
+    `game.Unimplemented`, the bit behind the stack's `manual` chip.
+  - `unreviewed`: catalogued, but not audited against its text.
+  - `caveats`: catalogued with declared simplifications. `caveats` is
+    the catalogue's player-facing sentences.
+  - `automated`: catalogued and complete.
+  - `no_effect`: nothing to automate. A vanilla creature, a card whose
+    text is only keywords the engine enforces, or a basic land.
+- `counts` is by distinct card, and always carries all five keys.
+  `count` on a card is its copies, summed across the command zone and
+  the main deck. Sideboard rows are not bucketed.
+- `cards` is sorted by bucket in the order above, then by name.
+- `unknown` is the names the card index could not resolve; they are in
+  no bucket.
+- `violations` is `deck.Validate`'s answer. It is informational and
+  never blocks a report: a 60-card list still gets its buckets.
+- `source` is `moxfield`, `archidekt` or `text`. `source_url` and
+  `deck_key` are absent for `text`.
+- `commanders`, `cards`, `unknown` and `violations` are always arrays,
+  never `null`.
+
+The body carries names, oracle IDs, buckets and caveat sentences, and
+never card art, an image URL or oracle text: the line ADR 0092 drew for
+`GET /roadmap`.
+
+**Errors**
+
+A link that cannot be read answers with a sentence a player can act on,
+the typed code, and the same `violations[]` shape a deck upload uses:
+
+```json
+{
+  "error": "That deck is private. Make it public or unlisted on the deck site, or paste the list as text.",
+  "code": "deck_private",
+  "violations": [{ "code": "deck_private", "card": "<the url>", "message": "…" }]
+}
+```
+
+| Status | `code` | When |
+|---|---|---|
+| 400 | `unknown_source` | Not a Moxfield or Archidekt deck link |
+| 404 | `deck_not_found` | The deck site answered 404 |
+| 422 | `deck_private` | The deck is private |
+| 422 | `unreadable_deck` | The deck was fetched but is not a list the importer can read |
+| 502 | `upstream_blocked` | The deck site's CDN is blocking this server |
+| 502 | `external_api_unavailable` | The deck site did not answer |
+
+The upstream failures are 502 rather than 4xx: the caller's link was
+fine. Other errors use the uniform `{error}` shape: 400 for a body with
+neither or both of `url` and `text`, or an unreadable pasted list; 503
+when the card index is not loaded.
+
 ## Authenticated routes
 
 ### `POST /games` *(admin only)*
@@ -292,7 +400,7 @@ Create a new game.
 
 `host_discord_id` is optional. It names the table host by Discord user ID
 ([ADR 0075 §2.1](decisions/0075-table-settings-and-host-controls.md)). The
-Discord bot's `/cc-invite` sends the user who ran it. The ID is held on the
+Discord bot's `/c2-invite` sends the user who ran it. The ID is held on the
 table, unserved, until that Discord identity claims a seat through the OAuth
 join. That seat then becomes host. See [The table host](#the-table-host).
 
@@ -362,7 +470,7 @@ Discord sign-ins, other seats, and the host of a different table.
 **Not the same thing as the game's creator.** `games.created_by` (ADR
 0051 decision 2) is whoever called `POST /games` while signed in, and
 is a *different* predicate, `lobby.CanRotateInvites` — used only by
-`POST /games/{id}/invites/rotate` and the Discord bot's `/cc-end` host
+`POST /games/{id}/invites/rotate` and the Discord bot's `/c2-end` host
 check, below. A table's creator need not ever sit down (no seat, no
 `is_host`), and a seated host need not be the creator — the first
 human to join hosts by default regardless of who created the table.
@@ -381,7 +489,7 @@ Transfer hosting to another seat. Host or admin only.
 `is_host` flags moved. Connected clients get a fresh snapshot with the new
 `is_host`.
 
-An explicit transfer also clears a pending named host, so a late `/cc-invite`
+An explicit transfer also clears a pending named host, so a late `/c2-invite`
 claimant does not take the table back.
 
 **Errors**
@@ -1280,7 +1388,7 @@ Send one person this table's invite link as a Discord direct message
 6). The server opens the DM itself, with a bot token and two plain
 REST calls — `POST /users/@me/channels` then `POST
 /channels/{id}/messages`. The gateway bot binary is not involved. The
-`/cc-invite-dm` slash command ([#613](https://github.com/krakenhavoc/cmd_and_ctrl/issues/613))
+`/c2-invite-dm` slash command ([#613](https://github.com/krakenhavoc/cmd_and_ctrl/issues/613))
 is a thin client of this route, so there is exactly one place that
 builds and sends an invite DM.
 
@@ -1308,7 +1416,7 @@ appears on the wire in neither direction.
 
 `discord_id` is accepted as an alternative — a raw Discord snowflake,
 exactly one of the two fields — but **only for an admin session**. It
-exists for #613's `/cc-invite-dm @user`, which holds a mention and
+exists for #613's `/c2-invite-dm @user`, which holds a mention and
 nothing else: its target may never have signed in here, so there is no
 user id to send. Letting every caller pass one would turn this route
 into "DM any Discord user who shares a server with the bot", which is
@@ -1369,7 +1477,7 @@ link the table has already shared, which is a startling side effect of
 
 ### `GET /games/{id}/creator` *(admin only)*
 
-The Discord bot's `/cc-end` host check ([#1098](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1098)):
+The Discord bot's `/c2-end` host check ([#1098](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1098)):
 does the Discord user named by `?discord_id=<snowflake>` match this
 game's creator. The bot calls the server with its own admin
 credentials (same as every other bot call — see
@@ -1583,6 +1691,101 @@ construction.
 `source_text` and `source_format` are not included here — this is the
 picker's list, not the re-seat payload; seating reads them server-side
 via `POST /games/{id}/decks/{deck_id}`.
+
+### `POST /deck-requests`
+
+Ask for a deck's missing cards to be added to the engine
+([ADR 0095](decisions/0095-deck-coverage-and-deck-requests.md) §3).
+The server files a GitHub issue that is a checklist of the deck's
+`manual` and `unreviewed` cards, or joins the open issue already filed
+for that deck. The site's "Request these cards" button and the bot's
+`/c2-deck-req` both call it.
+
+**Who may call it:**
+
+- **The bot**, with the admin session, naming the Discord member it is
+  asking for: `requester: {discord_id, display_name}`. Required for an
+  admin session (400 without it, or with a `discord_id` that is not a
+  Discord user id).
+- **A signed-in user whose account has a Discord identity.** The
+  requester comes from the session and the users table; sending
+  `requester` is 403.
+
+No session is 401. A guest or spectator seat, or a signed-in account
+with no Discord identity, is 403.
+
+**Request**
+
+```json
+{ "url": "https://moxfield.com/decks/AbC123" }
+{ "url": "https://moxfield.com/decks/AbC123",
+  "requester": { "discord_id": "123456789012345678", "display_name": "Alice" } }
+```
+
+A link only. `text` is refused with 400: a pasted list has no stable
+identity to deduplicate on.
+
+**What it does**, in order:
+
+1. **Rate limit.** Three asks per requester per rolling 24 hours, keyed
+   `discord:<snowflake>` whether the ask came from the site or the bot,
+   and counted in the database (`deck_request_asks`) so a deploy does
+   not reset it. Over the limit is **429** `rate_limited`, decided
+   before the deck is fetched. Only an ask that reaches GitHub (an
+   issue filed, or a comment added) counts.
+2. **The report.** The deck is fetched and bucketed exactly as
+   `POST /deck-coverage` does it, from the same 10-minute cache. A
+   fetch failure answers with that route's error table.
+3. **Nothing to add.** No `manual` and no `unreviewed` card: no issue,
+   **200** `nothing_to_add`, with the report (its caveated cards
+   included).
+4. **An open issue for the deck.** A comment, "Also requested by
+   *name*", with the current counts: **200** `joined`. If this
+   requester already asked on that issue, no comment is added, and the
+   answer is `joined` with `already_requested: true`.
+5. **A closed or deleted issue, or none.** A new issue, and the
+   deck's row repointed at it: **201** `filed`.
+
+The issue's title is `[deck-request] <deck name>` (the commander's name
+when the deck has none), with labels `enhancement` and `deck-request`.
+If GitHub refuses the labels, the issue is filed without them, as
+`POST /bugreport` does. The body holds the deck link, the requester's
+display name (never the snowflake), the counts, `## Cards to add` and
+`## Cards to review` checklists (`- [ ] Name (oracle id)`),
+`## Automated with caveats`, any names the index could not resolve, and
+a footer naming the surface that filed it. The deck name, the display
+name and any unresolved name went through ADR 0017's redaction before
+they are published, and an `@` in them cannot ping anyone.
+
+**Response**
+
+```json
+{
+  "status": "filed",
+  "issue_url": "https://github.com/krakenhavoc/cmd_and_ctrl/issues/1700",
+  "issue_number": 1700,
+  "report": { "deck_name": "…", "counts": { "manual": 12, "…": 0 }, "cards": [] }
+}
+```
+
+| `status` | HTTP | Fields |
+|---|---|---|
+| `filed` | 201 | `issue_url`, `issue_number`, `report` |
+| `joined` | 200 | `issue_url`, `issue_number`, `report`; `already_requested: true` when no comment was added |
+| `nothing_to_add` | 200 | `report` |
+| `rate_limited` | 429 | `retry_after`: whole seconds until the next ask is allowed (also sent as `Retry-After`) |
+
+`report` is the `POST /deck-coverage` body. A 429 from the IP limiter
+(`{"error": "too many requests"}`) has no `status` field; tell the two
+apart by it.
+
+**Other errors**
+
+- **503** when the feature is off: `CMDCTRL_GITHUB_TOKEN` is not set
+  (the message names it), or the server has no database
+  (`CMDCTRL_DATA_DIR`). Never a silent success.
+- **502** when GitHub fails while reading the deck's issue, commenting
+  or filing.
 
 ## Signing out
 

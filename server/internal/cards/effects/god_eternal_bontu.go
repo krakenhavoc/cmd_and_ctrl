@@ -45,10 +45,8 @@ func init() {
 			{
 				Watches:   []game.EventKind{game.EventETB},
 				AppliesTo: b06SelfETB,
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "God-Eternal Bontu — sacrifice any number of other permanents, then draw that many cards",
-						bontuSacrificeThenDraw)
-				},
+				Key:       "God-Eternal Bontu — sacrifice any number of other permanents, then draw that many cards",
+				Effect:    bontuSacrificeThenDraw,
 			},
 			Optional(On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return b22SelfDiedOrWasExiledFromBattlefield(ev, source)

@@ -11,9 +11,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // The table's tax collector. b15OpponentCastSpell is the condition;
 // the mana value is read off the stack as the trigger fires (CR
 // 202.3e — game.(*Game).ManaValueForEffect, so a spell cast for X = 5 hits for its
-// full cost) and captured in Build, because the spell may have
-// resolved or been countered by the time the trigger does. The
-// controller picks any target as the trigger goes on the stack;
+// full cost) and carried on the item's Params, because the spell may
+// have resolved or been countered by the time the trigger does — so
+// the amount is computed once at trigger (Build) time and read back
+// at resolution rather than re-derived from a spell that may be gone.
+// The controller picks any target as the trigger goes on the stack;
 // Kaervek is the damage source, so its colour is what a prevention
 // check sees. A zero-mana-value spell (a land is not a spell; a
 // Mox is) triggers and deals nothing.
@@ -30,19 +32,17 @@ func init() {
 				return b15OpponentCastSpell(ev, source)
 			},
 			Targets: TargetAny(),
+			Key:     "Kaervek the Merciless — deal damage equal to that spell's mana value to any target",
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
 				amount := 0
 				if spell, ok := g.LookupCardForEffect(ev.CardID); ok {
 					amount, _ = g.ManaValueForEffect(spell)
 				}
-				return game.NewTriggeredItem(source, "Kaervek the Merciless — deal damage equal to that spell's mana value to any target",
-					func(g *game.Game, item *game.StackItem) error {
-						if len(item.Targets) == 0 {
-							return nil
-						}
-						return DealDamage{Source: item.SourceCardID, Target: item.Targets[0].ID, Amount: amount}.Apply(NewContext(g, item))
-					})
+				item := game.NewTriggeredItem(source, "Kaervek the Merciless — deal damage equal to that spell's mana value to any target")
+				item.Params.Amount = amount
+				return item
 			},
+			Effect: DealAmountFromParamsToFirstTarget,
 		}},
 	})
 }

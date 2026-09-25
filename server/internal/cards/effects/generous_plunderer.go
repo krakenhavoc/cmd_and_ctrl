@@ -48,16 +48,23 @@ func init() {
 				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 					return attackDeclared(ev, source)
 				},
+				Key: "Generous Plunderer — damage to defending player equal to their artifacts",
+				// The defending player is a board read at trigger time
+				// (ADR 0041 P9's fill-in Build): b17DefendingPlayer resolves
+				// the attack's target to a player once, when the attack was
+				// declared, and the resolving item cannot re-derive it later.
 				Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
-					defender := b17DefendingPlayer(g, ev)
-					return game.NewTriggeredItem(source, "Generous Plunderer — damage to defending player equal to their artifacts",
-						func(g *game.Game, item *game.StackItem) error {
-							n := b03ArtifactsControlled(g, defender)
-							if n == 0 {
-								return nil
-							}
-							return DealDamage{Source: item.SourceCardID, Target: defender, Amount: n}.Apply(NewContext(g, item))
-						})
+					item := game.NewTriggeredItem(source, "Generous Plunderer — damage to defending player equal to their artifacts")
+					item.Params.Player = b17DefendingPlayer(g, ev)
+					return item
+				},
+				Effect: func(g *game.Game, item *game.StackItem) error {
+					defender := item.Params.Player
+					n := b03ArtifactsControlled(g, defender)
+					if n == 0 {
+						return nil
+					}
+					return DealDamage{Source: item.SourceCardID, Target: defender, Amount: n}.Apply(NewContext(g, item))
 				},
 			},
 		},
@@ -76,9 +83,8 @@ func generousPlundererTreasure(g *game.Game, item *game.StackItem) error {
 		return err
 	}
 	return ReflexiveTrigger{
-		Label:   "Generous Plunderer — a tapped Treasure for target opponent",
-		Targets: TargetPlayer("target opponent", Opponent()),
-		Effect:  generousPlundererGift,
+		Label: "Generous Plunderer — a tapped Treasure for target opponent",
+		Body:  generousPlundererGiftBody,
 	}.Apply(ctx)
 }
 

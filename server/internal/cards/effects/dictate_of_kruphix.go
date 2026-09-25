@@ -33,12 +33,9 @@ func init() {
 			AppliesTo: func(ev game.Event, _ *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return ev.Actor != uuid.Nil
 			},
-			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				drawer := ev.Actor
-				return game.NewTriggeredItem(source, "Dictate of Kruphix — draw an additional card",
-					func(g *game.Game, item *game.StackItem) error {
-						return DrawCards{Player: drawer, N: 1}.Apply(NewContext(g, item))
-					})
+			Key: "Dictate of Kruphix — draw an additional card",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				return DrawCards{Player: item.Trigger.Event.Actor, N: 1}.Apply(NewContext(g, item))
 			},
 		}},
 	})

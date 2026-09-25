@@ -33,12 +33,10 @@ func init() {
 			Watches:   []game.EventKind{game.EventETB},
 			AppliesTo: b06SelfETB,
 			Targets:   TargetPlayer("target opponent", Opponent()),
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Shaman of the Pack — target opponent loses life for each Elf you control",
-					func(g *game.Game, item *game.StackItem) error {
-						return b43TargetPlayerLoses(g, item,
-							b43CreaturesOfSubtypeControlled(g, item.Controller, "Elf"))
-					})
+			Key:       "Shaman of the Pack — target opponent loses life for each Elf you control",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				return b43TargetPlayerLoses(g, item,
+					b43CreaturesOfSubtypeControlled(g, item.Controller, "Elf"))
 			},
 		}},
 	})

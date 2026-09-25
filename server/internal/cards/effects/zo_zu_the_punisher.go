@@ -45,16 +45,22 @@ func init() {
 				return ok
 			},
 			Key: "Zo-Zu the Punisher — 2 damage to that land's controller",
+			// A fill-in Build (ADR 0041 P9): the controller is read
+			// as the trigger is built, so it is captured into
+			// Params.Player rather than a closure — a land that has
+			// since left, or changed controller, is still attributed
+			// correctly.
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
-				victim, _ := b39LandEnteredController(ev, g)
-				return game.NewTriggeredItem(source, "Zo-Zu the Punisher — 2 damage to that land's controller",
-					func(g *game.Game, item *game.StackItem) error {
-						return DealDamage{
-							Source: item.SourceCardID,
-							Target: victim,
-							Amount: 2,
-						}.Apply(NewContext(g, item))
-					})
+				item := game.NewTriggeredItem(source, "Zo-Zu the Punisher — 2 damage to that land's controller")
+				item.Params.Player, _ = b39LandEnteredController(ev, g)
+				return item
+			},
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				return DealDamage{
+					Source: item.SourceCardID,
+					Target: item.Params.Player,
+					Amount: 2,
+				}.Apply(NewContext(g, item))
 			},
 		}},
 	})

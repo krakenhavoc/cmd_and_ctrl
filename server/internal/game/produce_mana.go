@@ -297,10 +297,8 @@ func (g *Game) producesManaReplacementsExistLocked() bool {
 			return true
 		}
 	}
-	for i := range g.TurnScopedReplacements {
-		if eventKindMatches(g.TurnScopedReplacements[i].Watches, RepEventProduceMana) {
-			return true
-		}
+	if g.scopedReplacementsWatchLocked(RepEventProduceMana) {
+		return true
 	}
 	for i := range g.testReplacements {
 		if eventKindMatches(g.testReplacements[i].Watches, RepEventProduceMana) {

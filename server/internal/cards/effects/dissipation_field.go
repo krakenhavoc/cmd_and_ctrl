@@ -46,14 +46,9 @@ func init() {
 				_, ok := b41PermanentDealtDamageToYou(ev, source, g)
 				return ok
 			},
-			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				// Only the ID is captured; the trigger resolves against
-				// whichever Game it is restored into.
-				dealer := ev.Source
-				return game.NewTriggeredItem(source, "Dissipation Field — return it to its owner's hand",
-					func(g *game.Game, item *game.StackItem) error {
-						return BounceToHand{Target: dealer}.Apply(NewContext(g, item))
-					})
+			Key: "Dissipation Field — return it to its owner's hand",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				return BounceToHand{Target: item.Trigger.Event.Source}.Apply(NewContext(g, item))
 			},
 		}},
 	})

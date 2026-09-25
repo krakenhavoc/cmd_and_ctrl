@@ -26,11 +26,13 @@ import (
 // triggers do not fire for them (CR 508.4) — including the Garrison's
 // own, which is what keeps it from making tokens forever.
 //
-// The defending player is read off the attack EVENT rather than
-// recomputed at resolution, because that is the only place the
-// Garrison's own attack target is recorded. An attack whose defender
-// has left the game between declaration and resolution makes no
-// tokens rather than tokens attacking nobody.
+// The defending player is read off the attack EVENT, at trigger time,
+// and carried on the item's Params — not recomputed live at
+// resolution, because a live re-derivation could answer differently if
+// the attacked planeswalker or battle changed hands in response, and
+// CR 506.4's defending player is fixed at declaration. An attack whose
+// defender has left the game between declaration and resolution makes
+// no tokens rather than tokens attacking nobody.
 //
 // Declared simplification, weaker than printed (#259): MELD is not
 // modelled. Hanweir Garrison and Hanweir Battlements will never become
@@ -47,18 +49,21 @@ func init() {
 		Triggered: []game.TriggeredAbility{{
 			Watches:   []game.EventKind{game.EventAttack},
 			AppliesTo: ThisAttacked,
+			Key:       "Hanweir Garrison — two tapped and attacking Humans",
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
-				defender := b17DefendingPlayer(g, ev)
-				return game.NewTriggeredItem(source, "Hanweir Garrison — two tapped and attacking Humans",
-					func(g *game.Game, item *game.StackItem) error {
-						if defender == uuid.Nil {
-							return nil
-						}
-						tmpl := TokenCard("1/1 red Human")
-						tmpl.Tapped = true
-						tmpl.AttackingTarget = defender
-						return CreateToken{Controller: item.Controller, Template: tmpl, N: 2}.Apply(NewContext(g, item))
-					})
+				item := game.NewTriggeredItem(source, "Hanweir Garrison — two tapped and attacking Humans")
+				item.Params.Player = b17DefendingPlayer(g, ev)
+				return item
+			},
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				defender := item.Params.Player
+				if defender == uuid.Nil {
+					return nil
+				}
+				tmpl := TokenCard("1/1 red Human")
+				tmpl.Tapped = true
+				tmpl.AttackingTarget = defender
+				return CreateToken{Controller: item.Controller, Template: tmpl, N: 2}.Apply(NewContext(g, item))
 			},
 		}},
 	})

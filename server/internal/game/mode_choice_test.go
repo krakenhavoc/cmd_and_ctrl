@@ -48,7 +48,7 @@ func threeBulletTrigger(ran *[]string) TriggeredAbility {
 			return ev.CardID == source.InstanceID
 		},
 		Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
-			return NewTriggeredItem(source, "Modal Source — choose one", nil)
+			return NewTriggeredItem(source, "Modal Source — choose one")
 		},
 		Modes: &ModeSpec{
 			Prompt: "Choose one",

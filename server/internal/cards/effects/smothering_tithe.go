@@ -34,23 +34,21 @@ func init() {
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return ev.Actor != uuid.Nil && ev.Actor != source.Controller
 			},
-			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				drawer := ev.Actor
-				return game.NewTriggeredItem(source, "Smothering Tithe — Treasure unless drawer pays {2}",
-					func(g *game.Game, item *game.StackItem) error {
-						return PayUnless{
-							Chooser:  drawer,
-							Cost:     "{2}",
-							Question: "Smothering Tithe — pay {2}?",
-							OnDecline: func(ctx *Context) error {
-								return CreateToken{
-									Controller: ctx.Controller(),
-									Template:   TreasureToken(),
-									N:          1,
-								}.Apply(ctx)
-							},
-						}.Apply(NewContext(g, item))
-					})
+			Key: "Smothering Tithe — Treasure unless drawer pays {2}",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				ctx := NewContext(g, item)
+				return PayUnless{
+					Chooser:  ctx.Trigger().Event.Actor,
+					Cost:     "{2}",
+					Question: "Smothering Tithe — pay {2}?",
+					OnDecline: func(ctx *Context) error {
+						return CreateToken{
+							Controller: ctx.Controller(),
+							Template:   TreasureToken(),
+							N:          1,
+						}.Apply(ctx)
+					},
+				}.Apply(ctx)
 			},
 		}},
 	})

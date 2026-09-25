@@ -40,13 +40,12 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			{
 				Watches: []game.EventKind{game.EventBeginEndStep},
+				Key:     b24WitchOfTheMoorsLabel,
 				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 					return b24YourEndStepAndYouGainedLifeThisTurn(ev, source, g) && b24GraveyardHasCreatureCard(g, source.Controller)
 				},
 				Targets: TargetCardInGraveyard("up to one target creature card from your graveyard", YouOwn(), Creature()).WithCount(0, 1),
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, b24WitchOfTheMoorsLabel, b24WitchOfTheMoorsEdictAndReturn)
-				},
+				Effect:  b24WitchOfTheMoorsEdictAndReturn,
 			},
 			On(game.EventBeginEndStep, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b24YourEndStepAndYouGainedLifeThisTurn(ev, source, g) && !b24GraveyardHasCreatureCard(g, source.Controller)

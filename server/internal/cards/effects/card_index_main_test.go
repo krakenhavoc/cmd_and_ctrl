@@ -16,5 +16,9 @@ import (
 // stack trace.
 func TestMain(m *testing.M) {
 	game.SetCardIndexCrossCheck(func(msg string) { panic(msg) })
+	// ADR 0041 P9 (tier 4-2): the legacy-trigger lint reads the
+	// PRODUCTION catalog, so it is captured before any test registers
+	// a fixture of its own.
+	snapshotProductionDefKeys()
 	os.Exit(m.Run())
 }

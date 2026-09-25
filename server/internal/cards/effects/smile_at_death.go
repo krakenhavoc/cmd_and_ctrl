@@ -34,10 +34,8 @@ func init() {
 			},
 			Targets: TargetCardInGraveyard("up to two target creature cards with power 2 or less from your graveyard",
 				YouOwn(), Creature(), PowerLE(2)).WithCount(0, 2),
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Smile at Death — return up to two small creature cards to the battlefield with a +1/+1 counter",
-					b35ReturnChosenToBattlefieldWithCounter)
-			},
+			Key:    "Smile at Death — return up to two small creature cards to the battlefield with a +1/+1 counter",
+			Effect: b35ReturnChosenToBattlefieldWithCounter,
 		}},
 	})
 }

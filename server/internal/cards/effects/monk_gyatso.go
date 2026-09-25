@@ -53,19 +53,17 @@ func init() {
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return targetedAnotherCreatureYouControl(ev, source, g)
 			},
-			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				victim := ev.CardID
-				return game.NewTriggeredItem(source, "Monk Gyatso — airbend the targeted creature",
-					func(g *game.Game, item *game.StackItem) error {
-						// The creature may have been answered some
-						// other way while the trigger sat on the
-						// stack. Nothing to airbend is not an error
-						// (CR 608.2c).
-						if !onBattlefield(g, victim) {
-							return nil
-						}
-						return Airbend{Target: victim}.Apply(NewContext(g, item))
-					})
+			Key: "Monk Gyatso — airbend the targeted creature",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				victim := item.Trigger.Event.CardID
+				// The creature may have been answered some
+				// other way while the trigger sat on the
+				// stack. Nothing to airbend is not an error
+				// (CR 608.2c).
+				if !onBattlefield(g, victim) {
+					return nil
+				}
+				return Airbend{Target: victim}.Apply(NewContext(g, item))
 			},
 			OptionalPrompt: &game.TriggerOptionalPrompt{
 				Question: "Monk Gyatso — airbend the targeted creature? (Exile it; its owner may cast it for {2}.)",

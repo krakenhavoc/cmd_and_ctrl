@@ -1878,3 +1878,667 @@ The owner took the recommendation on all five questions.
    tail (slices 4-3 to 4-10) is part of the sprint.
 5. **Q5 — A. In parallel.** M, 3b-1, 4-0 and 4-1 start together; then
    3b-2 and 4-2; then the tail and 4-final.
+
+### Implementation notes (tier 4-1)
+
+Slice 4-1 of P9 (`AbilityRef`, the catalog body, the restore lookup
+with Q2 and Q3, the stack-item field refusal, `lastKnownStack` carried,
+and the census fold). Where the code differs from the design above, the
+code wins, and each difference is listed here.
+
+- **Only activated abilities are stamped, so only `catalog/activated`
+  is registered.** `ActivateCatalogAbility` puts
+  `Body: "catalog/activated"` and `Params.Ability` on the item. It
+  names the row while the source is still the object that has it,
+  before any cost moves it. `catalog/triggered` is **not** registered
+  in this slice. A 4-1 binary cannot rebuild a trigger's `Effect`,
+  because the row has no `Effect` until 4-2. So it has to refuse a 4-2
+  file that names the key, and it does, because the key is unknown.
+  4-2 registers it.
+- **`AbilityRef.Key` is the key whose list the ref indexes, not the
+  full `CatalogAbilityKey`.** For `own:<i>` it is the object's
+  `CatalogKey`, which already includes any copy grants. For
+  `grant:<bundle>:<i>:<n>` it is the bundle's `GrantKey`. The composite
+  key cannot be split back apart: a copy grant and a layer-6 grant are
+  both `|grant:<x>`, and `own:<i>` counts only the own list. A grant
+  ref whose bundle is not its key is refused.
+- **A stamp is only written if the lookup works.** The announce path
+  checks that the running catalog returns the same row under the ref.
+  If it does not, the item is not stamped. That covers an
+  instance-carried ability (`census:IntrinsicAbilityCards`) and a
+  catalog stub that does not return rows. An unstamped item stays an
+  unkeyed closure, and the census counts it.
+- **Q3's manual item has no body and no ref.** A row that cannot be
+  found leaves the item on the stack with its announcement: label,
+  targets, modes, X and payment. Its `Effect`, target clause, mode
+  clause, body and ref are cleared, so it resolves as a
+  sandbox-announced item does. Its source card is flagged
+  `AbilitiesLostOnRestore`, and that flag is carried from then on. The
+  next capture is an ordinary restore point, so a later boot does not
+  report the item again. The report is
+  `GameSnapshot.LostStackAbilities()`. It makes the same lookup restore
+  makes, and reads only the snapshot and the catalog, as
+  `AbilityShortfalls` does. The boot path (`ws/persist.go`) logs one
+  ERROR line for each lost item, naming the game, the card, the label
+  and the ref. The summary counts these items in
+  `cards_with_lost_abilities`.
+- **Q2 applies inside the list the ref names.** For a moved row, the
+  single row with the declared label in the same list is used, and the
+  ref is rewritten to point at it. A grant ref keeps its bundle and
+  instance. An empty label never uses the fallback.
+- **The whole-record refusal applies to the current schema only.**
+  Unknown keys on a stack item, on its `params.ability`, on a
+  `lastKnownStack` entry and on that entry's item are refused
+  (`ErrUnknownEffectKey`) when the file is v7. In an older file an
+  unknown key can only be one that a later bump removed, and that is the
+  bump's migration to handle. No fixture holds such a key. The
+  existing `params` checks still apply to every schema.
+- **More refusals** (`unknownAbilityRef`):
+  - a `catalog/activated` item with no ref;
+  - a ref with an unknown slot, including `triggered`, which 4-2 adds;
+  - a ref outside the grammar;
+  - a ref under a body that does not read one;
+  - any `params.ability` on a delayed trigger.
+
+  No binary writes any of these, so each one means a newer file.
+- **The census fold.** An item is counted once, in `StackEffects`, in
+  either of two cases:
+  - its `Effect` is an unkeyed closure;
+  - it holds a target or mode clause, and has neither a spell's oracle
+    ID nor a catalog ref to rebuild the clause from.
+
+  The second case includes a tier-2 keyed item that carries a clause.
+  None does today. 4-0's reflexive bodies will, until restore can
+  rebuild their clause. `StackTargetSpecs` is on
+  `retiredCensusCounters`. The field is kept so that a census written
+  by an older binary still decodes as not restorable.
+- **P11, as applied.** The eleven `census:StackTargetSpecs` lines
+  moved to `census:ChoiceResumeFrames`, the class of the route that is
+  left to them (a resume frame reaches every one):
+  - `ModeOption.Effect`, `ModeOption.Targets`, `ModeSpec.Options`;
+  - `StackItem.modeSpec`, `StackItem.targetSpec`;
+  - `TargetDifference.Key`;
+  - `TargetSpec.AbilityOK`, `.CardOK`, `.Different`, `.PlayerOK`,
+    `.Rest`.
+
+  Its ceiling went from 98 to 109. The rule now appears in
+  `closure_fields_test.go` and in the header of `closure_fields.txt`.
+  `StackEffects` stays at 6, because `lastKnownStack`'s three lines are
+  still reached through `StackItem.Effect`.
+- **`lastKnownStack` is carried** as
+  `GameSnapshot.LastKnownStack`: a list sorted by card ID, where each
+  entry is a card mirror and a stack-item mirror. The item's oracle ID
+  is read from the recorded card, because a countered copy is in no
+  zone. The census sees each entry as it sees a live item and card, and
+  a real spell holds nothing it counts. One engine fix came with it.
+  `createSpellCopyLocked` now creates `StackMeta` when it is nil. A game
+  restored with an empty stack has no map, and a copy made from a
+  carried record can be the first item put on it.
+- **Verifying P10.** A test removes `catalog/activated` from the
+  registry, standing in for a binary from before this slice, and
+  confirms the file is refused. Another removes `lastKnownStack` from a
+  file, standing in for what an older binary writes, and confirms that
+  file still restores.
+- **Fixtures.** Three new files in `v7/`, each made by real cards:
+  - `activated_on_stack.json`: Goblin Bombardment's ping, `own:0`;
+  - `granted_activated_on_stack.json`: Squirrel Nest's granted ability,
+    `grant:squirrel-nest/make-a-squirrel:0:0`;
+  - `countered_spell_lki.json`: a Lightning Bolt countered by
+    Counterspell.
+
+  No existing fixture changed. The triggered fixtures P10 lists
+  (`etb_trigger_on_stack`, `granted_dies_trigger`, `token_trigger`,
+  `emblem_trigger`, `modal_trigger`) need 4-2's declarative `Effect`.
+  `reflexive_trigger` and `prowess_on_stack` need 4-0's body keys.
+  `storm_after_counter` needs storm's trigger to be data. None of these
+  can be a restore point in this slice.
+
+### Implementation notes (tier 3b-1)
+
+What the replacement half of tier 3b settled where the code and P8
+differ or P8 left it open. Everything else is as P8 says.
+
+- **The four kinds are declared, and nothing else.** `preventCombatDamage`,
+  `preventDamage`, `exileInsteadOfLeaving` and `exileInsteadOfGraveyard`
+  carry `reader: readerReplacement`. The layer adapter skips them. The
+  replacement gather adapts each live record in
+  `game/scoped_replacements.go`. The block-rule reader, `Mod.Text` and the
+  two block-rule kinds are left to 3b-2, because nothing here reads them.
+- **The engine owns the writers.** There are four `*ForEffect` functions,
+  one per kind, and no exported mod constructor for a replacement kind. A
+  `ScopedEffectFor` cannot write one by accident. The card-side builders
+  keep their names. `PreventAllCombatDamageThisTurn` gains `Player`, which
+  replaces the batch-38 helper. Cosmic Intervention calls
+  `ExileInsteadOfGraveyardThisTurn{Then}`.
+- **Every adapted closure reads its record back by `Seq` at call time.**
+  So an effect held by an open CR 616 prompt acts on the registry as it is
+  when the prompt is answered. A spent shield, a record an undo removed and
+  a redirect whose object has gone all answer "does not apply". None of
+  them acts on a stale copy.
+- **`Seq` goes only on a record with a non-layer mod.** A layer-only record
+  is never named. Keeping its `Seq` at zero keeps it byte-identical to what
+  an earlier v7 binary writes and reads, so a Giant Growth does not become
+  a rollback refusal. The ID is `scopedReplacementIDBase + Seq×8 + mod
+  index`. It sits in the range the turn-scoped registry used.
+- **The counter is derived, not carried.** `Game.scopedEffectSeq` is
+  cloned with the game. Restore sets it to the largest `Seq` among the
+  restored records. Uniqueness needs nothing more, because no prompt
+  survives a restore. So the snapshot gains no top-level key. The drift
+  test classifies the field `rebuilt`.
+- **A shield on a permanent also pins its duration** (`PinnedTo`). The
+  record is then swept with its object, like the Whip's redirect. The
+  affected set is pinned as P8 says, so a flicker ends the shield
+  (CR 400.7).
+- **The uncharged "prevent that damage" form is not built.** Before this
+  change, `PreventNextDamage` with `Amount: 0` meant "the next damage
+  event, whole". No catalogued card prints it, and P8 gives
+  `preventDamage` a charge of at least 1. An `Amount` below 1 now
+  registers nothing. The one test that used it
+  (`TestCreepingBloodsuckerGainsNothingWhenEveryOpponentIsFogged`) uses a
+  100-point shield instead.
+- **Cosmic Intervention's per-card return is labelled from the record.**
+  The label is `SourceName + " — return the exiled permanent"`, the string
+  the closure used to hard-code. The body is `Mod.Then`, checked through
+  `KnownEffectBody` at registration and at restore.
+- **The Whip's and unearth's record has no `Source`.**
+  `ExileInsteadOfLeavingBattlefield(g, cardID, controller, label)` keeps
+  its signature, as P8 asks, and that signature names no source. The label
+  carries the attribution.
+- **Ratchet (P11).** The `Game.TurnScopedReplacements` line is deleted.
+  Nine lines move to `census:ChoiceResumeFrames`, through
+  `replacementResume.applicable.effect`:
+  - `ReplacementEffect.AppliesTo`, `.Controller`, `.CopySelector`,
+    `.EntryHandReveal` and `.Replace`;
+  - `CopySelector.Candidates` and `.Except`;
+  - `EntryHandReveal.Matches` and `.Then`.
+
+  The `ChoiceResumeFrames` ceiling goes from 98 to 107. The
+  `TurnScopedReplacements` ceiling is deleted and the counter is added to
+  `retiredCensusCounters`. `ContinuationCensus.TurnScopedReplacements`
+  keeps its field so an old census still decodes.
+- **Two caveats were stale, and both are cleared.**
+  - Whip of Erebos's "Stifle the exile" caveat was #1591. It is fixed by
+    the indefinite pin (`TestWhipRedirectOutlivesACounteredExile`).
+  - Dregscape Zombie's "a bounce goes to hand" caveat was already stale:
+    #539 routed the bounce through the exit primitive
+    (`TestUnearthedCreatureBouncedGoesToExile`).
+
+  Both cards are `CompletenessFull`.
+- **Fixtures.** Four new files are written into `v7/`: `fog.json`,
+  `mending_hands_partial.json`, `whip_redirect.json` and
+  `cosmic_intervention.json`. No existing fixture changed. `v7.txt` records
+  `mods[].amount`, `.combatOnly`, `.then` and `seq`.
+
+### Implementation notes (tier 3b-2)
+
+What the block-rule half of tier 3b settled where the code and P8
+differ, or P8 left it open. Everything else is as P8 says. This slice
+depends on 3b-1's reader field, `Mod.Amount` and the `seq` machinery,
+and rebases onto it.
+
+- **The two kinds are declared, and nothing else new in the reader
+  system.** `cantBeBlockedExceptBy` and `limitBlockersPerDefender`
+  carry `reader: readerBlockRule`, a THIRD `modReader` alongside
+  `readerLayer` and `readerReplacement` (P8 speaks of "the layer pass,
+  or the replacement gather" as if there were only two readers; a
+  block rule is its own kind of non-layer reader, not a variety of
+  replacement). The layer adapter skips both, exactly as it skips the
+  replacement kinds.
+- **No `*ForEffect` writer functions, and no validation gap either.**
+  Unlike the four replacement kinds (which each got a dedicated
+  `*ForEffect` function because they have engine-decided semantics —
+  the shield's minimum charge, the delayed-trigger body check), the
+  two block-rule kinds are plain layer-mod-style constructors,
+  `CantBeBlockedExceptByMod` and `LimitBlockersPerDefenderMod`
+  (`game/scoped_block_rules.go`), registered through the EXISTING
+  `RegisterScopedEffectForEffect` / `RegisterScopedRuleEffectForEffect`
+  entry points — the same ones `AddAttackRequirementMod` (#1571) uses.
+  Validation still happens once, centrally: `blockRuleModProblem`
+  mirrors `replacementModProblem` and is called from
+  `appendScopedEffectLocked` alongside it, so a bad parameter panics at
+  registration whichever entry point reached it.
+- **The block-rule closures are rebuilt fresh on every walk and never
+  read back by Seq.** P8's language ("rebuilt from the record by the
+  running binary" — the same status the replacement gather has)
+  reads as implying the replacement kinds' by-Seq indirection carries
+  over. It does not, and the reason is a real difference between the
+  two consumers rather than an oversight: a replacement effect's
+  closures can be handed to a CR 616 ordering prompt and called again
+  after the registry has shrunk underneath them (a sweep, a spent
+  shield), so `scopedReplacementEffect` reads the record back by `Seq`
+  at call time. A block declaration never pauses on a prompt — the
+  whole check (`blockRuleRefusalLocked`, `blockerBoundsLocked`,
+  `blockLimitRefusalLocked`) runs synchronously inside one locked call,
+  and the `BlockRule` values `forEachScopedBlockRuleLocked` hands to it
+  are used and discarded before that call returns. So
+  `blockRuleFromScopedMod` captures `ScopedEffect` and `Mod` BY VALUE
+  (both are immutable once registered) instead of closing over `(seq,
+  mod, kind)` and re-reading the registry. Every such record still
+  takes a `Seq`, because `appendScopedEffectLocked` stamps one on any
+  non-layer mod regardless of reader — nothing here reads it back, and
+  nothing needs to.
+- **`forEachScopedBlockRuleLocked` fully replaces
+  `forEachTurnScopedBlockRuleLocked`,** rather than sitting beside it
+  as a third walk. `blockRuleRefusalLocked`, `blockerBoundsLocked` and
+  `blockLimitRefusalLocked` each call `forEachBlockRuleLocked` (the
+  battlefield walk, unchanged) and then the new walk in its place —
+  same two-step order P8's "walked after the battlefield" preserves.
+  `CatalogBlockRules` (a permanent's own printed rule) is untouched by
+  this tier; only the until-end-of-turn twin moved.
+- **The engine owns the "allowed" predicate.**
+  `blockRuleAllowedPredicate(keywords, subtypes)` mirrors
+  `effects.HasKeyword` / `effects.OfCreatureType` (`cards/effects/targets.go`)
+  exactly — a keyword any-of via `game.HasKeyword`, a subtype any-of
+  via `Card.HasSubtype` guarded by `IsCreature()` — so a changeling
+  still passes for a named subtype and a granted keyword still counts.
+  Duplicating the predicate rather than sharing code with
+  `cards/effects` is deliberate: `internal/game` cannot import
+  `cards/effects` (the dependency runs the other way), and the two
+  copies are held in step by the integration tests (Gingerbrute's
+  haste, Departed Deckhand's Spirits and changeling case), not by a
+  shared function.
+- **`BlockRuleUntilEOT`'s generality is retired along with the
+  struct.** P8 gives the retired shape as `CantBeBlockedThisTurnExceptBy{Target,
+  Keywords, Subtypes, Text}` — four fields, no `Match` predicate and no
+  `Rule func(scope) game.BlockRule` closure. The old struct's `Match`
+  field and arbitrary `Rule` closure had exactly zero production
+  callers (only `Target` was ever used, by Gingerbrute and Departed
+  Deckhand), so nothing is lost: the new struct is `ScopedEffectFor`
+  under the hood, reusing the existing Target/Match → snapshot →
+  `RegisterScopedEffectForEffect` pipeline `BoostUntilEOT` and
+  `GrantKeywordUntilEOT` already share, rather than inventing a second
+  one. `eotAffected.appliesTo()`, which existed only for
+  `BlockRuleUntilEOT`'s old closure-based `Rule`, is deleted as dead
+  code — every continuous effect (layer, replacement or block-rule
+  mod) now pins its affected set as data, with no closure predicate
+  left in the tier 3b family.
+- **`EachOpponentCantBlockWithMoreThanN.Apply` drops straight to
+  `RegisterScopedRuleEffectForEffect`** with `game.ScopeOpponentsCreatures`
+  and a `LimitBlockersPerDefenderMod`, the same shape
+  `OpponentsCreaturesAttackIfAble` (#1571) already uses for its own
+  `ScopeOpponentsCreatures` record. No new card-facing wrapper type was
+  needed for this one.
+- **Ratchet (P11).** `Game.TurnScopedBlockRules` and its three
+  `BlockRule.{Pair,Count,Limit}` lines are DELETED outright, not moved.
+  P11's worked example ("No other route reaches `BlockRule`, so its
+  ceiling is deleted") holds exactly: unlike the replacement kinds'
+  `ReplacementEffect`, `CopySelector` and `EntryHandReveal` types (each
+  also reachable through a paused CR 616 prompt's resume frame, so
+  their lines migrated to `census:ChoiceResumeFrames` when the turn-scoped
+  registry that set their class went away), nothing else in the tree
+  holds a `BlockRule` value across an action boundary — a block
+  declaration has no resume frame to fall back to. All four lines
+  (`BlockRule.Count`, `BlockRule.Limit`, `BlockRule.Pair`,
+  `Game.TurnScopedBlockRules`) are removed from
+  `testdata/closure_fields.txt`, and `census:TurnScopedBlockRules` is
+  deleted from `closureClassCeilings` rather than lowered to 0 (a
+  ceiling of 0 and no entry are equivalent to the ratchet test, but the
+  ADR's own worked example says "deleted", so the code follows it).
+  `TurnScopedBlockRules` joins `retiredCensusCounters`.
+  `ContinuationCensus.TurnScopedBlockRules` keeps its field so an old
+  census still decodes.
+- **Fixtures.** Two new files are written into `v7/`: `gingerbrute.json`
+  (a real `{1}` activation: one `cantBeBlockedExceptBy` record with
+  `Keywords: ["haste"]`, pinned to the Gingerbrute object) and
+  `mirri_limit.json` (a real attack trigger: one
+  `limitBlockersPerDefender` record, `Scope: "opponentsCreatures"`).
+  No existing fixture changed. `v7.txt` records the one new field,
+  `mods[].text`; `Mod.Keywords` and `Mod.Subtypes` and `Duration`
+  already had shape entries from tier 3a and 3b-1.
+
+### Implementation notes (tier 4-0: engine and reflexive triggers)
+
+Slice 4-0 of #1497 (the amendment above, Decision P9): the nine engine
+triggers with no catalog row, and every CR 603.12 reflexive trigger in
+the catalog, move onto tier 2's body-key machinery.
+
+- **`game.NewKeyedTriggeredItem(source, label, body, params)`** is
+  `NewTriggeredItem`'s twin for a trigger with no catalog row: it
+  derives `Effect` from the registered body via `bodyEffect` and
+  stamps `Body`/`Params` alongside it, the same three fields
+  `DelayedTrigger.stackItem()` already stamps for a fired delayed
+  trigger. Nine sites use it: prowess (`prowess/pump`), suspend's two
+  (`suspend/tick`, `suspend/free-cast`), madness
+  (`madness/offer`, reading `Params.Cost`), the monarch's two
+  (`monarch/crown`, `monarch/draw`, both reading `Params.Player`),
+  evoke's sacrifice (`evoke/sacrifice`), face-down ward
+  (`facedown/ward`, reading the payer and the targeted stack item off
+  `item.Trigger.Event` — already-carried, already-restorable data —
+  rather than a captured closure), and the four `WhenManaSpent` cards,
+  which share one body (`mana-rider/dispatch`) keyed by
+  `Params.Name` — the same `manaSpendTriggers` registry key
+  `ManaRider.Trigger` already carries on the paying token, so no new
+  per-card key was needed.
+- **`game.ReflexiveBody(key, fn, targetsFrom)`** is `DelayedBody`'s
+  reflexive twin (Decision P9's "the body registration can declare the
+  clause beside the function"). `targetsFrom func(sourceID uuid.UUID,
+  p EffectParams) *TargetSpec` is nil for an untargeted "when you do";
+  otherwise it is called both when the trigger is put on the stack and
+  again at restore, with the reflexive trigger's own source card's
+  instance ID and its `Params` — the two already-carried facts every
+  targeted reflexive trigger in the catalog needed: Eden, Seat of the
+  Sanctum's "another target permanent card" reads the source ID to
+  exclude itself; Teferi Akosa of Zhalfir's mana-value ceiling is X,
+  fixed at creation and carried as `Params.Amount`; every other
+  targeted body's clause is a constant, ignoring both arguments. The
+  registration is stored in a package-level map, never on `Game`, so
+  it adds no new closure-reachable route from `*Game` — only the
+  `Body` string crosses the snapshot boundary.
+- **`ReflexiveTrigger` (both the engine's and the card-side
+  `effects.ReflexiveTrigger`) drops `Effect` and `Targets`.** In their
+  place: `Body game.BodyRef` and `Params game.EffectParams`. A card
+  file builds a `ReflexiveTrigger{Label, Body, Params}` literal
+  (`WhenYouDo(label, body)` for the common untargeted, no-params
+  case); it never writes a body inline. Every reflexive body in the
+  catalog is registered once in `internal/cards/effects/reflexive_bodies.go`,
+  the ledger's convention for delayed-trigger bodies
+  (`delayed_bodies.go`). Fourteen keys, in ten files: `ziatora/fling`,
+  `breeches/blast` (reading `Params.Amount`), `breeches/copy-that-spell`,
+  `generous-plunderer/gift`, `eden/return-from-graveyard`,
+  `tarkir/damage`, `teferi-akosa/shuffle-into-library` (reading
+  `Params.Amount` for its clause only, not its body),
+  `rodolf-duskbringer/return-from-graveyard`,
+  `undead-butler/return-to-hand`, and five `overlook/<land>-fetch`
+  keys — one per Streets of New Capenna "Overlook" land, registered at
+  each land's own `init()` (or, for Riveteers Overlook, which keeps its
+  own spec, in its own file) rather than through one shared key, because
+  each land's printed basics are baked into its own body at
+  registration and never vary at runtime.
+- **`restoreStackItem` re-derives a reflexive trigger's `targetSpec`**
+  from `reflexiveTargetSpecFor(s.Body, s.SourceCardID, out.Params)`
+  when the item names a `Body` but is not a spell (the existing
+  catalog-oracle-ID path stays spell-only). This slice rebased onto
+  4-1 after 4-1 merged first, so the census side of it is 4-1's fold
+  (`stackSpecsRederivable`, the `Implementation notes (tier 4-1)`
+  section above): this slice's own contribution is one more `if` in
+  `stackSpecsRederivable` — a `Body` whose `reflexiveTargetSpecFor`
+  answers non-nil is rederivable, same as a spell's oracle ID or a
+  stamped ability's `Params.Ability` — so a reflexive trigger's own
+  re-derivable clause does not fall into the fold's "neither" branch
+  and force an otherwise-restorable item to count under
+  `StackEffects`.
+- **No `closure_fields.txt` or `closureClassCeilings` change.**
+  Neither `ReflexiveTrigger` (engine or card-side) nor
+  `reflexiveTargetSpecs` is a field reachable from `*Game` — the first
+  is a function-call parameter type, never stored; the second is a
+  package-level registry, exactly like `effectBodies`. `StackItem`'s
+  own fields (`Effect`, `targetSpec`, `Body`, `Params`) are unchanged.
+  The type graph the ratchet walks is therefore identical before and
+  after this slice, confirmed by running
+  `TestClosureFieldsReachableFromGame` with no update.
+- **Fixture.** `v7/reflexive_trigger.json` (a real Undead Butler: dies,
+  is exiled, and its reflexive "return a creature card from your
+  graveyard to your hand" is on the stack with its target already
+  chosen) is a new file under the "never touch an existing file" rule.
+  No existing fixture changed.
+
+### Implementation notes (tier 4-2)
+
+Slice 4-2 of P9: the declarative `TriggeredAbility.Effect`, the engine
+default build, the constructors, the `TargetsFrom` audit, and the
+legacy-`Build` allowlist. Where the code differs from the design above,
+the code wins, and each difference is listed here.
+
+- **The engine builds a declared row.** `buildTriggerItemLocked` is the
+  one place the harvest turns a declaration into an item, called from
+  the untargeted path and from the end of the target walk. A row with
+  an `Effect` and no `Build` becomes `NewTriggeredItem(source, Key,
+  Effect)`. A row with both keeps its `Build` as a fill-in: it sets the
+  label, a controller or `Params` and leaves `item.Effect` nil, and the
+  engine installs the row's `Effect`. A fill-in `Build` that sets
+  `item.Effect` is an `effectKeyFault`. A row with a `Build` and no
+  `Effect` is the legacy shape and is built exactly as before. A
+  `Build` whose item names a body of its own (4-0's
+  `NewKeyedTriggeredItem`) made data already, and that item is kept
+  as it is, even beside a declared `Effect`. Face-down ward is the case:
+  it is built by `effects.Ward`, which now declares an `Effect`, and 4-0
+  replaced its `Build` with a keyed one. The
+  prompt frames now carry the whole declaration: `pickTargetFrame.build`
+  became `pickTargetFrame.ability`, and `triggerResumeFrame.build` is
+  gone, because the frame already held the ability.
+- **A row's identity is stamped by the registry, not computed in the
+  harvest.** The design counted the ref in the list `TriggersForCard`
+  returns. The code instead stamps every triggered row once, when the
+  catalog files its definition (`game.IdentifyCatalogRows`, called by
+  `effects.fileDef` for a card, a face, an emblem, a token template and
+  a granted bundle). Every copy of the row the engine hands out keeps
+  that identity: through `CatalogTriggers`, a merged composite key, the
+  designation filter and the LTB and declared-zone harvests. So no
+  harvest path threads an index, and prowess and face-down ward, which
+  are not catalog rows, are never counted.
+  - `AbilityRef.Key` for a triggered row is the key it was filed under.
+    It is never a composite.
+  - A row from a granted bundle, including a #665 copy grant, is
+    `grant:<bundle>:<i>:<n>` under the bundle's `GrantKey`. This is
+    unlike 4-1's activated copy-grant rows, which are `own:<i>` under
+    the composite `CatalogKey`. Both resolve through the same lookup.
+  - `<n>` is numbered when a composite key's definition is merged
+    (`numberTriggerRowOccurrences`), so a bundle granted twice gives
+    instance 0 and instance 1.
+- **The name is the row's `Key`.** `Ward`, `Cascade`, `GrantsCascade`
+  and `Storm` now declare a `Key` so the Q2 check has one. A row with
+  an empty `Key` matches only at its exact index, with no label
+  fallback, as in 4-1.
+- **One resolver.** 4-1's lookup became the generic `resolveAbilityRow`,
+  and `resolveActivatedAbilityRef` and `resolveTriggeredAbilityRef` are
+  two thin wrappers over it. The restore, the `catalog/triggered` body,
+  `LostStackAbilities` and the refusals ask the same question for both
+  slots. `catalog/triggered` is registered and in the ledger, and the
+  refusal now checks that the ref's slot is the one its body reads.
+- **A triggered item's clauses come back only where it held one.** The
+  snapshot's `hasTargetSpec` and `hasModeSpec` decide. The activated
+  slot always restores both, because an activation always stamps the
+  row's clauses. A trigger takes its clause from the announcement,
+  which may have had none.
+- **The `TargetsFrom` audit.** 18 files use `TargetsFrom`. 17 of them
+  read only the trigger context and the source's instance ID
+  (`AnotherTarget`, `NotSelf`, `OtherThan`, and Scrap Trawler's mana
+  value). Molten Primordial reads `g.Seats`, which is the board. The
+  design had no way to keep such a row unstamped, so the row declares
+  it: `TriggeredAbility.TargetsFromReadsBoard`. A row that sets it is
+  never stamped and is on the allowlist.
+  - A stamped `TargetsFrom` clause is rebuilt after the whole game is
+    restored (`rederiveTriggerClauseLocked`). It is called with the
+    item's carried `Trigger` and with the source card as the restored
+    game has it. When the source is in no zone (a token that has
+    ceased to exist), it gets a stand-in carrying the recorded ID and
+    controller.
+- **The constructors.** `OnAny` declares its `Effect`, so every
+  constructor on it does too. A nil effect keeps a hand-built item,
+  because Forum Familiar replaces the `Build` afterwards and a row with
+  neither would never trigger.
+  - `WhenYouLoseControlOfThis` keeps a fill-in `Build` for its
+    controller.
+  - `WheneverAnOpponentActivates` reads the activator from
+    `item.Trigger` at resolution.
+  - `Ward` and `WardGranted` read the targeting item and the payer from
+    `item.Trigger`. The "no item or no payer" check moved from `Build`
+    to `AppliesTo`.
+  - `Cascade` and `GrantsCascade` carry the spell's mana value as
+    `Params.Amount`.
+  - `Storm` reads the spell off the item's source.
+  - Gift's entry trigger carries the promised opponent as
+    `Params.Player`.
+- **The `buildDef` keywords.** `buildDef` appends suspend's two
+  triggers and madness's trigger to the card's own `CardDef.Triggered`,
+  so they are catalog rows and the registry stamps them. 4-0 merged
+  while this slice was open and keyed all three with tier-2 bodies
+  (`suspend/tick`, `suspend/free-cast`, `madness/offer`). This slice
+  keeps 4-0's version, so their items name those bodies and never
+  `catalog/triggered`. Gift's entry trigger is the `buildDef` keyword
+  this slice declared.
+- **The allowlist** is
+  `server/internal/cards/effects/testdata/legacy_trigger_builds.txt`.
+  Each line is `<card name> | <catalog key> | <row index>`, sorted by
+  card name, so a tail batch that takes a run of cards deletes a
+  contiguous block. It lists 395 rows. The production catalog has 852
+  declared rows, and `TestDeclaredTriggerRowsAreStampable` holds every
+  one of them to being nameable. Ten more rows (the suspend and madness
+  rows) are keyed by a `Build` of their own.
+  - `TestLegacyTriggerBuildsOnlyShrink` fails on a listed row that no
+    longer needs listing, and on an unlisted row that has no `Effect`
+    or reads the board.
+  - It reads the production catalog as `TestMain` captured it, before
+    any test registers a fixture.
+  - A row with no `Effect` whose `Build` makes a keyed item is data and
+    is not listed. The lint finds out by calling the `Build` once on a
+    fresh game with a stand-in source. A `Build` that cannot run on a
+    stand-in stays listed, which is the safe side.
+  - `-update-legacy-triggers` deletes stale lines and never adds one.
+- **P11.** No census counter retires in this slice. The resume-frame
+  routes changed: `pickTargetFrame.build` and `triggerResumeFrame.build`
+  are gone, and `pickTargetFrame.ability` and `TriggeredAbility.Effect`
+  are new. All four are `census:ChoiceResumeFrames`, so its count is
+  unchanged at 109. `StackEffects` stays at 6 until the tail retires
+  it. The ratchet generator now writes the P11 paragraph of the file
+  header itself. 4-1 had added it by hand, and a regeneration dropped
+  it.
+- **Fixtures.** New files in `v7/`, each made by real cards. No existing
+  fixture changed.
+  - `etb_trigger_on_stack`: Mulldrifter.
+  - `granted_dies_trigger`: Feign Death's grant, keyed through LKI.
+  - `token_trigger`: a Pest.
+  - `emblem_trigger`: Teferi, Hero of Dominaria's emblem, targeted.
+  - `modal_trigger`: Gala Greeters.
+  - `targets_from_trigger`: Gixian Puppeteer's "another target".
+  - `storm_after_counter`: Grapeshot's storm trigger over a countered
+    Grapeshot in `lastKnownStack`.
+  - `prowess_on_stack`: a prowess trigger keyed by 4-0's `prowess/pump`
+    body, above the Lightning Bolt that triggered it. 4-0 merged while
+    this slice was open and added `reflexive_trigger` itself.
+
+  That is eight new files in all.
+
+### Implementation notes (tier 4 tail: design leftovers)
+
+Five rows the alphabetical tail batches left, each for a reason of its
+own.
+
+- **The Ozolith (row 0).** "Those counters" is read at resolution
+  through `ctx.TriggeringPermanent()`, the #1379 record, instead of a
+  map frozen in the `Build`. The value is the same: `battlefieldExitLocked`
+  writes the CR 603.10 counters (`lastKnownCounters`, which `AppliesTo`
+  still reads) and the record in consecutive calls, each a copy of the
+  same `Card.Counters`, and the record is keyed by the object's epoch.
+  The lifetimes differ. The record is dropped at the turn boundary and
+  when the card's owner leaves the game. A frozen map outlived both. So
+  a trigger still waiting after a sandbox `pass_turn`, or after the
+  departed creature's owner conceded, now puts nothing on The Ozolith.
+  That is the posture every #1379 reader already has (Hangarback
+  Walker), and it is the weaker answer.
+- **Valakut Exploration (row 1).** The cards exiled with the
+  enchantment, frozen as the ability triggers, ride the item's
+  `Payload`: persisted, cloned, copied with the ability, and read back
+  with `ctx.PayloadCards()`. No new `EffectParams` field.
+- **Molten Primordial (row 0).** It no longer sets
+  `TargetsFromReadsBoard`. Its clause reads two things. The first is
+  the seat list and each seat's name. Seats are permanent once the game
+  starts: `AddPlayer` and `RemovePlayer` are lobby-only, an eliminated
+  seat stays in the list, and the snapshot restores `g.Seats` in order.
+  The second is the controller "opponent" is relative to. It now comes
+  from the trigger context's snapshot of the entering permanent
+  (`tc.Object.Controller`) rather than from `source.Controller`. The two
+  agree at the harvest. At a restore, though, `source` is the live card,
+  so a Primordial stolen while its trigger waited would have shifted
+  every clause onto the wrong player. No catalog row sets the flag now.
+- **Éowyn, Shieldmaiden (row 0).** An ordinary conversion. Nothing was
+  captured.
+- **Resourceful Defense (row 0) stays listed.** Its "those counters" is
+  a walk of the event log (`b14LastKnownCounterKinds`), and the walk does
+  not agree with the record. CR 704.5q's +1/+1 / −1/−1 cancel
+  (`stateBasedActionsLocked`) rewrites `Card.Counters` and emits no
+  `EventCounterPlaced`. So the walk still reports counters the
+  permanent no longer had. Take a creature with one +1/+1 counter that
+  is given a −1/−1 counter. The pair cancels, and the creature then
+  dies with no counters. Resourceful Defense triggers anyway and puts a
+  +1/+1 counter and a −1/−1 counter on its target, and on a noncreature
+  target both stay. Reading the record, as The Ozolith does, is the
+  rules answer. The trigger would not fire at all. But it changes play,
+  so the change is left to its own PR. That PR also moves the walk out
+  of `AppliesTo`.
+
+### Implementation notes (tier 4-final)
+
+The last slice of P9. It converts the last listed row, audits every
+source of an unkeyed stack item, and retires `StackEffects`. This is
+the retirement that closes #1497 under the owner's answer to Q4.
+
+- **Resourceful Defense (row 0), a deliberate rules fix.** Both the
+  trigger's condition and its effect now read the CR 603.10 record,
+  the way The Ozolith does. The condition "if it had counters on it"
+  reads `g.LastKnownCountersForEffect`. The effect "those counters"
+  reads `ctx.TriggeringPermanent().Counters` at resolution. The
+  event-log walk `b14LastKnownCounterKinds` is deleted.
+  - **What changes in play.** CR 704.5q's +1/+1 / −1/−1 cancel emits
+    no counter event, so the walk reported counters the permanent no
+    longer had. Take a creature that had one +1/+1 counter, was given a
+    −1/−1 counter, lost both to the cancel, and then died. It no longer
+    triggers the card.
+  - **What does not change.** A creature left with an uneven remainder
+    after the cancel moves exactly that remainder.
+  - Both cases are pinned in `batch14_test.go`. The first test fails
+    on the old code.
+  - `testdata/legacy_trigger_builds.txt` now holds only its header.
+    `TestLegacyTriggerBuildsOnlyShrink` is unchanged, and it still
+    fails on any row that would need listing.
+  - Follow-up: `b13LastKnownCounters`, the single-kind walk that
+    batches 17, 22, 23 and 29 use, has the same CR 704.5q blind spot.
+    The owner is filing it separately, and this slice does not touch
+    it.
+- **The audit.** Every source that can put an `Effect` on a stack item
+  was checked.
+  - Catalog trigger rows are keyed through `catalog/triggered`. The
+    catalog has 1247 declared rows, and all 1247 are stampable. Ten
+    more are keyed by a tier-2 `Build`.
+  - Catalog activations are keyed through `catalog/activated`.
+  - The engine triggers (prowess, suspend, madness, face-down ward,
+    monarch, evoke, mana-spend riders) are keyed through tier-2 bodies.
+  - Reflexive triggers are keyed through reflexive bodies, and delayed
+    triggers, fired or event-conditioned, through their bodies.
+  - Ability copies inherit `Body` and `Params` from the original.
+  - Sandbox-announced items carry no `Effect` at all.
+  - That leaves three unkeyed sources, and none of them is reachable
+    in production:
+    1. **An ability carried on the card instance
+       (`Card.ActivatedAbilities`).** `activatedAbilityRefFor` never
+       stamps one. Nothing in production writes a non-empty list:
+       `checkTokenTemplate` forbids it, and the copy paths copy an
+       empty one.
+    2. **A declared trigger row with no catalog identity.** This only
+       happens with a stubbed `CatalogTriggers`.
+    3. **A test that hand-builds an item with a closure.**
+- **Owner decision (2026-09-25): fold.** An item whose `Effect` is a
+  closure with no `Body` is counted once in `IntrinsicAbilityCards`.
+  So is an item whose target or mode clause nothing re-derives.
+  `IntrinsicAbilityCards` is the counter that already owns instance
+  closures, and it stays censused. `StackEffects` joins
+  `retiredCensusCounters`. The field stays so that an older census
+  still decodes. This is the same kind of fold that tier 4-1 did when
+  it folded `StackTargetSpecs` into `StackEffects`.
+- **`NewTriggeredItem(source, label)` takes no effect.** The effect
+  parameter is gone, as P9 planned for when the list emptied.
+  - Engine sites that need an `Effect` install it from a row or a body
+    on the next line: `buildTriggerItemLocked`, the event-conditioned
+    delayed dispatch, and `NewKeyedTriggeredItem`.
+  - Tests that need an unkeyed item use `newTriggeredItemForTest` in
+    `internal/game`. In the aiseat and legal tests the two sites set
+    `item.Effect` directly.
+  - `StackItem.Effect` is still an exported field, because the
+    resolver needs it at runtime. That is why the census still counts
+    an item that carries a closure and no body.
+- **P11.** `StackEffects`' six ratchet lines moved in this PR:
+  - `StackItem.Effect` → `census:ChoiceResumeFrames`. Its remaining
+    route is `resolving.item`, the same route that `targetSpec` and
+    `modeSpec` took in 4-1. The ceiling goes from 118 to 119.
+  - `Game.StackMeta`, `Game.PendingTriggers`, `Game.lastKnownStack` and
+    `lastKnownSpell.card` → `census:IntrinsicAbilityCards`. For the
+    first three, the fold is what counts an unkeyed item there. The
+    fourth is a `Card`. The ceiling goes from 45 to 49.
+  - `lastKnownSpell.item` → `keyed`. A countered spell's clauses come
+    back by oracle ID, and no ability is ever recorded there.
+  - The `census:StackEffects` ceiling is deleted.
+  - With this, the only live census classes are
+    `census:ChoiceResumeFrames` (owner decision 4) and
+    `census:IntrinsicAbilityCards`.
+- **No schema or fixture change.** The snapshot shape is unchanged.
+  This PR adds no fixture and edits none.

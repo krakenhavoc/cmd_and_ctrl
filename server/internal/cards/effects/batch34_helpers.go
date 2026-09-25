@@ -340,16 +340,13 @@ func b34AttackingVampiresHaveDeathtouchAndLifelink(name string) game.TriggeredAb
 		AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 			return b34VampireYouControlAttacked(ev, source, g)
 		},
-		Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-			attacker := ev.CardID
-			return game.NewTriggeredItem(source, name+" — the attacking Vampire has deathtouch and lifelink",
-				func(g *game.Game, item *game.StackItem) error {
-					return GrantKeywordUntilEOT{
-						Target:   attacker,
-						Keywords: []string{"deathtouch", "lifelink"},
-						Label:    name + " — deathtouch and lifelink",
-					}.Apply(NewContext(g, item))
-				})
+		Key: name + " — the attacking Vampire has deathtouch and lifelink",
+		Effect: func(g *game.Game, item *game.StackItem) error {
+			return GrantKeywordUntilEOT{
+				Target:   item.Trigger.Event.CardID,
+				Keywords: []string{"deathtouch", "lifelink"},
+				Label:    name + " — deathtouch and lifelink",
+			}.Apply(NewContext(g, item))
 		},
 	}
 }
@@ -490,11 +487,13 @@ func b34DestroyChosenAndAllOthersWithItsName(ctx *Context) error {
 }
 
 // b34ThatPlayerLosesLifeAndDraws is Seizan, Perverter of Truth's
-// upkeep body: the player whose upkeep it is — captured in Build —
-// loses `life` life and draws `draw` cards, in printed order. A
-// player no longer seated does neither.
-func b34ThatPlayerLosesLifeAndDraws(player uuid.UUID, life, draw int) func(g *game.Game, item *game.StackItem) error {
+// upkeep body: the player whose upkeep it is — stamped onto
+// item.Params.Player by a fill-in Build — loses `life` life and
+// draws `draw` cards, in printed order. A player no longer seated
+// does neither.
+func b34ThatPlayerLosesLifeAndDraws(life, draw int) func(g *game.Game, item *game.StackItem) error {
 	return func(g *game.Game, item *game.StackItem) error {
+		player := item.Params.Player
 		if p := g.PlayerByIDForEffect(player); p == nil || p.Eliminated {
 			return nil
 		}
@@ -551,19 +550,19 @@ func b34SearchBasicTappedIfSacrificedAFood(g *game.Game, item *game.StackItem) e
 }
 
 // b34ThatPlayerLosesTwoYouGainTwo is Polluted Bonds' body: the
-// land's controller — captured in Build — loses 2 life, then the
-// enchantment's controller gains 2. A loss and a gain, not damage
-// and not a drain of whatever was lost: the gain is 2 even when the
-// loser is already gone.
-func b34ThatPlayerLosesTwoYouGainTwo(victim uuid.UUID) func(g *game.Game, item *game.StackItem) error {
-	return func(g *game.Game, item *game.StackItem) error {
-		if p := g.PlayerByIDForEffect(victim); p != nil && !p.Eliminated {
-			if err := g.ChangePlayerLifeForEffect(item.SourceCardID, victim, -2); err != nil {
-				return err
-			}
+// land's controller — stamped onto item.Params.Player by a fill-in
+// Build when the trigger fired — loses 2 life, then the enchantment's
+// controller gains 2. A loss and a gain, not damage and not a drain
+// of whatever was lost: the gain is 2 even when the loser is already
+// gone.
+func b34ThatPlayerLosesTwoYouGainTwo(g *game.Game, item *game.StackItem) error {
+	victim := item.Params.Player
+	if p := g.PlayerByIDForEffect(victim); p != nil && !p.Eliminated {
+		if err := g.ChangePlayerLifeForEffect(item.SourceCardID, victim, -2); err != nil {
+			return err
 		}
-		return GainLife{Player: item.Controller, Amount: 2}.Apply(NewContext(g, item))
 	}
+	return GainLife{Player: item.Controller, Amount: 2}.Apply(NewContext(g, item))
 }
 
 // b34DestroyChosenThenSearchBasicTapped is Deathsprout's body: the

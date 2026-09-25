@@ -42,15 +42,18 @@ func init() {
 				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 					return ev.Actor != uuid.Nil && ev.Actor != source.Controller
 				},
+				Key: "Scrawling Crawler — that player loses 1 life",
 				Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					drawer := ev.Actor
-					return game.NewTriggeredItem(source, "Scrawling Crawler — that player loses 1 life",
-						func(g *game.Game, item *game.StackItem) error {
-							if g.PlayerByIDForEffect(drawer) == nil {
-								return nil
-							}
-							return g.ChangePlayerLifeForEffect(item.SourceCardID, drawer, -1)
-						})
+					item := game.NewTriggeredItem(source, "Scrawling Crawler — that player loses 1 life")
+					item.Params.Player = ev.Actor
+					return item
+				},
+				Effect: func(g *game.Game, item *game.StackItem) error {
+					drawer := item.Params.Player
+					if g.PlayerByIDForEffect(drawer) == nil {
+						return nil
+					}
+					return g.ChangePlayerLifeForEffect(item.SourceCardID, drawer, -1)
 				},
 			},
 		},

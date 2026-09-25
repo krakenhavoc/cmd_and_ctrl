@@ -12,8 +12,8 @@ import "github.com/google/uuid"
 //	"Your life total can't change. (You can't gain or lose life. You
 //	 can't pay any amount of life except 0.)"
 //
-// WHY IT IS NOT IN TurnScopedReplacements, which is the registry
-// #1200 named. That slice holds ReplacementEffect values, and a
+// WHY IT WAS NOT PUT IN TurnScopedReplacements, which is the registry
+// #1200 named (retired since by ADR 0041 tier 3b). That slice held ReplacementEffect values, and a
 // ReplacementEffect is two closures — counted in
 // ContinuationCensus.TurnScopedReplacements and classified `dropped`
 // by the snapshot drift test, because a closure cannot be written to

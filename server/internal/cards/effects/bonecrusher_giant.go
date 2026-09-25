@@ -91,20 +91,16 @@ func init() {
 			// set by emitBecameTargetLocked at every one of the six
 			// sites that finish choosing targets, so this reads the
 			// same answer however the spell was announced.
-			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				caster := ev.Actor
-				return game.NewTriggeredItem(source,
-					"Bonecrusher Giant — 2 damage to that spell's controller",
-					func(g *game.Game, item *game.StackItem) error {
-						if caster == uuid.Nil {
-							return nil
-						}
-						return DealDamage{
-							Source: item.SourceCardID,
-							Target: caster,
-							Amount: 2,
-						}.Apply(NewContext(g, item))
-					})
+			Key: "Bonecrusher Giant — 2 damage to that spell's controller",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				if item.Trigger == nil || item.Trigger.Event.Actor == uuid.Nil {
+					return nil
+				}
+				return DealDamage{
+					Source: item.SourceCardID,
+					Target: item.Trigger.Event.Actor,
+					Amount: 2,
+				}.Apply(NewContext(g, item))
 			},
 		}},
 	})

@@ -2,7 +2,7 @@
   // SiteHeader — the shared site nav (#1386, ADR 0092's dual-portal
   // experiment). One of two competing entries into the app; the other
   // is the #/home sitemap page. The owner will pick between them once
-  // both exist, so this stays deliberately small: a wordmark, five
+  // both exist, so this stays deliberately small: a wordmark, six
   // links, and a sign in/out control, reusing the session store and
   // the existing logout path rather than inventing either.
   //
@@ -10,8 +10,9 @@
   // needs one tied to a Discord user (the same gate Lobby's own "my
   // games" button already uses) — a guest or admin session would
   // otherwise land on a page that can only tell them to sign in.
-  // Roadmap and Home are public, so a signed-out visitor still sees
-  // both plus Sign in.
+  // Roadmap, Deck check and Home are public (ADR 0095 §5 adds the
+  // second of those), so a signed-out visitor still sees all three
+  // plus Sign in.
   //
   // Not shown on Game — the board has its own command bar, and a
   // second row of chrome above it would just eat table space.
@@ -101,6 +102,12 @@
         class:current={current("roadmap")}
         aria-current={current("roadmap") ? "page" : undefined}
         onclick={closeMenu}>Roadmap</a
+      >
+      <a
+        href="#/deck-check"
+        class:current={current("deckCheck")}
+        aria-current={current("deckCheck") ? "page" : undefined}
+        onclick={closeMenu}>Deck check</a
       >
       <a
         href="#/home"

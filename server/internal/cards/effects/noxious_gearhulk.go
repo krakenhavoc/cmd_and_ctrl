@@ -35,30 +35,28 @@ func init() {
 			AppliesTo:      b06SelfETB,
 			OptionalPrompt: &game.TriggerOptionalPrompt{Question: "Noxious Gearhulk — destroy another target creature?"},
 			Targets:        TargetCreature("another target creature", b03NotNamed("Noxious Gearhulk")),
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Noxious Gearhulk — destroy another target creature, gain life equal to its toughness",
-					func(g *game.Game, item *game.StackItem) error {
-						if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
-							return nil
-						}
-						target := item.Targets[0].ID
-						if target == item.SourceCardID {
-							return nil
-						}
-						victim, ok := g.LookupCardForEffect(target)
-						if !ok {
-							return nil
-						}
-						toughness := victim.CurrentToughness()
-						ctx := NewContext(g, item)
-						if err := (DestroyTarget{Target: target}).Apply(ctx); err != nil {
-							return err
-						}
-						if z := g.FindCardZoneForEffect(target); z != nil && z.Kind == game.ZoneBattlefield {
-							return nil // indestructible: not destroyed this way
-						}
-						return GainLife{Player: item.Controller, Amount: toughness}.Apply(ctx)
-					})
+			Key:            "Noxious Gearhulk — destroy another target creature, gain life equal to its toughness",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
+					return nil
+				}
+				target := item.Targets[0].ID
+				if target == item.SourceCardID {
+					return nil
+				}
+				victim, ok := g.LookupCardForEffect(target)
+				if !ok {
+					return nil
+				}
+				toughness := victim.CurrentToughness()
+				ctx := NewContext(g, item)
+				if err := (DestroyTarget{Target: target}).Apply(ctx); err != nil {
+					return err
+				}
+				if z := g.FindCardZoneForEffect(target); z != nil && z.Kind == game.ZoneBattlefield {
+					return nil // indestructible: not destroyed this way
+				}
+				return GainLife{Player: item.Controller, Amount: toughness}.Apply(ctx)
 			},
 		}},
 	})

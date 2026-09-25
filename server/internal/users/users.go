@@ -82,7 +82,7 @@ type Store interface {
 	// snowflake (identities.provider = "discord", .subject =
 	// discordID). ErrNotFound if no identity row matches — an unknown
 	// snowflake, or one that never signed in. Added for #1098's
-	// /cc-end host check: given the Discord user who ran the command,
+	// /c2-end host check: given the Discord user who ran the command,
 	// which users(id) — if any — does games.created_by need to equal.
 	UserIDForDiscord(ctx context.Context, discordID string) (uuid.UUID, error)
 }

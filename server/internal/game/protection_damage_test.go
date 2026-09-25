@@ -195,19 +195,10 @@ func TestProtectionSpendsNoPreventionShield(t *testing.T) {
 	bolt.TypeLine = "Instant"
 	bolt.Colors = []string{"R"}
 
-	charges := 4
-	g.RegisterTurnScopedReplacement(ReplacementEffect{
-		Watches: []EventKind{EventDealDamage},
-		AppliesTo: func(ev *ReplacementEvent, _ *Game, _ *Card) bool {
-			return ev.Kind == RepEventDamage && ev.DamageTarget == victim && charges > 0 && ev.DamageAmount > 0
-		},
-		Replace: func(ev *ReplacementEvent, _ *Game, _ *Card) error {
-			absorbed := min(charges, ev.DamageAmount)
-			charges -= absorbed
-			ev.DamageAmount -= absorbed
-			return nil
-		},
-		Label: "Prevent the next 4 damage",
+	g.WithWriteLock(func() {
+		if !g.PreventNextDamageThisTurnForEffect(uuid.Nil, victim, 4, false, "Prevent the next 4 damage") {
+			t.Fatal("setup: the shield registered nothing")
+		}
 	})
 
 	g.WithWriteLock(func() {
@@ -220,7 +211,7 @@ func TestProtectionSpendsNoPreventionShield(t *testing.T) {
 	if got := damageOn(g, victim); got != 0 {
 		t.Errorf("protected creature took %d damage", got)
 	}
-	if charges != 4 {
+	if charges := shieldChargeLeft(g); charges != 4 {
 		t.Errorf("the shield has %d charges left, want 4 — protection applies first and spends nothing (#420)", charges)
 	}
 	var prompts int
@@ -247,19 +238,10 @@ func TestAPreventionShieldStillSpendsAgainstAnUnprotectedSource(t *testing.T) {
 	beam.TypeLine = "Instant"
 	beam.Colors = []string{"W"}
 
-	charges := 4
-	g.RegisterTurnScopedReplacement(ReplacementEffect{
-		Watches: []EventKind{EventDealDamage},
-		AppliesTo: func(ev *ReplacementEvent, _ *Game, _ *Card) bool {
-			return ev.Kind == RepEventDamage && ev.DamageTarget == victim && charges > 0 && ev.DamageAmount > 0
-		},
-		Replace: func(ev *ReplacementEvent, _ *Game, _ *Card) error {
-			absorbed := min(charges, ev.DamageAmount)
-			charges -= absorbed
-			ev.DamageAmount -= absorbed
-			return nil
-		},
-		Label: "Prevent the next 4 damage",
+	g.WithWriteLock(func() {
+		if !g.PreventNextDamageThisTurnForEffect(uuid.Nil, victim, 4, false, "Prevent the next 4 damage") {
+			t.Fatal("setup: the shield registered nothing")
+		}
 	})
 
 	g.WithWriteLock(func() {
@@ -271,7 +253,7 @@ func TestAPreventionShieldStillSpendsAgainstAnUnprotectedSource(t *testing.T) {
 	if got := damageOn(g, victim); got != 0 {
 		t.Errorf("the shield should have absorbed all 3: damage = %d", got)
 	}
-	if charges != 1 {
+	if charges := shieldChargeLeft(g); charges != 1 {
 		t.Errorf("the shield has %d charges left, want 1", charges)
 	}
 }
@@ -430,4 +412,20 @@ func TestUndoRewindsProtectionAcrossEveryCheck(t *testing.T) {
 	if qs != 0 {
 		t.Errorf("the creature still reads %d protections after the undo", qs)
 	}
+}
+
+// shieldChargeLeft is the charge of the one preventDamage record on the
+// board, 0 when there is none (a spent shield is removed).
+func shieldChargeLeft(g *Game) int {
+	n := 0
+	g.ReadSnapshot(func() {
+		for _, e := range g.ScopedEffects {
+			for _, m := range e.Mods {
+				if m.Kind == ModPreventDamage {
+					n = m.Amount
+				}
+			}
+		}
+	})
+	return n
 }

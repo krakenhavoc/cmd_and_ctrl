@@ -201,11 +201,12 @@ var gameFields = plan(
 	// still be able to read how it last existed.
 	"lastKnownPermanents", carried, "",
 	// #1255: CR 608.2h LKI for spells that left the stack this turn.
-	// Its only readers are copy effects that name a spell without
-	// targeting it — a storm trigger, Thousand-Year Storm, Doublecast's
-	// delayed trigger — and every one of those is a closure the
-	// snapshot already refuses to carry. Clone copies it for undo.
-	"lastKnownStack", dropped, "read only by stack items and delayed triggers whose behaviour is a closure, counted in ContinuationCensus.StackEffects and ContinuationCensus.DelayedTriggerEffects; with no such reader the record is dead and restores empty",
+	// Its readers are copy effects that name a spell without targeting
+	// it — a storm trigger, Thousand-Year Storm, Doublecast's delayed
+	// trigger. It was dropped while every one of them was a closure;
+	// ADR 0041 phase 3 tier 4 (#1497, P9) makes them data, so it is
+	// carried (GameSnapshot.LastKnownStack). Clone copies it for undo.
+	"lastKnownStack", carried, "GameSnapshot.LastKnownStack",
 	// ADR 0054: the key and the per-turn stream counters ARE the
 	// randomness. Clone copies them (undo rewinds) and rngSnapshot
 	// carries them (a restore continues every stream).
@@ -223,8 +224,7 @@ var gameFields = plan(
 
 	"ScopedEffects", carried, "GameSnapshot.ScopedEffects — ADR 0041 phase 3's data record for a continuous effect with a duration (#1497)",
 	"scopedEffectMemo", rebuilt, "the layer-pass adapter's memo over ScopedEffects (#1558); a restored game's first recompute builds it",
-	"TurnScopedReplacements", dropped, "ReplacementEffect is three closures; counted in ContinuationCensus.TurnScopedReplacements",
-	"TurnScopedBlockRules", dropped, "BlockRule is two closures; counted in ContinuationCensus.TurnScopedBlockRules",
+	"scopedEffectSeq", rebuilt, "the last ScopedEffect.Seq handed out (ADR 0041 P8); restore sets it to the largest Seq the carried records hold",
 	"testReplacements", dropped, "test-only injection slot; production has no path to it",
 	"replacementsAppliedThisEvent", dropped, "non-empty between actions only for an event paused on a replacement prompt, and that prompt's resume frame is counted in ContinuationCensus.ChoiceResumeFrames; Clone deep-copies it for undo (#808)",
 	"nextReplacementEventID", dropped, "mints keys for the map above, which restores empty",
@@ -499,6 +499,9 @@ var scopedEffectFields = plan(
 	"Timestamp", carried, "",
 	"Duration", carried, "",
 	"Label", carried, "",
+	// ADR 0041 P8 (tier 3b): the name a replacement effect's ID is
+	// minted from, carried so a restored record keeps it.
+	"Seq", carried, "",
 )
 
 var zoneFields = plan(
@@ -592,15 +595,16 @@ var stackItemFields = plan(
 	// counter removed this way" ability for nothing.
 	"Paid", carried, "",
 
-	"targetSpec", rebuilt, "a spell's spec is re-derived from the catalog by oracle ID; an ability's is censused",
+	"targetSpec", rebuilt, "a spell's spec is re-derived from the catalog by oracle ID, a stamped ability's from its catalog row (ADR 0041 P9); an item that is neither is counted in ContinuationCensus.IntrinsicAbilityCards (ADR 0041 tier 4-final)",
 	// #764: the ModeSpec an item was announced under, so the CR
 	// 608.2b re-check can find the clause of the mode occurrence a
 	// TargetRef names. Same disposition as targetSpec and for the
-	// same reason: catalog data, keyed by oracle ID for a spell and
-	// unreachable for an ability, which is why an ability carrying
-	// one is counted in ContinuationCensus.StackTargetSpecs.
-	"modeSpec", rebuilt, "a spell's mode spec is re-derived from the catalog by oracle ID; an ability's is censused",
-	"Effect", dropped, "a closure; counted in ContinuationCensus.StackEffects (spells need none — they dispatch via EffectResolver)",
+	// same reason: catalog data, keyed by oracle ID for a spell and by
+	// its ability ref for a stamped ability (ADR 0041 P9, #1497); an
+	// item that has neither is counted once, in IntrinsicAbilityCards
+	// (tier 4-final retired StackEffects).
+	"modeSpec", rebuilt, "a spell's mode spec is re-derived from the catalog by oracle ID, a stamped ability's from its catalog row; an item that is neither is counted in ContinuationCensus.IntrinsicAbilityCards",
+	"Effect", dropped, "a closure; re-derived from Body (a catalog row, a tier-2 body or a reflexive body) — one with no Body is counted in ContinuationCensus.IntrinsicAbilityCards (spells need none — they dispatch via EffectResolver)",
 )
 
 var delayedTriggerFields = plan(

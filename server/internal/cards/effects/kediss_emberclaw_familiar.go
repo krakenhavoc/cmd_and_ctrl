@@ -13,12 +13,13 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // trigger is the combat-damage-to-a-player condition with the
 // dealing creature narrowed to a commander (the deck importer's
 // IsCommander flag, the field Bastion Protector reads); the amount
-// and the struck opponent are captured in Build, and the commander
-// itself is the damage source for each other opponent, so a damage
-// doubler sees the commander. That damage is NOT combat damage, so
-// it does not add to the per-commander tally (#380) — the printed
-// ruling. Two partner commanders connecting are two triggers, one
-// each, as printed.
+// and the struck opponent are read at resolution off the item's
+// carried trigger context (item.Trigger.Event, #1223), and the
+// commander itself is the damage source for each other opponent, so a
+// damage doubler sees the commander. That damage is NOT combat
+// damage, so it does not add to the per-commander tally (#380) — the
+// printed ruling. Two partner commanders connecting are two triggers,
+// one each, as printed.
 //
 // Partner is a deck-construction rule and needs nothing on the card.
 //
@@ -33,21 +34,19 @@ func init() {
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b10CommanderYouControlDealtCombatDamageToOpponent(ev, source, g)
 			},
-			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				commander, struck, amount := ev.Source, ev.Target, ev.Amount
-				return game.NewTriggeredItem(source, "Kediss — that much damage to each other opponent",
-					func(g *game.Game, item *game.StackItem) error {
-						ctx := NewContext(g, item)
-						for _, opp := range ctx.Opponents() {
-							if opp == struck {
-								continue
-							}
-							if err := (DealDamage{Source: commander, Target: opp, Amount: amount}).Apply(ctx); err != nil {
-								return err
-							}
-						}
-						return nil
-					})
+			Key: "Kediss — that much damage to each other opponent",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				commander, struck, amount := item.Trigger.Event.Source, item.Trigger.Event.Target, item.Trigger.Event.Amount
+				ctx := NewContext(g, item)
+				for _, opp := range ctx.Opponents() {
+					if opp == struck {
+						continue
+					}
+					if err := (DealDamage{Source: commander, Target: opp, Amount: amount}).Apply(ctx); err != nil {
+						return err
+					}
+				}
+				return nil
 			},
 		}},
 	})

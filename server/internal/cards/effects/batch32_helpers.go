@@ -375,25 +375,26 @@ func b32PutCountersPerElfOnChosenCreature(g *game.Game, item *game.StackItem) er
 // combat-damage trigger.
 const b32TrygonPredatorLabel = "Trygon Predator — destroy an artifact or enchantment that player controls"
 
-// b32DestroyChosenIfControlledBy is Trygon Predator's body: the
-// chosen artifact or enchantment is destroyed if it is still legal
-// and still controlled by `victim`, the player the Predator hit. A
-// pick under some other player's control — possible when two
-// Predators connected with two players in one combat and the
-// clause offered both players' permanents — does nothing.
-func b32DestroyChosenIfControlledBy(victim uuid.UUID) func(g *game.Game, item *game.StackItem) error {
-	return func(g *game.Game, item *game.StackItem) error {
-		ctx := NewContext(g, item)
-		id, ok := b16FirstLegalTargetCard(ctx)
-		if !ok {
-			return nil
-		}
-		c, found := g.LookupCardForEffect(id)
-		if !found || c.Controller != victim {
-			return nil
-		}
-		return DestroyTarget{Target: id}.Apply(ctx)
+// b32DestroyChosenIfControlledByTriggerVictim is Trygon Predator's
+// body: the chosen artifact or enchantment is destroyed if it is
+// still legal and still controlled by the player the Predator hit —
+// read off the item's triggering event (item.Trigger.Event.Target,
+// ADR 0041 P9) rather than captured, so a table with this trigger
+// waiting on the stack is a restore point. A pick under some other
+// player's control — possible when two Predators connected with two
+// players in one combat and the clause offered both players'
+// permanents — does nothing.
+func b32DestroyChosenIfControlledByTriggerVictim(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	id, ok := b16FirstLegalTargetCard(ctx)
+	if !ok {
+		return nil
 	}
+	c, found := g.LookupCardForEffect(id)
+	if !found || c.Controller != item.Trigger.Event.Target {
+		return nil
+	}
+	return DestroyTarget{Target: id}.Apply(ctx)
 }
 
 // b32NeyaliLabel is the stack label of Neyali's attack trigger —

@@ -33,16 +33,19 @@ func init() {
 				_, ok := b28CreatureWasDealtDamage(ev, g)
 				return ok
 			},
+			Key: "Repercussion — that much damage to the creature's controller",
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
 				c, ok := b28CreatureWasDealtDamage(ev, g)
 				if !ok {
 					return nil
 				}
-				victim, amount := c.Controller, ev.Amount
-				return game.NewTriggeredItem(source, "Repercussion — that much damage to the creature's controller",
-					func(g *game.Game, item *game.StackItem) error {
-						return DealDamage{Source: item.SourceCardID, Target: victim, Amount: amount}.Apply(NewContext(g, item))
-					})
+				item := game.NewTriggeredItem(source, "Repercussion — that much damage to the creature's controller")
+				item.Params.Player = c.Controller
+				item.Params.Amount = ev.Amount
+				return item
+			},
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				return DealDamage{Source: item.SourceCardID, Target: item.Params.Player, Amount: item.Params.Amount}.Apply(NewContext(g, item))
 			},
 		}},
 	})

@@ -29,10 +29,13 @@ func init() {
 			AppliesTo: func(ev game.Event, _ *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return ev.Actor != uuid.Nil
 			},
+			Key: "Seizan, Perverter of Truth — that player loses 2 life and draws two cards",
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Seizan, Perverter of Truth — that player loses 2 life and draws two cards",
-					b34ThatPlayerLosesLifeAndDraws(ev.Actor, 2, 2))
+				item := game.NewTriggeredItem(source, "Seizan, Perverter of Truth — that player loses 2 life and draws two cards")
+				item.Params.Player = ev.Actor
+				return item
 			},
+			Effect: b34ThatPlayerLosesLifeAndDraws(2, 2),
 		}},
 	})
 }

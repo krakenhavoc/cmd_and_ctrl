@@ -133,9 +133,7 @@ func BecomesLevel(n int, label string, effect func(g *game.Game, item *game.Stac
 		AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 			return ev.CardID == source.InstanceID && ev.Amount == n
 		},
-		Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-			return game.NewTriggeredItem(source, label, effect)
-		},
+		Effect: effect,
 	}
 }
 
@@ -171,16 +169,17 @@ func ToSolve(label string, condition func(g *game.Game, controller, source uuid.
 			}
 			return condition(g, source.Controller, source.InstanceID)
 		},
-		Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-			return game.NewTriggeredItem(source, label, func(g *game.Game, item *game.StackItem) error {
-				// CR 603.4: the intervening if is checked again on
-				// resolution. Nothing happens if it is false — the
-				// ability is simply removed from the stack.
-				if !condition(g, item.Controller, item.SourceCardID) || sourceIsNewObject(g, item) { // #1432
-					return nil
-				}
-				return g.SolveCaseForEffect(item.SourceCardID)
-			})
+		// No fill-in Build (ADR 0041 P9): `condition` and `label` are
+		// catalog data fixed at registration, so the engine can build
+		// the item itself from the row's Key and Effect.
+		Effect: func(g *game.Game, item *game.StackItem) error {
+			// CR 603.4: the intervening if is checked again on
+			// resolution. Nothing happens if it is false — the
+			// ability is simply removed from the stack.
+			if !condition(g, item.Controller, item.SourceCardID) || sourceIsNewObject(g, item) { // #1432
+				return nil
+			}
+			return g.SolveCaseForEffect(item.SourceCardID)
 		},
 	}
 }

@@ -39,29 +39,34 @@ func init() {
 				return ok && c.IsCreature()
 			},
 			Targets: TargetAny(),
+			Key:     "Terror of the Peaks — damage equal to that creature's power to any target",
+			// The power at entry is a board read made at trigger time
+			// (ADR 0041 P9's fill-in Build) and goes onto Params.Amount
+			// rather than being closed over; the entering creature's
+			// identity is on item.Trigger.Event.CardID already.
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
-				entered := ev.CardID
-				atEntry := 0
-				if c, ok := g.LookupCardForEffect(entered); ok {
-					atEntry = c.CurrentPower()
+				item := game.NewTriggeredItem(source, "Terror of the Peaks — damage equal to that creature's power to any target")
+				if c, ok := g.LookupCardForEffect(ev.CardID); ok {
+					item.Params.Amount = c.CurrentPower()
 				}
-				return game.NewTriggeredItem(source, "Terror of the Peaks — damage equal to that creature's power to any target",
-					func(g *game.Game, item *game.StackItem) error {
-						if len(item.Targets) == 0 {
-							return nil
-						}
-						amount := atEntry
-						if z := g.FindCardZoneForEffect(entered); z != nil && z.Kind == game.ZoneBattlefield {
-							if c, ok := g.LookupCardForEffect(entered); ok {
-								amount = c.CurrentPower()
-							}
-						}
-						return DealDamage{
-							Source: item.SourceCardID,
-							Target: item.Targets[0].ID,
-							Amount: amount,
-						}.Apply(NewContext(g, item))
-					})
+				return item
+			},
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				if len(item.Targets) == 0 {
+					return nil
+				}
+				entered := item.Trigger.Event.CardID
+				amount := item.Params.Amount
+				if z := g.FindCardZoneForEffect(entered); z != nil && z.Kind == game.ZoneBattlefield {
+					if c, ok := g.LookupCardForEffect(entered); ok {
+						amount = c.CurrentPower()
+					}
+				}
+				return DealDamage{
+					Source: item.SourceCardID,
+					Target: item.Targets[0].ID,
+					Amount: amount,
+				}.Apply(NewContext(g, item))
 			},
 		}},
 	})

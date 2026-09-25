@@ -12,8 +12,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // Since #1326 the engine stamps CR 305.4's distinction on the
 // settled entry itself (Event.Played), so the trigger reads that
 // directly (b20LandPlayed) rather than guessing from the zone the
-// land came from. The drawer is the player who played the land —
-// the event's Actor — not the Horn's controller.
+// land came from. The drawer is the player who played the land — the
+// event's Actor, read at resolution off the item's carried trigger
+// context (item.Trigger.Event.Actor, #1223) — not the Horn's
+// controller.
 //
 // No simplification.
 func init() {
@@ -27,12 +29,9 @@ func init() {
 				ok := b20LandPlayed(ev, g)
 				return ok
 			},
-			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				drawer := ev.Actor
-				return game.NewTriggeredItem(source, "Horn of Greed — that player draws a card",
-					func(g *game.Game, item *game.StackItem) error {
-						return DrawCards{Player: drawer, N: 1}.Apply(NewContext(g, item))
-					})
+			Key: "Horn of Greed — that player draws a card",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				return DrawCards{Player: item.Trigger.Event.Actor, N: 1}.Apply(NewContext(g, item))
 			},
 		}},
 	})

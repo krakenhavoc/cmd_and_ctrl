@@ -25,9 +25,13 @@ func init() {
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return b15OpponentCastSpell(ev, source)
 			},
-			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Memory Erosion — that player mills two cards",
-					b35ThatPlayerMillsTwo(ev.Actor))
+			Key: "Memory Erosion — that player mills two cards",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				caster := item.Trigger.Event.Actor
+				if g.PlayerByIDForEffect(caster) == nil {
+					return nil
+				}
+				return MillCards{Player: caster, N: 2}.Apply(NewContext(g, item))
 			},
 		}},
 	})

@@ -24,10 +24,8 @@ func init() {
 			Watches:   []game.EventKind{game.EventETB},
 			AppliesTo: b06SelfETB,
 			Targets:   TargetCardInGraveyard("target instant or sorcery card in your graveyard", Or(Instant(), Sorcery()), YouOwn()),
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Archaeomancer — return an instant or sorcery card to hand",
-					returnTargetCardToHand)
-			},
+			Key:       "Archaeomancer — return an instant or sorcery card to hand",
+			Effect:    returnTargetCardToHand,
 		}},
 	})
 }

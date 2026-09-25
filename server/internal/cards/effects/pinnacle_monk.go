@@ -27,26 +27,21 @@ func init() {
 		Name:            "Pinnacle Monk",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{game.KeywordProwess},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventETB},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-				return ev.CardID == source.InstanceID
-			},
-			Targets: TargetCardInGraveyard("target instant or sorcery card from your graveyard",
-				YouOwn(), Or(Instant(), Sorcery())),
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Pinnacle Monk — return target instant or sorcery card from your graveyard to your hand",
-					func(g *game.Game, item *game.StackItem) error {
-						if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
-							return nil
-						}
-						ctx := NewContext(g, item)
-						if !ctx.IsTargetLegal(item.Targets[0]) {
-							return nil
-						}
-						return ReturnFromGraveyard{Target: item.Targets[0].ID, Dest: game.ZoneHand}.Apply(ctx)
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			Targeting(WhenThisEnters("Pinnacle Monk — return target instant or sorcery card from your graveyard to your hand",
+				func(g *game.Game, item *game.StackItem) error {
+					if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
+						return nil
+					}
+					ctx := NewContext(g, item)
+					if !ctx.IsTargetLegal(item.Targets[0]) {
+						return nil
+					}
+					return ReturnFromGraveyard{Target: item.Targets[0].ID, Dest: game.ZoneHand}.Apply(ctx)
+				}),
+				TargetCardInGraveyard("target instant or sorcery card from your graveyard",
+					YouOwn(), Or(Instant(), Sorcery())),
+			),
+		},
 	})
 }

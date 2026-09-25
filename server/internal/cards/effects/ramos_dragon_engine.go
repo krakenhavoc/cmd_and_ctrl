@@ -61,19 +61,20 @@ func init() {
 				return source != nil && ev.Actor == source.Controller
 			},
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
-				n := spellColorCount(g, ev.CardID)
-				return game.NewTriggeredItem(source,
-					"Ramos, Dragon Engine — a +1/+1 counter for each of that spell's colors",
-					func(g *game.Game, item *game.StackItem) error {
-						if n <= 0 {
-							return nil
-						}
-						return AddCounter{
-							Target: item.SourceCardID,
-							Kind:   game.CounterPlusOne,
-							N:      n,
-						}.Apply(NewContext(g, item))
-					})
+				item := game.NewTriggeredItem(source,
+					"Ramos, Dragon Engine — a +1/+1 counter for each of that spell's colors")
+				item.Params.Amount = spellColorCount(g, ev.CardID)
+				return item
+			},
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				if item.Params.Amount <= 0 {
+					return nil
+				}
+				return AddCounter{
+					Target: item.SourceCardID,
+					Kind:   game.CounterPlusOne,
+					N:      item.Params.Amount,
+				}.Apply(NewContext(g, item))
 			},
 		}},
 		ManaAbilities: []ManaAbility{{

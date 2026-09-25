@@ -248,7 +248,7 @@ func init() {
 		if _, taken := defs[key]; taken {
 			panic(fmt.Sprintf("effects: two token templates claim %q", key))
 		}
-		defs[key] = buildTokenDef(t)
+		fileDef(key, buildTokenDef(t))
 		tokenTemplatesBySlug[t.Slug] = build
 	}
 }

@@ -23,7 +23,7 @@ func damageWatcher(t *testing.T) {
 		Watches:   []EventKind{EventDealDamage},
 		AppliesTo: func(Event, *Card, Characteristic, *Game) bool { return true },
 		Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
-			return NewTriggeredItem(source, "watcher", nil)
+			return NewTriggeredItem(source, "watcher")
 		},
 	})
 }
@@ -142,7 +142,7 @@ func TestADiesTriggerNamesThePermanentThatLeft(t *testing.T) {
 			return ev.CardID == source.InstanceID
 		},
 		Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
-			return NewTriggeredItem(source, "dies", nil)
+			return NewTriggeredItem(source, "dies")
 		},
 	})
 	bear := bearNamed(me.ID, "Dying Bear")
@@ -176,7 +176,7 @@ func TestAnOptionalTriggerNamesTheObjectThatTriggeredNotTheOneAtBuild(t *testing
 		AppliesTo:      func(Event, *Card, Characteristic, *Game) bool { return true },
 		OptionalPrompt: &TriggerOptionalPrompt{Question: "watch?"},
 		Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
-			return NewTriggeredItem(source, "watcher", nil)
+			return NewTriggeredItem(source, "watcher")
 		},
 	})
 	src := watcherNamed(g, me.ID, "Watcher")
@@ -382,7 +382,7 @@ func TestDelayedAndReflexiveTriggersInheritTheCreatorsSourceObject(t *testing.T)
 			}
 		}
 		if !g.QueueReflexiveTriggerForEffect(parent, ReflexiveTrigger{
-			Label: "when you do", Effect: func(*Game, *StackItem) error { return nil },
+			Label: "when you do", Body: testBody(func(*Game, *StackItem) error { return nil }),
 		}) {
 			t.Fatal("QueueReflexiveTriggerForEffect refused a well-formed declaration")
 		}

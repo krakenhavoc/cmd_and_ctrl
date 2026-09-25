@@ -68,12 +68,9 @@ func init() {
 		Triggered: []game.TriggeredAbility{{
 			Watches:   []game.EventKind{game.EventETB},
 			AppliesTo: shamanCreatureEntered,
-			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				entered := ev.CardID
-				return game.NewTriggeredItem(source, "Thornbite Staff — attach to the Shaman",
-					func(g *game.Game, item *game.StackItem) error {
-						return attachSourceTo(g, item, entered)
-					})
+			Key:       "Thornbite Staff — attach to the Shaman",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				return attachSourceTo(g, item, item.Trigger.Event.CardID)
 			},
 			OptionalPrompt: &game.TriggerOptionalPrompt{Question: "Thornbite Staff — attach it to the Shaman?"},
 		}},

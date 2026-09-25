@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -14,10 +12,13 @@ import (
 // A board wipe answered by a CR 614 replacement plus a CR 603.7
 // delayed trigger: the wipe still resolves, but every permanent it
 // would have killed lands in exile and walks back at the end step,
-// as a new object. Registered as a turn-scoped replacement in
-// OnResolve for the Fog reason — the instant is in the graveyard by
-// the time the replacement has anything to do, so the effect has to
-// outlive its source. StepCleanup clears it.
+// as a new object. Registered in OnResolve for the Fog reason — the
+// instant is in the graveyard by the time the replacement has anything
+// to do, so the effect has to outlive its source. It is a ScopedEffect
+// record (ADR 0041 phase 3 tier 3b): "permanents you control", read
+// live, until end of turn, with the return named as a registered
+// delayed-trigger body rather than captured in a closure — so a table
+// that cast it is still a restore point.
 //
 // It catches sacrifice as well as destruction, which is correct:
 // the card says "put into a graveyard from the battlefield", not
@@ -71,42 +72,10 @@ func init() {
 			Foretell("{1}{W}"),
 		},
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			// Capture plain IDs, never pointers: the replacement is
-			// value-copied onto the undo stack and has to keep
-			// working against whichever game it is restored into.
-			controller := ctx.Controller()
-			source := ctx.Source()
-			ctx.Game.RegisterTurnScopedReplacement(game.ReplacementEffect{
-				Watches: []game.EventKind{game.EventZoneMove},
-				AppliesTo: func(ev *game.ReplacementEvent, g *game.Game, _ *game.Card) bool {
-					if ev.Kind != game.RepEventMove {
-						return false
-					}
-					if ev.OldZone != game.ZoneBattlefield || ev.NewZone != game.ZoneGraveyard {
-						return false
-					}
-					c, ok := g.LookupCardForEffect(ev.CardID)
-					return ok && c.Controller == controller
-				},
-				Replace: func(ev *game.ReplacementEvent, g *game.Game, _ *game.Card) error {
-					ev.NewZone = game.ZoneExile
-					ev.NewZoneOwner = uuid.Nil
-					g.ScheduleDelayedTriggerForEffect(game.DelayedTrigger{
-						Controller:   controller,
-						SourceCardID: source,
-						Label:        "Cosmic Intervention — return the exiled permanent",
-						At:           game.StepEnd,
-						Cards:        []uuid.UUID{ev.CardID},
-						Body:         returnExiledToOwnersBody,
-					})
-					return nil
-				},
-				Controller: func(_ *game.ReplacementEvent, _ *game.Game, _ *game.Card) uuid.UUID {
-					return controller
-				},
+			return ExileInsteadOfGraveyardThisTurn{
+				Then:  returnExiledToOwnersBody,
 				Label: "Cosmic Intervention: exile instead of graveyard",
-			})
-			return nil
+			}.Apply(ctx)
 		},
 	})
 }

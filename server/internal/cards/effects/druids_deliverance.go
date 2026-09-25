@@ -28,8 +28,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // Reusing the table-wide shield would therefore have made the card
 // substantially STRONGER than printed, which is the one direction a
 // simplification may not go (#259). So the shield is player-scoped:
-// the same CR 615.1 turn-scoped replacement, with one extra clause
-// requiring the damage's target to be this player.
+// PreventAllCombatDamageThisTurn with Player set, the same CR 615.1
+// replacement with one extra clause requiring the damage's target to
+// be this player.
 //
 // Non-combat damage is untouched: a Lightning Bolt aimed at the
 // controller after this resolves still lands, and so does a Pestilence
@@ -54,8 +55,10 @@ func init() {
 			"Populate isn't available, so no token copy is made — the spell is the damage prevention only.",
 		},
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			return b38PreventAllCombatDamageToPlayerThisTurn(ctx, item.Controller,
-				"Druid's Deliverance — prevent combat damage to you")
+			return PreventAllCombatDamageThisTurn{
+				Player: item.Controller,
+				Label:  "Druid's Deliverance — prevent combat damage to you",
+			}.Apply(ctx)
 		},
 	})
 }

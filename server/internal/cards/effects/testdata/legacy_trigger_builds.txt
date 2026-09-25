@@ -1,0 +1,14 @@
+# legacy_trigger_builds.txt — ADR 0041 P9's allowlist (#1497, tier 4-2).
+#
+# Every catalog triggered row whose stack item cannot be rebuilt from the
+# row: a hand-written Build with no declared Effect, or a TargetsFrom
+# that reads the board. Such an item stays a census closure and holds a
+# restore point back while it waits on the stack.
+#
+# One row per line, sorted: <card name> | <catalog key> | <row index>.
+# The list ONLY SHRINKS. Convert a card by declaring its Effect (AGENTS.md,
+# "Adding a triggered ability") and delete its line, or run
+#   go test ./internal/cards/effects -run TestLegacyTriggerBuildsOnlyShrink -args -update-legacy-triggers
+# which deletes stale lines and never adds one. A new hand-written Build
+# fails the test instead of being added here.
+

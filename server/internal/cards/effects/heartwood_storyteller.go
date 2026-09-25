@@ -42,7 +42,11 @@ import (
 // library, a Sylvan Library tax, a hand-size concern — can decline
 // while the others take theirs.
 //
-// One trigger per spell, one prompt per beneficiary.
+// One trigger per spell, one prompt per beneficiary. The caster is
+// read at resolution off the item's carried trigger context
+// (item.Trigger.Event.Actor, #1223) — by then the spell may have left
+// the stack entirely, and the beneficiaries are defined relative to
+// whoever cast it, not to what's still there.
 //
 // No simplification.
 func init() {
@@ -56,16 +60,9 @@ func init() {
 				spell, ok := g.LookupCardForEffect(ev.CardID)
 				return ok && !spell.IsCreature()
 			},
-			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				// The caster is captured here: by resolution the
-				// spell may have left the stack entirely, and the
-				// beneficiaries are defined relative to them.
-				caster := ev.Actor
-				return game.NewTriggeredItem(source,
-					"Heartwood Storyteller — each of that player's opponents may draw a card",
-					func(g *game.Game, item *game.StackItem) error {
-						return b38EachOpponentOfMayDraw(g, item, caster)
-					})
+			Key: "Heartwood Storyteller — each of that player's opponents may draw a card",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				return b38EachOpponentOfMayDraw(g, item, item.Trigger.Event.Actor)
 			},
 		}},
 	})

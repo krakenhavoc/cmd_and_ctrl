@@ -43,22 +43,24 @@ func init() {
 				_, ok := b18AnotherAngelOrClericYouControlEntered(ev, source, g)
 				return ok
 			},
+			Key: "Righteous Valkyrie — gain life equal to its toughness",
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
-				entered := ev.CardID
-				fallback := 0
-				if c, ok := g.LookupCardForEffect(entered); ok {
-					fallback = c.CurrentToughness()
+				item := game.NewTriggeredItem(source, "Righteous Valkyrie — gain life equal to its toughness")
+				item.Params.Object.ID = ev.CardID
+				if c, ok := g.LookupCardForEffect(ev.CardID); ok {
+					item.Params.Amount = c.CurrentToughness()
 				}
-				return game.NewTriggeredItem(source, "Righteous Valkyrie — gain life equal to its toughness",
-					func(g *game.Game, item *game.StackItem) error {
-						toughness := fallback
-						if z := g.FindCardZoneForEffect(entered); z != nil && z.Kind == game.ZoneBattlefield {
-							if c, ok := g.LookupCardForEffect(entered); ok {
-								toughness = c.CurrentToughness()
-							}
-						}
-						return GainLife{Player: item.Controller, Amount: toughness}.Apply(NewContext(g, item))
-					})
+				return item
+			},
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				entered := item.Params.Object.ID
+				toughness := item.Params.Amount
+				if z := g.FindCardZoneForEffect(entered); z != nil && z.Kind == game.ZoneBattlefield {
+					if c, ok := g.LookupCardForEffect(entered); ok {
+						toughness = c.CurrentToughness()
+					}
+				}
+				return GainLife{Player: item.Controller, Amount: toughness}.Apply(NewContext(g, item))
 			},
 		}},
 	})

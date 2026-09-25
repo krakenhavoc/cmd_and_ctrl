@@ -56,27 +56,30 @@ func init() {
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return creatureDealtCombatDamageToAnOpponentOf(ev, source.Controller, g)
 			},
+			Key: gixPayOneLifeLabel,
+			// Actor is the dealing creature's controller, stamped at
+			// emit time and carried on item.Trigger.Event — still valid
+			// if the creature has since died to simultaneous combat
+			// damage. The fill-in Build keeps the "no controller"
+			// suppression; the payment itself is the row's Effect.
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				// Actor is the dealing creature's controller, stamped
-				// at emit time — still valid if the creature has since
-				// died to simultaneous combat damage.
-				payer := ev.Actor
-				if payer == uuid.Nil {
+				if ev.Actor == uuid.Nil {
 					return nil
 				}
-				return game.NewTriggeredItem(source, gixPayOneLifeLabel,
-					func(g *game.Game, item *game.StackItem) error {
-						return MayChoice{
-							Player:   payer,
-							Question: "Gix, Yawgmoth Praetor — pay 1 life to draw a card?",
-							YesLabel: "Pay 1 life",
-							NoLabel:  "Decline",
-							LifeCost: gixLifePayment,
-							OnYes: func(ctx *Context) error {
-								return payLifeThenDrawFor(ctx, payer, gixLifePayment, 1)
-							},
-						}.Apply(NewContext(g, item))
-					})
+				return game.NewTriggeredItem(source, gixPayOneLifeLabel)
+			},
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				payer := item.Trigger.Event.Actor
+				return MayChoice{
+					Player:   payer,
+					Question: "Gix, Yawgmoth Praetor — pay 1 life to draw a card?",
+					YesLabel: "Pay 1 life",
+					NoLabel:  "Decline",
+					LifeCost: gixLifePayment,
+					OnYes: func(ctx *Context) error {
+						return payLifeThenDrawFor(ctx, payer, gixLifePayment, 1)
+					},
+				}.Apply(NewContext(g, item))
 			},
 		}},
 	})

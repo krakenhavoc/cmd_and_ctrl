@@ -40,10 +40,8 @@ func init() {
 			OptionalPrompt: &game.TriggerOptionalPrompt{
 				Question: "Loran of the Third Path — destroy up to one target artifact or enchantment?",
 			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Loran of the Third Path — destroy target artifact or enchantment",
-					destroyChosenPermanent)
-			},
+			Key:    "Loran of the Third Path — destroy target artifact or enchantment",
+			Effect: destroyChosenPermanent,
 		}},
 		Activated: []ActivatedAbility{{
 			Label:   "{T}: You and target opponent each draw a card.",

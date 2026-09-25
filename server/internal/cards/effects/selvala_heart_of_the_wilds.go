@@ -63,22 +63,23 @@ func init() {
 				_, ok := selvalaBiggestCreatureEntered(ev, source, g)
 				return ok
 			},
+			Key: selvalaDrawLabel,
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
 				entered, ok := selvalaBiggestCreatureEntered(ev, source, g)
 				if !ok {
 					return nil
 				}
-				// Captured by VALUE, never as a *Card: undo restores a
-				// cloned game and the closure resolves against that one.
-				who, what := entered.Controller, entered.InstanceID
-				return game.NewTriggeredItem(source, selvalaDrawLabel,
-					func(g *game.Game, item *game.StackItem) error {
-						c, ok := g.LookupCardForEffect(what)
-						if !ok || !selvalaHasTheGreatestPower(g, c) {
-							return nil
-						}
-						return DrawCards{Player: who, N: 1}.Apply(NewContext(g, item))
-					})
+				item := game.NewTriggeredItem(source, selvalaDrawLabel)
+				item.Params.Player = entered.Controller
+				item.Params.Object.ID = entered.InstanceID
+				return item
+			},
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				c, ok := g.LookupCardForEffect(item.Params.Object.ID)
+				if !ok || !selvalaHasTheGreatestPower(g, c) {
+					return nil
+				}
+				return DrawCards{Player: item.Params.Player, N: 1}.Apply(NewContext(g, item))
 			},
 			OptionalPrompt: &game.TriggerOptionalPrompt{
 				Question: "Selvala, Heart of the Wilds — draw a card?",

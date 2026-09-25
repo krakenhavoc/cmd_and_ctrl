@@ -19,10 +19,14 @@ import (
 // resolve one at a time with a response window between them.
 //
 // The damaged player is the DEFENDER that particular attacker was
-// declared against, read off ev.Target and captured in Build — not
-// "an opponent of Hellrider's controller". In a four-player game two
-// creatures can attack two different seats in the same combat, and
-// each ping has to follow its own attacker.
+// declared against, read at resolution off the item's carried trigger
+// context (item.Trigger.Event.Target, #1223) — not "an opponent of
+// Hellrider's controller" and not re-derived live from the attacker,
+// which can be removed from combat in response while the trigger
+// still deals its damage (CR 603.7 — the ability is independent of
+// its source). In a four-player game two creatures can attack two
+// different seats in the same combat, and each ping has to follow its
+// own attacker.
 //
 // Hellrider counts itself: the text is "a creature you control", not
 // "another".
@@ -41,25 +45,15 @@ func init() {
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventAttack},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-				return attackDeclaredByYou(ev, source.Controller)
+				return attackDeclaredByYou(ev, source.Controller) && ev.Target != uuid.Nil
 			},
-			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				// Captured now, not read off the board at resolution:
-				// the attacker can be removed from combat in response
-				// and the trigger still deals its damage (CR 603.7 —
-				// the ability is independent of its source).
-				defender := ev.Target
-				if defender == uuid.Nil {
-					return nil
-				}
-				return game.NewTriggeredItem(source, "Hellrider — 1 damage to the defending player",
-					func(g *game.Game, item *game.StackItem) error {
-						return DealDamage{
-							Source: item.SourceCardID,
-							Target: defender,
-							Amount: 1,
-						}.Apply(NewContext(g, item))
-					})
+			Key: "Hellrider — 1 damage to the defending player",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				return DealDamage{
+					Source: item.SourceCardID,
+					Target: item.Trigger.Event.Target,
+					Amount: 1,
+				}.Apply(NewContext(g, item))
 			},
 		}},
 	})

@@ -55,20 +55,22 @@ func init() {
 			{
 				Watches:   []game.EventKind{game.EventETB},
 				AppliesTo: Self,
+				Key:       "The Goose Mother — create half X Food, rounded up",
+				// #1312/#1357: read once, here (ADR 0041 P9's fill-in
+				// Build), and stamp the plain int on Params.Amount
+				// rather than closing over the card, which the
+				// Effect must not capture.
 				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					// #1312/#1357: read once, here, and close over the
-					// plain int — not the card, which the Effect below
-					// must not capture (AGENTS.md: undo restores a
-					// cloned game and the closure has to resolve
-					// against that one).
-					x := source.CastX()
-					return game.NewTriggeredItem(source, "The Goose Mother — create half X Food, rounded up",
-						func(g *game.Game, item *game.StackItem) error {
-							if x <= 0 {
-								return nil
-							}
-							return CreateToken{Controller: item.Controller, Template: FoodToken(), N: (x + 1) / 2}.Apply(NewContext(g, item))
-						})
+					item := game.NewTriggeredItem(source, "The Goose Mother — create half X Food, rounded up")
+					item.Params.Amount = source.CastX()
+					return item
+				},
+				Effect: func(g *game.Game, item *game.StackItem) error {
+					x := item.Params.Amount
+					if x <= 0 {
+						return nil
+					}
+					return CreateToken{Controller: item.Controller, Template: FoodToken(), N: (x + 1) / 2}.Apply(NewContext(g, item))
 				},
 			},
 			{
@@ -78,9 +80,8 @@ func init() {
 				},
 				OptionalPrompt: &game.TriggerOptionalPrompt{Question: "The Goose Mother — sacrifice a Food to draw a card?"},
 				Targets:        TargetPermanent("a Food you control", And(HasSubtype("Food"), YouControl())),
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, b27GooseMotherAttackLabel, b27SacrificeChosenThenDraw)
-				},
+				Key:            b27GooseMotherAttackLabel,
+				Effect:         b27SacrificeChosenThenDraw,
 			},
 		},
 	})

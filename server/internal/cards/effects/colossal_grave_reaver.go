@@ -54,20 +54,17 @@ func init() {
 					}
 					return true
 				},
-				Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					seq := ev.Seq
-					return game.NewTriggeredItem(source, b17GraveReaverReturnLabel,
-						func(g *game.Game, item *game.StackItem) error {
-							pick, ok := b17GreatestManaValue(g, b17MilledCreatureCards(g, item.Controller, seq))
-							if !ok {
-								return nil
-							}
-							return ReturnFromGraveyard{
-								Target:     pick,
-								Dest:       game.ZoneBattlefield,
-								Controller: item.Controller,
-							}.Apply(NewContext(g, item))
-						})
+				Key: b17GraveReaverReturnLabel,
+				Effect: func(g *game.Game, item *game.StackItem) error {
+					pick, ok := b17GreatestManaValue(g, b17MilledCreatureCards(g, item.Controller, item.Trigger.Event.Seq))
+					if !ok {
+						return nil
+					}
+					return ReturnFromGraveyard{
+						Target:     pick,
+						Dest:       game.ZoneBattlefield,
+						Controller: item.Controller,
+					}.Apply(NewContext(g, item))
 				},
 			},
 		},

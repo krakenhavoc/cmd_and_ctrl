@@ -9,7 +9,7 @@ package lobby
 // different delivery of the same link the creator would otherwise
 // paste into a channel, so it does not invalidate a link already
 // shared. The gateway bot binary is not involved; the
-// `/cc-invite-dm` slash command (#613) will be a thin client of this
+// `/c2-invite-dm` slash command (#613) will be a thin client of this
 // route, so there stays exactly one place that builds and sends an
 // invite DM.
 //
@@ -44,7 +44,7 @@ const maxDMNameLen = 80
 //     to a Discord snowflake through identities; the snowflake is never
 //     on the wire in either direction.
 //   - discord_id is a raw Discord snowflake, and is ADMIN-ONLY. It
-//     exists for #613's `/cc-invite-dm @user`, which holds a mention
+//     exists for #613's `/c2-invite-dm @user`, which holds a mention
 //     and nothing else — the target may have never signed in here, so
 //     there is no user id to send. Allowing it for everyone would turn
 //     the route into "DM any Discord user who shares a guild with the
@@ -290,7 +290,7 @@ func flattenForDM(s string) string {
 }
 
 // inviteURL builds the link the DM carries. Same shape the bot's
-// /cc-invite posts (server/internal/bot/commands.go's buildInviteURL),
+// /c2-invite posts (server/internal/bot/commands.go's buildInviteURL),
 // so a player who has clicked one has clicked both. An invite token is
 // base64url, so it needs no escaping.
 func inviteURL(base string, gameID uuid.UUID, token string) string {

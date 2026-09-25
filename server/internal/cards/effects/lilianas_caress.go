@@ -7,8 +7,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	"Whenever an opponent discards a card, that player loses 2 life."
 //
 // The discard deck's Megrim. Sangromancer's condition — the
-// discarding player is the event's Actor — with the loss going to
-// that player, captured in Build. Once per card discarded, so a
+// discarding player is the event's Actor, read at resolution off the
+// item's carried trigger context (item.Trigger.Event.Actor, #1223) —
+// with the loss going to that player. Once per card discarded, so a
 // wheel that makes an opponent discard seven is fourteen life, as
 // printed. Life loss, not damage: no prevention or doubler sees it.
 //
@@ -23,12 +24,9 @@ func init() {
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return b18OpponentDiscarded(ev, source)
 			},
-			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				victim := ev.Actor
-				return game.NewTriggeredItem(source, "Liliana's Caress — that player loses 2 life",
-					func(g *game.Game, item *game.StackItem) error {
-						return g.ChangePlayerLifeForEffect(item.SourceCardID, victim, -2)
-					})
+			Key: "Liliana's Caress — that player loses 2 life",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				return g.ChangePlayerLifeForEffect(item.SourceCardID, item.Trigger.Event.Actor, -2)
 			},
 		}},
 	})

@@ -1,6 +1,8 @@
 package effects
 
 import (
+	"github.com/google/uuid"
+
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -44,6 +46,11 @@ import (
 // No simplifications.
 func init() {
 	enters := WhenThisEnters("Molten Primordial — gain control of up to one creature each opponent controls", moltenPrimordialEffect)
+	// ADR 0041 P9 (#1497): restore calls TargetsFrom again, on the
+	// restored game, to rebuild the clause the item was announced
+	// under. It gets the same list, because the list reads nothing the
+	// game can change — see moltenPrimordialClauses — so the row is not
+	// TargetsFromReadsBoard and its item is a restore point.
 	enters.TargetsFrom = moltenPrimordialClauses
 	Register(Spec{
 		OracleID:        "8d8c9f7b-92c7-4284-ad9c-304ce42edba5",
@@ -60,11 +67,29 @@ func init() {
 // "up to one target creature that player controls" three times in a
 // row would not say which player.
 //
-// Runs under g.mu (TargetsFrom's contract): reads g.Seats only.
-func moltenPrimordialClauses(_ game.TriggerContext, source *game.Card, g *game.Game) *game.TargetSpec {
+// Runs under g.mu (TargetsFrom's contract). It reads two things, and
+// neither can change between the announcement and a restore:
+//
+//   - "Opponent" is relative to the Primordial's controller AS IT
+//     ENTERED — the trigger context's snapshot of the entering object
+//     (tc.Object), which the item carries. Not source.Controller: the
+//     harvest passes a value copy taken as the ability triggered, but
+//     restore passes the live card, and a Primordial stolen while its
+//     trigger waited would shift every clause onto the wrong player.
+//     The two agree at the harvest, so play is unchanged.
+//   - The seat list, in seat order, and each seat's name. A seat is
+//     permanent once the game starts (AddPlayer and RemovePlayer are
+//     lobby-only, and an eliminated seat stays in the list), and a
+//     snapshot restores g.Seats in order, so over an active game the
+//     list is a constant, not board state.
+func moltenPrimordialClauses(tc game.TriggerContext, source *game.Card, g *game.Game) *game.TargetSpec {
+	controller := source.Controller
+	if obj := tc.Object; obj != nil && obj.ID == source.InstanceID && obj.Controller != uuid.Nil {
+		controller = obj.Controller
+	}
 	var clauses []*game.TargetSpec
 	for _, p := range g.Seats {
-		if p == nil || p.ID == source.Controller {
+		if p == nil || p.ID == controller {
 			continue
 		}
 		clauses = append(clauses, TargetCreature("up to one target creature "+p.Name+" controls",

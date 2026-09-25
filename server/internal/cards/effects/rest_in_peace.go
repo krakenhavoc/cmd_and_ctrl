@@ -47,10 +47,8 @@ func init() {
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return ev.CardID == source.InstanceID
 			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Rest in Peace — exile all graveyards",
-					b02ExileAllGraveyards)
-			},
+			Key:    "Rest in Peace — exile all graveyards",
+			Effect: b02ExileAllGraveyards,
 		}},
 	})
 }

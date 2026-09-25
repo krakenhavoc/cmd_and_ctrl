@@ -40,17 +40,15 @@ func init() {
 				return ev.Actor == source.Controller
 			},
 			Targets: TargetAny(),
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Niv-Mizzet, the Firemind — deal 1 damage to any target",
-					func(g *game.Game, item *game.StackItem) error {
-						ctx := NewContext(g, item)
-						for _, t := range ctx.LegalTargets() {
-							if err := (DealDamage{Source: item.SourceCardID, Target: t.ID, Amount: 1}).Apply(ctx); err != nil {
-								return err
-							}
-						}
-						return nil
-					})
+			Key:     "Niv-Mizzet, the Firemind — deal 1 damage to any target",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				ctx := NewContext(g, item)
+				for _, t := range ctx.LegalTargets() {
+					if err := (DealDamage{Source: item.SourceCardID, Target: t.ID, Amount: 1}).Apply(ctx); err != nil {
+						return err
+					}
+				}
+				return nil
 			},
 		}},
 	})

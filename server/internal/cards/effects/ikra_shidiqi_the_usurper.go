@@ -17,8 +17,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // triggers, as printed) and the life is that creature's toughness,
 // read live at resolution when it is still on the battlefield — so a
 // pump in response counts — and otherwise the toughness it had when
-// the damage was dealt, captured in Build (Righteous Valkyrie's
-// fallback). Partner is a deck-construction rule (CR 702.124), the
+// the damage was dealt. That fallback is computed once, at trigger
+// (Build) time, and carried on the item's Params rather than baked
+// into a per-instance closure (ADR 0041 P9) — Righteous Valkyrie's
+// fallback. Partner is a deck-construction rule (CR 702.124), the
 // deck importer's business.
 //
 // No simplification.
@@ -33,15 +35,19 @@ func init() {
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return combatDamageToPlayerBy(ev, source.Controller, g)
 			},
+			Key: "Ikra Shidiqi, the Usurper — gain life equal to that creature's toughness",
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
 				dealer := ev.Source
 				fallback := 0
 				if c, ok := g.LookupCardForEffect(dealer); ok {
 					fallback = c.CurrentToughness()
 				}
-				return game.NewTriggeredItem(source, "Ikra Shidiqi, the Usurper — gain life equal to that creature's toughness",
-					b35GainLifeEqualToToughness(dealer, fallback))
+				item := game.NewTriggeredItem(source, "Ikra Shidiqi, the Usurper — gain life equal to that creature's toughness")
+				item.Params.Object = game.ObjectRef{ID: dealer}
+				item.Params.Amount = fallback
+				return item
 			},
+			Effect: b35GainLifeEqualToToughness,
 		}},
 	})
 }

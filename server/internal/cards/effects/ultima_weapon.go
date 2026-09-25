@@ -36,13 +36,12 @@ func init() {
 		Static:       []game.StaticAbility{PumpAttached(7, 7)},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventAttack},
+			Key:     "Ultima Weapon — destroy target creature an opponent controls",
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return attachedCreatureAttacked(ev, source)
 			},
 			Targets: TargetCreature("target creature an opponent controls", OpponentControls()),
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return destroyChosenTargetTrigger(source, "Ultima Weapon — destroy target creature an opponent controls")
-			},
+			Effect:  destroyChosenPermanent,
 		}},
 		Activated: []ActivatedAbility{
 			EquipAbility("{7}"),

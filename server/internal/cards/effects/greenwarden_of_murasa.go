@@ -40,10 +40,8 @@ func init() {
 				AppliesTo:      b06SelfETB,
 				OptionalPrompt: &game.TriggerOptionalPrompt{Question: "Greenwarden of Murasa — return a card from your graveyard to your hand?"},
 				Targets:        TargetCardInGraveyard("target card from your graveyard", YouOwn()),
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Greenwarden of Murasa — return a card from your graveyard to your hand",
-						b35ReturnChosenGraveyardCardToHand)
-				},
+				Key:            "Greenwarden of Murasa — return a card from your graveyard to your hand",
+				Effect:         b35ReturnChosenGraveyardCardToHand,
 			},
 			{
 				Watches: []game.EventKind{game.EventLTB},
@@ -52,10 +50,8 @@ func init() {
 				},
 				OptionalPrompt: &game.TriggerOptionalPrompt{Question: "Greenwarden of Murasa — exile it from your graveyard to return a card to your hand?"},
 				Targets:        TargetCardInGraveyard("target card from your graveyard", YouOwn()),
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Greenwarden of Murasa — exile it and return a card from your graveyard to your hand",
-						b35ExileSelfFromGraveyardThenReturnChosen)
-				},
+				Key:            "Greenwarden of Murasa — exile it and return a card from your graveyard to your hand",
+				Effect:         b35ExileSelfFromGraveyardThenReturnChosen,
 			},
 		},
 	})

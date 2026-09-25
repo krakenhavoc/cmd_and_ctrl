@@ -70,6 +70,8 @@ cmd_and_ctrl/
 │   │   ├── roadmap/     # the curated registry of keywords, mechanics and engine seams behind the public roadmap; generates docs/engine-seams.md's open table (ADR 0092) and its closed list from docs/engine-seams/closed/ (#1461)
 │   │   ├── bugstore/    # bug-report artifacts: reporter screenshots (public, Camo-reachable) + pinned replays (admin-only)
 │   │   ├── deck/        # decklist parsers (Moxfield, plain text) + Commander validation
+│   │   ├── deckcoverage/ # a decklist's coverage report: every card bucketed manual / unreviewed / caveats / automated / no_effect (ADR 0095)
+│   │   ├── deckrequests/ # which GitHub issue tracks each requested deck, and who asked when (ADR 0095, migration 0006)
 │   │   ├── snapshotscrub/ # the scrubber behind cmd/snapshotscrub: generic-JSON rewrite, refuses snowflakes and emails (#522)
 │   │   └── db/          # persistent SQLite store (ADR 0051): open/WAL/migrate/backup (S34 sub-PR 1); users/games/decks land in later sub-PRs
 │   ├── Makefile
@@ -95,7 +97,7 @@ cmd_and_ctrl/
     ├── bot.md           # AI bot seat — user-facing guide (S31)
     ├── engine-seams/closed/ # one fragment per closed seam; CI generates engine-seams.md's Closed list from them (#1461)
     ├── sprints.md       # sprint plan
-    └── decisions/       # ADRs (0001 WS library … 0093 granted abilities) — see §4 on numbering
+    └── decisions/       # ADRs (0001 WS library … 0095 deck coverage and requests) — see §4 on numbering
 ```
 
 When you create a new top-level directory, add it here.
@@ -252,7 +254,7 @@ unused — they can be removed in a later cleanup PR.)
 - `boteval suite render --pos path/to/position.json [--deck ID]` — prints the exact prompt a model would see for one position and the move list with `<- accept / reject / heuristic / model@capture` markers. This is the labelling screen. See [docs/bot.md](docs/bot.md#position-suite).
 - `boteval arena --seats a,b,c,d [--decks …] --games N --rotate --out DIR` — headless bot-vs-bot games with the report block ADR 0052 asks every bot PR to carry: win rate with a **Wilson 95% interval** against the table's null rate (1/seats), the funnel's layer/escalation/timeout counters, and decision + model-call latency tails. Rotation seats contestant `k` at position `(k+i)%n` in game `i`, so turn order cancels. A model tier with **no endpoint is refused, not downgraded** (an `assisted` seat with no client plays the heuristic under a model tier's name). A stall is **reported, not fatal**. Artifacts land in `<out>/<RFC3339 start>/`: `summary.md`, `summary.json`, `games.jsonl` (streamed per game), `decisions/`, `replays/`. Wall clock: ~0.2 s per two-seat heuristic game, ~3.5 s per four-seat curated-deck game, 5–15 min per game with one local-model seat. See [docs/bot.md](docs/bot.md#arena).
 - `cd server && go run ./cmd/gamecli -addr ws://localhost:8080/ws` — drive the demo game from a terminal; reads action JSON on stdin or via `-script path.json`
-- Endpoints: `GET /healthz`, `GET /ws` (protocol v0, see [docs/protocol.md](docs/protocol.md)), `POST /admin/login`, `/games*` lobby routes (see [docs/lobby.md](docs/lobby.md)), `GET /me/games` + `POST /me/games/{id}/session` (a signed-in user's games and seat reclaim, ADR 0051 sub-PR 4), `GET /me/tablemates` + `POST /games/{id}/invites/dm` (the people you have played with, and DMing one of them this table's existing invite link — ADR 0051 decisions 8 and 5, S34 sub-PR 6), `GET /auth/discord/link` (link Discord to a held seat), `/cards/*` image + metadata routes, `GET /catalog` + `GET /catalog/image/{id}` (signed-in session required — the card catalogue, [ADR 0042](docs/decisions/0042-card-catalog-page.md); `main.go` says why it is not public), `GET /roadmap` (public, no session — the engine roadmap: card names and caveats only, never art or oracle text, [ADR 0092](docs/decisions/0092-public-roadmap-and-site-portal.md))
+- Endpoints: `GET /healthz`, `GET /ws` (protocol v0, see [docs/protocol.md](docs/protocol.md)), `POST /admin/login`, `/games*` lobby routes (see [docs/lobby.md](docs/lobby.md)), `GET /me/games` + `POST /me/games/{id}/session` (a signed-in user's games and seat reclaim, ADR 0051 sub-PR 4), `GET /me/tablemates` + `POST /games/{id}/invites/dm` (the people you have played with, and DMing one of them this table's existing invite link — ADR 0051 decisions 8 and 5, S34 sub-PR 6), `GET /auth/discord/link` (link Discord to a held seat), `/cards/*` image + metadata routes, `GET /catalog` + `GET /catalog/image/{id}` (signed-in session required — the card catalogue, [ADR 0042](docs/decisions/0042-card-catalog-page.md); `main.go` says why it is not public), `GET /roadmap` (public, no session — the engine roadmap: card names and caveats only, never art or oracle text, [ADR 0092](docs/decisions/0092-public-roadmap-and-site-portal.md)), `POST /deck-coverage` (public, no session, per-IP limited — a Moxfield/Archidekt link or pasted list bucketed into `manual` / `unreviewed` / `caveats` / `automated` / `no_effect`; names, oracle IDs and caveats only) and `POST /deck-requests` (a Discord-signed-in user, or the bot's admin session naming the member — files or joins a GitHub issue listing the deck's missing cards, 3 asks per person per 24 h; [ADR 0095](docs/decisions/0095-deck-coverage-and-deck-requests.md), [docs/lobby.md](docs/lobby.md))
 - Env vars:
   - `CMDCTRL_ADDR` — listen addr (default `:8080`)
   - `CMDCTRL_DATA_DIR` — data root (default `./data`; empty string disables disk writes + card cache). Holds `db/cmdctrl.sqlite` (ADR 0051, S34 sub-PR 1 — the persistent user/game/deck store, `internal/db`) and its `db/cmdctrl.backup.sqlite` VACUUM INTO copy, alongside the existing `scryfall/`, `images/`, `avatars/`, `bugreports/`, `restore/`, `replays/` and `games/`. Since S34 sub-PR 3 the lobby's games, seats and invites are rows in that database, and invites are stored as hashes. `lobby/` holds only the `<id>.json.imported` files the one-time importer renamed and left for a rollback (docs/environments.md).
@@ -269,7 +271,7 @@ unused — they can be removed in a later cleanup PR.)
   - `CMDCTRL_SECURE_COOKIES` — truthy sets the `Secure` attribute on the session cookie. Enable in any TLS deployment; leave unset for plain-HTTP local dev (a `Secure` cookie is never sent over http and would silently break login).
   - `CMDCTRL_TRUST_FORWARDED` — truthy keys the lobby rate limiter off the leftmost `X-Forwarded-For` hop instead of the socket `RemoteAddr`. Enable **only** when the server sits behind a trusted reverse proxy that sets the header; otherwise clients can spoof it to dodge limits.
   - `CMDCTRL_DEV_RELAX_RATE_LIMITS` — truthy effectively disables the lobby rate limiters. For the e2e suite and local load-y dev loops only; logs a loud warning on boot. **Never set in production.**
-  - `CMDCTRL_GITHUB_TOKEN` — enables the in-app "report a bug" button (`POST /bugreport` files a GitHub issue). Use a fine-grained PAT with **Issues: write** on the one repo, nothing broader. Unset disables the feature and the client hides the button. See [ADR 0017](docs/decisions/0017-bug-report-button.md). **Reports are published to everyone who can read the repo, so credentials are redacted before they get there** — client (`client/src/lib/redact.ts`, applied to the protocol log, console capture and the submitted draft) and server (`server/internal/util/redact`, applied in `renderBugIssueBody`); never log a token-bearing URL raw, pass it through `redactURL` (#721, [ADR 0017 §9](docs/decisions/0017-bug-report-button.md); durable sessions #517 depend on it). **Provisioned by CI/CD**: the deploy job upserts it into `/etc/cmd_and_ctrl/env` (the env file the HomeLab cloud-init template writes and the systemd units read) from the `CMDCTRL_GITHUB_TOKEN` Actions secret, via `sudo scripts/set-server-env.sh`; to rotate, update the secret and rerun the deploy — no host access needed.
+  - `CMDCTRL_GITHUB_TOKEN` — enables the in-app "report a bug" button (`POST /bugreport` files a GitHub issue) and ADR 0095's deck requests (`POST /deck-requests` files or comments on a deck-request issue; it also needs `CMDCTRL_DATA_DIR`, and answers 503 naming whichever is missing). Use a fine-grained PAT with **Issues: write** on the one repo, nothing broader. Unset disables both and the client hides the bug button. See [ADR 0017](docs/decisions/0017-bug-report-button.md). **Reports are published to everyone who can read the repo, so credentials are redacted before they get there** — client (`client/src/lib/redact.ts`, applied to the protocol log, console capture and the submitted draft) and server (`server/internal/util/redact`, applied in `renderBugIssueBody`); never log a token-bearing URL raw, pass it through `redactURL` (#721, [ADR 0017 §9](docs/decisions/0017-bug-report-button.md); durable sessions #517 depend on it). **Provisioned by CI/CD**: the deploy job upserts it into `/etc/cmd_and_ctrl/env` (the env file the HomeLab cloud-init template writes and the systemd units read) from the `CMDCTRL_GITHUB_TOKEN` Actions secret, via `sudo scripts/set-server-env.sh`; to rotate, update the secret and rerun the deploy — no host access needed.
   - `CMDCTRL_GITHUB_REPO` — `owner/name` slug issues are filed against (default `krakenhavoc/cmd_and_ctrl`).
   - `CMDCTRL_PUBLIC_BASE_URL` — the origin this server is reachable at from the public internet (e.g. `https://cmd.labxp.io`). Needed for bug-report **screenshots**: GitHub renders an issue image by fetching it through its Camo proxy, so the URL in the issue body has to be absolute and publicly resolvable. Falls back to `CMDCTRL_CLIENT_BASE_URL`; with neither set (or no `CMDCTRL_DATA_DIR`) attachments are disabled, `/bugreport/config` reports `attachments:false`, the modal hides its file picker, and text reports keep working. **No default on purpose** — a wrong origin produces issues full of broken images, which is worse than a deploy that doesn't offer upload. Provisioned by CI/CD from the `CMDCTRL_PUBLIC_BASE_URL` repo variable. See [ADR 0017 §6](docs/decisions/0017-bug-report-button.md).
   - `CMDCTRL_OPENAI_ENDPOINT` — an OpenAI-compatible `/v1/chat/completions` server for the model-backed bot tiers (`assisted`, `strong`): Ollama, LM Studio, llama.cpp's server, vLLM. Takes a URL (e.g. `http://192.168.1.18:11434`), or `1` for a stock Ollama on this machine. If both this and an Anthropic key are set, this one wins. Unset by default.
@@ -296,7 +298,13 @@ A restore point written by yesterday's binary has to restore in today's. Three t
   - **Never edit, regenerate or delete a fixture to make the test pass.** If a bump migrates an old shape, list the migrated paths in `corpusMigrations` in `snapshot_corpus_test.go`, with the reason. Nothing else may excuse a difference.
 - **The ability check.** A card whose catalog entry lost abilities between the writing and the reading binary is restored anyway. It is flagged `Card.AbilitiesLostOnRestore`, which shows it as `manual` for the rest of the game, and the boot log has an ERROR line naming the game, the card and the counts. More abilities than captured is not a mismatch.
 - **Effect keys (#1497, [ADR 0041](docs/decisions/0041-game-persistence.md) phase 3).** A `ScopedEffect` mod kind is an on-disk identity, like a token slug: never renamed, never reused. A restore point naming a kind (or a delayed-trigger / stack-item effect key) this binary cannot interpret is refused with `ErrUnknownEffectKey` and the file is KEPT — only a newer build can have written it, so it is the rollback case. That refusal is what lets the vocabulary grow within a schema version.
-- **The closure ratchet.** `TestClosureFieldsReachableFromGame` (`internal/game`) lists every ROUTE from `Game` to something that can hold a func or an interface — every field of every reachable struct whose type reaches one, directly or through another struct — in `internal/game/testdata/closure_fields.txt`, each classified `rebuilt`, `keyed`, `transient`, `test-only` or `census:<Counter>`. A new route fails until it is classified, including a new field whose type is a struct already on the list (#1558): `cd server && go test ./internal/game -run TestClosureFieldsReachableFromGame -args -update-closure-fields` keeps the existing classes and marks new routes `unclassified`. The number of lines in each `census:` class and in `transient` is pinned by `closureClassCeilings` in the test and may only fall: phase 3's tiers delete lines and lower the ceiling; nothing raises one.
+- **Abilities on the stack (#1497, ADR 0041 P9, tier 4).** An ability's stack item names the catalog row it came from: `Body: "catalog/activated"` or `"catalog/triggered"`, plus `Params.Ability`, an `AbilityRef` of `{key, slot, ref, name}`. The `ref` is ADR 0093's `own:<i>` or `grant:<bundle>:<i>:<n>`, and `name` is the row's label (an activated row's `Label`, a triggered row's `Key`). `ActivateCatalogAbility` stamps every catalog activated ability. The trigger harvest stamps a triggered row that DECLARES its `Effect` (slice 4-2): the registry gives each row its identity as it files the definition (`game.IdentifyCatalogRows`), so no card file names its own row. A table with either waiting — queued or on the stack — is a restore point. Restore rebuilds the item's effect, target clause and mode clause from that row, in the running binary; a `TargetsFrom` clause is built again from the item's carried `Trigger` and its source. Three outcomes, set by the owner's answers of 2026-09-25:
+  - The row at the ref has the same label: restored.
+  - It does not, and exactly one row in the same list has that label (a deploy reordered the card's abilities): that row is used and the ref is rewritten.
+  - No row, or more than one, has the label: the game is restored anyway. The item stays on the stack as a manual item with no effect, like a sandbox-announced one. Its source card is flagged `Card.AbilitiesLostOnRestore`, and the boot log has one ERROR line naming the game, the card, the label and the ref (`GameSnapshot.LostStackAbilities`). Never abandon the game and never drop the item.
+
+  A binary from before slice 4-2 does not register `catalog/triggered`, so it refuses a file that names it (the rollback case). An ability carried on a card instance (`Card.ActivatedAbilities`) is never stamped and is still counted by the census. Neither is a trigger whose row computes its effect in a hand-written `Build` with no `Effect` beside it, nor one whose `TargetsFrom` reads the board (`TriggeredAbility.TargetsFromReadsBoard`): such rows would be listed in `server/internal/cards/effects/testdata/legacy_trigger_builds.txt`, which is EMPTY since tier 4-final and which `TestLegacyTriggerBuildsOnlyShrink` holds to shrinking — it fails on a listed row that no longer needs listing (delete the line, or run `cd server && go test ./internal/cards/effects -run TestLegacyTriggerBuildsOnlyShrink -args -update-legacy-triggers`, which never adds one) and on a new hand-written `Build` that is not listed (declare the `Effect` instead). A `Build` that makes a keyed item (`game.NewKeyedTriggeredItem` over a tier-2 body, as suspend and madness do) is data already and is not listed. Since this change, every stack-item field (on the stack, queued, or in `lastKnownStack`) is refused if this binary does not know it, for a file of the current schema. So a new stack-item field is refused by every binary from here on and needs no bump. `lastKnownStack`, the CR 608.2h record of spells countered this turn, is carried too. The census counts a stack item once, in `IntrinsicAbilityCards`, when its effect is a closure with no `Body` or when it has a target or mode clause with neither an oracle ID nor an ability ref behind it. In production the only such item is an ability carried on a card instance, which is that counter's own subject; a test that hand-builds an item (`newTriggeredItemForTest` in `internal/game`) lands there too. `StackTargetSpecs` and `StackEffects` are both retired (tier 4-final, owner decision 2026-09-25): `game.NewTriggeredItem(source, label)` takes no effect, because what a stack item does is always a catalog row or a registered body.
+- **The closure ratchet.** `TestClosureFieldsReachableFromGame` (`internal/game`) lists every ROUTE from `Game` to something that can hold a func or an interface — every field of every reachable struct whose type reaches one, directly or through another struct — in `internal/game/testdata/closure_fields.txt`, each classified `rebuilt`, `keyed`, `transient`, `test-only` or `census:<Counter>`. A new route fails until it is classified, including a new field whose type is a struct already on the list (#1558): `cd server && go test ./internal/game -run TestClosureFieldsReachableFromGame -args -update-closure-fields` keeps the existing classes and marks new routes `unclassified`. The number of lines in each `census:` class and in `transient` is pinned by `closureClassCeilings` in the test and may only fall: phase 3's tiers delete lines and lower the ceiling; nothing raises one. The one exception is ADR 0041 P11: when a tier retires a counter, its lines may move to the class of the route they still have, in the same PR, and the PR lists those lines and the new ceiling.
 
 ### AI bot seat (Go, `server/internal/aiseat/`)
 
@@ -321,7 +329,7 @@ A restore point written by yesterday's binary has to restore in today's. Three t
   - `AISEAT_DECISION_LOG=<dir>` — writes a per-game decision log for every game played through `playGame`/`playGameIn` (the same writer the server uses, `aiseat/decisionlog`). Unset (the default, and CI) costs nothing: the runner builds no event without an observer. `AISEAT_DECISION_LOG_MODE` takes the same three values as the server variable. This is how the position corpus gets harvested, and what `TestDecisionLogReplaysOffline` uses to prove a recorded window re-decides identically offline. **Mind the disk**: a four-seat game writes a few thousand windows and a four-player board view is ~50 KiB, so one game is 100–250 MiB. `escalated` only saves anything for policies that run Layer A (the `heuristic` TIER, `rules.NewFilter(heuristic.New(), …)`); the bare `heuristic.New()` the whole-game tests seat reports every window as Layer B and keeps them all in full.
   - `AISEAT_CATALOG_GAMES=N` / `AISEAT_CATALOG_SEED=<uint64>` — the catalog soak (`TestCatalogSoak`, #601): N four-bot games on decks dealt from the catalog itself rather than from the hand-written vanilla decks the other whole-game tests use. The seed defaults to one derived from the UTC date, so each night deals new decks and coverage accumulates; the log prints the base seed, and every failure prints the seed to replay. Needs `CMDCTRL_SCRYFALL_DUMP` as well (a `Spec` carries an oracle ID and a name, not a type line or a mana cost) and skips without it. It **fails on any `EventEffectError`** — a card whose primitive threw mid-resolution, which the engine logs and survives, so nothing else in the tree goes red over it.
   - `AISEAT_CATALOG_POLICY=random|heuristic|mixed` (#1456) — what fills the catalog soak's seats, modelled on `AISEAT_SOAK_POLICY` (the random soak, below): `random` (default, unchanged from before this variable existed) is the widest exploration of the catalog; `heuristic` seats `heuristic.New()` at every seat, which builds board states — blockers up, equipment attached, auras out — that `random` rarely sets up and most catalog cards actually need to be reached at all; `mixed` alternates by seat index. An unrecognised value fails the test outright rather than falling back silently, because a catalog soak run is expensive enough that a misspelled flag deserves a loud failure. The nightly's `catalog-soak` job sets `heuristic`.
-  - `AISEAT_CATALOG_REPORT=<path>` — where the catalog soak writes its per-card JSON (cast / resolved / entered / triggered / errored, per oracle ID). The nightly uploads it as an artifact on every run, green included: the useful half is the list of cards no bot game reached, which is where a unit test buys more than another bot game.
+  - `AISEAT_CATALOG_REPORT=<path>` — where the catalog soak writes its report JSON: `{"cards": [...], "census": {...}}`. `cards` is the per-card table (cast / resolved / entered / triggered / errored, per oracle ID) it always wrote. `census` is ADR 0041 P7's measurement (#1497, #1558 item 4) — the catalog soak captures a restore point (`game.Game.CaptureSnapshot`, the same call `ws.Room.writeRestorePointLocked` makes) after every observed action of every game in the run, and tallies what it found: `actions` and `captured` (how many of those captures were restorable), `by_kind` (blocked captures per census kind, summed over the whole run — `game.ContinuationCensus.Kinds`'s keys), and `longest_run_by_kind` (the longest run of CONSECUTIVE actions any one kind stayed the blocker — the number the shutdown census can't give, since it only ever reads one instant). It is not a gate: the shutdown census (#524) reads one instant per deploy and every deploy so far has caught an idle table, so this is the stand-in evidence P7 asks for to order phase 3's remaining tiers. Capture is sampled at the poll rate the stall detector already uses, so a burst of actions inside one poll tick coalesces into one capture — an undercount that can only make a stale run look shorter than it was, never longer. The nightly uploads the whole file as an artifact on every run, green included: the useful half of `cards` is the list of cards no bot game reached, and the useful half of `census` is whether tier 4 (stack effects and target specs, by a wide margin in every run so far) is worth hurrying.
   - `AISEAT_STALL` / `AISEAT_WALLCLOCK` — Go durations. Since [#685](https://github.com/krakenhavoc/cmd_and_ctrl/issues/685) **every bot-table budget in the package reads them**, so there is one pair of knobs for a loaded runner and no literal left to edit:
     - `TestFourRandomBotsPlay` — stall detector and wall clock, defaults `15s` / `300s`.
     - `TestCatalogSoak` — the same, same defaults.
@@ -337,8 +345,12 @@ A restore point written by yesterday's binary has to restore in today's. Three t
 ### Discord bot (Go, `server/cmd/bot/`)
 - Separate binary from the game server; runs as `cmd-and-ctrl-bot.service` on the prod VPS. See [docs/decisions/0004-discord-identity.md](docs/decisions/0004-discord-identity.md).
 - `make -C server build-bot` — produces `server/bin/cmd_and_ctrl-bot`
-- Commands: `/cc-invite [name]` (channel-visible invite URL), `/cc-games` (ephemeral list), and `/cc-end <game>` (confirm, then archive; #614).
-- `/cc-end` is **host or admin** (S34 [#1044](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1044) added `games.created_by`; [#1098](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1098) wired it into `server/internal/bot/end.go`). "Admin" is a Discord user on `CMDCTRL_DISCORD_ADMIN_USER_IDS` or a guild member holding a role on `CMDCTRL_DISCORD_ADMIN_ROLE_IDS`. "Host" is the game's own **creator** — whoever called `POST /games` while signed in — checked via `GET /games/{id}/creator?discord_id=<snowflake>` (admin-only; the bot calls it with its own admin session, per `Handler.mayEnd`). The server never says who a game's creator actually is, to the bot or anyone else — that route answers only "does this one Discord id match", so the bot never learns a creator's identity by asking about someone else's. Games with no creator (an admin session created the table, or it was restored from a pre-ADR-0051 file import) always answer `false` there, so the two allowlists are the only route for those. Both allowlists unset **and** no creator still refuses everyone with an ephemeral message naming the two variables — it never fails open. Confirmation is an ephemeral Confirm/Cancel prompt naming the table, players and created time; only the invoker's clicks count, and the prompt expires 60s after it's shown (`confirmTTL` in `end.go`).
+- Commands: `/c2-invite [name]` (channel-visible invite URL), `/c2-games` (ephemeral list), `/c2-end <game>` (confirm, then archive; #614), `/c2-deck-check <link>` and `/c2-deck-req <link>` (ADR 0095 §4 — deck coverage checks and deck requests).
+- **Registration is a bulk overwrite** ([#1631](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1631), ADR 0095): `RegisterCommands` calls `ApplicationCommandBulkOverwrite` once per guild instead of creating one command at a time, so a stale registration (the old `cc-` names, or any command removed from `commandDefinitions`) disappears on the first boot of a new binary rather than needing a manual cleanup step.
+- **Deferred replies.** `/c2-deck-check` and `/c2-deck-req` are the bot's first deferred interactions: both defer with `InteractionResponseDeferredChannelMessageWithSource`, ephemeral, giving about 20s instead of the other commands' 4s HTTP budget (a deck fetch plus a GitHub call can run long). A deferred response's visibility is fixed at defer time — `WebhookEdit` has no `Flags` field — so a command whose final reply must be channel-visible (`/c2-deck-req` on `filed` or `joined`) defers ephemerally, deletes that placeholder once the result is known, and posts the visible half as a follow-up message instead of an edit.
+- `/c2-deck-check <link>` calls the public `POST /deck-coverage` with the bot's admin session (its own, larger rate bucket) and replies ephemerally with the bucket counts, up to ~15 `manual` card names, a link to the site's full report, and — when there is something to request — a **Request these cards** button. The button's custom ID carries the deck link URL-encoded; when that would exceed Discord's 100-character cap it stores the link server-side instead (same in-memory-with-TTL trade-off as `/c2-end`'s confirmations: a bot restart drops it, run the check again) and carries a short token. Pressing it runs the same request flow as `/c2-deck-req`, attributed to whoever clicked.
+- `/c2-deck-req <link>` calls `POST /deck-requests` with the bot's admin session and `requester: {discord_id, display_name}` (`Member.Nick`, then `User.GlobalName`, then `User.Username`). `filed` and `joined` (a fresh comment) reply in the channel with the issue link; `joined` with `already_requested`, `nothing_to_add`, `rate_limited` and every error reply ephemerally.
+- `/c2-end` is **host or admin** (S34 [#1044](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1044) added `games.created_by`; [#1098](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1098) wired it into `server/internal/bot/end.go`). "Admin" is a Discord user on `CMDCTRL_DISCORD_ADMIN_USER_IDS` or a guild member holding a role on `CMDCTRL_DISCORD_ADMIN_ROLE_IDS`. "Host" is the game's own **creator** — whoever called `POST /games` while signed in — checked via `GET /games/{id}/creator?discord_id=<snowflake>` (admin-only; the bot calls it with its own admin session, per `Handler.mayEnd`). The server never says who a game's creator actually is, to the bot or anyone else — that route answers only "does this one Discord id match", so the bot never learns a creator's identity by asking about someone else's. Games with no creator (an admin session created the table, or it was restored from a pre-ADR-0051 file import) always answer `false` there, so the two allowlists are the only route for those. Both allowlists unset **and** no creator still refuses everyone with an ephemeral message naming the two variables — it never fails open. Confirmation is an ephemeral Confirm/Cancel prompt naming the table, players and created time; only the invoker's clicks count, and the prompt expires 60s after it's shown (`confirmTTL` in `end.go`).
 - Env vars (bot binary reads these; server binary does not yet — ADR 0051 Decision 5's DM invites, #613, will add the bot token to the server's env too):
   - `CMDCTRL_DISCORD_BOT_TOKEN` — **required**. Discord Developer Portal → Bot → Reset Token. In production: the Actions **secret** of the same name.
   - `CMDCTRL_DISCORD_APP_ID` — **required**. Application ID from the same portal. In production: the Actions **variable** of the same name.
@@ -346,7 +358,7 @@ A restore point written by yesterday's binary has to restore in today's. Three t
   - `CMDCTRL_ADMIN_TOKEN` — **required**. Same shared secret the server uses; the bot hits `POST /admin/login` + `POST /games` + `GET /games` + `POST /games/{id}/archive` over loopback. In production: copied by CD from `/etc/cmd_and_ctrl/env` on every deploy, never set separately.
   - `CMDCTRL_SERVER_BASE_URL` — default `http://127.0.0.1:8080`. Where the bot calls the admin API.
   - `CMDCTRL_CLIENT_BASE_URL` — default `https://cmd.labxp.io`. Used to compose the invite URL posted back to Discord.
-  - `CMDCTRL_DISCORD_ADMIN_USER_IDS` / `CMDCTRL_DISCORD_ADMIN_ROLE_IDS` — **optional**, comma-separated snowflakes; who counts as **admin** for `/cc-end` (see above) — the game's own creator does not need either list, since that half of the check comes from `games.created_by` via the server, not from bot config. In production: the Actions **variables** of the same names, written by "Sync bot env" only when set — leaving them unset is a supported state, not a misconfiguration.
+  - `CMDCTRL_DISCORD_ADMIN_USER_IDS` / `CMDCTRL_DISCORD_ADMIN_ROLE_IDS` — **optional**, comma-separated snowflakes; who counts as **admin** for `/c2-end` (see above) — the game's own creator does not need either list, since that half of the check comes from `games.created_by` via the server, not from bot config. In production: the Actions **variables** of the same names, written by "Sync bot env" only when set — leaving them unset is a supported state, not a misconfiguration.
 - Unset `CMDCTRL_DISCORD_BOT_TOKEN` disables the bot (binary exits 0 after logging `bot disabled`). Convenient for dev stacks without a registered Discord app.
 - Bot secrets live in a dedicated env file, `/etc/cmd_and_ctrl/bot.env` (`root:cmdctrl-bot`, mode `0640`), not the server's env file — ADR 0004 §6 explains why. The CD "Sync bot env" step writes it on production only; never hand-edit it. Host setup and verification: [deploy/README.md](deploy/README.md#discord-bot-production-only). Once the `CMDCTRL_DISCORD_BOT_TOKEN` secret is set, CD emits a `::warning::` (never a failure) for a production host that cannot run the bot: no `cmdctrl-bot` user or group, or the unit not enabled or not active after its restart.
 - Each allowed guild authorizes the app with the `bot applications.commands` scopes and `permissions=0` (ADR 0004, revised 2026-09-16): the bot user must be a guild member to open DMs for #613. Install URL: [deploy/README.md](deploy/README.md#discord-scopes).
@@ -1055,7 +1067,25 @@ place twice that many instead", "if a player would draw a card, that
 player mills instead") live on the same `Spec{}` struct via the
 optional `Replacements []game.ReplacementEffect` field. Used today by
 Doubling Season, Hardened Scales, Kismet, Stasis, Gemstone Mine,
-Fog, Stone of Erech.
+Stone of Erech.
+
+**A replacement a resolving spell or ability CREATES is data, not a
+`Spec.Replacements` entry and never a closure** (ADR 0041 phase 3
+tier 3b, #1497). Fog's "prevent all combat damage this turn", Mending
+Hands' "prevent the next 4 damage", the Whip's and unearth's "if it
+would leave the battlefield, exile it instead" and Cosmic
+Intervention's "exile it instead" are `ScopedEffect` records with a
+replacement-reader mod kind (`game/scoped_replacements.go`), swept by
+the one duration sweep and carried by the snapshot. Write them with the
+card-side primitives: `PreventAllCombatDamageThisTurn{Player}` (Player
+zero is all combat damage), `PreventNextDamage{Target, Amount}` (Amount
+at least 1; a spent charge is a new record, so an undo rewinds it),
+`ExileInsteadOfLeavingBattlefield(g, id, controller, label)` (indefinite,
+pinned to the object — it lasts while that object is on the
+battlefield) and `ExileInsteadOfGraveyardThisTurn{Then: <BodyRef>}`
+(the per-card follow-up is a registered delayed-trigger body). A shape
+none of them says is a new mod kind in the engine, with its first
+card, not a closure; `Game.TurnScopedReplacements` is gone.
 
 **A discard goes through the exit primitive** (#853). Every discard
 site — the CR 514.1 cleanup discard, the effect-discard continuation,
@@ -2104,9 +2134,14 @@ BlockRules: []game.BlockRule{
 - **Flat "can't block" / "can't be blocked" is still a `Restriction`
   bit** (`RestrictSelf`, `RestrictAttached`). A rule is for a clause
   with a parameter.
-- **"This turn"** is `BlockRuleUntilEOT{Target: id, Rule: func(s
-  BlockScope) game.BlockRule { … }}` (Gingerbrute, Departed Deckhand).
-  It snapshots the set at resolution (CR 611.2c).
+- **"This turn"** is `CantBeBlockedThisTurnExceptBy{Target: id,
+  Keywords: []string{"haste"}, Text: "creatures with haste"}`
+  (Gingerbrute; Departed Deckhand's granted evasion uses `Subtypes:
+  []string{"Spirit"}` instead). It registers a `cantBeBlockedExceptBy`
+  `ScopedEffect` record pinned to `Target` at resolution (CR 611.2c,
+  ADR 0041 phase 3 tier 3b, #1497) — `Keywords` and `Subtypes` are each
+  an any-of, and `Text` is the allowed set as the card prints it, read
+  by the refusal sentence.
 - **A token that prints one** declares it on its `tokenTemplate`'s
   `BlockRules` slot (Avatar Kuruk's Spirit).
 - **"No more than N creatures can block each combat"** (Silent Arbiter,
@@ -2160,7 +2195,14 @@ sacrifice in response). See [ADR 0018](docs/decisions/0018-triggers-on-the-stack
 [triggers_common.go](server/internal/cards/effects/triggers_common.go)
 (#579). The label is the whole stack label, "<card> — <what
 happens>", and `Do(...)` sequences primitive values whose `Player` /
-`Controller` field defaults to the item's controller:
+`Controller` field defaults to the item's controller. Every
+constructor DECLARES the effect on the row (`TriggeredAbility.Effect`,
+ADR 0041 P9, #1497): the engine builds the item from the row and names
+the row on it, so a table with the trigger waiting on the stack is a
+restore point. That is why the effect must not capture anything that
+was only true when the ability triggered — a restored item runs the
+row's `Effect` again, and reads the triggering event off
+`item.Trigger`:
 
 ```go
 Triggered: []game.TriggeredAbility{
@@ -2211,9 +2253,9 @@ per-event-kind index at `Register`
 ([trigger_zones.go](server/internal/game/trigger_zones.go)), so an
 event kind nothing declares costs one map lookup and no walk.
 
-An effect that needs the item (targets, X, the source ID) or must
-capture something off the event is a closure with the `Effect`
-signature, exactly as before:
+An effect that needs the item (targets, X, the source ID, the
+triggering event on `item.Trigger`) is a closure with the `Effect`
+signature. It reads everything off the item and the `g` it is handed:
 
 ```go
 WhenThisEnters("Mulldrifter — draw two cards",
@@ -2223,9 +2265,8 @@ WhenThisEnters("Mulldrifter — draw two cards",
 ```
 
 Every constructor returns an ordinary `game.TriggeredAbility`. The
-long form below is exactly what it builds, and is still the right
-tool when `Build` itself has to do something — capture `ev.Actor` for
-a PayUnless payer, read the event to decide whether to return nil:
+long form below is exactly what it builds — a `Key` that is the stack
+label, and the `Effect` declared beside it:
 
 ```go
 Triggered: []game.TriggeredAbility{{
@@ -2233,14 +2274,40 @@ Triggered: []game.TriggeredAbility{{
     AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
         return ev.CardID == source.InstanceID
     },
-    Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-        return game.NewTriggeredItem(source, "Mulldrifter — draw two cards",
-            func(g *game.Game, item *game.StackItem) error {
-                return DrawCards{Player: item.Controller, N: 2}.Apply(NewContext(g, item))
-            })
+    Key: "Mulldrifter — draw two cards",
+    Effect: func(g *game.Game, item *game.StackItem) error {
+        return DrawCards{Player: item.Controller, N: 2}.Apply(NewContext(g, item))
     },
 }},
 ```
+
+**A value from trigger time goes on the item, not in a closure.** The
+triggering event is on `item.Trigger` already (#1223) — "that player"
+is `item.Trigger.Event.Actor`, "the creature that died" is
+`ctx.Trigger().Object`. Anything else read off the board when the
+ability triggers — a label that names a player, a mana value, a
+controller override — is filled in by a `Build` kept BESIDE the
+`Effect`: it returns `game.NewTriggeredItem(source, label)` with
+the value in `item.Params` (`Player`, `Object`, `Amount`, `Cost`,
+`Name`), a controller or a label set, and **leaves `item.Effect`
+nil** — the engine installs the row's `Effect`. A `Build` that sets
+`item.Effect` while `Effect` is declared is an `effectKeyFault`: the
+test binary panics at the first trigger. Cascade, storm, gift and
+`WhenYouLoseControlOfThis` are the worked examples.
+
+A `Build` with no `Effect` beside it — the old shape, which computed
+the effect at trigger time — is gone from the catalog.
+`testdata/legacy_trigger_builds.txt` is empty and only shrinks (see
+"Snapshot compatibility"), so a new one fails the build, and
+`game.NewTriggeredItem` takes no effect at all (ADR 0041 tier
+4-final). A
+`TargetsFrom` that reads anything but its trigger context and the
+source's identity (`NotSelf`, `AnotherTarget`) must set
+`TargetsFromReadsBoard`, because restore calls it again on the
+restored board; that row is listed too. The seat list is not the
+board — a seat is permanent once the game starts — and "opponent" is
+relative to the controller the trigger context recorded, so Molten
+Primordial's one clause per opponent needs no flag.
 
 **Combat declarations (#830, #859):** BOTH combat declarations
 announce once, at their **lock-in** — the first priority boundary of
@@ -3777,15 +3844,60 @@ condition actually held:
 
 ```go
 ReflexiveTrigger{
-    Label:   "Ziatora, the Incinerator — damage equal to the sacrificed creature's power",
-    Targets: TargetAny(),          // chosen when the trigger goes on the stack
-    Cards:   []uuid.UUID{killed},  // the payload; read back with ctx.PayloadCards()
-    Effect:  b29ZiatoraFling,      // a package-level func, NOT a closure
+    Label: "Ziatora, the Incinerator — damage equal to the sacrificed creature's power",
+    Cards: []uuid.UUID{killed},  // the payload; read back with ctx.PayloadCards()
+    Body:  ziatoraFlingBody,     // registered in reflexive_bodies.go — never a closure inline
 }.Apply(ctx)
 ```
 
-`WhenYouDo(label, effect)` is the plain mandatory, untargeted case.
-Both go through the harvester's own dispatch
+**The body is registered, not written inline** (ADR 0041 P9, #1497,
+tier 4): every reflexive-trigger body is a `game.BodyRef` declared
+once in `internal/cards/effects/reflexive_bodies.go`, the same
+append-only-ledger convention `delayed_bodies.go` uses for delayed
+triggers, so a table with a reflexive trigger waiting — or resolving
+on the stack, its target already chosen — is still a restore point. A
+card file never writes `Body: func(...) {...}` inline; it references
+the registered `BodyRef` by name.
+
+**The target clause lives on the registration, not on the struct.**
+`ReflexiveTrigger` has no `Targets` field: a reflexive trigger has no
+catalog row for restore to re-derive a captured `*TargetSpec` from, so
+the clause is declared beside the body instead, with
+`game.ReflexiveBody(key, fn, targetsFrom)`:
+
+```go
+// reflexive_bodies.go
+ziatoraFlingBody = game.ReflexiveBody("ziatora/fling", simpleBody(b29ZiatoraFling), constTargets(TargetAny))
+
+edenReturnBody = game.ReflexiveBody("eden/return-from-graveyard", simpleBody(edenReturnChosenFromGraveyard),
+    func(sourceID uuid.UUID, _ game.EffectParams) *game.TargetSpec {
+        return TargetCardInGraveyard("another target permanent card from your graveyard",
+            YouOwn(), Permanent(), OtherThan(sourceID))
+    })
+```
+
+`targetsFrom` is nil for an untargeted "when you do"
+(`game.SimpleDelayedBody` — no clause to register). Otherwise it is
+called both when the trigger is put on the stack and again at
+restore, with the reflexive trigger's own source card's instance ID
+and its `Params` — the two facts every targeted clause in the catalog
+has needed so far: Eden, Seat of the Sanctum reads the source ID to
+exclude itself ("another"); Teferi Akosa of Zhalfir's mana-value
+ceiling is X, fixed at creation and carried as `Params.Amount`; every
+other clause is a constant and ignores both arguments (`constTargets`
+wraps one). Data the body itself needs beyond the item — an amount, a
+name — is `Params`, set on the `ReflexiveTrigger` literal:
+
+```go
+ReflexiveTrigger{
+    Label:  "Breeches, the Blastmaker — damage equal to that spell's mana value",
+    Body:   breechesBlastBody,
+    Params: game.EffectParams{Amount: spellManaValueForEffect(g, spell)},
+}.Apply(ctx)
+```
+
+`WhenYouDo(label, body)` is the plain mandatory, untargeted, no-params
+case. Both go through the harvester's own dispatch
 (`Game.QueueReflexiveTriggerForEffect`), so the trigger gets a target
 prompt, the CR 603.3d drop when nothing is legal, a "you may" if it
 prints one, and a place on `PendingTriggers` — exactly as a harvested
@@ -3993,17 +4105,18 @@ it.
 
 **The two rules that matter:**
 
-1. **`Build` builds; it does not resolve.** Do the work inside the
-   `Effect` closure passed to `NewTriggeredItem`, never in `Build`
-   itself. Applying the effect in `Build` skips the stack and denies
+1. **Nothing resolves before the stack says so.** Do the work in the
+   `Effect`, never in `Build` itself. Applying the effect in `Build` skips the stack and denies
    every player their response window. The only game reads `Build`
    should do are the ones that pick targets.
-2. **The `Effect` closure reads everything off `item` and the `g` it
+2. **The `Effect` reads everything off `item` and the `g` it
    receives.** Don't capture `source *game.Card` (a pointer into a
-   zone slice) or the `*game.Game` from `Build`'s arguments — undo
-   restores a cloned game and the closure has to resolve against
-   that one. `item.Controller`, `item.SourceCardID`, `item.Targets`
-   carry what you need.
+   zone slice), the `*game.Game`, or anything from the triggering
+   event — undo restores a cloned game, and a restore point rebuilds
+   the item from the row, so the effect has to resolve against what
+   the item carries. `item.Controller`, `item.SourceCardID`,
+   `item.Targets`, `item.Trigger` and `item.Params` carry what you
+   need.
 
 **Targeted triggers** declare the clause on the ability, exactly
 like a spell's `Spec.Targets`:
@@ -4030,15 +4143,18 @@ Esper Sentinel) is a `PayUnless` primitive the trigger's `Effect`
 applies: it queues a `pay_unless` prompt for the taxed player and
 returns; the "unless" consequence runs later as `OnDecline` when
 they answer "Don't pay" — or "Pay" without the mana in pool +
-untapped sources. Capture the payer's ID in `Build` (it's
-`ev.Actor` for cast / draw events) and read the controller off the
-`Context` inside `OnDecline`. See
-[rhystic_study.go](server/internal/cards/effects/rhystic_study.go).
+untapped sources. Read the payer's ID off the triggering event at
+resolution (`item.Trigger.Event.Actor` for cast / draw events — not
+captured in a `Build`, which would put the row on the legacy list) and
+read the controller off the `Context` inside `OnDecline`. See
+[rhystic_study.go](server/internal/cards/effects/rhystic_study.go),
+whose `Effect` reads the payer as `ctx.Trigger().Event.Actor`.
 
 **Dies triggers** get the CR 603.10 last-known-information
-characteristics as the third `Build` argument — the card is already
-in the graveyard when `Build` runs, so read power / toughness /
-types from `sourceLKI`, not `source`.
+characteristics as the third `AppliesTo` / `Build` argument — the card
+is already in the graveyard when they run, so read power / toughness /
+types from `sourceLKI`, not `source`. At resolution the same facts are
+`ctx.Trigger().Object` and `ctx.TriggeringPermanent()` (below).
 
 **"Where X is that creature's power"** (and any other read of the
 event's permanent at RESOLUTION) is `ctx.TriggeringPermanent()`

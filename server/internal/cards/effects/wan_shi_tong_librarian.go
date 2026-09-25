@@ -48,27 +48,31 @@ func init() {
 			{
 				Watches:   []game.EventKind{game.EventETB},
 				AppliesTo: Self,
+				Key:       "Wan Shi Tong, Librarian — enters: counters and draw",
+				// A fill-in Build (ADR 0041 P9): #1312's read is a
+				// fact of the moment the trigger fired, so it is
+				// captured into Params.Amount rather than a closure —
+				// not the card, which the Effect below must not
+				// capture (AGENTS.md: undo restores a cloned game and
+				// the closure has to resolve against that one).
 				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					// #1312: read once, here, and close over the plain
-					// int — not the card, which the Effect below must
-					// not capture (AGENTS.md: undo restores a cloned
-					// game and the closure has to resolve against
-					// that one).
-					x := source.CastX()
-					return game.NewTriggeredItem(source, "Wan Shi Tong, Librarian — enters: counters and draw",
-						func(g *game.Game, item *game.StackItem) error {
-							ctx := NewContext(g, item)
-							if x > 0 {
-								if err := (AddCounter{Target: item.SourceCardID, Kind: game.CounterPlusOne, N: x}).Apply(ctx); err != nil {
-									return err
-								}
-							}
-							// "Then draw half X cards, rounded down" —
-							// integer division on a non-negative X
-							// (CR 107.3) is exactly floor(X/2), and
-							// DrawCards no-ops on N<=0.
-							return DrawCards{Player: item.Controller, N: x / 2}.Apply(ctx)
-						})
+					item := game.NewTriggeredItem(source, "Wan Shi Tong, Librarian — enters: counters and draw")
+					item.Params.Amount = source.CastX()
+					return item
+				},
+				Effect: func(g *game.Game, item *game.StackItem) error {
+					x := item.Params.Amount
+					ctx := NewContext(g, item)
+					if x > 0 {
+						if err := (AddCounter{Target: item.SourceCardID, Kind: game.CounterPlusOne, N: x}).Apply(ctx); err != nil {
+							return err
+						}
+					}
+					// "Then draw half X cards, rounded down" —
+					// integer division on a non-negative X
+					// (CR 107.3) is exactly floor(X/2), and
+					// DrawCards no-ops on N<=0.
+					return DrawCards{Player: item.Controller, N: x / 2}.Apply(ctx)
 				},
 			},
 			On(game.EventSearchLibrary, AnOpponentSearchesTheirOwnLibrary,

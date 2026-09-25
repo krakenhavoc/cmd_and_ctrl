@@ -66,19 +66,23 @@ func init() {
 					return ok
 				},
 				OptionalPrompt: &game.TriggerOptionalPrompt{Question: "Bloodchief Ascension — have that player lose 2 life? (You gain 2 life.)"},
+				Key:            "Bloodchief Ascension — that player loses 2 life and you gain 2 life",
 				Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
 					victim, _ := b06CardInOpponentsGraveyard(ev, source.Controller, g)
-					return game.NewTriggeredItem(source, "Bloodchief Ascension — that player loses 2 life and you gain 2 life",
-						func(g *game.Game, item *game.StackItem) error {
-							p := g.PlayerByIDForEffect(victim)
-							if p == nil || p.Eliminated {
-								return nil
-							}
-							if err := g.ChangePlayerLifeForEffect(item.SourceCardID, victim, -2); err != nil {
-								return err
-							}
-							return GainLife{Player: item.Controller, Amount: 2}.Apply(NewContext(g, item))
-						})
+					item := game.NewTriggeredItem(source, "Bloodchief Ascension — that player loses 2 life and you gain 2 life")
+					item.Params.Player = victim
+					return item
+				},
+				Effect: func(g *game.Game, item *game.StackItem) error {
+					victim := item.Params.Player
+					p := g.PlayerByIDForEffect(victim)
+					if p == nil || p.Eliminated {
+						return nil
+					}
+					if err := g.ChangePlayerLifeForEffect(item.SourceCardID, victim, -2); err != nil {
+						return err
+					}
+					return GainLife{Player: item.Controller, Amount: 2}.Apply(NewContext(g, item))
 				},
 			},
 		},

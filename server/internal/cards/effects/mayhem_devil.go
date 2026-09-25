@@ -32,19 +32,17 @@ func init() {
 				return ev.CardID != uuid.Nil
 			},
 			Targets: TargetAny(),
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Mayhem Devil — deal 1 damage",
-					func(g *game.Game, item *game.StackItem) error {
-						if len(item.Targets) == 0 {
-							return nil
-						}
-						ctx := NewContext(g, item)
-						return DealDamage{
-							Source: ctx.Source(),
-							Target: item.Targets[0].ID,
-							Amount: 1,
-						}.Apply(ctx)
-					})
+			Key:     "Mayhem Devil — deal 1 damage",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				if len(item.Targets) == 0 {
+					return nil
+				}
+				ctx := NewContext(g, item)
+				return DealDamage{
+					Source: ctx.Source(),
+					Target: item.Targets[0].ID,
+					Amount: 1,
+				}.Apply(ctx)
 			},
 		}},
 	})

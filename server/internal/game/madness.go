@@ -182,12 +182,20 @@ func MadnessTrigger(cost string) TriggeredAbility {
 				ev.OldZone == ZoneHand && ev.NewZone == ZoneExile
 		},
 		Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
-			return NewTriggeredItem(source, MadnessTriggerLabel, func(g *Game, item *StackItem) error {
-				return g.offerMadnessCastLocked(item.Controller, item.SourceCardID, cost)
-			})
+			// ADR 0041 P9 (#1497, tier 4): madness has no catalog row,
+			// so this item is keyed directly, with the printed madness
+			// cost carried as Params.Cost rather than captured.
+			return NewKeyedTriggeredItem(source, MadnessTriggerLabel, madnessOfferBody, EffectParams{Cost: cost})
 		},
 	}
 }
+
+// madnessOfferBody is "madness/offer": the CR 702.35a "may", reading
+// the madness cost back off Params rather than a captured variable
+// (ADR 0041 P9, #1497, tier 4).
+var madnessOfferBody = DelayedBody("madness/offer", func(g *Game, item *StackItem, p EffectParams) error {
+	return g.offerMadnessCastLocked(item.Controller, item.SourceCardID, p.Cost)
+})
 
 // offerMadnessCastLocked is the trigger's resolution: the CR 702.35a
 // "may", and CR 702.35b's answer to a "no".

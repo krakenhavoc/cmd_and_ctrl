@@ -36,20 +36,12 @@ func init() {
 		PrintedKeywords: []string{"trample"},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventDealDamage},
+			Key:     "Wrathful Raptors — the damaged Dinosaur deals that much damage to any non-Dinosaur target",
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b24SubtypeYouControlDealtDamage(ev, source, g, "Dinosaur")
 			},
 			Targets: b24TargetAnyNotSubtype("Dinosaur"),
-			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				dinosaur, amount := ev.Target, ev.Amount
-				return game.NewTriggeredItem(source, "Wrathful Raptors — the damaged Dinosaur deals that much damage to any non-Dinosaur target",
-					func(g *game.Game, item *game.StackItem) error {
-						if len(item.Targets) == 0 {
-							return nil
-						}
-						return DealDamage{Source: dinosaur, Target: item.Targets[0].ID, Amount: amount}.Apply(NewContext(g, item))
-					})
-			},
+			Effect:  damagedCreatureReflectsChosenAmount,
 		}},
 	})
 }

@@ -46,12 +46,16 @@ func init() {
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return cardDied(ev, source)
 			},
+			Key: "Goldvein Hydra — create tapped Treasures equal to its power",
+			// The last-known power is a board read at trigger time
+			// (ADR 0041 P9's fill-in Build), carried as item.Params.Amount.
 			Build: func(_ game.Event, source *game.Card, lki game.Characteristic, g *game.Game) *game.StackItem {
-				power := b13LastKnownPower(g, source.InstanceID, lki)
-				return game.NewTriggeredItem(source, "Goldvein Hydra — create tapped Treasures equal to its power",
-					func(g *game.Game, item *game.StackItem) error {
-						return b13CreateTappedTreasures(NewContext(g, item), item.Controller, power)
-					})
+				item := game.NewTriggeredItem(source, "Goldvein Hydra — create tapped Treasures equal to its power")
+				item.Params.Amount = b13LastKnownPower(g, source.InstanceID, lki)
+				return item
+			},
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				return b13CreateTappedTreasures(NewContext(g, item), item.Controller, item.Params.Amount)
 			},
 		}},
 	})

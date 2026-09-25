@@ -182,8 +182,11 @@ func resolvingPermanentSpell(g *game.Game, item *game.StackItem) bool {
 // the stack.
 //
 // The recipient is read in Build, off the permanent that just entered,
-// and captured as a value: by resolution the permanent may be gone and
-// its record with it, but the chosen player is still the chosen player.
+// and carried on the item as Params.Player: by resolution the permanent
+// may be gone and its record with it, but the chosen player is still
+// the chosen player. The Build only fills that in; the effect is the
+// row's (ADR 0041 P9), so a gift waiting on the stack is a restore
+// point.
 func (g *Gift) entryTrigger(cardName string) game.TriggeredAbility {
 	label := cardName + " — " + g.Label
 	return game.TriggeredAbility{
@@ -193,10 +196,12 @@ func (g *Gift) entryTrigger(cardName string) game.TriggeredAbility {
 		},
 		Key: label,
 		Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-			to := source.Provenance.GiftOpponent
-			return game.NewTriggeredItem(source, label, func(gm *game.Game, item *game.StackItem) error {
-				return g.giveTo(NewContext(gm, item), to)
-			})
+			item := game.NewTriggeredItem(source, label)
+			item.Params.Player = source.Provenance.GiftOpponent
+			return item
+		},
+		Effect: func(gm *game.Game, item *game.StackItem) error {
+			return g.giveTo(NewContext(gm, item), item.Params.Player)
 		},
 	}
 }

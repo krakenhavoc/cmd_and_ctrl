@@ -42,21 +42,29 @@ func init() {
 				_, ok := b43ALandAnOpponentControlsEntered(ev, source, g)
 				return ok
 			},
+			Key: "Nightshade Harvester — that player loses 1 life, a +1/+1 counter on this creature",
+			// "That player" is the land's controller as it entered —
+			// a fact about that moment (ADR 0041 P9's fill-in Build),
+			// since the land may have left the battlefield again by
+			// the time this resolves.
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
 				victim, _ := b43ALandAnOpponentControlsEntered(ev, source, g)
-				return game.NewTriggeredItem(source, "Nightshade Harvester — that player loses 1 life, a +1/+1 counter on this creature",
-					func(g *game.Game, item *game.StackItem) error {
-						ctx := NewContext(g, item)
-						if g.PlayerByIDForEffect(victim) != nil {
-							if err := g.ChangePlayerLifeForEffect(item.SourceCardID, victim, -1); err != nil {
-								return err
-							}
-						}
-						if !b09SourceStillOnBattlefield(g, item) {
-							return nil
-						}
-						return AddCounter{Target: item.SourceCardID, Kind: game.CounterPlusOne, N: 1}.Apply(ctx)
-					})
+				item := game.NewTriggeredItem(source, "Nightshade Harvester — that player loses 1 life, a +1/+1 counter on this creature")
+				item.Params.Player = victim
+				return item
+			},
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				ctx := NewContext(g, item)
+				victim := item.Params.Player
+				if g.PlayerByIDForEffect(victim) != nil {
+					if err := g.ChangePlayerLifeForEffect(item.SourceCardID, victim, -1); err != nil {
+						return err
+					}
+				}
+				if !b09SourceStillOnBattlefield(g, item) {
+					return nil
+				}
+				return AddCounter{Target: item.SourceCardID, Kind: game.CounterPlusOne, N: 1}.Apply(ctx)
 			},
 		}},
 	})

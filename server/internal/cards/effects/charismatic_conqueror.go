@@ -33,9 +33,10 @@ import (
 //     answer the player gave, so it must not fall through to the
 //     token.
 //
-// The permanent is captured in Build as a scalar instance ID, the way
-// Amulet of Vigor captures it: a pointer into a zone slice would not
-// survive the clone an undo restores from.
+// The permanent is read back from item.Trigger.Event.CardID at
+// resolution, never captured in a closure: a pointer into a zone
+// slice would not survive the clone an undo restores from, and a
+// closed-over ID would not survive a restore at all (ADR 0041 P9).
 //
 // No simplification.
 func init() {
@@ -49,16 +50,7 @@ func init() {
 				Watches:   []game.EventKind{game.EventETB},
 				AppliesTo: charismaticConquerorWatch,
 				Key:       charismaticConquerorLabel,
-				Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					entered := ev.CardID
-					if entered == uuid.Nil {
-						return nil
-					}
-					return game.NewTriggeredItem(source, charismaticConquerorLabel,
-						func(g *game.Game, item *game.StackItem) error {
-							return charismaticConquerorAsk(g, item, entered)
-						})
-				},
+				Effect:    charismaticConquerorEffect,
 			},
 		},
 	})
@@ -78,6 +70,17 @@ func charismaticConquerorWatch(ev game.Event, source *game.Card, _ game.Characte
 		return false
 	}
 	return c.IsArtifact() || c.IsCreature()
+}
+
+// charismaticConquerorEffect reads the entering permanent off
+// item.Trigger.Event rather than a closure, so a restored item asks
+// again about the same object (ADR 0041 P9).
+func charismaticConquerorEffect(g *game.Game, item *game.StackItem) error {
+	entered := item.Trigger.Event.CardID
+	if entered == uuid.Nil {
+		return nil
+	}
+	return charismaticConquerorAsk(g, item, entered)
 }
 
 // charismaticConquerorAsk is the trigger's body: ask the permanent's

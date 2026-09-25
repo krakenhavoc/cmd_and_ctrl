@@ -34,19 +34,17 @@ func init() {
 				return ev.Actor == source.Controller
 			},
 			Targets: TargetPlayer("target player"),
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Bloodgift Demon — target player draws a card and loses 1 life",
-					func(g *game.Game, item *game.StackItem) error {
-						if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetPlayer {
-							return nil
-						}
-						victim := item.Targets[0].ID
-						ctx := NewContext(g, item)
-						if err := (DrawCards{Player: victim, N: 1}).Apply(ctx); err != nil {
-							return err
-						}
-						return GainLife{Player: victim, Amount: -1}.Apply(ctx)
-					})
+			Key:     "Bloodgift Demon — target player draws a card and loses 1 life",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetPlayer {
+					return nil
+				}
+				victim := item.Targets[0].ID
+				ctx := NewContext(g, item)
+				if err := (DrawCards{Player: victim, N: 1}).Apply(ctx); err != nil {
+					return err
+				}
+				return GainLife{Player: victim, Amount: -1}.Apply(ctx)
 			},
 		}},
 	})

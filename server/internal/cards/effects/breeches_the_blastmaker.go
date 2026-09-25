@@ -65,11 +65,12 @@ func init() {
 		Triggered: []game.TriggeredAbility{{
 			Watches:   []game.EventKind{game.EventCast},
 			AppliesTo: YouCastYourSecondSpellEachTurn,
-			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				spell := ev.CardID
-				return game.NewTriggeredItem(source,
-					"Breeches, the Blastmaker — sacrifice an artifact and flip a coin",
-					breechesOffer(spell))
+			Key:       "Breeches, the Blastmaker — sacrifice an artifact and flip a coin",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				if item.Trigger == nil {
+					return nil
+				}
+				return breechesOffer(item.Trigger.Event.CardID)(g, item)
 			},
 		}},
 	})
@@ -147,15 +148,15 @@ func breechesFlipResult(g *game.Game, item *game.StackItem, spell uuid.UUID, res
 	ctx := NewContext(g, item)
 	if result.Won[0] {
 		return ReflexiveTrigger{
-			Label:  "Breeches, the Blastmaker — copy that spell",
-			Cards:  []uuid.UUID{spell},
-			Effect: breechesCopyThatSpell,
+			Label: "Breeches, the Blastmaker — copy that spell",
+			Cards: []uuid.UUID{spell},
+			Body:  breechesCopyThatSpellBody,
 		}.Apply(ctx)
 	}
 	return ReflexiveTrigger{
-		Label:   "Breeches, the Blastmaker — damage equal to that spell's mana value",
-		Targets: TargetAny(),
-		Effect:  breechesBlast(spellManaValueForEffect(g, spell)),
+		Label:  "Breeches, the Blastmaker — damage equal to that spell's mana value",
+		Body:   breechesBlastBody,
+		Params: game.EffectParams{Amount: spellManaValueForEffect(g, spell)},
 	}.Apply(ctx)
 }
 
@@ -182,19 +183,8 @@ func breechesCopyThatSpell(g *game.Game, item *game.StackItem) error {
 	}.Apply(ctx)
 }
 
-// breechesBlast is "when you lose the flip, Breeches deals damage
-// equal to that spell's mana value to any target". The amount is a
-// scalar fixed when the flip was lost; the target is the one chosen
-// as this trigger went on the stack.
-func breechesBlast(amount int) Effect {
-	return func(g *game.Game, item *game.StackItem) error {
-		if len(item.Targets) == 0 {
-			return nil
-		}
-		return DealDamage{
-			Source: item.SourceCardID,
-			Target: item.Targets[0].ID,
-			Amount: amount,
-		}.Apply(NewContext(g, item))
-	}
-}
+// breechesBlastEffect (reflexive_bodies.go) is "when you lose the
+// flip, Breeches deals damage equal to that spell's mana value to any
+// target": the amount rides Params.Amount, fixed when the flip was
+// lost; the target is the one chosen as this trigger went on the
+// stack.

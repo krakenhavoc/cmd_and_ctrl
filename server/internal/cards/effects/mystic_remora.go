@@ -48,19 +48,16 @@ func init() {
 					c, ok := g.LookupCardForEffect(ev.CardID)
 					return ok && !c.IsCreature()
 				},
-				Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					caster := ev.Actor
-					return game.NewTriggeredItem(source, "Mystic Remora — draw unless caster pays {4}",
-						func(g *game.Game, item *game.StackItem) error {
-							return PayUnless{
-								Chooser:  caster,
-								Cost:     "{4}",
-								Question: "Mystic Remora — pay {4}?",
-								OnDecline: func(ctx *Context) error {
-									return DrawCards{Player: ctx.Controller(), N: 1}.Apply(ctx)
-								},
-							}.Apply(NewContext(g, item))
-						})
+				Key: "Mystic Remora — draw unless caster pays {4}",
+				Effect: func(g *game.Game, item *game.StackItem) error {
+					return PayUnless{
+						Chooser:  item.Trigger.Event.Actor,
+						Cost:     "{4}",
+						Question: "Mystic Remora — pay {4}?",
+						OnDecline: func(ctx *Context) error {
+							return DrawCards{Player: ctx.Controller(), N: 1}.Apply(ctx)
+						},
+					}.Apply(NewContext(g, item))
 				},
 			},
 		},

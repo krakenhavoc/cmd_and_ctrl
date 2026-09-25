@@ -51,9 +51,8 @@ func init() {
 					return b21SelfEnteredOrAttacked(ev, source) && b21AnyGraveyardHasACard(g)
 				},
 				Targets: TargetCardInGraveyard("up to one target card from a graveyard").WithCount(0, 1),
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, b21BrewmasterLabel, b21BrewmasterExileAndFood)
-				},
+				Key:     b21BrewmasterLabel,
+				Effect:  b21BrewmasterExileAndFood,
 			},
 			OnAny([]game.EventKind{game.EventETB, game.EventAttack}, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b21SelfEnteredOrAttacked(ev, source) && !b21AnyGraveyardHasACard(g)

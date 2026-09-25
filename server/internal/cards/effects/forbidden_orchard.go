@@ -35,18 +35,16 @@ func init() {
 				return ev.Source == source.InstanceID
 			},
 			Targets: TargetPlayer("target opponent", Opponent()),
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Forbidden Orchard — target opponent creates a 1/1 Spirit",
-					func(g *game.Game, item *game.StackItem) error {
-						if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetPlayer {
-							return nil
-						}
-						return CreateToken{
-							Controller: item.Targets[0].ID,
-							Template:   TokenCard("1/1 colorless Spirit"),
-							N:          1,
-						}.Apply(NewContext(g, item))
-					})
+			Key:     "Forbidden Orchard — target opponent creates a 1/1 Spirit",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetPlayer {
+					return nil
+				}
+				return CreateToken{
+					Controller: item.Targets[0].ID,
+					Template:   TokenCard("1/1 colorless Spirit"),
+					N:          1,
+				}.Apply(NewContext(g, item))
 			},
 		}},
 	})

@@ -32,7 +32,8 @@ package game
 //   - DelayedTrigger.Effect — "at the beginning of the next end step"
 //   - PendingChoice's six resume frames + scryResume — a paused
 //     game literally holds the rest of the effect as a continuation
-//   - TurnScopedReplacements' AppliesTo / Replace — Fog
+//   - (RETIRED by ADR 0041 phase 3 tier 3b: Gingerbrute's and Fog's
+//     block rules and replacements are both ScopedEffect records now)
 //   - Card.ManaAbilities / ActivatedAbilities, when an ability
 //     closure was stamped onto the INSTANCE and the catalog cannot
 //     hand it back. #521 emptied the large and ordinary case of
@@ -458,6 +459,16 @@ type GameSnapshot struct {
 	// battlefield this turn (#1379) — see permanent_lki.go.
 	LastKnownPermanents map[uuid.UUID][]PermanentInfo `json:"lastKnownPermanents,omitempty"`
 
+	// LastKnownStack is CR 608.2h LKI for spells that left the stack
+	// this turn without resolving (#1255, stack_lki.go). Carried since
+	// ADR 0041 phase 3 tier 4 (#1497, P9): its readers — storm's copies
+	// of a countered spell, "copy that spell" — become data in that
+	// tier, and a restore that dropped it would make a restored storm
+	// miss them. Sorted by card ID. Additive within v7 under P10's
+	// second rule: a binary before it drops the key from files it
+	// writes itself, so carrying it makes nothing worse for it.
+	LastKnownStack []lastKnownSpellSnapshot `json:"lastKnownStack,omitempty"`
+
 	RNG               rngSnapshot          `json:"rng"`
 	SourceOrdinals    map[uuid.UUID]uint64 `json:"sourceOrdinals,omitempty"`
 	SourceOrdinalNext uint64               `json:"sourceOrdinalNext,omitempty"`
@@ -489,7 +500,7 @@ func (s *GameSnapshot) UnmarshalJSON(data []byte) error {
 	if !s.turnSeqPresent {
 		_, s.turnSeqPresent = envelope.Turn["seq"]
 	}
-	fields, err := unknownScopedEffectFields(data)
+	fields, err := unknownScopedEffectFields(data, s.Schema)
 	if err != nil {
 		return err
 	}
@@ -1195,12 +1206,29 @@ const (
 // drops to a permanent zero as the corresponding continuation becomes
 // data-driven.
 type ContinuationCensus struct {
-	// StackEffects is stack items (on the stack or queued) whose
-	// resolution behaviour is a closure.
+	// StackEffects counted stack items (on the stack, queued, or
+	// remembered in lastKnownStack) that restore could not rebuild: an
+	// Effect that is a bare closure, or a target or mode clause with
+	// neither an oracle ID nor a catalog ability ref behind it. RETIRED
+	// by ADR 0041 phase 3 tier 4-final (#1497): every production path
+	// names its item's body — a catalog row (catalog/activated,
+	// catalog/triggered), a tier-2 body or a reflexive body — and the
+	// one kind of item that still cannot (an ability carried on the
+	// card instance, or a hand-built item) is folded into
+	// IntrinsicAbilityCards. Nothing increments this. The field stays
+	// so a census written by an older binary still decodes, and still
+	// reads as not restorable.
 	StackEffects int `json:"stackEffects,omitempty"`
 
-	// StackTargetSpecs is items whose CR 608.2b re-check clause is a
-	// closure and could not be re-derived from the catalog.
+	// StackTargetSpecs counted items whose CR 608.2b re-check clause is
+	// a closure and could not be re-derived from the catalog. RETIRED by
+	// ADR 0041 phase 3 tier 4 (#1497, P9): a stack item's clauses are
+	// re-derived from its oracle ID (a spell), its catalog ability ref
+	// (a stamped ability, tier 4-1) or its own registration (a CR 603.12
+	// reflexive trigger's ReflexiveBody, tier 4-0), and an item that is
+	// none of those is counted ONCE, in StackEffects. Nothing increments
+	// this. The field stays so a census written by an older binary
+	// still decodes, and still reads as not restorable.
 	StackTargetSpecs int `json:"stackTargetSpecs,omitempty"`
 
 	// DelayedTriggerEffects is queued "at the beginning of the next
@@ -1220,12 +1248,20 @@ type ContinuationCensus struct {
 	// durations.
 	ScopedStatics int `json:"turnScopedStatics,omitempty"`
 
-	// TurnScopedReplacements is floating until-end-of-turn
-	// replacement effects (Fog).
+	// TurnScopedReplacements counted floating until-end-of-turn
+	// replacement effects held as closures (Fog, a prevention shield,
+	// the Whip's redirect). RETIRED by ADR 0041 phase 3 tier 3b
+	// (#1497): each is a ScopedEffect record now, which the snapshot
+	// carries, and nothing increments this. The field stays so a
+	// census written by an older binary still decodes.
 	TurnScopedReplacements int `json:"turnScopedReplacements,omitempty"`
 
-	// TurnScopedBlockRules is floating until-end-of-turn block rules
-	// (Gingerbrute's "can't block this turn"). #750.
+	// TurnScopedBlockRules counted floating until-end-of-turn block
+	// rules held as closures (Gingerbrute's "can't block this turn",
+	// #750). RETIRED by ADR 0041 phase 3 tier 3b (#1497): each is a
+	// ScopedEffect record now, which the snapshot carries, and nothing
+	// increments this. The field stays so a census written by an older
+	// binary still decodes.
 	TurnScopedBlockRules int `json:"turnScopedBlockRules,omitempty"`
 
 	// IntrinsicAbilityCards is cards holding an ability closure on
@@ -1245,6 +1281,14 @@ type ContinuationCensus struct {
 	// instance ability with no entry behind it — a closure stamped
 	// onto one object at runtime — still counts, and must: the
 	// counter is meant to become accurate, not unreachable.
+	//
+	// Since ADR 0041 tier 4-final (#1497) it also counts, once each, the
+	// stack items (on the stack, queued, or in lastKnownStack) that
+	// restore cannot rebuild: an Effect that is a closure with no Body,
+	// or a target or mode clause nothing re-derives. In production the
+	// only such item is an ability carried on a card instance, which is
+	// this counter's own subject — and StackEffects, which used to count
+	// them, is retired.
 	IntrinsicAbilityCards int `json:"intrinsicAbilityCards,omitempty"`
 
 	// UnpersistableRNG marked a game whose random source belonged to
@@ -1485,18 +1529,12 @@ func (g *Game) captureSnapshotLocked() *GameSnapshot {
 		}
 	}
 	s.LastKnownPermanents = cloneLastKnownPermanents(g.lastKnownPermanents)
+	s.LastKnownStack = snapshotLastKnownStack(g.lastKnownStack, cen)
 
-	// Turn-scoped registries: entirely closure-bearing, so only the
-	// census and the labels survive. Dropping a Fog silently would be
-	// worse than refusing the restore point, which is what this does.
-	for _, re := range g.TurnScopedReplacements {
-		cen.TurnScopedReplacements++
-		cen.note("turn-scoped replacement: %s", labelOr(re.Label, "unnamed"))
-	}
-	for _, br := range g.TurnScopedBlockRules {
-		cen.TurnScopedBlockRules++
-		cen.note("turn-scoped block rule: %s", labelOr(br.Label, "unnamed"))
-	}
+	// The turn-scoped block-rule registry retired with ADR 0041 tier
+	// 3b, alongside its replacement twin: a Gingerbrute is a
+	// ScopedEffect record now, carried above. Nothing increments
+	// cen.TurnScopedBlockRules any more.
 	// BuiltinReplacements and Listeners are deliberately NOT counted:
 	// both are process-lifetime singletons installed by NewGame, so
 	// the new binary rebuilds them itself. See restoreGame.
@@ -1752,6 +1790,14 @@ func snapshotStackItem(g *Game, s *StackItem, cen *ContinuationCensus) stackItem
 	if s == nil {
 		return stackItemSnapshot{}
 	}
+	return snapshotStackItemAs(s, oracleIDOfLocked(g, s.SourceCardID), cen)
+}
+
+// snapshotStackItemAs is snapshotStackItem with the source's oracle ID
+// supplied: a spell in Game.lastKnownStack has left the stack, and the
+// card it records is the one to read it from (a countered COPY is in
+// no zone at all).
+func snapshotStackItemAs(s *StackItem, oracleID string, cen *ContinuationCensus) stackItemSnapshot {
 	out := stackItemSnapshot{
 		ID:            s.ID,
 		Kind:          s.Kind,
@@ -1785,34 +1831,60 @@ func snapshotStackItem(g *Game, s *StackItem, cen *ContinuationCensus) stackItem
 		HasEffect:     s.Effect != nil,
 		HasTargetSpec: s.targetSpec != nil,
 		HasModeSpec:   s.modeSpec != nil,
-		OracleID:      oracleIDOfLocked(g, s.SourceCardID),
+		OracleID:      oracleID,
 		Body:          s.Body,
 		Params:        effectParamsOrNil(s.Params),
 	}
-	// A KEYED item (a fired delayed trigger, ADR 0041 P2) is data:
-	// restore re-derives its Effect from Body. Only an item whose
-	// Effect is a bare closure still blocks the restore point.
-	if s.Effect != nil && s.Body == "" {
-		cen.StackEffects++
+	// ADR 0041 P9 (#1497, tier 4): the census fold. An item is counted
+	// ONCE, whatever it holds, because the question is one question —
+	// can restore rebuild this item — and it has one of two answers:
+	//
+	//   - an Effect that is a bare closure cannot be rebuilt;
+	//   - a target or mode clause can be rebuilt only when the item
+	//     says where it came from: a SPELL by oracle ID, an ABILITY by
+	//     its catalog row (Params.Ability, ability_ref.go, tier 4-1),
+	//     or a CR 603.12 REFLEXIVE TRIGGER by its own Body registration
+	//     (ReflexiveBody/reflexiveTargetSpecFor, tier 4-0).
+	//
+	// A KEYED item (a fired delayed trigger, ADR 0041 P2; a stamped
+	// activated ability, or a reflexive trigger, P9) is data: restore
+	// re-derives its Effect. StackTargetSpecs is retired: nothing
+	// increments it.
+	//
+	// Tier 4-final (owner decision, 2026-09-25) retired StackEffects
+	// too and folded what is left into IntrinsicAbilityCards: every
+	// production path keys its item, and the one that cannot — an
+	// ability carried on a card instance (Card.ActivatedAbilities),
+	// which activatedAbilityRefFor never stamps — is that counter's own
+	// subject. A hand-built item with a closure and no body (a test
+	// fixture, a stubbed catalog row) lands here as well, so the census
+	// still refuses to call a game holding one restorable.
+	switch {
+	case s.Effect != nil && s.Body == "":
+		cen.IntrinsicAbilityCards++
 		cen.note("stack effect: %s", labelOr(s.Label, string(s.Kind)))
-	}
-	// A SPELL's target spec was looked up from the catalog by oracle
-	// ID when it was cast, so the new binary can look it up again —
-	// no census entry. An ABILITY's spec came off the ability
-	// declaration, which is reached by an index the item does not
-	// record, so it cannot be recovered here.
-	if s.targetSpec != nil && !spellSpecRederivable(out) {
-		cen.StackTargetSpecs++
-		cen.note("stack target spec: %s", labelOr(s.Label, string(s.Kind)))
-	}
-	// #764: an ABILITY's ModeSpec came off the ability declaration,
-	// reached by an index the item does not record, so it cannot be
-	// recovered here either. A spell's is looked up by oracle ID.
-	if s.modeSpec != nil && !spellSpecRederivable(out) {
-		cen.StackTargetSpecs++
-		cen.note("stack mode spec: %s", labelOr(s.Label, string(s.Kind)))
+	case (s.targetSpec != nil || s.modeSpec != nil) && !stackSpecsRederivable(out):
+		cen.IntrinsicAbilityCards++
+		cen.note("stack clause: %s", labelOr(s.Label, string(s.Kind)))
 	}
 	return out
+}
+
+// stackSpecsRederivable reports whether restore can rebuild this item's
+// target and mode clauses: a spell from the catalog by oracle ID, a
+// stamped ability from its catalog row, or a reflexive trigger from its
+// own Body's registration (ADR 0041 P9, #1497, tier 4-0).
+func stackSpecsRederivable(s stackItemSnapshot) bool {
+	if spellSpecRederivable(s) {
+		return true
+	}
+	if _, catalog := catalogBodySlot(s.Body); catalog && s.Params != nil && s.Params.Ability != nil {
+		return true
+	}
+	if s.Body != "" && reflexiveTargetSpecFor(s.Body, s.SourceCardID, effectParamsValue(s.Params)) != nil {
+		return true
+	}
+	return false
 }
 
 // spellSpecRederivable reports whether restore can rebuild this
@@ -2145,20 +2217,42 @@ func (s *GameSnapshot) restoreGame() *Game {
 		}
 	}
 
+	// ADR 0041 P9 / Q3: the sources of stack abilities this binary's
+	// catalog no longer has, flagged once every zone is restored.
+	var lostSources []uuid.UUID
 	if len(s.StackMeta) > 0 {
 		g.StackMeta = make(map[uuid.UUID]*StackItem, len(s.StackMeta))
 		for i := range s.StackMeta {
-			it := restoreStackItem(&s.StackMeta[i])
+			it, ok := restoreStackItem(&s.StackMeta[i])
+			if !ok {
+				lostSources = append(lostSources, it.SourceCardID)
+			}
 			g.StackMeta[it.ID] = it
 		}
 	}
 	if len(s.PendingTriggers) > 0 {
 		g.PendingTriggers = make([]*StackItem, len(s.PendingTriggers))
 		for i := range s.PendingTriggers {
-			g.PendingTriggers[i] = restoreStackItem(&s.PendingTriggers[i])
+			it, ok := restoreStackItem(&s.PendingTriggers[i])
+			if !ok {
+				lostSources = append(lostSources, it.SourceCardID)
+			}
+			g.PendingTriggers[i] = it
 		}
 	}
+	for _, id := range lostSources {
+		g.flagAbilitiesLostLocked(id)
+	}
+	// Tier 4-2: a stamped trigger whose row builds its clause from the
+	// trigger context gets it back now that every zone is restored.
+	for i := range s.StackMeta {
+		g.rederiveTriggerClauseLocked(g.StackMeta[s.StackMeta[i].ID], &s.StackMeta[i])
+	}
+	for i := range s.PendingTriggers {
+		g.rederiveTriggerClauseLocked(g.PendingTriggers[i], &s.PendingTriggers[i])
+	}
 	g.ScopedEffects = deepCopyScopedEffects(s.ScopedEffects)
+	g.scopedEffectSeq = maxScopedEffectSeq(g.ScopedEffects)
 	if len(s.DelayedTriggers) > 0 {
 		g.DelayedTriggers = make([]*DelayedTrigger, len(s.DelayedTriggers))
 		for i := range s.DelayedTriggers {
@@ -2223,6 +2317,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 		}
 	}
 	g.lastKnownPermanents = cloneLastKnownPermanents(s.LastKnownPermanents)
+	g.lastKnownStack = restoreLastKnownStack(s.LastKnownStack)
 
 	restoreRNG(g, s.RNG)
 	g.sourceOrdinals = cloneSourceOrdinals(s.SourceOrdinals)
@@ -2472,7 +2567,11 @@ func restorePlayer(p *playerSnapshot) *Player {
 	return out
 }
 
-func restoreStackItem(s *stackItemSnapshot) *StackItem {
+// restoreStackItem rebuilds one stack item. It reports false when the
+// item was stamped with a catalog row this binary cannot find (ADR 0041
+// P9, the owner's Q3): the item is restored as a manual one and the
+// caller flags its source.
+func restoreStackItem(s *stackItemSnapshot) (*StackItem, bool) {
 	out := &StackItem{
 		ID:            s.ID,
 		Kind:          s.Kind,
@@ -2511,6 +2610,12 @@ func restoreStackItem(s *stackItemSnapshot) *StackItem {
 		// with an unkeyed Effect is counted in the census and keeps
 		// the snapshot from being a restore point.
 	}
+	if _, ok := catalogBodySlot(s.Body); ok {
+		// A stamped activated or triggered ability (P9): the row gives
+		// back the Effect, the target clause and the mode clause
+		// together, with the owner's Q2 name check. No row is Q3.
+		return out, restoreCatalogAbility(out, s)
+	}
 	if s.Body != "" {
 		out.Effect = bodyEffect(s.Body, out.Params)
 	}
@@ -2522,11 +2627,17 @@ func restoreStackItem(s *stackItemSnapshot) *StackItem {
 		// one function that applies both rewrites, in the order the
 		// announce path does.
 		out.targetSpec = castTargetSpecForItem(s.OracleID, out)
+	} else if s.HasTargetSpec && s.Body != "" {
+		// A CR 603.12 reflexive trigger (ADR 0041 P9, #1497, tier 4):
+		// the clause was declared alongside the body's registration
+		// (ReflexiveBody), keyed the same way, so it is re-derived from
+		// there rather than from a catalog row.
+		out.targetSpec = reflexiveTargetSpecFor(s.Body, s.SourceCardID, out.Params)
 	}
 	if s.HasModeSpec && s.Kind == StackItemSpell && s.OracleID != "" && CatalogModeSpec != nil {
 		out.modeSpec = CatalogModeSpec(s.OracleID)
 	}
-	return out
+	return out, true
 }
 
 func restoreDelayedTrigger(d *delayedTriggerSnapshot) *DelayedTrigger {

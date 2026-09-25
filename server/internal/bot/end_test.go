@@ -210,7 +210,7 @@ func TestEvaluateComponentClick_Confirm(t *testing.T) {
 	token := "tok1"
 	h.confirmations.put(token, pendingEnd{GameID: gid, GameName: "friday", InvokerID: "u1", ExpiresAt: now.Add(confirmTTL)}, now)
 
-	outcome, pending, gotToken := h.evaluateComponentClick(ccEndCustomIDPrefix+"confirm:"+token, "u1", now)
+	outcome, pending, gotToken := h.evaluateComponentClick(c2EndCustomIDPrefix+"confirm:"+token, "u1", now)
 	if outcome != outcomeConfirm {
 		t.Fatalf("want outcomeConfirm, got %v", outcome)
 	}
@@ -225,7 +225,7 @@ func TestEvaluateComponentClick_Cancel(t *testing.T) {
 	token := "tok2"
 	h.confirmations.put(token, pendingEnd{GameID: uuid.New(), GameName: "friday", InvokerID: "u1", ExpiresAt: now.Add(confirmTTL)}, now)
 
-	outcome, _, _ := h.evaluateComponentClick(ccEndCustomIDPrefix+"cancel:"+token, "u1", now)
+	outcome, _, _ := h.evaluateComponentClick(c2EndCustomIDPrefix+"cancel:"+token, "u1", now)
 	if outcome != outcomeCancel {
 		t.Fatalf("want outcomeCancel, got %v", outcome)
 	}
@@ -238,7 +238,7 @@ func TestEvaluateComponentClick_Timeout(t *testing.T) {
 	h.confirmations.put(token, pendingEnd{GameID: uuid.New(), GameName: "friday", InvokerID: "u1", ExpiresAt: now.Add(confirmTTL)}, now)
 
 	later := now.Add(confirmTTL + time.Second)
-	outcome, pending, _ := h.evaluateComponentClick(ccEndCustomIDPrefix+"confirm:"+token, "u1", later)
+	outcome, pending, _ := h.evaluateComponentClick(c2EndCustomIDPrefix+"confirm:"+token, "u1", later)
 	if outcome != outcomeExpired {
 		t.Fatalf("want outcomeExpired, got %v", outcome)
 	}
@@ -253,7 +253,7 @@ func TestEvaluateComponentClick_WrongUser(t *testing.T) {
 	token := "tok4"
 	h.confirmations.put(token, pendingEnd{GameID: uuid.New(), GameName: "friday", InvokerID: "u1", ExpiresAt: now.Add(confirmTTL)}, now)
 
-	outcome, _, _ := h.evaluateComponentClick(ccEndCustomIDPrefix+"confirm:"+token, "u2", now)
+	outcome, _, _ := h.evaluateComponentClick(c2EndCustomIDPrefix+"confirm:"+token, "u2", now)
 	if outcome != outcomeWrongUser {
 		t.Fatalf("want outcomeWrongUser, got %v", outcome)
 	}
@@ -266,7 +266,7 @@ func TestEvaluateComponentClick_WrongUser(t *testing.T) {
 
 func TestEvaluateComponentClick_NotFound(t *testing.T) {
 	h := newTestHandler(nil, Config{}, time.Now())
-	outcome, _, _ := h.evaluateComponentClick(ccEndCustomIDPrefix+"confirm:missing", "u1", time.Now())
+	outcome, _, _ := h.evaluateComponentClick(c2EndCustomIDPrefix+"confirm:missing", "u1", time.Now())
 	if outcome != outcomeNotFound {
 		t.Fatalf("want outcomeNotFound, got %v", outcome)
 	}
@@ -274,7 +274,7 @@ func TestEvaluateComponentClick_NotFound(t *testing.T) {
 
 func TestEvaluateComponentClick_MalformedCustomID(t *testing.T) {
 	h := newTestHandler(nil, Config{}, time.Now())
-	outcome, _, _ := h.evaluateComponentClick(ccEndCustomIDPrefix+"noaction", "u1", time.Now())
+	outcome, _, _ := h.evaluateComponentClick(c2EndCustomIDPrefix+"noaction", "u1", time.Now())
 	if outcome != outcomeInvalidCustomID {
 		t.Fatalf("want outcomeInvalidCustomID, got %v", outcome)
 	}
@@ -391,7 +391,7 @@ func TestHandleEnd_Unauthorized_NoConfirmationCreated(t *testing.T) {
 	dispatchRecover(t, h, i)
 
 	if len(h.confirmations.pending) != 0 {
-		t.Error("an unauthorized /cc-end must not create a pending confirmation")
+		t.Error("an unauthorized /c2-end must not create a pending confirmation")
 	}
 }
 
@@ -584,7 +584,7 @@ func TestDispatchComponent_Confirm_CallsArchive(t *testing.T) {
 		GuildID: "g1",
 		Type:    discordgo.InteractionMessageComponent,
 		Member:  &discordgo.Member{User: discordUser("u1")},
-		Data:    discordgo.MessageComponentInteractionData{CustomID: ccEndCustomIDPrefix + "confirm:" + token},
+		Data:    discordgo.MessageComponentInteractionData{CustomID: c2EndCustomIDPrefix + "confirm:" + token},
 	}}
 	dispatchRecover(t, h, i)
 
@@ -617,7 +617,7 @@ func TestDispatchComponent_Confirm_ArchiveError(t *testing.T) {
 		GuildID: "g1",
 		Type:    discordgo.InteractionMessageComponent,
 		Member:  &discordgo.Member{User: discordUser("u1")},
-		Data:    discordgo.MessageComponentInteractionData{CustomID: ccEndCustomIDPrefix + "confirm:" + token},
+		Data:    discordgo.MessageComponentInteractionData{CustomID: c2EndCustomIDPrefix + "confirm:" + token},
 	}}
 	dispatchRecover(t, h, i)
 
@@ -636,7 +636,7 @@ func TestDispatchComponent_Cancel_DoesNotCallArchive(t *testing.T) {
 		GuildID: "g1",
 		Type:    discordgo.InteractionMessageComponent,
 		Member:  &discordgo.Member{User: discordUser("u1")},
-		Data:    discordgo.MessageComponentInteractionData{CustomID: ccEndCustomIDPrefix + "cancel:" + token},
+		Data:    discordgo.MessageComponentInteractionData{CustomID: c2EndCustomIDPrefix + "cancel:" + token},
 	}}
 	dispatchRecover(t, h, i)
 

@@ -18,13 +18,14 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // finds, does not chain. The intervening "if you cast it" cannot
 // change between trigger and resolution, so it is checked once.
 // The "you may" is the trigger's optional prompt; the search
-// admits Aura cards with mana value at most the entering Aura's
-// (read at trigger time) and a name no Aura the controller controls
-// has (read at resolution, as printed), and the found card is put
-// onto the battlefield and then attached to Light-Paws in the
-// search's continuation (b29SearchAuraAttachedToSource). Nothing is
-// searched if Light-Paws has left the battlefield: there is nothing
-// to attach the card to.
+// admits Aura cards with mana value at most the entering Aura's —
+// read at trigger time and carried on the item's Params, because the
+// entering Aura may be gone by the time the search runs — and a name
+// no Aura the controller controls has (read at resolution, as
+// printed), and the found card is put onto the battlefield and then
+// attached to Light-Paws in the search's continuation
+// (b29SearchAuraAttachedToSource). Nothing is searched if Light-Paws
+// has left the battlefield: there is nothing to attach the card to.
 //
 // Sandbox simplification, declared, weaker than printed: an Aura
 // found this way that cannot legally enchant Light-Paws ("enchant
@@ -46,16 +47,17 @@ func init() {
 				return ok
 			},
 			OptionalPrompt: &game.TriggerOptionalPrompt{Question: "Light-Paws, Emperor's Voice — search for an Aura to attach to it?"},
+			Key:            b29LightPawsLabel,
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
 				maxMV := 0
 				if aura, ok := g.LookupCardForEffect(ev.CardID); ok {
 					maxMV = aura.ManaValue()
 				}
-				return game.NewTriggeredItem(source, b29LightPawsLabel,
-					func(g *game.Game, item *game.StackItem) error {
-						return b29SearchAuraAttachedToSource(g, item, maxMV)
-					})
+				item := game.NewTriggeredItem(source, b29LightPawsLabel)
+				item.Params.Amount = maxMV
+				return item
 			},
+			Effect: b29SearchAuraAttachedToSource,
 		}},
 	})
 }

@@ -1008,3 +1008,48 @@ func drainTargetOpponentOne(g *game.Game, item *game.StackItem) error {
 	}
 	return nil
 }
+
+// dealOneDamageToPlayerWhoDrew is "whenever an opponent draws a card,
+// this [creature/enchantment] deals 1 damage to that player" —
+// Underworld Dreams and Fate Unraveler. The drawer is read off the
+// item's triggering event (item.Trigger.Event.Actor, ADR 0041 P9)
+// rather than captured, so a table with this trigger waiting on the
+// stack is a restore point. A drawer who has since left the game
+// takes no damage.
+func dealOneDamageToPlayerWhoDrew(g *game.Game, item *game.StackItem) error {
+	drawer := item.Trigger.Event.Actor
+	if g.PlayerByIDForEffect(drawer) == nil {
+		return nil
+	}
+	return DealDamage{Source: item.SourceCardID, Target: drawer, Amount: 1}.Apply(NewContext(g, item))
+}
+
+// damagedCreatureReflectsChosenAmount is "whenever a [Dragon/Dinosaur]
+// you control is dealt damage, it deals that much damage to any
+// target that isn't a [Dragon/Dinosaur]" — Wrathful Red Dragon and
+// Wrathful Raptors. The damaged permanent and the amount are read off
+// the item's triggering event (item.Trigger.Event, ADR 0041 P9)
+// rather than captured.
+func damagedCreatureReflectsChosenAmount(g *game.Game, item *game.StackItem) error {
+	if len(item.Targets) == 0 {
+		return nil
+	}
+	return DealDamage{Source: item.Trigger.Event.Target, Target: item.Targets[0].ID, Amount: item.Trigger.Event.Amount}.Apply(NewContext(g, item))
+}
+
+// thatPlayerLosesOneLife is "you may have that player lose 1 life" —
+// Blood Seeker's and Suture Priest's second ability, both triggered
+// by a creature an opponent controls entering: the entering
+// creature's controller, read off the trigger's last-known object
+// (item.Trigger.Object, ADR 0041 P9), loses the life, and a departed
+// player is asked nothing.
+func thatPlayerLosesOneLife(g *game.Game, item *game.StackItem) error {
+	if item.Trigger == nil || item.Trigger.Object == nil {
+		return nil
+	}
+	victim := item.Trigger.Object.Controller
+	if g.PlayerByIDForEffect(victim) == nil {
+		return nil
+	}
+	return g.ChangePlayerLifeForEffect(item.SourceCardID, victim, -1)
+}

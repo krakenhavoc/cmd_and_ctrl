@@ -69,17 +69,24 @@ func init() {
 				Watches:   []game.EventKind{game.EventLTB},
 				AppliesTo: edeaCreatureYouControlButDontOwnDied,
 				Key:       edeaReturnLabel,
+				// The dead creature's post-move epoch is a board read
+				// made at trigger time (ADR 0041 P9's fill-in Build):
+				// it is what edeaReturnAndDraw checks against at
+				// resolution to confirm "it" is still the same object
+				// in a graveyard, and it is the epoch the object has
+				// NOW, in its new zone — not item.Trigger.Object.Epoch,
+				// which is CR 603.10's battlefield-exit snapshot and
+				// answers the epoch it had THERE, before it left.
 				Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
-					dead := ev.CardID
+					item := game.NewTriggeredItem(source, edeaReturnLabel)
 					epoch := -1
-					if c, ok := g.LookupCardForEffect(dead); ok {
+					if c, ok := g.LookupCardForEffect(ev.CardID); ok {
 						epoch = c.ObjectEpoch
 					}
-					return game.NewTriggeredItem(source, edeaReturnLabel,
-						func(g *game.Game, item *game.StackItem) error {
-							return edeaReturnAndDraw(g, item, dead, epoch)
-						})
+					item.Params.Object = game.ObjectRef{ID: ev.CardID, Epoch: epoch}
+					return item
 				},
+				Effect: edeaReturnAndDrawEffect,
 			},
 		},
 	})
@@ -121,6 +128,13 @@ func edeaStealEffect(g *game.Game, item *game.StackItem) error {
 func edeaCreatureYouControlButDontOwnDied(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	dead, ok := diedCreature(ev, g)
 	return ok && dead.Controller == source.Controller && dead.Owner != source.Controller
+}
+
+// edeaReturnAndDrawEffect is the dies trigger's resolution (ADR 0041
+// P9): the dead creature's identity rides item.Params.Object, stamped
+// by the row's fill-in Build.
+func edeaReturnAndDrawEffect(g *game.Game, item *game.StackItem) error {
+	return edeaReturnAndDraw(g, item, item.Params.Object.ID, item.Params.Object.Epoch)
 }
 
 // edeaReturnAndDraw returns the dead creature to the battlefield under

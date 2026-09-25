@@ -30,20 +30,18 @@ func init() {
 			},
 			OptionalPrompt: &game.TriggerOptionalPrompt{Question: "Disciple of the Vault: have target opponent lose 1 life?"},
 			Targets:        TargetPlayer("target opponent", Opponent()),
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Disciple of the Vault — target opponent loses 1 life",
-					func(g *game.Game, item *game.StackItem) error {
-						ctx := NewContext(g, item)
-						for _, t := range ctx.LegalTargets() {
-							if t.Kind != game.TargetPlayer {
-								continue
-							}
-							if err := g.ChangePlayerLifeForEffect(ctx.Source(), t.ID, -1); err != nil {
-								return err
-							}
-						}
-						return nil
-					})
+			Key:            "Disciple of the Vault — target opponent loses 1 life",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				ctx := NewContext(g, item)
+				for _, t := range ctx.LegalTargets() {
+					if t.Kind != game.TargetPlayer {
+						continue
+					}
+					if err := g.ChangePlayerLifeForEffect(ctx.Source(), t.ID, -1); err != nil {
+						return err
+					}
+				}
+				return nil
 			},
 		}},
 	})

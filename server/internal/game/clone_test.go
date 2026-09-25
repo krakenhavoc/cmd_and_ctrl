@@ -73,55 +73,51 @@ func TestCloneIsolatesKnownBy(t *testing.T) {
 	}
 }
 
-// TestRestoreFromRollsBackTurnScopedReplacements is the Fog-undo
-// repro: register a turn-scoped replacement after a snapshot, then
-// restore — the replacement must be gone. Previously RestoreFrom
-// omitted TurnScopedReplacements entirely, so an undone Fog kept
-// preventing damage.
-func TestRestoreFromRollsBackTurnScopedReplacements(t *testing.T) {
+// TestRestoreFromRollsBackScopedReplacements is the Fog-undo repro:
+// register a Fog after a snapshot, then restore — the replacement must
+// be gone. (Before ADR 0041 tier 3b it lived in TurnScopedReplacements,
+// which RestoreFrom once omitted entirely, so an undone Fog kept
+// preventing damage.)
+func TestRestoreFromRollsBackScopedReplacements(t *testing.T) {
 	g := newActiveGame(t)
 	snap := g.Clone()
 
 	g.WithWriteLock(func() {
-		g.RegisterTurnScopedReplacement(ReplacementEffect{
-			Watches: []EventKind{EventDealDamage},
-			Label:   "Fog: prevent all combat damage this turn",
-		})
+		g.PreventCombatDamageThisTurnForEffect(uuid.Nil, uuid.Nil, "Fog: prevent all combat damage this turn")
 	})
-	if len(g.TurnScopedReplacements) != 1 {
-		t.Fatalf("setup: turn-scoped replacement not registered")
+	if len(g.ScopedEffects) != 1 {
+		t.Fatalf("setup: the Fog registered %d records, want 1", len(g.ScopedEffects))
 	}
 
 	g.WithWriteLock(func() { g.RestoreFrom(snap) })
-	if n := len(g.TurnScopedReplacements); n != 0 {
-		t.Errorf("RestoreFrom kept %d turn-scoped replacements, want 0", n)
+	if n := len(g.ScopedEffects); n != 0 {
+		t.Errorf("RestoreFrom kept %d scoped effects, want 0", n)
 	}
 	if n := len(g.BuiltinReplacements); n != len(snap.BuiltinReplacements) {
 		t.Errorf("RestoreFrom lost the built-in registry: %d entries, want %d", n, len(snap.BuiltinReplacements))
 	}
 }
 
-// TestCloneCopiesTurnScopedReplacements covers the other direction:
-// a snapshot taken WHILE a turn-scoped replacement is live must
-// carry it, and clearing the original afterwards must not reach the
-// snapshot's copy.
-func TestCloneCopiesTurnScopedReplacements(t *testing.T) {
+// TestCloneCopiesScopedReplacements covers the other direction: a
+// snapshot taken WHILE a Fog is live must carry it, and sweeping the
+// original afterwards must not reach the snapshot's copy.
+func TestCloneCopiesScopedReplacements(t *testing.T) {
 	g := newActiveGame(t)
 	g.WithWriteLock(func() {
-		g.RegisterTurnScopedReplacement(ReplacementEffect{
-			Watches: []EventKind{EventDealDamage},
-			Label:   "Fog",
-		})
+		g.PreventCombatDamageThisTurnForEffect(uuid.Nil, uuid.Nil, "Fog")
 	})
 
 	snap := g.Clone()
-	if len(snap.TurnScopedReplacements) != 1 {
-		t.Fatalf("clone dropped the live turn-scoped replacement")
+	if len(snap.ScopedEffects) != 1 {
+		t.Fatalf("clone dropped the live Fog")
 	}
 
-	g.WithWriteLock(func() { g.ClearTurnScopedReplacementsLocked() })
-	if len(snap.TurnScopedReplacements) != 1 {
-		t.Error("clearing the original's registry reached the clone (aliased slice)")
+	g.WithWriteLock(func() { g.ClearEndOfTurnScopedStaticsLocked() })
+	if len(g.ScopedEffects) != 0 {
+		t.Fatalf("setup: the cleanup sweep kept the Fog: %d records", len(g.ScopedEffects))
+	}
+	if len(snap.ScopedEffects) != 1 {
+		t.Error("sweeping the original's registry reached the clone (aliased slice)")
 	}
 }
 

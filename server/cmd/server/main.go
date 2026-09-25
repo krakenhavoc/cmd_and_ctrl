@@ -144,6 +144,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/db"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/deck"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/decklibrary"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/deckrequests"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/decks"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/discord"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -469,16 +470,25 @@ func main() {
 	// Token unset = feature off; the client hides the button via
 	// GET /bugreport/config. The token should be a fine-grained PAT
 	// with Issues:write on the one repo — see ADR 0017.
-	var bugReporter lobby.BugReporter
+	//
+	// The same client files ADR 0095's deck requests (POST
+	// /deck-requests), which also need the database for their rate
+	// limit and deduplication. Either missing = that route 503s.
+	var (
+		bugReporter      lobby.BugReporter
+		deckRequestFiler lobby.DeckRequestFiler
+	)
 	ghRepo := os.Getenv("CMDCTRL_GITHUB_REPO")
 	if ghRepo == "" {
 		ghRepo = "krakenhavoc/cmd_and_ctrl"
 	}
 	if ghToken := os.Getenv("CMDCTRL_GITHUB_TOKEN"); ghToken != "" {
-		bugReporter = github.NewClient(ghToken, ghRepo)
-		log.Info("bug reporting enabled", "repo", ghRepo)
+		gh := github.NewClient(ghToken, ghRepo)
+		bugReporter = gh
+		deckRequestFiler = gh
+		log.Info("bug reporting and deck requests enabled", "repo", ghRepo)
 	} else {
-		log.Info("bug reporting disabled — set CMDCTRL_GITHUB_TOKEN to enable")
+		log.Info("bug reporting and deck requests disabled — set CMDCTRL_GITHUB_TOKEN to enable")
 	}
 
 	// Bug-report artifacts: screenshots and pinned replays, under the
@@ -548,6 +558,8 @@ func main() {
 		DeckLibrary:       deckLibrary,
 		BugReporter:       bugReporter,
 		BugStore:          bugStore,
+		DeckRequestFiler:  deckRequestFiler,
+		DeckRequests:      newDeckRequestStore(database),
 		Log:               log,
 		Bots:              bots,
 		// The four curated archetype decks from S31 sub-PR 5. This
@@ -883,6 +895,16 @@ func newDeckLibraryStore(database *db.DB) decklibrary.Store {
 		return decklibrary.NoStore{}
 	}
 	return decklibrary.NewSQLStore(database)
+}
+
+// newDeckRequestStore builds ADR 0095's deck-request store (migration
+// 0006). No database returns nil, which the lobby reads as "deck
+// requests are off": their rate limit and deduplication live in it.
+func newDeckRequestStore(database *db.DB) deckrequests.Store {
+	if database == nil {
+		return nil
+	}
+	return deckrequests.NewSQLStore(database)
 }
 
 func envOr(key, dflt string) string {

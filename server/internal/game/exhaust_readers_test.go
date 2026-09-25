@@ -100,7 +100,7 @@ func TestTheActivationEventIsHarvestable(t *testing.T) {
 			return ev.Actor == source.Controller && ev.Exhaust
 		},
 		Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
-			return NewTriggeredItem(source, "watcher — count one", func(*Game, *StackItem) error {
+			return newTriggeredItemForTest(source, "watcher — count one", func(*Game, *StackItem) error {
 				fired++
 				return nil
 			})

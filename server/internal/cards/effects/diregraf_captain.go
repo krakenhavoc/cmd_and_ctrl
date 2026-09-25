@@ -36,17 +36,15 @@ func init() {
 				return anotherZombieYouControlDied(ev, source, g)
 			},
 			Targets: TargetPlayer("target opponent", Opponent()),
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Diregraf Captain — target opponent loses 1 life",
-					func(g *game.Game, item *game.StackItem) error {
-						ctx := NewContext(g, item)
-						for _, t := range ctx.LegalTargets() {
-							if t.Kind == game.TargetPlayer {
-								return g.ChangePlayerLifeForEffect(item.SourceCardID, t.ID, -1)
-							}
-						}
-						return nil
-					})
+			Key:     "Diregraf Captain — target opponent loses 1 life",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				ctx := NewContext(g, item)
+				for _, t := range ctx.LegalTargets() {
+					if t.Kind == game.TargetPlayer {
+						return g.ChangePlayerLifeForEffect(item.SourceCardID, t.ID, -1)
+					}
+				}
+				return nil
 			},
 		}},
 	})

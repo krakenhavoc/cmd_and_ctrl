@@ -37,18 +37,17 @@ func init() {
 				return artifactEnteredUnderYourControl(ev, source, g)
 			},
 			Targets: TargetPlayer("target opponent", Opponent()),
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, ping, func(g *game.Game, item *game.StackItem) error {
-					// CR 608.2b: an opponent who left the game in
-					// response is no longer a legal target.
-					ctx := NewContext(g, item)
-					for _, t := range ctx.LegalTargets() {
-						if t.Kind == game.TargetPlayer {
-							return DealDamage{Source: item.SourceCardID, Target: t.ID, Amount: 1}.Apply(ctx)
-						}
+			Key:     ping,
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				// CR 608.2b: an opponent who left the game in
+				// response is no longer a legal target.
+				ctx := NewContext(g, item)
+				for _, t := range ctx.LegalTargets() {
+					if t.Kind == game.TargetPlayer {
+						return DealDamage{Source: item.SourceCardID, Target: t.ID, Amount: 1}.Apply(ctx)
 					}
-					return nil
-				})
+				}
+				return nil
 			},
 		}},
 		Activated: []ActivatedAbility{{

@@ -25,19 +25,13 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventETB},
+			Key:     "Verdant Sun's Avatar — gain life equal to its toughness",
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				c, ok := enteredUnderYourControl(ev, source, g, false)
 				return ok && c.IsCreature()
 			},
-			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
-				entered := ev.CardID
-				fallback := 0
-				if c, ok := g.LookupCardForEffect(entered); ok {
-					fallback = c.CurrentToughness()
-				}
-				return game.NewTriggeredItem(source, "Verdant Sun's Avatar — gain life equal to its toughness",
-					b20GainLifeEqualToToughnessOf(entered, fallback))
-			},
+			Build:  b20GainLifeEqualToToughnessBuild("Verdant Sun's Avatar — gain life equal to its toughness"),
+			Effect: b20GainLifeEqualToToughnessEffect,
 		}},
 	})
 }

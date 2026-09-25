@@ -40,14 +40,12 @@ func init() {
 					return ok && dead.Controller == source.Controller && dead.HasSubtype("Elemental")
 				},
 				Targets: TargetAny(),
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Omnath, Locus of Rage — 3 damage to any target",
-						func(g *game.Game, item *game.StackItem) error {
-							if len(item.Targets) == 0 {
-								return nil
-							}
-							return DealDamage{Source: item.SourceCardID, Target: item.Targets[0].ID, Amount: 3}.Apply(NewContext(g, item))
-						})
+				Key:     "Omnath, Locus of Rage — 3 damage to any target",
+				Effect: func(g *game.Game, item *game.StackItem) error {
+					if len(item.Targets) == 0 {
+						return nil
+					}
+					return DealDamage{Source: item.SourceCardID, Target: item.Targets[0].ID, Amount: 3}.Apply(NewContext(g, item))
 				},
 			},
 		},

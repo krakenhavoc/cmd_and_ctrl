@@ -53,21 +53,20 @@ func init() {
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return ev.CardID == source.InstanceID
 			},
+			// A fill-in Build (ADR 0041 P9): the controller is the CASTER
+			// (ev.Actor), a fact of the moment the spell was cast, not the
+			// spell card's own Controller field.
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return &game.StackItem{
-					Kind:         game.StackItemTriggered,
-					Controller:   ev.Actor,
-					Owner:        ev.Actor,
-					SourceCardID: source.InstanceID,
-					Label:        "Desolation Twin — create a 10/10 colorless Eldrazi",
-					Effect: func(g *game.Game, item *game.StackItem) error {
-						return CreateToken{
-							Controller: item.Controller,
-							Template:   TokenCard("10/10 colorless Eldrazi"),
-							N:          1,
-						}.Apply(NewContext(g, item))
-					},
-				}
+				item := game.NewTriggeredItem(source, "Desolation Twin — create a 10/10 colorless Eldrazi")
+				item.Controller, item.Owner = ev.Actor, ev.Actor
+				return item
+			},
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				return CreateToken{
+					Controller: item.Controller,
+					Template:   TokenCard("10/10 colorless Eldrazi"),
+					N:          1,
+				}.Apply(NewContext(g, item))
 			},
 		}},
 	})

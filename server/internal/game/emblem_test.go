@@ -54,7 +54,7 @@ func stubEmblemCatalog(t *testing.T) {
 			return ev.Actor == source.Controller
 		},
 		Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
-			return NewTriggeredItem(source, "test emblem — you drew a card",
+			return newTriggeredItemForTest(source, "test emblem — you drew a card",
 				func(*Game, *StackItem) error { return nil })
 		},
 	}

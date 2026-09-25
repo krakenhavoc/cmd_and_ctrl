@@ -46,19 +46,17 @@ func b13LandYouControlEntered(ev game.Event, source *game.Card, g *game.Game) bo
 // to the source's controller, combat or not. The creature is looked
 // up live; damage is dealt before SBAs run, so an attacker that
 // traded with its blocker is still on the battlefield when its event
-// fires. Returns the creature's ID for the trigger to destroy.
-func b13CreatureDealtDamageToYou(ev game.Event, source *game.Card, g *game.Game) (uuid.UUID, bool) {
+// fires. The damaging creature's ID is ev.Source itself, so callers
+// that need it read that off the event rather than a second return.
+func b13CreatureDealtDamageToYou(ev game.Event, source *game.Card, g *game.Game) bool {
 	if ev.Kind != game.EventDealDamage || ev.Amount <= 0 || ev.Target != source.Controller {
-		return uuid.Nil, false
+		return false
 	}
 	if z := g.FindCardZoneForEffect(ev.Source); z == nil || z.Kind != game.ZoneBattlefield {
-		return uuid.Nil, false
+		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.Source)
-	if !ok || !c.IsCreature() {
-		return uuid.Nil, false
-	}
-	return c.InstanceID, true
+	return ok && c.IsCreature()
 }
 
 // b13OtherCreatureYouControlLeftWithoutDying is Dour Port-Mage's

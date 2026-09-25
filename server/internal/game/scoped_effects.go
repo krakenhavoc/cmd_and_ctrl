@@ -94,6 +94,58 @@ const (
 // kind is.
 const ModGrantAbilities ModKind = "grantAbilities" // layer 6
 
+// The replacement kinds (ADR 0041 P8, tier 3b, #1497). These are not
+// layer operations: each one is a CR 614 replacement effect a
+// resolving spell or ability created (CR 611.2), read by the
+// replacement gather rather than by the layer pass. See
+// scoped_replacements.go for what each one does and the registration
+// function that writes it.
+const (
+	// ModPreventCombatDamage is "prevent all combat damage that would
+	// be dealt this turn" (Fog, CR 615.1) — or, with Player set, "…
+	// that would be dealt to <Player>" (Druid's Deliverance). Reads
+	// Player. Scope ScopeGame.
+	ModPreventCombatDamage ModKind = "preventCombatDamage"
+	// ModPreventDamage is "prevent the next N damage that would be
+	// dealt to <target> this turn" (Mending Hands, CR 615.8). Reads
+	// Amount, the charge LEFT (at least 1), and CombatOnly. A pinned
+	// object, or ScopeGame plus Player for a player.
+	ModPreventDamage ModKind = "preventDamage"
+	// ModExileInsteadOfLeaving is "if it would leave the battlefield,
+	// exile it instead of putting it anywhere else" (Whip of Erebos,
+	// unearth). Reads nothing. A pinned object.
+	ModExileInsteadOfLeaving ModKind = "exileInsteadOfLeaving"
+	// ModExileInsteadOfGraveyard is "if a permanent you control would
+	// be put into a graveyard from the battlefield this turn, exile it
+	// instead" plus a delayed trigger per redirected card (Cosmic
+	// Intervention). Reads Then, a registered delayed-trigger body key.
+	// Scope ScopeYourPermanents.
+	ModExileInsteadOfGraveyard ModKind = "exileInsteadOfGraveyard"
+)
+
+// The block-rule kinds (ADR 0041 P8, tier 3b, #1497). These are not
+// layer operations either: each one is a CR 509.1b block restriction a
+// resolving spell or ability created, read by the block-rule walk
+// (forEachBlockRuleLocked's third pass) rather than by the layer pass.
+// See scoped_block_rules.go for what each one does and the
+// registration functions that write them.
+const (
+	// ModCantBeBlockedExceptBy is "<creature> can't be blocked this
+	// turn except by <keyword-or-subtype>" (Gingerbrute's activated
+	// ability, Departed Deckhand's granted evasion). Reads Keywords and
+	// Subtypes, each an any-of — a blocker matching either is allowed —
+	// and Text, the allowed set as the card prints it, which the
+	// refusal sentence reads. The pinned attacker(s).
+	ModCantBeBlockedExceptBy ModKind = "cantBeBlockedExceptBy"
+	// ModLimitBlockersPerDefender is "each opponent can't block with
+	// more than N creatures this combat" (Mirri, Weatherlight Duelist's
+	// attack trigger). Reads Amount. Scope ScopeOpponentsCreatures,
+	// read live against the record's Controller (#1571's style: the
+	// rule is about players, not a characteristic, so CR 611.2c does
+	// not lock it).
+	ModLimitBlockersPerDefender ModKind = "limitBlockersPerDefender"
+)
+
 // AffectedScope is a ScopedEffect's affected set as a RULE read live at
 // every layer pass, instead of a set of objects locked when the effect
 // began (#1571). CR 611.2c locks the set only for an effect that
@@ -114,11 +166,24 @@ const (
 	// ScopeOpponentsCreatures is "creatures your opponents control",
 	// the "you" being the record's Controller.
 	ScopeOpponentsCreatures AffectedScope = "opponentsCreatures"
+	// ScopeGame is an effect that names no object at all (tier 3b,
+	// #1497): Fog's "all combat damage", or a prevention shield on a
+	// PLAYER, whose Mod names the player. It matches no permanent.
+	ScopeGame AffectedScope = "game"
+	// ScopeYourPermanents is "permanents you control", read live — the
+	// "you" being the record's Controller (tier 3b, Cosmic
+	// Intervention). A replacement effect is not a characteristic, so
+	// CR 611.2c does not lock its set.
+	ScopeYourPermanents AffectedScope = "yourPermanents"
 )
 
 // KnownAffectedScope reports whether this binary can interpret s.
 func KnownAffectedScope(s AffectedScope) bool {
-	return s == ScopeNone || s == ScopeOpponentsCreatures
+	switch s {
+	case ScopeNone, ScopeOpponentsCreatures, ScopeGame, ScopeYourPermanents:
+		return true
+	}
+	return false
 }
 
 // Mod is one operation of a ScopedEffect, with its plain parameters.
@@ -141,6 +206,21 @@ type Mod struct {
 	Player       uuid.UUID   `json:"player,omitempty"`
 	// Grants is ModGrantAbilities' bundle keys, in GrantKey form.
 	Grants []string `json:"grants,omitempty"`
+	// Amount is ModPreventDamage's charge LEFT (tier 3b). A shield that
+	// absorbs damage is replaced by a record with a lower Amount, never
+	// mutated in place (see ScopedEffect's contract).
+	Amount int `json:"amount,omitempty"`
+	// CombatOnly narrows ModPreventDamage to combat damage.
+	CombatOnly bool `json:"combatOnly,omitempty"`
+	// Then is ModExileInsteadOfGraveyard's delayed-trigger body key: a
+	// registered BodyRef's key, scheduled at the next end step for each
+	// card the replacement redirects. A restore point naming a body
+	// this binary has not registered is refused (ErrUnknownEffectKey).
+	Then string `json:"then,omitempty"`
+	// Text is ModCantBeBlockedExceptBy's printed parameter — "creatures
+	// with haste", "Spirits" — read by the refusal sentence
+	// (BlockRule.Label).
+	Text string `json:"text,omitempty"`
 }
 
 // AffectedObject is one member of a ScopedEffect's affected set: the
@@ -202,6 +282,13 @@ func entryMatches(enteredAt int64, unstamped bool, stamp int64) bool {
 // IMMUTABILITY CONTRACT: every field
 // is written once at registration and never mutated. Clone copies the
 // slice into a fresh backing array and shares the inner slices.
+//
+// One clarification, for the one record that changes (ADR 0041 P8): a
+// ModPreventDamage shield that absorbs damage is REPLACED, never
+// edited — the registry slice is rebuilt with a new record at that
+// position (fresh Mods, lower Amount), and a spent shield is removed.
+// A clone taken before the damage keeps the old record, so an undo
+// rewinds the charge.
 type ScopedEffect struct {
 	// Affected is the CR 611.2c set, locked when the effect began.
 	Affected []AffectedObject `json:"affected"`
@@ -238,10 +325,35 @@ type ScopedEffect struct {
 
 	// Label is human-readable attribution for logs and tests.
 	Label string `json:"label,omitempty"`
+
+	// Seq is the record's identity for a reader that has to name it
+	// across a pause (tier 3b, ADR 0041 P8): a replacement effect's
+	// ReplacementEffectID is minted from it, because a CR 616 prompt
+	// holds that ID while the registry shrinks under it (a sweep, a
+	// pin collected, a spent shield) and a position would then name a
+	// different record. Taken from Game.scopedEffectSeq at registration,
+	// and only for a record with a non-layer mod: a layer-only record
+	// is never named, and leaving it zero keeps every such record the
+	// bytes an earlier v7 binary wrote and reads.
+	Seq int64 `json:"seq,omitempty"`
 }
 
-// modKindSpec is where a kind lives in the layer system.
+// modReader is which part of the engine interprets a kind (ADR 0041
+// P8): the layer pass, or — for the tier 3b kinds — the replacement
+// gather or the block-rule walk. The layer adapter skips every kind
+// that is not its own.
+type modReader uint8
+
+const (
+	readerLayer modReader = iota
+	readerReplacement
+	readerBlockRule
+)
+
+// modKindSpec is where a kind lives: its reader, and for a layer kind
+// its place in the layer system.
 type modKindSpec struct {
+	reader   modReader
 	layer    Layer
 	subLayer SubLayer
 	removes  bool // CR 613.1f ability removal (ADR 0046)
@@ -267,6 +379,14 @@ var modKinds = map[ModKind]modKindSpec{
 	ModAddAttackRequirement: {layer: Layer6Ability},
 	// #1584, ADR 0093 PR 4
 	ModGrantAbilities: {layer: Layer6Ability},
+	// Tier 3b (ADR 0041 P8): replacement effects, not layer operations.
+	ModPreventCombatDamage:     {reader: readerReplacement},
+	ModPreventDamage:           {reader: readerReplacement},
+	ModExileInsteadOfLeaving:   {reader: readerReplacement},
+	ModExileInsteadOfGraveyard: {reader: readerReplacement},
+	// Tier 3b (ADR 0041 P8): block-rule effects, not layer operations.
+	ModCantBeBlockedExceptBy:    {reader: readerBlockRule},
+	ModLimitBlockersPerDefender: {reader: readerBlockRule},
 }
 
 // KnownModKind reports whether this binary can interpret k.
@@ -450,12 +570,22 @@ func (g *Game) RegisterScopedRuleEffectForEffect(sourceID uuid.UUID, scope Affec
 //
 // Caller must hold g.mu (write).
 func (g *Game) appendScopedEffectLocked(sourceID uuid.UUID, affected []AffectedObject, scope AffectedScope, controller uuid.UUID, mods []Mod, d Duration, label string, ts int64) bool {
+	named := false
 	for _, m := range mods {
 		if !KnownModKind(m.Kind) {
 			panic(fmt.Sprintf("game: scoped effect %q uses unknown mod kind %q", label, m.Kind))
 		}
 		if m.Kind == ModGrantAbilities && len(m.Grants) == 0 {
 			panic(fmt.Sprintf("game: scoped effect %q grants no ability bundle", label))
+		}
+		if problem := replacementModProblem(m); problem != "" {
+			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
+		}
+		if problem := blockRuleModProblem(m); problem != "" {
+			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
+		}
+		if modKinds[m.Kind].reader != readerLayer {
+			named = true
 		}
 	}
 	e := ScopedEffect{
@@ -474,6 +604,10 @@ func (g *Game) appendScopedEffectLocked(sourceID uuid.UUID, affected []AffectedO
 	}
 	if controller != uuid.Nil {
 		e.Controller = controller
+	}
+	if named {
+		g.scopedEffectSeq++
+		e.Seq = g.scopedEffectSeq
 	}
 	g.ScopedEffects = append(g.ScopedEffects, e)
 	g.layerVersion.Add(1)
@@ -679,8 +813,11 @@ func adaptScopedEffects(records []ScopedEffect) []ContinuousEffect {
 		}
 		for _, m := range e.Mods {
 			spec, ok := modKinds[m.Kind]
-			if !ok {
-				continue // unreachable: registration and restore both refuse it
+			if !ok || spec.reader != readerLayer {
+				// Unknown: unreachable, since registration and restore
+				// both refuse it. Not a layer kind: the replacement
+				// gather reads it (scoped_replacements.go).
+				continue
 			}
 			out = append(out, staticContinuousEffect{
 				ability: StaticAbility{
@@ -735,7 +872,12 @@ func scopePredicate(scope AffectedScope, controller uuid.UUID) func(*Card, *Game
 		return func(target *Card, _ *Game, _ *Card) bool {
 			return target != nil && target.IsCreature() && target.Controller != controller
 		}
+	case ScopeYourPermanents:
+		return func(target *Card, _ *Game, _ *Card) bool {
+			return target != nil && target.Controller == controller
+		}
 	}
+	// ScopeGame names no object, so it matches none.
 	return func(*Card, *Game, *Card) bool { return false }
 }
 

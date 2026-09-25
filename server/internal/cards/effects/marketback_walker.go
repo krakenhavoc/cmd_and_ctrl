@@ -69,15 +69,20 @@ func init() {
 				return cardDied(ev, source)
 			},
 			Key: "Marketback Walker — draw a card for each +1/+1 counter on it",
+			// The dies trigger reads the LAST-KNOWN counter count, which
+			// is a fact about the moment it died (ADR 0041 P9's fill-in
+			// Build), not something the resolving item can re-derive
+			// from a board the permanent has already left.
 			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
-				counters := b13LastKnownCounters(g, source.InstanceID, game.CounterPlusOne)
-				return game.NewTriggeredItem(source, "Marketback Walker — draw a card for each +1/+1 counter on it",
-					func(g *game.Game, item *game.StackItem) error {
-						if counters <= 0 {
-							return nil
-						}
-						return DrawCards{Player: item.Controller, N: counters}.Apply(NewContext(g, item))
-					})
+				item := game.NewTriggeredItem(source, "Marketback Walker — draw a card for each +1/+1 counter on it")
+				item.Params.Amount = b13LastKnownCounters(g, source.InstanceID, game.CounterPlusOne)
+				return item
+			},
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				if item.Params.Amount <= 0 {
+					return nil
+				}
+				return DrawCards{Player: item.Controller, N: item.Params.Amount}.Apply(NewContext(g, item))
 			},
 		}},
 	})

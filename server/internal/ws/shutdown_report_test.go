@@ -107,8 +107,10 @@ func TestShutdownReportNotCleanNamesTheContinuation(t *testing.T) {
 	if rep.Clean {
 		t.Fatalf("Clean = true, want false; census: %+v", rep.Census)
 	}
-	if rep.Census.StackEffects != 1 {
-		t.Errorf("Census.StackEffects = %d, want 1", rep.Census.StackEffects)
+	// ADR 0041 tier 4-final (#1497): an unkeyed stack item is counted
+	// under IntrinsicAbilityCards; StackEffects is retired.
+	if rep.Census.IntrinsicAbilityCards != 1 {
+		t.Errorf("Census.IntrinsicAbilityCards = %d, want 1", rep.Census.IntrinsicAbilityCards)
 	}
 	found := false
 	for _, l := range rep.Census.Labels {

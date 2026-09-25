@@ -18,6 +18,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // the trigger is simply not there to copy.
 //
 // No simplification.
+const thousandYearStormLabel = "Thousand-Year Storm — copy the spell for each instant and sorcery cast before it this turn"
+
 func init() {
 	Register(Spec{
 		OracleID:     "dd4cf149-2fae-40e5-b50b-639f6bcec65e",
@@ -25,29 +27,35 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventCast},
+			Key:     thousandYearStormLabel,
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return instantOrSorceryCastByYou(ev, source, g)
 			},
+			// A fill-in Build (ADR 0041 P9): the count is fixed when
+			// the trigger goes on the stack, so it is a fact of the
+			// moment the spell was cast, not something the Effect can
+			// recompute later.
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
-				spell := ev.CardID
-				count := b12InstantsAndSorceriesCastBeforeThisTurn(g, source.Controller, spell)
-				return game.NewTriggeredItem(source, "Thousand-Year Storm — copy the spell for each instant and sorcery cast before it this turn",
-					func(g *game.Game, item *game.StackItem) error {
-						if count <= 0 {
-							return nil
-						}
-						return CopySpell{
-							StackID:          spell,
-							Controller:       item.Controller,
-							Count:            count,
-							ChooseNewTargets: true,
-							// CR 608.2h, #1255: "copy it" names the
-							// spell without targeting it, so a spell
-							// countered before this resolves is still
-							// copied.
-							FromLastKnown: true,
-						}.Apply(NewContext(g, item))
-					})
+				item := game.NewTriggeredItem(source, thousandYearStormLabel)
+				item.Params.Amount = b12InstantsAndSorceriesCastBeforeThisTurn(g, source.Controller, ev.CardID)
+				return item
+			},
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				count := item.Params.Amount
+				if count <= 0 {
+					return nil
+				}
+				return CopySpell{
+					StackID:          item.Trigger.Event.CardID,
+					Controller:       item.Controller,
+					Count:            count,
+					ChooseNewTargets: true,
+					// CR 608.2h, #1255: "copy it" names the
+					// spell without targeting it, so a spell
+					// countered before this resolves is still
+					// copied.
+					FromLastKnown: true,
+				}.Apply(NewContext(g, item))
 			},
 		}},
 	})

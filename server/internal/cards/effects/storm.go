@@ -61,21 +61,32 @@ func Storm() game.TriggeredAbility {
 	return game.TriggeredAbility{
 		Keyword:   KeywordStorm,
 		FromStack: true,
+		Key:       stormKey,
 		Watches:   []game.EventKind{game.EventCast},
 		AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 			return ev.CardID == source.InstanceID
 		},
+		// A fill-in Build (ADR 0041 P9): the label and the caster are
+		// facts of the cast; the effect is the row's.
 		Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
 			return stormItem(source.Name, ev.Actor, source.InstanceID)
 		},
+		Effect: stormEffect,
 	}
 }
 
+// stormKey is the Key of every storm row — the name a restored item
+// checks its row by (ADR 0041 P9).
+const stormKey = "storm"
+
 // stormItem is the stack item the keyword queues.
 //
-// It captures exactly two values, and both are immutable: the spell's
-// instance ID and the name the label is built from. The COUNT is not
-// captured — it is read as the item resolves, off the same cast order
+// It carries exactly two values, and both are immutable: the spell's
+// instance ID (the item's SourceCardID) and the name the label is built
+// from. Nothing is captured in a closure — the row's Effect,
+// stormEffect, reads the spell off the item, so a storm trigger waiting
+// on the stack is a restore point (ADR 0041 P9). The COUNT is not
+// carried — it is read as the item resolves, off the same cast order
 // the whole turn is recorded in (ADR 0086 Decision 2, CR 608.2h). A
 // spell cast in response to this trigger is appended after the storm
 // spell and cannot move its index, so the number is the same whenever
@@ -99,23 +110,26 @@ func stormItem(name string, caster, spell uuid.UUID) *game.StackItem {
 		Owner:        caster,
 		SourceCardID: spell,
 		Label:        name + " — storm",
-		Effect: func(g *game.Game, item *game.StackItem) error {
-			n := g.StormCountForEffect(item.Controller, spell)
-			if n <= 0 {
-				return nil
-			}
-			return CopySpell{
-				StackID:          spell,
-				Controller:       item.Controller,
-				Count:            n,
-				ChooseNewTargets: true,
-				// CR 608.2h, #1255: the trigger names the spell and
-				// does not target it, so a storm spell countered in
-				// response to its own trigger (CR 113.7a keeps the
-				// trigger) is still copied, from last-known
-				// information.
-				FromLastKnown: true,
-			}.Apply(NewContext(g, item))
-		},
 	}
+}
+
+// stormEffect is storm's resolution: copy the spell the item names
+// once for each spell cast before it this turn.
+func stormEffect(g *game.Game, item *game.StackItem) error {
+	spell := item.SourceCardID
+	n := g.StormCountForEffect(item.Controller, spell)
+	if n <= 0 {
+		return nil
+	}
+	return CopySpell{
+		StackID:          spell,
+		Controller:       item.Controller,
+		Count:            n,
+		ChooseNewTargets: true,
+		// CR 608.2h, #1255: the trigger names the spell and does not
+		// target it, so a storm spell countered in response to its own
+		// trigger (CR 113.7a keeps the trigger) is still copied, from
+		// last-known information.
+		FromLastKnown: true,
+	}.Apply(NewContext(g, item))
 }

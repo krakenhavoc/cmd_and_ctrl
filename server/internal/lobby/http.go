@@ -22,6 +22,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/deck"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/decklibrary"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/deckrequests"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/discord"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
@@ -182,6 +183,22 @@ type Config struct {
 	// /bugreport/config reports attachments:false so the modal hides
 	// its file picker. See ADR 0017 §6.
 	BugStore *bugstore.Store
+
+	// DeckRequestFiler files and joins ADR 0095's deck-request issues.
+	// Nil turns POST /deck-requests off (503 naming
+	// CMDCTRL_GITHUB_TOKEN). Production wires the same *github.Client
+	// as BugReporter.
+	DeckRequestFiler DeckRequestFiler
+
+	// DeckRequests remembers which issue tracks each deck and who
+	// asked when (migration 0006). Nil turns POST /deck-requests off:
+	// the rate limit and the deduplication both live in it.
+	DeckRequests deckrequests.Store
+
+	// FetchDeck fetches a deck link for POST /deck-coverage and POST
+	// /deck-requests. Nil means deck.FetchFromURL over DeckHTTPClient;
+	// tests inject a fake so nothing reaches the network.
+	FetchDeck DeckFetcher
 
 	// Log is used for the handful of non-fatal conditions where
 	// swallowing the error silently would cost a later debugging
@@ -366,7 +383,7 @@ func Handler(c Config) http.Handler {
 	dmLimit := newLimiter(1.0/10, 3)
 	mux.Handle("POST /games/{id}/invites/dm",
 		limit.Middleware(auth.Middleware(c.Auth)(perCallerLimit(dmLimit, handlerFunc(c, inviteDM)))))
-	// The Discord bot's /cc-end host check (#1098): "does this Discord
+	// The Discord bot's /c2-end host check (#1098): "does this Discord
 	// user's snowflake match this game's creator", a boolean and
 	// nothing else. Admin-only — the bot always calls with its admin
 	// session — so it never widens who can learn a game's creator;
@@ -492,6 +509,26 @@ func Handler(c Config) http.Handler {
 	// filing limit would starve legitimate renders. The limit here is
 	// only a brake on enumeration attempts, which 404 anyway.
 	bugAttachLimit := newLimiter(5, 60)
+	// ADR 0095: the deck coverage checker and deck requests.
+	//
+	// POST /deck-coverage is public and fetches a third-party URL on
+	// the caller's behalf, so it is limited per client IP: ~1 check /
+	// 10 s with a burst of 3. The bot's admin session rides its own
+	// bucket instead, because it calls from loopback for every guild
+	// member at once (deckCoverageLimit). A repeat check of one deck
+	// is served from a ten-minute cache and fetches nothing.
+	//
+	// POST /deck-requests needs a session and rides the ordinary IP
+	// bucket; its real limit is three asks per requester per 24 h,
+	// counted in the database.
+	deckChecks := newDeckCheck()
+	deckCoveragePublic := newLimiter(1.0/10, 3)
+	deckCoverageAdmin := newLimiter(1, 10)
+	mux.Handle("POST /deck-coverage",
+		deckCoverageLimit(c, deckCoveragePublic, deckCoverageAdmin, handlerFunc(c, deckChecks.coverage)))
+	mux.Handle("POST /deck-requests",
+		limit.Middleware(auth.Middleware(c.Auth)(handlerFunc(c, deckChecks.request))))
+
 	mux.Handle("GET /bugreport/config", handlerFunc(c, bugReportConfig))
 	mux.Handle("POST /bugreport", bugLimit.Middleware(auth.Middleware(c.Auth)(handlerFunc(c, bugReport))))
 	// Unauthenticated by necessity — Camo presents no session. The
@@ -597,7 +634,7 @@ type sessionResponse struct {
 type createGameRequest struct {
 	Name string `json:"name"`
 	// HostDiscordID optionally names the table host by Discord user
-	// ID (ADR 0075 §2.1). /cc-invite sends the invoking user.
+	// ID (ADR 0075 §2.1). /c2-invite sends the invoking user.
 	HostDiscordID string `json:"host_discord_id,omitempty"`
 }
 
@@ -1303,7 +1340,7 @@ type gameCreatorResponse struct {
 	IsCreator bool `json:"is_creator"`
 }
 
-// gameCreator (admin-only) answers the Discord bot's /cc-end host
+// gameCreator (admin-only) answers the Discord bot's /c2-end host
 // check (#1098): does the Discord user named by ?discord_id=<snowflake>
 // match this game's creator. It never says who the creator actually
 // is — only whether ONE named snowflake is a match — so an admin

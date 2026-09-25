@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Archfiend of Depravity — Creature — Demon {3}{B}{B}, 5/4 (EDHREC
 // rank 1572):
@@ -39,13 +43,14 @@ func init() {
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return b14OpponentsEndStepBegan(ev, source)
 			},
-			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				victim := ev.Actor
-				return game.NewTriggeredItem(source, "Archfiend of Depravity — that player keeps up to two creatures and sacrifices the rest",
-					func(g *game.Game, item *game.StackItem) error {
-						b14PlayerSacrificesAllButN(g, item.SourceCardID, victim, 2, "Archfiend of Depravity — sacrifice a creature (keep up to two)")
-						return nil
-					})
+			Key: "Archfiend of Depravity — that player keeps up to two creatures and sacrifices the rest",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				var victim uuid.UUID
+				if item.Trigger != nil {
+					victim = item.Trigger.Event.Actor
+				}
+				b14PlayerSacrificesAllButN(g, item.SourceCardID, victim, 2, "Archfiend of Depravity — sacrifice a creature (keep up to two)")
+				return nil
 			},
 		}},
 	})

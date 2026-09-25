@@ -48,18 +48,14 @@ func init() {
 			Watches:   []game.EventKind{game.EventETB},
 			AppliesTo: b06SelfETB,
 			Targets:   TargetCreature("target creature"),
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				until := source.InstanceID
-				return game.NewTriggeredItem(source,
-					"Oubliette — target creature phases out until Oubliette leaves the battlefield",
-					func(g *game.Game, item *game.StackItem) error {
-						ctx := NewContext(g, item)
-						return PhaseOutUntilLeaves{
-							Targets:      legalTargetCards(item, g),
-							Until:        until,
-							TapOnPhaseIn: true,
-						}.Apply(ctx)
-					})
+			Key:       "Oubliette — target creature phases out until Oubliette leaves the battlefield",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				ctx := NewContext(g, item)
+				return PhaseOutUntilLeaves{
+					Targets:      legalTargetCards(item, g),
+					Until:        item.SourceCardID,
+					TapOnPhaseIn: true,
+				}.Apply(ctx)
 			},
 		}},
 	})

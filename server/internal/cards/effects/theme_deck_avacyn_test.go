@@ -430,7 +430,7 @@ func TestAvacynThemeDeckPlaysFourTurns(t *testing.T) {
 	advanceToStepOf(t, g, oppSeat, game.StepDeclareBlockers)
 
 	castThemeSpell(t, g, me, hand["Fog"])
-	if got := len(g.TurnScopedReplacements); got != 1 {
+	if got := scopedReplacementCount(g); got != 1 {
 		t.Fatalf("turn-scoped replacements after the fog resolved = %d, want 1", got)
 	}
 
@@ -460,7 +460,7 @@ func TestAvacynThemeDeckPlaysFourTurns(t *testing.T) {
 	}
 	// CR 514.2 / ADR 0013: the fog was turn-scoped and the cleanup
 	// swept it.
-	if got := len(g.TurnScopedReplacements); got != 0 {
+	if got := scopedReplacementCount(g); got != 0 {
 		t.Errorf("turn-scoped replacements a turn after the fog = %d, want 0", got)
 	}
 

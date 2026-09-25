@@ -18,13 +18,17 @@ import (
 //	    AtYourUpkeep("Awakening Zone — create an Eldrazi Spawn", Do(CreateToken{Template: EldraziSpawnToken(), N: 1})),
 //	}
 //
-// Every constructor returns an ordinary game.TriggeredAbility built
-// exactly as a hand-written one would be — Watches, an AppliesTo, and
-// a Build that puts the item on the stack via NewTriggeredItem — so
-// the engine sees no difference and the S19 rules (ADR 0018) hold
-// unchanged: Build builds and never resolves; the Effect reads the
-// controller, source and targets off the item it is handed and
-// captures no *Card or *Game.
+// Every constructor returns an ordinary game.TriggeredAbility —
+// Watches, an AppliesTo, a Key that is the stack label, and the Effect
+// DECLARED on the row (ADR 0041 P9, #1497, tier 4-2). The engine builds
+// the item from the row itself (its Key and its Effect) and names the
+// row on it, so a table with the trigger waiting on the
+// stack is still a restore point. The S19 rules (ADR 0018) hold
+// unchanged: nothing resolves before the stack says so, and the Effect
+// reads the controller, source, targets and triggering event
+// (item.Trigger) off the item it is handed and captures no *Card or
+// *Game — and nothing that was only true when the ability triggered,
+// because a restored item runs the row's Effect again.
 //
 // The two rules for using them:
 //
@@ -93,15 +97,25 @@ func On(kind game.EventKind, when When, label string, effect Effect) game.Trigge
 // OnAny is On for one printed ability with two or more trigger
 // conditions — "Whenever ~ enters or attacks" is one ability watching
 // two kinds, not two abilities (Sun Titan).
+//
+// The effect is declared on the row (ADR 0041 P9): the engine builds
+// the item from the label and the effect and stamps it with the row's
+// catalog name. A nil effect keeps the old hand-built item
+// with no Effect, for the one card that replaces the Build afterwards
+// (Forum Familiar) — a row with neither would never trigger at all.
 func OnAny(kinds []game.EventKind, when When, label string, effect Effect) game.TriggeredAbility {
-	return game.TriggeredAbility{
+	t := game.TriggeredAbility{
 		Watches:   kinds,
 		AppliesTo: when,
 		Key:       label,
-		Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-			return game.NewTriggeredItem(source, label, effect)
-		},
+		Effect:    effect,
 	}
+	if effect == nil {
+		t.Build = func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
+			return game.NewTriggeredItem(source, label)
+		}
+	}
+	return t
 }
 
 // Optional makes a trigger a CR 603.5 "you may": the harvester asks
@@ -589,9 +603,11 @@ func WheneverYouActivateAnExhaustAbility(label string, effect Effect) game.Trigg
 // `build` receives the ACTIVATOR (Event.Actor) and returns the
 // effect: "this creature deals 2 damage to THAT PLAYER". It does not
 // target — the clause says "that player", so hexproof and "can't be
-// the target of" do nothing about it and CR 608.2b re-checks nothing
-// — and it is captured in the Build closure the way Ob Nixilis, the
-// Hate-Twisted captures a drawer.
+// the target of" do nothing about it and CR 608.2b re-checks nothing.
+// The activator is read at RESOLUTION off the item's triggering event
+// (item.Trigger, #1223), not captured when the ability triggers, so the
+// row is declarative and a restored item finds the same player
+// (ADR 0041 P9).
 //
 // Compose Optional() over the result for a "you may" (Runic
 // Armasaur), exactly as with any other trigger.
@@ -609,11 +625,20 @@ func WheneverAnOpponentActivates(label string, of CardPredicate, includeMana boo
 			}
 			return activationSourceMatches(g, ev, of)
 		},
-		Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-			activator := ev.Actor
-			return game.NewTriggeredItem(source, label, build(activator))
+		Effect: func(g *game.Game, item *game.StackItem) error {
+			return build(triggeringActor(item))(g, item)
 		},
 	}
+}
+
+// triggeringActor is the Actor of the event that put a triggered item
+// on the stack — the player who activated, cast, drew or attacked — or
+// uuid.Nil for an item that carries no triggering event.
+func triggeringActor(item *game.StackItem) uuid.UUID {
+	if item == nil || item.Trigger == nil {
+		return uuid.Nil
+	}
+	return item.Trigger.Event.Actor
 }
 
 // activationSourceMatches runs `of` against the object whose ability
@@ -733,10 +758,13 @@ func WhenThisIsPutIntoYourGraveyardFromYourLibrary(label string, effect Effect) 
 // hand the thief the trigger. The item is built for ev.Target instead
 // — the only reading under which "you lose control of ~" can be true
 // of its own controller.
+//
+// The Build here only fills in the controller (ADR 0041 P9): it leaves
+// item.Effect nil and the engine installs the declared effect.
 func WhenYouLoseControlOfThis(label string, effect Effect) game.TriggeredAbility {
 	t := On(game.EventControlChanged, ThisChangedController, label, effect)
 	t.Build = func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-		item := game.NewTriggeredItem(source, label, effect)
+		item := game.NewTriggeredItem(source, label)
 		item.Controller, item.Owner = ev.Target, ev.Target
 		return item
 	}
@@ -784,6 +812,20 @@ func SelfTargetedByASpell(ev game.Event, source *game.Card, _ game.Characteristi
 		return false
 	}
 	return b40TargetedByASpell(ev, g)
+}
+
+// DealAmountFromParamsToFirstTarget is the Effect body for "…deals
+// that much damage to target X", where the amount was computed once
+// at trigger time and carried on item.Params.Amount by a fill-in
+// Build — Kaervek the Merciless's spell mana value, All Will Be One's
+// counters placed — rather than baked into a per-instance closure. A
+// target that left in response (CR 608.2b) leaves the ability to do
+// nothing rather than error.
+func DealAmountFromParamsToFirstTarget(g *game.Game, item *game.StackItem) error {
+	if len(item.Targets) == 0 {
+		return nil
+	}
+	return DealDamage{Source: item.SourceCardID, Target: item.Targets[0].ID, Amount: item.Params.Amount}.Apply(NewContext(g, item))
 }
 
 // PutChosenTargetOnTopOfLibrary is the Effect body behind "put target

@@ -32,19 +32,25 @@ func init() {
 				_, ok := b26NontokenCreatureEntered(ev, g)
 				return ok
 			},
+			Key: "Genesis Chamber — that creature's controller creates a Myr",
+			// The entering creature's controller is a board read at
+			// trigger time (ADR 0041 P9's fill-in Build), carried as
+			// item.Params.Player.
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
 				entered, _ := b26NontokenCreatureEntered(ev, g)
-				controller := entered.Controller
-				return game.NewTriggeredItem(source, "Genesis Chamber — that creature's controller creates a Myr",
-					func(g *game.Game, item *game.StackItem) error {
-						if !b26SourceOnBattlefieldUntapped(g, item) {
-							return nil
-						}
-						if g.PlayerByIDForEffect(controller) == nil {
-							return nil
-						}
-						return CreateToken{Controller: controller, Template: TokenCard("1/1 colorless Myr artifact"), N: 1}.Apply(NewContext(g, item))
-					})
+				item := game.NewTriggeredItem(source, "Genesis Chamber — that creature's controller creates a Myr")
+				item.Params.Player = entered.Controller
+				return item
+			},
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				controller := item.Params.Player
+				if !b26SourceOnBattlefieldUntapped(g, item) {
+					return nil
+				}
+				if g.PlayerByIDForEffect(controller) == nil {
+					return nil
+				}
+				return CreateToken{Controller: controller, Template: TokenCard("1/1 colorless Myr artifact"), N: 1}.Apply(NewContext(g, item))
 			},
 		}},
 	})

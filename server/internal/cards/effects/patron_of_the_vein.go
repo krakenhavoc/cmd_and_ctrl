@@ -34,18 +34,23 @@ func init() {
 				Watches:   []game.EventKind{game.EventETB},
 				AppliesTo: b06SelfETB,
 				Targets:   TargetCreature("target creature an opponent controls", OpponentControls()),
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Patron of the Vein — destroy target creature an opponent controls", destroyFirstLegalTarget)
-				},
+				Key:       "Patron of the Vein — destroy target creature an opponent controls",
+				Effect:    destroyFirstLegalTarget,
 			},
 			{
 				Watches: []game.EventKind{game.EventLTB},
 				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 					return b33OpponentsCreatureDied(ev, source, g)
 				},
-				Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Patron of the Vein — exile the creature and put a +1/+1 counter on each Vampire you control",
-						b33ExileDeadThenCounterOnEachVampire(ev.CardID))
+				Key: "Patron of the Vein — exile the creature and put a +1/+1 counter on each Vampire you control",
+				Effect: func(g *game.Game, item *game.StackItem) error {
+					dead := item.Trigger.Event.CardID
+					if z := g.FindCardZoneForEffect(dead); z != nil && z.Kind == game.ZoneGraveyard {
+						if err := (ExileTarget{Target: dead}).Apply(NewContext(g, item)); err != nil {
+							return err
+						}
+					}
+					return b17PutCounterOnEachVampireYouControl(g, item)
 				},
 			},
 		},

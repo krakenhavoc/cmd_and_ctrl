@@ -492,28 +492,16 @@ func b33UntapSelf(g *game.Game, item *game.StackItem) error {
 
 // b33DamageDefendingPlayerFromSource is Raid Bombardment's body: 1
 // damage from the enchantment to the player the attacker was
-// declared against — the event's Target, captured in Build. The
-// engine has no planeswalker defenders, so "the player or
-// planeswalker" collapses to the player.
-func b33DamageDefendingPlayerFromSource(defender uuid.UUID, n int) func(g *game.Game, item *game.StackItem) error {
-	return func(g *game.Game, item *game.StackItem) error {
-		if g.PlayerByIDForEffect(defender) == nil {
-			return nil
-		}
-		return DealDamage{Source: item.SourceCardID, Target: defender, Amount: n}.Apply(NewContext(g, item))
+// declared against — the event's Target, stamped onto
+// item.Params.Player by a fill-in Build. The engine has no
+// planeswalker defenders, so "the player or planeswalker" collapses
+// to the player.
+func b33DamageDefendingPlayerFromSource(g *game.Game, item *game.StackItem) error {
+	defender := item.Params.Player
+	if g.PlayerByIDForEffect(defender) == nil {
+		return nil
 	}
-}
-
-// b33CreateInsectsPerMinusCounterPlaced is Nest of Scarabs' body:
-// `n` 1/1 black Insects, `n` being the number of -1/-1 counters the
-// firing event placed, captured in Build.
-func b33CreateInsectsPerMinusCounterPlaced(n int) func(g *game.Game, item *game.StackItem) error {
-	return func(g *game.Game, item *game.StackItem) error {
-		if n <= 0 {
-			return nil
-		}
-		return CreateToken{Controller: item.Controller, Template: TokenCard("1/1 black Insect"), N: n}.Apply(NewContext(g, item))
-	}
+	return DealDamage{Source: item.SourceCardID, Target: defender, Amount: 1}.Apply(NewContext(g, item))
 }
 
 // b33ReanimateChosenWithCounters is Rakdos Joins Up's entry body: the
@@ -552,28 +540,28 @@ func b33ReanimateChosenWithCounters(n int) func(g *game.Game, item *game.StackIt
 // WATCHER, not just a card's own dies-trigger: PermanentInfo.Power is
 // PowerForComparison as the legend last existed on the battlefield —
 // layers (an anthem's bonus) and counters both included, uncapped.
-// `dead` is kept only as the fallback for an item restored from a
-// snapshot written before StackItem.Trigger existed.
-func b33DamageChosenOpponentByDeadCreaturesPower(dead uuid.UUID) func(g *game.Game, item *game.StackItem) error {
-	return func(g *game.Game, item *game.StackItem) error {
-		ctx := NewContext(g, item)
-		n := 0
-		if info, ok := ctx.TriggeringPermanent(); ok {
-			n = info.Power
-		} else {
-			n = b17LastKnownPowerOffBattlefield(g, dead)
-		}
-		if n <= 0 {
-			return nil
-		}
-		for _, t := range ctx.LegalTargets() {
-			if t.Kind != game.TargetPlayer {
-				continue
-			}
-			return DealDamage{Source: item.SourceCardID, Target: t.ID, Amount: n}.Apply(ctx)
-		}
+// item.Params.Object.ID — the dead legend's instance ID, stamped by a
+// fill-in Build — is kept only as the fallback for an item whose
+// Trigger context did not carry the object (never true for a fresh
+// trigger; the safe side for anything else).
+func b33DamageChosenOpponentByDeadCreaturesPower(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	n := 0
+	if info, ok := ctx.TriggeringPermanent(); ok {
+		n = info.Power
+	} else {
+		n = b17LastKnownPowerOffBattlefield(g, item.Params.Object.ID)
+	}
+	if n <= 0 {
 		return nil
 	}
+	for _, t := range ctx.LegalTargets() {
+		if t.Kind != game.TargetPlayer {
+			continue
+		}
+		return DealDamage{Source: item.SourceCardID, Target: t.ID, Amount: n}.Apply(ctx)
+	}
+	return nil
 }
 
 // b33PutCounterOnEnteredCreature is Good-Fortune Unicorn's body: one
@@ -596,23 +584,6 @@ func createTappedZombie(g *game.Game, item *game.StackItem) error {
 		Spec:       Token(BlackZombieToken()).EntersTapped(),
 		N:          1,
 	}.Apply(NewContext(g, item))
-}
-
-// b33ExileDeadThenCounterOnEachVampire is Patron of the Vein's dies
-// body: the dead creature is exiled if it is still in a graveyard (a
-// card that has since been reanimated, or an opponent's commander
-// that went to the command zone, is left where it is), then every
-// Vampire the controller controls gets a +1/+1 counter — the second
-// half is not conditional on the first, as printed.
-func b33ExileDeadThenCounterOnEachVampire(dead uuid.UUID) func(g *game.Game, item *game.StackItem) error {
-	return func(g *game.Game, item *game.StackItem) error {
-		if z := g.FindCardZoneForEffect(dead); z != nil && z.Kind == game.ZoneGraveyard {
-			if err := (ExileTarget{Target: dead}).Apply(NewContext(g, item)); err != nil {
-				return err
-			}
-		}
-		return b17PutCounterOnEachVampireYouControl(g, item)
-	}
 }
 
 // b33ScryN is "scry N" as a trigger body (Hermes' Bird attack).
@@ -669,29 +640,27 @@ const b33DalkovanAttackLabel = "Dalkovan Encampment — create two 1/1 red Warri
 // b33DalkovanWarriors is Dalkovan Encampment's attack body: two 1/1
 // red Warriors per activation of the land this turn, tapped and
 // attacking the player the first declared attacker was declared
-// against (captured in Build), and a delayed trigger that sacrifices
-// them at the beginning of the next end step.
-func b33DalkovanWarriors(defender uuid.UUID) func(g *game.Game, item *game.StackItem) error {
-	return func(g *game.Game, item *game.StackItem) error {
-		ctx := NewContext(g, item)
-		n := 2 * b33ResolutionsThisTurn(g, item.SourceCardID, b33DalkovanEncampmentLabel)
-		if n <= 0 {
-			return nil
-		}
-		cursor := b25LastEventSeq(g)
-		if err := g.CreateTokensAttackingForEffect(item.Controller, b33TappedAttackingRedWarrior(), n, defender); err != nil {
-			return err
-		}
-		tokens := b27TokensCreatedByAfter(g, item.Controller, cursor)
-		if len(tokens) == 0 {
-			return nil
-		}
-		return ScheduleDelayedTrigger{
-			Label: "Dalkovan Encampment — sacrifice the Warriors",
-			Cards: tokens,
-			Body:  sacrificeListedCardsBody,
-		}.Apply(ctx)
+// against (item.Trigger.Event.Target, ADR 0041 P9), and a delayed
+// trigger that sacrifices them at the beginning of the next end step.
+func b33DalkovanWarriors(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	n := 2 * b33ResolutionsThisTurn(g, item.SourceCardID, b33DalkovanEncampmentLabel)
+	if n <= 0 {
+		return nil
 	}
+	cursor := b25LastEventSeq(g)
+	if err := g.CreateTokensAttackingForEffect(item.Controller, b33TappedAttackingRedWarrior(), n, item.Trigger.Event.Target); err != nil {
+		return err
+	}
+	tokens := b27TokensCreatedByAfter(g, item.Controller, cursor)
+	if len(tokens) == 0 {
+		return nil
+	}
+	return ScheduleDelayedTrigger{
+		Label: "Dalkovan Encampment — sacrifice the Warriors",
+		Cards: tokens,
+		Body:  sacrificeListedCardsBody,
+	}.Apply(ctx)
 }
 
 // b33DistributeCountersRoundRobin is Lathiel's body: the life gained
@@ -783,32 +752,35 @@ func b33ClearListedGoads(g *game.Game, item *game.StackItem) error {
 	return nil
 }
 
-// b33GoadChosenIfControlledBy is Alela's body: the chosen creature is
-// goaded by the controller if it is still legal and still controlled
-// by `victim`, the player the Faeries hit, and a delayed trigger
-// clears the marker at the beginning of the controller's next turn
-// (CR 701.15a's "until your next turn"). A pick under some other
-// player's control — possible when Faeries connected with two
-// players in one combat and the clause offered both players'
-// creatures — does nothing.
-func b33GoadChosenIfControlledBy(victim uuid.UUID) func(g *game.Game, item *game.StackItem) error {
-	return func(g *game.Game, item *game.StackItem) error {
-		ctx := NewContext(g, item)
-		id, ok := b16FirstLegalTargetCard(ctx)
-		if !ok {
-			return nil
-		}
-		c, found := g.LookupCardForEffect(id)
-		if !found || c.Controller != victim || !onBattlefield(g, id) {
-			return nil
-		}
-		b33Goad(g, id, item.Controller)
-		return ScheduleDelayedTrigger{
-			At:                 game.StepUpkeep,
-			ControllerTurnOnly: true,
-			Label:              "Alela, Cunning Conqueror — the goad ends",
-			Cards:              []uuid.UUID{id},
-			Body:               clearListedGoadsBody,
-		}.Apply(ctx)
+// b33AlelaGoadChosen is Alela's body: the chosen creature is goaded
+// by the controller if it is still legal and still controlled by the
+// player the Faeries hit — read back off the item's carried trigger
+// event (item.Trigger, #1379, ADR 0041 P9) rather than captured at
+// trigger time — and a delayed trigger clears the marker at the
+// beginning of the controller's next turn (CR 701.15a's "until your
+// next turn"). A pick under some other player's control — possible
+// when Faeries connected with two players in one combat and the
+// clause offered both players' creatures — does nothing.
+func b33AlelaGoadChosen(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	id, ok := b16FirstLegalTargetCard(ctx)
+	if !ok {
+		return nil
 	}
+	var victim uuid.UUID
+	if item.Trigger != nil {
+		victim = item.Trigger.Event.Target
+	}
+	c, found := g.LookupCardForEffect(id)
+	if !found || c.Controller != victim || !onBattlefield(g, id) {
+		return nil
+	}
+	b33Goad(g, id, item.Controller)
+	return ScheduleDelayedTrigger{
+		At:                 game.StepUpkeep,
+		ControllerTurnOnly: true,
+		Label:              "Alela, Cunning Conqueror — the goad ends",
+		Cards:              []uuid.UUID{id},
+		Body:               clearListedGoadsBody,
+	}.Apply(ctx)
 }

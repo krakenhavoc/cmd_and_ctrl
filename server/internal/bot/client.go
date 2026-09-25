@@ -18,12 +18,15 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/lobby"
 )
 
-// Default request timeout. The loopback calls we make (admin
-// login, create game, list games) should resolve in well under
-// 100 ms on the VPS. 5 s is generous headroom for a GC pause or
-// a cold-started server; the 3 s Discord interaction deadline
-// forces us to keep this below the SDK's own budget.
-const defaultRequestTimeout = 5 * time.Second
+// Default request timeout: the http.Client's CEILING, not the
+// per-call budget. Every call is made with its interaction's
+// context, which is what actually bounds it — 4 s for the game
+// commands (defaultInteractionTimeout), 20 s for the two deck
+// commands (deckInteractionTimeout), whose server call fetches the
+// deck from Moxfield or Archidekt and may then call GitHub, each
+// with its own 10 s cap server-side (ADR 0095). The ceiling sits
+// above the longest context so it never cuts a deck call short.
+const defaultRequestTimeout = 25 * time.Second
 
 // Errors returned by ServerClient. Wrapped by the command
 // handlers into user-visible messages; callers should use
@@ -268,7 +271,7 @@ func (c *ServerClient) ListGames(ctx context.Context) ([]lobby.GameMeta, error) 
 // GetGame calls GET /games/{id} with the cached admin session
 // (re-logging in once on a 401). Unlike ListGames, this reaches
 // archived games too — Lobby.Get does not filter them the way
-// Lobby.List does — which is what lets /cc-end tell "already
+// Lobby.List does — which is what lets /c2-end tell "already
 // archived" apart from "no such game" before it asks for
 // confirmation.
 func (c *ServerClient) GetGame(ctx context.Context, id uuid.UUID) (lobby.GameMeta, error) {
@@ -308,7 +311,7 @@ func (c *ServerClient) GetGame(ctx context.Context, id uuid.UUID) (lobby.GameMet
 
 // IsCreator calls GET /games/{id}/creator?discord_id=<discordID> with
 // the cached admin session (re-logging in once on a 401) — the
-// server-side half of #1098's /cc-end host check: does discordID
+// server-side half of #1098's /c2-end host check: does discordID
 // match the Discord user who created this game. The server never
 // says who the creator actually is; only whether this one snowflake
 // matches. ErrGameNotFound on a 404, same as GetGame and ArchiveGame.
@@ -388,6 +391,224 @@ func (c *ServerClient) ArchiveGame(ctx context.Context, id uuid.UUID) (lobby.Gam
 		return lobby.GameMeta{}, fmt.Errorf("decode game: %w", err)
 	}
 	return meta, nil
+}
+
+// --- Deck coverage / deck requests (ADR 0095 §4, #1631) ---
+//
+// These types mirror the wire shapes documented in docs/lobby.md's
+// "POST /deck-coverage" and "POST /deck-requests" sections rather
+// than importing server/internal/deckcoverage — that package (PR 1
+// of ADR 0095) may not exist in every tree this package builds
+// against, and the bot only ever needs the JSON contract, never the
+// server's internal Go types.
+
+// DeckCoverageBucket is one of the five buckets POST /deck-coverage
+// sorts a decklist's cards into.
+type DeckCoverageBucket string
+
+// The five buckets, in the order POST /deck-coverage sorts cards:
+// most actionable first.
+const (
+	BucketManual     DeckCoverageBucket = "manual"
+	BucketUnreviewed DeckCoverageBucket = "unreviewed"
+	BucketCaveats    DeckCoverageBucket = "caveats"
+	BucketAutomated  DeckCoverageBucket = "automated"
+	BucketNoEffect   DeckCoverageBucket = "no_effect"
+)
+
+// DeckViolation is one entry of deck.Validate's informational output,
+// carried on both a successful report and a fetch-error response.
+type DeckViolation struct {
+	Code    string `json:"code"`
+	Message string `json:"message"`
+	Card    string `json:"card,omitempty"`
+}
+
+// DeckCoverageCard is one card's line in a coverage report.
+type DeckCoverageCard struct {
+	Name     string             `json:"name"`
+	OracleID string             `json:"oracle_id"`
+	Count    int                `json:"count"`
+	Bucket   DeckCoverageBucket `json:"bucket"`
+	Caveats  []string           `json:"caveats,omitempty"`
+}
+
+// DeckCoverageReport is the body of a successful POST /deck-coverage
+// response, and the `report` field of a POST /deck-requests response.
+type DeckCoverageReport struct {
+	DeckName   string                     `json:"deck_name"`
+	Source     string                     `json:"source"`
+	SourceURL  string                     `json:"source_url,omitempty"`
+	DeckKey    string                     `json:"deck_key,omitempty"`
+	Commanders []string                   `json:"commanders"`
+	Counts     map[DeckCoverageBucket]int `json:"counts"`
+	Cards      []DeckCoverageCard         `json:"cards"`
+	Unknown    []string                   `json:"unknown"`
+	Violations []DeckViolation            `json:"violations"`
+}
+
+// DeckAPIError is returned by DeckCoverage and DeckRequest for any
+// non-2xx response the two routes' error tables describe (docs/lobby.md):
+// a fetch error with a code and violations, or the uniform {error}
+// shape a bad body / 503 / 502 uses. Message is always the
+// player-readable sentence the server sent.
+type DeckAPIError struct {
+	StatusCode int
+	Message    string
+	Code       string
+	Violations []DeckViolation
+}
+
+func (e *DeckAPIError) Error() string {
+	if e.Message != "" {
+		return e.Message
+	}
+	return fmt.Sprintf("server returned %d", e.StatusCode)
+}
+
+// DeckCoverage calls POST /deck-coverage with the cached admin
+// session (re-logging in once on a 401) — the bot's own, larger rate
+// bucket rather than the public per-IP one (ADR 0095 §4). link must
+// be a Moxfield or Archidekt deck URL.
+func (c *ServerClient) DeckCoverage(ctx context.Context, link string) (DeckCoverageReport, error) {
+	body, err := json.Marshal(map[string]string{"url": link})
+	if err != nil {
+		return DeckCoverageReport{}, err
+	}
+	resp, err := c.doAuthorized(ctx, func(token string) (*http.Response, error) {
+		req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/deck-coverage", bytes.NewReader(body))
+		if err != nil {
+			return nil, err
+		}
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+token)
+		resp, err := c.http.Do(req)
+		if err != nil {
+			return nil, fmt.Errorf("%w: %v", ErrServerUnreachable, err)
+		}
+		return resp, nil
+	})
+	if err != nil {
+		return DeckCoverageReport{}, err
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		return DeckCoverageReport{}, ErrUnauthorized
+	}
+	if resp.StatusCode != http.StatusOK {
+		return DeckCoverageReport{}, decodeDeckAPIError(resp)
+	}
+
+	var report DeckCoverageReport
+	if err := json.NewDecoder(resp.Body).Decode(&report); err != nil {
+		return DeckCoverageReport{}, fmt.Errorf("decode deck-coverage response: %w", err)
+	}
+	return report, nil
+}
+
+// DeckRequester is the {discord_id, display_name} the bot sends on
+// POST /deck-requests, naming the guild member it is asking for.
+type DeckRequester struct {
+	DiscordID   string `json:"discord_id"`
+	DisplayName string `json:"display_name"`
+}
+
+// DeckRequestStatus is POST /deck-requests's `status` field.
+type DeckRequestStatus string
+
+const (
+	DeckRequestFiled        DeckRequestStatus = "filed"
+	DeckRequestJoined       DeckRequestStatus = "joined"
+	DeckRequestNothingToAdd DeckRequestStatus = "nothing_to_add"
+	DeckRequestRateLimited  DeckRequestStatus = "rate_limited"
+)
+
+// DeckRequestResult is a successful (2xx or 429-with-status) response
+// from POST /deck-requests. Report is nil only when the server sent
+// none (defensive; every documented status carries one).
+type DeckRequestResult struct {
+	Status           DeckRequestStatus   `json:"status"`
+	IssueURL         string              `json:"issue_url,omitempty"`
+	IssueNumber      int                 `json:"issue_number,omitempty"`
+	RetryAfter       int                 `json:"retry_after,omitempty"`
+	AlreadyRequested bool                `json:"already_requested,omitempty"`
+	Report           *DeckCoverageReport `json:"report,omitempty"`
+}
+
+// DeckRequest calls POST /deck-requests with the cached admin session
+// (re-logging in once on a 401), naming requester as the guild member
+// the request is filed on behalf of. link must be a deck URL — the
+// route refuses pasted text.
+//
+// A 429 carrying {"status":"rate_limited", ...} is a normal result,
+// not an error: it is one of the four documented outcomes. A 429
+// carrying only {"error":...} (the IP limiter's shape, which this
+// route should not reach given the admin session, but is handled
+// defensively) surfaces as a DeckAPIError instead.
+func (c *ServerClient) DeckRequest(ctx context.Context, link string, requester DeckRequester) (DeckRequestResult, error) {
+	body, err := json.Marshal(struct {
+		URL       string        `json:"url"`
+		Requester DeckRequester `json:"requester"`
+	}{URL: link, Requester: requester})
+	if err != nil {
+		return DeckRequestResult{}, err
+	}
+	resp, err := c.doAuthorized(ctx, func(token string) (*http.Response, error) {
+		req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/deck-requests", bytes.NewReader(body))
+		if err != nil {
+			return nil, err
+		}
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+token)
+		resp, err := c.http.Do(req)
+		if err != nil {
+			return nil, fmt.Errorf("%w: %v", ErrServerUnreachable, err)
+		}
+		return resp, nil
+	})
+	if err != nil {
+		return DeckRequestResult{}, err
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	switch resp.StatusCode {
+	case http.StatusCreated, http.StatusOK, http.StatusTooManyRequests:
+		var result DeckRequestResult
+		if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+			return DeckRequestResult{}, fmt.Errorf("decode deck-request response: %w", err)
+		}
+		if result.Status == "" {
+			// A 429 with no status field is the generic IP-limiter
+			// shape ({"error": "too many requests"}), not a
+			// rate_limited deck-request result.
+			return DeckRequestResult{}, &DeckAPIError{StatusCode: resp.StatusCode, Message: "too many requests"}
+		}
+		return result, nil
+	case http.StatusUnauthorized:
+		return DeckRequestResult{}, ErrUnauthorized
+	default:
+		return DeckRequestResult{}, decodeDeckAPIError(resp)
+	}
+}
+
+// decodeDeckAPIError reads a non-2xx deck-coverage/deck-requests body
+// into a *DeckAPIError. Both routes use the same two error shapes: a
+// fetch error ({error, code, violations}) and the uniform {error}
+// shape everything else uses.
+func decodeDeckAPIError(resp *http.Response) error {
+	b, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
+	var body struct {
+		Error      string          `json:"error"`
+		Code       string          `json:"code"`
+		Violations []DeckViolation `json:"violations"`
+	}
+	_ = json.Unmarshal(b, &body)
+	msg := body.Error
+	if msg == "" {
+		msg = strings.TrimSpace(string(b))
+	}
+	return &DeckAPIError{StatusCode: resp.StatusCode, Message: msg, Code: body.Code, Violations: body.Violations}
 }
 
 // statusErr builds an informative error for an unexpected

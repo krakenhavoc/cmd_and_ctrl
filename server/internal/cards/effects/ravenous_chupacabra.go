@@ -28,9 +28,8 @@ func init() {
 				return ev.CardID == source.InstanceID
 			},
 			Targets: TargetCreature("target creature an opponent controls", OpponentControls()),
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return destroyChosenTargetTrigger(source, "Ravenous Chupacabra — destroy target creature an opponent controls")
-			},
+			Key:     "Ravenous Chupacabra — destroy target creature an opponent controls",
+			Effect:  destroyChosenPermanent,
 		}},
 	})
 }

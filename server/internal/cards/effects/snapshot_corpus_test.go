@@ -147,7 +147,166 @@ func corpusBoards() []corpusBoard {
 		// v7, added by ADR 0093 PR 4 (#1584) as a new file: duration
 		// grants — the grantAbilities mod on disk.
 		{"duration_grants", corpusDurationGrants},
+		// v7, added by tier 4-0 (#1497) as a new file: a CR 603.12
+		// reflexive trigger on the stack, its target already chosen —
+		// a keyed stack item whose clause is re-derived from its Body
+		// rather than carried as a captured closure.
+		{"reflexive_trigger", corpusReflexiveTrigger},
+		// v7, added by tier 4's first slice (#1497, ADR 0041 P9) as new
+		// files: a stamped activated ability waiting on the stack (an
+		// own row and a granted row), and a countered spell's last-known
+		// information, which the snapshot carries from this slice on.
+		{"activated_on_stack", corpusActivatedOnStack},
+		{"granted_activated_on_stack", corpusGrantedActivatedOnStack},
+		{"countered_spell_lki", corpusCounteredSpellLKI},
+		// v7, added by tier 3b-1 (#1497) as new files: replacement
+		// effects a spell creates, which only became restore points with
+		// it — the replacement mods, ScopeGame, ScopeYourPermanents,
+		// seq, amount and then on disk.
+		{"fog", corpusFog},
+		{"mending_hands_partial", corpusMendingHandsPartial},
+		{"whip_redirect", corpusWhipRedirect},
+		{"cosmic_intervention", corpusCosmicIntervention},
+		// v7, added by tier 3b-2 (#1497) as new files: block-rule
+		// effects a spell or ability creates, which only became restore
+		// points with it — the cantBeBlockedExceptBy and
+		// limitBlockersPerDefender mods, and Text, on disk.
+		{"gingerbrute", corpusGingerbrute},
+		{"mirri_limit", corpusMirriLimit},
+		// v7, added by tier 4's second slice (#1497, ADR 0041 P9) as new
+		// files: declared triggered abilities waiting to resolve, named
+		// by their catalog row — a card's own row, a granted bundle's,
+		// a token's, an emblem's, a modal one, one whose clause is
+		// built from the trigger context, and a storm trigger over a
+		// countered spell's last-known information.
+		{"etb_trigger_on_stack", corpusETBTriggerOnStack},
+		{"granted_dies_trigger", corpusGrantedDiesTrigger},
+		{"token_trigger", corpusTokenTrigger},
+		{"emblem_trigger", corpusEmblemTrigger},
+		{"modal_trigger", corpusModalTrigger},
+		{"targets_from_trigger", corpusTargetsFromTrigger},
+		{"storm_after_counter", corpusStormAfterCounter},
+		// Tier 4-0's prowess/pump body, which merged while 4-2 was open:
+		// an engine trigger with no catalog row, keyed by its body.
+		{"prowess_on_stack", corpusProwessOnStack},
 	}
+}
+
+// ---------------------------------------------------------------
+// v7 boards added by ADR 0041 phase 3's tier 3b-1 (#1497)
+// ---------------------------------------------------------------
+//
+// NEW files in v7/: a replacement effect a spell created held the
+// restore point back until cleanup (and the Whip's redirect for as long
+// as it lasted) before tier 3b, so none of these could be a fixture.
+
+// corpusFog is a real Fog: one preventCombatDamage record, ScopeGame.
+func corpusFog(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	castCatalogSpell(t, g, "Fog", "Instant", fogOracle, nil)
+	passPriorityAroundTable(t, g)
+	if n := scopedReplacementCount(g); n != 1 {
+		t.Fatalf("setup: Fog registered %d scoped replacements, want 1", n)
+	}
+	return g
+}
+
+// corpusMendingHandsPartial is a real Mending Hands on a creature that
+// has since been dealt 3: a preventDamage shield with 1 charge left.
+func corpusMendingHandsPartial(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat].ID
+	bear := pushBattlefieldCardWithTimestamp(g, corpusCreature(me, "Grizzly Bears", 2, 6))
+	castCatalogSpell(t, g, "Mending Hands", "Instant", mendingHandsOracl,
+		[]game.TargetRef{{Kind: game.TargetCard, ID: bear}})
+	passPriorityAroundTable(t, g)
+	g.WithWriteLock(func() { _ = g.DealDamageToCreatureForEffect(bear, bear, 3) })
+	if len(g.ScopedEffects) != 1 || g.ScopedEffects[0].Mods[0].Amount != 1 {
+		t.Fatalf("setup: want one shield with 1 charge left, have %+v", g.ScopedEffects)
+	}
+	return g
+}
+
+// corpusWhipRedirect is a real Whip of Erebos activation: the returned
+// creature, its end-step exile queued, and the exileInsteadOfLeaving
+// record pinned to it with an indefinite duration.
+func corpusWhipRedirect(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	seat := g.Turn.ActiveSeat
+	me := g.Seats[seat]
+	advanceToMainOf(t, g, seat)
+	whip := pushCatalogPermanent(g, me.ID, "Whip of Erebos", "Legendary Enchantment Artifact", b06WhipOfErebosOracle, false)
+	dead := seedGraveyardCreature(me, "Giant", "{4}{B}")
+	b06AddMana(me, "B", "B", "C", "C")
+	if err := g.ActivateCatalogAbility(me.ID, whip, 0, game.ActivateAbilityParams{
+		Targets: []game.TargetRef{{Kind: game.TargetCard, ID: dead}},
+	}); err != nil {
+		t.Fatalf("activate: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if !g.Battlefield.Contains(dead) || scopedReplacementCount(g) != 1 {
+		t.Fatalf("setup: the creature is back %v, scoped replacements %d", g.Battlefield.Contains(dead), scopedReplacementCount(g))
+	}
+	return g
+}
+
+// corpusCosmicIntervention is a real Cosmic Intervention after it
+// saved a creature: the exileInsteadOfGraveyard record
+// (ScopeYourPermanents, with its then body) and the delayed return it
+// scheduled.
+func corpusCosmicIntervention(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat].ID
+	bear := pushBattlefieldCardWithTimestamp(g, corpusCreature(me, "Grizzly Bears", 2, 2))
+	castCatalogSpell(t, g, "Cosmic Intervention", "Instant", cosmicInterventionOracle, nil)
+	passPriorityAroundTable(t, g)
+	g.WithWriteLock(func() {
+		if err := g.DestroyPermanentForEffect(bear); err != nil {
+			t.Fatalf("destroy: %v", err)
+		}
+	})
+	if !g.Exile.Contains(bear) || len(g.DelayedTriggers) != 1 {
+		t.Fatalf("setup: exiled %v, delayed triggers %d", g.Exile.Contains(bear), len(g.DelayedTriggers))
+	}
+	return g
+}
+
+// ---------------------------------------------------------------
+// v7 boards added by ADR 0041 phase 3's tier 3b-2 (#1497)
+// ---------------------------------------------------------------
+//
+// NEW files in v7/: a block rule a spell or ability created held the
+// restore point back until cleanup before tier 3b-2, so neither of
+// these could be a fixture.
+
+// corpusGingerbrute is a real Gingerbrute activation: the
+// cantBeBlockedExceptBy record pinned to it, Keywords ["haste"] and
+// Text on disk.
+func corpusGingerbrute(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat].ID
+	brute := pushCatalogPermanent(g, me, "Gingerbrute", "Artifact Creature — Food Golem", gingerbruteOracle, false)
+	gingerbruteActivate(t, g, me, brute)
+	if n := scopedBlockRuleCount(g); n != 1 {
+		t.Fatalf("setup: Gingerbrute registered %d scoped block rules, want 1", n)
+	}
+	return g
+}
+
+// corpusMirriLimit is a real Mirri, Weatherlight Duelist attack: the
+// limitBlockersPerDefender record (ScopeOpponentsCreatures) her attack
+// trigger registered.
+func corpusMirriLimit(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	seat := g.Turn.ActiveSeat
+	me, opp := g.Seats[seat], g.Seats[(seat+1)%len(g.Seats)]
+	mirri := b12Push(g, me.ID, "Mirri, Weatherlight Duelist", "Legendary Creature — Cat Warrior", mirriWeatherlightDuelistOracle, 3, 2)
+	declareAttack(t, g, opp.ID, mirri)
+	passPriorityAroundTable(t, g)
+	if n := scopedBlockRuleCount(g); n != 1 {
+		t.Fatalf("setup: Mirri's trigger registered %d scoped block rules, want 1", n)
+	}
+	return g
 }
 
 // newCorpusGame is a started, mulligans-closed two-seat game: a
@@ -583,6 +742,36 @@ func corpusDurationGrants(t *testing.T) *game.Game {
 	return g
 }
 
+// corpusReflexiveTrigger is a real CR 603.12 reflexive trigger sitting
+// on the stack with its target already chosen (ADR 0041 P9, #1497,
+// tier 4): Undead Butler dies, its controller exiles it, and "when you
+// do" — the reflexive half — has picked the creature card to return
+// and is waiting to resolve. The file holds a keyed stack item whose
+// clause is re-derived from its Body ("undead-butler/return-to-hand")
+// rather than carried as a captured *TargetSpec.
+func corpusReflexiveTrigger(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	target := pushGraveyardPermanent(me, "Dead Fatty", "Creature — Bear", "{5}{B}")
+	butler := pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Undead Butler", TypeLine: "Creature — Zombie",
+		OracleID: b41UndeadButlerOracle, Power: 1, Toughness: 2,
+		Owner: me.ID, Controller: me.ID,
+	})
+	g.WithWriteLock(func() { _ = g.DestroyPermanentForEffect(butler) })
+	passPriorityAroundTable(t, g)
+	// "You may exile it" is the parent's optional prompt; the
+	// reflexive "when you do" that follows is mandatory.
+	answerLatestTriggerPrompt(t, g, me.ID, true)
+	passPriorityAroundTable(t, g)
+	b04WaitForPick(t, g, me.ID)
+	pickCard(t, g, me.ID, target)
+	if len(g.StackMeta) == 0 {
+		t.Fatal("setup: the reflexive trigger is not on the stack")
+	}
+	return g
+}
+
 const corpusJudoonOracle = "ca04089c-24b6-465e-9303-ea28c0d6f3c7"
 
 // ---------------------------------------------------------------
@@ -626,6 +815,287 @@ func corpusCrewedVehicle(t *testing.T) *game.Game {
 	passPriorityAroundTable(t, g)
 	if len(g.ScopedEffects) != 1 {
 		t.Fatalf("setup: crew registered %d scoped effects, want 1", len(g.ScopedEffects))
+	}
+	return g
+}
+
+// ---------------------------------------------------------------
+// v7 boards added by ADR 0041 phase 3's tier 4, first slice (#1497)
+// ---------------------------------------------------------------
+//
+// NEW files in v7/: an ability waiting on the stack held the restore
+// point back until it resolved before this slice, so none of these
+// could be a fixture until now.
+
+// corpusActivatedOnStack is a real Goblin Bombardment activation waiting
+// on the stack: the sacrifice paid, the ping at the opponent unresolved.
+// The file holds a stack item with body catalog/activated and an own:0
+// ability ref.
+func corpusActivatedOnStack(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat].ID
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)].ID
+	bomb := pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Goblin Bombardment", OracleID: goblinBombardmentOracle,
+		TypeLine: "Enchantment", Owner: me, Controller: me,
+	})
+	fodder := pushBattlefieldCardWithTimestamp(g, corpusCreature(me, "Grizzly Bears", 2, 2))
+	if err := g.ActivateCatalogAbility(me, bomb, 0, game.ActivateAbilityParams{
+		SacrificeIDs: []uuid.UUID{fodder},
+		Targets:      []game.TargetRef{{Kind: game.TargetPlayer, ID: opp}},
+	}); err != nil {
+		t.Fatalf("activate Goblin Bombardment: %v", err)
+	}
+	if len(g.StackMeta) != 1 {
+		t.Fatalf("setup: %d stack items, want the Bombardment's ping", len(g.StackMeta))
+	}
+	return g
+}
+
+// corpusGrantedActivatedOnStack is a real Squirrel Nest's granted
+// ability, activated on the enchanted land and waiting on the stack: a
+// grant:<bundle>:<i>:<n> ability ref on disk.
+func corpusGrantedActivatedOnStack(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat].ID
+	land := pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Forest", TypeLine: "Basic Land — Forest",
+		Owner: me, Controller: me,
+	})
+	pushAuraOnLand(t, g, me, "Squirrel Nest", gaSquirrelNestOracle, land)
+	idx, ref := grantedActivatedIndex(t, g, land)
+	if idx < 0 {
+		t.Fatal("setup: the enchanted land has no granted ability")
+	}
+	if err := g.ActivateCatalogAbility(me, land, idx, game.ActivateAbilityParams{Ref: ref}); err != nil {
+		t.Fatalf("activate the granted ability: %v", err)
+	}
+	if len(g.StackMeta) != 1 {
+		t.Fatalf("setup: %d stack items, want the Squirrel", len(g.StackMeta))
+	}
+	return g
+}
+
+// corpusCounteredSpellLKI is a real Lightning Bolt countered by a real
+// Counterspell: the stack is empty, and the Bolt as it last stood on it
+// is in the game's last-known information — `lastKnownStack` on disk.
+func corpusCounteredSpellLKI(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)].ID
+	bolt := castCatalogSpell(t, g, "Lightning Bolt", "Instant", lightningBoltOracle,
+		[]game.TargetRef{{Kind: game.TargetPlayer, ID: opp}})
+	castCatalogSpell(t, g, "Counterspell", "Instant", corpusCounterspellOracle,
+		[]game.TargetRef{{Kind: game.TargetCard, ID: bolt}})
+	passPriorityAroundTable(t, g)
+	snap := g.CaptureSnapshot()
+	if len(snap.StackMeta) != 0 || len(snap.LastKnownStack) != 1 {
+		t.Fatalf("setup: %d stack items and %d last-known spells, want 0 and the Bolt",
+			len(snap.StackMeta), len(snap.LastKnownStack))
+	}
+	return g
+}
+
+const corpusCounterspellOracle = "cc187110-1148-4090-bbb8-e205694a39f5"
+
+// ---------------------------------------------------------------
+// v7 boards added by ADR 0041 phase 3's tier 4, second slice (#1497)
+// ---------------------------------------------------------------
+//
+// NEW files in v7/: a triggered ability waiting on the stack held the
+// restore point back until it resolved before this slice. Each board
+// asserts the stamp it is there to freeze, so a card that slips back to
+// a hand-written Build fails here rather than writing a fixture that
+// proves nothing.
+
+const (
+	corpusMulldrifterOracle = "24d0f5e7-0d9e-4b76-900e-a7274e80312d"
+	corpusTeferiHeroOracle  = "f2f165b6-ef0a-42ad-9352-ba68be8248b0"
+)
+
+// corpusSettleTrigger passes priority until a triggered item from
+// `source` is on the stack, and returns it.
+func corpusSettleTrigger(t *testing.T, g *game.Game, source uuid.UUID) *game.StackItem {
+	t.Helper()
+	for i := 0; i < 8; i++ {
+		if it := triggerOnStack(g, source); it != nil {
+			return it
+		}
+		if err := g.PassPriority(); err != nil {
+			t.Fatalf("PassPriority: %v", err)
+		}
+	}
+	t.Fatalf("no trigger from %s reached the stack", source)
+	return nil
+}
+
+// corpusRequireTriggeredStamp fails unless the item names a triggered
+// catalog row whose ref starts with `refPrefix`.
+func corpusRequireTriggeredStamp(t *testing.T, it *game.StackItem, refPrefix string) {
+	t.Helper()
+	if it == nil || it.Body != game.CatalogTriggeredBodyKey || it.Params.Ability == nil ||
+		it.Params.Ability.Slot != game.AbilitySlotTriggered || !strings.HasPrefix(it.Params.Ability.Ref, refPrefix) {
+		t.Fatalf("setup: the trigger is not stamped with a %s… triggered ref: %+v", refPrefix, it)
+	}
+}
+
+// corpusETBTriggerOnStack is a real Mulldrifter's "when this enters,
+// draw two cards" waiting on the stack: an own:0 triggered ref.
+func corpusETBTriggerOnStack(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	drifter := castCatalogSpell(t, g, "Mulldrifter", "Creature — Elemental", corpusMulldrifterOracle, nil)
+	corpusRequireTriggeredStamp(t, corpusSettleTrigger(t, g, drifter), "own:")
+	return g
+}
+
+// corpusGrantedDiesTrigger is Feign Death's GRANTED "when this creature
+// dies, return it" waiting on the stack: the key comes off the dead
+// creature's last-known information, and the ref names the bundle.
+func corpusGrantedDiesTrigger(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat].ID
+	bear := pushBattlefieldCardWithTimestamp(g, corpusCreature(me, "Grizzly Bears", 2, 2))
+	castCatalogSpell(t, g, "Feign Death", "Instant", feignDeathOracle, dgCardRef(bear))
+	passPriorityAroundTable(t, g)
+	g.WithWriteLock(func() { _ = g.DestroyPermanentForEffect(bear) })
+	corpusRequireTriggeredStamp(t, corpusSettleTrigger(t, g, bear), "grant:")
+	return g
+}
+
+// corpusTokenTrigger is a real Pest token's "when this token dies, you
+// gain 1 life" waiting on the stack: a token template's row, whose
+// source has ceased to exist.
+func corpusTokenTrigger(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat].ID
+	pest := PestToken()
+	pest.InstanceID, pest.Owner, pest.Controller = uuid.New(), me, me
+	id := pushBattlefieldCardWithTimestamp(g, pest)
+	g.WithWriteLock(func() { _ = g.DestroyPermanentForEffect(id) })
+	it := corpusSettleTrigger(t, g, id)
+	corpusRequireTriggeredStamp(t, it, "own:")
+	if it.Params.Ability.Key != game.TokenKey("pest") {
+		t.Fatalf("setup: the Pest's trigger names %q, want the token key", it.Params.Ability.Key)
+	}
+	return g
+}
+
+// corpusEmblemTrigger is Teferi, Hero of Dominaria's emblem —
+// "whenever you draw a card, exile target permanent an opponent
+// controls" — triggered by a draw, its target chosen, waiting on the
+// stack: an emblem's row, with a target clause.
+func corpusEmblemTrigger(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat].ID
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)].ID
+	victim := pushBattlefieldCardWithTimestamp(g, corpusCreature(opp, "Grizzly Bears", 2, 2))
+	teferi := uuid.New()
+	g.Seats[g.Turn.ActiveSeat].Graveyard.PushTop(game.Card{
+		InstanceID: teferi, Name: "Teferi, Hero of Dominaria",
+		TypeLine: "Legendary Planeswalker — Teferi", OracleID: corpusTeferiHeroOracle,
+		Owner: me, Controller: me,
+	})
+	var err error
+	g.WithWriteLock(func() {
+		if err = g.CreateEmblemForEffect(me, teferi); err == nil {
+			err = g.DrawNForEffect(me, 1)
+		}
+	})
+	if err != nil {
+		t.Fatalf("setup: %v", err)
+	}
+	pickTriggerTarget(t, g, me, victim)
+	var it *game.StackItem
+	for _, item := range g.StackMeta {
+		if item.Kind == game.StackItemTriggered {
+			it = item
+		}
+	}
+	corpusRequireTriggeredStamp(t, it, "own:")
+	if it.Params.Ability.Key != game.EmblemKey(corpusTeferiHeroOracle) {
+		t.Fatalf("setup: the emblem's trigger names %q, want the emblem key", it.Params.Ability.Key)
+	}
+	return g
+}
+
+// corpusModalTrigger is a real Gala Greeters' alliance trigger with its
+// mode chosen (CR 603.3c), waiting on the stack: the row's mode clause
+// comes back from the catalog on restore.
+func corpusModalTrigger(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat].ID
+	greeters := b12Push(g, me, "Gala Greeters", "Creature — Elf Druid", b15GalaGreetersOracle, 1, 1)
+	castCatalogSpell(t, g, "Grizzly Bears", "Creature — Bear", "", nil)
+	passPriorityAroundTable(t, g)
+	c := modePickChoiceFor(g, me)
+	if c == nil {
+		t.Fatal("setup: the alliance trigger asked for no mode")
+	}
+	if err := g.ResolveModePick(c.ID, me, []int{1}); err != nil {
+		t.Fatalf("setup: ResolveModePick: %v", err)
+	}
+	corpusRequireTriggeredStamp(t, triggerOnStack(g, greeters), "own:")
+	return g
+}
+
+// corpusTargetsFromTrigger is a real Gixian Puppeteer's dies trigger —
+// "return ANOTHER target creature card …", whose clause TargetsFrom
+// builds from the trigger's own source — with its target chosen,
+// waiting on the stack. Restore calls TargetsFrom again.
+func corpusTargetsFromTrigger(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	seat := g.Seats[g.Turn.ActiveSeat]
+	me := seat.ID
+	puppeteer := b12Push(g, me, "Gixian Puppeteer", "Creature — Phyrexian Warlock", b40GixianPuppeteerOracle, 2, 3)
+	elf := uuid.New()
+	seat.Graveyard.PushTop(game.Card{
+		InstanceID: elf, Name: "Llanowar Elves", TypeLine: "Creature — Elf Druid",
+		ManaCost: "{G}", Power: 1, Toughness: 1, Owner: me, Controller: me,
+	})
+	g.WithWriteLock(func() { _ = g.DestroyPermanentForEffect(puppeteer) })
+	pickTriggerTarget(t, g, me, elf)
+	corpusRequireTriggeredStamp(t, triggerOnStack(g, puppeteer), "own:")
+	return g
+}
+
+// corpusProwessOnStack is a prowess trigger — an engine trigger with no
+// catalog row, keyed by tier 4-0's prowess/pump body — waiting on the
+// stack above the Lightning Bolt that triggered it.
+func corpusProwessOnStack(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat].ID
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)].ID
+	monk := pushProwessCreature(g, me, "Monastery Swiftspear", 1, 2, game.KeywordProwess, "haste")
+	castCatalogSpell(t, g, "Lightning Bolt", "Instant", lightningBoltOracle,
+		[]game.TargetRef{{Kind: game.TargetPlayer, ID: opp}})
+	if it := corpusSettleTrigger(t, g, monk); it.Body != "prowess/pump" {
+		t.Fatalf("setup: the prowess trigger names body %q, want prowess/pump", it.Body)
+	}
+	return g
+}
+
+// corpusStormAfterCounter is a real Grapeshot's storm trigger waiting
+// on the stack after Counterspell countered the Grapeshot: the trigger
+// is data, and the spell it copies is in lastKnownStack.
+func corpusStormAfterCounter(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)].ID
+	castCatalogSpell(t, g, "Lightning Bolt", "Instant", lightningBoltOracle,
+		[]game.TargetRef{{Kind: game.TargetPlayer, ID: opp}})
+	passPriorityAroundTable(t, g)
+	shot := castCatalogSpell(t, g, "Grapeshot", "Sorcery", grapeshotOracle,
+		[]game.TargetRef{{Kind: game.TargetPlayer, ID: opp}})
+	corpusRequireTriggeredStamp(t, corpusSettleTrigger(t, g, shot), "own:")
+	counter := castCatalogSpell(t, g, "Counterspell", "Instant", corpusCounterspellOracle,
+		[]game.TargetRef{{Kind: game.TargetCard, ID: shot}})
+	for i := 0; i < 8 && g.Stack.Contains(counter); i++ {
+		if err := g.PassPriority(); err != nil {
+			t.Fatalf("PassPriority: %v", err)
+		}
+	}
+	snap := g.CaptureSnapshot()
+	if g.Stack.Contains(shot) || triggerOnStack(g, shot) == nil || len(snap.LastKnownStack) != 1 {
+		t.Fatalf("setup: grapeshot on the stack %v, storm trigger %v, %d last-known spells — want the storm trigger over a countered Grapeshot",
+			g.Stack.Contains(shot), triggerOnStack(g, shot) != nil, len(snap.LastKnownStack))
 	}
 	return g
 }

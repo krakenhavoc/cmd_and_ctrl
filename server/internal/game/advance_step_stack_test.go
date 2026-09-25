@@ -54,7 +54,7 @@ func seedUpkeepWatcher(t *testing.T, g *Game, owner *Player) *upkeepWatcherRecor
 				return true
 			},
 			Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
-				return NewTriggeredItem(source, "Test Upkeep Watcher — gain 1 life",
+				return newTriggeredItemForTest(source, "Test Upkeep Watcher — gain 1 life",
 					func(g *Game, item *StackItem) error {
 						rec.resolutions++
 						rec.resolvedIn = g.Turn.Step
@@ -216,7 +216,7 @@ func TestAdvanceStepStopsAtAPromptTheDriveItselfRaises(t *testing.T) {
 				return true
 			},
 			Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
-				return NewTriggeredItem(source, "Test Prompting Watcher — scry 1",
+				return newTriggeredItemForTest(source, "Test Prompting Watcher — scry 1",
 					func(g *Game, item *StackItem) error {
 						asked++
 						g.ScryForEffect(item.Controller, item.SourceCardID, 1)

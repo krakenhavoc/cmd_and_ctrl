@@ -39,28 +39,33 @@ func init() {
 				}
 				return g.CastTallyFor(ev.Actor).Noncreature == 1
 			},
-			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				caster := ev.Actor
-				powerAtTrigger := source.CurrentPower()
-				return game.NewTriggeredItem(source, "Esper Sentinel — draw unless caster pays {X}",
-					func(g *game.Game, item *game.StackItem) error {
-						x := powerAtTrigger
-						if live, ok := g.LookupCardForEffect(item.SourceCardID); ok {
-							x = live.CurrentPower()
-						}
-						if x <= 0 {
-							return nil
-						}
-						cost := fmt.Sprintf("{%d}", x)
-						return PayUnless{
-							Chooser:  caster,
-							Cost:     cost,
-							Question: "Esper Sentinel — pay " + cost + "?",
-							OnDecline: func(ctx *Context) error {
-								return DrawCards{Player: ctx.Controller(), N: 1}.Apply(ctx)
-							},
-						}.Apply(NewContext(g, item))
-					})
+			Key: "Esper Sentinel — draw unless caster pays {X}",
+			// The Sentinel's power at trigger time is a board read the
+			// effect cannot re-derive from item.Trigger alone (ADR 0041
+			// P9's fill-in Build): it is the CR 603.10 fallback X if the
+			// source has since left the battlefield.
+			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
+				item := game.NewTriggeredItem(source, "Esper Sentinel — draw unless caster pays {X}")
+				item.Params.Amount = source.CurrentPower()
+				return item
+			},
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				x := item.Params.Amount
+				if live, ok := g.LookupCardForEffect(item.SourceCardID); ok {
+					x = live.CurrentPower()
+				}
+				if x <= 0 {
+					return nil
+				}
+				cost := fmt.Sprintf("{%d}", x)
+				return PayUnless{
+					Chooser:  item.Trigger.Event.Actor,
+					Cost:     cost,
+					Question: "Esper Sentinel — pay " + cost + "?",
+					OnDecline: func(ctx *Context) error {
+						return DrawCards{Player: ctx.Controller(), N: 1}.Apply(ctx)
+					},
+				}.Apply(NewContext(g, item))
 			},
 		}},
 	})

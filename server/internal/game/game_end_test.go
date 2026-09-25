@@ -98,7 +98,7 @@ func seedEffectTrigger(t *testing.T, g *Game, owner *Player, oracle string, effe
 				return ev.Actor == source.Controller
 			},
 			Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
-				return NewTriggeredItem(source, "Test Win Trigger — you win", effect)
+				return newTriggeredItemForTest(source, "Test Win Trigger — you win", effect)
 			},
 		}}
 	})

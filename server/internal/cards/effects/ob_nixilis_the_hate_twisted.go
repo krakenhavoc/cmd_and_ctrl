@@ -52,16 +52,12 @@ func init() {
 			Watches:   []game.EventKind{game.EventDrawCard},
 			AppliesTo: ByAnOpponent,
 			Key:       "Ob Nixilis — 1 damage to that player",
-			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				drawer := ev.Actor
-				return game.NewTriggeredItem(source, "Ob Nixilis — 1 damage to that player",
-					func(g *game.Game, item *game.StackItem) error {
-						return DealDamage{
-							Source: item.SourceCardID,
-							Target: drawer,
-							Amount: 1,
-						}.Apply(NewContext(g, item))
-					})
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				return DealDamage{
+					Source: item.SourceCardID,
+					Target: item.Trigger.Event.Actor,
+					Amount: 1,
+				}.Apply(NewContext(g, item))
 			},
 		}},
 		Activated: []ActivatedAbility{{

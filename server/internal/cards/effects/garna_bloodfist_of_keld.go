@@ -34,13 +34,25 @@ func init() {
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return anotherCreatureYouControlDied(ev, source, g)
 			},
+			Key: "Garna, Bloodfist of Keld — draw a card or deal 1 damage to each opponent",
+			// "Was it attacking" reads the event log at trigger time
+			// (ADR 0041 P9's fill-in Build): a fact about the moment the
+			// creature died, not something the resolving item can
+			// re-derive from the board later.
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
 				attacking := b35WasAttackingWhenItLeft(g, ev.CardID, ev.Seq)
 				label := "Garna, Bloodfist of Keld — 1 damage to each opponent"
 				if attacking {
 					label = "Garna, Bloodfist of Keld — draw a card (it was attacking)"
 				}
-				return game.NewTriggeredItem(source, label, b35DrawIfAttackingElsePingOpponents(attacking))
+				item := game.NewTriggeredItem(source, label)
+				if attacking {
+					item.Params.Amount = 1
+				}
+				return item
+			},
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				return b35DrawIfAttackingElsePingOpponents(item.Params.Amount != 0)(g, item)
 			},
 		}},
 	})

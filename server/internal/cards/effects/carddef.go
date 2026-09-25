@@ -18,6 +18,15 @@ var defs = map[string]*game.CardDef{}
 // lookupDef is the game.CatalogLookup implementation.
 func lookupDef(key string) *game.CardDef { return defs[key] }
 
+// fileDef is the one writer of `defs`: it stamps every triggered row of
+// the definition with its catalog identity (the key and its index —
+// game.IdentifyCatalogRows, ADR 0041 P9) and files it. A row the engine
+// can name is a row whose waiting stack item can be restored.
+func fileDef(key string, d *game.CardDef) {
+	game.IdentifyCatalogRows(key, d)
+	defs[key] = d
+}
+
 // activatedShapes projects declared activated abilities into the
 // engine's shapes. Shared by buildDef and by buildGrantDef, because
 // a CR 707.9a granted activated ability is declared exactly as a

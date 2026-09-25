@@ -14,8 +14,18 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // is a FromStack ability (cascade's mechanism): it fires when the
 // spell is announced, goes on the stack above it, and resolves first
 // — so a Counterspell on the Krasis still leaves the life and the
-// cards behind, as printed. X is read off the stack item at trigger
-// time and halved, rounding down, each half separately.
+// cards behind, as printed.
+//
+// X is read off the SPELL's own stack item and halved, rounding down,
+// each half separately — but only while that spell is still on the
+// stack, which by the time this trigger RESOLVES it may not be: the
+// spell sits below the trigger, so a Counterspell aimed at it while
+// the trigger is still pending removes it first (CR 601.2c allows
+// targeting any spell on the stack, not just the top one). So the
+// halves are computed once, at trigger (Build) time, synchronously
+// with the cast, and carried on the item's Params — not re-derived at
+// resolution, where the spell may already be gone and the "as
+// printed" payout would be lost along with it.
 //
 // The X counters are the printed CR 614.1c entry clause and ride the
 // CR 614 pipeline as one — XCounters, seeded onto the entry event off
@@ -47,6 +57,7 @@ func init() {
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return ev.CardID == source.InstanceID
 			},
+			Key: "Hydroid Krasis — gain half X life and draw half X cards",
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
 				half := 0
 				if item := g.StackItemForEffect(source.InstanceID); item != nil && item.XValue > 0 {
@@ -58,14 +69,16 @@ func init() {
 					Owner:        ev.Actor,
 					SourceCardID: source.InstanceID,
 					Label:        "Hydroid Krasis — gain half X life and draw half X cards",
-					Effect: func(g *game.Game, item *game.StackItem) error {
-						ctx := NewContext(g, item)
-						if err := (GainLife{Player: item.Controller, Amount: half}).Apply(ctx); err != nil {
-							return err
-						}
-						return DrawCards{Player: item.Controller, N: half}.Apply(ctx)
-					},
+					Params:       game.EffectParams{Amount: half},
 				}
+			},
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				half := item.Params.Amount
+				ctx := NewContext(g, item)
+				if err := (GainLife{Player: item.Controller, Amount: half}).Apply(ctx); err != nil {
+					return err
+				}
+				return DrawCards{Player: item.Controller, N: half}.Apply(ctx)
 			},
 		}},
 	})

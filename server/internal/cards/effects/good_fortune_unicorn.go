@@ -26,9 +26,9 @@ func init() {
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b13AnotherCreatureYouControlEntered(ev, source, g)
 			},
-			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Good-Fortune Unicorn — put a +1/+1 counter on the creature that entered",
-					b33PutCounterOnEnteredCreature(ev.CardID))
+			Key: "Good-Fortune Unicorn — put a +1/+1 counter on the creature that entered",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				return b33PutCounterOnEnteredCreature(item.Trigger.Event.CardID)(g, item)
 			},
 		}},
 	})

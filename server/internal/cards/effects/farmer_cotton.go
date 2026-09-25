@@ -31,24 +31,26 @@ func init() {
 		Triggered: []game.TriggeredAbility{{
 			Watches:   []game.EventKind{game.EventETB},
 			AppliesTo: Self,
+			Key:       "Farmer Cotton — create X Halflings and X Food",
+			// #1312/#1357: read once, here (ADR 0041 P9's fill-in
+			// Build), and stamp the plain int on Params.Amount rather
+			// than closing over the card, which the Effect must not
+			// capture.
 			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				// #1312/#1357: read once, here, and close over the
-				// plain int — not the card, which the Effect below
-				// must not capture (AGENTS.md: undo restores a
-				// cloned game and the closure has to resolve
-				// against that one).
-				x := source.CastX()
-				return game.NewTriggeredItem(source, "Farmer Cotton — create X Halflings and X Food",
-					func(g *game.Game, item *game.StackItem) error {
-						if x <= 0 {
-							return nil
-						}
-						ctx := NewContext(g, item)
-						if err := (CreateToken{Controller: item.Controller, Template: TokenCard("1/1 white Halfling"), N: x}).Apply(ctx); err != nil {
-							return err
-						}
-						return CreateToken{Controller: item.Controller, Template: FoodToken(), N: x}.Apply(ctx)
-					})
+				item := game.NewTriggeredItem(source, "Farmer Cotton — create X Halflings and X Food")
+				item.Params.Amount = source.CastX()
+				return item
+			},
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				x := item.Params.Amount
+				if x <= 0 {
+					return nil
+				}
+				ctx := NewContext(g, item)
+				if err := (CreateToken{Controller: item.Controller, Template: TokenCard("1/1 white Halfling"), N: x}).Apply(ctx); err != nil {
+					return err
+				}
+				return CreateToken{Controller: item.Controller, Template: FoodToken(), N: x}.Apply(ctx)
 			},
 		}},
 	})
