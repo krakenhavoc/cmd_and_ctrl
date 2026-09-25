@@ -18,12 +18,15 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/lobby"
 )
 
-// Default request timeout. The loopback calls we make (admin
-// login, create game, list games) should resolve in well under
-// 100 ms on the VPS. 5 s is generous headroom for a GC pause or
-// a cold-started server; the 3 s Discord interaction deadline
-// forces us to keep this below the SDK's own budget.
-const defaultRequestTimeout = 5 * time.Second
+// Default request timeout: the http.Client's CEILING, not the
+// per-call budget. Every call is made with its interaction's
+// context, which is what actually bounds it — 4 s for the game
+// commands (defaultInteractionTimeout), 20 s for the two deck
+// commands (deckInteractionTimeout), whose server call fetches the
+// deck from Moxfield or Archidekt and may then call GitHub, each
+// with its own 10 s cap server-side (ADR 0095). The ceiling sits
+// above the longest context so it never cuts a deck call short.
+const defaultRequestTimeout = 25 * time.Second
 
 // Errors returned by ServerClient. Wrapped by the command
 // handlers into user-visible messages; callers should use
