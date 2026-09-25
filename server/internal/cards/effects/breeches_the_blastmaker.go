@@ -65,11 +65,12 @@ func init() {
 		Triggered: []game.TriggeredAbility{{
 			Watches:   []game.EventKind{game.EventCast},
 			AppliesTo: YouCastYourSecondSpellEachTurn,
-			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				spell := ev.CardID
-				return game.NewTriggeredItem(source,
-					"Breeches, the Blastmaker — sacrifice an artifact and flip a coin",
-					breechesOffer(spell))
+			Key:       "Breeches, the Blastmaker — sacrifice an artifact and flip a coin",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				if item.Trigger == nil {
+					return nil
+				}
+				return breechesOffer(item.Trigger.Event.CardID)(g, item)
 			},
 		}},
 	})

@@ -30,10 +30,8 @@ func init() {
 				return ev.CardID == source.InstanceID
 			},
 			Targets: TargetPlayer("target opponent", Opponent()),
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Archon of Cruelty — target opponent sacrifices, discards and loses 3; you draw and gain 3",
-					b09ArchonOfCrueltyTrigger)
-			},
+			Key:     "Archon of Cruelty — target opponent sacrifices, discards and loses 3; you draw and gain 3",
+			Effect:  b09ArchonOfCrueltyTrigger,
 		}},
 	})
 }

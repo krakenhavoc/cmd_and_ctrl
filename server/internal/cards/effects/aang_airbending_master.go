@@ -57,12 +57,11 @@ func init() {
 			{
 				Watches:   []game.EventKind{game.EventETB},
 				AppliesTo: Self,
+				Key:       etbLabel,
 				TargetsFrom: func(_ game.TriggerContext, source *game.Card, _ *game.Game) *game.TargetSpec {
 					return TargetCreature("another target creature", NotSelf(source.InstanceID))
 				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, etbLabel, AirbendOtherTarget)
-				},
+				Effect: AirbendOtherTarget,
 			},
 			OncePerBatch(On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return creatureYouControlLeftWithoutDying(ev, source, g)

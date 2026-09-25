@@ -706,30 +706,6 @@ type Game struct {
 	// builtin_replacements.go. Added in S17 sub-PR 2.
 	BuiltinReplacements []ReplacementEffect
 
-	// TurnScopedBlockRules is the UNTIL-END-OF-TURN slot for the
-	// CR 509.1b block rules of #750 — Gingerbrute's "target creature
-	// can't block this turn"-shaped effects, and any other block
-	// restriction a spell or ability creates for the turn rather than
-	// a permanent printing. Read by forEachBlockRuleLocked alongside
-	// the battlefield walk, so a turn-scoped rule is a pair check and
-	// a count bound exactly as a catalog one is.
-	//
-	// Emptied wholesale by ClearTurnScopedBlockRulesLocked in the
-	// cleanup sweep. The
-	// registry carries no turn stamp because it holds nothing that
-	// outlasts a turn: no card found while drafting ADR 0045's
-	// addendum prints a block rule with a longer duration, and one
-	// that arrives would use #755's duration model rather than a
-	// second one here.
-	//
-	// Closures, so the snapshot cannot carry it: counted in
-	// ContinuationCensus.TurnScopedBlockRules and marked `dropped` in
-	// the drift test. (Its replacement twin, TurnScopedReplacements,
-	// was retired by ADR 0041 phase 3 tier 3b: those effects are
-	// ScopedEffect records now.)
-	// See ADR 0045 addendum Decision 11 and block_rules.go.
-	TurnScopedBlockRules []BlockRule
-
 	// ScopedEffects is the CONTINUOUS-EFFECT slot for effects whose
 	// lifetime is a duration rather than a battlefield source: Giant
 	// Growth's +3/+3, Overrun's mass pump and trample grant, a crewed
@@ -740,7 +716,12 @@ type Game struct {
 	// point. Adapted into the layer pass by activeStaticAbilitiesLocked
 	// and swept by the one duration sweep. See scoped_effects.go and
 	// duration.go. Tier 3a retired the closure-bearing ScopedStatics
-	// registry it used to sit beside (S32's TurnScopedStatics).
+	// registry it used to sit beside (S32's TurnScopedStatics); tier 3b
+	// retired its two turn-scoped twins the same way — replacement
+	// effects (TurnScopedReplacements, scoped_replacements.go) and block
+	// rules (TurnScopedBlockRules, scoped_block_rules.go) are both
+	// ScopedEffect records here now, read by their own non-layer
+	// reader.
 	ScopedEffects []ScopedEffect
 
 	// scopedEffectMemo is the layer-pass adapter's output for

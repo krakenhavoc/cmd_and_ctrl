@@ -225,7 +225,6 @@ var gameFields = plan(
 	"ScopedEffects", carried, "GameSnapshot.ScopedEffects — ADR 0041 phase 3's data record for a continuous effect with a duration (#1497)",
 	"scopedEffectMemo", rebuilt, "the layer-pass adapter's memo over ScopedEffects (#1558); a restored game's first recompute builds it",
 	"scopedEffectSeq", rebuilt, "the last ScopedEffect.Seq handed out (ADR 0041 P8); restore sets it to the largest Seq the carried records hold",
-	"TurnScopedBlockRules", dropped, "BlockRule is two closures; counted in ContinuationCensus.TurnScopedBlockRules",
 	"testReplacements", dropped, "test-only injection slot; production has no path to it",
 	"replacementsAppliedThisEvent", dropped, "non-empty between actions only for an event paused on a replacement prompt, and that prompt's resume frame is counted in ContinuationCensus.ChoiceResumeFrames; Clone deep-copies it for undo (#808)",
 	"nextReplacementEventID", dropped, "mints keys for the map above, which restores empty",

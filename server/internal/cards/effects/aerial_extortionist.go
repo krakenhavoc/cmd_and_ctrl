@@ -45,10 +45,8 @@ func init() {
 					return b26SelfEnteredOrDealtCombatDamageToPlayer(ev, source, g)
 				},
 				Targets: TargetPermanent("up to one target nonland permanent", Nonland()).WithCount(0, 1),
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Aerial Extortionist — exile a nonland permanent; its owner may cast it",
-						b26ExileFirstLegalTargetOwnerMayCast)
-				},
+				Key:     "Aerial Extortionist — exile a nonland permanent; its owner may cast it",
+				Effect:  b26ExileFirstLegalTargetOwnerMayCast,
 			},
 			On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b26AnotherPlayerCastFromOutsideHand(ev, source, g)

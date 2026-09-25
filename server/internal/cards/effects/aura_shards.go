@@ -28,9 +28,8 @@ func init() {
 				return ok && entered.IsCreature() && entered.Controller == source.Controller
 			},
 			Targets: TargetPermanent("target artifact or enchantment", Or(Artifact(), Enchantment())),
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return destroyChosenTargetTrigger(source, "Aura Shards — destroy target artifact or enchantment")
-			},
+			Key:     "Aura Shards — destroy target artifact or enchantment",
+			Effect:  destroyChosenPermanent,
 			OptionalPrompt: &game.TriggerOptionalPrompt{
 				Question: "Aura Shards — destroy an artifact or enchantment?",
 			},

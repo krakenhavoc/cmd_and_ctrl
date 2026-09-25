@@ -30,15 +30,13 @@ func init() {
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return attachedCreatureDealtCombatDamageToPlayer(ev, source, g)
 			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Bloodforged Battle-Axe — create a token copy of this Equipment",
-					func(g *game.Game, item *game.StackItem) error {
-						return CreateTokenCopy{
-							Controller: item.Controller,
-							Copy:       item.SourceCardID,
-							N:          1,
-						}.Apply(NewContext(g, item))
-					})
+			Key: "Bloodforged Battle-Axe — create a token copy of this Equipment",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				return CreateTokenCopy{
+					Controller: item.Controller,
+					Copy:       item.SourceCardID,
+					N:          1,
+				}.Apply(NewContext(g, item))
 			},
 		}},
 		Activated: []ActivatedAbility{
