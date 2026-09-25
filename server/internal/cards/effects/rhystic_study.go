@@ -30,24 +30,22 @@ func init() {
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return ev.Actor != source.Controller
 			},
-			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				caster := ev.Actor
-				return game.NewTriggeredItem(source, "Rhystic Study — draw unless caster pays {1}",
-					func(g *game.Game, item *game.StackItem) error {
-						return PayUnless{
-							Chooser:  caster,
-							Cost:     "{1}",
-							Question: "Rhystic Study — pay {1}?",
-							OnDecline: func(ctx *Context) error {
-								return MayChoice{
-									Question: "Rhystic Study — draw a card?",
-									OnYes: func(ctx *Context) error {
-										return DrawCards{Player: ctx.Controller(), N: 1}.Apply(ctx)
-									},
-								}.Apply(ctx)
+			Key: "Rhystic Study — draw unless caster pays {1}",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				ctx := NewContext(g, item)
+				return PayUnless{
+					Chooser:  ctx.Trigger().Event.Actor,
+					Cost:     "{1}",
+					Question: "Rhystic Study — pay {1}?",
+					OnDecline: func(ctx *Context) error {
+						return MayChoice{
+							Question: "Rhystic Study — draw a card?",
+							OnYes: func(ctx *Context) error {
+								return DrawCards{Player: ctx.Controller(), N: 1}.Apply(ctx)
 							},
-						}.Apply(NewContext(g, item))
-					})
+						}.Apply(ctx)
+					},
+				}.Apply(ctx)
 			},
 		}},
 	})

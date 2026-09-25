@@ -35,14 +35,12 @@ func init() {
 				},
 				Targets: TargetCreature("target creature you control other than Rosie Cotton",
 					YouControl(), b03NotNamed("Rosie Cotton of South Lane")),
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Rosie Cotton of South Lane — put a +1/+1 counter on target creature",
-						func(g *game.Game, item *game.StackItem) error {
-							if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
-								return nil
-							}
-							return AddCounter{Target: item.Targets[0].ID, Kind: "+1/+1", N: 1}.Apply(NewContext(g, item))
-						})
+				Key: "Rosie Cotton of South Lane — put a +1/+1 counter on target creature",
+				Effect: func(g *game.Game, item *game.StackItem) error {
+					if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
+						return nil
+					}
+					return AddCounter{Target: item.Targets[0].ID, Kind: "+1/+1", N: 1}.Apply(NewContext(g, item))
 				},
 			},
 		},

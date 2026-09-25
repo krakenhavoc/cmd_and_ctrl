@@ -52,10 +52,13 @@ func init() {
 				return b35SelfWasDealtDamage(ev, source)
 			},
 			Targets: b35TargetAnyOther(),
+			Key:     "Screaming Nemesis — deal that much damage to any other target",
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Screaming Nemesis — deal that much damage to any other target",
-					b35RedirectDamageToChosen(ev.Amount))
+				item := game.NewTriggeredItem(source, "Screaming Nemesis — deal that much damage to any other target", nil)
+				item.Params.Amount = ev.Amount
+				return item
 			},
+			Effect: b35RedirectDamageToChosen,
 		}},
 	})
 }

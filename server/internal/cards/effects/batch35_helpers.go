@@ -491,23 +491,22 @@ func b35GainLifeEqualToToughness(g *game.Game, item *game.StackItem) error {
 }
 
 // b35RedirectDamageToChosen is Screaming Nemesis's body: the Nemesis
-// deals the event's amount, captured in Build, to the announced
-// target if it is still legal and is not the Nemesis itself. The
-// SOURCE is the Nemesis, as printed, and a Nemesis that died to the
-// damage still deals it — the damage path does not need the source
-// on the battlefield.
-func b35RedirectDamageToChosen(amount int) func(g *game.Game, item *game.StackItem) error {
-	return func(g *game.Game, item *game.StackItem) error {
-		if amount <= 0 {
-			return nil
-		}
-		ctx := NewContext(g, item)
-		ts := ctx.LegalTargets()
-		if len(ts) == 0 || (ts[0].Kind == game.TargetCard && ts[0].ID == item.SourceCardID) {
-			return nil
-		}
-		return DealDamage{Source: item.SourceCardID, Target: ts[0].ID, Amount: amount}.Apply(ctx)
+// deals the event's amount, stamped onto item.Params.Amount by a
+// fill-in Build, to the announced target if it is still legal and is
+// not the Nemesis itself. The SOURCE is the Nemesis, as printed, and
+// a Nemesis that died to the damage still deals it — the damage path
+// does not need the source on the battlefield.
+func b35RedirectDamageToChosen(g *game.Game, item *game.StackItem) error {
+	amount := item.Params.Amount
+	if amount <= 0 {
+		return nil
 	}
+	ctx := NewContext(g, item)
+	ts := ctx.LegalTargets()
+	if len(ts) == 0 || (ts[0].Kind == game.TargetCard && ts[0].ID == item.SourceCardID) {
+		return nil
+	}
+	return DealDamage{Source: item.SourceCardID, Target: ts[0].ID, Amount: amount}.Apply(ctx)
 }
 
 // b35PutCounterOnSelf is Wildwood Scourge's body: one +1/+1 counter

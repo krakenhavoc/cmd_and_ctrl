@@ -36,9 +36,8 @@ func init() {
 			},
 			Targets: TargetPermanent("target artifact or enchantment an opponent controls",
 				Or(Artifact(), Enchantment()), OpponentControls()),
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return destroyChosenTargetTrigger(source, "Scrapshooter — destroy target artifact or enchantment an opponent controls")
-			},
+			Key:    "Scrapshooter — destroy target artifact or enchantment an opponent controls",
+			Effect: destroyChosenPermanent,
 		}},
 	})
 }

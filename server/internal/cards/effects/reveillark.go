@@ -38,10 +38,8 @@ func init() {
 			},
 			Targets: TargetCardInGraveyard("up to two target creature cards with power 2 or less from your graveyard",
 				YouOwn(), Creature(), PowerLE(2)).WithCount(0, 2),
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Reveillark — return up to two small creature cards to the battlefield",
-					b34ReturnUpToTwoSmallCreatures)
-			},
+			Key:    "Reveillark — return up to two small creature cards to the battlefield",
+			Effect: b34ReturnUpToTwoSmallCreatures,
 		}},
 	})
 }

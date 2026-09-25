@@ -53,15 +53,12 @@ func init() {
 				// EventZoneMove is where that lives.)
 				return cardDied(ev, source)
 			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				rancor := source.InstanceID
-				return game.NewTriggeredItem(source, "Rancor — return it to your hand",
-					func(g *game.Game, item *game.StackItem) error {
-						return ReturnFromGraveyard{
-							Target: rancor,
-							Dest:   game.ZoneHand,
-						}.Apply(NewContext(g, item))
-					})
+			Key: "Rancor — return it to your hand",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				return ReturnFromGraveyard{
+					Target: item.SourceCardID,
+					Dest:   game.ZoneHand,
+				}.Apply(NewContext(g, item))
 			},
 		}},
 	})

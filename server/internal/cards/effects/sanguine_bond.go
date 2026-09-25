@@ -35,15 +35,17 @@ func init() {
 				return ev.Target == source.Controller && ev.Amount > 0
 			},
 			Targets: TargetPlayer("target opponent", Opponent()),
+			Key:     "Sanguine Bond — target opponent loses that much life",
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				amount := ev.Amount
-				return game.NewTriggeredItem(source, "Sanguine Bond — target opponent loses that much life",
-					func(g *game.Game, item *game.StackItem) error {
-						if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetPlayer {
-							return nil
-						}
-						return g.ChangePlayerLifeForEffect(item.SourceCardID, item.Targets[0].ID, -amount)
-					})
+				item := game.NewTriggeredItem(source, "Sanguine Bond — target opponent loses that much life", nil)
+				item.Params.Amount = ev.Amount
+				return item
+			},
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetPlayer {
+					return nil
+				}
+				return g.ChangePlayerLifeForEffect(item.SourceCardID, item.Targets[0].ID, -item.Params.Amount)
 			},
 		}},
 	})
