@@ -26,16 +26,17 @@ func init() {
 				_, ok := b04OpponentLostLife(ev, source.Controller, g)
 				return ok
 			},
-			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
-				lost, _ := b04OpponentLostLife(ev, source.Controller, g)
-				victim := ev.Target
-				return game.NewTriggeredItem(source, "Mindcrank — that player mills that many cards",
-					func(g *game.Game, item *game.StackItem) error {
-						if g.PlayerByIDForEffect(victim) == nil {
-							return nil
-						}
-						return MillCards{Player: victim, N: lost}.Apply(NewContext(g, item))
-					})
+			Key: "Mindcrank — that player mills that many cards",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				victim := item.Trigger.Event.Target
+				if g.PlayerByIDForEffect(victim) == nil {
+					return nil
+				}
+				lost, ok := b04OpponentLostLife(item.Trigger.Event, item.Controller, g)
+				if !ok {
+					return nil
+				}
+				return MillCards{Player: victim, N: lost}.Apply(NewContext(g, item))
 			},
 		}},
 	})

@@ -37,9 +37,13 @@ func init() {
 				AppliesTo: func(ev game.Event, _ *game.Card, _ game.Characteristic, _ *game.Game) bool {
 					return b35DrawStepBegan(ev)
 				},
-				Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Nekusar, the Mindrazer — that player draws an additional card",
-						b35ThatPlayerDrawsOne(ev.Actor))
+				Key: "Nekusar, the Mindrazer — that player draws an additional card",
+				Effect: func(g *game.Game, item *game.StackItem) error {
+					drawer := item.Trigger.Event.Actor
+					if g.PlayerByIDForEffect(drawer) == nil {
+						return nil
+					}
+					return DrawCards{Player: drawer, N: 1}.Apply(NewContext(g, item))
 				},
 			},
 			{
@@ -47,9 +51,13 @@ func init() {
 				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 					return b35OpponentDrewACard(ev, source)
 				},
-				Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Nekusar, the Mindrazer — 1 damage to the player who drew",
-						b35DamageThatPlayer(ev.Actor, 1))
+				Key: "Nekusar, the Mindrazer — 1 damage to the player who drew",
+				Effect: func(g *game.Game, item *game.StackItem) error {
+					victim := item.Trigger.Event.Actor
+					if g.PlayerByIDForEffect(victim) == nil {
+						return nil
+					}
+					return DealDamage{Source: item.SourceCardID, Target: victim, Amount: 1}.Apply(NewContext(g, item))
 				},
 			},
 		},

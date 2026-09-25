@@ -43,12 +43,9 @@ func init() {
 					!b28TriggerPromptPendingFrom(g, source)
 			},
 			OptionalPrompt: &game.TriggerOptionalPrompt{Question: "Nykthos Paragon — put that many +1/+1 counters on each creature you control?"},
-			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				n := ev.Amount
-				return game.NewTriggeredItem(source, b28NykthosParagonLabel,
-					func(g *game.Game, item *game.StackItem) error {
-						return b28PutCountersOnEachCreatureYouControl(g, item, n)
-					})
+			Key:            b28NykthosParagonLabel,
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				return b28PutCountersOnEachCreatureYouControl(g, item, item.Trigger.Event.Amount)
 			},
 		}},
 	})

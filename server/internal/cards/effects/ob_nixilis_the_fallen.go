@@ -31,24 +31,22 @@ func init() {
 			},
 			OptionalPrompt: &game.TriggerOptionalPrompt{Question: "Ob Nixilis, the Fallen — have target player lose 3 life? (He gets three +1/+1 counters.)"},
 			Targets:        TargetPlayer("target player"),
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Ob Nixilis, the Fallen — target player loses 3 life, three +1/+1 counters",
-					func(g *game.Game, item *game.StackItem) error {
-						if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetPlayer {
-							return nil
-						}
-						ctx := NewContext(g, item)
-						if p := ctx.PlayerByID(item.Targets[0].ID); p == nil || p.Eliminated {
-							return nil
-						}
-						if err := g.ChangePlayerLifeForEffect(item.SourceCardID, item.Targets[0].ID, -3); err != nil {
-							return err
-						}
-						if !b09SourceStillOnBattlefield(g, item) {
-							return nil
-						}
-						return AddCounter{Target: item.SourceCardID, Kind: "+1/+1", N: 3}.Apply(ctx)
-					})
+			Key:            "Ob Nixilis, the Fallen — target player loses 3 life, three +1/+1 counters",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetPlayer {
+					return nil
+				}
+				ctx := NewContext(g, item)
+				if p := ctx.PlayerByID(item.Targets[0].ID); p == nil || p.Eliminated {
+					return nil
+				}
+				if err := g.ChangePlayerLifeForEffect(item.SourceCardID, item.Targets[0].ID, -3); err != nil {
+					return err
+				}
+				if !b09SourceStillOnBattlefield(g, item) {
+					return nil
+				}
+				return AddCounter{Target: item.SourceCardID, Kind: "+1/+1", N: 3}.Apply(ctx)
 			},
 		}},
 	})

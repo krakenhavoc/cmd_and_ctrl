@@ -36,13 +36,10 @@ func init() {
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return attackDeclared(ev, source)
 			},
-			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				defender := ev.Target
-				return game.NewTriggeredItem(source, "Parhelion II — two attacking 4/4 Angels",
-					func(g *game.Game, item *game.StackItem) error {
-						return g.CreateTokensAttackingForEffect(
-							item.Controller, TokenCard("4/4 white Angel with flying and vigilance"), 2, defender)
-					})
+			Key: "Parhelion II — two attacking 4/4 Angels",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				return g.CreateTokensAttackingForEffect(
+					item.Controller, TokenCard("4/4 white Angel with flying and vigilance"), 2, item.Trigger.Event.Target)
 			},
 		}},
 	})

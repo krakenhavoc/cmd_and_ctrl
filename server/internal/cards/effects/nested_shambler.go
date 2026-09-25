@@ -45,18 +45,19 @@ func init() {
 			},
 			Key: "Nested Shambler — a tapped Squirrel for each point of its power",
 			Build: func(_ game.Event, source *game.Card, lki game.Characteristic, g *game.Game) *game.StackItem {
-				power := b13LastKnownPower(g, source.InstanceID, lki)
-				return game.NewTriggeredItem(source, "Nested Shambler — a tapped Squirrel for each point of its power",
-					func(g *game.Game, item *game.StackItem) error {
-						if power <= 0 {
-							return nil
-						}
-						return CreateTokenAdvanced{
-							Controller: item.Controller,
-							Spec:       Token(TokenCard("1/1 green Squirrel")).EntersTapped(),
-							N:          power,
-						}.Apply(NewContext(g, item))
-					})
+				item := game.NewTriggeredItem(source, "Nested Shambler — a tapped Squirrel for each point of its power", nil)
+				item.Params.Amount = b13LastKnownPower(g, source.InstanceID, lki)
+				return item
+			},
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				if item.Params.Amount <= 0 {
+					return nil
+				}
+				return CreateTokenAdvanced{
+					Controller: item.Controller,
+					Spec:       Token(TokenCard("1/1 green Squirrel")).EntersTapped(),
+					N:          item.Params.Amount,
+				}.Apply(NewContext(g, item))
 			},
 		}},
 	})

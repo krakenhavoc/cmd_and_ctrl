@@ -504,18 +504,6 @@ func b33DamageDefendingPlayerFromSource(defender uuid.UUID, n int) func(g *game.
 	}
 }
 
-// b33CreateInsectsPerMinusCounterPlaced is Nest of Scarabs' body:
-// `n` 1/1 black Insects, `n` being the number of -1/-1 counters the
-// firing event placed, captured in Build.
-func b33CreateInsectsPerMinusCounterPlaced(n int) func(g *game.Game, item *game.StackItem) error {
-	return func(g *game.Game, item *game.StackItem) error {
-		if n <= 0 {
-			return nil
-		}
-		return CreateToken{Controller: item.Controller, Template: TokenCard("1/1 black Insect"), N: n}.Apply(NewContext(g, item))
-	}
-}
-
 // b33ReanimateChosenWithCounters is Rakdos Joins Up's entry body: the
 // announced creature card, if still in the controller's graveyard,
 // returns to the battlefield under its owner's control ("from YOUR
@@ -596,23 +584,6 @@ func createTappedZombie(g *game.Game, item *game.StackItem) error {
 		Spec:       Token(BlackZombieToken()).EntersTapped(),
 		N:          1,
 	}.Apply(NewContext(g, item))
-}
-
-// b33ExileDeadThenCounterOnEachVampire is Patron of the Vein's dies
-// body: the dead creature is exiled if it is still in a graveyard (a
-// card that has since been reanimated, or an opponent's commander
-// that went to the command zone, is left where it is), then every
-// Vampire the controller controls gets a +1/+1 counter — the second
-// half is not conditional on the first, as printed.
-func b33ExileDeadThenCounterOnEachVampire(dead uuid.UUID) func(g *game.Game, item *game.StackItem) error {
-	return func(g *game.Game, item *game.StackItem) error {
-		if z := g.FindCardZoneForEffect(dead); z != nil && z.Kind == game.ZoneGraveyard {
-			if err := (ExileTarget{Target: dead}).Apply(NewContext(g, item)); err != nil {
-				return err
-			}
-		}
-		return b17PutCounterOnEachVampireYouControl(g, item)
-	}
 }
 
 // b33ScryN is "scry N" as a trigger body (Hermes' Bird attack).
