@@ -49,32 +49,28 @@ func init() {
 				}),
 				Key:     "Gatekeeper of Malakir — kicked, target player sacrifices",
 				Targets: TargetPlayer("target player"),
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source,
-						"Gatekeeper of Malakir — target player sacrifices a creature",
-						func(g *game.Game, item *game.StackItem) error {
-							victim := uuid.Nil
-							for _, t := range item.Targets {
-								if t.Kind == game.TargetPlayer {
-									victim = t.ID
-									break
-								}
-							}
-							if victim == uuid.Nil {
-								return nil
-							}
-							var creatures []uuid.UUID
-							for _, c := range g.BattlefieldCardsForEffect() {
-								if c.Controller == victim && c.IsCreature() {
-									creatures = append(creatures, c.InstanceID)
-								}
-							}
-							return SacrificeChoice{
-								Player:     victim,
-								Candidates: creatures,
-								Question:   "Gatekeeper of Malakir — sacrifice a creature",
-							}.Apply(NewContext(g, item))
-						})
+				Effect: func(g *game.Game, item *game.StackItem) error {
+					victim := uuid.Nil
+					for _, t := range item.Targets {
+						if t.Kind == game.TargetPlayer {
+							victim = t.ID
+							break
+						}
+					}
+					if victim == uuid.Nil {
+						return nil
+					}
+					var creatures []uuid.UUID
+					for _, c := range g.BattlefieldCardsForEffect() {
+						if c.Controller == victim && c.IsCreature() {
+							creatures = append(creatures, c.InstanceID)
+						}
+					}
+					return SacrificeChoice{
+						Player:     victim,
+						Candidates: creatures,
+						Question:   "Gatekeeper of Malakir — sacrifice a creature",
+					}.Apply(NewContext(g, item))
 				},
 			},
 		},

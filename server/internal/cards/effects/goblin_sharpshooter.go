@@ -24,10 +24,10 @@ func init() {
 				_, died := diedCreature(ev, g)
 				return died
 			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Goblin Sharpshooter — untap", func(g *game.Game, item *game.StackItem) error {
-					return UntapTarget{Target: item.SourceCardID}.Apply(NewContext(g, item))
-				})
-			}}},
+			Key: "Goblin Sharpshooter — untap",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				return UntapTarget{Target: item.SourceCardID}.Apply(NewContext(g, item))
+			},
+		}},
 	})
 }

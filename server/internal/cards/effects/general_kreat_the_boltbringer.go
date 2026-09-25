@@ -51,12 +51,9 @@ func init() {
 				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 					return b21CreatureOfSubtypeYouControlAttacked(ev, source, g, "Goblin")
 				},
-				Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					defender := ev.Target
-					return game.NewTriggeredItem(source, b21KreatAttackLabel,
-						func(g *game.Game, item *game.StackItem) error {
-							return g.CreateTokensAttackingForEffect(item.Controller, b21TappedAttackingGoblin(), 1, defender)
-						})
+				Key: b21KreatAttackLabel,
+				Effect: func(g *game.Game, item *game.StackItem) error {
+					return g.CreateTokensAttackingForEffect(item.Controller, b21TappedAttackingGoblin(), 1, item.Trigger.Event.Target)
 				},
 			},
 			WheneverAnotherCreatureEntersUnderYourControl("General Kreat — 1 damage to each opponent", func(g *game.Game, item *game.StackItem) error {

@@ -46,11 +46,9 @@ func init() {
 			AppliesTo: b06SelfETB,
 			Targets: TargetPermanent("any number of target creatures and/or planeswalkers",
 				Or(Creature(), Planeswalker())).WithCount(0, 4),
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Fury — 4 damage divided among the targets",
-					func(g *game.Game, item *game.StackItem) error {
-						return b22DamageDividedEvenly(NewContext(g, item), 4)
-					})
+			Key: "Fury — 4 damage divided among the targets",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				return b22DamageDividedEvenly(NewContext(g, item), 4)
 			},
 		}},
 	})

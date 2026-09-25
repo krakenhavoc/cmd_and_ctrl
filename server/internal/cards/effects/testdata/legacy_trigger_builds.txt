@@ -102,53 +102,12 @@ Dragonlord Atarka | daff70a4-a990-47c9-b6ef-2c379272c8a3 | 0
 Drakuseth, Maw of Flames | 060deaff-44d6-4f03-9568-bcb7add80255 | 0
 Dualcaster Mage | 8eb7c0a5-6190-40de-b473-2d1daa3bbe28 | 0
 Duplicant | ea86abfa-6cab-4ef0-8463-34136fc25b59 | 0
-Duskshell Crawler | e54ad5a1-e79d-42db-a3e9-5caecae62c9f | 0
-Edea, Possessed Sorceress | 7beb7505-b765-486d-a205-78325922a10f | 2
-Edric, Spymaster of Trest | 9a1de7e4-9930-4db3-a8f3-d146d0abf38b | 0
-Emeria, the Sky Ruin | cc999cf2-c99b-4911-8c52-6cc4a99fcc7b | 0
-Enduring Tenacity | 98e698ae-1a69-469c-9cfb-0e3fedeb71d4 | 0
 Eroded Canyon | 852c6520-d148-4923-a312-05a9af821f24 | 0
-Ertai Resurrected | 3d038f7c-95fa-4b71-8f74-b9b4dd45cde0 | 0
-Esika's Chariot | 8e7b079d-9ede-421c-bd2b-f9a5126a8e6f | 1
-Esper Sentinel | 5def9f38-0a0b-4e8d-9f9d-29dcb46520b4 | 0
-Eternal Witness | 30b24e8e-3b0e-4d8e-90f3-f66eb7c1858c | 0
-Eternal of Harsh Truths | 5c09d646-afea-4fd0-9752-04820b81cc5b | 0
 Eternal of Harsh Truths | 5c09d646-afea-4fd0-9752-04820b81cc5b | 1
-Exquisite Blood | 8f933fae-6c0c-42d7-a817-14760d8285cd | 0
 Fable of the Mirror-Breaker | c0957e5e-c71b-439c-931c-9f55d2f76ace | 0
 Fable of the Mirror-Breaker | c0957e5e-c71b-439c-931c-9f55d2f76ace | 1
 Fable of the Mirror-Breaker | c0957e5e-c71b-439c-931c-9f55d2f76ace | 2
-Falkenrath Noble | 3739b179-bc81-4737-8376-66a57e16b942 | 0
-Farmer Cotton | 11f1d2b7-0c2b-40df-bf90-3c55b23449af | 0
-Fate Unraveler | 7d66f67d-3148-4636-ac5a-2cf8a51d5e50 | 0
-Fevered Visions | 70763549-4b4e-4cb8-8c02-0639ba18bb1a | 0
-Firemane Commando | ac675899-25bb-4f06-9c8c-bf188024495f | 1
-Flumph | bc328acc-8521-4581-88c3-99a7cb2c1cdb | 0
-Font of Mythos | 7194a262-5e7a-4c12-b271-2bc5e0799477 | 0
-Forbidden Orchard | cfd60d1f-9832-4408-b84e-0fd3018b015b | 0
-Forced Fruition | 448b27a5-7c0c-4ab6-bddf-bd62b920aacc | 0
-Forum Familiar | 7ea0012b-b90b-43d6-bb5b-e4e92452bea7 | 0
-Foundation Breaker | 8b7a3613-f1bd-4262-9b11-b631167c2c2d | 0
-Fury | fbf9f8c5-849f-45d5-8129-5fc683c21a04 | 0
-Garna, Bloodfist of Keld | 3fb83218-e18d-405d-91c8-46b5e4e672a9 | 0
-Gatekeeper of Malakir | 6781f8ae-2a86-4e3d-bc43-48809c9d6c26 | 0
-General Kreat, the Boltbringer | da1c1c70-c2fa-4ba7-89fe-d9af3fb353b9 | 0
-Generous Plunderer | 91c835d1-22ca-4c90-9ba6-c8e01bbc0347 | 1
-Genesis Chamber | 150ab025-5cc3-4468-a724-bbba8838445d | 0
-Gimli's Reckless Might | 824abca7-b5e2-4ddb-ac7d-b7d04758a3c9 | 0
-Gix, Yawgmoth Praetor | 928d977e-cff0-4e0e-83bb-16d73a754f35 | 0
-Goblin Sharpshooter | d81285b7-a718-411a-8be3-ecc0cfe0bcb0 | 0
-God-Eternal Bontu | 183891b0-b5ec-47f4-8d09-b9d3cfc4e7f1 | 0
-Goldspan Dragon | 716b3ea2-45b7-4a8f-af72-de7f4e510eff | 0
-Goldvein Hydra | 2b62543f-a475-457a-a96b-b5d070383d3c | 0
-Gonti, Night Minister | e16f79c1-ffbb-4893-b62a-d4e9d15e2b16 | 0
-Gonti, Night Minister | e16f79c1-ffbb-4893-b62a-d4e9d15e2b16 | 1
-Good-Fortune Unicorn | 1e0cdff3-3ec5-41fc-8053-f072bae156b3 | 0
 Graypelt Refuge | 60b36821-0fad-423c-98c4-f64d991719f3 | 0
-Grazilaxx, Illithid Scholar | d22ff377-d282-4a28-9dce-96f25913dc96 | 0
-Greenwarden of Murasa | 2facb1b3-4522-4610-a0ab-29ac53ca7fcd | 0
-Greenwarden of Murasa | 2facb1b3-4522-4610-a0ab-29ac53ca7fcd | 1
-Guild Artisan | aceac269-5100-428a-a4a3-bac57031e30b | 0
 Guiltfeeder | 0285bd20-f49e-48f7-8c8c-960f9fbe4d34 | 0
 Hammer of Nazahn | e3955573-3db5-490e-903e-65e0172a9202 | 0
 Hangarback Walker | dde55256-5259-44e7-a267-fca45a7f0d04 | 0
