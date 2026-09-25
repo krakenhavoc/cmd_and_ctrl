@@ -391,11 +391,13 @@ the typed code, and the same `violations[]` shape a deck upload uses:
 | 404 | `deck_not_found` | The deck site answered 404 |
 | 422 | `deck_private` | The deck is private |
 | 422 | `unreadable_deck` | The deck was fetched but is not a list the importer can read |
-| 502 | `upstream_blocked` | The deck site's CDN is blocking this server |
-| 502 | `external_api_unavailable` | The deck site did not answer |
+| 424 | `upstream_blocked` | The deck site's CDN is blocking this server |
+| 424 | `external_api_unavailable` | The deck site did not answer |
 
-The upstream failures are 502 rather than 4xx: the caller's link was
-fine.
+The upstream failures are 424 (Failed Dependency): the caller's link was
+fine, and a dependency failed. Not 502: Cloudflare, in front of both
+hosts, replaces an origin 502's body with its own "error code: 502"
+page, so the player-readable `error` and the `hint` never arrived.
 
 **Moxfield.** Moxfield blocks this server: every Moxfield endpoint
 answers it with a Cloudflare 403. So **any** fetch error for a Moxfield
@@ -1826,8 +1828,8 @@ apart by it.
 - **503** when the feature is off: `CMDCTRL_GITHUB_TOKEN` is not set
   (the message names it), or the server has no database
   (`CMDCTRL_DATA_DIR`). Never a silent success.
-- **502** when GitHub fails while reading the deck's issue, commenting
-  or filing.
+- **424** when GitHub fails while reading the deck's issue, commenting
+  or filing (not 502, which Cloudflare replaces with its own page).
 
 ## Signing out
 

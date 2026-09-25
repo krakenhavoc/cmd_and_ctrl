@@ -317,10 +317,10 @@ func newDeckFetchError(rawURL string, err error) error {
 		e.status = http.StatusUnprocessableEntity
 		e.msg = "That deck is private. Make it public or unlisted on the deck site, or paste the list as text."
 	case deck.CodeUpstreamBlocked:
-		e.status = http.StatusBadGateway
+		e.status = http.StatusFailedDependency
 		e.msg = "The deck site is blocking this server right now. Try an Archidekt link, or paste the list as text."
 	default: // deck.CodeExternalAPIUnavailable
-		e.status = http.StatusBadGateway
+		e.status = http.StatusFailedDependency
 		e.msg = "The deck site did not answer. Try again in a minute, or paste the list as text."
 	}
 	return withMoxfieldHint(rawURL, e)
@@ -491,7 +491,7 @@ func (d *deckCheck) request(c Config, w http.ResponseWriter, r *http.Request) er
 	default:
 		open, url, err := d.issueOpen(r.Context(), c, existing)
 		if err != nil {
-			return httpError(http.StatusBadGateway, fmt.Sprintf("checking the deck's existing issue failed: %s", err))
+			return httpError(http.StatusFailedDependency, fmt.Sprintf("checking the deck's existing issue failed: %s", err))
 		}
 		if open {
 			return d.join(r.Context(), c, w, existing, url, requesterKey, who, report)
@@ -613,7 +613,7 @@ func (d *deckCheck) join(ctx context.Context, c Config, w http.ResponseWriter, e
 		return writeJSON(w, http.StatusOK, resp)
 	}
 	if _, err := c.DeckRequestFiler.CreateComment(ctx, existing.IssueNumber, renderDeckRequestComment(who, report)); err != nil {
-		return httpError(http.StatusBadGateway, fmt.Sprintf("commenting on the deck's issue failed: %s", err))
+		return httpError(http.StatusFailedDependency, fmt.Sprintf("commenting on the deck's issue failed: %s", err))
 	}
 	d.recordAsk(ctx, c, existing.DeckKey, requesterKey)
 	return writeJSON(w, http.StatusOK, resp)
@@ -626,7 +626,7 @@ func (d *deckCheck) file(ctx context.Context, c Config, w http.ResponseWriter, k
 	body := renderDeckRequestIssue(who, p.Role == auth.RoleAdmin, report)
 	url, number, err := fileDeckRequestIssue(ctx, c, title, body)
 	if err != nil {
-		return httpError(http.StatusBadGateway, fmt.Sprintf("filing the issue failed: %s", err))
+		return httpError(http.StatusFailedDependency, fmt.Sprintf("filing the issue failed: %s", err))
 	}
 	if err := c.DeckRequests.Put(ctx, deckrequests.Request{
 		DeckKey: key, IssueNumber: number, IssueURL: url, CreatedAt: d.now(),

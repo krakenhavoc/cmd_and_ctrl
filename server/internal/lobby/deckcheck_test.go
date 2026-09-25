@@ -321,9 +321,9 @@ func TestDeckCoverageMoxfieldHint(t *testing.T) {
 		wantCode   string
 		wantHint   bool
 	}{
-		{blocked, http.StatusBadGateway, deck.CodeUpstreamBlocked, true},
+		{blocked, http.StatusFailedDependency, deck.CodeUpstreamBlocked, true},
 		{"https://moxfield.com/decks/gone", http.StatusNotFound, deck.CodeDeckNotFound, true},
-		{archBlocked, http.StatusBadGateway, deck.CodeUpstreamBlocked, false},
+		{archBlocked, http.StatusFailedDependency, deck.CodeUpstreamBlocked, false},
 		{"https://example.com/decks/1", http.StatusBadRequest, deck.CodeUnknownSource, false},
 	} {
 		code, raw := s.post(t, "/deck-coverage", "", map[string]string{"url": tc.url})
@@ -346,7 +346,7 @@ func TestDeckCoverageMoxfieldHint(t *testing.T) {
 	code, _, raw := s.request(t, tok, map[string]string{"url": blocked})
 	var body errBody
 	_ = json.Unmarshal([]byte(raw), &body)
-	if code != http.StatusBadGateway || body.Hint != deckFetchHintPasteList || body.Code != deck.CodeUpstreamBlocked {
+	if code != http.StatusFailedDependency || body.Hint != deckFetchHintPasteList || body.Code != deck.CodeUpstreamBlocked {
 		t.Errorf("request for a blocked Moxfield deck: %d %s", code, raw)
 	}
 }
@@ -395,7 +395,7 @@ func TestDeckCoverageErrors(t *testing.T) {
 		{map[string]string{"url": "https://example.com/decks/1"}, http.StatusBadRequest, deck.CodeUnknownSource},
 		{map[string]string{"url": "https://moxfield.com/decks/nope"}, http.StatusNotFound, deck.CodeDeckNotFound},
 		{map[string]string{"url": private}, http.StatusUnprocessableEntity, deck.CodeDeckPrivate},
-		{map[string]string{"url": blocked}, http.StatusBadGateway, deck.CodeUpstreamBlocked},
+		{map[string]string{"url": blocked}, http.StatusFailedDependency, deck.CodeUpstreamBlocked},
 		{map[string]string{}, http.StatusBadRequest, ""},
 		{map[string]string{"url": needyDeckURL, "text": "1 Forest"}, http.StatusBadRequest, ""},
 	} {
