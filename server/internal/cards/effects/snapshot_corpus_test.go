@@ -154,7 +154,94 @@ func corpusBoards() []corpusBoard {
 		{"activated_on_stack", corpusActivatedOnStack},
 		{"granted_activated_on_stack", corpusGrantedActivatedOnStack},
 		{"countered_spell_lki", corpusCounteredSpellLKI},
+		// v7, added by tier 3b-1 (#1497) as new files: replacement
+		// effects a spell creates, which only became restore points with
+		// it — the replacement mods, ScopeGame, ScopeYourPermanents,
+		// seq, amount and then on disk.
+		{"fog", corpusFog},
+		{"mending_hands_partial", corpusMendingHandsPartial},
+		{"whip_redirect", corpusWhipRedirect},
+		{"cosmic_intervention", corpusCosmicIntervention},
 	}
+}
+
+// ---------------------------------------------------------------
+// v7 boards added by ADR 0041 phase 3's tier 3b-1 (#1497)
+// ---------------------------------------------------------------
+//
+// NEW files in v7/: a replacement effect a spell created held the
+// restore point back until cleanup (and the Whip's redirect for as long
+// as it lasted) before tier 3b, so none of these could be a fixture.
+
+// corpusFog is a real Fog: one preventCombatDamage record, ScopeGame.
+func corpusFog(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	castCatalogSpell(t, g, "Fog", "Instant", fogOracle, nil)
+	passPriorityAroundTable(t, g)
+	if n := scopedReplacementCount(g); n != 1 {
+		t.Fatalf("setup: Fog registered %d scoped replacements, want 1", n)
+	}
+	return g
+}
+
+// corpusMendingHandsPartial is a real Mending Hands on a creature that
+// has since been dealt 3: a preventDamage shield with 1 charge left.
+func corpusMendingHandsPartial(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat].ID
+	bear := pushBattlefieldCardWithTimestamp(g, corpusCreature(me, "Grizzly Bears", 2, 6))
+	castCatalogSpell(t, g, "Mending Hands", "Instant", mendingHandsOracl,
+		[]game.TargetRef{{Kind: game.TargetCard, ID: bear}})
+	passPriorityAroundTable(t, g)
+	g.WithWriteLock(func() { _ = g.DealDamageToCreatureForEffect(bear, bear, 3) })
+	if len(g.ScopedEffects) != 1 || g.ScopedEffects[0].Mods[0].Amount != 1 {
+		t.Fatalf("setup: want one shield with 1 charge left, have %+v", g.ScopedEffects)
+	}
+	return g
+}
+
+// corpusWhipRedirect is a real Whip of Erebos activation: the returned
+// creature, its end-step exile queued, and the exileInsteadOfLeaving
+// record pinned to it with an indefinite duration.
+func corpusWhipRedirect(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	seat := g.Turn.ActiveSeat
+	me := g.Seats[seat]
+	advanceToMainOf(t, g, seat)
+	whip := pushCatalogPermanent(g, me.ID, "Whip of Erebos", "Legendary Enchantment Artifact", b06WhipOfErebosOracle, false)
+	dead := seedGraveyardCreature(me, "Giant", "{4}{B}")
+	b06AddMana(me, "B", "B", "C", "C")
+	if err := g.ActivateCatalogAbility(me.ID, whip, 0, game.ActivateAbilityParams{
+		Targets: []game.TargetRef{{Kind: game.TargetCard, ID: dead}},
+	}); err != nil {
+		t.Fatalf("activate: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if !g.Battlefield.Contains(dead) || scopedReplacementCount(g) != 1 {
+		t.Fatalf("setup: the creature is back %v, scoped replacements %d", g.Battlefield.Contains(dead), scopedReplacementCount(g))
+	}
+	return g
+}
+
+// corpusCosmicIntervention is a real Cosmic Intervention after it
+// saved a creature: the exileInsteadOfGraveyard record
+// (ScopeYourPermanents, with its then body) and the delayed return it
+// scheduled.
+func corpusCosmicIntervention(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat].ID
+	bear := pushBattlefieldCardWithTimestamp(g, corpusCreature(me, "Grizzly Bears", 2, 2))
+	castCatalogSpell(t, g, "Cosmic Intervention", "Instant", cosmicInterventionOracle, nil)
+	passPriorityAroundTable(t, g)
+	g.WithWriteLock(func() {
+		if err := g.DestroyPermanentForEffect(bear); err != nil {
+			t.Fatalf("destroy: %v", err)
+		}
+	})
+	if !g.Exile.Contains(bear) || len(g.DelayedTriggers) != 1 {
+		t.Fatalf("setup: exiled %v, delayed triggers %d", g.Exile.Contains(bear), len(g.DelayedTriggers))
+	}
+	return g
 }
 
 // newCorpusGame is a started, mulligans-closed two-seat game: a

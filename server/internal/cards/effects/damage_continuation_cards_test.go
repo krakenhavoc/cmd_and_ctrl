@@ -114,7 +114,10 @@ func TestCreepingBloodsuckerGainsNothingWhenEveryOpponentIsFogged(t *testing.T) 
 
 	g.WithWriteLock(func() {
 		for _, p := range g.Seats[1:] {
-			if err := (PreventNextDamage{Target: p.ID, Label: "prevent that damage"}).Apply(NewContext(g, nil)); err != nil {
+			// A shield larger than the drain: the whole event is
+			// prevented. (The uncharged "prevent that damage" form is
+			// not built — ADR 0041 P8 adds a kind with its first card.)
+			if err := (PreventNextDamage{Target: p.ID, Amount: 100, Label: "prevent the next 100 damage"}).Apply(NewContext(g, nil)); err != nil {
 				t.Fatalf("PreventNextDamage: %v", err)
 			}
 		}

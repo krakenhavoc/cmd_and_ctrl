@@ -1992,3 +1992,79 @@ code wins, and each difference is listed here.
   `reflexive_trigger` and `prowess_on_stack` need 4-0's body keys.
   `storm_after_counter` needs storm's trigger to be data. None of these
   can be a restore point in this slice.
+
+### Implementation notes (tier 3b-1)
+
+What the replacement half of tier 3b settled where the code and P8
+differ or P8 left it open. Everything else is as P8 says.
+
+- **The four kinds are declared, and nothing else.** `preventCombatDamage`,
+  `preventDamage`, `exileInsteadOfLeaving` and `exileInsteadOfGraveyard`
+  carry `reader: readerReplacement`. The layer adapter skips them. The
+  replacement gather adapts each live record in
+  `game/scoped_replacements.go`. The block-rule reader, `Mod.Text` and the
+  two block-rule kinds are left to 3b-2, because nothing here reads them.
+- **The engine owns the writers.** There are four `*ForEffect` functions,
+  one per kind, and no exported mod constructor for a replacement kind. A
+  `ScopedEffectFor` cannot write one by accident. The card-side builders
+  keep their names. `PreventAllCombatDamageThisTurn` gains `Player`, which
+  replaces the batch-38 helper. Cosmic Intervention calls
+  `ExileInsteadOfGraveyardThisTurn{Then}`.
+- **Every adapted closure reads its record back by `Seq` at call time.**
+  So an effect held by an open CR 616 prompt acts on the registry as it is
+  when the prompt is answered. A spent shield, a record an undo removed and
+  a redirect whose object has gone all answer "does not apply". None of
+  them acts on a stale copy.
+- **`Seq` goes only on a record with a non-layer mod.** A layer-only record
+  is never named. Keeping its `Seq` at zero keeps it byte-identical to what
+  an earlier v7 binary writes and reads, so a Giant Growth does not become
+  a rollback refusal. The ID is `scopedReplacementIDBase + Seq×8 + mod
+  index`. It sits in the range the turn-scoped registry used.
+- **The counter is derived, not carried.** `Game.scopedEffectSeq` is
+  cloned with the game. Restore sets it to the largest `Seq` among the
+  restored records. Uniqueness needs nothing more, because no prompt
+  survives a restore. So the snapshot gains no top-level key. The drift
+  test classifies the field `rebuilt`.
+- **A shield on a permanent also pins its duration** (`PinnedTo`). The
+  record is then swept with its object, like the Whip's redirect. The
+  affected set is pinned as P8 says, so a flicker ends the shield
+  (CR 400.7).
+- **The uncharged "prevent that damage" form is not built.** Before this
+  change, `PreventNextDamage` with `Amount: 0` meant "the next damage
+  event, whole". No catalogued card prints it, and P8 gives
+  `preventDamage` a charge of at least 1. An `Amount` below 1 now
+  registers nothing. The one test that used it
+  (`TestCreepingBloodsuckerGainsNothingWhenEveryOpponentIsFogged`) uses a
+  100-point shield instead.
+- **Cosmic Intervention's per-card return is labelled from the record.**
+  The label is `SourceName + " — return the exiled permanent"`, the string
+  the closure used to hard-code. The body is `Mod.Then`, checked through
+  `KnownEffectBody` at registration and at restore.
+- **The Whip's and unearth's record has no `Source`.**
+  `ExileInsteadOfLeavingBattlefield(g, cardID, controller, label)` keeps
+  its signature, as P8 asks, and that signature names no source. The label
+  carries the attribution.
+- **Ratchet (P11).** The `Game.TurnScopedReplacements` line is deleted.
+  Nine lines move to `census:ChoiceResumeFrames`, through
+  `replacementResume.applicable.effect`:
+  - `ReplacementEffect.AppliesTo`, `.Controller`, `.CopySelector`,
+    `.EntryHandReveal` and `.Replace`;
+  - `CopySelector.Candidates` and `.Except`;
+  - `EntryHandReveal.Matches` and `.Then`.
+
+  The `ChoiceResumeFrames` ceiling goes from 98 to 107. The
+  `TurnScopedReplacements` ceiling is deleted and the counter is added to
+  `retiredCensusCounters`. `ContinuationCensus.TurnScopedReplacements`
+  keeps its field so an old census still decodes.
+- **Two caveats were stale, and both are cleared.**
+  - Whip of Erebos's "Stifle the exile" caveat was #1591. It is fixed by
+    the indefinite pin (`TestWhipRedirectOutlivesACounteredExile`).
+  - Dregscape Zombie's "a bounce goes to hand" caveat was already stale:
+    #539 routed the bounce through the exit primitive
+    (`TestUnearthedCreatureBouncedGoesToExile`).
+
+  Both cards are `CompletenessFull`.
+- **Fixtures.** Four new files are written into `v7/`: `fog.json`,
+  `mending_hands_partial.json`, `whip_redirect.json` and
+  `cosmic_intervention.json`. No existing fixture changed. `v7.txt` records
+  `mods[].amount`, `.combatOnly`, `.then` and `seq`.

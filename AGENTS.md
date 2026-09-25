@@ -1061,7 +1061,25 @@ place twice that many instead", "if a player would draw a card, that
 player mills instead") live on the same `Spec{}` struct via the
 optional `Replacements []game.ReplacementEffect` field. Used today by
 Doubling Season, Hardened Scales, Kismet, Stasis, Gemstone Mine,
-Fog, Stone of Erech.
+Stone of Erech.
+
+**A replacement a resolving spell or ability CREATES is data, not a
+`Spec.Replacements` entry and never a closure** (ADR 0041 phase 3
+tier 3b, #1497). Fog's "prevent all combat damage this turn", Mending
+Hands' "prevent the next 4 damage", the Whip's and unearth's "if it
+would leave the battlefield, exile it instead" and Cosmic
+Intervention's "exile it instead" are `ScopedEffect` records with a
+replacement-reader mod kind (`game/scoped_replacements.go`), swept by
+the one duration sweep and carried by the snapshot. Write them with the
+card-side primitives: `PreventAllCombatDamageThisTurn{Player}` (Player
+zero is all combat damage), `PreventNextDamage{Target, Amount}` (Amount
+at least 1; a spent charge is a new record, so an undo rewinds it),
+`ExileInsteadOfLeavingBattlefield(g, id, controller, label)` (indefinite,
+pinned to the object — it lasts while that object is on the
+battlefield) and `ExileInsteadOfGraveyardThisTurn{Then: <BodyRef>}`
+(the per-card follow-up is a registered delayed-trigger body). A shape
+none of them says is a new mod kind in the engine, with its first
+card, not a closure; `Game.TurnScopedReplacements` is gone.
 
 **A discard goes through the exit primitive** (#853). Every discard
 site — the CR 514.1 cleanup discard, the effect-discard continuation,

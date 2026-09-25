@@ -706,16 +706,6 @@ type Game struct {
 	// builtin_replacements.go. Added in S17 sub-PR 2.
 	BuiltinReplacements []ReplacementEffect
 
-	// TurnScopedReplacements is the per-turn replacement slot —
-	// effects registered here live until the current turn's
-	// StepCleanup, then are cleared. Used by spells that create
-	// transient replacement effects (Fog's "prevent all combat
-	// damage this turn", future "until end of turn" damage
-	// prevention cards). Distinct from BuiltinReplacements (game-
-	// lifetime) and catalog replacements (battlefield-presence-
-	// gated via source card's AppliesTo). Added in S17 sub-PR 5.
-	TurnScopedReplacements []ReplacementEffect
-
 	// TurnScopedBlockRules is the UNTIL-END-OF-TURN slot for the
 	// CR 509.1b block rules of #750 — Gingerbrute's "target creature
 	// can't block this turn"-shaped effects, and any other block
@@ -725,7 +715,7 @@ type Game struct {
 	// a count bound exactly as a catalog one is.
 	//
 	// Emptied wholesale by ClearTurnScopedBlockRulesLocked in the
-	// cleanup sweep, next to ClearTurnScopedReplacementsLocked. The
+	// cleanup sweep. The
 	// registry carries no turn stamp because it holds nothing that
 	// outlasts a turn: no card found while drafting ADR 0045's
 	// addendum prints a block rule with a longer duration, and one
@@ -734,7 +724,9 @@ type Game struct {
 	//
 	// Closures, so the snapshot cannot carry it: counted in
 	// ContinuationCensus.TurnScopedBlockRules and marked `dropped` in
-	// the drift test, exactly like TurnScopedReplacements.
+	// the drift test. (Its replacement twin, TurnScopedReplacements,
+	// was retired by ADR 0041 phase 3 tier 3b: those effects are
+	// ScopedEffect records now.)
 	// See ADR 0045 addendum Decision 11 and block_rules.go.
 	TurnScopedBlockRules []BlockRule
 
@@ -756,6 +748,15 @@ type Game struct {
 	// the records still here (#1558). Derived, never persisted, never
 	// cloned: see scopedEffectAdapterMemo.
 	scopedEffectMemo scopedEffectAdapterMemo
+
+	// scopedEffectSeq is the last ScopedEffect.Seq handed out (tier 3b,
+	// ADR 0041 P8): a record a non-layer reader has to name — a
+	// replacement effect's ID — takes the next one at registration.
+	// Monotone within a running game and cloned with it. Not
+	// serialised: restore sets it to the largest Seq the restored
+	// records carry, which is all uniqueness needs, because nothing
+	// that outlives a restore (no prompt does) holds an older one.
+	scopedEffectSeq int64
 
 	// testReplacements is the test-only replacement injection slot
 	// populated by RegisterReplacementForTest. Unexported so

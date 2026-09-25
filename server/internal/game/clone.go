@@ -335,10 +335,6 @@ func (g *Game) cloneLocked() *Game {
 		out.BuiltinReplacements = make([]ReplacementEffect, len(g.BuiltinReplacements))
 		copy(out.BuiltinReplacements, g.BuiltinReplacements)
 	}
-	if len(g.TurnScopedReplacements) > 0 {
-		out.TurnScopedReplacements = make([]ReplacementEffect, len(g.TurnScopedReplacements))
-		copy(out.TurnScopedReplacements, g.TurnScopedReplacements)
-	}
 	// #750: the same reasoning for the until-end-of-turn block rules.
 	// A BlockRule is written once at registration and never mutated,
 	// so a fresh backing array is all the isolation an undo needs —
@@ -357,6 +353,7 @@ func (g *Game) cloneLocked() *Game {
 	// snapshot taken mid-turn still holds the effects that were live
 	// when it was taken.
 	out.ScopedEffects = cloneScopedEffects(g.ScopedEffects)
+	out.scopedEffectSeq = g.scopedEffectSeq
 	// CR 603.10 LKI snapshots (S19). Values are Characteristic copies
 	// that are never mutated after being stored, so a per-entry value
 	// copy is sufficient. Usually empty — entries live only for the
@@ -973,9 +970,9 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.Listeners = src.Listeners
 	g.PendingChoices = src.PendingChoices
 	g.BuiltinReplacements = src.BuiltinReplacements
-	g.TurnScopedReplacements = src.TurnScopedReplacements
 	g.TurnScopedBlockRules = src.TurnScopedBlockRules
 	g.ScopedEffects = src.ScopedEffects
+	g.scopedEffectSeq = src.scopedEffectSeq
 	g.lastKnownBattlefield = src.lastKnownBattlefield
 	g.lastKnownTriggerIdentity = src.lastKnownTriggerIdentity
 	g.lastKnownCounters = src.lastKnownCounters
