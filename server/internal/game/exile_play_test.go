@@ -342,3 +342,173 @@ func TestExileTopWithPermissionTakesTheTopNotTheBottom(t *testing.T) {
 		t.Errorf("library top after the exile = %v, want the former bottom card", c.InstanceID)
 	}
 }
+
+// --- CR 903.9 (#1587) ---------------------------------------------
+//
+// Before #1587, ExileTopWithPermissionForEffect moved cards with a
+// raw MoveCard and never opened the CR 614 replacement window, so a
+// commander impulse-exiled off the top of its owner's library was
+// never offered the command zone. These pin the fix: the prompt is
+// offered, nothing moves until it's answered, and the exile-play
+// grant lands only on a card that actually reaches exile.
+
+// TestImpulseExiledCommanderOffersCommandZone is #1587's own repro:
+// Ragavan-shaped impulse exile off the top of the victim's library,
+// with a commander on top.
+func TestImpulseExiledCommanderOffersCommandZone(t *testing.T) {
+	g := newActiveGame(t)
+	owner, thief := g.Seats[0], g.Seats[1]
+	owner.Library.Cards = nil
+	cmdID := seatCommander(t, owner.Library, owner)
+
+	var ids []uuid.UUID
+	var err error
+	g.WithWriteLock(func() {
+		ids, err = g.ExileTopWithPermissionForEffect(owner.ID, thief.ID, 1, CastPermission{})
+	})
+	if err != nil {
+		t.Fatalf("ExileTopWithPermissionForEffect: %v", err)
+	}
+	if len(ids) != 0 {
+		t.Fatalf("landed %v before the CR 903.9 prompt was answered, want none", ids)
+	}
+	if g.Exile.Contains(cmdID) {
+		t.Fatalf("impulse-exiled commander hit exile before the prompt was answered")
+	}
+	if !owner.Library.Contains(cmdID) {
+		t.Fatalf("commander left the library before the prompt was answered")
+	}
+
+	prompt := expectCommanderPrompt(t, g, owner)
+	if err := g.ResolveOptionalReplacement(prompt.ID, owner.ID, true); err != nil {
+		t.Fatalf("ResolveOptionalReplacement: %v", err)
+	}
+	assertOnlyIn(t, cmdID, owner.Command, g.Exile, owner.Library)
+
+	// The commander went to the command zone, not to exile — CR 400.7
+	// says it is not the object the exile grant names, so it gets no
+	// grant at all.
+	if perm := g.CastPermissionOnCardByIDForEffect(cmdID); perm.Granted() {
+		t.Errorf("a commander sent to the command zone should not carry an exile-play grant")
+	}
+}
+
+// TestImpulseExiledCommanderDeclineGrantsPlay is the other half: the
+// owner may decline the command zone, and then the card stays in
+// exile and gets exactly the grant it would have gotten if it were
+// any other card.
+func TestImpulseExiledCommanderDeclineGrantsPlay(t *testing.T) {
+	g := newActiveGame(t)
+	owner, thief := g.Seats[0], g.Seats[1]
+	owner.Library.Cards = nil
+	cmdID := seatCommander(t, owner.Library, owner)
+
+	g.WithWriteLock(func() {
+		if _, err := g.ExileTopWithPermissionForEffect(owner.ID, thief.ID, 1, CastPermission{CastOnly: true}); err != nil {
+			t.Fatalf("ExileTopWithPermissionForEffect: %v", err)
+		}
+	})
+	prompt := expectCommanderPrompt(t, g, owner)
+	if err := g.ResolveOptionalReplacement(prompt.ID, owner.ID, false); err != nil {
+		t.Fatalf("ResolveOptionalReplacement: %v", err)
+	}
+	assertOnlyIn(t, cmdID, g.Exile, owner.Command, owner.Library)
+
+	perm := g.CastPermissionOnCardByIDForEffect(cmdID)
+	if perm == nil || !perm.Granted() {
+		t.Fatalf("a commander that stayed in exile should carry the exile-play grant")
+	}
+	if perm.Player != thief.ID {
+		t.Errorf("permission holder = %v, want the thief %v", perm.Player, thief.ID)
+	}
+	if !perm.CastOnly {
+		t.Errorf("CastOnly should have ridden through the grant")
+	}
+}
+
+// TestImpulseExileOfANonCommanderIsUnchanged is the regression: an
+// ordinary card still lands and is still granted immediately, with no
+// prompt at all — #1587 must not have slowed down the common case.
+func TestImpulseExileOfANonCommanderIsUnchanged(t *testing.T) {
+	g := newActiveGame(t)
+	owner, thief := g.Seats[0], g.Seats[1]
+	owner.Library.Cards = nil
+	loot := seedLibraryTop(owner, "Stolen Bolt", "Instant")
+
+	var ids []uuid.UUID
+	var err error
+	g.WithWriteLock(func() {
+		ids, err = g.ExileTopWithPermissionForEffect(owner.ID, thief.ID, 1, CastPermission{CastOnly: true})
+	})
+	if err != nil {
+		t.Fatalf("ExileTopWithPermissionForEffect: %v", err)
+	}
+	if len(ids) != 1 || ids[0] != loot {
+		t.Fatalf("exiled %v, want [%v] landed immediately", ids, loot)
+	}
+	if len(g.PendingChoices) != 0 {
+		t.Fatalf("a non-commander exile queued %d prompts, want 0", len(g.PendingChoices))
+	}
+	if !g.Exile.Contains(loot) {
+		t.Fatalf("card never reached exile")
+	}
+	perm := g.CastPermissionOnCardByIDForEffect(loot)
+	if perm == nil || !perm.Granted() {
+		t.Fatalf("the exile-play grant should have landed immediately")
+	}
+	if perm.Player != thief.ID || !perm.CastOnly {
+		t.Errorf("grant = %+v, want holder %v and CastOnly", perm, thief.ID)
+	}
+}
+
+// TestImpulseExileThenWaitsForTheWholeBatch pins the continuation
+// form Bonehoard Dracosaur needs: with a commander among the exiled
+// cards, `then` does not run until the CR 903.9 prompt is answered,
+// and it is handed the true final landed list — not the commander,
+// which went to the command zone.
+func TestImpulseExileThenWaitsForTheWholeBatch(t *testing.T) {
+	g := newActiveGame(t)
+	owner, thief := g.Seats[0], g.Seats[1]
+	owner.Library.Cards = nil
+	loot := seedLibraryTop(owner, "Stolen Bolt", "Instant")
+	cmdID := seatCommander(t, owner.Library, owner) // pushed on top, after loot
+
+	var thenCalls int
+	var gotLanded []uuid.UUID
+	g.WithWriteLock(func() {
+		err := g.ExileTopWithPermissionThenForEffect(owner.ID, thief.ID, 2, CastPermission{}, func(_ *Game, landed []uuid.UUID) error {
+			thenCalls++
+			gotLanded = landed
+			return nil
+		})
+		if err != nil {
+			t.Fatalf("ExileTopWithPermissionThenForEffect: %v", err)
+		}
+	})
+	if thenCalls != 0 {
+		t.Fatalf("then ran %d times before the CR 903.9 prompt was answered, want 0", thenCalls)
+	}
+	if g.Exile.Contains(loot) {
+		t.Fatalf("the batch landed before the commander's prompt was answered")
+	}
+
+	prompt := expectCommanderPrompt(t, g, owner)
+	if err := g.ResolveOptionalReplacement(prompt.ID, owner.ID, true); err != nil {
+		t.Fatalf("ResolveOptionalReplacement: %v", err)
+	}
+
+	if thenCalls != 1 {
+		t.Fatalf("then ran %d times, want exactly 1", thenCalls)
+	}
+	if len(gotLanded) != 1 || gotLanded[0] != loot {
+		t.Fatalf("then landed = %v, want [%v] — the commander went to the command zone", gotLanded, loot)
+	}
+	assertOnlyIn(t, cmdID, owner.Command, g.Exile, owner.Library)
+	assertOnlyIn(t, loot, g.Exile, owner.Command, owner.Library)
+	if perm := g.CastPermissionOnCardByIDForEffect(loot); !perm.Granted() {
+		t.Errorf("the landed card should carry the exile-play grant")
+	}
+	if perm := g.CastPermissionOnCardByIDForEffect(cmdID); perm.Granted() {
+		t.Errorf("the commander in the command zone should not carry a grant")
+	}
+}

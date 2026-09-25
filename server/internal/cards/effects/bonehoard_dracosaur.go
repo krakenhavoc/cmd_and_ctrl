@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Bonehoard Dracosaur — Creature — Dinosaur Dragon {3}{R}{R}, 5/5
 // (EDHREC rank 1375):
@@ -29,34 +33,38 @@ func init() {
 		PrintedKeywords: []string{"flying", "first strike"},
 		Triggered: []game.TriggeredAbility{
 			AtYourUpkeep("Bonehoard Dracosaur — exile the top two cards, play them this turn", func(g *game.Game, item *game.StackItem) error {
-				exiled, err := b12ImpulseExileForTurn(g, item, 2)
-				if err != nil {
-					return err
-				}
-				land, nonland := false, false
-				for _, id := range exiled {
-					c, ok := g.LookupCardForEffect(id)
-					if !ok {
-						continue
+				// The riders read what was EXILED, so they wait for
+				// the continuation form: a commander among the two
+				// cards pauses the batch on its owner's CR 903.9
+				// prompt, and the fire-and-forget form's return would
+				// be short or empty right when this needs it most
+				// (#1587).
+				return b12ImpulseExileForTurnThen(g, item, 2, func(g *game.Game, exiled []uuid.UUID) error {
+					land, nonland := false, false
+					for _, id := range exiled {
+						c, ok := g.LookupCardForEffect(id)
+						if !ok {
+							continue
+						}
+						if c.IsLand() {
+							land = true
+						} else {
+							nonland = true
+						}
 					}
-					if c.IsLand() {
-						land = true
-					} else {
-						nonland = true
+					ctx := NewContext(g, item)
+					if land {
+						if err := (CreateToken{Controller: item.Controller, Template: TokenCard("3/1 red Dinosaur"), N: 1}).Apply(ctx); err != nil {
+							return err
+						}
 					}
-				}
-				ctx := NewContext(g, item)
-				if land {
-					if err := (CreateToken{Controller: item.Controller, Template: TokenCard("3/1 red Dinosaur"), N: 1}).Apply(ctx); err != nil {
-						return err
+					if nonland {
+						if err := (CreateToken{Controller: item.Controller, Template: TreasureToken(), N: 1}).Apply(ctx); err != nil {
+							return err
+						}
 					}
-				}
-				if nonland {
-					if err := (CreateToken{Controller: item.Controller, Template: TreasureToken(), N: 1}).Apply(ctx); err != nil {
-						return err
-					}
-				}
-				return nil
+					return nil
+				})
 			}),
 		},
 	})
