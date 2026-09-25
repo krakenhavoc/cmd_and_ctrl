@@ -38,9 +38,8 @@ func init() {
 			AppliesTo:      b06SelfETB,
 			OptionalPrompt: &game.TriggerOptionalPrompt{Question: "Manglehorn — destroy target artifact?"},
 			Targets:        TargetPermanent("target artifact", Artifact()),
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return destroyChosenTargetTrigger(source, "Manglehorn — destroy target artifact")
-			},
+			Key:            "Manglehorn — destroy target artifact",
+			Effect:         destroyChosenPermanent,
 		}},
 		Replacements: []game.ReplacementEffect{{
 			Watches: []game.EventKind{game.EventZoneMove},

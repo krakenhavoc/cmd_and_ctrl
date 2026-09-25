@@ -295,18 +295,6 @@ func b35EachOpponentLosesOne(g *game.Game, item *game.StackItem) error {
 	return eachOpponentLosesLife(g, item, 1)
 }
 
-// b35ThatPlayerMillsTwo is Memory Erosion's body: the caster of the
-// spell, captured in Build, mills two — or the rest of their library
-// when it holds fewer.
-func b35ThatPlayerMillsTwo(caster uuid.UUID) func(g *game.Game, item *game.StackItem) error {
-	return func(g *game.Game, item *game.StackItem) error {
-		if g.PlayerByIDForEffect(caster) == nil {
-			return nil
-		}
-		return MillCards{Player: caster, N: 2}.Apply(NewContext(g, item))
-	}
-}
-
 // b35TutelageLabel is the stack label of Sphinx's Tutelage's draw
 // trigger.
 const b35TutelageLabel = "Sphinx's Tutelage — target opponent mills two cards, repeating while two nonland cards share a color"
@@ -517,29 +505,6 @@ func b35PutCounterOnSelf(g *game.Game, item *game.StackItem) error {
 		return nil
 	}
 	return AddCounter{Target: item.SourceCardID, Kind: game.CounterPlusOne, N: 1}.Apply(NewContext(g, item))
-}
-
-// b35ThatPlayerDrawsOne is Nekusar's draw-step body: the player
-// whose draw step it is, captured in Build, draws an additional
-// card.
-func b35ThatPlayerDrawsOne(drawer uuid.UUID) func(g *game.Game, item *game.StackItem) error {
-	return func(g *game.Game, item *game.StackItem) error {
-		if g.PlayerByIDForEffect(drawer) == nil {
-			return nil
-		}
-		return DrawCards{Player: drawer, N: 1}.Apply(NewContext(g, item))
-	}
-}
-
-// b35DamageThatPlayer is Nekusar's draw body: `n` damage from
-// Nekusar to the player who drew, captured in Build.
-func b35DamageThatPlayer(victim uuid.UUID, n int) func(g *game.Game, item *game.StackItem) error {
-	return func(g *game.Game, item *game.StackItem) error {
-		if g.PlayerByIDForEffect(victim) == nil {
-			return nil
-		}
-		return DealDamage{Source: item.SourceCardID, Target: victim, Amount: n}.Apply(NewContext(g, item))
-	}
 }
 
 // b35EachOpponentLosesAllCounters is Final Act's fifth mode: every

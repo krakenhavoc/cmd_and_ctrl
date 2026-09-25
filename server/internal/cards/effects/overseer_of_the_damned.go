@@ -34,9 +34,8 @@ func init() {
 				OptionalPrompt: &game.TriggerOptionalPrompt{
 					Question: "Overseer of the Damned — destroy target creature?",
 				},
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Overseer of the Damned — destroy target creature", destroyFirstLegalTarget)
-				},
+				Key:    "Overseer of the Damned — destroy target creature",
+				Effect: destroyFirstLegalTarget,
 			},
 			On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b33OpponentsNontokenCreatureDied(ev, source, g)

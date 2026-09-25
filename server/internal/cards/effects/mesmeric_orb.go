@@ -51,12 +51,9 @@ func init() {
 			AppliesTo: func(ev game.Event, _ *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return ev.Kind == game.EventUntapCard && ev.Actor != uuid.Nil
 			},
-			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				controller := ev.Actor
-				return game.NewTriggeredItem(source, "Mesmeric Orb — that permanent's controller mills a card",
-					func(g *game.Game, item *game.StackItem) error {
-						return MillCards{Player: controller, N: 1}.Apply(NewContext(g, item))
-					})
+			Key: "Mesmeric Orb — that permanent's controller mills a card",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				return MillCards{Player: item.Trigger.Event.Actor, N: 1}.Apply(NewContext(g, item))
 			},
 		}},
 	})

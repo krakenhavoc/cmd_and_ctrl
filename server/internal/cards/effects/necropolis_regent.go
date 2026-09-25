@@ -49,16 +49,12 @@ func init() {
 				return combatDamageToPlayerBy(ev, source.Controller, g)
 			},
 			Key: "Necropolis Regent — that many +1/+1 counters",
-			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				grew, amount := ev.Source, ev.Amount
-				return game.NewTriggeredItem(source, "Necropolis Regent — that many +1/+1 counters",
-					func(g *game.Game, item *game.StackItem) error {
-						return AddCounter{
-							Target: grew,
-							Kind:   game.CounterPlusOne,
-							N:      amount,
-						}.Apply(NewContext(g, item))
-					})
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				return AddCounter{
+					Target: item.Trigger.Event.Source,
+					Kind:   game.CounterPlusOne,
+					N:      item.Trigger.Event.Amount,
+				}.Apply(NewContext(g, item))
 			},
 		}},
 	})

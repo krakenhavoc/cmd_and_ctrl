@@ -28,16 +28,13 @@ func init() {
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return combatDamageToPlayerBy(ev, source.Controller, g)
 			},
-			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				n := ev.Amount
-				return game.NewTriggeredItem(source, "Old Gnawbone — create that many Treasures",
-					func(g *game.Game, item *game.StackItem) error {
-						return CreateToken{
-							Controller: item.Controller,
-							Template:   TreasureToken(),
-							N:          n,
-						}.Apply(NewContext(g, item))
-					})
+			Key: "Old Gnawbone — create that many Treasures",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				return CreateToken{
+					Controller: item.Controller,
+					Template:   TreasureToken(),
+					N:          item.Trigger.Event.Amount,
+				}.Apply(NewContext(g, item))
 			},
 		}},
 	})

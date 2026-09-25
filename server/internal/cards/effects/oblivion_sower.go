@@ -40,6 +40,11 @@ func init() {
 				return ev.CardID == source.InstanceID
 			},
 			Targets: TargetPlayer("target opponent", Opponent()),
+			Key:     "Oblivion Sower — target opponent exiles four, you take their lands from exile",
+			// The cast trigger's controller is the CASTER (ev.Actor),
+			// not source.Controller — a controller override the
+			// engine cannot derive, so Build fills it in and leaves
+			// item.Effect nil (ADR 0041 P9's fill-in Build).
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
 				return &game.StackItem{
 					Kind:         game.StackItemTriggered,
@@ -47,9 +52,9 @@ func init() {
 					Owner:        ev.Actor,
 					SourceCardID: source.InstanceID,
 					Label:        "Oblivion Sower — target opponent exiles four, you take their lands from exile",
-					Effect:       b21ExileTopFourThenTakeTheirLands,
 				}
 			},
+			Effect: b21ExileTopFourThenTakeTheirLands,
 		}},
 	})
 }

@@ -57,31 +57,29 @@ func init() {
 				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 					return b18OpponentsCreatureDied(ev, source, g)
 				},
-				Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					dead := ev.CardID
-					return game.NewTriggeredItem(source, "Mari, the Killing Quill — exile it with a hit counter on it",
-						func(g *game.Game, item *game.StackItem) error {
-							if z := g.FindCardZoneForEffect(dead); z == nil || z.Kind != game.ZoneGraveyard {
+				Key: "Mari, the Killing Quill — exile it with a hit counter on it",
+				Effect: func(g *game.Game, item *game.StackItem) error {
+					dead := item.Trigger.Event.CardID
+					if z := g.FindCardZoneForEffect(dead); z == nil || z.Kind != game.ZoneGraveyard {
+						return nil
+					}
+					// #870: "with a hit counter on it" is a
+					// clause on the exile, not the next line —
+					// a graveyard is a CR 903.9 zone, so an
+					// opponent's commander stops to be asked
+					// about the command zone and the counter
+					// must wait for the answer. A commander
+					// that takes the offer is not exiled and
+					// gets nothing.
+					return ExileTarget{
+						Target: dead,
+						Then: func(ctx *Context, exiled bool) error {
+							if !exiled {
 								return nil
 							}
-							// #870: "with a hit counter on it" is a
-							// clause on the exile, not the next line —
-							// a graveyard is a CR 903.9 zone, so an
-							// opponent's commander stops to be asked
-							// about the command zone and the counter
-							// must wait for the answer. A commander
-							// that takes the offer is not exiled and
-							// gets nothing.
-							return ExileTarget{
-								Target: dead,
-								Then: func(ctx *Context, exiled bool) error {
-									if !exiled {
-										return nil
-									}
-									return AddCounter{Target: dead, Kind: "hit", N: 1}.Apply(ctx)
-								},
-							}.Apply(NewContext(g, item))
-						})
+							return AddCounter{Target: dead, Kind: "hit", N: 1}.Apply(ctx)
+						},
+					}.Apply(NewContext(g, item))
 				},
 			},
 			{
@@ -93,12 +91,9 @@ func init() {
 					_, ok := b24ExiledCardWithCounterOwnedBy(g, ev.Target, "hit")
 					return ok
 				},
-				Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					victim := ev.Target
-					return game.NewTriggeredItem(source, "Mari, the Killing Quill — remove a hit counter, draw a card and create two Treasures",
-						func(g *game.Game, item *game.StackItem) error {
-							return b24RemoveHitCounterDrawAndTreasures(g, item, victim)
-						})
+				Key: "Mari, the Killing Quill — remove a hit counter, draw a card and create two Treasures",
+				Effect: func(g *game.Game, item *game.StackItem) error {
+					return b24RemoveHitCounterDrawAndTreasures(g, item, item.Trigger.Event.Target)
 				},
 				OptionalPrompt: &game.TriggerOptionalPrompt{Question: "Mari, the Killing Quill — remove a hit counter from a card that player owns in exile?"},
 			},

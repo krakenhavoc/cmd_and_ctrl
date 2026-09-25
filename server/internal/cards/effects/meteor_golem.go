@@ -23,9 +23,8 @@ func init() {
 			Watches:   []game.EventKind{game.EventETB},
 			AppliesTo: b06SelfETB,
 			Targets:   TargetPermanent("target nonland permanent an opponent controls", Nonland(), OpponentControls()),
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return destroyChosenTargetTrigger(source, "Meteor Golem — destroy target nonland permanent an opponent controls")
-			},
+			Key:       "Meteor Golem — destroy target nonland permanent an opponent controls",
+			Effect:    destroyChosenPermanent,
 		}},
 	})
 }

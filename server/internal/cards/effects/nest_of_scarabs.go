@@ -30,10 +30,17 @@ func init() {
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b33YouPutMinusCountersOnACreature(ev, source, g)
 			},
+			Key: "Nest of Scarabs — create a 1/1 black Insect for each -1/-1 counter placed",
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
-				n := b33CountersPlacedDelta(ev, game.CounterMinusOne, g)
-				return game.NewTriggeredItem(source, "Nest of Scarabs — create a 1/1 black Insect for each -1/-1 counter placed",
-					b33CreateInsectsPerMinusCounterPlaced(n))
+				item := game.NewTriggeredItem(source, "Nest of Scarabs — create a 1/1 black Insect for each -1/-1 counter placed", nil)
+				item.Params.Amount = b33CountersPlacedDelta(ev, game.CounterMinusOne, g)
+				return item
+			},
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				if item.Params.Amount <= 0 {
+					return nil
+				}
+				return CreateToken{Controller: item.Controller, Template: TokenCard("1/1 black Insect"), N: item.Params.Amount}.Apply(NewContext(g, item))
 			},
 		}},
 	})

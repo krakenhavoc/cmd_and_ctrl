@@ -67,12 +67,9 @@ func init() {
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return ev.CardID != uuid.Nil && ev.Actor == source.Controller
 			},
-			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				discarded := ev.CardID
-				return game.NewTriggeredItem(source, "Necropotence — exile the discarded card",
-					func(g *game.Game, item *game.StackItem) error {
-						return necropotenceExileDiscarded(g, item.Controller, discarded)
-					})
+			Key: "Necropotence — exile the discarded card",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				return necropotenceExileDiscarded(g, item.Controller, item.Trigger.Event.CardID)
 			},
 		}},
 		Activated: []ActivatedAbility{{

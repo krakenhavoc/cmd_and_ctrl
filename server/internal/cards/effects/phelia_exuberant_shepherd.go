@@ -61,10 +61,8 @@ func init() {
 			TargetsFrom: AnotherTarget(func(other CardPredicate) *game.TargetSpec {
 				return TargetPermanent("up to one other target nonland permanent", Nonland(), other).WithCount(0, 1)
 			}),
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Phelia, Exuberant Shepherd — exile up to one other nonland permanent",
-					pheliaExile)
-			},
+			Key:    "Phelia, Exuberant Shepherd — exile up to one other nonland permanent",
+			Effect: pheliaExile,
 		}},
 	})
 }

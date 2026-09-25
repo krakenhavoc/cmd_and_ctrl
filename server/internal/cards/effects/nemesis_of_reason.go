@@ -36,15 +36,22 @@ func init() {
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return attackDeclared(ev, source)
 			},
+			Key: "Nemesis of Reason — defending player mills ten cards",
+			// The defending player is a fact about the attack
+			// DECLARATION (CR 506.4) — which player's planeswalker or
+			// battle the attacker is going after — so it is read once,
+			// in Build, off the board as it stood then.
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
-				defender := b17DefendingPlayer(g, ev)
-				return game.NewTriggeredItem(source, "Nemesis of Reason — defending player mills ten cards",
-					func(g *game.Game, item *game.StackItem) error {
-						if defender == uuid.Nil || g.PlayerByIDForEffect(defender) == nil {
-							return nil
-						}
-						return MillCards{Player: defender, N: 10}.Apply(NewContext(g, item))
-					})
+				item := game.NewTriggeredItem(source, "Nemesis of Reason — defending player mills ten cards", nil)
+				item.Params.Player = b17DefendingPlayer(g, ev)
+				return item
+			},
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				defender := item.Params.Player
+				if defender == uuid.Nil || g.PlayerByIDForEffect(defender) == nil {
+					return nil
+				}
+				return MillCards{Player: defender, N: 10}.Apply(NewContext(g, item))
 			},
 		}},
 	})

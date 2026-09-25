@@ -25,12 +25,10 @@ func init() {
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return b18OpponentDiscarded(ev, source)
 			},
-			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				victim := ev.Actor
-				return game.NewTriggeredItem(source, "Megrim — deal 2 damage to that player",
-					func(g *game.Game, item *game.StackItem) error {
-						return DealDamage{Source: item.SourceCardID, Target: victim, Amount: 2}.Apply(NewContext(g, item))
-					})
+			Key: "Megrim — deal 2 damage to that player",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				victim := item.Trigger.Event.Actor
+				return DealDamage{Source: item.SourceCardID, Target: victim, Amount: 2}.Apply(NewContext(g, item))
 			},
 		}},
 	})
