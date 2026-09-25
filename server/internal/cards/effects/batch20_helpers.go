@@ -203,20 +203,36 @@ func b20EachPlayerDrawsAndGainsOne(g *game.Game, item *game.StackItem) error {
 	return nil
 }
 
-// b20GainLifeEqualToToughnessOf builds the Righteous Valkyrie body
-// for an entering creature: "you gain life equal to that creature's
-// toughness", read as the trigger resolves — current toughness,
-// counters and anthems included — falling back to the toughness it
-// had when the trigger fired if it has since left (CR 608.2h's
-// last-known value).
-func b20GainLifeEqualToToughnessOf(entered uuid.UUID, fallback int) func(g *game.Game, item *game.StackItem) error {
-	return func(g *game.Game, item *game.StackItem) error {
-		toughness := fallback
-		if z := g.FindCardZoneForEffect(entered); z != nil && z.Kind == game.ZoneBattlefield {
-			if c, ok := g.LookupCardForEffect(entered); ok {
-				toughness = c.CurrentToughness()
-			}
+// b20GainLifeEqualToToughnessBuild is the Righteous Valkyrie body's
+// fill-in Build (ADR 0041 P9), shared by Verdant Sun's Avatar and
+// Wolverine Riders: the fallback — the toughness the entering
+// creature had when the trigger fired — is a fact of that moment, so
+// it is captured into Params.Amount rather than a closure. `label`
+// is a compile-time constant, not a board read, so currying it here
+// is fine.
+func b20GainLifeEqualToToughnessBuild(label string) func(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) *game.StackItem {
+	return func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
+		item := game.NewTriggeredItem(source, label, nil)
+		if c, ok := g.LookupCardForEffect(ev.CardID); ok {
+			item.Params.Amount = c.CurrentToughness()
 		}
-		return GainLife{Player: item.Controller, Amount: toughness}.Apply(NewContext(g, item))
+		return item
 	}
+}
+
+// b20GainLifeEqualToToughnessEffect is "you gain life equal to that
+// creature's toughness", read as the trigger resolves — current
+// toughness, counters and anthems included, off the entering
+// creature named on the item's triggering event — falling back to
+// Params.Amount, the toughness it had when the trigger fired, if it
+// has since left (CR 608.2h's last-known value).
+func b20GainLifeEqualToToughnessEffect(g *game.Game, item *game.StackItem) error {
+	toughness := item.Params.Amount
+	entered := item.Trigger.Event.CardID
+	if z := g.FindCardZoneForEffect(entered); z != nil && z.Kind == game.ZoneBattlefield {
+		if c, ok := g.LookupCardForEffect(entered); ok {
+			toughness = c.CurrentToughness()
+		}
+	}
+	return GainLife{Player: item.Controller, Amount: toughness}.Apply(NewContext(g, item))
 }

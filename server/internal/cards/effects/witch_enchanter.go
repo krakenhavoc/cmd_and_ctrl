@@ -24,14 +24,13 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventETB},
+			Key:     "Witch Enchanter — destroy target artifact or enchantment",
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return ev.CardID == source.InstanceID
 			},
 			Targets: TargetPermanent("target artifact or enchantment an opponent controls",
 				Or(Artifact(), Enchantment()), OpponentControls()),
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return destroyChosenTargetTrigger(source, "Witch Enchanter — destroy target artifact or enchantment")
-			},
+			Effect: destroyChosenPermanent,
 		}},
 	})
 }

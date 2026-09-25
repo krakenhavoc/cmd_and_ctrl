@@ -31,19 +31,13 @@ func init() {
 			}, "Wolverine Riders — create a 1/1 green Elf Warrior", Do(CreateToken{Template: TokenCard("1/1 green Elf Warrior"), N: 1})),
 			{
 				Watches: []game.EventKind{game.EventETB},
+				Key:     "Wolverine Riders — gain life equal to the Elf's toughness",
 				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 					_, ok := b27AnotherElfYouControlEntered(ev, source, g)
 					return ok
 				},
-				Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
-					entered := ev.CardID
-					fallback := 0
-					if c, ok := g.LookupCardForEffect(entered); ok {
-						fallback = c.CurrentToughness()
-					}
-					return game.NewTriggeredItem(source, "Wolverine Riders — gain life equal to the Elf's toughness",
-						b20GainLifeEqualToToughnessOf(entered, fallback))
-				},
+				Build:  b20GainLifeEqualToToughnessBuild("Wolverine Riders — gain life equal to the Elf's toughness"),
+				Effect: b20GainLifeEqualToToughnessEffect,
 			},
 		},
 	})

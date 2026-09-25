@@ -26,19 +26,11 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventDrawCard},
+			Key:     "Underworld Dreams — 1 damage to that player",
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return ev.Actor != uuid.Nil && ev.Actor != source.Controller
 			},
-			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				drawer := ev.Actor
-				return game.NewTriggeredItem(source, "Underworld Dreams — 1 damage to that player",
-					func(g *game.Game, item *game.StackItem) error {
-						if g.PlayerByIDForEffect(drawer) == nil {
-							return nil
-						}
-						return DealDamage{Source: item.SourceCardID, Target: drawer, Amount: 1}.Apply(NewContext(g, item))
-					})
-			},
+			Effect: dealOneDamageToPlayerWhoDrew,
 		}},
 	})
 }

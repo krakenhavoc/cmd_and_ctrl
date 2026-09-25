@@ -45,13 +45,12 @@ func init() {
 			}, "Weapons Manufacturing — create a Munitions token", Do(CreateToken{Template: TokenCard("Munitions"), N: 1})),
 			{
 				Watches: []game.EventKind{game.EventLTB},
+				Key:     "Munitions — 2 damage to any target",
 				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 					return b31MunitionsYouControlLeft(ev, source, g)
 				},
 				Targets: TargetAny(),
-				Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Munitions — 2 damage to any target", b31DamageChosenTargetFrom(ev.CardID, 2))
-				},
+				Effect:  b31MunitionsDamageChosenTarget,
 			},
 		},
 	})

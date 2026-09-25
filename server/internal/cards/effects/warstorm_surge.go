@@ -34,15 +34,13 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventETB},
+			Key:     "Warstorm Surge — the creature deals damage equal to its power to any target",
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				c, ok := enteredUnderYourControl(ev, source, g, false)
 				return ok && c.IsCreature()
 			},
 			Targets: TargetAny(),
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Warstorm Surge — the creature deals damage equal to its power to any target",
-					b06WarstormSurgeDamage)
-			},
+			Effect:  b06WarstormSurgeDamage,
 		}},
 	})
 }

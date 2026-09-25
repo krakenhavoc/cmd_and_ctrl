@@ -196,50 +196,15 @@ The Ozolith | 1946ded1-5f53-409f-b0a6-5433bb0357d2 | 1
 The Reaver Cleaver | 37a2a31d-51e6-4c07-b4c2-b206ad40eb42 | 0
 Thornbite Staff | dae4815e-9025-4993-ab46-52a3f1a7219e | 0
 Thornwood Falls | ec96cde2-f1e6-495c-94e2-3e8ae79e556c | 0
-Thousand-Year Storm | dd4cf149-2fae-40e5-b50b-639f6bcec65e | 0
-Thunderbreak Regent | bb04f927-0348-4a14-9e74-381f18083f6a | 0
-Tiller Engine | 62f6baba-da3b-45b8-a3c1-efb75763cca8 | 0
-Tiller Engine | 62f6baba-da3b-45b8-a3c1-efb75763cca8 | 1
-Titania, Protector of Argoth | d0ade00d-a496-441d-9b7e-7dc033d3292c | 0
 Tranquil Cove | 5d641bf6-0f93-4189-8dc1-ec7ea446dade | 0
-Tribute to the World Tree | 72deedab-7c17-4505-aeca-4bc8596d80a5 | 0
 Triumph of Gerrard | 426a5f3f-f161-49b3-97d0-02cda554752b | 0
 Triumph of Gerrard | 426a5f3f-f161-49b3-97d0-02cda554752b | 1
 Triumph of Gerrard | 426a5f3f-f161-49b3-97d0-02cda554752b | 2
-Trygon Predator | c744b5f4-fbcf-48b8-9d60-5e9c6ac297e0 | 0
-Ugin, Eye of the Storms | 5c58353a-fd60-4528-bf0d-669626cda0b2 | 0
-Ultima Weapon | 0dc4bf39-67d6-44e5-8993-dd18b20cfdee | 0
-Underworld Dreams | 967cf377-ae26-464d-85ac-8448b5a911f7 | 0
 Urza's Saga | 4c6a0c30-b547-4eff-8ff4-0ca25803c076 | 0
 Urza's Saga | 4c6a0c30-b547-4eff-8ff4-0ca25803c076 | 1
 Urza's Saga | 4c6a0c30-b547-4eff-8ff4-0ca25803c076 | 2
 Valakut Exploration | d6861319-ae16-4e6c-af87-a264f667d694 | 1
-Valakut, the Molten Pinnacle | 1bc44216-4e06-4f66-89b7-5c327004604e | 0
-Vaultborn Tyrant | e8d0accc-b320-4c07-8a71-a09db860351e | 1
-Vein Ripper | f83a768c-162d-46f0-8ebd-d9c6b2c69322 | 1
-Vengeful Bloodwitch | 4cdbc466-42fc-471f-beab-397caec18101 | 0
-Venser, Shaper Savant | 0f41cefc-d6ff-4db7-ba35-502b7e081de1 | 0
-Verdant Sun's Avatar | 6ee71432-a44d-495e-86ea-d495d891c331 | 0
-Vexing Bauble | 4514777d-0589-4631-978b-ff244167c176 | 0
-Vexing Puzzlebox | 7267ab16-2157-4b86-93ea-ca2c0fee064a | 0
-Vilis, Broker of Blood | 7c209753-121b-4859-944b-4e33f885e777 | 0
-Vincent, Vengeful Atoner | b8961205-87fa-4cce-aba9-84fa2f91a67f | 1
-Voracious Hydra | ff8f5a4b-112a-425e-b489-7ee26d1d9fb3 | 0
-Wall of Frost | 741e4f32-0587-40fa-a73d-5bcf66b52348 | 0
-Wan Shi Tong, Librarian | 2bace3ea-7d28-4a1c-857a-d3c3a1c11b59 | 0
-Warstorm Surge | 42fb1a1c-ab3d-4cdc-a6ff-a591f7481583 | 0
-Weapons Manufacturing | e48a8160-cffe-4e00-a3e9-a59d7fc7b3a2 | 1
 Wind-Scarred Crag | b0af0c54-2a59-4075-8543-d41ff20c4c87 | 0
 Windbrisk Heights | 3589bcfc-42b0-414a-adce-bc690dc631c8 | 0
-Witch Enchanter | 0355249a-8e4e-41db-9cea-1b901faffbe6 | 0
-Witch of the Moors | 7ad97dd9-1342-4ed4-bea9-1bb21d748e04 | 0
 Wizard Class | 36f68aa3-9955-46f1-bc87-497f16ef5222 | 0
-Wolverine Riders | 09070db6-01f6-4a8a-b167-a7825e6959f4 | 1
-Wrathful Raptors | 1ba92b64-d821-4c24-aed6-fc90d0c63c10 | 0
-Wrathful Red Dragon | 17c2a962-994a-49f1-8c4e-ebcc43c3c92a | 0
-Y'shtola Rhul | a6a7bf77-0560-4572-a826-3bc9df1f78d1 | 0
-Yedora, Grave Gardener | 1fa20b05-cc06-4fb7-ae76-677a29e2185a | 0
-Zara, Renegade Recruiter | cd2720c2-522c-4fdc-9cef-9c5ce250fe7b | 0
-Zenith Chronicler | 9fed6494-3bdd-4bc6-901f-da5fb623b152 | 0
-Zo-Zu the Punisher | 0e412b68-9179-4094-960a-95692428855b | 0
 Éowyn, Shieldmaiden | 98a2a642-a30a-43e7-b47f-4776c22d1cb0 | 0

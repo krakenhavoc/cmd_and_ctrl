@@ -17,13 +17,12 @@ func init() {
 		PrintedKeywords: []string{"defender"},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventBlock},
+			Key:     "Wall of Frost — attacking creature doesn't untap",
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return ev.CardID == source.InstanceID
 			},
-			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Wall of Frost — attacking creature doesn't untap", func(g *game.Game, item *game.StackItem) error {
-					return (DoesntUntapNextUntapStep{Targets: []uuid.UUID{ev.Target}, Label: "Wall of Frost"}).Apply(NewContext(g, item))
-				})
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				return (DoesntUntapNextUntapStep{Targets: []uuid.UUID{item.Trigger.Event.Target}, Label: "Wall of Frost"}).Apply(NewContext(g, item))
 			}}},
 	})
 }

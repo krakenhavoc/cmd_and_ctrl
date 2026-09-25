@@ -66,16 +66,21 @@ func init() {
 		}},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventChangeLife, game.EventDealDamage},
+			Key:     "Vilis, Broker of Blood — draw that many cards",
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				_, ok := s22PlayerLostLife(ev, source.Controller, g)
 				return ok
 			},
+			// A fill-in Build (ADR 0041 P9): the amount lost is a
+			// fact of the moment the trigger fired, so it is captured
+			// into Params.Amount rather than a closure.
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
-				amount, _ := s22PlayerLostLife(ev, source.Controller, g)
-				return game.NewTriggeredItem(source, "Vilis, Broker of Blood — draw that many cards",
-					func(g *game.Game, item *game.StackItem) error {
-						return DrawCards{Player: item.Controller, N: amount}.Apply(NewContext(g, item))
-					})
+				item := game.NewTriggeredItem(source, "Vilis, Broker of Blood — draw that many cards", nil)
+				item.Params.Amount, _ = s22PlayerLostLife(ev, source.Controller, g)
+				return item
+			},
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				return DrawCards{Player: item.Controller, N: item.Params.Amount}.Apply(NewContext(g, item))
 			},
 		}},
 	})
