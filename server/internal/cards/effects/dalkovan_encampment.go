@@ -72,9 +72,8 @@ func init() {
 				return attackDeclaredByYou(ev, source.Controller) &&
 					b33ResolutionsThisTurn(g, source.InstanceID, b33DalkovanEncampmentLabel) > 0
 			},
-			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, b33DalkovanAttackLabel, b33DalkovanWarriors(ev.Target))
-			},
+			Key:    b33DalkovanAttackLabel,
+			Effect: b33DalkovanWarriors,
 		}},
 	})
 }

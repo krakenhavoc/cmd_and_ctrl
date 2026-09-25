@@ -30,12 +30,9 @@ func init() {
 				return discardedByYou(ev, source)
 			},
 			OptionalPrompt: &game.TriggerOptionalPrompt{Question: "Containment Construct — exile the discarded card to play it this turn?"},
-			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				discarded := ev.CardID
-				return game.NewTriggeredItem(source, "Containment Construct — exile the discarded card, play it this turn",
-					func(g *game.Game, item *game.StackItem) error {
-						return b17ExileFromGraveyardAndMayPlay(g, item.Controller, discarded)
-					})
+			Key:            "Containment Construct — exile the discarded card, play it this turn",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				return b17ExileFromGraveyardAndMayPlay(g, item.Controller, item.Trigger.Event.CardID)
 			},
 		}},
 	})

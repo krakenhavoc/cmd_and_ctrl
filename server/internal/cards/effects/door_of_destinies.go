@@ -43,12 +43,12 @@ func init() {
 				spell, ok := g.LookupCardForEffect(ev.CardID)
 				return ok && spell.HasSubtype(source.NamedTribe)
 			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				sourceID := source.InstanceID
-				return game.NewTriggeredItem(source, "Door of Destinies — put a charge counter",
-					func(g *game.Game, _ *game.StackItem) error {
-						return g.AddCounterForEffect(sourceID, "charge", 1)
-					})
+			Key: "Door of Destinies — put a charge counter",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				if sourceIsNewObject(g, item) { // #1432
+					return nil
+				}
+				return g.AddCounterForEffect(item.SourceCardID, "charge", 1)
 			},
 		}},
 	})

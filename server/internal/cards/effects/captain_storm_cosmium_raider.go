@@ -29,15 +29,13 @@ func init() {
 				return artifactEnteredUnderYourControl(ev, source, g)
 			},
 			Targets: TargetPermanent("target Pirate you control", YouControl(), IsPirateCard()),
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Captain Storm — +1/+1 counter on a Pirate",
-					func(g *game.Game, item *game.StackItem) error {
-						ctx := NewContext(g, item)
-						if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
-							return nil
-						}
-						return AddCounter{Target: item.Targets[0].ID, Kind: "+1/+1", N: 1}.Apply(ctx)
-					})
+			Key:     "Captain Storm — +1/+1 counter on a Pirate",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				ctx := NewContext(g, item)
+				if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
+					return nil
+				}
+				return AddCounter{Target: item.Targets[0].ID, Kind: "+1/+1", N: 1}.Apply(ctx)
 			},
 		}},
 	})

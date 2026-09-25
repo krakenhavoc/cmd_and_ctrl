@@ -53,25 +53,29 @@ func init() {
 				_, ok := b43YouWereDealtDamage(ev, source, g)
 				return ok
 			},
+			// A fill-in Build (ADR 0041 P9): the stack label carries the
+			// damage amount, a fact of the moment the trigger fired. The
+			// effect reads the same value back off item.Trigger.Event.
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
 				n, _ := b43YouWereDealtDamage(ev, source, g)
-				return game.NewTriggeredItem(source, "Darien, King of Kjeldor — you may create "+strconv.Itoa(n)+" Soldiers",
-					func(g *game.Game, item *game.StackItem) error {
-						ctx := NewContext(g, item)
-						return MayChoice{
-							Player:   item.Controller,
-							Question: "Darien, King of Kjeldor — create " + strconv.Itoa(n) + " 1/1 white Soldier creature tokens?",
-							YesLabel: "Create them",
-							NoLabel:  "Decline",
-							OnYes: func(ctx *Context) error {
-								return CreateToken{
-									Controller: item.Controller,
-									Template:   TokenCard("1/1 white Soldier"),
-									N:          n,
-								}.Apply(ctx)
-							},
+				return game.NewTriggeredItem(source, "Darien, King of Kjeldor — you may create "+strconv.Itoa(n)+" Soldiers", nil)
+			},
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				ctx := NewContext(g, item)
+				n := item.Trigger.Event.Amount
+				return MayChoice{
+					Player:   item.Controller,
+					Question: "Darien, King of Kjeldor — create " + strconv.Itoa(n) + " 1/1 white Soldier creature tokens?",
+					YesLabel: "Create them",
+					NoLabel:  "Decline",
+					OnYes: func(ctx *Context) error {
+						return CreateToken{
+							Controller: item.Controller,
+							Template:   TokenCard("1/1 white Soldier"),
+							N:          n,
 						}.Apply(ctx)
-					})
+					},
+				}.Apply(ctx)
 			},
 		}},
 	})

@@ -46,15 +46,13 @@ func init() {
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b26ArtifactCreatureYouControlBecameBlocked(ev, source, g)
 			},
-			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				defender := ev.Actor
-				return game.NewTriggeredItem(source, "Cyberman Patrol — afflict 3: defending player loses 3 life",
-					func(g *game.Game, item *game.StackItem) error {
-						if g.PlayerByIDForEffect(defender) == nil {
-							return nil
-						}
-						return g.ChangePlayerLifeForEffect(item.SourceCardID, defender, -3)
-					})
+			Key: "Cyberman Patrol — afflict 3: defending player loses 3 life",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				defender := item.Trigger.Event.Actor
+				if g.PlayerByIDForEffect(defender) == nil {
+					return nil
+				}
+				return g.ChangePlayerLifeForEffect(item.SourceCardID, defender, -3)
 			},
 		}},
 	})

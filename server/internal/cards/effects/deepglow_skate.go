@@ -32,20 +32,18 @@ func init() {
 			Watches:   []game.EventKind{game.EventETB},
 			AppliesTo: b06SelfETB,
 			Targets:   TargetPermanent("any number of target permanents").WithCount(0, 0),
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Deepglow Skate — double the counters on the targets",
-					func(g *game.Game, item *game.StackItem) error {
-						ctx := NewContext(g, item)
-						for _, t := range item.Targets {
-							if t.Kind != game.TargetCard || !g.TargetStillLegalForEffect(item, t) {
-								continue
-							}
-							if err := b17DoubleCountersOn(ctx, t.ID); err != nil {
-								return err
-							}
-						}
-						return nil
-					})
+			Key:       "Deepglow Skate — double the counters on the targets",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				ctx := NewContext(g, item)
+				for _, t := range item.Targets {
+					if t.Kind != game.TargetCard || !g.TargetStillLegalForEffect(item, t) {
+						continue
+					}
+					if err := b17DoubleCountersOn(ctx, t.ID); err != nil {
+						return err
+					}
+				}
+				return nil
 			},
 		}},
 	})

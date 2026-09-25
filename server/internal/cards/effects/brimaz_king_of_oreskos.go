@@ -52,12 +52,9 @@ func init() {
 				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 					return attackDeclared(ev, source)
 				},
-				Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					defender := ev.Target
-					return game.NewTriggeredItem(source, "Brimaz, King of Oreskos — an attacking 1/1 Cat Soldier with vigilance",
-						func(g *game.Game, item *game.StackItem) error {
-							return g.CreateTokensAttackingForEffect(item.Controller, TokenCard("1/1 white Cat Soldier with vigilance"), 1, defender)
-						})
+				Key: "Brimaz, King of Oreskos — an attacking 1/1 Cat Soldier with vigilance",
+				Effect: func(g *game.Game, item *game.StackItem) error {
+					return g.CreateTokensAttackingForEffect(item.Controller, TokenCard("1/1 white Cat Soldier with vigilance"), 1, item.Trigger.Event.Target)
 				},
 			},
 			On(game.EventBlock, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {

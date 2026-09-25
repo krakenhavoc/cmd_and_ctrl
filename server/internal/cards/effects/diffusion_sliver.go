@@ -54,18 +54,26 @@ func init() {
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventBecomesTarget},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				// The targeting item is what the resolution reads off the
+				// triggering event; an event naming none has nothing to
+				// counter (the payer-nil check is inside the helper).
+				if ev.StackItemID == uuid.Nil {
+					return false
+				}
 				return b41SliverYouControlBecameAnOpponentsTarget(ev, source, g)
 			},
-			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				// Capture the two UUIDs, never the *Card or the *Game.
-				itemID, payer := ev.StackItemID, ev.Actor
-				if itemID == uuid.Nil || payer == uuid.Nil {
+			Key: "Diffusion Sliver — counter it unless its controller pays {2}",
+			// ADR 0041 P9 (tier 4-2): declared on the row. The targeting
+			// item and the payer are read at resolution off the item's
+			// triggering event rather than captured when the ability
+			// triggered, so a restored item charges the same player for
+			// the same spell.
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				if item.Trigger == nil {
 					return nil
 				}
-				return game.NewTriggeredItem(source, "Diffusion Sliver — counter it unless its controller pays {2}",
-					func(g *game.Game, item *game.StackItem) error {
-						return wardPayOrCounter(g, item, itemID, payer, WardMana("{2}"))
-					})
+				ev := item.Trigger.Event
+				return wardPayOrCounter(g, item, ev.StackItemID, ev.Actor, WardMana("{2}"))
 			},
 		}},
 	})

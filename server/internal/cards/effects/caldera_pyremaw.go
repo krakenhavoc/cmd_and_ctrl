@@ -53,35 +53,33 @@ func init() {
 				return ok && (c.IsInstant() || c.IsSorcery())
 			},
 			Targets: TargetPlayer("target opponent", Opponent()),
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Caldera Pyremaw — a +1/+1 counter, then damage equal to its power to target opponent",
-					func(g *game.Game, item *game.StackItem) error {
-						dealDamage := func(g *game.Game) error {
-							ctx := NewContext(g, item)
-							power := b43PowerNowOrLastKnown(g, item.SourceCardID)
-							if power <= 0 {
-								return nil
-							}
-							for _, t := range ctx.LegalTargets() {
-								if t.Kind == game.TargetPlayer {
-									return DealDamage{Source: item.SourceCardID, Target: t.ID, Amount: power}.Apply(ctx)
-								}
-							}
-							return nil
+			Key:     "Caldera Pyremaw — a +1/+1 counter, then damage equal to its power to target opponent",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				dealDamage := func(g *game.Game) error {
+					ctx := NewContext(g, item)
+					power := b43PowerNowOrLastKnown(g, item.SourceCardID)
+					if power <= 0 {
+						return nil
+					}
+					for _, t := range ctx.LegalTargets() {
+						if t.Kind == game.TargetPlayer {
+							return DealDamage{Source: item.SourceCardID, Target: t.ID, Amount: power}.Apply(ctx)
 						}
-						if !b09SourceStillOnBattlefield(g, item) {
-							return dealDamage(g)
-						}
-						// #1290: power has to be read AFTER the
-						// counter LANDS, not on the next line — a
-						// Doubling Season / Hardened Scales board
-						// pauses the placement on a CR 616 prompt, and
-						// reading power before that resumes would
-						// measure the pre-placement power.
-						return g.AddCounterThenForEffect(item.SourceCardID, game.CounterPlusOne, 1, func(g *game.Game, _ int) error {
-							return dealDamage(g)
-						})
-					})
+					}
+					return nil
+				}
+				if !b09SourceStillOnBattlefield(g, item) {
+					return dealDamage(g)
+				}
+				// #1290: power has to be read AFTER the
+				// counter LANDS, not on the next line — a
+				// Doubling Season / Hardened Scales board
+				// pauses the placement on a CR 616 prompt, and
+				// reading power before that resumes would
+				// measure the pre-placement power.
+				return g.AddCounterThenForEffect(item.SourceCardID, game.CounterPlusOne, 1, func(g *game.Game, _ int) error {
+					return dealDamage(g)
+				})
 			},
 		}},
 	})

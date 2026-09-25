@@ -58,50 +58,9 @@ Bojuka Bog | 04b7362d-0490-4cb0-b5d7-2a7732f659ce | 0
 Bonecrusher Giant | d6d72f5f-8f5d-4180-b514-f22ff5482902 | 0
 Breeches, Brazen Plunderer | eb77f7dc-e9e4-44ef-8616-9f4e737e8ca5 | 0
 Breeches, the Blastmaker | 8514f20a-50c7-4319-84cb-2bf263548234 | 0
-Breena, the Demagogue | d11e627b-8a48-411d-a261-2c9a02a758ba | 0
-Brimaz, King of Oreskos | 49471b65-be9d-4ded-b2e5-dfc81b306b54 | 0
-Bristling Backwoods | 9cbc9f83-8979-42a5-a466-a8d89c8e6de8 | 0
-Bristly Bill, Spine Sower | d3b2d8a2-d3bc-448c-9cf6-6bead6010c28 | 0
-Buster Sword | 5e060d58-4d6e-425c-b7d4-727669fcce5b | 0
-Caldera Pyremaw | 3eb5ae68-7f76-4874-80a4-80058b10fc7a | 0
-Captain Lannery Storm | 235bf0ba-658c-463f-b112-7478ba27bd7b | 1
-Captain Storm, Cosmium Raider | 431e85e3-15e6-471b-ba71-6058394c9a96 | 0
-Carmen, Cruel Skymarcher | 84c24e62-26bd-4ca4-b6b9-d31e2065f13b | 1
-Case of the Shattered Pact | d00a089b-7d0d-4b89-902b-7b914e892178 | 1
-Charismatic Conqueror | 3dcc35f3-74dc-46a8-8aa9-3411189f0547 | 0
-Chitterspitter | 4a338863-d599-46e7-9c30-e11b898ae1b0 | 0
-Cloudstone Curio | 5cd2fd32-4da2-40eb-b003-c0b9a9ec91c1 | 0
-Cold-Eyed Selkie | f33cd975-ab70-4209-a6d8-e0d727772bf2 | 0
-Colossal Grave-Reaver | df8e0d1b-b47c-4807-9c9b-84dcec835254 | 1
-Conclave Mentor | a2fe5937-212c-4e71-8d6e-f408b38100aa | 0
-Contagion Clasp | 43f2d81e-aa01-4fa9-9046-6a27a05dbd2d | 0
-Containment Construct | 54d48e54-be4a-4a78-a778-b28e74ef7134 | 0
 Cool but Rude | 1f076303-d160-4e02-aa1e-9ed6040c3735 | 2
-Cream of the Crop | b61a87e3-dc98-4db9-abed-b47b677d81ab | 0
 Creosote Heath | c116b787-5f7e-47ef-a694-58709770dd32 | 0
-Crossway Troublemakers | 1a362e4d-6c02-4b67-ab63-c6622e505195 | 0
-Currency Converter | 981298e6-ddee-49c0-9377-f47f019b4138 | 0
-Curse of Opulence | ba0d3df2-3acf-46d7-8d64-8d67d1579adc | 1
-Cyberman Patrol | 1e51fab7-3ca5-4fbb-a1e9-b39c842895e8 | 0
-Cybership | 9c6ac895-0644-47ea-8a40-8f35cbbeba42 | 0
-Dalkovan Encampment | 33a90122-7280-4481-9b97-5879194cae40 | 0
-Darien, King of Kjeldor | d05336cb-6157-47e7-942f-43becd67a5bf | 0
-Deepglow Skate | debce64a-18bd-42f5-9e85-158c2242e9e9 | 0
-Defiant Thundermaw | 5c7f02ad-1daf-4d1a-bef0-0b2064f9b67e#1 | 0
-Deputy of Acquittals | 3cbb5045-8566-4279-b7d3-3e599b11ccc5 | 0
-Desolation Twin | c0cb1f37-1679-42c7-a794-81e088157eeb | 0
-Dictate of Kruphix | be74a4c1-d569-4203-b28a-3e2ac6a82990 | 0
-Diffusion Sliver | 458ca9f4-4622-48e1-9ca1-6a8117188973 | 0
-Diregraf Captain | 70de24d9-c585-4bf6-ac2c-c5b4b7aa298c | 0
-Disciple of Freyalise | 2699005b-a471-429f-a9d8-fbf2077ee2fd | 0
-Disciple of the Vault | c8625113-0ce4-4454-83a1-25c31b8bfb9a | 0
 Dismal Backwater | 865a2194-fca0-446e-aae3-ca475cd66e00 | 0
-Dissipation Field | 35426427-4268-4c8f-9fe1-270f2ce43d97 | 0
-Door of Destinies | 9b6d3dcf-aa5a-4516-bd48-a0723e86bfd1 | 0
-Dragonlord Atarka | daff70a4-a990-47c9-b6ef-2c379272c8a3 | 0
-Drakuseth, Maw of Flames | 060deaff-44d6-4f03-9568-bcb7add80255 | 0
-Dualcaster Mage | 8eb7c0a5-6190-40de-b473-2d1daa3bbe28 | 0
-Duplicant | ea86abfa-6cab-4ef0-8463-34136fc25b59 | 0
 Duskshell Crawler | e54ad5a1-e79d-42db-a3e9-5caecae62c9f | 0
 Edea, Possessed Sorceress | 7beb7505-b765-486d-a205-78325922a10f | 2
 Edric, Spymaster of Trest | 9a1de7e4-9930-4db3-a8f3-d146d0abf38b | 0

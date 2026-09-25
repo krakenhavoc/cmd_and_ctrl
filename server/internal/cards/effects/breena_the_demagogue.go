@@ -77,23 +77,35 @@ func init() {
 				return !b11TriggeredThisTurn(g, source.InstanceID, b17BreenaLabel(g, opp))
 			},
 			Targets: TargetCreature("a creature you control", YouControl()),
+			// A fill-in Build (ADR 0041 P9): the stack label names the
+			// attacked opponent, a fact of the moment Breena triggered.
+			// The effect re-derives that opponent from item.Trigger at
+			// resolution rather than closing over it.
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
-				attacker, opp := ev.Actor, b17DefendingPlayer(g, ev)
-				return game.NewTriggeredItem(source, b17BreenaLabel(g, opp),
-					func(g *game.Game, item *game.StackItem) error {
-						if !b17OpponentHasMoreLifeThanAnother(g, item.Controller, opp) {
-							return nil
-						}
-						ctx := NewContext(g, item)
-						if err := (DrawCards{Player: attacker, N: 1}).Apply(ctx); err != nil {
-							return err
-						}
-						if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard || !ctx.IsTargetLegal(item.Targets[0]) {
-							return nil
-						}
-						return AddCounter{Target: item.Targets[0].ID, Kind: game.CounterPlusOne, N: 2}.Apply(ctx)
-					})
+				opp := b17DefendingPlayer(g, ev)
+				return game.NewTriggeredItem(source, b17BreenaLabel(g, opp), nil)
 			},
+			Effect: breenaEffect,
 		}},
 	})
+}
+
+// breenaEffect is Breena's resolution: read the attacker and the
+// attacked opponent off item.Trigger.Event rather than a closure, so
+// a restored item resolves against the current board's answer to the
+// intervening if.
+func breenaEffect(g *game.Game, item *game.StackItem) error {
+	ev := item.Trigger.Event
+	opp := b17DefendingPlayer(g, ev)
+	if !b17OpponentHasMoreLifeThanAnother(g, item.Controller, opp) {
+		return nil
+	}
+	ctx := NewContext(g, item)
+	if err := (DrawCards{Player: ev.Actor, N: 1}).Apply(ctx); err != nil {
+		return err
+	}
+	if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard || !ctx.IsTargetLegal(item.Targets[0]) {
+		return nil
+	}
+	return AddCounter{Target: item.Targets[0].ID, Kind: game.CounterPlusOne, N: 2}.Apply(ctx)
 }

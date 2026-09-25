@@ -37,39 +37,37 @@ func init() {
 			AppliesTo:      b06SelfETB,
 			OptionalPrompt: &game.TriggerOptionalPrompt{Question: "Disciple of Freyalise — sacrifice another creature to gain that much life and draw that many cards?"},
 			Targets:        TargetCreature("another creature you control", YouControl(), b03NotNamed("Disciple of Freyalise")),
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Disciple of Freyalise — sacrifice a creature, gain life and draw equal to its power",
-					func(g *game.Game, item *game.StackItem) error {
-						if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
+			Key:            "Disciple of Freyalise — sacrifice a creature, gain life and draw equal to its power",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
+					return nil
+				}
+				target := item.Targets[0].ID
+				if target == item.SourceCardID {
+					return nil
+				}
+				ctx := NewContext(g, item)
+				if !ctx.IsTargetLegal(item.Targets[0]) {
+					return nil
+				}
+				victim, ok := g.LookupCardForEffect(target)
+				if !ok {
+					return nil
+				}
+				power := victim.CurrentPower()
+				controller := item.Controller
+				return SacrificePermanent{
+					Target: target,
+					Then: func(ctx *Context, sacrificed bool) error {
+						if !sacrificed || power <= 0 {
 							return nil
 						}
-						target := item.Targets[0].ID
-						if target == item.SourceCardID {
-							return nil
+						if err := (GainLife{Player: controller, Amount: power}).Apply(ctx); err != nil {
+							return err
 						}
-						ctx := NewContext(g, item)
-						if !ctx.IsTargetLegal(item.Targets[0]) {
-							return nil
-						}
-						victim, ok := g.LookupCardForEffect(target)
-						if !ok {
-							return nil
-						}
-						power := victim.CurrentPower()
-						controller := item.Controller
-						return SacrificePermanent{
-							Target: target,
-							Then: func(ctx *Context, sacrificed bool) error {
-								if !sacrificed || power <= 0 {
-									return nil
-								}
-								if err := (GainLife{Player: controller, Amount: power}).Apply(ctx); err != nil {
-									return err
-								}
-								return DrawCards{Player: controller, N: power}.Apply(ctx)
-							},
-						}.Apply(ctx)
-					})
+						return DrawCards{Player: controller, N: power}.Apply(ctx)
+					},
+				}.Apply(ctx)
 			},
 		}},
 	})

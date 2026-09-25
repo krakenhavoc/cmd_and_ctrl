@@ -44,10 +44,8 @@ func init() {
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return attachedCreatureDealtCombatDamageToPlayer(ev, source, g)
 			},
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Buster Sword — draw a card",
-					Do(DrawCards{N: 1}))
-			},
+			Key:    "Buster Sword — draw a card",
+			Effect: Do(DrawCards{N: 1}),
 		}},
 		Activated: []ActivatedAbility{
 			EquipAbility("{2}"),

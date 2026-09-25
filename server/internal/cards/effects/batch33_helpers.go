@@ -669,29 +669,27 @@ const b33DalkovanAttackLabel = "Dalkovan Encampment — create two 1/1 red Warri
 // b33DalkovanWarriors is Dalkovan Encampment's attack body: two 1/1
 // red Warriors per activation of the land this turn, tapped and
 // attacking the player the first declared attacker was declared
-// against (captured in Build), and a delayed trigger that sacrifices
-// them at the beginning of the next end step.
-func b33DalkovanWarriors(defender uuid.UUID) func(g *game.Game, item *game.StackItem) error {
-	return func(g *game.Game, item *game.StackItem) error {
-		ctx := NewContext(g, item)
-		n := 2 * b33ResolutionsThisTurn(g, item.SourceCardID, b33DalkovanEncampmentLabel)
-		if n <= 0 {
-			return nil
-		}
-		cursor := b25LastEventSeq(g)
-		if err := g.CreateTokensAttackingForEffect(item.Controller, b33TappedAttackingRedWarrior(), n, defender); err != nil {
-			return err
-		}
-		tokens := b27TokensCreatedByAfter(g, item.Controller, cursor)
-		if len(tokens) == 0 {
-			return nil
-		}
-		return ScheduleDelayedTrigger{
-			Label: "Dalkovan Encampment — sacrifice the Warriors",
-			Cards: tokens,
-			Body:  sacrificeListedCardsBody,
-		}.Apply(ctx)
+// against (item.Trigger.Event.Target, ADR 0041 P9), and a delayed
+// trigger that sacrifices them at the beginning of the next end step.
+func b33DalkovanWarriors(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	n := 2 * b33ResolutionsThisTurn(g, item.SourceCardID, b33DalkovanEncampmentLabel)
+	if n <= 0 {
+		return nil
 	}
+	cursor := b25LastEventSeq(g)
+	if err := g.CreateTokensAttackingForEffect(item.Controller, b33TappedAttackingRedWarrior(), n, item.Trigger.Event.Target); err != nil {
+		return err
+	}
+	tokens := b27TokensCreatedByAfter(g, item.Controller, cursor)
+	if len(tokens) == 0 {
+		return nil
+	}
+	return ScheduleDelayedTrigger{
+		Label: "Dalkovan Encampment — sacrifice the Warriors",
+		Cards: tokens,
+		Body:  sacrificeListedCardsBody,
+	}.Apply(ctx)
 }
 
 // b33DistributeCountersRoundRobin is Lathiel's body: the life gained

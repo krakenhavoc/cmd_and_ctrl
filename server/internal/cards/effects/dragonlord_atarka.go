@@ -53,11 +53,9 @@ func init() {
 			AppliesTo: b06SelfETB,
 			Targets: TargetPermanent("any number of target creatures and/or planeswalkers your opponents control",
 				And(Or(Creature(), Planeswalker()), OpponentControls())).WithCount(0, 5),
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Dragonlord Atarka — 5 damage divided among the targets",
-					func(g *game.Game, item *game.StackItem) error {
-						return b22DamageDividedEvenly(NewContext(g, item), 5)
-					})
+			Key: "Dragonlord Atarka — 5 damage divided among the targets",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				return b22DamageDividedEvenly(NewContext(g, item), 5)
 			},
 		}},
 	})
