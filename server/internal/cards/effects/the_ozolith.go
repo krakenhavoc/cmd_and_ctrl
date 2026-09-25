@@ -111,9 +111,8 @@ func init() {
 					},
 				),
 				Targets: TargetCreature("target creature"),
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "The Ozolith — move its counters onto that creature", ozolithMoveCounters)
-				},
+				Key:     "The Ozolith — move its counters onto that creature",
+				Effect:  ozolithMoveCounters,
 				OptionalPrompt: &game.TriggerOptionalPrompt{
 					Question: "The Ozolith — move all its counters onto target creature?",
 				},

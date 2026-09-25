@@ -1036,3 +1036,20 @@ func damagedCreatureReflectsChosenAmount(g *game.Game, item *game.StackItem) err
 	}
 	return DealDamage{Source: item.Trigger.Event.Target, Target: item.Targets[0].ID, Amount: item.Trigger.Event.Amount}.Apply(NewContext(g, item))
 }
+
+// thatPlayerLosesOneLife is "you may have that player lose 1 life" —
+// Blood Seeker's and Suture Priest's second ability, both triggered
+// by a creature an opponent controls entering: the entering
+// creature's controller, read off the trigger's last-known object
+// (item.Trigger.Object, ADR 0041 P9), loses the life, and a departed
+// player is asked nothing.
+func thatPlayerLosesOneLife(g *game.Game, item *game.StackItem) error {
+	if item.Trigger == nil || item.Trigger.Object == nil {
+		return nil
+	}
+	victim := item.Trigger.Object.Controller
+	if g.PlayerByIDForEffect(victim) == nil {
+		return nil
+	}
+	return g.ChangePlayerLifeForEffect(item.SourceCardID, victim, -1)
+}
