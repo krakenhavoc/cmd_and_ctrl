@@ -60,7 +60,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // thing. And the duration, which looked like the third problem, is
 // not one: "for as long as this creature remains on the battlefield"
 // is CR 611.2b and has had a shape since #755 / ADR 0063
-// (DurationWhileSourceRemains + StaticForDuration + SnapshotAffected,
+// (DurationWhileSourceRemains + ScopedEffectFor with a Match,
 // the same machinery Sower of Temptation uses). So the trigger is one
 // engine seam away, not three, and the file is written so that when
 // #754 lands the whole ability can be added in one place.

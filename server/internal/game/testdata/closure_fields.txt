@@ -68,7 +68,6 @@ Game.Listeners                               rebuilt                            
 Game.PendingChoices                          census:ChoiceResumeFrames          # Game.PendingChoices
 Game.PendingTriggers                         census:StackEffects                # Game.PendingTriggers
 Game.PhasedOut                               census:IntrinsicAbilityCards       # Game.PhasedOut
-Game.ScopedStatics                           census:ScopedStatics               # Game.ScopedStatics
 Game.Seats                                   census:IntrinsicAbilityCards       # Game.Seats
 Game.Stack                                   census:IntrinsicAbilityCards       # Game.Stack
 Game.StackMeta                               census:StackEffects                # Game.StackMeta
@@ -135,16 +134,12 @@ ReplacementEvent.stackItem                   census:ChoiceResumeFrames          
 ReplacementEvent.tokenTail                   census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.tokenTail
 ReplacementEvent.zoneRoute                   census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.zoneRoute
 ReturnToHandCost.Filter                      census:IntrinsicAbilityCards       # Game.simultaneousExit.ActivatedAbilities.Cost.ReturnToHand.Filter
-ScopedStatic.Ability                         census:ScopedStatics               # Game.ScopedStatics.Ability
-ScopedStatic.Source                          census:ScopedStatics               # Game.ScopedStatics.Source
 SearchLibrarySpec.Pred                       census:ChoiceResumeFrames          # Game.PendingChoices.searchResume.spec.Pred
 SearchLibrarySpec.Then                       census:ChoiceResumeFrames          # Game.PendingChoices.searchResume.spec.Then
 SearchLibrarySpec.Validate                   census:ChoiceResumeFrames          # Game.PendingChoices.searchResume.spec.Validate
 StackItem.Effect                             census:StackEffects                # Game.StackMeta.Effect
 StackItem.modeSpec                           census:StackTargetSpecs            # Game.StackMeta.modeSpec
 StackItem.targetSpec                         census:StackTargetSpecs            # Game.StackMeta.targetSpec
-StaticAbility.AppliesTo                      census:ScopedStatics               # Game.ScopedStatics.Ability.AppliesTo
-StaticAbility.Apply                          census:ScopedStatics               # Game.ScopedStatics.Ability.Apply
 TapOthersCost.Filter                         census:IntrinsicAbilityCards       # Game.simultaneousExit.ManaAbilities.TapOthers.Filter
 TapPermanentsCost.Spec                       census:ChoiceResumeFrames          # Game.PendingChoices.payUnlessResume.tap.Spec
 TargetDifference.Key                         census:StackTargetSpecs            # Game.StackMeta.targetSpec.Different.Key

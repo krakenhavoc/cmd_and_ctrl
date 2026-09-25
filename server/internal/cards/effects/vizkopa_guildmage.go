@@ -20,7 +20,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // exists for the rest of the turn and fires on an event ("whenever
 // you gain life"), which is a floating trigger. The engine's two
 // duration mechanisms are turn-scoped STATICS
-// (RegisterScopedStaticForEffect, #279) and step-keyed DELAYED
+// (a ScopedEffect record, #279) and step-keyed DELAYED
 // triggers (ScheduleDelayedTriggerForEffect, CR 603.7) — a static
 // changes a characteristic, and a delayed trigger fires at a named
 // step, so neither can express "watch an event kind until end of

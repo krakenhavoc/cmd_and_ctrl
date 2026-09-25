@@ -497,7 +497,7 @@ func (g *Game) CastPermissionActiveForEffect(p *CastPermission, playerID uuid.UU
 	// `false`: this is a query, not the cleanup sweep. An
 	// UntilEndOfTurn permission is live for the whole of the turn it
 	// names and is dropped by sweepCastPermissionsLocked at that
-	// turn's cleanup step — the same split ScopedStatic lives under.
+	// turn's cleanup step — the same split ScopedEffect lives under.
 	return !g.durationExpiredLocked(p.Duration, false)
 }
 

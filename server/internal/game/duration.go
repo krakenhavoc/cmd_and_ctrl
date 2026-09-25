@@ -21,7 +21,7 @@ import "github.com/google/uuid"
 // `Duration` is the replacement, and it is DATA — no closures, no
 // pointers into game state. That matters three times over:
 //
-//   - `Clone` copies a `ScopedStatic` by value, so a duration that
+//   - `Clone` copies a `ScopedEffect` by value, so a duration that
 //     captured a `*Card` would alias across an undo snapshot.
 //   - The snapshot census already refuses a restore point for a game
 //     holding a scoped static, because the ability is two closures
@@ -87,7 +87,7 @@ const (
 	// that has to be re-checked against a zone every query would be a
 	// second copy of that rule, and the two would drift.
 	//
-	// A ScopedStatic must not carry it: a continuous effect is about
+	// A ScopedEffect must not carry it: a continuous effect is about
 	// objects on the battlefield and has no zone-bound husk to be
 	// swept by. `durationExpiredLocked` therefore treats it exactly as
 	// Indefinite, which is the safe half of that mistake — the layer
@@ -189,7 +189,7 @@ func (d Duration) Known() bool { return d.Kind.Known() && d.Condition.Known() }
 // at the first cleanup it sees — the pre-S38 behaviour.
 //
 // IMMUTABLE after registration, like every other field on
-// ScopedStatic: `Clone` shares the value with every undo snapshot.
+// ScopedEffect: `Clone` shares the value with every undo snapshot.
 type Duration struct {
 	// Kind selects which of the fields below mean anything.
 	Kind DurationKind

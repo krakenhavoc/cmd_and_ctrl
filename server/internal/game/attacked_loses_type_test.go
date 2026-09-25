@@ -2,8 +2,6 @@ package game
 
 import (
 	"encoding/json"
-	"slices"
-	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -31,17 +29,9 @@ func stripAttackableTypesForTest(t *testing.T, g *Game, target, lock uuid.UUID) 
 		if !ok {
 			t.Fatalf("setup: the lock %v is not on the battlefield", lock)
 		}
-		g.RegisterScopedStaticForEffect(StaticAbility{
-			Layer: Layer4Type,
-			AppliesTo: func(c *Card, _ *Game, _ *Card) bool {
-				return c.InstanceID == target
-			},
-			Apply: func(ch *Characteristic, _ *Card, _ *Game, _ *Card) {
-				ch.Types = slices.DeleteFunc(slices.Clone(ch.Types), func(ty string) bool {
-					return strings.EqualFold(ty, "Planeswalker") || strings.EqualFold(ty, "Battle")
-				})
-			},
-		}, lock, "test — loses the planeswalker and battle types", d)
+		g.RegisterScopedEffectForEffect(lock, g.PinnedObjectsLocked(target),
+			[]Mod{RemoveTypesMod("Planeswalker", "Battle")}, d,
+			"test — loses the planeswalker and battle types")
 		g.RecomputeLayersIfStaleLocked()
 	})
 	if c := findBattlefieldCard(g, target); c == nil || c.IsPlaneswalker() || c.IsBattle() {
@@ -164,14 +154,9 @@ func TestAttackedWalkerThatGainsATypeStaysAttacked(t *testing.T) {
 	declaredAttackerAt(t, g, attacker, walker)
 
 	g.WithWriteLock(func() {
-		g.RegisterScopedStaticForEffect(StaticAbility{
-			Layer:     Layer4Type,
-			AppliesTo: func(c *Card, _ *Game, _ *Card) bool { return c.InstanceID == walker },
-			Apply: func(ch *Characteristic, _ *Card, _ *Game, _ *Card) {
-				ch.Types = append(slices.Clone(ch.Types), "Creature")
-				ch.Power, ch.Toughness = 5, 5
-			},
-		}, walker, "test — becomes a 5/5 creature too", g.UntilEndOfTurnDuration())
+		g.RegisterScopedEffectForEffect(walker, g.PinnedObjectsLocked(walker),
+			append([]Mod{AddTypesMod("Creature")}, SetBasePTMods(5, 5)...),
+			g.UntilEndOfTurnDuration(), "test — becomes a 5/5 creature too")
 		g.RecomputeLayersIfStaleLocked()
 	})
 	if c := findBattlefieldCard(g, walker); !c.IsCreature() || !c.IsPlaneswalker() {
@@ -196,13 +181,9 @@ func TestAttackedBattleThatGainsATypeStaysAttacked(t *testing.T) {
 	declaredAttackerAt(t, g, attacker, battle)
 
 	g.WithWriteLock(func() {
-		g.RegisterScopedStaticForEffect(StaticAbility{
-			Layer:     Layer4Type,
-			AppliesTo: func(c *Card, _ *Game, _ *Card) bool { return c.InstanceID == battle },
-			Apply: func(ch *Characteristic, _ *Card, _ *Game, _ *Card) {
-				ch.Types = append(slices.Clone(ch.Types), "Artifact")
-			},
-		}, battle, "test — becomes an artifact too", g.UntilEndOfTurnDuration())
+		g.RegisterScopedEffectForEffect(battle, g.PinnedObjectsLocked(battle),
+			[]Mod{AddTypesMod("Artifact")}, g.UntilEndOfTurnDuration(),
+			"test — becomes an artifact too")
 		g.RecomputeLayersIfStaleLocked()
 	})
 	if c := findBattlefieldCard(g, battle); !c.IsArtifact() || !c.IsBattle() {

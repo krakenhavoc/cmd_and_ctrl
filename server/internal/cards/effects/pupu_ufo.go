@@ -58,18 +58,8 @@ func init() {
 // its controller controls, until end of turn.
 func pupuUFOBasePowerFromTowns(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	affected := eotSnapshot(ctx, ctx.Source(), nil)
-	if affected == nil {
-		return nil
-	}
 	towns := countControlled(g, ctx.Controller(), MatchLandSubtype("Town"))
-	g.RegisterScopedStaticForEffect(game.StaticAbility{
-		Layer:     game.Layer7PT,
-		SubLayer:  game.SubLayer7B_Set,
-		AppliesTo: affected.appliesTo(),
-		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
-			c.Power = towns
-		},
-	}, ctx.Source(), fmt.Sprintf("PuPu UFO — base power %d until end of turn", towns), g.UntilEndOfTurnDuration())
-	return nil
+	return untilEndOfTurn(ctx, ctx.Source(), nil,
+		fmt.Sprintf("PuPu UFO — base power %d until end of turn", towns),
+		game.SetBasePowerMod(towns))
 }

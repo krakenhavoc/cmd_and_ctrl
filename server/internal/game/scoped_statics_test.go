@@ -6,12 +6,14 @@ import (
 	"github.com/google/uuid"
 )
 
-// turn_scoped_statics_test.go pins the S32 registry's mechanics at
-// the engine level: the layer engine sees floating effects, CR
-// 613.7 timestamp ordering holds between a floating effect and a
-// battlefield one, the cleanup sweep runs at the right moment, and
-// the undo stack carries the list. Card-level behaviour (Giant
-// Growth, Overrun, Aang) lives in the effects package.
+// scoped_statics_test.go pins the duration registry's mechanics at the
+// engine level: the layer engine sees floating effects, CR 613.7
+// timestamp ordering holds between them, the cleanup sweep runs at the
+// right moment, and the undo stack carries the list. S32 wrote these
+// against the closure registry; ADR 0041 phase 3 tier 3a (#1497)
+// retired it, and the same tests now hold its data-record successor,
+// ScopedEffect, to the same rules. Card-level behaviour (Giant Growth,
+// Overrun, Aang) lives in the effects package.
 
 // pushScopedTestCreature seeds a creature on the battlefield and
 // fires the zone-move event so the layer listener stamps
@@ -60,12 +62,18 @@ func scopedEffectivePT(t *testing.T, g *Game, id uuid.UUID) (int, int) {
 	return p, tough
 }
 
-// scopedPinnedTo builds the "this one permanent" AppliesTo predicate the
-// card-facing primitives build, without importing the effects
-// package (which would be an import cycle).
-func scopedPinnedTo(id uuid.UUID) func(*Card, *Game, *Card) bool {
-	return func(target *Card, _ *Game, _ *Card) bool {
-		return target.InstanceID == id
+// pinUntilEOTForTest registers an until-end-of-turn record over one
+// battlefield permanent, created by `source`, and fails the test if
+// nothing registered.
+func pinUntilEOTForTest(t *testing.T, g *Game, source, target uuid.UUID, label string, mods ...Mod) {
+	t.Helper()
+	ok := false
+	g.WithWriteLock(func() {
+		ok = g.RegisterScopedEffectForEffect(source, g.PinnedObjectsLocked(target), mods,
+			g.UntilEndOfTurnDuration(), label)
+	})
+	if !ok {
+		t.Fatalf("setup: %q registered nothing", label)
 	}
 }
 
@@ -80,17 +88,7 @@ func TestScopedStaticAppliesImmediately(t *testing.T) {
 		t.Fatalf("baseline P/T = %d/%d, want 2/2", p, tough)
 	}
 
-	g.WithWriteLock(func() {
-		g.RegisterScopedStaticForEffect(StaticAbility{
-			Layer:     Layer7PT,
-			SubLayer:  SubLayer7C_Modify,
-			AppliesTo: scopedPinnedTo(bear),
-			Apply: func(c *Characteristic, _ *Card, _ *Game, _ *Card) {
-				c.Power += 3
-				c.Toughness += 3
-			},
-		}, uuid.New(), "test — +3/+3", g.UntilEndOfTurnDuration())
-	})
+	pinUntilEOTForTest(t, g, uuid.New(), bear, "test — +3/+3", ModifyPTMod(3, 3))
 
 	if p, tough := scopedEffectivePT(t, g, bear); p != 5 || tough != 5 {
 		t.Errorf("pumped P/T = %d/%d, want 5/5", p, tough)
@@ -104,25 +102,15 @@ func TestScopedStaticExpiresAtCleanup(t *testing.T) {
 	g := newActiveGame(t)
 	bear := pushScopedTestCreature(g, g.Seats[0].ID, 2, 2)
 
-	g.WithWriteLock(func() {
-		g.RegisterScopedStaticForEffect(StaticAbility{
-			Layer:     Layer7PT,
-			SubLayer:  SubLayer7C_Modify,
-			AppliesTo: scopedPinnedTo(bear),
-			Apply: func(c *Characteristic, _ *Card, _ *Game, _ *Card) {
-				c.Power += 3
-				c.Toughness += 3
-			},
-		}, uuid.New(), "test — +3/+3", g.UntilEndOfTurnDuration())
-	})
+	pinUntilEOTForTest(t, g, uuid.New(), bear, "test — +3/+3", ModifyPTMod(3, 3))
 	if p, _ := scopedEffectivePT(t, g, bear); p != 5 {
 		t.Fatalf("setup: power = %d, want 5", p)
 	}
 
 	advancePastScopedCleanup(t, g)
 
-	if n := len(g.ScopedStatics); n != 0 {
-		t.Errorf("ScopedStatics = %d after cleanup, want 0", n)
+	if n := len(g.ScopedEffects); n != 0 {
+		t.Errorf("ScopedEffects = %d after cleanup, want 0", n)
 	}
 	if p, tough := scopedEffectivePT(t, g, bear); p != 2 || tough != 2 {
 		t.Errorf("post-cleanup P/T = %d/%d, want 2/2", p, tough)
@@ -150,20 +138,11 @@ func TestScopedStaticFromEndStepExpiresSameTurn(t *testing.T) {
 	seatAtGrant := g.Turn.ActiveSeat
 	turnsBegunAtGrant := g.Seats[seatAtGrant].TurnsBegun
 
-	g.WithWriteLock(func() {
-		g.RegisterScopedStaticForEffect(StaticAbility{
-			Layer:     Layer7PT,
-			SubLayer:  SubLayer7C_Modify,
-			AppliesTo: scopedPinnedTo(bear),
-			Apply: func(c *Characteristic, _ *Card, _ *Game, _ *Card) {
-				c.Power += 3
-			},
-		}, uuid.New(), "end-step grant", g.UntilEndOfTurnDuration())
-	})
+	pinUntilEOTForTest(t, g, uuid.New(), bear, "end-step grant", ModifyPTMod(3, 0))
 	if p, _ := scopedEffectivePT(t, g, bear); p != 5 {
 		t.Fatalf("setup: power = %d, want 5", p)
 	}
-	if got := g.ScopedStatics[0].Duration; got.Kind != UntilEndOfTurn ||
+	if got := g.ScopedEffects[0].Duration; got.Kind != UntilEndOfTurn ||
 		got.ExpiresAfterTurnsBegun != turnsBegunAtGrant {
 		t.Fatalf("duration = %+v, want until end of turn stamped on the turn it was created in (%d)",
 			got, turnsBegunAtGrant)
@@ -178,7 +157,7 @@ func TestScopedStaticFromEndStepExpiresSameTurn(t *testing.T) {
 	if g.Turn.ActiveSeat == seatAtGrant {
 		t.Fatalf("cursor did not leave seat %d's turn (at %q)", seatAtGrant, g.Turn.Step)
 	}
-	if n := len(g.ScopedStatics); n != 0 {
+	if n := len(g.ScopedEffects); n != 0 {
 		t.Errorf("grant made in the end step survived its own turn's cleanup (%d entries)", n)
 	}
 	if p, _ := scopedEffectivePT(t, g, bear); p != 2 {
@@ -196,29 +175,10 @@ func TestScopedStaticComposesWithAnthemInLayerOrder(t *testing.T) {
 	bear := pushScopedTestCreature(g, g.Seats[0].ID, 4, 4)
 
 	// The 7c modifier is created FIRST (earliest timestamp).
-	g.WithWriteLock(func() {
-		g.RegisterScopedStaticForEffect(StaticAbility{
-			Layer:     Layer7PT,
-			SubLayer:  SubLayer7C_Modify,
-			AppliesTo: scopedPinnedTo(bear),
-			Apply: func(c *Characteristic, _ *Card, _ *Game, _ *Card) {
-				c.Power++
-				c.Toughness++
-			},
-		}, uuid.New(), "anthem-shaped +1/+1", g.UntilEndOfTurnDuration())
-	})
+	pinUntilEOTForTest(t, g, uuid.New(), bear, "anthem-shaped +1/+1", ModifyPTMod(1, 1))
 	// The 7b setter is created SECOND (latest timestamp) and must
 	// still apply first.
-	g.WithWriteLock(func() {
-		g.RegisterScopedStaticForEffect(StaticAbility{
-			Layer:     Layer7PT,
-			SubLayer:  SubLayer7B_Set,
-			AppliesTo: scopedPinnedTo(bear),
-			Apply: func(c *Characteristic, _ *Card, _ *Game, _ *Card) {
-				c.Power, c.Toughness = 1, 1
-			},
-		}, uuid.New(), "base P/T 1/1", g.UntilEndOfTurnDuration())
-	})
+	pinUntilEOTForTest(t, g, uuid.New(), bear, "base P/T 1/1", SetBasePTMods(1, 1)...)
 
 	if p, tough := scopedEffectivePT(t, g, bear); p != 2 || tough != 2 {
 		t.Errorf("P/T = %d/%d, want 2/2 (7b sets 1/1, then 7c adds +1/+1)", p, tough)
@@ -232,20 +192,8 @@ func TestScopedStaticsSortByTimestampWithinALayer(t *testing.T) {
 	g := newActiveGame(t)
 	bear := pushScopedTestCreature(g, g.Seats[0].ID, 2, 2)
 
-	setPT := func(p, tough int, label string) {
-		g.WithWriteLock(func() {
-			g.RegisterScopedStaticForEffect(StaticAbility{
-				Layer:     Layer7PT,
-				SubLayer:  SubLayer7B_Set,
-				AppliesTo: scopedPinnedTo(bear),
-				Apply: func(c *Characteristic, _ *Card, _ *Game, _ *Card) {
-					c.Power, c.Toughness = p, tough
-				},
-			}, uuid.New(), label, g.UntilEndOfTurnDuration())
-		})
-	}
-	setPT(1, 1, "base 1/1")
-	setPT(5, 5, "base 5/5")
+	pinUntilEOTForTest(t, g, uuid.New(), bear, "base 1/1", SetBasePTMods(1, 1)...)
+	pinUntilEOTForTest(t, g, uuid.New(), bear, "base 5/5", SetBasePTMods(5, 5)...)
 
 	if p, tough := scopedEffectivePT(t, g, bear); p != 5 || tough != 5 {
 		t.Errorf("P/T = %d/%d, want 5/5 (the later timestamp wins in 7b)", p, tough)
@@ -261,16 +209,8 @@ func TestScopedStaticSurvivesItsSourceLeaving(t *testing.T) {
 	bear := pushScopedTestCreature(g, owner, 2, 2)
 	sourcePermanent := pushScopedTestCreature(g, owner, 1, 1)
 
-	g.WithWriteLock(func() {
-		g.RegisterScopedStaticForEffect(StaticAbility{
-			Layer:     Layer7PT,
-			SubLayer:  SubLayer7C_Modify,
-			AppliesTo: scopedPinnedTo(bear),
-			Apply: func(c *Characteristic, _ *Card, _ *Game, _ *Card) {
-				c.Power += 3
-			},
-		}, sourcePermanent, "grant from a permanent that is about to die", g.UntilEndOfTurnDuration())
-	})
+	pinUntilEOTForTest(t, g, sourcePermanent, bear,
+		"grant from a permanent that is about to die", ModifyPTMod(3, 0))
 
 	if err := g.MoveCardByID(
 		ZoneRef{Kind: ZoneBattlefield},
@@ -283,8 +223,8 @@ func TestScopedStaticSurvivesItsSourceLeaving(t *testing.T) {
 	if p, _ := scopedEffectivePT(t, g, bear); p != 5 {
 		t.Errorf("power = %d, want 5 — the grant must outlive its source", p)
 	}
-	if got := g.ScopedStatics[0].Source.InstanceID; got != sourcePermanent {
-		t.Errorf("stored source LKI = %s, want %s", got, sourcePermanent)
+	if got := g.ScopedEffects[0].Source.ID; got != sourcePermanent {
+		t.Errorf("stored source = %s, want %s", got, sourcePermanent)
 	}
 }
 
@@ -295,28 +235,23 @@ func TestScopedStaticSurvivesItsSourceLeaving(t *testing.T) {
 // compaction would rewrite the snapshot's backing array.
 func TestCloneCopiesScopedStatics(t *testing.T) {
 	g := newActiveGame(t)
-	g.WithWriteLock(func() {
-		g.RegisterScopedStaticForEffect(StaticAbility{
-			Layer:     Layer6Ability,
-			AppliesTo: func(*Card, *Game, *Card) bool { return false },
-			Apply:     func(*Characteristic, *Card, *Game, *Card) {},
-		}, uuid.New(), "grant", g.UntilEndOfTurnDuration())
-	})
+	bear := pushScopedTestCreature(g, g.Seats[0].ID, 2, 2)
+	pinUntilEOTForTest(t, g, uuid.New(), bear, "grant", AddKeywordsMod("vigilance"))
 
 	snap := g.Clone()
-	if len(snap.ScopedStatics) != 1 {
-		t.Fatalf("clone dropped the live scoped static")
+	if len(snap.ScopedEffects) != 1 {
+		t.Fatalf("clone dropped the live scoped effect")
 	}
 
 	g.WithWriteLock(func() { g.ClearEndOfTurnScopedStaticsLocked() })
-	if len(g.ScopedStatics) != 0 {
-		t.Fatalf("sweep left %d entries on the original", len(g.ScopedStatics))
+	if len(g.ScopedEffects) != 0 {
+		t.Fatalf("sweep left %d entries on the original", len(g.ScopedEffects))
 	}
-	if len(snap.ScopedStatics) != 1 {
+	if len(snap.ScopedEffects) != 1 {
 		t.Error("sweeping the original reached the clone (aliased slice)")
 	}
-	if snap.ScopedStatics[0].Label != "grant" {
-		t.Errorf("clone's entry = %q, want %q", snap.ScopedStatics[0].Label, "grant")
+	if snap.ScopedEffects[0].Label != "grant" {
+		t.Errorf("clone's entry = %q, want %q", snap.ScopedEffects[0].Label, "grant")
 	}
 }
 
@@ -329,25 +264,15 @@ func TestRestoreFromRollsBackScopedStatics(t *testing.T) {
 	bear := pushScopedTestCreature(g, g.Seats[0].ID, 2, 2)
 	snap := g.Clone()
 
-	g.WithWriteLock(func() {
-		g.RegisterScopedStaticForEffect(StaticAbility{
-			Layer:     Layer7PT,
-			SubLayer:  SubLayer7C_Modify,
-			AppliesTo: scopedPinnedTo(bear),
-			Apply: func(c *Characteristic, _ *Card, _ *Game, _ *Card) {
-				c.Power += 3
-				c.Toughness += 3
-			},
-		}, uuid.New(), "Giant Growth — +3/+3", g.UntilEndOfTurnDuration())
-	})
+	pinUntilEOTForTest(t, g, uuid.New(), bear, "Giant Growth — +3/+3", ModifyPTMod(3, 3))
 	if p, _ := scopedEffectivePT(t, g, bear); p != 5 {
 		t.Fatalf("setup: power = %d, want 5", p)
 	}
 
 	g.WithWriteLock(func() { g.RestoreFrom(snap) })
 
-	if n := len(g.ScopedStatics); n != 0 {
-		t.Errorf("RestoreFrom kept %d scoped statics, want 0", n)
+	if n := len(g.ScopedEffects); n != 0 {
+		t.Errorf("RestoreFrom kept %d scoped effects, want 0", n)
 	}
 	if p, tough := scopedEffectivePT(t, g, bear); p != 2 || tough != 2 {
 		t.Errorf("post-undo P/T = %d/%d, want 2/2", p, tough)
@@ -360,19 +285,14 @@ func TestRestoreFromRollsBackScopedStatics(t *testing.T) {
 // churning the layer version.
 func TestClearExpiredScopedStaticsIsIdempotent(t *testing.T) {
 	g := newActiveGame(t)
-	g.WithWriteLock(func() {
-		g.RegisterScopedStaticForEffect(StaticAbility{
-			Layer:     Layer6Ability,
-			AppliesTo: func(*Card, *Game, *Card) bool { return false },
-			Apply:     func(*Characteristic, *Card, *Game, *Card) {},
-		}, uuid.New(), "grant", g.UntilEndOfTurnDuration())
-	})
+	bear := pushScopedTestCreature(g, g.Seats[0].ID, 2, 2)
+	pinUntilEOTForTest(t, g, uuid.New(), bear, "grant", AddKeywordsMod("vigilance"))
 
 	g.WithWriteLock(func() { g.ClearEndOfTurnScopedStaticsLocked() })
 	versionAfterFirst := g.layerVersion.Load()
 	g.WithWriteLock(func() { g.ClearEndOfTurnScopedStaticsLocked() })
 
-	if n := len(g.ScopedStatics); n != 0 {
+	if n := len(g.ScopedEffects); n != 0 {
 		t.Errorf("second sweep left %d entries", n)
 	}
 	if got := g.layerVersion.Load(); got != versionAfterFirst {

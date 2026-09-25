@@ -101,20 +101,9 @@ func (r RestrictUntilEOT) Apply(ctx *Context) error {
 	if r.Restrictions == 0 {
 		return nil
 	}
-	set := eotSnapshot(ctx, r.Target, r.Match)
-	if set == nil {
-		return nil
-	}
-	bits := r.Restrictions
-	ctx.Game.RegisterScopedStaticForEffect(game.StaticAbility{
-		Layer:     game.Layer6Ability,
-		AppliesTo: set.appliesTo(),
-		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
-			c.Restrictions |= bits
-		},
-	}, ctx.Source(), eotLabel(r.Label, "restriction until end of turn"),
-		ctx.Game.UntilEndOfTurnDuration())
-	return nil
+	return untilEndOfTurn(ctx, r.Target, r.Match,
+		eotLabel(r.Label, "restriction until end of turn"),
+		game.AddRestrictionsMod(r.Restrictions))
 }
 
 // RestrictAttachedWhile is "During your turn, equipped creature can't

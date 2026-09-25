@@ -33,8 +33,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //   - "becomes a Pirate in addition to its other types" is a layer 4
 //     type add, snapshotted to the stolen creature's own instance and
 //     entry stamp exactly as BecomeCreatureUntilEOT pins a Vehicle
-//     (CR 400.7, CR 611.2c) — StaticUntilEOT is the right tool rather
-//     than BecomeCreatureUntilEOT itself, because that constructor's
+//     (CR 400.7, CR 611.2c) — an `addSubtypes` record rather than
+//     BecomeCreatureUntilEOT itself, because that constructor's
 //     empty-Types default adds Artifact and Creature, which this
 //     card does not print.
 //
@@ -81,20 +81,7 @@ func coerciveRecruiterEffect(g *game.Game, item *game.StackItem) error {
 	}).Apply(ctx); err != nil {
 		return err
 	}
-	set := eotSnapshot(ctx, target, nil)
-	if set == nil {
-		return nil
-	}
-	return StaticUntilEOT{
-		Label: "Coercive Recruiter — becomes a Pirate in addition to its other types",
-		Ability: game.StaticAbility{
-			Layer:     game.Layer4Type,
-			AppliesTo: set.appliesTo(),
-			Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
-				if !eotHasType(c.Subtypes, "Pirate") {
-					c.Subtypes = append(c.Subtypes, "Pirate")
-				}
-			},
-		},
-	}.Apply(ctx)
+	return untilEndOfTurn(ctx, target, nil,
+		"Coercive Recruiter — becomes a Pirate in addition to its other types",
+		game.AddSubtypesMod("Pirate"))
 }

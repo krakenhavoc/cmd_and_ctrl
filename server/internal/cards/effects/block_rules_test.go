@@ -266,15 +266,8 @@ func TestLegolasWithNoAbilitiesCanBeBlockedByAnything(t *testing.T) {
 	legolas := b12Push(g, me.ID, "Legolas Greenleaf", "Legendary Creature — Elf Archer", legolasGreenleafOracle, 2, 2)
 	small := b12Creature(g, opp.ID, "Grizzly Bears", "Creature — Bear", 2, 2)
 	g.WithWriteLock(func() {
-		g.RegisterScopedStaticForEffect(game.StaticAbility{
-			Layer: game.Layer6Ability,
-			AppliesTo: func(target *game.Card, _ *game.Game, _ *game.Card) bool {
-				return target.InstanceID == legolas
-			},
-			Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
-				c.AbilitiesRemoved = true
-			},
-		}, uuid.Nil, "loses all abilities", g.UntilEndOfTurnDuration())
+		g.RegisterScopedEffectForEffect(uuid.Nil, g.PinnedObjectsLocked(legolas),
+			[]game.Mod{game.LoseAllAbilitiesMod()}, g.UntilEndOfTurnDuration(), "loses all abilities")
 	})
 	brAttack(t, g, legolas)
 	if err := g.DeclareBlocker(small, legolas); err != nil {

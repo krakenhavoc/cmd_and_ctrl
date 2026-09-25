@@ -218,28 +218,10 @@ func TestAnEarthbentLandPlayedThisTurnIsSickWithoutTheHaste(t *testing.T) {
 // the test above, built from the same predicate the real thing uses so
 // the only difference is the grant.
 func (g *Game) animateLandWithoutHasteForTest(land uuid.UUID, stamp int64) {
-	applies := func(t *Card, _ *Game, _ *Card) bool {
-		return t.InstanceID == land && t.EnteredBattlefieldAt == stamp
-	}
 	d := g.PinnedTo(IndefiniteDuration(), land)
-	ts := timeNowUnixNano()
-	g.registerScopedStaticLocked(StaticAbility{
-		Layer:     Layer4Type,
-		AppliesTo: applies,
-		Apply: func(ch *Characteristic, _ *Card, _ *Game, _ *Card) {
-			if !typeListHas(ch.Types, "Creature") {
-				ch.Types = append(ch.Types, "Creature")
-			}
-		},
-	}, uuid.Nil, "probe — animate without haste", d, ts)
-	g.registerScopedStaticLocked(StaticAbility{
-		Layer:     Layer7PT,
-		SubLayer:  SubLayer7B_Set,
-		AppliesTo: applies,
-		Apply: func(ch *Characteristic, _ *Card, _ *Game, _ *Card) {
-			ch.Power, ch.Toughness = 0, 0
-		},
-	}, uuid.Nil, "probe — animate without haste (base P/T)", d, ts)
+	g.RegisterScopedEffectForEffect(uuid.Nil, []AffectedObject{PinObject(land, stamp)},
+		append([]Mod{AddTypesMod("Creature")}, SetBasePTMods(0, 0)...), d,
+		"probe — animate without haste")
 }
 
 // TestEarthbendCountersGoThroughThePlacementWindow: the counters are
@@ -682,7 +664,7 @@ func TestACancelledEarthbendDoesNothing(t *testing.T) {
 	if n := len(g.DelayedTriggers); n != 0 {
 		t.Errorf("a cancelled earthbend queued %d delayed returns", n)
 	}
-	if n := len(g.ScopedStatics) + len(g.ScopedEffects); n != 0 {
+	if n := len(g.ScopedEffects); n != 0 {
 		t.Errorf("a cancelled earthbend registered %d continuous effects", n)
 	}
 }
@@ -704,7 +686,7 @@ func TestEarthbendingALandThatHasLeftIsANoOp(t *testing.T) {
 
 	earthbend(t, g, me, land, 4)
 
-	if n := len(g.ScopedStatics) + len(g.ScopedEffects); n != 0 {
+	if n := len(g.ScopedEffects); n != 0 {
 		t.Errorf("%d continuous effects registered against a land that is not on the battlefield", n)
 	}
 	if n := len(g.DelayedTriggers); n != 0 {
