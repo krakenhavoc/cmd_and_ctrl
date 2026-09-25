@@ -464,6 +464,7 @@ binary. Migration 0006 (ADR 0095, the deck-request tables) is that
 shape:
 
 ```sh
+sudo apt-get install -y sqlite3   # not on the hosts by default
 sudo systemctl stop cmd-and-ctrl
 sudo sqlite3 /var/lib/cmd_and_ctrl/data/db/cmdctrl.sqlite \
   "DROP TABLE deck_request_asks; DROP TABLE deck_requests; DELETE FROM schema_migrations WHERE version = 6;"
