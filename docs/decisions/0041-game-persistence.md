@@ -1132,7 +1132,8 @@ with, taking each recommendation.
    3b and 4. The corpus rule narrows from "the writer never touches an
    existing directory" to "the writer never touches an existing
    **file**" — a fixture is still never edited, regenerated or
-   deleted.
+   deleted. *Second half superseded 2026-09-25 by Decision P10:
+   tiers 3b and 4 stay in v7 (owner answer Q1).*
 
 ### Implementation notes (PR 1, #1555)
 
@@ -1290,13 +1291,13 @@ Three things the first slice settled that the decisions above left open.
   file. No existing fixture changed, and `closure_fields.txt` is
   unchanged.
 
-## Amendment, 2026-09-24 — phase 3 tiers 3b and 4: design for review (#1497)
+## Amendment, 2026-09-24 — phase 3 tiers 3b and 4 (#1497)
 
 *Amendment, 2026-09-24, branch `docs/1497-tiers-3b-4-design`. The
 design step for the last two tiers of
 [#1497](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1497). Docs
 only: no engine code changes with this amendment. Decisions P8 to P11
-below are proposals until the owner answers the questions at the end.*
+were accepted on 2026-09-25; the owner's answers are at the end.*
 
 This amendment is measured against `origin/develop` at `933cddfc`,
 after tier 1 (#1555), tier 2 (#1568, #1582), the #1558 hardening
@@ -1856,3 +1857,24 @@ both tiers are planned in full whatever it shows.
   object remains, not until cleanup.
 - An undo now rewinds a prevention shield's spent charge.
 - Cosmic Intervention and Mirri behave exactly as they do today.
+
+### Owner answers (2026-09-25)
+
+The owner took the recommendation on all five questions.
+
+1. **Q1 — A. Stay in v7.** Decision P10 stands and owner decision 6's
+   second half ("v8 comes with tiers 3b and 4") is withdrawn. No shape
+   file or fixture directory is added for a version bump. New fixtures
+   for 3b and 4 are written into `v7/` beside the existing ones, under
+   the "never touch an existing file" rule.
+2. **Q2 — C. The ref, checked against the declared label.** A mismatch
+   falls back to the single row with that label; otherwise answer 3
+   applies.
+3. **Q3 — B. Restore the game.** An ability the new binary cannot find
+   stays on the stack with no automatic effect, to be resolved by hand.
+   The card is flagged `AbilitiesLostOnRestore` and one ERROR line is
+   logged.
+4. **Q4 — A. #1497 closes when `StackEffects` retires.** The `Build`
+   tail (slices 4-3 to 4-10) is part of the sprint.
+5. **Q5 — A. In parallel.** M, 3b-1, 4-0 and 4-1 start together; then
+   3b-2 and 4-2; then the tail and 4-final.
