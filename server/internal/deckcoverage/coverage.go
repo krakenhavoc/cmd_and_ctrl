@@ -76,7 +76,9 @@ type Report struct {
 	Source string `json:"source"`
 	// SourceURL is the deck's canonical link; empty for pasted text.
 	SourceURL string `json:"source_url,omitempty"`
-	// DeckKey is "moxfield:<id>" or "archidekt:<id>"; empty for text.
+	// DeckKey is "moxfield:<id>" or "archidekt:<id>" for a link, and
+	// "list:<hash>" (ListKey) for a pasted list — whatever the caller
+	// put on the Deck; Build does not derive it.
 	DeckKey    string   `json:"deck_key,omitempty"`
 	Commanders []string `json:"commanders"`
 	// Counts is by distinct card, and always carries all five buckets.

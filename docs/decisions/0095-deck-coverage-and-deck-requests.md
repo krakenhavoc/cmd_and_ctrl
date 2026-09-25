@@ -120,6 +120,8 @@ report. The checker answers "how much of this is automated", not "is this legal"
 
   Anonymous and guest sessions get 401 and 403. Requests must be **URL-based**: pasted text has no
   stable identity to deduplicate on, so the site shows the button only for a link check.
+  *Superseded by the [amendment 2026-09-25](#amendment-2026-09-25-requests-from-a-pasted-list): a pasted list is requestable, deduplicated by a hash of its
+  resolved cards.*
 
 ### 3. Filing, deduplication and limits
 
@@ -187,6 +189,8 @@ that already keeps the bot's Discord secrets out of the server's env file.
   `manual` names, then "…and N more". It includes a link to the site's `#/deck-check?url=…` for
   the full list. When there is something to request, it adds a **Request these cards** button.
   The button runs the same handler as `/c2-deck-req`, keyed to the invoker who presses it.
+- *The `link` option on both commands is optional since the [amendment 2026-09-25](#amendment-2026-09-25-requests-from-a-pasted-list); with none,
+  the bot asks for the list in a modal.*
 - **`/c2-deck-req <link>`** calls `POST /deck-requests` with the invoker's ID and display name. It
   replies in the channel with the issue link when an issue is filed or joined, so the table can
   see it. It replies ephemerally when the request was refused or there was nothing to add.
@@ -201,7 +205,8 @@ header (ADR 0092).
 - **Result.** Counts first, then the cards grouped by bucket. Caveated cards show their caveat. For
   signed-in viewers, card names link to `#/catalog?q=` as the roadmap's names do. Signed-out
   viewers see plain text.
-- **Request these cards.** The button shows only for a link check that has `manual` or
+- **Request these cards.** *(The link-only condition is superseded by the [amendment 2026-09-25](#amendment-2026-09-25-requests-from-a-pasted-list): the
+  button shows for a pasted list too.)* The button shows only for a link check that has `manual` or
   `unreviewed` cards.
   - A signed-in user with a Discord identity can press it; it calls `POST /deck-requests` and shows
     the issue link.
@@ -271,3 +276,101 @@ consume. Where PR 1 differs from, or fills in, the text above:
   any. The deck name, the display name and unresolved names are redacted and kept to one line, and
   their `@` is broken with a zero-width space so a name cannot ping anyone. With no deck name and
   no commander, the title falls back to the deck key.
+
+## Amendment 2026-09-25: requests from a pasted list
+
+**Issue:** [#1641](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1641), following #1631.
+
+### Why
+
+**Moxfield blocks our servers.** Every Moxfield endpoint answers the prod and dev hosts with a
+Cloudflare 403: the v2 and v3 API, the export and the site itself. The block keys on the client's
+fingerprint, not its IP, so a different egress address does not help. Moxfield sends no CORS
+header, so the browser cannot fetch the deck for us either, and Moxfield has no practical way to
+ask for API access.
+
+So a Moxfield player's route is **Export → copy the list → paste it**. Under §2 a pasted list could
+be checked but not requested, because text had "no stable identity to deduplicate on". For the
+most popular deck site, that made the request half of this ADR unreachable.
+
+### Owner decision (2026-09-25)
+
+**A pasted list can be requested, on the site and in Discord.** The §2 sentence "Requests must be
+URL-based" and the §5 condition "only for a link check" are superseded. Everything else in §3
+applies to a list exactly as to a link: the 3-per-24-hours limit, "nothing to add", joining the
+open issue, and refiling a closed one.
+
+### The list's identity
+
+A list is deduplicated by what it contains. Its deck key is
+`list:<the first 16 hex digits of sha256(canonical form)>`, computed by
+`deckcoverage.ListKey`. The canonical form is:
+
+- **One line per copy**: a card's line is repeated by its count.
+- **A resolved card is its oracle ID.** For the rare resolved card with none, it is `name:` and
+  its lowercased name.
+- **An unresolved name is `name:` and the name**, lowercased with its whitespace collapsed.
+- **A commander's line is prefixed `commander:`**, so the same 99 cards under a different
+  commander is a different deck.
+- **Sideboard rows are left out**, as the report leaves them out of its buckets.
+- **The lines are sorted and joined with `\n`.**
+
+Set codes, collector numbers, foil markers, row order, a card split across two rows, and whether
+the commander is marked with a `Commander` section or `*CMDR*` all fall away. A Moxfield export and
+an MTGO export of one deck give one key. The same deck with one card changed is a new key and a
+new issue; the comment an open issue gets carries fresh counts only for the exact same list.
+
+`POST /deck-coverage` now returns this key as `deck_key` for a pasted list (it was empty), and the
+report cache keys a list's report by it. A pasted list may name at most 2,000 cards, because
+`"999999999 Forest"` is one short line and both the key and the report walk every copy.
+
+### The issue for a list
+
+- **Title.** A list has no name, so the title falls back to the commanders, as §3 already did for
+  an unnamed deck. With no commander either, it is `Pasted list (list:<hash>)`.
+- **Deck line.** The body says `**Deck:** Pasted list` where a link would be.
+- **The list itself.** A collapsed `<details>` block at the end holds the list as `N Name` lines,
+  commanders first and marked `*CMDR*`, in a fenced block that the checker can read back. It is
+  rendered from the report, meaning the card index's names and the summed counts, and **never from
+  the raw paste**. Anything the requester typed that the index did not resolve stays in the
+  escaped "Names the card index could not resolve" section, under §3's existing markdown escaping
+  and redaction.
+
+### The Moxfield hint
+
+Since Moxfield blocks the server, any fetch error for a Moxfield link is really that block, even
+one that reads as "not found" or "private". Every such error keeps its HTTP status and its `code`,
+but its sentence becomes:
+
+> Moxfield blocks our server. On Moxfield, open the deck → Export → Copy plain text, then paste the
+> list here instead.
+
+The error body also gains `"hint": "paste_list"`. A client keys its "paste the list instead"
+affordance on the hint rather than on the code. **No `moxfield_blocked` code was added**: `code`
+stays the fetcher's classification of what happened, and the hint says what to do about it.
+Archidekt errors are unchanged.
+
+### The site
+
+"Request these cards" shows for a pasted-list check that has `manual` or `unreviewed` cards, and
+sends `{text}`. On an error with the `paste_list` hint, the page shows the server's sentence and a
+**Paste the list instead** button that switches to the "Paste a list" tab.
+
+### The bot
+
+- **`link` is optional** on `/c2-deck-check` and `/c2-deck-req`. With no link, the bot answers at
+  once with a **modal** (`InteractionResponseModal`). A modal has to be the first response, within
+  the 3-second deadline, so it is shown before any deferral.
+  - It is titled "Paste your decklist" and has one required paragraph `TextInput`, up to 4,000
+    characters.
+  - Its label points at Moxfield's Export → Copy plain text, or any "1 Card Name" list.
+- **Submitting the modal** (`InteractionModalSubmit`) routes by the modal's custom ID to the same
+  deferred check or request flow, sending `{text}`. `Dispatch` handles modal submits behind the
+  same guild allow-list.
+- **The "Request these cards" button after a pasted check** has to carry the list, which cannot
+  fit in a 100-character custom ID. The bot's in-memory link store, with its one-hour TTL, now holds
+  a link **or** a list behind a random token. A bot restart drops it, as before, and the player
+  runs the check again.
+- **The full-report link** cannot carry a list, so a pasted check's reply links to `#/deck-check`
+  plainly.
+- **A Moxfield error** shows the server's hint sentence.

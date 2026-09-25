@@ -304,10 +304,13 @@ so it is limited per client IP to about one check every 10 seconds,
 with a burst of 3 (429 past that; the key follows
 `CMDCTRL_TRUST_FORWARDED`). An **admin** session has its own bucket of
 1/s, burst 10, because the bot calls from loopback on behalf of every
-guild member at once. Any other session is ignored. A link report is
-cached for 10 minutes under its deck key, so a second check of the same
-deck, however the link is spelled, fetches nothing. A pasted list is
-never cached.
+guild member at once. Any other session is ignored. A report is cached
+for 10 minutes under its deck key, so a second check of the same deck,
+however the link is spelled, fetches nothing. A pasted list is cached
+under its list key the same way, so the same deck pasted from two
+exports is built once.
+
+A pasted list may name at most 2,000 cards in total (400 past that).
 
 **Response 200**
 
@@ -350,8 +353,18 @@ never cached.
   no bucket.
 - `violations` is `deck.Validate`'s answer. It is informational and
   never blocks a report: a 60-card list still gets its buckets.
-- `source` is `moxfield`, `archidekt` or `text`. `source_url` and
-  `deck_key` are absent for `text`.
+- `source` is `moxfield`, `archidekt` or `text`. `source_url` is absent
+  for `text`.
+- `deck_key` is the deck's identity: `moxfield:<id>`, `archidekt:<id>`,
+  or, for a pasted list, `list:<16 hex digits>` ([ADR 0095, amendment
+  2026-09-25](decisions/0095-deck-coverage-and-deck-requests.md#amendment-2026-09-25-requests-from-a-pasted-list)).
+  The list key is the first 16 hex digits of the SHA-256 of the list's
+  canonical form: one line per copy, each a card's oracle ID (for a name
+  the index cannot resolve, `name:` and the lowercased name), a
+  commander's line prefixed `commander:`, sideboard rows left out,
+  sorted and joined with `\n`. Set codes, collector numbers, row order,
+  split rows and the way the commander is marked do not change it; a
+  different commander does.
 - `commanders`, `cards`, `unknown` and `violations` are always arrays,
   never `null`.
 
@@ -382,7 +395,24 @@ the typed code, and the same `violations[]` shape a deck upload uses:
 | 502 | `external_api_unavailable` | The deck site did not answer |
 
 The upstream failures are 502 rather than 4xx: the caller's link was
-fine. Other errors use the uniform `{error}` shape: 400 for a body with
+fine.
+
+**Moxfield.** Moxfield blocks this server: every Moxfield endpoint
+answers it with a Cloudflare 403. So **any** fetch error for a Moxfield
+link keeps its status and `code` but carries this sentence as `error`,
+and `"hint": "paste_list"`:
+
+```json
+{
+  "error": "Moxfield blocks our server. On Moxfield, open the deck → Export → Copy plain text, then paste the list here instead.",
+  "code": "upstream_blocked",
+  "hint": "paste_list",
+  "violations": [{ "code": "upstream_blocked", "card": "<the url>", "message": "…" }]
+}
+```
+
+A client keys its "paste the list instead" affordance on `hint`, not on
+`code`. `POST /deck-requests` answers a Moxfield link the same way. Other errors use the uniform `{error}` shape: 400 for a body with
 neither or both of `url` and `text`, or an unreadable pasted list; 503
 when the card index is not loaded.
 
@@ -1718,12 +1748,18 @@ with no Discord identity, is 403.
 
 ```json
 { "url": "https://moxfield.com/decks/AbC123" }
+{ "text": "1 Atraxa, Praetors' Voice *CMDR*\n1 Sol Ring\n..." }
 { "url": "https://moxfield.com/decks/AbC123",
   "requester": { "discord_id": "123456789012345678", "display_name": "Alice" } }
 ```
 
-A link only. `text` is refused with 400: a pasted list has no stable
-identity to deduplicate on.
+Exactly one of `url` and `text` (400 for neither or both). A pasted list
+is deduplicated by its list key (`deck_key`, see `POST /deck-coverage`),
+so the same deck pasted from two exports joins one issue, and the same
+cards under another commander file another. Since the [2026-09-25
+amendment](decisions/0095-deck-coverage-and-deck-requests.md#amendment-2026-09-25-requests-from-a-pasted-list):
+Moxfield blocks this server, so pasting is a Moxfield player's only
+route.
 
 **What it does**, in order:
 
@@ -1733,9 +1769,10 @@ identity to deduplicate on.
    not reset it. Over the limit is **429** `rate_limited`, decided
    before the deck is fetched. Only an ask that reaches GitHub (an
    issue filed, or a comment added) counts.
-2. **The report.** The deck is fetched and bucketed exactly as
-   `POST /deck-coverage` does it, from the same 10-minute cache. A
-   fetch failure answers with that route's error table.
+2. **The report.** The deck is fetched (or the list parsed) and
+   bucketed exactly as `POST /deck-coverage` does it, from the same
+   10-minute cache. A fetch failure answers with that route's error
+   table, the Moxfield hint included.
 3. **Nothing to add.** No `manual` and no `unreviewed` card: no issue,
    **200** `nothing_to_add`, with the report (its caveated cards
    included).
@@ -1747,15 +1784,20 @@ identity to deduplicate on.
    deck's row repointed at it: **201** `filed`.
 
 The issue's title is `[deck-request] <deck name>` (the commander's name
-when the deck has none), with labels `enhancement` and `deck-request`.
+when the deck has none, which a pasted list never does), with labels
+`enhancement` and `deck-request`.
 If GitHub refuses the labels, the issue is filed without them, as
 `POST /bugreport` does. The body holds the deck link, the requester's
 display name (never the snowflake), the counts, `## Cards to add` and
 `## Cards to review` checklists (`- [ ] Name (oracle id)`),
 `## Automated with caveats`, any names the index could not resolve, and
-a footer naming the surface that filed it. The deck name, the display
-name and any unresolved name went through ADR 0017's redaction before
-they are published, and an `@` in them cannot ping anyone.
+a footer naming the surface that filed it. For a pasted list the deck
+line reads "Pasted list" instead of a link, and the list itself follows
+in a collapsed `<details>` block: `N Name` lines, commanders first and
+marked `*CMDR*`, rendered from the card index's names and never from
+the raw paste. The deck name, the display name and any unresolved name
+went through ADR 0017's redaction before they are published, and an `@`
+in them cannot ping anyone.
 
 **Response**
 

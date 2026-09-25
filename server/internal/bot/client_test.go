@@ -56,9 +56,10 @@ type fakeServer struct {
 	// deckCoverageStatus/deckCoverageBody drive POST /deck-coverage.
 	// deckCoverageBody is marshalled verbatim, so it can be a
 	// DeckCoverageReport (2xx) or an error map (non-2xx).
-	deckCoverageStatus int
-	deckCoverageBody   any
-	gotDeckCoverageURL string
+	deckCoverageStatus  int
+	deckCoverageBody    any
+	gotDeckCoverageURL  string
+	gotDeckCoverageText string
 
 	// deckRequestStatus/deckRequestBody drive POST /deck-requests,
 	// the same way. gotDeckRequest records the decoded request body.
@@ -66,6 +67,7 @@ type fakeServer struct {
 	deckRequestBody   any
 	gotDeckRequest    struct {
 		URL       string        `json:"url"`
+		Text      string        `json:"text"`
 		Requester DeckRequester `json:"requester"`
 	}
 }
@@ -106,10 +108,12 @@ func (fs *fakeServer) handleDeckCoverage(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	var body struct {
-		URL string `json:"url"`
+		URL  string `json:"url"`
+		Text string `json:"text"`
 	}
 	_ = json.NewDecoder(r.Body).Decode(&body)
 	fs.gotDeckCoverageURL = body.URL
+	fs.gotDeckCoverageText = body.Text
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(fs.deckCoverageStatus)
 	if fs.deckCoverageBody != nil {
@@ -561,7 +565,7 @@ func TestDeckCoverage_Success(t *testing.T) {
 		Violations: []DeckViolation{},
 	}
 
-	report, err := c.DeckCoverage(context.Background(), "https://moxfield.com/decks/AbC123")
+	report, err := c.DeckCoverage(context.Background(), DeckSource{URL: "https://moxfield.com/decks/AbC123"})
 	if err != nil {
 		t.Fatalf("DeckCoverage: %v", err)
 	}
@@ -585,7 +589,7 @@ func TestDeckCoverage_FetchError(t *testing.T) {
 		"violations": []map[string]string{{"code": "deck_private", "card": "https://moxfield.com/decks/x", "message": "private"}},
 	}
 
-	_, err := c.DeckCoverage(context.Background(), "https://moxfield.com/decks/x")
+	_, err := c.DeckCoverage(context.Background(), DeckSource{URL: "https://moxfield.com/decks/x"})
 	var apiErr *DeckAPIError
 	if !errors.As(err, &apiErr) {
 		t.Fatalf("want *DeckAPIError, got %v (%T)", err, err)
@@ -607,7 +611,7 @@ func TestDeckCoverage_FetchError(t *testing.T) {
 func TestDeckCoverage_Unauthorized(t *testing.T) {
 	fs, c := newFakeServer(t)
 	fs.deckCoverageStatus = http.StatusUnauthorized
-	_, err := c.DeckCoverage(context.Background(), "https://moxfield.com/decks/x")
+	_, err := c.DeckCoverage(context.Background(), DeckSource{URL: "https://moxfield.com/decks/x"})
 	if !errors.Is(err, ErrUnauthorized) {
 		t.Errorf("want ErrUnauthorized, got %v", err)
 	}
@@ -617,7 +621,7 @@ func TestDeckCoverage_ServiceUnavailable(t *testing.T) {
 	fs, c := newFakeServer(t)
 	fs.deckCoverageStatus = http.StatusServiceUnavailable
 	fs.deckCoverageBody = map[string]any{"error": "card index not loaded"}
-	_, err := c.DeckCoverage(context.Background(), "https://moxfield.com/decks/x")
+	_, err := c.DeckCoverage(context.Background(), DeckSource{URL: "https://moxfield.com/decks/x"})
 	var apiErr *DeckAPIError
 	if !errors.As(err, &apiErr) || apiErr.StatusCode != http.StatusServiceUnavailable {
 		t.Fatalf("want a 503 *DeckAPIError, got %v", err)
@@ -632,7 +636,7 @@ func TestDeckRequest_Filed(t *testing.T) {
 		Report: &DeckCoverageReport{Counts: map[DeckCoverageBucket]int{BucketManual: 12}},
 	}
 
-	result, err := c.DeckRequest(context.Background(), "https://moxfield.com/decks/AbC123", DeckRequester{DiscordID: "42", DisplayName: "Alice"})
+	result, err := c.DeckRequest(context.Background(), DeckSource{URL: "https://moxfield.com/decks/AbC123"}, DeckRequester{DiscordID: "42", DisplayName: "Alice"})
 	if err != nil {
 		t.Fatalf("DeckRequest: %v", err)
 	}
@@ -652,7 +656,7 @@ func TestDeckRequest_RateLimited(t *testing.T) {
 	fs.deckRequestStatus = http.StatusTooManyRequests
 	fs.deckRequestBody = DeckRequestResult{Status: DeckRequestRateLimited, RetryAfter: 3600}
 
-	result, err := c.DeckRequest(context.Background(), "https://moxfield.com/decks/x", DeckRequester{})
+	result, err := c.DeckRequest(context.Background(), DeckSource{URL: "https://moxfield.com/decks/x"}, DeckRequester{})
 	if err != nil {
 		t.Fatalf("DeckRequest: %v (rate_limited is a result, not an error)", err)
 	}
@@ -666,7 +670,7 @@ func TestDeckRequest_IPLimiterShapeIsAnError(t *testing.T) {
 	fs.deckRequestStatus = http.StatusTooManyRequests
 	fs.deckRequestBody = map[string]string{"error": "too many requests"}
 
-	_, err := c.DeckRequest(context.Background(), "https://moxfield.com/decks/x", DeckRequester{})
+	_, err := c.DeckRequest(context.Background(), DeckSource{URL: "https://moxfield.com/decks/x"}, DeckRequester{})
 	var apiErr *DeckAPIError
 	if !errors.As(err, &apiErr) {
 		t.Fatalf("want *DeckAPIError for a status-less 429, got %v", err)
@@ -678,7 +682,7 @@ func TestDeckRequest_ServiceUnavailable(t *testing.T) {
 	fs.deckRequestStatus = http.StatusServiceUnavailable
 	fs.deckRequestBody = map[string]string{"error": "deck requests need CMDCTRL_GITHUB_TOKEN"}
 
-	_, err := c.DeckRequest(context.Background(), "https://moxfield.com/decks/x", DeckRequester{})
+	_, err := c.DeckRequest(context.Background(), DeckSource{URL: "https://moxfield.com/decks/x"}, DeckRequester{})
 	var apiErr *DeckAPIError
 	if !errors.As(err, &apiErr) || apiErr.StatusCode != http.StatusServiceUnavailable {
 		t.Fatalf("want a 503 *DeckAPIError, got %v", err)
@@ -688,8 +692,46 @@ func TestDeckRequest_ServiceUnavailable(t *testing.T) {
 func TestDeckRequest_Unauthorized(t *testing.T) {
 	fs, c := newFakeServer(t)
 	fs.deckRequestStatus = http.StatusUnauthorized
-	_, err := c.DeckRequest(context.Background(), "https://moxfield.com/decks/x", DeckRequester{})
+	_, err := c.DeckRequest(context.Background(), DeckSource{URL: "https://moxfield.com/decks/x"}, DeckRequester{})
 	if !errors.Is(err, ErrUnauthorized) {
 		t.Errorf("want ErrUnauthorized, got %v", err)
+	}
+}
+
+// A pasted list goes up as {text}, with no url (ADR 0095, amendment
+// 2026-09-25), on both routes.
+func TestDeckRoutes_SendAPastedListAsText(t *testing.T) {
+	fs, c := newFakeServer(t)
+	fs.deckCoverageBody = DeckCoverageReport{Source: "text", DeckKey: "list:0123456789abcdef"}
+	list := "1 Sol Ring\n1 Arcane Signet"
+	report, err := c.DeckCoverage(context.Background(), DeckSource{Text: list})
+	if err != nil || report.DeckKey != "list:0123456789abcdef" {
+		t.Fatalf("DeckCoverage: %+v, %v", report, err)
+	}
+	if fs.gotDeckCoverageText != list || fs.gotDeckCoverageURL != "" {
+		t.Errorf("server saw url %q text %q", fs.gotDeckCoverageURL, fs.gotDeckCoverageText)
+	}
+
+	fs.deckRequestBody = DeckRequestResult{Status: DeckRequestFiled, IssueNumber: 9}
+	if _, err := c.DeckRequest(context.Background(), DeckSource{Text: list}, DeckRequester{DiscordID: "42", DisplayName: "Alice"}); err != nil {
+		t.Fatalf("DeckRequest: %v", err)
+	}
+	if fs.gotDeckRequest.Text != list || fs.gotDeckRequest.URL != "" || fs.gotDeckRequest.Requester.DiscordID != "42" {
+		t.Errorf("server saw %+v", fs.gotDeckRequest)
+	}
+}
+
+func TestDeckCoverage_MoxfieldHint(t *testing.T) {
+	fs, c := newFakeServer(t)
+	fs.deckCoverageStatus = http.StatusBadGateway
+	fs.deckCoverageBody = map[string]any{
+		"error": "Moxfield blocks our server. On Moxfield, open the deck → Export → Copy plain text, then paste the list here instead.",
+		"code":  "upstream_blocked",
+		"hint":  "paste_list",
+	}
+	_, err := c.DeckCoverage(context.Background(), DeckSource{URL: "https://moxfield.com/decks/x"})
+	var apiErr *DeckAPIError
+	if !errors.As(err, &apiErr) || apiErr.Hint != DeckHintPasteList || apiErr.Code != "upstream_blocked" {
+		t.Fatalf("want a hinted *DeckAPIError, got %#v", err)
 	}
 }

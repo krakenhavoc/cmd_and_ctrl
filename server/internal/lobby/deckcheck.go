@@ -8,7 +8,9 @@ package lobby
 //   - POST /deck-requests — signed in (a user with a Discord identity,
 //     or the bot's admin session naming a Discord member). Files the
 //     deck's missing cards as a GitHub issue, or joins the open issue
-//     already filed for that deck.
+//     already filed for that deck. A link or, since ADR 0095's
+//     2026-09-25 amendment, a pasted list: Moxfield blocks this
+//     server, so a Moxfield player's only route is Export and paste.
 //
 // The report is deckcoverage.Build's and nothing here re-decides a
 // bucket. What this file owns is the HTTP edge: the per-IP limit on a
@@ -21,6 +23,7 @@ import (
 	"fmt"
 	"math"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -152,7 +155,7 @@ func (d *deckCheck) coverage(c Config, w http.ResponseWriter, r *http.Request) e
 	if body.URL != "" {
 		report, err = d.reportForURL(r.Context(), c, body.URL)
 	} else {
-		report, err = textReport(c, body.Text)
+		report, err = d.reportForText(c, body.Text)
 	}
 	if err != nil {
 		return writeDeckFetchError(w, err)
@@ -160,14 +163,56 @@ func (d *deckCheck) coverage(c Config, w http.ResponseWriter, r *http.Request) e
 	return writeJSON(w, http.StatusOK, report)
 }
 
-// textReport builds a report for a pasted list. Never cached: pasted
-// text has no stable identity to key on.
-func textReport(c Config, text string) (*deckcoverage.Report, error) {
+// parsedList is a pasted list read and keyed: its entries and its
+// "list:<hash>" deck key (deckcoverage.ListKey).
+type parsedList struct {
+	key     string
+	entries []deck.Entry
+}
+
+// parseList reads a pasted list and derives its deck key. The key is
+// the list's identity (ADR 0095, amendment 2026-09-25): the same deck
+// pasted from two exports is one key, so it is one cache entry and one
+// deck request.
+func parseList(c Config, text string) (parsedList, error) {
 	entries, err := deck.ParseText(text)
 	if err != nil {
-		return nil, httpError(http.StatusBadRequest, "could not read that list: "+err.Error())
+		return parsedList{}, httpError(http.StatusBadRequest, "could not read that list: "+err.Error())
 	}
-	return buildReport(c, deckcoverage.Deck{Source: "text", Entries: entries})
+	key, err := deckcoverage.ListKey(c.Cards, entries)
+	switch {
+	case errors.Is(err, deckcoverage.ErrNoIndex):
+		return parsedList{}, httpError(http.StatusServiceUnavailable, "the card index is not loaded on this server")
+	case errors.Is(err, deckcoverage.ErrListTooLong):
+		return parsedList{}, httpError(http.StatusBadRequest,
+			fmt.Sprintf("that list names more than %d cards; paste one deck at a time", deckcoverage.MaxListCopies))
+	case err != nil:
+		return parsedList{}, err
+	}
+	return parsedList{key: key, entries: entries}, nil
+}
+
+// reportForText builds the report for a pasted list, reusing a cached
+// one for the same list key. A pasted list has no name and no link:
+// its report says Source "text" and carries the list key.
+func (d *deckCheck) reportForText(c Config, text string) (*deckcoverage.Report, error) {
+	list, err := parseList(c, text)
+	if err != nil {
+		return nil, err
+	}
+	return d.reportForList(c, list)
+}
+
+func (d *deckCheck) reportForList(c Config, list parsedList) (*deckcoverage.Report, error) {
+	if r, ok := d.cache.get(list.key); ok {
+		return r, nil
+	}
+	r, err := buildReport(c, deckcoverage.Deck{Source: "text", DeckKey: list.key, Entries: list.entries})
+	if err != nil {
+		return nil, err
+	}
+	d.cache.put(list.key, r)
+	return r, nil
 }
 
 // reportForURL returns the report for the deck a link names: from the
@@ -229,7 +274,22 @@ type deckFetchError struct {
 	status    int
 	msg       string
 	violation deck.Violation
+	// hint is deckFetchHintPasteList when the way forward is to paste
+	// the list instead of linking it. Empty otherwise.
+	hint string
 }
+
+// deckFetchHintPasteList is the `hint` a Moxfield fetch error carries
+// (ADR 0095, amendment 2026-09-25): Moxfield blocks this server, so
+// the only way to check or request a Moxfield deck is to paste it. A
+// client keys its "paste the list instead" affordance on it.
+const deckFetchHintPasteList = "paste_list"
+
+// moxfieldBlockedMessage is the sentence every Moxfield fetch error
+// shows. Moxfield answers this server with a Cloudflare 403 on every
+// endpoint (the block keys on the client's fingerprint, not its IP),
+// so a "not found" or "private" from it is not worth believing either.
+const moxfieldBlockedMessage = "Moxfield blocks our server. On Moxfield, open the deck → Export → Copy plain text, then paste the list here instead."
 
 func (e *deckFetchError) Error() string { return e.msg }
 
@@ -239,11 +299,11 @@ func newDeckFetchError(rawURL string, err error) error {
 		// A payload the parser refused (an empty Archidekt export, a
 		// Moxfield companion slot): the deck was reached but is not a
 		// list we can read.
-		return &deckFetchError{
+		return withMoxfieldHint(rawURL, &deckFetchError{
 			status:    http.StatusUnprocessableEntity,
 			msg:       "Could not read that deck: " + err.Error(),
 			violation: deck.Violation{Code: "unreadable_deck", Card: rawURL, Message: err.Error()},
-		}
+		})
 	}
 	e := &deckFetchError{violation: v}
 	switch v.Code {
@@ -263,30 +323,49 @@ func newDeckFetchError(rawURL string, err error) error {
 		e.status = http.StatusBadGateway
 		e.msg = "The deck site did not answer. Try again in a minute, or paste the list as text."
 	}
+	return withMoxfieldHint(rawURL, e)
+}
+
+// withMoxfieldHint rewrites a fetch error for a Moxfield link to
+// moxfieldBlockedMessage with the paste_list hint, keeping its status
+// and code. A link that is not a Moxfield deck is left alone.
+func withMoxfieldHint(rawURL string, e *deckFetchError) *deckFetchError {
+	if e.violation.Code == deck.CodeUnknownSource {
+		return e
+	}
+	if ref, err := deck.ParseDeckURL(rawURL); err != nil || ref.Source != deck.SourceMoxfield {
+		return e
+	}
+	e.msg = moxfieldBlockedMessage
+	e.hint = deckFetchHintPasteList
 	return e
 }
 
 // writeDeckFetchError writes a deckFetchError as
-// {error, code, violations: [v]}, and hands anything else back to the
-// ordinary lobby error path.
+// {error, code, violations: [v]} (plus `hint` when it has one), and
+// hands anything else back to the ordinary lobby error path.
 func writeDeckFetchError(w http.ResponseWriter, err error) error {
 	var fe *deckFetchError
 	if !errors.As(err, &fe) {
 		return err
 	}
-	return writeJSON(w, fe.status, map[string]any{
+	body := map[string]any{
 		"error":      fe.msg,
 		"code":       fe.violation.Code,
 		"violations": []deck.Violation{fe.violation},
-	})
+	}
+	if fe.hint != "" {
+		body["hint"] = fe.hint
+	}
+	return writeJSON(w, fe.status, body)
 }
 
 // --- POST /deck-requests ---
 
 type deckRequestBody struct {
-	URL string `json:"url"`
-	// Text is accepted only to be refused with a useful message:
-	// pasted text has no stable identity to deduplicate on.
+	// URL is a Moxfield or Archidekt link; Text is a pasted list.
+	// Exactly one of them (ADR 0095, amendment 2026-09-25).
+	URL       string         `json:"url,omitempty"`
 	Text      string         `json:"text,omitempty"`
 	Requester *deckRequester `json:"requester,omitempty"`
 }
@@ -339,13 +418,13 @@ func (d *deckCheck) request(c Config, w http.ResponseWriter, r *http.Request) er
 	if err := decodeJSON(w, r, &body); err != nil {
 		return err
 	}
-	if strings.TrimSpace(body.Text) != "" {
+	body.URL, body.Text = strings.TrimSpace(body.URL), strings.TrimSpace(body.Text)
+	switch {
+	case body.URL == "" && body.Text == "":
 		return httpError(http.StatusBadRequest,
-			"a deck request needs a Moxfield or Archidekt link; a pasted list has no stable identity to deduplicate on")
-	}
-	body.URL = strings.TrimSpace(body.URL)
-	if body.URL == "" {
-		return httpError(http.StatusBadRequest, "send the deck's Moxfield or Archidekt link as url")
+			"send the deck's Moxfield or Archidekt link as url, or a pasted list as text")
+	case body.URL != "" && body.Text != "":
+		return httpError(http.StatusBadRequest, "send url or text, not both")
 	}
 	who, err := deckRequesterFor(r.Context(), c, p, body.Requester)
 	if err != nil {
@@ -354,11 +433,27 @@ func (d *deckCheck) request(c Config, w http.ResponseWriter, r *http.Request) er
 	if c.Cards == nil {
 		return httpError(http.StatusServiceUnavailable, "the card index is not loaded on this server")
 	}
-	ref, err := deck.ParseDeckURL(body.URL)
-	if err != nil {
-		return writeDeckFetchError(w, newDeckFetchError(body.URL, err))
+
+	// The deck key: the link's deck ID, or the pasted list's hash. A
+	// list is parsed and keyed before the limit, because that is cheap
+	// and touches nothing outside this process; a link is not fetched
+	// until the limit has passed.
+	var (
+		key  string
+		list parsedList
+	)
+	if body.URL != "" {
+		ref, err := deck.ParseDeckURL(body.URL)
+		if err != nil {
+			return writeDeckFetchError(w, newDeckFetchError(body.URL, err))
+		}
+		key = ref.Key()
+	} else {
+		if list, err = parseList(c, body.Text); err != nil {
+			return err
+		}
+		key = list.key
 	}
-	key := ref.Key()
 	requesterKey := "discord:" + who.DiscordID
 
 	// Refuse an over-limit ask before fetching anything; checked again
@@ -367,7 +462,12 @@ func (d *deckCheck) request(c Config, w http.ResponseWriter, r *http.Request) er
 		return err
 	}
 
-	report, err := d.reportForURL(r.Context(), c, body.URL)
+	var report *deckcoverage.Report
+	if body.URL != "" {
+		report, err = d.reportForURL(r.Context(), c, body.URL)
+	} else {
+		report, err = d.reportForList(c, list)
+	}
 	if err != nil {
 		return writeDeckFetchError(w, err)
 	}
@@ -612,11 +712,15 @@ var mdEscaper = strings.NewReplacer(
 )
 
 // deckRequestTitle is "[deck-request] <deck name>", falling back to
-// the commander when the deck has no name.
+// the commander when the deck has no name — always, for a pasted list,
+// which has none — and then to the deck key.
 func deckRequestTitle(r *deckcoverage.Report) string {
 	name := strings.TrimSpace(r.DeckName)
 	if name == "" && len(r.Commanders) > 0 {
 		name = strings.Join(r.Commanders, " / ")
+	}
+	if name == "" && deckcoverage.IsListKey(r.DeckKey) {
+		name = "Pasted list (" + r.DeckKey + ")"
 	}
 	if name == "" {
 		name = r.DeckKey
@@ -652,11 +756,17 @@ var deckBucketLabels = map[deckcoverage.Bucket]string{
 // go through mdUserText.
 func renderDeckRequestIssue(who deckRequester, fromBot bool, r *deckcoverage.Report) string {
 	var b strings.Builder
-	deckName := strings.TrimSpace(r.DeckName)
-	if deckName == "" {
-		deckName = "(unnamed deck)"
+	pasted := r.SourceURL == ""
+	if pasted {
+		// No link to show: say so, and put the list itself below.
+		b.WriteString("**Deck:** Pasted list\n")
+	} else {
+		deckName := strings.TrimSpace(r.DeckName)
+		if deckName == "" {
+			deckName = "(unnamed deck)"
+		}
+		fmt.Fprintf(&b, "**Deck:** [%s](%s)\n", mdUserText(deckName, deckRequestTitleMax), redact.Secrets(r.SourceURL))
 	}
-	fmt.Fprintf(&b, "**Deck:** [%s](%s)\n", mdUserText(deckName, deckRequestTitleMax), redact.Secrets(r.SourceURL))
 	if len(r.Commanders) > 0 {
 		fmt.Fprintf(&b, "**Commander:** %s\n", mdUserText(strings.Join(r.Commanders, " / "), deckRequestTitleMax))
 	}
@@ -691,6 +801,9 @@ func renderDeckRequestIssue(who deckRequester, fromBot bool, r *deckcoverage.Rep
 			fmt.Fprintf(&b, "- %s\n", mdUserText(n, 120))
 		}
 	}
+	if pasted {
+		writePastedList(&b, r)
+	}
 
 	b.WriteString("\n---\n")
 	if fromBot {
@@ -699,6 +812,41 @@ func renderDeckRequestIssue(who deckRequester, fromBot bool, r *deckcoverage.Rep
 		b.WriteString("_Filed from the deck checker on the site (ADR 0095)._\n")
 	}
 	return b.String()
+}
+
+// writePastedList appends a pasted list's cards as a collapsed block,
+// so the issue carries the deck a link would have pointed at. It is
+// rendered from the REPORT — card names off the Scryfall index, with
+// their counts — and never from the raw paste: nothing the requester
+// typed reaches this block (their unresolved names are in their own,
+// escaped section above). A fenced block of "N Name" lines is also a
+// list the checker reads back, with the commanders first and marked
+// *CMDR*.
+func writePastedList(b *strings.Builder, r *deckcoverage.Report) {
+	commander := map[string]bool{}
+	for _, n := range r.Commanders {
+		commander[n] = true
+	}
+	cards := append([]deckcoverage.Card(nil), r.Cards...)
+	sort.SliceStable(cards, func(i, j int) bool {
+		if ci, cj := commander[cards[i].Name], commander[cards[j].Name]; ci != cj {
+			return ci
+		}
+		return strings.ToLower(cards[i].Name) < strings.ToLower(cards[j].Name)
+	})
+	total := 0
+	for _, c := range cards {
+		total += c.Count
+	}
+	fmt.Fprintf(b, "\n<details>\n<summary>The list (%d cards)</summary>\n\n```text\n", total)
+	for _, c := range cards {
+		fmt.Fprintf(b, "%d %s", c.Count, c.Name)
+		if commander[c.Name] {
+			b.WriteString(" *CMDR*")
+		}
+		b.WriteString("\n")
+	}
+	b.WriteString("```\n\n</details>\n")
 }
 
 // renderDeckRequestComment is the "Also requested by" comment, with

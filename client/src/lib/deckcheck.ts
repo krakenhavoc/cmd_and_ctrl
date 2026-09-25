@@ -56,7 +56,10 @@ export interface CoverageReport {
   source: DeckCoverageSource;
   /** Absent for a pasted-text check. */
   source_url?: string;
-  /** "moxfield:<id>" | "archidekt:<id>"; absent for a pasted-text check. */
+  /**
+   * The deck's identity: "moxfield:<id>" | "archidekt:<id>" for a link,
+   * "list:<hash>" for a pasted list (ADR 0095, amendment 2026-09-25).
+   */
   deck_key?: string;
   commanders: string[];
   counts: CoverageCounts;
@@ -82,16 +85,31 @@ export class DeckCheckError extends Error {
     message: string,
     public code?: string,
     public violations?: DeckCoverageViolation[],
+    /** "paste_list" when the way forward is to paste the list instead (a Moxfield link). */
+    public hint?: string,
   ) {
     super(message);
     this.name = "DeckCheckError";
   }
 }
 
+/**
+ * PASTE_LIST_HINT is the `hint` the server puts on every Moxfield fetch
+ * error (ADR 0095, amendment 2026-09-25): Moxfield blocks the server,
+ * so the only way in is to export the list and paste it.
+ */
+export const PASTE_LIST_HINT = "paste_list";
+
+/** shouldOfferPaste reports whether an error means "paste the list instead". */
+export function shouldOfferPaste(err: unknown): boolean {
+  return err instanceof DeckCheckError && err.hint === PASTE_LIST_HINT;
+}
+
 interface RawErrorBody {
   error?: string;
   code?: string;
   violations?: DeckCoverageViolation[];
+  hint?: string;
   status?: string;
   retry_after?: number;
 }
@@ -116,7 +134,7 @@ async function deckCheckErrorFrom(res: Response): Promise<DeckCheckError> {
     return new DeckCheckError(429, TOO_MANY_CHECKS, body.code, body.violations);
   }
   const message = body.error ?? `${res.status} ${res.statusText}`;
-  return new DeckCheckError(res.status, message, body.code, body.violations);
+  return new DeckCheckError(res.status, message, body.code, body.violations, body.hint);
 }
 
 /**
@@ -159,8 +177,10 @@ export interface DeckRequestResponse {
 }
 
 /**
- * requestDeck files or joins a deck request for a link check
- * (POST /deck-requests). Needs a session with a Discord identity —
+ * requestDeck files or joins a deck request (POST /deck-requests) for
+ * a link or a pasted list — the same `{url}` or `{text}` the check was
+ * made with. A pasted list is deduplicated server-side by a hash of its
+ * resolved cards (ADR 0095, amendment 2026-09-25). Needs a session with a Discord identity —
  * the caller should gate the button on canRequestCards + a signed-in
  * Discord session and let the server's 403 be the final word.
  *
@@ -170,7 +190,10 @@ export interface DeckRequestResponse {
  * shows the wait) — not a thrown error. A 429 with no `status` is the
  * IP limiter's bare shape and throws, same as checkDeck.
  */
-export async function requestDeck(url: string, signal?: AbortSignal): Promise<DeckRequestResponse> {
+export async function requestDeck(
+  req: DeckCheckRequest,
+  signal?: AbortSignal,
+): Promise<DeckRequestResponse> {
   const s = currentSession();
   const headers = new Headers({ "Content-Type": "application/json", Accept: "application/json" });
   if (s?.token) headers.set("Authorization", `Bearer ${s.token}`);
@@ -178,7 +201,7 @@ export async function requestDeck(url: string, signal?: AbortSignal): Promise<De
     method: "POST",
     headers,
     credentials: "same-origin",
-    body: JSON.stringify({ url }),
+    body: JSON.stringify(req),
     signal,
   });
   if (res.status === 401) {
@@ -241,14 +264,14 @@ export const BUCKET_BLURBS: Record<CoverageBucket, string> = {
 
 /**
  * canRequestCards reports whether "Request these cards" should show at
- * all: a link check (a stable deck key — pasted text has none, ADR
- * 0095 §2) with at least one manual or unreviewed card. Whether the
- * VIEWER may press it is a separate question — see the Discord-session
- * check the page makes; the server's 403 is the final word either way.
+ * all: a check — a link or, since ADR 0095's 2026-09-25 amendment, a
+ * pasted list — with at least one manual or unreviewed card. Whether
+ * the VIEWER may press it is a separate question — see the
+ * Discord-session check the page makes; the server's 403 is the final
+ * word either way.
  */
 export function canRequestCards(report: CoverageReport | null | undefined): boolean {
   if (!report) return false;
-  if (report.source === "text" || !report.deck_key) return false;
   return report.counts.manual > 0 || report.counts.unreviewed > 0;
 }
 
