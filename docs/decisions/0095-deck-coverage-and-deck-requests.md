@@ -259,9 +259,11 @@ consume. Where PR 1 differs from, or fills in, the text above:
   burst 10) instead of per IP. The bot calls from loopback for every guild member at once, and the
   public 1-per-10-seconds bucket would starve it. PR 2 should send its admin session on this route.
 - **Fetch errors.** An unsupported link is 400, a missing deck 404, a private or unreadable deck
-  422. A Cloudflare block or an unreachable deck site is **502**, not a 4xx: the caller's link was
-  fine. Every one carries a sentence to show the player, the violation code and a `violations[]`
-  entry.
+  422. A Cloudflare block or an unreachable deck site is **424** (Failed Dependency). It was 502
+  until 2026-09-25, but Cloudflare, in front of both hosts, replaced an origin 502's body with its
+  own "error code: 502" page, so the sentence and the Moxfield hint never reached the player. A
+  GitHub failure on `POST /deck-requests` moved from 502 to 424 for the same reason. Every one
+  carries a sentence to show the player, the violation code and a `violations[]` entry.
 - **What counts as an ask.** Only an ask that reaches GitHub, an issue filed or a comment added,
   is recorded. `nothing_to_add` and a repeat ask on the same open issue are not. The limit is
   checked before the deck is fetched, and again under the filing lock.
