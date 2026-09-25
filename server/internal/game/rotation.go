@@ -79,11 +79,10 @@ func (g *Game) sweepTurnEndLocked() {
 	// that outlived its turn would save a creature next turn from a
 	// destruction nobody paid for.
 	g.clearRegenerationShieldsLocked()
-	// S17 sub-PR 5: "until end of turn" replacement effects (Fog's
-	// prevent-all-combat-damage, future prevention shields with a
-	// per-turn duration) clear at cleanup so next turn starts with a
-	// clean slate.
-	g.ClearTurnScopedReplacementsLocked()
+	// S17 sub-PR 5's "until end of turn" REPLACEMENT effects (Fog's
+	// prevent-all-combat-damage, a prevention shield) are ScopedEffect
+	// records since ADR 0041 tier 3b, and end in the duration sweep
+	// below with every other continuous effect a spell created.
 	// #750, ADR 0045 addendum Decision 11: until-end-of-turn BLOCK
 	// rules ("this creature can't block this turn") end here for the
 	// same reason and by the same rule. The registry is emptied

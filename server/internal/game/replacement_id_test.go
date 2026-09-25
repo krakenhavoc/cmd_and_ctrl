@@ -66,7 +66,7 @@ func TestDecodeCatalogReplacementIDRejectsOtherRanges(t *testing.T) {
 		{"zero is not an ID", 0},
 		{"self-replacement", selfReplacementIDBase},
 		{"self-replacement, slot 3", selfReplacementIDBase + 3},
-		{"turn-scoped", turnScopedIDBase},
+		{"scoped replacement", scopedReplacementIDBase},
 		{"test-injected", testReplacementIDBase},
 		{"built-in", builtinReplacementIDBase},
 		{"built-in, index 2", builtinReplacementIDBase + 2},

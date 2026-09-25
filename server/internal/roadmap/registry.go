@@ -551,11 +551,10 @@ var items = []Item{
 	},
 	{
 		Slug: "unearth", Name: "Unearth", Kind: KindMechanic, Status: StatusImplemented,
-		Summary:          "Return a creature from your graveyard to the battlefield with haste for one turn; it's exiled afterwards.",
-		Rules:            []string{"702.82"},
-		Probe:            activatedLabel("Unearth "),
-		Phrases:          []string{"unearthed"},
-		NoCatalogExample: "The one catalogued unearth card has a small caveat of its own, so none is listed as fully automated yet.",
+		Summary: "Return a creature from your graveyard to the battlefield with haste for one turn; it's exiled afterwards.",
+		Rules:   []string{"702.82"},
+		Probe:   activatedLabel("Unearth "),
+		Phrases: []string{"unearthed"},
 	},
 	{
 		Slug: "embalm-eternalize", Name: "Embalm and eternalize", Kind: KindMechanic, Status: StatusImplemented,

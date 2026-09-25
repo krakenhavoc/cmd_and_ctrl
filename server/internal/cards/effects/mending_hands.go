@@ -27,8 +27,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // Note the shield outlives the spell: Mending Hands is in the
 // graveyard before the damage it prevents is dealt. That is the
-// same turn-scoped-replacement lifetime Fog uses, and it is why
-// neither card needs a permanent to hang off.
+// same until-end-of-turn ScopedEffect lifetime Fog uses, and it is
+// why neither card needs a permanent to hang off. The charge left is
+// part of the record, so an undo rewinds a spent shield.
 func init() {
 	Register(Spec{
 		OracleID:     "a612f30d-cd55-438b-a7de-8c80509183aa",

@@ -163,6 +163,11 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// ADR 0093 PR 4 (#1584): its cases are in scoped_grants_test.go,
 		// because a grant needs a catalog bundle to mean anything.
 		ModGrantAbilities: true,
+		// ADR 0041 P8 (tier 3b): replacement kinds, which no layer
+		// applies. Their cases are in scoped_replacements_test.go here
+		// and in cards/effects.
+		ModPreventCombatDamage: true, ModPreventDamage: true,
+		ModExileInsteadOfLeaving: true, ModExileInsteadOfGraveyard: true,
 	}
 	for _, k := range ModKinds() {
 		if !covered[k] {
@@ -251,6 +256,11 @@ func TestAnUnknownEffectKeyIsRefused(t *testing.T) {
 		"stack-item body": func(s *GameSnapshot) {
 			s.PendingTriggers = append(s.PendingTriggers, stackItemSnapshot{ID: uuid.New(), Body: "nobody/registered-this-body"})
 		},
+		// Tier 3b: a replacement mod's delayed-trigger body.
+		"scoped-effect then body": func(s *GameSnapshot) {
+			s.ScopedEffects[0].Mods[0].Then = "nobody/registered-this-body"
+		},
+		"scoped-effect scope": func(s *GameSnapshot) { s.ScopedEffects[0].Scope = "everythingFromTheFuture" },
 	}
 	for name, corrupt := range cases {
 		t.Run(name, func(t *testing.T) {

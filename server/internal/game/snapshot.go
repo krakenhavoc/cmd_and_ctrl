@@ -32,7 +32,9 @@ package game
 //   - DelayedTrigger.Effect — "at the beginning of the next end step"
 //   - PendingChoice's six resume frames + scryResume — a paused
 //     game literally holds the rest of the effect as a continuation
-//   - TurnScopedReplacements' AppliesTo / Replace — Fog
+//   - TurnScopedBlockRules' Pair / Count / Limit — Gingerbrute
+//     (the replacement twin, Fog's, is a ScopedEffect record since
+//     ADR 0041 tier 3b)
 //   - Card.ManaAbilities / ActivatedAbilities, when an ability
 //     closure was stamped onto the INSTANCE and the catalog cannot
 //     hand it back. #521 emptied the large and ordinary case of
@@ -1220,8 +1222,12 @@ type ContinuationCensus struct {
 	// durations.
 	ScopedStatics int `json:"turnScopedStatics,omitempty"`
 
-	// TurnScopedReplacements is floating until-end-of-turn
-	// replacement effects (Fog).
+	// TurnScopedReplacements counted floating until-end-of-turn
+	// replacement effects held as closures (Fog, a prevention shield,
+	// the Whip's redirect). RETIRED by ADR 0041 phase 3 tier 3b
+	// (#1497): each is a ScopedEffect record now, which the snapshot
+	// carries, and nothing increments this. The field stays so a
+	// census written by an older binary still decodes.
 	TurnScopedReplacements int `json:"turnScopedReplacements,omitempty"`
 
 	// TurnScopedBlockRules is floating until-end-of-turn block rules
@@ -1486,13 +1492,11 @@ func (g *Game) captureSnapshotLocked() *GameSnapshot {
 	}
 	s.LastKnownPermanents = cloneLastKnownPermanents(g.lastKnownPermanents)
 
-	// Turn-scoped registries: entirely closure-bearing, so only the
-	// census and the labels survive. Dropping a Fog silently would be
-	// worse than refusing the restore point, which is what this does.
-	for _, re := range g.TurnScopedReplacements {
-		cen.TurnScopedReplacements++
-		cen.note("turn-scoped replacement: %s", labelOr(re.Label, "unnamed"))
-	}
+	// The turn-scoped block-rule registry is entirely closure-bearing,
+	// so only the census and the labels survive. Dropping a rule
+	// silently would be worse than refusing the restore point, which
+	// is what this does. (Its replacement twin retired with ADR 0041
+	// tier 3b: a Fog is a ScopedEffect record, carried above.)
 	for _, br := range g.TurnScopedBlockRules {
 		cen.TurnScopedBlockRules++
 		cen.note("turn-scoped block rule: %s", labelOr(br.Label, "unnamed"))
@@ -2159,6 +2163,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 		}
 	}
 	g.ScopedEffects = deepCopyScopedEffects(s.ScopedEffects)
+	g.scopedEffectSeq = maxScopedEffectSeq(g.ScopedEffects)
 	if len(s.DelayedTriggers) > 0 {
 		g.DelayedTriggers = make([]*DelayedTrigger, len(s.DelayedTriggers))
 		for i := range s.DelayedTriggers {

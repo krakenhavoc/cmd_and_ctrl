@@ -37,6 +37,12 @@ func (s *GameSnapshot) checkEffectKeys() error {
 			if m.Kind == ModGrantAbilities {
 				unknown = append(unknown, unknownGrantBundles(m.Grants)...)
 			}
+			// Tier 3b: a delayed-trigger body a replacement mod names
+			// (Cosmic Intervention's per-card return) is as much a key
+			// as a delayed trigger's own body.
+			if m.Then != "" && !KnownEffectBody(m.Then) {
+				unknown = append(unknown, "scoped-effect then body "+m.Then)
+			}
 		}
 		if !KnownAffectedScope(e.Scope) {
 			unknown = append(unknown, "scoped-effect scope "+string(e.Scope))
