@@ -44,19 +44,10 @@ func init() {
 				return nil
 			}
 			target := item.Targets[0].ID
-			if set := eotSnapshot(ctx, target, nil); set != nil {
-				if err := (StaticUntilEOT{
-					Label: "Cerulean Wisps — that creature becomes blue",
-					Ability: game.StaticAbility{
-						Layer:     game.Layer5Color,
-						AppliesTo: set.appliesTo(),
-						Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
-							c.Colors = []string{"U"}
-						},
-					},
-				}).Apply(ctx); err != nil {
-					return err
-				}
+			if err := untilEndOfTurn(ctx, target, nil,
+				"Cerulean Wisps — that creature becomes blue",
+				game.SetColorsMod("U")); err != nil {
+				return err
 			}
 			if err := (UntapTarget{Target: target}).Apply(ctx); err != nil {
 				return err

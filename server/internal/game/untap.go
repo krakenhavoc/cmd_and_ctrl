@@ -170,7 +170,7 @@ type UntapStepRestriction struct {
 // step, and is dropped by sweepUntapHoldsLocked once it has expired —
 // "it doesn't last forever". IMMUTABLE after registration: cloneCard
 // shares the pointer with every undo snapshot, exactly as Clone shares
-// ScopedStatic.Duration by value.
+// ScopedEffect.Duration by value.
 type UntapSkip struct {
 	Player uuid.UUID
 	While  *Duration

@@ -264,17 +264,9 @@ type GrantAllCreatureTypesUntilEOT struct {
 }
 
 func (a GrantAllCreatureTypesUntilEOT) Apply(ctx *Context) error {
-	set := eotSnapshot(ctx, a.Target, a.Match)
-	if set == nil {
-		return nil
-	}
-	ctx.Game.RegisterScopedStaticForEffect(game.StaticAbility{
-		Layer:     game.Layer4Type,
-		AppliesTo: set.appliesTo(),
-		Apply:     applyAllCreatureTypes,
-	}, ctx.Source(), eotLabel(a.Label, "all creature types until end of turn"),
-		ctx.Game.UntilEndOfTurnDuration())
-	return nil
+	return untilEndOfTurn(ctx, a.Target, a.Match,
+		eotLabel(a.Label, "all creature types until end of turn"),
+		game.AllCreatureTypesMod())
 }
 
 // ChosenTypeManaRestrictions builds the `RestrictionsFunc` for

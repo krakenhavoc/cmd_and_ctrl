@@ -11,7 +11,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // in the catalog before: the layer engine recomputed continuous
 // effects from the battlefield on every pass, so there was nowhere
 // for a +3/+3 to live once the instant that made it hit the
-// graveyard. `BoostUntilEOT` puts it in `Game.TurnScopedStatics`,
+// graveyard. `BoostUntilEOT` puts it in `Game.ScopedEffects`,
 // where the recompute finds it until the cleanup step sweeps it
 // (CR 514.2). See ADR 0035.
 //

@@ -32,7 +32,6 @@ package game
 //   - DelayedTrigger.Effect — "at the beginning of the next end step"
 //   - PendingChoice's six resume frames + scryResume — a paused
 //     game literally holds the rest of the effect as a continuation
-//   - ScopedStatic.Ability's AppliesTo / Apply — Giant Growth's +3/+3
 //   - TurnScopedReplacements' AppliesTo / Replace — Fog
 //   - Card.ManaAbilities / ActivatedAbilities, when an ability
 //     closure was stamped onto the INSTANCE and the catalog cannot
@@ -1211,11 +1210,14 @@ type ContinuationCensus struct {
 	// ChoiceResumeFrames is paused prompts holding a continuation.
 	ChoiceResumeFrames int `json:"choiceResumeFrames,omitempty"`
 
-	// ScopedStatics is floating continuous effects with a duration
-	// (Giant Growth's +3/+3, Act of Treason's theft). The wire key
-	// stays `turnScopedStatics`, the name it had before the registry
-	// grew the other CR 611.2 durations, so a census written by an
-	// older binary still decodes.
+	// ScopedStatics counted floating continuous effects held as
+	// closures (Giant Growth's +3/+3, Act of Treason's theft). RETIRED
+	// by ADR 0041 phase 3 tier 3a (#1497): every such effect is a
+	// ScopedEffect record now, which the snapshot carries, and nothing
+	// increments this. The field stays so a census written by an older
+	// binary still decodes; the wire key stays `turnScopedStatics`, the
+	// name it had before the registry grew the other CR 611.2
+	// durations.
 	ScopedStatics int `json:"turnScopedStatics,omitempty"`
 
 	// TurnScopedReplacements is floating until-end-of-turn
@@ -1487,11 +1489,6 @@ func (g *Game) captureSnapshotLocked() *GameSnapshot {
 	// Turn-scoped registries: entirely closure-bearing, so only the
 	// census and the labels survive. Dropping a Fog silently would be
 	// worse than refusing the restore point, which is what this does.
-	for _, st := range g.ScopedStatics {
-		cen.ScopedStatics++
-		cen.note("scoped static (%s): %s", st.Duration.Kind,
-			labelOr(st.Label, st.Source.Name))
-	}
 	for _, re := range g.TurnScopedReplacements {
 		cen.TurnScopedReplacements++
 		cen.note("turn-scoped replacement: %s", labelOr(re.Label, "unnamed"))

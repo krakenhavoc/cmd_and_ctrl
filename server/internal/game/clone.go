@@ -348,20 +348,14 @@ func (g *Game) cloneLocked() *Game {
 		out.TurnScopedBlockRules = make([]BlockRule, len(g.TurnScopedBlockRules))
 		copy(out.TurnScopedBlockRules, g.TurnScopedBlockRules)
 	}
-	// S32/S38 scoped statics — the layer-engine twin of the slice
-	// above, and the same reasoning: a ScopedStatic is written once
-	// at registration and never mutated (see the immutability
-	// contract on the type), so a fresh backing array is enough.
-	// What must not be shared is the array itself — the cleanup-step
-	// sweeps replace the slice rather than compacting in place
-	// precisely so an undo snapshot taken mid-turn still holds the
-	// grants that were live when it was taken.
-	if len(g.ScopedStatics) > 0 {
-		out.ScopedStatics = make([]ScopedStatic, len(g.ScopedStatics))
-		copy(out.ScopedStatics, g.ScopedStatics)
-	}
-	// ADR 0041 phase 3's data twin: same immutability contract, same
-	// fresh backing array.
+	// Scoped effects (ADR 0041 phase 3) — the layer-engine twin of the
+	// slice above, and the same reasoning: a record is written once at
+	// registration and never mutated (see the immutability contract on
+	// the type), so a fresh backing array is enough. What must not be
+	// shared is the array itself — the cleanup-step sweeps replace the
+	// slice rather than compacting in place precisely so an undo
+	// snapshot taken mid-turn still holds the effects that were live
+	// when it was taken.
 	out.ScopedEffects = cloneScopedEffects(g.ScopedEffects)
 	// CR 603.10 LKI snapshots (S19). Values are Characteristic copies
 	// that are never mutated after being stored, so a per-entry value
@@ -981,7 +975,6 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.BuiltinReplacements = src.BuiltinReplacements
 	g.TurnScopedReplacements = src.TurnScopedReplacements
 	g.TurnScopedBlockRules = src.TurnScopedBlockRules
-	g.ScopedStatics = src.ScopedStatics
 	g.ScopedEffects = src.ScopedEffects
 	g.lastKnownBattlefield = src.lastKnownBattlefield
 	g.lastKnownTriggerIdentity = src.lastKnownTriggerIdentity

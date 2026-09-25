@@ -7,8 +7,8 @@ import (
 )
 
 // scoped_effects_bench_test.go measures the layer-pass cost of ADR 0041
-// phase 3's data records against the legacy closure statics they
-// replace (#1558): 100 effects on one creature, and one full recompute
+// phase 3's data records (#1558; tier 3a retired the legacy closure
+// statics they were measured against): 100 effects on one creature, and one full recompute
 // per iteration — what a board that has to recompute pays for them.
 
 func benchScopedBoard(b *testing.B) (*Game, uuid.UUID) {
@@ -36,28 +36,6 @@ func BenchmarkScopedEffectRecompute100(b *testing.B) {
 		for i := 0; i < 100; i++ {
 			g.RegisterScopedEffectForEffect(uuid.Nil, g.PinnedObjectsLocked(bear),
 				[]Mod{ModifyPTMod(1, 1)}, IndefiniteDuration(), "bench")
-		}
-	})
-	benchRecompute(b, g)
-}
-
-// BenchmarkScopedStaticRecompute100 is the legacy closure static the
-// records replace, 100 of them on the same creature — the baseline.
-func BenchmarkScopedStaticRecompute100(b *testing.B) {
-	g, bear := benchScopedBoard(b)
-	g.WithWriteLock(func() {
-		for i := 0; i < 100; i++ {
-			g.RegisterScopedStaticForEffect(StaticAbility{
-				Layer:    Layer7PT,
-				SubLayer: SubLayer7C_Modify,
-				AppliesTo: func(target *Card, _ *Game, _ *Card) bool {
-					return target.InstanceID == bear
-				},
-				Apply: func(c *Characteristic, _ *Card, _ *Game, _ *Card) {
-					c.Power++
-					c.Toughness++
-				},
-			}, uuid.Nil, "bench", IndefiniteDuration())
 		}
 	})
 	benchRecompute(b, g)

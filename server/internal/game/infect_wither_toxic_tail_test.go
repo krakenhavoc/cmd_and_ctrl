@@ -303,13 +303,9 @@ func TestGrantedToxicIsCumulative(t *testing.T) {
 	atk := uuid.New()
 	g.WithWriteLock(func() {
 		pushPrintedKeywordCreature(g, atk, me.ID, me.ID, 1, 1, "toxic 1")
-		g.RegisterScopedStaticForEffect(StaticAbility{
-			Layer:     Layer6Ability,
-			AppliesTo: func(target *Card, _ *Game, _ *Card) bool { return target.InstanceID == atk },
-			Apply: func(c *Characteristic, _ *Card, _ *Game, _ *Card) {
-				c.Abilities = AppendKeywordAbility(c.Abilities, "toxic 1")
-			},
-		}, uuid.New(), "test — Karumonix-shaped toxic grant", g.UntilEndOfTurnDuration())
+		g.RegisterScopedEffectForEffect(uuid.New(), g.PinnedObjectsLocked(atk),
+			[]Mod{AddKeywordsMod("toxic 1")}, g.UntilEndOfTurnDuration(),
+			"test — Karumonix-shaped toxic grant")
 		g.RecomputeLayersIfStaleLocked()
 		g.markCombatDamageToPlayerLocked(opp.ID, atk, 1, "")
 	})

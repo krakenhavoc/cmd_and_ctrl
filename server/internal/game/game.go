@@ -738,24 +738,17 @@ type Game struct {
 	// See ADR 0045 addendum Decision 11 and block_rules.go.
 	TurnScopedBlockRules []BlockRule
 
-	// ScopedStatics is the CONTINUOUS-EFFECT slot for effects whose
+	// ScopedEffects is the CONTINUOUS-EFFECT slot for effects whose
 	// lifetime is a duration rather than a battlefield source: Giant
-	// Growth's +3/+3, Overrun's mass pump and trample grant, Act of
-	// Treason's theft, Agent of Treachery's. Consulted by
-	// activeStaticAbilitiesLocked alongside the battlefield walk and
-	// swept by the one duration sweep (CR 611.2). See
-	// scoped_statics.go and duration.go. Added in S32 as
-	// TurnScopedStatics; renamed in S38 when it stopped being
-	// turn-scoped (ADR 0063).
-	ScopedStatics []ScopedStatic
-
-	// ScopedEffects is the same slot's DATA twin (ADR 0041 phase 3,
-	// #1497): a continuous effect from a resolution recorded as an
-	// affected set, a list of operations from a closed vocabulary and
-	// a duration, so the snapshot carries it and a game holding one is
-	// still a restore point. Adapted into the layer pass beside
-	// ScopedStatics and swept by the same duration sweep. See
-	// scoped_effects.go.
+	// Growth's +3/+3, Overrun's mass pump and trample grant, a crewed
+	// Vehicle, Act of Treason's theft, Agent of Treachery's (CR 611.2).
+	// Each is DATA (ADR 0041 phase 3, #1497): an affected set, a list
+	// of operations from a closed vocabulary and a duration, so the
+	// snapshot carries it and a game holding one is still a restore
+	// point. Adapted into the layer pass by activeStaticAbilitiesLocked
+	// and swept by the one duration sweep. See scoped_effects.go and
+	// duration.go. Tier 3a retired the closure-bearing ScopedStatics
+	// registry it used to sit beside (S32's TurnScopedStatics).
 	ScopedEffects []ScopedEffect
 
 	// scopedEffectMemo is the layer-pass adapter's output for

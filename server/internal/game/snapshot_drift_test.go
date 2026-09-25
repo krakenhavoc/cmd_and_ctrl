@@ -221,8 +221,7 @@ var gameFields = plan(
 	"BuiltinReplacements", rebuilt, "registered by NewGame, not per-game state",
 	"mu", rebuilt, "a fresh receiver owns its own lock, exactly as Clone does",
 
-	"ScopedStatics", dropped, "StaticAbility is two closures; counted in ContinuationCensus.ScopedStatics",
-	"ScopedEffects", carried, "GameSnapshot.ScopedEffects — ADR 0041 phase 3's data twin of ScopedStatics (#1497)",
+	"ScopedEffects", carried, "GameSnapshot.ScopedEffects — ADR 0041 phase 3's data record for a continuous effect with a duration (#1497)",
 	"scopedEffectMemo", rebuilt, "the layer-pass adapter's memo over ScopedEffects (#1558); a restored game's first recompute builds it",
 	"TurnScopedReplacements", dropped, "ReplacementEffect is three closures; counted in ContinuationCensus.TurnScopedReplacements",
 	"TurnScopedBlockRules", dropped, "BlockRule is two closures; counted in ContinuationCensus.TurnScopedBlockRules",
@@ -482,21 +481,6 @@ var playerFields = plan(
 	// not in this slice at all and needs nothing, because it comes
 	// back with the battlefield.
 	"Statics", carried, "",
-)
-
-// scopedStaticFields classifies game.ScopedStatic — the floating
-// continuous-effect registry's entry type. It was not classified
-// before S38, so a field added to it used to vanish across a restore
-// with nothing complaining. The whole entry is dropped and censused;
-// `Duration` is the half of it that is plain data and could be
-// carried the day #515 makes the ability re-derivable, which is why
-// it is classified `carried` rather than sharing the closure's fate.
-var scopedStaticFields = plan(
-	"Ability", dropped, "two closures; counted by ContinuationCensus.ScopedStatics",
-	"Source", dropped, "rides with the ability; counted by ContinuationCensus.ScopedStatics",
-	"Timestamp", dropped, "rides with the ability; counted by ContinuationCensus.ScopedStatics",
-	"Duration", carried, "plain data (duration.go); carried by Clone and ready for #515",
-	"Label", dropped, "reaches the operator through ContinuationCensus.Labels",
 )
 
 // scopedEffectFields classifies ADR 0041 phase 3's data record
@@ -796,7 +780,6 @@ var driftPlans = []struct {
 	{StackItem{}, stackItemFields},
 	{DelayedTrigger{}, delayedTriggerFields},
 	{PendingChoice{}, pendingChoiceFields},
-	{ScopedStatic{}, scopedStaticFields},
 	{ScopedEffect{}, scopedEffectFields},
 }
 

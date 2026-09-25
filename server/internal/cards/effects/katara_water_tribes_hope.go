@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Katara, Water Tribe's Hope — Legendary Creature — Human Warrior
 // Ally {2}{W}{U}{U}, 3/3:
@@ -61,21 +65,7 @@ func init() {
 func kataraBasePTX(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	x := ctx.X()
-	applies := SnapshotAffected(ctx, And(Creature(), ControlledBy(ctx.Controller())))
-	if applies == nil {
-		return nil
-	}
-	return StaticForDuration{
-		Ability: game.StaticAbility{
-			Layer:     game.Layer7PT,
-			SubLayer:  game.SubLayer7B_Set,
-			AppliesTo: applies,
-			Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
-				c.Power = x
-				c.Toughness = x
-			},
-		},
-		Duration: DurationUntilEndOfTurn(ctx),
-		Label:    "Katara, Water Tribe's Hope — base X/X until end of turn",
-	}.Apply(ctx)
+	return untilEndOfTurn(ctx, uuid.Nil, And(Creature(), ControlledBy(ctx.Controller())),
+		"Katara, Water Tribe's Hope — base X/X until end of turn",
+		game.SetBasePTMods(x, x)...)
 }

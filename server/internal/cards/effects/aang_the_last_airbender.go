@@ -44,7 +44,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //     engine had nowhere to put one — every static was recomputed
 //     from the battlefield, so a floating grant could not exist.
 //     `GrantKeywordUntilEOT` (until_end_of_turn.go) is that place
-//     now: the grant lands in `Game.TurnScopedStatics`, the
+//     now: the grant lands in `Game.ScopedEffects`, the
 //     recompute picks it up, and the cleanup step sweeps it
 //     (CR 514.2). Lifelink is one of the twelve keywords the
 //     combat code honours, so the life gain is real, not cosmetic.

@@ -177,7 +177,7 @@ func TestLegalTargetEnumerationHonoursKeywords(t *testing.T) {
 // half, and the reason this change is only one function: the spell
 // was announced at a legal target, the target then GAINED hexproof
 // from a Layer 6 grant, and the re-check must counter the spell by
-// game rules. The grant goes through RegisterScopedStatic so the
+// game rules. The grant is a scoped effect so the
 // keyword is read out of Effective(), not off the printed card.
 func TestResolutionRecheckFizzlesOnGainedHexproof(t *testing.T) {
 	g := newActiveGame(t)
@@ -200,15 +200,8 @@ func TestResolutionRecheckFizzlesOnGainedHexproof(t *testing.T) {
 
 	// "In response": the opponent's Swiftfoot Boots land on it.
 	g.WithWriteLock(func() {
-		g.RegisterScopedStaticForEffect(StaticAbility{
-			Layer: Layer6Ability,
-			AppliesTo: func(c *Card, _ *Game, _ *Card) bool {
-				return c.InstanceID == target
-			},
-			Apply: func(ch *Characteristic, _ *Card, _ *Game, _ *Card) {
-				ch.Abilities = append(ch.Abilities, "hexproof")
-			},
-		}, uuid.New(), "boots", g.UntilEndOfTurnDuration())
+		g.RegisterScopedEffectForEffect(uuid.New(), g.PinnedObjectsLocked(target),
+			[]Mod{AddKeywordsMod("hexproof")}, g.UntilEndOfTurnDuration(), "boots")
 	})
 	// Force the recompute so Effective() carries the grant, the same
 	// way ReadSnapshot does before any consumer reads it.

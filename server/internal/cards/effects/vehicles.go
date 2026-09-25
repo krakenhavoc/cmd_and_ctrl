@@ -136,59 +136,27 @@ func (b BecomeCreatureUntilEOT) applyFor(ctx *Context, duration game.Duration) e
 	// so a Vehicle that is flickered in response stops being a
 	// creature rather than coming back animated. Same contract the
 	// other until-EOT primitives use.
-	stamp := int64(0)
-	found := false
-	for _, c := range ctx.Game.BattlefieldCardsForEffect() {
-		if c.InstanceID == target {
-			stamp = c.EnteredBattlefieldAt
-			found = true
-			break
-		}
-	}
-	if !found {
+	affected := ctx.Game.PinnedObjectsLocked(target)
+	if len(affected) == 0 {
 		return nil
-	}
-	applies := func(t *game.Card, _ *game.Game, _ *game.Card) bool {
-		return t.InstanceID == target && t.EnteredBattlefieldAt == stamp
 	}
 
 	types := b.Types
 	if len(types) == 0 {
 		types = []string{"Artifact", "Creature"}
 	}
-	addedTypes := append([]string(nil), types...)
-	addedSubtypes := append([]string(nil), b.Subtypes...)
-	label := eotLabel(b.Label, "becomes a creature until end of turn")
-
-	ctx.Game.RegisterScopedStaticForEffect(game.StaticAbility{
-		Layer:     game.Layer4Type,
-		AppliesTo: applies,
-		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
-			for _, t := range addedTypes {
-				if !eotHasType(c.Types, t) {
-					c.Types = append(c.Types, t)
-				}
-			}
-			for _, s := range addedSubtypes {
-				if !eotHasType(c.Subtypes, s) {
-					c.Subtypes = append(c.Subtypes, s)
-				}
-			}
-		},
-	}, ctx.Source(), label, duration)
-
-	if b.SetPower != 0 || b.SetToughness != 0 {
-		power, toughness := b.SetPower, b.SetToughness
-		ctx.Game.RegisterScopedStaticForEffect(game.StaticAbility{
-			Layer:     game.Layer7PT,
-			SubLayer:  game.SubLayer7B_Set,
-			AppliesTo: applies,
-			Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
-				c.Power = power
-				c.Toughness = toughness
-			},
-		}, ctx.Source(), label+" (base P/T)", duration)
+	// One record (ADR 0041 phase 3, tier 3a): the layer-4 type change
+	// and the layer-7b set are ONE effect at one timestamp (CR 613.7),
+	// and a table holding a crewed Vehicle is still a restore point.
+	mods := []game.Mod{game.AddTypesMod(types...)}
+	if len(b.Subtypes) > 0 {
+		mods = append(mods, game.AddSubtypesMod(b.Subtypes...))
 	}
+	if b.SetPower != 0 || b.SetToughness != 0 {
+		mods = append(mods, game.SetBasePTMods(b.SetPower, b.SetToughness)...)
+	}
+	ctx.Game.RegisterScopedEffectForEffect(ctx.Source(), affected, mods, duration,
+		eotLabel(b.Label, "becomes a creature until end of turn"))
 	return nil
 }
 

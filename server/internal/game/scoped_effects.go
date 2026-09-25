@@ -12,15 +12,15 @@ import (
 // effect created by a resolving spell or ability (CR 611.2) — see the
 // 2026-09-24 amendment to ADR 0041, Decision P1, and #1497.
 //
-// WHY A SECOND REGISTRY BESIDE ScopedStatics. A `ScopedStatic` holds a
-// `StaticAbility`, which is two closures, so a game holding one is not
+// WHY DATA. The registry this replaced, `ScopedStatic`, held a
+// `StaticAbility`, which is two closures, so a game holding one was not
 // a restore point (`ContinuationCensus.ScopedStatics`). An earthbent
-// land or an Agent of Treachery's theft keeps one alive for the rest
-// of the game, and so froze its table's restore point for the rest of
-// the game. A `ScopedEffect` says the same thing as DATA: the objects
-// it affects, a list of operations from a closed vocabulary, one
-// timestamp and an ADR 0063 `Duration`. The snapshot carries it
-// verbatim, and the running binary interprets it.
+// land or an Agent of Treachery's theft kept one alive for the rest
+// of the game, and a Giant Growth or a crewed Vehicle until cleanup. A
+// `ScopedEffect` says the same thing as DATA: the objects it affects, a
+// list of operations from a closed vocabulary, one timestamp and an
+// ADR 0063 `Duration`. The snapshot carries it verbatim, and the
+// running binary interprets it.
 //
 // The measurement behind the vocabulary is in the ADR: every scoped
 // static in the tree — 115 card files and every engine site — is one
@@ -28,10 +28,10 @@ import (
 // bespoke closure, so there is no per-card registry here; the
 // `ModKind` string is the key, and the engine owns its namespace.
 //
-// The legacy registry stays until every writer has moved (ADR 0041 P5,
-// tier 3a). Both feed the same layer pass, sort together by timestamp
-// within each layer bucket (CR 613.7), and are swept by the same
-// `durationExpiredLocked`.
+// Tier 3a (ADR 0041 P5) moved the last writer and deleted the closure
+// registry, so this is the only place a duration-scoped continuous
+// effect lives. It is swept by `durationExpiredLocked`, like every
+// other duration in the game.
 
 // ModKind names one operation a ScopedEffect performs. It is a STRING
 // on disk, never an int, so renumbering constants can never change
@@ -175,7 +175,7 @@ func entryMatches(enteredAt int64, unstamped bool, stamp int64) bool {
 // ScopedEffect is a continuous effect created by a resolving spell or
 // ability (CR 611.2), as data. See the file comment.
 //
-// IMMUTABILITY CONTRACT, the same one ScopedStatic keeps: every field
+// IMMUTABILITY CONTRACT: every field
 // is written once at registration and never mutated. Clone copies the
 // slice into a fresh backing array and shares the inner slices.
 type ScopedEffect struct {
@@ -453,7 +453,7 @@ func cloneMods(mods []Mod) []Mod {
 
 // cloneScopedEffects copies the registry into a fresh backing array.
 // Entries are immutable, so their inner slices are shared, exactly as
-// the ScopedStatics clone does.
+// every other duration registry clone does.
 func cloneScopedEffects(in []ScopedEffect) []ScopedEffect {
 	if len(in) == 0 {
 		return nil
@@ -469,7 +469,7 @@ func cloneScopedEffects(in []ScopedEffect) []ScopedEffect {
 
 // sweepScopedEffectsLocked drops records whose duration has run out,
 // through the one function that decides what a duration means. Same
-// fresh-slice rule as sweepScopedStaticsLocked, for the same reason:
+// fresh-slice rule as every duration sweep, for the same reason:
 // the backing array is shared with every undo snapshot.
 //
 // Returns whether it dropped anything; the caller bumps the layer

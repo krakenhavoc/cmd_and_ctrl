@@ -256,15 +256,8 @@ func TestStateBasedActionInCleanupGrantsPriority(t *testing.T) {
 	owner := g.Seats[0]
 	bear := pushScopedTestCreature(g, owner.ID, 2, 2)
 	g.WithWriteLock(func() {
-		g.RegisterScopedStaticForEffect(StaticAbility{
-			Layer:     Layer7PT,
-			SubLayer:  SubLayer7C_Modify,
-			AppliesTo: scopedPinnedTo(bear),
-			Apply: func(c *Characteristic, _ *Card, _ *Game, _ *Card) {
-				c.Power += 3
-				c.Toughness += 3
-			},
-		}, uuid.New(), "test — +3/+3 until end of turn", g.UntilEndOfTurnDuration())
+		g.RegisterScopedEffectForEffect(uuid.New(), g.PinnedObjectsLocked(bear),
+			[]Mod{ModifyPTMod(3, 3)}, g.UntilEndOfTurnDuration(), "test — +3/+3 until end of turn")
 	})
 	if err := g.AddCounter(bear, "-1/-1", 4); err != nil {
 		t.Fatalf("AddCounter: %v", err)
@@ -426,15 +419,8 @@ func TestUntilEndOfTurnEffectMadeInCleanupExpiresInTheSecondCleanup(t *testing.T
 				return NewTriggeredItem(source, "Test Pump Watcher — +2/+2 until end of turn",
 					func(g *Game, item *StackItem) error {
 						self := item.SourceCardID
-						g.RegisterScopedStaticForEffect(StaticAbility{
-							Layer:     Layer7PT,
-							SubLayer:  SubLayer7C_Modify,
-							AppliesTo: scopedPinnedTo(self),
-							Apply: func(c *Characteristic, _ *Card, _ *Game, _ *Card) {
-								c.Power += 2
-								c.Toughness += 2
-							},
-						}, self, "test — +2/+2 until end of turn", g.UntilEndOfTurnDuration())
+						g.RegisterScopedEffectForEffect(self, g.PinnedObjectsLocked(self),
+							[]Mod{ModifyPTMod(2, 2)}, g.UntilEndOfTurnDuration(), "test — +2/+2 until end of turn")
 						return nil
 					})
 			},
@@ -447,8 +433,8 @@ func TestUntilEndOfTurnEffectMadeInCleanupExpiresInTheSecondCleanup(t *testing.T
 		t.Fatalf("DiscardSelection: %v", err)
 	}
 	settleStack(t, g)
-	if len(g.ScopedStatics) != 1 {
-		t.Fatalf("the trigger did not create its effect in the cleanup step: %d registered", len(g.ScopedStatics))
+	if len(g.ScopedEffects) != 1 {
+		t.Fatalf("the trigger did not create its effect in the cleanup step: %d registered", len(g.ScopedEffects))
 	}
 
 	closeCleanupWindow(t, g)
@@ -456,8 +442,8 @@ func TestUntilEndOfTurnEffectMadeInCleanupExpiresInTheSecondCleanup(t *testing.T
 	if n := cleanupStepsBegun(g); n != 2 {
 		t.Fatalf("cleanup steps begun = %d, want 2", n)
 	}
-	if len(g.ScopedStatics) != 0 {
-		t.Errorf("the effect leaked into the next turn: %d still registered", len(g.ScopedStatics))
+	if len(g.ScopedEffects) != 0 {
+		t.Errorf("the effect leaked into the next turn: %d still registered", len(g.ScopedEffects))
 	}
 	if g.Turn.ActiveSeat != 1 {
 		t.Errorf("turn did not end: seat %d step %s", g.Turn.ActiveSeat, g.Turn.Step)
