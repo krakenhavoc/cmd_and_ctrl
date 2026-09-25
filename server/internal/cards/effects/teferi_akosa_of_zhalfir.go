@@ -281,10 +281,10 @@ func teferiAkosaTapThenShuffle(g *game.Game, item *game.StackItem, picked []uuid
 	}
 	x := len(tapped)
 	return ReflexiveTrigger{
-		Label:   "Teferi Akosa of Zhalfir — shuffle a nonland permanent with mana value " + strconv.Itoa(x) + " or less into its owner's library",
-		Targets: teferiAkosaShuffleTarget(x),
-		Cards:   tapped,
-		Effect:  teferiAkosaShuffleIntoLibrary,
+		Label:  "Teferi Akosa of Zhalfir — shuffle a nonland permanent with mana value " + strconv.Itoa(x) + " or less into its owner's library",
+		Cards:  tapped,
+		Body:   teferiAkosaShuffleBody,
+		Params: game.EffectParams{Amount: x},
 	}.Apply(ctx)
 }
 

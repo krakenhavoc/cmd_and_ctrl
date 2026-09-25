@@ -237,6 +237,6 @@ func TestADelayedTriggerKeepsTheStampWhenItsCreatorMovedTheSourceElsewhere(t *te
 // and reports whether the declaration was accepted.
 func queueReflexiveProbe(g *Game, parent *StackItem) bool {
 	return g.QueueReflexiveTriggerForEffect(parent, ReflexiveTrigger{
-		Label: "when you do", Effect: func(*Game, *StackItem) error { return nil },
+		Label: "when you do", Body: testBody(func(*Game, *StackItem) error { return nil }),
 	})
 }

@@ -67,8 +67,7 @@ func b41UndeadButlerExileThenRebuy(g *game.Game, item *game.StackItem) error {
 		return nil
 	}
 	return ReflexiveTrigger{
-		Label:   "Undead Butler — return target creature card from your graveyard to your hand",
-		Targets: TargetCardInGraveyard("target creature card in your graveyard", YouOwn(), Creature()),
-		Effect:  returnFirstLegalGraveyardTargetToHand,
+		Label: "Undead Butler — return target creature card from your graveyard to your hand",
+		Body:  undeadButlerReturnBody,
 	}.Apply(ctx)
 }

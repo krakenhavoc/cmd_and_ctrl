@@ -214,6 +214,23 @@ func ManaSpendTriggerFor(key string) (ManaSpendTrigger, bool) {
 	return t, ok
 }
 
+// manaRiderDispatchBody is "mana-rider/dispatch" (ADR 0041 P9, #1497,
+// tier 4): the one tier-2 body every mana-spend-rider trigger's item
+// carries, re-deriving the per-card ManaSpendTrigger from Params.Name —
+// the same manaSpendTriggers key ManaSpendTriggerFor already reads, and
+// already an on-disk identity (ManaRider.Trigger rides the snapshot on
+// the paying token). An unknown key is the same "weaker than printed"
+// posture applyManaSpendRidersLocked already takes for one, rather than
+// a refusal: the rider registry is its own append-only vocabulary, not
+// the tier-2 ledger's.
+var manaRiderDispatchBody = DelayedBody("mana-rider/dispatch", func(g *Game, item *StackItem, p EffectParams) error {
+	t, ok := ManaSpendTriggerFor(p.Name)
+	if !ok {
+		return nil
+	}
+	return t.Effect(g, item)
+})
+
 // copyManaRiders returns a fresh backing array for a rider list (and for
 // each rider's filter), or nil for an empty one — copyRestrictions' twin
 // and for its reason: the catalog's slice is process-lifetime and shared
@@ -316,6 +333,15 @@ func (g *Game) applyManaSpendRidersLocked(item *StackItem, ctx ManaSpendContext,
 				}
 				seen[r.Trigger] = true
 				r.Applied = true
+				// ADR 0041 P9 (#1497, tier 4): the four WhenManaSpent
+				// cards have no catalog row for this item, so it is
+				// keyed directly under "mana-rider/dispatch" — one
+				// body, re-looking up t.Effect by Params.Name (the
+				// SAME registry key, ManaSpendTriggerFor already reads)
+				// rather than a per-card key, since the registry
+				// already IS the append-only identity a rider's
+				// ManaRider.Trigger field carries in the snapshot.
+				params := EffectParams{Name: r.Trigger}
 				g.queueHarvestedTriggerLocked(&StackItem{
 					Kind:         StackItemTriggered,
 					Controller:   item.Controller,
@@ -323,7 +349,9 @@ func (g *Game) applyManaSpendRidersLocked(item *StackItem, ctx ManaSpendContext,
 					SourceCardID: tok.Source,
 					Label:        t.Label,
 					Payload:      []TargetRef{{Kind: TargetCard, ID: item.ID}},
-					Effect:       t.Effect,
+					Body:         manaRiderDispatchBody.Key(),
+					Params:       params,
+					Effect:       bodyEffect(manaRiderDispatchBody.Key(), params),
 				})
 				continue
 			}
