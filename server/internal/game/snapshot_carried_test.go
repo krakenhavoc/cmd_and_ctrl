@@ -257,6 +257,20 @@ var carriedFixture = map[string]any{
 			Label:      "drift-Game.ScopedEffects",
 		}}
 	},
+	// ADR 0041 P9 (#1497): the record is keyed by its card's instance
+	// ID and restore re-keys it by the restored card, so a generated map
+	// (key and card ID independent) could never come back under its key;
+	// and a generated item would name an invented body and be refused.
+	"Game.lastKnownStack": func(g *Game) any {
+		id := uuid.NewSHA1(uuid.Nil, []byte("Game.lastKnownStack"))
+		me := g.Seats[0].ID
+		return map[uuid.UUID]lastKnownSpell{id: {
+			card: Card{InstanceID: id, Name: "drift-Game.lastKnownStack", TypeLine: "Instant",
+				Owner: me, Controller: me},
+			item: StackItem{ID: id, Kind: StackItemSpell, Controller: me, Owner: me,
+				SourceCardID: id, Label: "drift-Game.lastKnownStack", XValue: 5, Seq: 5151},
+		}}
+	},
 	// The zone a spell was cast from (CR 400.7g / ADR 0066).
 	"StackItem.CastFromZone": ZoneGraveyard,
 	// ADR 0069's face-down rule. An invented kind has no viewers row.

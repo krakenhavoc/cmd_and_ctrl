@@ -52,6 +52,12 @@ import (
 //     the ceiling is lowered to match — that is the ratchet clicking.
 //     Tier PRs delete lines and lower ceilings; nothing raises one
 //     without a reviewer reading why in the diff.
+//   - ADR 0041 P11: a retirement may move a line to the class of its
+//     remaining route, in the same PR, and the PR lists the lines and
+//     the new ceiling. A field reachable by several routes carries the
+//     most restrictive class among them, so deleting the route that set
+//     it lets it fall to the next one — usually the resume frames. That
+//     is not a new route, and it is the one way a ceiling goes up.
 //
 // Owner decision 4 (2026-09-24): ChoiceResumeFrames is the one census
 // counter that stays allowed after tier 4 — resume frames are out of
@@ -73,8 +79,10 @@ const closureFieldsFile = "closure_fields.txt"
 // retiredCensusCounters are the counters a landed phase-3 tier has
 // retired. A closure field charged to one of them fails the build.
 var retiredCensusCounters = map[string]string{
-	"DelayedTriggerEffects": "ADR 0041 phase 3 tier 2 (#1497): a delayed trigger is a registered body key plus plain params",
-	"ScopedStatics":         "ADR 0041 phase 3 tier 3a (#1497): a continuous effect with a duration is a ScopedEffect record over the closed Mod vocabulary",
+	"DelayedTriggerEffects":  "ADR 0041 phase 3 tier 2 (#1497): a delayed trigger is a registered body key plus plain params",
+	"ScopedStatics":          "ADR 0041 phase 3 tier 3a (#1497): a continuous effect with a duration is a ScopedEffect record over the closed Mod vocabulary",
+	"StackTargetSpecs":       "ADR 0041 phase 3 tier 4 (#1497, P9): a stack item's target and mode clauses are re-derived from its oracle ID or its catalog ability ref, and an item that can be neither is counted once, in StackEffects",
+	"TurnScopedReplacements": "ADR 0041 phase 3 tier 3b (#1497): a replacement effect a spell creates is a ScopedEffect record with a replacement-reader mod",
 }
 
 // closureClassCeilings is the ratchet's second half (#1558): how many
@@ -83,14 +91,28 @@ var retiredCensusCounters = map[string]string{
 // only fall — lower the number in the same PR that deletes the lines,
 // and never raise one to make a new route pass: classify the route as
 // what it really is, or make it data.
+//
+// One exception, which is not a new route (ADR 0041 P11): a retirement
+// may move a line to the class of its REMAINING route, in the same PR,
+// and the PR lists the lines and the new ceiling. A field reachable by
+// several routes carries the most restrictive class among them, so
+// deleting the route that set its class drops it to the next one —
+// usually a paused prompt's resume frame. Tier 4-1 moved eleven lines
+// that way and tier 3b-1 nine (ReplacementEffect.*, CopySelector.*,
+// EntryHandReveal.*): ChoiceResumeFrames 98 → 118.
 var closureClassCeilings = map[string]int{
-	"census:ChoiceResumeFrames":     98,
-	"census:IntrinsicAbilityCards":  45,
-	"census:StackEffects":           6,
-	"census:StackTargetSpecs":       11,
-	"census:TurnScopedBlockRules":   4,
-	"census:TurnScopedReplacements": 10,
-	"transient":                     1,
+	// 98 + the 11 census:StackTargetSpecs lines tier 4's first slice
+	// moved here under ADR 0041 P11 (ModeOption.Effect,
+	// ModeOption.Targets, ModeSpec.Options, StackItem.modeSpec,
+	// StackItem.targetSpec, TargetDifference.Key and
+	// TargetSpec.{AbilityOK, CardOK, Different, PlayerOK, Rest}) + the 9
+	// census:TurnScopedReplacements lines tier 3b-1 moved
+	// (ReplacementEffect.*, CopySelector.*, EntryHandReveal.*).
+	"census:ChoiceResumeFrames":    118,
+	"census:IntrinsicAbilityCards": 45,
+	"census:StackEffects":          6,
+	"census:TurnScopedBlockRules":  4,
+	"transient":                    1,
 }
 
 // isCeilingedClass reports whether a class is one closureClassCeilings
@@ -419,7 +441,7 @@ const closureFieldsHeader = `# closure_fields.txt — ADR 0041 phase 3's ratchet
 #
 # A line is one edge, <Type>.<Field>. Where Game reaches the SAME type
 # by several routes the edges into it differ (Game.BuiltinReplacements
-# is rebuilt, Game.TurnScopedReplacements is a blocker), and the lines
+# is rebuilt, a paused prompt's replacementResume is a blocker), and the lines
 # for that type's own fields carry the most restrictive class of every
 # route in: ReplacementEffect.Replace is charged to the blocker until
 # the tier that retires it. The trailing comment is the shortest route.

@@ -54,3 +54,4 @@ body tarkir/damage
 body teferi-akosa/shuffle-into-library
 body undead-butler/return-to-hand
 body ziatora/fling
+body catalog/activated

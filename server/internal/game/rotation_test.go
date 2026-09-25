@@ -57,10 +57,7 @@ func newRotationProbe(t *testing.T) rotationProbe {
 			g.TurnTally.Triggered = map[string]int{}
 		}
 		g.TurnTally.Triggered[tallied] = 1
-		g.RegisterTurnScopedReplacement(ReplacementEffect{
-			Watches: []EventKind{EventDealDamage},
-			Label:   "Fog: prevent all combat damage this turn",
-		})
+		g.PreventCombatDamageThisTurnForEffect(uuid.New(), uuid.Nil, "Fog: prevent all combat damage this turn")
 		if !g.RegisterScopedEffectForEffect(uuid.New(), g.PinnedObjectsLocked(blocker),
 			[]Mod{ModifyPTMod(3, 3)}, g.UntilEndOfTurnDuration(), "test — +3/+3 until end of turn") {
 			t.Fatal("setup: the +3/+3 registered nothing")
@@ -116,11 +113,8 @@ func (p rotationProbe) assertCleanNextTurn(t *testing.T) {
 			t.Errorf("%s is still in combat: attacking %v blocking %v", c.Name, c.AttackingTarget, c.BlockingTarget)
 		}
 	}
-	if len(g.TurnScopedReplacements) != 0 {
-		t.Errorf("A's turn-scoped prevention shield survived into N's turn: %d", len(g.TurnScopedReplacements))
-	}
 	if len(g.ScopedEffects) != 0 {
-		t.Errorf("A's until-end-of-turn static survived into N's turn: %d", len(g.ScopedEffects))
+		t.Errorf("A's until-end-of-turn static and prevention shield survived into N's turn: %d", len(g.ScopedEffects))
 	}
 	g.WithWriteLock(func() { g.RecomputeLayersIfStaleLocked() })
 	if c := findCard(g, p.blocker); c == nil || c.CurrentPower() != 4 {

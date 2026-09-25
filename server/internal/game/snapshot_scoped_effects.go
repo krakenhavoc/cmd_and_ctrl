@@ -37,6 +37,12 @@ func (s *GameSnapshot) checkEffectKeys() error {
 			if m.Kind == ModGrantAbilities {
 				unknown = append(unknown, unknownGrantBundles(m.Grants)...)
 			}
+			// Tier 3b: a delayed-trigger body a replacement mod names
+			// (Cosmic Intervention's per-card return) is as much a key
+			// as a delayed trigger's own body.
+			if m.Then != "" && !KnownEffectBody(m.Then) {
+				unknown = append(unknown, "scoped-effect then body "+m.Then)
+			}
 		}
 		if !KnownAffectedScope(e.Scope) {
 			unknown = append(unknown, "scoped-effect scope "+string(e.Scope))
@@ -62,9 +68,18 @@ func (s *GameSnapshot) checkEffectKeys() error {
 			if p != nil && !p.Filter.Valid() {
 				unknown = append(unknown, fmt.Sprintf("delayed-trigger spell filter %v", p.Filter.Types))
 			}
+			// An ability ref is an ability's stack item's, never a
+			// delayed trigger's: no binary writes one here.
+			if p != nil && p.Ability != nil {
+				unknown = append(unknown, "delayed-trigger params with an ability ref")
+			}
 		}
 	}
-	for _, list := range [][]stackItemSnapshot{s.StackMeta, s.PendingTriggers} {
+	lastKnown := make([]stackItemSnapshot, 0, len(s.LastKnownStack))
+	for _, e := range s.LastKnownStack {
+		lastKnown = append(lastKnown, e.Item)
+	}
+	for _, list := range [][]stackItemSnapshot{s.StackMeta, s.PendingTriggers, lastKnown} {
 		for _, it := range list {
 			if it.Body != "" && !KnownEffectBody(it.Body) {
 				unknown = append(unknown, "stack-item body "+it.Body)
@@ -72,12 +87,42 @@ func (s *GameSnapshot) checkEffectKeys() error {
 			if it.Params != nil && !it.Params.Filter.Valid() {
 				unknown = append(unknown, fmt.Sprintf("stack-item spell filter %v", it.Params.Filter.Types))
 			}
+			unknown = append(unknown, unknownAbilityRef(it)...)
 		}
 	}
 	if len(unknown) == 0 {
 		return nil
 	}
 	return fmt.Errorf("%w: %s", ErrUnknownEffectKey, strings.Join(unknown, ", "))
+}
+
+// unknownAbilityRef is the ability-ref half of checkEffectKeys (ADR
+// 0041 P9, #1497). A catalog/* body is read through its ref, so an item
+// naming one must carry a ref this binary can read: a slot it knows, a
+// key, and a ref in ADR 0093's grammar. Whether the catalog still HAS
+// that row is not a refusal — that is the owner's Q3, answered at
+// restore. And a ref on an item whose body does not read one is a
+// newer binary's shape, so it is refused rather than ignored.
+func unknownAbilityRef(it stackItemSnapshot) []string {
+	var ref *AbilityRef
+	if it.Params != nil {
+		ref = it.Params.Ability
+	}
+	if it.Body != CatalogActivatedBodyKey {
+		if ref != nil {
+			return []string{fmt.Sprintf("ability ref on a stack item whose body %q does not read one", it.Body)}
+		}
+		return nil
+	}
+	switch {
+	case ref == nil:
+		return []string{CatalogActivatedBodyKey + " stack item with no ability ref"}
+	case ref.Slot != AbilitySlotActivated:
+		return []string{fmt.Sprintf("ability-ref slot %q under %s", ref.Slot, CatalogActivatedBodyKey)}
+	case !wellFormedAbilityRef(*ref):
+		return []string{fmt.Sprintf("ability ref %q of %q", ref.Ref, ref.Key)}
+	}
+	return nil
 }
 
 // unknownGrantBundles is the grantAbilities half of checkEffectKeys
@@ -127,13 +172,23 @@ func deepCopyScopedEffects(in []ScopedEffect) []ScopedEffect {
 // Covered: a scopedEffects record, its affected members, its mods and
 // its duration (tier 1); and — #1568 review — every EffectParams a
 // delayed trigger or a stack item carries (`params`, `condParams`),
-// down through its `filter` and its `object`.
-func unknownScopedEffectFields(data []byte) ([]string, error) {
+// down through its `filter`, its `object` and — tier 4 — its `ability`.
+//
+// Tier 4 (ADR 0041 P10, #1497) extends it to the WHOLE stack-item
+// record — on the stack, queued, or remembered in `lastKnownStack` —
+// for a file of the current schema. That does not protect a binary from
+// before this change (the catalog/* body is its refusal token); it
+// means every stack-item field added after it is refused by every
+// binary from here on. It is asked only of the current schema because
+// in an OLDER file an unknown key can only be one a bump removed,
+// which is that bump's migration to handle, never a refusal.
+func unknownScopedEffectFields(data []byte, schema int) ([]string, error) {
 	var envelope struct {
 		ScopedEffects   []map[string]json.RawMessage `json:"scopedEffects"`
 		DelayedTriggers []map[string]json.RawMessage `json:"delayedTriggers"`
 		StackMeta       []map[string]json.RawMessage `json:"stackMeta"`
 		PendingTriggers []map[string]json.RawMessage `json:"pendingTriggers"`
+		LastKnownStack  []map[string]json.RawMessage `json:"lastKnownStack"`
 	}
 	if err := json.Unmarshal(data, &envelope); err != nil {
 		return nil, err
@@ -184,6 +239,9 @@ func unknownScopedEffectFields(data []byte) ([]string, error) {
 		if err := nested(where+" filter", obj["filter"], castFilterJSONKeys, false); err != nil {
 			return err
 		}
+		if err := nested(where+" ability", obj["ability"], abilityRefJSONKeys, false); err != nil {
+			return err
+		}
 		return nested(where+" object", obj["object"], objectRefJSONKeys, false)
 	}
 	for _, rec := range envelope.ScopedEffects {
@@ -206,9 +264,30 @@ func unknownScopedEffectFields(data []byte) ([]string, error) {
 			return nil, err
 		}
 	}
+	current := schema >= SnapshotSchemaVersion
+	stackItem := func(where string, it map[string]json.RawMessage) error {
+		if current {
+			check(where, it, stackItemJSONKeys)
+		}
+		return params(where+"'s params", it["params"])
+	}
 	for _, list := range [][]map[string]json.RawMessage{envelope.StackMeta, envelope.PendingTriggers} {
 		for _, it := range list {
-			if err := params("a stack item's params", it["params"]); err != nil {
+			if err := stackItem("a stack item", it); err != nil {
+				return nil, err
+			}
+		}
+	}
+	for _, e := range envelope.LastKnownStack {
+		if current {
+			check("a lastKnownStack entry", e, lastKnownSpellJSONKeys)
+		}
+		it, err := object(e["item"])
+		if err != nil {
+			return nil, err
+		}
+		if it != nil {
+			if err := stackItem("a lastKnownStack item", it); err != nil {
 				return nil, err
 			}
 		}
@@ -225,6 +304,9 @@ var (
 	effectParamsJSONKeys   = jsonKeysOf(reflect.TypeOf(EffectParams{}))
 	castFilterJSONKeys     = jsonKeysOf(reflect.TypeOf(CastFilter{}))
 	objectRefJSONKeys      = jsonKeysOf(reflect.TypeOf(ObjectRef{}))
+	abilityRefJSONKeys     = jsonKeysOf(reflect.TypeOf(AbilityRef{}))
+	stackItemJSONKeys      = jsonKeysOf(reflect.TypeOf(stackItemSnapshot{}))
+	lastKnownSpellJSONKeys = jsonKeysOf(reflect.TypeOf(lastKnownSpellSnapshot{}))
 )
 
 // jsonKeysOf is the set of keys encoding/json writes for a struct's

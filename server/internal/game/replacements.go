@@ -199,9 +199,9 @@ type ReplacementEffectID uint64
 // into it — see encodeCatalogReplacementID.
 //
 //	1                     .. selfReplacementIDBase  catalog (battlefield card × slot)
-//	selfReplacementIDBase .. turnScopedIDBase       a card replacing its own entry, by slot
-//	turnScopedIDBase      .. testReplacementIDBase  turn-scoped (Fog), by index
-//	testReplacementIDBase .. builtinReplacementIDBase  test-injected, by index
+//	selfReplacementIDBase   .. scopedReplacementIDBase  a card replacing its own entry, by slot
+//	scopedReplacementIDBase .. testReplacementIDBase    a ScopedEffect's replacement mod, by Seq × mod
+//	testReplacementIDBase   .. builtinReplacementIDBase  test-injected, by index
 //	builtinReplacementIDBase ..                     built-ins (commander zone), by index
 //
 // They were three `const` declarations inside the two functions that
@@ -209,7 +209,7 @@ type ReplacementEffectID uint64
 // is written down once.
 const (
 	selfReplacementIDBase    ReplacementEffectID = 1 << 45
-	turnScopedIDBase         ReplacementEffectID = 1 << 50
+	scopedReplacementIDBase  ReplacementEffectID = 1 << 50
 	testReplacementIDBase    ReplacementEffectID = 1 << 55
 	builtinReplacementIDBase ReplacementEffectID = 1 << 62
 )
@@ -1184,7 +1184,7 @@ type activeReplacement struct {
 // first.
 //
 // The zero value means "no stable identity, never interchangeable
-// with anything". Built-in, turn-scoped and test replacements take
+// with anything". Built-in, scoped (ADR 0041 P8) and test replacements take
 // it: they are registered per instance rather than declared on a
 // catalog entry, so two of them are two separate declarations that
 // happen to look alike, not two printings of one effect.
@@ -1255,7 +1255,7 @@ func encodeCatalogReplacementID(cardIdx, slot int) (ReplacementEffectID, bool) {
 // back into the battlefield index and slot it was minted from.
 //
 // ok is false for an ID outside the catalog range — zero, or one
-// belonging to a self-replacement, a turn-scoped effect, a test
+// belonging to a self-replacement, a scoped effect, a test
 // injection or a built-in. Callers that handle those ranges check
 // them first; this is the defensive floor for a stale or malformed ID
 // off the wire, which decodes to nothing rather than to whatever card
@@ -1857,7 +1857,7 @@ func (g *Game) gatherActiveReplacementsLocked(ev *ReplacementEvent) []activeRepl
 					// The same budget the packed catalog IDs are
 					// bounded by, for the same reason: slot
 					// MaxCatalogReplacementSlots would be the first
-					// turn-scoped effect's ID.
+					// scoped replacement's ID.
 					break
 				}
 				id := selfReplacementIDBase + ReplacementEffectID(repIdx)
@@ -1886,27 +1886,15 @@ func (g *Game) gatherActiveReplacementsLocked(ev *ReplacementEvent) []activeRepl
 		}
 	}
 
-	// Turn-scoped replacements — Fog-class effects registered via
-	// RegisterTurnScopedReplacement. Live until StepCleanup clears
-	// the slice. IDs in a dedicated range between catalog space
-	// and test space.
-	for i := range g.TurnScopedReplacements {
-		id := turnScopedIDBase + ReplacementEffectID(i)
-		if applied[id] {
-			continue
-		}
-		eff := g.TurnScopedReplacements[i]
-		if !eventKindMatches(eff.Watches, ev.Kind) {
-			continue
-		}
-		if eff.AppliesTo != nil && !eff.AppliesTo(ev, g, nil) {
-			continue
-		}
-		out = append(out, activeReplacement{effect: eff, source: nil, id: id})
-	}
+	// Scoped replacements — the replacement mods of ScopedEffect
+	// records (ADR 0041 P8, tier 3b): Fog, a prevention shield, the
+	// Whip's redirect, Cosmic Intervention. IDs are minted from each
+	// record's Seq, never its position, because the registry can
+	// shrink under an open CR 616 prompt. See scoped_replacements.go.
+	out = g.gatherScopedReplacementsLocked(ev, applied, out)
 
 	// Test replacements. IDs live in a dedicated range above the
-	// catalog + turn-scoped spaces and below the built-in base.
+	// catalog + scoped spaces and below the built-in base.
 	for i := range g.testReplacements {
 		id := testReplacementIDBase + ReplacementEffectID(i)
 		if applied[id] {
@@ -1923,23 +1911,6 @@ func (g *Game) gatherActiveReplacementsLocked(ev *ReplacementEvent) []activeRepl
 	}
 
 	return out
-}
-
-// RegisterTurnScopedReplacement appends a replacement effect that
-// lives until the current turn's StepCleanup. Used by Fog and
-// similar "until end of turn" prevention cards. Caller must hold
-// g.mu.
-func (g *Game) RegisterTurnScopedReplacement(effect ReplacementEffect) {
-	g.TurnScopedReplacements = append(g.TurnScopedReplacements, effect)
-}
-
-// ClearTurnScopedReplacementsLocked drops every turn-scoped
-// replacement at StepCleanup. Called from runStepEntryHooksLocked.
-// Caller must hold g.mu.
-func (g *Game) ClearTurnScopedReplacementsLocked() {
-	if len(g.TurnScopedReplacements) > 0 {
-		g.TurnScopedReplacements = nil
-	}
 }
 
 // ReplacementOptionMetaForEffect returns the prompt label and
@@ -1968,13 +1939,9 @@ func (g *Game) ReplacementOptionMetaForEffect(id ReplacementEffectID) (string, u
 		}
 		return "", uuid.UUID{}
 	}
-	// Turn-scoped replacements (Fog etc.).
-	if id >= turnScopedIDBase {
-		i := int(id - turnScopedIDBase)
-		if i >= 0 && i < len(g.TurnScopedReplacements) {
-			return g.TurnScopedReplacements[i].Label, uuid.UUID{}
-		}
-		return "", uuid.UUID{}
+	// Scoped replacements (Fog, a prevention shield, …), by Seq.
+	if id >= scopedReplacementIDBase {
+		return g.scopedReplacementLabelLocked(id), uuid.UUID{}
 	}
 	// Catalog — the packed (battlefield index, slot) range, unpacked
 	// by the same pair the gather pass mints with.
