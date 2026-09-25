@@ -1,6 +1,6 @@
 # ADR 0095 — Deck coverage checks and deck requests, on the site and in Discord
 
-**Status:** Proposed · 2026-09-25 · Post-S30 — Rolling deck-driven catalog growth (outside a numbered sprint)
+**Status:** Accepted · 2026-09-25 · Post-S30 — Rolling deck-driven catalog growth (outside a numbered sprint)
 **Issue:** [#1631](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1631)
 **Numbering:** swept with the AGENTS.md §4 check on 2026-09-25: `git fetch --all --prune`, then the
 ADR file names in the history of every remote branch. The highest number present anywhere is
@@ -40,7 +40,7 @@ Most of what is needed already exists:
 
 Nothing puts a whole decklist into buckets, and nothing lets anyone outside the repo ask for cards.
 
-## Owner decisions (2026-09-25, on #1631)
+## Owner decisions (2026-09-25, on #1631; ADR accepted the same day, including the sign-in and links-only assumptions)
 
 1. **Every bot command moves to the `/c2-` prefix:** `/c2-invite`, `/c2-games`, `/c2-end`, and the
    two new ones below. The old `cc-` registrations are removed.
