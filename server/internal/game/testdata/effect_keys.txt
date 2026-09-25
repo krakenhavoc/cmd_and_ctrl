@@ -31,3 +31,4 @@ body warp/exile
 condition cast/you-next-cast
 condition earthbend/this-object-left
 body zara/return-to-hand
+body catalog/activated
