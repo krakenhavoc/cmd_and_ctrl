@@ -3,8 +3,8 @@
 **Status:** Accepted · 2026-04-22 · Sprint S12.5
 **Revised:** 2026-09-16 · Operator runbook, First deploy step 2: guilds authorize `bot applications.commands`, not `applications.commands` alone (owner decision, for #613's DM invites) · Branch `feat/bot-provisioning-cd`
 **Revised:** 2026-09-16 · §6 and the operator runbook: the server env file is `/etc/cmd_and_ctrl/env`, both env files' owners are corrected, and "Rotating tokens" follows the CD-owned `bot.env` and the HomeLab-owned admin token (#251) · Branch `docs/adr-0004-env-path-251`
-**Revised:** 2026-09-19 · A third command, `/cc-end <game>` (confirm, then archive), joins `/cc-invite` and `/cc-games` — admin-only for now via two new optional env vars, `CMDCTRL_DISCORD_ADMIN_USER_IDS` / `CMDCTRL_DISCORD_ADMIN_ROLE_IDS`; the "host" half of #614's design point waits on S34 `games.created_by` (#1044). Details in `server/internal/bot/end.go` and AGENTS.md's Discord bot section, not repeated here · Issue #614
-**Revised:** 2026-09-19 · The "host" half lands: `/cc-end` now also accepts the game's own creator, via the server's `GET /games/{id}/creator` (#1098). "Admin-only" above now reads "host or admin" — see `Handler.mayEnd` in `server/internal/bot/end.go` and AGENTS.md's Discord bot section · Issue #1098
+**Revised:** 2026-09-19 · A third command, `/c2-end <game>` (confirm, then archive), joins `/c2-invite` and `/c2-games` — admin-only for now via two new optional env vars, `CMDCTRL_DISCORD_ADMIN_USER_IDS` / `CMDCTRL_DISCORD_ADMIN_ROLE_IDS`; the "host" half of #614's design point waits on S34 `games.created_by` (#1044). Details in `server/internal/bot/end.go` and AGENTS.md's Discord bot section, not repeated here · Issue #614
+**Revised:** 2026-09-19 · The "host" half lands: `/c2-end` now also accepts the game's own creator, via the server's `GET /games/{id}/creator` (#1098). "Admin-only" above now reads "host or admin" — see `Handler.mayEnd` in `server/internal/bot/end.go` and AGENTS.md's Discord bot section · Issue #1098
 
 ## Context
 
@@ -21,11 +21,11 @@ Two surfaces ship under S12.5 and are covered here together:
    Discord and shows up in the game with their Discord name and
    avatar already on the seat. (Implemented in PR #127–129.)
 2. **Slash-command bot for posting invites from inside
-   Discord.** Admins type `/cc-invite` in an approved server and
+   Discord.** Admins type `/c2-invite` in an approved server and
    get a game + an invite URL pasted back to the channel. This
    is the PR 1–4 slice that closes the S12.5 bot tasks.
 
-Rich Presence, DM invites (`/cc-invite-dm`), and
+Rich Presence, DM invites (`/c2-invite-dm`), and
 re-link-after-the-fact are **deferred**. They're out-of-scope
 for the MVP; the user's ask was slash commands + approved-server
 gating, and those two ship here.
@@ -76,7 +76,7 @@ Comma-separated snowflakes in a single env var. Enforced at:
 
 1. **Registration time.** `RegisterCommands` iterates the
    allow-list and registers every command in `commandDefinitions()`
-   per allowed guild (`/cc-invite`, `/cc-games`, and `/cc-end` as of
+   per allowed guild (`/c2-invite`, `/c2-games`, and `/c2-end` as of
    #614 — see the revision note above and AGENTS.md's Discord bot
    section for the current list).
    A `GuildCreate` event on a non-listed guild logs a warning and

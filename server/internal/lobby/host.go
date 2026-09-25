@@ -5,7 +5,7 @@ package lobby
 // Who hosts:
 //
 //   - POST /games may name a host by Discord ID (host_discord_id; the
-//     Discord bot's /cc-invite passes whoever ran it). It is held
+//     Discord bot's /c2-invite passes whoever ran it). It is held
 //     pending on the meta until that identity claims a seat, and then
 //     bound to that seat.
 //   - Until then — and at every table that names nobody — the first
@@ -86,7 +86,7 @@ func (l *Lobby) syncHostLocked(entry *gameEntry) {
 // TransferHost makes target the table host. The caller is authorised
 // at the HTTP layer (CanManageTable). target must be a human seat
 // still in the game. An explicit transfer also drops any pending
-// named host, so a late /cc-invite claimant does not take the table
+// named host, so a late /c2-invite claimant does not take the table
 // back from whoever it was handed to.
 func (l *Lobby) TransferHost(id, target uuid.UUID) (GameMeta, error) {
 	var broadcast func()

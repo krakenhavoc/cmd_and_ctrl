@@ -1,9 +1,9 @@
 // Command cmd_and_ctrl-bot is the S12.5 Discord slash-command bot.
 // It runs as a second systemd unit next to the game server and
-// exposes /cc-invite + /cc-games + /cc-end against an allow-listed
-// set of guilds. Every command works by calling back into the game
-// server's admin HTTP API over loopback — the bot never mutates
-// game state directly.
+// exposes /c2-invite + /c2-games + /c2-end + /c2-deck-check +
+// /c2-deck-req against an allow-listed set of guilds. Every command
+// works by calling back into the game server's admin HTTP API over
+// loopback — the bot never mutates game state directly.
 //
 // Configuration is via environment variables. See
 // server/internal/bot/config.go for the full list; all CMDCTRL_*

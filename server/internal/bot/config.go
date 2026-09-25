@@ -66,13 +66,13 @@ type Config struct {
 	ClientBaseURL string
 
 	// AdminUserIDs and AdminRoleIDs together define who may run
-	// /cc-end: a Discord user on AdminUserIDs, or a guild member
+	// /c2-end: a Discord user on AdminUserIDs, or a guild member
 	// holding a role on AdminRoleIDs. Both optional and both
 	// comma-separated snowflakes, same shape as GuildIDs.
 	//
 	// This is the "admin" half of issue #614's "host or admin"
 	// check. If both lists are empty AND the game being ended has no
-	// creator, /cc-end refuses every caller rather than failing open;
+	// creator, /c2-end refuses every caller rather than failing open;
 	// see Config.IsAdmin. The "host" half — the game's own creator,
 	// now that games.created_by exists (#1044, #1098) — is not a
 	// Config field: it is per-game, so it is answered by the server
@@ -146,7 +146,7 @@ func (c Config) Redacted() map[string]any {
 }
 
 // IsAdmin reports whether the interaction's invoker is authorized to
-// run /cc-end: a Discord user on AdminUserIDs, or a guild member
+// run /c2-end: a Discord user on AdminUserIDs, or a guild member
 // holding a role on AdminRoleIDs. An empty configuration (both lists
 // empty) never authorizes anyone — see the AdminUserIDs/AdminRoleIDs
 // doc comment.
@@ -173,7 +173,7 @@ func (c Config) IsAdmin(i *discordgo.Interaction) bool {
 // HasAdmins reports whether any admin (user or role) is configured
 // at all. Used to distinguish "you specifically are not an admin"
 // from "nobody is configured as an admin yet" in the refusal
-// message /cc-end gives an unauthorized caller.
+// message /c2-end gives an unauthorized caller.
 func (c Config) HasAdmins() bool {
 	return len(c.AdminUserIDs) > 0 || len(c.AdminRoleIDs) > 0
 }

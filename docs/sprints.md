@@ -512,9 +512,9 @@ Every "out of scope" deferral from the initial planning pass is pulled into this
 **Discord bot (`cmd_and_ctrl-bot`):**
 
 - [x] New top-level directory `bot/` or a cmd under `server/cmd/bot/` — picked `server/cmd/bot/` + `server/internal/bot/` in ADR 0004 (shared module, separate binary). Go, using `bwmarrin/discordgo`. Allow-list gate via `CMDCTRL_DISCORD_GUILD_IDS`.
-- [x] Slash command `/cc-invite [name]` — calls server `POST /games` with admin credentials (bot holds `CMDCTRL_ADMIN_TOKEN` via env), posts the invite link back to the channel (channel-visible embed; ephemeral-toggle deferred).
-- [ ] Slash command `/cc-invite-dm @user [name]` — deferred (needs invite-side pre-bind of DiscordID; not in MVP).
-- [x] Slash command `/cc-games` — ephemeral list of active/lobby games (invite tokens already stripped by `Lobby.List`). `/cc-end <id>` deferred (destructive, wants confirmation UX) — shipped as an S34 follow-up, [#614](https://github.com/krakenhavoc/cmd_and_ctrl/issues/614).
+- [x] Slash command `/c2-invite [name]` — calls server `POST /games` with admin credentials (bot holds `CMDCTRL_ADMIN_TOKEN` via env), posts the invite link back to the channel (channel-visible embed; ephemeral-toggle deferred).
+- [ ] Slash command `/c2-invite-dm @user [name]` — deferred (needs invite-side pre-bind of DiscordID; not in MVP).
+- [x] Slash command `/c2-games` — ephemeral list of active/lobby games (invite tokens already stripped by `Lobby.List`). `/c2-end <id>` deferred (destructive, wants confirmation UX) — shipped as an S34 follow-up, [#614](https://github.com/krakenhavoc/cmd_and_ctrl/issues/614).
 - [x] Bot deploys as a second systemd unit on the same VPS (S12 infra). Unit at `deploy/cmd-and-ctrl-bot.service`; env file separate from the server's (ADR 0004 §6).
 
 **Rich Presence:**
@@ -547,8 +547,8 @@ Every "out of scope" deferral from the initial planning pass is pulled into this
 ### Exit criteria
 
 1. A friend clicks an invite link shared in Discord, clicks "Sign in with Discord" once, and lands in the game with their Discord name + avatar already on the seat. No manual name prompt.
-2. `/cc-invite` in a Discord channel produces a game + pastes an invite link the playgroup can click.
-3. `/cc-invite-dm @alice` DMs Alice a link she can click for one-tap onboarding.
+2. `/c2-invite` in a Discord channel produces a game + pastes an invite link the playgroup can click.
+3. `/c2-invite-dm @alice` DMs Alice a link she can click for one-tap onboarding.
 4. With Rich Presence toggled on and the Discord desktop client running, the player's Discord profile shows "In a Commander game" while they play, and clears within seconds of leaving.
 5. A player who joined with manual name entry can later click "Link Discord" and have their avatar appear at all four seats without leaving the game.
 6. All four of the above work against the deployed VPS from S12.
@@ -2641,12 +2641,12 @@ The server has only ever had seats. A session bound one socket to one game and o
 
 ### Sub-PR 6 — tablemates, invite picker, DM invites
 
-**Open — the only sub-PR left.** [#613](https://github.com/krakenhavoc/cmd_and_ctrl/issues/613) (the `/cc-invite-dm` slash command) is a thin client of this sub-PR's route and follows it.
+**Open — the only sub-PR left.** [#613](https://github.com/krakenhavoc/cmd_and_ctrl/issues/613) (the `/c2-invite-dm` slash command) is a thin client of this sub-PR's route and follows it.
 
 - [ ] Tablemates query (ADR 0051 decision 8): people who share a `seats` row with the caller, recency-ordered, offered as suggestions when inviting
 - [ ] Invite picker UI over that query
 - [ ] `POST /games/{id}/invites/dm` — the server sends the DM itself over Discord REST with a bot token; the gateway bot does not open the DM
-- [ ] [#613](https://github.com/krakenhavoc/cmd_and_ctrl/issues/613) — `/cc-invite-dm @user`, a thin client of the route above
+- [ ] [#613](https://github.com/krakenhavoc/cmd_and_ctrl/issues/613) — `/c2-invite-dm @user`, a thin client of the route above
 
 ### Sub-PR 7 — `sessions_invalid_before`: logout-everywhere, admin remove-user
 
@@ -2659,7 +2659,7 @@ The server has only ever had seats. A session bound one socket to one game and o
 ### Out of scope (explicit handoffs)
 
 - **The rest of sub-PR 6** — tablemates, the invite picker and `POST /games/{id}/invites/dm` — and [#613](https://github.com/krakenhavoc/cmd_and_ctrl/issues/613), the slash command that calls it once it ships.
-- **[#1098](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1098) — the host, not just an admin.** `games.created_by` now exists, but invite rotation ([#1057](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1057), closing [#1038](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1038)) and `/cc-end` ([#1058](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1058), closing [#614](https://github.com/krakenhavoc/cmd_and_ctrl/issues/614)) both shipped admin-only, each with its own `TODO(#1044)`. Letting a game's creator do either without an admin token is #1098, still open.
+- **[#1098](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1098) — the host, not just an admin.** `games.created_by` now exists, but invite rotation ([#1057](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1057), closing [#1038](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1038)) and `/c2-end` ([#1058](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1058), closing [#614](https://github.com/krakenhavoc/cmd_and_ctrl/issues/614)) both shipped admin-only, each with its own `TODO(#1044)`. Letting a game's creator do either without an admin token is #1098, still open.
 - **Collapsing `player` sessions into `identified`** — one durable credential per person, the `seats` table answering "which seat is yours" at upgrade time. Deferred in ADR 0051 until S33 and S34 have both settled.
 - **A second identity provider** (Microsoft Entra External ID) — the `identities` table is shaped for it; not adopted now. See ADR 0051's Deferred section for the reversal triggers.
 - **Explicit friends list, stats/ratings, spectator accounts, guest-to-user upgrade for a seat whose session is already gone** — all named and deferred in ADR 0051.
@@ -2686,7 +2686,7 @@ The server has only ever had seats. A session bound one socket to one game and o
 
 **On `develop`, not yet promoted:** sub-PR 4 ([#1059](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1059), my games / seat linking / Discord link), sub-PR 5 ([#1061](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1061), deck library), sub-PR 6 ([#1113](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1113), tablemates, the invite picker and `POST /games/{id}/invites/dm`), and sub-PR 7 ([#1056](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1056), per-user revocation and the 30-day identity session).
 
-**Every sub-PR is built.** What is left of the sprint's own scope is the follow-on [#613](https://github.com/krakenhavoc/cmd_and_ctrl/issues/613), the `/cc-invite-dm` slash command that calls sub-PR 6's route, and it depends on [#249](https://github.com/krakenhavoc/cmd_and_ctrl/issues/249) provisioning the bot. Two owner checks can only be made against production after the next promotion: a DM actually arriving (the server's `CMDCTRL_DISCORD_BOT_TOKEN` is written on a `main` deploy only), and `/cc-end` once an admin allowlist is set.
+**Every sub-PR is built.** What is left of the sprint's own scope is the follow-on [#613](https://github.com/krakenhavoc/cmd_and_ctrl/issues/613), the `/c2-invite-dm` slash command that calls sub-PR 6's route, and it depends on [#249](https://github.com/krakenhavoc/cmd_and_ctrl/issues/249) provisioning the bot. Two owner checks can only be made against production after the next promotion: a DM actually arriving (the server's `CMDCTRL_DISCORD_BOT_TOKEN` is written on a `main` deploy only), and `/c2-end` once an admin allowlist is set.
 
 ---
 

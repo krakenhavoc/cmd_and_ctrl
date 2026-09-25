@@ -50,8 +50,8 @@ CD is gated `if: env.IS_DEV != 'true'`; do not work around that by hand.
    Two more keys are written the same way, but only when set —
    `CMDCTRL_DISCORD_ADMIN_USER_IDS` and `CMDCTRL_DISCORD_ADMIN_ROLE_IDS`
    (Actions **variables**, comma-separated snowflakes): who may run
-   `/cc-end` (#614). Unlike the four keys above, an unset admin variable
-   is not a misconfiguration — `/cc-end` refuses every caller with its
+   `/c2-end` (#614). Unlike the four keys above, an unset admin variable
+   is not a misconfiguration — `/c2-end` refuses every caller with its
    own ephemeral message rather than failing open, so this step neither
    warns nor writes anything for the one left unset.
 
@@ -157,7 +157,7 @@ sudo stat -c '%U:%G %a' /etc/cmd_and_ctrl/bot.env # root:cmdctrl-bot 640
 ```
 
 `bot config invalid` names the missing key; `bot disabled` means the
-token is empty. Then in an allowed guild, `/cc-games` should answer with
+token is empty. Then in an allowed guild, `/c2-games` should answer with
 an ephemeral list. A reply saying the bot is not authorized against the
 game server means the two admin tokens differ. The bot user should also
 appear in each allowed guild's member list; if it does not, that guild
@@ -177,7 +177,7 @@ https://discord.com/oauth2/authorize?client_id=<APP_ID>&scope=bot+applications.c
 Manage Server in the guild. It is done once per guild in Discord, not on
 the host, so a rebuild of production does not repeat it.
 
-- `applications.commands` is what `/cc-invite` and `/cc-games` need.
+- `applications.commands` is what `/c2-invite` and `/c2-games` need.
   Their replies are interaction responses, which need no channel
   permissions.
 - `bot` makes the bot user a member of the guild. Direct-message invites

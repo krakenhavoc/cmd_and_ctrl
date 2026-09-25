@@ -383,7 +383,7 @@ func Handler(c Config) http.Handler {
 	dmLimit := newLimiter(1.0/10, 3)
 	mux.Handle("POST /games/{id}/invites/dm",
 		limit.Middleware(auth.Middleware(c.Auth)(perCallerLimit(dmLimit, handlerFunc(c, inviteDM)))))
-	// The Discord bot's /cc-end host check (#1098): "does this Discord
+	// The Discord bot's /c2-end host check (#1098): "does this Discord
 	// user's snowflake match this game's creator", a boolean and
 	// nothing else. Admin-only — the bot always calls with its admin
 	// session — so it never widens who can learn a game's creator;
@@ -634,7 +634,7 @@ type sessionResponse struct {
 type createGameRequest struct {
 	Name string `json:"name"`
 	// HostDiscordID optionally names the table host by Discord user
-	// ID (ADR 0075 §2.1). /cc-invite sends the invoking user.
+	// ID (ADR 0075 §2.1). /c2-invite sends the invoking user.
 	HostDiscordID string `json:"host_discord_id,omitempty"`
 }
 
@@ -1340,7 +1340,7 @@ type gameCreatorResponse struct {
 	IsCreator bool `json:"is_creator"`
 }
 
-// gameCreator (admin-only) answers the Discord bot's /cc-end host
+// gameCreator (admin-only) answers the Discord bot's /c2-end host
 // check (#1098): does the Discord user named by ?discord_id=<snowflake>
 // match this game's creator. It never says who the creator actually
 // is — only whether ONE named snowflake is a match — so an admin

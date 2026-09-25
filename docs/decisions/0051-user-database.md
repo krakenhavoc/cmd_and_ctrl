@@ -318,7 +318,7 @@ the game. The message carries the ordinary invite link; nothing new
 is minted. Rate-limited per caller like every invite-adjacent route.
 
 **Amended at acceptance (2026-09-16):** the bot *does* gain a
-`/cc-invite-dm @user` slash command (#613), carried over from ADR 0004
+`/c2-invite-dm @user` slash command (#613), carried over from ADR 0004
 and S12.5 (#59). It is a thin client of this route: it creates the game
 with its existing admin credentials and calls
 `POST /games/{id}/invites/dm`. It never opens a DM from its gateway
@@ -429,7 +429,7 @@ One PR each, in this order:
 | 3 | `games` / `seats` / `invites` replace `lobby/*.json`; importer; hashed invite lookup | 1 |
 | 4 | `GET /me/games` and a "My games" view; seat linking on first sign-in; linking Discord to an already-held seat mid-game (`GET /auth/discord/link`, carried over from S12.5 #59) | 2, 3 |
 | 5 | `decks`: library rows from upload, seat-from-library route, `GET /me/decks` | 2, 3 |
-| 6 | Tablemates query, invite picker, `POST /games/{id}/invites/dm` via bot REST; the `/cc-invite-dm` slash command that calls it (#613) can follow separately | 4 |
+| 6 | Tablemates query, invite picker, `POST /games/{id}/invites/dm` via bot REST; the `/c2-invite-dm` slash command that calls it (#613) can follow separately | 4 |
 | 7 | `sessions_invalid_before`, logout-everywhere, admin remove-user | 2 |
 
 Sub-PRs 2 and 3 are independent of each other and can run in
@@ -774,7 +774,7 @@ or did something differently from how they read.
   already loads every seat's avatar from.)
 - **A Discord snowflake IS accepted in the DM route's body, for an
   admin session only.** Decision 5 says the route takes a `user_id`
-  and stops there. `/cc-invite-dm @user` (#613) holds a mention and
+  and stops there. `/c2-invite-dm @user` (#613) holds a mention and
   nothing else, and its target may never have signed in here, so there
   would be no user id to send. Accepting `discord_id` from every
   caller would make this "DM any Discord user who shares a server with
