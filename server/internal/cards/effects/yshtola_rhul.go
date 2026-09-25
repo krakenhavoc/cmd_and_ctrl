@@ -26,22 +26,20 @@ func init() {
 		Caveats:      []string{"The extra end step is not created, so it blinks a creature only once per turn instead of twice."},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventBeginEndStep},
+			Key:     "Y'shtola Rhul — blink a creature you control",
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				// "your end step" — not every end step.
 				return ev.Actor == source.Controller
 			},
 			Targets: TargetCreature("target creature you control", YouControl()),
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Y'shtola Rhul — blink a creature you control",
-					func(g *game.Game, item *game.StackItem) error {
-						if len(item.Targets) == 0 {
-							return nil
-						}
-						// "under its owner's control" — leave
-						// Controller zero rather than passing the
-						// trigger's controller.
-						return Flicker{Target: item.Targets[0].ID}.Apply(NewContext(g, item))
-					})
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				if len(item.Targets) == 0 {
+					return nil
+				}
+				// "under its owner's control" — leave
+				// Controller zero rather than passing the
+				// trigger's controller.
+				return Flicker{Target: item.Targets[0].ID}.Apply(NewContext(g, item))
 			},
 		}},
 	})

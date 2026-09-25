@@ -55,24 +55,25 @@ func randomCardToHandOrBattlefield(g *game.Game, id uuid.UUID) error {
 
 // WheneverYouRollDice fires once per instruction. Unlike an in-flight guard,
 // BatchSeq distinguishes a second instruction even while the first trigger
-// is still waiting on the stack. Only immutable event data is captured.
+// is still waiting on the stack. The batch is read off the item's
+// triggering event (item.Trigger.Event.BatchSeq, ADR 0041 P9) rather than
+// captured, so a table with this trigger waiting on the stack is a
+// restore point.
 func WheneverYouRollDice(label string, effect func(*game.Game, *game.StackItem, int) error) game.TriggeredAbility {
 	return game.TriggeredAbility{
 		Watches: []game.EventKind{game.EventRollDie}, Key: label,
 		AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 			return ev.Actor == source.Controller && ev.Seq == ev.BatchSeq
 		},
-		Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-			batch := ev.BatchSeq
-			return game.NewTriggeredItem(source, label, func(g *game.Game, item *game.StackItem) error {
-				total := 0
-				for _, rolled := range g.Events {
-					if rolled.Kind == game.EventRollDie && rolled.BatchSeq == batch {
-						total += rolled.Amount
-					}
+		Effect: func(g *game.Game, item *game.StackItem) error {
+			batch := item.Trigger.Event.BatchSeq
+			total := 0
+			for _, rolled := range g.Events {
+				if rolled.Kind == game.EventRollDie && rolled.BatchSeq == batch {
+					total += rolled.Amount
 				}
-				return effect(g, item, total)
-			})
+			}
+			return effect(g, item, total)
 		},
 	}
 }

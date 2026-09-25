@@ -47,15 +47,12 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			Optional(game.TriggeredAbility{
 				Watches: []game.EventKind{game.EventLTB},
+				Key:     "Yedora, Grave Gardener — return it face down as a Forest land",
 				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 					return b19AnotherNontokenCreatureYouControlDied(ev, source, g)
 				},
-				Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					died := ev.CardID
-					return game.NewTriggeredItem(source, "Yedora, Grave Gardener — return it face down as a Forest land",
-						func(g *game.Game, _ *game.StackItem) error {
-							return yedoraReturnFaceDown(g, died)
-						})
+				Effect: func(g *game.Game, item *game.StackItem) error {
+					return yedoraReturnFaceDown(g, item.Trigger.Event.CardID)
 				},
 			}, "Yedora, Grave Gardener — return it to the battlefield face down as a Forest land?"),
 		},

@@ -24,14 +24,12 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventLTB},
+			Key:     "Vengeful Bloodwitch — target opponent loses 1 life and you gain 1 life",
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b16SelfOrAnotherCreatureYouControlDied(ev, source, g)
 			},
 			Targets: TargetPlayer("target opponent", Opponent()),
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Vengeful Bloodwitch — target opponent loses 1 life and you gain 1 life",
-					drainTargetOpponentOne)
-			},
+			Effect:  drainTargetOpponentOne,
 		}},
 	})
 }

@@ -19,7 +19,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // through the trigger's target prompt instead (Voracious Hydra's
 // posture): the trigger targets "up to one nonland permanent an
 // opponent controls", and picking one is the tap mode while picking
-// none is the untap mode (b31TapChosenOrUntapLand). It is declared
+// none is the untap mode (b31TapChosenOrUntapLandEffect). It is declared
 // TWICE for the reason Hazel's Brewmaster gives: the engine drops a
 // targeted trigger whose legal set is empty, which would drop the
 // untap with it, so the targeted entry fires only while an opponent
@@ -43,23 +43,21 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			{
 				Watches: []game.EventKind{game.EventETB},
+				Key:     b31TillerEngineLabel,
 				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 					return b31LandYouControlEnteredTapped(ev, source, g) && b31OpponentControlsNonlandPermanent(g, source.Controller)
 				},
 				Targets: TargetPermanent("up to one target nonland permanent an opponent controls to tap (none: untap that land)",
 					Nonland(), OpponentControls()).WithCount(0, 1),
-				Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, b31TillerEngineLabel, b31TapChosenOrUntapLand(ev.CardID))
-				},
+				Effect: b31TapChosenOrUntapLandEffect,
 			},
 			{
 				Watches: []game.EventKind{game.EventETB},
+				Key:     b31TillerEngineLabel,
 				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 					return b31LandYouControlEnteredTapped(ev, source, g) && !b31OpponentControlsNonlandPermanent(g, source.Controller)
 				},
-				Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, b31TillerEngineLabel, b31TapChosenOrUntapLand(ev.CardID))
-				},
+				Effect: b31TapChosenOrUntapLandEffect,
 			},
 		},
 	})

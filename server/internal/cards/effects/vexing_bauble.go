@@ -49,22 +49,23 @@ func init() {
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return source != nil && NoManaWasSpentToCast(g, ev.CardID)
 			},
-			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				spell := ev.CardID
-				return game.NewTriggeredItem(source,
-					"Vexing Bauble — counter that spell",
-					func(g *game.Game, item *game.StackItem) error {
-						// CR 603.4: the intervening-if is checked
-						// again on resolution. A spell that is no
-						// longer on the stack answers "known
-						// nothing" — but CounterTarget on a missing
-						// item is already a no-op, so the re-read is
-						// the honest check and not the guard.
-						if !NoManaWasSpentToCast(g, spell) {
-							return nil
-						}
-						return CounterTarget{StackID: spell}.Apply(NewContext(g, item))
-					})
+			// A fill-in Build (ADR 0041 P9): the item's own label
+			// differs from the row's Key, exactly as before.
+			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
+				return game.NewTriggeredItem(source, "Vexing Bauble — counter that spell", nil)
+			},
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				spell := item.Trigger.Event.CardID
+				// CR 603.4: the intervening-if is checked
+				// again on resolution. A spell that is no
+				// longer on the stack answers "known
+				// nothing" — but CounterTarget on a missing
+				// item is already a no-op, so the re-read is
+				// the honest check and not the guard.
+				if !NoManaWasSpentToCast(g, spell) {
+					return nil
+				}
+				return CounterTarget{StackID: spell}.Apply(NewContext(g, item))
 			},
 		}},
 		Activated: []ActivatedAbility{{

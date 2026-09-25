@@ -219,30 +219,32 @@ func b31MunitionsYouControlLeft(ev game.Event, source *game.Card, g *game.Game) 
 // Tiller Engine's trigger share.
 const b31TillerEngineLabel = "Tiller Engine — untap that land, or tap a nonland permanent an opponent controls"
 
-// b31TapChosenOrUntapLand is Tiller Engine's body for one land: with
-// a nonland permanent chosen (and still legal) it is tapped; with
-// none chosen, the land that entered is untapped — if it is still
-// on the battlefield and still tapped. A chosen permanent that
-// became illegal never reaches here — the engine counters the
-// trigger first (CR 608.2b) — so the untap can only run for a
-// trigger whose controller chose it.
-func b31TapChosenOrUntapLand(entered uuid.UUID) func(g *game.Game, item *game.StackItem) error {
-	return func(g *game.Game, item *game.StackItem) error {
-		ctx := NewContext(g, item)
-		for _, t := range ctx.LegalTargets() {
-			if t.Kind != game.TargetCard {
-				continue
-			}
-			return TapTarget{Target: t.ID}.Apply(ctx)
+// b31TapChosenOrUntapLandEffect is Tiller Engine's body for one land:
+// with a nonland permanent chosen (and still legal) it is tapped; with
+// none chosen, the land that entered is untapped — if it is still on
+// the battlefield and still tapped. A chosen permanent that became
+// illegal never reaches here — the engine counters the trigger first
+// (CR 608.2b) — so the untap can only run for a trigger whose
+// controller chose it. The land that entered is read off the item's
+// triggering event (item.Trigger.Event.CardID, ADR 0041 P9) rather
+// than captured, so a table with this trigger waiting on the stack is
+// a restore point.
+func b31TapChosenOrUntapLandEffect(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	for _, t := range ctx.LegalTargets() {
+		if t.Kind != game.TargetCard {
+			continue
 		}
-		if !onBattlefield(g, entered) {
-			return nil
-		}
-		if c, ok := g.LookupCardForEffect(entered); !ok || !c.Tapped {
-			return nil
-		}
-		return UntapTarget{Target: entered}.Apply(ctx)
+		return TapTarget{Target: t.ID}.Apply(ctx)
 	}
+	entered := item.Trigger.Event.CardID
+	if !onBattlefield(g, entered) {
+		return nil
+	}
+	if c, ok := g.LookupCardForEffect(entered); !ok || !c.Tapped {
+		return nil
+	}
+	return UntapTarget{Target: entered}.Apply(ctx)
 }
 
 // b31BlossomingTortoiseLabel is the stack label both declarations
@@ -282,20 +284,19 @@ func b31ChosenOpponentLosesLife(amount int) func(g *game.Game, item *game.StackI
 	}
 }
 
-// b31DamageChosenTargetFrom is the body of the trigger Weapons
-// Manufacturing carries for a Munitions token: `amount` damage to
-// the target chosen when the trigger went on the stack, dealt by
-// the token that left (`token`) rather than by the Manufacturing —
-// a colorless source, as printed, so a red-damage payoff does not
-// see it.
-func b31DamageChosenTargetFrom(token uuid.UUID, amount int) func(g *game.Game, item *game.StackItem) error {
-	return func(g *game.Game, item *game.StackItem) error {
-		ctx := NewContext(g, item)
-		for _, t := range ctx.LegalTargets() {
-			return DealDamage{Source: token, Target: t.ID, Amount: amount}.Apply(ctx)
-		}
-		return nil
+// b31MunitionsDamageChosenTarget is the body of the trigger Weapons
+// Manufacturing carries for a Munitions token: 2 damage to the
+// target chosen when the trigger went on the stack, dealt by the
+// token that left — read off the item's triggering event
+// (item.Trigger.Event.CardID, ADR 0041 P9) rather than captured —
+// rather than by the Manufacturing — a colorless source, as
+// printed, so a red-damage payoff does not see it.
+func b31MunitionsDamageChosenTarget(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	for _, t := range ctx.LegalTargets() {
+		return DealDamage{Source: item.Trigger.Event.CardID, Target: t.ID, Amount: 2}.Apply(ctx)
 	}
+	return nil
 }
 
 // b31CountersOnChosenCreature is Fain's first activation: two +1/+1

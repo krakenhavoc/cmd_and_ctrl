@@ -37,6 +37,7 @@ func init() {
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventDealDamage},
+			Key:     b32TrygonPredatorLabel,
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return ev.Source == source.InstanceID && combatDamageToPlayerBy(ev, source.Controller, g)
 			},
@@ -45,9 +46,7 @@ func init() {
 			},
 			Targets: TargetPermanent("target artifact or enchantment that player controls",
 				b32ArtifactOrEnchantmentOfPlayerHitByYourTrygonPredator),
-			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, b32TrygonPredatorLabel, b32DestroyChosenIfControlledBy(ev.Target))
-			},
+			Effect: b32DestroyChosenIfControlledByTriggerVictim,
 		}},
 	})
 }

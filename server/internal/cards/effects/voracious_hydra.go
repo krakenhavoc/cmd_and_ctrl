@@ -51,13 +51,12 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			{
 				Watches: []game.EventKind{game.EventETB},
+				Key:     b25VoraciousHydraLabel,
 				AppliesTo: func(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {
 					return b06SelfETB(ev, source, lki, g) && b25OpponentControlsACreature(g, source.Controller)
 				},
 				Targets: TargetCreature("up to one target creature you don't control to fight (none: double the counters)", OpponentControls()).WithCount(0, 1),
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, b25VoraciousHydraLabel, b25DoubleCountersOrFightChosen)
-				},
+				Effect:  b25DoubleCountersOrFightChosen,
 			},
 			On(game.EventETB, func(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {
 				return b06SelfETB(ev, source, lki, g) && !b25OpponentControlsACreature(g, source.Controller)

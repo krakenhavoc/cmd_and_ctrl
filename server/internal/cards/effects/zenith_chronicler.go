@@ -28,15 +28,12 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventCast},
+			Key:     "Zenith Chronicler — each other player draws a card",
 			AppliesTo: func(ev game.Event, _ *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b25FirstMulticoloredSpellThisTurn(ev, g)
 			},
-			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				caster := ev.Actor
-				return game.NewTriggeredItem(source, "Zenith Chronicler — each other player draws a card",
-					func(g *game.Game, item *game.StackItem) error {
-						return b25EachPlayerExceptDraws(NewContext(g, item), caster, 1)
-					})
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				return b25EachPlayerExceptDraws(NewContext(g, item), item.Trigger.Event.Actor, 1)
 			},
 		}},
 	})
