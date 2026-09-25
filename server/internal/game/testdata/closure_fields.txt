@@ -15,7 +15,7 @@
 #
 # A line is one edge, <Type>.<Field>. Where Game reaches the SAME type
 # by several routes the edges into it differ (Game.BuiltinReplacements
-# is rebuilt, Game.TurnScopedReplacements is a blocker), and the lines
+# is rebuilt, a paused prompt's replacementResume is a blocker), and the lines
 # for that type's own fields carry the most restrictive class of every
 # route in: ReplacementEffect.Replace is charged to the blocker until
 # the tier that retires it. The trailing comment is the shortest route.
@@ -31,7 +31,9 @@
 # first slice moved the eleven census:StackTargetSpecs lines this way:
 # every one is still reached through a resume frame
 # (pickTargetFrame.spec, modePickFrame.ability.Modes, resolving.item),
-# so census:ChoiceResumeFrames went from 98 to 109.
+# so census:ChoiceResumeFrames went from 98 to 109. Tier 3b-1 moved
+# nine census:TurnScopedReplacements lines the same way, through
+# replacementResume.applicable.effect, so the ceiling is now 118.
 #
 # Owner decision 4 (2026-09-24): census:ChoiceResumeFrames is the one
 # counter that stays allowed after tier 4 — resume frames are out of
@@ -60,14 +62,14 @@ BlockRule.Pair                               census:TurnScopedBlockRules        
 Card.ActivatedAbilities                      census:IntrinsicAbilityCards       # Game.simultaneousExit.ActivatedAbilities
 Card.ManaAbilities                           census:IntrinsicAbilityCards       # Game.simultaneousExit.ManaAbilities
 CoinFlipSpec.Then                            census:ChoiceResumeFrames          # Game.PendingChoices.coinFlipResume.spec.Then
-CopySelector.Candidates                      census:TurnScopedReplacements      # Game.BuiltinReplacements.CopySelector.Candidates
-CopySelector.Except                          census:TurnScopedReplacements      # Game.BuiltinReplacements.CopySelector.Except
+CopySelector.Candidates                      census:ChoiceResumeFrames          # Game.BuiltinReplacements.CopySelector.Candidates
+CopySelector.Except                          census:ChoiceResumeFrames          # Game.BuiltinReplacements.CopySelector.Except
 CostModifier.Amount                          census:IntrinsicAbilityCards       # Game.simultaneousExit.ActivatedAbilities.CostModifiers.Amount
 CostModifier.AppliesTo                       census:IntrinsicAbilityCards       # Game.simultaneousExit.ActivatedAbilities.CostModifiers.AppliesTo
 CounterRemovalCost.From                      census:IntrinsicAbilityCards       # Game.simultaneousExit.ManaAbilities.RemoveCounters.From
 DiscardCost.Match                            census:IntrinsicAbilityCards       # Game.simultaneousExit.ManaAbilities.DiscardCards.Match
-EntryHandReveal.Matches                      census:TurnScopedReplacements      # Game.BuiltinReplacements.EntryHandReveal.Matches
-EntryHandReveal.Then                         census:TurnScopedReplacements      # Game.BuiltinReplacements.EntryHandReveal.Then
+EntryHandReveal.Matches                      census:ChoiceResumeFrames          # Game.BuiltinReplacements.EntryHandReveal.Matches
+EntryHandReveal.Then                         census:ChoiceResumeFrames          # Game.BuiltinReplacements.EntryHandReveal.Then
 ExileCost.Match                              census:IntrinsicAbilityCards       # Game.simultaneousExit.ManaAbilities.ExileCards.Match
 Game.Battlefield                             census:IntrinsicAbilityCards       # Game.Battlefield
 Game.BuiltinReplacements                     rebuilt                            # Game.BuiltinReplacements
@@ -80,7 +82,6 @@ Game.Seats                                   census:IntrinsicAbilityCards       
 Game.Stack                                   census:IntrinsicAbilityCards       # Game.Stack
 Game.StackMeta                               census:StackEffects                # Game.StackMeta
 Game.TurnScopedBlockRules                    census:TurnScopedBlockRules        # Game.TurnScopedBlockRules
-Game.TurnScopedReplacements                  census:TurnScopedReplacements      # Game.TurnScopedReplacements
 Game.enteringTokens                          census:ChoiceResumeFrames          # Game.enteringTokens
 Game.lastKnownStack                          census:StackEffects                # Game.lastKnownStack
 Game.logProjection                           rebuilt                            # Game.logProjection
@@ -126,11 +127,11 @@ Player.Graveyard                             census:IntrinsicAbilityCards       
 Player.Hand                                  census:IntrinsicAbilityCards       # Game.Seats.Hand
 Player.Library                               census:IntrinsicAbilityCards       # Game.Seats.Library
 ProjectionCache.v                            rebuilt                            # Game.logProjection.v
-ReplacementEffect.AppliesTo                  census:TurnScopedReplacements      # Game.BuiltinReplacements.AppliesTo
-ReplacementEffect.Controller                 census:TurnScopedReplacements      # Game.BuiltinReplacements.Controller
-ReplacementEffect.CopySelector               census:TurnScopedReplacements      # Game.BuiltinReplacements.CopySelector
-ReplacementEffect.EntryHandReveal            census:TurnScopedReplacements      # Game.BuiltinReplacements.EntryHandReveal
-ReplacementEffect.Replace                    census:TurnScopedReplacements      # Game.BuiltinReplacements.Replace
+ReplacementEffect.AppliesTo                  census:ChoiceResumeFrames          # Game.BuiltinReplacements.AppliesTo
+ReplacementEffect.Controller                 census:ChoiceResumeFrames          # Game.BuiltinReplacements.Controller
+ReplacementEffect.CopySelector               census:ChoiceResumeFrames          # Game.BuiltinReplacements.CopySelector
+ReplacementEffect.EntryHandReveal            census:ChoiceResumeFrames          # Game.BuiltinReplacements.EntryHandReveal
+ReplacementEffect.Replace                    census:ChoiceResumeFrames          # Game.BuiltinReplacements.Replace
 ReplacementEvent.TokenGroups                 census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.TokenGroups
 ReplacementEvent.counterTail                 census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.counterTail
 ReplacementEvent.damageTail                  census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.damageTail

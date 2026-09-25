@@ -75,7 +75,11 @@ var prowessTrigger = TriggeredAbility{
 		return ok && !spell.IsCreature()
 	},
 	Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
-		item := NewTriggeredItem(source, prowessLabel, resolveProwess)
+		// ADR 0041 P9 (#1497, tier 4): prowess has no catalog row, so
+		// its item is keyed directly rather than through a catalog
+		// AbilityRef — a table with one on the stack is still a
+		// restore point.
+		item := NewKeyedTriggeredItem(source, prowessLabel, prowessPumpBody, EffectParams{})
 		// #1511: prowess instances commute with each other, so a batch
 		// of nothing but prowess needs no CR 603.3b ordering prompt.
 		// Each one reads only its own source (is this object still on
@@ -89,6 +93,11 @@ var prowessTrigger = TriggeredAbility{
 		return item
 	},
 }
+
+// prowessPumpBody is registered under "prowess/pump" (ADR 0041 P9,
+// #1497, tier 4), so a prowess trigger waiting on the stack restores
+// through the running binary rather than blocking the snapshot.
+var prowessPumpBody = SimpleDelayedBody("prowess/pump", resolveProwess)
 
 // resolveProwess is "this creature gets +1/+1 until end of turn". A
 // package-level func, so it captures nothing and survives Clone.

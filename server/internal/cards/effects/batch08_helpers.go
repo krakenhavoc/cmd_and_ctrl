@@ -1,6 +1,8 @@
 package effects
 
 import (
+	"strings"
+
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -215,15 +217,30 @@ func b08OverlookLand(oracleID, name string, subtypes ...string) Spec {
 			reason += ", " + subtypes[i]
 		}
 	}
+	// ADR 0041 P9 (#1497, tier 4): the reflexive trigger's body is
+	// registered here, ONCE, at this land's own package init — not per
+	// resolution — under a key namespaced to the land, so a table with
+	// this land's "when you do" waiting is a restore point. reason and
+	// pred are the land's own printed basics, fixed for the life of the
+	// binary; nothing per-game or per-instance is captured.
+	fetchBody := game.SimpleDelayedBody("overlook/"+b08OverlookSlug(name)+"-fetch", b08OverlookFetchFor(reason, pred))
 	return Spec{
 		OracleID:     oracleID,
 		Name:         name,
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			On(game.EventETB, b06SelfETB, name+" — sacrifice it",
-				b08OverlookSacrifice(name+" — fetch a basic tapped, gain 1 life", reason, pred)),
+				b08OverlookSacrifice(name+" — fetch a basic tapped, gain 1 life", fetchBody)),
 		},
 	}
+}
+
+// b08OverlookSlug is the land's printed name, lowercased and
+// hyphenated, for its reflexive-trigger body key. Every name in the
+// family is plain ASCII words separated by single spaces, so this is
+// exact rather than a general-purpose slugifier.
+func b08OverlookSlug(name string) string {
+	return strings.ToLower(strings.ReplaceAll(name, " ", "-"))
 }
 
 // b08OverlookSacrifice is the Overlook family's entry-trigger body:
@@ -234,10 +251,10 @@ func b08OverlookLand(oracleID, name string, subtypes ...string) Spec {
 // conditional on the doing, so a land bounced in response to the
 // entry trigger sacrifices nothing and fetches nothing.
 //
-// `pred` and the two strings are plain data captured by value, which
-// is the whole capture — no *Card, no *Game, so the reflexive
-// trigger's Effect survives Clone / undo like any other.
-func b08OverlookSacrifice(fetchLabel, reason string, pred func(game.Card) bool) Effect {
+// `fetchBody` is a registered game.BodyRef, plain data captured by
+// value — no *Card, no *Game — so this closure survives Clone / undo
+// like any other catalog trigger's.
+func b08OverlookSacrifice(fetchLabel string, fetchBody game.BodyRef) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
 		// #1432: a land that left and came back is a new object — the
@@ -249,15 +266,16 @@ func b08OverlookSacrifice(fetchLabel, reason string, pred func(game.Card) bool) 
 		if err := (SacrificePermanent{Target: item.SourceCardID}).Apply(ctx); err != nil {
 			return err
 		}
-		return WhenYouDo(fetchLabel, b08OverlookFetch(reason, pred)).Apply(ctx)
+		return WhenYouDo(fetchLabel, fetchBody).Apply(ctx)
 	}
 }
 
-// b08OverlookFetch is the reflexive half: search, put it onto the
-// battlefield tapped, shuffle, gain 1 life. The land that made this
-// trigger is in a graveyard by now, which is fine — the life gain is
-// attributed to it by ID and nothing reads the permanent.
-func b08OverlookFetch(reason string, pred func(game.Card) bool) Effect {
+// b08OverlookFetchFor builds the registered reflexive body for one
+// Overlook land: search, put it onto the battlefield tapped, shuffle,
+// gain 1 life. The land that made this trigger is in a graveyard by
+// now, which is fine — the life gain is attributed to it by ID and
+// nothing reads the permanent.
+func b08OverlookFetchFor(reason string, pred func(game.Card) bool) func(g *game.Game, item *game.StackItem) error {
 	return func(g *game.Game, item *game.StackItem) error {
 		source, controller := item.SourceCardID, item.Controller
 		return SearchLibrary{

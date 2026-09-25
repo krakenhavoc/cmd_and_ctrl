@@ -635,13 +635,6 @@ func TestCensusCountsEveryContinuationKind(t *testing.T) {
 			expect: func(c ContinuationCensus) int { return c.ChoiceResumeFrames },
 		},
 		{
-			name: "turn-scoped replacement",
-			set: func(g *Game) {
-				g.TurnScopedReplacements = []ReplacementEffect{{Label: "Fog"}}
-			},
-			expect: func(c ContinuationCensus) int { return c.TurnScopedReplacements },
-		},
-		{
 			// #521 changed what this counter means, not whether it
 			// exists. It used to fire on "has an instance ability and
 			// no oracle ID", which caught every Treasure on every

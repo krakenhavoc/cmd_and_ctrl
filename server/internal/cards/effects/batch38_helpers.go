@@ -213,50 +213,6 @@ func b38EachPlayerReanimatesOne(g *game.Game, item *game.StackItem, question str
 	return nil
 }
 
-// --- prevention ----------------------------------------------------
-
-// b38PreventAllCombatDamageToPlayerThisTurn is the player-scoped Fog:
-// "prevent all combat damage that would be dealt to YOU this turn"
-// (Druid's Deliverance, Awe Strike's cousins).
-//
-// PreventAllCombatDamageThisTurn is the table-wide version and is
-// NOT a substitute: it also saves the controller's creatures and
-// every other player, which is more than these cards print and more
-// than #259 allows a simplification to be. The difference is one
-// clause in AppliesTo — the damage's target must be this player — so
-// the shield is built here rather than by widening the shared one.
-//
-// A turn-scoped CR 615.1 replacement, like the Fog: no charges, no
-// target, it fires on every matching damage event and expires with
-// the turn. Non-combat damage is untouched, so a Lightning Bolt aimed
-// at the player after this resolves still lands.
-//
-// The CR 616.1 ordering choice belongs to the AFFECTED player rather
-// than to whoever registered the shield, so the controller hook
-// reports none — the same posture Fog takes.
-//
-// Worth graduating into prevention.go next to Fog's builder once a
-// second batch wants it; it lives here to keep concurrent batches off
-// the same file.
-func b38PreventAllCombatDamageToPlayerThisTurn(ctx *Context, player uuid.UUID, label string) error {
-	if player == uuid.Nil {
-		return nil
-	}
-	ctx.Game.RegisterTurnScopedReplacement(game.ReplacementEffect{
-		Watches: []game.EventKind{game.EventDealDamage},
-		AppliesTo: func(ev *game.ReplacementEvent, _ *game.Game, _ *game.Card) bool {
-			return ev.Kind == game.RepEventDamage && ev.IsCombatDamage && ev.DamageTarget == player
-		},
-		Replace: func(ev *game.ReplacementEvent, _ *game.Game, _ *game.Card) error {
-			ev.Cancel()
-			return nil
-		},
-		Controller: func(*game.ReplacementEvent, *game.Game, *game.Card) uuid.UUID { return uuid.Nil },
-		Label:      label,
-	})
-	return nil
-}
-
 // --- static scopes -------------------------------------------------
 
 // b38SlimedNonHorror is Sludge Monster's static scope: a creature

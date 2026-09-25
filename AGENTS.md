@@ -301,7 +301,7 @@ A restore point written by yesterday's binary has to restore in today's. Three t
   - It does not, and exactly one row in the same list has that label (a deploy reordered the card's abilities): that row is used and the ref is rewritten.
   - No row, or more than one, has the label: the game is restored anyway. The item stays on the stack as a manual item with no effect, like a sandbox-announced one. Its source card is flagged `Card.AbilitiesLostOnRestore`, and the boot log has one ERROR line naming the game, the card, the label and the ref (`GameSnapshot.LostStackAbilities`). Never abandon the game and never drop the item.
 
-  A binary from before slice 4-2 does not register `catalog/triggered`, so it refuses a file that names it (the rollback case). An ability carried on a card instance (`Card.ActivatedAbilities`) is never stamped and is still counted by the census. Neither is a trigger whose row computes its effect in a hand-written `Build` with no `Effect` beside it, nor one whose `TargetsFrom` reads the board (`TriggeredAbility.TargetsFromReadsBoard`): those rows are listed in `server/internal/cards/effects/testdata/legacy_trigger_builds.txt`, which `TestLegacyTriggerBuildsOnlyShrink` holds to shrinking — it fails on a listed row that no longer needs listing (delete the line, or run `cd server && go test ./internal/cards/effects -run TestLegacyTriggerBuildsOnlyShrink -args -update-legacy-triggers`, which never adds one) and on a new hand-written `Build` that is not listed (declare the `Effect` instead). Since this change, every stack-item field (on the stack, queued, or in `lastKnownStack`) is refused if this binary does not know it, for a file of the current schema. So a new stack-item field is refused by every binary from here on and needs no bump. `lastKnownStack`, the CR 608.2h record of spells countered this turn, is carried too. The census counts a stack item once, in `StackEffects`, when its effect is an unkeyed closure or when it has a target or mode clause with neither an oracle ID nor an ability ref behind it. `StackTargetSpecs` is retired.
+  A binary from before slice 4-2 does not register `catalog/triggered`, so it refuses a file that names it (the rollback case). An ability carried on a card instance (`Card.ActivatedAbilities`) is never stamped and is still counted by the census. Neither is a trigger whose row computes its effect in a hand-written `Build` with no `Effect` beside it, nor one whose `TargetsFrom` reads the board (`TriggeredAbility.TargetsFromReadsBoard`): those rows are listed in `server/internal/cards/effects/testdata/legacy_trigger_builds.txt`, which `TestLegacyTriggerBuildsOnlyShrink` holds to shrinking — it fails on a listed row that no longer needs listing (delete the line, or run `cd server && go test ./internal/cards/effects -run TestLegacyTriggerBuildsOnlyShrink -args -update-legacy-triggers`, which never adds one) and on a new hand-written `Build` that is not listed (declare the `Effect` instead). A `Build` that makes a keyed item (`game.NewKeyedTriggeredItem` over a tier-2 body, as suspend and madness do) is data already and is not listed. Since this change, every stack-item field (on the stack, queued, or in `lastKnownStack`) is refused if this binary does not know it, for a file of the current schema. So a new stack-item field is refused by every binary from here on and needs no bump. `lastKnownStack`, the CR 608.2h record of spells countered this turn, is carried too. The census counts a stack item once, in `StackEffects`, when its effect is an unkeyed closure or when it has a target or mode clause with neither an oracle ID nor an ability ref behind it. `StackTargetSpecs` is retired.
 - **The closure ratchet.** `TestClosureFieldsReachableFromGame` (`internal/game`) lists every ROUTE from `Game` to something that can hold a func or an interface — every field of every reachable struct whose type reaches one, directly or through another struct — in `internal/game/testdata/closure_fields.txt`, each classified `rebuilt`, `keyed`, `transient`, `test-only` or `census:<Counter>`. A new route fails until it is classified, including a new field whose type is a struct already on the list (#1558): `cd server && go test ./internal/game -run TestClosureFieldsReachableFromGame -args -update-closure-fields` keeps the existing classes and marks new routes `unclassified`. The number of lines in each `census:` class and in `transient` is pinned by `closureClassCeilings` in the test and may only fall: phase 3's tiers delete lines and lower the ceiling; nothing raises one. The one exception is ADR 0041 P11: when a tier retires a counter, its lines may move to the class of the route they still have, in the same PR, and the PR lists those lines and the new ceiling.
 
 ### AI bot seat (Go, `server/internal/aiseat/`)
@@ -1061,7 +1061,25 @@ place twice that many instead", "if a player would draw a card, that
 player mills instead") live on the same `Spec{}` struct via the
 optional `Replacements []game.ReplacementEffect` field. Used today by
 Doubling Season, Hardened Scales, Kismet, Stasis, Gemstone Mine,
-Fog, Stone of Erech.
+Stone of Erech.
+
+**A replacement a resolving spell or ability CREATES is data, not a
+`Spec.Replacements` entry and never a closure** (ADR 0041 phase 3
+tier 3b, #1497). Fog's "prevent all combat damage this turn", Mending
+Hands' "prevent the next 4 damage", the Whip's and unearth's "if it
+would leave the battlefield, exile it instead" and Cosmic
+Intervention's "exile it instead" are `ScopedEffect` records with a
+replacement-reader mod kind (`game/scoped_replacements.go`), swept by
+the one duration sweep and carried by the snapshot. Write them with the
+card-side primitives: `PreventAllCombatDamageThisTurn{Player}` (Player
+zero is all combat damage), `PreventNextDamage{Target, Amount}` (Amount
+at least 1; a spent charge is a new record, so an undo rewinds it),
+`ExileInsteadOfLeavingBattlefield(g, id, controller, label)` (indefinite,
+pinned to the object — it lasts while that object is on the
+battlefield) and `ExileInsteadOfGraveyardThisTurn{Then: <BodyRef>}`
+(the per-card follow-up is a registered delayed-trigger body). A shape
+none of them says is a new mod kind in the engine, with its first
+card, not a closure; `Game.TurnScopedReplacements` is gone.
 
 **A discard goes through the exit primitive** (#853). Every discard
 site — the CR 514.1 cleanup discard, the effect-discard continuation,
@@ -3811,15 +3829,60 @@ condition actually held:
 
 ```go
 ReflexiveTrigger{
-    Label:   "Ziatora, the Incinerator — damage equal to the sacrificed creature's power",
-    Targets: TargetAny(),          // chosen when the trigger goes on the stack
-    Cards:   []uuid.UUID{killed},  // the payload; read back with ctx.PayloadCards()
-    Effect:  b29ZiatoraFling,      // a package-level func, NOT a closure
+    Label: "Ziatora, the Incinerator — damage equal to the sacrificed creature's power",
+    Cards: []uuid.UUID{killed},  // the payload; read back with ctx.PayloadCards()
+    Body:  ziatoraFlingBody,     // registered in reflexive_bodies.go — never a closure inline
 }.Apply(ctx)
 ```
 
-`WhenYouDo(label, effect)` is the plain mandatory, untargeted case.
-Both go through the harvester's own dispatch
+**The body is registered, not written inline** (ADR 0041 P9, #1497,
+tier 4): every reflexive-trigger body is a `game.BodyRef` declared
+once in `internal/cards/effects/reflexive_bodies.go`, the same
+append-only-ledger convention `delayed_bodies.go` uses for delayed
+triggers, so a table with a reflexive trigger waiting — or resolving
+on the stack, its target already chosen — is still a restore point. A
+card file never writes `Body: func(...) {...}` inline; it references
+the registered `BodyRef` by name.
+
+**The target clause lives on the registration, not on the struct.**
+`ReflexiveTrigger` has no `Targets` field: a reflexive trigger has no
+catalog row for restore to re-derive a captured `*TargetSpec` from, so
+the clause is declared beside the body instead, with
+`game.ReflexiveBody(key, fn, targetsFrom)`:
+
+```go
+// reflexive_bodies.go
+ziatoraFlingBody = game.ReflexiveBody("ziatora/fling", simpleBody(b29ZiatoraFling), constTargets(TargetAny))
+
+edenReturnBody = game.ReflexiveBody("eden/return-from-graveyard", simpleBody(edenReturnChosenFromGraveyard),
+    func(sourceID uuid.UUID, _ game.EffectParams) *game.TargetSpec {
+        return TargetCardInGraveyard("another target permanent card from your graveyard",
+            YouOwn(), Permanent(), OtherThan(sourceID))
+    })
+```
+
+`targetsFrom` is nil for an untargeted "when you do"
+(`game.SimpleDelayedBody` — no clause to register). Otherwise it is
+called both when the trigger is put on the stack and again at
+restore, with the reflexive trigger's own source card's instance ID
+and its `Params` — the two facts every targeted clause in the catalog
+has needed so far: Eden, Seat of the Sanctum reads the source ID to
+exclude itself ("another"); Teferi Akosa of Zhalfir's mana-value
+ceiling is X, fixed at creation and carried as `Params.Amount`; every
+other clause is a constant and ignores both arguments (`constTargets`
+wraps one). Data the body itself needs beyond the item — an amount, a
+name — is `Params`, set on the `ReflexiveTrigger` literal:
+
+```go
+ReflexiveTrigger{
+    Label:  "Breeches, the Blastmaker — damage equal to that spell's mana value",
+    Body:   breechesBlastBody,
+    Params: game.EffectParams{Amount: spellManaValueForEffect(g, spell)},
+}.Apply(ctx)
+```
+
+`WhenYouDo(label, body)` is the plain mandatory, untargeted, no-params
+case. Both go through the harvester's own dispatch
 (`Game.QueueReflexiveTriggerForEffect`), so the trigger gets a target
 prompt, the CR 603.3d drop when nothing is legal, a "you may" if it
 prints one, and a place on `PendingTriggers` — exactly as a harvested

@@ -19,47 +19,51 @@ import (
 // back into a second reanimation. One helper, so the two cannot
 // drift.
 //
-// TURN-SCOPED, which is a real (declared) limitation rather than a
-// choice: the registry is swept at cleanup (Game.ClearTurnScopedReplacementsLocked),
-// and the redirect covers the whole window the printed clause cares
-// about because the end-step exile fires before that sweep. It lapses
-// only if the permanent somehow survives the turn, which no catalog
-// card can arrange today.
+// FOR AS LONG AS THE OBJECT REMAINS (#1591). The printed clause has no
+// duration, so the effect lasts until the permanent it names leaves
+// the battlefield — which, by the clause itself, is into exile. It is a
+// ScopedEffect record (ADR 0041 phase 3 tier 3b), pinned to the object
+// with an indefinite duration: the engine drops it once that object is
+// gone (CR 400.7), and not before. It used to live in a registry swept
+// at cleanup, so a creature whose end-step exile was countered (Stifle)
+// survived the turn without it, died into the graveyard, and could be
+// whipped again.
 //
-// A BOUNCE bypasses it, and that is an engine seam rather than a card
-// decision: BounceToHandForEffect moves the card without running the
-// CR 614 pipeline, so a whipped or unearthed creature returned to
-// hand in response goes to hand, not exile. Whip of Erebos declared
-// it first; every card built on this helper inherits the caveat.
+// A bounce is redirected too: since #539 BounceToHandForEffect moves
+// the card through the shared exit primitive, which runs the CR 614
+// window every other battlefield exit does.
 
 // ExileInsteadOfLeavingBattlefield registers the CR 614 replacement
-// that redirects ANY battlefield exit of the one instance `cardID` to
-// exile, under `controller`'s control of the replacement effect.
-//
-// The instance ID is captured, never a *Card: undo resolves the
-// closures against a cloned game, where an instance ID is stable and
-// a pointer is not.
-//
-// `NewZone != ZoneExile` is the guard that stops the effect replacing
-// its own result, which CR 614.5 would forbid anyway and which would
-// be an infinite loop if it did not.
+// that redirects ANY battlefield exit of the permanent `cardID` to
+// exile, under `controller`'s control of the replacement effect. It
+// registers nothing for a card that is not on the battlefield.
 //
 // Caller must hold g.mu — every caller is an ability body running at
 // resolution, which does.
 func ExileInsteadOfLeavingBattlefield(g *game.Game, cardID, controller uuid.UUID, label string) {
-	g.RegisterTurnScopedReplacement(game.ReplacementEffect{
-		Watches: []game.EventKind{game.EventZoneMove},
-		AppliesTo: func(ev *game.ReplacementEvent, _ *game.Game, _ *game.Card) bool {
-			return ev.Kind == game.RepEventMove && ev.CardID == cardID &&
-				ev.OldZone == game.ZoneBattlefield && ev.NewZone != game.ZoneExile
-		},
-		Replace: func(ev *game.ReplacementEvent, _ *game.Game, _ *game.Card) error {
-			ev.NewZone = game.ZoneExile
-			return nil
-		},
-		Controller: func(_ *game.ReplacementEvent, _ *game.Game, _ *game.Card) uuid.UUID {
-			return controller
-		},
-		Label: label,
-	})
+	g.ExileInsteadOfLeavingBattlefieldForEffect(uuid.Nil, cardID, controller, label)
+}
+
+// ExileInsteadOfGraveyardThisTurn is "if a permanent you control would
+// be put into a graveyard from the battlefield this turn, exile it
+// instead" (Cosmic Intervention), with Then — a registered delayed-
+// trigger body — scheduled at the beginning of the next end step for
+// each permanent it exiles, carrying that card in the fired item's
+// Targets. "You" is the resolving item's controller, and the set is
+// read live (a replacement effect is not a characteristic, so CR 611.2c
+// does not lock it): a permanent that enters after the spell resolved
+// is saved too. A sacrifice is caught as well as a destruction, since
+// the text says "put into a graveyard from the battlefield".
+type ExileInsteadOfGraveyardThisTurn struct {
+	Then  game.BodyRef
+	Label string
+}
+
+func (e ExileInsteadOfGraveyardThisTurn) Apply(ctx *Context) error {
+	label := e.Label
+	if label == "" {
+		label = "exile instead of graveyard"
+	}
+	ctx.Game.ExileInsteadOfGraveyardThisTurnForEffect(ctx.Source(), ctx.Controller(), e.Then, label)
+	return nil
 }

@@ -99,9 +99,8 @@ func edenSacrificeThenReturn(ctx *Context) error {
 		return err
 	}
 	return ReflexiveTrigger{
-		Label:   "Eden, Seat of the Sanctum — return a permanent card from your graveyard",
-		Targets: TargetCardInGraveyard("another target permanent card from your graveyard", YouOwn(), Permanent(), OtherThan(source)),
-		Effect:  edenReturnChosenFromGraveyard,
+		Label: "Eden, Seat of the Sanctum — return a permanent card from your graveyard",
+		Body:  edenReturnBody,
 	}.Apply(ctx)
 }
 

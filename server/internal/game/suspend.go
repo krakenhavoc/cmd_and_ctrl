@@ -161,12 +161,17 @@ func SuspendUpkeepTrigger() TriggeredAbility {
 		AppliesTo: func(ev Event, source *Card, _ Characteristic, _ *Game) bool {
 			return ev.Actor == source.Controller && CardIsSuspended(*source)
 		},
-		// ADR 0041 P9 (tier 4-2): declared, so the engine builds the
-		// item and names its catalog row — a countdown waiting on the
-		// stack is a restore point.
-		Effect: suspendTick,
+		Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
+			// ADR 0041 P9 (#1497, tier 4): suspend has no catalog row,
+			// so this item is keyed directly.
+			return NewKeyedTriggeredItem(source, "Suspend — remove a time counter", suspendTickBody, EffectParams{})
+		},
 	}
 }
+
+// suspendTickBody registers suspendTick under "suspend/tick" (ADR 0041
+// P9, #1497, tier 4).
+var suspendTickBody = SimpleDelayedBody("suspend/tick", suspendTick)
 
 // suspendTick is the upkeep trigger's resolution, and the whole of it:
 // remove one time counter (CR 702.62b).
@@ -222,9 +227,17 @@ func SuspendLastCounterTrigger() TriggeredAbility {
 		AppliesTo: func(ev Event, source *Card, _ Characteristic, _ *Game) bool {
 			return ev.Target == source.InstanceID && ev.Label == CounterTime && ev.Amount == 0
 		},
-		Effect: suspendLastCounterRemoved,
+		Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
+			// ADR 0041 P9 (#1497, tier 4): suspend has no catalog row,
+			// so this item is keyed directly.
+			return NewKeyedTriggeredItem(source, SuspendFreeCastLabel, suspendFreeCastBody, EffectParams{})
+		},
 	}
 }
+
+// suspendFreeCastBody registers suspendLastCounterRemoved under
+// "suspend/free-cast" (ADR 0041 P9, #1497, tier 4).
+var suspendFreeCastBody = SimpleDelayedBody("suspend/free-cast", suspendLastCounterRemoved)
 
 // suspendLastCounterRemoved is the second trigger's resolution: the
 // CR 702.62b/c offer, made against the game as it is now (CR 608.2).

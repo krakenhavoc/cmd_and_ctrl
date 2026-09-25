@@ -17,15 +17,17 @@ package game
 // What is NOT here:
 //   - Layer 1 (copy) with a duration (Mirage Mirror, Cytoshape).
 //     The bucket exists (ADR 0043 §5) and nothing registers into it.
-//   - Durations for the REPLACEMENT twin. `TurnScopedReplacements`
-//     is still cleared wholesale at cleanup and has no duration
-//     field; no card needs a longer-lived replacement yet
-//     (ADR 0063 Decision 8).
+//   - A separate registry for the REPLACEMENT twin. Since ADR 0041
+//     tier 3b a replacement a spell creates (Fog, a prevention shield,
+//     the Whip's redirect) is a ScopedEffect record too, with a
+//     replacement-reader mod the layer pass skips and the replacement
+//     gather reads (scoped_replacements.go). It is swept here with
+//     everything else.
 
 // ClearEndOfTurnScopedStaticsLocked is the CR 514.2 cleanup sweep:
 // "until end of turn" effects end during the cleanup step. Called
 // from `sweepTurnEndLocked` alongside the damage wipe, the
-// turn-scoped replacement clear and the impulse-exile sweep — the
+// turn-scoped block-rule clear and the impulse-exile sweep — the
 // same "this turn is over" pass. It drops effects of every other
 // duration whose time has also run out, because it is the same
 // sweep.

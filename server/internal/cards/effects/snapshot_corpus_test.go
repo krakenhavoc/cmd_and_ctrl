@@ -147,6 +147,11 @@ func corpusBoards() []corpusBoard {
 		// v7, added by ADR 0093 PR 4 (#1584) as a new file: duration
 		// grants — the grantAbilities mod on disk.
 		{"duration_grants", corpusDurationGrants},
+		// v7, added by tier 4-0 (#1497) as a new file: a CR 603.12
+		// reflexive trigger on the stack, its target already chosen —
+		// a keyed stack item whose clause is re-derived from its Body
+		// rather than carried as a captured closure.
+		{"reflexive_trigger", corpusReflexiveTrigger},
 		// v7, added by tier 4's first slice (#1497, ADR 0041 P9) as new
 		// files: a stamped activated ability waiting on the stack (an
 		// own row and a granted row), and a countered spell's last-known
@@ -154,6 +159,14 @@ func corpusBoards() []corpusBoard {
 		{"activated_on_stack", corpusActivatedOnStack},
 		{"granted_activated_on_stack", corpusGrantedActivatedOnStack},
 		{"countered_spell_lki", corpusCounteredSpellLKI},
+		// v7, added by tier 3b-1 (#1497) as new files: replacement
+		// effects a spell creates, which only became restore points with
+		// it — the replacement mods, ScopeGame, ScopeYourPermanents,
+		// seq, amount and then on disk.
+		{"fog", corpusFog},
+		{"mending_hands_partial", corpusMendingHandsPartial},
+		{"whip_redirect", corpusWhipRedirect},
+		{"cosmic_intervention", corpusCosmicIntervention},
 		// v7, added by tier 4's second slice (#1497, ADR 0041 P9) as new
 		// files: declared triggered abilities waiting to resolve, named
 		// by their catalog row — a card's own row, a granted bundle's,
@@ -167,7 +180,89 @@ func corpusBoards() []corpusBoard {
 		{"modal_trigger", corpusModalTrigger},
 		{"targets_from_trigger", corpusTargetsFromTrigger},
 		{"storm_after_counter", corpusStormAfterCounter},
+		// Tier 4-0's prowess/pump body, which merged while 4-2 was open:
+		// an engine trigger with no catalog row, keyed by its body.
+		{"prowess_on_stack", corpusProwessOnStack},
 	}
+}
+
+// ---------------------------------------------------------------
+// v7 boards added by ADR 0041 phase 3's tier 3b-1 (#1497)
+// ---------------------------------------------------------------
+//
+// NEW files in v7/: a replacement effect a spell created held the
+// restore point back until cleanup (and the Whip's redirect for as long
+// as it lasted) before tier 3b, so none of these could be a fixture.
+
+// corpusFog is a real Fog: one preventCombatDamage record, ScopeGame.
+func corpusFog(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	castCatalogSpell(t, g, "Fog", "Instant", fogOracle, nil)
+	passPriorityAroundTable(t, g)
+	if n := scopedReplacementCount(g); n != 1 {
+		t.Fatalf("setup: Fog registered %d scoped replacements, want 1", n)
+	}
+	return g
+}
+
+// corpusMendingHandsPartial is a real Mending Hands on a creature that
+// has since been dealt 3: a preventDamage shield with 1 charge left.
+func corpusMendingHandsPartial(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat].ID
+	bear := pushBattlefieldCardWithTimestamp(g, corpusCreature(me, "Grizzly Bears", 2, 6))
+	castCatalogSpell(t, g, "Mending Hands", "Instant", mendingHandsOracl,
+		[]game.TargetRef{{Kind: game.TargetCard, ID: bear}})
+	passPriorityAroundTable(t, g)
+	g.WithWriteLock(func() { _ = g.DealDamageToCreatureForEffect(bear, bear, 3) })
+	if len(g.ScopedEffects) != 1 || g.ScopedEffects[0].Mods[0].Amount != 1 {
+		t.Fatalf("setup: want one shield with 1 charge left, have %+v", g.ScopedEffects)
+	}
+	return g
+}
+
+// corpusWhipRedirect is a real Whip of Erebos activation: the returned
+// creature, its end-step exile queued, and the exileInsteadOfLeaving
+// record pinned to it with an indefinite duration.
+func corpusWhipRedirect(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	seat := g.Turn.ActiveSeat
+	me := g.Seats[seat]
+	advanceToMainOf(t, g, seat)
+	whip := pushCatalogPermanent(g, me.ID, "Whip of Erebos", "Legendary Enchantment Artifact", b06WhipOfErebosOracle, false)
+	dead := seedGraveyardCreature(me, "Giant", "{4}{B}")
+	b06AddMana(me, "B", "B", "C", "C")
+	if err := g.ActivateCatalogAbility(me.ID, whip, 0, game.ActivateAbilityParams{
+		Targets: []game.TargetRef{{Kind: game.TargetCard, ID: dead}},
+	}); err != nil {
+		t.Fatalf("activate: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if !g.Battlefield.Contains(dead) || scopedReplacementCount(g) != 1 {
+		t.Fatalf("setup: the creature is back %v, scoped replacements %d", g.Battlefield.Contains(dead), scopedReplacementCount(g))
+	}
+	return g
+}
+
+// corpusCosmicIntervention is a real Cosmic Intervention after it
+// saved a creature: the exileInsteadOfGraveyard record
+// (ScopeYourPermanents, with its then body) and the delayed return it
+// scheduled.
+func corpusCosmicIntervention(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat].ID
+	bear := pushBattlefieldCardWithTimestamp(g, corpusCreature(me, "Grizzly Bears", 2, 2))
+	castCatalogSpell(t, g, "Cosmic Intervention", "Instant", cosmicInterventionOracle, nil)
+	passPriorityAroundTable(t, g)
+	g.WithWriteLock(func() {
+		if err := g.DestroyPermanentForEffect(bear); err != nil {
+			t.Fatalf("destroy: %v", err)
+		}
+	})
+	if !g.Exile.Contains(bear) || len(g.DelayedTriggers) != 1 {
+		t.Fatalf("setup: exiled %v, delayed triggers %d", g.Exile.Contains(bear), len(g.DelayedTriggers))
+	}
+	return g
 }
 
 // newCorpusGame is a started, mulligans-closed two-seat game: a
@@ -603,6 +698,36 @@ func corpusDurationGrants(t *testing.T) *game.Game {
 	return g
 }
 
+// corpusReflexiveTrigger is a real CR 603.12 reflexive trigger sitting
+// on the stack with its target already chosen (ADR 0041 P9, #1497,
+// tier 4): Undead Butler dies, its controller exiles it, and "when you
+// do" — the reflexive half — has picked the creature card to return
+// and is waiting to resolve. The file holds a keyed stack item whose
+// clause is re-derived from its Body ("undead-butler/return-to-hand")
+// rather than carried as a captured *TargetSpec.
+func corpusReflexiveTrigger(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	target := pushGraveyardPermanent(me, "Dead Fatty", "Creature — Bear", "{5}{B}")
+	butler := pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Undead Butler", TypeLine: "Creature — Zombie",
+		OracleID: b41UndeadButlerOracle, Power: 1, Toughness: 2,
+		Owner: me.ID, Controller: me.ID,
+	})
+	g.WithWriteLock(func() { _ = g.DestroyPermanentForEffect(butler) })
+	passPriorityAroundTable(t, g)
+	// "You may exile it" is the parent's optional prompt; the
+	// reflexive "when you do" that follows is mandatory.
+	answerLatestTriggerPrompt(t, g, me.ID, true)
+	passPriorityAroundTable(t, g)
+	b04WaitForPick(t, g, me.ID)
+	pickCard(t, g, me.ID, target)
+	if len(g.StackMeta) == 0 {
+		t.Fatal("setup: the reflexive trigger is not on the stack")
+	}
+	return g
+}
+
 const corpusJudoonOracle = "ca04089c-24b6-465e-9303-ea28c0d6f3c7"
 
 // ---------------------------------------------------------------
@@ -885,6 +1010,22 @@ func corpusTargetsFromTrigger(t *testing.T) *game.Game {
 	g.WithWriteLock(func() { _ = g.DestroyPermanentForEffect(puppeteer) })
 	pickTriggerTarget(t, g, me, elf)
 	corpusRequireTriggeredStamp(t, triggerOnStack(g, puppeteer), "own:")
+	return g
+}
+
+// corpusProwessOnStack is a prowess trigger — an engine trigger with no
+// catalog row, keyed by tier 4-0's prowess/pump body — waiting on the
+// stack above the Lightning Bolt that triggered it.
+func corpusProwessOnStack(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat].ID
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)].ID
+	monk := pushProwessCreature(g, me, "Monastery Swiftspear", 1, 2, game.KeywordProwess, "haste")
+	castCatalogSpell(t, g, "Lightning Bolt", "Instant", lightningBoltOracle,
+		[]game.TargetRef{{Kind: game.TargetPlayer, ID: opp}})
+	if it := corpusSettleTrigger(t, g, monk); it.Body != "prowess/pump" {
+		t.Fatalf("setup: the prowess trigger names body %q, want prowess/pump", it.Body)
+	}
 	return g
 }
 

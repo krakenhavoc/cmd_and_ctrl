@@ -198,9 +198,8 @@ func (g *Game) RegisterTurnScopedBlockRuleLocked(rule BlockRule) {
 }
 
 // ClearTurnScopedBlockRulesLocked drops every until-end-of-turn block
-// rule. A fresh slice rather than a truncation, exactly as
-// ClearTurnScopedReplacementsLocked does, so a clone taken before the
-// sweep keeps its own backing array.
+// rule. A fresh slice rather than a truncation, so a clone taken
+// before the sweep keeps its own backing array.
 //
 // Caller must hold g.mu in write mode.
 func (g *Game) ClearTurnScopedBlockRulesLocked() {

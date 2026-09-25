@@ -1993,6 +1993,168 @@ code wins, and each difference is listed here.
   `storm_after_counter` needs storm's trigger to be data. None of these
   can be a restore point in this slice.
 
+### Implementation notes (tier 3b-1)
+
+What the replacement half of tier 3b settled where the code and P8
+differ or P8 left it open. Everything else is as P8 says.
+
+- **The four kinds are declared, and nothing else.** `preventCombatDamage`,
+  `preventDamage`, `exileInsteadOfLeaving` and `exileInsteadOfGraveyard`
+  carry `reader: readerReplacement`. The layer adapter skips them. The
+  replacement gather adapts each live record in
+  `game/scoped_replacements.go`. The block-rule reader, `Mod.Text` and the
+  two block-rule kinds are left to 3b-2, because nothing here reads them.
+- **The engine owns the writers.** There are four `*ForEffect` functions,
+  one per kind, and no exported mod constructor for a replacement kind. A
+  `ScopedEffectFor` cannot write one by accident. The card-side builders
+  keep their names. `PreventAllCombatDamageThisTurn` gains `Player`, which
+  replaces the batch-38 helper. Cosmic Intervention calls
+  `ExileInsteadOfGraveyardThisTurn{Then}`.
+- **Every adapted closure reads its record back by `Seq` at call time.**
+  So an effect held by an open CR 616 prompt acts on the registry as it is
+  when the prompt is answered. A spent shield, a record an undo removed and
+  a redirect whose object has gone all answer "does not apply". None of
+  them acts on a stale copy.
+- **`Seq` goes only on a record with a non-layer mod.** A layer-only record
+  is never named. Keeping its `Seq` at zero keeps it byte-identical to what
+  an earlier v7 binary writes and reads, so a Giant Growth does not become
+  a rollback refusal. The ID is `scopedReplacementIDBase + Seq×8 + mod
+  index`. It sits in the range the turn-scoped registry used.
+- **The counter is derived, not carried.** `Game.scopedEffectSeq` is
+  cloned with the game. Restore sets it to the largest `Seq` among the
+  restored records. Uniqueness needs nothing more, because no prompt
+  survives a restore. So the snapshot gains no top-level key. The drift
+  test classifies the field `rebuilt`.
+- **A shield on a permanent also pins its duration** (`PinnedTo`). The
+  record is then swept with its object, like the Whip's redirect. The
+  affected set is pinned as P8 says, so a flicker ends the shield
+  (CR 400.7).
+- **The uncharged "prevent that damage" form is not built.** Before this
+  change, `PreventNextDamage` with `Amount: 0` meant "the next damage
+  event, whole". No catalogued card prints it, and P8 gives
+  `preventDamage` a charge of at least 1. An `Amount` below 1 now
+  registers nothing. The one test that used it
+  (`TestCreepingBloodsuckerGainsNothingWhenEveryOpponentIsFogged`) uses a
+  100-point shield instead.
+- **Cosmic Intervention's per-card return is labelled from the record.**
+  The label is `SourceName + " — return the exiled permanent"`, the string
+  the closure used to hard-code. The body is `Mod.Then`, checked through
+  `KnownEffectBody` at registration and at restore.
+- **The Whip's and unearth's record has no `Source`.**
+  `ExileInsteadOfLeavingBattlefield(g, cardID, controller, label)` keeps
+  its signature, as P8 asks, and that signature names no source. The label
+  carries the attribution.
+- **Ratchet (P11).** The `Game.TurnScopedReplacements` line is deleted.
+  Nine lines move to `census:ChoiceResumeFrames`, through
+  `replacementResume.applicable.effect`:
+  - `ReplacementEffect.AppliesTo`, `.Controller`, `.CopySelector`,
+    `.EntryHandReveal` and `.Replace`;
+  - `CopySelector.Candidates` and `.Except`;
+  - `EntryHandReveal.Matches` and `.Then`.
+
+  The `ChoiceResumeFrames` ceiling goes from 98 to 107. The
+  `TurnScopedReplacements` ceiling is deleted and the counter is added to
+  `retiredCensusCounters`. `ContinuationCensus.TurnScopedReplacements`
+  keeps its field so an old census still decodes.
+- **Two caveats were stale, and both are cleared.**
+  - Whip of Erebos's "Stifle the exile" caveat was #1591. It is fixed by
+    the indefinite pin (`TestWhipRedirectOutlivesACounteredExile`).
+  - Dregscape Zombie's "a bounce goes to hand" caveat was already stale:
+    #539 routed the bounce through the exit primitive
+    (`TestUnearthedCreatureBouncedGoesToExile`).
+
+  Both cards are `CompletenessFull`.
+- **Fixtures.** Four new files are written into `v7/`: `fog.json`,
+  `mending_hands_partial.json`, `whip_redirect.json` and
+  `cosmic_intervention.json`. No existing fixture changed. `v7.txt` records
+  `mods[].amount`, `.combatOnly`, `.then` and `seq`.
+
+### Implementation notes (tier 4-0: engine and reflexive triggers)
+
+Slice 4-0 of #1497 (the amendment above, Decision P9): the nine engine
+triggers with no catalog row, and every CR 603.12 reflexive trigger in
+the catalog, move onto tier 2's body-key machinery.
+
+- **`game.NewKeyedTriggeredItem(source, label, body, params)`** is
+  `NewTriggeredItem`'s twin for a trigger with no catalog row: it
+  derives `Effect` from the registered body via `bodyEffect` and
+  stamps `Body`/`Params` alongside it, the same three fields
+  `DelayedTrigger.stackItem()` already stamps for a fired delayed
+  trigger. Nine sites use it: prowess (`prowess/pump`), suspend's two
+  (`suspend/tick`, `suspend/free-cast`), madness
+  (`madness/offer`, reading `Params.Cost`), the monarch's two
+  (`monarch/crown`, `monarch/draw`, both reading `Params.Player`),
+  evoke's sacrifice (`evoke/sacrifice`), face-down ward
+  (`facedown/ward`, reading the payer and the targeted stack item off
+  `item.Trigger.Event` — already-carried, already-restorable data —
+  rather than a captured closure), and the four `WhenManaSpent` cards,
+  which share one body (`mana-rider/dispatch`) keyed by
+  `Params.Name` — the same `manaSpendTriggers` registry key
+  `ManaRider.Trigger` already carries on the paying token, so no new
+  per-card key was needed.
+- **`game.ReflexiveBody(key, fn, targetsFrom)`** is `DelayedBody`'s
+  reflexive twin (Decision P9's "the body registration can declare the
+  clause beside the function"). `targetsFrom func(sourceID uuid.UUID,
+  p EffectParams) *TargetSpec` is nil for an untargeted "when you do";
+  otherwise it is called both when the trigger is put on the stack and
+  again at restore, with the reflexive trigger's own source card's
+  instance ID and its `Params` — the two already-carried facts every
+  targeted reflexive trigger in the catalog needed: Eden, Seat of the
+  Sanctum's "another target permanent card" reads the source ID to
+  exclude itself; Teferi Akosa of Zhalfir's mana-value ceiling is X,
+  fixed at creation and carried as `Params.Amount`; every other
+  targeted body's clause is a constant, ignoring both arguments. The
+  registration is stored in a package-level map, never on `Game`, so
+  it adds no new closure-reachable route from `*Game` — only the
+  `Body` string crosses the snapshot boundary.
+- **`ReflexiveTrigger` (both the engine's and the card-side
+  `effects.ReflexiveTrigger`) drops `Effect` and `Targets`.** In their
+  place: `Body game.BodyRef` and `Params game.EffectParams`. A card
+  file builds a `ReflexiveTrigger{Label, Body, Params}` literal
+  (`WhenYouDo(label, body)` for the common untargeted, no-params
+  case); it never writes a body inline. Every reflexive body in the
+  catalog is registered once in `internal/cards/effects/reflexive_bodies.go`,
+  the ledger's convention for delayed-trigger bodies
+  (`delayed_bodies.go`). Fourteen keys, in ten files: `ziatora/fling`,
+  `breeches/blast` (reading `Params.Amount`), `breeches/copy-that-spell`,
+  `generous-plunderer/gift`, `eden/return-from-graveyard`,
+  `tarkir/damage`, `teferi-akosa/shuffle-into-library` (reading
+  `Params.Amount` for its clause only, not its body),
+  `rodolf-duskbringer/return-from-graveyard`,
+  `undead-butler/return-to-hand`, and five `overlook/<land>-fetch`
+  keys — one per Streets of New Capenna "Overlook" land, registered at
+  each land's own `init()` (or, for Riveteers Overlook, which keeps its
+  own spec, in its own file) rather than through one shared key, because
+  each land's printed basics are baked into its own body at
+  registration and never vary at runtime.
+- **`restoreStackItem` re-derives a reflexive trigger's `targetSpec`**
+  from `reflexiveTargetSpecFor(s.Body, s.SourceCardID, out.Params)`
+  when the item names a `Body` but is not a spell (the existing
+  catalog-oracle-ID path stays spell-only). This slice rebased onto
+  4-1 after 4-1 merged first, so the census side of it is 4-1's fold
+  (`stackSpecsRederivable`, the `Implementation notes (tier 4-1)`
+  section above): this slice's own contribution is one more `if` in
+  `stackSpecsRederivable` — a `Body` whose `reflexiveTargetSpecFor`
+  answers non-nil is rederivable, same as a spell's oracle ID or a
+  stamped ability's `Params.Ability` — so a reflexive trigger's own
+  re-derivable clause does not fall into the fold's "neither" branch
+  and force an otherwise-restorable item to count under
+  `StackEffects`.
+- **No `closure_fields.txt` or `closureClassCeilings` change.**
+  Neither `ReflexiveTrigger` (engine or card-side) nor
+  `reflexiveTargetSpecs` is a field reachable from `*Game` — the first
+  is a function-call parameter type, never stored; the second is a
+  package-level registry, exactly like `effectBodies`. `StackItem`'s
+  own fields (`Effect`, `targetSpec`, `Body`, `Params`) are unchanged.
+  The type graph the ratchet walks is therefore identical before and
+  after this slice, confirmed by running
+  `TestClosureFieldsReachableFromGame` with no update.
+- **Fixture.** `v7/reflexive_trigger.json` (a real Undead Butler: dies,
+  is exiled, and its reflexive "return a creature card from your
+  graveyard to your hand" is on the stack with its target already
+  chosen) is a new file under the "never touch an existing file" rule.
+  No existing fixture changed.
+
 ### Implementation notes (tier 4-2)
 
 Slice 4-2 of P9: the declarative `TriggeredAbility.Effect`, the engine
@@ -2008,7 +2170,12 @@ the code wins, and each difference is listed here.
   label, a controller or `Params` and leaves `item.Effect` nil, and the
   engine installs the row's `Effect`. A fill-in `Build` that sets
   `item.Effect` is an `effectKeyFault`. A row with a `Build` and no
-  `Effect` is the legacy shape and is built exactly as before. The
+  `Effect` is the legacy shape and is built exactly as before. A
+  `Build` whose item names a body of its own (4-0's
+  `NewKeyedTriggeredItem`) made data already, and that item is kept
+  as it is, even beside a declared `Effect`. Face-down ward is the case:
+  it is built by `effects.Ward`, which now declares an `Effect`, and 4-0
+  replaced its `Build` with a keyed one. The
   prompt frames now carry the whole declaration: `pickTargetFrame.build`
   became `pickTargetFrame.ability`, and `triggerResumeFrame.build` is
   gone, because the frame already held the ability.
@@ -2075,29 +2242,31 @@ the code wins, and each difference is listed here.
   - `Storm` reads the spell off the item's source.
   - Gift's entry trigger carries the promised opponent as
     `Params.Player`.
-- **The `buildDef` keywords are catalog rows.** P9 lists suspend's two
-  triggers and madness's trigger among the engine triggers with no
-  catalog row, for 4-0's body keys. In the code, `buildDef` appends all
-  three to the card's own `CardDef.Triggered`, so the registry stamps
-  them like any other row. They declare `Effect` here
-  (`suspendTick`, `suspendLastCounterRemoved`, and the madness offer
-  over the row's cost), and 4-0 has nothing left to do for them. The
-  engine-only rows (prowess, face-down ward, monarch, evoke, the
-  mana-spend riders and the reflexive triggers) are unchanged.
-  Face-down ward is built by `effects.Ward`, so it now declares its
-  `Effect` too, but it has no catalog row and is not stamped.
+- **The `buildDef` keywords.** `buildDef` appends suspend's two
+  triggers and madness's trigger to the card's own `CardDef.Triggered`,
+  so they are catalog rows and the registry stamps them. 4-0 merged
+  while this slice was open and keyed all three with tier-2 bodies
+  (`suspend/tick`, `suspend/free-cast`, `madness/offer`). This slice
+  keeps 4-0's version, so their items name those bodies and never
+  `catalog/triggered`. Gift's entry trigger is the `buildDef` keyword
+  this slice declared.
 - **The allowlist** is
   `server/internal/cards/effects/testdata/legacy_trigger_builds.txt`.
   Each line is `<card name> | <catalog key> | <row index>`, sorted by
   card name, so a tail batch that takes a run of cards deletes a
-  contiguous block. It lists 395 rows. The production catalog has 862
+  contiguous block. It lists 395 rows. The production catalog has 852
   declared rows, and `TestDeclaredTriggerRowsAreStampable` holds every
-  one of them to being nameable.
+  one of them to being nameable. Ten more rows (the suspend and madness
+  rows) are keyed by a `Build` of their own.
   - `TestLegacyTriggerBuildsOnlyShrink` fails on a listed row that no
     longer needs listing, and on an unlisted row that has no `Effect`
     or reads the board.
   - It reads the production catalog as `TestMain` captured it, before
     any test registers a fixture.
+  - A row with no `Effect` whose `Build` makes a keyed item is data and
+    is not listed. The lint finds out by calling the `Build` once on a
+    fresh game with a stand-in source. A `Build` that cannot run on a
+    stand-in stays listed, which is the safe side.
   - `-update-legacy-triggers` deletes stale lines and never adds one.
 - **P11.** No census counter retires in this slice. The resume-frame
   routes changed: `pickTargetFrame.build` and `triggerResumeFrame.build`
@@ -2107,8 +2276,8 @@ the code wins, and each difference is listed here.
   it. The ratchet generator now writes the P11 paragraph of the file
   header itself. 4-1 had added it by hand, and a regeneration dropped
   it.
-- **Fixtures.** Seven new files in `v7/`, each made by real cards. No
-  existing fixture changed.
+- **Fixtures.** New files in `v7/`, each made by real cards. No existing
+  fixture changed.
   - `etb_trigger_on_stack`: Mulldrifter.
   - `granted_dies_trigger`: Feign Death's grant, keyed through LKI.
   - `token_trigger`: a Pest.
@@ -2117,5 +2286,8 @@ the code wins, and each difference is listed here.
   - `targets_from_trigger`: Gixian Puppeteer's "another target".
   - `storm_after_counter`: Grapeshot's storm trigger over a countered
     Grapeshot in `lastKnownStack`.
+  - `prowess_on_stack`: a prowess trigger keyed by 4-0's `prowess/pump`
+    body, above the Lightning Bolt that triggered it. 4-0 merged while
+    this slice was open and added `reflexive_trigger` itself.
 
-  `reflexive_trigger` and `prowess_on_stack` still wait for 4-0.
+  That is eight new files in all.

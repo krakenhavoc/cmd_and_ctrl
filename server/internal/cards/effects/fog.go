@@ -11,12 +11,13 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // where the closure lives, so Holy Day and Tangle are three lines
 // each instead of three copies of the same registration.
 //
-// Turn-scoped rather than battlefield-presence-gated because Fog is
-// an instant: it resolves, registers a transient replacement, and
-// goes to the graveyard. The pipeline keeps firing the registered
-// replacement on every combat-damage event until StepCleanup clears
-// the turn-scoped registry — which is exactly CR 514.2's "this
-// turn".
+// A duration rather than battlefield presence because Fog is an
+// instant: it resolves, registers a replacement effect, and goes to
+// the graveyard. The pipeline keeps firing it on every combat-damage
+// event until the cleanup step's duration sweep ends it — which is
+// exactly CR 514.2's "this turn". The effect is a ScopedEffect record
+// (ADR 0041 phase 3 tier 3b), so a table with a Fog on it is still a
+// restore point.
 //
 // Combat damage only. A Lightning Bolt cast after the Fog resolves
 // still kills; the IsCombatDamage flag comes from the combat-damage

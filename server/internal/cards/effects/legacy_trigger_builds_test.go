@@ -10,6 +10,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/google/uuid"
+
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -68,9 +70,40 @@ func snapshotProductionDefKeys() {
 }
 
 // needsLegacyListing is the one reading of "this row's item cannot be
-// rebuilt from the row", kept in step with game.triggeredAbilityRefFor.
+// rebuilt", kept in step with game.buildTriggerItemLocked: a row with
+// no declared Effect whose Build does not make a KEYED item (4-0's
+// engine triggers that buildDef appends — suspend, madness — name a
+// tier-2 body and are data already), or a row whose TargetsFrom reads
+// the board.
 func needsLegacyListing(t game.TriggeredAbility) bool {
-	return t.Effect == nil || t.TargetsFromReadsBoard
+	if t.TargetsFromReadsBoard {
+		return true
+	}
+	return t.Effect == nil && !buildMakesKeyedItem(t)
+}
+
+// buildMakesKeyedItem asks a Build what it makes, on a fresh game and a
+// stand-in source: an item naming a body is keyed. A Build that cannot
+// run on a stand-in (or makes nothing) is not keyed as far as the lint
+// can tell, which keeps it listed — the safe side.
+func buildMakesKeyedItem(t game.TriggeredAbility) (keyed bool) {
+	if t.Build == nil {
+		return false
+	}
+	defer func() {
+		if recover() != nil {
+			keyed = false
+		}
+	}()
+	g := game.NewGame()
+	src := game.Card{InstanceID: uuid.New(), Name: "Lint Probe"}
+	var ev game.Event
+	if len(t.Watches) > 0 {
+		ev.Kind = t.Watches[0]
+	}
+	ev.CardID = src.InstanceID
+	item := t.Build(ev, &src, game.Characteristic{}, g)
+	return item != nil && item.Body != ""
 }
 
 // catalogKeyNames names every production catalog key for the list: the
@@ -237,7 +270,8 @@ func TestLegacyTriggerBuildsOnlyShrink(t *testing.T) {
 // row that declares its Effect carries the catalog identity the
 // registry stamped (fileDef), so a harvested item of it is keyed.
 func TestDeclaredTriggerRowsAreStampable(t *testing.T) {
-	declared, stampable := 0, 0
+	declared, stampable, keyed := 0, 0, 0
+	defer func() { t.Logf("%d keyed by a Build of their own (tier-2 bodies)", keyed) }()
 	for _, key := range productionDefKeys {
 		d := defs[key]
 		if d == nil {
@@ -245,6 +279,10 @@ func TestDeclaredTriggerRowsAreStampable(t *testing.T) {
 		}
 		for i, tr := range d.Triggered {
 			if needsLegacyListing(tr) {
+				continue
+			}
+			if tr.Effect == nil {
+				keyed++
 				continue
 			}
 			declared++

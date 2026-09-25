@@ -32,7 +32,9 @@ package game
 //   - DelayedTrigger.Effect — "at the beginning of the next end step"
 //   - PendingChoice's six resume frames + scryResume — a paused
 //     game literally holds the rest of the effect as a continuation
-//   - TurnScopedReplacements' AppliesTo / Replace — Fog
+//   - TurnScopedBlockRules' Pair / Count / Limit — Gingerbrute
+//     (the replacement twin, Fog's, is a ScopedEffect record since
+//     ADR 0041 tier 3b)
 //   - Card.ManaAbilities / ActivatedAbilities, when an ability
 //     closure was stamped onto the INSTANCE and the catalog cannot
 //     hand it back. #521 emptied the large and ordinary case of
@@ -1215,11 +1217,12 @@ type ContinuationCensus struct {
 	// StackTargetSpecs counted items whose CR 608.2b re-check clause is
 	// a closure and could not be re-derived from the catalog. RETIRED by
 	// ADR 0041 phase 3 tier 4 (#1497, P9): a stack item's clauses are
-	// re-derived from its oracle ID (a spell) or its catalog ability ref
-	// (a stamped ability), and an item that is neither is counted ONCE,
-	// in StackEffects. Nothing increments this. The field stays so a
-	// census written by an older binary still decodes, and still reads
-	// as not restorable.
+	// re-derived from its oracle ID (a spell), its catalog ability ref
+	// (a stamped ability, tier 4-1) or its own registration (a CR 603.12
+	// reflexive trigger's ReflexiveBody, tier 4-0), and an item that is
+	// none of those is counted ONCE, in StackEffects. Nothing increments
+	// this. The field stays so a census written by an older binary
+	// still decodes, and still reads as not restorable.
 	StackTargetSpecs int `json:"stackTargetSpecs,omitempty"`
 
 	// DelayedTriggerEffects is queued "at the beginning of the next
@@ -1239,8 +1242,12 @@ type ContinuationCensus struct {
 	// durations.
 	ScopedStatics int `json:"turnScopedStatics,omitempty"`
 
-	// TurnScopedReplacements is floating until-end-of-turn
-	// replacement effects (Fog).
+	// TurnScopedReplacements counted floating until-end-of-turn
+	// replacement effects held as closures (Fog, a prevention shield,
+	// the Whip's redirect). RETIRED by ADR 0041 phase 3 tier 3b
+	// (#1497): each is a ScopedEffect record now, which the snapshot
+	// carries, and nothing increments this. The field stays so a
+	// census written by an older binary still decodes.
 	TurnScopedReplacements int `json:"turnScopedReplacements,omitempty"`
 
 	// TurnScopedBlockRules is floating until-end-of-turn block rules
@@ -1506,13 +1513,11 @@ func (g *Game) captureSnapshotLocked() *GameSnapshot {
 	s.LastKnownPermanents = cloneLastKnownPermanents(g.lastKnownPermanents)
 	s.LastKnownStack = snapshotLastKnownStack(g.lastKnownStack, cen)
 
-	// Turn-scoped registries: entirely closure-bearing, so only the
-	// census and the labels survive. Dropping a Fog silently would be
-	// worse than refusing the restore point, which is what this does.
-	for _, re := range g.TurnScopedReplacements {
-		cen.TurnScopedReplacements++
-		cen.note("turn-scoped replacement: %s", labelOr(re.Label, "unnamed"))
-	}
+	// The turn-scoped block-rule registry is entirely closure-bearing,
+	// so only the census and the labels survive. Dropping a rule
+	// silently would be worse than refusing the restore point, which
+	// is what this does. (Its replacement twin retired with ADR 0041
+	// tier 3b: a Fog is a ScopedEffect record, carried above.)
 	for _, br := range g.TurnScopedBlockRules {
 		cen.TurnScopedBlockRules++
 		cen.note("turn-scoped block rule: %s", labelOr(br.Label, "unnamed"))
@@ -1825,11 +1830,14 @@ func snapshotStackItemAs(s *StackItem, oracleID string, cen *ContinuationCensus)
 	//   - an Effect that is a bare closure cannot be rebuilt;
 	//   - a target or mode clause can be rebuilt only when the item
 	//     says where it came from: a SPELL by oracle ID, an ABILITY by
-	//     its catalog row (Params.Ability, ability_ref.go).
+	//     its catalog row (Params.Ability, ability_ref.go, tier 4-1),
+	//     or a CR 603.12 REFLEXIVE TRIGGER by its own Body registration
+	//     (ReflexiveBody/reflexiveTargetSpecFor, tier 4-0).
 	//
 	// A KEYED item (a fired delayed trigger, ADR 0041 P2; a stamped
-	// activated ability, P9) is data: restore re-derives its Effect.
-	// StackTargetSpecs is retired: nothing increments it.
+	// activated ability, or a reflexive trigger, P9) is data: restore
+	// re-derives its Effect. StackTargetSpecs is retired: nothing
+	// increments it.
 	switch {
 	case s.Effect != nil && s.Body == "":
 		cen.StackEffects++
@@ -1843,13 +1851,19 @@ func snapshotStackItemAs(s *StackItem, oracleID string, cen *ContinuationCensus)
 
 // stackSpecsRederivable reports whether restore can rebuild this item's
 // target and mode clauses: a spell from the catalog by oracle ID, a
-// stamped ability from its catalog row.
+// stamped ability from its catalog row, or a reflexive trigger from its
+// own Body's registration (ADR 0041 P9, #1497, tier 4-0).
 func stackSpecsRederivable(s stackItemSnapshot) bool {
 	if spellSpecRederivable(s) {
 		return true
 	}
-	_, catalog := catalogBodySlot(s.Body)
-	return catalog && s.Params != nil && s.Params.Ability != nil
+	if _, catalog := catalogBodySlot(s.Body); catalog && s.Params != nil && s.Params.Ability != nil {
+		return true
+	}
+	if s.Body != "" && reflexiveTargetSpecFor(s.Body, s.SourceCardID, effectParamsValue(s.Params)) != nil {
+		return true
+	}
+	return false
 }
 
 // spellSpecRederivable reports whether restore can rebuild this
@@ -2217,6 +2231,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 		g.rederiveTriggerClauseLocked(g.PendingTriggers[i], &s.PendingTriggers[i])
 	}
 	g.ScopedEffects = deepCopyScopedEffects(s.ScopedEffects)
+	g.scopedEffectSeq = maxScopedEffectSeq(g.ScopedEffects)
 	if len(s.DelayedTriggers) > 0 {
 		g.DelayedTriggers = make([]*DelayedTrigger, len(s.DelayedTriggers))
 		for i := range s.DelayedTriggers {
@@ -2591,6 +2606,12 @@ func restoreStackItem(s *stackItemSnapshot) (*StackItem, bool) {
 		// one function that applies both rewrites, in the order the
 		// announce path does.
 		out.targetSpec = castTargetSpecForItem(s.OracleID, out)
+	} else if s.HasTargetSpec && s.Body != "" {
+		// A CR 603.12 reflexive trigger (ADR 0041 P9, #1497, tier 4):
+		// the clause was declared alongside the body's registration
+		// (ReflexiveBody), keyed the same way, so it is re-derived from
+		// there rather than from a catalog row.
+		out.targetSpec = reflexiveTargetSpecFor(s.Body, s.SourceCardID, out.Params)
 	}
 	if s.HasModeSpec && s.Kind == StackItemSpell && s.OracleID != "" && CatalogModeSpec != nil {
 		out.modeSpec = CatalogModeSpec(s.OracleID)

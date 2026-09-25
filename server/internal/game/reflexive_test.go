@@ -86,10 +86,10 @@ func TestReflexiveTriggerLandsAboveTheParentAndWaitsForPriority(t *testing.T) {
 		order = append(order, "parent")
 		g.QueueReflexiveTriggerForEffect(item, ReflexiveTrigger{
 			Label: "reflexive — when you do",
-			Effect: func(*Game, *StackItem) error {
+			Body: testBody(func(*Game, *StackItem) error {
 				order = append(order, "reflexive")
 				return nil
-			},
+			}),
 		})
 		return nil
 	})
@@ -162,14 +162,13 @@ func TestReflexiveTriggerPicksItsTargetWhenItGoesOnTheStack(t *testing.T) {
 		g.Battlefield.PushTop(c)
 		latecomer = c.InstanceID
 		g.QueueReflexiveTriggerForEffect(item, ReflexiveTrigger{
-			Label:   "reflexive — target creature",
-			Targets: creatureSpec(),
-			Effect: func(_ *Game, it *StackItem) error {
+			Label: "reflexive — target creature",
+			Body: testReflexiveBody(func(_ *Game, it *StackItem) error {
 				if len(it.Targets) > 0 {
 					chosen = it.Targets[0].ID
 				}
 				return nil
-			},
+			}, creatureSpec()),
 		})
 		return nil
 	})
@@ -227,12 +226,11 @@ func TestReflexiveTriggerWithNoLegalTargetIsDropped(t *testing.T) {
 	fired := 0
 	queueAbility(g, me, uuid.Nil, "parent", func(g *Game, item *StackItem) error {
 		g.QueueReflexiveTriggerForEffect(item, ReflexiveTrigger{
-			Label:   "reflexive — target creature",
-			Targets: creatureSpec(),
-			Effect: func(*Game, *StackItem) error {
+			Label: "reflexive — target creature",
+			Body: testReflexiveBody(func(*Game, *StackItem) error {
 				fired++
 				return nil
-			},
+			}, creatureSpec()),
 		})
 		return nil
 	})
@@ -269,10 +267,10 @@ func TestReflexiveTriggerOptionalAsksFirst(t *testing.T) {
 				g.QueueReflexiveTriggerForEffect(item, ReflexiveTrigger{
 					Label:    "reflexive — you may",
 					Optional: &TriggerOptionalPrompt{Question: "do the thing?"},
-					Effect: func(*Game, *StackItem) error {
+					Body: testBody(func(*Game, *StackItem) error {
 						fired++
 						return nil
-					},
+					}),
 				})
 				return nil
 			})
@@ -316,15 +314,14 @@ func TestReflexiveTriggerCarriesItsPayload(t *testing.T) {
 	queueAbility(g, me, uuid.Nil, "parent", func(g *Game, item *StackItem) error {
 		g.QueueReflexiveTriggerForEffect(item, ReflexiveTrigger{
 			Label:   "reflexive — payload plus target",
-			Targets: creatureSpec(),
 			Payload: []TargetRef{{Kind: TargetCard, ID: carried}, {Kind: TargetPlayer, ID: me}},
-			Effect: func(_ *Game, it *StackItem) error {
+			Body: testReflexiveBody(func(_ *Game, it *StackItem) error {
 				sawPayload = it.Payload
 				if len(it.Targets) > 0 {
 					sawTarget = it.Targets[0].ID
 				}
 				return nil
-			},
+			}, creatureSpec()),
 		})
 		return nil
 	})
@@ -374,7 +371,7 @@ func TestReflexiveTriggerSurvivesCloneAndRestore(t *testing.T) {
 		g.QueueReflexiveTriggerForEffect(item, ReflexiveTrigger{
 			Label:   "reflexive — survives undo",
 			Payload: []TargetRef{{Kind: TargetCard, ID: carried}},
-			Effect:  effect,
+			Body:    testBody(effect),
 		})
 		return nil
 	})
@@ -439,7 +436,7 @@ func TestReflexiveTriggerPayloadSurvivesASnapshot(t *testing.T) {
 		g.QueueReflexiveTriggerForEffect(item, ReflexiveTrigger{
 			Label:   "reflexive — survives a restart",
 			Payload: []TargetRef{{Kind: TargetCard, ID: carried}},
-			Effect:  func(*Game, *StackItem) error { return nil },
+			Body:    testBody(func(*Game, *StackItem) error { return nil }),
 		})
 		return nil
 	})
@@ -484,11 +481,11 @@ func TestReflexiveTriggerFromADepartedSource(t *testing.T) {
 		g.Seats[0].Graveyard.PushTop(c)
 		g.QueueReflexiveTriggerForEffect(item, ReflexiveTrigger{
 			Label: "reflexive — from a graveyard",
-			Effect: func(_ *Game, it *StackItem) error {
+			Body: testBody(func(_ *Game, it *StackItem) error {
 				fired++
 				sawSource, sawController = it.SourceCardID, it.Controller
 				return nil
-			},
+			}),
 		})
 		return nil
 	})
@@ -508,20 +505,86 @@ func TestReflexiveTriggerFromADepartedSource(t *testing.T) {
 func TestQueueReflexiveTriggerRejectsMalformed(t *testing.T) {
 	g := newActiveGame(t)
 	parent := &StackItem{ID: uuid.New(), Kind: StackItemTriggered, Controller: g.Seats[0].ID}
-	noop := func(*Game, *StackItem) error { return nil }
+	noop := testBody(func(*Game, *StackItem) error { return nil })
 	g.WithWriteLock(func() {
-		if g.QueueReflexiveTriggerForEffect(nil, ReflexiveTrigger{Label: "x", Effect: noop}) {
+		if g.QueueReflexiveTriggerForEffect(nil, ReflexiveTrigger{Label: "x", Body: noop}) {
 			t.Error("queued a reflexive trigger with no parent item")
 		}
 		if g.QueueReflexiveTriggerForEffect(parent, ReflexiveTrigger{Label: "x"}) {
-			t.Error("queued a reflexive trigger with no Effect")
+			t.Error("queued a reflexive trigger with no Body")
 		}
-		if g.QueueReflexiveTriggerForEffect(parent, ReflexiveTrigger{Effect: noop}) {
+		if g.QueueReflexiveTriggerForEffect(parent, ReflexiveTrigger{Body: noop}) {
 			t.Error("queued a reflexive trigger with no Label")
 		}
 	})
 	if len(g.PendingTriggers)+len(g.PendingChoices) != 0 {
 		t.Errorf("a malformed declaration left %d triggers and %d choices behind",
 			len(g.PendingTriggers), len(g.PendingChoices))
+	}
+}
+
+// TestReflexiveTriggerIsARestorePoint is ADR 0041 P9's point (#1497,
+// tier 4): a reflexive trigger's item is keyed (Body, not a captured
+// Effect), and its own target clause — which has no catalog row to
+// re-derive from — is re-derived from the same key (ReflexiveBody),
+// so a table with one waiting on the stack, target already chosen, is
+// still a full-fidelity restore point.
+func TestReflexiveTriggerIsARestorePoint(t *testing.T) {
+	g := newRestorableGame(t)
+	me := g.Seats[0].ID
+	source := pushCreatureToBattlefield(t, g, g.Seats[0])
+	victim := pushCreatureToBattlefield(t, g, g.Seats[1])
+
+	var resolvedAgainst uuid.UUID
+	body := testReflexiveBody(func(_ *Game, it *StackItem) error {
+		if len(it.Targets) > 0 {
+			resolvedAgainst = it.Targets[0].ID
+		}
+		return nil
+	}, creatureSpec())
+	queueAbility(g, me, source, "parent", func(g *Game, item *StackItem) error {
+		g.QueueReflexiveTriggerForEffect(item, ReflexiveTrigger{
+			Label: "reflexive — restorable, target creature",
+			Body:  body,
+		})
+		return nil
+	})
+	for i := 0; i < len(g.Seats); i++ {
+		if err := g.PassPriority(); err != nil {
+			t.Fatalf("PassPriority: %v", err)
+		}
+	}
+	prompt := pickTargetPrompt(g)
+	if prompt == nil {
+		t.Fatal("no pick_target prompt for the reflexive trigger")
+	}
+	if err := g.ResolvePickTarget(prompt.ID, me, TargetRef{Kind: TargetCard, ID: victim}); err != nil {
+		t.Fatalf("ResolvePickTarget: %v", err)
+	}
+	if len(g.StackMeta) != 1 {
+		t.Fatalf("stack holds %d items, want the reflexive trigger with its target chosen", len(g.StackMeta))
+	}
+
+	snap := g.CaptureSnapshot()
+	if !snap.Restorable() {
+		t.Fatalf("a reflexive trigger with its target chosen blocks the restore point: %+v", snap.Continuations)
+	}
+	restored, err := snap.RestoreStrict()
+	if err != nil {
+		t.Fatalf("RestoreStrict: %v", err)
+	}
+	var item *StackItem
+	for _, it := range restored.StackMeta {
+		item = it
+	}
+	if item == nil {
+		t.Fatal("restore lost the reflexive trigger")
+	}
+	if len(item.Targets) != 1 || item.Targets[0].ID != victim {
+		t.Fatalf("restored item targets = %v, want [%v]", item.Targets, victim)
+	}
+	settleStack(t, restored)
+	if resolvedAgainst != victim {
+		t.Errorf("the restored trigger resolved against %v, want %v", resolvedAgainst, victim)
 	}
 }

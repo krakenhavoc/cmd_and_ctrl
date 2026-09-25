@@ -64,24 +64,26 @@ import "github.com/google/uuid"
 
 // ReflexiveTrigger is the declaration a resolving effect hands the
 // engine to create a CR 603.12 reflexive triggered ability. Every
-// field except Label and Effect is optional.
+// field except Label and Body is optional.
 //
 // The controller and the source are NOT fields: CR 603.12 fixes them
 // as the controller and the source of the ability that created the
 // trigger, which is the resolving stack item passed alongside.
+//
+// There is no Targets field. The trigger's target clause, when it has
+// one, is chosen when the trigger goes on the stack (CR 603.3d) —
+// which for a reflexive trigger is the point of the exercise, because
+// the parent has already resolved and the controller now knows what it
+// did — but it is declared alongside Body's registration (ReflexiveBody)
+// rather than passed here, because a reflexive trigger has no catalog
+// row to re-derive a captured clause from at restore. An empty legal
+// set drops the trigger with no prompt, exactly as for a harvested
+// trigger; a body registered with no clause is an untargeted follow-up.
 type ReflexiveTrigger struct {
 	// Label is the stack-overlay copy, in the same shape every other
 	// trigger uses: "Ziatora, the Incinerator — damage equal to the
 	// sacrificed creature's power".
 	Label string
-
-	// Targets is the trigger's target clause. Chosen when the
-	// trigger goes on the stack (CR 603.3d) — which for a reflexive
-	// trigger is the point of the exercise, because the parent has
-	// already resolved and the controller now knows what it did. An
-	// empty legal set drops the trigger with no prompt, exactly as
-	// for a harvested trigger. Nil for an untargeted follow-up.
-	Targets *TargetSpec
 
 	// Optional makes the trigger a CR 603.5 "you may". Nil for the
 	// usual mandatory "when you do".
@@ -102,15 +104,21 @@ type ReflexiveTrigger struct {
 	// exactly the triggers that most need one.
 	Payload []TargetRef
 
-	// Effect is what the trigger does when its stack item resolves.
-	// Same contract as StackItem.Effect: read the controller, the
-	// source, the chosen targets and the payload off the item it is
-	// handed, and capture neither a *Game nor a pointer into a zone
-	// slice — undo restores a cloned game and the closure has to
-	// resolve against that one.
+	// Body and Params name what the trigger does when its stack item
+	// resolves, and its own target clause when it has one (ADR 0041
+	// P9, #1497, tier 4): Body is a key ReflexiveBody registered,
+	// carrying both the resolution function and — for a targeted
+	// trigger — the clause itself, since a reflexive trigger has no
+	// catalog row to re-derive either from. Params is the body's plain
+	// data (Eden, Seat of the Sanctum needs nothing; Teferi Akosa of
+	// Zhalfir's Amount is X, fixed when the trigger was created).
 	//
-	// Runs under g.mu held in write mode.
-	Effect func(g *Game, item *StackItem) error
+	// This replaced a captured Effect closure; the contract is
+	// unchanged — read the controller, the source, the chosen targets
+	// and the payload off the item the body is handed, capture
+	// nothing.
+	Body   BodyRef
+	Params EffectParams
 }
 
 // QueueReflexiveTriggerForEffect creates the reflexive triggered
@@ -129,21 +137,20 @@ type ReflexiveTrigger struct {
 // The condition ("when you DO") is the caller's to evaluate — call
 // this only once the thing happened. Nothing here re-checks it.
 //
-// Returns false when the declaration is malformed (no parent, no
-// Effect, no Label), which is dropped rather than queued. A true
-// return does NOT promise a stack item: a targeted trigger with no
-// legal target is removed from the stack per CR 603.3d, and an
-// optional one can still be declined.
+// Returns false when the declaration is malformed (no parent, no Body,
+// no Label), which is dropped rather than queued. A true return does
+// NOT promise a stack item: a targeted trigger with no legal target is
+// removed from the stack per CR 603.3d, and an optional one can still
+// be declined.
 //
 // Caller must hold g.mu in write mode — the caller is a resolving
 // effect, which already does.
 func (g *Game) QueueReflexiveTriggerForEffect(parent *StackItem, rt ReflexiveTrigger) bool {
-	if parent == nil || rt.Effect == nil || rt.Label == "" {
+	if parent == nil || rt.Body.key == "" || rt.Label == "" {
 		return false
 	}
 	source, lki := g.reflexiveSourceLocked(parent)
-	label := rt.Label
-	effect := rt.Effect
+	label, body, params := rt.Label, rt.Body.key, cloneEffectParams(rt.Params)
 	payload := append([]TargetRef(nil), rt.Payload...)
 	// CR 603.12: the reflexive trigger's source is the parent's, and
 	// so is the OBJECT (#1418) — the resolving parent already names
@@ -152,16 +159,20 @@ func (g *Game) QueueReflexiveTriggerForEffect(parent *StackItem, rt ReflexiveTri
 	// followedSourceObjectLocked): "return this to the battlefield.
 	// When you do, …" is about the permanent it returned.
 	sourceObject := g.followedSourceObjectLocked(parent)
+	// ADR 0041 P9 (#1497): the target clause, when this body has one,
+	// is re-derived from the registration rather than carried as a
+	// captured *TargetSpec — the same reason the item itself is data.
+	targets := reflexiveTargetSpecFor(body, source.InstanceID, params)
 	ability := TriggeredAbility{
 		// Watches / AppliesTo stay empty: this ability is never
 		// harvested off an event, so nothing ever looks at them. The
 		// dispatch reads Targets, OptionalPrompt and Build, and it
 		// is handed the match rather than asked to find one.
 		Key:            label,
-		Targets:        rt.Targets,
+		Targets:        targets,
 		OptionalPrompt: rt.Optional,
 		Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
-			item := NewTriggeredItem(source, label, effect)
+			item := NewKeyedTriggeredItem(source, label, rt.Body, params)
 			item.SourceObject = sourceObject
 			item.Payload = append([]TargetRef(nil), payload...)
 			return item

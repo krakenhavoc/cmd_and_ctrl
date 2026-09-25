@@ -624,7 +624,11 @@ func (g *Game) buildTriggerItemLocked(t TriggeredAbility, ev Event, source Card,
 	switch {
 	case t.Build != nil:
 		item = t.Build(ev, &source, lki, g)
-		if item == nil || t.Effect == nil {
+		// A Build that names a body of its own made a keyed item —
+		// data already (tier 2's body keys, 4-0's engine triggers such
+		// as suspend, madness and face-down ward) — and it wins over a
+		// declared Effect beside it.
+		if item == nil || t.Effect == nil || item.Body != "" {
 			return item
 		}
 		if item.Effect != nil {

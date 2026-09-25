@@ -1478,8 +1478,10 @@ scopedEffects[].duration.SourceEnteredAt	number:int64
 scopedEffects[].label	string
 scopedEffects[].mods	array
 scopedEffects[].mods[]	object
+scopedEffects[].mods[].amount	number:int
 scopedEffects[].mods[].colors	array
 scopedEffects[].mods[].colors[]	string
+scopedEffects[].mods[].combatOnly	bool
 scopedEffects[].mods[].grants	array
 scopedEffects[].mods[].grants[]	string
 scopedEffects[].mods[].keywords	array
@@ -1490,10 +1492,12 @@ scopedEffects[].mods[].power	number:int
 scopedEffects[].mods[].restrictions	number:uint8
 scopedEffects[].mods[].subtypes	array
 scopedEffects[].mods[].subtypes[]	string
+scopedEffects[].mods[].then	string
 scopedEffects[].mods[].toughness	number:int
 scopedEffects[].mods[].types	array
 scopedEffects[].mods[].types[]	string
 scopedEffects[].scope	string
+scopedEffects[].seq	number:int64
 scopedEffects[].source	object
 scopedEffects[].source.epoch	number:int
 scopedEffects[].source.id	custom(uuid.UUID)

@@ -29,8 +29,8 @@ func TestFogCancelsCombatDamageToCreature(t *testing.T) {
 	passPriorityAroundTable(t, g)
 
 	// Fog turn-scoped replacement is now registered.
-	if len(g.TurnScopedReplacements) != 1 {
-		t.Fatalf("TurnScopedReplacements = %d, want 1", len(g.TurnScopedReplacements))
+	if scopedReplacementCount(g) != 1 {
+		t.Fatalf("scoped replacements = %d, want 1", scopedReplacementCount(g))
 	}
 
 	// Directly invoke the combat-damage helper — simulates a
@@ -124,8 +124,8 @@ func TestFogClearsAtCleanup(t *testing.T) {
 
 	castCatalogSpell(t, g, "Fog", "Instant", fogOracle, nil)
 	passPriorityAroundTable(t, g)
-	if len(g.TurnScopedReplacements) != 1 {
-		t.Fatalf("Fog didn't register: %d turn-scoped", len(g.TurnScopedReplacements))
+	if scopedReplacementCount(g) != 1 {
+		t.Fatalf("Fog didn't register: %d turn-scoped", scopedReplacementCount(g))
 	}
 
 	// Walk the cursor past cleanup. From main phase to next turn's
@@ -138,7 +138,7 @@ func TestFogClearsAtCleanup(t *testing.T) {
 			t.Fatalf("AdvanceStep: %v", err)
 		}
 	}
-	if len(g.TurnScopedReplacements) != 0 {
-		t.Errorf("turn-scoped replacements = %d after cleanup, want 0", len(g.TurnScopedReplacements))
+	if scopedReplacementCount(g) != 0 {
+		t.Errorf("turn-scoped replacements = %d after cleanup, want 0", scopedReplacementCount(g))
 	}
 }

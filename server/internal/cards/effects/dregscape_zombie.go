@@ -15,14 +15,16 @@ package effects
 // (CR 702.82a), so this Spec is one `Unearth("{B}")` entry and the
 // zone dimension does the rest — the same shape a Triome's cycling
 // has one zone over. See unearth.go.
+//
+// Its one caveat — a bounce skipping the redirect — went stale with
+// #539, which routed BounceToHandForEffect through the shared exit
+// primitive and its CR 614 window; ADR 0041 tier 3b's rework of the
+// redirect pinned it (TestUnearthedCreatureBouncedGoesToExile).
 func init() {
 	Register(Spec{
 		OracleID:     "be9d1346-4416-4ade-ae84-7a4121e0bd12",
 		Name:         "Dregscape Zombie",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"An unearthed creature bounced to hand goes to hand rather than being exiled; every other way it would leave the battlefield exiles it as printed.",
-		},
-		Activated: []ActivatedAbility{Unearth("{B}")},
+		Completeness: CompletenessFull,
+		Activated:    []ActivatedAbility{Unearth("{B}")},
 	})
 }
