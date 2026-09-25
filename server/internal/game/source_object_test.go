@@ -382,7 +382,7 @@ func TestDelayedAndReflexiveTriggersInheritTheCreatorsSourceObject(t *testing.T)
 			}
 		}
 		if !g.QueueReflexiveTriggerForEffect(parent, ReflexiveTrigger{
-			Label: "when you do", Effect: func(*Game, *StackItem) error { return nil },
+			Label: "when you do", Body: testBody(func(*Game, *StackItem) error { return nil }),
 		}) {
 			t.Fatal("QueueReflexiveTriggerForEffect refused a well-formed declaration")
 		}

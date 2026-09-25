@@ -3777,15 +3777,60 @@ condition actually held:
 
 ```go
 ReflexiveTrigger{
-    Label:   "Ziatora, the Incinerator — damage equal to the sacrificed creature's power",
-    Targets: TargetAny(),          // chosen when the trigger goes on the stack
-    Cards:   []uuid.UUID{killed},  // the payload; read back with ctx.PayloadCards()
-    Effect:  b29ZiatoraFling,      // a package-level func, NOT a closure
+    Label: "Ziatora, the Incinerator — damage equal to the sacrificed creature's power",
+    Cards: []uuid.UUID{killed},  // the payload; read back with ctx.PayloadCards()
+    Body:  ziatoraFlingBody,     // registered in reflexive_bodies.go — never a closure inline
 }.Apply(ctx)
 ```
 
-`WhenYouDo(label, effect)` is the plain mandatory, untargeted case.
-Both go through the harvester's own dispatch
+**The body is registered, not written inline** (ADR 0041 P9, #1497,
+tier 4): every reflexive-trigger body is a `game.BodyRef` declared
+once in `internal/cards/effects/reflexive_bodies.go`, the same
+append-only-ledger convention `delayed_bodies.go` uses for delayed
+triggers, so a table with a reflexive trigger waiting — or resolving
+on the stack, its target already chosen — is still a restore point. A
+card file never writes `Body: func(...) {...}` inline; it references
+the registered `BodyRef` by name.
+
+**The target clause lives on the registration, not on the struct.**
+`ReflexiveTrigger` has no `Targets` field: a reflexive trigger has no
+catalog row for restore to re-derive a captured `*TargetSpec` from, so
+the clause is declared beside the body instead, with
+`game.ReflexiveBody(key, fn, targetsFrom)`:
+
+```go
+// reflexive_bodies.go
+ziatoraFlingBody = game.ReflexiveBody("ziatora/fling", simpleBody(b29ZiatoraFling), constTargets(TargetAny))
+
+edenReturnBody = game.ReflexiveBody("eden/return-from-graveyard", simpleBody(edenReturnChosenFromGraveyard),
+    func(sourceID uuid.UUID, _ game.EffectParams) *game.TargetSpec {
+        return TargetCardInGraveyard("another target permanent card from your graveyard",
+            YouOwn(), Permanent(), OtherThan(sourceID))
+    })
+```
+
+`targetsFrom` is nil for an untargeted "when you do"
+(`game.SimpleDelayedBody` — no clause to register). Otherwise it is
+called both when the trigger is put on the stack and again at
+restore, with the reflexive trigger's own source card's instance ID
+and its `Params` — the two facts every targeted clause in the catalog
+has needed so far: Eden, Seat of the Sanctum reads the source ID to
+exclude itself ("another"); Teferi Akosa of Zhalfir's mana-value
+ceiling is X, fixed at creation and carried as `Params.Amount`; every
+other clause is a constant and ignores both arguments (`constTargets`
+wraps one). Data the body itself needs beyond the item — an amount, a
+name — is `Params`, set on the `ReflexiveTrigger` literal:
+
+```go
+ReflexiveTrigger{
+    Label:  "Breeches, the Blastmaker — damage equal to that spell's mana value",
+    Body:   breechesBlastBody,
+    Params: game.EffectParams{Amount: spellManaValueForEffect(g, spell)},
+}.Apply(ctx)
+```
+
+`WhenYouDo(label, body)` is the plain mandatory, untargeted, no-params
+case. Both go through the harvester's own dispatch
 (`Game.QueueReflexiveTriggerForEffect`), so the trigger gets a target
 prompt, the CR 603.3d drop when nothing is legal, a "you may" if it
 prints one, and a place on `PendingTriggers` — exactly as a harvested

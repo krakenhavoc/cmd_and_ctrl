@@ -1289,3 +1289,89 @@ Three things the first slice settled that the decisions above left open.
   Your Own Death's `modifyPT` plus `grantAbilities` record) is a new
   file. No existing fixture changed, and `closure_fields.txt` is
   unchanged.
+
+### Implementation notes (tier 4-0: engine and reflexive triggers)
+
+Slice 4-0 of #1497 (branch `docs/1497-tiers-3b-4-design`'s amendment,
+"phase 3 tiers 3b and 4," Decision P9): the nine engine triggers with
+no catalog row, and every CR 603.12 reflexive trigger in the catalog,
+move onto tier 2's body-key machinery.
+
+- **`game.NewKeyedTriggeredItem(source, label, body, params)`** is
+  `NewTriggeredItem`'s twin for a trigger with no catalog row: it
+  derives `Effect` from the registered body via `bodyEffect` and
+  stamps `Body`/`Params` alongside it, the same three fields
+  `DelayedTrigger.stackItem()` already stamps for a fired delayed
+  trigger. Nine sites use it: prowess (`prowess/pump`), suspend's two
+  (`suspend/tick`, `suspend/free-cast`), madness
+  (`madness/offer`, reading `Params.Cost`), the monarch's two
+  (`monarch/crown`, `monarch/draw`, both reading `Params.Player`),
+  evoke's sacrifice (`evoke/sacrifice`), face-down ward
+  (`facedown/ward`, reading the payer and the targeted stack item off
+  `item.Trigger.Event` — already-carried, already-restorable data —
+  rather than a captured closure), and the four `WhenManaSpent` cards,
+  which share one body (`mana-rider/dispatch`) keyed by
+  `Params.Name` — the same `manaSpendTriggers` registry key
+  `ManaRider.Trigger` already carries on the paying token, so no new
+  per-card key was needed.
+- **`game.ReflexiveBody(key, fn, targetsFrom)`** is `DelayedBody`'s
+  reflexive twin (Decision P9's "the body registration can declare the
+  clause beside the function"). `targetsFrom func(sourceID uuid.UUID,
+  p EffectParams) *TargetSpec` is nil for an untargeted "when you do";
+  otherwise it is called both when the trigger is put on the stack and
+  again at restore, with the reflexive trigger's own source card's
+  instance ID and its `Params` — the two already-carried facts every
+  targeted reflexive trigger in the catalog needed: Eden, Seat of the
+  Sanctum's "another target permanent card" reads the source ID to
+  exclude itself; Teferi Akosa of Zhalfir's mana-value ceiling is X,
+  fixed at creation and carried as `Params.Amount`; every other
+  targeted body's clause is a constant, ignoring both arguments. The
+  registration is stored in a package-level map, never on `Game`, so
+  it adds no new closure-reachable route from `*Game` — only the
+  `Body` string crosses the snapshot boundary.
+- **`ReflexiveTrigger` (both the engine's and the card-side
+  `effects.ReflexiveTrigger`) drops `Effect` and `Targets`.** In their
+  place: `Body game.BodyRef` and `Params game.EffectParams`. A card
+  file builds a `ReflexiveTrigger{Label, Body, Params}` literal
+  (`WhenYouDo(label, body)` for the common untargeted, no-params
+  case); it never writes a body inline. Every reflexive body in the
+  catalog is registered once in `internal/cards/effects/reflexive_bodies.go`,
+  the ledger's convention for delayed-trigger bodies
+  (`delayed_bodies.go`). Fourteen keys, in ten files: `ziatora/fling`,
+  `breeches/blast` (reading `Params.Amount`), `breeches/copy-that-spell`,
+  `generous-plunderer/gift`, `eden/return-from-graveyard`,
+  `tarkir/damage`, `teferi-akosa/shuffle-into-library` (reading
+  `Params.Amount` for its clause only, not its body),
+  `rodolf-duskbringer/return-from-graveyard`,
+  `undead-butler/return-to-hand`, and five `overlook/<land>-fetch`
+  keys — one per Streets of New Capenna "Overlook" land, registered at
+  each land's own `init()` (or, for Riveteers Overlook, which keeps its
+  own spec, in its own file) rather than through one shared key, because
+  each land's printed basics are baked into its own body at
+  registration and never vary at runtime.
+- **`restoreStackItem` re-derives a reflexive trigger's `targetSpec`**
+  from `reflexiveTargetSpecFor(s.Body, s.SourceCardID, out.Params)`
+  when the item names a `Body` but is not a spell (the existing
+  catalog-oracle-ID path stays spell-only). The census exclusion is
+  narrow and deliberately does not fold `StackTargetSpecs` into
+  `StackEffects` generally — that fold, and the counter's full
+  retirement, belongs to slice 4-1's `AbilityRef` (its row in the
+  amendment's slicing table says "Retires StackTargetSpecs"
+  explicitly). This slice only adds `s.Body == ""` to both of
+  `StackTargetSpecs`'s existing increments, so a reflexive trigger's
+  own re-derivable clause is excluded while an unkeyed catalog
+  ability's is still counted exactly as before.
+- **No `closure_fields.txt` or `closureClassCeilings` change.**
+  Neither `ReflexiveTrigger` (engine or card-side) nor
+  `reflexiveTargetSpecs` is a field reachable from `*Game` — the first
+  is a function-call parameter type, never stored; the second is a
+  package-level registry, exactly like `effectBodies`. `StackItem`'s
+  own fields (`Effect`, `targetSpec`, `Body`, `Params`) are unchanged.
+  The type graph the ratchet walks is therefore identical before and
+  after this slice, confirmed by running
+  `TestClosureFieldsReachableFromGame` with no update.
+- **Fixture.** `v7/reflexive_trigger.json` (a real Undead Butler: dies,
+  is exiled, and its reflexive "return a creature card from your
+  graveyard to your hand" is on the stack with its target already
+  chosen) is a new file under the "never touch an existing file" rule.
+  No existing fixture changed.

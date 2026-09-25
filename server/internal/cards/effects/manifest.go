@@ -98,7 +98,31 @@ func init() {
 	// it — the ability belongs to a STATE — so it is named here, where
 	// the state is.
 	ward.Key = faceDownWardLabel
+	// ADR 0041 P9 (#1497, tier 4): unlike every other Ward/WardGranted
+	// card, this state has no catalog row at all, so its item cannot
+	// wait on a later slice's AbilityRef — it is keyed directly here.
+	// Watches / AppliesTo are unchanged (Ward's own, never serialised,
+	// re-registered by this same init on every boot); only Build
+	// changes, to a body that reads the stack item ID and the payer
+	// off item.Trigger.Event rather than off captured closure
+	// variables — stampTriggerContext has already put the same event
+	// there by the time the body runs.
+	ward.Build = func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
+		if ev.StackItemID == uuid.Nil || ev.Actor == uuid.Nil {
+			return nil
+		}
+		return game.NewKeyedTriggeredItem(source, faceDownWardLabel, facedownWardBody, game.EffectParams{})
+	}
 	game.CatalogFaceDownWard = func() []game.TriggeredAbility {
 		return []game.TriggeredAbility{ward}
 	}
 }
+
+// facedownWardBody is "facedown/ward" (ADR 0041 P9, #1497, tier 4):
+// wardPayOrCounter's targetingItem/payer pair, read back off
+// item.Trigger.Event — the harvester's own record of the
+// EventBecomesTarget this trigger fired on — instead of a captured
+// closure. The mana cost is the state's own constant, never a card's.
+var facedownWardBody = game.SimpleDelayedBody("facedown/ward", func(g *game.Game, item *game.StackItem) error {
+	return wardPayOrCounter(g, item, item.Trigger.Event.StackItemID, item.Trigger.Event.Actor, WardMana(faceDownWardCost))
+})

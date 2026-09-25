@@ -1200,7 +1200,10 @@ type ContinuationCensus struct {
 	StackEffects int `json:"stackEffects,omitempty"`
 
 	// StackTargetSpecs is items whose CR 608.2b re-check clause is a
-	// closure and could not be re-derived from the catalog.
+	// closure and could not be re-derived from the catalog or, since
+	// ADR 0041 phase 3 tier 4 (#1497), from a registered body
+	// (ReflexiveBody). Retires when tier 4-1's AbilityRef makes a
+	// catalog ability's clause re-derivable the same way.
 	StackTargetSpecs int `json:"stackTargetSpecs,omitempty"`
 
 	// DelayedTriggerEffects is queued "at the beginning of the next
@@ -1789,7 +1792,8 @@ func snapshotStackItem(g *Game, s *StackItem, cen *ContinuationCensus) stackItem
 		Body:          s.Body,
 		Params:        effectParamsOrNil(s.Params),
 	}
-	// A KEYED item (a fired delayed trigger, ADR 0041 P2) is data:
+	// A KEYED item (a fired delayed trigger, ADR 0041 P2, or a CR
+	// 603.12 reflexive trigger, ADR 0041 P9 tier 4, #1497) is data:
 	// restore re-derives its Effect from Body. Only an item whose
 	// Effect is a bare closure still blocks the restore point.
 	if s.Effect != nil && s.Body == "" {
@@ -1798,17 +1802,22 @@ func snapshotStackItem(g *Game, s *StackItem, cen *ContinuationCensus) stackItem
 	}
 	// A SPELL's target spec was looked up from the catalog by oracle
 	// ID when it was cast, so the new binary can look it up again —
-	// no census entry. An ABILITY's spec came off the ability
-	// declaration, which is reached by an index the item does not
-	// record, so it cannot be recovered here.
-	if s.targetSpec != nil && !spellSpecRederivable(out) {
+	// no census entry. A KEYED item's clause — a reflexive trigger's
+	// — is re-derived from its Body's own registration
+	// (ReflexiveBody/reflexiveTargetSpecFor), same reason, so it is
+	// excluded here too. An unkeyed ABILITY's spec came off the
+	// ability declaration, which is reached by an index the item does
+	// not record, so it cannot be recovered here (tier 4-1's
+	// AbilityRef retires this counter for that case).
+	if s.targetSpec != nil && s.Body == "" && !spellSpecRederivable(out) {
 		cen.StackTargetSpecs++
 		cen.note("stack target spec: %s", labelOr(s.Label, string(s.Kind)))
 	}
 	// #764: an ABILITY's ModeSpec came off the ability declaration,
 	// reached by an index the item does not record, so it cannot be
-	// recovered here either. A spell's is looked up by oracle ID.
-	if s.modeSpec != nil && !spellSpecRederivable(out) {
+	// recovered here either. A spell's is looked up by oracle ID. No
+	// reflexive trigger declares modes.
+	if s.modeSpec != nil && s.Body == "" && !spellSpecRederivable(out) {
 		cen.StackTargetSpecs++
 		cen.note("stack mode spec: %s", labelOr(s.Label, string(s.Kind)))
 	}
@@ -2522,6 +2531,12 @@ func restoreStackItem(s *stackItemSnapshot) *StackItem {
 		// one function that applies both rewrites, in the order the
 		// announce path does.
 		out.targetSpec = castTargetSpecForItem(s.OracleID, out)
+	} else if s.HasTargetSpec && s.Body != "" {
+		// A CR 603.12 reflexive trigger (ADR 0041 P9, #1497, tier 4):
+		// the clause was declared alongside the body's registration
+		// (ReflexiveBody), keyed the same way, so it is re-derived from
+		// there rather than from a catalog row.
+		out.targetSpec = reflexiveTargetSpecFor(s.Body, s.SourceCardID, out.Params)
 	}
 	if s.HasModeSpec && s.Kind == StackItemSpell && s.OracleID != "" && CatalogModeSpec != nil {
 		out.modeSpec = CatalogModeSpec(s.OracleID)

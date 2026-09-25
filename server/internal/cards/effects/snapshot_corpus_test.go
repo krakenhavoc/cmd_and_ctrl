@@ -147,6 +147,11 @@ func corpusBoards() []corpusBoard {
 		// v7, added by ADR 0093 PR 4 (#1584) as a new file: duration
 		// grants — the grantAbilities mod on disk.
 		{"duration_grants", corpusDurationGrants},
+		// v7, added by tier 4-0 (#1497) as a new file: a CR 603.12
+		// reflexive trigger on the stack, its target already chosen —
+		// a keyed stack item whose clause is re-derived from its Body
+		// rather than carried as a captured closure.
+		{"reflexive_trigger", corpusReflexiveTrigger},
 	}
 }
 
@@ -579,6 +584,36 @@ func corpusDurationGrants(t *testing.T) *game.Game {
 	passPriorityAroundTable(t, g)
 	if len(g.ScopedEffects) != 2 {
 		t.Fatalf("setup: the two spells registered %d scoped effects, want 2", len(g.ScopedEffects))
+	}
+	return g
+}
+
+// corpusReflexiveTrigger is a real CR 603.12 reflexive trigger sitting
+// on the stack with its target already chosen (ADR 0041 P9, #1497,
+// tier 4): Undead Butler dies, its controller exiles it, and "when you
+// do" — the reflexive half — has picked the creature card to return
+// and is waiting to resolve. The file holds a keyed stack item whose
+// clause is re-derived from its Body ("undead-butler/return-to-hand")
+// rather than carried as a captured *TargetSpec.
+func corpusReflexiveTrigger(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	target := pushGraveyardPermanent(me, "Dead Fatty", "Creature — Bear", "{5}{B}")
+	butler := pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Undead Butler", TypeLine: "Creature — Zombie",
+		OracleID: b41UndeadButlerOracle, Power: 1, Toughness: 2,
+		Owner: me.ID, Controller: me.ID,
+	})
+	g.WithWriteLock(func() { _ = g.DestroyPermanentForEffect(butler) })
+	passPriorityAroundTable(t, g)
+	// "You may exile it" is the parent's optional prompt; the
+	// reflexive "when you do" that follows is mandatory.
+	answerLatestTriggerPrompt(t, g, me.ID, true)
+	passPriorityAroundTable(t, g)
+	b04WaitForPick(t, g, me.ID)
+	pickCard(t, g, me.ID, target)
+	if len(g.StackMeta) == 0 {
+		t.Fatal("setup: the reflexive trigger is not on the stack")
 	}
 	return g
 }

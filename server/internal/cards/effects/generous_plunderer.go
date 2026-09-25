@@ -76,9 +76,8 @@ func generousPlundererTreasure(g *game.Game, item *game.StackItem) error {
 		return err
 	}
 	return ReflexiveTrigger{
-		Label:   "Generous Plunderer — a tapped Treasure for target opponent",
-		Targets: TargetPlayer("target opponent", Opponent()),
-		Effect:  generousPlundererGift,
+		Label: "Generous Plunderer — a tapped Treasure for target opponent",
+		Body:  generousPlundererGiftBody,
 	}.Apply(ctx)
 }
 

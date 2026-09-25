@@ -382,10 +382,9 @@ func b29SacrificeChosenCreature(g *game.Game, item *game.StackItem) error {
 			return err
 		}
 		return ReflexiveTrigger{
-			Label:   "Ziatora, the Incinerator — damage equal to the sacrificed creature's power to any target, and three Treasures",
-			Targets: TargetAny(),
-			Cards:   []uuid.UUID{t.ID},
-			Effect:  b29ZiatoraFling,
+			Label: "Ziatora, the Incinerator — damage equal to the sacrificed creature's power to any target, and three Treasures",
+			Cards: []uuid.UUID{t.ID},
+			Body:  ziatoraFlingBody,
 		}.Apply(ctx)
 	}
 	return nil

@@ -160,6 +160,18 @@ var (
 	effectConditions = map[string]ConditionFunc{}
 	effectAliases    = map[string]string{}
 	effectKeyPattern = regexp.MustCompile(`^[a-z0-9]+(-[a-z0-9]+)*/[a-z0-9]+(-[a-z0-9]+)*$`)
+
+	// reflexiveTargetSpecs is ADR 0041 P9's answer for a CR 603.12
+	// reflexive trigger's target clause (#1497, tier 4): a reflexive
+	// trigger has no catalog row to re-derive it from at restore, so
+	// ReflexiveBody declares the clause beside the body, keyed the
+	// same way. The function is handed the reflexive trigger's source
+	// card's instance ID (Eden, Seat of the Sanctum's "another target
+	// permanent card" needs to exclude itself) and its Params (Teferi
+	// Akosa of Zhalfir's X, fixed when the trigger was created) — both
+	// already-carried, already-restorable facts, so nothing new has to
+	// be captured to build the clause again.
+	reflexiveTargetSpecs = map[string]func(sourceID uuid.UUID, p EffectParams) *TargetSpec{}
 )
 
 func checkEffectKey(kind, key string) {
@@ -198,6 +210,45 @@ func SimpleDelayedBody(key string, fn func(g *Game, item *StackItem) error) Body
 		panic(fmt.Sprintf("game: body %q has no function", key))
 	}
 	return DelayedBody(key, func(g *Game, item *StackItem, _ EffectParams) error { return fn(g, item) })
+}
+
+// ReflexiveBody registers a CR 603.12 reflexive trigger's body together
+// with its own target clause (ADR 0041 P9, #1497, tier 4). A reflexive
+// trigger is created ad hoc from a resolving effect rather than from a
+// catalog row, so there is nothing for restore to look the clause up
+// against — the registration is that row.
+//
+// targetsFrom is nil for an untargeted "when you do". Otherwise it is
+// called with the reflexive trigger's source card's instance ID and its
+// Params, both when the trigger is put on the stack and again when a
+// restored item re-derives its clause, so it must be a pure function of
+// those two values — exactly the constraint every other body already
+// keeps.
+func ReflexiveBody(key string, fn BodyFunc, targetsFrom func(sourceID uuid.UUID, p EffectParams) *TargetSpec) BodyRef {
+	ref := DelayedBody(key, fn)
+	if targetsFrom != nil {
+		effectRegistryMu.Lock()
+		reflexiveTargetSpecs[key] = targetsFrom
+		effectRegistryMu.Unlock()
+	}
+	return ref
+}
+
+// reflexiveTargetSpecFor re-derives a reflexive trigger's target clause
+// from its body key, for a live dispatch and for restore alike. Nil
+// when the key carries no clause (untargeted) or is not registered at
+// all — the same "unknown key" posture bodyEffect takes, since a
+// missing target clause here means the item goes on the stack with no
+// prompt rather than that the whole restore is refused; the body key
+// itself is what checkEffectKeys refuses.
+func reflexiveTargetSpecFor(key string, sourceID uuid.UUID, p EffectParams) *TargetSpec {
+	effectRegistryMu.RLock()
+	fn, ok := reflexiveTargetSpecs[resolveEffectAlias(key)]
+	effectRegistryMu.RUnlock()
+	if !ok || fn == nil {
+		return nil
+	}
+	return fn(sourceID, p)
 }
 
 // DelayedCondition registers an event condition.
