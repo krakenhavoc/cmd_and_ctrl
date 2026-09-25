@@ -110,8 +110,12 @@ Greenwarden of Murasa | 2facb1b3-4522-4610-a0ab-29ac53ca7fcd | 0
 Greenwarden of Murasa | 2facb1b3-4522-4610-a0ab-29ac53ca7fcd | 1
 Guild Artisan | aceac269-5100-428a-a4a3-bac57031e30b | 0
 Guiltfeeder | 0285bd20-f49e-48f7-8c8c-960f9fbe4d34 | 0
+History of Benalia | c15bb7eb-aaaa-4468-9641-8f706d6137e8 | 0
+History of Benalia | c15bb7eb-aaaa-4468-9641-8f706d6137e8 | 1
+History of Benalia | c15bb7eb-aaaa-4468-9641-8f706d6137e8 | 2
 Ignoble Hierarch | c8de43a3-ebd3-4000-b343-a6ffed11d34d | 0
 Jagged Barrens | 64ee02f1-afdb-474b-a893-31538ad7219a | 0
+Jungle Hollow | 6de714e1-446d-4fb9-9e3d-bcd3ec6af9ca | 0
 Manglehorn | b67db32b-30a9-49d2-b4c2-90a9f80c36eb | 0
 Mari, the Killing Quill | 5f1fdc23-9af0-41a1-aeba-7288f9642734 | 0
 Mari, the Killing Quill | 5f1fdc23-9af0-41a1-aeba-7288f9642734 | 1

@@ -23,18 +23,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // batches reach them rather than opening a second file for the same
 // card.
 //
-// Jungle Hollow is registered on its own below the table (ADR 0041
-// P9, #1497, tier 4 tail): its trigger declares Effect directly, and
-// the shared loop's Build — used by every other member of this cycle
-// — is left exactly as it was, so this file changes nothing about how
-// any card outside this one resolves. gainOneLifeOnEntry is a second
-// copy of that same tiny closure, not a shared rename, for the same
-// reason: nobody else may be repointed at it mid-migration.
-//
 // No simplification.
 func init() {
 	for _, land := range []struct{ oracleID, name, a, b string }{
 		{"d37f858e-03c8-4594-9b92-cd03699a1591", "Scoured Barrens", "W", "B"},
+		{"6de714e1-446d-4fb9-9e3d-bcd3ec6af9ca", "Jungle Hollow", "B", "G"},
 		{"64e29bfc-9313-4e8c-808c-bc27f6b018a6", "Bloodfell Caves", "B", "R"}, // batch 08 (#301)
 		// Roadmap batch 09 (#302) — six more of the ten; that is nine.
 		{"865a2194-fca0-446e-aae3-ca475cd66e00", "Dismal Backwater", "U", "B"},
@@ -69,23 +62,4 @@ func init() {
 			}},
 		})
 	}
-
-	Register(Spec{
-		OracleID:      "6de714e1-446d-4fb9-9e3d-bcd3ec6af9ca",
-		Name:          "Jungle Hollow",
-		Completeness:  CompletenessFull,
-		Replacements:  []game.ReplacementEffect{SelfEntersTapped()},
-		ManaAbilities: []ManaAbility{dualManaAbility("B", "G")},
-		Triggered: []game.TriggeredAbility{{
-			Watches:   []game.EventKind{game.EventETB},
-			AppliesTo: b06SelfETB,
-			Key:       "Jungle Hollow — you gain 1 life",
-			Effect:    gainOneLifeOnEntry,
-		}},
-	})
-}
-
-// gainOneLifeOnEntry is Jungle Hollow's declared Effect body.
-func gainOneLifeOnEntry(g *game.Game, item *game.StackItem) error {
-	return GainLife{Player: item.Controller, Amount: 1}.Apply(NewContext(g, item))
 }
