@@ -46,22 +46,22 @@ func init() {
 // forumFamiliarTurnedFaceUp is the CR 708.8 trigger, with its target
 // clause built per source so "another" can name the Familiar itself.
 func forumFamiliarTurnedFaceUp() game.TriggeredAbility {
-	t := WhenThisIsTurnedFaceUp("Forum Familiar — bounce a permanent you control", nil)
+	t := WhenThisIsTurnedFaceUp("Forum Familiar — bounce a permanent you control", forumFamiliarBounceEffect)
 	t.Targets = TargetPermanent("another target permanent you control", YouControl())
-	t.Build = func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-		self := source.InstanceID
-		return game.NewTriggeredItem(source, "Forum Familiar — bounce a permanent you control",
-			func(g *game.Game, item *game.StackItem) error {
-				if len(item.Targets) > 0 && item.Targets[0].ID != self {
-					if err := g.BounceToHandForEffect(item.Targets[0].ID); err != nil {
-						return err
-					}
-				}
-				// CR 608.2: the rest of the ability happens whether or
-				// not the target is still legal, and the counter is not
-				// conditional on the bounce.
-				return g.AddCounterForEffect(self, "+1/+1", 1)
-			})
-	}
 	return t
+}
+
+// forumFamiliarBounceEffect is the trigger's resolution: bounce the
+// chosen permanent (unless it is the Familiar itself, which the
+// target clause already excludes), then place the counter whether or
+// not the bounce happened (CR 608.2: not conditional on the target
+// still being legal).
+func forumFamiliarBounceEffect(g *game.Game, item *game.StackItem) error {
+	self := item.SourceCardID
+	if len(item.Targets) > 0 && item.Targets[0].ID != self {
+		if err := g.BounceToHandForEffect(item.Targets[0].ID); err != nil {
+			return err
+		}
+	}
+	return g.AddCounterForEffect(self, "+1/+1", 1)
 }

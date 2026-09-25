@@ -28,20 +28,18 @@ func init() {
 				return b17SourceDealtDamageToSelf(ev, source)
 			},
 			Targets: TargetPlayer("target opponent", Opponent()),
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Flumph — you and target opponent each draw a card",
-					func(g *game.Game, item *game.StackItem) error {
-						ctx := NewContext(g, item)
-						if err := (DrawCards{Player: item.Controller, N: 1}).Apply(ctx); err != nil {
-							return err
-						}
-						for _, t := range ctx.LegalTargets() {
-							if t.Kind == game.TargetPlayer {
-								return DrawCards{Player: t.ID, N: 1}.Apply(ctx)
-							}
-						}
-						return nil
-					})
+			Key:     "Flumph — you and target opponent each draw a card",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				ctx := NewContext(g, item)
+				if err := (DrawCards{Player: item.Controller, N: 1}).Apply(ctx); err != nil {
+					return err
+				}
+				for _, t := range ctx.LegalTargets() {
+					if t.Kind == game.TargetPlayer {
+						return DrawCards{Player: t.ID, N: 1}.Apply(ctx)
+					}
+				}
+				return nil
 			},
 		}},
 	})

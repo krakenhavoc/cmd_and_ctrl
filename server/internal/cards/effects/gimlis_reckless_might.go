@@ -64,28 +64,26 @@ func init() {
 					Distinct(TargetCreature("up to one target creature you don't control",
 						OpponentControls()).WithCount(0, 1)),
 				),
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Gimli's Reckless Might — the attacker fights a creature you don't control",
-						func(g *game.Game, item *game.StackItem) error {
-							ctx := NewContext(g, item)
-							// CR 603.4: the intervening if is re-checked as
-							// the ability resolves.
-							if b43TotalPowerControlled(g, item.Controller) < 8 {
-								return nil
-							}
-							mine, ok := ctx.ClauseTarget(0)
-							if !ok || mine.Kind != game.TargetCard {
-								return nil
-							}
-							theirs, ok := ctx.ClauseTarget(1)
-							if !ok || theirs.Kind != game.TargetCard {
-								// "Up to one" — declined, or gone. The
-								// fight does not happen and nothing else
-								// on the card does either.
-								return nil
-							}
-							return b10Fight(ctx, mine.ID, theirs.ID)
-						})
+				Key: "Gimli's Reckless Might — the attacker fights a creature you don't control",
+				Effect: func(g *game.Game, item *game.StackItem) error {
+					ctx := NewContext(g, item)
+					// CR 603.4: the intervening if is re-checked as
+					// the ability resolves.
+					if b43TotalPowerControlled(g, item.Controller) < 8 {
+						return nil
+					}
+					mine, ok := ctx.ClauseTarget(0)
+					if !ok || mine.Kind != game.TargetCard {
+						return nil
+					}
+					theirs, ok := ctx.ClauseTarget(1)
+					if !ok || theirs.Kind != game.TargetCard {
+						// "Up to one" — declined, or gone. The
+						// fight does not happen and nothing else
+						// on the card does either.
+						return nil
+					}
+					return b10Fight(ctx, mine.ID, theirs.ID)
 				},
 			}),
 		},

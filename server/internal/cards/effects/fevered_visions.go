@@ -43,23 +43,21 @@ func init() {
 			AppliesTo: func(ev game.Event, _ *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return ev.Kind == game.EventBeginEndStep
 			},
-			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				who := ev.Actor
-				return game.NewTriggeredItem(source, "Fevered Visions — that player draws, and takes 2 with four or more in hand",
-					func(g *game.Game, item *game.StackItem) error {
-						ctx := NewContext(g, item)
-						if err := (DrawCards{Player: who, N: 1}).Apply(ctx); err != nil {
-							return err
-						}
-						if who == item.Controller {
-							return nil
-						}
-						p := g.PlayerByIDForEffect(who)
-						if p == nil || len(p.Hand.Cards) < 4 {
-							return nil
-						}
-						return DealDamage{Source: item.SourceCardID, Target: who, Amount: 2}.Apply(ctx)
-					})
+			Key: "Fevered Visions — that player draws, and takes 2 with four or more in hand",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				who := item.Trigger.Event.Actor
+				ctx := NewContext(g, item)
+				if err := (DrawCards{Player: who, N: 1}).Apply(ctx); err != nil {
+					return err
+				}
+				if who == item.Controller {
+					return nil
+				}
+				p := g.PlayerByIDForEffect(who)
+				if p == nil || len(p.Hand.Cards) < 4 {
+					return nil
+				}
+				return DealDamage{Source: item.SourceCardID, Target: who, Amount: 2}.Apply(ctx)
 			},
 		}},
 	})

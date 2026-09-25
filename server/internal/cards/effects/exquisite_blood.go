@@ -25,12 +25,15 @@ func init() {
 				_, ok := b04OpponentLostLife(ev, source.Controller, g)
 				return ok
 			},
+			Key: "Exquisite Blood — you gain that much life",
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
 				amount, _ := b04OpponentLostLife(ev, source.Controller, g)
-				return game.NewTriggeredItem(source, "Exquisite Blood — you gain that much life",
-					func(g *game.Game, item *game.StackItem) error {
-						return GainLife{Player: item.Controller, Amount: amount}.Apply(NewContext(g, item))
-					})
+				item := game.NewTriggeredItem(source, "Exquisite Blood — you gain that much life", nil)
+				item.Params.Amount = amount
+				return item
+			},
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				return GainLife{Player: item.Controller, Amount: item.Params.Amount}.Apply(NewContext(g, item))
 			},
 		}},
 	})

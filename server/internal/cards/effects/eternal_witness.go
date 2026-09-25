@@ -23,10 +23,8 @@ func init() {
 				return ev.CardID == source.InstanceID
 			},
 			Targets: TargetCardInGraveyard("target card in your graveyard", YouOwn()),
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Eternal Witness — return target card to hand",
-					returnTargetCardToHand)
-			},
+			Key:     "Eternal Witness — return target card to hand",
+			Effect:  returnTargetCardToHand,
 			OptionalPrompt: &game.TriggerOptionalPrompt{
 				Question: "Eternal Witness — return a card from your graveyard?",
 			},

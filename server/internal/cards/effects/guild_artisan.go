@@ -42,15 +42,12 @@ func init() {
 				return b34CommanderCreatureYouOwnAttackedAPlayer(ev, source, g) &&
 					b34NoOpponentHasMoreLifeThan(g, source.Controller, ev.Target)
 			},
-			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				attacked := ev.Target
-				return game.NewTriggeredItem(source, "Guild Artisan — create two Treasures",
-					func(g *game.Game, item *game.StackItem) error {
-						if !b34NoOpponentHasMoreLifeThan(g, item.Controller, attacked) {
-							return nil
-						}
-						return CreateToken{Controller: item.Controller, Template: TreasureToken(), N: 2}.Apply(NewContext(g, item))
-					})
+			Key: "Guild Artisan — create two Treasures",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				if !b34NoOpponentHasMoreLifeThan(g, item.Controller, item.Trigger.Event.Target) {
+					return nil
+				}
+				return CreateToken{Controller: item.Controller, Template: TreasureToken(), N: 2}.Apply(NewContext(g, item))
 			},
 		}},
 	})
