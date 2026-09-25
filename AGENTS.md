@@ -95,7 +95,7 @@ cmd_and_ctrl/
     ├── bot.md           # AI bot seat — user-facing guide (S31)
     ├── engine-seams/closed/ # one fragment per closed seam; CI generates engine-seams.md's Closed list from them (#1461)
     ├── sprints.md       # sprint plan
-    └── decisions/       # ADRs (0001 WS library … 0093 granted abilities) — see §4 on numbering
+    └── decisions/       # ADRs (0001 WS library … 0095 deck coverage and requests) — see §4 on numbering
 ```
 
 When you create a new top-level directory, add it here.
