@@ -54,10 +54,14 @@ import (
 // re-checked after the declaration.
 
 // BlockScope picks the creatures a block rule binds, relative to the
-// permanent carrying the rule. `source` is nil for an until-end-of-turn
-// rule (game.TurnScopedBlockRules), whose effect has no permanent; the
-// scopes that read a source answer false for it, and the UntilEOT
-// constructors build their own scope from a snapshotted set instead.
+// permanent carrying the rule. It is read only by the CatalogBlockRules
+// constructors below, for a rule a permanent prints on itself; the
+// turn-scoped twin (CantBeBlockedThisTurnExceptBy) is a
+// cantBeBlockedExceptBy ScopedEffect record instead (ADR 0041 phase 3
+// tier 3b, #1497), pinned to its target directly rather than through a
+// scope — its source is the effect that created it, which may have
+// left the battlefield since (CR 611.2b), so its Pair reports no
+// source either.
 //
 // Reads only — it runs inside the engine's read-only block check.
 type BlockScope func(g *game.Game, c, source *game.Card) bool
@@ -257,101 +261,81 @@ func NoMoreThanNCanBlockEachCombat(n int) game.BlockRule {
 // every opponent may block with one creature, and one opponent's
 // block never uses up another's (#1534, ADR 0045 Decision 47).
 //
-// Registered on resolution into the turn-scoped registry, as
-// BlockRuleUntilEOT's rules are, but WITHOUT a snapshot: the line is
-// a rule about players, not a change to any creature's
+// Registered on resolution as a ScopeOpponentsCreatures ScopedEffect
+// record (ADR 0041 phase 3 tier 3b, #1497) — WITHOUT a snapshot: the
+// line is a rule about players, not a change to any creature's
 // characteristics, so CR 611.2c does not lock the affected set, and a
 // creature an opponent flashes in afterwards is bound too. "Each
 // opponent" is read at resolution against the ability's controller,
 // and the rule outlives Mirri (CR 611.2b).
 //
-// "This combat" rides the until-end-of-turn registry because the
+// "This combat" rides the until-end-of-turn duration because the
 // engine has no extra combats yet (#753): the turn's one combat is the
 // only one the rule can meet. When extra combats land, this must end
 // at the end of combat instead, or it binds the next one too.
 //
 // `label` is the whole clause the refusal sentence reads, card name
-// included, because a turn-scoped rule has no source permanent to
-// name.
+// included, because a ScopeOpponentsCreatures record has no source
+// permanent to name.
 type EachOpponentCantBlockWithMoreThanN struct {
 	N     int
 	Label string
 }
 
-// Apply registers the rule. Caller is inside the resolution frame
+// Apply registers the record. Caller is inside the resolution frame
 // (holds g.mu write).
 func (r EachOpponentCantBlockWithMoreThanN) Apply(ctx *Context) error {
 	if r.N <= 0 {
 		return nil
 	}
-	you, n := ctx.Controller(), r.N
-	ctx.Game.RegisterTurnScopedBlockRuleLocked(game.BlockRule{
-		Limit: func(_ *game.Game, blocker, _ *game.Card) int {
-			if blocker == nil || blocker.Controller == you {
-				return 0
-			}
-			return n
-		},
-		LimitPerDefender: true,
-		Label:            eotLabel(r.Label, "each opponent's blocks are limited this combat"),
-	})
+	ctx.Game.RegisterScopedRuleEffectForEffect(ctx.Source(), game.ScopeOpponentsCreatures, ctx.Controller(),
+		[]game.Mod{game.LimitBlockersPerDefenderMod(r.N)}, DurationUntilEndOfTurn(ctx),
+		eotLabel(r.Label, "each opponent's blocks are limited this combat"))
 	return nil
 }
 
 // --- until end of turn ------------------------------------------
 
-// BlockRuleUntilEOT registers a block rule for the rest of the turn —
-// "<this creature / target creature> can't be blocked this turn except
-// by creatures with haste" (Gingerbrute, Departed Deckhand's {3}{U}).
-// It goes into game.TurnScopedBlockRules, which the turn-end sweep
-// empties (ADR 0045 addendum, Decision 11).
+// CantBeBlockedThisTurnExceptBy registers a block rule for the rest of
+// the turn — "<this creature / target creature> can't be blocked this
+// turn except by creatures with haste" (Gingerbrute), "… except by
+// Spirits" (Departed Deckhand's {3}{U}). It is a cantBeBlockedExceptBy
+// ScopedEffect record (ADR 0041 phase 3 tier 3b, #1497), pinned to
+// Target at resolution (CR 611.2c) exactly as BoostUntilEOT's is: a
+// creature that enters later is not covered, and one that leaves and
+// returns is a new object (CR 400.7) and is not covered either.
 //
-// The affected set is snapshotted at resolution (CR 611.2c), exactly
-// as RestrictUntilEOT's is: a creature that enters later is not
-// covered, and one that leaves and returns is a new object (CR 400.7)
-// and is not covered either. `Rule` receives the scope for that set
-// and builds the rule from the ordinary constructors, so the
-// turn-scoped twin of every rule above is one line:
+// `Keywords` and `Subtypes` are each an any-of — a blocker matching
+// either is allowed — and `Text` is the allowed set as the card prints
+// it, which the refusal sentence reads:
 //
-//	BlockRuleUntilEOT{Target: id, Rule: func(s BlockScope) game.BlockRule {
-//	    return CantBeBlockedExceptBy(s, HasKeyword("haste"), "creatures with haste")
-//	}}
-//
-// A turn-scoped rule has no source permanent (the effect outlives the
-// ability that made it, CR 611.2b), so predicates inside it see no
-// caster: YouControl() matches nothing there. No printed turn-scoped
-// rule needs one.
-type BlockRuleUntilEOT struct {
-	// Target pins the rule to one permanent. Ignored when Match is set.
+//	CantBeBlockedThisTurnExceptBy{Target: id, Keywords: []string{"haste"}, Text: "creatures with haste"}
+//	CantBeBlockedThisTurnExceptBy{Target: id, Subtypes: []string{"Spirit"}, Text: "Spirits"}
+type CantBeBlockedThisTurnExceptBy struct {
+	// Target pins the rule to one permanent.
 	Target uuid.UUID
-	// Match selects the affected permanents, evaluated ONCE at
-	// resolution with the ability's controller as the caster.
-	Match CardPredicate
-	// Rule builds the rule for the snapshotted set.
-	Rule func(scope BlockScope) game.BlockRule
+	// Keywords is an any-of: a blocker with one of these is allowed.
+	Keywords []string
+	// Subtypes is an any-of: a blocker with one of these effective
+	// creature types is allowed (a changeling passes for any of them).
+	Subtypes []string
+	// Text is the allowed set as the card prints it — "creatures with
+	// haste", "Spirits" — read by the refusal sentence.
+	Text string
 	// Label names the effect in logs and the continuation census.
 	Label string
 }
 
-// Apply registers the rule. Caller is inside the resolution frame
+// Apply registers the record. Caller is inside the resolution frame
 // (holds g.mu write).
-func (r BlockRuleUntilEOT) Apply(ctx *Context) error {
-	if r.Rule == nil {
+func (r CantBeBlockedThisTurnExceptBy) Apply(ctx *Context) error {
+	if len(r.Keywords) == 0 && len(r.Subtypes) == 0 {
 		return nil
 	}
-	set := eotSnapshot(ctx, r.Target, r.Match)
-	if set == nil {
-		return nil
-	}
-	inSet := set.appliesTo()
-	rule := r.Rule(func(g *game.Game, c, _ *game.Card) bool { return inSet(c, g, nil) })
-	if rule.Label == "" {
-		// The continuation census notes a turn-scoped rule by its
-		// Label. A rule with a printed parameter keeps it, because
-		// the refusal sentence reads it too; one without (a count, a
-		// "can't be blocked while") is named after the effect.
-		rule.Label = eotLabel(r.Label, "block rule until end of turn")
-	}
-	ctx.Game.RegisterTurnScopedBlockRuleLocked(rule)
-	return nil
+	return ScopedEffectFor{
+		Target:   r.Target,
+		Mods:     []game.Mod{game.CantBeBlockedExceptByMod(r.Keywords, r.Subtypes, r.Text)},
+		Duration: DurationUntilEndOfTurn(ctx),
+		Label:    eotLabel(r.Label, "can't be blocked this turn except by "+r.Text),
+	}.Apply(ctx)
 }

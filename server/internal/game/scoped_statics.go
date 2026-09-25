@@ -17,20 +17,21 @@ package game
 // What is NOT here:
 //   - Layer 1 (copy) with a duration (Mirage Mirror, Cytoshape).
 //     The bucket exists (ADR 0043 §5) and nothing registers into it.
-//   - A separate registry for the REPLACEMENT twin. Since ADR 0041
-//     tier 3b a replacement a spell creates (Fog, a prevention shield,
-//     the Whip's redirect) is a ScopedEffect record too, with a
-//     replacement-reader mod the layer pass skips and the replacement
-//     gather reads (scoped_replacements.go). It is swept here with
-//     everything else.
+//   - A separate registry for the REPLACEMENT or BLOCK-RULE twins.
+//     Since ADR 0041 tier 3b a replacement a spell creates (Fog, a
+//     prevention shield, the Whip's redirect) and a block rule a spell
+//     or ability creates (Gingerbrute, Mirri, Weatherlight Duelist)
+//     are both ScopedEffect records too, with a non-layer mod the
+//     layer pass skips and the replacement gather or the block-rule
+//     walk reads (scoped_replacements.go, scoped_block_rules.go). Both
+//     are swept here with everything else.
 
 // ClearEndOfTurnScopedStaticsLocked is the CR 514.2 cleanup sweep:
 // "until end of turn" effects end during the cleanup step. Called
-// from `sweepTurnEndLocked` alongside the damage wipe, the
-// turn-scoped block-rule clear and the impulse-exile sweep — the
-// same "this turn is over" pass. It drops effects of every other
-// duration whose time has also run out, because it is the same
-// sweep.
+// from `sweepTurnEndLocked` alongside the damage wipe and the
+// impulse-exile sweep — the same "this turn is over" pass. It drops
+// effects of every other duration whose time has also run out, because
+// it is the same sweep.
 //
 // Caller must hold g.mu.
 func (g *Game) ClearEndOfTurnScopedStaticsLocked() {

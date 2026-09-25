@@ -94,11 +94,11 @@ func TestMirriLimitsEachOpponentToOneBlockerOnHerAttack(t *testing.T) {
 	if triggerOnStack(g, mirri) == nil {
 		t.Fatal("Mirri's attack trigger is not on the stack")
 	}
-	if n := len(g.TurnScopedBlockRules); n != 0 {
+	if n := scopedBlockRuleCount(g); n != 0 {
 		t.Fatalf("%d block rules before the trigger resolved", n)
 	}
 	passPriorityAroundTable(t, g)
-	if n := len(g.TurnScopedBlockRules); n != 1 {
+	if n := scopedBlockRuleCount(g); n != 1 {
 		t.Fatalf("%d block rules after the trigger resolved, want 1", n)
 	}
 	p2Late := b12Creature(g, p2.ID, "P2 Flashed-in Bear", "Creature — Bear", 2, 2)
@@ -146,7 +146,7 @@ func TestMirriBlockLimitEndsWithHerTurn(t *testing.T) {
 	mirri := pushMirri(g, me.ID)
 	declareAttack(t, g, p1.ID, mirri)
 	passPriorityAroundTable(t, g)
-	if len(g.TurnScopedBlockRules) != 1 {
+	if scopedBlockRuleCount(g) != 1 {
 		t.Fatal("Mirri's trigger registered no rule")
 	}
 
@@ -155,7 +155,7 @@ func TestMirriBlockLimitEndsWithHerTurn(t *testing.T) {
 	a := b12Creature(g, p2.ID, "Bear A", "Creature — Bear", 2, 2)
 	b := b12Creature(g, p2.ID, "Bear B", "Creature — Bear", 2, 2)
 	advanceToMainOf(t, g, 1)
-	if len(g.TurnScopedBlockRules) != 0 {
+	if scopedBlockRuleCount(g) != 0 {
 		t.Fatal("Mirri's rule outlived her turn")
 	}
 	advanceTo(t, g, game.StepDeclareAttackers)

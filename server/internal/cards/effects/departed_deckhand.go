@@ -33,10 +33,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // a rule about the pair, parameterised by a predicate on the BLOCKER.
 // The Deckhand's own is a Spec.BlockRules entry on itself. The {3}{U}
 // grants the same rule to ANOTHER creature until end of turn, which a
-// permanent's static cannot say, so it registers a turn-scoped rule
-// (BlockRuleUntilEOT) pinned to the target at resolution (CR 611.2c):
-// it survives the Deckhand leaving (CR 611.2b), and a target that
-// leaves and returns is a new object and loses it.
+// permanent's static cannot say, so it registers a cantBeBlockedExceptBy
+// ScopedEffect record (CantBeBlockedThisTurnExceptBy, ADR 0041 phase 3
+// tier 3b, #1497) pinned to the target at resolution (CR 611.2c): it
+// survives the Deckhand leaving (CR 611.2b), and a target that leaves
+// and returns is a new object and loses it.
 //
 // "Spirits" is an EFFECTIVE creature type, so a changeling can block.
 // "Another" excludes the Deckhand by name, as every other "another
@@ -68,12 +69,11 @@ func init() {
 					if t.Kind != game.TargetCard {
 						continue
 					}
-					return BlockRuleUntilEOT{
-						Target: t.ID,
-						Rule: func(scope BlockScope) game.BlockRule {
-							return CantBeBlockedExceptBy(scope, OfCreatureType("Spirit"), "Spirits")
-						},
-						Label: "Departed Deckhand — can't be blocked except by Spirits",
+					return CantBeBlockedThisTurnExceptBy{
+						Target:   t.ID,
+						Subtypes: []string{"Spirit"},
+						Text:     "Spirits",
+						Label:    "Departed Deckhand — can't be blocked except by Spirits",
 					}.Apply(ctx)
 				}
 				return nil
