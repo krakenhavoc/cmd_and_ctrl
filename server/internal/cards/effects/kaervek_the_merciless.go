@@ -42,12 +42,7 @@ func init() {
 				item.Params.Amount = amount
 				return item
 			},
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				if len(item.Targets) == 0 {
-					return nil
-				}
-				return DealDamage{Source: item.SourceCardID, Target: item.Targets[0].ID, Amount: item.Params.Amount}.Apply(NewContext(g, item))
-			},
+			Effect: DealAmountFromParamsToFirstTarget,
 		}},
 	})
 }
