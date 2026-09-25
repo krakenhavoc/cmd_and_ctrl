@@ -45,7 +45,7 @@ func init() {
 					return g.ChangePlayerLifeForEffect(item.SourceCardID, defender, -2)
 				},
 			},
-			WhenAttacksAndIsNotBlocked("Eternal of Harsh Truths — draw a card", func(g *game.Game, item *game.StackItem, _ uuid.UUID) error {
+			WhenAttacksAndIsNotBlockedEffect("Eternal of Harsh Truths — draw a card", func(g *game.Game, item *game.StackItem, _ uuid.UUID) error {
 				return g.DrawNForEffect(item.Controller, 1)
 			}),
 		},

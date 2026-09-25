@@ -55,9 +55,8 @@ func ChapterTrigger(n int, label string, effect func(g *game.Game, item *game.St
 		AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 			return ev.CardID == source.InstanceID && ev.Amount == n
 		},
-		Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-			return game.NewTriggeredItem(source, label, effect)
-		},
+		Key:    label,
+		Effect: effect,
 	}
 }
 

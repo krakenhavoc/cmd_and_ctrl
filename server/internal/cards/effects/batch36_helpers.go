@@ -395,15 +395,8 @@ func b36DesertDual(oracleID, name, a, b string) Spec {
 			Watches:   []game.EventKind{game.EventETB},
 			AppliesTo: b06SelfETB,
 			Targets:   TargetPlayer("target opponent", Opponent()),
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, name+" — 1 damage to target opponent",
-					func(g *game.Game, item *game.StackItem) error {
-						if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetPlayer {
-							return nil
-						}
-						return DealDamage{Source: item.SourceCardID, Target: item.Targets[0].ID, Amount: 1}.Apply(NewContext(g, item))
-					})
-			},
+			Key:       name + " — 1 damage to target opponent",
+			Effect:    b36DesertDualDamage,
 		}},
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},
@@ -411,4 +404,14 @@ func b36DesertDual(oracleID, name, a, b string) Spec {
 			Label:    "Add {" + a + "} or {" + b + "}",
 		}},
 	}
+}
+
+// b36DesertDualDamage is the desert dual's ETB: 1 damage to the
+// chosen target opponent, dealt by the land itself (item.SourceCardID),
+// read off item.Targets rather than a captured value (ADR 0041 P9).
+func b36DesertDualDamage(g *game.Game, item *game.StackItem) error {
+	if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetPlayer {
+		return nil
+	}
+	return DealDamage{Source: item.SourceCardID, Target: item.Targets[0].ID, Amount: 1}.Apply(NewContext(g, item))
 }

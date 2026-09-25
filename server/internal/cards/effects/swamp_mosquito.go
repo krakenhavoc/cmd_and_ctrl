@@ -14,7 +14,7 @@ import (
 //
 // A proof card for #1279. "Attacks and isn't blocked" (CR 509.3) fires
 // off the defending player's COMPLETED block declaration
-// (EventBlockersDeclared, WhenAttacksAndIsNotBlocked); before the
+// (EventBlockersDeclared, WhenAttacksAndIsNotBlockedEffect); before the
 // declaration had a completion point there was no moment to fire on,
 // because "not blocked" and "not asked yet" were the same empty
 // record. The counter is placed by the trigger's controller through
@@ -28,7 +28,7 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{
-			WhenAttacksAndIsNotBlocked("Swamp Mosquito — defending player gets a poison counter", defendingPlayerGetsAPoisonCounter),
+			WhenAttacksAndIsNotBlockedEffect("Swamp Mosquito — defending player gets a poison counter", defendingPlayerGetsAPoisonCounter),
 		},
 	})
 }
