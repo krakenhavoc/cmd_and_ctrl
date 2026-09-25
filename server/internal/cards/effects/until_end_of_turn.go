@@ -93,18 +93,6 @@ func eotSnapshot(ctx *Context, target uuid.UUID, match CardPredicate) eotAffecte
 	return out
 }
 
-// appliesTo builds a closure predicate for a snapshotted set. Captures
-// only the map — no pointers into game state. Only the turn-scoped
-// block rules (BlockRuleUntilEOT, tier 3b of ADR 0041 phase 3) still
-// need one; every continuous effect pins the set as data instead
-// (affectedObjects, scoped_effect.go).
-func (s eotAffected) appliesTo() func(*game.Card, *game.Game, *game.Card) bool {
-	return func(target *game.Card, _ *game.Game, _ *game.Card) bool {
-		stamp, ok := s[target.InstanceID]
-		return ok && target.EnteredBattlefieldAt == stamp
-	}
-}
-
 // BoostUntilEOT is "target creature gets +X/+Y until end of turn"
 // (Giant Growth) or "creatures you control get +X/+Y until end of
 // turn" (Overrun). Layer 7c — it MODIFIES power and toughness, so

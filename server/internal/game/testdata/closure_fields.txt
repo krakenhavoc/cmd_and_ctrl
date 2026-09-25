@@ -56,9 +56,6 @@ ActivatedAbilityShape.Effect                 census:IntrinsicAbilityCards       
 ActivatedAbilityShape.Modes                  census:IntrinsicAbilityCards       # Game.simultaneousExit.ActivatedAbilities.Modes
 ActivatedAbilityShape.Targets                census:IntrinsicAbilityCards       # Game.simultaneousExit.ActivatedAbilities.Targets
 AnnouncedClause.Clause                       census:ChoiceResumeFrames          # Game.PendingChoices.pickTargetResume.steps.Clause
-BlockRule.Count                              census:TurnScopedBlockRules        # Game.TurnScopedBlockRules.Count
-BlockRule.Limit                              census:TurnScopedBlockRules        # Game.TurnScopedBlockRules.Limit
-BlockRule.Pair                               census:TurnScopedBlockRules        # Game.TurnScopedBlockRules.Pair
 Card.ActivatedAbilities                      census:IntrinsicAbilityCards       # Game.simultaneousExit.ActivatedAbilities
 Card.ManaAbilities                           census:IntrinsicAbilityCards       # Game.simultaneousExit.ManaAbilities
 CoinFlipSpec.Then                            census:ChoiceResumeFrames          # Game.PendingChoices.coinFlipResume.spec.Then
@@ -81,7 +78,6 @@ Game.PhasedOut                               census:IntrinsicAbilityCards       
 Game.Seats                                   census:IntrinsicAbilityCards       # Game.Seats
 Game.Stack                                   census:IntrinsicAbilityCards       # Game.Stack
 Game.StackMeta                               census:StackEffects                # Game.StackMeta
-Game.TurnScopedBlockRules                    census:TurnScopedBlockRules        # Game.TurnScopedBlockRules
 Game.enteringTokens                          census:ChoiceResumeFrames          # Game.enteringTokens
 Game.lastKnownStack                          census:StackEffects                # Game.lastKnownStack
 Game.logProjection                           rebuilt                            # Game.logProjection

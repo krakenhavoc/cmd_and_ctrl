@@ -39,7 +39,9 @@ package game
 // Every "this turn" registry sweeps here. ADR 0057's granted "can't
 // lose / can't win this turn" gates ride Player.Statics (its
 // 2026-09-24 amendment) and end in ClearEndOfTurnScopedStaticsLocked
-// below; ADR 0045's TurnScopedBlockRules have their own line.
+// below, which is also where ADR 0045's until-end-of-turn block rules
+// end since ADR 0041 phase 3 tier 3b (#1497) made them ScopedEffect
+// records too.
 //
 // Idempotent: CR 514.3a's second cleanup step runs it again (#661),
 // and a player leaving during a discard pause runs it once more.
@@ -80,17 +82,14 @@ func (g *Game) sweepTurnEndLocked() {
 	// destruction nobody paid for.
 	g.clearRegenerationShieldsLocked()
 	// S17 sub-PR 5's "until end of turn" REPLACEMENT effects (Fog's
-	// prevent-all-combat-damage, a prevention shield) are ScopedEffect
-	// records since ADR 0041 tier 3b, and end in the duration sweep
-	// below with every other continuous effect a spell created.
-	// #750, ADR 0045 addendum Decision 11: until-end-of-turn BLOCK
-	// rules ("this creature can't block this turn") end here for the
-	// same reason and by the same rule. The registry is emptied
-	// wholesale — it holds nothing that outlasts a turn — and it sits
-	// beside the replacement sweep rather than in the layer duration
-	// sweep below because a block rule is not a continuous effect the
-	// layers apply; it is a question asked when a block is declared.
-	g.ClearTurnScopedBlockRulesLocked()
+	// prevent-all-combat-damage, a prevention shield) and #750's
+	// until-end-of-turn BLOCK rules ("this creature can't block this
+	// turn") are both ScopedEffect records since ADR 0041 tier 3b
+	// (#1497, ADR 0045 addendum Decision 11 for the block rules), and
+	// end in the duration sweep below with every other continuous
+	// effect a spell created — a block rule is not something the layers
+	// apply, but it is swept on the same schedule, because its record
+	// carries the same Duration.
 	// S32: "until end of turn" CONTINUOUS effects (Giant Growth's
 	// +3/+3, Overrun's trample grant) expire here for the same reason
 	// and by the same rule — CR 514.2 ends them during the cleanup

@@ -2068,3 +2068,120 @@ differ or P8 left it open. Everything else is as P8 says.
   `mending_hands_partial.json`, `whip_redirect.json` and
   `cosmic_intervention.json`. No existing fixture changed. `v7.txt` records
   `mods[].amount`, `.combatOnly`, `.then` and `seq`.
+
+### Implementation notes (tier 3b-2)
+
+What the block-rule half of tier 3b settled where the code and P8
+differ, or P8 left it open. Everything else is as P8 says. This slice
+depends on 3b-1's reader field, `Mod.Amount` and the `seq` machinery,
+and rebases onto it.
+
+- **The two kinds are declared, and nothing else new in the reader
+  system.** `cantBeBlockedExceptBy` and `limitBlockersPerDefender`
+  carry `reader: readerBlockRule`, a THIRD `modReader` alongside
+  `readerLayer` and `readerReplacement` (P8 speaks of "the layer pass,
+  or the replacement gather" as if there were only two readers; a
+  block rule is its own kind of non-layer reader, not a variety of
+  replacement). The layer adapter skips both, exactly as it skips the
+  replacement kinds.
+- **No `*ForEffect` writer functions, and no validation gap either.**
+  Unlike the four replacement kinds (which each got a dedicated
+  `*ForEffect` function because they have engine-decided semantics —
+  the shield's minimum charge, the delayed-trigger body check), the
+  two block-rule kinds are plain layer-mod-style constructors,
+  `CantBeBlockedExceptByMod` and `LimitBlockersPerDefenderMod`
+  (`game/scoped_block_rules.go`), registered through the EXISTING
+  `RegisterScopedEffectForEffect` / `RegisterScopedRuleEffectForEffect`
+  entry points — the same ones `AddAttackRequirementMod` (#1571) uses.
+  Validation still happens once, centrally: `blockRuleModProblem`
+  mirrors `replacementModProblem` and is called from
+  `appendScopedEffectLocked` alongside it, so a bad parameter panics at
+  registration whichever entry point reached it.
+- **The block-rule closures are rebuilt fresh on every walk and never
+  read back by Seq.** P8's language ("rebuilt from the record by the
+  running binary" — the same status the replacement gather has)
+  reads as implying the replacement kinds' by-Seq indirection carries
+  over. It does not, and the reason is a real difference between the
+  two consumers rather than an oversight: a replacement effect's
+  closures can be handed to a CR 616 ordering prompt and called again
+  after the registry has shrunk underneath them (a sweep, a spent
+  shield), so `scopedReplacementEffect` reads the record back by `Seq`
+  at call time. A block declaration never pauses on a prompt — the
+  whole check (`blockRuleRefusalLocked`, `blockerBoundsLocked`,
+  `blockLimitRefusalLocked`) runs synchronously inside one locked call,
+  and the `BlockRule` values `forEachScopedBlockRuleLocked` hands to it
+  are used and discarded before that call returns. So
+  `blockRuleFromScopedMod` captures `ScopedEffect` and `Mod` BY VALUE
+  (both are immutable once registered) instead of closing over `(seq,
+  mod, kind)` and re-reading the registry. Every such record still
+  takes a `Seq`, because `appendScopedEffectLocked` stamps one on any
+  non-layer mod regardless of reader — nothing here reads it back, and
+  nothing needs to.
+- **`forEachScopedBlockRuleLocked` fully replaces
+  `forEachTurnScopedBlockRuleLocked`,** rather than sitting beside it
+  as a third walk. `blockRuleRefusalLocked`, `blockerBoundsLocked` and
+  `blockLimitRefusalLocked` each call `forEachBlockRuleLocked` (the
+  battlefield walk, unchanged) and then the new walk in its place —
+  same two-step order P8's "walked after the battlefield" preserves.
+  `CatalogBlockRules` (a permanent's own printed rule) is untouched by
+  this tier; only the until-end-of-turn twin moved.
+- **The engine owns the "allowed" predicate.**
+  `blockRuleAllowedPredicate(keywords, subtypes)` mirrors
+  `effects.HasKeyword` / `effects.OfCreatureType` (`cards/effects/targets.go`)
+  exactly — a keyword any-of via `game.HasKeyword`, a subtype any-of
+  via `Card.HasSubtype` guarded by `IsCreature()` — so a changeling
+  still passes for a named subtype and a granted keyword still counts.
+  Duplicating the predicate rather than sharing code with
+  `cards/effects` is deliberate: `internal/game` cannot import
+  `cards/effects` (the dependency runs the other way), and the two
+  copies are held in step by the integration tests (Gingerbrute's
+  haste, Departed Deckhand's Spirits and changeling case), not by a
+  shared function.
+- **`BlockRuleUntilEOT`'s generality is retired along with the
+  struct.** P8 gives the retired shape as `CantBeBlockedThisTurnExceptBy{Target,
+  Keywords, Subtypes, Text}` — four fields, no `Match` predicate and no
+  `Rule func(scope) game.BlockRule` closure. The old struct's `Match`
+  field and arbitrary `Rule` closure had exactly zero production
+  callers (only `Target` was ever used, by Gingerbrute and Departed
+  Deckhand), so nothing is lost: the new struct is `ScopedEffectFor`
+  under the hood, reusing the existing Target/Match → snapshot →
+  `RegisterScopedEffectForEffect` pipeline `BoostUntilEOT` and
+  `GrantKeywordUntilEOT` already share, rather than inventing a second
+  one. `eotAffected.appliesTo()`, which existed only for
+  `BlockRuleUntilEOT`'s old closure-based `Rule`, is deleted as dead
+  code — every continuous effect (layer, replacement or block-rule
+  mod) now pins its affected set as data, with no closure predicate
+  left in the tier 3b family.
+- **`EachOpponentCantBlockWithMoreThanN.Apply` drops straight to
+  `RegisterScopedRuleEffectForEffect`** with `game.ScopeOpponentsCreatures`
+  and a `LimitBlockersPerDefenderMod`, the same shape
+  `OpponentsCreaturesAttackIfAble` (#1571) already uses for its own
+  `ScopeOpponentsCreatures` record. No new card-facing wrapper type was
+  needed for this one.
+- **Ratchet (P11).** `Game.TurnScopedBlockRules` and its three
+  `BlockRule.{Pair,Count,Limit}` lines are DELETED outright, not moved.
+  P11's worked example ("No other route reaches `BlockRule`, so its
+  ceiling is deleted") holds exactly: unlike the replacement kinds'
+  `ReplacementEffect`, `CopySelector` and `EntryHandReveal` types (each
+  also reachable through a paused CR 616 prompt's resume frame, so
+  their lines migrated to `census:ChoiceResumeFrames` when the turn-scoped
+  registry that set their class went away), nothing else in the tree
+  holds a `BlockRule` value across an action boundary — a block
+  declaration has no resume frame to fall back to. All four lines
+  (`BlockRule.Count`, `BlockRule.Limit`, `BlockRule.Pair`,
+  `Game.TurnScopedBlockRules`) are removed from
+  `testdata/closure_fields.txt`, and `census:TurnScopedBlockRules` is
+  deleted from `closureClassCeilings` rather than lowered to 0 (a
+  ceiling of 0 and no entry are equivalent to the ratchet test, but the
+  ADR's own worked example says "deleted", so the code follows it).
+  `TurnScopedBlockRules` joins `retiredCensusCounters`.
+  `ContinuationCensus.TurnScopedBlockRules` keeps its field so an old
+  census still decodes.
+- **Fixtures.** Two new files are written into `v7/`: `gingerbrute.json`
+  (a real `{1}` activation: one `cantBeBlockedExceptBy` record with
+  `Keywords: ["haste"]`, pinned to the Gingerbrute object) and
+  `mirri_limit.json` (a real attack trigger: one
+  `limitBlockersPerDefender` record, `Scope: "opponentsCreatures"`).
+  No existing fixture changed. `v7.txt` records the one new field,
+  `mods[].text`; `Mod.Keywords` and `Mod.Subtypes` and `Duration`
+  already had shape entries from tier 3a and 3b-1.
