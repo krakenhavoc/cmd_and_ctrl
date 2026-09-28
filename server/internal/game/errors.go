@@ -187,6 +187,11 @@ var (
 	// printed cost instead would be strictly better than the card.
 	// Added in S29.
 	ErrCastCostRequired = errors.New("game: casting from that zone requires its alternative cost")
+	// ErrAltCostNotGranted: the claimed alternative cost is one only a
+	// permission opens (AlternativeCost.RequiresGrant) and no live one
+	// names this card — a miracle cost claimed for a card whose miracle
+	// trigger has not resolved (CR 702.94a, #1665).
+	ErrAltCostNotGranted = errors.New("game: that alternative cost is not open to this card right now")
 
 	// ErrNoManaCost is returned by cast_spell when a non-land card
 	// with no mana cost (Ancestral Vision, Living End) is cast by

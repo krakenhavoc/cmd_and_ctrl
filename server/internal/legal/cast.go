@@ -324,6 +324,12 @@ func (e *enumerator) castMovesForCard(card game.Card, from string, kind game.Zon
 	if offer != nil && offer.FaceDown != nil {
 		card.SetFaceDown(offer.FaceDown.Kind)
 	}
+	// #1665: a HAND permission (miracle) applies to the one offer it
+	// opens and to nothing else — the same narrowing CastSpell makes
+	// once the claim is known, so the miracle cast is offered at
+	// instant speed and the printed cast only where a sorcery could be
+	// cast. A no-op for every other zone. See game.CastPermission.ForClaim.
+	perm = perm.ForClaim(offer)
 	// Timing (CR 307.1 / 702.8), #1195: THE engine's own read, the
 	// same one CastSpell calls and the view stamps `castable_here`
 	// from — so a bot is never offered a cast the engine will refuse

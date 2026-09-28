@@ -58,10 +58,14 @@ var defaultTriggerZones = []ZoneKind{ZoneBattlefield}
 // supportedTriggerZones is the set of non-battlefield zones the
 // harvest walks. Graveyard and exile are the three keyword families
 // #925 was opened for (cycling-this-card, suspend, graveyard
-// recursion); the hand and the library have no card asking yet, and
-// a zone nothing walks would be a declaration the engine silently
+// recursion). The hand joined with miracle (#1665, CR 702.94a: "you
+// may reveal this card from your hand as you draw it"), which is the
+// only ability that watches from there — and the index keeps the walk
+// to the events it declares, so a hand is walked for EventDrawCard
+// and for nothing else. The library has no card asking yet, and a
+// zone nothing walks would be a declaration the engine silently
 // ignored. `effects.Register` refuses the rest at boot.
-var supportedTriggerZones = []ZoneKind{ZoneGraveyard, ZoneExile}
+var supportedTriggerZones = []ZoneKind{ZoneGraveyard, ZoneExile, ZoneHand}
 
 // TriggerZones is the zones a triggered ability watches from. Never
 // empty.
@@ -95,14 +99,14 @@ func TriggerWatchesFromZone(t TriggeredAbility, zone ZoneKind) bool {
 // leave a card with a trigger nothing ever walks.
 func TriggerZoneUnsupported(zone ZoneKind) string {
 	switch zone {
-	case ZoneGraveyard, ZoneExile:
+	case ZoneGraveyard, ZoneExile, ZoneHand:
 		return ""
 	case ZoneBattlefield:
 		return "the battlefield is what an empty Zones means — declare nothing"
 	case ZoneStack:
 		return "a trigger on a spell on the stack is TriggeredAbility.FromStack (cascade, CR 702.85a)"
 	default:
-		return "only the graveyard and exile are walked (#925); add the zone to supportedTriggerZones with the card that needs it"
+		return "only the graveyard, exile and the hand are walked (#925, #1665); add the zone to supportedTriggerZones with the card that needs it"
 	}
 }
 

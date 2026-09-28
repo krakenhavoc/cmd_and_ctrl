@@ -308,6 +308,13 @@ func (g *Game) validateCastPathLocked(card Card, srcKind ZoneKind, alt *Alternat
 	if alt != nil && alt.FromZone != "" && alt.FromZone != srcKind {
 		return ErrCastZoneNotAllowed
 	}
+	// #1665, miracle: an offer that needs a permission to be claimed
+	// is claimable only under a live one that names its key. Asked of
+	// the grant BEFORE any ForClaim narrowing, because this is the
+	// question the grant exists to answer.
+	if alt != nil && alt.RequiresGrant && (grant == nil || grant.AltCostKey != alt.Key) {
+		return ErrAltCostNotGranted
+	}
 	switch srcKind {
 	case ZoneHand, ZoneCommand:
 		return nil

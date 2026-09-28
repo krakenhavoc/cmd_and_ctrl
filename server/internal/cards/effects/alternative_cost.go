@@ -117,6 +117,34 @@ func Flashback(cost string) game.AlternativeCost {
 	}
 }
 
+// Miracle is "Miracle {cost} (You may cast this card for its miracle
+// cost when you draw it if it's the first card you drew this turn.)"
+// — CR 702.94, #1665.
+//
+// The PRICE half of the keyword, bundled with the one flag that makes
+// it miracle's rather than evoke's: RequiresGrant. The offer is
+// claimable only while the miracle trigger's permission names this
+// card object, so a Terminus in a hand is never castable for {W}
+// until it has been revealed as the first card drawn in a turn.
+//
+// The TRIGGER half is grown by buildDef from this declaration (the
+// same arrangement madness and suspend use), so a card file writes
+// one line and cannot forget the other half:
+//
+//	AlternativeCosts: []game.AlternativeCost{Miracle("{W}")},
+//
+// Bound to the hand — the only zone a card is drawn into — so a
+// commander in the command zone cannot claim it either.
+func Miracle(cost string) game.AlternativeCost {
+	return game.AlternativeCost{
+		Key:           game.AltCostKeyMiracle,
+		Label:         "Miracle " + cost,
+		ManaCost:      cost,
+		FromZone:      game.ZoneHand,
+		RequiresGrant: true,
+	}
+}
+
 // Escape is "Escape—{cost}, Exile N other cards from your graveyard.
 // (You may cast this card from your graveyard for its escape cost.)"
 // — CR 702.138.

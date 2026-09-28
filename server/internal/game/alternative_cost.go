@@ -254,6 +254,20 @@ type AlternativeCost struct {
 	// It carries the price of turning the permanent back up as well,
 	// and that is deliberate — see FaceDownCast.
 	FaceDown *FaceDownCast
+
+	// RequiresGrant makes this printed offer claimable only while a
+	// live CastPermission for the card OBJECT carries the same Key —
+	// miracle's "when you reveal this card this way, you may cast it
+	// by paying [cost]" (CR 702.94a, #1665). The offer is the PRICE;
+	// the permission the miracle trigger's resolution grants is the
+	// RIGHT to pay it, and without it a Terminus in a hand is not
+	// castable for {W}.
+	//
+	// Checked by validateCastPathLocked, which CastSpell and
+	// CastOffersForLocked (the view's stamp and the bot's offer list)
+	// both call, so an offer this gates is neither shown, enumerated
+	// nor accepted. See miracle.go.
+	RequiresGrant bool
 }
 
 // cardComponent returns the card-shaped half of this cost: the spec

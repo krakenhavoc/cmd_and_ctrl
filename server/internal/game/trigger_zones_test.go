@@ -261,7 +261,7 @@ func TestTriggerZoneUnsupportedNamesTheAlternative(t *testing.T) {
 			t.Errorf("TriggerZoneUnsupported(%s) = %q, want it supported", zone, why)
 		}
 	}
-	for _, zone := range []ZoneKind{ZoneBattlefield, ZoneStack, ZoneHand, ZoneLibrary, ZoneCommand} {
+	for _, zone := range []ZoneKind{ZoneBattlefield, ZoneStack, ZoneLibrary, ZoneCommand} {
 		if TriggerZoneUnsupported(zone) == "" {
 			t.Errorf("TriggerZoneUnsupported(%s) = \"\", want a reason", zone)
 		}
