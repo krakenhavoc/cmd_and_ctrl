@@ -44,6 +44,13 @@ import (
 //     Grappling Hook, Turntimber Basilisk; #1684) — a requirement on
 //     the would-be BLOCKER that names one attacking OBJECT (instance
 //     and epoch, CR 400.7), obeyed only by blocking that attacker.
+//   - "it blocks each attacking creature this turn if able" (Blaze of
+//     Glory; #1715) — on the would-be BLOCKER, and it is one
+//     requirement per ATTACKER it could block, obeyed by blocking that
+//     attacker: Lure said from the blocker's side. With a capacity to
+//     match (Blaze gives "any number" in the same breath) the most it
+//     can obey is every attacker it can legally block; with less, the
+//     search fills what capacity it has.
 //
 // A Lure may be narrowed to some blockers — "All Walls able to block
 // this creature do so" (Marble Priest), "All creatures with flying …"
@@ -112,13 +119,20 @@ const (
 	// that object obeys it: blocking anything else obeys nothing, and a
 	// new object the attacker's card has become is not it (CR 400.7).
 	BlockRequirementBlocksAttacker BlockRequirementKind = "blocksAttacker"
+	// BlockRequirementBlocksEach is "it blocks each attacking creature
+	// this turn if able" (Blaze of Glory; #1715), on the creature that
+	// must block. One requirement per attacker its controller defends
+	// against, each obeyed only by blocking THAT attacker — so a
+	// creature that can block two of three attackers obeys two and
+	// disobeys one, and the declaration must still obey two.
+	BlockRequirementBlocksEach BlockRequirementKind = "blocksEach"
 )
 
 // KnownBlockRequirementKind reports whether this binary can interpret k.
 func KnownBlockRequirementKind(k BlockRequirementKind) bool {
 	switch k {
 	case BlockRequirementBlocks, BlockRequirementLure, BlockRequirementMustBeBlocked, BlockRequirementExactlyOne,
-		BlockRequirementBlocksAttacker:
+		BlockRequirementBlocksAttacker, BlockRequirementBlocksEach:
 		return true
 	}
 	return false
@@ -127,7 +141,7 @@ func KnownBlockRequirementKind(k BlockRequirementKind) bool {
 // blockerSideRequirement reports whether a requirement of kind k sits
 // on the creature that must block (as opposed to on the attacker).
 func blockerSideRequirement(k BlockRequirementKind) bool {
-	return k == BlockRequirementBlocks || k == BlockRequirementBlocksAttacker
+	return k == BlockRequirementBlocks || k == BlockRequirementBlocksAttacker || k == BlockRequirementBlocksEach
 }
 
 // Blocker filter keys (#1684): the registered narrowings a Lure may
@@ -204,8 +218,8 @@ func (r BlockRequirement) namesAttacker(atk *Card) bool {
 
 // blockPairWeight is how many requirements blocker `b` blocking
 // attacker `atk` obeys that are PER PAIR — b's "blocks that attacker"
-// naming atk, and each of atk's Lures that binds b. The search's pair
-// arc cost.
+// naming atk, b's "blocks each attacking creature" (#1715), and each
+// of atk's Lures that binds b. The search's pair arc cost.
 //
 // b's "blocks each combat" is NOT here since #1706: blocking anything
 // obeys it ONCE, however many attackers a creature that can block
@@ -215,6 +229,9 @@ func blockPairWeight(b, atk *Card) int {
 	n := 0
 	for _, r := range blockRequirementsOf(b) {
 		if r.Kind == BlockRequirementBlocksAttacker && r.namesAttacker(atk) {
+			n++
+		}
+		if r.Kind == BlockRequirementBlocksEach && atk != nil {
 			n++
 		}
 	}
@@ -354,11 +371,15 @@ type blockReqHit struct {
 // key identifies the requirement a hit obeys, independent of HOW it is
 // obeyed: "blocks each combat" is the same requirement whichever
 // attacker the creature blocks, while a Lure requirement is one per
-// potential blocker.
+// potential blocker and a "blocks each attacking creature" one per
+// attacker (#1715).
 func (h blockReqHit) key() blockReqHit {
 	k := blockReqHit{holder: h.holder, idx: h.idx}
-	if h.req.Kind == BlockRequirementLure {
+	switch h.req.Kind {
+	case BlockRequirementLure:
 		k.blocker = h.blocker
+	case BlockRequirementBlocksEach:
+		k.attacker = h.attacker
 	}
 	return k
 }
@@ -393,6 +414,14 @@ func (g *Game) blockRequirementHitsLocked(defender uuid.UUID, assign blockAssign
 					if r.namesAttacker(findBattlefieldCard(g, atkID)) {
 						out = append(out, blockReqHit{req: r, holder: b.InstanceID, idx: j, blocker: b.InstanceID, attacker: atkID})
 						break
+					}
+				}
+			case BlockRequirementBlocksEach:
+				// #1715: one requirement per attacker, so one hit per
+				// attacker blocked.
+				for _, atkID := range atkIDs {
+					if findBattlefieldCard(g, atkID) != nil {
+						out = append(out, blockReqHit{req: r, holder: b.InstanceID, idx: j, blocker: b.InstanceID, attacker: atkID})
 					}
 				}
 			}

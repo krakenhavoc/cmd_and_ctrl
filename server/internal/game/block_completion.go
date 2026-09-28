@@ -195,6 +195,30 @@ func (g *Game) isDefendingPlayerLocked(seat uuid.UUID) bool {
 	return false
 }
 
+// IsDefendingPlayerForEffect reports whether `seat` is a defending
+// player in the sense a spell or ability cast during combat means —
+// Yare's and Blaze of Glory's "target creature defending player
+// controls" (#1715). Commander plays with the attack-multiple-players
+// option, under which "all the attacking player's opponents are
+// defending players during the combat phase" from the moment it
+// starts (CR 802.2), and a two-player game says the same of its one
+// nonactive player (CR 506.2). So: any live player other than the
+// active player, during the combat phase — which is what gives Blaze
+// of Glory a target in the beginning of combat step, before anything
+// attacks. Outside the combat phase there is no defending player.
+//
+// Not the block verb's question: WHO MAY BLOCK a given attacker is
+// isDefendingPlayerLocked's, the player that attack is aimed at.
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) IsDefendingPlayerForEffect(seat uuid.UUID) bool {
+	if PhaseOf(g.Turn.Step) != PhaseCombat || seat == uuid.Nil || seat == g.activeSeatIDLocked() {
+		return false
+	}
+	p := g.playerByIDLocked(seat)
+	return p != nil && !p.Eliminated
+}
+
 // defendingSeatsAPNAPLocked returns the defending players in APNAP
 // order — starting after the active seat and walking the table — so
 // the declarations a single boundary completes announce in the order
