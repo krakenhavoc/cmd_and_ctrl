@@ -41,26 +41,31 @@ import (
 // usual line is to order the monarch trigger to resolve first, and
 // then the creature stays gone until somebody takes the crown from you.
 //
-// Two ways this differs from the printed text, neither of which makes
-// the card stronger:
+// Two ways this differs from the printed text:
 //
 //   - The return goes on the stack as a trigger, where CR 610.3c makes
 //     it an immediate one-shot. The table gets a window in which the
-//     creature is still in exile; nothing can stop it coming back
-//     short of removing the delayed trigger, which no card in the
-//     catalog does.
-//   - A delayed trigger belongs to its controller, and CR 800.4a
-//     removes it when that player leaves the game, so a creature exiled
-//     by a player who then loses stays exiled. What the rules want
-//     there is unsettled in the engine's model of "until" durations;
-//     ADR 0096 records it.
-//
-// No simplification.
+//     creature is still in exile, and nothing in the catalog can stop
+//     it coming back. The Oblivion Ring family (Ossification, Hostage
+//     Taker) takes the same posture and is not caveated for it.
+//   - THE DECLARED CAVEAT. A delayed trigger belongs to its controller,
+//     and eliminatePlayerLocked drops a departed player's delayed
+//     triggers (CR 800.4a) BEFORE the CR 724.4 hand-on crowns somebody
+//     else. So if the Jailer's controller leaves the game, the creature
+//     stays exiled for good — even though the player who takes the
+//     crown as they leave is an opponent of theirs, and the printed
+//     "until" would be over. Pinned by
+//     TestPalaceJailerControllerLeavingKeepsTheCreatureExiled; ADR 0096
+//     records it as open. It never helps the Jailer's controller, who
+//     has left.
 func init() {
 	Register(Spec{
 		OracleID:     "180eda7c-fca2-403b-85cd-8ffebaf9f408",
 		Name:         "Palace Jailer",
-		Completeness: CompletenessFull,
+		Completeness: CompletenessCaveats,
+		Caveats: []string{
+			"If Palace Jailer's controller leaves the game, the exiled creature stays in exile.",
+		},
 		Triggered: []game.TriggeredAbility{
 			WhenThisEntersYouBecomeTheMonarch("Palace Jailer"),
 			Targeting(WhenThisEnters(palaceJailerExileLabel, palaceJailerExile),
