@@ -203,7 +203,44 @@ func corpusBoards() []corpusBoard {
 		// Tier 4-0's prowess/pump body, which merged while 4-2 was open:
 		// an engine trigger with no catalog row, keyed by its body.
 		{"prowess_on_stack", corpusProwessOnStack},
+		// v7, added by #1593: duration copy effects — the becomeCopy mod
+		// carrying its copied values, and the carried durationCopyBase
+		// under a Cytoshaped Clone. No file yet, for detection_tower's
+		// reason: the writer still refuses on develop after #1707
+		// (gingerbrute.json and whip_redirect.json now render an entry
+		// stamp their frozen files lack), so it is frozen at the next
+		// write. Until then TestSnapshotCorpusBoardsStillBuild holds it
+		// to being a restore point.
+		{"duration_copy", corpusDurationCopy},
 	}
+}
+
+// corpusDurationCopy is a Clone of Grizzly Bears that Cytoshape turned
+// into a Hill Giant until end of turn (a becomeCopy record, and the
+// Clone's entry copy as its durationCopyBase), beside an Unstable
+// Shapeshifter that has become a copy of a Runeclaw Bear for good (an
+// indefinite record whose copied values carry a granted bundle).
+func corpusDurationCopy(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat].ID
+	bears := pushBattlefieldCardWithTimestamp(g, corpusCreature(me, "Grizzly Bears", 2, 2))
+	giant := pushBattlefieldCardWithTimestamp(g, corpusCreature(me, "Hill Giant", 3, 3))
+	clone := castCatalogSpell(t, g, "Clone", "Creature — Shapeshifter", oracleClone, nil)
+	resolveWithCopyChoice(t, g, bears)
+	castCatalogSpell(t, g, "Cytoshape", "Instant", oracleCytoshape,
+		[]game.TargetRef{{Kind: game.TargetCard, ID: clone}})
+	dcAnswerChooseCards(t, g, giant)
+	passPriorityAroundTable(t, g)
+	pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Unstable Shapeshifter", TypeLine: "Creature — Shapeshifter",
+		OracleID: oracleUnstableShapeshifter, Power: 0, Toughness: 1, Owner: me, Controller: me,
+	})
+	dcEnter(t, g, me, "Runeclaw Bear", "Creature — Bear", 2, 2)
+	passPriorityAroundTable(t, g)
+	if len(g.ScopedEffects) != 2 {
+		t.Fatalf("setup: want the Cytoshape and the Shapeshifter records, have %d", len(g.ScopedEffects))
+	}
+	return g
 }
 
 // ---------------------------------------------------------------
