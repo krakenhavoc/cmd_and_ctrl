@@ -169,8 +169,11 @@ func TestActivationOffersTheLifeOptionWhenManaIsShort(t *testing.T) {
 	}
 	// #74: the price rides the Move, so a policy can see what the
 	// activation costs in life.
-	if got[0].Cost == nil || got[0].Cost.Life != game.PhyrexianLifePerSymbol {
-		t.Errorf("move cost = %+v, want Life = %d", got[0].Cost, game.PhyrexianLifePerSymbol)
+	// #1677: and the part of it that buys nothing, so a policy does
+	// not read Phyrexian life as a payoff proxy.
+	if got[0].Cost == nil || got[0].Cost.Life != game.PhyrexianLifePerSymbol ||
+		got[0].Cost.PhyrexianLife != game.PhyrexianLifePerSymbol {
+		t.Errorf("move cost = %+v, want Life = PhyrexianLife = %d", got[0].Cost, game.PhyrexianLifePerSymbol)
 	}
 	// #544: the engine accepts exactly what the list offered.
 	dispatchAll(t, g, active.ID, moves)
@@ -207,5 +210,26 @@ func TestActivationDoesNotOfferLifeItCannotPay(t *testing.T) {
 		if tc.offer {
 			dispatchAll(t, g, active.ID, moves)
 		}
+	}
+}
+
+// TestActivationDoesNotOfferPhyrexianLifeToALockedSeat — CR 119.8,
+// the half of the life rule a bare "life >= cost" check missed
+// (#1677): a seat whose life total can't change can't pay life, the
+// strike refuses the claim, and the Pod with no green source is not
+// offered.
+func TestActivationDoesNotOfferPhyrexianLifeToALockedSeat(t *testing.T) {
+	g := newTable(t)
+	active := g.Seats[g.Turn.ActiveSeat]
+	clearHand(active)
+	pod := phyrexianPod(g, active)
+	battlefieldCard(g, active, basic("Island", "Island"))
+	advanceTo(t, g, game.StepPrecombatMain)
+	g.WithWriteLock(func() {
+		g.GrantLifeTotalLockForEffect(active.ID, "Test — your life total can't change",
+			uuid.Nil, g.UntilYourNextTurnDuration(active.ID))
+	})
+	if got := activationsOf(legal.EnumerateFor(g, active.ID), pod); len(got) != 0 {
+		t.Errorf("a locked seat was offered %q", got[0].Label)
 	}
 }
