@@ -263,7 +263,14 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 		// ActivateCatalogAbility validates with (#544, #1200): a
 		// policy is never offered a life cost the engine refuses,
 		// including one a locked life total makes unpayable.
-		if !g.CanPayLifeLocked(p, ab.Cost.Life) {
+		//
+		// #1594: the amount is the COMPUTED one — War Room's "pay
+		// life equal to the number of colors in your commanders'
+		// color identity" — read through the engine's own
+		// AbilityLifeCostLocked, so the move the bot is offered and
+		// the payment the engine charges are the same number.
+		life, lifeOK := g.AbilityLifeCostLocked(e.seat, source.InstanceID, ab.Cost)
+		if !lifeOK || !g.CanPayLifeLocked(p, life) {
 			continue
 		}
 		// CR 602.2b: X is announced with the activation, so the
@@ -545,8 +552,10 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 							// controller pays at announce, so the
 							// Phyrexian half counts — a policy that saw
 							// only the printed component would read a
-							// four-life activation as free.
-							cost := withPhyrexianLife(moveCost(ab.Cost.Life, loyalty), phyrexianLife)
+							// four-life activation as free. #1594: and
+							// the computed component is `life`, the
+							// amount the engine will charge.
+							cost := withPhyrexianLife(moveCost(life, loyalty), phyrexianLife)
 							for _, price := range cc.prices() {
 								cost = withCounterPrice(cost, price)
 							}
@@ -662,7 +671,11 @@ func (e *enumerator) abilityManaPayment(source *game.Card, zone game.ZoneKind, a
 		pay.excluded = game.WithAutoTapExclusions(excluded, taps)
 		return pay, true
 	}
-	x, life, ok := e.affordablePayment(cost, game.ManaSpendForAbility(*source), floor, ab.Cost.Life, excluded)
+	// #1594: the life held back from the Phyrexian strike is the
+	// COMPUTED component, the amount the engine charges beside it. The
+	// caller already refused an unpriceable one, so ok is not re-read.
+	reserved, _ := e.g.AbilityLifeCostLocked(e.seat, source.InstanceID, ab.Cost)
+	x, life, ok := e.affordablePayment(cost, game.ManaSpendForAbility(*source), floor, reserved, excluded)
 	if !ok {
 		return abilityManaPayment{}, false
 	}
