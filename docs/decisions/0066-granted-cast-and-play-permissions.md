@@ -2528,8 +2528,9 @@ moment. Picking it outside a sorcery window gets the ordinary
 `ErrSorcerySpeedRequired` toast. Topdeck the Halls ("decorated cards in
 your hand have miracle {S}") grants the keyword and is not legal in
 Commander. Temporal Mastery waits on extra turns (the engine cannot add a
-turn), Revenge of the Hunted on "all creatures able to block it do so" (the
-blocking-requirements seam), and Bonfire of the Damned on a "target player
+turn). Revenge of the Hunted was waiting on "all creatures able to block it do
+so", which #1597 has since shipped, so it is one card file away and not
+built here. Also still open: Bonfire of the Damned on a "target player
 or planeswalker" clause whose sweep follows the chosen target's
 controller.
 
