@@ -203,36 +203,6 @@ func b22EachPlayerKeepsWithinPowerAndSacrificesTheRest(g *game.Game, item *game.
 	})
 }
 
-// b22DamageDividedEvenly is Fury's "4 damage divided as you choose
-// among any number of target creatures and/or planeswalkers", with
-// the division made for the player: as evenly as possible across the
-// legal targets in the order they were picked, the remainder going
-// to the earliest picks. One target takes it all; four take one
-// each. Declared on the card — the engine's pick_target prompt
-// carries no distribution.
-func b22DamageDividedEvenly(ctx *Context, total int) error {
-	var targets []uuid.UUID
-	for _, t := range ctx.LegalTargets() {
-		if t.Kind == game.TargetCard {
-			targets = append(targets, t.ID)
-		}
-	}
-	if len(targets) == 0 || total <= 0 {
-		return nil
-	}
-	share, extra := total/len(targets), total%len(targets)
-	for i, id := range targets {
-		amount := share
-		if i < extra {
-			amount++
-		}
-		if err := (DealDamage{Source: ctx.Source(), Target: id, Amount: amount}).Apply(ctx); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 // b22DestroyFirstArtifactAndFirstEnchantment is Hull Breach's third
 // mode: of the two targets picked, the first that is an artifact and
 // the first that is an enchantment are destroyed. The picker cannot

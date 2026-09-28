@@ -252,8 +252,15 @@ type StackItem struct {
 	// already paid manually. Surfaced on the wire so opponents see X.
 	XValue int
 
-	// Distribution maps target ID → portion for "divide N among
-	// targets" spells. Sandbox: just data capture, not enforcement.
+	// Distribution maps target ID → portion for "N damage divided as
+	// you choose among …" (CR 601.2d). Written at announce by
+	// settleDistribution — every target of a divided clause assigned
+	// at least 1, the shares summing to the clause's amount — for a
+	// cast, an activation and a trigger's pick_target walk alike, and
+	// read at resolution by the card (effects.DealDividedDamage): a
+	// target that became illegal takes nothing and its share is not
+	// redistributed (CR 608.2b). Carried by clone, snapshot and copy
+	// (CR 707.10), remapped by a retarget (CR 115.7c). #1563.
 	Distribution map[uuid.UUID]int
 
 	// Paid is what this announcement actually cost: the counters

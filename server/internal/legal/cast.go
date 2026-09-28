@@ -35,6 +35,12 @@ type castParams struct {
 	// (CR 601.2b, ADR 0073), as positions in the card's OptionalCosts
 	// slice, repeated once per payment for a multikicker.
 	OptionalCosts []int `json:"optional_costs,omitempty"`
+	// Distribution is the division of a "divided as you choose"
+	// clause (#1563, CR 601.2d), target id → share. The enumerator
+	// always announces game.EvenDistribution — the amount split as
+	// evenly as possible, the remainder to the earliest targets — so
+	// every divided move it offers is one the gate accepts.
+	Distribution map[string]int `json:"distribution,omitempty"`
 	// GiftOpponent is the opponent a gift is promised to (CR
 	// 702.174a, ADR 0089) — set exactly when OptionalCosts names the
 	// card's gift cost.
@@ -933,6 +939,13 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 			if xBound && setX != x && !e.g.TargetsWithinXForEffect(steps, targets, setX) {
 				continue
 			}
+			// #1563: a divided clause needs a share of at least 1 per
+			// target out of the amount this X gives, so a set with more
+			// targets than that is a cast the engine refuses (#544).
+			dist, ok := game.EvenDistribution(steps, targets, setX)
+			if !ok {
+				continue
+			}
 			for _, discards := range discardSets {
 				for _, sacs := range sacrificeSets {
 					if budget <= 0 {
@@ -958,11 +971,12 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 							modes:    modes,
 							targets:  targets,
 							x:        setX,
+							dist:     dist,
 							discards: discards,
 							sacs:     sacs,
 						}
 					}
-					emit(altCostSets[0], modes, targets, setX, discards, sacs)
+					emit(altCostSets[0], modes, targets, setX, dist, discards, sacs)
 				}
 			}
 		}
@@ -986,7 +1000,7 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 			return
 		}
 		budget--
-		emit(altPaid, first.modes, first.targets, first.x, first.discards, first.sacs)
+		emit(altPaid, first.modes, first.targets, first.x, first.dist, first.discards, first.sacs)
 	}
 }
 
@@ -996,6 +1010,7 @@ type announcedCast struct {
 	modes    []int
 	targets  []game.TargetRef
 	x        int
+	dist     map[uuid.UUID]int
 	discards []uuid.UUID
 	sacs     []uuid.UUID
 }
@@ -1007,7 +1022,7 @@ type announcedCast struct {
 // label and the params — the #815 / #866 lesson at the move layer: two
 // writers of one move shape drift, and the one that drifts is the one
 // nobody reads.
-type castEmitter func(altPaid []uuid.UUID, modes []int, targets []game.TargetRef, setX int, discards, sacs []uuid.UUID)
+type castEmitter func(altPaid []uuid.UUID, modes []int, targets []game.TargetRef, setX int, dist map[uuid.UUID]int, discards, sacs []uuid.UUID)
 
 // castMoveEmitter builds that writer for one (card, zone, offer,
 // optional-cost) announcement. Everything it closes over is fixed for
@@ -1021,7 +1036,7 @@ func (e *enumerator) castMoveEmitter(
 	chosen []int,
 	giftTo uuid.UUID,
 ) castEmitter {
-	return func(altPaid []uuid.UUID, modes []int, targets []game.TargetRef, setX int, discards, sacs []uuid.UUID) {
+	return func(altPaid []uuid.UUID, modes []int, targets []game.TargetRef, setX int, dist map[uuid.UUID]int, discards, sacs []uuid.UUID) {
 		label := "Cast " + card.Name
 		switch from {
 		case "command":
@@ -1071,6 +1086,7 @@ func (e *enumerator) castMoveEmitter(
 				DiscardIDs:      idStrings(discards),
 				SacrificeIDs:    idStrings(sacs),
 				OptionalCosts:   chosen,
+				Distribution:    distributionWire(dist),
 				GiftOpponent:    giftWire(giftTo),
 				Strict:          true,
 				AutoTap:         true,
@@ -1080,6 +1096,19 @@ func (e *enumerator) castMoveEmitter(
 			}),
 		})
 	}
+}
+
+// distributionWire is a division on the wire: target id string →
+// share. Nil for the announcement that divides nothing.
+func distributionWire(dist map[uuid.UUID]int) map[string]int {
+	if len(dist) == 0 {
+		return nil
+	}
+	out := make(map[string]int, len(dist))
+	for id, v := range dist {
+		out[id.String()] = v
+	}
+	return out
 }
 
 // cheapestFuelFirst orders the candidates for a cost's CARD-shaped half

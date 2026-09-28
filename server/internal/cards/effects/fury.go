@@ -19,21 +19,16 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // above by the four points, since every target must be assigned at
 // least one (CR 601.2d).
 //
-// Declared simplification (weaker than printed): the DIVISION is
-// made for the player. The engine's target picker for a triggered
-// ability carries no damage distribution — StackItem.Distribution
-// exists for a cast, not for the harvester's pick_target prompt — so
-// the four points are split as evenly as possible across the chosen
-// targets in the order they were picked, the remainder going to the
-// earliest picks: one target takes 4, two take 2 each, three take
-// 2/1/1, four take 1 each. A 3/1 split is not offered. The seam is
-// a distribution on the pick_target prompt.
+// The division is the caster's (#1563, CR 601.2d): the trigger's
+// pick_target prompt asks for the targets AND each one's share, every
+// target at least 1 and the shares summing to 4. A target that leaves
+// in response takes nothing and its share is lost, not moved to the
+// others (CR 608.2b).
 func init() {
 	Register(Spec{
 		OracleID:        "fbf9f8c5-849f-45d5-8129-5fc683c21a04",
 		Name:            "Fury",
-		Completeness:    CompletenessCaveats,
-		Caveats:         []string{"The 4 damage is divided as evenly as possible among the targets you pick, in the order you pick them, rather than however you choose."},
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"double strike"},
 		AlternativeCosts: []game.AlternativeCost{
 			EvokePitch(
@@ -45,10 +40,10 @@ func init() {
 			Watches:   []game.EventKind{game.EventETB},
 			AppliesTo: b06SelfETB,
 			Targets: TargetPermanent("any number of target creatures and/or planeswalkers",
-				Or(Creature(), Planeswalker())).WithCount(0, 4),
+				Or(Creature(), Planeswalker())).WithCount(0, 4).Dividing(Divide(4)),
 			Key: "Fury — 4 damage divided among the targets",
 			Effect: func(g *game.Game, item *game.StackItem) error {
-				return b22DamageDividedEvenly(NewContext(g, item), 4)
+				return DealDividedDamage(NewContext(g, item))
 			},
 		}},
 	})

@@ -790,6 +790,14 @@ type ActivateAbilityParams struct {
 	// clauses of the chosen modes (#764).
 	Targets []TargetRef
 
+	// Distribution is the announced division for an ability whose
+	// clause divides ("It deals 3 damage divided as you choose among
+	// one, two, or three targets"), keyed by target id — CR 601.2d
+	// through CR 602.2b, validated by the same settleDistribution the
+	// cast path uses. Empty for every ability that divides nothing,
+	// and for a lone target, which takes the whole amount. #1563.
+	Distribution map[uuid.UUID]int
+
 	// Modes are the mode indexes announced for a modal activated
 	// ability (CR 602.2b, CR 700.2), in the order chosen; a repeated
 	// index is legal only when the ability's ModeSpec is Repeatable
@@ -1221,6 +1229,12 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	if err := g.validateAnnouncedTargetsLocked(SourceObject(playerID, source), steps, params.Targets); err != nil {
 		return err
 	}
+	// #1563, CR 601.2d via CR 602.2b: the division, with the targets.
+	dist, err := settleDistribution(steps, params.Targets, params.Distribution, params.XValue)
+	if err != nil {
+		return err
+	}
+	params.Distribution = dist
 
 	// #1397: every card this payment is about to move, asked about
 	// BEFORE anything is paid. A commander among them whose owner has
@@ -1470,6 +1484,7 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		Label:        ab.Label,
 		Targets:      append([]TargetRef(nil), params.Targets...),
 		Modes:        append([]int(nil), params.Modes...),
+		Distribution: cloneDistributionLocked(params.Distribution),
 		// CR 602.2b: X was announced above and is locked here. The
 		// effect reads it back through Context.X(), the same
 		// accessor an X spell's OnResolve uses, and the wire ships

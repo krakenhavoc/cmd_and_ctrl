@@ -394,6 +394,17 @@ type TargetSpec struct {
 	xBound    int
 	xBoundSet bool
 
+	// Divide marks a clause whose effect is "divided as you choose
+	// among" its targets (#1563, CR 601.2d / 700.2i) — Fury's "4
+	// damage divided as you choose among any number of target
+	// creatures and/or planeswalkers". The caster announces the
+	// division with the targets; the announce gate refuses a division
+	// that gives a target 0 or does not add up to the amount, and the
+	// division rides StackItem.Distribution to resolution. Nil — every
+	// clause that divides nothing — means no division. Build it with
+	// Dividing and the effects package's Divide / DivideX constructors.
+	Divide *DivideSpec
+
 	// Rest holds clauses 2..n of a multi-clause statement, in
 	// printed order. Empty — which is every clause the catalog
 	// declared before #764, every cost-payment predicate and every

@@ -980,6 +980,20 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		)
 		return err
 	}
+	// #1563, CR 601.2d: the division is announced with the targets,
+	// against the amount the announced X gives. The settled copy — a
+	// lone target handed the whole amount — is what the item stores.
+	dist, err := settleDistribution(steps, params.Targets, params.Distribution, params.XValue)
+	if err != nil {
+		slog.Warn("cast_spell rejected: bad division",
+			"card_name", card.Name,
+			"oracle_id", card.OracleID,
+			"x_value", params.XValue,
+			"err", err,
+		)
+		return err
+	}
+	params.Distribution = dist
 	// S21 sub-PR 5: additional costs (CR 601.2f). Validated here,
 	// with the rest of the announce-time choices, and paid further
 	// down once the spell is on the stack — validate-all-then-pay,
