@@ -1,0 +1,6 @@
+---
+title: "A turn-scoped hexproof waiver, and \"can't have\" a keyword"
+date: 2026-09-28
+issues: [1651]
+---
+**A turn-scoped hexproof waiver, and "can't have" a keyword** (#1651, CR 702.11 / CR 101.2, [ADR 0038 amendment 2026-09-28 (#1651)](decisions/0038-protection-style-keywords.md)). Detection Tower's "until end of turn, your opponents and creatures your opponents control with hexproof can be the targets of spells and abilities you control as though they didn't have hexproof" is a new ADR 0041 data record, the `waiveHexproof` mod under the live `opponentsAndTheirCreatures` scope. The same two readers as the static `Spec.HexproofBypasses` check it at the targeting choke point, and only the record's controller benefits. Undo, the snapshot and cleanup treat it like every other scoped record. "Loses <keyword> and can't have <keyword>" is a strip after the layer-6 bucket. An effect records the tokens on `Characteristic.CantHave`, using `effects.LoseAndCantHave` for the static form and the `cantHaveKeywords` mod for the scoped one. The strip then removes them from the ability list, so a grant with a later timestamp cannot put them back. **Detection Tower**, **Arcane Lighthouse**, **Archetype of Endurance**, **Archetype of Imagination** and **Archetype of Finality** ship `full`. **Archetype of Aggression** and **Archetype of Courage** lose their caveats.
