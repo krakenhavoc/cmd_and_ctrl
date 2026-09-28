@@ -65,13 +65,12 @@ func b13CreatureDealtDamageToYou(ev game.Event, source *game.Card, g *game.Game)
 // exile, a library tuck. EventLTB carries the destination in
 // NewZone, so "without dying" is the one comparison CR 700.4 makes.
 //
-// The card is read post-move (diedCreature's posture): the Controller
-// field survives the move, so "creature you control" is the creature
-// that just left under the source's controller's control. "Creature"
-// is its type as it last existed (leftAsType, #1675), so a crewed
-// Vehicle or an animated land that is bounced counts. A stolen
-// creature that went back to its owner's hand is not counted —
-// weaker than printed, never stronger.
+// "You control" is the controller the creature had as it left
+// (leftUnderControlOf, #1682), so a stolen creature bounced to its
+// owner's hand counts for the thief, under whose control it left, and
+// not for the owner. "Creature" is its type as it last existed
+// (leftAsType, #1675), so a crewed Vehicle or an animated land that
+// is bounced counts.
 func b13OtherCreatureYouControlLeftWithoutDying(ev game.Event, source *game.Card, g *game.Game) bool {
 	return ev.CardID != source.InstanceID && creatureYouControlLeftWithoutDying(ev, source, g)
 }

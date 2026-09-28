@@ -107,7 +107,8 @@ func b25DamageDealtByCounteredCreature(ev game.Event, g *game.Game) bool {
 // went to a graveyard from the battlefield, and it was a Goblin as it
 // last existed (leftAsSubtype, #1679) — a changeling counts, and so
 // does a creature that was a Goblin only through a grant. The
-// controller is read post-move (diedCreature). The source's own death
+// controller is the one it had as it died (leftUnderControlOf,
+// #1682). The source's own death
 // is cardDied's business, so this excludes it.
 func b25AnotherGoblinYouControlDied(ev game.Event, source *game.Card, g *game.Game) bool {
 	dead, ok := diedCreature(ev, g)

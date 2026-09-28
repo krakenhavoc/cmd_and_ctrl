@@ -145,8 +145,9 @@ func b18OpponentDiscarded(ev game.Event, source *game.Card) bool {
 }
 
 // b18OpponentsCreatureDied is "whenever a creature an opponent
-// controls dies" (Sangromancer): the dead creature, read post-move,
-// was controlled by someone other than the source's controller.
+// controls dies" (Sangromancer): the dead creature was controlled, as
+// it last existed, by someone other than the source's controller
+// (leftUnderControlOf, #1682).
 func b18OpponentsCreatureDied(ev game.Event, source *game.Card, g *game.Game) bool {
 	dead, ok := diedCreature(ev, g)
 	return ok && leftUnderControlOf(ev, dead) != source.Controller

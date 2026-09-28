@@ -48,7 +48,8 @@ func b22FirstSpellOnAnOpponentsTurn(ev game.Event, source *game.Card, g *game.Ga
 
 // b22CreatureYouControlDied is "whenever a creature you control
 // dies" on a NONcreature source (Cauldron of Essence): the dead
-// creature, read post-move, was the source's controller's.
+// creature was the source's controller's as it last existed
+// (leftUnderControlOf, #1682).
 func b22CreatureYouControlDied(ev game.Event, source *game.Card, g *game.Game) bool {
 	dead, ok := diedCreature(ev, g)
 	return ok && leftUnderControlOf(ev, dead) == source.Controller

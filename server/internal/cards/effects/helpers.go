@@ -313,8 +313,11 @@ func lootOne(g *game.Game, item *game.StackItem, n int) error {
 // graveyard, plus ok=false when the event isn't a creature death.
 //
 // The card is read post-move, so Tapped / Counters are already
-// cleared (CR 400.7) but TypeLine, Controller and Owner survive —
-// which is what "another creature YOU CONTROL dies" needs.
+// cleared (CR 400.7) but TypeLine and Owner survive. Its controller is
+// NOT read off it: "another creature YOU CONTROL dies" asks
+// leftUnderControlOf(ev, card), the controller the exit stamped on the
+// event (#1682), because a card in a graveyard has no controller
+// (CR 108.4).
 //
 // Whether it WAS a creature is not read off that card (#1675). CR
 // 603.10a: a leaves-the-battlefield ability looks back in time, and

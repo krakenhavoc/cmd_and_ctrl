@@ -94,10 +94,10 @@ func b21DragonYouControlDealtDamage(ev game.Event, source *game.Card, g *game.Ga
 
 // b21ArtifactOrCreatureYouControlDied is the granted trigger on Agent
 // of the Iron Throne: an artifact or creature the controller
-// controlled was put into a graveyard from the battlefield. The dead
-// card is read post-move — its printed type line and its controller
-// survive the move — so a Treasure, a Clue, a token creature and a
-// nontoken one all count, as printed.
+// controlled was put into a graveyard from the battlefield. Its types
+// and its controller are read as it last existed (leftAsType,
+// leftUnderControlOf — #1675, #1682), so a Treasure, a Clue, a token
+// creature and a nontoken one all count, as printed.
 func b21ArtifactOrCreatureYouControlDied(ev game.Event, source *game.Card, g *game.Game) (game.Card, bool) {
 	if ev.Kind != game.EventLTB || ev.NewZone != game.ZoneGraveyard {
 		return game.Card{}, false

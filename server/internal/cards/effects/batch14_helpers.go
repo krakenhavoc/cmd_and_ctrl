@@ -109,10 +109,10 @@ func b14OpponentsEndStepBegan(ev game.Event, source *game.Card) bool {
 
 // b14PermanentYouControlLeft is Resourceful Defense's condition: a
 // permanent the source's controller controlled left the battlefield,
-// for anywhere, with counters on it. The card is read post-move — the
-// Controller field survives the move — so a token that ceased to exist
-// on leaving is not seen, which is the diedCreature posture and weaker
-// than printed. "If it had counters on it" is the CR 603.10 record the
+// for anywhere, with counters on it. The controller is the one it had
+// as it left (leftUnderControlOf, #1682); the card is still looked up
+// post-move, so a token that ceased to exist on leaving is not seen,
+// which is the diedCreature posture and weaker than printed. "If it had counters on it" is the CR 603.10 record the
 // engine writes as the permanent leaves (LastKnownCountersForEffect),
 // the reading The Ozolith's condition makes.
 func b14PermanentYouControlLeft(ev game.Event, source *game.Card, g *game.Game) bool {
