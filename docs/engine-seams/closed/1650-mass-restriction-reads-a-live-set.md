@@ -1,0 +1,6 @@
+---
+title: "Mass \"can't block / can't be blocked this turn\" reads a live set"
+date: 2026-09-28
+issues: [1650]
+---
+**Mass "can't block / can't be blocked this turn" reads a live set** (#1650, CR 611.2c, [ADR 0045 amendment 2026-09-28 (#1650)](decisions/0045-combat-restrictions.md) Decision 54). CR 611.2c locks the affected set of an effect from a resolving spell or ability only when the effect changes characteristics or control, and a restriction does neither. So `RestrictUntilEOT`'s mass form no longer takes a `Match` snapshot. It takes a `game.AffectedScope` and registers an ADR 0041 data record whose set is a rule read until cleanup. The record reaches a creature that arrives, or loses flying, after the spell resolved. The single-`Target` form is unchanged. Live-rule restriction records are applied after the last layer (`foldRuleScopedRestrictionsLocked`), so "without flying" reads the finished characteristics. There are two new scopes, `yourCreatures` and `creaturesWithoutFlying`, and `ScopedEffectFor` refuses a `Match` over `addRestrictions`. `BoostUntilEOT` and `GrantKeywordUntilEOT` keep their snapshot, correctly. **Glaring Spotlight**, **Falter**, **Magmatic Chasm**, **Seismic Stomp**, **Cosmotronic Wave** and **Hazardous Blast** ship `full`.

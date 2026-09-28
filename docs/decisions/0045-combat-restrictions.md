@@ -3448,3 +3448,120 @@ because restore points already carry it.
 - **Retiring the legacy delayed trigger.** Retiring it is a snapshot-schema
   bump. It becomes possible once no restore point from before #1598 can be
   handed to this binary's predecessor.
+
+## Amendment (2026-09-28, [#1650](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1650)): a mass "can't block / can't be blocked this turn" reads a live set
+
+Corrects how `RestrictUntilEOT`'s mass form chooses what it affects. Decisions
+1-53 stand. Sprint S37 (combat correctness), tracker
+[#880](https://github.com/krakenhavoc/cmd_and_ctrl/issues/880). This settles the
+rules question [ADR 0041](0041-game-persistence.md)'s tier-3a amendment recorded
+and left open ("`RestrictUntilEOT`'s mass form pins its affected set"). It also
+unblocks Glaring Spotlight, which [ADR 0038](0038-protection-style-keywords.md)'s
+2026-09-27 amendment left out.
+
+Decision 53 is #1598's goad amendment above, so this one is Decision 54.
+
+### The rule
+
+CR 611.2c: a continuous effect from a resolving spell or ability that **modifies
+the characteristics or changes the controller** of objects affects only the
+objects there when it began. An effect that does neither "modifies the rules of
+the game" and can affect objects that weren't affected when it began. A
+restriction is not a characteristic (§1: CR 613 gives it no layer). So "creatures
+without flying can't block this turn" also stops a creature flashed in after
+Falter resolved, and Glaring Spotlight's "creatures you control … can't be blocked
+this turn" also covers the creature you cast next. The cards' rulings say the
+same.
+
+The old doc comment cited CR 611.2c for the opposite conclusion. The mass form
+snapshotted its set exactly as `BoostUntilEOT` does. No shipped card used it:
+all six callers (Access Tunnel, Artful Dodge, Lost Jitte, Merfolk Sovereign,
+Rogue's Passage, Untimely Malfunction) pin one target.
+
+### Decision 54: the mass form is a live-rule record, folded in after the last layer
+
+- **`RestrictUntilEOT{Scope}` replaces `RestrictUntilEOT{Match}`.** A
+  `CardPredicate` is a closure, and a closure cannot be carried by undo or a
+  restore point. It would have to be re-read on every pass until cleanup. So the
+  mass form takes a `game.AffectedScope` and registers the
+  [#1571](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1571) live-rule
+  record (`RegisterScopedRuleEffectForEffect`: `addRestrictions`, until end of
+  turn, the resolving controller as the scope's "you"). Two scopes join the
+  closed vocabulary: **`yourCreatures`** and **`creaturesWithoutFlying`**.
+  `opponentsCreatures` already existed. A printed set no scope names needs a new
+  scope, which is an on-disk identity like a mod kind.
+- **The `Target` form is unchanged.** "Target creature can't block this turn" is
+  a different effect. It follows one object, and a creature that leaves and
+  returns is a new object (CR 400.7) that it no longer covers.
+- **Live-rule restrictions are applied after layer 7, not in layer 6.** The
+  adapter skips an `addRestrictions` mod on a record with a `Scope`, and
+  `foldRuleScopedRestrictionsLocked` ORs its bits in once every layer has run.
+  "Without flying" is a layer-6 result. Inside the layer-6 bucket, sorted by
+  timestamp, a flying grant made after Falter would apply after the scope had
+  already asked, and the creature would stay unable to block. §1 already says a
+  restriction's layer is unobservable, because the bits are only ever OR'd in
+  and nothing reads them mid-pass. So moving them to the end changes nothing
+  except when the question is asked. Registration refuses any mod other than
+  `addRestrictions` on `creaturesWithoutFlying`, because a layer mod there would
+  ask it half-way through the pass.
+- **A ratchet.** `ScopedEffectFor` refuses a `Match` together with an
+  `addRestrictions` mod, and the error names `RestrictUntilEOT{Scope}`. The
+  snapshot this amendment removes cannot come back through the general
+  builder.
+
+### What keeps its snapshot, correctly
+
+`BoostUntilEOT`, `GrantKeywordUntilEOT`, and every other `ScopedEffectFor{Match}`
+mod that changes a characteristic (P/T, types, colours, abilities, control). Those
+are exactly the effects CR 611.2c locks. Overrun does not pump the creature cast
+after it. Glaring Spotlight shows both at once: its "gain hexproof until end of
+turn" is `GrantKeywordUntilEOT{Match}` and locks, while its "can't be blocked this
+turn" is live.
+
+### Proof cards
+
+All six are new and `full`:
+
+- **Glaring Spotlight**: the hexproof waiver is #1560's `HexproofBypasses`, with
+  `BySpellsAndAbilitiesYouControl`. The ability locks the hexproof and reads
+  `yourCreatures` live.
+- **Falter**, **Magmatic Chasm**, **Seismic Stomp**: `creaturesWithoutFlying`.
+- **Cosmotronic Wave**, **Hazardous Blast**: one-shot damage, then a live
+  `opponentsCreatures`.
+
+### Tests
+
+- `game/scoped_restrictions_test.go`:
+  - Each scope matches what it names and reaches a late arrival.
+  - The layer adapter builds nothing for a live-rule restriction, and the fold
+    applies it.
+  - `creaturesWithoutFlying` refuses a layer mod.
+- `cards/effects/live_mass_restriction_test.go`:
+  - Falter stops a creature that arrives after it resolved, both on the bit and
+    through a refused `DeclareBlocker`. A flyer still blocks.
+  - A later flying grant lifts the restriction, and a later flying loss brings
+    it on.
+  - The effect ends at cleanup.
+  - The single-`Target` form covers only its target.
+  - The live scope survives undo (Clone / RestoreFrom) and a capture → JSON →
+    `RestoreStrict` round trip.
+  - Each card's own behaviour and one refusal.
+  - `ScopedEffectFor` refuses a mass restriction.
+- The snapshot corpus gains `v7/falter.json`, so the scope's on-disk string is
+  frozen.
+
+### What this does NOT decide
+
+- **Other durations.** `RestrictUntilEOT` is until end of turn. A mass "until
+  your next turn, creatures your opponents control can't block" is
+  `RegisterScopedRuleEffectForEffect` with another `Duration`, and has no
+  card-facing builder until a card needs one.
+- **More scopes.** Awe for the Guilds ("monocolored creatures"), Flash of
+  Defiance ("green creatures and white creatures"), Ruthless Invasion
+  ("nonartifact creatures"), Goblin Locksmith ("creatures with defender"), Hero
+  of Oxid Ridge ("creatures with power 1 or less") and Venser, the Sojourner's
+  −1 ("creatures") each need one more scope. None is built here.
+- **`addAttackRequirement` under a `Match`.** A requirement is also a rules
+  effect. It already has its live scope (Decision 52), and nothing builds it
+  through `ScopedEffectFor{Match}` today, so the ratchet covers restrictions
+  only.

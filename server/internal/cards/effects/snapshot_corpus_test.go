@@ -173,6 +173,10 @@ func corpusBoards() []corpusBoard {
 		// limitBlockersPerDefender mods, and Text, on disk.
 		{"gingerbrute", corpusGingerbrute},
 		{"mirri_limit", corpusMirriLimit},
+		// v7, added by #1650 as a new file: a restriction whose
+		// affected set is a live rule — addRestrictions under the
+		// creaturesWithoutFlying scope on disk.
+		{"falter", corpusFalter},
 		// v7, added by tier 4's second slice (#1497, ADR 0041 P9) as new
 		// files: declared triggered abilities waiting to resolve, named
 		// by their catalog row — a card's own row, a granted bundle's,
@@ -305,6 +309,22 @@ func corpusMirriLimit(t *testing.T) *game.Game {
 	passPriorityAroundTable(t, g)
 	if n := scopedBlockRuleCount(g); n != 1 {
 		t.Fatalf("setup: Mirri's trigger registered %d scoped block rules, want 1", n)
+	}
+	return g
+}
+
+// corpusFalter is a real Falter: one addRestrictions record over the
+// live creaturesWithoutFlying scope (#1650), with a creature on the
+// board it reaches.
+func corpusFalter(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	seat := g.Turn.ActiveSeat
+	opp := g.Seats[(seat+1)%len(g.Seats)]
+	pushSizedCreature(g, opp.ID, "Grizzly Bears", 2, 2)
+	castCatalogSpell(t, g, "Falter", "Instant", falterOracle, nil)
+	passPriorityAroundTable(t, g)
+	if len(g.ScopedEffects) != 1 || g.ScopedEffects[0].Scope != game.ScopeCreaturesWithoutFlying {
+		t.Fatalf("setup: Falter registered %+v, want one creaturesWithoutFlying record", g.ScopedEffects)
 	}
 	return g
 }
