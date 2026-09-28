@@ -30,29 +30,52 @@
   interface Props {
     // The Vehicle being crewed; null closes the modal.
     card: CardView | null;
-    // The crew ability, for its number and its label.
+    // The crew ability, for its number and its label. Null for a
+    // teamwork cost, which passes `threshold` instead.
     ability: ActivatedAbilityView | null;
+    // #1703: teamwork (CR 702.194a) is crew's sentence on a spell —
+    // the same floor-on-total-power picker. A teamwork prompt passes
+    // the number here, and its own keyword and rule for the heading.
+    threshold?: number;
+    keyword?: string;
+    rule?: string;
     // The creatures the server says could pay it right now.
     options: CardView[];
     onConfirm: (instanceIDs: string[]) => void;
     onCancel: () => void;
   }
 
-  const { card, ability, options, onConfirm, onCancel }: Props = $props();
+  const {
+    card,
+    ability,
+    threshold,
+    keyword = "Crew",
+    rule = "CR 702.122",
+    options,
+    onConfirm,
+    onCancel,
+  }: Props = $props();
 
   let chosen = $state<string[]>([]);
 
   // Reset when a different activation opens the prompt.
   let lastKey: string | null = null;
   $effect(() => {
-    const key = card && ability ? `${card.instance_id}:${ability.index}` : null;
+    const key = card
+      ? ability
+        ? `${card.instance_id}:${ability.index}`
+        : threshold !== undefined
+          ? `${card.instance_id}:${keyword}`
+          : null
+      : null;
     if (key !== lastKey) {
       lastKey = key;
       chosen = [];
     }
   });
 
-  const need = $derived(ability?.crew_cost ?? 0);
+  const need = $derived(threshold ?? ability?.crew_cost ?? 0);
+  const open = $derived(card !== null && (ability !== null || threshold !== undefined));
 
   // Power is read off the CardView, which already carries the
   // post-layer effective value the server will re-check against — so
@@ -77,7 +100,7 @@
   }
 
   function handleKey(e: KeyboardEvent): void {
-    if (!card) return;
+    if (!open) return;
     if (e.key === "Enter") {
       e.preventDefault();
       confirm();
@@ -87,29 +110,30 @@
     }
   }
   $effect(() => {
-    if (!card) return;
+    if (!open) return;
     document.addEventListener("keydown", handleKey);
     return () => document.removeEventListener("keydown", handleKey);
   });
   onDestroy(() => document.removeEventListener("keydown", handleKey));
 </script>
 
-{#if card && ability}
+{#if open && card}
   <ModalLayer />
   <div class="prompt-backdrop" role="dialog" aria-modal="true" aria-labelledby="crew-cost-title">
     <div class="prompt-modal crew-modal">
       <h2 id="crew-cost-title">
         {card.name}
-        <span class="prompt-src" aria-hidden="true">Crew {need} · CR 702.122</span>
+        <span class="prompt-src" aria-hidden="true">{keyword} {need} · {rule}</span>
       </h2>
       <p class="prompt-hint">
         Tap any number of untapped creatures you control with total power {need} or more.
       </p>
       {#if options.length === 0}
-        <p class="prompt-hint error">You control no untapped creatures to crew with.</p>
+        <p class="prompt-hint error">You control no untapped creatures to tap.</p>
       {:else if available < need}
         <p class="prompt-hint error">
-          Your untapped creatures total {available} power — not enough to crew {need}.
+          Your untapped creatures total {available} power — not enough for {keyword.toLowerCase()}
+          {need}.
         </p>
       {:else}
         <ul class="prompt-options">
@@ -138,7 +162,7 @@
           >Cancel <span class="kbd">Esc</span></button
         >
         <button type="button" class="primary" disabled={!enough} onclick={confirm}>
-          Crew
+          {keyword === "Crew" ? "Crew" : "Tap"}
           <span class="kbd">↵</span>
         </button>
       </div>

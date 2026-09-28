@@ -1534,6 +1534,19 @@ export interface OptionalCostView {
   // list).
   chooses_opponent?: boolean;
   opponent_options?: string[];
+  // #1703: teamwork (CR 702.194a) — tap any number of your untapped
+  // creatures with total power `teamwork` or more. `teamwork_options`
+  // is who may be tapped; present-and-empty means the whole set falls
+  // short and the offer cannot be taken. The picks ride cast_spell as
+  // `teamwork_ids`.
+  teamwork?: number;
+  teamwork_options?: LegalTargetsView;
+  // #1703: blight N (CR 701.68a) — put `blight` -1/-1 counters on one
+  // creature you control. `blight_options` is your creatures;
+  // present-and-empty means you control none. The pick rides
+  // cast_spell as `blight_ids`.
+  blight?: number;
+  blight_options?: LegalTargetsView;
   // #1267: the target clause the spell has WHEN THIS COST IS PAID —
   // Long River's Pull counters any spell once the gift is promised.
   // Same shape and meaning as AlternativeCostView's trio; absent when

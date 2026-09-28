@@ -97,6 +97,12 @@ export interface CastChoices {
   // waterbend. Undefined and empty are the same thing to the server;
   // tapping nothing is always legal.
   tapIDs?: string[];
+  // #1703: the creatures tapped for a claimed teamwork offer, and the
+  // one creature a claimed blight puts its -1/-1 counters on. Set only
+  // when `optionalCosts` claims that offer; the server refuses them on
+  // a cast that does not.
+  teamworkIDs?: string[];
+  blightIDs?: string[];
   // CR 107.4c/f (#916): how many of the cost's Phyrexian symbols are
   // being paid with 2 life each instead of mana. Collected after the
   // X picker — an {X} cost has to be sized before the rest of it can
@@ -169,6 +175,11 @@ export function applyCastChoices(
   if (choices.giftOpponent !== undefined && choices.giftOpponent !== "")
     params.gift_opponent = choices.giftOpponent;
   if (choices.tapIDs !== undefined && choices.tapIDs.length > 0) params.tap_ids = choices.tapIDs;
+  // #1703: omitted unless the offer was claimed and paid.
+  if (choices.teamworkIDs !== undefined && choices.teamworkIDs.length > 0)
+    params.teamwork_ids = choices.teamworkIDs;
+  if (choices.blightIDs !== undefined && choices.blightIDs.length > 0)
+    params.blight_ids = choices.blightIDs;
   // #916: omitted at 0, which is the server default and what every
   // client that predates the stepper sends.
   if (choices.phyrexianLife !== undefined && choices.phyrexianLife > 0)
@@ -923,8 +934,66 @@ export function modesUnderChoices(card: CardView, choices: CastChoices | undefin
 // is every mana kicker. An empty array means the offer cannot be
 // taken right now: a Constant Mists with no land to sacrifice.
 export function optionalCostPayOptions(offer: OptionalCostView): string[] | undefined {
+  // #1703: teamwork's creatures and blight's are the same question —
+  // present-and-empty is an offer the board cannot pay right now.
+  if (offer.teamwork_options) return offer.teamwork_options.cards ?? [];
+  if (offer.blight_options) return offer.blight_options.cards ?? [];
   if (!offer.sacrifice_options) return undefined;
   return offer.sacrifice_options.cards ?? [];
+}
+
+// ClaimedCreatureCost is a claimed teamwork or blight offer: the
+// number the card prints and the creatures the server says could pay
+// it (#1703).
+export interface ClaimedCreatureCost {
+  offer: OptionalCostView;
+  n: number;
+  options: string[];
+}
+
+function claimedOffer(
+  card: CardView,
+  choices: CastChoices | undefined,
+  pick: (o: OptionalCostView) => number | undefined,
+  opts: (o: OptionalCostView) => LegalTargetsView | undefined,
+): ClaimedCreatureCost | undefined {
+  for (const index of choices?.optionalCosts ?? []) {
+    const offer = optionalCostsOf(card)[index];
+    const n = offer ? pick(offer) : undefined;
+    if (offer && n !== undefined && n > 0) {
+      return { offer, n, options: opts(offer)?.cards ?? [] };
+    }
+  }
+  return undefined;
+}
+
+// castTeamworkOffer is the teamwork offer this cast has claimed, if
+// any — the prompt that follows the add-on picker asks which creatures
+// to tap (#1703).
+export function castTeamworkOffer(
+  card: CardView,
+  choices: CastChoices | undefined,
+): ClaimedCreatureCost | undefined {
+  return claimedOffer(
+    card,
+    choices,
+    (o) => o.teamwork,
+    (o) => o.teamwork_options,
+  );
+}
+
+// castBlightOffer is the blight offer this cast has claimed, if any —
+// the prompt asks which one creature takes the counters (#1703).
+export function castBlightOffer(
+  card: CardView,
+  choices: CastChoices | undefined,
+): ClaimedCreatureCost | undefined {
+  return claimedOffer(
+    card,
+    choices,
+    (o) => o.blight,
+    (o) => o.blight_options,
+  );
 }
 
 // castIsForbidden reports whether the server's own cast gate has

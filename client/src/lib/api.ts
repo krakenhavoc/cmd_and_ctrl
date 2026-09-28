@@ -878,6 +878,13 @@ export async function fetchAutoTapPreview(
     if (cast.discardIDs && cast.discardIDs.length > 0) {
       params.set("discard_ids", cast.discardIDs.join(","));
     }
+    // #1703: a creature tapped for teamwork cannot also tap for mana.
+    if (cast.teamworkIDs && cast.teamworkIDs.length > 0) {
+      params.set("teamwork_ids", cast.teamworkIDs.join(","));
+    }
+    if (cast.blightIDs && cast.blightIDs.length > 0) {
+      params.set("blight_ids", cast.blightIDs.join(","));
+    }
   }
   // `abilityIndex` prices a CR 602 activated ability's own mana
   // component instead of the card's printed cast cost. Without it
