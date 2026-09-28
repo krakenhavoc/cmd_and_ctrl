@@ -2377,8 +2377,12 @@ type ActivatedAbilityView struct {
 	// is empty; a cost with no mana component is not made of mana, so
 	// there is nothing for this field to price.
 	ChargedManaCost *string `json:"charged_mana_cost,omitempty"`
-	LifeCost        int     `json:"life_cost,omitempty"`
-	SorcerySpeed    bool    `json:"sorcery_speed,omitempty"`
+	// LifeCost is the life an activation charges the controller right
+	// now — the printed "Pay N life" or, since #1594, a computed one
+	// (War Room's commander-identity count), priced through
+	// game.AbilityLifeCostLocked, the function the engine charges with.
+	LifeCost     int  `json:"life_cost,omitempty"`
+	SorcerySpeed bool `json:"sorcery_speed,omitempty"`
 	// ConditionUnmet is true when the ability carries an activation
 	// condition (CR 602.1b — "Activate only if an opponent controls
 	// four or more lands", "Activate only during your turn") and that
@@ -7480,6 +7484,14 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 			LifeCost:      a.Cost.Life,
 			SorcerySpeed:  a.SorcerySpeed,
 			LoyaltyCost:   a.Cost.Loyalty,
+		}
+		// #1594: a computed life component (War Room's "pay life
+		// equal to the number of colors in your commanders' color
+		// identity") is priced for the controller now, through the
+		// function the engine charges with, so the chip shows what an
+		// activation would cost this player at this moment.
+		if life, ok := g.AbilityLifeCostLocked(caster, c.InstanceID, a.Cost); ok {
+			v.LifeCost = life
 		}
 		// CR 606.3 is carried by the loyalty component itself, so a
 		// catalog entry doesn't have to remember to set SorcerySpeed
