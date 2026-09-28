@@ -435,6 +435,11 @@
         >MUST ATTACK</span
       >
     {/if}
+    {#if card.must_block}
+      <span class="badge must-attack" title="must block this combat" aria-label="must block"
+        >MUST BLOCK</span
+      >
+    {/if}
     {#if enchantedPlayer}
       <span
         class="badge curse"
@@ -524,6 +529,11 @@
     {#if card.must_attack}
       <span class="badge must-attack" title="must attack this combat" aria-label="must attack"
         >MUST ATTACK</span
+      >
+    {/if}
+    {#if card.must_block}
+      <span class="badge must-attack" title="must block this combat" aria-label="must block"
+        >MUST BLOCK</span
       >
     {/if}
     {#if enchantedPlayer}

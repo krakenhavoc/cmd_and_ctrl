@@ -3323,7 +3323,8 @@ floating form.
 
 - **Blocking requirements** (Grand Melee's second line, Lure). Decision 15's
   sketch stands, and the block completion point (Decision 38) is its
-  checkpoint.
+  checkpoint. *Superseded 2026-09-28: built by the #1597 amendment below
+  (Decisions 55–58).*
 - **More than one goader per creature** (CR 701.15c): `GoadedBy` is one ID.
 - **Zurgo Helmsmasher, Goblin Rabblemaster, Legion Warboss, Grand Melee,
   Kardur, Disrupt Decorum.** Each is now a constructor call away
@@ -3565,3 +3566,214 @@ All six are new and `full`:
   effect. It already has its live scope (Decision 52), and nothing builds it
   through `ScopedEffectFor{Match}` today, so the ratchet covers restrictions
   only.
+
+## Amendment (2026-09-28, [#1597](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1597)): blocking requirements (CR 509.1c)
+
+Builds [Decision 15](#15-requirements-cr-5091c-a-slot-and-a-checkpoint-built-with-their-first-card)
+as the blocking twin of #1571's attack requirements (Decisions 48–52).
+Decisions 1–54 stand. The "Blocking requirements" bullet of the #1571
+amendment's "What this does NOT decide" is superseded. Sprint S37 (combat
+correctness), tracker [#880](https://github.com/krakenhavoc/cmd_and_ctrl/issues/880).
+
+### The rule
+
+CR 509.1c: the defending player checks each requirement on the creatures they
+control and on the attacking creatures, and the declaration must obey the
+**maximum number of requirements that can be obeyed without disobeying a
+restriction**. A blocking cost (CR 509.1d) is never forced, and the engine
+models none. Four texts are requirements:
+
+- "blocks each combat if able" (Watchdog, Razorgrass Screen, Grand Melee's
+  second line). This is one requirement on the creature that must block, and
+  blocking anything obeys it.
+- "all creatures able to block this creature do so" (Lure, Prized Unicorn).
+  This is one requirement on **each** creature able to block the attacker, and
+  it is obeyed only by that creature blocking that attacker.
+- "must be blocked if able" (Gaea's Protector, Irresistible Prey). One
+  requirement on the attacker, obeyed by at least one blocker.
+- "must be blocked by exactly one creature if able" (Nacatl War-Pride). One
+  requirement on the attacker, obeyed by exactly one blocker.
+
+Because a requirement never beats a restriction, a Lure'd menace attacker with
+one potential blocker asks nothing, since the lone block is illegal
+(CR 702.111b). With two potential blockers it asks for both.
+
+### Decision 55: a requirement is an entry on the characteristic, whichever side it sits on
+
+`Characteristic.BlockRequirements []BlockRequirement` is `AttackRequirements`'
+twin (Decision 48), for §1's reasons. Layer statics and data records write it.
+It is only ever appended to, and a layer-6 ability removal never clears it, so a
+creature under Grand Melee that loses all abilities still has to block. Each
+entry is `{Kind, Source, SourceName}`, where `Kind` is one of the closed
+vocabulary `blocks`, `lure`, `mustBeBlocked` and `exactlyOne`.
+
+A `blocks` entry sits on the creature that must block. The other three sit on
+the **attacker**, and the engine reads them there whenever that creature is
+attacking. One slot holds both sides, because the layer pass already decides
+who an effect reaches, and a second slot would be a second vocabulary.
+
+Floating requirements are ADR 0041 data. The new mod kind
+**`addBlockRequirement`** is layer 6, and its `Text` names the kind.
+Registration panics on an unknown kind, and restore refuses one
+(`ErrUnknownEffectKey`). A `ScopedEffect.Scope` works as it does for attacks,
+though no card here needs one.
+
+On the card side, `effects.BlockRequirementWhere(kind, appliesTo)` builds a
+static, with the shorthands `BlocksEachCombat`, `BlocksEachCombatWhere`,
+`AllAbleToBlockDoSo` and `MustBeBlocked`. `effects.BlockRequirementUntilEOT{Target, Kind}`
+builds the pinned "this turn" record.
+
+### Decision 56: reach, per defending player; the verb refuses a drop; three checkpoints
+
+This is Decision 49's split, made **per defending player**, because each
+defending player declares on their own (Decision 38):
+
+- **reach(D)** is the requirements the staged block assignment obeys, plus the
+  best legal **addition** of the defending player's untapped, unassigned
+  creatures (`blockRequirementReachLocked`). The requirements are counted
+  exactly (`blockRequirementHitsLocked`).
+- **The verb.** `checkBlockDeclarationLocked` gets one more set check after the
+  pair, count and limit checks (`blockRequirementRefusalLocked`). It refuses a
+  declaration that lowers the reach of any pending defender it touches. Two
+  examples are a creature sent to block something else while Lure asks for it,
+  and a second blocker on an "exactly one" attacker. `DeclareBlocker` is the
+  one-entry form of the same verb, so it gets the check too.
+- **The checkpoint** is where a defender says their declaration is done. That is
+  their `pass_priority` in the step, `finish_blocks`, and `AdvanceStep` leaving
+  the step (for every pending defender). Each one is refused while an addition
+  would obey another requirement, and the refusal names that requirement.
+  `blockCheckpointLocked` runs before the completion (Decision 38), so a refused
+  pass completes nothing, announces nothing and moves no priority.
+- **Only a pending declaration is judged.** Once a defender has completed, a
+  Lure cast afterwards asks nothing of them. The sandbox's late block by hand
+  (Decision 38) is also not judged.
+
+The refusal is the existing `illegal_block` frame with a new reason,
+**`block_requirement`** (`BlockRefusedError.Requirement` and `SourceName`).
+`card_id` is the creature that could obey it. The sentence is built by the
+server:
+
+- "Wall One must block Bear if able (Lure)."
+- "Their Wall must block this combat if able (Grand Melee)."
+- "Gaea's Protector must be blocked if able."
+- "… must be blocked by exactly one creature if able."
+
+### Decision 57: the search is a min-cost flow per combination of modes, and its witness is re-checked
+
+Blockers compete for attackers under the count bounds (menace's minimum,
+Hungering Hydra's maximum) and the whole-combat limits (Silent Arbiter,
+Mirri). A maximum is a capacity, but a **minimum is not**: an attacker takes 0
+blockers or at least *m*. So each attacker with a live minimum of two or more,
+and each attacker with an "exactly one" requirement, gets a small set of
+**modes**: closed, exactly one, or at least *lo*. The search solves one min-cost
+flow for each combination of modes (`bestBlockRequirementAdditionLocked`,
+capped at 256 combinations; past the cap the rest stay closed).
+
+The network is source → [limit room] → blocker (1) → attacker (1, cost −(the
+blocker's `blocks` count + the attacker's `lure` count)) → the attacker's mode
+arcs → sink. A mode's first *lo* units cost −2²⁰, so the flow fills every
+minimum it can, and the fill is checked afterwards.
+
+The flow is only a search. Each witness is **re-checked by the ordinary
+validator** (`checkBlockRestrictionsLocked`, which is everything in
+`checkBlockDeclarationLocked` except the requirement check, so the search never
+recurses) and **counted exactly**. The refusal and the enumerator are only ever
+handed a declaration the verb accepts, together with the gain it really has.
+Several whole-combat limits are folded into the tightest room over every
+creature any of them counts, which is stricter than the rules and never looser.
+A board the search under-counts is weaker than printed, never stronger.
+
+Every caller takes `anyBlockRequirementLocked`'s fast path first. It is false at
+nearly every table, and the option generator memoises reach(base) across the
+options it judges.
+
+### Decision 58: the enumerator, the bot, the #328 signal and the wire
+
+- **Option generator.** When a requirement is owed, `blockOptionsLocked`
+  offers the whole witness first as one option, `BlockOption.Required`. The
+  singles and minimum groups may not contain it in one piece, for example a
+  Lure'd menace attacker's three blockers. Because the witness is an option,
+  the #328 signal (`seatOwesBlockDecision`) and the step-start auto-completion
+  (completion point 1) always see a legal block when one is owed. So a defender
+  who owes a requirement is never auto-completed past it.
+- **Enumerator.** A block the verb would refuse is not offered, because it
+  runs the same validator. The defending player's `pass` is withheld while the
+  checkpoint would refuse it (`blockRequirementOwed`). The required option is
+  offered as one `declare_blockers` move (or `declare_blocker` for a single
+  block) labelled "Block as required: …" and marked **`AlwaysLegal`**.
+- **Bot.** The runner's decline-to-always-legal fallback (Decision 51) and the
+  heuristic's `SafeIndex` step both reach the required move, so a defending
+  seat that would rather not chump a Lure'd 4/4 still blocks, and the combat
+  ends.
+- **Wire.** `CardView.must_block` is one additive, public, omitempty field. It
+  is true on each creature in a pending defender's witness
+  (`MustBlockForEffect`) and clears once that defender's pass would be
+  accepted. The client badges it "MUST BLOCK". The #328 signal already holds
+  autopass for a defender with a legal block, so nothing else changes.
+  `block_requirement` joins `BLOCK_REFUSAL_REASONS`.
+
+### Proof cards
+
+- **Grand Melee** loses its block-half caveat and ships `full`.
+- New and `full`:
+  - **Lure** (Aura, `BlockRequirementWhere(lure, AttachedToSource)`).
+  - **Prized Unicorn**.
+  - **Gaea's Protector**.
+  - **Razorgrass Screen** (defender, blocks each combat).
+  - **Irresistible Prey** ("must be blocked this turn" record, then a draw).
+  - **Taunting Challenge** (a Lure record for the turn).
+
+### Tests
+
+- `game/block_requirements_test.go`:
+  - Lure with three potential blockers. Blocking the other attacker is refused.
+    Two of three is accepted, but the pass, `FinishBlocks` and `AdvanceStep` are
+    each refused, naming the third. With the third added, the pass completes
+    the declaration.
+  - Lure plus menace. One blocker owes nothing (auto-completed at step start),
+    and two owe the pair, while the single is still `too_few_blockers`.
+  - "Blocks each combat" against a flyer, and on a tapped creature: nothing is
+    owed.
+  - "Can't block" beats the requirement. Under Silent Arbiter either creature
+    that must block is a legal answer, and a creature with none is refused the
+    slot.
+  - Must-be-blocked and exactly-one: a second blocker on the exactly-one
+    attacker is refused.
+  - Judged only while pending.
+  - Clone / `RestoreFrom` and a JSON snapshot round trip keep enforcing it.
+  - An unaffected table takes the fast path.
+  - The search picks the attacker with the most requirements under a limit.
+- `game/scoped_effects_test.go` covers the new mod kind.
+- `cards/effects/block_requirement_cards_test.go` has one test per proof card,
+  through a real attack and the defender's pass. Grand Melee's test covers both
+  halves.
+- `legal/block_requirements_test.go`: every offered move is accepted
+  (`dispatchAll`). The pass is withheld, and the one `AlwaysLegal` move is the
+  three walls on the Lure'd attacker. The withheld moves are refused. An
+  unaffected table is unchanged.
+- `aiseat/block_requirements_test.go`: the heuristic, an aggressive policy and a
+  never-blocks policy each put both 2/2s on a Lure'd 4/4, and the combat ends.
+  `block_requirements_internal_test.go`: a declining policy takes the required
+  block.
+- `protocol/must_block_view_test.go`: the stamp appears, and clears once the
+  block is made. The face-down table places `must_block` as public.
+- Client: `refusalTokens.test.ts` (the token mirror).
+
+### What this does NOT decide
+
+- **Blocking costs** (CR 509.1d, War Cadence). Nothing models them, so nothing
+  forces one.
+- **Choosing how another player's creatures block** (Brutal Hordechief,
+  Invasion Plans' second line). That is a control question, not a requirement.
+- **"Blocks each attacking creature if able" / "can block any number"** (Blaze
+  of Glory). A creature here blocks one attacker.
+- **Provoke, and "target creature blocks it this turn if able"** (Grappling
+  Hook, Turntimber Basilisk). These are a requirement on one blocker to block
+  one attacker, a fifth kind the `Mod`'s one `Text` cannot name. They need a
+  kind that carries the attacker, and are left for a card batch.
+- **Predicated Lures** ("all Walls able to block …", Marble Priest; "all
+  creatures with flying …", Talruum Piper). They need a predicate on the
+  requirement.
+- **Watchdog, Nacatl War-Pride, Alluring Scent, Bloodscent** and the other
+  "one file, same constructors" cards are left for a card batch. Watchdog also
+  needs its "creatures attacking you get −1/−0" static.
