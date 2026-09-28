@@ -9,6 +9,12 @@
 // is simply absent from the card's `activated_abilities`, and a
 // static or a trigger has no per-ability representation on the wire —
 // so these two pips are the whole of what the client renders for it.
+//
+// #1705 adds the two later ADR 0071 amendments to the same slot:
+// harnessed (CR 701.64, its "∞ — [ability]" lines) and monstrous
+// (CR 701.37b, its "as long as this creature is monstrous" lines).
+// Both had wire fields (`CardView.harnessed` / `CardView.monstrous`)
+// long before either had a badge — this file is what closes that gap.
 
 import { describe, it, expect, afterEach } from "vitest";
 
@@ -86,6 +92,44 @@ describe("the designation badge", () => {
   it("is absent on an unprepared preparation creature", () => {
     const { container } = mount(
       permanent({ name: "Skycoach Conductor", type_line: "Creature — Bird Pilot" }),
+    );
+    expect(container.querySelector(".badge.designation")).toBeNull();
+  });
+
+  // ADR 0071 amendment, #1321 (CR 701.64): a harnessed permanent.
+  it("shows a harnessed permanent", () => {
+    const { container } = mount(
+      permanent({
+        name: "The Mind Stone",
+        type_line: "Legendary Artifact",
+        harnessed: true,
+      }),
+    );
+    expect(badgeText(container)).toBe("HARNESSED");
+  });
+
+  it("is absent on an unharnessed permanent", () => {
+    const { container } = mount(
+      permanent({ name: "The Mind Stone", type_line: "Legendary Artifact" }),
+    );
+    expect(container.querySelector(".badge.designation")).toBeNull();
+  });
+
+  // ADR 0071 amendment, #1700 (CR 701.37b): a monstrous creature.
+  it("shows a monstrous creature", () => {
+    const { container } = mount(
+      permanent({
+        name: "Stormbreath Dragon",
+        type_line: "Creature — Dragon",
+        monstrous: true,
+      }),
+    );
+    expect(badgeText(container)).toBe("MONSTROUS");
+  });
+
+  it("is absent on a creature that hasn't become monstrous", () => {
+    const { container } = mount(
+      permanent({ name: "Stormbreath Dragon", type_line: "Creature — Dragon" }),
     );
     expect(container.querySelector(".badge.designation")).toBeNull();
   });

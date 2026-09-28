@@ -232,6 +232,15 @@
   // designation (CR 722.3a), which says its prepare spell is waiting
   // in exile to be cast. A Class or a Case is never a preparation
   // card, so the slot still holds one badge at most.
+  //
+  // ADR 0071's addendums add a fourth and fifth tenant, #1705:
+  // HARNESSED (CR 701.64) and MONSTROUS (CR 701.37b). Unlike Class /
+  // Case / preparation, neither carries a subtype gate — any
+  // permanent can be harnessed, any creature can become monstrous —
+  // so in principle a card could someday carry two of these at once
+  // (a harnessed monstrous creature). No printed card does today, and
+  // this slot still shows at most one badge; if that combination ever
+  // ships, this priority chain is where to widen it.
   const designationBadge = $derived(
     card.solved
       ? "SOLVED"
@@ -239,14 +248,22 @@
         ? `LVL ${card.class_level}`
         : card.prepared
           ? "PREPARED"
-          : "",
+          : card.harnessed
+            ? "HARNESSED"
+            : card.monstrous
+              ? "MONSTROUS"
+              : "",
   );
   const designationTitle = $derived(
     card.solved
       ? "this Case is solved"
       : card.prepared
         ? "prepared — you may cast a copy of its spell from exile"
-        : `Class level ${card.class_level ?? 1}`,
+        : card.harnessed
+          ? "harnessed — its ∞ ability lines are on (CR 701.64)"
+          : card.monstrous
+            ? 'monstrous — its "as long as this creature is monstrous" lines are on (CR 701.37b)'
+            : `Class level ${card.class_level ?? 1}`,
   );
 
   // Hover delay (settings.display.hoverDelayMs) defers the write to
