@@ -541,3 +541,85 @@ case down, here or in a new dated amendment, before running
 renames or repurposes anything, or that needs a refusal channel because
 an older binary would otherwise misread it, is Q1/P10's other branch —
 a new schema version, not a regeneration.
+
+## Amendment 2026-09-28 (#1712): a second sanctioned regeneration — a test-helper fix, not a wire-format addition
+
+The #1698 amendment above covers a schema addition (ten new fields, one
+new value). This one is a different shape of "additive" — no field was
+added or changed meaning; a test double that had been silently
+skipping a step started performing it — and it is recorded separately
+because the case for it is not identical.
+
+**What happened.** #1707's second commit fixed `pushCatalogPermanent`
+(`internal/cards/effects/activated_test.go`), the helper two scripted
+corpus boards (`gingerbrute`, `whip_redirect`) use to seed a catalog
+permanent straight onto the battlefield. Before the fix it only
+appended the card to `g.Battlefield.Cards` — no `EmitEvent`, so no
+`EventZoneMove`, so `stampBattlefieldEntryLocked` never ran and the
+card's `EnteredBattlefieldAt` stayed at its zero value. That is not a
+state any REAL battlefield entry can produce: production always routes
+through `EmitEvent` (`Game.MoveCard` and every mutation that pushes a
+card onto the battlefield emits `EventZoneMove`), so a zero
+`EnteredBattlefieldAt` on a live permanent never happens. The two
+frozen fixtures were capturing an artifact of the test double, not a
+value a real snapshot has ever held. #1707 fixed the helper to emit the
+event the same way `pushBattlefieldCardWithTimestamp` does, but did not
+re-run `-write-corpus` over the two files this changed the output of —
+that is what #1712 tracks.
+
+**Why this is not a compatibility break.** Nothing about the
+`enteredBattlefieldAt` field itself changed — same key, same type
+(int64 nanoseconds), same meaning, no rename or repurpose. Applying
+Decision P10's test again: the two existing fixtures, unmodified, with
+the old `0`, still pass `TestSnapshotCorpusRestores` today, unchanged,
+under the binary that carries the `pushCatalogPermanent` fix (verified
+before touching either file). Regenerating them is not fixing a
+restore failure; it is only unblocking `TestWriteSnapshotCorpus`'s
+self-consistency check, which cannot tell "the wire format changed"
+apart from "the scripted board now performs one more real action than
+it used to."
+
+**Why the diff is bigger than one field, and why that's still the same
+change.** Emitting the extra `EventZoneMove` is not a value patched in
+after the fact — it is one more real event appended to the game's
+event log, mid-script, before the actions the rest of each board's
+`build` function already performs. Once the deterministic corpus clock
+(`corpusEpoch`, ticking `+1000` per call) is asked for one more
+timestamp before the point it used to be asked for the first one, three
+things shift by construction, not by coincidence:
+
+- the new `zone_move` event itself appears in `events`, at the seq slot
+  it now occupies;
+- every event logged afterward in the same board carries a `seq` one
+  higher than before, because the counter is monotonic and one more
+  event landed ahead of it;
+- every `enteredAt` / `PinnedEnteredAt` / scoped-effect `timestamp` /
+  `layerVersion` that reads off the corpus clock or off this
+  permanent's own `EnteredBattlefieldAt` advances by the same one tick,
+  because they are all derived from the same clock and the same stamp,
+  not independent literals.
+
+Diffed hunk by hunk against the committed originals (sample in the PR
+body for #1712), that is the whole of it for both files: one new event,
+and every downstream value that was always going to be "whatever the
+clock said last" shifted by the one call the fix inserted. No key was
+renamed, no value took on a new meaning, and nothing before the fixed
+helper's call moved at all.
+
+**What was done.** `gingerbrute.json` and `whip_redirect.json` under
+`internal/game/testdata/snapshots/v7/` were deleted and rewritten by
+`TestWriteSnapshotCorpus -write-corpus`, in the same PR as this
+amendment, alongside the new `duration_copy.json` (#1593) that file's
+absence was blocking. `detection_tower.json` and `arcane_lighthouse.json`
+(#1696) needed no action here — #1707 already wrote them, new, in its
+own regeneration pass.
+
+**What this does not authorise.** Same boundary as the #1698 amendment:
+this is not a general license to regenerate a fixture because a test
+helper changed. It applies specifically to a scripted board where the
+only thing that changed is that a **test double started doing what
+production already always did** — production's own `EnteredBattlefieldAt`
+semantics did not move. A fix to a helper that changes what a board
+actually represents (a different card, a different zone, a different
+player) is a new board under a new name, not a regeneration of the old
+one.
