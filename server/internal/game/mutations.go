@@ -2286,10 +2286,10 @@ func mostRestrictiveRequirement(options []string, pending []ColorRequirement) (i
 	for i := range pending {
 		req := pending[i]
 		for _, opt := range options {
-			if !matchColor(opt, req.Options) {
+			if !req.Admits(opt) {
 				continue
 			}
-			if best < 0 || len(req.Options) < len(pending[best].Options) {
+			if best < 0 || req.width() < pending[best].width() {
 				best, bestOpt = i, opt
 			}
 			break
