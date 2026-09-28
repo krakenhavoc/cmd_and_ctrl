@@ -3,12 +3,12 @@
   "snapshot": {
     "schema": 7,
     "takenAt": "2026-09-24T00:00:00Z",
-    "id": "0e94b358-8fde-4fd2-8730-ce6587c2111e",
+    "id": "a3d0f951-38e2-4a49-8dfc-b6d59cf6ec3e",
     "createdAt": "2026-09-24T00:00:00Z",
     "state": "active",
     "seats": [
       {
-        "id": "7f94e600-d3b4-493b-b965-8cca20cddc40",
+        "id": "6e813858-32e8-4631-82cb-dd92a9f13d9d",
         "name": "P1",
         "seat": 0,
         "life": 40,
@@ -16,10 +16,10 @@
         "energy": 0,
         "library": {
           "kind": "library",
-          "owner": "7f94e600-d3b4-493b-b965-8cca20cddc40",
+          "owner": "6e813858-32e8-4631-82cb-dd92a9f13d9d",
           "cards": [
             {
-              "instanceId": "92c5e85a-72a3-4148-8b66-7a9f3df14aea",
+              "instanceId": "dd65df9e-b86c-4d3b-bf2e-d7c83bb46512",
               "name": "Forest",
               "typeLine": "Basic Land — Forest",
               "power": 0,
@@ -27,8 +27,8 @@
               "variableToughness": false,
               "startingLoyalty": 0,
               "needsEffect": false,
-              "owner": "7f94e600-d3b4-493b-b965-8cca20cddc40",
-              "controller": "7f94e600-d3b4-493b-b965-8cca20cddc40",
+              "owner": "6e813858-32e8-4631-82cb-dd92a9f13d9d",
+              "controller": "6e813858-32e8-4631-82cb-dd92a9f13d9d",
               "tapped": false,
               "battleX": 0,
               "battleY": 0,
@@ -65,7 +65,7 @@
               "phaseInLockedBy": "00000000-0000-0000-0000-000000000000"
             },
             {
-              "instanceId": "245cf469-6b3c-4e50-b3f1-196d3a52c56d",
+              "instanceId": "59b39c48-8fc1-4671-bf60-6b1c599541ef",
               "name": "Forest",
               "typeLine": "Basic Land — Forest",
               "power": 0,
@@ -73,8 +73,8 @@
               "variableToughness": false,
               "startingLoyalty": 0,
               "needsEffect": false,
-              "owner": "7f94e600-d3b4-493b-b965-8cca20cddc40",
-              "controller": "7f94e600-d3b4-493b-b965-8cca20cddc40",
+              "owner": "6e813858-32e8-4631-82cb-dd92a9f13d9d",
+              "controller": "6e813858-32e8-4631-82cb-dd92a9f13d9d",
               "tapped": false,
               "battleX": 0,
               "battleY": 0,
@@ -111,7 +111,7 @@
               "phaseInLockedBy": "00000000-0000-0000-0000-000000000000"
             },
             {
-              "instanceId": "3f83cb08-7618-4ca9-b1b8-981c17835c74",
+              "instanceId": "22d41c53-3bee-4d58-b022-442c3970baaa",
               "name": "Forest",
               "typeLine": "Basic Land — Forest",
               "power": 0,
@@ -119,8 +119,8 @@
               "variableToughness": false,
               "startingLoyalty": 0,
               "needsEffect": false,
-              "owner": "7f94e600-d3b4-493b-b965-8cca20cddc40",
-              "controller": "7f94e600-d3b4-493b-b965-8cca20cddc40",
+              "owner": "6e813858-32e8-4631-82cb-dd92a9f13d9d",
+              "controller": "6e813858-32e8-4631-82cb-dd92a9f13d9d",
               "tapped": false,
               "battleX": 0,
               "battleY": 0,
@@ -157,7 +157,7 @@
               "phaseInLockedBy": "00000000-0000-0000-0000-000000000000"
             },
             {
-              "instanceId": "eaa2daab-1f50-4d28-8b0e-a57b8e00266c",
+              "instanceId": "044bf34d-2341-4899-a554-34f22fc26eba",
               "name": "Forest",
               "typeLine": "Basic Land — Forest",
               "power": 0,
@@ -165,8 +165,8 @@
               "variableToughness": false,
               "startingLoyalty": 0,
               "needsEffect": false,
-              "owner": "7f94e600-d3b4-493b-b965-8cca20cddc40",
-              "controller": "7f94e600-d3b4-493b-b965-8cca20cddc40",
+              "owner": "6e813858-32e8-4631-82cb-dd92a9f13d9d",
+              "controller": "6e813858-32e8-4631-82cb-dd92a9f13d9d",
               "tapped": false,
               "battleX": 0,
               "battleY": 0,
@@ -206,10 +206,10 @@
         },
         "hand": {
           "kind": "hand",
-          "owner": "7f94e600-d3b4-493b-b965-8cca20cddc40",
+          "owner": "6e813858-32e8-4631-82cb-dd92a9f13d9d",
           "cards": [
             {
-              "instanceId": "ea950f1c-4c60-452a-96e5-724fbac7fb3d",
+              "instanceId": "c0396ce7-b196-44bd-a4bb-36c5b43a075c",
               "name": "Forest",
               "typeLine": "Basic Land — Forest",
               "power": 0,
@@ -217,8 +217,8 @@
               "variableToughness": false,
               "startingLoyalty": 0,
               "needsEffect": false,
-              "owner": "7f94e600-d3b4-493b-b965-8cca20cddc40",
-              "controller": "7f94e600-d3b4-493b-b965-8cca20cddc40",
+              "owner": "6e813858-32e8-4631-82cb-dd92a9f13d9d",
+              "controller": "6e813858-32e8-4631-82cb-dd92a9f13d9d",
               "tapped": false,
               "battleX": 0,
               "battleY": 0,
@@ -229,7 +229,7 @@
               "damageMarked": 0,
               "faceDown": false,
               "knownBy": {
-                "7f94e600-d3b4-493b-b965-8cca20cddc40": true
+                "6e813858-32e8-4631-82cb-dd92a9f13d9d": true
               },
               "enteredBattlefieldAt": 0,
               "summonedThisTurn": false,
@@ -258,7 +258,7 @@
               "phaseInLockedBy": "00000000-0000-0000-0000-000000000000"
             },
             {
-              "instanceId": "bd564a89-c476-4aa8-943d-8b132a33b497",
+              "instanceId": "a7a868d0-b20f-4795-827d-a5751fc2c148",
               "name": "Forest",
               "typeLine": "Basic Land — Forest",
               "power": 0,
@@ -266,8 +266,8 @@
               "variableToughness": false,
               "startingLoyalty": 0,
               "needsEffect": false,
-              "owner": "7f94e600-d3b4-493b-b965-8cca20cddc40",
-              "controller": "7f94e600-d3b4-493b-b965-8cca20cddc40",
+              "owner": "6e813858-32e8-4631-82cb-dd92a9f13d9d",
+              "controller": "6e813858-32e8-4631-82cb-dd92a9f13d9d",
               "tapped": false,
               "battleX": 0,
               "battleY": 0,
@@ -278,7 +278,7 @@
               "damageMarked": 0,
               "faceDown": false,
               "knownBy": {
-                "7f94e600-d3b4-493b-b965-8cca20cddc40": true
+                "6e813858-32e8-4631-82cb-dd92a9f13d9d": true
               },
               "enteredBattlefieldAt": 0,
               "summonedThisTurn": false,
@@ -307,7 +307,7 @@
               "phaseInLockedBy": "00000000-0000-0000-0000-000000000000"
             },
             {
-              "instanceId": "81504f14-493e-4bb5-b821-1ecfb1aa08dc",
+              "instanceId": "bcf91dd3-ad59-4a18-9ab1-697f7ae75b7f",
               "name": "Forest",
               "typeLine": "Basic Land — Forest",
               "power": 0,
@@ -315,8 +315,8 @@
               "variableToughness": false,
               "startingLoyalty": 0,
               "needsEffect": false,
-              "owner": "7f94e600-d3b4-493b-b965-8cca20cddc40",
-              "controller": "7f94e600-d3b4-493b-b965-8cca20cddc40",
+              "owner": "6e813858-32e8-4631-82cb-dd92a9f13d9d",
+              "controller": "6e813858-32e8-4631-82cb-dd92a9f13d9d",
               "tapped": false,
               "battleX": 0,
               "battleY": 0,
@@ -327,7 +327,7 @@
               "damageMarked": 0,
               "faceDown": false,
               "knownBy": {
-                "7f94e600-d3b4-493b-b965-8cca20cddc40": true
+                "6e813858-32e8-4631-82cb-dd92a9f13d9d": true
               },
               "enteredBattlefieldAt": 0,
               "summonedThisTurn": false,
@@ -356,7 +356,7 @@
               "phaseInLockedBy": "00000000-0000-0000-0000-000000000000"
             },
             {
-              "instanceId": "9b240a23-f9a7-4b80-8c65-13c7f52a359c",
+              "instanceId": "1bba3878-0422-4e81-a969-1bbeeb4a5b43",
               "name": "Forest",
               "typeLine": "Basic Land — Forest",
               "power": 0,
@@ -364,8 +364,8 @@
               "variableToughness": false,
               "startingLoyalty": 0,
               "needsEffect": false,
-              "owner": "7f94e600-d3b4-493b-b965-8cca20cddc40",
-              "controller": "7f94e600-d3b4-493b-b965-8cca20cddc40",
+              "owner": "6e813858-32e8-4631-82cb-dd92a9f13d9d",
+              "controller": "6e813858-32e8-4631-82cb-dd92a9f13d9d",
               "tapped": false,
               "battleX": 0,
               "battleY": 0,
@@ -376,7 +376,7 @@
               "damageMarked": 0,
               "faceDown": false,
               "knownBy": {
-                "7f94e600-d3b4-493b-b965-8cca20cddc40": true
+                "6e813858-32e8-4631-82cb-dd92a9f13d9d": true
               },
               "enteredBattlefieldAt": 0,
               "summonedThisTurn": false,
@@ -405,7 +405,7 @@
               "phaseInLockedBy": "00000000-0000-0000-0000-000000000000"
             },
             {
-              "instanceId": "ed99d27d-5948-4435-a7f9-f22ed8fcd860",
+              "instanceId": "b55ff305-e814-4708-a479-1aae73450ad5",
               "name": "Forest",
               "typeLine": "Basic Land — Forest",
               "power": 0,
@@ -413,8 +413,8 @@
               "variableToughness": false,
               "startingLoyalty": 0,
               "needsEffect": false,
-              "owner": "7f94e600-d3b4-493b-b965-8cca20cddc40",
-              "controller": "7f94e600-d3b4-493b-b965-8cca20cddc40",
+              "owner": "6e813858-32e8-4631-82cb-dd92a9f13d9d",
+              "controller": "6e813858-32e8-4631-82cb-dd92a9f13d9d",
               "tapped": false,
               "battleX": 0,
               "battleY": 0,
@@ -425,7 +425,7 @@
               "damageMarked": 0,
               "faceDown": false,
               "knownBy": {
-                "7f94e600-d3b4-493b-b965-8cca20cddc40": true
+                "6e813858-32e8-4631-82cb-dd92a9f13d9d": true
               },
               "enteredBattlefieldAt": 0,
               "summonedThisTurn": false,
@@ -454,7 +454,7 @@
               "phaseInLockedBy": "00000000-0000-0000-0000-000000000000"
             },
             {
-              "instanceId": "dca2504b-5ca3-407e-b846-82dbac78751e",
+              "instanceId": "3c1a1a11-9222-407c-8d04-4a3054961dbd",
               "name": "Forest",
               "typeLine": "Basic Land — Forest",
               "power": 0,
@@ -462,8 +462,8 @@
               "variableToughness": false,
               "startingLoyalty": 0,
               "needsEffect": false,
-              "owner": "7f94e600-d3b4-493b-b965-8cca20cddc40",
-              "controller": "7f94e600-d3b4-493b-b965-8cca20cddc40",
+              "owner": "6e813858-32e8-4631-82cb-dd92a9f13d9d",
+              "controller": "6e813858-32e8-4631-82cb-dd92a9f13d9d",
               "tapped": false,
               "battleX": 0,
               "battleY": 0,
@@ -474,7 +474,7 @@
               "damageMarked": 0,
               "faceDown": false,
               "knownBy": {
-                "7f94e600-d3b4-493b-b965-8cca20cddc40": true
+                "6e813858-32e8-4631-82cb-dd92a9f13d9d": true
               },
               "enteredBattlefieldAt": 0,
               "summonedThisTurn": false,
@@ -503,7 +503,7 @@
               "phaseInLockedBy": "00000000-0000-0000-0000-000000000000"
             },
             {
-              "instanceId": "4a8f9c60-d424-4372-94e1-55ed5068e914",
+              "instanceId": "91979720-5957-4cf7-b888-86f73307a9a3",
               "name": "Forest",
               "typeLine": "Basic Land — Forest",
               "power": 0,
@@ -511,8 +511,8 @@
               "variableToughness": false,
               "startingLoyalty": 0,
               "needsEffect": false,
-              "owner": "7f94e600-d3b4-493b-b965-8cca20cddc40",
-              "controller": "7f94e600-d3b4-493b-b965-8cca20cddc40",
+              "owner": "6e813858-32e8-4631-82cb-dd92a9f13d9d",
+              "controller": "6e813858-32e8-4631-82cb-dd92a9f13d9d",
               "tapped": false,
               "battleX": 0,
               "battleY": 0,
@@ -523,7 +523,7 @@
               "damageMarked": 0,
               "faceDown": false,
               "knownBy": {
-                "7f94e600-d3b4-493b-b965-8cca20cddc40": true
+                "6e813858-32e8-4631-82cb-dd92a9f13d9d": true
               },
               "enteredBattlefieldAt": 0,
               "summonedThisTurn": false,
@@ -555,14 +555,69 @@
         },
         "graveyard": {
           "kind": "graveyard",
-          "owner": "7f94e600-d3b4-493b-b965-8cca20cddc40"
+          "owner": "6e813858-32e8-4631-82cb-dd92a9f13d9d",
+          "cards": [
+            {
+              "instanceId": "25b8a07c-43d5-4bba-9cab-096a8f34ef4d",
+              "name": "Cytoshape",
+              "oracleId": "14221c18-7801-49c9-a2c8-53b8c5181d63",
+              "typeLine": "Instant",
+              "power": 0,
+              "toughness": 0,
+              "variableToughness": false,
+              "startingLoyalty": 0,
+              "needsEffect": false,
+              "owner": "6e813858-32e8-4631-82cb-dd92a9f13d9d",
+              "controller": "6e813858-32e8-4631-82cb-dd92a9f13d9d",
+              "tapped": false,
+              "battleX": 0,
+              "battleY": 0,
+              "isCommander": false,
+              "attackingTarget": "00000000-0000-0000-0000-000000000000",
+              "blockingTarget": "00000000-0000-0000-0000-000000000000",
+              "goadedBy": "00000000-0000-0000-0000-000000000000",
+              "damageMarked": 0,
+              "faceDown": false,
+              "knownBy": {
+                "314b3639-d673-45c2-9788-e63f025f83ab": true,
+                "6e813858-32e8-4631-82cb-dd92a9f13d9d": true
+              },
+              "enteredBattlefieldAt": 0,
+              "objectEpoch": 2,
+              "summonedThisTurn": false,
+              "markedLethalByDeathtouch": false,
+              "attachedTo": {
+                "Kind": "",
+                "ID": "00000000-0000-0000-0000-000000000000",
+                "Slot": 0,
+                "Mode": 0
+              },
+              "baseController": "00000000-0000-0000-0000-000000000000",
+              "chosenPlayer": "00000000-0000-0000-0000-000000000000",
+              "provenance": {
+                "giftOpponent": "00000000-0000-0000-0000-000000000000"
+              },
+              "preparedBy": {
+                "id": "00000000-0000-0000-0000-000000000000",
+                "epoch": 0
+              },
+              "hiddenBy": {
+                "id": "00000000-0000-0000-0000-000000000000",
+                "epoch": 0
+              },
+              "protectorPlayerId": "00000000-0000-0000-0000-000000000000",
+              "phasedOutBy": "00000000-0000-0000-0000-000000000000",
+              "phaseInLockedBy": "00000000-0000-0000-0000-000000000000",
+              "catalogAbilities": {}
+            }
+          ]
         },
         "command": {
           "kind": "command",
-          "owner": "7f94e600-d3b4-493b-b965-8cca20cddc40",
+          "owner": "6e813858-32e8-4631-82cb-dd92a9f13d9d",
           "cards": [
             {
-              "instanceId": "871b8060-1115-4317-bcaf-30c7d505dfd2",
+              "instanceId": "770b3877-4eb5-4b69-aecd-104eac4abc41",
               "name": "Test Commander 1",
               "typeLine": "Legendary Creature — Test",
               "power": 3,
@@ -570,8 +625,8 @@
               "variableToughness": false,
               "startingLoyalty": 0,
               "needsEffect": false,
-              "owner": "7f94e600-d3b4-493b-b965-8cca20cddc40",
-              "controller": "7f94e600-d3b4-493b-b965-8cca20cddc40",
+              "owner": "6e813858-32e8-4631-82cb-dd92a9f13d9d",
+              "controller": "6e813858-32e8-4631-82cb-dd92a9f13d9d",
               "tapped": false,
               "battleX": 0,
               "battleY": 0,
@@ -582,8 +637,8 @@
               "damageMarked": 0,
               "faceDown": false,
               "knownBy": {
-                "7f94e600-d3b4-493b-b965-8cca20cddc40": true,
-                "85bb5a48-704c-4af5-9551-cbfcfb373180": true
+                "314b3639-d673-45c2-9788-e63f025f83ab": true,
+                "6e813858-32e8-4631-82cb-dd92a9f13d9d": true
               },
               "enteredBattlefieldAt": 0,
               "summonedThisTurn": false,
@@ -615,7 +670,7 @@
         },
         "emblems": {
           "kind": "command",
-          "owner": "7f94e600-d3b4-493b-b965-8cca20cddc40"
+          "owner": "6e813858-32e8-4631-82cb-dd92a9f13d9d"
         },
         "turnsBegun": 1,
         "eliminated": false,
@@ -628,7 +683,7 @@
         "landDropsPerTurn": 1
       },
       {
-        "id": "85bb5a48-704c-4af5-9551-cbfcfb373180",
+        "id": "314b3639-d673-45c2-9788-e63f025f83ab",
         "name": "P2",
         "seat": 1,
         "life": 40,
@@ -636,10 +691,10 @@
         "energy": 0,
         "library": {
           "kind": "library",
-          "owner": "85bb5a48-704c-4af5-9551-cbfcfb373180",
+          "owner": "314b3639-d673-45c2-9788-e63f025f83ab",
           "cards": [
             {
-              "instanceId": "647a46a7-c525-4760-989c-1f3523c6c596",
+              "instanceId": "a98d3ba6-dbfa-4108-a43d-6f967fa4272a",
               "name": "Forest",
               "typeLine": "Basic Land — Forest",
               "power": 0,
@@ -647,8 +702,8 @@
               "variableToughness": false,
               "startingLoyalty": 0,
               "needsEffect": false,
-              "owner": "85bb5a48-704c-4af5-9551-cbfcfb373180",
-              "controller": "85bb5a48-704c-4af5-9551-cbfcfb373180",
+              "owner": "314b3639-d673-45c2-9788-e63f025f83ab",
+              "controller": "314b3639-d673-45c2-9788-e63f025f83ab",
               "tapped": false,
               "battleX": 0,
               "battleY": 0,
@@ -685,7 +740,7 @@
               "phaseInLockedBy": "00000000-0000-0000-0000-000000000000"
             },
             {
-              "instanceId": "0b3e3fe5-9a4b-4446-99c0-c67ef8b5b96f",
+              "instanceId": "4165b933-74f4-4135-9158-c2c6566ec293",
               "name": "Forest",
               "typeLine": "Basic Land — Forest",
               "power": 0,
@@ -693,8 +748,8 @@
               "variableToughness": false,
               "startingLoyalty": 0,
               "needsEffect": false,
-              "owner": "85bb5a48-704c-4af5-9551-cbfcfb373180",
-              "controller": "85bb5a48-704c-4af5-9551-cbfcfb373180",
+              "owner": "314b3639-d673-45c2-9788-e63f025f83ab",
+              "controller": "314b3639-d673-45c2-9788-e63f025f83ab",
               "tapped": false,
               "battleX": 0,
               "battleY": 0,
@@ -731,7 +786,7 @@
               "phaseInLockedBy": "00000000-0000-0000-0000-000000000000"
             },
             {
-              "instanceId": "2071d564-839b-43f9-81a0-f466608fca5e",
+              "instanceId": "566d0d0c-a15d-4252-afee-802ada2e7d89",
               "name": "Forest",
               "typeLine": "Basic Land — Forest",
               "power": 0,
@@ -739,8 +794,8 @@
               "variableToughness": false,
               "startingLoyalty": 0,
               "needsEffect": false,
-              "owner": "85bb5a48-704c-4af5-9551-cbfcfb373180",
-              "controller": "85bb5a48-704c-4af5-9551-cbfcfb373180",
+              "owner": "314b3639-d673-45c2-9788-e63f025f83ab",
+              "controller": "314b3639-d673-45c2-9788-e63f025f83ab",
               "tapped": false,
               "battleX": 0,
               "battleY": 0,
@@ -777,7 +832,7 @@
               "phaseInLockedBy": "00000000-0000-0000-0000-000000000000"
             },
             {
-              "instanceId": "65a457dc-ec3f-4754-8fa3-e2a32bf118d0",
+              "instanceId": "e51f87a1-0214-48ee-a34b-bc4b218191e5",
               "name": "Forest",
               "typeLine": "Basic Land — Forest",
               "power": 0,
@@ -785,8 +840,8 @@
               "variableToughness": false,
               "startingLoyalty": 0,
               "needsEffect": false,
-              "owner": "85bb5a48-704c-4af5-9551-cbfcfb373180",
-              "controller": "85bb5a48-704c-4af5-9551-cbfcfb373180",
+              "owner": "314b3639-d673-45c2-9788-e63f025f83ab",
+              "controller": "314b3639-d673-45c2-9788-e63f025f83ab",
               "tapped": false,
               "battleX": 0,
               "battleY": 0,
@@ -826,10 +881,10 @@
         },
         "hand": {
           "kind": "hand",
-          "owner": "85bb5a48-704c-4af5-9551-cbfcfb373180",
+          "owner": "314b3639-d673-45c2-9788-e63f025f83ab",
           "cards": [
             {
-              "instanceId": "123e9c60-af20-4fd1-a010-24d2d2d40f89",
+              "instanceId": "d0ed6fe2-0a8b-42ed-bd26-34c397ae5208",
               "name": "Forest",
               "typeLine": "Basic Land — Forest",
               "power": 0,
@@ -837,8 +892,8 @@
               "variableToughness": false,
               "startingLoyalty": 0,
               "needsEffect": false,
-              "owner": "85bb5a48-704c-4af5-9551-cbfcfb373180",
-              "controller": "85bb5a48-704c-4af5-9551-cbfcfb373180",
+              "owner": "314b3639-d673-45c2-9788-e63f025f83ab",
+              "controller": "314b3639-d673-45c2-9788-e63f025f83ab",
               "tapped": false,
               "battleX": 0,
               "battleY": 0,
@@ -849,7 +904,7 @@
               "damageMarked": 0,
               "faceDown": false,
               "knownBy": {
-                "85bb5a48-704c-4af5-9551-cbfcfb373180": true
+                "314b3639-d673-45c2-9788-e63f025f83ab": true
               },
               "enteredBattlefieldAt": 0,
               "summonedThisTurn": false,
@@ -878,7 +933,7 @@
               "phaseInLockedBy": "00000000-0000-0000-0000-000000000000"
             },
             {
-              "instanceId": "a0180f3e-ee53-4371-9091-6a2a773039ab",
+              "instanceId": "e0f24f8d-cb20-4a0c-b116-9eae5f7f8446",
               "name": "Forest",
               "typeLine": "Basic Land — Forest",
               "power": 0,
@@ -886,8 +941,8 @@
               "variableToughness": false,
               "startingLoyalty": 0,
               "needsEffect": false,
-              "owner": "85bb5a48-704c-4af5-9551-cbfcfb373180",
-              "controller": "85bb5a48-704c-4af5-9551-cbfcfb373180",
+              "owner": "314b3639-d673-45c2-9788-e63f025f83ab",
+              "controller": "314b3639-d673-45c2-9788-e63f025f83ab",
               "tapped": false,
               "battleX": 0,
               "battleY": 0,
@@ -898,7 +953,7 @@
               "damageMarked": 0,
               "faceDown": false,
               "knownBy": {
-                "85bb5a48-704c-4af5-9551-cbfcfb373180": true
+                "314b3639-d673-45c2-9788-e63f025f83ab": true
               },
               "enteredBattlefieldAt": 0,
               "summonedThisTurn": false,
@@ -927,7 +982,7 @@
               "phaseInLockedBy": "00000000-0000-0000-0000-000000000000"
             },
             {
-              "instanceId": "cd4b0050-be5a-46a8-b14d-7f270d8b2cc7",
+              "instanceId": "6ff82a42-396d-416a-b625-80bf5398e59d",
               "name": "Forest",
               "typeLine": "Basic Land — Forest",
               "power": 0,
@@ -935,8 +990,8 @@
               "variableToughness": false,
               "startingLoyalty": 0,
               "needsEffect": false,
-              "owner": "85bb5a48-704c-4af5-9551-cbfcfb373180",
-              "controller": "85bb5a48-704c-4af5-9551-cbfcfb373180",
+              "owner": "314b3639-d673-45c2-9788-e63f025f83ab",
+              "controller": "314b3639-d673-45c2-9788-e63f025f83ab",
               "tapped": false,
               "battleX": 0,
               "battleY": 0,
@@ -947,7 +1002,7 @@
               "damageMarked": 0,
               "faceDown": false,
               "knownBy": {
-                "85bb5a48-704c-4af5-9551-cbfcfb373180": true
+                "314b3639-d673-45c2-9788-e63f025f83ab": true
               },
               "enteredBattlefieldAt": 0,
               "summonedThisTurn": false,
@@ -976,7 +1031,7 @@
               "phaseInLockedBy": "00000000-0000-0000-0000-000000000000"
             },
             {
-              "instanceId": "e7588be5-8c87-4410-a645-b636a8f11be4",
+              "instanceId": "04633401-9ff7-4fa8-8962-7c0ae2df2790",
               "name": "Forest",
               "typeLine": "Basic Land — Forest",
               "power": 0,
@@ -984,8 +1039,8 @@
               "variableToughness": false,
               "startingLoyalty": 0,
               "needsEffect": false,
-              "owner": "85bb5a48-704c-4af5-9551-cbfcfb373180",
-              "controller": "85bb5a48-704c-4af5-9551-cbfcfb373180",
+              "owner": "314b3639-d673-45c2-9788-e63f025f83ab",
+              "controller": "314b3639-d673-45c2-9788-e63f025f83ab",
               "tapped": false,
               "battleX": 0,
               "battleY": 0,
@@ -996,7 +1051,7 @@
               "damageMarked": 0,
               "faceDown": false,
               "knownBy": {
-                "85bb5a48-704c-4af5-9551-cbfcfb373180": true
+                "314b3639-d673-45c2-9788-e63f025f83ab": true
               },
               "enteredBattlefieldAt": 0,
               "summonedThisTurn": false,
@@ -1025,7 +1080,7 @@
               "phaseInLockedBy": "00000000-0000-0000-0000-000000000000"
             },
             {
-              "instanceId": "f54ce533-3739-4bd3-8d7e-bb7420b4ea14",
+              "instanceId": "f24d0959-de84-4ab1-be74-8e2bd3757012",
               "name": "Forest",
               "typeLine": "Basic Land — Forest",
               "power": 0,
@@ -1033,8 +1088,8 @@
               "variableToughness": false,
               "startingLoyalty": 0,
               "needsEffect": false,
-              "owner": "85bb5a48-704c-4af5-9551-cbfcfb373180",
-              "controller": "85bb5a48-704c-4af5-9551-cbfcfb373180",
+              "owner": "314b3639-d673-45c2-9788-e63f025f83ab",
+              "controller": "314b3639-d673-45c2-9788-e63f025f83ab",
               "tapped": false,
               "battleX": 0,
               "battleY": 0,
@@ -1045,7 +1100,7 @@
               "damageMarked": 0,
               "faceDown": false,
               "knownBy": {
-                "85bb5a48-704c-4af5-9551-cbfcfb373180": true
+                "314b3639-d673-45c2-9788-e63f025f83ab": true
               },
               "enteredBattlefieldAt": 0,
               "summonedThisTurn": false,
@@ -1074,7 +1129,7 @@
               "phaseInLockedBy": "00000000-0000-0000-0000-000000000000"
             },
             {
-              "instanceId": "14b7cfcf-01d7-4fe6-a1d3-077fff0690de",
+              "instanceId": "bea73ffe-8d5f-429f-9252-6855e7f71b68",
               "name": "Forest",
               "typeLine": "Basic Land — Forest",
               "power": 0,
@@ -1082,8 +1137,8 @@
               "variableToughness": false,
               "startingLoyalty": 0,
               "needsEffect": false,
-              "owner": "85bb5a48-704c-4af5-9551-cbfcfb373180",
-              "controller": "85bb5a48-704c-4af5-9551-cbfcfb373180",
+              "owner": "314b3639-d673-45c2-9788-e63f025f83ab",
+              "controller": "314b3639-d673-45c2-9788-e63f025f83ab",
               "tapped": false,
               "battleX": 0,
               "battleY": 0,
@@ -1094,7 +1149,7 @@
               "damageMarked": 0,
               "faceDown": false,
               "knownBy": {
-                "85bb5a48-704c-4af5-9551-cbfcfb373180": true
+                "314b3639-d673-45c2-9788-e63f025f83ab": true
               },
               "enteredBattlefieldAt": 0,
               "summonedThisTurn": false,
@@ -1123,7 +1178,7 @@
               "phaseInLockedBy": "00000000-0000-0000-0000-000000000000"
             },
             {
-              "instanceId": "16cb5b6f-35fe-4366-99ae-07b7465cf154",
+              "instanceId": "86928c25-730e-4c09-b330-fd7d30cc3e7f",
               "name": "Forest",
               "typeLine": "Basic Land — Forest",
               "power": 0,
@@ -1131,8 +1186,8 @@
               "variableToughness": false,
               "startingLoyalty": 0,
               "needsEffect": false,
-              "owner": "85bb5a48-704c-4af5-9551-cbfcfb373180",
-              "controller": "85bb5a48-704c-4af5-9551-cbfcfb373180",
+              "owner": "314b3639-d673-45c2-9788-e63f025f83ab",
+              "controller": "314b3639-d673-45c2-9788-e63f025f83ab",
               "tapped": false,
               "battleX": 0,
               "battleY": 0,
@@ -1143,7 +1198,7 @@
               "damageMarked": 0,
               "faceDown": false,
               "knownBy": {
-                "85bb5a48-704c-4af5-9551-cbfcfb373180": true
+                "314b3639-d673-45c2-9788-e63f025f83ab": true
               },
               "enteredBattlefieldAt": 0,
               "summonedThisTurn": false,
@@ -1175,14 +1230,14 @@
         },
         "graveyard": {
           "kind": "graveyard",
-          "owner": "85bb5a48-704c-4af5-9551-cbfcfb373180"
+          "owner": "314b3639-d673-45c2-9788-e63f025f83ab"
         },
         "command": {
           "kind": "command",
-          "owner": "85bb5a48-704c-4af5-9551-cbfcfb373180",
+          "owner": "314b3639-d673-45c2-9788-e63f025f83ab",
           "cards": [
             {
-              "instanceId": "65104556-6f06-4ff8-9c5c-ccc32afbad71",
+              "instanceId": "9548ad25-65ff-4207-87cc-5b8853f758dc",
               "name": "Test Commander 2",
               "typeLine": "Legendary Creature — Test",
               "power": 3,
@@ -1190,8 +1245,8 @@
               "variableToughness": false,
               "startingLoyalty": 0,
               "needsEffect": false,
-              "owner": "85bb5a48-704c-4af5-9551-cbfcfb373180",
-              "controller": "85bb5a48-704c-4af5-9551-cbfcfb373180",
+              "owner": "314b3639-d673-45c2-9788-e63f025f83ab",
+              "controller": "314b3639-d673-45c2-9788-e63f025f83ab",
               "tapped": false,
               "battleX": 0,
               "battleY": 0,
@@ -1202,8 +1257,8 @@
               "damageMarked": 0,
               "faceDown": false,
               "knownBy": {
-                "7f94e600-d3b4-493b-b965-8cca20cddc40": true,
-                "85bb5a48-704c-4af5-9551-cbfcfb373180": true
+                "314b3639-d673-45c2-9788-e63f025f83ab": true,
+                "6e813858-32e8-4631-82cb-dd92a9f13d9d": true
               },
               "enteredBattlefieldAt": 0,
               "summonedThisTurn": false,
@@ -1235,7 +1290,7 @@
         },
         "emblems": {
           "kind": "command",
-          "owner": "85bb5a48-704c-4af5-9551-cbfcfb373180"
+          "owner": "314b3639-d673-45c2-9788-e63f025f83ab"
         },
         "eliminated": false,
         "handKept": true,
@@ -1252,18 +1307,17 @@
       "owner": "00000000-0000-0000-0000-000000000000",
       "cards": [
         {
-          "instanceId": "af32ab74-f37e-47da-98a4-39bb0904859d",
-          "name": "Whip of Erebos",
-          "oracleId": "53987a39-c18c-4c13-b1ea-fd1b2a369f9e",
-          "typeLine": "Legendary Enchantment Artifact",
-          "power": 1,
-          "toughness": 1,
+          "instanceId": "41d6e2ae-0901-44e7-b015-182f9d92e7dd",
+          "name": "Grizzly Bears",
+          "typeLine": "Creature — Bear",
+          "power": 2,
+          "toughness": 2,
           "variableToughness": false,
           "startingLoyalty": 0,
           "needsEffect": false,
-          "owner": "7f94e600-d3b4-493b-b965-8cca20cddc40",
-          "controller": "7f94e600-d3b4-493b-b965-8cca20cddc40",
-          "tapped": true,
+          "owner": "6e813858-32e8-4631-82cb-dd92a9f13d9d",
+          "controller": "6e813858-32e8-4631-82cb-dd92a9f13d9d",
+          "tapped": false,
           "battleX": 0,
           "battleY": 0,
           "isCommander": false,
@@ -1281,7 +1335,7 @@
             "Slot": 0,
             "Mode": 0
           },
-          "baseController": "7f94e600-d3b4-493b-b965-8cca20cddc40",
+          "baseController": "6e813858-32e8-4631-82cb-dd92a9f13d9d",
           "chosenPlayer": "00000000-0000-0000-0000-000000000000",
           "provenance": {
             "giftOpponent": "00000000-0000-0000-0000-000000000000"
@@ -1296,24 +1350,107 @@
           },
           "protectorPlayerId": "00000000-0000-0000-0000-000000000000",
           "phasedOutBy": "00000000-0000-0000-0000-000000000000",
-          "phaseInLockedBy": "00000000-0000-0000-0000-000000000000",
-          "catalogAbilities": {
-            "activated": 1,
-            "static": 1
-          }
+          "phaseInLockedBy": "00000000-0000-0000-0000-000000000000"
         },
         {
-          "instanceId": "7f43286d-8378-4e9d-aed6-05dea863f888",
-          "name": "Giant",
-          "typeLine": "Creature — Zombie Giant",
+          "instanceId": "ceb8d5e1-2a9a-4772-a1c7-1e7a68500332",
+          "name": "Hill Giant",
+          "typeLine": "Creature — Bear",
           "power": 3,
           "toughness": 3,
           "variableToughness": false,
-          "manaCost": "{4}{B}",
           "startingLoyalty": 0,
           "needsEffect": false,
-          "owner": "7f94e600-d3b4-493b-b965-8cca20cddc40",
-          "controller": "7f94e600-d3b4-493b-b965-8cca20cddc40",
+          "owner": "6e813858-32e8-4631-82cb-dd92a9f13d9d",
+          "controller": "6e813858-32e8-4631-82cb-dd92a9f13d9d",
+          "tapped": false,
+          "battleX": 0,
+          "battleY": 0,
+          "isCommander": false,
+          "attackingTarget": "00000000-0000-0000-0000-000000000000",
+          "blockingTarget": "00000000-0000-0000-0000-000000000000",
+          "goadedBy": "00000000-0000-0000-0000-000000000000",
+          "damageMarked": 0,
+          "faceDown": false,
+          "enteredBattlefieldAt": 1790208000000002000,
+          "summonedThisTurn": false,
+          "markedLethalByDeathtouch": false,
+          "attachedTo": {
+            "Kind": "",
+            "ID": "00000000-0000-0000-0000-000000000000",
+            "Slot": 0,
+            "Mode": 0
+          },
+          "baseController": "6e813858-32e8-4631-82cb-dd92a9f13d9d",
+          "chosenPlayer": "00000000-0000-0000-0000-000000000000",
+          "provenance": {
+            "giftOpponent": "00000000-0000-0000-0000-000000000000"
+          },
+          "preparedBy": {
+            "id": "00000000-0000-0000-0000-000000000000",
+            "epoch": 0
+          },
+          "hiddenBy": {
+            "id": "00000000-0000-0000-0000-000000000000",
+            "epoch": 0
+          },
+          "protectorPlayerId": "00000000-0000-0000-0000-000000000000",
+          "phasedOutBy": "00000000-0000-0000-0000-000000000000",
+          "phaseInLockedBy": "00000000-0000-0000-0000-000000000000"
+        },
+        {
+          "instanceId": "bb92ae44-9d48-42dd-a40b-1d381239dd05",
+          "name": "Hill Giant",
+          "typeLine": "Creature — Bear",
+          "power": 3,
+          "toughness": 3,
+          "variableToughness": false,
+          "startingLoyalty": 0,
+          "printedSelf": {
+            "OracleID": "42226b87-0746-4ebf-9fd0-108d508462af",
+            "TokenKey": "",
+            "ScryfallID": "",
+            "Name": "Clone",
+            "TypeLine": "Creature — Shapeshifter",
+            "ManaCost": "",
+            "Colors": null,
+            "ColorIdentity": null,
+            "ProducedMana": null,
+            "Keywords": null,
+            "GrantedAbilities": null,
+            "Power": 0,
+            "Toughness": 0,
+            "StartingLoyalty": 0,
+            "VariableToughness": false,
+            "PrintedPTKnown": false,
+            "Layout": "",
+            "Faces": null,
+            "ActiveFace": 0
+          },
+          "durationCopyBase": {
+            "OracleID": "",
+            "TokenKey": "",
+            "ScryfallID": "",
+            "Name": "Grizzly Bears",
+            "TypeLine": "Creature — Bear",
+            "ManaCost": "",
+            "Colors": null,
+            "ColorIdentity": null,
+            "ProducedMana": null,
+            "Keywords": null,
+            "GrantedAbilities": null,
+            "Power": 2,
+            "Toughness": 2,
+            "StartingLoyalty": 0,
+            "VariableToughness": false,
+            "PrintedPTKnown": false,
+            "Layout": "",
+            "Faces": null,
+            "ActiveFace": 0
+          },
+          "needsEffect": false,
+          "owner": "6e813858-32e8-4631-82cb-dd92a9f13d9d",
+          "controller": "6e813858-32e8-4631-82cb-dd92a9f13d9d",
           "tapped": false,
           "battleX": 0,
           "battleY": 0,
@@ -1324,11 +1461,11 @@
           "damageMarked": 0,
           "faceDown": false,
           "knownBy": {
-            "7f94e600-d3b4-493b-b965-8cca20cddc40": true,
-            "85bb5a48-704c-4af5-9551-cbfcfb373180": true
+            "314b3639-d673-45c2-9788-e63f025f83ab": true,
+            "6e813858-32e8-4631-82cb-dd92a9f13d9d": true
           },
-          "enteredBattlefieldAt": 1790208000000002000,
-          "objectEpoch": 1,
+          "enteredBattlefieldAt": 1790208000000003000,
+          "objectEpoch": 2,
           "summonedThisTurn": true,
           "markedLethalByDeathtouch": false,
           "attachedTo": {
@@ -1337,7 +1474,150 @@
             "Slot": 0,
             "Mode": 0
           },
-          "baseController": "7f94e600-d3b4-493b-b965-8cca20cddc40",
+          "baseController": "6e813858-32e8-4631-82cb-dd92a9f13d9d",
+          "chosenPlayer": "00000000-0000-0000-0000-000000000000",
+          "provenance": {
+            "fromZone": "hand",
+            "giftOpponent": "00000000-0000-0000-0000-000000000000",
+            "manaOnPaper": true
+          },
+          "preparedBy": {
+            "id": "00000000-0000-0000-0000-000000000000",
+            "epoch": 0
+          },
+          "hiddenBy": {
+            "id": "00000000-0000-0000-0000-000000000000",
+            "epoch": 0
+          },
+          "protectorPlayerId": "00000000-0000-0000-0000-000000000000",
+          "phasedOutBy": "00000000-0000-0000-0000-000000000000",
+          "phaseInLockedBy": "00000000-0000-0000-0000-000000000000"
+        },
+        {
+          "instanceId": "47555212-6fdb-4dc6-ad84-734fbe5ec86f",
+          "name": "Runeclaw Bear",
+          "oracleId": "oracle-Runeclaw Bear",
+          "typeLine": "Creature — Bear",
+          "power": 2,
+          "toughness": 2,
+          "variableToughness": false,
+          "manaCost": "{1}{G}",
+          "startingLoyalty": 0,
+          "grantedAbilities": [
+            "grant:unstable-shapeshifter/this-ability"
+          ],
+          "printedSelf": {
+            "OracleID": "6a71deb3-6659-47ea-8687-136cf75fa381",
+            "TokenKey": "",
+            "ScryfallID": "",
+            "Name": "Unstable Shapeshifter",
+            "TypeLine": "Creature — Shapeshifter",
+            "ManaCost": "",
+            "Colors": null,
+            "ColorIdentity": null,
+            "ProducedMana": null,
+            "Keywords": null,
+            "GrantedAbilities": null,
+            "Power": 0,
+            "Toughness": 1,
+            "StartingLoyalty": 0,
+            "VariableToughness": false,
+            "PrintedPTKnown": false,
+            "Layout": "",
+            "Faces": null,
+            "ActiveFace": 0
+          },
+          "durationCopyBase": {
+            "OracleID": "6a71deb3-6659-47ea-8687-136cf75fa381",
+            "TokenKey": "",
+            "ScryfallID": "",
+            "Name": "Unstable Shapeshifter",
+            "TypeLine": "Creature — Shapeshifter",
+            "ManaCost": "",
+            "Colors": null,
+            "ColorIdentity": null,
+            "ProducedMana": null,
+            "Keywords": null,
+            "GrantedAbilities": null,
+            "Power": 0,
+            "Toughness": 1,
+            "StartingLoyalty": 0,
+            "VariableToughness": false,
+            "PrintedPTKnown": false,
+            "Layout": "",
+            "Faces": null,
+            "ActiveFace": 0
+          },
+          "needsEffect": false,
+          "owner": "6e813858-32e8-4631-82cb-dd92a9f13d9d",
+          "controller": "6e813858-32e8-4631-82cb-dd92a9f13d9d",
+          "tapped": false,
+          "battleX": 0,
+          "battleY": 0,
+          "isCommander": false,
+          "attackingTarget": "00000000-0000-0000-0000-000000000000",
+          "blockingTarget": "00000000-0000-0000-0000-000000000000",
+          "goadedBy": "00000000-0000-0000-0000-000000000000",
+          "damageMarked": 0,
+          "faceDown": false,
+          "enteredBattlefieldAt": 1790208000000005000,
+          "summonedThisTurn": false,
+          "markedLethalByDeathtouch": false,
+          "attachedTo": {
+            "Kind": "",
+            "ID": "00000000-0000-0000-0000-000000000000",
+            "Slot": 0,
+            "Mode": 0
+          },
+          "baseController": "6e813858-32e8-4631-82cb-dd92a9f13d9d",
+          "chosenPlayer": "00000000-0000-0000-0000-000000000000",
+          "provenance": {
+            "giftOpponent": "00000000-0000-0000-0000-000000000000"
+          },
+          "preparedBy": {
+            "id": "00000000-0000-0000-0000-000000000000",
+            "epoch": 0
+          },
+          "hiddenBy": {
+            "id": "00000000-0000-0000-0000-000000000000",
+            "epoch": 0
+          },
+          "protectorPlayerId": "00000000-0000-0000-0000-000000000000",
+          "phasedOutBy": "00000000-0000-0000-0000-000000000000",
+          "phaseInLockedBy": "00000000-0000-0000-0000-000000000000"
+        },
+        {
+          "instanceId": "0a2a3466-781a-420b-8037-2d7a4acddd7a",
+          "name": "Runeclaw Bear",
+          "oracleId": "oracle-Runeclaw Bear",
+          "typeLine": "Creature — Bear",
+          "power": 2,
+          "toughness": 2,
+          "variableToughness": false,
+          "manaCost": "{1}{G}",
+          "startingLoyalty": 0,
+          "needsEffect": false,
+          "owner": "6e813858-32e8-4631-82cb-dd92a9f13d9d",
+          "controller": "6e813858-32e8-4631-82cb-dd92a9f13d9d",
+          "tapped": false,
+          "battleX": 0,
+          "battleY": 0,
+          "isCommander": false,
+          "attackingTarget": "00000000-0000-0000-0000-000000000000",
+          "blockingTarget": "00000000-0000-0000-0000-000000000000",
+          "goadedBy": "00000000-0000-0000-0000-000000000000",
+          "damageMarked": 0,
+          "faceDown": false,
+          "enteredBattlefieldAt": 1790208000000006000,
+          "summonedThisTurn": false,
+          "markedLethalByDeathtouch": false,
+          "attachedTo": {
+            "Kind": "",
+            "ID": "00000000-0000-0000-0000-000000000000",
+            "Slot": 0,
+            "Mode": 0
+          },
+          "baseController": "6e813858-32e8-4631-82cb-dd92a9f13d9d",
           "chosenPlayer": "00000000-0000-0000-0000-000000000000",
           "provenance": {
             "giftOpponent": "00000000-0000-0000-0000-000000000000"
@@ -1373,8 +1653,8 @@
       "Number": 1,
       "ActiveSeat": 0,
       "PriorityHolder": 0,
-      "Phase": "precombat_main",
-      "Step": "precombat_main",
+      "Phase": "combat",
+      "Step": "begin_combat",
       "Extra": false,
       "ExtraRef": 0,
       "OrderSeat": 0
@@ -1392,84 +1672,110 @@
     },
     "startingSeat": 0,
     "splitSecondActive": false,
-    "delayedTriggers": [
-      {
-        "id": "5a40ec58-55c5-453c-8c9d-a63943588527",
-        "controller": "7f94e600-d3b4-493b-b965-8cca20cddc40",
-        "sourceCardId": "af32ab74-f37e-47da-98a4-39bb0904859d",
-        "sourceObject": {
-          "id": "af32ab74-f37e-47da-98a4-39bb0904859d",
-          "epoch": 0
-        },
-        "label": "Whip of Erebos — exile the returned creature",
-        "at": "end",
-        "controllerTurnOnly": false,
-        "createdSeq": 1,
-        "cards": [
-          "7f43286d-8378-4e9d-aed6-05dea863f888"
-        ],
-        "hasEffect": true,
-        "body": "exile/listed-cards"
-      }
-    ],
     "scopedEffects": [
       {
         "affected": [
           {
-            "id": "7f43286d-8378-4e9d-aed6-05dea863f888",
-            "enteredAt": 1790208000000002000,
+            "id": "bb92ae44-9d48-42dd-a40b-1d381239dd05",
+            "enteredAt": 1790208000000003000,
             "controller": "00000000-0000-0000-0000-000000000000"
           }
         ],
         "mods": [
           {
-            "kind": "addKeywords",
-            "keywords": [
-              "haste"
-            ],
-            "player": "00000000-0000-0000-0000-000000000000"
+            "kind": "becomeCopy",
+            "player": "00000000-0000-0000-0000-000000000000",
+            "copy": [
+              {
+                "OracleID": "",
+                "TokenKey": "",
+                "ScryfallID": "",
+                "Name": "Hill Giant",
+                "TypeLine": "Creature — Bear",
+                "ManaCost": "",
+                "Colors": null,
+                "ColorIdentity": null,
+                "ProducedMana": null,
+                "Keywords": null,
+                "GrantedAbilities": null,
+                "Power": 3,
+                "Toughness": 3,
+                "StartingLoyalty": 0,
+                "VariableToughness": false,
+                "PrintedPTKnown": false,
+                "Layout": "",
+                "Faces": null,
+                "ActiveFace": 0
+              }
+            ]
           }
         ],
         "source": {
-          "id": "af32ab74-f37e-47da-98a4-39bb0904859d",
-          "epoch": 0
+          "id": "25b8a07c-43d5-4bba-9cab-096a8f34ef4d",
+          "epoch": 2
         },
-        "sourceName": "Whip of Erebos",
-        "controller": "7f94e600-d3b4-493b-b965-8cca20cddc40",
-        "timestamp": 1790208000000003000,
+        "sourceName": "Cytoshape",
+        "controller": "6e813858-32e8-4631-82cb-dd92a9f13d9d",
+        "timestamp": 1790208000000004000,
         "duration": {
           "Kind": 0,
-          "Player": "7f94e600-d3b4-493b-b965-8cca20cddc40",
+          "Player": "6e813858-32e8-4631-82cb-dd92a9f13d9d",
           "ExpiresAtTurnsBegun": 0,
           "ExpiresAfterTurnsBegun": 1,
           "Condition": 0,
           "Source": "00000000-0000-0000-0000-000000000000",
           "SourceEnteredAt": 0,
-          "Pinned": "00000000-0000-0000-0000-000000000000",
-          "PinnedEnteredAt": 0
+          "Pinned": "bb92ae44-9d48-42dd-a40b-1d381239dd05",
+          "PinnedEnteredAt": 1790208000000003000
         },
-        "label": "Whip of Erebos — the returned creature has haste"
+        "label": "Cytoshape — becomes a copy until end of turn"
       },
       {
         "affected": [
           {
-            "id": "7f43286d-8378-4e9d-aed6-05dea863f888",
-            "enteredAt": 1790208000000002000,
+            "id": "47555212-6fdb-4dc6-ad84-734fbe5ec86f",
+            "enteredAt": 1790208000000005000,
             "controller": "00000000-0000-0000-0000-000000000000"
           }
         ],
         "mods": [
           {
-            "kind": "exileInsteadOfLeaving",
-            "player": "00000000-0000-0000-0000-000000000000"
+            "kind": "becomeCopy",
+            "player": "00000000-0000-0000-0000-000000000000",
+            "copy": [
+              {
+                "OracleID": "oracle-Runeclaw Bear",
+                "TokenKey": "",
+                "ScryfallID": "",
+                "Name": "Runeclaw Bear",
+                "TypeLine": "Creature — Bear",
+                "ManaCost": "{1}{G}",
+                "Colors": null,
+                "ColorIdentity": null,
+                "ProducedMana": null,
+                "Keywords": null,
+                "GrantedAbilities": [
+                  "grant:unstable-shapeshifter/this-ability"
+                ],
+                "Power": 2,
+                "Toughness": 2,
+                "StartingLoyalty": 0,
+                "VariableToughness": false,
+                "PrintedPTKnown": false,
+                "Layout": "",
+                "Faces": null,
+                "ActiveFace": 0
+              }
+            ]
           }
         ],
         "source": {
-          "id": "00000000-0000-0000-0000-000000000000",
+          "id": "47555212-6fdb-4dc6-ad84-734fbe5ec86f",
           "epoch": 0
         },
-        "controller": "7f94e600-d3b4-493b-b965-8cca20cddc40",
-        "timestamp": 1790208000000004000,
+        "sourceName": "Unstable Shapeshifter",
+        "controller": "6e813858-32e8-4631-82cb-dd92a9f13d9d",
+        "timestamp": 1790208000000007000,
         "duration": {
           "Kind": 3,
           "Player": "00000000-0000-0000-0000-000000000000",
@@ -1478,45 +1784,49 @@
           "Condition": 0,
           "Source": "00000000-0000-0000-0000-000000000000",
           "SourceEnteredAt": 0,
-          "Pinned": "7f43286d-8378-4e9d-aed6-05dea863f888",
-          "PinnedEnteredAt": 1790208000000002000
+          "Pinned": "47555212-6fdb-4dc6-ad84-734fbe5ec86f",
+          "PinnedEnteredAt": 1790208000000005000
         },
-        "label": "Whip of Erebos: if it would leave the battlefield, exile it instead",
-        "seq": 1
+        "label": "Unstable Shapeshifter — becomes a copy"
       }
     ],
+    "spellsCastThisTurn": {
+      "6e813858-32e8-4631-82cb-dd92a9f13d9d": {
+        "Total": 2,
+        "Noncreature": 1
+      }
+    },
     "turnTally": {
       "resolved": {
-        "af32ab74-f37e-47da-98a4-39bb0904859d#0|{2}{B}{B}, {T}: Return target creature card from your graveyard to the battlefield. It gains haste. Exile it at the beginning of the next end step. If it would leave the battlefield, exile it instead. Activate only as a sorcery.": 1
+        "25b8a07c-43d5-4bba-9cab-096a8f34ef4d#1|": 1,
+        "47555212-6fdb-4dc6-ad84-734fbe5ec86f#0|Unstable Shapeshifter — becomes a copy of that creature": 1,
+        "bb92ae44-9d48-42dd-a40b-1d381239dd05#1|": 1
       },
       "triggered": {
-        "af32ab74-f37e-47da-98a4-39bb0904859d#0|": 1
+        "47555212-6fdb-4dc6-ad84-734fbe5ec86f#0|Unstable Shapeshifter — becomes a copy of that creature": 1
       },
       "enteredSubtypes": {
-        "7f94e600-d3b4-493b-b965-8cca20cddc40|giant": 1,
-        "7f94e600-d3b4-493b-b965-8cca20cddc40|zombie": 1
+        "6e813858-32e8-4631-82cb-dd92a9f13d9d|bear": 2
       },
       "entered": {
-        "7f43286d-8378-4e9d-aed6-05dea863f888": 1
+        "0a2a3466-781a-420b-8037-2d7a4acddd7a": 1,
+        "bb92ae44-9d48-42dd-a40b-1d381239dd05": 1
       },
       "loopRun": {
-        "af32ab74-f37e-47da-98a4-39bb0904859d|{2}{B}{B}, {T}: Return target creature card from your graveyard to the battlefield. It gains haste. Exile it at the beginning of the next end step. If it would leave the battlefield, exile it instead. Activate only as a sorcery.": 1
-      }
-    },
-    "activations": {
-      "ever": {
-        "af32ab74-f37e-47da-98a4-39bb0904859d#0|{2}{B}{B}, {T}: Return target creature card from your graveyard to the battlefield. It gains haste. Exile it at the beginning of the next end step. If it would leave the battlefield, exile it instead. Activate only as a sorcery.": 1
+        "47555212-6fdb-4dc6-ad84-734fbe5ec86f|Unstable Shapeshifter — becomes a copy of that creature": 1
       },
-      "turn": {
-        "af32ab74-f37e-47da-98a4-39bb0904859d#0|{2}{B}{B}, {T}: Return target creature card from your graveyard to the battlefield. It gains haste. Exile it at the beginning of the next end step. If it would leave the battlefield, exile it instead. Activate only as a sorcery.": 1
-      }
+      "casts": [
+        "bb92ae44-9d48-42dd-a40b-1d381239dd05",
+        "25b8a07c-43d5-4bba-9cab-096a8f34ef4d"
+      ]
     },
+    "activations": {},
     "events": [
       {
         "seq": 1,
         "batch": 1,
         "kind": "step_began",
-        "actor": "7f94e600-d3b4-493b-b965-8cca20cddc40",
+        "actor": "6e813858-32e8-4631-82cb-dd92a9f13d9d",
         "source": "00000000-0000-0000-0000-000000000000",
         "target": "00000000-0000-0000-0000-000000000000",
         "card_id": "00000000-0000-0000-0000-000000000000",
@@ -1535,7 +1845,7 @@
         "seq": 2,
         "batch": 2,
         "kind": "step_began",
-        "actor": "7f94e600-d3b4-493b-b965-8cca20cddc40",
+        "actor": "6e813858-32e8-4631-82cb-dd92a9f13d9d",
         "source": "00000000-0000-0000-0000-000000000000",
         "target": "00000000-0000-0000-0000-000000000000",
         "card_id": "00000000-0000-0000-0000-000000000000",
@@ -1554,7 +1864,7 @@
         "seq": 3,
         "batch": 2,
         "kind": "begin_upkeep",
-        "actor": "7f94e600-d3b4-493b-b965-8cca20cddc40",
+        "actor": "6e813858-32e8-4631-82cb-dd92a9f13d9d",
         "source": "00000000-0000-0000-0000-000000000000",
         "target": "00000000-0000-0000-0000-000000000000",
         "card_id": "00000000-0000-0000-0000-000000000000",
@@ -1567,9 +1877,43 @@
       },
       {
         "seq": 4,
+        "batch": 2,
+        "kind": "zone_move",
+        "actor": "00000000-0000-0000-0000-000000000000",
+        "source": "00000000-0000-0000-0000-000000000000",
+        "target": "00000000-0000-0000-0000-000000000000",
+        "card_id": "41d6e2ae-0901-44e7-b015-182f9d92e7dd",
+        "stack_item_id": "00000000-0000-0000-0000-000000000000",
+        "old_zone": "hand",
+        "new_zone": "battlefield",
+        "cause_controller": "00000000-0000-0000-0000-000000000000",
+        "cause_item": "00000000-0000-0000-0000-000000000000",
+        "attacking_target": "00000000-0000-0000-0000-000000000000",
+        "blocking_target": "00000000-0000-0000-0000-000000000000",
+        "last_known_controller": "00000000-0000-0000-0000-000000000000"
+      },
+      {
+        "seq": 5,
+        "batch": 2,
+        "kind": "zone_move",
+        "actor": "00000000-0000-0000-0000-000000000000",
+        "source": "00000000-0000-0000-0000-000000000000",
+        "target": "00000000-0000-0000-0000-000000000000",
+        "card_id": "ceb8d5e1-2a9a-4772-a1c7-1e7a68500332",
+        "stack_item_id": "00000000-0000-0000-0000-000000000000",
+        "old_zone": "hand",
+        "new_zone": "battlefield",
+        "cause_controller": "00000000-0000-0000-0000-000000000000",
+        "cause_item": "00000000-0000-0000-0000-000000000000",
+        "attacking_target": "00000000-0000-0000-0000-000000000000",
+        "blocking_target": "00000000-0000-0000-0000-000000000000",
+        "last_known_controller": "00000000-0000-0000-0000-000000000000"
+      },
+      {
+        "seq": 6,
         "batch": 3,
         "kind": "step_began",
-        "actor": "7f94e600-d3b4-493b-b965-8cca20cddc40",
+        "actor": "6e813858-32e8-4631-82cb-dd92a9f13d9d",
         "source": "00000000-0000-0000-0000-000000000000",
         "target": "00000000-0000-0000-0000-000000000000",
         "card_id": "00000000-0000-0000-0000-000000000000",
@@ -1585,10 +1929,10 @@
         "last_known_controller": "00000000-0000-0000-0000-000000000000"
       },
       {
-        "seq": 5,
+        "seq": 7,
         "batch": 4,
         "kind": "step_began",
-        "actor": "7f94e600-d3b4-493b-b965-8cca20cddc40",
+        "actor": "6e813858-32e8-4631-82cb-dd92a9f13d9d",
         "source": "00000000-0000-0000-0000-000000000000",
         "target": "00000000-0000-0000-0000-000000000000",
         "card_id": "00000000-0000-0000-0000-000000000000",
@@ -1604,50 +1948,14 @@
         "last_known_controller": "00000000-0000-0000-0000-000000000000"
       },
       {
-        "seq": 6,
-        "batch": 4,
-        "kind": "begin_precombat_main",
-        "actor": "7f94e600-d3b4-493b-b965-8cca20cddc40",
-        "source": "00000000-0000-0000-0000-000000000000",
-        "target": "00000000-0000-0000-0000-000000000000",
-        "card_id": "00000000-0000-0000-0000-000000000000",
-        "stack_item_id": "00000000-0000-0000-0000-000000000000",
-        "cause_controller": "00000000-0000-0000-0000-000000000000",
-        "cause_item": "00000000-0000-0000-0000-000000000000",
-        "attacking_target": "00000000-0000-0000-0000-000000000000",
-        "blocking_target": "00000000-0000-0000-0000-000000000000",
-        "last_known_controller": "00000000-0000-0000-0000-000000000000"
-      },
-      {
-        "seq": 7,
-        "batch": 4,
-        "kind": "zone_move",
-        "actor": "00000000-0000-0000-0000-000000000000",
-        "source": "00000000-0000-0000-0000-000000000000",
-        "target": "00000000-0000-0000-0000-000000000000",
-        "card_id": "af32ab74-f37e-47da-98a4-39bb0904859d",
-        "stack_item_id": "00000000-0000-0000-0000-000000000000",
-        "old_zone": "hand",
-        "new_zone": "battlefield",
-        "cause_controller": "00000000-0000-0000-0000-000000000000",
-        "cause_item": "00000000-0000-0000-0000-000000000000",
-        "attacking_target": "00000000-0000-0000-0000-000000000000",
-        "blocking_target": "00000000-0000-0000-0000-000000000000",
-        "last_known_controller": "00000000-0000-0000-0000-000000000000"
-      },
-      {
         "seq": 8,
         "batch": 4,
-        "kind": "mana_spent",
-        "actor": "7f94e600-d3b4-493b-b965-8cca20cddc40",
-        "source": "af32ab74-f37e-47da-98a4-39bb0904859d",
+        "kind": "begin_precombat_main",
+        "actor": "6e813858-32e8-4631-82cb-dd92a9f13d9d",
+        "source": "00000000-0000-0000-0000-000000000000",
         "target": "00000000-0000-0000-0000-000000000000",
         "card_id": "00000000-0000-0000-0000-000000000000",
         "stack_item_id": "00000000-0000-0000-0000-000000000000",
-        "amount": 4,
-        "colors": [
-          "B"
-        ],
         "cause_controller": "00000000-0000-0000-0000-000000000000",
         "cause_item": "00000000-0000-0000-0000-000000000000",
         "attacking_target": "00000000-0000-0000-0000-000000000000",
@@ -1657,11 +1965,11 @@
       {
         "seq": 9,
         "batch": 4,
-        "kind": "tap_card",
-        "actor": "7f94e600-d3b4-493b-b965-8cca20cddc40",
-        "source": "00000000-0000-0000-0000-000000000000",
+        "kind": "cost_warning",
+        "actor": "6e813858-32e8-4631-82cb-dd92a9f13d9d",
+        "source": "bb92ae44-9d48-42dd-a40b-1d381239dd05",
         "target": "00000000-0000-0000-0000-000000000000",
-        "card_id": "af32ab74-f37e-47da-98a4-39bb0904859d",
+        "card_id": "00000000-0000-0000-0000-000000000000",
         "stack_item_id": "00000000-0000-0000-0000-000000000000",
         "cause_controller": "00000000-0000-0000-0000-000000000000",
         "cause_item": "00000000-0000-0000-0000-000000000000",
@@ -1672,12 +1980,14 @@
       {
         "seq": 10,
         "batch": 4,
-        "kind": "trigger",
-        "actor": "7f94e600-d3b4-493b-b965-8cca20cddc40",
-        "source": "af32ab74-f37e-47da-98a4-39bb0904859d",
+        "kind": "cast",
+        "actor": "6e813858-32e8-4631-82cb-dd92a9f13d9d",
+        "source": "bb92ae44-9d48-42dd-a40b-1d381239dd05",
         "target": "00000000-0000-0000-0000-000000000000",
-        "card_id": "af32ab74-f37e-47da-98a4-39bb0904859d",
+        "card_id": "bb92ae44-9d48-42dd-a40b-1d381239dd05",
         "stack_item_id": "00000000-0000-0000-0000-000000000000",
+        "old_zone": "hand",
+        "new_zone": "stack",
         "cause_controller": "00000000-0000-0000-0000-000000000000",
         "cause_item": "00000000-0000-0000-0000-000000000000",
         "attacking_target": "00000000-0000-0000-0000-000000000000",
@@ -1686,14 +1996,13 @@
       },
       {
         "seq": 11,
-        "batch": 4,
-        "kind": "activate_ability",
-        "actor": "7f94e600-d3b4-493b-b965-8cca20cddc40",
-        "source": "af32ab74-f37e-47da-98a4-39bb0904859d",
+        "batch": 5,
+        "kind": "resolve",
+        "actor": "6e813858-32e8-4631-82cb-dd92a9f13d9d",
+        "source": "bb92ae44-9d48-42dd-a40b-1d381239dd05",
         "target": "00000000-0000-0000-0000-000000000000",
-        "card_id": "af32ab74-f37e-47da-98a4-39bb0904859d",
-        "stack_item_id": "699b8c6f-f1ab-466e-a702-b936b3693693",
-        "label": "{2}{B}{B}, {T}: Return target creature card from your graveyard to the battlefield. It gains haste. Exile it at the beginning of the next end step. If it would leave the battlefield, exile it instead. Activate only as a sorcery.",
+        "card_id": "bb92ae44-9d48-42dd-a40b-1d381239dd05",
+        "stack_item_id": "00000000-0000-0000-0000-000000000000",
         "cause_controller": "00000000-0000-0000-0000-000000000000",
         "cause_item": "00000000-0000-0000-0000-000000000000",
         "attacking_target": "00000000-0000-0000-0000-000000000000",
@@ -1702,13 +2011,13 @@
       },
       {
         "seq": 12,
-        "batch": 4,
-        "kind": "becomes_target",
-        "actor": "7f94e600-d3b4-493b-b965-8cca20cddc40",
-        "source": "af32ab74-f37e-47da-98a4-39bb0904859d",
-        "target": "7f43286d-8378-4e9d-aed6-05dea863f888",
-        "card_id": "7f43286d-8378-4e9d-aed6-05dea863f888",
-        "stack_item_id": "699b8c6f-f1ab-466e-a702-b936b3693693",
+        "batch": 5,
+        "kind": "copy_applied",
+        "actor": "6e813858-32e8-4631-82cb-dd92a9f13d9d",
+        "source": "41d6e2ae-0901-44e7-b015-182f9d92e7dd",
+        "target": "00000000-0000-0000-0000-000000000000",
+        "card_id": "bb92ae44-9d48-42dd-a40b-1d381239dd05",
+        "stack_item_id": "00000000-0000-0000-0000-000000000000",
         "cause_controller": "00000000-0000-0000-0000-000000000000",
         "cause_item": "00000000-0000-0000-0000-000000000000",
         "attacking_target": "00000000-0000-0000-0000-000000000000",
@@ -1718,13 +2027,14 @@
       {
         "seq": 13,
         "batch": 5,
-        "kind": "resolve",
-        "actor": "7f94e600-d3b4-493b-b965-8cca20cddc40",
-        "source": "af32ab74-f37e-47da-98a4-39bb0904859d",
+        "kind": "zone_move",
+        "actor": "6e813858-32e8-4631-82cb-dd92a9f13d9d",
+        "source": "00000000-0000-0000-0000-000000000000",
         "target": "00000000-0000-0000-0000-000000000000",
-        "card_id": "00000000-0000-0000-0000-000000000000",
+        "card_id": "bb92ae44-9d48-42dd-a40b-1d381239dd05",
         "stack_item_id": "00000000-0000-0000-0000-000000000000",
-        "label": "{2}{B}{B}, {T}: Return target creature card from your graveyard to the battlefield. It gains haste. Exile it at the beginning of the next end step. If it would leave the battlefield, exile it instead. Activate only as a sorcery.",
+        "old_zone": "stack",
+        "new_zone": "battlefield",
         "cause_controller": "00000000-0000-0000-0000-000000000000",
         "cause_item": "00000000-0000-0000-0000-000000000000",
         "attacking_target": "00000000-0000-0000-0000-000000000000",
@@ -1734,14 +2044,12 @@
       {
         "seq": 14,
         "batch": 5,
-        "kind": "zone_move",
-        "actor": "7f94e600-d3b4-493b-b965-8cca20cddc40",
+        "kind": "etb",
+        "actor": "6e813858-32e8-4631-82cb-dd92a9f13d9d",
         "source": "00000000-0000-0000-0000-000000000000",
         "target": "00000000-0000-0000-0000-000000000000",
-        "card_id": "7f43286d-8378-4e9d-aed6-05dea863f888",
+        "card_id": "bb92ae44-9d48-42dd-a40b-1d381239dd05",
         "stack_item_id": "00000000-0000-0000-0000-000000000000",
-        "old_zone": "graveyard",
-        "new_zone": "battlefield",
         "cause_controller": "00000000-0000-0000-0000-000000000000",
         "cause_item": "00000000-0000-0000-0000-000000000000",
         "attacking_target": "00000000-0000-0000-0000-000000000000",
@@ -1751,11 +2059,206 @@
       {
         "seq": 15,
         "batch": 5,
-        "kind": "etb",
-        "actor": "7f94e600-d3b4-493b-b965-8cca20cddc40",
+        "kind": "cost_warning",
+        "actor": "6e813858-32e8-4631-82cb-dd92a9f13d9d",
+        "source": "25b8a07c-43d5-4bba-9cab-096a8f34ef4d",
+        "target": "00000000-0000-0000-0000-000000000000",
+        "card_id": "00000000-0000-0000-0000-000000000000",
+        "stack_item_id": "00000000-0000-0000-0000-000000000000",
+        "cause_controller": "00000000-0000-0000-0000-000000000000",
+        "cause_item": "00000000-0000-0000-0000-000000000000",
+        "attacking_target": "00000000-0000-0000-0000-000000000000",
+        "blocking_target": "00000000-0000-0000-0000-000000000000",
+        "last_known_controller": "00000000-0000-0000-0000-000000000000"
+      },
+      {
+        "seq": 16,
+        "batch": 5,
+        "kind": "cast",
+        "actor": "6e813858-32e8-4631-82cb-dd92a9f13d9d",
+        "source": "25b8a07c-43d5-4bba-9cab-096a8f34ef4d",
+        "target": "00000000-0000-0000-0000-000000000000",
+        "card_id": "25b8a07c-43d5-4bba-9cab-096a8f34ef4d",
+        "stack_item_id": "00000000-0000-0000-0000-000000000000",
+        "old_zone": "hand",
+        "new_zone": "stack",
+        "cause_controller": "00000000-0000-0000-0000-000000000000",
+        "cause_item": "00000000-0000-0000-0000-000000000000",
+        "attacking_target": "00000000-0000-0000-0000-000000000000",
+        "blocking_target": "00000000-0000-0000-0000-000000000000",
+        "last_known_controller": "00000000-0000-0000-0000-000000000000"
+      },
+      {
+        "seq": 17,
+        "batch": 5,
+        "kind": "becomes_target",
+        "actor": "6e813858-32e8-4631-82cb-dd92a9f13d9d",
+        "source": "25b8a07c-43d5-4bba-9cab-096a8f34ef4d",
+        "target": "bb92ae44-9d48-42dd-a40b-1d381239dd05",
+        "card_id": "bb92ae44-9d48-42dd-a40b-1d381239dd05",
+        "stack_item_id": "25b8a07c-43d5-4bba-9cab-096a8f34ef4d",
+        "cause_controller": "00000000-0000-0000-0000-000000000000",
+        "cause_item": "00000000-0000-0000-0000-000000000000",
+        "attacking_target": "00000000-0000-0000-0000-000000000000",
+        "blocking_target": "00000000-0000-0000-0000-000000000000",
+        "last_known_controller": "00000000-0000-0000-0000-000000000000"
+      },
+      {
+        "seq": 18,
+        "batch": 6,
+        "kind": "resolve",
+        "actor": "6e813858-32e8-4631-82cb-dd92a9f13d9d",
+        "source": "25b8a07c-43d5-4bba-9cab-096a8f34ef4d",
+        "target": "00000000-0000-0000-0000-000000000000",
+        "card_id": "25b8a07c-43d5-4bba-9cab-096a8f34ef4d",
+        "stack_item_id": "00000000-0000-0000-0000-000000000000",
+        "cause_controller": "00000000-0000-0000-0000-000000000000",
+        "cause_item": "00000000-0000-0000-0000-000000000000",
+        "attacking_target": "00000000-0000-0000-0000-000000000000",
+        "blocking_target": "00000000-0000-0000-0000-000000000000",
+        "last_known_controller": "00000000-0000-0000-0000-000000000000"
+      },
+      {
+        "seq": 19,
+        "batch": 6,
+        "kind": "zone_move",
+        "actor": "6e813858-32e8-4631-82cb-dd92a9f13d9d",
         "source": "00000000-0000-0000-0000-000000000000",
         "target": "00000000-0000-0000-0000-000000000000",
-        "card_id": "7f43286d-8378-4e9d-aed6-05dea863f888",
+        "card_id": "25b8a07c-43d5-4bba-9cab-096a8f34ef4d",
+        "stack_item_id": "00000000-0000-0000-0000-000000000000",
+        "old_zone": "stack",
+        "new_zone": "graveyard",
+        "cause": "rule",
+        "cause_controller": "00000000-0000-0000-0000-000000000000",
+        "cause_item": "00000000-0000-0000-0000-000000000000",
+        "attacking_target": "00000000-0000-0000-0000-000000000000",
+        "blocking_target": "00000000-0000-0000-0000-000000000000",
+        "last_known_controller": "00000000-0000-0000-0000-000000000000"
+      },
+      {
+        "seq": 20,
+        "batch": 6,
+        "kind": "copy_applied",
+        "actor": "00000000-0000-0000-0000-000000000000",
+        "source": "ceb8d5e1-2a9a-4772-a1c7-1e7a68500332",
+        "target": "00000000-0000-0000-0000-000000000000",
+        "card_id": "bb92ae44-9d48-42dd-a40b-1d381239dd05",
+        "stack_item_id": "00000000-0000-0000-0000-000000000000",
+        "cause_controller": "00000000-0000-0000-0000-000000000000",
+        "cause_item": "00000000-0000-0000-0000-000000000000",
+        "attacking_target": "00000000-0000-0000-0000-000000000000",
+        "blocking_target": "00000000-0000-0000-0000-000000000000",
+        "last_known_controller": "00000000-0000-0000-0000-000000000000"
+      },
+      {
+        "seq": 21,
+        "batch": 6,
+        "kind": "zone_move",
+        "actor": "00000000-0000-0000-0000-000000000000",
+        "source": "00000000-0000-0000-0000-000000000000",
+        "target": "00000000-0000-0000-0000-000000000000",
+        "card_id": "47555212-6fdb-4dc6-ad84-734fbe5ec86f",
+        "stack_item_id": "00000000-0000-0000-0000-000000000000",
+        "old_zone": "hand",
+        "new_zone": "battlefield",
+        "cause_controller": "00000000-0000-0000-0000-000000000000",
+        "cause_item": "00000000-0000-0000-0000-000000000000",
+        "attacking_target": "00000000-0000-0000-0000-000000000000",
+        "blocking_target": "00000000-0000-0000-0000-000000000000",
+        "last_known_controller": "00000000-0000-0000-0000-000000000000"
+      },
+      {
+        "seq": 22,
+        "batch": 6,
+        "kind": "zone_move",
+        "actor": "00000000-0000-0000-0000-000000000000",
+        "source": "00000000-0000-0000-0000-000000000000",
+        "target": "00000000-0000-0000-0000-000000000000",
+        "card_id": "0a2a3466-781a-420b-8037-2d7a4acddd7a",
+        "stack_item_id": "00000000-0000-0000-0000-000000000000",
+        "old_zone": "hand",
+        "new_zone": "battlefield",
+        "cause_controller": "00000000-0000-0000-0000-000000000000",
+        "cause_item": "00000000-0000-0000-0000-000000000000",
+        "attacking_target": "00000000-0000-0000-0000-000000000000",
+        "blocking_target": "00000000-0000-0000-0000-000000000000",
+        "last_known_controller": "00000000-0000-0000-0000-000000000000"
+      },
+      {
+        "seq": 23,
+        "batch": 6,
+        "kind": "etb",
+        "actor": "6e813858-32e8-4631-82cb-dd92a9f13d9d",
+        "source": "00000000-0000-0000-0000-000000000000",
+        "target": "00000000-0000-0000-0000-000000000000",
+        "card_id": "0a2a3466-781a-420b-8037-2d7a4acddd7a",
+        "stack_item_id": "00000000-0000-0000-0000-000000000000",
+        "cause_controller": "00000000-0000-0000-0000-000000000000",
+        "cause_item": "00000000-0000-0000-0000-000000000000",
+        "attacking_target": "00000000-0000-0000-0000-000000000000",
+        "blocking_target": "00000000-0000-0000-0000-000000000000",
+        "last_known_controller": "00000000-0000-0000-0000-000000000000"
+      },
+      {
+        "seq": 24,
+        "batch": 6,
+        "kind": "trigger",
+        "actor": "6e813858-32e8-4631-82cb-dd92a9f13d9d",
+        "source": "47555212-6fdb-4dc6-ad84-734fbe5ec86f",
+        "target": "00000000-0000-0000-0000-000000000000",
+        "card_id": "00000000-0000-0000-0000-000000000000",
+        "stack_item_id": "00000000-0000-0000-0000-000000000000",
+        "label": "Unstable Shapeshifter — becomes a copy of that creature",
+        "cause_controller": "00000000-0000-0000-0000-000000000000",
+        "cause_item": "00000000-0000-0000-0000-000000000000",
+        "attacking_target": "00000000-0000-0000-0000-000000000000",
+        "blocking_target": "00000000-0000-0000-0000-000000000000",
+        "last_known_controller": "00000000-0000-0000-0000-000000000000"
+      },
+      {
+        "seq": 25,
+        "batch": 7,
+        "kind": "step_began",
+        "actor": "6e813858-32e8-4631-82cb-dd92a9f13d9d",
+        "source": "00000000-0000-0000-0000-000000000000",
+        "target": "00000000-0000-0000-0000-000000000000",
+        "card_id": "00000000-0000-0000-0000-000000000000",
+        "stack_item_id": "00000000-0000-0000-0000-000000000000",
+        "amount": 1,
+        "round": 1,
+        "label": "begin_combat",
+        "step": "begin_combat",
+        "cause_controller": "00000000-0000-0000-0000-000000000000",
+        "cause_item": "00000000-0000-0000-0000-000000000000",
+        "attacking_target": "00000000-0000-0000-0000-000000000000",
+        "blocking_target": "00000000-0000-0000-0000-000000000000",
+        "last_known_controller": "00000000-0000-0000-0000-000000000000"
+      },
+      {
+        "seq": 26,
+        "batch": 8,
+        "kind": "resolve",
+        "actor": "6e813858-32e8-4631-82cb-dd92a9f13d9d",
+        "source": "47555212-6fdb-4dc6-ad84-734fbe5ec86f",
+        "target": "00000000-0000-0000-0000-000000000000",
+        "card_id": "00000000-0000-0000-0000-000000000000",
+        "stack_item_id": "00000000-0000-0000-0000-000000000000",
+        "label": "Unstable Shapeshifter — becomes a copy of that creature",
+        "cause_controller": "00000000-0000-0000-0000-000000000000",
+        "cause_item": "00000000-0000-0000-0000-000000000000",
+        "attacking_target": "00000000-0000-0000-0000-000000000000",
+        "blocking_target": "00000000-0000-0000-0000-000000000000",
+        "last_known_controller": "00000000-0000-0000-0000-000000000000"
+      },
+      {
+        "seq": 27,
+        "batch": 8,
+        "kind": "copy_applied",
+        "actor": "00000000-0000-0000-0000-000000000000",
+        "source": "0a2a3466-781a-420b-8037-2d7a4acddd7a",
+        "target": "00000000-0000-0000-0000-000000000000",
+        "card_id": "47555212-6fdb-4dc6-ad84-734fbe5ec86f",
         "stack_item_id": "00000000-0000-0000-0000-000000000000",
         "cause_controller": "00000000-0000-0000-0000-000000000000",
         "cause_item": "00000000-0000-0000-0000-000000000000",
@@ -1764,8 +2267,8 @@
         "last_known_controller": "00000000-0000-0000-0000-000000000000"
       }
     ],
-    "eventSeq": 15,
-    "eventBatch": 5,
+    "eventSeq": 27,
+    "eventBatch": 8,
     "rng": {
       "kind": "keyed",
       "key": "s2YZX3oQmcR5MQF3j2kEIjKrdb96A6WApjc78MqP5/M=",
@@ -1775,33 +2278,33 @@
       }
     },
     "sourceOrdinals": {
-      "0b3e3fe5-9a4b-4446-99c0-c67ef8b5b96f": 65542,
-      "123e9c60-af20-4fd1-a010-24d2d2d40f89": 65539,
-      "14b7cfcf-01d7-4fe6-a1d3-077fff0690de": 65538,
-      "16cb5b6f-35fe-4366-99ae-07b7465cf154": 65544,
-      "2071d564-839b-43f9-81a0-f466608fca5e": 65540,
-      "245cf469-6b3c-4e50-b3f1-196d3a52c56d": 3,
-      "3f83cb08-7618-4ca9-b1b8-981c17835c74": 9,
-      "4a8f9c60-d424-4372-94e1-55ed5068e914": 1,
-      "647a46a7-c525-4760-989c-1f3523c6c596": 65545,
-      "65104556-6f06-4ff8-9c5c-ccc32afbad71": 65536,
-      "65a457dc-ec3f-4754-8fa3-e2a32bf118d0": 65543,
-      "81504f14-493e-4bb5-b821-1ecfb1aa08dc": 11,
-      "871b8060-1115-4317-bcaf-30c7d505dfd2": 0,
-      "92c5e85a-72a3-4148-8b66-7a9f3df14aea": 4,
-      "9b240a23-f9a7-4b80-8c65-13c7f52a359c": 2,
-      "a0180f3e-ee53-4371-9091-6a2a773039ab": 65546,
-      "bd564a89-c476-4aa8-943d-8b132a33b497": 6,
-      "cd4b0050-be5a-46a8-b14d-7f270d8b2cc7": 65547,
-      "dca2504b-5ca3-407e-b846-82dbac78751e": 8,
-      "e7588be5-8c87-4410-a645-b636a8f11be4": 65541,
-      "ea950f1c-4c60-452a-96e5-724fbac7fb3d": 7,
-      "eaa2daab-1f50-4d28-8b0e-a57b8e00266c": 10,
-      "ed99d27d-5948-4435-a7f9-f22ed8fcd860": 5,
-      "f54ce533-3739-4bd3-8d7e-bb7420b4ea14": 65537
+      "044bf34d-2341-4899-a554-34f22fc26eba": 10,
+      "04633401-9ff7-4fa8-8962-7c0ae2df2790": 65541,
+      "1bba3878-0422-4e81-a969-1bbeeb4a5b43": 2,
+      "22d41c53-3bee-4d58-b022-442c3970baaa": 9,
+      "3c1a1a11-9222-407c-8d04-4a3054961dbd": 8,
+      "4165b933-74f4-4135-9158-c2c6566ec293": 65542,
+      "566d0d0c-a15d-4252-afee-802ada2e7d89": 65540,
+      "59b39c48-8fc1-4671-bf60-6b1c599541ef": 3,
+      "6ff82a42-396d-416a-b625-80bf5398e59d": 65547,
+      "770b3877-4eb5-4b69-aecd-104eac4abc41": 0,
+      "86928c25-730e-4c09-b330-fd7d30cc3e7f": 65544,
+      "91979720-5957-4cf7-b888-86f73307a9a3": 1,
+      "9548ad25-65ff-4207-87cc-5b8853f758dc": 65536,
+      "a7a868d0-b20f-4795-827d-a5751fc2c148": 6,
+      "a98d3ba6-dbfa-4108-a43d-6f967fa4272a": 65545,
+      "b55ff305-e814-4708-a479-1aae73450ad5": 5,
+      "bcf91dd3-ad59-4a18-9ab1-697f7ae75b7f": 11,
+      "bea73ffe-8d5f-429f-9252-6855e7f71b68": 65538,
+      "c0396ce7-b196-44bd-a4bb-36c5b43a075c": 7,
+      "d0ed6fe2-0a8b-42ed-bd26-34c397ae5208": 65539,
+      "dd65df9e-b86c-4d3b-bf2e-d7c83bb46512": 4,
+      "e0f24f8d-cb20-4a0c-b116-9eae5f7f8446": 65546,
+      "e51f87a1-0214-48ee-a34b-bc4b218191e5": 65543,
+      "f24d0959-de84-4ab1-be74-8e2bd3757012": 65537
     },
-    "layerVersion": 5,
-    "lastResolvedVersion": 5,
+    "layerVersion": 10,
+    "lastResolvedVersion": 10,
     "continuations": {}
   }
 }
