@@ -83,6 +83,13 @@
     // the window is a property of the turn, so PlayerPanel derives it
     // once and hands it down.
     sorcerySpeedBlocked?: string;
+    // #1695: the paying player's current life, for the mana popover's
+    // life-cost check. Same threading as sorcerySpeedBlocked — a
+    // battlefield row only ever holds one seat's own permanents, so
+    // BattlefieldRow hands down that seat's life once per row.
+    // Undefined leaves the popover's life-cost check unblocked, same
+    // as every card surface this prop hasn't reached yet.
+    payerLife?: number;
     // S24 (ADR 0036 decision 14 item 3): the name of the player this
     // permanent enchants, for a Curse. A card attached to a PLAYER has
     // no host card to be drawn behind, so without this the board shows
@@ -124,6 +131,7 @@
     onRawTap,
     onActivateAbility,
     sorcerySpeedBlocked = "",
+    payerLife,
     enchantedPlayer,
     priority = false,
     onClick,
@@ -614,6 +622,7 @@
         onActivateAbility={(idx) => onActivateAbility?.(idx)}
         summoningSick={!!card.summoning_sick}
         {sorcerySpeedBlocked}
+        {payerLife}
         onRawTap={onRawTap && onActivateManaAbility && menuManaAbilities.length > 0 && !card.tapped
           ? onRawTap
           : undefined}

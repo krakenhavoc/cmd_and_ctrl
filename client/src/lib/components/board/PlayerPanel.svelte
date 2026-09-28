@@ -444,6 +444,7 @@
       onRawTap={activateManaAbility ? onTapToggle : undefined}
       {onActivateAbility}
       {sorcerySpeedBlocked}
+      payerLife={seat.life}
     />
   </div>
   <!-- The back row: land piles first, then the other permanents,
@@ -464,6 +465,7 @@
       onRawTap={activateManaAbility ? onTapToggle : undefined}
       {onActivateAbility}
       {sorcerySpeedBlocked}
+      payerLife={seat.life}
     />
     <BattlefieldRow
       label="enchant / artifact"
@@ -478,6 +480,7 @@
       onRawTap={activateManaAbility ? onTapToggle : undefined}
       {onActivateAbility}
       {sorcerySpeedBlocked}
+      payerLife={seat.life}
     />
   </div>
   <div class="grid-bottom">
