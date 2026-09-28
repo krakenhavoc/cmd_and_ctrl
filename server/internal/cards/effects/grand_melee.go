@@ -7,25 +7,25 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	"All creatures attack each combat if able.
 //	 All creatures block each combat if able."
 //
-// #1599: the attack half only. The block half needs the
-// block-requirement seam (#1597, CR 509.1c "must block if able"),
-// which the engine does not have yet — #1595 built attack
-// requirements, not block ones, and #1597 is untouched. Building the
-// attack half alone ships a card that is weaker than printed and
-// declares exactly the missing line, never one that is stronger.
+// Both halves are enforced. The attack half is #1599's
+// AttacksEachCombatWhere; the block half is #1597's
+// BlocksEachCombatWhere (CR 509.1c), which puts one "blocks each combat
+// if able" requirement on every creature, so a defending player's pass
+// is refused while any untapped creature of theirs could still legally
+// block something. Neither predicate scopes anything — "ALL creatures",
+// no "you control", no "other" — and both are attributed to Grand
+// Melee itself, so a refusal names this card.
 //
-// The attack half is AttacksEachCombatWhere with no scoping predicate
-// at all — "ALL creatures", no "you control", no "other" — attributed
-// to Grand Melee itself, so a table full of forced attackers still
-// names this card in the refusal sentence.
+// No simplification.
 func init() {
+	allCreatures := func(_ *game.Card, _ *game.Game, _ *game.Card) bool { return true }
 	Register(Spec{
 		OracleID:     "1accf98a-0905-4a9d-9ab3-72e9f853f4ab",
 		Name:         "Grand Melee",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"Creatures aren't forced to block — only the attack requirement is enforced."},
+		Completeness: CompletenessFull,
 		Static: []game.StaticAbility{
-			AttacksEachCombatWhere(func(_ *game.Card, _ *game.Game, _ *game.Card) bool { return true }),
+			AttacksEachCombatWhere(allCreatures),
+			BlocksEachCombatWhere(allCreatures),
 		},
 	})
 }
