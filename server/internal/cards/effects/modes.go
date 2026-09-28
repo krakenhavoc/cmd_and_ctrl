@@ -65,6 +65,24 @@ var YouControlACommander = game.ModeCondition("you-control-a-commander", control
 // effective subtypes, so a changeling counts.
 var YouControlAWizard = game.ModeCondition("you-control-a-wizard", ControlsA("Wizard"))
 
+// WasKicked is the kicker cards' count — "If this spell was kicked,
+// choose any number instead" (the Inscription cycle), "If it was
+// kicked, choose both instead" (Depth Defiler). It reads the kicker
+// announced WITH the modes (CR 601.2b), not the board, which is why it
+// is registered through ModeConditionOnAnnouncement (#1655). For a
+// "when you cast this spell" trigger the engine hands it the spell's
+// own record, so the same condition serves both.
+var WasKicked = game.ModeConditionOnAnnouncement("was-kicked", func(_ *game.Game, q game.ModeCountQuery) bool {
+	return q.Kicked()
+})
+
+// DeliriumForModes is "If there are four or more card types among
+// cards in your graveyard, choose both instead" (Prophetic Titan) —
+// delirium, read for the chooser as the modes are chosen (#1655).
+var DeliriumForModes = game.ModeCondition("delirium", func(g *game.Game, chooser uuid.UUID) bool {
+	return b16CardTypesInGraveyard(g, chooser) >= 4
+})
+
 // ChooseOne — "Choose one —".
 func ChooseOne(options ...game.ModeOption) *game.ModeSpec {
 	return &game.ModeSpec{Prompt: "Choose one", Options: options, Min: 1, Max: 1}

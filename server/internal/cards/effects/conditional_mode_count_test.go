@@ -352,6 +352,9 @@ func TestRegisterRefusesABadConditionalModeCount(t *testing.T) {
 		"does not raise":    ChooseN("Choose two", 2, 2, Mode("a"), Mode("b")).OrUpToIf(2, cond),
 		"more than printed": ChooseOne(Mode("a"), Mode("b")).OrUpToIf(3, cond),
 		"unbounded max":     {Options: []game.ModeOption{{Label: "a"}, {Label: "b"}}, Min: 1, Max: 0, RaisedMax: 2, RaiseMaxIf: cond},
+		"min past max":      {Options: []game.ModeOption{{Label: "a"}, {Label: "b"}, {Label: "c"}}, Min: 1, Max: 1, RaisedMax: 2, RaisedMin: 3, RaiseMaxIf: cond},
+		"min not raised":    {Options: []game.ModeOption{{Label: "a"}, {Label: "b"}}, Min: 1, Max: 1, RaisedMax: 2, RaisedMin: 1, RaiseMaxIf: cond},
+		"min without max":   {Options: []game.ModeOption{{Label: "a"}, {Label: "b"}}, Min: 1, Max: 1, RaisedMin: 2, RaiseMaxIf: cond},
 	} {
 		t.Run(name, func(t *testing.T) {
 			defer func() {

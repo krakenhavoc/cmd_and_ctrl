@@ -100,7 +100,7 @@ func TestPublicModeSpecShowsThePrintedMax(t *testing.T) {
 	mine.IsCommander = true
 	g.Battlefield.PushTop(mine)
 
-	v := viewOfModeSpec(g, g.Seats[0].ID, game.SourceObject(g.Seats[0].ID, nil), ms)
+	v := viewOfModeSpec(g, game.ModeCountQuery{Chooser: g.Seats[0].ID}, game.SourceObject(g.Seats[0].ID, nil), ms)
 	if v.Max != 2 {
 		t.Fatalf("the caster's own stamp: max = %d, want 2", v.Max)
 	}

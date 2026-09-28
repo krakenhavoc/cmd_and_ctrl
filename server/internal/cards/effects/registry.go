@@ -1024,20 +1024,28 @@ func checkNoXBound(name, owner string, spec *game.TargetSpec) {
 // 0065's 2026-09-27 amendment): RaisedMax and RaiseMaxIf come as a
 // pair, the raise must actually raise a bounded Max, and — unless the
 // spec is Repeatable — it may not promise more distinct bullets than
-// the card prints. Each is a card that would otherwise register
-// silently and ship a mode count the printed card does not have.
+// the card prints; a raised minimum (#1655) must sit between the
+// printed Min and the raised Max. Each is a card that would otherwise
+// register silently and ship a mode count the printed card does not
+// have.
 func checkRaisedModeMax(name, owner string, ms *game.ModeSpec) {
 	if ms.RaiseMaxIf.IsZero() && ms.RaisedMax == 0 {
 		return
 	}
 	if ms.RaiseMaxIf.IsZero() || ms.RaisedMax == 0 {
-		panic(fmt.Sprintf("effects.Register: %q %s declares half a conditional mode count — use OrUpToIf(n, cond)", name, owner))
+		panic(fmt.Sprintf("effects.Register: %q %s declares half a conditional mode count — use OrUpToIf / InsteadIf / AnyNumberIf", name, owner))
 	}
 	if ms.Max <= 0 || ms.RaisedMax <= ms.Max {
 		panic(fmt.Sprintf("effects.Register: %q %s raises Max %d to %d — a conditional count must raise a bounded Max", name, owner, ms.Max, ms.RaisedMax))
 	}
 	if !ms.Repeatable && ms.RaisedMax > len(ms.Options) {
 		panic(fmt.Sprintf("effects.Register: %q %s raises Max to %d with only %d bullets", name, owner, ms.RaisedMax, len(ms.Options)))
+	}
+	// #1655: a forced count ("choose both instead", InsteadIf) raises
+	// the minimum too, and never past the raised maximum or below the
+	// printed minimum — either would be a count no printed card has.
+	if ms.RaisedMin != 0 && (ms.RaisedMin <= ms.Min || ms.RaisedMin > ms.RaisedMax) {
+		panic(fmt.Sprintf("effects.Register: %q %s raises Min %d to %d with a raised Max of %d", name, owner, ms.Min, ms.RaisedMin, ms.RaisedMax))
 	}
 }
 

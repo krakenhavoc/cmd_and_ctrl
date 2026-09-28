@@ -30,32 +30,32 @@ func TestModeMaxIsRaisedOnlyForAChooserTheConditionHoldsFor(t *testing.T) {
 	me, opp := g.Seats[0], g.Seats[1]
 	ms := (&ModeSpec{Options: make([]ModeOption, 3), Min: 1, Max: 1}).OrUpToIf(2, controlsAnArtifact)
 
-	if got := g.ModeMaxForEffect(ms, me.ID); got != 1 {
+	if got := modeHi(g, ms, me.ID); got != 1 {
 		t.Errorf("condition false: max = %d, want the printed 1", got)
 	}
 	g.Battlefield.PushTop(Card{InstanceID: uuid.New(), Name: "Rock", TypeLine: "Artifact", Owner: me.ID, Controller: me.ID})
-	if got := g.ModeMaxForEffect(ms, me.ID); got != 2 {
+	if got := modeHi(g, ms, me.ID); got != 2 {
 		t.Errorf("condition true: max = %d, want 2", got)
 	}
-	if got := g.ModeMaxForEffect(ms, opp.ID); got != 1 {
+	if got := modeHi(g, ms, opp.ID); got != 1 {
 		t.Errorf("the condition is the CHOOSER's: opponent's max = %d, want 1", got)
 	}
-	if err := validateModes(ms, g.modeMaxLocked(ms, me.ID), []int{0, 2}); err != nil {
+	if err := validateModes(ms, ms.Min, modeHi(g, ms, me.ID), []int{0, 2}); err != nil {
 		t.Errorf("two within the raised bound: %v", err)
 	}
-	if err := validateModes(ms, g.modeMaxLocked(ms, opp.ID), []int{0, 2}); err != ErrInvalidParam {
+	if err := validateModes(ms, ms.Min, modeHi(g, ms, opp.ID), []int{0, 2}); err != ErrInvalidParam {
 		t.Errorf("two over the printed bound: %v, want ErrInvalidParam", err)
 	}
-	if err := validateModes(ms, g.modeMaxLocked(ms, me.ID), []int{0, 1, 2}); err != ErrInvalidParam {
+	if err := validateModes(ms, ms.Min, modeHi(g, ms, me.ID), []int{0, 1, 2}); err != ErrInvalidParam {
 		t.Errorf("three over the raised bound: %v, want ErrInvalidParam", err)
 	}
-	if g.ModeMaxForEffect(nil, me.ID) != 0 {
+	if modeHi(g, nil, me.ID) != 0 {
 		t.Error("a nil spec has no bound")
 	}
 	// A key this binary never registered holds for nobody: the printed
 	// bound, the weaker reading.
 	unknown := (&ModeSpec{Options: make([]ModeOption, 3), Min: 1, Max: 1}).OrUpToIf(2, ModeCountCondition{key: "test/never-registered"})
-	if got := g.ModeMaxForEffect(unknown, me.ID); got != 1 {
+	if got := modeHi(g, unknown, me.ID); got != 1 {
 		t.Errorf("unknown condition: max = %d, want 1", got)
 	}
 }
