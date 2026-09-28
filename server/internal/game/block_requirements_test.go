@@ -161,6 +161,26 @@ func TestLureOnAMenaceAttackerRespectsMenace(t *testing.T) {
 			t.Fatalf("pass with the pair declared: %v", err)
 		}
 	})
+	// "Must be blocked" gains nothing from the second blocker, so only
+	// the menace minimum makes the search put two creatures on it — a
+	// minimum is not a capacity, which is why it is a mode.
+	t.Run("must be blocked with menace owes two", func(t *testing.T) {
+		g := newActiveGame(t)
+		me, opp := g.Seats[0], g.Seats[1]
+		atk := pushCombatant(t, g, me, "Menace Bear", 2, 2, "menace")
+		withBlockRequirement(t, g, atk, BlockRequirementMustBeBlocked)
+		w1 := pushCombatant(t, g, opp, "Wall One", 0, 4)
+		w2 := pushCombatant(t, g, opp, "Wall Two", 0, 4)
+		declareAttacks(t, g, atk)
+		passToDefender(t, g)
+		blockRequirementErr(t, g.PassPriority())
+		if err := block(t, g, w1, atk, w2, atk); err != nil {
+			t.Fatalf("the pair: %v", err)
+		}
+		if err := g.PassPriority(); err != nil {
+			t.Fatalf("pass with the pair declared: %v", err)
+		}
+	})
 }
 
 // TestBlocksEachCombatWithNoLegalBlockIsNotOwed — "blocks each combat
