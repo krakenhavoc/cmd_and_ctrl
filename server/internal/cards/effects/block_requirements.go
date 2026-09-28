@@ -18,7 +18,10 @@ import (
 //	Static: []game.StaticAbility{AllAbleToBlockDoSo()},             // Prized Unicorn
 //	Static: []game.StaticAbility{BlockRequirementWhere(game.BlockRequirementLure, AttachedToSource)}, // Lure
 //	Static: []game.StaticAbility{MustBeBlocked()},                  // Gaea's Protector
+//	Static: []game.StaticAbility{FilteredLure(game.BlockerFilterWall)}, // Marble Priest
 //	BlockRequirementUntilEOT{Target: t, Kind: game.BlockRequirementMustBeBlocked}.Apply(ctx) // Irresistible Prey
+//	BlocksAttackerUntilEOT{Blocker: t, Attacker: ref}.Apply(ctx)    // Provoke, Grappling Hook
+//	Triggered: []game.TriggeredAbility{Provoke()},                  // Goblin Grappler
 //
 // Two sides, one slot. "Blocks each combat if able" sits on the
 // creature that must block; Lure, "must be blocked" and "must be
@@ -37,13 +40,28 @@ import (
 // catalog static that writes it is not applied once CatalogAbilityKey
 // answers empty (CR 613.1f).
 func BlockRequirementWhere(kind game.BlockRequirementKind, appliesTo func(target *game.Card, g *game.Game, source *game.Card) bool) game.StaticAbility {
+	return blockRequirementStatic(kind, "", appliesTo)
+}
+
+// blockRequirementStatic is BlockRequirementWhere with a blocker filter
+// key (#1684). It panics — at catalog load, so at boot — on a kind that
+// can't be written by a static (blocksAttacker names an attacking
+// object, which only a resolving effect knows) and on a filter this
+// binary has not registered or that is set on anything but a Lure.
+func blockRequirementStatic(kind game.BlockRequirementKind, filter string, appliesTo func(target *game.Card, g *game.Game, source *game.Card) bool) game.StaticAbility {
+	if kind == game.BlockRequirementBlocksAttacker {
+		panic("effects: a blocksAttacker requirement names an attacking object; use BlocksAttackerUntilEOT")
+	}
+	if filter != "" && (kind != game.BlockRequirementLure || !game.KnownBlockerFilter(filter)) {
+		panic("effects: blocker filter " + filter + " is not a registered filter on a Lure")
+	}
 	return game.StaticAbility{
 		Layer: game.Layer6Ability,
 		AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
 			return target.IsCreature() && appliesTo(target, g, source)
 		},
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, source *game.Card) {
-			r := game.BlockRequirement{Kind: kind}
+			r := game.BlockRequirement{Kind: kind, Filter: filter}
 			if source != nil {
 				r.Source, r.SourceName = source.InstanceID, source.Name
 			}
@@ -71,6 +89,18 @@ func AllAbleToBlockDoSo() game.StaticAbility {
 	return BlockRequirementWhere(game.BlockRequirementLure, selfOnly)
 }
 
+// FilteredLure is "All <filter> able to block this creature do so"
+// (#1684): Marble Priest's Walls (game.BlockerFilterWall), Talruum
+// Piper's creatures with flying (game.BlockerFilterFlying). The filter
+// is a registered KEY on the requirement, never a closure, so the
+// characteristic that carries it stays plain comparable data.
+func FilteredLure(filter string) game.StaticAbility {
+	if filter == "" {
+		panic("effects: FilteredLure needs a filter; use AllAbleToBlockDoSo for an unfiltered Lure")
+	}
+	return blockRequirementStatic(game.BlockRequirementLure, filter, selfOnly)
+}
+
 // MustBeBlocked is "This creature must be blocked if able" (Gaea's
 // Protector).
 func MustBeBlocked() game.StaticAbility {
@@ -95,10 +125,42 @@ func (b BlockRequirementUntilEOT) Apply(ctx *Context) error {
 	if b.Target == uuid.Nil {
 		return nil
 	}
+	if b.Kind == game.BlockRequirementBlocksAttacker {
+		panic("effects: a blocksAttacker requirement names an attacking object; use BlocksAttackerUntilEOT")
+	}
 	return ScopedEffectFor{
 		Target:   b.Target,
 		Mods:     []game.Mod{game.AddBlockRequirementMod(b.Kind)},
 		Duration: DurationUntilEndOfTurn(ctx),
 		Label:    eotLabel(b.Label, "block requirement: "+string(b.Kind)),
+	}.Apply(ctx)
+}
+
+// BlocksAttackerUntilEOT is "<Blocker> blocks <Attacker> this turn if
+// able" (#1684) — Provoke's "untap and block it if able", Grappling
+// Hook's and Turntimber Basilisk's "target creature blocks it this
+// turn if able". A data record pinned to the would-be blocker, naming
+// the attacking OBJECT (instance and epoch), so an attacker that left
+// and came back is not it and the requirement asks nothing (CR 400.7).
+// A requirement the blocker can't legally obey — a flyer it can't
+// reach, a menace attacker it can't block alone — asks nothing either
+// (CR 509.1c: a requirement never beats a restriction).
+type BlocksAttackerUntilEOT struct {
+	Blocker  uuid.UUID
+	Attacker game.ObjectRef
+	Label    string
+}
+
+// Apply registers the record. A zero Blocker or Attacker registers
+// nothing.
+func (b BlocksAttackerUntilEOT) Apply(ctx *Context) error {
+	if b.Blocker == uuid.Nil || b.Attacker.ID == uuid.Nil {
+		return nil
+	}
+	return ScopedEffectFor{
+		Target:   b.Blocker,
+		Mods:     []game.Mod{game.BlocksAttackerMod(b.Attacker)},
+		Duration: DurationUntilEndOfTurn(ctx),
+		Label:    eotLabel(b.Label, "block requirement: blocks an attacker"),
 	}.Apply(ctx)
 }

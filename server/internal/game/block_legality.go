@@ -452,6 +452,8 @@ func (e *BlockRefusedError) Sentence(viewer uuid.UUID) string {
 //	"Grizzly Bears must block this combat if able (Grand Melee)."
 //	"Gaea's Protector must be blocked if able."
 //	"Nacatl War-Pride must be blocked by exactly one creature if able."
+//	"Grizzly Bears must block Goblin Grappler if able."
+//	"Grizzly Bears must block Llanowar Elves if able (Grappling Hook)."
 //
 // The printing card is named when it is not the creature the sentence
 // is about, because that is the card the player has to answer.
@@ -460,7 +462,7 @@ func (e *BlockRefusedError) requirementSentence(blocker, attacker string) string
 	switch e.Requirement.Kind {
 	case BlockRequirementBlocks:
 		s, subject = blocker+" must block this combat if able", e.BlockerName
-	case BlockRequirementLure:
+	case BlockRequirementLure, BlockRequirementBlocksAttacker:
 		s, subject = blocker+" must block "+attacker+" if able", e.AttackerName
 	case BlockRequirementMustBeBlocked:
 		s, subject = attacker+" must be blocked if able", e.AttackerName

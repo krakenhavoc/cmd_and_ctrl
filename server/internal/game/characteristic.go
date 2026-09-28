@@ -231,6 +231,9 @@ type Characteristic struct {
 	// creatures able to block this creature do so" (Lure), "must be
 	// blocked if able" (Gaea's Protector) and "must be blocked by
 	// exactly one creature if able". #1597, block_requirements.go.
+	// #1684 adds "blocks <that attacker> this turn if able" on a
+	// would-be blocker (Provoke; BlockRequirement.Attacker) and the
+	// filtered Lure (Marble Priest's Walls; BlockRequirement.Filter).
 	//
 	// AttackRequirements' twin, for the same reasons: written by
 	// ordinary layer statics and by ADR 0041 data records, only ever
