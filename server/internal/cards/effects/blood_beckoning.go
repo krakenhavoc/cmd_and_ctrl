@@ -22,15 +22,7 @@ func init() {
 			TargetCardInGraveyard("two target creature cards from your graveyard", YouOwn(), Creature()).WithCount(2, 2))},
 		Targets: TargetCardInGraveyard("target creature card from your graveyard", YouOwn(), Creature()),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			for _, t := range ctx.LegalTargets() {
-				if t.Kind != game.TargetCard {
-					continue
-				}
-				if err := (ReturnFromGraveyard{Target: t.ID, Dest: game.ZoneHand}).Apply(ctx); err != nil {
-					return err
-				}
-			}
-			return nil
+			return returnLegalGraveyardTargetsToHand(ctx)
 		},
 	})
 }
