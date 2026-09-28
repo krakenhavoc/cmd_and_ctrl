@@ -172,6 +172,27 @@ const (
 	ModWaiveHexproof ModKind = "waiveHexproof"
 )
 
+// ModBecomeCopy is "<affected> becomes a copy of <object> [until end of
+// turn]" (#1593, ADR 0043's amendment of 2026-09-28): a CR 707.2 copy
+// effect with a duration and a timestamp of its own, applied to a
+// permanent that is already on the battlefield. Mirage Mirror,
+// Cytoshape, Mirrorweave, Shifting Woodland's delirium, Unstable
+// Shapeshifter, Lazav.
+//
+// Reads Copy, which holds exactly ONE PrintedValues: the copied
+// object's copiable values as they were when the effect began, with the
+// card's "except" clause already applied. Values, never a reference —
+// the copied card may be in a graveyard (Shifting Woodland, Lazav) and
+// may leave it, and the copy does not end when it does.
+//
+// Not a layer-pass operation. A copy has to change the oracle ID every
+// catalog hook keys on, which no Characteristic field carries (ADR 0043
+// Decision 1), so it is MATERIALISED onto the permanent's flat printed
+// fields before the layer pass runs, by materialiseDurationCopiesLocked
+// (duration_copy.go). That is layer 1 by construction: layers 2-7 then
+// run on its result (CR 613.1a).
+const ModBecomeCopy ModKind = "becomeCopy"
+
 // AffectedScope is a ScopedEffect's affected set as a RULE read live at
 // every layer pass, instead of a set of objects locked when the effect
 // began (#1571). CR 611.2c locks the set only for an effect that
@@ -272,6 +293,11 @@ type Mod struct {
 	// (ADR 0041 P1); an older binary refuses a file carrying one
 	// (ADR 0041 P4), which the unknown kind already guarantees.
 	Objects []ObjectRef `json:"objects,omitempty"`
+	// Copy is ModBecomeCopy's copied values (#1593): exactly one entry,
+	// required on that kind and refused on every other. A slice for the
+	// reason Objects is one — every other mod writes nothing, and the
+	// record stays plain data with no pointer in it (ADR 0041 P1).
+	Copy []PrintedValues `json:"copy,omitempty"`
 }
 
 // AffectedObject is one member of a ScopedEffect's affected set: the
@@ -402,6 +428,9 @@ const (
 	readerBlockRule
 	// readerTargeting is the targeting choke point (#1651).
 	readerTargeting
+	// readerCopy is the layer-1 materialiser (#1593,
+	// duration_copy.go): it runs before the layer pass, not in it.
+	readerCopy
 )
 
 // modKindSpec is where a kind lives: its reader, and for a layer kind
@@ -447,6 +476,8 @@ var modKinds = map[ModKind]modKindSpec{
 	// targeting.
 	ModCantHaveKeywords: {layer: Layer6Ability},
 	ModWaiveHexproof:    {reader: readerTargeting},
+	// #1593: layer 1, applied to the printed baseline before the pass.
+	ModBecomeCopy: {reader: readerCopy, layer: Layer1Copy},
 }
 
 // KnownModKind reports whether this binary can interpret k.
@@ -700,7 +731,10 @@ func (g *Game) appendScopedEffectLocked(sourceID uuid.UUID, affected []AffectedO
 		if problem := hexproofModProblem(m); problem != "" {
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
-		if modKinds[m.Kind].reader != readerLayer {
+		if problem := copyModProblem(m); problem != "" {
+			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
+		}
+		if r := modKinds[m.Kind].reader; r != readerLayer && r != readerCopy {
 			named = true
 		}
 	}
@@ -742,6 +776,7 @@ func cloneMods(mods []Mod) []Mod {
 		m.Keywords = copyStrings(m.Keywords)
 		m.Grants = copyStrings(m.Grants)
 		m.Objects = append([]ObjectRef(nil), m.Objects...)
+		m.Copy = clonePrintedValuesSlice(m.Copy)
 		out[i] = m
 	}
 	return out
