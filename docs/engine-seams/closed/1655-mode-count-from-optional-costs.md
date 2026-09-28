@@ -1,5 +1,5 @@
 ---
-title: "A mode count read off the optional costs, and a forced higher count"
+title: "A mode count that reads the announced optional costs, and one that forces the higher count"
 date: 2026-09-28
 issues: [1655]
 ---

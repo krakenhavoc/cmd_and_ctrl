@@ -111,3 +111,20 @@ func TestPublicModeSpecShowsThePrintedMax(t *testing.T) {
 		t.Error("publicModeSpec must copy, not overwrite the caster's own stamp")
 	}
 }
+
+// #1655: the public copy puts the printed MINIMUM back too (a forced
+// count raises it) and drops the caster's if_optional_paid, without
+// touching the caster's own stamp.
+func TestPublicModeSpecShowsThePrintedMinAndNoOptionalBounds(t *testing.T) {
+	v := &ModeSpecView{
+		Min: 2, Max: 2, printedMin: 1, printedMax: 1,
+		IfOptionalPaid: &ModeBoundsView{Min: 1, Max: 3},
+	}
+	pub := publicModeSpec(v)
+	if pub.Min != 1 || pub.Max != 1 || pub.IfOptionalPaid != nil {
+		t.Errorf("public copy: %d..%d, if_optional_paid %+v; want the printed 1..1 and none", pub.Min, pub.Max, pub.IfOptionalPaid)
+	}
+	if v.Min != 2 || v.IfOptionalPaid == nil {
+		t.Error("the caster's own stamp is untouched")
+	}
+}
