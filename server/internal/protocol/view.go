@@ -563,16 +563,20 @@ type TargetDifferenceView struct {
 // for the owner's hand cards. Added in S20 sub-PR 4.
 type ModeSpecView struct {
 	Prompt string `json:"prompt"`
-	Min    int    `json:"min"`
+	// Min is the lower bound for THIS caster right now, with no
+	// optional cost announced: the printed Min, raised while a FORCED
+	// conditional count holds (#1655 — "choose both instead" with no
+	// "may").
+	Min int `json:"min"`
 	// Max is the upper bound for THIS caster right now (#1590): the
 	// printed Max, raised to RaisedMax while a conditional mode count
 	// holds — Jeska's Will's "if you control a commander as you cast
 	// this spell, you may choose both instead" stamps 2 for a seat
 	// with a commander on the battlefield and 1 for everybody else.
-	// Read by game.ModeMaxForEffect, the same bound the announce gate
-	// enforces, so a picker that offers up to `max` never offers a
-	// selection the server refuses. The public projection
-	// (publicModeSpec) puts the printed bound back.
+	// Read by game.ModeBoundsForEffect, the same bounds the announce
+	// gate enforces, so a picker that offers up to `max` never offers
+	// a selection the server refuses. The public projection
+	// (publicModeSpec) puts the printed bounds back.
 	Max     int              `json:"max"`
 	Options []ModeOptionView `json:"options"`
 	// Repeatable is CR 700.2d, "you may choose the same mode more
