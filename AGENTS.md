@@ -954,6 +954,7 @@ func init() {
 - Type-add — append to `c.Types` after checking idempotency
 - Keyword grant — `c.Abilities = game.AppendKeywordAbility(c.Abilities, kw)`, which dedupes a redundant keyword and keeps every instance of a cumulative one (toxic, #748)
 - CDA P/T — `c.Power = computed; c.Toughness = computed + 1`
+- Keyword lockout ("lose X and can't have or gain X", the Archetypes) — not a hand-written removal, which a later grant undoes (CR 613.7). Use `effects.LoseAndCantHave(applies, "x")`, or `LoseAndCantHaveUntilEOT` for a resolving ability (Arcane Lighthouse). The engine strips the keyword after the whole layer-6 bucket (ADR 0038, amendment of 2026-09-28)
 
 **Tests** — see [anthem_test.go](server/internal/cards/effects/anthem_test.go) and [tarmogoyf_test.go](server/internal/cards/effects/tarmogoyf_test.go) for the layer-aware pattern. Use `pushBattlefieldCardWithTimestamp` (fires `EventZoneMove` so the listener stamps `EnteredBattlefieldAt` + bumps `layerVersion`); read effective characteristics via `effectivePower` / `effectiveToughness` / `effectiveTypes` / `effectiveAbilities` helpers.
 

@@ -410,3 +410,127 @@ matter:
   resolves. `RestrictUntilEOT` locks its set at resolution, so the
   card would ship weaker than printed. It is left out until
   "can't be blocked" can be read over a live set.
+
+## Amendment (2026-09-28, #1651): a waiver with a duration, and "can't have hexproof"
+
+A6 left two shapes unbuilt. This amendment builds both.
+
+### B1. A turn-scoped waiver is a `ScopedEffect` mod, read at the same choke point
+
+Detection Tower: "{1}, {T}: Until end of turn, your opponents and
+creatures your opponents control with hexproof can be the targets of
+spells and abilities you control as though they didn't have hexproof."
+
+This is A1's waiver, created by a resolving ability (CR 611.2) instead
+of printed on a permanent. It is an ADR 0041 data record with a new mod
+kind, `waiveHexproof` (`game.WaiveHexproofMod`), under a new affected
+scope, `opponentsAndTheirCreatures`. The kind has its own reader,
+`readerTargeting`. The layer adapter skips it, because it is not a
+characteristic. `hexproofBypassedLocked` and
+`playerHexproofBypassedLocked` walk `Game.ScopedEffects` after the
+battlefield statics. So the announce gate, the CR 608.2b re-check and
+the bot's enumerator all get it from the same two functions, as A2 said
+they would.
+
+Three details are fixed by the printed text:
+
+- **The beneficiary is the record's `Controller`.** That is the
+  ability's controller as it resolved (CR 611.2c reads "you" once).
+  Every card that prints a timed waiver says "spells and abilities you
+  control", so the kind always behaves like A3's `YoursOnly`. A
+  third player gets nothing, and the kind has no flag to say
+  otherwise. If a card ever prints an unrestricted timed waiver, it
+  gets a new kind.
+- **The set is live.** A waiver changes no characteristic and no
+  control, so CR 611.2c does not lock it (the same reading #1571 and
+  #1650 used for attack requirements and restrictions). A creature
+  that an opponent casts after the Tower resolves is covered, and so
+  is one that changes control to an opponent. The scope matches
+  opponents' **creatures** only. A hexproof noncreature permanent
+  (for example, an animated manland that stops being a creature) is
+  not covered, because the Tower does not name it.
+- **The player half.** The new scope is the first one that names
+  players. `scopeCoversPlayer` answers for it. Every other scope
+  covers no player, so no existing record changes meaning.
+
+The record is data. Undo copies it with the registry, and the snapshot
+writes it verbatim. The cleanup sweep ends it like every other
+until-end-of-turn record. No new state was needed. The restore-time
+key check refuses an unknown scope or kind, as ADR 0041 P4 requires.
+
+### B2. "Can't have" is a post-layer-6 strip, recorded on the characteristic
+
+Arcane Lighthouse: "Until end of turn, creatures your opponents control
+lose hexproof and shroud and can't have hexproof or shroud." The
+Archetype cycle prints the static form: "Creatures your opponents
+control lose <keyword> and can't have or gain <keyword>."
+
+"Can't have" is a CR 101.2 "can't". It beats every "can", whatever the
+timestamps. A layer-6 removal alone is not enough, because layer 6
+runs in timestamp order (CR 613.7). A grant sorted after the removal,
+such as a Heroic Intervention cast afterwards or a catalog creature's
+own `PrintedKeywords` static, appends the keyword again and keeps it.
+That was the declared gap on Archetype of Aggression and Archetype of
+Courage.
+
+There were two ways to model it:
+
+1. **A flag that the keyword reader checks.** `HasKeyword` would
+   answer false for a keyword the object can't have, and the
+   keyword would stay in `Characteristic.Abilities`.
+2. **A strip after layer 6.** Effects record what the object can't
+   have, and when the layer-6 bucket finishes, the engine removes
+   those keywords from `Abilities`.
+
+This amendment uses (2). Under (1), the keyword would still be in
+`Abilities`, so the wire would ship a hexproof badge on a creature
+that has no hexproof. Every reader that walks the list instead of
+calling `HasKeyword`, such as the protection-quality walk and the
+view, would need to learn the rule, and a missed reader would be a
+silent leak. Under (2), every downstream reader sees the right list
+without being changed. That is the argument `materialiseControlLocked`
+made for layer 2.
+
+How it works:
+
+- **`Characteristic.CantHave []string`** holds the keyword tokens the
+  object can't have. It works like `Restrictions`. A layer-6 effect
+  appends to it. Nothing clears it, including a CR 613.1f "loses all
+  abilities". The can't-have belongs to the effect's source, not to
+  the object.
+- **`enforceCantHaveLocked`** runs once, right after the layer-6
+  bucket (`layerPassLocked`). It removes every listed token from
+  `Abilities`, compared case-insensitively. Layer 7 and everything
+  after the pass see the stripped list. The timestamp of the
+  effect that recorded the can't-have does not matter, because the
+  strip runs after the whole bucket. That is the point of the rule.
+- **CR 613.6 still applies to the source.** The recording happens
+  inside the ordinary layer-6 `Apply`. So an Archetype that has lost
+  its abilities records nothing, and its opponents' creatures can have
+  the keyword again. This needed no extra code.
+- **The static form** is `effects.LoseAndCantHave(applies, keywords…)`,
+  which is one layer-6 `StaticAbility`. **The scoped form** is the
+  mod kind `cantHaveKeywords` (`game.CantHaveKeywordsMod`), which is a
+  layer-6 mod whose `Apply` records the tokens. Arcane Lighthouse
+  changes characteristics, so CR 611.2c locks its set. It is a
+  pinned record over the opponents' creatures as the ability
+  resolves. A creature that comes under an opponent's control later
+  keeps its hexproof.
+- **"Lose" needs no separate removal.** The strip removes the keyword
+  whatever added it, including the printed baseline. "Loses X and
+  can't have X" is therefore one record or one static, not two.
+
+`CantHave` is part of the characteristic's snapshot shape. It appears
+on last-known information like every other field there. It is
+`omitempty`, so every existing fixture renders byte-for-byte as before.
+`clone` copies it, and `sameCharacteristic` compares it.
+
+### B3. Cards
+
+- **Detection Tower** (B1) and **Arcane Lighthouse** (B2, scoped) ship
+  `full`.
+- **Archetype of Endurance**, **Archetype of Imagination** and
+  **Archetype of Finality** (B2, static) ship `full`.
+- **Archetype of Aggression** and **Archetype of Courage** are moved
+  onto `LoseAndCantHave`. Their caveats described exactly this gap,
+  so they now ship `full`.

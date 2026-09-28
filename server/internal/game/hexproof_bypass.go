@@ -47,6 +47,17 @@ import "github.com/google/uuid"
 //     not make ward trigger retroactively (the second ruling), and a
 //     ward trigger already on the stack still resolves.
 //
+// A WAIVER WITH A DURATION (#1651, ADR 0038's amendment of 2026-09-28,
+// B1). Detection Tower's "{1}, {T}: Until end of turn, your opponents
+// and creatures your opponents control with hexproof can be the targets
+// of spells and abilities you control …" is the same waiver created by a
+// resolving ability. It is an ADR 0041 data record (ModWaiveHexproof),
+// read by the same two functions below, after the battlefield statics:
+// the beneficiary is the record's Controller, and its set is the
+// record's scope read live (a waiver changes no characteristic, so CR
+// 611.2c does not lock it). Being data, it rides undo and the snapshot
+// with the rest of the registry and ends at cleanup with it.
+//
 // WHAT IS NOT WAIVED. Only hexproof. Shroud (CR 702.18) and protection
 // (CR 702.16b) are separate refusals and a hexproof waiver says
 // nothing about them; canBeTargetedBy tests them before and after the
@@ -112,9 +123,12 @@ func (g *Game) hexproofBypassedLocked(target *Card, by uuid.UUID) bool {
 	if g == nil || target == nil {
 		return false
 	}
-	return g.anyHexproofBypassLocked(by, func(b HexproofBypass, source *Card) bool {
+	if g.anyHexproofBypassLocked(by, func(b HexproofBypass, source *Card) bool {
 		return b.Permanent != nil && b.Permanent(g, target, source)
-	})
+	}) {
+		return true
+	}
+	return g.scopedHexproofWaiverLocked(by, target, nil)
 }
 
 // playerHexproofBypassedLocked is hexproofBypassedLocked for a
@@ -123,9 +137,71 @@ func (g *Game) playerHexproofBypassedLocked(target *Player, by uuid.UUID) bool {
 	if g == nil || target == nil {
 		return false
 	}
-	return g.anyHexproofBypassLocked(by, func(b HexproofBypass, source *Card) bool {
+	if g.anyHexproofBypassLocked(by, func(b HexproofBypass, source *Card) bool {
 		return b.Player != nil && b.Player(g, target, source)
-	})
+	}) {
+		return true
+	}
+	return g.scopedHexproofWaiverLocked(by, nil, target)
+}
+
+// WaiveHexproofMod is "<affected> can be the targets of spells and
+// abilities you control as though they didn't have hexproof" as an
+// ADR 0041 data record (#1651, Detection Tower). Register it with
+// RegisterScopedRuleEffectForEffect under ScopeOpponentsAndTheirCreatures;
+// "you" is the record's Controller.
+func WaiveHexproofMod() Mod { return Mod{Kind: ModWaiveHexproof} }
+
+// scopedHexproofWaiverLocked reports whether a turn-scoped waiver
+// record lets a spell or ability `by` controls target `card` (a
+// battlefield permanent with hexproof) or `player` (a player with
+// hexproof) as though it didn't have hexproof. Exactly one of the two
+// is non-nil.
+//
+// Only a record whose Controller is `by` counts: every printed timed
+// waiver says "spells and abilities YOU control" (A3's YoursOnly).
+//
+// Caller must hold g.mu. Reads only.
+func (g *Game) scopedHexproofWaiverLocked(by uuid.UUID, card *Card, player *Player) bool {
+	for i := range g.ScopedEffects {
+		e := &g.ScopedEffects[i]
+		if e.Controller != by || !scopedEffectHasMod(e, ModWaiveHexproof) {
+			continue
+		}
+		if player != nil {
+			if scopeCoversPlayer(e.Scope, e.Controller, player.ID) {
+				return true
+			}
+			continue
+		}
+		applies := affectedPredicate(e.Affected)
+		if e.Scope != ScopeNone {
+			applies = scopePredicate(e.Scope, e.Controller)
+		}
+		if applies(card, g, nil) {
+			return true
+		}
+	}
+	return false
+}
+
+// scopedEffectHasMod reports whether the record carries a mod of kind k.
+func scopedEffectHasMod(e *ScopedEffect, k ModKind) bool {
+	for _, m := range e.Mods {
+		if m.Kind == k {
+			return true
+		}
+	}
+	return false
+}
+
+// scopeCoversPlayer reports whether a live scope names the PLAYER
+// `player` (#1651). ScopeOpponentsAndTheirCreatures is the only scope
+// that names players at all — "your opponents", the "you" being
+// `controller` — so every other scope covers none, and no record
+// written before it changes meaning.
+func scopeCoversPlayer(scope AffectedScope, controller, player uuid.UUID) bool {
+	return scope == ScopeOpponentsAndTheirCreatures && player != uuid.Nil && player != controller
 }
 
 // anyHexproofBypassLocked walks every waiver on the battlefield,
