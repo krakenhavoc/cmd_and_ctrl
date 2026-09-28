@@ -238,6 +238,10 @@ func (g *Game) onTurnBeganLocked() {
 	// backstop for a turn that ended without one (ADR 0059
 	// Decision 6).
 	g.sweepCastPermissionsLocked(false)
+	// #1598: and goad, per goader — CR 701.15a's "until your next turn"
+	// is the same boundary, and a creature goaded by two players loses
+	// only the goad of the player whose turn is beginning.
+	g.sweepExpiredGoadsLocked()
 	if g.Turn.ActiveSeat >= 0 && g.Turn.ActiveSeat < len(g.Seats) && g.Seats[g.Turn.ActiveSeat] != nil {
 		active := g.Seats[g.Turn.ActiveSeat]
 		active.UndosRemaining = g.Settings.UndoLimit

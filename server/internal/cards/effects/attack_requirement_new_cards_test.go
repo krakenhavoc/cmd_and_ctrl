@@ -235,10 +235,10 @@ func TestDisruptDecorumGoadsEveryOpponentsCreature(t *testing.T) {
 	castCatalogSpell(t, g, "Disrupt Decorum", "Sorcery", disruptDecorumOracle, nil)
 	passPriorityAroundTable(t, g)
 
-	if c, ok := g.LookupCardForEffect(bear); !ok || c.GoadedBy != me.ID {
+	if c, ok := g.LookupCardForEffect(bear); !ok || c.LatestGoader() != me.ID {
 		t.Fatal("Disrupt Decorum did not goad the opponent's creature")
 	}
-	if c, ok := g.LookupCardForEffect(mine); !ok || c.GoadedBy != uuid.Nil {
+	if c, ok := g.LookupCardForEffect(mine); !ok || c.LatestGoader() != uuid.Nil {
 		t.Fatal("Disrupt Decorum goaded the caster's own creature")
 	}
 

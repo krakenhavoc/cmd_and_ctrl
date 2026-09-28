@@ -250,6 +250,45 @@ describe("buildMenuSections — battlefield", () => {
     expect(sectionIDs(buildMenuSections(v, c, "a", false))).not.toContain("special_actions");
   });
 
+  // #1598 (CR 701.15c): goads stack, one per player. The menu on a
+  // card another seat controls is an admin's, hence isAdmin below.
+  it("offers goad to a viewer who has not goaded it, beside clear", () => {
+    const goaded = card("g1", "a", {
+      type_line: "Creature — Bear",
+      goaded_by: "b",
+      goaders: ["b"],
+    });
+    const v2 = view([seat("a", "Alice"), seat("b", "Bob"), seat("c", "Cy")], {
+      battlefield: [goaded],
+    });
+    const asC = buildMenuSections(v2, goaded, "c", true);
+    expect(itemById(asC, "goad")?.action).toEqual({
+      type: "set_goaded",
+      params: { instance_id: "g1", by: "c" },
+    });
+    expect(itemById(asC, "goad-clear")?.label).toBe("Clear goad");
+    const asB = buildMenuSections(v2, goaded, "b", true);
+    expect(itemById(asB, "goad")).toBeUndefined();
+    expect(itemById(asB, "goad-clear")).toBeDefined();
+  });
+
+  it("reads every goader, falling back to goaded_by for an older server", () => {
+    const twice = card("g2", "a", {
+      type_line: "Creature — Bear",
+      goaded_by: "c",
+      goaders: ["b", "c"],
+    });
+    const v2 = view([seat("a", "Alice"), seat("b", "Bob"), seat("c", "Cy")], {
+      battlefield: [twice],
+    });
+    const asB = buildMenuSections(v2, twice, "b", true);
+    expect(itemById(asB, "goad")).toBeUndefined();
+    expect(itemById(asB, "goad-clear")?.label).toBe("Clear goads");
+    const legacy = card("g3", "a", { type_line: "Creature — Bear", goaded_by: "b" });
+    expect(itemById(buildMenuSections(v2, legacy, "b", true), "goad")).toBeUndefined();
+    expect(itemById(buildMenuSections(v, c, "a", false), "goad-clear")).toBeUndefined();
+  });
+
   it("disables the no-op half of the tap toggle", () => {
     const sections = buildMenuSections(v, c, "a", false);
     expect(itemById(sections, "tap")?.disabled).toBe(true);

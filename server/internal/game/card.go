@@ -253,15 +253,20 @@ type Card struct {
 	// Only meaningful on the battlefield. Added in S08.
 	BlockingTarget uuid.UUID
 
-	// GoadedBy is the player ID who goaded this creature. uuid.Nil
-	// means "not goaded". A goaded creature attacks each combat if
-	// able and attacks a player other than the goader if able
-	// (CR 701.15b); since #1571 those two requirements are enforced
-	// (attack_requirements.go). One goader: a second goad replaces the
-	// first, which loses CR 701.15c's extra requirements (weaker than
-	// printed). Cleared on zone exit alongside Tapped /
-	// AttackingTarget. Added in S10.
-	GoadedBy uuid.UUID
+	// Goads is every player who has goaded this creature and whose goad
+	// has not ended, one entry per goader, oldest goad first (#1598,
+	// CR 701.15c). Nil means "not goaded". Each goaded creature attacks
+	// each combat if able and attacks a player other than that goader
+	// if able (CR 701.15b), and since #1571 those requirements are
+	// enforced (attack_requirements.go) — two per entry, so a creature
+	// goaded by two players must attack a player who goaded it neither
+	// time if it can. Each entry ends as ITS goader's next turn begins
+	// (CR 701.15a, sweepExpiredGoadsLocked); a second goad by the same
+	// player refreshes that entry rather than adding one. Written only
+	// through goadLocked / clearGoadsLocked (goad.go). Cleared on zone
+	// exit alongside Tapped / AttackingTarget. Added in S10 as a single
+	// GoadedBy ID.
+	Goads []Goad
 
 	// PhasedOutBy is the player who controlled this permanent AT THE
 	// MOMENT IT PHASED OUT (CR 702.26a), and it is meaningful only
@@ -443,7 +448,8 @@ type Card struct {
 	// `out := c` and deep-copies only the slice / map fields by
 	// hand, so a pointer here would alias between the live game and
 	// every undo snapshot. Same reason AttackingTarget /
-	// BlockingTarget / GoadedBy are uuid.Nil-sentinel values.
+	// BlockingTarget are uuid.Nil-sentinel values (and why cloneCard
+	// copies Goads by hand).
 	//
 	// Cleared on battlefield exit by MoveCard alongside Tapped and
 	// the combat relations. The REVERSE direction (a host that

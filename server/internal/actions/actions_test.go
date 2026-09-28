@@ -737,8 +737,8 @@ func TestDispatchSetGoaded(t *testing.T) {
 	if err := Dispatch(g, a); err != nil {
 		t.Fatalf("Dispatch: %v", err)
 	}
-	if g.Battlefield.Cards[0].GoadedBy != p1.ID {
-		t.Errorf("goaded_by: got %v, want %v", g.Battlefield.Cards[0].GoadedBy, p1.ID)
+	if g.Battlefield.Cards[0].LatestGoader() != p1.ID {
+		t.Errorf("goaded_by: got %v, want %v", g.Battlefield.Cards[0].LatestGoader(), p1.ID)
 	}
 }
 

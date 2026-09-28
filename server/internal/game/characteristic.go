@@ -222,7 +222,7 @@ type Characteristic struct {
 	// combat if able" does go with its abilities: the catalog static
 	// that writes it is not applied once CatalogAbilityKey answers
 	// empty, CR 613.1f.) One entry per requirement, because CR 508.1d
-	// COUNTS them. Goad's pair is not here: it rides Card.GoadedBy.
+	// COUNTS them. Goad's pairs are not here: they ride Card.Goads.
 	AttackRequirements []AttackRequirement
 }
 

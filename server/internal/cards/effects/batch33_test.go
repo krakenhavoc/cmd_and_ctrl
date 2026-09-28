@@ -72,7 +72,7 @@ func b33Goaded(t *testing.T, g *game.Game, id uuid.UUID) uuid.UUID {
 	if !ok {
 		t.Fatalf("%s is not on the battlefield", id)
 	}
-	return c.GoadedBy
+	return c.LatestGoader()
 }
 
 // b33PoolCount counts the tokens of one colour in a player's pool.

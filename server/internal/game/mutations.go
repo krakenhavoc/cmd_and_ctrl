@@ -8558,13 +8558,16 @@ func (g *Game) SetInitiative(playerID uuid.UUID) error {
 	return nil
 }
 
-// SetGoaded marks a battlefield creature as goaded by the given player.
-// Pass uuid.Nil for `by` to clear the goad. The card must be on the
-// battlefield; goading a card in any other zone is meaningless.
+// SetGoaded is the sandbox goad: `by` goads the battlefield creature,
+// adding to any other player's goad on it (CR 701.15c) or refreshing
+// `by`'s own (goadLocked), and the goad ends as `by`'s next turn begins
+// like any other (CR 701.15a). Pass uuid.Nil for `by` to clear EVERY
+// goad on the creature. The card must be on the battlefield; goading a
+// card in any other zone is meaningless.
 //
-// Since #1571 the marker is enforced: the goaded creature's two
-// CR 701.15b requirements are judged with every other CR 508.1d
-// requirement (attack_requirements.go).
+// Since #1571 the marker is enforced: the goaded creature's CR 701.15b
+// requirements are judged with every other CR 508.1d requirement
+// (attack_requirements.go).
 func (g *Game) SetGoaded(cardID, by uuid.UUID) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
@@ -8576,7 +8579,11 @@ func (g *Game) SetGoaded(cardID, by uuid.UUID) error {
 	}
 	for i := range g.Battlefield.Cards {
 		if g.Battlefield.Cards[i].InstanceID == cardID {
-			g.Battlefield.Cards[i].GoadedBy = by
+			if by == uuid.Nil {
+				g.Battlefield.Cards[i].Goads = nil
+			} else {
+				g.goadLocked(&g.Battlefield.Cards[i], by)
+			}
 			return nil
 		}
 	}

@@ -44,7 +44,7 @@ func TestJeeringHomunculusMayGoadTargetCreature(t *testing.T) {
 	pickCard(t, g, me.ID, bear)
 	passPriorityAroundTable(t, g)
 
-	if c, ok := g.LookupCardForEffect(bear); !ok || c.GoadedBy != me.ID {
+	if c, ok := g.LookupCardForEffect(bear); !ok || c.LatestGoader() != me.ID {
 		t.Fatal("Jeering Homunculus did not goad the bear")
 	}
 
@@ -91,7 +91,7 @@ func TestTauntingKobaldGoadsOnAttack(t *testing.T) {
 	pickCard(t, g, me.ID, bear)
 	passPriorityAroundTable(t, g)
 
-	if c, ok := g.LookupCardForEffect(bear); !ok || c.GoadedBy != me.ID {
+	if c, ok := g.LookupCardForEffect(bear); !ok || c.LatestGoader() != me.ID {
 		t.Fatal("Taunting Kobold did not goad the bear")
 	}
 
@@ -132,7 +132,7 @@ func TestVengefulAncestorGoadsOnETBAndDamagesAnyGoadedAttacker(t *testing.T) {
 	pickCard(t, g, me.ID, bear)
 	passPriorityAroundTable(t, g)
 
-	if c, ok := g.LookupCardForEffect(bear); !ok || c.GoadedBy != me.ID {
+	if c, ok := g.LookupCardForEffect(bear); !ok || c.LatestGoader() != me.ID {
 		t.Fatal("Vengeful Ancestor's ETB did not goad the bear")
 	}
 
@@ -182,7 +182,7 @@ func racketeerShapeTest(t *testing.T, name, typeLine, oracleID string) {
 	pickCard(t, g, me.ID, victim)
 	passPriorityAroundTable(t, g)
 
-	if c, ok := g.LookupCardForEffect(victim); !ok || c.GoadedBy != me.ID {
+	if c, ok := g.LookupCardForEffect(victim); !ok || c.LatestGoader() != me.ID {
 		t.Fatalf("%s did not goad the defending player's creature", name)
 	}
 
@@ -243,7 +243,7 @@ func TestPuppetMasterGoadsAndPreventsBlockOnAttack(t *testing.T) {
 	passPriorityAroundTable(t, g)
 
 	c, ok := g.LookupCardForEffect(victim)
-	if !ok || c.GoadedBy != me.ID {
+	if !ok || c.LatestGoader() != me.ID {
 		t.Fatal("Puppet Master did not goad the opponent's creature")
 	}
 	if !game.Restricted(&c, game.CantBlock) {
@@ -266,7 +266,7 @@ func TestPuppetMasterGoadsAndPreventsBlockOnAttack(t *testing.T) {
 }
 
 // TestPuppetMasterTreasureFromAnyGoadedCreatureConnecting: the second
-// ability reads GoadedBy alone — a creature goaded by someone else's
+// ability reads IsGoaded alone — a creature goaded by someone else's
 // effect still pays off.
 func TestPuppetMasterTreasureFromAnyGoadedCreatureConnecting(t *testing.T) {
 	g := newCatalogGame(t)
@@ -276,7 +276,7 @@ func TestPuppetMasterTreasureFromAnyGoadedCreatureConnecting(t *testing.T) {
 	goaded := pushBattlefieldCardWithTimestamp(g, game.Card{
 		InstanceID: uuid.New(), Name: "Goaded Bear", TypeLine: "Creature — Bear",
 		Power: 2, Toughness: 2, Owner: me.ID, Controller: me.ID, Keywords: []string{"haste"},
-		GoadedBy: me.ID,
+		Goads: []game.Goad{{By: me.ID, ExpiresAtTurnsBegun: 99}},
 	})
 
 	attackWith(t, g, opp.ID, goaded)

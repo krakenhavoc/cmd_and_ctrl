@@ -714,41 +714,33 @@ func tuckSelfThirdFromTop(g *game.Game, item *game.StackItem) error {
 // trigger — the "one or more" dedup keys on it.
 const b33AlelaGoadLabel = "Alela, Cunning Conqueror — goad a creature that player controls"
 
-// b33Goad stamps the engine's goad marker on a battlefield creature:
-// `by` is the goading player. The engine surfaces the marker (the
-// client badges the creature and the context menu offers to clear
-// it) and, since #1571, enforces goad's two CR 701.15b requirements
-// from it (game/attack_requirements.go) — so this is exactly the
+// b33Goad adds `by`'s goad to a battlefield creature — the engine's
+// goad marker (game/goad.go), which keeps every goader's goad
+// (CR 701.15c, #1598) and refreshes `by`'s own if it is already
+// there. The engine surfaces the marker (the client badges the
+// creature and the context menu offers to clear it), enforces each
+// goad's two CR 701.15b requirements from it
+// (game/attack_requirements.go, since #1571), and ends each goad as
+// its goader's next turn begins (CR 701.15a) — so this is exactly the
 // sandbox's goad, written from an effect under the lock the effect
 // already holds. Nothing to stamp is not an error.
 func b33Goad(g *game.Game, cardID, by uuid.UUID) {
-	if g.Battlefield == nil {
-		return
-	}
-	for i := range g.Battlefield.Cards {
-		if g.Battlefield.Cards[i].InstanceID == cardID {
-			g.Battlefield.Cards[i].GoadedBy = by
-			return
-		}
-	}
+	g.GoadForEffect(cardID, by)
 }
 
-// b33ClearListedGoads is the delayed-trigger body that ends a goad
-// "until your next turn": every card the item carries that is still
-// on the battlefield and still goaded by the item's controller has
-// its marker cleared. Package-level so the delayed trigger captures
-// nothing.
-func b33ClearListedGoads(g *game.Game, item *game.StackItem) error {
-	for _, t := range item.Targets {
-		if t.Kind != game.TargetCard {
-			continue
-		}
-		c, ok := g.LookupCardForEffect(t.ID)
-		if !ok || !onBattlefield(g, t.ID) || c.GoadedBy != item.Controller {
-			continue
-		}
-		b33Goad(g, t.ID, uuid.Nil)
-	}
+// b33ClearListedGoads is the body of the "the goad ends" delayed
+// trigger every goad effect schedules for the goader's next upkeep.
+// Since #1598 the ENGINE ends each goad as its goader's turn begins,
+// so by the time this resolves there is nothing left for it to end,
+// and it runs the same expiry sweep (which is then a no-op) rather
+// than clearing anything itself: a goad the same player refreshed in
+// that upkeep, before this resolved, is stamped for their NEXT turn
+// and must survive it. It is still scheduled so a restore point read
+// by a binary from before #1598 — which keeps one goader and ends it
+// only through this trigger — does not keep that goad forever.
+// Package-level so the delayed trigger captures nothing.
+func b33ClearListedGoads(g *game.Game, _ *game.StackItem) error {
+	g.ExpireGoadsForEffect()
 	return nil
 }
 

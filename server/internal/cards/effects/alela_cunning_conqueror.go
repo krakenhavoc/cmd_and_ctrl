@@ -26,9 +26,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // trigger goads a creature THAT player controls. Alela herself is a
 // Faerie and counts.
 //
-// The goad is the engine's goad: this trigger stamps the S10 goad
-// marker, and a delayed trigger clears it at the beginning of the
-// controller's next turn, which is "until your next turn". Since
+// The goad is the engine's goad: this trigger adds the controller's
+// goad to the S10 goad marker, and the engine ends it as the
+// controller's next turn begins, which is "until your next turn"
+// (CR 701.15a, game/goad.go). Since
 // #1571 the engine enforces it — the goaded creature attacks each
 // combat if able and attacks a player other than Alela's controller
 // if able (CR 701.15b), judged with every other CR 508.1d requirement
@@ -44,17 +45,16 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // graveyard, so a set computed later by looking the dealer up would
 // lose exactly the player the goad is for.
 //
-// Sandbox simplification, declared: the marker holds ONE goading
-// player (Card.GoadedBy), so a creature already goaded by someone else
-// is goaded by Alela's controller alone afterwards — the earlier
-// goad's "a player other than" requirement is lost (CR 701.15c counts
-// both). Weaker than printed, never stronger.
+// A creature already goaded by someone else keeps that goad too: since
+// #1598 the marker holds every goader (Card.Goads), each ending as its
+// own goader's next turn begins, so the creature must attack a player
+// who goaded it neither time if it can (CR 701.15c). That was this
+// card's last caveat.
 func init() {
 	Register(Spec{
 		OracleID:        "1cae5752-b4af-4a8f-8c8c-2493e163083b",
 		Name:            "Alela, Cunning Conqueror",
-		Completeness:    CompletenessCaveats,
-		Caveats:         []string{"A creature goaded by two different players only remembers the most recent goad."},
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{
 			On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {

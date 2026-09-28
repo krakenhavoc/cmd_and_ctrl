@@ -1504,12 +1504,21 @@ type CardView struct {
 	// currently declared to block, or omitted if not declared.
 	// Cleared on zone exit and by clear_combat. Added in S08.
 	BlockingTarget string `json:"blocking_target,omitempty"`
-	// GoadedBy is the player ID who goaded this creature, or empty
-	// when not goaded. Cleared on zone exit. Added in S10; enforced
-	// since #1571 — a goaded creature attacks each combat if able and
-	// attacks a player other than the goader if able (CR 701.15b),
-	// judged with every other CR 508.1d requirement.
+	// GoadedBy is the player ID whose goad on this creature is the most
+	// recent, or empty when it is not goaded. Cleared on zone exit.
+	// Added in S10; enforced since #1571 — a goaded creature attacks
+	// each combat if able and attacks a player other than the goader if
+	// able (CR 701.15b), judged with every other CR 508.1d requirement.
+	// Since #1598 a creature may be goaded by several players at once
+	// (CR 701.15c): this field keeps its meaning for a client that reads
+	// one ID ("is it goaded, and by whom lately"), and Goaders has them
+	// all.
 	GoadedBy string `json:"goaded_by,omitempty"`
+	// Goaders is every player whose goad is on this creature, oldest
+	// goad first, each ending as that player's next turn begins
+	// (CR 701.15a). Omitted when not goaded; when present its last
+	// entry equals GoadedBy. #1598.
+	Goaders []string `json:"goaders,omitempty"`
 	// MustAttack is true on a creature the active player owes an
 	// attack with right now (#1571, CR 508.1d): during
 	// declare_attackers, while the declaration could still obey a
@@ -7063,8 +7072,13 @@ func viewOfCard(c game.Card) CardView {
 	if c.BlockingTarget != uuid.Nil {
 		view.BlockingTarget = c.BlockingTarget.String()
 	}
-	if c.GoadedBy != uuid.Nil {
-		view.GoadedBy = c.GoadedBy.String()
+	if c.IsGoaded() {
+		view.GoadedBy = c.LatestGoader().String()
+		goaders := c.Goaders()
+		view.Goaders = make([]string, len(goaders))
+		for i, id := range goaders {
+			view.Goaders[i] = id.String()
+		}
 	}
 	if c.IsAttached() {
 		id := ""

@@ -1,10 +1,6 @@
 package effects
 
-import (
-	"github.com/google/uuid"
-
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-)
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // Vengeful Ancestor — Creature — Spirit Dragon, {2}{R}{R}, 3/4:
 //
@@ -19,7 +15,7 @@ import (
 // ability, two trigger conditions (Sun Titan's pattern) — over
 // GoadTarget (goad.go). The second line watches EventAttack for ANY
 // creature — not only ones this card goaded — that is currently
-// goaded (Card.GoadedBy set by anybody), and has THAT creature deal 1
+// goaded (Card.IsGoaded — anybody's goad), and has THAT creature deal 1
 // damage to its own controller: "it deals 1 damage to its controller"
 // names the attacker as the source, not Vengeful Ancestor, so the
 // attacker's own deathtouch or lifelink (if any) applies to the ping.
@@ -54,7 +50,7 @@ func init() {
 // — any goader's, not only this card's.
 func vengefulAncestorGoadedAttacker(ev game.Event, _ *game.Card, _ game.Characteristic, g *game.Game) bool {
 	c, ok := g.LookupCardForEffect(ev.CardID)
-	return ok && c.GoadedBy != uuid.Nil
+	return ok && c.IsGoaded()
 }
 
 // vengefulAncestorDamageGoadedAttacker reads the attacking creature
