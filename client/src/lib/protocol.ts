@@ -2491,6 +2491,21 @@ export interface CardView extends CastSurfaceView {
   // arrives as an ordinary exile card with an `exile_play` stamp
   // naming face 1. Absent — not `false` — for everything else.
   prepared?: boolean;
+  // ADR 0071 amendment, #1321 (CR 701.64): this permanent is
+  // harnessed — the marker that switches its printed "∞ — [ability]"
+  // lines on. Unlike `class_level` / `solved` it carries no subtype
+  // gate: any permanent can print "Harness [this permanent]", so the
+  // field is read straight off the card once it is on the
+  // battlefield. Absent — not `false` — for everything else.
+  harnessed?: boolean;
+  // ADR 0071 amendment, #1700 (CR 701.37b): this permanent is
+  // monstrous — set by the monstrosity keyword action ("{cost}:
+  // Monstrosity N.") and kept until the permanent leaves the
+  // battlefield. Switches on its "as long as this creature is
+  // monstrous" lines. Read straight off the card the same way
+  // `harnessed` is — no card type owns monstrosity. Absent — not
+  // `false` — for everything else.
+  monstrous?: boolean;
   // #781 (CR 105.4 / CR 614.12): the answers this permanent's
   // controller gave to its "as this enters, choose a color" and "as
   // this enters, choose a creature type" instructions — one uppercase
