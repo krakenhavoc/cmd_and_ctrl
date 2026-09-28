@@ -185,6 +185,12 @@ func (layerVersionBump) OnEvent(g *Game, ev Event) {
 	case EventTokenCreated:
 		g.layerVersion.Add(1)
 		stampBattlefieldEntryLocked(g, ev.CardID)
+	case EventMonarchChanged:
+		// #1722, ADR 0096: "as long as you're the monarch" (Entourage of
+		// Trest's extra block) is a layer input that no permanent moving
+		// stands in for — the crown changes hands with the board
+		// untouched. A handful of times a game, so no gate.
+		g.layerVersion.Add(1)
 	case EventCounterPlaced:
 		g.layerVersion.Add(1)
 	case EventPlayerCounterPlaced:

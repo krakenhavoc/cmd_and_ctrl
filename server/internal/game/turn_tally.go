@@ -214,6 +214,13 @@ type TurnTally struct {
 	// FirstEvent is the index into Game.Events at which this turn
 	// began; EventsThisTurn slices from it.
 	FirstEvent int `json:"firstEvent,omitempty"`
+	// MonarchAtStart is who was the monarch as this turn began (#1722)
+	// — Knights of the Black Rose's "if you were the monarch as the
+	// turn began". Read through Game.MonarchAsTurnBegan. A stamp taken
+	// in resetTurnTallyLocked rather than a walk back through the event
+	// log, so it clones, snapshots and undoes with the rest of the
+	// turn's record. uuid.Nil when nobody was.
+	MonarchAtStart uuid.UUID `json:"monarchAtStart,omitempty"`
 }
 
 // TallyKey names one printed ability of one CARD: the source's
@@ -626,7 +633,7 @@ func (g *Game) SpellsCastBeforeThisTurn(spellID uuid.UUID) int {
 // resetTurnTallyLocked starts a fresh tally at the current end of the
 // event log. Caller must hold g.mu.
 func (g *Game) resetTurnTallyLocked() {
-	g.TurnTally = TurnTally{FirstEvent: len(g.Events)}
+	g.TurnTally = TurnTally{FirstEvent: len(g.Events), MonarchAtStart: g.Monarch}
 	// #628: the loop notice is a claim about THIS turn's resolutions,
 	// so it dies with the counts it was derived from. A table that
 	// stepped its way past a loop by hand starts the next turn with
@@ -636,7 +643,7 @@ func (g *Game) resetTurnTallyLocked() {
 
 // cloneTurnTally deep-copies the maps; the counters are plain values.
 func cloneTurnTally(t TurnTally) TurnTally {
-	out := TurnTally{CreaturesDied: t.CreaturesDied, FirstEvent: t.FirstEvent}
+	out := TurnTally{CreaturesDied: t.CreaturesDied, FirstEvent: t.FirstEvent, MonarchAtStart: t.MonarchAtStart}
 	if len(t.Players) > 0 {
 		out.Players = make(map[uuid.UUID]PlayerTurnTally, len(t.Players))
 		for k, v := range t.Players {

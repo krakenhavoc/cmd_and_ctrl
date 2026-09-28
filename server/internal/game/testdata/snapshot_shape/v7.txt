@@ -3552,6 +3552,7 @@ turnTally.loopAllowance	map:string
 turnTally.loopAllowance{}	number:int
 turnTally.loopRun	map:string
 turnTally.loopRun{}	number:int
+turnTally.monarchAtStart	custom(uuid.UUID)
 turnTally.players	map:array
 turnTally.players{}	object
 turnTally.players{}.attacksDeclared	number:int

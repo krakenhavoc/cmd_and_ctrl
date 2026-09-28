@@ -8655,20 +8655,28 @@ func (g *Game) SetCommanderDamage(from, to uuid.UUID, amount int) error {
 // moves and draws without anybody clicking it. The action stays
 // because a card has to be able to hand the crown out in the first
 // place, and because the sandbox posture is that a table can always
-// correct the board by hand.
+// correct the board by hand. A card's effect uses SetMonarchForEffect,
+// under the lock it already holds (#1722).
 //
-// Returns ErrPlayerNotFound if playerID isn't seated, or
-// ErrGameNotActive in lobby/ended state.
+// Returns ErrPlayerNotFound if playerID isn't seated or has left the
+// game, or ErrGameNotActive in lobby/ended state.
 func (g *Game) SetMonarch(playerID uuid.UUID) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	if g.State != StateActive {
 		return ErrGameNotActive
 	}
-	if playerID != uuid.Nil && g.playerByIDLocked(playerID) == nil {
-		return ErrPlayerNotFound
+	if playerID != uuid.Nil {
+		if p := g.playerByIDLocked(playerID); p == nil || p.Eliminated {
+			return ErrPlayerNotFound
+		}
 	}
-	g.Monarch = playerID
+	// #1722: the same write, and the same EventMonarchChanged, as a
+	// card's "you become the monarch" (SetMonarchForEffect) — so a
+	// table correcting the crown by hand fires "whenever you become
+	// the monarch" and re-reads every "as long as you're the monarch"
+	// static exactly as the card would have.
+	g.becomeMonarchLocked(playerID)
 	return nil
 }
 
