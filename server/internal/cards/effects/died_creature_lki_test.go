@@ -192,3 +192,117 @@ func TestMahadiCountsACrewedVehicleAndAnAnimatedLand(t *testing.T) {
 		t.Errorf("a crewed Vehicle and an animated land died: %d Treasures, want 2", n)
 	}
 }
+
+// Cruel Celebrant — "whenever this or another creature or planeswalker
+// you control dies" — counts a crewed Vehicle through leftAsType.
+func TestCruelCelebrantDrainsForACrewedVehicle(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	pushCatalogPermanent(g, me.ID, "Cruel Celebrant", "Creature — Vampire", b08CruelCelebrantOracle, false)
+	caravan := pushVehicleForTest(g, me.ID, "Cultivator's Caravan", cultivatorsCaravanOrcl, 5, 5)
+	crewForTest(t, g, me.ID, caravan, pushCrewerForTest(g, me.ID, "Crewer", 3))
+	lifeBefore := me.Life
+
+	b18Kill(t, g, caravan)
+	if me.Life != lifeBefore+1 {
+		t.Errorf("life %d → %d; a crewed Vehicle dying is a creature you controlled dying", lifeBefore, me.Life)
+	}
+}
+
+// lastLTBOf is the newest EventLTB for cardID.
+func lastLTBOf(t *testing.T, g *game.Game, cardID uuid.UUID) game.Event {
+	t.Helper()
+	for i := len(g.Events) - 1; i >= 0; i-- {
+		if ev := g.Events[i]; ev.Kind == game.EventLTB && ev.CardID == cardID {
+			return ev
+		}
+	}
+	t.Fatalf("no EventLTB for %s", cardID)
+	return game.Event{}
+}
+
+// Every dies / leaves-the-battlefield condition that tests a card
+// type reads the last-known one (#1675). Three permanents whose types on
+// the battlefield differ from the card left behind:
+//
+//   - a printed creature an effect made a noncreature artifact land,
+//     which dies — the graveyard card is a creature and nothing else;
+//   - a crewed Vehicle, which is bounced — the card in hand is an
+//     artifact and nothing else;
+//   - an animated land, which dies — the graveyard card is a land and
+//     nothing else.
+//
+// Each condition answers for what the permanent was.
+func TestLeavesTheBattlefieldConditionsReadLastKnownTypes(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	source := &game.Card{InstanceID: uuid.New(), Controller: me.ID, Owner: me.ID}
+
+	bear := b12Creature(g, me.ID, "My Bear", "Creature — Bear", 2, 2)
+	g.WithWriteLock(func() {
+		if !g.RegisterScopedEffectForEffect(uuid.Nil, g.PinnedObjectsLocked(bear),
+			[]game.Mod{game.RemoveTypesMod("Creature"), game.AddTypesMod("Artifact", "Land")},
+			g.UntilEndOfTurnDuration(), "test — the bear becomes a noncreature artifact land") {
+			t.Fatal("setup: the effect registered nothing")
+		}
+		g.RecomputeLayersIfStaleLocked()
+	})
+	g.WithWriteLock(func() { _ = g.DestroyPermanentForEffect(bear) })
+	died := lastLTBOf(t, g, bear)
+
+	caravan := pushVehicleForTest(g, me.ID, "Cultivator's Caravan", cultivatorsCaravanOrcl, 5, 5)
+	crewForTest(t, g, me.ID, caravan, pushCrewerForTest(g, me.ID, "Crewer", 3))
+	g.WithWriteLock(func() { _ = g.BounceToHandForEffect(caravan) })
+	bounced := lastLTBOf(t, g, caravan)
+
+	manland := b12Permanent(g, me.ID, "Test Manland", "Land")
+	animateLandForTest(t, g, manland)
+	g.WithWriteLock(func() { _ = g.DestroyPermanentForEffect(manland) })
+	landDied := lastLTBOf(t, g, manland)
+
+	var none game.Characteristic
+	_, diedAsCreature := diedCreature(died, g)
+	_, b21 := b21ArtifactOrCreatureYouControlDied(died, source, g)
+	_, b21Land := b21ArtifactOrCreatureYouControlDied(landDied, source, g)
+	for _, c := range []struct {
+		name      string
+		got, want bool
+	}{
+		{"diedCreature (a noncreature died)", diedAsCreature, false},
+		{"b21ArtifactOrCreatureYouControlDied", b21, true},
+		{"b23ArtifactPutIntoGraveyardFromBattlefield", b23ArtifactPutIntoGraveyardFromBattlefield(died, g), true},
+		{"b10LandYouControlDied", b10LandYouControlDied(died, source, g), true},
+		{"scrapTrawlerArtifactHitTheYard", scrapTrawlerArtifactHitTheYard(died, source, none, g), true},
+		{"anotherArtifactOrCreaturePutIntoGraveyardFromBattlefield", anotherArtifactOrCreaturePutIntoGraveyardFromBattlefield(died, source, g), true},
+		{"b21ArtifactOrCreatureYouControlDied (animated land died)", b21Land, true},
+		{"anotherArtifactOrCreaturePutIntoGraveyardFromBattlefield (animated land died)", anotherArtifactOrCreaturePutIntoGraveyardFromBattlefield(landDied, source, g), true},
+		{"creatureYouControlLeftWithoutDying (crewed Vehicle bounced)", creatureYouControlLeftWithoutDying(bounced, source, g), true},
+		{"aCreatureYouControlLeft (crewed Vehicle bounced)", aCreatureYouControlLeft(bounced, source, none, g), true},
+		{"aCreatureYouControlLeft (noncreature died)", aCreatureYouControlLeft(died, source, none, g), false},
+	} {
+		if c.got != c.want {
+			t.Errorf("%s = %v, want %v", c.name, c.got, c.want)
+		}
+	}
+}
+
+// The Ozolith — "whenever a creature you control leaves the
+// battlefield, if it had counters on it" — collects from a crewed
+// Vehicle, which was a creature as it left.
+func TestOzolithCollectsFromACrewedVehicle(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	oz := seedPermanentWithOracle(g, me.ID, "The Ozolith", "Legendary Artifact", ozolithOracle)
+	caravan := pushVehicleForTest(g, me.ID, "Cultivator's Caravan", cultivatorsCaravanOrcl, 5, 5)
+	for i := range g.Battlefield.Cards {
+		if g.Battlefield.Cards[i].InstanceID == caravan {
+			g.Battlefield.Cards[i].Counters = map[string]int{"+1/+1": 2}
+		}
+	}
+	crewForTest(t, g, me.ID, caravan, pushCrewerForTest(g, me.ID, "Crewer", 3))
+
+	b18Kill(t, g, caravan)
+	if got := allCountersOn(t, g, oz); got["+1/+1"] != 2 {
+		t.Errorf("The Ozolith's counters = %v, want +1/+1:2 from the crewed Vehicle", got)
+	}
+}

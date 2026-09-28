@@ -123,6 +123,9 @@ func TestLTBLastKnownTypesSurviveSnapshotCloneAndUndo(t *testing.T) {
 		}
 	})
 	want := ltbSince(t, g, seq, land).LastKnownTypes
+	if !slices.Contains(want, "Creature") {
+		t.Fatalf("LastKnownTypes = %v, want the animated land's Creature", want)
+	}
 
 	_, restored := roundTrip(t, g)
 	if got := ltbSince(t, restored, seq, land).LastKnownTypes; !slices.Equal(got, want) {
