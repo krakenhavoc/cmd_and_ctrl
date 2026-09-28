@@ -1289,7 +1289,11 @@ is set, `any_color` is set alongside it, so a client that reads only
 the older key still says "any colour". Both are labels only — the
 prices in `cast_prices` and the `castable_here` bit already reflect
 the fold, because the server prices every cast through the one
-pricer.
+pricer. A Phyrexian symbol does not fold (#1589, CR 107.4f): under
+either label it stays in the `cast_prices` string as printed —
+`{1}{B/P}{B/P}`, not `{3}` — and still counts toward
+`phyrexian_symbols`, so the cast may claim it for 2 life with
+`phyrexian_life`. When it is paid with mana instead, any mana pays it.
 
 **`alternative_costs` lists only offers the caster could pay (#695).**
 An offer is stamped when its condition holds, when the caster's life

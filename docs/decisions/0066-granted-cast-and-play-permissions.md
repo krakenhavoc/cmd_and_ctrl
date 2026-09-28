@@ -2363,3 +2363,77 @@ stronger.
 Proof cards: Hostage Taker, Gonti, Night Minister and Outrageous Robbery, all
 `full`. Tracker [#885](https://github.com/krakenhavoc/cmd_and_ctrl/issues/885);
 deck tracker [#1565](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1565).
+
+## Amendment — 2026-09-28 (#1589): a Phyrexian symbol keeps its life half under a spend grant
+
+The #1573 amendment stated one inherited trade: under either "spend mana as
+though" clause, a Phyrexian slot folded to generic and lost its "or 2 life"
+half. That was weaker than printed, never stronger, but it was wrong. CR 107.4c
+says a Phyrexian symbol is paid with one mana of its colour **or** 2 life, and
+CR 107.4f says the same of the ten hybrid Phyrexian symbols. A grant that says
+"spend mana as though it were mana of any color" (or "of any type") widens
+which mana pays the first half. It says nothing about the second half.
+
+Before this, a Dismember (`{1}{B/P}{B/P}`) that Gonti exiled cost three mana.
+Worse, the view still stamped `phyrexian_symbols: 2` from the printed cost, so
+the client offered a life payment that `strikePhyrexianLifeLocked` then refused
+as an over-claim.
+
+### Decision — widen the slot, don't fold it
+
+`spendAsThoughAny` is still the one reading, called in `printedCostLocked`,
+the one pricer. Both folds now keep every Phyrexian requirement and mark it
+`ColorRequirement.AnyMana`. The slot stays Phyrexian, so `PhyrexianSymbols`
+counts it and the strike may claim it for 2 life. Its mana half admits any
+mana. Everything else folds exactly as before: coloured slots always, `{C}`
+under any type only (CR 106.1b). A `{C}` under any colour is still not payable
+by coloured mana.
+
+`Options` stays as printed, and so does `String()`. So `cast_prices` and the
+preview's `cost` render `{1}{B/P}{B/P}` rather than `{3}`, and the
+missing-mana breakdown names `{B/P}`. There is no Scryfall symbol for "any
+mana or 2 life". The printed symbol plus the grant's `any_color` / `any_type`
+label is the honest rendering.
+
+**One predicate for the mana half.** `ColorRequirement.Admits(color)` is
+`AnyMana || matchColor(color, Options)`. Every payment path asks it instead of
+reading `Options`: the pool solver (`attemptSpend`, `MissingFor`), the
+auto-tapper's slot match (`pickMatchingSlot`), the Phyrexian strike's ranking
+(`PhyrexianLifePlan`), pay-time colour picks (`mostRestrictiveRequirement`,
+which also sorts a widened slot as the widest), and convoke's colour cover
+(`payerCoversRequirement`). So the hand payment, the auto-tapper, the auto-tap
+preview, the bot enumerator's affordability probe and `cast_prices` still
+agree without a line of their own. They all read the one pricer's cost, and
+that cost is paid through one predicate.
+
+**A widened slot is paid last.** The pool solver pays requirements greedily,
+first match wins. A slot that admits anything, walked before a narrower one,
+could take the only token the narrower one needed. Picture a cost modifier
+appending `{W}` after the fold: without the ordering, the wildcard would take
+the Plains and the `{W}` would go unpaid. So the folds emit widened slots
+last, and `widenedLast` reorders them at the pool solver and at the
+auto-tapper's `solveColored` too. The auto-tapper backtracks, so there the
+ordering saves search budget rather than answers.
+
+### What does not change
+
+Nothing new is stored. `AnyMana` lives on a `ParsedCost` the pricer computes
+on every read, and no snapshot or wire struct carries a `ColorRequirement`.
+The wire keys are unchanged; only the content of a `cast_prices` string under
+a grant changes. [protocol.md](../protocol.md) says so beside
+`exile_play.any_type`. A cast with no grant never sets `AnyMana`, so its
+requirements are exactly the parse.
+
+### Out of scope, stated
+
+- **The cast enumerator never pays a spell's Phyrexian symbol with life.**
+  `legal/cast.go` prices the mana path only, while `affordablePayment`
+  (`legal/abilities.go`) offers the life path for activated abilities. A bot
+  holding a stolen Dismember and one land gets no move, grant or not. That
+  gap was there before this amendment and is not this seam.
+- **Convoke under a spend grant.** A convoked creature pays a widened slot
+  when it has any colour. A colourless creature still pays it only as
+  generic, as it would with no grant. No printed card puts convoke and a
+  Phyrexian symbol on a stolen spell.
+
+Tracker [#887](https://github.com/krakenhavoc/cmd_and_ctrl/issues/887).

@@ -1368,16 +1368,28 @@ func countWord(n int) string {
 // Colorless {C} requirements are left alone. "Mana of any color"
 // does not include colorless (CR 106.1b), so a {C} slot still needs
 // real colorless mana.
+//
+// Phyrexian slots are not folded either (#1589). A Phyrexian symbol
+// is "one mana of its colour, or 2 life" (CR 107.4c, and CR 107.4f
+// for the hybrid Phyrexian ones), and the grant widens only the mana
+// half — so the slot stays a Phyrexian requirement the caster may
+// strike for life, marked AnyMana so any mana pays it otherwise. See
+// widenPhyrexian.
 func asAnyColorCost(cost ParsedCost) ParsedCost {
 	out := cost
 	out.Required = nil
+	var widened []ColorRequirement
 	for _, req := range cost.Required {
-		if requiresColorless(req) {
+		switch {
+		case requiresColorless(req):
 			out.Required = append(out.Required, req)
-			continue
+		case req.Phyrexian:
+			widened = append(widened, widenPhyrexian(req))
+		default:
+			out.Generic++
 		}
-		out.Generic++
 	}
+	out.Required = append(out.Required, widened...)
 	return out
 }
 
@@ -1386,14 +1398,38 @@ func asAnyColorCost(cost ParsedCost) ParsedCost {
 // colorless included, folds into the generic demand, because any mana
 // in the pool can now pay any symbol. A hybrid or two-for-one hybrid
 // slot folds to one generic, the cheapest way to pay it when any mana
-// counts as its colour. A Phyrexian slot folds too and so loses its
-// "or 2 life" half — the same trade asAnyColorCost has always made,
-// and weaker than printed rather than stronger.
+// counts as its colour.
+//
+// A Phyrexian slot does not fold (#1589): it keeps its "or 2 life"
+// half and is widened to any mana, exactly as under asAnyColorCost.
 func asAnyTypeCost(cost ParsedCost) ParsedCost {
 	out := cost
 	out.Required = nil
-	out.Generic += len(cost.Required)
+	for _, req := range cost.Required {
+		if req.Phyrexian {
+			out.Required = append(out.Required, widenPhyrexian(req))
+			continue
+		}
+		out.Generic++
+	}
 	return out
+}
+
+// widenPhyrexian is a Phyrexian requirement under a spend-as-though
+// grant: still Phyrexian, so PhyrexianSymbols counts it and
+// strikePhyrexianLifeLocked may strike it for 2 life, and AnyMana, so
+// any one mana pays it when the caster does not. Options is kept as
+// printed so the price still renders "{B/P}" and the missing-mana
+// breakdown still names the symbol.
+//
+// The folds put widened slots AFTER every slot they keep as printed.
+// The pool solver pays requirements greedily in order, and a slot that
+// admits anything must not take the only colorless mana a {C} behind
+// it needed; ManaPool.attemptSpend orders them last too, for the slots
+// a cost modifier appends after the fold.
+func widenPhyrexian(req ColorRequirement) ColorRequirement {
+	req.AnyMana = true
+	return req
 }
 
 // spendAsThoughAny applies a permission's "spend mana as though"

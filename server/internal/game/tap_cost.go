@@ -294,7 +294,7 @@ func matchPayersToRequirements(reqs []ColorRequirement, payers []Card) []int {
 // Options, so either colour covers them.
 func payerCoversRequirement(c Card, req ColorRequirement) bool {
 	for _, color := range c.EffectiveColors() {
-		if matchColor(color, req.Options) {
+		if req.Admits(color) {
 			return true
 		}
 	}

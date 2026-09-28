@@ -109,7 +109,7 @@ func PhyrexianLifePlan(cost ParsedCost, pool ManaPool, ctx ManaSpendContext, n i
 			}
 			payable := false
 			for _, tok := range spendable {
-				if matchColor(pool[tok].Color, req.Options) {
+				if req.Admits(pool[tok].Color) {
 					payable = true
 					break
 				}
