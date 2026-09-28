@@ -329,3 +329,100 @@ event-picker table in AGENTS.md §7 has the row.
   needs goad as a static, continuous effect.
 - Zurgo Stormrender's leaves-the-battlefield half is now expressible;
   the card waits on mobilize.
+
+## Amendment (2026-09-28, #1675): the leaving permanent's card types ride the same event
+
+**Status:** Accepted · S37 — Combat correctness · [#1675](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1675)
+
+### Context
+
+The #1661 amendment above gave a third party's trigger condition the
+combat state a leaving permanent had. Its builder noticed the same hole
+one field over: `diedCreature(ev, g)` — the reader behind Blood Artist,
+Zulaport Cutthroat, Grave Pact, Midnight Reaper and about thirty other
+"whenever a creature dies" cards — tested `IsCreature()` on the card
+**as it sits in the graveyard**. In the graveyard no continuous effect
+applies to the card any more, so a permanent that was a creature only
+because of an effect — a crewed Vehicle, an animated manland, a Gideon
+on his own turn, an artifact Tezzeret animated — is an artifact, a land
+or a planeswalker again, and none of those triggers fired. The reverse
+was wrong too: a printed creature that an effect had made a noncreature
+still read as a creature once it died. `diedCreature`'s own comment
+called this a sandbox gap, because the CR 603.10 snapshot
+(`lastKnownBattlefield`) is keyed to the dying card's own triggers and
+is deleted when the harvest for the event ends.
+
+CR 603.10a is the same rule as before: a leaves-the-battlefield ability
+looks back in time, so "whenever a creature dies" asks what the
+permanent was as it last existed on the battlefield.
+
+### Decision 1 — `Event.LastKnownTypes`, stamped with the combat state
+
+```go
+LastKnownTypes []string // post-layer Characteristic.Types as it left — EventLTB only
+```
+
+`battlefieldExitLocked`'s look-back is now `exitLKI` (was `combatLKI`):
+the combat state plus a copy of `c.Effective().Types`, read with the
+card still on the battlefield — the post-layer value
+`snapshotLKILocked` writes for the dying card's own triggers, not the
+printed type line. The three `EventLTB` emit sites already call
+`stamp`; it now writes the types too, so every route (destroy,
+sacrifice, the zone route's bounce / exile / sandbox move, and the
+sandbox drag to the stack) carries them with no new call site.
+
+Card **types** only. Subtypes and supertypes are the same question
+("whenever a Zombie you control dies" missing a changeling-granted
+Zombie) and would ride the same field shape, but no issue asks for them
+yet and each is a reader change as well as a stamp; they are left open
+below rather than stamped for nobody.
+
+Same reasoning as Decision 1 above for the event rather than a map: the
+event log is already shared by `Clone`, serialised by the snapshot and
+rewound by an undo, so this adds no game state (the v7 shape file
+records the additive key). `cloneTriggerContext` copies the slice as it
+does `Event.Colors`.
+
+### Decision 2 — `Event.WasType` and `leftAsType`
+
+`Event.WasType(cardType) (was, known bool)` answers the question
+case-insensitively and says whether the event carries the types at all.
+`known` is false for every kind but `EventLTB`, and for an `EventLTB`
+that predates the field (a restored snapshot's log) or was built by
+hand in a test.
+
+Card side, `leftAsType(ev, c, cardType)` in `effects/helpers.go` reads
+`WasType` and falls back to the card as it sits only when the event
+does not know — the pre-#1675 reading, never a false "no". Every
+dies / leaves-the-battlefield condition that tests a card type now asks
+it:
+
+| Reader | File | Cards |
+|---|---|---|
+| `diedCreature` | helpers.go | every "whenever a creature dies" |
+| `creatureYouControlLeftWithoutDying` | batch13_helpers.go | Dour Port-Mage, Aang |
+| `b21ArtifactOrCreatureYouControlDied` | batch21_helpers.go | Agent of the Iron Throne |
+| `b23ArtifactPutIntoGraveyardFromBattlefield` | batch23_helpers.go | Disciple of the Vault, Viridian Revel |
+| `b10LandYouControlDied` | batch10_helpers.go | Titania, Protector of Argoth |
+| `scrapTrawlerArtifactHitTheYard` | scrap_trawler.go | Scrap Trawler |
+| `aCreatureYouControlLeft` | outpost_siege.go | Outpost Siege |
+| `anotherArtifactOrCreaturePutIntoGraveyardFromBattlefield` | slice296c_helpers.go | Tarrian's Soulcleaver |
+| inline | the_ozolith.go, cruel_celebrant.go | The Ozolith, Cruel Celebrant |
+
+The per-turn tally's `CreaturesDied` already read `lastKnownBattlefield`
+at the event, so Mahadi, Emporium Master was right all along; its caveat
+("only a creature because of another effect isn't counted") was stale
+and is cleared, with a test pinning the behaviour.
+
+### Still open
+
+- **Subtypes and supertypes as they last existed.** "Whenever a Zombie
+  / Vampire / Faerie you control dies" (Undead Augur, Headless Rider,
+  Crossway Troublemakers, Tegwyll) still reads the graveyard card's
+  subtypes, so a creature that was one of those only through a grant
+  (Maskwood Nexus, a changeling-granting effect) is missed — weaker than
+  printed, and declared in those cards' comments.
+- **Controller as it last existed.** Every "you control" dies clause
+  reads `Card.Controller` off the graveyard card. MoveCard does not reset
+  it, so that is right for every board that does not change control in
+  the same event that moves the permanent.
