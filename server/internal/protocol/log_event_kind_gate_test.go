@@ -138,15 +138,16 @@ var silentEventKinds = map[string]string{
 	"EventBecomesPlotted": "the plot special action's LogSpecialAction line, or the LogResolve of the effect that plotted it plus its LogZone exile, already tells the table (#1382)",
 
 	// --- visible board state -------------------------------------------
-	"EventTapCard":        silentBoardStateIsVisible,
-	"EventUntapCard":      silentBoardStateIsVisible,
-	"EventAttach":         silentBoardStateIsVisible,
-	"EventUnattach":       silentBoardStateIsVisible,
-	"EventCopyApplied":    silentBoardStateIsVisible,
-	"EventCaseSolved":     silentBoardStateIsVisible,
-	"EventHarnessed":      silentBoardStateIsVisible,
-	"EventRegenerated":    silentImpliedByAnotherLine,
-	"EventBattleDefeated": silentBoardStateIsVisible,
+	"EventTapCard":         silentBoardStateIsVisible,
+	"EventUntapCard":       silentBoardStateIsVisible,
+	"EventAttach":          silentBoardStateIsVisible,
+	"EventUnattach":        silentBoardStateIsVisible,
+	"EventCopyApplied":     silentBoardStateIsVisible,
+	"EventCaseSolved":      silentBoardStateIsVisible,
+	"EventHarnessed":       silentBoardStateIsVisible,
+	"EventBecameMonstrous": silentBoardStateIsVisible,
+	"EventRegenerated":     silentImpliedByAnotherLine,
+	"EventBattleDefeated":  silentBoardStateIsVisible,
 
 	// --- hidden-zone work ----------------------------------------------
 	"EventSearchLibrary": "the number of matches is itself hidden information about a hidden zone (see the search_library prompt's redaction)",

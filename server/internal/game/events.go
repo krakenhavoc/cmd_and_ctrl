@@ -757,6 +757,22 @@ const (
 	// do (ADR 0071 amendment, #1321).
 	EventHarnessed EventKind = "harnessed"
 
+	// EventBecameMonstrous — a permanent became monstrous (CR 701.37,
+	// ADR 0071 amendment #1700). Source / CardID / Target = the
+	// permanent, Actor = its controller, Amount = the N of the
+	// "Monstrosity N" instruction that made it monstrous — the X a
+	// "when this creature becomes monstrous" trigger reads (CR
+	// 701.37c). The ANNOUNCED N, not the number of counters that
+	// landed: a Doubling Season that turns three counters into six
+	// leaves Polukranos's X at three (the Theros rulings).
+	//
+	// Emitted once per object: MonstrosityForEffect does nothing for a
+	// permanent that is already monstrous, so a second activation
+	// fires no "becomes monstrous" trigger (CR 701.37c). Bumps the
+	// layer version for the reason EventHarnessed does — an "as long
+	// as this creature is monstrous" static switches on.
+	EventBecameMonstrous EventKind = "became_monstrous"
+
 	// EventTurnBegan — one real (not skipped) turn began. Actor is the
 	// active player, Amount is Turn.Seq, and Label is "extra" for an
 	// extra turn. Emitted after every per-turn reset and before the new
