@@ -512,6 +512,11 @@ func TestRegalBehemothAddsAManaOnlyWhileYouAreTheMonarch(t *testing.T) {
 	if got := sortedPool(me); len(got) != 1 {
 		t.Fatalf("pool = %v without the crown, want one green", got)
 	}
+	// The additional mana is a colour pick, so "nothing extra" also
+	// means no pick is waiting.
+	if pick := riderLatestManaPick(g, me.ID); pick != nil {
+		t.Fatalf("a colour pick for an additional mana opened without the crown: %+v", pick)
+	}
 
 	monCrown(t, g, me.ID)
 	tapForMana(t, g, me.ID, other)
