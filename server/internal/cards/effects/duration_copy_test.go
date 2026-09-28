@@ -647,6 +647,9 @@ func TestATreasureThatBecomesACreatureLosesItsManaAbilityUntilCleanup(t *testing
 	tok := TreasureToken()
 	tok.InstanceID = uuid.New()
 	tok.Owner, tok.Controller = me.ID, me.ID
+	// As a restored token carries it: the snapshot rebuilds the
+	// card-carried slice from the token key (snapshot.go).
+	tok.ManaAbilities = game.ManaAbilitiesForCard(tok)
 	treasure := pushBattlefieldCardWithTimestamp(g, tok)
 	if len(game.ManaAbilitiesForCard(dcCard(t, g, treasure))) == 0 {
 		t.Fatal("setup: the Treasure has no mana ability")

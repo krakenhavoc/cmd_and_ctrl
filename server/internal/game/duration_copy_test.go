@@ -358,6 +358,47 @@ func TestADurationCopyRoundTripsUndoAndSnapshot(t *testing.T) {
 	}
 }
 
+// TestADurationCopyIsVisibleAsItIsRegistered — the rest of the
+// resolving effect runs under the same lock, before any recompute, and
+// reads the flat fields: CatalogKey, the printed P/T of the CR 704.5f
+// check. They have to be the copy's already.
+func TestADurationCopyIsVisibleAsItIsRegistered(t *testing.T) {
+	g := newActiveGame(t)
+	me := g.Seats[0]
+	mirror := vanillaOnBattlefield(g, me.ID, "Mirage Mirror", "Artifact", 0, 0)
+	bears := bearsOnBattlefield(g, me.ID, "Grizzly Bears")
+	g.WithWriteLock(func() {
+		v, _ := g.CopiableValuesForEffect(bears)
+		g.BecomeCopyForEffect(mirror, bears, []uuid.UUID{mirror}, v, g.UntilEndOfTurnDuration(), "probe")
+		c, _ := g.battlefieldCardLocked(mirror)
+		if CatalogKey(*c) != "oracle-Grizzly Bears" || c.Toughness != 2 {
+			t.Errorf("inside the registering resolution the permanent keys as %q with printed toughness %d", CatalogKey(*c), c.Toughness)
+		}
+	})
+}
+
+// TestUndoDoesNotShareTheDurationCopyBaseline — the baseline is a
+// pointer, and an undo snapshot must share nothing with the live card
+// (PrintedSelf's rule): a write through the live one — the restore
+// backfill writes through it — must not reach the undo.
+func TestUndoDoesNotShareTheDurationCopyBaseline(t *testing.T) {
+	g := newActiveGame(t)
+	me := g.Seats[0]
+	mirror := vanillaOnBattlefield(g, me.ID, "Mirage Mirror", "Artifact", 0, 0)
+	bears := bearsOnBattlefield(g, me.ID, "Grizzly Bears")
+	becomeCopyUntilEOT(t, g, mirror, bears)
+	undo := g.Clone()
+	g.WithWriteLock(func() {
+		c, _ := g.battlefieldCardLocked(mirror)
+		c.DurationCopyBase.Name = "scribbled on"
+	})
+	for _, c := range undo.Battlefield.Cards {
+		if c.InstanceID == mirror && (c.DurationCopyBase == nil || c.DurationCopyBase.Name != "Mirage Mirror") {
+			t.Fatalf("the undo's baseline is %+v, want Mirage Mirror's own values untouched", c.DurationCopyBase)
+		}
+	}
+}
+
 // TestRestoreRefusesAMalformedCopyMod — the copy mod's values and the
 // bundles its except clause granted are keys like any other: a record
 // this binary could not have written is refused, never guessed at.
