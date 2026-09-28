@@ -186,6 +186,7 @@ var tokenTable = map[string]game.Card{
 	"5/5 red Dragon Spirit with flying":             {Name: "Dragon Spirit", TypeLine: "Token Creature — Dragon Spirit", Power: 5, Toughness: 5, Colors: []string{"R"}, Keywords: []string{"flying"}},
 	"5/5 white Horse":                               {Name: "Horse", TypeLine: "Token Creature — Horse", Power: 5, Toughness: 5, Colors: []string{"W"}},
 	"5/5 red and green Elemental":                   {Name: "Elemental", TypeLine: "Token Creature — Elemental", Power: 5, Toughness: 5, Colors: []string{"R", "G"}},
+	"6/5 blue Leviathan with hexproof":              {Name: "Leviathan", TypeLine: "Token Creature — Leviathan", Power: 6, Toughness: 5, Colors: []string{"U"}, Keywords: []string{"hexproof"}},
 	"8/8 blue Scion of the Deep":                    {Name: "Scion of the Deep", TypeLine: "Token Legendary Creature — Octopus", Power: 8, Toughness: 8, Colors: []string{"U"}},
 	"9/9 blue Kraken":                               {Name: "Kraken", TypeLine: "Token Creature — Kraken", Power: 9, Toughness: 9, Colors: []string{"U"}},
 	"Munitions":                                     {Name: "Munitions", TypeLine: "Token Artifact"},

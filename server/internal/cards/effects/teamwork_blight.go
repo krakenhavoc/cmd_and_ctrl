@@ -57,6 +57,36 @@ func (c *Context) UsedTeamwork() bool { return c.OptionalCostTimes(game.Teamwork
 // whose additional cost is an optional blight.
 func (c *Context) BlightPaid() bool { return c.OptionalCostTimes(game.BlightKey) > 0 }
 
+// TeamworkUsed is the teamwork cards' mode count — "Choose one. If this
+// spell was cast using teamwork, choose both instead" is
+// ChooseOne(…).InsteadIf(2, TeamworkUsed). It reads the teamwork cost
+// announced WITH the modes (CR 601.2b, #1655), never the board.
+var TeamworkUsed = game.ModeConditionOnAnnouncement("used-teamwork", func(_ *game.Game, q game.ModeCountQuery) bool {
+	return q.OptionalCostTimes(game.TeamworkKey) > 0
+})
+
+// BlightUsed is the same count for a card whose optional cost is a
+// blight — "If this spell's additional cost was paid, choose both
+// instead" (Pyrrhic Strike).
+var BlightUsed = game.ModeConditionOnAnnouncement("blight-paid", func(_ *game.Game, q game.ModeCountQuery) bool {
+	return q.OptionalCostTimes(game.BlightKey) > 0
+})
+
+// ModeClauseTarget is the still-legal target (CR 608.2b) announced for
+// clause `slot` of mode occurrence `occ` — the read a bullet with TWO
+// target clauses needs ("target creature you control deals damage …
+// to target creature an opponent controls"), where ModeTarget would
+// hand back whichever clause came first. (zero, false) when that
+// clause's target has gone.
+func ModeClauseTarget(ctx *Context, occ, slot int) (game.TargetRef, bool) {
+	for _, t := range ctx.ModeTargets(occ) {
+		if t.Slot == slot && ctx.IsTargetLegal(t) {
+			return t, true
+		}
+	}
+	return game.TargetRef{}, false
+}
+
 // checkTeamworkBlight is the Register guard for the two components.
 // Each shape it refuses compiles and then behaves as something the
 // card does not print:
