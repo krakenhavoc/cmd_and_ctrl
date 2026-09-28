@@ -32,21 +32,12 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // that can go false is the case a "grant once and forget"
 // implementation of the keyword would have got wrong.
 //
-// # DECLARED SIMPLIFICATIONS
+// # DECLARED SIMPLIFICATION
 //
-// Two of Zurgo's four lines are not enforced. Both are weaker than
-// printed, never stronger.
+// One of Zurgo's four lines is not enforced, weaker than printed,
+// never stronger.
 //
-//  1. "Attacks each combat if able" is a REQUIREMENT (CR 508.1d).
-//     The engine has no attack-requirement machinery at all —
-//     `DeclareAttacker` is entirely opt-in and nothing validates the
-//     declared set against requirements — so Zurgo may legally sit
-//     home. In a sandbox where players declare their own attacks
-//     this is close to harmless: the requirement is on Zurgo's
-//     controller, who wanted to attack anyway. It becomes real the
-//     day the bot seat plays this card.
-//
-//  2. "Whenever a creature dealt damage by Zurgo this turn dies, put
+//   - "Whenever a creature dealt damage by Zurgo this turn dies, put
 //     a +1/+1 counter on Zurgo" needs per-creature damage-SOURCE
 //     history. `Card.DamageMarked` is a bare integer and
 //     `MarkedLethalByDeathtouch` is a bool; neither records WHO dealt
@@ -56,23 +47,34 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //     with no second card asking for it yet, so it is not being
 //     speculatively built here.
 //
-// Haste and the conditional indestructible are both fully live.
+// "Attacks each combat if able" is no longer on that list. #1595 gave
+// the engine CR 508.1d attack-requirement enforcement
+// (game/attack_requirements.go), and Zurgo's own line is the plainest
+// shape it takes: AttacksEachCombat() is "~ attacks each combat if
+// able" on the creature's own ability list, so a Zurgo that loses all
+// abilities (CR 613.1f) stops being required to swing.
+//
+// Haste, the conditional indestructible, and the attack requirement
+// are all fully live.
 func init() {
 	Register(Spec{
 		OracleID:        "6c48d888-9f5d-43f4-adbd-61dbdba09260",
 		Name:            "Zurgo Helmsmasher",
 		Completeness:    CompletenessCaveats,
-		Caveats:         []string{"Zurgo does not have to attack — \"attacks each combat if able\" is not enforced.", "The +1/+1 counter trigger never happens: the engine does not record which creature dealt a creature its damage."},
+		Caveats:         []string{"The +1/+1 counter trigger never happens: the engine does not record which creature dealt a creature its damage."},
 		PrintedKeywords: []string{"haste"},
-		Static: []game.StaticAbility{{
-			Layer: game.Layer6Ability,
-			AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
-				return target.InstanceID == source.InstanceID &&
-					isActivePlayer(g, source.Controller)
+		Static: []game.StaticAbility{
+			AttacksEachCombat(),
+			{
+				Layer: game.Layer6Ability,
+				AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
+					return target.InstanceID == source.InstanceID &&
+						isActivePlayer(g, source.Controller)
+				},
+				Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
+					c.Abilities = append(c.Abilities, "indestructible")
+				},
 			},
-			Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
-				c.Abilities = append(c.Abilities, "indestructible")
-			},
-		}},
+		},
 	})
 }
