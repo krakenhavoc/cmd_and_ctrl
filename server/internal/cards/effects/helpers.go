@@ -330,6 +330,42 @@ func diedCreature(ev game.Event, g *game.Game) (game.Card, bool) {
 	return c, true
 }
 
+// diedWhileAttacking resolves the creature that just died from a dies
+// event when it was ATTACKING as it died — "whenever an attacking
+// creature dies" (Kardur, Doomscourge), Garna's "if it was attacking".
+// The card is returned as it now sits in the graveyard, exactly as
+// diedCreature returns it, so a "you control" clause reads its
+// Controller the same way.
+//
+// The attack is read off the event, never the card: the exit took the
+// creature out of combat and cleared Card.AttackingTarget before the
+// event fired, and Event.AttackingTarget is the combat state as it
+// last existed (#1661, CR 603.10a). So a creature that dies to combat
+// damage, to a removal spell after blockers and to a sacrifice
+// mid-combat all count, and one that was removed from combat first
+// (a control change, CR 506.4) does not.
+//
+// No IsCreature check on the graveyard card, deliberately: only a
+// creature attacks, and a crewed Vehicle that died attacking is an
+// artifact again by the time it is in the graveyard. The event says
+// what it was.
+func diedWhileAttacking(ev game.Event, g *game.Game) (game.Card, bool) {
+	if ev.Kind != game.EventLTB || ev.NewZone != game.ZoneGraveyard || ev.AttackingTarget == uuid.Nil {
+		return game.Card{}, false
+	}
+	return g.LookupCardForEffect(ev.CardID)
+}
+
+// diedWhileBlocking is diedWhileAttacking for a creature that was
+// BLOCKING as it died — "whenever a blocking creature dies" (Death
+// Tyrant). Event.BlockingTarget names the attacker it was blocking.
+func diedWhileBlocking(ev game.Event, g *game.Game) (game.Card, bool) {
+	if ev.Kind != game.EventLTB || ev.NewZone != game.ZoneGraveyard || ev.BlockingTarget == uuid.Nil {
+		return game.Card{}, false
+	}
+	return g.LookupCardForEffect(ev.CardID)
+}
+
 // IsToken reports whether a card is a token. Token type lines are
 // stamped "Token Creature — Spirit" by the templates in tokens.go;
 // "Token" isn't one of the supertypes ParseTypeLine knows, so a

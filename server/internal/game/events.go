@@ -1270,6 +1270,30 @@ type Event struct {
 	// #187 (ADR 0053 Decision 1).
 	CombatStep string `json:"combat_step,omitempty"`
 
+	// AttackingTarget, BlockingTarget and Blocked are a leaving
+	// permanent's COMBAT STATE as it last existed on the battlefield,
+	// on EventLTB only (#1661, CR 603.10a): the player, planeswalker
+	// or battle it was attacking (Card.AttackingTarget's domain), the
+	// attacker it was blocking (Card.BlockingTarget), and whether it
+	// was a blocked attacker (CR 509.1h). All zero for a permanent
+	// that was not in combat, or had been removed from it (CR 506.4)
+	// before it left.
+	//
+	// On the event because the card cannot say any more. Leaving the
+	// battlefield takes a permanent out of combat, and MoveCard clears
+	// both fields before the event fires — so "whenever an attacking
+	// creature dies" (Kardur, Doomscourge), "whenever a blocking
+	// creature dies" (Death Tyrant) and Garna's "if it was attacking"
+	// read them here, as every other watcher reads Actor and NewZone.
+	// Taken in battlefieldExitLocked, the one step every battlefield
+	// exit runs, so combat damage, a removal spell mid-combat and a
+	// sacrifice all report the same facts. Engine-internal:
+	// protocol/log.go does not project them. See ADR 0027's
+	// 2026-09-28 amendment.
+	AttackingTarget uuid.UUID `json:"attacking_target,omitempty"`
+	BlockingTarget  uuid.UUID `json:"blocking_target,omitempty"`
+	Blocked         bool      `json:"blocked,omitempty"`
+
 	// SettingOld / SettingNew are a table setting's value before and
 	// after an EventSettingsChanged, formatted as text: an int as
 	// decimal ("-1" is UndoUnlimited), a bool as "true"/"false", an

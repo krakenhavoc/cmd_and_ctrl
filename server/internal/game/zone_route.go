@@ -662,9 +662,10 @@ func (g *Game) executeZoneRouteLocked(ev *ReplacementEvent) (err error) {
 	redirected := dstZone.Kind != r.Dst
 
 	fromBattlefield := src.Kind == ZoneBattlefield
+	var combat combatLKI
 	if fromBattlefield {
 		// LKI, and the CR 400.7 forget — battlefield_exit.go.
-		g.battlefieldExitLocked(ev.CardID)
+		combat = g.battlefieldExitLocked(ev.CardID)
 	}
 	// The pre-move card, for CR 708.9 below: MoveCard clears the
 	// face-down state on the way through (CR 400.7), so "was this a
@@ -810,6 +811,7 @@ func (g *Game) executeZoneRouteLocked(ev *ReplacementEvent) (err error) {
 			NewZone: dstZone.Kind,
 		}
 		r.Cause.stampCause(&ltb)
+		combat.stamp(&ltb)
 		g.EmitEvent(ltb)
 		// A permanent leaving the battlefield can invalidate a queued
 		// "sacrifice a creature of your choice" prompt (Grave Pact).
