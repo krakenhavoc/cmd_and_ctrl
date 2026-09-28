@@ -48,10 +48,11 @@ func b22FirstSpellOnAnOpponentsTurn(ev game.Event, source *game.Card, g *game.Ga
 
 // b22CreatureYouControlDied is "whenever a creature you control
 // dies" on a NONcreature source (Cauldron of Essence): the dead
-// creature, read post-move, was the source's controller's.
+// creature was the source's controller's as it last existed
+// (leftUnderControlOf, #1682).
 func b22CreatureYouControlDied(ev game.Event, source *game.Card, g *game.Game) bool {
 	dead, ok := diedCreature(ev, g)
-	return ok && dead.Controller == source.Controller
+	return ok && leftUnderControlOf(ev, dead) == source.Controller
 }
 
 // b22SlimedCreatureYouDontControlDied is Toxrill's third ability: a
@@ -60,7 +61,7 @@ func b22CreatureYouControlDied(ev game.Event, source *game.Card, g *game.Game) b
 // (CR 400.7), so the count is read back off the log.
 func b22SlimedCreatureYouDontControlDied(ev game.Event, source *game.Card, g *game.Game) bool {
 	dead, ok := diedCreature(ev, g)
-	if !ok || dead.Controller == source.Controller {
+	if !ok || leftUnderControlOf(ev, dead) == source.Controller {
 		return false
 	}
 	return b13LastKnownCounters(g, dead.InstanceID, "slime") > 0

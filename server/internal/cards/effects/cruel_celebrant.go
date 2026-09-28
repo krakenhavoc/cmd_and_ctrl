@@ -31,7 +31,7 @@ func init() {
 					return false
 				}
 				dead, ok := g.LookupCardForEffect(ev.CardID)
-				return ok && dead.Controller == source.Controller && (leftAsType(ev, dead, "creature") || leftAsType(ev, dead, "planeswalker"))
+				return ok && leftUnderControlOf(ev, dead) == source.Controller && (leftAsType(ev, dead, "creature") || leftAsType(ev, dead, "planeswalker"))
 			}, "Cruel Celebrant — each opponent loses 1 life, you gain 1 life", drainEachOpponent),
 		},
 	})

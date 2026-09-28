@@ -116,7 +116,7 @@ func anotherZombieYouControlDied(ev game.Event, source *game.Card, g *game.Game)
 		return false
 	}
 	dead, ok := diedCreature(ev, g)
-	return ok && dead.Controller == source.Controller && leftAsSubtype(ev, dead, "Zombie")
+	return ok && leftUnderControlOf(ev, dead) == source.Controller && leftAsSubtype(ev, dead, "Zombie")
 }
 
 // anotherCreatureYouControlDied is Garna's condition: a creature
@@ -126,7 +126,7 @@ func anotherCreatureYouControlDied(ev game.Event, source *game.Card, g *game.Gam
 		return false
 	}
 	dead, ok := diedCreature(ev, g)
-	return ok && dead.Controller == source.Controller
+	return ok && leftUnderControlOf(ev, dead) == source.Controller
 }
 
 // b35SelfWasDealtDamage is Screaming Nemesis's condition: the source

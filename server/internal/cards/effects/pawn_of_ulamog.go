@@ -34,7 +34,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			Optional(On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				dead, ok := diedCreature(ev, g)
-				return ok && dead.Controller == source.Controller && !IsToken(dead)
+				return ok && leftUnderControlOf(ev, dead) == source.Controller && !IsToken(dead)
 			}, "Pawn of Ulamog — create a 0/1 Eldrazi Spawn", Do(CreateToken{
 				Template: EldraziSpawnToken(),
 				N:        1,

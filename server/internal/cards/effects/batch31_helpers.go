@@ -210,7 +210,7 @@ func b31MunitionsYouControlLeft(ev game.Event, source *game.Card, g *game.Game) 
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.CardID)
-	return ok && IsToken(c) && c.Name == "Munitions" && c.Controller == source.Controller
+	return ok && IsToken(c) && c.Name == "Munitions" && leftUnderControlOf(ev, c) == source.Controller
 }
 
 // --- effect bodies -----------------------------------------------

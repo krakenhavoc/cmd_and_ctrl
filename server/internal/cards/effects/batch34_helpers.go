@@ -252,7 +252,7 @@ func b34VampireYouControlAttacked(ev game.Event, source *game.Card, g *game.Game
 // grant counts.
 func b34VampireYouControlDied(ev game.Event, source *game.Card, g *game.Game) bool {
 	dead, ok := diedCreature(ev, g)
-	return ok && dead.Controller == source.Controller && leftAsSubtype(ev, dead, "Vampire")
+	return ok && leftUnderControlOf(ev, dead) == source.Controller && leftAsSubtype(ev, dead, "Vampire")
 }
 
 // b34SourceYouControlDealtDamageToPlayerAtLeast is Dragonborn

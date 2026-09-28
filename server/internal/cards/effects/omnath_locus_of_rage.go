@@ -38,7 +38,7 @@ func init() {
 						return true
 					}
 					dead, ok := diedCreature(ev, g)
-					return ok && dead.Controller == source.Controller && leftAsSubtype(ev, dead, "Elemental")
+					return ok && leftUnderControlOf(ev, dead) == source.Controller && leftAsSubtype(ev, dead, "Elemental")
 				},
 				Targets: TargetAny(),
 				Key:     "Omnath, Locus of Rage — 3 damage to any target",

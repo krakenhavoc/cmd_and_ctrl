@@ -378,6 +378,7 @@ func cloneTriggerContext(tc *TriggerContext) *TriggerContext {
 	out.Event.Colors = copyStrings(tc.Event.Colors)
 	out.Event.LastKnownTypes = copyStrings(tc.Event.LastKnownTypes)
 	out.Event.LastKnownSubtypes = copyStrings(tc.Event.LastKnownSubtypes)
+	out.Event.LastKnownSupertypes = copyStrings(tc.Event.LastKnownSupertypes)
 	if tc.Object != nil {
 		obj := *tc.Object
 		obj.Types = copyStrings(tc.Object.Types)

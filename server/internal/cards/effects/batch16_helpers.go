@@ -177,7 +177,7 @@ func b16SelfOrAnotherCreatureYouControlDied(ev game.Event, source *game.Card, g 
 		return true
 	}
 	dead, ok := diedCreature(ev, g)
-	return ok && dead.Controller == source.Controller
+	return ok && leftUnderControlOf(ev, dead) == source.Controller
 }
 
 // b16AnotherCreatureYouControlEnteredOrDied is Daxos's condition on
@@ -190,7 +190,7 @@ func b16AnotherCreatureYouControlEnteredOrDied(ev game.Event, source *game.Card,
 		return false
 	}
 	dead, ok := diedCreature(ev, g)
-	return ok && dead.Controller == source.Controller
+	return ok && leftUnderControlOf(ev, dead) == source.Controller
 }
 
 // b16PlayerAttackedWithAtLeast is Aurelia's condition: an attacker

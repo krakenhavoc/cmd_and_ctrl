@@ -35,7 +35,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				dead, ok := diedCreature(ev, g)
-				return ok && dead.Controller != source.Controller
+				return ok && leftUnderControlOf(ev, dead) != source.Controller
 			}, "Yahenni, Undying Partisan — put a +1/+1 counter on Yahenni",
 				func(g *game.Game, item *game.StackItem) error {
 					return AddCounter{Target: item.SourceCardID, Kind: game.CounterPlusOne, N: 1}.Apply(NewContext(g, item))

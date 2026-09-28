@@ -78,7 +78,7 @@ func b27SelfOrNontokenZombieYouControlDied(ev game.Event, source *game.Card, g *
 		return false
 	}
 	dead, ok := diedCreature(ev, g)
-	return ok && dead.Controller == source.Controller && leftAsSubtype(ev, dead, "Zombie") && !IsToken(dead)
+	return ok && leftUnderControlOf(ev, dead) == source.Controller && leftAsSubtype(ev, dead, "Zombie") && !IsToken(dead)
 }
 
 // b27ColorlessSpellWithManaValueAtLeastCastByYou is Sanctum of

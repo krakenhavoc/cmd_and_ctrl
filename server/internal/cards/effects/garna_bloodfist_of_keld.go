@@ -9,8 +9,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 was attacking. Otherwise, Garna deals 1 damage to each opponent."
 //
 // The aristocrats commander that pays either way. The condition is
-// "another creature you control died" (diedCreature read post-move,
-// the source excluded). "If it was attacking" is diedWhileAttacking
+// "another creature you control died" (diedCreature, with the
+// controller it had as it died — leftUnderControlOf, #1682 — and the
+// source excluded). "If it was attacking" is diedWhileAttacking
 // (#1661): the attack as it last existed, carried on the dies event
 // itself, because the exit has already cleared it from the card
 // (CR 603.10a).
