@@ -151,6 +151,9 @@
     onSelectCombatCard: (cardID: string) => void;
     onDeclareAttack: (targetPlayerID: string) => void;
     onDeclareBlock: (attackerCardID: string) => void;
+    // #1724: a token group's "Attack <seat> with N" — forwarded to the
+    // viewer's own PlayerPanel. See PlayerPanel's prop of the same name.
+    onDeclareAttackers?: (attackerIDs: string[], defenderSeatID: string) => void;
     // #519: connectionBanner.ts's actionsDisabled(status), computed by
     // Game.svelte and handed down rather than recomputed here — Board
     // has no socket of its own to ask. Dims the table and turns every
@@ -184,6 +187,7 @@
     onSelectCombatCard,
     onDeclareAttack,
     onDeclareBlock,
+    onDeclareAttackers,
     disabled = false,
     autopassEnabled,
     loopNotice = "",
@@ -2150,6 +2154,7 @@
               onActivateAbility={handleActivateAbility}
               onManaAbilityCost={handleManaAbilityCost}
               considering={seat.id === consideringSeatID}
+              onDeclareAttackers={pos === "self" && !disabled ? onDeclareAttackers : undefined}
             />
           {/if}
         </div>

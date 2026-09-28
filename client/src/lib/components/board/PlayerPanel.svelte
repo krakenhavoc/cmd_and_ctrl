@@ -61,6 +61,9 @@
   import PlayerIdentity from "./PlayerIdentity.svelte";
   import PhaseDisplay from "./PhaseDisplay.svelte";
   import PromisesRow from "./PromisesRow.svelte";
+  import TokenGroupModal from "./TokenGroupModal.svelte";
+  import { groupMembersOf } from "../../tokenGroups";
+  import { canOverride } from "../../contextMenu.logic";
 
   type ActionSender = (type: ActionType, params?: ActionPayload["params"], player?: string) => void;
 
@@ -138,6 +141,13 @@
     // #1307: threaded straight through to PlayerIdentity — see its
     // prop doc.
     considering?: boolean;
+    // #1724: "Attack <seat> with N" from a token group's list — one
+    // declare_attackers action for exactly those attackers. Game owns
+    // it because it is the same bulk declaration "attack with all"
+    // sends, with the same refusal handling (the attack-tax picker).
+    // Undefined hides the list's attack buttons; "Use this one" still
+    // selects a single attacker the two-click way.
+    onDeclareAttackers?: (attackerIDs: string[], defenderSeatID: string) => void;
   }
 
   const {
@@ -172,6 +182,7 @@
     flipped = false,
     spectator = false,
     considering = false,
+    onDeclareAttackers,
   }: Props = $props();
 
   // The seat's commander, wherever it is right now: the command zone
@@ -254,6 +265,32 @@
   const sorcerySpeedBlocked = $derived(
     isSelf ? (canActivateSorcerySpeedAbility(view, viewerID).reason ?? "") : "",
   );
+
+  // #1724: the token group whose member list is open, by group key.
+  // The members are re-derived from every snapshot, so the list
+  // follows the board while it is open; a group that has broken up
+  // (down to one token, or none) closes it.
+  let openGroupKey = $state<string | null>(null);
+  const openGroupMembers = $derived.by(() => {
+    if (!openGroupKey) return [];
+    const rowCards = controlledCards
+      .filter((c) => !hostedCardIDs.has(c.instance_id))
+      .sort((a, b) => (a.battle_x ?? 0) - (b.battle_x ?? 0));
+    return groupMembersOf(rowCards, attachmentsByHost, openGroupKey);
+  });
+  $effect(() => {
+    if (openGroupKey && openGroupMembers.length === 0) openGroupKey = null;
+  });
+  // Tap / Untap in the list: the same permission a click has — the
+  // controller, or an admin.
+  const canTapGroup = $derived(
+    openGroupMembers.length > 0 && canOverride(openGroupMembers[0], viewerID, isAdmin),
+  );
+  function declareGroupBlockers(blockerIDs: string[], attackerID: string): void {
+    for (const id of blockerIDs) {
+      sendAction("declare_blocker", { blocker: id, attacker: attackerID });
+    }
+  }
 
   const buckets = $derived.by(() => {
     const out = { creature: [] as CardView[], land: [] as CardView[], right: [] as CardView[] };
@@ -445,6 +482,7 @@
       {onActivateAbility}
       {sorcerySpeedBlocked}
       payerLife={seat.life}
+      onGroupClick={(k) => (openGroupKey = k)}
     />
   </div>
   <!-- The back row: land piles first, then the other permanents,
@@ -466,6 +504,7 @@
       {onActivateAbility}
       {sorcerySpeedBlocked}
       payerLife={seat.life}
+      onGroupClick={(k) => (openGroupKey = k)}
     />
     <BattlefieldRow
       label="enchant / artifact"
@@ -481,6 +520,7 @@
       {onActivateAbility}
       {sorcerySpeedBlocked}
       payerLife={seat.life}
+      onGroupClick={(k) => (openGroupKey = k)}
     />
   </div>
   <div class="grid-bottom">
@@ -551,6 +591,21 @@
       {sorcerySpeedBlocked}
     />
   </div>
+  <TokenGroupModal
+    groupKey={openGroupKey ?? ""}
+    members={openGroupMembers}
+    {attachmentsByHost}
+    {view}
+    {viewerID}
+    {combatMode}
+    canTap={canTapGroup}
+    onUse={handleCardClick}
+    onTarget={onTargetCard}
+    {onTapToggle}
+    onAttack={isSelf ? onDeclareAttackers : undefined}
+    onBlock={isSelf ? declareGroupBlockers : undefined}
+    onClose={() => (openGroupKey = null)}
+  />
 </div>
 
 <style>
