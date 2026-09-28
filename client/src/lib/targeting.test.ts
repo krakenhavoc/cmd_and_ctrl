@@ -17,6 +17,7 @@ import {
   isMultiPick,
   isPicked,
   modeOptionCastable,
+  modesUnderChoices,
   setConfirmHandler,
   togglePick,
   isLegalCardTarget,
@@ -31,6 +32,36 @@ import type { ActivatedAbilityView, CardView, PendingChoiceView } from "./protoc
 function card(extras: Partial<CardView> = {}): CardView {
   return { instance_id: "spell", name: "Spell", owner: "p0", controller: "p0", ...extras };
 }
+
+describe("modesUnderChoices — #1655 mode counts from optional costs", () => {
+  const ruin = card({
+    modes: {
+      prompt: "Choose one",
+      min: 1,
+      max: 1,
+      options: [{ label: "a" }, { label: "b" }, { label: "c" }],
+      if_optional_paid: { min: 1, max: 3 },
+    },
+  });
+
+  it("keeps the printed count when no optional cost is ticked", () => {
+    expect(modesUnderChoices(ruin, {}).modes).toMatchObject({ min: 1, max: 1 });
+    expect(modesUnderChoices(ruin, { optionalCosts: [] }).modes).toMatchObject({ min: 1, max: 1 });
+  });
+
+  it("switches to the kicked count when the kicker is ticked", () => {
+    const kicked = modesUnderChoices(ruin, { optionalCosts: [0] });
+    expect(kicked.modes).toMatchObject({ min: 1, max: 3 });
+    expect(ruin.modes).toMatchObject({ min: 1, max: 1 });
+  });
+
+  it("leaves a card whose count does not depend on the kicker alone", () => {
+    const plain = card({
+      modes: { prompt: "Choose one", min: 1, max: 1, options: [{ label: "a" }] },
+    });
+    expect(modesUnderChoices(plain, { optionalCosts: [0] })).toBe(plain);
+  });
+});
 
 describe("targeting store — S20 legal sets", () => {
   it("uses the server legal set when the card carries one", () => {
