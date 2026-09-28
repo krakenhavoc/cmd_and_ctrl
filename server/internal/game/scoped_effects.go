@@ -734,7 +734,7 @@ func (g *Game) appendScopedEffectLocked(sourceID uuid.UUID, affected []AffectedO
 		if problem := copyModProblem(m); problem != "" {
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
-		if r :=modKinds[m.Kind].reader; r != readerLayer && r != readerCopy {
+		if r := modKinds[m.Kind].reader; r != readerLayer && r != readerCopy {
 			named = true
 		}
 	}
