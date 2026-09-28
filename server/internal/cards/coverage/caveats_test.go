@@ -106,6 +106,19 @@ var adoptableGaps = map[string]string{
 		Swat's cycle; narrowing the probe to dodge this caveat would
 		blind it to a real "you control a commander" free cast on the
 		next card.`,
+	"Dread Return / flashback": `Slice 296-d (#296). Flashback() covers a
+		MANA cost bound to the graveyard; Dread Return's printed
+		flashback cost is "Sacrifice three creatures" — no mana at
+		all. game.AlternativeCost has ManaCost, Life, and three
+		card-naming components (ExileFromHand, ReturnToHand,
+		ExileFromGraveyard), none of which pay with a sacrifice of the
+		caster's own permanents, so there is no way to build this
+		specific offer with the existing constructor. Adopting
+		Flashback("{cost}") verbatim would misrepresent the printed
+		cost rather than implement it. Nothing to adopt until
+		AlternativeCost grows a sacrifice component; narrowing the
+		probe to dodge this caveat would blind it to a real "flashback
+		isn't implemented" on the next mana-cost flashback card.`,
 }
 
 // TestAdoptableGapsArePinned fails on any movement in that set.

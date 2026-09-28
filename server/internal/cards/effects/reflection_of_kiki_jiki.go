@@ -73,7 +73,7 @@ func reflectionOfKikiJikiCopyWithHaste(g *game.Game, item *game.StackItem) error
 		Controller: item.Controller,
 		Copy:       copyOf,
 		N:          1,
-		Except:     reflectionOfKikiJikiHasteException,
+		Except:     TokenCopyGainsHaste,
 	}).Apply(ctx); err != nil {
 		return err
 	}
@@ -86,19 +86,4 @@ func reflectionOfKikiJikiCopyWithHaste(g *game.Game, item *game.StackItem) error
 		Cards: tokens,
 		Body:  sacrificeListedCardsBody,
 	}.Apply(ctx)
-}
-
-// reflectionOfKikiJikiHasteException is the "except it has haste"
-// clause. Haste rides on the TEMPLATE, as a printed keyword, because
-// CreateTokenForEffect copies the template wholesale and printed
-// keywords are read straight off the instance — a token has no catalog
-// key to hang a layer-6 grant off (see fable_of_the_mirror_breaker.go
-// and #521).
-func reflectionOfKikiJikiHasteException(t *game.Card) {
-	for _, kw := range t.Keywords {
-		if kw == "haste" {
-			return
-		}
-	}
-	t.Keywords = append(t.Keywords, "haste")
 }
