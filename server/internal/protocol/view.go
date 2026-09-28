@@ -1708,6 +1708,17 @@ type CardView struct {
 	// row's `cant_activate` clause is printed text that says "the
 	// chosen name" without saying which.
 	ChosenName string `json:"chosen_name,omitempty"`
+	// ChosenOption is the family's fifth answer (#1572): the NAMED
+	// OPTION this permanent's "as this enters, choose <A> or <B>"
+	// instruction was answered with — a Siege's anchor word, "Khans"
+	// or "Temur". Absent when the permanent asks no such question and
+	// in the window before it is answered.
+	//
+	// Public and cleared by the non-knower redaction for the reasons
+	// above. It is the one of the five that decides which of the
+	// permanent's OWN printed abilities exists (ADR 0071's gate), so
+	// without it the table cannot tell which half of a Siege is live.
+	ChosenOption string `json:"chosen_option,omitempty"`
 	// ManaCost is the printed casting cost as Scryfall returns it —
 	// "{1}{R}", "{W/U}", "{X}{B}{B}", etc. Empty for lands and for
 	// placeholder / demo-seed cards. Rendered by the client as a
@@ -6695,6 +6706,7 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	out.ChosenColor = ""
 	out.NamedTribe = ""
 	out.ChosenName = ""
+	out.ChosenOption = ""
 	// ADR 0083: a token's printed text is public on a token the
 	// viewer can see, and a token is always known to every seat
 	// (mintTokenLocked adds every seat as a knower), so in practice
@@ -6946,13 +6958,14 @@ func viewOfCard(c game.Card) CardView {
 		// (game/zone.go, game/entry_tail.go), so "non-empty" already
 		// means "a permanent on the battlefield whose controller has
 		// answered". This is the one place either is projected.
-		ChosenColor: c.ChosenColor,
-		NamedTribe:  c.NamedTribe,
-		ChosenName:  c.ChosenName,
-		knowers:     knowers,
-		Layout:      c.Layout,
-		Faces:       viewOfFaces(c),
-		ActiveFace:  c.ActiveFace,
+		ChosenColor:  c.ChosenColor,
+		NamedTribe:   c.NamedTribe,
+		ChosenName:   c.ChosenName,
+		ChosenOption: c.ChosenOption,
+		knowers:      knowers,
+		Layout:       c.Layout,
+		Faces:        viewOfFaces(c),
+		ActiveFace:   c.ActiveFace,
 		// ADR 0083. A token has no printing behind it, so there is no
 		// oracle text for the client to fetch by scryfall_id and a
 		// token that prints an ability would otherwise reach the board

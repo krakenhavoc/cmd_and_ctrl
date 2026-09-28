@@ -575,6 +575,34 @@ type Card struct {
 	// choose_card_name.go.
 	ChosenName string
 
+	// ChosenOption is the NAMED OPTION chosen for this permanent by an
+	// "as this enters, choose <A> or <B>" instruction (CR 614.12) —
+	// the anchor words of the Siege cycles: "choose Khans or Dragons"
+	// (Citadel Siege, Palace Siege), "choose Jeskai or Temur"
+	// (Frostcliff Siege). Empty means no option has been chosen, which
+	// is both "this card has no such instruction" and the window
+	// between the permanent entering and its controller answering.
+	//
+	// The fifth member of the family, and the one whose vocabulary is
+	// the CARD's: the options are the words printed on it, offered as
+	// an option_pick and stored verbatim. What reads it is the ADR 0071
+	// designation gate (DesignationChosenOption) — the ability printed
+	// after an anchor word exists only while that word is the chosen
+	// one, so the other ability is not in the list the permanent hands
+	// the layer pass, the harvester or the enumerator at all.
+	//
+	// Same lifecycle as its four siblings: per INSTANCE (two Sieges
+	// can choose differently), carried by the snapshot and by clone,
+	// and cleared when the permanent leaves the battlefield (CR 400.7)
+	// — a Siege that is bounced and recast chooses again. NOT a
+	// copiable value (CR 707.2): CopiableValuesOf never looks here, so
+	// a copy of a Siege makes its own choice as IT enters.
+	//
+	// Written by the as-enters prompt in choose_option.go and by
+	// nothing else; read with ChosenOptionOf or the gate. Added for
+	// #1572; see ADR 0071's amendment of 2026-09-27.
+	ChosenOption string
+
 	// Provenance is what this permanent remembers about the SPELL it
 	// came from — CR 400.7d, "an ability of a permanent can reference
 	// information about the spell that became that permanent as it
