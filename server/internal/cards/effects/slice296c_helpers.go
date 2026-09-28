@@ -63,7 +63,7 @@ func anotherArtifactOrCreaturePutIntoGraveyardFromBattlefield(ev game.Event, sou
 	if !ok {
 		return false
 	}
-	return c.IsArtifact() || c.IsCreature()
+	return leftAsType(ev, c, "artifact") || leftAsType(ev, c, "creature")
 }
 
 // colorsAmongPermanentsControlledBy counts the distinct colors among

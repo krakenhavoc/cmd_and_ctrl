@@ -314,20 +314,42 @@ func lootOne(g *game.Game, item *game.StackItem, n int) error {
 //
 // The card is read post-move, so Tapped / Counters are already
 // cleared (CR 400.7) but TypeLine, Controller and Owner survive —
-// which is what "another creature YOU CONTROL dies" needs. A
-// creature that stopped being a creature before it died is a
-// sandbox gap: we read the printed type line rather than the
-// battlefield LKI, because the LKI map is keyed to the dying card's
-// own triggers and isn't reachable from a watcher's AppliesTo.
+// which is what "another creature YOU CONTROL dies" needs.
+//
+// Whether it WAS a creature is not read off that card (#1675). CR
+// 603.10a: a leaves-the-battlefield ability looks back in time, and
+// in the graveyard every effect that made the permanent a creature
+// has stopped applying — a crewed Vehicle is an artifact again, an
+// animated manland a land. So the test is the permanent's type as it
+// last existed, which the exit stamps on the event (leftAsType).
 func diedCreature(ev game.Event, g *game.Game) (game.Card, bool) {
 	if ev.Kind != game.EventLTB || ev.NewZone != game.ZoneGraveyard {
 		return game.Card{}, false
 	}
 	c, ok := g.LookupCardForEffect(ev.CardID)
-	if !ok || !c.IsCreature() {
+	if !ok || !leftAsType(ev, c, "creature") {
 		return game.Card{}, false
 	}
 	return c, true
+}
+
+// leftAsType reports whether the permanent an EventLTB names had card
+// type cardType ("creature", "artifact", "land", …) as it last existed
+// on the battlefield (#1675, CR 603.10a) — Event.LastKnownTypes, the
+// post-layer types the exit read with the card still in play. c is
+// the card as it sits now, and is consulted only for an event that
+// carries no last-known types (one logged before the field existed,
+// or built by hand in a test), which is the pre-#1675 reading.
+//
+// Every dies / leaves-the-battlefield condition that asks "was it a
+// creature / an artifact / a land" asks here, never c.IsCreature():
+// the card in the graveyard, hand or exile no longer has the types an
+// effect gave it.
+func leftAsType(ev game.Event, c game.Card, cardType string) bool {
+	if was, known := ev.WasType(cardType); known {
+		return was
+	}
+	return c.HasCardType(cardType)
 }
 
 // diedWhileAttacking resolves the creature that just died from a dies

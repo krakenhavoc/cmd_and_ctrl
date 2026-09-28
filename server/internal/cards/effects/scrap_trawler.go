@@ -65,7 +65,7 @@ func scrapTrawlerArtifactHitTheYard(ev game.Event, source *game.Card, _ game.Cha
 		return true
 	}
 	c, ok := g.LookupCardForEffect(ev.CardID)
-	return ok && c.IsArtifact() && c.Controller == source.Controller
+	return ok && leftAsType(ev, c, "artifact") && c.Controller == source.Controller
 }
 
 // scrapTrawlerCheaperArtifactClause builds the target clause from the

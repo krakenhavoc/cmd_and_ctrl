@@ -1294,6 +1294,23 @@ type Event struct {
 	BlockingTarget  uuid.UUID `json:"blocking_target,omitempty"`
 	Blocked         bool      `json:"blocked,omitempty"`
 
+	// LastKnownTypes is a leaving permanent's CARD TYPES as it last
+	// existed on the battlefield, on EventLTB only (#1675, CR
+	// 603.10a): its post-layer Characteristic.Types ("Creature",
+	// "Artifact", …), read with the card still on the battlefield.
+	//
+	// On the event for the same reason as the combat state above. A
+	// permanent that was a creature only because of an effect — a
+	// crewed Vehicle, an animated manland, a Gideon on his own turn —
+	// is not one in the graveyard, where every effect that made it
+	// one has stopped applying. "Whenever a creature dies" (Blood
+	// Artist, Grave Pact) reads the type here, never off the card it
+	// finds in the graveyard. Nil on every other kind; read it through
+	// WasType, which also says whether the event carries it at all.
+	// Engine-internal: protocol/log.go does not project it. See ADR
+	// 0027's 2026-09-28 amendment (#1675).
+	LastKnownTypes []string `json:"last_known_types,omitempty"`
+
 	// SettingOld / SettingNew are a table setting's value before and
 	// after an EventSettingsChanged, formatted as text: an int as
 	// decimal ("-1" is UndoUnlimited), a bool as "true"/"false", an

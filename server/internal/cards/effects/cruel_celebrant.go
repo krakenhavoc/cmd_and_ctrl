@@ -10,10 +10,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // The Orzhov Zulaport Cutthroat: a drain on every death of your own,
 // planeswalkers included, and on its own. One dies trigger. The
 // self case is the ordinary "this dies" read on the LTB harvest; the
-// other case reads the dead card post-move — controller and type
-// line survive the trip to the graveyard — and admits creatures and
-// planeswalkers you controlled. An opponent's creature is not "you
-// control" and an exile or a bounce is not a death.
+// other case reads the dead card post-move — its controller survives
+// the trip to the graveyard — and admits what was a creature or a
+// planeswalker you controlled as it last existed (leftAsType, #1675).
+// An opponent's creature is not "you control" and an exile or a
+// bounce is not a death.
 //
 // No simplification.
 func init() {
@@ -30,7 +31,7 @@ func init() {
 					return false
 				}
 				dead, ok := g.LookupCardForEffect(ev.CardID)
-				return ok && dead.Controller == source.Controller && (dead.IsCreature() || dead.IsPlaneswalker())
+				return ok && dead.Controller == source.Controller && (leftAsType(ev, dead, "creature") || leftAsType(ev, dead, "planeswalker"))
 			}, "Cruel Celebrant — each opponent loses 1 life, you gain 1 life", drainEachOpponent),
 		},
 	})

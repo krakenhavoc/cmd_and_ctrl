@@ -46,7 +46,7 @@ func aCreatureYouControlLeft(ev game.Event, source *game.Card, _ game.Characteri
 		return false
 	}
 	left, ok := g.LookupCardForEffect(ev.CardID)
-	return ok && left.IsCreature() && left.Controller == source.Controller
+	return ok && leftAsType(ev, left, "creature") && left.Controller == source.Controller
 }
 
 // outpostSiegeImpulse is the Khans body.
