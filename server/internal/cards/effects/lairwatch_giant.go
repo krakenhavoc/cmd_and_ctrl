@@ -9,7 +9,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 first strike until end of turn."
 //
 // The first line is CanBlockAdditional on itself (#1706). The trigger
-// is batch-aware (#1715): the block lock-in emits one EventBlock per
+// is CR 509.3e's "blocks … a particular number of creatures", and is
+// batch-aware (#1715): the block lock-in emits one EventBlock per
 // attacker, numbered in Amount, so selfBlocksAtLeast(…, 2) fires on the
 // second pair and on nothing else — once when the Giant blocks two, and
 // never when it blocks one. First strike gained in the declare
