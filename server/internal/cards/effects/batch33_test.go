@@ -1078,7 +1078,7 @@ func TestB33GodEternalBontuSacrificesTheChosenPermanentsToDrawAndReturnsThirdFro
 	}
 }
 
-func TestB33LathielDealsTheLifeGainedOutAsCountersAtTheEndStep(t *testing.T) {
+func TestB33LathielDistributesTheLifeGainedAsCountersAtTheEndStep(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
 	lathiel := b12Push(g, me.ID, "Lathiel, the Bounteous Dawn", "Legendary Creature — Unicorn", b33LathielOracle, 2, 2)
@@ -1093,8 +1093,9 @@ func TestB33LathielDealsTheLifeGainedOutAsCountersAtTheEndStep(t *testing.T) {
 	if latestPickTarget(g, me.ID) != nil {
 		t.Fatal("no life gained this turn, no trigger")
 	}
-	// Three life on an opponent's turn: three counters around the
-	// two creatures picked — two on the first, one on the second.
+	// Three life on an opponent's turn: the controller divides the
+	// three counters as they choose (#1657) — one on the first
+	// creature picked, two on the second.
 	advanceToMainOf(t, g, 1)
 	g.WithWriteLock(func() { _ = g.ChangePlayerLifeForEffect(uuid.Nil, me.ID, 3) })
 	advanceToEndStepOf(t, g, 1)
@@ -1106,23 +1107,23 @@ func TestB33LathielDealsTheLifeGainedOutAsCountersAtTheEndStep(t *testing.T) {
 	if !hasID(p.PickTargetCards, a) || !hasID(p.PickTargetCards, b) {
 		t.Error("any creature, an opponent's included, is offered")
 	}
-	b17PickCards(t, g, me.ID, a, b)
+	b17PickCardsDivided(t, g, me.ID, map[uuid.UUID]int{a: 1, b: 2}, a, b)
 	passPriorityAroundTable(t, g)
-	if got := counterCount(g, a, "+1/+1"); got != 2 {
-		t.Errorf("the first picked gets the remainder: %d, want 2", got)
+	if got := counterCount(g, a, "+1/+1"); got != 1 {
+		t.Errorf("the first picked: %d, want the 1 announced for it", got)
 	}
-	if got := counterCount(g, b, "+1/+1"); got != 1 {
-		t.Errorf("the second picked: %d, want 1", got)
+	if got := counterCount(g, b, "+1/+1"); got != 2 {
+		t.Errorf("the second picked: %d, want the 2 announced for it", got)
 	}
-	// One creature picked gets every counter.
+	// One creature picked, no share named, gets every counter.
 	advanceToMainOf(t, g, 2)
 	g.WithWriteLock(func() { _ = g.ChangePlayerLifeForEffect(uuid.Nil, me.ID, 2) })
 	advanceToEndStepOf(t, g, 2)
 	b04WaitForPick(t, g, me.ID)
 	b17PickCards(t, g, me.ID, a)
 	passPriorityAroundTable(t, g)
-	if got := counterCount(g, a, "+1/+1"); got != 4 {
-		t.Errorf("two more on the one creature picked: %d, want 4", got)
+	if got := counterCount(g, a, "+1/+1"); got != 3 {
+		t.Errorf("two more on the one creature picked: %d, want 3", got)
 	}
 }
 

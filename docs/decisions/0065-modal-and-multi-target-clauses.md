@@ -901,3 +901,298 @@ aiseat question for later.
   counters" with no targets** (Feast of the Victorious Dead) — the
   first is a prevention shield, the second is not a target clause at
   all.
+
+## Amendment (2026-09-28 (b), #1657): a divided amount read off the board or a paid cost, and "up to" division
+
+**Sprint:** S45 — Modal spells, multi-target clauses and copy effects.
+Tracker [#888](https://github.com/krakenhavoc/cmd_and_ctrl/issues/888).
+
+The amendment above left two shapes out, by name: an amount that is
+neither a constant nor the announced X, and Lathiel's "up to that
+many", whose shares may sum to less than the amount.
+
+    Ureni, the Song Unending  X damage divided …, where X is the number of lands you control
+    Orca, Siege Demon         When Orca dies, it deals damage equal to its power divided …
+    Lathiel, the Bounteous    distribute up to that many +1/+1 counters among any number
+      Dawn                    of other target creatures (that many = life gained this turn)
+    Avacyn's Judgment         2 damage divided …; if its madness cost was paid, X instead
+
+### Decision: an amount RULE, named by a key, that answers in the existing data shapes
+
+```go
+type DivideSpec struct {
+    Total, FromX, DoubleFromX …  // unchanged
+    AmountKey DivideAmount       // a registered rule; replaces the three above
+    UpTo      bool               // the shares may sum to at most the amount
+}
+
+var DivideLandsYouControl = game.RegisterDivideAmount("lands-you-control",
+    func(g *game.Game, a game.DivideAmountArgs) game.DivideSpec {
+        return game.DivideSpec{Total: b02CountLandsControlledBy(g, a.Controller)}
+    })
+
+Targets: TargetPermanent(…).WithCount(0, 0).Dividing(DivideBy(DivideLandsYouControl)),   // Ureni
+Targets: TargetCreature(…).WithCount(0, 0).Dividing(UpTo(DivideBy(DivideLifeYouGainedThisTurn))), // Lathiel
+```
+
+A **key, not a func**, for the reason `ModeCountCondition` (#1590) and
+`LifeCostCount` (#1594) are keys: a trigger's clause is reachable from
+`Game` through the `pick_target` resume frame, and ADR 0041 phase 3's
+closure ratchet admits no new func-typed route. The functions live in a
+registry in `game/divide.go`, registered once at init by
+`RegisterDivideAmount`; the cards' rules are in
+`effects/divide_amounts.go`.
+
+The rule reads `DivideAmountArgs` — the announcing player, the source,
+a trigger's source LAST-KNOWN characteristics (CR 603.10; Orca's power
+after it died, counters included), and the claimed alternative cost
+(the key that lands on `StackItem.AltCost`). It **answers in the data
+shapes the engine already has**: `{Total: n}`, or `{FromX: true}` for
+Avacyn's Judgment's madness cast, so the announced X is still applied by
+`TotalFor` and — the reason this matters — the client can still apply
+it to the X it collected. The earlier amendment's argument against a
+func ("the client has to compute the same amount from the X it
+collected, which a func cannot ship") is met: the server evaluates the
+rule and ships its answer, never the rule.
+
+`Register` refuses a clause that names a rule AND a fixed or X amount.
+
+### Decision: the rule is read ONCE, at announce, into the steps
+
+`bindDivideAmountsLocked(steps, args)` replaces each step's
+`Clause.Divide` with the rule's answer — a fresh spec, since the steps
+hold clause copies (`AnnouncedClauses`), so the catalog's clause is
+never touched. It runs at the three announce points:
+
+- a cast, straight after X is bound (`CastSpell`), with the claimed
+  alternative cost;
+- an activation (`activateCatalogAbilityLocked`);
+- a trigger, when its target walk OPENS (`queuePickTargetLocked`), with
+  the harvester's LKI.
+
+The last is the load-bearing choice. CR 603.3d puts the targets and the
+division on the ability "as it is put on the stack", which in this
+engine is the walk; the frame carries the bound steps, so the prompt,
+its wire projection (`pick_target.divide`), the enumerator's cap and
+the gate all read one number, and a land that arrives while the prompt
+is open changes nothing. That is Ureni's ruling ("The value of X won't
+change even if the number of lands you control changes after that
+point") and Lathiel's ("Gaining more life in response … won't change how
+many counters will be distributed"). Nothing re-reads the rule at
+resolution: the item carries `Distribution`, as before.
+
+`settleDistribution` and `EvenDistribution` are unchanged in shape —
+they read bound steps. The frame is cloned by `clonePickTargetFrame`
+(the bound spec is immutable and shared), and a snapshot drops the
+frame exactly as it always has (the census records it), so undo and
+snapshot need nothing new.
+
+### Decision: "up to" relaxes the sum, not the minimum
+
+`UpTo` changes one comparison in the gate: the shares must sum to **at
+most** the amount rather than exactly. Each chosen target still gets at
+least 1 — CR 601.2d, and Lathiel's own ruling ("Each target must
+receive at least one +1/+1 counter") — so an up-to clause still takes
+no more targets than its amount. Zero targets is the clause's Min, as
+for any clause ("You may choose no targets if you want"). The bot's
+even split of the whole amount is a legal up-to answer, so the
+enumerator needs nothing new; it offers the empty answer because Min is
+0.
+
+### Decision: the view resolves the rule for the viewer
+
+`viewOfTargetClause` and `abilityLegalTargets` stamp the resolved
+amount (`stampDivideAmount`) for the source's controller and — on an
+`alternative_costs[]` entry — that offer's key, so Avacyn's Judgment's
+hand card says `{total: 2}` and its madness offer says `{from_x:
+true}`. `DivideView` gains `up_to`. Writing this found that
+`abilityClauseView` never carried `divide` at all, so a single-clause
+divided ability (Mogg Mob) reached the client with no amount and the
+picker never asked for the split the gate demands for two or more
+targets; `abilityLegalTargets` now stamps it.
+
+The client's `divisionProblem` takes `upTo`, the divide modal and the
+targeting banner say "up to", and `hasXCost` asks the claimed offer's
+own mana cost, because Avacyn's Judgment prints `{1}{R}` and its madness
+cost is `{X}{R}`: the X prompt has to open for the madness cast.
+
+### Consequences
+
+- Lathiel, the Bounteous Dawn ships `CompletenessFull`; its round-robin
+  body is deleted.
+- New, all `full`: Ureni, the Song Unending, Orca, Siege Demon, and
+  Avacyn's Judgment (#653's "if its madness cost was paid").
+- The enumerator binds the same amount before the even split, in the
+  cast (with the offer's key) and activation expansions.
+
+### Out of scope, stated
+
+- **Polukranos, World Eater** — "When Polukranos becomes monstrous, it
+  deals X damage divided …", X being the monstrosity activation's X.
+  The divided half would be `DivideBy` a rule reading that X off the
+  triggering event; the engine has no monstrosity (CR 701.37) at all,
+  and no "becomes monstrous" event. The card waits on that keyword.
+- **Divided prevention** (Remedy) and **distribute without targets**
+  (Feast of the Victorious Dead), as above.
+
+---
+
+## Amendment (2026-09-28 (c), #1655): a mode count read off the optional costs, and a forced higher count
+
+**Sprint:** S45 — Modal spells, multi-target clauses and copy effects.
+Tracker [#888](https://github.com/krakenhavoc/cmd_and_ctrl/issues/888).
+
+The 2026-09-27 amendment's "Out of scope" named two shapes #1590 could
+not express, and they share a fix:
+
+- *"Choose one. If this spell was kicked, choose any number instead"*
+  (the Inscription cycle), *"If it was kicked, choose both instead"*
+  (Depth Defiler). The condition is the caster's own optional-cost
+  choice, made in the same CR 601.2b announcement as the modes, not
+  the board.
+- *"If there are four or more card types among cards in your
+  graveyard, choose both instead"* (Prophetic Titan). There is no
+  "may", so the higher count is **forced** and `Min` has to rise with
+  `Max`.
+
+### Decision: `RaisedMin` beside `RaisedMax`, and three declarations
+
+```go
+type ModeSpec struct {
+    // … Min, Max, Repeatable …
+    RaisedMax  int
+    RaisedMin  int                // new: 0 = Min does not move
+    RaiseMaxIf ModeCountCondition // governs both; the #1590 name is kept
+}
+
+ChooseOne(…).OrUpToIf(2, YouControlACommander) // "you may choose both instead" — #1590, unchanged
+ChooseOne(…).InsteadIf(2, WasKicked)           // "choose both instead": Min = Max = 2
+ChooseOne(…).AnyNumberIf(WasKicked)            // "choose any number / one or more instead": Max = every bullet, Min stays
+```
+
+"Choose any number instead" keeps a minimum of one. The spell is still
+a "choose one" card whose count widens; announcing no bullet at all is
+refused, kicked or not. `checkRaisedModeMax` now also refuses a
+`RaisedMin` that does not exceed `Min` or that exceeds `RaisedMax`.
+
+### Decision: one reader over a query, not the chooser
+
+`modeMaxLocked(ms, chooser)` becomes `modeBoundsLocked(ms, q)`
+(`ModeBoundsForEffect` outside the package). It returns `(lo, hi)` for
+a `ModeCountQuery`:
+
+```go
+type ModeCountQuery struct {
+    Chooser       uuid.UUID
+    OracleID      string // the card whose OptionalCosts index space OptionalCosts names
+    OptionalCosts []int  // what was announced WITH the modes
+}
+```
+
+The predicate registry keys a `func(*Game, ModeCountQuery) bool`.
+`game.ModeCondition(key, func(g, chooser))` keeps its #1590 signature
+and adapts. The new `game.ModeConditionOnAnnouncement(key, func(g, q))`
+registers a predicate that reads the announcement. It is still a
+**key, not a closure** (ADR 0041 phase 3: the closure ratchet gains no
+route). `q.Kicked()` / `q.OptionalCostTimes(key)` count by the cost's
+`Key` rather than its index, so a condition never knows its card's
+declaration order. `effects.WasKicked` is the first announcement
+condition. `effects.DeliriumForModes` and `effects.Descended8` are
+board conditions.
+
+Where each owner gets its query:
+
+- **A spell** (`castSpellLocked`): `CastSpellParams.OptionalCosts`.
+  Mode validation moved BELOW `validateOptionalCostChoice` and the gift
+  check, so the count is read against an optional-cost choice that has
+  already been validated. CR 601.2b announces the modes and the
+  optional costs in one step, and ADR 0089's gift already reads that
+  step's optional costs to rewrite the target clause (CR 601.2c comes
+  after). The mode count is the same read, one clause earlier.
+- **A trigger** (`queueModePickLocked`) and **an activated ability**
+  (`activateCatalogAbilityLocked`): `modeQueryForSourceLocked(source)`
+  reads the source spell's `PaidCost.OptionalCosts` while it is on the
+  stack. That is Depth Defiler's "when you cast this spell … if it was
+  kicked": its trigger is harvested with the spell still on the stack
+  and its payment recorded. Once the source has entered, the query
+  reads the permanent's `CastProvenance.OptionalCosts` (ADR 0073 §5).
+  No printed card needs the second path yet; it is one line and it
+  keeps the three owners from answering "was it kicked" three ways.
+
+### Decision: a forced count on a trigger asks for what is on offer
+
+CR 603.3c: a bullet whose targets cannot be chosen "can't be chosen";
+it does not remove the ability. So when a raised minimum exceeds the
+number of choosable bullets, the `mode_pick` prompt's `ModeMin` drops
+to the choosable count, and never below the printed `Min`, which
+`EnoughChoosableModes` has already enforced. A spell has no such
+clamp. A kicked forced-both spell whose second bullet has no target is
+refused at announce, like any spell that cannot fill its targets, and
+the enumerator offers no move for it (`legalModeSets` returns nothing
+when `lo` exceeds the choosable options).
+
+### Decision: the wire carries both ranges; the picker switches on the kicker
+
+`ModeSpecView.min` / `.max` are the caster's bounds with **no**
+optional cost announced; `min` can now differ from the printed one (a
+board-driven forced count). `if_optional_paid: {min, max}` carries the
+bounds with every optional cost the card offers announced once. It is
+stamped only when those differ, so it is absent for every card but the
+kicker-driven ones. The client's cast flow asks the optional costs
+BEFORE the modes (`confirmAltCost` → `continueCast`), so
+`modesUnderChoices` opens the picker on `if_optional_paid` when the
+caster ticked one. A picker whose `min == max > 1` reads "choose N"
+rather than "choose up to N". `publicModeSpec` restores the printed
+`min` and `max` and drops `if_optional_paid`, as it drops #1590's raised `max`.
+
+"Every optional cost once" is exact for every card on this shape: each
+offers one optional cost. A card that offered two, with a count
+depending on only one of them, would need a per-cost list. None is
+printed.
+
+### Decision: bullets whose order is observable run in printed order
+
+The engine walks `ModeOption.Effect` in announce order (§3 above).
+Three of this change's cards have bullets that see each other: Depth
+Defiler's bounce feeds its discard, Wail of the Forgotten's bounce
+feeds its discard, and Inscription of Abundance's counters feed its
+"greatest power" and its fight. They declare their bullets with `Mode`
+and run them through `effects.BulletsInPrintedOrder` from `OnResolve`
+(a spell) or the ability's `Effect` (a trigger), as the #1590 Wills do
+with `if ctx.HasMode(i)` chains. The other three use `ModeDoing`,
+because their bullets cannot observe one another.
+
+### Consequences
+
+- Inscription of Ruin, Inscription of Abundance, Depth Defiler,
+  Prophetic Titan, Let's Play a Game and Wail of the Forgotten ship
+  `CompletenessFull`.
+- `legal.legalModeSets` takes the query, so each optional-cost
+  announcement (`optionalCostSets`) gets its own mode range. Unkicked
+  Inscription moves offer exactly one bullet and kicked ones up to
+  three, and every move dispatches (#544,
+  `TestInscriptionOfRuinModeRangesFollowTheKicker`).
+- A trigger prompt's `ModeMin` is persisted as it always was
+  (`snapshot.go`), so a forced minimum survives a restore and an undo
+  (`TestPropheticTitanForcedCountSurvivesRestoreAndUndo`).
+- `docs/protocol.md`'s `cast_spell` row documents `if_optional_paid`
+  and the moving `min`.
+
+### Out of scope, stated
+
+- **Teamwork** (HULK SMASH!, Go Nuts!, Atlantis Attacks, Murdock's
+  Crusade, Widow's Bite: "you may tap any number of creatures you
+  control with total power N or more") and **blight** (Pyrrhic
+  Strike: "you may put two -1/-1 counters on a creature you
+  control"). Both are optional costs `AdditionalCost` has no component
+  for (a tap-creatures-by-total-power payment, a counter placement).
+  Once either exists, the card's count is `InsteadIf(2, …)` over a
+  condition that reads `q.OptionalCostTimes`. Nothing in this
+  amendment changes for them.
+- **The engine's announce-order walk of `ModeOption.Effect`.** This
+  amendment works around it card by card and does not re-decide §3.
+- **Inscription of Insight.** Its "scry 2, then draw two cards" bullet
+  queues the scry prompt and draws in the continuation, so a kicked
+  cast that also takes "X is the number of cards in their hand" would
+  count the hand BEFORE the draw. Printed order needs a bullet walk
+  that waits for a prompt to be answered, and nothing has one yet.

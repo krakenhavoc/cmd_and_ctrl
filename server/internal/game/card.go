@@ -982,6 +982,20 @@ type Card struct {
 	// battlefield (CR 400.7), carried by the snapshot.
 	Harnessed bool
 
+	// Monstrous is the CR 701.37b designation — the marker the
+	// monstrosity keyword action sets (ADR 0071 amendment, #1700).
+	//
+	// Set by MonstrosityForEffect, from a "Monstrosity N" activated
+	// ability's resolution, and by nothing else. Once set it STAYS set
+	// for as long as the permanent is on the battlefield (CR 701.37b:
+	// "Once a permanent has become monstrous, it stays monstrous until
+	// it leaves the battlefield"), and CR 701.37b also says it is
+	// "neither an ability nor part of the permanent's copiable values"
+	// — so it is Harnessed's field in every respect: not copiable,
+	// cleared when the permanent leaves the battlefield (CR 400.7),
+	// carried by clone and the snapshot.
+	Monstrous bool
+
 	// Prepared is the CR 722.3a designation on a permanent with a
 	// prepare spell (ADR 0090): while it is set, the permanent's
 	// controller may cast the CR 722.3c copy of its prepare spell that

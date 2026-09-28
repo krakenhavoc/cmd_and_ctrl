@@ -1468,6 +1468,13 @@ export interface ModeSpecView {
   // (Mystic Confluence). The picker offers a count per option rather
   // than a toggle, and each occurrence is asked for its own targets.
   repeatable?: boolean;
+  // #1655: the bounds with the card's optional costs announced —
+  // Inscription of Ruin's "if this spell was kicked, choose any number
+  // instead", Depth Defiler-shaped "choose both instead". `min` / `max`
+  // above are the bounds with none announced; the picker switches to
+  // these when the caster ticked an optional cost. Absent when paying
+  // changes nothing.
+  if_optional_paid?: { min: number; max: number };
 }
 
 // AdditionalCostView is the "As an additional cost to cast this
@@ -2012,6 +2019,12 @@ export interface DivideView {
   total?: number;
   from_x?: boolean;
   double_from_x?: number;
+  // #1657: "distribute UP TO that many" (Lathiel) — the shares may add
+  // up to less than the amount, each pick still at least 1. An amount
+  // read off the board (Ureni's lands, Orca's power, Avacyn's
+  // Judgment's madness X) arrives already resolved into the fields
+  // above; there is nothing for the client to compute.
+  up_to?: boolean;
 }
 
 // TargetDifferenceView is a clause's set rule (#1559): `label`

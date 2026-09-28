@@ -822,24 +822,6 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		)
 		return ErrInvalidParam
 	}
-	// S20 sub-PR 4: modal spells — the chosen modes must be distinct,
-	// in range and the right count (CR 601.2b, 700.2). #1590: the
-	// count's upper bound is read HERE, "as you cast this spell", for
-	// a conditional mode count (Jeska's Will's "if you control a
-	// commander … choose both instead") — and only here: the choice
-	// lands on StackItem.Modes and nothing re-asks the condition, so a
-	// commander that leaves in response changes nothing.
-	modeSpec := ModeSpecFor(CatalogKey(card))
-	modeMax := g.modeMaxLocked(modeSpec, playerID)
-	if err := validateModes(modeSpec, modeMax, params.Modes); err != nil {
-		slog.Warn("cast_spell rejected: bad mode choice",
-			"card_name", card.Name,
-			"oracle_id", card.OracleID,
-			"modes_received", params.Modes,
-			"mode_max", modeMax,
-		)
-		return err
-	}
 	// ADR 0073, CR 601.2b: the optional additional costs the caster
 	// chooses to pay — kicker, multikicker, buyback. Announced HERE,
 	// with the modes and before the targets, for two reasons that
@@ -874,6 +856,34 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 			"oracle_id", card.OracleID,
 			"gift_opponent", params.GiftOpponent,
 			"optional_costs", params.OptionalCosts,
+		)
+		return err
+	}
+	// S20 sub-PR 4: modal spells — the chosen modes must be distinct,
+	// in range and the right count (CR 601.2b, 700.2). #1590: the
+	// count's bounds are read HERE, "as you cast this spell", for a
+	// conditional mode count (Jeska's Will's "if you control a
+	// commander … choose both instead") — and only here: the choice
+	// lands on StackItem.Modes and nothing re-asks the condition, so a
+	// commander that leaves in response changes nothing.
+	//
+	// #1655: AFTER the optional-cost choice above, because CR 601.2b
+	// announces both in one step and "if this spell was kicked, choose
+	// any number instead" (Inscription of Ruin) reads the kicker the
+	// caster is announcing alongside the modes.
+	modeSpec := ModeSpecFor(CatalogKey(card))
+	modeMin, modeMax := g.modeBoundsLocked(modeSpec, ModeCountQuery{
+		Chooser:       playerID,
+		OracleID:      CatalogKey(card),
+		OptionalCosts: params.OptionalCosts,
+	})
+	if err := validateModes(modeSpec, modeMin, modeMax, params.Modes); err != nil {
+		slog.Warn("cast_spell rejected: bad mode choice",
+			"card_name", card.Name,
+			"oracle_id", card.OracleID,
+			"modes_received", params.Modes,
+			"mode_min", modeMin,
+			"mode_max", modeMax,
 		)
 		return err
 	}
@@ -923,6 +933,12 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// #1559: "with mana value X or less" — X is announced before
 	// targets (CR 601.2b / 602.2b), so the bound is known here.
 	bindStepsX(steps, params.XValue)
+	// #1657, CR 601.2d: a divided amount read off the board or off the
+	// claimed alternative cost ("X if its madness cost was paid") is
+	// fixed here, with the targets, and never re-read.
+	g.bindDivideAmountsLocked(steps, DivideAmountArgs{
+		Controller: playerID, Source: cardID, AltCost: params.AlternativeCost,
+	})
 	params.Targets = assignAnnouncedSlots(steps, params.Targets)
 	for _, i := range xSteps {
 		// Max 0 reads as "unbounded" to the ordinary count check, so

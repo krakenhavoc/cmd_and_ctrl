@@ -242,6 +242,7 @@ func (g *Game) resetAsNewObjectLocked(oldID uuid.UUID) uuid.UUID {
 		c.ClassLevel = 0
 		c.Solved = false
 		c.Harnessed = false
+		c.Monstrous = false
 		c.Prepared = false
 		c.effective = nil
 		return newID

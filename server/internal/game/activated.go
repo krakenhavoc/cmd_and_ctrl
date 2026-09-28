@@ -1224,7 +1224,8 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// CR 602.2b / 700.2: the modes are announced with the targets, in
 	// that order — the chosen bullets are what decide which target
 	// clauses the activation even has (#764).
-	if err := validateModes(ab.Modes, g.modeMaxLocked(ab.Modes, playerID), params.Modes); err != nil {
+	modeMin, modeMax := g.modeBoundsLocked(ab.Modes, g.modeQueryForSourceLocked(*source, playerID))
+	if err := validateModes(ab.Modes, modeMin, modeMax, params.Modes); err != nil {
 		return err
 	}
 	if ab.Modes == nil && len(params.Modes) > 0 {
@@ -1238,6 +1239,8 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// #1559: "with mana value X or less" — X is announced before
 	// targets (CR 601.2b / 602.2b), so the bound is known here.
 	bindStepsX(steps, params.XValue)
+	// #1657: a divided amount read off the board, fixed at activation.
+	g.bindDivideAmountsLocked(steps, DivideAmountArgs{Controller: playerID, Source: cardID})
 	params.Targets = assignAnnouncedSlots(steps, params.Targets)
 	for _, i := range xSteps {
 		if n := stepTargetCount(steps[i], params.Targets); n != params.XValue {

@@ -89,6 +89,17 @@ describe("hasXCost", () => {
   it("does not fire for convoke, which adds no cost of its own", () => {
     expect(hasXCost(rescuer)).toBe(false);
   });
+
+  // #1657: Avacyn's Judgment prints {1}{R}; its madness cost is {X}{R}.
+  it("fires for the claimed offer's own {X}, and only for that offer", () => {
+    const judgment = card({
+      mana_cost: "{1}{R}",
+      alternative_costs: [{ key: "madness", mana_cost: "{X}{R}" }],
+    });
+    expect(hasXCost(judgment)).toBe(false);
+    expect(hasXCost(judgment, "madness")).toBe(true);
+    expect(hasXCost(judgment, "flashback")).toBe(false);
+  });
 });
 
 describe("applyCastChoices", () => {

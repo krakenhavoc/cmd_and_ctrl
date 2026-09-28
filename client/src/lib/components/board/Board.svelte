@@ -85,6 +85,7 @@
     alternativeCostsOf,
     alternativeCostByKey,
     castTargetOverride,
+    modesUnderChoices,
     altCostPayOptions,
     applyCastChoices,
     castChoicesBase,
@@ -598,7 +599,7 @@
     // and it is 0, so the picker is skipped and nothing is sent. The
     // server refuses a non-zero X on such a cast, which is what makes
     // this a prompt decision rather than a rule the client enforces.
-    if (hasXCost(card) && !castLocksXAtZero(card, choices.altCost)) {
+    if (hasXCost(card, choices.altCost) && !castLocksXAtZero(card, choices.altCost)) {
       xPromptChoices = choices;
       xPromptCard = card;
       return;
@@ -791,7 +792,8 @@
   function continueCast(card: CardView, choices: CastChoices): void {
     if (isModal(card)) {
       modePromptChoices = choices;
-      modePromptCard = card;
+      // #1655: a ticked kicker can change how many bullets it may take.
+      modePromptCard = modesUnderChoices(card, choices);
       return;
     }
     // S14: if the card declares a target_mode (catalog cards with
@@ -2370,6 +2372,7 @@
     sourceName={dividePrompt ? dividePrompt.card.name : null}
     targets={divideTargets}
     total={dividePrompt?.divide ?? 0}
+    upTo={dividePrompt?.divideUpTo === true}
     onConfirm={confirmDivision}
     onCancel={() => (dividePrompt = null)}
   />
@@ -2377,6 +2380,9 @@
     gameID={view.id}
     card={xPromptCard}
     suggestedMax={suggestedX}
+    costLabel={xPromptCard
+      ? alternativeCostByKey(xPromptCard, xPromptChoices.altCost)?.mana_cost
+      : undefined}
     castParams={castPreviewParams(xPromptChoices)}
     onConfirm={confirmX}
     onCancel={() => {

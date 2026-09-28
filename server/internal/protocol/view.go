@@ -519,18 +519,29 @@ type LegalTargetsView struct {
 // X the client collected instead — or twice X once X reaches
 // `double_from_x`, when that is set. A pick_target prompt's amount is
 // always fixed (a trigger announces no X). Added by #1563.
+//
+// #1657: an amount read off the board ("X is the number of lands you
+// control", "equal to its power", "2, or X if its madness cost was
+// paid") arrives already resolved into these same fields — the server
+// reads the rule for the viewer and ships the answer, so the client
+// never learns there was a rule. `up_to` is "distribute UP TO that
+// many" (Lathiel): the shares may sum to less than the amount, each
+// target still at least 1.
 type DivideView struct {
 	Total       int  `json:"total,omitempty"`
 	FromX       bool `json:"from_x,omitempty"`
 	DoubleFromX int  `json:"double_from_x,omitempty"`
+	UpTo        bool `json:"up_to,omitempty"`
 }
 
-// divideView projects a clause's division, or nil for none.
+// divideView projects a clause's division, or nil for none. The spec
+// must already have its amount rule resolved (game.DivideAmountForEffect,
+// or a step bound at announce) — an unresolved rule projects as 0.
 func divideView(d *game.DivideSpec) *DivideView {
 	if d == nil {
 		return nil
 	}
-	return &DivideView{Total: d.Total, FromX: d.FromX, DoubleFromX: d.DoubleFromX}
+	return &DivideView{Total: d.Total, FromX: d.FromX, DoubleFromX: d.DoubleFromX, UpTo: d.UpTo}
 }
 
 // TargetDifferenceView is the wire shape of game.TargetDifference: the
@@ -552,16 +563,20 @@ type TargetDifferenceView struct {
 // for the owner's hand cards. Added in S20 sub-PR 4.
 type ModeSpecView struct {
 	Prompt string `json:"prompt"`
-	Min    int    `json:"min"`
+	// Min is the lower bound for THIS caster right now, with no
+	// optional cost announced: the printed Min, raised while a FORCED
+	// conditional count holds (#1655 — "choose both instead" with no
+	// "may").
+	Min int `json:"min"`
 	// Max is the upper bound for THIS caster right now (#1590): the
 	// printed Max, raised to RaisedMax while a conditional mode count
 	// holds — Jeska's Will's "if you control a commander as you cast
 	// this spell, you may choose both instead" stamps 2 for a seat
 	// with a commander on the battlefield and 1 for everybody else.
-	// Read by game.ModeMaxForEffect, the same bound the announce gate
-	// enforces, so a picker that offers up to `max` never offers a
-	// selection the server refuses. The public projection
-	// (publicModeSpec) puts the printed bound back.
+	// Read by game.ModeBoundsForEffect, the same bounds the announce
+	// gate enforces, so a picker that offers up to `max` never offers
+	// a selection the server refuses. The public projection
+	// (publicModeSpec) puts the printed bounds back.
 	Max     int              `json:"max"`
 	Options []ModeOptionView `json:"options"`
 	// Repeatable is CR 700.2d, "you may choose the same mode more
@@ -569,11 +584,29 @@ type ModeSpecView struct {
 	// option instead of a toggle, and each occurrence is asked for
 	// its own targets. Added by #764.
 	Repeatable bool `json:"repeatable,omitempty"`
+	// IfOptionalPaid is the bounds with the card's optional
+	// additional costs announced (#1655) — Inscription of Ruin's
+	// "if this spell was kicked, choose any number instead", Depth
+	// Defiler-shaped "choose both instead". `min` / `max` above are
+	// the bounds with none announced; the picker switches to these
+	// when the caster ticked an optional cost, because CR 601.2b
+	// announces the two together. Absent when announcing the costs
+	// changes nothing, which is every card but these. Per caster, and
+	// dropped from the public copy, like `max`.
+	IfOptionalPaid *ModeBoundsView `json:"if_optional_paid,omitempty"`
 
-	// printedMax is the spec's own Max, before any conditional raise,
-	// for publicModeSpec: the raise is the asking seat's answer and a
-	// bystander's copy shows what the card prints. Server-only.
-	printedMax int
+	// printedMin / printedMax are the spec's own Min / Max, before any
+	// conditional raise, for publicModeSpec: the raise is the asking
+	// seat's answer and a bystander's copy shows what the card prints.
+	// Server-only.
+	printedMin, printedMax int
+}
+
+// ModeBoundsView is a mode count's bounds under one announcement
+// (#1655).
+type ModeBoundsView struct {
+	Min int `json:"min"`
+	Max int `json:"max"`
 }
 
 type ModeOptionView struct {
@@ -1742,6 +1775,12 @@ type CardView struct {
 	// so the field is set straight off the card, the same way
 	// Prepared is below.
 	Harnessed bool `json:"harnessed,omitempty"`
+	// Monstrous is a permanent's CR 701.37b monstrous designation
+	// (ADR 0071 amendment, #1700) — set by the monstrosity keyword
+	// action and kept until the permanent leaves the battlefield.
+	// Public, like Harnessed, and set straight off the card for the
+	// same reason: no card type owns monstrosity.
+	Monstrous bool `json:"monstrous,omitempty"`
 	// Prepared is a permanent's CR 722.3a prepared designation
 	// (ADR 0090): while it is set, its controller may cast the copy of
 	// its prepare spell that sits in exile — which the wire already
@@ -3780,8 +3819,10 @@ func publicModeSpec(ms *ModeSpecView) *ModeSpecView {
 	}
 	out := *ms
 	// #1590: `max` is the asking seat's answer when a conditional mode
-	// count raised it; the public copy shows the printed bound.
-	out.Max = ms.printedMax
+	// count raised it; the public copy shows the printed bound. #1655:
+	// and `min`, which a forced count raises too.
+	out.Min, out.Max = ms.printedMin, ms.printedMax
+	out.IfOptionalPaid = nil
 	out.Options = make([]ModeOptionView, len(ms.Options))
 	for i, o := range ms.Options {
 		o.LegalTargets = nil
@@ -4185,7 +4226,7 @@ func castStampsFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, kind
 	// that is up — and a face picker needs the answer for the other.
 	out.TargetMode = game.TargetModeFor(key)
 	if ms := game.ModeSpecFor(key); ms != nil {
-		out.Modes = viewOfModeSpec(g, caster, src, ms)
+		out.Modes = viewOfCastModeSpec(g, caster, key, src, ms)
 	}
 	if ac := game.AdditionalCostFor(key); !ac.Empty() {
 		out.AdditionalCost = &AdditionalCostView{
@@ -4340,7 +4381,7 @@ func castStampsFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, kind
 	if spec == nil {
 		return out
 	}
-	out.LegalTargets = viewOfTargetClause(g, g.LegalTargetsForEffect(src, spec), spec)
+	out.LegalTargets = viewOfTargetClause(g, src, "", g.LegalTargetsForEffect(src, spec), spec)
 	out.Clauses = viewOfClauses(g, src, spec)
 	return out
 }
@@ -4533,10 +4574,31 @@ func viewOfProtection(c *game.Card) []ProtectionView {
 // the clause's set rule and X bound stamped on (#1559). Cost-payment
 // projections keep viewOfLegalTargets: a cost is not targeting and
 // carries neither. Caller must hold g.mu.
-func viewOfTargetClause(g *game.Game, lt game.LegalTargets, spec *game.TargetSpec) *LegalTargetsView {
+//
+// `altKey` is the alternative cost this clause would be announced
+// under ("" for the printed cost): a divided amount read by a rule
+// (#1657) is resolved here, for `src`'s controller and that cost, so
+// the wire quotes the amount the gate would fix right now — Ureni's
+// land count, Avacyn's Judgment's 2 or its madness X.
+func viewOfTargetClause(g *game.Game, src game.TargetSource, altKey string, lt game.LegalTargets, spec *game.TargetSpec) *LegalTargetsView {
 	v := viewOfLegalTargets(lt, spec)
 	stampTargetSetRule(g, v, lt.Cards, spec)
+	stampDivideAmount(g, v, src, altKey, spec)
 	return v
+}
+
+// stampDivideAmount writes a divided clause's amount onto its view,
+// with an amount rule (#1657) read for `src`'s controller and the
+// claimed alternative cost. Caller must hold g.mu.
+func stampDivideAmount(g *game.Game, v *LegalTargetsView, src game.TargetSource, altKey string, spec *game.TargetSpec) {
+	if spec == nil || spec.Divide == nil {
+		return
+	}
+	args := game.DivideAmountArgs{Controller: src.Controller, AltCost: altKey}
+	if src.Object != nil {
+		args.Source = src.Object.InstanceID
+	}
+	v.Divide = divideView(g.DivideAmountForEffect(spec.Divide, args))
 }
 
 // stampTargetSetRule writes a clause's set rule and X bound onto its
@@ -4688,7 +4750,7 @@ func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, src game.TargetSourc
 		}
 		if spec := game.TargetSpecUnderAlternativeCost(base, &ac); spec != nil {
 			v.TargetMode = spec.Mode
-			v.LegalTargets = viewOfTargetClause(g, g.LegalTargetsForEffect(src, spec), spec)
+			v.LegalTargets = viewOfTargetClause(g, src, ac.Key, g.LegalTargetsForEffect(src, spec), spec)
 		}
 		// The card-shaped half. SpecCandidatesForEffect, not
 		// LegalTargetsForEffect, for the same reason the additional
@@ -4785,7 +4847,7 @@ func viewOfOptionalCosts(g *game.Game, caster uuid.UUID, src game.TargetSource, 
 		}
 		if spec := oc.Targets; spec != nil {
 			v.TargetMode = spec.Mode
-			v.LegalTargets = viewOfTargetClause(g, g.LegalTargetsForEffect(src, spec), spec)
+			v.LegalTargets = viewOfTargetClause(g, src, "", g.LegalTargetsForEffect(src, spec), spec)
 			v.Clauses = viewOfClauses(g, src, spec)
 		}
 		out = append(out, v)
@@ -4793,15 +4855,41 @@ func viewOfOptionalCosts(g *game.Game, caster uuid.UUID, src game.TargetSource, 
 	return out
 }
 
+// viewOfCastModeSpec is viewOfModeSpec for a card the caster could
+// cast: the bounds as they stand with no optional cost announced, and
+// — for a card whose count reads its own optional costs (#1655,
+// Inscription of Ruin's "if this spell was kicked, choose any number
+// instead") — the bounds with every offered optional cost announced,
+// on `if_optional_paid`, which the picker reads when the caster has
+// ticked one. Caller must hold g.mu.
+func viewOfCastModeSpec(g *game.Game, caster uuid.UUID, key string, src game.TargetSource, ms *game.ModeSpec) *ModeSpecView {
+	out := viewOfModeSpec(g, game.ModeCountQuery{Chooser: caster, OracleID: key}, src, ms)
+	optional := game.OptionalCostsFor(key)
+	if len(optional) == 0 || ms.RaiseMaxIf.IsZero() {
+		return out
+	}
+	all := make([]int, len(optional))
+	for i := range all {
+		all[i] = i
+	}
+	lo, hi := g.ModeBoundsForEffect(ms, game.ModeCountQuery{Chooser: caster, OracleID: key, OptionalCosts: all})
+	if lo != out.Min || hi != out.Max {
+		out.IfOptionalPaid = &ModeBoundsView{Min: lo, Max: hi}
+	}
+	return out
+}
+
 // viewOfModeSpec projects a modal card's options with each targeted
 // option's legal set from the caster's point of view, and the mode
-// count's upper bound as `chooser` would be held to it right now
-// (#1590). Caller must hold g.mu.
-func viewOfModeSpec(g *game.Game, chooser uuid.UUID, src game.TargetSource, ms *game.ModeSpec) *ModeSpecView {
+// count's bounds as the choice `q` describes would be held to them
+// right now (#1590, #1655). Caller must hold g.mu.
+func viewOfModeSpec(g *game.Game, q game.ModeCountQuery, src game.TargetSource, ms *game.ModeSpec) *ModeSpecView {
+	lo, hi := g.ModeBoundsForEffect(ms, q)
 	out := &ModeSpecView{
 		Prompt:     ms.Prompt,
-		Min:        ms.Min,
-		Max:        g.ModeMaxForEffect(ms, chooser),
+		Min:        lo,
+		Max:        hi,
+		printedMin: ms.Min,
 		printedMax: ms.Max,
 		Repeatable: ms.Repeatable,
 		Options:    make([]ModeOptionView, 0, len(ms.Options)),
@@ -4810,7 +4898,7 @@ func viewOfModeSpec(g *game.Game, chooser uuid.UUID, src game.TargetSource, ms *
 		ov := ModeOptionView{Label: o.Label, Cost: o.Cost}
 		if o.Targets != nil {
 			ov.TargetMode = o.Targets.Mode
-			ov.LegalTargets = viewOfTargetClause(g, g.LegalTargetsForEffect(src, o.Targets), o.Targets)
+			ov.LegalTargets = viewOfTargetClause(g, src, "", g.LegalTargetsForEffect(src, o.Targets), o.Targets)
 			ov.Clauses = viewOfClauses(g, src, o.Targets)
 		}
 		out.Options = append(out.Options, ov)
@@ -4829,7 +4917,7 @@ func viewOfClauses(g *game.Game, src game.TargetSource, spec *game.TargetSpec) [
 	out := make([]LegalTargetsView, 0, spec.ClauseCount())
 	for i := 0; i < spec.ClauseCount(); i++ {
 		c := spec.Clause(i)
-		v := viewOfTargetClause(g, g.LegalTargetsForEffect(src, c), c)
+		v := viewOfTargetClause(g, src, "", g.LegalTargetsForEffect(src, c), c)
 		v.Label = c.Label
 		out = append(out, *v)
 	}
@@ -6876,6 +6964,10 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	// prints none of its own abilities, so it cannot have harnessed
 	// one on.
 	out.Harnessed = false
+	// #1700: cleared with the other designations rather than trusted
+	// to be false — only a permanent with a monstrosity ability can
+	// become monstrous, so the badge would hint at the hidden card.
+	out.Monstrous = false
 	// ADR 0090: a face-down permanent has no prepare spell (CR 708.2)
 	// and cannot be prepared, but the field is cleared with the other
 	// designations rather than trusted to be false.
@@ -7194,6 +7286,7 @@ func viewOfCard(c game.Card) CardView {
 			view.Solved = c.Solved
 		}
 		view.Harnessed = c.Harnessed
+		view.Monstrous = c.Monstrous
 		view.Prepared = c.Prepared
 	}
 	if c.BlockingTarget != uuid.Nil {
@@ -7704,7 +7797,7 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 		// its targets, so the menu needs the same picker a modal
 		// spell's hand card gets.
 		if a.Modes != nil {
-			v.Modes = viewOfModeSpec(g, caster, abilitySrc, a.Modes)
+			v.Modes = viewOfModeSpec(g, g.ModeQueryForSourceForEffect(c, caster), abilitySrc, a.Modes)
 		}
 		out = append(out, v)
 	}
@@ -7814,6 +7907,11 @@ func abilityLegalTargets(g *game.Game, src game.TargetSource, spec *game.TargetS
 	lt := g.LegalTargetsForEffect(src, spec)
 	v := abilityClauseView(lt, spec)
 	stampTargetSetRule(g, v, lt.Cards, spec)
+	// #1657: the division too. abilityClauseView never carried it, so
+	// a single-clause divided ability (Mogg Mob) reached the client
+	// with no `divide` and the picker never asked for the split the
+	// gate demands for two or more targets.
+	stampDivideAmount(g, v, src, "", spec)
 	return v
 }
 

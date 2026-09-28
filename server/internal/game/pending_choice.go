@@ -2826,6 +2826,15 @@ func (g *Game) queueTriggerPromptLocked(
 // priority-grant boundary (#809). Caller must hold g.mu. Added in S20
 // sub-PR 2.
 func (g *Game) queuePickTargetLocked(tc TriggerContext, source Card, lki Characteristic, t TriggeredAbility, doubledBy doublerRef, modes []int, steps []AnnouncedClause, spec *TargetSpec) {
+	// #1657, CR 603.3d → CR 601.2d: a trigger's divided amount read
+	// off the board ("X is the number of lands you control") or off its
+	// source's last-known state ("damage equal to its power") is fixed
+	// as the ability is put on the stack — which is this walk — and
+	// the prompt, the view and the gate all read the fixed number.
+	lkiCopy := lki
+	g.bindDivideAmountsLocked(steps, DivideAmountArgs{
+		Controller: source.Controller, Source: source.InstanceID, SourceLKI: &lkiCopy,
+	})
 	g.queuePickTargetStepLocked(&pickTargetFrame{
 		tc:        tc,
 		source:    source,

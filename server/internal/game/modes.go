@@ -106,46 +106,58 @@ type ModeSpec struct {
 	// card that does not say the words expects. Added by #764.
 	Repeatable bool
 
-	// RaisedMax / RaiseMaxIf are a CONDITIONAL mode count (#1590):
-	// "Choose one. If you control a commander as you cast this spell,
-	// you may choose both instead" (Jeska's Will and the rest of the
-	// Commander Legends Will cycle), "If you control a Wizard as you
-	// cast this spell, you may choose two instead" (Flame of Anor).
-	// While RaiseMaxIf holds for the chooser, the upper bound is
-	// RaisedMax instead of Max; Min never moves, because every printed
-	// card on this shape says "you MAY choose both" — one bullet stays
-	// a legal answer.
+	// RaisedMax / RaisedMin / RaiseMaxIf are a CONDITIONAL mode count
+	// (#1590, #1655). While RaiseMaxIf holds, the upper bound is
+	// RaisedMax instead of Max, and the lower bound is RaisedMin
+	// instead of Min when RaisedMin is set. Three printed shapes:
 	//
-	// Read through modeMaxLocked / ModeMaxForEffect and nowhere else,
-	// at the moment the choice is MADE: CR 601.2b's announce for a
-	// spell, CR 602.2b's activation, CR 603.3c's mode_pick for a
+	//   - "If you control a commander as you cast this spell, you MAY
+	//     choose both instead" (Jeska's Will, Flame of Anor): the
+	//     maximum rises and Min stays, because one bullet is still a
+	//     legal answer. OrUpToIf.
+	//   - "If it was kicked, choose both instead" (Depth Defiler), "If
+	//     there are four or more card types among cards in your
+	//     graveyard, choose both instead" (Prophetic Titan): no "may",
+	//     so the MINIMUM rises with it and one bullet is no longer an
+	//     answer. InsteadIf, RaisedMin == RaisedMax.
+	//   - "If this spell was kicked, choose any number instead"
+	//     (Inscription of Ruin): the maximum becomes every bullet and
+	//     Min stays. AnyNumberIf.
+	//
+	// Read through modeBoundsLocked / ModeBoundsForEffect and nowhere
+	// else, at the moment the choice is MADE: CR 601.2b's announce for
+	// a spell, CR 602.2b's activation, CR 603.3c's mode_pick for a
 	// trigger. The answer is recorded in StackItem.Modes and is never
 	// re-asked, so a commander that leaves after the announcement
 	// changes nothing — "as you cast this spell" is a check, not a
 	// duration. The view stamps the same answer per caster onto
-	// ModeSpecView.Max, and the bot's enumerator widens its selections
-	// by it, so the picker, the enumerator and the gate cannot
-	// disagree.
+	// ModeSpecView.Min / Max, and the bot's enumerator bounds its
+	// selections by it, so the picker, the enumerator and the gate
+	// cannot disagree.
 	//
-	// Both or neither: effects.Register panics on one without the
-	// other, and on a RaisedMax that does not exceed Max. Declared with
-	// OrUpToIf. Added by ADR 0065's 2026-09-27 amendment.
+	// RaiseMaxIf is required with either raise and refused without
+	// one; effects.Register panics on a RaisedMax that does not exceed
+	// Max, and on a RaisedMin outside Min..RaisedMax. Added by ADR
+	// 0065's 2026-09-27 amendment; RaisedMin by its 2026-09-28 one.
 	//
 	// RaiseMaxIf is a KEY, not a func (ADR 0041 phase 3, #1497): a
 	// ModeSpec is reachable from Game through a trigger's paused
 	// mode_pick frame, and the closure ratchet
 	// (testdata/closure_fields.txt) allows no new func-typed route. The
 	// predicate lives in a registry beside this file, registered once
-	// at init by ModeCondition, and the spec carries only its name.
+	// at init by ModeCondition / ModeConditionOnAnnouncement, and the
+	// spec carries only its name. The field keeps its #1590 name
+	// although it now governs the minimum too.
 	RaisedMax  int
+	RaisedMin  int
 	RaiseMaxIf ModeCountCondition
 }
 
 // ModeCountCondition names a registered "if <condition> as you cast
 // this spell" predicate for a conditional mode count (#1590). The key
 // is unexported, so the only way to hold a non-zero one is
-// ModeCondition, which is what makes a func literal on a ModeSpec a
-// compile error.
+// ModeCondition / ModeConditionOnAnnouncement, which is what makes a
+// func literal on a ModeSpec a compile error.
 type ModeCountCondition struct{ key string }
 
 // Key is the condition's registry key.
@@ -154,21 +166,70 @@ func (c ModeCountCondition) Key() string { return c.key }
 // IsZero reports whether no condition is named.
 func (c ModeCountCondition) IsZero() bool { return c.key == "" }
 
+// ModeCountQuery is what a conditional mode count's predicate is
+// asked about (#1655): who is choosing, and what was announced WITH
+// the choice. CR 601.2b announces the modes and the optional
+// additional costs in one step — "announce … whether they will pay
+// optional costs" — so "if this spell was kicked, choose any number
+// instead" is answerable at the same moment as "if you control a
+// commander".
+type ModeCountQuery struct {
+	// Chooser is the player choosing the modes — "you".
+	Chooser uuid.UUID
+
+	// OracleID is the catalog key of the card whose OptionalCosts
+	// slice is the index space OptionalCosts names. Empty when no
+	// optional cost can have been announced.
+	OracleID string
+
+	// OptionalCosts are the optional additional costs announced for
+	// the object whose modes are being chosen, as positions in the
+	// card's OptionalCosts (ADR 0073): CastSpellParams.OptionalCosts
+	// for a spell being cast, the spell's PaidCost.OptionalCosts for
+	// a "when you cast this spell" trigger (Depth Defiler), and the
+	// permanent's CastProvenance for an ability of a permanent that
+	// entered kicked.
+	OptionalCosts []int
+}
+
+// OptionalCostTimes counts how many times the optional cost keyed
+// `key` was announced — OptionalCostTimesPaid without needing a Card.
+func (q ModeCountQuery) OptionalCostTimes(key string) int {
+	return optionalCostTimesFor(q.OracleID, q.OptionalCosts, key)
+}
+
+// Kicked is CR 702.33's "if it was kicked": kicker or multikicker
+// announced at least once.
+func (q ModeCountQuery) Kicked() bool {
+	return q.OptionalCostTimes(KickerKey)+q.OptionalCostTimes(MultikickerKey) > 0
+}
+
 var modeCountConditions = struct {
 	sync.RWMutex
-	byKey map[string]func(g *Game, chooser uuid.UUID) bool
-}{byKey: map[string]func(g *Game, chooser uuid.UUID) bool{}}
+	byKey map[string]func(g *Game, q ModeCountQuery) bool
+}{byKey: map[string]func(g *Game, q ModeCountQuery) bool{}}
 
-// ModeCondition registers a conditional-mode-count predicate under
-// `key` and returns its name. Call it once, from a package-level var
-// in the file that uses it. Panics on an empty key, a nil predicate or
-// a duplicate, each of which is a card-file bug that would otherwise
-// ship a mode count that never rises.
+// ModeCondition registers a conditional-mode-count predicate over the
+// board under `key` and returns its name — "if you control a
+// commander". Call it once, from a package-level var in the file that
+// uses it. Panics on an empty key, a nil predicate or a duplicate,
+// each of which is a card-file bug that would otherwise ship a mode
+// count that never rises.
 //
 // The predicate is read-only and runs under g.mu, so it must not call
 // a public locking accessor; `chooser` is the player choosing the
 // modes — "you" in "if you control a commander".
 func ModeCondition(key string, fn func(g *Game, chooser uuid.UUID) bool) ModeCountCondition {
+	if fn == nil {
+		return ModeConditionOnAnnouncement(key, nil)
+	}
+	return ModeConditionOnAnnouncement(key, func(g *Game, q ModeCountQuery) bool { return fn(g, q.Chooser) })
+}
+
+// ModeConditionOnAnnouncement registers a predicate that may also read
+// what was announced with the choice — "if this spell was kicked"
+// (#1655). Same contract and same panics as ModeCondition.
+func ModeConditionOnAnnouncement(key string, fn func(g *Game, q ModeCountQuery) bool) ModeCountCondition {
 	if key == "" {
 		panic("game: ModeCondition with an empty key")
 	}
@@ -184,51 +245,94 @@ func ModeCondition(key string, fn func(g *Game, chooser uuid.UUID) bool) ModeCou
 	return ModeCountCondition{key: key}
 }
 
-// holds evaluates the named condition for `chooser`. An unknown or
-// zero key holds for nobody — the printed bound, the weaker reading.
-func (c ModeCountCondition) holds(g *Game, chooser uuid.UUID) bool {
+// holds evaluates the named condition. An unknown or zero key holds
+// for nobody — the printed bound, the weaker reading.
+func (c ModeCountCondition) holds(g *Game, q ModeCountQuery) bool {
 	if c.key == "" {
 		return false
 	}
 	modeCountConditions.RLock()
 	fn, ok := modeCountConditions.byKey[c.key]
 	modeCountConditions.RUnlock()
-	return ok && fn(g, chooser)
+	return ok && fn(g, q)
 }
 
-// OrUpToIf declares the conditional mode count on a spec built by one
-// of the catalog constructors — "choose one; if you control a
-// commander as you cast this spell, you may choose both instead" is
-// ChooseOne(…).OrUpToIf(2, effects.YouControlACommander). Mutates and
-// returns the spec so a card file reads like its oracle text, the way
-// TargetSpec.WithCount does.
+// OrUpToIf declares the "you MAY choose N instead" count on a spec
+// built by one of the catalog constructors — "choose one; if you
+// control a commander as you cast this spell, you may choose both
+// instead" is ChooseOne(…).OrUpToIf(2, effects.YouControlACommander).
+// Mutates and returns the spec so a card file reads like its oracle
+// text, the way TargetSpec.WithCount does.
 func (ms *ModeSpec) OrUpToIf(n int, cond ModeCountCondition) *ModeSpec {
 	ms.RaisedMax, ms.RaiseMaxIf = n, cond
 	return ms
 }
 
-// modeMaxLocked is the upper bound on how many options `chooser` may
-// pick from `ms` right now: RaisedMax while the spec's condition holds
-// for them, Max otherwise (#1590). 0 still means unbounded, as Max
-// always has.
-//
-// Caller must hold g.mu.
-func (g *Game) modeMaxLocked(ms *ModeSpec, chooser uuid.UUID) int {
-	if ms == nil {
-		return 0
-	}
-	if ms.RaisedMax > ms.Max && ms.RaiseMaxIf.holds(g, chooser) {
-		return ms.RaisedMax
-	}
-	return ms.Max
+// InsteadIf declares the "choose N instead" count with no "may" —
+// "If it was kicked, choose both instead" is
+// ChooseOne(…).InsteadIf(2, effects.WasKicked). The minimum rises
+// with the maximum, so one bullet is no longer an answer (#1655).
+func (ms *ModeSpec) InsteadIf(n int, cond ModeCountCondition) *ModeSpec {
+	ms.RaisedMax, ms.RaisedMin, ms.RaiseMaxIf = n, n, cond
+	return ms
 }
 
-// ModeMaxForEffect is modeMaxLocked on the *ForEffect surface, for the
-// callers already under g.mu that must quote the same bound the
-// announce gate enforces — the bot's move enumerator and the protocol
-// projection (#1590).
-func (g *Game) ModeMaxForEffect(ms *ModeSpec, chooser uuid.UUID) int {
-	return g.modeMaxLocked(ms, chooser)
+// AnyNumberIf declares "choose any number instead" / "choose one or
+// more instead": the maximum becomes every printed bullet and the
+// minimum stays (#1655).
+func (ms *ModeSpec) AnyNumberIf(cond ModeCountCondition) *ModeSpec {
+	ms.RaisedMax, ms.RaiseMaxIf = len(ms.Options), cond
+	return ms
+}
+
+// modeBoundsLocked is the lower and upper bound on how many options
+// may be picked from `ms` for the choice `q` describes: the raised
+// bounds while the spec's condition holds, Min / Max otherwise
+// (#1590, #1655). A hi of 0 still means unbounded, as Max always has.
+//
+// Caller must hold g.mu.
+func (g *Game) modeBoundsLocked(ms *ModeSpec, q ModeCountQuery) (lo, hi int) {
+	if ms == nil {
+		return 0, 0
+	}
+	if ms.RaisedMax > ms.Max && ms.RaiseMaxIf.holds(g, q) {
+		return max(ms.Min, ms.RaisedMin), ms.RaisedMax
+	}
+	return ms.Min, ms.Max
+}
+
+// ModeBoundsForEffect is modeBoundsLocked on the *ForEffect surface,
+// for the callers already under g.mu that must quote the same bounds
+// the announce gate enforces — the bot's move enumerator and the
+// protocol projection (#1590, #1655).
+func (g *Game) ModeBoundsForEffect(ms *ModeSpec, q ModeCountQuery) (lo, hi int) {
+	return g.modeBoundsLocked(ms, q)
+}
+
+// modeQueryForSourceLocked is the ModeCountQuery for a choice made on
+// behalf of `source` — a trigger's mode_pick or an activated ability.
+// The optional costs are the source's own announcement: the spell's
+// PaidCost while it is on the stack (a "when you cast this spell"
+// trigger — Depth Defiler), the permanent's CastProvenance once it has
+// entered (#1655).
+//
+// Caller must hold g.mu.
+func (g *Game) modeQueryForSourceLocked(source Card, chooser uuid.UUID) ModeCountQuery {
+	q := ModeCountQuery{Chooser: chooser, OracleID: CatalogKey(source)}
+	if item, ok := g.StackMeta[source.InstanceID]; ok && item != nil && item.Kind == StackItemSpell {
+		q.OptionalCosts = item.Paid.OptionalCosts
+		return q
+	}
+	q.OptionalCosts = source.Provenance.OptionalCosts
+	return q
+}
+
+// ModeQueryForSourceForEffect is modeQueryForSourceLocked on the
+// *ForEffect surface, for the enumerator's and the view's
+// activated-ability rows, which must ask the question the activation
+// gate asks.
+func (g *Game) ModeQueryForSourceForEffect(source Card, chooser uuid.UUID) ModeCountQuery {
+	return g.modeQueryForSourceLocked(source, chooser)
 }
 
 // CatalogModeSpec is the catalog hook the effects package wires at
@@ -246,13 +350,13 @@ func ModeSpecFor(oracleID string) *ModeSpec {
 // validateModes is the announce-time gate for a modal announcement:
 // every index must name an option, none may repeat unless the spec
 // is Repeatable (CR 700.2d), and the count must fall within
-// Min..max, where `max` is the bound modeMaxLocked quoted for the
-// chooser at this announcement (#1590 — the spec's own Max unless a
-// conditional mode count raised it). A nil spec (non-catalog card, or a catalog card that
+// lo..hi, the bounds modeBoundsLocked quoted for this announcement
+// (#1590, #1655 — the spec's own Min / Max unless a conditional mode
+// count raised them). A nil spec (non-catalog card, or a catalog card that
 // isn't modal) keeps the S13.1 free-form behaviour: any indexes the
 // client sends are recorded for opponents to see and players resolve
 // by hand.
-func validateModes(spec *ModeSpec, max int, modes []int) error {
+func validateModes(spec *ModeSpec, lo, hi int, modes []int) error {
 	if spec == nil {
 		return nil
 	}
@@ -266,7 +370,7 @@ func validateModes(spec *ModeSpec, max int, modes []int) error {
 		}
 		seen[m] = true
 	}
-	if len(modes) < spec.Min || (max > 0 && len(modes) > max) {
+	if len(modes) < lo || (hi > 0 && len(modes) > hi) {
 		return ErrInvalidParam
 	}
 	return nil

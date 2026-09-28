@@ -262,6 +262,7 @@ func everyFieldCardView(owner string, knowers map[string]bool) CardView {
 		ClassLevel:        3,
 		Solved:            true,
 		Harnessed:         true,
+		Monstrous:         true,
 		Prepared:          true,
 		// #781. Deliberately NOT added to redactedCardKeys: both are
 		// public on a card the viewer can see and both are stripped
