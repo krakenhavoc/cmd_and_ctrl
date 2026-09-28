@@ -51,6 +51,20 @@ func ModeDoing(label string, targets *game.TargetSpec, effect func(item *game.St
 	}
 }
 
+// YouControlACommander is the Commander Legends Will cycle's
+// conditional mode count — "If you control a commander as you cast
+// this spell, you may choose both instead":
+// ChooseOne(…).OrUpToIf(2, YouControlACommander) (#1590). It is the
+// free-spell cycle's controlsACommander registered by name, so "control
+// a commander" reads the same in both places: a commander PERMANENT
+// the chooser controls, anybody's.
+var YouControlACommander = game.ModeCondition("you-control-a-commander", controlsACommander)
+
+// YouControlAWizard is Flame of Anor's — "If you control a Wizard as
+// you cast this spell, you may choose two instead". ControlsA reads
+// effective subtypes, so a changeling counts.
+var YouControlAWizard = game.ModeCondition("you-control-a-wizard", ControlsA("Wizard"))
+
 // ChooseOne — "Choose one —".
 func ChooseOne(options ...game.ModeOption) *game.ModeSpec {
 	return &game.ModeSpec{Prompt: "Choose one", Options: options, Min: 1, Max: 1}
@@ -125,6 +139,29 @@ func ModeTarget(ctx *Context, occurrence int) (game.TargetRef, bool) {
 		}
 	}
 	return game.TargetRef{}, false
+}
+
+// OptionTargets is every still-legal target (CR 608.2b) announced for
+// the occurrence(s) that chose option `option`, for the older
+// OnResolve shape — a run of `if ctx.HasMode(i)` blocks in PRINTED
+// order (CR 608.2c) — once a card may take more than one bullet and
+// each bullet has its own target group (#764). Reading item.Targets[0]
+// instead is right only while exactly one bullet can be chosen: with
+// both chosen it hands the second bullet the first one's target.
+// Added for the conditional-mode-count Wills (#1590).
+func OptionTargets(ctx *Context, option int) []game.TargetRef {
+	var out []game.TargetRef
+	for occ, m := range ctx.Modes() {
+		if m != option {
+			continue
+		}
+		for _, t := range ctx.ModeTargets(occ) {
+			if ctx.IsTargetLegal(t) {
+				out = append(out, t)
+			}
+		}
+	}
+	return out
 }
 
 // DestroyTheModesTarget is "destroy target <thing>" as a modal

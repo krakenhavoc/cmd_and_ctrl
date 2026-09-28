@@ -817,13 +817,20 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		return ErrInvalidParam
 	}
 	// S20 sub-PR 4: modal spells — the chosen modes must be distinct,
-	// in range and the right count (CR 601.2b, 700.2).
+	// in range and the right count (CR 601.2b, 700.2). #1590: the
+	// count's upper bound is read HERE, "as you cast this spell", for
+	// a conditional mode count (Jeska's Will's "if you control a
+	// commander … choose both instead") — and only here: the choice
+	// lands on StackItem.Modes and nothing re-asks the condition, so a
+	// commander that leaves in response changes nothing.
 	modeSpec := ModeSpecFor(CatalogKey(card))
-	if err := validateModes(modeSpec, params.Modes); err != nil {
+	modeMax := g.modeMaxLocked(modeSpec, playerID)
+	if err := validateModes(modeSpec, modeMax, params.Modes); err != nil {
 		slog.Warn("cast_spell rejected: bad mode choice",
 			"card_name", card.Name,
 			"oracle_id", card.OracleID,
 			"modes_received", params.Modes,
+			"mode_max", modeMax,
 		)
 		return err
 	}

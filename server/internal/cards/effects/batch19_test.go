@@ -336,13 +336,11 @@ func TestB19DrownInDreamsDrawsXOrMillsTwiceX(t *testing.T) {
 	if opp.Library.Size() != library-6 || opp.Graveyard.Size() < 6 {
 		t.Errorf("X=3 mills 6, milled %d", library-opp.Library.Size())
 	}
-	// The declared gap: never both.
+	// No commander on the battlefield: both is refused (#1590 — the
+	// rider's condition is false, so the bound stays one).
 	id := handCardFull(me, "Drown in Dreams", "Instant", "{X}{2}{U}", b19DrownInDreamsOracle, nil)
-	if err := g.CastSpell(me.ID, id, game.CastSpellParams{Modes: []int{0, 1}, Targets: b16TargetPlayer(me.ID), XValue: 1}); err == nil {
-		t.Error("choose one — both modes is refused (the commander rider is the declared gap)")
-	}
-	if spec, _ := Lookup(b19DrownInDreamsOracle); spec.Completeness != CompletenessCaveats {
-		t.Error("the choose-both gap must be declared")
+	if err := g.CastSpell(me.ID, id, game.CastSpellParams{Modes: []int{0, 1}, Targets: append(b16TargetPlayer(me.ID), game.TargetRef{Kind: game.TargetPlayer, ID: me.ID, Mode: 1}), XValue: 1}); err == nil {
+		t.Error("without a commander, both modes is refused")
 	}
 }
 

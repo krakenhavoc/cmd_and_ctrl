@@ -524,8 +524,17 @@ type TargetDifferenceView struct {
 // ModeSpecView / ModeOptionView are the wire shape of game.ModeSpec
 // for the owner's hand cards. Added in S20 sub-PR 4.
 type ModeSpecView struct {
-	Prompt  string           `json:"prompt"`
-	Min     int              `json:"min"`
+	Prompt string `json:"prompt"`
+	Min    int    `json:"min"`
+	// Max is the upper bound for THIS caster right now (#1590): the
+	// printed Max, raised to RaisedMax while a conditional mode count
+	// holds — Jeska's Will's "if you control a commander as you cast
+	// this spell, you may choose both instead" stamps 2 for a seat
+	// with a commander on the battlefield and 1 for everybody else.
+	// Read by game.ModeMaxForEffect, the same bound the announce gate
+	// enforces, so a picker that offers up to `max` never offers a
+	// selection the server refuses. The public projection
+	// (publicModeSpec) puts the printed bound back.
 	Max     int              `json:"max"`
 	Options []ModeOptionView `json:"options"`
 	// Repeatable is CR 700.2d, "you may choose the same mode more
@@ -533,6 +542,11 @@ type ModeSpecView struct {
 	// option instead of a toggle, and each occurrence is asked for
 	// its own targets. Added by #764.
 	Repeatable bool `json:"repeatable,omitempty"`
+
+	// printedMax is the spec's own Max, before any conditional raise,
+	// for publicModeSpec: the raise is the asking seat's answer and a
+	// bystander's copy shows what the card prints. Server-only.
+	printedMax int
 }
 
 type ModeOptionView struct {
@@ -3647,6 +3661,9 @@ func publicModeSpec(ms *ModeSpecView) *ModeSpecView {
 		return nil
 	}
 	out := *ms
+	// #1590: `max` is the asking seat's answer when a conditional mode
+	// count raised it; the public copy shows the printed bound.
+	out.Max = ms.printedMax
 	out.Options = make([]ModeOptionView, len(ms.Options))
 	for i, o := range ms.Options {
 		o.LegalTargets = nil
@@ -4050,7 +4067,7 @@ func castStampsFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, kind
 	// that is up — and a face picker needs the answer for the other.
 	out.TargetMode = game.TargetModeFor(key)
 	if ms := game.ModeSpecFor(key); ms != nil {
-		out.Modes = viewOfModeSpec(g, src, ms)
+		out.Modes = viewOfModeSpec(g, caster, src, ms)
 	}
 	if ac := game.AdditionalCostFor(key); !ac.Empty() {
 		out.AdditionalCost = &AdditionalCostView{
@@ -4632,13 +4649,15 @@ func viewOfOptionalCosts(g *game.Game, caster uuid.UUID, src game.TargetSource, 
 }
 
 // viewOfModeSpec projects a modal card's options with each targeted
-// option's legal set from the caster's point of view. Caller must
-// hold g.mu.
-func viewOfModeSpec(g *game.Game, src game.TargetSource, ms *game.ModeSpec) *ModeSpecView {
+// option's legal set from the caster's point of view, and the mode
+// count's upper bound as `chooser` would be held to it right now
+// (#1590). Caller must hold g.mu.
+func viewOfModeSpec(g *game.Game, chooser uuid.UUID, src game.TargetSource, ms *game.ModeSpec) *ModeSpecView {
 	out := &ModeSpecView{
 		Prompt:     ms.Prompt,
 		Min:        ms.Min,
-		Max:        ms.Max,
+		Max:        g.ModeMaxForEffect(ms, chooser),
+		printedMax: ms.Max,
 		Repeatable: ms.Repeatable,
 		Options:    make([]ModeOptionView, 0, len(ms.Options)),
 	}
@@ -7506,7 +7525,7 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 		// its targets, so the menu needs the same picker a modal
 		// spell's hand card gets.
 		if a.Modes != nil {
-			v.Modes = viewOfModeSpec(g, abilitySrc, a.Modes)
+			v.Modes = viewOfModeSpec(g, caster, abilitySrc, a.Modes)
 		}
 		out = append(out, v)
 	}

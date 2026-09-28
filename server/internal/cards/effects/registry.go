@@ -43,6 +43,7 @@ func Register(spec Spec) {
 		if spec.Modes.Repeatable && spec.Modes.Max == 1 {
 			panic(fmt.Sprintf("effects.Register: %q is Repeatable with Max 1 — there is nothing to repeat", spec.Name))
 		}
+		checkRaisedModeMax(spec.Name, "Modes", spec.Modes)
 		for i, o := range spec.Modes.Options {
 			if o.Label == "" {
 				panic(fmt.Sprintf("effects.Register: %q mode %d has no label — the bullet is the whole of what the picker shows", spec.Name, i))
@@ -66,6 +67,7 @@ func Register(spec Spec) {
 			if a.Targets != nil {
 				panic(fmt.Sprintf("effects.Register: %q declares an activated ability with both Targets and Modes — put the target clause on the mode", spec.Name))
 			}
+			checkRaisedModeMax(spec.Name, "an activated ability's Modes", a.Modes)
 			for i, o := range a.Modes.Options {
 				if o.Label == "" {
 					panic(fmt.Sprintf("effects.Register: %q activated mode %d has no label", spec.Name, i))
@@ -87,6 +89,7 @@ func Register(spec Spec) {
 			panic(fmt.Sprintf("effects.Register: %q declares a trigger with both Targets and Modes — put the target clause on the mode", spec.Name))
 		}
 		if t.Modes != nil {
+			checkRaisedModeMax(spec.Name, "a trigger's Modes", t.Modes)
 			for i, o := range t.Modes.Options {
 				checkModeCost(spec.Name, "trigger mode", i, o.Cost, false)
 			}
@@ -970,6 +973,27 @@ func checkNoXBound(name, owner string, spec *game.TargetSpec) {
 		if spec.Clause(i).ManaValueAtMostX {
 			panic(fmt.Sprintf("effects.Register: %q declares \"mana value X or less\" on %s target clause %d — only a spell's clause is bound to an announced X", name, owner, i))
 		}
+	}
+}
+
+// checkRaisedModeMax validates a conditional mode count (#1590, ADR
+// 0065's 2026-09-27 amendment): RaisedMax and RaiseMaxIf come as a
+// pair, the raise must actually raise a bounded Max, and — unless the
+// spec is Repeatable — it may not promise more distinct bullets than
+// the card prints. Each is a card that would otherwise register
+// silently and ship a mode count the printed card does not have.
+func checkRaisedModeMax(name, owner string, ms *game.ModeSpec) {
+	if ms.RaiseMaxIf.IsZero() && ms.RaisedMax == 0 {
+		return
+	}
+	if ms.RaiseMaxIf.IsZero() || ms.RaisedMax == 0 {
+		panic(fmt.Sprintf("effects.Register: %q %s declares half a conditional mode count — use OrUpToIf(n, cond)", name, owner))
+	}
+	if ms.Max <= 0 || ms.RaisedMax <= ms.Max {
+		panic(fmt.Sprintf("effects.Register: %q %s raises Max %d to %d — a conditional count must raise a bounded Max", name, owner, ms.Max, ms.RaisedMax))
+	}
+	if !ms.Repeatable && ms.RaisedMax > len(ms.Options) {
+		panic(fmt.Sprintf("effects.Register: %q %s raises Max to %d with only %d bullets", name, owner, ms.RaisedMax, len(ms.Options)))
 	}
 }
 

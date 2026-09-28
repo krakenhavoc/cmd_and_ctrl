@@ -1,6 +1,11 @@
 package game
 
-import "fmt"
+import (
+	"fmt"
+	"sync"
+
+	"github.com/google/uuid"
+)
 
 // modes.go — modal spells, triggers and activated abilities
 // (CR 700.2). A card with "Choose one —" / "Choose two —" text
@@ -100,6 +105,130 @@ type ModeSpec struct {
 	// ErrInvalidParam at announce, which is what every printed modal
 	// card that does not say the words expects. Added by #764.
 	Repeatable bool
+
+	// RaisedMax / RaiseMaxIf are a CONDITIONAL mode count (#1590):
+	// "Choose one. If you control a commander as you cast this spell,
+	// you may choose both instead" (Jeska's Will and the rest of the
+	// Commander Legends Will cycle), "If you control a Wizard as you
+	// cast this spell, you may choose two instead" (Flame of Anor).
+	// While RaiseMaxIf holds for the chooser, the upper bound is
+	// RaisedMax instead of Max; Min never moves, because every printed
+	// card on this shape says "you MAY choose both" — one bullet stays
+	// a legal answer.
+	//
+	// Read through modeMaxLocked / ModeMaxForEffect and nowhere else,
+	// at the moment the choice is MADE: CR 601.2b's announce for a
+	// spell, CR 602.2b's activation, CR 603.3c's mode_pick for a
+	// trigger. The answer is recorded in StackItem.Modes and is never
+	// re-asked, so a commander that leaves after the announcement
+	// changes nothing — "as you cast this spell" is a check, not a
+	// duration. The view stamps the same answer per caster onto
+	// ModeSpecView.Max, and the bot's enumerator widens its selections
+	// by it, so the picker, the enumerator and the gate cannot
+	// disagree.
+	//
+	// Both or neither: effects.Register panics on one without the
+	// other, and on a RaisedMax that does not exceed Max. Declared with
+	// OrUpToIf. Added by ADR 0065's 2026-09-27 amendment.
+	//
+	// RaiseMaxIf is a KEY, not a func (ADR 0041 phase 3, #1497): a
+	// ModeSpec is reachable from Game through a trigger's paused
+	// mode_pick frame, and the closure ratchet
+	// (testdata/closure_fields.txt) allows no new func-typed route. The
+	// predicate lives in a registry beside this file, registered once
+	// at init by ModeCondition, and the spec carries only its name.
+	RaisedMax  int
+	RaiseMaxIf ModeCountCondition
+}
+
+// ModeCountCondition names a registered "if <condition> as you cast
+// this spell" predicate for a conditional mode count (#1590). The key
+// is unexported, so the only way to hold a non-zero one is
+// ModeCondition, which is what makes a func literal on a ModeSpec a
+// compile error.
+type ModeCountCondition struct{ key string }
+
+// Key is the condition's registry key.
+func (c ModeCountCondition) Key() string { return c.key }
+
+// IsZero reports whether no condition is named.
+func (c ModeCountCondition) IsZero() bool { return c.key == "" }
+
+var modeCountConditions = struct {
+	sync.RWMutex
+	byKey map[string]func(g *Game, chooser uuid.UUID) bool
+}{byKey: map[string]func(g *Game, chooser uuid.UUID) bool{}}
+
+// ModeCondition registers a conditional-mode-count predicate under
+// `key` and returns its name. Call it once, from a package-level var
+// in the file that uses it. Panics on an empty key, a nil predicate or
+// a duplicate, each of which is a card-file bug that would otherwise
+// ship a mode count that never rises.
+//
+// The predicate is read-only and runs under g.mu, so it must not call
+// a public locking accessor; `chooser` is the player choosing the
+// modes — "you" in "if you control a commander".
+func ModeCondition(key string, fn func(g *Game, chooser uuid.UUID) bool) ModeCountCondition {
+	if key == "" {
+		panic("game: ModeCondition with an empty key")
+	}
+	if fn == nil {
+		panic(fmt.Sprintf("game: mode condition %q has no predicate", key))
+	}
+	modeCountConditions.Lock()
+	defer modeCountConditions.Unlock()
+	if _, dup := modeCountConditions.byKey[key]; dup {
+		panic(fmt.Sprintf("game: mode condition %q registered twice", key))
+	}
+	modeCountConditions.byKey[key] = fn
+	return ModeCountCondition{key: key}
+}
+
+// holds evaluates the named condition for `chooser`. An unknown or
+// zero key holds for nobody — the printed bound, the weaker reading.
+func (c ModeCountCondition) holds(g *Game, chooser uuid.UUID) bool {
+	if c.key == "" {
+		return false
+	}
+	modeCountConditions.RLock()
+	fn, ok := modeCountConditions.byKey[c.key]
+	modeCountConditions.RUnlock()
+	return ok && fn(g, chooser)
+}
+
+// OrUpToIf declares the conditional mode count on a spec built by one
+// of the catalog constructors — "choose one; if you control a
+// commander as you cast this spell, you may choose both instead" is
+// ChooseOne(…).OrUpToIf(2, effects.YouControlACommander). Mutates and
+// returns the spec so a card file reads like its oracle text, the way
+// TargetSpec.WithCount does.
+func (ms *ModeSpec) OrUpToIf(n int, cond ModeCountCondition) *ModeSpec {
+	ms.RaisedMax, ms.RaiseMaxIf = n, cond
+	return ms
+}
+
+// modeMaxLocked is the upper bound on how many options `chooser` may
+// pick from `ms` right now: RaisedMax while the spec's condition holds
+// for them, Max otherwise (#1590). 0 still means unbounded, as Max
+// always has.
+//
+// Caller must hold g.mu.
+func (g *Game) modeMaxLocked(ms *ModeSpec, chooser uuid.UUID) int {
+	if ms == nil {
+		return 0
+	}
+	if ms.RaisedMax > ms.Max && ms.RaiseMaxIf.holds(g, chooser) {
+		return ms.RaisedMax
+	}
+	return ms.Max
+}
+
+// ModeMaxForEffect is modeMaxLocked on the *ForEffect surface, for the
+// callers already under g.mu that must quote the same bound the
+// announce gate enforces — the bot's move enumerator and the protocol
+// projection (#1590).
+func (g *Game) ModeMaxForEffect(ms *ModeSpec, chooser uuid.UUID) int {
+	return g.modeMaxLocked(ms, chooser)
 }
 
 // CatalogModeSpec is the catalog hook the effects package wires at
@@ -117,11 +246,13 @@ func ModeSpecFor(oracleID string) *ModeSpec {
 // validateModes is the announce-time gate for a modal announcement:
 // every index must name an option, none may repeat unless the spec
 // is Repeatable (CR 700.2d), and the count must fall within
-// Min..Max. A nil spec (non-catalog card, or a catalog card that
+// Min..max, where `max` is the bound modeMaxLocked quoted for the
+// chooser at this announcement (#1590 — the spec's own Max unless a
+// conditional mode count raised it). A nil spec (non-catalog card, or a catalog card that
 // isn't modal) keeps the S13.1 free-form behaviour: any indexes the
 // client sends are recorded for opponents to see and players resolve
 // by hand.
-func validateModes(spec *ModeSpec, modes []int) error {
+func validateModes(spec *ModeSpec, max int, modes []int) error {
 	if spec == nil {
 		return nil
 	}
@@ -135,7 +266,7 @@ func validateModes(spec *ModeSpec, modes []int) error {
 		}
 		seen[m] = true
 	}
-	if len(modes) < spec.Min || (spec.Max > 0 && len(modes) > spec.Max) {
+	if len(modes) < spec.Min || (max > 0 && len(modes) > max) {
 		return ErrInvalidParam
 	}
 	return nil

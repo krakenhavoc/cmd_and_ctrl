@@ -72,8 +72,11 @@ func (g *Game) queueModePickLocked(tc TriggerContext, source Card, lki Character
 		ModeOptionIndex: options,
 		ModeOptionLabel: labels,
 		ModeMin:         ms.Min,
-		ModeMax:         ms.Max,
-		ModeRepeatable:  ms.Repeatable,
+		// #1590: the bound as it stands NOW, as the trigger goes on
+		// the stack (CR 603.3c) — the prompt carries it, so the answer
+		// gate and the enumerator read the same number.
+		ModeMax:        g.modeMaxLocked(ms, source.Controller),
+		ModeRepeatable: ms.Repeatable,
 		modePickResume: &modePickFrame{
 			tc:        tc,
 			source:    source,

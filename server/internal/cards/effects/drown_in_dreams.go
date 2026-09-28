@@ -13,33 +13,39 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // both. Each mode is an ordinary X-scaled primitive on a player
 // target; X rides the cast (ctx.X()).
 //
-// SANDBOX GAP, weaker than printed: the "choose both" rider is not
-// offered. Each mode carries its own target, and a modal spec whose
-// maximum is above one may carry a target on at most one option
-// (per-mode target slots are the open multi-target work), so the
-// card is "choose one" whether or not a commander is on the board.
-// Never stronger: the wider choice is simply absent.
+// The commander rider is the conditional mode count #1590 built:
+// `OrUpToIf(2, YouControlACommander)`, read at announce (CR 601.2b)
+// and fixed from then on. With both chosen, each bullet has its own
+// "target player" (#764's per-mode target groups), so the draw and
+// the mill may point at different players; OptionTargets reads each
+// bullet's own group. The body runs the bullets in PRINTED order (CR
+// 608.2c) whatever order they were clicked in, which is observable
+// here: drawing X and then milling 2X off the same player is not the
+// same as the other way round.
 func init() {
 	Register(Spec{
 		OracleID:     "d3cec4b5-bc93-44a2-a29d-3478f0a5dac6",
 		Name:         "Drown in Dreams",
 		XMatters:     true,
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"Choosing both modes when you control a commander isn't implemented — you always choose one."},
+		Completeness: CompletenessFull,
 		Modes: ChooseOne(
 			Mode("Target player draws X cards.", TargetPlayer("target player")),
 			Mode("Target player mills twice X cards.", TargetPlayer("target player")),
-		),
+		).OrUpToIf(2, YouControlACommander),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetPlayer {
-				return nil
-			}
-			player := item.Targets[0].ID
 			if ctx.HasMode(0) {
-				return DrawCards{Player: player, N: ctx.X()}.Apply(ctx)
+				for _, t := range OptionTargets(ctx, 0) {
+					if err := (DrawCards{Player: t.ID, N: ctx.X()}).Apply(ctx); err != nil {
+						return err
+					}
+				}
 			}
 			if ctx.HasMode(1) {
-				return MillCards{Player: player, N: 2 * ctx.X()}.Apply(ctx)
+				for _, t := range OptionTargets(ctx, 1) {
+					if err := (MillCards{Player: t.ID, N: 2 * ctx.X()}).Apply(ctx); err != nil {
+						return err
+					}
+				}
 			}
 			return nil
 		},
