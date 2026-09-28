@@ -780,6 +780,36 @@ export function printedCostClaimable(card: CardView): boolean {
   return card.alternative_cost_required !== true;
 }
 
+// printedCostCastableNow narrows printedCostClaimable to "and the
+// engine would accept it AT THIS MOMENT" (#1686). The two disagree
+// only for a card carrying a granted alternative cost with its own
+// clock — a live miracle grant is instant-speed for its OWN claim and
+// says nothing about the printed one, which stays whatever timing the
+// card prints. Drawn on another player's turn, the printed sorcery
+// cost is still on the menu (`printedCostClaimable` stays true) but
+// not choosable until the caster's own main phase
+// (`printed_cost_timing_closed`).
+//
+// Every other card answers both questions the same way, because
+// nothing else on the wire carries a second claim with a different
+// clock — this is deliberately a second predicate rather than a
+// change to `printedCostClaimable` itself, which the zone browser's
+// button label and canCastFromHand's tooltip also read and which must
+// keep answering the zone-and-payability question alone (see their
+// own call sites for why timing does not belong there).
+export function printedCostCastableNow(card: CardView): boolean {
+  return printedCostClaimable(card) && card.printed_cost_timing_closed !== true;
+}
+
+// castableAlternativeCostsOf narrows alternativeCostsOf to the offers
+// the engine would accept RIGHT NOW (#1686) — dropping one whose
+// `timing_closed` bit is set. The cost picker is the one reader that
+// needs this: it is the only place a card's own claim and a granted
+// claim with a different clock are ever offered side by side.
+export function castableAlternativeCostsOf(card: CardView): AlternativeCostView[] {
+  return alternativeCostsOf(card).filter((o) => o.timing_closed !== true);
+}
+
 // optionalCostsOf returns the "you may pay an additional cost" offers
 // on a card — kicker, multikicker, buyback — or an empty list for the
 // vast majority that have none (ADR 0073).

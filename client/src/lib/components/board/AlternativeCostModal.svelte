@@ -50,13 +50,13 @@
   import { onDestroy } from "svelte";
   import type { CardView, PlayerView } from "../../protocol";
   import {
-    alternativeCostsOf,
+    castableAlternativeCostsOf,
     optionalCostMaxTimes,
     optionalCostOpponentOptions,
     optionalCostPayOptions,
     optionalCostSelection,
     optionalCostsOf,
-    printedCostClaimable,
+    printedCostCastableNow,
   } from "../../targeting";
   import ModalLayer from "../ModalLayer.svelte";
 
@@ -80,10 +80,17 @@
     return seats.find((s) => s.id === id)?.name ?? "Opponent";
   }
 
-  const offers = $derived(card ? alternativeCostsOf(card) : []);
+  // #1686: castableAlternativeCostsOf drops an offer the engine would
+  // refuse RIGHT NOW for timing (a live miracle grant's claim has its
+  // own clock, instant-speed, independent of the printed cost's) —
+  // alternativeCostsOf alone would still show it, exactly as it did
+  // before this fix, next to a printed cost the server would then
+  // reject with a sorcery-speed error.
+  const offers = $derived(card ? castableAlternativeCostsOf(card) : []);
   const addOns = $derived(card ? optionalCostsOf(card) : []);
-  // #1012: whether "Its mana cost" is a row at all.
-  const printedOK = $derived(card ? printedCostClaimable(card) : true);
+  // #1012 / #1686: whether "Its mana cost" is a row at all — on the
+  // zone-and-payability question AND on timing.
+  const printedOK = $derived(card ? printedCostCastableNow(card) : true);
 
   // How many times each optional cost is being paid, by index. A Map
   // rather than an array so the wire shape is built in exactly one

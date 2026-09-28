@@ -1438,9 +1438,11 @@ as it did.
   a card whose zone a PERMISSION prices — a Snapcaster'd instant, a
   library top under Bolas's Citadel — is the same shape.
 
-  Absent, which is every hand cast, every command-zone cast and a
-  Gravecrawler whose graveyard permission carries no price, means the
-  printed cost is on the menu as usual.
+  Absent, which is every ordinary hand cast, every command-zone cast
+  and a Gravecrawler whose graveyard permission carries no price,
+  means the printed cost is on the menu as usual. This field is a
+  ZONE-and-payability answer only — see the `printed_cost_timing_closed`
+  amendment below for the orthogonal "is now the moment" question.
 
   Read it in the cost picker: the "its mana cost" row is not an option
   the player declined, it is one the card does not offer from here, so
@@ -1469,6 +1471,78 @@ as it did.
   cast surfaces for everything in them), and exile keys its button off
   `exile_play`. The bit was still PUBLIC after #1015; #1055 below is
   where it stopped being.
+
+## The cost picker's own clock: `printed_cost_timing_closed` and `timing_closed` (#1686, 2026-09-28)
+
+Two additive fields, and a fix to a HAND-zone gap the ones above never
+covered: before this, `castStampsFor` (the function behind
+`alternative_costs`, `alternative_cost_required` and everything else
+in this section) was called for a card in HAND with a hard-coded
+`nil` permission — a hand's own printed text never needed one before
+S42's granted permissions existed, since CR 601.2 already opens the
+hand. Miracle (#1665) is the first keyword that grants a HAND-zone
+offer (`CastPermission{Zone: hand, AltCostKey: "miracle", Timing:
+flash}`), and under a `nil` grant `CastOffersForLocked` refuses a
+`RequiresGrant` offer outright — so a live miracle grant was invisible
+on the wire, in EVERY zone. Fixed by looking the permission up for
+hand and the command zone exactly as the graveyard and library
+branches already did; nothing changes for a card with no grant, which
+stays every card that isn't a live miracle.
+
+With the grant now visible, the second gap: `alternative_cost_required`
+and the offer LIST are a ZONE-and-payability answer, deliberately
+blind to timing (CR 307.1) — the exile strip's informational
+`cast_prices` badge reads the same list while a sorcery is between
+windows on purpose (#1389), so it must not go empty just because now
+is not the moment. A live miracle grant needed a genuinely SECOND
+signal: it opens its own claim at instant speed (CR 608.2g) and says
+nothing about the printed one, which stays whatever timing the card
+prints — a sorcery for Terminus. Drawn on another player's turn (or,
+just as often, in the card's own owner's DRAW step — sorcery speed
+needs a MAIN phase, and the draw step is not one), the printed claim
+is closed while the miracle claim stays open, and before this pair of
+fields the picker had no way to tell the two apart.
+
+- **`CardView.printed_cost_timing_closed`** (bool, omitted when false)
+  says the printed mana cost IS one of the prices this cast may claim
+  (`alternative_cost_required` is false) but the engine will refuse it
+  RIGHT NOW for timing. Stamped only when the card also carries at
+  least one entry in `alternative_costs` — the picker never opens over
+  a card with nothing else to offer, so a plain sorcery gains no stamp
+  here regardless of the step, and the overwhelming majority of cards
+  in every frame are untouched.
+- **`AlternativeCostView.timing_closed`** (bool, omitted when false) is
+  the same question asked of ONE offer: the engine will refuse this
+  specific claim right now even though its zone and payability both
+  check out. Every S22 keyword (overload, evoke, cleave, flashback,
+  escape, warp) answers to the card's own printed timing or a wider
+  per-player grant the same way the printed cost does, so this stays
+  false for them; miracle's claim is the one with a clock of its own
+  independent of the card's.
+
+Both are derived from `game.CastTimingOpenLocked`, under the grant
+narrowed to the specific claim being asked about
+(`CastPermission.ForClaim`) — the same narrowing `CastSpell` applies
+before its own timing check, so the picker and the announce path
+cannot disagree. Both are public, the same reasoning
+`ActivatedAbilityView.timing_closed` already gives: whose turn it is,
+what is on the stack and the battlefield's own grants are all public
+facts.
+
+**Read them in the cost picker, and nowhere else.** `printedCostCastableNow`
+and `castableAlternativeCostsOf` (`targeting.ts`) are the two new
+readers; `printedCostClaimable` and `alternativeCostsOf` are
+unchanged and still answer the zone-and-payability question alone,
+because the zone browser's button label and `canCastFromHand`'s
+tooltip both want that question specifically — a card whose sorcery
+window happens to be shut right now is not "uncastable from this
+zone", and conflating the two would print the wrong sentence in a
+tooltip that already has the right one from `legal_moves`.
+
+Additive on the wire (`v` unchanged): a client that ignores both
+fields behaves exactly as it did before this amendment, for every
+card that doesn't carry a granted alternative cost with its own clock
+— which today is every card except a live miracle.
 
 ## `castable_here` is the viewer's own answer (#1055, 2026-09-21)
 

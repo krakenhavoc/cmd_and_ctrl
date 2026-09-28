@@ -75,6 +75,10 @@ import (
 //   - by the holder PASSING PRIORITY (closeMiracleWindowLocked, from
 //     PassPriority): in paper the choice is made inside the
 //     resolution, and passing is how a player says "no";
+//   - by the sandbox's own skip-ahead, AdvanceStep (#1686): it is
+//     documented as "pass priority until this step ends," so it
+//     closes every seat's window with the same call, rather than
+//     leaving a grant open past the passes it stands in for;
 //   - by the end of the turn at the latest — the permission's
 //     zero Duration, stamped at the grant.
 //

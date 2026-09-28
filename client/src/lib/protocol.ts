@@ -1584,6 +1584,15 @@ export interface AlternativeCostView {
   // offer a payment the announce gate rejects. Absent for every offer
   // that prints none, which is all of them today.
   phyrexian_symbols?: number;
+  // #1686: the engine will refuse THIS offer right now for timing (CR
+  // 307.1) even though its zone and payability both check out. Every
+  // S22 keyword here answers to the card's own printed timing (or a
+  // wider per-player grant) the same way the printed cost does, so
+  // this stays absent for them; a live miracle grant is the first
+  // offer with a clock of its own that can disagree with the printed
+  // cost's. Read by the cost picker via castableAlternativeCostsOf
+  // (targeting.ts), which drops an offer this is set on.
+  timing_closed?: boolean;
 }
 
 // TapCostView is the "tap permanents you control to help pay for
@@ -2070,13 +2079,25 @@ export interface CastSurfaceView {
   // is castable at its flashback cost and at nothing else; a card a
   // permission PRICES is the same shape.
   //
-  // Absent — every hand cast, every command-zone cast, and a
+  // Absent — every ordinary hand cast, every command-zone cast, and a
   // Gravecrawler whose graveyard permission carries no price — means
   // the printed cost is on the menu as usual. `castable_here` is one
   // bit and says only that a cast is possible from here; this is the
   // other half of the sentence, and the client must not infer it from
   // the shape of the offer list.
   alternative_cost_required?: boolean;
+  // #1686: the printed cost IS one of the prices (`alternative_cost_required`
+  // is false) but the engine will refuse it RIGHT NOW for timing (CR
+  // 307.1) — the one hand-zone exception to "absent means the printed
+  // cost is on the menu as usual" above. A live miracle grant opens
+  // its OWN claim at instant speed and says nothing about the printed
+  // one, which stays whatever timing the card prints; drawn on another
+  // player's turn, the printed sorcery cast is still on the menu but
+  // not choosable until the caster's own main phase. Read via
+  // printedCostCastableNow (targeting.ts), not printedCostClaimable —
+  // the zone browser's button label and canCastFromHand's tooltip stay
+  // on the zone-and-payability question alone.
+  printed_cost_timing_closed?: boolean;
   // ADR 0073 (#664): the "you may pay an additional cost" offers this
   // card makes — kicker, multikicker, buyback. Rendered inside the
   // same picker the alternative costs open, because CR 601.2b
