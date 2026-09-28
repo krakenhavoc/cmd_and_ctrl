@@ -291,6 +291,9 @@ export interface TargetingState {
   // step being asked. Already resolved against the X the caster
   // announced.
   divide?: number;
+  // #1659: the CURRENT step's divide is X-based and X isn't known
+  // yet — see TargetStep.divideFromXUnresolved.
+  divideFromXUnresolved?: boolean;
   // #1563: the division announced so far, target id → share, for
   // every divided step already answered. Rides the action as
   // `distribution`.
@@ -328,6 +331,12 @@ export interface TargetStep {
   // against the announced X. Undefined for a clause that divides
   // nothing.
   divide?: number;
+  // #1659: true when the clause divides an X-based amount but X
+  // hasn't been collected for this walk — the banner shows "X"
+  // rather than the 0 `divide` resolves to in that case (every real
+  // walk collects X before targeting starts, so this is a defensive
+  // fallback, not a state the client should reach).
+  divideFromXUnresolved?: boolean;
 }
 
 export interface TargetRef {
@@ -391,6 +400,7 @@ export function stepsFor(
     distinct: c.distinct === true,
     different: c.different ? { label: c.different.label, keys: c.different.keys ?? {} } : undefined,
     divide: c.divide ? divideTotal(c.divide, choices?.xValue) : undefined,
+    divideFromXUnresolved: c.divide?.from_x === true && choices?.xValue === undefined,
   }));
 }
 
@@ -498,6 +508,7 @@ export function openWalk(
     done: [],
     different: first.different,
     divide: first.divide,
+    divideFromXUnresolved: first.divideFromXUnresolved,
     ...extra,
   };
 }
@@ -545,6 +556,7 @@ export function advance(t: TargetingState): TargetingState | null {
     done,
     different: s.different,
     divide: s.divide,
+    divideFromXUnresolved: s.divideFromXUnresolved,
   };
 }
 
@@ -972,14 +984,21 @@ export function beginForAbility(
   // to be a hard-coded 1 / 1 with a note naming the fix — give the
   // view a LegalTargetsView and emit the count server-side — which
   // #334 needed, because Teferi's "up to one target" is Min 0.
+  // #1659: xValue rides through to stepsFor so a divide-from-X clause
+  // (Katilda's activation-cost X, or any future X-cost ability with a
+  // "divided as you choose" clause) resolves against the announced X
+  // rather than silently landing on 0 — the two call sites used to
+  // drop it on the floor, which is invisible until a card exercises
+  // both mechanics at once.
   const steps =
     modes && modes.length > 0
-      ? abilityModeSteps(ability, modes)
+      ? abilityModeSteps(ability, modes, xValue)
       : stepsFor(
           (ability.target_mode || "any") as TargetingMode,
           ability.legal_targets,
           ability.clauses,
           0,
+          xValue !== undefined ? { xValue } : undefined,
         );
   targeting.set(
     openWalk(card, steps, {
@@ -1001,15 +1020,21 @@ export function beginForAbility(
 }
 
 // abilityModeSteps is modeSteps for an activated ability's own
-// ModeSpecView.
-export function abilityModeSteps(ability: ActivatedAbilityView, modes: number[]): TargetStep[] {
+// ModeSpecView. `xValue` is the ability's announced X (#1659) — see
+// the comment at its call site in beginForAbility.
+export function abilityModeSteps(
+  ability: ActivatedAbilityView,
+  modes: number[],
+  xValue?: number,
+): TargetStep[] {
   const options = ability.modes?.options ?? [];
   const out: TargetStep[] = [];
+  const choices = xValue !== undefined ? { xValue } : undefined;
   modes.forEach((optionIndex, occurrence) => {
     const option = options[optionIndex];
     if (!option?.legal_targets && !option?.clauses?.length) return;
     const mode = (option.target_mode || "any") as TargetingMode;
-    for (const st of stepsFor(mode, option.legal_targets, option.clauses, occurrence)) {
+    for (const st of stepsFor(mode, option.legal_targets, option.clauses, occurrence, choices)) {
       out.push({ ...st, label: st.label || option.label });
     }
   });

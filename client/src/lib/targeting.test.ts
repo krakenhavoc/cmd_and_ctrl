@@ -392,6 +392,48 @@ describe("activated-ability targeting", () => {
     });
     cancel();
   });
+
+  // #1659: an activated ability's own X (announced before targeting,
+  // same as a spell's) has to reach stepsFor so a divide-from-X clause
+  // resolves against it instead of silently landing on 0 — the two
+  // call sites used to drop the ability's xValue on the floor.
+  it("resolves a divide-from-X clause against the ability's announced X", () => {
+    const divideAbility = {
+      index: 0,
+      label: "{X}: deal X damage divided as you choose among any number of targets",
+      target_mode: "any",
+      legal_targets: { min: 0, max: 0, divide: { from_x: true } },
+    } as unknown as ActivatedAbilityView;
+
+    beginForAbility(bombardment, divideAbility, [], [], 4);
+
+    const t = get(targeting)!;
+    expect(t.divide).toBe(4);
+    expect(t.divideFromXUnresolved).toBeFalsy();
+    cancel();
+  });
+
+  it("a modal activated ability's divide-from-X clause also sees the announced X", () => {
+    const modalDivideAbility = {
+      index: 0,
+      label: "Choose one —",
+      modes: {
+        options: [
+          {
+            label: "deal X damage divided as you choose",
+            target_mode: "any",
+            legal_targets: { min: 0, max: 0, divide: { from_x: true } },
+          },
+        ],
+      },
+    } as unknown as ActivatedAbilityView;
+
+    beginForAbility(bombardment, modalDivideAbility, [], [], 3, undefined, [0]);
+
+    const t = get(targeting)!;
+    expect(t.divide).toBe(3);
+    cancel();
+  });
 });
 
 // --- S20 sub-PR 5: multi-target ------------------------------------
