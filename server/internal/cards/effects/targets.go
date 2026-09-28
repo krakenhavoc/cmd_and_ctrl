@@ -68,6 +68,17 @@ func Creature() CardPredicate {
 	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return c.IsCreature() }
 }
 
+// AttackingOrBlocking — "target attacking or blocking creature"
+// (Helicarrier Strike, #1703). A creature is attacking when
+// Card.AttackingTarget is set and blocking when Card.BlockingTarget
+// is (attack_target.go / blockers.go); both are cleared at combat's
+// end, so the clause is legal only during the combat that set them.
+func AttackingOrBlocking() CardPredicate {
+	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
+		return c.AttackingTarget != uuid.Nil || c.BlockingTarget != uuid.Nil
+	}
+}
+
 // NonbasicLand — "nonbasic land" (CR 205.4c): a land without the
 // basic SUPERTYPE. The land TYPE is not the test — a Sacred Foundry
 // is a Mountain and still nonbasic, and a Snow-Covered Swamp is
