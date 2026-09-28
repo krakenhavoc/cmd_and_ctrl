@@ -75,6 +75,18 @@ func StaticWhenChosen(option string, s game.StaticAbility) game.StaticAbility {
 	return s
 }
 
+// DoublerWhenChosen is WhenChosen for a game.TriggerDoubler — Windcrag
+// Siege's Mardu line, "If a creature attacking causes a triggered
+// ability of a permanent you control to trigger, that ability
+// triggers an additional time" (#1647). A TriggerDoubler is not an
+// ability-list entry (TriggersForCard / StaticAbilitiesForCard never
+// see it), so it carries its own ActiveWhen rather than reaching the
+// ordinary gate through one of those accessors.
+func DoublerWhenChosen(option string, d game.TriggerDoubler) game.TriggerDoubler {
+	d.ActiveWhen = ChosenIs(option)
+	return d
+}
+
 // ChosenOptionOf is the option stored on the permanent `source`, or ""
 // while none has been chosen. Read-only; safe under either lock. The
 // gate is the ordinary reader; this is for an effect that has to say
