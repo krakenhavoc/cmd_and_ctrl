@@ -23,6 +23,9 @@ import (
 // battle (CR 110.4), counted off the printed type line in the
 // graveyard.
 //
+// The bullets run in printed order (BulletsInPrintedOrder, CR 608.2c)
+// whatever order they were clicked in: the bounce lands before the
+// discard, so a bounced permanent is a card the opponent may discard.
 // "The rest into your graveyard" is a move, not a mill, and routes
 // through the graveyard replacements (TakeRestIntoGraveyard). No
 // simplification.
@@ -32,37 +35,47 @@ func init() {
 		Name:         "Wail of the Forgotten",
 		Completeness: CompletenessFull,
 		Modes: ChooseOne(
-			ModeDoing("Return target nonland permanent to its owner's hand.",
-				TargetPermanent("target nonland permanent", Nonland()),
-				BounceTheModesTarget),
-			ModeDoing("Target opponent discards a card.",
-				TargetPlayer("target opponent", Opponent()),
-				func(item *game.StackItem, ctx *Context, occ int) error {
-					t, ok := ModeTarget(ctx, occ)
-					if !ok || t.Kind != game.TargetPlayer {
-						return nil
-					}
-					ctx.Game.QueueDiscardChoiceForEffect(game.DiscardPrompt{
-						Player: t.ID,
-						Source: item.SourceCardID,
-						N:      1,
-					})
-					return nil
-				}),
-			ModeDoing("Look at the top three cards of your library. Put one of them into your hand and the rest into your graveyard.",
-				nil,
-				func(item *game.StackItem, ctx *Context, _ int) error {
-					player := item.Controller
-					return TakeFromLibraryToHand{
-						Player: player,
-						Cards:  ctx.Game.LookAtTopOfLibraryForEffect(player, 3),
-						Max:    1,
-						Label:  "Wail of the Forgotten — put one into your hand",
-						Then:   TakeRestIntoGraveyard,
-					}.Apply(ctx)
-				}),
+			Mode("Return target nonland permanent to its owner's hand.",
+				TargetPermanent("target nonland permanent", Nonland())),
+			Mode("Target opponent discards a card.",
+				TargetPlayer("target opponent", Opponent())),
+			Mode("Look at the top three cards of your library. Put one of them into your hand and the rest into your graveyard."),
 		).AnyNumberIf(Descended8),
+		OnResolve: func(item *game.StackItem, ctx *Context) error {
+			return BulletsInPrintedOrder(item, ctx,
+				BounceTheModesTarget,
+				wailOfTheForgottenDiscard,
+				wailOfTheForgottenLook)
+		},
 	})
+}
+
+// wailOfTheForgottenDiscard is the second bullet. After the bounce, in
+// printed order, so a permanent bounced to the same opponent's hand is
+// theirs to discard.
+func wailOfTheForgottenDiscard(item *game.StackItem, ctx *Context, occ int) error {
+	t, ok := ModeTarget(ctx, occ)
+	if !ok || t.Kind != game.TargetPlayer {
+		return nil
+	}
+	ctx.Game.QueueDiscardChoiceForEffect(game.DiscardPrompt{
+		Player: t.ID,
+		Source: item.SourceCardID,
+		N:      1,
+	})
+	return nil
+}
+
+// wailOfTheForgottenLook is the third bullet.
+func wailOfTheForgottenLook(item *game.StackItem, ctx *Context, _ int) error {
+	player := item.Controller
+	return TakeFromLibraryToHand{
+		Player: player,
+		Cards:  ctx.Game.LookAtTopOfLibraryForEffect(player, 3),
+		Max:    1,
+		Label:  "Wail of the Forgotten — put one into your hand",
+		Then:   TakeRestIntoGraveyard,
+	}.Apply(ctx)
 }
 
 // Descended8 is descend 8's mode count — "If there are eight or more

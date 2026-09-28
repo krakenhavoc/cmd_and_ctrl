@@ -13,7 +13,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	   control."
 //
 // Inscription of Ruin's count (#1655, AnyNumberIf(WasKicked)) on a
-// green body. The bullets run in printed order (CR 608.2c), and that
+// green body. The bullets run in printed order (CR 608.2c,
+// BulletsInPrintedOrder) whatever order they were clicked in, and that
 // order is observable: kicked with all three on one creature, the
 // counters land first, so the life bullet reads the bigger power and
 // the fight deals it. X is read at resolution over layered power.
@@ -31,32 +32,43 @@ func init() {
 			Kicker("{2}{G}"),
 		},
 		Modes: ChooseOne(
-			ModeDoing("Put two +1/+1 counters on target creature.",
-				TargetCreature("target creature"),
-				func(_ *game.StackItem, ctx *Context, occ int) error {
-					t, ok := ModeTarget(ctx, occ)
-					if !ok {
-						return nil
-					}
-					return AddCounter{Target: t.ID, Kind: "+1/+1", N: 2}.Apply(ctx)
-				}),
-			ModeDoing("Target player gains X life, where X is the greatest power among creatures they control.",
-				TargetPlayer("target player"),
-				func(_ *game.StackItem, ctx *Context, occ int) error {
-					t, ok := ModeTarget(ctx, occ)
-					if !ok || t.Kind != game.TargetPlayer {
-						return nil
-					}
-					return GainLife{Player: t.ID, Amount: b42GreatestPowerControlledBy(ctx.Game, t.ID)}.Apply(ctx)
-				}),
-			ModeDoing("Target creature you control fights target creature you don't control.",
+			Mode("Put two +1/+1 counters on target creature.",
+				TargetCreature("target creature")),
+			Mode("Target player gains X life, where X is the greatest power among creatures they control.",
+				TargetPlayer("target player")),
+			Mode("Target creature you control fights target creature you don't control.",
 				Clauses(
 					TargetCreature("target creature you control", YouControl()),
 					TargetCreature("target creature you don't control", OpponentControls()),
-				),
-				inscriptionOfAbundanceFight),
+				)),
 		).AnyNumberIf(WasKicked),
+		OnResolve: func(item *game.StackItem, ctx *Context) error {
+			return BulletsInPrintedOrder(item, ctx,
+				inscriptionOfAbundanceCounters,
+				inscriptionOfAbundanceLife,
+				inscriptionOfAbundanceFight)
+		},
 	})
+}
+
+// inscriptionOfAbundanceCounters is the first bullet.
+func inscriptionOfAbundanceCounters(_ *game.StackItem, ctx *Context, occ int) error {
+	t, ok := ModeTarget(ctx, occ)
+	if !ok {
+		return nil
+	}
+	return AddCounter{Target: t.ID, Kind: "+1/+1", N: 2}.Apply(ctx)
+}
+
+// inscriptionOfAbundanceLife is the second: X read now, over layered
+// power, so counters the first bullet just placed count.
+func inscriptionOfAbundanceLife(_ *game.StackItem, ctx *Context, occ int) error {
+	t, ok := ModeTarget(ctx, occ)
+	if !ok || t.Kind != game.TargetPlayer {
+		return nil
+	}
+	ctx.Game.RecomputeLayersIfStaleLocked()
+	return GainLife{Player: t.ID, Amount: b42GreatestPowerControlledBy(ctx.Game, t.ID)}.Apply(ctx)
 }
 
 // inscriptionOfAbundanceFight is the third bullet: this occurrence's

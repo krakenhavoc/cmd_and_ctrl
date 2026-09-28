@@ -182,6 +182,32 @@ func OptionTargets(ctx *Context, option int) []game.TargetRef {
 	return out
 }
 
+// BulletsInPrintedOrder runs each chosen bullet's body in PRINTED
+// order (CR 608.2c) — option 0's occurrences first, then option 1's —
+// whatever order the caster clicked them in. `bodies[i]` is option i's
+// body, handed the occurrence so it reads its own target group.
+//
+// For a card whose bullets can see each other (#1655: Depth Defiler's
+// bounce before its draw-then-discard, Inscription of Abundance's
+// counters before its "greatest power"), where the engine's ModeOption
+// Effect walk — announce order — would let the caster reorder them.
+// Declare the bullets with Mode, not ModeDoing, and call this from
+// OnResolve (a spell) or the ability's Effect (a trigger).
+func BulletsInPrintedOrder(item *game.StackItem, ctx *Context, bodies ...func(item *game.StackItem, ctx *Context, occ int) error) error {
+	modes := ctx.Modes()
+	for opt, body := range bodies {
+		for occ, m := range modes {
+			if m != opt || body == nil {
+				continue
+			}
+			if err := body(item, ctx, occ); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
 // DestroyTheModesTarget is "destroy target <thing>" as a modal
 // bullet's body — shared by Kolaghan's Command's artifact bullet and
 // Glissa Sunslayer's enchantment bullet, which differ only in the

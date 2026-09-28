@@ -37,29 +37,20 @@ func init() {
 			item.Controller, item.Owner = ev.Actor, ev.Actor
 			return item
 		},
-		Effect: func(*game.Game, *game.StackItem) error { return nil },
+		// CR 608.2c: printed order, whatever order the modes were
+		// picked in — the bounce lands before the draw and the
+		// discard, so a creature bounced to the target player's hand
+		// is a card they may discard.
+		Effect: func(g *game.Game, item *game.StackItem) error {
+			return BulletsInPrintedOrder(item, NewContext(g, item),
+				BounceTheModesTarget,
+				depthDefilerDrawThenDiscard)
+		},
 		Modes: ChooseOne(
-			ModeDoing("Return target creature to its owner's hand.",
-				TargetCreature("target creature"),
-				BounceTheModesTarget),
-			ModeDoing("Target player draws two cards, then discards a card.",
-				TargetPlayer("target player"),
-				func(item *game.StackItem, ctx *Context, occ int) error {
-					t, ok := ModeTarget(ctx, occ)
-					if !ok || t.Kind != game.TargetPlayer {
-						return nil
-					}
-					if err := (DrawCards{Player: t.ID, N: 2}).Apply(ctx); err != nil {
-						return err
-					}
-					ctx.Game.QueueDiscardChoiceForEffect(game.DiscardPrompt{
-						Player:   t.ID,
-						Source:   item.SourceCardID,
-						N:        1,
-						Question: "Depth Defiler — discard a card",
-					})
-					return nil
-				}),
+			Mode("Return target creature to its owner's hand.",
+				TargetCreature("target creature")),
+			Mode("Target player draws two cards, then discards a card.",
+				TargetPlayer("target player")),
 		).InsteadIf(2, WasKicked),
 	}
 	Register(Spec{
@@ -71,4 +62,22 @@ func init() {
 		},
 		Triggered: []game.TriggeredAbility{onCast},
 	})
+}
+
+// depthDefilerDrawThenDiscard is the second bullet.
+func depthDefilerDrawThenDiscard(item *game.StackItem, ctx *Context, occ int) error {
+	t, ok := ModeTarget(ctx, occ)
+	if !ok || t.Kind != game.TargetPlayer {
+		return nil
+	}
+	if err := (DrawCards{Player: t.ID, N: 2}).Apply(ctx); err != nil {
+		return err
+	}
+	ctx.Game.QueueDiscardChoiceForEffect(game.DiscardPrompt{
+		Player:   t.ID,
+		Source:   item.SourceCardID,
+		N:        1,
+		Question: "Depth Defiler — discard a card",
+	})
+	return nil
 }
