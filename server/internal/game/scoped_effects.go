@@ -71,10 +71,12 @@ const (
 	ModAddAttackRequirement ModKind = "addAttackRequirement" // layer 6
 	// ModAddBlockRequirement is a CR 509.1c block requirement (#1597):
 	// Text names which one (BlockRequirementKind — "blocks", "lure",
-	// "mustBeBlocked", "exactlyOne"). Layer 6 for ModAddAttackRequirement's
-	// reason (block_requirements.go). Irresistible Prey's "target
-	// creature must be blocked this turn if able", Taunting Challenge's
-	// "all creatures able to block target creature this turn do so".
+	// "mustBeBlocked", "exactlyOne", "blocksAttacker"). Layer 6 for
+	// ModAddAttackRequirement's reason (block_requirements.go).
+	// Irresistible Prey's "target creature must be blocked this turn if
+	// able", Taunting Challenge's "all creatures able to block target
+	// creature this turn do so", and — with Objects naming the attacker
+	// (#1684) — Provoke's "block it if able".
 	ModAddBlockRequirement ModKind = "addBlockRequirement" // layer 6
 )
 
@@ -239,6 +241,14 @@ type Mod struct {
 	// with haste", "Spirits" — read by the refusal sentence
 	// (BlockRule.Label).
 	Text string `json:"text,omitempty"`
+	// Objects are the objects a mod names — today only the one
+	// attacking object a "blocksAttacker" block requirement names
+	// (#1684; BlocksAttackerMod), Provoke's "block IT". Required (one
+	// entry) on that kind and refused on every other mod. A slice, so
+	// every other mod writes nothing and the record stays plain data
+	// (ADR 0041 P1); an older binary refuses a file carrying one
+	// (ADR 0041 P4), which the unknown kind already guarantees.
+	Objects []ObjectRef `json:"objects,omitempty"`
 }
 
 // AffectedObject is one member of a ScopedEffect's affected set: the
@@ -505,6 +515,38 @@ func AddBlockRequirementMod(kind BlockRequirementKind) Mod {
 	return Mod{Kind: ModAddBlockRequirement, Text: string(kind)}
 }
 
+// BlocksAttackerMod is "<affected creature> blocks <attacker> this turn
+// if able" (#1684): Provoke, Grappling Hook, Turntimber Basilisk. The
+// requirement names the attacking OBJECT, so it asks nothing once that
+// creature has left the battlefield, even if its card comes back.
+func BlocksAttackerMod(attacker ObjectRef) Mod {
+	return Mod{Kind: ModAddBlockRequirement, Text: string(BlockRequirementBlocksAttacker), Objects: []ObjectRef{attacker}}
+}
+
+// blockRequirementModProblem is the registration check for a
+// block-requirement mod: a known kind, and an attacker object exactly
+// when the kind names one. "" when the mod is sound.
+func blockRequirementModProblem(m Mod) string {
+	if m.Kind != ModAddBlockRequirement {
+		if len(m.Objects) != 0 {
+			return fmt.Sprintf("mod %q names objects, which only a blocksAttacker requirement reads", m.Kind)
+		}
+		return ""
+	}
+	kind := BlockRequirementKind(m.Text)
+	if !KnownBlockRequirementKind(kind) {
+		return fmt.Sprintf("names unknown block requirement %q", m.Text)
+	}
+	names := len(m.Objects) == 1 && m.Objects[0].ID != uuid.Nil
+	if (kind == BlockRequirementBlocksAttacker) != names {
+		return fmt.Sprintf("block requirement %q needs one attacking object exactly when it is blocksAttacker", m.Text)
+	}
+	if kind != BlockRequirementBlocksAttacker && len(m.Objects) != 0 {
+		return fmt.Sprintf("block requirement %q names objects it does not read", m.Text)
+	}
+	return ""
+}
+
 // GrantAbilitiesMod is "gains '<ability>'" (layer 6, ADR 0093 PR 4):
 // each affected object gets the named catalog bundles, with the
 // record's source as the grantor. Reads Grants. Keys are stored in
@@ -617,8 +659,8 @@ func (g *Game) appendScopedEffectLocked(sourceID uuid.UUID, affected []AffectedO
 		if m.Kind == ModGrantAbilities && len(m.Grants) == 0 {
 			panic(fmt.Sprintf("game: scoped effect %q grants no ability bundle", label))
 		}
-		if m.Kind == ModAddBlockRequirement && !KnownBlockRequirementKind(BlockRequirementKind(m.Text)) {
-			panic(fmt.Sprintf("game: scoped effect %q names unknown block requirement %q", label, m.Text))
+		if problem := blockRequirementModProblem(m); problem != "" {
+			panic(fmt.Sprintf("game: scoped effect %q %s", label, problem))
 		}
 		if problem := replacementModProblem(m); problem != "" {
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
@@ -667,6 +709,7 @@ func cloneMods(mods []Mod) []Mod {
 		m.Colors = copyStrings(m.Colors)
 		m.Keywords = copyStrings(m.Keywords)
 		m.Grants = copyStrings(m.Grants)
+		m.Objects = append([]ObjectRef(nil), m.Objects...)
 		out[i] = m
 	}
 	return out
@@ -1099,8 +1142,12 @@ func modApply(m Mod) func(*Characteristic, *Card, *Game, *Card) {
 		}
 	case ModAddBlockRequirement:
 		kind := BlockRequirementKind(m.Text)
+		var attacker ObjectRef
+		if len(m.Objects) > 0 {
+			attacker = m.Objects[0]
+		}
 		return func(ch *Characteristic, _ *Card, _ *Game, src *Card) {
-			r := BlockRequirement{Kind: kind}
+			r := BlockRequirement{Kind: kind, Attacker: attacker}
 			if src != nil {
 				r.Source, r.SourceName = src.InstanceID, src.Name
 			}

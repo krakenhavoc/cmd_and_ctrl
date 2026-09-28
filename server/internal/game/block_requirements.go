@@ -1,6 +1,9 @@
 package game
 
 import (
+	"fmt"
+	"sync"
+
 	"github.com/google/uuid"
 )
 
@@ -22,7 +25,7 @@ import (
 // block is illegal (CR 702.111b) and a requirement never beats a
 // restriction.
 //
-// # The four texts
+// # The five texts
 //
 //   - "blocks each combat if able" (Watchdog; Grand Melee's second
 //     line on every creature) — a requirement on the would-be BLOCKER,
@@ -37,6 +40,17 @@ import (
 //     one requirement on the attacker, obeyed by at least one blocker.
 //   - "must be blocked by exactly one creature if able" (Nacatl
 //     War-Pride) — one requirement, obeyed by exactly one blocker.
+//   - "target creature blocks THIS creature this turn if able" (Provoke,
+//     Grappling Hook, Turntimber Basilisk; #1684) — a requirement on
+//     the would-be BLOCKER that names one attacking OBJECT (instance
+//     and epoch, CR 400.7), obeyed only by blocking that attacker.
+//
+// A Lure may be narrowed to some blockers — "All Walls able to block
+// this creature do so" (Marble Priest), "All creatures with flying …"
+// (Talruum Piper). The narrowing is a registered FILTER KEY on the
+// requirement, never a closure (ADR 0041's ratchet: the requirement is
+// pure data, compared and copied with the characteristic), and a
+// blocker the filter does not match carries no requirement from it.
 //
 // # How it is judged in an incremental declaration
 //
@@ -91,15 +105,122 @@ const (
 	// BlockRequirementExactlyOne is "must be blocked by exactly one
 	// creature if able", on the attacker.
 	BlockRequirementExactlyOne BlockRequirementKind = "exactlyOne"
+	// BlockRequirementBlocksAttacker is "<this creature> blocks <that
+	// attacker> this turn if able" (Provoke, Grappling Hook, Turntimber
+	// Basilisk; #1684), on the creature that must block. It names ONE
+	// attacking object in BlockRequirement.Attacker, and only blocking
+	// that object obeys it: blocking anything else obeys nothing, and a
+	// new object the attacker's card has become is not it (CR 400.7).
+	BlockRequirementBlocksAttacker BlockRequirementKind = "blocksAttacker"
 )
 
 // KnownBlockRequirementKind reports whether this binary can interpret k.
 func KnownBlockRequirementKind(k BlockRequirementKind) bool {
 	switch k {
-	case BlockRequirementBlocks, BlockRequirementLure, BlockRequirementMustBeBlocked, BlockRequirementExactlyOne:
+	case BlockRequirementBlocks, BlockRequirementLure, BlockRequirementMustBeBlocked, BlockRequirementExactlyOne,
+		BlockRequirementBlocksAttacker:
 		return true
 	}
 	return false
+}
+
+// blockerSideRequirement reports whether a requirement of kind k sits
+// on the creature that must block (as opposed to on the attacker).
+func blockerSideRequirement(k BlockRequirementKind) bool {
+	return k == BlockRequirementBlocks || k == BlockRequirementBlocksAttacker
+}
+
+// Blocker filter keys (#1684): the registered narrowings a Lure may
+// carry in BlockRequirement.Filter. An identity like the kind itself —
+// never renamed, never reused — although today only a catalog static
+// writes one, so none reaches a snapshot.
+const (
+	// BlockerFilterWall is "All Walls able to block …" (Marble Priest).
+	BlockerFilterWall = "wall"
+	// BlockerFilterFlying is "All creatures with flying able to block
+	// …" (Talruum Piper).
+	BlockerFilterFlying = "flying"
+)
+
+// blockerFilters is the registry behind BlockRequirement.Filter. A
+// filter reads the would-be blocker as it is now (its effective
+// characteristics), because "all Walls able to block" asks about the
+// creature at the declaration, not when the Lure began.
+var blockerFilters = struct {
+	sync.RWMutex
+	byKey map[string]func(blocker *Card) bool
+}{byKey: map[string]func(blocker *Card) bool{
+	BlockerFilterWall:   func(b *Card) bool { return b.HasSubtype("Wall") },
+	BlockerFilterFlying: func(b *Card) bool { return HasKeyword(b, "flying") },
+}}
+
+// RegisterBlockerFilter adds a blocker filter under `key`. Panics on an
+// empty key, a nil predicate or a duplicate — each a card-file bug that
+// would otherwise surface as a Lure that silently binds nobody.
+func RegisterBlockerFilter(key string, match func(blocker *Card) bool) {
+	if key == "" || match == nil {
+		panic("game: RegisterBlockerFilter needs a key and a predicate")
+	}
+	blockerFilters.Lock()
+	defer blockerFilters.Unlock()
+	if _, dup := blockerFilters.byKey[key]; dup {
+		panic(fmt.Sprintf("game: blocker filter %q registered twice", key))
+	}
+	blockerFilters.byKey[key] = match
+}
+
+// KnownBlockerFilter reports whether `key` names a registered filter.
+// The empty key is "no filter" and is always known.
+func KnownBlockerFilter(key string) bool {
+	if key == "" {
+		return true
+	}
+	blockerFilters.RLock()
+	defer blockerFilters.RUnlock()
+	_, ok := blockerFilters.byKey[key]
+	return ok
+}
+
+// bindsBlocker reports whether Lure requirement r reaches `blocker`:
+// always without a filter, and — with one — only when the registered
+// predicate matches. An unregistered key binds nobody, which is the
+// weaker-than-printed direction.
+func (r BlockRequirement) bindsBlocker(blocker *Card) bool {
+	if r.Filter == "" {
+		return true
+	}
+	blockerFilters.RLock()
+	match := blockerFilters.byKey[r.Filter]
+	blockerFilters.RUnlock()
+	return match != nil && blocker != nil && match(blocker)
+}
+
+// namesAttacker reports whether BlocksAttacker requirement r names the
+// attacking permanent `atk` — the same instance AND the same object
+// (CR 400.7).
+func (r BlockRequirement) namesAttacker(atk *Card) bool {
+	return atk != nil && r.Attacker.ID == atk.InstanceID && r.Attacker.Epoch == atk.ObjectEpoch
+}
+
+// blockPairWeight is how many requirements blocker `b` blocking
+// attacker `atk` obeys that are PER PAIR — b's "blocks each combat"
+// (any attacker obeys it), b's "blocks that attacker" naming atk, and
+// each of atk's Lures that binds b. The search's arc cost.
+func blockPairWeight(b, atk *Card) int {
+	n := 0
+	for _, r := range blockRequirementsOf(b) {
+		switch {
+		case r.Kind == BlockRequirementBlocks,
+			r.Kind == BlockRequirementBlocksAttacker && r.namesAttacker(atk):
+			n++
+		}
+	}
+	for _, r := range blockRequirementsOf(atk) {
+		if r.Kind == BlockRequirementLure && r.bindsBlocker(b) {
+			n++
+		}
+	}
+	return n
 }
 
 // BlockRequirement is one CR 509.1c requirement on one object. Pure
@@ -113,6 +234,14 @@ type BlockRequirement struct {
 	// anybody asks.
 	Source     uuid.UUID
 	SourceName string
+	// Attacker is the attacking OBJECT a BlockRequirementBlocksAttacker
+	// names (#1684) — instance and epoch, so a creature that left and
+	// came back is not it. Zero on every other kind.
+	Attacker ObjectRef
+	// Filter narrows a BlockRequirementLure to the blockers a registered
+	// filter matches (KnownBlockerFilter; "wall", "flying"). Empty on
+	// every other kind, and on an ordinary Lure.
+	Filter string
 }
 
 // blockRequirementsOf is what the layer pass wrote onto `c`. Read off
@@ -186,8 +315,12 @@ func (g *Game) anyBlockRequirementLocked(defender uuid.UUID) bool {
 		if len(reqs) == 0 {
 			continue
 		}
-		if c.Controller == defender && c.IsCreature() && blockRequirementCount(reqs, BlockRequirementBlocks) > 0 {
-			return true
+		if c.Controller == defender && c.IsCreature() {
+			for _, r := range reqs {
+				if blockerSideRequirement(r.Kind) {
+					return true
+				}
+			}
 		}
 		if c.AttackingTarget != uuid.Nil && g.defendingPlayerForAttackerLocked(c) == defender {
 			return true
@@ -237,14 +370,16 @@ func (g *Game) blockRequirementHitsLocked(defender uuid.UUID, assign map[uuid.UU
 		if !blocking || atkID == uuid.Nil {
 			continue
 		}
+		atk := findBattlefieldCard(g, atkID)
 		for j, r := range blockRequirementsOf(b) {
-			if r.Kind == BlockRequirementBlocks {
+			switch {
+			case r.Kind == BlockRequirementBlocks,
+				r.Kind == BlockRequirementBlocksAttacker && r.namesAttacker(atk):
 				out = append(out, blockReqHit{req: r, holder: b.InstanceID, idx: j, blocker: b.InstanceID, attacker: atkID})
 			}
 		}
-		atk := findBattlefieldCard(g, atkID)
 		for j, r := range blockRequirementsOf(atk) {
-			if r.Kind == BlockRequirementLure {
+			if r.Kind == BlockRequirementLure && r.bindsBlocker(b) {
 				out = append(out, blockReqHit{req: r, holder: atkID, idx: j, blocker: b.InstanceID, attacker: atkID})
 			}
 		}
@@ -303,13 +438,11 @@ type brAttacker struct {
 	min     int
 	max     int // 0: unbounded
 	mb, one int // must-be-blocked / exactly-one requirement counts
-	lure    int
 	modes   []brMode
 }
 
 type brBlocker struct {
 	card    *Card
-	blocks  int
 	limited bool // counted by a whole-combat limit
 }
 
@@ -351,7 +484,6 @@ func (g *Game) bestBlockRequirementAdditionLocked(defender uuid.UUID, assign map
 			c0:   counts[c.InstanceID],
 			mb:   blockRequirementCount(reqs, BlockRequirementMustBeBlocked),
 			one:  blockRequirementCount(reqs, BlockRequirementExactlyOne),
-			lure: blockRequirementCount(reqs, BlockRequirementLure),
 		}
 		a.min, a.max = g.blockerBoundsLocked(c)
 		atks = append(atks, a)
@@ -368,19 +500,20 @@ func (g *Game) bestBlockRequirementAdditionLocked(defender uuid.UUID, assign map
 		if _, blocking := assign[b.InstanceID]; blocking {
 			continue
 		}
-		blks = append(blks, &brBlocker{card: b, blocks: blockRequirementCount(blockRequirementsOf(b), BlockRequirementBlocks)})
+		blks = append(blks, &brBlocker{card: b})
 	}
 	if len(blks) == 0 {
 		return 0, nil
 	}
-	// Pair legality, once.
-	legal := make([][]bool, len(blks))
+	// Pair legality and pair weight, once; -1 marks an illegal pair.
+	weight := make([][]int, len(blks))
 	anyPair := false
 	for i, b := range blks {
-		legal[i] = make([]bool, len(atks))
+		weight[i] = make([]int, len(atks))
 		for j, a := range atks {
+			weight[i][j] = -1
 			if g.BlockPairRefusalLocked(a.card, b.card).Legal() {
-				legal[i][j] = true
+				weight[i][j] = blockPairWeight(b.card, a.card)
 				anyPair = true
 			}
 		}
@@ -442,7 +575,7 @@ func (g *Game) bestBlockRequirementAdditionLocked(defender uuid.UUID, assign map
 		for i, a := range specials {
 			chosen[a] = a.modes[pick[i]]
 		}
-		if w, ok := g.solveBlockRequirementFlow(atks, blks, legal, chosen, room); ok && len(w) > 0 {
+		if w, ok := g.solveBlockRequirementFlow(atks, blks, weight, chosen, room); ok && len(w) > 0 {
 			if gain := g.blockAdditionGainLocked(defender, assign, w, obeyed); gain > bestGain {
 				bestGain, best = gain, w
 			}
@@ -550,11 +683,12 @@ func (g *Game) blockLimitRoomLocked(defender uuid.UUID, assign map[uuid.UUID]uui
 // minimum could not be filled.
 //
 // The network: source -> [limit room] -> blocker (1) -> attacker (1,
-// cost -(the blocker's "blocks" count + the attacker's Lure count)) ->
-// the attacker's mode arcs -> sink. A mode's first lo units cost -brBig
+// cost -blockPairWeight: the blocker's "blocks" count, its "blocks that
+// attacker" requirements naming this attacker, and the attacker's
+// Lures that bind this blocker) -> the attacker's mode arcs -> sink. A mode's first lo units cost -brBig
 // each, so the flow fills every minimum it can before it spends a
 // blocker on anything else; the fill is checked afterwards.
-func (g *Game) solveBlockRequirementFlow(atks []*brAttacker, blks []*brBlocker, legal [][]bool, chosen map[*brAttacker]brMode, room brRoom) ([]BlockDeclaration, bool) {
+func (g *Game) solveBlockRequirementFlow(atks []*brAttacker, blks []*brBlocker, weight [][]int, chosen map[*brAttacker]brMode, room brRoom) ([]BlockDeclaration, bool) {
 	nb, na := len(blks), len(atks)
 	src, lim := 0, 1
 	bNode := func(i int) int { return 2 + i }
@@ -582,12 +716,12 @@ func (g *Game) solveBlockRequirementFlow(atks []*brAttacker, blks []*brBlocker, 
 		}
 		return a.modes[0]
 	}
-	for i, b := range blks {
+	for i := range blks {
 		for j, a := range atks {
-			if !legal[i][j] || modeOf(a).closed {
+			if weight[i][j] < 0 || modeOf(a).closed {
 				continue
 			}
-			pairs = append(pairs, pairArc{b: i, a: j, arc: f.add(bNode(i), aNode(j), 1, -(b.blocks + a.lure))})
+			pairs = append(pairs, pairArc{b: i, a: j, arc: f.add(bNode(i), aNode(j), 1, -weight[i][j])})
 		}
 	}
 	type forced struct{ node, arc int }

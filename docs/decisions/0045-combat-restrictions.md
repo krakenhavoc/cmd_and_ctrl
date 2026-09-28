@@ -3777,3 +3777,178 @@ options it judges.
 - **Watchdog, Nacatl War-Pride, Alluring Scent, Bloodscent** and the other
   "one file, same constructors" cards are left for a card batch. Watchdog also
   needs its "creatures attacking you get −1/−0" static.
+
+## Amendment (2026-09-28, [#1684](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1684)): "blocks IT" and filtered Lures
+
+Follows up the #1597 amendment. Decisions 1–58 stand. That amendment's "What
+this does NOT decide" bullets on **Provoke / "target creature blocks it"**,
+**predicated Lures** and the **one-file cards** are superseded. Sprint S37
+(combat correctness), tracker [#880](https://github.com/krakenhavoc/cmd_and_ctrl/issues/880).
+
+### The rule
+
+- **Provoke** (CR 702.39a): "Whenever this creature attacks, you may have target
+  creature defending player controls untap and block it if able." Grappling Hook
+  ("target creature block it", "it" being the equipped creature) and Turntimber
+  Basilisk ("target creature block this creature") say the same thing without
+  the untap. Each is **one requirement on one creature, obeyed only by blocking
+  one particular attacker.** Blocking anything else obeys nothing. A creature
+  that left the battlefield and came back is a new object (CR 400.7) and is not
+  "it".
+- **Filtered Lures**: "All Walls able to block this creature do so" (Marble
+  Priest) and "All creatures with flying able to block this creature do so"
+  (Talruum Piper) are Lure, except that only the named blockers carry a
+  requirement from it.
+
+CR 509.1c is unchanged: a requirement never beats a restriction, so Provoke
+aimed at a creature that can't legally block the provoker (a flyer it can't
+reach, a menace attacker it can't block alone) asks nothing.
+
+### Decision 59: a fifth kind names the attacking object, and a Lure may carry a registered filter key
+
+**The kind.** `BlockRequirementBlocksAttacker` (`"blocksAttacker"`) joins the
+closed vocabulary. Like `blocks`, it sits on the would-be **blocker**.
+`BlockRequirement` gains `Attacker ObjectRef`, the instance ID and
+`Card.ObjectEpoch` of the attacker it names. It is obeyed when the blocker
+blocks the permanent whose instance and epoch both match. The requirement key
+(`blockReqHit.key`) is the holder and index, as for `blocks`, so it is one
+requirement however many attackers exist.
+
+**The record.** A static can't write this kind, because only a resolving effect
+knows which object attacked. It rides the existing `addBlockRequirement` mod
+with `Text: "blocksAttacker"` and a new field, **`Mod.Objects []ObjectRef`**,
+holding exactly one entry. The field is a slice rather than a pointer or a
+struct:
+
+- `TestScopedEffectIsPureData` forbids pointers.
+- A struct-valued `ObjectRef` would be written on every mod, and an older
+  binary would then refuse every restore point that carries a scoped effect,
+  not just the ones that use the kind.
+- With a slice, `omitempty` keeps every other mod byte-identical.
+
+Registration (`blockRequirementModProblem`) panics on four things:
+
+- a `blocksAttacker` mod without exactly one object;
+- any other block-requirement kind that names an object;
+- any other mod kind that names an object;
+- an unknown block-requirement kind (as before).
+
+Restore still refuses an unknown kind (`ErrUnknownEffectKey`). The snapshot
+shape grows additively (`scopedEffects[].mods[].objects`, and the LKI
+characteristic's `BlockRequirements[].Attacker` and `.Filter`), recorded in
+`snapshot_shape/v7.txt`. There is no schema bump, because a file written
+before the change has neither field. On the card side,
+`effects.BlocksAttackerUntilEOT{Blocker, Attacker}` builds the pinned
+until-end-of-turn record.
+
+**The filter.** `BlockRequirement` gains `Filter string`, a key into the
+engine's blocker-filter registry (`KnownBlockerFilter`,
+`RegisterBlockerFilter`). Two keys are built in: `wall` (`HasSubtype("Wall")`,
+so a changeling is a Wall) and `flying` (`HasKeyword`). A filter reads the
+blocker's **effective** characteristics at the declaration. The filter is a
+key and not a closure for two reasons:
+
+- `BlockRequirement` lives in `Characteristic`, which is copied and compared
+  with `slices.Equal` (`layer_dependency.go`), and a func field would not even
+  compile there.
+- ADR 0041's ratchet keeps closures out of anything that is data.
+
+An unregistered key binds nobody, which is weaker than printed and never
+stronger. `effects.FilteredLure(key)` builds the static. It and
+`blockRequirementStatic` panic at catalog load on an unregistered key, on a
+filter set on anything but a Lure, and on a static asked to write
+`blocksAttacker`.
+
+**The search.** Decision 57's network keeps its shape. What changes is the
+blocker → attacker arc cost. It was −(the blocker's `blocks` count + the
+attacker's Lure count). It is now **−`blockPairWeight(b, a)`**, which is:
+
+- the blocker's `blocks` requirements;
+- plus its `blocksAttacker` requirements that name *this* attacker;
+- plus the attacker's Lures whose filter binds *this* blocker.
+
+Every added requirement is still obeyed by exactly one pair, and each blocker
+still has capacity 1. So the flow counts each one at most once, and the
+witness is still **counted exactly by `blockRequirementHitsLocked` and
+re-checked by the ordinary validator**. Nothing the refusal or the enumerator
+is handed can be a declaration the verb refuses. `anyBlockRequirementLocked`'s
+fast path now recognises any blocker-side kind.
+
+**The refusal sentence.** The `block_requirement` reason is unchanged. The new
+kind reads like a Lure: "Grizzly Bears must block Goblin Grappler if able.",
+and "(Grappling Hook)" is added when the source is not the attacker. The wire
+is unchanged, since the kind never crossed it. `must_block` and the enumerator's
+`AlwaysLegal` required move come from the same witness, so they pick up both
+additions for free.
+
+**Provoke is a triggered ability, not a `PrintedKeywords` token.**
+`effects.Provoke()` returns an optional `TriggeredAbility`. It watches
+`EventAttack` for this creature, targets through
+`TargetCreatureDefendingPlayerControls`, untaps the target, and registers the
+record. "It" is read off `item.Trigger.Object`, the attacking object's
+last-known information, with the epoch it had when it attacked. So the item
+is a restore point and captures nothing. Provoke stays out of the closed
+keyword table for Exalted's reason. The table is for keywords the engine
+reads as a bare string and that another permanent can grant, and nothing
+grants provoke. A keyword joins the table only in the change that teaches the
+engine to honour it *as a token*, and this change teaches it as a trigger. Two
+instances trigger separately (CR 702.39b), which two constructor calls give.
+
+### Cards
+
+All are `full`:
+
+- **Goblin Grappler** (Provoke).
+- **Grappling Hook**: double strike, plus `TargetBlocksTheAttacker` on the
+  equipped creature.
+- **Turntimber Basilisk**: deathtouch, plus a landfall
+  `TargetBlocksThisCreature`. The requirement waits for the Basilisk to attack
+  this turn, and asks nothing if it never does.
+- **Marble Priest**: `FilteredLure(wall)`, plus a standing prevention of
+  combat damage dealt to it by Walls.
+- **Talruum Piper**: `FilteredLure(flying)`.
+- **Alluring Scent** and **Bloodscent**: a Lure record for the turn.
+- **Elvish Bard** and **Taunting Elf**: `AllAbleToBlockDoSo`.
+- **Canopy Stalker**: `MustBeBlocked`, plus a dies trigger that reads
+  `TurnTally.CreaturesDied` on resolution.
+- **Watchdog**: `BlocksEachCombat`, plus a layer 7c −1/−0 on creatures whose
+  attack target is its controller while it is untapped. The static declares
+  `DependsOnAttackingStatus` and rides the tap/untap invalidation.
+- **Nacatl War-Pride**: `exactlyOne`, plus X tapped-and-attacking token copies
+  of itself exiled at the next end step. Each token carries the same
+  requirement through the copied oracle ID.
+
+### Tests
+
+- `game/block_requirements_1684_test.go` covers:
+  - The provoked creature must block the provoker. Blocking the other attacker
+    is refused, the pass is refused until it blocks, and `must_block` stamps
+    exactly that pair.
+  - Against a flyer it can't reach, nothing is owed and it may block
+    elsewhere.
+  - A record naming another epoch of the card asks nothing.
+  - The flow puts the one slot under a limit on the provoker.
+  - Clone / `RestoreFrom` and a JSON round trip keep enforcing it, and the
+    snapshot carries `objects`.
+  - Mod validation.
+  - The filtered Lure binds only Walls, or only flyers, through a stubbed
+    static.
+  - An unregistered key binds nobody.
+  - The registry.
+- `cards/effects/block_requirement_cards_1684_test.go` has one test per card:
+  its main behaviour through a real attack and the defender's pass, plus one
+  refusal.
+- `legal/block_requirements_1684_test.go`:
+  - Every offered move is accepted.
+  - The pass is withheld, and the one `AlwaysLegal` move is the provoked
+    creature on the provoker.
+  - No offered move sends it at the other attacker.
+  - The withheld moves are refused.
+
+### What this does NOT decide
+
+- **Blocking costs** (CR 509.1d) and **"blocks each attacking creature"**
+  remain as the #1597 amendment left them.
+- **A filtered Lure as a data record** ("all Walls able to block target
+  creature this turn do so"). No card needs one. It would be a filter key on
+  the mod, validated like the kind.
