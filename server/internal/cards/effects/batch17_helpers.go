@@ -170,7 +170,7 @@ func b17PermanentSacrificedToPay(g *game.Game, item *game.StackItem) (uuid.UUID,
 // b17LastKnownPowerOffBattlefield is the power a card had when it
 // last left the battlefield, read without the harvester's LKI
 // characteristic (which only a dies trigger receives): its printed
-// power plus the +1/+1 and -1/-1 counters read back off the log,
+// power plus every P/T counter read back off the log (#1664),
 // floored at zero the way CurrentPower floors it. A static bonus
 // from another permanent is not in it — declared on the card that
 // reads this.
@@ -179,7 +179,8 @@ func b17LastKnownPowerOffBattlefield(g *game.Game, cardID uuid.UUID) int {
 	if !ok {
 		return 0
 	}
-	p := c.Power + b13LastKnownCounters(g, cardID, "+1/+1") - b13LastKnownCounters(g, cardID, "-1/-1")
+	dp, _ := b13LastKnownPTDelta(g, cardID)
+	p := c.Power + dp
 	if p < 0 {
 		return 0
 	}

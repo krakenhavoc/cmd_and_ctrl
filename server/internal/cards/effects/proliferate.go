@@ -84,6 +84,18 @@ var harmfulCardCounters = map[string]bool{
 	game.CounterStun:     true,
 }
 
+// harmfulCardCounter is harmfulCardCounters widened to every P/T
+// counter kind (#1664, CR 122.1a): a -2/-1 or a -0/-1 shrinks the
+// creature exactly as a -1/-1 does, and a +1/+0 or a +0/+1 grows it.
+// A P/T kind is harmful when it takes more than it gives.
+func harmfulCardCounter(name string) bool {
+	if harmfulCardCounters[name] {
+		return true
+	}
+	p, t, ok := game.ParsePTCounter(name)
+	return ok && p+t < 0
+}
+
 // harmfulPlayerCounters are the player-level counters you do not want
 // on yourself and do want on an opponent.
 var harmfulPlayerCounters = map[string]bool{
@@ -108,7 +120,7 @@ func BeneficialProliferateChoice(g *game.Game, controller uuid.UUID) (cards []uu
 		if len(c.Counters) == 0 {
 			continue
 		}
-		if wantsMoreCounters(c.Counters, harmfulCardCounters, c.Controller == controller) {
+		if wantsMoreCounters(c.Counters, harmfulCardCounter, c.Controller == controller) {
 			cards = append(cards, c.InstanceID)
 		}
 	}
@@ -116,7 +128,7 @@ func BeneficialProliferateChoice(g *game.Game, controller uuid.UUID) (cards []uu
 		if p == nil || p.Eliminated || len(p.Counters) == 0 {
 			continue
 		}
-		if wantsMoreCounters(p.Counters, harmfulPlayerCounters, p.ID == controller) {
+		if wantsMoreCounters(p.Counters, func(name string) bool { return harmfulPlayerCounters[name] }, p.ID == controller) {
 			players = append(players, p.ID)
 		}
 	}
@@ -129,14 +141,14 @@ func BeneficialProliferateChoice(g *game.Game, controller uuid.UUID) (cards []uu
 // kind on it is harmful — an opponent's creature with a -1/-1 counter
 // is a fine choice; the same creature also carrying a +1/+1 counter
 // is not, because proliferate would hand them both.
-func wantsMoreCounters(counters map[string]int, harmful map[string]bool, mine bool) bool {
+func wantsMoreCounters(counters map[string]int, harmful func(string) bool, mine bool) bool {
 	seen := false
 	for name, n := range counters {
 		if n <= 0 {
 			continue
 		}
 		seen = true
-		if wanted := !harmful[name]; wanted != mine {
+		if wanted := !harmful(name); wanted != mine {
 			// Mine and harmful, or theirs and helpful.
 			return false
 		}

@@ -58,11 +58,27 @@ export const COUNTER_STYLES: Record<string, CounterStyle> = {
 
 const NEUTRAL_STYLE: CounterStyle = { abbr: "?", color: "#6c7a99" };
 
+// PT_COUNTER matches every power/toughness counter name the server's
+// game.ParsePTCounter accepts: "[+-]N/[+-]M" (#1664, CR 122.1a).
+const PT_COUNTER = /^([+-])(\d{1,3})\/([+-])(\d{1,3})$/;
+
 // counterStyle resolves a counter name to its pin style, falling
 // back to a neutral style with the first 3 characters as the abbr.
+//
+// #1664: a P/T counter other than +1/+1 and -1/-1 (Contagion's -2/-1,
+// Dwarven Armorer's +1/+0) shows its WHOLE name — three characters
+// would draw "+1/" for both +1/+0 and +1/+2 — in the +1/+1 green when
+// it adds more than it takes and the -1/-1 red when it takes more.
 export function counterStyle(name: string): CounterStyle {
   const known = COUNTER_STYLES[name];
   if (known) return known;
+  const pt = PT_COUNTER.exec(name);
+  if (pt) {
+    const power = (pt[1] === "-" ? -1 : 1) * Number(pt[2]);
+    const toughness = (pt[3] === "-" ? -1 : 1) * Number(pt[4]);
+    const base = COUNTER_STYLES[power + toughness < 0 ? COUNTER_MINUS_ONE : COUNTER_PLUS_ONE];
+    return { abbr: name, color: base?.color ?? NEUTRAL_STYLE.color };
+  }
   return { ...NEUTRAL_STYLE, abbr: name.slice(0, 3) };
 }
 

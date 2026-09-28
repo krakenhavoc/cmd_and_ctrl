@@ -136,3 +136,59 @@ enough to verify counters are working at the table.
 - Counter-type registry gives S14+ a stable taxonomy for the
   effect catalog to bind against (any "put +1/+1 counter on ~"
   parser can name-key into the same constants the SBA loop reads).
+
+## Amendment (2026-09-28, #1664): every P/T counter kind changes power and toughness
+
+**Context.** §1 and the S13.2 gap analysis read "counters change P/T"
+as "+1/+1 and -1/-1 change P/T": `Card.PowerForComparison` and
+`Card.CurrentToughness` added `Counters["+1/+1"]` and subtracted
+`Counters["-1/-1"]`, and nothing else. CR 122.1a covers every
+"+X/+Y" and "-X/-Y" counter, and older cards print several: -2/-1
+(Contagion), +1/+0 and +0/+1 (Dwarven Armorer), -0/-1 (Wall of
+Roots), +1/+2 (Armor Thrull), +2/+2 (Baron Sengir). Such a counter was
+stored, drawn as a pip, and changed nothing — Wall of Roots made {G}
+every turn for free forever.
+
+**Decision.**
+
+1. **One parser.** `game.ParsePTCounter(name)` (`pt_counters.go`) is
+   the only place that decides whether a counter name is a P/T counter
+   and what it is worth. The grammar is closed: `[+-]N/[+-]M`, both
+   signs present, one to three decimal digits a side. "+X/+X", "1/1",
+   "loyalty" and any homebrew name are not P/T counters, so an unknown
+   name can never be mistaken for a stat change. `PTCounterDelta` sums a
+   counter map through it.
+2. **The counter step sums every kind.** The CR 613.4c step — which this
+   engine applies after the layer system, in `PowerForComparison` /
+   `CurrentToughness`, rather than inside layer 7 — reads
+   `PTCounterDelta`. The view, combat, the SBAs and every card that
+   reads "its power" go through those two helpers already, so they
+   follow. The catalog's three last-known-P/T readers (dies triggers
+   and off-battlefield reads, `b13LastKnownPower`,
+   `b17LastKnownPowerOffBattlefield`, `b29LastKnownToughnessOffBattlefield`)
+   read the same sum off the event log via `b13LastKnownPTDelta`.
+3. **CR 704.5q stays two kinds.** Annihilation is +1/+1 against -1/-1
+   and nothing else. A +1/+0 and a -1/-0 on one creature both stay; so
+   do a +1/+1 and a -2/-1. The §1 SBA is unchanged and now says so.
+4. **"+1/+1 counters" printed on a card still means that kind.**
+   Hardened Scales, Branching Evolution, Conclave Mentor, "the number
+   of +1/+1 counters on it" and every other kind-specific reader keep
+   naming `CounterPlusOne`: a +1/+2 counter is not a +1/+1 counter, and
+   Hardened Scales does not add to one. Doubling Season ("one or more
+   counters") doubles any kind, as printed.
+5. **Proliferate's automatic pick** treats a P/T kind as harmful when it
+   takes more than it gives (a -2/-1, a -0/-1), and helpful otherwise.
+6. **The client** pip for a P/T kind other than the two pinned ones
+   shows its whole name ("+1/+0", not "+1/") in the +1/+1 green or the
+   -1/-1 red. The wire is unchanged: `CardView.counters` already carried
+   the name as-is, and `power` / `toughness` already carried the sum.
+
+**Not changed.** The bot heuristic's `counterRemovalValue` still prices
+only +1/+1 / -1/-1 removal specially; any other kind is the generic
+rate. The heuristic package may not import `game` (ADR 0033 §3), and no
+catalogued card yet removes an odd P/T counter as a cost (Balduvian
+Hydra is the one that would).
+
+**Cards.** Contagion, Wall of Roots (the first printed mana ability
+whose cost adds a counter), Dwarven Armorer, Armor Thrull and Lightning
+Serpent, all `full`.

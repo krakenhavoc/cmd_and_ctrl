@@ -121,6 +121,23 @@ func b13LastKnownCounters(g *game.Game, cardID uuid.UUID, kind string) int {
 	return total
 }
 
+// b13LastKnownPTDelta is the power and toughness `cardID`'s P/T
+// counters added when it last left the battlefield — every P/T kind,
+// not just +1/+1 and -1/-1 (#1664, CR 122.1a). Same walk and same
+// newest-total-per-kind rule as b13LastKnownCounterTotal, summed
+// through game.PTCounterDelta so a departed creature's P/T is computed
+// by the rule the live one's was.
+func b13LastKnownPTDelta(g *game.Game, cardID uuid.UUID) (power, toughness int) {
+	last := map[string]int{}
+	b13LastKnownCounterWalk(g, cardID, func(ev game.Event) bool {
+		if _, seen := last[ev.Label]; !seen {
+			last[ev.Label] = ev.Amount
+		}
+		return true
+	})
+	return game.PTCounterDelta(last)
+}
+
 // b13LastKnownCounterTotal is the total number of counters of every
 // kind `cardID` had when it last left the battlefield — Twitching
 // Doll counts nest counters and anything else alike. Same walk as
@@ -182,10 +199,11 @@ func b13LastKnownCounterWalk(g *game.Game, cardID uuid.UUID, visit func(ev game.
 
 // b13LastKnownPower is a dead creature's power as it last was on the
 // battlefield: the harvester's LKI characteristic (layers applied)
-// plus its +1/+1 counters, minus its -1/-1 counters, floored at zero
-// the way CurrentPower floors it.
+// plus what its P/T counters added — every kind, CR 122.1a (#1664) —
+// floored at zero the way CurrentPower floors it.
 func b13LastKnownPower(g *game.Game, cardID uuid.UUID, lki game.Characteristic) int {
-	p := lki.Power + b13LastKnownCounters(g, cardID, "+1/+1") - b13LastKnownCounters(g, cardID, "-1/-1")
+	dp, _ := b13LastKnownPTDelta(g, cardID)
+	p := lki.Power + dp
 	if p < 0 {
 		return 0
 	}
