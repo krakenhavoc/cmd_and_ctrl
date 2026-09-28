@@ -131,8 +131,8 @@
   );
 
   // Live P/T comes straight off the wire: since S16 the server sends
-  // CurrentPower()/CurrentToughness() — effective P/T with +1/+1 and
-  // -1/-1 counter deltas already baked in — so re-adding counters
+  // CurrentPower()/CurrentToughness() — effective P/T with every P/T
+  // counter kind's delta already baked in (#1664) — so re-adding counters
   // here would double-count them. The printed parenthetical reads the
   // Scryfall metadata (string-typed; handles "*" stats) and only
   // renders once the meta fetch lands and the values actually differ.

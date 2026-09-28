@@ -3681,6 +3681,11 @@ func (g *Game) stateBasedActionsLocked() (fired, left bool) {
 
 	// Counter cancel (704.5q). Must run before destruction so the
 	// post-cancel state is what the lethal-damage SBA sees.
+	//
+	// #1664: ONLY +1/+1 against -1/-1. Every other P/T counter kind
+	// changes power and toughness (PTCounterDelta), but CR 704.5q
+	// names these two and no others: a +1/+0 and a -1/-0 on one
+	// creature both stay, as do a +1/+1 and a -2/-1.
 	for i := range g.Battlefield.Cards {
 		c := &g.Battlefield.Cards[i]
 		if !c.IsCreature() || c.Counters == nil {

@@ -58,6 +58,7 @@ var xMattersAllowlist = map[string]string{
 	"benevolent_hydra.go Benevolent Hydra":     "1/1 body: the Hydra survives at X=0 with its counter-boosting replacement and its {T} ability",
 	"farmer_cotton.go Farmer Cotton":           "1/1 legendary body: the creature stays even when it brings no Halflings and no Food",
 	"fated_firepower.go Fated Firepower":       "an enchantment with flash: the permanent stays on the battlefield at X=0, amplifying by the 0 fire counters it entered with",
+	"lightning_serpent.go Lightning Serpent":   "2/1 trample haste body: at X=0 it still attacks for 2 before the end-step sacrifice",
 	"pull_from_tomorrow.go Pull from Tomorrow": "\"then discard a card\" is fixed: X=0 draws nothing and still discards, so it is a bad play rather than a no-op",
 	"spiteful_banditry.go Spiteful Banditry":   "the Treasure-on-death trigger never reads X: at X=0 the enchantment deals no damage and is still an engine",
 	"springleaf_parade.go Springleaf Parade":   "the \"creature tokens you control have {T}: Add one mana of any color\" static never reads X",

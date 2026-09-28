@@ -1574,8 +1574,9 @@ type ManaAbilityCost struct {
 	// as one.
 	RemoveCounters *game.CounterRemovalCost
 
-	// AddCounter is a cost that puts a counter on the source. No
-	// printed mana ability has one; the slot exists because the
+	// AddCounter is a cost that puts a counter on the source — Wall
+	// of Roots' "Put a -0/-1 counter on this creature: Add {G}"
+	// (#1664, the first printed mana ability to use it). The
 	// component is declared once and owned by both ability kinds.
 	// Build it with AddCounterToThis(kind, n).AddCounter.
 	AddCounter *game.CounterAddCost

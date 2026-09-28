@@ -1,0 +1,7 @@
+---
+title: "Every P/T counter kind changes power and toughness"
+date: 2026-09-28
+issues: [1664]
+pr: 1673
+---
+**Every P/T counter kind changes power and toughness** (#1664, CR 122.1a / CR 613.4c / CR 704.5q, [ADR 0008 amendment 2026-09-28](decisions/0008-counter-mechanics.md)) — `Card.PowerForComparison` and `Card.CurrentToughness` read only `+1/+1` and `-1/-1`, so a -2/-1 (Contagion), a +1/+0 (Dwarven Armorer) or a -0/-1 (Wall of Roots) was stored, drawn as a pip, and changed nothing. `game.ParsePTCounter` is now the one parser (closed grammar `[+-]N/[+-]M`, both signs, 1–3 digits a side, so "loyalty", "1/1" and homebrew names are never stat changes) and `game.PTCounterDelta` sums a counter map through it; the two helpers read the sum, so the view, combat, the SBAs and every "its power" reader follow. The catalog's last-known P/T readers sum every kind off the event log (`b13LastKnownPTDelta`), and proliferate's automatic pick reads a P/T kind as harmful when it takes more than it gives. **Unchanged on purpose:** CR 704.5q annihilation is still +1/+1 against -1/-1 only, and every printed "+1/+1 counters" reader (Hardened Scales, Branching Evolution, Conclave Mentor) still names that one kind; Doubling Season doubles any kind, as printed. The client pip shows a P/T kind's whole name. Shipped on Contagion, Wall of Roots (the first printed mana ability whose cost adds a counter), Dwarven Armorer, Armor Thrull and Lightning Serpent, all `full`.

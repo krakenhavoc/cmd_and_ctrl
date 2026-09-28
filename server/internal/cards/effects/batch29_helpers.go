@@ -128,8 +128,8 @@ func b29SpiritsControlled(g *game.Game, controller uuid.UUID) int {
 // b29LastKnownToughnessOffBattlefield is the toughness a card had
 // when it last left the battlefield, read without the harvester's
 // LKI characteristic (which only a dies trigger receives): its
-// printed toughness plus the +1/+1 and -1/-1 counters read back off
-// the log — b17LastKnownPowerOffBattlefield's other half. A static
+// printed toughness plus every P/T counter read back off the log
+// (#1664) — b17LastKnownPowerOffBattlefield's other half. A static
 // bonus from another permanent is not in it; declared on the card
 // that reads this.
 func b29LastKnownToughnessOffBattlefield(g *game.Game, cardID uuid.UUID) int {
@@ -137,7 +137,8 @@ func b29LastKnownToughnessOffBattlefield(g *game.Game, cardID uuid.UUID) int {
 	if !ok {
 		return 0
 	}
-	return c.Toughness + b13LastKnownCounters(g, cardID, "+1/+1") - b13LastKnownCounters(g, cardID, "-1/-1")
+	_, dt := b13LastKnownPTDelta(g, cardID)
+	return c.Toughness + dt
 }
 
 // b29AuraNamesControlled is the set of names among the Auras

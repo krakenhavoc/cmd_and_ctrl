@@ -1095,8 +1095,9 @@ func (c *Card) IsKnownTo(viewerID uuid.UUID) bool {
 }
 
 // CurrentPower returns the card's combat-relevant power: the
-// post-layer effective power (S16: anthems, CDAs, etc.) plus any
-// +1/+1 counters, minus any -1/-1 counters. Reads via Effective()
+// post-layer effective power (S16: anthems, CDAs, etc.) plus what
+// every P/T counter on it adds (+1/+1, -1/-1, -2/-1, +1/+0 … —
+// CR 122.1a, #1664). Reads via Effective()
 // so layer-7c modifications (Glorious Anthem) and layer-7a CDAs
 // (Tarmogoyf) flow through naturally without combat code needing
 // to know about the layer engine.
@@ -1124,15 +1125,17 @@ func (c Card) CurrentPower() int {
 func (c Card) PowerForComparison() int {
 	p := c.Effective().Power
 	if c.Counters != nil {
-		p += c.Counters["+1/+1"]
-		p -= c.Counters["-1/-1"]
+		// #1664: every P/T counter kind (CR 122.1a), not just
+		// +1/+1 and -1/-1 — see pt_counters.go.
+		dp, _ := PTCounterDelta(c.Counters)
+		p += dp
 	}
 	return p
 }
 
 // CurrentToughness returns the card's combat-relevant toughness:
-// the post-layer effective toughness (S16: anthems, CDAs) plus any
-// +1/+1 counters, minus any -1/-1 counters. Used by the lethal-
+// the post-layer effective toughness (S16: anthems, CDAs) plus what
+// every P/T counter on it adds (CR 122.1a, #1664). Used by the lethal-
 // damage and 0-toughness SBAs (S13.1). May be zero or negative —
 // callers compare against DamageMarked directly. NOT clamped (cf.
 // CurrentPower) because the SBAs need to tell a real 0 from the
@@ -1145,8 +1148,8 @@ func (c Card) PowerForComparison() int {
 func (c Card) CurrentToughness() int {
 	t := c.Effective().Toughness
 	if c.Counters != nil {
-		t += c.Counters["+1/+1"]
-		t -= c.Counters["-1/-1"]
+		_, dt := PTCounterDelta(c.Counters)
+		t += dt
 	}
 	return t
 }
