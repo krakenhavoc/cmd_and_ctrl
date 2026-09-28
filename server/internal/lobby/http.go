@@ -1739,6 +1739,14 @@ func castParamsFromPreviewQuery(r *http.Request, xValue int) (game.CastSpellPara
 	if params.DiscardIDs, err = uuidListParam(q.Get("discard_ids"), "discard_ids"); err != nil {
 		return params, err
 	}
+	// #1703: teamwork's taps and the blighted creature, for the same
+	// reason — a creature tapped for teamwork cannot also tap for mana.
+	if params.TeamworkIDs, err = uuidListParam(q.Get("teamwork_ids"), "teamwork_ids"); err != nil {
+		return params, err
+	}
+	if params.BlightIDs, err = uuidListParam(q.Get("blight_ids"), "blight_ids"); err != nil {
+		return params, err
+	}
 	return params, nil
 }
 

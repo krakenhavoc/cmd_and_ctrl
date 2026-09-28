@@ -720,6 +720,24 @@ type OptionalCostView struct {
 	ChoosesOpponent bool     `json:"chooses_opponent,omitempty"`
 	OpponentOptions []string `json:"opponent_options,omitempty"`
 
+	// Teamwork is CR 702.194a's number — "tap any number of creatures
+	// you control with total power N or more" (#1703). TeamworkOptions
+	// is the viewer's untapped creatures that could be tapped for it;
+	// present-and-empty means the offer cannot be taken right now,
+	// because the whole set does not reach N. The picks ride cast_spell
+	// as `teamwork_ids`, and the client sums the cards' `power` exactly
+	// as it does for a crew picker.
+	Teamwork        int               `json:"teamwork,omitempty"`
+	TeamworkOptions *LegalTargetsView `json:"teamwork_options,omitempty"`
+
+	// Blight is the N of "you may blight N" (CR 701.68a): put N -1/-1
+	// counters on a creature you control. BlightOptions is the
+	// viewer's creatures, present-and-empty when they control none (CR
+	// 701.68b — they cannot choose to blight). The one pick rides
+	// cast_spell as `blight_ids`.
+	Blight        int               `json:"blight,omitempty"`
+	BlightOptions *LegalTargetsView `json:"blight_options,omitempty"`
+
 	// TargetMode / LegalTargets / Clauses are the target clause the
 	// spell has WHEN THIS COST IS PAID — a gift's "if the gift was
 	// promised, instead … target …" (CR 702.174m) — in exactly the
@@ -4836,6 +4854,19 @@ func viewOfOptionalCosts(g *game.Game, caster uuid.UUID, src game.TargetSource, 
 		}
 		if oc.Sacrifice != nil {
 			v.SacrificeOptions = sacrificeCostOptions(g, caster, oc.Sacrifice, uuid.Nil, false)
+		}
+		// #1703: the engine's own walks, so the picker offers exactly
+		// the creatures the validator accepts (#544).
+		if oc.Teamwork > 0 {
+			v.Teamwork = oc.Teamwork
+			v.TeamworkOptions = &LegalTargetsView{Min: 1, Max: 0}
+			if g.TeamworkPayableForEffect(caster, oc.Teamwork) {
+				v.TeamworkOptions.Cards = cardIDStrings(g.TeamworkOptionsForEffect(caster))
+			}
+		}
+		if oc.Blight > 0 {
+			v.Blight = oc.Blight
+			v.BlightOptions = &LegalTargetsView{Min: 1, Max: 1, Cards: cardIDStrings(g.BlightOptionsForEffect(caster))}
 		}
 		if oc.ChoosesOpponent {
 			v.ChoosesOpponent = true

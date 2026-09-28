@@ -40,6 +40,10 @@ type castParams struct {
 	// (CR 601.2b, ADR 0073), as positions in the card's OptionalCosts
 	// slice, repeated once per payment for a multikicker.
 	OptionalCosts []int `json:"optional_costs,omitempty"`
+	// TeamworkIDs / BlightIDs pay an announced teamwork or blight cost
+	// (#1703) — CastSpellParams.TeamworkIDs / BlightIDs.
+	TeamworkIDs []string `json:"teamwork_ids,omitempty"`
+	BlightIDs   []string `json:"blight_ids,omitempty"`
 	// Distribution is the division of a "divided as you choose"
 	// clause (#1563, CR 601.2d), target id → share. The enumerator
 	// always announces game.EvenDistribution — the amount split as
@@ -834,8 +838,18 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 		}
 	}
 
+	// #1703: teamwork's taps and blight's creature. ONE payment each,
+	// not every subset — crewPayment's discipline, and for crew's
+	// reason: the number is a floor, and the policy has nothing to
+	// choose between two sets that clear it. A set of optional costs
+	// the seat cannot pay is not announced at all.
+	teamIDs, blightIDs, ok := e.teamworkBlightPayment(optional, chosen)
+	if !ok {
+		return
+	}
+
 	budget := e.opts.MaxExpansionPerSource
-	emit := e.castMoveEmitter(g, card, from, offer, optional, chosen, giftTo)
+	emit := e.castMoveEmitter(g, card, from, offer, optional, chosen, giftTo, teamIDs, blightIDs)
 	// #1013: the first announcement the expansion makes, kept so the
 	// ALTERNATIVE cost payments can be offered against it below.
 	var first *announcedCast
@@ -995,10 +1009,16 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 					// these named. Village Rites naming the Eldrazi Spawn
 					// that was also its {B} is a cast the engine refuses;
 					// offering it is #544.
-					if len(discards)+len(sacs) > 0 &&
+					//
+					// #1703: and the same for the creatures tapped to
+					// teamwork — a Llanowar Elves in the team cannot
+					// also make the {G}.
+					if len(discards)+len(sacs)+len(teamIDs)+len(blightIDs) > 0 &&
 						!e.canPayExcluding(setCost, setX, spend, game.CastAutoTapExclusions(game.CastSpellParams{
 							DiscardIDs:   discards,
 							SacrificeIDs: sacs,
+							TeamworkIDs:  teamIDs,
+							BlightIDs:    blightIDs,
 						})) {
 						continue
 					}
@@ -1013,6 +1033,8 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 							dist:     dist,
 							discards: discards,
 							sacs:     sacs,
+							team:     teamIDs,
+							blight:   blightIDs,
 						}
 					}
 					emit(altCostSets[0], modes, targets, setX, setLife, dist, discards, sacs)
@@ -1067,6 +1089,10 @@ type announcedCast struct {
 	dist     map[uuid.UUID]int
 	discards []uuid.UUID
 	sacs     []uuid.UUID
+	// team and blight are the #1703 payments, excluded from the
+	// auto-tap plan the all-life payment is re-checked against.
+	team   []uuid.UUID
+	blight []uuid.UUID
 }
 
 // castEmitter writes one concrete cast move.
@@ -1089,6 +1115,7 @@ func (e *enumerator) castMoveEmitter(
 	optional []game.AdditionalCost,
 	chosen []int,
 	giftTo uuid.UUID,
+	teamIDs, blightIDs []uuid.UUID,
 ) castEmitter {
 	return func(altPaid []uuid.UUID, modes []int, targets []game.TargetRef, setX, phyLife int, dist map[uuid.UUID]int, discards, sacs []uuid.UUID) {
 		label := "Cast " + card.Name
@@ -1146,6 +1173,8 @@ func (e *enumerator) castMoveEmitter(
 				DiscardIDs:      idStrings(discards),
 				SacrificeIDs:    idStrings(sacs),
 				OptionalCosts:   chosen,
+				TeamworkIDs:     idStrings(teamIDs),
+				BlightIDs:       idStrings(blightIDs),
 				Distribution:    distributionWire(dist),
 				GiftOpponent:    giftWire(giftTo),
 				Strict:          true,
@@ -1370,6 +1399,8 @@ func (e *enumerator) allLifePayment(first *announcedCast, spend game.ManaSpendCo
 	if !e.canPayExcluding(reduced, first.x, spend, game.CastAutoTapExclusions(game.CastSpellParams{
 		DiscardIDs:   first.discards,
 		SacrificeIDs: first.sacs,
+		TeamworkIDs:  first.team,
+		BlightIDs:    first.blight,
 	})) {
 		return 0, false
 	}
