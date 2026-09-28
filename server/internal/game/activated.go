@@ -1194,7 +1194,7 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// CR 602.2b / 700.2: the modes are announced with the targets, in
 	// that order — the chosen bullets are what decide which target
 	// clauses the activation even has (#764).
-	if err := validateModes(ab.Modes, params.Modes); err != nil {
+	if err := validateModes(ab.Modes, g.modeMaxLocked(ab.Modes, playerID), params.Modes); err != nil {
 		return err
 	}
 	if ab.Modes == nil && len(params.Modes) > 0 {

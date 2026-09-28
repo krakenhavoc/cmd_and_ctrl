@@ -575,10 +575,8 @@ func TestB16FlameOfAnorIsChooseOneAndResolvesEachMode(t *testing.T) {
 	if opp.Hand.Size() != hand+2 {
 		t.Errorf("the target player drew %d, want 2", opp.Hand.Size()-hand)
 	}
-	spec, _ := Lookup(b16FlameOfAnorOracle)
-	if spec.Modes.Max != 1 || spec.Completeness != CompletenessCaveats {
-		t.Error("the Wizard bonus gap must be declared, and the spell stays choose-one")
-	}
+	// Choosing two, with and without a Wizard, is
+	// conditional_mode_count_test.go's (#1590).
 }
 
 func TestB16CircuitousRouteFetchesBasicsAndGatesTapped(t *testing.T) {

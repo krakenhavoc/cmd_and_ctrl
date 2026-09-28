@@ -1308,9 +1308,10 @@ func TestAkromasWillSecondBulletGrantsProtectionFromEachColor(t *testing.T) {
 	}
 }
 
-// Akroma's Will asks for ONE bullet: the commander clause that would
-// let a player take both is the declared simplification, so a
-// two-mode announcement is refused rather than quietly allowed.
+// Akroma's Will asks for ONE bullet without a commander on the
+// battlefield: the "choose both" rider's condition is false, so a
+// two-mode announcement is refused rather than quietly allowed
+// (#1590; the commander half is in conditional_mode_count_test.go).
 func TestAkromasWillRefusesBothModes(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]
@@ -1325,7 +1326,7 @@ func TestAkromasWillRefusesBothModes(t *testing.T) {
 		}
 	}
 	if err := g.CastSpell(me.ID, id, game.CastSpellParams{Modes: []int{0, 1}}); err == nil {
-		t.Error("choosing both bullets must be refused while the commander clause is unimplemented")
+		t.Error("choosing both bullets must be refused without a commander")
 	}
 }
 

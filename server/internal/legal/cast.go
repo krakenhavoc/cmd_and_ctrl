@@ -1190,8 +1190,10 @@ func (e *enumerator) canPayExcluding(
 }
 
 // legalModeSets lists every distinct mode selection of size
-// Min..Max, excluding any with more than one targeted option (the
-// engine's castTargetSpec rejects those).
+// Min..max, where max is the bound the announce gate will hold this
+// seat to — the printed Max, or the raised one while a conditional
+// mode count holds (#1590, game.ModeMaxForEffect). A seat without a
+// commander is never offered Jeska's Will's "both".
 func (e *enumerator) legalModeSets(src game.TargetSource, ms *game.ModeSpec) [][]int {
 	// ADR 0065 §6, "prefer the modes that have legal targets": an
 	// option whose clause cannot be filled is dropped before any
@@ -1201,7 +1203,7 @@ func (e *enumerator) legalModeSets(src game.TargetSource, ms *game.ModeSpec) [][
 	if !game.EnoughChoosableModes(len(options), ms) {
 		return nil
 	}
-	hi := ms.Max
+	hi := e.g.ModeMaxForEffect(ms, e.seat)
 	if hi <= 0 || (!ms.Repeatable && hi > len(options)) {
 		hi = len(options)
 	}

@@ -1451,6 +1451,11 @@ export interface ZoneView {
 export interface ModeSpecView {
   prompt: string;
   min: number;
+  // #1590: the bound THIS caster is held to right now — the printed
+  // max, raised while a conditional mode count holds (Jeska's Will's
+  // "if you control a commander as you cast this spell, you may choose
+  // both instead"). The server stamps it per caster, so a picker that
+  // offers up to `max` never offers a selection the gate refuses.
   max: number;
   options: ModeOptionView[];
   // #764, CR 700.2d: "you may choose the same mode more than once"

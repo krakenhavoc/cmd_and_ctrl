@@ -514,7 +514,7 @@ func TestB24WillOfTheAbzanEdictsTheBiggestOrReanimates(t *testing.T) {
 	dead := b17GraveyardCard(me, "Dead Bear", "Creature — Bear", "{1}{G}")
 	if err := b22TryModal(g, b24WillOfTheAbzanOracle, []int{0, 1},
 		[]game.TargetRef{{Kind: game.TargetPlayer, ID: a.ID}, {Kind: game.TargetCard, ID: dead}}); err == nil {
-		t.Fatal("choose both is the declared gap — one mode only")
+		t.Fatal("no commander: choose both is refused (#1590) — one mode only")
 	}
 	aLife, bLife := a.Life, b.Life
 	castModal(t, g, "Will of the Abzan", "Sorcery", b24WillOfTheAbzanOracle, []int{0},

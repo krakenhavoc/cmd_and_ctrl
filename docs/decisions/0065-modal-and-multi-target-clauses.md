@@ -607,3 +607,148 @@ discipline this file already keeps:
   detail Spree's per-bullet `Cost` cannot express without a bullet
   declaring a different cost depending on how many others are already
   chosen — left for that card.
+
+---
+
+## Amendment (2026-09-27, #1590): a conditional mode count — "you may choose both instead"
+
+**Sprint:** S45 — Modal spells, multi-target clauses and copy effects.
+Tracker [#888](https://github.com/krakenhavoc/cmd_and_ctrl/issues/888);
+the proof card is Jeska's Will on the Edea deck tracker
+[#1565](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1565).
+
+§3's `ModeSpec` bounds the count with two integers fixed at
+`Register`. The Commander Legends Will cycle prints a bound that
+depends on the board: *"Choose one. If you control a commander as you
+cast this spell, you may choose both instead."* Flame of Anor prints
+the same sentence about a Wizard. With nowhere for the condition to
+live, all six catalogued cards on this shape (Jeska's Will, Akroma's
+Will, Drown in Dreams, Will of the Mardu, Will of the Abzan, Flame of
+Anor) shipped as "choose one" with a caveat — weaker than printed,
+the #259 posture.
+
+### Decision: `RaisedMax` + `RaiseMaxIf` on the spec, read by one accessor
+
+```go
+type ModeSpec struct {
+    // … Prompt, Options, Min, Max, Repeatable …
+    RaisedMax  int
+    RaiseMaxIf ModeCountCondition // a registered KEY, not a func
+}
+
+// effects/modes.go, once
+var YouControlACommander = game.ModeCondition("you-control-a-commander", controlsACommander)
+
+// card file
+Modes: ChooseOne(
+    ModeDoing("Add {R} for each card in target opponent's hand.", …),
+    ModeDoing("Exile the top three cards of your library. …", nil, …),
+).OrUpToIf(2, YouControlACommander),
+```
+
+`(*Game).modeMaxLocked(ms, chooser)` — exported as `ModeMaxForEffect`
+— is the only reader: `RaisedMax` while the named condition holds for
+the chooser, `Max` otherwise. `Min` never moves, because every printed
+card on the shape says the caster *may* choose both. `OrUpToIf`
+mutates and returns the spec, like `TargetSpec.WithCount`, so the card
+file reads like its oracle text.
+
+**Why a key and not a func.** A `ModeSpec` is reachable from `Game`
+through a trigger's paused `mode_pick` frame, so a func-typed field on
+it is a new closure route, and ADR 0041 phase 3's ratchet
+(`testdata/closure_fields.txt`, `closureClassCeilings`) lets the
+blocker classes only shrink. `game.ModeCondition(key, fn)` registers
+the predicate once at init in a package-level registry and returns a
+`ModeCountCondition` whose key is unexported — the `BodyRef` idiom
+ADR 0041's tier 2 uses for delayed triggers — so the spec carries data
+and a func literal on it does not compile. An unregistered key holds
+for nobody: the printed bound, the weaker reading. The key is never
+persisted (the spec is re-derived from the catalog), so it needs no
+ledger.
+
+The predicate takes the CHOOSER, not the card, for the same reason
+`AlternativeCost.Condition` does (S28's Fierce Guardianship): "you
+control" is a question about a player. `effects.YouControlACommander`
+registers the free-spell cycle's existing `controlsACommander`, so
+"control a commander" means the same thing in both places: a
+commander PERMANENT the player controls, anybody's (a stolen one
+counts, an opponent's on their own side and one in the command zone
+do not). `effects.YouControlAWizard` registers `ControlsA("Wizard")`,
+Snuff Out's condition shape, for Flame of Anor.
+
+### Decision: read at the choice, never again
+
+The bound is read at the moment the choice is made — CR 601.2b's
+announce in `castSpellLocked`, CR 602.2b's activation in
+`activateCatalogAbilityLocked`, CR 603.3c's `mode_pick` prompt for a trigger —
+and passed to `validateModes(spec, max, modes)`, which no longer reads
+`spec.Max` itself. The answer lands on `StackItem.Modes` and nothing
+re-asks the condition, so "as you cast this spell" is a check and not
+a duration: a commander that dies in response does not take a bullet
+off the stack. Nothing new is stored — the multiset of chosen modes
+already IS the record, and a restore or a copy (CR 707.10) carries it
+as it always has.
+
+A trigger's `mode_pick` prompt carries the raised bound in
+`PendingChoice.ModeMax`, so `validateModePick` and the enumerator's
+answer walk (`legal/choices.go`) read the number the prompt was
+queued with. No catalogued trigger uses this today (SOLDIER Military
+Program is the first one that would), but a ModeSpec has three owners
+(§3) and a bound only one of them honoured would be the #544 bug
+waiting for its card.
+
+### Decision: the wire's `max` is the caster's bound; the public copy is the printed one
+
+`ModeSpecView.max` is stamped per caster from `ModeMaxForEffect` in
+`castStampsFor` and in the activated-ability rows, so
+`ModePickerModal.svelte` — which already bounds its selection by
+`spec.max` — offers "both" exactly when the gate would accept it,
+with no client change. `publicModeSpec` (#1172) puts the printed
+`Max` back on the public copy: the raise is the asking seat's answer,
+exactly as `legal_targets` is, even though the board it reads is
+public. No new wire field.
+
+### Decision: the enumerator widens by the same accessor
+
+`legal.legalModeSets` takes its upper bound from `ModeMaxForEffect`
+for the enumerating seat, so a bot without a commander is never
+offered Jeska's Will's "both" and a bot with one is.
+`TestJeskasWillBothIsOfferedOnlyWithACommander` dispatches every
+offer against the engine either way (#544).
+
+### Decision: `Register` refuses a half-declared or non-raising count
+
+`checkRaisedModeMax` panics at boot on `RaisedMax` without
+`RaiseMaxIf` (or the reverse), on a raise that does not exceed a
+bounded `Max`, and — for a non-repeatable spec — on a raise past the
+number of printed bullets. Each would register silently and ship a
+mode count the printed card does not have.
+
+### Consequences
+
+- Jeska's Will, Akroma's Will, Drown in Dreams, Will of the Mardu,
+  Will of the Abzan and Flame of Anor ship `CompletenessFull`. The
+  four whose bodies read `item.Targets[0]` or walked every target
+  against every chosen bullet now read each bullet's own target group
+  through `effects.OptionTargets(ctx, option)`, in PRINTED order from
+  `OnResolve` — which is observable on Will of the Mardu (the Warriors
+  are made before the damage counts your creatures) and Drown in
+  Dreams (draw, then mill).
+- `docs/protocol.md`'s `cast_spell` row says what `modes.max` means.
+
+### Out of scope, stated
+
+- **"Choose both instead" with no "may"** — the teamwork cards (HULK
+  SMASH!, Go Nuts!), Inscription of Ruin's "if this spell was kicked,
+  choose any number instead", Depth Defiler, Pyrrhic Strike. Their
+  condition is the caster's own optional-cost choice made in the SAME
+  announcement (ADR 0073), and some force the higher count rather than
+  permit it, so the bound depends on `params.OptionalCosts` and `Min`
+  moves too. The predicate here takes only the board.
+- **Board conditions on a trigger that FORCE the higher count** —
+  Prophetic Titan's delirium ("choose both instead", no "may"). The
+  trigger owner already reads the raised bound as the trigger goes on
+  the stack, but only `Max` is raised; a forced count needs `Min`
+  raised with it. Captain Kirk's "choose one or more instead" keeps
+  `Min` at one and would fit as is. Neither is catalogued by this
+  change.
