@@ -12,8 +12,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // self case is the ordinary "this dies" read on the LTB harvest; the
 // other case reads the dead card post-move — its controller survives
 // the trip to the graveyard — and admits what was a creature or a
-// planeswalker you controlled as it last existed (leftAsType, #1675). An opponent's creature is not "you
-// control" and an exile or a bounce is not a death.
+// planeswalker you controlled as it last existed (leftAsType, #1675).
+// An opponent's creature is not "you control" and an exile or a
+// bounce is not a death.
 //
 // No simplification.
 func init() {
