@@ -589,7 +589,7 @@ func (g *Game) specMatchesLocked(src TargetSource, spec *TargetSpec, targeting b
 		for _, z := range g.zonesOfKindLocked(zk) {
 			for i := range z.Cards {
 				c := z.Cards[i]
-				if targeting && !CanBeTargetedBy(&c, zk, src) {
+				if targeting && !g.canBeTargetedByLocked(&c, zk, src) {
 					continue
 				}
 				if spec.CardOK != nil && !spec.CardOK(g, src.Controller, c, zk) {
@@ -833,7 +833,7 @@ func (g *Game) specMatchLocked(src TargetSource, spec *TargetSpec, ref TargetRef
 			if c.InstanceID != ref.ID {
 				continue
 			}
-			if targeting && !CanBeTargetedBy(&c, z.Kind, src) {
+			if targeting && !g.canBeTargetedByLocked(&c, z.Kind, src) {
 				return false
 			}
 			if !spec.xBoundAdmits(c) {

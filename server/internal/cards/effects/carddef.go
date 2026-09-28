@@ -123,6 +123,8 @@ func buildDef(spec Spec) *game.CardDef {
 		AttackTaxes:                spec.AttackTaxes,
 		BlockRules:                 spec.BlockRules,
 		AttackLimits:               spec.AttackLimits,
+		HexproofBypasses:           spec.HexproofBypasses,
+		WardSuppressions:           spec.WardSuppressions,
 		CastableZones:              spec.CastableZones,
 		SpecialActions:             spec.SpecialActions,
 		SpecialActionGrants:        spec.SpecialActionGrants,

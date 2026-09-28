@@ -113,8 +113,17 @@ type CardDef struct {
 	// creatures can attack you each combat" (Crawlspace). Read through
 	// CatalogAttackLimits, keyed by CatalogAbilityKey; see
 	// attack_limits.go and ADR 0045 Decision 44 (#1507).
-	AttackLimits  []AttackLimit
-	CastableZones []ZoneKind
+	AttackLimits []AttackLimit
+	// HexproofBypasses are this permanent's "can be the targets of
+	// spells and abilities as though they didn't have hexproof"
+	// statics (CR 702.11) — Nowhere to Run, Kaya, Bane of the Dead.
+	// WardSuppressions are its "ward abilities of those creatures
+	// don't trigger" statics (CR 702.21). Both read from the
+	// battlefield through CatalogAbilityKey; see hexproof_bypass.go
+	// and ADR 0038's amendment of 2026-09-27 (#1560).
+	HexproofBypasses []HexproofBypass
+	WardSuppressions []WardSuppression
+	CastableZones    []ZoneKind
 
 	// SpecialActions are the CR 116.2 special actions the card offers
 	// from its owner's hand — foretell (CR 702.143a) and suspend
@@ -494,6 +503,18 @@ func init() {
 	CatalogAttackLimits = func(key string) []AttackLimit {
 		if d := catalogDef(key); d != nil {
 			return d.AttackLimits
+		}
+		return nil
+	}
+	CatalogHexproofBypasses = func(key string) []HexproofBypass {
+		if d := catalogDef(key); d != nil {
+			return d.HexproofBypasses
+		}
+		return nil
+	}
+	CatalogWardSuppressions = func(key string) []WardSuppression {
+		if d := catalogDef(key); d != nil {
+			return d.WardSuppressions
 		}
 		return nil
 	}

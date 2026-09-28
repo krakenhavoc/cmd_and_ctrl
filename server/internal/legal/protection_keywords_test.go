@@ -114,3 +114,56 @@ func TestEnumeratorStillSacrificesProtectedCreatures(t *testing.T) {
 		t.Errorf("protected creatures must stay sacrificeable: %v", sacs)
 	}
 }
+
+const oracleNowhereToRun = "da82ca96-a613-4d00-9e6b-1fece4fc23d0"
+
+// TestEnumeratorOffersHexproofTargetsUnderNowhereToRun is #1560's
+// half of the same guard, pointing the other way: once a static waives
+// hexproof, the engine accepts the target, so a bot that still withheld
+// it would be unable to make a play the rules allow. Shroud is not
+// waived and must stay withheld.
+func TestEnumeratorOffersHexproofTargetsUnderNowhereToRun(t *testing.T) {
+	g := newTable(t)
+	active := g.Seats[g.Turn.ActiveSeat]
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%4]
+	clearHand(active)
+	bolt := handCard(active, game.Card{
+		Name: "Lightning Bolt", TypeLine: "Instant", ManaCost: "{R}",
+		OracleID: oracleLightningBolt,
+	})
+	battlefieldCard(g, active, basic("Mountain", "Mountain"))
+	battlefieldCard(g, active, game.Card{
+		Name: "Nowhere to Run", TypeLine: "Enchantment", ManaCost: "{1}{B}",
+		OracleID: oracleNowhereToRun,
+	})
+	theirHexproof := battlefieldCard(g, opp, protectedCreature("Slippery Bogle", "{G/U}", "hexproof"))
+	theirShroud := battlefieldCard(g, opp, protectedCreature("Silhana Ledgewalker", "{1}{G}", "shroud"))
+	advanceTo(t, g, game.StepPrecombatMain)
+
+	moves := legal.EnumerateFor(g, active.ID)
+	dispatchAll(t, g, active.ID, moves)
+
+	targeted := map[string]bool{}
+	for _, m := range moves {
+		if m.Source != bolt {
+			continue
+		}
+		var p struct {
+			Targets []struct {
+				ID string `json:"id"`
+			} `json:"targets"`
+		}
+		if err := json.Unmarshal(m.Params, &p); err != nil {
+			t.Fatalf("bad Bolt params: %s", string(m.Params))
+		}
+		for _, tr := range p.Targets {
+			targeted[tr.ID] = true
+		}
+	}
+	if !targeted[theirHexproof.String()] {
+		t.Errorf("Nowhere to Run waives the opponent's hexproof — the bot must be offered the Bolt at it")
+	}
+	if targeted[theirShroud.String()] {
+		t.Errorf("shroud is not waived — the bot proposed a Bolt the engine would reject")
+	}
+}
