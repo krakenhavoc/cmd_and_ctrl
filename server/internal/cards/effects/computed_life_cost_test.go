@@ -141,8 +141,8 @@ func TestWarRoomUnaffordableLifeIsRefusedAndNotOffered(t *testing.T) {
 	if !ok {
 		t.Fatal("at 3 life the activation is affordable and must be offered")
 	}
-	if m.Cost.Life != 3 {
-		t.Errorf("move Cost.Life = %d, want the computed 3", m.Cost.Life)
+	if m.Cost == nil || m.Cost.Life != 3 {
+		t.Errorf("move Cost = %+v, want Life = the computed 3", m.Cost)
 	}
 }
 

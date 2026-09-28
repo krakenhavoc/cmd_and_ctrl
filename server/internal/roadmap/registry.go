@@ -392,6 +392,14 @@ var items = []Item{
 		NoCatalogExample: "Its only catalogued card hasn't been reviewed yet, so none is listed as fully automated.",
 	},
 	{
+		Slug: "computed-life-cost", Name: "Life costs that are counted", Kind: KindMechanic, Status: StatusImplemented,
+		Summary:  "Abilities whose life cost is worked out when you activate them, like paying life equal to the colors in your commanders' identity, or half your life.",
+		Rules:    []string{"601.2f", "602.2b"},
+		ADR:      "0020-activated-abilities.md",
+		Mechanic: "computed life cost",
+		Examples: []string{"War Room", "Murderous Betrayal"},
+	},
+	{
 		Slug: "cast-from-graveyard", Name: "Casting from your graveyard", Kind: KindMechanic, Status: StatusImplemented,
 		Summary:  "Cards whose own text lets you cast them from your graveyard.",
 		Mechanic: "casting from the graveyard",
