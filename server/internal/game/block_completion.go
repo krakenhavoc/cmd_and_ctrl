@@ -154,6 +154,11 @@ func (g *Game) FinishBlocks(seat uuid.UUID) error {
 	if !g.isDefendingPlayerLocked(seat) {
 		return ErrNotDefending
 	}
+	// #1597 / CR 509.1c: finishing is the declaration's checkpoint,
+	// exactly as the defender's pass is.
+	if err := g.blockCheckpointLocked(seat); err != nil {
+		return err
+	}
 	if g.completeBlockDeclarationLocked(seat) {
 		g.closeBlockDeclarationIfCompleteLocked()
 	}

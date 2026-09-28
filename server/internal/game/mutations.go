@@ -7017,6 +7017,15 @@ func (g *Game) passPriorityLocked() error {
 	// post-declaration window.
 	if g.Turn.Step == StepDeclareBlockers {
 		if h := g.Turn.PriorityHolder; h >= 0 && h < numSeats && g.Seats[h] != nil {
+			// #1597 / CR 509.1c: and so it is the declaration's
+			// requirement checkpoint — refused, with the requirement
+			// named, while a legal addition would still obey one more
+			// ("Grizzly Bears must block Prized Unicorn if able").
+			// Only while this defender's declaration is pending; the
+			// fast path keeps every table without a requirement out.
+			if err := g.blockCheckpointLocked(g.Seats[h].ID); err != nil {
+				return err
+			}
 			if g.completeBlockDeclarationLocked(g.Seats[h].ID) && g.closeBlockDeclarationIfCompleteLocked() {
 				return nil
 			}

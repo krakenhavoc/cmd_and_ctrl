@@ -69,6 +69,13 @@ const (
 	// ModAddRestrictions is: not a characteristic, written where the
 	// text sits, only ever appended to (attack_requirements.go).
 	ModAddAttackRequirement ModKind = "addAttackRequirement" // layer 6
+	// ModAddBlockRequirement is a CR 509.1c block requirement (#1597):
+	// Text names which one (BlockRequirementKind — "blocks", "lure",
+	// "mustBeBlocked", "exactlyOne"). Layer 6 for ModAddAttackRequirement's
+	// reason (block_requirements.go). Irresistible Prey's "target
+	// creature must be blocked this turn if able", Taunting Challenge's
+	// "all creatures able to block target creature this turn do so".
+	ModAddBlockRequirement ModKind = "addBlockRequirement" // layer 6
 )
 
 // ModGrantAbilities gives each affected object the named catalog
@@ -389,6 +396,8 @@ var modKinds = map[ModKind]modKindSpec{
 	ModModifyPT:         {layer: Layer7PT, subLayer: SubLayer7C_Modify},
 	// #1571
 	ModAddAttackRequirement: {layer: Layer6Ability},
+	// #1597
+	ModAddBlockRequirement: {layer: Layer6Ability},
 	// #1584, ADR 0093 PR 4
 	ModGrantAbilities: {layer: Layer6Ability},
 	// Tier 3b (ADR 0041 P8): replacement effects, not layer operations.
@@ -486,6 +495,14 @@ func SetBaseToughnessMod(n int) Mod { return Mod{Kind: ModSetBaseToughness, Toug
 // the record's source, so a refusal names the card.
 func AddAttackRequirementMod(otherThan uuid.UUID) Mod {
 	return Mod{Kind: ModAddAttackRequirement, Player: otherThan}
+}
+
+// AddBlockRequirementMod is a CR 509.1c block requirement (#1597) of
+// the given kind. The requirement is attributed to the record's source,
+// so a refusal names the card. Registration refuses a kind this binary
+// does not know, and so does restore (ErrUnknownEffectKey).
+func AddBlockRequirementMod(kind BlockRequirementKind) Mod {
+	return Mod{Kind: ModAddBlockRequirement, Text: string(kind)}
 }
 
 // GrantAbilitiesMod is "gains '<ability>'" (layer 6, ADR 0093 PR 4):
@@ -599,6 +616,9 @@ func (g *Game) appendScopedEffectLocked(sourceID uuid.UUID, affected []AffectedO
 		}
 		if m.Kind == ModGrantAbilities && len(m.Grants) == 0 {
 			panic(fmt.Sprintf("game: scoped effect %q grants no ability bundle", label))
+		}
+		if m.Kind == ModAddBlockRequirement && !KnownBlockRequirementKind(BlockRequirementKind(m.Text)) {
+			panic(fmt.Sprintf("game: scoped effect %q names unknown block requirement %q", label, m.Text))
 		}
 		if problem := replacementModProblem(m); problem != "" {
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
@@ -1076,6 +1096,15 @@ func modApply(m Mod) func(*Characteristic, *Card, *Game, *Card) {
 				r.Source, r.SourceName = src.InstanceID, src.Name
 			}
 			ch.AttackRequirements = append(ch.AttackRequirements, r)
+		}
+	case ModAddBlockRequirement:
+		kind := BlockRequirementKind(m.Text)
+		return func(ch *Characteristic, _ *Card, _ *Game, src *Card) {
+			r := BlockRequirement{Kind: kind}
+			if src != nil {
+				r.Source, r.SourceName = src.InstanceID, src.Name
+			}
+			ch.BlockRequirements = append(ch.BlockRequirements, r)
 		}
 	case ModModifyPT:
 		p, t := m.Power, m.Toughness

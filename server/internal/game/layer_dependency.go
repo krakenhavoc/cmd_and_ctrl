@@ -490,7 +490,8 @@ func sameCharacteristic(a, b Characteristic) bool {
 		sameStringSlice(a.Colors, b.Colors) &&
 		sameStringSlice(a.Abilities, b.Abilities) &&
 		sameGrants(a.GrantedAbilities, b.GrantedAbilities) &&
-		slices.Equal(a.AttackRequirements, b.AttackRequirements)
+		slices.Equal(a.AttackRequirements, b.AttackRequirements) &&
+		slices.Equal(a.BlockRequirements, b.BlockRequirements)
 }
 
 // sameGrants compares two layered-grant lists; nil equals empty, for

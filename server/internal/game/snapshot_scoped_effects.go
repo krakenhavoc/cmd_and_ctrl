@@ -37,6 +37,11 @@ func (s *GameSnapshot) checkEffectKeys() error {
 			if m.Kind == ModGrantAbilities {
 				unknown = append(unknown, unknownGrantBundles(m.Grants)...)
 			}
+			// #1597: the requirement a block-requirement mod names is as
+			// much a key as the kind itself.
+			if m.Kind == ModAddBlockRequirement && !KnownBlockRequirementKind(BlockRequirementKind(m.Text)) {
+				unknown = append(unknown, "block requirement "+m.Text)
+			}
 			// Tier 3b: a delayed-trigger body a replacement mod names
 			// (Cosmic Intervention's per-card return) is as much a key
 			// as a delayed trigger's own body.

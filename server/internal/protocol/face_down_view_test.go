@@ -67,6 +67,9 @@ var redactedCardKeys = map[string]bool{
 	// (goad, Grand Melee, Bident) are on the board, and a face-down
 	// permanent prints no requirement of its own (CR 708.2).
 	"must_attack": true,
+	// #1597: likewise that it owes a block — Lure, Grand Melee and the
+	// attacker's own "must be blocked" are on the board.
+	"must_block":  true,
 	"attached_to": true,
 	"no_untap":    true,
 	// #1339: who is defending against an attack is as public as what
@@ -237,6 +240,7 @@ func everyFieldCardView(owner string, knowers map[string]bool) CardView {
 		GoadedBy:            "goader",
 		Goaders:             []string{"goader"},
 		MustAttack:          true,
+		MustBlock:           true,
 		AttachedTo:          &TargetRefView{Kind: "card", ID: "host"},
 		NoUntap:             &NoUntapView{Static: true, Next: []string{"next-player"}},
 		Auto:                true,

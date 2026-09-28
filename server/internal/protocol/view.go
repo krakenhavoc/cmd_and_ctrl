@@ -1532,6 +1532,17 @@ type CardView struct {
 	// (game.MustAttackForEffect, the enumerator's own answer); the
 	// client renders it and never derives a requirement.
 	MustAttack bool `json:"must_attack,omitempty"`
+	// MustBlock is true on a creature a defending player owes a block
+	// with right now (#1597, CR 509.1c): during declare_blockers, while
+	// their declaration is pending and could still obey a requirement
+	// it does not — Lure, "blocks each combat if able", Grand Melee,
+	// "must be blocked if able" — and this creature is one of the
+	// blocks the server wants (game.MustBlockForEffect, the same blocks
+	// the enumerator offers as the required answer). It clears the
+	// moment that defender's pass would be accepted. Public, like the
+	// declarations. The client renders it and never derives a
+	// requirement.
+	MustBlock bool `json:"must_block,omitempty"`
 	// AttachedTo is the CR 301.5c / CR 303.4 attachment relation for
 	// an Equipment or an Aura: the permanent or player this card is
 	// attached to. Omitted for the overwhelming majority of cards,
@@ -5156,6 +5167,19 @@ func stampCombatTargets(g *game.Game, view *GameView) {
 		if atk, err := uuid.Parse(c.InstanceID); err == nil {
 			if d := g.DefendingPlayerForAttackerForEffect(atk); d != uuid.Nil {
 				c.DefendingPlayer = d.String()
+			}
+		}
+	}
+	// #1597: the creatures a defending player owes a block with.
+	if g.Turn.Step == game.StepDeclareBlockers {
+		if owed := g.MustBlockForEffect(); len(owed) > 0 {
+			for i := range view.Battlefield.Cards {
+				c := &view.Battlefield.Cards[i]
+				if id, err := uuid.Parse(c.InstanceID); err == nil {
+					if _, ok := owed[id]; ok {
+						c.MustBlock = true
+					}
+				}
 			}
 		}
 	}

@@ -451,7 +451,11 @@ func enumerateLocked(g *game.Game, seat uuid.UUID, opts Options) []Move {
 		// function answers both sides (#544) — and the attack moves
 		// that would answer the requirement are marked AlwaysLegal
 		// in combatMoves, so a seat that declines has one to take.
-		if !attackRequirementOwed(g, seat) {
+		//
+		// #1597 / CR 509.1c: the same for a defending player's pass in
+		// declare_blockers, the block declaration's checkpoint — the
+		// required blocks are offered as one AlwaysLegal move.
+		if !attackRequirementOwed(g, seat) && !blockRequirementOwed(g, seat) {
 			e.out = append(e.out, Move{
 				Type:        TypePassPriority,
 				Player:      seat,

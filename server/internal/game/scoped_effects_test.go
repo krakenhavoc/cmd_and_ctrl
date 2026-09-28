@@ -125,6 +125,13 @@ func TestEveryModKindAppliesInItsLayer(t *testing.T) {
 				t.Errorf("attack requirements = %+v, want a plain one and one naming the player", c.AttackRequirements)
 			}
 		}},
+		// #1597: one block requirement per mod, of the kind it names.
+		{"addBlockRequirement", []Mod{AddBlockRequirementMod(BlockRequirementMustBeBlocked), AddBlockRequirementMod(BlockRequirementLure)}, func(t *testing.T, _, c Characteristic, _ *Game) {
+			if len(c.BlockRequirements) != 2 || c.BlockRequirements[0].Kind != BlockRequirementMustBeBlocked ||
+				c.BlockRequirements[1].Kind != BlockRequirementLure {
+				t.Errorf("block requirements = %+v, want must-be-blocked then lure", c.BlockRequirements)
+			}
+		}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -160,6 +167,7 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		ModAllCreatureTypes: true, ModSetColors: true, ModAddKeywords: true, ModRemoveKeywords: true,
 		ModLoseAllAbilities: true, ModAddRestrictions: true, ModSetBasePower: true,
 		ModSetBaseToughness: true, ModModifyPT: true, ModAddAttackRequirement: true,
+		ModAddBlockRequirement: true,
 		// ADR 0093 PR 4 (#1584): its cases are in scoped_grants_test.go,
 		// because a grant needs a catalog bundle to mean anything.
 		ModGrantAbilities: true,

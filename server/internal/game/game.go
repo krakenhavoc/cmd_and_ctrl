@@ -1152,6 +1152,16 @@ func (g *Game) AdvanceStep() (Turn, error) {
 			return g.Turn, err
 		}
 	}
+	// #1597 / CR 509.1c: leaving declare_blockers completes every
+	// pending declaration (completion point 4), so each one is judged
+	// first. The skip-ahead does not wave off Lure or Grand Melee.
+	if g.Turn.Step == StepDeclareBlockers {
+		for _, seat := range g.defendingSeatsAPNAPLocked() {
+			if err := g.blockCheckpointLocked(seat); err != nil {
+				return g.Turn, err
+			}
+		}
+	}
 	// #830 / CR 509.2a, and #859 / CR 508.2: leaving a step completes
 	// whatever turn-based action was staged in it. A combat
 	// declaration still staged here — attackers or blockers — is
