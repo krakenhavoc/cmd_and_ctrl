@@ -555,6 +555,28 @@ func TestB24WillOfTheAbzanEdictsTheBiggestOrReanimates(t *testing.T) {
 	}
 }
 
+// TestB24WillOfTheAbzanFirstModeAcceptsZeroTargets is #1654: "any
+// number of target opponents" is CR 115.1d, so zero is a legal
+// choice, not a minimum-one clause. The cast must be accepted and
+// resolve without error or any sacrifice prompt.
+func TestB24WillOfTheAbzanFirstModeAcceptsZeroTargets(t *testing.T) {
+	g := newCatalogGame(t)
+	a, b := g.Seats[1], g.Seats[2]
+	b12Creature(g, a.ID, "A's Giant", "Creature — Giant", 5, 5)
+	b12Creature(g, b.ID, "B's Bear", "Creature — Bear", 2, 2)
+	aLife, bLife := a.Life, b.Life
+
+	castModal(t, g, "Will of the Abzan", "Sorcery", b24WillOfTheAbzanOracle, []int{0}, nil)
+	passPriorityAroundTable(t, g)
+
+	if a.Life != aLife || b.Life != bLife {
+		t.Errorf("nobody was targeted, so nobody loses life: %d→%d, %d→%d", aLife, a.Life, bLife, b.Life)
+	}
+	if sacrificeChoiceFor(g, a.ID) != nil || sacrificeChoiceFor(g, b.ID) != nil {
+		t.Error("nobody was targeted, so nobody is prompted to sacrifice")
+	}
+}
+
 // --- the triggers --------------------------------------------------
 
 func TestB24NaturesWillTapsTheirLandsUntapsYoursOncePerPlayer(t *testing.T) {
