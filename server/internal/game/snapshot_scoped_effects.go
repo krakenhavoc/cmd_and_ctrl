@@ -37,6 +37,20 @@ func (s *GameSnapshot) checkEffectKeys() error {
 			if m.Kind == ModGrantAbilities {
 				unknown = append(unknown, unknownGrantBundles(m.Grants)...)
 			}
+			// #1593: a copy mod carries exactly one set of values, and
+			// the ability bundles its except clause granted are keys
+			// like a grant mod's — a bundle this binary does not
+			// register would be an ability that silently does nothing.
+			if problem := copyModProblem(m); problem != "" {
+				unknown = append(unknown, problem)
+			}
+			for _, v := range m.Copy {
+				for _, k := range v.GrantedAbilities {
+					if k == "" || catalogDef(GrantKey(k)) == nil {
+						unknown = append(unknown, fmt.Sprintf("copied ability-grant bundle %q", k))
+					}
+				}
+			}
 			// #1597: the requirement a block-requirement mod names is as
 			// much a key as the kind itself.
 			if m.Kind == ModAddBlockRequirement && !KnownBlockRequirementKind(BlockRequirementKind(m.Text)) {

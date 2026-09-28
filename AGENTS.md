@@ -1710,6 +1710,20 @@ triggers, statics, replacements and abilities for free. It does NOT
 bring counters, damage, status, or any other layer's effect. See
 [ADR 0043](docs/decisions/0043-copy-effects.md).
 
+**"Becomes a copy … until end of turn" is a different primitive.** A
+permanent that is ALREADY on the battlefield becoming a copy (Mirage
+Mirror, Cytoshape, Mirrorweave, Unstable Shapeshifter, Lazav) is
+`BecomeCopy{Targets, Of, Indefinite, Except}` in
+[become_copy.go](server/internal/cards/effects/become_copy.go) — a
+duration copy with a timestamp of its own that ENDS, putting the
+permanent back to its entry copy or to itself (#1593, ADR 0043's
+2026-09-28 amendment). The except clause takes the same
+`PrintedValues` edits, plus `AddKeyword` for "except it has haste".
+"As this enters … until end of turn" (Cursed Mirror) is
+`EntersAsCopyOfUntilEndOfTurn`. Never write a copy by setting a card's
+printed fields from a card file: the record is what lets it end, undo
+and survive a restart.
+
 **Don't reach for this for a token copy.** "Create a token that's a
 copy of target creature" (Follow the Spirit, Kiki-Jiki) is
 `CreateTokenCopy` in

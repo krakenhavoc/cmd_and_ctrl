@@ -486,6 +486,10 @@ func cloneCard(c Card) Card {
 	// values through the shared pointer and the undo would find it
 	// already un-cloned.
 	out.PrintedSelf = copyPrintedValues(c.PrintedSelf)
+	// #1593: the duration-copy baseline is a pointer for the same
+	// reason, and an undo that shared it would revert a Cytoshape to
+	// whatever the live game's baseline had become.
+	out.DurationCopyBase = copyPrintedValues(c.DurationCopyBase)
 	// #1270: the listed face-down body is a pointer too. Never
 	// mutated through, but copied for PrintedSelf's reason — an undo
 	// snapshot must not share anything with the live card.

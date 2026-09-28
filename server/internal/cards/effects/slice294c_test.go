@@ -408,7 +408,7 @@ func TestShiftingWoodlandEntersUntappedWithAForest(t *testing.T) {
 	if !ok {
 		t.Fatal("Shifting Woodland is not registered")
 	}
-	if spec.Completeness != CompletenessCaveats {
-		t.Errorf("Completeness = %v, want CompletenessCaveats (the Delirium copy ability is not implemented)", spec.Completeness)
+	if spec.Completeness != CompletenessFull {
+		t.Errorf("Completeness = %v, want CompletenessFull (#1593 built the Delirium copy ability)", spec.Completeness)
 	}
 }

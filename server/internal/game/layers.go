@@ -18,9 +18,10 @@ import (
 // Layer ordering follows CR 613:
 //   1. Copy effects (Clone) — landed in S16.5 as a rewrite of the
 //      copiable-value baseline (Card.PrintedSelf), not as an effect
-//      in this bucket; ADR 0043. The Layer1Copy bucket stays for
-//      copies with a duration (Mirage Mirror, Cytoshape), which aren't
-//      supported yet.
+//      in this bucket; ADR 0043. Copies with a duration (Mirage
+//      Mirror, Cytoshape) are materialised onto the same baseline
+//      before the pass, in timestamp order (#1593, duration_copy.go),
+//      so the Layer1Copy bucket stays empty.
 //   2. Control-changing effects (Mind Control) — S24. The output
 //      lands in Characteristic.Controller and is materialised back
 //      onto Card.Controller at the end of the pass; see
@@ -806,6 +807,10 @@ func (g *Game) recomputeLayersLocked() {
 	// up, so a pass that ends an effect settles in one go rather than
 	// looping.
 	g.ClearExpiredScopedStaticsLocked()
+	// #1593: layer 1's duration copies are materialised onto the
+	// printed baseline BEFORE the pass, so layers 2-7 run on their
+	// result (CR 613.1a). See duration_copy.go.
+	g.materialiseDurationCopiesLocked()
 	g.layerPassLocked()
 	changed := g.materialiseControlLocked()
 	// #1313: untap holds end with their CR 611.2b duration, and the

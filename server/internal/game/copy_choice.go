@@ -78,6 +78,14 @@ type CopySelector struct {
 	// Double's additional +1/+1 counter) can reach
 	// ev.AddCounterAtETB. Nil for a plain Clone.
 	Except func(ev *ReplacementEvent, v *PrintedValues, g *Game, source *Card)
+
+	// UntilEndOfTurn makes the copy last only until the cleanup step
+	// (#1593): "as this artifact enters, you may have it become a copy
+	// of any creature on the battlefield until end of turn" (Cursed
+	// Mirror). The copy still lands as the permanent enters, before
+	// any event; see settleTimedEntryCopyLocked for how it gets its
+	// end.
+	UntilEndOfTurn bool
 }
 
 // offerCopyChoiceLocked handles an applicable copy-selector
@@ -221,6 +229,7 @@ func (g *Game) ResolveCopyTarget(choiceID, chooserID, cardID uuid.UUID) error {
 			}
 			ev.EntersAsCopyOf = &values
 			ev.copySourceID = cardID
+			ev.copyUntilEndOfTurn = chosen.effect.CopySelector != nil && chosen.effect.CopySelector.UntilEndOfTurn
 		}
 	}
 

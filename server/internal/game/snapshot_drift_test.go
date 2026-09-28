@@ -341,6 +341,10 @@ var cardFields = plan(
 	// it is printed as. Pure data by construction — see copy.go on
 	// why PrintedValues carries no closures.
 	"PrintedSelf", carried, "",
+	// #1593: the layer-1 baseline under a duration copy — a Clone's
+	// entry copy that a Cytoshape overwrote. Not derivable from the
+	// board once the copy has landed, so carried like PrintedSelf.
+	"DurationCopyBase", carried, "",
 	// #665 / CR 707.9a: the ability bundles a copy effect's "except"
 	// clause granted. Carried, and carriable at all, because it holds
 	// catalog KEYS rather than closures — the abilities themselves
