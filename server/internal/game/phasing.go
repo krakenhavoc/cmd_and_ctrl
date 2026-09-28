@@ -56,7 +56,7 @@ import "github.com/google/uuid"
 //
 // MoveCard's battlefield-exit block is the negative image of this
 // rule. Every field it clears — Tapped, NextUntapSkips, Counters,
-// LostLastCounter, BattleX/Y, the combat targets, GoadedBy,
+// LostLastCounter, BattleX/Y, the combat targets, Goads,
 // DamageMarked, RegenerationShields, AttachedTo, AttachedAt,
 // BaseController, NamedTribe, ChosenColor, ChosenPlayer, ChosenName,
 // ChosenOption, Provenance, ClassLevel, Solved, ProtectorPlayerID,

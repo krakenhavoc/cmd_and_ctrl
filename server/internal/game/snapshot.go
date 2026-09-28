@@ -609,54 +609,59 @@ type zoneSnapshot struct {
 // snapshotCard always sets it, so every file this binary writes
 // carries the key; restore backfills it when the key is missing.
 type cardSnapshot struct {
-	InstanceID               uuid.UUID           `json:"instanceId"`
-	Name                     string              `json:"name"`
-	ScryfallID               string              `json:"scryfallId,omitempty"`
-	OracleID                 string              `json:"oracleId,omitempty"`
-	TokenKey                 string              `json:"tokenKey,omitempty"`
-	TypeLine                 string              `json:"typeLine,omitempty"`
-	Power                    int                 `json:"power"`
-	Toughness                int                 `json:"toughness"`
-	VariableToughness        *bool               `json:"variableToughness,omitempty"`
-	ManaCost                 string              `json:"manaCost,omitempty"`
-	ProducedMana             []string            `json:"producedMana,omitempty"`
-	Colors                   []string            `json:"colors,omitempty"`
-	ColorIdentity            []string            `json:"colorIdentity,omitempty"`
-	StartingLoyalty          int                 `json:"startingLoyalty"`
-	Keywords                 []string            `json:"keywords,omitempty"`
-	GrantedAbilities         []string            `json:"grantedAbilities,omitempty"`
-	Layout                   string              `json:"layout,omitempty"`
-	Faces                    []Face              `json:"faces,omitempty"`
-	ActiveFace               int                 `json:"activeFace,omitempty"`
-	PrintedSelf              *PrintedValues      `json:"printedSelf,omitempty"`
-	NeedsEffect              bool                `json:"needsEffect"`
-	Owner                    uuid.UUID           `json:"owner"`
-	Controller               uuid.UUID           `json:"controller"`
-	Tapped                   bool                `json:"tapped"`
-	NextUntapSkips           []untapSkipSnapshot `json:"nextUntapSkips,omitempty"`
-	BattleX                  float64             `json:"battleX"`
-	BattleY                  float64             `json:"battleY"`
-	Counters                 map[string]int      `json:"counters,omitempty"`
-	IsCommander              bool                `json:"isCommander"`
-	AttackingTarget          uuid.UUID           `json:"attackingTarget"`
-	BlockingTarget           uuid.UUID           `json:"blockingTarget"`
-	GoadedBy                 uuid.UUID           `json:"goadedBy"`
-	DamageMarked             int                 `json:"damageMarked"`
-	RegenerationShields      int                 `json:"regenerationShields,omitempty"`
-	FaceDown                 bool                `json:"faceDown"`
-	FaceDownKind             FaceDownKind        `json:"faceDownKind,omitempty"`
-	KnownBy                  map[uuid.UUID]bool  `json:"knownBy,omitempty"`
-	EnteredBattlefieldAt     int64               `json:"enteredBattlefieldAt"`
-	ObjectEpoch              int                 `json:"objectEpoch,omitempty"`
-	SummonedThisTurn         bool                `json:"summonedThisTurn"`
-	MarkedLethalByDeathtouch bool                `json:"markedLethalByDeathtouch"`
-	LostLastCounter          bool                `json:"lostLastCounter,omitempty"`
-	PrintedPTKnown           bool                `json:"printedPTKnown,omitempty"`
-	AttachedTo               TargetRef           `json:"attachedTo,omitempty"`
-	AttachedAt               int64               `json:"attachedAt,omitempty"`
-	BaseController           uuid.UUID           `json:"baseController,omitempty"`
-	FaceDownListed           *FaceDownListing    `json:"faceDownListed,omitempty"`
-	FaceTurnedAt             int64               `json:"faceTurnedAt,omitempty"`
+	InstanceID        uuid.UUID           `json:"instanceId"`
+	Name              string              `json:"name"`
+	ScryfallID        string              `json:"scryfallId,omitempty"`
+	OracleID          string              `json:"oracleId,omitempty"`
+	TokenKey          string              `json:"tokenKey,omitempty"`
+	TypeLine          string              `json:"typeLine,omitempty"`
+	Power             int                 `json:"power"`
+	Toughness         int                 `json:"toughness"`
+	VariableToughness *bool               `json:"variableToughness,omitempty"`
+	ManaCost          string              `json:"manaCost,omitempty"`
+	ProducedMana      []string            `json:"producedMana,omitempty"`
+	Colors            []string            `json:"colors,omitempty"`
+	ColorIdentity     []string            `json:"colorIdentity,omitempty"`
+	StartingLoyalty   int                 `json:"startingLoyalty"`
+	Keywords          []string            `json:"keywords,omitempty"`
+	GrantedAbilities  []string            `json:"grantedAbilities,omitempty"`
+	Layout            string              `json:"layout,omitempty"`
+	Faces             []Face              `json:"faces,omitempty"`
+	ActiveFace        int                 `json:"activeFace,omitempty"`
+	PrintedSelf       *PrintedValues      `json:"printedSelf,omitempty"`
+	NeedsEffect       bool                `json:"needsEffect"`
+	Owner             uuid.UUID           `json:"owner"`
+	Controller        uuid.UUID           `json:"controller"`
+	Tapped            bool                `json:"tapped"`
+	NextUntapSkips    []untapSkipSnapshot `json:"nextUntapSkips,omitempty"`
+	BattleX           float64             `json:"battleX"`
+	BattleY           float64             `json:"battleY"`
+	Counters          map[string]int      `json:"counters,omitempty"`
+	IsCommander       bool                `json:"isCommander"`
+	AttackingTarget   uuid.UUID           `json:"attackingTarget"`
+	BlockingTarget    uuid.UUID           `json:"blockingTarget"`
+	// GoadedBy is the pre-#1598 single goader, still written (as
+	// Card.LatestGoader) for a binary that predates Goads, and read
+	// only when a file has no `goads` key (restoreGoads).
+	GoadedBy uuid.UUID `json:"goadedBy"`
+	// Goads is every goad on the card with its end (#1598).
+	Goads                    []goadSnapshot     `json:"goads,omitempty"`
+	DamageMarked             int                `json:"damageMarked"`
+	RegenerationShields      int                `json:"regenerationShields,omitempty"`
+	FaceDown                 bool               `json:"faceDown"`
+	FaceDownKind             FaceDownKind       `json:"faceDownKind,omitempty"`
+	KnownBy                  map[uuid.UUID]bool `json:"knownBy,omitempty"`
+	EnteredBattlefieldAt     int64              `json:"enteredBattlefieldAt"`
+	ObjectEpoch              int                `json:"objectEpoch,omitempty"`
+	SummonedThisTurn         bool               `json:"summonedThisTurn"`
+	MarkedLethalByDeathtouch bool               `json:"markedLethalByDeathtouch"`
+	LostLastCounter          bool               `json:"lostLastCounter,omitempty"`
+	PrintedPTKnown           bool               `json:"printedPTKnown,omitempty"`
+	AttachedTo               TargetRef          `json:"attachedTo,omitempty"`
+	AttachedAt               int64              `json:"attachedAt,omitempty"`
+	BaseController           uuid.UUID          `json:"baseController,omitempty"`
+	FaceDownListed           *FaceDownListing   `json:"faceDownListed,omitempty"`
+	FaceTurnedAt             int64              `json:"faceTurnedAt,omitempty"`
 	// NamedTribe is the CR 614.12 "as this enters, choose a creature
 	// type" answer (S26). Carried rather than rebuilt: the choice was
 	// made by a player and nothing in the catalog can re-derive it, so
@@ -1691,7 +1696,8 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		IsCommander:              c.IsCommander,
 		AttackingTarget:          c.AttackingTarget,
 		BlockingTarget:           c.BlockingTarget,
-		GoadedBy:                 c.GoadedBy,
+		GoadedBy:                 c.LatestGoader(),
+		Goads:                    snapshotGoads(c.Goads),
 		DamageMarked:             c.DamageMarked,
 		RegenerationShields:      c.RegenerationShields,
 		FaceDown:                 c.FaceDown,
@@ -2223,6 +2229,9 @@ func (s *GameSnapshot) restoreGame() *Game {
 			}
 		}
 	}
+	// #1598: a pre-#1598 goad came back unstamped; it ends as its
+	// goader's next turn begins, which needs the restored TurnsBegun.
+	g.backfillLegacyGoadsLocked()
 
 	// ADR 0041 P9 / Q3: the sources of stack abilities this binary's
 	// catalog no longer has, flagged once every zone is restored.
@@ -2417,7 +2426,7 @@ func restoreCard(c *cardSnapshot) Card {
 		IsCommander:              c.IsCommander,
 		AttackingTarget:          c.AttackingTarget,
 		BlockingTarget:           c.BlockingTarget,
-		GoadedBy:                 c.GoadedBy,
+		Goads:                    restoreGoads(c.Goads, c.GoadedBy),
 		DamageMarked:             c.DamageMarked,
 		RegenerationShields:      c.RegenerationShields,
 		FaceDown:                 c.FaceDown,

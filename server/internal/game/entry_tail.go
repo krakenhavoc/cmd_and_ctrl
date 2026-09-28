@@ -226,7 +226,7 @@ func (g *Game) resetAsNewObjectLocked(oldID uuid.UUID) uuid.UUID {
 		c.RegenerationShields = 0
 		c.AttackingTarget = uuid.Nil
 		c.BlockingTarget = uuid.Nil
-		c.GoadedBy = uuid.Nil
+		c.Goads = nil
 		c.ClearFaceDown()
 		c.BattleX = 0
 		c.BattleY = 0

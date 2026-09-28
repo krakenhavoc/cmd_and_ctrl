@@ -883,31 +883,38 @@ function tapItems(card: CardView): MenuItem[] {
   ];
 }
 
+// goadItems offers the sandbox goad. Since #1598 a creature may carry
+// several players' goads at once (CR 701.15c), so "Goad (by you)" stays
+// on offer while the viewer is not among its goaders, and "Clear goad"
+// (which clears every goad) appears once anyone has goaded it.
+// `goaders` is absent from a server before #1598, which held one goader
+// in `goaded_by`.
 function goadItems(card: CardView, viewerID: string | null): MenuItem[] {
   if (!viewerID) return [];
-  if (card.goaded_by) {
-    return [
-      {
-        id: "goad-clear",
-        label: "Clear goad",
-        action: {
-          type: "set_goaded",
-          params: { instance_id: card.instance_id, by: "" },
-        },
-      },
-    ];
-  }
-  return [
-    {
+  const goaders = card.goaders ?? (card.goaded_by ? [card.goaded_by] : []);
+  const items: MenuItem[] = [];
+  if (!goaders.includes(viewerID)) {
+    items.push({
       id: "goad",
       label: "Goad (by you)",
-      hint: "sandbox marker — must-attack is not enforced",
+      hint: "until your next turn it attacks each combat, and a player other than you, if able",
       action: {
         type: "set_goaded",
         params: { instance_id: card.instance_id, by: viewerID },
       },
-    },
-  ];
+    });
+  }
+  if (goaders.length > 0) {
+    items.push({
+      id: "goad-clear",
+      label: goaders.length > 1 ? "Clear goads" : "Clear goad",
+      action: {
+        type: "set_goaded",
+        params: { instance_id: card.instance_id, by: "" },
+      },
+    });
+  }
+  return items;
 }
 
 function otherCounterItems(card: CardView): MenuItem[] {

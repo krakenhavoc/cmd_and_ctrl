@@ -1533,13 +1533,13 @@ func TestSetGoaded(t *testing.T) {
 	if err := g.SetGoaded(c.InstanceID, p1.ID); err != nil {
 		t.Fatalf("SetGoaded: %v", err)
 	}
-	if g.Battlefield.Cards[0].GoadedBy != p1.ID {
-		t.Errorf("goaded_by: got %v, want %v", g.Battlefield.Cards[0].GoadedBy, p1.ID)
+	if g.Battlefield.Cards[0].LatestGoader() != p1.ID {
+		t.Errorf("goaded_by: got %v, want %v", g.Battlefield.Cards[0].LatestGoader(), p1.ID)
 	}
 	// Clearing.
 	_ = g.SetGoaded(c.InstanceID, uuid.Nil)
-	if g.Battlefield.Cards[0].GoadedBy != uuid.Nil {
-		t.Errorf("goaded cleared: got %v, want nil", g.Battlefield.Cards[0].GoadedBy)
+	if g.Battlefield.Cards[0].LatestGoader() != uuid.Nil {
+		t.Errorf("goaded cleared: got %v, want nil", g.Battlefield.Cards[0].LatestGoader())
 	}
 	// Unknown card.
 	if err := g.SetGoaded(uuid.New(), p1.ID); err != ErrCardNotFound {
@@ -1557,8 +1557,8 @@ func TestSetGoadedClearsOnZoneExit(t *testing.T) {
 	if _, err := MoveCard(g.Battlefield, p0.Graveyard, c.InstanceID); err != nil {
 		t.Fatalf("MoveCard: %v", err)
 	}
-	if p0.Graveyard.Cards[0].GoadedBy != uuid.Nil {
-		t.Errorf("goaded persisted across zone exit: got %v", p0.Graveyard.Cards[0].GoadedBy)
+	if p0.Graveyard.Cards[0].LatestGoader() != uuid.Nil {
+		t.Errorf("goaded persisted across zone exit: got %v", p0.Graveyard.Cards[0].LatestGoader())
 	}
 }
 

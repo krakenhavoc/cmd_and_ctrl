@@ -503,6 +503,9 @@ func cloneCard(c Card) Card {
 	} else {
 		out.NextUntapSkips = nil
 	}
+	// #1598: one entry per goader. A value copy would share the backing
+	// array, so a goad added after the snapshot could surface in it.
+	out.Goads = cloneGoads(c.Goads)
 	// CR 400.7d (#653 / ADR 0073): what the spell that became this
 	// permanent was cast for. Its one slice would alias the live
 	// record into every undo snapshot under a value copy.

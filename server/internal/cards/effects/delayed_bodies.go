@@ -45,7 +45,9 @@ var (
 	// Kiki-Jiki's token).
 	sacrificeListedCardsBody = game.SimpleDelayedBody("sacrifice/listed-cards", b33SacrificeListedCards)
 
-	// Clear the goad on the listed permanents.
+	// "The goad ends" — a no-op sweep since #1598 (the engine ends each
+	// goad itself), kept registered and scheduled for restore points
+	// read by an older binary. See b33ClearListedGoads.
 	clearListedGoadsBody = game.SimpleDelayedBody("goad/clear-listed", b33ClearListedGoads)
 
 	// Return the listed cards from a graveyard to their owners' hands

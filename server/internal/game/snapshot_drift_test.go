@@ -272,7 +272,7 @@ var cardFields = plan(
 	"IsCommander", carried, "",
 	"AttackingTarget", carried, "",
 	"BlockingTarget", carried, "",
-	"GoadedBy", carried, "",
+	"Goads", carried, "",
 	"DamageMarked", carried, "",
 	// #667 regeneration shields. Carried for the reason DamageMarked
 	// is: it is per-turn state on one permanent that nothing can

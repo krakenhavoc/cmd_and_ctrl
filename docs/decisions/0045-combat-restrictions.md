@@ -3330,3 +3330,121 @@ floating form.
   (`AttacksEachCombat`, `AttacksEachCombatWhere`, a pinned
   `addAttackRequirement` record, `OpponentsCreaturesAttackIfAble{OtherThanYou}`)
   and is left for a card batch.
+
+## Amendment (2026-09-28, [#1598](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1598)): goad remembers every goader (CR 701.15c)
+
+Closes the one-goader gap Decision 48 declared. Decisions 48–52 stand; the
+last paragraph of Decision 48 ("The marker holds one goader…") and the
+"More than one goader per creature" bullet of the #1571 amendment's "What this
+does NOT decide" are superseded. Sprint S37 (combat correctness), tracker
+[#880](https://github.com/krakenhavoc/cmd_and_ctrl/issues/880).
+
+### The rule
+
+CR 701.15a: goading a creature makes it goaded by that player **until that
+player's next turn**. CR 701.15b: a goaded creature attacks each combat if able
+and attacks a player other than the goading player if able. CR 701.15c: a
+creature can be goaded by more than one player, and then it carries each
+goader's requirements, so it must attack a player who didn't goad it if able.
+If every opponent has goaded it, it must still attack one of them.
+
+### Decision 53: the marker is a set with one end per goader
+
+`Card.GoadedBy uuid.UUID` becomes `Card.Goads []Goad`, where
+`Goad{By, ExpiresAtTurnsBegun}` is one player's goad (`game/goad.go`).
+
+- **One entry per goader.** `goadLocked` adds an entry, and a player who has
+  already goaded the creature refreshes their entry rather than adding a second:
+  the entry is restamped and moves to the end. Two goads by one player are one
+  set of CR 701.15b requirements. `SetGoaded(card, by)` (the sandbox verb) and
+  the card-side `b33Goad` both go through it; `GoadForEffect` is the locked
+  entry point for effects. `SetGoaded(card, uuid.Nil)` still clears every goad.
+- **Each goad ends on its own goader's turn.** `ExpiresAtTurnsBegun` is the
+  goader's `Player.TurnsBegun + 1` when the goad is made. That is the counter
+  and the stamp an `UntilYourNextTurn` `Duration` uses (ADR 0063), so a goad
+  made on the goader's own turn and one made on somebody else's both end as the
+  goader's next turn begins. A goader who has left ends it when that turn would
+  have begun (CR 800.4m), for free. `sweepExpiredGoadsLocked` runs from
+  `onTurnBeganLocked`, next to the scoped-effect and cast-permission sweeps, and
+  drops only the expired entries. It covers `Game.PhasedOut` too: CR 702.26d
+  keeps a phased-out permanent's state, but its durations still run out.
+- **The requirements read the whole set.** `attackRequirementsOfLocked` adds
+  goad's pair **per entry**. No new rule is needed: CR 508.1d's counting already
+  gives CR 701.15c. Goaded by A and B, an attack on C obeys all four
+  requirements and one on A or B obeys three. So Decision 49's reach refuses A
+  and B while C is open. Goaded by every opponent, every attack on a player obeys
+  the same number, so the creature must attack and may attack any of them. The
+  refusal sentence names the one "other than" requirement the refused target
+  breaks ("… is goaded by B and must attack a player other than B if able.").
+
+**The engine owns the end, and the delayed trigger stays.** Every goad card
+still schedules the "the goad ends" delayed trigger for the goader's next
+upkeep (`clearListedGoadsBody`). In this binary its body only runs the expiry
+sweep, which by then has nothing left to end. It must never clear a goad the
+same player made in that upkeep before it resolved, because that goad is
+stamped for their **next** turn (`TestGoadEndsTriggerSparesARefreshedGoad`). It
+is kept for the snapshot reason below. Its body key must stay registered anyway,
+because restore points already carry it.
+
+### Snapshot and wire
+
+- **Snapshot: additive, no bump.** The card mirror gains
+  `goads: [{by, expiresAtTurnsBegun}]` (omitempty) and keeps writing
+  `goadedBy`, which now holds the latest goader (`Card.LatestGoader`).
+  - A file from before #1598 has only `goadedBy`. It restores as a one-entry
+    set, and `backfillLegacyGoadsLocked` stamps it `TurnsBegun + 1` once the
+    seats are restored. That is exactly what the goad would have been stamped
+    with, because the goader's count as the file was written is the turn the
+    goad was made in or after.
+  - A binary from before #1598, reading a new file, drops `goads`. It keeps the
+    latest goader, which is the one goad it can represent, and the delayed
+    trigger ends that goad as it always did.
+  - The corpus fixtures' `goadedBy` key is written back unchanged.
+  - `testdata/snapshot_shape/v7.txt` records the new paths.
+- **Wire: additive.** `CardView.goaders` lists every goader, oldest first, and
+  is omitted when the creature is not goaded. `goaded_by` keeps its S10 shape
+  and is the latest goader, always the last entry of `goaders`. Both are public
+  and survive the face-down redaction.
+- **Client.** The context menu offers "Goad (by you)" whenever the viewer is not
+  already a goader, beside "Clear goad(s)". It reads `goaders` and falls back to
+  `goaded_by` for a server from before #1598. The badge is unchanged.
+
+### Proof card
+
+- **Alela, Cunning Conqueror**: her last caveat ("A creature goaded by two
+  different players only remembers the most recent goad.") is removed, and she
+  ships `full`.
+
+### Tests
+
+- `game/goad_test.go` runs at a four-seat table, where `me` controls X, A and B
+  goad it, and C did not:
+  - Goaded by A then B, X must attack C. A and B are refused, each naming its
+    own "other than" requirement.
+  - Once A's turn begins, A's goad is over and B's is not: an attack on A weighs
+    what one on C does, and more than one on B. B's goad ends on B's turn. After
+    a fresh goad by B, X may attack A and not B.
+  - Goaded by all three opponents, X must attack and may attack any of them.
+  - A re-goad refreshes the entry: it is restamped, moves last, and still ends
+    on the goader's turn.
+  - Clone and `RestoreFrom` (undo) do not alias the set.
+  - The snapshot round trip keeps the set and still enforces it.
+  - A `goadedBy`-only (pre-#1598) restore point comes back stamped, and ends on
+    the goader's next turn.
+  - `SetGoaded(nil)` clears every goad.
+- `legal/attack_requirements_test.go`: the enumerator offers only the attack at
+  the player who goaded X neither time, marked `AlwaysLegal`, and withholds the
+  pass. Goaded by everyone, it offers all three attacks.
+- `aiseat/attack_requirements_test.go`: under the heuristic and an aggressive
+  policy, a twice-goaded creature attacks the non-goader and the combat ends.
+- `cards/effects/goad_multi_test.go`: Alela's goad keeps another player's goad.
+  The legacy trigger spares a goad refreshed in the goader's upkeep.
+- Client: `contextMenu.test.ts`.
+
+### What this does NOT decide
+
+- **Goad as a trigger event.** Nothing emits "whenever a creature becomes
+  goaded", and no catalog card needs it yet.
+- **Retiring the legacy delayed trigger.** Retiring it is a snapshot-schema
+  bump. It becomes possible once no restore point from before #1598 can be
+  handed to this binary's predecessor.

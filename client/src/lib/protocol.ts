@@ -2336,11 +2336,15 @@ export interface CardView extends CastSurfaceView {
   // Omitted when not declared as blocker. Cleared on zone exit and
   // by clear_combat. Added in S08.
   blocking_target?: string;
-  // Player ID who goaded this creature, or omitted when not goaded.
-  // Cleared on zone exit. Added in S10; enforced server-side since
-  // #1571 (CR 701.15b — attacks each combat if able, and a player
-  // other than the goader if able).
+  // Player ID whose goad on this creature is the most recent, or
+  // omitted when not goaded. Cleared on zone exit. Added in S10;
+  // enforced server-side since #1571 (CR 701.15b — attacks each combat
+  // if able, and a player other than the goader if able).
   goaded_by?: string;
+  // #1598 (CR 701.15c): every player whose goad is on this creature,
+  // oldest first; its last entry equals goaded_by. Omitted when not
+  // goaded, and by a server from before #1598.
+  goaders?: string[];
   // #1571 (ADR 0045 Decision 51): true on a creature the active player
   // owes an attack with right now — during declare_attackers, while the
   // declaration could still obey a CR 508.1d requirement it does not

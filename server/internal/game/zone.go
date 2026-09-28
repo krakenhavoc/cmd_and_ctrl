@@ -193,7 +193,7 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 		c.BattleY = 0
 		c.AttackingTarget = uuid.Nil
 		c.BlockingTarget = uuid.Nil
-		c.GoadedBy = uuid.Nil
+		c.Goads = nil
 		// #816 / CR 400.7: marked damage and the CR 702.2c deathtouch
 		// flag belong to the permanent that took them, and the card in
 		// the new zone is a new object. This is the ONE battlefield

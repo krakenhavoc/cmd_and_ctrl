@@ -8,8 +8,8 @@ import (
 
 // goad.go — #1599's reusable card-facing goad (CR 701.15) shapes,
 // built on the marker Alela, Cunning Conqueror already stamps
-// (b33Goad, batch33_helpers.go) and the delayed trigger that clears it
-// "until your next turn" (clearListedGoadsBody, delayed_bodies.go).
+// (b33Goad, batch33_helpers.go), which the engine ends "until your
+// next turn" per goader (game/goad.go, #1598).
 // Two shapes cover every printed goad effect that isn't Alela's own
 // per-hit-player pick:
 //
@@ -20,10 +20,13 @@ import (
 //	                              Disrupt Decorum's "you don't
 //	                              control".
 //
-// Both stamp GoadedBy = the effect's controller on every affected
-// card and schedule ONE delayed trigger that clears every card it
-// lists at the beginning of that controller's next turn (CR 701.15a),
-// exactly as Alela's own goad does.
+// Both add the effect's controller's goad to every affected card —
+// beside any other player's goad already on it (CR 701.15c, #1598) —
+// and the engine ends it as that controller's next turn begins
+// (CR 701.15a, game/goad.go). Each also schedules ONE "the goad ends"
+// delayed trigger listing the cards, exactly as Alela's own goad does;
+// since #1598 it ends nothing in this binary and is kept for restore
+// points read by an older one (b33ClearListedGoads).
 
 // GoadTarget is the Effect for a targeted "goad target creature"
 // ability: read the announced target back (re-checked for CR 608.2b
@@ -57,9 +60,9 @@ func GoadAllMatching(ctx *Context, match func(g *game.Game, c game.Card) bool) e
 	return goadAndScheduleClear(ctx, ids)
 }
 
-// goadAndScheduleClear stamps GoadedBy on every listed card and
-// schedules the delayed trigger that clears it at the beginning of
-// the controller's next turn (CR 701.15a).
+// goadAndScheduleClear adds the controller's goad to every listed card
+// and schedules the legacy "the goad ends" delayed trigger for the
+// controller's next upkeep (see the file comment).
 func goadAndScheduleClear(ctx *Context, ids []uuid.UUID) error {
 	controller := ctx.Controller()
 	for _, id := range ids {

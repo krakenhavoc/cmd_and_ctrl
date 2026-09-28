@@ -26,7 +26,7 @@ import (
 //
 // The Treasure trigger is "one or more … to one of your opponents":
 // creatureDealtCombatDamageToAnOpponentOf already reads that shape
-// (opponent_politics.go), so the only addition is the GoadedBy check
+// (opponent_politics.go), so the only addition is the IsGoaded check
 // on the dealer — ANY creature's goad counts, not only one this card
 // made, matching the printed line's "goaded creatures" with no
 // "you've goaded". OncePerBatch keeps a multi-creature connection to
@@ -81,5 +81,5 @@ func puppetMasterGoadedCreatureHitAnOpponent(ev game.Event, source *game.Card, g
 		return false
 	}
 	dealer, ok := g.LookupCardForEffect(ev.Source)
-	return ok && dealer.GoadedBy != uuid.Nil
+	return ok && dealer.IsGoaded()
 }

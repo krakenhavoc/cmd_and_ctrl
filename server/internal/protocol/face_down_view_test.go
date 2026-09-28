@@ -61,6 +61,8 @@ var redactedCardKeys = map[string]bool{
 	"attacking_target_kind": true,
 	"blocking_target":       true,
 	"goaded_by":             true,
+	// #1598: every goader, as public as the latest one.
+	"goaders": true,
 	// #1571: that a creature owes an attack is public — its sources
 	// (goad, Grand Melee, Bident) are on the board, and a face-down
 	// permanent prints no requirement of its own (CR 708.2).
@@ -233,6 +235,7 @@ func everyFieldCardView(owner string, knowers map[string]bool) CardView {
 		Defense:             4,
 		BlockingTarget:      "attacker",
 		GoadedBy:            "goader",
+		Goaders:             []string{"goader"},
 		MustAttack:          true,
 		AttachedTo:          &TargetRefView{Kind: "card", ID: "host"},
 		NoUntap:             &NoUntapView{Static: true, Next: []string{"next-player"}},
