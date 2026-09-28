@@ -112,6 +112,22 @@ type AbilityCost struct {
 	// total above the payment; the SBA loop handles the rest.
 	Life int
 
+	// LifeFrom is a life payment whose amount the card states as a
+	// rule rather than a number (#1594, ADR 0020 Decision 47) — War
+	// Room's "Pay life equal to the number of colors in your
+	// commanders' color identity", Murderous Betrayal's "Pay half
+	// your life, rounded up". Zero means no such component, which is
+	// every other ability.
+	//
+	// A registered KEY (LifeCount, life_cost_count.go), not a func,
+	// because an AbilityCost is reachable from Game and the ADR 0041
+	// closure ratchet admits no new func-typed route. The amount is
+	// read ONCE, at announce (CR 601.2f–g via CR 602.2b), by
+	// AbilityLifeCostLocked — the one reader the engine, the legal
+	// enumerator and the view share — and is added to Life. What was
+	// charged is on PaidCost.LifePaid; nothing re-reads the count.
+	LifeFrom LifeCostCount
+
 	// Loyalty is the loyalty-counter component of a planeswalker's
 	// loyalty ability (CR 606.4): +N adds N counters to the source,
 	// −N removes N, and [0] neither. Nil means "this is not a
@@ -1192,7 +1208,13 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	if err := g.validateExileSelfCostLocked(srcZone, ab.Cost); err != nil {
 		return err
 	}
-	if !g.CanPayLifeLocked(p, ab.Cost.Life) {
+	// #1594, CR 601.2f–g via CR 602.2b: the life component's amount
+	// is determined HERE, before anything is paid, and is what the
+	// payment below charges — a computed count (War Room) is read
+	// once and locked in, so nothing that happens after the
+	// announcement changes what was paid.
+	lifeCost, lifeOK := g.AbilityLifeCostLocked(playerID, cardID, ab.Cost)
+	if !lifeOK || !g.CanPayLifeLocked(p, lifeCost) {
 		// CR 119.4 forbids paying more life than you have. Paying
 		// down to exactly 0 is legal; the SBA loop ends the game
 		// after. CR 119.8 forbids it outright while the player's life
@@ -1361,11 +1383,11 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// #793: the cost path — CR 602.2b activates an ability in one
 	// indivisible step, so the payment runs the CR 614 window
 	// (CR 119.4) but never stops to ask a CR 616 ordering question.
-	if ab.Cost.Life > 0 {
-		if err := g.PayLifeForEffect(cardID, playerID, ab.Cost.Life); err != nil {
+	if lifeCost > 0 {
+		if err := g.PayLifeForEffect(cardID, playerID, lifeCost); err != nil {
 			return err
 		}
-		paid.LifePaid += ab.Cost.Life
+		paid.LifePaid += lifeCost
 	}
 	if ab.Cost.Loyalty != nil {
 		// applyCounterLocked, not AddCounterForEffect: a counter placed
