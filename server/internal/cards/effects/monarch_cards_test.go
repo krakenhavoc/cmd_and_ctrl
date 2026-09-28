@@ -589,9 +589,13 @@ func TestPalaceJailerReturnsTheCreatureWhenAnOpponentBecomesTheMonarch(t *testin
 	victim := pushVanillaCreature(g, owner.ID, "Their Bear", 2, 2)
 	jailer := jailerExile(t, g, victim)
 
-	// Neither the Jailer leaving nor you re-becoming the monarch
-	// releases it: the duration is keyed to the crown.
+	// Neither the Jailer leaving, nor the turn ending, nor the crown
+	// being cleared, nor YOU becoming the monarch releases it: the
+	// duration is keyed to an OPPONENT taking the crown.
 	e2Destroy(t, g, jailer)
+	advanceToUpkeepOf(t, g, 1)
+	monSettle(t, g)
+	monCrown(t, g, uuid.Nil)
 	monCrown(t, g, me.ID)
 	monSettle(t, g)
 	if z := e2Zone(g, victim); z != game.ZoneExile {
