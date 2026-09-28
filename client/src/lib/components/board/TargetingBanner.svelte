@@ -57,7 +57,8 @@
   // resolve to.
   const divideText = $derived.by(() => {
     if (!state || state.divide === undefined) return "";
-    const amount = state.divideFromXUnresolved ? "X" : `${state.divide}`;
+    const amount =
+      (state.divideUpTo ? "up to " : "") + (state.divideFromXUnresolved ? "X" : `${state.divide}`);
     const targets =
       state.max > 0
         ? `up to ${state.max} target${state.max === 1 ? "" : "s"}`

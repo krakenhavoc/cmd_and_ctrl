@@ -449,6 +449,9 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 		var announcements []announcement
 		for _, modes := range modeSets {
 			steps := game.AnnouncedClauses(ab.Targets, ab.Modes, modes)
+			// #1657: a divided amount read off the board, sized as
+			// the activation gate will size it.
+			g.BindDivideAmountsForEffect(steps, game.DivideAmountArgs{Controller: e.seat, Source: source.InstanceID})
 			sets := e.legalStepSets(abilitySrc, steps, budget)
 			for _, ts := range sets {
 				announcements = append(announcements, announcement{modes: modes, targets: ts, steps: steps})

@@ -519,18 +519,29 @@ type LegalTargetsView struct {
 // X the client collected instead — or twice X once X reaches
 // `double_from_x`, when that is set. A pick_target prompt's amount is
 // always fixed (a trigger announces no X). Added by #1563.
+//
+// #1657: an amount read off the board ("X is the number of lands you
+// control", "equal to its power", "2, or X if its madness cost was
+// paid") arrives already resolved into these same fields — the server
+// reads the rule for the viewer and ships the answer, so the client
+// never learns there was a rule. `up_to` is "distribute UP TO that
+// many" (Lathiel): the shares may sum to less than the amount, each
+// target still at least 1.
 type DivideView struct {
 	Total       int  `json:"total,omitempty"`
 	FromX       bool `json:"from_x,omitempty"`
 	DoubleFromX int  `json:"double_from_x,omitempty"`
+	UpTo        bool `json:"up_to,omitempty"`
 }
 
-// divideView projects a clause's division, or nil for none.
+// divideView projects a clause's division, or nil for none. The spec
+// must already have its amount rule resolved (game.DivideAmountForEffect,
+// or a step bound at announce) — an unresolved rule projects as 0.
 func divideView(d *game.DivideSpec) *DivideView {
 	if d == nil {
 		return nil
 	}
-	return &DivideView{Total: d.Total, FromX: d.FromX, DoubleFromX: d.DoubleFromX}
+	return &DivideView{Total: d.Total, FromX: d.FromX, DoubleFromX: d.DoubleFromX, UpTo: d.UpTo}
 }
 
 // TargetDifferenceView is the wire shape of game.TargetDifference: the
@@ -4346,7 +4357,7 @@ func castStampsFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, kind
 	if spec == nil {
 		return out
 	}
-	out.LegalTargets = viewOfTargetClause(g, g.LegalTargetsForEffect(src, spec), spec)
+	out.LegalTargets = viewOfTargetClause(g, src, "", g.LegalTargetsForEffect(src, spec), spec)
 	out.Clauses = viewOfClauses(g, src, spec)
 	return out
 }
@@ -4539,10 +4550,31 @@ func viewOfProtection(c *game.Card) []ProtectionView {
 // the clause's set rule and X bound stamped on (#1559). Cost-payment
 // projections keep viewOfLegalTargets: a cost is not targeting and
 // carries neither. Caller must hold g.mu.
-func viewOfTargetClause(g *game.Game, lt game.LegalTargets, spec *game.TargetSpec) *LegalTargetsView {
+//
+// `altKey` is the alternative cost this clause would be announced
+// under ("" for the printed cost): a divided amount read by a rule
+// (#1657) is resolved here, for `src`'s controller and that cost, so
+// the wire quotes the amount the gate would fix right now — Ureni's
+// land count, Avacyn's Judgment's 2 or its madness X.
+func viewOfTargetClause(g *game.Game, src game.TargetSource, altKey string, lt game.LegalTargets, spec *game.TargetSpec) *LegalTargetsView {
 	v := viewOfLegalTargets(lt, spec)
 	stampTargetSetRule(g, v, lt.Cards, spec)
+	stampDivideAmount(g, v, src, altKey, spec)
 	return v
+}
+
+// stampDivideAmount writes a divided clause's amount onto its view,
+// with an amount rule (#1657) read for `src`'s controller and the
+// claimed alternative cost. Caller must hold g.mu.
+func stampDivideAmount(g *game.Game, v *LegalTargetsView, src game.TargetSource, altKey string, spec *game.TargetSpec) {
+	if spec == nil || spec.Divide == nil {
+		return
+	}
+	args := game.DivideAmountArgs{Controller: src.Controller, AltCost: altKey}
+	if src.Object != nil {
+		args.Source = src.Object.InstanceID
+	}
+	v.Divide = divideView(g.DivideAmountForEffect(spec.Divide, args))
 }
 
 // stampTargetSetRule writes a clause's set rule and X bound onto its
@@ -4694,7 +4726,7 @@ func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, src game.TargetSourc
 		}
 		if spec := game.TargetSpecUnderAlternativeCost(base, &ac); spec != nil {
 			v.TargetMode = spec.Mode
-			v.LegalTargets = viewOfTargetClause(g, g.LegalTargetsForEffect(src, spec), spec)
+			v.LegalTargets = viewOfTargetClause(g, src, ac.Key, g.LegalTargetsForEffect(src, spec), spec)
 		}
 		// The card-shaped half. SpecCandidatesForEffect, not
 		// LegalTargetsForEffect, for the same reason the additional
@@ -4791,7 +4823,7 @@ func viewOfOptionalCosts(g *game.Game, caster uuid.UUID, src game.TargetSource, 
 		}
 		if spec := oc.Targets; spec != nil {
 			v.TargetMode = spec.Mode
-			v.LegalTargets = viewOfTargetClause(g, g.LegalTargetsForEffect(src, spec), spec)
+			v.LegalTargets = viewOfTargetClause(g, src, "", g.LegalTargetsForEffect(src, spec), spec)
 			v.Clauses = viewOfClauses(g, src, spec)
 		}
 		out = append(out, v)
@@ -4816,7 +4848,7 @@ func viewOfModeSpec(g *game.Game, chooser uuid.UUID, src game.TargetSource, ms *
 		ov := ModeOptionView{Label: o.Label, Cost: o.Cost}
 		if o.Targets != nil {
 			ov.TargetMode = o.Targets.Mode
-			ov.LegalTargets = viewOfTargetClause(g, g.LegalTargetsForEffect(src, o.Targets), o.Targets)
+			ov.LegalTargets = viewOfTargetClause(g, src, "", g.LegalTargetsForEffect(src, o.Targets), o.Targets)
 			ov.Clauses = viewOfClauses(g, src, o.Targets)
 		}
 		out.Options = append(out.Options, ov)
@@ -4835,7 +4867,7 @@ func viewOfClauses(g *game.Game, src game.TargetSource, spec *game.TargetSpec) [
 	out := make([]LegalTargetsView, 0, spec.ClauseCount())
 	for i := 0; i < spec.ClauseCount(); i++ {
 		c := spec.Clause(i)
-		v := viewOfTargetClause(g, g.LegalTargetsForEffect(src, c), c)
+		v := viewOfTargetClause(g, src, "", g.LegalTargetsForEffect(src, c), c)
 		v.Label = c.Label
 		out = append(out, *v)
 	}
@@ -7825,6 +7857,11 @@ func abilityLegalTargets(g *game.Game, src game.TargetSource, spec *game.TargetS
 	lt := g.LegalTargetsForEffect(src, spec)
 	v := abilityClauseView(lt, spec)
 	stampTargetSetRule(g, v, lt.Cards, spec)
+	// #1657: the division too. abilityClauseView never carried it, so
+	// a single-clause divided ability (Mogg Mob) reached the client
+	// with no `divide` and the picker never asked for the split the
+	// gate demands for two or more targets.
+	stampDivideAmount(g, v, src, "", spec)
 	return v
 }
 

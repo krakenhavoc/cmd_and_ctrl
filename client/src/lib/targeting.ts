@@ -294,6 +294,9 @@ export interface TargetingState {
   // #1659: the CURRENT step's divide is X-based and X isn't known
   // yet — see TargetStep.divideFromXUnresolved.
   divideFromXUnresolved?: boolean;
+  // #1657: the CURRENT step divides "up to" its amount — see
+  // TargetStep.divideUpTo.
+  divideUpTo?: boolean;
   // #1563: the division announced so far, target id → share, for
   // every divided step already answered. Rides the action as
   // `distribution`.
@@ -337,6 +340,9 @@ export interface TargetStep {
   // walk collects X before targeting starts, so this is a defensive
   // fallback, not a state the client should reach).
   divideFromXUnresolved?: boolean;
+  // #1657: "distribute UP TO that many" (Lathiel) — the shares may sum
+  // to less than `divide`, each pick still at least 1.
+  divideUpTo?: boolean;
 }
 
 export interface TargetRef {
@@ -401,6 +407,7 @@ export function stepsFor(
     different: c.different ? { label: c.different.label, keys: c.different.keys ?? {} } : undefined,
     divide: c.divide ? divideTotal(c.divide, choices?.xValue) : undefined,
     divideFromXUnresolved: c.divide?.from_x === true && choices?.xValue === undefined,
+    divideUpTo: c.divide?.up_to === true ? true : undefined,
   }));
 }
 
@@ -430,13 +437,14 @@ export function evenSplit(ids: string[], total: number): Record<string, number> 
 
 // divisionProblem says why a division would be refused (CR 601.2d),
 // or null when the server will take it: every pick at least 1, the
-// shares adding up to the amount. The same rules the engine's
-// settleDistribution enforces, so Confirm is enabled exactly when the
-// answer is legal.
+// shares adding up to the amount — or, with `upTo` (#1657), to at most
+// the amount. The same rules the engine's settleDistribution enforces,
+// so Confirm is enabled exactly when the answer is legal.
 export function divisionProblem(
   ids: string[],
   total: number,
   dist: Record<string, number>,
+  upTo = false,
 ): string | null {
   if (ids.length > total) {
     return `${ids.length} targets can't share ${total} — each needs at least 1`;
@@ -446,6 +454,11 @@ export function divisionProblem(
     const v = dist[id] ?? 0;
     if (!Number.isInteger(v) || v < 1) return "each target needs at least 1";
     sum += v;
+  }
+  if (upTo) {
+    // #1657: "up to that many" — less is fine, more is not.
+    if (sum > total) return `assign at most ${total} in all (${sum} so far)`;
+    return null;
   }
   if (sum !== total) return `assign ${total} in all (${sum} so far)`;
   return null;
@@ -508,6 +521,7 @@ export function openWalk(
     done: [],
     different: first.different,
     divide: first.divide,
+    divideUpTo: first.divideUpTo,
     divideFromXUnresolved: first.divideFromXUnresolved,
     ...extra,
   };
@@ -556,6 +570,7 @@ export function advance(t: TargetingState): TargetingState | null {
     done,
     different: s.different,
     divide: s.divide,
+    divideUpTo: s.divideUpTo,
     divideFromXUnresolved: s.divideFromXUnresolved,
   };
 }
@@ -964,9 +979,15 @@ export function modeOptionCastable(option: ModeOptionView): boolean {
 // Deluge's "pay X life" is an additional cost with its own X, the
 // printed mana cost is a flat {2}{B}, and the announced X is also
 // the -X/-X the spell hands out.
-export function hasXCost(card: CardView): boolean {
+//
+// #1657 adds the fourth: an alternative cost priced with an {X} of its
+// own on a card whose printed cost has none — Avacyn's Judgment prints
+// {1}{R} and its madness cost is {X}{R}, and that X is also the damage
+// it divides. `altCost` is the key of the offer being claimed.
+export function hasXCost(card: CardView, altCost?: string): boolean {
   if (card.tap_cost?.demands_x) return true;
   if (card.additional_cost?.demands_x) return true;
+  if ((alternativeCostByKey(card, altCost)?.mana_cost ?? "").includes("{X}")) return true;
   return (card.mana_cost ?? "").includes("{X}");
 }
 

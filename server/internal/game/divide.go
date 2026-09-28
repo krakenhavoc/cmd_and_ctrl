@@ -2,6 +2,7 @@ package game
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/google/uuid"
 )
@@ -55,6 +56,160 @@ type DivideSpec struct {
 	// DoubleFromX, with FromX, is the X at and above which the amount
 	// is twice X. 0 means never.
 	DoubleFromX int
+
+	// AmountKey names a registered amount RULE (#1657) — "X is the
+	// number of lands you control" (Ureni, the Song Unending), "damage
+	// equal to its power" (Orca, Siege Demon), "up to that many" where
+	// that many is the life you gained this turn (Lathiel), "2, or X
+	// if this spell's madness cost was paid" (Avacyn's Judgment). When
+	// set it REPLACES Total / FromX / DoubleFromX: the rule is read
+	// once, at announce (CR 601.2d — the division is announced with
+	// the targets, so its amount must be known then), and answers
+	// with one of the data shapes above, which the rest of the engine
+	// already reads. See divideAmountLocked.
+	//
+	// A key, not a func, for the reason ModeCountCondition and
+	// LifeCostCount are keys: a trigger's clause is reachable from
+	// Game through the pick_target resume frame, and ADR 0041 phase
+	// 3's closure ratchet admits no new func-typed route.
+	AmountKey DivideAmount
+
+	// UpTo is "distribute UP TO that many" (Lathiel, the Bounteous
+	// Dawn): the shares may add up to LESS than the amount, never
+	// more. Each chosen target still receives at least 1 — CR 601.2d,
+	// and Lathiel's own ruling: "Each target must receive at least one
+	// +1/+1 counter." Whether zero targets is legal is the clause's
+	// Min, as it is for every clause.
+	UpTo bool
+}
+
+// DivideAmount names a registered divided-amount rule (#1657). The
+// key is unexported, so the only way to hold a non-zero one is
+// RegisterDivideAmount — a func literal on a DivideSpec does not
+// compile.
+type DivideAmount struct{ key string }
+
+// Key is the rule's registry key.
+func (a DivideAmount) Key() string { return a.key }
+
+// IsZero reports whether no rule is named.
+func (a DivideAmount) IsZero() bool { return a.key == "" }
+
+// DivideAmountArgs is everything an amount rule may read at announce.
+type DivideAmountArgs struct {
+	// Controller is the player announcing: the caster, the activator,
+	// or the controller of the trigger being put on the stack — "you"
+	// in "the number of lands you control".
+	Controller uuid.UUID
+
+	// Source is the spell's or ability's source object.
+	Source uuid.UUID
+
+	// SourceLKI is a trigger's source as it last existed when the
+	// ability triggered (CR 603.10) — "its power" on a dies trigger
+	// (Orca). Nil for a cast or an activation, whose source is live.
+	SourceLKI *Characteristic
+
+	// AltCost is the alternative cost claimed at announce (CR 118.9),
+	// the key that lands on StackItem.AltCost — "if this spell's
+	// madness cost was paid". Empty for a cast that paid its mana
+	// cost, and always for an ability.
+	AltCost string
+}
+
+// DivideAmountFunc computes a divided amount. It answers in the DATA
+// shapes — a Total, or FromX (with DoubleFromX) — so the announced X
+// is still applied by TotalFor, and the client applies it to the X it
+// collected; AmountKey and UpTo on the answer are ignored (UpTo is the
+// clause's). It is read-only and runs under g.mu, so it must not call
+// a public locking accessor. A negative Total is read as 0.
+type DivideAmountFunc func(g *Game, a DivideAmountArgs) DivideSpec
+
+var divideAmounts = struct {
+	sync.RWMutex
+	byKey map[string]DivideAmountFunc
+}{byKey: map[string]DivideAmountFunc{}}
+
+// RegisterDivideAmount registers a divided-amount rule under `key` and
+// returns its name. Call it once, from a package-level var. Panics on
+// an empty key, a nil function or a duplicate — each a card-file bug
+// that would otherwise ship a division the engine cannot size.
+func RegisterDivideAmount(key string, fn DivideAmountFunc) DivideAmount {
+	if key == "" {
+		panic("game: RegisterDivideAmount with an empty key")
+	}
+	if fn == nil {
+		panic(fmt.Sprintf("game: divide amount %q has no function", key))
+	}
+	divideAmounts.Lock()
+	defer divideAmounts.Unlock()
+	if _, dup := divideAmounts.byKey[key]; dup {
+		panic(fmt.Sprintf("game: divide amount %q registered twice", key))
+	}
+	divideAmounts.byKey[key] = fn
+	return DivideAmount{key: key}
+}
+
+// divideAmountLocked is the clause's division with its amount rule
+// read NOW — the one place AmountKey is evaluated (#1657). A spec
+// without a rule is returned as is; one with a rule comes back as a
+// fresh spec in the data shape the rule answered with, carrying the
+// clause's UpTo and no key, so every later reader (the gate, the even
+// split, the view, the enumerator's cap) sees a plain amount. A key
+// that is not registered sizes the division at 0 — no target can be
+// chosen — rather than guessing, the weaker reading.
+//
+// Caller must hold g.mu.
+func (g *Game) divideAmountLocked(d *DivideSpec, a DivideAmountArgs) *DivideSpec {
+	if d == nil || d.AmountKey.IsZero() {
+		return d
+	}
+	divideAmounts.RLock()
+	fn, ok := divideAmounts.byKey[d.AmountKey.key]
+	divideAmounts.RUnlock()
+	out := DivideSpec{UpTo: d.UpTo}
+	if ok {
+		r := fn(g, a)
+		out.Total, out.FromX, out.DoubleFromX = r.Total, r.FromX, r.DoubleFromX
+		if out.Total < 0 {
+			out.Total = 0
+		}
+	}
+	return &out
+}
+
+// DivideAmountForEffect is divideAmountLocked on the *ForEffect
+// surface, for the protocol projection: the amount the view quotes is
+// the one the gate would fix if the announcement were made now.
+func (g *Game) DivideAmountForEffect(d *DivideSpec, a DivideAmountArgs) *DivideSpec {
+	return g.divideAmountLocked(d, a)
+}
+
+// bindDivideAmountsLocked fixes every divided step's amount rule at
+// announce (#1657, CR 601.2d): each step whose clause names an
+// AmountKey has its Divide replaced by the rule's answer. The steps
+// hold clause COPIES (AnnouncedClauses) and the replacement is a new
+// spec, so the catalog's shared clause is never touched. Called at the
+// three announce points — a cast, an activation, and the moment a
+// trigger's target walk opens — before anything reads the amount, and
+// never again: a land that leaves, or life gained in response, changes
+// nothing about a division already announced (Ureni's and Lathiel's
+// rulings).
+//
+// Caller must hold g.mu.
+func (g *Game) bindDivideAmountsLocked(steps []AnnouncedClause, a DivideAmountArgs) {
+	for i := range steps {
+		if d := steps[i].Clause.Divide; d != nil && !d.AmountKey.IsZero() {
+			steps[i].Clause.Divide = g.divideAmountLocked(d, a)
+		}
+	}
+}
+
+// BindDivideAmountsForEffect is bindDivideAmountsLocked for the bot's
+// move enumerator, which must size a division exactly as the gate it
+// is about to be judged by does (#544).
+func (g *Game) BindDivideAmountsForEffect(steps []AnnouncedClause, a DivideAmountArgs) {
+	g.bindDivideAmountsLocked(steps, a)
 }
 
 // TotalFor is the amount divided under an announced X. Nil-safe (0).
@@ -111,7 +266,8 @@ func dividedStepIDs(step AnnouncedClause, targets []TargetRef) []uuid.UUID {
 //
 //   - each target of that step is assigned at least 1;
 //   - the shares sum to exactly the clause's amount under the
-//     announced X;
+//     announced X — or, on an UpTo clause ("distribute up to that
+//     many", #1657), to at most that amount;
 //   - a step with more targets than the amount cannot be announced at
 //     all, since some target would get 0;
 //   - a step with ONE target and no share named for it is given the
@@ -132,8 +288,9 @@ func dividedStepIDs(step AnnouncedClause, targets []TargetRef) []uuid.UUID {
 // the sandbox records the choice for the table to resolve by hand.
 //
 // `targets` must already carry their (Mode, Slot) — call it after
-// assignAnnouncedSlots and validateAnnouncedTargetsLocked. Nil in, nil
-// out, for the announcement that divides nothing.
+// assignAnnouncedSlots and validateAnnouncedTargetsLocked — and every
+// step's amount rule must already be fixed by bindDivideAmountsLocked
+// (#1657). Nil in, nil out, for the announcement that divides nothing.
 func settleDistribution(steps []AnnouncedClause, targets []TargetRef, dist map[uuid.UUID]int, x int) (map[uuid.UUID]int, error) {
 	if len(steps) == 0 {
 		return dist, nil
@@ -179,7 +336,11 @@ func settleDistribution(steps []AnnouncedClause, targets []TargetRef, dist map[u
 			sum += v
 			out[id] = v
 		}
-		if sum != total {
+		if d.UpTo {
+			if sum > total {
+				return nil, errDivision("the division must add up to at most %d, not %d", total, sum)
+			}
+		} else if sum != total {
 			return nil, errDivision("the division must add up to %d, not %d", total, sum)
 		}
 	}
