@@ -484,6 +484,8 @@ func sameCharacteristic(a, b Characteristic) bool {
 		a.AbilitiesRemoved == b.AbilitiesRemoved &&
 		a.Controller == b.Controller &&
 		a.Restrictions == b.Restrictions &&
+		a.AdditionalBlocks == b.AdditionalBlocks &&
+		a.BlocksAnyNumber == b.BlocksAnyNumber &&
 		sameStringSlice(a.Types, b.Types) &&
 		sameStringSlice(a.Subtypes, b.Subtypes) &&
 		sameStringSlice(a.Supertypes, b.Supertypes) &&

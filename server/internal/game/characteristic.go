@@ -253,6 +253,25 @@ type Characteristic struct {
 	// That is what makes the "can't" beat a grant whatever its
 	// timestamp. See cant_have.go.
 	CantHave []string `json:",omitempty"`
+
+	// AdditionalBlocks and BlocksAnyNumber are how many attackers this
+	// creature can block (CR 509.1a/b, #1706): one, plus
+	// AdditionalBlocks ("can block an additional creature each
+	// combat" — High Ground, Two-Headed Giant of Foriys; "an
+	// additional ninety-nine" — a monstrous Hundred-Handed One), or
+	// any number at all when BlocksAnyNumber is set (Palace Guard).
+	// BlockCapacity is the one reader.
+	//
+	// Restrictions' twin in shape: written by ordinary layer statics,
+	// only ever added to, never cleared by a layer-6 ability removal.
+	// Several "an additional creature" effects add up (High Ground's
+	// ruling), and "any number" beats any count. A creature's OWN
+	// "can block any number" still goes with its abilities, because
+	// the catalog static that writes it is not applied once
+	// CatalogAbilityKey answers empty (CR 613.1f); High Ground's does
+	// not, because the effect is High Ground's.
+	AdditionalBlocks int  `json:",omitempty"`
+	BlocksAnyNumber  bool `json:",omitempty"`
 }
 
 // printedCharacteristic builds a Characteristic from the card's

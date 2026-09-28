@@ -272,6 +272,8 @@ var cardFields = plan(
 	"IsCommander", carried, "",
 	"AttackingTarget", carried, "",
 	"BlockingTarget", carried, "",
+	// #1706: a multi-blocker's further attackers.
+	"AlsoBlocking", carried, "",
 	"Goads", carried, "",
 	"DamageMarked", carried, "",
 	// #667 regeneration shields. Carried for the reason DamageMarked

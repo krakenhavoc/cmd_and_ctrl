@@ -126,6 +126,18 @@ const (
 	// reasons it is a property of the declaration, never of a pair.
 	// #1597, block_requirements.go.
 	BlockReasonRequirement BlockReason = "block_requirement"
+
+	// BlockReasonBlockerCapacity — the declaration would have one
+	// creature block more attackers than it can: a creature blocks one
+	// attacker unless an effect lets it block an additional creature
+	// (High Ground) or any number of creatures (Palace Guard), CR
+	// 509.1a/b. BlockRefusal.N carries the capacity and Blocker is the
+	// creature. Only a creature that can block two or more is ever
+	// refused this: a one-attacker blocker's second entry RE-POINTS it,
+	// which is the sandbox's "re-declare blocker". Like the count
+	// reasons it comes from the declaration verbs, never from
+	// BlockPairRefusalLocked. #1706.
+	BlockReasonBlockerCapacity BlockReason = "blocker_capacity"
 )
 
 // BlockReasons lists every reason the engine can return today, in the
@@ -151,6 +163,7 @@ func BlockReasons() []BlockReason {
 		BlockReasonNotDefending,
 		BlockReasonDeclarationLimit,
 		BlockReasonRequirement,
+		BlockReasonBlockerCapacity,
 	}
 }
 
@@ -440,6 +453,10 @@ func (e *BlockRefusedError) Sentence(viewer uuid.UUID) string {
 		return clause + "."
 	case BlockReasonRequirement:
 		return e.requirementSentence(blocker, attacker)
+	case BlockReasonBlockerCapacity:
+		// #1706. About the blocker and a number, like the count
+		// reasons are about the attacker and one.
+		return blocker + " can't block more than " + blockerCountPhrase(e.N) + " each combat."
 	}
 	return blocker + " can't block " + attacker + "."
 }

@@ -11,6 +11,9 @@ activations.ever{}	number:int
 activations.turn	map:string
 activations.turn{}	number:int
 activeSeatLeftPending	bool
+announcedAlsoBlocks	map:array
+announcedAlsoBlocks{}	array
+announcedAlsoBlocks{}[]	custom(uuid.UUID)
 announcedAttacks	map:array
 announcedAttacks{}	bool
 announcedBecameBlocked	map:array
@@ -26,6 +29,8 @@ battlefield.cards[]	object
 battlefield.cards[].abilitiesLostOnRestore	bool
 battlefield.cards[].activatedAbilityCount	number:int
 battlefield.cards[].activeFace	number:int
+battlefield.cards[].alsoBlocking	array
+battlefield.cards[].alsoBlocking[]	custom(uuid.UUID)
 battlefield.cards[].attachedAt	number:int64
 battlefield.cards[].attachedTo	object
 battlefield.cards[].attachedTo.ID	custom(uuid.UUID)
@@ -389,6 +394,8 @@ exile.cards[]	object
 exile.cards[].abilitiesLostOnRestore	bool
 exile.cards[].activatedAbilityCount	number:int
 exile.cards[].activeFace	number:int
+exile.cards[].alsoBlocking	array
+exile.cards[].alsoBlocking[]	custom(uuid.UUID)
 exile.cards[].attachedAt	number:int64
 exile.cards[].attachedTo	object
 exile.cards[].attachedTo.ID	custom(uuid.UUID)
@@ -627,6 +634,7 @@ lastKnownBattlefield{}	object
 lastKnownBattlefield{}.Abilities	array
 lastKnownBattlefield{}.AbilitiesRemoved	bool
 lastKnownBattlefield{}.Abilities[]	string
+lastKnownBattlefield{}.AdditionalBlocks	number:int
 lastKnownBattlefield{}.AllCreatureTypes	bool
 lastKnownBattlefield{}.AttackRequirements	array
 lastKnownBattlefield{}.AttackRequirements[]	object
@@ -643,6 +651,7 @@ lastKnownBattlefield{}.BlockRequirements[].Filter	string
 lastKnownBattlefield{}.BlockRequirements[].Kind	string
 lastKnownBattlefield{}.BlockRequirements[].Source	custom(uuid.UUID)
 lastKnownBattlefield{}.BlockRequirements[].SourceName	string
+lastKnownBattlefield{}.BlocksAnyNumber	bool
 lastKnownBattlefield{}.CantHave	array
 lastKnownBattlefield{}.CantHave[]	string
 lastKnownBattlefield{}.Colors	array
@@ -679,6 +688,7 @@ lastKnownPermanents{}[].characteristic	object
 lastKnownPermanents{}[].characteristic.Abilities	array
 lastKnownPermanents{}[].characteristic.AbilitiesRemoved	bool
 lastKnownPermanents{}[].characteristic.Abilities[]	string
+lastKnownPermanents{}[].characteristic.AdditionalBlocks	number:int
 lastKnownPermanents{}[].characteristic.AllCreatureTypes	bool
 lastKnownPermanents{}[].characteristic.AttackRequirements	array
 lastKnownPermanents{}[].characteristic.AttackRequirements[]	object
@@ -695,6 +705,7 @@ lastKnownPermanents{}[].characteristic.BlockRequirements[].Filter	string
 lastKnownPermanents{}[].characteristic.BlockRequirements[].Kind	string
 lastKnownPermanents{}[].characteristic.BlockRequirements[].Source	custom(uuid.UUID)
 lastKnownPermanents{}[].characteristic.BlockRequirements[].SourceName	string
+lastKnownPermanents{}[].characteristic.BlocksAnyNumber	bool
 lastKnownPermanents{}[].characteristic.CantHave	array
 lastKnownPermanents{}[].characteristic.CantHave[]	string
 lastKnownPermanents{}[].characteristic.Colors	array
@@ -730,6 +741,8 @@ lastKnownStack[].card	object
 lastKnownStack[].card.abilitiesLostOnRestore	bool
 lastKnownStack[].card.activatedAbilityCount	number:int
 lastKnownStack[].card.activeFace	number:int
+lastKnownStack[].card.alsoBlocking	array
+lastKnownStack[].card.alsoBlocking[]	custom(uuid.UUID)
 lastKnownStack[].card.attachedAt	number:int64
 lastKnownStack[].card.attachedTo	object
 lastKnownStack[].card.attachedTo.ID	custom(uuid.UUID)
@@ -1165,6 +1178,7 @@ pendingChoices[].damageAssignment	object
 pendingChoices[].damageAssignment.AllowTrample	bool
 pendingChoices[].damageAssignment.AttackerID	custom(uuid.UUID)
 pendingChoices[].damageAssignment.AttackerPower	number:int
+pendingChoices[].damageAssignment.BlockerDivides	bool
 pendingChoices[].damageAssignment.BlockerIDs	array
 pendingChoices[].damageAssignment.BlockerIDs[]	custom(uuid.UUID)
 pendingChoices[].damageAssignment.CombatStep	string
@@ -1177,6 +1191,7 @@ pendingChoices[].damageAssignment.SourceLKI	object
 pendingChoices[].damageAssignment.SourceLKI.Abilities	array
 pendingChoices[].damageAssignment.SourceLKI.AbilitiesRemoved	bool
 pendingChoices[].damageAssignment.SourceLKI.Abilities[]	string
+pendingChoices[].damageAssignment.SourceLKI.AdditionalBlocks	number:int
 pendingChoices[].damageAssignment.SourceLKI.AllCreatureTypes	bool
 pendingChoices[].damageAssignment.SourceLKI.AttackRequirements	array
 pendingChoices[].damageAssignment.SourceLKI.AttackRequirements[]	object
@@ -1193,6 +1208,7 @@ pendingChoices[].damageAssignment.SourceLKI.BlockRequirements[].Filter	string
 pendingChoices[].damageAssignment.SourceLKI.BlockRequirements[].Kind	string
 pendingChoices[].damageAssignment.SourceLKI.BlockRequirements[].Source	custom(uuid.UUID)
 pendingChoices[].damageAssignment.SourceLKI.BlockRequirements[].SourceName	string
+pendingChoices[].damageAssignment.SourceLKI.BlocksAnyNumber	bool
 pendingChoices[].damageAssignment.SourceLKI.CantHave	array
 pendingChoices[].damageAssignment.SourceLKI.CantHave[]	string
 pendingChoices[].damageAssignment.SourceLKI.Colors	array
@@ -1462,6 +1478,8 @@ phasedOut.cards[]	object
 phasedOut.cards[].abilitiesLostOnRestore	bool
 phasedOut.cards[].activatedAbilityCount	number:int
 phasedOut.cards[].activeFace	number:int
+phasedOut.cards[].alsoBlocking	array
+phasedOut.cards[].alsoBlocking[]	custom(uuid.UUID)
 phasedOut.cards[].attachedAt	number:int64
 phasedOut.cards[].attachedTo	object
 phasedOut.cards[].attachedTo.ID	custom(uuid.UUID)
@@ -1849,6 +1867,8 @@ seats[].command.cards[]	object
 seats[].command.cards[].abilitiesLostOnRestore	bool
 seats[].command.cards[].activatedAbilityCount	number:int
 seats[].command.cards[].activeFace	number:int
+seats[].command.cards[].alsoBlocking	array
+seats[].command.cards[].alsoBlocking[]	custom(uuid.UUID)
 seats[].command.cards[].attachedAt	number:int64
 seats[].command.cards[].attachedTo	object
 seats[].command.cards[].attachedTo.ID	custom(uuid.UUID)
@@ -2089,6 +2109,8 @@ seats[].emblems.cards[]	object
 seats[].emblems.cards[].abilitiesLostOnRestore	bool
 seats[].emblems.cards[].activatedAbilityCount	number:int
 seats[].emblems.cards[].activeFace	number:int
+seats[].emblems.cards[].alsoBlocking	array
+seats[].emblems.cards[].alsoBlocking[]	custom(uuid.UUID)
 seats[].emblems.cards[].attachedAt	number:int64
 seats[].emblems.cards[].attachedTo	object
 seats[].emblems.cards[].attachedTo.ID	custom(uuid.UUID)
@@ -2319,6 +2341,8 @@ seats[].graveyard.cards[]	object
 seats[].graveyard.cards[].abilitiesLostOnRestore	bool
 seats[].graveyard.cards[].activatedAbilityCount	number:int
 seats[].graveyard.cards[].activeFace	number:int
+seats[].graveyard.cards[].alsoBlocking	array
+seats[].graveyard.cards[].alsoBlocking[]	custom(uuid.UUID)
 seats[].graveyard.cards[].attachedAt	number:int64
 seats[].graveyard.cards[].attachedTo	object
 seats[].graveyard.cards[].attachedTo.ID	custom(uuid.UUID)
@@ -2548,6 +2572,8 @@ seats[].hand.cards[]	object
 seats[].hand.cards[].abilitiesLostOnRestore	bool
 seats[].hand.cards[].activatedAbilityCount	number:int
 seats[].hand.cards[].activeFace	number:int
+seats[].hand.cards[].alsoBlocking	array
+seats[].hand.cards[].alsoBlocking[]	custom(uuid.UUID)
 seats[].hand.cards[].attachedAt	number:int64
 seats[].hand.cards[].attachedTo	object
 seats[].hand.cards[].attachedTo.ID	custom(uuid.UUID)
@@ -2781,6 +2807,8 @@ seats[].library.cards[]	object
 seats[].library.cards[].abilitiesLostOnRestore	bool
 seats[].library.cards[].activatedAbilityCount	number:int
 seats[].library.cards[].activeFace	number:int
+seats[].library.cards[].alsoBlocking	array
+seats[].library.cards[].alsoBlocking[]	custom(uuid.UUID)
 seats[].library.cards[].attachedAt	number:int64
 seats[].library.cards[].attachedTo	object
 seats[].library.cards[].attachedTo.ID	custom(uuid.UUID)
@@ -3107,6 +3135,8 @@ stack.cards[]	object
 stack.cards[].abilitiesLostOnRestore	bool
 stack.cards[].activatedAbilityCount	number:int
 stack.cards[].activeFace	number:int
+stack.cards[].alsoBlocking	array
+stack.cards[].alsoBlocking[]	custom(uuid.UUID)
 stack.cards[].attachedAt	number:int64
 stack.cards[].attachedTo	object
 stack.cards[].attachedTo.ID	custom(uuid.UUID)

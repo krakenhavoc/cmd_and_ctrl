@@ -230,7 +230,7 @@ func (g *Game) phaseOutLocked(source uuid.UUID, ids []uuid.UUID, opts phaseOutOp
 		// CR 702.26b's own last sentence: "A permanent that phases out
 		// is removed from combat. (See rule 506.4.)"
 		c.AttackingTarget = uuid.Nil
-		c.BlockingTarget = uuid.Nil
+		c.clearBlocking()
 		g.forgetCombatRecordLocked(id)
 		// CR 702.26a: it phases in during the untap step of the player
 		// who controlled it WHEN IT PHASED OUT, which is not
