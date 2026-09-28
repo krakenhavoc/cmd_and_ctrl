@@ -666,3 +666,25 @@ func TestMonstrosityForEffect(t *testing.T) {
 		t.Errorf("Monstrosity -2: monstrous %v, counters %d — want monstrous with none", o.Monstrous, o.Counters[CounterPlusOne])
 	}
 }
+
+// TestMonstrousIsClearedByTheNewObjectReset — the second CR 400.7 site
+// (#1700): an entry that mints a new object wipes the designation even
+// if it never passed through zone.go's exit.
+func TestMonstrousIsClearedByTheNewObjectReset(t *testing.T) {
+	g := newActiveGame(t)
+	seat := g.Seats[0].ID
+	id := pushTypedTestCard(g, Card{
+		Name: "Test Monster", TypeLine: "Creature — Beast", Power: 2, Toughness: 2,
+		Owner: seat, Controller: seat, Monstrous: true,
+	})
+	var newID uuid.UUID
+	g.WithWriteLock(func() { newID = g.resetAsNewObjectLocked(id) })
+	if newID == uuid.Nil {
+		t.Fatal("the reset did not run")
+	}
+	monstrous := false
+	g.ReadSnapshot(func() { monstrous = g.IsMonstrous(newID) })
+	if monstrous {
+		t.Error("the new object is still monstrous")
+	}
+}

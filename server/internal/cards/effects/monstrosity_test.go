@@ -571,6 +571,26 @@ func TestDomesticatedHydraMonstrosityX(t *testing.T) {
 	}
 }
 
+// X = 0 places no counters — so no counter event invalidates the layer
+// pass — and the gated trample must still switch on: the designation's
+// own event is what announces the change.
+func TestDomesticatedHydraAtXZeroStillGainsTrample(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	hydra := pushMonster(g, me.ID, "Domesticated Hydra", domesticatedHydraOrcl, 3, 3)
+	if hasString(effectiveAbilities(t, g, hydra), "trample") {
+		t.Fatal("trample before monstrosity")
+	}
+	activateMonstrosity(t, g, me.ID, hydra, 0)
+	passPriorityAroundTable(t, g)
+	if plusOneCounters(g, hydra) != 0 {
+		t.Fatal("X = 0 placed counters")
+	}
+	if !hasString(effectiveAbilities(t, g, hydra), "trample") {
+		t.Error("a Hydra made monstrous at X = 0 has no trample")
+	}
+}
+
 // X X/X Hydras; at X = 0, none — and the Broodmaster is spent.
 func TestHydraBroodmasterMakesXHydras(t *testing.T) {
 	g := newCatalogGame(t)
