@@ -16,7 +16,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // token. The dies trigger fires for Omnath's own death (the LTB
 // harvest finds him in the graveyard and hands the ability his
 // battlefield characteristics) and for any other Elemental you
-// control — the tokens his own first ability makes are Elementals,
+// control — an Elemental as it last existed on the battlefield (CR
+// 603.10a, #1679) — the tokens his own first ability makes are Elementals,
 // which is the whole card — and it targets "any target", picked
 // when it goes on the stack. The damage source is Omnath whether he
 // is on the battlefield or in the graveyard, and he is red, so
@@ -37,7 +38,7 @@ func init() {
 						return true
 					}
 					dead, ok := diedCreature(ev, g)
-					return ok && dead.Controller == source.Controller && dead.HasSubtype("Elemental")
+					return ok && dead.Controller == source.Controller && leftAsSubtype(ev, dead, "Elemental")
 				},
 				Targets: TargetAny(),
 				Key:     "Omnath, Locus of Rage — 3 damage to any target",

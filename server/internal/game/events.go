@@ -1311,6 +1311,20 @@ type Event struct {
 	// 0027's 2026-09-28 amendment (#1675).
 	LastKnownTypes []string `json:"last_known_types,omitempty"`
 
+	// LastKnownSubtypes / LastKnownAllCreatureTypes are the same
+	// permanent's SUBTYPES as it last existed, on EventLTB only
+	// (#1679, CR 603.10a): its post-layer Characteristic.Subtypes, and
+	// whether it was every creature type (a changeling, or a creature
+	// under Maskwood Nexus) — one flag rather than ~345 subtypes. A
+	// creature that was a Zombie only through a grant is not one in
+	// the graveyard, so "whenever another Zombie you control dies"
+	// (Diregraf Captain) reads the subtype here. Read them through
+	// WasSubtype, which answers as Card.HasSubtype did on the
+	// battlefield. Engine-internal, like LastKnownTypes. See ADR
+	// 0027's 2026-09-28 amendment (#1679).
+	LastKnownSubtypes         []string `json:"last_known_subtypes,omitempty"`
+	LastKnownAllCreatureTypes bool     `json:"last_known_all_creature_types,omitempty"`
+
 	// SettingOld / SettingNew are a table setting's value before and
 	// after an EventSettingsChanged, formatted as text: an int as
 	// decimal ("-1" is UndoUnlimited), a bool as "true"/"false", an

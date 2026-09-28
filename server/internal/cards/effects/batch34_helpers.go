@@ -247,11 +247,12 @@ func b34VampireYouControlAttacked(ev game.Event, source *game.Card, g *game.Game
 // b34VampireYouControlDied is Crossway Troublemakers' second
 // condition: a Vampire creature its controller controlled died —
 // the Troublemakers' own death included, since a dies trigger looks
-// back (CR 603.10) and the card in the graveyard still reads as a
-// Vampire.
+// back (CR 603.10). The Vampire is its last-known subtypes
+// (leftAsSubtype, #1679), so a creature that was one only through a
+// grant counts.
 func b34VampireYouControlDied(ev game.Event, source *game.Card, g *game.Game) bool {
 	dead, ok := diedCreature(ev, g)
-	return ok && dead.Controller == source.Controller && dead.HasSubtype("Vampire")
+	return ok && dead.Controller == source.Controller && leftAsSubtype(ev, dead, "Vampire")
 }
 
 // b34SourceYouControlDealtDamageToPlayerAtLeast is Dragonborn

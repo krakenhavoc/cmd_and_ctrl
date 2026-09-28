@@ -58,7 +58,7 @@ func (g *Game) battlefieldExitLocked(cardID uuid.UUID) exitLKI {
 // exitLKI is the last-known information a leaving permanent's
 // EventLTB carries (CR 603.10a): its combat state (#1661) — what it
 // was attacking, what it was blocking, and whether it was a blocked
-// attacker — and its card types (#1675).
+// attacker — its card types (#1675) and its subtypes (#1679).
 //
 // It exists for the leaves-the-battlefield event and nothing else.
 // A leaving permanent is removed from combat (CR 506.4) — MoveCard
@@ -88,27 +88,46 @@ func (g *Game) battlefieldExitLocked(cardID uuid.UUID) exitLKI {
 // dies" is judged on what it was as it left, which is the post-layer
 // Types (Effective()) read here — the same value snapshotLKILocked
 // writes for the dying card's own triggers.
+//
+// The subtypes are the same again (#1679). A creature that was a
+// Zombie only because Maskwood Nexus, a changeling grant or a lord's
+// type grant said so is not one in the graveyard, and Diregraf
+// Captain's "whenever another Zombie you control dies" is judged on
+// what it was as it left. The post-layer Subtypes are copied, and
+// "is every creature type" rides as one flag rather than as the ~345
+// entries of AllCreatureTypes, for the reasons on HasAllCreatureTypes.
+// Together they answer Event.WasSubtype exactly as Card.HasSubtype
+// answered with the permanent still on the battlefield.
 type exitLKI struct {
-	attacking uuid.UUID
-	blocking  uuid.UUID
-	blocked   bool
-	types     []string
+	attacking        uuid.UUID
+	blocking         uuid.UUID
+	blocked          bool
+	types            []string
+	subtypes         []string
+	allCreatureTypes bool
 }
 
-// exitLKILocked reads cardID's combat state and card types off the
-// battlefield. The zero value for a card that is not there. Caller
+// exitLKILocked reads cardID's combat state, card types and subtypes
+// off the battlefield. The zero value for a card that is not there. Caller
 // must hold g.mu.
 func (g *Game) exitLKILocked(cardID uuid.UUID) exitLKI {
 	c := findBattlefieldCard(g, cardID)
 	if c == nil {
 		return exitLKI{}
 	}
+	eff := c.Effective()
 	return exitLKI{
-		// A copy: Effective() can hand back the layer cache's own
-		// slice, and the event outlives the cache.
-		types:     copyStrings(c.Effective().Types),
-		attacking: c.AttackingTarget,
-		blocking:  c.BlockingTarget,
+		// Copies: Effective() can hand back the layer cache's own
+		// slices, and the event outlives the cache.
+		types:    copyStrings(eff.Types),
+		subtypes: copyStrings(eff.Subtypes),
+		// Card.HasSubtype's two branches, folded into one flag: a
+		// face-down permanent is never every creature type (CR 708.2 —
+		// the changeling underneath is text it does not have), and
+		// anything else is when its layered characteristic says so.
+		allCreatureTypes: !c.FaceDownIsPermanent() && HasAllCreatureTypes(c),
+		attacking:        c.AttackingTarget,
+		blocking:         c.BlockingTarget,
 		// Only an attacker is ever blocked (CR 509.1h), and
 		// removeFromCombatLocked drops the row with the attack, so
 		// the record cannot outlive the attack it describes.
@@ -118,12 +137,15 @@ func (g *Game) exitLKILocked(cardID uuid.UUID) exitLKI {
 
 // stamp writes the last-known information onto an EventLTB
 // (Event.AttackingTarget, Event.BlockingTarget, Event.Blocked,
-// Event.LastKnownTypes).
+// Event.LastKnownTypes, Event.LastKnownSubtypes,
+// Event.LastKnownAllCreatureTypes).
 func (l exitLKI) stamp(ev *Event) {
 	ev.AttackingTarget = l.attacking
 	ev.BlockingTarget = l.blocking
 	ev.Blocked = l.blocked
 	ev.LastKnownTypes = l.types
+	ev.LastKnownSubtypes = l.subtypes
+	ev.LastKnownAllCreatureTypes = l.allCreatureTypes
 }
 
 // WasType reports whether the permanent an EventLTB names had card
@@ -139,6 +161,28 @@ func (ev Event) WasType(cardType string) (was, known bool) {
 		return false, false
 	}
 	return hasTypeFold(ev.LastKnownTypes, cardType), true
+}
+
+// WasSubtype reports whether the permanent an EventLTB names had
+// subtype `subtype` as it last existed on the battlefield (#1679, CR
+// 603.10a), with Card.HasSubtype's semantics: case-insensitive, and a
+// permanent that was every creature type (a changeling, or under
+// Maskwood Nexus) has every creature type — but not "Forest" or
+// "Equipment", which are not creature types (CR 205.3m).
+//
+// known is WasType's: false for every kind but EventLTB, and for an
+// EventLTB that carries no last-known types (logged before #1675, or
+// built by hand in a test). The subtypes are stamped by the same
+// exitLKI as the types, so a stamped event with no subtypes is a
+// permanent that had none — a known "no", not an unknown.
+func (ev Event) WasSubtype(subtype string) (was, known bool) {
+	if ev.Kind != EventLTB || ev.LastKnownTypes == nil {
+		return false, false
+	}
+	if typeListHas(ev.LastKnownSubtypes, subtype) {
+		return true, true
+	}
+	return ev.LastKnownAllCreatureTypes && IsCreatureType(subtype), true
 }
 
 // forgetPerObjectTurnStateLocked drops every "this object did this"
