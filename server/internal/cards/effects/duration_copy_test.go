@@ -635,3 +635,61 @@ func TestADurationCopyWithAGrantIsARestorePoint(t *testing.T) {
 		t.Fatalf("restored Shapeshifter is %q keyed %q", c.Name, game.CatalogKey(c))
 	}
 }
+
+// --- Dimir Doppelganger ------------------------------------------------
+
+const oracleDimirDoppelganger = "1916f120-4418-404a-aed5-b95ebf60d3a3"
+
+// TestDimirDoppelgangerExilesAndBecomesTheCardKeepingTheAbility — the
+// card is exiled, the Doppelganger becomes it for good, and the granted
+// ability can be activated again from the copy.
+func TestDimirDoppelgangerExilesAndBecomesTheCardKeepingTheAbility(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	dopp := dcSeed(g, me.ID, "Dimir Doppelganger", "Creature — Shapeshifter", oracleDimirDoppelganger, 0, 2)
+	giant := dcGraveyardCard(g, opp, "Hill Giant", "Creature — Giant", "oracle-giant", 3, 3)
+	hoof := dcGraveyardCard(g, me, "Craterhoof Behemoth", "Creature — Beast", "oracle-hoof", 5, 5)
+
+	dcMana(t, g, me.ID, "{C}{U}{B}")
+	if err := g.ActivateCatalogAbility(me.ID, dopp, 0, game.ActivateAbilityParams{
+		Targets: []game.TargetRef{{Kind: game.TargetCard, ID: giant}},
+	}); err != nil {
+		t.Fatalf("activate: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if z := g.FindCardZoneForEffect(giant); z == nil || z.Kind != game.ZoneExile {
+		t.Error("the targeted card was not exiled")
+	}
+	if c := dcCard(t, g, dopp); c.Name != "Hill Giant" || c.Effective().Power != 3 {
+		t.Fatalf("the Doppelganger is %q %d/%d", c.Name, c.Effective().Power, c.Effective().Toughness)
+	}
+	dcCleanup(g)
+	if c := dcCard(t, g, dopp); c.Name != "Hill Giant" {
+		t.Fatalf("an indefinite copy ended at cleanup: %q", c.Name)
+	}
+
+	dcMana(t, g, me.ID, "{C}{U}{B}")
+	if err := g.ActivateCatalogAbility(me.ID, dopp, 0, game.ActivateAbilityParams{
+		Targets: []game.TargetRef{{Kind: game.TargetCard, ID: hoof}},
+	}); err != nil {
+		t.Fatalf("the granted ability cannot be activated from the copy: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if c := dcCard(t, g, dopp); c.Name != "Craterhoof Behemoth" {
+		t.Fatalf("second activation: %q", c.Name)
+	}
+}
+
+// TestDimirDoppelgangerRefusesANoncreatureCard — "target CREATURE card".
+func TestDimirDoppelgangerRefusesANoncreatureCard(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	dopp := dcSeed(g, me.ID, "Dimir Doppelganger", "Creature — Shapeshifter", oracleDimirDoppelganger, 0, 2)
+	ring := dcGraveyardCard(g, me, "Sol Ring", "Artifact", "oracle-sol", 0, 0)
+	dcMana(t, g, me.ID, "{C}{U}{B}")
+	if err := g.ActivateCatalogAbility(me.ID, dopp, 0, game.ActivateAbilityParams{
+		Targets: []game.TargetRef{{Kind: game.TargetCard, ID: ring}},
+	}); err == nil {
+		t.Fatal("Dimir Doppelganger targeted an artifact card")
+	}
+}
