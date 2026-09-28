@@ -666,40 +666,6 @@ func b33DalkovanWarriors(g *game.Game, item *game.StackItem) error {
 	}.Apply(ctx)
 }
 
-// b33DistributeCountersRoundRobin is Lathiel's body: the life gained
-// this turn, re-read at resolution (the intervening if), is dealt out
-// as +1/+1 counters one at a time around the announced creatures in
-// the order they were picked, skipping any that is no longer legal.
-// With one creature chosen every counter lands on it; with three, the
-// first gets the remainder.
-func b33DistributeCountersRoundRobin(g *game.Game, item *game.StackItem) error {
-	ctx := NewContext(g, item)
-	n := b15LifeGainedThisTurn(g, item.Controller)
-	if n <= 0 {
-		return nil
-	}
-	var targets []uuid.UUID
-	for _, t := range item.Targets {
-		if t.Kind != game.TargetCard || !g.TargetStillLegalForEffect(item, t) {
-			continue
-		}
-		targets = append(targets, t.ID)
-	}
-	if len(targets) == 0 {
-		return nil
-	}
-	share := make(map[uuid.UUID]int, len(targets))
-	for i := 0; i < n; i++ {
-		share[targets[i%len(targets)]]++
-	}
-	for _, id := range targets {
-		if err := (AddCounter{Target: id, Kind: game.CounterPlusOne, N: share[id]}).Apply(ctx); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 // tuckSelfThirdFromTop is God-Eternal Bontu's return body —
 // Oketra's: the card, if it is still in a graveyard or in exile, goes
 // into its owner's library third from the top.

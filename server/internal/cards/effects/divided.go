@@ -33,6 +33,21 @@ func DivideXDoublingFrom(from int) game.DivideSpec {
 	return game.DivideSpec{FromX: true, DoubleFromX: from}
 }
 
+// DivideBy is an amount read by a registered rule at announce (#1657)
+// rather than printed — "X is the number of lands you control",
+// "damage equal to its power". The rules live in divide_amounts.go.
+func DivideBy(rule game.DivideAmount) game.DivideSpec {
+	return game.DivideSpec{AmountKey: rule}
+}
+
+// UpTo turns a division into "distribute UP TO that many" (Lathiel):
+// the shares may sum to less than the amount, each chosen target still
+// at least 1. UpTo(DivideBy(LifeYouGainedThisTurn)).
+func UpTo(d game.DivideSpec) game.DivideSpec {
+	d.UpTo = true
+	return d
+}
+
 // DealDividedDamage deals each target of the resolving item its
 // announced share of the division, from the item's source.
 //

@@ -877,6 +877,12 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 		// bot is never offered only the first bullet of a charm
 		// (ADR 0065 §6).
 		steps := game.AnnouncedClauses(cardSpec, modeSpec, modes)
+		// #1657: a divided amount read off the board or off the offer
+		// this expansion claims (Avacyn's Judgment's madness X), sized
+		// exactly as CastSpell's gate will size it.
+		e.g.BindDivideAmountsForEffect(steps, game.DivideAmountArgs{
+			Controller: e.seat, Source: card.InstanceID, AltCost: offerKey(offer),
+		})
 		// #619, CR 601.2c. Crackle with Power's target count IS X
 		// ("deals five times X damage to each of up to X targets"),
 		// and the announce path refuses any cast where the two

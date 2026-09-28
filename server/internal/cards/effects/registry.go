@@ -966,7 +966,8 @@ func checkFlatClauses(name string, spec *game.TargetSpec) {
 }
 
 // checkDivide validates a divided clause (#1563): the amount is a
-// positive constant or the announced X, a doubling threshold only
+// positive constant, the announced X, or a registered amount rule
+// standing alone (#1657), a doubling threshold only
 // means something on an X amount, and the clause may not let one
 // object fill two of its slots — the division is keyed by target id,
 // so two picks of the same object could not be told apart (and CR
@@ -977,6 +978,14 @@ func checkDivide(name string, i int, c *game.TargetClause) {
 		return
 	}
 	switch {
+	case !d.AmountKey.IsZero() && (d.Total != 0 || d.FromX || d.DoubleFromX != 0):
+		panic(fmt.Sprintf("effects.Register: %q target clause %d names an amount rule AND a fixed or X amount — the rule replaces them; use DivideBy(rule)", name, i))
+	case !d.AmountKey.IsZero():
+		// The rule sizes the division at announce (#1657); nothing
+		// here to check but AllowSame, below.
+		if c.AllowSame {
+			panic(fmt.Sprintf("effects.Register: %q target clause %d divides among picks that may repeat — a division is keyed by target", name, i))
+		}
 	case !d.FromX && d.Total < 1:
 		panic(fmt.Sprintf("effects.Register: %q target clause %d divides a fixed amount of %d — use Divide(n) with n ≥ 1, or DivideX()", name, i, d.Total))
 	case d.DoubleFromX > 0 && !d.FromX:
