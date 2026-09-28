@@ -106,7 +106,7 @@ func b21ArtifactOrCreatureYouControlDied(ev game.Event, source *game.Card, g *ga
 	if !ok || c.Controller != source.Controller {
 		return game.Card{}, false
 	}
-	if !c.IsArtifact() && !c.IsCreature() {
+	if !leftAsType(ev, c, "artifact") && !leftAsType(ev, c, "creature") {
 		return game.Card{}, false
 	}
 	return c, true

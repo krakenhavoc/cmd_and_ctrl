@@ -32,15 +32,16 @@ import "github.com/google/uuid"
 // (moveCardByRefLocked, behind MoveCardByID) — immediately before
 // their MoveCard.
 //
-// It returns the object's combat state as it last existed (#1661),
-// read before anything here or in MoveCard clears it, for the caller
-// to stamp onto the EventLTB it emits — see combatLKI.
+// It returns the object's combat state (#1661) and card types (#1675)
+// as they last existed, read before anything here or in MoveCard
+// clears them, for the caller to stamp onto the EventLTB it emits —
+// see exitLKI.
 //
 // Caller must hold g.mu.
-func (g *Game) battlefieldExitLocked(cardID uuid.UUID) combatLKI {
+func (g *Game) battlefieldExitLocked(cardID uuid.UUID) exitLKI {
 	// #1661: FIRST, before forgetPerObjectTurnStateLocked drops the
 	// blocked record and before MoveCard clears the attack and block.
-	combat := g.combatLKILocked(cardID)
+	lki := g.exitLKILocked(cardID)
 	g.snapshotLKILocked(cardID)
 	// #1379: the same reading, kept past the harvest for an ability
 	// that resolves later and asks about this object (CR 608.2h).
@@ -51,12 +52,13 @@ func (g *Game) battlefieldExitLocked(cardID uuid.UUID) combatLKI {
 	// the card still has it.
 	g.freezePaidTapsOnExitLocked(cardID)
 	g.forgetPerObjectTurnStateLocked(cardID)
-	return combat
+	return lki
 }
 
-// combatLKI is a leaving permanent's combat state as it last existed
-// on the battlefield (#1661, CR 603.10a): what it was attacking, what
-// it was blocking, and whether it was a blocked attacker.
+// exitLKI is the last-known information a leaving permanent's
+// EventLTB carries (CR 603.10a): its combat state (#1661) — what it
+// was attacking, what it was blocking, and whether it was a blocked
+// attacker — and its card types (#1675).
 //
 // It exists for the leaves-the-battlefield event and nothing else.
 // A leaving permanent is removed from combat (CR 506.4) — MoveCard
@@ -77,20 +79,34 @@ func (g *Game) battlefieldExitLocked(cardID uuid.UUID) combatLKI {
 // A creature that was removed from combat before it left (a control
 // change, CR 506.4) carries none: removeFromCombatLocked has already
 // cleared all three, which is the rule — it is no longer attacking.
-type combatLKI struct {
+//
+// The types are the same story one step removed (#1675). MoveCard
+// drops the layer cache on the way out, and in the graveyard no
+// continuous effect applies to the card any more, so a crewed
+// Vehicle is an artifact again and an animated manland a land by the
+// time a watcher looks it up. Blood Artist's "whenever a creature
+// dies" is judged on what it was as it left, which is the post-layer
+// Types (Effective()) read here — the same value snapshotLKILocked
+// writes for the dying card's own triggers.
+type exitLKI struct {
 	attacking uuid.UUID
 	blocking  uuid.UUID
 	blocked   bool
+	types     []string
 }
 
-// combatLKILocked reads cardID's combat state off the battlefield.
-// The zero value for a card that is not there. Caller must hold g.mu.
-func (g *Game) combatLKILocked(cardID uuid.UUID) combatLKI {
+// exitLKILocked reads cardID's combat state and card types off the
+// battlefield. The zero value for a card that is not there. Caller
+// must hold g.mu.
+func (g *Game) exitLKILocked(cardID uuid.UUID) exitLKI {
 	c := findBattlefieldCard(g, cardID)
 	if c == nil {
-		return combatLKI{}
+		return exitLKI{}
 	}
-	return combatLKI{
+	return exitLKI{
+		// A copy: Effective() can hand back the layer cache's own
+		// slice, and the event outlives the cache.
+		types:     copyStrings(c.Effective().Types),
 		attacking: c.AttackingTarget,
 		blocking:  c.BlockingTarget,
 		// Only an attacker is ever blocked (CR 509.1h), and
@@ -100,12 +116,29 @@ func (g *Game) combatLKILocked(cardID uuid.UUID) combatLKI {
 	}
 }
 
-// stamp writes the combat state onto an EventLTB
-// (Event.AttackingTarget, Event.BlockingTarget, Event.Blocked).
-func (l combatLKI) stamp(ev *Event) {
+// stamp writes the last-known information onto an EventLTB
+// (Event.AttackingTarget, Event.BlockingTarget, Event.Blocked,
+// Event.LastKnownTypes).
+func (l exitLKI) stamp(ev *Event) {
 	ev.AttackingTarget = l.attacking
 	ev.BlockingTarget = l.blocking
 	ev.Blocked = l.blocked
+	ev.LastKnownTypes = l.types
+}
+
+// WasType reports whether the permanent an EventLTB names had card
+// type cardType (case-insensitive: "creature", "Artifact") as it last
+// existed on the battlefield (#1675, CR 603.10a), and whether the
+// event carries its last-known types at all. known is false for every
+// kind but EventLTB, and for an EventLTB logged before the field
+// existed (a restored snapshot's log) or built by hand in a test —
+// the caller decides what unknown means, which for a catalog trigger
+// is the card as it now sits.
+func (ev Event) WasType(cardType string) (was, known bool) {
+	if ev.Kind != EventLTB || ev.LastKnownTypes == nil {
+		return false, false
+	}
+	return hasTypeFold(ev.LastKnownTypes, cardType), true
 }
 
 // forgetPerObjectTurnStateLocked drops every "this object did this"

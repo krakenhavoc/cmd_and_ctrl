@@ -4701,7 +4701,7 @@ func (g *Game) executeBattlefieldLeaveLocked(cardID uuid.UUID, dest ZoneKind, de
 	// that killed it, which MoveCard's exit cleanup zeroes a line
 	// later (#816) — and the Game-side forget of what this object did
 	// this turn (#630, CR 400.7). See battlefield_exit.go.
-	combat := g.battlefieldExitLocked(cardID)
+	lki := g.battlefieldExitLocked(cardID)
 	if _, err := MoveCard(g.Battlefield, destZone, cardID); err != nil {
 		return err
 	}
@@ -4714,7 +4714,7 @@ func (g *Game) executeBattlefieldLeaveLocked(cardID uuid.UUID, dest ZoneKind, de
 		NewZone: dest,
 	})
 	ltb := Event{Kind: EventLTB, CardID: cardID, Actor: actor, NewZone: dest}
-	combat.stamp(&ltb)
+	lki.stamp(&ltb)
 	g.EmitEvent(ltb)
 	// A permanent leaving the battlefield is the one event that can
 	// invalidate a queued "sacrifice a creature of your choice" prompt
@@ -5335,13 +5335,13 @@ func (g *Game) moveCardByRefLocked(src, dst ZoneRef, cardID uuid.UUID, asCommand
 		// already is. Nothing to do.
 		return nil
 	}
-	var combat combatLKI
+	var lki exitLKI
 	if srcZone.Kind == ZoneBattlefield {
 		// LKI, and the CR 400.7 forget — battlefield_exit.go. The
 		// sandbox move is a battlefield exit like any other: a
 		// planeswalker shoved to hand from the context menu is as new
 		// an object when it comes back as one Venser bounced.
-		combat = g.battlefieldExitLocked(cardID)
+		lki = g.battlefieldExitLocked(cardID)
 	}
 	if _, err := MoveCard(srcZone, dstZone, cardID); err != nil {
 		return err
@@ -5377,7 +5377,7 @@ func (g *Game) moveCardByRefLocked(src, dst ZoneRef, cardID uuid.UUID, asCommand
 	})
 	if srcZone.Kind == ZoneBattlefield {
 		ltb := Event{Kind: EventLTB, CardID: cardID, NewZone: dstZone.Kind}
-		combat.stamp(&ltb)
+		lki.stamp(&ltb)
 		g.EmitEvent(ltb)
 	}
 	if dstZone.Kind == ZoneBattlefield {

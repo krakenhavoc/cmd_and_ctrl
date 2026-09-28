@@ -38,7 +38,7 @@ func b23ArtifactPutIntoGraveyardFromBattlefield(ev game.Event, g *game.Game) boo
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.CardID)
-	return ok && c.IsArtifact()
+	return ok && leftAsType(ev, c, "artifact")
 }
 
 // b23AnotherGreenCreatureYouControlEntered is Ivy Lane Denizen's

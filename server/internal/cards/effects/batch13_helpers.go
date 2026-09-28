@@ -65,12 +65,13 @@ func b13CreatureDealtDamageToYou(ev game.Event, source *game.Card, g *game.Game)
 // exile, a library tuck. EventLTB carries the destination in
 // NewZone, so "without dying" is the one comparison CR 700.4 makes.
 //
-// The card is read post-move (diedCreature's posture): the printed
-// type line and the Controller field survive the move, so "creature
-// you control" is the creature that just left under the source's
-// controller's control. A creature that was a creature only through
-// a layer effect, or a stolen creature that went back to its owner's
-// hand, is not counted — weaker than printed, never stronger.
+// The card is read post-move (diedCreature's posture): the Controller
+// field survives the move, so "creature you control" is the creature
+// that just left under the source's controller's control. "Creature"
+// is its type as it last existed (leftAsType, #1675), so a crewed
+// Vehicle or an animated land that is bounced counts. A stolen
+// creature that went back to its owner's hand is not counted —
+// weaker than printed, never stronger.
 func b13OtherCreatureYouControlLeftWithoutDying(ev game.Event, source *game.Card, g *game.Game) bool {
 	return ev.CardID != source.InstanceID && creatureYouControlLeftWithoutDying(ev, source, g)
 }
@@ -85,7 +86,7 @@ func creatureYouControlLeftWithoutDying(ev game.Event, source *game.Card, g *gam
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.CardID)
-	return ok && c.IsCreature() && c.Controller == source.Controller
+	return ok && leftAsType(ev, c, "creature") && c.Controller == source.Controller
 }
 
 // --- counters read back off the log ------------------------------
