@@ -9,6 +9,7 @@ import (
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/legal"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
 )
 
 // miracle_test.go — miracle (CR 702.94, #1665), end to end on real
@@ -247,6 +248,121 @@ func TestMiracleOnAnOpponentsTurnIgnoresTimingForTheMiracleCastOnly(t *testing.T
 	}
 }
 
+// #1686: the wire must tell the client's cost picker which offer is
+// timing-open RIGHT NOW, so it never shows "Its mana cost" next to
+// "Miracle {W}" only to have the printed choice fail at announce with
+// ErrSorcerySpeedRequired. A live miracle grant opens the miracle
+// claim at instant speed and has nothing to say about the printed one
+// (CastPermission.ForClaim) — the printed {4}{W}{W} sorcery is still a
+// sorcery, so on another player's turn the view must stamp
+// `printed_cost_timing_closed` and must NOT stamp `timing_closed` on
+// the miracle offer.
+//
+// This stays a separate question from CastOffersForLocked's own list
+// (still unfiltered — protocol.TestGrantedOfferInASharedZoneIsFilteredByItsLifeComponent
+// pins why): the exile strip's informational cast_prices badge reads
+// that list without caring whether now is the moment, and the picker
+// needs a second, timing-aware signal beside it rather than a
+// narrower version of it.
+func TestMiracleViewFlagsThePrintedCostAsTimingClosed(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[1] // seat 0 is active: it is their draw step
+	term := pushMiracleOnTop(g, me, "Terminus", "Sorcery", "{4}{W}{W}", terminusOracle)
+	if err := g.DrawCard(me.ID); err != nil {
+		t.Fatalf("DrawCard: %v", err)
+	}
+	revealAndResolve(t, g, me)
+	if !hasMiracleGrant(me, term) {
+		t.Fatal("a first draw on an opponent's turn granted no miracle cast")
+	}
+
+	view := protocol.ViewOfGameFor(g, me.ID.String())
+	var card *protocol.CardView
+	for _, seat := range view.Seats {
+		if seat.ID != me.ID.String() {
+			continue
+		}
+		for i := range seat.Hand.Cards {
+			if seat.Hand.Cards[i].InstanceID == term.String() {
+				card = &seat.Hand.Cards[i]
+			}
+		}
+	}
+	if card == nil {
+		t.Fatal("Terminus is missing from its owner's own hand view")
+	}
+	if !card.PrintedCostTimingClosed {
+		t.Error("the printed sorcery cost is not flagged timing-closed on another player's turn (#1686)")
+	}
+	if card.AlternativeCostRequired {
+		t.Error("alternative_cost_required should stay false — the printed cost IS one of the zone's prices, just not right now")
+	}
+	found := false
+	for _, ac := range card.AlternativeCosts {
+		if ac.Key != game.AltCostKeyMiracle {
+			continue
+		}
+		found = true
+		if ac.TimingClosed {
+			t.Error("the miracle offer itself must not be flagged timing-closed while its grant is live")
+		}
+	}
+	if !found {
+		t.Fatal("the miracle offer is missing from the view while the grant is live")
+	}
+}
+
+// The mirror image, and the one that proves this is additive rather
+// than a new noise field on every card: an ORDINARY sorcery — no
+// miracle keyword, nothing granted — sitting in its owner's hand
+// during their own precombat main phase (CR 307.1's actual sorcery-
+// speed window) must carry neither flag. Sorcery speed is not "your
+// turn" alone (the draw step isn't it either, which is exactly why a
+// sorcery miracle's printed cost stays closed even when the reveal
+// happens on the card's own owner's turn) — it is specifically a main
+// phase with an empty stack, which this test puts the card in.
+func TestMiracleViewLeavesAnOrdinarySorceryUnflaggedInMainPhase(t *testing.T) {
+	g := newCatalogGame(t)
+	active := g.Seats[g.Turn.ActiveSeat]
+	id := uuid.New()
+	active.Hand.PushTop(game.Card{
+		InstanceID: id,
+		Name:       "Ordinary Sorcery",
+		TypeLine:   "Sorcery",
+		ManaCost:   "{2}{W}",
+		OracleID:   "test-ordinary-sorcery-1686",
+		Owner:      active.ID,
+		Controller: active.ID,
+	})
+	for g.Turn.Step != game.StepPrecombatMain && g.Turn.Step != game.StepPostcombatMain {
+		if _, err := g.AdvanceStep(); err != nil {
+			t.Fatalf("AdvanceStep: %v", err)
+		}
+	}
+
+	view := protocol.ViewOfGameFor(g, active.ID.String())
+	var card *protocol.CardView
+	for _, seat := range view.Seats {
+		if seat.ID != active.ID.String() {
+			continue
+		}
+		for i := range seat.Hand.Cards {
+			if seat.Hand.Cards[i].InstanceID == id.String() {
+				card = &seat.Hand.Cards[i]
+			}
+		}
+	}
+	if card == nil {
+		t.Fatal("the ordinary sorcery is missing from its owner's own hand view")
+	}
+	if card.PrintedCostTimingClosed {
+		t.Error("an ordinary sorcery in its owner's main phase must not be flagged timing-closed")
+	}
+	if card.AlternativeCostRequired {
+		t.Error("an ordinary sorcery with no alternative cost must not require one")
+	}
+}
+
 // CR 702.94b: a card that left the hand before its trigger resolved is
 // not the card that was revealed — even when it has come back.
 func TestMiracleCardThatLeftTheHandIsNotCast(t *testing.T) {
@@ -291,6 +407,26 @@ func TestMiracleWindowClosesWhenTheHolderPasses(t *testing.T) {
 	}
 	if hasMiracleGrant(me, term) {
 		t.Fatal("the miracle grant survived its holder passing priority")
+	}
+}
+
+// #1686: the sandbox's skip-ahead is documented as "pass priority
+// until this step ends," so a manual advance must decline a live
+// miracle window exactly as an explicit PassPriority does — not leave
+// it open until the turn's cleanup sweeps it.
+func TestMiracleWindowClosesOnManualStepAdvance(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[1]
+	term := drawMiracleInOwnDrawStep(t, g, 1, "Terminus", "Sorcery", "{4}{W}{W}", terminusOracle)
+	revealAndResolve(t, g, me)
+	if !hasMiracleGrant(me, term) {
+		t.Fatal("no grant after the trigger resolved")
+	}
+	if _, err := g.AdvanceStep(); err != nil {
+		t.Fatalf("AdvanceStep: %v", err)
+	}
+	if hasMiracleGrant(me, term) {
+		t.Fatal("the miracle grant survived a manual step advance (#1686)")
 	}
 }
 

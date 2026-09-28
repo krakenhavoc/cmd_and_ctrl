@@ -244,6 +244,18 @@ func AlternativeCostsOfferedFromZone(oracleID string, zone ZoneKind) []Alternati
 //
 // Each entry points at a freshly copied value, so a caller may hold
 // one past the call. Caller must hold g.mu.
+//
+// Deliberately NOT filtered by timing (CR 307.1). This answers "what
+// may this cast claim out of this zone", and "is now the right moment"
+// is a separate question CastTimingOpenLocked answers on its own —
+// castable_here folds both together, and the exile strip's
+// informational cast_prices (#1389) reads this list on purpose while a
+// sorcery is between windows, so a caster can still see what a card
+// will cost later this turn. #1686 needed the picker to know which
+// offer is timing-open RIGHT NOW without losing that; see
+// AlternativeCostView.TimingClosed and CastSurfaceView.
+// PrintedCostTimingClosed, computed alongside this list rather than
+// inside it.
 func (g *Game) CastOffersForLocked(playerID uuid.UUID, card Card, zone ZoneKind, grant *CastPermission) []*AlternativeCost {
 	var out []*AlternativeCost
 	if g.validateCastPathLocked(card, zone, nil, grant) == nil {

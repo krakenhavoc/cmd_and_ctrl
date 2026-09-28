@@ -111,6 +111,58 @@ describe("the cost picker drops a price the server would refuse — #1012", () =
   });
 });
 
+// --- the miracle window (#1686) ---------------------------------------
+//
+// A live miracle grant opens the miracle claim at instant speed and
+// has nothing to say about the printed cost, which stays a sorcery
+// (CastPermission.ForClaim, server/internal/game/cast_zones.go). Drawn
+// on another player's turn, the sorcery-speed window is shut for the
+// printed claim only — it is still one of the zone's prices
+// (`alternative_cost_required` stays false, unlike a zone-bound
+// flashback-only offer), just not choosable this instant
+// (`printed_cost_timing_closed: true`). The miracle offer itself
+// carries no `timing_closed`, because its own claim IS open.
+//
+// Before #1686 the server had no timing-aware signal at all: the
+// picker read `alternative_cost_required`/`alternative_costs` alone,
+// showed "Its mana cost" next to "Miracle {W}" regardless of the
+// moment, and confirming the printed one failed at announce with a
+// sorcery-speed toast.
+const miracleOnAnothersTurn = card({
+  instance_id: "term",
+  name: "Terminus",
+  type_line: "Sorcery",
+  mana_cost: "{4}{W}{W}",
+  alternative_costs: [{ key: "miracle", label: "Miracle {W}", mana_cost: "{W}" }],
+  alternative_cost_required: false,
+  printed_cost_timing_closed: true,
+  castable_here: true,
+});
+
+describe("the picker during a miracle window offers only what the engine would accept — #1686", () => {
+  it("drops the printed cost when only the miracle claim is open", () => {
+    const { container, confirmed } = mountPicker(miracleOnAnothersTurn);
+    expect(optionNames(container)).toEqual(["Miracle {W}"]);
+    click(confirmButton(container));
+    expect(confirmed).toEqual([{ key: "miracle", optional: [] }]);
+  });
+
+  it("shows both prices once the printed cost's own timing is open too", () => {
+    // The owner's own precombat main phase, say — sorcery speed is
+    // open, so both claims are genuinely on the menu and nothing here
+    // should hide either one.
+    const bothOpen = card({
+      instance_id: "term",
+      name: "Terminus",
+      type_line: "Sorcery",
+      mana_cost: "{4}{W}{W}",
+      alternative_costs: [{ key: "miracle", label: "Miracle {W}", mana_cost: "{W}" }],
+      castable_here: true,
+    });
+    expect(optionNames(mountPicker(bothOpen).container)).toEqual(["Its mana cost", "Miracle {W}"]);
+  });
+});
+
 // --- the zone browser's button label ----------------------------------
 
 function snapWithGraveyard(cards: CardView[]): GameView {
