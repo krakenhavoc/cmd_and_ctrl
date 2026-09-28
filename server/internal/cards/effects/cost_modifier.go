@@ -233,6 +233,39 @@ func OpponentsSpell() CostPredicate {
 	}
 }
 
+// TargetsYouOrYourPermanent passes when one of the spell's announced
+// targets is the modifier source's controller, or a permanent that
+// controller controls — Monastery Siege's Dragons mode, "Spells your
+// opponents cast that target you or a permanent you control cost {2}
+// more to cast."
+//
+// A TARGET-READING predicate: the constructor that pairs it with
+// CostsMore must set the resulting modifier's ReadsTargets itself
+// (unlike CostsLessIfItTargets in self_cost_modifier.go, plain
+// CostsMore has no target-reading variant of its own, because
+// "opponents' spells that target you" is the first printed clause of
+// its shape).
+func TargetsYouOrYourPermanent() CostPredicate {
+	return func(q game.CostQuery) bool {
+		for _, t := range q.Targets {
+			switch t.Kind {
+			case game.TargetPlayer:
+				if t.ID == q.Source.Controller {
+					return true
+				}
+			case game.TargetCard:
+				if q.Game == nil {
+					continue
+				}
+				if c, ok := q.Game.LookupCardForEffect(t.ID); ok && c.Controller == q.Source.Controller {
+					return true
+				}
+			}
+		}
+		return false
+	}
+}
+
 // CastFromGraveyardOrExile passes on a spell being cast from a
 // graveyard or from exile — "spells your opponents cast from
 // graveyards or from exile cost {2} more" (Aven Interrupter). Reads
