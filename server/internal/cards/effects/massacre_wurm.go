@@ -60,22 +60,22 @@ func init() {
 				Watches: []game.EventKind{game.EventLTB},
 				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 					dead, ok := diedCreature(ev, g)
-					return ok && dead.Controller != source.Controller
+					return ok && leftUnderControlOf(ev, dead) != source.Controller
 				},
 				Key: "Massacre Wurm — that player loses 2 life",
 				// The dying creature's controller is read when the
-				// trigger is BUILT, off the card in its
-				// destination zone, because by the time the
-				// trigger resolves that card may have moved again
-				// (CR 603.10 — the ability uses last-known
-				// information about the permanent).
+				// trigger is BUILT, off the controller the exit
+				// stamped on the event (#1682), because by the
+				// time the trigger resolves that card may have
+				// moved again (CR 603.10 — the ability uses
+				// last-known information about the permanent).
 				Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
 					dead, ok := diedCreature(ev, g)
 					if !ok {
 						return nil
 					}
 					item := game.NewTriggeredItem(source, "Massacre Wurm — that player loses 2 life")
-					item.Params.Player = dead.Controller
+					item.Params.Player = leftUnderControlOf(ev, dead)
 					return item
 				},
 				Effect: func(g *game.Game, item *game.StackItem) error {

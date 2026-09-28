@@ -98,6 +98,20 @@ func (g *Game) battlefieldExitLocked(cardID uuid.UUID) exitLKI {
 // entries of AllCreatureTypes, for the reasons on HasAllCreatureTypes.
 // Together they answer Event.WasSubtype exactly as Card.HasSubtype
 // answered with the permanent still on the battlefield.
+//
+// The supertypes and the controller close the set (#1682). A creature
+// that was legendary only because it was a Clone copying a legend is
+// a plain Clone in the graveyard, and Rakdos Joins Up's "whenever a
+// legendary creature you control dies" is judged on what it was as it
+// left: the post-layer Supertypes are copied. And "you control" is a
+// question about the permanent, not the card — CR 108.4 says a card
+// in a graveyard has no controller at all — so the player who
+// controlled it as it left rides the event too. The card's own
+// Controller field happens to still name that player today, because
+// MoveCard does not reset it; the stamp is what makes the answer the
+// rule's rather than a side effect of what MoveCard leaves behind, and
+// what keeps it right for a reader that looks after the card has moved
+// on (a reanimation writes the new controller onto the card).
 type exitLKI struct {
 	attacking        uuid.UUID
 	blocking         uuid.UUID
@@ -105,10 +119,12 @@ type exitLKI struct {
 	types            []string
 	subtypes         []string
 	allCreatureTypes bool
+	supertypes       []string
+	controller       uuid.UUID
 }
 
-// exitLKILocked reads cardID's combat state, card types and subtypes
-// off the battlefield. The zero value for a card that is not there. Caller
+// exitLKILocked reads cardID's combat state, card types, subtypes,
+// supertypes and controller off the battlefield. The zero value for a card that is not there. Caller
 // must hold g.mu.
 func (g *Game) exitLKILocked(cardID uuid.UUID) exitLKI {
 	c := findBattlefieldCard(g, cardID)
@@ -119,8 +135,14 @@ func (g *Game) exitLKILocked(cardID uuid.UUID) exitLKI {
 	return exitLKI{
 		// Copies: Effective() can hand back the layer cache's own
 		// slices, and the event outlives the cache.
-		types:    copyStrings(eff.Types),
-		subtypes: copyStrings(eff.Subtypes),
+		types:      copyStrings(eff.Types),
+		subtypes:   copyStrings(eff.Subtypes),
+		supertypes: copyStrings(eff.Supertypes),
+		// Card.Controller, not eff.Controller: the layer pass
+		// materialises layer 2's answer onto the field
+		// (materialiseControlLocked), and the field is what every
+		// "you control" reader on the battlefield asks.
+		controller: c.Controller,
 		// Card.HasSubtype's two branches, folded into one flag: a
 		// face-down permanent is never every creature type (CR 708.2 —
 		// the changeling underneath is text it does not have), and
@@ -138,7 +160,8 @@ func (g *Game) exitLKILocked(cardID uuid.UUID) exitLKI {
 // stamp writes the last-known information onto an EventLTB
 // (Event.AttackingTarget, Event.BlockingTarget, Event.Blocked,
 // Event.LastKnownTypes, Event.LastKnownSubtypes,
-// Event.LastKnownAllCreatureTypes).
+// Event.LastKnownAllCreatureTypes, Event.LastKnownSupertypes,
+// Event.LastKnownController).
 func (l exitLKI) stamp(ev *Event) {
 	ev.AttackingTarget = l.attacking
 	ev.BlockingTarget = l.blocking
@@ -146,6 +169,8 @@ func (l exitLKI) stamp(ev *Event) {
 	ev.LastKnownTypes = l.types
 	ev.LastKnownSubtypes = l.subtypes
 	ev.LastKnownAllCreatureTypes = l.allCreatureTypes
+	ev.LastKnownSupertypes = l.supertypes
+	ev.LastKnownController = l.controller
 }
 
 // WasType reports whether the permanent an EventLTB names had card
@@ -183,6 +208,37 @@ func (ev Event) WasSubtype(subtype string) (was, known bool) {
 		return true, true
 	}
 	return ev.LastKnownAllCreatureTypes && IsCreatureType(subtype), true
+}
+
+// WasSupertype reports whether the permanent an EventLTB names had
+// supertype `supertype` ("legendary", "Snow", "basic") as it last
+// existed on the battlefield (#1682, CR 603.10a), case-insensitively
+// as Card.HasSupertype asks. known is WasType's: the supertypes are
+// stamped by the same exitLKI, so a stamped event with none is a
+// permanent that had none — a known "no" — and an event with no
+// last-known types at all is an unknown.
+func (ev Event) WasSupertype(supertype string) (was, known bool) {
+	if ev.Kind != EventLTB || ev.LastKnownTypes == nil {
+		return false, false
+	}
+	return typeListHas(ev.LastKnownSupertypes, supertype), true
+}
+
+// LeftUnderControlOf reports the player who controlled the permanent
+// an EventLTB names as it last existed on the battlefield (#1682, CR
+// 603.10a), and whether the event carries it at all. known is false
+// for every kind but EventLTB, and for an EventLTB with no controller
+// stamp (logged before the field existed, or built by hand in a test)
+// — the caller decides what unknown means, which for a catalog trigger
+// is the card as it now sits.
+//
+// Every permanent on the battlefield has a controller, so a stamped
+// event always names one; uuid.Nil is only ever "not stamped".
+func (ev Event) LeftUnderControlOf() (controller uuid.UUID, known bool) {
+	if ev.Kind != EventLTB || ev.LastKnownController == uuid.Nil {
+		return uuid.Nil, false
+	}
+	return ev.LastKnownController, true
 }
 
 // forgetPerObjectTurnStateLocked drops every "this object did this"

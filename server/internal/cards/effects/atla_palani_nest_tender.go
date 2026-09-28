@@ -51,5 +51,5 @@ func init() {
 // anEggYouControlDied is "whenever an Egg you control dies".
 func anEggYouControlDied(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	dead, ok := diedCreature(ev, g)
-	return ok && dead.Controller == source.Controller && leftAsSubtype(ev, dead, "Egg")
+	return ok && leftUnderControlOf(ev, dead) == source.Controller && leftAsSubtype(ev, dead, "Egg")
 }

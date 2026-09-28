@@ -502,10 +502,122 @@ changes.
 - **Supertypes as they last existed.** `b33LegendaryCreatureYouControlDied`
   (Rakdos Joins Up) reads the graveyard card's supertype, so a creature
   that was legendary only through an effect is missed. Same shape, one
-  more field, when a card needs it.
+  more field, when a card needs it. *Closed by the #1682 amendment
+  below.*
 - **Controller as it last existed** — unchanged from the #1675 note.
+  *Closed by the #1682 amendment below.*
 - **Maskwood Nexus off the battlefield.** Its second sentence ("creature
   cards you own that aren't on the battlefield") is still a declared
   caveat on the Nexus; once it lands, the graveyard fallback would agree
   with the stamp for the Nexus case, and the stamp remains what answers
   for every grant that stops at the battlefield.
+
+## Amendment (2026-09-28, #1682): the leaving permanent's supertypes and controller ride the same event
+
+**Status:** Accepted · S37 — Combat correctness · [#1682](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1682)
+
+### Context
+
+The #1675 and #1679 amendments stamped a leaving permanent's card types
+and subtypes and left two facts open, both still read off the card as it
+sits in its new zone:
+
+- **Supertypes.** Rakdos Joins Up's "whenever a legendary creature you
+  control dies" asked `isLegendary` of the graveyard card. A Clone that
+  entered as a copy of a legend (CR 707.2 — the copy effect is a
+  battlefield effect) was legendary as it died and is a plain Clone in
+  the graveyard, so the trigger did not fire.
+- **Controller.** Every "a creature you control dies" / "a creature an
+  opponent controls dies" clause compared `dead.Controller` with the
+  source's controller. "You control" is a question about the
+  **permanent**, and a card in a graveyard has no controller at all
+  (CR 108.4). The field happens to still name the player who controlled
+  the permanent — `MoveCard` does not reset it, so a stolen creature
+  sacrificed by its thief reads as the thief's, which is right — but
+  that is a side effect of what the move leaves behind, not the rule.
+  It is wrong for any reader that looks after the card has moved on (a
+  reanimation writes its new controller onto the card before the entry
+  pipeline runs), and for any future move that honours CR 108.4.
+
+CR 603.10a again: the ability looks back in time.
+
+### Decision 1 — `Event.LastKnownSupertypes` and `Event.LastKnownController`
+
+```go
+LastKnownSupertypes []string  // post-layer Characteristic.Supertypes as it left — EventLTB only
+LastKnownController uuid.UUID // Card.Controller as it left — EventLTB only
+```
+
+`exitLKILocked` copies `c.Effective().Supertypes` beside the types and
+subtypes, and reads `c.Controller` — the field layer 2 materialises its
+answer onto (`materialiseControlLocked`), which is what every "you
+control" reader on the battlefield asks. `stamp` writes both on every
+`EventLTB` emit site, so every exit route (destroy, sacrifice, bounce,
+the zone route, the sandbox move and the sandbox drag to the stack)
+carries them with no new call site; `cloneTriggerContext` copies the
+slice. No new game state: the fields ride the event log (the v7 shape
+file records the additive keys, which zero-value to "unknown" for a
+file written before them). No wire change: `protocol/log.go` does not
+project them.
+
+### Decision 2 — `Event.WasSupertype`, `Event.LeftUnderControlOf`, and their card-side readers
+
+`Event.WasSupertype(supertype) (was, known bool)` answers
+case-insensitively, with `WasType`'s `known`: the stamp is present
+exactly when `LastKnownTypes` is, so a stamped permanent with no
+supertypes is a known "no". `Event.LeftUnderControlOf() (controller,
+known)` is known for a stamped `EventLTB` only; a permanent always has a
+controller, so `uuid.Nil` only ever means "not stamped".
+
+Card side, in `effects/helpers.go`, `leftAsSupertype(ev, c, supertype)`
+and `leftUnderControlOf(ev, c)` fall back to the card as it sits only
+for an unstamped event — the pre-#1682 reading, never a false answer.
+Rakdos Joins Up asks `leftAsSupertype(ev, dead, "Legendary")`. Every
+dies / leaves-the-battlefield condition that asks "you control" or "an
+opponent controls" asks `leftUnderControlOf`:
+
+| Reader | File | Cards |
+|---|---|---|
+| `ACreatureYouControlDied` | triggers_common.go | every `WheneverACreatureYouControlDies` — Zulaport Cutthroat, Grave Pact, Butcher of Malakir, Dictate of Erebos, Bastion of Remembrance, Dark Prophecy, Moldervine Reclamation, Vindictive Vampire |
+| `anEggYouControlDied` | atla_palani_nest_tender.go | Atla Palani, Nest Tender |
+| `b16SelfOrAnotherCreatureYouControlDied`, `b16AnotherCreatureYouControlEnteredOrDied` | batch16_helpers.go | Vengeful Bloodwitch, Daxos |
+| `b17SelfOrZombieYouControlDied` | batch17_helpers.go | Undead Augur |
+| `b18OpponentsCreatureDied` | batch18_helpers.go | Sangromancer, Mari, Spiteful Banditry |
+| `b19AnotherNontokenCreatureYouControlDied` | batch19_helpers.go | Liesa, Forgotten Archangel; Yedora, Grave Gardener |
+| `b22CreatureYouControlDied`, `b22SlimedCreatureYouDontControlDied` | batch22_helpers.go | Cauldron of Essence, Toxrill |
+| `b25AnotherGoblinYouControlDied` | batch25_helpers.go | Pashalik Mons |
+| `b27SelfOrNontokenZombieYouControlDied` | batch27_helpers.go | Headless Rider |
+| `b33LegendaryCreatureYouControlDied`, `b33OpponentsCreatureDied`, `b33OpponentsNontokenCreatureDied` | batch33_helpers.go | Rakdos Joins Up, Patron of the Vein, Overseer of the Damned |
+| `b34VampireYouControlDied` | batch34_helpers.go | Crossway Troublemakers |
+| `anotherZombieYouControlDied`, `anotherCreatureYouControlDied` | batch35_helpers.go | Diregraf Captain, Plague Belcher; Pitiless Plunderer, Garna, Elas il-Kor |
+| `b36AngelYouControlDied`, `b36AnotherFaerieYouControlDied` | batch36_helpers.go | Bishop of Wings, Tegwyll |
+| `b39AnotherCreatureYouControlDied` | batch39_helpers.go | Erebos, Bleak-Hearted |
+| `edeaCreatureYouControlButDontOwnDied` | edea_possessed_sorceress.go | Edea — the controller half only; "don't own" stays `dead.Owner` |
+| `deathTyrantCombatDeath` | death_tyrant.go | Death Tyrant (both halves) |
+| `b10LandYouControlDied` | batch10_helpers.go | Titania, Protector of Argoth |
+| `creatureYouControlLeftWithoutDying` | batch13_helpers.go | Aang, Dour Port-Mage |
+| `b14PermanentYouControlLeft` | batch14_helpers.go | Resourceful Defense |
+| `b21ArtifactOrCreatureYouControlDied` | batch21_helpers.go | Agent of the Iron Throne |
+| `b31MunitionsYouControlLeft` | batch31_helpers.go | Weapons Manufacturing |
+| `aCreatureYouControlLeft` | outpost_siege.go | Outpost Siege |
+| `scrapTrawlerArtifactHitTheYard` | scrap_trawler.go | Scrap Trawler |
+| inline | ares_god_of_war.go, cruel_celebrant.go, massacre_wurm.go (condition **and** "that player"), midnight_reaper.go, nadiers_nightblade.go, omnath_locus_of_rage.go, open_the_graves.go, pawn_of_ulamog.go, teysa_orzhov_scion.go, the_ozolith.go, vraan_executioner_thane.go, yahenni_undying_partisan.go | as named |
+
+Engine side, the per-turn tally's `CreaturesDied` (Barrensteppe Siege's
+Mardu "if a creature died under your control this turn") credits the
+stamped controller too.
+
+**Not switched, on purpose:** every clause that means the OWNER — "a
+creature card you own", "its owner's graveyard", "under its owner's
+control" — reads `Owner`, which a move never changes and which is not
+this question. The replacement effects that watch a creature about to
+die (Liesa, Stone of Erech, Kismet-style entry checks) run before the
+move, with the permanent still on the battlefield, and read it there.
+
+### Still open
+
+- **Colour as it last existed.** Teysa, Orzhov Scion's "whenever
+  another black creature you control dies" reads `dead.HasColor("B")`
+  off the graveyard card, so a creature that was black only through an
+  effect is missed (and one an effect made non-black counts). Same
+  shape, one more field, when a card needs it.

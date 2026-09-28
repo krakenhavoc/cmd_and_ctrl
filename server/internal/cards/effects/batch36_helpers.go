@@ -171,7 +171,7 @@ func b36SelfDealtCombatDamageToPlayer(ev game.Event, source *game.Card, g *game.
 // creature that was an Angel only through a grant.
 func b36AngelYouControlDied(ev game.Event, source *game.Card, g *game.Game) bool {
 	dead, ok := diedCreature(ev, g)
-	return ok && dead.Controller == source.Controller && leftAsSubtype(ev, dead, "Angel")
+	return ok && leftUnderControlOf(ev, dead) == source.Controller && leftAsSubtype(ev, dead, "Angel")
 }
 
 // b36AnotherFaerieYouControlDied is Tegwyll, Duke of Splendor's
@@ -180,7 +180,7 @@ func b36AngelYouControlDied(ev game.Event, source *game.Card, g *game.Game) bool
 func b36AnotherFaerieYouControlDied(ev game.Event, source *game.Card, g *game.Game) bool {
 	dead, ok := diedCreature(ev, g)
 	return ok && dead.InstanceID != source.InstanceID &&
-		dead.Controller == source.Controller && leftAsSubtype(ev, dead, "Faerie")
+		leftUnderControlOf(ev, dead) == source.Controller && leftAsSubtype(ev, dead, "Faerie")
 }
 
 // b36EndStepAndAnOpponentLostThree is Sygg, River Cutthroat's

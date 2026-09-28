@@ -25,7 +25,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				dead, ok := diedCreature(ev, g)
-				return ok && dead.Controller == source.Controller && !IsToken(dead)
+				return ok && leftUnderControlOf(ev, dead) == source.Controller && !IsToken(dead)
 			}, "Midnight Reaper — 1 damage to you, draw a card", func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				if err := (DealDamage{

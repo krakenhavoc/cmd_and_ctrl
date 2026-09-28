@@ -67,7 +67,7 @@ func b19AnotherNontokenCreatureYouControlDied(ev game.Event, source *game.Card, 
 		return false
 	}
 	dead, ok := diedCreature(ev, g)
-	return ok && !IsToken(dead) && dead.Controller == source.Controller
+	return ok && !IsToken(dead) && leftUnderControlOf(ev, dead) == source.Controller
 }
 
 // --- replacements ------------------------------------------------
