@@ -19,6 +19,7 @@ const (
 	tearAsunderOracle       = "610af0f7-b5e3-43fb-9d02-7c59bd99034c"
 	expelTheUnworthyOracle  = "4af2e62f-150e-4fd0-98b0-c6e72f5f9a51"
 	bloodBeckoningOracle    = "67a48e3f-2388-42a9-a8b1-97c08761f807"
+	divineResilienceOracle  = "4f6e2e47-34df-4bf3-a546-e06b42840167"
 )
 
 // wpCreature seeds a creature with a printed mana cost on the
@@ -184,5 +185,33 @@ func TestBloodBeckoningKickedReturnsTwo(t *testing.T) {
 	passPriorityAroundTable(t, g)
 	if !me.Hand.Contains(a) || !me.Hand.Contains(b) {
 		t.Error("the kicked Beckoning returns both creature cards")
+	}
+}
+
+func TestDivineResilienceKickedProtectsEveryTarget(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[g.Turn.ActiveSeat], g.Seats[(g.Turn.ActiveSeat+1)%4]
+	a := wpCreature(g, me.ID, "Bear A", "{1}{G}")
+	b := wpCreature(g, me.ID, "Bear B", "{1}{G}")
+	c := wpCreature(g, me.ID, "Bear C", "{1}{G}")
+	theirs := wpCreature(g, opp.ID, "Their Bear", "{1}{G}")
+	three := []game.TargetRef{{Kind: game.TargetCard, ID: a}, {Kind: game.TargetCard, ID: b}, {Kind: game.TargetCard, ID: c}}
+	if _, err := castWithOptionalCosts(t, g, "Divine Resilience", "Instant", divineResilienceOracle,
+		three, nil, nil); err == nil {
+		t.Fatal("unkicked, Divine Resilience takes one target")
+	}
+	if _, err := castWithOptionalCosts(t, g, "Divine Resilience", "Instant", divineResilienceOracle,
+		twTarget(theirs), []int{0}, nil); !errors.Is(err, game.ErrIllegalTarget) {
+		t.Fatalf("err = %v, want ErrIllegalTarget — the kicked clause is still creatures you control", err)
+	}
+	if _, err := castWithOptionalCosts(t, g, "Divine Resilience", "Instant", divineResilienceOracle,
+		three, []int{0}, nil); err != nil {
+		t.Fatalf("kicked: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	for _, id := range []uuid.UUID{a, b, c} {
+		if !effectiveAbilitiesContain(t, g, id, "indestructible") {
+			t.Errorf("%s should be indestructible", id)
+		}
 	}
 }
