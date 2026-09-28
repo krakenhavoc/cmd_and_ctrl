@@ -453,6 +453,12 @@ interface AbilityCost {
   // Present, at any value including 0, on a planeswalker's loyalty
   // ability. Mana abilities never carry it.
   loyalty_cost?: number;
+  // #1690: a "Pay N life" cost component — Greed's printed one, and
+  // since #1688 a computed one (War Room, Murderous Betrayal, priced
+  // through the controller's board state). Carried by both mana and
+  // activated abilities under the same wire name
+  // (ActivatedAbilityView.LifeCost / ManaAbilityView.LifeCost).
+  life_cost?: number;
   // S24: "Activate only as a sorcery" (CR 602.5d). Equip is the
   // catalog's first; a loyalty ability gets the same window from its
   // own arm below rather than from this flag.
@@ -598,6 +604,25 @@ export function tapOthersShortfall(opts: ReturnOptionsShape | undefined, label?:
   return `nothing to tap (${label ?? "another untapped creature you control"})`;
 }
 
+// NOT_ENOUGH_LIFE is the hint on a row whose life_cost is more than
+// the paying player has (#1690). Exported so other surfaces that
+// render the same cost (ManaAbilityMenu, seatSummary) can say the
+// same thing.
+export const NOT_ENOUGH_LIFE = "Not enough life";
+
+// notEnoughLife is the reason a "Pay N life" cost can't be paid right
+// now, or "" when it can. CR 119.4: paying life equal to your life
+// total is legal, so the test is strictly greater, never "at least".
+// `life` is undefined when the caller has no life total to check
+// against (no snapshot in scope), in which case the row is judged
+// unblocked and the server's own CR 119.4 check is the only gate —
+// exactly the posture every other advisory-only check here takes.
+export function notEnoughLife(lifeCost: number | undefined, life: number | undefined): string {
+  if (!lifeCost || life === undefined) return "";
+  if (lifeCost <= life) return "";
+  return NOT_ENOUGH_LIFE;
+}
+
 // abilityBlocked returns the reason an ability can't be activated
 // right now, or "" when it can. Advisory only — the server re-checks
 // every cost; this just greys the row and explains why.
@@ -606,9 +631,16 @@ export function abilityBlocked(
   tapped: boolean,
   sick: boolean,
   loyalty?: LoyaltyContext,
+  life?: number,
 ): string {
   if (a.tap_cost && tapped) return "already tapped";
   if (a.tap_cost && sick) return "summoning sickness";
+  // #1690: a life cost the paying player can't afford — Greed's fixed
+  // one, and since #1688 a computed one (War Room, Murderous
+  // Betrayal). Checked early, alongside the other basic cost-shape
+  // arms, before the more specific candidate-shortfall reasons below.
+  const shortOnLife = notEnoughLife(a.life_cost, life);
+  if (shortOnLife) return shortOnLife;
   // #747: fewer options than the clause's count, not just none —
   // "needs three Foods (you have 2)".
   const sacrifice = sacrificeRangeShortfall(
@@ -737,6 +769,12 @@ function abilityItems(card: CardView, view: GameView, viewerID: string | null): 
   const tapped = !!card.tapped;
   const sick = !!card.summoning_sick;
   const loyalty: LoyaltyContext = { card, view, viewerID };
+  // #1690: the PAYING player's current life, for the life-cost check
+  // below. That's the card's controller, not necessarily the viewer —
+  // an admin override menu can open on a card the viewer doesn't
+  // control (canOverride above), and it's still that controller who
+  // would pay the cost.
+  const payerLife = view.seats.find((s) => s.id === (card.controller || card.owner))?.life;
   // S24: "its activated abilities can't be activated" (Arrest,
   // Faith's Fetters). Read off the wire, not derived — the server
   // refuses these activations outright, and a row that opens a
@@ -758,7 +796,7 @@ function abilityItems(card: CardView, view: GameView, viewerID: string | null): 
   for (const a of card.mana_abilities ?? card.zone_mana_abilities ?? []) {
     // Mana abilities never carry a loyalty cost, so the context is
     // inert for them — passed anyway to keep one call shape.
-    const blocked = manaRestricted || abilityBlocked(a, tapped, sick, loyalty);
+    const blocked = manaRestricted || abilityBlocked(a, tapped, sick, loyalty, payerLife);
     // #1190: a discount note when the engine charges less than the
     // printed cost — shown only on an unblocked row, so a "why is
     // this greyed" reason never loses to a price note.
@@ -777,7 +815,7 @@ function abilityItems(card: CardView, view: GameView, viewerID: string | null): 
   // hand card's cycling, and the index means the same thing to the
   // engine either way.
   for (const a of card.activated_abilities ?? card.zone_abilities ?? []) {
-    const blocked = restricted || abilityBlocked(a, tapped, sick, loyalty);
+    const blocked = restricted || abilityBlocked(a, tapped, sick, loyalty, payerLife);
     // #1296: a price that depends on the target (Dragonfire Blade)
     // says its range here; the targeting banner names each target's.
     items.push({
