@@ -2012,6 +2012,12 @@ export interface DivideView {
   total?: number;
   from_x?: boolean;
   double_from_x?: number;
+  // #1657: "distribute UP TO that many" (Lathiel) — the shares may add
+  // up to less than the amount, each pick still at least 1. An amount
+  // read off the board (Ureni's lands, Orca's power, Avacyn's
+  // Judgment's madness X) arrives already resolved into the fields
+  // above; there is nothing for the client to compute.
+  up_to?: boolean;
 }
 
 // TargetDifferenceView is a clause's set rule (#1559): `label`

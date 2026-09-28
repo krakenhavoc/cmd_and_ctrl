@@ -110,3 +110,29 @@ describe("the target walk", () => {
     expect(distributionOf(t)).toBeUndefined();
   });
 });
+
+// #1657: "distribute UP TO that many" (Lathiel). The amount itself —
+// read off the board or off the madness cost — arrives resolved, so the
+// only new client rule is that a short sum is legal.
+describe("an up-to division", () => {
+  const ids = ["a", "b"];
+  it("accepts a sum short of the amount, each pick still at least 1", () => {
+    expect(divisionProblem(ids, 5, { a: 1, b: 1 }, true)).toBeNull();
+    expect(divisionProblem(ids, 5, { a: 1, b: 0 }, true)).toMatch(/at least 1/);
+  });
+  it("refuses a sum over the amount", () => {
+    expect(divisionProblem(ids, 3, { a: 2, b: 2 }, true)).toMatch(/at most 3/);
+  });
+  it("rides the walk from the wire", () => {
+    const lathiel: LegalTargetsView = {
+      cards: ids,
+      min: 0,
+      max: 0,
+      divide: { total: 3, up_to: true },
+    };
+    const t = openWalk(card, stepsFor("creature", lathiel, undefined, 0), {});
+    expect(t.divide).toBe(3);
+    expect(t.divideUpTo).toBe(true);
+    expect(openWalk(card, stepsFor("creature", fury, undefined, 0), {}).divideUpTo).toBeUndefined();
+  });
+});

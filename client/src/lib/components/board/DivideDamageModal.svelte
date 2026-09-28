@@ -23,12 +23,14 @@
     // The picks, in the order they were picked, with a display name.
     targets: { id: string; name: string }[];
     // The amount being divided, already resolved against X.
+    // #1657: "up to that many" — the shares may add up to less.
+    upTo?: boolean;
     total: number;
     onConfirm: (dist: Record<string, number>) => void;
     onCancel: () => void;
   }
 
-  const { sourceName, targets, total, onConfirm, onCancel }: Props = $props();
+  const { sourceName, targets, total, upTo = false, onConfirm, onCancel }: Props = $props();
 
   let shares = $state<Record<string, number>>({});
 
@@ -46,7 +48,7 @@
 
   const ids = $derived(targets.map((t) => t.id));
   const assigned = $derived(ids.reduce((n, id) => n + (shares[id] ?? 0), 0));
-  const problem = $derived(divisionProblem(ids, total, shares));
+  const problem = $derived(divisionProblem(ids, total, shares, upTo));
 
   function step(id: string, delta: number): void {
     const next = (shares[id] ?? 0) + delta;
@@ -88,9 +90,11 @@
   <ModalLayer />
   <div class="prompt-backdrop" role="dialog" aria-modal="true" aria-labelledby="divide-title">
     <div class="prompt-modal divide-modal">
-      <h2 id="divide-title">Divide {total} — {sourceName}</h2>
+      <h2 id="divide-title">Divide {upTo ? "up to " : ""}{total} — {sourceName}</h2>
       <p class="prompt-hint">
-        Assign each target at least 1. The shares must add up to {total}.
+        Assign each target at least 1. The shares must add up to {upTo
+          ? `at most ${total}`
+          : total}.
       </p>
       <ul class="rows">
         {#each targets as t (t.id)}
@@ -115,7 +119,7 @@
         {/each}
       </ul>
       <p class="status" class:bad={problem !== null} aria-live="polite">
-        {problem ?? `${total} assigned`}
+        {problem ?? `${assigned} of ${total} assigned`}
       </p>
       <div class="prompt-foot">
         <button type="button" class="ghost" onclick={onCancel}
