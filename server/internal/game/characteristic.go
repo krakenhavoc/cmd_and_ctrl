@@ -224,6 +224,19 @@ type Characteristic struct {
 	// empty, CR 613.1f.) One entry per requirement, because CR 508.1d
 	// COUNTS them. Goad's pairs are not here: they ride Card.Goads.
 	AttackRequirements []AttackRequirement
+
+	// BlockRequirements are the CR 509.1c requirements this object
+	// carries — "blocks each combat if able" on a would-be blocker
+	// (Watchdog, Grand Melee's second line), and on an attacker "all
+	// creatures able to block this creature do so" (Lure), "must be
+	// blocked if able" (Gaea's Protector) and "must be blocked by
+	// exactly one creature if able". #1597, block_requirements.go.
+	//
+	// AttackRequirements' twin, for the same reasons: written by
+	// ordinary layer statics and by ADR 0041 data records, only ever
+	// appended to, never cleared by a layer-6 ability removal, one entry
+	// per requirement because CR 509.1c counts them.
+	BlockRequirements []BlockRequirement
 }
 
 // printedCharacteristic builds a Characteristic from the card's
@@ -342,6 +355,7 @@ func (c Characteristic) clone() Characteristic {
 	out.Abilities = append([]string(nil), c.Abilities...)
 	out.GrantedAbilities = append([]GrantedAbility(nil), c.GrantedAbilities...)
 	out.AttackRequirements = append([]AttackRequirement(nil), c.AttackRequirements...)
+	out.BlockRequirements = append([]BlockRequirement(nil), c.BlockRequirements...)
 	return out
 }
 

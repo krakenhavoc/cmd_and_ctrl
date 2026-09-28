@@ -132,8 +132,10 @@ func (g *Game) BlockDeclarationSeatsLocked() (pending, declared []int) {
 // Errors: ErrGameNotActive, ErrWrongStep outside declare_blockers, a
 // *ChoicePendingError while a blocking prompt is open (#730, the gate a
 // pass obeys — completing may queue triggers and move priority),
-// ErrPlayerNotFound for an unknown seat, and ErrNotDefending for a seat
-// nothing is attacking. Idempotent: a seat whose declaration is already
+// ErrPlayerNotFound for an unknown seat, ErrNotDefending for a seat
+// nothing is attacking, and — #1597 — a *BlockRefusedError with reason
+// block_requirement while the seat's staged declaration leaves a
+// CR 509.1c requirement unobeyed that it could obey. Idempotent: a seat whose declaration is already
 // complete gets nil and nothing happens.
 func (g *Game) FinishBlocks(seat uuid.UUID) error {
 	g.mu.Lock()
@@ -153,6 +155,11 @@ func (g *Game) FinishBlocks(seat uuid.UUID) error {
 	g.RecomputeLayersIfStaleLocked()
 	if !g.isDefendingPlayerLocked(seat) {
 		return ErrNotDefending
+	}
+	// #1597 / CR 509.1c: finishing is the declaration's checkpoint,
+	// exactly as the defender's pass is.
+	if err := g.blockCheckpointLocked(seat); err != nil {
+		return err
 	}
 	if g.completeBlockDeclarationLocked(seat) {
 		g.closeBlockDeclarationIfCompleteLocked()

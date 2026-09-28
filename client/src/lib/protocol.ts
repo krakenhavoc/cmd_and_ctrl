@@ -108,6 +108,12 @@ export const BLOCK_REFUSAL_REASONS = [
   // whole-combat count limit — Silent Arbiter's "no more than one
   // creature can block each combat" (CR 509.1b).
   "declaration_limit",
+  // #1597 (CR 509.1c): the declaration — or the defending player's
+  // pass / finish_blocks that ends it — leaves a blocking requirement
+  // unobeyed that it could obey (Lure, "blocks each combat if able",
+  // "must be blocked if able"). `card_id` is the creature that could
+  // obey it; the message names the requirement.
+  "block_requirement",
 ] as const;
 export type BlockRefusalReason = (typeof BLOCK_REFUSAL_REASONS)[number];
 
@@ -2351,6 +2357,13 @@ export interface CardView extends CastSurfaceView {
   // (Zurgo, goad, Bident of Thassa). Server-computed; the client
   // renders it and never derives a requirement. Omitted otherwise.
   must_attack?: boolean;
+  // #1597 (CR 509.1c): true on a creature a defending player owes a
+  // block with right now — during declare_blockers, while their
+  // declaration is pending and could still obey a requirement it does
+  // not (Lure, Grand Melee, "blocks each combat if able", "must be
+  // blocked if able"). Server-computed; the client renders it and never
+  // derives a requirement. Omitted otherwise.
+  must_block?: boolean;
   // S24 (ADR 0036): the attachment relation for an Equipment or an
   // Aura — the permanent (`kind: "card"`) or player
   // (`kind: "player"`) this card is attached to. Omitted for every

@@ -553,6 +553,11 @@ lastKnownBattlefield{}.AttackRequirements[].GoadedBy	custom(uuid.UUID)
 lastKnownBattlefield{}.AttackRequirements[].OtherThan	custom(uuid.UUID)
 lastKnownBattlefield{}.AttackRequirements[].Source	custom(uuid.UUID)
 lastKnownBattlefield{}.AttackRequirements[].SourceName	string
+lastKnownBattlefield{}.BlockRequirements	array
+lastKnownBattlefield{}.BlockRequirements[]	object
+lastKnownBattlefield{}.BlockRequirements[].Kind	string
+lastKnownBattlefield{}.BlockRequirements[].Source	custom(uuid.UUID)
+lastKnownBattlefield{}.BlockRequirements[].SourceName	string
 lastKnownBattlefield{}.Colors	array
 lastKnownBattlefield{}.Colors[]	string
 lastKnownBattlefield{}.ControlSource	custom(uuid.UUID)
@@ -594,6 +599,11 @@ lastKnownPermanents{}[].characteristic.AttackRequirements[].GoadedBy	custom(uuid
 lastKnownPermanents{}[].characteristic.AttackRequirements[].OtherThan	custom(uuid.UUID)
 lastKnownPermanents{}[].characteristic.AttackRequirements[].Source	custom(uuid.UUID)
 lastKnownPermanents{}[].characteristic.AttackRequirements[].SourceName	string
+lastKnownPermanents{}[].characteristic.BlockRequirements	array
+lastKnownPermanents{}[].characteristic.BlockRequirements[]	object
+lastKnownPermanents{}[].characteristic.BlockRequirements[].Kind	string
+lastKnownPermanents{}[].characteristic.BlockRequirements[].Source	custom(uuid.UUID)
+lastKnownPermanents{}[].characteristic.BlockRequirements[].SourceName	string
 lastKnownPermanents{}[].characteristic.Colors	array
 lastKnownPermanents{}[].characteristic.Colors[]	string
 lastKnownPermanents{}[].characteristic.ControlSource	custom(uuid.UUID)
@@ -1038,6 +1048,11 @@ pendingChoices[].damageAssignment.SourceLKI.AttackRequirements[].GoadedBy	custom
 pendingChoices[].damageAssignment.SourceLKI.AttackRequirements[].OtherThan	custom(uuid.UUID)
 pendingChoices[].damageAssignment.SourceLKI.AttackRequirements[].Source	custom(uuid.UUID)
 pendingChoices[].damageAssignment.SourceLKI.AttackRequirements[].SourceName	string
+pendingChoices[].damageAssignment.SourceLKI.BlockRequirements	array
+pendingChoices[].damageAssignment.SourceLKI.BlockRequirements[]	object
+pendingChoices[].damageAssignment.SourceLKI.BlockRequirements[].Kind	string
+pendingChoices[].damageAssignment.SourceLKI.BlockRequirements[].Source	custom(uuid.UUID)
+pendingChoices[].damageAssignment.SourceLKI.BlockRequirements[].SourceName	string
 pendingChoices[].damageAssignment.SourceLKI.Colors	array
 pendingChoices[].damageAssignment.SourceLKI.Colors[]	string
 pendingChoices[].damageAssignment.SourceLKI.ControlSource	custom(uuid.UUID)
