@@ -52,12 +52,21 @@ func TestEnumeratorAgreesWithTheAutoTapperOnAStolenPhyrexianCard(t *testing.T) {
 					}
 				})
 
-				got := castMovesFor(legal.EnumerateFor(g, seat.ID), loot.InstanceID)
+				// #1677: the life payments are offered as well, so the
+				// agreement is about the MANA payment — phyrexian_life 0
+				// — and every move offered, life or not, must dispatch.
+				all := castMovesFor(legal.EnumerateFor(g, seat.ID), loot.InstanceID)
+				dispatchAll(t, g, seat.ID, all)
+				var got []legal.Move
+				for _, m := range all {
+					if phyrexianLifeOf(t, m) == 0 {
+						got = append(got, m)
+					}
+				}
 				if len(got) != want {
-					t.Fatalf("offered %d casts off %d Mountains, want %d", len(got), lands, want)
+					t.Fatalf("offered %d mana casts off %d Mountains, want %d", len(got), lands, want)
 				}
 				if want > 0 {
-					dispatchAll(t, g, seat.ID, got)
 					return
 				}
 				// Not offered, and the auto-tapper refuses the same cast.
