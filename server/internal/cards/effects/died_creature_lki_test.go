@@ -169,7 +169,8 @@ func TestMidnightReaperDrawsForASacrificedCrewedVehicle(t *testing.T) {
 }
 
 // Mahadi, Emporium Master counts "each creature that died this turn"
-// off the per-turn tally, which reads the same last-known types: a
+// off the per-turn tally, which reads the CR 603.10 snapshot as each
+// death happens — the same types the event carries: a
 // crewed Vehicle and an animated land that died are two creatures, an
 // uncrewed Vehicle none.
 func TestMahadiCountsACrewedVehicleAndAnAnimatedLand(t *testing.T) {
@@ -262,19 +263,19 @@ func TestLeavesTheBattlefieldConditionsReadLastKnownTypes(t *testing.T) {
 
 	var none game.Characteristic
 	_, diedAsCreature := diedCreature(died, g)
-	_, b21 := b21ArtifactOrCreatureYouControlDied(died, source, g)
-	_, b21Land := b21ArtifactOrCreatureYouControlDied(landDied, source, g)
+	b21Card, b21 := b21ArtifactOrCreatureYouControlDied(died, source, g)
+	b21LandCard, b21Land := b21ArtifactOrCreatureYouControlDied(landDied, source, g)
 	for _, c := range []struct {
 		name      string
 		got, want bool
 	}{
 		{"diedCreature (a noncreature died)", diedAsCreature, false},
-		{"b21ArtifactOrCreatureYouControlDied", b21, true},
+		{"b21ArtifactOrCreatureYouControlDied", b21 && b21Card.InstanceID == bear, true},
 		{"b23ArtifactPutIntoGraveyardFromBattlefield", b23ArtifactPutIntoGraveyardFromBattlefield(died, g), true},
 		{"b10LandYouControlDied", b10LandYouControlDied(died, source, g), true},
 		{"scrapTrawlerArtifactHitTheYard", scrapTrawlerArtifactHitTheYard(died, source, none, g), true},
 		{"anotherArtifactOrCreaturePutIntoGraveyardFromBattlefield", anotherArtifactOrCreaturePutIntoGraveyardFromBattlefield(died, source, g), true},
-		{"b21ArtifactOrCreatureYouControlDied (animated land died)", b21Land, true},
+		{"b21ArtifactOrCreatureYouControlDied (animated land died)", b21Land && b21LandCard.InstanceID == manland, true},
 		{"anotherArtifactOrCreaturePutIntoGraveyardFromBattlefield (animated land died)", anotherArtifactOrCreaturePutIntoGraveyardFromBattlefield(landDied, source, g), true},
 		{"creatureYouControlLeftWithoutDying (crewed Vehicle bounced)", creatureYouControlLeftWithoutDying(bounced, source, g), true},
 		{"aCreatureYouControlLeft (crewed Vehicle bounced)", aCreatureYouControlLeft(bounced, source, none, g), true},
