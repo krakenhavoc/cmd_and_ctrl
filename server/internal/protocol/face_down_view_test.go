@@ -320,11 +320,18 @@ func everyFieldCastSurface(lt *LegalTargetsView) CastSurfaceView {
 			Key: "overload", Label: "Overload {6}{U}", ManaCost: "{6}{U}", Life: 1, PayLabel: "a blue card",
 			TargetMode: "creature", LegalTargets: lt, PayOptions: lt,
 			XLockedAtZero: true, PhyrexianSymbols: 1,
+			// #1686.
+			TimingClosed: true,
 		}},
 		// #1012: the flag that says the printed cost is not one of
 		// the prices this cast may claim. Redacted with the offer
 		// list it is only meaningful beside.
 		AlternativeCostRequired: true,
+		// #1686: the printed cost's own timing-closed signal — see the
+		// field doc for why it is independent of AlternativeCostRequired
+		// (both may be true at once on a real card; this fixture just
+		// needs both non-zero).
+		PrintedCostTimingClosed: true,
 		TapCost:                 &TapCostView{Key: "convoke", Options: lt},
 		TargetCostNotes:         []string{"This spell costs {1} more to cast for each target beyond the first."},
 		PhyrexianSymbols:        1,
@@ -703,6 +710,10 @@ var castSurfaceScopes = map[string]castSurfaceScope{
 	"Modes":                   surfacePublicPile,
 	"AlternativeCosts":        surfacePublicPile,
 	"AlternativeCostRequired": surfacePublicPile,
+	// #1686: derived from whose turn it is, the stack, and the
+	// battlefield's own grants — all public, the same reasoning
+	// ActivatedAbilityView.TimingClosed's doc gives.
+	"PrintedCostTimingClosed": surfacePublicPile,
 	"TapCost":                 surfacePublicPile,
 	"PhyrexianSymbols":        surfacePublicPile,
 	"TargetCostNotes":         surfacePublicPile,
@@ -777,6 +788,9 @@ var alternativeCostScopes = map[string]castSurfaceScope{
 	// CR 601.2h) but one seat's all the same.
 	"LegalTargets": surfacePrivate,
 	"PayOptions":   surfacePrivate,
+	// #1686: same reasoning as PrintedCostTimingClosed above — public
+	// board state, not per-viewer.
+	"TimingClosed": surfacePublicPile,
 }
 
 // TestHandPublicCastSurfaceIsAnAllowlist is the #1169 guard, and it is

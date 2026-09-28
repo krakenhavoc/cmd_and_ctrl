@@ -786,6 +786,23 @@ type AlternativeCostView struct {
 	// today — shipped because the field the client reads must not
 	// depend on which cost is being paid.
 	PhyrexianSymbols int `json:"phyrexian_symbols,omitempty"`
+
+	// TimingClosed says the engine will refuse THIS offer right now for
+	// timing (CR 307.1) even though its zone and payability both check
+	// out — #1686. Every S22 keyword here answers to the card's own
+	// printed timing (or a wider per-player grant) the same way the
+	// printed cost does, so this stays false for them; a live miracle
+	// grant is the first offer with a clock of its own — TimingFlash for
+	// its own claim — that can disagree with the printed cost's, and
+	// CastPermission.ForClaim is what is asked to find out.
+	//
+	// The same negative shape CastSurfaceView.PrintedCostTimingClosed
+	// and ActivatedAbilityView.TimingClosed use: omitempty keeps it off
+	// every offer the engine has no objection to right now, which is
+	// every offer that isn't gated on a grant with its own timing. The
+	// picker drops an offer this is set on exactly as it drops the
+	// printed row when PrintedCostTimingClosed is set.
+	TimingClosed bool `json:"timing_closed,omitempty"`
 }
 
 // TapCostView is the wire shape of game.TapPermanentsCost — the
@@ -1998,6 +2015,36 @@ type CastSurfaceView struct {
 	// Stamped and stripped with `alternative_costs`, which it is only
 	// meaningful beside.
 	AlternativeCostRequired bool `json:"alternative_cost_required,omitempty"`
+	// PrintedCostTimingClosed says the printed mana cost IS one of the
+	// prices this cast may claim out of this zone (AlternativeCostRequired
+	// is false) but the engine will refuse it RIGHT NOW for timing (CR
+	// 307.1) — #1686. Deliberately NOT folded into AlternativeCostRequired
+	// or into CastOffersForLocked's list: that list and the price it
+	// prices are a ZONE-and-payability answer the exile strip's
+	// informational `cast_prices` badge reads while a sorcery is between
+	// windows (#1389), and must not go empty just because now is not the
+	// moment. A live miracle grant is exactly the case that needed a
+	// second, timing-aware signal: it opens ITS OWN claim at instant
+	// speed and says nothing about the printed one, which stays whatever
+	// timing the card prints — drawn on another player's turn, the
+	// printed sorcery cast is still on the menu (this stays false only
+	// when AlternativeCostRequired is already true) but not choosable
+	// until the caster's own main phase.
+	//
+	// The same NEGATIVE shape ActivatedAbilityView.TimingClosed uses
+	// one struct over: omitempty keeps it off every card the engine has
+	// no objection to casting at its printed price right now, which is
+	// every ordinary hand cast. The cost picker drops the "its mana
+	// cost" row when this is set, exactly as it already does when
+	// AlternativeCostRequired is — a player has no way to tell "the
+	// server refuses this for the zone" from "the server refuses this
+	// for the moment", and needs to be shown neither.
+	//
+	// Public, like AlternativeCostRequired: it is derived from
+	// game.CastTimingOpenLocked, which reads whose turn it is, what is
+	// on the stack and the battlefield's own grants — all public facts,
+	// the same reasoning ActivatedAbilityView.TimingClosed's doc gives.
+	PrintedCostTimingClosed bool `json:"printed_cost_timing_closed,omitempty"`
 	// TapCost is the S22 convoke / waterbend clause for a card in the
 	// viewer's own hand / command zone: which of your untapped
 	// permanents may be tapped to help pay, and how many. Absent for
@@ -3418,7 +3465,27 @@ func stampLegalTargets(g *game.Game, seats []PlayerView, anyGrant bool) {
 				// `castable_here` was never part of this: castStampsFor
 				// only ever sets it for a graveyard or a library top,
 				// so a hand card has never carried one.
-				s := castStampsFor(g, caster, c, activeFace(c), zone.kind, nil)
+				//
+				// #1686: the grant is no longer hard-coded nil. A hand
+				// card's own printed text never needed a permission
+				// before #1665 — CR 601.2 already opens the hand — but a
+				// GRANTED hand-zone offer (miracle) is invisible on the
+				// wire without one: CastOffersForLocked refuses a
+				// RequiresGrant offer under a nil grant
+				// (AlternativeCost.RequiresGrant, ErrAltCostNotGranted),
+				// so the picker could never even see "Miracle {W}", let
+				// alone choose correctly between it and the printed
+				// cost. Looked up the same way the graveyard and
+				// library branches above do, and gated behind the same
+				// `anyGrant` fast negative — a plain hand card's grant
+				// is always nil and this costs nothing for it.
+				var grant *game.CastPermission
+				if anyGrant {
+					if live, ok := liveCardForView(g, c); ok {
+						grant = grantedCast(g, caster, live, zone.kind)
+					}
+				}
+				s := castStampsFor(g, caster, c, activeFace(c), zone.kind, grant)
 				s.applyPublicTo(c, zone.kind)
 				c.stampsFor(caster, s)
 				// #992: and the halves this hand card is NOT showing.
@@ -3427,7 +3494,7 @@ func stampLegalTargets(g *game.Game, seats []PlayerView, anyGrant bool) {
 				// picker reads — and it is one extra face for those
 				// two layouts and zero for every other card in the
 				// game.
-				stampCastableFaces(g, caster, c, zone.kind, nil, true)
+				stampCastableFaces(g, caster, c, zone.kind, grant, true)
 			}
 		}
 	}
@@ -4202,6 +4269,33 @@ func castStampsFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, kind
 	// at its flashback cost and at no other, and the client had to
 	// infer that from the shape of the offer list.
 	out.AlternativeCostRequired = len(offers) > 0 && !printedCostAmong(offers)
+	// #1686: a second, timing-aware signal beside the zone-and-
+	// payability answer above — see PrintedCostTimingClosed's doc for
+	// why it is not folded into `offers` itself. Only asked at all when
+	// there is at least one alternative cost to disagree with the
+	// printed one — the picker never opens over a card with nothing
+	// else to offer (afterFace, client-side), so a plain sorcery with
+	// no offers gains no stamp here, and the overwhelming majority of
+	// cards in every fixture are untouched. The printed claim is asked
+	// about only when it is one of the prices at all (skipped when
+	// AlternativeCostRequired already refuses it for a different
+	// reason); each offer is asked about under the SAME per-claim
+	// narrowing (CastPermission.ForClaim) CastSpell applies before its
+	// own timing check, so the picker and the announce path cannot
+	// disagree.
+	if haveLive && len(out.AlternativeCosts) > 0 {
+		if !out.AlternativeCostRequired {
+			out.PrintedCostTimingClosed = !g.CastTimingOpenLocked(caster, live, kind, grant.ForClaim(nil))
+		}
+		for i := range out.AlternativeCosts {
+			for _, o := range offers {
+				if o != nil && o.Key == out.AlternativeCosts[i].Key {
+					out.AlternativeCosts[i].TimingClosed = !g.CastTimingOpenLocked(caster, live, kind, grant.ForClaim(o))
+					break
+				}
+			}
+		}
+	}
 	// #1015: and THE cast-surface bit, derived here because this is
 	// the one place that knows both halves of it — the prices this
 	// cast may claim, and the ADR 0073 §7 gate. An empty price list
@@ -6664,6 +6758,11 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	// says the card prints a zone-bound price, which is the same leak
 	// one step removed.
 	out.AlternativeCostRequired = false
+	// #1686: cleared with it, for the same reason — every field of the
+	// announce surface goes with a face-down card's identity, whether
+	// or not this particular one is timing-shaped rather than
+	// cost-shaped.
+	out.PrintedCostTimingClosed = false
 	// ADR 0073: "Kicker {4}" names the card as loudly as an overload
 	// cost does, and CR 708.2 leaves a face-down object with no text
 	// to offer it from.
