@@ -941,3 +941,107 @@ Nothing here builds a general "Harness" cost component analogous to
 ("harness [this permanent]"), not a cost syntax, and no card prints
 "Harness" as part of a larger cost the way a Class's level-up is
 printed as part of an activation instruction.
+
+---
+
+## Amendment (2026-09-27): a chosen option is a gate too — the anchor-word Sieges (CR 614.12, #1572)
+
+**Status:** Accepted · 2026-09-27 · tracked on
+[#1572](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1572),
+tracker [#889](https://github.com/krakenhavoc/cmd_and_ctrl/issues/889);
+the proof card came from the Edea deck tracker
+[#1565](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1565).
+
+### Context
+
+"As this enchantment enters, choose Khans or Dragons. • Khans — [ability]
+• Dragons — [ability]" is the Siege cycles' shape (Fate Reforged's five,
+Tarkir: Dragonstorm's five). The words are ANCHOR WORDS: each points at the
+ability printed after it, and a Siege has exactly one of the two abilities —
+the one after the word chosen as it entered (the Fate Reforged rulings, and
+the same answer for a copy: it makes its own choice).
+
+Two things were missing. The answer had nowhere to live: the as-enters family
+had four per-permanent fields (`NamedTribe`, `ChosenColor`, `ChosenPlayer`,
+`ChosenName`), each with its own validated vocabulary and its own writer, and
+a word the CARD supplies fits none of them. And nothing could say "this
+ability exists only when the word is Temur" — which is, word for word, what
+this ADR's gate is for.
+
+### Decision
+
+**A sixth gate kind, not a card-side check.** `DesignationChosenOption`
+joins the enum, `Designation` grows an `Option string` (the anchor word),
+and `Active` answers `d.Option != "" && c.ChosenOption == d.Option`.
+`game.ChosenOptionIs(word)` builds it. Everything Decision 1 promised follows
+unchanged: the four accessors drop the unchosen line, so the harvester never
+matches a Dragons trigger on a Khans Siege, the layer pass never sees a Temur
+anthem on a Jeskai one, and a targeted trigger on the wrong line never asks
+anybody to pick a target. The issue suggested a `ChosenOptionIs(src, opt)`
+reader for card `AppliesTo`s instead; a reader would work for triggers but
+leaves the unchosen static in the list the layer pass walks and puts the
+same `if` in every card file, which is exactly the "if the Class is level 3
+inside an Apply" this ADR ruled out.
+
+**An empty answer matches no word.** Between entering and answering the
+Siege has NEITHER ability. An open `PendingChoice` stops priority, so the
+window is unobservable, and the direction is the safe one (weaker than
+printed, never stronger).
+
+**The answer is `Card.ChosenOption string`, the as-enters family's fifth
+member**, with the family's lifecycle verbatim: per instance, cleared at both
+CR 400.7 sites (`zone.go`'s battlefield exit and `resetAsNewObjectLocked`),
+carried by clone and the snapshot (`chosenOption`, `carried` in
+`snapshot_drift_test.go`; additive, so the v7 shape file was updated in place
+and no schema bump), not a copiable value (CR 707.2 — `CopiableValuesOf`
+never reads it). The one difference from its siblings is the vocabulary: the
+options are the card's own words, so there is nothing to validate beyond "one
+of the offered options".
+
+**The prompt is the existing `option_pick`.** `Game.QueueChooseOptionAsEntersForEffect(chooser,
+source, question, options)` queues one option per word, in printed order,
+from the permanent's `AsEnters` hook (S26's declared simplification, fifth
+use: queued as the permanent enters rather than by pausing the CR 614
+pipeline). No option names a seat or a card, so nothing prunes the list while
+it is open and the answered INDEX is stable — `Then`, not `ThenSeat`. A
+prompt dropped unanswered runs with `NoChoiceIndex` and stores nothing. The
+gate, `internal/legal`, the wire and the client modal answer it with no
+change; the bot takes the first word (the enumerator's always-legal option).
+
+**Announced and invalidating.** `setChosenOptionLocked` emits
+`EventOptionChosen` (actor = the chooser, `Label` = the word). The layer
+listener's designation arm bumps on it — the answer switches a gated static
+on — and the public log narrates it as `choose_option` ("P1 chose Temur for
+Frostcliff Siege"), `choice` redacted with the card's name like its
+siblings'. `CardView.chosen_option` carries the word, public, cleared on the
+non-knower redaction.
+
+**Card side** (`cards/effects/choose_option.go`):
+`ChooseOptionAsEnters(label, options...)` for `Spec.AsEnters`, `ChosenIs(word)`
+for the gate, `WhenChosen(word, trigger)` / `StaticWhenChosen(word, static)`
+to stamp it, and `ChosenOptionOf` for an effect that has to say the word.
+`TestEveryAnchorWordGateIsOffered` runs every registered anchor-word card's
+`AsEnters` and fails when a gate names a word the prompt never offers (that
+line would be switched off forever) or an offered word gates nothing.
+
+### Cards
+
+Frostcliff Siege (the proof card: a gated combat-damage trigger and three
+gated layer statics), Palace Siege, Citadel Siege, Barrensteppe Siege,
+Outpost Siege and Frontier Siege — all `CompletenessFull`.
+
+### Still not covered
+
+- **Windcrag Siege.** Its Mardu line is a CR 603.2d trigger doubler, and
+  `game.TriggerDoubler` has no `ActiveWhen`. The doubling query already hands
+  over the doubler as a `Card`, so the gate field plus one `Active` check in
+  the doubling pass is the missing piece — Decision 1 point 3's "same two
+  lines on the day one does", for a fifth slot. Writing the word check inside
+  the card's `Applies` instead would work and is exactly the per-card `if`
+  this amendment exists to avoid.
+- Glacierwood, Hollowmurk and Monastery Siege were not attempted here (the
+  PR kept to six cards); their lines look expressible on existing machinery
+  (`GatedCastPermissions`, a once-per-turn trigger plus "whenever you attack",
+  and a target-reading `CostModifier`), unverified.
+- Mana abilities and replacement effects still take no gate (Decision 1
+  point 3); no Siege needs one.

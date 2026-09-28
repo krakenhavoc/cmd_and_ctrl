@@ -180,6 +180,11 @@ const (
 	// typed it, trimmed and otherwise untouched — CR 201.2 admits any
 	// card name, so there is no canonical spelling to report (#1210).
 	LogChooseName LogKind = "choose_name"
+	// LogChooseOption — a player answered an "as this enters, choose
+	// <A> or <B>" prompt (CR 614.12) whose options are words printed
+	// on the card: a Siege's anchor word, "Khans" or "Temur" (#1572).
+	// `Choice` is the word as the card prints it.
+	LogChooseOption LogKind = "choose_option"
 	// LogChoosePlayer — a player answered an "as this enters, choose
 	// a player" prompt (CR 614.12): True-Name Nemesis. The answer is
 	// a SEAT, so it rides TargetSeat like every other player
@@ -1042,6 +1047,12 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		base.Choice = ev.Label
 		return base, true
 
+	case game.EventOptionChosen:
+		base.Kind = LogChooseOption
+		base.CardID = uuidStringOrEmpty(ev.CardID)
+		base.Choice = ev.Label
+		return base, true
+
 	case game.EventPlayerChosen:
 		base.Kind = LogChoosePlayer
 		base.CardID = uuidStringOrEmpty(ev.CardID)
@@ -1724,6 +1735,8 @@ func renderLogText(e LogEvent, cardName, targetName string) string {
 		return fmt.Sprintf("%s chose %s for %s", actor, nameOr(e.Choice, "a creature type"), card)
 	case LogChooseName:
 		return fmt.Sprintf("%s named %s for %s", actor, nameOr(e.Choice, "a card"), card)
+	case LogChooseOption:
+		return fmt.Sprintf("%s chose %s for %s", actor, nameOr(e.Choice, "an option"), card)
 	case LogChoosePlayer:
 		// `target` is already the seat name here (or "a player"): a
 		// chosen player never rides Target, so the card branch above

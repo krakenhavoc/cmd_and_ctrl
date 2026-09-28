@@ -13,6 +13,8 @@ import "github.com/google/uuid"
 //	CR 721.2   a station THRESHOLD  "as long as this has N or more charge counters, it has …"
 //	CR 709.5   a Room's UNLOCKED    a locked door has no rules text at all
 //	           DOOR                 (designed here, built by #886)
+//	CR 614.12  a CHOSEN OPTION      "choose Khans or Dragons. • Khans — …"
+//	           (anchor word)        (#1572, ADR 0071 amendment 2026-09-27)
 //
 // Four printed mechanics, one sentence. So one field, one predicate,
 // one place — and nowhere else in the engine asks the question.
@@ -112,6 +114,21 @@ const (
 	// the build if a card file tries. #886 adds the state and the
 	// unlock special action; nothing else here changes when it does.
 	DesignationDoorUnlocked
+
+	// DesignationChosenOption is CR 614.12's anchor-word form: "As
+	// this enters, choose Khans or Dragons. • Khans — [ability]
+	// • Dragons — [ability]". The ability printed after an anchor word
+	// exists only while that word is the permanent's chosen option
+	// (Card.ChosenOption), so a Siege has exactly one of its two
+	// abilities once its controller has answered, and neither in the
+	// window before (#1572). Option is the anchor word.
+	//
+	// Not a designation in CR 701's sense — nothing names a chosen
+	// option one — but exactly the thing this gate exists to ask:
+	// per-permanent battlefield state, not copiable, cleared by CR
+	// 400.7, whose only job is to switch one of the permanent's own
+	// printed abilities on. See ADR 0071's 2026-09-27 amendment.
+	DesignationChosenOption
 )
 
 // DoorSide names which half of a Room a DesignationDoorUnlocked gate
@@ -141,6 +158,13 @@ type Designation struct {
 
 	// Door is which half of a Room a DoorUnlocked gate is printed on.
 	Door DoorSide
+
+	// Option is the anchor word a ChosenOption gate is printed after —
+	// "Khans", "Temur". Compared exactly against Card.ChosenOption,
+	// which the as-enters prompt stamps from the same card's own
+	// option list, so the two spellings cannot drift. Empty for every
+	// other kind.
+	Option string
 }
 
 // Active reports whether this gate is satisfied by the object right
@@ -165,6 +189,12 @@ func (d Designation) Active(c Card) bool {
 		return c.Counters[CounterCharge] >= d.N
 	case DesignationHarnessed:
 		return c.Harnessed
+	case DesignationChosenOption:
+		// An unanswered prompt ("") matches no anchor word, so a
+		// Siege has NEITHER ability before its controller chooses —
+		// never both, which would be the stronger-than-printed
+		// direction.
+		return d.Option != "" && c.ChosenOption == d.Option
 	case DesignationDoorUnlocked:
 		// Reserved. Nothing can unlock a door yet, so nothing is
 		// unlocked — and no registered card declares this gate, so
@@ -198,6 +228,12 @@ func ChargeCounters(n int) Designation {
 // Harnessed builds a CR 701.64 / 702.186b gate: the ability exists
 // while the permanent is harnessed.
 func Harnessed() Designation { return Designation{Kind: DesignationHarnessed} }
+
+// ChosenOptionIs builds a CR 614.12 anchor-word gate: the ability
+// exists while `option` is the permanent's chosen option (#1572).
+func ChosenOptionIs(option string) Designation {
+	return Designation{Kind: DesignationChosenOption, Option: option}
+}
 
 // ClassLevelOf is the permanent's current Class level (CR 716.2b): a
 // Class permanent with no level designation is level 1, so the zero

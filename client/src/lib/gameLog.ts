@@ -91,6 +91,7 @@ const LOG_TONE: Record<LogKind, string> = {
   choose_type: "tone-quiet",
   choose_player: "tone-quiet",
   choose_name: "tone-quiet",
+  choose_option: "tone-quiet",
   // #1214: a resolution-time pick over cards or permanents. Quiet for
   // the same reason — the choice itself moves nothing, and whatever
   // the card then does to what was chosen has its own line.

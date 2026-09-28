@@ -682,6 +682,12 @@ type cardSnapshot struct {
 	// came back with an empty name would silently stop restricting
 	// the card it was played to stop.
 	ChosenName string `json:"chosenName,omitempty"`
+	// ChosenOption is the CR 614.12 "as this enters, choose <A> or
+	// <B>" answer (#1572) — a Siege's anchor word. Carried for
+	// ChosenPlayer's reason: it is the whole of what decides which of
+	// the permanent's two printed abilities exists, so a restore that
+	// lost it would bring a Siege back with neither.
+	ChosenOption string `json:"chosenOption,omitempty"`
 	// Provenance is CR 400.7d: what the spell that became this
 	// permanent was cast for — the alternative cost (#653) and the
 	// optional additional costs (#664, ADR 0073 §5), in one record.
@@ -1707,6 +1713,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		ChosenColor:              c.ChosenColor,
 		ChosenPlayer:             c.ChosenPlayer,
 		ChosenName:               c.ChosenName,
+		ChosenOption:             c.ChosenOption,
 		ClassLevel:               c.ClassLevel,
 		Solved:                   c.Solved,
 		Harnessed:                c.Harnessed,
@@ -2432,6 +2439,7 @@ func restoreCard(c *cardSnapshot) Card {
 		ChosenColor:              c.ChosenColor,
 		ChosenPlayer:             c.ChosenPlayer,
 		ChosenName:               c.ChosenName,
+		ChosenOption:             c.ChosenOption,
 		ClassLevel:               c.ClassLevel,
 		Solved:                   c.Solved,
 		Harnessed:                c.Harnessed,

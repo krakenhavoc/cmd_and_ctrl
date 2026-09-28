@@ -233,3 +233,50 @@ func TestAChosenColorForAVanishedCardStillNamesTheColour(t *testing.T) {
 	}
 	assertNoUUID(t, entry.Text)
 }
+
+// TestLogNarratesAChosenOption is #1572's line: a Siege's anchor word
+// is chosen out loud, and the log says who chose which word for which
+// card. The word rides `choice` like a colour or a creature type, and
+// the permanent carries it on `chosen_option` for the card view.
+func TestLogNarratesAChosenOption(t *testing.T) {
+	g := buildActiveGame(t)
+	chooser, other := g.Seats[0], g.Seats[1]
+	siege := uuid.New()
+	g.WithWriteLock(func() {
+		g.Battlefield.PushTop(game.Card{
+			InstanceID: siege, Name: "Frostcliff Siege", TypeLine: "Enchantment",
+			Owner: chooser.ID, Controller: chooser.ID,
+			ChosenOption: "Temur",
+			KnownBy:      map[uuid.UUID]bool{chooser.ID: true, other.ID: true},
+		})
+		g.EmitEvent(game.Event{
+			Kind: game.EventOptionChosen, Actor: chooser.ID, CardID: siege, Label: "Temur",
+		})
+	})
+
+	view := ViewOfGame(g)
+	entry := findLog(t, view.Log, LogChooseOption)
+	if want := "P1 chose Temur for Frostcliff Siege"; entry.Text != want {
+		t.Errorf("text: got %q, want %q", entry.Text, want)
+	}
+	if entry.Choice != "Temur" {
+		t.Errorf("choice: got %q, want %q", entry.Choice, "Temur")
+	}
+	if entry.CardID != siege.String() {
+		t.Errorf("card_id: got %q, want the Siege", entry.CardID)
+	}
+	assertNoUUID(t, entry.Text)
+
+	found := false
+	for _, c := range view.Battlefield.Cards {
+		if c.InstanceID == siege.String() {
+			found = true
+			if c.ChosenOption != "Temur" {
+				t.Errorf("CardView.chosen_option = %q, want Temur", c.ChosenOption)
+			}
+		}
+	}
+	if !found {
+		t.Fatal("the Siege is not in the battlefield view")
+	}
+}

@@ -608,6 +608,11 @@ export type LogKind =
   // and otherwise untouched — CR 201.2 admits any card name, so
   // there is no canonical spelling to report (#1210).
   | "choose_name"
+  // A player answered an "as this enters, choose <A> or <B>" prompt
+  // whose options are words printed on the card (CR 614.12): a
+  // Siege's anchor word. `choice` is the word ("Khans", "Temur")
+  // (#1572).
+  | "choose_option"
   // #1214: a player answered one of the three resolution-time picks
   // (CR 608.2) — an opponent choosing from a revealed set, a seat
   // choosing among another player's permanents, a seat choosing N of

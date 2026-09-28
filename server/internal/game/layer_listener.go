@@ -279,12 +279,14 @@ func (layerVersionBump) OnEvent(g *Game, ev Event) {
 		// second pass produces no further delta and so no further
 		// bump.
 		g.layerVersion.Add(1)
-	case EventClassLevel, EventCaseSolved, EventHarnessed:
+	case EventClassLevel, EventCaseSolved, EventHarnessed, EventOptionChosen:
 		// ADR 0071: a designation switches printed statics on and off,
 		// so a level-up or a solve changes which continuous effects
 		// are in play. Charge-counter thresholds need no arm of their
 		// own — EventCounterPlaced above is emitted for removals too,
-		// which is exactly the pair a live "{N+}" gate needs.
+		// which is exactly the pair a live "{N+}" gate needs. A
+		// chosen option (#1572, a Siege's anchor word) is the same
+		// switch: the answer turns the chosen mode's gated static on.
 		//
 		// Without this the level-3 anthem would appear only when some
 		// unrelated permanent happened to move, which is the same
