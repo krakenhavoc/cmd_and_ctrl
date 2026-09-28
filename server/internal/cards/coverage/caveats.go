@@ -226,6 +226,26 @@ var mechanics = []Mechanic{
 		Adopt:      `PayLifeInstead(label, life, condition)`,
 	},
 	{
+		// #1594: War Room shipped caveated because its life cost is
+		// computed ("that life cost scales per deck"). The phrases are
+		// the caveat's words for an ability-cost count; the probe reads
+		// the declaration, so it cannot misfire on a card that merely
+		// mentions life.
+		Name:    "computed life cost",
+		Phrases: []string{"life cost scales", "pay life equal to", "pay half your life"},
+		Implements: func(s effects.Spec) bool {
+			for _, a := range s.Activated {
+				if !a.Cost.LifeFrom.IsZero() {
+					return true
+				}
+			}
+			return false
+		},
+		Evidence:   "an Activated ability's Cost.LifeFrom names a registered count",
+		Confidence: Exact,
+		Adopt:      `PayLifeCount(LifeEqualToCommanderColors)`,
+	},
+	{
 		// Phrases here are deliberately CAST-shaped. "from your
 		// graveyard" on its own is far too common in caveat prose —
 		// City of Traitors talks about a land returning from the

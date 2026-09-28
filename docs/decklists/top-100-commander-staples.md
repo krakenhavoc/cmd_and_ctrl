@@ -141,7 +141,7 @@ everything else names the one piece of machinery standing in its way.
 | 77 | 136 | Yavimaya Coast | Land | mana rider |
 | 78 | 137 | Llanowar Wastes | Land | mana rider |
 | 79 | 140 | Talisman of Progress | Artifact | mana rider |
-| 80 | 141 | War Room | Land | dynamic cost |
+| 80 | 141 | War Room | Land | **shipped** |
 | 81 | 142 | Morphic Pool | Land | **shipped** |
 | 82 | 143 | Rejuvenating Springs | Land | **shipped** |
 | 83 | 144 | Ponder | Sorcery | library top |
@@ -437,7 +437,7 @@ worth more than three cards.
 | Multi-target graveyard + sacrifice mid-resolution | 1 | Victimize |
 | Beginning-of-main-phase repeatable modal | 1 | Black Market Connections |
 | ~~Cumulative upkeep~~ (shipped, #567) | 1 | Mystic Remora |
-| Cost amounts computed at activation | 1 | War Room |
+| ~~Cost amounts computed at activation~~ (shipped, #1594) | 1 | War Room |
 | Protection from everything | 1 | The One Ring |
 | Choose new targets for a spell or ability | 1 | Deflecting Swat |
 
