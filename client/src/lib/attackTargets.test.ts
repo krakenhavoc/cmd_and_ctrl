@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import type { CardView, GameView, PlayerView, ZoneView } from "./protocol";
-import { attackTargetHint, defendingPlayerOf, permanentAttackTargets } from "./attackTargets";
+import {
+  attackTargetHint,
+  blockedAttackersOf,
+  blockerHasRoom,
+  defendingPlayerOf,
+  permanentAttackTargets,
+} from "./attackTargets";
 import { buildMenuSections } from "./contextMenu.logic";
 
 // attackTargets.test.ts — S27, CR 506.2 / 508.1d.
@@ -196,5 +202,32 @@ describe("defendingPlayerOf", () => {
         attacker({ attacking_target: "c-gone", attacking_target_kind: "planeswalker" }),
       ),
     ).toBeUndefined();
+  });
+});
+
+// #1706: the multi-blocker helpers read the server's stamps only.
+describe("blockedAttackersOf / blockerHasRoom", () => {
+  it("reads one attacker, several, or none", () => {
+    expect(blockedAttackersOf({})).toEqual([]);
+    expect(blockedAttackersOf({ blocking_target: "a" })).toEqual(["a"]);
+    expect(blockedAttackersOf({ blocking_target: "a", blocking_targets: ["a", "b"] })).toEqual([
+      "a",
+      "b",
+    ]);
+  });
+  it("has room by the published capacity", () => {
+    expect(blockerHasRoom({})).toBe(true);
+    expect(blockerHasRoom({ blocking_target: "a" })).toBe(false);
+    expect(blockerHasRoom({ blocking_target: "a", block_capacity: 2 })).toBe(true);
+    expect(
+      blockerHasRoom({ blocking_target: "a", blocking_targets: ["a", "b"], block_capacity: 2 }),
+    ).toBe(false);
+    expect(
+      blockerHasRoom({
+        blocking_target: "a",
+        blocking_targets: ["a", "b"],
+        blocks_any_number: true,
+      }),
+    ).toBe(true);
   });
 });

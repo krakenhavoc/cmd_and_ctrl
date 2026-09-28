@@ -398,6 +398,13 @@ type GameSnapshot struct {
 	// mid-combat blocked state rather than losing it.
 	AnnouncedBlocks  map[uuid.UUID]uuid.UUID `json:"announcedBlocks,omitempty"`
 	BlockedAttackers map[uuid.UUID]bool      `json:"announcedBecameBlocked,omitempty"`
+	// AnnouncedAlsoBlocks is the rest of a blocker's announced pairs
+	// when it blocks more than one attacker (#1706): AnnouncedBlocks
+	// keeps the first, so a file this binary writes is read by an
+	// older one as "announced against its first attacker", and an
+	// older file — which has no key — restores every blocker with the
+	// one pair it could have. Additive, no schema bump.
+	AnnouncedAlsoBlocks map[uuid.UUID][]uuid.UUID `json:"announcedAlsoBlocks,omitempty"`
 
 	// AnnouncedAttacks is the attack declaration's half of the same
 	// bookkeeping (#859, attackers.go): the creatures that have had
@@ -644,6 +651,10 @@ type cardSnapshot struct {
 	IsCommander      bool                `json:"isCommander"`
 	AttackingTarget  uuid.UUID           `json:"attackingTarget"`
 	BlockingTarget   uuid.UUID           `json:"blockingTarget"`
+	// AlsoBlocking is Card.AlsoBlocking (#1706): the attackers a
+	// multi-blocker blocks after blockingTarget. Omitted for every
+	// ordinary blocker, so an older file restores exactly as before.
+	AlsoBlocking []uuid.UUID `json:"alsoBlocking,omitempty"`
 	// GoadedBy is the pre-#1598 single goader, still written (as
 	// Card.LatestGoader) for a binary that predates Goads, and read
 	// only when a file has no `goads` key (restoreGoads).
@@ -1435,7 +1446,7 @@ func (g *Game) captureSnapshotLocked() *GameSnapshot {
 		turnSeqPresent:        true,
 	}
 	s.OncePerBatchFired = copyStringUint64Map(g.oncePerBatchFired)
-	s.AnnouncedBlocks = copyUUIDPairMap(g.announcedBlocks)
+	s.AnnouncedBlocks, s.AnnouncedAlsoBlocks = splitAnnouncedBlocks(g.announcedBlocks)
 	s.BlockedAttackers = copyBoolMap(g.blockedAttackers)
 	s.AnnouncedAttacks = copyBoolMap(g.announcedAttacks)
 	s.AttackDefenders = copyUUIDPairMap(g.attackDefenders)
@@ -1707,6 +1718,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		IsCommander:              c.IsCommander,
 		AttackingTarget:          c.AttackingTarget,
 		BlockingTarget:           c.BlockingTarget,
+		AlsoBlocking:             copyUUIDSlice(c.AlsoBlocking),
 		GoadedBy:                 c.LatestGoader(),
 		Goads:                    snapshotGoads(c.Goads),
 		DamageMarked:             c.DamageMarked,
@@ -2203,7 +2215,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.eventBatch = s.EventBatch
 	g.resolutionOpen = s.ResolutionOpen
 	g.oncePerBatchFired = copyStringUint64Map(s.OncePerBatchFired)
-	g.announcedBlocks = copyUUIDPairMap(s.AnnouncedBlocks)
+	g.announcedBlocks = joinAnnouncedBlocks(s.AnnouncedBlocks, s.AnnouncedAlsoBlocks)
 	g.blockedAttackers = copyBoolMap(s.BlockedAttackers)
 	g.announcedAttacks = copyBoolMap(s.AnnouncedAttacks)
 	g.attackDefenders = copyUUIDPairMap(s.AttackDefenders)
@@ -2439,6 +2451,7 @@ func restoreCard(c *cardSnapshot) Card {
 		IsCommander:              c.IsCommander,
 		AttackingTarget:          c.AttackingTarget,
 		BlockingTarget:           c.BlockingTarget,
+		AlsoBlocking:             copyUUIDSlice(c.AlsoBlocking),
 		Goads:                    restoreGoads(c.Goads, c.GoadedBy),
 		DamageMarked:             c.DamageMarked,
 		RegenerationShields:      c.RegenerationShields,

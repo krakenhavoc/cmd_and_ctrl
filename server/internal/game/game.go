@@ -414,7 +414,7 @@ type Game struct {
 	// re-done trigger, and the reverse would double-fire it — and an
 	// undo that dropped the blocked state would hand a blocked
 	// attacker's damage to the defending player.
-	announcedBlocks  map[uuid.UUID]uuid.UUID
+	announcedBlocks  map[uuid.UUID][]uuid.UUID
 	blockedAttackers map[uuid.UUID]bool
 
 	// announcedAttacks is the same bookkeeping for the ATTACK

@@ -31,7 +31,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			OnAny([]game.EventKind{game.EventAttack, game.EventBlock}, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-				return attackDeclared(ev, source) || b28SelfBlocked(ev, source)
+				return attackDeclared(ev, source) || selfBlocksOnce(ev, source)
 			}, "Savvy Hunter — create a Food", Do(CreateToken{Template: FoodToken(), N: 1})),
 		},
 		Activated: []ActivatedAbility{{

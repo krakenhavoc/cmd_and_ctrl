@@ -1196,7 +1196,7 @@ All eight are new. Seven ship `full`; one ships with a caveat.
 | Arbor Colossus | a targeted becomes-monstrous trigger; no legal target, no prompt (CR 603.3d) |
 | Fleecemane Lion | gated hexproof and indestructible |
 | Domesticated Hydra | Monstrosity X and a gated keyword; X = 0 still switches it on |
-| Hundred-Handed One | gated reach — **caveat:** "can block an additional ninety-nine creatures" has no shape (a blocker maps to one attacker), Brave the Sands' gap |
+| Hundred-Handed One | gated reach — **caveat:** "can block an additional ninety-nine creatures" has no shape (a blocker maps to one attacker), Brave the Sands' gap. *Lifted by #1706 ([ADR 0045](0045-combat-restrictions.md) Decisions 60–63): a gated `CanBlockAdditional(99)`, and the card is `full`.* |
 
 ### Still not covered
 

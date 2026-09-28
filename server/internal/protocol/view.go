@@ -905,6 +905,12 @@ type DamageAssignmentView struct {
 	AttackerPower  int      `json:"attacker_power"`
 	AllowTrample   bool     `json:"allow_trample,omitempty"`
 	HasDeathtouch  bool     `json:"has_deathtouch,omitempty"`
+	// BlockerDivides marks the CR 510.1d prompt (#1706): the card
+	// named by attacker_card_id is a BLOCKER that blocks two or more
+	// attackers, blocker_card_ids are those attackers, and its
+	// controller divides its damage among them as they choose — no
+	// order to keep and no trample.
+	BlockerDivides bool `json:"blocker_divides,omitempty"`
 }
 
 // ReplacementOptionView is one entry in a PendingChoiceView's
@@ -1572,6 +1578,21 @@ type CardView struct {
 	// currently declared to block, or omitted if not declared.
 	// Cleared on zone exit and by clear_combat. Added in S08.
 	BlockingTarget string `json:"blocking_target,omitempty"`
+	// BlockingTargets is every attacker this card blocks, in
+	// declaration order, when it blocks two or more (#1706 — High
+	// Ground, Palace Guard). Omitted for an ordinary blocker, whose one
+	// attacker is BlockingTarget; when present its first entry repeats
+	// BlockingTarget.
+	BlockingTargets []string `json:"blocking_targets,omitempty"`
+	// BlockCapacity is how many attackers this creature can block when
+	// an effect lets it block more than one ("can block an additional
+	// creature each combat"), and BlocksAnyNumber is set instead when
+	// it can block any number (#1706, game.BlockCapacity). Both are
+	// omitted for the ordinary creature that blocks one. Public: they
+	// are read off the effective characteristic, and a face-down
+	// creature has no text of its own to leak.
+	BlockCapacity   int  `json:"block_capacity,omitempty"`
+	BlocksAnyNumber bool `json:"blocks_any_number,omitempty"`
 	// GoadedBy is the player ID whose goad on this creature is the most
 	// recent, or empty when it is not goaded. Cleared on zone exit.
 	// Added in S10; enforced since #1571 — a goaded creature attacks
@@ -5911,6 +5932,7 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 				AttackerPower:  frame.AttackerPower,
 				AllowTrample:   frame.AllowTrample,
 				HasDeathtouch:  frame.HasDeathtouch,
+				BlockerDivides: frame.BlockerDivides,
 			}
 		}
 		out = append(out, v)
@@ -7322,6 +7344,19 @@ func viewOfCard(c game.Card) CardView {
 	}
 	if c.BlockingTarget != uuid.Nil {
 		view.BlockingTarget = c.BlockingTarget.String()
+	}
+	if len(c.AlsoBlocking) > 0 {
+		for _, id := range c.BlockedAttackers() {
+			view.BlockingTargets = append(view.BlockingTargets, id.String())
+		}
+	}
+	if c.IsCreature() {
+		switch n := game.BlockCapacity(&c); {
+		case n == 0:
+			view.BlocksAnyNumber = true
+		case n > 1:
+			view.BlockCapacity = n
+		}
 	}
 	if c.IsGoaded() {
 		view.GoadedBy = c.LatestGoader().String()

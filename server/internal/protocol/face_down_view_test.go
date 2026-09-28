@@ -60,7 +60,14 @@ var redactedCardKeys = map[string]bool{
 	"attacking_target":      true,
 	"attacking_target_kind": true,
 	"blocking_target":       true,
-	"goaded_by":             true,
+	// #1706: every attacker a multi-blocker blocks, and how many it
+	// can — the second read off the effective characteristic, which
+	// for a face-down creature holds only what OTHER permanents give
+	// it (it prints nothing, CR 708.2).
+	"blocking_targets":  true,
+	"block_capacity":    true,
+	"blocks_any_number": true,
+	"goaded_by":         true,
 	// #1598: every goader, as public as the latest one.
 	"goaders": true,
 	// #1571: that a creature owes an attack is public — its sources
@@ -237,6 +244,9 @@ func everyFieldCardView(owner string, knowers map[string]bool) CardView {
 		ProtectorPlayer:     "protector",
 		Defense:             4,
 		BlockingTarget:      "attacker",
+		BlockingTargets:     []string{"attacker", "attacker-2"},
+		BlockCapacity:       2,
+		BlocksAnyNumber:     true,
 		GoadedBy:            "goader",
 		Goaders:             []string{"goader"},
 		MustAttack:          true,

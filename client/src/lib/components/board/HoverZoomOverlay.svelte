@@ -257,7 +257,10 @@
             <span class="state state-attack">attacking</span>
           {/if}
           {#if card.blocking_target}
-            <span class="state">blocking</span>
+            <span class="state"
+              >blocking{#if (card.blocking_targets?.length ?? 0) > 1}
+                ×{card.blocking_targets?.length}{/if}</span
+            >
           {/if}
           {#if card.goaded_by}
             <span class="state state-attack">goaded</span>

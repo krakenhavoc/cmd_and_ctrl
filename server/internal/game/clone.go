@@ -302,7 +302,7 @@ func (g *Game) cloneLocked() *Game {
 	// declaration. An undo across a re-point that kept them would
 	// swallow the re-done "becomes blocked"; dropping them would
 	// announce the same attacker twice.
-	out.announcedBlocks = copyUUIDPairMap(g.announcedBlocks)
+	out.announcedBlocks = copyUUIDListMap(g.announcedBlocks)
 	out.blockedAttackers = copyBoolMap(g.blockedAttackers)
 	// #859: the attack declaration's announcements rewind with it for
 	// the same reason — an undo across a re-point that kept them
@@ -463,6 +463,10 @@ func cloneCard(c Card) Card {
 	}
 	if len(c.Colors) > 0 {
 		out.Colors = append([]string(nil), c.Colors...)
+	}
+	// #1706: a multi-blocker's further attackers.
+	if len(c.AlsoBlocking) > 0 {
+		out.AlsoBlocking = append([]uuid.UUID(nil), c.AlsoBlocking...)
 	}
 	// ADR 0034 faces. ActiveFace and Layout are scalars and ride the
 	// value copy, but Faces is a slice of structs each holding its

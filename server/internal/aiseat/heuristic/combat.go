@@ -716,6 +716,10 @@ func (p *Policy) decideBlock(st *state, moves []legal.Move) (aiseat.Decision, bo
 		if c.BlockingTarget != "" {
 			blocked[c.BlockingTarget] = true
 		}
+		// #1706: a creature blocking several attackers stops each.
+		for _, id := range c.BlockingTargets {
+			blocked[id] = true
+		}
 	}
 	unblocked := 0
 	for id, c := range incoming {

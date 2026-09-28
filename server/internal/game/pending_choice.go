@@ -997,6 +997,15 @@ type DamageAssignmentFrame struct {
 	// keyword. The client renders a "to player" input only when
 	// set; the server accepts trample_to_player > 0 only when set.
 	AllowTrample bool
+	// BlockerDivides marks the CR 510.1d prompt (#1706): the source is
+	// a BLOCKER that blocks two or more attackers, AttackerID names the
+	// blocker, BlockerIDs the attackers it blocks, and the chooser is
+	// the blocker's controller. Its damage is "divided as its controller
+	// chooses among them", so the lethal-first order below does not
+	// apply and neither does trample. Zero in every attacker's prompt,
+	// and in a frame restored from before the field, which is what
+	// those frames were.
+	BlockerDivides bool `json:",omitempty"`
 	// HasDeathtouch is true when the attacker has deathtouch (CR
 	// 702.2c — 1 damage is lethal). The server uses this to relax
 	// the at-least-lethal prefix rule: 1 damage satisfies the
@@ -2647,8 +2656,15 @@ func (g *Game) ResolveDamageAssignment(
 	// assignment must have received at-least-lethal damage. Lethal
 	// threshold = max(1, blocker.CurrentToughness - blocker.DamageMarked).
 	// Deathtouch collapses the threshold to 1.
+	//
+	// #1706: a blocker dividing its damage among the attackers it
+	// blocks has no order to keep (CR 510.1d) — any split that adds up
+	// is legal.
 	assigned := make(map[uuid.UUID]int, len(ordered))
 	for i, e := range ordered {
+		if frame.BlockerDivides {
+			break
+		}
 		lethal := 1
 		if !frame.HasDeathtouch {
 			blk := findBattlefieldCard(g, e.BlockerID)
