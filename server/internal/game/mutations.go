@@ -370,6 +370,17 @@ type CastSpellParams struct {
 	// caster simply pays the whole cost with mana. Added in S22.
 	TapIDs []uuid.UUID
 
+	// TeamworkIDs names the untapped creatures tapped to pay an
+	// announced teamwork cost (CR 702.194a): any number of them whose
+	// total effective power reaches the teamwork number. BlightIDs
+	// names the ONE creature an announced blight cost puts its -1/-1
+	// counters on (CR 701.68a). Same discipline as SacrificeIDs:
+	// validated at announce, paid with the spell on the stack, and
+	// refused rather than ignored when the announcement pays no such
+	// cost. Added for #1703.
+	TeamworkIDs []uuid.UUID
+	BlightIDs   []uuid.UUID
+
 	// AlternativeCost names the cost the caster is paying INSTEAD of
 	// the mana cost (CR 118.9) — the Key of one of the card's
 	// declared game.AlternativeCost entries, "overload" / "evoke" /
@@ -1039,6 +1050,27 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		)
 		return err
 	}
+	// #1703: the two components whose payment names creatures on
+	// the board — teamwork's taps (CR 702.194a) and blight's one
+	// creature (CR 701.68a). Same plan, same validate-all-then-pay.
+	if err := g.validateTeamworkLocked(playerID, costPlan, params.TeamworkIDs, params.TapIDs); err != nil {
+		slog.Warn("cast_spell rejected: bad teamwork payment",
+			"card_name", card.Name,
+			"oracle_id", card.OracleID,
+			"teamwork_received", len(params.TeamworkIDs),
+			"err", err,
+		)
+		return err
+	}
+	if err := g.validateBlightLocked(playerID, costPlan, params.BlightIDs); err != nil {
+		slog.Warn("cast_spell rejected: bad blight payment",
+			"card_name", card.Name,
+			"oracle_id", card.OracleID,
+			"blight_received", len(params.BlightIDs),
+			"err", err,
+		)
+		return err
+	}
 	// S22: tap-permanents-as-a-cost — convoke and waterbend. Checked
 	// here with the other announce-time choices and paid further
 	// down once the spell is on the stack, same validate-all-then-pay
@@ -1209,8 +1241,9 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	moving := append(append(append([]uuid.UUID(nil), params.DiscardIDs...), params.SacrificeIDs...), params.AltCostIDs...)
 	// #1445 / #1427: a card an EFFECT has already paused on its way
 	// out cannot pay — moved, or tapped to convoke / waterbend
-	// (TapIDs). See refusePausedCostCardsLocked.
-	if err := g.refusePausedCostCardsLocked(moving, params.TapIDs); err != nil {
+	// (TapIDs), tapped to teamwork or blighted (#1703). See
+	// refusePausedCostCardsLocked.
+	if err := g.refusePausedCostCardsLocked(moving, params.TapIDs, params.TeamworkIDs, params.BlightIDs); err != nil {
 		return err
 	}
 	asked, answers := g.askCostCommanderLocked(playerID, moving, params.commanderAnswers, card.Name,
@@ -1421,6 +1454,18 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// above it. The mana side of the payment was already folded into
 	// the cost gate above; this is the board half.
 	g.payTapPermanentsCostLocked(playerID, params.TapIDs)
+	// #1703: teamwork's taps and blight's counters, in the same
+	// window and for the same reason. A creature the blight kills
+	// dies at the closing state-based check, with the cost paid.
+	g.payTeamworkLocked(playerID, params.TeamworkIDs)
+	if err := g.payBlightLocked(playerID, costPlan, params.BlightIDs); err != nil {
+		slog.Error("cast_spell: blight cost failed after validation",
+			"card_name", card.Name,
+			"oracle_id", card.OracleID,
+			"err", err,
+		)
+		return err
+	}
 	if splitSecond {
 		g.SplitSecondActive = true
 	}

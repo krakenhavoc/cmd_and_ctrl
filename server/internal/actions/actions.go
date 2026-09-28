@@ -504,6 +504,12 @@ func dispatch(g *game.Game, a Action) error {
 			// (CR 702.174a). Present exactly when optional_costs
 			// names the card's gift cost.
 			GiftOpponent string `json:"gift_opponent,omitempty"`
+			// #1703 — the creatures tapped to pay an announced
+			// teamwork cost (CR 702.194a), and the one creature an
+			// announced blight cost puts its -1/-1 counters on
+			// (CR 701.68a). Absent unless optional_costs names one.
+			TeamworkIDs []string `json:"teamwork_ids,omitempty"`
+			BlightIDs   []string `json:"blight_ids,omitempty"`
 			// S22 — the untapped permanents tapped to help pay
 			// (convoke, waterbend). Optional even on a card that
 			// offers the cost: tapping nothing and paying the whole
@@ -604,6 +610,22 @@ func dispatch(g *game.Game, a Action) error {
 					return fmt.Errorf("cast_spell tap_ids[%d]: %w", i, err)
 				}
 				params.TapIDs = append(params.TapIDs, id)
+			}
+		}
+		for _, l := range []struct {
+			name string
+			raw  []string
+			dst  *[]uuid.UUID
+		}{
+			{"teamwork_ids", p.TeamworkIDs, &params.TeamworkIDs},
+			{"blight_ids", p.BlightIDs, &params.BlightIDs},
+		} {
+			for i, raw := range l.raw {
+				id, err := uuid.Parse(raw)
+				if err != nil {
+					return fmt.Errorf("cast_spell %s[%d]: %w", l.name, i, err)
+				}
+				*l.dst = append(*l.dst, id)
 			}
 		}
 		if len(p.LockedSources) > 0 {

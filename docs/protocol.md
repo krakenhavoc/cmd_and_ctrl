@@ -1426,6 +1426,42 @@ casts every gift card as its printed ungifted spell.
   responder needs it, because a promised Long River's Pull counters
   any spell and an unpromised one only a creature spell.
 
+### Teamwork and blight (#1703, ADR 0073 amendment 2026-09-28)
+
+Two more optional costs, keyed `"teamwork"` (CR 702.194a) and `"blight"`
+(CR 701.68a), announced by index in `optional_costs` like a kicker. What
+is new is only what the caster names while paying. All four fields are
+additive; a client that ignores them never announces either cost and casts
+the card unpaid.
+
+- **`cast_spell.teamwork_ids`** (`["<uuid>", ...]`) are the creatures tapped
+  for an announced teamwork cost: any number of the caster's untapped
+  creatures whose total **effective** power (`power` on the card view) is at
+  least the teamwork number. Summoning-sick creatures may pay — this is not
+  the `{T}` symbol. Refused, never ignored, when sent without the teamwork
+  index; refused with `the tapped creatures' total power is below the
+  teamwork number` when they fall short (including none named); a tapped
+  creature, an opponent's creature, a repeat or a creature also in `tap_ids`
+  is `bad_request`. The creatures are tapped with the spell on the stack and
+  are never spent by `auto_tap`.
+
+- **`cast_spell.blight_ids`** (`["<uuid>"]`, exactly one) is the creature an
+  announced blight puts its N -1/-1 counters on — a creature the caster
+  controls. One that dies of the counters is a legal choice and still pays.
+  The counters are a COST: a replacement worded "if an effect would put"
+  (Doubling Season) does not apply (CR 614.16); one that names no effect
+  (Winding Constrictor, Vizier of Remedies) does.
+
+- **`OptionalCostView`** gains `teamwork` (N) with `teamwork_options` (the
+  viewer's untapped creatures; present-and-empty when their positive powers
+  together do not reach N, so the client greys the toggle), and `blight` (N)
+  with `blight_options` (the viewer's creatures; present-and-empty when they
+  control none, CR 701.68b).
+
+- The auto-tap preview (`GET /games/{id}/auto-tap-preview`) accepts
+  `teamwork_ids` and `blight_ids` on its query string, with the meaning above:
+  the creatures they name are not planned for mana.
+
 ## One list of cast prices, and the printed cost's place in it (#1012, #1015)
 
 One additive field on `CardView`, and a sharper meaning for two that

@@ -1056,3 +1056,131 @@ for at least one pick and the legal-move enumerator omits zero. Bots offer the
 smallest three useful counts, using the existing
 `maxEnumeratedVariableCounts` cap, with nested cheapest-first payments so this
 new dimension cannot consume the target/mode expansion budget.
+
+---
+
+## Amendment (2026-09-28, [#1703](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1703)): teamwork and blight are two more components of the optional cost
+
+**Sprint:** S44 — Mana and cost components. Tracker [#887](https://github.com/krakenhavoc/cmd_and_ctrl/issues/887).
+Related: [#1655](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1655) (the mode count
+that reads the announcement), [ADR 0065](0065-modal-and-multi-target-clauses.md).
+
+Two printed optional costs had no component to announce, so the cards that
+print them (HULK SMASH!, Go Nuts!, Widow's Bite, Pyrrhic Strike …) were
+waiting even after #1655 could read "if this spell was cast using teamwork,
+choose both instead":
+
+> **702.194a** Teamwork represents a static ability that functions while the
+> spell with teamwork is on the stack. "Teamwork N" means "As an additional
+> cost to cast this spell, you may tap any number of creatures you control
+> with total power N or more." Paying a spell's teamwork cost follows the
+> rules for paying additional costs in rules 601.2b and 601.2f–h.
+>
+> **701.68a** To "blight N" means to put N -1/-1 counters on a creature you
+> control. **701.68b** If a player is given the choice to blight but is unable
+> to put N -1/-1 counters on a creature they control …, they can't choose to
+> blight.
+
+Both are paid at CR 601.2h, so both are components of `game.AdditionalCost`
+under §1's rule — a flag or a field on the one struct, never a second cost
+type — and both are announced by index (§2) like a kicker.
+
+### Decision 11 — teamwork is crew's sentence on a spell: `AdditionalCost.Teamwork`
+
+`AdditionalCost.Teamwork int` is N. The caster names the creatures on
+`CastSpellParams.TeamworkIDs` (`cast_spell.teamwork_ids`). CR 702.194a and
+CR 702.122a say the same thing, so `validateTeamworkLocked`
+(`game/teamwork_blight_cost.go`) reads what `validateCrewCostLocked` reads:
+distinct creatures, on the battlefield, the caster's, **untapped** (CR 118.3),
+with a total **effective** power (`CurrentPower` after a layer refresh) of at
+least N. Overshooting is legal. There is **no summoning-sickness check**:
+CR 302.6 restricts a creature's own `{T}` abilities, and tapping a creature to
+pay a spell's cost is not that — convoke's and crew's reading, one keyword
+over. A creature named to convoke / waterbend (`TapIDs`) cannot also be named
+here. The short-power refusal is `ErrInsufficientTeamwork`, crew's twin.
+
+The taps land with the spell on the stack (`payTeamworkLocked`, one
+`EventTapCard` each), and the creatures are in `CastAutoTapExclusions`, so a
+Llanowar Elves named to the team is not also tapped for the spell's mana.
+
+It is a separate list from `TapIDs`, not a second use of it. Convoke's list
+pays MANA and is bounded by the cost; teamwork's pays a power threshold and has
+no mana effect at all. Folding them would make "I tapped this to pay {1}" and "I
+tapped this for teamwork" indistinguishable.
+
+### Decision 12 — blight is the counter-placement cost aimed at a chosen creature: `AdditionalCost.Blight`
+
+`AdditionalCost.Blight int` is N. The caster names ONE creature they control
+on `CastSpellParams.BlightIDs` (`cast_spell.blight_ids`). A creature that
+**dies** of the counters is a legal choice and still pays — CR 701.68b refuses
+the blight only when the counters cannot be *put* — and it dies at the cast's
+closing state-based check with the spell on the stack.
+
+**The counters go through the CR 614 counter window**, marked
+`ReplacementEvent.CounterFromCost`, and settle without pausing (the
+`mustSettleNow` posture every cost-shaped payment takes: CR 601.2h pays the
+costs as one step). Which replacements apply is CR 614.16:
+
+> Some replacement effects apply "if an effect would … put one or more counters
+> on a permanent." These replacement effects apply if the effect of a resolving
+> spell or ability … puts a counter on a permanent …
+
+A cost payment is not the effect of a resolving spell or ability, so
+**Doubling Season does not double a blight** (it reads the mark, beside its
+existing `CounterFromCombatDamage` gate). A replacement that names no effect —
+Winding Constrictor's and Vizier of Remedies' "if one or more counters would be
+put", Vorinclex's "if you would put" — replaces the event and **does** apply:
+that is the long-standing Devoted Druid + Vizier of Remedies ruling. Hardened
+Scales watches only +1/+1 counters and never sees a blight. Whatever the window
+settles on, the cost is paid.
+
+This is a deliberate difference from `AbilityCost.AddCounter` (Devoted Druid,
+#789) and the loyalty cost, which write their counters with
+`applyCounterLocked` and so skip the window entirely. Their comments cite
+CR 614.16 for Doubling Season, which is right, but skipping the window also
+skips the replacements that CR 614.16 does not exclude, which the Druid +
+Vizier ruling says apply. The blight does not repeat that, and the existing
+two are left as they are here (see "What this does NOT decide").
+
+### Decision 13 — both are optional, single, alone, and keyed
+
+`effects.Teamwork(n)` and `effects.OptionalBlight(n)` are the only
+constructors; `checkTeamworkBlight` refuses at boot: either component in the
+mandatory slot, a wrong key (the resolution reads `TeamworkKey` /
+`BlightKey`), a repeat, a component mixed with mana / discard / sacrifice / a
+gift, two of either on one card, and teamwork beside convoke. The reads are
+`ctx.UsedTeamwork()` (CR 702.194b) and `ctx.BlightPaid()`; once #1655's
+`ModeConditionOnAnnouncement` is on develop, "choose both instead" is
+`InsteadIf(2, UsedTeamwork)` / `InsteadIf(2, BlightPaid)`.
+
+### Decision 14 — one walk each for the view, the enumerator and the validator
+
+`Game.TeamworkOptionsForEffect` / `TeamworkPayableForEffect` and
+`Game.BlightOptionsForEffect` are the candidate walks (#544). The hand card's
+`optional_costs[i]` carries `teamwork` + `teamwork_options` (present-and-empty
+when the untapped creatures' positive powers do not reach N) and `blight` +
+`blight_options`. The enumerator makes ONE payment per announced set, never a
+subset search: teamwork reuses `crewPayment` (greedy, biggest power first), and
+blight goes on a creature that survives the counters if there is one, least
+power first. A set it cannot pay is not announced, and the payment is checked
+for affordability with those creatures excluded from the auto-tap plan. The
+auto-tap preview reads `teamwork_ids` / `blight_ids` off its query string for
+the same exclusion.
+
+### What this does NOT decide
+
+- **Mandatory and variable blight** — "blight 2 or pay {1}" (Wild Unraveling,
+  Bogslither's Embrace) is a choice between two costs, and "blight X" (Soul
+  Immolation) is a variable count bounded by toughness. Neither is this
+  component.
+- **Blight as an activated ability's cost or as an effect** — Dawnhand
+  Dissident's "{T}, Blight 1:", the "you may blight 1. If you do" triggers.
+  `AbilityCost` has no blight slot; the ADR 0021 rule applies.
+- **"Becomes tapped to pay a teamwork cost"** (Agent Maria Hill) and "whenever
+  you cast a spell using teamwork" (Virtual Assistant) — no event names the
+  cost a tap paid.
+- **The blighted creature** (CR 701.68c) — no card built here reads it, so it
+  is not recorded.
+- **Devoted Druid and the loyalty cost** keep `applyCounterLocked`. Moving them
+  onto the window with `CounterFromCost` would fix Vizier / Winding Constrictor
+  there too, and is its own change.

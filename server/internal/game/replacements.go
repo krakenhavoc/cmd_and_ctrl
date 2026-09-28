@@ -827,6 +827,21 @@ type ReplacementEvent struct {
 	// not something to leave for the PR that branches it.
 	CounterFromCombatDamage bool
 
+	// CounterFromCost marks a placement that PAYS A COST rather than
+	// one an effect makes: a blight paid as an additional cost to cast
+	// (#1703, CR 701.68a at CR 601.2h).
+	//
+	// It is CounterFromCombatDamage's sibling, for the same card and
+	// the same rule. CR 614.16 says a replacement worded "if an effect
+	// would put one or more counters" applies to the effect of a
+	// resolving spell or ability. A cost payment is neither, so
+	// Doubling Season does not double a blight. A replacement that
+	// names no effect (Vorinclex, Winding Constrictor, Vizier of
+	// Remedies) replaces the event itself and is not gated on this.
+	// That is the Devoted Druid + Vizier ruling, and it is why a
+	// cost's counters open this window at all.
+	CounterFromCost bool
+
 	// --- RepEventLife fields ---
 
 	// LifePlayer / LifeDelta describe the life change.

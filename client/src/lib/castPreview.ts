@@ -40,6 +40,10 @@ export interface AutoTapCastParams {
   // cast offers to Village Rites, so the preview must not either.
   sacrificeIDs?: string[];
   discardIDs?: string[];
+  // #1703: the creatures tapped for teamwork and the one blighted. A
+  // creature tapped for teamwork cannot also tap for mana.
+  teamworkIDs?: string[];
+  blightIDs?: string[];
 }
 
 // castPreviewParams projects the choices announced so far onto the
@@ -61,6 +65,10 @@ export function castPreviewParams(choices: CastChoices | null | undefined): Auto
     out.sacrificeIDs = [...choices.sacrificeIDs];
   }
   if (choices.discardIDs && choices.discardIDs.length > 0) out.discardIDs = [...choices.discardIDs];
+  if (choices.teamworkIDs && choices.teamworkIDs.length > 0) {
+    out.teamworkIDs = [...choices.teamworkIDs];
+  }
+  if (choices.blightIDs && choices.blightIDs.length > 0) out.blightIDs = [...choices.blightIDs];
   return out;
 }
 
@@ -106,5 +114,9 @@ export function castPreviewParamsFromPayload(
   if (sacs.length > 0) out.sacrificeIDs = sacs;
   const discards = stringIDs(payload.discard_ids);
   if (discards.length > 0) out.discardIDs = discards;
+  const team = stringIDs(payload.teamwork_ids);
+  if (team.length > 0) out.teamworkIDs = team;
+  const blight = stringIDs(payload.blight_ids);
+  if (blight.length > 0) out.blightIDs = blight;
   return out;
 }

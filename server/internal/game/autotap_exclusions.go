@@ -34,8 +34,14 @@ import "github.com/google/uuid"
 // while paying a cast's mana: the lock-tap reservations, the permanents
 // tapped for convoke / waterbend, and the permanents and cards named to
 // the additional cost's sacrifice and discard. Nil when empty.
+//
+// #1703: and the creatures tapped for teamwork — a Llanowar Elves
+// named to HULK SMASH!'s teamwork cannot also tap for its {R} — and the
+// creature named to a blight, which a sacrifice-for-mana plan (an
+// Eldrazi Spawn) would otherwise eat before the counters could land.
 func CastAutoTapExclusions(params CastSpellParams) map[uuid.UUID]bool {
-	return unionIDs(params.LockedSources, params.TapIDs, params.SacrificeIDs, params.DiscardIDs)
+	return unionIDs(params.LockedSources, params.TapIDs, params.SacrificeIDs, params.DiscardIDs,
+		params.TeamworkIDs, params.BlightIDs)
 }
 
 // AbilityAutoTapExclusions is the same set for a CR 602 activation's

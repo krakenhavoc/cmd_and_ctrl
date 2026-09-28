@@ -80,6 +80,8 @@
     castSacrificeClause,
     castSacrificeLabel,
     optionalCostsOf,
+    castTeamworkOffer,
+    castBlightOffer,
     tapCostOf,
     tapCostLimit,
     alternativeCostsOf,
@@ -473,7 +475,62 @@
     sacrificePromptCard = null;
     sacrificePromptChoices = {};
     if (!card) return;
-    afterCastCosts(card, { ...choices, sacrificeIDs: instanceIDs });
+    afterSacrificeCost(card, { ...choices, sacrificeIDs: instanceIDs });
+  }
+
+  // #1703: a claimed teamwork offer asks which creatures to tap — the
+  // crew picker, since CR 702.194a is crew's sentence on a spell — and
+  // a claimed blight asks which one creature takes the counters. Both
+  // after the sacrifice step and before X, in the order the server
+  // validates the announcement.
+  let teamworkPrompt = $state<{ card: CardView; n: number; choices: CastChoices } | null>(null);
+  let teamworkPromptOptionIDs = $state<string[]>([]);
+  const teamworkOptions = $derived.by(() => {
+    const ids = new Set(teamworkPromptOptionIDs);
+    return view.battlefield.cards.filter((c) => ids.has(c.instance_id));
+  });
+  let blightPrompt = $state<{
+    card: CardView;
+    label: string;
+    choices: CastChoices;
+  } | null>(null);
+  let blightPromptOptionIDs = $state<string[]>([]);
+  const blightOptions = $derived.by(() =>
+    orderSacrificeOptions(view.battlefield.cards, blightPromptOptionIDs),
+  );
+
+  function afterSacrificeCost(card: CardView, choices: CastChoices): void {
+    const tw = castTeamworkOffer(card, choices);
+    if (tw && choices.teamworkIDs === undefined) {
+      teamworkPromptOptionIDs = tw.options;
+      teamworkPrompt = { card, n: tw.n, choices };
+      return;
+    }
+    const bl = castBlightOffer(card, choices);
+    if (bl && choices.blightIDs === undefined) {
+      blightPromptOptionIDs = bl.options;
+      blightPrompt = {
+        card,
+        label: `a creature you control for ${bl.offer.label ?? `Blight ${bl.n}`} (it gets ${bl.n} -1/-1 counter${bl.n === 1 ? "" : "s"})`,
+        choices,
+      };
+      return;
+    }
+    afterCastCosts(card, choices);
+  }
+
+  function confirmTeamwork(ids: string[]): void {
+    const p = teamworkPrompt;
+    teamworkPrompt = null;
+    if (!p) return;
+    afterSacrificeCost(p.card, { ...p.choices, teamworkIDs: ids });
+  }
+
+  function confirmBlight(ids: string[]): void {
+    const p = blightPrompt;
+    blightPrompt = null;
+    if (!p) return;
+    afterSacrificeCost(p.card, { ...p.choices, blightIDs: ids });
   }
 
   // S22: convoke / waterbend — "you may tap your own untapped
@@ -591,7 +648,7 @@
       sacrificePromptCard = card;
       return;
     }
-    afterCastCosts(card, choices);
+    afterSacrificeCost(card, choices);
   }
 
   function afterCastCosts(card: CardView, choices: CastChoices): void {
@@ -2202,6 +2259,27 @@
     options={crewOptions}
     onConfirm={confirmCrew}
     onCancel={() => (crewPrompt = null)}
+  />
+  <!-- #1703: teamwork (CR 702.194a) is crew's picker on a spell. -->
+  <CrewCostModal
+    card={teamworkPrompt?.card ?? null}
+    ability={null}
+    threshold={teamworkPrompt?.n}
+    keyword="Teamwork"
+    rule="CR 702.194"
+    options={teamworkOptions}
+    onConfirm={confirmTeamwork}
+    onCancel={() => (teamworkPrompt = null)}
+  />
+  <!-- #1703: blight N (CR 701.68a) — one creature you control. -->
+  <SacrificeCostModal
+    source={blightPrompt?.card ?? null}
+    label={blightPrompt?.label ?? "a creature you control"}
+    options={blightOptions}
+    count={1}
+    verb="Choose"
+    onConfirm={confirmBlight}
+    onCancel={() => (blightPrompt = null)}
   />
   <CounterCostModal
     card={counterPrompt?.card ?? manaCounterPrompt?.card ?? null}
