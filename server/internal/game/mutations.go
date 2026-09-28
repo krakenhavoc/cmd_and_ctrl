@@ -2436,6 +2436,9 @@ func (g *Game) printedCostLocked(p *Player, card Card, params CastSpellParams) (
 	if err != nil {
 		return ParsedCost{}, CastCost{}, err
 	}
+	// #1665: a hand permission prices only the claim it opens, the same
+	// narrowing CastSpell makes. See CastPermission.ForClaim.
+	grant = grant.ForClaim(alt)
 	chosen := CastCostFor(card, alt, grant)
 	cost, err := ParseCost(chosen.Paid)
 	if err != nil {

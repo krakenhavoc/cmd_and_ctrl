@@ -17,6 +17,7 @@ func init() {
 		OracleID:         "b349f018-c20b-48b0-9e65-d5fd56b24b88",
 		Name:             "Entreat the Angels",
 		Completeness:     CompletenessFull,
+		XMatters:         true,
 		AlternativeCosts: []game.AlternativeCost{Miracle("{X}{W}{W}")},
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			n := ctx.X()

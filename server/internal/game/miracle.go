@@ -136,19 +136,19 @@ func MiracleTrigger(name, cost string) TriggeredAbility {
 				return nil
 			}
 			ref := ObjectRef{ID: source.InstanceID, Epoch: source.ObjectEpoch}
-			// The reveal is the "yes" (CR 702.94a), and it is made of the
-			// card as it sits NOW: one that left the hand while the
-			// prompt was open is not there to reveal, and there is no
-			// trigger to put on the stack.
-			if g.miracleCardInHandLocked(source.Owner, ref) == nil {
-				return nil
+			// The reveal is the "yes" (CR 702.94a), made of the card as it
+			// sits NOW. One that left the hand while the prompt was open
+			// is not there to reveal; its trigger still goes on the stack
+			// and grants nothing when it resolves (CR 702.94b), exactly as
+			// a revealed card Brainstormed away in response would.
+			if g.miracleCardInHandLocked(source.Owner, ref) != nil {
+				g.RevealForEffect(RevealSpec{
+					Player: source.Owner,
+					Source: source.InstanceID,
+					Reason: "Miracle — " + source.Name,
+					Cards:  []uuid.UUID{source.InstanceID},
+				})
 			}
-			g.RevealForEffect(RevealSpec{
-				Player: source.Owner,
-				Source: source.InstanceID,
-				Reason: "Miracle — " + source.Name,
-				Cards:  []uuid.UUID{source.InstanceID},
-			})
 			return NewKeyedTriggeredItem(source, MiracleTriggerLabel, miracleOfferBody,
 				EffectParams{Cost: cost, Object: ref})
 		},

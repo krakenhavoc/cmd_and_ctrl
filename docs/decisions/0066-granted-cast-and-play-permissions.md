@@ -2437,3 +2437,100 @@ requirements are exactly the parse.
   Phyrexian symbol on a stolen spell.
 
 Tracker [#887](https://github.com/krakenhavoc/cmd_and_ctrl/issues/887).
+
+---
+
+## Amendment — 2026-09-28 (#1665): miracle, a hand permission that opens one printed offer
+
+Miracle (CR 702.94) is madness moved one zone over: a keyword that lets a
+player cast a card for an alternative cost during the resolution of a
+triggered ability. It is built from the pieces this ADR and its #657
+amendment already have, and adds three small things. The code is
+`server/internal/game/miracle.go`.
+
+**1. The price is a printed offer, and the permission is the right to
+claim it.** A miracle card declares
+`AlternativeCosts: []game.AlternativeCost{Miracle("{W}")}`. Like
+`Flashback` and `Escape`, the constructor bundles the rewrite with the
+price. For miracle the rewrite is one new field,
+`AlternativeCost.RequiresGrant`: the offer can be claimed only while a live
+`CastPermission` for the card object carries the same key.
+`validateCastPathLocked` checks this. `CastSpell` and `CastOffersForLocked`
+both call it, so the view, the bot enumerator and the announce path cannot
+disagree about when `{W}` is on the menu. A refused claim returns
+`ErrAltCostNotGranted`. Madness puts the price on the permission (`Cost`).
+Miracle cannot do that: the card sits in a hand, where every cast of it
+would read the permission, and `CastCostFor` would then reprice the
+printed cast too. So the miracle permission carries no `Cost`, and the
+printed offer does the pricing.
+
+**2. The hand is a permission zone for exactly one kind of grant.**
+`CastPermissionForLocked` no longer answers nil for a hand. It returns
+a live stored `ScopeCards` permission naming the card object, and nothing
+else. A standing permission is never read there. The hand still needs no
+permission to be cast from (CR 601.2). What the miracle grant adds is
+`TimingFlash` (CR 608.2g), which lets a Terminus drawn in an opponent's
+upkeep be cast there. The same timing would turn a hard-cast Terminus into
+an instant, so a hand permission is scoped to its own claim by
+`CastPermission.ForClaim`. That returns nil for a cast that claims any
+other offer. `CastSpell` narrows as soon as the claim is resolved, before
+the price, the CR 107.3b rule and the timing gate. The enumerator narrows
+per offer in `castMovesForCard`. So the printed cost keeps sorcery timing
+while the grant is live, and a bot is offered the miracle cast at instant
+speed but the printed one only where a sorcery could be cast. Every
+non-hand permission passes through `ForClaim` unchanged.
+
+**3. The trigger watches draws from the hand.** `TriggeredAbility.Zones`
+gains `ZoneHand` (the #925 dimension; `supportedTriggerZones`). The
+per-event index keeps the walk narrow: a hand is walked only for
+`EventDrawCard`, and only when some registered card declares a hand
+trigger. "The first card you've drawn this turn" is read off
+`Game.DrawnThisTurn`, which `actuallyDrawCardLocked` appends to before it
+emits the event. It is a fact about the draw, not a count the harvest has
+to trust. A draw on another player's turn counts. The CR 702.94a "you may
+reveal" is the trigger's `OptionalPrompt` ("Reveal Terminus for its
+miracle cost {W}?"), so the client needs nothing new. A "yes" reveals the
+card to the table through `RevealForEffect` and puts a keyed item
+(`miracle/offer`, ADR 0041 P9) on the stack. The item carries the revealed
+object as `Params.Object` (instance and CR 400.7 epoch). `effects.buildDef`
+grows the trigger from the `Miracle` cost, the same bargain madness makes:
+a card file declares the keyword once.
+
+**The window, and where it is still wider than paper.** CR 702.94b: a
+card that has left the hand is not the card that was revealed. That
+includes a card that left and came back, which has a new epoch. The
+resolution then grants nothing. When it does grant, the permission names
+the object, so the cast itself ends it (CR 400.7). As with madness, the
+cast is an ordinary `cast_spell` after the trigger resolves, not an inline
+cast. The window madness bounds with an end-step cleanup is shut much
+tighter here, because an open-ended "{W} at instant speed" in a hand would
+be stronger than printed:
+
+- the holder **passing priority** closes it (`closeMiracleWindowLocked`,
+  called from `PassPriority` before the pass runs, because that pass can
+  resolve the next miracle trigger);
+- the permission's zero `Duration` still ends it at the end of the turn
+  at the latest.
+
+What is left is CR 117.3b. When the miracle card was drawn on another
+player's turn, the active player receives priority first after the trigger
+resolves. They may act before the owner casts, and the owner may then cast
+the miracle in response. Madness declares the same gap. For a draw-step
+miracle, where the owner is the active player, nothing is wider.
+`Game.AdvanceStep` (the sandbox step driver) passes through
+`passPriorityLocked` and not `PassPriority`, so a window left open when a
+player advances the step by hand lasts to the end of the turn.
+
+**Out of scope, stated.** The client's cost picker still lists "Its mana
+cost" beside "Miracle {W}" while the grant is live. `alternative_cost_required`
+stays false, because the printed cost is claimable, just not at every
+moment. Picking it outside a sorcery window gets the ordinary
+`ErrSorcerySpeedRequired` toast. Topdeck the Halls ("decorated cards in
+your hand have miracle {S}") grants the keyword and is not legal in
+Commander. Temporal Mastery waits on extra turns (the engine cannot add a
+turn), Revenge of the Hunted on "all creatures able to block it do so" (the
+blocking-requirements seam), and Bonfire of the Damned on a "target player
+or planeswalker" clause whose sweep follows the chosen target's
+controller.
+
+Tracker [#885](https://github.com/krakenhavoc/cmd_and_ctrl/issues/885).
