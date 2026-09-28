@@ -236,6 +236,25 @@ func TestADurationCopyOutlivesTheCardItCopied(t *testing.T) {
 	}
 }
 
+// TestADurationCopyThatEndedWhilePhasedOutRevertsOnPhaseIn — phasing is
+// not a zone change (CR 702.26d), so a phased-out copy keeps its record
+// and its values. If the cleanup sweep ends the copy while the permanent
+// is out, the sweep cannot see it, and the recompute that follows the
+// phase-in is what puts it back.
+func TestADurationCopyThatEndedWhilePhasedOutRevertsOnPhaseIn(t *testing.T) {
+	g := newActiveGame(t)
+	me := g.Seats[0]
+	mirror := vanillaOnBattlefield(g, me.ID, "Mirage Mirror", "Artifact", 0, 0)
+	bears := bearsOnBattlefield(g, me.ID, "Grizzly Bears")
+	becomeCopyUntilEOT(t, g, mirror, bears)
+	g.WithWriteLock(func() { _ = g.PhaseOutForEffect(uuid.Nil, mirror) })
+	cleanupSweep(g)
+	g.WithWriteLock(func() { g.phaseInLocked([]uuid.UUID{mirror}) })
+	if c := copyProbe(t, g, mirror); c.Name != "Mirage Mirror" || c.IsCopy() {
+		t.Fatalf("a copy that ended while phased out came back as %q (copy %v)", c.Name, c.IsCopy())
+	}
+}
+
 // TestADurationCopyEndsWhenThePermanentLeaves — CR 400.7 again. The
 // record is pinned to the object, so it is collected, and the card that
 // arrives in the graveyard is itself.

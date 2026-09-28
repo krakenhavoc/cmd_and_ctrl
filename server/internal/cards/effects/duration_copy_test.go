@@ -636,6 +636,34 @@ func TestADurationCopyWithAGrantIsARestorePoint(t *testing.T) {
 	}
 }
 
+// TestATreasureThatBecomesACreatureLosesItsManaAbilityUntilCleanup — a
+// token carries its abilities on the card as well as in the catalog. A
+// copy has to take them away with the rest of its text and give them
+// back when it ends.
+func TestATreasureThatBecomesACreatureLosesItsManaAbilityUntilCleanup(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	bears := seedCopyableCreature(g, me.ID, "Grizzly Bears", "Creature — Bear", 2, 2)
+	tok := TreasureToken()
+	tok.InstanceID = uuid.New()
+	tok.Owner, tok.Controller = me.ID, me.ID
+	treasure := pushBattlefieldCardWithTimestamp(g, tok)
+	if len(game.ManaAbilitiesForCard(dcCard(t, g, treasure))) == 0 {
+		t.Fatal("setup: the Treasure has no mana ability")
+	}
+	g.WithWriteLock(func() {
+		v, _ := g.CopiableValuesForEffect(bears)
+		g.BecomeCopyForEffect(uuid.Nil, bears, []uuid.UUID{treasure}, v, g.UntilEndOfTurnDuration(), "probe")
+	})
+	if n := len(game.ManaAbilitiesForCard(dcCard(t, g, treasure))); n != 0 {
+		t.Errorf("the Treasure-as-Bears still has %d mana abilities", n)
+	}
+	dcCleanup(g)
+	if n := len(game.ManaAbilitiesForCard(dcCard(t, g, treasure))); n == 0 {
+		t.Error("after cleanup the Treasure has no mana ability")
+	}
+}
+
 // --- Dimir Doppelganger ------------------------------------------------
 
 const oracleDimirDoppelganger = "1916f120-4418-404a-aed5-b95ebf60d3a3"
