@@ -13,6 +13,7 @@
   import type { CardView } from "../../protocol";
   import Card from "./Card.svelte";
   import { etbPulse } from "../../animations";
+  import { rowEntries } from "../../tokenGroups";
 
   interface Props {
     label: string;
@@ -63,6 +64,12 @@
     // invisible without this. Derived by PlayerPanel, which is the
     // component that can see the seat list.
     curseTargets?: Record<string, string>;
+    // #1724: identical tokens fold into a group drawn as at most two
+    // cards (untapped, tapped) with a count; clicking one calls this
+    // with the group's key and the panel opens the member list
+    // (TokenGroupModal). Undefined turns grouping off, so a row with
+    // nowhere to open the list never hides a token behind a count.
+    onGroupClick?: (groupKey: string) => void;
   }
 
   const {
@@ -79,6 +86,7 @@
     strip = false,
     attachmentsByHost = {},
     curseTargets = {},
+    onGroupClick,
   }: Props = $props();
 
   const sorted = $derived.by(() => {
@@ -95,18 +103,46 @@
   // basics would hide the very thing that makes it different. The
   // non-strip rows render `sorted` as one pile each so the markup
   // has a single shape.
+  //
+  // #1724: before any of that, identical tokens fold into groups
+  // (lib/tokenGroups.ts). A group half is always a pile of its own —
+  // one card, with the group's count — and its members never reach
+  // the name piles.
   interface Pile {
     key: string;
     tapped: boolean;
     cards: CardView[];
+    // Set for a token group's half: every member it stands for, the
+    // drawn one first.
+    group?: { groupKey: string; members: CardView[] };
   }
+  const entries = $derived(
+    onGroupClick
+      ? rowEntries(sorted, attachmentsByHost)
+      : sorted.map((c) => ({ kind: "card" as const, key: c.instance_id, card: c })),
+  );
   const piles = $derived.by((): Pile[] => {
-    if (!strip) return sorted.map((c) => ({ key: c.instance_id, tapped: !!c.tapped, cards: [c] }));
     const out: Pile[] = [];
     const byName = new Map<string, Pile>();
-    for (const c of sorted) {
+    for (const e of entries) {
+      if (e.kind === "group") {
+        out.push({
+          key: e.key,
+          tapped: e.tapped,
+          cards: [e.rep],
+          group: {
+            groupKey: e.groupKey,
+            members: [e.rep, ...e.members.filter((m) => m !== e.rep)],
+          },
+        });
+        continue;
+      }
+      const c = e.card;
       const solo =
-        !!c.tapped || !!c.is_commander || (attachmentsByHost[c.instance_id] ?? []).length > 0;
+        !strip ||
+        !!c.tapped ||
+        !!c.is_commander ||
+        (attachmentsByHost[c.instance_id] ?? []).length > 0;
       if (solo) {
         out.push({ key: c.instance_id, tapped: !!c.tapped, cards: [c] });
         continue;
@@ -123,6 +159,14 @@
     }
     return out;
   });
+
+  // The attachments drawn behind a pile's card: its own, or for a
+  // group every member's, so an Equipment on a grouped token is still
+  // on the board to be clicked.
+  function attachmentsFor(p: Pile, c: CardView): CardView[] {
+    if (!p.group) return attachmentsByHost[c.instance_id] ?? [];
+    return p.group.members.flatMap((m) => attachmentsByHost[m.instance_id] ?? []);
+  }
 </script>
 
 <div class="row" class:compact class:strip data-zone={label}>
@@ -136,15 +180,19 @@
         class="pile"
         class:tapped={p.tapped}
         class:multi={p.cards.length > 1}
-        title={p.cards.length > 1 ? `${p.cards.length} × ${p.cards[0].name}` : undefined}
+        class:group={!!p.group}
+        title={p.group
+          ? `${p.group.members.length} × ${p.cards[0].name} — click to choose which`
+          : p.cards.length > 1
+            ? `${p.cards.length} × ${p.cards[0].name}`
+            : undefined}
       >
         {#each p.cards as c, i (c.instance_id)}
+          {@const attached = attachmentsFor(p, c)}
+          {@const memberIDs = p.group?.members.map((m) => m.instance_id)}
           <div role="listitem" class:tapped={!!c.tapped} style:--i={i} use:etbPulse>
-            <div
-              class="host-stack"
-              class:has-attachments={(attachmentsByHost[c.instance_id] ?? []).length > 0}
-            >
-              {#each attachmentsByHost[c.instance_id] ?? [] as a (a.instance_id)}
+            <div class="host-stack" class:has-attachments={attached.length > 0}>
+              {#each attached as a (a.instance_id)}
                 <div class="attachment">
                   <Card
                     card={a}
@@ -162,27 +210,47 @@
                   />
                 </div>
               {/each}
-              <Card
-                card={c}
-                enchantedPlayer={curseTargets[c.instance_id]}
-                selected={selectedCombatCardID === c.instance_id}
-                attacking={!!c.attacking_target}
-                blocking={!!c.blocking_target}
-                onClick={onCardClick}
-                onActivateManaAbility={onActivateManaAbility
-                  ? (idx) => onActivateManaAbility(c, idx)
-                  : undefined}
-                onRawTap={onRawTap ? () => onRawTap(c) : undefined}
-                onActivateAbility={onActivateAbility
-                  ? (idx) => onActivateAbility(c, idx)
-                  : undefined}
-                {sorcerySpeedBlocked}
-                {payerLife}
-              />
+              <div class="host">
+                <Card
+                  card={c}
+                  enchantedPlayer={curseTargets[c.instance_id]}
+                  selected={memberIDs
+                    ? !!selectedCombatCardID && memberIDs.includes(selectedCombatCardID)
+                    : selectedCombatCardID === c.instance_id}
+                  attacking={!!c.attacking_target}
+                  blocking={!!c.blocking_target}
+                  {memberIDs}
+                  onClick={p.group && onGroupClick
+                    ? () => onGroupClick(p.group!.groupKey)
+                    : onCardClick}
+                  onActivateManaAbility={onActivateManaAbility
+                    ? (idx) => onActivateManaAbility(c, idx)
+                    : undefined}
+                  onRawTap={onRawTap ? () => onRawTap(c) : undefined}
+                  onActivateAbility={onActivateAbility
+                    ? (idx) => onActivateAbility(c, idx)
+                    : undefined}
+                  {sorcerySpeedBlocked}
+                  {payerLife}
+                />
+                {#if p.group}
+                  <!-- Every other member keeps an element with its
+                       instance ID where the group is drawn, so an arrow,
+                       a picker or an animation that looks a card up by
+                       [data-instance-id] lands on the group's card
+                       rather than on nothing. -->
+                  {#each p.group.members.slice(1) as m (m.instance_id)}
+                    <span class="member-anchor" data-instance-id={m.instance_id} aria-hidden="true"
+                    ></span>
+                  {/each}
+                {/if}
+              </div>
             </div>
           </div>
         {/each}
-        {#if p.cards.length > 1}
+        {#if p.group}
+          <span class="group-count" data-testid="group-count">×{p.group.members.length}</span>
+        {:else if p.cards.length > 1}
           <span class="pile-count" aria-hidden="true">{p.cards.length}</span>
         {/if}
       </div>
@@ -344,6 +412,41 @@
      leaves visible between names. */
   .row.strip .pile.multi:hover > [role="listitem"] + [role="listitem"] {
     margin-left: calc(var(--card-w, 88px) * -0.6);
+  }
+  /* #1724: a token group's card. The host box is what the hidden
+     members' anchors cover, so a lookup by any member's instance ID
+     measures the card that stands for it. */
+  .host {
+    position: relative;
+  }
+  .member-anchor {
+    position: absolute;
+    inset: 0;
+    visibility: hidden;
+    pointer-events: none;
+  }
+  /* The group's count sits on the card's top-right corner, clear of
+     the top-left badges (CMD, GOAD) and the P/T pip at the bottom. */
+  .group-count {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    z-index: 8;
+    min-width: 24px;
+    height: 20px;
+    padding: 0 6px;
+    box-sizing: border-box;
+    border-radius: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--gold);
+    background: var(--surface, #0b0a09);
+    border: 1px solid rgba(217, 180, 92, 0.6);
+    pointer-events: none;
   }
   .pile-count {
     position: absolute;
