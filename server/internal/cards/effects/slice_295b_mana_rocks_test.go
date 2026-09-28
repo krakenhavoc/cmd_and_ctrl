@@ -165,8 +165,8 @@ func TestB295CagedSunPumpsCreaturesOfTheChosenColor(t *testing.T) {
 	if !ok {
 		t.Fatal("Caged Sun is registered")
 	}
-	if spec.Completeness != CompletenessCaveats || len(spec.Caveats) == 0 {
-		t.Error("Caged Sun should declare a caveat for the unbuilt land-mana-doubling clause")
+	if spec.Completeness != CompletenessFull {
+		t.Errorf("Completeness = %v, want CompletenessFull — the mana-doubling clause is implemented too (#1600)", spec.Completeness)
 	}
 }
 
