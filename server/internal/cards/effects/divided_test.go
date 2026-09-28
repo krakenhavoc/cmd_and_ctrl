@@ -261,3 +261,32 @@ func TestAbzanCharmDistributesItsCountersAsChosen(t *testing.T) {
 		t.Errorf("one counter each: powers %d/%d, want 3/3", pa, pb)
 	}
 }
+
+// Register refuses the divided clauses no printed card has and the
+// engine could not judge (#1563).
+func TestRegisterRefusesABadDivision(t *testing.T) {
+	mustPanic(t, "divides a fixed amount of 0", func() {
+		Register(Spec{OracleID: "divide-test-zero", Name: "Zero",
+			Targets: TargetAny().WithCount(1, 2).Dividing(game.DivideSpec{})})
+	})
+	mustPanic(t, "doubles a fixed divided amount", func() {
+		Register(Spec{OracleID: "divide-test-double", Name: "Double",
+			Targets: TargetAny().WithCount(1, 2).Dividing(game.DivideSpec{Total: 3, DoubleFromX: 6})})
+	})
+	mustPanic(t, "picks that may repeat", func() {
+		spec := TargetAny().WithCount(1, 2).Dividing(Divide(3))
+		spec.AllowSame = true
+		Register(Spec{OracleID: "divide-test-same", Name: "Same", Targets: spec})
+	})
+	mustPanic(t, "a trigger announces no X", func() {
+		Register(Spec{OracleID: "divide-test-trigger-x", Name: "Trigger X",
+			Triggered: []game.TriggeredAbility{{
+				Watches:   []game.EventKind{game.EventETB},
+				AppliesTo: b06SelfETB,
+				Targets:   TargetAny().WithCount(0, 0).Dividing(DivideX()),
+				Key:       "Trigger X",
+				Effect:    func(*game.Game, *game.StackItem) error { return nil },
+			}},
+		})
+	})
+}
