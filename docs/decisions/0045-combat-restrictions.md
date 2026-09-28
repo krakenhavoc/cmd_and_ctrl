@@ -751,7 +751,8 @@ never contains that string. The restriction is in `restrictions` as
   it follows the requirements slot.
 - "Can't attack or block alone". No attributed card.
 - Blocking an additional creature (Brave the Sands, whose caveat stays),
-  since `BlockingTarget` is a single ID.
+  since `BlockingTarget` is a single ID. *(Built by
+  [#1706](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1706): Decisions 60–63.)*
 - Attack-side count limits (Crawlspace, Silent Arbiter's first line).
   `DeclareAttackers` already receives the set, and the same all-or-nothing
   shape would work, but no card in this wave needs it. *(Built by
@@ -3766,7 +3767,9 @@ options it judges.
 - **Choosing how another player's creatures block** (Brutal Hordechief,
   Invasion Plans' second line). That is a control question, not a requirement.
 - **"Blocks each attacking creature if able" / "can block any number"** (Blaze
-  of Glory). A creature here blocks one attacker.
+  of Glory). A creature here blocks one attacker. *(The "any number" half is
+  built by #1706, Decisions 60–63; "blocks each attacking creature" is still
+  open.)*
 - **Provoke, and "target creature blocks it this turn if able"** (Grappling
   Hook, Turntimber Basilisk). These are a requirement on one blocker to block
   one attacker, a fifth kind the `Mod`'s one `Text` cannot name. They need a
@@ -3952,3 +3955,270 @@ All are `full`:
 - **A filtered Lure as a data record** ("all Walls able to block target
   creature this turn do so"). No card needs one. It would be a filter key on
   the mod, validated like the kind.
+
+## Amendment (2026-09-28, [#1706](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1706)): a creature that blocks more than one attacker
+
+Decision 18 put "blocking an additional creature" out of scope because
+`BlockingTarget` was a single ID, and the #1597 amendment's "What this does
+NOT decide" said again that "a creature here blocks one attacker". This
+amendment builds it. Decisions 1–59 stand; that bullet of Decision 18, and the
+"can block any number" half of the #1597 bullet, are superseded. Sprint S37
+(combat correctness), tracker [#880](https://github.com/krakenhavoc/cmd_and_ctrl/issues/880).
+CR numbers were checked against the pinned edition (`MagicCompRules 20260819.txt`).
+Oracle text was read from the 2026-09-23 Scryfall dump.
+
+### The rule
+
+- **CR 509.1a/b.** The defending player chooses which creatures block and
+  which attacker each one blocks. A creature blocks one attacker, unless an
+  effect lets it block more: "can block an additional creature each combat"
+  (High Ground, Two-Headed Giant of Foriys), "an additional ninety-nine"
+  (a monstrous Hundred-Handed One), or "can block any number of creatures"
+  (Palace Guard). The number is part of the declaration's legality, like
+  menace's minimum. Several "additional" effects add up.
+- **CR 510.1d.** A blocking creature assigns its combat damage to the creatures
+  it is blocking. If it blocks none (they were removed from combat), it assigns
+  none. If it blocks exactly one, all of the damage goes there. If it blocks two
+  or more, "its controller divides it among them as they choose". There is no
+  order and no lethal-first rule, and trample does nothing for a blocker.
+- **CR 509.3a/b.** "Whenever this creature blocks" triggers once, however many
+  attackers the creature blocks. "Whenever this creature blocks a creature"
+  triggers once for each attacker.
+
+### Decision 60: the capacity is on the characteristic, and the set rides beside the old field
+
+**Capacity.** `Characteristic.AdditionalBlocks int` and
+`Characteristic.BlocksAnyNumber bool` are written by ordinary layer statics and
+are only ever added to, like `Restrictions` (§1). `game.BlockCapacity(c)` is
+the one reader. It returns 1 by default, 1 + `AdditionalBlocks`, or 0 for "any
+number".
+
+- A creature's own line goes with its abilities (CR 613.1f). This happens
+  because its catalog static is not applied once `CatalogAbilityKey` is empty.
+- High Ground's and Echo Circlet's lines do not go, because those effects
+  belong to their sources. This is §1's argument for Pacifism.
+- Both fields are compared by `sameCharacteristic`. They are `omitempty`, so
+  every other snapshot path is unchanged.
+
+The card-side builders are `effects.CanBlockAdditional(applies, n)` and
+`effects.CanBlockAnyNumber(applies)`. Both are layer 6, with the scope as
+their argument (Decision 41's rule).
+
+**The set.** `Card.BlockingTarget` stays as the FIRST attacker a creature
+blocks. The new `Card.AlsoBlocking []uuid.UUID` holds the rest, in
+declaration order.
+
+- There are about 50 "is it blocking" reads of `BlockingTarget` across the
+  engine, the view, the bots and the tests. They stay correct without being
+  touched.
+- `BlockedAttackers()` is the one reader of the whole set, and
+  `IsBlockingAttacker(id)` is the pair test.
+- `setBlockingSet` and `clearBlocking` are the only writers. Every
+  `BlockingTarget = uuid.Nil` in the engine now calls `clearBlocking`, so the
+  two fields cannot disagree.
+
+**Rejected: replace `BlockingTarget` with a slice.** It is the cleaner
+shape, but it would change every reader and every test, and the snapshot and
+wire keys along with them. It would also buy nothing that
+`BlockedAttackers()` does not already give.
+
+### Decision 61: the declaration works on a set, and adds rather than re-points when there is room
+
+The validator's working copy (Decision 13's `base` and `after`), the
+whole-combat limit tallies (Decision 43) and the CR 509.1c search
+(Decision 57) all now read a `blockAssignment`, which maps each blocker to the
+attackers it blocks.
+
+**The entry rule.** An entry `(blocker, attacker)` naming a pairing that is
+already stored is idempotent, as before. Otherwise:
+
+- **Capacity 1** re-points the blocker, exactly as the sandbox's "re-declare
+  blocker" always has. The attacker it leaves is *touched*, so its count
+  bounds are judged.
+- **Room left** adds the attacker to the set.
+- **No room left** refuses the whole declaration with the new reason
+  `blocker_capacity` (`BlockRefusal.N` is the capacity). The sentence is "Two-Headed Giant of
+  Foriys can't block more than two creatures each combat." A full
+  multi-blocker is never silently re-pointed, because that would take back a
+  block the defender chose. Undo and `clear_combat` remain the way to change
+  one.
+
+**What falls out unchanged:**
+
+- **Counts are per attacker.** One creature blocking three attackers is one
+  blocker of each. Menace still needs two creatures, and a Hungering Hydra
+  still takes one.
+- **Limits count creatures.** `blockLimitTallyLocked` counts the blocker keys,
+  so a creature blocking two attackers is one creature under Silent Arbiter.
+- **Pair legality is per pair.** Each entry is still judged by
+  `BlockPairRefusalLocked` and the #1339 defender check.
+
+**The option generator** (Decision 14) keeps a blocker with room eligible:
+`BlockerEligible` now accepts "not blocking, or has room". It never offers a
+blocker an attacker that blocker already blocks, because that entry would
+change nothing, so singles only ever add. Every option still passes through the
+validator. The enumerator, the #328 signal and the bots follow with no new
+code.
+
+**The requirement search** (Decision 57, `block_requirements.go`) keeps its
+guarantee: the witness is counted exactly and re-checked by the ordinary
+validator. The network changes in three places:
+
+- **Blocker room.** A blocker with room left enters with that room, not with
+  1. A creature already blocking takes part only for the room it has left,
+  because an addition never re-points.
+- **"Blocks each combat" is charged once.** Decision 59's pair weight
+  included the blocker's `blocks` count, which would count it once per
+  attacker for a multi-blocker. It now costs its weight on the blocker's
+  FIRST unit (a first source arc of capacity 1), and the rest of the room is
+  a second arc at cost 0. A blocker that is already blocking has obeyed it
+  already, so both of its arcs cost 0. `blockRequirementHitsLocked` counts it
+  once too.
+- **Limits.** A blocker that is already blocking has already been counted by
+  a whole-combat limit, so it bypasses the limit node. A limited blocker that
+  is not blocking yet keeps a single unit through that node. "Counts once, then
+  carries more" cannot be expressed as a flow, and one unit is the weaker
+  answer.
+
+Lures and "blocks that attacker" stay per pair, so a Palace Guard facing two
+Lure'd attackers owes both blocks.
+
+### Decision 62: the blocker divides its damage through the existing prompt
+
+`assignAndDealCombatDamageLocked` builds its per-attacker blocker lists from
+`BlockedAttackers()`. A blocker whose set still holds two or more **live**
+attackers (on the battlefield and attacking) does not deal damage inside the
+attacker loop. Instead it is handled after the loop:
+
+- **Two or more live attackers left.** It queues the CR 510.1c
+  damage-assignment prompt with the roles turned round:
+  - the frame's `AttackerID` is the blocker, the damage source;
+  - `BlockerIDs` are the attackers, the recipients;
+  - the chooser is the blocker's controller;
+  - `DamageAssignmentFrame.BlockerDivides` is set (`omitempty`).
+- **One live attacker left.** It deals that attacker all of its damage, with
+  no prompt.
+- **None left.** It deals nothing.
+
+`ResolveDamageAssignment` skips the lethal-first order for a `BlockerDivides`
+frame, and still refuses trample, because `AllowTrample` is false. Everything
+else is reused unchanged:
+
+- the source keywords snapshotted at queue time (lifelink, deathtouch,
+  infect, the LKI for protection);
+- the resume path;
+- the table gate (#702, #730): the step cannot end until the defender
+  answers;
+- the enumerator's canonical answer, which is a valid free split;
+- the bots' use of that answer.
+
+The prompt's reason is "Divide combat damage among the creatures it blocks".
+
+### Decision 63: announcements, snapshot and wire
+
+- **Announcements.** `Game.announcedBlocks` becomes blocker → the attackers its
+  `EventBlock`s named. The lock-in announces each pair not yet announced, and
+  numbers it in `EventBlock.Amount`: 1 for the blocker's first pair, 2 for its
+  second, and so on. `effects.selfBlocksOnce` is "whenever this creature
+  blocks" (CR 509.3a) and reads only `Amount <= 1`. Savvy Hunter, Smuggler's
+  Copter and Guardian of the Gateless use it. Brimaz ("blocks a creature",
+  CR 509.3b) keeps the per-pair reader. `EventBecomesBlocked` is still once
+  per attacker.
+- **Snapshot, additive, no bump.**
+  - The card mirror gains `alsoBlocking` (`omitempty`).
+  - `announcedBlocks` keeps its key and writes each blocker's FIRST
+    announced attacker. The rest ride a new `announcedAlsoBlocks`
+    (`omitempty`).
+  - A file from before #1706 has neither new key, so it restores every block
+    and announcement as the single pair it described.
+  - An older binary reading a new file keeps each blocker's first attacker.
+    That is the one block it can represent.
+  - `testdata/snapshot_shape/v7.txt` records the new paths.
+- **Wire, additive and public.**
+  - `CardView.block_capacity` is set when the capacity is 2 or more, and
+    `blocks_any_number` is set instead for "any number". Both are read off
+    the effective characteristic. A face-down creature prints nothing of its
+    own (CR 708.2), so they survive the face-down redaction.
+  - `CardView.blocking_targets` lists every attacker when the card blocks two
+    or more. Its first entry repeats `blocking_target`.
+  - `damage_assignment.blocker_divides` marks the division prompt.
+  - `blocker_capacity` joins the refusal tokens.
+- **Client, kept small.**
+  - The two-click flow needs no change, because the server adds rather than
+    re-points for a blocker with room.
+  - Combat arrows draw one arrow per blocked attacker.
+  - The card menu's row reads "Also block" and offers only the attackers the
+    creature is not blocking yet (`blockerHasRoom` and `blockedAttackersOf`
+    read the stamps and derive nothing, §6).
+  - The damage prompt says "Divide its N damage among them however you like".
+- **Bot.** The heuristic's "already blocked" tally reads `blocking_targets`.
+  Everything else comes from the enumerator.
+
+### Proof cards
+
+All are `full`:
+
+- **Brave the Sands** and **Hundred-Handed One** lose their caveats. The
+  Giant's is a `Monstrous()`-gated `CanBlockAdditional(99)`.
+- **Palace Guard**, **High Ground**, **Two-Headed Giant of Foriys**, **Wall of
+  Glare**, **Echo Circlet** and **Watcher in the Web** are new.
+- **Guardian of the Gateless** is new. Its "+1/+1 for each creature it's
+  blocking" triggers once and reads `BlockingCountForEffect` on resolution.
+
+### Tests
+
+- `game/multi_block_test.go` covers, with stubbed statics:
+  - Capacity 2 adds a second attacker and refuses a third, alone or inside one
+    declaration of three.
+  - "Any number" blocks five attackers.
+  - An ordinary blocker still re-points.
+  - One `EventBlock` per pair, numbered, and one `EventBecomesBlocked` per
+    attacker.
+  - The division prompt: both attackers' damage lands on the blocker, a
+    lethal-first-breaking split is accepted, and trample is refused.
+  - A blocker with one live attacker left deals it everything, with no
+    prompt.
+  - Menace still needs two creatures.
+  - Two Lure'd attackers owe both blocks from one Palace Guard, and the pass
+    names the missing one.
+  - "Blocks each combat" is counted once.
+  - A one-creature limit counts the multi-blocker once.
+  - The option generator stays legal and never repeats a pairing.
+  - Clone and `RestoreFrom` (including aliasing) and a JSON round trip, with
+    the announcements.
+  - A pre-#1706 snapshot restores its single block.
+- `legal/multi_block_test.go`: the enumerator offers the Giant each attacker it
+  does not block yet, and nothing once it is full. Every offer dispatches, and
+  the withheld third block is refused with `blocker_capacity`. Palace Guard is
+  offered every attacker until it has blocked them all.
+- `aiseat/multi_block_test.go`: the heuristic and the aggressive policy finish
+  a combat against Palace Guard and the Giant. The aggressive one blocks two
+  attackers with one creature and answers the division prompt.
+- `protocol/multi_block_view_test.go` covers the capacity stamps, and
+  `blocking_targets` only for two or more, and `blocker_divides` on the
+  prompt. `face_down_view_test.go` places the three card fields as public.
+- `cards/effects/multi_block_cards_test.go` has one test per proof card. It
+  also covers Savvy Hunter blocking two and making one Food, and two High
+  Grounds adding up. `batch16_test.go`'s Brave the Sands test now pins the
+  second line.
+- Client: `attackTargets.test.ts` and `contextMenu.test.ts`, plus the
+  refusal-token mirror.
+
+### What this does NOT decide
+
+- **"Can block an additional creature this turn" and "can block any number of
+  creatures this turn"** from a resolving spell or ability. Coastline Chimera,
+  Mounted Archers, Anurid Swarmsnapper, Luminous Guardian, Give No Ground,
+  Valor Made Real, Act of Heroism and Yare all need an ADR 0041 data-record mod
+  that writes the capacity. It would be additive, like `addBlockRequirement`.
+- **"Blocks each attacking creature if able"** (Blaze of Glory) is a
+  requirement kind on the blocker, obeyed per attacker.
+- **"Whenever this creature blocks two or more creatures"** (Lairwatch Giant)
+  is a trigger condition. It is readable from `BlockingCountForEffect` and was
+  left for a card batch.
+- **Conditional capacity** (Kemba's Legion's per-Equipment count, Cenn's
+  Tactician, Entourage of Trest, Foriysian Totem, Iona's Blessing, Vanguard's
+  Shield) is one file each with the two builders, and was left for a card
+  batch.
+- **Re-pointing a multi-blocker away from an attacker.** The verb only adds;
+  undo is the way back, as for every other staged block.
