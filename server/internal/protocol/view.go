@@ -4897,7 +4897,11 @@ func viewOfOptionalCosts(g *game.Game, caster uuid.UUID, src game.TargetSource, 
 				v.OpponentOptions = append(v.OpponentOptions, id.String())
 			}
 		}
-		if spec := oc.Targets; spec != nil {
+		// #1716: the clause THIS offer's claim produces, asked of the
+		// one function announce, the CR 608.2b re-check and the
+		// enumerator ask — nil base, so an offer that rewrites nothing
+		// stamps nothing and the client keeps the card's own clause.
+		if spec := game.TargetSpecUnderOptionalCosts(nil, costs, []int{i}); spec != nil {
 			v.TargetMode = spec.Mode
 			v.LegalTargets = viewOfTargetClause(g, src, "", g.LegalTargetsForEffect(src, spec), spec)
 			v.Clauses = viewOfClauses(g, src, spec)

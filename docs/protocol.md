@@ -1421,7 +1421,13 @@ casts every gift card as its printed ungifted spell.
   River's Pull's promised "target spell", Wear Down's two targets,
   Valley Rally's target that only a promised cast has). Absent when
   paying the cost leaves the card's own clause alone, which is every
-  kicker and buyback. Per viewer, like every legal set.
+  buyback and most kickers. **#1716:** not only gift — a kicker,
+  teamwork or blight offer carries the trio too when paying it widens
+  the clause (Bloodchief's Thirst's kicked "target creature or
+  planeswalker", Too Evil to Stay Dead's teamwork lifting "mana value 4
+  or less"). No new field; a client that already takes its clause from
+  the first ticked offer carrying one needs no change. Per viewer, like
+  every legal set.
 
 - **`StackItemView.gift_to`** (player ID string) is who a spell on the
   stack promised its gift to; absent when it promised none. Public: a
