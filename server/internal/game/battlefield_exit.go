@@ -32,8 +32,15 @@ import "github.com/google/uuid"
 // (moveCardByRefLocked, behind MoveCardByID) — immediately before
 // their MoveCard.
 //
+// It returns the object's combat state as it last existed (#1661),
+// read before anything here or in MoveCard clears it, for the caller
+// to stamp onto the EventLTB it emits — see combatLKI.
+//
 // Caller must hold g.mu.
-func (g *Game) battlefieldExitLocked(cardID uuid.UUID) {
+func (g *Game) battlefieldExitLocked(cardID uuid.UUID) combatLKI {
+	// #1661: FIRST, before forgetPerObjectTurnStateLocked drops the
+	// blocked record and before MoveCard clears the attack and block.
+	combat := g.combatLKILocked(cardID)
 	g.snapshotLKILocked(cardID)
 	// #1379: the same reading, kept past the harvest for an ability
 	// that resolves later and asks about this object (CR 608.2h).
@@ -44,6 +51,61 @@ func (g *Game) battlefieldExitLocked(cardID uuid.UUID) {
 	// the card still has it.
 	g.freezePaidTapsOnExitLocked(cardID)
 	g.forgetPerObjectTurnStateLocked(cardID)
+	return combat
+}
+
+// combatLKI is a leaving permanent's combat state as it last existed
+// on the battlefield (#1661, CR 603.10a): what it was attacking, what
+// it was blocking, and whether it was a blocked attacker.
+//
+// It exists for the leaves-the-battlefield event and nothing else.
+// A leaving permanent is removed from combat (CR 506.4) — MoveCard
+// clears AttackingTarget and BlockingTarget, and the exit forgets its
+// blocked record — so by the time ANY watcher's trigger condition
+// runs, the card itself no longer says it was in combat. The dying
+// card's own triggers already had a CR 603.10 snapshot of its
+// characteristics, which carry no combat state; a third party's
+// "whenever an attacking creature dies" (Kardur, Doomscourge) had
+// nothing at all. CR 603.10a says every leaves-the-battlefield
+// ability looks back in time, so the facts ride the event every
+// watcher already reads, rather than a second snapshot keyed by card
+// that a watcher would have to know to ask for.
+//
+// Taken in battlefieldExitLocked, which every battlefield exit runs,
+// so a creature that dies to combat damage, to a removal spell in the
+// declare blockers step and to a sacrifice all carry the same facts.
+// A creature that was removed from combat before it left (a control
+// change, CR 506.4) carries none: removeFromCombatLocked has already
+// cleared all three, which is the rule — it is no longer attacking.
+type combatLKI struct {
+	attacking uuid.UUID
+	blocking  uuid.UUID
+	blocked   bool
+}
+
+// combatLKILocked reads cardID's combat state off the battlefield.
+// The zero value for a card that is not there. Caller must hold g.mu.
+func (g *Game) combatLKILocked(cardID uuid.UUID) combatLKI {
+	c := findBattlefieldCard(g, cardID)
+	if c == nil {
+		return combatLKI{}
+	}
+	return combatLKI{
+		attacking: c.AttackingTarget,
+		blocking:  c.BlockingTarget,
+		// Only an attacker is ever blocked (CR 509.1h), and
+		// removeFromCombatLocked drops the row with the attack, so
+		// the record cannot outlive the attack it describes.
+		blocked: c.AttackingTarget != uuid.Nil && g.blockedAttackers[cardID],
+	}
+}
+
+// stamp writes the combat state onto an EventLTB
+// (Event.AttackingTarget, Event.BlockingTarget, Event.Blocked).
+func (l combatLKI) stamp(ev *Event) {
+	ev.AttackingTarget = l.attacking
+	ev.BlockingTarget = l.blocking
+	ev.Blocked = l.blocked
 }
 
 // forgetPerObjectTurnStateLocked drops every "this object did this"

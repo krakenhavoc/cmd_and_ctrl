@@ -10,15 +10,17 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // The aristocrats commander that pays either way. The condition is
 // "another creature you control died" (diedCreature read post-move,
-// the source excluded). "If it was attacking" is the part with no
-// field to read: the battlefield-leave choke point clears the dead
-// creature's attack before its dies event fires, and the harvester's
-// last-known characteristic carries no combat state — so it is read
-// off the event log in Build, at the event (b35WasAttackingWhenItLeft):
-// an attack declaration naming the creature, found before the combat
-// it attacked in ended or the turn changed, means it was attacking.
-// A creature that attacked, left, and came back is a new object with
-// no attack of its own, so it reads as not attacking, as printed.
+// the source excluded). "If it was attacking" is diedWhileAttacking
+// (#1661): the attack as it last existed, carried on the dies event
+// itself, because the exit has already cleared it from the card
+// (CR 603.10a).
+//
+// It used to be read off the event log instead — an EventAttack
+// naming the creature earlier in the same combat — and that was wrong
+// twice: a creature put onto the battlefield attacking (a ninja, a
+// token created tapped and attacking) was never declared and read as
+// not attacking, and one removed from combat by a control change
+// (CR 506.4) still read as attacking.
 //
 // The damage is dealt by Garna, so a Fog-class shield stops it; the
 // draw is the controller's.
@@ -40,7 +42,7 @@ func init() {
 			// creature died, not something the resolving item can
 			// re-derive from the board later.
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
-				attacking := b35WasAttackingWhenItLeft(g, ev.CardID, ev.Seq)
+				_, attacking := diedWhileAttacking(ev, g)
 				label := "Garna, Bloodfist of Keld — 1 damage to each opponent"
 				if attacking {
 					label = "Garna, Bloodfist of Keld — draw a card (it was attacking)"

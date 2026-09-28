@@ -1,6 +1,7 @@
 # ADR 0027 — Attack triggers ride an event, not combat state
 
 **Status:** Implemented · 2026-09-10 · Branch `feat/attack-triggers`
+**Amendment:** 2026-09-28 · **Accepted** · [Combat state rides the leaves-the-battlefield event (CR 603.10a)](#amendment-2026-09-28-1661-combat-state-rides-the-leaves-the-battlefield-event) · [#1661](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1661)
 
 ## Context
 
@@ -214,3 +215,117 @@ Nothing about the decision itself changes: `EventAttack`,
 `attackDeclared` / `attackDeclaredByYou` and the CR 603.3d timing are
 as shipped, and the other deferrals in that section (batched attacks,
 attacking a planeswalker) still stand.
+
+## Amendment (2026-09-28, #1661): combat state rides the leaves-the-battlefield event
+
+**Status:** Accepted · S37 — Combat correctness · [#1661](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1661)
+
+### Context
+
+This ADR's title is the decision it keeps making: a trigger is written
+against an **event**, not against combat state, because by the time a
+trigger looks at the board the state has moved on. The one combat
+trigger family it did not reach was the one where that is literally
+true — "whenever an **attacking** creature dies" (Kardur,
+Doomscourge), "whenever a **blocking** creature an opponent controls
+dies" (Death Tyrant), Garna's "draw a card if it **was attacking**".
+
+A permanent leaving the battlefield is removed from combat (CR 506.4).
+The engine does that in the exit itself: `MoveCard` clears
+`Card.AttackingTarget` and `Card.BlockingTarget`, and
+`forgetPerObjectTurnStateLocked` drops the blocked record, all before
+`EventLTB` is emitted. The CR 603.10 snapshot the exit takes
+(`lastKnownBattlefield`) is a `Characteristic` — no combat state — and
+it is keyed to the dying card's **own** leaves-the-battlefield
+triggers. So a third party's trigger condition had nothing to read, and
+Kardur shipped with his drain caveated (#1660). Garna had been working
+around it with an event-log walk (an `EventAttack` naming the creature
+earlier in the same combat), which was wrong in both directions: a
+creature put onto the battlefield attacking was never declared and read
+as not attacking, and one removed from combat by a control change still
+read as attacking.
+
+CR 603.10a says leaves-the-battlefield abilities "look back in time":
+every such ability, whoever controls it, judges the event against the
+game as it was immediately before.
+
+### Decision 1 — Three fields on `Event`, stamped on `EventLTB` only
+
+```go
+AttackingTarget uuid.UUID // what it was attacking — Card.AttackingTarget's domain
+BlockingTarget  uuid.UUID // the attacker it was blocking
+Blocked         bool      // it was a blocked attacker (CR 509.1h)
+```
+
+The same names as the `Card` fields they preserve, so a reader who
+knows one knows the other. All three are zero for a permanent that was
+not in combat, or had already been removed from it.
+
+**Why the event rather than a second snapshot.** Every watcher already
+receives the event; a snapshot map keyed by card would need a reader
+API, a lifetime (the harvest deletes `lastKnownBattlefield` the moment
+its dispatch ends), and an entry in Clone and the persisted snapshot.
+The event log is already all three: `Clone` shares it, the snapshot
+serialises it, and an undo rewinds it. So this adds **no game state**,
+in the same sense §3 above meant it. It is also the answer that cannot
+drift from the moment it describes, which is what "look back in time"
+asks for.
+
+**Why not `PermanentInfo` (ADR 0018's CR 608.2h record).** That record
+answers a *resolving* ability's question about an object that has left.
+No catalog card asks a combat question at resolution today; a trigger
+condition, which is what every card on this list is, runs at the event.
+If one does, adding the same three facts to `PermanentInfo` from the
+same `combatLKI` value is a two-line change.
+
+### Decision 2 — One reader, in the one exit step
+
+`battlefieldExitLocked` already runs for every battlefield exit (the
+destroy / sacrifice route, the general effect route and the sandbox
+move). It now reads the combat state **first** — before the snapshot,
+before the blocked record is forgotten, before `MoveCard` — and returns
+it as a `combatLKI` value. Each of the three `EventLTB` emit sites
+stamps it. One reader means combat damage, a removal spell in the
+declare blockers step, a sacrifice mid-combat, a bounce and a sandbox
+drag all report the same facts; the per-route test table
+(`combat_lki_test.go`) pins every route.
+
+A creature removed from combat before it left — a control change, the
+engine's CR 506.4 route (`removeFromCombatLocked`) — reports nothing,
+because that function has already cleared all three. That is the rule,
+not a gap: it is no longer an attacking creature.
+
+`Blocked` is read only for a creature that is attacking, and
+`removeFromCombatLocked` drops the row with the attack, so the record
+cannot outlive the attack it describes.
+
+### Decision 3 — Card-side readers
+
+`diedWhileAttacking(ev, g)` and `diedWhileBlocking(ev, g)` in
+`effects/helpers.go`, beside `diedCreature`. Each returns the dead card
+as it now sits in the graveyard (for "you control" / "an opponent
+controls" and for "return that card") and `ok` when the event says it
+was attacking / blocking. Neither checks `IsCreature` on the graveyard
+card: only a creature attacks or blocks, and a crewed Vehicle that died
+attacking is an artifact again by the time it is in the graveyard. The
+event-picker table in AGENTS.md §7 has the row.
+
+### Cards
+
+- **Kardur, Doomscourge** — the drain ships; `full`.
+- **Garna, Bloodfist of Keld** — moved onto `diedWhileAttacking`; the
+  log walk (`b35WasAttackingWhenItLeft`) is deleted.
+- **Death Tyrant** (new) — both clauses, crossed correctly (your
+  blocker and their attacker are not it).
+- **Ares, God of War** (new) — "return that card" guarded by the
+  graveyard object epoch, Edea's shape.
+
+### Still open
+
+- "Attacking or blocking **alone**" (Thijarian Witness) needs the
+  combat's other participants at the moment of death, which a per-card
+  fact cannot carry.
+- "A **goaded** attacking or blocking creature" (Baeloth Barrityl)
+  needs goad as a static, continuous effect.
+- Zurgo Stormrender's leaves-the-battlefield half is now expressible;
+  the card waits on mobilize.

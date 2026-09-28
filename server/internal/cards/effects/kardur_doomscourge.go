@@ -19,25 +19,28 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // too, and the engine judges it with every other requirement at the
 // table.
 //
-// DECLARED SIMPLIFICATION: the drain trigger is not implemented.
-// "Whenever an attacking creature dies" needs to know, AFTER the
-// creature has already moved to the graveyard, that it was attacking
-// at the moment it died — and CR 603.10 last-known-information does
-// not carry combat state (Card.AttackingTarget is cleared on every
-// zone exit, same as Tapped and Counters, before any watcher's
-// AppliesTo runs). Building this properly needs a combat-state LKI
-// the engine does not keep for arbitrary watchers today; no second
-// card is asking for it yet, so it is not being speculatively built
-// here. The requirement half is real and does the card's other job.
+// #1661: the drain is diedWhileAttacking — the dying creature's
+// attack as it last existed, carried on its leaves-the-battlefield
+// event (CR 603.10a), because the exit has already cleared it from
+// the card. ANY attacking creature: an opponent's creature Kardur
+// forced in, your own, and Kardur himself if he dies attacking (the
+// LTB harvest reads his own event the same way). A blocker dying is
+// not an attacking creature dying, and nor is a creature that was
+// removed from combat before it died.
+//
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID:     "bc14356c-3a1a-47af-9a6e-2b449de0331f",
 		Name:         "Kardur, Doomscourge",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"When a creature dies while attacking, opponents don't lose life and you don't gain life — that trigger isn't implemented."},
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Kardur, Doomscourge — creatures your opponents control attack each combat if able and attack a player other than you if able",
 				kardurDoomscourgeRequirement),
+			On(game.EventLTB, func(ev game.Event, _ *game.Card, _ game.Characteristic, g *game.Game) bool {
+				_, ok := diedWhileAttacking(ev, g)
+				return ok
+			}, "Kardur, Doomscourge — each opponent loses 1 life, you gain 1 life", drainEachOpponent),
 		},
 	})
 }

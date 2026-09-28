@@ -301,8 +301,11 @@ events	array
 events[]	object
 events[].actor	custom(uuid.UUID)
 events[].amount	number:int
+events[].attacking_target	custom(uuid.UUID)
 events[].batch	number:uint64
 events[].batch_seq	number:uint64
+events[].blocked	bool
+events[].blocking_target	custom(uuid.UUID)
 events[].call	string
 events[].card_id	custom(uuid.UUID)
 events[].cause	string
@@ -902,8 +905,11 @@ lastKnownStack[].item.trigger	object
 lastKnownStack[].item.trigger.Event	object
 lastKnownStack[].item.trigger.Event.actor	custom(uuid.UUID)
 lastKnownStack[].item.trigger.Event.amount	number:int
+lastKnownStack[].item.trigger.Event.attacking_target	custom(uuid.UUID)
 lastKnownStack[].item.trigger.Event.batch	number:uint64
 lastKnownStack[].item.trigger.Event.batch_seq	number:uint64
+lastKnownStack[].item.trigger.Event.blocked	bool
+lastKnownStack[].item.trigger.Event.blocking_target	custom(uuid.UUID)
 lastKnownStack[].item.trigger.Event.call	string
 lastKnownStack[].item.trigger.Event.card_id	custom(uuid.UUID)
 lastKnownStack[].item.trigger.Event.cause	string
@@ -1220,8 +1226,11 @@ pendingTriggers[].trigger	object
 pendingTriggers[].trigger.Event	object
 pendingTriggers[].trigger.Event.actor	custom(uuid.UUID)
 pendingTriggers[].trigger.Event.amount	number:int
+pendingTriggers[].trigger.Event.attacking_target	custom(uuid.UUID)
 pendingTriggers[].trigger.Event.batch	number:uint64
 pendingTriggers[].trigger.Event.batch_seq	number:uint64
+pendingTriggers[].trigger.Event.blocked	bool
+pendingTriggers[].trigger.Event.blocking_target	custom(uuid.UUID)
 pendingTriggers[].trigger.Event.call	string
 pendingTriggers[].trigger.Event.card_id	custom(uuid.UUID)
 pendingTriggers[].trigger.Event.cause	string
@@ -2937,8 +2946,11 @@ stackMeta[].trigger	object
 stackMeta[].trigger.Event	object
 stackMeta[].trigger.Event.actor	custom(uuid.UUID)
 stackMeta[].trigger.Event.amount	number:int
+stackMeta[].trigger.Event.attacking_target	custom(uuid.UUID)
 stackMeta[].trigger.Event.batch	number:uint64
 stackMeta[].trigger.Event.batch_seq	number:uint64
+stackMeta[].trigger.Event.blocked	bool
+stackMeta[].trigger.Event.blocking_target	custom(uuid.UUID)
 stackMeta[].trigger.Event.call	string
 stackMeta[].trigger.Event.card_id	custom(uuid.UUID)
 stackMeta[].trigger.Event.cause	string
