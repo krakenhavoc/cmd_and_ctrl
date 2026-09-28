@@ -86,7 +86,7 @@ func creatureYouControlLeftWithoutDying(ev game.Event, source *game.Card, g *gam
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.CardID)
-	return ok && leftAsType(ev, c, "creature") && c.Controller == source.Controller
+	return ok && leftAsType(ev, c, "creature") && leftUnderControlOf(ev, c) == source.Controller
 }
 
 // --- counters read back off the log ------------------------------

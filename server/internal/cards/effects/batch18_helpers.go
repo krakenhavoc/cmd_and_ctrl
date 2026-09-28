@@ -149,7 +149,7 @@ func b18OpponentDiscarded(ev game.Event, source *game.Card) bool {
 // was controlled by someone other than the source's controller.
 func b18OpponentsCreatureDied(ev game.Event, source *game.Card, g *game.Game) bool {
 	dead, ok := diedCreature(ev, g)
-	return ok && dead.Controller != source.Controller
+	return ok && leftUnderControlOf(ev, dead) != source.Controller
 }
 
 // --- effects -----------------------------------------------------

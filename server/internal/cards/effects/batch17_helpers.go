@@ -269,7 +269,7 @@ func b17SelfOrZombieYouControlDied(ev game.Event, source *game.Card, g *game.Gam
 		return false
 	}
 	dead, ok := diedCreature(ev, g)
-	return ok && dead.Controller == source.Controller && leftAsSubtype(ev, dead, "Zombie")
+	return ok && leftUnderControlOf(ev, dead) == source.Controller && leftAsSubtype(ev, dead, "Zombie")
 }
 
 // b17SelfOrAnotherCreatureDied is Cordial Vampire's condition: any

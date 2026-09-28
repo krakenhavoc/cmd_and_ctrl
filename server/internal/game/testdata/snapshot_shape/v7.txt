@@ -321,8 +321,11 @@ events[].exhaust	bool
 events[].kind	string
 events[].label	string
 events[].last_known_all_creature_types	bool
+events[].last_known_controller	custom(uuid.UUID)
 events[].last_known_subtypes	array
 events[].last_known_subtypes[]	string
+events[].last_known_supertypes	array
+events[].last_known_supertypes[]	string
 events[].last_known_types	array
 events[].last_known_types[]	string
 events[].looked_at	number:int
@@ -940,8 +943,11 @@ lastKnownStack[].item.trigger.Event.exhaust	bool
 lastKnownStack[].item.trigger.Event.kind	string
 lastKnownStack[].item.trigger.Event.label	string
 lastKnownStack[].item.trigger.Event.last_known_all_creature_types	bool
+lastKnownStack[].item.trigger.Event.last_known_controller	custom(uuid.UUID)
 lastKnownStack[].item.trigger.Event.last_known_subtypes	array
 lastKnownStack[].item.trigger.Event.last_known_subtypes[]	string
+lastKnownStack[].item.trigger.Event.last_known_supertypes	array
+lastKnownStack[].item.trigger.Event.last_known_supertypes[]	string
 lastKnownStack[].item.trigger.Event.last_known_types	array
 lastKnownStack[].item.trigger.Event.last_known_types[]	string
 lastKnownStack[].item.trigger.Event.looked_at	number:int
@@ -1271,8 +1277,11 @@ pendingTriggers[].trigger.Event.exhaust	bool
 pendingTriggers[].trigger.Event.kind	string
 pendingTriggers[].trigger.Event.label	string
 pendingTriggers[].trigger.Event.last_known_all_creature_types	bool
+pendingTriggers[].trigger.Event.last_known_controller	custom(uuid.UUID)
 pendingTriggers[].trigger.Event.last_known_subtypes	array
 pendingTriggers[].trigger.Event.last_known_subtypes[]	string
+pendingTriggers[].trigger.Event.last_known_supertypes	array
+pendingTriggers[].trigger.Event.last_known_supertypes[]	string
 pendingTriggers[].trigger.Event.last_known_types	array
 pendingTriggers[].trigger.Event.last_known_types[]	string
 pendingTriggers[].trigger.Event.looked_at	number:int
@@ -2996,8 +3005,11 @@ stackMeta[].trigger.Event.exhaust	bool
 stackMeta[].trigger.Event.kind	string
 stackMeta[].trigger.Event.label	string
 stackMeta[].trigger.Event.last_known_all_creature_types	bool
+stackMeta[].trigger.Event.last_known_controller	custom(uuid.UUID)
 stackMeta[].trigger.Event.last_known_subtypes	array
 stackMeta[].trigger.Event.last_known_subtypes[]	string
+stackMeta[].trigger.Event.last_known_supertypes	array
+stackMeta[].trigger.Event.last_known_supertypes[]	string
 stackMeta[].trigger.Event.last_known_types	array
 stackMeta[].trigger.Event.last_known_types[]	string
 stackMeta[].trigger.Event.looked_at	number:int

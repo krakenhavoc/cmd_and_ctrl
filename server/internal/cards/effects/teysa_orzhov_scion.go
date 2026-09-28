@@ -44,7 +44,7 @@ func init() {
 					return false
 				}
 				dead, ok := diedCreature(ev, g)
-				return ok && dead.Controller == source.Controller && dead.HasColor("B")
+				return ok && leftUnderControlOf(ev, dead) == source.Controller && dead.HasColor("B")
 			}, "Teysa, Orzhov Scion — create a 1/1 white Spirit with flying",
 				Do(CreateToken{Template: TokenCard("1/1 white Spirit with flying"), N: 1})),
 		},

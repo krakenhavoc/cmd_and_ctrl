@@ -49,7 +49,7 @@ func init() {
 					return false
 				}
 				dead, ok := diedCreature(ev, g)
-				if !ok || dead.Controller != source.Controller {
+				if !ok || leftUnderControlOf(ev, dead) != source.Controller {
 					return false
 				}
 				return !b11TriggeredThisTurn(g, source.InstanceID, b40VraanLabel)

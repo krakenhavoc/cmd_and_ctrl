@@ -341,7 +341,7 @@ func ArtifactEnteredUnderYourControl(ev game.Event, source *game.Card, _ game.Ch
 // graveyard, the source included (Zulaport Cutthroat).
 func ACreatureYouControlDied(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	dead, ok := diedCreature(ev, g)
-	return ok && dead.Controller == source.Controller
+	return ok && leftUnderControlOf(ev, dead) == source.Controller
 }
 
 // AnotherCreatureDied — any other creature, anyone's, died (Blood

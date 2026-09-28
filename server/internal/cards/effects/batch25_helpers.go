@@ -111,7 +111,7 @@ func b25DamageDealtByCounteredCreature(ev game.Event, g *game.Game) bool {
 // is cardDied's business, so this excludes it.
 func b25AnotherGoblinYouControlDied(ev game.Event, source *game.Card, g *game.Game) bool {
 	dead, ok := diedCreature(ev, g)
-	return ok && dead.InstanceID != source.InstanceID && dead.Controller == source.Controller && leftAsSubtype(ev, dead, "Goblin")
+	return ok && dead.InstanceID != source.InstanceID && leftUnderControlOf(ev, dead) == source.Controller && leftAsSubtype(ev, dead, "Goblin")
 }
 
 // b25AttackersHaveDoubleStrike is "attacking creatures you control

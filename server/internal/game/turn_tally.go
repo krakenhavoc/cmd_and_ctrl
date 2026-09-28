@@ -791,7 +791,14 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 			return
 		}
 		g.TurnTally.CreaturesDied++
-		controller := c.Controller
+		// #1682 / CR 603.10a: "died under your control" is the
+		// controller the permanent had as it left, which the exit
+		// stamped on the event — not the graveyard card's field, which
+		// CR 108.4 says names no one.
+		controller, known := ev.LeftUnderControlOf()
+		if !known {
+			controller = c.Controller
+		}
 		if controller == uuid.Nil {
 			controller = c.Owner
 		}

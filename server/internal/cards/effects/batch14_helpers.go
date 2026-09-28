@@ -120,7 +120,7 @@ func b14PermanentYouControlLeft(ev game.Event, source *game.Card, g *game.Game) 
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.CardID)
-	if !ok || c.Controller != source.Controller {
+	if !ok || leftUnderControlOf(ev, c) != source.Controller {
 		return false
 	}
 	return len(g.LastKnownCountersForEffect(ev.CardID)) > 0

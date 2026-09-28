@@ -215,27 +215,30 @@ func b33AnyCreatureEntered(ev game.Event, g *game.Game) bool {
 }
 
 // b33LegendaryCreatureYouControlDied is Rakdos Joins Up's condition:
-// a legendary creature the source's controller controlled died. The
-// dead card is read post-move, so the supertype is its printed one.
+// a legendary creature the source's controller controlled died. Both
+// halves are read as the creature last existed on the battlefield
+// (#1682, CR 603.10a): a Clone that copied a legend was legendary and
+// is a plain Clone in the graveyard, so the supertype comes off the
+// event (leftAsSupertype), and so does the controller.
 func b33LegendaryCreatureYouControlDied(ev game.Event, source *game.Card, g *game.Game) bool {
 	dead, ok := diedCreature(ev, g)
-	return ok && dead.Controller == source.Controller && isLegendary(&dead)
+	return ok && leftUnderControlOf(ev, dead) == source.Controller && leftAsSupertype(ev, dead, "Legendary")
 }
 
 // b33OpponentsCreatureDied is "whenever a creature an opponent
-// controls dies" (Patron of the Vein) — the dead creature, read
-// post-move, was controlled by someone other than the source's
+// controls dies" (Patron of the Vein) — the dead creature was
+// controlled, as it last existed, by someone other than the source's
 // controller.
 func b33OpponentsCreatureDied(ev game.Event, source *game.Card, g *game.Game) bool {
 	dead, ok := diedCreature(ev, g)
-	return ok && dead.Controller != source.Controller
+	return ok && leftUnderControlOf(ev, dead) != source.Controller
 }
 
 // b33OpponentsNontokenCreatureDied is Overseer of the Damned's
 // condition: b33OpponentsCreatureDied narrowed to a nontoken creature.
 func b33OpponentsNontokenCreatureDied(ev game.Event, source *game.Card, g *game.Game) bool {
 	dead, ok := diedCreature(ev, g)
-	return ok && dead.Controller != source.Controller && !IsToken(dead)
+	return ok && leftUnderControlOf(ev, dead) != source.Controller && !IsToken(dead)
 }
 
 // b33YouPutMinusCountersOnACreature is Nest of Scarabs' condition:

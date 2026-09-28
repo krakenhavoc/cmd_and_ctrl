@@ -92,7 +92,7 @@ func b39SeaMonsterYouControlDealtCombatDamageToPlayer(ev game.Event, source *gam
 // second trigger.
 func b39AnotherCreatureYouControlDied(ev game.Event, source *game.Card, g *game.Game) bool {
 	dead, ok := diedCreature(ev, g)
-	return ok && dead.InstanceID != source.InstanceID && dead.Controller == source.Controller
+	return ok && dead.InstanceID != source.InstanceID && leftUnderControlOf(ev, dead) == source.Controller
 }
 
 // b39PlusOneCountersOnCreatureYouControl is Shalai and Hallar's

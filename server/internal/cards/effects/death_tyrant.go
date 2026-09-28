@@ -61,9 +61,9 @@ func init() {
 // attacking creature the source's controller controlled died, or a
 // blocking creature someone else controlled did.
 func deathTyrantCombatDeath(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	if dead, ok := diedWhileAttacking(ev, g); ok && dead.Controller == source.Controller {
+	if dead, ok := diedWhileAttacking(ev, g); ok && leftUnderControlOf(ev, dead) == source.Controller {
 		return true
 	}
 	dead, ok := diedWhileBlocking(ev, g)
-	return ok && dead.Controller != source.Controller
+	return ok && leftUnderControlOf(ev, dead) != source.Controller
 }

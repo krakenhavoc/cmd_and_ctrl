@@ -103,7 +103,7 @@ func b21ArtifactOrCreatureYouControlDied(ev game.Event, source *game.Card, g *ga
 		return game.Card{}, false
 	}
 	c, ok := g.LookupCardForEffect(ev.CardID)
-	if !ok || c.Controller != source.Controller {
+	if !ok || leftUnderControlOf(ev, c) != source.Controller {
 		return game.Card{}, false
 	}
 	if !leftAsType(ev, c, "artifact") && !leftAsType(ev, c, "creature") {

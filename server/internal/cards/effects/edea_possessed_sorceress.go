@@ -127,7 +127,7 @@ func edeaStealEffect(g *game.Game, item *game.StackItem) error {
 // left the battlefield and does not own.
 func edeaCreatureYouControlButDontOwnDied(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	dead, ok := diedCreature(ev, g)
-	return ok && dead.Controller == source.Controller && dead.Owner != source.Controller
+	return ok && leftUnderControlOf(ev, dead) == source.Controller && dead.Owner != source.Controller
 }
 
 // edeaReturnAndDrawEffect is the dies trigger's resolution (ADR 0041

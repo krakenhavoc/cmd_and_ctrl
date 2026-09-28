@@ -1325,6 +1325,28 @@ type Event struct {
 	LastKnownSubtypes         []string `json:"last_known_subtypes,omitempty"`
 	LastKnownAllCreatureTypes bool     `json:"last_known_all_creature_types,omitempty"`
 
+	// LastKnownSupertypes is the same permanent's SUPERTYPES as it
+	// last existed, on EventLTB only (#1682, CR 603.10a): its
+	// post-layer Characteristic.Supertypes ("Legendary", "Snow", …). A
+	// Clone that copied a legend was legendary on the battlefield and
+	// is a plain Clone in the graveyard, so "whenever a legendary
+	// creature you control dies" (Rakdos Joins Up) reads it here, via
+	// WasSupertype. Engine-internal, like LastKnownTypes. See ADR
+	// 0027's 2026-09-28 amendment (#1682).
+	LastKnownSupertypes []string `json:"last_known_supertypes,omitempty"`
+
+	// LastKnownController is the player who controlled the same
+	// permanent as it last existed, on EventLTB only (#1682, CR
+	// 603.10a). "Whenever a creature you control dies" asks about the
+	// permanent, and a card in a graveyard has no controller (CR
+	// 108.4); a stolen creature sacrificed by its thief died under
+	// the thief's control, whoever owns the card. Read it through
+	// LeftUnderControlOf, which also says whether the event carries
+	// it. uuid.Nil on every other kind and on an unstamped EventLTB.
+	// Engine-internal, like LastKnownTypes. See ADR 0027's 2026-09-28
+	// amendment (#1682).
+	LastKnownController uuid.UUID `json:"last_known_controller,omitempty"`
+
 	// SettingOld / SettingNew are a table setting's value before and
 	// after an EventSettingsChanged, formatted as text: an int as
 	// decimal ("-1" is UndoUnlimited), a bool as "true"/"false", an

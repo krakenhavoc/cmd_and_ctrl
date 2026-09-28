@@ -37,7 +37,7 @@ func init() {
 			Watches: []game.EventKind{game.EventLTB},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				dead, ok := diedWhileAttacking(ev, g)
-				return ok && dead.Controller == source.Controller
+				return ok && leftUnderControlOf(ev, dead) == source.Controller
 			},
 			Key: aresReturnLabel,
 			// The dead card's post-move epoch is a board read made at

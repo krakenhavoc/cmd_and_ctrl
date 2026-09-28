@@ -93,7 +93,7 @@ func b10LandYouControlDied(ev game.Event, source *game.Card, g *game.Game) bool 
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.CardID)
-	return ok && leftAsType(ev, c, "land") && c.Controller == source.Controller
+	return ok && leftAsType(ev, c, "land") && leftUnderControlOf(ev, c) == source.Controller
 }
 
 // b10AnotherLandPlayedByYou is City of Traitors' "when you play

@@ -373,6 +373,41 @@ func leftAsSubtype(ev game.Event, c game.Card, subtype string) bool {
 	return c.HasSubtype(subtype)
 }
 
+// leftAsSupertype is leftAsType for a SUPERTYPE (#1682, CR 603.10a):
+// whether the permanent an EventLTB names was legendary / snow as it
+// last existed on the battlefield — Event.LastKnownSupertypes, the
+// post-layer supertypes the exit read with the card still in play. A
+// Clone that copied a legend was legendary, and is a plain Clone in
+// the graveyard. c is the card as it sits now, consulted only for an
+// event that carries no last-known information.
+func leftAsSupertype(ev game.Event, c game.Card, supertype string) bool {
+	if was, known := ev.WasSupertype(supertype); known {
+		return was
+	}
+	return c.HasSupertype(supertype)
+}
+
+// leftUnderControlOf is the player who controlled the permanent an
+// EventLTB names as it last existed on the battlefield (#1682, CR
+// 603.10a) — Event.LastKnownController. c is the card as it sits now,
+// and its Controller is consulted only for an event that carries no
+// stamp.
+//
+// Every "you control" / "an opponent controls" dies or
+// leaves-the-battlefield condition asks here, never dead.Controller:
+// "you control" is a question about the permanent, and a card in a
+// graveyard has no controller (CR 108.4). A stolen creature sacrificed
+// by its thief died under the THIEF's control, so the thief's
+// Zulaport Cutthroat drains and the owner's does not. OWNER clauses —
+// "its owner's graveyard", "under its owner's control", "a creature
+// card you own" — read c.Owner and are not this question.
+func leftUnderControlOf(ev game.Event, c game.Card) uuid.UUID {
+	if controller, known := ev.LeftUnderControlOf(); known {
+		return controller
+	}
+	return c.Controller
+}
+
 // diedWhileAttacking resolves the creature that just died from a dies
 // event when it was ATTACKING as it died — "whenever an attacking
 // creature dies" (Kardur, Doomscourge), Garna's "if it was attacking".
