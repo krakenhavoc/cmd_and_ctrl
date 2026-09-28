@@ -175,12 +175,23 @@ const (
 	// Intervention). A replacement effect is not a characteristic, so
 	// CR 611.2c does not lock its set.
 	ScopeYourPermanents AffectedScope = "yourPermanents"
+	// ScopeYourCreatures is "creatures you control", read live — the
+	// "you" being the record's Controller (#1650, Glaring Spotlight's
+	// "creatures you control … can't be blocked this turn").
+	ScopeYourCreatures AffectedScope = "yourCreatures"
+	// ScopeCreaturesWithoutFlying is "creatures without flying", every
+	// player's, read live (#1650, Falter). Whether a creature has
+	// flying is a layer-6 result, so a record with this scope may only
+	// carry mods that are read after the layer pass is finished — see
+	// foldRuleScopedRestrictionsLocked. Registration enforces it.
+	ScopeCreaturesWithoutFlying AffectedScope = "creaturesWithoutFlying"
 )
 
 // KnownAffectedScope reports whether this binary can interpret s.
 func KnownAffectedScope(s AffectedScope) bool {
 	switch s {
-	case ScopeNone, ScopeOpponentsCreatures, ScopeGame, ScopeYourPermanents:
+	case ScopeNone, ScopeOpponentsCreatures, ScopeGame, ScopeYourPermanents,
+		ScopeYourCreatures, ScopeCreaturesWithoutFlying:
 		return true
 	}
 	return false
@@ -297,7 +308,8 @@ type ScopedEffect struct {
 	// every pass (#1571): the record affects whatever the rule matches
 	// now, including objects that did not exist when it began. Only
 	// for an effect that changes neither characteristics nor control
-	// (CR 611.2c) — today, an attack requirement.
+	// (CR 611.2c): an attack requirement, a block rule, a replacement,
+	// or (#1650) a restriction such as Falter's "can't block".
 	Scope AffectedScope `json:"scope,omitempty"`
 
 	// Mods are applied each in its own layer, all at Timestamp. One
@@ -562,6 +574,16 @@ func (g *Game) RegisterScopedRuleEffectForEffect(sourceID uuid.UUID, scope Affec
 	if scope == ScopeNone || !KnownAffectedScope(scope) || len(mods) == 0 {
 		return false
 	}
+	if scope == ScopeCreaturesWithoutFlying {
+		// #1650: this scope reads a layer-6 result, so only a mod the
+		// post-layer fold applies may use it. A layer mod would read
+		// the keyword half-way through the pass.
+		for _, m := range mods {
+			if !foldedAfterLayers(scope, m.Kind) {
+				panic(fmt.Sprintf("game: scoped effect %q: scope %q carries only addRestrictions, got %q", label, scope, m.Kind))
+			}
+		}
+	}
 	return g.appendScopedEffectLocked(sourceID, nil, scope, controller, mods, d, label, timeNowUnixNano())
 }
 
@@ -819,6 +841,11 @@ func adaptScopedEffects(records []ScopedEffect) []ContinuousEffect {
 				// gather reads it (scoped_replacements.go).
 				continue
 			}
+			if foldedAfterLayers(e.Scope, m.Kind) {
+				// #1650: a live-rule restriction is applied once the
+				// pass is over (foldRuleScopedRestrictionsLocked).
+				continue
+			}
 			out = append(out, staticContinuousEffect{
 				ability: StaticAbility{
 					Layer:            spec.layer,
@@ -876,9 +903,77 @@ func scopePredicate(scope AffectedScope, controller uuid.UUID) func(*Card, *Game
 		return func(target *Card, _ *Game, _ *Card) bool {
 			return target != nil && target.Controller == controller
 		}
+	case ScopeYourCreatures:
+		return func(target *Card, _ *Game, _ *Card) bool {
+			return target != nil && target.IsCreature() && target.Controller == controller
+		}
+	case ScopeCreaturesWithoutFlying:
+		return func(target *Card, _ *Game, _ *Card) bool {
+			return target != nil && target.IsCreature() && !HasKeyword(target, "flying")
+		}
 	}
 	// ScopeGame names no object, so it matches none.
 	return func(*Card, *Game, *Card) bool { return false }
+}
+
+// foldedAfterLayers reports whether a record's mod is applied by
+// foldRuleScopedRestrictionsLocked rather than in its layer bucket: a
+// restriction whose affected set is a live rule (#1650).
+func foldedAfterLayers(scope AffectedScope, kind ModKind) bool {
+	return scope != ScopeNone && kind == ModAddRestrictions
+}
+
+// foldRuleScopedRestrictionsLocked applies every live-rule restriction
+// record once the layer pass is over (#1650). Two examples are Falter's
+// "creatures without flying can't block this turn" and Glaring
+// Spotlight's "creatures you control … can't be blocked this turn".
+//
+// WHY THE SET IS LIVE. CR 611.2c locks the affected set of an effect
+// from a resolving spell or ability only when the effect changes
+// characteristics or control. "Can't block" and "can't be blocked"
+// change neither, and CR 613 gives a restriction no layer at all
+// (restrictions.go). So the effect reaches a creature that arrives,
+// becomes a creature, or loses flying after the spell resolved, and
+// stops reaching one that gains flying. A pinned record (`Affected`,
+// the single-target RestrictUntilEOT) is a different effect, "target
+// creature can't block", and stays in its layer.
+//
+// WHY AFTER THE PASS. The scope reads the object's FINISHED
+// characteristics. "Without flying" is a layer-6 result, and a layer-6
+// bucket sorted by timestamp would ask the question before a
+// later-timestamped flying grant had applied. Restriction bits are only
+// ever OR'd in and no layer reads them, so applying them after layer 7
+// changes nothing else. The records are read afresh on every pass and
+// hold no closure, so undo and a restore point carry them as data.
+//
+// Caller must hold g.mu in write mode (the layer pass does).
+func (g *Game) foldRuleScopedRestrictionsLocked() {
+	if g.Battlefield == nil {
+		return
+	}
+	for i := range g.ScopedEffects {
+		e := &g.ScopedEffects[i]
+		if e.Scope == ScopeNone {
+			continue
+		}
+		var bits Restriction
+		for _, m := range e.Mods {
+			if foldedAfterLayers(e.Scope, m.Kind) {
+				bits |= m.Restrictions
+			}
+		}
+		if bits == 0 {
+			continue
+		}
+		applies := scopePredicate(e.Scope, e.Controller)
+		for j := range g.Battlefield.Cards {
+			target := &g.Battlefield.Cards[j]
+			if target.effective == nil || !applies(target, g, nil) {
+				continue
+			}
+			target.effective.Restrictions |= bits
+		}
+	}
 }
 
 // modApply is the interpreter: what each kind does to a

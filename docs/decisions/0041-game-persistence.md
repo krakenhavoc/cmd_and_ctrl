@@ -1103,6 +1103,9 @@ cheap sources of evidence.
     cover creatures that enter later.
   - The engine models restrictions as layer-6 bits, so pinning is
     today's behaviour. Tier 3a keeps it exactly.
+  - *Resolved 2026-09-28 (#1650):* it does change the rules. The mass
+    form now reads a live `AffectedScope`. See ADR 0045's amendment of
+    that date, Decision 54.
 - **It does not change any card's behaviour**, except Shadowspear,
   whose affected set is pinned at resolution (owner decision 2). The
   PR that migrates it calls the change out.

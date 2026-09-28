@@ -869,6 +869,9 @@ func (g *Game) layerPassLocked() {
 	for i, b := range layerOrder {
 		g.applyLayerLocked(effects, b.Layer, b.SubLayer, b.has7Sub, i, st)
 	}
+	// #1650: a restriction over a live rule reads the finished
+	// characteristics, so it is applied once every layer has run.
+	g.foldRuleScopedRestrictionsLocked()
 }
 
 // materialiseControlLocked copies layer 2's output back onto

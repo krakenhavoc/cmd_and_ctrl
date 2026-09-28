@@ -44,6 +44,12 @@ import (
 // A battlefield static (Glorious Anthem) is the opposite and stays
 // that way: its AppliesTo genuinely re-runs every pass, because a
 // creature that enters under an anthem does get +1/+1.
+//
+// The snapshot is right HERE because a pump and a keyword grant
+// change characteristics, which is the only kind of effect CR 611.2c
+// locks. A mass "can't block / can't be blocked this turn" changes
+// the rules instead, so it is NOT snapshotted: RestrictUntilEOT's
+// mass form takes a live game.AffectedScope (#1650, restrictions.go).
 
 // eotAffected is the snapshot of permanents a turn-scoped effect
 // locks onto: instance ID → the `EnteredBattlefieldAt` stamp that

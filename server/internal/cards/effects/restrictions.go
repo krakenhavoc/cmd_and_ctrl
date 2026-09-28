@@ -1,6 +1,8 @@
 package effects
 
 import (
+	"fmt"
+
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -33,7 +35,9 @@ import (
 // between two restriction effects is unobservable, and a layer-6
 // "loses all abilities" cannot strip a Pacifism. That last part is
 // the rules-correct outcome, not a happy accident: the "can't
-// attack" belongs to the Aura, not to the creature.
+// attack" belongs to the Aura, not to the creature. (The one exception
+// is RestrictUntilEOT's mass form, whose live set is folded in after
+// the last layer so it reads finished characteristics — #1650.)
 
 // RestrictAttached is "Enchanted creature can't attack or block" /
 // "Equipped creature can't be blocked" — a restriction scoped to
@@ -68,25 +72,43 @@ func RestrictSelf(r game.Restriction) game.StaticAbility {
 }
 
 // RestrictUntilEOT is "target creature can't be blocked this turn"
-// (Rogue's Passage) or a mass form ("creatures your opponents
-// control can't block this turn"). The turn-scoped sibling of
-// RestrictAttached, registered into the S32 until-end-of-turn
-// registry and swept at cleanup (CR 514.2).
+// (Rogue's Passage) or a mass form ("creatures without flying can't
+// block this turn", Falter). The turn-scoped sibling of
+// RestrictAttached, registered as an ADR 0041 data record and swept at
+// cleanup (CR 514.2).
 //
-// The affected set is snapshotted at resolution (CR 611.2c), exactly
-// as BoostUntilEOT and GrantKeywordUntilEOT do, so a creature that
-// enters after the ability resolves is not covered — and a creature
-// that leaves and returns is a new object (CR 400.7) and is not
-// covered either, which the entry-stamp half of the snapshot key
-// enforces.
+// THE TWO FORMS ARE DIFFERENT EFFECTS, and only one of them locks a
+// set.
+//
+//   - Target is "target creature can't block this turn". It follows
+//     that one object: a creature that leaves and returns is a new
+//     object (CR 400.7) and is no longer covered, which the entry
+//     stamp in the pinned record enforces.
+//   - Scope is the mass form, and its set is a RULE read live for the
+//     rest of the turn (#1650). CR 611.2c locks the affected set only
+//     for an effect that changes characteristics or control. "Can't
+//     block", "can't be blocked" and "can't attack" change neither;
+//     they change the rules of the game. So Falter also stops a
+//     creature flashed in after it resolved, and Glaring Spotlight's
+//     "creatures you control … can't be blocked this turn" also
+//     covers the creature you cast next. BoostUntilEOT and
+//     GrantKeywordUntilEOT are the opposite case (they DO change
+//     characteristics) and keep their snapshot.
+//
+// A mass form takes a closed game.AffectedScope rather than a
+// CardPredicate because a closure cannot be carried by undo or a
+// restore point, and this one has to be re-read on every pass until
+// cleanup. A printed set that no scope names needs a new scope in
+// game/scoped_effects.go.
 type RestrictUntilEOT struct {
-	// Target pins the effect to one permanent. Ignored when Match
-	// is set.
+	// Target pins the effect to one permanent. Ignored when Scope is
+	// set.
 	Target uuid.UUID
 
-	// Match selects the affected permanents, evaluated ONCE at
-	// resolution (CR 611.2c).
-	Match CardPredicate
+	// Scope is the mass form's affected set, read live until cleanup
+	// against the controller of the resolving spell or ability (the
+	// "you" of game.ScopeYourCreatures / game.ScopeOpponentsCreatures).
+	Scope game.AffectedScope
 
 	// Restrictions is the bit set to add. game.CantAttackOrBlock is
 	// the common pair.
@@ -101,9 +123,17 @@ func (r RestrictUntilEOT) Apply(ctx *Context) error {
 	if r.Restrictions == 0 {
 		return nil
 	}
-	return untilEndOfTurn(ctx, r.Target, r.Match,
-		eotLabel(r.Label, "restriction until end of turn"),
-		game.AddRestrictionsMod(r.Restrictions))
+	label := eotLabel(r.Label, "restriction until end of turn")
+	mod := game.AddRestrictionsMod(r.Restrictions)
+	if r.Scope != game.ScopeNone {
+		if !game.KnownAffectedScope(r.Scope) {
+			return fmt.Errorf("effects: RestrictUntilEOT %q: unknown scope %q", label, r.Scope)
+		}
+		ctx.Game.RegisterScopedRuleEffectForEffect(ctx.Source(), r.Scope, ctx.Controller(),
+			[]game.Mod{mod}, DurationUntilEndOfTurn(ctx), label)
+		return nil
+	}
+	return untilEndOfTurn(ctx, r.Target, nil, label, mod)
 }
 
 // RestrictAttachedWhile is "During your turn, equipped creature can't
