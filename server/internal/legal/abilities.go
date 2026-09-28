@@ -58,6 +58,10 @@ type activateParams struct {
 	// every ability that does not print the clause.
 	TapIDs []string `json:"tap_ids,omitempty"`
 	XValue int      `json:"x_value,omitempty"`
+	// Distribution is the division of a "divided as you choose"
+	// clause (#1563), announced as game.EvenDistribution — see
+	// castParams.Distribution.
+	Distribution map[string]int `json:"distribution,omitempty"`
 	// #917, CR 107.4f: how many of the mana component's Phyrexian
 	// symbols this activation pays with 2 life each. Omitted for
 	// every ability that prints none, which is nearly all of them.
@@ -433,13 +437,14 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 		type announcement struct {
 			modes   []int
 			targets []game.TargetRef
+			steps   []game.AnnouncedClause
 		}
 		var announcements []announcement
 		for _, modes := range modeSets {
 			steps := game.AnnouncedClauses(ab.Targets, ab.Modes, modes)
 			sets := e.legalStepSets(abilitySrc, steps, budget)
 			for _, ts := range sets {
-				announcements = append(announcements, announcement{modes: modes, targets: ts})
+				announcements = append(announcements, announcement{modes: modes, targets: ts, steps: steps})
 			}
 		}
 		if len(announcements) == 0 {
@@ -509,6 +514,12 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 								game.WithAutoTapExclusions(abilityExcluded, sacs, discardIDs, exileIDs, taps)) {
 							continue
 						}
+						// #1563: the division this activation announces
+						// under its X — none refused by the gate (#544).
+						dist, ok := game.EvenDistribution(ann.steps, targets, tapXValue)
+						if !ok {
+							continue
+						}
 						for _, cc := range counterChoices {
 							if budget <= 0 {
 								break
@@ -568,6 +579,7 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 									WaterbendIDs:     idStrings(waterbendIDs),
 									TapIDs:           idStrings(taps),
 									XValue:           tapXValue,
+									Distribution:     distributionWire(dist),
 									PhyrexianLife:    phyrexianLife,
 									Strict:           true,
 									AutoTap:          true,

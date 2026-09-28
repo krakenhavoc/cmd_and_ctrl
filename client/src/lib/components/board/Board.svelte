@@ -95,6 +95,9 @@
     togglePick,
     canConfirm,
     setConfirmHandler,
+    needsDivision,
+    withDivision,
+    distributionOf,
     type CastChoices,
     type CastSourceZone,
     type TargetingState,
@@ -104,6 +107,7 @@
   import { castPreviewParams } from "../../castPreview";
   import { orderSacrificeOptions, sacrificeCount, sacrificeRange } from "../../sacrificeCost";
   import XCostModal from "./XCostModal.svelte";
+  import DivideDamageModal from "./DivideDamageModal.svelte";
   import SacrificeCostModal from "./SacrificeCostModal.svelte";
   import CrewCostModal from "./CrewCostModal.svelte";
   import CounterCostModal from "./CounterCostModal.svelte";
@@ -846,7 +850,42 @@
   // another clause to ask about opens the next prompt; a finished
   // walk fires the one action carrying every pick, each stamped with
   // the clause it answered.
+  //
+  // #1563: a divided step with two or more picks asks for the shares
+  // first (CR 601.2d — the division is announced with the targets),
+  // and the walk carries on from confirmDivision.
   function stepOrFire(state: TargetingState): void {
+    if (needsDivision(state)) {
+      dividePrompt = state;
+      return;
+    }
+    continueWalk(state);
+  }
+
+  // dividePrompt is the walk paused on a divided step's shares; the
+  // targeting store stays live underneath so Back returns to the picks.
+  let dividePrompt = $state<TargetingState | null>(null);
+  const divideTargets = $derived.by(() => {
+    const p = dividePrompt;
+    if (!p) return [];
+    const names = new Map<string, string>();
+    for (const c of view.battlefield.cards) names.set(c.instance_id, c.name);
+    for (const seat of view.seats) names.set(seat.id, seat.name);
+    return p.picked.map((ref) => ({ id: ref.id, name: names.get(ref.id) ?? ref.id.slice(0, 8) }));
+  });
+  // A walk that ends underneath the prompt — cancelled, or a trigger's
+  // pick_target answered elsewhere — takes the prompt with it.
+  $effect(() => {
+    if (!$targeting && dividePrompt) dividePrompt = null;
+  });
+  function confirmDivision(dist: Record<string, number>): void {
+    const state = dividePrompt;
+    dividePrompt = null;
+    if (!state) return;
+    continueWalk(withDivision(state, dist));
+  }
+
+  function continueWalk(state: TargetingState): void {
     const next = advance(state);
     if (next) {
       targeting.set(next);
@@ -864,11 +903,11 @@
       // S20 sub-PR 2: answering a triggered ability's pick_target
       // prompt. The store clears when the next snapshot no longer
       // carries the choice (see the effect below).
-      guardedSendAction(
-        "resolve_choice",
-        { choice_id: state.choiceID, targets },
-        viewerID ?? undefined,
-      );
+      // #1563: a divided trigger's shares ride the same answer.
+      const answer: Record<string, unknown> = { choice_id: state.choiceID, targets };
+      const dist = distributionOf(state);
+      if (dist) answer.distribution = dist;
+      guardedSendAction("resolve_choice", answer, viewerID ?? undefined);
       targeting.set(null);
       return;
     }
@@ -902,6 +941,9 @@
       // these targets, and sent in the same message.
       if (state.ability.phyrexianLife) params.phyrexian_life = state.ability.phyrexianLife;
       if (state.modes !== undefined) params.modes = state.modes;
+      // #1563: the division, announced with the targets (CR 602.2b).
+      const abilityDist = distributionOf(state);
+      if (abilityDist) params.distribution = abilityDist;
       // #1310: the waterbend taps chosen before the targeting step.
       if (abilityWaterbendIDs && abilityWaterbendIDs.length > 0) {
         params.waterbend_ids = abilityWaterbendIDs;
@@ -919,6 +961,9 @@
     }
     const params: Record<string, unknown> = { instance_id: state.card.instance_id, targets };
     if (state.modes !== undefined) params.modes = state.modes;
+    // #1563: the division, announced with the targets (CR 601.2d).
+    const castDist = distributionOf(state);
+    if (castDist) params.distribution = castDist;
     // #764: a modal activated ability sends its modes beside its
     // targets (CR 602.2b) — handled in the ability branch above.
     applyCastChoices(params, state.choices);
@@ -2318,6 +2363,15 @@
       sacrificePromptCard = null;
       sacrificePromptChoices = {};
     }}
+  />
+  <!-- #1563, CR 601.2d: the shares of a divided step, asked once its
+       two or more targets are picked. -->
+  <DivideDamageModal
+    sourceName={dividePrompt ? dividePrompt.card.name : null}
+    targets={divideTargets}
+    total={dividePrompt?.divide ?? 0}
+    onConfirm={confirmDivision}
+    onCancel={() => (dividePrompt = null)}
   />
   <XCostModal
     gameID={view.id}

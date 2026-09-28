@@ -925,6 +925,11 @@ type pickTargetFrame struct {
 	steps  []AnnouncedClause
 	step   int
 	picked []TargetRef
+	// dist is the division announced so far (#1563, CR 601.2d via CR
+	// 603.3d): each answered divided step's shares, settled by the
+	// same gate a cast uses, stamped onto the item as its
+	// Distribution when the walk finishes.
+	dist map[uuid.UUID]int
 
 	doubledBy doublerRef
 }
@@ -2914,6 +2919,7 @@ func (g *Game) finishPickTargetLocked(f *pickTargetFrame) {
 	stampTriggerSource(item, f.source, f.tc)
 	item.Targets = append([]TargetRef(nil), f.picked...)
 	item.Modes = append([]int(nil), f.modes...)
+	item.Distribution = cloneDistributionLocked(f.dist)
 	item.targetSpec = f.spec
 	item.modeSpec = f.modeSpec
 	item.DoubledBy, item.DoubledByName = f.doubledBy.id, f.doubledBy.name
@@ -2972,6 +2978,18 @@ func (g *Game) ResolvePickTarget(choiceID, chooserID uuid.UUID, target TargetRef
 // count within Min..Max, each legal, distinct — and stamped on the
 // built item in the order given.
 func (g *Game) ResolvePickTargets(choiceID, chooserID uuid.UUID, targets []TargetRef) error {
+	return g.ResolvePickTargetsDivided(choiceID, chooserID, targets, nil)
+}
+
+// ResolvePickTargetsDivided is ResolvePickTargets with the division
+// announced alongside the targets (#1563, CR 601.2d via CR 603.3d) —
+// Fury's "4 damage divided as you choose among any number of target
+// creatures and/or planeswalkers". `dist` is keyed by target id and
+// is settled against the prompt's clause exactly as a cast's is: each
+// target at least 1, the shares summing to the amount, a lone target
+// given the whole amount when no share is named. Nil for a clause
+// that divides nothing, which is every other pick_target prompt.
+func (g *Game) ResolvePickTargetsDivided(choiceID, chooserID uuid.UUID, targets []TargetRef, dist map[uuid.UUID]int) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	if g.State != StateActive {
@@ -3035,6 +3053,24 @@ func (g *Game) ResolvePickTargets(choiceID, chooserID uuid.UUID, targets []Targe
 				}
 			}
 		}
+	}
+	// #1563: a trigger announces no X, so the amount is the clause's
+	// fixed one. Settled before anything moves, so a refused division
+	// leaves the prompt open for another answer.
+	settled, err := settleDistribution(frame.steps[frame.step:frame.step+1], stamped, dist, 0)
+	if err != nil {
+		return err
+	}
+	for id := range settled {
+		if _, dup := frame.dist[id]; dup {
+			return errDivision("the same target is in two divided clauses")
+		}
+	}
+	for id, v := range settled {
+		if frame.dist == nil {
+			frame.dist = make(map[uuid.UUID]int, len(settled))
+		}
+		frame.dist[id] = v
 	}
 	g.dequeueChoiceLocked(idx)
 	frame.picked = append(frame.picked, stamped...)

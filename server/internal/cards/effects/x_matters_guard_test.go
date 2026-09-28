@@ -209,11 +209,24 @@ var xHolders = map[string]bool{"ctx": true, "cast": true}
 // readsXDirectly reports whether the subtree reads the announced X in
 // any spelling the catalog uses: `ctx.X()` on an effect Context,
 // `cast.X` on a game.CastCounts, or `item.XValue` off the stack item.
+//
+// #1563 adds a fourth, a DECLARATION rather than a read: a divided
+// clause whose amount is the announced X (`game.DivideSpec{FromX:
+// true}`, built by DivideX / DivideXDoublingFrom). The engine reads X
+// for it at announce, and the card's resolution only honours the
+// division — so Shatterskull Smashing reaches X through its target
+// clause, and X=0 does nothing at all.
 func readsXDirectly(n ast.Node) bool {
 	found := false
 	ast.Inspect(n, func(n ast.Node) bool {
 		if found {
 			return false
+		}
+		if kv, ok := n.(*ast.KeyValueExpr); ok {
+			if key, ok := kv.Key.(*ast.Ident); ok && key.Name == "FromX" {
+				found = true
+				return false
+			}
 		}
 		sel, ok := n.(*ast.SelectorExpr)
 		if !ok {

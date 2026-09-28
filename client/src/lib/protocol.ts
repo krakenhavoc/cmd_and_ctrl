@@ -1981,6 +1981,22 @@ export interface LegalTargetsView {
   // and a card with no entry (an unreadable cost) meets no bound.
   mana_value_at_most_x?: boolean;
   mana_values?: Record<string, number>;
+  // #1563, CR 601.2d: the clause's effect is "divided as you choose"
+  // among its picks. The picker asks for a share per pick once a step
+  // has two or more — each at least 1, summing to the amount — and
+  // sends them as the action's `distribution`. Absent on every clause
+  // that divides nothing.
+  divide?: DivideView;
+}
+
+// DivideView is the amount a clause divides (#1563): a fixed `total`,
+// or — with `from_x` — the X collected in the cost prompts, doubled
+// once X reaches `double_from_x` (Shatterskull Smashing). A pick_target
+// prompt's amount is always a fixed `total`.
+export interface DivideView {
+  total?: number;
+  from_x?: boolean;
+  double_from_x?: number;
 }
 
 // TargetDifferenceView is a clause's set rule (#1559): `label`

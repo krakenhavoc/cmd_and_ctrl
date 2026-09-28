@@ -29,8 +29,11 @@ type choiceParams struct {
 	TrampleTo   int           `json:"trample_to_player,omitempty"`
 	Target      *targetWire   `json:"target,omitempty"`
 	Targets     []targetWire  `json:"targets"`
-	Bottom      []string      `json:"bottom"`
-	TopOrder    []string      `json:"top_order"`
+	// Distribution rides a pick_target answer whose clause divides
+	// (#1563): game.PickTargetDefaultDistribution, the even split.
+	Distribution map[string]int `json:"distribution,omitempty"`
+	Bottom       []string       `json:"bottom"`
+	TopOrder     []string       `json:"top_order"`
 	// Graveyard is the surveil answer's bin leg. No omitempty, for
 	// the same reason Bottom/TopOrder have none: "keep all on top"
 	// is the empty slice, and omitempty would erase it into absent,
@@ -268,6 +271,12 @@ func (e *enumerator) choiceMoves() bool {
 			if hi <= 0 || hi > len(cands) {
 				hi = len(cands)
 			}
+			// #1563: a divided clause assigns each target at least 1,
+			// so it cannot take more targets than its amount — sets
+			// past that are answers the engine refuses (#544).
+			if d := game.PickTargetDivideForEffect(c); d != nil && hi > d.TotalFor(0) {
+				hi = d.TotalFor(0)
+			}
 			if lo == 0 && hi == 1 || lo == 1 && hi == 1 {
 				// Single-slot prompt: the resolver reads `target`.
 				for _, t := range cands {
@@ -288,6 +297,11 @@ func (e *enumerator) choiceMoves() bool {
 				if p.Targets == nil {
 					p.Targets = []targetWire{}
 				}
+				dist, ok := game.PickTargetDefaultDistribution(c, set)
+				if !ok {
+					continue
+				}
+				p.Distribution = distributionWire(dist)
 				e.addChoice(c, reason+targetLabel(g, set), p)
 			}
 

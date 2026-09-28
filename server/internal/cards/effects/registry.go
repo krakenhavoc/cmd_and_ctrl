@@ -80,9 +80,11 @@ func Register(spec Spec) {
 	for _, t := range spec.Triggered {
 		checkFlatClauses(spec.Name, t.Targets)
 		checkNoXBound(spec.Name, "a trigger's", t.Targets)
+		checkNoDivideX(spec.Name, "a trigger's", t.Targets)
 		if t.Modes != nil {
 			for _, o := range t.Modes.Options {
 				checkNoXBound(spec.Name, "a trigger mode's", o.Targets)
+				checkNoDivideX(spec.Name, "a trigger mode's", o.Targets)
 			}
 		}
 		if t.Modes != nil && t.Targets != nil {
@@ -956,8 +958,41 @@ func checkFlatClauses(name string, spec *game.TargetSpec) {
 		}
 	}
 	for i := 0; i < spec.ClauseCount(); i++ {
+		checkDivide(name, i, spec.Clause(i))
 		if d := spec.Clause(i).Different; d != nil && (d.Key == nil || d.Label == "") {
 			panic(fmt.Sprintf("effects.Register: %q target clause %d has a set rule with no Key or no Label — build it with EachDifferentManaValue / EachDifferentController / EachDifferentName", name, i))
+		}
+	}
+}
+
+// checkDivide validates a divided clause (#1563): the amount is a
+// positive constant or the announced X, a doubling threshold only
+// means something on an X amount, and the clause may not let one
+// object fill two of its slots — the division is keyed by target id,
+// so two picks of the same object could not be told apart (and CR
+// 601.2d's "each target" is about distinct targets anyway).
+func checkDivide(name string, i int, c *game.TargetClause) {
+	d := c.Divide
+	if d == nil {
+		return
+	}
+	switch {
+	case !d.FromX && d.Total < 1:
+		panic(fmt.Sprintf("effects.Register: %q target clause %d divides a fixed amount of %d — use Divide(n) with n ≥ 1, or DivideX()", name, i, d.Total))
+	case d.DoubleFromX > 0 && !d.FromX:
+		panic(fmt.Sprintf("effects.Register: %q target clause %d doubles a fixed divided amount — DoubleFromX only applies to DivideX", name, i))
+	case c.AllowSame:
+		panic(fmt.Sprintf("effects.Register: %q target clause %d divides among picks that may repeat — a division is keyed by target", name, i))
+	}
+}
+
+// checkNoDivideX refuses DivideX on a trigger's clause: a trigger
+// announces no X, so the amount would always be 0 and no target could
+// ever be chosen (#1563).
+func checkNoDivideX(name, owner string, spec *game.TargetSpec) {
+	for i := 0; i < spec.ClauseCount(); i++ {
+		if d := spec.Clause(i).Divide; d != nil && d.FromX {
+			panic(fmt.Sprintf("effects.Register: %q divides X on %s target clause %d — a trigger announces no X", name, owner, i))
 		}
 	}
 }

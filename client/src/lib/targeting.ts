@@ -4,6 +4,7 @@ import type {
   ActivatedAbilityView,
   AlternativeCostView,
   CardView,
+  DivideView,
   LegalTargetsView,
   ModeOptionView,
   OptionalCostView,
@@ -285,6 +286,15 @@ export interface TargetingState {
   // #1559: the CURRENT step's rule over its chosen set, when it has
   // one — like `legal`, it always describes the step being asked.
   different?: SetRule;
+  // #1563: the CURRENT step's divided amount, when its clause is
+  // "divided as you choose" — like `legal`, it always describes the
+  // step being asked. Already resolved against the X the caster
+  // announced.
+  divide?: number;
+  // #1563: the division announced so far, target id → share, for
+  // every divided step already answered. Rides the action as
+  // `distribution`.
+  distribution?: Record<string, number>;
 }
 
 // SetRule is a clause's rule over the chosen SET of its picks (#1559,
@@ -314,6 +324,10 @@ export interface TargetStep {
   distinct: boolean;
   // #1559: the clause's set rule, when it prints one.
   different?: SetRule;
+  // #1563: the amount the clause divides among its picks, resolved
+  // against the announced X. Undefined for a clause that divides
+  // nothing.
+  divide?: number;
 }
 
 export interface TargetRef {
@@ -376,7 +390,76 @@ export function stepsFor(
     slot,
     distinct: c.distinct === true,
     different: c.different ? { label: c.different.label, keys: c.different.keys ?? {} } : undefined,
+    divide: c.divide ? divideTotal(c.divide, choices?.xValue) : undefined,
   }));
+}
+
+// divideTotal is the amount a divided clause splits (#1563) — the
+// client twin of game.(*DivideSpec).TotalFor: a fixed total, or the X
+// the caster announced, doubled once X reaches `double_from_x`.
+export function divideTotal(d: DivideView, xValue: number | undefined): number {
+  if (!d.from_x) return d.total ?? 0;
+  const x = Math.max(0, xValue ?? 0);
+  if (d.double_from_x && d.double_from_x > 0 && x >= d.double_from_x) return 2 * x;
+  return x;
+}
+
+// evenSplit is the division the picker opens with, and the one the
+// bot announces (game.EvenDistribution): the amount split as evenly as
+// possible, the remainder one point at a time to the earliest picks.
+export function evenSplit(ids: string[], total: number): Record<string, number> {
+  const out: Record<string, number> = {};
+  if (ids.length === 0) return out;
+  const share = Math.floor(total / ids.length);
+  const extra = total % ids.length;
+  ids.forEach((id, i) => {
+    out[id] = share + (i < extra ? 1 : 0);
+  });
+  return out;
+}
+
+// divisionProblem says why a division would be refused (CR 601.2d),
+// or null when the server will take it: every pick at least 1, the
+// shares adding up to the amount. The same rules the engine's
+// settleDistribution enforces, so Confirm is enabled exactly when the
+// answer is legal.
+export function divisionProblem(
+  ids: string[],
+  total: number,
+  dist: Record<string, number>,
+): string | null {
+  if (ids.length > total) {
+    return `${ids.length} targets can't share ${total} — each needs at least 1`;
+  }
+  let sum = 0;
+  for (const id of ids) {
+    const v = dist[id] ?? 0;
+    if (!Number.isInteger(v) || v < 1) return "each target needs at least 1";
+    sum += v;
+  }
+  if (sum !== total) return `assign ${total} in all (${sum} so far)`;
+  return null;
+}
+
+// needsDivision reports whether completing the CURRENT step has to ask
+// for a division first: its clause divides and two or more targets are
+// picked. One pick takes the whole amount and needs no question — the
+// server fills it in.
+export function needsDivision(t: TargetingState): boolean {
+  return t.divide !== undefined && t.picked.length >= 2;
+}
+
+// withDivision records the current step's division on the state, to
+// ride the action with every other divided step's.
+export function withDivision(t: TargetingState, dist: Record<string, number>): TargetingState {
+  return { ...t, distribution: { ...(t.distribution ?? {}), ...dist } };
+}
+
+// distributionOf is the `distribution` a finished walk sends, or
+// undefined when nothing was divided among two or more targets.
+export function distributionOf(t: TargetingState): Record<string, number> | undefined {
+  const d = t.distribution;
+  return d && Object.keys(d).length > 0 ? d : undefined;
 }
 
 // withinX narrows an X-bounded clause's cards ("with mana value X or
@@ -414,6 +497,7 @@ export function openWalk(
     step: 0,
     done: [],
     different: first.different,
+    divide: first.divide,
     ...extra,
   };
 }
@@ -460,6 +544,7 @@ export function advance(t: TargetingState): TargetingState | null {
     step: next,
     done,
     different: s.different,
+    divide: s.divide,
   };
 }
 
@@ -523,6 +608,9 @@ export function togglePick(t: TargetingState, ref: TargetRef): TargetingState {
     return { ...t, picked: t.picked.filter((p) => p.id !== ref.id) };
   }
   if (t.max > 0 && t.picked.length >= t.max) return t;
+  // #1563: a divided clause gives each target at least 1, so it takes
+  // no more targets than its amount.
+  if (t.divide !== undefined && t.picked.length >= t.divide) return t;
   // #1559: the server would refuse the set, so the pick is refused
   // here — the card is already greyed by isLegalCardTarget.
   if (breaksSetRule(t, ref.id)) return t;

@@ -752,3 +752,152 @@ mode count the printed card does not have.
   raised with it. Captain Kirk's "choose one or more instead" keeps
   `Min` at one and would fit as is. Neither is catalogued by this
   change.
+
+---
+
+## Amendment (2026-09-28, #1563): divided damage — "divided as you choose" (CR 601.2d / 700.2i)
+
+**Sprint:** S45 — Modal spells, multi-target clauses and copy effects.
+Tracker [#888](https://github.com/krakenhavoc/cmd_and_ctrl/issues/888);
+the proof card is Shatterskull Smashing on the Edea deck tracker
+[#1565](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1565).
+
+"Out of scope, stated" above named this: `StackItem.Distribution` rode
+the stack item — deep-cloned, snapshotted, copied, remapped by a CR
+115.7 retarget — and nothing wrote it at announce or read it at
+resolution. Every catalogued divided card (Fury, Dragonlord Atarka,
+Shatterskull Smashing, and Abzan Charm's "distribute" bullet) shipped
+the division made FOR the player — an even split in pick order, or all
+of it on one target — with a caveat. Weaker than printed, the #259
+posture, and it is what this amendment removes.
+
+### Decision: the amount is a clause property, as data
+
+```go
+type DivideSpec struct {
+    Total       int  // a fixed amount (Fury's 4)
+    FromX       bool // the announced X (Fire Covenant)
+    DoubleFromX int  // with FromX: twice X from this X up (Shatterskull Smashing's 6)
+}
+
+type TargetSpec struct {
+    // … every #764 / #1559 field …
+    Divide *DivideSpec
+}
+
+// card file
+Targets: TargetPermanent("up to two target creatures and/or planeswalkers",
+    Or(Creature(), Planeswalker())).WithCount(0, 2).Dividing(DivideXDoublingFrom(6)),
+```
+
+On the CLAUSE, because CR 601.2d divides among the targets a clause
+chose, and a clause is what every reader already walks: the announce
+gate, the CR 608.2b re-check, the view projection and the enumerator
+all iterate `AnnouncedClauses`, so a divided clause on a MODE (Abzan
+Charm's third bullet) needed no second path. `effects.Divide(n)`,
+`DivideX()` and `DivideXDoublingFrom(n)` are the constructors;
+`game.(*DivideSpec).TotalFor(x)` is the one place the amount is
+computed, mirrored once in the client.
+
+**Data, not a func.** A trigger's clause is reachable from `Game`
+through the `pick_target` resume frame, and ADR 0041 phase 3's ratchet
+lets func routes only shrink. Every printed divided card measured
+against the Sep-23 dump is one of the three shapes above — a constant,
+X, or Shatterskull's doubled X — so a `func(x int) int` would have
+bought nothing but a closure route. And the client has to compute the
+same amount from the X it collected, which a func cannot ship.
+
+`Register` refuses a fixed amount below 1, a doubling without
+`FromX`, a divided clause with `AllowSame` (the division is keyed by
+target id, so two picks of one object could not be told apart), and
+`DivideX` on a trigger's clause (a trigger announces no X).
+
+### Decision: the division is announced with the targets, and one gate judges it
+
+`settleDistribution(steps, targets, dist, x)` runs straight after
+`validateAnnouncedTargetsLocked` at all three announce points — a cast
+(CR 601.2d), an activation (CR 602.2b) and each step of a trigger's
+`pick_target` walk (CR 603.3d, `ResolvePickTargetsDivided`). For every
+divided step it demands each target at least 1 and the shares summing
+to the clause's amount under the announced X, and it refuses a step
+with more targets than the amount (some target would get 0). A share
+naming anything that is not a target of a divided step is refused, as
+is a division sent with no divided clause at all — a confused client,
+not something to drop quietly. One convenience: a step with ONE target
+and no share named takes the whole amount, because there is nothing
+to choose.
+
+The settled map is what `StackItem.Distribution` stores. A trigger
+walk accumulates it on the `pickTargetFrame` (`dist`, deep-copied by
+`clonePickTargetFrame`) and stamps it on the item with the targets.
+
+The S13.1 free-form path — a card with no structured clause — keeps
+the division it was sent, unjudged, exactly as it keeps its targets:
+the sandbox records it for the table.
+
+### Decision: resolution honours the announcement; a departed share is lost
+
+`effects.DealDividedDamage(ctx)` (and `PutDividedCounters(ctx, kind)`
+for "distribute") walks `ctx.LegalTargets()` — the CR 608.2b re-check
+— and deals each survivor exactly its announced share. A target that
+left or stopped qualifying takes nothing, and its share is NOT moved
+to the others: the division was made at announce and CR 608.2b says
+only that an illegal target is unaffected. That is observably
+different from the old even split over the SURVIVORS, which dealt a
+departed target's share to someone else.
+
+Nothing else was needed for undo, snapshot and copy: the field was
+already carried by all three, and CR 707.10's copy (and 707.10c's new
+targets, through `remapDistributionLocked`) keeps it. Those paths are
+now pinned by tests rather than assumed.
+
+### Decision: the wire says the amount; the client asks for the split
+
+`LegalTargetsView.divide` — `{ total?, from_x?, double_from_x? }` —
+rides every target clause's view, including a `pick_target` prompt's.
+`cast_spell` and `activate_ability` already had a `distribution` field
+(S13.1 data capture); `resolve_choice` gains one for the `pick_target`
+answer. The client's target walk, on completing a divided step with
+two or more picks, opens a small per-target number picker seeded with
+the even split and confirms only when every share is at least 1 and
+they sum to the amount; one pick needs no picker.
+
+### Decision: the bot announces the even split
+
+`game.EvenDistribution(steps, targets, x)` — the amount split as
+evenly as possible, the remainder one point at a time to the earliest
+targets — is what `internal/legal` puts on every divided cast,
+activation and `pick_target` answer, and it returns `ok = false` for a
+target set larger than the amount, which the enumerator then does not
+offer (#544). A `pick_target` prompt's upper bound is also capped at
+the amount, so "any number of targets" (Bogardan Hellkite) does not
+spend the expansion budget on sets the gate refuses. The even split is
+a legal DEFAULT, not a policy: a smarter split (lethal first) is an
+aiseat question for later.
+
+### Consequences
+
+- Fury, Dragonlord Atarka, Shatterskull Smashing and Abzan Charm ship
+  `CompletenessFull`. `b22DamageDividedEvenly` is deleted.
+- New: Inferno Titan (a bounded divided trigger), Bogardan Hellkite
+  ("any number of targets"), Fire Covenant (an X paid in life, the
+  amount the same X) and Mogg Mob (the activated-ability path).
+- `x_matters_guard_test.go` counts a `FromX` declaration as reading X,
+  because the engine reads it for the card at announce.
+
+### Out of scope, stated
+
+- **An amount read off the board or a paid cost** — Lathiel's "up to
+  that many" (life gained this turn, and "up to"), Ureni's "X is the
+  number of …", Orca's "equal to its power", Avacyn's Judgment's
+  "if this spell's madness cost was paid, X instead".
+  `DivideSpec` has a constant and an announced X; none of these is
+  either, and Lathiel's "up to" also lets the shares sum to LESS than
+  the amount. Lathiel keeps its caveat.
+- **Division across two clauses**, and a divided clause that allows
+  the same object twice. No printed card does either; both are refused
+  rather than guessed at.
+- **Prevention divided among targets** (Remedy) and **"distribute
+  counters" with no targets** (Feast of the Victorious Dead) — the
+  first is a prevention shield, the second is not a target clause at
+  all.

@@ -504,6 +504,33 @@ type LegalTargetsView struct {
 	// (an unreadable cost) meets no bound.
 	ManaValueAtMostX bool           `json:"mana_value_at_most_x,omitempty"`
 	ManaValues       map[string]int `json:"mana_values,omitempty"`
+
+	// Divide marks a clause whose effect is "divided as you choose
+	// among" its picks (#1563, CR 601.2d) — Fury's 4 damage,
+	// Shatterskull Smashing's X. The picker asks for a share per pick
+	// once the picks are made: each at least 1, summing to the amount,
+	// sent as the action's `distribution`. Absent on every clause that
+	// divides nothing.
+	Divide *DivideView `json:"divide,omitempty"`
+}
+
+// DivideView is the wire shape of game.DivideSpec: the amount a clause
+// divides. `total` is the fixed amount; with `from_x` the amount is the
+// X the client collected instead — or twice X once X reaches
+// `double_from_x`, when that is set. A pick_target prompt's amount is
+// always fixed (a trigger announces no X). Added by #1563.
+type DivideView struct {
+	Total       int  `json:"total,omitempty"`
+	FromX       bool `json:"from_x,omitempty"`
+	DoubleFromX int  `json:"double_from_x,omitempty"`
+}
+
+// divideView projects a clause's division, or nil for none.
+func divideView(d *game.DivideSpec) *DivideView {
+	if d == nil {
+		return nil
+	}
+	return &DivideView{Total: d.Total, FromX: d.FromX, DoubleFromX: d.DoubleFromX}
 }
 
 // TargetDifferenceView is the wire shape of game.TargetDifference: the
@@ -4422,7 +4449,7 @@ func stampTargetSetRule(g *game.Game, v *LegalTargetsView, cards []uuid.UUID, sp
 }
 
 func viewOfLegalTargets(lt game.LegalTargets, spec *game.TargetSpec) *LegalTargetsView {
-	view := &LegalTargetsView{Min: spec.Min, Max: spec.Max, CountFromX: spec.CountFromX, Distinct: spec.Distinct}
+	view := &LegalTargetsView{Min: spec.Min, Max: spec.Max, CountFromX: spec.CountFromX, Distinct: spec.Distinct, Divide: divideView(spec.Divide)}
 	for _, id := range lt.Players {
 		view.Players = append(view.Players, id.String())
 	}
@@ -5597,6 +5624,9 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 				}
 				pt.Different = dv
 			}
+			// #1563: a divided trigger clause asks for the shares
+			// with the picks.
+			pt.Divide = divideView(game.PickTargetDivideForEffect(c))
 			v.PickTarget = pt
 		}
 		// PendingChoiceTriggerOrder — S19 sub-PR 8. Resolve each

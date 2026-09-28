@@ -714,6 +714,7 @@ func clonePickTargetFrame(f *pickTargetFrame) *pickTargetFrame {
 	out := *f
 	out.picked = append([]TargetRef(nil), f.picked...)
 	out.modes = append([]int(nil), f.modes...)
+	out.dist = cloneDistributionLocked(f.dist)
 	return &out
 }
 
