@@ -144,6 +144,18 @@ func TestEveryModKindAppliesInItsLayer(t *testing.T) {
 				t.Errorf("block requirements = %+v, want must-be-blocked then lure", c.BlockRequirements)
 			}
 		}},
+		// #1715: capacity from a resolving effect, onto the fields the
+		// statics write.
+		{"addBlockCapacity", []Mod{AddBlockCapacityMod(2)}, func(t *testing.T, b, c Characteristic, _ *Game) {
+			if c.AdditionalBlocks != b.AdditionalBlocks+2 {
+				t.Errorf("AdditionalBlocks = %d, want %d", c.AdditionalBlocks, b.AdditionalBlocks+2)
+			}
+		}},
+		{"blockAnyNumber", []Mod{BlockAnyNumberMod()}, func(t *testing.T, _, c Characteristic, _ *Game) {
+			if !c.BlocksAnyNumber {
+				t.Error("BlocksAnyNumber is not set")
+			}
+		}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -179,7 +191,7 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		ModAllCreatureTypes: true, ModSetColors: true, ModAddKeywords: true, ModRemoveKeywords: true,
 		ModLoseAllAbilities: true, ModAddRestrictions: true, ModSetBasePower: true,
 		ModSetBaseToughness: true, ModModifyPT: true, ModAddAttackRequirement: true,
-		ModAddBlockRequirement: true,
+		ModAddBlockRequirement: true, ModAddBlockCapacity: true, ModBlockAnyNumber: true,
 		// ADR 0093 PR 4 (#1584): its cases are in scoped_grants_test.go,
 		// because a grant needs a catalog bundle to mean anything.
 		ModGrantAbilities: true,

@@ -78,6 +78,20 @@ const (
 	// creature this turn do so", and — with Objects naming the attacker
 	// (#1684) — Provoke's "block it if able".
 	ModAddBlockRequirement ModKind = "addBlockRequirement" // layer 6
+	// ModAddBlockCapacity is "can block an additional creature this
+	// turn" from a resolving spell or ability (#1715): Coastline
+	// Chimera's and Mounted Archers' activations, Act of Heroism,
+	// Yare's "up to two additional creatures". Reads Amount, the number
+	// of ADDITIONAL attackers (at least 1), added to
+	// Characteristic.AdditionalBlocks exactly as CanBlockAdditional's
+	// static adds it, so several add up. Layer 6 for the reason the
+	// static is: "can block" is an ability the effect grants.
+	ModAddBlockCapacity ModKind = "addBlockCapacity" // layer 6
+	// ModBlockAnyNumber is "can block any number of creatures this
+	// turn" (#1715): Give No Ground, Valor Made Real, Blaze of Glory.
+	// Reads nothing; sets Characteristic.BlocksAnyNumber, which beats
+	// any count. Layer 6, like ModAddBlockCapacity.
+	ModBlockAnyNumber ModKind = "blockAnyNumber" // layer 6
 )
 
 // ModGrantAbilities gives each affected object the named catalog
@@ -462,6 +476,9 @@ var modKinds = map[ModKind]modKindSpec{
 	ModAddAttackRequirement: {layer: Layer6Ability},
 	// #1597
 	ModAddBlockRequirement: {layer: Layer6Ability},
+	// #1715
+	ModAddBlockCapacity: {layer: Layer6Ability},
+	ModBlockAnyNumber:   {layer: Layer6Ability},
 	// #1584, ADR 0093 PR 4
 	ModGrantAbilities: {layer: Layer6Ability},
 	// Tier 3b (ADR 0041 P8): replacement effects, not layer operations.
@@ -581,6 +598,26 @@ func AddBlockRequirementMod(kind BlockRequirementKind) Mod {
 // creature has left the battlefield, even if its card comes back.
 func BlocksAttackerMod(attacker ObjectRef) Mod {
 	return Mod{Kind: ModAddBlockRequirement, Text: string(BlockRequirementBlocksAttacker), Objects: []ObjectRef{attacker}}
+}
+
+// AddBlockCapacityMod is "can block N additional creatures this turn"
+// (#1715): N more attackers on top of the one every creature may
+// block. Reads Amount; registration refuses N < 1.
+func AddBlockCapacityMod(n int) Mod { return Mod{Kind: ModAddBlockCapacity, Amount: n} }
+
+// BlockAnyNumberMod is "can block any number of creatures this turn"
+// (#1715).
+func BlockAnyNumberMod() Mod { return Mod{Kind: ModBlockAnyNumber} }
+
+// blockCapacityModProblem is the registration and restore check for
+// ModAddBlockCapacity: a positive count. "" when the mod is sound. A
+// record with none would be an effect that grants nothing, and one
+// with a negative count would TAKE capacity, which no card prints.
+func blockCapacityModProblem(m Mod) string {
+	if m.Kind == ModAddBlockCapacity && m.Amount < 1 {
+		return fmt.Sprintf("an addBlockCapacity mod needs an amount of at least 1, got %d", m.Amount)
+	}
+	return ""
 }
 
 // blockRequirementModProblem is the registration check for a
@@ -732,6 +769,9 @@ func (g *Game) appendScopedEffectLocked(sourceID uuid.UUID, affected []AffectedO
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
 		if problem := copyModProblem(m); problem != "" {
+			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
+		}
+		if problem := blockCapacityModProblem(m); problem != "" {
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
 		if r := modKinds[m.Kind].reader; r != readerLayer && r != readerCopy {
@@ -1221,6 +1261,15 @@ func modApply(m Mod) func(*Characteristic, *Card, *Game, *Card) {
 				r.Source, r.SourceName = src.InstanceID, src.Name
 			}
 			ch.BlockRequirements = append(ch.BlockRequirements, r)
+		}
+	case ModAddBlockCapacity:
+		n := m.Amount
+		return func(ch *Characteristic, _ *Card, _ *Game, _ *Card) {
+			ch.AdditionalBlocks += n
+		}
+	case ModBlockAnyNumber:
+		return func(ch *Characteristic, _ *Card, _ *Game, _ *Card) {
+			ch.BlocksAnyNumber = true
 		}
 	case ModModifyPT:
 		p, t := m.Power, m.Toughness
