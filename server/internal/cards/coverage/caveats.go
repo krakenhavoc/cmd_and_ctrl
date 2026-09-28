@@ -167,6 +167,14 @@ var mechanics = []Mechanic{
 		Adopt:      `AlternativeCosts: []game.AlternativeCost{Warp("{cost}")} — the exile clause rides the constructor`,
 	},
 	{
+		Name:       "miracle",
+		Phrases:    []string{"miracle"},
+		Implements: altCost("miracle"),
+		Evidence:   `game.AlternativeCostByKey(oracleID, "miracle") resolves`,
+		Confidence: Exact,
+		Adopt:      `AlternativeCosts: []game.AlternativeCost{Miracle("{cost}")} — the reveal-on-draw trigger is grown from it (#1665)`,
+	},
+	{
 		Name: "free cast",
 		Phrases: []string{
 			"free cast", "free spell", "cast it for free",

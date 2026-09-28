@@ -1163,6 +1163,16 @@ priced at the madness cost, keyed `"madness"` and `TimingFlash`
 engine side, and the two declared simplifications it shares with
 cascade, are in `server/internal/game/madness.go`.
 
+**Miracle is one constructor** (#1665, CR 702.94):
+`AlternativeCosts: []game.AlternativeCost{Miracle("{W}")}`. `buildDef`
+grows the reveal-on-draw trigger from it. The offer carries
+`RequiresGrant`, so it is claimable only after the trigger has resolved
+for that card object. The grant is a hand `CastPermission` with
+`TimingFlash`, and `CastPermission.ForClaim` scopes it to the miracle
+claim, so the printed cost keeps its own timing. Never hand-roll the
+cost: without `RequiresGrant` the card would be castable for its miracle
+cost from any hand at any time. See `server/internal/game/miracle.go`.
+
 Unlike static abilities, replacements fire **before** the event
 happens — the pipeline constructs a `game.ReplacementEvent`, the
 engine offers each applicable replacement a chance to mutate or

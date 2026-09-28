@@ -714,6 +714,12 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		)
 		return err
 	}
+	// #1665: a HAND permission (miracle) opens one claim and nothing
+	// else. From here down — the price, the X rule, the timing gate —
+	// a cast that pays the printed cost reads no permission at all, so
+	// a live miracle grant does not make a hard-cast sorcery an
+	// instant. A no-op for every other zone. See CastPermission.ForClaim.
+	grant = grant.ForClaim(alt)
 	// CR 708.4, ADR 0082 decision 2: the whole of "casting a card
 	// face down" is this line, and where it sits is the decision.
 	//
@@ -2430,6 +2436,9 @@ func (g *Game) printedCostLocked(p *Player, card Card, params CastSpellParams) (
 	if err != nil {
 		return ParsedCost{}, CastCost{}, err
 	}
+	// #1665: a hand permission prices only the claim it opens, the same
+	// narrowing CastSpell makes. See CastPermission.ForClaim.
+	grant = grant.ForClaim(alt)
 	chosen := CastCostFor(card, alt, grant)
 	cost, err := ParseCost(chosen.Paid)
 	if err != nil {
@@ -6966,6 +6975,12 @@ func seatOfPlayerLocked(g *Game, id uuid.UUID) int {
 func (g *Game) PassPriority() error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
+	// #1665: passing is the decline of a resolved miracle's cast
+	// (CR 702.94a) — see miracle.go. Before the pass, because this
+	// pass can resolve the next miracle trigger.
+	if h := g.Turn.PriorityHolder; h >= 0 && h < len(g.Seats) && g.Seats[h] != nil {
+		g.closeMiracleWindowLocked(g.Seats[h].ID)
+	}
 	return g.passPriorityLocked()
 }
 

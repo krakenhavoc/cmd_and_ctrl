@@ -341,6 +341,13 @@ var items = []Item{
 		Mechanic: "flashback",
 	},
 	{
+		Slug: "miracle", Name: "Miracle", Kind: KindMechanic, Status: StatusImplemented,
+		Summary:  "Reveal a miracle card as the first card you draw in a turn, and you may cast it for its miracle cost right then, even on another player's turn.",
+		Rules:    []string{"702.94"},
+		ADR:      "0066-granted-cast-and-play-permissions.md",
+		Mechanic: "miracle",
+	},
+	{
 		Slug: "escape", Name: "Escape", Kind: KindMechanic, Status: StatusImplemented,
 		Summary:  "Cast a card from your graveyard for its escape cost, exiling other cards from your graveyard to pay for it.",
 		Rules:    []string{"702.138"},

@@ -70,8 +70,9 @@ func TestExileGrantPricesOnlyAnExileCast(t *testing.T) {
 	grant.AnyColor = true
 	me.Hand.PushTop(c)
 	// Stale on purpose: the permission names the card as it sits in
-	// HAND, which is a zone no permission may open, so nothing about
-	// the hand cast may read it.
+	// HAND, where a permission opens only the claim it names (#1665,
+	// CastPermission.ForClaim) — and this cast claims nothing, so
+	// nothing about its price may read it.
 	grant.Zone = ZoneHand
 	g.GrantCastPermissionOverCardForEffect(c.InstanceID, grant)
 

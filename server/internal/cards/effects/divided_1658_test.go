@@ -575,8 +575,11 @@ func TestBlessingsOfNatureDistributesFourAmongAnyNumber(t *testing.T) {
 		t.Errorf("b: %d +1/+1 counters, want 3", n)
 	}
 	spec, ok := Lookup(blessingsOfNatureOracle)
-	if !ok || spec.Completeness != CompletenessCaveats || len(spec.Caveats) == 0 {
-		t.Error("Blessings of Nature should declare CompletenessCaveats for its missing Miracle cost")
+	if !ok || spec.Completeness != CompletenessFull || len(spec.Caveats) != 0 {
+		t.Error("Blessings of Nature should be CompletenessFull now that Miracle ships (#1665)")
+	}
+	if game.AlternativeCostByKey(blessingsOfNatureOracle, game.AltCostKeyMiracle) == nil {
+		t.Error("Blessings of Nature should declare Miracle {G}")
 	}
 }
 

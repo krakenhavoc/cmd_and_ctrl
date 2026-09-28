@@ -223,8 +223,12 @@ type CastPermission struct {
 	Player uuid.UUID `json:"player"`
 
 	// Zone is where the cast comes FROM: exile, a graveyard, or a
-	// library. Never hand (CR 601.2 already allows it) and never the
-	// command zone (CR 903.4 is the format's, not an effect's).
+	// library. Never the command zone (CR 903.4 is the format's, not
+	// an effect's). A HAND permission exists for one keyword only —
+	// miracle (#1665), a ScopeCards grant over the one revealed card
+	// that opens its printed miracle offer at instant speed; CR 601.2
+	// already lets the card be cast from there, so the permission is
+	// read only for the claim it names (ForClaim).
 	Zone ZoneKind `json:"zone"`
 
 	// ZoneOwner names the SEAT whose pile a ScopeStanding permission
@@ -786,9 +790,12 @@ func (g *Game) GrantCastPermissionToCardsForEffect(perm CastPermission, cards []
 // CastPermissionForLocked is THE query: does an effect let playerID
 // cast or play this card out of this zone right now?
 //
-// It returns nil for hand and the command zone (CR 601.2 and CR 903.4
-// need no effect); otherwise the stored or derived permission that
-// opens the cast. The cast path, the view and the bot enumerator all
+// It returns nil for the command zone (CR 903.4 needs no effect) and,
+// for a hand, nil unless a STORED per-object permission names the card
+// — miracle's (#1665, miracle.go), which is not the right to cast out
+// of a hand (CR 601.2 already gives that) but the right to claim one
+// printed offer at instant speed. Otherwise it is the stored or derived
+// permission that opens the cast. The cast path, the view and the bot enumerator all
 // read this one function, so none of them can disagree about what is
 // legal.
 //
@@ -807,12 +814,15 @@ func (g *Game) GrantCastPermissionToCardsForEffect(perm CastPermission, cards []
 //
 // Caller must hold g.mu (read or write).
 func (g *Game) CastPermissionForLocked(playerID uuid.UUID, card Card, zone ZoneKind) *CastPermission {
-	if zone == ZoneHand || zone == ZoneCommand {
+	if zone == ZoneCommand {
 		return nil
 	}
 	p := g.playerByIDLocked(playerID)
 	if p == nil {
 		return nil
+	}
+	if zone == ZoneHand {
+		return g.storedHandPermissionLocked(p, card)
 	}
 	// ADR 0090: a CR 722.3c prepare copy answers for itself, and ONLY
 	// for itself. Its permission is derived from the prepared
@@ -863,6 +873,51 @@ func (g *Game) CastPermissionForLocked(playerID uuid.UUID, card Card, zone ZoneK
 		return &out
 	}
 	return nil
+}
+
+// storedHandPermissionLocked is CastPermissionForLocked's hand branch:
+// the live STORED ScopeCards permission naming this card object in a
+// hand, or nil. Standing permissions are never consulted — nothing
+// derives a rule over a hand, and a hand is not a pile a grant could
+// name by position.
+//
+// Caller must hold g.mu.
+func (g *Game) storedHandPermissionLocked(p *Player, card Card) *CastPermission {
+	for i := range p.CastPermissions {
+		perm := &p.CastPermissions[i]
+		if perm.Scope == ScopeStanding || !perm.CoversCard(card, ZoneHand) {
+			continue
+		}
+		if !g.CastPermissionActiveForEffect(perm, p.ID) {
+			continue
+		}
+		out := *perm
+		return &out
+	}
+	return nil
+}
+
+// ForClaim narrows a permission to the cast it is being read for. A
+// permission over any zone but a hand is returned as it is: it is the
+// reason the cast is legal at all, whatever it claims.
+//
+// A HAND permission (miracle, #1665) is different in kind. The cast is
+// legal without it (CR 601.2), and it exists to open ONE printed offer
+// — the one under its AltCostKey — at its Timing. So it applies to a
+// cast that claims that offer and to no other: a Terminus hard-cast
+// for {4}{W}{W} while its miracle grant is live is a sorcery, exactly
+// as it would be without the grant. Nil-safe.
+//
+// CastSpell narrows once the claim is resolved and before the timing
+// gate; the enumerator narrows per offer, so the two agree.
+func (p *CastPermission) ForClaim(alt *AlternativeCost) *CastPermission {
+	if p == nil || p.Zone != ZoneHand {
+		return p
+	}
+	if alt == nil || alt.Key != p.AltCostKey {
+		return nil
+	}
+	return p
 }
 
 // PileOwnerFor resolves WHOSE graveyard or library this permission
