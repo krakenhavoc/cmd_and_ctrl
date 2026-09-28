@@ -2466,6 +2466,17 @@ export interface CardView extends CastSurfaceView {
   // what "G" means.
   chosen_color?: string;
   named_tribe?: string;
+  // #1210 (CR 614.12): the CARD NAME this permanent's "as this enters,
+  // choose a card name" instruction was answered with — Pithing
+  // Needle, Phyrexian Revoker, Sorcerous Spyglass. Same lifecycle,
+  // PUBLIC/redaction and rendering module as chosen_color above.
+  chosen_name?: string;
+  // #1572 (ADR 0071): the NAMED OPTION this permanent's "as this
+  // enters, choose <A> or <B>" instruction was answered with — a
+  // Siege's anchor word, "Khans" or "Temur". Decides which of the
+  // permanent's OWN printed abilities exists. Same lifecycle,
+  // PUBLIC/redaction and rendering module as chosen_color above.
+  chosen_option?: string;
   // S15: raw Scryfall mana-cost string ("{1}{R}", "{W/U}", "{X}{B}"),
   // rendered as a read-only chip on hand-zone cards. Omitted for
   // lands and for placeholder / demo-seed cards. Also zeroed on the

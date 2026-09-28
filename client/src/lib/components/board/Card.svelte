@@ -463,6 +463,8 @@
       abilities={card.abilities}
       chosenColor={card.chosen_color}
       namedTribe={card.named_tribe}
+      chosenOption={card.chosen_option}
+      chosenName={card.chosen_name}
       protection={card.protection}
     />
     {#if (card.damage_marked ?? 0) > 0}
@@ -547,6 +549,8 @@
       abilities={card.abilities}
       chosenColor={card.chosen_color}
       namedTribe={card.named_tribe}
+      chosenOption={card.chosen_option}
+      chosenName={card.chosen_name}
       protection={card.protection}
     />
     {#if (card.damage_marked ?? 0) > 0}
