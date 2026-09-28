@@ -108,15 +108,15 @@ func b35TwoNonlandCardsShareAColor(g *game.Game, milled []uuid.UUID) bool {
 
 // anotherZombieYouControlDied is Plague Belcher's condition: a
 // Zombie the source's controller controlled, other than the source,
-// died. The dead card is read post-move, so a changeling counts and a
-// Zombie that was one only through a layer effect does not — weaker,
-// never stronger (Undead Augur's read).
+// died. Whether it was a Zombie is its last-known subtypes
+// (leftAsSubtype, #1679): a changeling counts, and so does a creature
+// that was a Zombie only through a grant (Undead Augur's read).
 func anotherZombieYouControlDied(ev game.Event, source *game.Card, g *game.Game) bool {
 	if ev.CardID == source.InstanceID {
 		return false
 	}
 	dead, ok := diedCreature(ev, g)
-	return ok && dead.Controller == source.Controller && dead.HasSubtype("Zombie")
+	return ok && dead.Controller == source.Controller && leftAsSubtype(ev, dead, "Zombie")
 }
 
 // anotherCreatureYouControlDied is Garna's condition: a creature

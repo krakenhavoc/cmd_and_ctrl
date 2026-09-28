@@ -257,10 +257,10 @@ func b17GreatestManaValue(g *game.Game, ids []uuid.UUID) (uuid.UUID, bool) {
 
 // b17SelfOrZombieYouControlDied is Undead Augur's condition: the
 // Augur itself died, or a Zombie its controller controlled did. The
-// dead card is read post-move (its printed type line and its
-// controller survive the move), so a changeling counts and a Zombie
-// that was one only through a layer effect does not — weaker, never
-// stronger.
+// dead card is read post-move for its controller; whether it was a
+// Zombie is its last-known subtypes (leftAsSubtype, #1679), so a
+// changeling counts and so does a creature that was a Zombie only
+// through a grant (Maskwood Nexus).
 func b17SelfOrZombieYouControlDied(ev game.Event, source *game.Card, g *game.Game) bool {
 	if cardDied(ev, source) {
 		return true
@@ -269,7 +269,7 @@ func b17SelfOrZombieYouControlDied(ev game.Event, source *game.Card, g *game.Gam
 		return false
 	}
 	dead, ok := diedCreature(ev, g)
-	return ok && dead.Controller == source.Controller && dead.HasSubtype("Zombie")
+	return ok && dead.Controller == source.Controller && leftAsSubtype(ev, dead, "Zombie")
 }
 
 // b17SelfOrAnotherCreatureDied is Cordial Vampire's condition: any

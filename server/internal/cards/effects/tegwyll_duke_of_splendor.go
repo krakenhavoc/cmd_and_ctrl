@@ -14,7 +14,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // ride PrintedKeywords; the anthem is the shared TribalAnthem
 // builder with "other" and "you control"; the dies trigger fires for
 // every OTHER Faerie the controller controlled that goes to a
-// graveyard — Tegwyll's own death does not count, as printed — and
+// graveyard — a Faerie as it last existed on the battlefield (CR
+// 603.10a, #1679), grants included; Tegwyll's own death does not
+// count, as printed — and
 // the draw comes before the life loss, in printed order.
 //
 // No simplification.

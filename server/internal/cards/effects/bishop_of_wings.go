@@ -12,7 +12,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // The Angel deck's glue. Two triggers, both on Angels the controller
 // controls — effective subtypes, so a changeling counts. The Bishop
 // is a Human Cleric and never matches either; the dies trigger reads
-// the card in the graveyard, which still says Angel.
+// the Angel as it last existed on the battlefield (CR 603.10a,
+// #1679), so a creature that was an Angel only through a grant
+// counts too.
 //
 // No simplification.
 func init() {

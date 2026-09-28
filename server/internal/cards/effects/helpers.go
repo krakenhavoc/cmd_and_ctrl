@@ -352,6 +352,27 @@ func leftAsType(ev game.Event, c game.Card, cardType string) bool {
 	return c.HasCardType(cardType)
 }
 
+// leftAsSubtype is leftAsType for a SUBTYPE (#1679, CR 603.10a):
+// whether the permanent an EventLTB names was a Zombie / an Elf / an
+// Egg as it last existed on the battlefield — Event.LastKnownSubtypes
+// plus the "every creature type" flag, answered with Card.HasSubtype's
+// semantics, so a printed changeling counts for every tribe and so
+// does a creature under Maskwood Nexus or a lord's type grant. c is
+// the card as it sits now, consulted only for an event that carries
+// no last-known information.
+//
+// Every tribal dies / leaves-the-battlefield condition asks here,
+// never dead.HasSubtype: in the graveyard no grant applies any more,
+// so a creature that was a Zombie only through one reads as whatever
+// it prints — and one an effect STOPPED being a Zombie reads as one
+// again.
+func leftAsSubtype(ev game.Event, c game.Card, subtype string) bool {
+	if was, known := ev.WasSubtype(subtype); known {
+		return was
+	}
+	return c.HasSubtype(subtype)
+}
+
 // diedWhileAttacking resolves the creature that just died from a dies
 // event when it was ATTACKING as it died — "whenever an attacking
 // creature dies" (Kardur, Doomscourge), Garna's "if it was attacking".

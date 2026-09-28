@@ -18,9 +18,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // order drawn from the game's seeded RNG.
 //
 // "An Egg you control" reads the Egg as it last existed on the
-// battlefield, so a token Egg counts (it is in the graveyard long
-// enough to be read) and so does any other Egg creature — a
-// changeling included.
+// battlefield (CR 603.10a, leftAsSubtype since #1679), so a token Egg
+// counts (it is in the graveyard long enough to be read) and so does
+// any other Egg creature — a changeling, or a creature that was an
+// Egg only through a grant, included.
 //
 // No simplification.
 func init() {
@@ -50,5 +51,5 @@ func init() {
 // anEggYouControlDied is "whenever an Egg you control dies".
 func anEggYouControlDied(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	dead, ok := diedCreature(ev, g)
-	return ok && dead.Controller == source.Controller && dead.HasSubtype("Egg")
+	return ok && dead.Controller == source.Controller && leftAsSubtype(ev, dead, "Egg")
 }

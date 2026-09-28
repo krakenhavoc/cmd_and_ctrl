@@ -20,8 +20,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // Troublemakers themselves included — granting both keywords until
 // end of turn through the turn-scoped registry
 // (b34AttackingVampiresHaveDeathtouchAndLifelink). The dies trigger
-// fires for any Vampire creature the controller controlled, the
-// Troublemakers' own death included; its "you may pay 2 life" is
+// fires for any Vampire creature the controller controlled — a
+// Vampire as it last existed on the battlefield (CR 603.10a, #1679),
+// grants included — the Troublemakers' own death included; its "you may pay 2 life" is
 // the ordinary trigger prompt, and a controller who cannot pay when
 // it resolves neither pays nor draws.
 //

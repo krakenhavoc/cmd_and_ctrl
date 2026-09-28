@@ -13,11 +13,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // The Dimir Zombie lord. Deathtouch rides PrintedKeywords; the
 // anthem is TribalAnthem over "other Zombies you control" — both
 // words printed, so it buffs only your side; the drain is a targeted
-// dies trigger: another Zombie the controller controlled died (the
-// dead card is read post-move, so a changeling counts and a Zombie
-// only through a layer effect does not — weaker, never stronger),
-// the controller picks the opponent as the trigger goes on the
-// stack, and that player loses 1 life (life loss, not damage) on
+// dies trigger: another Zombie the controller controlled died (a
+// Zombie as it last existed on the battlefield, CR 603.10a — so a
+// changeling counts and so does a creature that was a Zombie only
+// through Maskwood Nexus or another grant, #1679), the controller
+// picks the opponent as the trigger goes on the stack, and that player loses 1 life (life loss, not damage) on
 // resolution.
 //
 // No simplification.

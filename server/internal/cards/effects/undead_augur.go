@@ -11,10 +11,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // The Zombie deck's card draw. One dies trigger with two conditions:
 // the Augur's own death (the card is already in the graveyard when
 // the harvester finds it, and cardDied reads it by ID) or a Zombie
-// its controller controlled dying. The Zombie is read post-move from
-// its printed type line — a changeling counts — so a creature that
-// was a Zombie only through a layer effect when it died is missed:
-// weaker, never stronger. Draw first, lose life second, as printed.
+// its controller controlled dying. Whether it was a Zombie is read as
+// it last existed on the battlefield (CR 603.10a, #1679), so a
+// changeling counts and so does a creature that was a Zombie only
+// through a grant — Maskwood Nexus, a lord's type grant. Draw first,
+// lose life second, as printed.
 //
 // No simplification.
 func init() {

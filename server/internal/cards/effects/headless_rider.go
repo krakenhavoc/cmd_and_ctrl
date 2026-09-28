@@ -10,8 +10,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // The Zombie deck's death-replacement engine. One trigger watching
 // EventLTB: the Rider's own death (cardDied — graveyard only) or a
-// NONTOKEN Zombie its controller controlled dying, read post-move so
-// a changeling counts. The token is the shared 2/2 black Zombie; a
+// NONTOKEN Zombie its controller controlled dying — a Zombie as it
+// last existed on the battlefield (CR 603.10a, #1679), so a
+// changeling counts and so does a creature that was a Zombie only
+// through a grant. The token is the shared 2/2 black Zombie; a
 // token dying does not fire it, which is exactly why the printed
 // card says "nontoken" — the Rider's own Zombies would chain
 // forever otherwise.
