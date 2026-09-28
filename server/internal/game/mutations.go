@@ -3487,13 +3487,17 @@ func (g *Game) ActivateLoyalty(playerID, planeswalkerID uuid.UUID, label string,
 	if delta < 0 && pw.Counters[CounterLoyalty] < -delta {
 		return ErrInsufficientLoyalty
 	}
-	// applyCounterLocked deletes the key at zero and emits the
-	// counter event, which is what every other counter mutation in
-	// the engine does; the hand-rolled map write here predated it.
-	// A counter-doubling replacement applies only to a counter placed
-	// by an effect (CR 614.16), so this
-	// deliberately bypasses the CR 614 counter-replacement pipeline.
-	if err := g.applyCounterLocked(planeswalkerID, CounterLoyalty, delta); err != nil {
+	// payCostCounterLocked (counter_cost.go): a loyalty ability's
+	// counter change is a COST (CR 606.4), not an effect, so a
+	// replacement that names "an effect" (Doubling Season) still does
+	// not apply — but this now opens the CR 614 window with
+	// CounterFromCost set, so a replacement that names no effect at all
+	// (Vorinclex, Monstrous Raider) does, matching the catalogued
+	// activation path in activated.go. This used to call
+	// applyCounterLocked directly and bypass the window entirely, which
+	// was right about Doubling Season and wrong about Vorinclex — ADR
+	// 0073's 2026-09-28 amendment, #1710.
+	if _, err := g.payCostCounterLocked(playerID, planeswalkerID, CounterLoyalty, delta); err != nil {
 		return err
 	}
 	if g.LoyaltyActivatedThisTurn == nil {
@@ -6054,10 +6058,11 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 	}
 	paid.CountersRemoved = counters.total
 	if ab.AddCounter != nil {
-		if err := g.payCounterAddLocked(cardID, ab.AddCounter); err != nil {
+		added, err := g.payCounterAddLocked(playerID, cardID, ab.AddCounter)
+		if err != nil {
 			return err
 		}
-		paid.CountersAdded = ab.AddCounter.N
+		paid.CountersAdded = added
 	}
 	// S21 sub-PR 1 made sacrifice-self costs real (Treasure, Eldrazi
 	// Spawn, Lotus Petal); the mana-cost pass adds sacrifice-another
