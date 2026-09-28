@@ -46,6 +46,8 @@ func TestDesignationActiveReadsTheObject(t *testing.T) {
 		{"solved gate on a solved Case", CaseSolved(), Card{Solved: true}, true},
 		{"harnessed gate on an unharnessed permanent", Harnessed(), Card{}, false},
 		{"harnessed gate on a harnessed permanent", Harnessed(), Card{Harnessed: true}, true},
+		{"monstrous gate on a creature that is not monstrous", Monstrous(), Card{}, false},
+		{"monstrous gate on a monstrous creature", Monstrous(), Card{Monstrous: true}, true},
 		{"7+ with no counters", ChargeCounters(7), Card{}, false},
 		{"7+ with six", ChargeCounters(7), Card{Counters: map[string]int{CounterCharge: 6}}, false},
 		{"7+ with seven", ChargeCounters(7), Card{Counters: map[string]int{CounterCharge: 7}}, true},
@@ -464,6 +466,10 @@ func TestDesignationsClearOnBattlefieldLeave(t *testing.T) {
 		if err := g.HarnessForEffect(id); err != nil {
 			t.Fatalf("HarnessForEffect: %v", err)
 		}
+		// ADR 0071 amendment (#1700): and so is monstrous.
+		if err := g.MonstrosityForEffect(id, 0); err != nil {
+			t.Fatalf("MonstrosityForEffect: %v", err)
+		}
 	})
 	var moved Card
 	g.WithWriteLock(func() {
@@ -473,9 +479,9 @@ func TestDesignationsClearOnBattlefieldLeave(t *testing.T) {
 			t.Fatalf("MoveCard: %v", err)
 		}
 	})
-	if moved.ClassLevel != 0 || moved.Solved || moved.Harnessed {
-		t.Errorf("designations survived the zone change: level %d, solved %v, harnessed %v",
-			moved.ClassLevel, moved.Solved, moved.Harnessed)
+	if moved.ClassLevel != 0 || moved.Solved || moved.Harnessed || moved.Monstrous {
+		t.Errorf("designations survived the zone change: level %d, solved %v, harnessed %v, monstrous %v",
+			moved.ClassLevel, moved.Solved, moved.Harnessed, moved.Monstrous)
 	}
 	if got := ClassLevelOf(moved); got != 1 {
 		t.Errorf("ClassLevelOf a card off the battlefield = %d, want 1 (CR 716.2b)", got)
@@ -502,6 +508,9 @@ func TestDesignationsSurviveCloneAndSnapshot(t *testing.T) {
 		if err := g.HarnessForEffect(id); err != nil {
 			t.Fatalf("HarnessForEffect: %v", err)
 		}
+		if err := g.MonstrosityForEffect(id, 0); err != nil {
+			t.Fatalf("MonstrosityForEffect: %v", err)
+		}
 	})
 
 	find := func(cards []Card) Card {
@@ -514,9 +523,9 @@ func TestDesignationsSurviveCloneAndSnapshot(t *testing.T) {
 	}
 
 	cloned := find(g.Clone().Battlefield.Cards)
-	if cloned.ClassLevel != 3 || !cloned.Solved || !cloned.Harnessed {
-		t.Errorf("clone lost the designations: level %d, solved %v, harnessed %v",
-			cloned.ClassLevel, cloned.Solved, cloned.Harnessed)
+	if cloned.ClassLevel != 3 || !cloned.Solved || !cloned.Harnessed || !cloned.Monstrous {
+		t.Errorf("clone lost the designations: level %d, solved %v, harnessed %v, monstrous %v",
+			cloned.ClassLevel, cloned.Solved, cloned.Harnessed, cloned.Monstrous)
 	}
 
 	restored, err := g.CaptureSnapshot().Restore()
@@ -525,9 +534,9 @@ func TestDesignationsSurviveCloneAndSnapshot(t *testing.T) {
 	}
 	var back Card
 	restored.ReadSnapshot(func() { back = find(restored.Battlefield.Cards) })
-	if back.ClassLevel != 3 || !back.Solved || !back.Harnessed {
-		t.Errorf("snapshot round-trip lost the designations: level %d, solved %v, harnessed %v",
-			back.ClassLevel, back.Solved, back.Harnessed)
+	if back.ClassLevel != 3 || !back.Solved || !back.Harnessed || !back.Monstrous {
+		t.Errorf("snapshot round-trip lost the designations: level %d, solved %v, harnessed %v, monstrous %v",
+			back.ClassLevel, back.Solved, back.Harnessed, back.Monstrous)
 	}
 }
 
@@ -544,13 +553,14 @@ func TestClassLevelIsNotACopiableValue(t *testing.T) {
 		ClassLevel: 3,
 		Solved:     true,
 		Harnessed:  true,
+		Monstrous:  true,
 	}
 	copied := CopiableValuesOf(source)
 	clone := Card{InstanceID: uuid.New(), Name: "Clone", TypeLine: "Creature — Shapeshifter"}
 	clone.applyCopy(copied, source)
-	if clone.ClassLevel != 0 || clone.Solved || clone.Harnessed {
-		t.Errorf("copy took the designations: level %d, solved %v, harnessed %v — CR 716.2c / 719.3b / 701.64 say it must not",
-			clone.ClassLevel, clone.Solved, clone.Harnessed)
+	if clone.ClassLevel != 0 || clone.Solved || clone.Harnessed || clone.Monstrous {
+		t.Errorf("copy took the designations: level %d, solved %v, harnessed %v, monstrous %v — CR 716.2c / 719.3b / 701.64 / 701.37b say it must not",
+			clone.ClassLevel, clone.Solved, clone.Harnessed, clone.Monstrous)
 	}
 	if got := ClassLevelOf(clone); got != 1 {
 		t.Errorf("a copy of a level-3 Class is level %d, want 1", got)
@@ -591,4 +601,68 @@ func levelOfLocked(g *Game, id uuid.UUID) int {
 	n := 0
 	g.ReadSnapshot(func() { n = g.ClassLevelFor(id) })
 	return n
+}
+
+// TestMonstrosityForEffect — CR 701.37a / c (#1700): the first
+// resolution places N counters, sets the designation and announces N;
+// every later one does nothing at all. A negative N is zero, and a
+// permanent that is not on the battlefield is a quiet no-op.
+func TestMonstrosityForEffect(t *testing.T) {
+	g := newActiveGame(t)
+	seat := g.Seats[0].ID
+	id := pushTypedTestCard(g, Card{
+		Name: "Test Monster", TypeLine: "Creature — Beast", Power: 2, Toughness: 2,
+		Owner: seat, Controller: seat,
+	})
+	g.WithWriteLock(func() {
+		if err := g.MonstrosityForEffect(id, 3); err != nil {
+			t.Fatalf("MonstrosityForEffect: %v", err)
+		}
+		if err := g.MonstrosityForEffect(id, 5); err != nil {
+			t.Fatalf("second MonstrosityForEffect: %v", err)
+		}
+		if err := g.MonstrosityForEffect(uuid.New(), 2); err != nil {
+			t.Errorf("a permanent that is not there: %v, want a quiet no-op", err)
+		}
+	})
+	var c Card
+	var amounts []int
+	g.ReadSnapshot(func() {
+		if p := findBattlefieldCard(g, id); p != nil {
+			c = *p
+		}
+		for _, ev := range g.Events {
+			if ev.Kind == EventBecameMonstrous && ev.CardID == id {
+				amounts = append(amounts, ev.Amount)
+			}
+		}
+	})
+	if !c.Monstrous {
+		t.Fatal("not monstrous after Monstrosity 3")
+	}
+	if n := c.Counters[CounterPlusOne]; n != 3 {
+		t.Errorf("+1/+1 counters = %d, want 3 — the second instruction placed counters", n)
+	}
+	if len(amounts) != 1 || amounts[0] != 3 {
+		t.Errorf("EventBecameMonstrous amounts = %v, want [3]", amounts)
+	}
+
+	other := pushTypedTestCard(g, Card{
+		Name: "Other Monster", TypeLine: "Creature — Beast", Power: 2, Toughness: 2,
+		Owner: seat, Controller: seat,
+	})
+	g.WithWriteLock(func() {
+		if err := g.MonstrosityForEffect(other, -2); err != nil {
+			t.Fatalf("MonstrosityForEffect(-2): %v", err)
+		}
+	})
+	var o Card
+	g.ReadSnapshot(func() {
+		if p := findBattlefieldCard(g, other); p != nil {
+			o = *p
+		}
+	})
+	if !o.Monstrous || o.Counters[CounterPlusOne] != 0 {
+		t.Errorf("Monstrosity -2: monstrous %v, counters %d — want monstrous with none", o.Monstrous, o.Counters[CounterPlusOne])
+	}
 }
