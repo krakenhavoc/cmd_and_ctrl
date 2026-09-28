@@ -112,6 +112,12 @@ func (g *Game) battlefieldExitLocked(cardID uuid.UUID) exitLKI {
 // rule's rather than a side effect of what MoveCard leaves behind, and
 // what keeps it right for a reader that looks after the card has moved
 // on (a reanimation writes the new controller onto the card).
+//
+// Colour closes the set (#1689). A creature that was black only
+// because of an effect — Darkest Hour, a black-making static, an
+// Aura — is not black in the graveyard, and Teysa, Orzhov Scion's
+// "whenever another black creature you control dies" is judged on
+// what it was as it left: the post-layer Colors are copied.
 type exitLKI struct {
 	attacking        uuid.UUID
 	blocking         uuid.UUID
@@ -121,11 +127,12 @@ type exitLKI struct {
 	allCreatureTypes bool
 	supertypes       []string
 	controller       uuid.UUID
+	colors           []string
 }
 
 // exitLKILocked reads cardID's combat state, card types, subtypes,
-// supertypes and controller off the battlefield. The zero value for a card that is not there. Caller
-// must hold g.mu.
+// supertypes, controller and colours off the battlefield. The zero
+// value for a card that is not there. Caller must hold g.mu.
 func (g *Game) exitLKILocked(cardID uuid.UUID) exitLKI {
 	c := findBattlefieldCard(g, cardID)
 	if c == nil {
@@ -138,6 +145,7 @@ func (g *Game) exitLKILocked(cardID uuid.UUID) exitLKI {
 		types:      copyStrings(eff.Types),
 		subtypes:   copyStrings(eff.Subtypes),
 		supertypes: copyStrings(eff.Supertypes),
+		colors:     copyStrings(eff.Colors),
 		// Card.Controller, not eff.Controller: the layer pass
 		// materialises layer 2's answer onto the field
 		// (materialiseControlLocked), and the field is what every
@@ -161,7 +169,7 @@ func (g *Game) exitLKILocked(cardID uuid.UUID) exitLKI {
 // (Event.AttackingTarget, Event.BlockingTarget, Event.Blocked,
 // Event.LastKnownTypes, Event.LastKnownSubtypes,
 // Event.LastKnownAllCreatureTypes, Event.LastKnownSupertypes,
-// Event.LastKnownController).
+// Event.LastKnownController, Event.LastKnownColors).
 func (l exitLKI) stamp(ev *Event) {
 	ev.AttackingTarget = l.attacking
 	ev.BlockingTarget = l.blocking
@@ -171,6 +179,7 @@ func (l exitLKI) stamp(ev *Event) {
 	ev.LastKnownAllCreatureTypes = l.allCreatureTypes
 	ev.LastKnownSupertypes = l.supertypes
 	ev.LastKnownController = l.controller
+	ev.LastKnownColors = l.colors
 }
 
 // WasType reports whether the permanent an EventLTB names had card
@@ -239,6 +248,22 @@ func (ev Event) LeftUnderControlOf() (controller uuid.UUID, known bool) {
 		return uuid.Nil, false
 	}
 	return ev.LastKnownController, true
+}
+
+// WasColor reports whether the permanent an EventLTB names was colour
+// `color` ("B" for black, etc.) as it last existed on the battlefield
+// (#1689, CR 603.10a), with Card.HasColor's semantics: an exact match
+// against the post-layer colour list, so a creature that was black
+// only through an effect (Darkest Hour) counts, and one an effect had
+// painted another colour does not. known is WasSupertype's: the
+// colours are stamped by the same exitLKI, so a stamped event with
+// none is a known "no" (colourless), and an event with no last-known
+// types at all is an unknown.
+func (ev Event) WasColor(color string) (was, known bool) {
+	if ev.Kind != EventLTB || ev.LastKnownTypes == nil {
+		return false, false
+	}
+	return typeListHas(ev.LastKnownColors, color), true
 }
 
 // forgetPerObjectTurnStateLocked drops every "this object did this"

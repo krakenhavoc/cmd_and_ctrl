@@ -1347,6 +1347,16 @@ type Event struct {
 	// amendment (#1682).
 	LastKnownController uuid.UUID `json:"last_known_controller,omitempty"`
 
+	// LastKnownColors is the same permanent's COLOURS as it last
+	// existed, on EventLTB only (#1689, CR 603.10a): its post-layer
+	// Card.EffectiveColors ("B", "U", …). A creature that was black
+	// only because of an effect (Darkest Hour, a black-making static,
+	// an Aura) is not one in the graveyard, so "whenever another black
+	// creature you control dies" (Teysa, Orzhov Scion) reads the
+	// colour here, via WasColor. Engine-internal, like LastKnownTypes.
+	// See ADR 0027's 2026-09-28 amendment (#1689).
+	LastKnownColors []string `json:"last_known_colors,omitempty"`
+
 	// SettingOld / SettingNew are a table setting's value before and
 	// after an EventSettingsChanged, formatted as text: an int as
 	// decimal ("-1" is UndoUnlimited), a bool as "true"/"false", an

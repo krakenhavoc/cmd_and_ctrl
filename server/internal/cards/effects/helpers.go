@@ -411,6 +411,27 @@ func leftUnderControlOf(ev game.Event, c game.Card) uuid.UUID {
 	return c.Controller
 }
 
+// leftAsColor is leftAsType for a COLOUR (#1689, CR 603.10a): whether
+// the permanent an EventLTB names was colour `color` ("B" for black)
+// as it last existed on the battlefield — Event.LastKnownColors, the
+// post-layer colours the exit read with the card still in play. A
+// creature that was black only through an effect (Darkest Hour, a
+// black-making static, an Aura) was black on the battlefield and is
+// whatever it prints in the graveyard. c is the card as it sits now,
+// consulted only for an event that carries no last-known information.
+//
+// Teysa, Orzhov Scion's "whenever another black creature you control
+// dies" asks here, never dead.HasColor: in the graveyard no effect
+// applies any more, so a creature painted black by Darkest Hour reads
+// as whatever it prints, and one an effect painted another colour
+// still reads as its printed colour.
+func leftAsColor(ev game.Event, c game.Card, color string) bool {
+	if was, known := ev.WasColor(color); known {
+		return was
+	}
+	return c.HasColor(color)
+}
+
 // diedWhileAttacking resolves the creature that just died from a dies
 // event when it was ATTACKING as it died — "whenever an attacking
 // creature dies" (Kardur, Doomscourge), Garna's "if it was attacking".

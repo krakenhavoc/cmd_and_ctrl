@@ -321,6 +321,8 @@ events[].exhaust	bool
 events[].kind	string
 events[].label	string
 events[].last_known_all_creature_types	bool
+events[].last_known_colors	array
+events[].last_known_colors[]	string
 events[].last_known_controller	custom(uuid.UUID)
 events[].last_known_subtypes	array
 events[].last_known_subtypes[]	string
@@ -943,6 +945,8 @@ lastKnownStack[].item.trigger.Event.exhaust	bool
 lastKnownStack[].item.trigger.Event.kind	string
 lastKnownStack[].item.trigger.Event.label	string
 lastKnownStack[].item.trigger.Event.last_known_all_creature_types	bool
+lastKnownStack[].item.trigger.Event.last_known_colors	array
+lastKnownStack[].item.trigger.Event.last_known_colors[]	string
 lastKnownStack[].item.trigger.Event.last_known_controller	custom(uuid.UUID)
 lastKnownStack[].item.trigger.Event.last_known_subtypes	array
 lastKnownStack[].item.trigger.Event.last_known_subtypes[]	string
@@ -1277,6 +1281,8 @@ pendingTriggers[].trigger.Event.exhaust	bool
 pendingTriggers[].trigger.Event.kind	string
 pendingTriggers[].trigger.Event.label	string
 pendingTriggers[].trigger.Event.last_known_all_creature_types	bool
+pendingTriggers[].trigger.Event.last_known_colors	array
+pendingTriggers[].trigger.Event.last_known_colors[]	string
 pendingTriggers[].trigger.Event.last_known_controller	custom(uuid.UUID)
 pendingTriggers[].trigger.Event.last_known_subtypes	array
 pendingTriggers[].trigger.Event.last_known_subtypes[]	string
@@ -3005,6 +3011,8 @@ stackMeta[].trigger.Event.exhaust	bool
 stackMeta[].trigger.Event.kind	string
 stackMeta[].trigger.Event.label	string
 stackMeta[].trigger.Event.last_known_all_creature_types	bool
+stackMeta[].trigger.Event.last_known_colors	array
+stackMeta[].trigger.Event.last_known_colors[]	string
 stackMeta[].trigger.Event.last_known_controller	custom(uuid.UUID)
 stackMeta[].trigger.Event.last_known_subtypes	array
 stackMeta[].trigger.Event.last_known_subtypes[]	string
