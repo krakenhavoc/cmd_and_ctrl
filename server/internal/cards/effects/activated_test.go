@@ -18,12 +18,36 @@ const (
 
 // pushCatalogPermanent seeds a catalog card onto the battlefield,
 // already free of summoning sickness unless `sick` says otherwise.
+//
+// Pushes the card, then fires EventZoneMove the same way
+// pushBattlefieldCardWithTimestamp (anthem_test.go) does, so the layer
+// listener stamps EnteredBattlefieldAt and bumps layerVersion. Without
+// that stamp/event a layer-engine test using this helper only passed
+// when something else in the test happened to trigger a recompute.
+// The listener unconditionally sets SummonedThisTurn = true on entry
+// (S18), so `sick` is re-applied after the emit to keep this helper's
+// existing contract — a non-sick creature the caller can act with
+// immediately.
 func pushCatalogPermanent(g *game.Game, owner uuid.UUID, name, typeLine, oracle string, sick bool) uuid.UUID {
 	id := uuid.New()
 	g.Battlefield.PushTop(game.Card{
 		InstanceID: id, Name: name, TypeLine: typeLine, OracleID: oracle,
 		Power: 1, Toughness: 1, Owner: owner, Controller: owner,
 		SummonedThisTurn: sick,
+	})
+	g.WithWriteLock(func() {
+		g.EmitEvent(game.Event{
+			Kind:    game.EventZoneMove,
+			CardID:  id,
+			OldZone: game.ZoneHand,
+			NewZone: game.ZoneBattlefield,
+		})
+		for i := range g.Battlefield.Cards {
+			if g.Battlefield.Cards[i].InstanceID == id {
+				g.Battlefield.Cards[i].SummonedThisTurn = sick
+				break
+			}
+		}
 	})
 	return id
 }

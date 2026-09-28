@@ -155,6 +155,16 @@ func TestHermitDruidAnnouncesTheWholeRun(t *testing.T) {
 func TestConsumingAberrationAnnouncesWhatItMills(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
+	// Consuming Aberration's power/toughness are a CDA equal to the
+	// number of cards in its controller's opponents' graveyards (CR
+	// 604.3). pushCatalogPermanent now stamps a real battlefield entry
+	// (#1698), so the layer engine actually computes that CDA instead
+	// of leaving the helper's literal 1/1 in place — and with every
+	// graveyard empty at the top of the game, a freshly-entered
+	// Aberration is a real 0/0 that dies to CR 704.5f before it ever
+	// sees a spell cast. Seed one card into an opponent's graveyard
+	// first so it has 1 toughness and survives to trigger.
+	opp.Graveyard.PushTop(game.Card{Name: "Already Dead", TypeLine: "Instant"})
 	pushCatalogPermanent(g, me.ID, "Consuming Aberration", "Creature — Horror",
 		"9b55fb72-237d-4935-b645-8ebc6eb4140e", false)
 	seedSearchLibrary(opp,
