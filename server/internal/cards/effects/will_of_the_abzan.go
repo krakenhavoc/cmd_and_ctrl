@@ -14,13 +14,14 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // An edict that takes the biggest creature, or a reanimation, and
 // with a commander out, both. The first mode targets any number of
-// opponents; each still-legal one chooses a creature with the
-// greatest power among their own (GreatestPowerYouControl evaluated
-// for the chooser through the sacrifice prompt, so ties are theirs
-// to break — b24PlayerSacrificesGreatestPowerCreatureAndLosesLife)
-// and loses 3 life, in announce order. The second returns the chosen
-// creature card under its owner's control, which is the caster's:
-// the clause says "your graveyard".
+// opponents — CR 115.1d, so zero is a legal choice and resolves as a
+// no-op; each still-legal one chooses a creature with the greatest
+// power among their own (GreatestPowerYouControl evaluated for the
+// chooser through the sacrifice prompt, so ties are theirs to break —
+// b24PlayerSacrificesGreatestPowerCreatureAndLosesLife) and loses 3
+// life, in announce order. The second returns the chosen creature
+// card under its owner's control, which is the caster's: the clause
+// says "your graveyard".
 //
 // The commander rider is the conditional mode count #1590 built:
 // `OrUpToIf(2, YouControlACommander)`, read at announce (CR 601.2b)
@@ -34,7 +35,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Modes: ChooseOne(
 			Mode("Any number of target opponents each sacrifice a creature with the greatest power among creatures that player controls and lose 3 life.",
-				TargetPlayer("any number of target opponents", Opponent()).WithCount(1, 0)),
+				TargetPlayer("any number of target opponents", Opponent()).WithCount(0, 0)),
 			Mode("Return target creature card from your graveyard to the battlefield.",
 				TargetCardInGraveyard("target creature card from your graveyard", YouOwn(), Creature())),
 		).OrUpToIf(2, YouControlACommander),

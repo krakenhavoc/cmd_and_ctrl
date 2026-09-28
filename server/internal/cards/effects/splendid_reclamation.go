@@ -17,17 +17,16 @@ import (
 // walked), and each land returns under its owner's control, which
 // is the caster's: "your graveyard".
 //
-// Sandbox simplification, declared: the lands enter untapped and are
-// tapped a beat later (Victimize's posture — ReturnFromGraveyard has
-// no tapped flag). Anything watching for a tap event sees one; both
-// steps happen inside one resolution, so nothing gets a window to
-// tap the land for mana in between.
+// No simplification: the lands enter already tapped, via
+// ReturnFromGraveyard.Tapped (#1284), which stamps the CR 614 entry
+// with EntersTapped rather than moving the card untapped and tapping
+// it a beat later. Nothing watching for a tap event sees one, matching
+// Drownyard Temple and Reassembling Skeleton one primitive over.
 func init() {
 	Register(Spec{
 		OracleID:     "13fe5e46-77a6-45d8-ac0b-c3d740eccf86",
 		Name:         "Splendid Reclamation",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The lands enter untapped and are tapped immediately afterwards, so anything watching for a land being tapped sees one."},
+		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			p := ctx.PlayerByID(ctx.Controller())
 			if p == nil || p.Graveyard == nil {
@@ -40,10 +39,7 @@ func init() {
 				}
 			}
 			for _, id := range lands {
-				if err := (ReturnFromGraveyard{Target: id, Dest: game.ZoneBattlefield}).Apply(ctx); err != nil {
-					return err
-				}
-				if err := (TapTarget{Target: id}).Apply(ctx); err != nil {
+				if err := (ReturnFromGraveyard{Target: id, Dest: game.ZoneBattlefield, Tapped: true}).Apply(ctx); err != nil {
 					return err
 				}
 			}
