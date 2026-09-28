@@ -1913,7 +1913,7 @@ engine seam.
 | Gandalf the White | "You may cast legendary spells and artifact spells as though they had flash." | the per-player flash row |
 | Ancient Greenwarden | "You may play lands from your graveyard." | play from graveyard |
 | Traveling Chocobo | "You may play lands and cast Bird spells from the top of your library." | #765 |
-| Windcrag Siege | "As this enchantment enters, choose Mardu or Jeskai." | an as-enters mode choice (the issue calls it misattributed) |
+| Windcrag Siege | "As this enchantment enters, choose Mardu or Jeskai." | shipped: the as-enters choice landed in #1646 (ADR 0071's 2026-09-27 amendment), and the doubler itself is gated by `TriggerDoubler.ActiveWhen` (#1647) since a `TriggerDoubler` is not an ability-list entry the ordinary designation gate can reach |
 
 **Noticed while checking, not in the issue's list:** Drivnod, Carnage Dominus
 has Teysa's exact text. Its other ability ("{B/P}{B/P}, Exile three creature

@@ -216,9 +216,9 @@ func Harness(label string, cost game.AbilityCost) ActivatedAbility {
 }
 
 // specDesignations is every designation gate a Spec declares, across
-// all five gateable slots. One walk, so a guard (Register's door
-// check, and the catalog-wide test beside it) cannot cover four slots
-// and forget the fifth.
+// all six gateable slots. One walk, so a guard (Register's door
+// check, and the catalog-wide test beside it) cannot cover five slots
+// and forget the sixth.
 //
 // #1314 added GatedCastPermissions: a standing cast/play permission
 // can now be gated exactly like a static, a trigger, an activated
@@ -228,8 +228,16 @@ func Harness(label string, cost game.AbilityCost) ActivatedAbility {
 // no gate at all (game.CastPermission has none — see
 // game.CastPermissionGate's doc comment for why the gate lives on a
 // separate wrapper), so it is not walked here.
+//
+// #1647 added TriggerDoublers: a TriggerDoubler is not an
+// ability-list entry (TriggersForCard / StaticAbilitiesForCard never
+// see it), so it carries its own ActiveWhen rather than reaching the
+// gate through one of the other five, and this walk has to see that
+// one too or Windcrag Siege's Mardu word would offer a prompt option
+// that TestEveryAnchorWordGateIsOffered could not tell switches
+// anything on.
 func specDesignations(spec Spec) []game.Designation {
-	out := make([]game.Designation, 0, len(spec.Static)+len(spec.Triggered)+len(spec.Activated)+len(spec.CostModifiers)+len(spec.GatedCastPermissions))
+	out := make([]game.Designation, 0, len(spec.Static)+len(spec.Triggered)+len(spec.Activated)+len(spec.CostModifiers)+len(spec.GatedCastPermissions)+len(spec.TriggerDoublers))
 	for _, a := range spec.Static {
 		out = append(out, a.ActiveWhen)
 	}
@@ -241,6 +249,9 @@ func specDesignations(spec Spec) []game.Designation {
 	}
 	for _, m := range spec.CostModifiers {
 		out = append(out, m.ActiveWhen)
+	}
+	for _, d := range spec.TriggerDoublers {
+		out = append(out, d.ActiveWhen)
 	}
 	for _, p := range spec.GatedCastPermissions {
 		out = append(out, p.ActiveWhen)
