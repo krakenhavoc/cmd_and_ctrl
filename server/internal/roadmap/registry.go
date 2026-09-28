@@ -655,6 +655,15 @@ var items = []Item{
 		Probe:   designation(game.DesignationHarnessed),
 	},
 	{
+		Slug: "monstrosity", Name: "Monstrosity", Kind: KindMechanic, Status: StatusImplemented,
+		Summary:  "Once per creature, pay to put +1/+1 counters on it and make it monstrous, which can trigger an ability or switch one on.",
+		Rules:    []string{"701.37"},
+		ADR:      "0071-designations-that-switch-abilities-on.md",
+		Probe:    anyOf(activatedAction("Monstrosity"), designation(game.DesignationMonstrous)),
+		Printed:  `(?i):\s*monstrosity\b`, // the keyword action after a cost, not a card named "Monstrosity of the Lake"
+		Examples: []string{"Stormbreath Dragon"},
+	},
+	{
 		Slug: "hideaway", Name: "Hideaway", Kind: KindMechanic, Status: StatusImplemented,
 		Summary:  "When a permanent with hideaway enters, you exile one of your top cards face down and may later play it for free.",
 		Rules:    []string{"702.75"},

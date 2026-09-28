@@ -102,6 +102,7 @@ battlefield.cards[].lostLastCounter	bool
 battlefield.cards[].manaAbilityCount	number:int
 battlefield.cards[].manaCost	string
 battlefield.cards[].markedLethalByDeathtouch	bool
+battlefield.cards[].monstrous	bool
 battlefield.cards[].name	string
 battlefield.cards[].namedTribe	string
 battlefield.cards[].needsEffect	bool
@@ -427,6 +428,7 @@ exile.cards[].lostLastCounter	bool
 exile.cards[].manaAbilityCount	number:int
 exile.cards[].manaCost	string
 exile.cards[].markedLethalByDeathtouch	bool
+exile.cards[].monstrous	bool
 exile.cards[].name	string
 exile.cards[].namedTribe	string
 exile.cards[].needsEffect	bool
@@ -730,6 +732,7 @@ lastKnownStack[].card.lostLastCounter	bool
 lastKnownStack[].card.manaAbilityCount	number:int
 lastKnownStack[].card.manaCost	string
 lastKnownStack[].card.markedLethalByDeathtouch	bool
+lastKnownStack[].card.monstrous	bool
 lastKnownStack[].card.name	string
 lastKnownStack[].card.namedTribe	string
 lastKnownStack[].card.needsEffect	bool
@@ -1424,6 +1427,7 @@ phasedOut.cards[].lostLastCounter	bool
 phasedOut.cards[].manaAbilityCount	number:int
 phasedOut.cards[].manaCost	string
 phasedOut.cards[].markedLethalByDeathtouch	bool
+phasedOut.cards[].monstrous	bool
 phasedOut.cards[].name	string
 phasedOut.cards[].namedTribe	string
 phasedOut.cards[].needsEffect	bool
@@ -1735,6 +1739,7 @@ seats[].command.cards[].lostLastCounter	bool
 seats[].command.cards[].manaAbilityCount	number:int
 seats[].command.cards[].manaCost	string
 seats[].command.cards[].markedLethalByDeathtouch	bool
+seats[].command.cards[].monstrous	bool
 seats[].command.cards[].name	string
 seats[].command.cards[].namedTribe	string
 seats[].command.cards[].needsEffect	bool
@@ -1937,6 +1942,7 @@ seats[].emblems.cards[].lostLastCounter	bool
 seats[].emblems.cards[].manaAbilityCount	number:int
 seats[].emblems.cards[].manaCost	string
 seats[].emblems.cards[].markedLethalByDeathtouch	bool
+seats[].emblems.cards[].monstrous	bool
 seats[].emblems.cards[].name	string
 seats[].emblems.cards[].namedTribe	string
 seats[].emblems.cards[].needsEffect	bool
@@ -2129,6 +2135,7 @@ seats[].graveyard.cards[].lostLastCounter	bool
 seats[].graveyard.cards[].manaAbilityCount	number:int
 seats[].graveyard.cards[].manaCost	string
 seats[].graveyard.cards[].markedLethalByDeathtouch	bool
+seats[].graveyard.cards[].monstrous	bool
 seats[].graveyard.cards[].name	string
 seats[].graveyard.cards[].namedTribe	string
 seats[].graveyard.cards[].needsEffect	bool
@@ -2320,6 +2327,7 @@ seats[].hand.cards[].lostLastCounter	bool
 seats[].hand.cards[].manaAbilityCount	number:int
 seats[].hand.cards[].manaCost	string
 seats[].hand.cards[].markedLethalByDeathtouch	bool
+seats[].hand.cards[].monstrous	bool
 seats[].hand.cards[].name	string
 seats[].hand.cards[].namedTribe	string
 seats[].hand.cards[].needsEffect	bool
@@ -2515,6 +2523,7 @@ seats[].library.cards[].lostLastCounter	bool
 seats[].library.cards[].manaAbilityCount	number:int
 seats[].library.cards[].manaCost	string
 seats[].library.cards[].markedLethalByDeathtouch	bool
+seats[].library.cards[].monstrous	bool
 seats[].library.cards[].name	string
 seats[].library.cards[].namedTribe	string
 seats[].library.cards[].needsEffect	bool
@@ -2803,6 +2812,7 @@ stack.cards[].lostLastCounter	bool
 stack.cards[].manaAbilityCount	number:int
 stack.cards[].manaCost	string
 stack.cards[].markedLethalByDeathtouch	bool
+stack.cards[].monstrous	bool
 stack.cards[].name	string
 stack.cards[].namedTribe	string
 stack.cards[].needsEffect	bool

@@ -92,3 +92,35 @@ func TestDesignationViewStampsLevelAndSolved(t *testing.T) {
 		t.Error("solved must be absent for anything that is not a solved Case")
 	}
 }
+
+// TestMonstrousViewIsPublicOnTheBattlefield — #1700: CardView.monstrous
+// is read straight off a battlefield permanent, like harnessed, and is
+// absent for one that is not monstrous.
+func TestMonstrousViewIsPublicOnTheBattlefield(t *testing.T) {
+	g := buildActiveGame(t)
+	owner := g.Seats[0]
+	monsterID, plainID := uuid.New(), uuid.New()
+	now := time.Now().UnixNano()
+	seen := map[uuid.UUID]bool{owner.ID: true, g.Seats[1].ID: true}
+	g.WithWriteLock(func() {
+		g.Battlefield.PushTop(game.Card{
+			InstanceID: monsterID, Name: "Stormbreath Dragon", TypeLine: "Creature — Dragon",
+			Owner: owner.ID, Controller: owner.ID, EnteredBattlefieldAt: now, Monstrous: true, KnownBy: seen,
+		})
+		g.Battlefield.PushTop(game.Card{
+			InstanceID: plainID, Name: "Grizzly Bears", TypeLine: "Creature — Bear",
+			Owner: owner.ID, Controller: owner.ID, EnteredBattlefieldAt: now, KnownBy: seen,
+		})
+	})
+	v := ViewOfGameFor(g, g.Seats[1].ID.String())
+	got := map[string]bool{}
+	for _, c := range v.Battlefield.Cards {
+		got[c.InstanceID] = c.Monstrous
+	}
+	if !got[monsterID.String()] {
+		t.Error("a monstrous permanent does not project monstrous to an opponent")
+	}
+	if got[plainID.String()] {
+		t.Error("a permanent that is not monstrous projects monstrous")
+	}
+}

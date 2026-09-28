@@ -388,6 +388,9 @@ var cardFields = plan(
 	// is a legal state, so a restore that dropped it would come back
 	// wrong and say nothing.
 	"Harnessed", carried, "",
+	// ADR 0071 amendment (#1700): the CR 701.37b monstrous
+	// designation, carried for Harnessed's reason.
+	"Monstrous", carried, "",
 	// ADR 0090 (#1328): the CR 722.3a prepared designation, the
 	// CR 722.3c copy's not-a-card marker, and the permanent object the
 	// copy is kept in exile by. Carried for Solved's reason — every

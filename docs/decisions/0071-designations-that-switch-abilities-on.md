@@ -1045,3 +1045,174 @@ Outpost Siege and Frontier Siege — all `CompletenessFull`.
   and a target-reading `CostModifier`), unverified.
 - Mana abilities and replacement effects still take no gate (Decision 1
   point 3); no Siege needs one.
+
+---
+
+## Amendment (2026-09-28): a sixth designation, Monstrous (CR 701.37, #1700)
+
+**Status:** Accepted · 2026-09-28 · tracked on
+[#1700](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1700),
+tracker [#889](https://github.com/krakenhavoc/cmd_and_ctrl/issues/889).
+Relates to [#1657](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1657)
+(whose builder skipped Polukranos for want of this) and
+[#1563](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1563) (divided
+damage).
+
+### Context
+
+CR 701.37 is a keyword action that sets a designation:
+
+> **701.37a** "Monstrosity N" means "If this permanent isn't monstrous, put
+> N +1/+1 counters on it and it becomes monstrous."
+> **701.37b** Monstrous is a designation that has no rules meaning other
+> than to act as a marker that the monstrosity action and other spells and
+> abilities can identify. Only permanents can be or become monstrous. Once
+> a permanent has become monstrous, it stays monstrous until it leaves the
+> battlefield. Monstrous is neither an ability nor part of the permanent's
+> copiable values.
+> **701.37c** If a permanent's ability instructs it to become monstrous,
+> but that permanent is already monstrous, the ability does nothing. …
+> Abilities that trigger when a permanent "becomes monstrous" … "X" refers
+> to the number chosen for X in the monstrosity ability.
+
+The engine had neither the marker nor an event, so two printed shapes could
+not be written: "When this creature becomes monstrous, …" (Polukranos,
+Stormbreath Dragon, Hydra Broodmaster, Ember Swallower, Arbor Colossus) and
+"As long as this creature is monstrous, it has …" (Fleecemane Lion,
+Domesticated Hydra, Hundred-Handed One). The second is exactly what this
+ADR's gate is for; the first needs an event that carries X.
+
+### Decision: Harnessed's three pieces, plus the counters and the X
+
+- **`Card.Monstrous bool`** (`game/card.go`), in the bool block beside
+  `Harnessed`. Every lifecycle rule is Harnessed's: not copiable
+  (`CopiableValuesOf` never reads it — CR 701.37b says so in terms),
+  cleared at both CR 400.7 sites (`zone.go`'s battlefield exit and
+  `entry_tail.go`'s `resetAsNewObjectLocked`), carried by clone (`out := c`)
+  and the snapshot (`cardSnapshot.Monstrous`, both projection sites,
+  `carried` in `snapshot_drift_test.go`). Additive with a correct zero value
+  ("not monstrous"), so the v7 shape file was updated in place with no
+  schema bump, as #1572's `chosenOption` was.
+- **`DesignationMonstrous`** is appended to the `DesignationKind` enum (no
+  existing value moves), `Active` answers `c.Monstrous`, and
+  `game.Monstrous()` builds the gate. Nothing else changed for the four
+  accessors to honour it — Decision 1's argument, paid off a sixth time.
+- **`Game.MonstrosityForEffect(cardID, n)`** is the keyword action and the
+  one writer of the flag outside the snapshot restore. Three rules, each one
+  line:
+  1. **"Isn't monstrous" is checked on resolution.** A permanent that is
+     already monstrous returns immediately — no counters, no event. There is
+     no activation `Condition`: CR 701.37a is an *if* inside the effect, so
+     a second activation is legal, and one activated in response to the
+     first finds the creature monstrous by the time it resolves. A
+     `Condition` would get the in-response case wrong.
+  2. **The counters ride the CR 614 pipeline**
+     (`AddCounterByThenForEffect`, placed by the permanent's controller), so
+     Doubling Season and Hardened Scales apply, and a window holding both
+     pauses on the CR 616 ordering prompt. The designation and the event are
+     the placement's **continuation**, so nothing — no trigger, no gated
+     static — sees the creature monstrous before its counters are on it. The
+     continuation re-finds the card and re-checks the flag, because the
+     pointer is not stable across the pause. The creature becomes monstrous
+     even when the counters are replaced away entirely; the two halves of
+     the instruction are not conditional on each other.
+  3. **The event carries the announced N**, not the counters that landed:
+     `EventBecameMonstrous` (Source / CardID / Target = the permanent,
+     Actor = its controller, **Amount = N**). CR 701.37c and the Theros
+     rulings make "X" in a becomes-monstrous trigger the X of the
+     instruction, so a Doubling Season that doubles Polukranos's counters
+     does not double its damage.
+
+  A permanent not on the battlefield is a quiet no-op rather than an error
+  (its ability's source left in response; CR 701.37b's "only permanents").
+  A negative N reads as zero.
+- **`EventBecameMonstrous` bumps the layer version** with the other
+  designation events in `layer_listener.go`. This is load-bearing at
+  X = 0: no counter is placed, so no `EventCounterPlaced` invalidates the
+  pass, and without the bump a Domesticated Hydra made monstrous for
+  {G}{G}{G} would not have trample
+  (`TestDomesticatedHydraAtXZeroStillGainsTrample`). Silent on the public
+  log (`silentBoardStateIsVisible`), for `EventHarnessed`'s reason: the
+  counters are narrated, the designation is a badge.
+
+**Wire:** `CardView.monstrous` (omitempty), read straight off a battlefield
+permanent like `harnessed` — no card type owns monstrosity, so there is no
+subtype probe. Public, and cleared on the non-knower (face-down) redaction
+with the other designations. No client change in this amendment: the client
+renders none of `harnessed`, `solved` or `monstrous` as a badge yet, and the
++1/+1 counters it does render are the visible half.
+
+**Catalog side** (`cards/effects/monstrosity.go`):
+
+| Printed | Constructor |
+|---|---|
+| "{cost}: Monstrosity N." | `Monstrosity(cost, n)` |
+| "{cost}: Monstrosity X." | `MonstrosityX(cost)` — N is `item.XValue` |
+| "When this creature becomes monstrous, …" | `WhenBecomesMonstrous(label, effect)` |
+| "… X …" in that trigger | `MonstrosityXOf(item)` — the event's Amount |
+| "As long as this creature is monstrous, it has …" | `MonstrousKeywords(kws...)` |
+
+The activated ability's label is built from the cost ("{5}{R}{R}:
+Monstrosity 3."), which is the printed line without reminder text, so
+`TestAbilitiesMatchOracleText` holds by construction. Not sorcery speed.
+Both activation constructors run `sourceIsNewObject` first (#1432), so the
+ability of a creature that left and came back does not make the new object
+monstrous.
+
+**Polukranos's divided X.** #1563's `DivideSpec` refuses `FromX` on a
+trigger, because a trigger announces no X. It does not need to: Polukranos's
+clause comes from `TriggeredAbility.TargetsFrom`, which reads X off the
+trigger context (`tc.Amount()`) and returns
+`TargetCreature(…, OpponentControls()).WithCount(0, X).Dividing(Divide(X))`
+— a fixed `Total` sized per trigger instance, which the CR 603.3d walk
+settles exactly as it settles Inferno Titan's 3. "Any number" caps at X
+because every target must be assigned at least one (CR 601.2d); X = 0
+returns a nil clause, so the trigger targets nothing. `TargetsFrom` reads
+only its trigger context, so the clause is re-derivable on restore and
+`TargetsFromReadsBoard` stays false. This does not depend on #1699's
+`AmountKey`; that PR's shape would also express it, and neither conflicts.
+
+**Bots.** Monstrosity is an ordinary activation; `internal/legal` needs no
+change. Polukranos and Hydra Broodmaster declare `XMatters` (X = 0 spends
+the monstrosity for nothing), so the enumerator's X floor is 1 for them;
+Domesticated Hydra takes an `xMattersAllowlist` entry, because X = 0 still
+buys it trample. The enumerator will still offer a second activation on a
+creature that is already monstrous — legal and useless, the same posture
+Harness has.
+
+**Roadmap:** a `monstrosity` mechanic entry (`internal/roadmap/registry.go`)
+probed by the keyword action after a cost or the `Monstrous` gate.
+
+### Cards
+
+All eight are new. Seven ship `full`; one ships with a caveat.
+
+| Card | What it proves |
+|---|---|
+| Polukranos, World Eater | Monstrosity X, the trigger's X, the X-sized divided clause, the fight-back from each still-legal target |
+| Stormbreath Dragon | Monstrosity N and a becomes-monstrous trigger reading hand sizes on resolution; flying, haste, protection from white |
+| Hydra Broodmaster | the trigger's X is the announced X under Doubling Season (X X/X tokens, not 2X) |
+| Ember Swallower | a symmetrical edict, each seat asked three times in APNAP order |
+| Arbor Colossus | a targeted becomes-monstrous trigger; no legal target, no prompt (CR 603.3d) |
+| Fleecemane Lion | gated hexproof and indestructible |
+| Domesticated Hydra | Monstrosity X and a gated keyword; X = 0 still switches it on |
+| Hundred-Handed One | gated reach — **caveat:** "can block an additional ninety-nine creatures" has no shape (a blocker maps to one attacker), Brave the Sands' gap |
+
+### Still not covered
+
+- **"Enters or becomes monstrous"** (Alpha Deathclaw, Protector of the
+  Wastes) is one ability watching two events — expressible today
+  (`Watches: {EventETB, EventBecameMonstrous}`); not attempted here to keep
+  to eight cards. Protector's "controlled by different players" is a
+  cross-target constraint that needs checking separately.
+- **Cost reductions on the monstrosity ability** (Grim Giganotosaurus,
+  Nemesis of Mortals) need an activated-ability cost modifier reading the
+  board — unverified.
+- **Monstrosity X where X is not announced** (Clay Golem's die roll,
+  Maester Seymour's counter count) needs `MonstrosityX` to take its N from a
+  rule rather than `item.XValue`; the engine half already takes any N.
+- **Shipbreaker Kraken**'s "don't untap for as long as you control this
+  creature" rides ADR 0058's duration, and **Sealock Monster**'s land-type
+  change rides layer 4 — both unverified.
+- The rest of the monstrosity cards are keywords plus the ability and are
+  one file each.
