@@ -15,29 +15,31 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // as printed. The intervening if is b15LifeGainedThisTurn, checked
 // at announce and again at resolution (CR 603.4); the targets are
 // "any number of other target creatures", Appa, Steadfast Guardian's
-// Min-0 unbounded clause with Lathiel kept out by name; and the
-// counters are placed on the announced creatures that are still
-// legal when the trigger resolves.
+// Min-0 unbounded clause with Lathiel kept out by name.
 //
-// Sandbox simplification, declared: "distribute" is a split of the
-// controller's choosing, and the engine has no prompt for one. The
-// counters are dealt out one at a time around the chosen creatures
-// in the order they were picked — one creature gets them all, three
-// creatures share them as evenly as the count allows, with the first
-// picked getting the remainder. Every split is one the printed card
-// allows and the total is never more than the life gained; "up to"
-// is answered by choosing fewer creatures, or none. Weaker than
-// printed — an uneven split cannot be asked for — never stronger.
+// "Distribute up to that many" is a divided clause (#1657, ADR 0065's
+// 2026-09-28 (b) amendment): UpTo(DivideBy(DivideLifeYouGainedThisTurn)).
+// The amount is the life gained this turn, read as the trigger is put
+// on the stack — the target walk — and never again, which is the
+// ruling: "Gaining more life in response to the triggered ability
+// won't change how many counters will be distributed, nor will it
+// change the distribution." The controller announces the split with
+// the targets; UpTo lets it add up to LESS than the life gained, and
+// each chosen creature still gets at least one (the ruling again), so
+// three life can be 1 + 1 on two creatures. Choosing no creature at
+// all is the clause's Min 0 — "you may choose no targets". At
+// resolution each creature still a legal target gets exactly its
+// announced share (PutDividedCounters); a departed creature's share
+// is lost, not moved.
 //
 // With no other creature on the battlefield the trigger is dropped
 // before the prompt (CR 603.3d); the printed card would put it on
-// the stack to do nothing.
+// the stack to do nothing. No difference anyone can observe.
 func init() {
 	Register(Spec{
 		OracleID:        "d3c56fc4-3611-41b1-952e-4c5311b1510b",
 		Name:            "Lathiel, the Bounteous Dawn",
-		Completeness:    CompletenessCaveats,
-		Caveats:         []string{"The counters are dealt out one at a time around the creatures you chose, in the order you picked them — you can't ask for an uneven split."},
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"lifelink"},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventBeginEndStep},
@@ -45,9 +47,20 @@ func init() {
 				return b33EndStepAndYouGainedLifeThisTurn(ev, source, g)
 			},
 			Targets: TargetCreature("any number of other target creatures",
-				b03NotNamed("Lathiel, the Bounteous Dawn")).WithCount(0, 0),
+				b03NotNamed("Lathiel, the Bounteous Dawn")).WithCount(0, 0).
+				Dividing(UpTo(DivideBy(DivideLifeYouGainedThisTurn))),
 			Key:    "Lathiel, the Bounteous Dawn — distribute +1/+1 counters among the chosen creatures",
-			Effect: b33DistributeCountersRoundRobin,
+			Effect: lathielDistributeCounters,
 		}},
 	})
+}
+
+// lathielDistributeCounters is Lathiel's body: the intervening if
+// re-checked (CR 603.4), then each surviving target's announced share
+// of +1/+1 counters.
+func lathielDistributeCounters(g *game.Game, item *game.StackItem) error {
+	if b15LifeGainedThisTurn(g, item.Controller) <= 0 {
+		return nil
+	}
+	return PutDividedCounters(NewContext(g, item), game.CounterPlusOne)
 }

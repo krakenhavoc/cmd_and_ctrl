@@ -923,6 +923,12 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// #1559: "with mana value X or less" — X is announced before
 	// targets (CR 601.2b / 602.2b), so the bound is known here.
 	bindStepsX(steps, params.XValue)
+	// #1657, CR 601.2d: a divided amount read off the board or off the
+	// claimed alternative cost ("X if its madness cost was paid") is
+	// fixed here, with the targets, and never re-read.
+	g.bindDivideAmountsLocked(steps, DivideAmountArgs{
+		Controller: playerID, Source: cardID, AltCost: params.AlternativeCost,
+	})
 	params.Targets = assignAnnouncedSlots(steps, params.Targets)
 	for _, i := range xSteps {
 		// Max 0 reads as "unbounded" to the ordinary count check, so

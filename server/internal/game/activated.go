@@ -1238,6 +1238,8 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// #1559: "with mana value X or less" — X is announced before
 	// targets (CR 601.2b / 602.2b), so the bound is known here.
 	bindStepsX(steps, params.XValue)
+	// #1657: a divided amount read off the board, fixed at activation.
+	g.bindDivideAmountsLocked(steps, DivideAmountArgs{Controller: playerID, Source: cardID})
 	params.Targets = assignAnnouncedSlots(steps, params.Targets)
 	for _, i := range xSteps {
 		if n := stepTargetCount(steps[i], params.Targets); n != params.XValue {
