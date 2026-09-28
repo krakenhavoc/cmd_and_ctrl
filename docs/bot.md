@@ -1731,6 +1731,34 @@ life is offered Toxic Deluge at X=12; a bot at 1 life is not offered it
 at all. The rule is keyed on the cost component, so the next card that
 prints "pay X life" is priced without a line of its own.
 
+**Phyrexian symbols can be paid with life, on spells and abilities
+alike.** A `{B/P}` is one black mana or 2 life (CR 107.4c), and the
+caster announces how many symbols the life buys as `phyrexian_life`.
+Abilities have had this since
+[#917](https://github.com/krakenhavoc/cmd_and_ctrl/issues/917). Casts
+priced only the mana until
+[#1677](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1677), so a
+bot with one Swamp was never offered Dismember at any life total. Each
+cast now gets at most two payments. The first is all mana when the
+seat can pay it, and otherwise the fewest symbols paid with life that
+make the cast affordable. The second pays every symbol with life, and
+is offered once per card out of the budget the targets left over. The
+counts in between are the same trade paid partly, so they are not
+offered. Every count is bounded by the engine's own life predicate
+(CR 119.4, and CR 119.8's locked life total). The move label says
+`paying 4 life for Phyrexian mana`, and `Move.Cost` carries the life
+twice: in `life`, with the rest of what the move charges, and in
+`phyrexian_life`, the part that buys nothing extra.
+
+That second field is how the heuristic gets it right. Other life costs
+earn a small payoff (`LifePayoff`), because what a card charges is the
+only evidence of what it does. Phyrexian life gets no payoff: it buys
+the same spell the mana would. So wherever the seat can pay mana, the
+mana payment scores higher. The heuristic also never pays Phyrexian
+life that would leave it below 10 (`phyrexianLifeFloor`, the default
+`DangerLife`). The random tier picks among the legal moves like any
+other.
+
 **A spell whose target count is X is offered with X equal to the
 number of targets it picks.** Crackle with Power deals five times X
 damage to each of up to X targets, so the count and the announcement

@@ -546,7 +546,7 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 							// Phyrexian half counts — a policy that saw
 							// only the printed component would read a
 							// four-life activation as free.
-							cost := moveCost(ab.Cost.Life+phyrexianLife*game.PhyrexianLifePerSymbol, loyalty)
+							cost := withPhyrexianLife(moveCost(ab.Cost.Life, loyalty), phyrexianLife)
 							for _, price := range cc.prices() {
 								cost = withCounterPrice(cost, price)
 							}
@@ -918,10 +918,14 @@ func (e *enumerator) affordablePayment(
 	if x, ok := e.affordableXExcluding(cost, spend, floor, excluded); ok {
 		return x, 0, true
 	}
-	budget := e.p.Life - reservedLife
 	for n := 1; n <= cost.PhyrexianSymbols(); n++ {
 		reduced, life := game.PhyrexianLifePlan(cost, e.p.ManaPool, spend, n)
-		if life > budget {
+		// #1677: the engine's own predicate — CR 119.4's "down to 0"
+		// and CR 119.8's locked life total — rather than a bare
+		// subtraction that knew only the first half, so a seat under
+		// a life lock is not offered a Phyrexian activation the
+		// strike refuses.
+		if !e.g.CanPayLifeLocked(e.p, reservedLife+life) {
 			break
 		}
 		if x, ok := e.affordableXExcluding(reduced, spend, floor, excluded); ok {
