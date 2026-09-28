@@ -250,10 +250,17 @@ const (
 // know its declaration order, and so the two readers above share one
 // lookup.
 func OptionalCostTimesPaid(card Card, paid []int, key string) int {
+	return optionalCostTimesFor(CatalogKey(card), paid, key)
+}
+
+// optionalCostTimesFor is OptionalCostTimesPaid by catalog key, for a
+// reader that holds the announcement but not the card — a conditional
+// mode count's ModeCountQuery (#1655).
+func optionalCostTimesFor(oracleID string, paid []int, key string) int {
 	if len(paid) == 0 || key == "" {
 		return 0
 	}
-	costs := OptionalCostsFor(CatalogKey(card))
+	costs := OptionalCostsFor(oracleID)
 	if len(costs) == 0 {
 		return 0
 	}

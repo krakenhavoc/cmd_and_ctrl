@@ -85,6 +85,7 @@
     alternativeCostsOf,
     alternativeCostByKey,
     castTargetOverride,
+    modesUnderChoices,
     altCostPayOptions,
     applyCastChoices,
     castChoicesBase,
@@ -791,7 +792,8 @@
   function continueCast(card: CardView, choices: CastChoices): void {
     if (isModal(card)) {
       modePromptChoices = choices;
-      modePromptCard = card;
+      // #1655: a ticked kicker can change how many bullets it may take.
+      modePromptCard = modesUnderChoices(card, choices);
       return;
     }
     // S14: if the card declares a target_mode (catalog cards with

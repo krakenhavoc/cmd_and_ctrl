@@ -132,7 +132,11 @@
       <h2 id="mode-picker-title">
         {card.name}
         <span class="prompt-src" aria-hidden="true">
-          {single ? "choose one" : `choose up to ${spec.max}`}
+          {single
+            ? "choose one"
+            : spec.min === spec.max
+              ? `choose ${spec.max}`
+              : `choose up to ${spec.max}`}
         </span>
       </h2>
       <p class="prompt-hint">
