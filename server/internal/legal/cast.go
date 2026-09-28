@@ -740,7 +740,14 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	modeSpec := game.ModeSpecFor(game.CatalogKey(card))
 	modeSets := [][]int{nil}
 	if modeSpec != nil {
-		modeSets = e.legalModeSets(castSrc, modeSpec)
+		// #1655: under THIS announcement's optional costs — a kicked
+		// Inscription of Ruin may take every bullet, an unkicked one
+		// exactly one, and each is its own move.
+		modeSets = e.legalModeSets(castSrc, modeSpec, game.ModeCountQuery{
+			Chooser:       e.seat,
+			OracleID:      game.CatalogKey(card),
+			OptionalCosts: chosen,
+		})
 		if len(modeSets) == 0 {
 			return
 		}
@@ -1369,12 +1376,13 @@ func (e *enumerator) allLifePayment(first *announcedCast, spend game.ManaSpendCo
 	return n, true
 }
 
-// legalModeSets lists every distinct mode selection of size
-// Min..max, where max is the bound the announce gate will hold this
-// seat to — the printed Max, or the raised one while a conditional
-// mode count holds (#1590, game.ModeMaxForEffect). A seat without a
-// commander is never offered Jeska's Will's "both".
-func (e *enumerator) legalModeSets(src game.TargetSource, ms *game.ModeSpec) [][]int {
+// legalModeSets lists every distinct mode selection of size lo..hi,
+// the bounds the announce gate will hold this announcement to — the
+// printed Min / Max, or the raised ones while a conditional mode count
+// holds (#1590, #1655, game.ModeBoundsForEffect). A seat without a
+// commander is never offered Jeska's Will's "both", and a kicked
+// Depth Defiler-shaped count is never offered one bullet.
+func (e *enumerator) legalModeSets(src game.TargetSource, ms *game.ModeSpec, q game.ModeCountQuery) [][]int {
 	// ADR 0065 §6, "prefer the modes that have legal targets": an
 	// option whose clause cannot be filled is dropped before any
 	// combination is built, so the budget never goes on a selection
@@ -1383,7 +1391,12 @@ func (e *enumerator) legalModeSets(src game.TargetSource, ms *game.ModeSpec) [][
 	if !game.EnoughChoosableModes(len(options), ms) {
 		return nil
 	}
-	hi := e.g.ModeMaxForEffect(ms, e.seat)
+	lo, hi := e.g.ModeBoundsForEffect(ms, q)
+	if !ms.Repeatable && lo > len(options) {
+		// A forced count the board cannot fill: the gate refuses every
+		// selection, so there is no move (#544).
+		return nil
+	}
 	if hi <= 0 || (!ms.Repeatable && hi > len(options)) {
 		hi = len(options)
 	}
@@ -1393,12 +1406,11 @@ func (e *enumerator) legalModeSets(src game.TargetSource, ms *game.ModeSpec) [][
 		out = append(out, append([]int(nil), sel...))
 		return len(out) < budget
 	}
-	if ms.Min == 0 {
+	if lo == 0 {
 		if !add(nil) {
 			return out
 		}
 	}
-	lo := ms.Min
 	if lo < 1 {
 		lo = 1
 	}

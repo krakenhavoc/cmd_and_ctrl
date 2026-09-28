@@ -905,6 +905,19 @@ export function castTargetOverride(
   return undefined;
 }
 
+// modesUnderChoices is the card the mode picker should open on for
+// THIS cast (#1655): the card itself, or — when the caster has ticked
+// an optional cost and the server said that changes the mode count —
+// a copy whose `modes` carries `if_optional_paid`'s bounds. CR 601.2b
+// announces the kicker with the modes, so a kicked Inscription of Ruin
+// may take any number of bullets and an unkicked one exactly one.
+export function modesUnderChoices(card: CardView, choices: CastChoices | undefined): CardView {
+  const modes = card.modes;
+  const paid = modes?.if_optional_paid;
+  if (!modes || !paid || (choices?.optionalCosts?.length ?? 0) === 0) return card;
+  return { ...card, modes: { ...modes, min: paid.min, max: paid.max } };
+}
+
 // optionalCostPayOptions returns the permanents that can pay an
 // offer's sacrifice half, or undefined when it charges none — which
 // is every mana kicker. An empty array means the offer cannot be
