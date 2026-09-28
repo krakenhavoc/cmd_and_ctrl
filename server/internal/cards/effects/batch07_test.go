@@ -830,6 +830,15 @@ func TestB07SerumVisionsDrawsThenScriesTwo(t *testing.T) {
 	}
 }
 
+// TestB07SplendidReclamationReturnsEveryLandCardTapped is #1654's
+// closing half of #1284: the lands return via
+// ReturnFromGraveyard.Tapped, not an untapped return followed by an
+// OnETB tap. The assertion that earns its keep is the tap EVENT
+// count, not the Tapped flag — the same discipline temples_test.go
+// and reassembling_skeleton_test.go use for their own self-entry
+// replacements: an enters-then-gets-tapped workaround would leave the
+// permanent Tapped too, so only counting EventTapCard tells the two
+// apart.
 func TestB07SplendidReclamationReturnsEveryLandCardTapped(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
@@ -852,6 +861,9 @@ func TestB07SplendidReclamationReturnsEveryLandCardTapped(t *testing.T) {
 		}
 		if card.Controller != me.ID {
 			t.Errorf("%s returned under %s, want the caster", card.Name, card.Controller)
+		}
+		if n := tapEventsFor(g, id); n != 0 {
+			t.Errorf("%s entered via a replacement, not an OnETB tap — got %d EventTapCard, want 0", card.Name, n)
 		}
 	}
 	if !me.Graveyard.Contains(bear) {
