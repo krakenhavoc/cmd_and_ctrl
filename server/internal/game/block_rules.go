@@ -300,7 +300,7 @@ func (g *Game) blockerCountValidLocked(attacker *Card, n int) bool {
 // breaks — so the client has a card to highlight.
 //
 // Caller must hold g.mu with fresh layers. Reads only.
-func (g *Game) blockLimitRefusalLocked(base, after map[uuid.UUID]uuid.UUID, decls []BlockDeclaration) *BlockRefusedError {
+func (g *Game) blockLimitRefusalLocked(base, after blockAssignment, decls []BlockDeclaration) *BlockRefusedError {
 	var out *BlockRefusedError
 	check := func(r BlockRule, source *Card) bool {
 		if r.Limit == nil {
@@ -380,7 +380,7 @@ func (r BlockRule) limitGroup(blocker *Card) uuid.UUID {
 // in is absent; nil when none counts at all.
 //
 // Caller must hold g.mu with fresh layers. Reads only.
-func (g *Game) blockLimitTallyLocked(r BlockRule, source *Card, assign map[uuid.UUID]uuid.UUID) map[uuid.UUID]blockLimitTally {
+func (g *Game) blockLimitTallyLocked(r BlockRule, source *Card, assign blockAssignment) map[uuid.UUID]blockLimitTally {
 	var out map[uuid.UUID]blockLimitTally
 	for blockerID := range assign {
 		b := findBattlefieldCard(g, blockerID)

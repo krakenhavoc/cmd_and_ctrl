@@ -114,6 +114,11 @@ export const BLOCK_REFUSAL_REASONS = [
   // "must be blocked if able"). `card_id` is the creature that could
   // obey it; the message names the requirement.
   "block_requirement",
+  // #1706 (CR 509.1a/b): one more attacker than the blocker can block —
+  // a creature that "can block an additional creature" already blocking
+  // two. Only a creature that can block more than one is ever refused
+  // this; an ordinary blocker's second block re-points it.
+  "blocker_capacity",
 ] as const;
 export type BlockRefusalReason = (typeof BLOCK_REFUSAL_REASONS)[number];
 
@@ -1176,6 +1181,10 @@ export interface DamageAssignmentView {
   attacker_power: number;
   allow_trample?: boolean;
   has_deathtouch?: boolean;
+  // #1706, CR 510.1d: the card in attacker_card_id is a BLOCKER that
+  // blocks every creature in blocker_card_ids, and its controller
+  // divides its damage among them freely — no order, no trample.
+  blocker_divides?: boolean;
 }
 
 // DelayedTriggerView mirrors `protocol.DelayedTriggerView`
@@ -2389,6 +2398,15 @@ export interface CardView extends CastSurfaceView {
   // Omitted when not declared as blocker. Cleared on zone exit and
   // by clear_combat. Added in S08.
   blocking_target?: string;
+  // #1706: every attacker this card blocks, in declaration order, when
+  // it blocks two or more (High Ground, Palace Guard). Omitted for an
+  // ordinary blocker — read blockedAttackersOf rather than either field.
+  blocking_targets?: string[];
+  // #1706: how many attackers this creature can block when an effect
+  // lets it block more than one; blocks_any_number instead when it can
+  // block any number. Both omitted for the ordinary one-attacker case.
+  block_capacity?: number;
+  blocks_any_number?: boolean;
   // Player ID whose goad on this creature is the most recent, or
   // omitted when not goaded. Cleared on zone exit. Added in S10;
   // enforced server-side since #1571 (CR 701.15b — attacks each combat

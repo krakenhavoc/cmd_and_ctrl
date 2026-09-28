@@ -104,3 +104,26 @@ export function defendingPlayerOf(attacker: CardView): string | undefined {
 export function attackersDefendedBy(view: GameView, seatID: string): CardView[] {
   return (view.battlefield?.cards ?? []).filter((c) => defendingPlayerOf(c) === seatID);
 }
+
+// blockedAttackersOf is every attacker `card` blocks (#1706): the
+// server's blocking_targets when it blocks two or more, else its one
+// blocking_target, else none.
+export function blockedAttackersOf(
+  card: Pick<CardView, "blocking_target" | "blocking_targets">,
+): string[] {
+  if (card.blocking_targets && card.blocking_targets.length > 0) return [...card.blocking_targets];
+  return card.blocking_target ? [card.blocking_target] : [];
+}
+
+// blockerHasRoom reports whether a creature already blocking could be
+// pointed at one more attacker (#1706) — the server's capacity stamps,
+// never a rule re-derived here.
+export function blockerHasRoom(
+  card: Pick<
+    CardView,
+    "blocking_target" | "blocking_targets" | "block_capacity" | "blocks_any_number"
+  >,
+): boolean {
+  if (card.blocks_any_number) return true;
+  return blockedAttackersOf(card).length < (card.block_capacity ?? 1);
+}

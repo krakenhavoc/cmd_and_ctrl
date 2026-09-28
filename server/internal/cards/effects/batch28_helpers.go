@@ -139,6 +139,16 @@ func b28SelfBlocked(ev game.Event, source *game.Card) bool {
 	return ev.Kind == game.EventBlock && ev.CardID == source.InstanceID && ev.Target != uuid.Nil
 }
 
+// selfBlocksOnce is "whenever this creature blocks" with no object —
+// CR 509.3a, which triggers ONCE however many attackers the creature
+// blocks (#1706: High Ground, Palace Guard). The lock-in emits one
+// EventBlock per attacker and numbers them in Amount, so only the
+// first (Amount 1; 0 on a hand-built event) counts. "Whenever this
+// blocks A creature" (CR 509.3b, Brimaz) is b28SelfBlocked, per pair.
+func selfBlocksOnce(ev game.Event, source *game.Card) bool {
+	return b28SelfBlocked(ev, source) && ev.Amount <= 1
+}
+
 // b28GraveyardHasCreatureCardOfSubtype reports whether `player`'s
 // graveyard holds a creature card with the given subtype — the
 // question Spawnbed Protector's targeted declaration asks before it

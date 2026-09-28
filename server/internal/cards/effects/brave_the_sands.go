@@ -12,22 +12,18 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // "creatures you control" (b16GrantKeywords), and vigilance is
 // engine-honoured: an attacker with it stays untapped.
 //
-// Sandbox simplification, declared: the second ability is not
-// modelled. A blocker holds exactly one BlockingTarget, so no static
-// can let it block a second attacker. (The combat-wide COUNT limits
-// that were once skipped beside it — Silent Arbiter, Crawlspace —
-// shipped with #1507; this is the other side, and still open.)
-// Every creature still blocks one attacker. Weaker than printed,
-// never stronger, and the vigilance half is the half the card is
-// played for.
+// The second line is CanBlockAdditional over the same set (#1706): each
+// of your creatures may block two attackers, and one that does divides
+// its combat damage between them (CR 510.1d). Two Brave the Sands add
+// up — each creature blocks three.
 func init() {
 	Register(Spec{
 		OracleID:     "4e89bd75-f59d-4f08-be51-5660fbbba3c2",
 		Name:         "Brave the Sands",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"Your creatures can't block an additional creature — each still blocks only one."},
+		Completeness: CompletenessFull,
 		Static: []game.StaticAbility{
 			b16GrantKeywords(b16CreaturesYouControl, "vigilance"),
+			CanBlockAdditional(b16CreaturesYouControl, 1),
 		},
 	})
 }

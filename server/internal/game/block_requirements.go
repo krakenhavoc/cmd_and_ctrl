@@ -203,15 +203,18 @@ func (r BlockRequirement) namesAttacker(atk *Card) bool {
 }
 
 // blockPairWeight is how many requirements blocker `b` blocking
-// attacker `atk` obeys that are PER PAIR — b's "blocks each combat"
-// (any attacker obeys it), b's "blocks that attacker" naming atk, and
-// each of atk's Lures that binds b. The search's arc cost.
+// attacker `atk` obeys that are PER PAIR — b's "blocks that attacker"
+// naming atk, and each of atk's Lures that binds b. The search's pair
+// arc cost.
+//
+// b's "blocks each combat" is NOT here since #1706: blocking anything
+// obeys it ONCE, however many attackers a creature that can block
+// more takes, so the search charges it on the blocker's first unit
+// (blocksEachCombatWeight) rather than on every pair.
 func blockPairWeight(b, atk *Card) int {
 	n := 0
 	for _, r := range blockRequirementsOf(b) {
-		switch {
-		case r.Kind == BlockRequirementBlocks,
-			r.Kind == BlockRequirementBlocksAttacker && r.namesAttacker(atk):
+		if r.Kind == BlockRequirementBlocksAttacker && r.namesAttacker(atk) {
 			n++
 		}
 	}
@@ -221,6 +224,12 @@ func blockPairWeight(b, atk *Card) int {
 		}
 	}
 	return n
+}
+
+// blocksEachCombatWeight is how many "blocks each combat if able"
+// requirements `b` carries — each obeyed by b blocking anything.
+func blocksEachCombatWeight(b *Card) int {
+	return blockRequirementCount(blockRequirementsOf(b), BlockRequirementBlocks)
 }
 
 // BlockRequirement is one CR 509.1c requirement on one object. Pure
@@ -359,28 +368,40 @@ func (h blockReqHit) key() blockReqHit {
 // refusal a caller sees is stable.
 //
 // Caller must hold g.mu with fresh layers. Reads only.
-func (g *Game) blockRequirementHitsLocked(defender uuid.UUID, assign map[uuid.UUID]uuid.UUID) []blockReqHit {
+func (g *Game) blockRequirementHitsLocked(defender uuid.UUID, assign blockAssignment) []blockReqHit {
 	var out []blockReqHit
 	for i := range g.Battlefield.Cards {
 		b := &g.Battlefield.Cards[i]
 		if b.Controller != defender {
 			continue
 		}
-		atkID, blocking := assign[b.InstanceID]
-		if !blocking || atkID == uuid.Nil {
+		atkIDs := assign[b.InstanceID]
+		if len(atkIDs) == 0 {
 			continue
 		}
-		atk := findBattlefieldCard(g, atkID)
+		// #1706: a creature may block several attackers. Each of its
+		// own requirements is still ONE requirement — "blocks each
+		// combat" obeyed once however many it blocks, "blocks that
+		// attacker" obeyed when the named one is among them — and each
+		// Lure is obeyed per (blocker, Lure'd attacker) pair.
 		for j, r := range blockRequirementsOf(b) {
-			switch {
-			case r.Kind == BlockRequirementBlocks,
-				r.Kind == BlockRequirementBlocksAttacker && r.namesAttacker(atk):
-				out = append(out, blockReqHit{req: r, holder: b.InstanceID, idx: j, blocker: b.InstanceID, attacker: atkID})
+			switch r.Kind {
+			case BlockRequirementBlocks:
+				out = append(out, blockReqHit{req: r, holder: b.InstanceID, idx: j, blocker: b.InstanceID, attacker: atkIDs[0]})
+			case BlockRequirementBlocksAttacker:
+				for _, atkID := range atkIDs {
+					if r.namesAttacker(findBattlefieldCard(g, atkID)) {
+						out = append(out, blockReqHit{req: r, holder: b.InstanceID, idx: j, blocker: b.InstanceID, attacker: atkID})
+						break
+					}
+				}
 			}
 		}
-		for j, r := range blockRequirementsOf(atk) {
-			if r.Kind == BlockRequirementLure && r.bindsBlocker(b) {
-				out = append(out, blockReqHit{req: r, holder: atkID, idx: j, blocker: b.InstanceID, attacker: atkID})
+		for _, atkID := range atkIDs {
+			for j, r := range blockRequirementsOf(findBattlefieldCard(g, atkID)) {
+				if r.Kind == BlockRequirementLure && r.bindsBlocker(b) {
+					out = append(out, blockReqHit{req: r, holder: atkID, idx: j, blocker: b.InstanceID, attacker: atkID})
+				}
 			}
 		}
 	}
@@ -393,7 +414,7 @@ func (g *Game) blockRequirementHitsLocked(defender uuid.UUID, assign map[uuid.UU
 		var first uuid.UUID
 		for i := range g.Battlefield.Cards {
 			id := g.Battlefield.Cards[i].InstanceID
-			if assign[id] == atk.InstanceID {
+			if assign.has(id, atk.InstanceID) {
 				if n == 0 {
 					first = id
 				}
@@ -425,7 +446,7 @@ func (r blockReach) total() int { return r.obeyed + r.addition }
 // blockRequirementReachLocked is reach(assign) for `defender`.
 //
 // Caller must hold g.mu with fresh layers. Reads only.
-func (g *Game) blockRequirementReachLocked(defender uuid.UUID, assign map[uuid.UUID]uuid.UUID) blockReach {
+func (g *Game) blockRequirementReachLocked(defender uuid.UUID, assign blockAssignment) blockReach {
 	out := blockReach{obeyed: len(g.blockRequirementHitsLocked(defender, assign))}
 	out.addition, out.witness = g.bestBlockRequirementAdditionLocked(defender, assign, out.obeyed)
 	return out
@@ -444,6 +465,12 @@ type brAttacker struct {
 type brBlocker struct {
 	card    *Card
 	limited bool // counted by a whole-combat limit
+	// #1706: room is how many more attackers it may block (brInfCap
+	// for "any number"); blocking is whether it already blocks one,
+	// which means its "blocks each combat" is already obeyed and a
+	// whole-combat limit has already counted it.
+	room     int
+	blocking bool
 }
 
 // brMode is how many MORE blockers an attacker may take in one
@@ -471,12 +498,9 @@ const (
 // that board, never stronger.
 //
 // Caller must hold g.mu with fresh layers. Reads only.
-func (g *Game) bestBlockRequirementAdditionLocked(defender uuid.UUID, assign map[uuid.UUID]uuid.UUID, obeyed int) (int, []BlockDeclaration) {
+func (g *Game) bestBlockRequirementAdditionLocked(defender uuid.UUID, assign blockAssignment, obeyed int) (int, []BlockDeclaration) {
 	var atks []*brAttacker
-	counts := map[uuid.UUID]int{}
-	for _, a := range assign {
-		counts[a]++
-	}
+	counts := assign.blockerCounts()
 	for _, c := range g.defendedAttackersLocked(defender) {
 		reqs := blockRequirementsOf(c)
 		a := &brAttacker{
@@ -497,10 +521,18 @@ func (g *Game) bestBlockRequirementAdditionLocked(defender uuid.UUID, assign map
 		if b.Controller != defender || !b.IsCreature() || b.Tapped {
 			continue
 		}
-		if _, blocking := assign[b.InstanceID]; blocking {
+		// An addition never re-points: a creature already blocking
+		// takes part only when it can block more (#1706), and only for
+		// the room it has left.
+		cur := len(assign[b.InstanceID])
+		room := brInfCap
+		if capacity := BlockCapacity(b); capacity > 0 {
+			room = capacity - cur
+		}
+		if room <= 0 {
 			continue
 		}
-		blks = append(blks, &brBlocker{card: b})
+		blks = append(blks, &brBlocker{card: b, room: room, blocking: cur > 0})
 	}
 	if len(blks) == 0 {
 		return 0, nil
@@ -512,6 +544,9 @@ func (g *Game) bestBlockRequirementAdditionLocked(defender uuid.UUID, assign map
 		weight[i] = make([]int, len(atks))
 		for j, a := range atks {
 			weight[i][j] = -1
+			if assign.has(b.card.InstanceID, a.card.InstanceID) {
+				continue
+			}
 			if g.BlockPairRefusalLocked(a.card, b.card).Legal() {
 				weight[i][j] = blockPairWeight(b.card, a.card)
 				anyPair = true
@@ -603,18 +638,11 @@ func (g *Game) bestBlockRequirementAdditionLocked(defender uuid.UUID, assign map
 // would refuse the addition.
 //
 // Caller must hold g.mu with fresh layers. Reads only.
-func (g *Game) blockAdditionGainLocked(defender uuid.UUID, assign map[uuid.UUID]uuid.UUID, add []BlockDeclaration, obeyed int) int {
+func (g *Game) blockAdditionGainLocked(defender uuid.UUID, assign blockAssignment, add []BlockDeclaration, obeyed int) int {
 	if _, _, err := g.checkBlockRestrictionsLocked(assign, add); err != nil {
 		return 0
 	}
-	after := make(map[uuid.UUID]uuid.UUID, len(assign)+len(add))
-	for b, a := range assign {
-		after[b] = a
-	}
-	for _, d := range add {
-		after[d.Blocker] = d.Attacker
-	}
-	return len(g.blockRequirementHitsLocked(defender, after)) - obeyed
+	return len(g.blockRequirementHitsLocked(defender, withBlocks(assign, add))) - obeyed
 }
 
 // brRoom is the whole-combat limit as the search sees it: how many
@@ -631,7 +659,7 @@ type brRoom struct {
 // `assign` for `defender`'s group and marks the candidates they count.
 //
 // Caller must hold g.mu with fresh layers. Reads only.
-func (g *Game) blockLimitRoomLocked(defender uuid.UUID, assign map[uuid.UUID]uuid.UUID, blks []*brBlocker) brRoom {
+func (g *Game) blockLimitRoomLocked(defender uuid.UUID, assign blockAssignment, blks []*brBlocker) brRoom {
 	out := brRoom{room: -1}
 	visit := func(r BlockRule, source *Card) bool {
 		if r.Limit == nil {
@@ -682,12 +710,22 @@ func (g *Game) blockLimitRoomLocked(defender uuid.UUID, assign map[uuid.UUID]uui
 // of modes and returns its assignment, or ok=false when a mode's
 // minimum could not be filled.
 //
-// The network: source -> [limit room] -> blocker (1) -> attacker (1,
-// cost -blockPairWeight: the blocker's "blocks" count, its "blocks that
-// attacker" requirements naming this attacker, and the attacker's
-// Lures that bind this blocker) -> the attacker's mode arcs -> sink. A mode's first lo units cost -brBig
-// each, so the flow fills every minimum it can before it spends a
-// blocker on anything else; the fill is checked afterwards.
+// The network: source -> [limit room] -> blocker (1, cost -the
+// blocker's "blocks" count) -> attacker (1, cost -blockPairWeight: its
+// "blocks that attacker" requirements naming this attacker, and the
+// attacker's Lures that bind this blocker) -> the attacker's mode arcs
+// -> sink. A mode's first lo units cost -brBig each, so the flow fills
+// every minimum it can before it spends a blocker on anything else;
+// the fill is checked afterwards.
+//
+// #1706: a blocker that can block more than one attacker gets a second
+// source arc for the rest of its room, at cost 0 — its "blocks" count
+// is obeyed once, on the first unit. A blocker that already blocks has
+// obeyed it, so its first unit costs 0 too, and a whole-combat limit
+// has already counted it, so it bypasses the limit node. A limited
+// blocker that is not blocking yet keeps a single unit through the
+// limit: "counts once, then carries more" is not a flow, and one unit
+// is the weaker answer.
 func (g *Game) solveBlockRequirementFlow(atks []*brAttacker, blks []*brBlocker, weight [][]int, chosen map[*brAttacker]brMode, room brRoom) ([]BlockDeclaration, bool) {
 	nb, na := len(blks), len(atks)
 	src, lim := 0, 1
@@ -699,10 +737,18 @@ func (g *Game) solveBlockRequirementFlow(atks []*brAttacker, blks []*brBlocker, 
 		f.add(src, lim, room.room, 0)
 	}
 	for i, b := range blks {
-		if b.limited && room.room >= 0 {
-			f.add(lim, bNode(i), 1, 0)
+		first := 0
+		if !b.blocking {
+			first = -blocksEachCombatWeight(b.card)
+		}
+		viaLimit := b.limited && room.room >= 0 && !b.blocking
+		if viaLimit {
+			f.add(lim, bNode(i), 1, first)
 		} else {
-			f.add(src, bNode(i), 1, 0)
+			f.add(src, bNode(i), 1, first)
+		}
+		if b.room > 1 && !viaLimit {
+			f.add(src, bNode(i), b.room-1, 0)
 		}
 	}
 	type pairArc struct {
@@ -853,7 +899,7 @@ type blockReachCache map[uuid.UUID]blockReach
 // unobeyable otherwise.
 //
 // Caller must hold g.mu with fresh layers. Reads only.
-func (g *Game) blockRequirementRefusalLocked(base, after map[uuid.UUID]uuid.UUID, decls []BlockDeclaration, cache blockReachCache) *BlockRefusedError {
+func (g *Game) blockRequirementRefusalLocked(base, after blockAssignment, decls []BlockDeclaration, cache blockReachCache) *BlockRefusedError {
 	var seen []uuid.UUID
 	for _, d := range decls {
 		b := findBattlefieldCard(g, d.Blocker)
@@ -891,24 +937,12 @@ func (g *Game) blockRequirementRefusalLocked(base, after map[uuid.UUID]uuid.UUID
 	return nil
 }
 
-// withBlocks is `assign` with `add` staged on top, as a fresh map.
-func withBlocks(assign map[uuid.UUID]uuid.UUID, add []BlockDeclaration) map[uuid.UUID]uuid.UUID {
-	out := make(map[uuid.UUID]uuid.UUID, len(assign)+len(add))
-	for b, a := range assign {
-		out[b] = a
-	}
-	for _, d := range add {
-		out[d.Blocker] = d.Attacker
-	}
-	return out
-}
-
 // explainBlockReachDropLocked names a requirement the plan `could`
 // obeys and the plan `now` does not — the one the refused declaration
 // (or pass) gives up.
 //
 // Caller must hold g.mu with fresh layers. Reads only.
-func (g *Game) explainBlockReachDropLocked(defender uuid.UUID, could, now map[uuid.UUID]uuid.UUID) *BlockRefusedError {
+func (g *Game) explainBlockReachDropLocked(defender uuid.UUID, could, now blockAssignment) *BlockRefusedError {
 	kept := map[blockReqHit]bool{}
 	for _, h := range g.blockRequirementHitsLocked(defender, now) {
 		kept[h.key()] = true
@@ -974,7 +1008,8 @@ func (g *Game) BlockRequirementsUnmetForEffect(defender uuid.UUID) *BlockRefused
 
 // MustBlockForEffect lists the creatures a pending defending player
 // owes a block with right now — the witness the checkpoint wants,
-// blocker -> attacker, across every defending player. It is the view's
+// blocker -> attacker (the first one, for a creature the witness has
+// blocking several — #1706), across every defending player. It is the view's
 // `must_block` stamp and the same blocks the enumerator offers as the
 // declaration's required answer, so the two agree by construction.
 // Nil whenever every pass in the step would be accepted.
@@ -993,7 +1028,9 @@ func (g *Game) MustBlockForEffect() map[uuid.UUID]uuid.UUID {
 			if out == nil {
 				out = map[uuid.UUID]uuid.UUID{}
 			}
-			out[d.Blocker] = d.Attacker
+			if _, seen := out[d.Blocker]; !seen {
+				out[d.Blocker] = d.Attacker
+			}
 		}
 	}
 	return out

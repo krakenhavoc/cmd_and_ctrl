@@ -251,7 +251,20 @@ type Card struct {
 	// declared to block. uuid.Nil means "not declared as blocker".
 	// Set by DeclareBlocker, cleared by ClearCombat or zone exit.
 	// Only meaningful on the battlefield. Added in S08.
+	//
+	// Since #1706 it is the FIRST attacker this card blocks: a creature
+	// that can block more than one (BlockCapacity) keeps the rest, in
+	// declaration order, in AlsoBlocking. Every "is it blocking" reader
+	// keeps reading this field; a reader that asks WHICH attackers
+	// reads BlockedAttackers.
 	BlockingTarget uuid.UUID
+
+	// AlsoBlocking is every attacker this card blocks after
+	// BlockingTarget (CR 509.1a/b, #1706) — Palace Guard's second and
+	// third. Nil for every ordinary blocker, and always nil when
+	// BlockingTarget is uuid.Nil: the two are written and cleared
+	// together (setBlockingSet, clearBlocking).
+	AlsoBlocking []uuid.UUID
 
 	// Goads is every player who has goaded this creature and whose goad
 	// has not ended, one entry per goader, oldest goad first (#1598,

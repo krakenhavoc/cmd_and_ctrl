@@ -821,6 +821,14 @@ const (
 	//
 	// Added in S31 sub-PR 0 for the public game log; moved to the
 	// lock-in in #830.
+	//
+	// #1706: a creature that blocks several attackers gets one event
+	// per attacker, and Amount is the pair's 1-based place among them
+	// (1 for its first — and only, for an ordinary blocker). That is
+	// CR 509.3b's "whenever this blocks A CREATURE", once per attacker.
+	// CR 509.3a's plain "whenever this creature blocks" triggers once
+	// however many it blocks, so it reads only Amount <= 1 (a
+	// hand-built event in a test carries 0) — effects.selfBlocksOnce.
 	EventBlock EventKind = "block"
 
 	// EventBecomesBlocked — the attacker named by Source / CardID /

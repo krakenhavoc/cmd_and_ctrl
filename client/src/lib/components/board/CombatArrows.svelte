@@ -35,6 +35,7 @@
   import { onDestroy, untrack } from "svelte";
   import { get } from "svelte/store";
   import type { CardView, GameView } from "../../protocol";
+  import { blockedAttackersOf } from "../../attackTargets";
   import { gsap } from "gsap";
   import { settings } from "../../settings";
   import {
@@ -89,12 +90,17 @@
           toSeatID: c.attacking_target,
         });
       }
-      if (c.blocking_target && byID.has(c.blocking_target)) {
+      // #1706: one arrow per attacker a multi-blocker blocks.
+      for (const target of blockedAttackersOf(c)) {
+        if (!byID.has(target)) continue;
         out.push({
           kind: "block",
-          id: `blk-${c.instance_id}`,
+          id:
+            target === c.blocking_target
+              ? `blk-${c.instance_id}`
+              : `blk-${c.instance_id}-${target}`,
           fromCardID: c.instance_id,
-          toCardID: c.blocking_target,
+          toCardID: target,
         });
       }
     }

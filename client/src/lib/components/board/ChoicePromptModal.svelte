@@ -1448,18 +1448,28 @@
           {active.reason || "Assign combat damage"}
           <span class="prompt-src" aria-hidden="true">CR 510.1c</span>
         </h2>
-        <p class="prompt-hint">
-          <strong>{attackerName(damageFrame.attacker_card_id)}</strong>
-          is blocked by {damageFrame.blocker_card_ids.length} creatures. Order them and divide
-          {damageFrame.attacker_power} damage — earlier blockers must be dealt at-least-lethal before
-          the next gets any.
-          {#if damageFrame.allow_trample}
-            Trample lets leftover damage spill to the defending player.
-          {/if}
-          {#if damageFrame.has_deathtouch}
-            Deathtouch makes 1 damage lethal.
-          {/if}
-        </p>
+        {#if damageFrame.blocker_divides}
+          <!-- #1706, CR 510.1d: a blocker dividing its damage among the
+               attackers it blocks — any split that adds up. -->
+          <p class="prompt-hint">
+            <strong>{attackerName(damageFrame.attacker_card_id)}</strong>
+            is blocking {damageFrame.blocker_card_ids.length} creatures. Divide its
+            {damageFrame.attacker_power} damage among them however you like.
+          </p>
+        {:else}
+          <p class="prompt-hint">
+            <strong>{attackerName(damageFrame.attacker_card_id)}</strong>
+            is blocked by {damageFrame.blocker_card_ids.length} creatures. Order them and divide
+            {damageFrame.attacker_power} damage — earlier blockers must be dealt at-least-lethal before
+            the next gets any.
+            {#if damageFrame.allow_trample}
+              Trample lets leftover damage spill to the defending player.
+            {/if}
+            {#if damageFrame.has_deathtouch}
+              Deathtouch makes 1 damage lethal.
+            {/if}
+          </p>
+        {/if}
         <ul class="assign-list">
           {#each blockerOrder as id, i (id)}
             <li class="assign-row">

@@ -7381,7 +7381,7 @@ func (g *Game) DeclareAttackerWith(attackerID, targetPlayerID uuid.UUID, params 
 			// A card declared as attacker can't simultaneously be a
 			// blocker — clearing the other field keeps the per-card
 			// combat state coherent.
-			card.BlockingTarget = uuid.Nil
+			card.clearBlocking()
 			return nil
 		}
 	}
@@ -7577,7 +7577,7 @@ func (g *Game) DeclareAttackersWith(decls []AttackDeclaration, params DeclareAtt
 			card.Tapped = true
 		}
 		// Attacking and blocking are mutually exclusive per card.
-		card.BlockingTarget = uuid.Nil
+		card.clearBlocking()
 		declared = append(declared, d.Attacker)
 	}
 	if len(declared) == 0 {
@@ -7841,10 +7841,19 @@ func (g *Game) assignAndDealCombatDamageLocked(step string) {
 	firstStrike := step == CombatStepFirstStrike
 
 	blockersByAttacker := make(map[uuid.UUID][]int, len(g.Battlefield.Cards))
+	// #1706: a blocker that still blocks two or more live attackers
+	// divides its damage among them (CR 510.1d) through a prompt,
+	// queued after the attacker loop, instead of dealing it to each.
+	var dividing []uuid.UUID
+	divides := map[uuid.UUID]bool{}
 	for i := range g.Battlefield.Cards {
 		c := &g.Battlefield.Cards[i]
-		if c.BlockingTarget != uuid.Nil {
-			blockersByAttacker[c.BlockingTarget] = append(blockersByAttacker[c.BlockingTarget], i)
+		for _, atk := range c.BlockedAttackers() {
+			blockersByAttacker[atk] = append(blockersByAttacker[atk], i)
+		}
+		if len(c.AlsoBlocking) > 0 && len(g.liveBlockedAttackersLocked(c)) >= 2 {
+			divides[c.InstanceID] = true
+			dividing = append(dividing, c.InstanceID)
 		}
 	}
 
@@ -7885,7 +7894,7 @@ func (g *Game) assignAndDealCombatDamageLocked(step string) {
 		liveBlockers := make([]uuid.UUID, 0, len(blkIdxs))
 		for _, bi := range blkIdxs {
 			blk := &g.Battlefield.Cards[bi]
-			if blk.BlockingTarget != atkID {
+			if !blk.IsBlockingAttacker(atkID) {
 				continue // reverted earlier in this step
 			}
 			liveBlockers = append(liveBlockers, blk.InstanceID)
@@ -7959,6 +7968,9 @@ func (g *Game) assignAndDealCombatDamageLocked(step string) {
 		// strike blocker can still hit a vanilla attacker in the
 		// first-strike step (CR 510.4).
 		for _, blkID := range liveBlockers {
+			if divides[blkID] {
+				continue // divides its damage below (#1706)
+			}
 			blk := findBattlefieldCard(g, blkID)
 			if blk == nil || !g.participatesInStepLocked(blk, firstStrike) {
 				continue
@@ -7968,6 +7980,26 @@ func (g *Game) assignAndDealCombatDamageLocked(step string) {
 				continue
 			}
 			g.markCombatDamageOnCardLocked(atkID, blkPower, blkID, step)
+		}
+	}
+
+	// #1706, CR 510.1d: a blocker blocking two or more attackers
+	// assigns its combat damage "divided as its controller chooses
+	// among them". The CR 510.1c prompt carries it, with the roles
+	// turned round (queueBlockerDamageDivisionLocked). Its set is
+	// re-read now, after the attackers' damage, because the
+	// simultaneity is the prompt's: every mark it makes is on the same
+	// board the other blockers' marks landed on, and SBAs run only once
+	// the step's marks are all down.
+	for _, blkID := range dividing {
+		blk := findBattlefieldCard(g, blkID)
+		if blk == nil || !g.participatesInStepLocked(blk, firstStrike) || power[blkID] <= 0 {
+			continue
+		}
+		if live := g.liveBlockedAttackersLocked(blk); len(live) >= 2 {
+			g.queueBlockerDamageDivisionLocked(blk, live, power[blkID], step)
+		} else if len(live) == 1 {
+			g.markCombatDamageOnCardLocked(live[0], power[blkID], blkID, step)
 		}
 	}
 }
@@ -8184,7 +8216,7 @@ func (g *Game) clearCombatLocked() {
 			attackerLeft = true
 		}
 		g.Battlefield.Cards[i].AttackingTarget = uuid.Nil
-		g.Battlefield.Cards[i].BlockingTarget = uuid.Nil
+		g.Battlefield.Cards[i].clearBlocking()
 	}
 	if attackerLeft {
 		g.invalidateLayersForAttackChangeLocked()
