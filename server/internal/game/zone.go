@@ -268,6 +268,10 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 		// CR 701.64 harnessed designation — a permanent that leaves
 		// and comes back is a new object and is not harnessed.
 		c.Harnessed = false
+		// ADR 0071 amendment (#1700) / CR 400.7 + CR 701.37b: and so
+		// is monstrous — a flickered Polukranos is a new object that
+		// can become monstrous again.
+		c.Monstrous = false
 		// ADR 0090 / CR 400.7: and so is the CR 722.3a prepared
 		// designation. The copy it kept in exile names this OBJECT's
 		// epoch, which the increment above has just retired, so the

@@ -1775,6 +1775,12 @@ type CardView struct {
 	// so the field is set straight off the card, the same way
 	// Prepared is below.
 	Harnessed bool `json:"harnessed,omitempty"`
+	// Monstrous is a permanent's CR 701.37b monstrous designation
+	// (ADR 0071 amendment, #1700) — set by the monstrosity keyword
+	// action and kept until the permanent leaves the battlefield.
+	// Public, like Harnessed, and set straight off the card for the
+	// same reason: no card type owns monstrosity.
+	Monstrous bool `json:"monstrous,omitempty"`
 	// Prepared is a permanent's CR 722.3a prepared designation
 	// (ADR 0090): while it is set, its controller may cast the copy of
 	// its prepare spell that sits in exile — which the wire already
@@ -6958,6 +6964,10 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	// prints none of its own abilities, so it cannot have harnessed
 	// one on.
 	out.Harnessed = false
+	// #1700: cleared with the other designations rather than trusted
+	// to be false — only a permanent with a monstrosity ability can
+	// become monstrous, so the badge would hint at the hidden card.
+	out.Monstrous = false
 	// ADR 0090: a face-down permanent has no prepare spell (CR 708.2)
 	// and cannot be prepared, but the field is cleared with the other
 	// designations rather than trusted to be false.
@@ -7276,6 +7286,7 @@ func viewOfCard(c game.Card) CardView {
 			view.Solved = c.Solved
 		}
 		view.Harnessed = c.Harnessed
+		view.Monstrous = c.Monstrous
 		view.Prepared = c.Prepared
 	}
 	if c.BlockingTarget != uuid.Nil {

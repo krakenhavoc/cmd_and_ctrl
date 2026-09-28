@@ -129,6 +129,15 @@ const (
 	// 400.7, whose only job is to switch one of the permanent's own
 	// printed abilities on. See ADR 0071's 2026-09-27 amendment.
 	DesignationChosenOption
+
+	// DesignationMonstrous is CR 701.37b's "monstrous" designation:
+	// "As long as this creature is monstrous, it has hexproof and
+	// indestructible" (Fleecemane Lion). Set by the monstrosity
+	// keyword action (MonstrosityForEffect) and kept until the
+	// permanent leaves the battlefield. ADR 0071 amendment, #1700.
+	// Appended rather than slotted beside Harnessed so no existing
+	// kind's value moves.
+	DesignationMonstrous
 )
 
 // DoorSide names which half of a Room a DesignationDoorUnlocked gate
@@ -189,6 +198,8 @@ func (d Designation) Active(c Card) bool {
 		return c.Counters[CounterCharge] >= d.N
 	case DesignationHarnessed:
 		return c.Harnessed
+	case DesignationMonstrous:
+		return c.Monstrous
 	case DesignationChosenOption:
 		// An unanswered prompt ("") matches no anchor word, so a
 		// Siege has NEITHER ability before its controller chooses —
@@ -228,6 +239,10 @@ func ChargeCounters(n int) Designation {
 // Harnessed builds a CR 701.64 / 702.186b gate: the ability exists
 // while the permanent is harnessed.
 func Harnessed() Designation { return Designation{Kind: DesignationHarnessed} }
+
+// Monstrous builds a CR 701.37b gate: the ability exists while the
+// permanent is monstrous (#1700).
+func Monstrous() Designation { return Designation{Kind: DesignationMonstrous} }
 
 // ChosenOptionIs builds a CR 614.12 anchor-word gate: the ability
 // exists while `option` is the permanent's chosen option (#1572).
@@ -529,4 +544,77 @@ func (g *Game) HarnessForEffect(cardID uuid.UUID) error {
 func (g *Game) IsHarnessed(cardID uuid.UUID) bool {
 	card := findBattlefieldCard(g, cardID)
 	return card != nil && card.Harnessed
+}
+
+// MonstrosityForEffect is the CR 701.37a keyword action "Monstrosity
+// N": "If this permanent isn't monstrous, put N +1/+1 counters on it
+// and it becomes monstrous." ADR 0071 amendment, #1700. The one
+// writer of Card.Monstrous outside the snapshot restore.
+//
+// Three rules, each a line below:
+//
+//   - The "isn't monstrous" check is made HERE, at resolution, not at
+//     activation. CR 701.37a is an "if", not an activation
+//     restriction, so a second activation is legal and simply does
+//     nothing — including one activated in response to the first,
+//     which finds the permanent already monstrous when it resolves.
+//     No counters, no event, no second trigger (CR 701.37c).
+//   - The counters go through the CR 614 pipeline, placed by the
+//     permanent's controller, so a Doubling Season or a Hardened
+//     Scales applies — and, when both do, the CR 616 ordering prompt
+//     pauses the placement. The designation and the event are the
+//     continuation, so a trigger never sees the creature before its
+//     counters are on it.
+//   - The event carries N, the ANNOUNCED amount, not the number that
+//     landed. "X" in "when this creature becomes monstrous, … X" is
+//     the X of the monstrosity instruction (CR 701.37c; Polukranos's
+//     ruling), so a doubled placement does not double the trigger.
+//
+// It becomes monstrous even when the counters are replaced away
+// entirely (CR 614.10 / a "can't have counters" effect): the
+// instruction's second half is not conditional on the first. N below
+// zero is treated as zero.
+//
+// A permanent that is not on the battlefield does nothing and is not
+// an error: the ability's source left in response, which is ordinary
+// play, and CR 701.37b says only permanents can become monstrous.
+//
+// Caller must hold g.mu in write mode.
+func (g *Game) MonstrosityForEffect(cardID uuid.UUID, n int) error {
+	card := findBattlefieldCard(g, cardID)
+	if card == nil || card.Monstrous {
+		return nil
+	}
+	if n < 0 {
+		n = 0
+	}
+	placer := card.Controller
+	return g.AddCounterByThenForEffect(placer, cardID, CounterPlusOne, n, func(g *Game, _ int) error {
+		// Re-find: the placement may have paused on a CR 616 prompt,
+		// and the permanent pointer is not stable across an action.
+		c := findBattlefieldCard(g, cardID)
+		if c == nil || c.Monstrous {
+			return nil
+		}
+		c.Monstrous = true
+		g.EmitEvent(Event{
+			Kind:   EventBecameMonstrous,
+			Actor:  c.Controller,
+			Source: cardID,
+			CardID: cardID,
+			Target: cardID,
+			Amount: n,
+		})
+		return nil
+	})
+}
+
+// IsMonstrous reports whether the named battlefield permanent is
+// monstrous. False for anything not on the battlefield — CR 400.7, a
+// permanent that left is a new object and is not monstrous.
+//
+// Caller must hold g.mu.
+func (g *Game) IsMonstrous(cardID uuid.UUID) bool {
+	card := findBattlefieldCard(g, cardID)
+	return card != nil && card.Monstrous
 }
