@@ -78,6 +78,7 @@ export function castSurfaceOf(s: CastSurfaceView) {
     additional_cost: s.additional_cost,
     alternative_costs: s.alternative_costs,
     alternative_cost_required: s.alternative_cost_required,
+    printed_cost_timing_closed: s.printed_cost_timing_closed,
     optional_costs: s.optional_costs,
     cant_cast: s.cant_cast,
     tap_cost: s.tap_cost,

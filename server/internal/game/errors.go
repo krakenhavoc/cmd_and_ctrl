@@ -165,11 +165,19 @@ var (
 	ErrLandDropUnavailable = errors.New("game: no land plays left this turn")
 
 	// ErrNoPlayPermission is returned when a player tries to play a
-	// card from exile without a live impulse-exile grant — the grant
-	// belongs to someone else, has expired, was never made, or is
-	// cast-only and the card is a land (CR 305.1: playing a land is
-	// not casting). Added in S21 sub-PR 6.
-	ErrNoPlayPermission = errors.New("game: no permission to play this card from exile")
+	// card without the permission that would allow it: casting from
+	// exile with no live grant (the grant belongs to someone else, has
+	// expired, or was never made), or playing a LAND under any grant
+	// that is cast-only (CR 305.1: playing a land is not casting).
+	// Added in S21 sub-PR 6 for exile; the cast-only branch is a gate
+	// on the GRANT rather than on exile specifically, so since #1665
+	// (miracle) it is also reached for a land sitting in its owner's
+	// HAND — the printed text says nothing about zones. The wording
+	// is deliberately zone-neutral rather than naming one: it is one
+	// sentinel for both callers (#1686), compared by identity or
+	// errors.Is throughout the test suite, so it names no zone rather
+	// than naming the wrong one.
+	ErrNoPlayPermission = errors.New("game: no permission to play this card from here")
 
 	// ErrCastZoneNotAllowed is returned by cast_spell when the card
 	// does not declare the source zone as one it can be cast from —
