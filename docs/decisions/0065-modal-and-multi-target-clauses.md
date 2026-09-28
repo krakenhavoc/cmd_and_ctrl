@@ -901,3 +901,136 @@ aiseat question for later.
   counters" with no targets** (Feast of the Victorious Dead) — the
   first is a prevention shield, the second is not a target clause at
   all.
+
+## Amendment (2026-09-28 (b), #1657): a divided amount read off the board or a paid cost, and "up to" division
+
+**Sprint:** S45 — Modal spells, multi-target clauses and copy effects.
+Tracker [#888](https://github.com/krakenhavoc/cmd_and_ctrl/issues/888).
+
+The amendment above left two shapes out, by name: an amount that is
+neither a constant nor the announced X, and Lathiel's "up to that
+many", whose shares may sum to less than the amount.
+
+    Ureni, the Song Unending  X damage divided …, where X is the number of lands you control
+    Orca, Siege Demon         When Orca dies, it deals damage equal to its power divided …
+    Lathiel, the Bounteous    distribute up to that many +1/+1 counters among any number
+      Dawn                    of other target creatures (that many = life gained this turn)
+    Avacyn's Judgment         2 damage divided …; if its madness cost was paid, X instead
+
+### Decision: an amount RULE, named by a key, that answers in the existing data shapes
+
+```go
+type DivideSpec struct {
+    Total, FromX, DoubleFromX …  // unchanged
+    AmountKey DivideAmount       // a registered rule; replaces the three above
+    UpTo      bool               // the shares may sum to at most the amount
+}
+
+var DivideLandsYouControl = game.RegisterDivideAmount("lands-you-control",
+    func(g *game.Game, a game.DivideAmountArgs) game.DivideSpec {
+        return game.DivideSpec{Total: b02CountLandsControlledBy(g, a.Controller)}
+    })
+
+Targets: TargetPermanent(…).WithCount(0, 0).Dividing(DivideBy(DivideLandsYouControl)),   // Ureni
+Targets: TargetCreature(…).WithCount(0, 0).Dividing(UpTo(DivideBy(DivideLifeYouGainedThisTurn))), // Lathiel
+```
+
+A **key, not a func**, for the reason `ModeCountCondition` (#1590) and
+`LifeCostCount` (#1594) are keys: a trigger's clause is reachable from
+`Game` through the `pick_target` resume frame, and ADR 0041 phase 3's
+closure ratchet admits no new func-typed route. The functions live in a
+registry in `game/divide.go`, registered once at init by
+`RegisterDivideAmount`; the cards' rules are in
+`effects/divide_amounts.go`.
+
+The rule reads `DivideAmountArgs` — the announcing player, the source,
+a trigger's source LAST-KNOWN characteristics (CR 603.10; Orca's power
+after it died, counters included), and the claimed alternative cost
+(the key that lands on `StackItem.AltCost`). It **answers in the data
+shapes the engine already has**: `{Total: n}`, or `{FromX: true}` for
+Avacyn's Judgment's madness cast, so the announced X is still applied by
+`TotalFor` and — the reason this matters — the client can still apply
+it to the X it collected. The earlier amendment's argument against a
+func ("the client has to compute the same amount from the X it
+collected, which a func cannot ship") is met: the server evaluates the
+rule and ships its answer, never the rule.
+
+`Register` refuses a clause that names a rule AND a fixed or X amount.
+
+### Decision: the rule is read ONCE, at announce, into the steps
+
+`bindDivideAmountsLocked(steps, args)` replaces each step's
+`Clause.Divide` with the rule's answer — a fresh spec, since the steps
+hold clause copies (`AnnouncedClauses`), so the catalog's clause is
+never touched. It runs at the three announce points:
+
+- a cast, straight after X is bound (`CastSpell`), with the claimed
+  alternative cost;
+- an activation (`activateCatalogAbilityLocked`);
+- a trigger, when its target walk OPENS (`queuePickTargetLocked`), with
+  the harvester's LKI.
+
+The last is the load-bearing choice. CR 603.3d puts the targets and the
+division on the ability "as it is put on the stack", which in this
+engine is the walk; the frame carries the bound steps, so the prompt,
+its wire projection (`pick_target.divide`), the enumerator's cap and
+the gate all read one number, and a land that arrives while the prompt
+is open changes nothing. That is Ureni's ruling ("The value of X won't
+change even if the number of lands you control changes after that
+point") and Lathiel's ("Gaining more life in response … won't change how
+many counters will be distributed"). Nothing re-reads the rule at
+resolution: the item carries `Distribution`, as before.
+
+`settleDistribution` and `EvenDistribution` are unchanged in shape —
+they read bound steps. The frame is cloned by `clonePickTargetFrame`
+(the bound spec is immutable and shared), and a snapshot drops the
+frame exactly as it always has (the census records it), so undo and
+snapshot need nothing new.
+
+### Decision: "up to" relaxes the sum, not the minimum
+
+`UpTo` changes one comparison in the gate: the shares must sum to **at
+most** the amount rather than exactly. Each chosen target still gets at
+least 1 — CR 601.2d, and Lathiel's own ruling ("Each target must
+receive at least one +1/+1 counter") — so an up-to clause still takes
+no more targets than its amount. Zero targets is the clause's Min, as
+for any clause ("You may choose no targets if you want"). The bot's
+even split of the whole amount is a legal up-to answer, so the
+enumerator needs nothing new; it offers the empty answer because Min is
+0.
+
+### Decision: the view resolves the rule for the viewer
+
+`viewOfTargetClause` and `abilityLegalTargets` stamp the resolved
+amount (`stampDivideAmount`) for the source's controller and — on an
+`alternative_costs[]` entry — that offer's key, so Avacyn's Judgment's
+hand card says `{total: 2}` and its madness offer says `{from_x:
+true}`. `DivideView` gains `up_to`. Writing this found that
+`abilityClauseView` never carried `divide` at all, so a single-clause
+divided ability (Mogg Mob) reached the client with no amount and the
+picker never asked for the split the gate demands for two or more
+targets; `abilityLegalTargets` now stamps it.
+
+The client's `divisionProblem` takes `upTo`, the divide modal and the
+targeting banner say "up to", and `hasXCost` asks the claimed offer's
+own mana cost, because Avacyn's Judgment prints `{1}{R}` and its madness
+cost is `{X}{R}`: the X prompt has to open for the madness cast.
+
+### Consequences
+
+- Lathiel, the Bounteous Dawn ships `CompletenessFull`; its round-robin
+  body is deleted.
+- New, all `full`: Ureni, the Song Unending, Orca, Siege Demon, and
+  Avacyn's Judgment (#653's "if its madness cost was paid").
+- The enumerator binds the same amount before the even split, in the
+  cast (with the offer's key) and activation expansions.
+
+### Out of scope, stated
+
+- **Polukranos, World Eater** — "When Polukranos becomes monstrous, it
+  deals X damage divided …", X being the monstrosity activation's X.
+  The divided half would be `DivideBy` a rule reading that X off the
+  triggering event; the engine has no monstrosity (CR 701.37) at all,
+  and no "becomes monstrous" event. The card waits on that keyword.
+- **Divided prevention** (Remedy) and **distribute without targets**
+  (Feast of the Victorious Dead), as above.
