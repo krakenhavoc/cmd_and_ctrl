@@ -29,7 +29,13 @@ import {
   seatLabel,
 } from "./attackAll";
 import { grantedFromLabel, hasGrantedActivatedAbility } from "./abilityRef";
-import { attackersDefendedBy, attackTargetHint, permanentAttackTargets } from "./attackTargets";
+import {
+  attackersDefendedBy,
+  attackTargetHint,
+  blockedAttackersOf,
+  blockerHasRoom,
+  permanentAttackTargets,
+} from "./attackTargets";
 import { isCreature, isLand, isPlaneswalker } from "./cardTypes";
 import { counterCostBlocked } from "./counterCost";
 import type { ActionType, CardView, GameView } from "./protocol";
@@ -1137,11 +1143,22 @@ function combatItems(view: GameView, card: CardView): MenuItem[] {
   // DEFENDING against — attacking them, a planeswalker they control or
   // a battle they protect. Every other attacker is somebody else's to
   // block, and the server refuses it with not_defending.
-  const attackers = attackersDefendedBy(view, card.controller);
+  // #1706: a creature that can block more than one attacker and has
+  // room is ADDED to another block rather than re-pointed, so it is
+  // offered only the attackers it does not block yet.
+  const adding = !!card.blocking_target && blockerHasRoom(card);
+  const blocked = new Set(blockedAttackersOf(card));
+  const attackers = attackersDefendedBy(view, card.controller).filter(
+    (a) => !adding || !blocked.has(a.instance_id),
+  );
   if (attackers.length > 0) {
     items.push({
       id: "combat-block",
-      label: card.blocking_target ? "Re-declare blocker" : "Declare blocker",
+      label: adding
+        ? "Also block"
+        : card.blocking_target
+          ? "Re-declare blocker"
+          : "Declare blocker",
       items: attackers.map((a) => ({
         id: `combat-block-${a.instance_id}`,
         label: a.name || "unknown attacker",
