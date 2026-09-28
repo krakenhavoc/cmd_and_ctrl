@@ -421,8 +421,91 @@ and is cleared, with a test pinning the behaviour.
   Crossway Troublemakers, Tegwyll) still reads the graveyard card's
   subtypes, so a creature that was one of those only through a grant
   (Maskwood Nexus, a changeling-granting effect) is missed — weaker than
-  printed, and declared in those cards' comments.
+  printed, and declared in those cards' comments. *Subtypes closed by
+  the #1679 amendment below; supertypes remain open.*
 - **Controller as it last existed.** Every "you control" dies clause
   reads `Card.Controller` off the graveyard card. MoveCard does not reset
   it, so that is right for every board that does not change control in
   the same event that moves the permanent.
+
+## Amendment (2026-09-28, #1679): the leaving permanent's subtypes ride the same event
+
+**Status:** Accepted · S37 — Combat correctness · [#1679](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1679)
+
+### Context
+
+The #1675 amendment stamped a leaving permanent's card **types** and
+left its subtypes open. The tribal dies-triggers — "whenever another
+Zombie you control dies" and its kin — resolved the dead card with
+`diedCreature` and then asked `dead.HasSubtype("Zombie")` of the card
+**as it sits in the graveyard**. No grant applies there: a Bear that
+was a Zombie under Maskwood Nexus, under a changeling grant or under a
+lord's type grant is a Bear again, and Diregraf Captain did not drain.
+The reverse was wrong as well: a Zombie that Kenrith's Transformation
+had made an Elk read as a Zombie once it died. The cards' comments
+declared the first half as "weaker, never stronger".
+
+CR 603.10a again: the ability looks back in time, so the question is
+what subtypes the permanent had as it last existed on the battlefield.
+
+### Decision 1 — `Event.LastKnownSubtypes` and `Event.LastKnownAllCreatureTypes`
+
+```go
+LastKnownSubtypes         []string // post-layer Characteristic.Subtypes as it left — EventLTB only
+LastKnownAllCreatureTypes bool     // it was every creature type (changeling, Maskwood Nexus)
+```
+
+`exitLKILocked` copies `c.Effective().Subtypes` beside the types, and
+records "every creature type" as **one flag** rather than writing the
+~345 entries of `AllCreatureTypes` into the list — the same reason
+`Characteristic.AllCreatureTypes` is a flag (see `HasAllCreatureTypes`).
+The flag is `HasAllCreatureTypes(c)` for any permanent that is not
+face down; a face-down permanent is never every creature type
+(CR 708.2 — the changeling underneath is text it does not have), which
+is the branch `Card.HasSubtype` takes. `stamp` writes both on every
+`EventLTB` emit site, so every exit route carries them with no new call
+site; `cloneTriggerContext` copies the slice. No new game state: the
+fields ride the event log (the v7 shape file records the additive keys).
+No wire change: `protocol/log.go` does not project them.
+
+### Decision 2 — `Event.WasSubtype` and `leftAsSubtype`
+
+`Event.WasSubtype(subtype) (was, known bool)` answers with
+`Card.HasSubtype`'s semantics: case-insensitive, and a permanent that
+was every creature type has every **creature** type (CR 205.3m) — not
+"Forest" or "Equipment". `known` is `WasType`'s: the stamp is present
+exactly when `LastKnownTypes` is, so a stamped creature with no subtypes
+is a known "no", never an unknown.
+
+Card side, `leftAsSubtype(ev, c, subtype)` in `effects/helpers.go`
+falls back to `c.HasSubtype` only for an unstamped event. Every tribal
+dies condition asks it:
+
+| Reader | File | Cards |
+|---|---|---|
+| `b17SelfOrZombieYouControlDied` | batch17_helpers.go | Undead Augur |
+| `b27SelfOrNontokenZombieYouControlDied` | batch27_helpers.go | Headless Rider |
+| `anotherZombieYouControlDied` | batch35_helpers.go | Diregraf Captain, Plague Belcher |
+| `b25AnotherGoblinYouControlDied` | batch25_helpers.go | Pashalik Mons |
+| `b34VampireYouControlDied` | batch34_helpers.go | Crossway Troublemakers |
+| `b36AngelYouControlDied` | batch36_helpers.go | Bishop of Wings |
+| `b36AnotherFaerieYouControlDied` | batch36_helpers.go | Tegwyll, Duke of Splendor |
+| `anEggYouControlDied` | atla_palani_nest_tender.go | Atla Palani, Nest Tender |
+| inline | omnath_locus_of_rage.go | Omnath, Locus of Rage |
+
+Every one of those cards was already `CompletenessFull` with the gap
+declared only in its prose; the prose is corrected, and no caveat
+changes.
+
+### Still open
+
+- **Supertypes as they last existed.** `b33LegendaryCreatureYouControlDied`
+  (Rakdos Joins Up) reads the graveyard card's supertype, so a creature
+  that was legendary only through an effect is missed. Same shape, one
+  more field, when a card needs it.
+- **Controller as it last existed** — unchanged from the #1675 note.
+- **Maskwood Nexus off the battlefield.** Its second sentence ("creature
+  cards you own that aren't on the battlefield") is still a declared
+  caveat on the Nexus; once it lands, the graveyard fallback would agree
+  with the stamp for the Nexus case, and the stamp remains what answers
+  for every grant that stops at the battlefield.

@@ -1,0 +1,6 @@
+---
+title: "Subtypes in the leaves-the-battlefield last-known information"
+date: 2026-09-28
+issues: [1679]
+---
+**Subtypes in the leaves-the-battlefield last-known information** (#1679, CR 603.10a, [ADR 0027 amendment 2026-09-28, #1679](decisions/0027-attack-triggers.md)). The tribal dies-triggers ("whenever another Zombie you control dies") asked `HasSubtype` of the card in the graveyard, where no grant applies, so a creature that was a Zombie only under Maskwood Nexus, a changeling grant or a lord's type grant was not counted — and a Zombie an effect had made an Elk still was. `EventLTB` now also carries `Event.LastKnownSubtypes` and `Event.LastKnownAllCreatureTypes` (one flag, not ~345 subtypes), stamped by the same `exitLKI` as the #1675 card types; `Event.WasSubtype` answers with `Card.HasSubtype`'s semantics. Card side, `leftAsSubtype(ev, c, subtype)` is the one question, and every tribal dies condition asks it. **Cards:** Undead Augur, Headless Rider, Diregraf Captain, Plague Belcher, Pashalik Mons, Crossway Troublemakers, Bishop of Wings, Tegwyll, Atla Palani and Omnath, Locus of Rage — prose corrected, all already full. **Still open:** supertypes and controller as they last existed.
