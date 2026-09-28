@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Shifting Woodland — Land:
 //
@@ -14,26 +18,35 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // checkland shape (EntersTappedUnless, one Forest, not "another" —
 // this land has no printed subtype of its own to exclude).
 //
-// S49 sandbox simplification: the Delirium activated ability isn't
-// implemented. "Becomes a copy of target permanent card ... until end
-// of turn" is a CR 707 layer-1 copy effect applied to a permanent
-// that is ALREADY on the battlefield, with its own duration and
-// reversion at cleanup — a different shape from the ETB
-// "enters as a copy" replacement the catalog has (EntersAsCopyOf),
-// which only ever fires once, at entry, and never reverts. There's no
-// primitive for a temporary in-place copy yet, so the ability is left
-// off entirely; the land only ever taps for {G}.
+// The delirium ability is a duration copy (#1593, become_copy.go): the
+// land becomes the graveyard card until the cleanup step and then is
+// Shifting Woodland again. The copied values are read as the ability
+// resolves and stored, so exiling the card afterwards does not end the
+// copy. A copied creature has summoning sickness unless the land has
+// been under its controller's control since the turn began (CR 302.6),
+// which is the usual reason to activate it on an opponent's end step.
+//
+// Shipped in #1592 with the delirium ability caveated; #1593 lifted it.
 func init() {
+	const label = "Delirium — {2}{G}{G}: This land becomes a copy of target permanent card in your graveyard until end of turn. Activate only if there are four or more card types among cards in your graveyard."
 	Register(Spec{
 		OracleID:     "7c2a4fe5-43e8-4e20-bef2-0278d18afc4b",
 		Name:         "Shifting Woodland",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The \"Delirium — {2}{G}{G}: This land becomes a copy of target permanent card in your graveyard until end of turn\" ability isn't implemented — the land can only tap for green mana."},
+		Completeness: CompletenessFull,
 		Replacements: []game.ReplacementEffect{EntersTappedUnless(otherLandsWithSubtypeAtLeast("forest", 1))},
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},
 			Produced: "{G}",
 			Label:    "Add {G}",
+		}},
+		Activated: []ActivatedAbility{{
+			Label:   label,
+			Cost:    ManaCost("{2}{G}{G}"),
+			Targets: TargetCardInGraveyard("target permanent card in your graveyard", YouOwn(), Permanent()),
+			Condition: func(g *game.Game, controller, _ uuid.UUID) bool {
+				return b16CardTypesInGraveyard(g, controller) >= 4
+			},
+			Effect: selfBecomesCopyOfTarget("Shifting Woodland — becomes a copy until end of turn"),
 		}},
 	})
 }

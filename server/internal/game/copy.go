@@ -1,5 +1,7 @@
 package game
 
+import "strings"
+
 // copy.go — CR 707 copy effects (Clone, Phyrexian Metamorph, Spark
 // Double, Sakashima the Impostor). The S16.5 half of #159 that a
 // real card finally asked for, and the fix for #335.
@@ -400,6 +402,21 @@ func (v *PrintedValues) GrantAbility(name string) {
 		}
 	}
 	v.GrantedAbilities = append(v.GrantedAbilities, key)
+}
+
+// AddKeyword is "except it has <keyword>" for a KEYWORD ability —
+// Cursed Mirror's haste, Lazav's hexproof (CR 707.9a). A keyword is a
+// printed value here like any other (Card.Keywords, merged into the
+// printed abilities by printedCharacteristic), so a later copy copies
+// it too, as the rule says. Idempotent case-insensitively, because the
+// importer stamps Scryfall's "Haste" and the catalog writes "haste".
+func (v *PrintedValues) AddKeyword(kw string) {
+	for _, existing := range v.Keywords {
+		if strings.EqualFold(existing, kw) {
+			return
+		}
+	}
+	v.Keywords = append(v.Keywords, kw)
 }
 
 // MakeToken stamps the "Token" supertype on the copiable values —

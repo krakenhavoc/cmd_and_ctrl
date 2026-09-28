@@ -77,6 +77,23 @@ func EntersAsCopyOf(
 	}
 }
 
+// EntersAsCopyOfUntilEndOfTurn is EntersAsCopyOf for "as this enters,
+// you may have it become a copy of <candidates> until end of turn"
+// (Cursed Mirror, #1593). The copy lands exactly as an entry copy does —
+// before any event, so the permanent's ETB triggers are the copied
+// card's — and the engine then gives it an end
+// (game.settleTimedEntryCopyLocked): at the cleanup step the permanent
+// is itself again.
+func EntersAsCopyOfUntilEndOfTurn(
+	name string,
+	candidates func(g *game.Game, controller uuid.UUID, self uuid.UUID) []uuid.UUID,
+	except func(ev *game.ReplacementEvent, v *game.PrintedValues, g *game.Game, source *game.Card),
+) game.ReplacementEffect {
+	r := EntersAsCopyOf(name, candidates, except)
+	r.CopySelector.UntilEndOfTurn = true
+	return r
+}
+
 // copyCandidates walks the battlefield and returns the permanents
 // that pass `ok`, skipping the entering permanent itself — a Clone
 // is not on the battlefield yet when the prompt is built, but an

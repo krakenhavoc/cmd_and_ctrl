@@ -314,6 +314,20 @@ func (c *Card) clearCarriedAbilitySlices() {
 	c.ActivatedAbilities = nil
 }
 
+// OwnPrintedValues returns the values printed on the CARD `c`,
+// whatever copy effect its permanent is under: PrintedSelf when a copy
+// effect has overwritten the flat fields, the flat fields otherwise. It
+// is the last-known copiable values of a card that was in a graveyard
+// (CR 608.2h) — a card in a graveyard is never a copy — which is what
+// Lazav's "become a copy of that card" reads when the card has moved
+// on before the trigger resolves.
+func OwnPrintedValues(c Card) PrintedValues {
+	if c.PrintedSelf != nil {
+		return c.PrintedSelf.Clone()
+	}
+	return printedValuesOf(c)
+}
+
 // settleTimedEntryCopyLocked turns an "as this enters, it becomes a
 // copy … until end of turn" entry copy (Cursed Mirror) into a duration
 // copy, once the permanent has its entry stamp.
