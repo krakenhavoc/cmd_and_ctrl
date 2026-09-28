@@ -616,8 +616,74 @@ move, with the permanent still on the battlefield, and read it there.
 
 ### Still open
 
-- **Colour as it last existed.** Teysa, Orzhov Scion's "whenever
+- ~~**Colour as it last existed.** Teysa, Orzhov Scion's "whenever
   another black creature you control dies" reads `dead.HasColor("B")`
   off the graveyard card, so a creature that was black only through an
   effect is missed (and one an effect made non-black counts). Same
-  shape, one more field, when a card needs it.
+  shape, one more field, when a card needs it.~~ **Closed by the
+  #1689 amendment below.**
+
+## Amendment (2026-09-28, #1689): the leaving permanent's colour rides the same event
+
+**Status:** Accepted · S37 — Combat correctness · [#1689](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1689)
+
+### Context
+
+The #1675, #1679 and #1682 amendments stamped a leaving permanent's
+card types, subtypes, supertypes and controller, and left the last
+characteristic still read off the graveyard card: colour. Teysa,
+Orzhov Scion's "whenever another black creature you control dies"
+asked `dead.HasColor("B")` of the card as it sits in the graveyard,
+where no continuous effect applies any more, so a creature that was
+black only through an effect (Darkest Hour, a black-making static, an
+Aura) did not trigger it — and one an effect had painted another
+colour still counted, because the printed colour is what the
+graveyard card falls back to.
+
+CR 603.10a again: the ability looks back in time, so the question is
+what colour the permanent had as it last existed on the battlefield.
+
+### Decision 1 — `Event.LastKnownColors`
+
+```go
+LastKnownColors []string // post-layer Card.EffectiveColors as it left — EventLTB only
+```
+
+`exitLKILocked` copies `c.Effective().Colors` beside the types,
+subtypes, supertypes and controller. `stamp` writes it on every
+`EventLTB` emit site, so every exit route carries it with no new call
+site; `cloneTriggerContext` copies the slice. No new game state: the
+field rides the event log (the v7 shape file records the additive
+key). No wire change: `protocol/log.go` does not project it.
+
+### Decision 2 — `Event.WasColor` and `leftAsColor`
+
+`Event.WasColor(color) (was, known bool)` answers with
+`Card.HasColor`'s semantics — an exact match against the post-layer
+colour list — with `WasSupertype`'s `known`: the stamp is present
+exactly when `LastKnownTypes` is, so a stamped colourless permanent is
+a known "no", never an unknown.
+
+Card side, `leftAsColor(ev, c, color)` in `effects/helpers.go` falls
+back to `c.HasColor` only for an unstamped event — the pre-#1689
+reading, never a false answer. Teysa, Orzhov Scion asks
+`leftAsColor(ev, dead, "B")`. A grep of every dies / leaves-the-
+battlefield reader that tested colour on the moved card
+(`dead.HasColor`, `HasColor` near `cardDied` / `diedCreature` /
+`EventLTB`) found Teysa as the only one; no other catalog card reads
+a departed permanent's colour today.
+
+### Cards
+
+- **Teysa, Orzhov Scion** — switched onto `leftAsColor`; stays
+  `full`. No caveat existed to clear — the gap was in the doc comment,
+  which is corrected.
+
+### Still open
+
+Nothing. Card types (#1675), subtypes and "every creature type"
+(#1679), supertypes and controller (#1682) and colour (#1689) are all
+now read as the permanent last existed on the battlefield (CR
+603.10a). The one remaining gap in this family is Maskwood Nexus's
+off-battlefield grant, noted in the #1679 amendment above, which is
+not a last-known-information question at all.
