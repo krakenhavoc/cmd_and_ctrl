@@ -977,6 +977,16 @@
     if (!params) return;
     sendBulkAttack(defenderSeatID, params);
   }
+  // #1724: "Attack <seat> with N" from a token group's list. The same
+  // bulk declaration the picker above confirms — one action, one undo —
+  // so an attack tax or a count limit is refused and offered back
+  // exactly as it is for "attack with all".
+  function declareGroupAttackers(attackerIDs: string[], defenderSeatID: string): void {
+    if (!canDeclareAttackers) return;
+    const params = attackAllParams(attackPlan, defenderSeatID, { only: attackerIDs });
+    if (!params) return;
+    sendBulkAttack(defenderSeatID, params);
+  }
   function cancelAttackPicker(): void {
     attackPickerDefenderID = null;
     attackPickerLimitReason = null;
@@ -1534,6 +1544,7 @@
           onSelectCombatCard={handleSelectCombatCard}
           onDeclareAttack={declareAttackTarget}
           onDeclareBlock={declareBlockTarget}
+          onDeclareAttackers={declareGroupAttackers}
           {autopassEnabled}
           {loopNotice}
           onPassPriority={passPriority}

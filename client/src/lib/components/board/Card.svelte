@@ -104,6 +104,11 @@
     // marking every card on the table high is the same as marking
     // none of them, so the default is no hint at all.
     priority?: boolean;
+    // #1724: a token group's card stands for every member of its
+    // half, so the targeting ring asks about all of them — a group
+    // whose drawn member is not a legal target but another member is
+    // still lights up, and never hides a legal target.
+    memberIDs?: readonly string[];
     onClick?: (card: CardView, ev: MouseEvent) => void;
   }
 
@@ -111,12 +116,14 @@
   // set get a ring so the player can see what they may click.
   const targetable = $derived.by(() => {
     const t = $targeting;
-    return t !== null && isLegalCardTarget(t, card.instance_id);
+    if (t === null) return false;
+    return (memberIDs ?? [card.instance_id]).some((id) => isLegalCardTarget(t, id));
   });
   // S20 sub-PR 5: already picked in a multi-target prompt.
   const picked = $derived.by(() => {
     const t = $targeting;
-    return t !== null && isPicked(t, card.instance_id);
+    if (t === null) return false;
+    return (memberIDs ?? [card.instance_id]).some((id) => isPicked(t, id));
   });
 
   const {
@@ -134,6 +141,7 @@
     payerLife,
     enchantedPlayer,
     priority = false,
+    memberIDs,
     onClick,
   }: Props = $props();
 

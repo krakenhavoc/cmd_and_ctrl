@@ -1184,3 +1184,156 @@ the same exclusion.
 - **Devoted Druid and the loyalty cost** keep `applyCounterLocked`. Moving them
   onto the window with `CounterFromCost` would fix Vizier / Winding Constrictor
   there too, and is its own change.
+
+## Amendment (2026-09-28, [#1710](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1710)): Devoted Druid and the loyalty cost join the window too
+
+**Sprint:** S44 — Mana and cost components. Tracker [#887](https://github.com/krakenhavoc/cmd_and_ctrl/issues/887).
+
+The #1703 amendment above left one line of unfinished business: Devoted
+Druid's "put a -1/-1 counter on this creature" cost (`payCounterAddLocked`,
+`server/internal/game/counter_cost.go`) and a planeswalker's loyalty cost
+(`server/internal/game/activated.go`'s catalogued path and
+`mutations.go`'s `ActivateLoyalty` sandbox verb) both wrote the counter-map
+mutation directly, bypassing the CR 614 window entirely. This was right
+about Doubling Season — a cost is not the effect of a resolving spell or
+ability (CR 614.16), so Doubling Season genuinely does nothing to either —
+but wrong to conclude from that, that *no* replacement applies. A
+replacement that names no effect replaces the EVENT, cost or not, and three
+real cards depend on exactly that:
+
+- **Vizier of Remedies + Devoted Druid** is the long-standing infinite-mana
+  combo: "If one or more -1/-1 counters would be put on a creature you
+  control, that many -1/-1 counters minus one are put on it instead" reduces
+  the Druid's one counter to zero, so the untap ability costs nothing and
+  can be activated indefinitely.
+- **Winding Constrictor** on the Druid's cost: "If one or more counters
+  would be put on an artifact or creature you control, that many plus one
+  … are put on that permanent instead" names no effect and no counter kind,
+  so it adds one to the Druid's -1/-1 placement the same as it would to any
+  other.
+- **Vorinclex, Monstrous Raider** on a +loyalty cost: "If you would put one
+  or more counters on a permanent or player, put twice that many … instead"
+  doubles a `+1` loyalty ability to `+2`.
+
+### The loyalty ruling, checked
+
+The task that opened this amendment asked explicitly to confirm, rather than
+assume, that a loyalty cost's counters are not doubled by an effect-scoped
+replacement — because "loyalty abilities are activated abilities whose cost
+happens to be counters" is exactly the same shape as Devoted Druid's cost,
+and it would be easy to get backwards. The Gatherer ruling on Doubling
+Season settles it directly:
+
+> If you activate an ability whose cost has you put loyalty counters on a
+> planeswalker, the number you put on isn't doubled because those counters
+> are put on as a cost, not as an effect. Planeswalkers will, however, enter
+> the battlefield with double the normal number of loyalty counters, since
+> that placement is an effect (the printed starting loyalty, stamped by the
+> CR 613/ADR 0032 entry rule) rather than a cost.
+
+(Gatherer, Doubling Season rulings; summarised via [tappedout.net's Doubling
+Season and planeswalkers
+Q&A](https://tappedout.net/mtg-questions/does-doubling-season-second-ability-work-for-planeswalkers-as-well/),
+which quotes the same ruling.) This is the asymmetry ADR 0032 already builds
+on the OTHER side — starting loyalty is stamped by the engine's own entry
+rule, not by a catalog effect, and it goes through the ordinary counter
+pipeline already, unaffected by this amendment — and it is now symmetric
+with Devoted Druid's cost on this side too: **a loyalty ability's cost is a
+cost, full stop, whether the counters are going up or down.** Doubling
+Season does not touch a `+1` ability's counter, exactly as it does not touch
+the Druid's -1/-1. A replacement that names no effect (Vorinclex) still
+does, exactly as it still does for the Druid.
+
+The Devoted Druid + Vizier of Remedies interaction needed no new research —
+it is one of the best-known combo rulings in Modern — but is worth restating
+in engine terms: the Druid's mana ability itself is untouched (Vizier says
+nothing about mana), and the untap ability still goes on the stack as
+printed (CR 602.2a); what changes is only what the untap ability's OWN cost
+settles on once paid.
+
+### Decision 15 — one helper, `payCostCounterLocked`, replaces two direct writes
+
+`server/internal/game/counter_cost.go` gains `payCostCounterLocked(playerID,
+cardID uuid.UUID, name string, delta int) (int, error)` — `blightLocked`'s
+pattern (`teamwork_blight_cost.go`) generalised off the blight-specific
+call, since both are "a cost places counters through the window, marked
+`CounterFromCost`, settled now because a cost cannot pause (CR 601.2h /
+602.2b)":
+
+```go
+func (g *Game) payCostCounterLocked(playerID, cardID uuid.UUID, name string, delta int) (int, error) {
+	if delta == 0 {
+		return 0, nil
+	}
+	return g.addCounterMustSettleNowLocked(&ReplacementEvent{
+		Kind:            RepEventCounter,
+		CounterTarget:   cardID,
+		CounterName:     name,
+		CounterDelta:    delta,
+		CounterPlacer:   playerID,
+		CounterFromCost: true,
+	})
+}
+```
+
+Three call sites move onto it:
+
+- `payCounterAddLocked` (Devoted Druid's `AbilityCost.AddCounter`,
+  `counter_cost.go`) — now returns `(int, error)`, the delta that actually
+  landed, instead of assuming the printed `N`.
+- The loyalty component of `payAbilityCostLocked`
+  (`activated.go`, the catalogued CR 602 path).
+- `ActivateLoyalty` (`mutations.go`, the sandbox manual-loyalty verb for the
+  planeswalkers with no catalog entry). This one is not named in the issue
+  body, which cites only the catalogued path, but it pays the identical
+  cost with the identical (now-stale) reasoning in its own comment, and
+  Vorinclex's card text does not care which verb a table used to activate a
+  walker's ability. Leaving it on the old path would have made the fix
+  depend on whether a planeswalker happened to be catalogued, which is not
+  a distinction CR 606 or any of the three cards above draws.
+
+**`playerID` rides onto `CounterPlacer`.** In every caller today the payer
+is also the target's controller (you can only add a counter to your own
+creature this way, and only a planeswalker's controller may activate its
+loyalty ability, CR 606.3), so this makes no observable difference against
+Vorinclex's existing fallback-to-controller reading
+(`counterPlacerOrFallback`, `vorinclex_monstrous_raider.go`) — but it is the
+CR 120.3d fact, it is the precedent `blightLocked` already set, and it costs
+nothing to state explicitly rather than leave to a fallback.
+
+**A negative delta (a "-3" loyalty ability) is unaffected.** Every
+registered counter-placement replacement gates on `CounterDelta > 0`
+(CR 614.1 / CR 122.6: "would be put" is a placement, not a removal), so a
+minus ability's counters pass through the window and settle exactly as
+printed — the window is opened, but nothing in it has anything to say about
+a removal.
+
+**The cost is paid whatever the window settles on.** `payCostCounterLocked`
+returns the settled amount rather than an error when a replacement reduces
+it to zero; `PaidCost.CountersAdded` now records what actually landed
+(0 under Vizier, 2 under Winding Constrictor, 1 with nothing in play — see
+`paid_cost.go`) instead of the printed `N`, matching `CountersRemoved` and
+`Sacrificed`'s existing "record the fact, not the cost line" convention. The
+ability itself — the untap, the `+1`/`-3` effect — resolves regardless,
+because CR 118.3 was already checked before anything was spent
+(`canPlaceCounterLocked`), and reducing a placement to nothing is not the
+same as being unable to make it.
+
+### What this closes and what it still doesn't decide
+
+Closed: Devoted Druid's cost and both loyalty paths (catalogued and
+sandbox) now see every counter-placement replacement that CR 614.16 does
+not name, matching `blightLocked`'s #1703 behaviour exactly. `docs/engine-seams.md`'s
+row for this gap (if any) should be updated or closed alongside.
+
+Still open, and out of scope here for the same reasons #1703 gave:
+
+- **A "counters can't be put on…" prohibition** (Solemnity, Melira) — still
+  has no plug-in point beyond `canPlaceCounterLocked`'s stated single
+  answer (not on the battlefield / not controlled).
+- **The blighted creature, mandatory/variable blight, blight as an
+  activated ability's cost** — #1703's own deferrals, untouched here.
+- **A `Card.PaidLoyaltyDelta`-style provenance field** — no card built so
+  far reads "how much loyalty did this activation actually add", so
+  `PaidCost` grows no new field for it; `CountersAdded` already exists and
+  needed only to start telling the truth.

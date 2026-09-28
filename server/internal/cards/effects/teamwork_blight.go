@@ -125,7 +125,11 @@ func checkTeamworkBlight(spec Spec) {
 				panic(fmt.Sprintf("effects.Register: %q declares a blight cost keyed %q — build it with OptionalBlight(n)", spec.Name, oc.Key))
 			}
 		}
-		if oc.MaxPayments() > 1 || oc.ManaCost != "" || oc.DiscardCards != 0 || oc.Sacrifice != nil || oc.PayLifeX || oc.ChoosesOpponent || oc.Targets != nil {
+		// A target-clause rewrite (Targets, set by WhenPaid) is NOT a
+		// payment component and is allowed: "if this spell was cast
+		// using teamwork, instead … target …" (Cruel Alliance, Too
+		// Evil to Stay Dead) is what the field exists for (#1716).
+		if oc.MaxPayments() > 1 || oc.ManaCost != "" || oc.DiscardCards != 0 || oc.Sacrifice != nil || oc.PayLifeX || oc.ChoosesOpponent {
 			panic(fmt.Sprintf("effects.Register: %q optional cost %q mixes teamwork / blight with another component — build it with Teamwork(n) or OptionalBlight(n)", spec.Name, oc.Key))
 		}
 	}

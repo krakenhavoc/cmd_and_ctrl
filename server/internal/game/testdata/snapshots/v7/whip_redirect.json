@@ -1272,7 +1272,7 @@
           "goadedBy": "00000000-0000-0000-0000-000000000000",
           "damageMarked": 0,
           "faceDown": false,
-          "enteredBattlefieldAt": 0,
+          "enteredBattlefieldAt": 1790208000000001000,
           "summonedThisTurn": false,
           "markedLethalByDeathtouch": false,
           "attachedTo": {
@@ -1327,7 +1327,7 @@
             "7f94e600-d3b4-493b-b965-8cca20cddc40": true,
             "85bb5a48-704c-4af5-9551-cbfcfb373180": true
           },
-          "enteredBattlefieldAt": 1790208000000001000,
+          "enteredBattlefieldAt": 1790208000000002000,
           "objectEpoch": 1,
           "summonedThisTurn": true,
           "markedLethalByDeathtouch": false,
@@ -1417,7 +1417,7 @@
         "affected": [
           {
             "id": "7f43286d-8378-4e9d-aed6-05dea863f888",
-            "enteredAt": 1790208000000001000,
+            "enteredAt": 1790208000000002000,
             "controller": "00000000-0000-0000-0000-000000000000"
           }
         ],
@@ -1436,7 +1436,7 @@
         },
         "sourceName": "Whip of Erebos",
         "controller": "7f94e600-d3b4-493b-b965-8cca20cddc40",
-        "timestamp": 1790208000000002000,
+        "timestamp": 1790208000000003000,
         "duration": {
           "Kind": 0,
           "Player": "7f94e600-d3b4-493b-b965-8cca20cddc40",
@@ -1454,7 +1454,7 @@
         "affected": [
           {
             "id": "7f43286d-8378-4e9d-aed6-05dea863f888",
-            "enteredAt": 1790208000000001000,
+            "enteredAt": 1790208000000002000,
             "controller": "00000000-0000-0000-0000-000000000000"
           }
         ],
@@ -1469,7 +1469,7 @@
           "epoch": 0
         },
         "controller": "7f94e600-d3b4-493b-b965-8cca20cddc40",
-        "timestamp": 1790208000000003000,
+        "timestamp": 1790208000000004000,
         "duration": {
           "Kind": 3,
           "Player": "00000000-0000-0000-0000-000000000000",
@@ -1479,7 +1479,7 @@
           "Source": "00000000-0000-0000-0000-000000000000",
           "SourceEnteredAt": 0,
           "Pinned": "7f43286d-8378-4e9d-aed6-05dea863f888",
-          "PinnedEnteredAt": 1790208000000001000
+          "PinnedEnteredAt": 1790208000000002000
         },
         "label": "Whip of Erebos: if it would leave the battlefield, exile it instead",
         "seq": 1
@@ -1621,6 +1621,23 @@
       {
         "seq": 7,
         "batch": 4,
+        "kind": "zone_move",
+        "actor": "00000000-0000-0000-0000-000000000000",
+        "source": "00000000-0000-0000-0000-000000000000",
+        "target": "00000000-0000-0000-0000-000000000000",
+        "card_id": "af32ab74-f37e-47da-98a4-39bb0904859d",
+        "stack_item_id": "00000000-0000-0000-0000-000000000000",
+        "old_zone": "hand",
+        "new_zone": "battlefield",
+        "cause_controller": "00000000-0000-0000-0000-000000000000",
+        "cause_item": "00000000-0000-0000-0000-000000000000",
+        "attacking_target": "00000000-0000-0000-0000-000000000000",
+        "blocking_target": "00000000-0000-0000-0000-000000000000",
+        "last_known_controller": "00000000-0000-0000-0000-000000000000"
+      },
+      {
+        "seq": 8,
+        "batch": 4,
         "kind": "mana_spent",
         "actor": "7f94e600-d3b4-493b-b965-8cca20cddc40",
         "source": "af32ab74-f37e-47da-98a4-39bb0904859d",
@@ -1638,7 +1655,7 @@
         "last_known_controller": "00000000-0000-0000-0000-000000000000"
       },
       {
-        "seq": 8,
+        "seq": 9,
         "batch": 4,
         "kind": "tap_card",
         "actor": "7f94e600-d3b4-493b-b965-8cca20cddc40",
@@ -1653,7 +1670,7 @@
         "last_known_controller": "00000000-0000-0000-0000-000000000000"
       },
       {
-        "seq": 9,
+        "seq": 10,
         "batch": 4,
         "kind": "trigger",
         "actor": "7f94e600-d3b4-493b-b965-8cca20cddc40",
@@ -1668,7 +1685,7 @@
         "last_known_controller": "00000000-0000-0000-0000-000000000000"
       },
       {
-        "seq": 10,
+        "seq": 11,
         "batch": 4,
         "kind": "activate_ability",
         "actor": "7f94e600-d3b4-493b-b965-8cca20cddc40",
@@ -1684,7 +1701,7 @@
         "last_known_controller": "00000000-0000-0000-0000-000000000000"
       },
       {
-        "seq": 11,
+        "seq": 12,
         "batch": 4,
         "kind": "becomes_target",
         "actor": "7f94e600-d3b4-493b-b965-8cca20cddc40",
@@ -1699,7 +1716,7 @@
         "last_known_controller": "00000000-0000-0000-0000-000000000000"
       },
       {
-        "seq": 12,
+        "seq": 13,
         "batch": 5,
         "kind": "resolve",
         "actor": "7f94e600-d3b4-493b-b965-8cca20cddc40",
@@ -1715,7 +1732,7 @@
         "last_known_controller": "00000000-0000-0000-0000-000000000000"
       },
       {
-        "seq": 13,
+        "seq": 14,
         "batch": 5,
         "kind": "zone_move",
         "actor": "7f94e600-d3b4-493b-b965-8cca20cddc40",
@@ -1732,7 +1749,7 @@
         "last_known_controller": "00000000-0000-0000-0000-000000000000"
       },
       {
-        "seq": 14,
+        "seq": 15,
         "batch": 5,
         "kind": "etb",
         "actor": "7f94e600-d3b4-493b-b965-8cca20cddc40",
@@ -1747,7 +1764,7 @@
         "last_known_controller": "00000000-0000-0000-0000-000000000000"
       }
     ],
-    "eventSeq": 14,
+    "eventSeq": 15,
     "eventBatch": 5,
     "rng": {
       "kind": "keyed",
@@ -1783,8 +1800,8 @@
       "ed99d27d-5948-4435-a7f9-f22ed8fcd860": 5,
       "f54ce533-3739-4bd3-8d7e-bb7420b4ea14": 65537
     },
-    "layerVersion": 4,
-    "lastResolvedVersion": 4,
+    "layerVersion": 5,
+    "lastResolvedVersion": 5,
     "continuations": {}
   }
 }

@@ -724,3 +724,157 @@ func TestDimirDoppelgangerRefusesANoncreatureCard(t *testing.T) {
 		t.Fatal("Dimir Doppelganger targeted an artifact card")
 	}
 }
+
+// --- Mizzium Transreliquat -------------------------------------------
+
+const oracleMizziumTransreliquat = "a1f73421-cda5-4029-9bcf-f2baee179e5c"
+
+// TestMizziumTransreliquatCheapAbilityRevertsAtCleanup — the {3}
+// ability is an ordinary until-end-of-turn copy, Mirage Mirror's
+// shape, and reverts at cleanup.
+func TestMizziumTransreliquatCheapAbilityRevertsAtCleanup(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	transreliquat := dcSeed(g, me.ID, "Mizzium Transreliquat", "Artifact", oracleMizziumTransreliquat, 0, 0)
+	sol := dcSeed(g, me.ID, "Sol Ring", "Artifact", solRingOracle, 0, 0)
+
+	dcMana(t, g, me.ID, "{C}{C}{C}")
+	if err := g.ActivateCatalogAbility(me.ID, transreliquat, 0, game.ActivateAbilityParams{
+		Targets: []game.TargetRef{{Kind: game.TargetCard, ID: sol}},
+	}); err != nil {
+		t.Fatalf("activate the {3} ability: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if c := dcCard(t, g, transreliquat); c.Name != "Sol Ring" {
+		t.Fatalf("the {3} ability did not copy Sol Ring: %q", c.Name)
+	}
+	dcCleanup(g)
+	if c := dcCard(t, g, transreliquat); c.Name != "Mizzium Transreliquat" || c.IsCopy() {
+		t.Fatalf("after cleanup Mizzium Transreliquat is %q (copy %v)", c.Name, c.IsCopy())
+	}
+}
+
+// TestMizziumTransreliquatExpensiveAbilityKeepsTheAbility — the
+// {1}{U}{R} ability is an indefinite copy that grants itself back
+// (Dimir Doppelganger's shape), so the copy can activate it again, and
+// it does NOT end at cleanup.
+func TestMizziumTransreliquatExpensiveAbilityKeepsTheAbility(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	transreliquat := dcSeed(g, me.ID, "Mizzium Transreliquat", "Artifact", oracleMizziumTransreliquat, 0, 0)
+	sol := dcSeed(g, me.ID, "Sol Ring", "Artifact", solRingOracle, 0, 0)
+	other := dcSeed(g, me.ID, "Other Artifact", "Artifact", "", 0, 0)
+
+	dcMana(t, g, me.ID, "{C}{U}{R}")
+	if err := g.ActivateCatalogAbility(me.ID, transreliquat, 1, game.ActivateAbilityParams{
+		Targets: []game.TargetRef{{Kind: game.TargetCard, ID: sol}},
+	}); err != nil {
+		t.Fatalf("activate the {1}{U}{R} ability: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if c := dcCard(t, g, transreliquat); c.Name != "Sol Ring" {
+		t.Fatalf("the {1}{U}{R} ability did not copy Sol Ring: %q", c.Name)
+	}
+	dcCleanup(g)
+	if c := dcCard(t, g, transreliquat); c.Name != "Sol Ring" {
+		t.Fatalf("an indefinite copy ended at cleanup: %q", c.Name)
+	}
+
+	dcMana(t, g, me.ID, "{C}{U}{R}")
+	if err := g.ActivateCatalogAbility(me.ID, transreliquat, 0, game.ActivateAbilityParams{
+		Targets: []game.TargetRef{{Kind: game.TargetCard, ID: other}},
+	}); err != nil {
+		t.Fatalf("the granted ability cannot be activated from the copy: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if c := dcCard(t, g, transreliquat); c.Name != "Other Artifact" {
+		t.Fatalf("second activation: %q", c.Name)
+	}
+}
+
+// --- Lazav, Familiar Stranger -----------------------------------------
+
+const oracleLazavFamiliarStranger = "ca60623a-1a98-4153-a0ee-2f34981de5cb"
+
+// lfsCounters reads Lazav's +1/+1 counters.
+func lfsCounters(t *testing.T, g *game.Game, id uuid.UUID) int {
+	t.Helper()
+	return dcCard(t, g, id).Counters[game.CounterPlusOne]
+}
+
+// TestLazavFamiliarStrangerCountersExilesAndBecomesACopy — committing
+// a crime puts a counter on Lazav, offers the graveyard exile, and
+// (accepted) becomes a copy of the exiled creature until end of turn.
+func TestLazavFamiliarStrangerCountersExilesAndBecomesACopy(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	lazav := dcSeed(g, me.ID, "Lazav, Familiar Stranger", "Legendary Creature — Shapeshifter", oracleLazavFamiliarStranger, 1, 4)
+	giant := dcGraveyardCard(g, opp, "Hill Giant", "Creature — Giant", "oracle-giant", 3, 3)
+	advanceToMain(t, g)
+
+	castCatalogSpell(t, g, "Lightning Bolt", "Instant", lightningBoltOracle, b16TargetPlayer(opp.ID))
+	if lfsCounters(t, g, lazav) != 0 {
+		t.Fatal("the counter is part of the trigger's resolution, not its announcement")
+	}
+	passPriorityAroundTable(t, g)
+	if got := lfsCounters(t, g, lazav); got != 1 {
+		t.Fatalf("+1/+1 counters = %d, want 1", got)
+	}
+
+	pick := latestChooseCardsFor(g, me.ID)
+	if pick == nil {
+		t.Fatal("Lazav must offer the graveyard exile")
+	}
+	if err := g.ResolveChooseCards(pick.ID, me.ID, []uuid.UUID{giant}); err != nil {
+		t.Fatalf("ResolveChooseCards: %v", err)
+	}
+	if z := g.FindCardZoneForEffect(giant); z == nil || z.Kind != game.ZoneExile {
+		t.Fatal("the chosen card was not exiled")
+	}
+
+	ask := latestChoiceOfKind(g, game.PendingChoiceConfirm)
+	if ask == nil || ask.Chooser != me.ID {
+		t.Fatalf("Lazav must ask whether to become a copy: %+v", g.PendingChoices)
+	}
+	if err := g.ResolveConfirm(ask.ID, me.ID, true); err != nil {
+		t.Fatalf("ResolveConfirm(yes): %v", err)
+	}
+	if c := dcCard(t, g, lazav); c.Name != "Hill Giant" || c.Effective().Power != 3 {
+		t.Fatalf("Lazav did not become the Hill Giant: %q %d/%d", c.Name, c.Effective().Power, c.Effective().Toughness)
+	}
+}
+
+// TestLazavFamiliarStrangerRevertsAtCleanupAndOncePerTurn — the copy
+// is until end of turn (unlike the indefinite Lazavs) and the whole
+// ability triggers only once each turn.
+func TestLazavFamiliarStrangerRevertsAtCleanupAndOncePerTurn(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	lazav := dcSeed(g, me.ID, "Lazav, Familiar Stranger", "Legendary Creature — Shapeshifter", oracleLazavFamiliarStranger, 1, 4)
+	giant := dcGraveyardCard(g, opp, "Hill Giant", "Creature — Giant", "oracle-giant", 3, 3)
+	advanceToMain(t, g)
+
+	castCatalogSpell(t, g, "Lightning Bolt", "Instant", lightningBoltOracle, b16TargetPlayer(opp.ID))
+	passPriorityAroundTable(t, g)
+	if err := g.ResolveChooseCards(latestChooseCardsFor(g, me.ID).ID, me.ID, []uuid.UUID{giant}); err != nil {
+		t.Fatalf("ResolveChooseCards: %v", err)
+	}
+	if err := g.ResolveConfirm(latestChoiceOfKind(g, game.PendingChoiceConfirm).ID, me.ID, true); err != nil {
+		t.Fatalf("ResolveConfirm(yes): %v", err)
+	}
+	if c := dcCard(t, g, lazav); c.Name != "Hill Giant" {
+		t.Fatalf("setup: Lazav is %q, want Hill Giant", c.Name)
+	}
+
+	// Once per turn: a second crime this turn does nothing more.
+	castCatalogSpell(t, g, "Lightning Bolt", "Instant", lightningBoltOracle, b16TargetPlayer(opp.ID))
+	passPriorityAroundTable(t, g)
+	if got := lfsCounters(t, g, lazav); got != 1 {
+		t.Fatalf("+1/+1 counters after a second crime this turn = %d, want 1", got)
+	}
+
+	dcCleanup(g)
+	if c := dcCard(t, g, lazav); c.Name != "Lazav, Familiar Stranger" || c.IsCopy() {
+		t.Fatalf("after cleanup Lazav is %q (copy %v), want itself back", c.Name, c.IsCopy())
+	}
+}

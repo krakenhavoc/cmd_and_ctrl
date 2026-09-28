@@ -4222,3 +4222,154 @@ All are `full`:
   batch.
 - **Re-pointing a multi-blocker away from an attacker.** The verb only adds;
   undo is the way back, as for every other staged block.
+
+## Amendment (2026-09-28, [#1715](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1715)): capacity from a resolving effect, "blocks each attacking creature", and "blocks two or more"
+
+The #1706 amendment's "What this does NOT decide" named three follow-ups
+this amendment builds: capacity from a resolving spell or ability, Blaze of
+Glory's requirement, and Lairwatch Giant's trigger. Decisions 1–63 stand.
+Sprint S37 (combat correctness), tracker
+[#880](https://github.com/krakenhavoc/cmd_and_ctrl/issues/880). CR numbers were
+checked against the comprehensive rules effective 2026-08-07. Oracle text was
+read from the 2026-09-23 Scryfall dump.
+
+### The rule
+
+- **CR 509.1a/b** (as in the #1706 amendment). "Can block an additional
+  creature this turn" and "can block any number of creatures this turn" are
+  the same capacity as the static forms, for the turn.
+- **CR 509.1c.** "It blocks each attacking creature this turn if able" is a
+  requirement for each attacking creature. The declaration has to obey the
+  most requirements it can without breaking a restriction. A creature that
+  can block only two of three attackers owes two blocks, and a flyer it can't
+  reach asks nothing.
+- **CR 509.3e.** An ability that triggers when a creature blocks "a particular
+  number of creatures" triggers if it blocks that many when blockers are
+  declared, and an effect that adds blockers can also make it trigger.
+- **CR 802.2** (attack multiple players, which Commander uses). "As the combat
+  phase starts ... all the attacking player's opponents are defending players
+  during the combat phase." CR 506.2 says the same of a two-player game's
+  nonactive player.
+
+### Decision 64: turn-scoped capacity is two ADR 0041 layer-6 mod kinds
+
+`addBlockCapacity` reads `Amount`, the number of ADDITIONAL attackers (at
+least 1). `blockAnyNumber` reads nothing. Both are layer 6, and their `Apply`
+writes the fields the #1706 statics write: `Characteristic.AdditionalBlocks +=
+Amount` and `BlocksAnyNumber = true`. So records add up with each other and
+with a static, "any number" beats any count, and `game.BlockCapacity` stays
+the one reader. Nothing in the block validator, the requirement search, the
+option generator, the view or the bot changes.
+
+The record is pinned to the creature (CR 611.2c; a single target is the same
+set either way) and lasts until cleanup (`DurationUntilEndOfTurn`). Being data,
+it rides `Clone`, undo and the snapshot. A restore point naming either kind in
+an older binary is refused as an unknown kind (ADR 0041 P4). An
+`addBlockCapacity` with `Amount < 1` panics at registration and is refused at
+restore (`ErrUnknownEffectKey`), because it would grant nothing, or take
+capacity away, which no card prints.
+
+Card side: `effects.BlockCapacityUntilEOT{Target, Additional | AnyNumber}` for
+a stand-alone grant. `blockCapacityMods` lets a card fold the grant into ONE
+record with a pump when the printed sentence is one effect (Give No Ground's
+"+2/+6 ... and can block any number", Act of Heroism's "+2/+2 ... and can
+block an additional creature"; CR 613.7).
+
+### Decision 65: `blocksEach` is Lure said from the blocker's side
+
+A sixth `BlockRequirementKind`, `"blocksEach"`, sits on the would-be BLOCKER.
+It is counted per attacker:
+
+- `blockPairWeight` adds one for every (blocker, attacker) pair, so the
+  min-cost flow prefers every pair it can afford.
+- `blockRequirementHitsLocked` records one hit per attacker blocked.
+- `blockReqHit.key` keys a `blocksEach` hit on its attacker, as a Lure's is
+  keyed on its blocker. That keying is what lets the refusal name the attacker
+  left out.
+- `blockerSideRequirement` includes it, so the fast path sees it.
+
+The capacity bounds it for free: the search gives a blocker only the room it
+has, so without "any number" the requirement is obeyed as far as capacity
+allows. Blaze of Glory writes both mods in one record. The refusal sentence
+is Lure's pair form ("Wall must block Bear if able (Blaze of Glory)."). There
+is no wire change: the kind is not projected, and `must_block` still names
+each owing blocker's first required attacker.
+
+### Decision 66: "defending player" on a spell is every opponent, for the whole combat phase
+
+`Game.IsDefendingPlayerForEffect(seat)` is true during the combat phase for
+any live player other than the active player (CR 802.2; CR 506.2 for two
+players). It is false outside combat. `effects.ControlledByDefendingPlayer()`
+is the target predicate for Yare's and Blaze of Glory's "target creature
+defending player controls". This is deliberately NOT the block verb's
+question. Who may block a particular attacker is still
+`isDefendingPlayerLocked` / `defendingPlayerForAttackerLocked`: the player
+THAT attack is aimed at. An attacking creature's own trigger keeps
+`TargetCreatureDefendingPlayerControls` (CR 802.2a). Blaze of Glory's "before
+blockers are declared" is a `CastCondition` on the beginning of combat and
+declare attackers steps. That is when every opponent is already a defending
+player, before anything attacks.
+
+### Decision 67: "blocks N or more" reads the numbered `EventBlock`
+
+The lock-in already numbers each blocker's pairs in `EventBlock.Amount`
+(#1706). The event numbered N is the one that takes the creature to N, so
+`effects.selfBlocksAtLeast(ev, source, N)` is `Amount == N`. That triggers
+once per declaration however many more it blocks, and never for a creature
+that blocks fewer. A block added after the lock-in (the sandbox's late block)
+is announced with its own number, so it takes a creature from one to two
+exactly as CR 509.3e's "effects that add ... blockers" does. No new event and
+no batch bookkeeping.
+
+### Cards
+
+All are `full`:
+
+- **Coastline Chimera**, **Mounted Archers**, **Anurid Swarmsnapper** and
+  **Luminous Guardian** activate `BlockCapacityUntilEOT` on themselves.
+- **Give No Ground**, **Valor Made Real** and **Act of Heroism** are
+  resolving grants.
+- **Yare** targets a creature a defending player controls.
+- **Blaze of Glory** is "any number" plus `blocksEach`, cast only before
+  blockers.
+- **Lairwatch Giant** has a static +1 and the Decision 67 trigger.
+
+### Tests
+
+- `game/multi_block_followups_test.go`:
+  - A +1-this-turn record blocks two attackers, and the creature blocks one
+    on the next turn it is attacked.
+  - Records add up, and "any number" beats them.
+  - A zero amount panics.
+  - Clone and undo, a JSON round trip, and a malformed restore refused.
+  - `blocksEach` with "any number": a companion blocker may join, the pass
+    and `finish_blocks` are refused naming the wall and a missed attacker,
+    and all three blocked passes (the flyer excepted).
+  - `blocksEach` with capacity 2 owes exactly two.
+  - `IsDefendingPlayerForEffect` in main, beginning of combat, and for an
+    eliminated player.
+  - `scoped_effects_test.go` has a layer case for each new kind.
+- `legal/multi_block_followups_test.go`: a +1 record is offered two attackers
+  and then none, with the third refused `blocker_capacity`. Under
+  `blocksEach` the pass is withheld, the one `AlwaysLegal` move puts the wall
+  on every attacker, every offer dispatches, and the pass returns.
+- `aiseat/multi_block_followups_test.go`: the heuristic, aggressive and
+  never-blocks policies all end a combat in which a blazed 2/2 blocks all
+  three forced attackers and divides its damage.
+- `cards/effects/block_capacity_eot_cards_test.go`: one test per card,
+  including:
+  - Yare refused in a main phase and on the active player's creature.
+  - Blaze of Glory refused in the declare blockers step.
+  - Lairwatch Giant: one trigger for two, none for one.
+  - Valor Made Real through a restore point.
+
+### What this does NOT decide
+
+- **Re-pointing a multi-blocker away from one of its attackers.** It needs a
+  new action (remove one pair), an enumerator move and a client affordance.
+  Undo and `clear_combat` remain the way back.
+- **Conditional capacity statics** (Kemba's Legion and similar) belong to a
+  card batch, as before.
+- **The bot's attack-side estimates** (`aiseat/heuristic/trample.go`,
+  `unblockedPower`) still assume one attacker per blocker. That is weaker
+  play, not an illegal move.
