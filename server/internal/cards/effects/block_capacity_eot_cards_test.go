@@ -14,14 +14,16 @@ import (
 // snapshot) is pinned in game/multi_block_followups_test.go.
 
 const (
-	coastlineChimeraOracle = "da95382c-0536-49aa-a0db-3b52926bf559"
-	mountedArchersOracle   = "22517690-3ec1-49c9-951f-93eb3114423a"
-	giveNoGroundOracle     = "bae18a46-00e0-4b3e-8fdb-44cc61f30f8e"
-	valorMadeRealOracle    = "5bd1348c-51cc-4426-b995-8bb6d4a5bd2e"
-	actOfHeroismOracle     = "25edb501-11b5-4617-8a65-2eb4869cccd5"
-	yareOracle             = "f0f24c6d-80fb-4e99-a74d-6ed9d349ed3d"
-	blazeOfGloryOracle     = "b330ac89-790e-4cc9-96a5-532c48252088"
-	lairwatchGiantOracle   = "dac0dc4c-acf3-40de-b6b5-963ff4176d3a"
+	coastlineChimeraOracle   = "da95382c-0536-49aa-a0db-3b52926bf559"
+	mountedArchersOracle     = "22517690-3ec1-49c9-951f-93eb3114423a"
+	giveNoGroundOracle       = "bae18a46-00e0-4b3e-8fdb-44cc61f30f8e"
+	valorMadeRealOracle      = "5bd1348c-51cc-4426-b995-8bb6d4a5bd2e"
+	actOfHeroismOracle       = "25edb501-11b5-4617-8a65-2eb4869cccd5"
+	yareOracle               = "f0f24c6d-80fb-4e99-a74d-6ed9d349ed3d"
+	blazeOfGloryOracle       = "b330ac89-790e-4cc9-96a5-532c48252088"
+	lairwatchGiantOracle     = "dac0dc4c-acf3-40de-b6b5-963ff4176d3a"
+	anuridSwarmsnapperOracle = "fd275ea7-9ccc-4148-9b33-392a612486dd"
+	luminousGuardianOracle   = "0d9a31f5-20d0-4266-95ec-38b4fa96b8aa"
 )
 
 // bcCast puts an instant into `caster`'s hand and casts it at `target`
@@ -235,24 +237,30 @@ func TestLairwatchGiantTriggersOnlyWhenItBlocksTwo(t *testing.T) {
 	}
 }
 
-// TestCoastlineChimeraAndMountedArchersActivationsAddUp — each
-// activation is one more attacker this turn; cleanup takes them all.
-func TestCoastlineChimeraAndMountedArchersActivationsAddUp(t *testing.T) {
-	for _, tc := range []struct{ name, oracle, cost, kw string }{
-		{"Coastline Chimera", coastlineChimeraOracle, "{C}{W}", "flying"},
-		{"Mounted Archers", mountedArchersOracle, "{W}", "reach"},
+// TestSelfCapacityActivationsAddUp — Coastline Chimera, Mounted
+// Archers, Anurid Swarmsnapper and Luminous Guardian: each activation
+// is one more attacker this turn; cleanup takes them all.
+func TestSelfCapacityActivationsAddUp(t *testing.T) {
+	for _, tc := range []struct {
+		name, oracle, cost, kw string
+		idx                    int
+	}{
+		{"Coastline Chimera", coastlineChimeraOracle, "{C}{W}", "flying", 0},
+		{"Mounted Archers", mountedArchersOracle, "{W}", "reach", 0},
+		{"Anurid Swarmsnapper", anuridSwarmsnapperOracle, "{C}{G}", "reach", 0},
+		{"Luminous Guardian", luminousGuardianOracle, "{C}{C}", "", 1},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			g := newCatalogGame(t)
 			me := g.Seats[0]
 			id := pushMonster(g, me.ID, tc.name, tc.oracle, 1, 5)
-			if !hasString(effectiveAbilities(t, g, id), tc.kw) {
+			if tc.kw != "" && !hasString(effectiveAbilities(t, g, id), tc.kw) {
 				t.Errorf("no %s", tc.kw)
 			}
 			advanceTo(t, g, game.StepPrecombatMain)
 			for want := 2; want <= 3; want++ {
 				floatMana(t, g, me, tc.cost)
-				if err := g.ActivateCatalogAbility(me.ID, id, 0, game.ActivateAbilityParams{}); err != nil {
+				if err := g.ActivateCatalogAbility(me.ID, id, tc.idx, game.ActivateAbilityParams{}); err != nil {
 					t.Fatalf("activate: %v", err)
 				}
 				passPriorityAroundTable(t, g)
@@ -265,5 +273,24 @@ func TestCoastlineChimeraAndMountedArchersActivationsAddUp(t *testing.T) {
 				t.Errorf("capacity next turn = %d, want 1", got)
 			}
 		})
+	}
+}
+
+// TestLuminousGuardianPumpsToughness — its other activation.
+func TestLuminousGuardianPumpsToughness(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	id := pushMonster(g, me.ID, "Luminous Guardian", luminousGuardianOracle, 1, 4)
+	advanceTo(t, g, game.StepPrecombatMain)
+	floatMana(t, g, me, "{W}")
+	if err := g.ActivateCatalogAbility(me.ID, id, 0, game.ActivateAbilityParams{}); err != nil {
+		t.Fatal(err)
+	}
+	passPriorityAroundTable(t, g)
+	if p, tg := effectivePower(t, g, id), effectiveToughness(t, g, id); p != 1 || tg != 5 {
+		t.Errorf("Guardian is %d/%d, want 1/5", p, tg)
+	}
+	if got := mbCapacity(t, g, id); got != 1 {
+		t.Errorf("the pump changed its capacity to %d", got)
 	}
 }
