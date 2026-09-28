@@ -270,7 +270,16 @@ func WardGranted(cost WardCost, label string, grants func(target *game.Card, g *
 				if warded.InstanceID != ev.CardID {
 					continue
 				}
-				return grants(warded, g, source) && ev.Actor != warded.Controller
+				if !grants(warded, g, source) || ev.Actor == warded.Controller {
+					return false
+				}
+				// CR 702.21 + Nowhere to Run (#1560): "ward abilities of
+				// those creatures don't trigger". Asked of the WARDED
+				// permanent, not the source — a granted ward's source
+				// is the Equipment or emblem — and only here, at the
+				// moment it would trigger, so the static leaving later
+				// does not trigger it after the fact.
+				return !g.WardSuppressedForEffect(warded)
 			}
 			return false
 		},

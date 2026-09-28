@@ -283,14 +283,37 @@ const KeywordChangeling = "changeling"
 // nil card returns true: a caller that has lost the card has an
 // existence problem, not a targeting one, and the zone walk that
 // wraps this reports that separately.
+//
+// This exported form has no game, so it honours no "as though it
+// didn't have hexproof" waiver (#1560). The engine's own targeting
+// paths call canBeTargetedByLocked, which does.
 func CanBeTargetedBy(c *Card, zone ZoneKind, src TargetSource) bool {
+	return canBeTargetedBy(nil, c, zone, src)
+}
+
+// canBeTargetedByLocked is CanBeTargetedBy as the targeting choke
+// point in targets.go asks it: with the game, so a static on the
+// battlefield may waive hexproof (hexproof_bypass.go, #1560). Caller
+// must hold g.mu with fresh layers.
+func (g *Game) canBeTargetedByLocked(c *Card, zone ZoneKind, src TargetSource) bool {
+	return canBeTargetedBy(g, c, zone, src)
+}
+
+// canBeTargetedBy is the shared body. `g` may be nil, which waives
+// nothing.
+//
+// The waiver is asked only once hexproof alone would refuse, so a
+// board with no hexproof on it never walks the battlefield for one,
+// and it waives ONLY hexproof: shroud is refused before it is asked
+// and protection after, exactly as they were before it existed.
+func canBeTargetedBy(g *Game, c *Card, zone ZoneKind, src TargetSource) bool {
 	if c == nil || zone != ZoneBattlefield {
 		return true
 	}
 	if HasKeyword(c, "shroud") {
 		return false
 	}
-	if HasKeyword(c, "hexproof") && c.Controller != src.Controller {
+	if HasKeyword(c, "hexproof") && c.Controller != src.Controller && !g.hexproofBypassedLocked(c, src.Controller) {
 		return false
 	}
 	// CR 702.16b. The pre-test is cheap and the snapshot is not, so

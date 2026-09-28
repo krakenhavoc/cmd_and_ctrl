@@ -301,3 +301,112 @@ reputation but not by structure, which is why it landed without
 needing anything this ADR argued about: it is unparameterised, it is
 read off `Effective().Abilities` like every other keyword, and its
 consumers — the destruction path — are already holding the card.
+
+## Amendment (2026-09-27, #1560): waiving hexproof, and ward that doesn't trigger
+
+Nowhere to Run (#1565, the Edea deck) prints two statics this ADR had
+no shape for: "Creatures your opponents control can be the targets of
+spells and abilities as though they didn't have hexproof" (CR 702.11)
+and "Ward abilities of those creatures don't trigger" (CR 702.21).
+Kaya, Bane of the Dead prints the first one for players as well.
+
+### A1. A waiver at the choke point, not a layer-6 removal
+
+"As though it didn't have hexproof" is not "loses hexproof". Glaring
+Spotlight's ruling says so directly: the creature keeps the ability,
+and only the targeting is affected. Removing `"hexproof"` from
+`Characteristic.Abilities` would work today, because targeting is
+hexproof's only reader. It would still be wrong in three ways. The
+badge would disappear from the creature's own controller's view. A
+second waiver would be timestamp-ordered against every other layer-6
+grant. And a Shadowspear that removed hexproof would become the same
+object as a Nowhere to Run that waived it. Shadowspear's "lose
+hexproof" stays a layer-6 `RemoveKeywordsMod`.
+
+So the waiver is a new catalog slot, `Spec.HexproofBypasses
+[]game.HexproofBypass`. `game/hexproof_bypass.go` reads it live off
+the battlefield, keyed by `CatalogAbilityKey`, the way `BlockRules`
+and `PlayerKeywords` are read. Nothing is stored, so undo, the
+snapshot and restore points have nothing new to carry. A source that
+has lost all its abilities waives nothing (CR 613.1f).
+
+### A2. Only hexproof, and only when hexproof is what refuses
+
+`canBeTargetedBy` (keywords.go) checks shroud first, then hexproof,
+then protection, as before. It asks for a waiver only when hexproof
+alone would refuse the target, so a board with no hexproof on it
+never walks the battlefield looking for one. Shroud (CR 702.18) and
+protection (CR 702.16b) are separate refusals, and a hexproof waiver
+does not affect them. The exported `CanBeTargetedBy` has no `*Game`
+and so honours no waiver. Both targeting call sites in `targets.go`
+now use `g.canBeTargetedByLocked`.
+
+The announce gate (CR 601.2c) and the resolution re-check
+(CR 608.2b) go through the same function, so decision 1 covers them
+both again. If Nowhere to Run leaves while a spell aimed at a
+hexproof creature is on the stack, the target becomes illegal. That
+is the card's 2024-09-20 ruling, and the resolution path needed no
+change for it. The bot's enumerator reaches targeting through
+`LegalTargetsForEffect` and gets the waiver for free, as decision 5
+predicted.
+
+### A3. Whose spells: `YoursOnly`
+
+The printed cards differ on one word. Glaring Spotlight, Kaya and
+Detection Tower say "spells and abilities **you control**". Nowhere to
+Run says only "spells and abilities", so any player's spell may
+target the creature, including one cast by the creature's other
+opponents. `HexproofBypass.YoursOnly` carries that difference as data.
+The effects constructors name it (`BySpellsAndAbilities` /
+`BySpellsAndAbilitiesYouControl`), so a card file cannot leave it out
+without choosing.
+
+The affected set is read live on every check. A static ability has
+no locked set (CR 611.3a). A creature that enters or changes control
+afterwards is covered for exactly as long as it matches.
+
+### A4. The player half
+
+`HexproofBypass.Player` waives a player's hexproof (CR 702.11d). It
+is read by `canPlayerBeTargetedByLocked`, the player half of the same
+choke point, in the same place: only once player hexproof would
+refuse. Kaya, Bane of the Dead is the card that needs it.
+
+### A5. Ward suppression lives on the trigger
+
+`Spec.WardSuppressions []game.WardSuppression` is read by
+`Game.WardSuppressedForEffect`. The one caller is the trigger
+condition in `effects.WardGranted`. Every ward in the catalog uses
+that condition: printed `Ward`, a granted ward (Lavaspur Boots), an
+emblem's (Teferi Akosa), and a face-down permanent's. Three details
+matter:
+
+- It is asked about the **warded permanent**, never the trigger's
+  source. A granted ward's trigger belongs to the Equipment or
+  emblem, but "ward abilities of those creatures" is about the
+  creature that has the ward.
+- It is asked **when the ability would trigger**, and at no other
+  time. Removing Nowhere to Run later does not make ward trigger
+  retroactively (the card's second ruling). A ward trigger that is
+  already on the stack still resolves.
+- It suppresses **ward** only. Diffusion Sliver's "counter it unless
+  its controller pays {2}" works like ward but is not a ward ability,
+  and it is not built on `WardGranted`. Leaving it alone is what the
+  printed text says.
+
+### A6. Not built here
+
+- **A waiver with a duration.** Detection Tower's "{1}, {T}: Until
+  end of turn, your opponents and creatures your opponents control
+  with hexproof can be the targets…" would be a `ScopedEffect` mod
+  kind that the same two readers walk. No card in a tracked deck needs
+  it yet, and it is the only missing piece for Detection Tower.
+- **"Lose hexproof and can't have hexproof"** (Arcane Lighthouse,
+  Archetype of Endurance). This is a layer-6 removal plus a rule that
+  stops the ability being gained again. It is a different seam.
+- **Glaring Spotlight.** Its static is this seam. Its second ability
+  says "creatures you control … can't be blocked this turn", and the
+  card's ruling covers creatures that arrive after the ability
+  resolves. `RestrictUntilEOT` locks its set at resolution, so the
+  card would ship weaker than printed. It is left out until
+  "can't be blocked" can be read over a live set.
