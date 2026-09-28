@@ -609,37 +609,41 @@ type zoneSnapshot struct {
 // snapshotCard always sets it, so every file this binary writes
 // carries the key; restore backfills it when the key is missing.
 type cardSnapshot struct {
-	InstanceID        uuid.UUID           `json:"instanceId"`
-	Name              string              `json:"name"`
-	ScryfallID        string              `json:"scryfallId,omitempty"`
-	OracleID          string              `json:"oracleId,omitempty"`
-	TokenKey          string              `json:"tokenKey,omitempty"`
-	TypeLine          string              `json:"typeLine,omitempty"`
-	Power             int                 `json:"power"`
-	Toughness         int                 `json:"toughness"`
-	VariableToughness *bool               `json:"variableToughness,omitempty"`
-	ManaCost          string              `json:"manaCost,omitempty"`
-	ProducedMana      []string            `json:"producedMana,omitempty"`
-	Colors            []string            `json:"colors,omitempty"`
-	ColorIdentity     []string            `json:"colorIdentity,omitempty"`
-	StartingLoyalty   int                 `json:"startingLoyalty"`
-	Keywords          []string            `json:"keywords,omitempty"`
-	GrantedAbilities  []string            `json:"grantedAbilities,omitempty"`
-	Layout            string              `json:"layout,omitempty"`
-	Faces             []Face              `json:"faces,omitempty"`
-	ActiveFace        int                 `json:"activeFace,omitempty"`
-	PrintedSelf       *PrintedValues      `json:"printedSelf,omitempty"`
-	NeedsEffect       bool                `json:"needsEffect"`
-	Owner             uuid.UUID           `json:"owner"`
-	Controller        uuid.UUID           `json:"controller"`
-	Tapped            bool                `json:"tapped"`
-	NextUntapSkips    []untapSkipSnapshot `json:"nextUntapSkips,omitempty"`
-	BattleX           float64             `json:"battleX"`
-	BattleY           float64             `json:"battleY"`
-	Counters          map[string]int      `json:"counters,omitempty"`
-	IsCommander       bool                `json:"isCommander"`
-	AttackingTarget   uuid.UUID           `json:"attackingTarget"`
-	BlockingTarget    uuid.UUID           `json:"blockingTarget"`
+	InstanceID        uuid.UUID      `json:"instanceId"`
+	Name              string         `json:"name"`
+	ScryfallID        string         `json:"scryfallId,omitempty"`
+	OracleID          string         `json:"oracleId,omitempty"`
+	TokenKey          string         `json:"tokenKey,omitempty"`
+	TypeLine          string         `json:"typeLine,omitempty"`
+	Power             int            `json:"power"`
+	Toughness         int            `json:"toughness"`
+	VariableToughness *bool          `json:"variableToughness,omitempty"`
+	ManaCost          string         `json:"manaCost,omitempty"`
+	ProducedMana      []string       `json:"producedMana,omitempty"`
+	Colors            []string       `json:"colors,omitempty"`
+	ColorIdentity     []string       `json:"colorIdentity,omitempty"`
+	StartingLoyalty   int            `json:"startingLoyalty"`
+	Keywords          []string       `json:"keywords,omitempty"`
+	GrantedAbilities  []string       `json:"grantedAbilities,omitempty"`
+	Layout            string         `json:"layout,omitempty"`
+	Faces             []Face         `json:"faces,omitempty"`
+	ActiveFace        int            `json:"activeFace,omitempty"`
+	PrintedSelf       *PrintedValues `json:"printedSelf,omitempty"`
+	// DurationCopyBase is Card.DurationCopyBase (#1593): the layer-1
+	// baseline under a duration copy. Additive; absent means no
+	// duration copy applies, which is what every older file says.
+	DurationCopyBase *PrintedValues      `json:"durationCopyBase,omitempty"`
+	NeedsEffect      bool                `json:"needsEffect"`
+	Owner            uuid.UUID           `json:"owner"`
+	Controller       uuid.UUID           `json:"controller"`
+	Tapped           bool                `json:"tapped"`
+	NextUntapSkips   []untapSkipSnapshot `json:"nextUntapSkips,omitempty"`
+	BattleX          float64             `json:"battleX"`
+	BattleY          float64             `json:"battleY"`
+	Counters         map[string]int      `json:"counters,omitempty"`
+	IsCommander      bool                `json:"isCommander"`
+	AttackingTarget  uuid.UUID           `json:"attackingTarget"`
+	BlockingTarget   uuid.UUID           `json:"blockingTarget"`
 	// GoadedBy is the pre-#1598 single goader, still written (as
 	// Card.LatestGoader) for a binary that predates Goads, and read
 	// only when a file has no `goads` key (restoreGoads).
@@ -1691,6 +1695,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		Faces:                    copyFaces(c.Faces),
 		ActiveFace:               c.ActiveFace,
 		PrintedSelf:              copyPrintedValues(c.PrintedSelf),
+		DurationCopyBase:         copyPrintedValues(c.DurationCopyBase),
 		NeedsEffect:              c.NeedsEffect,
 		Owner:                    c.Owner,
 		Controller:               c.Controller,
@@ -2422,6 +2427,7 @@ func restoreCard(c *cardSnapshot) Card {
 		Faces:                    copyFaces(c.Faces),
 		ActiveFace:               c.ActiveFace,
 		PrintedSelf:              copyPrintedValues(c.PrintedSelf),
+		DurationCopyBase:         copyPrintedValues(c.DurationCopyBase),
 		NeedsEffect:              c.NeedsEffect,
 		Owner:                    c.Owner,
 		Controller:               c.Controller,

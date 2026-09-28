@@ -15,8 +15,6 @@ package game
 // names because every turn-boundary site calls them.
 //
 // What is NOT here:
-//   - Layer 1 (copy) with a duration (Mirage Mirror, Cytoshape).
-//     The bucket exists (ADR 0043 §5) and nothing registers into it.
 //   - A separate registry for the REPLACEMENT or BLOCK-RULE twins.
 //     Since ADR 0041 tier 3b a replacement a spell creates (Fog, a
 //     prevention shield, the Whip's redirect) and a block rule a spell
@@ -79,6 +77,11 @@ func (g *Game) ClearExpiredScopedStaticsLocked() {
 func (g *Game) sweepScopedStaticsLocked(endOfTurn bool) {
 	if g.sweepScopedEffectsLocked(endOfTurn) {
 		g.layerVersion.Add(1)
+		// #1593: a duration copy that just ended is reverted NOW, not
+		// at the next recompute — Card.OracleID and the printed P/T
+		// are read directly, and the permanent must not be the
+		// copied card for one more read after its copy is over.
+		g.materialiseDurationCopiesLocked()
 	}
 }
 

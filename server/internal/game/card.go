@@ -679,6 +679,22 @@ type Card struct {
 	// on the board as a 0/0. Added in S16.5 (#159 / #335).
 	PrintedSelf *PrintedValues
 
+	// DurationCopyBase is the layer-1 baseline UNDER this permanent's
+	// duration copy effects (#1593, duration_copy.go): what its flat
+	// printed fields go back to when the last "becomes a copy … until
+	// end of turn" ends. For a Clone it is the Clone's entry copy — a
+	// Cytoshape on a Clone of Llanowar Elves reverts to the Elves, not
+	// to Clone — and for anything else it is the card's own values.
+	// nil while no duration copy applies.
+	//
+	// Stashed by the first duration copy, restored and cleared by the
+	// materialiser when none is left, and cleared with PrintedSelf on
+	// the CR 400.7 battlefield-leave path. Carried by the snapshot and
+	// deep-copied by clone.go for PrintedSelf's reason: once the copy
+	// has overwritten the printed fields nothing else remembers what
+	// the Clone had copied.
+	DurationCopyBase *PrintedValues
+
 	// FaceDownListed is the CR 708.2 body an effect LISTED for this
 	// face-down object — Cyber Conversion's "It's a 2/2 Cyberman
 	// artifact creature", Yedora's "It's a Forest land". nil is

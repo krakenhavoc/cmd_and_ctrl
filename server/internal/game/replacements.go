@@ -486,6 +486,13 @@ type ReplacementEvent struct {
 	// event names what was copied.
 	copySourceID uuid.UUID
 
+	// copyUntilEndOfTurn marks EntersAsCopyOf as a copy WITH A
+	// DURATION — "as this enters, you may have it become a copy of …
+	// until end of turn" (Cursed Mirror, #1593). The entry path lands
+	// it like any entry copy, and settleTimedEntryCopyLocked re-files
+	// it as a duration copy once the permanent has its entry stamp.
+	copyUntilEndOfTurn bool
+
 	// stackItem is the resolving spell's StackItem, carried across a
 	// paused entry so the resume can finish the two jobs only stack
 	// resolution does: attaching a resolved Aura to what it targeted
