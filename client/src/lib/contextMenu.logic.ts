@@ -412,9 +412,10 @@ export function damageAction(card: CardView, delta: number): MenuAction {
 }
 
 // AbilityCost is the cost-shaped subset shared by ManaAbilityView and
-// ActivatedAbilityView, so one predicate covers both. Mirrors the
-// identically-shaped local type in ManaAbilityMenu.svelte.
-interface AbilityCost {
+// ActivatedAbilityView, so one predicate covers both. Exported (#1695)
+// so ManaAbilityMenu.svelte can type its own rows against it instead
+// of keeping a second, hand-rolled copy of the same shape.
+export interface AbilityCost {
   tap_cost?: boolean;
   // #1190: mana_cost is the PRINTED mana component and
   // charged_mana_cost what the engine actually charges right now,

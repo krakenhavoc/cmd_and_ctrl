@@ -12,18 +12,12 @@
   // figure out overflow / flip-to-top-if-near-edge itself.
 
   import type { ActivatedAbilityView, ManaAbilityView } from "../../protocol";
-  import { counterCostBlocked, type CounterCostShape } from "../../counterCost";
   import {
-    ACTIVATION_CONDITION_UNMET,
-    NO_COMMANDER_IDENTITY,
+    abilityBlocked as sharedAbilityBlocked,
     chargedManaCostLabel,
     chargedManaCostNote,
-    returnShortfall,
-    tapOthersShortfall,
-    type ReturnOptionsShape,
+    type AbilityCost,
   } from "../../contextMenu.logic";
-  import { sacrificeShortfall } from "../../sacrificeCost";
-  import { hasSatisfiableTargets } from "../../timing";
   import ModalLayer from "../ModalLayer.svelte";
 
   interface Props {
@@ -52,6 +46,15 @@
     // nobody mistakes it for the mana row. Undefined hides it.
     onRawTap?: () => void;
     onClose?: () => void;
+    // #1695: the paying player's current life — the card's
+    // controller, same as the right-click context menu's rule. A
+    // battlefield row only ever holds one seat's own permanents, so
+    // PlayerPanel hands down that seat's life once per panel, the same
+    // way it hands down `sorcerySpeedBlocked`. Undefined leaves an
+    // unpayable life cost unblocked, like every other advisory check
+    // here with nothing to judge against — the server's CR 119.4
+    // refusal is still the real gate.
+    payerLife?: number;
   }
 
   const {
@@ -64,6 +67,7 @@
     sorcerySpeedBlocked = "",
     onRawTap,
     onClose,
+    payerLife,
   }: Props = $props();
 
   function activate(index: number): void {
@@ -71,68 +75,30 @@
     onClose?.();
   }
 
-  // An ability is unavailable when its tap cost can't be paid, or
-  // when a sacrifice cost has nothing to pay it with. The server
-  // re-checks everything; this is just the affordance.
+  // An ability is unavailable when its tap cost can't be paid, its
+  // life cost is more than the payer has, a sacrifice / return /
+  // tap-other cost has nothing to pay it with, or any of the other
+  // reasons the right-click context menu already judges through
+  // `abilityBlocked` in contextMenu.logic.ts (#1695 — this used to be
+  // a second, hand-maintained copy of that whole predicate, and the
+  // copy never grew a life-cost check at all, which is what let an
+  // unaffordable "Pay N life" ability stay clickable here after #1690
+  // fixed the context menu's copy).
   //
-  // Mana and activated abilities share the cost-shaped fields, so
-  // one predicate covers both — the activated-only clauses (targets)
-  // simply don't appear on a ManaAbilityView.
-  type CostShaped = {
-    tap_cost?: boolean;
-    sacrifice_label?: string;
-    sacrifice_options?: { players?: string[]; cards?: string[]; min?: number; max?: number };
-    // #1213 / #1227: a return-to-hand cost. Ninjutsu is the row this
-    // matters most for — it is payable only in the declare-blockers
-    // window, with an unblocked attacker on the board, so a hand card
-    // that never greyed would be clickable and refused nearly always.
-    return_label?: string;
-    return_options?: ReturnOptionsShape;
-    // #759: a tap-another cost (station), greyed the same way.
-    tap_others_label?: string;
-    tap_others_options?: ReturnOptionsShape;
-    // #1157: `min` carries the clause's count, and an "up to N" clause
-    // (min 0) is satisfied by an empty candidate list.
-    legal_targets?: { players?: string[]; cards?: string[]; min?: number };
-    // Never set on a ManaAbilityView — mana abilities don't use the
-    // stack and have no timing restriction (CR 605.1a) — so the arm
-    // below is inert for the first list and live for the second.
-    sorcery_speed?: boolean;
-    // #743: the server says the ability's "Activate only if …"
-    // condition is false. Both lists carry it — Temple of the False
-    // God's mana row as much as Tectonic Edge's destroy.
-    condition_unmet?: boolean;
-    // #844, CR 903.4f: a "in your commander's color identity" mana
-    // ability with no identity to narrow to adds nothing. Mana
-    // abilities only; the arm below is inert for the activated list.
-    adds_no_mana?: boolean;
-  } & CounterCostShape;
-
-  function abilityBlocked(a: CostShaped): string {
+  // The one check kept local is the sorcery-speed override: PlayerPanel
+  // computes `sorcerySpeedBlocked` once per panel and threads it down
+  // as a plain string — Card, Hand, PileBar, CommandZone and
+  // ZoneBrowserModal all take the same prop — rather than the
+  // LoyaltyContext + GameView the context menu has directly in scope.
+  // Checked first, exactly where it sat before; everything else
+  // (including the shared function's own `timing_closed` fallback,
+  // for a row this prop doesn't cover) comes from the shared
+  // predicate now.
+  function abilityBlocked(a: AbilityCost): string {
     if (a.tap_cost && tapped) return "already tapped";
     if (a.tap_cost && summoningSick) return "summoning sickness";
     if (a.sorcery_speed && sorcerySpeedBlocked) return sorcerySpeedBlocked;
-    if (a.condition_unmet) return ACTIVATION_CONDITION_UNMET;
-    // #844: Command Tower with no commander, or a colourless one.
-    if (a.adds_no_mana) return NO_COMMANDER_IDENTITY;
-    // #747: count-aware — "needs three Foods (you have 2)".
-    const sacrifice = sacrificeShortfall(a.sacrifice_options, a.sacrifice_label ?? "a permanent");
-    if (sacrifice) return sacrifice;
-    // #1213 / #1227: the same question one verb over, off the one
-    // shared predicate the right-click menu asks.
-    const returned = returnShortfall(a.return_options, a.return_label);
-    if (returned) return returned;
-    const tapOthers = tapOthersShortfall(a.tap_others_options, a.tap_others_label);
-    if (tapOthers) return tapOthers;
-    // #625: a "remove N counters" cost with nothing that can pay it.
-    const counters = counterCostBlocked(a);
-    if (counters) return counters;
-    // #1157: CR 601.2c through the shared predicate — a clause needs
-    // `min` candidates, and "up to N" needs none. The same one-line
-    // copy of this test lived here and in contextMenu.logic.ts, and
-    // both stopped at "the list is empty".
-    if (!hasSatisfiableTargets(a.legal_targets)) return "no legal target";
-    return "";
+    return sharedAbilityBlocked(a, tapped, summoningSick, undefined, payerLife);
   }
 
   function activateAbility(index: number): void {

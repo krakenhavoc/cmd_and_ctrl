@@ -34,6 +34,12 @@
     // it is open. Pass-through to Card → ManaAbilityMenu, which greys
     // `sorcery_speed` abilities with it.
     sorcerySpeedBlocked?: string;
+    // #1695: the paying player's current life — always this row's own
+    // seat, since a BattlefieldRow only ever holds one seat's
+    // controlled cards. PlayerPanel hands it down once per panel, the
+    // same way it hands down sorcerySpeedBlocked, so the mana
+    // popover's life-cost check has something to grey against.
+    payerLife?: number;
     // compact — one card size down (PlayerPanel's --card-w-sm). Used
     // for the middle band: non-creature permanents and lands.
     compact?: boolean;
@@ -68,6 +74,7 @@
     onRawTap,
     onActivateAbility,
     sorcerySpeedBlocked = "",
+    payerLife,
     compact = false,
     strip = false,
     attachmentsByHost = {},
@@ -151,6 +158,7 @@
                       ? (idx) => onActivateAbility(a, idx)
                       : undefined}
                     {sorcerySpeedBlocked}
+                    {payerLife}
                   />
                 </div>
               {/each}
@@ -169,6 +177,7 @@
                   ? (idx) => onActivateAbility(c, idx)
                   : undefined}
                 {sorcerySpeedBlocked}
+                {payerLife}
               />
             </div>
           </div>
