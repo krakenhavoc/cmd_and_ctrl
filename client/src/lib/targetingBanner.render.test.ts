@@ -50,3 +50,55 @@ describe("the targeting banner names the stack half it is asking about", () => {
     }
   });
 });
+
+// #1659: the banner used to say nothing about the amount being
+// divided until the picks closed and DivideDamageModal opened. Now it
+// names the amount, and the target count, while the player is still
+// picking.
+describe("#1659 — the targeting banner shows the divided amount", () => {
+  it("a fixed divide names the amount and the target ceiling", () => {
+    const arcLightning: CardView = {
+      ...card("Arc Lightning"),
+      legal_targets: { min: 1, max: 3, divide: { total: 3 } },
+    };
+    begin(arcLightning, "any");
+
+    const { container } = render(TargetingBanner, {});
+
+    expect(container.textContent).toContain("divide 3 damage among up to 3 targets");
+  });
+
+  it("an X-based divide shows the announced X once it is known", () => {
+    const rollingThunder: CardView = {
+      ...card("Rolling Thunder"),
+      legal_targets: { min: 0, max: 0, divide: { from_x: true } },
+    };
+    begin(rollingThunder, "any", { xValue: 5 });
+
+    const { container } = render(TargetingBanner, {});
+
+    expect(container.textContent).toContain("divide 5 damage among any number of targets");
+  });
+
+  it("an X-based divide falls back to 'X' rather than inventing 0", () => {
+    const rollingThunder: CardView = {
+      ...card("Rolling Thunder"),
+      legal_targets: { min: 0, max: 0, divide: { from_x: true } },
+    };
+    // No xValue in the choices — the walk doesn't know X yet.
+    begin(rollingThunder, "any");
+
+    const { container } = render(TargetingBanner, {});
+
+    expect(container.textContent).toContain("divide X damage among any number of targets");
+    expect(container.textContent).not.toContain("divide 0 damage");
+  });
+
+  it("a clause with no divide shows nothing about dividing", () => {
+    begin(card("Lightning Bolt"), "any");
+
+    const { container } = render(TargetingBanner, {});
+
+    expect(container.textContent).not.toContain("divide");
+  });
+});
