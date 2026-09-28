@@ -111,7 +111,7 @@ func (g *Game) declareBlockersLocked(decls []BlockDeclaration) error {
 	// this turn, menace granted by an aura, a land Urborg made a
 	// Swamp.
 	g.RecomputeLayersIfStaleLocked()
-	entries, after, err := g.checkBlockDeclarationAfterLocked(g.currentBlockAssignmentLocked(), decls)
+	entries, after, err := g.checkBlockDeclarationAfterLocked(g.currentBlockAssignmentLocked(), decls, nil)
 	if err != nil {
 		return err
 	}
@@ -195,45 +195,38 @@ func (g *Game) currentBlockAssignmentLocked() blockAssignment {
 //
 // Caller must hold g.mu with fresh layers.
 func (g *Game) checkBlockDeclarationLocked(base blockAssignment, decls []BlockDeclaration) ([]blockEntry, error) {
-	entries, _, err := g.checkBlockDeclarationAfterLocked(base, decls)
+	entries, _, err := g.checkBlockDeclarationAfterLocked(base, decls, nil)
 	return entries, err
 }
 
 // checkBlockDeclarationAfterLocked is checkBlockDeclarationLocked that
 // also hands back the assignment the action would leave behind — nil
-// when it changes nothing — which is what the verb writes.
+// when it changes nothing, a re-declaration of pairings already stored
+// — which is what the verb writes (#1706: a blocker's whole set). The
+// cache memoises reach(base) per defending player for a caller judging
+// many declarations against one base (blockOptionsLocked); nil caches
+// nothing.
 //
 // Caller must hold g.mu with fresh layers.
-func (g *Game) checkBlockDeclarationAfterLocked(base blockAssignment, decls []BlockDeclaration) ([]blockEntry, blockAssignment, error) {
+func (g *Game) checkBlockDeclarationAfterLocked(base blockAssignment, decls []BlockDeclaration, cache blockReachCache) ([]blockEntry, blockAssignment, error) {
 	entries, after, err := g.checkBlockRestrictionsLocked(base, decls)
 	if err != nil || after == nil {
 		return entries, after, err
 	}
-	if e := g.blockRequirementRefusalLocked(base, after, decls, nil); e != nil {
+	if e := g.blockRequirementRefusalLocked(base, after, decls, cache); e != nil {
 		return nil, nil, e
 	}
 	return entries, after, nil
 }
 
-// checkBlockDeclarationCachedLocked is checkBlockDeclarationLocked with
-// a memo of reach(base) per defending player, for a caller judging many
-// declarations against one base (blockOptionsLocked). nil caches
-// nothing.
+// checkBlockDeclarationCachedLocked is the validator's verdict alone,
+// with a memo of reach(base) per defending player, for a caller judging
+// many declarations against one base (blockOptionsLocked).
 //
 // Caller must hold g.mu with fresh layers.
-func (g *Game) checkBlockDeclarationCachedLocked(base blockAssignment, decls []BlockDeclaration, cache blockReachCache) ([]blockEntry, error) {
-	entries, after, err := g.checkBlockRestrictionsLocked(base, decls)
-	if err != nil {
-		return nil, err
-	}
-	if after == nil {
-		// Nothing changes: a re-declaration of pairings already stored.
-		return entries, nil
-	}
-	if e := g.blockRequirementRefusalLocked(base, after, decls, cache); e != nil {
-		return nil, e
-	}
-	return entries, nil
+func (g *Game) checkBlockDeclarationCachedLocked(base blockAssignment, decls []BlockDeclaration, cache blockReachCache) error {
+	_, _, err := g.checkBlockDeclarationAfterLocked(base, decls, cache)
+	return err
 }
 
 // checkBlockRestrictionsLocked is every check of the validator but the
@@ -573,7 +566,7 @@ func (g *Game) blockOptionsLocked(seat uuid.UUID, perAttackerCap, maxTotal int) 
 		}
 		for _, b := range pool {
 			decls := []BlockDeclaration{{Blocker: b.InstanceID, Attacker: atk.InstanceID}}
-			if _, err := g.checkBlockDeclarationCachedLocked(base, decls, cache); err == nil {
+			if err := g.checkBlockDeclarationCachedLocked(base, decls, cache); err == nil {
 				out = append(out, BlockOption{Blocks: decls})
 				if maxTotal > 0 && len(out) >= maxTotal {
 					return out
@@ -595,7 +588,7 @@ func (g *Game) blockOptionsLocked(seat uuid.UUID, perAttackerCap, maxTotal int) 
 			for _, b := range combo {
 				decls = append(decls, BlockDeclaration{Blocker: b.InstanceID, Attacker: atk.InstanceID})
 			}
-			if _, err := g.checkBlockDeclarationCachedLocked(base, decls, cache); err == nil {
+			if err := g.checkBlockDeclarationCachedLocked(base, decls, cache); err == nil {
 				out = append(out, BlockOption{Blocks: decls})
 				if maxTotal > 0 && len(out) >= maxTotal {
 					return out
