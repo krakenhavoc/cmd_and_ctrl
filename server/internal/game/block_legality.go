@@ -479,7 +479,7 @@ func (e *BlockRefusedError) requirementSentence(blocker, attacker string) string
 	switch e.Requirement.Kind {
 	case BlockRequirementBlocks:
 		s, subject = blocker+" must block this combat if able", e.BlockerName
-	case BlockRequirementLure, BlockRequirementBlocksAttacker:
+	case BlockRequirementLure, BlockRequirementBlocksAttacker, BlockRequirementBlocksEach:
 		s, subject = blocker+" must block "+attacker+" if able", e.AttackerName
 	case BlockRequirementMustBeBlocked:
 		s, subject = attacker+" must be blocked if able", e.AttackerName

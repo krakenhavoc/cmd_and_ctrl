@@ -51,6 +51,10 @@ func (s *GameSnapshot) checkEffectKeys() error {
 					}
 				}
 			}
+			// #1715: a capacity mod's count is part of what it means.
+			if problem := blockCapacityModProblem(m); problem != "" {
+				unknown = append(unknown, problem)
+			}
 			// #1597: the requirement a block-requirement mod names is as
 			// much a key as the kind itself.
 			if m.Kind == ModAddBlockRequirement && !KnownBlockRequirementKind(BlockRequirementKind(m.Text)) {
