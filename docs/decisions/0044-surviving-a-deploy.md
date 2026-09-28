@@ -434,3 +434,110 @@ not having one. The shutdown line already carries the true rewind
 delta — `seq_behind` — for the process that is about to stop; the
 boot line carries only what boot can honestly know, the restore
 point's own age.
+
+## Amendment 2026-09-28 (#1698): one sanctioned regeneration of the v7 corpus
+
+Decision 7's rule is "appended to and never rewritten," in that order,
+and this is the one time the second half is set aside on purpose — not
+a reversal of the rule, a recorded exception to it.
+
+**What happened.** Five PRs in one day — #1661, and the four ADR 0027
+amendments that followed it, #1675, #1679, #1682 and #1689 — each added
+one `omitempty` field to `Event`, all in the same place: right after
+`CauseItem`, all stamped only on `EventLTB`, all carrying a leaving
+permanent's last-known battlefield state (CR 603.10a) for a dies /
+leaves-the-battlefield trigger to read. Nine fields in total:
+`attacking_target`, `blocking_target`, `blocked`, `last_known_types`,
+`last_known_subtypes`, `last_known_all_creature_types`,
+`last_known_supertypes`, `last_known_controller`, `last_known_colors`.
+None of the five PRs touched the snapshot corpus, because none of them
+had reason to think they were a schema decision — each looked, in
+isolation, like adding a field that zero-values correctly, the case
+`SnapshotSchemaVersion`'s own comment says needs no bump.
+
+Diffing the regenerated output against the committed fixtures (below)
+turned up a second, older, unrelated source of the same kind of drift:
+`Characteristic.BlockRequirements` (`internal/game/characteristic.go`),
+added by #1597 (PR #1683) and widened in scope, not in shape, by #1684
+(PR #1693). It carries no `omitempty` — every `Characteristic` on the
+wire has always printed `"AttackRequirements": null` for a permanent
+with none, and after #1683 it started needing to print
+`"BlockRequirements": null` right beside it — and #1683 never
+regenerated the corpus either. So the writer has in fact refused since
+#1683 landed, on any board a `Characteristic` reaches (which is every
+board), independent of and earlier than the LKI cluster; #1696 is only
+the first PR that happened to need a NEW board while the writer was
+in that state, which is what surfaced the refusal as a filed issue.
+
+Collectively these ten fields (nine on `Event`, one on `Characteristic`)
+left every fixture in `internal/game/testdata/snapshots/v7/` rendering
+one byte different from what is committed, which is exactly what
+`TestWriteSnapshotCorpus` (this decision's guard) exists to catch — it
+refused to write anything, including the two new boards #1696 had added
+to `corpusBoards()` (`detection_tower`, `arcane_lighthouse`) with
+nowhere to land.
+
+**Why this is the additive case, not a silent change.** Decision 7
+exists to catch a rename, a repurpose or a unit change wearing an
+additive disguise — the failure mode is a fixture that still decodes
+but means something different. This is not that. Applying ADR 0041
+Decision P10's test for "additive" (`docs/decisions/0041-game-persistence.md`,
+"Decision P10"): today's binary is the first to write any of these ten
+fields, so an older binary was never asked to restore a file holding
+them, and dropping them from its own files makes nothing worse for it.
+Three things confirm it rather than assume it:
+
+- `Event` and `Characteristic` have no custom `(Un)MarshalJSON`, and
+  `internal/game` has no use of `json.DisallowUnknownFields` anywhere.
+  Decoding is the standard library's ordinary permissive behaviour both
+  directions: a pre-#1661/#1597 file missing these fields decodes into
+  today's binary with the documented empty/zero fallback each field's
+  own comment describes (`WasType`, `WasColor`, `LeftUnderControlOf`,
+  a nil `BlockRequirements` slice reading as "none," exactly what an
+  older file's absence of the field means), and a file carrying them
+  would decode into an older binary with the extra keys silently
+  ignored. This is unlike the `ErrUnknownEffectKey` vocabulary this
+  same ADR's decision 7 and ADR 0041's P4/P10 built for the "effects
+  as data" surface (stack-item bodies, `params`, scoped effect kinds)
+  — that machinery is a deliberate, manually-checked refusal gate, and
+  it does not run over plain `Event` or `Characteristic` fields, so
+  nothing here is being routed around it.
+- Every fixture that existed before this regeneration — all 39 of
+  them, written across v7's whole life, from before any of tiers 1
+  through 4 — still passes `TestSnapshotCorpusRestores` unchanged
+  under the binary that added all ten fields. That is the property
+  decision 7 actually cares about (a fixture this binary did not write
+  still restores), and it was never broken. Only the WRITER's
+  overly-blunt byte-for-byte check — which cannot distinguish "the
+  shape changed" from "a new field was appended" — was refusing to
+  run.
+- Diffing every regenerated file against its committed original,
+  hunk by hunk, confirms nothing else moved: every line that
+  disappears from a fixture reappears byte-for-byte (its trailing
+  comma aside) among the lines that replace it, in the same hunk. No
+  fixture lost a key, changed a value, or reordered anything. The only
+  wholly new content, across all 39 files, is the ten fields above and
+  — on the handful of fixtures whose scripted board already put a
+  permanent through a stamped `EventLTB` — the real (nonzero)
+  `last_known_*` values for that permanent, which is new information a
+  pre-#1661 binary could not have captured, not a change to anything
+  it did capture.
+
+**What was done.** The 39 existing files under
+`internal/game/testdata/snapshots/v7/` were deleted and rewritten by
+`TestWriteSnapshotCorpus -write-corpus` against the current binary, in
+the same commit as this amendment, alongside the two new files the
+regeneration unblocked (`detection_tower.json`, `arcane_lighthouse.json`).
+A sample diff is in the PR body for #1698.
+
+**What this does not authorise.** The append-only rule stands for
+everything else. A future PR that adds a field is not free to
+regenerate on the strength of this precedent — it has to make the same
+case this amendment makes (no decode-time refusal gate, the field's own
+comment describes the safe empty fallback, and old fixtures still
+restore unchanged before touching anything), and it has to write that
+case down, here or in a new dated amendment, before running
+`-write-corpus` over a file that already exists. A field that removes,
+renames or repurposes anything, or that needs a refusal channel because
+an older binary would otherwise misread it, is Q1/P10's other branch —
+a new schema version, not a regeneration.
