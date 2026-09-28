@@ -629,11 +629,12 @@ func (g *Game) payCounterRemovalLocked(pay counterPayment) error {
 // enumerator, the protocol view and the client's greyed row. See the
 // #789 addendum to ADR 0020.
 //
-// Note what this is NOT asking. A counter-placement REPLACEMENT
-// (Doubling Season, Hardened Scales, a Solemnity-style cancel
-// registered as one) is irrelevant here, because paying a cost is not
-// an effect and the placement never enters the CR 614 pipeline — see
-// payCounterAddLocked.
+// Note what this is NOT asking. Whether a counter-placement
+// REPLACEMENT (Doubling Season, Hardened Scales, Vizier of Remedies)
+// applies is a question for the CR 614 window itself, opened by
+// payCostCounterLocked below — the ADR 0073 2026-09-28 amendment (#1710).
+// This predicate is only CR 118.3's "can the counter be put here at
+// all", asked before anything is spent.
 //
 // Caller must hold g.mu (read or write).
 func (g *Game) canPlaceCounterLocked(playerID, cardID uuid.UUID, ac *CounterAddCost) bool {
@@ -659,21 +660,98 @@ func (g *Game) CanPlaceCounterForEffect(playerID, cardID uuid.UUID, ac *CounterA
 	return g.canPlaceCounterLocked(playerID, cardID, ac)
 }
 
-// payCounterAddLocked puts the cost's counter on the source.
+// payCounterAddLocked puts the cost's counter on the source, THROUGH
+// the CR 614 counter window — payCostCounterLocked below — marked
+// CounterFromCost. It used to call applyCounterLocked directly, on the
+// reasoning that a counter-doubling replacement applies only to a
+// counter placed by an effect (CR 614.16), so a Doubling Season does
+// NOT double the -1/-1 counter a Devoted Druid puts on itself to
+// untap.
 //
-// applyCounterLocked, not AddCounterForEffect, for the third time in
-// this file and for the same rule: a counter-doubling replacement
-// applies only to a counter placed by an effect (CR
-// 614.16), so a Doubling Season does NOT double the -1/-1 counter a
-// Devoted Druid puts on itself to untap. Routing it through the CR
-// 614 pipeline would silently make it — and it would make the
-// untapper cost twice as much under a card that is supposed to be
-// pure upside, which is the kind of wrong that takes a week to find.
+// That reasoning is still right about Doubling Season — it names "an
+// effect" and payCostCounterLocked's CounterFromCost mark is exactly
+// what keeps it out — but it went too far and skipped EVERY
+// replacement, including the ones CR 614.16 does not exclude. A
+// replacement that names no effect — Vizier of Remedies' "if one or
+// more -1/-1 counters would be put", Winding Constrictor's "if one or
+// more counters would be put" — replaces the event like it would any
+// other, which is the long-standing Devoted Druid + Vizier of Remedies
+// ruling (ADR 0073's 2026-09-28 amendment, #1710). The untapper still
+// costs nothing extra under Doubling Season; it costs nothing AT ALL
+// under Vizier, which is the point of that combo.
+//
+// Returns the delta that actually landed — 0 under a Vizier, 2 under a
+// Winding Constrictor, 1 with no replacement in play — for the caller
+// to record on PaidCost.CountersAdded. The cost is paid whatever the
+// window settles on: a Vizier that erases the counter still lets the
+// untap resolve, which is what makes the Druid + Vizier loop free
+// rather than merely cheap.
 //
 // Caller must hold g.mu.
-func (g *Game) payCounterAddLocked(cardID uuid.UUID, ac *CounterAddCost) error {
+func (g *Game) payCounterAddLocked(playerID, cardID uuid.UUID, ac *CounterAddCost) (int, error) {
 	if ac == nil || ac.N < 1 {
-		return nil
+		return 0, nil
 	}
-	return g.applyCounterLocked(cardID, ac.Counter, ac.N)
+	return g.payCostCounterLocked(playerID, cardID, ac.Counter, ac.N)
+}
+
+// payCostCounterLocked puts (or removes) `delta` counters of `name` on
+// `cardID` as part of PAYING A COST — Devoted Druid's -1/-1
+// (payCounterAddLocked above), a loyalty ability's +/-N
+// (activated.go's payAbilityCostLocked and mutations.go's
+// ActivateLoyalty) — through the CR 614 counter window with
+// CounterFromCost set, rather than writing the counter-map mutation
+// directly.
+//
+// The rule this rests on is CR 614.16, read the way blightLocked's
+// comment (teamwork_blight_cost.go) reads it for the same reason: "if
+// an effect would put" only covers the effect of a resolving spell or
+// ability, and a cost payment is neither, so Doubling Season — which
+// names "an effect" — does not double a cost-paid counter (it reads
+// this mark to say so). A replacement that names no effect at all —
+// Vizier of Remedies, Winding Constrictor, Vorinclex, Monstrous
+// Raider — replaces the EVENT, and a cost's counters are as much an
+// event as any other placement's, so those DO apply. That asymmetry is
+// the Devoted Druid + Vizier of Remedies ruling, and it is why this
+// helper opens the window at all instead of mutating the map inline as
+// applyCounterLocked would.
+//
+// A LOYALTY cost's negative delta (a "-3" ability) is a removal, not a
+// placement, and every registered counter-placement replacement
+// already gates on a positive delta (CR 614.1's "would put", not
+// "would remove") — so a minus ability's counters are unaffected here,
+// as printed.
+//
+// A zero delta is a no-op with no event, matching
+// AddCounterByThenForEffect's own zero guard: a [0] loyalty ability
+// still pays its cost (and burns the turn's activation) whether or not
+// anything moves.
+//
+// mustSettleNow (CR 601.2h / CR 602.2b): a cost is paid in one
+// indivisible step, so a CR 616 ordering question between two
+// applicable replacements is answered by applying the gathered order
+// rather than pausing to ask — the same posture blightLocked and every
+// other cost-shaped counter or life payment takes.
+//
+// Returns the delta that actually landed, for a caller that records it
+// (PaidCost.CountersAdded). `playerID` rides onto the event as
+// CounterPlacer (CR 120.3d) — in every caller today that is also the
+// target's controller, so this makes no observable difference to a
+// replacement that falls back to the target's controller when no
+// placer is named, but it is the fact the rule asks for and the
+// precedent blightLocked already set.
+//
+// Caller must hold g.mu.
+func (g *Game) payCostCounterLocked(playerID, cardID uuid.UUID, name string, delta int) (int, error) {
+	if delta == 0 {
+		return 0, nil
+	}
+	return g.addCounterMustSettleNowLocked(&ReplacementEvent{
+		Kind:            RepEventCounter,
+		CounterTarget:   cardID,
+		CounterName:     name,
+		CounterDelta:    delta,
+		CounterPlacer:   playerID,
+		CounterFromCost: true,
+	})
 }

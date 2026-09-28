@@ -1393,12 +1393,14 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		paid.LifePaid += lifeCost
 	}
 	if ab.Cost.Loyalty != nil {
-		// applyCounterLocked, not AddCounterForEffect: a counter placed
-		// by a COST isn't placed by an effect (CR 614.16), so counter-doubling
-		// replacements do NOT apply to a loyalty ability's + cost.
-		// Doubling Season really does nothing here, and routing
-		// through the CR 614 pipeline would silently make it.
-		if err := g.applyCounterLocked(cardID, CounterLoyalty, *ab.Cost.Loyalty); err != nil {
+		// payCostCounterLocked (counter_cost.go), not applyCounterLocked:
+		// a counter placed by a COST isn't placed by an EFFECT (CR
+		// 614.16), so Doubling Season really does nothing to a loyalty
+		// ability's cost — but a replacement that names no effect
+		// (Vorinclex, Monstrous Raider) does apply, which is why this
+		// goes through the CR 614 window at all rather than writing the
+		// map directly. ADR 0073's 2026-09-28 amendment, #1710.
+		if _, err := g.payCostCounterLocked(playerID, cardID, CounterLoyalty, *ab.Cost.Loyalty); err != nil {
 			return err
 		}
 		if g.LoyaltyActivatedThisTurn == nil {
@@ -1421,10 +1423,11 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// for the same reason the removal is: the source has to still be
 	// on the battlefield.
 	if ac := ab.Cost.AddCounter; ac != nil {
-		if err := g.payCounterAddLocked(cardID, ac); err != nil {
+		added, err := g.payCounterAddLocked(playerID, cardID, ac)
+		if err != nil {
 			return err
 		}
-		paid.CountersAdded = ac.N
+		paid.CountersAdded = added
 	}
 	// Sacrifices last: they move cards, which invalidates `source`.
 	// One payment is one simultaneous exit (#747, CR 603.10a).
