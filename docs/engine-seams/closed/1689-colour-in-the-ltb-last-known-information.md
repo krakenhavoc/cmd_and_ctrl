@@ -1,0 +1,6 @@
+---
+title: "Colour in the leaves-the-battlefield last-known information"
+date: 2026-09-28
+issues: [1689]
+---
+**Colour in the leaves-the-battlefield last-known information** (#1689, CR 603.10a, [ADR 0027 amendment 2026-09-28, #1689](decisions/0027-attack-triggers.md)). Teysa, Orzhov Scion's "whenever another black creature you control dies" asked `dead.HasColor("B")` of the card in the graveyard, where no effect applies any more, so a creature painted black only by Darkest Hour, a black-making static or an Aura was not counted — and one an effect had painted another colour still was, because the printed colour is the graveyard fallback. `EventLTB` now also carries `Event.LastKnownColors`, stamped by the same `exitLKI` as the #1675 types, #1679 subtypes and #1682 supertypes/controller; `Event.WasColor` reads it with `Card.HasColor`'s exact-match semantics. Card side, `leftAsColor(ev, c, color)` is the one question; Teysa is the only catalog card that tested a departed permanent's colour, so it is the only switch. This closes the last-known-information family this ADR opened: card types, subtypes, supertypes, controller and now colour are all read as the permanent last existed on the battlefield rather than as the card sits in its new zone.
