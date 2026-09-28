@@ -179,12 +179,8 @@ func corpusBoards() []corpusBoard {
 		{"falter", corpusFalter},
 		// v7, added by #1651: a hexproof waiver under the live
 		// opponentsAndTheirCreatures scope, and a cantHaveKeywords record
-		// pinned to an opponent's creature. No file yet: the writer
-		// refuses while the existing v7 fixtures differ from this
-		// build's output (the event log's last-known fields after
-		// cause_item), so they are frozen at the next write. Until then
-		// TestSnapshotCorpusBoardsStillBuild holds them to being
-		// restore points.
+		// pinned to an opponent's creature. Written by #1707's v7
+		// regeneration (ADR 0044's 2026-09-28 #1698 amendment).
 		{"detection_tower", corpusDetectionTower},
 		{"arcane_lighthouse", corpusArcaneLighthouse},
 		// v7, added by tier 4's second slice (#1497, ADR 0041 P9) as new
@@ -205,12 +201,9 @@ func corpusBoards() []corpusBoard {
 		{"prowess_on_stack", corpusProwessOnStack},
 		// v7, added by #1593: duration copy effects — the becomeCopy mod
 		// carrying its copied values, and the carried durationCopyBase
-		// under a Cytoshaped Clone. No file yet, for detection_tower's
-		// reason: the writer still refuses on develop after #1707
-		// (gingerbrute.json and whip_redirect.json now render an entry
-		// stamp their frozen files lack), so it is frozen at the next
-		// write. Until then TestSnapshotCorpusBoardsStillBuild holds it
-		// to being a restore point.
+		// under a Cytoshaped Clone. Written by #1712, alongside the
+		// regeneration of gingerbrute.json and whip_redirect.json that
+		// unblocked it (ADR 0044's 2026-09-28 #1712 amendment).
 		{"duration_copy", corpusDurationCopy},
 	}
 }
