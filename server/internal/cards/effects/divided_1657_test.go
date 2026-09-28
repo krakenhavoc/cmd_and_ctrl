@@ -362,6 +362,23 @@ func TestAvacynsJudgmentViewQuotesTwoInHand(t *testing.T) {
 	t.Fatal("Avacyn's Judgment not in the hand view")
 }
 
+// An amount rule stands alone: a clause that also names a fixed or X
+// amount is a card-file bug Register refuses at boot.
+func TestRegisterRefusesARuleBesideAnAmount(t *testing.T) {
+	mustPanic(t, "names an amount rule AND", func() {
+		d := DivideBy(DivideLandsYouControl)
+		d.Total = 3
+		Register(Spec{OracleID: "divide-test-rule-and-total", Name: "Rule And Total",
+			Targets: TargetAny().WithCount(0, 0).Dividing(d)})
+	})
+	mustPanic(t, "names an amount rule AND", func() {
+		d := DivideBy(DivideLandsYouControl)
+		d.FromX = true
+		Register(Spec{OracleID: "divide-test-rule-and-x", Name: "Rule And X",
+			Targets: TargetAny().WithCount(0, 0).Dividing(d)})
+	})
+}
+
 // d1657LandCannonOracle is a test-only card: no catalogued ACTIVATED
 // ability divides a ruled amount yet (Polukranos waits on
 // monstrosity), so the activation path's binding is proved on this.

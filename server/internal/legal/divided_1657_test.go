@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/legal"
 )
@@ -48,6 +49,20 @@ func pickTargetAnswers(t *testing.T, moves []legal.Move, total int) (maxTargets 
 		}
 	}
 	return maxTargets
+}
+
+// widestDivided is the most targets any of the moves announces — so a
+// test can tell "every offer is legal" from "only the empty offer was
+// made", which an unsized division would also produce.
+func widestDivided(t *testing.T, moves []legal.Move) int {
+	t.Helper()
+	w := 0
+	for _, m := range moves {
+		if n := len(decodeDivided(t, m).Targets); n > w {
+			w = n
+		}
+	}
+	return w
 }
 
 // Ureni's amount is the lands its controller has, not the mana it was
@@ -134,6 +149,63 @@ func TestLathielPickTargetAnswersAreAccepted(t *testing.T) {
 	dispatchAll(t, g, active.ID, moves)
 }
 
+// oracleLegalLandCannon is a test-only card: no catalogued ACTIVATED
+// ability divides a ruled amount yet, so the activation enumerator's
+// binding is proved on this.
+const oracleLegalLandCannon = "test-1657-legal-land-cannon"
+
+func init() {
+	effects.Register(effects.Spec{
+		OracleID: oracleLegalLandCannon,
+		Name:     "Test Legal Land Cannon",
+		Activated: []effects.ActivatedAbility{{
+			Label: "{T}: This deals damage equal to the number of lands you control divided as you choose among any number of targets.",
+			Cost:  effects.TapCost(),
+			Targets: effects.TargetAny().WithCount(0, 0).
+				Dividing(effects.DivideBy(effects.DivideLandsYouControl)),
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				return effects.DealDividedDamage(effects.NewContext(g, item))
+			},
+		}},
+	})
+}
+
+// An activation's ruled amount is sized as the activation gate sizes
+// it: two lands, never a three-target activation.
+func TestActivationMovesSizeARuledDivision(t *testing.T) {
+	g := newTable(t)
+	active := g.Seats[g.Turn.ActiveSeat]
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	cannon := battlefieldCard(g, active, game.Card{
+		Name: "Test Legal Land Cannon", TypeLine: "Artifact", OracleID: oracleLegalLandCannon,
+	})
+	lands(g, active, "Wastes", "Wastes", 2)
+	for _, name := range []string{"A", "B", "C"} {
+		battlefieldCard(g, opp, creature(name, "{1}{G}", 2, 2))
+	}
+	advanceTo(t, g, game.StepPrecombatMain)
+	var moves []legal.Move
+	for _, m := range legal.EnumerateFor(g, active.ID) {
+		if m.Kind == legal.KindActivate && m.Source == cannon {
+			moves = append(moves, m)
+		}
+	}
+	if len(moves) == 0 {
+		t.Fatal("the cannon's activation is not offered")
+	}
+	for _, m := range moves {
+		d := decodeDivided(t, m)
+		if len(d.Targets) > 2 {
+			t.Errorf("%q: %d targets cannot divide 2", m.Label, len(d.Targets))
+		}
+		checkEvenDivision(t, m.Label, d, 2)
+	}
+	if w := widestDivided(t, moves); w != 2 {
+		t.Errorf("widest activation: %d targets, want 2 (two lands)", w)
+	}
+	dispatchAll(t, g, active.ID, moves)
+}
+
 // Avacyn's Judgment: the printed cast divides 2, the madness cast from
 // exile divides the X it announces — and every offer is accepted.
 func TestAvacynsJudgmentMovesSizeTheDivisionByTheClaimedCost(t *testing.T) {
@@ -161,6 +233,9 @@ func TestAvacynsJudgmentMovesSizeTheDivisionByTheClaimedCost(t *testing.T) {
 				t.Errorf("%q: %d targets cannot divide 2", m.Label, len(d.Targets))
 			}
 			checkEvenDivision(t, m.Label, d, 2)
+		}
+		if w := widestDivided(t, moves); w != 2 {
+			t.Errorf("widest cast: %d targets, want 2", w)
 		}
 		dispatchAll(t, g, active.ID, moves)
 	})
@@ -203,6 +278,9 @@ func TestAvacynsJudgmentMovesSizeTheDivisionByTheClaimedCost(t *testing.T) {
 		}
 		if !sawX {
 			t.Error("no madness cast announced an X above 0")
+		}
+		if w := widestDivided(t, moves); w != 2 {
+			t.Errorf("widest madness cast: %d targets, want 2 (X=3 over two creatures)", w)
 		}
 		dispatchAll(t, g, active.ID, moves)
 	})
