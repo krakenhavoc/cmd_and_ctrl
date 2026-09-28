@@ -177,6 +177,16 @@ func corpusBoards() []corpusBoard {
 		// affected set is a live rule — addRestrictions under the
 		// creaturesWithoutFlying scope on disk.
 		{"falter", corpusFalter},
+		// v7, added by #1651: a hexproof waiver under the live
+		// opponentsAndTheirCreatures scope, and a cantHaveKeywords record
+		// pinned to an opponent's creature. No file yet: the writer
+		// refuses while the existing v7 fixtures differ from this
+		// build's output (the event log's last-known fields after
+		// cause_item), so they are frozen at the next write. Until then
+		// TestSnapshotCorpusBoardsStillBuild holds them to being
+		// restore points.
+		{"detection_tower", corpusDetectionTower},
+		{"arcane_lighthouse", corpusArcaneLighthouse},
 		// v7, added by tier 4's second slice (#1497, ADR 0041 P9) as new
 		// files: declared triggered abilities waiting to resolve, named
 		// by their catalog row — a card's own row, a granted bundle's,
@@ -325,6 +335,34 @@ func corpusFalter(t *testing.T) *game.Game {
 	passPriorityAroundTable(t, g)
 	if len(g.ScopedEffects) != 1 || g.ScopedEffects[0].Scope != game.ScopeCreaturesWithoutFlying {
 		t.Fatalf("setup: Falter registered %+v, want one creaturesWithoutFlying record", g.ScopedEffects)
+	}
+	return g
+}
+
+// corpusDetectionTower is a real Detection Tower activation: one
+// waiveHexproof record over the live opponentsAndTheirCreatures scope
+// (#1651), with a hexproof creature on the board it reaches.
+func corpusDetectionTower(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	pushSizedCreature(g, opp.ID, "Slippery Bogle", 1, 1, "hexproof")
+	activateLand(t, g, "Detection Tower", detectionTowerOracle)
+	if len(g.ScopedEffects) != 1 || g.ScopedEffects[0].Scope != game.ScopeOpponentsAndTheirCreatures {
+		t.Fatalf("setup: Detection Tower registered %+v, want one opponentsAndTheirCreatures record", g.ScopedEffects)
+	}
+	return g
+}
+
+// corpusArcaneLighthouse is a real Arcane Lighthouse activation: one
+// cantHaveKeywords record pinned to the opponent's hexproof creature
+// (#1651), so CantHave is on disk in the characteristic's shape too.
+func corpusArcaneLighthouse(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	pushSizedCreature(g, opp.ID, "Slippery Bogle", 1, 1, "hexproof")
+	activateLand(t, g, "Arcane Lighthouse", arcaneLighthouseOracle)
+	if len(g.ScopedEffects) != 1 || g.ScopedEffects[0].Mods[0].Kind != game.ModCantHaveKeywords {
+		t.Fatalf("setup: Arcane Lighthouse registered %+v, want one cantHaveKeywords record", g.ScopedEffects)
 	}
 	return g
 }

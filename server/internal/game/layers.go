@@ -868,6 +868,11 @@ func (g *Game) layerPassLocked() {
 	st := newLayerPassState(effects)
 	for i, b := range layerOrder {
 		g.applyLayerLocked(effects, b.Layer, b.SubLayer, b.has7Sub, i, st)
+		if b.Layer == Layer6Ability {
+			// #1651: "can't have" beats every grant in the bucket,
+			// whatever its timestamp (CR 101.2). See cant_have.go.
+			g.enforceCantHaveLocked()
+		}
 	}
 	// #1650: a restriction over a live rule reads the finished
 	// characteristics, so it is applied once every layer has run.

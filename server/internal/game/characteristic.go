@@ -240,6 +240,19 @@ type Characteristic struct {
 	// appended to, never cleared by a layer-6 ability removal, one entry
 	// per requirement because CR 509.1c counts them.
 	BlockRequirements []BlockRequirement
+
+	// CantHave are the keyword tokens this object can't have (CR
+	// 101.2, #1651): Arcane Lighthouse's "can't have hexproof or
+	// shroud", an Archetype's "can't have or gain trample".
+	// Restrictions' twin: written by a layer-6 effect's Apply, only
+	// ever appended to, and never cleared by a CR 613.1f ability
+	// removal, because the can't-have belongs to the effect's source.
+	//
+	// It is read once, by enforceCantHaveLocked, straight after the
+	// layer-6 bucket, which strips every listed token from Abilities.
+	// That is what makes the "can't" beat a grant whatever its
+	// timestamp. See cant_have.go.
+	CantHave []string `json:",omitempty"`
 }
 
 // printedCharacteristic builds a Characteristic from the card's
@@ -359,6 +372,7 @@ func (c Characteristic) clone() Characteristic {
 	out.GrantedAbilities = append([]GrantedAbility(nil), c.GrantedAbilities...)
 	out.AttackRequirements = append([]AttackRequirement(nil), c.AttackRequirements...)
 	out.BlockRequirements = append([]BlockRequirement(nil), c.BlockRequirements...)
+	out.CantHave = append([]string(nil), c.CantHave...)
 	return out
 }
 

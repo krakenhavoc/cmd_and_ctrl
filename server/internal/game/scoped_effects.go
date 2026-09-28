@@ -155,6 +155,23 @@ const (
 	ModLimitBlockersPerDefender ModKind = "limitBlockersPerDefender"
 )
 
+// The hexproof kinds (#1651, ADR 0038's amendment of 2026-09-28). See
+// cant_have.go and hexproof_bypass.go for what each one does.
+const (
+	// ModCantHaveKeywords is "loses <keywords> and can't have
+	// <keywords>" (Arcane Lighthouse, CR 101.2). Reads Keywords. Layer
+	// 6: its Apply records the tokens on Characteristic.CantHave, and
+	// the strip after the layer-6 bucket removes them whatever granted
+	// them, so a later grant cannot put one back.
+	ModCantHaveKeywords ModKind = "cantHaveKeywords" // layer 6
+	// ModWaiveHexproof is "<affected> can be the targets of spells and
+	// abilities you control as though they didn't have hexproof"
+	// (Detection Tower, CR 702.11). Reads nothing; the beneficiary is
+	// the record's Controller. Not a layer operation: the targeting
+	// choke point reads it (hexproof_bypass.go).
+	ModWaiveHexproof ModKind = "waiveHexproof"
+)
+
 // AffectedScope is a ScopedEffect's affected set as a RULE read live at
 // every layer pass, instead of a set of objects locked when the effect
 // began (#1571). CR 611.2c locks the set only for an effect that
@@ -194,13 +211,19 @@ const (
 	// carry mods that are read after the layer pass is finished — see
 	// foldRuleScopedRestrictionsLocked. Registration enforces it.
 	ScopeCreaturesWithoutFlying AffectedScope = "creaturesWithoutFlying"
+	// ScopeOpponentsAndTheirCreatures is "your opponents and creatures
+	// your opponents control", read live — the "you" being the record's
+	// Controller (#1651, Detection Tower). The one scope that also
+	// names PLAYERS (scopeCoversPlayer); as a permanent predicate it is
+	// ScopeOpponentsCreatures.
+	ScopeOpponentsAndTheirCreatures AffectedScope = "opponentsAndTheirCreatures"
 )
 
 // KnownAffectedScope reports whether this binary can interpret s.
 func KnownAffectedScope(s AffectedScope) bool {
 	switch s {
 	case ScopeNone, ScopeOpponentsCreatures, ScopeGame, ScopeYourPermanents,
-		ScopeYourCreatures, ScopeCreaturesWithoutFlying:
+		ScopeYourCreatures, ScopeCreaturesWithoutFlying, ScopeOpponentsAndTheirCreatures:
 		return true
 	}
 	return false
@@ -377,6 +400,8 @@ const (
 	readerLayer modReader = iota
 	readerReplacement
 	readerBlockRule
+	// readerTargeting is the targeting choke point (#1651).
+	readerTargeting
 )
 
 // modKindSpec is where a kind lives: its reader, and for a layer kind
@@ -418,6 +443,10 @@ var modKinds = map[ModKind]modKindSpec{
 	// Tier 3b (ADR 0041 P8): block-rule effects, not layer operations.
 	ModCantBeBlockedExceptBy:    {reader: readerBlockRule},
 	ModLimitBlockersPerDefender: {reader: readerBlockRule},
+	// #1651: "can't have" is a layer-6 record; the waiver is read by
+	// targeting.
+	ModCantHaveKeywords: {layer: Layer6Ability},
+	ModWaiveHexproof:    {reader: readerTargeting},
 }
 
 // KnownModKind reports whether this binary can interpret k.
@@ -666,6 +695,9 @@ func (g *Game) appendScopedEffectLocked(sourceID uuid.UUID, affected []AffectedO
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
 		if problem := blockRuleModProblem(m); problem != "" {
+			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
+		}
+		if problem := hexproofModProblem(m); problem != "" {
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
 		if modKinds[m.Kind].reader != readerLayer {
@@ -958,7 +990,7 @@ func affectedPredicate(set []AffectedObject) func(*Card, *Game, *Card) bool {
 // restore both refuse one.
 func scopePredicate(scope AffectedScope, controller uuid.UUID) func(*Card, *Game, *Card) bool {
 	switch scope {
-	case ScopeOpponentsCreatures:
+	case ScopeOpponentsCreatures, ScopeOpponentsAndTheirCreatures:
 		return func(target *Card, _ *Game, _ *Card) bool {
 			return target != nil && target.IsCreature() && target.Controller != controller
 		}
@@ -1125,6 +1157,8 @@ func modApply(m Mod) func(*Characteristic, *Card, *Game, *Card) {
 		return func(ch *Characteristic, _ *Card, _ *Game, _ *Card) {
 			ch.Restrictions |= bits
 		}
+	case ModCantHaveKeywords:
+		return cantHaveApply(m.Keywords)
 	case ModSetBasePower:
 		n := m.Power
 		return func(ch *Characteristic, _ *Card, _ *Game, _ *Card) { ch.Power = n }
