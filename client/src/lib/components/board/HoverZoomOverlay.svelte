@@ -235,7 +235,16 @@
                it to finish the sentence. -->
           {#each chosen as chip (chip.kind)}
             <span class="state state-chosen" title={chip.title}>
-              {chip.kind === "color" ? "chosen color" : "chosen type"}: {chip.label}
+              {#if chip.kind === "color"}
+                chosen color: {chip.label}
+              {:else if chip.kind === "tribe"}
+                chosen type: {chip.label}
+              {:else}
+                <!-- option/name labels already carry their own prefix
+                     ("Mode: Temur", "Named: Sol Ring") — see
+                     chosenValues.ts. -->
+                {chip.label}
+              {/if}
             </span>
           {/each}
           {#if card.tapped}

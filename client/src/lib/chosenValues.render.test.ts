@@ -41,7 +41,14 @@ function chips(container: HTMLElement): { text: string; title: string }[] {
 describe("chosenValueChips", () => {
   it("is empty for the card that chose nothing", () => {
     expect(chosenValueChips({})).toEqual([]);
-    expect(chosenValueChips({ chosen_color: "", named_tribe: "" })).toEqual([]);
+    expect(
+      chosenValueChips({
+        chosen_color: "",
+        named_tribe: "",
+        chosen_option: "",
+        chosen_name: "",
+      }),
+    ).toEqual([]);
   });
 
   it("names the colour rather than shipping the letter", () => {
@@ -55,6 +62,20 @@ describe("chosenValueChips", () => {
     expect(chosenValueChips({ named_tribe: "Elf" })[0].title).toContain('"the chosen type"');
   });
 
+  it("labels a chosen option (#1572, a Siege's anchor word) as a mode", () => {
+    const chip = chosenValueChips({ chosen_option: "Temur" })[0];
+    expect(chip.kind).toBe("option");
+    expect(chip.label).toBe("Mode: Temur");
+    expect(chip.title).toContain('"the chosen option"');
+  });
+
+  it("labels a chosen name (#1210, Pithing Needle) as named", () => {
+    const chip = chosenValueChips({ chosen_name: "Sol Ring" })[0];
+    expect(chip.kind).toBe("name");
+    expect(chip.label).toBe("Named: Sol Ring");
+    expect(chip.title).toContain('"the chosen name"');
+  });
+
   it("shows a letter it does not recognise rather than dropping the answer", () => {
     // A future server that learns a sixth colour must not make the
     // client silently forget that a choice was made.
@@ -64,6 +85,16 @@ describe("chosenValueChips", () => {
   it("puts the colour first when a permanent chose both", () => {
     const both = chosenValueChips({ chosen_color: "W", named_tribe: "Elf" });
     expect(both.map((c) => c.kind)).toEqual(["color", "tribe"]);
+  });
+
+  it("orders colour, type, option, name when a permanent somehow chose all four", () => {
+    const all = chosenValueChips({
+      chosen_color: "W",
+      named_tribe: "Elf",
+      chosen_option: "Temur",
+      chosen_name: "Sol Ring",
+    });
+    expect(all.map((c) => c.kind)).toEqual(["color", "tribe", "option", "name"]);
   });
 });
 
@@ -89,6 +120,32 @@ describe("the chosen-value chip on a card", () => {
     expect(chips(container).map((c) => c.text)).toEqual(["Red", "Goblin"]);
   });
 
+  it("shows the chosen option (a Siege's anchor word) on the card", () => {
+    const { container } = mountCard(
+      permanent({ name: "Frostcliff Siege", chosen_option: "Temur" }),
+    );
+    expect(chips(container).map((c) => c.text)).toEqual(["Mode: Temur"]);
+    expect(chips(container)[0].title).toMatch(/Temur/);
+  });
+
+  it("shows the chosen name (Pithing Needle) on the card", () => {
+    const { container } = mountCard(permanent({ name: "Pithing Needle", chosen_name: "Sol Ring" }));
+    expect(chips(container).map((c) => c.text)).toEqual(["Named: Sol Ring"]);
+    expect(chips(container)[0].title).toMatch(/Sol Ring/);
+  });
+
+  it("shows no chip when the chosen option or name is an empty string", () => {
+    const { container } = mountCard(
+      permanent({ name: "Pithing Needle", chosen_option: "", chosen_name: "" }),
+    );
+    expect(chips(container)).toEqual([]);
+  });
+
+  it("shows no chip when the chosen option or name is absent (prompt not yet answered)", () => {
+    const { container } = mountCard(permanent({ name: "Pithing Needle" }));
+    expect(chips(container)).toEqual([]);
+  });
+
   it("renders alongside the keyword badges rather than replacing them", () => {
     const { container } = mountCard(
       permanent({
@@ -109,7 +166,14 @@ describe("the chosen-value chip on a card", () => {
   // given and invents nothing for a card it cannot read.
   it("renders nothing for a card the viewer does not know", () => {
     const { container } = mountCard(
-      permanent({ known_by_you: false, name: "", type_line: "", chosen_color: undefined }),
+      permanent({
+        known_by_you: false,
+        name: "",
+        type_line: "",
+        chosen_color: undefined,
+        chosen_option: undefined,
+        chosen_name: undefined,
+      }),
     );
     expect(chips(container)).toEqual([]);
   });
