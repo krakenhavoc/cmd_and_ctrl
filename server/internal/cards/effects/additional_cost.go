@@ -174,3 +174,34 @@ func BuybackSacrifice(label string, preds ...CardPredicate) game.AdditionalCost 
 		Label:     "Buyback—Sacrifice " + label,
 	}
 }
+
+// WhenPaid declares the target clause a paid optional cost gives the
+// spell, REPLACING the printed one — the kicker, teamwork and blight
+// twin of Gift.Instead (#1716, ADR 0089 §3 amendment 2026-09-28):
+//
+//	Targets:       TargetCreature("target creature with mana value 3 or less", ManaValueLE(3)),
+//	OptionalCosts: []game.AdditionalCost{WhenPaid(Teamwork(2), TargetCreature("target creature"))}, // Cruel Alliance
+//
+//	Targets:       TargetPermanent("target artifact or enchantment", Or(Artifact(), Enchantment())),
+//	OptionalCosts: []game.AdditionalCost{WhenPaid(Kicker("{1}{B}"), TargetPermanent("target nonland permanent", Nonland()))}, // Tear Asunder
+//
+// "If this spell was kicked, instead destroy target creature" is a
+// different clause, not a looser predicate on the same one: the cost
+// is announced at CR 601.2b and the targets at 601.2c, so the clause
+// the targets are chosen and judged against is the one the
+// announcement produced. That is why this rewrites the whole clause
+// rather than teaching a TargetSpec predicate to read the stack item:
+// the predicate is also asked by the view and the enumerator, which
+// have no stack item, and game.TargetSpecUnderOptionalCosts is the one
+// function all four readers (announce, the CR 608.2b re-check and
+// restore, the view, the enumerator) already share.
+//
+// A clause the unpaid spell does not have at all is the printed list
+// with the extra clause appended, exactly as for gift.
+func WhenPaid(cost game.AdditionalCost, clause *game.TargetSpec) game.AdditionalCost {
+	if clause == nil {
+		panic("effects.WhenPaid: a nil clause rewrites nothing — declare the cost on its own")
+	}
+	cost.Targets = clause
+	return cost
+}

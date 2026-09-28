@@ -8,6 +8,24 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
+// returnLegalGraveyardTargetsToHand returns every still-legal graveyard
+// target to its owner's hand, in announce order — the body of the
+// "return N target cards from your graveyard to your hand" spells whose
+// count an optional cost raises (Peerless Recycling's gift, Blood
+// Beckoning's kicker, #1716). A pick that left the graveyard in
+// response is dropped by the CR 608.2b re-check before this runs.
+func returnLegalGraveyardTargetsToHand(ctx *Context) error {
+	for _, t := range ctx.LegalTargets() {
+		if t.Kind != game.TargetCard {
+			continue
+		}
+		if err := (ReturnFromGraveyard{Target: t.ID, Dest: game.ZoneHand}).Apply(ctx); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // cardDied reports whether an EventLTB marks `source` going to the
 // graveyard from the battlefield — i.e. it "died" (CR 700.4) — as
 // opposed to being exiled, bounced, or tucked into the library.
