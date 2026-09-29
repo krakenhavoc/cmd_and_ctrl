@@ -445,6 +445,11 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 			modes   []int
 			targets []game.TargetRef
 			steps   []game.AnnouncedClause
+			// xValue is the X this announcement's target clause was
+			// bound to (#1723), or -1 when nothing bound one — the
+			// overwhelming majority, which reads pay.xValue exactly as
+			// before.
+			xValue int
 		}
 		var announcements []announcement
 		for _, modes := range modeSets {
@@ -452,9 +457,43 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 			// #1657: a divided amount read off the board, sized as
 			// the activation gate will size it.
 			g.BindDivideAmountsForEffect(steps, game.DivideAmountArgs{Controller: e.seat, Source: source.InstanceID})
+			if game.StepsBoundByX(steps) {
+				// #1723: an X-bound target clause ("with mana value
+				// X") is NOT monotonic in X the way "X or less" is —
+				// a larger X can have FEWER legal targets, not more —
+				// so the single "largest affordable X" cast.go picks
+				// for the "or less" case would routinely offer
+				// nothing here, when a smaller X has a legal target
+				// and the largest affordable one does not. So this
+				// tries every affordable X from the floor up and
+				// keeps only the (X, target) pairs that are actually
+				// legal — #544's rule, one dimension over from the
+				// count ladders (variableSacrificePayments and
+				// friends) already do for a cost's X.
+				//
+				// Only the plain mana-{X} shape is supported: an
+				// ability whose PRICE reads its targets, or whose X is
+				// announced by a sacrifice/tap count rather than mana,
+				// has no catalog card combining that with an X-bound
+				// target yet, so it is left unenumerated rather than
+				// guessed at.
+				if perTarget || ab.Cost.XSlots() == 0 {
+					continue
+				}
+				floor := enumeratedXFloor(game.CatalogAbilityKey(*source), ab.Cost.FloorX())
+				for x := floor; x <= basePay.xValue; x++ {
+					xs := game.AnnouncedClauses(ab.Targets, ab.Modes, modes)
+					g.BindDivideAmountsForEffect(xs, game.DivideAmountArgs{Controller: e.seat, Source: source.InstanceID})
+					game.BindStepsXForEffect(xs, x)
+					for _, ts := range e.legalStepSets(abilitySrc, xs, budget) {
+						announcements = append(announcements, announcement{modes: modes, targets: ts, steps: xs, xValue: x})
+					}
+				}
+				continue
+			}
 			sets := e.legalStepSets(abilitySrc, steps, budget)
 			for _, ts := range sets {
-				announcements = append(announcements, announcement{modes: modes, targets: ts, steps: steps})
+				announcements = append(announcements, announcement{modes: modes, targets: ts, steps: steps, xValue: -1})
 			}
 		}
 		if len(announcements) == 0 {
@@ -493,7 +532,19 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 				// payment it carries. Register refuses a cost that
 				// also puts {X} in its mana component, so there is
 				// never a second claimant on this number.
+				//
+				// #1723: `ann.xValue >= 0` only for an ability whose
+				// mana cost has {X} (the ladder above requires
+				// ab.Cost.XSlots() > 0), and effects.Register already
+				// refuses {X} in the mana cost alongside
+				// SacrificeCountFromX (#1213) — one announced X
+				// cannot pay both. So the two conditions below can
+				// never both hold for the same ability, and reading
+				// one after the other here is never a clobber.
 				xValue := pay.xValue
+				if ann.xValue >= 0 {
+					xValue = ann.xValue
+				}
 				if game.SacrificeCountFromX(ab.Cost.SacrificeOther) {
 					xValue = len(sacs)
 				}

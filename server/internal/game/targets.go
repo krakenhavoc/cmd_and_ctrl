@@ -383,14 +383,34 @@ type TargetSpec struct {
 	// narrows that superset by the X it collected, from the mana
 	// values the view ships beside it.
 	//
-	// Only on a clause whose announcement HAS an X: a spell's or an
-	// activated ability's. effects.Register refuses it on a trigger.
+	// Only on a clause whose announcement HAS an X: a spell's, or
+	// since #1723 an activated ability whose own cost demands one
+	// (CR 602.2b) — effects.Register checks the ability's cost rather
+	// than refusing the flag outright. A trigger announces no X ever,
+	// so it is still refused there.
 	ManaValueAtMostX bool
 
-	// xBound is ManaValueAtMostX's X once an announcement has bound
-	// it; xBoundSet says whether it has. Unexported and never set on
-	// a catalog spec — only on the value copies AnnouncedClauses
-	// hands out — so the shared declaration is never mutated.
+	// ManaValueEqualsX is "with mana value X" (#1723, Lazav, the
+	// Multifarious's "target creature card in your graveyard with
+	// mana value X") — the same announced-X mechanism as
+	// ManaValueAtMostX, with an exact comparison instead of "or
+	// less". Unlike ManaValueAtMostX the legal set is NOT monotonic
+	// in X: raising X can both add and remove candidates, so a
+	// caller that only tries the largest affordable X (the way the
+	// cast path picks one X for ManaValueAtMostX) can miss a legal
+	// announcement a smaller X would have had. See
+	// internal/legal/abilities.go's X ladder for the activation
+	// enumerator's answer.
+	//
+	// Register refuses a clause that sets both flags — "or less" and
+	// "exactly" are different clauses, never one card's.
+	ManaValueEqualsX bool
+
+	// xBound is the announced X once an announcement has bound
+	// ManaValueAtMostX or ManaValueEqualsX; xBoundSet says whether it
+	// has. Unexported and never set on a catalog spec — only on the
+	// value copies AnnouncedClauses hands out — so the shared
+	// declaration is never mutated.
 	xBound    int
 	xBoundSet bool
 
@@ -489,6 +509,14 @@ func (s *TargetSpec) EachDifferent(d *TargetDifference) *TargetSpec {
 // (#1559). Mutates and returns the receiver, as WithCount does.
 func (s *TargetSpec) WithManaValueAtMostX() *TargetSpec {
 	s.ManaValueAtMostX = true
+	return s
+}
+
+// WithManaValueEqualsX marks the clause "with mana value X" (#1723,
+// Lazav, the Multifarious). Mutates and returns the receiver, as
+// WithCount does.
+func (s *TargetSpec) WithManaValueEqualsX() *TargetSpec {
+	s.ManaValueEqualsX = true
 	return s
 }
 

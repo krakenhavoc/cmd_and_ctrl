@@ -1120,10 +1120,58 @@ card tests are `server/internal/cards/effects/duration_copy_test.go`.
   a copy (a Clone) is copied as the card rather than as what it was
   copying. Declared as the card's caveat. Lazav and Dimir Doppelganger
   copy a CARD, whose last-known values are its own, so they are exact.
-- **Shapesharer** ("until your next turn", two target clauses) and
-  **Mizzium Transreliquat** need no new machinery — `BecomeCopy` would
-  take the duration as a field — and wait only for a card batch, as do
-  the other Lazavs.
 - A duration copy on a **face-down** permanent, and a permanent that
   **transforms** while a duration copy is on it, have no printed card
   in the catalog that reaches them and are not specifically handled.
+
+## Amendment (2026-09-28, #1723): a third duration — CR 611.2b's "until your next turn"
+
+The "Still not covered" list above named Shapesharer and said
+`BecomeCopy` would take the duration as a field "and wait only for a
+card batch." That deferral is spent.
+
+`BecomeCopy.Indefinite bool` covered exactly two durations — "until
+end of turn" (false, the zero value) and no stated duration at all
+(true) — which was every printed card of the class through Mizzium
+Transreliquat. Shapesharer's "{2}{U}: Target Shapeshifter becomes a
+copy of target creature **until your next turn**" is CR 611.2b's third
+duration, and it does not fit a bool: a card cannot say "until end of
+turn AND until your next turn" by setting two flags, and the two are
+easy to confuse in exactly the way that matters here — "until your
+next turn" ends as that turn BEGINS (CR 500.1), "until end of turn"
+ends at the cleanup the turn already has.
+
+`Indefinite` is replaced with `Duration CopyDuration`, a three-value
+enum (`CopyUntilEndOfTurn` — the zero value, so every card registered
+before this change reads exactly as it did; `CopyIndefinite`;
+`CopyUntilYourNextTurn`). `Apply` builds the `game.Duration` from it,
+reading "your" off `ctx.Controller()` for the new case — the ability's
+controller, per CR 611.2b — rather than adding a field to carry a
+player ID nothing else on the struct needs. `game.UntilYourNextTurn` is
+not a new engine kind: it already exists (`UntilYourNextTurnDuration`,
+used by cast bans and cast-permission windows) and `durationExpiredLocked`
+already handles it generically for any scoped effect, `BecomeCopyMod`
+included. So this is entirely a catalog-side change — one field, one
+switch in `become_copy.go` — with nothing new to teach the sweep, the
+snapshot, or undo.
+
+### Cards
+
+**Shapesharer** (new, `CompletenessFull`): `Duration:
+CopyUntilYourNextTurn`. Two target clauses (#764) — "target
+Shapeshifter" (`OfCreatureType("Shapeshifter")`, which a changeling
+card, this one included, always satisfies) and "target creature" —
+read positionally with `ctx.ClauseTarget(0)` / `ClauseTarget(1)`, the
+Bite Down shape. **Lazav, the Multifarious** (new, `CompletenessFull`)
+also uses `BecomeCopy`, with `Duration: CopyIndefinite` — the same
+shape as Lazav, Dimir Mastermind one Lazav over — but its actual seam
+is the second half of [#1723](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1723):
+an activated ability's target bound to its own announced X. See
+[ADR 0019](0019-structured-targeting.md)'s amendment of the same date.
+
+### Tests
+
+`server/internal/cards/effects/shapesharer_test.go` pins the duration
+itself: the copy survives the cleanup of the turn it was made on (an
+`UntilEndOfTurn` copy would not) and reverts only once the controller's
+own next turn begins, after every other seat at the table has had one.

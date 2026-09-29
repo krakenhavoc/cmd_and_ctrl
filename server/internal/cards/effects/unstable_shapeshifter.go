@@ -46,11 +46,11 @@ var unstableShapeshifterTrigger = On(game.EventETB,
 		self := ctx.Source()
 		entered := ctx.Trigger().Event.CardID
 		copyOf := BecomeCopy{
-			Targets:    []uuid.UUID{self},
-			Of:         entered,
-			Indefinite: true,
-			Except:     func(v *game.PrintedValues) { v.GrantAbility(unstableShapeshifterGrant) },
-			Label:      "Unstable Shapeshifter — becomes a copy",
+			Targets:  []uuid.UUID{self},
+			Of:       entered,
+			Duration: CopyIndefinite,
+			Except:   func(v *game.PrintedValues) { v.GrantAbility(unstableShapeshifterGrant) },
+			Label:    "Unstable Shapeshifter — becomes a copy",
 		}
 		if info, ok := ctx.TriggeringPermanent(); !ok || info.Left {
 			card, found := g.LookupCardForEffect(entered)

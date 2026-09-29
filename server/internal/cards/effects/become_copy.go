@@ -18,6 +18,42 @@ import (
 // lands on a permanent already in play, has a timestamp of its own, and
 // ENDS — Mirage Mirror is Mirage Mirror again at cleanup, and a Clone
 // that Cytoshape turned into a Hill Giant is the creature it cloned.
+//
+// # Amendment (2026-09-28, #1723): a third duration
+//
+// Every card that shipped before Shapesharer prints one of two
+// durations — "until end of turn" or none at all (CR 611.2a,
+// "indefinite" below) — so a bool sufficed. Shapesharer's "until your
+// next turn" (CR 611.2b) is a third, and the two are easy to confuse:
+// "until your next turn" ends as that turn BEGINS, "until end of
+// turn" ends at the cleanup that turn already has. `CopyDuration` is
+// the enum the bool would have needed a second one anyway; the zero
+// value keeps every existing card's `BecomeCopy{...}` literal
+// unchanged.
+
+// CopyDuration selects how long a BecomeCopy effect lasts (CR 611.2).
+// The zero value, CopyUntilEndOfTurn, is every printed card that
+// states no duration of its own other than "until end of turn" —
+// Cytoshape, Mirrorweave, Lazav Familiar Stranger, Mizzium
+// Transreliquat's {3} line.
+type CopyDuration int
+
+const (
+	// CopyUntilEndOfTurn is CR 611.2's plain "until end of turn" — the
+	// zero value, so every card registered before this type existed
+	// reads exactly as it did.
+	CopyUntilEndOfTurn CopyDuration = iota
+
+	// CopyIndefinite is a copy with no stated duration (CR 611.2a):
+	// Unstable Shapeshifter, Lazav Dimir Mastermind, Dimir
+	// Doppelganger, Mizzium Transreliquat's {1}{U}{R} line.
+	CopyIndefinite
+
+	// CopyUntilYourNextTurn is CR 611.2b's "until your next turn" —
+	// Shapesharer. "Your" is the ability's controller, so Apply reads
+	// it off ctx.Controller() rather than a field on this struct.
+	CopyUntilYourNextTurn
+)
 
 // BecomeCopy makes each of Targets a copy of Of.
 //
@@ -38,10 +74,10 @@ type BecomeCopy struct {
 	// information once it has moved; see Lazav).
 	Values *game.PrintedValues
 
-	// Indefinite is a copy with no stated duration (CR 611.2a): Unstable
-	// Shapeshifter, Lazav, Dimir Doppelganger. False is "until end of
-	// turn", which is every other printed card of the class.
-	Indefinite bool
+	// Duration is how long the copy lasts (CR 611.2). The zero value,
+	// CopyUntilEndOfTurn, is every printed card of the class but the
+	// three that state otherwise.
+	Duration CopyDuration
 
 	// Except is the card's "except" clause, applied to a private copy of
 	// the values on their way in: SetName, AddSupertype, AddKeyword,
@@ -81,9 +117,14 @@ func (b BecomeCopy) Apply(ctx *Context) error {
 	if b.Except != nil {
 		b.Except(&v)
 	}
-	d := ctx.Game.UntilEndOfTurnDuration()
-	if b.Indefinite {
+	var d game.Duration
+	switch b.Duration {
+	case CopyIndefinite:
 		d = game.IndefiniteDuration()
+	case CopyUntilYourNextTurn:
+		d = ctx.Game.UntilYourNextTurnDuration(ctx.Controller())
+	default:
+		d = ctx.Game.UntilEndOfTurnDuration()
 	}
 	label := b.Label
 	if label == "" {

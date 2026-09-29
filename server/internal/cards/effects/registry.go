@@ -57,10 +57,15 @@ func Register(spec Spec) {
 	checkPlayerKeywords(spec)
 	for _, a := range spec.Activated {
 		checkFlatClauses(spec.Name, a.Targets)
-		checkNoXBound(spec.Name, "an activated ability's", a.Targets)
+		// #1723: an X-bound target clause is allowed on an activated
+		// ability whose OWN cost announces an X (CR 602.2b) — Lazav,
+		// the Multifarious's "{X}: ... with mana value X". Still
+		// refused when the cost has none: the flag would be a bound
+		// nothing on the wire ever sets.
+		checkNoXBound(spec.Name, "an activated ability's", a.Targets, a.Cost.DemandsX())
 		if a.Modes != nil {
 			for _, o := range a.Modes.Options {
-				checkNoXBound(spec.Name, "an activated mode's", o.Targets)
+				checkNoXBound(spec.Name, "an activated mode's", o.Targets, a.Cost.DemandsX())
 			}
 		}
 		if a.Modes != nil {
@@ -79,11 +84,13 @@ func Register(spec Spec) {
 	}
 	for _, t := range spec.Triggered {
 		checkFlatClauses(spec.Name, t.Targets)
-		checkNoXBound(spec.Name, "a trigger's", t.Targets)
+		// A trigger announces no X, ever (#1559) — unlike an activated
+		// ability (#1723), there is no cost to check.
+		checkNoXBound(spec.Name, "a trigger's", t.Targets, false)
 		checkNoDivideX(spec.Name, "a trigger's", t.Targets)
 		if t.Modes != nil {
 			for _, o := range t.Modes.Options {
-				checkNoXBound(spec.Name, "a trigger mode's", o.Targets)
+				checkNoXBound(spec.Name, "a trigger mode's", o.Targets, false)
 				checkNoDivideX(spec.Name, "a trigger mode's", o.Targets)
 			}
 		}
@@ -963,6 +970,14 @@ func checkFlatClauses(name string, spec *game.TargetSpec) {
 		if d := spec.Clause(i).Different; d != nil && (d.Key == nil || d.Label == "") {
 			panic(fmt.Sprintf("effects.Register: %q target clause %d has a set rule with no Key or no Label — build it with EachDifferentManaValue / EachDifferentController / EachDifferentName", name, i))
 		}
+		// #1723: "mana value X or less" and "mana value X" are
+		// different clauses — no printed card is both, and a spec
+		// that set both would have the second WithManaValue...X()
+		// call silently mean nothing (xBoundAdmits reads
+		// ManaValueEqualsX first).
+		if c := spec.Clause(i); c.ManaValueAtMostX && c.ManaValueEqualsX {
+			panic(fmt.Sprintf("effects.Register: %q target clause %d sets both ManaValueAtMostX and ManaValueEqualsX", name, i))
+		}
 	}
 }
 
@@ -1007,16 +1022,25 @@ func checkNoDivideX(name, owner string, spec *game.TargetSpec) {
 	}
 }
 
-// checkNoXBound refuses ManaValueAtMostX on a clause whose owner
-// announces no X the engine binds it to (#1559). Only a SPELL's
-// clauses are bound — at cast and again from StackItem.XValue at
-// resolution. A trigger announces no X at all, and the bot's
-// activation enumerator does not bind one, so on either owner the
-// flag would be a bound nothing enforces consistently.
-func checkNoXBound(name, owner string, spec *game.TargetSpec) {
+// checkNoXBound refuses an X-bound target clause (ManaValueAtMostX or
+// ManaValueEqualsX) on an owner that announces no X the engine can
+// bind it to (#1559, #1723). `xAvailable` is the caller's answer to
+// "does this owner announce an X": always true for a spell (no call
+// site checks one — a spell's Targets is never passed here at all),
+// `a.Cost.DemandsX()` for an activated ability (CR 602.2b's X is that
+// ability's own cost, not the spell path's), and always false for a
+// trigger, which announces none.
+func checkNoXBound(name, owner string, spec *game.TargetSpec, xAvailable bool) {
+	if xAvailable {
+		return
+	}
 	for i := 0; i < spec.ClauseCount(); i++ {
-		if spec.Clause(i).ManaValueAtMostX {
-			panic(fmt.Sprintf("effects.Register: %q declares \"mana value X or less\" on %s target clause %d — only a spell's clause is bound to an announced X", name, owner, i))
+		c := spec.Clause(i)
+		switch {
+		case c.ManaValueAtMostX:
+			panic(fmt.Sprintf("effects.Register: %q declares \"mana value X or less\" on %s target clause %d — %s announces no X", name, owner, i, owner))
+		case c.ManaValueEqualsX:
+			panic(fmt.Sprintf("effects.Register: %q declares \"mana value X\" on %s target clause %d — %s announces no X", name, owner, i, owner))
 		}
 	}
 }

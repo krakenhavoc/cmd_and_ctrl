@@ -46,12 +46,12 @@ var dimirDoppelgangerAbility = ActivatedAbility{
 			}
 			own := game.OwnPrintedValues(c)
 			return BecomeCopy{
-				Targets:    []uuid.UUID{self},
-				Of:         card,
-				Values:     &own,
-				Indefinite: true,
-				Except:     func(v *game.PrintedValues) { v.GrantAbility(dimirDoppelgangerGrant) },
-				Label:      "Dimir Doppelganger — becomes a copy",
+				Targets:  []uuid.UUID{self},
+				Of:       card,
+				Values:   &own,
+				Duration: CopyIndefinite,
+				Except:   func(v *game.PrintedValues) { v.GrantAbility(dimirDoppelgangerGrant) },
+				Label:    "Dimir Doppelganger — becomes a copy",
 			}.Apply(ctx)
 		}}.Apply(ctx)
 	},
