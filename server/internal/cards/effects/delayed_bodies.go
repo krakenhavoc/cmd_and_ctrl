@@ -102,6 +102,12 @@ var (
 	// turn": an EventCast by the trigger's controller whose spell
 	// passes CondParams.Filter.
 	youNextCastCondition = game.DelayedCondition("cast/you-next-cast", youNextCast)
+
+	// The event condition of "until an opponent becomes the monarch"
+	// (Palace Jailer, #1722): an EventMonarchChanged whose new monarch
+	// is not the trigger's controller.
+	anOpponentBecameTheMonarchCondition = game.DelayedCondition("monarch/an-opponent-became",
+		anOpponentBecameTheMonarchSince)
 )
 
 // maxManaDrainRefund bounds the refund a restored Mana Drain may add. No
