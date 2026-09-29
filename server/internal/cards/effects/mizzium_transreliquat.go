@@ -50,11 +50,11 @@ var mizziumTransreliquatKeepAbility = ActivatedAbility{
 		}
 		self := ctx.Source()
 		return BecomeCopy{
-			Targets:    []uuid.UUID{self},
-			Of:         targets[0].ID,
-			Indefinite: true,
-			Except:     func(v *game.PrintedValues) { v.GrantAbility(mizziumTransreliquatGrant) },
-			Label:      "Mizzium Transreliquat — becomes a copy",
+			Targets:  []uuid.UUID{self},
+			Of:       targets[0].ID,
+			Duration: CopyIndefinite,
+			Except:   func(v *game.PrintedValues) { v.GrantAbility(mizziumTransreliquatGrant) },
+			Label:    "Mizzium Transreliquat — becomes a copy",
 		}.Apply(ctx)
 	},
 }

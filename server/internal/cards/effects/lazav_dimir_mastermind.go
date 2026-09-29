@@ -61,10 +61,10 @@ var lazavDimirMastermindTrigger = game.TriggeredAbility{
 		}
 		own := game.OwnPrintedValues(card)
 		return BecomeCopy{
-			Targets:    []uuid.UUID{self},
-			Of:         card.InstanceID,
-			Values:     &own,
-			Indefinite: true,
+			Targets:  []uuid.UUID{self},
+			Of:       card.InstanceID,
+			Values:   &own,
+			Duration: CopyIndefinite,
 			Except: func(v *game.PrintedValues) {
 				v.SetName("Lazav, Dimir Mastermind")
 				v.AddSupertype("Legendary")
