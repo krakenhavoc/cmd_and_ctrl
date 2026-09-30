@@ -109,10 +109,32 @@ type StackItem struct {
 	// exist (CR 608.2n).
 	Kind StackItemKind
 
-	// Controller is the player who cast / activated this item. They
-	// retain priority after announcing (CR 117.3c). Counter actions
-	// route to the controller's graveyard by default.
+	// Controller is the player who controls this item NOW. It starts
+	// as the player who cast / activated it (CR 601.2a), who retains
+	// priority after announcing (CR 117.3c).
+	//
+	// For a SPELL it is layer 2's answer (ADR 0104, #1745): a spell's
+	// control can be changed by a continuous effect (CR 611.1,
+	// CR 613.1b), and stackControlPassLocked materialises the result
+	// here, the way materialiseControlLocked materialises a
+	// permanent's onto Card.Controller. So every reader of "you" at
+	// resolution reads the current controller without being touched.
+	// Nothing else writes it after the item is built.
 	Controller uuid.UUID
+
+	// BaseController is the player under whose control this item was
+	// put on the stack: the caster, or for a copy the player who made
+	// it (CR 110.2b, CR 707.10). It is what a spell's control reverts
+	// to once every effect that changed it has ended, and it becomes
+	// the default controller of the permanent a permanent spell
+	// becomes (CR 110.2b).
+	//
+	// Zero means "Controller is the base", exactly as
+	// Card.BaseController does on the battlefield. The first effect
+	// that changes the spell's control stamps it
+	// (GainControlOfSpellForEffect), so no build site had to learn
+	// about it. Added by ADR 0104.
+	BaseController uuid.UUID
 
 	// Owner is the player who owns the card (relevant for spells —
 	// resolution sends the card to its owner's graveyard, not the

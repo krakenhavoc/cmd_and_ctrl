@@ -494,7 +494,7 @@ func (p *Policy) buildImprovPrompt(in aiseat.Input, sp resolvedSpell, card DeckC
 		b.WriteString("\nSTILL ON THE STACK (bottom first)\n")
 		for i := range v.StackItems {
 			it := &v.StackItems[i]
-			fmt.Fprintf(&b, "  %s — cast by %s\n", stackLabel(it, v), seatLabelByID(v, it.Controller, me))
+			fmt.Fprintf(&b, "  %s — %s\n", stackLabel(it, v), stackOwnership(it, v, me))
 		}
 	}
 

@@ -114,6 +114,11 @@ type AlternativeCost struct {
 	// The spell being cast is never a legal choice: CR 601.2a moves
 	// it to the stack before costs are paid, so it is no longer in
 	// hand. Force of Will cannot pitch itself.
+	//
+	// The count is the spec's Min, one when unset — the same reading
+	// ExileFromGraveyard's N has. Commandeer's "exile two blue cards
+	// from your hand" is a spec of Min 2 (#1745); every other pitch
+	// names one card.
 	ExileFromHand *TargetSpec
 
 	// ReturnToHand is "return an Island you control to its owner's
@@ -285,7 +290,11 @@ func (a *AlternativeCost) cardComponent() (*TargetSpec, ZoneKind, int) {
 	}
 	switch {
 	case a.ExileFromHand != nil:
-		return a.ExileFromHand, ZoneHand, 1
+		n := a.ExileFromHand.Min
+		if n < 1 {
+			n = 1
+		}
+		return a.ExileFromHand, ZoneHand, n
 	case a.ReturnToHand != nil:
 		return a.ReturnToHand, ZoneBattlefield, 1
 	case a.ExileFromGraveyard != nil:
@@ -717,7 +726,12 @@ func (g *Game) payAlternativeCostLocked(playerID uuid.UUID, alt *AlternativeCost
 	}
 	switch {
 	case alt.ExileFromHand != nil:
-		return move(ids[0], ZoneExile)
+		// One card for every pitch but Commandeer's two (#1745).
+		for _, id := range ids {
+			if err := move(id, ZoneExile); err != nil {
+				return err
+			}
+		}
 	case alt.ReturnToHand != nil:
 		return move(ids[0], ZoneHand)
 	case alt.ExileFromGraveyard != nil:

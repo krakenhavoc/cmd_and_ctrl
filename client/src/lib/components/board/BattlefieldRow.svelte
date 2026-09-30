@@ -64,6 +64,10 @@
     // invisible without this. Derived by PlayerPanel, which is the
     // component that can see the seat list.
     curseTargets?: Record<string, string>;
+    // ADR 0104: the OWNER's name for each permanent a different player
+    // controls — a stolen permanent, or the permanent a stolen spell
+    // became. Derived by PlayerPanel, for curseTargets' reason.
+    takenFrom?: Record<string, string>;
     // #1724: identical tokens fold into a group drawn as at most two
     // cards (untapped, tapped) with a count; clicking one calls this
     // with the group's key and the panel opens the member list
@@ -87,6 +91,7 @@
     strip = false,
     attachmentsByHost = {},
     curseTargets = {},
+    takenFrom = {},
     onGroupClick,
   }: Props = $props();
 
@@ -198,6 +203,7 @@
                   <Card
                     card={a}
                     enchantedPlayer={curseTargets[a.instance_id]}
+                    takenFrom={takenFrom[a.instance_id]}
                     onClick={onCardClick}
                     onActivateManaAbility={onActivateManaAbility
                       ? (idx) => onActivateManaAbility(a, idx)
@@ -216,6 +222,7 @@
                 <Card
                   card={c}
                   enchantedPlayer={curseTargets[c.instance_id]}
+                  takenFrom={takenFrom[c.instance_id]}
                   selected={memberIDs
                     ? !!selectedCombatCardID && memberIDs.includes(selectedCombatCardID)
                     : selectedCombatCardID === c.instance_id}

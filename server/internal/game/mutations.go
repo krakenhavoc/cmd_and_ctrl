@@ -1402,14 +1402,16 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 			if params.Fuse {
 				g.Stack.Cards[i].materialiseFused()
 			}
-			if faceDown != FaceDownNone {
-				// The face-down viewers rule is "the CONTROLLER may
-				// look" (CR 708.5), and it is read off the card. A
-				// card that has just left a hand carries no
-				// controller, so the caster is stamped here, before
-				// the landing below asks.
-				g.Stack.Cards[i].Controller = playerID
-			}
+			// CR 601.2a: the player who casts a spell becomes its
+			// controller — and the CARD on the stack says so, not just
+			// the StackItem (ADR 0104, #1745 finding 1). A card carries
+			// its owner as its controller from the deck load, so a
+			// spell cast off another player's card (Gonti, a Ragavan
+			// impulse, Wrexial) used to answer "target spell you don't
+			// control" by its owner. The face-down viewers rule
+			// (CR 708.5) reads it too, and needs it before the landing
+			// below asks.
+			g.Stack.Cards[i].Controller = playerID
 		}
 	}
 	if faceDown != FaceDownNone {
@@ -3476,10 +3478,20 @@ func (g *Game) routeStackCardToGraveyardLocked(c Card, item *StackItem, resolved
 		// continuation rather than the next line: a route that paused
 		// on a CR 903.9 prompt finishes later, and the grant has to
 		// land when it does. See adventure.go.
+		//
+		// CR 715.3d names the spell's CONTROLLER twice — "its
+		// controller exiles it" and "that player may play it" — so a
+		// stolen Adventure is the thief's to cast later (ADR 0104,
+		// owner decision 4). The owner stands in only for an item
+		// with no controller, which no cast produces.
 		cardID := c.InstanceID
-		r.Dst, r.DstOwner, r.Actor = ZoneExile, uuid.Nil, c.Owner
+		controller := c.Owner
+		if item != nil && item.Controller != uuid.Nil {
+			controller = item.Controller
+		}
+		r.Dst, r.DstOwner, r.Actor = ZoneExile, uuid.Nil, controller
 		r.then = func(g *Game) error {
-			g.grantAdventureCastFromExileLocked(cardID)
+			g.grantAdventureCastFromExileLocked(cardID, controller)
 			return nil
 		}
 	}
@@ -4450,10 +4462,30 @@ func (g *Game) settleDeparturesLocked() {
 //
 // S13.1.
 func (g *Game) cleanupStackForEliminatedLocked(playerID uuid.UUID) {
+	// CR 800.4a, in the rule's order (ADR 0104 §7): the effects that
+	// give the departed player control END before anything they still
+	// control is removed. A spell they had stolen goes back to the
+	// player it was taken from — or to its caster — rather than being
+	// exiled for a player who never cast it. The recompute is what
+	// hands it back (the stack step of the layer pass). The same drop
+	// ends a resolving spell's theft of a PERMANENT (Act of Treason),
+	// which leaveGameObjectsLocked's own recompute then hands back.
+	//
+	// Not on the departure that ENDS the game: that one keeps the
+	// final board as it was (ADR 0060 Decision 5).
+	if g.survivingSeatsLocked() > 1 && g.endControlEffectsForLocked(playerID) {
+		g.RecomputeLayersIfStaleLocked()
+	}
 	if len(g.StackMeta) > 0 {
 		toRemove := make([]uuid.UUID, 0, len(g.StackMeta))
 		for id, item := range g.StackMeta {
-			if item != nil && item.Controller == playerID {
+			// CR 800.4c for the stack: a spell that went back to a
+			// player who had ALREADY left has nobody to control it
+			// either, and goes the way this player's own does.
+			if item == nil {
+				continue
+			}
+			if p := g.playerByIDLocked(item.Controller); item.Controller == playerID || (p != nil && p.Eliminated) {
 				toRemove = append(toRemove, id)
 			}
 		}
