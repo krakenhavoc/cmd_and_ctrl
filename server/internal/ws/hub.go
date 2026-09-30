@@ -393,7 +393,7 @@ func (h *Hub) ServeWS(w http.ResponseWriter, r *http.Request) {
 			client.log.Error("build "+label+" snapshot failed", "err", err)
 			return 0, false
 		}
-		raw, marshalErr := marshalSnapshotFrame(seq, room.Generation(), protocol.FilterViewFor(view, viewerIDForFilter(playerID)))
+		raw, marshalErr := marshalSnapshotFrame(seq, room.Generation(), protocol.FilterViewFor(view, viewerIDForFilter(playerID, binding.Admin)))
 		if marshalErr != nil {
 			client.log.Error("marshal "+label+" snapshot failed", "err", marshalErr)
 			return 0, false
@@ -536,9 +536,17 @@ func statusFor(err error) int {
 // string falls through the is-knower fast-path, every battlefield
 // card gets redacted as "unknown", and the spectator sees empty
 // tiles where the names and images should be. Bug #191 fix.
-func viewerIDForFilter(playerID uuid.UUID) string {
+func viewerIDForFilter(playerID uuid.UUID, admin bool) string {
 	if playerID == uuid.Nil {
-		return ""
+		// #1588, ADR 0069's 2026-09-30 amendment: a seatless
+		// connection is the admin (omniscient debug view, "") or a
+		// spectator (public information only). Decided by the Admin
+		// flag, not ReadOnly, so an unclassified connection defaults
+		// to the restricted view.
+		if admin {
+			return ""
+		}
+		return protocol.SpectatorViewerID
 	}
 	return playerID.String()
 }
@@ -630,7 +638,7 @@ func (h *Hub) broadcastToRoom(gameID uuid.UUID, seq uint64, generation uint64, v
 		if c.gameID != gameID {
 			continue
 		}
-		raw, err := marshalSnapshotFrame(seq, generation, protocol.FilterViewFor(view, viewerIDForFilter(c.playerID)))
+		raw, err := marshalSnapshotFrame(seq, generation, protocol.FilterViewFor(view, viewerIDForFilter(c.playerID, c.admin)))
 		if err != nil {
 			c.log.Error("marshal broadcast snapshot failed", "err", err)
 			continue

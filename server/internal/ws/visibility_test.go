@@ -10,6 +10,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
 )
 
@@ -250,11 +251,76 @@ func TestSpectatorSeesFullCardData(t *testing.T) {
 // boundary. Guards against a future refactor that drops the zero-
 // check and regresses issue #191.
 func TestViewerIDForFilterCoercesNil(t *testing.T) {
-	if got := viewerIDForFilter(uuid.Nil); got != "" {
+	if got := viewerIDForFilter(uuid.Nil, true); got != "" {
 		t.Errorf("viewerIDForFilter(Nil): got %q, want \"\"", got)
 	}
 	id := uuid.New()
-	if got := viewerIDForFilter(id); got != id.String() {
+	if got := viewerIDForFilter(id, false); got != id.String() {
 		t.Errorf("viewerIDForFilter(%s): got %q, want %q", id, got, id.String())
+	}
+}
+
+// TestViewerIDForFilterSplitsSpectatorFromAdmin (#1588): a seatless
+// connection is a spectator unless it is the admin.
+func TestViewerIDForFilterSplitsSpectatorFromAdmin(t *testing.T) {
+	if got := viewerIDForFilter(uuid.Nil, false); got != protocol.SpectatorViewerID {
+		t.Errorf("seatless non-admin: got %q, want the spectator viewer", got)
+	}
+	if got := viewerIDForFilter(uuid.Nil, true); got != "" {
+		t.Errorf("seatless admin: got %q, want the omniscient \"\"", got)
+	}
+}
+
+// TestSpectatorAndAdminGetDifferentViews (#1588, ADR 0069's
+// 2026-09-30 amendment): a seatless connection is a spectator, who sees
+// public information only, unless the session is the admin, who keeps
+// the omniscient debug view. A foretold card (face down in exile, known
+// only to its owner) is the probe: the admin reads it, the spectator
+// gets a redacted back.
+func TestSpectatorAndAdminGetDifferentViews(t *testing.T) {
+	_, rooms, cleanup := newMultiGameServer(t, 1)
+	defer cleanup()
+	room := rooms[0]
+	owner := room.Game.Seats[0].ID
+
+	foretold := game.NewCard("Secret Foretold", owner)
+	foretold.TypeLine = "Sorcery"
+	foretold.SetFaceDown(game.FaceDownForetold)
+	foretold.KnownBy = map[uuid.UUID]bool{owner: true}
+	room.Game.WithWriteLock(func() { room.Game.Exile.PushTop(foretold) })
+
+	view := func(admin bool) protocol.CardView {
+		t.Helper()
+		log := slog.New(slog.NewTextHandler(io.Discard, nil))
+		hub := NewHub(log)
+		hub.SetRoom(room)
+		hub.SetAuthorizer(UpgradeAuthorizerFunc(func(r *http.Request) (Binding, error) {
+			return Binding{GameID: room.Game.ID, Admin: admin, ReadOnly: !admin}, nil
+		}))
+		mux := http.NewServeMux()
+		mux.HandleFunc("GET /ws", hub.ServeWS)
+		srv := httptest.NewServer(mux)
+		defer srv.Close()
+		conn := dial(t, "ws"+strings.TrimPrefix(srv.URL, "http")+"/ws")
+		defer conn.Close()
+		snap := readSnapshotFrame(t, conn)
+		for _, c := range snap.Game.Exile.Cards {
+			if c.InstanceID == foretold.InstanceID.String() {
+				return c
+			}
+		}
+		t.Fatalf("foretold card missing from the exile view (admin=%v)", admin)
+		return protocol.CardView{}
+	}
+
+	if c := view(true); c.Name != "Secret Foretold" || !c.KnownByYou {
+		t.Errorf("admin lost the omniscient view: %+v", c)
+	}
+	c := view(false)
+	if c.Name != "" || c.KnownByYou || c.TypeLine != "" {
+		t.Errorf("spectator can read a foretold card: %+v", c)
+	}
+	if !c.FaceDown {
+		t.Errorf("face_down must stay public for the spectator")
 	}
 }

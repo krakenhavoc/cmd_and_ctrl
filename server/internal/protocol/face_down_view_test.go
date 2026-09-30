@@ -398,6 +398,7 @@ func TestRedactionZoneByViewer(t *testing.T) {
 		full outcome = iota
 		redacted
 		absent
+		skipped
 	)
 	zones := []string{"battlefield", "stack", "exile", "graveyard", "command", "hand", "library"}
 	viewers := []struct {
@@ -429,13 +430,50 @@ func TestRedactionZoneByViewer(t *testing.T) {
 			},
 		},
 		{
-			// The empty viewer knows every card on the table and sees
-			// no hand or library at all (FilterViewFor's contract).
-			name: "spectator", viewer: "",
+			// The empty viewer is the ADMIN's omniscient debug view: it
+			// knows every card on the table and sees no hand or library
+			// at all (FilterViewFor's contract).
+			name: "admin", viewer: "",
 			knowers: map[string]bool{},
 			want: func(zone string) outcome {
 				if zone == "hand" || zone == "library" {
 					return absent
+				}
+				return full
+			},
+		},
+		{
+			// #1588: a spectator sees public information only. A card
+			// one seat knows and the other does not (a foretold card, a
+			// hideaway card, a hand card) is a non-knower's card to
+			// them, exactly as it is to the opponent.
+			name: "spectator, card one seat knows", viewer: SpectatorViewerID,
+			knowers: map[string]bool{ownerID: true},
+			want: func(zone string) outcome {
+				if zone == "hand" || zone == "library" {
+					return absent
+				}
+				return redacted
+			},
+		},
+		{
+			// Nobody knows it: Necropotence's exile.
+			name: "spectator, card no seat knows", viewer: SpectatorViewerID,
+			knowers: map[string]bool{},
+			want: func(zone string) outcome {
+				if zone == "hand" || zone == "library" {
+					return absent
+				}
+				return redacted
+			},
+		},
+		{
+			// Every seat knows it: a public card.
+			name: "spectator, card every seat knows", viewer: SpectatorViewerID,
+			knowers: map[string]bool{ownerID: true, oppID: true},
+			want: func(zone string) outcome {
+				if zone == "hand" || zone == "library" {
+					return skipped
 				}
 				return full
 			},
@@ -486,6 +524,7 @@ func TestRedactionZoneByViewer(t *testing.T) {
 				}
 
 				switch vw.want(zone) {
+				case skipped:
 				case absent:
 					if len(got) != 0 {
 						t.Errorf("card present, want it withheld: %+v", got[0])
