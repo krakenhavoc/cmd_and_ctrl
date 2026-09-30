@@ -30,14 +30,25 @@ jobs:
       # Otherwise the script writes the dump where the server isn't
       # looking and the lobby keeps reporting "card index not loaded".
       CMDCTRL_DATA_DIR: /var/lib/cmd_and_ctrl/data
-      SSH_OPTS: -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10
+      # SSH_OPTS is NOT declared here: the pin step exports it through
+      # $GITHUB_ENV, which a job-level value would override (#1739).
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
       - name: Verify CMDCTRL_HOST is set
         run: |
           if [ -z "${CMDCTRL_HOST}" ]; then
             echo "::error::Repo variable CMDCTRL_HOST is not set."
             exit 1
           fi
+
+      # SSH trust is pinned by a repo variable, not by each runner's own
+      # known_hosts (#1739); the script says why.
+      - name: Pin the deploy host's SSH key
+        env:
+          HOST_KEY: ${{ vars.CMDCTRL_HOST_KEY }}
+        run: scripts/pin-host-key.sh "${CMDCTRL_HOST}" CMDCTRL_HOST_KEY
 
       - name: Run scryfall-refresh on deploy host
         # sudo -u cmdctrl so the dump is created with the same
