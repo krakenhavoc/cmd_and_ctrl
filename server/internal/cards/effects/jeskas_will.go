@@ -41,7 +41,7 @@ import (
 // leaves both bullets on the stack. Until #1590 the card asked for one
 // bullet always, the weaker-than-printed posture #259 demands.
 //
-// Both bullets are ModeDoing bodies run in announce order; they touch
+// Both bullets are ModeDoing bodies run in printed order; they touch
 // different things (a mana pool, the top of your library), so the
 // order the caster clicked them in is not observable.
 func init() {

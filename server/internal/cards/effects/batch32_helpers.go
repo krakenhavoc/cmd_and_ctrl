@@ -336,8 +336,11 @@ func b32CounterOrDestroyChosenThenControllerDraws(g *game.Game, item *game.Stack
 // comes from CardOK. Players is left false, so "any" cannot point at
 // a player.
 func b32TargetSpellOrAnotherCreatureOrPlaneswalker(label string) *game.TargetSpec {
-	permanent := And(Or(Creature(), Planeswalker()), b03NotNamed("Ertai Resurrected"))
-	return &game.TargetSpec{
+	permanent := Or(Creature(), Planeswalker())
+	// "Another": the object this trigger belongs to is not a pick. A
+	// spell on the stack is never the source, so only the battlefield
+	// half is affected.
+	return Another(&game.TargetSpec{
 		Mode:  "any",
 		Label: label,
 		Zones: []game.ZoneKind{game.ZoneBattlefield, game.ZoneStack},
@@ -351,7 +354,7 @@ func b32TargetSpellOrAnotherCreatureOrPlaneswalker(label string) *game.TargetSpe
 			return permanent(g, caster, c)
 		},
 		Min: 0, Max: 1,
-	}
+	})
 }
 
 // b32PutCountersPerElfOnChosenCreature is Immaculate Magistrate's

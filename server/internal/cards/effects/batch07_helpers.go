@@ -13,7 +13,7 @@ import (
 //
 // What is NOT here, because main already had it by the time this
 // batch was finished: "an opponent loses life" is b04OpponentLostLife,
-// "nonbasic" is b03Nonbasic, "another" by name is b03NotNamed, and
+// "nonbasic" is b03Nonbasic, "another" is Another, and
 // the 1/1 flying Thopter is tokens.go's ThopterToken.
 
 // b07IsModified is CR 700.9's "modified": a creature with a counter

@@ -23,8 +23,8 @@ import (
 // battle (CR 110.4), counted off the printed type line in the
 // graveyard.
 //
-// The bullets run in printed order (BulletsInPrintedOrder, CR 608.2c)
-// whatever order they were clicked in: the bounce lands before the
+// The engine runs the bullets in printed order (CR 608.2c) whatever
+// order they were clicked in: the bounce lands before the
 // discard, so a bounced permanent is a card the opponent may discard.
 // "The rest into your graveyard" is a move, not a mill, and routes
 // through the graveyard replacements (TakeRestIntoGraveyard). No
@@ -35,18 +35,16 @@ func init() {
 		Name:         "Wail of the Forgotten",
 		Completeness: CompletenessFull,
 		Modes: ChooseOne(
-			Mode("Return target nonland permanent to its owner's hand.",
-				TargetPermanent("target nonland permanent", Nonland())),
-			Mode("Target opponent discards a card.",
-				TargetPlayer("target opponent", Opponent())),
-			Mode("Look at the top three cards of your library. Put one of them into your hand and the rest into your graveyard."),
+			ModeDoing("Return target nonland permanent to its owner's hand.",
+				TargetPermanent("target nonland permanent", Nonland()),
+				BounceTheModesTarget),
+			ModeDoing("Target opponent discards a card.",
+				TargetPlayer("target opponent", Opponent()),
+				wailOfTheForgottenDiscard),
+			ModeDoing("Look at the top three cards of your library. Put one of them into your hand and the rest into your graveyard.",
+				nil,
+				wailOfTheForgottenLook),
 		).AnyNumberIf(Descended8),
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			return BulletsInPrintedOrder(item, ctx,
-				BounceTheModesTarget,
-				wailOfTheForgottenDiscard,
-				wailOfTheForgottenLook)
-		},
 	})
 }
 

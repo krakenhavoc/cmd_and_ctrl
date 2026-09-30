@@ -33,21 +33,17 @@ import (
 // used to land first; nothing a player can see depended on it, but
 // the sequence is observable and now it is right.
 //
-// Declared simplification, weaker than printed: "two OTHER creatures"
-// is enforced by name (b03NotNamed, Warren Soultrader's posture),
-// because a sacrifice clause's predicate never sees the source. A
-// second Priest of Forgotten Gods, or a token copy of this one, cannot
-// be fed to it.
+// "Two OTHER creatures" is object identity (effects.SacrificeAnotherN, CR 109.1):
+// a second Priest of Forgotten Gods, or a token copy, can be sacrificed to it.
 func init() {
 	Register(Spec{
 		OracleID:     "2ad8ff62-d090-4835-9274-3b755ba0f8e6",
 		Name:         "Priest of Forgotten Gods",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"Another creature named Priest of Forgotten Gods can't be one of the two creatures sacrificed to its ability."},
+		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label: "{T}, Sacrifice two other creatures: Any number of target players each lose 2 life and sacrifice a creature. You add {B}{B} and draw a card.",
-			Cost: Plus(TapCost(), SacrificeN(2, "two other creatures",
-				Creature(), b03NotNamed("Priest of Forgotten Gods"))),
+			Cost: Plus(TapCost(), SacrificeAnotherN(2, "two other creatures",
+				Creature())),
 			Targets: TargetPlayer("any number of target players").WithCount(0, 0),
 			Effect:  priestOfForgottenGodsEffect,
 		}},

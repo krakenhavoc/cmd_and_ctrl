@@ -24,14 +24,13 @@ func init() {
 		Completeness:  CompletenessFull,
 		OptionalCosts: []game.AdditionalCost{Teamwork(4)},
 		Modes: ChooseOne(
-			Mode("Street Justice — Exile target creature with toughness 4 or greater.",
-				TargetCreature("target creature with toughness 4 or greater", ToughnessGE(4))),
-			Mode("Legal Justice — Exile target enchantment with mana value 4 or greater.",
-				TargetPermanent("target enchantment with mana value 4 or greater", Enchantment(), ManaValueGE(4))),
+			ModeDoing("Street Justice — Exile target creature with toughness 4 or greater.",
+				TargetCreature("target creature with toughness 4 or greater", ToughnessGE(4)),
+				exileTheModesTarget),
+			ModeDoing("Legal Justice — Exile target enchantment with mana value 4 or greater.",
+				TargetPermanent("target enchantment with mana value 4 or greater", Enchantment(), ManaValueGE(4)),
+				exileTheModesTarget),
 		).InsteadIf(2, TeamworkUsed),
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			return BulletsInPrintedOrder(item, ctx, exileTheModesTarget, exileTheModesTarget)
-		},
 	})
 }
 

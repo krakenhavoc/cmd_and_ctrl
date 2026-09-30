@@ -21,13 +21,12 @@ func init() {
 		Completeness:  CompletenessFull,
 		OptionalCosts: []game.AdditionalCost{OptionalBlight(2)},
 		Modes: ChooseOne(
-			Mode("Destroy target artifact or enchantment.",
-				TargetPermanent("target artifact or enchantment", Or(Artifact(), Enchantment()))),
-			Mode("Destroy target creature with mana value 3 or greater.",
-				TargetCreature("target creature with mana value 3 or greater", ManaValueGE(3))),
+			ModeDoing("Destroy target artifact or enchantment.",
+				TargetPermanent("target artifact or enchantment", Or(Artifact(), Enchantment())),
+				DestroyTheModesTarget),
+			ModeDoing("Destroy target creature with mana value 3 or greater.",
+				TargetCreature("target creature with mana value 3 or greater", ManaValueGE(3)),
+				DestroyTheModesTarget),
 		).InsteadIf(2, BlightUsed),
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			return BulletsInPrintedOrder(item, ctx, DestroyTheModesTarget, DestroyTheModesTarget)
-		},
 	})
 }

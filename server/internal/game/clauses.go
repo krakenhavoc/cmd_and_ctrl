@@ -209,7 +209,8 @@ func assignAnnouncedSlots(steps []AnnouncedClause, targets []TargetRef) []Target
 // the ordinary count check — announcing X=0 would buy an unbounded
 // clause for free, which is the exact shape of the bug CountFromX
 // exists to close (#259). The caller checks those steps for an exact
-// count of X.
+// count of X ("at most X" for a clause marked UpToX, see
+// xCountMismatch).
 func resolveStepCountsFromX(steps []AnnouncedClause, x int) []int {
 	var out []int
 	for i := range steps {
@@ -217,10 +218,27 @@ func resolveStepCountsFromX(steps []AnnouncedClause, x int) []int {
 			continue
 		}
 		steps[i].Clause.Min, steps[i].Clause.Max = x, x
+		if steps[i].Clause.UpToX {
+			// "Up to X": the ceiling is X and zero is allowed. UpToX
+			// stays set for the caller, which checks the count against
+			// it (Max 0 reads as unbounded when X is 0).
+			steps[i].Clause.Min = 0
+		}
 		steps[i].Clause.CountFromX = false
 		out = append(out, i)
 	}
 	return out
+}
+
+// xCountMismatch reports whether an X-counted step (an index
+// resolveStepCountsFromX returned) was answered with the wrong number of
+// targets: exactly X, or at most X for an "up to X" clause.
+func xCountMismatch(step AnnouncedClause, targets []TargetRef, x int) (n int, bad bool) {
+	n = stepTargetCount(step, targets)
+	if step.Clause.UpToX {
+		return n, n > x
+	}
+	return n, n != x
 }
 
 // stepTargetCount counts the refs that answer one step.

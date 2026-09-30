@@ -58,6 +58,12 @@ surface tiny.
    Targets: TargetPermanent("target artifact or enchantment", Or(Artifact(), Enchantment())),
    Targets: TargetCardInGraveyard("target card in your graveyard", YouOwn()),
    ```
+   "Another" / "other" is object identity, never a name: wrap the clause
+   in `Another(...)` (`Another(TargetCreature("another target creature
+   you control", YouControl()))`), use `SacrificeAnotherN` for a
+   "sacrifice another" cost, and `RemoveCountersAmongOthers` for "from
+   among other permanents". `game.TargetSpec.ExcludeSource` is what they
+   set (#1738). "Up to X targets" is `CountFromX` plus `UpToX`.
    Predicates compose with `And` / `Or` / `Not`; add missing ones to
    `targets.go`, not to the card file. Multi-target clauses set the
    count on the same spec — `TargetCreature("two target nonartifact
@@ -146,7 +152,12 @@ surface tiny.
    Confluence). A trigger or activated ability has no `OnResolve` to
    branch in, so declare each bullet's body on the option with
    `ModeDoing(label, targets, fn)`; the engine runs the chosen ones
-   in announce order, once per occurrence. Inside a bullet, read its
+   in PRINTED order (CR 608.2c, whatever order the player announced
+   them in), once per occurrence, with repeats of one mode in announce
+   order. `ModeDoing` works on a spell too, and is the way to write a
+   card whose bullets can see each other; a card that branches in
+   `OnResolve` walks `ctx.ModeOccurrences()` (printed order), never
+   `0..len(ctx.Modes())`. Inside a bullet, read its
    own targets with `ModeTarget(ctx, occurrence)` /
    `ctx.ModeTargets(occurrence)` — never `item.Targets[0]`, which
    belongs to whichever bullet was chosen first.

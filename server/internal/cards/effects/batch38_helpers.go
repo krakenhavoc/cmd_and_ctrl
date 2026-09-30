@@ -132,23 +132,7 @@ func b38TapOrUntapTarget(cardName string) Effect {
 		if target == uuid.Nil {
 			return nil
 		}
-		return PickOption{
-			Question: cardName + " — tap or untap that permanent",
-			Options: []game.ChoiceOption{
-				{Label: "Tap it"},
-				{Label: "Untap it"},
-			},
-			Then: func(ctx *Context, index int) error {
-				switch index {
-				case 0:
-					return TapTarget{Target: target}.Apply(ctx)
-				case 1:
-					return UntapTarget{Target: target}.Apply(ctx)
-				default:
-					return nil
-				}
-			},
-		}.Apply(ctx)
+		return tapOrUntapPermanent(ctx, cardName, target)
 	}
 }
 

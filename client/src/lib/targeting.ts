@@ -616,7 +616,8 @@ function countOf(
   if (!lt) return { min: 1, max: 1 };
   if (lt.count_from_x) {
     const x = choices?.xValue ?? 0;
-    return { min: x, max: x };
+    // "Up to X": the announced X is a ceiling and zero picks is legal.
+    return { min: lt.up_to_x ? 0 : x, max: x };
   }
   return { min: lt.min ?? 1, max: lt.max ?? 1 };
 }

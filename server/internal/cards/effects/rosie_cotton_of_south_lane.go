@@ -16,10 +16,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // trigger: the harvester drops it with no prompt when Rosie is your
 // only creature (CR 603.3d), and asks otherwise.
 //
-// "Other than Rosie Cotton" is by name (b03NotNamed): a trigger's
-// target clause never receives its source, and in a singleton format
-// the name is the creature. A token copy of Rosie could not be
-// chosen either, which is weaker than printed, never stronger.
+// "Other than Rosie Cotton" is object identity (effects.Another, CR 109.1):
+// a token copy of Rosie can be chosen, as printed.
 func init() {
 	Register(Spec{
 		OracleID:     "168d5711-4459-440f-8de4-aabffd47c44d",
@@ -33,8 +31,8 @@ func init() {
 				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 					return ev.Actor == source.Controller
 				},
-				Targets: TargetCreature("target creature you control other than Rosie Cotton",
-					YouControl(), b03NotNamed("Rosie Cotton of South Lane")),
+				Targets: Another(TargetCreature("target creature you control other than Rosie Cotton",
+					YouControl())),
 				Key: "Rosie Cotton of South Lane — put a +1/+1 counter on target creature",
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {

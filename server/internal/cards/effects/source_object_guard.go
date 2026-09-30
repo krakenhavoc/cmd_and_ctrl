@@ -127,3 +127,14 @@ func (c *Context) withoutNewSourceObject(ids []uuid.UUID) []uuid.UUID {
 	}
 	return ids
 }
+
+// sourceIsStillThisPermanent reports whether the item's source is on
+// the battlefield as the same object the ability came from — the test
+// for a bullet that moves "this permanent" itself ("put Gandalf on top
+// of its owner's library", "exile this artifact, then return it"). A
+// source that died in response is in another zone, and one that left
+// and came back is a new object (CR 400.7); either way the instruction
+// finds nothing to move.
+func sourceIsStillThisPermanent(g *game.Game, item *game.StackItem) bool {
+	return item != nil && onBattlefield(g, item.SourceCardID) && !sourceIsNewObject(g, item)
+}
