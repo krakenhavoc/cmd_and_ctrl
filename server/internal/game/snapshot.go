@@ -655,6 +655,11 @@ type cardSnapshot struct {
 	BattleX          float64             `json:"battleX"`
 	BattleY          float64             `json:"battleY"`
 	Counters         map[string]int      `json:"counters,omitempty"`
+	// CounterStampedAt is Card.CounterStampedAt (ADR 0101): the CR
+	// 613.7c timestamp of each keyword counter kind. Additive within v7;
+	// an older file has none, and an unstamped keyword counter is
+	// ordered at its permanent's own timestamp.
+	CounterStampedAt map[string]int64 `json:"counterStampedAt,omitempty"`
 	IsCommander      bool                `json:"isCommander"`
 	AttackingTarget  uuid.UUID           `json:"attackingTarget"`
 	BlockingTarget   uuid.UUID           `json:"blockingTarget"`
@@ -1737,6 +1742,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		BattleX:                  c.BattleX,
 		BattleY:                  c.BattleY,
 		Counters:                 copyStringIntMap(c.Counters),
+		CounterStampedAt:         copyStringInt64Map(c.CounterStampedAt),
 		IsCommander:              c.IsCommander,
 		AttackingTarget:          c.AttackingTarget,
 		BlockingTarget:           c.BlockingTarget,
@@ -2478,6 +2484,7 @@ func restoreCard(c *cardSnapshot) Card {
 		BattleX:                  c.BattleX,
 		BattleY:                  c.BattleY,
 		Counters:                 copyStringIntMap(c.Counters),
+		CounterStampedAt:         copyStringInt64Map(c.CounterStampedAt),
 		IsCommander:              c.IsCommander,
 		AttackingTarget:          c.AttackingTarget,
 		BlockingTarget:           c.BlockingTarget,

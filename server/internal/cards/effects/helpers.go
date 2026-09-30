@@ -879,8 +879,8 @@ func damageToFirstTarget(amount int) func(item *game.StackItem, ctx *Context) er
 // behind "…: Put a[n] <kind> counter on this permanent" (Tekuthal,
 // Inquiry Dominus; Solphim, Mayhem Dominus): a no-op if something
 // killed the source before the ability resolves, otherwise a counter
-// on the source itself. Both cards pair it with b24KeywordCounterGrant
-// so the counter carries CR 122.1b's keyword.
+// on the source itself. The indestructible counter needs nothing
+// else: the engine reads keyword counters itself (CR 122.1b, ADR 0101).
 // plusOneCountersOnThis is "Put N +1/+1 counters on this creature" —
 // the body most of the exhaust cards print (Prowcatcher Specialist,
 // Greenbelt Guardian, Afterburner Expert, Elvish Refueler, Boom
@@ -889,8 +889,8 @@ func damageToFirstTarget(amount int) func(item *game.StackItem, ctx *Context) er
 // Unlike putCounterOnSourceWhileOnBattlefield beside it, it does NOT
 // check that the source is still on the battlefield: AddCounter is a
 // no-op on a card that has gone, and the two cards that read that
-// check pair it with a keyword-counter grant that would not be. Keep
-// them separate rather than merging them into one flagged helper.
+// check place a keyword counter on a source that must still be there.
+// Keep them separate rather than merging them into one flagged helper.
 func plusOneCountersOnThis(n int) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		return AddCounter{

@@ -219,6 +219,7 @@ func (g *Game) resetAsNewObjectLocked(oldID uuid.UUID) uuid.UUID {
 		c.Tapped = false
 		c.NextUntapSkips = nil
 		c.Counters = nil
+		c.CounterStampedAt = nil
 		c.LostLastCounter = false
 		c.KnownBy = nil
 		c.DamageMarked = 0
