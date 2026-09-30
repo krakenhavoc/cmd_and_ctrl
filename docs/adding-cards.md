@@ -1250,6 +1250,50 @@ declared `Destruction` flag — `destroyRoute` sets it,
 tags each doomed permanent with the rule that doomed it
 (`doomedPermanent`, `server/internal/game/simultaneous.go`).
 
+### "Enters under the control of an opponent of your choice" (ADR 0102, #1759)
+
+Captive Audience, Pendant of Prosperity, Abby, Merciless Soldier and
+Xantcha, Sleeper Agent print it. It is a CR 614.1d replacement effect
+from the permanent itself, and it is one line:
+
+```go
+Replacements: []game.ReplacementEffect{
+    EntersUnderTheControlOfAnOpponentOfYourChoice("Captive Audience", game.ControlForHarm),
+},
+```
+
+The second argument is what the gift does to its recipient:
+`game.ControlForHarm` (Captive Audience, Xantcha) or
+`game.ControlForBenefit` (Pendant of Prosperity). Only the bot reads it
+— it gives a harmful permanent to its strongest opponent and a helpful
+one to its weakest.
+
+Never hand-roll the effect. The constructor carries the CR 616.1b tier
+flag (`ChangesEntryController`), which is what makes the control change
+apply before every other effect in the window, so Kismet and Authority
+of the Consuls are judged against the player the permanent actually
+enters under. The engine does everything else
+([game/entry_controller.go](../server/internal/game/entry_controller.go)):
+
+- It asks the would-be controller (normally the caster; for "return it
+  under your control" the player returning it) **as the permanent
+  would enter**, never on cast — so a reanimated, blinked or
+  token-copied permanent asks too, and a Clone that chose to copy one
+  asks as well (CR 614.12).
+- With one eligible opponent there is no prompt. An entry that cannot
+  pause uses the first opponent in turn order after the chooser.
+- The permanent lands under the chosen player. The owner never changes.
+  There is no `EventControlChanged`: it ENTERED under that player, so
+  `BaseController` is them (CR 110.2), its own triggers and "whenever a
+  creature you control enters" are theirs, and it is summoning sick
+  until their next turn (CR 302.6).
+- If its controller (not its owner) leaves the game it is exiled; if its
+  owner leaves, it leaves with them (CR 800.4a) — nothing to write.
+
+"Its owner" in the rest of the card's text (Pendant's "this artifact's
+owner draws a card") reads `Card.Owner`. The card's other abilities say
+"you" for the controller, as every card does.
+
 ### Adding a copy effect (S16.5+)
 
 "You may have this creature enter as a copy of X" (Clone, Phyrexian

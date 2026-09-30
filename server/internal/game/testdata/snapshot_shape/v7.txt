@@ -1194,6 +1194,7 @@ pendingChoices[].coinWins	number:int
 pendingChoices[].colorOptions	array
 pendingChoices[].colorOptions[]	string
 pendingChoices[].colorPurpose	string
+pendingChoices[].controlPurpose	string
 pendingChoices[].copyOptions	array
 pendingChoices[].copyOptions[]	custom(uuid.UUID)
 pendingChoices[].count	number:int

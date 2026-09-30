@@ -1190,6 +1190,9 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 			// a fetched, reanimated or blinked land can pause there now
 			// and was never PLAYED.
 			landPlay: true,
+			// ADR 0102: whose land drop this spends, kept apart from
+			// Actor, which an entry-controller effect may rewrite.
+			landPlayer: playerID,
 		}
 		out, err := g.applyReplacementsLocked(ev)
 		if errors.Is(err, errReplacementPending) {
@@ -1202,6 +1205,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		}
 		defer g.clearReplacementEventLocked(ev.ID)
 		if out == nil || out.Canceled {
+			g.restoreEntryControllerLocked(ev)
 			setFaceInZoneLocked(src, cardID, wasFace)
 			return nil
 		}
@@ -2951,6 +2955,7 @@ func (g *Game) resolveTopOfStackLocked() error {
 		}
 		defer g.clearReplacementEventLocked(ev.ID)
 		if out == nil || out.Canceled {
+			g.restoreEntryControllerLocked(ev)
 			return nil
 		}
 		// #653: THE push, rather than a second copy of it. This branch

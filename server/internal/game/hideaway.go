@@ -212,6 +212,7 @@ func (g *Game) PlayLandDuringResolutionForEffect(playerID, cardID uuid.UUID) (bo
 		Actor:          playerID,
 		entryResumable: true,
 		landPlay:       true,
+		landPlayer:     playerID,
 	}
 	out, err := g.applyReplacementsLocked(ev)
 	if errors.Is(err, errReplacementPending) {
