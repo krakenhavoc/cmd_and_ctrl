@@ -1,6 +1,6 @@
 # ADR 0099 — Discover
 
-**Status:** Proposed · 2026-09-30 · Post-S30 — Rolling deck-driven catalog growth. For owner review; no engine code until it is accepted.
+**Status:** Accepted · 2026-09-30 · Post-S30 — Rolling deck-driven catalog growth. The owner accepted every recommendation; see [Owner decisions](#owner-decisions-2026-09-30).
 **Issue:** [#1112](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1112), the Pirates deck tracker. The `discover` row in `server/internal/roadmap/registry.go` names it, with Hit the Mother Lode and Brass's Tunnel-Grinder waiting. #1751 shipped Tecutlan, the Searing Rift (Brass's back face) with its discover trigger left out and a caveat.
 **Numbering:** I ran the AGENTS.md §4 sweep on 2026-09-30: `git fetch --prune`, then every `docs/decisions/` file name on every remote branch (37 heads). The highest number anywhere is **0098**, and 0099 is free. 0098, 0100, 0101 and 0102 are reserved for ADRs being written at the same time.
 **Builds on:**
@@ -259,3 +259,21 @@ The heuristic scores `may_cast` today only as "unrecognised choice", a tie. Unde
 4. **Prompt shape.** Should discover reuse `may_cast` with labels and a keyword field (recommended), or get a dedicated `discover` prompt kind (Option B)?
 5. **Partial cards.** Should Chimil, the Inner Sun ship with a caveat on "Spells you control can't be countered", or wait for that static grant?
 6. **Hit the Mother Lode with no hit.** I read CR 701.57c as saying that an empty walk has no discovered card, so no Treasures are made. Do you agree?
+
+---
+
+## Owner decisions (2026-09-30)
+
+The owner accepted every recommendation.
+
+1. **The window.** A discover grant closes on the discoverer's next priority pass, and the card goes to hand. This is miracle's rule (Decision 4).
+2. **Cascade: yes.** The same engine work moves cascade onto the shared pieces, not just the walk:
+   - the `MaxSpellManaValue` cap, set to the cascading spell's mana value minus one;
+   - `TimingFlash`, so a cascaded sorcery can be cast on an opponent's turn (CR 608.2g);
+   - the pass-closed window. An uncast cascade hit goes to the bottom of its owner's library when the caster next passes priority, and `cascade/bottom-if-not-cast` stops being scheduled.
+
+   The engine PR lists every cascade behaviour this changes.
+3. **"Whenever you discover"** fires when the card is settled. On a cast, that is right after the `EventCast`, so Curator of Sun's Creation's trigger resolves before the discovered spell (Decision 5).
+4. **Prompt shape.** Discover reuses `may_cast`, with the accept and decline labels and a keyword field (Decision 3 and §Client).
+5. **Chimil, the Inner Sun** ships with a player-facing caveat on "Spells you control can't be countered".
+6. **Hit the Mother Lode** makes no Treasures on an empty walk. With no hit there is no discovered card (CR 701.57c).
