@@ -204,6 +204,28 @@ func (g *Game) PermanentRefForEffect(cardID uuid.UUID) (ObjectRef, bool) {
 	return ObjectRef{ID: cardID, Epoch: recs[len(recs)-1].Epoch}, true
 }
 
+// LastKnownPermanentForEffect is the record of the card's most recent
+// DEPARTED battlefield object this turn (CR 603.10 / 608.2h), as it
+// stood on the battlefield: post-layer characteristics, counter-aware
+// power and toughness, and the counters it had. It answers "what did
+// the permanent that just left look like", for a dies trigger's fill-in
+// Build or intervening-if and for a sacrifice-cost ability's effect;
+// unlike PermanentForEffect it never answers with a live object, so a
+// card that has come back is not mistaken for the one that left. An
+// ability that was handed the object (Trigger.Object) should prefer
+// PermanentForEffect on that ref.
+//
+// False when the card has not left the battlefield this turn.
+//
+// Caller must hold g.mu.
+func (g *Game) LastKnownPermanentForEffect(cardID uuid.UUID) (PermanentInfo, bool) {
+	recs := g.lastKnownPermanents[cardID]
+	if len(recs) == 0 {
+		return PermanentInfo{}, false
+	}
+	return recs[len(recs)-1], true
+}
+
 // PermanentForEffect is the resolution-time read of a permanent an
 // effect refers to (CR 608.2h): the permanent as it is NOW while the
 // named object is still on the battlefield, and as it last existed there

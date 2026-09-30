@@ -17,9 +17,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // PrintedKeywords, the devotion-gated "isn't a creature" clause is the
 // same Layer 4 self-static reading `devotionTo` and calling
 // `notACreature` (swap the colour), and the activated ability's
-// "another target creature" is the catalog's by-NAME exclusion
-// (`b03NotNamed`) an activated ability's static clause has always
-// used, since `ActivatedAbility.Targets` has no per-source rewrite.
+// "another target creature" is object identity (`Another`, CR 109.1).
 //
 // The lifegain trigger is new to this card: `YouGainedLife` (the
 // predicate Archangel of Thune's own "whenever you gain life" uses)
@@ -55,7 +53,7 @@ func init() {
 		Activated: []ActivatedAbility{{
 			Label:   "{1}{W}: Another target creature gains lifelink until end of turn.",
 			Cost:    ManaCost("{1}{W}"),
-			Targets: TargetCreature("another target creature", b03NotNamed("Heliod, Sun-Crowned")),
+			Targets: Another(TargetCreature("another target creature")),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				id, ok := b16FirstLegalTargetCard(ctx)

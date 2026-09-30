@@ -22,8 +22,8 @@ import (
 // b09IsHistoric, "lands you control" is b10LandsControlled, "an
 // Equipment card" is b09IsEquipmentCard, "legendary" is
 // b05Legendary, "N damage to each opponent" is damageToEachOpponent,
-// the counters a permanent had when it left are b13LastKnownCounters
-// (and its walk, b13LastKnownCounterWalk), and the per-ability "one
+// the counters a permanent had when it left are
+// game.LastKnownPermanentForEffect, and the per-ability "one
 // or more" dedup is OncePerBatch.
 
 // --- token templates ---------------------------------------------

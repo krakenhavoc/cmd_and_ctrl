@@ -53,13 +53,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // twice. "Up to one OTHER target creature" may name nothing, which is
 // the right answer on an empty board and a legal one otherwise.
 //
-// "Other" is excluded by NAME (b03NotNamed), the catalog's standing
-// posture, because a target clause is never handed the source. In a
-// singleton format that is the same creature; it additionally
-// excludes a token copy of the Sludge Monster, which is weaker than
-// printed and never stronger — and in this particular case costs
-// nothing at all, since a second Sludge Monster is a Horror and
-// immune to the static anyway.
+// "Other" is object identity (effects.Another, CR 109.1), so a token copy of
+// the Sludge Monster is a legal pick, as printed.
 //
 // No simplification.
 func init() {
@@ -95,7 +90,7 @@ func init() {
 					}
 					return nil
 				}),
-				TargetCreature("up to one other target creature", b03NotNamed("Sludge Monster")).WithCount(0, 1)),
+				Another(TargetCreature("up to one other target creature")).WithCount(0, 1)),
 		},
 	})
 }

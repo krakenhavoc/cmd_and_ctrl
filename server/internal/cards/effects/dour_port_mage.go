@@ -48,7 +48,7 @@ func init() {
 		Activated: []ActivatedAbility{{
 			Label:   "{1}{U}, {T}: Return another target creature you control to its owner's hand.",
 			Cost:    Plus(ManaCost("{1}{U}"), TapCost()),
-			Targets: TargetCreature("another target creature you control", YouControl(), b03NotNamed("Dour Port-Mage")),
+			Targets: Another(TargetCreature("another target creature you control", YouControl())),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
 					return nil

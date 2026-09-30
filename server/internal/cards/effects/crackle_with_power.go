@@ -15,18 +15,17 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // X of 0 buys no targets rather than an unbounded clause. Each still-
 // legal target takes 5X from the spell (CR 608.2b per slot).
 //
-// Sandbox simplification, declared: "up to X targets" is EXACTLY X
-// targets. CountFromX pins both bounds to X, and there is no
-// X-bounded "up to" shape. A caster who wants fewer targets than X
-// announces a smaller X — weaker than printed (less damage), never
-// stronger.
+// "Up to X targets" is UpToX: the announced X is the ceiling, so a
+// caster may choose fewer targets than X and still deal five times X
+// to each (#1738).
+//
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID:     "273f5483-b67e-4dd6-bba8-c0a047fa34d7",
 		Name:         "Crackle with Power",
 		XMatters:     true,
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"You must choose exactly X targets rather than up to X."},
+		Completeness: CompletenessFull,
 		Targets:      b10CrackleTargets(),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return b10DamageEachLegalTarget(ctx, 5*ctx.X())
@@ -34,10 +33,11 @@ func init() {
 	})
 }
 
-// b10CrackleTargets is "X targets", any target each.
+// b10CrackleTargets is "up to X targets", any target each.
 func b10CrackleTargets() *game.TargetSpec {
 	spec := TargetAny()
-	spec.Label = "X targets"
+	spec.Label = "up to X targets"
 	spec.CountFromX = true
+	spec.UpToX = true
 	return spec
 }

@@ -58,6 +58,12 @@ surface tiny.
    Targets: TargetPermanent("target artifact or enchantment", Or(Artifact(), Enchantment())),
    Targets: TargetCardInGraveyard("target card in your graveyard", YouOwn()),
    ```
+   "Another" / "other" is object identity, never a name: wrap the clause
+   in `Another(...)` (`Another(TargetCreature("another target creature
+   you control", YouControl()))`), use `SacrificeAnotherN` for a
+   "sacrifice another" cost, and `RemoveCountersAmongOthers` for "from
+   among other permanents". `game.TargetSpec.ExcludeSource` is what they
+   set (#1738). "Up to X targets" is `CountFromX` plus `UpToX`.
    Predicates compose with `And` / `Or` / `Not`; add missing ones to
    `targets.go`, not to the card file. Multi-target clauses set the
    count on the same spec — `TargetCreature("two target nonartifact

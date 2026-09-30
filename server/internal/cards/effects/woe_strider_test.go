@@ -50,17 +50,22 @@ func TestWoeStriderSacrificesAnotherCreatureToScry(t *testing.T) {
 	}
 }
 
-// Sandbox simplification, declared: "another" is enforced by name, so
-// a SECOND Woe Strider on the battlefield can't feed its own ability.
-func TestWoeStriderCannotSacrificeASecondCopyOfItself(t *testing.T) {
+// "Another" is object identity (#1738): a SECOND Woe Strider can feed
+// the first one's ability, and the first cannot feed itself.
+func TestWoeStriderSacrificesASecondCopyButNotItself(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
 	strider := pushCatalogPermanent(g, me.ID, "Woe Strider", "Creature — Horror", woeStriderOracle, false)
 	second := pushCatalogPermanent(g, me.ID, "Woe Strider", "Creature — Horror", woeStriderOracle, false)
 
 	if err := g.ActivateCatalogAbility(me.ID, strider, 0, game.ActivateAbilityParams{
-		SacrificeIDs: []uuid.UUID{second},
+		SacrificeIDs: []uuid.UUID{strider},
 	}); !errors.Is(err, game.ErrIllegalTarget) {
-		t.Errorf("sacrificing a second Woe Strider: err = %v, want ErrIllegalTarget", err)
+		t.Errorf("sacrificing itself: err = %v, want ErrIllegalTarget", err)
+	}
+	if err := g.ActivateCatalogAbility(me.ID, strider, 0, game.ActivateAbilityParams{
+		SacrificeIDs: []uuid.UUID{second},
+	}); err != nil {
+		t.Errorf("sacrificing a second Woe Strider: %v", err)
 	}
 }

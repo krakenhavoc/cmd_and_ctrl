@@ -24,7 +24,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //     counter placement invalidates the layer cache) and the
 //     toughness SBA sweeps it when the counters catch up.
 //   - The Slug trigger reads the dead creature's slime count back
-//     off the log (b13LastKnownCounters — the card's counters are
+//     off the departure record (the card's counters are
 //     cleared on the way out), so a creature Toxrill's own -1/-1
 //     killed makes a Slug, as printed.
 //   - "Sacrifice a Slug" is any permanent with the Slug subtype —

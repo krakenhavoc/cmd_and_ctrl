@@ -326,6 +326,28 @@ type TargetSpec struct {
 	// printed card (issue #259).
 	CountFromX bool
 
+	// UpToX turns CountFromX into "up to X": the announced X is the
+	// CEILING and zero targets is a legal pick ("up to X target cards
+	// from graveyards", Kozilek's Command; "up to X targets", Crackle
+	// with Power). Meaningless without CountFromX. The announce paths
+	// check such a step for at most X targets where a plain CountFromX
+	// step demands exactly X, and the wire carries it as up_to_x so the
+	// picker lets the player stop early.
+	UpToX bool
+
+	// ExcludeSource is the printed word "another" / "other": the object
+	// this clause belongs to is not an eligible pick (CR 109.1 — "another"
+	// means a different OBJECT, not a different name, so a second card
+	// with the same name, or a token copy, stays eligible).
+	//
+	// On a TARGET clause it is read wherever the walk holds a live source
+	// object (a permanent's ability, a trigger, a mode). On a SACRIFICE
+	// clause (AbilityCost.SacrificeOther, ManaAbilityShape.SacrificeOther)
+	// the payment validator, the legal enumerator and the protocol view
+	// each drop the source, the same shape as TapOthersCost.ExcludeSource
+	// and ReturnCost.ExcludeSource. Build it with effects.Another.
+	ExcludeSource bool
+
 	// AllowSame permits the same player / card in more than one
 	// slot. Off for every ordinary clause; reserved for effects
 	// whose wording uses separate "target" words that may coincide.
@@ -631,6 +653,9 @@ func (g *Game) specMatchesLocked(src TargetSource, spec *TargetSpec, targeting b
 				if targeting && !g.canBeTargetedByLocked(&c, zk, src) {
 					continue
 				}
+				if spec.excludesSource(src, c.InstanceID) {
+					continue
+				}
 				if spec.CardOK != nil && !spec.CardOK(g, src.Controller, c, zk) {
 					continue
 				}
@@ -655,6 +680,15 @@ func (g *Game) specMatchesLocked(src TargetSource, spec *TargetSpec, targeting b
 		}
 	}
 	return out
+}
+
+// excludesSource reports whether a candidate is the live source object
+// of a clause that says "another" (TargetSpec.ExcludeSource). A walk
+// with no live source object — a cost payment, or a source that has
+// left (whose returned card is a new object, CR 400.7) — excludes
+// nothing here; a sacrifice cost drops the source at its own sites.
+func (s *TargetSpec) excludesSource(src TargetSource, id uuid.UUID) bool {
+	return s != nil && s.ExcludeSource && src.Object != nil && src.Object.InstanceID == id
 }
 
 // abilityItemsBySeqLocked is every ACTIVATED or TRIGGERED item on the
@@ -876,6 +910,9 @@ func (g *Game) specMatchLocked(src TargetSource, spec *TargetSpec, ref TargetRef
 				return false
 			}
 			if !spec.xBoundAdmits(c) {
+				return false
+			}
+			if spec.excludesSource(src, c.InstanceID) {
 				return false
 			}
 			return spec.CardOK == nil || spec.CardOK(g, src.Controller, c, z.Kind)
