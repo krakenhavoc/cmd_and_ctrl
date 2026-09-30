@@ -434,3 +434,30 @@ func TotalManaValueOfHistoricPermanentsYouControl() func(q game.CostQuery) int {
 		return total
 	}
 }
+
+// CostsLessPerSacrificed is "This spell costs {per} less to cast for
+// each permanent sacrificed this way" — Torgaar, Famine Incarnate's
+// "{2} less for each creature", Rottenmouth Viper's "{1} less for each
+// permanent" (ADR 0100 §3). It reads game.CostQuery.Sacrificing, the
+// count the announcement's variable sacrifice clause names: CR 601.2b
+// announces that count before 601.2f totals the cost, so the discount
+// is part of the price CastSpell charges, the auto-tap preview shows and
+// the enumerator offers — all three through the one pricer.
+//
+// Declare it in Spec.SelfCostModifiers beside a SacrificeAnyNumberCost.
+// A reduction spends generic mana only and stops at zero (the engine's
+// rule, game.reduceGeneric), so a Torgaar paid with five creatures
+// still costs its {B}{B}. `per` must be generic mana; anything else
+// panics at init.
+func CostsLessPerSacrificed(per string, label string) game.CostModifier {
+	unit, err := game.ParseCost(per)
+	if err != nil || unit.XSlots > 0 || len(unit.Required) > 0 || unit.Generic < 1 {
+		panic(fmt.Sprintf("effects.CostsLessPerSacrificed: %q is not a fixed generic amount (%v)", per, err))
+	}
+	return CostsLessEach(func(q game.CostQuery) int {
+		if q.Sacrificing < 1 {
+			return 0
+		}
+		return unit.Generic * q.Sacrificing
+	}, label)
+}

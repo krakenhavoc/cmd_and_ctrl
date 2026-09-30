@@ -35,9 +35,11 @@ export interface AutoTapCastParams {
   tapIDs?: string[];
   face?: number;
   // #1242: the cards and permanents named to the additional cost.
-  // They do not change the price; they change what the auto-tapper
-  // may spend on it — the server will not crack the Eldrazi Spawn a
-  // cast offers to Village Rites, so the preview must not either.
+  // They change what the auto-tapper may spend on it — the server will
+  // not crack the Eldrazi Spawn a cast offers to Village Rites, so the
+  // preview must not either. ADR 0100 §3: and the sacrifice count can
+  // change the PRICE — Torgaar's "{2} less for each creature sacrificed
+  // this way" — which the server reads off this list.
   sacrificeIDs?: string[];
   discardIDs?: string[];
   // #1703: the creatures tapped for teamwork and the one blighted. A

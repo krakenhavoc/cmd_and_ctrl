@@ -1238,6 +1238,22 @@ the policy for choosing the sets is what keeps that product finite
   it, and the next state-based check would kill the bot). The life a
   branch pays rides `MoveCost.Life`, and the move label names the branch
   ("Cast Lightning Axe (Pay {5})").
+- **A variable sacrifice on a cast is a short ladder of counts**
+  ([ADR 0100](decisions/0100-delve-either-or-and-variable-sacrifice-costs.md)
+  §6). "Sacrifice any number of creatures" (Vicious Betrayal, Torgaar)
+  is offered at zero and then at up to THREE positive counts, smallest
+  first, each a prefix of the seat's fuel order
+  (`legal.castVariableSacrificePayments`, `maxEnumeratedVariableCounts`),
+  so the counts nest. Each count is priced on its own through the one
+  pricer with `CostQuery.Sacrificing` set, so Torgaar paid with three
+  creatures is offered at `{B}{B}` and a count the seat cannot afford is
+  not offered at all. "Sacrifice X lands" (Devastating Summons) is the
+  same ladder with the count as the move's `x_value`, starting at one
+  when the card's X is the whole of its effect (#810). "Sacrifice X
+  creatures. Destroy X target creatures" (Eliminate the Competition)
+  lets the TARGETS fix X, and X fixes the one payment: the first X of
+  the fuel order. The move label names what is sacrificed
+  ("... (sacrificing Bear, Bear)").
 - **The move label names the kick** ("Cast Burst Lightning (Kicker
   {4})", "... (Multikicker {G} x3)"), so the kicked and unkicked casts
   of one card are distinguishable in the move list and in a bot-eval

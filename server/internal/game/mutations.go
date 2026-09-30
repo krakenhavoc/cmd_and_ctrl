@@ -1492,11 +1492,12 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		// orders produce the same record.
 		// #1213: and how many permanents the additional cost
 		// sacrificed, for the third time the same reason — by
-		// resolution they are in graveyards. A cast's clause is
-		// always a printed count (effects.Register refuses a variable
-		// one on a cast), so this is never news here; it is recorded
-		// anyway so a reader of PaidCost.Sacrificed never has to ask
-		// which kind of announcement it is looking at.
+		// resolution they are in graveyards. Since ADR 0100 §3 a
+		// cast's clause may be variable ("sacrifice any number of
+		// creatures", "sacrifice X lands"), and this record is the
+		// only place the count lives: Vicious Betrayal's "+2/+2 for
+		// each creature sacrificed this way" reads it through
+		// ctx.Sacrificed().
 		//
 		// ADR 0100 §2: and which either/or branch was paid and which
 		// cards the additional cost discarded — Grab the Prize's "if
@@ -2577,6 +2578,10 @@ func (g *Game) costAfterModifiersLocked(cost ParsedCost, p *Player, card Card, p
 		FromZone:   fromZone,
 		XValue:     params.XValue,
 		Targets:    params.Targets,
+		// ADR 0100 §3: the announced sacrifice count, which CR 601.2b
+		// settles before 601.2f totals the cost (Torgaar's "{2} less
+		// for each creature sacrificed this way").
+		Sacrificing: len(params.SacrificeIDs),
 	})
 	if err != nil {
 		return ParsedCost{}, err

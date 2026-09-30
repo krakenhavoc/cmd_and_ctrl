@@ -1607,7 +1607,10 @@ export interface AdditionalCostView {
   // Present-and-empty means the cost is unpayable, so the spell is
   // uncastable. #747: min / max are the clause's count ("sacrifice
   // two creatures" is 2 / 2) and the cards come in payment order —
-  // see sacrificeCost.ts.
+  // see sacrificeCost.ts. ADR 0100 §3: "sacrifice any number of
+  // creatures" is min 0 / max 0, an open count from zero, and
+  // "sacrifice X lands" sets count_from_x — the number picked is the
+  // x_value. Either may be paid with none (castSacrificeRange).
   sacrifice_options?: LegalTargetsView;
   // S23: a "pay X life" clause (Toxic Deluge). The X prompt has to
   // open for this card even though its printed mana cost has no {X},
