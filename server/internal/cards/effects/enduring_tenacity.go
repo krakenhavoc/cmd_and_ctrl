@@ -16,35 +16,21 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // is built, so a life total that moves again before it resolves does
 // not change the drain.
 //
-// # The Glimmer half is deliberately left out
+// The Glimmer half is the Enduring cycle's shared dies trigger
+// (WhenThisDiesReturnItAsAnEnchantment, glimmer_return.go), written
+// for Enduring Curiosity: the card comes back once as an enchantment
+// that is not a creature, pinned to that object, and a second death
+// finds "if it was a creature" false and leaves it in the graveyard.
+// It was held out until the per-object type change existed, because
+// a return as an ordinary creature would have been an unkillable
+// drain engine — stronger than printed.
 //
-// The second ability returns the creature as an ENCHANTMENT that is
-// no longer a creature — a permanent whose printed creature type has
-// been stripped for the rest of its existence, for this object only.
-// There is no per-instance "came back without its creature type"
-// state to hang that on: the type line is printed data and the
-// Layer 4 machinery is keyed on the catalog entry, which is shared by
-// every copy of the card in every zone.
-//
-// The failure mode of shipping it anyway is the one that is never
-// allowed. Returned as an ordinary creature, Enduring Tenacity dies
-// again, triggers again, and returns again — a free, unkillable,
-// infinitely recursive 4/3 drain engine. That is far STRONGER than
-// printed, so the clause is dropped rather than approximated; the
-// card as registered is a 4/3 that dies once, which is weaker than
-// printed and therefore the right direction.
-//
-// The clause becomes writable once the engine can carry a
-// per-instance type override through a battlefield entry — the same
-// state a "loses all creature types permanently" effect would need.
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID:     "98e698ae-1a69-469c-9cfb-0e3fedeb71d4",
 		Name:         "Enduring Tenacity",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"When this dies, it doesn't return to the battlefield as an enchantment — it goes to the graveyard like any other creature.",
-		},
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{{
 			Watches:   []game.EventKind{game.EventChangeLife},
 			AppliesTo: YouGainedLife,
@@ -53,6 +39,8 @@ func init() {
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return drainTargetedOpponent(item.Trigger.Event.Amount)(g, item)
 			},
-		}},
+		},
+			WhenThisDiesReturnItAsAnEnchantment("Enduring Tenacity"),
+		},
 	})
 }

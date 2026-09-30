@@ -78,16 +78,16 @@ import (
 // (OneColorOfAmount), never ten separate picks, which would be a
 // strictly better card.
 //
-// WHAT IS NOT WIRED: "can't be attacked". No creature can attack a
-// planeswalker in this engine at all — DeclareAttacker rejects any
-// target that is not a seated player, and the client only ever offers
-// seats (ADR 0032 §7, "Absent"). So the clause has nothing to
-// restrict and no bit to set. Declaring a "can't be attacked" flag
-// with no attack-declaration path to read it would put a promise on
-// the card that nothing enforces, which is the one thing ADR 0038 §7
-// says not to do. It is a caveat instead, and it flips to a real
-// restriction in the same change that teaches combat about
-// planeswalkers.
+// WHAT IS NOT WIRED: "can't be attacked". Planeswalkers can be
+// attacked (game/attack_target.go, S27), and combat damage removes
+// their loyalty (CR 120.3c), but the engine has no "can't be
+// attacked" restriction for a permanent: the attack-target check
+// (classifyAttackTargetLocked) asks only whether the target is a
+// player, a planeswalker or a battle, and an AttackLimit with Max 0
+// is inert. So an attached
+// Aetherspark can still be attacked — WEAKER than printed, which is
+// the direction a simplification may go — and the caveat says so. It
+// becomes a real restriction when the engine grows one (no seam yet).
 //
 // Printed loyalty reaches the card through deck import (ADR 0032 §1),
 // so Spec.StartingLoyalty is deliberately unset: it is printed card
@@ -98,7 +98,7 @@ func init() {
 		Name:         "The Aetherspark",
 		Completeness: CompletenessCaveats,
 		Caveats: []string{
-			"Nothing can attack a planeswalker in this game yet, so \"The Aetherspark can't be attacked\" never comes up.",
+			"The Aetherspark can still be attacked while it's attached to a creature.",
 		},
 		Triggered: []game.TriggeredAbility{{
 			Watches:   []game.EventKind{game.EventDealDamage},

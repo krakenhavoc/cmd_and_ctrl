@@ -26,6 +26,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //     condition, so there is nothing left to re-check by the time the
 //     trigger would resolve.
 //
+// The dies half is shared with Enduring Tenacity and lives in
+// glimmer_return.go (WhenThisDiesReturnItAsAnEnchantment).
+//
 // "It's an enchantment. (It's not a creature.)" is a CR 613.3 type
 // change with no stated duration (CR 611.2a): it is about THIS
 // RETURN, so it follows the permanent that came back and ends with
@@ -65,53 +68,7 @@ func init() {
 			On(game.EventDealDamage, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return combatDamageToPlayerBy(ev, source.Controller, g)
 			}, "Enduring Curiosity — draw a card", Do(DrawCards{N: 1})),
-			On(game.EventLTB, func(ev game.Event, source *game.Card, lki game.Characteristic, _ *game.Game) bool {
-				return cardDied(ev, source) && keywordSliceContains(lki.Types, "Creature")
-			}, "Enduring Curiosity — return it to the battlefield; it's an enchantment, not a creature",
-				enduringCuriosityReturnAsEnchantment),
+			WhenThisDiesReturnItAsAnEnchantment("Enduring Curiosity"),
 		},
 	})
-}
-
-// enduringCuriosityReturnAsEnchantment is the dies trigger's Effect: a
-// package-level func, not a closure, so it captures nothing — undo
-// restores a cloned game and this has to resolve against whichever one
-// it is handed. item.SourceCardID already carries the instance to
-// move (NewTriggeredItem stamps it from the ability's source), and the
-// returned permanent keeps that SAME instance ID: CR 400.7's "new
-// object" is tracked here by the (InstanceID, EnteredBattlefieldAt)
-// pair the duration model already reads (see
-// sameObjectOnBattlefieldLocked in game/duration.go), not by minting a
-// fresh one on every zone change.
-func enduringCuriosityReturnAsEnchantment(g *game.Game, item *game.StackItem) error {
-	ctx := NewContext(g, item)
-	id := item.SourceCardID
-	if zone := g.FindCardZoneForEffect(id); zone == nil || zone.Kind != game.ZoneGraveyard {
-		// CR 608.2b: something moved the card out of the graveyard in
-		// response — exiled it, put it back on top of a library, a
-		// second effect reanimated it first — and the trigger still
-		// resolves; it just has nothing left to bring back.
-		return nil
-	}
-	if err := (ReturnFromGraveyard{Target: id, Dest: game.ZoneBattlefield}).Apply(ctx); err != nil {
-		return err
-	}
-	affected := ctx.Game.PinnedObjectsLocked(id)
-	if len(affected) == 0 {
-		// It didn't actually take the battlefield — a replacement or a
-		// state-based action swept it away the instant it entered —
-		// so there is nothing left to keep from being a creature.
-		return nil
-	}
-	// A data record (ADR 0041 phase 3, #1497): the effect lasts as long
-	// as the permanent does, and as a closure it kept the table off the
-	// restore path for all of it. Registered straight onto the game,
-	// not through ScopedEffectFor: the permanent IS this trigger's
-	// source, returned as a new object, which ScopedEffectFor's "this"
-	// guard (#1432) would rightly refuse to call "this".
-	ctx.Game.RegisterScopedEffectForEffect(ctx.Source(), affected,
-		[]game.Mod{game.RemoveTypesMod("Creature")},
-		ctx.Game.PinnedTo(game.IndefiniteDuration(), id),
-		"Enduring Curiosity — it's an enchantment (it's not a creature)")
-	return nil
 }

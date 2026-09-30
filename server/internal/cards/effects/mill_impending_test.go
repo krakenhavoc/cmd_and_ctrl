@@ -119,6 +119,46 @@ func TestBarrowgoyfSizeIsCardTypesInAllGraveyards(t *testing.T) {
 	}
 }
 
+// The size follows a mill and a discard at once, with nothing else on
+// the battlefield moving: a card reaching (or leaving) a graveyard
+// refreshes the layer cache on its own (game/layer_listener.go).
+func TestBarrowgoyfSizeUpdatesAtOnceAfterAMillOrADiscard(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	goyf := b12Push(g, me.ID, "Barrowgoyf", "Creature — Lhurgoyf", barrowgoyfOracle, 0, 1)
+	if got := effectivePower(t, g, goyf); got != 0 {
+		t.Fatalf("empty graveyards: power %d, want 0", got)
+	}
+
+	plTop(me, "Mind Stone", "Artifact", "{2}")
+	g.WithWriteLock(func() {
+		if _, err := g.MillToZoneForEffect(me.ID, 1, game.ZoneGraveyard); err != nil {
+			t.Fatalf("mill: %v", err)
+		}
+	})
+	if got, want := effectivePower(t, g, goyf), 1; got != want {
+		t.Errorf("after milling an artifact: power %d, want %d", got, want)
+	}
+	if got, want := effectiveToughness(t, g, goyf), 2; got != want {
+		t.Errorf("after milling an artifact: toughness %d, want %d", got, want)
+	}
+
+	sorcery := uuid.New()
+	me.Hand.Cards = nil
+	me.Hand.PushTop(game.Card{InstanceID: sorcery, Name: "Divination", TypeLine: "Sorcery", Owner: me.ID, Controller: me.ID})
+	g.WithWriteLock(func() {
+		if err := g.DiscardRandomForEffect(me.ID, 1); err != nil {
+			t.Fatalf("discard: %v", err)
+		}
+	})
+	if !me.Graveyard.Contains(sorcery) {
+		t.Fatal("the sorcery was not discarded")
+	}
+	if got, want := effectivePower(t, g, goyf), 2; got != want {
+		t.Errorf("after discarding a sorcery: power %d, want %d", got, want)
+	}
+}
+
 // The combat trigger, end to end: two damage means "you may mill
 // two", the mill is a decision asked during the resolution, and the
 // creature card among the two milled is offered back to hand.

@@ -19,21 +19,16 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // never silently skipped), and it gains no life and draws no cards —
 // exactly the printed ability doing nothing, not an error.
 //
-// Sandbox simplification, declared — the same one Jarad, Golgari
-// Lich Lord and Greater Good already carry: the sacrificed creature's
-// power is its printed power plus its +1/+1 and -1/-1 counters as
-// they were when it left. A bonus from another permanent's static
-// ability (an anthem) is not in it, because there is no last-known
-// characteristic to read for a creature that left as a COST rather
-// than dying to an effect.
+// "That creature's power" is its last-known information (CR 608.2h,
+// departedCreaturePower): counters and an anthem's bonus both count,
+// as they did while it was on the battlefield.
+//
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID:     "8f2c8498-5b10-4ec7-8678-598c90987556",
 		Name:         "Disciple of Bolas",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"The sacrificed creature's power counts its +1/+1 and -1/-1 counters but not a bonus from another permanent, such as an anthem.",
-		},
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Disciple of Bolas — sacrifice another creature; gain life and draw cards equal to its power",
 				discipleOfBolasSacrificeThenPayout),
@@ -57,7 +52,7 @@ func discipleOfBolasSacrificeThenPayout(g *game.Game, item *game.StackItem) erro
 				// as much as it can, which is nothing.
 				return nil
 			}
-			power := b17LastKnownPowerOffBattlefield(g, ids[0])
+			power := departedCreaturePower(g, ids[0])
 			if power <= 0 {
 				return nil
 			}
