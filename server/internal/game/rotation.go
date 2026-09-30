@@ -200,13 +200,17 @@ func (g *Game) beginNextTurnLocked() {
 
 // startTurnLocked is the tail both kinds of turn share once the cursor
 // has been stamped on the new turn's untap step: the old turn's
-// cleanup-discard pause is dropped, the seat's turn is counted, delayed
+// cleanup-discard pause is dropped, the turn plan is refilled from the
+// template, the seat's turn is counted, delayed
 // triggers bound to an extra turn that can no longer happen are swept,
 // and the per-turn resets run.
 //
 // Caller must hold g.mu.
 func (g *Game) startTurnLocked() {
 	g.DiscardPending = nil
+	// ADR 0059 Decision 3: a new turn plans the template again, which
+	// also drops any added phase the old turn never reached.
+	g.resetTurnPlanLocked()
 	g.noteTurnBegunLocked(g.Turn.ActiveSeat)
 	g.sweepUnreachableBoundTriggersLocked()
 	g.onTurnBeganLocked()

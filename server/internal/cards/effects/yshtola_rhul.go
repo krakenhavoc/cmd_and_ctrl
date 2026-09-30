@@ -12,18 +12,18 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // with every ETB re-fired, but there is no window in which the board
 // is missing it.
 //
-// S22 sandbox simplification — **the additional end step is not
-// implemented.** `Turn.advance` walks a fixed twelve-step sequence by
-// index and the engine has no notion of an inserted step; adding one
-// is turn-machinery work well outside a flicker PR. So Y'shtola
-// blinks once per turn instead of twice, which is strictly weaker
-// than printed. Nothing else about the card is approximated.
+// The second is CR 500.9 through the turn plan (ADR 0059 sub-PR 2b,
+// #753): "the first end step of the turn" is Turn.StepOrdinal, so the
+// trigger fires again in the added end step, blinks again, and adds
+// nothing more. A delayed "at the beginning of the next end step"
+// trigger created in the first end step fires in the added one.
+//
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID:     "a6a7bf77-0560-4572-a826-3bc9df1f78d1",
 		Name:         "Y'shtola Rhul",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The extra end step is not created, so it blinks a creature only once per turn instead of twice."},
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventBeginEndStep},
 			Key:     "Y'shtola Rhul — blink a creature you control",
@@ -36,10 +36,17 @@ func init() {
 				if len(item.Targets) == 0 {
 					return nil
 				}
+				ctx := NewContext(g, item)
 				// "under its owner's control" — leave
 				// Controller zero rather than passing the
 				// trigger's controller.
-				return Flicker{Target: item.Targets[0].ID}.Apply(NewContext(g, item))
+				if err := (Flicker{Target: item.Targets[0].ID}).Apply(ctx); err != nil {
+					return err
+				}
+				if g.Turn.Step != game.StepEnd || !g.IsFirstStepOfItsKindForEffect() {
+					return nil
+				}
+				return AddStepAfterThisStep{Step: game.StepEnd}.Apply(ctx)
 			},
 		}},
 	})

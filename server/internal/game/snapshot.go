@@ -330,6 +330,16 @@ type GameSnapshot struct {
 	ExtraTurns   []ExtraTurn `json:"extraTurns,omitempty"`
 	NextExtraRef int         `json:"nextExtraRef,omitempty"`
 
+	// TurnPlan / NextPhaseID are the rest of the turn (ADR 0059
+	// Decisions 3 and 10). Pure data, additive within v7. A file
+	// without them (written before the plan, or by an older binary)
+	// restores with the template's tail after the current step, which
+	// is the only plan such a game can have had. An older binary
+	// reading a newer file drops them and loses any added phase still
+	// to come: weaker, never stronger, until the next deploy.
+	TurnPlan    []PlannedStep `json:"turnPlan,omitempty"`
+	NextPhaseID int           `json:"nextPhaseId,omitempty"`
+
 	// ScopedEffects is ADR 0041 phase 3's data-backed continuous
 	// effects (scoped_effects.go, #1497): carried verbatim, because a
 	// record holds nothing but data. v7.
@@ -1516,6 +1526,8 @@ func (g *Game) captureSnapshotLocked() *GameSnapshot {
 	}
 	s.ExtraTurns = cloneExtraTurns(g.ExtraTurns)
 	s.NextExtraRef = g.NextExtraRef
+	s.TurnPlan = clonePlan(g.TurnPlan)
+	s.NextPhaseID = g.NextPhaseID
 	// ADR 0041 phase 3 (#1497): data, so carried whole and never
 	// counted by the census.
 	s.ScopedEffects = deepCopyScopedEffects(g.ScopedEffects)
@@ -2332,6 +2344,19 @@ func (s *GameSnapshot) restoreGame() *Game {
 
 	g.ExtraTurns = cloneExtraTurns(s.ExtraTurns)
 	g.NextExtraRef = s.NextExtraRef
+	g.TurnPlan = clonePlan(s.TurnPlan)
+	g.NextPhaseID = s.NextPhaseID
+	if len(g.TurnPlan) > 0 || g.Turn.Step == StepCleanup {
+		// A file written with the plan: it describes this cursor.
+		g.planAt = g.planCursorLocked()
+		if g.Turn.PhaseID == 0 {
+			g.Turn.PhaseID = templatePhaseID(g.Turn.Step)
+		}
+	} else if g.Turn.Step != "" {
+		// A file from before the plan: no added phase can exist, so
+		// the template's tail is exactly the rest of its turn.
+		g.resetTurnPlanLocked()
+	}
 
 	g.LoyaltyActivatedThisTurn = copyBoolMap(s.LoyaltyActivatedThisTurn)
 	g.SpellsCastThisTurn = copyTallyMap(s.SpellsCastThisTurn)

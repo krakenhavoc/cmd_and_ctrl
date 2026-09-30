@@ -35,16 +35,25 @@ type MayPay struct {
 	Cost     string
 	Question string
 	OnPay    func(ctx *Context) error
+	// InThisStep holds the table in the current step until the chooser
+	// answers (Game.QueueMayPayInThisStepForEffect). Set it when OnPay
+	// is about the step or phase in progress — "after this phase, there
+	// is an additional combat phase" (Hellkite Charger) — so the answer
+	// cannot arrive after that phase has ended.
+	InThisStep bool
 }
 
 func (p MayPay) Apply(ctx *Context) error {
 	item := ctx.Item
 	onPay := p.OnPay
-	return ctx.Game.QueueMayPayForEffect(p.Chooser, ctx.Source(), p.Cost, p.Question,
-		func(g *game.Game) error {
-			if onPay == nil {
-				return nil
-			}
-			return onPay(NewContext(g, item))
-		})
+	then := func(g *game.Game) error {
+		if onPay == nil {
+			return nil
+		}
+		return onPay(NewContext(g, item))
+	}
+	if p.InThisStep {
+		return ctx.Game.QueueMayPayInThisStepForEffect(p.Chooser, ctx.Source(), p.Cost, p.Question, then)
+	}
+	return ctx.Game.QueueMayPayForEffect(p.Chooser, ctx.Source(), p.Cost, p.Question, then)
 }

@@ -288,7 +288,47 @@
         "active_seat": 0,
         "priority_holder": 0,
         "phase": "precombat_main",
-        "step": "precombat_main"
+        "step": "precombat_main",
+        "phase_id": 2,
+        "phase_ordinal": 1,
+        "upcoming": [
+          {
+            "step": "begin_combat",
+            "phase_id": 3
+          },
+          {
+            "step": "declare_attackers",
+            "phase_id": 3
+          },
+          {
+            "step": "declare_blockers",
+            "phase_id": 3
+          },
+          {
+            "step": "first_strike_damage",
+            "phase_id": 3
+          },
+          {
+            "step": "combat_damage",
+            "phase_id": 3
+          },
+          {
+            "step": "end_combat",
+            "phase_id": 3
+          },
+          {
+            "step": "postcombat_main",
+            "phase_id": 4
+          },
+          {
+            "step": "end",
+            "phase_id": 5
+          },
+          {
+            "step": "cleanup",
+            "phase_id": 5
+          }
+        ]
       },
       "mulligans_open": false,
       "undo_limit": 1,
@@ -744,7 +784,47 @@
         "active_seat": 0,
         "priority_holder": 0,
         "phase": "precombat_main",
-        "step": "precombat_main"
+        "step": "precombat_main",
+        "phase_id": 2,
+        "phase_ordinal": 1,
+        "upcoming": [
+          {
+            "step": "begin_combat",
+            "phase_id": 3
+          },
+          {
+            "step": "declare_attackers",
+            "phase_id": 3
+          },
+          {
+            "step": "declare_blockers",
+            "phase_id": 3
+          },
+          {
+            "step": "first_strike_damage",
+            "phase_id": 3
+          },
+          {
+            "step": "combat_damage",
+            "phase_id": 3
+          },
+          {
+            "step": "end_combat",
+            "phase_id": 3
+          },
+          {
+            "step": "postcombat_main",
+            "phase_id": 4
+          },
+          {
+            "step": "end",
+            "phase_id": 5
+          },
+          {
+            "step": "cleanup",
+            "phase_id": 5
+          }
+        ]
       },
       "mulligans_open": false,
       "undo_limit": 1,
@@ -1184,6 +1264,38 @@
         "priority_holder": 0,
         "phase": "combat",
         "step": "declare_attackers",
+        "phase_id": 3,
+        "phase_ordinal": 1,
+        "upcoming": [
+          {
+            "step": "declare_blockers",
+            "phase_id": 3
+          },
+          {
+            "step": "first_strike_damage",
+            "phase_id": 3
+          },
+          {
+            "step": "combat_damage",
+            "phase_id": 3
+          },
+          {
+            "step": "end_combat",
+            "phase_id": 3
+          },
+          {
+            "step": "postcombat_main",
+            "phase_id": 4
+          },
+          {
+            "step": "end",
+            "phase_id": 5
+          },
+          {
+            "step": "cleanup",
+            "phase_id": 5
+          }
+        ],
         "attack_targets": [
           {
             "kind": "player",
@@ -1658,7 +1770,47 @@
         "active_seat": 0,
         "priority_holder": 0,
         "phase": "precombat_main",
-        "step": "precombat_main"
+        "step": "precombat_main",
+        "phase_id": 2,
+        "phase_ordinal": 1,
+        "upcoming": [
+          {
+            "step": "begin_combat",
+            "phase_id": 3
+          },
+          {
+            "step": "declare_attackers",
+            "phase_id": 3
+          },
+          {
+            "step": "declare_blockers",
+            "phase_id": 3
+          },
+          {
+            "step": "first_strike_damage",
+            "phase_id": 3
+          },
+          {
+            "step": "combat_damage",
+            "phase_id": 3
+          },
+          {
+            "step": "end_combat",
+            "phase_id": 3
+          },
+          {
+            "step": "postcombat_main",
+            "phase_id": 4
+          },
+          {
+            "step": "end",
+            "phase_id": 5
+          },
+          {
+            "step": "cleanup",
+            "phase_id": 5
+          }
+        ]
       },
       "mulligans_open": false,
       "undo_limit": 1,
@@ -2090,7 +2242,47 @@
         "active_seat": 0,
         "priority_holder": 0,
         "phase": "precombat_main",
-        "step": "precombat_main"
+        "step": "precombat_main",
+        "phase_id": 2,
+        "phase_ordinal": 1,
+        "upcoming": [
+          {
+            "step": "begin_combat",
+            "phase_id": 3
+          },
+          {
+            "step": "declare_attackers",
+            "phase_id": 3
+          },
+          {
+            "step": "declare_blockers",
+            "phase_id": 3
+          },
+          {
+            "step": "first_strike_damage",
+            "phase_id": 3
+          },
+          {
+            "step": "combat_damage",
+            "phase_id": 3
+          },
+          {
+            "step": "end_combat",
+            "phase_id": 3
+          },
+          {
+            "step": "postcombat_main",
+            "phase_id": 4
+          },
+          {
+            "step": "end",
+            "phase_id": 5
+          },
+          {
+            "step": "cleanup",
+            "phase_id": 5
+          }
+        ]
       },
       "mulligans_open": false,
       "undo_limit": 1,
@@ -2360,7 +2552,47 @@
         "active_seat": 0,
         "priority_holder": 0,
         "phase": "precombat_main",
-        "step": "precombat_main"
+        "step": "precombat_main",
+        "phase_id": 2,
+        "phase_ordinal": 1,
+        "upcoming": [
+          {
+            "step": "begin_combat",
+            "phase_id": 3
+          },
+          {
+            "step": "declare_attackers",
+            "phase_id": 3
+          },
+          {
+            "step": "declare_blockers",
+            "phase_id": 3
+          },
+          {
+            "step": "first_strike_damage",
+            "phase_id": 3
+          },
+          {
+            "step": "combat_damage",
+            "phase_id": 3
+          },
+          {
+            "step": "end_combat",
+            "phase_id": 3
+          },
+          {
+            "step": "postcombat_main",
+            "phase_id": 4
+          },
+          {
+            "step": "end",
+            "phase_id": 5
+          },
+          {
+            "step": "cleanup",
+            "phase_id": 5
+          }
+        ]
       },
       "mulligans_open": false,
       "undo_limit": 1,
@@ -2674,7 +2906,47 @@
         "active_seat": 0,
         "priority_holder": 0,
         "phase": "precombat_main",
-        "step": "precombat_main"
+        "step": "precombat_main",
+        "phase_id": 2,
+        "phase_ordinal": 1,
+        "upcoming": [
+          {
+            "step": "begin_combat",
+            "phase_id": 3
+          },
+          {
+            "step": "declare_attackers",
+            "phase_id": 3
+          },
+          {
+            "step": "declare_blockers",
+            "phase_id": 3
+          },
+          {
+            "step": "first_strike_damage",
+            "phase_id": 3
+          },
+          {
+            "step": "combat_damage",
+            "phase_id": 3
+          },
+          {
+            "step": "end_combat",
+            "phase_id": 3
+          },
+          {
+            "step": "postcombat_main",
+            "phase_id": 4
+          },
+          {
+            "step": "end",
+            "phase_id": 5
+          },
+          {
+            "step": "cleanup",
+            "phase_id": 5
+          }
+        ]
       },
       "mulligans_open": false,
       "undo_limit": 1,
@@ -3007,7 +3279,47 @@
         "active_seat": 0,
         "priority_holder": 0,
         "phase": "precombat_main",
-        "step": "precombat_main"
+        "step": "precombat_main",
+        "phase_id": 2,
+        "phase_ordinal": 1,
+        "upcoming": [
+          {
+            "step": "begin_combat",
+            "phase_id": 3
+          },
+          {
+            "step": "declare_attackers",
+            "phase_id": 3
+          },
+          {
+            "step": "declare_blockers",
+            "phase_id": 3
+          },
+          {
+            "step": "first_strike_damage",
+            "phase_id": 3
+          },
+          {
+            "step": "combat_damage",
+            "phase_id": 3
+          },
+          {
+            "step": "end_combat",
+            "phase_id": 3
+          },
+          {
+            "step": "postcombat_main",
+            "phase_id": 4
+          },
+          {
+            "step": "end",
+            "phase_id": 5
+          },
+          {
+            "step": "cleanup",
+            "phase_id": 5
+          }
+        ]
       },
       "mulligans_open": false,
       "undo_limit": 1,

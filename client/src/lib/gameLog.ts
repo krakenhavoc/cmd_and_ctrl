@@ -114,6 +114,9 @@ const LOG_TONE: Record<LogKind, string> = {
   // ADR 0059 (#753). An extra turn changes who plays next, which is
   // the turn structure the step spine narrates — toned like it.
   extra_turn: "tone-step",
+  // Added phases change the turn's structure too — another combat is
+  // coming — so they are toned like the step spine as well.
+  extra_phase: "tone-step",
   // A spawn is not a play. It reads like one on the board, which is
   // exactly why the line has to stand out from the turn around it.
   spawn: "tone-cast",

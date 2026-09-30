@@ -306,13 +306,70 @@ export interface ArrowRef {
   toSeat?: number;
 }
 
+// The steps of a combat phase, as the log's `step` entries name them.
+const COMBAT_PHASE_STEPS = new Set([
+  "begin_combat",
+  "declare_attackers",
+  "declare_blockers",
+  "first_strike_damage",
+  "combat_damage",
+  "end_combat",
+]);
+
+// combatKeyer returns a function naming the COMBAT a log entry happened
+// in (ADR 0059 Decision 11): the seq of the `step` entry that opened
+// that combat phase. A turn can have several combats (Relentless
+// Assault, Aurelia), so the turn alone does not say which blocks a
+// damage entry belongs to. A combat opens at `begin_combat`, and at any
+// other combat step whose previous step entry was not a combat step of
+// the same turn, or was `end_combat` (a combat whose beginning step was
+// skipped).
+//
+// An entry with no combat-opening step before it in the window — the
+// step entry fell out of the log, or the entry is outside combat —
+// falls back to its turn, which is what the grouping was before a turn
+// could have two combats.
+function combatKeyer(log: readonly LogEvent[] | undefined): (e: LogEvent) => string {
+  const opens: { seq: number; key: number }[] = [];
+  let current = 0;
+  let prev: LogEvent | undefined;
+  for (const e of log ?? []) {
+    if (e.kind !== "step") continue;
+    const step = e.step ?? "";
+    if (!COMBAT_PHASE_STEPS.has(step)) {
+      current = 0;
+    } else if (
+      step === "begin_combat" ||
+      prev === undefined ||
+      (prev.turn ?? 0) !== (e.turn ?? 0) ||
+      !COMBAT_PHASE_STEPS.has(prev.step ?? "") ||
+      prev.step === "end_combat"
+    ) {
+      current = e.seq;
+    }
+    opens.push({ seq: e.seq, key: current });
+    prev = e;
+  }
+  return (e: LogEvent): string => {
+    for (let i = opens.length - 1; i >= 0; i--) {
+      if (opens[i].seq < e.seq) {
+        if (opens[i].key !== 0) return `c${opens[i].key}`;
+        break;
+      }
+    }
+    return `t${e.turn ?? 0}`;
+  };
+}
+
 // arrowRefsFor names the CombatArrows arrow each damage entry travelled
 // along, from the log alone (ADR 0053 Decision 4). Roles come from
-// the same turn's `block` entries, the latest per blocker — never from
+// the same combat's `block` entries, the latest per blocker — never from
 // live battlefield state, which has already lost the creatures that
-// died. An entry that names no arrow (an attack on a planeswalker or
-// battle, or a block entry that fell out of the log window) adds
-// nothing; the text cue still carries it.
+// died. "The same combat" is combatKeyer's: two combats in one turn
+// never pair a block from the first with damage from the second. An
+// entry that names no arrow (an attack on a planeswalker or battle, or
+// a block entry that fell out of the log window) adds nothing; the
+// text cue still carries it.
 export function arrowRefsFor(
   damage: readonly LogEvent[],
   log: readonly LogEvent[] | undefined,
@@ -321,17 +378,18 @@ export function arrowRefsFor(
   const add = (ref: ArrowRef) => {
     if (!out.some((r) => r.id === ref.id)) out.push(ref);
   };
-  const blocksByTurn = new Map<number, Map<string, string>>();
-  const blocksOn = (turn: number): Map<string, string> => {
-    let m = blocksByTurn.get(turn);
+  const combatOf = combatKeyer(log);
+  const blocksByCombat = new Map<string, Map<string, string>>();
+  const blocksOn = (combat: string): Map<string, string> => {
+    let m = blocksByCombat.get(combat);
     if (m) return m;
     m = new Map();
     for (const e of log ?? []) {
-      if (e.kind === "block" && (e.turn ?? 0) === turn && e.card_id && e.target) {
+      if (e.kind === "block" && combatOf(e) === combat && e.card_id && e.target) {
         m.set(e.card_id, e.target); // blocker → attacker; later wins
       }
     }
-    blocksByTurn.set(turn, m);
+    blocksByCombat.set(combat, m);
     return m;
   };
 
@@ -344,7 +402,7 @@ export function arrowRefsFor(
     }
     const target = d.target;
     if (!target) continue;
-    const blocks = blocksOn(d.turn ?? 0);
+    const blocks = blocksOn(combatOf(d));
     if (blocks.get(target) === source) {
       add({ id: `blk-${target}`, kind: "block", fromCardID: target, toCardID: source });
     } else if (blocks.get(source) === target) {

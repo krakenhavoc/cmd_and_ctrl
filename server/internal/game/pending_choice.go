@@ -3280,6 +3280,35 @@ func (g *Game) QueueMayPayForEffect(
 	cost, question string,
 	onPay func(g *Game) error,
 ) error {
+	return g.queueMayPayLocked(chooser, source, cost, question, onPay, TurnStep{})
+}
+
+// QueueMayPayInThisStepForEffect is QueueMayPayForEffect for a "you may
+// pay. If you do, …" whose consequence is about the step or phase in
+// progress: Hellkite Charger's "untap all attacking creatures and after
+// this phase, there is an additional combat phase". The prompt is
+// anchored to the current step (PendingChoice.OwedInStep, #997's
+// anchor), so the table cannot walk out of the combat before the
+// answer — an answer given in the next phase would add the combat after
+// the wrong one.
+//
+// Caller must hold g.mu.
+func (g *Game) QueueMayPayInThisStepForEffect(
+	chooser, source uuid.UUID,
+	cost, question string,
+	onPay func(g *Game) error,
+) error {
+	return g.queueMayPayLocked(chooser, source, cost, question, onPay, g.currentTurnStepLocked())
+}
+
+// queueMayPayLocked is the one body behind both may-pay doors. `owed`
+// is the step the prompt must be answered in, or the zero TurnStep.
+func (g *Game) queueMayPayLocked(
+	chooser, source uuid.UUID,
+	cost, question string,
+	onPay func(g *Game) error,
+	owed TurnStep,
+) error {
 	parsed, err := ParseCost(cost)
 	if err != nil {
 		g.EmitEvent(Event{
@@ -3293,12 +3322,13 @@ func (g *Game) QueueMayPayForEffect(
 		return nil
 	}
 	g.QueueChoiceForEffect(PendingChoice{
-		Kind:    PendingChoicePayUnless,
-		Chooser: chooser,
-		Count:   1,
-		Source:  source,
-		Reason:  question,
-		PayCost: cost,
+		Kind:       PendingChoicePayUnless,
+		Chooser:    chooser,
+		Count:      1,
+		Source:     source,
+		Reason:     question,
+		PayCost:    cost,
+		OwedInStep: owed,
 		payUnlessResume: &payUnlessFrame{
 			cost:  parsed,
 			onPay: onPay,

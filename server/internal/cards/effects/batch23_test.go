@@ -112,16 +112,15 @@ func TestBatch23CardsAreRegistered(t *testing.T) {
 			t.Errorf("oracle %s registered as %q, want %q", oracle, spec.Name, name)
 		}
 	}
-	// The four remaining declared skips must stay out until their
-	// seam lands: an opponent's choice at resolution, an additional
-	// phase, a card put from hand at resolution, and a trigger-
-	// replacement ("triggers an additional time"). Collector Ouphe
-	// (the activation gate) and Runic Armasaur (the ability-
-	// activation trigger event) came off this list with #1210 and
-	// are in `want` above.
+	// The three remaining declared skips must stay out until their
+	// seam lands: an opponent's choice at resolution, a card put from
+	// hand at resolution, and a trigger-replacement ("triggers an
+	// additional time"). Collector Ouphe (the activation gate) and
+	// Runic Armasaur (the ability-activation trigger event) came off
+	// this list with #1210, and Sphinx of the Second Sun (an
+	// additional phase) with ADR 0059 sub-PR 2b (#753).
 	for oracle, name := range map[string]string{
 		"5bb32efd-9e58-4021-bbda-4ffccfa1d601": "Druid of Purification",
-		"516101be-be39-4d84-8fee-d8a79930dd0a": "Sphinx of the Second Sun",
 		"8d571129-9030-47e0-9624-a49fb63e5a1b": "Ilharg, the Raze-Boar",
 		"95b53836-18aa-451a-992d-2a111deeeab2": "Yarok, the Desecrated",
 	} {
