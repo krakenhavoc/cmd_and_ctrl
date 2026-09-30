@@ -1260,7 +1260,7 @@ func (e *enumerator) sacrificePool(sourceID uuid.UUID, selfToo bool, spec *game.
 	lt := e.g.SpecCandidatesForEffect(e.seat, spec)
 	var pool []uuid.UUID
 	for _, id := range lt.Cards {
-		if selfToo && id == sourceID {
+		if (selfToo || spec.ExcludeSource) && id == sourceID {
 			continue
 		}
 		if c := findBattlefield(e.g, id); c != nil && c.Controller == e.seat {

@@ -323,9 +323,11 @@ func NotSelf(selfID uuid.UUID) CardPredicate {
 //		return TargetCreature("another target creature you control", YouControl(), other)
 //	}),
 //
-// Exact where b03NotNamed is an approximation: a second permanent with
-// the same name — a Clone or token copy of the source — stays a legal
-// target, as printed, and the source itself never is.
+// A TRIGGER'S "another" is also expressible with Another (a clause's
+// ExcludeSource); this form remains for a clause built per source.
+// Either is exact: a second permanent with the same name — a Clone or
+// token copy of the source — stays a legal target, as printed, and
+// the source itself never is.
 func AnotherTarget(build func(other CardPredicate) *game.TargetSpec) func(game.TriggerContext, *game.Card, *game.Game) *game.TargetSpec {
 	return func(_ game.TriggerContext, source *game.Card, _ *game.Game) *game.TargetSpec {
 		self := uuid.Nil

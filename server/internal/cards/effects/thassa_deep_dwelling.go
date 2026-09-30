@@ -52,7 +52,7 @@ func init() {
 		Activated: []ActivatedAbility{{
 			Label:   "{3}{U}: Tap another target creature.",
 			Cost:    ManaCost("{3}{U}"),
-			Targets: TargetCreature("another target creature", b03NotNamed("Thassa, Deep-Dwelling")),
+			Targets: Another(TargetCreature("another target creature")),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				id, ok := b16FirstLegalTargetCard(ctx)

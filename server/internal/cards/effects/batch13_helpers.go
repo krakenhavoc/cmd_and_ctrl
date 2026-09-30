@@ -88,122 +88,18 @@ func creatureYouControlLeftWithoutDying(ev game.Event, source *game.Card, g *gam
 	return ok && leftAsType(ev, c, "creature") && leftUnderControlOf(ev, c) == source.Controller
 }
 
-// --- counters read back off the log ------------------------------
-
-// b13LastKnownCounters is the number of `kind` counters `cardID` had
-// the last time it was on the battlefield — read for a permanent
-// that has just left it, which is what a dies trigger (Goldvein
-// Hydra's "equal to its power") and a sacrifice-cost ability
-// (Twitching Doll's "for each counter on this creature") need and
-// what neither can get from the card itself: MoveCard clears
-// Counters on the way out (CR 400.7), and the CR 603.10 LKI
-// characteristic the harvester hands a dies trigger carries the
-// layer-computed P/T with no counter math.
-//
-// EventCounterPlaced carries the post-change total, so the most
-// recent one for the card and kind IS the count at the moment it
-// left. The walk stops at the card's arrival on the battlefield —
-// an earlier life of the same instance (a reanimated card keeps its
-// InstanceID) is not this one — except that "enters with" counters
-// are placed a beat BEFORE the arrival is logged, by every entry
-// site, so the placements immediately preceding the arrival are
-// still read (b13LastKnownCounterWalk). Zero when the kind was never
-// placed, or was removed to nothing.
-func b13LastKnownCounters(g *game.Game, cardID uuid.UUID, kind string) int {
-	total := 0
-	b13LastKnownCounterWalk(g, cardID, func(ev game.Event) bool {
-		if ev.Label != kind {
-			return true
-		}
-		total = ev.Amount
-		return false
-	})
-	return total
-}
-
-// b13LastKnownPTDelta is the power and toughness `cardID`'s P/T
-// counters added when it last left the battlefield — every P/T kind,
-// not just +1/+1 and -1/-1 (#1664, CR 122.1a). Same walk and same
-// newest-total-per-kind rule as b13LastKnownCounterTotal, summed
-// through game.PTCounterDelta so a departed creature's P/T is computed
-// by the rule the live one's was.
-func b13LastKnownPTDelta(g *game.Game, cardID uuid.UUID) (power, toughness int) {
-	last := map[string]int{}
-	b13LastKnownCounterWalk(g, cardID, func(ev game.Event) bool {
-		if _, seen := last[ev.Label]; !seen {
-			last[ev.Label] = ev.Amount
-		}
-		return true
-	})
-	return game.PTCounterDelta(last)
-}
-
-// b13LastKnownCounterTotal is the total number of counters of every
-// kind `cardID` had when it last left the battlefield — Twitching
-// Doll counts nest counters and anything else alike. Same walk as
-// b13LastKnownCounters, taking the most recent total per kind.
-func b13LastKnownCounterTotal(g *game.Game, cardID uuid.UUID) int {
-	seen := map[string]bool{}
-	total := 0
-	b13LastKnownCounterWalk(g, cardID, func(ev game.Event) bool {
-		if !seen[ev.Label] {
-			seen[ev.Label] = true
-			total += ev.Amount
-		}
-		return true
-	})
-	return total
-}
-
-// b13LastKnownCounterWalk hands `visit` every EventCounterPlaced for
-// `cardID` from the card's most recent life on the battlefield,
-// newest first, until visit returns false or the life runs out.
-//
-// The life's start is the card's arrival — its EventETB, or its
-// EventTokenCreated. Past that, only the events one entry site emits
-// about the card between placing its "enters with" counters and
-// logging the arrival are stepped over (the zone move onto the
-// battlefield, the resolve of the spell it was, a copy applied); the
-// first event that is none of those is the previous life, or the
-// game before the card, and the walk ends.
-func b13LastKnownCounterWalk(g *game.Game, cardID uuid.UUID, visit func(ev game.Event) bool) {
-	arrived := false
-	for i := len(g.Events) - 1; i >= 0; i-- {
-		ev := g.Events[i]
-		if ev.Kind == game.EventCounterPlaced && ev.Target == cardID {
-			if !visit(ev) {
-				return
-			}
-			continue
-		}
-		if !arrived {
-			if ev.CardID == cardID && (ev.Kind == game.EventETB || ev.Kind == game.EventTokenCreated) {
-				arrived = true
-			}
-			continue
-		}
-		if ev.CardID != cardID {
-			return
-		}
-		switch ev.Kind {
-		case game.EventResolve, game.EventCopyApplied, game.EventTokenCreated:
-			continue
-		case game.EventZoneMove:
-			if ev.NewZone == game.ZoneBattlefield {
-				continue
-			}
-		}
-		return
-	}
-}
+// --- power of a departed permanent ---------------------------------
 
 // b13LastKnownPower is a dead creature's power as it last was on the
-// battlefield: the harvester's LKI characteristic (layers applied)
-// plus what its P/T counters added — every kind, CR 122.1a (#1664) —
-// floored at zero the way CurrentPower floors it.
+// battlefield: the departure record's power (layers applied, every P/T
+// counter kind, CR 122.1a), floored at zero the way CurrentPower floors
+// it. `lki` is the harvester's characteristic, used only when the card
+// has no departure record (it never left through the battlefield exit).
 func b13LastKnownPower(g *game.Game, cardID uuid.UUID, lki game.Characteristic) int {
-	dp, _ := b13LastKnownPTDelta(g, cardID)
-	p := lki.Power + dp
+	p := lki.Power
+	if info, ok := g.LastKnownPermanentForEffect(cardID); ok {
+		p = info.Power
+	}
 	if p < 0 {
 		return 0
 	}

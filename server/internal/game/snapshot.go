@@ -323,6 +323,13 @@ type GameSnapshot struct {
 	PendingTriggers []stackItemSnapshot      `json:"pendingTriggers,omitempty"`
 	DelayedTriggers []delayedTriggerSnapshot `json:"delayedTriggers,omitempty"`
 
+	// ExtraTurns / NextExtraRef are the CR 500.7 extra-turn queue (ADR
+	// 0059 Decision 10). Pure data, additive within v7: an older binary
+	// drops the queue, which loses the queued turns (weaker, never
+	// stronger) until the next deploy.
+	ExtraTurns   []ExtraTurn `json:"extraTurns,omitempty"`
+	NextExtraRef int         `json:"nextExtraRef,omitempty"`
+
 	// ScopedEffects is ADR 0041 phase 3's data-backed continuous
 	// effects (scoped_effects.go, #1497): carried verbatim, because a
 	// record holds nothing but data. v7.
@@ -1052,17 +1059,22 @@ type stackItemSnapshot struct {
 }
 
 type delayedTriggerSnapshot struct {
-	ID                 uuid.UUID   `json:"id"`
-	Controller         uuid.UUID   `json:"controller"`
-	SourceCardID       uuid.UUID   `json:"sourceCardId"`
-	SourceObject       *ObjectRef  `json:"sourceObject,omitempty"` // #1418
-	Label              string      `json:"label,omitempty"`
-	At                 Step        `json:"at"`
-	ControllerTurnOnly bool        `json:"controllerTurnOnly"`
-	CreatedSeq         int         `json:"createdSeq,omitempty"`
-	CreatedTurn        int         `json:"createdTurn,omitempty"`
-	Cards              []uuid.UUID `json:"cards,omitempty"`
-	HasEffect          bool        `json:"hasEffect,omitempty"`
+	ID                 uuid.UUID  `json:"id"`
+	Controller         uuid.UUID  `json:"controller"`
+	SourceCardID       uuid.UUID  `json:"sourceCardId"`
+	SourceObject       *ObjectRef `json:"sourceObject,omitempty"` // #1418
+	Label              string     `json:"label,omitempty"`
+	At                 Step       `json:"at"`
+	ControllerTurnOnly bool       `json:"controllerTurnOnly"`
+	// OnExtraTurn is ADR 0059 Decision 8's binding to one extra turn.
+	// Additive: an older binary drops it, but every card that binds a
+	// trigger also names a body that binary lacks, so it refuses the
+	// file (ErrUnknownEffectKey) rather than firing the trigger early.
+	OnExtraTurn int         `json:"onExtraTurn,omitempty"`
+	CreatedSeq  int         `json:"createdSeq,omitempty"`
+	CreatedTurn int         `json:"createdTurn,omitempty"`
+	Cards       []uuid.UUID `json:"cards,omitempty"`
+	HasEffect   bool        `json:"hasEffect,omitempty"`
 	// #663: the event condition. On and ExpiresAfterTurn are data
 	// and come back; the AppliesTo predicate and the Optional prompt
 	// are closures and do not, exactly as Effect does not — and the
@@ -1502,6 +1514,8 @@ func (g *Game) captureSnapshotLocked() *GameSnapshot {
 			s.DelayedTriggers[i] = snapshotDelayedTrigger(d, cen)
 		}
 	}
+	s.ExtraTurns = cloneExtraTurns(g.ExtraTurns)
+	s.NextExtraRef = g.NextExtraRef
 	// ADR 0041 phase 3 (#1497): data, so carried whole and never
 	// counted by the census.
 	s.ScopedEffects = deepCopyScopedEffects(g.ScopedEffects)
@@ -1961,6 +1975,7 @@ func snapshotDelayedTrigger(d *DelayedTrigger, cen *ContinuationCensus) delayedT
 		Label:              d.Label,
 		At:                 d.At,
 		ControllerTurnOnly: d.ControllerTurnOnly,
+		OnExtraTurn:        d.OnExtraTurn,
 		CreatedSeq:         d.CreatedSeq,
 		HasEffect:          d.Body.key != "",
 		Body:               d.Body.key,
@@ -2314,6 +2329,9 @@ func (s *GameSnapshot) restoreGame() *Game {
 			}
 		}
 	}
+
+	g.ExtraTurns = cloneExtraTurns(s.ExtraTurns)
+	g.NextExtraRef = s.NextExtraRef
 
 	g.LoyaltyActivatedThisTurn = copyBoolMap(s.LoyaltyActivatedThisTurn)
 	g.SpellsCastThisTurn = copyTallyMap(s.SpellsCastThisTurn)
@@ -2706,6 +2724,7 @@ func restoreDelayedTrigger(d *delayedTriggerSnapshot) *DelayedTrigger {
 		Label:              d.Label,
 		At:                 d.At,
 		ControllerTurnOnly: d.ControllerTurnOnly,
+		OnExtraTurn:        d.OnExtraTurn,
 		CreatedSeq:         d.CreatedSeq,
 		// checkEffectKeys has already refused a key this binary has
 		// no body or condition for, so these refs are registered ones.

@@ -66,6 +66,14 @@
   const priorityHeld = $derived((turn.priority_holder ?? -1) >= 0);
   const activePlayer = $derived(seats[activeSeat]);
   const stepLabel = $derived(STEP_LABELS[turn.step as keyof typeof STEP_LABELS] ?? turn.step);
+  // ADR 0059 Decision 11 (#753): the next queued extra turn, if any.
+  // "T{n}" stays the round (owner decision 1); an extra turn is marked
+  // instead, and the queue shows who takes the next one.
+  const nextExtra = $derived.by(() => {
+    const seat = turn.extra_turns?.[0];
+    if (seat === undefined) return null;
+    return seats[seat]?.name ?? `seat ${seat}`;
+  });
 
   // Key hints for the three priority buttons (ADR 0047). Read from
   // the same binding map the dispatcher uses — imported directly
@@ -148,6 +156,17 @@
       <span class="seat-dot" style="background:{activeColor}"></span>
       <span class="active-name">{activePlayer?.name ?? `seat ${activeSeat}`}</span>
     </span>
+    {#if turn.extra}
+      <span class="extra-turn" title="This turn was created by an effect">Extra turn</span>
+    {/if}
+    {#if nextExtra}
+      <span
+        class="next-extra"
+        title="Queued extra turns are taken before normal turn order resumes"
+      >
+        Next: {nextExtra} (extra)
+      </span>
+    {/if}
   </div>
 
   <div class="row track" aria-label="phase track">
@@ -293,6 +312,18 @@
   }
   .summary {
     justify-content: space-between;
+  }
+  .extra-turn,
+  .next-extra {
+    font-size: 0.75em;
+    padding: 0 0.4em;
+    border-radius: 999px;
+    border: 1px solid var(--active-player-color, currentColor);
+    white-space: nowrap;
+  }
+  .next-extra {
+    opacity: 0.75;
+    border-style: dashed;
   }
   .turn-no {
     font-weight: 700;

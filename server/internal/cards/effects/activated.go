@@ -57,6 +57,27 @@ func SacrificeN(n int, label string, preds ...CardPredicate) game.AbilityCost {
 	return game.AbilityCost{SacrificeOther: sacrificeSpec(label, preds...).WithCount(n, n)}
 }
 
+// Another is the printed word "another" / "other" on a clause: the
+// object the ability belongs to is not an eligible pick. It compares
+// OBJECTS (game.TargetSpec.ExcludeSource, CR 109.1), so a second card
+// with the same name or a token copy of the source stays eligible —
+// which is exactly what the by-name exclusion it replaces could not say.
+//
+//	Targets: Another(TargetCreature("another target creature you control", YouControl()))
+//
+// Wrap the whole clause, and leave "another" out of the predicates.
+func Another(spec *game.TargetSpec) *game.TargetSpec {
+	spec.ExcludeSource = true
+	return spec
+}
+
+// SacrificeAnotherN is SacrificeN for "Sacrifice another <permanent>":
+// the source itself is not a legal payment (a second permanent with the
+// same name is).
+func SacrificeAnotherN(n int, label string, preds ...CardPredicate) game.AbilityCost {
+	return game.AbilityCost{SacrificeOther: Another(sacrificeSpec(label, preds...)).WithCount(n, n)}
+}
+
 // SacrificeOneOrMore is "Sacrifice one or more <permanents>" —
 // Radiant Lotus's "{T}, Sacrifice one or more artifacts" is
 //
@@ -505,6 +526,15 @@ func RemoveCountersAmong(kind string, n int, label string, preds ...CardPredicat
 		From:    TargetPermanent(label, preds...),
 		Among:   true,
 	}}
+}
+
+// RemoveCountersAmongOthers is RemoveCountersAmong for "from among
+// OTHER <permanents> you control": the source is not one of the
+// permanents the counters come off (compared by object, not by name).
+func RemoveCountersAmongOthers(kind string, n int, label string, preds ...CardPredicate) game.AbilityCost {
+	c := RemoveCountersAmong(kind, n, label, preds...)
+	c.RemoveCounters.From.ExcludeSource = true
+	return c
 }
 
 // AddCounterToThis is "Put a <kind> counter on this permanent" as a

@@ -314,6 +314,7 @@ delayedTriggers[].hasEffect	bool
 delayedTriggers[].id	custom(uuid.UUID)
 delayedTriggers[].label	string
 delayedTriggers[].on	array
+delayedTriggers[].onExtraTurn	number:int
 delayedTriggers[].on[]	string
 delayedTriggers[].optionalQuestion	string
 delayedTriggers[].params	object
@@ -627,6 +628,11 @@ exile.kind	string
 exile.owner	custom(uuid.UUID)
 extraLandDropsThisTurn	map:array
 extraLandDropsThisTurn{}	number:int
+extraTurns	array
+extraTurns[]	object
+extraTurns[].ref	number:int
+extraTurns[].seat	number:int
+extraTurns[].source	custom(uuid.UUID)
 firstStrikeStepParticipants	map:array
 firstStrikeStepParticipants{}	bool
 foretoldThisTurn	map:array
@@ -1158,6 +1164,7 @@ loyaltyActivatedThisTurn	map:array
 loyaltyActivatedThisTurn{}	bool
 monarch	custom(uuid.UUID)
 mulligansOpen	bool
+nextExtraRef	number:int
 oncePerBatchFired	map:string
 oncePerBatchFired{}	number:uint64
 outcome	object

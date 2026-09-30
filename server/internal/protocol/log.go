@@ -335,6 +335,15 @@ const (
 	// already carries it, and there is no special action here to
 	// carry this one.
 	LogTurnFaceDown LogKind = "turn_face_down"
+	// LogExtraTurn — an effect gave a player an extra turn (CR 500.7,
+	// ADR 0059 Decision 11). `seat` is the player who will take it and
+	// `card_id` the card whose effect created it; one entry per turn,
+	// so Time Stretch writes two. Narrated because it changes the
+	// turn's structure, which the owner's log rule for these seams
+	// keeps (ADR 0059, decided question 2): the next player to act is
+	// no longer the next seat, and the table needs to know why before
+	// the turn bar moves.
+	LogExtraTurn LogKind = "extra_turn"
 )
 
 // The three choose-a-value kinds are separate rather than one "chose
@@ -1275,6 +1284,11 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		base.Amount = ev.Amount
 		return base, true
 
+	case game.EventExtraTurnAdded:
+		base.Kind = LogExtraTurn
+		base.CardID = uuidStringOrEmpty(ev.Source)
+		return base, true
+
 	default:
 		return LogEvent{}, false
 	}
@@ -1814,6 +1828,11 @@ func renderLogText(e LogEvent, cardName, targetName string) string {
 			return fmt.Sprintf("%s was turned face down", card)
 		}
 		return fmt.Sprintf("%s turned %s face down", target, card)
+	case LogExtraTurn:
+		if e.CardID == "" {
+			return fmt.Sprintf("%s will take an extra turn", actor)
+		}
+		return fmt.Sprintf("%s will take an extra turn (%s)", actor, card)
 	case LogPhaseOut:
 		return fmt.Sprintf("%s phased out", card)
 	case LogPhaseIn:

@@ -31,6 +31,7 @@
     StackItemView,
     ZoneView,
   } from "../../protocol";
+  import { isBoardAnsweredChoice } from "../../boardAnsweredChoice";
   import { seatPlacements, type SeatPosition } from "../../cardTypes";
   import { isResponseWindowFor, responseWindowKey } from "../../considering";
   import PlayerPanel from "./PlayerPanel.svelte";
@@ -1918,12 +1919,7 @@
     // shape, same picker, and the server routes the answer on the
     // kind.
     const mine = (view.pending_choices ?? []).find(
-      (c) =>
-        (c.kind === "pick_target" ||
-          c.kind === "legend_rule" ||
-          c.kind === "choose_protector" ||
-          c.kind === "retarget") &&
-        c.chooser === viewerID,
+      (c) => isBoardAnsweredChoice(c.kind) && c.chooser === viewerID,
     );
     const cur = $targeting;
     if (mine) {

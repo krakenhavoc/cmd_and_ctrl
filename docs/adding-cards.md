@@ -58,6 +58,12 @@ surface tiny.
    Targets: TargetPermanent("target artifact or enchantment", Or(Artifact(), Enchantment())),
    Targets: TargetCardInGraveyard("target card in your graveyard", YouOwn()),
    ```
+   "Another" / "other" is object identity, never a name: wrap the clause
+   in `Another(...)` (`Another(TargetCreature("another target creature
+   you control", YouControl()))`), use `SacrificeAnotherN` for a
+   "sacrifice another" cost, and `RemoveCountersAmongOthers` for "from
+   among other permanents". `game.TargetSpec.ExcludeSource` is what they
+   set (#1738). "Up to X targets" is `CountFromX` plus `UpToX`.
    Predicates compose with `And` / `Or` / `Not`; add missing ones to
    `targets.go`, not to the card file. Multi-target clauses set the
    count on the same spec — `TargetCreature("two target nonartifact
@@ -4661,6 +4667,38 @@ stored on the caster as a `PlayerStatic` with an until-end-of-turn
 duration. Concession is never gated, and the last player standing always
 wins (CR 104.2a). See [ADR 0057](decisions/0057-win-and-lose-by-effect.md)
 and its 2026-09-24 amendment.
+
+### Extra turns (#753, ADR 0059)
+
+"Take an extra turn after this one" (CR 500.7) is one primitive, and a
+card never touches the turn cursor:
+
+```go
+OnResolve: youTakeAnExtraTurn,                                  // Temporal Manipulation
+return TakeExtraTurn{Player: target, N: 2}.Apply(ctx)           // Time Stretch
+Effect:    youTakeAnExtraTurnEffect,                            // an activated ability (Magistrate's Scepter)
+OnResolve: extraTurnThenLoseAtItsEndStep("Final Fortune — you lose the game"),
+```
+
+The engine queues the turn on a stack (`Game.ExtraTurns`) that the
+rotation seam pops, so the most recently created turn is taken first
+and normal rotation resumes after the seat whose turn was interrupted.
+An extra turn is a turn: `Turn.Seq` and the seat's `TurnsBegun` go up,
+every "this turn" tally resets, "until your next turn" ends, and
+summoning sickness clears. `Turn.Round` does NOT move, because the board
+shows the round and marks the turn "Extra turn" (`game.IsExtraTurn()`).
+A queued turn of a player who has left is dropped as it would begin
+(CR 800.4k).
+
+"At the beginning of THAT turn's end step" is a delayed trigger bound
+to the turn: pass the ref `TakeExtraTurnsForEffect` returned as
+`ScheduleDelayedTrigger.OnExtraTurn`. It fires only in that turn's end
+step, and is swept if that turn never reaches one. Do not schedule an
+unbound "next end step" trigger for it. An instant cast in an end step
+would fire it in the wrong turn.
+
+Skipping a turn (Trouble in Pairs, Ugin's Nexus, Savor the Moment) has
+no shape yet (ADR 0059 Decision 14). Declare it as a caveat.
 
 ### When NOT to add a catalog entry
 

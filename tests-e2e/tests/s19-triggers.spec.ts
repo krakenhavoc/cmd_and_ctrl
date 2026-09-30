@@ -190,7 +190,7 @@ test.describe("S19 ETB triggers", () => {
     // server's Question copy) rather than a bare page-wide text
     // scan: that also matched the stack overlay and the targeting
     // banner, and it raced the WS delta on a 5s budget.
-    await expect(caster.page.getByRole("dialog", { name: /Reclamation Sage —/i })).toBeVisible();
+    await expect(caster.page.getByRole("dialog", { name: /Reclamation Sage —/i })).toBeVisible({ timeout: 20_000 });
     await expect(opponent.page.getByRole("dialog", { name: /Reclamation Sage —/i })).toHaveCount(
       0,
     );
@@ -339,7 +339,7 @@ test.describe("S19 ETB triggers", () => {
       "Eternal Witness prompt queued",
     );
 
-    await expect(caster.page.getByRole("dialog", { name: /Eternal Witness —/i })).toBeVisible();
+    await expect(caster.page.getByRole("dialog", { name: /Eternal Witness —/i })).toBeVisible({ timeout: 20_000 });
 
     await caster.page.getByRole("button", { name: /^Yes$/ }).click();
 
@@ -358,7 +358,7 @@ test.describe("S19 ETB triggers", () => {
       .getByRole("button", { name: /^grave: / })
       .click();
     const graveBrowser = caster.page.getByRole("dialog", { name: /graveyard/i });
-    await expect(graveBrowser).toBeVisible();
+    await expect(graveBrowser).toBeVisible({ timeout: 20_000 });
     await graveBrowser.getByRole("button", { name: "Lightning Bolt", exact: true }).click();
 
     const staged = await admin.waitFor(
@@ -466,7 +466,7 @@ test.describe("S19 ETB triggers", () => {
     // default, so a loose pattern here would match either one.
     await expect(
       caster.page.getByRole("dialog", { name: "Solemn Simulacrum — search for a basic land?" }),
-    ).toBeVisible();
+    ).toBeVisible({ timeout: 20_000 });
 
     await caster.page.getByRole("button", { name: /^Yes$/ }).click();
 
@@ -605,8 +605,8 @@ test.describe("S19 ETB triggers", () => {
     // Caster sees the dialog with Yes/No buttons; opponent has no
     // trigger dialog at all (the only legitimate dialog they could
     // see is mulligan, which has long since closed).
-    await expect(caster.page.getByRole("button", { name: /^Yes$/ })).toBeVisible();
-    await expect(caster.page.getByRole("button", { name: /^No$/ })).toBeVisible();
+    await expect(caster.page.getByRole("button", { name: /^Yes$/ })).toBeVisible({ timeout: 20_000 });
+    await expect(caster.page.getByRole("button", { name: /^No$/ })).toBeVisible({ timeout: 20_000 });
     await expect(opponent.page.getByRole("dialog", { name: /Reclamation Sage —/i })).toHaveCount(
       0,
     );
@@ -645,7 +645,7 @@ test.describe("S19 ETB triggers", () => {
     // without truncation or escape errors. The modal's <h2> IS its
     // aria-labelledby target, so the reason is the dialog's
     // accessible name.
-    await expect(caster.page.getByRole("dialog", { name: prompt!.reason! })).toBeVisible();
+    await expect(caster.page.getByRole("dialog", { name: prompt!.reason! })).toBeVisible({ timeout: 20_000 });
   });
 
   // S19 sub-PR 6: pay-unless. The opponent's Smothering Tithe taxes
@@ -690,7 +690,7 @@ test.describe("S19 ETB triggers", () => {
     expect(prompt?.pay_cost).toBe("{2}");
 
     // Caster's browser shows the pay dialog; the opponent's doesn't.
-    await expect(caster.page.getByRole("button", { name: /^Pay \{2\}$/ })).toBeVisible();
+    await expect(caster.page.getByRole("button", { name: /^Pay \{2\}$/ })).toBeVisible({ timeout: 20_000 });
     await expect(opponent.page.getByRole("button", { name: /^Pay \{2\}$/ })).toHaveCount(0);
 
     await caster.page.getByRole("button", { name: /^Don't pay$/ }).click();

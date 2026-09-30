@@ -28,20 +28,13 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // Unearth is the constructor: the return, the haste, the end-step
 // exile and the leaves-the-battlefield redirect all come with the
 // keyword.
-//
-// Inherited gap, not this card's own: the Powerstone token this
-// creates can tap for mana to cast any spell — its printed
-// restriction to artifact spells isn't modelled (see PowerstoneToken
-// in tokens.go). Declared here rather than fixed, since the
-// restriction lives on the shared token template, not on this card.
+// The Powerstone's spend restriction lives on the shared token template
+// (see PowerstoneToken in tokens.go).
 func init() {
 	Register(Spec{
-		OracleID:     "d4d65797-2b92-4265-9169-133120c86c7f",
-		Name:         "Cityscape Leveler",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"The Powerstone token this creates can pay for any spell — its printed restriction to artifact spells isn't implemented.",
-		},
+		OracleID:        "d4d65797-2b92-4265-9169-133120c86c7f",
+		Name:            "Cityscape Leveler",
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"trample"},
 		Triggered: []game.TriggeredAbility{{
 			FromStack: true,

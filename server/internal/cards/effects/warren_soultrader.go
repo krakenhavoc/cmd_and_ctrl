@@ -23,12 +23,11 @@ func init() {
 	Register(Spec{
 		OracleID:     "ace86e56-efde-4eb7-8815-71456a4c3abe",
 		Name:         "Warren Soultrader",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"A second copy or token copy of Warren Soultrader can't be sacrificed to its own ability."},
+		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label: "Pay 1 life, Sacrifice another creature: Create a Treasure token.",
 			Cost: Plus(PayLife(1), game.AbilityCost{
-				SacrificeOther: sacrificeSpec("another creature", Creature(), b03NotNamed("Warren Soultrader")),
+				SacrificeOther: Another(sacrificeSpec("another creature", Creature())),
 			}),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return CreateToken{

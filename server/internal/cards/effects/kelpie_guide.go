@@ -21,13 +21,12 @@ func init() {
 	Register(Spec{
 		OracleID:     "8fc1e8b1-3afc-4e9d-a3ae-7bd9bcdcb465",
 		Name:         "Kelpie Guide",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The untap ability can't untap another Kelpie Guide."},
+		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{
 			{
 				Label:   "{T}: Untap another target permanent you control.",
 				Cost:    TapCost(),
-				Targets: TargetPermanent("another target permanent you control", YouControl(), b03NotNamed("Kelpie Guide")),
+				Targets: Another(TargetPermanent("another target permanent you control", YouControl())),
 				Effect:  b22UntapEachLegalTarget,
 			},
 			{

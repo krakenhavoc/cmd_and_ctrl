@@ -16,12 +16,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // paid at announce, so the dies-triggers land above the ability and
 // the fetched land comes after them.
 //
-// Two declared gaps, both weaker than printed:
-//
-//   - "Another creature" is by name (b03NotNamed): a cost's clause
-//     never receives its source, and in a singleton format the name
-//     is the creature. A token copy of the Wight could not be fed to
-//     it either.
+// "Another creature" is object identity (effects.Another, CR 109.1): a
+// token copy of the Wight can be fed to it, as printed.
 //
 // It also carried the graveyard-staleness simplification until
 // #1117 — the layer engine recomputed on battlefield and counter
@@ -32,11 +28,8 @@ func init() {
 	Register(Spec{
 		OracleID:        "4507df69-6bf7-43d6-a609-c032b61835d5",
 		Name:            "Wight of the Reliquary",
-		Completeness:    CompletenessCaveats,
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"vigilance"},
-		Caveats: []string{
-			"A second copy or token copy of Wight of the Reliquary can't be sacrificed to its own ability.",
-		},
 		Static: []game.StaticAbility{{
 			Layer:    game.Layer7PT,
 			SubLayer: game.SubLayer7C_Modify,
@@ -52,7 +45,7 @@ func init() {
 		Activated: []ActivatedAbility{{
 			Label: "{T}, Sacrifice another creature: Search your library for a land card, put it onto the battlefield tapped, then shuffle.",
 			Cost: Plus(TapCost(), game.AbilityCost{
-				SacrificeOther: sacrificeSpec("another creature", Creature(), b03NotNamed("Wight of the Reliquary")),
+				SacrificeOther: Another(sacrificeSpec("another creature", Creature())),
 			}),
 			Effect: b11FetchLandTapped("Wight of the Reliquary — a land card, onto the battlefield tapped"),
 		}},

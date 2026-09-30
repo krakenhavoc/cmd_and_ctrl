@@ -351,7 +351,12 @@ func playCatalogGame(t *testing.T, room *ws.Room, policies []aiseat.Policy, turn
 			lastCaptured = seq
 		}
 		snap := g.Snapshot()
-		if snap.State != game.StateActive || snap.Turn.Round > turnBudget {
+		// ADR 0059 Decision 13: extra turns share their round, so a
+		// runaway extra-turn line would never exhaust a Round budget.
+		// Cap the turn count too; that game ends as a budget run, not a
+		// hang until the wall clock.
+		if snap.State != game.StateActive || snap.Turn.Round > turnBudget ||
+			snap.Turn.Seq > turnBudget*len(policies)*2 {
 			break
 		}
 		if seq := room.Seq(); seq != lastSeq {

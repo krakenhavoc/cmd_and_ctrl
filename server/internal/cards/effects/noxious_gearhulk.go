@@ -27,14 +27,13 @@ func init() {
 	Register(Spec{
 		OracleID:        "a77b5be2-f361-4135-ba25-670a74d268ac",
 		Name:            "Noxious Gearhulk",
-		Completeness:    CompletenessCaveats,
-		Caveats:         []string{"The trigger can't target another creature named Noxious Gearhulk, such as a token copy of it."},
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"menace"},
 		Triggered: []game.TriggeredAbility{{
 			Watches:        []game.EventKind{game.EventETB},
 			AppliesTo:      b06SelfETB,
 			OptionalPrompt: &game.TriggerOptionalPrompt{Question: "Noxious Gearhulk — destroy another target creature?"},
-			Targets:        TargetCreature("another target creature", b03NotNamed("Noxious Gearhulk")),
+			Targets:        Another(TargetCreature("another target creature")),
 			Key:            "Noxious Gearhulk — destroy another target creature, gain life equal to its toughness",
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {

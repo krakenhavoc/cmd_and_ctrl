@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Midnight Clock — Artifact {2}{U}:
 //
@@ -18,17 +22,22 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // share one closure since AddCounter needs the source's own instance
 // ID, which is only known at resolution time (item.SourceCardID).
 //
-// Caveat: the twelfth-counter payoff isn't implemented — there is no
-// primitive yet that shuffles a hand AND a graveyard into a library
-// together (teferi_akosa_of_zhalfir.go's shuffle helper is card-
-// specific and single-zone). The mana ability and both hour-counter
-// abilities work; the clock accumulates counters with no payoff.
+// The payoff is a trigger on the placement that CROSSES twelve
+// (b12CounterTotalBefore reads the total before the event, so a
+// thirteenth counter, or a placement that starts above twelve, fires
+// nothing). It resolves as Echo of Eons does for one player: the hand
+// and graveyard leave together as one tuck batch, the library is
+// shuffled, seven cards are drawn, and the artifact is exiled if it is
+// still the same permanent on the battlefield. The trigger does not
+// need its source to resolve, so the shuffle and draw happen even if
+// the Clock was removed in response.
+//
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID:     "c68faebc-b2cd-461b-b93e-e1fcd4816810",
 		Name:         "Midnight Clock",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The twelfth-hour-counter payoff — shuffle your hand and graveyard into your library, draw seven, then exile this artifact — isn't implemented. The mana ability and the hour-counter abilities work."},
+		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},
 			Produced: "{U}",
@@ -43,6 +52,9 @@ func init() {
 			On(game.EventBeginUpkeep, func(_ game.Event, _ *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return true
 			}, "Midnight Clock — put an hour counter", midnightClockPutHourCounter),
+			On(game.EventCounterPlaced, midnightClockTwelfthHour,
+				"Midnight Clock — shuffle your hand and graveyard into your library, draw seven, exile this artifact",
+				midnightClockPayoff),
 		},
 	})
 }
@@ -53,4 +65,38 @@ func init() {
 // captures a *Card or *Game.
 func midnightClockPutHourCounter(g *game.Game, item *game.StackItem) error {
 	return AddCounter{Target: item.SourceCardID, Kind: "hour", N: 1}.Apply(NewContext(g, item))
+}
+
+// midnightClockTwelfthHour is "when the twelfth hour counter is put on
+// this artifact": an hour-counter placement on the source whose new
+// total reaches twelve from below.
+func midnightClockTwelfthHour(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	if ev.Kind != game.EventCounterPlaced || ev.Target != source.InstanceID || ev.Label != "hour" || ev.Amount < 12 {
+		return false
+	}
+	before, _ := b12CounterTotalBefore(ev, g)
+	return before < 12
+}
+
+// midnightClockPayoff shuffles the controller's hand and graveyard into
+// their library, draws seven, then exiles the Clock. Only values cross
+// the continuation, never the item or the game it started with.
+func midnightClockPayoff(g *game.Game, item *game.StackItem) error {
+	return midnightClockShuffleAway(g, item.Controller, item.SourceCardID)
+}
+
+func midnightClockShuffleAway(g *game.Game, player, clock uuid.UUID) error {
+	ids := append(allHandCardIDs(g, player), echoOfEonsGraveyardCardIDs(g, player)...)
+	return g.TuckCardsToLibraryThenForEffect(ids, game.TuckOptions{}, func(g *game.Game, _ []uuid.UUID) error {
+		if err := g.ShuffleLibraryForEffect(player); err != nil {
+			return err
+		}
+		if err := g.DrawNForEffect(player, 7); err != nil {
+			return err
+		}
+		if g.Battlefield.Contains(clock) {
+			return g.ExileCardForEffect(clock)
+		}
+		return nil
+	})
 }

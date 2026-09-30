@@ -46,7 +46,7 @@ planned just-in-time from the S12 pain-point triage.
 | S11      | Polish III — hover preview, undo, spectator                          | 5     | [#11](https://github.com/krakenhavoc/cmd_and_ctrl/issues/11)   | 2026-09-11 | **done**    |
 | S11.5    | Per-user settings and preferences (mini)                             | 5     | [#82](https://github.com/krakenhavoc/cmd_and_ctrl/issues/82)   | 2026-09-18 | **done**    |
 | S12      | Deploy + 4-player go-live with friends                               | 6     | [#12](https://github.com/krakenhavoc/cmd_and_ctrl/issues/12)   | 2026-09-25 | **done**    |
-| S12.5    | Discord identity for players (OAuth + bot + presence)                | 6     | [#59](https://github.com/krakenhavoc/cmd_and_ctrl/issues/59)   | 2026-10-09 | planned     |
+| S12.5    | Discord identity for players (OAuth + bot + presence)                | 6     | [#59](https://github.com/krakenhavoc/cmd_and_ctrl/issues/59)   | 2026-10-09 | in progress |
 | S13      | Priority foundation (rules graft kickoff)                            | 7     | [#62](https://github.com/krakenhavoc/cmd_and_ctrl/issues/62)   | 2026-05-17 | **done**    |
 | S13.1    | Stack: cast/resolve/target/counter/trigger/SBA                       | 7     | [#63](https://github.com/krakenhavoc/cmd_and_ctrl/issues/63)   | 2026-06-14 | **done**    |
 | S13.2    | Counter mechanics (SBAs + player counters + UI)                      | 7     | [#79](https://github.com/krakenhavoc/cmd_and_ctrl/issues/79)   | 2026-06-28 | **done**    |
@@ -509,40 +509,40 @@ Every "out of scope" deferral from the initial planning pass is pulled into this
 
 **Discord OAuth (core):**
 
-- [ ] Register the Discord application; `CMDCTRL_DISCORD_CLIENT_ID` / `CMDCTRL_DISCORD_CLIENT_SECRET` env vars (dev + prod). Callback URLs for both environments registered with Discord.
-- [ ] Server routes: `GET /auth/discord/start?game=<id>&t=<invite>` builds the Discord authorize URL with PKCE + state; `GET /auth/discord/callback` exchanges the code, calls `/users/@me`, completes `Lobby.Join` on the bound invite, mints the session.
-- [ ] Server-side state store (`game_id`, `invite_token`, `pkce_verifier`, 5-minute TTL) — reuse the pattern from `auth.MemoryAuthenticator`; no schema migration.
-- [ ] Extend `auth.Principal` with optional `DiscordID`, `DiscordUsername`, `DiscordAvatarHash`, `DisplayName`. `MemoryAuthenticator` preserves them across `Validate`.
-- [ ] Extend `lobby.SeatInfo` with `display_name` (Discord `global_name`, fallback username, final fallback manual name) and `avatar_url`.
-- [ ] Client: `Join.svelte` gets a primary "Sign in with Discord" button; manual name-entry kept as fallback.
+- [x] Register the Discord application; `CMDCTRL_DISCORD_CLIENT_ID` / `CMDCTRL_DISCORD_CLIENT_SECRET` env vars (dev + prod). Callback URLs for both environments registered with Discord.
+- [x] Server routes: `GET /auth/discord/start?game=<id>&t=<invite>` builds the Discord authorize URL with PKCE + state; `GET /auth/discord/callback` exchanges the code, calls `/users/@me`, completes `Lobby.Join` on the bound invite, mints the session.
+- [x] Server-side state store (`game_id`, `invite_token`, `pkce_verifier`, 5-minute TTL) — reuse the pattern from `auth.MemoryAuthenticator`; no schema migration.
+- [x] Extend `auth.Principal` with optional `DiscordID`, `DiscordUsername`, `DiscordAvatarHash`, `DisplayName`. `MemoryAuthenticator` preserves them across `Validate`.
+- [x] Extend `lobby.SeatInfo` with `display_name` (Discord `global_name`, fallback username, final fallback manual name) and `avatar_url`. *(Shipped as `discord_id` + `discord_avatar_hash`; the client builds the avatar URL, there is no `avatar_url` field.)*
+- [x] Client: `Join.svelte` gets a primary "Sign in with Discord" button; manual name-entry kept as fallback.
 
 **Avatar rendering:**
 
 - [ ] `client/src/lib/protocol.ts` — `PlayerView` / `SeatInfo` grow the two optional fields.
-- [ ] `PlayerHeader.svelte` — render a 24px circular avatar before `.seat-dot` when present.
-- [ ] Lobby seat list, any S10 politics / commander-damage UI that names seats — pick up `displayName` / `avatarUrl`.
-- [ ] Server-side avatar cache (`$CMDCTRL_DATA_DIR/avatars/<discord_id>/<hash>.png`): on first fetch hit `cdn.discordapp.com`, cache with immutable headers, re-fetch when hash changes. Client requests `/avatars/<discord_id>`; server serves from cache or proxies on miss. (Avoids embedding Discord CDN URLs directly in the state stream.)
+- [x] `PlayerHeader.svelte` — render a 24px circular avatar before `.seat-dot` when present.
+- [x] Lobby seat list, any S10 politics / commander-damage UI that names seats — pick up `displayName` / `avatarUrl`.
+- [x] Server-side avatar cache (`$CMDCTRL_DATA_DIR/avatars/<discord_id>/<hash>.png`): on first fetch hit `cdn.discordapp.com`, cache with immutable headers, re-fetch when hash changes. Client requests `/avatars/<discord_id>`; server serves from cache or proxies on miss. (Avoids embedding Discord CDN URLs directly in the state stream.)
 
 **Discord bot (`cmd_and_ctrl-bot`):**
 
 - [x] New top-level directory `bot/` or a cmd under `server/cmd/bot/` — picked `server/cmd/bot/` + `server/internal/bot/` in ADR 0004 (shared module, separate binary). Go, using `bwmarrin/discordgo`. Allow-list gate via `CMDCTRL_DISCORD_GUILD_IDS`.
 - [x] Slash command `/c2-invite [name]` — calls server `POST /games` with admin credentials (bot holds `CMDCTRL_ADMIN_TOKEN` via env), posts the invite link back to the channel (channel-visible embed; ephemeral-toggle deferred).
-- [ ] Slash command `/c2-invite-dm @user [name]` — deferred (needs invite-side pre-bind of DiscordID; not in MVP).
+- [x] Slash command `/c2-invite-dm <user> [game] [name]` — shipped in [#613](https://github.com/krakenhavoc/cmd_and_ctrl/issues/613): now a thin client of the server route `POST /games/{id}/invites/dm` (ADR 0051 decision 5), not a gateway DM.
 - [x] Slash command `/c2-games` — ephemeral list of active/lobby games (invite tokens already stripped by `Lobby.List`). `/c2-end <id>` deferred (destructive, wants confirmation UX) — shipped as an S34 follow-up, [#614](https://github.com/krakenhavoc/cmd_and_ctrl/issues/614).
 - [x] Bot deploys as a second systemd unit on the same VPS (S12 infra). Unit at `deploy/cmd-and-ctrl-bot.service`; env file separate from the server's (ADR 0004 §6).
 
 **Rich Presence:**
 
-- [ ] Opt-in toggle in the client ("Show this game on Discord"); stored in `localStorage` alongside the session.
-- [ ] When enabled, client uses Discord's RPC over the local IPC socket (`discord-rpc` from npm or a thin WebSocket wrapper) to publish presence: "In a Commander game — Turn 5, 3 opponents alive".
-- [ ] Presence updates on phase change + life change (throttled to 1 update / 15 s to stay inside Discord's rate limits).
-- [ ] Presence clears on game end / browser close.
+- [ ] Opt-in toggle in the client ("Show this game on Discord"); stored in `localStorage` alongside the session. *(Not built; tracked with the S12.5 leftovers in [#607](https://github.com/krakenhavoc/cmd_and_ctrl/issues/607).)*
+- [ ] When enabled, client uses Discord's RPC over the local IPC socket (`discord-rpc` from npm or a thin WebSocket wrapper) to publish presence: "In a Commander game — Turn 5, 3 opponents alive". *(Not built; tracked with the S12.5 leftovers in [#607](https://github.com/krakenhavoc/cmd_and_ctrl/issues/607).)*
+- [ ] Presence updates on phase change + life change (throttled to 1 update / 15 s to stay inside Discord's rate limits). *(Not built; tracked with the S12.5 leftovers in [#607](https://github.com/krakenhavoc/cmd_and_ctrl/issues/607).)*
+- [ ] Presence clears on game end / browser close. *(Not built; tracked with the S12.5 leftovers in [#607](https://github.com/krakenhavoc/cmd_and_ctrl/issues/607).)*
 
 **Re-link after the fact:**
 
-- [ ] `GET /auth/discord/link` — already-signed-in player reopens the invite/OAuth loop to attach (or swap) their Discord identity onto an existing seat without leaving the game.
-- [ ] Client surfaces a "Link Discord" row in a session-settings panel (new — probably a small menu in the corner of `Game.svelte`).
-- [ ] Server merges Discord fields onto the existing `Principal` + broadcasts a `SeatInfo` update delta so opponents immediately see the avatar/name swap.
+- [x] `GET /auth/discord/link` — already-signed-in player reopens the invite/OAuth loop to attach (or swap) their Discord identity onto an existing seat without leaving the game.
+- [x] Client surfaces a "Link Discord" row in a session-settings panel (new — probably a small menu in the corner of `Game.svelte`).
+- [x] Server merges Discord fields onto the existing `Principal` + broadcasts a `SeatInfo` update delta so opponents immediately see the avatar/name swap.
 
 **Docs:**
 
@@ -568,6 +568,7 @@ Every "out of scope" deferral from the initial planning pass is pulled into this
 6. All four of the above work against the deployed VPS from S12.
 
 ---
+
 
 ## S13 — Priority foundation (rules graft kickoff)
 
@@ -2655,12 +2656,12 @@ The server has only ever had seats. A session bound one socket to one game and o
 
 ### Sub-PR 6 — tablemates, invite picker, DM invites
 
-**Open — the only sub-PR left.** [#613](https://github.com/krakenhavoc/cmd_and_ctrl/issues/613) (the `/c2-invite-dm` slash command) is a thin client of this sub-PR's route and follows it.
+[#613](https://github.com/krakenhavoc/cmd_and_ctrl/issues/613) (the `/c2-invite-dm` slash command, a thin client of this sub-PR's route) has shipped.
 
 - [ ] Tablemates query (ADR 0051 decision 8): people who share a `seats` row with the caller, recency-ordered, offered as suggestions when inviting
 - [ ] Invite picker UI over that query
 - [ ] `POST /games/{id}/invites/dm` — the server sends the DM itself over Discord REST with a bot token; the gateway bot does not open the DM
-- [ ] [#613](https://github.com/krakenhavoc/cmd_and_ctrl/issues/613) — `/c2-invite-dm @user`, a thin client of the route above
+- [x] [#613](https://github.com/krakenhavoc/cmd_and_ctrl/issues/613) — `/c2-invite-dm @user`, a thin client of the route above
 
 ### Sub-PR 7 — `sessions_invalid_before`: logout-everywhere, admin remove-user
 

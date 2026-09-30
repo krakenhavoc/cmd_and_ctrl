@@ -486,6 +486,10 @@ type LegalTargetsView struct {
 	// client substitutes the X it collected in the cost prompts.
 	// Added in S22 alongside convoke / waterbend.
 	CountFromX bool `json:"count_from_x,omitempty"`
+	// UpToX, with CountFromX, makes the announced X a ceiling rather
+	// than the exact count: "up to X target cards". The picker lets
+	// the player confirm with fewer.
+	UpToX bool `json:"up_to_x,omitempty"`
 
 	// Label is the clause's printed wording — "target creature you
 	// control". Absent for a single-clause statement, where the
@@ -970,6 +974,13 @@ type StackItemView struct {
 	Distribution map[string]int `json:"distribution,omitempty"`
 	HoldPriority bool           `json:"hold_priority,omitempty"`
 	SplitSecond  bool           `json:"split_second,omitempty"`
+	// CantBeCountered is true for a spell that can't be countered:
+	// its own printed "this spell can't be countered" (Supreme
+	// Verdict, Thrun) or the mana that paid for it (Cavern of Souls,
+	// Delighted Halfling, Boseiju, #1547). Read from the engine's one
+	// gate, so the badge and the counter verbs cannot disagree. Public:
+	// it is a fact about a spell everyone can see. Added in #1553.
+	CantBeCountered bool `json:"cant_be_countered,omitempty"`
 	// AltCost is the key of the alternative cost this spell was cast
 	// for — "overload", "evoke", "cleave" — empty for an ordinary
 	// cast (S22). Public information the moment it is announced, and
@@ -3086,6 +3097,15 @@ type TurnView struct {
 	PriorityHolder int    `json:"priority_holder"`
 	Phase          string `json:"phase"`
 	Step           string `json:"step"`
+	// Extra marks an extra turn (CR 500.7, ADR 0059 Decision 11).
+	// Number stays the round, so the board shows the same "T3" with an
+	// "Extra turn" mark rather than a new number (owner decision 1).
+	Extra bool `json:"extra,omitempty"`
+	// ExtraTurns lists the seat indices of queued extra turns in the
+	// order they will be taken, next first. A queued turn of a player
+	// who has left is omitted: it will not begin (CR 800.4k). Public
+	// information — the spell that queued it was public.
+	ExtraTurns []int `json:"extra_turns,omitempty"`
 	// BlockDecisionSeats lists the seat indices that owe a
 	// declare-blockers decision right now — under attack, with at
 	// least one creature that could legally block one of the
@@ -3232,6 +3252,8 @@ func ViewOfGame(g *game.Game) GameView {
 				PriorityHolder: g.Turn.PriorityHolder,
 				Phase:          string(g.Turn.Phase),
 				Step:           string(g.Turn.Step),
+				Extra:          g.Turn.Extra,
+				ExtraTurns:     viewOfExtraTurns(g),
 				// #328: who still owes a block declaration. Read
 				// surface takes the lock we already hold and the
 				// layers ReadSnapshot just refreshed.
@@ -4690,7 +4712,7 @@ func stampTargetSetRule(g *game.Game, v *LegalTargetsView, cards []uuid.UUID, sp
 }
 
 func viewOfLegalTargets(lt game.LegalTargets, spec *game.TargetSpec) *LegalTargetsView {
-	view := &LegalTargetsView{Min: spec.Min, Max: spec.Max, CountFromX: spec.CountFromX, Distinct: spec.Distinct, Divide: divideView(spec.Divide)}
+	view := &LegalTargetsView{Min: spec.Min, Max: spec.Max, CountFromX: spec.CountFromX, UpToX: spec.CountFromX && spec.UpToX, Distinct: spec.Distinct, Divide: divideView(spec.Divide)}
 	for _, id := range lt.Players {
 		view.Players = append(view.Players, id.String())
 	}
@@ -6011,7 +6033,9 @@ func viewOfStackItemsInStackOrder(g *game.Game) []StackItemView {
 	if g.Stack != nil {
 		for _, c := range g.Stack.Cards {
 			if item, ok := g.StackMeta[c.InstanceID]; ok && item != nil {
-				entries = append(entries, entry{item.Seq, viewOfStackItem(item)})
+				v := viewOfStackItem(item)
+				v.CantBeCountered = g.SpellCantBeCounteredForEffect(item.ID)
+				entries = append(entries, entry{item.Seq, v})
 				seen[item.ID] = true
 			}
 		}
@@ -8097,7 +8121,7 @@ func sacrificeCostOptions(g *game.Game, controller uuid.UUID, spec *game.TargetS
 	lt := g.SpecCandidatesForEffect(controller, spec)
 	var ids []uuid.UUID
 	for _, id := range lt.Cards {
-		if selfToo && id == sourceID {
+		if (selfToo || spec.ExcludeSource) && id == sourceID {
 			continue
 		}
 		if c, ok := g.LookupCardForEffect(id); ok && c.Controller == controller {
@@ -8400,4 +8424,18 @@ func modeMemoryWire(m game.ModeMemory) string {
 		return "ever"
 	}
 	return ""
+}
+
+// viewOfExtraTurns is TurnView.ExtraTurns: the queued extra turns'
+// seats, next first, without the turns of players who have left.
+// Caller holds g's read lock.
+func viewOfExtraTurns(g *game.Game) []int {
+	var out []int
+	for _, et := range g.ExtraTurnsQueuedForEffect() {
+		if et.Seat < 0 || et.Seat >= len(g.Seats) || g.Seats[et.Seat] == nil || g.Seats[et.Seat].Eliminated {
+			continue
+		}
+		out = append(out, et.Seat)
+	}
+	return out
 }

@@ -47,19 +47,6 @@ func b03Nonbasic() CardPredicate {
 	}
 }
 
-// b03NotNamed excludes a card by name. It is how "sacrifice ANOTHER
-// creature" is written on Warren Soultrader: TargetSpec.CardOK never
-// receives the source (#350 lists "another/other" as an open gap),
-// so the source cannot be excluded by instance — but it can by
-// name, which in a singleton format is the same creature. A token
-// copy of the Soultrader would also be excluded, which is WEAKER
-// than printed, never stronger.
-func b03NotNamed(name string) CardPredicate {
-	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
-		return c.Name != name
-	}
-}
-
 // b03IsLandCard / b03IsArtifactCard are SearchLibrary predicates
 // (which take a bare game.Card rather than a CardPredicate).
 func b03IsLandCard(c game.Card) bool     { return c.IsLand() }

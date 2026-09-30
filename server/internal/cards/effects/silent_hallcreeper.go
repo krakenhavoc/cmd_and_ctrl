@@ -43,11 +43,8 @@ const silentHallcreeperLabel = "Silent Hallcreeper — choose one"
 // counters, and — being the same object — its memory, though as a copy
 // it no longer has this trigger to consult it.
 //
-// "Another" is the catalog's by-name exclusion (b03NotNamed), because
-// a mode's target clause is static and is never handed its source: a
-// second creature named Silent Hallcreeper — a Clone of this one — is
-// not offered. Weaker than printed in that corner only, never
-// stronger, the reading Departed Deckhand ships with.
+// "Another" is object identity (effects.Another, CR 109.1): a Clone of this
+// creature, or any second creature with the same name, is a legal target.
 func init() {
 	Register(Spec{
 		OracleID:     "6aea681e-88d2-48df-a717-3ce0bc95205b",
@@ -74,7 +71,7 @@ func silentHallcreeperTrigger() game.TriggeredAbility {
 				return DrawCards{Player: item.Controller, N: 1}.Apply(ctx)
 			}),
 		ModeDoing("This creature becomes a copy of another target creature you control.",
-			TargetCreature("another target creature you control", YouControl(), b03NotNamed("Silent Hallcreeper")),
+			Another(TargetCreature("another target creature you control", YouControl())),
 			func(item *game.StackItem, ctx *Context, occ int) error {
 				t, ok := ModeTarget(ctx, occ)
 				if !ok {
