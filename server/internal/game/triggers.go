@@ -415,6 +415,15 @@ type TriggerOptionalPrompt struct {
 	// controller. Nil means "use source.Controller". Runs under
 	// g.mu — MUST NOT take public locks.
 	Chooser func(ev Event, source *Card, g *Game) uuid.UUID
+
+	// Trade declares what answering "yes" DOES: it trades the source
+	// permanent for the object the trigger is about — Perplexing
+	// Chimera's "you may exchange control of this creature and that
+	// spell" (ADR 0104). Nothing in the engine reads it. It rides the
+	// prompt to the wire as `trade_for` (PendingChoice.TradeSubject), so
+	// a bot can weigh the trade instead of saying yes to every trigger
+	// it controls, which is the heuristic's default for a "you may".
+	Trade bool
 }
 
 // triggerHarvester is the process-lifetime listener that

@@ -16,7 +16,7 @@ import "github.com/google/uuid"
 //
 //	CR 715.3d  an Adventure spell that RESOLVES is exiled instead of
 //	           being put into its owner's graveyard;
-//	CR 715.4   its owner may then cast it as a creature spell from
+//	CR 715.3d  its controller may then cast it as a creature spell from
 //	           exile, for as long as it stays there;
 //	(715.3d's "instead of") everything else — countered, fizzled,
 //	           discarded, milled — is an ordinary card going to an
@@ -45,7 +45,7 @@ import "github.com/google/uuid"
 // graveyard", not something the card's text did — so the guard reads
 // false and the frame reaches the route. A spell whose OWN text
 // exiled it has already left, gets no route, and correctly gets no
-// CR 715.4 grant either, because CR 715.3d never applied to it.
+// CR 715.3d grant either, because CR 715.3d never applied to it.
 //
 // The grant itself is ADR 0066's one model and nothing new: a
 // card-scoped standing CastPermission over exile, naming the CREATURE
@@ -58,7 +58,7 @@ import "github.com/google/uuid"
 //	                       the moment the card leaves exile (cast,
 //	                       Bojuka Bog'd, anything) it is a new object
 //	                       the grant does not name.
-//	Faces: []int{0}        "as a creature spell", CR 715.4 — the one
+//	Faces: []int{0}        "as a creature spell", CR 715.3d — the one
 //	                       thing the permission could not say before
 //	                       this issue, because Face was a bare int
 //	                       whose zero meant "no opinion" and the
@@ -66,7 +66,7 @@ import "github.com/google/uuid"
 //
 // Which is also why the restriction belongs on the PERMISSION rather
 // than on the card: a Ragavan that impulse-exiles an adventure card
-// opens both halves (its grant names no face), and CR 715.4's grant
+// opens both halves (its grant names no face), and CR 715.3d's grant
 // opens one. Same card, same zone, two different answers — so the
 // answer cannot live on the card's own CastableFaces.
 
@@ -76,7 +76,7 @@ import "github.com/google/uuid"
 // characteristics are the creature's everywhere but the stack.
 const adventureSpellFace = 1
 
-// adventureCreatureFace is the face CR 715.4 opens from exile.
+// adventureCreatureFace is the face CR 715.3d opens from exile.
 const adventureCreatureFace = 0
 
 // castAsAdventure reports whether `c` is a card with an Adventure
@@ -92,22 +92,27 @@ func castAsAdventure(c Card) bool {
 	return c.Layout == LayoutAdventure && c.ActiveFace == adventureSpellFace
 }
 
-// grantAdventureCastFromExileLocked writes CR 715.4's permission onto
-// the card that just landed in exile: its OWNER may cast it, as the
-// creature (face 0), for as long as it remains there.
+// grantAdventureCastFromExileLocked writes CR 715.3d's permission onto
+// the card that just landed in exile: `player` — the Adventure spell's
+// CONTROLLER as it resolved — may cast it, as the creature (face 0),
+// for as long as it remains there.
 //
-// The owner rather than the controller, and CR 715.4 says so in as
-// many words — a Bonecrusher Giant whose Stomp was cast off somebody
-// else's Ragavan grant is still its owner's creature to cast later.
+// The controller rather than the owner, because CR 715.3d says so in
+// as many words: "its controller exiles it. For as long as that card
+// remains exiled, that player may play it." This used to grant the
+// owner and cite CR 715.4, the older number for the rule; ADR 0104
+// (owner decision 4) moved it to the pinned text. A Stomp stolen with
+// Aethersnatch, or cast off somebody else's Ragavan grant, is the
+// resolving player's creature to cast later.
 //
 // A card that is no longer in exile is not an error and grants
 // nothing. The route's continuation runs from every terminal outcome,
 // including the ones where nothing moved: an Adventure commander
 // whose owner took CR 903.9's offer is in the command zone, where
-// CR 715.4 has nothing to say and CR 903.4 already lets them cast it.
+// CR 715.3d has nothing to say and CR 903.4 already lets them cast it.
 //
 // Caller must hold g.mu (write).
-func (g *Game) grantAdventureCastFromExileLocked(cardID uuid.UUID) {
+func (g *Game) grantAdventureCastFromExileLocked(cardID, player uuid.UUID) {
 	if g.Exile == nil {
 		return
 	}
@@ -116,18 +121,21 @@ func (g *Game) grantAdventureCastFromExileLocked(cardID uuid.UUID) {
 			continue
 		}
 		exiled := g.Exile.Cards[i]
+		if player == uuid.Nil {
+			player = exiled.Owner
+		}
 		g.GrantCastPermissionToCardsForEffect(CastPermission{
-			Player: exiled.Owner,
+			Player: player,
 			Zone:   ZoneExile,
-			// CR 715.4 has no end: "for as long as it remains
+			// CR 715.3d has no end: "for as long as it remains
 			// exiled". ADR 0063's vocabulary for that is
 			// WhileInZone (#945), and ObjectEpoch is what enforces
 			// it — see the file header.
 			Duration: WhileInZoneDuration(),
-			// CR 715.4: the creature, and only the creature. The
+			// CR 715.3d: the creature, and only the creature. The
 			// Adventure half was cast once and is spent.
 			Faces: []int{adventureCreatureFace},
-			// CR 715.4 says CAST. An adventure card's face 0 is
+			// CR 715.3d says CAST. An adventure card's face 0 is
 			// always a creature card (CR 715.2a), so nothing is
 			// stranded by this; it says what the rule says.
 			CastOnly: true,

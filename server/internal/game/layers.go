@@ -817,6 +817,11 @@ func (g *Game) recomputeLayersLocked() {
 	g.materialiseDurationCopiesLocked()
 	g.layerPassLocked()
 	changed := g.materialiseControlLocked()
+	// ADR 0104: layer 2 for the SPELLS on the stack — the same
+	// setController records, pinned to stack objects, materialised onto
+	// StackItem.Controller. After the battlefield so an exchange of a
+	// spell and a permanent lands both halves in one pass.
+	spellChanged := g.stackControlPassLocked()
 	// #1313: untap holds end with their CR 611.2b duration, and the
 	// board those durations read — who controls the source, whether it
 	// is still here — is settled only now, after layer 2 has been
@@ -850,6 +855,7 @@ func (g *Game) recomputeLayersLocked() {
 	// invalidates is picked up by the next pass exactly as any other
 	// mutation is. See emitControlChangesLocked.
 	g.emitControlChangesLocked(changed)
+	g.emitSpellControlChangesLocked(spellChanged)
 }
 
 // layerPassLocked runs one complete CR 613 application over the

@@ -381,6 +381,18 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 		return 0, "coin: other call"
 
 	case choiceTriggerPrompt, choiceOptionalReplacement, choiceEntryPayLife, choicePayUnless:
+		// ADR 0104 (owner decision 8): a "yes" that TRADES the source
+		// for a spell — Perplexing Chimera — is taken only when the
+		// spell is worth the creature: mana value 5 or more, or a
+		// permanent spell, which the bot keeps as a permanent.
+		if kind == choiceTriggerPrompt && ch.TradeFor != "" {
+			if !st.tradeIsWorthIt(ch.TradeFor) {
+				if cp.Apply != nil && *cp.Apply {
+					return 0.25, "trade: the spell is not worth the creature"
+				}
+				return 1, "trade: keep the creature"
+			}
+		}
 		// The enumerator only offers "pay" when the cost is payable,
 		// and a trigger the bot controls is a trigger it wants. Say
 		// yes, but not so emphatically that a targeted alternative
@@ -410,6 +422,22 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 		return 0.5, "declared order"
 	}
 	return 0, "unrecognised choice"
+}
+
+// tradeIsWorthIt is owner decision 8 of ADR 0104: trade a creature for
+// a spell (Perplexing Chimera) when the spell's mana value is 5 or
+// more, or when it is a permanent spell — one that stays with the bot
+// as a permanent. A spell the view cannot find is not worth it: the
+// trade gives up a certain creature for an unknown.
+func (st *state) tradeIsWorthIt(spellID string) bool {
+	c := st.stack[spellID]
+	if c == nil {
+		return false
+	}
+	if manaValue(c.ManaCost, 0) >= 5 {
+		return true
+	}
+	return !isType(c, "instant") && !isType(c, "sorcery")
 }
 
 // valueKeptInHand scores one choose_cards answer over the bot's own
