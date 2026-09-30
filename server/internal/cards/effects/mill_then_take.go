@@ -86,6 +86,12 @@ func mayTakeOneFromYourGraveyard(ctx *Context, match CardPredicate, question str
 // closure holding the old one would move a card in a game nobody is
 // looking at.
 func mayTakeOneIntoYourHand(ctx *Context, candidates []uuid.UUID, question string) error {
+	return takeOneIntoYourHand(ctx, candidates, question, 0)
+}
+
+// takeOneIntoYourHand is mayTakeOneIntoYourHand with the floor named:
+// 0 is "you may return a card", 1 is "return a card" (Ghostly Dancers).
+func takeOneIntoYourHand(ctx *Context, candidates []uuid.UUID, question string, min int) error {
 	if len(candidates) == 0 {
 		return nil
 	}
@@ -95,7 +101,7 @@ func mayTakeOneIntoYourHand(ctx *Context, candidates []uuid.UUID, question strin
 		Source:   ctx.Source(),
 		Question: question,
 		Cards:    candidates,
-		Min:      0,
+		Min:      min,
 		Max:      1,
 		Zone:     game.ZoneGraveyard,
 		Then: func(g *game.Game, picked []uuid.UUID) error {
