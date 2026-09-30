@@ -190,6 +190,12 @@ const (
 	// a SEAT, so it rides TargetSeat like every other player
 	// reference in this log and `Choice` is empty.
 	LogChoosePlayer LogKind = "choose_player"
+	// LogChooseController — a player chose the opponent a permanent
+	// enters under the control of (ADR 0102, CR 614.12): Captive
+	// Audience, Pendant of Prosperity. "Alice chose Bob to control
+	// Captive Audience." The chosen seat rides TargetSeat, as in
+	// LogChoosePlayer.
+	LogChooseController LogKind = "choose_controller"
 	// LogChooseCards — a player answered one of #1214's three
 	// resolution-time picks (CR 608.2): an opponent choosing from a
 	// set you revealed, somebody choosing among another player's
@@ -1075,6 +1081,17 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		}
 		return base, true
 
+	case game.EventEntryControllerChosen:
+		// ADR 0102. Actor chose, Target is the seat the permanent enters
+		// under, CardID the permanent. Not setTarget, for
+		// EventPlayerChosen's reason: the answer is always a seat.
+		base.Kind = LogChooseController
+		base.CardID = uuidStringOrEmpty(ev.CardID)
+		if seat := seatOf(ev.Target); seat != NoSeat {
+			base.TargetSeat = &seat
+		}
+		return base, true
+
 	case game.EventCardsChosen:
 		// #1214, CR 608.2. Actor chose, Source asked, CardID is the one
 		// card when there was one. The asking card rides `Target` so
@@ -1759,6 +1776,12 @@ func renderLogText(e LogEvent, cardName, targetName string) string {
 			return fmt.Sprintf("%s chose a player for %s", actor, card)
 		}
 		return fmt.Sprintf("%s chose %s for %s", actor, target, card)
+	case LogChooseController:
+		// ADR 0102. `target` is the seat name (or "a player").
+		if e.TargetSeat == nil {
+			return fmt.Sprintf("%s chose a player to control %s", actor, card)
+		}
+		return fmt.Sprintf("%s chose %s to control %s", actor, target, card)
 	case LogChooseCards:
 		// #1214. `card` is the one card chosen (or "a card" for a
 		// viewer who may not identify it), `target` the card that

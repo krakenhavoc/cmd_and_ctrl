@@ -606,6 +606,23 @@ type ReplacementEvent struct {
 	// PLAYED, so it must not spend the turn's land drop.
 	landPlay bool
 
+	// landPlayer is the player whose land drop a landPlay entry
+	// spends, captured before the window opens. ev.Actor is the
+	// would-be CONTROLLER, and an entry-controller effect (ADR 0102)
+	// rewrites it; the land drop belongs to whoever PLAYED the land
+	// whatever it enters under, so the tally reads this and not Actor.
+	// uuid.Nil falls back to Actor, which is every entry built before
+	// the field existed.
+	landPlayer uuid.UUID
+
+	// entryControllerSet and entryControllerPrior are an
+	// entry-controller effect's bookkeeping (ADR 0102 decision 2): the
+	// first time one re-stamps the entering card's controller, what the
+	// card carried is remembered so a cancelled entry can put it back.
+	// See setEntryControllerLocked.
+	entryControllerSet   bool
+	entryControllerPrior uuid.UUID
+
 	// zoneRoute is the exit half's answer to entryResumable: the
 	// per-destination bookkeeping (to the bottom of the library, face
 	// down in exile, this was a mill, this was a counterspell, this
@@ -1139,6 +1156,27 @@ type ReplacementEffect struct {
 	// no printed copy effect combines with. See copy_choice.go.
 	CopySelector *CopySelector
 
+	// EntryController, when non-nil, makes this a "this permanent
+	// enters under the control of an opponent of your choice" effect
+	// (CR 614.1d, CR 614.12) — Captive Audience, Pendant of
+	// Prosperity, Abby, Merciless Soldier, Xantcha, Sleeper Agent. The
+	// apply-loop settles it inline or queues a
+	// PendingChoiceEntryController and bails; the answer becomes the
+	// would-be controller the permanent lands under. Replace is never
+	// called. Mandatory: an entry that cannot pause takes the default
+	// rather than skipping it. See entry_controller.go and ADR 0102.
+	EntryController *EntryControllerChoice
+
+	// ChangesEntryController declares CR 616.1b's tier: this effect
+	// would modify under whose control an object enters, so it is
+	// applied before every other effect in the window, and when
+	// several such effects apply only they are ordered
+	// (entryControlTier). Declared by the constructor, never inferred
+	// from Replace. Every EntryController effect sets it; a later
+	// "enters under your control instead" (Gather Specimens) would set
+	// it too.
+	ChangesEntryController bool
+
 	// Preemptive declares a RULES-LEVEL shield that applies before
 	// any other applicable replacement, with no CR 616 ordering
 	// prompt. Exactly one effect sets it: protection's damage
@@ -1402,6 +1440,11 @@ func (g *Game) applyReplacementsLocked(ev *ReplacementEvent) (*ReplacementEvent,
 			g.applyFirstGatheredLocked(ev, applicable[i:i+1])
 			continue
 		}
+		// CR 616.1b (ADR 0102): an effect that would change under whose
+		// control the object enters is applied before any other, so
+		// only those are candidates on this pass. The rest are gathered
+		// again afterwards, against the new controller (CR 616.1f).
+		applicable = entryControlTier(applicable)
 		if len(applicable) > 1 {
 			// CR 616: affected player picks order. Queue a prompt
 			// and stash the resume frame; caller returns without
@@ -1457,6 +1500,18 @@ func (g *Game) applyReplacementsLocked(ev *ReplacementEvent) (*ReplacementEvent,
 		}
 		// Exactly one applicable.
 		chosen := applicable[0]
+		if chosen.effect.EntryController != nil {
+			// "Enters under the control of an opponent of your choice"
+			// (ADR 0102). Mandatory, so it is asked BEFORE the
+			// cannot-pause skip below: an entry that cannot pause takes
+			// the default opponent rather than skipping the effect.
+			// entry_controller.go settles the inline cases; a queued
+			// prompt bails.
+			if g.offerEntryControllerLocked(ev, chosen) {
+				return ev, errReplacementPending
+			}
+			continue
+		}
 		if ev.mustSettleNow && asksItsOwnQuestion(chosen.effect) {
 			// #793, the single-effect half of the branch above: an
 			// effect that would ask its controller a question cannot
@@ -1569,7 +1624,7 @@ func allPureCancels(applicable []activeReplacement) bool {
 		return false
 	}
 	for _, a := range applicable {
-		if !a.effect.PureCancel || asksItsOwnQuestion(a.effect) {
+		if !a.effect.PureCancel || asksItsOwnQuestion(a.effect) || a.effect.EntryController != nil {
 			return false
 		}
 	}
@@ -1611,7 +1666,7 @@ func sameModification(applicable []activeReplacement) bool {
 		return false
 	}
 	for _, a := range applicable {
-		if a.identity != want || asksItsOwnQuestion(a.effect) {
+		if a.identity != want || asksItsOwnQuestion(a.effect) || a.effect.EntryController != nil {
 			return false
 		}
 	}
@@ -1667,6 +1722,12 @@ func (g *Game) applyFirstGatheredLocked(ev *ReplacementEvent, applicable []activ
 	}
 	chosen := applicable[0]
 	g.replacementsAppliedThisEvent[ev.ID][chosen.id] = true
+	if chosen.effect.EntryController != nil {
+		// ADR 0102: mandatory, and nobody can be asked on this path, so
+		// the default opponent — never a skip.
+		g.settleEntryControllerByDefaultLocked(ev, chosen)
+		return
+	}
 	if chosen.effect.Replace != nil {
 		if err := chosen.effect.Replace(ev, g, chosen.source); err != nil {
 			g.EmitEvent(Event{Kind: EventEffectError, ErrorMsg: err.Error()})
@@ -1927,6 +1988,48 @@ func (g *Game) gatherActiveReplacementsLocked(ev *ReplacementEvent) []activeRepl
 					id:       id,
 					identity: replacementIdentity{card: key, slot: repIdx, controller: src.Controller},
 				})
+			}
+			// ADR 0102 decision 6, CR 614.12: once an entering permanent
+			// has been given a copy to enter as (CR 616.1c, a Clone's
+			// answer), which effects apply is judged "as it would exist
+			// on the battlefield" — as the copy. So the COPIED card's
+			// own entry replacements are gathered too: a Clone copying
+			// Abby, Merciless Soldier enters under the control of an
+			// opponent. Their IDs sit one stride above the card's own,
+			// so a copied slot 0 is never mistaken for the Clone's
+			// already-applied selector. A copied copy selector is not
+			// gathered: the copy has been chosen, and asking again would
+			// be a second copy of one entry.
+			if ev.EntersAsCopyOf != nil {
+				copied := entering
+				copied.applyCopy(*ev.EntersAsCopyOf, Card{})
+				ckey := CatalogKey(copied)
+				if ckey != key {
+					creps := CatalogReplacements(ckey)
+					for repIdx := range creps {
+						if repIdx >= MaxCatalogReplacementSlots {
+							break
+						}
+						id := selfReplacementIDBase + MaxCatalogReplacementSlots + ReplacementEffectID(repIdx)
+						if applied[id] {
+							continue
+						}
+						eff := creps[repIdx]
+						if eff.CopySelector != nil || !eventKindMatches(eff.Watches, ev.Kind) {
+							continue
+						}
+						src := copied
+						if eff.AppliesTo != nil && !eff.AppliesTo(ev, g, &src) {
+							continue
+						}
+						out = append(out, activeReplacement{
+							effect:   eff,
+							source:   &src,
+							id:       id,
+							identity: replacementIdentity{card: ckey, slot: repIdx, controller: src.Controller},
+						})
+					}
+				}
 			}
 		}
 	}

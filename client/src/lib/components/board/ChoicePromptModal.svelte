@@ -518,6 +518,18 @@
     answer({ option_index: index });
   }
 
+  // ADR 0102 entry_controller — "enters under the control of an
+  // opponent of your choice" (CR 614.12a). The same seat buttons and
+  // the same {option_index} answer as option_pick; what differs is the
+  // sentence. The permanent is not on the battlefield yet, and nothing
+  // can happen until an opponent is named.
+  const isEntryController = $derived(active?.kind === "entry_controller");
+  const entryControllerHint = $derived(
+    active?.control_purpose === "benefit"
+      ? "Whoever you choose will control it and get what it does."
+      : "Whoever you choose will control it and live with what it does.",
+  );
+
   // #764 mode_pick — CR 603.3c. A modal TRIGGERED ability's bullet,
   // chosen as the ability is put on the stack. A spell and an
   // activated ability need no prompt (the player who announces is
@@ -1362,6 +1374,24 @@
                     {/each}
                   </span>
                 {/if}
+              </button>
+            </li>
+          {/each}
+        </ul>
+      {:else if isEntryController}
+        <h2 id="choice-title">
+          {active.reason || "Choose an opponent"}
+          <span class="prompt-src" aria-hidden="true">choose an opponent · CR 614.12a</span>
+        </h2>
+        <p class="prompt-hint">
+          It hasn't entered yet: it enters under the control of the opponent you choose.
+          {entryControllerHint}
+        </p>
+        <ul class="pick-options">
+          {#each pickOptions as opt, i (i)}
+            <li>
+              <button type="button" class="pick-option" onclick={() => answerOptionPick(i)}>
+                <span class="pick-label">{opt.label}</span>
               </button>
             </li>
           {/each}

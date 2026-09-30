@@ -99,6 +99,9 @@ type choiceParams struct {
 	Bottom   []string    `json:"bottom"`
 	TopOrder []string    `json:"top_order"`
 	Call     string      `json:"call"`
+	// OptionIndex answers an option_pick or an entry_controller
+	// prompt (ADR 0102): the offset into the prompt's pick_options.
+	OptionIndex *int `json:"option_index"`
 }
 
 type mulliganParams struct {

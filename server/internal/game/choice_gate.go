@@ -231,6 +231,13 @@ var choiceGateDecisions = map[PendingChoiceKind]bool{
 	// suspended on the answer, so a table that could walk past the
 	// question would be answering it by entering.
 	PendingChoiceEntryRevealFromHand: true,
+	// ADR 0102, CR 614.12a. "Enters under the control of an opponent
+	// of your choice." It blocks for entry_reveal_from_hand's reason:
+	// the permanent is mid-entry and the CR 614 pipeline is suspended on
+	// the answer, so a table that could walk past the question would be
+	// answering it by entering — and Xantcha's ruling is that nobody may
+	// act while it is on the battlefield before an opponent controls it.
+	PendingChoiceEntryController: true,
 }
 
 // ChoiceBlocksTable is THE question "does an unanswered prompt of this

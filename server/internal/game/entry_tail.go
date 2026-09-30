@@ -180,6 +180,7 @@ func (g *Game) enterBattlefieldThroughPipelineLocked(ev *ReplacementEvent) (ente
 	}
 	defer g.clearReplacementEventLocked(ev.ID)
 	if out == nil || out.Canceled || out.NewZone != ZoneBattlefield {
+		g.restoreEntryControllerLocked(ev)
 		// CR 614.10 with a null replacement, or a replacement that sent
 		// the card somewhere else. There is no generic "put it wherever
 		// the pipeline said" helper for these sources, so a redirect is
