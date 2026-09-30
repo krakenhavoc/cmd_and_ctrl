@@ -424,3 +424,30 @@ func PermanentsControlledBy(g *game.Game, playerID uuid.UUID) []uuid.UUID {
 	}
 	return out
 }
+
+// tapOrUntapPermanent is "tap or untap <that permanent>" once the
+// permanent is known: the choice between the two actions is made as
+// the effect resolves, through an option pick. Either branch is always
+// legal — tapping a tapped permanent and untapping an untapped one
+// both do nothing — so the first option is one the chooser can always
+// take, as the prompt requires. Shared by Merrow Reejerey's trigger
+// and Gandalf the Grey's first bullet.
+func tapOrUntapPermanent(ctx *Context, cardName string, target uuid.UUID) error {
+	return PickOption{
+		Question: cardName + " — tap or untap that permanent",
+		Options: []game.ChoiceOption{
+			{Label: "Tap it"},
+			{Label: "Untap it"},
+		},
+		Then: func(ctx *Context, index int) error {
+			switch index {
+			case 0:
+				return TapTarget{Target: target}.Apply(ctx)
+			case 1:
+				return UntapTarget{Target: target}.Apply(ctx)
+			default:
+				return nil
+			}
+		},
+	}.Apply(ctx)
+}

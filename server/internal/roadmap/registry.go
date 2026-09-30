@@ -1046,6 +1046,14 @@ var items = []Item{
 		EngineNotes: "prompt inside an entry replacement: #1198's `ReplacementEffect.EntryHandReveal` is the nearest shape — a card choice over the hand, asked inside the CR 614 entry window through `PendingChoiceEntryRevealFromHand` — but it only REVEALS the chosen card. Mox Diamond needs the pick DISCARDED through `discardCardsLocked` (so madness and discard payoffs see it), and the \"if you don't\" answer has to redirect the entering artifact to its owner's graveyard. A `mustSettleNow` entry (a spell putting it onto the battlefield) needs a declared answer too, and the weaker one is to bin the Mox without asking. Shipping the card without this would make it a free Mox, stronger than printed, so it stays out of the catalog. Noted earlier on #295 and #1600.",
 	},
 	{
+		Slug: "enters-under-an-opponents-control", Name: "Entering under an opponent's control", Kind: KindSeam, Status: StatusMissing,
+		Summary:     "Permanents that enter the battlefield under the control of an opponent of your choice, such as Captive Audience.",
+		Missing:     "A permanent can't yet enter under an opponent's control, so Captive Audience isn't available.",
+		Issue:       1759,
+		Waiting:     []string{"Captive Audience"},
+		EngineNotes: "primitive: the entry pipeline has no way to name who controls a permanent as it enters. `Flicker` / `ReturnFromExile` take a `Controller`, but only for a card coming back from exile; `GainControl` is a layer-2 effect applied once the permanent is on the battlefield, which is a change of control (`EventControlChanged`, the caster's own enters triggers already fired) rather than an entry under that player. Needs a choice of opponent made as the permanent would enter and the entry landing under that player, who then controls its enters triggers. Found building ADR 0097's card batch (#1749): Captive Audience's modes are all expressible and this clause is the whole blocker. Xantcha, Sleeper Agent (\"an opponent of your choice gains control of it\") is the related shape.",
+	},
+	{
 		Slug: "control-of-a-spell", Name: "Gaining control of a spell", Kind: KindSeam, Status: StatusMissing,
 		Summary:     "Effects that take control of a spell on the stack, such as Invert Polarity and Commandeer.",
 		Missing:     "Nothing can take control of a spell yet, so a spell always resolves for the player who cast it.",

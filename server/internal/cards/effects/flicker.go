@@ -113,3 +113,28 @@ func exileTargetsThenScheduleReturn(ctx *Context, label string) error {
 		}.Apply(NewContext(g, item))
 	})
 }
+
+// exileThisThenReturnUnderAnOpponentsControl is "Exile <this>, then
+// return it to the battlefield under an opponent's control" (Sol'Kanar
+// the Tainted, Zuko, Conflicted): the controller names the opponent,
+// and the permanent comes back under that player's control as a new
+// object (CR 400.7). Only the permanent the ability came from moves —
+// one that died or was flickered in response has nothing to exile —
+// and with no opponent left to name nothing happens.
+func exileThisThenReturnUnderAnOpponentsControl(ctx *Context, item *game.StackItem, name string) error {
+	if !sourceIsStillThisPermanent(ctx.Game, item) {
+		return nil
+	}
+	self := item.SourceCardID
+	return ChoosePlayer{
+		Among:    Opponents,
+		Question: name + " — choose an opponent to return it under",
+		Then: func(ctx *Context) error {
+			opp := ctx.ChosenPlayer()
+			if opp == uuid.Nil {
+				return nil
+			}
+			return Flicker{Target: self, Controller: opp}.Apply(ctx)
+		},
+	}.Apply(ctx)
+}
