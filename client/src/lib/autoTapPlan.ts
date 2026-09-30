@@ -16,10 +16,15 @@
 // every card that leaves the hand. "Taps 2 lands" and "taps 2 lands
 // and exiles Simian Spirit Guide from your hand" are not the same
 // offer.
+//
+// #1621 adds a fifth payment: a costless "once each turn" mana ability
+// (Vivi Ornitier's {0}) that the planner reaches for only when nothing
+// else can pay. It taps nothing and spends nothing for good, but it
+// uses up the ability for the turn, so the summary names it.
 
 import type { AutoTapPreview, AutoTapPreviewSource } from "./api";
 
-export type PlanPayment = "tap" | "sacrifice" | "tap_sacrifice" | "exile";
+export type PlanPayment = "tap" | "sacrifice" | "tap_sacrifice" | "exile" | "once_per_turn";
 
 export interface PlanRow {
   id: string;
@@ -39,6 +44,7 @@ export interface PlanRow {
 export function paymentOf(src: AutoTapPreviewSource | undefined): PlanPayment {
   if (!src) return "tap";
   if (src.exile) return "exile";
+  if (src.once_per_turn) return "once_per_turn";
   if (src.sacrifice) return src.tap ? "tap_sacrifice" : "sacrifice";
   return "tap";
 }
@@ -52,6 +58,8 @@ export function paymentVerb(p: PlanPayment): string {
       return "sacrifice";
     case "tap_sacrifice":
       return "tap + sacrifice";
+    case "once_per_turn":
+      return "once this turn";
     default:
       return "tap";
   }
@@ -76,7 +84,7 @@ export function planRows(
       name: src?.name || nameOf(id) || id.slice(0, 8),
       payment,
       fromHand: src?.zone === "hand",
-      gone: payment !== "tap",
+      gone: payment !== "tap" && payment !== "once_per_turn",
     };
   });
 }
@@ -99,11 +107,13 @@ export function planSummary(rows: PlanRow[]): string {
   const crackedAfterTap = rows.filter((r) => r.payment === "tap_sacrifice").map((r) => r.name);
   const sacrificed = rows.filter((r) => r.payment === "sacrifice").map((r) => r.name);
   const exiled = rows.filter((r) => r.payment === "exile").map((r) => r.name);
+  const oncePerTurn = rows.filter((r) => r.payment === "once_per_turn").map((r) => r.name);
   const parts: string[] = [];
   if (taps > 0) parts.push(`taps ${plural(taps, "permanent", "permanents")}`);
   const eaten = [...crackedAfterTap, ...sacrificed];
   if (eaten.length > 0) parts.push(`sacrifices ${joinNames(eaten)}`);
   if (exiled.length > 0) parts.push(`exiles ${joinNames(exiled)} from your hand`);
+  if (oncePerTurn.length > 0) parts.push(`uses ${joinNames(oncePerTurn)}'s once-each-turn ability`);
   const sentence = joinNames(parts);
   return sentence.charAt(0).toUpperCase() + sentence.slice(1) + ".";
 }

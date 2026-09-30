@@ -440,10 +440,23 @@ Eldrazi Spawn, Eldrazi Scion) is plannable too — the executor cracks it
 without tapping it, and a tapped one is still a source — and inside the
 sacrifice tier a CREATURE the cost eats comes after a Treasure or a Gold.
 What the planner still demands is that the ability cost the source
-SOMETHING: a `{T}` or the source itself. Order the abilities so the
-cheapest is FIRST; the planner takes one ability per permanent, in order
+SOMETHING: a `{T}` or the source itself. The one exception (#1621) is an
+ability that costs NOTHING and declares `OncePerTurn: true`. That is
+Vivi Ornitier's "{0}: Add X mana … Activate only during your turn and
+only once each turn", written `OncePerTurn: true, Condition:
+DuringYourTurn()`. Write "Activate only once each turn" on a mana
+ability as that field, never as a `Condition`. The field is what the
+planner can read, and `Register` folds the gate into the ability's
+`Condition` for you, per object and per label. Such an ability is the
+LAST tier, planned only when nothing else can pay: after every land,
+every frozen source, every Treasure and every Spirit Guide in hand.
+Its output is priced the way the activation computes it, so a power-0
+Vivi is not a source. A once-each-turn ability with any other cost,
+such as Ramos's five +1/+1 counters, stays out of the plan. Order the
+abilities so the cheapest is FIRST; the planner takes one ability per
+permanent, in order
 ([ADR 0011](decisions/0011-mana-pool-and-auto-tapper.md)
-amendments 2026-09-22 and 2026-09-23).
+amendments 2026-09-22, 2026-09-23 and 2026-09-30).
 
 **Counter costs (#789).** `ManaAbilityCost.RemoveCounters` is the SAME
 `*game.CounterRemovalCost` a CR 602 ability's cost carries — one

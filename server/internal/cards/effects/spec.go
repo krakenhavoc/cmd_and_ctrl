@@ -1265,6 +1265,28 @@ type ManaAbility struct {
 	// addendum.
 	Exhaust bool
 
+	// OncePerTurn is "Activate only once each turn" on a mana ability
+	// (Vivi Ornitier, Ramos, Dragon Engine). One declarative bit, not a
+	// Condition, for the reason Exhaust is one: the engine enforces it
+	// — Register folds the gate into the built ability's Condition, so
+	// the click path, the enumerator, the view and the auto-tapper all
+	// refuse a second activation this turn — and the auto-tapper can
+	// READ it, which it cannot do to a closure (#1621).
+	//
+	// The count is per OBJECT and per LABEL (the activation record,
+	// game/activation_tally.go): a flickered permanent is a new object
+	// with a fresh use (CR 400.7), and a card with two such abilities
+	// counts each on its own. Register refuses a blank label.
+	//
+	// What the bit buys: an ability that costs its source NOTHING —
+	// Vivi's "{0}" — is plannable by the auto-tapper only when it sets
+	// this, and then only as the last-resort tier, after every land,
+	// every Treasure and every card in hand (ADR 0011, amendment
+	// 2026-09-30). Keep any other "activate only …" clause in
+	// Condition beside it: Vivi is
+	// `OncePerTurn: true, Condition: DuringYourTurn()`.
+	OncePerTurn bool
+
 	// Rider is everything the oracle text says AFTER the "Add …"
 	// clause, as one callback: the painland cycle's "This land deals
 	// 1 damage to you", Ancient Tomb's "deals 2 damage to you". It
