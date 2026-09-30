@@ -615,6 +615,28 @@ async function joinAsPlayer(
   name: string,
 ): Promise<JoinedPlayer> {
   const context = await browser.newContext();
+  // Make the client hold on an opponent's stack item. Smart autopass
+  // (#1308) passes for a seat with nothing to respond with, so on an
+  // idle table the opponent passes the caster's trigger the moment it
+  // lands and it resolves before any assertion can see it; before
+  // that change an opponent's stack item always held. These tests
+  // assert on the trigger while it waits and resolve it through
+  // resolveStack's own "next" clicks. Everything else stays on the
+  // defaults (auto-pass through upkeep/draw is what setup waits for).
+  // Written only when absent so a later navigation does not undo what
+  // the app saved.
+  await context.addInitScript(() => {
+    try {
+      if (localStorage.getItem("cmdctrl.settings.v1") === null) {
+        localStorage.setItem(
+          "cmdctrl.settings.v1",
+          JSON.stringify({ gameplay: { alwaysStopOpponentStack: true } }),
+        );
+      }
+    } catch {
+      // storage unavailable: fall back to the defaults
+    }
+  });
   const page = await context.newPage();
   await page.goto(`/#/games/${gameID}/join?t=${encodeURIComponent(inviteToken)}`);
   await page.getByPlaceholder("your name").fill(name);
