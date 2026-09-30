@@ -1,10 +1,11 @@
 # ADR 0103 — Rooms: casting either half, locked doors, and unlocking them
 
-**Status:** Proposed · 2026-09-30 · S50 — Seams from the deck re-checks. For owner review; nothing here is built.
+**Status:** Accepted · 2026-09-30 · S50 — Seams from the deck re-checks
+**Owner decisions:** 2026-09-30. All eight open questions are answered; see [Owner decisions](#owner-decisions-2026-09-30) at the end. Two answers changed the design: every split card now casts either half, with fuse and aftermath (Decision 3), and "fully unlocked" gets its own log line (Decision 9).
 **Issue:** [#1756](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1756) (the Rooms seam). [#1640](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1640) (the ViviVoltron deck request) waits on it for Roaring Furnace // Steaming Sauna.
 **Numbering:** checked with the AGENTS.md §4 sweep on 2026-09-30. I listed `docs/decisions/` on every remote branch (37, then 39 on the repeat just before the push) and also collected every `docs/decisions/010*` file name on any ref with `git log --all`. Numbers up to 0102 are taken. Numbers 0104 and 0105 are reserved for ADRs being written in parallel, and both had appeared on branches by the repeat run. No branch has 0103, so this one takes **0103**.
 **Builds on:** [ADR 0071](0071-designations-that-switch-abilities-on.md) (the designation gate; its Decision 3 sketched Rooms and reserved `DesignationDoorUnlocked`), [ADR 0034](0034-multi-face-cards.md) (`Faces`, `ActiveFace`, `SetFace`, `CastableFaces`, the `#1` catalog keys), [ADR 0062](0062-abilities-and-special-actions-from-the-hand.md) Decision 4 (one `special_action` verb, one timing table), [ADR 0082](0082-casting-face-down-and-turning-face-up.md) Decision 6 (a special action taken on a battlefield permanent), [ADR 0069](0069-face-down-objects.md) (face-down objects), [ADR 0043](0043-copy-effects.md) (copiable values), [ADR 0013](0013-replacement-effects.md) (the entry pipeline), [ADR 0041](0041-game-persistence.md) (restore points), [ADR 0033](0033-ai-bot-seat.md) (the bot).
-**Supersedes:** ADR 0071 Decision 3 ("Rooms: designed, not built"), once accepted. **Amends:** ADR 0034 §4's `split` row, for cards with a shared type line only.
+**Supersedes:** ADR 0071 Decision 3 ("Rooms: designed, not built"). **Amends:** ADR 0034 §4's `split` row, for every split card.
 
 ---
 
@@ -75,7 +76,7 @@ There are four real choices. Each has a recommendation, and the Decisions sectio
 
 **A. Fork each reader.** Teach `printedCharacteristic`, `manaCostForValue`, `printedColors`, the name readers and the view about Rooms, one at a time. *Rejected.* This is the shape ADR 0046 and #622 removed: every reader is a place to forget, and the next reader added forgets by default.
 
-**B. Materialise the flat fields (recommended).** Keep ADR 0034's rule that the flat printed fields (`Name`, `ManaCost`, `Colors`, …) hold what the object *is right now*. For a Room, "right now" depends on the zone and the doors, so one function, `materialiseRoom`, rewrites the flat fields at the few moments that change them: entering the battlefield, unlocking, locking, and leaving the battlefield or the stack. Every existing reader is then correct without being edited. It is the same bet ADR 0034 Decision 1 made, and that one paid off.
+**B. Materialise the flat fields (recommended).** Keep ADR 0034's rule that the flat printed fields (`Name`, `ManaCost`, `Colors`, …) hold what the object *is right now*. For a Room, "right now" depends on the zone and the doors, so one function, `materialiseSplit`, rewrites the flat fields at the few moments that change them: entering the battlefield, unlocking, locking, and leaving the battlefield or the stack. Every existing reader is then correct without being edited. It is the same bet ADR 0034 Decision 1 made, and that one paid off.
 
 **C. A third "permanent" face.** Append a synthetic face to `Faces` at import that stands for the battlefield Room. *Rejected.* The face picker, the snapshot, copies (`PrintedValues` copies `Faces`) and every `len(Faces)` check would all see a face that isn't printed.
 
@@ -128,7 +129,7 @@ case DesignationDoorUnlocked:
 
 ### 2. What a Room is in each zone
 
-`materialiseRoom(c *Card, state)` is the one writer of a Room's flat fields besides `SetFace`. It runs only when `HasSharedTypeLine` is true.
+`materialiseSplit(c *Card, state)` is the one writer of a split card's flat fields besides `SetFace`. It runs for every `split` card (owner decision 1). The door rows apply only when `HasSharedTypeLine` is true. The table below uses a Room as the example; for any other split card only the first two rows apply, plus a fused spell (Decision 3), which is the whole card on the stack.
 
 | Where | Name | Mana cost / value | Colours | Rule |
 |---|---|---|---|---|
@@ -138,12 +139,12 @@ case DesignationDoorUnlocked:
 | Battlefield, both unlocked | "Left // Right" | both costs | union | 709.5 |
 | Battlefield, both locked | empty | empty, MV 0 | none | 709.5, 105.2 |
 
-The type line is the shared line in every row (709.5a). Rules text is not a flat field: it is the door gate (Decision 7).
+For a Room the type line is the shared line in every row (709.5a). For any other split card the whole-card type line is the union of both halves' types and subtypes (709.4c): Commit // Memory is "Instant Sorcery" in hand. Rules text is not a flat field: for a Room it is the door gate (Decision 7).
 
 It runs at four moments:
 
-1. **Import.** `toGameCard` calls it instead of `SetFace(0)` for a Room, so a Room in a decklist is the whole card.
-2. **`MoveCard`.** It is the one place every zone change passes through. A Room moving anywhere except the stack or the battlefield is rematerialised as the whole card. `CastSpell` still calls `SetFace(i)` after the move to the stack.
+1. **Import.** `toGameCard` calls it instead of `SetFace(0)` for a split card, so a split card in a decklist is the whole card.
+2. **`MoveCard`.** It is the one place every zone change passes through. A split card moving anywhere except the stack or the battlefield is rematerialised as the whole card. `CastSpell` still calls `SetFace(i)` after the move to the stack.
 3. **Entering the battlefield.** After the entry's doors are settled (Decision 4).
 4. **The two door writers** (Decision 6).
 
@@ -154,13 +155,18 @@ Two readers need one small change each:
 
 ### 3. Casting either half
 
-`CastableFaces` returns `[0, 1]` for a card with a shared type line (CR 709.3). The existing face picker, the per-face announce surface from #992, the enumerator's `CastableFacesUnder` walk and the timing gate's union over faces all follow without changes.
+`CastableFaces` returns `[0, 1]` for a Room, as for every split card (CR 709.3; see the end of this decision). The existing face picker, the per-face announce surface from #992, the enumerator's `CastableFacesUnder` walk and the timing gate's union over faces all follow without changes.
 
 On the stack, `SetFace(i)` already gives the cast half's name, cost, colour and mana value (709.3b, 202.3d). `Faces` stays on the card, which is 709.5b: a copy of the spell still has both halves.
 
-`faceOnResolve` already returns 0 for `split`, so the permanent resolves as face 0 and `materialiseRoom` takes over. `CatalogKey` gets one rule: a card with a shared type line keys on the bare oracle ID on every face (Option 2B).
+`faceOnResolve` already returns 0 for `split`, so the permanent resolves as face 0 and `materialiseSplit` takes over. `CatalogKey` gets one rule: a card with a shared type line keys on the bare oracle ID on every face (Option 2B).
 
-**Other split cards are not changed.** Instants and sorceries with `layout: split` keep casting their left half only. Opening their right halves brings in fuse (CR 702.102) and aftermath (CR 702.127), and aftermath's right half may only be cast from a graveyard. Doing it blindly would let a player cast an aftermath half from hand. That is a separate change. The deck validator's `split` warning stops firing for Rooms and stays for the rest.
+**Every split card casts either half** (owner decision 1, CR 709.3). `CastableFaces` returns `[0, 1]` for every `split` card, narrowed by the zone the cast comes from, so that no half is castable where the rules forbid it:
+
+- **Aftermath (CR 702.127a).** The half that prints aftermath is found from the faces' own oracle text (`Face.OracleText` starts with "Aftermath"), so no catalog entry is needed. In the dump it is always the right half of the 27 aftermath cards. That half may be cast **only from a graveyard**, from any zone and under any grant. The engine derives the graveyard permission for it from the card, the same way a printed flashback opens the graveyard, and exiles it instead of letting it leave the stack anywhere else when it was cast from a graveyard. The other half is cast like any card: from hand, and from a graveyard only if some other permission opens it (a Snapcaster Mage flashback grant does). The aftermath permission never opens the first half.
+- **Fuse (CR 702.102).** A card with fuse cast **from hand** may be cast with both halves. The announcement gains `fuse: true` (`CastSpellParams.Fuse`). The spell on the stack is marked `Card.Fused` and materialised as the whole card: both names, the combined cost as its total cost (702.102c) and mana value (202.3d), and both halves' colours and types (702.102b, 709.4d). Its target clauses are the left half's clauses followed by the right half's, one announcement in ADR 0065's clause order. It resolves the left half's instructions, then the right half's (702.102d), each half reading only its own targets. The catalog gives a fused spell a key of its own, derived from the two halves' registrations; if either half is uncatalogued the fused spell resolves by hand, like any uncatalogued spell. A fused cast is refused from any zone but the hand, for a card without fuse, and for a card either of whose halves declares modes, an alternative cost or an additional or optional cost. None of the 22 fuse cards prints one, so the refusal only stops a cast the engine could not price correctly.
+
+The deck validator's `split` warning is removed: the layout is played.
 
 ### 4. Entering with the cast door unlocked (709.5d)
 
@@ -203,7 +209,7 @@ func (g *Game) UnlockDoorForEffect(roomID uuid.UUID, door DoorSide, actor uuid.U
 func (g *Game) LockDoorForEffect(roomID uuid.UUID, door DoorSide, actor uuid.UUID) error
 ```
 
-Each is idempotent (unlocking an unlocked door does nothing and emits nothing, like `SolveCaseForEffect`). Each sets or clears the bit, calls `materialiseRoom` and then emits:
+Each is idempotent (unlocking an unlocked door does nothing and emits nothing, like `SolveCaseForEffect`). Each sets or clears the bit, calls `materialiseSplit` and then emits:
 
 - `EventDoorUnlocked` (`CardID` = the Room, `Actor` = the unlocking player, `Amount` = the door side), and then, if both doors are now unlocked, `EventRoomFullyUnlocked` (709.5i);
 - or `EventDoorLocked`.
@@ -264,7 +270,7 @@ type RoomDoorsView struct {
 
 Door names, costs and images already ride on `faces`. `SpecialActionView` gains `door` (`"left"` / `"right"`) and `CardView.name` stays the rules name, so a fully locked Room sends an empty name. The client displays a nameless Room from `faces` (Decision 10). Door state is public, as a Class level is.
 
-The log (#984 gate): `EventDoorUnlocked` and `EventDoorLocked` get narrated lines: "Alice unlocks Awakening Hall (Funeral Room // Awakening Hall)". `EventRoomFullyUnlocked` is listed in `silentEventKinds`, because the unlock line just before it already says it. The log names the card by its whole name, because the card's identity is public and a log line is display, not a rules read.
+The log (#984 gate): `EventDoorUnlocked` and `EventDoorLocked` get narrated lines: "Alice unlocks Awakening Hall (Funeral Room // Awakening Hall)". `EventRoomFullyUnlocked` gets its own line too (owner decision 7): "Funeral Room // Awakening Hall is fully unlocked". It gives the eerie triggers something visible to point to. The log names the card by its whole name, because the card's identity is public and a log line is display, not a rules read.
 
 ### 10. The client
 
@@ -293,7 +299,7 @@ Scoring: the heuristic prices every special action at one flat `SpecialActionVal
 
 Four PRs, each green on its own:
 
-1. **Engine.** `HasSharedTypeLine`, `Unlocked`, `materialiseRoom` and its four call sites, `NamesOf`, the `CopiableValuesOf` rule, `CastableFaces` and `CatalogKey` for Rooms, the 709.5d seed, the two writers and three events with their layer bumps and log lines, `Designation.Active` for doors, the gate on `Replacements` / `UntapStep` / `NoMaxHandSize`, the new Register guard, the `unlock` special action with its derived offer, `door` param and spend purpose, the enumerator case, the wire field, the snapshot field and fixture, and the validator note. Tests use an uncatalogued Room imported from a fixture, which is enough to prove casting, entering, unlocking, triggers on the event, the view and the bot move.
+1. **Engine.** Casting either half of every split card, aftermath and fuse (Decision 3), `HasSharedTypeLine`, `Unlocked`, `materialiseSplit` and its four call sites, `NamesOf`, the `CopiableValuesOf` rule, `CastableFaces` and `CatalogKey` for Rooms, the 709.5d seed, the two writers and three events with their layer bumps and log lines, `Designation.Active` for doors, the gate on `Replacements` / `UntapStep` / `NoMaxHandSize`, the new Register guard, the `unlock` special action with its derived offer, `door` param and spend purpose, the enumerator case, the wire field, the snapshot field and fixture, and the validator note. Tests use an uncatalogued Room imported from a fixture, which is enough to prove casting, entering, unlocking, triggers on the event, the view and the bot move.
 2. **Client.** The door strip, buttons, overlay and name fallback.
 3. **Cards.** `Room(...)`, the trigger constructors and readers, and the 20 Rooms marked "PR 3" below. This includes the three the registry lists as waiting.
 4. **Room-adjacent cards.** The 16 eerie cards, Keys to the House, Marina Vendrell, Ghostly Keybearer, Creeping Peeper and Rampaging Soulrager. Anthropede and Intruding Soulrager only name the Room subtype, so they can go in any batch.
@@ -350,14 +356,14 @@ Every paper Room in the dump. "PR 3" means the card is expected to need nothing 
 - `MoveCard` gains one branch on `HasSharedTypeLine`. It is one layout string compare for every other card.
 - `Card` gains one byte, inside the existing bool block.
 - **Name matching stays partial.** Readers that compare `c.Name ==` won't match one half's name on a Room outside the battlefield. Only the readers the Room cards need move to `NamesOf`. The rest move when a card needs them.
-- **Other split cards** still cast only their left half and still show their left half's characteristics in hand. Decision 3 explains why.
+- **A fused split spell has a synthetic catalog key.** It is the one catalog key that is not a printed face. Decision 3 says why it is derived rather than declared.
 
 ---
 
 ## Out of scope
 
 - The two Alchemy Rooms (perpetual, conjure).
-- Casting the right half of non-Room split cards, fuse and aftermath.
+- Copying a fused split spell (CR 707.10 copies the fused status). No catalogued card copies an instant or sorcery that has fuse.
 - Manifest dread (CR 701.62), which four Rooms wait on. It needs its own seam.
 - Granting convoke to spells, and standing alternative-cost grants.
 - A Room that loses all its abilities (Decision 8).
@@ -375,3 +381,16 @@ Every paper Room in the dump. "PR 3" means the card is expected to need nothing 
 6. **A fully locked Room's name on the wire.** Should `CardView.name` be empty for a fully locked Room, with the client falling back to `faces` (recommended: it keeps the rules name and the display name separate)? Or should the server send a display name such as "Funeral Room // Awakening Hall (locked)"?
 7. **The log.** Should "fully unlocked" be silent because the unlock line just before it covers it (recommended), or get its own line so the eerie triggers have something visible to point to?
 8. **Delivery.** Is four PRs right (engine, client, 20 Rooms, Room-adjacent cards)? Or should the three waiting-list Rooms ride in PR 1 so #1640 unblocks with the engine change?
+
+---
+
+## Owner decisions (2026-09-30)
+
+1. **Every split card, not Rooms only.** The owner favours following CR 709.3 strictly. PR 1 opens the right half of every split card and handles aftermath and fuse now. An aftermath half can be cast only from a graveyard, and the aftermath permission never opens the first half. Fuse is cast from hand. If fuse had not fitted, it could have gone on a seam row, but no half may become castable where the rules forbid it. Decision 3 is rewritten to match.
+2. **The 8 Rooms with a door we can't build stay uncatalogued.** They still play through the derived unlock, with their door abilities manual.
+3. **A copy of a Room spell enters fully locked**, the literal reading of CR 709.5d and 707.10.
+4. **Door-strip "Unlock {cost}" buttons, plus the right-click menu row.**
+5. **The bot scores an unlock like casting a spell of the door's mana value.**
+6. **A fully locked Room's `CardView.name` is empty**, and the client falls back to `faces`.
+7. **"Fully unlocked" gets its own log line.** This is not the recommendation; Decision 9 is changed to match.
+8. **Four PRs, as proposed.** Engine, client, the 20 Rooms, then the Room-adjacent cards.
