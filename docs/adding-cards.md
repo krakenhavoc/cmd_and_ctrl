@@ -1451,6 +1451,22 @@ canonicalised forms the engine expects. Canonical tokens:
 | `"prowess"` | Prowess (CR 702.108) — #706, the first TRIGGERED keyword in the table: `TriggersForCard` turns each instance on the effective ability list into one trigger (`game/prowess.go`). Cumulative like toxic, so grant it through `game.AppendKeywordAbility`. Never write a prowess trigger by hand — declare the token ([ADR 0014 amendment 2026-09-24](decisions/0014-combat-keywords.md)) |
 | `"split second"` | Split second (CR 702.61) — #1519, a SPELL's keyword: `castHasSplitSecond` (`game/split_second.go`) stamps `StackItem.SplitSecond` at announce, and while it is on the stack nobody casts or activates a non-mana ability. Declare it on an instant or sorcery exactly like flash; never pass the sandbox `SplitSecond` cast flag from a card ([ADR 0007 amendment 2026-09-24](decisions/0007-stack-foundation.md)) |
 
+**A keyword counter needs no grant** (CR 122.1b, [ADR 0101](decisions/0101-keyword-counters.md)).
+"Put a flying counter on it" is `AddCounter{Target: id, Kind:
+game.CounterFlying, N: 1}`, and that is the whole card side: the
+engine reads the counter itself, as a layer-6 effect at the counter's
+own CR 613.7c timestamp, so the keyword lasts as long as the counter
+does whatever put it there. Do not add a static that grants the
+keyword to "creatures with a flying counter" (the retired
+`b24KeywordCounterGrant`): it stops when its source leaves, it is
+silenced by the source losing its abilities, and it has the wrong
+timestamp. "Returns … with a hexproof counter on it" rides the entry
+event (`ReturnFromGraveyardWithCountersForEffect`, Perennation). The
+kinds are the thirteen in `game.KeywordCounterKinds()`, spelled as the
+keyword token (`game.CounterFirstStrike` is `"first strike"`). Decayed,
+exalted and "hexproof from" counters are not read yet, because those
+keywords are not enforced: a card that places one ships with a caveat.
+
 **A keyword that is a trigger** has two shapes, and ADR 0014's
 2026-09-24 amendment says which to use. A constructor on
 `Spec.Triggered` (`Cascade()`, `Storm()`, `Ward(...)`) when the keyword

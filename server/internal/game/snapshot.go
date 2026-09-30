@@ -660,9 +660,9 @@ type cardSnapshot struct {
 	// an older file has none, and an unstamped keyword counter is
 	// ordered at its permanent's own timestamp.
 	CounterStampedAt map[string]int64 `json:"counterStampedAt,omitempty"`
-	IsCommander      bool                `json:"isCommander"`
-	AttackingTarget  uuid.UUID           `json:"attackingTarget"`
-	BlockingTarget   uuid.UUID           `json:"blockingTarget"`
+	IsCommander      bool             `json:"isCommander"`
+	AttackingTarget  uuid.UUID        `json:"attackingTarget"`
+	BlockingTarget   uuid.UUID        `json:"blockingTarget"`
 	// AlsoBlocking is Card.AlsoBlocking (#1706): the attackers a
 	// multi-blocker blocks after blockingTarget. Omitted for every
 	// ordinary blocker, so an older file restores exactly as before.
