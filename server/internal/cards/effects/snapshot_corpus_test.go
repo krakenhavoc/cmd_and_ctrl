@@ -1312,25 +1312,11 @@ func firstDifferingLine(a, b []byte) string {
 	return fmt.Sprintf("lengths differ: %d vs %d lines", len(al), len(bl))
 }
 
-// TestWriteSnapshotCorpus writes the generated fixture set for the
-// current schema version. It runs only when asked:
-//
-//	go test ./internal/cards/effects -run TestWriteSnapshotCorpus -args -write-corpus
-//
-// The writer NEVER TOUCHES AN EXISTING FILE (ADR 0041's 2026-09-24
-// phase 3 amendment, owner decision 6 — narrowed from "never touches an
-// existing directory"). For a version whose directory already exists it
-// re-renders every board and fails if any file already there would come
-// out different, because a fixture is never rewritten: a changed shape
-// is a new version, in a new directory. A board with no file yet — one a
-// later change under the same version added — is written beside the
-// others, which is how a shape that becomes a restore point after its
-// version was introduced gets frozen without a bump.
-func TestWriteSnapshotCorpus(t *testing.T) {
-	if !*writeCorpus {
-		t.Skip("writes fixtures; run with -args -write-corpus")
-	}
-	dir := filepath.Join(corpusRoot, fmt.Sprintf("v%d", game.SnapshotSchemaVersion))
+// renderCorpusBoards renders every scripted board, twice, and fails if a
+// board comes out different the second time: a board that does not pin
+// all of its nondeterminism cannot be a fixture.
+func renderCorpusBoards(t *testing.T) map[string][]byte {
+	t.Helper()
 	rendered := map[string][]byte{}
 	for _, b := range corpusBoards() {
 		first, second := renderBoard(t, b), renderBoard(t, b)
@@ -1340,41 +1326,119 @@ func TestWriteSnapshotCorpus(t *testing.T) {
 		}
 		rendered[b.name] = first
 	}
+	return rendered
+}
 
-	var changed []string
-	fresh := map[string][]byte{}
+// corpusFixtureDrift compares every rendered board with the fixture
+// already written for it in dir. It returns the boards that have no
+// file yet, and one entry per existing fixture that is NOT a subset of
+// its board's fresh render (#1801).
+//
+// Subset, not byte identity, because the rule within a schema version is
+// additive only (SnapshotSchemaVersion's comment): a field added later in
+// the version renders in the fresh capture and is absent from an older
+// fixture, and that is exactly what the version allows. What it does not
+// allow — a key in the fixture that the build no longer writes, or writes
+// with another type or value — is what this reports. The comparison is
+// the restore guard's own (corpusSubset, with the same ignore lists), so
+// "may this build still write into v<N>?" and "does this build still
+// read v<N>?" are one rule, not two.
+func corpusFixtureDrift(t *testing.T, dir string, rendered map[string][]byte) (fresh map[string][]byte, drift []string) {
+	t.Helper()
+	fresh = map[string][]byte{}
 	for name, raw := range rendered {
 		existing, err := os.ReadFile(filepath.Join(dir, name+".json"))
 		if err != nil {
 			fresh[name] = raw
 			continue
 		}
-		if !bytes.Equal(existing, raw) {
-			changed = append(changed, name+".json: "+firstDifferingLine(existing, raw))
+		if diffs := corpusFixtureNotInRender(t, existing, raw); len(diffs) > 0 {
+			drift = append(drift, name+".json:\n    "+strings.Join(diffs, "\n    "))
 		}
 	}
-	if len(changed) > 0 {
-		sort.Strings(changed)
-		t.Fatalf(`%s holds fixtures written by an earlier build of schema v%d, and
-fixtures are never rewritten. The writer would now produce:
+	sort.Strings(drift)
+	return fresh, drift
+}
 
-  %s
+// corpusFixtureNotInRender lists every key or value in a fixture's
+// snapshot that a fresh render of the same board does not carry.
+func corpusFixtureNotInRender(t *testing.T, fixtureRaw, renderRaw []byte) []string {
+	t.Helper()
+	fixture, err := decodeGeneric(fixtureRaw)
+	if err != nil {
+		t.Fatalf("decode fixture: %v", err)
+	}
+	render, err := decodeGeneric(renderRaw)
+	if err != nil {
+		t.Fatalf("decode render: %v", err)
+	}
+	want, _ := fixture.(map[string]any)["snapshot"]
+	got, _ := render.(map[string]any)["snapshot"]
+	if want == nil {
+		return []string{`no "snapshot" in the fixture`}
+	}
+	var diffs []string
+	corpusSubset(want, got, "", game.SnapshotSchemaVersion, &diffs)
+	return diffs
+}
 
-If the snapshot's shape changed, that is a new schema version: bump
-SnapshotSchemaVersion (see its comment for when that is required) and
-run this again to write v%d beside the old set. If only the scripted
-boards changed, nothing needs doing — the file on disk is still the
-fixture. Nothing was written.`,
-			dir, game.SnapshotSchemaVersion, strings.Join(changed, "\n  "), game.SnapshotSchemaVersion+1)
+// corpusDriftAdvice is what to do when a fixture is not a subset of its
+// board's render. Shared by the writer and the always-on test.
+func corpusDriftAdvice() string {
+	return fmt.Sprintf(`Each line is a key or value in a fixture that a fresh render of its
+board no longer carries. New keys in the render are fine (additive, the
+v%[1]d rule); these are not.
+
+If the snapshot's shape changed — a key renamed, removed or retyped —
+that is a new schema version: bump SnapshotSchemaVersion (see its
+comment for when that is required) and run the writer again to write
+v%[2]d beside the old set. If a scripted board now builds a different
+game on purpose, keep the old board building what its fixture holds and
+add the new game as a new board. Never edit the fixture.`,
+		game.SnapshotSchemaVersion, game.SnapshotSchemaVersion+1)
+}
+
+// TestWriteSnapshotCorpus writes the generated fixture set for the
+// current schema version. It runs only when asked:
+//
+//	go test ./internal/cards/effects -run TestWriteSnapshotCorpus -args -write-corpus
+//
+// The writer NEVER TOUCHES AN EXISTING FILE (ADR 0041's 2026-09-24
+// phase 3 amendment, owner decision 6 — narrowed from "never touches an
+// existing directory"). For a version whose directory already exists it
+// re-renders every board and fails unless every file already there is a
+// SUBSET of its board's fresh render (corpusFixtureDrift, #1801): a key
+// added later in the version is fine, a key lost or changed is a new
+// version, in a new directory. A board with no file yet — one a later
+// change under the same version added — is written beside the others,
+// which is how a shape that becomes a restore point after its version
+// was introduced gets frozen without a bump.
+//
+// TestSnapshotCorpusBoardsStillMatchTheirFixtures runs the same check on
+// every CI run, so this refusal is never the first place drift shows up.
+func TestWriteSnapshotCorpus(t *testing.T) {
+	if !*writeCorpus {
+		t.Skip("writes fixtures; run with -args -write-corpus")
+	}
+	dir := filepath.Join(corpusRoot, fmt.Sprintf("v%d", game.SnapshotSchemaVersion))
+	fresh, drift := corpusFixtureDrift(t, dir, renderCorpusBoards(t))
+	if len(drift) > 0 {
+		t.Fatalf("%s holds fixtures written by an earlier build of schema v%d, and fixtures are never rewritten.\n\n  %s\n\n%s\n\nNothing was written.",
+			dir, game.SnapshotSchemaVersion, strings.Join(drift, "\n  "), corpusDriftAdvice())
 	}
 	if len(fresh) == 0 {
-		t.Logf("%s already holds this build's output; nothing to write", dir)
+		t.Logf("%s already holds a fixture for every board; nothing to write", dir)
 		return
 	}
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	for name, raw := range fresh {
+	names := make([]string, 0, len(fresh))
+	for name := range fresh {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	for _, name := range names {
 		path := filepath.Join(dir, name+".json")
 		// O_EXCL: the one guarantee this function makes is that it
 		// never overwrites a fixture, so it asks the filesystem to
@@ -1383,7 +1447,7 @@ fixture. Nothing was written.`,
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, err := f.Write(raw); err != nil {
+		if _, err := f.Write(fresh[name]); err != nil {
 			f.Close()
 			t.Fatal(err)
 		}
@@ -1391,7 +1455,40 @@ fixture. Nothing was written.`,
 			t.Fatal(err)
 		}
 	}
-	t.Logf("wrote %d new fixtures to %s", len(fresh), dir)
+	t.Logf("wrote %d new fixtures to %s: %s", len(fresh), dir, strings.Join(names, ", "))
+}
+
+// TestSnapshotCorpusBoardsStillMatchTheirFixtures is the writer's
+// precondition, on every CI run (#1801): each fixture in the current
+// version's set is a subset of a fresh render of its board. Without it,
+// a change that stops rendering a key (or renders it differently) passes
+// CI and is found only by the next person who adds a board — which is
+// how #1801 surfaced, two PRs after the change that caused it.
+//
+// A registered board with no fixture fails too: the writer only adds
+// files, so it runs in the change that registers the board. The
+// restore guard (TestSnapshotCorpusRestores) is the other half:
+// it checks the fixture against a RESTORED game, this against a BUILT
+// one.
+func TestSnapshotCorpusBoardsStillMatchTheirFixtures(t *testing.T) {
+	dir := filepath.Join(corpusRoot, fmt.Sprintf("v%d", game.SnapshotSchemaVersion))
+	fresh, drift := corpusFixtureDrift(t, dir, renderCorpusBoards(t))
+	if len(drift) > 0 {
+		t.Errorf("%s:\n\n  %s\n\n%s", dir, strings.Join(drift, "\n  "), corpusDriftAdvice())
+	}
+	if len(fresh) > 0 {
+		names := make([]string, 0, len(fresh))
+		for name := range fresh {
+			names = append(names, name)
+		}
+		sort.Strings(names)
+		t.Errorf(`these boards are registered in corpusBoards but %s has no fixture for them: %s
+
+Write them in the same change that registers them (it only adds files):
+
+  go test ./internal/cards/effects -run TestWriteSnapshotCorpus -args -write-corpus`,
+			dir, strings.Join(names, ", "))
+	}
 }
 
 // TestSnapshotCorpusBoardsStillBuild keeps the writer honest between
