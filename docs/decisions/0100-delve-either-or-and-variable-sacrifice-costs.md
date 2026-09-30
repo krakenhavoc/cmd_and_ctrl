@@ -274,10 +274,10 @@ The other 19 wait for their own component, and each becomes a new kind of branch
 ## Consequences
 
 - One pricer still answers every price. `DelveBudget` and the branch's mana are read from `CastPrice`, so the preview, the enumerator and `CastSpell` agree on the budget and the total.
-- `validateAdditionalCostLocked` and `payAdditionalCostLocked` do not grow new cases. The branch picks which entry goes in the plan, and the variable clause is the plan's only sacrifice entry.
+- There is still one validator (`validateAdditionalCostLocked`) and one payer (`payAdditionalCostLocked`), and neither gets a second walk. The branch only decides which entry goes in the plan. The validator gains two checks: the fixed `PayLife` check (CR 119.4), and the rule that a variable clause, as the plan's only sacrifice entry, takes whatever is left of `sacrifice_ids`.
 - #1213's comment ("a cast's sacrifice clause is always a FIXED count") and the `checkSacrificeClause` doc comment are rewritten in sub-PR 4.
 - ADR 0021 and ADR 0073 each get a dated amendment pointing here when their sub-PR lands.
-- `docs/adding-cards.md` gains a delve paragraph under "Adding a triggered ability" → additional costs, and an either/or paragraph next to `SacrificeCost`.
+- `docs/adding-cards.md` gains a delve paragraph next to the convoke and waterbend (`Spec.TapCost`) note, and an either/or paragraph and a variable-sacrifice paragraph next to `SacrificeCost` and `SacrificeNCost`.
 
 ## Open questions for the owner
 
