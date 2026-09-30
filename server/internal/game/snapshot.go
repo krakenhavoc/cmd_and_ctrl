@@ -1059,6 +1059,7 @@ type delayedTriggerSnapshot struct {
 	Label              string      `json:"label,omitempty"`
 	At                 Step        `json:"at"`
 	ControllerTurnOnly bool        `json:"controllerTurnOnly"`
+	TurnOf             *uuid.UUID  `json:"turnOf,omitempty"` // #1538
 	CreatedSeq         int         `json:"createdSeq,omitempty"`
 	CreatedTurn        int         `json:"createdTurn,omitempty"`
 	Cards              []uuid.UUID `json:"cards,omitempty"`
@@ -1949,6 +1950,23 @@ func oracleIDOfLocked(g *Game, cardID uuid.UUID) string {
 	return ""
 }
 
+// uuidPtrOrNil is id as a pointer, nil for the zero UUID, so an absent
+// optional id is absent from the JSON rather than written as zeros.
+func uuidPtrOrNil(id uuid.UUID) *uuid.UUID {
+	if id == uuid.Nil {
+		return nil
+	}
+	return &id
+}
+
+// uuidOrNil is the inverse of uuidPtrOrNil.
+func uuidOrNil(id *uuid.UUID) uuid.UUID {
+	if id == nil {
+		return uuid.Nil
+	}
+	return *id
+}
+
 func snapshotDelayedTrigger(d *DelayedTrigger, cen *ContinuationCensus) delayedTriggerSnapshot {
 	if d == nil {
 		return delayedTriggerSnapshot{}
@@ -1961,6 +1979,7 @@ func snapshotDelayedTrigger(d *DelayedTrigger, cen *ContinuationCensus) delayedT
 		Label:              d.Label,
 		At:                 d.At,
 		ControllerTurnOnly: d.ControllerTurnOnly,
+		TurnOf:             uuidPtrOrNil(d.TurnOf),
 		CreatedSeq:         d.CreatedSeq,
 		HasEffect:          d.Body.key != "",
 		Body:               d.Body.key,
@@ -2706,6 +2725,7 @@ func restoreDelayedTrigger(d *delayedTriggerSnapshot) *DelayedTrigger {
 		Label:              d.Label,
 		At:                 d.At,
 		ControllerTurnOnly: d.ControllerTurnOnly,
+		TurnOf:             uuidOrNil(d.TurnOf),
 		CreatedSeq:         d.CreatedSeq,
 		// checkEffectKeys has already refused a key this binary has
 		// no body or condition for, so these refs are registered ones.

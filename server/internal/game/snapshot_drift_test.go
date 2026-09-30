@@ -631,6 +631,7 @@ var delayedTriggerFields = plan(
 	"Label", carried, "",
 	"At", carried, "",
 	"ControllerTurnOnly", carried, "",
+	"TurnOf", carried, "",
 	"CreatedSeq", carried, "",
 	"Cards", carried, "",
 	// #663's event condition. The data half comes back so a restored
