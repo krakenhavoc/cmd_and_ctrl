@@ -1,8 +1,9 @@
 # ADR 0101 — Keyword counters read by the engine
 
-**Status:** Proposed · 2026-09-30 · Post-S30 — Rolling deck-driven catalog growth
+**Status:** Accepted · 2026-09-30 · Post-S30 — Rolling deck-driven catalog growth
 **Issue:** [#1753](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1753). It relates to the Betor deck re-check on #1117, where Perennation is the last seam-blocked card.
 **Numbering:** checked with the AGENTS.md §4 sweep on 2026-09-30. I ran `git fetch --all --prune`, then read every `docs/decisions/` file name on every remote branch (41 heads). The highest number on any branch is **0098**. Numbers 0099, 0100 and 0102 are held for ADRs being written at the same time, so this one takes **0101**.
+**Owner decisions:** 2026-09-30. All five recommendations were accepted; see Owner decisions below.
 **Builds on:** [ADR 0014](0014-combat-keywords.md) (the closed keyword table), [ADR 0046](0046-layer-6-authoritative.md) (layer 6 is the one ability list), [ADR 0067](0067-layer-dependency-ordering.md) (CR 613.6 silencing), [ADR 0038](0038-protection-style-keywords.md)'s 2026-09-28 amendment (the "can't have" strip), and [ADR 0041](0041-game-persistence.md) (the snapshot shape rule).
 
 ---
@@ -232,3 +233,15 @@ Keeping the statics would be harmless, because `AppendKeywordAbility` dedupes th
 3. **Off-battlefield counters (Decision 4).** Ship the off-battlefield read now, or wait for a card that puts a keyword counter on a card outside the battlefield? I recommend shipping it now: it is one loop behind the same predicate, and CR 122.1b names it.
 4. **The restore fallback (Decision 7).** Is ordering an unstamped keyword counter at its permanent's own timestamp acceptable for restore points written before the change? The alternative is a schema bump with a migration that cannot know the true timestamp either. I recommend the fallback.
 5. **Decayed and exalted.** Should either keyword be scheduled so its counter can join the table? Rot-Curse Rakshasa and Emissary of Soulfire are one card each. I recommend waiting for a deck that asks.
+
+---
+
+## Owner decisions (2026-09-30)
+
+The owner accepted all five recommendations.
+
+1. **Delivery: one PR.** It contains the engine read, the `b24` deletion with the caveat clears, the roadmap flip, and Perennation.
+2. **Badge provenance: no `counter_keywords` wire field.** The counter pip says where the keyword came from.
+3. **Off-battlefield counters: ship the read now** (Decision 4).
+4. **Restore fallback: accepted** (Decision 7). An unstamped keyword counter is ordered at its permanent's own timestamp. There is no schema bump.
+5. **Decayed and exalted wait** for a deck that asks for them.
