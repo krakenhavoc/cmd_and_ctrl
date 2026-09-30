@@ -78,33 +78,3 @@ func ProducedPerCounterRemoved(slot string) func(*game.Game, uuid.UUID, uuid.UUI
 		return out
 	}
 }
-
-// ManaAbilityNotUsedThisTurn is "Activate only once each turn" for a
-// MANA ability (Ramos, Dragon Engine).
-//
-// It counts this permanent's mana-ability activations in the turn's
-// own slice of the event log rather than in a new per-turn map,
-// because the fact is already recorded: ActivateManaAbility emits one
-// EventManaAbilityActivated per activation, with Source set to the
-// permanent. A new map would be new turn-scoped state to clone,
-// snapshot, classify and flush, for a question the log already
-// answers.
-//
-// LIMIT, stated because it is real: the count is per PERMANENT, not
-// per ability index — the event carries no index. On a card with one
-// mana ability, which is Ramos and every other card that prints this
-// clause today, the two are the same thing. A card with two mana
-// abilities, only one of them once-per-turn, would need the index on
-// the event first.
-//
-// Read-only under g.mu, like every activation condition.
-func ManaAbilityNotUsedThisTurn() ActivationCondition {
-	return func(g *game.Game, _ uuid.UUID, source uuid.UUID) bool {
-		for _, ev := range g.EventsThisTurn() {
-			if ev.Kind == game.EventManaAbilityActivated && ev.Source == source {
-				return false
-			}
-		}
-		return true
-	}
-}

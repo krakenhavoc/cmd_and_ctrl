@@ -164,6 +164,48 @@ func TestBrassTunnelGrinderFirstBoreCounterDoesNotTransform(t *testing.T) {
 	}
 }
 
+// Tecutlan's mana spent on a permanent spell discovers X, X being that
+// spell's mana value; spent on an instant it does nothing (ADR 0099).
+func TestTecutlanDiscoversOffAPermanentSpellItsManaPaysFor(t *testing.T) {
+	for _, tc := range []struct {
+		name, typeLine string
+		discovers      bool
+	}{
+		{"a creature spell", "Creature — Goblin", true},
+		{"an instant", "Instant", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			g := newCatalogGame(t)
+			me := g.Seats[g.Turn.ActiveSeat]
+			advanceToMain(t, g)
+			hit := discoverLibraryCard(me.ID, "Shock", "Instant", "{R}")
+			me.Library.Cards = []game.Card{hit}
+			card := btgCard(me.ID)
+			card.SetFace(1)
+			land := pushBattlefieldCardWithTimestamp(g, card)
+			activateManaFor(t, g, me.ID, land, 0, game.ManaAbilityParams{})
+
+			castFromHandForTest(t, g, me, "Spell", tc.typeLine, "{R}", "", strict)
+			passPriorityAroundTable(t, g)
+			var prompt *game.PendingChoice
+			for _, c := range g.PendingChoices {
+				if c != nil && c.Kind == game.PendingChoiceMayCast {
+					prompt = c
+				}
+			}
+			if !tc.discovers {
+				if prompt != nil || !me.Library.Contains(hit.InstanceID) {
+					t.Fatalf("an instant paid with Tecutlan's mana discovered")
+				}
+				return
+			}
+			if prompt == nil || prompt.MayCastCard != hit.InstanceID {
+				t.Fatalf("discover 1 did not offer the one-drop: %+v", prompt)
+			}
+		})
+	}
+}
+
 // Tecutlan taps for {R}.
 func TestTecutlanTapsForRed(t *testing.T) {
 	g := newCatalogGame(t)

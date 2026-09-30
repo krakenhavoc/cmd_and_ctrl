@@ -457,6 +457,10 @@ func (g *Game) activeStaticAbilitiesLocked() []ContinuousEffect {
 	// permanent's provenance — data, so it needs no catalog hook and
 	// survives the snapshot. See mana_spend_rider.go.
 	out = append(out, g.manaRiderContinuousEffectsLocked()...)
+	// ADR 0101 / CR 122.1b: keyword counters, each a layer-6 effect at
+	// its own CR 613.7c timestamp. One more source list into the same
+	// gather; see keyword_counters.go.
+	out = append(out, g.keywordCounterEffectsLocked()...)
 	if g.Battlefield == nil || CatalogStaticAbilities == nil {
 		return out
 	}

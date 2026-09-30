@@ -344,6 +344,7 @@ func everyFieldCastSurface(lt *LegalTargetsView) CastSurfaceView {
 		// needs both non-zero).
 		PrintedCostTimingClosed: true,
 		TapCost:                 &TapCostView{Key: "convoke", Options: lt},
+		Delve:                   &DelveView{Options: lt, Max: 1},
 		TargetCostNotes:         []string{"This spell costs {1} more to cast for each target beyond the first."},
 		PhyrexianSymbols:        1,
 		CastableHere:            true,
@@ -765,8 +766,12 @@ var castSurfaceScopes = map[string]castSurfaceScope{
 	// ActivatedAbilityView.TimingClosed's doc gives.
 	"PrintedCostTimingClosed": surfacePublicPile,
 	"TapCost":                 surfacePublicPile,
-	"PhyrexianSymbols":        surfacePublicPile,
-	"TargetCostNotes":         surfacePublicPile,
+	// ADR 0100: delve's options are the caster's graveyard, a public
+	// pile everybody can count, and its budget is printed arithmetic —
+	// placed with TapCost, whose options are the caster's own board.
+	"Delve":            surfacePublicPile,
+	"PhyrexianSymbols": surfacePublicPile,
+	"TargetCostNotes":  surfacePublicPile,
 	// #1169: and the four that are not cost-shaped. `target_mode` is
 	// the card's printed prompt shape and is already public on a
 	// revealed card's FACES (#992); `additional_cost` and

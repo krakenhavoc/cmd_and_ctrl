@@ -351,6 +351,12 @@ type PendingChoice struct {
 	// `color_purpose`; see ColorPurpose.
 	ColorPurpose ColorPurpose
 
+	// ControlPurpose is what giving the entering permanent away does to
+	// its recipient, for a PendingChoiceEntryController (ADR 0102).
+	// Unused for every other kind. Carried for ColorPurpose's reason —
+	// only the card knows — and projected as `control_purpose`.
+	ControlPurpose ControlPurpose
+
 	// ManaRestrictions are the spend restrictions the token minted
 	// by this PendingChoiceMana will carry — Delighted Halfling's
 	// "spend this mana only to cast a legendary spell". Empty for
@@ -676,6 +682,14 @@ type PendingChoice struct {
 	// Options entry so the client's prompt can show the card face
 	// instead of quoting a name into a sentence.
 	MayCastCard uuid.UUID
+
+	// MayCastKeyword names the rule a PendingChoiceMayCast is asked
+	// under — "cascade", "discover", "suspend", "madness" — so the
+	// client can name it and word the decline (ADR 0099 §7). Empty for
+	// an offer whose card text is the whole story (hideaway, Malcolm).
+	// The branch names ride AcceptLabel / DeclineLabel, as a confirm's
+	// do. Wire-serialised.
+	MayCastKeyword string
 
 	// mayCastResume is the server-only continuation for a
 	// PendingChoiceMayCast: what to do on each answer. Not
@@ -2481,6 +2495,7 @@ func (g *Game) finishSettledReplacementLocked(ev, out *ReplacementEvent) error {
 		// battlefield (CR 111.1), so one whose entry was replaced away
 		// simply ceases to be; the rest of its batch still lands,
 		// through the entry tail.
+		g.restoreEntryControllerLocked(ev)
 		g.dropEnteringTokenLocked(ev.CardID)
 		if err := g.runRouteTailLocked(ev.zoneRoute); err != nil {
 			return err
@@ -3254,6 +3269,35 @@ func (g *Game) QueueMayPayForEffect(
 	cost, question string,
 	onPay func(g *Game) error,
 ) error {
+	return g.queueMayPayLocked(chooser, source, cost, question, onPay, TurnStep{})
+}
+
+// QueueMayPayInThisStepForEffect is QueueMayPayForEffect for a "you may
+// pay. If you do, …" whose consequence is about the step or phase in
+// progress: Hellkite Charger's "untap all attacking creatures and after
+// this phase, there is an additional combat phase". The prompt is
+// anchored to the current step (PendingChoice.OwedInStep, #997's
+// anchor), so the table cannot walk out of the combat before the
+// answer — an answer given in the next phase would add the combat after
+// the wrong one.
+//
+// Caller must hold g.mu.
+func (g *Game) QueueMayPayInThisStepForEffect(
+	chooser, source uuid.UUID,
+	cost, question string,
+	onPay func(g *Game) error,
+) error {
+	return g.queueMayPayLocked(chooser, source, cost, question, onPay, g.currentTurnStepLocked())
+}
+
+// queueMayPayLocked is the one body behind both may-pay doors. `owed`
+// is the step the prompt must be answered in, or the zero TurnStep.
+func (g *Game) queueMayPayLocked(
+	chooser, source uuid.UUID,
+	cost, question string,
+	onPay func(g *Game) error,
+	owed TurnStep,
+) error {
 	parsed, err := ParseCost(cost)
 	if err != nil {
 		g.EmitEvent(Event{
@@ -3267,12 +3311,13 @@ func (g *Game) QueueMayPayForEffect(
 		return nil
 	}
 	g.QueueChoiceForEffect(PendingChoice{
-		Kind:    PendingChoicePayUnless,
-		Chooser: chooser,
-		Count:   1,
-		Source:  source,
-		Reason:  question,
-		PayCost: cost,
+		Kind:       PendingChoicePayUnless,
+		Chooser:    chooser,
+		Count:      1,
+		Source:     source,
+		Reason:     question,
+		PayCost:    cost,
+		OwedInStep: owed,
 		payUnlessResume: &payUnlessFrame{
 			cost:  parsed,
 			onPay: onPay,
@@ -3313,6 +3358,52 @@ func (g *Game) QueueMayCastForEffect(
 		mayCastResume: &mayCastFrame{
 			onAccept:  onAccept,
 			onDecline: onDecline,
+		},
+	})
+	return nil
+}
+
+// MayCastPrompt is QueueMayCastForEffect's question with its words:
+// the rule it is asked under and the names of its two branches (ADR
+// 0099 §3). Every field but the card and the two branches is optional.
+type MayCastPrompt struct {
+	Chooser, Source, Card uuid.UUID
+	// Question is the dialog header.
+	Question string
+	// Keyword is the rule's name — PendingChoice.MayCastKeyword.
+	Keyword string
+	// AcceptLabel / DeclineLabel name the two buttons. Empty renders
+	// the client's defaults.
+	AcceptLabel, DeclineLabel string
+	OnAccept, OnDecline       func(g *Game) error
+}
+
+// QueueMayCastPromptForEffect is QueueMayCastForEffect with the
+// prompt's words. The same kind, the same frame and the same answer;
+// only what the client shows differs. A chooser who has left gets the
+// decline, exactly as QueueMayCastForEffect does.
+//
+// Caller must hold g.mu.
+func (g *Game) QueueMayCastPromptForEffect(p MayCastPrompt) error {
+	if pl := g.playerByIDLocked(p.Chooser); pl == nil || pl.Eliminated {
+		if p.OnDecline != nil {
+			return p.OnDecline(g)
+		}
+		return nil
+	}
+	g.QueueChoiceForEffect(PendingChoice{
+		Kind:           PendingChoiceMayCast,
+		Chooser:        p.Chooser,
+		Count:          1,
+		Source:         p.Source,
+		Reason:         p.Question,
+		MayCastCard:    p.Card,
+		MayCastKeyword: p.Keyword,
+		AcceptLabel:    p.AcceptLabel,
+		DeclineLabel:   p.DeclineLabel,
+		mayCastResume: &mayCastFrame{
+			onAccept:  p.OnAccept,
+			onDecline: p.OnDecline,
 		},
 	})
 	return nil
@@ -4030,13 +4121,22 @@ func setCardSetCandidates(c *PendingChoice, live []uuid.UUID) {
 func (g *Game) pruneDepartedSeatOptionsLocked() {
 	for i := len(g.PendingChoices) - 1; i >= 0; i-- {
 		c := g.PendingChoices[i]
-		if c == nil || c.Kind != PendingChoiceOptionPick || len(c.PickOptions) == 0 {
+		if c == nil || (c.Kind != PendingChoiceOptionPick && c.Kind != PendingChoiceEntryController) || len(c.PickOptions) == 0 {
 			continue
 		}
 		opts, ok := keepSeats(c.PickOptions, func(id uuid.UUID) bool {
 			p := g.playerByIDLocked(id)
 			return p != nil && !p.Eliminated
 		})
+		if !ok && c.Kind == PendingChoiceEntryController {
+			// ADR 0102: every opponent the permanent could have been
+			// given to has left. The entry still happens — under its
+			// would-be controller, the no-opponent rule reached late —
+			// so the paused event is resumed rather than dropped.
+			g.removeChoiceAtLocked(i)
+			g.settleEntryControllerWithoutChoiceLocked(c)
+			continue
+		}
 		if !ok {
 			g.EmitEvent(Event{
 				Kind:   EventPendingChoiceDropped,

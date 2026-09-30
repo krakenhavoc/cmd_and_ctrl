@@ -30,21 +30,18 @@ import (
 // (ActivateAbilityParams.PhyrexianLife, CR 602.2b, 2 life each per
 // pip); the DISCARD component landed with #660's AbilityCost.DiscardCards
 // (DiscardN). The counter it places is CR 122.1b: an indestructible
-// counter grants indestructible for as long as it's there, carried by
-// b24KeywordCounterGrant exactly as Tekuthal, Inquiry Dominus's own
-// indestructible counter is. The counter and the static live on the
-// same permanent, so there's no window where Solphim leaving the
-// battlefield could strand the grant on someone else.
+// counter grants indestructible for as long as it's there, and the
+// engine reads it itself (ADR 0101), so the card declares nothing for
+// it.
 func init() {
 	Register(Spec{
 		OracleID:     "895f23a2-55b7-4cc0-8939-2efaaf097e6f",
 		Name:         "Solphim, Mayhem Dominus",
 		Completeness: CompletenessFull,
-		Static:       []game.StaticAbility{b24KeywordCounterGrant("indestructible")},
 		Activated: []ActivatedAbility{{
 			Label:  "{1}{R/P}{R/P}, Discard two cards: Put an indestructible counter on Solphim, Mayhem Dominus.",
 			Cost:   Plus(ManaCost("{1}{R/P}{R/P}"), DiscardN(2, "two cards")),
-			Effect: putCounterOnSourceWhileOnBattlefield("indestructible", 1),
+			Effect: putCounterOnSourceWhileOnBattlefield(game.CounterIndestructible, 1),
 		}},
 		Replacements: []game.ReplacementEffect{{
 			Watches: []game.EventKind{game.EventDealDamage},

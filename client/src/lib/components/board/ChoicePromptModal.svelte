@@ -34,6 +34,8 @@
   import { colorPickOptions } from "../../manaSource";
   import ManaSymbolPicker from "./ManaSymbolPicker.svelte";
   import { payUnlessAnswer, waterbendLimit } from "../../waterbend";
+  import { mayCastCopy } from "../../mayCast";
+  import { freeCastRequest, mayCastKeywordsThatOpenACast } from "../../freeCastRequest";
 
   interface Props {
     snap: GameView;
@@ -488,8 +490,20 @@
   // the exiled card, which then casts out of exile like any other
   // impulse grant; "No" puts it on the bottom of the library with
   // the rest of the cards cascade turned over.
+  //
+  // ADR 0099 §7: the same prompt serves discover, suspend and madness,
+  // each of which does something different on "no". The server names
+  // the rule (may_cast_keyword) and the branches; mayCastCopy words
+  // them. The offered card is in exile face up, found by may_cast_card.
   const isMayCast = $derived(active?.kind === "may_cast");
-  const mayCastCard = $derived(active?.options?.[0]);
+  const mayCastCard = $derived(
+    active?.may_cast_card
+      ? snap.exile?.cards?.find((c) => c.instance_id === active.may_cast_card)
+      : active?.options?.[0],
+  );
+  const mayCastWords = $derived(
+    mayCastCopy(active?.may_cast_keyword, active?.accept_label, active?.decline_label),
+  );
 
   // Shockland entry branch — "as this land enters, you may pay 2
   // life. If you don't, it enters tapped." Same {choice_id, apply}
@@ -531,6 +545,18 @@
     if (!active || !viewerID) return;
     answer({ option_index: index });
   }
+
+  // ADR 0102 entry_controller — "enters under the control of an
+  // opponent of your choice" (CR 614.12a). The same seat buttons and
+  // the same {option_index} answer as option_pick; what differs is the
+  // sentence. The permanent is not on the battlefield yet, and nothing
+  // can happen until an opponent is named.
+  const isEntryController = $derived(active?.kind === "entry_controller");
+  const entryControllerHint = $derived(
+    active?.control_purpose === "benefit"
+      ? "Whoever you choose will control it and get what it does."
+      : "Whoever you choose will control it and live with what it does.",
+  );
 
   // #764 mode_pick — CR 603.3c. A modal TRIGGERED ability's bullet,
   // chosen as the ability is put on the stack. A spell and an
@@ -859,6 +885,16 @@
     if (isPayUnless) {
       answer(payUnlessAnswer(active, apply, payTaps));
       return;
+    }
+    // ADR 0099 §7: "Cast it free" hands the card to Board's cast chain
+    // once the snapshot carrying the grant arrives.
+    if (
+      apply &&
+      isMayCast &&
+      active.may_cast_card &&
+      mayCastKeywordsThatOpenACast.has(active.may_cast_keyword ?? "")
+    ) {
+      freeCastRequest.set(active.may_cast_card);
     }
     answer({ apply });
   }
@@ -1346,20 +1382,20 @@
       {:else if isMayCast}
         <h2 id="choice-title">
           {active.reason || "Cast it without paying its mana cost?"}
-          <span class="prompt-src" aria-hidden="true">cascade · CR 702.85</span>
+          <span class="prompt-src" aria-hidden="true">{mayCastWords.source}</span>
         </h2>
         <p class="prompt-hint">
           {#if mayCastCard}
             <strong>{mayCastCard.name}</strong> is exiled face up.
           {/if}
-          Say yes and it stays in exile, castable for nothing until end of turn. Say no and it goes to
-          the bottom of your library with everything else cascade turned over.
+          {mayCastWords.hint}
         </p>
         <div class="prompt-foot">
           <span class="prompt-count"><span class="kbd">Y</span> / <span class="kbd">N</span></span>
-          <button type="button" onclick={() => answerOptional(false)}>To the bottom</button>
+          <button type="button" onclick={() => answerOptional(false)}>{mayCastWords.decline}</button
+          >
           <button type="button" class="primary" onclick={() => answerOptional(true)}>
-            Cast it free
+            {mayCastWords.accept}
           </button>
         </div>
       {:else if isEntryPayLife}
@@ -1399,6 +1435,24 @@
                     {/each}
                   </span>
                 {/if}
+              </button>
+            </li>
+          {/each}
+        </ul>
+      {:else if isEntryController}
+        <h2 id="choice-title">
+          {active.reason || "Choose an opponent"}
+          <span class="prompt-src" aria-hidden="true">choose an opponent · CR 614.12a</span>
+        </h2>
+        <p class="prompt-hint">
+          It hasn't entered yet: it enters under the control of the opponent you choose.
+          {entryControllerHint}
+        </p>
+        <ul class="pick-options">
+          {#each pickOptions as opt, i (i)}
+            <li>
+              <button type="button" class="pick-option" onclick={() => answerOptionPick(i)}>
+                <span class="pick-label">{opt.label}</span>
               </button>
             </li>
           {/each}

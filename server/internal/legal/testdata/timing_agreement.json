@@ -288,7 +288,47 @@
         "active_seat": 0,
         "priority_holder": 0,
         "phase": "precombat_main",
-        "step": "precombat_main"
+        "step": "precombat_main",
+        "phase_id": 2,
+        "phase_ordinal": 1,
+        "upcoming": [
+          {
+            "step": "begin_combat",
+            "phase_id": 3
+          },
+          {
+            "step": "declare_attackers",
+            "phase_id": 3
+          },
+          {
+            "step": "declare_blockers",
+            "phase_id": 3
+          },
+          {
+            "step": "first_strike_damage",
+            "phase_id": 3
+          },
+          {
+            "step": "combat_damage",
+            "phase_id": 3
+          },
+          {
+            "step": "end_combat",
+            "phase_id": 3
+          },
+          {
+            "step": "postcombat_main",
+            "phase_id": 4
+          },
+          {
+            "step": "end",
+            "phase_id": 5
+          },
+          {
+            "step": "cleanup",
+            "phase_id": 5
+          }
+        ]
       },
       "mulligans_open": false,
       "undo_limit": 1,
@@ -428,6 +468,71 @@
           "source": "00000010-0000-4000-8000-000000000000"
         }
       ],
+      "legal_actions": {
+        "pass": true,
+        "sources": {
+          "00000006-0000-4000-8000-000000000000": {
+            "kinds": [
+              "land"
+            ],
+            "moves": 1,
+            "zones": [
+              "hand"
+            ]
+          },
+          "00000007-0000-4000-8000-000000000000": {
+            "kinds": [
+              "cast"
+            ],
+            "moves": 3,
+            "zones": [
+              "hand"
+            ],
+            "faces": [
+              0
+            ]
+          },
+          "0000000c-0000-4000-8000-000000000000": {
+            "kinds": [
+              "cast"
+            ],
+            "moves": 1,
+            "zones": [
+              "command"
+            ],
+            "faces": [
+              0
+            ]
+          },
+          "0000000e-0000-4000-8000-000000000000": {
+            "kinds": [
+              "mana"
+            ],
+            "moves": 1,
+            "mana_abilities": [
+              "land:R"
+            ]
+          },
+          "0000000f-0000-4000-8000-000000000000": {
+            "kinds": [
+              "mana"
+            ],
+            "moves": 1,
+            "mana_abilities": [
+              "land:R"
+            ]
+          },
+          "00000010-0000-4000-8000-000000000000": {
+            "kinds": [
+              "mana"
+            ],
+            "moves": 1,
+            "mana_abilities": [
+              "land:B"
+            ]
+          }
+        }
+      },
       "log": [
         {
           "seq": 1,
@@ -744,7 +849,47 @@
         "active_seat": 0,
         "priority_holder": 0,
         "phase": "precombat_main",
-        "step": "precombat_main"
+        "step": "precombat_main",
+        "phase_id": 2,
+        "phase_ordinal": 1,
+        "upcoming": [
+          {
+            "step": "begin_combat",
+            "phase_id": 3
+          },
+          {
+            "step": "declare_attackers",
+            "phase_id": 3
+          },
+          {
+            "step": "declare_blockers",
+            "phase_id": 3
+          },
+          {
+            "step": "first_strike_damage",
+            "phase_id": 3
+          },
+          {
+            "step": "combat_damage",
+            "phase_id": 3
+          },
+          {
+            "step": "end_combat",
+            "phase_id": 3
+          },
+          {
+            "step": "postcombat_main",
+            "phase_id": 4
+          },
+          {
+            "step": "end",
+            "phase_id": 5
+          },
+          {
+            "step": "cleanup",
+            "phase_id": 5
+          }
+        ]
       },
       "mulligans_open": false,
       "undo_limit": 1,
@@ -854,6 +999,83 @@
           "source": "0000001f-0000-4000-8000-000000000000"
         }
       ],
+      "legal_actions": {
+        "pass": true,
+        "sources": {
+          "00000017-0000-4000-8000-000000000000": {
+            "kinds": [
+              "cast"
+            ],
+            "moves": 1,
+            "zones": [
+              "hand"
+            ],
+            "faces": [
+              0
+            ]
+          },
+          "00000018-0000-4000-8000-000000000000": {
+            "kinds": [
+              "cast"
+            ],
+            "moves": 1,
+            "zones": [
+              "hand"
+            ],
+            "faces": [
+              0
+            ]
+          },
+          "00000019-0000-4000-8000-000000000000": {
+            "kinds": [
+              "cast"
+            ],
+            "moves": 1,
+            "zones": [
+              "command"
+            ],
+            "faces": [
+              0
+            ]
+          },
+          "0000001c-0000-4000-8000-000000000000": {
+            "kinds": [
+              "mana"
+            ],
+            "moves": 1,
+            "mana_abilities": [
+              "land:G"
+            ]
+          },
+          "0000001d-0000-4000-8000-000000000000": {
+            "kinds": [
+              "mana"
+            ],
+            "moves": 1,
+            "mana_abilities": [
+              "land:G"
+            ]
+          },
+          "0000001e-0000-4000-8000-000000000000": {
+            "kinds": [
+              "mana"
+            ],
+            "moves": 1,
+            "mana_abilities": [
+              "land:G"
+            ]
+          },
+          "0000001f-0000-4000-8000-000000000000": {
+            "kinds": [
+              "mana"
+            ],
+            "moves": 1,
+            "mana_abilities": [
+              "land:G"
+            ]
+          }
+        }
+      },
       "log": [
         {
           "seq": 1,
@@ -1184,6 +1406,38 @@
         "priority_holder": 0,
         "phase": "combat",
         "step": "declare_attackers",
+        "phase_id": 3,
+        "phase_ordinal": 1,
+        "upcoming": [
+          {
+            "step": "declare_blockers",
+            "phase_id": 3
+          },
+          {
+            "step": "first_strike_damage",
+            "phase_id": 3
+          },
+          {
+            "step": "combat_damage",
+            "phase_id": 3
+          },
+          {
+            "step": "end_combat",
+            "phase_id": 3
+          },
+          {
+            "step": "postcombat_main",
+            "phase_id": 4
+          },
+          {
+            "step": "end",
+            "phase_id": 5
+          },
+          {
+            "step": "cleanup",
+            "phase_id": 5
+          }
+        ],
         "attack_targets": [
           {
             "kind": "player",
@@ -1298,6 +1552,59 @@
           "source": "0000002e-0000-4000-8000-000000000000"
         }
       ],
+      "legal_actions": {
+        "pass": true,
+        "sources": {
+          "00000026-0000-4000-8000-000000000000": {
+            "kinds": [
+              "cast"
+            ],
+            "moves": 2,
+            "zones": [
+              "hand"
+            ],
+            "faces": [
+              0
+            ]
+          },
+          "0000002b-0000-4000-8000-000000000000": {
+            "kinds": [
+              "mana"
+            ],
+            "moves": 1,
+            "mana_abilities": [
+              "land:R"
+            ]
+          },
+          "0000002c-0000-4000-8000-000000000000": {
+            "kinds": [
+              "mana"
+            ],
+            "moves": 1,
+            "mana_abilities": [
+              "land:R"
+            ]
+          },
+          "0000002d-0000-4000-8000-000000000000": {
+            "kinds": [
+              "mana"
+            ],
+            "moves": 1,
+            "mana_abilities": [
+              "land:R"
+            ]
+          },
+          "0000002e-0000-4000-8000-000000000000": {
+            "kinds": [
+              "mana"
+            ],
+            "moves": 1,
+            "mana_abilities": [
+              "land:R"
+            ]
+          }
+        }
+      },
       "log": [
         {
           "seq": 1,
@@ -1658,7 +1965,47 @@
         "active_seat": 0,
         "priority_holder": 0,
         "phase": "precombat_main",
-        "step": "precombat_main"
+        "step": "precombat_main",
+        "phase_id": 2,
+        "phase_ordinal": 1,
+        "upcoming": [
+          {
+            "step": "begin_combat",
+            "phase_id": 3
+          },
+          {
+            "step": "declare_attackers",
+            "phase_id": 3
+          },
+          {
+            "step": "declare_blockers",
+            "phase_id": 3
+          },
+          {
+            "step": "first_strike_damage",
+            "phase_id": 3
+          },
+          {
+            "step": "combat_damage",
+            "phase_id": 3
+          },
+          {
+            "step": "end_combat",
+            "phase_id": 3
+          },
+          {
+            "step": "postcombat_main",
+            "phase_id": 4
+          },
+          {
+            "step": "end",
+            "phase_id": 5
+          },
+          {
+            "step": "cleanup",
+            "phase_id": 5
+          }
+        ]
       },
       "mulligans_open": false,
       "undo_limit": 1,
@@ -1767,6 +2114,59 @@
           "source": "0000003d-0000-4000-8000-000000000000"
         }
       ],
+      "legal_actions": {
+        "pass": true,
+        "sources": {
+          "00000035-0000-4000-8000-000000000000": {
+            "kinds": [
+              "cast"
+            ],
+            "moves": 2,
+            "zones": [
+              "hand"
+            ],
+            "faces": [
+              0
+            ]
+          },
+          "0000003a-0000-4000-8000-000000000000": {
+            "kinds": [
+              "mana"
+            ],
+            "moves": 1,
+            "mana_abilities": [
+              "land:R"
+            ]
+          },
+          "0000003b-0000-4000-8000-000000000000": {
+            "kinds": [
+              "mana"
+            ],
+            "moves": 1,
+            "mana_abilities": [
+              "land:R"
+            ]
+          },
+          "0000003c-0000-4000-8000-000000000000": {
+            "kinds": [
+              "mana"
+            ],
+            "moves": 1,
+            "mana_abilities": [
+              "land:R"
+            ]
+          },
+          "0000003d-0000-4000-8000-000000000000": {
+            "kinds": [
+              "mana"
+            ],
+            "moves": 1,
+            "mana_abilities": [
+              "land:R"
+            ]
+          }
+        }
+      },
       "log": [
         {
           "seq": 1,
@@ -2090,7 +2490,47 @@
         "active_seat": 0,
         "priority_holder": 0,
         "phase": "precombat_main",
-        "step": "precombat_main"
+        "step": "precombat_main",
+        "phase_id": 2,
+        "phase_ordinal": 1,
+        "upcoming": [
+          {
+            "step": "begin_combat",
+            "phase_id": 3
+          },
+          {
+            "step": "declare_attackers",
+            "phase_id": 3
+          },
+          {
+            "step": "declare_blockers",
+            "phase_id": 3
+          },
+          {
+            "step": "first_strike_damage",
+            "phase_id": 3
+          },
+          {
+            "step": "combat_damage",
+            "phase_id": 3
+          },
+          {
+            "step": "end_combat",
+            "phase_id": 3
+          },
+          {
+            "step": "postcombat_main",
+            "phase_id": 4
+          },
+          {
+            "step": "end",
+            "phase_id": 5
+          },
+          {
+            "step": "cleanup",
+            "phase_id": 5
+          }
+        ]
       },
       "mulligans_open": false,
       "undo_limit": 1,
@@ -2360,7 +2800,47 @@
         "active_seat": 0,
         "priority_holder": 0,
         "phase": "precombat_main",
-        "step": "precombat_main"
+        "step": "precombat_main",
+        "phase_id": 2,
+        "phase_ordinal": 1,
+        "upcoming": [
+          {
+            "step": "begin_combat",
+            "phase_id": 3
+          },
+          {
+            "step": "declare_attackers",
+            "phase_id": 3
+          },
+          {
+            "step": "declare_blockers",
+            "phase_id": 3
+          },
+          {
+            "step": "first_strike_damage",
+            "phase_id": 3
+          },
+          {
+            "step": "combat_damage",
+            "phase_id": 3
+          },
+          {
+            "step": "end_combat",
+            "phase_id": 3
+          },
+          {
+            "step": "postcombat_main",
+            "phase_id": 4
+          },
+          {
+            "step": "end",
+            "phase_id": 5
+          },
+          {
+            "step": "cleanup",
+            "phase_id": 5
+          }
+        ]
       },
       "mulligans_open": false,
       "undo_limit": 1,
@@ -2420,6 +2900,41 @@
           "source": "00000057-0000-4000-8000-000000000000"
         }
       ],
+      "legal_actions": {
+        "pass": true,
+        "sources": {
+          "00000053-0000-4000-8000-000000000000": {
+            "kinds": [
+              "cast"
+            ],
+            "moves": 1,
+            "zones": [
+              "command"
+            ],
+            "faces": [
+              0
+            ]
+          },
+          "00000056-0000-4000-8000-000000000000": {
+            "kinds": [
+              "mana"
+            ],
+            "moves": 1,
+            "mana_abilities": [
+              "land:R"
+            ]
+          },
+          "00000057-0000-4000-8000-000000000000": {
+            "kinds": [
+              "mana"
+            ],
+            "moves": 1,
+            "mana_abilities": [
+              "land:R"
+            ]
+          }
+        }
+      },
       "log": [
         {
           "seq": 1,
@@ -2674,7 +3189,47 @@
         "active_seat": 0,
         "priority_holder": 0,
         "phase": "precombat_main",
-        "step": "precombat_main"
+        "step": "precombat_main",
+        "phase_id": 2,
+        "phase_ordinal": 1,
+        "upcoming": [
+          {
+            "step": "begin_combat",
+            "phase_id": 3
+          },
+          {
+            "step": "declare_attackers",
+            "phase_id": 3
+          },
+          {
+            "step": "declare_blockers",
+            "phase_id": 3
+          },
+          {
+            "step": "first_strike_damage",
+            "phase_id": 3
+          },
+          {
+            "step": "combat_damage",
+            "phase_id": 3
+          },
+          {
+            "step": "end_combat",
+            "phase_id": 3
+          },
+          {
+            "step": "postcombat_main",
+            "phase_id": 4
+          },
+          {
+            "step": "end",
+            "phase_id": 5
+          },
+          {
+            "step": "cleanup",
+            "phase_id": 5
+          }
+        ]
       },
       "mulligans_open": false,
       "undo_limit": 1,
@@ -2734,6 +3289,41 @@
           "source": "00000062-0000-4000-8000-000000000000"
         }
       ],
+      "legal_actions": {
+        "pass": true,
+        "sources": {
+          "0000005e-0000-4000-8000-000000000000": {
+            "kinds": [
+              "cast"
+            ],
+            "moves": 1,
+            "zones": [
+              "command"
+            ],
+            "faces": [
+              0
+            ]
+          },
+          "00000061-0000-4000-8000-000000000000": {
+            "kinds": [
+              "mana"
+            ],
+            "moves": 1,
+            "mana_abilities": [
+              "land:B"
+            ]
+          },
+          "00000062-0000-4000-8000-000000000000": {
+            "kinds": [
+              "mana"
+            ],
+            "moves": 1,
+            "mana_abilities": [
+              "land:B"
+            ]
+          }
+        }
+      },
       "log": [
         {
           "seq": 1,
@@ -3007,7 +3597,47 @@
         "active_seat": 0,
         "priority_holder": 0,
         "phase": "precombat_main",
-        "step": "precombat_main"
+        "step": "precombat_main",
+        "phase_id": 2,
+        "phase_ordinal": 1,
+        "upcoming": [
+          {
+            "step": "begin_combat",
+            "phase_id": 3
+          },
+          {
+            "step": "declare_attackers",
+            "phase_id": 3
+          },
+          {
+            "step": "declare_blockers",
+            "phase_id": 3
+          },
+          {
+            "step": "first_strike_damage",
+            "phase_id": 3
+          },
+          {
+            "step": "combat_damage",
+            "phase_id": 3
+          },
+          {
+            "step": "end_combat",
+            "phase_id": 3
+          },
+          {
+            "step": "postcombat_main",
+            "phase_id": 4
+          },
+          {
+            "step": "end",
+            "phase_id": 5
+          },
+          {
+            "step": "cleanup",
+            "phase_id": 5
+          }
+        ]
       },
       "mulligans_open": false,
       "undo_limit": 1,
@@ -3083,6 +3713,53 @@
           "source": "0000006e-0000-4000-8000-000000000000"
         }
       ],
+      "legal_actions": {
+        "pass": true,
+        "sources": {
+          "00000068-0000-4000-8000-000000000000": {
+            "kinds": [
+              "cast"
+            ],
+            "moves": 1,
+            "zones": [
+              "hand"
+            ],
+            "faces": [
+              0
+            ]
+          },
+          "0000006a-0000-4000-8000-000000000000": {
+            "kinds": [
+              "cast"
+            ],
+            "moves": 1,
+            "zones": [
+              "command"
+            ],
+            "faces": [
+              0
+            ]
+          },
+          "0000006d-0000-4000-8000-000000000000": {
+            "kinds": [
+              "mana"
+            ],
+            "moves": 1,
+            "mana_abilities": [
+              "land:B"
+            ]
+          },
+          "0000006e-0000-4000-8000-000000000000": {
+            "kinds": [
+              "mana"
+            ],
+            "moves": 1,
+            "mana_abilities": [
+              "land:B"
+            ]
+          }
+        }
+      },
       "log": [
         {
           "seq": 1,

@@ -433,6 +433,39 @@ type CastPermission struct {
 	// and for the declared duration simplification.
 	GrantsHaste bool `json:"grantsHaste,omitempty"`
 
+	// MaxSpellManaValue caps the mana value of the SPELL this
+	// permission lets a player cast (ADR 0099 §3). Discover's "if the
+	// resulting spell's mana value is less than or equal to N"
+	// (CR 701.57a) and cascade's "less than this spell's mana value"
+	// (CR 702.85a) are both this field. It is judged against the face
+	// actually being cast, after ADR 0034 has materialised it, so a
+	// modal double-faced card's expensive back face or an adventure
+	// half that costs more is refused even though the card itself was
+	// a legal hit.
+	//
+	// A pointer because a cap of 0 is a real instruction ("discover 0"
+	// can still find a mana value 0 card). Nil means no cap. Checked in
+	// validateCastPathLocked, the one gate CastSpell, the view's offer
+	// list and the bot enumerator share, so all three refuse the same
+	// casts.
+	MaxSpellManaValue *int `json:"maxSpellManaValue,omitempty"`
+
+	// LapseOnPass closes the permission the next time its holder
+	// passes priority, and says where the card goes then (ADR 0099
+	// §4). It is the grant model's stand-in for CR 608.2g's "cast it
+	// during the resolution": the free cast is the holder's to take
+	// now, and passing without taking it is the decline. Miracle's
+	// window closes the same way (#1665, closeMiracleWindowLocked).
+	//
+	// Empty is "no pass window", which every other permission is.
+	LapseOnPass PermissionLapse `json:"lapseOnPass,omitempty"`
+
+	// Discover marks a discover grant (ADR 0099). It carries the N and
+	// the discovering source, because a discover whose card is cast is
+	// not complete until the cast (CR 701.57b), and the EventDiscover
+	// fired then needs both. Nil on every other permission.
+	Discover *DiscoverGrant `json:"discover,omitempty"`
+
 	// CastOnly restricts the permission to CASTING. Ragavan says "you
 	// may CAST that card", and a land exiled by Ragavan is stranded
 	// because playing a land is not casting (CR 305.1, 116.2a).
@@ -1193,24 +1226,39 @@ func stampStandingPermissionLocked(perm CastPermission, p *Player, c *Card) (Cas
 //
 // Caller must hold g.mu (write).
 func (g *Game) sweepCastPermissionsLocked(endOfTurn bool) {
+	type lapse struct {
+		holder uuid.UUID
+		perm   CastPermission
+	}
+	var lapsed []lapse
 	for _, p := range g.Seats {
 		if p == nil || len(p.CastPermissions) == 0 {
 			continue
 		}
 		kept := make([]CastPermission, 0, len(p.CastPermissions))
 		for _, perm := range p.CastPermissions {
-			if g.durationExpiredLocked(perm.Duration, endOfTurn) {
+			drop := g.durationExpiredLocked(perm.Duration, endOfTurn) ||
+				(perm.Scope != ScopeStanding && !g.anyNamedObjectStillThereLocked(perm))
+			if !drop {
+				kept = append(kept, perm)
 				continue
 			}
-			if perm.Scope != ScopeStanding && !g.anyNamedObjectStillThereLocked(perm) {
-				continue
+			// ADR 0099 §4's backstop. A pass-closed grant normally ends
+			// on its holder's next pass, but the sandbox can move the
+			// turn without one (pass_turn). Dropping it silently would
+			// strand a discovered card in exile and leave its discover
+			// unfinished, so it lapses exactly as a pass would have.
+			if perm.LapseOnPass != "" && perm.Scope == ScopeCards {
+				lapsed = append(lapsed, lapse{holder: p.ID, perm: perm})
 			}
-			kept = append(kept, perm)
 		}
 		if len(kept) == 0 {
 			kept = nil
 		}
 		p.CastPermissions = kept
+	}
+	for _, l := range lapsed {
+		g.lapseCastPermissionLocked(l.holder, l.perm)
 	}
 }
 
@@ -1442,6 +1490,7 @@ func asAnyColorCost(cost ParsedCost) ParsedCost {
 			widened = append(widened, widenPhyrexian(req))
 		default:
 			out.Generic++
+			out.FoldedColored++
 		}
 	}
 	out.Required = append(out.Required, widened...)
@@ -1466,6 +1515,7 @@ func asAnyTypeCost(cost ParsedCost) ParsedCost {
 			continue
 		}
 		out.Generic++
+		out.FoldedColored++
 	}
 	return out
 }

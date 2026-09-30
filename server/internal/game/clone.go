@@ -93,6 +93,11 @@ func (g *Game) cloneLocked() *Game {
 	// past the Time Warp that queued a turn must un-queue it.
 	out.ExtraTurns = cloneExtraTurns(g.ExtraTurns)
 	out.NextExtraRef = g.NextExtraRef
+	// ADR 0059 Decision 10: the turn plan is plain data too. An undo
+	// past a Relentless Assault must take its phases back out.
+	out.TurnPlan = clonePlan(g.TurnPlan)
+	out.NextPhaseID = g.NextPhaseID
+	out.planAt = g.planAt
 	if len(g.LoyaltyActivatedThisTurn) > 0 {
 		out.LoyaltyActivatedThisTurn = make(map[uuid.UUID]bool, len(g.LoyaltyActivatedThisTurn))
 		for k, v := range g.LoyaltyActivatedThisTurn {
@@ -512,6 +517,9 @@ func cloneCard(c Card) Card {
 	// ADR 0097: the "hasn't been chosen" memory is a map of slices,
 	// and a value copy would share both levels with the live card.
 	out.ModesChosen = copyModesChosen(c.ModesChosen)
+	// ADR 0101: the keyword counters' timestamps ride an undo with the
+	// counters they order.
+	out.CounterStampedAt = copyStringInt64Map(c.CounterStampedAt)
 	if len(c.Counters) > 0 {
 		out.Counters = make(map[string]int, len(c.Counters))
 		for k, v := range c.Counters {
@@ -931,6 +939,9 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.DelayedTriggers = src.DelayedTriggers
 	g.ExtraTurns = src.ExtraTurns
 	g.NextExtraRef = src.NextExtraRef
+	g.TurnPlan = src.TurnPlan
+	g.NextPhaseID = src.NextPhaseID
+	g.planAt = src.planAt
 	g.LoyaltyActivatedThisTurn = src.LoyaltyActivatedThisTurn
 	g.SpellsCastThisTurn = src.SpellsCastThisTurn
 	g.ForetoldThisTurn = src.ForetoldThisTurn

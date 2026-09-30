@@ -586,6 +586,18 @@ var choiceDepartureDecisions = map[PendingChoiceKind]choiceDepartureRule{
 	// it once through the drop action and once through the frame is
 	// the double-resume the second column exists to avoid.
 	PendingChoiceEntryRevealFromHand: {},
+	// entry_controller (ADR 0102) is dropped, never reassigned: the
+	// chooser is the would-be controller of the entering permanent,
+	// which is normally their own card and leaves the game with them
+	// (CR 800.4a step 1). When it is not — a reanimation "under your
+	// control" of another player's card — the effect putting it has
+	// ceased to exist with its controller, and the entry is abandoned
+	// with the card where it was. Like entry_reveal_from_hand, the
+	// frame rides PendingChoice.replacementResume, so
+	// finishDroppedReplacementLocked settles the paused entry with no
+	// drop action of its own. An OFFERED seat leaving is the other
+	// case, and pruneDepartedSeatOptionsLocked handles it.
+	PendingChoiceEntryController: {},
 	// ADR 0098's two siblings take the same row for the same reason:
 	// the discard or the sacrifice is the "unless" of the departed
 	// player's own entering permanent, and the hand or the permanents

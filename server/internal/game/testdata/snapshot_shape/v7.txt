@@ -58,6 +58,8 @@ battlefield.cards[].colorIdentity[]	string
 battlefield.cards[].colors	array
 battlefield.cards[].colors[]	string
 battlefield.cards[].controller	custom(uuid.UUID)
+battlefield.cards[].counterStampedAt	map:string
+battlefield.cards[].counterStampedAt{}	number:int64
 battlefield.cards[].counters	map:string
 battlefield.cards[].counters{}	number:int
 battlefield.cards[].damageMarked	number:int
@@ -428,6 +430,8 @@ exile.cards[].colorIdentity[]	string
 exile.cards[].colors	array
 exile.cards[].colors[]	string
 exile.cards[].controller	custom(uuid.UUID)
+exile.cards[].counterStampedAt	map:string
+exile.cards[].counterStampedAt{}	number:int64
 exile.cards[].counters	map:string
 exile.cards[].counters{}	number:int
 exile.cards[].damageMarked	number:int
@@ -783,6 +787,8 @@ lastKnownStack[].card.colorIdentity[]	string
 lastKnownStack[].card.colors	array
 lastKnownStack[].card.colors[]	string
 lastKnownStack[].card.controller	custom(uuid.UUID)
+lastKnownStack[].card.counterStampedAt	map:string
+lastKnownStack[].card.counterStampedAt{}	number:int64
 lastKnownStack[].card.counters	map:string
 lastKnownStack[].card.counters{}	number:int
 lastKnownStack[].card.damageMarked	number:int
@@ -1030,6 +1036,10 @@ lastKnownStack[].item.paid.Mana[].riders[].when[]	string
 lastKnownStack[].item.paid.OnPaper	bool
 lastKnownStack[].item.paid.ReturnedAttacking	custom(uuid.UUID)
 lastKnownStack[].item.paid.Sacrificed	number:int
+lastKnownStack[].item.paid.delved	array
+lastKnownStack[].item.paid.delved[]	object
+lastKnownStack[].item.paid.delved[].epoch	number:int
+lastKnownStack[].item.paid.delved[].id	custom(uuid.UUID)
 lastKnownStack[].item.paid.exiled	array
 lastKnownStack[].item.paid.exiled[]	custom(uuid.UUID)
 lastKnownStack[].item.paid.giftOpponent	custom(uuid.UUID)
@@ -1166,6 +1176,7 @@ loyaltyActivatedThisTurn{}	bool
 monarch	custom(uuid.UUID)
 mulligansOpen	bool
 nextExtraRef	number:int
+nextPhaseId	number:int
 oncePerBatchFired	map:string
 oncePerBatchFired{}	number:uint64
 outcome	object
@@ -1188,6 +1199,7 @@ pendingChoices[].coinWins	number:int
 pendingChoices[].colorOptions	array
 pendingChoices[].colorOptions[]	string
 pendingChoices[].colorPurpose	string
+pendingChoices[].controlPurpose	string
 pendingChoices[].copyOptions	array
 pendingChoices[].copyOptions[]	custom(uuid.UUID)
 pendingChoices[].count	number:int
@@ -1279,6 +1291,7 @@ pendingChoices[].manaRiders[].when[]	string
 pendingChoices[].manaSourceKinds	number:uint16
 pendingChoices[].manaTapped	bool
 pendingChoices[].mayCastCard	custom(uuid.UUID)
+pendingChoices[].mayCastKeyword	string
 pendingChoices[].midResolution	bool
 pendingChoices[].modeMax	number:int
 pendingChoices[].modeMin	number:int
@@ -1381,6 +1394,10 @@ pendingTriggers[].paid.Mana[].riders[].when[]	string
 pendingTriggers[].paid.OnPaper	bool
 pendingTriggers[].paid.ReturnedAttacking	custom(uuid.UUID)
 pendingTriggers[].paid.Sacrificed	number:int
+pendingTriggers[].paid.delved	array
+pendingTriggers[].paid.delved[]	object
+pendingTriggers[].paid.delved[].epoch	number:int
+pendingTriggers[].paid.delved[].id	custom(uuid.UUID)
 pendingTriggers[].paid.exiled	array
 pendingTriggers[].paid.exiled[]	custom(uuid.UUID)
 pendingTriggers[].paid.giftOpponent	custom(uuid.UUID)
@@ -1529,6 +1546,8 @@ phasedOut.cards[].colorIdentity[]	string
 phasedOut.cards[].colors	array
 phasedOut.cards[].colors[]	string
 phasedOut.cards[].controller	custom(uuid.UUID)
+phasedOut.cards[].counterStampedAt	map:string
+phasedOut.cards[].counterStampedAt{}	number:int64
 phasedOut.cards[].counters	map:string
 phasedOut.cards[].counters{}	number:int
 phasedOut.cards[].damageMarked	number:int
@@ -1848,6 +1867,9 @@ seats[].castPermissions[].cards[].epoch	number:int
 seats[].castPermissions[].cards[].id	custom(uuid.UUID)
 seats[].castPermissions[].castOnly	bool
 seats[].castPermissions[].cost	string
+seats[].castPermissions[].discover	object
+seats[].castPermissions[].discover.n	number:int
+seats[].castPermissions[].discover.source	custom(uuid.UUID)
 seats[].castPermissions[].duration	object
 seats[].castPermissions[].duration.Condition	number:int
 seats[].castPermissions[].duration.ExpiresAfterTurnsBegun	number:int
@@ -1874,7 +1896,9 @@ seats[].castPermissions[].filter.noncreatureOnly	bool
 seats[].castPermissions[].filter.sorceryOnly	bool
 seats[].castPermissions[].grantsHaste	bool
 seats[].castPermissions[].label	string
+seats[].castPermissions[].lapseOnPass	string
 seats[].castPermissions[].lifeEqualToManaValue	bool
+seats[].castPermissions[].maxSpellManaValue	number:int
 seats[].castPermissions[].notBeforeSeq	number:int
 seats[].castPermissions[].notBeforeTurn	number:int
 seats[].castPermissions[].player	custom(uuid.UUID)
@@ -1921,6 +1945,8 @@ seats[].command.cards[].colorIdentity[]	string
 seats[].command.cards[].colors	array
 seats[].command.cards[].colors[]	string
 seats[].command.cards[].controller	custom(uuid.UUID)
+seats[].command.cards[].counterStampedAt	map:string
+seats[].command.cards[].counterStampedAt{}	number:int64
 seats[].command.cards[].counters	map:string
 seats[].command.cards[].counters{}	number:int
 seats[].command.cards[].damageMarked	number:int
@@ -2166,6 +2192,8 @@ seats[].emblems.cards[].colorIdentity[]	string
 seats[].emblems.cards[].colors	array
 seats[].emblems.cards[].colors[]	string
 seats[].emblems.cards[].controller	custom(uuid.UUID)
+seats[].emblems.cards[].counterStampedAt	map:string
+seats[].emblems.cards[].counterStampedAt{}	number:int64
 seats[].emblems.cards[].counters	map:string
 seats[].emblems.cards[].counters{}	number:int
 seats[].emblems.cards[].damageMarked	number:int
@@ -2401,6 +2429,8 @@ seats[].graveyard.cards[].colorIdentity[]	string
 seats[].graveyard.cards[].colors	array
 seats[].graveyard.cards[].colors[]	string
 seats[].graveyard.cards[].controller	custom(uuid.UUID)
+seats[].graveyard.cards[].counterStampedAt	map:string
+seats[].graveyard.cards[].counterStampedAt{}	number:int64
 seats[].graveyard.cards[].counters	map:string
 seats[].graveyard.cards[].counters{}	number:int
 seats[].graveyard.cards[].damageMarked	number:int
@@ -2635,6 +2665,8 @@ seats[].hand.cards[].colorIdentity[]	string
 seats[].hand.cards[].colors	array
 seats[].hand.cards[].colors[]	string
 seats[].hand.cards[].controller	custom(uuid.UUID)
+seats[].hand.cards[].counterStampedAt	map:string
+seats[].hand.cards[].counterStampedAt{}	number:int64
 seats[].hand.cards[].counters	map:string
 seats[].hand.cards[].counters{}	number:int
 seats[].hand.cards[].damageMarked	number:int
@@ -2873,6 +2905,8 @@ seats[].library.cards[].colorIdentity[]	string
 seats[].library.cards[].colors	array
 seats[].library.cards[].colors[]	string
 seats[].library.cards[].controller	custom(uuid.UUID)
+seats[].library.cards[].counterStampedAt	map:string
+seats[].library.cards[].counterStampedAt{}	number:int64
 seats[].library.cards[].counters	map:string
 seats[].library.cards[].counters{}	number:int
 seats[].library.cards[].damageMarked	number:int
@@ -3204,6 +3238,8 @@ stack.cards[].colorIdentity[]	string
 stack.cards[].colors	array
 stack.cards[].colors[]	string
 stack.cards[].controller	custom(uuid.UUID)
+stack.cards[].counterStampedAt	map:string
+stack.cards[].counterStampedAt{}	number:int64
 stack.cards[].counters	map:string
 stack.cards[].counters{}	number:int
 stack.cards[].damageMarked	number:int
@@ -3454,6 +3490,10 @@ stackMeta[].paid.Mana[].riders[].when[]	string
 stackMeta[].paid.OnPaper	bool
 stackMeta[].paid.ReturnedAttacking	custom(uuid.UUID)
 stackMeta[].paid.Sacrificed	number:int
+stackMeta[].paid.delved	array
+stackMeta[].paid.delved[]	object
+stackMeta[].paid.delved[].epoch	number:int
+stackMeta[].paid.delved[].id	custom(uuid.UUID)
 stackMeta[].paid.exiled	array
 stackMeta[].paid.exiled[]	custom(uuid.UUID)
 stackMeta[].paid.giftOpponent	custom(uuid.UUID)
@@ -3577,10 +3617,23 @@ turn.ExtraRef	number:int
 turn.Number	number:int
 turn.OrderSeat	number:int
 turn.Phase	string
+turn.PhaseID	number:int
+turn.PhaseOrdinal	number:int
 turn.PriorityHolder	number:int
 turn.Seq	number:int
 turn.Step	string
+turn.StepOrdinal	number:int
+turnPlan	array
+turnPlan[]	object
+turnPlan[].phaseId	number:int
+turnPlan[].step	string
 turnTally	object
+turnTally.attacks	array
+turnTally.attacks[]	object
+turnTally.attacks[].attacker	custom(uuid.UUID)
+turnTally.attacks[].defender	custom(uuid.UUID)
+turnTally.attacks[].epoch	number:int
+turnTally.attacks[].phaseId	number:int
 turnTally.casts	array
 turnTally.casts[]	custom(uuid.UUID)
 turnTally.combatDamagedPlayers	map:string
@@ -3599,6 +3652,9 @@ turnTally.modesChosen	map:string
 turnTally.modesChosen{}	array
 turnTally.modesChosen{}[]	number:int
 turnTally.monarchAtStart	custom(uuid.UUID)
+turnTally.phaseStarted	number:int
+turnTally.phasesBegun	map:string
+turnTally.phasesBegun{}	number:int
 turnTally.players	map:array
 turnTally.players{}	object
 turnTally.players{}.attacksDeclared	number:int
@@ -3615,6 +3671,8 @@ turnTally.resolved	map:string
 turnTally.resolved{}	number:int
 turnTally.sacrificedSubtypes	map:string
 turnTally.sacrificedSubtypes{}	number:int
+turnTally.stepsBegun	map:string
+turnTally.stepsBegun{}	number:int
 turnTally.triggered	map:string
 turnTally.triggered{}	number:int
 undoLimit	number:int

@@ -44,6 +44,9 @@ type castParams struct {
 	// (#1703) — CastSpellParams.TeamworkIDs / BlightIDs.
 	TeamworkIDs []string `json:"teamwork_ids,omitempty"`
 	BlightIDs   []string `json:"blight_ids,omitempty"`
+	// DelveIDs are the graveyard cards exiled to delve (CR 702.66a,
+	// ADR 0100 §6) — CastSpellParams.DelveIDs.
+	DelveIDs []string `json:"delve_ids,omitempty"`
 	// Distribution is the division of a "divided as you choose"
 	// clause (#1563, CR 601.2d), target id → share. The enumerator
 	// always announces game.EvenDistribution — the amount split as
@@ -848,6 +851,15 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 		return
 	}
 
+	// ADR 0100 §6: delve's graveyard. The candidates are the engine's
+	// own walk, in the seat's fuel order when a policy supplies one, so
+	// the cards a payment eats first are the ones the seat misses
+	// least. An empty graveyard is no delve at all.
+	var delvePool []uuid.UUID
+	if g.DelveForLocked(e.seat, card) {
+		delvePool = e.cheapestFuelFirst(g.DelveOptionsForEffect(e.seat, card.InstanceID))
+	}
+
 	budget := e.opts.MaxExpansionPerSource
 	emit := e.castMoveEmitter(g, card, from, offer, optional, chosen, giftTo, teamIDs, blightIDs)
 	// #1013: the first announcement the expansion makes, kept so the
@@ -878,6 +890,11 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 		// the life has struck its symbols; printedAll is the cost
 		// before the strike, which the all-life payment below reads.
 		var pricedAll, printedAll game.ParsedCost
+		// ADR 0100 §6: the delve payment the X was solved with — the
+		// fewest cards that make the cast affordable — and the full
+		// budget, which is offered once, against the first announcement.
+		var delveIDs []uuid.UUID
+		var delveFull *delvePayment
 		if !perTarget {
 			priced, err := e.g.ApplyCostModifiersForEffect(modeCost, game.CostQuery{
 				Card:       card,
@@ -887,11 +904,12 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 			if err != nil {
 				continue
 			}
-			pay, ok := e.castPayment(priced, spend, xFloor, xLifeCeiling, lifeReserved, lifeAllowed)
+			pay, ok := e.solveCast(priced, spend, xFloor, xLifeCeiling, lifeReserved, lifeAllowed, delvePool)
 			if !ok {
 				continue
 			}
 			x, phyLife, pricedAll, printedAll = pay.x, pay.phyrexianLife, pay.cost, priced
+			delveIDs, delveFull = pay.delve, pay.delveFull
 		}
 		// The budget is spent MODES-outermost: every mode selection
 		// gets at least one target set before any gets a second, so a
@@ -955,6 +973,7 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 		for _, targets := range targetSets {
 			setX, setLife := x, phyLife
 			setCost, setPrinted := pricedAll, printedAll
+			setDelve, setDelveFull := delveIDs, delveFull
 			if perTarget {
 				// §14: priced with this set's targets. An unaffordable
 				// set is skipped before any budget is spent on it, so
@@ -969,11 +988,12 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 				if err != nil {
 					continue
 				}
-				pay, ok := e.castPayment(priced, spend, xFloor, xLifeCeiling, lifeReserved, lifeAllowed)
+				pay, ok := e.solveCast(priced, spend, xFloor, xLifeCeiling, lifeReserved, lifeAllowed, delvePool)
 				if !ok {
 					continue
 				}
 				setX, setLife, setCost, setPrinted = pay.x, pay.phyrexianLife, pay.cost, priced
+				setDelve, setDelveFull = pay.delve, pay.delveFull
 			}
 			if len(xSteps) > 0 {
 				// setX is the largest announcement this seat can pay
@@ -1025,19 +1045,21 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 					budget--
 					if first == nil {
 						first = &announcedCast{
-							modes:    modes,
-							targets:  targets,
-							x:        setX,
-							life:     setLife,
-							printed:  setPrinted,
-							dist:     dist,
-							discards: discards,
-							sacs:     sacs,
-							team:     teamIDs,
-							blight:   blightIDs,
+							modes:     modes,
+							targets:   targets,
+							x:         setX,
+							life:      setLife,
+							printed:   setPrinted,
+							dist:      dist,
+							discards:  discards,
+							sacs:      sacs,
+							team:      teamIDs,
+							blight:    blightIDs,
+							delve:     setDelve,
+							delveFull: setDelveFull,
 						}
 					}
-					emit(altCostSets[0], modes, targets, setX, setLife, dist, discards, sacs)
+					emit(altCostSets[0], modes, targets, setX, setLife, dist, discards, sacs, setDelve)
 				}
 			}
 		}
@@ -1064,15 +1086,25 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	if budget > 0 && lifeAllowed {
 		if n, ok := e.allLifePayment(first, spend, lifeReserved); ok {
 			budget--
-			emit(altCostSets[0], first.modes, first.targets, first.x, n, first.dist, first.discards, first.sacs)
+			emit(altCostSets[0], first.modes, first.targets, first.x, n, first.dist, first.discards, first.sacs, first.delve)
 		}
+	}
+	// ADR 0100 owner decision 3: the FULL delve payment of the first
+	// announcement, out of the leftover budget for the #1013 reason — it
+	// is the same spell with the same targets, paid with more of the
+	// graveyard and less mana, and must not displace a target set.
+	// Murktide Regent and Soulflayer want it; the policy prices the fuel
+	// either way.
+	if budget > 0 && first.delveFull != nil && e.delveFullAffordable(first, spend) {
+		budget--
+		emit(altCostSets[0], first.modes, first.targets, first.delveFull.x, first.life, first.dist, first.discards, first.sacs, first.delveFull.ids)
 	}
 	for _, altPaid := range altCostSets[1:] {
 		if budget <= 0 {
 			return
 		}
 		budget--
-		emit(altPaid, first.modes, first.targets, first.x, first.life, first.dist, first.discards, first.sacs)
+		emit(altPaid, first.modes, first.targets, first.x, first.life, first.dist, first.discards, first.sacs, first.delve)
 	}
 }
 
@@ -1093,6 +1125,11 @@ type announcedCast struct {
 	// auto-tap plan the all-life payment is re-checked against.
 	team   []uuid.UUID
 	blight []uuid.UUID
+	// delve is the announcement's delve payment (ADR 0100 §6), and
+	// delveFull the full-budget one offered beside it — nil when the
+	// two are the same set.
+	delve     []uuid.UUID
+	delveFull *delvePayment
 }
 
 // castEmitter writes one concrete cast move.
@@ -1102,7 +1139,7 @@ type announcedCast struct {
 // label and the params — the #815 / #866 lesson at the move layer: two
 // writers of one move shape drift, and the one that drifts is the one
 // nobody reads.
-type castEmitter func(altPaid []uuid.UUID, modes []int, targets []game.TargetRef, setX, phyLife int, dist map[uuid.UUID]int, discards, sacs []uuid.UUID)
+type castEmitter func(altPaid []uuid.UUID, modes []int, targets []game.TargetRef, setX, phyLife int, dist map[uuid.UUID]int, discards, sacs, delve []uuid.UUID)
 
 // castMoveEmitter builds that writer for one (card, zone, offer,
 // optional-cost) announcement. Everything it closes over is fixed for
@@ -1117,7 +1154,7 @@ func (e *enumerator) castMoveEmitter(
 	giftTo uuid.UUID,
 	teamIDs, blightIDs []uuid.UUID,
 ) castEmitter {
-	return func(altPaid []uuid.UUID, modes []int, targets []game.TargetRef, setX, phyLife int, dist map[uuid.UUID]int, discards, sacs []uuid.UUID) {
+	return func(altPaid []uuid.UUID, modes []int, targets []game.TargetRef, setX, phyLife int, dist map[uuid.UUID]int, discards, sacs, delve []uuid.UUID) {
 		label := "Cast " + card.Name
 		switch from {
 		case "command":
@@ -1142,6 +1179,11 @@ func (e *enumerator) castMoveEmitter(
 		}
 		if phyLife > 0 {
 			label += fmt.Sprintf(" paying %d life for Phyrexian mana", phyLife*game.PhyrexianLifePerSymbol)
+		}
+		// ADR 0100: the delved and the undelved casts are otherwise the
+		// same line in the move log.
+		if len(delve) > 0 {
+			label += fmt.Sprintf(" delving %d", len(delve))
 		}
 		label += targetLabel(g, targets)
 		e.add(Move{
@@ -1175,6 +1217,7 @@ func (e *enumerator) castMoveEmitter(
 				OptionalCosts:   chosen,
 				TeamworkIDs:     idStrings(teamIDs),
 				BlightIDs:       idStrings(blightIDs),
+				DelveIDs:        idStrings(delve),
 				Distribution:    distributionWire(dist),
 				GiftOpponent:    giftWire(giftTo),
 				Strict:          true,

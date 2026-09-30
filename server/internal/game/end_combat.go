@@ -101,7 +101,12 @@ func (g *Game) EndCombatPhaseForEffect() {
 	// itself the walk would clear it anyway — calling it twice costs a
 	// loop over the battlefield and nothing else.
 	g.clearCombatLocked()
-	for PhaseOf(g.Turn.Step) == PhaseCombat {
+	// Walk out of THIS combat phase only (ADR 0059 Decision 3): an
+	// additional combat phase planned straight after it (Aurelia,
+	// Karlach) is the next phase, not more of this one.
+	g.ensureTurnPlanLocked()
+	phase, seq := g.Turn.PhaseID, g.Turn.Seq
+	for PhaseOf(g.Turn.Step) == PhaseCombat && g.Turn.PhaseID == phase && g.Turn.Seq == seq {
 		g.advanceCursorLocked()
 	}
 	g.runStepEntryHooksLocked()

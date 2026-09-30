@@ -564,6 +564,31 @@ type ManaAbilityShape struct {
 	// make again.
 	Exhaust bool
 
+	// OncePerTurn declares "Activate only once each turn" on a MANA
+	// ability — Vivi Ornitier's "{0}: Add X mana …", Ramos's counter
+	// payout (#1621).
+	//
+	// It is a DECLARATION whose enforcement travels with it: the one
+	// constructor that sets it, effects.manaShapes, folds the gate
+	// ("this object has not activated the ability labelled Label this
+	// turn", ActivatedThisTurn over the per-turn activation record)
+	// into Condition in the same statement. So every reader that
+	// already honours Condition — ActivateManaAbility, the legal-move
+	// enumerator, the view's condition_unmet, the auto-tapper's planner
+	// and executor — honours this one too, without learning it exists.
+	//
+	// The bit itself has ONE reader, and that is why it is a bit rather
+	// than only a closure: the AUTO-TAPPER. An ability that costs its
+	// source nothing at all (no {T}, no sacrifice, no other component)
+	// is plannable only when something bounds it, and a Condition is an
+	// opaque closure the planner cannot read. OncePerTurn is the bound
+	// it can read — see autoTapFreeOncePerTurn and the last-resort
+	// tier it opens (ADR 0011, amendment 2026-09-30).
+	//
+	// Keyed by the LABEL (activation_tally.go), like Exhaust, so
+	// effects.Register refuses a blank one.
+	OncePerTurn bool
+
 	// Rider is the post-production half of a mana ability whose
 	// oracle text continues past the "Add …" clause — the painland
 	// cycle's "This land deals 1 damage to you", Ancient Tomb's 2.

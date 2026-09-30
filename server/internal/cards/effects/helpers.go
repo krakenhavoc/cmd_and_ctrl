@@ -287,6 +287,18 @@ func eventCardHasType(ev game.Event, g *game.Game, words ...string) bool {
 	return false
 }
 
+// damageEachOpponentThenGainLife is "~ deals N damage to each opponent
+// and you gain N life" as a whole effect (Y'shtola, Night's Blessed;
+// Quintorius Kand).
+func damageEachOpponentThenGainLife(n int) Effect {
+	return func(g *game.Game, item *game.StackItem) error {
+		if err := damageToEachOpponent(g, item, n); err != nil {
+			return err
+		}
+		return GainLife{Player: item.Controller, Amount: n}.Apply(NewContext(g, item))
+	}
+}
+
 // damageToEachOpponent deals n damage to every opponent of the
 // source's controller. The shared body of the "pings the table"
 // pirates.
@@ -610,6 +622,17 @@ func returnTargetCardToHand(g *game.Game, item *game.StackItem) error {
 	return ReturnFromGraveyard{Target: item.Targets[0].ID, Dest: game.ZoneHand}.Apply(NewContext(g, item))
 }
 
+// putTargetOnTopOfOwnersLibrary is "put target <permanent> on top of
+// its owner's library" as a spell's whole effect — Submerge, Set
+// Adrift. The tuck is the last instruction, so the fire-and-forget
+// form is right: nothing reads where the card went.
+func putTargetOnTopOfOwnersLibrary(item *game.StackItem, ctx *Context) error {
+	if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
+		return nil
+	}
+	return ctx.Game.TuckToLibraryForEffect(item.Targets[0].ID, false)
+}
+
 func destroyChosenPermanent(g *game.Game, item *game.StackItem) error {
 	if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
 		return nil
@@ -879,8 +902,8 @@ func damageToFirstTarget(amount int) func(item *game.StackItem, ctx *Context) er
 // behind "…: Put a[n] <kind> counter on this permanent" (Tekuthal,
 // Inquiry Dominus; Solphim, Mayhem Dominus): a no-op if something
 // killed the source before the ability resolves, otherwise a counter
-// on the source itself. Both cards pair it with b24KeywordCounterGrant
-// so the counter carries CR 122.1b's keyword.
+// on the source itself. The indestructible counter needs nothing
+// else: the engine reads keyword counters itself (CR 122.1b, ADR 0101).
 // plusOneCountersOnThis is "Put N +1/+1 counters on this creature" —
 // the body most of the exhaust cards print (Prowcatcher Specialist,
 // Greenbelt Guardian, Afterburner Expert, Elvish Refueler, Boom
@@ -889,8 +912,8 @@ func damageToFirstTarget(amount int) func(item *game.StackItem, ctx *Context) er
 // Unlike putCounterOnSourceWhileOnBattlefield beside it, it does NOT
 // check that the source is still on the battlefield: AddCounter is a
 // no-op on a card that has gone, and the two cards that read that
-// check pair it with a keyword-counter grant that would not be. Keep
-// them separate rather than merging them into one flagged helper.
+// check place a keyword counter on a source that must still be there.
+// Keep them separate rather than merging them into one flagged helper.
 func plusOneCountersOnThis(n int) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		return AddCounter{

@@ -330,6 +330,16 @@ type GameSnapshot struct {
 	ExtraTurns   []ExtraTurn `json:"extraTurns,omitempty"`
 	NextExtraRef int         `json:"nextExtraRef,omitempty"`
 
+	// TurnPlan / NextPhaseID are the rest of the turn (ADR 0059
+	// Decisions 3 and 10). Pure data, additive within v7. A file
+	// without them (written before the plan, or by an older binary)
+	// restores with the template's tail after the current step, which
+	// is the only plan such a game can have had. An older binary
+	// reading a newer file drops them and loses any added phase still
+	// to come: weaker, never stronger, until the next deploy.
+	TurnPlan    []PlannedStep `json:"turnPlan,omitempty"`
+	NextPhaseID int           `json:"nextPhaseId,omitempty"`
+
 	// ScopedEffects is ADR 0041 phase 3's data-backed continuous
 	// effects (scoped_effects.go, #1497): carried verbatim, because a
 	// record holds nothing but data. v7.
@@ -655,9 +665,14 @@ type cardSnapshot struct {
 	BattleX          float64             `json:"battleX"`
 	BattleY          float64             `json:"battleY"`
 	Counters         map[string]int      `json:"counters,omitempty"`
-	IsCommander      bool                `json:"isCommander"`
-	AttackingTarget  uuid.UUID           `json:"attackingTarget"`
-	BlockingTarget   uuid.UUID           `json:"blockingTarget"`
+	// CounterStampedAt is Card.CounterStampedAt (ADR 0101): the CR
+	// 613.7c timestamp of each keyword counter kind. Additive within v7;
+	// an older file has none, and an unstamped keyword counter is
+	// ordered at its permanent's own timestamp.
+	CounterStampedAt map[string]int64 `json:"counterStampedAt,omitempty"`
+	IsCommander      bool             `json:"isCommander"`
+	AttackingTarget  uuid.UUID        `json:"attackingTarget"`
+	BlockingTarget   uuid.UUID        `json:"blockingTarget"`
 	// AlsoBlocking is Card.AlsoBlocking (#1706): the attackers a
 	// multi-blocker blocks after blockingTarget. Omitted for every
 	// ordinary blocker, so an older file restores exactly as before.
@@ -1116,6 +1131,7 @@ type pendingChoiceSnapshot struct {
 	CoinWins             int                    `json:"coinWins,omitempty"`
 	ColorOptions         []string               `json:"colorOptions,omitempty"`
 	ColorPurpose         ColorPurpose           `json:"colorPurpose,omitempty"`
+	ControlPurpose       ControlPurpose         `json:"controlPurpose,omitempty"`
 	ManaRestrictions     []string               `json:"manaRestrictions,omitempty"`
 	ManaRiders           []ManaSpendRider       `json:"manaRiders,omitempty"`
 	ManaSourceKinds      ManaSourceKinds        `json:"manaSourceKinds,omitempty"`
@@ -1161,6 +1177,7 @@ type pendingChoiceSnapshot struct {
 	SearchCards     []uuid.UUID `json:"searchCards,omitempty"`
 	SearchMax       int         `json:"searchMax"`
 	MayCastCard     uuid.UUID   `json:"mayCastCard,omitempty"`
+	MayCastKeyword  string      `json:"mayCastKeyword,omitempty"`
 	AcceptLabel     string      `json:"acceptLabel,omitempty"`
 	LifeCost        int         `json:"lifeCost,omitempty"`
 	DeclineLabel    string      `json:"declineLabel,omitempty"`
@@ -1517,6 +1534,8 @@ func (g *Game) captureSnapshotLocked() *GameSnapshot {
 	}
 	s.ExtraTurns = cloneExtraTurns(g.ExtraTurns)
 	s.NextExtraRef = g.NextExtraRef
+	s.TurnPlan = clonePlan(g.TurnPlan)
+	s.NextPhaseID = g.NextPhaseID
 	// ADR 0041 phase 3 (#1497): data, so carried whole and never
 	// counted by the census.
 	s.ScopedEffects = deepCopyScopedEffects(g.ScopedEffects)
@@ -1738,6 +1757,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		BattleX:                  c.BattleX,
 		BattleY:                  c.BattleY,
 		Counters:                 copyStringIntMap(c.Counters),
+		CounterStampedAt:         copyStringInt64Map(c.CounterStampedAt),
 		IsCommander:              c.IsCommander,
 		AttackingTarget:          c.AttackingTarget,
 		BlockingTarget:           c.BlockingTarget,
@@ -2040,6 +2060,7 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		CoinWins:             c.CoinWins,
 		ColorOptions:         copyStrings(c.ColorOptions),
 		ColorPurpose:         c.ColorPurpose,
+		ControlPurpose:       c.ControlPurpose,
 		ManaRestrictions:     copyStrings(c.ManaRestrictions),
 		ManaRiders:           copyManaRiders(c.ManaRiders),
 		ManaSourceKinds:      c.ManaSourceKinds,
@@ -2075,6 +2096,7 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		SearchCards:          copyUUIDs(c.SearchCards),
 		SearchMax:            c.SearchMax,
 		MayCastCard:          c.MayCastCard,
+		MayCastKeyword:       c.MayCastKeyword,
 		AcceptLabel:          c.AcceptLabel,
 		DeclineLabel:         c.DeclineLabel,
 		LifeCost:             c.LifeCost,
@@ -2351,6 +2373,19 @@ func (s *GameSnapshot) restoreGame() *Game {
 
 	g.ExtraTurns = cloneExtraTurns(s.ExtraTurns)
 	g.NextExtraRef = s.NextExtraRef
+	g.TurnPlan = clonePlan(s.TurnPlan)
+	g.NextPhaseID = s.NextPhaseID
+	if len(g.TurnPlan) > 0 || g.Turn.Step == StepCleanup {
+		// A file written with the plan: it describes this cursor.
+		g.planAt = g.planCursorLocked()
+		if g.Turn.PhaseID == 0 {
+			g.Turn.PhaseID = templatePhaseID(g.Turn.Step)
+		}
+	} else if g.Turn.Step != "" {
+		// A file from before the plan: no added phase can exist, so
+		// the template's tail is exactly the rest of its turn.
+		g.resetTurnPlanLocked()
+	}
 
 	g.LoyaltyActivatedThisTurn = copyBoolMap(s.LoyaltyActivatedThisTurn)
 	g.SpellsCastThisTurn = copyTallyMap(s.SpellsCastThisTurn)
@@ -2497,6 +2532,7 @@ func restoreCard(c *cardSnapshot) Card {
 		BattleX:                  c.BattleX,
 		BattleY:                  c.BattleY,
 		Counters:                 copyStringIntMap(c.Counters),
+		CounterStampedAt:         copyStringInt64Map(c.CounterStampedAt),
 		IsCommander:              c.IsCommander,
 		AttackingTarget:          c.AttackingTarget,
 		BlockingTarget:           c.BlockingTarget,
@@ -2782,6 +2818,7 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		CoinWins:             c.CoinWins,
 		ColorOptions:         copyStrings(c.ColorOptions),
 		ColorPurpose:         c.ColorPurpose,
+		ControlPurpose:       c.ControlPurpose,
 		ManaRestrictions:     copyStrings(c.ManaRestrictions),
 		ManaRiders:           copyManaRiders(c.ManaRiders),
 		ManaSourceKinds:      c.ManaSourceKinds,
@@ -2817,6 +2854,7 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		SearchCards:          copyUUIDs(c.SearchCards),
 		SearchMax:            c.SearchMax,
 		MayCastCard:          c.MayCastCard,
+		MayCastKeyword:       c.MayCastKeyword,
 		AcceptLabel:          c.AcceptLabel,
 		DeclineLabel:         c.DeclineLabel,
 		LifeCost:             c.LifeCost,

@@ -133,6 +133,21 @@ type Turn struct {
 	Extra          bool // created by an effect (CR 500.7)
 	ExtraRef       int  // queued extra-turn identity; zero on normal turns
 	OrderSeat      int  // normal-rotation seat this turn follows
+
+	// PhaseID identifies the phase in progress, unique within the turn
+	// (ADR 0059 Decision 3). The template's five phases are 1..5; a
+	// phase an effect adds gets the next id from Game.NextPhaseID
+	// (turn_plan.go). Zero only on a cursor nothing has planned yet.
+	PhaseID int
+	// PhaseOrdinal is the nth phase of this family begun this turn
+	// (ADR 0059 Decision 8): the first combat is 1, an added one 2.
+	// Precombat and postcombat main are one family, "main" (CR 505.1b).
+	PhaseOrdinal int
+	// StepOrdinal is the nth time this step has begun this turn: 2 on
+	// Y'shtola Rhul's additional end step. A skipped step (CR 500.11)
+	// and one walked through (#717's absent first-strike step) are not
+	// counted.
+	StepOrdinal int
 }
 
 // TurnStep names ONE step of ONE turn — the cursor's Turn.Seq and
@@ -197,6 +212,7 @@ func newStartingTurn(startingSeat int) Turn {
 		Phase:          PhaseOf(StepUntap),
 		Step:           StepUntap,
 		OrderSeat:      startingSeat,
+		PhaseID:        templatePhaseID(StepUntap),
 	}
 }
 
@@ -218,6 +234,13 @@ func (t Turn) IsNewTurn(next Turn) bool {
 	return t.Seq != next.Seq
 }
 
+// advance returns the TEMPLATE successor of t: the next step of
+// turnSequence, or the next seat's untap past cleanup. The live cursor
+// no longer walks this list inside a turn — it pops Game.TurnPlan
+// (turn_plan.go, ADR 0059 Decision 3), which is this list plus whatever
+// phases and steps effects have added. The rotation seam still uses the
+// wrap branch to pick the next normal seat.
+//
 // advance returns the Turn cursor one step after t, wrapping to the
 // next seat (and incrementing Seq, plus Round when the rotation returns to
 // roundStartSeat) after the cleanup step. numSeats must be > 0; callers are
@@ -241,6 +264,9 @@ func (t Turn) advance(numSeats, roundStartSeat int) Turn {
 			Extra:          t.Extra,
 			ExtraRef:       t.ExtraRef,
 			OrderSeat:      t.OrderSeat,
+			PhaseID:        templatePhaseID(nextStep),
+			PhaseOrdinal:   t.PhaseOrdinal,
+			StepOrdinal:    t.StepOrdinal,
 		}
 	}
 	// Wrap: past cleanup, move to the next seat's untap. A table-facing
@@ -259,5 +285,6 @@ func (t Turn) advance(numSeats, roundStartSeat int) Turn {
 		Phase:          PhaseOf(StepUntap),
 		Step:           StepUntap,
 		OrderSeat:      nextSeat,
+		PhaseID:        templatePhaseID(StepUntap),
 	}
 }
