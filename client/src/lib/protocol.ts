@@ -1237,6 +1237,10 @@ export interface StackItemView {
   distribution?: Record<string, number>;
   hold_priority?: boolean;
   split_second?: boolean;
+  // #1553: the spell can't be countered — its own printed rider or the
+  // mana that paid for it (Cavern of Souls). Read from the engine's one
+  // counter gate; absent when false and on ability items.
+  cant_be_countered?: boolean;
   // S22: the alternative cost this spell was cast for — "overload",
   // "evoke", "cleave" — absent for an ordinary cast. Load-bearing
   // for anyone deciding whether to respond: an overloaded Cyclonic
