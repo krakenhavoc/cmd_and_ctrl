@@ -28,7 +28,7 @@
 //
 // What a drop DOES is not decided here either: a "cast" outcome hands
 // the card to Board.svelte's handlePlayCard — the one cast entry point
-// (AGENTS.md §7) — with the drag flag set, so the same prompt chain a
+// (docs/adding-cards.md) — with the drag flag set, so the same prompt chain a
 // click runs (face, costs, X, modes, targets) runs after the drop. The
 // only difference is the mana posture: applyCastChoices stamps
 // `strict: true, auto_tap: true` on a dragged cast, whatever the

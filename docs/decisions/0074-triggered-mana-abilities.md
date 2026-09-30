@@ -244,7 +244,7 @@ the real trigger, so the mana that arrives is the mana the cards say.
   new prompt kind, no wire schema change.
 - `docs/engine-seams.md` closes two rows with one entry.
 - A card author writing "whenever … is tapped for mana" now has a recipe
-  (AGENTS.md §7) and must not reach for `Spec.Triggered`. The distinction is
+  (AGENTS.md §7 (now docs/adding-cards.md)) and must not reach for `Spec.Triggered`. The distinction is
   observable in one line: if the ability adds mana and does not target, it is a
   `ManaTrigger`; Electro's and Fire Nation Palace's "add mana" triggers fire on
   a cast and on an attack, so they are ordinary stack triggers (CR 605.5a) and

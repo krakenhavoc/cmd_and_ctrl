@@ -136,7 +136,7 @@ func TapForManaGrant(key, produced, label, text string) AbilityGrant {
 
 // AnyColorManaGrant is "{T}: Add one mana of any color." as a granted
 // bundle. The picker lists the controller's commander identity first,
-// as every "any color" pipe does, and never narrows it (AGENTS.md §7).
+// as every "any color" pipe does, and never narrows it (docs/adding-cards.md).
 func AnyColorManaGrant(key string) AbilityGrant {
 	return TapForManaGrant(key, "{W|U|B|R|G}", "Add one mana of any color", "{T}: Add one mana of any color.")
 }

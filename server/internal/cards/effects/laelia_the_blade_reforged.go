@@ -21,7 +21,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // "One or more" is one trigger per batch, and the engine emits one
 // event per card — so the counter trigger declines every later event
 // of the same batch, matched by label so the attack trigger is not
-// mistaken for it (OncePerBatch; see AGENTS.md §7). A Bonehoard
+// mistaken for it (OncePerBatch; see docs/adding-cards.md). A Bonehoard
 // Dracosaur upkeep that exiles two cards grows Laelia once, as
 // printed; a second batch that arrives after the first trigger has
 // resolved is a second trigger, which is also what paper does.

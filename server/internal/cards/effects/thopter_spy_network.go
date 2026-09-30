@@ -25,7 +25,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // the engine emits one damage event per creature, and a second one
 // naming the same player is declined as a later event of the same
 // batch, while a second PLAYER hit is its own occurrence and its own
-// card (see AGENTS.md §7). Without the batch half the card would
+// card (see docs/adding-cards.md). Without the batch half the card would
 // ship STRONGER than printed (#259); without the player half,
 // weaker.
 func init() {

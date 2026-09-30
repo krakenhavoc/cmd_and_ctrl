@@ -138,7 +138,7 @@ func (g *Game) exhaustPermittedLocked(asker uuid.UUID) bool {
 // announcement and CR 605's mana abilities, which is the whole set of
 // things "you haven't activated an exhaust ability this turn" is about.
 //
-// An event scan rather than a tally field, for the reason AGENTS.md
+// An event scan rather than a tally field, for the reason docs/adding-cards.md
 // gives for one: this is a FILTERED question (whose activation, and
 // was it an exhaust one) that no counter carries, and
 // Game.Activations is keyed by object rather than by player so it

@@ -86,7 +86,7 @@ func tormentOfHailfireStart(ctx *Context) error {
 // A package-level function over a frozen slice of seat IDs: no *Game
 // and no player pointer is captured, so an undo that replays an answer
 // resolves it against the restored game (the delayed-trigger contract,
-// AGENTS.md §7).
+// docs/adding-cards.md).
 //
 // Caller holds g.mu.
 func tormentOfHailfireStep(ctx *Context, remaining []uuid.UUID) error {

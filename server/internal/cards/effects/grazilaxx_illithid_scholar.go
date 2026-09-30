@@ -27,7 +27,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //     connecting with a SECOND player is its own occurrence and its
 //     own card (CR 603.2c, #784 —
 //     WheneverOneOrMoreCreaturesYouControlDealCombatDamageToAPlayer;
-//     see AGENTS.md §7).
+//     see docs/adding-cards.md).
 //
 // No simplification.
 const b18GrazilaxxDrawLabel = "Grazilaxx, Illithid Scholar — draw a card"

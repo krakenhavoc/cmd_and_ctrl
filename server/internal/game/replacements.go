@@ -1246,7 +1246,7 @@ type activeReplacement struct {
 // instead", "put that counter on this creature instead"). Two copies
 // of such a card would share an identity and would not be
 // interchangeable. Nothing in the catalog does that today, and the
-// note in AGENTS.md §7 tells card authors to flag it rather than
+// note in docs/adding-cards.md tells card authors to flag it rather than
 // ship it quietly. See sameModification.
 type replacementIdentity struct {
 	// card is the source's CatalogAbilityKey — the catalog entry

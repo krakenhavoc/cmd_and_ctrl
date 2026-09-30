@@ -478,7 +478,7 @@ type BlockRule struct {
 
 - **Where they come from.** `Spec.BlockRules []game.BlockRule`, wired
   through a new `CatalogBlockRules` hook and read by walking the
-  battlefield with `CatalogAbilityKey` (AGENTS.md §7: new readers of a
+  battlefield with `CatalogAbilityKey` (AGENTS.md §7 (now docs/adding-cards.md): new readers of a
   "what does this permanent do" hook use that key). Until-end-of-turn
   rules (Gingerbrute) go in a new `Game.TurnScopedBlockRules`, next to
   `TurnScopedStatics`.
@@ -899,7 +899,7 @@ never contains that string. The restriction is in `restrictions` as
 cards listed under [Card first wave](#card-first-wave). The other evasion
 keywords are not here: they are
 [#825](https://github.com/krakenhavoc/cmd_and_ctrl/issues/825), with its
-own PR and soak run. Each card follows AGENTS.md §7: declared
+own PR and soak run. Each card follows AGENTS.md §7 (now docs/adding-cards.md): declared
 completeness, caveats only ever weaker than printed, and a re-check of
 every other clause.
 

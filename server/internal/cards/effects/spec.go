@@ -222,7 +222,7 @@ type Spec struct {
 	// card — entries like "flying", "reach", "deathtouch", "lifelink",
 	// "trample", "vigilance", "first strike", "double strike",
 	// "menace", "defender", "haste", "flash". Canonical lowercase
-	// tokens; see AGENTS.md §7 "Adding a combat-keyword card" for the
+	// tokens; see docs/adding-cards.md "Adding a combat-keyword card" for the
 	// complete table.
 	//
 	// Feeds two consumers:
@@ -287,7 +287,7 @@ type Spec struct {
 	// Build them with the constructors in mana_triggers.go
 	// (WheneverEnchantedLandTapsForMana and friends). See
 	// [ADR 0074](../../../../docs/decisions/0074-triggered-mana-abilities.md)
-	// and AGENTS.md §7. Added by #763.
+	// and docs/adding-cards.md. Added by #763.
 	ManaTriggers []game.ManaTrigger
 
 	// TriggerDoublers are CR 603.2d effects that add one instance to
@@ -1046,7 +1046,7 @@ type Spec struct {
 
 	// Completeness declares how faithfully this spec implements the
 	// card as printed — the machine-readable form of the prose
-	// "declared simplification" convention in AGENTS.md §7. See
+	// "declared simplification" convention in docs/adding-cards.md. See
 	// completeness.go for the full contract and for why the zero
 	// value is CompletenessUnreviewed rather than
 	// CompletenessFull.

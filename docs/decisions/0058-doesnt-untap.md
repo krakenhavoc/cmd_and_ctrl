@@ -166,7 +166,7 @@ var CatalogUntapStepRestrictions func(oracleID string) []UntapStepRestriction
 ```
 
 It is declared as `Spec.UntapStepRestrictions []game.UntapStepRestriction`.
-Adding the slot takes the four edits AGENTS.md §7 "Adding a `Spec` slot"
+Adding the slot takes the four edits AGENTS.md §7 (now docs/adding-cards.md) "Adding a `Spec` slot"
 lists (Spec field, `CardDef` field, `buildDef` line, engine call site).
 The `CatalogUntapStepRestrictions` variable is added as well, because
 the game-package untap tests stub it the way they already stub
@@ -369,7 +369,7 @@ g.EmitEvent(…EventUntapCard…)
 ```
 
 - **It covers every untap.** The primitive is the only way `Tapped`
-  goes false (AGENTS.md §7, "Untapping in another player's untap step").
+  goes false (AGENTS.md §7 (now docs/adding-cards.md), "Untapping in another player's untap step").
   So the untap step, `UntapTargetForEffect`, "untap all" effects,
   Seedborn Muse and the sandbox `tap` action all get the replacement.
   CR 122.1d is about untapping, not about the untap step, so it
@@ -497,7 +497,7 @@ when sub-PR 1 lands.
 - `untap.go`'s header (`:75-94`) stops listing the restriction as not
   written. It gets a section on the set's two directions, the marker,
   and stun. The Icy Manipulator mention goes.
-- AGENTS.md §7 "Untapping in another player's untap step (#74)" gains
+- AGENTS.md §7 (now docs/adding-cards.md) "Untapping in another player's untap step (#74)" gains
   a paragraph on `Spec.UntapStepRestrictions`, the marker helpers and
   the stun rule.
 - `docs/protocol.md` covers `no_untap`.
@@ -619,7 +619,7 @@ Sub-PR 1 assumes that line exists and adds it if it doesn't.
   (static filtered, read after layer 7), Tangle's caveat removal
   (controller-keyed marker, Decision 6), Frost Breath (`TapAndFreeze`),
   Sleep (player-keyed marker) and Alchemax Slayer-Bots (stun).
-- Docs: `untap.go` header, the `counter_types.go` comment, AGENTS.md §7,
+- Docs: `untap.go` header, the `counter_types.go` comment, AGENTS.md §7 (now docs/adding-cards.md),
   and moving the `docs/engine-seams.md` row to Closed.
 - Checks: `go test ./internal/game/... ./internal/cards/... ./internal/legal/...`,
   then `go test ./...` and `make lint`.
@@ -637,7 +637,7 @@ Sub-PR 1 assumes that line exists and adds it if it doesn't.
 **Card PRs.** The rest of the first wave decided in owner question 2,
 option (b): Mana Vault, Grim Monolith, Goblin Sharpshooter, Traxos,
 Back to Basics, Intruder Alarm, Wall of Frost, Kefnet's Monument,
-Dreamdew Entrancer and Cryogen Relic. Each card follows AGENTS.md §7: `Spec`
+Dreamdew Entrancer and Cryogen Relic. Each card follows AGENTS.md §7 (now docs/adding-cards.md): `Spec`
 slots, completeness declared, caveats weaker than printed and never
 stronger, and oracle text checked against the dump. The catalog soak
 runs with the wave in the random decks.

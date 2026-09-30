@@ -174,7 +174,7 @@ No catalog card shows it yet. Every silenced source today is under an
 Aura that also overwrites its types, and every layer 1-5 static on a
 creature applies only to itself. Magus of the Moon under Kenrith's
 Transformation or Darksteel Mutation would show it, which is why
-AGENTS.md §7 holds Magus back until
+AGENTS.md §7 (now docs/adding-cards.md) holds Magus back until
 [#669](https://github.com/krakenhavoc/cmd_and_ctrl/issues/669) lands.
 
 The Song of the Dryads on a Mind Control example gets the right answer

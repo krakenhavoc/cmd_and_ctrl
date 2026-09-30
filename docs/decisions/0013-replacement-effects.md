@@ -212,7 +212,7 @@ Three deliberate limits:
   two copies of one card would share an identity and would not be
   interchangeable. Nothing in the catalog does that today — the two
   source-reading replacements that exist are additive, and Arwen is
-  legendary — and AGENTS.md §7 tells card authors to raise it rather
+  legendary — and AGENTS.md §7 (now docs/adding-cards.md) tells card authors to raise it rather
   than ship it quietly. If one ever lands, the fix is a declared flag
   in the `PureCancel` mould, not a per-card special case.
 
@@ -842,7 +842,7 @@ is now true of the permanents the window takes away mid-sweep too.
 thing — how many of the legs that SETTLED landed as destructions —
 which is every leg unless one paused. A card that reads the number
 must use the `Then` form; that is what its doc comment says and what
-AGENTS.md §7 says. The state-based-action sweep never wanted a
+AGENTS.md §7 (now docs/adding-cards.md) says. The state-based-action sweep never wanted a
 destruction count: its question is "did this pass do anything", and it
 now answers that from the `doomed` set it collected rather than from a
 number that deliberately excludes a cancelled destruction the sweep

@@ -165,8 +165,7 @@ func DefaultWeights() Weights {
 
 // keywordTable is the per-keyword bonus added to a creature's value,
 // before the Keyword weight scales it. Keys are the canonical
-// lowercase tokens the engine puts on CardView.Abilities (AGENTS.md
-// §7). Anything not in the table is worth nothing, which is the
+// lowercase tokens the engine puts on CardView.Abilities (docs/adding-cards.md). Anything not in the table is worth nothing, which is the
 // right default for the long tail of ability words.
 var keywordTable = map[string]float64{
 	"flying":            1.50,

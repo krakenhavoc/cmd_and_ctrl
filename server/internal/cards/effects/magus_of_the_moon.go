@@ -7,7 +7,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	"Nonbasic lands are Mountains."
 //
 // Six words, one layer-4 static, and two rules that had to land
-// before it could be catalogued at all. AGENTS.md §7 held it back
+// before it could be catalogued at all. docs/adding-cards.md held it back
 // through four batches for exactly those two.
 //
 // CR 305.7 — "an effect that sets a land's subtype to one or more of

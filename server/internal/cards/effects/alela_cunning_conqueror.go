@@ -21,7 +21,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // Faeries aimed at the SAME player are declined as later events of
 // the same batch, while a Faerie connecting with a second player is
 // its own occurrence — OncePerBatchPerPlayer, the CR 603.2c key with
-// its player dimension (#784; see AGENTS.md §7). That is what makes
+// its player dimension (#784; see docs/adding-cards.md). That is what makes
 // the printed per-player target clause work: each hit player's
 // trigger goads a creature THAT player controls. Alela herself is a
 // Faerie and counts.
