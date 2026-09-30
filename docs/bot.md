@@ -276,6 +276,15 @@ offers only sets the engine accepts (the cap solver runs inside
 in a step where nobody holds priority, so a seat with no answer here
 would stop the game outright rather than merely stall its own turn.
 
+**Whom to give it to (`entry_controller`, ADR 0102, CR 614.12a).** "This
+enters under the control of an opponent of your choice" is offered as
+one answer per opponent. The heuristic reads the prompt's
+`control_purpose`: a harmful permanent (Captive Audience, Xantcha) goes
+to the opponent with the highest `SeatEval.Strength`, a helpful one
+(Pendant of Prosperity) to the lowest. It does not use `Threat`, which
+ranks a seat by how close it is to dying — "your life total becomes 4"
+costs a seat at 5 life almost nothing.
+
 **Whether to reveal (`entry_reveal_from_hand`, #1198, CR 614.1c).** The
 one card-set pick whose answer is FREE, and the reason it is a branch
 of its own rather than a second spelling of `choose_cards`. "As this

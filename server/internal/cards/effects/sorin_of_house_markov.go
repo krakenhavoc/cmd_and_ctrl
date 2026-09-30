@@ -52,15 +52,13 @@ import (
 // the ability resolves, after the theft: a white permanent you control
 // other than the stolen creature and Sorin himself.
 //
-// # Declared simplification (the back face's caveat)
+// # The lifelink counter
 //
-// The engine reads no keyword counters of its own (CR 122.1b), so the
-// lifelink counter is honoured by a static on the planeswalker that
-// grants lifelink to every creature with a lifelink counter — Vraska
-// Joins Up's posture (b24KeywordCounterGrant). While Sorin is on the
-// battlefield that is exactly the rule; once he leaves, the counter
-// stays on the creature and stops granting lifelink. Weaker than
-// printed.
+// CR 122.1b: the engine reads keyword counters itself (ADR 0101), so
+// the stolen creature has lifelink for as long as it has the counter,
+// whether or not Sorin is still on the battlefield. Until ADR 0101 a
+// static on the planeswalker carried the rule and stopped when Sorin
+// left.
 func init() {
 	Register(Spec{
 		OracleID:        sorinOfHouseMarkovOracleID,
@@ -79,17 +77,13 @@ func init() {
 	Register(Spec{
 		OracleID:     sorinOfHouseMarkovOracleID + "#1",
 		Name:         "Sorin, Ravenous Neonate",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"The lifelink counter from Sorin's −6 only gives lifelink while Sorin is on the battlefield — once he leaves, the counter stays but stops working.",
-		},
+		Completeness: CompletenessFull,
 		// Printed loyalty reaches a card through deck import (ADR 0032
 		// §1); this is the fallback for fixtures and the dev spawner.
 		StartingLoyalty: 3,
 		Triggered: []game.TriggeredAbility{
 			Extort("Sorin, Ravenous Neonate"),
 		},
-		Static: []game.StaticAbility{b24KeywordCounterGrant("lifelink")},
 		Activated: []ActivatedAbility{
 			{
 				Label: "+2: Create a Food token.",
@@ -183,7 +177,7 @@ func sorinTakeAndTurn(g *game.Game, item *game.StackItem) error {
 	if !sorinControlsAnotherWhitePermanent(g, you, target, item.SourceCardID) {
 		return nil
 	}
-	return AddCounter{Target: target, Kind: "lifelink", N: 1}.Apply(ctx)
+	return AddCounter{Target: target, Kind: game.CounterLifelink, N: 1}.Apply(ctx)
 }
 
 // sorinControlsAnotherWhitePermanent is the −6's condition: a white

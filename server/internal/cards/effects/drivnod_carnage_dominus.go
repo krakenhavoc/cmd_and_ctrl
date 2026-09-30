@@ -21,7 +21,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // Grim Lavamancer's "Exile two cards from your graveyard" pays), the
 // {B/P}{B/P} Phyrexian mana is ManaCost's own parsed-symbol handling,
 // and the counter it places is CR 122.1b's indestructible counter,
-// carried by b24KeywordCounterGrant exactly as Solphim's own is.
+// which the engine reads itself (ADR 0101).
 //
 // No simplification.
 func init() {
@@ -32,11 +32,10 @@ func init() {
 		Name:            "Drivnod, Carnage Dominus",
 		Completeness:    CompletenessFull,
 		TriggerDoublers: []game.TriggerDoubler{doubler},
-		Static:          []game.StaticAbility{b24KeywordCounterGrant("indestructible")},
 		Activated: []ActivatedAbility{{
 			Label:  "{B/P}{B/P}, Exile three creature cards from your graveyard: Put an indestructible counter on Drivnod, Carnage Dominus.",
 			Cost:   Plus(ManaCost("{B/P}{B/P}"), ExileFromGraveyard(3, "three creature cards", func(c game.Card) bool { return c.IsCreature() })),
-			Effect: putCounterOnSourceWhileOnBattlefield("indestructible", 1),
+			Effect: putCounterOnSourceWhileOnBattlefield(game.CounterIndestructible, 1),
 		}},
 	})
 }

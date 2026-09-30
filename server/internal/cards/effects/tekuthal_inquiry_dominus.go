@@ -26,13 +26,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // the counters come off permanents other than Tekuthal himself.
 //
 // The indestructible counter is CR 122.1b: a permanent with an
-// indestructible counter on it has indestructible. The engine reads no
-// keyword counters of its own, so Tekuthal carries the rule for the
-// counters it places, exactly as Vraska Joins Up carries it for its
-// deathtouch counters (b24KeywordCounterGrant). Vraska's declared gap
-// — the grant stops when the source leaves — cannot bite here: the
-// counter and the static are on the same permanent, so when Tekuthal
-// leaves, its counters leave with it.
+// indestructible counter on it has indestructible. The engine reads
+// keyword counters itself (ADR 0101), in layer 6 at the counter's own
+// timestamp, so the card declares nothing for it — and a Tekuthal that
+// lost all its abilities BEFORE the counter arrived is still
+// indestructible, which the static it used to carry got wrong.
 //
 // The {U/P} symbols are payable either way since #971 put the
 // activation-time Phyrexian announcement on ActivateAbilityParams
@@ -56,7 +54,6 @@ func init() {
 		Name:            "Tekuthal, Inquiry Dominus",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
-		Static:          []game.StaticAbility{b24KeywordCounterGrant("indestructible")},
 		Replacements: []game.ReplacementEffect{
 			ProliferateTwice("Tekuthal, Inquiry Dominus — proliferate twice"),
 		},
@@ -67,7 +64,7 @@ func init() {
 				RemoveCountersAmongOthers("", 3, "other artifacts, creatures, and planeswalkers you control",
 					Or(Artifact(), Creature(), Planeswalker())),
 			),
-			Effect: putCounterOnSourceWhileOnBattlefield("indestructible", 1),
+			Effect: putCounterOnSourceWhileOnBattlefield(game.CounterIndestructible, 1),
 		}},
 	})
 }

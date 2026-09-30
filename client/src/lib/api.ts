@@ -823,6 +823,9 @@ export interface AutoTapPreviewSource {
   tap?: boolean;
   sacrifice?: boolean;
   exile?: boolean;
+  // #1621: a costless "once each turn" ability (Vivi Ornitier's {0}) —
+  // nothing tapped, sacrificed or exiled; this turn's one use is spent.
+  once_per_turn?: boolean;
 }
 
 // fetchAutoTapPreview asks the server which permanents the auto-

@@ -276,6 +276,15 @@ type PendingChoiceView struct {
 	// every other kind. Added by #780.
 	ColorPurpose string `json:"color_purpose,omitempty"`
 
+	// ControlPurpose populates the "entry_controller" kind (ADR 0102):
+	// what giving the entering permanent away does to the seat that
+	// receives it — "harm" (Captive Audience) or "benefit" (Pendant of
+	// Prosperity), game.ControlPurpose. Public for ColorPurpose's
+	// reason: it is a reading of the card's own printed text. The
+	// seats themselves ride PickOptions, each with its Player set.
+	// Absent on every other kind.
+	ControlPurpose string `json:"control_purpose,omitempty"`
+
 	// TypeOptions populates the S26 "choose_creature_type" kind: every
 	// creature type the engine knows (CR 205.3m), for the picker to
 	// filter. Materialised here from game.AllCreatureTypes rather than
@@ -5843,7 +5852,11 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 		// the client renders faces rather than quoting names into a
 		// sentence, and they go through the same per-viewer redaction
 		// as every other Options list in filterPendingChoices.
-		if c.Kind == game.PendingChoiceOptionPick && len(c.PickOptions) > 0 {
+		//
+		// ADR 0102's entry_controller rides the same projection: its
+		// options are seats (Player set), and its purpose goes beside
+		// them.
+		if (c.Kind == game.PendingChoiceOptionPick || c.Kind == game.PendingChoiceEntryController) && len(c.PickOptions) > 0 {
 			v.PickOptions = make([]PickOptionView, 0, len(c.PickOptions))
 			for _, opt := range c.PickOptions {
 				out := PickOptionView{Label: opt.Label, LifeCost: opt.LifeCost}
@@ -5857,6 +5870,9 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 				}
 				v.PickOptions = append(v.PickOptions, out)
 			}
+		}
+		if c.Kind == game.PendingChoiceEntryController {
+			v.ControlPurpose = string(c.ControlPurpose)
 		}
 		// PendingChoiceModePick — #764, CR 603.3c: a modal trigger's
 		// bullets, chosen as the ability is put on the stack. Public
@@ -6457,6 +6473,29 @@ func viewOfZone(z *game.Zone) ZoneView {
 	}
 }
 
+// SpectatorViewerID is the viewerID of a spectator: a connection with
+// no seat that is not the admin (#1588, ADR 0069's 2026-09-30
+// amendment). It is not a UUID, so no seat's ID can equal it and no
+// card's knower set can contain it. The empty viewerID stays the
+// admin's omniscient debug view.
+const SpectatorViewerID = "spectator"
+
+// knownToEverySeat is the spectator's whole notion of "public": every
+// seat in the game knows the card. A card in a public zone is marked
+// known to every seat as it arrives; a face-down, foretold, hidden or
+// privately revealed card is not. A game with no seats knows nothing.
+func knownToEverySeat(c CardView, seatIDs []string) bool {
+	if len(seatIDs) == 0 {
+		return false
+	}
+	for _, id := range seatIDs {
+		if !c.knowers[id] {
+			return false
+		}
+	}
+	return true
+}
+
 // FilterViewFor returns a copy of v with zones hidden from the given
 // viewer zeroed out. The input is not mutated; only the copy's seat
 // entries for non-viewer players get new (empty) card slices.
@@ -6471,17 +6510,31 @@ func viewOfZone(z *game.Zone) ZoneView {
 //   - Shared zones (battlefield, stack, exile, phased_out):
 //     unchanged but for the per-card redaction every zone gets.
 //
-// viewerID is the player UUID string; pass the empty string to get a
-// "spectator" view where every opponent hand and library is hidden
-// (i.e. no seat is treated as "own"). An observer without a claimed
-// seat ends up here.
+// viewerID is the player UUID string. Two other values are not seats:
+//   - "" is the ADMIN's omniscient debug view: every card is known, but
+//     every hand and library is still hidden wholesale and no seat's
+//     move list or cast stamps are promoted.
+//   - SpectatorViewerID is a spectator (#1588, ADR 0069's 2026-09-30
+//     amendment): public information only. A card is known to a
+//     spectator only when EVERY seat knows it, so a face-down, foretold
+//     or hidden card, or one revealed to a single seat, reads as it
+//     does to a non-knower seat, and every hand stays hidden.
 func FilterViewFor(v GameView, viewerID string) GameView {
 	// S13.5: build a per-card "is the viewer a knower" closure that
-	// every zone projection consults. Empty viewerID = admin /
-	// spectator → knows everything.
+	// every zone projection consults. Empty viewerID = admin → knows
+	// everything. SpectatorViewerID knows what every seat knows.
+	seatIDs := make([]string, 0, len(v.Seats))
+	for _, p := range v.Seats {
+		if p.ID != "" {
+			seatIDs = append(seatIDs, p.ID)
+		}
+	}
 	isKnower := func(c CardView) bool {
-		if viewerID == "" {
+		switch viewerID {
+		case "":
 			return true
+		case SpectatorViewerID:
+			return knownToEverySeat(c, seatIDs)
 		}
 		return c.knowers[viewerID]
 	}

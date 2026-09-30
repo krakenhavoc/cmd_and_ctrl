@@ -398,6 +398,7 @@ func (g *Game) mintTokenLocked(grp TokenGroup, controller uuid.UUID) Card {
 	tok.Owner = controller
 	tok.Controller = controller
 	tok.Counters = nil
+	tok.CounterStampedAt = nil
 	tok.LostLastCounter = false
 	tok.KnownBy = nil
 	if grp.Entry.Tapped {

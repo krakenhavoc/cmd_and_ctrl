@@ -1063,13 +1063,14 @@ func TestB24VraskaJoinsUpGivesDeathtouchCountersAndDrawsOffLegends(t *testing.T)
 	if got := me.Hand.Size(); got != hand+1 {
 		t.Errorf("the legendary creature connecting draws one — the Bear none: %d", got-hand)
 	}
-	// The gap: Vraska leaving turns the counters inert.
+	// ADR 0101 (CR 122.1b): the engine reads the counters itself, so
+	// they keep granting deathtouch once Vraska has left.
 	b18Kill(t, g, vraska)
-	if hasAbility(effectiveAbilities(t, g, bear), "deathtouch") {
-		t.Error("declared gap: the counter stops granting once Vraska has left")
+	if !hasAbility(effectiveAbilities(t, g, bear), "deathtouch") {
+		t.Error("the deathtouch counter keeps granting deathtouch after Vraska has left")
 	}
-	if spec, _ := Lookup(b24VraskaJoinsUpOracle); spec.Completeness != CompletenessCaveats {
-		t.Error("the counter gap is declared")
+	if spec, _ := Lookup(b24VraskaJoinsUpOracle); spec.Completeness != CompletenessFull {
+		t.Error("with no gap left Vraska Joins Up is CompletenessFull")
 	}
 }
 

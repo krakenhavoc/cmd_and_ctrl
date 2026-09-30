@@ -724,3 +724,119 @@ paid for. It needed no change.
 
 - `AbilityCost.ExileCards`, the CR 602 owner of decision 6's component (#1297).
 - The tapped-aware picker of decision 3's named limit.
+
+## Amendment (2026-09-30, #1621): a costless once-each-turn ability is the last tier
+
+#1621 was reported as "the game doesn't recognize Vivi's activated ability as a
+mana source". Vivi Ornitier prints "{0}: Add X mana in any combination of {U}
+and/or {R}, where X is Vivi Ornitier's power. Activate only during your turn and
+only once each turn." The hand-clicked activation always worked. The planner
+refused it on #1242's demand (decision 2 of the amendment above): an ability
+that costs its source neither a `{T}` nor itself is not a planned source. So the
+`/autotap` preview, the strict cast gate and every bot read a Vivi board as
+short of mana it had.
+
+**Owner decision (2026-09-30):** the planner may use such an ability, but only
+as a **last-resort tier**. It is used only when nothing else can pay: after
+every ordinary source, every frozen source and the sacrifice tier, and with the
+once-per-turn gate respected. It is #1215's Treasure pattern, one tier further
+down.
+
+Five decisions.
+
+### 1. The bound is a declared bit: `ManaAbilityShape.OncePerTurn`
+
+#1242's demand exists because a costless ability with nothing bounding it would
+be a source the planner could book on every cast. Vivi's bound was a
+`Condition`, an opaque closure the planner cannot read. So "Activate only once
+each turn" on a mana ability is now a declaration, `effects.ManaAbility.OncePerTurn`.
+It is carried onto `game.ManaAbilityShape.OncePerTurn`.
+
+Its enforcement travels with it. `effects.manaShapes` sets the bit and, in the
+same statement, folds the gate into the built ability's `Condition`
+(`manaAbilityCondition`). The gate reads the per-turn half of the activation
+record: `ActivatedThisTurn(source, label) == 0`, per OBJECT and per LABEL. Every
+reader that already asks `Condition` therefore refuses a second use this turn
+without learning the bit exists. Those readers are `ActivateManaAbility`, the
+legal-move enumerator, the view's `condition_unmet`, and the planner's gather
+and executor. `ActivationTally.Turn` finally has its first reader. Both
+activation paths already write it before anything is paid.
+
+This replaces `effects.ManaAbilityNotUsedThisTurn`, which counted
+`EventManaAbilityActivated` in the turn's event log per permanent. That helper
+had two stated faults, and the record has neither. It could not tell two mana
+abilities of one card apart. It also counted a flickered permanent's previous
+object, because the instance ID survives the zone change and CR 400.7 says the
+returning permanent is a new object. Vivi and Ramos, Dragon Engine were its only
+users, and both declare the bit now.
+
+### 2. What the tier admits: `autoTapFreeOncePerTurn`
+
+The picker's demand becomes "a `{T}`, the source itself, **or** a costless
+once-each-turn ability". Costless means every cost component is empty, not only
+the ones the picker's exclusions already refuse. That rules out a mana cost, a
+life cost, a rider, a pre-rider, a counter removal or addition, a discard, an
+exile, a tap-others and a sacrifice-others.
+
+The counter removal is the case that matters. Ramos, Dragon Engine is
+once-each-turn, and `manaCounterCostPlannable` would accept its "remove five
++1/+1 counters" on a `{T}` source. But ten mana from five counters is a
+non-mana cost the player never agreed to pay, so Ramos stays out of every plan.
+An output computed from the PAYMENT (`ProducedForPaid`) is refused too. With
+nothing paid, the planner has nothing to predict it from.
+
+The output is priced by the same `manaPlannableSlotsLocked` every source goes
+through. For Vivi that is the power-scaled `ProducedFunc`, evaluated as the plan
+is made. A power-0 Vivi prices at nothing and is not a source. A power-3 Vivi is
+three `{U|R}` slots, which the executor answers greedily against the cost, as it
+does for a Birds of Paradise.
+
+The ability's other gates are asked exactly as for any source. "Activate only
+during your turn" is the `Condition`, and the `{T}`-only checks do not apply. A
+summoning-sick Vivi, a tapped Vivi (it attacked) and a Vivi under an untap
+restriction can all pay, because the ability taps nothing.
+
+### 3. The order: below everything, the hand included
+
+`tapSource.FreeOncePerTurn` is a key in both comparators. It is tested
+immediately after the #1212 wish and before every other tier, so it sorts
+LAST:
+
+```
+Wanted → FreeOncePerTurn → LeavesHand → Sacrifices → SacrificesCreature → Frozen → (restrictiveness | tier, slotCnt)
+```
+
+It sits below the Spirit Guide tier too, which the owner's words decide: "only
+when nothing else can pay". Paying with Vivi destroys nothing, but it spends the
+turn's single activation. A plan that reached for it to save a Mountain would
+leave the player without it for the next spell, the one that grows Vivi. The
+cost of that is invisible at plan time, which is why it is a floor under every
+other tier rather than a slot between two of them.
+
+The generic recruiter is where this key matters most. A power-3 Vivi is three
+any-colour slots, and without the key tier 1 would recruit it ahead of the
+basic land beside it. Minimality follows from the order. The coloured pass
+reaches Vivi only when backtracking through everything above it has failed.
+The recruiter adds it only when every other source is already in the plan.
+Whatever the cast does not need floats (CR 106.4), as any surplus does.
+
+### 4. The preview says what the payment is
+
+`AutoTapPlanEntry.OncePerTurn`, `once_per_turn` on the `/autotap` preview's
+`sources`. Vivi's entry is not a tap, a sacrifice or an exile. Without the bit,
+the client's `paymentOf` would have read it as a tap. The client renders it as
+"once this turn", not spent for good, and names it in the summary: "Taps 2
+permanents and uses Vivi Ornitier's once-each-turn ability."
+
+### 5. One planner, three readers
+
+Nothing new was added for the preview, the strict gate or the enumerator. All
+three reach `gatherTapSources` through `autoTapPreferringLocked`, so they cannot
+disagree about whether Vivi pays. The executor re-picks through
+`autoTapAbilityForRef` and re-asks `Condition`. It emits
+`EventManaAbilityActivated` and writes the activation record, which is what
+spends the once-each-turn use.
+
+**Still open.** The client-side "make it obvious" half of #1621 is a highlight
+on the legal actions a seat can take, and it is being designed as ADR 0105. It
+is not part of this amendment.

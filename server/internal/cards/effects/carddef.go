@@ -83,10 +83,11 @@ func manaShapes(in []ManaAbility) []game.ManaAbilityShape {
 			Produced:                  a.Produced,
 			Label:                     a.Label,
 			Exhaust:                   a.Exhaust,
+			OncePerTurn:               a.OncePerTurn,
 			Rider:                     a.Rider,
 			PreRider:                  a.PreRider,
 			NarrowToCommanderIdentity: a.NarrowToCommanderIdentity,
-			Condition:                 a.Condition,
+			Condition:                 manaAbilityCondition(a),
 			ProducedFunc:              a.ProducedFunc,
 			ProducedForPaid:           a.ProducedForPaid,
 			DerivesFromOtherSources:   a.DerivesFromOtherSources,
@@ -98,6 +99,36 @@ func manaShapes(in []ManaAbility) []game.ManaAbilityShape {
 		}
 	}
 	return out
+}
+
+// manaAbilityCondition is the built ability's whole activation gate:
+// the declared Condition, and — for a mana ability that sets
+// OncePerTurn — "this object has not activated the ability with this
+// label this turn" (#1621).
+//
+// The declaration and its enforcement are one statement on purpose.
+// game.ManaAbilityShape.OncePerTurn is a bit the AUTO-TAPPER reads to
+// know a costless ability is bounded; every other reader honours the
+// rule through Condition, which it already asks. Setting the bit here
+// and the gate here is what keeps "the planner thinks it is bounded"
+// and "the engine bounds it" from being two facts that can drift.
+//
+// The count is the per-turn half of the activation record
+// (game.ActivatedThisTurn), keyed by the OBJECT and the LABEL: both
+// ActivateManaAbility and the auto-tapper's executor write it for
+// every mana activation, before anything is paid.
+func manaAbilityCondition(a ManaAbility) ActivationCondition {
+	if !a.OncePerTurn {
+		return a.Condition
+	}
+	label := a.Label
+	once := func(g *game.Game, _, source uuid.UUID) bool {
+		return g.ActivatedThisTurn(source, label) == 0
+	}
+	if a.Condition == nil {
+		return once
+	}
+	return AllConditions(once, a.Condition)
 }
 
 // buildDef projects one Spec into the shape the engine reads.

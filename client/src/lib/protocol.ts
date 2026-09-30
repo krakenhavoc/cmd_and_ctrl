@@ -613,6 +613,9 @@ export type LogKind =
   | "choose_color"
   | "choose_type"
   | "choose_player"
+  // ADR 0102: a player chose the opponent a permanent enters under the
+  // control of. The seat rides target_seat, as for choose_player.
+  | "choose_controller"
   // A player answered an "as this enters, choose a card name" prompt
   // (CR 614.12): Pithing Needle, Phyrexian Revoker, Sorcerous
   // Spyglass. `choice` is the name as the player typed it, trimmed
@@ -928,6 +931,14 @@ export interface PendingChoiceView {
     // and it is always a legal answer. What was revealed reaches the
     // other seats afterwards, as an ordinary reveal in the log.
     | "entry_reveal_from_hand"
+    // ADR 0102 CR 614.12a: "this enchantment enters under the control
+    // of an opponent of your choice" (Captive Audience, Pendant of
+    // Prosperity). The permanent is mid-entry while this is open. The
+    // opponents ride pick_options, one per seat with `player` set, and
+    // the answer is {option_index: N} as for option_pick.
+    // control_purpose says whether the permanent hurts or helps the
+    // seat that receives it.
+    | "entry_controller"
     // ADR 0098: Mox Diamond's "if this would enter, you may discard a
     // land card instead. If you don't, put it into its owner's
     // graveyard." The reveal's payload and bounds, and — like it — the
@@ -1017,6 +1028,10 @@ export interface PendingChoiceView {
   // the ORDER of color_options is already the server's answer to the
   // same question (#986), so nothing here re-sorts.
   color_purpose?: "mana" | "benefit" | "harm" | "filter" | "protect" | string;
+  // ADR 0102: populated for kind "entry_controller" — what giving the
+  // entering permanent away does to the seat that receives it. The
+  // picker reads it only for its wording.
+  control_purpose?: "harm" | "benefit" | string;
   // S26: populated for kind "choose_creature_type" — every creature
   // type the engine knows, sorted. The list is long by design (the CR
   // 205.3m vocabulary is ~345 entries), so the picker filters it

@@ -273,6 +273,7 @@ var cardFields = plan(
 	"BattleX", carried, "",
 	"BattleY", carried, "",
 	"Counters", carried, "",
+	"CounterStampedAt", carried, "",
 	"IsCommander", carried, "",
 	"AttackingTarget", carried, "",
 	"BlockingTarget", carried, "",
@@ -670,6 +671,9 @@ var pendingChoiceFields = plan(
 	"CoinWins", carried, "",
 	"ColorOptions", carried, "",
 	"ColorPurpose", carried, "",
+	// ADR 0102: an entry_controller prompt's purpose, carried beside
+	// ColorPurpose for the same reason.
+	"ControlPurpose", carried, "",
 	// Added by the mana pipeline (#352/#356). A restricted mana token
 	// is game state that survives undo — clone.go deep-copies it at
 	// clone.go:135 — so the snapshot must carry it too, or a restored

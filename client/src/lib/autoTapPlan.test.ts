@@ -80,4 +80,27 @@ describe("planSummary", () => {
     );
     expect(planSummary(rows)).toBe("Sacrifices Gold and Eldrazi Spawn.");
   });
+
+  // #1621: Vivi Ornitier's {0} taps nothing and spends nothing for good,
+  // so it must not read as a tap — but the turn's one use is gone.
+  it("names a once-each-turn ability and does not count it as a tap", () => {
+    const rows = planRows(
+      {
+        ok: true,
+        cost: "{3}{U}",
+        plan: ["m1", "m2", "vivi"],
+        sources: [
+          { card_id: "m1", name: "Mountain", zone: "battlefield", tap: true },
+          { card_id: "m2", name: "Mountain", zone: "battlefield", tap: true },
+          { card_id: "vivi", name: "Vivi Ornitier", zone: "battlefield", once_per_turn: true },
+        ],
+      },
+      nameOf,
+    );
+    expect(rows.map((r) => r.payment)).toEqual(["tap", "tap", "once_per_turn"]);
+    expect(rows[2].gone).toBe(false);
+    expect(planSummary(rows)).toBe(
+      "Taps 2 permanents and uses Vivi Ornitier's once-each-turn ability.",
+    );
+  });
 });
