@@ -59,6 +59,12 @@ var (
 	returnListedPermanentsToHandBody = game.SimpleDelayedBody("sakashima/return-listed-to-hand",
 		sakashimaReturnListedPermanentsToHand)
 
+	// The trigger's controller loses the game (Final Fortune, Last
+	// Chance, Warrior's Oath: "at the beginning of that turn's end
+	// step, you lose the game"). Scheduled bound to the extra turn
+	// (DelayedTrigger.OnExtraTurn, ADR 0059 Decision 8).
+	loseTheGameAtThatTurnsEndBody = game.SimpleDelayedBody("extra-turn/lose-the-game", loseTheGameAtThatTurn)
+
 	// Draw a card (Urza's Bauble, Portent).
 	drawOneBody     = game.SimpleDelayedBody("draw/one-card", b27DrawOne)
 	portentDrawBody = game.SimpleDelayedBody("portent/draw", portentDraw)

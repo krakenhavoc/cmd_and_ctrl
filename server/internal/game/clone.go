@@ -89,6 +89,10 @@ func (g *Game) cloneLocked() *Game {
 			out.DelayedTriggers[i] = cloneDelayedTrigger(d)
 		}
 	}
+	// ADR 0059 Decision 10: the extra-turn queue is plain data. An undo
+	// past the Time Warp that queued a turn must un-queue it.
+	out.ExtraTurns = cloneExtraTurns(g.ExtraTurns)
+	out.NextExtraRef = g.NextExtraRef
 	if len(g.LoyaltyActivatedThisTurn) > 0 {
 		out.LoyaltyActivatedThisTurn = make(map[uuid.UUID]bool, len(g.LoyaltyActivatedThisTurn))
 		for k, v := range g.LoyaltyActivatedThisTurn {
@@ -925,6 +929,8 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.StackMeta = src.StackMeta
 	g.PendingTriggers = src.PendingTriggers
 	g.DelayedTriggers = src.DelayedTriggers
+	g.ExtraTurns = src.ExtraTurns
+	g.NextExtraRef = src.NextExtraRef
 	g.LoyaltyActivatedThisTurn = src.LoyaltyActivatedThisTurn
 	g.SpellsCastThisTurn = src.SpellsCastThisTurn
 	g.ForetoldThisTurn = src.ForetoldThisTurn

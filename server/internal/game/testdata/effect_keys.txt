@@ -58,3 +58,4 @@ body catalog/activated
 body catalog/triggered
 body miracle/offer
 condition monarch/an-opponent-became
+body extra-turn/lose-the-game

@@ -144,6 +144,12 @@ func (p *Policy) buildDelta(in aiseat.Input, cands []heuristic.Candidate, fallba
 	var b strings.Builder
 
 	fmt.Fprintf(&b, "TURN %d — %s", v.Turn.Number, stepName(v.Turn.Step))
+	// ADR 0059 Decision 13: the round number repeats on an extra turn
+	// (CR 500.7), so say so, or a model reads "TURN 3" twice as a
+	// replay of the same turn.
+	if v.Turn.Extra {
+		b.WriteString(" (extra turn)")
+	}
 	if as := seatAt(v, v.Turn.ActiveSeat); as != nil {
 		fmt.Fprintf(&b, " — active player: %s", seatLabel(as, me))
 	}

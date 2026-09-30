@@ -49,7 +49,6 @@ const (
 	b28HoldoutSettlementFullOracle = "e6b77545-de5c-4f4a-b7ea-83498fb33ba8"
 	b28FertilidSkipOracle          = "21f1c6d7-8289-44b2-b88f-c09e202be200"
 	b28MeathookMassacreIISkipOID   = "68957dca-df5c-4051-af22-407cb7e47200"
-	b28TimeStretchSkipOracle       = "72e56963-a9dd-44dc-a4d3-992b4d89dd28"
 	b28LoyalGuardianSkipOracle     = "de1cfa83-2049-48ab-b093-2f120a3ef4f2"
 )
 
@@ -168,7 +167,6 @@ func TestBatch28CardsAreRegistered(t *testing.T) {
 		b28TectonicGiantSkipOracle,    // a modal triggered ability
 		b28FertilidSkipOracle,         // counter-removal cost
 		b28MeathookMassacreIISkipOID,  // an opponent's life-payment choice with the consequence on decline; finality counters
-		b28TimeStretchSkipOracle,      // extra turns
 		b28LoyalGuardianSkipOracle,    // a beginning-of-combat trigger event
 	} {
 		if _, ok := Lookup(skipped); ok {
