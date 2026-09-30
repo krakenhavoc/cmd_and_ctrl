@@ -79,6 +79,11 @@ var redactedCardKeys = map[string]bool{
 	"must_block":  true,
 	"attached_to": true,
 	"no_untap":    true,
+	// ADR 0078: a token is publicly a token (CR 111.8), same as
+	// face_down_kind or phased_out above — the ART id behind it is
+	// what identifies the printing and IS redacted (scryfall_id is
+	// not in this table).
+	"is_token": true,
 	// #1339: who is defending against an attack is as public as what
 	// it is attacking — it is derived from it.
 	"defending_player": true,
@@ -213,6 +218,7 @@ func everyFieldCardView(owner string, knowers map[string]bool) CardView {
 		Owner:               owner,
 		Controller:          owner,
 		ScryfallID:          "scryfall",
+		IsToken:             true,
 		TypeLine:            "Legendary Creature — Test",
 		Colors:              []string{"B", "R"},
 		Protection:          []ProtectionView{{Printed: "red", Kind: "color", Value: "R"}},

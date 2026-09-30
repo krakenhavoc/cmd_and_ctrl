@@ -635,9 +635,15 @@ type zoneSnapshot struct {
 // snapshotCard always sets it, so every file this binary writes
 // carries the key; restore backfills it when the key is missing.
 type cardSnapshot struct {
-	InstanceID        uuid.UUID      `json:"instanceId"`
-	Name              string         `json:"name"`
-	ScryfallID        string         `json:"scryfallId,omitempty"`
+	InstanceID uuid.UUID `json:"instanceId"`
+	Name       string    `json:"name"`
+	ScryfallID string    `json:"scryfallId,omitempty"`
+	// TokenArtOnly: carried, not derived — ADR 0078. A restored 0/0
+	// Construct token must keep answering ToughnessIsKnown exactly as
+	// it did before the restore; recomputing this from the CURRENT
+	// resolver state would let a dump refresh between capture and
+	// restore change the answer for a token that already existed.
+	TokenArtOnly      bool           `json:"tokenArtOnly,omitempty"`
 	OracleID          string         `json:"oracleId,omitempty"`
 	TokenKey          string         `json:"tokenKey,omitempty"`
 	TypeLine          string         `json:"typeLine,omitempty"`
@@ -1739,6 +1745,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		InstanceID:               c.InstanceID,
 		Name:                     c.Name,
 		ScryfallID:               c.ScryfallID,
+		TokenArtOnly:             c.TokenArtOnly,
 		OracleID:                 c.OracleID,
 		TokenKey:                 c.TokenKey,
 		TypeLine:                 c.TypeLine,
@@ -2523,6 +2530,7 @@ func restoreCard(c *cardSnapshot) Card {
 		InstanceID:               c.InstanceID,
 		Name:                     c.Name,
 		ScryfallID:               c.ScryfallID,
+		TokenArtOnly:             c.TokenArtOnly,
 		OracleID:                 c.OracleID,
 		TokenKey:                 c.TokenKey,
 		TypeLine:                 c.TypeLine,
