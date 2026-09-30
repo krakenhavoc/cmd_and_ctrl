@@ -27,7 +27,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // happens.
 //
 // The discard is the printed one: the targeted player chooses which
-// card (CR 701.8a), through the ordinary discard prompt.
+// card (CR 701.9a), through the ordinary discard prompt.
 //
 // No simplification.
 func init() {

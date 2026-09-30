@@ -684,7 +684,7 @@ func TestGlimpseOnAShortLibraryLosesOnlyAtTheDraw(t *testing.T) {
 }
 
 // TestMindRotQueuesDiscardChoice is #651 in one test: the discard is a
-// PendingChoice addressed to the TARGET (CR 701.8a — the discarding
+// PendingChoice addressed to the TARGET (CR 701.9a — the discarding
 // player chooses), the table is gated until they answer (CR 608.2c —
 // the discard is part of the resolving effect), the answer moves
 // exactly those cards with one EventDiscardCard each, and the cleanup

@@ -1873,7 +1873,7 @@ func affectedPlayerForEvent(ev *ReplacementEvent, applicable []activeReplacement
 		// #982. A discard is a move out of a hand, but the affected
 		// player is not "the controller of the card" the move branch
 		// above looks up — a card in a hand has no controller, and
-		// CR 701.8a puts it into THAT PLAYER'S graveyard. The
+		// CR 701.9a puts it into THAT PLAYER'S graveyard. The
 		// discarding player is on the event; read it.
 		//
 		// Not observable while every discard replacement in the catalog
@@ -3849,7 +3849,7 @@ func (g *Game) pruneSacrificeChoicesLocked() {
 // card stops (Torment of Hailfire's sacrifice branch is the case).
 //
 // The bounds move with the list (setCardSetCandidates): a pick of two
-// from a hand that now holds one is CR 701.8a's "as many as you can",
+// from a hand that now holds one is CR 701.9a's "as many as you can",
 // and a floor left above the candidate count is the same wedge one
 // card later.
 //
@@ -3970,7 +3970,7 @@ func (g *Game) pruneCardSetChoicesLocked() {
 //
 // Two callers, one rule: an enumerator that offers a bigger set than
 // the resolver accepts is the #544 wedge, and so is a floor no
-// remaining set can reach. Clamping down is CR 701.8a's "as many as
+// remaining set can reach. Clamping down is CR 701.9a's "as many as
 // you can" for a discard and the same arithmetic for every other
 // pick.
 //

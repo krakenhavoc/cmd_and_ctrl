@@ -151,7 +151,7 @@ func TestCleanupDoesNotEraseAnOwedEffectDiscard(t *testing.T) {
 }
 
 // TestEffectDiscardWithNoCardsQueuesNothingAndStillRunsThen — CR
-// 701.8a discards as many as you can, and a prompt with no candidates
+// 701.9a discards as many as you can, and a prompt with no candidates
 // and a floor of one is one nobody can answer. What comes after "then"
 // is not conditional on there having been cards to pitch.
 func TestEffectDiscardWithNoCardsQueuesNothingAndStillRunsThen(t *testing.T) {
@@ -189,7 +189,7 @@ func TestEffectDiscardCapsAtTheHandSize(t *testing.T) {
 		t.Fatal("one card in hand still owes a discard")
 	}
 	if c.ChooseMin != 1 || c.ChooseMax != 1 {
-		t.Errorf("bounds [%d,%d], want [1,1] — CR 701.8a, as many as you can", c.ChooseMin, c.ChooseMax)
+		t.Errorf("bounds [%d,%d], want [1,1] — CR 701.9a, as many as you can", c.ChooseMin, c.ChooseMax)
 	}
 }
 

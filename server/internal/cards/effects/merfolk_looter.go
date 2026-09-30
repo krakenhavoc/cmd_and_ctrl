@@ -18,7 +18,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // why the discard has no Then clause hanging off it; there is nothing
 // printed after it.
 //
-// The discard is the controller's own choice (CR 701.8a), not the
+// The discard is the controller's own choice (CR 701.9a), not the
 // "at random" primitive.
 //
 // A tap cost, so the Looter cannot be used the turn it arrives

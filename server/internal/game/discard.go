@@ -4,7 +4,7 @@ import "github.com/google/uuid"
 
 // discard.go is the engine's ONE discard path.
 //
-// CR 701.8a: "To discard a card, move it from its owner's hand to
+// CR 701.9a: "To discard a card, move it from its owner's hand to
 // that player's graveyard." Four places in the game package said that
 // in Go, in four near-identical loops — move the card, mark it known
 // in its new zone, emit EventDiscardCard:
@@ -15,7 +15,7 @@ import "github.com/google/uuid"
 //     asks its controller to choose;
 //   - the revealed-hand discard leg of ResolvePendingChoice
 //     (Thoughtseize, where somebody ELSE picks);
-//   - the random discard (CR 701.8b, DiscardRandomForEffect);
+//   - the random discard (CR 701.9b, DiscardRandomForEffect);
 //
 // plus the discard component of an additional cost (CR 601.2h,
 // payAdditionalCostLocked).
@@ -50,7 +50,7 @@ type DiscardCause string
 
 const (
 	// DiscardCauseEffect is a discard an effect instructed — Mind Rot,
-	// looting, a random discard, a revealed-hand pick. CR 701.8a, part
+	// looting, a random discard, a revealed-hand pick. CR 701.9a, part
 	// of a resolving spell or ability (CR 608.2c). This is the only
 	// cause Library of Leng replaces.
 	DiscardCauseEffect DiscardCause = "effect"
@@ -109,7 +109,7 @@ type discardOptions struct {
 // counts as a DISCARD — the question "for each card discarded this
 // way" (Syphon Mind's draw) is asking.
 //
-// CR 701.8a: "To discard a card, move it from its owner's hand to
+// CR 701.9a: "To discard a card, move it from its owner's hand to
 // that player's graveyard." The discard is that MOVE OUT of the hand,
 // and nothing replaces the discard itself — a replacement rewrites
 // where the card goes. So the answer is "is it still in the hand":
@@ -122,14 +122,14 @@ type discardOptions struct {
 //     taking the offer. All of them replaced the destination of a
 //     discard that had already happened, which is the reading ADR 0013
 //     §5g gave `zoneRoute.Discard` — honoured wherever the card lands,
-//     because CR 701.8a defines a discard by its SOURCE.
+//     because CR 701.9a defines a discard by its SOURCE.
 //   - still in the hand. NOT discarded — the CR 614 window cancelled
 //     the move outright, or its prompt was abandoned (ADR 0013 §5j),
 //     and nothing ever left.
 //
 // This is sacrificedThisWayLocked's shape with the hand in place of
 // the battlefield, and the two rules have the same form because
-// CR 701.8a and CR 701.17a do: both name the keyword action as a move
+// CR 701.9a and CR 701.17a do: both name the keyword action as a move
 // OUT of a zone. Destroy is the odd one out (CR 701.7a defines it by
 // the graveyard it arrives in — destroyedThisWayLocked).
 //
@@ -150,7 +150,7 @@ func (g *Game) discardedThisWayLocked(playerID, cardID uuid.UUID) bool {
 	return !p.Hand.Contains(cardID)
 }
 
-// discardCardsLocked discards `cards` from playerID's hand (CR 701.8a),
+// discardCardsLocked discards `cards` from playerID's hand (CR 701.9a),
 // emitting one EventDiscardCard per card — the event every "whenever
 // you discard a card" trigger and every graveyard payoff in the
 // catalog watches.
@@ -183,7 +183,7 @@ func (g *Game) discardedThisWayLocked(playerID, cardID uuid.UUID) bool {
 //     returns nil with one card discarded, one prompt open and "then
 //     draw a card" still owed.
 //   - The discards of one batch are sequential in the log even though
-//     CR 701.8a makes them simultaneous. They already were; what is
+//     CR 701.9a makes them simultaneous. They already were; what is
 //     new is that a paused one puts the rest on the far side of a
 //     prompt. Mill made the opposite call (#529) because a paused mill
 //     must not re-read the top of the library; a discard reads a list
@@ -234,7 +234,7 @@ func (g *Game) discardBatchLocked(playerID uuid.UUID, cards, landed []uuid.UUID,
 			CardID: next,
 			Dst:    ZoneGraveyard,
 			// The discarding player's graveyard, named rather than
-			// inferred: CR 701.8a moves the card to the hand owner's
+			// inferred: CR 701.9a moves the card to the hand owner's
 			// graveyard, and every hand in this engine holds only its
 			// owner's cards.
 			DstOwner:      playerID,

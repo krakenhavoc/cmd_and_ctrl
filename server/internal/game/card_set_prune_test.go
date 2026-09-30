@@ -229,7 +229,7 @@ func TestARunWhoseLegWasWithdrawnStillCompletes(t *testing.T) {
 }
 
 // TestAPartlyEmptiedDiscardPromptTrimsAndClampsItsBounds is the other
-// half of the prune, and CR 701.8a's "as many as you can": a discard of
+// half of the prune, and CR 701.9a's "as many as you can": a discard of
 // two out of a hand that has lost two of its three cards is a discard
 // of one, and the clamped answer is one the resolver takes.
 func TestAPartlyEmptiedDiscardPromptTrimsAndClampsItsBounds(t *testing.T) {

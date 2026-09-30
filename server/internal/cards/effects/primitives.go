@@ -97,7 +97,7 @@ func (d DrawCards) Apply(ctx *Context) error {
 }
 
 // DiscardCards removes N cards from `Player`'s hand AT RANDOM
-// (CR 701.8b). Cards land in the graveyard known to every seated
+// (CR 701.9b). Cards land in the graveyard known to every seated
 // player (public-zone rule).
 //
 // It is for cards that print "at random" — Burning Inquiry — and for

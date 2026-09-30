@@ -752,7 +752,7 @@ every cause; the Obstinate Baloth shape reads the cause plus the
 controller of `Source`. Build one with `DiscardBecomes{…}.Build()`
 (`cards/effects/discard_replacements.go`) rather than by hand.
 
-`EventDiscardCard` still fires wherever the card ends up (CR 701.8a
+`EventDiscardCard` still fires wherever the card ends up (CR 701.9a
 defines a discard by the move OUT of the hand), so a discard your
 replacement redirects is still a discard for Megrim and friends, and a
 discarded commander still gets the CR 903.9 offer. A COST discard
@@ -2624,7 +2624,7 @@ finishes from a continuation, so `SearchLibrary{…, Then}` is handed the
 cards that ARRIVED where it aimed them (CR 400.7) and runs an action
 later when a tutored commander stops to answer CR 903.9 — `found` is
 not "what I picked". And "put a card from your hand into your
-graveyard" that does NOT say *discard* is not a discard (CR 701.8a
+graveyard" that does NOT say *discard* is not a discard (CR 701.9a
 defines one by the move out of the hand under that word): reach for
 `PutIntoGraveyardForEffect`, never `discardCardsLocked`, or Megrim
 fires off a card that never discarded. See
@@ -2710,7 +2710,7 @@ like `PromptedSacrifices`: `.Count()` is "a card for each card
 discarded this way", `.Discarded(seat)` is "if you discard a card this
 way", `.By(seat)` and `.Cards()` are the cards.
 
-What counts as discarded is CR 701.8a's move OUT of the hand, so a
+What counts as discarded is CR 701.9a's move OUT of the hand, so a
 madness card exiled instead of binned counts, a Library of Leng card
 put on top of the library counts, and a leg the CR 614 window
 cancelled does not. Do NOT measure it by reading the hand size back
@@ -2726,7 +2726,7 @@ handed `(g, seat, discarded)` because a fan-out copies one template,
 and it still fires for an empty hand ("discard your hand, then draw
 three"). The run's continuation is the rest of the INSTRUCTION and
 runs once. A payoff written on the leg pays out per answer, which is
-what Syphon Mind did. For the RANDOM discard (CR 701.8b) the
+what Syphon Mind did. For the RANDOM discard (CR 701.9b) the
 continuation is `g.DiscardRandomThenForEffect`. See
 [ADR 0013 §5y](decisions/0013-replacement-effects.md).
 
@@ -2934,7 +2934,7 @@ Do NOT reach for `UpTo: true` to make room for the one-card answer.
 `UpTo` drops the floor to ZERO, and `Validate` is never asked about an
 empty pick — so the clause could be answered by discarding nothing.
 That was a live bug on Compulsive Research until #626. `Min` is
-clamped to the hand size, which is CR 701.8a's "as many as you can",
+clamped to the hand size, which is CR 701.9a's "as many as you can",
 and the number your `Validate` compares against must be that same
 clamped count, captured when you queue.
 
@@ -3044,9 +3044,9 @@ applicable and the question lives inside it, because a player may
 decline even when they could say yes (bluffing an empty hand is a real
 play, and the shockland at 20 life may still not want to pay).
 
-The reveal clause is `game.EntryHandReveal{Matches, Min, Max, Question,
+The reveal clause is `game.EntryCardChoice{Matches, Min, Max, Question,
 Then}` (#1198, [ADR 0013](decisions/0013-replacement-effects.md)
-§5z). `Matches` is a `func(game.Card) bool` over a card in HAND, so it
+§5z; named `EntryHandReveal` until ADR 0098 gave it an `Action`). `Matches` is a `func(game.Card) bool` over a card in HAND, so it
 reads printed characteristics — `IsLandWithSubtype("island")` and
 friends — and it must not take a `*Game` (it runs under the read lock
 inside the bot enumerator as well as under the write lock on submit).
@@ -3055,6 +3055,32 @@ in hand, the whole table becomes entitled to read it, and the engine
 does the reveal itself. Do not write a prompt in the card file —
 there is no per-card prompt code in this family, the same way there is
 none in the shockland one.
+
+**"If this would enter, discard / sacrifice … instead. If you don't,
+put it into its owner's graveyard"** (Mox Diamond, Heart of Yavimaya,
+Lotus Vale — [ADR 0098](decisions/0098-discard-as-a-permanent-would-enter.md))
+is the same clause with an `Action` that SPENDS what it names, and a
+decline that redirects the entry instead of tapping it:
+
+```go
+Replacements: []game.ReplacementEffect{
+    EntersOnlyIfYouDiscardFromHand("Mox Diamond", "a land card", isLandCard),        // "you may discard", 0..1
+    EntersOnlyIfYouSacrifice("Lotus Vale", 2, "two untapped lands", untappedLand),  // not a "may": exactly N
+},
+```
+
+Both are in [enters_only_if.go](../server/internal/cards/effects/enters_only_if.go).
+The discard is an effect's (`DiscardCauseEffect`: Library of Leng and
+every discard payoff see it) and the sacrifice goes through
+`SacrificeAllThenForEffect`; either may pause, and the engine carries
+the paused entry across. "If you do" means the card really left. The
+permanent never enters on a decline — nothing that watches an entry
+triggers — and a later replacement applies to the move it became (Rest
+in Peace exiles a declined Mox, CR 616.2). A sacrifice clause reads a
+PERMANENT, so its `Matches` sees effective characteristics. The engine
+moves a redirected entry wherever the window sent it
+(`moveRedirectedEntryLocked`), from any entry site; a card that
+rewrites an entry's `NewZone` needs nothing else.
 
 **An alternative cast cost (S22):** "you may cast this spell for its
 <keyword> cost **rather than** its mana cost" (CR 118.9) goes in

@@ -27,7 +27,7 @@ import (
 //   - MoveCardByIDAsCommander → RepEventMove (carries EntersTapped,
 //     EntersWithCounters, asCommanderMove breadcrumb)
 //   - routeCardToZoneLocked → RepEventMove, or RepEventDiscard when the
-//     route is a discard (CR 701.8, #650)
+//     route is a discard (CR 701.9, #650)
 //   - createTokensLocked → RepEventCreateTokens, then one
 //     RepEventMove battlefield entry per token created (CR 701.7b,
 //     #762)
@@ -50,7 +50,7 @@ import (
 //	"draw"         — RepEventDraw    — DrawPlayer, DrawCount (CR 121.2)
 //	"produce_mana" — RepEventProduceMana — ManaPlayer, ManaSource, ManaColors (CR 106.12b)
 //	"move"         — RepEventMove    — CardID, OldZone, NewZone, NewZoneOwner, EntersTapped, EntersAttacking, EntersWithCounters, asCommanderMove
-//	"discard"      — RepEventDiscard — CardID, DiscardPlayer, DiscardCause, NewZone, NewZoneOwner (CR 701.8)
+//	"discard"      — RepEventDiscard — CardID, DiscardPlayer, DiscardCause, NewZone, NewZoneOwner (CR 701.9)
 //	"counter"      — RepEventCounter — CounterTarget OR CounterPlayer,
 //	                 CounterName, CounterDelta, CounterPlacer,
 //	                 CounterFromCombatDamage
@@ -69,7 +69,7 @@ const (
 	RepEventLife    ReplacementEventKind = "life"
 	RepEventDamage  ReplacementEventKind = "damage"
 
-	// RepEventDiscard is a discard (CR 701.8a) — the one exit whose
+	// RepEventDiscard is a discard (CR 701.9a) — the one exit whose
 	// keyword action is defined by where the card comes FROM, so it is
 	// its own event kind rather than a flag on RepEventMove. Library of
 	// Leng, madness (#657) and the Obstinate Baloth family all key on
@@ -646,7 +646,7 @@ type ReplacementEvent struct {
 
 	// DiscardPlayer is the player discarding the card — its owner,
 	// because every hand in this engine holds only its owner's cards
-	// (CR 701.8a moves the card to that player's graveyard).
+	// (CR 701.9a moves the card to that player's graveyard).
 	DiscardPlayer uuid.UUID
 
 	// DiscardCause is why the discard is happening: an effect's
@@ -953,7 +953,7 @@ type ReplacementEvent struct {
 	//
 	// Several things set it, and they fall into two families: paying a
 	// cost (life, CR 118.3, payLifeAsCostLocked in life_tail.go; a
-	// discard, CR 701.8a, discard.go, through zoneRoute.MustSettleNow;
+	// discard, CR 701.9a, discard.go, through zoneRoute.MustSettleNow;
 	// a counter placement mid-ability, #1370,
 	// AddCounterMustSettleNowForEffect in counter_tail.go) — CR 601.2h
 	// pays a spell's costs as one indivisible step and CR 601.2 rewinds
@@ -2088,7 +2088,7 @@ func eventKindMatches(watches []EventKind, kind ReplacementEventKind) bool {
 	case RepEventMove:
 		want = EventZoneMove
 	case RepEventDiscard:
-		// CR 701.8a. A discard is a move out of the hand, but what a
+		// CR 701.9a. A discard is a move out of the hand, but what a
 		// discard replacement watches for is the DISCARD — Library of
 		// Leng, madness, "if you would discard a card, exile it
 		// instead" — so it keys on the discard event, not the zone
