@@ -134,7 +134,8 @@
   import { exileCostNote, exileCostOptionCards, exileCostWhere } from "../../exileCost";
   import AlternativeCostModal from "./AlternativeCostModal.svelte";
   import FacePickerModal from "./FacePickerModal.svelte";
-  import { cardAsFace, needsFacePicker } from "../../faces";
+  import { cardAsFace, cardAsFused, faceOptions, needsFacePicker } from "../../faces";
+  import { unlockParams, unlockRequest } from "../../roomDoors";
   import TapCostModal from "./TapCostModal.svelte";
   import DelveCostModal from "./DelveCostModal.svelte";
   import { delveOptionIDs, hasDelveChoice } from "../../delve";
@@ -782,12 +783,22 @@
   // #1508: the choices the cast started with — its zone and whether it
   // was dragged — so the face picker's confirm carries both on.
   let facePromptBase: CastChoices = {};
-  function confirmFace(face: number): void {
+  // ADR 0103: the zone of the cast the picker is open for, as state so
+  // the picker re-reads it — which halves it offers depends on it.
+  let facePromptZone = $state<CastSourceZone | undefined>(undefined);
+  function confirmFace(face: number, fused = false): void {
     const card = facePromptCard;
     const base = facePromptBase;
     facePromptCard = null;
     facePromptBase = {};
     if (!card) return;
+    // ADR 0103, CR 702.102: the FUSED cast of a split card with fuse —
+    // both halves, the server's fused announce block, and `fuse: true`
+    // on the cast.
+    if (fused) {
+      afterFace(cardAsFused(card), { ...base, fuse: true });
+      return;
+    }
     // Run the rest of the chain against the CHOSEN face, so the
     // prompts and the cast-timing checks see its type line, its cost
     // and — since #992 — its own announce data: the cost picker, the
@@ -871,12 +882,31 @@
       return;
     }
     if (needsFacePicker(card)) {
+      // ADR 0103: a split card may have only one half this zone allows
+      // (an aftermath card in hand) — then there is nothing to ask.
+      const options = faceOptions(card, fromZone);
+      if (options.length === 1) {
+        const only = options[0];
+        afterFace(only.view, only.fused ? { ...base, fuse: true } : { ...base, face: only.face });
+        return;
+      }
       facePromptBase = base;
+      facePromptZone = base.fromZone;
       facePromptCard = card;
       return;
     }
     afterFace(card, base);
   }
+
+  // ADR 0103: a door button on a Room (Card.svelte's door strip) asks
+  // for an unlock through the roomDoors store; the Board is the one
+  // place that sends it, as the context menu's rows are.
+  $effect(() => {
+    const req = $unlockRequest;
+    if (!req) return;
+    unlockRequest.set(null);
+    guardedSendAction("special_action", unlockParams(req.cardID, req.door), viewerID ?? undefined);
+  });
 
   // ADR 0099 §7: "Cast it free" on a discover or cascade prompt starts
   // the cast chain for the exiled card as soon as the snapshot carrying
@@ -2368,6 +2398,7 @@
   />
   <FacePickerModal
     card={facePromptCard}
+    zone={facePromptZone}
     onConfirm={confirmFace}
     onCancel={() => (facePromptCard = null)}
   />

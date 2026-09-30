@@ -20,7 +20,13 @@
   import type { CardView } from "../../protocol";
   import { cardImageURL } from "../../cardImage";
   import { cardArt } from "../../cardArt";
-  import { LAYOUT_ADVENTURE, castableFaceIndex } from "../../faces";
+  import {
+    LAYOUT_ADVENTURE,
+    LAYOUT_SPLIT,
+    castableFaceIndex,
+    displayName,
+    faceOptions,
+  } from "../../faces";
   import { hasSatisfiableTargets } from "../../timing";
   import ModalLayer from "../ModalLayer.svelte";
 
@@ -29,14 +35,22 @@
     // opened for a card whose `faces` has more than one entry and
     // whose layout offers a choice — see needsFacePicker.
     card: CardView | null;
-    // Fires with the chosen face index.
-    onConfirm: (face: number) => void;
+    // The zone the cast comes out of, as the Board names it; undefined
+    // is the hand. ADR 0103: it decides which halves are on offer — an
+    // aftermath half only from a graveyard (CR 702.127a), the fused
+    // cast only from hand (CR 702.102a).
+    zone?: string;
+    // Fires with the chosen face index, and whether the choice is the
+    // FUSED cast of both halves (ADR 0103).
+    onConfirm: (face: number, fused: boolean) => void;
     onCancel: () => void;
   }
 
-  const { card, onConfirm, onCancel }: Props = $props();
+  const { card, zone, onConfirm, onCancel }: Props = $props();
 
-  const faces = $derived(card?.faces ?? []);
+  // ADR 0103: the choices, not the printed faces — a split card's
+  // halves the zone allows, then its fused cast when it has one.
+  const options = $derived(card ? faceOptions(card, zone) : []);
 
   // #1173 / #1168: default to the face this cast can actually make,
   // not always the front. A printed graveyard permission on one half
@@ -54,6 +68,7 @@
     return castableFaceIndex(
       c,
       (f) => f.castable_here === true || (!f.cant_cast && hasSatisfiableTargets(f.legal_targets)),
+      zone,
     );
   }
   let chosen = $state(0);
@@ -67,7 +82,9 @@
   });
 
   function confirm(): void {
-    onConfirm(chosen);
+    const opt = options[chosen];
+    if (!opt) return;
+    onConfirm(opt.face, opt.fused);
   }
 
   function handleKey(e: KeyboardEvent): void {
@@ -83,10 +100,10 @@
       chosen = Math.max(0, chosen - 1);
     } else if (e.key === "ArrowRight" || e.key === "ArrowDown") {
       e.preventDefault();
-      chosen = Math.min(faces.length - 1, chosen + 1);
+      chosen = Math.min(options.length - 1, chosen + 1);
     } else if (e.key >= "1" && e.key <= "9") {
       const n = Number(e.key) - 1;
-      if (n < faces.length) {
+      if (n < options.length) {
         e.preventDefault();
         chosen = n;
       }
@@ -103,7 +120,7 @@
   // 601.2 distinction, and the difference a player is actually
   // choosing between on a land-backed MDFC.
   const verb = $derived(
-    (faces[chosen]?.type_line ?? "").toLowerCase().includes("land") ? "Play" : "Cast",
+    (options[chosen]?.view.type_line ?? "").toLowerCase().includes("land") ? "Play" : "Cast",
   );
 
   // The rule the choice comes from, named for the player. A modal DFC
@@ -111,27 +128,34 @@
   // of two different rules, and the caption is the only place the
   // modal says which one it is looking at.
   const provenance = $derived(
-    card?.layout === LAYOUT_ADVENTURE ? "adventure · CR 715.3" : "modal double-faced · CR 712.12",
+    card?.layout === LAYOUT_ADVENTURE
+      ? "adventure · CR 715.3"
+      : card?.layout === LAYOUT_SPLIT
+        ? card.fused
+          ? "split, fuse · CR 709.3, 702.102"
+          : "split · CR 709.3"
+        : "modal double-faced · CR 712.12",
   );
 </script>
 
-{#if card && faces.length > 1}
+{#if card && options.length > 1}
   <ModalLayer />
   <div class="prompt-backdrop" role="dialog" aria-modal="true" aria-labelledby="face-title">
     <div class="prompt-modal face-modal">
       <h2 id="face-title">
-        {card.name}
+        {displayName(card)}
         <span class="prompt-src" aria-hidden="true">{provenance}</span>
       </h2>
       <p class="prompt-hint">Which half are you playing?</p>
       <ul class="face-options">
-        {#each faces as face, i (face.name)}
-          {@const art = cardImageURL(card, "normal", i)}
+        {#each options as opt, i (opt.fused ? "fused" : opt.face)}
+          {@const art = cardImageURL(card, "normal", opt.face)}
           <li>
             <button
               type="button"
               class="face-opt"
               class:on={chosen === i}
+              class:fused={opt.fused}
               aria-pressed={chosen === i}
               onclick={() => (chosen = i)}
               ondblclick={() => {
@@ -144,15 +168,17 @@
               {:else}
                 <div class="face-art face-art-blank" aria-hidden="true"></div>
               {/if}
-              <span class="face-name">{face.name}</span>
-              <span class="face-type">{face.type_line ?? ""}</span>
-              <span class="face-cost">{face.mana_cost || "—"}</span>
+              <span class="face-name">{opt.view.name}</span>
+              <span class="face-type"
+                >{opt.fused ? "both halves (fuse)" : (opt.view.type_line ?? "")}</span
+              >
+              <span class="face-cost">{opt.view.mana_cost || "—"}</span>
             </button>
           </li>
         {/each}
       </ul>
-      {#if faces[chosen]?.oracle_text}
-        <p class="face-text">{faces[chosen].oracle_text}</p>
+      {#if !options[chosen]?.fused && card.faces?.[options[chosen]?.face ?? 0]?.oracle_text}
+        <p class="face-text">{card.faces?.[options[chosen]?.face ?? 0]?.oracle_text}</p>
       {/if}
       <div class="prompt-foot">
         <button type="button" class="ghost" onclick={onCancel}
@@ -160,7 +186,7 @@
         >
         <button type="button" class="primary" onclick={confirm}>
           {verb}
-          {faces[chosen]?.name ?? ""} <span class="kbd">↵</span>
+          {options[chosen]?.view.name ?? ""} <span class="kbd">↵</span>
         </button>
       </div>
     </div>
@@ -211,6 +237,11 @@
 
   .face-opt.on {
     border-color: var(--accent, #d9a441);
+  }
+
+  /* ADR 0103: the fused cast is both halves, not a printed face. */
+  .face-opt.fused .face-type {
+    font-style: italic;
   }
 
   .face-art {

@@ -56,7 +56,7 @@ export interface ExileStripEntry {
 // per-viewer answer on whichever of them the cast would announce, and
 // an adventure card impulse-exiled by Ragavan carries it per face.
 function surfaces(card: CardView): CardView[] {
-  const faces = castableFaces(card);
+  const faces = castableFaces(card, "exile");
   return faces[0] === card ? faces : [card, ...faces];
 }
 
@@ -229,7 +229,7 @@ export function exileCostBadge(card: CardView): ExileCostBadge | null {
   for (const p of own.slice(1)) {
     lines.push(`or ${priceText(p)}${p.label ? ` (${p.label})` : ""}`);
   }
-  for (const f of castableFaces(card)) {
+  for (const f of castableFaces(card, "exile")) {
     if (f === card || f.name === card.name) continue;
     const fp = f.cast_prices?.[0];
     if (fp) lines.push(`${f.name}: ${priceText(fp)}`);
