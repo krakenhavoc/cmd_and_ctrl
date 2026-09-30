@@ -179,15 +179,12 @@ func (g *Game) grantFreeCastLocked(controller, cardID uuid.UUID, lessThan int) {
 // registered, because a restore point written by an older binary may
 // hold one, and an effect key is never deleted (ADR 0041 phase 3).
 //
-// cascadeBottomBody is the delayed trigger's body, a registered key
-// (ADR 0041 phase 3, #1497). The card rides on the item's Targets and
-// the controller is the item's, so it reads no params.
-// cascadeBottomBody is assigned in init rather than by a var
-// initialiser: the body reaches the exit primitives, which reach the
-// scheduler, and an initialiser would be an initialisation cycle.
-var cascadeBottomBody BodyRef
-
-func init() { cascadeBottomBody = SimpleDelayedBody("cascade/bottom-if-not-cast", cascadeBottom) }
+// The body is registered in init rather than by a var initialiser: it
+// reaches the exit primitives, which reach the scheduler, and an
+// initialiser would be an initialisation cycle. The card rides on the
+// item's Targets and the controller is the item's, so it reads no
+// params.
+func init() { SimpleDelayedBody("cascade/bottom-if-not-cast", cascadeBottom) }
 
 func cascadeBottom(g *Game, item *StackItem) error {
 	controller := item.Controller
