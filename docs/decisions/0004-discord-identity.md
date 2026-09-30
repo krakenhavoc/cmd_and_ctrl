@@ -5,6 +5,7 @@
 **Revised:** 2026-09-16 · §6 and the operator runbook: the server env file is `/etc/cmd_and_ctrl/env`, both env files' owners are corrected, and "Rotating tokens" follows the CD-owned `bot.env` and the HomeLab-owned admin token (#251) · Branch `docs/adr-0004-env-path-251`
 **Revised:** 2026-09-19 · A third command, `/c2-end <game>` (confirm, then archive), joins `/c2-invite` and `/c2-games` — admin-only for now via two new optional env vars, `CMDCTRL_DISCORD_ADMIN_USER_IDS` / `CMDCTRL_DISCORD_ADMIN_ROLE_IDS`; the "host" half of #614's design point waits on S34 `games.created_by` (#1044). Details in `server/internal/bot/end.go` and AGENTS.md's Discord bot section, not repeated here · Issue #614
 **Revised:** 2026-09-19 · The "host" half lands: `/c2-end` now also accepts the game's own creator, via the server's `GET /games/{id}/creator` (#1098). "Admin-only" above now reads "host or admin" — see `Handler.mayEnd` in `server/internal/bot/end.go` and AGENTS.md's Discord bot section · Issue #1098
+**Revised:** 2026-09-30 · Catch-up (#615): PR references corrected; the amendment section at the end records what changed since 2026-04-22 (five commands, bulk-overwrite registration, the server's DM-invite route, the optional env vars, `bot.env` ownership) without rewriting any decision above · Issue #615
 
 ## Context
 
@@ -19,14 +20,15 @@ Two surfaces ship under S12.5 and are covered here together:
 1. **OAuth2 sign-in on the invite-link landing page.** A friend
    who clicks an invite shared in Discord signs in once with
    Discord and shows up in the game with their Discord name and
-   avatar already on the seat. (Implemented in PR #127–129.)
+   avatar already on the seat. (Implemented in PRs #121, #122 and #147; the original text cited #127–129, which was wrong.)
 2. **Slash-command bot for posting invites from inside
    Discord.** Admins type `/c2-invite` in an approved server and
    get a game + an invite URL pasted back to the channel. This
    is the PR 1–4 slice that closes the S12.5 bot tasks.
 
 Rich Presence, DM invites (`/c2-invite-dm`), and
-re-link-after-the-fact are **deferred**. They're out-of-scope
+re-link-after-the-fact are **deferred** (see the 2026-09-30
+amendment below for where each went). They're out-of-scope
 for the MVP; the user's ask was slash commands + approved-server
 gating, and those two ship here.
 
@@ -272,3 +274,51 @@ suspected compromise:
 §6), and restart both units. Since #714
 CD owns `bot.env` and copies the admin token into it only during a
 `main` deploy.
+
+## Amendments
+
+Dated notes. The decisions above stand as written; this section says
+what changed around them.
+
+### 2026-09-30 · Catch-up (#615)
+
+- **Where the OAuth work landed.** PRs #121 (sign-in and seat claim),
+  #122 (avatars and `SeatInfo` fields) and #147 (the login-page flow).
+  Not #127-129. Routes and payloads are in
+  [docs/lobby.md](../lobby.md#discord-sign-in-s125-adr-0004-0050-0051);
+  the design changed from the original plan in one way worth knowing:
+  there is no `avatar_url` field, clients build `/avatars/<id>/<hash>.png`
+  from `discord_id` and `discord_avatar_hash`.
+- **Commands now.** `/c2-invite [name]`, `/c2-games`, `/c2-end <game>`
+  (host or admin, see the two revisions above), `/c2-deck-check [link]`
+  and `/c2-deck-req [link]` (ADR 0095 section 4; with no link, a paste
+  modal). The `/cc-` prefix was renamed to `/c2-` before first release.
+- **Registration is a bulk overwrite (#1631).** Decision 3's "registers
+  every command per allowed guild" is now one
+  `ApplicationCommandBulkOverwrite` call per guild, so a command removed
+  from `commandDefinitions` (or a stale old name) disappears on the next
+  boot of the bot instead of needing a manual cleanup. Decision 4 (guild
+  scoped) is unchanged.
+- **Bot token file.** `/etc/cmd_and_ctrl/bot.env`, `root:cmdctrl-bot`
+  `0640`, accepted over a systemd credential (owner decision 2026-09-16).
+  Decision 6's note about `systemd-creds` stays a future option.
+- **Deferred items, and where they went.**
+  - *DM invites.* Built on the server, not the gateway: ADR 0051
+    decision 5 and `POST /games/{id}/invites/dm` (S34 sub-PR 6,
+    [docs/lobby.md](../lobby.md#post-gamesidinvitesdm)). The server
+    needs `CMDCTRL_DISCORD_BOT_TOKEN` too (production only) and answers
+    503 naming it when unset. A `/c2-invite-dm` slash command that calls
+    that route with the bot's admin session is tracked in #613. The
+    sending path is unchanged; the bot only calls it.
+  - *Rich Presence.* Not built. Tracked with the S12.5 leftovers in #607.
+  - *Re-link after the fact.* Shipped as `GET /auth/discord/link`
+    (S34 sub-PR 4); the session-settings UI half follows in #607.
+  - *`/c2-end`.* Shipped, #614 / #1098.
+- **Env vars added since.** Bot binary: `CMDCTRL_DISCORD_ADMIN_USER_IDS`
+  and `CMDCTRL_DISCORD_ADMIN_ROLE_IDS` (optional, who counts as admin for
+  `/c2-end`). Server binary: `CMDCTRL_DISCORD_BOT_TOKEN` and
+  `CMDCTRL_PUBLIC_BASE_URL` / `CMDCTRL_CLIENT_BASE_URL` for the DM-invite
+  route. The operator runbook's table below lists the original set only;
+  AGENTS.md section 5 has the current one.
+- **The bot is production-only.** CD never installs or restarts it from
+  `develop`: two processes on one application answer every command twice.

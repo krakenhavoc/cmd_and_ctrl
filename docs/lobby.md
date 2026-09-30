@@ -1927,6 +1927,49 @@ callback also:
   on every sign-in. A failure is logged and the sign-in goes ahead;
   the next sign-in tries again.
 
+### `GET /auth/discord/config`
+
+Unauthenticated probe. Always registered; answers `200 {"enabled": bool}`.
+`enabled` is false when `CMDCTRL_DISCORD_CLIENT_ID` / `_CLIENT_SECRET` /
+`_REDIRECT_URI` are not all set, and the client hides its "Sign in with
+Discord" button.
+
+### `GET /auth/discord/start` and `GET /auth/discord/callback`
+
+Both are registered on every deployment and both answer **503** when
+Discord sign-in is not configured, rather than 404, so a misconfigured
+deploy is visible. They are per-IP rate-limited.
+
+`start` takes either `?game=<uuid>&t=<invite>` (the invite-link flow) or
+no query at all (the login-page flow, which mints an identity-only
+session). One of the pair without the other is a 400. It builds the
+Discord authorize URL with PKCE (S256) and a `state` value, and parks the
+`state`, the PKCE verifier and, in the invite flow, the game and invite in
+an in-memory state store with a **5-minute TTL**. `callback` consumes the
+state once, exchanges the code, reads `/users/@me` and either claims the
+seat bound to the invite or mints the identity session, then redirects the
+browser to the SPA's `#/oauth-complete?…` fragment.
+
+### `GET /avatars/{discord_id}/{hash}`
+
+A session is required (any role). The image is served from the server-side
+avatar cache (`$CMDCTRL_DATA_DIR/avatars/<discord_id>/<hash>`), fetched
+from Discord's CDN on the first miss and keyed on id plus hash, so a
+changed avatar is a new key. The client appends `.png`; the server strips
+it. 400 for a malformed id or hash, 503 when the cache is not configured
+or `CMDCTRL_DATA_DIR` is empty. There is no `avatar_url` field anywhere in
+the API: clients build this URL from `discord_id` and `discord_avatar_hash`.
+
+### `SeatInfo` Discord fields
+
+Each entry in a game's `players` (and the lobby's `GET /games`) may carry:
+
+| Field | Meaning |
+|---|---|
+| `display_name` | The name to show. Discord global name, then Discord username, then the name the player typed. |
+| `discord_id` | Discord snowflake, present only for a seat claimed through Discord. |
+| `discord_avatar_hash` | Avatar hash, present only when the account has one. |
+
 ### `GET /auth/discord/link`
 
 Link Discord to a seat you already hold (S34 sub-PR 4, carried over
