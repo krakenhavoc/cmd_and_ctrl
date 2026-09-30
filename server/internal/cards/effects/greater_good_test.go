@@ -46,6 +46,43 @@ func TestGreaterGoodDrawsForPowerThenDiscardsThree(t *testing.T) {
 	}
 }
 
+// pushGloriousAnthemFor puts a Glorious Anthem under `owner`'s control:
+// creatures they control get +1/+1.
+func pushGloriousAnthemFor(g *game.Game, owner uuid.UUID) uuid.UUID {
+	return pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Glorious Anthem", TypeLine: "Enchantment",
+		OracleID: gloriousAnthemOracle, Owner: owner, Controller: owner,
+	})
+}
+
+// TestGreaterGoodCountsAnAnthemInTheSacrificedPower — the power is the
+// creature's last-known information, so an anthem's +1 counts beside a
+// +1/+1 counter: a printed 2/2 with one counter under Glorious Anthem
+// draws four.
+func TestGreaterGoodCountsAnAnthemInTheSacrificedPower(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	greaterGood := pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Greater Good", TypeLine: "Enchantment",
+		OracleID: greaterGoodOracle, Owner: me.ID, Controller: me.ID,
+	})
+	pushGloriousAnthemFor(g, me.ID)
+	bear := pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Bear", TypeLine: "Creature — Bear",
+		Power: 2, Toughness: 2, Owner: me.ID, Controller: me.ID,
+		Counters: map[string]int{game.CounterPlusOne: 1},
+	})
+	if got := effectivePower(t, g, bear); got != 3 {
+		t.Fatalf("setup: the anthem makes the bear's layered power %d, want 3", got)
+	}
+
+	before := me.Hand.Size()
+	b16Activate(t, g, me.ID, greaterGood, 0, game.ActivateAbilityParams{SacrificeIDs: []uuid.UUID{bear}})
+	if got := me.Hand.Size(); got != before+4 {
+		t.Errorf("draws four for a 2/2 with a +1/+1 counter under an anthem: hand %d → %d", before, got)
+	}
+}
+
 // TestGreaterGoodDrawsNothingForAZeroPowerCreature — the sacrifice is
 // legal and still pays out the discard, but a 0-power creature draws
 // nothing at all (DrawCards{N: 0} is a no-op, not a one-card draw).

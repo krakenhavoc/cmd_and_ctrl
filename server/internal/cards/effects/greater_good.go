@@ -21,20 +21,16 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // discard path and self-clamps to whatever the hand holds after the
 // draw.
 //
-// Sandbox simplification, declared — the same one Jarad already
-// carries: the sacrificed creature's power is its printed power plus
-// its +1/+1 and -1/-1 counters as they were when it left. A bonus
-// from another permanent's static ability (an anthem) is not in it,
-// because the trigger has no last-known characteristic to read for a
-// creature that left as a COST rather than dying to an effect.
+// The sacrificed creature's power is its last-known information
+// (CR 608.2h, departedCreaturePower): counters and an anthem's bonus
+// both count, as they did while it was on the battlefield.
+//
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID:     "dc0593c2-ccb4-4648-a592-c5bcd121dc72",
 		Name:         "Greater Good",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"The sacrificed creature's power counts its +1/+1 and -1/-1 counters but not a bonus from another permanent, such as an anthem.",
-		},
+		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label: "Sacrifice a creature: Draw cards equal to the sacrificed creature's power, then discard three cards.",
 			Cost:  SacrificeACreature(),
@@ -43,7 +39,7 @@ func init() {
 				if !ok {
 					return nil
 				}
-				power := b17LastKnownPowerOffBattlefield(g, fed)
+				power := departedCreaturePower(g, fed)
 				ctx := NewContext(g, item)
 				if power > 0 {
 					if err := (DrawCards{Player: item.Controller, N: power}).Apply(ctx); err != nil {

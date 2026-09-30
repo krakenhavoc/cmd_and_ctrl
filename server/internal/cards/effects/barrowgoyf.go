@@ -41,21 +41,17 @@ import (
 // answering once the first one's cards have landed, and the cards it
 // offers are the ones that landed.
 //
-// Engine gap it shares with Tarmogoyf, Lord of Extinction and
-// Nighthawk Scavenger, not the card's: the layer cache is invalidated
-// by battlefield motion, counters, taps and turn changes, not by a
-// card reaching a graveyard from a hand, a library or the stack — so
-// Barrowgoyf's own mill shows on its size at the next recompute
-// rather than at once. #1117's E8 branch is closing exactly that;
-// the caveat below goes with it.
+// The size is current at once, including after its own mill: the
+// layer cache is invalidated whenever a card enters or leaves any
+// graveyard (game/layer_listener.go, #1117's graveyard half), not
+// only on battlefield motion.
+//
+// No simplification.
 func init() {
 	Register(Spec{
-		OracleID:     "74c0164c-130f-4572-9066-626c77f6e2ff",
-		Name:         "Barrowgoyf",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"Barrowgoyf's power and toughness may not update immediately after a card is milled or discarded — only after the next creature enters or leaves the battlefield, taps, untaps or gets a counter.",
-		},
+		OracleID:        "74c0164c-130f-4572-9066-626c77f6e2ff",
+		Name:            "Barrowgoyf",
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"deathtouch", "lifelink"},
 		Static: []game.StaticAbility{{
 			Layer:    game.Layer7PT,
