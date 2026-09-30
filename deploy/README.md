@@ -92,6 +92,11 @@ the running production VM **and again after every rebuild of
 production**. A rebuilt VM comes up with no `cmdctrl-bot` user and no
 enabled unit, which is how the bot was lost in the August reprovision.
 
+A rebuild also changes the VM's SSH host key, so the deploy fails
+outright until `CMDCTRL_HOST_KEY` (or `CMDCTRL_DEV_HOST_KEY`) is updated.
+Do that first:
+[docs/environments.md](../docs/environments.md#ssh-host-keys).
+
 CD warns but stays green. With the secret set, such a host gets a
 `::warning::` from "Sync bot env" (no `cmdctrl-bot` group) and another
 from the restart step (unit not enabled), and the deploy still passes
