@@ -39,7 +39,7 @@ import (
 // `effect` has the same contract as any triggered ability's: it runs
 // at resolution against the live game, and must read everything it
 // needs off `item` (Controller, SourceCardID, Targets) rather than
-// capturing a card pointer. See AGENTS.md §7 "Adding a triggered
+// capturing a card pointer. See docs/adding-cards.md "Adding a triggered
 // ability".
 //
 // For a chapter that targets, set `.Targets` on the returned value —

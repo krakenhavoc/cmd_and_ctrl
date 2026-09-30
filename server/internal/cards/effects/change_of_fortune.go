@@ -15,7 +15,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // walking g.Events. PlayerTurnTally had no discard counter yet, so
 // this PR adds CardsDiscarded — one field on the tally plus one case
 // in turnTallyListener (EventDiscardCard), the sanctioned way to
-// widen it (AGENTS.md §7) rather than a card-side scan.
+// widen it (docs/adding-cards.md) rather than a card-side scan.
 //
 // "Discard your hand" takes every card, so there is no choice to
 // make and the engine's random-selection discard (discardWholeHand,

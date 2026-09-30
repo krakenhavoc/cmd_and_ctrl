@@ -183,7 +183,7 @@ deleted.
 ## Consequences
 
 - A batch PR records a skip by appending a name to `Waiting` in `registry.go` and running `-update`.
-  It no longer edits a markdown table by hand. AGENTS.md §7 and the doc's intro say so.
+  It no longer edits a markdown table by hand. AGENTS.md §7 (now docs/adding-cards.md) and the doc's intro say so.
 - An engine PR that closes a seam finds out from CI: the first waiting card registered complete fails
   `TestWaitingCardsAreNotComplete`.
 - The server binary embeds the oracle fixture, about half a megabyte, which it never serves.

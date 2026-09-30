@@ -229,7 +229,7 @@ type Index struct {
 	// byOracle resolves an oracle_id — the printing-independent card
 	// identity Scryfall issues once per card — to one representative
 	// printing. The card-effect catalog is keyed by oracle_id
-	// (AGENTS.md §7), so this is the map that joins "what the engine
+	// (docs/adding-cards.md), so this is the map that joins "what the engine
 	// implements" to "what the card looks like".
 	//
 	// Which printing wins matters here in a way it does not for
@@ -501,7 +501,7 @@ func isPlayablePrint(c Card) bool {
 	// whose type line is literally "Card" (front_card / token
 	// placeholders) or "Card // Card" (art series). The layout and
 	// set_type switches above catch most of them, but not all —
-	// AGENTS.md §7 step 1 warns about exactly these because a
+	// docs/adding-cards.md step 1 warns about exactly these because a
 	// "Card // Card" record makes an ordinary single-faced creature
 	// look like a double-faced one, and it has caused a wrong triage
 	// twice. A record with no real type line cannot be the best

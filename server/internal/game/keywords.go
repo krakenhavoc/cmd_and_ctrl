@@ -408,7 +408,7 @@ func CanonicalKeywords(s string) ([]string, bool) {
 }
 
 // HasKeyword reports whether the card has the named keyword. kw
-// must be a canonical lowercase token (see AGENTS.md §7 "Adding a
+// must be a canonical lowercase token (see docs/adding-cards.md "Adding a
 // combat-keyword card" for the table): "flying", "reach",
 // "first strike", "double strike", "deathtouch", "lifelink",
 // "trample", "vigilance", "menace", "defender", "haste", "flash",

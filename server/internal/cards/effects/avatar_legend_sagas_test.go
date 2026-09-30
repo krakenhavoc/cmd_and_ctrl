@@ -388,7 +388,7 @@ func TestRokuChapterThreeReturnsAsAvatarRoku(t *testing.T) {
 // TestAvatarRokuCreatesADragonToken is the back-face ability:
 // "{8}: Create a 4/4 red Dragon creature token with flying and
 // firebending 4." Permissive mode waives the unfunded mana cost
-// (AGENTS.md §7's mana section — the human default), so the test does
+// (docs/adding-cards.md's mana section — the human default), so the test does
 // not need to float eight mana first.
 func TestAvatarRokuCreatesADragonToken(t *testing.T) {
 	g := newCatalogGame(t)

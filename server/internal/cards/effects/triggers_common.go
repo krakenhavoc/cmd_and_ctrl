@@ -132,7 +132,7 @@ func Optional(t game.TriggeredAbility, question string) game.TriggeredAbility {
 // batch is every event between two points where play moves on — a
 // stack item beginning to resolve, or the turn cursor entering a new
 // step — stamped on Event.Batch and checked by
-// oncePerBatchAllowsLocked; see AGENTS.md §7. Matched by the
+// oncePerBatchAllowsLocked; see docs/adding-cards.md. Matched by the
 // ability's label, which the constructors stamp as its Key.
 func OncePerBatch(t game.TriggeredAbility) game.TriggeredAbility {
 	t.OncePerBatch = true

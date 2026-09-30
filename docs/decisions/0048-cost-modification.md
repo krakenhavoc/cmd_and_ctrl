@@ -380,7 +380,7 @@ Checked on develop at `bcac391`:
   (`:189-190`). That widening would be wrong. A Sphere of Resistance in a
   hand would start taxing spells. A card's own modifier needs its own
   slot next to `CardDef.CostModifiers` (`game/carddef.go:59`, read at
-  `:180`), per AGENTS.md §7, "Adding a `Spec` slot".
+  `:180`), per AGENTS.md §7 (now docs/adding-cards.md), "Adding a `Spec` slot".
 - **One pricing function.** `applyCostModifiersLocked`
   (`cost_modifier.go:258`) serves all three pricing surfaces (§6):
   - the cast (`mutations.go:1319`, inside `effectiveCostLocked` at `:1290`);
@@ -413,7 +413,7 @@ Checked on develop at `bcac391`:
 `Spec.SelfCostModifiers []game.CostModifier` becomes
 `CardDef.SelfCostModifiers`, with one line in `effects.buildDef` and one
 reader, `game.SelfCostModifiersFor(card Card)`. That reader looks the card
-up by `CatalogKey(card)`. It is the four-edit slot recipe in AGENTS.md §7.
+up by `CatalogKey(card)`. It is the four-edit slot recipe in AGENTS.md §7 (now docs/adding-cards.md).
 No per-slot `Catalog…` variable is added until a game-package test needs
 to stub it.
 

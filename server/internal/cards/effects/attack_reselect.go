@@ -49,7 +49,7 @@ func reselectTargetAttackerTrigger(label string) game.TriggeredAbility {
 }
 
 // reselectTargetedAttacker is reselectTargetAttackerTrigger's effect.
-// A package-level func so the item captures nothing (AGENTS.md §7).
+// A package-level func so the item captures nothing (docs/adding-cards.md).
 func reselectTargetedAttacker(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	for _, t := range ctx.LegalTargets() {

@@ -6,7 +6,7 @@
 # restore point back while it waits on the stack.
 #
 # One row per line, sorted: <card name> | <catalog key> | <row index>.
-# The list ONLY SHRINKS. Convert a card by declaring its Effect (AGENTS.md,
+# The list ONLY SHRINKS. Convert a card by declaring its Effect (docs/adding-cards.md,
 # "Adding a triggered ability") and delete its line, or run
 #   go test ./internal/cards/effects -run TestLegacyTriggerBuildsOnlyShrink -args -update-legacy-triggers
 # which deletes stale lines and never adds one. A new hand-written Build

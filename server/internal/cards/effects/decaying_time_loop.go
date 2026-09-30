@@ -17,7 +17,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // + Spec.AlternativeCosts) — but the price itself is "discard a
 // land," and every discard-cost constructor the catalog has
 // (DiscardCost) takes a card count with no type filter. Retrace is
-// the only card in this batch that prints it, so per AGENTS.md §7
+// the only card in this batch that prints it, so per docs/adding-cards.md
 // this is noted here rather than in docs/engine-seams.md. Audited
 // under #1112; not modelled.
 func init() {

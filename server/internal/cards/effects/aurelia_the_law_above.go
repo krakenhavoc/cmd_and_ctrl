@@ -23,7 +23,7 @@ const (
 // each ability once per declaration — the engine emits EventAttack
 // per creature, so the count reaching the threshold is what
 // triggers, and the dedup — every later event of the same batch
-// (OncePerBatch, see AGENTS.md §7), then the rest of the turn — is
+// (OncePerBatch, see docs/adding-cards.md), then the rest of the turn — is
 // what keeps a six-creature attack from drawing four cards. "A
 // player" is any player, Aurelia's controller included, and the
 // damage goes to Aurelia's controller's opponents whoever attacked,

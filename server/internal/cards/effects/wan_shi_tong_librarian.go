@@ -53,7 +53,7 @@ func init() {
 				// fact of the moment the trigger fired, so it is
 				// captured into Params.Amount rather than a closure —
 				// not the card, which the Effect below must not
-				// capture (AGENTS.md: undo restores a cloned game and
+				// capture (docs/adding-cards.md: undo restores a cloned game and
 				// the closure has to resolve against that one).
 				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
 					item := game.NewTriggeredItem(source, "Wan Shi Tong, Librarian — enters: counters and draw")

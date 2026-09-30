@@ -319,7 +319,7 @@ func cataloguedOracleIDs(specs []effects.Spec) map[string]bool {
 
 // buildOracleFixture reads every catalogued base oracle ID in scope
 // (nil: all) out of the index. Placeholder printings (art series,
-// "Card" front cards, AGENTS.md §7 step 1) never win cards.Index's
+// "Card" front cards, docs/adding-cards.md step 1) never win cards.Index's
 // by-oracle join, and a type line of "Card" here would mean that
 // stopped being true.
 func buildOracleFixture(t *testing.T, idx *cards.Index, scope map[string]bool) (map[string]OracleCard, []string) {

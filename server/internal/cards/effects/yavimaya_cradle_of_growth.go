@@ -7,7 +7,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	"Each land is a Forest in addition to its other land types."
 //
 // Urborg, Tomb of Yawgmoth with a different land type, and named by
-// AGENTS.md §7 as one of the cards the layer-dependency work (#668 /
+// docs/adding-cards.md as one of the cards the layer-dependency work (#668 /
 // #669, ADR 0067) released. Everything Urborg's file says applies
 // here: the sentence is one layer-4 static, the intrinsic mana
 // ability is DERIVED from effective subtypes (CR 305.6) rather than

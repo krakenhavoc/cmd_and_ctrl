@@ -233,7 +233,7 @@ never the source of an ability activated from hand.
 
 Nothing here is a `PendingChoice`, so nothing here needs a
 `PendingChoiceKind`, a `choiceGateDecisions` row or a `choiceMoves` case
-(AGENTS.md §7, #730/#794). That is a consequence of Decision 3, not an
+(AGENTS.md §7 (now docs/adding-cards.md), #730/#794). That is a consequence of Decision 3, not an
 omission.
 
 ### 3. A cost settles now — CR 601.2h / CR 602.2b — including for a commander
@@ -310,7 +310,7 @@ happen otherwise, and the resulting bug — foretell illegal under a
 Trickbind — is invisible until somebody plays a split-second card.
 
 **The catalog declares one with a `Spec` slot, not a `Catalog*` hook**
-(AGENTS.md §7 "Adding a Spec slot", #622 / #627): `Spec.SpecialActions
+(AGENTS.md §7 (now docs/adding-cards.md) "Adding a Spec slot", #622 / #627): `Spec.SpecialActions
 []SpecialAction`, `game.CardDef.SpecialActions`, one line in
 `effects.buildDef`, and the engine call site is the new verb's handler.
 
@@ -534,7 +534,7 @@ ADR said it would be, item for item:
   (CR 702.61b) and there is a test row for it.
 - **`Spec.SpecialActions []game.SpecialAction`**, `CardDef.SpecialActions`,
   one line in `effects.buildDef`, and the verb's handler as the call
-  site — the AGENTS.md §7 "Adding a `Spec` slot" recipe, unchanged.
+  site — the AGENTS.md §7 (now docs/adding-cards.md) "Adding a `Spec` slot" recipe, unchanged.
   `effects.Register` refuses at boot a kind the engine cannot carry
   out, an unparseable cost, and a suspend with no time counters.
 - **`specialActionMoves()`** on the `legal` enumerator, called where

@@ -19,7 +19,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //     attack declaration. The engine emits EventAttack per creature,
 //     so the AppliesTo declines any further Goblin's event from the
 //     same batch — one declaration is one batch (OncePerBatch, see
-//     AGENTS.md §7) — keyed by label, because the ping trigger is a
+//     docs/adding-cards.md) — keyed by label, because the ping trigger is a
 //     different ability and must not swallow it. Kreat is a Goblin
 //     and counts for his own trigger; effective subtypes, so a
 //     changeling counts.
