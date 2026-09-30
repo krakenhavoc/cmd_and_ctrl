@@ -1042,12 +1042,16 @@ var items = []Item{
 		Phrases:  []string{"keyword counter"},
 	},
 	{
-		Slug: "discard-as-it-would-enter", Name: "Discarding a card as a permanent would enter", Kind: KindSeam, Status: StatusMissing,
-		Summary:     "Cards like Mox Diamond, which ask you to discard a card from your hand as they would enter and go to the graveyard if you don't.",
-		Missing:     "A card can't yet be discarded as another would enter, so Mox Diamond isn't available.",
+		Slug: "discard-as-it-would-enter", Name: "Discarding a card as a permanent would enter", Kind: KindSeam, Status: StatusPartial,
+		Summary:     "Cards like Mox Diamond and Heart of Yavimaya, which ask you to discard a card or sacrifice a permanent as they would enter, and go to the graveyard if you don't.",
+		Missing:     "A card that discards cards as it enters and then reads what it discarded, like Indominus Rex, Alpha, isn't supported yet.",
+		Rules:       []string{"614.1a", "614.13"},
 		Issue:       1744,
-		Waiting:     []string{"Mox Diamond"},
-		EngineNotes: "prompt inside an entry replacement: #1198's `ReplacementEffect.EntryHandReveal` is the nearest shape — a card choice over the hand, asked inside the CR 614 entry window through `PendingChoiceEntryRevealFromHand` — but it only REVEALS the chosen card. Mox Diamond needs the pick DISCARDED through `discardCardsLocked` (so madness and discard payoffs see it), and the \"if you don't\" answer has to redirect the entering artifact to its owner's graveyard. A `mustSettleNow` entry (a spell putting it onto the battlefield) needs a declared answer too, and the weaker one is to bin the Mox without asking. Shipping the card without this would make it a free Mox, stronger than printed, so it stays out of the catalog. Noted earlier on #295 and #1600.",
+		ADR:         "0098-discard-as-a-permanent-would-enter.md",
+		Probe:       enterOnlyIfProbe,
+		Examples:    []string{"Mox Diamond", "Heart of Yavimaya", "Lotus Vale"},
+		Waiting:     []string{"Indominus Rex, Alpha"},
+		EngineNotes: "**shipped in #1744 (ADR 0098):** `ReplacementEffect.EntryCardChoice` (renamed from #1198's `EntryHandReveal`) carries an `Action` — reveal, discard or sacrifice — and the entry kinds `entry_discard_from_hand` and `entry_sacrifice` join `entry_reveal_from_hand`. The discard goes through `discardCardsLocked` with `DiscardCauseEffect` and the sacrifice through `SacrificeAllThenForEffect`; either may pause, and the paused entry rides a frozen copy of the event (cloned again when the continuation runs). A redirected entry is now MOVED, by `moveRedirectedEntryLocked` inside the one entry finisher, where three sites used to treat it as a cancel and two put the card onto the battlefield anyway; a window that cannot ask runs a shockland's, reveal-land's or Mox's decline (`declineIsReplace`); and the apply-loop and `ResolveReplacementOrder` share one question dispatcher (`offerOwnQuestionLocked`). Shipped on Mox Diamond and the seven \"sacrifice … instead\" lands. Still missing: Indominus Rex, Alpha's \"discard any number of creature cards\" with no redirect, whose follow-on (a counter for each keyword among the discarded cards) needs `EntryCardChoice.Then` to be handed the entering event.",
 	},
 	{
 		Slug: "aura-on-a-graveyard-card", Name: "Auras that enchant a card in a graveyard", Kind: KindSeam, Status: StatusMissing,
@@ -1160,6 +1164,18 @@ func declaresModesNotChosen(s effects.Spec) bool {
 	}
 	for _, a := range s.Activated {
 		if a.Modes != nil && a.Modes.NotChosen != game.ModeMemoryNone {
+			return true
+		}
+	}
+	return false
+}
+
+// enterOnlyIfProbe is the "discard / sacrifice as it would enter" probe
+// (ADR 0098): a replacement whose entry card choice discards or
+// sacrifices rather than reveals.
+func enterOnlyIfProbe(s effects.Spec) bool {
+	for _, r := range s.Replacements {
+		if c := r.EntryCardChoice; c != nil && (c.Action == game.EntryCardDiscard || c.Action == game.EntryCardSacrifice) {
 			return true
 		}
 	}

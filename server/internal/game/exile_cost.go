@@ -29,7 +29,7 @@ import "github.com/google/uuid"
 // It is DiscardSelf one zone over (discard_cost.go), and it is a
 // second bit rather than a zone parameter on one "the source pays
 // itself" component because the two are different rules. Discarding
-// is a CR 701.8 keyword action with its own event, its own cause and
+// is a CR 701.9 keyword action with its own event, its own cause and
 // its own CR 614 window over the hand→graveyard move; exiling as a
 // cost is a plain CR 406 zone change with none of that. The shared
 // part — "the payment is the source, so nothing is announced and
@@ -177,7 +177,7 @@ func (g *Game) payAbilityExileSelfLocked(playerID, sourceID uuid.UUID, ab Activa
 // It is DiscardCost's sibling one keyword action over (discard_cost.go)
 // and deliberately NOT DiscardCost with a destination bolted on. The
 // two share a shape — a count, a printed label, a predicate — and
-// differ in the one way that matters: discarding is a CR 701.8 keyword
+// differ in the one way that matters: discarding is a CR 701.9 keyword
 // action with its own event, its own cause and a CR 614 window that
 // madness (CR 702.35a) watches; exiling a card as a cost is a plain
 // CR 406 zone change with none of that. A card exiled to Cadaverous

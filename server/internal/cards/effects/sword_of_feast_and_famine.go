@@ -28,7 +28,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // engine's only discard surface here was DiscardRandomForEffect.
 // #651 made an effect's discard a real prompt addressed to the
 // discarding player, so the damaged player now chooses their own card
-// as printed (CR 701.8a) and that caveat is gone. The untap is not
+// as printed (CR 701.9a) and that caveat is gone. The untap is not
 // behind a "then" — it happens as the trigger resolves, while the
 // discard prompt is still open — which is the printed card: the lands
 // come back whether or not the opponent has decided yet.

@@ -1209,3 +1209,20 @@ func thatPlayerLosesOneLife(g *game.Game, item *game.StackItem) error {
 	}
 	return g.ChangePlayerLifeForEffect(item.SourceCardID, victim, -1)
 }
+
+// sourceDealsDamageToEachLegalTarget is the Effect "<this> deals N
+// damage to <its target>": the ability's source deals `amount` to every
+// target still legal at resolution (CR 608.2b). Niv-Mizzet, the
+// Firemind's draw trigger and Balduvian Trading Post's "1 damage to
+// target attacking creature" share it.
+func sourceDealsDamageToEachLegalTarget(amount int) func(g *game.Game, item *game.StackItem) error {
+	return func(g *game.Game, item *game.StackItem) error {
+		ctx := NewContext(g, item)
+		for _, t := range ctx.LegalTargets() {
+			if err := (DealDamage{Source: item.SourceCardID, Target: t.ID, Amount: amount}).Apply(ctx); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+}
