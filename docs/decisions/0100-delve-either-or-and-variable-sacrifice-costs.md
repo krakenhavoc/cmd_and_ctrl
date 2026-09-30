@@ -1,6 +1,6 @@
 # ADR 0100 — Delve, either/or additional costs, and a variable sacrifice count on a cast
 
-**Status:** Proposed · 2026-09-30 · Post-S30 — Rolling deck-driven catalog growth. For owner review. No engine code lands with this ADR.
+**Status:** Accepted · 2026-09-30 · Post-S30 — Rolling deck-driven catalog growth. The owner answered the seven open questions on 2026-09-30; the answers are recorded under [Owner decisions](#owner-decisions-2026-09-30) and folded into the Decisions below. No engine code lands with this ADR.
 **Issue:** [#1732](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1732), rows 1, 3 and 6 (Demand Answers, Treasure Cruise, Plumb the Forbidden). It relates to #296 and #1731.
 **Numbering:** checked with the AGENTS.md §4 sweep on 2026-09-30. I ran `git fetch --all --prune`, then listed `docs/decisions/` on every remote branch (37 heads). The highest number anywhere is **0098**. 0099, 0101 and 0102 are reserved for ADRs being written at the same time, so this one takes 0100.
 **Builds on:**
@@ -23,7 +23,7 @@ Slice 296-a skipped six cards, and three of them wait on cost shapes the cast pa
 | Demand Answers | "As an additional cost to cast this spell, sacrifice an artifact or discard a card." | `game.AdditionalCost` requires every component it names. It cannot offer a choice. |
 | Plumb the Forbidden | "As an additional cost to cast this spell, you may sacrifice one or more creatures." | `effects.Register` refuses a variable sacrifice clause on a cast. The comment in `validateAdditionalCostLocked` gives the reason: the flat `sacrifice_ids` list is walked in plan order, and a clause with no fixed width cannot be told apart from the next clause's payment. |
 
-The other three rows of #1732 are out of scope: Veil of Summer's turn-scoped "can't be countered", Distant Melody's creature-type choice at resolution, and Grab the Prize's record of the discarded card. Grab the Prize comes up again in open question 6, because the record this ADR adds for the either/or cost is one field away from it.
+The other three rows of #1732 are out of scope: Veil of Summer's turn-scoped "can't be countered", Distant Melody's creature-type choice at resolution, and Grab the Prize's record of the discarded card. Grab the Prize is taken by sub-PR 3 after all (owner decision 6), because the record this ADR adds for the either/or cost is one field away from it.
 
 ### How many cards
 
@@ -152,6 +152,8 @@ Two alternatives were rejected:
 
 **The record.** `PaidCost.CostBranch int` holds the chosen index plus one; 0 means there was no either/or cost, which keeps the common case empty. The reader is keyed: `ctx.PaidCostBranch("modified")` is Lethal Throwdown's "if the modified creature was sacrificed". A CR 707.10 copy keeps the value, as `OptionalCosts` does. It is not carried onto the permanent, because no permanent in the 43 reads it. If one does, it joins `CastProvenance` then.
 
+**The discard record (owner decision 6).** Sub-PR 3 also adds `PaidCost.Discarded []uuid.UUID` (`discarded,omitempty`): the cards the additional cost discarded, in the order named, filled by `payAdditionalCostLocked` for a branch's discard and for a plain `DiscardCost` alike. The reader is `ctx.Discarded()`. It takes Grab the Prize (#1732, row 5): "if the discarded card wasn't a land card". The cards are read in the graveyard by instance ID, for the reason `PaidCost.Exiled` gives; a card that has since left the graveyard is read from its last-known record, because the printed clause asks about the card that was discarded, not about where it is now.
+
 ### 3. A variable sacrifice count on a cast: one variable clause, and it takes the whole list
 
 The #1213 amendment solved the count for an ability. It left casts out because of the width problem described above. The fix is a rule, not a new wire shape:
@@ -194,13 +196,13 @@ All three sit in the one cast chain, `handlePlayCard` (#874), and ride the `Cast
 
 - **The branch** is a radio group inside the alternative-cost picker, next to the optional-cost toggles. It is the same question ADR 0073 §9 put there: "what am I paying for this?", which CR 601.2b announces all at once. Unpayable branches are shown disabled. Choosing a branch opens that branch's own picker (`DiscardCostModal` or `SacrificeCostModal`), which the chain already has.
 - **Variable sacrifice** is `SacrificeCostModal` with an open or X count. For the X form, the number of permanents picked is X, and the numeric X prompt is skipped, as tap-X does (ADR 0073 Decision 10). For a discount card, the running price comes from the preview.
-- **Delve** is a card grid over the caster's graveyard: the escape-exile picker, capped at `delve_budget`. It opens after the X prompt and after the convoke picker, because both change the budget. It is skipped when the budget is zero or the graveyard is empty. Picking nothing is always legal.
+- **Delve** is a card grid over the caster's graveyard: the escape-exile picker, capped at `delve_budget`. It opens after the X prompt and after the convoke picker, because both change the budget. It is skipped when the budget is zero or the graveyard is empty. Picking nothing is always legal. It has a **"Choose for me"** button (owner decision 2), as the sacrifice picker does (ADR 0020 §16): the button fills the budget with the first entries of `delve.options.cards`, which the server sends in the fuel order the bot pays from (§6), and it never confirms for the player.
 
 ### 6. The bot enumerator
 
 `legal.castMovesForCard` prices every move through `PriceCastForEffect` with the full announcement, as it does today.
 
-- **Delve.** For each X candidate it offers **one** payment: the fewest graveyard cards that make the cast affordable, taken in `OrderCostFuel` order (the fuel price `aiseat/heuristic/fuel.go` already charges for escape). If the pool already pays, the payment is empty. This follows the one-payment discipline of the waterbend and discard payments, so the new dimension cannot use up the target and mode budget. Murktide wants more cards exiled, not fewer, and open question 3 asks whether to offer a second, full-budget payment. `affordableX` counts the delve budget when it searches, so a bot can reach Logic Knot at X = 3 with an empty pool and three cards in the graveyard.
+- **Delve.** For each X candidate it offers **two** payments (owner decision 3), both taken in `OrderCostFuel` order (the fuel price `aiseat/heuristic/fuel.go` already charges for escape): the **fewest** graveyard cards that make the cast affordable, and the **full budget**, `min(DelveBudget, graveyard size)` cards. Murktide Regent and Soulflayer want the second. When the two are the same set, one move is offered. If the pool already pays, the fewest is the empty payment. Two payments, not every subset, so the new dimension cannot use up the target and mode budget, which is the discipline the waterbend and discard payments follow. `affordableX` counts the delve budget when it searches, so a bot can reach Logic Knot at X = 3 with an empty pool and three cards in the graveyard.
 - **Either/or.** One move per payable branch (at most three), each priced with its `cost_branch`. The existing payment search pays each branch's cards.
 - **Variable sacrifice.** Zero when the floor allows it, then up to `maxEnumeratedVariableCounts` (3) positive counts, smallest first, with `sacrificePayments` choosing which permanents. For the X form, X is the count, so the X search and the payment are a single dimension.
 
@@ -222,12 +224,12 @@ Each sub-PR is one PR into `develop`, with its own seam row in the roadmap regis
 
 | # | Scope | First cards | Cards whose cost stops being the blocker |
 |---|---|---|---|
-| 1 | Delve: slot, options walk, `DelveBudget`, pricer step, validator, payer, `PaidCost.Delved`, view, wire, preview, client picker, bot payment | Treasure Cruise, Dig Through Time, Murderous Cut | 22 |
+| 1 | Delve: slot, options walk, `DelveBudget`, pricer step, validator, payer, `PaidCost.Delved`, view, wire, preview, client picker with "Choose for me", two bot payments | Treasure Cruise, Dig Through Time, Murderous Cut | 22 |
 | 2 | Delve readers: `CastCounts.Delved`, `CountersPerDelved`, `CastProvenance.Delved`, and Teval's grant in `DelveFor` | Murktide Regent | 4 |
-| 3 | Either/or: `Either`, `PayLife`, blight in a branch, `cost_branch`, `AdditionalCostMana`, branch payability, `PaidCost.CostBranch`, view, client radio, bot | Demand Answers, Bone Shards, Lightning Axe | 24 |
+| 3 | Either/or: `Either`, `PayLife`, blight in a branch, `cost_branch`, `AdditionalCostMana`, branch payability, `PaidCost.CostBranch`, `PaidCost.Discarded`, view, client radio, bot | Demand Answers, Bone Shards, Lightning Axe, Grab the Prize | 24 + Grab the Prize |
 | 4 | Variable sacrifice on a cast: the one-clause rule, `allowZero`, `SacrificeXCost`, `SacrificeAnyNumberCost`, `CostQuery.Sacrificing`, `CostsLessPerSacrificed` | Plumb the Forbidden, Vicious Betrayal, Torgaar | 11 |
 
-Sub-PRs 1 and 3 are independent of each other. Sub-PR 4 depends on 3 only for `Register`'s cross-slot check, which is easier to write once branches exist. It can go first if the owner prefers (open question 4).
+Sub-PRs 1 and 3 are independent of each other. Sub-PR 4 depends on 3 only for `Register`'s cross-slot check, which is easier to write once branches exist. The owner fixed the order as 1 → 3 → 4 → 2 (owner decision 4).
 
 Each card PR still triages its own card, because the cost is not always the card's only blocker. The next section lists the cases I know of.
 
@@ -279,7 +281,22 @@ The other 19 wait for their own component, and each becomes a new kind of branch
 - ADR 0021 and ADR 0073 each get a dated amendment pointing here when their sub-PR lands.
 - `docs/adding-cards.md` gains a delve paragraph next to the convoke and waterbend (`Spec.TapCost`) note, and an either/or paragraph and a variable-sacrifice paragraph next to `SacrificeCost` and `SacrificeNCost`.
 
-## Open questions for the owner
+## Owner decisions (2026-09-30)
+
+The owner answered all seven open questions on 2026-09-30. The Decisions above already read this way.
+
+1. **Delve is a `Spec.Delve` slot**, not a keyword token, as recommended (§1). Only catalogued cards delve.
+2. **The delve picker gets "Choose for me"**, which fills the budget in the server's fuel order, like the sacrifice picker (ADR 0020 §16). See §5.
+3. **Bots are offered two delve payments**: the fewest cards that make the cast affordable, and the full budget. See §6.
+4. **The sub-PR order is 1 → 3 → 4 → 2**: delve core, then either/or, then variable sacrifice, then the delve readers and Teval.
+5. **Corpse Cobble waits.** Sub-PR 4 ships the cost and leaves the card out, until last-known information exists for a list of sacrificed permanents.
+6. **Sub-PR 3 adds `PaidCost.Discarded` and takes Grab the Prize.** See §2.
+7. **Each sub-PR adds its own registry row**, with its `Waiting` list and its closed-seam fragment. There is no separate rows PR.
+
+## Open questions for the owner (answered)
+
+The questions as they were put. The answers are above.
+
 
 1. **Delve as a `Spec` slot or a keyword token.** I recommend `Spec.Delve`, like convoke, so only catalogued cards delve. The alternative is a `"delve"` token in `canonicalKeywords`. That would let every deck-imported delve card delve at once, with its effect still resolved by hand, the way split second works. Which do you want?
 2. **"Choose for me" on the delve picker.** Should it fill the budget from the graveyard in the server's fuel order, as the sacrifice picker's button does (ADR 0020 §16), or should delve always be picked by hand?
