@@ -259,6 +259,16 @@ const (
 	// (CR 716.2); `Amount` is the new level. A level is not a
 	// counter, so LogCounters cannot say it.
 	LogClassLevel LogKind = "class_level"
+	// LogDoorUnlocked — a Room's door was unlocked (CR 709.5c, ADR
+	// 0103): by the unlock special action, an instruction, or as the
+	// Room entered with the door of the half that was cast. `Label`
+	// is the door's name. LogDoorLocked is the reverse (CR 709.5g).
+	LogDoorUnlocked LogKind = "door_unlocked"
+	LogDoorLocked   LogKind = "door_locked"
+	// LogRoomFullyUnlocked — a Room had one door unlocked and got the
+	// other (CR 709.5i). Its own line by owner decision (ADR 0103 Q7),
+	// so the eerie triggers it sets off have something to point to.
+	LogRoomFullyUnlocked LogKind = "room_fully_unlocked"
 	// LogSettings — a table setting changed (ADR 0075 §2.3). `Label`
 	// is the setting's key ("undo_limit", "allow_spawn") and `Choice`
 	// its NEW value as text; the old value is deliberately not on the
@@ -1272,6 +1282,23 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		base.Amount = ev.Amount
 		return base, true
 
+	case game.EventDoorUnlocked, game.EventDoorLocked:
+		// CR 709.5c / 709.5g, ADR 0103. A door is not a counter and not
+		// a zone move, so no other line says it.
+		base.Kind = LogDoorUnlocked
+		if ev.Kind == game.EventDoorLocked {
+			base.Kind = LogDoorLocked
+		}
+		base.CardID = uuidStringOrEmpty(ev.CardID)
+		base.Label = ev.Label
+		return base, true
+
+	case game.EventRoomFullyUnlocked:
+		// CR 709.5i, ADR 0103 owner decision 7: its own line.
+		base.Kind = LogRoomFullyUnlocked
+		base.CardID = uuidStringOrEmpty(ev.CardID)
+		return base, true
+
 	case game.EventPhaseOut, game.EventPhaseIn:
 		// CR 702.26. Not a zone move (CR 702.26d), so no LogZone entry
 		// says it — this is the only line the table gets, and without
@@ -1473,12 +1500,12 @@ func resolveLogNames(entries []LogEvent, v *GameView) {
 			e.targetSeatName = nameOfSeat(*e.TargetSeat)
 		}
 		if c, ok := cards[e.CardID]; ok {
-			e.cardName = c.Name
+			e.cardName = logNameOf(c)
 			e.cardKnowers = c.knowers
 			e.cardFound = true
 		}
 		if c, ok := cards[e.Target]; ok {
-			e.targetName = c.Name
+			e.targetName = logNameOf(c)
 			e.targetKnowers = c.knowers
 		}
 		// Revealed cards are looked up in every zone, hands and
@@ -1870,6 +1897,17 @@ func renderLogText(e LogEvent, cardName, targetName string) string {
 			return fmt.Sprintf("%s gained a level", card)
 		}
 		return fmt.Sprintf("%s became level %d", card, e.Amount)
+	case LogDoorUnlocked, LogDoorLocked:
+		verb := "unlocked"
+		if e.Kind == LogDoorLocked {
+			verb = "locked"
+		}
+		if e.Label == "" {
+			return fmt.Sprintf("%s %s a door of %s", actor, verb, card)
+		}
+		return fmt.Sprintf("%s %s %s (%s)", actor, verb, e.Label, card)
+	case LogRoomFullyUnlocked:
+		return fmt.Sprintf("%s is fully unlocked", card)
 	case LogSettings:
 		return renderSettingsText(e)
 	case LogSpawn:
@@ -2349,4 +2387,15 @@ func countWord(n int) string {
 		return words[n]
 	}
 	return strconv.Itoa(n)
+}
+
+// logNameOf is the name a log line prints for a card: its own, or for
+// a Room with both doors locked — which has no name (CR 709.5, ADR
+// 0103) — its printed halves joined, because a log line is display
+// and the card's identity is public.
+func logNameOf(c CardView) string {
+	if c.Name != "" || c.Layout != game.LayoutSplit || len(c.Faces) < 2 {
+		return c.Name
+	}
+	return c.Faces[0].Name + " // " + c.Faces[1].Name
 }

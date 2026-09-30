@@ -458,6 +458,15 @@ type CastSpellParams struct {
 	// versa.
 	Face int
 
+	// Fuse announces a FUSED split spell (CR 702.102a, ADR 0103): both
+	// halves of a split card with fuse, cast together from hand, for
+	// both halves' mana costs (CR 702.102c). Face must be 0 with it.
+	// Refused, not ignored, for a card without fuse, from any zone but
+	// the hand, with a claimed alternative cost, or for a card whose
+	// halves declare modes or additional costs a fused announcement
+	// cannot carry.
+	Fuse bool
+
 	// PhyrexianLife is how many of the cost's Phyrexian symbols the
 	// caster is paying with life instead of mana — 2 life each
 	// (CR 107.4c, and CR 107.4f for the ten hybrid Phyrexian symbols
@@ -688,6 +697,24 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// gates were judged against.
 	params.Face = face
 	card.SetFace(params.Face)
+	// ADR 0103, CR 702.102a: a FUSED cast announces both halves of a
+	// split card with fuse, from hand, and the spell is both at once
+	// (CR 702.102b). Materialised here, on the copy every gate below
+	// reads, exactly as the face is: the cost gate sees both halves'
+	// costs (CR 702.102c), the target gate both halves' clauses, and
+	// the timing gate both halves' types.
+	if params.Fuse {
+		if err := fusedCastAllowed(card, src.Kind, params, grant); err != nil {
+			slog.Warn("cast_spell rejected: fuse not allowed",
+				"card_name", card.Name,
+				"oracle_id", card.OracleID,
+				"from_zone", src.Kind,
+				"err", err,
+			)
+			return err
+		}
+		card.materialiseFused()
+	}
 	// S21 sub-PR 6: casting out of exile needs a live permission
 	// naming this player. Checked before every other gate because
 	// it's the one that decides whether the card is yours to touch at
@@ -1370,6 +1397,11 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 			// the face has to be stamped on the real card, not just
 			// the copy the announce gates were judged against.
 			g.Stack.Cards[i].SetFace(params.Face)
+			// ADR 0103, CR 702.102b: a fused spell is both halves at
+			// once, with their combined characteristics.
+			if params.Fuse {
+				g.Stack.Cards[i].materialiseFused()
+			}
 			if faceDown != FaceDownNone {
 				// The face-down viewers rule is "the CONTROLLER may
 				// look" (CR 708.5), and it is read off the card. A
@@ -1439,7 +1471,11 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		// card given flashback by Snapcaster was cast for a cost the
 		// catalog has never heard of, and the permission that granted
 		// it may be gone by the time the spell leaves the stack.
-		AltCostExiles: alt != nil && alt.ExileOnLeavingStack,
+		// ADR 0103, CR 702.127a: an aftermath half cast from a
+		// graveyard is exiled instead of going anywhere else as it
+		// leaves the stack, however it leaves — the same replacement
+		// flashback's cost carries.
+		AltCostExiles: (alt != nil && alt.ExileOnLeavingStack) || (src.Kind == ZoneGraveyard && isAftermathHalf(card)),
 		CastFromZone:  src.Kind,
 		// #761: the mana that actually paid, or the fact that the
 		// engine waived the charge. Stamped here for the reason
@@ -3047,6 +3083,10 @@ func (g *Game) resolveTopOfStackLocked() error {
 		// TRANSFORMED". An adventure still resolves front-up: its
 		// creature half is the permanent no matter which half was cast.
 		// See faceOnResolve.
+		// ADR 0103, CR 709.5d: which door the permanent enters
+		// unlocked is the half that was CAST, read before the face is
+		// reset below.
+		castDoors := castDoorsOf(top, item)
 		setFaceInZoneLocked(g.Stack, top.InstanceID, faceOnResolve(top.Layout, top.ActiveFace))
 		top.SetFace(faceOnResolve(top.Layout, top.ActiveFace))
 		// Permanents resolve to the battlefield with the announce-time
@@ -3085,6 +3125,10 @@ func (g *Game) resolveTopOfStackLocked() error {
 			// entry — sees what is arriving, and so the pause-and-
 			// resume path carries it with everything else.
 			FaceDown: item.FaceDown,
+			// ADR 0103, CR 709.5d: the cast door, seeded like
+			// the counters below so the pause-and-resume path
+			// carries it.
+			EntersUnlocked: castDoors,
 		}
 		// S29: "this creature escapes with a +1/+1 counter on it"
 		// (CR 702.138c). Seeded onto the event BEFORE the pipeline

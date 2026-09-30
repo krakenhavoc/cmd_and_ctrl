@@ -139,6 +139,11 @@ func CardCastableFromAnyFace(c Card, zone ZoneKind) bool {
 		if CardCastableFromZone(CatalogKey(probe), zone) {
 			return true
 		}
+		// ADR 0103, CR 702.127a: an aftermath half opens its owner's
+		// graveyard itself, catalogued or not.
+		if opens, _ := aftermathZoneRule(probe, zone); opens {
+			return true
+		}
 	}
 	return false
 }
@@ -335,6 +340,14 @@ func (g *Game) validateCastPathLocked(card Card, srcKind ZoneKind, alt *Alternat
 	if !spellManaValueWithinCap(card, grant) {
 		return ErrSpellManaValueTooHigh
 	}
+	// ADR 0103, CR 702.127a: an aftermath half casts from a graveyard
+	// and from nowhere else — under any permission — and aftermath
+	// itself opens the graveyard for that half, and only that half.
+	aftermathOpens, err := aftermathZoneRule(card, srcKind)
+	if err != nil {
+		return err
+	}
+	opensItself := aftermathOpens || CardCastableFromZone(key, srcKind)
 	switch srcKind {
 	case ZoneHand, ZoneCommand:
 		return nil
@@ -349,7 +362,7 @@ func (g *Game) validateCastPathLocked(card Card, srcKind ZoneKind, alt *Alternat
 			return ErrNoPlayPermission
 		}
 	default:
-		if grant == nil && !CardCastableFromZone(key, srcKind) {
+		if grant == nil && !opensItself {
 			return ErrCastZoneNotAllowed
 		}
 	}
@@ -361,7 +374,7 @@ func (g *Game) validateCastPathLocked(card Card, srcKind ZoneKind, alt *Alternat
 	// granted price on a card that opens the zone itself would have
 	// made a Breach on the table strictly WORSE for its controller,
 	// which is the wrong direction twice over.
-	if grant != nil && !CardCastableFromZone(key, srcKind) {
+	if grant != nil && !opensItself {
 		if offer := grant.AlternativeCostFor(card); offer != nil && alt == nil {
 			return ErrCastCostRequired
 		}

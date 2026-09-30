@@ -789,6 +789,12 @@ type cardSnapshot struct {
 	// would silently hand a monstrous Polukranos a second
 	// "becomes monstrous" trigger.
 	Monstrous bool `json:"monstrous,omitempty"`
+	// Unlocked is a Room's two CR 709.5c unlocked designations and
+	// Fused a fused split spell's mark on the stack (ADR 0103). Both
+	// carried: a restore that dropped Unlocked would bring a Room back
+	// with its door abilities switched off, a legal-looking state.
+	Unlocked DoorMask `json:"unlocked,omitempty"`
+	Fused    bool     `json:"fused,omitempty"`
 	// Prepared, PrepareCopy and PreparedBy are ADR 0090's CR 722.3
 	// state: the designation on the permanent, and the not-a-card
 	// marker and permanent link on the copy it keeps in exile. Carried
@@ -1800,6 +1806,8 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		Solved:                   c.Solved,
 		Harnessed:                c.Harnessed,
 		Monstrous:                c.Monstrous,
+		Unlocked:                 c.Unlocked,
+		Fused:                    c.Fused,
 		Prepared:                 c.Prepared,
 		PrepareCopy:              c.PrepareCopy,
 		PreparedBy:               c.PreparedBy,
@@ -2581,6 +2589,8 @@ func restoreCard(c *cardSnapshot) Card {
 		Solved:                   c.Solved,
 		Harnessed:                c.Harnessed,
 		Monstrous:                c.Monstrous,
+		Unlocked:                 c.Unlocked,
+		Fused:                    c.Fused,
 		Prepared:                 c.Prepared,
 		PrepareCopy:              c.PrepareCopy,
 		PreparedBy:               c.PreparedBy,

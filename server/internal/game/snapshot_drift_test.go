@@ -418,6 +418,8 @@ var cardFields = plan(
 	// ADR 0071 amendment (#1700): the CR 701.37b monstrous
 	// designation, carried for Harnessed's reason.
 	"Monstrous", carried, "",
+	"Unlocked", carried, "",
+	"Fused", carried, "",
 	// ADR 0090 (#1328): the CR 722.3a prepared designation, the
 	// CR 722.3c copy's not-a-card marker, and the permanent object the
 	// copy is kept in exile by. Carried for Solved's reason — every

@@ -5157,7 +5157,7 @@ Three things to know:
 A **designation** is a marker a permanent has on the battlefield that
 switches some of its own printed abilities on — a Class's level
 (CR 716.2), a Case being solved (CR 719.3), a station card's charge
-counters (CR 721.2), and later a Room's unlocked door (CR 709.5). Four
+counters (CR 721.2), and a Room's unlocked door (CR 709.5, below). Four
 printed mechanics, one gate:
 [ADR 0071](decisions/0071-designations-that-switch-abilities-on.md).
 
@@ -5188,6 +5188,54 @@ proliferates or doubles it, a copy does not take it (CR 716.2c,
 (CR 400.7). A new designation needs a kind, an arm in
 `Designation.Active`, and a layer-version bump on the event that
 changes it — nothing else.
+
+### Adding a Room or a split card (ADR 0103, #1756)
+
+A **Room** (CR 709.5) is one catalog entry for both doors, keyed on the
+bare oracle ID, built with `Room(RoomSpec{…})` in
+[rooms.go](../server/internal/cards/effects/rooms.go):
+
+```go
+Register(Room(RoomSpec{
+    OracleID: "d5f31713-d380-42ba-8052-4b8d9beb3958",
+    Name:     "Roaring Furnace // Steaming Sauna",
+    Left:  Door{Triggered: []game.TriggeredAbility{WhenYouUnlockThisDoor(game.DoorLeft, "Roaring Furnace — …", effect)}},
+    Right: Door{NoMaxHandSize: true, Triggered: []game.TriggeredAbility{AtYourEndStep("Steaming Sauna — draw a card", draw)}},
+}))
+```
+
+`Room` stamps `ActiveWhen: DoorUnlocked(side)` on every ability of each
+door, and Register refuses a Room with an ungated ability, or one with
+an ability in a slot a door cannot reach (a mana ability, an "as
+enters" hook), and a door gate on anything that is not a Room. A door
+may carry statics, triggers, activated abilities, cost modifiers,
+trigger doublers, gated cast permissions, replacements, untap-step
+permissions and "no maximum hand size".
+
+Write nothing else about the lifecycle — it is the engine's: casting
+either half, entering with the cast door unlocked (CR 709.5d), a locked
+half's missing name, cost and text, the `unlock` special action
+(CR 709.5e), and CR 400.7 relocking a Room that leaves. The trigger
+shapes are `WhenYouUnlockThisDoor(side, …)` (fires as the Room enters
+with that door too, CR 709.5h), `WheneverYouFullyUnlockARoom(…)` and
+`Eerie(…)`; the instructions are `UnlockADoor`, `LockOrUnlockADoor` and
+`UnlockALockedDoorOfARoomYouControl`; the readers are
+`UnlockedDoorsYouControl`, `UnlockedDoorNamesYouControl` and
+`IsFullyUnlocked`. Mana that may pay only for unlocking is
+`game.ManaRestrictUnlock`, combined with a cast clause through
+`game.ManaRestrictAnyOf` (Smoky Lounge). A card's names are
+`game.NamesOf(c)` — a split card has two (CR 709.4a).
+
+An ordinary **split card** registers its halves as ADR 0034 faces: the
+left under the bare oracle ID, the right under `"<oracle>#1"`. Either
+half is cast (CR 709.3); aftermath's half only from a graveyard
+(CR 702.127a) — found from the face's own oracle text, no declaration
+needed. A card with fuse can also be cast fused from hand
+(CR 702.102): the engine builds that spell's definition from the two
+halves' entries, its clauses the left half's then the right half's,
+resolving left then right, each half reading its own targets under its
+own clause numbering. A fused cast of a card whose halves declare modes
+or additional costs is refused.
 
 ### Abilities from the hand (#660)
 

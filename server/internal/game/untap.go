@@ -146,6 +146,11 @@ type UntapStepPermission struct {
 	// facing — nothing about this goes on the stack, so there is no
 	// stack overlay to title.
 	Label string
+
+	// ActiveWhen is ADR 0071's designation gate: the permission exists
+	// only while the gate is satisfied by its source — a Room's Prop
+	// Room door (ADR 0103). Zero is "no gate".
+	ActiveWhen Designation
 }
 
 // UntapStepRestriction is a static effect that keeps a permanent from
@@ -549,7 +554,7 @@ func (g *Game) activeUntapStepPermissionsLocked(activePlayer uuid.UUID) []boundU
 				continue
 			}
 			for _, p := range CatalogUntapStepPermissions(oracle) {
-				if p.AppliesTo == nil || p.Untaps == nil {
+				if p.AppliesTo == nil || p.Untaps == nil || !p.ActiveWhen.Active(*src) {
 					continue
 				}
 				if !p.AppliesTo(g, src, activePlayer) {

@@ -126,9 +126,10 @@ const (
 	LayoutAdventure = "adventure"
 
 	// LayoutSplit and LayoutPrepare carry a joined top-level cost.
-	// The spine makes them cost their LEFT half instead of being
-	// free. For a split card that is still a simplification (fusing);
-	// for a preparation card it is the rule — CR 722.3, the card is
+	// A split card is cast as either half (CR 709.3) or both (fuse)
+	// and is its two halves combined everywhere but the stack and
+	// the battlefield (split.go, ADR 0103); for a preparation card
+	// face 0 is the rule — CR 722.3, the card is
 	// only ever cast as its permanent half, and its prepare spell
 	// (face 1) is cast as a COPY out of exile while the permanent is
 	// prepared (CR 722.3c, ADR 0090, prepare.go).
@@ -216,8 +217,13 @@ func (c Card) FaceCount() int {
 //	                   one of them.
 //	transform          front only (CR 712.11). The back is reached by
 //	                   transforming the permanent, not by casting it.
-//	split              front only for now — split needs fusing.
-//	                   Deferred.
+//	split              both — CR 709.3: the player chooses which half
+//	                   they are casting (ADR 0103). Where each half may
+//	                   be cast FROM is validateCastPathLocked's
+//	                   business: aftermath's half only from a graveyard
+//	                   (CR 702.127a). Casting both halves at once is
+//	                   fuse, a separate announcement (CastSpellParams.Fuse).
+//	                   A Room is a split card too, so either half.
 //	prepare            front only, and that is CR 722.3 rather than
 //	                   a deferral: the prepare spell is never cast
 //	                   from the card. Its copy in exile is, through
@@ -228,7 +234,7 @@ func (c Card) CastableFaces() []int {
 	if len(c.Faces) < 2 {
 		return []int{0}
 	}
-	if c.Layout == LayoutModalDFC || c.Layout == LayoutAdventure {
+	if c.Layout == LayoutModalDFC || c.Layout == LayoutAdventure || c.Layout == LayoutSplit {
 		out := make([]int, len(c.Faces))
 		for i := range c.Faces {
 			out[i] = i

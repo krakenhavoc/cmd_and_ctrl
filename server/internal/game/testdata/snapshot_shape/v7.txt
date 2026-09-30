@@ -124,6 +124,7 @@ battlefield.cards[].faces[].StartingLoyalty	number:int
 battlefield.cards[].faces[].Toughness	number:int
 battlefield.cards[].faces[].TypeLine	string
 battlefield.cards[].faces[].VariableToughness	bool
+battlefield.cards[].fused	bool
 battlefield.cards[].goadedBy	custom(uuid.UUID)
 battlefield.cards[].goads	array
 battlefield.cards[].goads[]	object
@@ -257,6 +258,7 @@ battlefield.cards[].tokenArtOnly	bool
 battlefield.cards[].tokenKey	string
 battlefield.cards[].toughness	number:int
 battlefield.cards[].typeLine	string
+battlefield.cards[].unlocked	number:uint8
 battlefield.cards[].variableToughness	bool
 battlefield.kind	string
 battlefield.owner	custom(uuid.UUID)
@@ -497,6 +499,7 @@ exile.cards[].faces[].StartingLoyalty	number:int
 exile.cards[].faces[].Toughness	number:int
 exile.cards[].faces[].TypeLine	string
 exile.cards[].faces[].VariableToughness	bool
+exile.cards[].fused	bool
 exile.cards[].goadedBy	custom(uuid.UUID)
 exile.cards[].goads	array
 exile.cards[].goads[]	object
@@ -630,6 +633,7 @@ exile.cards[].tokenArtOnly	bool
 exile.cards[].tokenKey	string
 exile.cards[].toughness	number:int
 exile.cards[].typeLine	string
+exile.cards[].unlocked	number:uint8
 exile.cards[].variableToughness	bool
 exile.kind	string
 exile.owner	custom(uuid.UUID)
@@ -855,6 +859,7 @@ lastKnownStack[].card.faces[].StartingLoyalty	number:int
 lastKnownStack[].card.faces[].Toughness	number:int
 lastKnownStack[].card.faces[].TypeLine	string
 lastKnownStack[].card.faces[].VariableToughness	bool
+lastKnownStack[].card.fused	bool
 lastKnownStack[].card.goadedBy	custom(uuid.UUID)
 lastKnownStack[].card.goads	array
 lastKnownStack[].card.goads[]	object
@@ -988,6 +993,7 @@ lastKnownStack[].card.tokenArtOnly	bool
 lastKnownStack[].card.tokenKey	string
 lastKnownStack[].card.toughness	number:int
 lastKnownStack[].card.typeLine	string
+lastKnownStack[].card.unlocked	number:uint8
 lastKnownStack[].card.variableToughness	bool
 lastKnownStack[].item	object
 lastKnownStack[].item.altCost	string
@@ -1621,6 +1627,7 @@ phasedOut.cards[].faces[].StartingLoyalty	number:int
 phasedOut.cards[].faces[].Toughness	number:int
 phasedOut.cards[].faces[].TypeLine	string
 phasedOut.cards[].faces[].VariableToughness	bool
+phasedOut.cards[].fused	bool
 phasedOut.cards[].goadedBy	custom(uuid.UUID)
 phasedOut.cards[].goads	array
 phasedOut.cards[].goads[]	object
@@ -1754,6 +1761,7 @@ phasedOut.cards[].tokenArtOnly	bool
 phasedOut.cards[].tokenKey	string
 phasedOut.cards[].toughness	number:int
 phasedOut.cards[].typeLine	string
+phasedOut.cards[].unlocked	number:uint8
 phasedOut.cards[].variableToughness	bool
 phasedOut.kind	string
 phasedOut.owner	custom(uuid.UUID)
@@ -2021,6 +2029,7 @@ seats[].command.cards[].faces[].StartingLoyalty	number:int
 seats[].command.cards[].faces[].Toughness	number:int
 seats[].command.cards[].faces[].TypeLine	string
 seats[].command.cards[].faces[].VariableToughness	bool
+seats[].command.cards[].fused	bool
 seats[].command.cards[].goadedBy	custom(uuid.UUID)
 seats[].command.cards[].goads	array
 seats[].command.cards[].goads[]	object
@@ -2154,6 +2163,7 @@ seats[].command.cards[].tokenArtOnly	bool
 seats[].command.cards[].tokenKey	string
 seats[].command.cards[].toughness	number:int
 seats[].command.cards[].typeLine	string
+seats[].command.cards[].unlocked	number:uint8
 seats[].command.cards[].variableToughness	bool
 seats[].command.kind	string
 seats[].command.owner	custom(uuid.UUID)
@@ -2269,6 +2279,7 @@ seats[].emblems.cards[].faces[].StartingLoyalty	number:int
 seats[].emblems.cards[].faces[].Toughness	number:int
 seats[].emblems.cards[].faces[].TypeLine	string
 seats[].emblems.cards[].faces[].VariableToughness	bool
+seats[].emblems.cards[].fused	bool
 seats[].emblems.cards[].goadedBy	custom(uuid.UUID)
 seats[].emblems.cards[].goads	array
 seats[].emblems.cards[].goads[]	object
@@ -2402,6 +2413,7 @@ seats[].emblems.cards[].tokenArtOnly	bool
 seats[].emblems.cards[].tokenKey	string
 seats[].emblems.cards[].toughness	number:int
 seats[].emblems.cards[].typeLine	string
+seats[].emblems.cards[].unlocked	number:uint8
 seats[].emblems.cards[].variableToughness	bool
 seats[].emblems.kind	string
 seats[].emblems.owner	custom(uuid.UUID)
@@ -2507,6 +2519,7 @@ seats[].graveyard.cards[].faces[].StartingLoyalty	number:int
 seats[].graveyard.cards[].faces[].Toughness	number:int
 seats[].graveyard.cards[].faces[].TypeLine	string
 seats[].graveyard.cards[].faces[].VariableToughness	bool
+seats[].graveyard.cards[].fused	bool
 seats[].graveyard.cards[].goadedBy	custom(uuid.UUID)
 seats[].graveyard.cards[].goads	array
 seats[].graveyard.cards[].goads[]	object
@@ -2640,6 +2653,7 @@ seats[].graveyard.cards[].tokenArtOnly	bool
 seats[].graveyard.cards[].tokenKey	string
 seats[].graveyard.cards[].toughness	number:int
 seats[].graveyard.cards[].typeLine	string
+seats[].graveyard.cards[].unlocked	number:uint8
 seats[].graveyard.cards[].variableToughness	bool
 seats[].graveyard.kind	string
 seats[].graveyard.owner	custom(uuid.UUID)
@@ -2744,6 +2758,7 @@ seats[].hand.cards[].faces[].StartingLoyalty	number:int
 seats[].hand.cards[].faces[].Toughness	number:int
 seats[].hand.cards[].faces[].TypeLine	string
 seats[].hand.cards[].faces[].VariableToughness	bool
+seats[].hand.cards[].fused	bool
 seats[].hand.cards[].goadedBy	custom(uuid.UUID)
 seats[].hand.cards[].goads	array
 seats[].hand.cards[].goads[]	object
@@ -2877,6 +2892,7 @@ seats[].hand.cards[].tokenArtOnly	bool
 seats[].hand.cards[].tokenKey	string
 seats[].hand.cards[].toughness	number:int
 seats[].hand.cards[].typeLine	string
+seats[].hand.cards[].unlocked	number:uint8
 seats[].hand.cards[].variableToughness	bool
 seats[].hand.kind	string
 seats[].hand.owner	custom(uuid.UUID)
@@ -2985,6 +3001,7 @@ seats[].library.cards[].faces[].StartingLoyalty	number:int
 seats[].library.cards[].faces[].Toughness	number:int
 seats[].library.cards[].faces[].TypeLine	string
 seats[].library.cards[].faces[].VariableToughness	bool
+seats[].library.cards[].fused	bool
 seats[].library.cards[].goadedBy	custom(uuid.UUID)
 seats[].library.cards[].goads	array
 seats[].library.cards[].goads[]	object
@@ -3118,6 +3135,7 @@ seats[].library.cards[].tokenArtOnly	bool
 seats[].library.cards[].tokenKey	string
 seats[].library.cards[].toughness	number:int
 seats[].library.cards[].typeLine	string
+seats[].library.cards[].unlocked	number:uint8
 seats[].library.cards[].variableToughness	bool
 seats[].library.kind	string
 seats[].library.owner	custom(uuid.UUID)
@@ -3319,6 +3337,7 @@ stack.cards[].faces[].StartingLoyalty	number:int
 stack.cards[].faces[].Toughness	number:int
 stack.cards[].faces[].TypeLine	string
 stack.cards[].faces[].VariableToughness	bool
+stack.cards[].fused	bool
 stack.cards[].goadedBy	custom(uuid.UUID)
 stack.cards[].goads	array
 stack.cards[].goads[]	object
@@ -3452,6 +3471,7 @@ stack.cards[].tokenArtOnly	bool
 stack.cards[].tokenKey	string
 stack.cards[].toughness	number:int
 stack.cards[].typeLine	string
+stack.cards[].unlocked	number:uint8
 stack.cards[].variableToughness	bool
 stack.kind	string
 stack.owner	custom(uuid.UUID)

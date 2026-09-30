@@ -718,7 +718,11 @@ func toGameCard(c cards.Card, isCommander bool) game.Card {
 	// replaces are the ones that were null ("" cost ⇒ a free spell)
 	// or joined ("Sorcery // Land" ⇒ a sorcery that passed IsLand()
 	// and skipped the cost gate entirely, #289).
-	out.SetFace(0)
+	//
+	// ADR 0103: a SPLIT card is then shown as both halves combined
+	// (CR 709.4) — its two names, both costs, both colours — which is
+	// what it is everywhere but the stack and the battlefield.
+	out.SettleImported()
 	return out
 }
 

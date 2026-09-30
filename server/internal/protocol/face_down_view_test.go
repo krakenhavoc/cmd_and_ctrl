@@ -312,6 +312,10 @@ func everyFieldCardView(owner string, knowers map[string]bool) CardView {
 			{Name: "Hidden Back", TypeLine: "Land", ManaCost: "{1}{U}", OracleText: "Back text", Power: 2, Toughness: 2, Image: "/cards/scryfall/image?face=1", CastSurfaceView: everyFieldCastSurface(lt)},
 		},
 		ActiveFace: 1,
+		// ADR 0103: a Room's doors and a fuse card's fused block.
+		// Both identify the card, so both go with the name.
+		Doors: &RoomDoorsView{Left: true, Right: false},
+		Fused: &CardFaceView{Name: "Hidden // Back", ManaCost: "{6}{U}{1}{U}", CastSurfaceView: everyFieldCastSurface(lt)},
 	}
 }
 

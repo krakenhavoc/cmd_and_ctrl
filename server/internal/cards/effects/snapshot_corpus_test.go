@@ -217,7 +217,42 @@ func corpusBoards() []corpusBoard {
 		// spell on the stack — PaidCost.CostBranch and
 		// PaidCost.Discarded on disk.
 		{"either_or_spell_on_stack", corpusEitherOrSpellOnStack},
+		// v7, added by ADR 0103 as a new file: a Room on the battlefield
+		// with one door unlocked (Card.Unlocked on disk) and a Room spell
+		// on the stack cast as its RIGHT half (ActiveFace 1 on a split
+		// card whose catalog key stays bare).
+		{"room_doors", corpusRoomDoors},
 	}
+}
+
+// corpusRoomDoors is a Room that entered with its right door unlocked
+// (CR 709.5d) and a second Room's right half waiting on the stack.
+func corpusRoomDoors(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	// An oracle ID no test registers: the board is the engine's Room
+	// lifecycle, not a card file, and a test that registered this
+	// Room's ID would leave its definition behind for the corpus run.
+	room := func() game.Card {
+		c := testRoomCard(me.ID)
+		c.OracleID = "corpus-room-doors-oracle"
+		return c
+	}
+	first, second := room(), room()
+	me.Hand.PushTop(first)
+	me.Hand.PushTop(second)
+	if err := g.CastSpell(me.ID, first.InstanceID, game.CastSpellParams{Face: 1}); err != nil {
+		t.Fatalf("setup: cast the first Room's right half: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if !g.Battlefield.Contains(first.InstanceID) {
+		t.Fatal("setup: the first Room did not resolve")
+	}
+	if err := g.CastSpell(me.ID, second.InstanceID, game.CastSpellParams{Face: 1}); err != nil {
+		t.Fatalf("setup: cast the second Room's right half: %v", err)
+	}
+	return g
 }
 
 // corpusEitherOrSpellOnStack is a Demand Answers on the stack that paid

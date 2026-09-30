@@ -197,21 +197,32 @@ func TestJunkTypesAreGone(t *testing.T) {
 	}
 }
 
-// TestSplitImportsItsLeftHalfCost is the declared simplification,
-// pinned so it cannot regress into either of its two worse
-// neighbours: a joined cost (rejected by ParseCost, so #289 refuses
-// the cast) or an empty one (free).
-func TestSplitImportsItsLeftHalfCost(t *testing.T) {
+// TestSplitImportsAsTheWholeCard is CR 709.4 (ADR 0103): a split card
+// out of play has both halves' characteristics combined — both names,
+// the two costs together (so a parseable cost with the combined mana
+// value, never Scryfall's joined "{1}{R} // {1}{U}", which ParseCost
+// refuses, and never the empty cost that made #289 free), and both
+// colours. Either half can be cast (CR 709.3).
+func TestSplitImportsAsTheWholeCard(t *testing.T) {
 	got := importOne(fireIcePrint())
-	if got.ManaCost != "{1}{R}" {
-		t.Errorf("ManaCost = %q, want the LEFT half {1}{R}", got.ManaCost)
+	if got.ManaCost != "{1}{R}{1}{U}" {
+		t.Errorf("ManaCost = %q, want both halves {1}{R}{1}{U}", got.ManaCost)
 	}
-	if _, err := game.ParseCost(got.ManaCost); err != nil {
-		t.Errorf("ParseCost(%q): %v — a split card must cost something", got.ManaCost, err)
+	cost, err := game.ParseCost(got.ManaCost)
+	if err != nil {
+		t.Fatalf("ParseCost(%q): %v — a split card must cost something", got.ManaCost, err)
 	}
-	if faces := got.CastableFaces(); len(faces) != 1 {
-		t.Errorf("split CastableFaces = %v, want just the left half "+
-			"(fusing is not designed)", faces)
+	if mv := cost.ManaValue(); mv != 4 {
+		t.Errorf("mana value = %d, want 4 (CR 202.3d: both halves)", mv)
+	}
+	if got.Name != "Fire // Ice" {
+		t.Errorf("Name = %q, want both halves' names", got.Name)
+	}
+	if names := game.NamesOf(got); len(names) != 2 || names[0] != "Fire" || names[1] != "Ice" {
+		t.Errorf("NamesOf = %v, want [Fire Ice] (CR 709.4a)", names)
+	}
+	if faces := got.CastableFaces(); len(faces) != 2 {
+		t.Errorf("split CastableFaces = %v, want both halves (CR 709.3)", faces)
 	}
 }
 
@@ -257,9 +268,14 @@ func TestUnsupportedLayoutIsWarnedNotRefused(t *testing.T) {
 		byCode[v.Code]++
 		joined += v.Message + "\n"
 	}
-	if byCode[CodeUnsupportedLayout] != 2 {
-		t.Fatalf("got %d layout warnings, want 2 (transform + split): %v",
+	// ADR 0103: split is played now (either half, fuse, aftermath),
+	// so only the transform card is warned about.
+	if byCode[CodeUnsupportedLayout] != 1 {
+		t.Fatalf("got %d layout warnings, want 1 (transform): %v",
 			byCode[CodeUnsupportedLayout], vs)
+	}
+	if strings.Contains(joined, "Fire") {
+		t.Error("a split card was warned about; ADR 0103 plays either half")
 	}
 	if !strings.Contains(joined, "Jace, Vryn's Prodigy") {
 		t.Errorf("warning does not name the FRONT face: %q", joined)

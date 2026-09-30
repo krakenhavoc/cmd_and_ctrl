@@ -66,6 +66,9 @@ type castParams struct {
 	// Face is the printed face being cast or played (ADR 0034).
 	// Omitted — the front — for every single-faced card.
 	Face int `json:"face,omitempty"`
+	// Fuse casts both halves of a split card with fuse from hand
+	// (CR 702.102a, ADR 0103) — CastSpellParams.Fuse.
+	Fuse bool `json:"fuse,omitempty"`
 }
 
 // castZone is one pile the walk below looks in. `mine` says the pile
@@ -266,6 +269,16 @@ func (e *enumerator) castMovesFromZone(c game.Card, kind game.ZoneKind, from str
 				continue
 			}
 			e.castMovesForCard(card, from, kind, perm, offer)
+		}
+	}
+	// ADR 0103, CR 702.102a: a split card with fuse in hand may also be
+	// cast as both halves, for both costs, with no alternative cost.
+	if kind == game.ZoneHand && perm == nil && game.HasFuse(c) && !game.FusedHalvesDeclareExtras(c.OracleID) {
+		fused := game.FusedSpell(c)
+		for _, offer := range g.CastOffersForLocked(e.seat, fused, kind, perm) {
+			if offer == nil {
+				e.castMovesForCard(fused, from, kind, perm, nil)
+			}
 		}
 	}
 }
@@ -663,6 +676,8 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 		// ADR 0034: `card` has already had SetFace applied by the
 		// caller, so this is the face the move announces.
 		Face: card.ActiveFace,
+		// ADR 0103: and a fused copy announces the fused cast.
+		Fuse: card.Fused,
 	}
 	price, err := e.g.PriceCastForEffect(e.seat, card, announce)
 	if err != nil {
@@ -1260,6 +1275,7 @@ func (e *enumerator) castMoveEmitter(
 				// ADR 0034: `card` has already had SetFace applied by
 				// the caller, so ActiveFace IS the face this move casts.
 				Face: card.ActiveFace,
+				Fuse: card.Fused,
 			}),
 		})
 	}

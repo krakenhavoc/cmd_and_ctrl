@@ -191,6 +191,9 @@ type CardDef struct {
 
 	CantBeCountered bool
 	NoMaxHandSize   bool
+	// NoMaxHandSizeWhen gates NoMaxHandSize on a designation (ADR
+	// 0071, ADR 0103: Steaming Sauna's door). Zero is no gate.
+	NoMaxHandSizeWhen Designation
 	// PlayerKeywords are the abilities this permanent's printed
 	// static gives its CONTROLLER — "You have hexproof" (Leyline of
 	// Sanctity, Aegis of the Gods). Engine ability tokens, in the
@@ -341,6 +344,11 @@ func catalogDef(key string) *CardDef {
 	// (CatalogAbilityKey), and its base may be empty ("|grant:<a>").
 	if strings.IndexByte(key, grantKeySeparator[0]) >= 0 {
 		return mergedCatalogDef(key)
+	}
+	// ADR 0103: a fused split spell's key is synthetic, answered from
+	// its two halves' own entries (split_fuse.go).
+	if strings.HasSuffix(key, fusedKeySuffix) {
+		return fusedCatalogDef(strings.TrimSuffix(key, fusedKeySuffix))
 	}
 	return CatalogLookup(key)
 }
