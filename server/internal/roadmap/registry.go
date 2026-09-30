@@ -992,6 +992,14 @@ var items = []Item{
 		EngineNotes: "**Built by [ADR 0103](decisions/0103-rooms.md)** (#1756), on ADR 0071's designation gate. `Card.Unlocked` holds a Room's two CR 709.5c designations; `materialiseSplit` keeps a split card's name, cost and colours right in every zone (the whole card off the stack, the cast half on it, the unlocked doors on the battlefield); a Room spell enters with its cast door unlocked (CR 709.5d) and `EventDoorUnlocked` fires after the ETB (CR 709.5h); the `unlock` special action (CR 709.5e) is derived from the card, so an uncatalogued Room can be unlocked too; `UnlockDoorForEffect` / `LockDoorForEffect` are the instructions (CR 709.5f-g) and `EventRoomFullyUnlocked` the full unlock (CR 709.5i). `effects.Room` builds a Room's Spec with every ability gated on its door, and Register refuses an ungated one. Every split card casts either half (CR 709.3); aftermath's half only from a graveyard (CR 702.127a); fuse from hand (CR 702.102). The cards themselves are catalogued separately (ADR 0103 PRs 3 and 4).",
 	},
 	{
+		Slug: "unremovable-stun-counters", Name: "Counters that can't be removed", Kind: KindSeam, Status: StatusMissing,
+		Summary:     "Permanents that stop a kind of counter from being removed from your opponents' permanents, such as Fear of Sleep Paralysis and stun counters.",
+		Missing:     "A permanent can't yet stop counters being removed from your opponents' permanents, so a creature you stun would untap again after one turn.",
+		Issue:       1824,
+		Waiting:     []string{"Fear of Sleep Paralysis"},
+		EngineNotes: "continuous effect over counter removal: `untapPermanentLocked` (`game/untap.go`) always removes a stun counter in place of the untap, and nothing gates removal of a counter kind on a filtered set of permanents. A static that says \"stun counters can't be removed from permanents your opponents control\" has to be read there and by the general removal path. Found by ADR 0103 PR 4 (#1756), which left the card out rather than ship it weaker than printed.",
+	},
+	{
 		Slug: "ability-suppression", Name: "Stopping abilities", Kind: KindSeam, Status: StatusPartial,
 		Summary:     "\"Loses all abilities\" works on the permanent an Aura or Equipment is attached to, and abilities on the stack can be countered.",
 		Missing:     "Making every creature lose its abilities and stopping enters abilities from triggering (Torpor Orb) aren't supported yet.",
