@@ -970,6 +970,13 @@ type StackItemView struct {
 	Distribution map[string]int `json:"distribution,omitempty"`
 	HoldPriority bool           `json:"hold_priority,omitempty"`
 	SplitSecond  bool           `json:"split_second,omitempty"`
+	// CantBeCountered is true for a spell that can't be countered:
+	// its own printed "this spell can't be countered" (Supreme
+	// Verdict, Thrun) or the mana that paid for it (Cavern of Souls,
+	// Delighted Halfling, Boseiju, #1547). Read from the engine's one
+	// gate, so the badge and the counter verbs cannot disagree. Public:
+	// it is a fact about a spell everyone can see. Added in #1553.
+	CantBeCountered bool `json:"cant_be_countered,omitempty"`
 	// AltCost is the key of the alternative cost this spell was cast
 	// for — "overload", "evoke", "cleave" — empty for an ordinary
 	// cast (S22). Public information the moment it is announced, and
@@ -6011,7 +6018,9 @@ func viewOfStackItemsInStackOrder(g *game.Game) []StackItemView {
 	if g.Stack != nil {
 		for _, c := range g.Stack.Cards {
 			if item, ok := g.StackMeta[c.InstanceID]; ok && item != nil {
-				entries = append(entries, entry{item.Seq, viewOfStackItem(item)})
+				v := viewOfStackItem(item)
+				v.CantBeCountered = g.SpellCantBeCounteredForEffect(item.ID)
+				entries = append(entries, entry{item.Seq, v})
 				seen[item.ID] = true
 			}
 		}
