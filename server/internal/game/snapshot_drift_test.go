@@ -637,6 +637,7 @@ var delayedTriggerFields = plan(
 	"ControllerTurnOnly", carried, "",
 	// ADR 0059 Decision 8: the binding to one extra turn.
 	"OnExtraTurn", carried, "",
+	"TurnOf", carried, "",
 	"CreatedSeq", carried, "",
 	"Cards", carried, "",
 	// #663's event condition. The data half comes back so a restored

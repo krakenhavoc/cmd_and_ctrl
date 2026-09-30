@@ -323,13 +323,13 @@ func (g *Game) continueEntryBatchLocked(b *entryBatch) error {
 }
 
 // recordEntryBatchMemberLocked stores a member's settled event. A
-// cancelled entry, and one a replacement redirected somewhere other
-// than the battlefield, is recorded as not entering: there is no
-// generic "put it wherever the pipeline said" helper for these sources,
-// so a redirect is treated as a cancel rather than guessed at — the
-// posture every effect-side entry takes.
+// cancelled entry is recorded as not entering. One a replacement
+// REDIRECTED somewhere other than the battlefield (a Mox Diamond whose
+// controller discarded nothing) is kept: the batch moves it there when
+// it lands (landEntryBatchLocked, ADR 0098 Decision 4) rather than
+// leaving it where it was.
 func (g *Game) recordEntryBatchMemberLocked(b *entryBatch, i int, out *ReplacementEvent) {
-	if out == nil || out.Canceled || out.NewZone != ZoneBattlefield {
+	if out == nil || out.Canceled {
 		b.members[i].out = nil
 		return
 	}
@@ -382,8 +382,22 @@ func (ev *ReplacementEvent) takeEntryBatch() (*entryBatch, int, bool) {
 func (g *Game) landEntryBatchLocked(b *entryBatch) error {
 	landings := make([]entryLanding, 0, len(b.members))
 	landed := make([]bool, len(b.members))
+	// ADR 0098 Decision 4: a member whose window was REDIRECTED never
+	// enters (CR 614.6). It goes where its window sent it, as part of
+	// the same event and before any member that does enter is
+	// announced. Its controller stamp is put back first, so the card
+	// arrives in its new zone carrying nothing the entry gave it.
+	for _, m := range b.members {
+		if m.out == nil || m.out.NewZone == ZoneBattlefield {
+			continue
+		}
+		g.setControllerInZoneLocked(m.cardID, m.from, m.priorController)
+		if err := g.moveRedirectedEntryLocked(m.out); err != nil && b.firstErr == nil {
+			b.firstErr = err
+		}
+	}
 	for i, m := range b.members {
-		if m.out == nil {
+		if m.out == nil || m.out.NewZone != ZoneBattlefield {
 			continue
 		}
 		l, ok, err := g.landEntryLocked(m.out)

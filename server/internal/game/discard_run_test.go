@@ -179,7 +179,7 @@ func TestAPromptedDiscardRunWaitsForAPausedCommanderLeg(t *testing.T) {
 	}
 	if !out.got.Discarded(me.ID) {
 		t.Errorf("the commander took the command zone and the run reports nothing discarded: "+
-			"CR 701.8a's discard is the move OUT of the hand, and only where the card went "+
+			"CR 701.9a's discard is the move OUT of the hand, and only where the card went "+
 			"was replaced (%v)", out.got)
 	}
 	if !me.Command.Contains(commander) {
@@ -273,7 +273,7 @@ func TestACancelledDiscardIsNotDiscardedThisWay(t *testing.T) {
 	}
 }
 
-// TestAPromptedDiscardRunIgnoresASeatWithAnEmptyHand: CR 701.8a
+// TestAPromptedDiscardRunIgnoresASeatWithAnEmptyHand: CR 701.9a
 // discards as many as you can, which for an empty hand is nothing. No
 // prompt goes up, so the seat is not part of the run and the run does
 // not wait for it.

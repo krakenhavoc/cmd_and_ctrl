@@ -6687,8 +6687,12 @@ func filterPendingChoices(src []PendingChoiceView, isKnower func(CardView) bool,
 		// itself information about it. Every seat sees that the
 		// prompt is open and whose it is; what was actually revealed
 		// reaches them afterwards as an EventRevealCards run.
+		// ADR 0098's entry_discard_from_hand (Mox Diamond) is the same
+		// pool, the same rule. entry_sacrifice is NOT here: its
+		// candidates are permanents the whole table can see.
 		if (c.Kind == string(game.PendingChoiceChooseCards) ||
-			c.Kind == string(game.PendingChoiceEntryRevealFromHand)) && c.Chooser != viewerID {
+			c.Kind == string(game.PendingChoiceEntryRevealFromHand) ||
+			c.Kind == string(game.PendingChoiceEntryDiscardFromHand)) && c.Chooser != viewerID {
 			out[i].Options = nil
 			out[i].ChooseMin = 0
 			out[i].ChooseMax = 0

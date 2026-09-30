@@ -928,6 +928,17 @@ export interface PendingChoiceView {
     // and it is always a legal answer. What was revealed reaches the
     // other seats afterwards, as an ordinary reveal in the log.
     | "entry_reveal_from_hand"
+    // ADR 0098: Mox Diamond's "if this would enter, you may discard a
+    // land card instead. If you don't, put it into its owner's
+    // graveyard." The reveal's payload and bounds, and — like it — the
+    // options and bounds reach the CHOOSER ONLY. An EMPTY list is the
+    // decline, and it sends the entering card to the graveyard.
+    | "entry_discard_from_hand"
+    // ADR 0098 Decision 11: Heart of Yavimaya's "sacrifice a Forest
+    // instead". Not a "may": choose_min == choose_max, and the
+    // candidates are the chooser's own permanents, so every seat sees
+    // them.
+    | "entry_sacrifice"
     // #1214 CR 608.2 / CR 701.20: an opponent picks from a set you
     // revealed — "target opponent chooses two of those cards" (Gifts
     // Ungiven), and the first leg of a Fact or Fiction pile split.

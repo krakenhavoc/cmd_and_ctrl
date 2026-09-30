@@ -295,8 +295,8 @@ func TestEternalWandererZeroMakesADoubleStrikeSamurai(t *testing.T) {
 
 // TestEternalWandererPlusOneBlinksAtTheNextEndStep — the +1 exiles an
 // opponent's artifact, and the delayed trigger returns it under its
-// owner's control at the next end step (the declared caveat: the next
-// one, not its owner's).
+// owner's control at the beginning of its OWNER's next end step (#1538:
+// not the Wanderer controller's end step, which came first).
 func TestEternalWandererPlusOneBlinksAtTheNextEndStep(t *testing.T) {
 	g := newCatalogGame(t)
 	seat := g.Turn.ActiveSeat
@@ -316,7 +316,7 @@ func TestEternalWandererPlusOneBlinksAtTheNextEndStep(t *testing.T) {
 			t.Fatal("the Relic is still on the battlefield")
 		}
 	}
-	advanceTo(t, g, game.StepEnd)
+	advanceToEndStepOf(t, g, opp.Seat)
 	passPriorityAroundTable(t, g)
 	back := false
 	for _, c := range g.Battlefield.Cards {
@@ -328,7 +328,7 @@ func TestEternalWandererPlusOneBlinksAtTheNextEndStep(t *testing.T) {
 		}
 	}
 	if !back {
-		t.Error("the Relic did not return at the end step")
+		t.Error("the Relic did not return at its owner's end step")
 	}
 }
 

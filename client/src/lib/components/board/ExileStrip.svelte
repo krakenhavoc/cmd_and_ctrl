@@ -21,6 +21,15 @@
   // printed cost: 0 for a plotted card, 2 for airbend, the foretell
   // cost. Hovering it lists the printed cost and any other price.
   //
+  // #1622: a card may also be DRAGGED onto the table to cast it, the
+  // hand's gesture (#1508) with the same thresholds, ghost, gold / red
+  // verdict and auto-tap preview; every decision is dragCast.ts's. The
+  // drop hands the card to the same cast chain a click does, with the
+  // exile zone, the grant's face and the drag flag (strict + auto-tap).
+  // The strip has no reorder band. Every card here is one the viewer
+  // holds a permission over; a card they do not hold is not in the
+  // strip at all, so it cannot be picked up.
+  //
   // On a narrow panel the strip collapses to a count chip that opens
   // the cards in a popover, so a phone keeps its hand width.
 
@@ -29,6 +38,23 @@
   import ManaSymbol from "./ManaSymbol.svelte";
   import { dealIn, dealOut } from "../../animations";
   import { handOverlap } from "../../handFan";
+  import { settings } from "../../settings";
+  import { fetchAutoTapPreview, type AutoTapPreview } from "../../api";
+  import { cardImageURL } from "../../cardImage";
+  import {
+    CAST_ZONE_MARGIN_PX,
+    IDLE,
+    SNAP_REASON_MS,
+    autoTapHighlight,
+    clearAutoTapHighlight,
+    dragVerdict,
+    previewSourceIDs,
+    step as stepDrag,
+    wantsPreview,
+    type DragInput,
+    type DragOutcome,
+    type DragState,
+  } from "../../dragCast";
   import {
     exileCostBadge,
     exileEntryLegality,
@@ -42,9 +68,14 @@
     view: GameView;
     viewerID: string | null;
     onCastCard?: (card: CardView, fromZone: CastSourceZone, face?: number) => void;
+    // #1622: drag a card onto the table to cast it. Called once the
+    // card is released past the line while castable; the parent runs
+    // the same cast chain a click does, with the drag flag. Undefined
+    // turns the gesture off.
+    onDragCast?: (card: CardView, fromZone: CastSourceZone, face?: number) => void;
   }
 
-  const { view, viewerID, onCastCard }: Props = $props();
+  const { view, viewerID, onCastCard, onDragCast }: Props = $props();
 
   const entries = $derived(exileStripEntries(view, viewerID));
   const readyCount = $derived(entries.filter((e) => e.state === "now").length);
@@ -72,6 +103,259 @@
     open = false;
     onCastCard(e.card, "exile", e.face);
   }
+  // ---- #1622: drag to cast -------------------------------------------
+  let drag = $state<DragState>(IDLE);
+  let dragCardID = $state<string | null>(null);
+  let preview = $state<AutoTapPreview | null>(null);
+  let previewToken = 0;
+  let previewRequested = false;
+  let ghost = $state<{
+    card: CardView;
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+    originX: number;
+    originY: number;
+    snapping: boolean;
+  } | null>(null);
+  let grabX = 0;
+  let grabY = 0;
+  let snapReason = $state<{ text: string; x: number; y: number } | null>(null);
+  let snapReasonTimer: ReturnType<typeof setTimeout> | null = null;
+  let snapTimer: ReturnType<typeof setTimeout> | null = null;
+  let dragSlot: HTMLElement | null = null;
+  let dragPointerID: number | null = null;
+  // A drag that ended swallows the one click the browser may still
+  // deliver for the same press.
+  let swallowClick = false;
+
+  const dragEnabled = $derived(!!onDragCast);
+  const dragging = $derived(drag.phase === "dragging");
+  const liveEntry = $derived(
+    dragCardID ? (entries.find((e) => e.card.instance_id === dragCardID) ?? null) : null,
+  );
+  const verdict = $derived(
+    liveEntry
+      ? dragVerdict(liveEntry.card, legalityFor(liveEntry), preview)
+      : { castable: false, reason: "That card left exile" },
+  );
+
+  // The ghost, the drop zone and the reason are position: fixed, and a
+  // transformed ancestor (the strip's hover lift) would make "fixed"
+  // mean "fixed to that ancestor", so they are moved to <body>.
+  function portal(node: HTMLElement): { destroy(): void } {
+    document.body.appendChild(node);
+    return {
+      destroy() {
+        node.remove();
+      },
+    };
+  }
+
+  function listen(): void {
+    window.addEventListener("pointermove", onWindowMove);
+    window.addEventListener("pointerup", onWindowUp);
+    window.addEventListener("pointercancel", onWindowCancel);
+    window.addEventListener("keydown", onWindowKey, true);
+  }
+
+  function unlisten(): void {
+    window.removeEventListener("pointermove", onWindowMove);
+    window.removeEventListener("pointerup", onWindowUp);
+    window.removeEventListener("pointercancel", onWindowCancel);
+    window.removeEventListener("keydown", onWindowKey, true);
+  }
+
+  function samePointer(ev: PointerEvent): boolean {
+    return dragPointerID === null || ev.pointerId === undefined || ev.pointerId === dragPointerID;
+  }
+
+  function apply(input: DragInput): DragOutcome {
+    const res = stepDrag(drag, input);
+    drag = res.state;
+    return res.outcome;
+  }
+
+  function onSlotPointerDown(ev: PointerEvent, e: ExileStripEntry): void {
+    swallowClick = false;
+    if (!dragEnabled || drag.phase !== "idle") return;
+    if (ev.button !== 0 || ev.isPrimary === false) return;
+    const slot = ev.currentTarget as HTMLElement;
+    const row = (slot.closest(".strip-cards") as HTMLElement | null) ?? slot;
+    const cardEl = (slot.querySelector(".card") as HTMLElement | null) ?? slot;
+    const r = cardEl.getBoundingClientRect();
+    grabX = ev.clientX - r.left;
+    grabY = ev.clientY - r.top;
+    dragSlot = slot;
+    dragPointerID = ev.pointerId ?? null;
+    dragCardID = e.card.instance_id;
+    ghost = {
+      card: e.card,
+      x: r.left,
+      y: r.top,
+      w: cardEl.offsetWidth || r.width,
+      h: cardEl.offsetHeight || r.height,
+      originX: r.left,
+      originY: r.top,
+      snapping: false,
+    };
+    // No handBottom: the strip has no reorder band, so the only
+    // outcomes are cast and snap back.
+    apply({
+      type: "down",
+      cardID: e.card.instance_id,
+      x: ev.clientX,
+      y: ev.clientY,
+      handTop: row.getBoundingClientRect().top,
+    });
+    listen();
+  }
+
+  function onWindowMove(ev: PointerEvent): void {
+    if (!samePointer(ev)) return;
+    const was = drag.phase;
+    const wasMode = drag.mode;
+    apply({ type: "move", x: ev.clientX, y: ev.clientY });
+    if (drag.phase !== "dragging") return;
+    ev.preventDefault();
+    if (was === "pressed") startDrag();
+    if (was === "pressed" || wasMode !== drag.mode) syncCastFeedback();
+    if (ghost) ghost = { ...ghost, x: ev.clientX - grabX, y: ev.clientY - grabY };
+  }
+
+  function onWindowUp(ev: PointerEvent): void {
+    if (!samePointer(ev)) return;
+    const entry = liveEntry;
+    const out = apply({ type: "up", x: ev.clientX, y: ev.clientY, verdict });
+    finish(out, entry, ev.clientX, ev.clientY);
+  }
+
+  function onWindowCancel(): void {
+    finish(apply({ type: "cancel" }), null, 0, 0);
+  }
+
+  function onWindowKey(ev: KeyboardEvent): void {
+    if (ev.key !== "Escape") return;
+    if (drag.phase === "dragging") {
+      ev.preventDefault();
+      ev.stopPropagation();
+    }
+    onWindowCancel();
+  }
+
+  function startDrag(): void {
+    if (dragSlot && dragPointerID !== null) {
+      try {
+        dragSlot.setPointerCapture?.(dragPointerID);
+      } catch {
+        // A pointer that is already gone cannot be captured; the
+        // window listeners still see its events.
+      }
+    }
+  }
+
+  // The auto-tapper is asked which sources it would spend once per
+  // drag, once the card is past the line, and its answer drives the
+  // board highlight.
+  function syncCastFeedback(): void {
+    if (drag.mode !== "cast") {
+      clearAutoTapHighlight();
+      return;
+    }
+    if (preview) {
+      autoTapHighlight.set(new Set(previewSourceIDs(preview)));
+      return;
+    }
+    if (previewRequested) return;
+    previewRequested = true;
+    const entry = liveEntry;
+    if (!entry || !view.id || !wantsPreview(entry.card, legalityFor(entry))) return;
+    const token = ++previewToken;
+    fetchAutoTapPreview(view.id, entry.card.instance_id)
+      .then((p) => {
+        if (token !== previewToken || drag.phase !== "dragging") return;
+        preview = p;
+        if (drag.mode === "cast") autoTapHighlight.set(new Set(previewSourceIDs(p)));
+      })
+      .catch(() => {
+        // No preview, no highlight: the server is the real answer.
+      });
+  }
+
+  function finish(out: DragOutcome, entry: ExileStripEntry | null, x: number, y: number): void {
+    unlisten();
+    if (dragSlot && dragPointerID !== null) {
+      try {
+        dragSlot.releasePointerCapture?.(dragPointerID);
+      } catch {
+        // Already released.
+      }
+    }
+    dragSlot = null;
+    dragPointerID = null;
+    dragCardID = null;
+    previewToken++;
+    previewRequested = false;
+    preview = null;
+    clearAutoTapHighlight();
+
+    if (out.kind === "click" || out.kind === "none") {
+      ghost = null;
+      return;
+    }
+    swallowClick = true;
+    if (out.kind === "cast") {
+      ghost = null;
+      if (entry) {
+        open = false;
+        onDragCast?.(entry.card, "exile", entry.face);
+      }
+      return;
+    }
+    if (out.kind === "snapBack" && out.reason) showSnapReason(out.reason, x, y);
+    snapBack();
+  }
+
+  function snapBack(): void {
+    const g = ghost;
+    if (!g || $settings.accessibility.reduceMotion) {
+      ghost = null;
+      return;
+    }
+    ghost = { ...g, snapping: true, x: g.originX, y: g.originY };
+    if (snapTimer !== null) clearTimeout(snapTimer);
+    snapTimer = setTimeout(() => {
+      snapTimer = null;
+      ghost = null;
+    }, 180);
+  }
+
+  function showSnapReason(text: string, x: number, y: number): void {
+    snapReason = { text, x, y };
+    if (snapReasonTimer !== null) clearTimeout(snapReasonTimer);
+    snapReasonTimer = setTimeout(() => {
+      snapReasonTimer = null;
+      snapReason = null;
+    }, SNAP_REASON_MS);
+  }
+
+  function onSlotClickCapture(ev: MouseEvent): void {
+    if (!swallowClick) return;
+    swallowClick = false;
+    ev.preventDefault();
+    ev.stopPropagation();
+  }
+
+  // Unmounted mid-drag: drop the listeners and the board highlight.
+  $effect(() => {
+    return () => {
+      unlisten();
+      clearAutoTapHighlight();
+      if (snapTimer !== null) clearTimeout(snapTimer);
+      if (snapReasonTimer !== null) clearTimeout(snapReasonTimer);
+    };
+  });
 </script>
 
 {#if entries.length > 0}
@@ -92,8 +376,16 @@
         {#each entries as e (e.card.instance_id)}
           {@const leg = legalityFor(e)}
           {@const badge = exileCostBadge(e.card)}
+          <!-- #1622: the pointer handler is the drag-to-cast gesture, a
+               pointer-only enhancement. The Card inside is the button;
+               click and Enter cast exactly as before. -->
+          <!-- svelte-ignore a11y_no_static_element_interactions -->
           <div
             class="strip-slot"
+            class:draggable={dragEnabled}
+            class:drag-source={dragging && dragCardID === e.card.instance_id}
+            onpointerdown={dragEnabled ? (ev) => onSlotPointerDown(ev, e) : undefined}
+            onclickcapture={dragEnabled ? onSlotClickCapture : undefined}
             class:blocked={!leg.legal}
             class:later={e.state === "later"}
             class:ready={leg.legal}
@@ -125,6 +417,57 @@
         {/each}
       </div>
     </div>
+  </div>
+{/if}
+
+{#if dragging && drag.mode === "cast"}
+  <!-- #1622: the faint "release to cast" zone over the table. -->
+  <div
+    class="drag-cast-zone"
+    class:castable={verdict.castable}
+    class:blocked={!verdict.castable}
+    style:height="{Math.max(0, drag.handTop - CAST_ZONE_MARGIN_PX - 12)}px"
+    use:portal
+    aria-hidden="true"
+  >
+    <span class="drag-cast-label">
+      {verdict.castable ? "Release to cast" : verdict.reason}
+    </span>
+  </div>
+{/if}
+{#if ghost && (dragging || ghost.snapping)}
+  {@const art = cardImageURL(ghost.card, "small")}
+  <div
+    class="drag-ghost"
+    class:castable={dragging && verdict.castable}
+    class:blocked={dragging && !verdict.castable}
+    class:snapping={ghost.snapping}
+    style:left="{ghost.x}px"
+    style:top="{ghost.y}px"
+    style:width="{ghost.w}px"
+    style:height="{ghost.h}px"
+    use:portal
+    aria-hidden="true"
+  >
+    {#if art}
+      <img src={art} alt="" draggable="false" />
+    {:else}
+      <span class="drag-ghost-name">{ghost.card.name}</span>
+    {/if}
+    {#if dragging && !verdict.castable && verdict.reason}
+      <span class="drag-ghost-reason">{verdict.reason}</span>
+    {/if}
+  </div>
+{/if}
+{#if snapReason}
+  <div
+    class="drag-snap-reason"
+    role="status"
+    style:left="{snapReason.x}px"
+    style:top="{snapReason.y}px"
+    use:portal
+  >
+    {snapReason.text}
   </div>
 {/if}
 
@@ -384,6 +727,129 @@
     .hint {
       top: auto;
       bottom: 6px;
+    }
+  }
+  .strip-slot.draggable {
+    touch-action: none;
+  }
+  .strip-slot.drag-source {
+    opacity: 0.3;
+  }
+  /* The ghost, the zone and the reason are portalled to <body>. Scoped
+     rules still reach them: the scoping class is on the element, and
+     moving it does not take it off. */
+  .drag-ghost {
+    position: fixed;
+    z-index: 1000;
+    pointer-events: none;
+    border-radius: 8px;
+    transform: rotate(-3deg) scale(1.04);
+    box-shadow: 0 14px 30px rgba(0, 0, 0, 0.55);
+  }
+  .drag-ghost img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border-radius: 8px;
+    object-fit: cover;
+  }
+  .drag-ghost-name {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    padding: 6px;
+    box-sizing: border-box;
+    border-radius: 8px;
+    background: var(--surface-2, #222);
+    color: var(--fg, #eee);
+    font-size: 12px;
+    text-align: center;
+  }
+  .drag-ghost.castable {
+    box-shadow:
+      0 0 0 2px var(--gold),
+      0 0 26px rgba(255, 208, 122, 0.75),
+      0 14px 30px rgba(0, 0, 0, 0.55);
+  }
+  .drag-ghost.blocked {
+    box-shadow:
+      0 0 0 2px var(--danger),
+      0 0 22px rgba(255, 107, 107, 0.6),
+      0 14px 30px rgba(0, 0, 0, 0.55);
+  }
+  .drag-ghost.blocked img {
+    filter: grayscale(0.5) brightness(0.65);
+  }
+  .drag-ghost-reason {
+    position: absolute;
+    left: 50%;
+    bottom: -8px;
+    transform: translate(-50%, 100%);
+    white-space: nowrap;
+    padding: 3px 8px;
+    border-radius: 6px;
+    background: rgba(40, 10, 10, 0.92);
+    color: #ffd6d6;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .drag-ghost.snapping {
+    transition:
+      left 180ms var(--ease, ease),
+      top 180ms var(--ease, ease),
+      opacity 180ms var(--ease, ease);
+    opacity: 0.4;
+  }
+  .drag-cast-zone {
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    top: 12px;
+    z-index: 999;
+    pointer-events: none;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding-bottom: 14px;
+    box-sizing: border-box;
+    border: 2px dashed rgba(217, 180, 92, 0.35);
+    border-radius: 14px;
+    background: rgba(217, 180, 92, 0.05);
+  }
+  .drag-cast-zone.blocked {
+    border-color: rgba(255, 107, 107, 0.35);
+    background: rgba(255, 107, 107, 0.05);
+  }
+  .drag-cast-label {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--gold-strong, #f1d38a);
+  }
+  .drag-cast-zone.blocked .drag-cast-label {
+    color: #ffb3b3;
+  }
+  .drag-snap-reason {
+    position: fixed;
+    z-index: 1001;
+    pointer-events: none;
+    transform: translate(-50%, -140%);
+    padding: 4px 10px;
+    border-radius: 6px;
+    background: rgba(40, 10, 10, 0.94);
+    color: #ffd6d6;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .drag-ghost,
+    .drag-ghost.snapping {
+      transition: none;
+      transform: none;
     }
   }
 </style>

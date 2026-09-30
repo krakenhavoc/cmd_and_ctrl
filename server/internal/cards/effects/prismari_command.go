@@ -18,7 +18,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // (CR 608.2b) — an artifact that stopped being one is skipped while
 // the other chosen bullet still happens.
 //
-// The draw-then-discard bullet is a real CR 701.8a choice: the
+// The draw-then-discard bullet is a real CR 701.9a choice: the
 // targeted player draws two, then picks which two to pitch through
 // the ordinary discard prompt. The discard is not "then draw a card
 // for each" — nothing downstream reads how many were discarded, so a

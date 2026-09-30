@@ -329,7 +329,7 @@ type AbilityCost struct {
 	//
 	// DiscardSelf's sibling, one zone over, and written as a second
 	// bit rather than as a zone on one "the source pays" component
-	// because the two are different rules: discarding is a CR 701.8
+	// because the two are different rules: discarding is a CR 701.9
 	// keyword action that puts the card in a graveyard and fires
 	// EventDiscardCard (and, for cycling, EventCycle); exiling as a
 	// cost is a plain CR 406 move that fires neither. A card file

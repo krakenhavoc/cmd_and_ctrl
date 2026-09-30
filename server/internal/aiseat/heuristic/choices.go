@@ -41,6 +41,8 @@ const (
 	choiceChooseCards         = "choose_cards"
 	choiceUntapChoice         = "untap_choice"
 	choiceEntryRevealFromHand = "entry_reveal_from_hand"
+	choiceEntryDiscard        = "entry_discard_from_hand"
+	choiceEntrySacrifice      = "entry_sacrifice"
 	choiceColor               = "choose_color"
 	choiceCoinCall            = "coin_call"
 	choiceMayCast             = "may_cast"
@@ -295,6 +297,42 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 			return 1, "reveal, so it enters untapped"
 		}
 		return 0.5, "reveal nothing"
+
+	case choiceEntryDiscard:
+		// ADR 0098, Mox Diamond: "you may discard a land card instead.
+		// If you don't, put it into its owner's graveyard."
+		//
+		// The reveal's shape with the OPPOSITE sign on what is named:
+		// a discarded card is spent. So among discards the seat names
+		// its cheapest land (fuelValue, #1028 — the price of a card a
+		// cost eats), and it discards rather than lose the permanent
+		// unless the land is one it cannot spare: the only land card in
+		// hand while it controls fewer than three lands. Declining is
+		// the enumerator's AlwaysLegal answer, so either way the seat
+		// has one.
+		if len(cp.CardIDs) == 0 {
+			return 0.5, "discard nothing: keep the land"
+		}
+		if st.onlyLandInHandAndShort(cp.CardIDs) {
+			return 0.25, "discard: the only land in hand, and lands are short"
+		}
+		var fuel float64
+		for _, id := range cp.CardIDs {
+			fuel += p.fuelValue(st, id)
+		}
+		return 2 - fuel/(1+fuel), "discard the cheapest land"
+
+	case choiceEntrySacrifice:
+		// ADR 0098 Decision 11, Heart of Yavimaya and Lotus Vale:
+		// "sacrifice <N> instead" is not a "may", so every offered set
+		// has the same size and the only question is which. Spend the
+		// cheapest permanents, priced as the rest of the evaluation
+		// prices them (fuelValue → permanentValue).
+		var fuel float64
+		for _, id := range cp.CardIDs {
+			fuel += p.fuelValue(st, id)
+		}
+		return -fuel, "sacrifice the cheapest"
 
 	case choiceConfirm:
 		// The chained-choice two-way prompt. Both branches are always
