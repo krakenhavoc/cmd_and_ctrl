@@ -130,12 +130,16 @@ func (g *Game) sweepTurnEndLocked() {
 // existed (the cursor advance's caller, advancePastEliminatedLocked,
 // PassTurn).
 //
-// The next turn belongs to the next seat after the current active seat
-// that is still in the game. A seat that has left is passed over (CR
+// The next turn is the most recently queued extra turn of a seat still
+// in the game (CR 500.7, extra_turns.go), when there is one. Otherwise
+// it is the next NORMAL turn: the next seat after Turn.OrderSeat that is
+// still in the game. OrderSeat is the seat whose normal turn this is, or
+// was before the extra turns began, so rotation resumes where the
+// extra turns interrupted it. A seat that has left is passed over (CR
 // 800.4k: that player's turn doesn't begin), and Turn.Round still
 // goes up when the rotation returns to the game's starting seat, so it
 // keeps counting full table rotations whether or not that seat is still
-// playing.
+// playing. An extra turn never moves Round.
 //
 // A cleanup-discard pause cannot outlive its turn: the discard belongs
 // to the turn that ended, so DiscardPending is dropped. In ordinary
@@ -148,8 +152,29 @@ func (g *Game) beginNextTurnLocked() {
 	if n == 0 {
 		return
 	}
+	if et, ok := g.popExtraTurnLocked(); ok {
+		g.Turn = Turn{
+			Seq:            g.Turn.Seq + 1,
+			Round:          g.Turn.Round,
+			ActiveSeat:     et.Seat,
+			PriorityHolder: initialPriorityHolder(StepUntap, et.Seat),
+			Phase:          PhaseOf(StepUntap),
+			Step:           StepUntap,
+			Extra:          true,
+			ExtraRef:       et.Ref,
+			OrderSeat:      g.Turn.OrderSeat,
+		}
+		g.startTurnLocked()
+		return
+	}
 	from := g.Turn
 	from.Step = StepCleanup
+	if from.Extra {
+		// Normal rotation resumes from the seat whose normal turn the
+		// extra turns followed. On a normal turn OrderSeat is the
+		// active seat, so this changes nothing there.
+		from.ActiveSeat = from.OrderSeat
+	}
 	next := from.advance(n, g.StartingSeat)
 	for i := 0; i < n && next.ActiveSeat >= 0 && next.ActiveSeat < n && g.Seats[next.ActiveSeat].Eliminated; i++ {
 		// CR 800.4m: an effect that lasts "until that player's next
@@ -170,8 +195,20 @@ func (g *Game) beginNextTurnLocked() {
 	// begun for duration purposes.
 	next.Seq = g.Turn.Seq + 1
 	g.Turn = next
+	g.startTurnLocked()
+}
+
+// startTurnLocked is the tail both kinds of turn share once the cursor
+// has been stamped on the new turn's untap step: the old turn's
+// cleanup-discard pause is dropped, the seat's turn is counted, delayed
+// triggers bound to an extra turn that can no longer happen are swept,
+// and the per-turn resets run.
+//
+// Caller must hold g.mu.
+func (g *Game) startTurnLocked() {
 	g.DiscardPending = nil
-	g.noteTurnBegunLocked(next.ActiveSeat)
+	g.noteTurnBegunLocked(g.Turn.ActiveSeat)
+	g.sweepUnreachableBoundTriggersLocked()
 	g.onTurnBeganLocked()
 }
 

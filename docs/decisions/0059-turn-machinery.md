@@ -1,6 +1,6 @@
 # ADR 0059 — Turn machinery: extra turns, extra phases and steps, and one turn identity
 
-**Status:** Accepted · 2026-09-17 · unscheduled (card-coverage audit, wave 2) · tracked on [#753](https://github.com/krakenhavoc/cmd_and_ctrl/issues/753). The owner's answers to the open questions are recorded in [Decided (2026-09-17)](#decided-2026-09-17).
+**Status:** Accepted · 2026-09-17 · unscheduled (card-coverage audit, wave 2) · tracked on [#753](https://github.com/krakenhavoc/cmd_and_ctrl/issues/753). The owner's answers to the open questions are recorded in [Decided (2026-09-17)](#decided-2026-09-17). **Amended 2026-09-30:** sub-PR 2 is split, and its first half (extra turns) has shipped — see [Amendment (2026-09-30)](#amendment-2026-09-30--sub-pr-2-is-split-2a-is-extra-turns).
 **Numbering:** 0052 is reserved for the emblems ADR
 ([#623](https://github.com/krakenhavoc/cmd_and_ctrl/issues/623)), and
 0056-0058 are being drafted in parallel for
@@ -1109,3 +1109,82 @@ proposed. The chosen one is marked.
    and only in the rest of one turn. The visible difference is that other
    players' "at the beginning of each end step" triggers skip that one
    turn.
+
+## Amendment (2026-09-30) — sub-PR 2 is split; 2a is extra turns
+
+Sub-PR 2 as planned is the whole of Decisions 3, 4, 5 and half of 8:
+the turn plan, added phases and steps, extra turns, bound delayed
+triggers and attack history. That is two independent mechanisms. The
+extra-turn queue never touches the step cursor inside a turn: it is
+read only by the rotation seam (Decision 6), which already exists. The
+plan rewrites `advanceCursorLocked` and `stepExistsLocked` (#717). So
+sub-PR 2 ships in two halves, one per PR, and nothing in either decision
+changes:
+
+- **2a — extra turns (shipped, #753).** Decision 5 in full;
+  `DelayedTrigger.OnExtraTurn` from Decision 8; the Decision 10
+  snapshot fields for those two (`extraTurns`, `nextExtraRef`,
+  `delayedTriggers[].onExtraTurn`, additive within v7); from Decision
+  11, `TurnView.extra`, `TurnView.extra_turns`, `EventExtraTurnAdded`
+  and its log line; from sub-PR 4, the board's "Extra turn" mark and
+  "Next: Alice (extra)" (they read only those two fields); from
+  Decision 13, the model prompt's "(extra turn)" and the catalog soak's
+  `Seq` cap; and the extra-turn half of the first wave.
+- **2b — the plan and added phases and steps (next).** Decisions 3 and
+  4 (`TurnPlan`, `PlannedStep`, `NextPhaseID`, `AddPhasesForEffect`,
+  `AddStepAfterCurrentForEffect`, `EventPhasesAdded`), the ordinals and
+  `TurnTally.Attacks` from Decision 8, `TurnView.phase_id`,
+  `phase_ordinal` and `upcoming`, the `combatBeats.ts` grouping, and the
+  extra-combat half of the first wave. Sub-PR 3 (bots and soak) and the
+  remaining sub-PR 4 presentation ("Combat 2", added phases on the
+  strip) follow it as planned.
+
+What 2a settled that the decisions left open, or states more exactly:
+
+1. **Rotation resumes from `OrderSeat` only after an extra turn.** A
+   normal turn has `OrderSeat == ActiveSeat` by construction, so
+   rotating from `OrderSeat` always and rotating from it only when
+   `Turn.Extra` is set are the same rule. The second is written, so a
+   hand-built cursor in a test (which sets `ActiveSeat` alone) still
+   rotates from the seat it names.
+2. **One effect's turns keep their order.** `TakeExtraTurnsForEffect(p,
+   src, n)` mints n refs and pushes them so that they come off the stack
+   in ref order and all ahead of anything queued earlier. Time Stretch's
+   two turns are refs k and k+1, taken in that order. A turn created
+   during the first of them goes between them (CR 500.7, test 3).
+3. **A departed or unseated player gets nothing.** The call returns nil
+   and queues nothing for a player who has already left (CR 800.4a).
+   A player who leaves after the turn is queued is handled as Decision 5
+   says: the turn is dropped as it would begin and counted toward
+   `TurnsBegun`. The wire omits such a turn from `extra_turns` straight
+   away, because it will not begin.
+4. **Bound triggers are swept at the turn boundary, and refused when
+   unreachable.** `sweepUnreachableBoundTriggersLocked` runs in the
+   rotation seam once the new turn is stamped and before the per-turn
+   resets, and drops every trigger whose `OnExtraTurn` is neither the
+   turn now beginning nor still queued. `ScheduleDelayedTriggerForEffect`
+   refuses such a binding up front, so it is never queued.
+5. **The step spine is unchanged.** The extra turn begins with ordinary
+   `step` lines. What says "extra" is the `extra_turn` line when the turn
+   is queued and `TurnView.extra` while it runs. `EventTurnBegan`'s
+   "extra" label stays an engine event with no line of its own, as its
+   silence row already says.
+6. **Rollback.** An older binary restoring a file with a queued turn
+   drops `extraTurns` and loses the turn: weaker, and only until the
+   next deploy. A bound trigger is not the same risk. Unbound, Final
+   Fortune's loss would fire in the wrong end step. But every card that
+   binds one names a body key an older binary does not have
+   (`extra-turn/lose-the-game`), so that binary refuses the file with
+   `ErrUnknownEffectKey` and keeps it (ADR 0041 phase 3).
+7. **Cards.** The seven extra-turn cards of the first wave shipped (Time
+   Warp, Time Stretch, Temporal Manipulation, Capture of Jingzhou,
+   Magistrate's Scepter, Final Fortune, Last Chance), plus two with the
+   same text and nothing else outside the seam: Warrior's Oath (Last
+   Chance's text) and Temporal Mastery (miracle and self-exile, both
+   already built). Teferi, Master of Time's −10 and Avatar Kuruk's
+   exhaust ability are wired, and both cards are now `full`. Trouble in
+   Pairs keeps a caveat. Its "if an opponent would begin an extra turn,
+   that player skips that turn instead" is skipping a turn, which
+   Decision 14 leaves out of scope. Ugin's Nexus waits on the same
+   thing.
+

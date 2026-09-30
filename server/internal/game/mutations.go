@@ -954,7 +954,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	for _, i := range xSteps {
 		// Max 0 reads as "unbounded" to the ordinary count check, so
 		// an X-counted step is checked for an EXACT count of X here.
-		if n := stepTargetCount(steps[i], params.Targets); n != params.XValue {
+		if n, bad := xCountMismatch(steps[i], params.Targets, params.XValue); bad {
 			slog.Warn("cast_spell rejected: X-defined target count mismatch",
 				"card_name", card.Name,
 				"oracle_id", card.OracleID,

@@ -1113,6 +1113,11 @@ migration now. The half that affects correctness is done here:
 `Game.WinnerSeat()` reads `Game.Outcome`, so `games.winner_seat` names
 the effect winner while several seats are still standing, and is NULL for
 a draw. Telling a draw from an abandoned table in "my games" is #1520.
+**Done in #1520 as migration `0007_game_outcome.sql`** (0006 was already
+taken by `deck_requests`): `games.outcome` is `win` | `draw` | NULL,
+written by the lobby from `Game.OutcomeKind()` when it first sees the
+game ended, and served as `outcome` on `GET /me/games`. Existing rows
+stay NULL, meaning unknown.
 
 ### A5. Smaller settlements
 

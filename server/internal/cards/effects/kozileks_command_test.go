@@ -68,9 +68,9 @@ func TestKozileksCommandScryThenDraw(t *testing.T) {
 	}
 }
 
-// TestKozileksCommandExilesExactlyXFromGraveyards pins the declared
-// caveat: the fourth bullet exiles exactly X cards, not up to X.
-func TestKozileksCommandExilesExactlyXFromGraveyards(t *testing.T) {
+// TestKozileksCommandExilesUpToXFromGraveyards: the fourth bullet takes
+// any number of cards from zero to X (#1738).
+func TestKozileksCommandExilesUpToXFromGraveyards(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
 	a := graveCreature(me, "Mine A", "{1}")
@@ -87,5 +87,28 @@ func TestKozileksCommandExilesExactlyXFromGraveyards(t *testing.T) {
 
 	if !g.Exile.Contains(a) || !g.Exile.Contains(b) {
 		t.Error("both graveyard cards named should be exiled")
+	}
+}
+
+// Fewer cards than X is a legal announcement.
+func TestKozileksCommandExilesFewerThanXFromGraveyards(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	a := graveCreature(me, "Mine A", "{1}")
+	b := graveCreature(opp, "Theirs B", "{2}")
+
+	b19CastXModal(t, g, "Kozilek's Command", "Kindred Instant — Eldrazi", kozileksCommandOracle, "{X}{C}{C}", 3,
+		[]int{0, 3},
+		[]game.TargetRef{
+			modeRef(game.TargetPlayer, me.ID, 0, 0),
+			modeRef(game.TargetCard, a, 1, 0),
+		})
+	passPriorityAroundTable(t, g)
+
+	if !g.Exile.Contains(a) {
+		t.Error("the one named graveyard card should be exiled")
+	}
+	if g.Exile.Contains(b) {
+		t.Error("the card that was not named stays")
 	}
 }

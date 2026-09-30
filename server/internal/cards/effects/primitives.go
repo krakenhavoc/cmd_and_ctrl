@@ -539,6 +539,11 @@ type ScheduleDelayedTrigger struct {
 
 	// Params is the body's plain data — what a closure used to capture.
 	Params game.EffectParams
+
+	// OnExtraTurn binds the trigger to one extra turn: the ref
+	// TakeExtraTurn queued. "At the beginning of THAT turn's end step"
+	// (Final Fortune). Zero is unbound.
+	OnExtraTurn int
 }
 
 func (s ScheduleDelayedTrigger) Apply(ctx *Context) error {
@@ -559,6 +564,7 @@ func (s ScheduleDelayedTrigger) Apply(ctx *Context) error {
 		Cards:              s.Cards,
 		Body:               s.Body,
 		Params:             s.Params,
+		OnExtraTurn:        s.OnExtraTurn,
 	})
 	return nil
 }

@@ -15,18 +15,13 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // Voltaic Key's untap, Sensei's Divining Top-style scry, and Rogue's
 // Passage's can't-be-blocked, each with its own mana-plus-tap cost.
 //
-// Declared simplification: "another" on the untap ability is enforced
-// by NAME (b03NotNamed), the catalog's standing convention for an
-// activated ability's target clause (Voltaic Key's own "target
-// artifact" admits itself, so there is no existing helper for
-// "another" to borrow that isn't by-name). Sonic Screwdriver cannot
-// untap a second Sonic Screwdriver.
+// "Another" on the untap ability is object identity (effects.Another,
+// CR 109.1): Sonic Screwdriver can untap a second Sonic Screwdriver.
 func init() {
 	Register(Spec{
 		OracleID:     "cd68cc31-12fd-48ff-b37b-bccfe4172974",
 		Name:         "Sonic Screwdriver",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The untap ability can't untap another Sonic Screwdriver."},
+		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},
 			Produced: "{W|U|B|R|G}",
@@ -36,7 +31,7 @@ func init() {
 			{
 				Label:   "{1}, {T}: Untap another target artifact.",
 				Cost:    Plus(ManaCost("{1}"), TapCost()),
-				Targets: TargetPermanent("another target artifact", Artifact(), b03NotNamed("Sonic Screwdriver")),
+				Targets: Another(TargetPermanent("another target artifact", Artifact())),
 				Effect:  untapFirstLegalTarget,
 			},
 			{

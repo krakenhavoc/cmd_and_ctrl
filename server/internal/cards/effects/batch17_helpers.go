@@ -19,7 +19,7 @@ import (
 // b11TriggeredThisTurn, "an opponent controls more lands than you"
 // is b03OpponentControlsMoreLands, lands / creature cards you have
 // are b03LandsControlled / b11CreatureCardsInGraveyard, a dead card's
-// counters are b13LastKnownCounters, "another creature dies" is
+// counters are game.LastKnownPermanentForEffect, "another creature dies" is
 // b15AnotherCreatureDied, a whole graveyard's exile is
 // exileGraveyardForEffect, "each player draws" is b05EachPlayerDraws,
 // and the whole-hand discard is discardWholeHand.
@@ -175,12 +175,14 @@ func b17PermanentSacrificedToPay(g *game.Game, item *game.StackItem) (uuid.UUID,
 // from another permanent is not in it — declared on the card that
 // reads this.
 func b17LastKnownPowerOffBattlefield(g *game.Game, cardID uuid.UUID) int {
-	c, ok := g.LookupCardForEffect(cardID)
-	if !ok {
+	var p int
+	if info, ok := g.LastKnownPermanentForEffect(cardID); ok {
+		p = info.Power
+	} else if c, ok := g.LookupCardForEffect(cardID); ok {
+		p = c.Power
+	} else {
 		return 0
 	}
-	dp, _ := b13LastKnownPTDelta(g, cardID)
-	p := c.Power + dp
 	if p < 0 {
 		return 0
 	}

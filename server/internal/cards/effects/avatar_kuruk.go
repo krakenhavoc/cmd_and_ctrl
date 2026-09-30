@@ -29,33 +29,29 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // non-Spirit. "Spirit" is read as an EFFECTIVE creature type, so a
 // changeling is a Spirit for both.
 //
-// SANDBOX SIMPLIFICATION, and this is why the card is not Full:
+// "EXHAUST — WATERBEND {20}: TAKE AN EXTRA TURN AFTER THIS ONE." The
+// cost is `WaterbendCost("{20}")` with `Exhaust: true` (#1310): the same
+// component Aang's "Waterbend {8}" and Katara's "Waterbend {X}" use, so
+// the artifacts and creatures tapped to help each pay for {1}, and the
+// ability can be activated once per object for the rest of the game.
+// The effect is TakeExtraTurn (CR 500.7, ADR 0059 Decision 5, #753).
 //
-//   - "Exhaust — Waterbend {20}: Take an extra turn after this one."
-//     is not registered, and the reason is now ONE, not two: extra
-//     turns have no queue/insertion primitive anywhere in this engine
-//     (the identity foundation is present, but the "Extra turns
-//     primitive" seam remains in docs/engine-seams.md, #753). The
-//     COST is expressible since #1310: `WaterbendCost("{20}")`
-//     with `Exhaust: true` is the whole declaration, the same
-//     component Aang's "Waterbend {8}" and Katara's "Waterbend {X}"
-//     use, and Boom Scholar's exhaust discount already reaches it
-//     through the ability's mana component. An ability that costs
-//     twenty and does nothing when activated would not be a weaker
-//     card, it would be a broken one, so it stays off entirely until
-//     #753 lands the effect.
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID:     theLegendOfKurukOracleID + "#1",
 		Name:         "Avatar Kuruk",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"\"Exhaust — Waterbend {20}: Take an extra turn after this one\" isn't implemented — extra turns don't exist in the engine yet.",
-		},
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			WheneverYouCast(nil, "Avatar Kuruk — create a 1/1 colorless Spirit",
 				Do(CreateToken{Template: kurukSpiritToken(), N: 1})),
 		},
+		Activated: []ActivatedAbility{{
+			Label:   "Exhaust — Waterbend {20}: Take an extra turn after this one.",
+			Cost:    WaterbendCost("{20}"),
+			Exhaust: true,
+			Effect:  youTakeAnExtraTurnEffect,
+		}},
 	})
 }
 

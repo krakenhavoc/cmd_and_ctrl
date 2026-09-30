@@ -1252,36 +1252,3 @@ func TestB13DranaGrowsEveryAttackerWhenSheConnects(t *testing.T) {
 		t.Errorf("a creature that stayed home got %d counters", got)
 	}
 }
-
-// --- the log-read helpers ------------------------------------------
-
-func TestB13LastKnownCountersReadTheLastTotalBeforeLeaving(t *testing.T) {
-	g := newCatalogGame(t)
-	me := g.Seats[0]
-	bear := b12Creature(g, me.ID, "Bear", "Creature — Bear", 2, 2)
-	g.WithWriteLock(func() {
-		_ = g.AddCounterForEffect(bear, "+1/+1", 3)
-		_ = g.AddCounterForEffect(bear, "+1/+1", -1)
-		_ = g.AddCounterForEffect(bear, "nest", 2)
-		_ = g.DestroyPermanentForEffect(bear)
-	})
-	g.WithWriteLock(func() {
-		if got := b13LastKnownCounters(g, bear, "+1/+1"); got != 2 {
-			t.Errorf("+1/+1: %d, want 2", got)
-		}
-		if got := b13LastKnownCounters(g, bear, "-1/-1"); got != 0 {
-			t.Errorf("-1/-1 was never placed: %d", got)
-		}
-		if got := b13LastKnownCounterTotal(g, bear); got != 4 {
-			t.Errorf("total: %d, want 4", got)
-		}
-	})
-	// A second life of the same instance starts from zero.
-	g.WithWriteLock(func() {
-		_ = g.ReturnFromGraveyardForEffect(bear, game.ZoneBattlefield)
-		_ = g.DestroyPermanentForEffect(bear)
-		if got := b13LastKnownCounters(g, bear, "+1/+1"); got != 0 {
-			t.Errorf("an earlier life's counters are not this one's: %d", got)
-		}
-	})
-}

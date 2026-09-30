@@ -50,8 +50,8 @@ func init() {
 				AtYourEndStep("Betor, Ancestor's Voice — +1/+1 counters equal to the life you gained, then return a creature card within the life you lost",
 					betorEndStep),
 				Clauses(
-					TargetCreature("up to one other target creature you control",
-						YouControl(), b03NotNamed("Betor, Ancestor's Voice")).WithCount(0, 1),
+					Another(TargetCreature("up to one other target creature you control",
+						YouControl())).WithCount(0, 1),
 					TargetCardInGraveyard("up to one target creature card in your graveyard with mana value at most the life you lost this turn",
 						YouOwn(), Creature(), ManaValueAtMostLifeLostThisTurn()).WithCount(0, 1),
 				),

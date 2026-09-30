@@ -20,19 +20,13 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // together so the card can't ship as a vanilla 4/3 that forgets its
 // own bonus.
 //
-// Sandbox simplification, declared: "ANOTHER creature" is enforced by
-// NAME (b03NotNamed), the same gap Warren Soultrader and Bartolomé del
-// Presidio carry — a sacrifice clause built once at init has no
-// instance to exclude and can only exclude the source by what it's
-// called. Woe Strider is not legendary, so unlike those two a SECOND
-// copy on the battlefield (not just a token copy) is also excluded,
-// which is weaker than printed, never stronger.
+// "ANOTHER creature" is object identity (effects.Another, CR 109.1): a second
+// Woe Strider, or a token copy of it, can be sacrificed to it.
 func init() {
 	Register(Spec{
 		OracleID:      "3adbd963-e85d-4569-963a-4472594f06f9",
 		Name:          "Woe Strider",
-		Completeness:  CompletenessCaveats,
-		Caveats:       []string{"A second copy or token copy of Woe Strider can't be sacrificed to its own ability."},
+		Completeness:  CompletenessFull,
 		CastableZones: []game.ZoneKind{game.ZoneGraveyard},
 		AlternativeCosts: []game.AlternativeCost{
 			EscapeWithCounters("{3}{B}{B}", 4, 2),
@@ -44,7 +38,7 @@ func init() {
 		Activated: []ActivatedAbility{{
 			Label: "Sacrifice another creature: Scry 1.",
 			Cost: game.AbilityCost{
-				SacrificeOther: sacrificeSpec("another creature", Creature(), b03NotNamed("Woe Strider")),
+				SacrificeOther: Another(sacrificeSpec("another creature", Creature())),
 			},
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return Scry{Player: item.Controller, N: 1}.Apply(NewContext(g, item))

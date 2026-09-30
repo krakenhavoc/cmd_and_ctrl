@@ -82,7 +82,13 @@ test.describe("opening hand", () => {
     await expect(alice.page.getByLabel("opening hand decisions")).toHaveCount(0);
     await expect(bob.page.getByLabel("opening hand decisions")).toHaveCount(0);
 
-    // The table is live: the active seat can act.
-    await expect(alice.page.getByRole("button", { name: "pass turn" })).toBeEnabled();
+    // The table is live: the active seat can act. The game rolls for
+    // the starting player (#1486), so it is either seat's button.
+    const passButtons = [alice, bob].map((p) => p.page.getByRole("button", { name: "pass turn" }));
+    await expect
+      .poll(async () => (await passButtons[0].isEnabled()) || (await passButtons[1].isEnabled()), {
+        timeout: 10_000,
+      })
+      .toBe(true);
   });
 });

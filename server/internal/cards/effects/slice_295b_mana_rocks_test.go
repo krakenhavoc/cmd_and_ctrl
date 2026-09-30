@@ -137,8 +137,8 @@ func TestB295MidnightClockTapsForBlueAndAccumulatesHourCounters(t *testing.T) {
 	if !ok {
 		t.Fatal("Midnight Clock is registered")
 	}
-	if spec.Completeness != CompletenessCaveats || len(spec.Caveats) == 0 {
-		t.Error("Midnight Clock should declare a caveat for the unbuilt twelfth-counter payoff")
+	if spec.Completeness != CompletenessFull {
+		t.Errorf("Midnight Clock's twelfth-counter payoff is built (#1727): Completeness = %v", spec.Completeness)
 	}
 }
 
@@ -197,8 +197,8 @@ func TestB295HerdHeirloomManaIsRestrictedToCreatureSpells(t *testing.T) {
 	if !ok {
 		t.Fatal("Herd Heirloom is registered")
 	}
-	if spec.Completeness != CompletenessCaveats || len(spec.Caveats) == 0 {
-		t.Error("Herd Heirloom should declare a caveat for the unbuilt granted-trigger ability")
+	if spec.Completeness != CompletenessFull {
+		t.Errorf("Herd Heirloom's granted-trigger ability is built (#1600): Completeness = %v", spec.Completeness)
 	}
 }
 

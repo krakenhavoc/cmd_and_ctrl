@@ -107,6 +107,7 @@ func gameRecordLocked(entry *gameEntry) GameRecord {
 		EndedAt:    entry.endedAt,
 		ArchivedAt: entry.meta.ArchivedAt,
 		WinnerSeat: entry.winnerSeat,
+		Outcome:    entry.outcome,
 		// ADR 0075 §2.1. syncHostLocked keeps HostPlayerID equal to the
 		// room's effective host before any write that matters.
 		HostPlayerID:  entry.meta.HostPlayerID,
@@ -146,8 +147,8 @@ func (l *Lobby) persistGameLocked(entry *gameEntry) {
 //
 // syncStateLocked copies the engine's lifecycle state onto the entry
 // and, when it moved, onto the games row: started_at on the first
-// sight of active, ended_at and winner_seat on the first sight of
-// ended. The engine is authoritative; meta.State is a cache of it.
+// sight of active, ended_at, winner_seat and outcome on the first
+// sight of ended. The engine is authoritative; meta.State is a cache of it.
 //
 // The lobby sees a transition wherever it already reads the live
 // state — Start, Get, List, restore — and through watchEnd, which is
@@ -168,6 +169,7 @@ func (l *Lobby) syncStateLocked(entry *gameEntry) {
 		if seat, ok := entry.room.Game.WinnerSeat(); ok {
 			entry.winnerSeat = &seat
 		}
+		entry.outcome = entry.room.Game.OutcomeKind()
 	}
 	l.persistGameLocked(entry)
 }
@@ -423,6 +425,7 @@ func (l *Lobby) loadEntry(id uuid.UUID, room *ws.Room) (*gameEntry, error) {
 		startedAt:  rec.StartedAt,
 		endedAt:    rec.EndedAt,
 		winnerSeat: rec.WinnerSeat,
+		outcome:    rec.Outcome,
 		// A game imported from lobby/*.json, or one that was already
 		// running when this binary first booted, has no start time on
 		// record. Stamping "now" on it would be a made-up date.

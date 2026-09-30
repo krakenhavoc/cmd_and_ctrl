@@ -47,23 +47,16 @@ import (
 //     permanents come along, counters and damage survive, no
 //     enters/leaves trigger fires, it phases in on its controller's
 //     untap step — is the primitive's, not this card's.
-//
-// WHAT IS NOT WIRED
-//
-//   - The −10. "Take two extra turns after this one" is the extra
-//     turns seam (docs/engine-seams.md): turn identity now handles a
-//     seat taking two turns in a row, but the machinery still has no
-//     queue or way to insert those turns. The ability is
-//     registered with no effect rather than omitted, so the row is
-//     visible, the loyalty is charged and the players resolve the
-//     extra turns between themselves — the sandbox posture #259
-//     asks for.
+//   - −10 as TakeExtraTurn{N: 2} (CR 500.7, ADR 0059 Decision 5,
+//     #753). Both turns are queued together, go ahead of any extra
+//     turn queued earlier, and are Teferi's controller's. Activated on
+//     an opponent's turn (the static above), the two turns follow that
+//     opponent's turn and normal rotation then resumes after it.
 func init() {
 	Register(Spec{
 		OracleID:     "e802fb53-7cf5-46bc-8a0b-f99cf5c20f74",
 		Name:         "Teferi, Master of Time",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The −10 doesn't take the two extra turns — the engine can't add a turn yet."},
+		Completeness: CompletenessFull,
 		ActivationTimings: []game.ActivationTiming{
 			ThisSourcesLoyaltyAbilitiesAtInstantSpeed(
 				"You may activate loyalty abilities of Teferi on any player's turn any time you could cast an instant.",
@@ -96,12 +89,8 @@ func init() {
 			{
 				Label: "−10: Take two extra turns after this one.",
 				Cost:  LoyaltyCost(-10),
-				Effect: func(_ *game.Game, _ *game.StackItem) error {
-					// Deliberately empty — see the caveat above. Not
-					// an error: an ability the engine cannot carry
-					// out is a sandbox gap, and EventEffectError is
-					// what the catalog soak fails a game on.
-					return nil
+				Effect: func(g *game.Game, item *game.StackItem) error {
+					return TakeExtraTurn{N: 2}.Apply(NewContext(g, item))
 				},
 			},
 		},

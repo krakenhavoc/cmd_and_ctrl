@@ -117,7 +117,11 @@
     </g>
   {:else if step === "end"}
     <!-- Crescent moon — end step, "nightfall". -->
-    <path d="M11 2 A6 6 0 1 0 11 14 A4.5 4.5 0 1 1 11 2 Z" fill="currentColor" />
+    <!-- The inner arc must reach the chord (12 units): a radius
+         under 6 is scaled up to exactly 6, which retraces the outer
+         arc and draws nothing (#1620 — the end step's icon was
+         invisible). Outer r=7 large arc, inner r=6 half circle. -->
+    <path d="M11 2 A7 7 0 1 0 11 14 A6 6 0 0 1 11 2 Z" fill="currentColor" />
   {:else if step === "cleanup"}
     <!-- 4-point sparkle — cleanup "sweeps" the turn. -->
     <path d="M8 1.5 L9 7 L14.5 8 L9 9 L8 14.5 L7 9 L1.5 8 L7 7 Z" fill="currentColor" />

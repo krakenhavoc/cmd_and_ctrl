@@ -27,7 +27,7 @@ import (
 // pay" is b17PermanentSacrificedToPay, the tutor-to-hand body is
 // b06TutorToHand, the first-legal-target read is
 // b16FirstLegalTargetCard, "the cards exiled with this permanent"
-// is b27ExiledWith, "another" by name is b03NotNamed, the basic-land
+// is b27ExiledWith, "another" is Another, the basic-land
 // test is b30IsBasicLandCard, "enters tapped unless your opponents
 // control N lands" is SelfEntersTappedUnless(
 // b40CatchUpDualCondition()), the white flying Spirit is
@@ -52,13 +52,11 @@ func b36WhiteHumanSoldierToken() game.Card { return TokenCard("1/1 white Human S
 // --- costs ---------------------------------------------------------
 
 // b36SacrificeAnotherArtifact is Repurposing Bay's "Sacrifice another
-// artifact:" — any artifact the activator controls other than one
-// named `self`. Built through the same clause the sac-outlet costs
-// use, so the client opens the same picker; "another" by name, the
-// b03NotNamed posture, since the clause is declared before any
-// instance exists.
-func b36SacrificeAnotherArtifact(self string) game.AbilityCost {
-	return game.AbilityCost{SacrificeOther: sacrificeSpec("another artifact", Artifact(), b03NotNamed(self))}
+// artifact:" — any artifact the activator controls other than the
+// source. Built through the same clause the sac-outlet costs use, so
+// the client opens the same picker.
+func b36SacrificeAnotherArtifact() game.AbilityCost {
+	return game.AbilityCost{SacrificeOther: Another(sacrificeSpec("another artifact", Artifact()))}
 }
 
 // --- predicates ----------------------------------------------------

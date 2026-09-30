@@ -42,18 +42,10 @@ func init() {
 			GrantToAttached("haste"),
 		},
 		Triggered: []game.TriggeredAbility{
-			AtBeginningOfEachCombat("Sting, the Glinting Dagger — untap equipped creature", stingUntapEquippedCreature),
+			AtBeginningOfEachCombat("Sting, the Glinting Dagger — untap equipped creature", untapAttachedHost),
 		},
 		Activated: []ActivatedAbility{
 			EquipAbility("{2}"),
 		},
 	})
-}
-
-func stingUntapEquippedCreature(g *game.Game, item *game.StackItem) error {
-	host := attachedHostFor(g, item.SourceCardID)
-	if host == nil {
-		return nil
-	}
-	return UntapTarget{Target: host.InstanceID}.Apply(NewContext(g, item))
 }

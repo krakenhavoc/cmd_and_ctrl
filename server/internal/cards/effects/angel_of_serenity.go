@@ -50,7 +50,7 @@ func init() {
 				Watches:        []game.EventKind{game.EventETB},
 				AppliesTo:      b06SelfETB,
 				OptionalPrompt: &game.TriggerOptionalPrompt{Question: "Angel of Serenity — exile up to three other target creatures?"},
-				Targets:        TargetCreature("up to three other target creatures", b03NotNamed("Angel of Serenity")).WithCount(0, 3),
+				Targets:        Another(TargetCreature("up to three other target creatures")).WithCount(0, 3),
 				Key:            b36AngelOfSerenityExileLabel,
 				Effect:         b36ExileChosenCreatures,
 			},

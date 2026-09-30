@@ -50,7 +50,7 @@ func (s *SQLStore) SeatsOfUser(ctx context.Context, userID string) ([]UserSeatRe
 		return nil, nil
 	}
 	rows, err := s.db.QueryContext(ctx,
-		`SELECT g.id, g.name, g.created_by, g.state, g.created_at, g.started_at, g.ended_at, g.archived_at, g.winner_seat, s.seat
+		`SELECT g.id, g.name, g.created_by, g.state, g.created_at, g.started_at, g.ended_at, g.archived_at, g.winner_seat, g.outcome, s.seat
 		 FROM seats s JOIN games g ON g.id = s.game_id
 		 WHERE s.user_id = ?
 		 ORDER BY g.created_at DESC, g.id, s.seat`, userID)
@@ -67,9 +67,10 @@ func (s *SQLStore) SeatsOfUser(ctx context.Context, userID string) ([]UserSeatRe
 			createdAt                      int64
 			startedAt, endedAt, archivedAt sql.NullInt64
 			winner                         sql.NullInt64
+			outcome                        sql.NullString
 		)
 		if err := rows.Scan(&id, &rec.Game.Name, &createdBy, &rec.Game.State, &createdAt,
-			&startedAt, &endedAt, &archivedAt, &winner, &rec.Seat); err != nil {
+			&startedAt, &endedAt, &archivedAt, &winner, &outcome, &rec.Seat); err != nil {
 			_ = rows.Close()
 			return nil, err
 		}
@@ -83,6 +84,7 @@ func (s *SQLStore) SeatsOfUser(ctx context.Context, userID string) ([]UserSeatRe
 		rec.Game.CreatedAt = fromMillis(createdAt)
 		rec.Game.StartedAt, rec.Game.EndedAt, rec.Game.ArchivedAt = timePtr(startedAt), timePtr(endedAt), timePtr(archivedAt)
 		rec.Game.WinnerSeat = intPtr(winner)
+		rec.Game.Outcome = outcome.String
 		rec.Others = []OtherSeatRecord{}
 		index[gid] = append(index[gid], len(out))
 		out = append(out, rec)

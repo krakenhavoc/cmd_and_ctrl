@@ -159,6 +159,20 @@ describe("stack lane items", () => {
     expect(m.top?.chips.map((c) => c.label)).toContain("additional (Panharmonicon)");
   });
 
+  // #1553: the engine's one counter gate, on the wire as
+  // cant_be_countered, shows as a chip the responder can read.
+  it("shows a can't-be-countered chip, and only when the wire says so", () => {
+    const yes = buildStackLane(
+      input({ stackItems: [spell("cav", ME, { cant_be_countered: true })] }),
+    );
+    const chip = yes.top?.chips.find((c) => c.label === "can't be countered");
+    expect(chip?.tone).toBe("flag");
+    expect(chip?.title).toMatch(/can't be countered/);
+
+    const no = buildStackLane(input({ stackItems: [spell("bolt", ME, {})] }));
+    expect(no.top?.chips.map((c) => c.label)).not.toContain("can't be countered");
+  });
+
   it("builds the chips in the order the docked card always drew them", () => {
     const x = spell("bolt", ME, {
       x_value: 3,

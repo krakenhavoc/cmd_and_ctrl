@@ -55,14 +55,28 @@ func (s *SQLStore) upsert(ctx context.Context, owner uuid.UUID, name, sourceForm
 	if err != nil {
 		return Deck{}, fmt.Errorf("decklibrary: marshal commanders: %w", err)
 	}
-	now := s.now().Truncate(time.Millisecond)
-	nowMs := now.UnixMilli()
+	nowMs := s.now().Truncate(time.Millisecond).UnixMilli()
 
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return Deck{}, err
 	}
 	defer func() { _ = tx.Rollback() }()
+
+	// updated_at is what List orders by, and it is only millisecond
+	// precise, so two saves inside one millisecond would tie and fall
+	// through to a random id (#1165). Keep one owner's stamps strictly
+	// increasing instead: a save never lands at or before the owner's
+	// newest existing stamp. The bump is at most a millisecond past the
+	// clock, and only when two saves collide.
+	var newest int64
+	if err := tx.QueryRowContext(ctx,
+		`SELECT COALESCE(MAX(updated_at), 0) FROM decks WHERE owner_id = ?`, owner.String()).Scan(&newest); err != nil {
+		return Deck{}, fmt.Errorf("decklibrary: newest stamp: %w", err)
+	}
+	if nowMs <= newest {
+		nowMs = newest + 1
+	}
 
 	var id string
 	err = tx.QueryRowContext(ctx,
@@ -105,7 +119,7 @@ func (s *SQLStore) Get(ctx context.Context, id uuid.UUID) (Deck, error) {
 func (s *SQLStore) List(ctx context.Context, owner uuid.UUID) ([]Deck, error) {
 	rows, err := s.db.QueryContext(ctx,
 		`SELECT id, owner_id, name, source_format, source_text, commanders, card_count, created_at, updated_at
-		 FROM decks WHERE owner_id = ? ORDER BY updated_at DESC, id`, owner.String())
+		 FROM decks WHERE owner_id = ? ORDER BY updated_at DESC, rowid DESC`, owner.String())
 	if err != nil {
 		return nil, fmt.Errorf("decklibrary: list: %w", err)
 	}

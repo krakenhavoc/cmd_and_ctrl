@@ -52,3 +52,16 @@ func (g *Game) spellCantBeCounteredLocked(spellID uuid.UUID) bool {
 	}
 	return false
 }
+
+// SpellCantBeCounteredForEffect is spellCantBeCounteredLocked for a caller
+// that already holds the lock — the view projection (#1553), which shows
+// the table why a Counterspell will do nothing. A stack item that is not
+// a spell answers false: CR 101.2-style "can't be countered" is a
+// statement about a spell, and an ability is countered by other verbs.
+func (g *Game) SpellCantBeCounteredForEffect(id uuid.UUID) bool {
+	item := g.StackMeta[id]
+	if item == nil || item.Kind != StackItemSpell {
+		return false
+	}
+	return g.spellCantBeCounteredLocked(id)
+}
