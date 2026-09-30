@@ -203,6 +203,14 @@
   // bluff rather than a formality.
   const isEntryReveal = $derived(active?.kind === "entry_reveal_from_hand");
 
+  // ADR 0098 — the same entry pause with a card that is SPENT. Mox
+  // Diamond's "you may discard a land card instead" (floor zero: showing
+  // nothing puts the Mox into its owner's graveyard, so the decline
+  // button says so) and Heart of Yavimaya's "sacrifice a Forest instead"
+  // (floor = ceiling: not a "may").
+  const isEntryDiscard = $derived(active?.kind === "entry_discard_from_hand");
+  const isEntrySacrifice = $derived(active?.kind === "entry_sacrifice");
+
   // #1214 — the three resolution-time picks (CR 608.2). Same
   // {choice_id, card_ids} payload and the same choose_min / choose_max
   // bounds as choose_cards, so they render through the same grid;
@@ -222,7 +230,13 @@
   const isPermanentPick = $derived(isTheirPermanents || isOwnPermanents);
   // The kinds that share the bounded card-set grid.
   const isCardSetPick = $derived(
-    isChooseCards || isUntapChoice || isEntryReveal || isRevealPick || isPermanentPick,
+    isChooseCards ||
+      isUntapChoice ||
+      isEntryReveal ||
+      isEntryDiscard ||
+      isEntrySacrifice ||
+      isRevealPick ||
+      isPermanentPick,
   );
 
   // How many cards this prompt accepts, and how few it will settle
@@ -856,6 +870,29 @@
   // lookup has to span destination zones. Falls back to a generic
   // string when the card isn't visible to the viewer (redacted
   // CardView entries arrive with empty names).
+  // ADR 0098: the name of the card whose entry an entry prompt is
+  // pausing. It is not on the battlefield yet — it is on the stack (a
+  // spell resolving), in a hand, a library, a graveyard or exile — so
+  // triggerSourceName's search does not reach it. Falls back to "it".
+  function enteringCardName(sourceID?: string): string {
+    if (!sourceID) return "it";
+    const seek = (cards: CardView[] | undefined) =>
+      cards?.find((c) => c.instance_id === sourceID && c.name)?.name;
+    const zones: (CardView[] | undefined)[] = [
+      snap.stack?.cards,
+      snap.battlefield?.cards,
+      snap.exile?.cards,
+    ];
+    for (const p of snap.seats ?? []) {
+      zones.push(p.hand?.cards, p.graveyard?.cards);
+    }
+    for (const z of zones) {
+      const name = seek(z);
+      if (name) return name;
+    }
+    return "it";
+  }
+
   function triggerSourceName(sourceID?: string): string {
     if (!sourceID) return "Triggered ability";
     const seek = (cards: CardView[] | undefined) => {
@@ -1631,6 +1668,12 @@
           {:else if isEntryReveal}
             {active.reason || "Reveal a card from your hand?"}
             <span class="prompt-src" aria-hidden="true">reveal · CR 614</span>
+          {:else if isEntryDiscard}
+            {active.reason || "Discard a card so it enters?"}
+            <span class="prompt-src" aria-hidden="true">discard · CR 614</span>
+          {:else if isEntrySacrifice}
+            {active.reason || "Sacrifice so it enters"}
+            <span class="prompt-src" aria-hidden="true">sacrifice · CR 614</span>
           {:else if isChooseCards}
             {active.reason || "Choose cards"}
             <span class="prompt-src" aria-hidden="true">choose</span>
@@ -1673,6 +1716,13 @@
             Show {pickMax === 1 ? "one of these" : `up to ${pickMax} of these`} to the table and it enters
             untapped. Revealing costs nothing — the card stays in your hand — but everyone gets to see
             it, and you may show nothing instead.
+          {:else if isEntryDiscard}
+            Discard one of these and {enteringCardName(active.source)} enters the battlefield. Discard
+            nothing and it goes to its owner's graveyard instead — it never enters.
+          {:else if isEntrySacrifice}
+            Sacrifice {pickMax === 1 ? "one of these" : `${pickMax} of these`} and {enteringCardName(
+              active.source,
+            )} enters the battlefield. This isn't optional.
           {:else if isChooseCards}
             {#if pickMin === pickMax}
               Pick {pickMax} of these.
@@ -1756,6 +1806,12 @@
               Untap
             {:else if isEntryReveal}
               {selected.size === 0 ? "Reveal nothing" : "Reveal"}
+            {:else if isEntryDiscard}
+              {selected.size === 0
+                ? `Don't discard — put ${enteringCardName(active.source)} into its owner's graveyard`
+                : "Discard"}
+            {:else if isEntrySacrifice}
+              Sacrifice
             {:else if isChooseCards || isRevealPick || isPermanentPick}
               Choose
             {:else}

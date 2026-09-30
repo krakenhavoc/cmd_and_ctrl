@@ -123,7 +123,7 @@ func TestTheTokenCreatorOrdersTheCreationReplacements(t *testing.T) {
 }
 
 // TestTheDiscardingPlayerOrdersTheDiscardReplacements is the other
-// half, with the same board shape: CR 701.8a puts the card into the
+// half, with the same board shape: CR 701.9a puts the card into the
 // DISCARDING player's graveyard, so they are the affected player
 // however the replacements are controlled.
 func TestTheDiscardingPlayerOrdersTheDiscardReplacements(t *testing.T) {
@@ -142,7 +142,7 @@ func TestTheDiscardingPlayerOrdersTheDiscardReplacements(t *testing.T) {
 		t.Fatalf("prompt kind = %q, want %q", p.Kind, PendingChoiceReplacementOrder)
 	}
 	if p.Chooser != discarder.ID {
-		t.Errorf("chooser = %s, want the discarding player %s (CR 701.8a); got %s, "+
+		t.Errorf("chooser = %s, want the discarding player %s (CR 701.9a); got %s, "+
 			"which is the controller of the replacements",
 			p.Chooser, discarder.ID, whichSeat(g, p.Chooser))
 	}

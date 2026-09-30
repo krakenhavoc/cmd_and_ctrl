@@ -4,7 +4,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // Mind Rot — "Target player discards two cards."
 //
-// Per CR 701.8a, the player who's discarding chooses the cards
+// Per CR 701.9a, the player who's discarding chooses the cards
 // unless the effect says "at random." Mind Rot's text doesn't; the
 // target chooses. The discard is a PendingChoice addressed to the
 // target over their own hand (#651), so the table waits for it: the

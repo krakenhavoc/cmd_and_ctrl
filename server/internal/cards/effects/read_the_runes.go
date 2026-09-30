@@ -44,7 +44,7 @@ import (
 // kind's own contract — the enumerator marks the first branch
 // always-legal, so it has to be one that never fails. It never does:
 // a player with an empty hand discards as many as they can, which is
-// none (CR 701.8a). "Sacrifice a permanent" is offered only when
+// none (CR 701.9a). "Sacrifice a permanent" is offered only when
 // there is one, per CR 608.2's "as much as possible", and a permanent
 // means ANY permanent you control, lands included.
 //

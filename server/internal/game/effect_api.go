@@ -137,7 +137,7 @@ func (g *Game) RevealHandForEffect(playerID uuid.UUID) {
 // optional in different combinations.
 type DiscardPrompt struct {
 	// Player is the discarding player, who is also the CHOOSER: per
-	// CR 701.8a the player discarding picks the cards, unless the
+	// CR 701.9a the player discarding picks the cards, unless the
 	// effect says "at random" (DiscardRandomForEffect) or names them.
 	// Thoughtseize, where a DIFFERENT player picks, is the other
 	// system — QueueDiscardFromRevealedHand, see ADR 0010 §10.
@@ -159,7 +159,7 @@ type DiscardPrompt struct {
 	//
 	// Zero — the usual case — leaves the floor at N, or at zero with
 	// UpTo. A Min above N is clamped to N, because the hand may be
-	// smaller than the printed count (CR 701.8a). Min and UpTo do
+	// smaller than the printed count (CR 701.9a). Min and UpTo do
 	// not compose; Min wins, and no printed clause wants both.
 	//
 	// It exists only alongside Validate. A floor below N with
@@ -185,7 +185,7 @@ type DiscardPrompt struct {
 	//
 	// It also runs, immediately and in the resolving effect's own
 	// frame, when the discard asks for nothing because the hand is
-	// empty: CR 701.8a discards as many as you can, and the
+	// empty: CR 701.9a discards as many as you can, and the
 	// instruction after "then" is not conditional on there having
 	// been cards to pitch. Same contract Scry's Then has for an
 	// empty library.
@@ -235,10 +235,10 @@ type DiscardPrompt struct {
 // (discard.go) — and lets it run Then once they have landed.
 //
 // Two things it deliberately does not do. It does not prompt for a
-// random discard (CR 701.8b — DiscardRandomForEffect stays a
+// random discard (CR 701.9b — DiscardRandomForEffect stays a
 // synchronous move) and it does not prompt for "discard your hand,"
 // where there is nothing to choose. And it queues NOTHING for an
-// empty hand: CR 701.8a discards as many as you can, and a prompt
+// empty hand: CR 701.9a discards as many as you can, and a prompt
 // with no candidates and a floor of one is a prompt nobody can
 // answer, holding the whole table (#544).
 //
@@ -280,7 +280,7 @@ func (g *Game) queueDiscardPromptLocked(p DiscardPrompt, run uuid.UUID) uuid.UUI
 	player := g.playerByIDLocked(p.Player)
 	n := p.N
 	if n > player.Hand.Size() {
-		// CR 701.8a — you discard as many as you can.
+		// CR 701.9a — you discard as many as you can.
 		n = player.Hand.Size()
 	}
 	if n <= 0 {
@@ -934,7 +934,7 @@ func (g *Game) DrawNForEffect(playerID uuid.UUID, n int) error {
 }
 
 // DiscardRandomForEffect discards n cards from playerID's hand,
-// chosen at random (CR 701.8b). Emits one EventDiscardCard per card
+// chosen at random (CR 701.9b). Emits one EventDiscardCard per card
 // and no EventZoneMove, through the one discard path (discard.go).
 // If the hand has fewer than n cards, discards all of them.
 //

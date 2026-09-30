@@ -93,6 +93,7 @@ planned just-in-time from the S12 pain-point triage.
 | S47     | Bot seat, round 2: wire it, measure it, sharpen it                   | 7     | [#890](https://github.com/krakenhavoc/cmd_and_ctrl/issues/890) | —          | in progress |
 | S48     | Client robustness and the surfaces that lie                          | 7     | [#891](https://github.com/krakenhavoc/cmd_and_ctrl/issues/891) | —          | in progress |
 | S49     | Operability, CI currency, and the hygiene tail                       | 7     | [#892](https://github.com/krakenhavoc/cmd_and_ctrl/issues/892) | —          | in progress |
+| S50     | Seams from the deck re-checks                                        | 7     | [#1784](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1784) | —        | in progress |
 
 ### How to read the status column
 
@@ -3072,5 +3073,32 @@ Planned 2026-09-18 in the S36–S49 backlog pass over the open issues; the track
 ### Status
 
 **In progress.** 7 of 9 members closed. Still open: [#598](https://github.com/krakenhavoc/cmd_and_ctrl/issues/598), [#615](https://github.com/krakenhavoc/cmd_and_ctrl/issues/615).
+
+---
+
+## S50 — Seams from the deck re-checks
+
+**Phase:** 7 · **Goal:** close the engine seams the 2026-09-29/30 deck re-checks and batch slices ran into, so the deck trackers (#1640, #1112, #1117, #1306, #1565) empty out. Tracking issue [#1784](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1784).
+
+Planned 2026-09-30 from that day's triage of every open issue. It holds the implementations of ADRs 0098, 0100, 0101 and 0102, which were accepted that day, plus the leftover gaps from slices 295-b and 296-a/d/e/m. Discover (ADR 0099) is tracked on #1112, and turn machinery on #753 (S41).
+
+- [ ] [#1744](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1744) — Mox Diamond, plus the seven "sacrifice a land instead" lands (ADR 0098)
+- [ ] [#1732](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1732) — Delve, either/or additional costs, variable sacrifice (ADR 0100)
+- [ ] [#1753](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1753) — Keyword counters read by the engine, plus Perennation (ADR 0101)
+- [ ] [#1759](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1759) — Entering under an opponent's control (ADR 0102)
+- [ ] [#1755](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1755) — Nightly playwright job (fix in #1763; waiting on a green nightly run)
+- [ ] [#1727](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1727) — Dread Return: sacrifice as an alternative-cost component
+- [ ] [#1735](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1735) — Mockingbird, Elesh Norn, Blightsteel
+- [ ] [#1743](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1743) — Spellskite pinned retarget; Explore the Vastlands
+- [ ] [#1600](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1600) — The remaining mana-rock seams
+- [ ] [#1729](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1729) — Monarch follow-ups (Palace Jailer, Court of Locthwain)
+- [ ] [#1604](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1604) — Counter-conditioned durations; "loses all land types"
+- [ ] [#1745](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1745) — Gain control of a spell on the stack (needs an ADR)
+- [ ] [#1756](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1756) — Rooms, CR 709 (needs an ADR)
+- [ ] [#1780](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1780) — An Aura that enchants a graveyard card, Animate Dead (needs an ADR)
+
+### Status
+
+**In progress.** 0 of 14 members closed. Four ADR implementations are running.
 
 ---

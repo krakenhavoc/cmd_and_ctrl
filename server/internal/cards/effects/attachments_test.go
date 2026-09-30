@@ -420,7 +420,7 @@ func TestSwordOfFeastAndFamineDiscardsAndUntapsLands(t *testing.T) {
 	dealCombatDamageToPlayer(g, bear, opp.ID, 4)
 	passPriorityAroundTable(t, g)
 
-	// #651: the damaged player CHOOSES their discard (CR 701.8a), so
+	// #651: the damaged player CHOOSES their discard (CR 701.9a), so
 	// the trigger leaves a prompt addressed to them. The untap is not
 	// behind it — the lands come back as the trigger resolves.
 	if got := discardOwed(g, opp.ID); got != 1 {

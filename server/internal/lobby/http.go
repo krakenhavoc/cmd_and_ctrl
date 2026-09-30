@@ -2017,13 +2017,14 @@ func downloadReplay(c Config, w http.ResponseWriter, r *http.Request) error {
 
 // replayViewerID converts a principal into the viewerID string
 // protocol.FilterViewFor expects. A seated player is their own UUID;
-// anyone else is "", the spectator view. The uuid.Nil coercion
-// matters — Nil stringifies to the all-zero UUID, which matches no
-// seat and is NOT what FilterViewFor documents as "no seat". Mirrors
+// anyone else is a spectator and gets protocol.SpectatorViewerID,
+// public information only (#1588). The admin never reaches here: the
+// admin's replay is streamed verbatim. The uuid.Nil coercion matters —
+// Nil stringifies to the all-zero UUID, which matches no seat. Mirrors
 // ws.viewerIDForFilter, which is unexported in that package.
 func replayViewerID(p auth.Principal) string {
 	if p.Role != auth.RolePlayer || p.PlayerID == uuid.Nil {
-		return ""
+		return protocol.SpectatorViewerID
 	}
 	return p.PlayerID.String()
 }
