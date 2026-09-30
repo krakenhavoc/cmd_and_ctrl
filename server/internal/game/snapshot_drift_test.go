@@ -249,6 +249,13 @@ var cardFields = plan(
 	"InstanceID", carried, "",
 	"Name", carried, "",
 	"ScryfallID", carried, "",
+	// ADR 0078: whether ScryfallID above is a resolved ART id rather
+	// than a printed identity. Must be carried alongside it — a
+	// restored 0/0 Construct token has to keep answering
+	// ToughnessIsKnown / fromScryfallPrinting exactly as it did before
+	// the restore, independent of whatever the token-art resolver
+	// would say about a template today.
+	"TokenArtOnly", carried, "",
 	"OracleID", carried, "",
 	// #521: the synthetic catalog key a TOKEN carries instead of an
 	// oracle ID. Carried for the same reason GrantedAbilities is — it

@@ -7092,8 +7092,17 @@ func printedIdentityOf(c *Card) (colors []string, known bool) {
 // placeholder — the demo seed, a token template, a test fixture. Both
 // IDs come off the same record, so either one standing is the whole
 // answer.
+//
+// ADR 0078: `ScryfallID != ""` no longer means that on its own for a
+// token whose id is only a resolved ART printing (TokenArtOnly) — a
+// vanilla Treasure or Soldier does not become "imported" just because
+// it got a picture. `&& !c.TokenArtOnly` on that half keeps this
+// reading "was this instance stamped from deck import" exactly as
+// documented; a token COPY's ScryfallID is a real copied identity
+// (TokenArtOnly false there) and still answers true, as does the
+// OracleID half for anything that carries one.
 func (c Card) fromScryfallPrinting() bool {
-	return c.ScryfallID != "" || c.OracleID != ""
+	return (c.ScryfallID != "" && !c.TokenArtOnly) || c.OracleID != ""
 }
 
 // distinctColorsInManaCost extracts the unique WUBRG letters that

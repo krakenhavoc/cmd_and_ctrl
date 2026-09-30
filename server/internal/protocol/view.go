@@ -1449,6 +1449,17 @@ type CardView struct {
 	Owner      string `json:"owner"`
 	Controller string `json:"controller"`
 	ScryfallID string `json:"scryfall_id,omitempty"`
+	// IsToken reports whether this object is a token (CR 111,
+	// game.Card.IsToken — the printed type line's "Token" supertype,
+	// same test as the CR 704.5d state-based action). ADR 0078: a
+	// token's `scryfall_id`, when present, is a resolved Scryfall
+	// TOKEN PRINTING chosen by the server for its art — not a card
+	// this player owns or could look up as a purchasable printing.
+	// PUBLIC: everyone at a paper table can see a token is a token
+	// (CR 111.8), so this survives the non-knower redaction and the
+	// face-down-permanent's public-body carve-out untouched — see
+	// face_down_view_test.go's redactedCardKeys.
+	IsToken bool `json:"is_token,omitempty"`
 	// TypeLine is Scryfall's printed type line ("Legendary Creature
 	// — Human Wizard"). Carried so the client can filter "creatures
 	// only" UIs (the combat panel) without a Scryfall round-trip.
@@ -7545,6 +7556,7 @@ func viewOfCard(c game.Card) CardView {
 		Owner:      c.Owner.String(),
 		Controller: c.Controller.String(),
 		ScryfallID: c.ScryfallID,
+		IsToken:    c.IsToken(),
 		TypeLine:   effectiveTypeLine(c, eff),
 		Colors:     append([]string(nil), eff.Colors...),
 		Protection: viewOfProtection(&c),
