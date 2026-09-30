@@ -609,7 +609,7 @@ func stubEntryHandRevealLand(t *testing.T, oracleID string) {
 			// physically in the hand's slice at this pre-push point,
 			// and Nil would admit it right alongside the real
 			// candidate.
-			EntryHandReveal: &EntryHandReveal{Min: 0, Max: 1, Matches: func(c Card) bool { return c.Name == "Island" }},
+			EntryCardChoice: &EntryCardChoice{Min: 0, Max: 1, Matches: func(c Card) bool { return c.Name == "Island" }},
 			AppliesTo: func(ev *ReplacementEvent, _ *Game, src *Card) bool {
 				return ev.Kind == RepEventMove && ev.NewZone == ZoneBattlefield &&
 					src != nil && ev.CardID == src.InstanceID

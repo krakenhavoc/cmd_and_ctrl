@@ -586,6 +586,12 @@ var choiceDepartureDecisions = map[PendingChoiceKind]choiceDepartureRule{
 	// it once through the drop action and once through the frame is
 	// the double-resume the second column exists to avoid.
 	PendingChoiceEntryRevealFromHand: {},
+	// ADR 0098's two siblings take the same row for the same reason:
+	// the discard or the sacrifice is the "unless" of the departed
+	// player's own entering permanent, and the hand or the permanents
+	// it would have named went with them (CR 800.4a).
+	PendingChoiceEntryDiscardFromHand: {},
+	PendingChoiceEntrySacrifice:       {},
 	// mana_pick is a cost's other half: the mana would enter a pool
 	// that has left the game with its player.
 	PendingChoiceMana: {},

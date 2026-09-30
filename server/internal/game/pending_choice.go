@@ -2042,43 +2042,18 @@ func (g *Game) ResolveReplacementOrder(choiceID, chooserID uuid.UUID, ordered []
 			// it up if a later effect switches it back on.
 			continue
 		}
-		if chosen.effect.CopySelector != nil {
-			// Same reason as the pay-life branch below: an effect
-			// with a CHOICE inside it can't be fired blind. Clone's
-			// controller still picks what it copies when a Kismet is
-			// also replacing the entry. Firing Replace here instead
-			// would mark the selector applied and silently drop the
-			// copy — the permanent would enter as a 0/0 and nobody
-			// would be asked anything.
-			if g.offerCopyChoiceLocked(ev, chosen) {
-				return nil
-			}
-			continue
-		}
-		if chosen.effect.EntryLifeCost > 0 {
-			// An effect with a payment inside it can't be fired
-			// blind — the shockland's controller still has to answer
-			// "pay 2 life?" even when a Kismet is also replacing this
-			// entry. Queue that prompt and bail; the effects later in
-			// the chosen order are still unapplied, so the apply-loop
-			// re-entry after the answer picks them up.
-			if g.offerEntryLifePaymentLocked(ev, chosen) {
-				return nil
-			}
-			continue
-		}
-		if chosen.effect.Optional {
-			// #847: and a "may" is the third of them. This
-			// branch was missing, so a "may" ordered alongside any
-			// other effect fired without ever being offered — the
-			// engine said yes on its controller's behalf, which is
-			// precisely what the two branches above exist to prevent.
-			// Same pause-and-bail, same one resume: the chain
-			// continues from this effect when
-			// ResolveOptionalReplacement re-enters the apply-loop,
-			// with the effects later in the chosen order still
-			// unapplied and therefore still gatherable.
-			if g.offerOptionalReplacementLocked(ev, chosen) {
+		// An effect with a CHOICE inside it can't be fired blind: a
+		// Clone's controller still picks what it copies, a shockland's
+		// still answers "pay 2 life?", a reveal-land's and a Mox
+		// Diamond's still pick from hand, and a "may" (#847) is still
+		// offered, when a Kismet is also replacing the entry. Queue
+		// that prompt and bail; the effects later in the chosen order
+		// are still unapplied, so the apply-loop re-entry after the
+		// answer picks them up. One dispatcher with the apply-loop
+		// (offerOwnQuestionLocked), because this list had already lost
+		// the reveal-land branch once (ADR 0098 gap 4).
+		if pending, handled := g.offerOwnQuestionLocked(ev, chosen); handled {
+			if pending {
 				return nil
 			}
 			continue
@@ -2296,10 +2271,14 @@ func (g *Game) applyResolvedReplacementEventLocked(ev *ReplacementEvent) error {
 		// destination if owner said "no", or ZoneCommand if they
 		// said "yes"). Run the physical move through the shared
 		// executeBattlefieldLeaveLocked helper.
-		if ev.entryResumable && ev.NewZone == ZoneBattlefield && ev.OldZone != ZoneBattlefield {
+		if ev.entryResumable && ev.OldZone != ZoneBattlefield {
 			// A paused ENTRY — the shockland's pay-2-life prompt, a
 			// CR 616 ordering prompt between two enters-tapped effects,
-			// Clone's "choose what to copy". The pipeline function
+			// Clone's "choose what to copy". Since ADR 0098 also one the
+			// window REDIRECTED (Mox Diamond's "if you don't, put it into
+			// its owner's graveyard"): the finisher moves it there
+			// (moveRedirectedEntryLocked) rather than dropping it, which
+			// stranded a resolving Mox on the stack. The pipeline function
 			// bailed before moving anything, so the push happens here,
 			// through exactly the finisher the unpaused path runs
 			// (executeEntryToBattlefieldLocked), and the effect's own
@@ -2320,18 +2299,13 @@ func (g *Game) applyResolvedReplacementEventLocked(ev *ReplacementEvent) error {
 			return nil
 		}
 		if ev.OldZone != ZoneBattlefield {
-			// What is left here is a battlefield entry the window
-			// REDIRECTED (it settled on some zone other than the
-			// battlefield), or one that is not entryResumable at all —
-			// since #1322 that is only the sandbox move_card verb,
-			// which never pauses. A redirected effect-side entry is
-			// treated as a cancel, the posture
-			// enterBattlefieldThroughPipelineLocked takes inline, so
-			// the caller's continuation is still told nothing entered;
-			// it used to be dropped here, which stranded a search whose
-			// fetched card a paused window redirected. Since #707 no
-			// EXIT lands here: every one of them carries a zoneRoute or
-			// comes off the battlefield.
+			// What is left here is an entry that is not entryResumable
+			// at all — since #1322 only the sandbox move_card verb,
+			// which never pauses. (A redirected resumable entry is
+			// finished by the branch above since ADR 0098.) The
+			// caller's continuation is still told nothing entered.
+			// Since #707 no EXIT lands here: every one of them carries
+			// a zoneRoute or comes off the battlefield.
 			return g.runEntryTailLocked(ev, uuid.Nil)
 		}
 		var owner *Player
@@ -3952,7 +3926,7 @@ func (g *Game) pruneCardSetChoicesLocked() {
 		// each one's drop action is dropDiscard, which strands the
 		// paused untap step or the paused CR 614 entry it is
 		// pausing — forever, with nothing to settle it.
-		if c.Kind == PendingChoiceUntapChoice || c.Kind == PendingChoiceEntryRevealFromHand {
+		if c.Kind == PendingChoiceUntapChoice || isEntryCardChoiceKind(c.Kind) {
 			continue
 		}
 		frame := c.chooseCardsResume

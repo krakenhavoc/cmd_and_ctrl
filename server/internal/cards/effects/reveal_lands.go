@@ -88,7 +88,7 @@ func EntersTappedUnlessYouRevealFromHand(
 		SelfReplacement: true,
 		Label:           name,
 		PromptQuestion:  fmt.Sprintf("%s — reveal %s from your hand so it enters untapped?", name, clause),
-		EntryHandReveal: &game.EntryHandReveal{
+		EntryCardChoice: &game.EntryCardChoice{
 			Matches: matches,
 			Min:     0,
 			Max:     1,
