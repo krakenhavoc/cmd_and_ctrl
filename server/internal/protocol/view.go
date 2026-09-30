@@ -4395,6 +4395,11 @@ func stampCastableFaces(g *game.Game, caster uuid.UUID, c *CardView, kind game.Z
 		if i < 0 || i >= len(c.Faces) {
 			continue
 		}
+		// ADR 0103, CR 702.127a: no surface for an aftermath half
+		// outside a graveyard — the zone forbids its cast.
+		if !game.FaceCastableFromZone(live, i, kind) {
+			continue
+		}
 		s := castStampsFor(g, caster, c, castFaceOf(c, i), kind, grant)
 		if public {
 			s.applyPublicToFace(&c.Faces[i], kind)

@@ -263,6 +263,17 @@ func aftermathZoneRule(c Card, zone ZoneKind) (opens bool, err error) {
 	return true, nil
 }
 
+// FaceCastableFromZone reports whether face `face` of c may be cast out
+// of `zone` as far as the card's own split rules go — false only for an
+// aftermath half anywhere but a graveyard (CR 702.127a). The view reads
+// it to publish no announce surface for a half the zone forbids.
+func FaceCastableFromZone(c Card, face int, zone ZoneKind) bool {
+	probe := c
+	probe.SetFace(face)
+	_, err := aftermathZoneRule(probe, zone)
+	return err == nil
+}
+
 // --- fuse (CR 702.102) ------------------------------------------------
 
 // HasFuse reports whether the split card has fuse (CR 702.102a).

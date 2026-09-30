@@ -271,11 +271,13 @@ func wearTearCard(owner uuid.UUID) game.Card {
 		Owner:      owner,
 		Controller: owner,
 		Faces: []game.Face{
-			{Name: "Wear", TypeLine: "Instant", ManaCost: "{1}{R}"},
-			{Name: "Tear", TypeLine: "Instant", ManaCost: "{W}"},
+			{Name: "Wear", TypeLine: "Instant", ManaCost: "{1}{R}",
+				OracleText: "Destroy target artifact.\nFuse (You may cast one or both halves of this card from your hand.)"},
+			{Name: "Tear", TypeLine: "Instant", ManaCost: "{W}",
+				OracleText: "Destroy target enchantment.\nFuse (You may cast one or both halves of this card from your hand.)"},
 		},
 	}
-	c.SetFace(0)
+	c.SettleImported()
 	return c
 }
 
@@ -304,7 +306,9 @@ func TestWearDestroysTargetArtifact(t *testing.T) {
 	}
 }
 
-func TestTearCannotBeCastYet(t *testing.T) {
+// TestTearDestroysTargetEnchantment is CR 709.3 (ADR 0103): the right
+// half of a split card is cast on its own, under its "#1" entry.
+func TestTearDestroysTargetEnchantment(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]
 	opp := g.Seats[1]
@@ -312,17 +316,59 @@ func TestTearCannotBeCastYet(t *testing.T) {
 
 	c := wearTearCard(me.ID)
 	me.Hand.PushTop(c)
-	for g.Turn.Step != game.StepPrecombatMain && g.Turn.Step != game.StepPostcombatMain {
-		if _, err := g.AdvanceStep(); err != nil {
-			t.Fatalf("AdvanceStep: %v", err)
-		}
-	}
-	err := g.CastSpell(me.ID, c.InstanceID, game.CastSpellParams{
+	advanceToMain(t, g)
+	if err := g.CastSpell(me.ID, c.InstanceID, game.CastSpellParams{
 		Face:    1,
 		Targets: []game.TargetRef{{Kind: game.TargetCard, ID: ench}},
-	})
-	if err == nil {
-		t.Error("casting face 1 (Tear) should be refused — split needs fusing, which isn't implemented")
+	}); err != nil {
+		t.Fatalf("cast Tear: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if g.Battlefield.Contains(ench) {
+		t.Error("Tear did not destroy the enchantment")
+	}
+}
+
+// TestWearTearFusedDestroysBoth is CR 702.102: cast fused from hand, for
+// {1}{R}{W}, Wear's target then Tear's, both destroyed.
+func TestWearTearFusedDestroysBoth(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	opp := g.Seats[1]
+	rock := b12Push(g, opp.ID, "Their Rock", "Artifact", "", 0, 0)
+	ench := b12Permanent(g, opp.ID, "Their Aura", "Enchantment")
+
+	c := wearTearCard(me.ID)
+	me.Hand.PushTop(c)
+	advanceToMain(t, g)
+	if err := g.CastSpell(me.ID, c.InstanceID, game.CastSpellParams{
+		Fuse: true,
+		Targets: []game.TargetRef{
+			{Kind: game.TargetCard, ID: rock, Slot: 0},
+			{Kind: game.TargetCard, ID: ench, Slot: 1},
+		},
+	}); err != nil {
+		t.Fatalf("cast Wear // Tear fused: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if g.Battlefield.Contains(rock) || g.Battlefield.Contains(ench) {
+		t.Errorf("fused Wear // Tear: artifact gone %v, enchantment gone %v — want both",
+			!g.Battlefield.Contains(rock), !g.Battlefield.Contains(ench))
+	}
+	// A pair in the wrong slots is refused: Tear's clause cannot take
+	// the artifact.
+	c2 := wearTearCard(me.ID)
+	me.Hand.PushTop(c2)
+	rock2 := b12Push(g, opp.ID, "Their Other Rock", "Artifact", "", 0, 0)
+	ench2 := b12Permanent(g, opp.ID, "Their Other Aura", "Enchantment")
+	if err := g.CastSpell(me.ID, c2.InstanceID, game.CastSpellParams{
+		Fuse: true,
+		Targets: []game.TargetRef{
+			{Kind: game.TargetCard, ID: ench2, Slot: 0},
+			{Kind: game.TargetCard, ID: rock2, Slot: 1},
+		},
+	}); err == nil {
+		t.Error("a fused cast with the targets in the wrong clauses was accepted")
 	}
 }
 

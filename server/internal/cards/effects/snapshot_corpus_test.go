@@ -220,8 +220,7 @@ func corpusBoards() []corpusBoard {
 		// v7, added by ADR 0103 as a new file: a Room on the battlefield
 		// with one door unlocked (Card.Unlocked on disk) and a Room spell
 		// on the stack cast as its RIGHT half (ActiveFace 1 on a split
-		// card whose catalog key stays bare). Registered only; its file
-		// is written by the next -write-corpus run (#1801).
+		// card whose catalog key stays bare).
 		{"room_doors", corpusRoomDoors},
 	}
 }
@@ -232,7 +231,15 @@ func corpusRoomDoors(t *testing.T) *game.Game {
 	g := newCorpusGame(t)
 	advanceToMain(t, g)
 	me := g.Seats[g.Turn.ActiveSeat]
-	first, second := testRoomCard(me.ID), testRoomCard(me.ID)
+	// An oracle ID no test registers: the board is the engine's Room
+	// lifecycle, not a card file, and a test that registered this
+	// Room's ID would leave its definition behind for the corpus run.
+	room := func() game.Card {
+		c := testRoomCard(me.ID)
+		c.OracleID = "corpus-room-doors-oracle"
+		return c
+	}
+	first, second := room(), room()
 	me.Hand.PushTop(first)
 	me.Hand.PushTop(second)
 	if err := g.CastSpell(me.ID, first.InstanceID, game.CastSpellParams{Face: 1}); err != nil {

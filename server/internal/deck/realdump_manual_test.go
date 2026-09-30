@@ -67,9 +67,11 @@ func TestRealDumpMultiFaceImport(t *testing.T) {
 			toughness: 2,
 		},
 		{
-			lookup: "Fire // Ice", name: "Fire",
-			typeLine: "Instant", manaCost: "{1}{R}",
-			layout: "split", faces: 2, castable: 1,
+			// ADR 0103, CR 709.4 / 709.3: a split card out of play is
+			// its whole card, and either half can be cast.
+			lookup: "Fire // Ice", name: "Fire // Ice",
+			typeLine: "Instant", manaCost: "{1}{R}{1}{U}",
+			layout: "split", faces: 2, castable: 2,
 		},
 		{
 			// #719 / CR 715.3: a real adventure card imports with the

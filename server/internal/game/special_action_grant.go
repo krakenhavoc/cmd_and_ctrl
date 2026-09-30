@@ -230,11 +230,10 @@ func manaCostOffer(kind SpecialActionKind, card Card, zone ZoneKind) (SpecialAct
 // libraryManaCost is the mana cost of a card outside the stack, or
 // false when it has none.
 //
-// A SPLIT card's mana cost there is both halves combined (CR 709.4b),
-// but the deck import materialises face 0 (SetFace), so Card.ManaCost
-// holds only the left half. Reading it would plot Fire // Ice for {1}{R}
-// instead of {1}{R}{1}{U}, which is cheaper than printed, so the halves
-// are summed here. Every other layout's mana cost outside the stack is
+// A SPLIT card's mana cost there is both halves combined (CR 709.4b).
+// Since ADR 0103 Card.ManaCost already holds that off the stack, but a
+// card an effect reached mid-cast may still be showing one half, so
+// the halves are summed from the faces here rather than trusted. Every other layout's mana cost outside the stack is
 // its front face's (CR 712.8a, CR 715.4), which is what Card.ManaCost
 // already holds.
 func libraryManaCost(card Card) (ParsedCost, bool) {
