@@ -247,7 +247,7 @@ func (g *Game) exileStillControlledLocked(playerID uuid.UUID) {
 		}
 	}
 	for _, id := range stuck {
-		if err := g.executeBattlefieldLeaveLocked(id, ZoneExile, uuid.Nil, nil); err != nil {
+		if err := g.executeBattlefieldLeaveLocked(id, ZoneExile, uuid.Nil, nil, false); err != nil {
 			g.EmitEvent(Event{
 				Kind:     EventEffectError,
 				ErrorMsg: "leaving the game: exile of a still-controlled permanent failed: " + err.Error(),
@@ -291,7 +291,7 @@ func (g *Game) exileGhostControlledLocked() int {
 		ghosts = append(ghosts, c.InstanceID)
 	}
 	for _, id := range ghosts {
-		if err := g.executeBattlefieldLeaveLocked(id, ZoneExile, uuid.Nil, nil); err != nil {
+		if err := g.executeBattlefieldLeaveLocked(id, ZoneExile, uuid.Nil, nil, false); err != nil {
 			g.EmitEvent(Event{
 				Kind:     EventEffectError,
 				ErrorMsg: "CR 800.4c: exile of a permanent left to a departed controller failed: " + err.Error(),

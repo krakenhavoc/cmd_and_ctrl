@@ -369,6 +369,29 @@ type ReplacementEvent struct {
 	NewZone      ZoneKind
 	NewZoneOwner uuid.UUID
 
+	// ShuffleDestinationLibrary is a replacement's declaration that its
+	// redirected NewZone == ZoneLibrary is a SHUFFLE-in, not merely a
+	// placement — "shuffle it into its owner's library instead"
+	// (Blightsteel Colossus, the Eldrazi titans' graveyard clause),
+	// as opposed to Library of Leng's "put it on top" or a tuck's
+	// unshuffled bottom/depth placement.
+	//
+	// Set by the SAME `Replace` that rewrites NewZone, never derived:
+	// nothing about a library destination says whether the printed
+	// text shuffled or placed, and guessing would either shuffle a
+	// Library of Leng discard (wrong) or leave a Blightsteel on top
+	// (the S17-era caveat this field closes).
+	//
+	// Consumed once, after the move has actually landed in a library —
+	// never before, and never on a destination a further replacement
+	// or a missing player redirected elsewhere — by
+	// executeZoneRouteLocked and executeBattlefieldLeaveLocked, the
+	// two functions that perform every replaced move's physical
+	// landing. A card that never reaches the library it was aimed at
+	// (canceled, or resolved to exile for a departed owner) shuffles
+	// nothing. See ADR 0013 §5ah.
+	ShuffleDestinationLibrary bool
+
 	// Destruction says this battlefield exit is a DESTRUCTION
 	// (CR 701.7a), as opposed to the other things that take the same
 	// exit — a sacrifice (CR 701.21a), the legend rule, an illegally
