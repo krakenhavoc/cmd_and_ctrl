@@ -203,4 +203,8 @@ var tokenTable = map[string]game.Card{
 
 	// Same reason, and longer again (#706: Elemental Eruption).
 	"4/4 red Dragon Elemental with flying and prowess": {Name: "Dragon Elemental", TypeLine: "Token Creature — Dragon Elemental", Power: 4, Toughness: 4, Colors: []string{"R"}, Keywords: []string{"flying", "prowess"}},
+
+	// Same reason (ADR 0102: Abby, Merciless Soldier). A named token:
+	// the key says the name the card prints.
+	"1/1 black Fungus Zombie named Cordyceps Infected": {Name: "Cordyceps Infected", TypeLine: "Token Creature — Fungus Zombie", Power: 1, Toughness: 1, Colors: []string{"B"}},
 }

@@ -756,6 +756,9 @@ var pendingChoiceFields = plan(
 	// a restored game that forgot it would render an offer about
 	// nothing.
 	"MayCastCard", carried, "",
+	// ADR 0099: the rule the may_cast is asked under, so a restored
+	// prompt words itself the same way.
+	"MayCastKeyword", carried, "",
 	// The chained-choice prompts (chained_choice.go). The labels are
 	// the card's own words for the two branches and the candidate set
 	// / bounds are what the enumerator reads to offer legal answers —

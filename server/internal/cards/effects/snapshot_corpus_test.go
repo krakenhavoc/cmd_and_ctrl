@@ -210,7 +210,28 @@ func corpusBoards() []corpusBoard {
 		// one newer than a "loses all abilities" record on the same
 		// creature, so a restore keeps the order.
 		{"keyword_counters", corpusKeywordCounters},
+		// v7, added by ADR 0100 sub-PR 1 as a new file: a delved spell
+		// on the stack — PaidCost.Delved, the objects in exile, on disk.
+		{"delved_spell_on_stack", corpusDelvedSpellOnStack},
 	}
+}
+
+// corpusDelvedSpellOnStack is a Treasure Cruise on the stack that
+// delved three cards (CR 702.66a, ADR 0100): its payment record names
+// the three objects that landed in exile, which is what a restore has
+// to carry for sub-PR 2's "exiled with it" readers (CR 607.2q).
+func corpusDelvedSpellOnStack(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	fuel := delveFuel(me, 3)
+	id, err := castCruise(t, g, game.CastSpellParams{DelveIDs: fuel})
+	if err != nil {
+		t.Fatalf("setup: CastSpell: %v", err)
+	}
+	if it := g.StackMeta[id]; it == nil || len(it.Paid.Delved) != 3 {
+		t.Fatal("setup: want Treasure Cruise on the stack with three delved cards")
+	}
+	return g
 }
 
 // corpusKeywordCounters is two Bears, each with a flying counter and a

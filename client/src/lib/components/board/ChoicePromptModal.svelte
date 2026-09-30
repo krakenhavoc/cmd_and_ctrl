@@ -34,6 +34,8 @@
   import { colorPickOptions } from "../../manaSource";
   import ManaSymbolPicker from "./ManaSymbolPicker.svelte";
   import { payUnlessAnswer, waterbendLimit } from "../../waterbend";
+  import { mayCastCopy } from "../../mayCast";
+  import { freeCastRequest, mayCastKeywordsThatOpenACast } from "../../freeCastRequest";
 
   interface Props {
     snap: GameView;
@@ -488,8 +490,20 @@
   // the exiled card, which then casts out of exile like any other
   // impulse grant; "No" puts it on the bottom of the library with
   // the rest of the cards cascade turned over.
+  //
+  // ADR 0099 §7: the same prompt serves discover, suspend and madness,
+  // each of which does something different on "no". The server names
+  // the rule (may_cast_keyword) and the branches; mayCastCopy words
+  // them. The offered card is in exile face up, found by may_cast_card.
   const isMayCast = $derived(active?.kind === "may_cast");
-  const mayCastCard = $derived(active?.options?.[0]);
+  const mayCastCard = $derived(
+    active?.may_cast_card
+      ? snap.exile?.cards?.find((c) => c.instance_id === active.may_cast_card)
+      : active?.options?.[0],
+  );
+  const mayCastWords = $derived(
+    mayCastCopy(active?.may_cast_keyword, active?.accept_label, active?.decline_label),
+  );
 
   // Shockland entry branch — "as this land enters, you may pay 2
   // life. If you don't, it enters tapped." Same {choice_id, apply}
@@ -871,6 +885,16 @@
     if (isPayUnless) {
       answer(payUnlessAnswer(active, apply, payTaps));
       return;
+    }
+    // ADR 0099 §7: "Cast it free" hands the card to Board's cast chain
+    // once the snapshot carrying the grant arrives.
+    if (
+      apply &&
+      isMayCast &&
+      active.may_cast_card &&
+      mayCastKeywordsThatOpenACast.has(active.may_cast_keyword ?? "")
+    ) {
+      freeCastRequest.set(active.may_cast_card);
     }
     answer({ apply });
   }
@@ -1358,20 +1382,20 @@
       {:else if isMayCast}
         <h2 id="choice-title">
           {active.reason || "Cast it without paying its mana cost?"}
-          <span class="prompt-src" aria-hidden="true">cascade · CR 702.85</span>
+          <span class="prompt-src" aria-hidden="true">{mayCastWords.source}</span>
         </h2>
         <p class="prompt-hint">
           {#if mayCastCard}
             <strong>{mayCastCard.name}</strong> is exiled face up.
           {/if}
-          Say yes and it stays in exile, castable for nothing until end of turn. Say no and it goes to
-          the bottom of your library with everything else cascade turned over.
+          {mayCastWords.hint}
         </p>
         <div class="prompt-foot">
           <span class="prompt-count"><span class="kbd">Y</span> / <span class="kbd">N</span></span>
-          <button type="button" onclick={() => answerOptional(false)}>To the bottom</button>
+          <button type="button" onclick={() => answerOptional(false)}>{mayCastWords.decline}</button
+          >
           <button type="button" class="primary" onclick={() => answerOptional(true)}>
-            Cast it free
+            {mayCastWords.accept}
           </button>
         </div>
       {:else if isEntryPayLife}

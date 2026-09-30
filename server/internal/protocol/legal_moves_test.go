@@ -451,7 +451,15 @@ func BenchmarkViewOfGame(b *testing.B) {
 	})
 	b.Run("enumeration_only", func(b *testing.B) {
 		for range b.N {
-			g.ReadSnapshot(func() { _ = enumerateLegalMoves(g) })
+			g.ReadSnapshot(func() { _, _ = enumerateLegalMoves(g) })
+		}
+	})
+	// ADR 0105 §5: the legal_actions digest alone, folded from the
+	// priority holder's uncapped list — the only seat with moves here.
+	all := legal.EnumerateFor(g, g.Seats[g.Turn.ActiveSeat].ID)
+	b.Run("digest_only", func(b *testing.B) {
+		for range b.N {
+			_ = digestLegalMoves(all)
 		}
 	})
 }

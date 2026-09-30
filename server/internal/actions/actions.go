@@ -526,6 +526,11 @@ func dispatch(g *game.Game, a Action) error {
 			// one entry when the claimed cost charges one, absent
 			// otherwise.
 			AltCostIDs []string `json:"alt_cost_ids,omitempty"`
+			// ADR 0100 — delve_ids names the cards in the caster's
+			// graveyard exiled to delve the spell (CR 702.66a), each
+			// paying for {1} of the generic mana. Absent pays the
+			// whole cost with mana.
+			DelveIDs []string `json:"delve_ids,omitempty"`
 			// ADR 0034 — which printed face of a multi-face card is
 			// being cast or played. Absent (0) is the front face,
 			// which is the right answer for every single-faced card
@@ -619,6 +624,7 @@ func dispatch(g *game.Game, a Action) error {
 		}{
 			{"teamwork_ids", p.TeamworkIDs, &params.TeamworkIDs},
 			{"blight_ids", p.BlightIDs, &params.BlightIDs},
+			{"delve_ids", p.DelveIDs, &params.DelveIDs},
 		} {
 			for i, raw := range l.raw {
 				id, err := uuid.Parse(raw)

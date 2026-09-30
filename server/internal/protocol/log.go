@@ -246,6 +246,12 @@ const (
 	// are public; neither identifies a card.
 	LogScry    LogKind = "scry"
 	LogSurveil LogKind = "surveil"
+	// LogDiscover — a player finished a discover (CR 701.57b, ADR
+	// 0099). `Amount` is the N and `CardID` the discovered card, which
+	// the walk exiled face up for the whole table to see; absent when
+	// the walk found nothing. The line comes when the card is settled:
+	// after the cast that used the grant, or once it is in a hand.
+	LogDiscover LogKind = "discover"
 	// LogSagaChapter — a lore counter advanced a Saga onto a chapter
 	// (CR 714.2b); `Amount` is the chapter number.
 	LogSagaChapter LogKind = "saga_chapter"
@@ -1239,6 +1245,16 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		base.LookedAt = ev.LookedAt
 		return base, true
 
+	case game.EventDiscover:
+		// CR 701.57b. The discovered card was exiled face up, so its
+		// name is public as the line is written; the per-viewer
+		// redaction still applies to a card that has since gone into a
+		// hand, the way it does to every other card-shaped line.
+		base.Kind = LogDiscover
+		base.CardID = uuidStringOrEmpty(ev.CardID)
+		base.Amount = ev.Amount
+		return base, true
+
 	case game.EventSagaChapter:
 		// CR 714.2b. A chapter firing is a beat of the turn, and until
 		// #1021 only the chapter ability's own resolve line marked it
@@ -1839,6 +1855,11 @@ func renderLogText(e LogEvent, cardName, targetName string) string {
 		return renderCountersText(e, card)
 	case LogScry, LogSurveil:
 		return renderLookText(e, actor)
+	case LogDiscover:
+		if e.CardID == "" {
+			return fmt.Sprintf("%s discovered %d and found nothing", actor, e.Amount)
+		}
+		return fmt.Sprintf("%s discovered %d — %s", actor, e.Amount, card)
 	case LogSagaChapter:
 		if e.Amount <= 0 {
 			return fmt.Sprintf("%s advanced a chapter", card)

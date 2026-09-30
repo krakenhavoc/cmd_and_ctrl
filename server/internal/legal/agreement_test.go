@@ -37,7 +37,7 @@ import (
 // Regenerate with:
 //
 //	go test ./internal/legal/ -run TestTimingAgreement -update
-var updateFixture = flag.Bool("update", false, "rewrite testdata/timing_agreement.json")
+var updateFixture = flag.Bool("update", false, "rewrite testdata/timing_agreement.json and testdata/legal_actions_agreement.json")
 
 const fixturePath = "testdata/timing_agreement.json"
 

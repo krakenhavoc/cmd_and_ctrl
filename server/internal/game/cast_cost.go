@@ -165,6 +165,19 @@ type CastPrice struct {
 	// subtracted. Identical to what applyCastCostLocked will demand
 	// of the mana pool, which is the entire contract.
 	Total ParsedCost
+
+	// DelveBudget is how many graveyard cards this announcement may
+	// exile to delve (CR 702.66a, ADR 0100 §1): the GENERIC mana in the
+	// total cost, after the cost modifiers and after what the announced
+	// convoke / waterbend taps pay, with X at the announced value and
+	// without the coloured symbols a "spend as though any colour" fold
+	// moved into Generic. 0 for a card with no delve.
+	//
+	// It is measured with the announcement's DelveIDs set aside, so it
+	// is the same number whether or not the caller has picked yet —
+	// the validator refuses a list longer than this, and the view, the
+	// preview and the bot enumerator read the cap from here.
+	DelveBudget int
 }
 
 // PriceCast prices an announced cast exactly as CastSpell will charge
@@ -236,5 +249,15 @@ func (g *Game) priceCastLocked(playerID uuid.UUID, card Card, params CastSpellPa
 	if err != nil {
 		return CastPrice{}, err
 	}
-	return CastPrice{CastCost: chosen, Card: card, Base: base, Total: total}, nil
+	budget := 0
+	if g.DelveForLocked(playerID, card) {
+		noDelve := params
+		noDelve.DelveIDs = nil
+		pre, err := g.costAfterModifiersLocked(base, p, card, noDelve)
+		if err != nil {
+			return CastPrice{}, err
+		}
+		budget = delveBudget(pre, params.XValue)
+	}
+	return CastPrice{CastCost: chosen, Card: card, Base: base, Total: total, DelveBudget: budget}, nil
 }

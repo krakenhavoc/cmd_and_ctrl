@@ -254,6 +254,24 @@ func TestCoinCallUsesChoiceIDAndStopsAtDeclaredCeiling(t *testing.T) {
 	}
 }
 
+// ADR 0099 §6: a discover's or a cascade's free cast is taken, whichever
+// order the enumerator lists the answers in — a declined offer and an
+// accepted one that the seat passes on end in the same place.
+func TestMayCastTakesTheFreeCast(t *testing.T) {
+	const choiceID = "00000000-0000-4000-8000-000000000002"
+	view := newView([]protocol.PlayerView{newSeat(0), newSeat(1)}, withChoice(protocol.PendingChoiceView{
+		ID: choiceID, Kind: "may_cast", Chooser: seatID(0).String(), MayCastKeyword: "discover",
+	}))
+	no, yes := false, true
+	in := input(0, view,
+		choiceMove(t, 0, choiceID, "put it into your hand", map[string]any{"apply": no}),
+		choiceMove(t, 0, choiceID, "cast it", map[string]any{"apply": yes}),
+	)
+	if got := chose(t, in, decide(t, heuristic.New(), in)); got != "cast it" {
+		t.Fatalf("may_cast = %q, want the free cast", got)
+	}
+}
+
 func TestCleanupDiscardPitchesTheWorstCard(t *testing.T) {
 	dragon := creature(cardID(1), 0, "Dragon", 6, 6)
 	mountain := land(cardID(2), 0)

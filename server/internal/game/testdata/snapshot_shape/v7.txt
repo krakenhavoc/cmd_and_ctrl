@@ -1036,6 +1036,10 @@ lastKnownStack[].item.paid.Mana[].riders[].when[]	string
 lastKnownStack[].item.paid.OnPaper	bool
 lastKnownStack[].item.paid.ReturnedAttacking	custom(uuid.UUID)
 lastKnownStack[].item.paid.Sacrificed	number:int
+lastKnownStack[].item.paid.delved	array
+lastKnownStack[].item.paid.delved[]	object
+lastKnownStack[].item.paid.delved[].epoch	number:int
+lastKnownStack[].item.paid.delved[].id	custom(uuid.UUID)
 lastKnownStack[].item.paid.exiled	array
 lastKnownStack[].item.paid.exiled[]	custom(uuid.UUID)
 lastKnownStack[].item.paid.giftOpponent	custom(uuid.UUID)
@@ -1287,6 +1291,7 @@ pendingChoices[].manaRiders[].when[]	string
 pendingChoices[].manaSourceKinds	number:uint16
 pendingChoices[].manaTapped	bool
 pendingChoices[].mayCastCard	custom(uuid.UUID)
+pendingChoices[].mayCastKeyword	string
 pendingChoices[].midResolution	bool
 pendingChoices[].modeMax	number:int
 pendingChoices[].modeMin	number:int
@@ -1389,6 +1394,10 @@ pendingTriggers[].paid.Mana[].riders[].when[]	string
 pendingTriggers[].paid.OnPaper	bool
 pendingTriggers[].paid.ReturnedAttacking	custom(uuid.UUID)
 pendingTriggers[].paid.Sacrificed	number:int
+pendingTriggers[].paid.delved	array
+pendingTriggers[].paid.delved[]	object
+pendingTriggers[].paid.delved[].epoch	number:int
+pendingTriggers[].paid.delved[].id	custom(uuid.UUID)
 pendingTriggers[].paid.exiled	array
 pendingTriggers[].paid.exiled[]	custom(uuid.UUID)
 pendingTriggers[].paid.giftOpponent	custom(uuid.UUID)
@@ -1858,6 +1867,9 @@ seats[].castPermissions[].cards[].epoch	number:int
 seats[].castPermissions[].cards[].id	custom(uuid.UUID)
 seats[].castPermissions[].castOnly	bool
 seats[].castPermissions[].cost	string
+seats[].castPermissions[].discover	object
+seats[].castPermissions[].discover.n	number:int
+seats[].castPermissions[].discover.source	custom(uuid.UUID)
 seats[].castPermissions[].duration	object
 seats[].castPermissions[].duration.Condition	number:int
 seats[].castPermissions[].duration.ExpiresAfterTurnsBegun	number:int
@@ -1884,7 +1896,9 @@ seats[].castPermissions[].filter.noncreatureOnly	bool
 seats[].castPermissions[].filter.sorceryOnly	bool
 seats[].castPermissions[].grantsHaste	bool
 seats[].castPermissions[].label	string
+seats[].castPermissions[].lapseOnPass	string
 seats[].castPermissions[].lifeEqualToManaValue	bool
+seats[].castPermissions[].maxSpellManaValue	number:int
 seats[].castPermissions[].notBeforeSeq	number:int
 seats[].castPermissions[].notBeforeTurn	number:int
 seats[].castPermissions[].player	custom(uuid.UUID)
@@ -3476,6 +3490,10 @@ stackMeta[].paid.Mana[].riders[].when[]	string
 stackMeta[].paid.OnPaper	bool
 stackMeta[].paid.ReturnedAttacking	custom(uuid.UUID)
 stackMeta[].paid.Sacrificed	number:int
+stackMeta[].paid.delved	array
+stackMeta[].paid.delved[]	object
+stackMeta[].paid.delved[].epoch	number:int
+stackMeta[].paid.delved[].id	custom(uuid.UUID)
 stackMeta[].paid.exiled	array
 stackMeta[].paid.exiled[]	custom(uuid.UUID)
 stackMeta[].paid.giftOpponent	custom(uuid.UUID)

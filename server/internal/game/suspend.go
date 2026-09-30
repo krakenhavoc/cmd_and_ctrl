@@ -264,12 +264,19 @@ func (g *Game) offerSuspendedCastLocked(chooser, cardID uuid.UUID) error {
 		return nil
 	}
 	name := c.Name
-	return g.QueueMayCastForEffect(chooser, cardID, cardID,
-		"Suspend — cast "+name+" without paying its mana cost?",
-		func(g *Game) error {
+	return g.QueueMayCastPromptForEffect(MayCastPrompt{
+		Chooser:      chooser,
+		Source:       cardID,
+		Card:         cardID,
+		Question:     "Suspend — cast " + name + " without paying its mana cost?",
+		Keyword:      MayCastKeywordSuspend,
+		AcceptLabel:  "Cast it free",
+		DeclineLabel: "Leave it in exile",
+		OnAccept: func(g *Game) error {
 			g.grantSuspendedFreeCastLocked(chooser, cardID)
 			return nil
-		}, nil)
+		},
+	})
 }
 
 // grantSuspendedFreeCastLocked stamps the free cast on the one exiled

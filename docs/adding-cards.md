@@ -3696,6 +3696,43 @@ could not write on the parent, because X is not known until the taps
 are in — and put the tapped creatures on `Cards` so the `Effect` can
 read them back with `ctx.PayloadCards()` instead of closing over them.
 
+**Discover (CR 701.57, [ADR 0099](decisions/0099-discover.md)):**
+"discover N" is an instruction, not a keyword ability, so a card calls
+it from wherever its text says to — a spell's `OnResolve`, a trigger's
+or an activated ability's `Effect` — and declares `Discovers: true` on
+its Spec:
+
+```go
+Discovers: true,
+Triggered: []game.TriggeredAbility{WhenThisDies("Primordial Gnawer — discover 3", DiscoverN(3))},
+
+return Discover{N: x}.Apply(ctx)                        // "discover X, where X is …"
+return Discover{Player: owner, N: mv}.Apply(ctx)        // Zoyowa's Justice: "that player discovers"
+return Discover{N: 10, Then: func(ctx *Context, r game.DiscoverResult) error {
+    // Hit the Mother Lode: r.Discovered is uuid.Nil on an empty walk,
+    // r.ManaValue is the discovered card's mana value (CR 701.57c).
+}}.Apply(ctx)
+Triggered: []game.TriggeredAbility{WheneverYouDiscover(label, effect)} // item.Trigger.Event.Amount is N
+```
+
+`discover_guard_test.go` holds `Discovers` and the source to each
+other, and `cards/coverage` reads it to fail a stale "discover isn't
+implemented" caveat. Work out N first: a board read ("the greatest
+power among them") at resolution, a fact about the triggering event
+("that spell's mana value") captured on the item or read off
+`ctx.Trigger()` / the payload. Anything printed after the discover goes
+in `Then`, which runs once on every outcome.
+
+The engine does the rest, and it is shared with cascade: the
+exile-until walk, the `may_cast` prompt ("Cast it free" / "Put it into
+your hand"), a `{0}` grant that is flash-timed (CR 608.2g) and capped at
+N against the face actually cast, and a window that closes on the
+discoverer's next priority pass — the card then goes to their hand.
+`EventDiscover` fires once the card is settled, right after the
+discovered spell's `EventCast` when it is cast. Cascade's grant has the
+same cap (one below the cascading spell), timing and pass-closed window;
+its uncast hit goes to the bottom on the pass.
+
 **Mana from a spell (roadmap batch 01):** "Add {B}{B}{B}" on a SPELL
 (Dark Ritual) or a non-mana ability (Mana Drain's refund) is the
 `AddMana` primitive in `add_mana.go`, not a `ManaAbility` — a mana
@@ -4939,7 +4976,14 @@ and then discard the change to `docs/engine-seams.md`.
   a counter — `AddCounterToThis(kind, n)`, Devoted Druid — with #789.) (Convoke and waterbend on a *spell* do have one since
   S22: `Spec.TapCost`, built with `Convoke()` / `Waterbend("{X}")`. The
   activated-ability seam is separate and still open — Katara, Water
-  Tribe's Hope is the card waiting on it.) (Ordinary activated abilities built from
+  Tribe's Hope is the card waiting on it.) (**Delve** has a shape since
+  ADR 0100 sub-PR 1: `Delve: true` on the Spec and nothing else. It is
+  not an additional or alternative cost (CR 702.66b) but a way of
+  paying the generic mana, priced next to convoke by the one pricer
+  (`CastPrice.DelveBudget`); the engine exiles the named graveyard
+  cards at CR 601.2h and records them in `PaidCost.Delved`. A card that
+  reads the cards "exiled with it" — Murktide Regent, Soulflayer — waits
+  on sub-PR 2's readers.) (Ordinary activated abilities built from
   those components are fine since S21: see `Spec.Activated`
   above.) Shipping a card with a cost the engine
   can't express simply omitted makes it **stronger than printed**, which
