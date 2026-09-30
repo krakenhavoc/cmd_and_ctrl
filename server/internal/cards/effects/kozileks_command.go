@@ -14,7 +14,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // Mishra's Command's exact shape one mana symbol over: choose two of
 // four X-scaled bullets, each with its own target group (#764,
-// ModeDoing), resolved in announce order (CR 608.2c). The first
+// ModeDoing), resolved in printed order (CR 608.2c). The first
 // bullet reuses the printed Eldrazi Spawn template; the second rides
 // Scry's Then the same way Preordain does; the third narrows its
 // battlefield clause with WithManaValueAtMostX, the announced-X

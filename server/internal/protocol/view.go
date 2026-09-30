@@ -961,7 +961,7 @@ type StackItemView struct {
 	Targets      []TargetRefView `json:"targets,omitempty"`
 	Modes        []int           `json:"modes,omitempty"`
 	// ModeLabels is the oracle bullet of each chosen mode, in
-	// announce order and with repeats — what "modes: 0, 2" used to
+	// printed (resolution) order and with repeats — what "modes: 0, 2" used to
 	// make the table guess. The caster's hand card is gone by the
 	// time the spell is on the stack, so the labels have to travel
 	// with the item. Added by #764 (ADR 0065 §7).

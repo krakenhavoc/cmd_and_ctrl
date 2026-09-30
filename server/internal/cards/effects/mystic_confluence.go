@@ -18,7 +18,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // creatures and draw a card" is [1, 1, 2] with two separate bounce
 // targets rather than one target the second bounce has to share.
 //
-// Each bullet's body runs once per occurrence in announce order
+// Each bullet's body runs once per occurrence in printed order
 // (CR 608.2c), which is what makes three draws three draws.
 //
 // No simplification.

@@ -26,19 +26,16 @@ func init() {
 		Completeness:  CompletenessFull,
 		OptionalCosts: []game.AdditionalCost{Teamwork(4)},
 		Modes: ChooseOne(
-			Mode("Destroy target noncreature artifact.",
-				TargetPermanent("target noncreature artifact", Artifact(), Noncreature())),
-			Mode("Target creature you control deals damage equal to its power to target creature an opponent controls.",
+			ModeDoing("Destroy target noncreature artifact.",
+				TargetPermanent("target noncreature artifact", Artifact(), Noncreature()),
+				DestroyTheModesTarget),
+			ModeDoing("Target creature you control deals damage equal to its power to target creature an opponent controls.",
 				Clauses(
 					TargetCreature("target creature you control", YouControl()),
 					TargetCreature("target creature an opponent controls", OpponentControls()),
-				)),
+				),
+				biteTheModesSecondTarget),
 		).InsteadIf(2, TeamworkUsed),
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			return BulletsInPrintedOrder(item, ctx,
-				DestroyTheModesTarget,
-				biteTheModesSecondTarget)
-		},
 	})
 }
 

@@ -2847,7 +2847,7 @@ func (g *Game) resolveTopOfStackLocked() error {
 	// spells fire their effect here. Errors emit EventEffectError
 	// via fireEffectResolverLocked and do not wedge resolution.
 	g.fireEffectResolverLocked(item, CatalogKey(top), top.InstanceID)
-	// CR 608.2c / 700.2d: each chosen bullet's own body, in announce
+	// CR 608.2c / 700.2d: each chosen bullet's own body, in printed
 	// order, once per occurrence. A modal card that branches inside
 	// its OnResolve on ctx.HasMode declares no ModeOption.Effect and
 	// this is a no-op for it (#764).
@@ -3185,7 +3185,7 @@ func (g *Game) resolveTopAbilityLocked() {
 		}
 	}
 	// CR 608.2c: a modal triggered or activated ability resolves its
-	// chosen bullets in announce order, after whatever body the item
+	// chosen bullets in printed order, after whatever body the item
 	// itself carries (#764).
 	g.runChosenModeEffectsLocked(top, top.modeSpec)
 }
