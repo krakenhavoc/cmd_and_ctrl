@@ -1,12 +1,10 @@
 # ADR 0102 — A permanent that enters under another player's control
 
-**Status:** Proposed · 2026-09-30 · Post-S30 — Rolling deck-driven catalog growth
+**Status:** Accepted · 2026-09-30 · Post-S30 — Rolling deck-driven catalog growth
 **Issue:** [#1759](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1759). It was found building ADR 0097's card batch (#1749). It relates to #1745, gaining control of a spell.
 **Numbering:** checked with the AGENTS.md §4 sweep on 2026-09-30. I ran `git fetch --all --prune` and read every `docs/decisions/` file name on all 37 remote heads. Numbers 0098–0101 are taken by ADRs written in parallel: 0098 (discard as a permanent would enter), 0099 (discover), 0100 (delve, either-or and variable sacrifice costs) and 0101 (keyword counters). No branch has 0102, so this one takes **0102**.
 **Builds on:** [ADR 0013](0013-replacement-effects.md) (the CR 614 window, its paused entries and the CR 616 ordering prompt), [ADR 0061](0061-token-creation-and-discard-are-replaceable-events.md) (token creation), [ADR 0063](0063-durations-and-control.md) (layer-2 control), [ADR 0043](0043-copy-effects.md) (entering as a copy), [ADR 0060](0060-leaving-the-game.md) (CR 800.4a), [ADR 0033](0033-ai-bot-seat.md) (the bot) and [ADR 0041](0041-game-persistence.md) (restore points).
-**Owner decisions:** none yet. The questions are at the end.
-
-This ADR is a plan only. It contains no engine code.
+**Owner decisions:** 2026-09-30. All eight open questions are answered; see [Owner decisions](#owner-decisions-2026-09-30) at the end.
 
 ---
 
@@ -143,7 +141,7 @@ The ability becomes what the rules say it is: a CR 614.1d replacement effect fro
 
 ---
 
-## Decision (proposed)
+## Decision
 
 ### 1. A declaration on `ReplacementEffect`, built by one constructor
 
@@ -344,3 +342,16 @@ The following already work today, and this ADR does not change them:
 6. **The bot's pick.** Should "give it away to hurt" go to the opponent with the highest `SeatEval.Strength` (recommended), or to the seat the heuristic's `Threat` ranks highest?
 7. **The log.** Should the choice get its own narrated line (recommended: "Alice chose Bob to control Captive Audience"), or be silent, with the zone-move line left to show the new controller?
 8. **Xantcha's other two blockers.** Should "any player may activate this ability" and "can't attack its owner or planeswalkers its owner controls" each get a registry seam row now, so Xantcha has somewhere to wait?
+
+---
+
+## Owner decisions (2026-09-30)
+
+1. **Scope: the four self-entry cards only.** These are Captive Audience, Pendant of Prosperity, Abby, Merciless Soldier and Xantcha, Sleeper Agent. Gather Specimens and Crafty Cutpurse stay out. The `ChangesEntryController` tier is still built general, so either can join later without a second change to the ordering.
+2. **The would-be controller lives in `ev.Actor`.** The effect rewrites `ev.Actor` and re-stamps `Card.Controller` on the entering card in its source zone, or on the staged token. It restores the prior value if the entry does not happen. There is no `EntersUnder` field.
+3. **One eligible opponent: no prompt.** The choice is forced, so the engine uses that opponent.
+4. **An entry that cannot pause: the first opponent in turn order after the chooser.** The replacement is mandatory and is never skipped.
+5. **The other CR 616.1 tiers wait.** 616.1a, 616.1c and 616.1d are added when a card needs them.
+6. **The bot gives a harmful permanent to the opponent with the highest `SeatEval.Strength`,** and a helpful one to the opponent with the lowest.
+7. **The choice gets its own narrated log line:** "Alice chose Bob to control Captive Audience."
+8. **Xantcha's other two blockers get registry seam rows and issues:** "any player may activate this ability" and "can't attack its owner or planeswalkers its owner controls". Xantcha is listed in both `Waiting` lists.
