@@ -203,20 +203,6 @@ func b24ExiledCardWithCounterOwnedBy(g *game.Game, owner uuid.UUID, kind string)
 	return uuid.Nil, false
 }
 
-// --- statics -----------------------------------------------------
-
-// b24KeywordCounterGrant is CR 122.1b for one keyword: a creature
-// with a `keyword` counter on it has that keyword. The engine reads
-// no keyword counters of its own, so Vraska Joins Up carries the
-// rule for the counters it places, while it is on the battlefield —
-// any creature's, anyone's, which is exactly what the rule says and
-// never more.
-func b24KeywordCounterGrant(keyword string) game.StaticAbility {
-	return b16GrantKeywords(func(target *game.Card, _ *game.Game, _ *game.Card) bool {
-		return target.IsCreature() && target.Counters[keyword] > 0
-	}, keyword)
-}
-
 // --- target specs ------------------------------------------------
 
 // b24TargetAnyNotSubtype is "any target that isn't a <subtype>" —

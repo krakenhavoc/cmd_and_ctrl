@@ -313,6 +313,14 @@ func (g *Game) executeEntryToBattlefieldLocked(ev *ReplacementEvent) (entered uu
 			err = tailErr
 		}
 	}()
+	if ev.NewZone != ZoneBattlefield {
+		// ADR 0098 Decision 4: the window REDIRECTED the entry — Mox
+		// Diamond's "if you don't, put it into its owner's graveyard",
+		// and whatever a later replacement did to that (CR 616.2). It
+		// never enters (CR 614.6), so nothing entered, and the tail is
+		// told so.
+		return uuid.Nil, g.moveRedirectedEntryLocked(ev)
+	}
 	if g.findCardZoneLocked(ev.CardID) == g.Battlefield {
 		// Something already resolved the entry; don't double-push.
 		return ev.CardID, nil
@@ -504,11 +512,19 @@ func (g *Game) landEntryLocked(ev *ReplacementEvent) (l entryLanding, ok bool, e
 	// with no StackItem" was true while the land play and stack
 	// resolution were the only resumable entries and would count a
 	// fetched, reanimated or blinked land now that they are not.
-	if ev.landPlay && ev.Actor != uuid.Nil {
+	//
+	// ADR 0102: the drop is the PLAYER's, read off landPlayer, because
+	// Actor is the would-be controller and an entry-controller effect
+	// can rewrite it.
+	landPlayer := ev.landPlayer
+	if landPlayer == uuid.Nil {
+		landPlayer = ev.Actor
+	}
+	if ev.landPlay && landPlayer != uuid.Nil {
 		if g.LandsPlayedThisTurn == nil {
 			g.LandsPlayedThisTurn = make(map[uuid.UUID]int)
 		}
-		g.LandsPlayedThisTurn[ev.Actor]++
+		g.LandsPlayedThisTurn[landPlayer]++
 	}
 	return entryLanding{ev: ev, moved: moved, srcKind: srcKind, entered: entered, played: ev.landPlay}, true, nil
 }

@@ -179,15 +179,91 @@ func (g *Game) enterBattlefieldThroughPipelineLocked(ev *ReplacementEvent) (ente
 		return uuid.Nil, err
 	}
 	defer g.clearReplacementEventLocked(ev.ID)
-	if out == nil || out.Canceled || out.NewZone != ZoneBattlefield {
-		// CR 614.10 with a null replacement, or a replacement that sent
-		// the card somewhere else. There is no generic "put it wherever
-		// the pipeline said" helper for these sources, so a redirect is
-		// treated as a cancel rather than guessed at. The caller's
-		// continuation still runs — see runEntryTailLocked.
+	if out == nil || out.Canceled {
+		g.restoreEntryControllerLocked(ev)
+		// CR 614.10 with a null replacement. The caller's continuation
+		// still runs — see runEntryTailLocked.
 		return uuid.Nil, nil
 	}
+	// A replacement that sent the card somewhere else (Mox Diamond's
+	// graveyard) is finished there by the same finisher, which moves
+	// it through moveRedirectedEntryLocked (ADR 0098 Decision 4). It
+	// used to be treated as a cancel, leaving the card where it was.
 	return g.executeEntryToBattlefieldLocked(out)
+}
+
+// moveRedirectedEntryLocked finishes an entry whose CR 614 window
+// settled somewhere other than the battlefield — "If you don't, put it
+// into its owner's graveyard" (Mox Diamond, Heart of Yavimaya, Lotus
+// Vale), and whatever a later replacement then did to that modified
+// event (CR 616.2: Rest in Peace's "exile it instead", CR 903.9).
+//
+// ADR 0098 Decision 4. Before it, three entry finishers treated such a
+// redirect as a CANCEL (the card stayed where it was — for a resolving
+// permanent spell, on the stack with its record already gone), and the
+// stack-resolution and land-play sites did not check at all and put the
+// card onto the battlefield anyway.
+//
+// The settled entry is turned into a settled EXIT and moved by
+// executeZoneRouteLocked, the mover every routed exit uses, from
+// whichever zone the card is in. It does NOT open a second window: the
+// replacements that apply to the move already applied to this event
+// while it was being replaced, and running them again would, for one,
+// ask a commander's owner CR 903.9's question twice.
+//
+//   - A created token (not in any zone yet) simply ceases to be: a
+//     token in a zone other than the battlefield ceases to exist
+//     (CR 111.7).
+//   - A card that has left the zone the window opened over is left
+//     alone, as landEntryLocked leaves it.
+//   - A destination that is the zone the card is already in (a Mox
+//     Diamond reanimated with no land to discard) is nothing to do —
+//     the sandbox mover's reading of the same case.
+//   - A land PLAY that is redirected still spends the land drop
+//     (CR 116.2a, 305.2; ADR 0098 owner decision 7): the play is the
+//     special action, and it was taken.
+//
+// The caller runs the entry tail, with uuid.Nil.
+//
+// Caller must hold g.mu.
+func (g *Game) moveRedirectedEntryLocked(ev *ReplacementEvent) error {
+	src := g.findCardZoneLocked(ev.CardID)
+	if src == nil {
+		g.dropEnteringTokenLocked(ev.CardID)
+		return nil
+	}
+	if src.Kind != ev.OldZone || src.Kind == ZoneBattlefield {
+		return nil
+	}
+	// ADR 0102: the land drop is the player's who played it, and an
+	// entry-controller effect's re-stamp does not follow the card
+	// anywhere but the battlefield.
+	landPlayer := ev.landPlayer
+	if landPlayer == uuid.Nil {
+		landPlayer = ev.Actor
+	}
+	if ev.landPlay && landPlayer != uuid.Nil {
+		if g.LandsPlayedThisTurn == nil {
+			g.LandsPlayedThisTurn = make(map[uuid.UUID]int)
+		}
+		g.LandsPlayedThisTurn[landPlayer]++
+	}
+	g.restoreEntryControllerLocked(ev)
+	dst, _, err := g.routeDestinationLocked(ev.CardID, ev.NewZone, ev.NewZoneOwner)
+	if err != nil {
+		return err
+	}
+	if dst == src {
+		return nil
+	}
+	ev.zoneRoute = &zoneRoute{
+		CardID:   ev.CardID,
+		Dst:      ev.NewZone,
+		DstOwner: ev.NewZoneOwner,
+		Actor:    ev.Actor,
+		Cause:    g.resolutionCauseLocked(),
+	}
+	return g.executeZoneRouteLocked(ev)
 }
 
 // resetAsNewObjectLocked gives the battlefield card `oldID` a fresh
@@ -219,6 +295,7 @@ func (g *Game) resetAsNewObjectLocked(oldID uuid.UUID) uuid.UUID {
 		c.Tapped = false
 		c.NextUntapSkips = nil
 		c.Counters = nil
+		c.CounterStampedAt = nil
 		c.LostLastCounter = false
 		c.KnownBy = nil
 		c.DamageMarked = 0

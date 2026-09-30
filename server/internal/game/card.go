@@ -239,6 +239,16 @@ type Card struct {
 	// counters; they're just storage until rules enforcement grows.
 	Counters map[string]int
 
+	// CounterStampedAt is the CR 613.7c timestamp of each KEYWORD
+	// counter kind on this object (CR 122.1b, ADR 0101): the moment the
+	// most recent counter of that kind was put on it. Removing counters
+	// does not change it; the entry goes when the kind's last counter
+	// does. Written only by applyCounterByLocked (stampKeywordCounter),
+	// cleared wherever Counters is, and not a copiable value (CR 707.2).
+	// nil means no keyword counter has been stamped — an unstamped one
+	// is ordered at the permanent's own timestamp.
+	CounterStampedAt map[string]int64
+
 	// IsCommander lives in the bool block at the end of Card, for alignment.
 
 	// AttackingTarget is the player ID this card has been declared to

@@ -170,6 +170,7 @@ var tokenTable = map[string]game.Card{
 	"3/3 green Ape":                                 {Name: "Ape", TypeLine: "Token Creature — Ape", Power: 3, Toughness: 3, Colors: []string{"G"}},
 	"3/3 green Beast":                               {Name: "Beast", TypeLine: "Token Creature — Beast", Power: 3, Toughness: 3, Colors: []string{"G"}},
 	"3/2 colorless Shapeshifter with changeling":    {Name: "Shapeshifter", TypeLine: "Token Creature — Shapeshifter", Power: 3, Toughness: 2, Keywords: []string{"changeling"}},
+	"3/2 red and white Spirit":                      {Name: "Spirit", TypeLine: "Token Creature — Spirit", Power: 3, Toughness: 2, Colors: []string{"R", "W"}},
 	"1/1 colorless Shapeshifter with changeling":    {Name: "Shapeshifter", TypeLine: "Token Creature — Shapeshifter", Power: 1, Toughness: 1, Keywords: []string{"changeling"}},
 	"3/3 green Frog Lizard":                         {Name: "Frog Lizard", TypeLine: "Token Creature — Frog Lizard", Power: 3, Toughness: 3, Colors: []string{"G"}},
 	"3/3 colorless Golem artifact":                  {Name: "Golem", TypeLine: "Token Enchantment Artifact Creature — Golem", Power: 3, Toughness: 3},
@@ -184,6 +185,7 @@ var tokenTable = map[string]game.Card{
 	"4/4 green Beast":                               {Name: "Beast", TypeLine: "Token Creature — Beast", Power: 4, Toughness: 4, Colors: []string{"G"}},
 	"4/4 green Phyrexian Beast":                     {Name: "Phyrexian Beast", TypeLine: "Token Creature — Phyrexian Beast", Power: 4, Toughness: 4, Colors: []string{"G"}},
 	"4/4 red Dragon with flying":                    {Name: "Dragon", TypeLine: "Token Creature — Dragon", Power: 4, Toughness: 4, Colors: []string{"R"}, Keywords: []string{"flying"}},
+	"5/5 red Dragon with flying":                    {Name: "Dragon", TypeLine: "Token Creature — Dragon", Power: 5, Toughness: 5, Colors: []string{"R"}, Keywords: []string{"flying"}},
 	"4/4 red Scorpion Dragon with flying and haste": {Name: "Scorpion Dragon", TypeLine: "Token Creature — Scorpion Dragon", Power: 4, Toughness: 4, Colors: []string{"R"}, Keywords: []string{"flying", "haste"}},
 	"4/4 white Angel with flying":                   {Name: "Angel", TypeLine: "Token Creature — Angel", Power: 4, Toughness: 4, Colors: []string{"W"}, Keywords: []string{"flying"}},
 	"4/4 white Angel with flying and vigilance":     {Name: "Angel", TypeLine: "Token Creature — Angel", Power: 4, Toughness: 4, Colors: []string{"W"}, Keywords: []string{"flying", "vigilance"}},
@@ -202,4 +204,8 @@ var tokenTable = map[string]game.Card{
 
 	// Same reason, and longer again (#706: Elemental Eruption).
 	"4/4 red Dragon Elemental with flying and prowess": {Name: "Dragon Elemental", TypeLine: "Token Creature — Dragon Elemental", Power: 4, Toughness: 4, Colors: []string{"R"}, Keywords: []string{"flying", "prowess"}},
+
+	// Same reason (ADR 0102: Abby, Merciless Soldier). A named token:
+	// the key says the name the card prints.
+	"1/1 black Fungus Zombie named Cordyceps Infected": {Name: "Cordyceps Infected", TypeLine: "Token Creature — Fungus Zombie", Power: 1, Toughness: 1, Colors: []string{"B"}},
 }

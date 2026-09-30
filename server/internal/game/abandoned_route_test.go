@@ -29,7 +29,7 @@ import (
 //
 // The abandoned leg is NOT LANDED: nothing moved, so it is not counted
 // as destroyed or discarded and no EventDiscardCard is emitted for it —
-// CR 701.8a defines a discard as the move out of the hand, and there
+// CR 701.9a defines a discard as the move out of the hand, and there
 // was none.
 
 // wipeCommanderOf puts a commander on the battlefield under `owner`.

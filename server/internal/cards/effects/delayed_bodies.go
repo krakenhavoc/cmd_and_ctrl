@@ -65,6 +65,12 @@ var (
 	// (DelayedTrigger.OnExtraTurn, ADR 0059 Decision 8).
 	loseTheGameAtThatTurnsEndBody = game.SimpleDelayedBody("extra-turn/lose-the-game", loseTheGameAtThatTurn)
 
+	// Untap all creatures that attacked this turn (Full Throttle's
+	// "at the beginning of each combat this turn", ADR 0059 sub-PR 2b).
+	// Scheduled with ScheduleDelayedTrigger.EachThisTurn, so it fires
+	// at every beginning of combat until cleanup.
+	untapCreaturesThatAttackedBody = game.SimpleDelayedBody("extra-combat/untap-creatures-that-attacked", untapCreaturesThatAttackedThisTurn)
+
 	// Draw a card (Urza's Bauble, Portent).
 	drawOneBody     = game.SimpleDelayedBody("draw/one-card", b27DrawOne)
 	portentDrawBody = game.SimpleDelayedBody("portent/draw", portentDraw)

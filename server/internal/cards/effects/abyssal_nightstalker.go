@@ -13,7 +13,7 @@ import (
 //	 discards a card."
 //
 // A proof card for #1279 — see Swamp Mosquito for the trigger. The
-// defending player chooses the card (CR 701.8a: a discard nobody says
+// defending player chooses the card (CR 701.9a: a discard nobody says
 // is random is the discarding player's choice), so the payoff is the
 // discard PROMPT, not DiscardCards, which is for "at random" only.
 // Nothing hangs off the answer, so the fire-and-forget queue is right.

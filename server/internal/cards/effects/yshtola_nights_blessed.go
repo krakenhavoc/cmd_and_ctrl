@@ -49,12 +49,7 @@ func init() {
 				}
 				mv, ok := g.ManaValueForEffect(spell)
 				return ok && mv >= 3
-			}, "Y'shtola, Night's Blessed — 2 damage to each opponent, you gain 2 life", func(g *game.Game, item *game.StackItem) error {
-				if err := damageToEachOpponent(g, item, 2); err != nil {
-					return err
-				}
-				return GainLife{Player: item.Controller, Amount: 2}.Apply(NewContext(g, item))
-			}),
+			}, "Y'shtola, Night's Blessed — 2 damage to each opponent, you gain 2 life", damageEachOpponentThenGainLife(2)),
 		},
 	})
 }

@@ -5,7 +5,7 @@ import (
 )
 
 // discard_run.go — the CONTINUATION of a prompted discard
-// (#1027, CR 701.8a, ADR 0013 §5y).
+// (#1027, CR 701.9a, ADR 0013 §5y).
 //
 // QueueDiscardChoiceForEffect does not discard anything. It queues a
 // QUESTION over the player's own hand and returns the prompt's ID;
@@ -36,7 +36,7 @@ import (
 //     card had to hand-roll an empty-hand skip to stop drawing for a
 //     seat that discarded nothing.
 //   - It waits for the MOVE, not for the answer, and it counts what
-//     CR 701.8a counts. `landed` is discardedThisWayLocked's answer:
+//     CR 701.9a counts. `landed` is discardedThisWayLocked's answer:
 //     the card left the HAND, wherever a replacement then sent it. A
 //     madness card exiled instead of binned (CR 702.35a, #1008) was
 //     discarded; a Library of Leng card put on top of the library was
@@ -58,7 +58,7 @@ import (
 // were asked (APNAP from the active player for a fan-out), carrying
 // the cards that really left that seat's hand.
 //
-// A seat that was skipped at queue time — an empty hand, so CR 701.8a's
+// A seat that was skipped at queue time — an empty hand, so CR 701.9a's
 // "as many as you can" asked it nothing, or a seat that had already
 // left the game — has no entry at all. `Discarded` reads the same for
 // it as for a seat that was asked and discarded nothing, which is
@@ -208,7 +208,7 @@ func (g *Game) discardRunLocked(
 		}
 	}
 	return g.runPromptsLocked(asks, landedThen, func(seat, run uuid.UUID) bool {
-		// CR 701.8a's "as many as you can": a seat with an empty hand
+		// CR 701.9a's "as many as you can": a seat with an empty hand
 		// is asked nothing and gets no leg, and a seat that has left
 		// the game can never answer. Both are
 		// queueDiscardPromptLocked's own rules, unchanged — the seat

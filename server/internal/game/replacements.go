@@ -27,7 +27,7 @@ import (
 //   - MoveCardByIDAsCommander → RepEventMove (carries EntersTapped,
 //     EntersWithCounters, asCommanderMove breadcrumb)
 //   - routeCardToZoneLocked → RepEventMove, or RepEventDiscard when the
-//     route is a discard (CR 701.8, #650)
+//     route is a discard (CR 701.9, #650)
 //   - createTokensLocked → RepEventCreateTokens, then one
 //     RepEventMove battlefield entry per token created (CR 701.7b,
 //     #762)
@@ -50,7 +50,7 @@ import (
 //	"draw"         — RepEventDraw    — DrawPlayer, DrawCount (CR 121.2)
 //	"produce_mana" — RepEventProduceMana — ManaPlayer, ManaSource, ManaColors (CR 106.12b)
 //	"move"         — RepEventMove    — CardID, OldZone, NewZone, NewZoneOwner, EntersTapped, EntersAttacking, EntersWithCounters, asCommanderMove
-//	"discard"      — RepEventDiscard — CardID, DiscardPlayer, DiscardCause, NewZone, NewZoneOwner (CR 701.8)
+//	"discard"      — RepEventDiscard — CardID, DiscardPlayer, DiscardCause, NewZone, NewZoneOwner (CR 701.9)
 //	"counter"      — RepEventCounter — CounterTarget OR CounterPlayer,
 //	                 CounterName, CounterDelta, CounterPlacer,
 //	                 CounterFromCombatDamage
@@ -69,7 +69,7 @@ const (
 	RepEventLife    ReplacementEventKind = "life"
 	RepEventDamage  ReplacementEventKind = "damage"
 
-	// RepEventDiscard is a discard (CR 701.8a) — the one exit whose
+	// RepEventDiscard is a discard (CR 701.9a) — the one exit whose
 	// keyword action is defined by where the card comes FROM, so it is
 	// its own event kind rather than a flag on RepEventMove. Library of
 	// Leng, madness (#657) and the Obstinate Baloth family all key on
@@ -606,6 +606,23 @@ type ReplacementEvent struct {
 	// PLAYED, so it must not spend the turn's land drop.
 	landPlay bool
 
+	// landPlayer is the player whose land drop a landPlay entry
+	// spends, captured before the window opens. ev.Actor is the
+	// would-be CONTROLLER, and an entry-controller effect (ADR 0102)
+	// rewrites it; the land drop belongs to whoever PLAYED the land
+	// whatever it enters under, so the tally reads this and not Actor.
+	// uuid.Nil falls back to Actor, which is every entry built before
+	// the field existed.
+	landPlayer uuid.UUID
+
+	// entryControllerSet and entryControllerPrior are an
+	// entry-controller effect's bookkeeping (ADR 0102 decision 2): the
+	// first time one re-stamps the entering card's controller, what the
+	// card carried is remembered so a cancelled entry can put it back.
+	// See setEntryControllerLocked.
+	entryControllerSet   bool
+	entryControllerPrior uuid.UUID
+
 	// zoneRoute is the exit half's answer to entryResumable: the
 	// per-destination bookkeeping (to the bottom of the library, face
 	// down in exile, this was a mill, this was a counterspell, this
@@ -646,7 +663,7 @@ type ReplacementEvent struct {
 
 	// DiscardPlayer is the player discarding the card — its owner,
 	// because every hand in this engine holds only its owner's cards
-	// (CR 701.8a moves the card to that player's graveyard).
+	// (CR 701.9a moves the card to that player's graveyard).
 	DiscardPlayer uuid.UUID
 
 	// DiscardCause is why the discard is happening: an effect's
@@ -953,7 +970,7 @@ type ReplacementEvent struct {
 	//
 	// Several things set it, and they fall into two families: paying a
 	// cost (life, CR 118.3, payLifeAsCostLocked in life_tail.go; a
-	// discard, CR 701.8a, discard.go, through zoneRoute.MustSettleNow;
+	// discard, CR 701.9a, discard.go, through zoneRoute.MustSettleNow;
 	// a counter placement mid-ability, #1370,
 	// AddCounterMustSettleNowForEffect in counter_tail.go) — CR 601.2h
 	// pays a spell's costs as one indivisible step and CR 601.2 rewinds
@@ -1103,26 +1120,25 @@ type ReplacementEffect struct {
 	// See entry_choice.go. Added with the shockland cycle.
 	EntryLifeCost int
 
-	// EntryHandReveal, when non-nil, makes this a "you may reveal
-	// <a card matching this> from your hand; if you don't,
-	// <replacement>" effect — the ten reveal-lands, Choked Estuary
-	// and its cycle. The apply-loop queues a
-	// PendingChoiceEntryRevealFromHand pick and bails; revealing
-	// means Replace NEVER runs, declining (or having nothing that
-	// matches) means it does.
+	// EntryCardChoice, when non-nil, makes this a "<reveal / discard /
+	// sacrifice> <cards matching this>; if you don't, <replacement>"
+	// effect — the ten reveal-lands (#1198), Mox Diamond and the seven
+	// "sacrifice … instead" lands (#1744, ADR 0098). The apply-loop
+	// queues a card-set pick and bails; naming cards (and, for a
+	// discard or a sacrifice, their really leaving) means Replace
+	// NEVER runs, declining — or having nothing that matches — means
+	// it does.
 	//
 	// EntryLifeCost's inversion with a CARD where the shockland has
-	// a number, which is why it is not Optional either. A reveal is
-	// not a cost and not a zone change (CR 701.20b): the named card
-	// is still in hand afterwards. A player with no matching card is
-	// not prompted and the replacement applies — the absence of the
-	// question, not a refusal of it.
+	// a number, which is why it is not Optional either, and why
+	// declineIsReplace lists it: in a window that cannot ask, the
+	// weaker branch is to RUN Replace.
 	//
 	// Takes precedence over Optional, which is meaningless alongside
 	// it. No printed card combines it with EntryLifeCost or
-	// CopySelector. See entry_reveal.go and ADR 0013 §5z. Added with
-	// the reveal-land cycle (#1198).
-	EntryHandReveal *EntryHandReveal
+	// CopySelector. See entry_card_choice.go, ADR 0013 §5z and
+	// ADR 0098.
+	EntryCardChoice *EntryCardChoice
 
 	// CopySelector, when non-nil, makes this an "as this permanent
 	// enters, you may have it enter as a copy of X" effect (CR
@@ -1138,6 +1154,27 @@ type ReplacementEffect struct {
 	// goes. Takes precedence over Optional and EntryLifeCost, which
 	// no printed copy effect combines with. See copy_choice.go.
 	CopySelector *CopySelector
+
+	// EntryController, when non-nil, makes this a "this permanent
+	// enters under the control of an opponent of your choice" effect
+	// (CR 614.1d, CR 614.12) — Captive Audience, Pendant of
+	// Prosperity, Abby, Merciless Soldier, Xantcha, Sleeper Agent. The
+	// apply-loop settles it inline or queues a
+	// PendingChoiceEntryController and bails; the answer becomes the
+	// would-be controller the permanent lands under. Replace is never
+	// called. Mandatory: an entry that cannot pause takes the default
+	// rather than skipping it. See entry_controller.go and ADR 0102.
+	EntryController *EntryControllerChoice
+
+	// ChangesEntryController declares CR 616.1b's tier: this effect
+	// would modify under whose control an object enters, so it is
+	// applied before every other effect in the window, and when
+	// several such effects apply only they are ordered
+	// (entryControlTier). Declared by the constructor, never inferred
+	// from Replace. Every EntryController effect sets it; a later
+	// "enters under your control instead" (Gather Specimens) would set
+	// it too.
+	ChangesEntryController bool
 
 	// Preemptive declares a RULES-LEVEL shield that applies before
 	// any other applicable replacement, with no CR 616 ordering
@@ -1402,6 +1439,11 @@ func (g *Game) applyReplacementsLocked(ev *ReplacementEvent) (*ReplacementEvent,
 			g.applyFirstGatheredLocked(ev, applicable[i:i+1])
 			continue
 		}
+		// CR 616.1b (ADR 0102): an effect that would change under whose
+		// control the object enters is applied before any other, so
+		// only those are candidates on this pass. The rest are gathered
+		// again afterwards, against the new controller (CR 616.1f).
+		applicable = entryControlTier(applicable)
 		if len(applicable) > 1 {
 			// CR 616: affected player picks order. Queue a prompt
 			// and stash the resume frame; caller returns without
@@ -1457,64 +1499,36 @@ func (g *Game) applyReplacementsLocked(ev *ReplacementEvent) (*ReplacementEvent,
 		}
 		// Exactly one applicable.
 		chosen := applicable[0]
+		if chosen.effect.EntryController != nil {
+			// "Enters under the control of an opponent of your choice"
+			// (ADR 0102). Mandatory, so it is asked BEFORE the
+			// cannot-pause skip below: an entry that cannot pause takes
+			// the default opponent rather than skipping the effect.
+			// entry_controller.go settles the inline cases; a queued
+			// prompt bails.
+			if g.offerEntryControllerLocked(ev, chosen) {
+				return ev, errReplacementPending
+			}
+			continue
+		}
 		if ev.mustSettleNow && asksItsOwnQuestion(chosen.effect) {
 			// #793, the single-effect half of the branch above: an
 			// effect that would ask its controller a question cannot
 			// fire on an event that cannot pause, and firing it blind
 			// would answer the question for them in the direction that
-			// favours it. Skipped un-applied — weaker than printed,
-			// never stronger, which is the posture
-			// optionalReplacementResumableLocked takes for an entry
-			// with nothing to resume it.
-			g.replacementsAppliedThisEvent[ev.ID][chosen.id] = true
+			// favours it. Settled on its weaker branch — skipped for a
+			// "may", its decline run for a shockland, a reveal-land or
+			// a Mox Diamond (ADR 0098 Decision 5).
+			g.skipOwnQuestionLocked(ev, chosen)
 			continue
 		}
-		if chosen.effect.CopySelector != nil {
-			// "You may have this enter as a copy of ..." — the
-			// picker and its decline-inline cases live in
-			// copy_choice.go. A queued prompt bails; anything else
-			// has already marked the effect applied and falls
-			// through to the next iteration.
-			if g.offerCopyChoiceLocked(ev, chosen) {
-				return ev, errReplacementPending
-			}
-			continue
-		}
-		if chosen.effect.EntryLifeCost > 0 {
-			// "As this enters, you may pay N life." The prompt (and
-			// the unaffordable-so-apply-it-inline case) lives in
-			// entry_choice.go; a queued prompt bails, an inline
-			// apply falls through to the next iteration.
-			if g.offerEntryLifePaymentLocked(ev, chosen) {
-				return ev, errReplacementPending
-			}
-			continue
-		}
-		if chosen.effect.EntryHandReveal != nil {
-			// "As this enters, you may reveal an Island or Swamp
-			// card from your hand." The same shape one line up with
-			// a card where the shockland has a number: the prompt
-			// and its three apply-it-inline cases live in
-			// entry_reveal.go, a queued prompt bails and an inline
-			// apply falls through to the next iteration (#1198,
-			// ADR 0013 §5z).
-			if g.offerEntryHandRevealLocked(ev, chosen) {
-				return ev, errReplacementPending
-			}
-			continue
-		}
-		if chosen.effect.Optional {
-			// "may" — owner decides each time. Queue a
-			// yes/no prompt; the resume path either fires Replace
-			// (yes) or marks applied and skips (no). The two cases
-			// that decline it inline instead — a chooser who has left
-			// the game, an event with nothing to resume it (#359) —
-			// live in the helper with the prompt, because
-			// ResolveReplacementOrder's chosen-order loop needs the
-			// same three answers and used to have none of them
-			// (#847). A queued prompt bails; a decline falls through
-			// to the next iteration.
-			if g.offerOptionalReplacementLocked(ev, chosen) {
+		// An effect with a question inside it — a copy selector, a
+		// shockland's life, an entry card choice, a "may". The prompt
+		// and each shape's apply-it-inline cases live with the shape;
+		// a queued prompt bails, anything else has already marked the
+		// effect applied and falls through to the next iteration.
+		if pending, handled := g.offerOwnQuestionLocked(ev, chosen); handled {
+			if pending {
 				return ev, errReplacementPending
 			}
 			continue
@@ -1569,7 +1583,7 @@ func allPureCancels(applicable []activeReplacement) bool {
 		return false
 	}
 	for _, a := range applicable {
-		if !a.effect.PureCancel || asksItsOwnQuestion(a.effect) {
+		if !a.effect.PureCancel || asksItsOwnQuestion(a.effect) || a.effect.EntryController != nil {
 			return false
 		}
 	}
@@ -1611,7 +1625,7 @@ func sameModification(applicable []activeReplacement) bool {
 		return false
 	}
 	for _, a := range applicable {
-		if a.identity != want || asksItsOwnQuestion(a.effect) {
+		if a.identity != want || asksItsOwnQuestion(a.effect) || a.effect.EntryController != nil {
 			return false
 		}
 	}
@@ -1633,7 +1647,78 @@ func sameModification(applicable []activeReplacement) bool {
 // prompt; the guard is here so a future one fails loudly by prompting
 // rather than quietly by deciding.
 func asksItsOwnQuestion(e ReplacementEffect) bool {
-	return e.Optional || e.EntryLifeCost > 0 || e.EntryHandReveal != nil || e.CopySelector != nil
+	return e.Optional || e.EntryLifeCost > 0 || e.EntryCardChoice != nil || e.CopySelector != nil
+}
+
+// declineIsReplace reports that this effect's Replace IS the "you
+// didn't" branch of its question — the shockland's enters-tapped, the
+// reveal-land's enters-tapped, Mox Diamond's and Heart of Yavimaya's
+// graveyard (ADR 0098 Decision 5).
+//
+// asksItsOwnQuestion answers "may this be fired blind?". This answers
+// the other question a window that cannot ask has to answer: which
+// branch is the weaker one? For an Optional "may" and a copy selector,
+// NOT applying is weaker, so such a window skips them. For these two,
+// not applying would be the STRONGER branch — a free untapped
+// shockland, a free Mox — so the window runs Replace instead.
+func declineIsReplace(e ReplacementEffect) bool {
+	return e.EntryLifeCost > 0 || e.EntryCardChoice != nil
+}
+
+// skipOwnQuestionLocked settles an effect that asks its own question
+// in a window that cannot ask it (mustSettleNow, an ordering whose
+// affected player has left): it is marked applied, and its Replace
+// runs only when that is its weaker branch (declineIsReplace).
+//
+// Caller must hold g.mu, and must have allocated the once-per-event
+// map entry for ev.ID.
+func (g *Game) skipOwnQuestionLocked(ev *ReplacementEvent, a activeReplacement) {
+	g.replacementsAppliedThisEvent[ev.ID][a.id] = true
+	if !declineIsReplace(a.effect) || a.effect.Replace == nil || ev.Canceled {
+		return
+	}
+	if err := a.effect.Replace(ev, g, a.source); err != nil {
+		g.EmitEvent(Event{Kind: EventEffectError, ErrorMsg: err.Error()})
+	}
+}
+
+// offerOwnQuestionLocked puts an effect's own question to its player,
+// or settles its un-asked branch inline. `handled` is false for an
+// effect that asks nothing; `pending` is true when a prompt is now
+// queued and the caller must bail.
+//
+// The ONE dispatcher for the four question shapes, shared by the
+// apply-loop's single-applicable arm and ResolveReplacementOrder's
+// chosen-order loop. They used to keep two lists, and the second had
+// lost the reveal-land branch (ADR 0098 gap 4) the way it had lost the
+// "may" before #847.
+//
+// Caller must hold g.mu.
+func (g *Game) offerOwnQuestionLocked(ev *ReplacementEvent, chosen activeReplacement) (pending, handled bool) {
+	switch {
+	case chosen.effect.EntryController != nil:
+		// "Enters under the control of an opponent of your choice" —
+		// entry_controller.go (ADR 0102). From ResolveReplacementOrder
+		// only when two CR 616.1b effects were ordered against each
+		// other; the apply-loop asks it before its cannot-pause skip.
+		return g.offerEntryControllerLocked(ev, chosen), true
+	case chosen.effect.CopySelector != nil:
+		// "You may have this enter as a copy of ..." — copy_choice.go.
+		return g.offerCopyChoiceLocked(ev, chosen), true
+	case chosen.effect.EntryLifeCost > 0:
+		// "As this enters, you may pay N life." — entry_choice.go.
+		return g.offerEntryLifePaymentLocked(ev, chosen), true
+	case chosen.effect.EntryCardChoice != nil:
+		// "You may reveal / discard …", "sacrifice … instead" —
+		// entry_card_choice.go.
+		return g.offerEntryCardChoiceLocked(ev, chosen), true
+	case chosen.effect.Optional:
+		// A "may" (#847) — the owner decides each time. The two cases
+		// that decline it inline — a chooser who has left, an event
+		// with nothing to resume it (#359) — live in the helper.
+		return g.offerOptionalReplacementLocked(ev, chosen), true
+	}
+	return false, false
 }
 
 // applyFirstGatheredLocked fires the FIRST gathered replacement and
@@ -1667,6 +1752,12 @@ func (g *Game) applyFirstGatheredLocked(ev *ReplacementEvent, applicable []activ
 	}
 	chosen := applicable[0]
 	g.replacementsAppliedThisEvent[ev.ID][chosen.id] = true
+	if chosen.effect.EntryController != nil {
+		// ADR 0102: mandatory, and nobody can be asked on this path, so
+		// the default opponent — never a skip.
+		g.settleEntryControllerByDefaultLocked(ev, chosen)
+		return
+	}
 	if chosen.effect.Replace != nil {
 		if err := chosen.effect.Replace(ev, g, chosen.source); err != nil {
 			g.EmitEvent(Event{Kind: EventEffectError, ErrorMsg: err.Error()})
@@ -1693,7 +1784,10 @@ func (g *Game) skipQuestionsLocked(ev *ReplacementEvent, applicable []activeRepl
 	out := make([]activeReplacement, 0, len(applicable))
 	for _, a := range applicable {
 		if asksItsOwnQuestion(a.effect) {
-			g.replacementsAppliedThisEvent[ev.ID][a.id] = true
+			// ADR 0098 Decision 5: marked applied, and its decline run
+			// when the decline IS Replace (a shockland, a reveal-land,
+			// a Mox Diamond), so the un-asked branch is the weaker one.
+			g.skipOwnQuestionLocked(ev, a)
 			continue
 		}
 		out = append(out, a)
@@ -1928,6 +2022,48 @@ func (g *Game) gatherActiveReplacementsLocked(ev *ReplacementEvent) []activeRepl
 					identity: replacementIdentity{card: key, slot: repIdx, controller: src.Controller},
 				})
 			}
+			// ADR 0102 decision 6, CR 614.12: once an entering permanent
+			// has been given a copy to enter as (CR 616.1c, a Clone's
+			// answer), which effects apply is judged "as it would exist
+			// on the battlefield" — as the copy. So the COPIED card's
+			// own entry replacements are gathered too: a Clone copying
+			// Abby, Merciless Soldier enters under the control of an
+			// opponent. Their IDs sit one stride above the card's own,
+			// so a copied slot 0 is never mistaken for the Clone's
+			// already-applied selector. A copied copy selector is not
+			// gathered: the copy has been chosen, and asking again would
+			// be a second copy of one entry.
+			if ev.EntersAsCopyOf != nil {
+				copied := entering
+				copied.applyCopy(*ev.EntersAsCopyOf, Card{})
+				ckey := CatalogKey(copied)
+				if ckey != key {
+					creps := CatalogReplacements(ckey)
+					for repIdx := range creps {
+						if repIdx >= MaxCatalogReplacementSlots {
+							break
+						}
+						id := selfReplacementIDBase + MaxCatalogReplacementSlots + ReplacementEffectID(repIdx)
+						if applied[id] {
+							continue
+						}
+						eff := creps[repIdx]
+						if eff.CopySelector != nil || !eventKindMatches(eff.Watches, ev.Kind) {
+							continue
+						}
+						src := copied
+						if eff.AppliesTo != nil && !eff.AppliesTo(ev, g, &src) {
+							continue
+						}
+						out = append(out, activeReplacement{
+							effect:   eff,
+							source:   &src,
+							id:       id,
+							identity: replacementIdentity{card: ckey, slot: repIdx, controller: src.Controller},
+						})
+					}
+				}
+			}
 		}
 	}
 
@@ -2061,7 +2197,7 @@ func eventKindMatches(watches []EventKind, kind ReplacementEventKind) bool {
 	case RepEventMove:
 		want = EventZoneMove
 	case RepEventDiscard:
-		// CR 701.8a. A discard is a move out of the hand, but what a
+		// CR 701.9a. A discard is a move out of the hand, but what a
 		// discard replacement watches for is the DISCARD — Library of
 		// Leng, madness, "if you would discard a card, exile it
 		// instead" — so it keys on the discard event, not the zone

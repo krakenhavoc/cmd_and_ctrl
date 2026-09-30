@@ -25,7 +25,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // PlayerDiscardsThenForEffect): the discard is a real up-to-X choice
 // by the targeted player, and the draw is the RUN's continuation, so
 // it happens once, after the discard has actually landed, and for
-// exactly as many cards as were really discarded (CR 701.8a) — never
+// exactly as many cards as were really discarded (CR 701.9a) — never
 // before the player has chosen, which would let the draw happen
 // before there was anything to count.
 //

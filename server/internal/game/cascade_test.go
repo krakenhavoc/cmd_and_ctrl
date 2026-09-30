@@ -175,11 +175,12 @@ func TestCascadeDeclineBottomsTheHitToo(t *testing.T) {
 	}
 }
 
-// Accepting and then never casting must not leave the card available
-// forever: a delayed trigger bottoms it at the next end step. This is
-// what keeps the grant-instead-of-inline-cast simplification from
-// being stronger than printed.
-func TestUncastCascadeHitGoesToTheBottomAtEndOfTurn(t *testing.T) {
+// Accepting and then never casting must not leave the card available:
+// the grant closes on the caster's next priority pass and the hit goes
+// to the bottom then (ADR 0099 owner decision 2). Before ADR 0099 it
+// stayed castable until the end step and a delayed trigger bottomed it,
+// which let a player hold a free spell for the rest of the turn.
+func TestUncastCascadeHitGoesToTheBottomOnTheNextPass(t *testing.T) {
 	g := newActiveGame(t)
 	me := g.Seats[0]
 	hit := libCard(me.ID, "Counterspell", "Instant", "{U}{U}")
@@ -189,23 +190,52 @@ func TestUncastCascadeHitGoesToTheBottomAtEndOfTurn(t *testing.T) {
 		_ = g.CascadeForEffect(me.ID, uuid.New(), 4)
 	})
 	answerMayCast(t, g, me.ID, true)
-	if len(g.DelayedTriggers) != 1 {
-		t.Fatalf("accepting queued %d delayed triggers, want 1", len(g.DelayedTriggers))
+	if len(g.DelayedTriggers) != 0 {
+		t.Fatalf("accepting queued %d delayed triggers; the window is the pass now", len(g.DelayedTriggers))
 	}
-
-	// Walk to the end step and let the delayed trigger fire and
-	// resolve.
-	advanceTo(t, g, StepEnd)
-	for i := 0; i < 40 && (len(g.Stack.Cards) > 0 || len(g.PendingTriggers) > 0 || len(g.StackMeta) > 0); i++ {
-		if err := g.PassPriority(); err != nil {
-			break
-		}
+	if g.Seats[g.Turn.PriorityHolder].ID != me.ID {
+		t.Fatalf("test needs the caster to hold priority")
+	}
+	if err := g.PassPriority(); err != nil {
+		t.Fatalf("PassPriority: %v", err)
 	}
 	if g.Exile.Contains(hit.InstanceID) {
-		t.Errorf("an uncast cascade hit is still parked in exile")
+		t.Errorf("an uncast cascade hit is still parked in exile after the pass")
 	}
 	if !me.Library.Contains(hit.InstanceID) {
 		t.Errorf("an uncast cascade hit did not reach the library")
+	}
+}
+
+// ADR 0099 owner decision 2: the cascade grant is flash-timed (CR
+// 608.2g) and capped one below the cascading spell's mana value
+// (CR 702.85a's "the resulting spell's mana value is less than").
+func TestCascadeGrantIsFlashTimedAndCapped(t *testing.T) {
+	g := newActiveGame(t)
+	me := g.Seats[0]
+	hit := libCard(me.ID, "Divination", "Sorcery", "{2}{U}")
+	libraryOf(t, me, hit)
+	g.WithWriteLock(func() {
+		_ = g.CascadeForEffect(me.ID, uuid.New(), 4)
+	})
+	c := discoverPrompt(t, g)
+	if c.MayCastKeyword != MayCastKeywordCascade {
+		t.Errorf("cascade prompt keyword = %q", c.MayCastKeyword)
+	}
+	answerMayCast(t, g, me.ID, true)
+	perm := g.CastPermissionOnCardByIDForEffect(hit.InstanceID)
+	if perm == nil || perm.Timing != TimingFlash || perm.MaxSpellManaValue == nil || *perm.MaxSpellManaValue != 3 || perm.LapseOnPass != LapseToLibraryBottom {
+		t.Fatalf("cascade grant = %+v", perm)
+	}
+	// The upkeep: a sorcery is castable here only because of the flash
+	// timing.
+	if err := g.CastSpell(me.ID, hit.InstanceID, CastSpellParams{FromZone: string(ZoneExile)}); err != nil {
+		t.Fatalf("casting the cascaded sorcery outside a main phase: %v", err)
+	}
+	for _, p := range me.CastPermissions {
+		if p.LapseOnPass != "" {
+			t.Errorf("the spent cascade grant is still held")
+		}
 	}
 }
 

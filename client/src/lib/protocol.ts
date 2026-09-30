@@ -361,6 +361,12 @@ export interface GameView {
   // omits it entirely. Client predicates stay permissive when it is
   // missing and let the server do the rejecting.
   legal_moves?: LegalMoveView[];
+  // ADR 0105 (#1789): a per-card digest of the same enumeration, built
+  // before the 48-move cap, so it stays exact down to the ability row.
+  // Own seat only, like legal_moves. Absent means "highlight nothing",
+  // never "nothing is legal". Nothing reads it yet: the highlights
+  // arrive in ADR 0105 sub-PR 2.
+  legal_actions?: LegalActionsView;
   // The public game log (S31 sub-PR 0, ADR 0033 §4): the last ~200
   // table-visible events, oldest first. Every card reference in it has
   // been through the same visibility filter as the zones above, so an
@@ -489,6 +495,37 @@ export interface RevealedCardView {
 // invariant you may rely on is "every card with a legal move has at
 // least one entry here". Do NOT read it as the complete set of legal
 // targets; that is what CardView.legal_targets is for.
+// GameView.legal_actions (ADR 0105): what each of the viewer's cards
+// may do right now, folded from the uncapped legal-move list. Keyed by
+// card instance ID. See docs/protocol.md "LegalActionsView".
+export interface LegalActionsView {
+  // A pass_priority move exists.
+  pass?: boolean;
+  sources?: Record<string, LegalSourceView>;
+}
+
+export interface LegalSourceView {
+  // Distinct move kinds, in enumeration order. Never pass, choice or
+  // mulligan.
+  kinds: Exclude<LegalMoveView["kind"], "pass" | "choice" | "mulligan">[];
+  // Moves in the uncapped list that involve this card.
+  moves: number;
+  // ADR 0093 refs of live activated_abilities / zone_abilities rows.
+  abilities?: string[];
+  // Refs of live mana_abilities / zone_mana_abilities rows.
+  mana_abilities?: string[];
+  // Live special-action kinds: foretell, suspend, turn_face_up, plot.
+  special_actions?: string[];
+  // from_zone of each cast or land move.
+  zones?: string[];
+  // Printed faces the cast moves cast (0 is the front).
+  faces?: number[];
+  // Players, planeswalkers and battles this creature may attack.
+  attack_targets?: string[];
+  // Attackers this creature may block, alone or in a group.
+  blocks?: string[];
+}
+
 export interface LegalMoveView {
   type: string;
   player: string;
@@ -613,6 +650,9 @@ export type LogKind =
   | "choose_color"
   | "choose_type"
   | "choose_player"
+  // ADR 0102: a player chose the opponent a permanent enters under the
+  // control of. The seat rides target_seat, as for choose_player.
+  | "choose_controller"
   // A player answered an "as this enters, choose a card name" prompt
   // (CR 614.12): Pithing Needle, Phyrexian Revoker, Sorcerous
   // Spyglass. `choice` is the name as the player typed it, trimmed
@@ -646,6 +686,9 @@ export type LogKind =
   | "counters"
   | "scry"
   | "surveil"
+  // ADR 0099: a finished discover (CR 701.57b). `amount` is the N and
+  // `card_id` the discovered card, absent when nothing was found.
+  | "discover"
   | "saga_chapter"
   | "class_level"
   // ADR 0075 §2.3: the host or the admin changed a table setting.
@@ -690,6 +733,12 @@ export type LogKind =
   // (CR 500.7). `seat` is who will take it and `card_id` the card whose
   // effect created it; one entry per turn.
   | "extra_turn"
+  // ADR 0059 Decision 11 (#753): an effect added phases or a step to
+  // the current turn (CR 500.8 / 500.9). `seat` is the active player,
+  // `card_id` the card whose effect added them, and `label` what was
+  // added: phase kinds in order, comma-separated ("combat,main"), or
+  // "step:<step>" for one step ("step:end").
+  | "extra_phase"
   // #1209, ADR 0082's 2026-09-23 amendment: a permanent that was
   // face up was turned face down (CR 708.2a). `card_id` is the
   // permanent; `target` is the object that did it (Ixidron, Cyber
@@ -925,6 +974,25 @@ export interface PendingChoiceView {
     // and it is always a legal answer. What was revealed reaches the
     // other seats afterwards, as an ordinary reveal in the log.
     | "entry_reveal_from_hand"
+    // ADR 0102 CR 614.12a: "this enchantment enters under the control
+    // of an opponent of your choice" (Captive Audience, Pendant of
+    // Prosperity). The permanent is mid-entry while this is open. The
+    // opponents ride pick_options, one per seat with `player` set, and
+    // the answer is {option_index: N} as for option_pick.
+    // control_purpose says whether the permanent hurts or helps the
+    // seat that receives it.
+    | "entry_controller"
+    // ADR 0098: Mox Diamond's "if this would enter, you may discard a
+    // land card instead. If you don't, put it into its owner's
+    // graveyard." The reveal's payload and bounds, and — like it — the
+    // options and bounds reach the CHOOSER ONLY. An EMPTY list is the
+    // decline, and it sends the entering card to the graveyard.
+    | "entry_discard_from_hand"
+    // ADR 0098 Decision 11: Heart of Yavimaya's "sacrifice a Forest
+    // instead". Not a "may": choose_min == choose_max, and the
+    // candidates are the chooser's own permanents, so every seat sees
+    // them.
+    | "entry_sacrifice"
     // #1214 CR 608.2 / CR 701.20: an opponent picks from a set you
     // revealed — "target opponent chooses two of those cards" (Gifts
     // Ungiven), and the first leg of a Fact or Fiction pile split.
@@ -1003,6 +1071,10 @@ export interface PendingChoiceView {
   // the ORDER of color_options is already the server's answer to the
   // same question (#986), so nothing here re-sorts.
   color_purpose?: "mana" | "benefit" | "harm" | "filter" | "protect" | string;
+  // ADR 0102: populated for kind "entry_controller" — what giving the
+  // entering permanent away does to the seat that receives it. The
+  // picker reads it only for its wording.
+  control_purpose?: "harm" | "benefit" | string;
   // S26: populated for kind "choose_creature_type" — every creature
   // type the engine knows, sorted. The list is long by design (the CR
   // 205.3m vocabulary is ~345 entries), so the picker filters it
@@ -1094,6 +1166,12 @@ export interface PendingChoiceView {
 
   accept_label?: string;
   decline_label?: string;
+  // ADR 0099 §7: populated for kind "may_cast". The rule the offer is
+  // asked under ("cascade", "discover", "suspend", "madness") and the
+  // instance id of the exiled card it offers. A may_cast also carries
+  // accept_label / decline_label when the server named its branches.
+  may_cast_keyword?: string;
+  may_cast_card?: string;
   // #74: populated for kind "confirm" — the life the ACCEPT branch
   // charges (Sylvan Library's 4). Absent when the branch costs no
   // life. The label already says it; this is the number, for anything
@@ -1655,6 +1733,18 @@ export interface AlternativeCostView {
 // legal — but unlike one it replaces nothing: it spends against a
 // cost that is still owed. The picked instance IDs ride cast_spell
 // as `tap_ids`.
+// DelveView is a card's delve (CR 702.66, ADR 0100 §4): the graveyard
+// cards the caster may exile, each paying for {1} of the generic mana.
+export interface DelveView {
+  // The caster's own graveyard, in the server's payment order: lands
+  // first, then cards with no graveyard cast surface, then the rest,
+  // oldest first. "Choose for me" fills the budget from the front.
+  options?: LegalTargetsView;
+  // The budget for the default announcement (this zone, X = 0, nothing
+  // tapped). A hint only — the preview's `delve_budget` is the cap.
+  max?: number;
+}
+
 export interface TapCostView {
   // "convoke" or "waterbend".
   key: string;
@@ -2184,6 +2274,11 @@ export interface CastSurfaceView {
   // flow opens a picker after X and before targeting. Absent for
   // nearly every card.
   tap_cost?: TapCostView;
+  // ADR 0100: delve (CR 702.66) — the caster's graveyard cards that may
+  // be exiled to pay generic mana, in the server's payment order, and a
+  // hint of how many. The picker's real cap is the auto-tap preview's
+  // `delve_budget`. Absent for every card without delve.
+  delve?: DelveView;
   // #746 (ADR 0048 addendum): the printed clauses of this card's own
   // cost modifiers whose price depends on its targets — Fireball's
   // "This spell costs {1} more to cast for each target beyond the
@@ -2886,6 +2981,12 @@ export interface AttackTargetView {
   attack_limit?: number;
 }
 
+// One step still to come this turn (TurnView.upcoming).
+export interface PlannedStepView {
+  step: string;
+  phase_id: number;
+}
+
 export interface TurnView {
   seq: number;
   number: number;
@@ -2903,6 +3004,18 @@ export interface TurnView {
   // Seat indices of queued extra turns, in the order they will be
   // taken (next first). Turns of players who have left are omitted.
   extra_turns?: number[];
+  // ADR 0059 Decision 11 (#753): the phase in progress. `phase_id` is
+  // unique within the turn (the template's phases are 1..5, an added
+  // phase gets the next id); `phase_ordinal` is the nth phase of its
+  // family this turn ("Combat 2"). Precombat and postcombat main are one
+  // family. Both absent before the game's first phase is planned.
+  phase_id?: number;
+  phase_ordinal?: number;
+  // The rest of this turn, in order: every step still to come, with the
+  // phase it belongs to, including added phases and steps. Absent at
+  // cleanup. `first_strike_damage` is listed in every combat and walked
+  // through when no combatant has first or double strike (#717).
+  upcoming?: PlannedStepView[];
   // #328: seat indices that owe a declare-blockers decision — under
   // attack, holding at least one creature that could legally block
   // one of the attackers. Absent outside the declare_blockers step.

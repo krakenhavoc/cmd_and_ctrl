@@ -34,7 +34,11 @@ type castParams struct {
 	// AltCostIDs are the cards paid to the NON-MANA half of that
 	// price: escape's exiled graveyard, Force of Will's pitched blue
 	// card, Daze's returned Island. Real resources, priced below.
-	AltCostIDs   []string    `json:"alt_cost_ids"`
+	AltCostIDs []string `json:"alt_cost_ids"`
+	// DelveIDs are the graveyard cards delve exiles (CR 702.66a, ADR
+	// 0100) — the same resource escape's exiled graveyard is, priced
+	// the same way.
+	DelveIDs     []string    `json:"delve_ids"`
 	Targets      []targetRef `json:"targets"`
 	Modes        []int       `json:"modes"`
 	XValue       int         `json:"x_value"`
@@ -99,6 +103,9 @@ type choiceParams struct {
 	Bottom   []string    `json:"bottom"`
 	TopOrder []string    `json:"top_order"`
 	Call     string      `json:"call"`
+	// OptionIndex answers an option_pick or an entry_controller
+	// prompt (ADR 0102): the offset into the prompt's pick_options.
+	OptionIndex *int `json:"option_index"`
 }
 
 type mulliganParams struct {

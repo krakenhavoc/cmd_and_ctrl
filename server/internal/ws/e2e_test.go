@@ -21,6 +21,7 @@ import (
 	"github.com/gorilla/websocket"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/legal"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
 )
 
@@ -157,12 +158,53 @@ func (n *normalizer) game(v protocol.GameView) protocol.GameView {
 	out.PendingTriggers = n.stackItems(v.PendingTriggers)
 	out.DelayedTriggers = n.delayedTriggers(v.DelayedTriggers)
 	out.Log = n.logEvents(v.Log)
+	// ADR 0105: the legal-action digest. Keyed by card instance ID and
+	// naming attack targets and attackers by ID, every one of them a
+	// card or player a zone or seat above has already numbered.
+	out.LegalActions = n.legalActions(v.LegalActions)
 	// Reveals: RevealView carries no instance IDs at all by design
 	// (reveal_frame.go) — Source is a card NAME, Cards are printed
 	// identity with a scryfall_id (a printing, not this instance).
 	// Nothing here for a normalizer to touch.
 	out.Reveals = v.Reveals
 
+	return out
+}
+
+// legalActions normalizes the ADR 0105 digest: the source map's keys,
+// and the attack targets and attackers each entry names. Refs, zones,
+// kinds and special-action kinds are not IDs and pass through.
+func (n *normalizer) legalActions(in *protocol.LegalActionsView) *protocol.LegalActionsView {
+	if in == nil {
+		return nil
+	}
+	out := &protocol.LegalActionsView{Pass: in.Pass}
+	if len(in.Sources) == 0 {
+		return out
+	}
+	// Every source is one of the viewer's own cards, and every attack
+	// target and attacker a seat or permanent, all of which the walk
+	// above has already numbered. So this only looks placeholders up,
+	// and Go's random map order cannot change the numbering.
+	out.Sources = make(map[string]*protocol.LegalSourceView, len(in.Sources))
+	for k, v := range in.Sources {
+		src := *v
+		src.AttackTargets = n.idList(src.AttackTargets)
+		src.Blocks = n.idList(src.Blocks)
+		out.Sources[n.id(k)] = &src
+	}
+	return out
+}
+
+// idList normalizes a list of IDs in order.
+func (n *normalizer) idList(in []string) []string {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make([]string, len(in))
+	for i, s := range in {
+		out[i] = n.id(s)
+	}
 	return out
 }
 
@@ -471,6 +513,9 @@ func everyFieldGameViewForNormalizer() protocol.GameView {
 			Options: []protocol.CardView{{InstanceID: uuid.NewString(), Name: "Choice Card", Owner: ownerID, Controller: ownerID}},
 		}},
 		LegalMoves: []protocol.LegalMoveView{{Type: "pass_priority", Player: uuid.MustParse(ownerID), Label: "Pass"}},
+		LegalActions: &protocol.LegalActionsView{Pass: true, Sources: map[string]*protocol.LegalSourceView{
+			cardID: {Kinds: []legal.Kind{legal.KindAttack}, Moves: 1, AttackTargets: []string{oppID}},
+		}},
 
 		Log: []protocol.LogEvent{{Seq: 1, Kind: protocol.LogCast, Turn: 3, Seat: 0, CardID: cardID, Text: "Owner cast Card"}},
 		Reveals: []protocol.RevealView{{

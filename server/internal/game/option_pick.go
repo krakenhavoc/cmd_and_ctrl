@@ -399,7 +399,7 @@ type OptionPickPrompt struct {
 // chain that assumed otherwise stops halfway. That is the same
 // contract QueueDiscardChoiceForEffect documents, pointed the other
 // way — a discard with nothing to pitch still runs Then, because CR
-// 701.8a says "as many as you can"; a question with no answers was
+// 701.9a says "as many as you can"; a question with no answers was
 // never asked at all.
 //
 // Caller must hold g.mu.

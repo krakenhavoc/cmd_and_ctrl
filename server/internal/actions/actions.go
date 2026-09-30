@@ -526,6 +526,11 @@ func dispatch(g *game.Game, a Action) error {
 			// one entry when the claimed cost charges one, absent
 			// otherwise.
 			AltCostIDs []string `json:"alt_cost_ids,omitempty"`
+			// ADR 0100 — delve_ids names the cards in the caster's
+			// graveyard exiled to delve the spell (CR 702.66a), each
+			// paying for {1} of the generic mana. Absent pays the
+			// whole cost with mana.
+			DelveIDs []string `json:"delve_ids,omitempty"`
 			// ADR 0034 — which printed face of a multi-face card is
 			// being cast or played. Absent (0) is the front face,
 			// which is the right answer for every single-faced card
@@ -619,6 +624,7 @@ func dispatch(g *game.Game, a Action) error {
 		}{
 			{"teamwork_ids", p.TeamworkIDs, &params.TeamworkIDs},
 			{"blight_ids", p.BlightIDs, &params.BlightIDs},
+			{"delve_ids", p.DelveIDs, &params.DelveIDs},
 		} {
 			for i, raw := range l.raw {
 				id, err := uuid.Parse(raw)
@@ -1536,6 +1542,12 @@ func dispatch(g *game.Game, a Action) error {
 		if kind, ok := g.PendingChoiceKindFor(choiceID); ok && kind == game.PendingChoiceOptionPick {
 			return g.ResolveOptionPick(choiceID, a.Player, p.OptionIndex)
 		}
+		// ADR 0102, CR 614.12a: "enters under the control of an
+		// opponent of your choice". The same {option_index} payload as
+		// option_pick, routed by kind for the same reason.
+		if kind, ok := g.PendingChoiceKindFor(choiceID); ok && kind == game.PendingChoiceEntryController {
+			return g.ResolveEntryController(choiceID, a.Player, p.OptionIndex)
+		}
 		// #764, CR 603.3c: the mode of a modal triggered ability,
 		// chosen as the ability is put on the stack. Routed by kind
 		// for the same reason the two above are.
@@ -1821,6 +1833,13 @@ func dispatch(g *game.Game, a Action) error {
 				// the land enter tapped, so it is routed here ahead
 				// of the count guards like the two above it.
 				return g.ResolveEntryRevealFromHand(choiceID, a.Player, ids)
+			case game.PendingChoiceEntryDiscardFromHand, game.PendingChoiceEntrySacrifice:
+				// ADR 0098: "you may discard a land card instead"
+				// (Mox Diamond, floor zero — the empty list is the
+				// decline that puts it into its owner's graveyard) and
+				// "sacrifice a Forest instead" (floor N). The same
+				// payload and resolver as the reveal above.
+				return g.ResolveEntryCardChoice(choiceID, a.Player, ids)
 			case game.PendingChoiceRevealPick:
 				// #1214, CR 608.2 / CR 701.20: "an opponent chooses
 				// two of those cards". Same payload and the same

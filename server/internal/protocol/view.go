@@ -152,6 +152,22 @@ type GameView struct {
 	// unfiltered view that goes to the crash dump and the replay log
 	// carries no seat's moves at all. Added in S31 sub-PR 2.
 	LegalMoves []LegalMoveView `json:"legal_moves,omitempty"`
+	// LegalActions is a per-card digest of the same enumeration
+	// (ADR 0105 §1, #1789): for each card the viewer's seat may do
+	// something with, which kinds of move, which ability rows (by
+	// ADR 0093 ref), which zones and faces it may be cast from, and
+	// whom it may attack or block. Built from the UNCAPPED list,
+	// before capLegalMoves degrades it, so it stays exact down to the
+	// ability row on a board past legalMovesWireCap. It is what the
+	// client's legal-action highlights read.
+	//
+	// OWN SEAT ONLY, by the same construction as LegalMoves: it is
+	// projected out of the unexported legalActionsBySeat map by
+	// FilterViewFor, so the unfiltered view, the admin, spectators and
+	// every other seat carry none. It reveals nothing LegalMoves does
+	// not already hand the same viewer. Absent whenever the seat owes
+	// no decision, so a quiet frame costs 0 bytes.
+	LegalActions *LegalActionsView `json:"legal_actions,omitempty"`
 	// legalBySeat is the per-seat enumeration, keyed by player UUID
 	// string. Unexported, so encoding/json never writes it: the only
 	// way a move list reaches a client is through FilterViewFor
@@ -159,6 +175,9 @@ type GameView struct {
 	// every filtered copy, which keeps repeated FilterViewFor calls
 	// idempotent.
 	legalBySeat map[string][]LegalMoveView
+	// legalActionsBySeat is the per-seat LegalActions digest, keyed
+	// and projected exactly as legalBySeat is.
+	legalActionsBySeat map[string]*LegalActionsView
 	// Log is the public game log: the last PublicLogMax table-visible
 	// events, oldest first. A projection of game.Game.Events, not a
 	// stored buffer — see log.go. Every card reference in it goes
@@ -276,6 +295,15 @@ type PendingChoiceView struct {
 	// every other kind. Added by #780.
 	ColorPurpose string `json:"color_purpose,omitempty"`
 
+	// ControlPurpose populates the "entry_controller" kind (ADR 0102):
+	// what giving the entering permanent away does to the seat that
+	// receives it — "harm" (Captive Audience) or "benefit" (Pendant of
+	// Prosperity), game.ControlPurpose. Public for ColorPurpose's
+	// reason: it is a reading of the card's own printed text. The
+	// seats themselves ride PickOptions, each with its Player set.
+	// Absent on every other kind.
+	ControlPurpose string `json:"control_purpose,omitempty"`
+
 	// TypeOptions populates the S26 "choose_creature_type" kind: every
 	// creature type the engine knows (CR 205.3m), for the picker to
 	// filter. Materialised here from game.AllCreatureTypes rather than
@@ -355,6 +383,18 @@ type PendingChoiceView struct {
 	// choice queue (#74).
 	AcceptLabel  string `json:"accept_label,omitempty"`
 	DeclineLabel string `json:"decline_label,omitempty"`
+
+	// MayCastKeyword names the rule a "may_cast" is asked under —
+	// "cascade", "discover", "suspend", "madness" — so the prompt can
+	// name it and word what declining does (ADR 0099 §7). A may_cast
+	// also carries AcceptLabel / DeclineLabel when the engine named its
+	// branches. Absent for an offer that is only its card's text.
+	MayCastKeyword string `json:"may_cast_keyword,omitempty"`
+	// MayCastCard is the instance id of the card a "may_cast" offers.
+	// The card is in exile face up, so its CardView is already on the
+	// wire; this says which one, so the client can show it and, after
+	// "Cast it free", start the cast chain on it.
+	MayCastCard string `json:"may_cast_card,omitempty"`
 
 	// LifeCost is the life a "confirm" prompt's ACCEPT branch charges
 	// (Sylvan Library's 4). Zero for a branch that costs no life.
@@ -918,6 +958,25 @@ type TapCostView struct {
 	// Waterbender's Restoration costs {U}{U} and still needs the X
 	// prompt; without this the client would never open it.
 	DemandsX bool `json:"demands_x,omitempty"`
+}
+
+// DelveView is the wire shape of a card's delve (CR 702.66, ADR 0100
+// §4): the graveyard cards the caster may exile, and a hint of how
+// many.
+type DelveView struct {
+	// Options are the cards in the caster's own graveyard that may be
+	// exiled, in the server's payment order (lands first, then cards
+	// with no graveyard cast surface, then the rest, oldest first) —
+	// the order a bot with no fuel policy pays from, which is what the
+	// picker's "Choose for me" button fills from (ADR 0100 owner
+	// decision 2). The spell itself is never among them.
+	Options *LegalTargetsView `json:"options,omitempty"`
+	// Max is the delve budget for the DEFAULT announcement — this
+	// zone, no alternative or optional cost, X = 0, nothing tapped —
+	// and is a hint only. The picker's real cap is the auto-tap
+	// preview's `delve_budget`, priced for the announcement as it
+	// stands, because a kicker, an X or a convoke tap all change it.
+	Max int `json:"max,omitempty"`
 }
 
 // DamageAssignmentView is the wire shape of the CR 510.1c
@@ -2162,6 +2221,11 @@ type CastSurfaceView struct {
 	// the overwhelming majority of cards. Optional like the
 	// alternative costs — tapping nothing is always a legal cast.
 	TapCost *TapCostView `json:"tap_cost,omitempty"`
+	// Delve is CR 702.66's "you may exile cards from your graveyard to
+	// pay generic mana" for a card the viewer could cast (ADR 0100 §4).
+	// Absent for every card without delve. Optional like the taps —
+	// exiling nothing is always a legal cast.
+	Delve *DelveView `json:"delve,omitempty"`
 	// PhyrexianSymbols is how many symbols in the cost this card is
 	// being offered at carry CR 107.4's "or 2 life" option — {U/P}
 	// on Gitaxian Probe, {B/P}{B/P} on Dismember, {G/W/P} on a
@@ -3106,6 +3170,22 @@ type TurnView struct {
 	// who has left is omitted: it will not begin (CR 800.4k). Public
 	// information — the spell that queued it was public.
 	ExtraTurns []int `json:"extra_turns,omitempty"`
+	// PhaseID identifies the phase in progress within this turn (ADR
+	// 0059 Decision 11): the template's phases are 1..5, and a phase an
+	// effect added (Relentless Assault's combat) gets the next id. Two
+	// combats in one turn have two ids.
+	PhaseID int `json:"phase_id,omitempty"`
+	// PhaseOrdinal is the nth phase of its family this turn: 2 in the
+	// second combat, 3 in the third main phase. Precombat and
+	// postcombat main are one family (CR 505.1b).
+	PhaseOrdinal int `json:"phase_ordinal,omitempty"`
+	// Upcoming is the rest of this turn's plan, in order — every step
+	// still to come, with the phase it belongs to, including phases and
+	// steps effects have added. Empty at cleanup. Public: the turn's
+	// structure is public information. `first_strike_damage` is listed
+	// in every combat and walked through when no combatant has first or
+	// double strike as it would begin (#717).
+	Upcoming []PlannedStepView `json:"upcoming,omitempty"`
 	// BlockDecisionSeats lists the seat indices that owe a
 	// declare-blockers decision right now — under attack, with at
 	// least one creature that could legally block one of the
@@ -3254,6 +3334,9 @@ func ViewOfGame(g *game.Game) GameView {
 				Step:           string(g.Turn.Step),
 				Extra:          g.Turn.Extra,
 				ExtraTurns:     viewOfExtraTurns(g),
+				PhaseID:        g.Turn.PhaseID,
+				PhaseOrdinal:   g.Turn.PhaseOrdinal,
+				Upcoming:       viewOfUpcoming(g),
 				// #328: who still owes a block declaration. Read
 				// surface takes the lock we already hold and the
 				// layers ReadSnapshot just refreshed.
@@ -3309,7 +3392,7 @@ func ViewOfGame(g *game.Game) GameView {
 		stampZoneAbilities(g, view.Seats, &view.Exile)
 		stampCombatTargets(g, &view)
 		stampNoUntap(g, &view.Battlefield)
-		view.legalBySeat = enumerateLegalMoves(g)
+		view.legalBySeat, view.legalActionsBySeat = enumerateLegalMoves(g)
 		// S31 sub-PR 0: the public log resolves card names and knower
 		// sets out of the view that was just assembled, so it must run
 		// last — and inside the same read lock, so the log and the
@@ -3341,24 +3424,36 @@ func ViewOfGame(g *game.Game) GameView {
 // (the active player still does), and blocking is the window a
 // client must never be left guessing about (#328).
 //
+// The second map is ADR 0105's digest of each seat's list. It is
+// folded from the UNCAPPED enumeration, before capLegalMoves, which is
+// the whole reason it is built here rather than from the wire list:
+// one enumeration, two projections of it.
+//
 // A nil map is fine — FilterViewFor reads it with a comma-less index
 // and gets nil back for every seat.
-func enumerateLegalMoves(g *game.Game) map[string][]LegalMoveView {
+func enumerateLegalMoves(g *game.Game) (map[string][]LegalMoveView, map[string]*LegalActionsView) {
 	var out map[string][]LegalMoveView
+	var digests map[string]*LegalActionsView
 	for _, p := range g.Seats {
 		if p == nil {
 			continue
 		}
-		moves := capLegalMoves(legal.EnumerateLocked(g, p.ID, legal.Options{}))
-		if len(moves) == 0 {
+		all := legal.EnumerateLocked(g, p.ID, legal.Options{})
+		if len(all) == 0 {
 			continue
+		}
+		if d := digestLegalMoves(all); d != nil {
+			if digests == nil {
+				digests = make(map[string]*LegalActionsView, len(g.Seats))
+			}
+			digests[p.ID.String()] = d
 		}
 		if out == nil {
 			out = make(map[string][]LegalMoveView, len(g.Seats))
 		}
-		out[p.ID.String()] = moves
+		out[p.ID.String()] = capLegalMoves(all)
 	}
-	return out
+	return out, digests
 }
 
 // legalMovesWireCap bounds how many moves one seat's list may put on
@@ -4336,6 +4431,13 @@ func castStampsFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, kind
 	if tc := game.TapPermanentsCostFor(key); !tc.Empty() {
 		out.TapCost = viewOfTapCost(g, caster, f.manaCost, tc)
 	}
+	// ADR 0100 §4: delve. The options walk is the engine's own
+	// (DelveOptionsForEffect) and the hint is CastPrice.DelveBudget for
+	// the default announcement out of this zone, so neither is a
+	// second answer to "how many may I exile".
+	if haveLive && g.DelveForLocked(caster, live) {
+		out.Delve = viewOfDelve(g, caster, live, kind, f.index)
+	}
 	// #746: the printed clauses of a per-target price, for the X
 	// picker's note.
 	out.TargetCostNotes = game.TargetPricedCostClauses(key)
@@ -4750,6 +4852,36 @@ func viewOfTapCost(g *game.Game, caster uuid.UUID, manaCost string, tc *game.Tap
 	v.Options = opts
 	v.Max = game.TapPermanentsBudgetFor(tc, manaCost, 0)
 	return v
+}
+
+// viewOfDelve projects a card's delve for `caster` casting it out of
+// `kind` (ADR 0100 §4). Caller must hold g.mu.
+func viewOfDelve(g *game.Game, caster uuid.UUID, live game.Card, kind game.ZoneKind, face int) *DelveView {
+	v := &DelveView{Options: &LegalTargetsView{Cards: cardIDStrings(g.DelveOptionsForEffect(caster, live.InstanceID))}}
+	if price, err := g.PriceCastForEffect(caster, live, game.CastSpellParams{
+		FromZone: delveZoneWire(kind),
+		Face:     face,
+	}); err == nil {
+		v.Max = price.DelveBudget
+	}
+	return v
+}
+
+// delveZoneWire is the cast_spell `from_zone` word for a zone, the
+// inverse of the engine's castZoneFromWire: the hand is the empty
+// string, which is what every hand cast sends.
+func delveZoneWire(kind game.ZoneKind) string {
+	switch kind {
+	case game.ZoneCommand:
+		return "command"
+	case game.ZoneGraveyard:
+		return "graveyard"
+	case game.ZoneExile:
+		return "exile"
+	case game.ZoneLibrary:
+		return "library"
+	}
+	return ""
 }
 
 // viewOfWaterbend projects a waterbend clause that is not a spell's —
@@ -5767,6 +5899,14 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 			v.DeclineLabel = c.DeclineLabel
 			v.LifeCost = c.LifeCost
 		}
+		if c.Kind == game.PendingChoiceMayCast {
+			v.AcceptLabel = c.AcceptLabel
+			v.DeclineLabel = c.DeclineLabel
+			v.MayCastKeyword = c.MayCastKeyword
+			if c.MayCastCard != uuid.Nil {
+				v.MayCastCard = c.MayCastCard.String()
+			}
+		}
 		// PendingChoiceLoopShortcut — the CR 726 proposal (#804). The
 		// count is the N in "has resolved N times this turn" and the
 		// max is the ceiling on the client's number field; Reason
@@ -5823,7 +5963,11 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 		// the client renders faces rather than quoting names into a
 		// sentence, and they go through the same per-viewer redaction
 		// as every other Options list in filterPendingChoices.
-		if c.Kind == game.PendingChoiceOptionPick && len(c.PickOptions) > 0 {
+		//
+		// ADR 0102's entry_controller rides the same projection: its
+		// options are seats (Player set), and its purpose goes beside
+		// them.
+		if (c.Kind == game.PendingChoiceOptionPick || c.Kind == game.PendingChoiceEntryController) && len(c.PickOptions) > 0 {
 			v.PickOptions = make([]PickOptionView, 0, len(c.PickOptions))
 			for _, opt := range c.PickOptions {
 				out := PickOptionView{Label: opt.Label, LifeCost: opt.LifeCost}
@@ -5837,6 +5981,9 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 				}
 				v.PickOptions = append(v.PickOptions, out)
 			}
+		}
+		if c.Kind == game.PendingChoiceEntryController {
+			v.ControlPurpose = string(c.ControlPurpose)
 		}
 		// PendingChoiceModePick — #764, CR 603.3c: a modal trigger's
 		// bullets, chosen as the ability is put on the stack. Public
@@ -6437,6 +6584,29 @@ func viewOfZone(z *game.Zone) ZoneView {
 	}
 }
 
+// SpectatorViewerID is the viewerID of a spectator: a connection with
+// no seat that is not the admin (#1588, ADR 0069's 2026-09-30
+// amendment). It is not a UUID, so no seat's ID can equal it and no
+// card's knower set can contain it. The empty viewerID stays the
+// admin's omniscient debug view.
+const SpectatorViewerID = "spectator"
+
+// knownToEverySeat is the spectator's whole notion of "public": every
+// seat in the game knows the card. A card in a public zone is marked
+// known to every seat as it arrives; a face-down, foretold, hidden or
+// privately revealed card is not. A game with no seats knows nothing.
+func knownToEverySeat(c CardView, seatIDs []string) bool {
+	if len(seatIDs) == 0 {
+		return false
+	}
+	for _, id := range seatIDs {
+		if !c.knowers[id] {
+			return false
+		}
+	}
+	return true
+}
+
 // FilterViewFor returns a copy of v with zones hidden from the given
 // viewer zeroed out. The input is not mutated; only the copy's seat
 // entries for non-viewer players get new (empty) card slices.
@@ -6451,17 +6621,31 @@ func viewOfZone(z *game.Zone) ZoneView {
 //   - Shared zones (battlefield, stack, exile, phased_out):
 //     unchanged but for the per-card redaction every zone gets.
 //
-// viewerID is the player UUID string; pass the empty string to get a
-// "spectator" view where every opponent hand and library is hidden
-// (i.e. no seat is treated as "own"). An observer without a claimed
-// seat ends up here.
+// viewerID is the player UUID string. Two other values are not seats:
+//   - "" is the ADMIN's omniscient debug view: every card is known, but
+//     every hand and library is still hidden wholesale and no seat's
+//     move list or cast stamps are promoted.
+//   - SpectatorViewerID is a spectator (#1588, ADR 0069's 2026-09-30
+//     amendment): public information only. A card is known to a
+//     spectator only when EVERY seat knows it, so a face-down, foretold
+//     or hidden card, or one revealed to a single seat, reads as it
+//     does to a non-knower seat, and every hand stays hidden.
 func FilterViewFor(v GameView, viewerID string) GameView {
 	// S13.5: build a per-card "is the viewer a knower" closure that
-	// every zone projection consults. Empty viewerID = admin /
-	// spectator → knows everything.
+	// every zone projection consults. Empty viewerID = admin → knows
+	// everything. SpectatorViewerID knows what every seat knows.
+	seatIDs := make([]string, 0, len(v.Seats))
+	for _, p := range v.Seats {
+		if p.ID != "" {
+			seatIDs = append(seatIDs, p.ID)
+		}
+	}
 	isKnower := func(c CardView) bool {
-		if viewerID == "" {
+		switch viewerID {
+		case "":
 			return true
+		case SpectatorViewerID:
+			return knownToEverySeat(c, seatIDs)
 		}
 		return c.knowers[viewerID]
 	}
@@ -6569,6 +6753,8 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		DiscardPending:    v.DiscardPending,
 		PendingChoices:    filterPendingChoices(v.PendingChoices, isKnower, viewerID),
 		LegalMoves:        legalMovesFor(v.legalBySeat, viewerID),
+		// ADR 0105: the digest of the same list, under the same rule.
+		LegalActions: legalActionsFor(v.legalActionsBySeat, viewerID),
 		// S31 sub-PR 0: the public log rides the same isKnower closure
 		// as every zone above it. Not a parallel visibility model —
 		// literally the same predicate, applied to the card each entry
@@ -6595,15 +6781,15 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 // legalMovesFor picks the viewer's own move list out of the per-seat
 // enumeration and drops every other seat's.
 //
-// The empty viewerID — spectator, admin, replay reader — gets
-// nothing, which is the one place this parts company with the rest of
-// FilterViewFor's "empty means see everything" convention. A move
+// The empty viewerID — admin, replay reader — and SpectatorViewerID
+// get nothing, which is the one place this parts company with the rest
+// of FilterViewFor's "empty means see everything" convention. A move
 // list is not a view of the board, it is a view of what a specific
 // player is holding: "cast Lightning Bolt targeting Kess" names a
 // card in a hand. There is no seat whose moves an unseated viewer is
 // entitled to, so there is nothing to hand back.
 func legalMovesFor(bySeat map[string][]LegalMoveView, viewerID string) []LegalMoveView {
-	if viewerID == "" || len(bySeat) == 0 {
+	if viewerID == "" || viewerID == SpectatorViewerID || len(bySeat) == 0 {
 		return nil
 	}
 	return bySeat[viewerID]
@@ -6667,8 +6853,12 @@ func filterPendingChoices(src []PendingChoiceView, isKnower func(CardView) bool,
 		// itself information about it. Every seat sees that the
 		// prompt is open and whose it is; what was actually revealed
 		// reaches them afterwards as an EventRevealCards run.
+		// ADR 0098's entry_discard_from_hand (Mox Diamond) is the same
+		// pool, the same rule. entry_sacrifice is NOT here: its
+		// candidates are permanents the whole table can see.
 		if (c.Kind == string(game.PendingChoiceChooseCards) ||
-			c.Kind == string(game.PendingChoiceEntryRevealFromHand)) && c.Chooser != viewerID {
+			c.Kind == string(game.PendingChoiceEntryRevealFromHand) ||
+			c.Kind == string(game.PendingChoiceEntryDiscardFromHand)) && c.Chooser != viewerID {
 			out[i].Options = nil
 			out[i].ChooseMin = 0
 			out[i].ChooseMax = 0
@@ -6977,6 +7167,8 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	out.Clauses = nil
 	out.CantCast = ""
 	out.TapCost = nil
+	// ADR 0100: "delve" names the card as loudly as its mana cost.
+	out.Delve = nil
 	// #916: derived from the mana cost, which is cleared above, so
 	// it goes with it — "two Phyrexian symbols" on a face-down card
 	// would name Dismember out loud.
@@ -8436,6 +8628,26 @@ func viewOfExtraTurns(g *game.Game) []int {
 			continue
 		}
 		out = append(out, et.Seat)
+	}
+	return out
+}
+
+// PlannedStepView is one step still to come this turn (TurnView.upcoming).
+type PlannedStepView struct {
+	Step    string `json:"step"`
+	PhaseID int    `json:"phase_id"`
+}
+
+// viewOfUpcoming is TurnView.Upcoming: the turn plan's remaining steps.
+// Caller holds g's read lock.
+func viewOfUpcoming(g *game.Game) []PlannedStepView {
+	plan := g.UpcomingStepsForEffect()
+	if len(plan) == 0 {
+		return nil
+	}
+	out := make([]PlannedStepView, len(plan))
+	for i, p := range plan {
+		out[i] = PlannedStepView{Step: string(p.Step), PhaseID: p.PhaseID}
 	}
 	return out
 }

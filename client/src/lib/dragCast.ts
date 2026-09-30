@@ -307,6 +307,9 @@ export function previewDecidesMana(card: CardView): boolean {
   if (alternativeCostsOf(card).length > 0) return false;
   if (!printedCostClaimable(card)) return false;
   if (tapCostOf(card)) return false;
+  // ADR 0100: delve pays generic mana out of the graveyard, which the
+  // printed-cost preview never counts.
+  if (card.delve) return false;
   if ((card.phyrexian_symbols ?? 0) > 0) return false;
   return true;
 }

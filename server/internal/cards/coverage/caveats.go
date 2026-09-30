@@ -151,6 +151,16 @@ var mechanics = []Mechanic{
 		Adopt:      `CastableZones: []game.ZoneKind{game.ZoneGraveyard} plus Flashback("{cost}") — see alternative_cost.go`,
 	},
 	{
+		// ADR 0100 sub-PR 1: CR 702.66, a way of paying rather than a
+		// cost, declared with one bit.
+		Name:       "delve",
+		Phrases:    []string{"delve"},
+		Implements: func(s effects.Spec) bool { return s.Delve },
+		Evidence:   "Spec.Delve is set",
+		Confidence: Exact,
+		Adopt:      "Delve: true on the Spec — see ADR 0100",
+	},
+	{
 		Name:       "escape",
 		Phrases:    []string{"escape"},
 		Implements: altCost("escape"),
@@ -520,6 +530,17 @@ var mechanics = []Mechanic{
 		Evidence:   `a trigger in game.CatalogTriggers(oracleID) is named "storm"`,
 		Confidence: Exact,
 		Adopt:      `Triggered: []game.TriggeredAbility{Storm()}`,
+	},
+	{
+		// ADR 0099: discover is an instruction inside a closure, so the
+		// only machine-readable signal is the Spec's own declaration,
+		// which effects/discover_guard_test.go holds to the source.
+		Name:       "discover",
+		Phrases:    []string{"discover"},
+		Implements: func(s effects.Spec) bool { return s.Discovers },
+		Evidence:   "the spec declares Spec.Discovers",
+		Confidence: Exact,
+		Adopt:      `Discover{N: n}.Apply(ctx) or DiscoverN(n), and Discovers: true on the Spec — see effects/discover.go`,
 	},
 	{
 		// #706: prowess is a canonicalKeywords token, not a

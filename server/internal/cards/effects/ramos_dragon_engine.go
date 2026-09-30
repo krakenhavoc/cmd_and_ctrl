@@ -31,17 +31,16 @@ import (
 //     tap, and a summoning-sick Ramos can still fire it the turn it
 //     lands — whose whole cost is removing five +1/+1 counters.
 //
-// "Activate only once each turn" is ManaAbilityNotUsedThisTurn, which
-// counts this permanent's EventManaAbilityActivated in the turn's own
-// slice of the event log. Ramos has exactly one mana ability, so
-// per-permanent and per-ability are the same question here; the
-// helper says so.
+// "Activate only once each turn" is the declared OncePerTurn bit
+// (#1621), which Register folds into the ability's Condition over the
+// per-turn activation record — per object and per label.
 //
-// The auto-tapper never plans the payout: the ability costs its source
-// neither a {T} nor itself (the demand autoTapAbilityFor makes since
-// #1242), so it is not a planned source at all, and ten mana from five
-// counters is not a decision a planner should make on the player's
-// behalf.
+// The auto-tapper never plans the payout. The ability costs its source
+// neither a {T} nor itself, and the one costless shape the planner
+// will take as a last resort (#1621 — Vivi Ornitier's {0}) must cost
+// NOTHING: removing five +1/+1 counters shrinks Ramos for good, and
+// ten mana from five counters is not a decision a planner should make
+// on the player's behalf.
 //
 // No simplification.
 func init() {
@@ -81,9 +80,9 @@ func init() {
 			Cost: ManaAbilityCost{
 				RemoveCounters: RemoveCountersFromThis(game.CounterPlusOne, 5).RemoveCounters,
 			},
-			Produced:  "{W}{W}{U}{U}{B}{B}{R}{R}{G}{G}",
-			Label:     "Remove five +1/+1 counters: Add {W}{W}{U}{U}{B}{B}{R}{R}{G}{G}",
-			Condition: ManaAbilityNotUsedThisTurn(),
+			Produced:    "{W}{W}{U}{U}{B}{B}{R}{R}{G}{G}",
+			Label:       "Remove five +1/+1 counters: Add {W}{W}{U}{U}{B}{B}{R}{R}{G}{G}",
+			OncePerTurn: true,
 		}},
 	})
 }

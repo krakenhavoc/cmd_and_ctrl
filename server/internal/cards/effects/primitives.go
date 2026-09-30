@@ -97,7 +97,7 @@ func (d DrawCards) Apply(ctx *Context) error {
 }
 
 // DiscardCards removes N cards from `Player`'s hand AT RANDOM
-// (CR 701.8b). Cards land in the graveyard known to every seated
+// (CR 701.9b). Cards land in the graveyard known to every seated
 // player (public-zone rule).
 //
 // It is for cards that print "at random" — Burning Inquiry — and for
@@ -552,6 +552,13 @@ type ScheduleDelayedTrigger struct {
 	// TakeExtraTurn queued. "At the beginning of THAT turn's end step"
 	// (Final Fortune). Zero is unbound.
 	OnExtraTurn int
+
+	// EachThisTurn is "at the beginning of EACH <step> this turn"
+	// (Full Throttle's "each combat this turn"): the trigger fires at
+	// every matching step for the rest of the turn instead of once, and
+	// ends at cleanup whether or not it fired (CR 603.7b, a stated
+	// duration).
+	EachThisTurn bool
 }
 
 func (s ScheduleDelayedTrigger) Apply(ctx *Context) error {
@@ -563,7 +570,7 @@ func (s ScheduleDelayedTrigger) Apply(ctx *Context) error {
 	if at == "" {
 		at = game.StepEnd
 	}
-	ctx.Game.ScheduleDelayedTriggerForEffect(game.DelayedTrigger{
+	dt := game.DelayedTrigger{
 		Controller:         controller,
 		SourceCardID:       ctx.Source(),
 		Label:              s.Label,
@@ -574,7 +581,12 @@ func (s ScheduleDelayedTrigger) Apply(ctx *Context) error {
 		Body:               s.Body,
 		Params:             s.Params,
 		OnExtraTurn:        s.OnExtraTurn,
-	})
+	}
+	if s.EachThisTurn {
+		d := ctx.Game.UntilEndOfTurnDuration()
+		dt.Duration = &d
+	}
+	ctx.Game.ScheduleDelayedTriggerForEffect(dt)
 	return nil
 }
 

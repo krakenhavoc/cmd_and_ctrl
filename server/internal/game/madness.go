@@ -49,7 +49,7 @@ import (
 //
 // A madness card milled, tutored, sacrificed off the battlefield or
 // pitched to Force of Will's alternative cost is not discarded, and
-// none of those opens a RepEventDiscard. CR 701.8a defines a discard
+// none of those opens a RepEventDiscard. CR 701.9a defines a discard
 // by the move OUT of the hand, so the one event kind is the whole
 // test.
 //
@@ -159,7 +159,7 @@ func MadnessReplacement() ReplacementEffect {
 //
 // It watches EventDiscardCard from ZoneExile, which is the reflexive
 // "when you do" written in the vocabulary the engine has: the discard
-// event is emitted once the move has LANDED (CR 701.8a defines a
+// event is emitted once the move has LANDED (CR 701.9a defines a
 // discard by the move out of the hand, so it fires wherever the card
 // ends up), so by the time the harvest runs the card is sitting in
 // exile and the zone walk finds it there.
@@ -212,18 +212,25 @@ func (g *Game) offerMadnessCastLocked(owner, cardID uuid.UUID, cost string) erro
 		return nil
 	}
 	name := c.Name
-	return g.QueueMayCastForEffect(owner, cardID, cardID,
-		"Madness — cast "+name+" for its madness cost "+cost+"?",
-		func(g *Game) error {
+	return g.QueueMayCastPromptForEffect(MayCastPrompt{
+		Chooser:      owner,
+		Source:       cardID,
+		Card:         cardID,
+		Question:     "Madness — cast " + name + " for its madness cost " + cost + "?",
+		Keyword:      MayCastKeywordMadness,
+		AcceptLabel:  "Cast it for " + cost,
+		DeclineLabel: "Put it into your graveyard",
+		OnAccept: func(g *Game) error {
 			g.grantMadnessCastLocked(owner, cardID, cost)
 			g.scheduleMadnessGraveyardLocked(owner, cardID, name)
 			return nil
 		},
-		func(g *Game) error {
+		OnDecline: func(g *Game) error {
 			// CR 702.35b. Immediately, inside this resolution, which
 			// is where the card prints it.
 			return g.madnessToGraveyardLocked(cardID)
-		})
+		},
+	})
 }
 
 // grantMadnessCastLocked stamps the cast on the one exiled object the
@@ -273,9 +280,10 @@ func (g *Game) grantMadnessCastLocked(owner, cardID uuid.UUID, cost string) {
 // beginning of the next end step, a madness card still sitting in
 // exile under its madness grant is put into its owner's graveyard.
 //
-// This is what keeps the grant from being STRONGER than printed, and
-// it is cascade's scheduleCascadeBottomLocked with a different
-// destination — see that function for the argument.
+// This is what keeps the grant from being STRONGER than printed. It is
+// the shape cascade used before ADR 0099 moved cascade onto a
+// pass-closed window (CastPermission.LapseOnPass); madness keeps the
+// end-step cleanup.
 //
 // Deliberately narrow, and narrowed by CR 400.7 rather than by the
 // grant: it fires only if the exiled card is still the SAME OBJECT the
@@ -335,7 +343,7 @@ func init() {
 // zone (CR 903.9).
 //
 // It is NOT a discard: the card left the hand a while ago, and
-// CR 701.8a's keyword action is the move out of a hand. So no discard
+// CR 701.9a's keyword action is the move out of a hand. So no discard
 // payoff fires a second time for one discarded card.
 //
 // Caller must hold g.mu (write).

@@ -184,8 +184,8 @@ func TestSorinRavenousNeonateMinusOneDealsTheLifeGained(t *testing.T) {
 }
 
 // −6 with another white permanent: the creature is yours, a Vampire,
-// and has a lifelink counter that grants lifelink while Sorin is here.
-// Loyalty 7, so Sorin survives the −6 and his static is still there.
+// and has a lifelink counter that grants lifelink — with Sorin on the
+// battlefield or not (CR 122.1b, ADR 0101).
 func TestSorinRavenousNeonateMinusSixStealsAndGivesLifelink(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
@@ -217,15 +217,15 @@ func TestSorinRavenousNeonateMinusSixStealsAndGivesLifelink(t *testing.T) {
 		t.Errorf("a lifelink counter: %d", got.Counters["lifelink"])
 	}
 	if !hasAbility(effectiveAbilities(t, g, target), "lifelink") {
-		t.Error("the lifelink counter grants lifelink while Sorin is on the battlefield")
+		t.Error("the lifelink counter grants lifelink")
 	}
 
-	// The declared caveat: with Sorin gone the counter stays and stops
-	// granting lifelink.
+	// ADR 0101: the engine reads the counter itself, so it keeps
+	// granting lifelink once Sorin has gone.
 	g.WithWriteLock(func() { _ = g.DestroyPermanentForEffect(walker) })
 	passPriorityAroundTable(t, g)
-	if hasAbility(effectiveAbilities(t, g, target), "lifelink") {
-		t.Error("the caveat: without Sorin the counter grants nothing")
+	if !hasAbility(effectiveAbilities(t, g, target), "lifelink") {
+		t.Error("without Sorin the lifelink counter still grants lifelink")
 	}
 }
 
