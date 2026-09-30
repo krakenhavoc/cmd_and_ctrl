@@ -1121,6 +1121,25 @@ type Card struct {
 	// later snapshot, and goes away only when the card itself leaves
 	// the game. Carried by the snapshot. Added in S33 (#522).
 	AbilitiesLostOnRestore bool
+
+	// Fused marks a FUSED split spell on the stack (CR 702.102a, ADR
+	// 0103 Decision 3): both halves were cast together from hand. The
+	// card then carries both halves' combined characteristics
+	// (CR 702.102b, 709.4d) and keys on FusedCatalogKey. Set only by
+	// the cast path and cleared by MoveCard, so it never outlives the
+	// stack. Carried by the snapshot, for a restore point taken with a
+	// fused spell on the stack.
+	Fused bool
+
+	// Unlocked is a Room's two CR 709.5c designations, "left half
+	// unlocked" and "right half unlocked" (ADR 0103). Battlefield state:
+	// set as the permanent enters by the half that was cast (CR
+	// 709.5d) and by UnlockDoorForEffect / LockDoorForEffect, cleared
+	// when it leaves the battlefield (CR 400.7), not copiable (nothing
+	// in the copy path reads it), and read by Designation.Active for
+	// the door gate. One byte in the bool block. Carried by the
+	// snapshot.
+	Unlocked DoorMask
 }
 
 // AddKnower marks `viewerID` as having seen this card. No-op for

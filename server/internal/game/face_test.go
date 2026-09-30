@@ -200,7 +200,10 @@ func TestCastableFacesPerLayout(t *testing.T) {
 		// opens is the permission's business — see CR 715.4's exile
 		// grant in adventure.go.
 		{LayoutAdventure, 2},
-		{LayoutSplit, 1},
+		// CR 709.3, ADR 0103: the caster chooses either half of a split
+		// card; where each half may be cast FROM is the cast-path gate's
+		// (aftermath).
+		{LayoutSplit, 2},
 		{LayoutPrepare, 1},
 		{"flip", 1},
 		{"", 1},

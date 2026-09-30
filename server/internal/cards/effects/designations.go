@@ -12,7 +12,7 @@ import (
 // is a marker a permanent has on the battlefield that switches some
 // of its own printed abilities on: a Class's level (CR 716.2), a
 // Case being solved (CR 719.3), a station threshold's charge counters
-// (CR 721.2), a Room's unlocked door (CR 709.5, not built).
+// (CR 721.2), a Room's unlocked door (CR 709.5, ADR 0103 — rooms.go).
 //
 // The engine side is server/internal/game/designations.go: one field
 // (`ActiveWhen`) on every printed-ability slot, one predicate, and one
@@ -255,6 +255,18 @@ func specDesignations(spec Spec) []game.Designation {
 	}
 	for _, p := range spec.GatedCastPermissions {
 		out = append(out, p.ActiveWhen)
+	}
+	// ADR 0103: a Room door's replacement (Torture Pit), untap-step
+	// permission (Prop Room) and "no maximum hand size" (Steaming
+	// Sauna) carry the gate too.
+	for _, r := range spec.Replacements {
+		out = append(out, r.ActiveWhen)
+	}
+	for _, u := range spec.UntapStep {
+		out = append(out, u.ActiveWhen)
+	}
+	if spec.NoMaxHandSize {
+		out = append(out, spec.NoMaxHandSizeWhen)
 	}
 	return out
 }

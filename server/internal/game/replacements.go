@@ -439,6 +439,15 @@ type ReplacementEvent struct {
 	// permanent with no prepare spell (CR 722.3a).
 	EntersPrepared bool
 
+	// EntersUnlocked is CR 709.5d's designation for a Room spell that
+	// resolves (ADR 0103): the door of the half that was cast, seeded
+	// from the resolving stack item before the CR 614 pipeline and
+	// given to the permanent by every battlefield landing before
+	// EventETB, so the unlocked door's statics apply as it enters. Zero
+	// for every other entry — a Room put onto the battlefield without
+	// being cast enters with both doors locked.
+	EntersUnlocked DoorMask
+
 	// EntersAttacking is the player, planeswalker or battle the
 	// permanent is put onto the battlefield ATTACKING (CR 506.3c,
 	// #1227) — ninjutsu's "put this card onto the battlefield from
@@ -1056,6 +1065,17 @@ func (ev *ReplacementEvent) AddCounterAtETB(name string, n int) {
 // tracking + CR 616 order-choose prompt are all enforced centrally;
 // cards stay declarative.
 type ReplacementEffect struct {
+	// ActiveWhen is ADR 0071's designation gate: the replacement exists
+	// only while the gate is satisfied by the permanent it is printed
+	// on. Its zero value is "no gate", which is every replacement in the
+	// catalog but a Room door's (ADR 0103 — Torture Pit's "if a source
+	// you control would deal noncombat damage …" exists only while its
+	// door is unlocked). Read by the battlefield gather and the entering
+	// card's self-replacement gather, which skip an inactive slot
+	// rather than filter the list, so a slot's index — which the
+	// replacement's ID packs — never moves.
+	ActiveWhen Designation
+
 	// Watches is the set of event kinds this effect is interested
 	// in. Cheap pre-filter — if ev.Kind isn't in Watches, AppliesTo
 	// is skipped. Empty Watches matches any kind (rarely useful).
@@ -1932,6 +1952,9 @@ func (g *Game) gatherActiveReplacementsLocked(ev *ReplacementEvent) []activeRepl
 				continue
 			}
 			for repIdx := range reps {
+				if !reps[repIdx].ActiveWhen.Active(*card) {
+					continue
+				}
 				id, ok := encodeCatalogReplacementID(cardIdx, repIdx)
 				if !ok {
 					// Unrepresentable — a slot past the budget, which
@@ -1992,6 +2015,9 @@ func (g *Game) gatherActiveReplacementsLocked(ev *ReplacementEvent) []activeRepl
 			key := CatalogKey(entering)
 			reps := CatalogReplacements(key)
 			for repIdx := range reps {
+				if !reps[repIdx].ActiveWhen.Active(entering) {
+					continue
+				}
 				if repIdx >= MaxCatalogReplacementSlots {
 					// The same budget the packed catalog IDs are
 					// bounded by, for the same reason: slot

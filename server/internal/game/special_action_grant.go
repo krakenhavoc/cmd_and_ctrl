@@ -287,12 +287,17 @@ func specialActionVerb(kind SpecialActionKind) string {
 // the first.
 //
 // Caller must hold g.mu (read or write).
-func (g *Game) specialActionOfferLocked(actor uuid.UUID, card Card, zone ZoneKind, kind SpecialActionKind, cost string) *SpecialAction {
+func (g *Game) specialActionOfferLocked(actor uuid.UUID, card Card, zone ZoneKind, kind SpecialActionKind, cost string, door DoorSide) *SpecialAction {
 	for _, sa := range g.SpecialActionsOfferedLocked(actor, card, zone) {
 		if sa.Kind != kind {
 			continue
 		}
 		if cost != "" && sa.Cost != cost {
+			continue
+		}
+		// ADR 0103: an unlock names its door; two doors can print the
+		// same cost.
+		if door != DoorNone && sa.Door != door {
 			continue
 		}
 		out := sa

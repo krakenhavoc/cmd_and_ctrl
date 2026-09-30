@@ -12,7 +12,7 @@ import "github.com/google/uuid"
 //	CR 719.3   a Case being SOLVED  "Solved — [ability]"
 //	CR 721.2   a station THRESHOLD  "as long as this has N or more charge counters, it has …"
 //	CR 709.5   a Room's UNLOCKED    a locked door has no rules text at all
-//	           DOOR                 (designed here, built by #886)
+//	           DOOR                 (built by ADR 0103, #1756)
 //	CR 614.12  a CHOSEN OPTION      "choose Khans or Dragons. • Khans — …"
 //	           (anchor word)        (#1572, ADR 0071 amendment 2026-09-27)
 //
@@ -108,11 +108,8 @@ const (
 	// printed on a Room's door exists only while that door is
 	// unlocked.
 	//
-	// RESERVED, NOT BUILT (ADR 0071 decision 3). Card has no unlocked
-	// state yet, so Active is false for it, no effects constructor
-	// produces one, and TestNoRegisteredSpecDeclaresADoorGate fails
-	// the build if a card file tries. #886 adds the state and the
-	// unlock special action; nothing else here changes when it does.
+	// Built by ADR 0103 (#1756): Active reads Card.Unlocked, the
+	// unlock special action and UnlockDoorForEffect set it.
 	DesignationDoorUnlocked
 
 	// DesignationChosenOption is CR 614.12's anchor-word form: "As
@@ -207,10 +204,11 @@ func (d Designation) Active(c Card) bool {
 		// direction.
 		return d.Option != "" && c.ChosenOption == d.Option
 	case DesignationDoorUnlocked:
-		// Reserved. Nothing can unlock a door yet, so nothing is
-		// unlocked — and no registered card declares this gate, so
-		// the false is unobservable rather than a silent nerf.
-		return false
+		// CR 709.5: a locked half has no rules text, so an ability
+		// printed on a door exists only while that door is unlocked
+		// (ADR 0103). Card.Unlocked is battlefield state, so off the
+		// battlefield every door ability is absent (CR 113.6).
+		return c.Unlocked.Has(d.Door)
 	}
 	return false
 }
@@ -239,6 +237,12 @@ func ChargeCounters(n int) Designation {
 // Harnessed builds a CR 701.64 / 702.186b gate: the ability exists
 // while the permanent is harnessed.
 func Harnessed() Designation { return Designation{Kind: DesignationHarnessed} }
+
+// DoorUnlocked builds a CR 709.5 gate: the ability, printed on that
+// door of a Room, exists while the door is unlocked (ADR 0103).
+func DoorUnlocked(door DoorSide) Designation {
+	return Designation{Kind: DesignationDoorUnlocked, Door: door}
+}
 
 // Monstrous builds a CR 701.37b gate: the ability exists while the
 // permanent is monstrous (#1700).

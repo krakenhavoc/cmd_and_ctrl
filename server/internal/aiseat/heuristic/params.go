@@ -68,6 +68,8 @@ type activateParams struct {
 type specialActionParams struct {
 	CardID string `json:"card_id"`
 	Kind   string `json:"kind"`
+	// Door is the door an "unlock" opens — "left" or "right" (ADR 0103).
+	Door string `json:"door"`
 }
 
 type attackParams struct {

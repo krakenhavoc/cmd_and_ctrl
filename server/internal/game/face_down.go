@@ -516,6 +516,10 @@ func (g *Game) turnFaceUpLocked(p *Player, cardID uuid.UUID, sa SpecialAction) e
 		return ErrSpecialActionNotOffered
 	}
 	c.ClearFaceDown()
+	// ADR 0103: a Room turned face up is a Room on the battlefield
+	// again — the halves its doors unlock, none if it entered face
+	// down (CR 708.8: nothing relating to entering applies).
+	c.materialiseDoors()
 	// CR 613.7f (#1271): "a permanent receives a new timestamp each
 	// time it turns face up or face down". The statics the card just
 	// got back are ordered AFTER everything already on the

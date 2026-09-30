@@ -321,6 +321,8 @@ func (g *Game) resetAsNewObjectLocked(oldID uuid.UUID) uuid.UUID {
 		c.Solved = false
 		c.Harnessed = false
 		c.Monstrous = false
+		// ADR 0103 / CR 400.7: a new object has neither door unlocked.
+		c.Unlocked = 0
 		c.Prepared = false
 		c.effective = nil
 		return newID

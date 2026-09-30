@@ -768,6 +768,34 @@ const (
 	// Added in S46 (#757).
 	EventCaseSolved EventKind = "case_solved"
 
+	// EventDoorUnlocked — a Room was given one of its unlocked
+	// designations (CR 709.5c, ADR 0103). Source / CardID / Target =
+	// the Room, Actor = the player who unlocked it (the special
+	// action's taker, the instructed player, or the controller as the
+	// Room entered with its cast door unlocked), Amount = the door, as
+	// a DoorSide (1 left, 2 right), Label = that door's name.
+	//
+	// What "when you unlock this door" watches — including as the
+	// permanent enters (CR 709.5h), which is why the entry emits it
+	// right after EventETB. Emitted only on a real change, so an
+	// unlock of a door that is already unlocked says nothing. Bumps
+	// the layer version: a door changes a name, a cost, colours and
+	// which gated statics exist.
+	EventDoorUnlocked EventKind = "door_unlocked"
+
+	// EventDoorLocked — a Room lost one of its unlocked designations
+	// (CR 709.5g). Same fields as EventDoorUnlocked. Bumps the layer
+	// version for the same reason.
+	EventDoorLocked EventKind = "door_locked"
+
+	// EventRoomFullyUnlocked — a Room that had one unlocked
+	// designation got the other, or had neither and got both
+	// (CR 709.5i). Source / CardID / Target = the Room, Actor = the
+	// player who unlocked it. Emitted right after the EventDoorUnlocked
+	// that completed it. What "whenever you fully unlock a Room" (the
+	// eerie cards) watches.
+	EventRoomFullyUnlocked EventKind = "room_fully_unlocked"
+
 	// EventHarnessed — a permanent became harnessed (CR 701.64).
 	// Source / CardID / Target = the permanent, Actor = its
 	// controller.

@@ -502,18 +502,14 @@ func pushColoredPermanent(g *game.Game, owner uuid.UUID, name, color string) uui
 
 // --- catalog-wide guards ---------------------------------------------
 
-// TestNoRegisteredSpecDeclaresADoorGate — ADR 0071 decision 3. The
-// Room door gate is reserved and not built: game.Card has no unlocked
-// state, so Designation.Active answers false for it, and a card that
-// declared one would ship with that ability switched off forever.
-// Register refuses one at boot; this is the whole-catalog sweep that
-// says so without needing a card to try.
-func TestNoRegisteredSpecDeclaresADoorGate(t *testing.T) {
+// TestEveryRegisteredSpecKeepsTheDoorRules — ADR 0103. Register
+// refuses a Room with an ungated ability and a door gate on anything
+// that is not a Room (checkRoomSpec); this is the whole-catalog sweep
+// that says so without needing a card to try.
+func TestEveryRegisteredSpecKeepsTheDoorRules(t *testing.T) {
 	for _, spec := range All() {
-		for _, d := range specDesignations(spec) {
-			if d.Kind == game.DesignationDoorUnlocked {
-				t.Errorf("%s gates an ability on an unlocked Room door, which is not built yet (#886)", spec.Name)
-			}
+		if problem := checkRoomSpec(spec); problem != "" {
+			t.Errorf("%s %s", spec.Name, problem)
 		}
 	}
 }

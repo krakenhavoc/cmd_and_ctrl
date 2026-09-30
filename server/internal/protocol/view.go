@@ -1886,6 +1886,15 @@ type CardView struct {
 	// state, not catalog state — exactly as an uncatalogued Saga
 	// still shows its lore counters.
 	ClassLevel int `json:"class_level,omitempty"`
+	// Doors is a Room's two CR 709.5c designations (ADR 0103): which
+	// doors are unlocked. Present only for a face-up Room on the
+	// battlefield, so `false` inside it is meaningful — a locked door —
+	// and its absence means "not a Room on the battlefield". Public: a
+	// Room's doors are visible to everyone in paper. The doors' names,
+	// costs and art ride on `faces`; a fully locked Room has no name
+	// (CR 709.5), so `name` is empty and the client labels it from
+	// `faces`.
+	Doors *RoomDoorsView `json:"doors,omitempty"`
 	// Solved is a Case permanent's CR 719.3 solved designation
 	// (ADR 0071). Public for the same reason, and absent — not
 	// `false` — for every card that is not a solved Case.
@@ -2061,6 +2070,14 @@ type CardView struct {
 	// What this feeds is the face picker and the hover overlay's
 	// back-face panel. Absent for single-faced cards.
 	Faces []CardFaceView `json:"faces,omitempty"`
+
+	// Fused is the announce surface of a FUSED cast of this split card
+	// — both halves at once, from hand (CR 702.102a, ADR 0103): the
+	// combined name and cost, and the two halves' target clauses in
+	// order. Present only for a split card with fuse in its owner's
+	// hand; the client's face picker offers it as a third choice and
+	// sends `fuse: true`. Same per-viewer split as Faces.
+	Fused *CardFaceView `json:"fused,omitempty"`
 
 	// ActiveFace indexes Faces. Omitted when zero, which is the
 	// front face and every single-faced card.
@@ -2481,6 +2498,17 @@ type SpecialActionView struct {
 	// never hide the keyword — a player has to be able to see that
 	// the card has it.
 	Available bool `json:"available,omitempty"`
+	// Door is the door an "unlock" row unlocks — "left" or "right"
+	// (ADR 0103) — and what the action payload names back. Empty for
+	// every other kind.
+	Door string `json:"door,omitempty"`
+}
+
+// RoomDoorsView is a Room's unlocked designations (CR 709.5c, ADR
+// 0103): true is an unlocked door.
+type RoomDoorsView struct {
+	Left  bool `json:"left"`
+	Right bool `json:"right"`
 }
 
 type ExilePlayView struct {
@@ -4262,6 +4290,10 @@ type castFace struct {
 	index    int
 	key      string
 	manaCost string
+	// fused is a FUSED cast of both halves of a split card with fuse
+	// (CR 702.102a, ADR 0103): key is game.FusedCatalogKey and
+	// manaCost both halves' costs together.
+	fused bool
 }
 
 // activeFace is the castFace for the half the view is SHOWING — every
@@ -4269,11 +4301,28 @@ type castFace struct {
 // 712.8a, MoveCard), so for all of them this is face 0 and the key is
 // the bare oracle ID, exactly as the pre-#992 call sites passed.
 func activeFace(c *CardView) castFace {
+	cost := c.ManaCost
+	// ADR 0103: a split card in a pile shows its WHOLE card (CR 709.4)
+	// — both costs together — but the half a plain cast announces is
+	// the one that is up, so its own printed cost is the one to price.
+	if c.ActiveFace >= 0 && c.ActiveFace < len(c.Faces) && c.Layout == game.LayoutSplit {
+		cost = c.Faces[c.ActiveFace].ManaCost
+	}
 	return castFace{
 		index:    c.ActiveFace,
 		key:      game.CatalogKeyForFace(c.oracleID, c.ActiveFace),
-		manaCost: c.ManaCost,
+		manaCost: cost,
 	}
+}
+
+// fusedFace is the castFace for a fused cast of a split card with
+// fuse (ADR 0103): both halves at once, under the synthetic key.
+func fusedFace(c *CardView) castFace {
+	cost := ""
+	for _, f := range c.Faces {
+		cost += f.ManaCost
+	}
+	return castFace{key: game.FusedCatalogKey(c.oracleID), manaCost: cost, fused: true}
 }
 
 // castFaceOf is activeFace for a face the card is NOT showing, read
@@ -4322,6 +4371,19 @@ func stampCastableFaces(g *game.Game, caster uuid.UUID, c *CardView, kind game.Z
 			s.applyPublicToFace(&c.Faces[i], kind)
 		}
 		c.Faces[i].stampsFor(caster, s)
+	}
+	// ADR 0103, CR 702.102a: a split card with fuse in its owner's hand
+	// also offers the fused cast of both halves.
+	if kind == game.ZoneHand && grant == nil && game.HasFuse(live) && !game.FusedHalvesDeclareExtras(live.OracleID) {
+		if c.Fused == nil {
+			fused := game.FusedSpell(live)
+			c.Fused = &CardFaceView{Name: fused.Name, TypeLine: fused.TypeLine, ManaCost: fused.ManaCost}
+		}
+		s := castStampsFor(g, caster, c, fusedFace(c), kind, grant)
+		if public {
+			s.applyPublicToFace(c.Fused, kind)
+		}
+		c.Fused.stampsFor(caster, s)
 	}
 }
 
@@ -4397,6 +4459,9 @@ func castStampsFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, kind
 	if haveLive {
 		live.SetFace(f.index)
 		live = grantedFace(live, grant)
+		if f.fused {
+			live = game.FusedSpell(live)
+		}
 	}
 	// S14: the announce-time target kind, read off the catalog entry
 	// of the half being cast. Stamped HERE since #992 rather than
@@ -5439,6 +5504,7 @@ func viewOfSpecialActions(g *game.Game, card game.Card, owner uuid.UUID, zone ga
 			Label:     sa.Label,
 			Cost:      sa.Cost,
 			Available: g.SpecialActionTimingOKLocked(owner, card, sa.Kind),
+			Door:      game.DoorName(sa.Door),
 		}
 		// #1319: the charged price, after every CR 601.2f cost
 		// modifier on the battlefield — Ranar the Ever-Watchful's
@@ -7071,6 +7137,17 @@ func applyAbilityOffersFor(z ZoneView, viewerID string) ZoneView {
 // One allocation per multi-face card per viewer, and none at all for
 // a single-faced card or one whose faces carry no stamps.
 func applyFaceCastStampsFor(c *CardView, viewerID string, mine bool) {
+	// ADR 0103: the fused block is one more face, promoted the same
+	// way off a copy of the pointer.
+	if c.Fused != nil && c.Fused.castOffers != nil {
+		f := *c.Fused
+		stamps, ok := f.castOffers[viewerID]
+		f.castOffers = nil
+		if ok && mine {
+			stamps.applyToFace(&f)
+		}
+		c.Fused = &f
+	}
 	stamped := false
 	for i := range c.Faces {
 		if c.Faces[i].castOffers != nil {
@@ -7199,6 +7276,7 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	// Restoration that still shipped "Sea Gate, Reborn // Land" in
 	// its faces array would be the loudest leak on the wire.
 	out.Faces = nil
+	out.Fused = nil
 	out.Layout = ""
 	out.ActiveFace = 0
 	// #95: everything below is read off the card's own text or type
@@ -7262,6 +7340,7 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	// neither. Cleared with the rest of the type-derived bits.
 	out.ClassLevel = 0
 	out.Solved = false
+	out.Doors = nil
 	// ADR 0071 amendment (#1321): a face-down permanent (CR 708.2)
 	// prints none of its own abilities, so it cannot have harnessed
 	// one on.
@@ -7590,6 +7669,13 @@ func viewOfCard(c game.Card) CardView {
 		view.Harnessed = c.Harnessed
 		view.Monstrous = c.Monstrous
 		view.Prepared = c.Prepared
+		// ADR 0103: a face-up Room's doors.
+		if game.HasSharedTypeLine(c) {
+			view.Doors = &RoomDoorsView{
+				Left:  c.Unlocked.Has(game.DoorLeft),
+				Right: c.Unlocked.Has(game.DoorRight),
+			}
+		}
 	}
 	if c.BlockingTarget != uuid.Nil {
 		view.BlockingTarget = c.BlockingTarget.String()

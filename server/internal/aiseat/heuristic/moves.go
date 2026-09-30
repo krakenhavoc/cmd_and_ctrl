@@ -354,7 +354,11 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 		// The enumerator has already checked the timing and the
 		// affordability, so anything that reaches here is a move the
 		// engine will accept (#544).
-		return p.cfg.SpecialActionValue, "special action: " + decode[specialActionParams](m.Params).Kind
+		sp := decode[specialActionParams](m.Params)
+		if sp.Kind == "unlock" {
+			return p.valueOfUnlock(st, sp)
+		}
+		return p.cfg.SpecialActionValue, "special action: " + sp.Kind
 
 	case legal.KindChoice:
 		return p.valueOfChoice(st, m)
@@ -672,4 +676,22 @@ func colorSymbols(cards []protocol.CardView) map[string]int {
 		}
 	}
 	return out
+}
+
+// valueOfUnlock prices the CR 709.5e unlock special action (ADR 0103,
+// owner decision 5) like casting a spell of the unlocked door's mana
+// value: unlocking a door is paying that half's cost for that half's
+// text, which is what casting it would have bought. An UNIMPLEMENTED
+// Room's door does nothing the engine runs, so it falls back to the
+// flat special-action value rather than being priced as a real spell.
+func (p *Policy) valueOfUnlock(st *state, sp specialActionParams) (float64, string) {
+	c := st.bf[sp.CardID]
+	face := 0
+	if sp.Door == "right" {
+		face = 1
+	}
+	if c == nil || face >= len(c.Faces) || c.Unimplemented {
+		return p.cfg.SpecialActionValue, "unlock door"
+	}
+	return p.cfg.SpellPerMana * float64(manaValue(c.Faces[face].ManaCost, 0)), "unlock " + c.Faces[face].Name
 }

@@ -775,6 +775,16 @@ type Spec struct {
 	// Issue #338.
 	NoMaxHandSize bool
 
+	// NoMaxHandSizeWhen gates NoMaxHandSize on a designation (ADR
+	// 0071's gate) — a Room's Steaming Sauna door (ADR 0103). Zero is
+	// no gate. The Room constructor sets it; a card file seldom does.
+	NoMaxHandSizeWhen game.Designation
+
+	// room marks a Spec built by Room (ADR 0103), so Register holds it
+	// to the door-gate rules (checkRoomSpec). Unexported: a card file
+	// gets it only by building its Spec with Room.
+	room bool
+
 	// PlayerKeywords declares a printed static that gives this
 	// permanent's CONTROLLER an ability — "You have hexproof"
 	// (Leyline of Sanctity, Aegis of the Gods), "You have protection

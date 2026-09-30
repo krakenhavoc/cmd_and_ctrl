@@ -379,16 +379,14 @@ func Register(spec Spec) {
 			}
 		}
 	}
-	// ADR 0071 decision 3: the Room door gate is RESERVED, not built.
-	// game.Card has no unlocked state, so Designation.Active answers
-	// false for it — a card that declared one would ship with that
-	// ability silently switched off forever, which is exactly the
-	// half-a-card failure ADR 0037 §5 forbids. #886 lifts this in the
-	// same change that adds the state.
-	for _, d := range specDesignations(spec) {
-		if d.Kind == game.DesignationDoorUnlocked {
-			panic(fmt.Sprintf("effects.Register: %q gates an ability on an unlocked Room door, which is designed but not built (ADR 0071 decision 3, #886)", spec.Name))
-		}
+	// ADR 0103 (superseding ADR 0071 decision 3's reservation): a Room
+	// gates EVERY ability on a door, and nothing but a Room has doors.
+	// An ungated ability on a Room would be active while its door is
+	// locked — stronger than printed — and a door gate anywhere else
+	// would switch an ability on and off for a reason the card never
+	// prints.
+	if problem := checkRoomSpec(spec); problem != "" {
+		panic(fmt.Sprintf("effects.Register: %q %s (ADR 0103)", spec.Name, problem))
 	}
 	// ADR 0062 Decision 4: a special action the engine cannot carry
 	// out would take a card out of a hand and do nothing with it, so

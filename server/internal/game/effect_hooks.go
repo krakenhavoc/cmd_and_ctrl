@@ -69,7 +69,15 @@ func CatalogKey(c Card) string {
 	if base == "" {
 		base = c.TokenKey
 	}
-	if c.ActiveFace != 0 && c.OracleID != "" {
+	// ADR 0103: a Room's two halves are ONE catalog entry, told apart
+	// by the door gate rather than by the key (Option 2B), so a Room
+	// keys on its bare oracle ID even while its right half is on the
+	// stack. A FUSED split spell is both halves at once and keys on the
+	// synthetic FusedCatalogKey, which catalogDef builds from the two.
+	switch {
+	case c.Fused && c.OracleID != "":
+		base = FusedCatalogKey(c.OracleID)
+	case c.ActiveFace != 0 && c.OracleID != "" && !HasSharedTypeLine(c):
 		base = c.OracleID + "#" + strconv.Itoa(c.ActiveFace)
 	}
 	// CR 707.9a, #665: an ability a copy effect GRANTED is part of
@@ -823,7 +831,7 @@ func (g *Game) EffectiveMaxHandSizeLocked(p *Player) int {
 		if key == "" {
 			continue
 		}
-		if CatalogNoMaxHandSize(key) {
+		if CatalogNoMaxHandSize(key) && noMaxHandSizeGate(key).Active(*c) {
 			return NoMaxHandSize
 		}
 	}
@@ -966,4 +974,14 @@ func TargetModeFor(oracleID string) string {
 		return ""
 	}
 	return CatalogTargetMode(oracleID)
+}
+
+// noMaxHandSizeGate is the designation gate on a card's "you have no
+// maximum hand size" static (ADR 0103: a Room door). The zero value —
+// no gate — for a card the catalog does not know.
+func noMaxHandSizeGate(key string) Designation {
+	if d := catalogDef(key); d != nil {
+		return d.NoMaxHandSizeWhen
+	}
+	return Designation{}
 }
