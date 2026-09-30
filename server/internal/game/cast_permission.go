@@ -1490,6 +1490,7 @@ func asAnyColorCost(cost ParsedCost) ParsedCost {
 			widened = append(widened, widenPhyrexian(req))
 		default:
 			out.Generic++
+			out.FoldedColored++
 		}
 	}
 	out.Required = append(out.Required, widened...)
@@ -1514,6 +1515,7 @@ func asAnyTypeCost(cost ParsedCost) ParsedCost {
 			continue
 		}
 		out.Generic++
+		out.FoldedColored++
 	}
 	return out
 }

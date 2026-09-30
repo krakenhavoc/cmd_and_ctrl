@@ -44,6 +44,9 @@ export interface AutoTapCastParams {
   // creature tapped for teamwork cannot also tap for mana.
   teamworkIDs?: string[];
   blightIDs?: string[];
+  // ADR 0100: the graveyard cards named to delve. They DO change the
+  // price — each pays {1} of the generic.
+  delveIDs?: string[];
 }
 
 // castPreviewParams projects the choices announced so far onto the
@@ -69,6 +72,7 @@ export function castPreviewParams(choices: CastChoices | null | undefined): Auto
     out.teamworkIDs = [...choices.teamworkIDs];
   }
   if (choices.blightIDs && choices.blightIDs.length > 0) out.blightIDs = [...choices.blightIDs];
+  if (choices.delveIDs && choices.delveIDs.length > 0) out.delveIDs = [...choices.delveIDs];
   return out;
 }
 
@@ -118,5 +122,7 @@ export function castPreviewParamsFromPayload(
   if (team.length > 0) out.teamworkIDs = team;
   const blight = stringIDs(payload.blight_ids);
   if (blight.length > 0) out.blightIDs = blight;
+  const delve = stringIDs(payload.delve_ids);
+  if (delve.length > 0) out.delveIDs = delve;
   return out;
 }

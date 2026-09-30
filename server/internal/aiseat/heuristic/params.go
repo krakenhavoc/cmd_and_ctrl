@@ -34,7 +34,11 @@ type castParams struct {
 	// AltCostIDs are the cards paid to the NON-MANA half of that
 	// price: escape's exiled graveyard, Force of Will's pitched blue
 	// card, Daze's returned Island. Real resources, priced below.
-	AltCostIDs   []string    `json:"alt_cost_ids"`
+	AltCostIDs []string `json:"alt_cost_ids"`
+	// DelveIDs are the graveyard cards delve exiles (CR 702.66a, ADR
+	// 0100) — the same resource escape's exiled graveyard is, priced
+	// the same way.
+	DelveIDs     []string    `json:"delve_ids"`
 	Targets      []targetRef `json:"targets"`
 	Modes        []int       `json:"modes"`
 	XValue       int         `json:"x_value"`

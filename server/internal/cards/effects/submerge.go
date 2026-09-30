@@ -46,13 +46,8 @@ func init() {
 			ManaCost:  "",
 			Condition: b41SubmergeCondition,
 		}},
-		Targets: TargetCreature("target creature"),
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
-				return nil
-			}
-			return ctx.Game.TuckToLibraryForEffect(item.Targets[0].ID, false)
-		},
+		Targets:   TargetCreature("target creature"),
+		OnResolve: putTargetOnTopOfOwnersLibrary,
 	})
 }
 
