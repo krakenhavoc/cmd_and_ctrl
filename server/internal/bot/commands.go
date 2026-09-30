@@ -23,6 +23,7 @@ import (
 // first boot of this binary with no separate cleanup step.
 const (
 	CmdInvite    = "c2-invite"
+	CmdInviteDM  = "c2-invite-dm"
 	CmdGames     = "c2-games"
 	CmdEnd       = "c2-end"
 	CmdDeckCheck = "c2-deck-check"
@@ -43,6 +44,33 @@ func commandDefinitions() []*discordgo.ApplicationCommand {
 				{
 					Name:        "name",
 					Description: "Optional display name for the game.",
+					Type:        discordgo.ApplicationCommandOptionString,
+					Required:    false,
+					MaxLength:   80,
+				},
+			},
+		},
+		{
+			Name:        CmdInviteDM,
+			Description: "DM someone an invite to a cmd_and_ctrl game (a new one, unless you name a game).",
+			Options: []*discordgo.ApplicationCommandOption{
+				{
+					Name:        "user",
+					Description: "Who to send the invite to.",
+					Type:        discordgo.ApplicationCommandOptionUser,
+					Required:    true,
+				},
+				{
+					Name:         "game",
+					Description:  "Existing game (creator or admin only) — id or name. Leave out to start a new game.",
+					Type:         discordgo.ApplicationCommandOptionString,
+					Required:     false,
+					Autocomplete: true,
+					MaxLength:    100,
+				},
+				{
+					Name:        "name",
+					Description: "Display name for the new game (ignored when a game is given).",
 					Type:        discordgo.ApplicationCommandOptionString,
 					Required:    false,
 					MaxLength:   80,
@@ -186,7 +214,7 @@ const deckInteractionTimeout = 20 * time.Second
 // budget; every other command keeps the tight, non-deferred one.
 func commandTimeout(name string) time.Duration {
 	switch name {
-	case CmdDeckCheck, CmdDeckReq:
+	case CmdDeckCheck, CmdDeckReq, CmdInviteDM:
 		return deckInteractionTimeout
 	default:
 		return defaultInteractionTimeout
@@ -256,6 +284,8 @@ func (h *Handler) Dispatch(s *discordgo.Session, i *discordgo.InteractionCreate)
 	switch data.Name {
 	case CmdInvite:
 		h.handleInvite(ctx, s, i, data)
+	case CmdInviteDM:
+		h.handleInviteDM(ctx, s, i, data)
 	case CmdGames:
 		h.handleGames(ctx, s, i)
 	case CmdEnd:

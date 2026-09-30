@@ -196,7 +196,7 @@ func (h *Handler) mayEnd(ctx context.Context, id uuid.UUID, i *discordgo.Interac
 // anyone who can run /c2-games in this guild.
 func (h *Handler) dispatchAutocomplete(ctx context.Context, s *discordgo.Session, i *discordgo.InteractionCreate) {
 	data := i.ApplicationCommandData()
-	if data.Name != CmdEnd {
+	if data.Name != CmdEnd && data.Name != CmdInviteDM {
 		_ = s.InteractionRespond(i.Interaction, autocompleteResponse(nil))
 		return
 	}

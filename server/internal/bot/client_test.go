@@ -46,6 +46,14 @@ type fakeServer struct {
 	creatorIsCreator     bool
 	gotCreatorDiscordIDs []string
 
+	// dmStatus/dmBody drive POST /games/{id}/invites/dm (#613);
+	// gotDMDiscordID and gotDMGameID record what the bot sent.
+	dmStatus       int
+	dmBody         any
+	gotDMDiscordID string
+	gotDMGameID    string
+	dmCalls        int
+
 	// requireBearer, when non-empty, makes /games reject any other
 	// Authorization value with 401 — lets the token-cache tests
 	// simulate a server-side session expiry / rotation.
@@ -85,6 +93,8 @@ func newFakeServer(t *testing.T) (*fakeServer, *ServerClient) {
 		creatorStatus:      http.StatusOK,
 		deckCoverageStatus: http.StatusOK,
 		deckRequestStatus:  http.StatusCreated,
+		dmStatus:           http.StatusOK,
+		dmBody:             map[string]any{"sent": true, "user_id": "u-1", "display_name": "Bob"},
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("/admin/login", fs.handleLogin)
@@ -92,6 +102,7 @@ func newFakeServer(t *testing.T) (*fakeServer, *ServerClient) {
 	mux.HandleFunc("GET /games/{id}", fs.handleGetGame)
 	mux.HandleFunc("POST /games/{id}/archive", fs.handleArchiveGame)
 	mux.HandleFunc("GET /games/{id}/creator", fs.handleIsCreator)
+	mux.HandleFunc("POST /games/{id}/invites/dm", fs.handleInviteDM)
 	mux.HandleFunc("POST /deck-coverage", fs.handleDeckCoverage)
 	mux.HandleFunc("POST /deck-requests", fs.handleDeckRequests)
 	ts := httptest.NewServer(mux)
@@ -99,6 +110,27 @@ func newFakeServer(t *testing.T) (*fakeServer, *ServerClient) {
 
 	c := NewServerClient(ts.URL, "admin-secret").WithHTTPClient(&http.Client{Timeout: 2 * time.Second})
 	return fs, c
+}
+
+func (fs *fakeServer) handleInviteDM(w http.ResponseWriter, r *http.Request) {
+	fs.gotAuthHeaders = append(fs.gotAuthHeaders, r.Header.Get("Authorization"))
+	if fs.requireBearer != "" && r.Header.Get("Authorization") != "Bearer "+fs.requireBearer {
+		http.Error(w, "stale session", http.StatusUnauthorized)
+		return
+	}
+	var body struct {
+		DiscordID string `json:"discord_id"`
+		UserID    string `json:"user_id"`
+	}
+	_ = json.NewDecoder(r.Body).Decode(&body)
+	fs.dmCalls++
+	fs.gotDMDiscordID = body.DiscordID
+	fs.gotDMGameID = r.PathValue("id")
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(fs.dmStatus)
+	if fs.dmBody != nil {
+		_ = json.NewEncoder(w).Encode(fs.dmBody)
+	}
 }
 
 func (fs *fakeServer) handleDeckCoverage(w http.ResponseWriter, r *http.Request) {
