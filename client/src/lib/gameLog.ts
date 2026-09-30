@@ -109,6 +109,11 @@ const LOG_TONE: Record<LogKind, string> = {
   discover: "tone-zone",
   saga_chapter: "tone-resolve",
   class_level: "tone-resolve",
+  // ADR 0103. A door opening is a Room switching its text on, which
+  // reads like a Class levelling; locking one is the reverse.
+  door_unlocked: "tone-resolve",
+  door_locked: "tone-quiet",
+  room_fully_unlocked: "tone-resolve",
   // ADR 0075 §2.3. Not a beat of the game but a change to the rules
   // it is being played under, which is why it is toned like a step —
   // the spine of the log, not a whisper in it.

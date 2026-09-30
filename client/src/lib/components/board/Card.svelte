@@ -35,6 +35,8 @@
   import CounterPips from "./CounterPips.svelte";
   import KeywordBadgeRow from "./KeywordBadgeRow.svelte";
   import ManaAbilityMenu from "./ManaAbilityMenu.svelte";
+  import RoomDoorStrip from "./RoomDoorStrip.svelte";
+  import { displayName } from "../../faces";
 
   interface Props {
     card: CardView;
@@ -109,6 +111,10 @@
     // whose drawn member is not a legal target but another member is
     // still lights up, and never hides a legal target.
     memberIDs?: readonly string[];
+    // ADR 0103: the viewing seat, so a Room's door strip offers its
+    // unlock buttons only to the Room's controller (CR 709.5e). Set by
+    // BattlefieldRow; undefined everywhere else, which offers none.
+    viewerID?: string | null;
     onClick?: (card: CardView, ev: MouseEvent) => void;
   }
 
@@ -142,6 +148,7 @@
     enchantedPlayer,
     priority = false,
     memberIDs,
+    viewerID,
     onClick,
   }: Props = $props();
 
@@ -398,8 +405,8 @@
   data-tapped={card.tapped ? "true" : "false"}
   role={interactive ? "button" : "img"}
   tabindex={interactive ? 0 : undefined}
-  aria-label={showBack ? "face-down card" : card.name}
-  title={showBack ? "" : card.name}
+  aria-label={showBack ? "face-down card" : displayName(card)}
+  title={showBack ? "" : displayName(card)}
   onpointerenter={handleEnter}
   onpointerleave={handleLeave}
   onclick={handleClick}
@@ -426,7 +433,7 @@
          Front face only — the back above is a bundled asset. -->
     <img
       src={imgSrc}
-      alt={card.name}
+      alt={displayName(card)}
       loading="lazy"
       decoding="async"
       draggable="false"
@@ -535,7 +542,7 @@
       {/if}
     {/if}
   {:else}
-    <span class="name-fallback">{card.name}</span>
+    <span class="name-fallback">{displayName(card)}</span>
     {#if card.token_text}
       <!-- ADR 0083: a token has no printing, so no art and no oracle
            text — the server sends what the token prints. A trigger or
@@ -636,6 +643,11 @@
     <span class="badge designation" title={designationTitle} aria-label={designationTitle}>
       {designationBadge}
     </span>
+  {/if}
+  {#if card.doors && !showBack}
+    <!-- ADR 0103: a Room's doors; the unlock buttons are its
+         controller's (CR 709.5e). -->
+    <RoomDoorStrip {card} canUnlock={!!viewerID && card.controller === viewerID} />
   {/if}
   {#if manaMenuOpen && hasManaAbilities}
     <div class="mana-menu-anchor">

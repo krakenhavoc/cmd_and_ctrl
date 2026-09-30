@@ -75,6 +75,7 @@
   const {
     label,
     cards,
+    viewerID,
     selectedCombatCardID = null,
     onCardClick,
     onActivateManaAbility,
@@ -207,6 +208,7 @@
                       : undefined}
                     {sorcerySpeedBlocked}
                     {payerLife}
+                    {viewerID}
                   />
                 </div>
               {/each}
@@ -232,6 +234,7 @@
                     : undefined}
                   {sorcerySpeedBlocked}
                   {payerLife}
+                  {viewerID}
                 />
                 {#if p.group}
                   <!-- Every other member keeps an element with its

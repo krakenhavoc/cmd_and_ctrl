@@ -128,6 +128,9 @@ export interface CastChoices {
   // Gate, Reborn have different types, different costs and, via
   // the composite catalog key, different rules.
   face?: number;
+  // ADR 0103 (CR 702.102a): cast BOTH halves of a split card with fuse,
+  // from hand. Sent as `fuse: true`; the face stays 0.
+  fuse?: boolean;
   // S29: the zone the cast comes out of. Undefined is the hand,
   // which is every cast the Board's own surfaces fire.
   //
@@ -204,6 +207,7 @@ export function applyCastChoices(
   // default, and `omitempty` on the Go side means an explicit zero
   // and an absent field are the same byte on the wire anyway.
   if (choices.face !== undefined && choices.face > 0) params.face = choices.face;
+  if (choices.fuse) params.fuse = true;
   // S29: omitted for a hand cast, for the same reason face 0 is.
   if (choices.fromZone !== undefined) params.from_zone = choices.fromZone;
   // #1508: a dragged cast always pays strictly and lets the engine tap
