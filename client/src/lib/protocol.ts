@@ -691,6 +691,12 @@ export type LogKind =
   | "discover"
   | "saga_chapter"
   | "class_level"
+  // ADR 0103: a Room's door was unlocked or locked (CR 709.5c/g);
+  // `label` is the door's name. `room_fully_unlocked` is the second
+  // door (CR 709.5i), its own line by owner decision.
+  | "door_unlocked"
+  | "door_locked"
+  | "room_fully_unlocked"
   // ADR 0075 §2.3: the host or the admin changed a table setting.
   // `label` is the setting's key ("undo_limit", "allow_spawn") and
   // `choice` its new value as text; `seat` is the host, or NoSeat when
@@ -1807,6 +1813,18 @@ export interface SpecialActionView {
   // `cost`), an empty string is a real "this now costs nothing".
   charged_cost?: string;
   available?: boolean;
+  // ADR 0103: the door an "unlock" row unlocks — "left" or "right" —
+  // and what the special_action payload names back. Absent on every
+  // other kind.
+  door?: "left" | "right";
+}
+
+// RoomDoorsView is a Room's two CR 709.5c designations (ADR 0103):
+// `true` is an unlocked door. Present only on a face-up Room on the
+// battlefield, so `false` is a locked door.
+export interface RoomDoorsView {
+  left: boolean;
+  right: boolean;
 }
 
 // ExilePlayView is the impulse-exile grant on a card in exile —
@@ -2671,6 +2689,10 @@ export interface CardView extends CastSurfaceView {
   // arrives as an ordinary exile card with an `exile_play` stamp
   // naming face 1. Absent — not `false` — for everything else.
   prepared?: boolean;
+  // ADR 0103 (CR 709.5): a Room's doors. Present only for a face-up
+  // Room on the battlefield. A fully locked Room has no name (CR 709.5),
+  // so `name` is empty and the client labels it from `faces`.
+  doors?: RoomDoorsView;
   // ADR 0071 amendment, #1321 (CR 701.64): this permanent is
   // harnessed — the marker that switches its printed "∞ — [ability]"
   // lines on. Unlike `class_level` / `solved` it carries no subtype
@@ -2786,6 +2808,12 @@ export interface CardView extends CastSurfaceView {
   faces?: CardFaceView[];
   // ADR 0034 — index into `faces`. Absent (0) is the front face.
   active_face?: number;
+  // ADR 0103 (CR 702.102): a split card with fuse in its owner's hand
+  // also offers the FUSED cast of both halves — this is its announce
+  // surface (both names, both costs, the left half's clauses then the
+  // right half's). The face picker offers it as a third choice and the
+  // cast sends `fuse: true`.
+  fused?: CardFaceView;
 }
 
 // ManaAbilityView mirrors `protocol.ManaAbilityView` server-side —
