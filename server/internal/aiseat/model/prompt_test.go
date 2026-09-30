@@ -358,3 +358,21 @@ func TestDeltaKeysTheRedactionOnTheLookPermission(t *testing.T) {
 		t.Errorf("a face the seat may not look at was named in the prompt:\n%s", user)
 	}
 }
+
+// ADR 0059 Decision 13: an extra turn keeps its round number (CR 500.7,
+// owner decision 1), so the turn line says it is extra rather than
+// letting a model read the same "TURN 7" as a replay.
+func TestDeltaMarksAnExtraTurn(t *testing.T) {
+	p := New(Config{Fallback: &stubB{index: 0}, Log: testLogger()})
+	v := view()
+	v.Turn.Extra = true
+	delta, _ := p.buildDelta(aiseat.Input{Seat: meSeat, View: v, Moves: []legal.Move{pass()}}, nil, 0)
+	if !strings.Contains(delta, "(extra turn)") {
+		t.Errorf("the turn line does not say it is an extra turn:\n%s", delta)
+	}
+	v.Turn.Extra = false
+	delta, _ = p.buildDelta(aiseat.Input{Seat: meSeat, View: v, Moves: []legal.Move{pass()}}, nil, 0)
+	if strings.Contains(delta, "extra turn") {
+		t.Errorf("a normal turn is marked extra:\n%s", delta)
+	}
+}
