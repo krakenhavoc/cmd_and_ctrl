@@ -242,7 +242,58 @@
       "active_seat": 1,
       "priority_holder": -1,
       "phase": "beginning",
-      "step": "untap"
+      "step": "untap",
+      "phase_id": 1,
+      "upcoming": [
+        {
+          "step": "upkeep",
+          "phase_id": 1
+        },
+        {
+          "step": "draw",
+          "phase_id": 1
+        },
+        {
+          "step": "precombat_main",
+          "phase_id": 2
+        },
+        {
+          "step": "begin_combat",
+          "phase_id": 3
+        },
+        {
+          "step": "declare_attackers",
+          "phase_id": 3
+        },
+        {
+          "step": "declare_blockers",
+          "phase_id": 3
+        },
+        {
+          "step": "first_strike_damage",
+          "phase_id": 3
+        },
+        {
+          "step": "combat_damage",
+          "phase_id": 3
+        },
+        {
+          "step": "end_combat",
+          "phase_id": 3
+        },
+        {
+          "step": "postcombat_main",
+          "phase_id": 4
+        },
+        {
+          "step": "end",
+          "phase_id": 5
+        },
+        {
+          "step": "cleanup",
+          "phase_id": 5
+        }
+      ]
     },
     "mulligans_open": true,
     "undo_limit": 1,

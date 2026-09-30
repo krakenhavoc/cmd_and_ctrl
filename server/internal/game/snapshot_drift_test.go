@@ -103,6 +103,12 @@ var gameFields = plan(
 	// counter. Plain data.
 	"ExtraTurns", carried, "",
 	"NextExtraRef", carried, "",
+	// ADR 0059 Decisions 3 and 10: the rest of the turn and its phase-id
+	// counter. Plain data. planAt is derived: it names the cursor the
+	// plan describes, and restore stamps it from the restored cursor.
+	"TurnPlan", carried, "",
+	"NextPhaseID", carried, "",
+	"planAt", rebuilt, "derived from the restored cursor: a restored plan describes the cursor it was captured with",
 	"SplitSecondActive", carried, "",
 	"LoyaltyActivatedThisTurn", carried, "",
 	"SpellsCastThisTurn", carried, "",

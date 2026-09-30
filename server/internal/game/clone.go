@@ -93,6 +93,11 @@ func (g *Game) cloneLocked() *Game {
 	// past the Time Warp that queued a turn must un-queue it.
 	out.ExtraTurns = cloneExtraTurns(g.ExtraTurns)
 	out.NextExtraRef = g.NextExtraRef
+	// ADR 0059 Decision 10: the turn plan is plain data too. An undo
+	// past a Relentless Assault must take its phases back out.
+	out.TurnPlan = clonePlan(g.TurnPlan)
+	out.NextPhaseID = g.NextPhaseID
+	out.planAt = g.planAt
 	if len(g.LoyaltyActivatedThisTurn) > 0 {
 		out.LoyaltyActivatedThisTurn = make(map[uuid.UUID]bool, len(g.LoyaltyActivatedThisTurn))
 		for k, v := range g.LoyaltyActivatedThisTurn {
@@ -934,6 +939,9 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.DelayedTriggers = src.DelayedTriggers
 	g.ExtraTurns = src.ExtraTurns
 	g.NextExtraRef = src.NextExtraRef
+	g.TurnPlan = src.TurnPlan
+	g.NextPhaseID = src.NextPhaseID
+	g.planAt = src.planAt
 	g.LoyaltyActivatedThisTurn = src.LoyaltyActivatedThisTurn
 	g.SpellsCastThisTurn = src.SpellsCastThisTurn
 	g.ForetoldThisTurn = src.ForetoldThisTurn

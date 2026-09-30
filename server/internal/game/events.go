@@ -810,6 +810,15 @@ const (
 	// begins, and a queued turn of a player who leaves never does.
 	EventExtraTurnAdded EventKind = "extra_turn_added"
 
+	// EventPhasesAdded — an effect added phases or a step to the
+	// current turn (CR 500.8 / 500.9, ADR 0059 Decision 4). Actor is the
+	// active player (whose turn gets them), Source the card whose effect
+	// added them, Amount how many phases or steps. For phases, Label is
+	// the kinds in the order they will occur, comma-separated
+	// ("combat,main"); for a step, Step is the step added and Label its
+	// name. Emitted as the plan is edited, before any of them begins.
+	EventPhasesAdded EventKind = "phases_added"
+
 	// EventStepBegan — the turn cursor entered a step. Actor is the
 	// active player, Step the step (typed), Amount the turn sequence,
 	// Round the table-facing rotation, and Label the step name. Emitted

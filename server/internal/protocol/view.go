@@ -3170,6 +3170,22 @@ type TurnView struct {
 	// who has left is omitted: it will not begin (CR 800.4k). Public
 	// information — the spell that queued it was public.
 	ExtraTurns []int `json:"extra_turns,omitempty"`
+	// PhaseID identifies the phase in progress within this turn (ADR
+	// 0059 Decision 11): the template's phases are 1..5, and a phase an
+	// effect added (Relentless Assault's combat) gets the next id. Two
+	// combats in one turn have two ids.
+	PhaseID int `json:"phase_id,omitempty"`
+	// PhaseOrdinal is the nth phase of its family this turn: 2 in the
+	// second combat, 3 in the third main phase. Precombat and
+	// postcombat main are one family (CR 505.1b).
+	PhaseOrdinal int `json:"phase_ordinal,omitempty"`
+	// Upcoming is the rest of this turn's plan, in order — every step
+	// still to come, with the phase it belongs to, including phases and
+	// steps effects have added. Empty at cleanup. Public: the turn's
+	// structure is public information. `first_strike_damage` is listed
+	// in every combat and walked through when no combatant has first or
+	// double strike as it would begin (#717).
+	Upcoming []PlannedStepView `json:"upcoming,omitempty"`
 	// BlockDecisionSeats lists the seat indices that owe a
 	// declare-blockers decision right now — under attack, with at
 	// least one creature that could legally block one of the
@@ -3318,6 +3334,9 @@ func ViewOfGame(g *game.Game) GameView {
 				Step:           string(g.Turn.Step),
 				Extra:          g.Turn.Extra,
 				ExtraTurns:     viewOfExtraTurns(g),
+				PhaseID:        g.Turn.PhaseID,
+				PhaseOrdinal:   g.Turn.PhaseOrdinal,
+				Upcoming:       viewOfUpcoming(g),
 				// #328: who still owes a block declaration. Read
 				// surface takes the lock we already hold and the
 				// layers ReadSnapshot just refreshed.
@@ -8609,6 +8628,26 @@ func viewOfExtraTurns(g *game.Game) []int {
 			continue
 		}
 		out = append(out, et.Seat)
+	}
+	return out
+}
+
+// PlannedStepView is one step still to come this turn (TurnView.upcoming).
+type PlannedStepView struct {
+	Step    string `json:"step"`
+	PhaseID int    `json:"phase_id"`
+}
+
+// viewOfUpcoming is TurnView.Upcoming: the turn plan's remaining steps.
+// Caller holds g's read lock.
+func viewOfUpcoming(g *game.Game) []PlannedStepView {
+	plan := g.UpcomingStepsForEffect()
+	if len(plan) == 0 {
+		return nil
+	}
+	out := make([]PlannedStepView, len(plan))
+	for i, p := range plan {
+		out[i] = PlannedStepView{Step: string(p.Step), PhaseID: p.PhaseID}
 	}
 	return out
 }

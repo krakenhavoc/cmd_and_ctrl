@@ -356,6 +356,16 @@ const (
 	// no longer the next seat, and the table needs to know why before
 	// the turn bar moves.
 	LogExtraTurn LogKind = "extra_turn"
+	// LogExtraPhase — an effect added phases or a step to the current
+	// turn (CR 500.8 / 500.9, ADR 0059 Decision 11). `seat` is the
+	// active player, whose turn gets them, and `card_id` the card whose
+	// effect added them. `label` is what was added: the phase kinds in
+	// the order they will occur, comma-separated ("combat,main"), or
+	// "step:<step>" for a single step ("step:end"). `amount` is how
+	// many. Narrated for LogExtraTurn's reason: it changes the turn's
+	// structure, and a player about to pass priority out of a main phase
+	// has to know another combat is coming.
+	LogExtraPhase LogKind = "extra_phase"
 )
 
 // The three choose-a-value kinds are separate rather than one "chose
@@ -1322,6 +1332,17 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		base.CardID = uuidStringOrEmpty(ev.Source)
 		return base, true
 
+	case game.EventPhasesAdded:
+		base.Kind = LogExtraPhase
+		base.CardID = uuidStringOrEmpty(ev.Source)
+		base.Amount = ev.Amount
+		if ev.Step != "" {
+			base.Label = "step:" + string(ev.Step)
+		} else {
+			base.Label = ev.Label
+		}
+		return base, true
+
 	default:
 		return LogEvent{}, false
 	}
@@ -1877,6 +1898,12 @@ func renderLogText(e LogEvent, cardName, targetName string) string {
 			return fmt.Sprintf("%s will take an extra turn", actor)
 		}
 		return fmt.Sprintf("%s will take an extra turn (%s)", actor, card)
+	case LogExtraPhase:
+		what := describeAddedPhases(e.Label)
+		if e.CardID == "" {
+			return fmt.Sprintf("%s's turn gets %s", actor, what)
+		}
+		return fmt.Sprintf("%s's turn gets %s (%s)", actor, what, card)
 	case LogPhaseOut:
 		return fmt.Sprintf("%s phased out", card)
 	case LogPhaseIn:
@@ -2278,4 +2305,48 @@ func (r *logRing) drain() []LogEvent {
 		out[i] = r.buf[(r.start+i)%len(r.buf)]
 	}
 	return out
+}
+
+// describeAddedPhases renders an extra_phase entry's label as the
+// thing the turn gets: "step:end" is "an additional end step",
+// "combat,main" is "an additional combat phase and an additional main
+// phase", and a run of the same kind is counted ("combat,combat" is
+// "two additional combat phases").
+func describeAddedPhases(label string) string {
+	if step, ok := strings.CutPrefix(label, "step:"); ok {
+		return "an additional " + strings.ReplaceAll(step, "_", " ") + " step"
+	}
+	if label == "" {
+		return "an additional phase"
+	}
+	kinds := strings.Split(label, ",")
+	var parts []string
+	for i := 0; i < len(kinds); {
+		j := i
+		for j < len(kinds) && kinds[j] == kinds[i] {
+			j++
+		}
+		if n := j - i; n == 1 {
+			parts = append(parts, "an additional "+kinds[i]+" phase")
+		} else {
+			parts = append(parts, countWord(n)+" additional "+kinds[i]+" phases")
+		}
+		i = j
+	}
+	switch len(parts) {
+	case 1:
+		return parts[0]
+	case 2:
+		return parts[0] + " and " + parts[1]
+	}
+	return strings.Join(parts[:len(parts)-1], ", ") + " and " + parts[len(parts)-1]
+}
+
+// countWord spells a small count the way the cards print it.
+func countWord(n int) string {
+	words := []string{"zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"}
+	if n >= 0 && n < len(words) {
+		return words[n]
+	}
+	return strconv.Itoa(n)
 }

@@ -4842,6 +4842,57 @@ would fire it in the wrong turn.
 Skipping a turn (Trouble in Pairs, Ugin's Nexus, Savor the Moment) has
 no shape yet (ADR 0059 Decision 14). Declare it as a caveat.
 
+### Extra combats, phases and steps (#753, ADR 0059 sub-PR 2b)
+
+The rest of the turn is data: `Game.TurnPlan`, which the cursor pops.
+A card adds phases or a step with a primitive from
+[extra_phases.go](../server/internal/cards/effects/extra_phases.go) and
+never touches the cursor:
+
+```go
+Effect:    untapAllYouControlThenExtraCombat,                  // Aurelia: "after this phase, … an additional combat phase"
+OnResolve: untapAttackersThenCombatAndMain,                   // Relentless Assault: "after this main phase, … combat … followed by … main"
+return ExtraCombatAfterThisPhase().Apply(ctx)                  // "after this phase, there is an additional combat phase"
+return ExtraCombatAndMainAfterThisMain().Apply(ctx)            // "after this main phase, … combat phase followed by … main phase"
+return AddPhases{Anchor: game.PhaseAnchor{Kind: game.AnchorThisPhase},
+    Kinds: []game.PhaseKind{game.PhaseKindBeginning}}.Apply(ctx) // Sphinx of the Second Sun
+return AddStepAfterThisStep{Step: game.StepEnd}.Apply(ctx)     // Y'shtola Rhul
+```
+
+Four things the engine does so a card does not:
+
+- **Newest first.** Phases added after the same phase run in the reverse
+  of the order they were added (CR 500.8), with no rule of their own.
+- **"After this main phase" outside a main phase adds nothing**, as the
+  Relentless Assault ruling says. `AnchorThisMainPhase` checks it.
+- **An added main phase is a postcombat main phase** (CR 505.1a): the
+  Saga lore action and "at the beginning of your precombat main phase"
+  happen once a turn, and "at the beginning of your postcombat main
+  phase" happens in every one.
+- **An added beginning phase is not a new turn.** Its untap step untaps,
+  but summoning sickness, "until your next turn" and the per-turn tallies
+  are keyed to the turn beginning.
+
+Read the turn's shape with `IsFirstCombatPhase(g)` ("if it's the first
+combat phase of the turn", Karlach), `g.IsFirstStepOfItsKindForEffect()`
+("the first end step of the turn", Y'shtola Rhul),
+`g.TimesAttackedThisTurn(id)` ("attacks for the first time each turn",
+Aurelia) and `CreaturesThatAttackedThisTurn(g)` ("untap all creatures that
+attacked this turn"). All of them are per OBJECT: a creature that left
+the battlefield and came back has not attacked.
+
+"At the beginning of each combat this turn" (Full Throttle) is
+`ScheduleDelayedTrigger{At: game.StepBeginCombat, EachThisTurn: true}`:
+a delayed trigger with a stated duration fires at every matching step
+until cleanup (CR 603.7b). A "you may pay. If you do, … after this
+phase" (Hellkite Charger) sets `MayPay.InThisStep`, so the table cannot
+leave the combat before the answer.
+
+Not built yet: "after the second main phase this turn" (World at War)
+and a trigger bound to one added combat, "at the beginning of that
+combat" (Moraug). Both ship with the first card that uses them (ADR 0059
+Decisions 4 and 8).
+
 ### When NOT to add a catalog entry
 
 The registry of known seams — what is missing, which cards wait on

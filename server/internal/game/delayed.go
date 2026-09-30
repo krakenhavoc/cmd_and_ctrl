@@ -206,6 +206,12 @@ type DelayedTrigger struct {
 	// Nil means "no duration", which is what a step-conditioned
 	// trigger wants: "at the beginning of the NEXT end step"
 	// scheduled during an end step has to outlive this turn.
+	//
+	// A step-conditioned trigger WITH a duration is CR 603.7b's other
+	// case: "at the beginning of each combat this turn" (Full
+	// Throttle) fires at every matching step inside the duration and is
+	// removed by the duration sweep, not by firing (ADR 0059 sub-PR
+	// 2b).
 	// ScheduleDelayedTriggerForEffect stamps UntilEndOfTurn on an
 	// event-conditioned trigger that names none, because every
 	// printed one says "this turn".
@@ -321,6 +327,13 @@ func (g *Game) fireDelayedTriggersLocked(step Step) {
 			(dt.TurnOf == uuid.Nil || g.activePlayerIDLocked() == dt.TurnOf) &&
 			(dt.OnExtraTurn == 0 || dt.OnExtraTurn == g.Turn.ExtraRef) {
 			fire = append(fire, dt)
+			if dt.repeatsAtStep() {
+				// CR 603.7b: a delayed trigger with a stated duration
+				// ("at the beginning of each combat THIS TURN", Full
+				// Throttle) triggers every time its step begins in
+				// that duration. The duration sweep removes it.
+				keep = append(keep, dt)
+			}
 			continue
 		}
 		keep = append(keep, dt)
@@ -332,6 +345,14 @@ func (g *Game) fireDelayedTriggersLocked(step Step) {
 	for _, dt := range fire {
 		g.queueHarvestedTriggerLocked(dt.stackItem())
 	}
+}
+
+// repeatsAtStep reports whether a step-conditioned trigger stays
+// queued after it fires: it has a stated duration (CR 603.7b, "…
+// each combat this turn"). An event-conditioned trigger always fires
+// once (#663's rule), duration or not.
+func (dt *DelayedTrigger) repeatsAtStep() bool {
+	return len(dt.On) == 0 && dt.Duration != nil
 }
 
 // stackItem builds the StackItem this delayed trigger puts on the

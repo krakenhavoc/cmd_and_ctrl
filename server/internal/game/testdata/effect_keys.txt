@@ -59,4 +59,5 @@ body catalog/triggered
 body miracle/offer
 condition monarch/an-opponent-became
 body extra-turn/lose-the-game
+body extra-combat/untap-creatures-that-attacked
 body gift-of-immortality/return-aura

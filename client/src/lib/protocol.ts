@@ -733,6 +733,12 @@ export type LogKind =
   // (CR 500.7). `seat` is who will take it and `card_id` the card whose
   // effect created it; one entry per turn.
   | "extra_turn"
+  // ADR 0059 Decision 11 (#753): an effect added phases or a step to
+  // the current turn (CR 500.8 / 500.9). `seat` is the active player,
+  // `card_id` the card whose effect added them, and `label` what was
+  // added: phase kinds in order, comma-separated ("combat,main"), or
+  // "step:<step>" for one step ("step:end").
+  | "extra_phase"
   // #1209, ADR 0082's 2026-09-23 amendment: a permanent that was
   // face up was turned face down (CR 708.2a). `card_id` is the
   // permanent; `target` is the object that did it (Ixidron, Cyber
@@ -2975,6 +2981,12 @@ export interface AttackTargetView {
   attack_limit?: number;
 }
 
+// One step still to come this turn (TurnView.upcoming).
+export interface PlannedStepView {
+  step: string;
+  phase_id: number;
+}
+
 export interface TurnView {
   seq: number;
   number: number;
@@ -2992,6 +3004,18 @@ export interface TurnView {
   // Seat indices of queued extra turns, in the order they will be
   // taken (next first). Turns of players who have left are omitted.
   extra_turns?: number[];
+  // ADR 0059 Decision 11 (#753): the phase in progress. `phase_id` is
+  // unique within the turn (the template's phases are 1..5, an added
+  // phase gets the next id); `phase_ordinal` is the nth phase of its
+  // family this turn ("Combat 2"). Precombat and postcombat main are one
+  // family. Both absent before the game's first phase is planned.
+  phase_id?: number;
+  phase_ordinal?: number;
+  // The rest of this turn, in order: every step still to come, with the
+  // phase it belongs to, including added phases and steps. Absent at
+  // cleanup. `first_strike_damage` is listed in every combat and walked
+  // through when no combatant has first or double strike (#717).
+  upcoming?: PlannedStepView[];
   // #328: seat indices that owe a declare-blockers decision — under
   // attack, holding at least one creature that could legally block
   // one of the attackers. Absent outside the declare_blockers step.

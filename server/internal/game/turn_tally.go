@@ -231,6 +231,85 @@ type TurnTally struct {
 	// and flushed with the rest of the tally when the turn begins.
 	// Read through Game.modesChosenLocked. See mode_memory.go.
 	ModesChosen map[string][]int `json:"modesChosen,omitempty"`
+	// Attacks is every attack declared this turn, in declaration order
+	// (ADR 0059 Decision 8): one record per attacking creature per
+	// declaration, so a creature that attacks in two combats has two.
+	// Read through TimesAttackedThisTurn and its siblings — "untap all
+	// creatures that attacked this turn" (Relentless Assault), "attacks
+	// for the first time each turn" (Aurelia, the Warleader).
+	Attacks []AttackRecord `json:"attacks,omitempty"`
+	// StepsBegun and PhasesBegun count the steps and phase families
+	// that have begun this turn; PhaseStarted is the PhaseID of the
+	// phase the last count opened. They are what Turn.StepOrdinal and
+	// Turn.PhaseOrdinal are read from (turn_plan.go).
+	StepsBegun   map[Step]int      `json:"stepsBegun,omitempty"`
+	PhasesBegun  map[PhaseKind]int `json:"phasesBegun,omitempty"`
+	PhaseStarted int               `json:"phaseStarted,omitempty"`
+}
+
+// AttackRecord is one creature declared as an attacker (CR 508.1).
+// Epoch is the attacker's Card.ObjectEpoch at the declaration, so a
+// creature that left the battlefield and came back is a new object
+// with no attacks of its own (CR 400.7). PhaseID is the combat phase
+// it attacked in.
+type AttackRecord struct {
+	Attacker uuid.UUID `json:"attacker"`
+	Epoch    int       `json:"epoch,omitempty"`
+	Defender uuid.UUID `json:"defender,omitempty"`
+	PhaseID  int       `json:"phaseId,omitempty"`
+}
+
+// TimesAttackedThisTurn is how many times the OBJECT `cardID` names
+// now has been declared as an attacker this turn — "whenever ~ attacks
+// for the first time each turn" is this reading 1 as the trigger
+// fires (the tally listener runs ahead of the trigger harvester).
+//
+// Caller must hold g.mu.
+func (g *Game) TimesAttackedThisTurn(cardID uuid.UUID) int {
+	if cardID == uuid.Nil || len(g.TurnTally.Attacks) == 0 {
+		return 0
+	}
+	epoch := g.objectEpochLocked(cardID)
+	n := 0
+	for _, a := range g.TurnTally.Attacks {
+		if a.Attacker == cardID && a.Epoch == epoch {
+			n++
+		}
+	}
+	return n
+}
+
+// AttackedThisTurn reports whether the object `cardID` names attacked
+// this turn: "creatures that attacked this turn".
+//
+// Caller must hold g.mu.
+func (g *Game) AttackedThisTurn(cardID uuid.UUID) bool {
+	return g.TimesAttackedThisTurn(cardID) > 0
+}
+
+// AttackedPlayersThisTurn is the players the object `cardID` names has
+// attacked this turn, first attack first and each once. An attack on a
+// planeswalker or a battle is not an attack on a player.
+//
+// Caller must hold g.mu.
+func (g *Game) AttackedPlayersThisTurn(cardID uuid.UUID) []uuid.UUID {
+	if cardID == uuid.Nil {
+		return nil
+	}
+	epoch := g.objectEpochLocked(cardID)
+	var out []uuid.UUID
+	seen := map[uuid.UUID]bool{}
+	for _, a := range g.TurnTally.Attacks {
+		if a.Attacker != cardID || a.Epoch != epoch || seen[a.Defender] {
+			continue
+		}
+		if g.playerByIDLocked(a.Defender) == nil {
+			continue
+		}
+		seen[a.Defender] = true
+		out = append(out, a.Defender)
+	}
+	return out
 }
 
 // TallyKey names one printed ability of one CARD: the source's
@@ -669,6 +748,22 @@ func cloneTurnTally(t TurnTally) TurnTally {
 	out.LoopRun = copyStringIntMap(t.LoopRun)
 	out.LoopAllowance = copyStringIntMap(t.LoopAllowance)
 	out.ModesChosen = copyModesChosen(t.ModesChosen)
+	if len(t.Attacks) > 0 {
+		out.Attacks = append([]AttackRecord(nil), t.Attacks...)
+	}
+	if len(t.StepsBegun) > 0 {
+		out.StepsBegun = make(map[Step]int, len(t.StepsBegun))
+		for k, v := range t.StepsBegun {
+			out.StepsBegun[k] = v
+		}
+	}
+	if len(t.PhasesBegun) > 0 {
+		out.PhasesBegun = make(map[PhaseKind]int, len(t.PhasesBegun))
+		for k, v := range t.PhasesBegun {
+			out.PhasesBegun[k] = v
+		}
+	}
+	out.PhaseStarted = t.PhaseStarted
 	// #1238: a fresh backing array, not the same slice header. The
 	// clone is an undo restore point and the live game keeps
 	// appending to its own list; sharing the array would let a cast
@@ -739,6 +834,20 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 		}
 	case EventAttack:
 		g.bumpPlayerTally(ev.Actor, func(p *PlayerTurnTally) { p.AttacksDeclared++ })
+		// ADR 0059 Decision 8: the per-object attack history. A fresh
+		// slice every time, never an append into shared capacity: the
+		// undo clone holds this backing array too (#1238's reason).
+		if ev.CardID != uuid.Nil {
+			rec := AttackRecord{
+				Attacker: ev.CardID,
+				Epoch:    g.objectEpochLocked(ev.CardID),
+				Defender: ev.Target,
+				PhaseID:  g.Turn.PhaseID,
+			}
+			attacks := make([]AttackRecord, len(g.TurnTally.Attacks), len(g.TurnTally.Attacks)+1)
+			copy(attacks, g.TurnTally.Attacks)
+			g.TurnTally.Attacks = append(attacks, rec)
+		}
 		g.notePlayerDecisionLocked()
 	case EventCast, EventBlock:
 		// #1238 / CR 702.40a: the turn's cast ORDER, table-wide. Taken
