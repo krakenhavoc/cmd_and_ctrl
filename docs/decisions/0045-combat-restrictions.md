@@ -751,7 +751,8 @@ never contains that string. The restriction is in `restrictions` as
   it follows the requirements slot.
 - "Can't attack or block alone". No attributed card.
 - Blocking an additional creature (Brave the Sands, whose caveat stays),
-  since `BlockingTarget` is a single ID.
+  since `BlockingTarget` is a single ID. *(Built by
+  [#1706](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1706): Decisions 60–63.)*
 - Attack-side count limits (Crawlspace, Silent Arbiter's first line).
   `DeclareAttackers` already receives the set, and the same all-or-nothing
   shape would work, but no card in this wave needs it. *(Built by
@@ -3323,10 +3324,1052 @@ floating form.
 
 - **Blocking requirements** (Grand Melee's second line, Lure). Decision 15's
   sketch stands, and the block completion point (Decision 38) is its
-  checkpoint.
+  checkpoint. *Superseded 2026-09-28: built by the #1597 amendment below
+  (Decisions 55–58).*
 - **More than one goader per creature** (CR 701.15c): `GoadedBy` is one ID.
 - **Zurgo Helmsmasher, Goblin Rabblemaster, Legion Warboss, Grand Melee,
   Kardur, Disrupt Decorum.** Each is now a constructor call away
   (`AttacksEachCombat`, `AttacksEachCombatWhere`, a pinned
   `addAttackRequirement` record, `OpponentsCreaturesAttackIfAble{OtherThanYou}`)
   and is left for a card batch.
+
+## Amendment (2026-09-28, [#1598](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1598)): goad remembers every goader (CR 701.15c)
+
+Closes the one-goader gap Decision 48 declared. Decisions 48–52 stand; the
+last paragraph of Decision 48 ("The marker holds one goader…") and the
+"More than one goader per creature" bullet of the #1571 amendment's "What this
+does NOT decide" are superseded. Sprint S37 (combat correctness), tracker
+[#880](https://github.com/krakenhavoc/cmd_and_ctrl/issues/880).
+
+### The rule
+
+CR 701.15a: goading a creature makes it goaded by that player **until that
+player's next turn**. CR 701.15b: a goaded creature attacks each combat if able
+and attacks a player other than the goading player if able. CR 701.15c: a
+creature can be goaded by more than one player, and then it carries each
+goader's requirements, so it must attack a player who didn't goad it if able.
+If every opponent has goaded it, it must still attack one of them.
+
+### Decision 53: the marker is a set with one end per goader
+
+`Card.GoadedBy uuid.UUID` becomes `Card.Goads []Goad`, where
+`Goad{By, ExpiresAtTurnsBegun}` is one player's goad (`game/goad.go`).
+
+- **One entry per goader.** `goadLocked` adds an entry, and a player who has
+  already goaded the creature refreshes their entry rather than adding a second:
+  the entry is restamped and moves to the end. Two goads by one player are one
+  set of CR 701.15b requirements. `SetGoaded(card, by)` (the sandbox verb) and
+  the card-side `b33Goad` both go through it; `GoadForEffect` is the locked
+  entry point for effects. `SetGoaded(card, uuid.Nil)` still clears every goad.
+- **Each goad ends on its own goader's turn.** `ExpiresAtTurnsBegun` is the
+  goader's `Player.TurnsBegun + 1` when the goad is made. That is the counter
+  and the stamp an `UntilYourNextTurn` `Duration` uses (ADR 0063), so a goad
+  made on the goader's own turn and one made on somebody else's both end as the
+  goader's next turn begins. A goader who has left ends it when that turn would
+  have begun (CR 800.4m), for free. `sweepExpiredGoadsLocked` runs from
+  `onTurnBeganLocked`, next to the scoped-effect and cast-permission sweeps, and
+  drops only the expired entries. It covers `Game.PhasedOut` too: CR 702.26d
+  keeps a phased-out permanent's state, but its durations still run out.
+- **The requirements read the whole set.** `attackRequirementsOfLocked` adds
+  goad's pair **per entry**. No new rule is needed: CR 508.1d's counting already
+  gives CR 701.15c. Goaded by A and B, an attack on C obeys all four
+  requirements and one on A or B obeys three. So Decision 49's reach refuses A
+  and B while C is open. Goaded by every opponent, every attack on a player obeys
+  the same number, so the creature must attack and may attack any of them. The
+  refusal sentence names the one "other than" requirement the refused target
+  breaks ("… is goaded by B and must attack a player other than B if able.").
+
+**The engine owns the end, and the delayed trigger stays.** Every goad card
+still schedules the "the goad ends" delayed trigger for the goader's next
+upkeep (`clearListedGoadsBody`). In this binary its body only runs the expiry
+sweep, which by then has nothing left to end. It must never clear a goad the
+same player made in that upkeep before it resolved, because that goad is
+stamped for their **next** turn (`TestGoadEndsTriggerSparesARefreshedGoad`). It
+is kept for the snapshot reason below. Its body key must stay registered anyway,
+because restore points already carry it.
+
+### Snapshot and wire
+
+- **Snapshot: additive, no bump.** The card mirror gains
+  `goads: [{by, expiresAtTurnsBegun}]` (omitempty) and keeps writing
+  `goadedBy`, which now holds the latest goader (`Card.LatestGoader`).
+  - A file from before #1598 has only `goadedBy`. It restores as a one-entry
+    set, and `backfillLegacyGoadsLocked` stamps it `TurnsBegun + 1` once the
+    seats are restored. That is exactly what the goad would have been stamped
+    with, because the goader's count as the file was written is the turn the
+    goad was made in or after.
+  - A binary from before #1598, reading a new file, drops `goads`. It keeps the
+    latest goader, which is the one goad it can represent, and the delayed
+    trigger ends that goad as it always did.
+  - The corpus fixtures' `goadedBy` key is written back unchanged.
+  - `testdata/snapshot_shape/v7.txt` records the new paths.
+- **Wire: additive.** `CardView.goaders` lists every goader, oldest first, and
+  is omitted when the creature is not goaded. `goaded_by` keeps its S10 shape
+  and is the latest goader, always the last entry of `goaders`. Both are public
+  and survive the face-down redaction.
+- **Client.** The context menu offers "Goad (by you)" whenever the viewer is not
+  already a goader, beside "Clear goad(s)". It reads `goaders` and falls back to
+  `goaded_by` for a server from before #1598. The badge is unchanged.
+
+### Proof card
+
+- **Alela, Cunning Conqueror**: her last caveat ("A creature goaded by two
+  different players only remembers the most recent goad.") is removed, and she
+  ships `full`.
+
+### Tests
+
+- `game/goad_test.go` runs at a four-seat table, where `me` controls X, A and B
+  goad it, and C did not:
+  - Goaded by A then B, X must attack C. A and B are refused, each naming its
+    own "other than" requirement.
+  - Once A's turn begins, A's goad is over and B's is not: an attack on A weighs
+    what one on C does, and more than one on B. B's goad ends on B's turn. After
+    a fresh goad by B, X may attack A and not B.
+  - Goaded by all three opponents, X must attack and may attack any of them.
+  - A re-goad refreshes the entry: it is restamped, moves last, and still ends
+    on the goader's turn.
+  - Clone and `RestoreFrom` (undo) do not alias the set.
+  - The snapshot round trip keeps the set and still enforces it.
+  - A `goadedBy`-only (pre-#1598) restore point comes back stamped, and ends on
+    the goader's next turn.
+  - `SetGoaded(nil)` clears every goad.
+- `legal/attack_requirements_test.go`: the enumerator offers only the attack at
+  the player who goaded X neither time, marked `AlwaysLegal`, and withholds the
+  pass. Goaded by everyone, it offers all three attacks.
+- `aiseat/attack_requirements_test.go`: under the heuristic and an aggressive
+  policy, a twice-goaded creature attacks the non-goader and the combat ends.
+- `cards/effects/goad_multi_test.go`: Alela's goad keeps another player's goad.
+  The legacy trigger spares a goad refreshed in the goader's upkeep.
+- Client: `contextMenu.test.ts`.
+
+### What this does NOT decide
+
+- **Goad as a trigger event.** Nothing emits "whenever a creature becomes
+  goaded", and no catalog card needs it yet.
+- **Retiring the legacy delayed trigger.** Retiring it is a snapshot-schema
+  bump. It becomes possible once no restore point from before #1598 can be
+  handed to this binary's predecessor.
+
+## Amendment (2026-09-28, [#1650](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1650)): a mass "can't block / can't be blocked this turn" reads a live set
+
+Corrects how `RestrictUntilEOT`'s mass form chooses what it affects. Decisions
+1-53 stand. Sprint S37 (combat correctness), tracker
+[#880](https://github.com/krakenhavoc/cmd_and_ctrl/issues/880). This settles the
+rules question [ADR 0041](0041-game-persistence.md)'s tier-3a amendment recorded
+and left open ("`RestrictUntilEOT`'s mass form pins its affected set"). It also
+unblocks Glaring Spotlight, which [ADR 0038](0038-protection-style-keywords.md)'s
+2026-09-27 amendment left out.
+
+Decision 53 is #1598's goad amendment above, so this one is Decision 54.
+
+### The rule
+
+CR 611.2c: a continuous effect from a resolving spell or ability that **modifies
+the characteristics or changes the controller** of objects affects only the
+objects there when it began. An effect that does neither "modifies the rules of
+the game" and can affect objects that weren't affected when it began. A
+restriction is not a characteristic (§1: CR 613 gives it no layer). So "creatures
+without flying can't block this turn" also stops a creature flashed in after
+Falter resolved, and Glaring Spotlight's "creatures you control … can't be blocked
+this turn" also covers the creature you cast next. The cards' rulings say the
+same.
+
+The old doc comment cited CR 611.2c for the opposite conclusion. The mass form
+snapshotted its set exactly as `BoostUntilEOT` does. No shipped card used it:
+all six callers (Access Tunnel, Artful Dodge, Lost Jitte, Merfolk Sovereign,
+Rogue's Passage, Untimely Malfunction) pin one target.
+
+### Decision 54: the mass form is a live-rule record, folded in after the last layer
+
+- **`RestrictUntilEOT{Scope}` replaces `RestrictUntilEOT{Match}`.** A
+  `CardPredicate` is a closure, and a closure cannot be carried by undo or a
+  restore point. It would have to be re-read on every pass until cleanup. So the
+  mass form takes a `game.AffectedScope` and registers the
+  [#1571](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1571) live-rule
+  record (`RegisterScopedRuleEffectForEffect`: `addRestrictions`, until end of
+  turn, the resolving controller as the scope's "you"). Two scopes join the
+  closed vocabulary: **`yourCreatures`** and **`creaturesWithoutFlying`**.
+  `opponentsCreatures` already existed. A printed set no scope names needs a new
+  scope, which is an on-disk identity like a mod kind.
+- **The `Target` form is unchanged.** "Target creature can't block this turn" is
+  a different effect. It follows one object, and a creature that leaves and
+  returns is a new object (CR 400.7) that it no longer covers.
+- **Live-rule restrictions are applied after layer 7, not in layer 6.** The
+  adapter skips an `addRestrictions` mod on a record with a `Scope`, and
+  `foldRuleScopedRestrictionsLocked` ORs its bits in once every layer has run.
+  "Without flying" is a layer-6 result. Inside the layer-6 bucket, sorted by
+  timestamp, a flying grant made after Falter would apply after the scope had
+  already asked, and the creature would stay unable to block. §1 already says a
+  restriction's layer is unobservable, because the bits are only ever OR'd in
+  and nothing reads them mid-pass. So moving them to the end changes nothing
+  except when the question is asked. Registration refuses any mod other than
+  `addRestrictions` on `creaturesWithoutFlying`, because a layer mod there would
+  ask it half-way through the pass.
+- **A ratchet.** `ScopedEffectFor` refuses a `Match` together with an
+  `addRestrictions` mod, and the error names `RestrictUntilEOT{Scope}`. The
+  snapshot this amendment removes cannot come back through the general
+  builder.
+
+### What keeps its snapshot, correctly
+
+`BoostUntilEOT`, `GrantKeywordUntilEOT`, and every other `ScopedEffectFor{Match}`
+mod that changes a characteristic (P/T, types, colours, abilities, control). Those
+are exactly the effects CR 611.2c locks. Overrun does not pump the creature cast
+after it. Glaring Spotlight shows both at once: its "gain hexproof until end of
+turn" is `GrantKeywordUntilEOT{Match}` and locks, while its "can't be blocked this
+turn" is live.
+
+### Proof cards
+
+All six are new and `full`:
+
+- **Glaring Spotlight**: the hexproof waiver is #1560's `HexproofBypasses`, with
+  `BySpellsAndAbilitiesYouControl`. The ability locks the hexproof and reads
+  `yourCreatures` live.
+- **Falter**, **Magmatic Chasm**, **Seismic Stomp**: `creaturesWithoutFlying`.
+- **Cosmotronic Wave**, **Hazardous Blast**: one-shot damage, then a live
+  `opponentsCreatures`.
+
+### Tests
+
+- `game/scoped_restrictions_test.go`:
+  - Each scope matches what it names and reaches a late arrival.
+  - The layer adapter builds nothing for a live-rule restriction, and the fold
+    applies it.
+  - `creaturesWithoutFlying` refuses a layer mod.
+- `cards/effects/live_mass_restriction_test.go`:
+  - Falter stops a creature that arrives after it resolved, both on the bit and
+    through a refused `DeclareBlocker`. A flyer still blocks.
+  - A later flying grant lifts the restriction, and a later flying loss brings
+    it on.
+  - The effect ends at cleanup.
+  - The single-`Target` form covers only its target.
+  - The live scope survives undo (Clone / RestoreFrom) and a capture → JSON →
+    `RestoreStrict` round trip.
+  - Each card's own behaviour and one refusal.
+  - `ScopedEffectFor` refuses a mass restriction.
+- The snapshot corpus gains `v7/falter.json`, so the scope's on-disk string is
+  frozen.
+
+### What this does NOT decide
+
+- **Other durations.** `RestrictUntilEOT` is until end of turn. A mass "until
+  your next turn, creatures your opponents control can't block" is
+  `RegisterScopedRuleEffectForEffect` with another `Duration`, and has no
+  card-facing builder until a card needs one.
+- **More scopes.** Awe for the Guilds ("monocolored creatures"), Flash of
+  Defiance ("green creatures and white creatures"), Ruthless Invasion
+  ("nonartifact creatures"), Goblin Locksmith ("creatures with defender"), Hero
+  of Oxid Ridge ("creatures with power 1 or less") and Venser, the Sojourner's
+  −1 ("creatures") each need one more scope. None is built here.
+- **`addAttackRequirement` under a `Match`.** A requirement is also a rules
+  effect. It already has its live scope (Decision 52), and nothing builds it
+  through `ScopedEffectFor{Match}` today, so the ratchet covers restrictions
+  only.
+
+## Amendment (2026-09-28, [#1597](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1597)): blocking requirements (CR 509.1c)
+
+Builds [Decision 15](#15-requirements-cr-5091c-a-slot-and-a-checkpoint-built-with-their-first-card)
+as the blocking twin of #1571's attack requirements (Decisions 48–52).
+Decisions 1–54 stand. The "Blocking requirements" bullet of the #1571
+amendment's "What this does NOT decide" is superseded. Sprint S37 (combat
+correctness), tracker [#880](https://github.com/krakenhavoc/cmd_and_ctrl/issues/880).
+
+### The rule
+
+CR 509.1c: the defending player checks each requirement on the creatures they
+control and on the attacking creatures, and the declaration must obey the
+**maximum number of requirements that can be obeyed without disobeying a
+restriction**. A blocking cost (CR 509.1d) is never forced, and the engine
+models none. Four texts are requirements:
+
+- "blocks each combat if able" (Watchdog, Razorgrass Screen, Grand Melee's
+  second line). This is one requirement on the creature that must block, and
+  blocking anything obeys it.
+- "all creatures able to block this creature do so" (Lure, Prized Unicorn).
+  This is one requirement on **each** creature able to block the attacker, and
+  it is obeyed only by that creature blocking that attacker.
+- "must be blocked if able" (Gaea's Protector, Irresistible Prey). One
+  requirement on the attacker, obeyed by at least one blocker.
+- "must be blocked by exactly one creature if able" (Nacatl War-Pride). One
+  requirement on the attacker, obeyed by exactly one blocker.
+
+Because a requirement never beats a restriction, a Lure'd menace attacker with
+one potential blocker asks nothing, since the lone block is illegal
+(CR 702.111b). With two potential blockers it asks for both.
+
+### Decision 55: a requirement is an entry on the characteristic, whichever side it sits on
+
+`Characteristic.BlockRequirements []BlockRequirement` is `AttackRequirements`'
+twin (Decision 48), for §1's reasons. Layer statics and data records write it.
+It is only ever appended to, and a layer-6 ability removal never clears it, so a
+creature under Grand Melee that loses all abilities still has to block. Each
+entry is `{Kind, Source, SourceName}`, where `Kind` is one of the closed
+vocabulary `blocks`, `lure`, `mustBeBlocked` and `exactlyOne`.
+
+A `blocks` entry sits on the creature that must block. The other three sit on
+the **attacker**, and the engine reads them there whenever that creature is
+attacking. One slot holds both sides, because the layer pass already decides
+who an effect reaches, and a second slot would be a second vocabulary.
+
+Floating requirements are ADR 0041 data. The new mod kind
+**`addBlockRequirement`** is layer 6, and its `Text` names the kind.
+Registration panics on an unknown kind, and restore refuses one
+(`ErrUnknownEffectKey`). A `ScopedEffect.Scope` works as it does for attacks,
+though no card here needs one.
+
+On the card side, `effects.BlockRequirementWhere(kind, appliesTo)` builds a
+static, with the shorthands `BlocksEachCombat`, `BlocksEachCombatWhere`,
+`AllAbleToBlockDoSo` and `MustBeBlocked`. `effects.BlockRequirementUntilEOT{Target, Kind}`
+builds the pinned "this turn" record.
+
+### Decision 56: reach, per defending player; the verb refuses a drop; three checkpoints
+
+This is Decision 49's split, made **per defending player**, because each
+defending player declares on their own (Decision 38):
+
+- **reach(D)** is the requirements the staged block assignment obeys, plus the
+  best legal **addition** of the defending player's untapped, unassigned
+  creatures (`blockRequirementReachLocked`). The requirements are counted
+  exactly (`blockRequirementHitsLocked`).
+- **The verb.** `checkBlockDeclarationLocked` gets one more set check after the
+  pair, count and limit checks (`blockRequirementRefusalLocked`). It refuses a
+  declaration that lowers the reach of any pending defender it touches. Two
+  examples are a creature sent to block something else while Lure asks for it,
+  and a second blocker on an "exactly one" attacker. `DeclareBlocker` is the
+  one-entry form of the same verb, so it gets the check too.
+- **The checkpoint** is where a defender says their declaration is done. That is
+  their `pass_priority` in the step, `finish_blocks`, and `AdvanceStep` leaving
+  the step (for every pending defender). Each one is refused while an addition
+  would obey another requirement, and the refusal names that requirement.
+  `blockCheckpointLocked` runs before the completion (Decision 38), so a refused
+  pass completes nothing, announces nothing and moves no priority.
+- **Only a pending declaration is judged.** Once a defender has completed, a
+  Lure cast afterwards asks nothing of them. The sandbox's late block by hand
+  (Decision 38) is also not judged.
+
+The refusal is the existing `illegal_block` frame with a new reason,
+**`block_requirement`** (`BlockRefusedError.Requirement` and `SourceName`).
+`card_id` is the creature that could obey it. The sentence is built by the
+server:
+
+- "Wall One must block Bear if able (Lure)."
+- "Their Wall must block this combat if able (Grand Melee)."
+- "Gaea's Protector must be blocked if able."
+- "… must be blocked by exactly one creature if able."
+
+### Decision 57: the search is a min-cost flow per combination of modes, and its witness is re-checked
+
+Blockers compete for attackers under the count bounds (menace's minimum,
+Hungering Hydra's maximum) and the whole-combat limits (Silent Arbiter,
+Mirri). A maximum is a capacity, but a **minimum is not**: an attacker takes 0
+blockers or at least *m*. So each attacker with a live minimum of two or more,
+and each attacker with an "exactly one" requirement, gets a small set of
+**modes**: closed, exactly one, or at least *lo*. The search solves one min-cost
+flow for each combination of modes (`bestBlockRequirementAdditionLocked`,
+capped at 256 combinations; past the cap the rest stay closed).
+
+The network is source → [limit room] → blocker (1) → attacker (1, cost −(the
+blocker's `blocks` count + the attacker's `lure` count)) → the attacker's mode
+arcs → sink. A mode's first *lo* units cost −2²⁰, so the flow fills every
+minimum it can, and the fill is checked afterwards.
+
+The flow is only a search. Each witness is **re-checked by the ordinary
+validator** (`checkBlockRestrictionsLocked`, which is everything in
+`checkBlockDeclarationLocked` except the requirement check, so the search never
+recurses) and **counted exactly**. The refusal and the enumerator are only ever
+handed a declaration the verb accepts, together with the gain it really has.
+Several whole-combat limits are folded into the tightest room over every
+creature any of them counts, which is stricter than the rules and never looser.
+A board the search under-counts is weaker than printed, never stronger.
+
+Every caller takes `anyBlockRequirementLocked`'s fast path first. It is false at
+nearly every table, and the option generator memoises reach(base) across the
+options it judges.
+
+### Decision 58: the enumerator, the bot, the #328 signal and the wire
+
+- **Option generator.** When a requirement is owed, `blockOptionsLocked`
+  offers the whole witness first as one option, `BlockOption.Required`. The
+  singles and minimum groups may not contain it in one piece, for example a
+  Lure'd menace attacker's three blockers. Because the witness is an option,
+  the #328 signal (`seatOwesBlockDecision`) and the step-start auto-completion
+  (completion point 1) always see a legal block when one is owed. So a defender
+  who owes a requirement is never auto-completed past it.
+- **Enumerator.** A block the verb would refuse is not offered, because it
+  runs the same validator. The defending player's `pass` is withheld while the
+  checkpoint would refuse it (`blockRequirementOwed`). The required option is
+  offered as one `declare_blockers` move (or `declare_blocker` for a single
+  block) labelled "Block as required: …" and marked **`AlwaysLegal`**.
+- **Bot.** The runner's decline-to-always-legal fallback (Decision 51) and the
+  heuristic's `SafeIndex` step both reach the required move, so a defending
+  seat that would rather not chump a Lure'd 4/4 still blocks, and the combat
+  ends.
+- **Wire.** `CardView.must_block` is one additive, public, omitempty field. It
+  is true on each creature in a pending defender's witness
+  (`MustBlockForEffect`) and clears once that defender's pass would be
+  accepted. The client badges it "MUST BLOCK". The #328 signal already holds
+  autopass for a defender with a legal block, so nothing else changes.
+  `block_requirement` joins `BLOCK_REFUSAL_REASONS`.
+
+### Proof cards
+
+- **Grand Melee** loses its block-half caveat and ships `full`.
+- New and `full`:
+  - **Lure** (Aura, `BlockRequirementWhere(lure, AttachedToSource)`).
+  - **Prized Unicorn**.
+  - **Gaea's Protector**.
+  - **Razorgrass Screen** (defender, blocks each combat).
+  - **Irresistible Prey** ("must be blocked this turn" record, then a draw).
+  - **Taunting Challenge** (a Lure record for the turn).
+
+### Tests
+
+- `game/block_requirements_test.go`:
+  - Lure with three potential blockers. Blocking the other attacker is refused.
+    Two of three is accepted, but the pass, `FinishBlocks` and `AdvanceStep` are
+    each refused, naming the third. With the third added, the pass completes
+    the declaration.
+  - Lure plus menace. One blocker owes nothing (auto-completed at step start),
+    and two owe the pair, while the single is still `too_few_blockers`.
+  - "Blocks each combat" against a flyer, and on a tapped creature: nothing is
+    owed.
+  - "Can't block" beats the requirement. Under Silent Arbiter either creature
+    that must block is a legal answer, and a creature with none is refused the
+    slot.
+  - Must-be-blocked and exactly-one: a second blocker on the exactly-one
+    attacker is refused.
+  - Judged only while pending.
+  - Clone / `RestoreFrom` and a JSON snapshot round trip keep enforcing it.
+  - An unaffected table takes the fast path.
+  - The search picks the attacker with the most requirements under a limit.
+- `game/scoped_effects_test.go` covers the new mod kind.
+- `cards/effects/block_requirement_cards_test.go` has one test per proof card,
+  through a real attack and the defender's pass. Grand Melee's test covers both
+  halves.
+- `legal/block_requirements_test.go`: every offered move is accepted
+  (`dispatchAll`). The pass is withheld, and the one `AlwaysLegal` move is the
+  three walls on the Lure'd attacker. The withheld moves are refused. An
+  unaffected table is unchanged.
+- `aiseat/block_requirements_test.go`: the heuristic, an aggressive policy and a
+  never-blocks policy each put both 2/2s on a Lure'd 4/4, and the combat ends.
+  `block_requirements_internal_test.go`: a declining policy takes the required
+  block.
+- `protocol/must_block_view_test.go`: the stamp appears, and clears once the
+  block is made. The face-down table places `must_block` as public.
+- Client: `refusalTokens.test.ts` (the token mirror).
+
+### What this does NOT decide
+
+- **Blocking costs** (CR 509.1d, War Cadence). Nothing models them, so nothing
+  forces one.
+- **Choosing how another player's creatures block** (Brutal Hordechief,
+  Invasion Plans' second line). That is a control question, not a requirement.
+- **"Blocks each attacking creature if able" / "can block any number"** (Blaze
+  of Glory). A creature here blocks one attacker. *(The "any number" half is
+  built by #1706, Decisions 60–63; "blocks each attacking creature" is still
+  open.)*
+- **Provoke, and "target creature blocks it this turn if able"** (Grappling
+  Hook, Turntimber Basilisk). These are a requirement on one blocker to block
+  one attacker, a fifth kind the `Mod`'s one `Text` cannot name. They need a
+  kind that carries the attacker, and are left for a card batch.
+- **Predicated Lures** ("all Walls able to block …", Marble Priest; "all
+  creatures with flying …", Talruum Piper). They need a predicate on the
+  requirement.
+- **Watchdog, Nacatl War-Pride, Alluring Scent, Bloodscent** and the other
+  "one file, same constructors" cards are left for a card batch. Watchdog also
+  needs its "creatures attacking you get −1/−0" static.
+
+## Amendment (2026-09-28, [#1684](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1684)): "blocks IT" and filtered Lures
+
+Follows up the #1597 amendment. Decisions 1–58 stand. That amendment's "What
+this does NOT decide" bullets on **Provoke / "target creature blocks it"**,
+**predicated Lures** and the **one-file cards** are superseded. Sprint S37
+(combat correctness), tracker [#880](https://github.com/krakenhavoc/cmd_and_ctrl/issues/880).
+
+### The rule
+
+- **Provoke** (CR 702.39a): "Whenever this creature attacks, you may have target
+  creature defending player controls untap and block it if able." Grappling Hook
+  ("target creature block it", "it" being the equipped creature) and Turntimber
+  Basilisk ("target creature block this creature") say the same thing without
+  the untap. Each is **one requirement on one creature, obeyed only by blocking
+  one particular attacker.** Blocking anything else obeys nothing. A creature
+  that left the battlefield and came back is a new object (CR 400.7) and is not
+  "it".
+- **Filtered Lures**: "All Walls able to block this creature do so" (Marble
+  Priest) and "All creatures with flying able to block this creature do so"
+  (Talruum Piper) are Lure, except that only the named blockers carry a
+  requirement from it.
+
+CR 509.1c is unchanged: a requirement never beats a restriction, so Provoke
+aimed at a creature that can't legally block the provoker (a flyer it can't
+reach, a menace attacker it can't block alone) asks nothing.
+
+### Decision 59: a fifth kind names the attacking object, and a Lure may carry a registered filter key
+
+**The kind.** `BlockRequirementBlocksAttacker` (`"blocksAttacker"`) joins the
+closed vocabulary. Like `blocks`, it sits on the would-be **blocker**.
+`BlockRequirement` gains `Attacker ObjectRef`, the instance ID and
+`Card.ObjectEpoch` of the attacker it names. It is obeyed when the blocker
+blocks the permanent whose instance and epoch both match. The requirement key
+(`blockReqHit.key`) is the holder and index, as for `blocks`, so it is one
+requirement however many attackers exist.
+
+**The record.** A static can't write this kind, because only a resolving effect
+knows which object attacked. It rides the existing `addBlockRequirement` mod
+with `Text: "blocksAttacker"` and a new field, **`Mod.Objects []ObjectRef`**,
+holding exactly one entry. The field is a slice rather than a pointer or a
+struct:
+
+- `TestScopedEffectIsPureData` forbids pointers.
+- A struct-valued `ObjectRef` would be written on every mod, and an older
+  binary would then refuse every restore point that carries a scoped effect,
+  not just the ones that use the kind.
+- With a slice, `omitempty` keeps every other mod byte-identical.
+
+Registration (`blockRequirementModProblem`) panics on four things:
+
+- a `blocksAttacker` mod without exactly one object;
+- any other block-requirement kind that names an object;
+- any other mod kind that names an object;
+- an unknown block-requirement kind (as before).
+
+Restore still refuses an unknown kind (`ErrUnknownEffectKey`). The snapshot
+shape grows additively (`scopedEffects[].mods[].objects`, and the LKI
+characteristic's `BlockRequirements[].Attacker` and `.Filter`), recorded in
+`snapshot_shape/v7.txt`. There is no schema bump, because a file written
+before the change has neither field. On the card side,
+`effects.BlocksAttackerUntilEOT{Blocker, Attacker}` builds the pinned
+until-end-of-turn record.
+
+**The filter.** `BlockRequirement` gains `Filter string`, a key into the
+engine's blocker-filter registry (`KnownBlockerFilter`,
+`RegisterBlockerFilter`). Two keys are built in: `wall` (`HasSubtype("Wall")`,
+so a changeling is a Wall) and `flying` (`HasKeyword`). A filter reads the
+blocker's **effective** characteristics at the declaration. The filter is a
+key and not a closure for two reasons:
+
+- `BlockRequirement` lives in `Characteristic`, which is copied and compared
+  with `slices.Equal` (`layer_dependency.go`), and a func field would not even
+  compile there.
+- ADR 0041's ratchet keeps closures out of anything that is data.
+
+An unregistered key binds nobody, which is weaker than printed and never
+stronger. `effects.FilteredLure(key)` builds the static. It and
+`blockRequirementStatic` panic at catalog load on an unregistered key, on a
+filter set on anything but a Lure, and on a static asked to write
+`blocksAttacker`.
+
+**The search.** Decision 57's network keeps its shape. What changes is the
+blocker → attacker arc cost. It was −(the blocker's `blocks` count + the
+attacker's Lure count). It is now **−`blockPairWeight(b, a)`**, which is:
+
+- the blocker's `blocks` requirements;
+- plus its `blocksAttacker` requirements that name *this* attacker;
+- plus the attacker's Lures whose filter binds *this* blocker.
+
+Every added requirement is still obeyed by exactly one pair, and each blocker
+still has capacity 1. So the flow counts each one at most once, and the
+witness is still **counted exactly by `blockRequirementHitsLocked` and
+re-checked by the ordinary validator**. Nothing the refusal or the enumerator
+is handed can be a declaration the verb refuses. `anyBlockRequirementLocked`'s
+fast path now recognises any blocker-side kind.
+
+**The refusal sentence.** The `block_requirement` reason is unchanged. The new
+kind reads like a Lure: "Grizzly Bears must block Goblin Grappler if able.",
+and "(Grappling Hook)" is added when the source is not the attacker. The wire
+is unchanged, since the kind never crossed it. `must_block` and the enumerator's
+`AlwaysLegal` required move come from the same witness, so they pick up both
+additions for free.
+
+**Provoke is a triggered ability, not a `PrintedKeywords` token.**
+`effects.Provoke()` returns an optional `TriggeredAbility`. It watches
+`EventAttack` for this creature, targets through
+`TargetCreatureDefendingPlayerControls`, untaps the target, and registers the
+record. "It" is read off `item.Trigger.Object`, the attacking object's
+last-known information, with the epoch it had when it attacked. So the item
+is a restore point and captures nothing. Provoke stays out of the closed
+keyword table for Exalted's reason. The table is for keywords the engine
+reads as a bare string and that another permanent can grant, and nothing
+grants provoke. A keyword joins the table only in the change that teaches the
+engine to honour it *as a token*, and this change teaches it as a trigger. Two
+instances trigger separately (CR 702.39b), which two constructor calls give.
+
+### Cards
+
+All are `full`:
+
+- **Goblin Grappler** (Provoke).
+- **Grappling Hook**: double strike, plus `TargetBlocksTheAttacker` on the
+  equipped creature.
+- **Turntimber Basilisk**: deathtouch, plus a landfall
+  `TargetBlocksThisCreature`. The requirement waits for the Basilisk to attack
+  this turn, and asks nothing if it never does.
+- **Marble Priest**: `FilteredLure(wall)`, plus a standing prevention of
+  combat damage dealt to it by Walls.
+- **Talruum Piper**: `FilteredLure(flying)`.
+- **Alluring Scent** and **Bloodscent**: a Lure record for the turn.
+- **Elvish Bard** and **Taunting Elf**: `AllAbleToBlockDoSo`.
+- **Canopy Stalker**: `MustBeBlocked`, plus a dies trigger that reads
+  `TurnTally.CreaturesDied` on resolution.
+- **Watchdog**: `BlocksEachCombat`, plus a layer 7c −1/−0 on creatures whose
+  attack target is its controller while it is untapped. The static declares
+  `DependsOnAttackingStatus` and rides the tap/untap invalidation.
+- **Nacatl War-Pride**: `exactlyOne`, plus X tapped-and-attacking token copies
+  of itself exiled at the next end step. Each token carries the same
+  requirement through the copied oracle ID.
+
+### Tests
+
+- `game/block_requirements_1684_test.go` covers:
+  - The provoked creature must block the provoker. Blocking the other attacker
+    is refused, the pass is refused until it blocks, and `must_block` stamps
+    exactly that pair.
+  - Against a flyer it can't reach, nothing is owed and it may block
+    elsewhere.
+  - A record naming another epoch of the card asks nothing.
+  - The flow puts the one slot under a limit on the provoker.
+  - Clone / `RestoreFrom` and a JSON round trip keep enforcing it, and the
+    snapshot carries `objects`.
+  - Mod validation.
+  - The filtered Lure binds only Walls, or only flyers, through a stubbed
+    static.
+  - An unregistered key binds nobody.
+  - The registry.
+- `cards/effects/block_requirement_cards_1684_test.go` has one test per card:
+  its main behaviour through a real attack and the defender's pass, plus one
+  refusal.
+- `legal/block_requirements_1684_test.go`:
+  - Every offered move is accepted.
+  - The pass is withheld, and the one `AlwaysLegal` move is the provoked
+    creature on the provoker.
+  - No offered move sends it at the other attacker.
+  - The withheld moves are refused.
+
+### What this does NOT decide
+
+- **Blocking costs** (CR 509.1d) and **"blocks each attacking creature"**
+  remain as the #1597 amendment left them.
+- **A filtered Lure as a data record** ("all Walls able to block target
+  creature this turn do so"). No card needs one. It would be a filter key on
+  the mod, validated like the kind.
+
+## Amendment (2026-09-28, [#1706](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1706)): a creature that blocks more than one attacker
+
+Decision 18 put "blocking an additional creature" out of scope because
+`BlockingTarget` was a single ID, and the #1597 amendment's "What this does
+NOT decide" said again that "a creature here blocks one attacker". This
+amendment builds it. Decisions 1–59 stand; that bullet of Decision 18, and the
+"can block any number" half of the #1597 bullet, are superseded. Sprint S37
+(combat correctness), tracker [#880](https://github.com/krakenhavoc/cmd_and_ctrl/issues/880).
+CR numbers were checked against the pinned edition (`MagicCompRules 20260819.txt`).
+Oracle text was read from the 2026-09-23 Scryfall dump.
+
+### The rule
+
+- **CR 509.1a/b.** The defending player chooses which creatures block and
+  which attacker each one blocks. A creature blocks one attacker, unless an
+  effect lets it block more: "can block an additional creature each combat"
+  (High Ground, Two-Headed Giant of Foriys), "an additional ninety-nine"
+  (a monstrous Hundred-Handed One), or "can block any number of creatures"
+  (Palace Guard). The number is part of the declaration's legality, like
+  menace's minimum. Several "additional" effects add up.
+- **CR 510.1d.** A blocking creature assigns its combat damage to the creatures
+  it is blocking. If it blocks none (they were removed from combat), it assigns
+  none. If it blocks exactly one, all of the damage goes there. If it blocks two
+  or more, "its controller divides it among them as they choose". There is no
+  order and no lethal-first rule, and trample does nothing for a blocker.
+- **CR 509.3a/b.** "Whenever this creature blocks" triggers once, however many
+  attackers the creature blocks. "Whenever this creature blocks a creature"
+  triggers once for each attacker.
+
+### Decision 60: the capacity is on the characteristic, and the set rides beside the old field
+
+**Capacity.** `Characteristic.AdditionalBlocks int` and
+`Characteristic.BlocksAnyNumber bool` are written by ordinary layer statics and
+are only ever added to, like `Restrictions` (§1). `game.BlockCapacity(c)` is
+the one reader. It returns 1 by default, 1 + `AdditionalBlocks`, or 0 for "any
+number".
+
+- A creature's own line goes with its abilities (CR 613.1f). This happens
+  because its catalog static is not applied once `CatalogAbilityKey` is empty.
+- High Ground's and Echo Circlet's lines do not go, because those effects
+  belong to their sources. This is §1's argument for Pacifism.
+- Both fields are compared by `sameCharacteristic`. They are `omitempty`, so
+  every other snapshot path is unchanged.
+
+The card-side builders are `effects.CanBlockAdditional(applies, n)` and
+`effects.CanBlockAnyNumber(applies)`. Both are layer 6, with the scope as
+their argument (Decision 41's rule).
+
+**The set.** `Card.BlockingTarget` stays as the FIRST attacker a creature
+blocks. The new `Card.AlsoBlocking []uuid.UUID` holds the rest, in
+declaration order.
+
+- There are about 50 "is it blocking" reads of `BlockingTarget` across the
+  engine, the view, the bots and the tests. They stay correct without being
+  touched.
+- `BlockedAttackers()` is the one reader of the whole set, and
+  `IsBlockingAttacker(id)` is the pair test.
+- `setBlockingSet` and `clearBlocking` are the only writers. Every
+  `BlockingTarget = uuid.Nil` in the engine now calls `clearBlocking`, so the
+  two fields cannot disagree.
+
+**Rejected: replace `BlockingTarget` with a slice.** It is the cleaner
+shape, but it would change every reader and every test, and the snapshot and
+wire keys along with them. It would also buy nothing that
+`BlockedAttackers()` does not already give.
+
+### Decision 61: the declaration works on a set, and adds rather than re-points when there is room
+
+The validator's working copy (Decision 13's `base` and `after`), the
+whole-combat limit tallies (Decision 43) and the CR 509.1c search
+(Decision 57) all now read a `blockAssignment`, which maps each blocker to the
+attackers it blocks.
+
+**The entry rule.** An entry `(blocker, attacker)` naming a pairing that is
+already stored is idempotent, as before. Otherwise:
+
+- **Capacity 1** re-points the blocker, exactly as the sandbox's "re-declare
+  blocker" always has. The attacker it leaves is *touched*, so its count
+  bounds are judged.
+- **Room left** adds the attacker to the set.
+- **No room left** refuses the whole declaration with the new reason
+  `blocker_capacity` (`BlockRefusal.N` is the capacity). The sentence is "Two-Headed Giant of
+  Foriys can't block more than two creatures each combat." A full
+  multi-blocker is never silently re-pointed, because that would take back a
+  block the defender chose. Undo and `clear_combat` remain the way to change
+  one.
+
+**What falls out unchanged:**
+
+- **Counts are per attacker.** One creature blocking three attackers is one
+  blocker of each. Menace still needs two creatures, and a Hungering Hydra
+  still takes one.
+- **Limits count creatures.** `blockLimitTallyLocked` counts the blocker keys,
+  so a creature blocking two attackers is one creature under Silent Arbiter.
+- **Pair legality is per pair.** Each entry is still judged by
+  `BlockPairRefusalLocked` and the #1339 defender check.
+
+**The option generator** (Decision 14) keeps a blocker with room eligible:
+`BlockerEligible` now accepts "not blocking, or has room". It never offers a
+blocker an attacker that blocker already blocks, because that entry would
+change nothing, so singles only ever add. Every option still passes through the
+validator. The enumerator, the #328 signal and the bots follow with no new
+code.
+
+**The requirement search** (Decision 57, `block_requirements.go`) keeps its
+guarantee: the witness is counted exactly and re-checked by the ordinary
+validator. The network changes in three places:
+
+- **Blocker room.** A blocker with room left enters with that room, not with
+  1. A creature already blocking takes part only for the room it has left,
+  because an addition never re-points.
+- **"Blocks each combat" is charged once.** Decision 59's pair weight
+  included the blocker's `blocks` count, which would count it once per
+  attacker for a multi-blocker. It now costs its weight on the blocker's
+  FIRST unit (a first source arc of capacity 1), and the rest of the room is
+  a second arc at cost 0. A blocker that is already blocking has obeyed it
+  already, so both of its arcs cost 0. `blockRequirementHitsLocked` counts it
+  once too.
+- **Limits.** A blocker that is already blocking has already been counted by
+  a whole-combat limit, so it bypasses the limit node. A limited blocker that
+  is not blocking yet keeps a single unit through that node. "Counts once, then
+  carries more" cannot be expressed as a flow, and one unit is the weaker
+  answer.
+
+Lures and "blocks that attacker" stay per pair, so a Palace Guard facing two
+Lure'd attackers owes both blocks.
+
+### Decision 62: the blocker divides its damage through the existing prompt
+
+`assignAndDealCombatDamageLocked` builds its per-attacker blocker lists from
+`BlockedAttackers()`. A blocker whose set still holds two or more **live**
+attackers (on the battlefield and attacking) does not deal damage inside the
+attacker loop. Instead it is handled after the loop:
+
+- **Two or more live attackers left.** It queues the CR 510.1c
+  damage-assignment prompt with the roles turned round:
+  - the frame's `AttackerID` is the blocker, the damage source;
+  - `BlockerIDs` are the attackers, the recipients;
+  - the chooser is the blocker's controller;
+  - `DamageAssignmentFrame.BlockerDivides` is set (`omitempty`).
+- **One live attacker left.** It deals that attacker all of its damage, with
+  no prompt.
+- **None left.** It deals nothing.
+
+`ResolveDamageAssignment` skips the lethal-first order for a `BlockerDivides`
+frame, and still refuses trample, because `AllowTrample` is false. Everything
+else is reused unchanged:
+
+- the source keywords snapshotted at queue time (lifelink, deathtouch,
+  infect, the LKI for protection);
+- the resume path;
+- the table gate (#702, #730): the step cannot end until the defender
+  answers;
+- the enumerator's canonical answer, which is a valid free split;
+- the bots' use of that answer.
+
+The prompt's reason is "Divide combat damage among the creatures it blocks".
+
+### Decision 63: announcements, snapshot and wire
+
+- **Announcements.** `Game.announcedBlocks` becomes blocker → the attackers its
+  `EventBlock`s named. The lock-in announces each pair not yet announced, and
+  numbers it in `EventBlock.Amount`: 1 for the blocker's first pair, 2 for its
+  second, and so on. `effects.selfBlocksOnce` is "whenever this creature
+  blocks" (CR 509.3a) and reads only `Amount <= 1`. Savvy Hunter, Smuggler's
+  Copter and Guardian of the Gateless use it. Brimaz ("blocks a creature",
+  CR 509.3b) keeps the per-pair reader. `EventBecomesBlocked` is still once
+  per attacker.
+- **Snapshot, additive, no bump.**
+  - The card mirror gains `alsoBlocking` (`omitempty`).
+  - `announcedBlocks` keeps its key and writes each blocker's FIRST
+    announced attacker. The rest ride a new `announcedAlsoBlocks`
+    (`omitempty`).
+  - A file from before #1706 has neither new key, so it restores every block
+    and announcement as the single pair it described.
+  - An older binary reading a new file keeps each blocker's first attacker.
+    That is the one block it can represent.
+  - `testdata/snapshot_shape/v7.txt` records the new paths.
+- **Wire, additive and public.**
+  - `CardView.block_capacity` is set when the capacity is 2 or more, and
+    `blocks_any_number` is set instead for "any number". Both are read off
+    the effective characteristic. A face-down creature prints nothing of its
+    own (CR 708.2), so they survive the face-down redaction.
+  - `CardView.blocking_targets` lists every attacker when the card blocks two
+    or more. Its first entry repeats `blocking_target`.
+  - `damage_assignment.blocker_divides` marks the division prompt.
+  - `blocker_capacity` joins the refusal tokens.
+- **Client, kept small.**
+  - The two-click flow needs no change, because the server adds rather than
+    re-points for a blocker with room.
+  - Combat arrows draw one arrow per blocked attacker.
+  - The card menu's row reads "Also block" and offers only the attackers the
+    creature is not blocking yet (`blockerHasRoom` and `blockedAttackersOf`
+    read the stamps and derive nothing, §6).
+  - The damage prompt says "Divide its N damage among them however you like".
+- **Bot.** The heuristic's "already blocked" tally reads `blocking_targets`.
+  Everything else comes from the enumerator.
+
+### Proof cards
+
+All are `full`:
+
+- **Brave the Sands** and **Hundred-Handed One** lose their caveats. The
+  Giant's is a `Monstrous()`-gated `CanBlockAdditional(99)`.
+- **Palace Guard**, **High Ground**, **Two-Headed Giant of Foriys**, **Wall of
+  Glare**, **Echo Circlet** and **Watcher in the Web** are new.
+- **Guardian of the Gateless** is new. Its "+1/+1 for each creature it's
+  blocking" triggers once and reads `BlockingCountForEffect` on resolution.
+
+### Tests
+
+- `game/multi_block_test.go` covers, with stubbed statics:
+  - Capacity 2 adds a second attacker and refuses a third, alone or inside one
+    declaration of three.
+  - "Any number" blocks five attackers.
+  - An ordinary blocker still re-points.
+  - One `EventBlock` per pair, numbered, and one `EventBecomesBlocked` per
+    attacker.
+  - The division prompt: both attackers' damage lands on the blocker, a
+    lethal-first-breaking split is accepted, and trample is refused.
+  - A blocker with one live attacker left deals it everything, with no
+    prompt.
+  - Menace still needs two creatures.
+  - Two Lure'd attackers owe both blocks from one Palace Guard, and the pass
+    names the missing one.
+  - "Blocks each combat" is counted once.
+  - A one-creature limit counts the multi-blocker once.
+  - The option generator stays legal and never repeats a pairing.
+  - Clone and `RestoreFrom` (including aliasing) and a JSON round trip, with
+    the announcements.
+  - A pre-#1706 snapshot restores its single block.
+- `legal/multi_block_test.go`: the enumerator offers the Giant each attacker it
+  does not block yet, and nothing once it is full. Every offer dispatches, and
+  the withheld third block is refused with `blocker_capacity`. Palace Guard is
+  offered every attacker until it has blocked them all.
+- `aiseat/multi_block_test.go`: the heuristic and the aggressive policy finish
+  a combat against Palace Guard and the Giant. The aggressive one blocks two
+  attackers with one creature and answers the division prompt.
+- `protocol/multi_block_view_test.go` covers the capacity stamps, and
+  `blocking_targets` only for two or more, and `blocker_divides` on the
+  prompt. `face_down_view_test.go` places the three card fields as public.
+- `cards/effects/multi_block_cards_test.go` has one test per proof card. It
+  also covers Savvy Hunter blocking two and making one Food, and two High
+  Grounds adding up. `batch16_test.go`'s Brave the Sands test now pins the
+  second line.
+- Client: `attackTargets.test.ts` and `contextMenu.test.ts`, plus the
+  refusal-token mirror.
+
+### What this does NOT decide
+
+- **"Can block an additional creature this turn" and "can block any number of
+  creatures this turn"** from a resolving spell or ability. Coastline Chimera,
+  Mounted Archers, Anurid Swarmsnapper, Luminous Guardian, Give No Ground,
+  Valor Made Real, Act of Heroism and Yare all need an ADR 0041 data-record mod
+  that writes the capacity. It would be additive, like `addBlockRequirement`.
+- **"Blocks each attacking creature if able"** (Blaze of Glory) is a
+  requirement kind on the blocker, obeyed per attacker.
+- **"Whenever this creature blocks two or more creatures"** (Lairwatch Giant)
+  is a trigger condition. It is readable from `BlockingCountForEffect` and was
+  left for a card batch.
+- **Conditional capacity** (Kemba's Legion's per-Equipment count, Cenn's
+  Tactician, Entourage of Trest, Foriysian Totem, Iona's Blessing, Vanguard's
+  Shield) is one file each with the two builders, and was left for a card
+  batch.
+- **Re-pointing a multi-blocker away from an attacker.** The verb only adds;
+  undo is the way back, as for every other staged block.
+
+## Amendment (2026-09-28, [#1715](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1715)): capacity from a resolving effect, "blocks each attacking creature", and "blocks two or more"
+
+The #1706 amendment's "What this does NOT decide" named three follow-ups
+this amendment builds: capacity from a resolving spell or ability, Blaze of
+Glory's requirement, and Lairwatch Giant's trigger. Decisions 1–63 stand.
+Sprint S37 (combat correctness), tracker
+[#880](https://github.com/krakenhavoc/cmd_and_ctrl/issues/880). CR numbers were
+checked against the comprehensive rules effective 2026-08-07. Oracle text was
+read from the 2026-09-23 Scryfall dump.
+
+### The rule
+
+- **CR 509.1a/b** (as in the #1706 amendment). "Can block an additional
+  creature this turn" and "can block any number of creatures this turn" are
+  the same capacity as the static forms, for the turn.
+- **CR 509.1c.** "It blocks each attacking creature this turn if able" is a
+  requirement for each attacking creature. The declaration has to obey the
+  most requirements it can without breaking a restriction. A creature that
+  can block only two of three attackers owes two blocks, and a flyer it can't
+  reach asks nothing.
+- **CR 509.3e.** An ability that triggers when a creature blocks "a particular
+  number of creatures" triggers if it blocks that many when blockers are
+  declared, and an effect that adds blockers can also make it trigger.
+- **CR 802.2** (attack multiple players, which Commander uses). "As the combat
+  phase starts ... all the attacking player's opponents are defending players
+  during the combat phase." CR 506.2 says the same of a two-player game's
+  nonactive player.
+
+### Decision 64: turn-scoped capacity is two ADR 0041 layer-6 mod kinds
+
+`addBlockCapacity` reads `Amount`, the number of ADDITIONAL attackers (at
+least 1). `blockAnyNumber` reads nothing. Both are layer 6, and their `Apply`
+writes the fields the #1706 statics write: `Characteristic.AdditionalBlocks +=
+Amount` and `BlocksAnyNumber = true`. So records add up with each other and
+with a static, "any number" beats any count, and `game.BlockCapacity` stays
+the one reader. Nothing in the block validator, the requirement search, the
+option generator, the view or the bot changes.
+
+The record is pinned to the creature (CR 611.2c; a single target is the same
+set either way) and lasts until cleanup (`DurationUntilEndOfTurn`). Being data,
+it rides `Clone`, undo and the snapshot. A restore point naming either kind in
+an older binary is refused as an unknown kind (ADR 0041 P4). An
+`addBlockCapacity` with `Amount < 1` panics at registration and is refused at
+restore (`ErrUnknownEffectKey`), because it would grant nothing, or take
+capacity away, which no card prints.
+
+Card side: `effects.BlockCapacityUntilEOT{Target, Additional | AnyNumber}` for
+a stand-alone grant. `blockCapacityMods` lets a card fold the grant into ONE
+record with a pump when the printed sentence is one effect (Give No Ground's
+"+2/+6 ... and can block any number", Act of Heroism's "+2/+2 ... and can
+block an additional creature"; CR 613.7).
+
+### Decision 65: `blocksEach` is Lure said from the blocker's side
+
+A sixth `BlockRequirementKind`, `"blocksEach"`, sits on the would-be BLOCKER.
+It is counted per attacker:
+
+- `blockPairWeight` adds one for every (blocker, attacker) pair, so the
+  min-cost flow prefers every pair it can afford.
+- `blockRequirementHitsLocked` records one hit per attacker blocked.
+- `blockReqHit.key` keys a `blocksEach` hit on its attacker, as a Lure's is
+  keyed on its blocker. That keying is what lets the refusal name the attacker
+  left out.
+- `blockerSideRequirement` includes it, so the fast path sees it.
+
+The capacity bounds it for free: the search gives a blocker only the room it
+has, so without "any number" the requirement is obeyed as far as capacity
+allows. Blaze of Glory writes both mods in one record. The refusal sentence
+is Lure's pair form ("Wall must block Bear if able (Blaze of Glory)."). There
+is no wire change: the kind is not projected, and `must_block` still names
+each owing blocker's first required attacker.
+
+### Decision 66: "defending player" on a spell is every opponent, for the whole combat phase
+
+`Game.IsDefendingPlayerForEffect(seat)` is true during the combat phase for
+any live player other than the active player (CR 802.2; CR 506.2 for two
+players). It is false outside combat. `effects.ControlledByDefendingPlayer()`
+is the target predicate for Yare's and Blaze of Glory's "target creature
+defending player controls". This is deliberately NOT the block verb's
+question. Who may block a particular attacker is still
+`isDefendingPlayerLocked` / `defendingPlayerForAttackerLocked`: the player
+THAT attack is aimed at. An attacking creature's own trigger keeps
+`TargetCreatureDefendingPlayerControls` (CR 802.2a). Blaze of Glory's "before
+blockers are declared" is a `CastCondition` on the beginning of combat and
+declare attackers steps. That is when every opponent is already a defending
+player, before anything attacks.
+
+### Decision 67: "blocks N or more" reads the numbered `EventBlock`
+
+The lock-in already numbers each blocker's pairs in `EventBlock.Amount`
+(#1706). The event numbered N is the one that takes the creature to N, so
+`effects.selfBlocksAtLeast(ev, source, N)` is `Amount == N`. That triggers
+once per declaration however many more it blocks, and never for a creature
+that blocks fewer. A block added after the lock-in (the sandbox's late block)
+is announced with its own number, so it takes a creature from one to two
+exactly as CR 509.3e's "effects that add ... blockers" does. No new event and
+no batch bookkeeping.
+
+### Cards
+
+All are `full`:
+
+- **Coastline Chimera**, **Mounted Archers**, **Anurid Swarmsnapper** and
+  **Luminous Guardian** activate `BlockCapacityUntilEOT` on themselves.
+- **Give No Ground**, **Valor Made Real** and **Act of Heroism** are
+  resolving grants.
+- **Yare** targets a creature a defending player controls.
+- **Blaze of Glory** is "any number" plus `blocksEach`, cast only before
+  blockers.
+- **Lairwatch Giant** has a static +1 and the Decision 67 trigger.
+
+### Tests
+
+- `game/multi_block_followups_test.go`:
+  - A +1-this-turn record blocks two attackers, and the creature blocks one
+    on the next turn it is attacked.
+  - Records add up, and "any number" beats them.
+  - A zero amount panics.
+  - Clone and undo, a JSON round trip, and a malformed restore refused.
+  - `blocksEach` with "any number": a companion blocker may join, the pass
+    and `finish_blocks` are refused naming the wall and a missed attacker,
+    and all three blocked passes (the flyer excepted).
+  - `blocksEach` with capacity 2 owes exactly two.
+  - `IsDefendingPlayerForEffect` in main, beginning of combat, and for an
+    eliminated player.
+  - `scoped_effects_test.go` has a layer case for each new kind.
+- `legal/multi_block_followups_test.go`: a +1 record is offered two attackers
+  and then none, with the third refused `blocker_capacity`. Under
+  `blocksEach` the pass is withheld, the one `AlwaysLegal` move puts the wall
+  on every attacker, every offer dispatches, and the pass returns.
+- `aiseat/multi_block_followups_test.go`: the heuristic, aggressive and
+  never-blocks policies all end a combat in which a blazed 2/2 blocks all
+  three forced attackers and divides its damage.
+- `cards/effects/block_capacity_eot_cards_test.go`: one test per card,
+  including:
+  - Yare refused in a main phase and on the active player's creature.
+  - Blaze of Glory refused in the declare blockers step.
+  - Lairwatch Giant: one trigger for two, none for one.
+  - Valor Made Real through a restore point.
+
+### What this does NOT decide
+
+- **Re-pointing a multi-blocker away from one of its attackers.** It needs a
+  new action (remove one pair), an enumerator move and a client affordance.
+  Undo and `clear_combat` remain the way back.
+- **Conditional capacity statics** (Kemba's Legion and similar) belong to a
+  card batch, as before.
+- **The bot's attack-side estimates** (`aiseat/heuristic/trample.go`,
+  `unblockedPower`) still assume one attacker per blocker. That is weaker
+  play, not an illegal move.

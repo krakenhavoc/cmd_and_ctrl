@@ -4,6 +4,7 @@ import type {
   ActivatedAbilityView,
   AlternativeCostView,
   CardView,
+  DivideView,
   LegalTargetsView,
   ModeOptionView,
   OptionalCostView,
@@ -96,6 +97,12 @@ export interface CastChoices {
   // waterbend. Undefined and empty are the same thing to the server;
   // tapping nothing is always legal.
   tapIDs?: string[];
+  // #1703: the creatures tapped for a claimed teamwork offer, and the
+  // one creature a claimed blight puts its -1/-1 counters on. Set only
+  // when `optionalCosts` claims that offer; the server refuses them on
+  // a cast that does not.
+  teamworkIDs?: string[];
+  blightIDs?: string[];
   // CR 107.4c/f (#916): how many of the cost's Phyrexian symbols are
   // being paid with 2 life each instead of mana. Collected after the
   // X picker — an {X} cost has to be sized before the rest of it can
@@ -168,6 +175,11 @@ export function applyCastChoices(
   if (choices.giftOpponent !== undefined && choices.giftOpponent !== "")
     params.gift_opponent = choices.giftOpponent;
   if (choices.tapIDs !== undefined && choices.tapIDs.length > 0) params.tap_ids = choices.tapIDs;
+  // #1703: omitted unless the offer was claimed and paid.
+  if (choices.teamworkIDs !== undefined && choices.teamworkIDs.length > 0)
+    params.teamwork_ids = choices.teamworkIDs;
+  if (choices.blightIDs !== undefined && choices.blightIDs.length > 0)
+    params.blight_ids = choices.blightIDs;
   // #916: omitted at 0, which is the server default and what every
   // client that predates the stepper sends.
   if (choices.phyrexianLife !== undefined && choices.phyrexianLife > 0)
@@ -285,6 +297,21 @@ export interface TargetingState {
   // #1559: the CURRENT step's rule over its chosen set, when it has
   // one — like `legal`, it always describes the step being asked.
   different?: SetRule;
+  // #1563: the CURRENT step's divided amount, when its clause is
+  // "divided as you choose" — like `legal`, it always describes the
+  // step being asked. Already resolved against the X the caster
+  // announced.
+  divide?: number;
+  // #1659: the CURRENT step's divide is X-based and X isn't known
+  // yet — see TargetStep.divideFromXUnresolved.
+  divideFromXUnresolved?: boolean;
+  // #1657: the CURRENT step divides "up to" its amount — see
+  // TargetStep.divideUpTo.
+  divideUpTo?: boolean;
+  // #1563: the division announced so far, target id → share, for
+  // every divided step already answered. Rides the action as
+  // `distribution`.
+  distribution?: Record<string, number>;
 }
 
 // SetRule is a clause's rule over the chosen SET of its picks (#1559,
@@ -314,6 +341,19 @@ export interface TargetStep {
   distinct: boolean;
   // #1559: the clause's set rule, when it prints one.
   different?: SetRule;
+  // #1563: the amount the clause divides among its picks, resolved
+  // against the announced X. Undefined for a clause that divides
+  // nothing.
+  divide?: number;
+  // #1659: true when the clause divides an X-based amount but X
+  // hasn't been collected for this walk — the banner shows "X"
+  // rather than the 0 `divide` resolves to in that case (every real
+  // walk collects X before targeting starts, so this is a defensive
+  // fallback, not a state the client should reach).
+  divideFromXUnresolved?: boolean;
+  // #1657: "distribute UP TO that many" (Lathiel) — the shares may sum
+  // to less than `divide`, each pick still at least 1.
+  divideUpTo?: boolean;
 }
 
 export interface TargetRef {
@@ -376,7 +416,84 @@ export function stepsFor(
     slot,
     distinct: c.distinct === true,
     different: c.different ? { label: c.different.label, keys: c.different.keys ?? {} } : undefined,
+    divide: c.divide ? divideTotal(c.divide, choices?.xValue) : undefined,
+    divideFromXUnresolved: c.divide?.from_x === true && choices?.xValue === undefined,
+    divideUpTo: c.divide?.up_to === true ? true : undefined,
   }));
+}
+
+// divideTotal is the amount a divided clause splits (#1563) — the
+// client twin of game.(*DivideSpec).TotalFor: a fixed total, or the X
+// the caster announced, doubled once X reaches `double_from_x`.
+export function divideTotal(d: DivideView, xValue: number | undefined): number {
+  if (!d.from_x) return d.total ?? 0;
+  const x = Math.max(0, xValue ?? 0);
+  if (d.double_from_x && d.double_from_x > 0 && x >= d.double_from_x) return 2 * x;
+  return x;
+}
+
+// evenSplit is the division the picker opens with, and the one the
+// bot announces (game.EvenDistribution): the amount split as evenly as
+// possible, the remainder one point at a time to the earliest picks.
+export function evenSplit(ids: string[], total: number): Record<string, number> {
+  const out: Record<string, number> = {};
+  if (ids.length === 0) return out;
+  const share = Math.floor(total / ids.length);
+  const extra = total % ids.length;
+  ids.forEach((id, i) => {
+    out[id] = share + (i < extra ? 1 : 0);
+  });
+  return out;
+}
+
+// divisionProblem says why a division would be refused (CR 601.2d),
+// or null when the server will take it: every pick at least 1, the
+// shares adding up to the amount — or, with `upTo` (#1657), to at most
+// the amount. The same rules the engine's settleDistribution enforces,
+// so Confirm is enabled exactly when the answer is legal.
+export function divisionProblem(
+  ids: string[],
+  total: number,
+  dist: Record<string, number>,
+  upTo = false,
+): string | null {
+  if (ids.length > total) {
+    return `${ids.length} targets can't share ${total} — each needs at least 1`;
+  }
+  let sum = 0;
+  for (const id of ids) {
+    const v = dist[id] ?? 0;
+    if (!Number.isInteger(v) || v < 1) return "each target needs at least 1";
+    sum += v;
+  }
+  if (upTo) {
+    // #1657: "up to that many" — less is fine, more is not.
+    if (sum > total) return `assign at most ${total} in all (${sum} so far)`;
+    return null;
+  }
+  if (sum !== total) return `assign ${total} in all (${sum} so far)`;
+  return null;
+}
+
+// needsDivision reports whether completing the CURRENT step has to ask
+// for a division first: its clause divides and two or more targets are
+// picked. One pick takes the whole amount and needs no question — the
+// server fills it in.
+export function needsDivision(t: TargetingState): boolean {
+  return t.divide !== undefined && t.picked.length >= 2;
+}
+
+// withDivision records the current step's division on the state, to
+// ride the action with every other divided step's.
+export function withDivision(t: TargetingState, dist: Record<string, number>): TargetingState {
+  return { ...t, distribution: { ...(t.distribution ?? {}), ...dist } };
+}
+
+// distributionOf is the `distribution` a finished walk sends, or
+// undefined when nothing was divided among two or more targets.
+export function distributionOf(t: TargetingState): Record<string, number> | undefined {
+  const d = t.distribution;
+  return d && Object.keys(d).length > 0 ? d : undefined;
 }
 
 // withinX narrows an X-bounded clause's cards ("with mana value X or
@@ -414,6 +531,9 @@ export function openWalk(
     step: 0,
     done: [],
     different: first.different,
+    divide: first.divide,
+    divideUpTo: first.divideUpTo,
+    divideFromXUnresolved: first.divideFromXUnresolved,
     ...extra,
   };
 }
@@ -460,6 +580,9 @@ export function advance(t: TargetingState): TargetingState | null {
     step: next,
     done,
     different: s.different,
+    divide: s.divide,
+    divideUpTo: s.divideUpTo,
+    divideFromXUnresolved: s.divideFromXUnresolved,
   };
 }
 
@@ -523,6 +646,9 @@ export function togglePick(t: TargetingState, ref: TargetRef): TargetingState {
     return { ...t, picked: t.picked.filter((p) => p.id !== ref.id) };
   }
   if (t.max > 0 && t.picked.length >= t.max) return t;
+  // #1563: a divided clause gives each target at least 1, so it takes
+  // no more targets than its amount.
+  if (t.divide !== undefined && t.picked.length >= t.divide) return t;
   // #1559: the server would refuse the set, so the pick is refused
   // here — the card is already greyed by isLegalCardTarget.
   if (breaksSetRule(t, ref.id)) return t;
@@ -680,6 +806,36 @@ export function printedCostClaimable(card: CardView): boolean {
   return card.alternative_cost_required !== true;
 }
 
+// printedCostCastableNow narrows printedCostClaimable to "and the
+// engine would accept it AT THIS MOMENT" (#1686). The two disagree
+// only for a card carrying a granted alternative cost with its own
+// clock — a live miracle grant is instant-speed for its OWN claim and
+// says nothing about the printed one, which stays whatever timing the
+// card prints. Drawn on another player's turn, the printed sorcery
+// cost is still on the menu (`printedCostClaimable` stays true) but
+// not choosable until the caster's own main phase
+// (`printed_cost_timing_closed`).
+//
+// Every other card answers both questions the same way, because
+// nothing else on the wire carries a second claim with a different
+// clock — this is deliberately a second predicate rather than a
+// change to `printedCostClaimable` itself, which the zone browser's
+// button label and canCastFromHand's tooltip also read and which must
+// keep answering the zone-and-payability question alone (see their
+// own call sites for why timing does not belong there).
+export function printedCostCastableNow(card: CardView): boolean {
+  return printedCostClaimable(card) && card.printed_cost_timing_closed !== true;
+}
+
+// castableAlternativeCostsOf narrows alternativeCostsOf to the offers
+// the engine would accept RIGHT NOW (#1686) — dropping one whose
+// `timing_closed` bit is set. The cost picker is the one reader that
+// needs this: it is the only place a card's own claim and a granted
+// claim with a different clock are ever offered side by side.
+export function castableAlternativeCostsOf(card: CardView): AlternativeCostView[] {
+  return alternativeCostsOf(card).filter((o) => o.timing_closed !== true);
+}
+
 // optionalCostsOf returns the "you may pay an additional cost" offers
 // on a card — kicker, multikicker, buyback — or an empty list for the
 // vast majority that have none (ADR 0073).
@@ -760,13 +916,84 @@ export function castTargetOverride(
   return undefined;
 }
 
+// modesUnderChoices is the card the mode picker should open on for
+// THIS cast (#1655): the card itself, or — when the caster has ticked
+// an optional cost and the server said that changes the mode count —
+// a copy whose `modes` carries `if_optional_paid`'s bounds. CR 601.2b
+// announces the kicker with the modes, so a kicked Inscription of Ruin
+// may take any number of bullets and an unkicked one exactly one.
+export function modesUnderChoices(card: CardView, choices: CastChoices | undefined): CardView {
+  const modes = card.modes;
+  const paid = modes?.if_optional_paid;
+  if (!modes || !paid || (choices?.optionalCosts?.length ?? 0) === 0) return card;
+  return { ...card, modes: { ...modes, min: paid.min, max: paid.max } };
+}
+
 // optionalCostPayOptions returns the permanents that can pay an
 // offer's sacrifice half, or undefined when it charges none — which
 // is every mana kicker. An empty array means the offer cannot be
 // taken right now: a Constant Mists with no land to sacrifice.
 export function optionalCostPayOptions(offer: OptionalCostView): string[] | undefined {
+  // #1703: teamwork's creatures and blight's are the same question —
+  // present-and-empty is an offer the board cannot pay right now.
+  if (offer.teamwork_options) return offer.teamwork_options.cards ?? [];
+  if (offer.blight_options) return offer.blight_options.cards ?? [];
   if (!offer.sacrifice_options) return undefined;
   return offer.sacrifice_options.cards ?? [];
+}
+
+// ClaimedCreatureCost is a claimed teamwork or blight offer: the
+// number the card prints and the creatures the server says could pay
+// it (#1703).
+export interface ClaimedCreatureCost {
+  offer: OptionalCostView;
+  n: number;
+  options: string[];
+}
+
+function claimedOffer(
+  card: CardView,
+  choices: CastChoices | undefined,
+  pick: (o: OptionalCostView) => number | undefined,
+  opts: (o: OptionalCostView) => LegalTargetsView | undefined,
+): ClaimedCreatureCost | undefined {
+  for (const index of choices?.optionalCosts ?? []) {
+    const offer = optionalCostsOf(card)[index];
+    const n = offer ? pick(offer) : undefined;
+    if (offer && n !== undefined && n > 0) {
+      return { offer, n, options: opts(offer)?.cards ?? [] };
+    }
+  }
+  return undefined;
+}
+
+// castTeamworkOffer is the teamwork offer this cast has claimed, if
+// any — the prompt that follows the add-on picker asks which creatures
+// to tap (#1703).
+export function castTeamworkOffer(
+  card: CardView,
+  choices: CastChoices | undefined,
+): ClaimedCreatureCost | undefined {
+  return claimedOffer(
+    card,
+    choices,
+    (o) => o.teamwork,
+    (o) => o.teamwork_options,
+  );
+}
+
+// castBlightOffer is the blight offer this cast has claimed, if any —
+// the prompt asks which one creature takes the counters (#1703).
+export function castBlightOffer(
+  card: CardView,
+  choices: CastChoices | undefined,
+): ClaimedCreatureCost | undefined {
+  return claimedOffer(
+    card,
+    choices,
+    (o) => o.blight,
+    (o) => o.blight_options,
+  );
 }
 
 // castIsForbidden reports whether the server's own cast gate has
@@ -834,9 +1061,15 @@ export function modeOptionCastable(option: ModeOptionView): boolean {
 // Deluge's "pay X life" is an additional cost with its own X, the
 // printed mana cost is a flat {2}{B}, and the announced X is also
 // the -X/-X the spell hands out.
-export function hasXCost(card: CardView): boolean {
+//
+// #1657 adds the fourth: an alternative cost priced with an {X} of its
+// own on a card whose printed cost has none — Avacyn's Judgment prints
+// {1}{R} and its madness cost is {X}{R}, and that X is also the damage
+// it divides. `altCost` is the key of the offer being claimed.
+export function hasXCost(card: CardView, altCost?: string): boolean {
   if (card.tap_cost?.demands_x) return true;
   if (card.additional_cost?.demands_x) return true;
+  if ((alternativeCostByKey(card, altCost)?.mana_cost ?? "").includes("{X}")) return true;
   return (card.mana_cost ?? "").includes("{X}");
 }
 
@@ -884,14 +1117,21 @@ export function beginForAbility(
   // to be a hard-coded 1 / 1 with a note naming the fix — give the
   // view a LegalTargetsView and emit the count server-side — which
   // #334 needed, because Teferi's "up to one target" is Min 0.
+  // #1659: xValue rides through to stepsFor so a divide-from-X clause
+  // (Katilda's activation-cost X, or any future X-cost ability with a
+  // "divided as you choose" clause) resolves against the announced X
+  // rather than silently landing on 0 — the two call sites used to
+  // drop it on the floor, which is invisible until a card exercises
+  // both mechanics at once.
   const steps =
     modes && modes.length > 0
-      ? abilityModeSteps(ability, modes)
+      ? abilityModeSteps(ability, modes, xValue)
       : stepsFor(
           (ability.target_mode || "any") as TargetingMode,
           ability.legal_targets,
           ability.clauses,
           0,
+          xValue !== undefined ? { xValue } : undefined,
         );
   targeting.set(
     openWalk(card, steps, {
@@ -913,15 +1153,21 @@ export function beginForAbility(
 }
 
 // abilityModeSteps is modeSteps for an activated ability's own
-// ModeSpecView.
-export function abilityModeSteps(ability: ActivatedAbilityView, modes: number[]): TargetStep[] {
+// ModeSpecView. `xValue` is the ability's announced X (#1659) — see
+// the comment at its call site in beginForAbility.
+export function abilityModeSteps(
+  ability: ActivatedAbilityView,
+  modes: number[],
+  xValue?: number,
+): TargetStep[] {
   const options = ability.modes?.options ?? [];
   const out: TargetStep[] = [];
+  const choices = xValue !== undefined ? { xValue } : undefined;
   modes.forEach((optionIndex, occurrence) => {
     const option = options[optionIndex];
     if (!option?.legal_targets && !option?.clauses?.length) return;
     const mode = (option.target_mode || "any") as TargetingMode;
-    for (const st of stepsFor(mode, option.legal_targets, option.clauses, occurrence)) {
+    for (const st of stepsFor(mode, option.legal_targets, option.clauses, occurrence, choices)) {
       out.push({ ...st, label: st.label || option.label });
     }
   });

@@ -173,6 +173,16 @@ func corpusBoards() []corpusBoard {
 		// limitBlockersPerDefender mods, and Text, on disk.
 		{"gingerbrute", corpusGingerbrute},
 		{"mirri_limit", corpusMirriLimit},
+		// v7, added by #1650 as a new file: a restriction whose
+		// affected set is a live rule — addRestrictions under the
+		// creaturesWithoutFlying scope on disk.
+		{"falter", corpusFalter},
+		// v7, added by #1651: a hexproof waiver under the live
+		// opponentsAndTheirCreatures scope, and a cantHaveKeywords record
+		// pinned to an opponent's creature. Written by #1707's v7
+		// regeneration (ADR 0044's 2026-09-28 #1698 amendment).
+		{"detection_tower", corpusDetectionTower},
+		{"arcane_lighthouse", corpusArcaneLighthouse},
 		// v7, added by tier 4's second slice (#1497, ADR 0041 P9) as new
 		// files: declared triggered abilities waiting to resolve, named
 		// by their catalog row — a card's own row, a granted bundle's,
@@ -189,7 +199,41 @@ func corpusBoards() []corpusBoard {
 		// Tier 4-0's prowess/pump body, which merged while 4-2 was open:
 		// an engine trigger with no catalog row, keyed by its body.
 		{"prowess_on_stack", corpusProwessOnStack},
+		// v7, added by #1593: duration copy effects — the becomeCopy mod
+		// carrying its copied values, and the carried durationCopyBase
+		// under a Cytoshaped Clone. Written by #1712, alongside the
+		// regeneration of gingerbrute.json and whip_redirect.json that
+		// unblocked it (ADR 0044's 2026-09-28 #1712 amendment).
+		{"duration_copy", corpusDurationCopy},
 	}
+}
+
+// corpusDurationCopy is a Clone of Grizzly Bears that Cytoshape turned
+// into a Hill Giant until end of turn (a becomeCopy record, and the
+// Clone's entry copy as its durationCopyBase), beside an Unstable
+// Shapeshifter that has become a copy of a Runeclaw Bear for good (an
+// indefinite record whose copied values carry a granted bundle).
+func corpusDurationCopy(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat].ID
+	bears := pushBattlefieldCardWithTimestamp(g, corpusCreature(me, "Grizzly Bears", 2, 2))
+	giant := pushBattlefieldCardWithTimestamp(g, corpusCreature(me, "Hill Giant", 3, 3))
+	clone := castCatalogSpell(t, g, "Clone", "Creature — Shapeshifter", oracleClone, nil)
+	resolveWithCopyChoice(t, g, bears)
+	castCatalogSpell(t, g, "Cytoshape", "Instant", oracleCytoshape,
+		[]game.TargetRef{{Kind: game.TargetCard, ID: clone}})
+	dcAnswerChooseCards(t, g, giant)
+	passPriorityAroundTable(t, g)
+	pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Unstable Shapeshifter", TypeLine: "Creature — Shapeshifter",
+		OracleID: oracleUnstableShapeshifter, Power: 0, Toughness: 1, Owner: me, Controller: me,
+	})
+	dcEnter(t, g, me, "Runeclaw Bear", "Creature — Bear", 2, 2)
+	passPriorityAroundTable(t, g)
+	if len(g.ScopedEffects) != 2 {
+		t.Fatalf("setup: want the Cytoshape and the Shapeshifter records, have %d", len(g.ScopedEffects))
+	}
+	return g
 }
 
 // ---------------------------------------------------------------
@@ -305,6 +349,50 @@ func corpusMirriLimit(t *testing.T) *game.Game {
 	passPriorityAroundTable(t, g)
 	if n := scopedBlockRuleCount(g); n != 1 {
 		t.Fatalf("setup: Mirri's trigger registered %d scoped block rules, want 1", n)
+	}
+	return g
+}
+
+// corpusFalter is a real Falter: one addRestrictions record over the
+// live creaturesWithoutFlying scope (#1650), with a creature on the
+// board it reaches.
+func corpusFalter(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	seat := g.Turn.ActiveSeat
+	opp := g.Seats[(seat+1)%len(g.Seats)]
+	pushSizedCreature(g, opp.ID, "Grizzly Bears", 2, 2)
+	castCatalogSpell(t, g, "Falter", "Instant", falterOracle, nil)
+	passPriorityAroundTable(t, g)
+	if len(g.ScopedEffects) != 1 || g.ScopedEffects[0].Scope != game.ScopeCreaturesWithoutFlying {
+		t.Fatalf("setup: Falter registered %+v, want one creaturesWithoutFlying record", g.ScopedEffects)
+	}
+	return g
+}
+
+// corpusDetectionTower is a real Detection Tower activation: one
+// waiveHexproof record over the live opponentsAndTheirCreatures scope
+// (#1651), with a hexproof creature on the board it reaches.
+func corpusDetectionTower(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	pushSizedCreature(g, opp.ID, "Slippery Bogle", 1, 1, "hexproof")
+	activateLand(t, g, "Detection Tower", detectionTowerOracle)
+	if len(g.ScopedEffects) != 1 || g.ScopedEffects[0].Scope != game.ScopeOpponentsAndTheirCreatures {
+		t.Fatalf("setup: Detection Tower registered %+v, want one opponentsAndTheirCreatures record", g.ScopedEffects)
+	}
+	return g
+}
+
+// corpusArcaneLighthouse is a real Arcane Lighthouse activation: one
+// cantHaveKeywords record pinned to the opponent's hexproof creature
+// (#1651), so CantHave is on disk in the characteristic's shape too.
+func corpusArcaneLighthouse(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	pushSizedCreature(g, opp.ID, "Slippery Bogle", 1, 1, "hexproof")
+	activateLand(t, g, "Arcane Lighthouse", arcaneLighthouseOracle)
+	if len(g.ScopedEffects) != 1 || g.ScopedEffects[0].Mods[0].Kind != game.ModCantHaveKeywords {
+		t.Fatalf("setup: Arcane Lighthouse registered %+v, want one cantHaveKeywords record", g.ScopedEffects)
 	}
 	return g
 }

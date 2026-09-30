@@ -24,7 +24,12 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //   - The Spirit trigger is the shared dies watcher (diedCreature),
 //     narrowed to another creature the controller controlled that is
 //     black. The three Spirits a removal activation makes are white,
-//     so they never retrigger it.
+//     so they never retrigger it. "Black" is read as the permanent
+//     last existed on the battlefield (leftAsColor, #1689, CR
+//     603.10a), so a creature painted black only by an effect
+//     (Darkest Hour, a black-making static, an Aura) counts, and one
+//     an effect painted another colour does not — the card in the
+//     graveyard is not consulted.
 //
 // No simplification.
 func init() {
@@ -44,7 +49,7 @@ func init() {
 					return false
 				}
 				dead, ok := diedCreature(ev, g)
-				return ok && dead.Controller == source.Controller && dead.HasColor("B")
+				return ok && leftUnderControlOf(ev, dead) == source.Controller && leftAsColor(ev, dead, "B")
 			}, "Teysa, Orzhov Scion — create a 1/1 white Spirit with flying",
 				Do(CreateToken{Template: TokenCard("1/1 white Spirit with flying"), N: 1})),
 		},

@@ -113,18 +113,20 @@ func TestCommandDefinitions(t *testing.T) {
 	if len(end.Options) != 1 || !end.Options[0].Required || !end.Options[0].Autocomplete {
 		t.Errorf("end should have one required, autocompleting option, got %+v", end.Options)
 	}
-	// Both deck commands take a single required "link" string.
+	// Both deck commands take a single OPTIONAL "link" string: with
+	// none, they ask for a pasted list in a modal (ADR 0095, amendment
+	// 2026-09-25).
 	if deckCheck == nil {
 		t.Fatal("missing deck-check command")
 	}
-	if len(deckCheck.Options) != 1 || deckCheck.Options[0].Name != "link" || !deckCheck.Options[0].Required {
-		t.Errorf("deck-check should have one required \"link\" option, got %+v", deckCheck.Options)
+	if len(deckCheck.Options) != 1 || deckCheck.Options[0].Name != "link" || deckCheck.Options[0].Required {
+		t.Errorf("deck-check should have one optional \"link\" option, got %+v", deckCheck.Options)
 	}
 	if deckReq == nil {
 		t.Fatal("missing deck-req command")
 	}
-	if len(deckReq.Options) != 1 || deckReq.Options[0].Name != "link" || !deckReq.Options[0].Required {
-		t.Errorf("deck-req should have one required \"link\" option, got %+v", deckReq.Options)
+	if len(deckReq.Options) != 1 || deckReq.Options[0].Name != "link" || deckReq.Options[0].Required {
+		t.Errorf("deck-req should have one optional \"link\" option, got %+v", deckReq.Options)
 	}
 }
 

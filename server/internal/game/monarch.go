@@ -16,10 +16,10 @@ import "github.com/google/uuid"
 //	"Whenever a creature deals combat damage to the monarch, that
 //	creature's controller becomes the monarch."
 //
-//	725.3. Only one player can be the monarch at a time. As a player
+//	724.3. Only one player can be the monarch at a time. As a player
 //	becomes the monarch, the current monarch ceases to be the monarch.
 //
-//	725.4. If the monarch leaves the game, the active player becomes
+//	724.4. If the monarch leaves the game, the active player becomes
 //	the monarch at the same time as that player leaves the game. If
 //	the active player is leaving the game or if there is no active
 //	player, the next player in turn order becomes the monarch. If no
@@ -77,7 +77,7 @@ func (monarchTriggers) OnEvent(g *Game, ev Event) {
 // only way to see all of them at once, and it is why a first-strike
 // hit and a regular hit both count.
 //
-// One trigger per creature that connects, which is what CR 725.3
+// One trigger per creature that connects, which is what CR 724.3
 // means by "as a player becomes the monarch, the current monarch
 // ceases to be": two creatures under different controllers both
 // connecting put two triggers on the stack, the monarch orders them
@@ -122,7 +122,7 @@ func (g *Game) monarchCombatDamageTriggerLocked(ev Event) {
 		// the ability triggered — the one losing the crown, not the
 		// one taking it. That is what makes CR 800.4a correct when
 		// the hit is lethal: the trigger leaves with its controller
-		// and the crown is handed on by CR 725.4 below instead.
+		// and the crown is handed on by CR 724.4 below instead.
 		Controller: g.Monarch,
 		Owner:      g.Monarch,
 		Label:      "the monarch — " + claimant.Name + " becomes the monarch",
@@ -186,7 +186,7 @@ var monarchDrawBody = DelayedBody("monarch/draw", func(g *Game, _ *StackItem, p 
 	return g.DrawNForEffect(p.Player, 1)
 })
 
-// monarchLeftTheGameLocked is CR 725.4: the crown never falls off the
+// monarchLeftTheGameLocked is CR 724.4: the crown never falls off the
 // table. When the monarch leaves, the active player takes it; if the
 // active player is the one leaving, the next player in turn order
 // does.
@@ -195,7 +195,7 @@ var monarchDrawBody = DelayedBody("monarch/draw", func(g *Game, _ *StackItem, p 
 // AFTER advancePastEliminatedLocked has already walked the cursor off
 // an eliminated active seat. So "the active player" here is by
 // construction a player still in the game, and the two halves of
-// CR 725.4 collapse into one lookup.
+// CR 724.4 collapse into one lookup.
 //
 // This is a reassignment by game rule, not a triggered ability: it
 // happens immediately, not on the stack ("at the same time as that
@@ -225,10 +225,24 @@ func (g *Game) monarchLeftTheGameLocked() {
 	g.becomeMonarchLocked(uuid.Nil)
 }
 
-// becomeMonarchLocked is the one write to Game.Monarch that the
-// rules half of the mechanic goes through. Refuses to crown a player
-// who is no longer seated or who has been eliminated between the
-// trigger and its resolution; uuid.Nil clears the designation.
+// becomeMonarchLocked is the one write to Game.Monarch. Every route
+// that moves the crown goes through it — a card's "you become the
+// monarch" (SetMonarchForEffect), the CR 724.2 combat-damage steal
+// (monarchCrownBody), the CR 724.4 hand-on above and the sandbox's
+// manual SetMonarch — so every one of them announces the move the
+// same way. Refuses to crown a player who is no longer seated or who
+// has been eliminated between the trigger and its resolution;
+// uuid.Nil clears the designation.
+//
+// #1722: it emits EventMonarchChanged, and ONLY when the designation
+// actually changes. A player who is already the monarch and is told
+// to become it again (a second Court entering, a Palace Jailer while
+// wearing the crown) does not become it — CR 724.3 has one monarch
+// and "as a player becomes the monarch" is a change of holder — so
+// "whenever you become the monarch" (Custodi Lich) does not trigger a
+// second time. The event is also the layer-invalidation input for
+// every "as long as you're the monarch" static (Entourage of Trest):
+// layerVersionBump bumps on it.
 //
 // Caller must hold g.mu in write mode.
 func (g *Game) becomeMonarchLocked(playerID uuid.UUID) {
@@ -238,5 +252,60 @@ func (g *Game) becomeMonarchLocked(playerID uuid.UUID) {
 			return
 		}
 	}
+	previous := g.Monarch
+	if previous == playerID {
+		return
+	}
 	g.Monarch = playerID
+	g.EmitEvent(Event{
+		Kind:   EventMonarchChanged,
+		Actor:  playerID,
+		Target: previous,
+	})
+}
+
+// EventMonarchChanged — the monarch designation (CR 724) moved.
+// Actor is the NEW monarch, uuid.Nil when the designation was cleared
+// (CR 724.4's "the game continues with no monarch", or a manual
+// clear); Target is the previous monarch, uuid.Nil when there was
+// none.
+//
+// Emitted only by becomeMonarchLocked, and only on a real change, so
+// "whenever you become the monarch" is `ev.Actor == you` and fires
+// once per becoming. Added by #1722 (ADR 0096).
+const EventMonarchChanged EventKind = "monarch_changed"
+
+// SetMonarchForEffect is "<player> becomes the monarch" from inside a
+// resolving spell or ability — Palace Jailer's and every Court's ETB,
+// Throne of the High City's activation. The effect_api.go convention:
+// the caller already holds g.mu in write mode (the resolution path
+// does), which is exactly why the public SetMonarch, which takes the
+// lock itself, deadlocked from an OnResolve or a trigger's Effect and
+// no catalog card could use the monarch before #1722.
+//
+// Same write, same event, same listener behaviour as the manual set:
+// both go through becomeMonarchLocked. A player who has left the game
+// is not crowned (CR 800.4a — the effect does as much as it can,
+// which is nothing); a player already the monarch stays it and
+// nothing triggers. Returns ErrPlayerNotFound for an ID that names no
+// seat, which is a caller bug rather than a game state.
+//
+// Caller must hold g.mu in write mode.
+func (g *Game) SetMonarchForEffect(playerID uuid.UUID) error {
+	if playerID == uuid.Nil || g.playerByIDLocked(playerID) == nil {
+		return ErrPlayerNotFound
+	}
+	g.becomeMonarchLocked(playerID)
+	return nil
+}
+
+// MonarchAsTurnBegan is who was the monarch as the current turn began
+// — Knights of the Black Rose's "if you were the monarch as the turn
+// began". Stamped into TurnTally by resetTurnTallyLocked, so it is
+// cloned, snapshotted and undone with the rest of the turn's record.
+// uuid.Nil when nobody was.
+//
+// Caller must hold g.mu.
+func (g *Game) MonarchAsTurnBegan() uuid.UUID {
+	return g.TurnTally.MonarchAtStart
 }

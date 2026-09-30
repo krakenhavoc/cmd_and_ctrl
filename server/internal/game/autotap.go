@@ -448,7 +448,11 @@ func (g *Game) autoTapPreferringLocked(
 	consumed := make([]int, len(sources)) // per-source slot consumption (colored reqs eat 1 each)
 	plan := make(tapPlan, 0, len(cost.Required))
 	budget := AutoTapBudget
-	if !solveColored(sources, used, consumed, &plan, cost.Required, 0, &budget) {
+	// #1589: a Phyrexian slot a spend grant widened to any mana is
+	// solved last, as the pool solver pays it last — the backtracking
+	// would find the answer either way, but a wildcard tried first
+	// spends the search budget on sources a narrower slot needed.
+	if !solveColored(sources, used, consumed, &plan, widenedLast(cost.Required), 0, &budget) {
 		return nil, false
 	}
 	if budget <= 0 {
@@ -1455,7 +1459,7 @@ func solveColored(
 		}
 		// Find a slot in this source that hasn't been consumed
 		// AND matches the requirement's options.
-		slotIdx := pickMatchingSlot(sources[i], consumed[i], req.Options)
+		slotIdx := pickMatchingSlot(sources[i], consumed[i], req)
 		if slotIdx < 0 {
 			continue
 		}
@@ -1482,16 +1486,18 @@ func solveColored(
 
 // pickMatchingSlot returns the index of the first slot in `s`
 // (starting at startIdx — the next un-consumed slot) whose Options
-// intersect with reqOptions. -1 when nothing matches. The
+// the requirement admits (ColorRequirement.Admits — its Options, or
+// any mana for a slot a spend grant widened, #1589). -1 when nothing
+// matches. The
 // "starting at consumed[i]" convention is fine for the simple
 // uniform-slot case (Sol Ring's two C slots are interchangeable);
 // a richer multi-color mana rock would need a per-slot pick, but
 // that doesn't ship in S15.
-func pickMatchingSlot(s tapSource, startIdx int, reqOptions []string) int {
+func pickMatchingSlot(s tapSource, startIdx int, req ColorRequirement) int {
 	for i := startIdx; i < len(s.Slots); i++ {
 		slot := s.Slots[i]
 		for _, opt := range slot.Options {
-			if matchColor(opt, reqOptions) {
+			if req.Admits(opt) {
 				return i
 			}
 		}

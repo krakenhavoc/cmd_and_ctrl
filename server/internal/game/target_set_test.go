@@ -210,3 +210,48 @@ func TestManaValueAtMostXBindsToTheAnnouncedX(t *testing.T) {
 		t.Error("an unreadable cost meets no bound")
 	}
 }
+
+// ManaValueEqualsX (#1723, Lazav, the Multifarious): unbound admits
+// every card; bound to X admits ONLY mana value X exactly — unlike
+// ManaValueAtMostX, a smaller or larger mana value both fail.
+func TestManaValueEqualsXBindsToTheAnnouncedX(t *testing.T) {
+	spec := (&TargetSpec{Zones: []ZoneKind{ZoneGraveyard}, Min: 0, Max: 0}).WithManaValueEqualsX()
+	two := Card{ManaCost: "{1}{B}"}
+	three := Card{ManaCost: "{2}{B}"}
+	four := Card{ManaCost: "{3}{B}"}
+	if !spec.xBoundAdmits(three) {
+		t.Error("before X is bound, the clause admits every card")
+	}
+	steps := AnnouncedClauses(spec, nil, nil)
+	bindStepsX(steps, 3)
+	if !steps[0].Clause.xBoundAdmits(three) {
+		t.Error("bound to X=3: mana value 3 must qualify")
+	}
+	if steps[0].Clause.xBoundAdmits(two) {
+		t.Error("bound to X=3: mana value 2 must not qualify (exact match, not \"or less\")")
+	}
+	if steps[0].Clause.xBoundAdmits(four) {
+		t.Error("bound to X=3: mana value 4 must not qualify")
+	}
+	if spec.xBoundSet {
+		t.Error("binding writes the announcement's copy, never the catalog spec")
+	}
+	if steps[0].Clause.xBoundAdmits(Card{ManaCost: "{1}{R} // {1}{U}"}) {
+		t.Error("an unreadable cost meets no bound")
+	}
+}
+
+// TestXBoundFlagsAreMutuallyExclusiveInPractice pins the reader that
+// backs both flags: xBoundAdmits prefers ManaValueEqualsX's exact
+// comparison whenever it is set, which is the behaviour
+// effects.Register's "not both" check exists to make unreachable
+// rather than silently mean something.
+func TestXBoundFlagsAreMutuallyExclusiveInPractice(t *testing.T) {
+	spec := &TargetSpec{ManaValueAtMostX: true, ManaValueEqualsX: true, xBound: 3, xBoundSet: true}
+	if spec.xBoundAdmits(Card{ManaCost: "{1}{B}"}) {
+		t.Error("with both flags set, xBoundAdmits reads ManaValueEqualsX's exact comparison, not ManaValueAtMostX's")
+	}
+	if !spec.xBoundAdmits(Card{ManaCost: "{2}{B}"}) {
+		t.Error("mana value 3 should meet the bound")
+	}
+}

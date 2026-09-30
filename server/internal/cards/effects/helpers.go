@@ -8,6 +8,24 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
+// returnLegalGraveyardTargetsToHand returns every still-legal graveyard
+// target to its owner's hand, in announce order — the body of the
+// "return N target cards from your graveyard to your hand" spells whose
+// count an optional cost raises (Peerless Recycling's gift, Blood
+// Beckoning's kicker, #1716). A pick that left the graveyard in
+// response is dropped by the CR 608.2b re-check before this runs.
+func returnLegalGraveyardTargetsToHand(ctx *Context) error {
+	for _, t := range ctx.LegalTargets() {
+		if t.Kind != game.TargetCard {
+			continue
+		}
+		if err := (ReturnFromGraveyard{Target: t.ID, Dest: game.ZoneHand}).Apply(ctx); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // cardDied reports whether an EventLTB marks `source` going to the
 // graveyard from the battlefield — i.e. it "died" (CR 700.4) — as
 // opposed to being exiled, bounced, or tucked into the library.
@@ -313,21 +331,159 @@ func lootOne(g *game.Game, item *game.StackItem, n int) error {
 // graveyard, plus ok=false when the event isn't a creature death.
 //
 // The card is read post-move, so Tapped / Counters are already
-// cleared (CR 400.7) but TypeLine, Controller and Owner survive —
-// which is what "another creature YOU CONTROL dies" needs. A
-// creature that stopped being a creature before it died is a
-// sandbox gap: we read the printed type line rather than the
-// battlefield LKI, because the LKI map is keyed to the dying card's
-// own triggers and isn't reachable from a watcher's AppliesTo.
+// cleared (CR 400.7) but TypeLine and Owner survive. Its controller is
+// NOT read off it: "another creature YOU CONTROL dies" asks
+// leftUnderControlOf(ev, card), the controller the exit stamped on the
+// event (#1682), because a card in a graveyard has no controller
+// (CR 108.4).
+//
+// Whether it WAS a creature is not read off that card (#1675). CR
+// 603.10a: a leaves-the-battlefield ability looks back in time, and
+// in the graveyard every effect that made the permanent a creature
+// has stopped applying — a crewed Vehicle is an artifact again, an
+// animated manland a land. So the test is the permanent's type as it
+// last existed, which the exit stamps on the event (leftAsType).
 func diedCreature(ev game.Event, g *game.Game) (game.Card, bool) {
 	if ev.Kind != game.EventLTB || ev.NewZone != game.ZoneGraveyard {
 		return game.Card{}, false
 	}
 	c, ok := g.LookupCardForEffect(ev.CardID)
-	if !ok || !c.IsCreature() {
+	if !ok || !leftAsType(ev, c, "creature") {
 		return game.Card{}, false
 	}
 	return c, true
+}
+
+// leftAsType reports whether the permanent an EventLTB names had card
+// type cardType ("creature", "artifact", "land", …) as it last existed
+// on the battlefield (#1675, CR 603.10a) — Event.LastKnownTypes, the
+// post-layer types the exit read with the card still in play. c is
+// the card as it sits now, and is consulted only for an event that
+// carries no last-known types (one logged before the field existed,
+// or built by hand in a test), which is the pre-#1675 reading.
+//
+// Every dies / leaves-the-battlefield condition that asks "was it a
+// creature / an artifact / a land" asks here, never c.IsCreature():
+// the card in the graveyard, hand or exile no longer has the types an
+// effect gave it.
+func leftAsType(ev game.Event, c game.Card, cardType string) bool {
+	if was, known := ev.WasType(cardType); known {
+		return was
+	}
+	return c.HasCardType(cardType)
+}
+
+// leftAsSubtype is leftAsType for a SUBTYPE (#1679, CR 603.10a):
+// whether the permanent an EventLTB names was a Zombie / an Elf / an
+// Egg as it last existed on the battlefield — Event.LastKnownSubtypes
+// plus the "every creature type" flag, answered with Card.HasSubtype's
+// semantics, so a printed changeling counts for every tribe and so
+// does a creature under Maskwood Nexus or a lord's type grant. c is
+// the card as it sits now, consulted only for an event that carries
+// no last-known information.
+//
+// Every tribal dies / leaves-the-battlefield condition asks here,
+// never dead.HasSubtype: in the graveyard no grant applies any more,
+// so a creature that was a Zombie only through one reads as whatever
+// it prints — and one an effect STOPPED being a Zombie reads as one
+// again.
+func leftAsSubtype(ev game.Event, c game.Card, subtype string) bool {
+	if was, known := ev.WasSubtype(subtype); known {
+		return was
+	}
+	return c.HasSubtype(subtype)
+}
+
+// leftAsSupertype is leftAsType for a SUPERTYPE (#1682, CR 603.10a):
+// whether the permanent an EventLTB names was legendary / snow as it
+// last existed on the battlefield — Event.LastKnownSupertypes, the
+// post-layer supertypes the exit read with the card still in play. A
+// Clone that copied a legend was legendary, and is a plain Clone in
+// the graveyard. c is the card as it sits now, consulted only for an
+// event that carries no last-known information.
+func leftAsSupertype(ev game.Event, c game.Card, supertype string) bool {
+	if was, known := ev.WasSupertype(supertype); known {
+		return was
+	}
+	return c.HasSupertype(supertype)
+}
+
+// leftUnderControlOf is the player who controlled the permanent an
+// EventLTB names as it last existed on the battlefield (#1682, CR
+// 603.10a) — Event.LastKnownController. c is the card as it sits now,
+// and its Controller is consulted only for an event that carries no
+// stamp.
+//
+// Every "you control" / "an opponent controls" dies or
+// leaves-the-battlefield condition asks here, never dead.Controller:
+// "you control" is a question about the permanent, and a card in a
+// graveyard has no controller (CR 108.4). A stolen creature sacrificed
+// by its thief died under the THIEF's control, so the thief's
+// Zulaport Cutthroat drains and the owner's does not. OWNER clauses —
+// "its owner's graveyard", "under its owner's control", "a creature
+// card you own" — read c.Owner and are not this question.
+func leftUnderControlOf(ev game.Event, c game.Card) uuid.UUID {
+	if controller, known := ev.LeftUnderControlOf(); known {
+		return controller
+	}
+	return c.Controller
+}
+
+// leftAsColor is leftAsType for a COLOUR (#1689, CR 603.10a): whether
+// the permanent an EventLTB names was colour `color` ("B" for black)
+// as it last existed on the battlefield — Event.LastKnownColors, the
+// post-layer colours the exit read with the card still in play. A
+// creature that was black only through an effect (Darkest Hour, a
+// black-making static, an Aura) was black on the battlefield and is
+// whatever it prints in the graveyard. c is the card as it sits now,
+// consulted only for an event that carries no last-known information.
+//
+// Teysa, Orzhov Scion's "whenever another black creature you control
+// dies" asks here, never dead.HasColor: in the graveyard no effect
+// applies any more, so a creature painted black by Darkest Hour reads
+// as whatever it prints, and one an effect painted another colour
+// still reads as its printed colour.
+func leftAsColor(ev game.Event, c game.Card, color string) bool {
+	if was, known := ev.WasColor(color); known {
+		return was
+	}
+	return c.HasColor(color)
+}
+
+// diedWhileAttacking resolves the creature that just died from a dies
+// event when it was ATTACKING as it died — "whenever an attacking
+// creature dies" (Kardur, Doomscourge), Garna's "if it was attacking".
+// The card is returned as it now sits in the graveyard, exactly as
+// diedCreature returns it, so a "you control" clause reads its
+// Controller the same way.
+//
+// The attack is read off the event, never the card: the exit took the
+// creature out of combat and cleared Card.AttackingTarget before the
+// event fired, and Event.AttackingTarget is the combat state as it
+// last existed (#1661, CR 603.10a). So a creature that dies to combat
+// damage, to a removal spell after blockers and to a sacrifice
+// mid-combat all count, and one that was removed from combat first
+// (a control change, CR 506.4) does not.
+//
+// No IsCreature check on the graveyard card, deliberately: only a
+// creature attacks, and a crewed Vehicle that died attacking is an
+// artifact again by the time it is in the graveyard. The event says
+// what it was.
+func diedWhileAttacking(ev game.Event, g *game.Game) (game.Card, bool) {
+	if ev.Kind != game.EventLTB || ev.NewZone != game.ZoneGraveyard || ev.AttackingTarget == uuid.Nil {
+		return game.Card{}, false
+	}
+	return g.LookupCardForEffect(ev.CardID)
+}
+
+// diedWhileBlocking is diedWhileAttacking for a creature that was
+// BLOCKING as it died — "whenever a blocking creature dies" (Death
+// Tyrant). Event.BlockingTarget names the attacker it was blocking.
+func diedWhileBlocking(ev game.Event, g *game.Game) (game.Card, bool) {
+	if ev.Kind != game.EventLTB || ev.NewZone != game.ZoneGraveyard || ev.BlockingTarget == uuid.Nil {
+		return game.Card{}, false
+	}
+	return g.LookupCardForEffect(ev.CardID)
 }
 
 // IsToken reports whether a card is a token. Token type lines are

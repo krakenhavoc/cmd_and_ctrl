@@ -160,6 +160,23 @@ type AdditionalCost struct {
 	// was promised" is exactly a clause list that differs by the
 	// cost.
 	Targets *TargetSpec
+
+	// Teamwork is CR 702.194a's "tap any number of creatures you
+	// control with total power N or more" — N, the floor the tapped
+	// creatures' effective power must reach. The caster names them in
+	// CastSpellParams.TeamworkIDs. Crew's sentence on a spell, read by
+	// the same rules (teamwork_blight_cost.go, #1703). Zero means no
+	// such component. effects.Register allows it only on an optional
+	// cost keyed TeamworkKey.
+	Teamwork int
+
+	// Blight is "blight N" paid as a cost (CR 701.68a): put N -1/-1
+	// counters on a creature you control. The caster names the one
+	// creature in CastSpellParams.BlightIDs. The counters go through
+	// the CR 614 window marked CounterFromCost (blightLocked). Zero
+	// means no such component. effects.Register allows it only on an
+	// optional cost keyed BlightKey.
+	Blight int
 }
 
 // MaxPayments is how many times this cost may be paid for one cast:
@@ -174,16 +191,17 @@ func (c *AdditionalCost) MaxPayments() int {
 
 // Empty reports whether the cost demands nothing. Nil-safe.
 func (c *AdditionalCost) Empty() bool {
-	return c == nil || (c.DiscardCards == 0 && c.Sacrifice == nil && !c.PayLifeX && c.ManaCost == "" && !c.ChoosesOpponent)
+	return c == nil || (c.DiscardCards == 0 && c.Sacrifice == nil && !c.PayLifeX && c.ManaCost == "" && !c.ChoosesOpponent &&
+		c.Teamwork == 0 && c.Blight == 0)
 }
 
 // CardsDemanded reports whether paying this cost needs the caster to
-// NAME something — cards to discard, permanents to sacrifice. A
-// mana-only cost needs no payment list, which is what lets a
-// multikicker be paid N times off one announcement (ADR 0073 §4).
-// Nil-safe.
+// NAME something — cards to discard, permanents to sacrifice or tap,
+// a creature to blight. A mana-only cost needs no payment list, which
+// is what lets a multikicker be paid N times off one announcement
+// (ADR 0073 §4). Nil-safe.
 func (c *AdditionalCost) CardsDemanded() bool {
-	return c != nil && (c.DiscardCards > 0 || c.Sacrifice != nil || c.PayLifeX)
+	return c != nil && (c.DiscardCards > 0 || c.Sacrifice != nil || c.PayLifeX || c.Teamwork > 0 || c.Blight > 0)
 }
 
 // CatalogAdditionalCost is the catalog hook the effects package
@@ -250,10 +268,17 @@ const (
 // know its declaration order, and so the two readers above share one
 // lookup.
 func OptionalCostTimesPaid(card Card, paid []int, key string) int {
+	return optionalCostTimesFor(CatalogKey(card), paid, key)
+}
+
+// optionalCostTimesFor is OptionalCostTimesPaid by catalog key, for a
+// reader that holds the announcement but not the card — a conditional
+// mode count's ModeCountQuery (#1655).
+func optionalCostTimesFor(oracleID string, paid []int, key string) int {
 	if len(paid) == 0 || key == "" {
 		return 0
 	}
-	costs := OptionalCostsFor(CatalogKey(card))
+	costs := OptionalCostsFor(oracleID)
 	if len(costs) == 0 {
 		return 0
 	}

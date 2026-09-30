@@ -52,6 +52,37 @@ func castXTargetsModes(t *testing.T, m legal.Move) (x, targets int, modes []int)
 	return p.XValue, len(p.Targets), p.Modes
 }
 
+// targetRefWire mirrors the unexported wire shape legal.wireTargets
+// writes (legal.go's targetWire) — kind/id/slot/mode, the same field
+// names the client and the engine both read. Slot and Mode are
+// omitted at zero, which json.Unmarshal already treats as the default
+// for an absent field, so a single-clause non-modal move's targets
+// decode with Mode == Slot == 0 exactly as they should.
+type targetRefWire struct {
+	Kind string `json:"kind"`
+	ID   string `json:"id,omitempty"`
+	Slot int    `json:"slot,omitempty"`
+	Mode int    `json:"mode,omitempty"`
+}
+
+// castXTargetsPerStep is castXTargetsModes plus each target's own
+// (Mode, Slot) — the per-step counting a modal card with more than
+// one announced clause needs (a "choose two" cycle whose every bullet
+// targets announces one clause per chosen bullet, so len(Targets) is
+// the WHOLE move's count, not any one bullet's).
+func castXTargetsPerStep(t *testing.T, m legal.Move) (x int, refs []targetRefWire, modes []int) {
+	t.Helper()
+	var p struct {
+		Targets []targetRefWire `json:"targets"`
+		Modes   []int           `json:"modes"`
+		XValue  int             `json:"x_value"`
+	}
+	if err := json.Unmarshal(m.Params, &p); err != nil {
+		t.Fatalf("params %s: %v", string(m.Params), err)
+	}
+	return p.XValue, p.Targets, p.Modes
+}
+
 // Crackle with Power is {X}{X}{X}{R}{R}: X=1 costs five mana, X=2
 // costs eight. Off five Mountains the only cast is one target at X=1,
 // and off eight both arities are offered — each announcing exactly as
@@ -160,6 +191,17 @@ func TestEveryXDefinedTargetCountIsSound(t *testing.T) {
 	for i := 0; i < 12; i++ {
 		battlefieldCard(g, active, basic("Mountain", "Mountain"))
 	}
+	// Kozilek's Command's fourth bullet is CountFromX over "cards
+	// from graveyards" with no other predicate (Min == Max == X):
+	// the enumerator only ever tries the single MAX AFFORDABLE X
+	// (affordableXFrom's doc — X never ranges), which for the
+	// {X}{R} stand-in cost below and 12 Mountains is 11. Seed
+	// exactly that many graveyard cards, so the clause is fillable
+	// with exactly one combination (all of them) rather than an
+	// unfillable "pick 11 of 1" or a combinatorial "pick 11 of 20".
+	for i := 0; i < 11; i++ {
+		graveyardCard(opp, creature("Their Dead Creature", "{1}{G}", 2, 2))
+	}
 	advanceTo(t, g, game.StepPrecombatMain)
 
 	probed := 0
@@ -175,10 +217,19 @@ func TestEveryXDefinedTargetCountIsSound(t *testing.T) {
 		id := handCard(active, game.Card{
 			Name: spec.Name, TypeLine: "Sorcery", ManaCost: "{X}{R}", OracleID: spec.OracleID,
 		})
-		moves := legal.EnumerateFor(g, active.ID)
+		// Kozilek's Command: "choose two" of four bullets, two of
+		// them plain "target player" (16 target-pair combinations on
+		// their own). The default per-source budget (12) is spent
+		// entirely on the FIRST mode-set the recursive builder tries
+		// (modes 0 and 1), so the graveyard bullet's own X-defined
+		// clause never gets a combination to appear in. Raise the
+		// budget for this sweep alone — it costs nothing else here,
+		// the board is small and fixed, and it is what lets every
+		// mode-set past the first get a turn.
+		moves := legal.EnumerateForWithOptions(g, active.ID, legal.Options{MaxExpansionPerSource: 200})
 		tied := 0
 		for _, m := range castMovesFor(moves, id) {
-			x, n, modes := castXTargetsModes(t, m)
+			x, refs, modes := castXTargetsPerStep(t, m)
 			// Ask the engine which clauses this announcement is
 			// actually answering, rather than re-deriving it here.
 			// Only some of a modal card's are X-counted: Heliod's
@@ -187,26 +238,32 @@ func TestEveryXDefinedTargetCountIsSound(t *testing.T) {
 			// free and the one target is a player.
 			steps := game.AnnouncedClauses(
 				game.TargetSpecFor(spec.OracleID), game.ModeSpecFor(spec.OracleID), modes)
-			counted := 0
+			// Per-step counting (#764): a "choose two" cycle whose
+			// every bullet targets (Kozilek's Command) announces one
+			// clause per CHOSEN bullet, so the move's whole target
+			// list is the wrong count for any one bullet — only the
+			// refs whose (Mode, Slot) match the X-counted step's own
+			// answer it, exactly as ModeTargets narrows to one
+			// occurrence at resolution.
 			for _, st := range steps {
-				if st.Clause.CountFromX {
-					counted++
+				if !st.Clause.CountFromX {
+					continue
 				}
-			}
-			if counted == 0 {
-				continue
-			}
-			if len(steps) != 1 {
-				t.Fatalf("%s announces %d clauses, one of them X-counted — this sweep counts the "+
-					"move's whole target list, so it needs per-step counting before it can judge that card",
-					spec.Name, len(steps))
-			}
-			tied++
-			if x != n {
-				t.Errorf("%s: %q announced X=%d for %d targets", spec.Name, m.Label, x, n)
-			}
-			if n == 0 {
-				t.Errorf("%s: %q targets nothing — an X-defined clause at X=0 does nothing (#810)", spec.Name, m.Label)
+				n := 0
+				for _, r := range refs {
+					if r.Mode == st.Mode && r.Slot == st.Slot {
+						n++
+					}
+				}
+				tied++
+				if x != n {
+					t.Errorf("%s: %q announced X=%d for %d targets on its X-defined step",
+						spec.Name, m.Label, x, n)
+				}
+				if n == 0 {
+					t.Errorf("%s: %q targets nothing on its X-defined step — an X-defined clause "+
+						"at X=0 does nothing (#810)", spec.Name, m.Label)
+				}
 			}
 		}
 		if tied == 0 {

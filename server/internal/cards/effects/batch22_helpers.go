@@ -48,10 +48,11 @@ func b22FirstSpellOnAnOpponentsTurn(ev game.Event, source *game.Card, g *game.Ga
 
 // b22CreatureYouControlDied is "whenever a creature you control
 // dies" on a NONcreature source (Cauldron of Essence): the dead
-// creature, read post-move, was the source's controller's.
+// creature was the source's controller's as it last existed
+// (leftUnderControlOf, #1682).
 func b22CreatureYouControlDied(ev game.Event, source *game.Card, g *game.Game) bool {
 	dead, ok := diedCreature(ev, g)
-	return ok && dead.Controller == source.Controller
+	return ok && leftUnderControlOf(ev, dead) == source.Controller
 }
 
 // b22SlimedCreatureYouDontControlDied is Toxrill's third ability: a
@@ -60,7 +61,7 @@ func b22CreatureYouControlDied(ev game.Event, source *game.Card, g *game.Game) b
 // (CR 400.7), so the count is read back off the log.
 func b22SlimedCreatureYouDontControlDied(ev game.Event, source *game.Card, g *game.Game) bool {
 	dead, ok := diedCreature(ev, g)
-	if !ok || dead.Controller == source.Controller {
+	if !ok || leftUnderControlOf(ev, dead) == source.Controller {
 		return false
 	}
 	return b13LastKnownCounters(g, dead.InstanceID, "slime") > 0
@@ -201,36 +202,6 @@ func b22EachPlayerKeepsWithinPowerAndSacrificesTheRest(g *game.Game, item *game.
 	return b08SacrificeAllMatching(ctx, func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
 		return c.IsCreature() && !keep[c.InstanceID]
 	})
-}
-
-// b22DamageDividedEvenly is Fury's "4 damage divided as you choose
-// among any number of target creatures and/or planeswalkers", with
-// the division made for the player: as evenly as possible across the
-// legal targets in the order they were picked, the remainder going
-// to the earliest picks. One target takes it all; four take one
-// each. Declared on the card — the engine's pick_target prompt
-// carries no distribution.
-func b22DamageDividedEvenly(ctx *Context, total int) error {
-	var targets []uuid.UUID
-	for _, t := range ctx.LegalTargets() {
-		if t.Kind == game.TargetCard {
-			targets = append(targets, t.ID)
-		}
-	}
-	if len(targets) == 0 || total <= 0 {
-		return nil
-	}
-	share, extra := total/len(targets), total%len(targets)
-	for i, id := range targets {
-		amount := share
-		if i < extra {
-			amount++
-		}
-		if err := (DealDamage{Source: ctx.Source(), Target: id, Amount: amount}).Apply(ctx); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 // b22DestroyFirstArtifactAndFirstEnchantment is Hull Breach's third

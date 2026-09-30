@@ -2,6 +2,7 @@ package game
 
 import (
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -372,5 +373,49 @@ func TestAlternativeCostsOfferedFromZonePartitionsByZone(t *testing.T) {
 	}
 	if got := AlternativeCostsOfferedFromZone(oracle, ZoneBattlefield); len(got) != 0 {
 		t.Errorf("from battlefield: got %+v, want none", got)
+	}
+}
+
+// #1686: ErrNoPlayPermission used to hard-code "from exile" in its
+// message, which was true of the ONLY caller when it was added (S21
+// sub-PR 6) and stopped being true once a cast-only grant could name
+// a HAND permission (miracle, #1665). "You may CAST that card" does
+// not let you play a land (CR 305.1); the gate that enforces it lives
+// in CastSpell's land-check ahead of validateCastPathLocked and fires
+// for whatever zone the grant names, not only exile.
+//
+// This pins the wording change directly: a cast-only permission over
+// a LAND sitting in its holder's own HAND is refused with
+// ErrNoPlayPermission, and the message must not claim the card was in
+// exile — it wasn't.
+func TestNoPlayPermissionWordingIsZoneNeutral(t *testing.T) {
+	if strings.Contains(ErrNoPlayPermission.Error(), "exile") {
+		t.Fatalf("ErrNoPlayPermission hard-codes a zone: %q", ErrNoPlayPermission.Error())
+	}
+
+	g := newActiveGame(t)
+	me := g.Seats[0]
+	advanceTo(t, g, StepPrecombatMain)
+	land := NewCard("Test Land", me.ID)
+	land.TypeLine = "Basic Land — Island"
+	land.OracleID = "test-cast-only-land"
+	me.Hand.PushTop(land)
+
+	g.WithWriteLock(func() {
+		g.GrantCastPermissionForEffect(CastPermission{
+			Player:   me.ID,
+			Zone:     ZoneHand,
+			Cards:    []PermissionCardRef{{ID: land.InstanceID, Epoch: land.ObjectEpoch}},
+			CastOnly: true,
+			Label:    "test: cast-only grant over a card already in hand",
+		})
+	})
+
+	err := g.CastSpell(me.ID, land.InstanceID, CastSpellParams{FromZone: "hand"})
+	if !errors.Is(err, ErrNoPlayPermission) {
+		t.Fatalf("land under a cast-only HAND grant: got %v, want ErrNoPlayPermission", err)
+	}
+	if strings.Contains(err.Error(), "exile") {
+		t.Fatalf("a hand-zone refusal named exile: %q", err.Error())
 	}
 }

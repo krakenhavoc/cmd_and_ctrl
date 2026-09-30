@@ -225,8 +225,8 @@ func (g *Game) resetAsNewObjectLocked(oldID uuid.UUID) uuid.UUID {
 		c.MarkedLethalByDeathtouch = false
 		c.RegenerationShields = 0
 		c.AttackingTarget = uuid.Nil
-		c.BlockingTarget = uuid.Nil
-		c.GoadedBy = uuid.Nil
+		c.clearBlocking()
+		c.Goads = nil
 		c.ClearFaceDown()
 		c.BattleX = 0
 		c.BattleY = 0
@@ -237,10 +237,12 @@ func (g *Game) resetAsNewObjectLocked(oldID uuid.UUID) uuid.UUID {
 		c.ChosenColor = ""
 		c.ChosenPlayer = uuid.Nil
 		c.ChosenName = ""
+		c.ChosenOption = ""
 		c.Provenance = CastProvenance{}
 		c.ClassLevel = 0
 		c.Solved = false
 		c.Harnessed = false
+		c.Monstrous = false
 		c.Prepared = false
 		c.effective = nil
 		return newID

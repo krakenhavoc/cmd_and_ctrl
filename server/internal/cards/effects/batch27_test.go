@@ -278,12 +278,13 @@ func TestB27ArchetypeOfAggressionGivesAndTakesTrample(t *testing.T) {
 	if hasEffectiveKeyword(t, g, late, "trample") {
 		t.Error("a printed keyword is in the baseline, so a later opposing trampler loses it")
 	}
-	// ...unless the trample is re-granted by a newer static — the
-	// declared gap, pinned here: a catalog trampler's PrintedKeywords
-	// static carries its own, later timestamp.
+	// ...and so does one whose trample is re-granted by a newer static:
+	// a catalog trampler's PrintedKeywords static carries its own, later
+	// timestamp. This was the declared gap until #1651 made "can't have"
+	// a strip after the whole layer-6 bucket (CR 101.2).
 	dreadmaw := b21Push(g, opp.ID, "Colossal Dreadmaw", "Creature — Dinosaur", "08c7db90-c0cf-4482-b7ee-bb033e5996d2", 6, 6)
-	if !hasEffectiveKeyword(t, g, dreadmaw, "trample") {
-		t.Error("the declared gap has closed — a later catalog trampler now loses trample; update the card's caveat")
+	if hasEffectiveKeyword(t, g, dreadmaw, "trample") {
+		t.Error("can't have or gain trample: a later catalog trampler loses it too")
 	}
 	b27Kill(g, archetype)
 	passPriorityAroundTable(t, g)

@@ -114,6 +114,30 @@ const (
 	// comes only from the declaration verbs. The token was reserved by
 	// ADR 0045's addendum (Decision 8) and first sent by #1507.
 	BlockReasonDeclarationLimit BlockReason = "declaration_limit"
+
+	// BlockReasonRequirement — the declaration, or the defending
+	// player's pass (or finish_blocks) that ends it, would leave a
+	// CR 509.1c requirement unobeyed although it could be obeyed:
+	// "blocks each combat if able", Lure's "all creatures able to
+	// block this creature do so", "must be blocked if able", "must be
+	// blocked by exactly one creature if able". BlockRefusedError's
+	// Requirement names which one and SourceName the card that prints
+	// it; Blocker is the creature that could obey it. Like the count
+	// reasons it is a property of the declaration, never of a pair.
+	// #1597, block_requirements.go.
+	BlockReasonRequirement BlockReason = "block_requirement"
+
+	// BlockReasonBlockerCapacity — the declaration would have one
+	// creature block more attackers than it can: a creature blocks one
+	// attacker unless an effect lets it block an additional creature
+	// (High Ground) or any number of creatures (Palace Guard), CR
+	// 509.1a/b. BlockRefusal.N carries the capacity and Blocker is the
+	// creature. Only a creature that can block two or more is ever
+	// refused this: a one-attacker blocker's second entry RE-POINTS it,
+	// which is the sandbox's "re-declare blocker". Like the count
+	// reasons it comes from the declaration verbs, never from
+	// BlockPairRefusalLocked. #1706.
+	BlockReasonBlockerCapacity BlockReason = "blocker_capacity"
 )
 
 // BlockReasons lists every reason the engine can return today, in the
@@ -138,6 +162,8 @@ func BlockReasons() []BlockReason {
 		BlockReasonTooManyBlockers,
 		BlockReasonNotDefending,
 		BlockReasonDeclarationLimit,
+		BlockReasonRequirement,
+		BlockReasonBlockerCapacity,
 	}
 }
 
@@ -329,7 +355,13 @@ type BlockRefusedError struct {
 	// printed on a card that is neither of the two creatures and the
 	// player needs to know which one to answer. Empty for every other
 	// reason. #1507.
+	//
+	// #1597: also the card a block_requirement's requirement is
+	// printed on ("Lure", "Grand Melee").
 	SourceName string
+	// Requirement is the CR 509.1c requirement a block_requirement
+	// refusal leaves unobeyed. Zero for every other reason. #1597.
+	Requirement BlockRequirement
 }
 
 // Error is the debug form. It is the sentence as a third party would
@@ -419,8 +451,47 @@ func (e *BlockRefusedError) Sentence(viewer uuid.UUID) string {
 			clause += " (" + e.SourceName + ")"
 		}
 		return clause + "."
+	case BlockReasonRequirement:
+		return e.requirementSentence(blocker, attacker)
+	case BlockReasonBlockerCapacity:
+		// #1706. About the blocker and a number, like the count
+		// reasons are about the attacker and one.
+		return blocker + " can't block more than " + blockerCountPhrase(e.N) + " each combat."
 	}
 	return blocker + " can't block " + attacker + "."
+}
+
+// requirementSentence is Sentence's block_requirement arm (#1597):
+//
+//	"Grizzly Bears must block Prized Unicorn if able."
+//	"Grizzly Bears must block Llanowar Elves if able (Lure)."
+//	"Watchdog must block this combat if able."
+//	"Grizzly Bears must block this combat if able (Grand Melee)."
+//	"Gaea's Protector must be blocked if able."
+//	"Nacatl War-Pride must be blocked by exactly one creature if able."
+//	"Grizzly Bears must block Goblin Grappler if able."
+//	"Grizzly Bears must block Llanowar Elves if able (Grappling Hook)."
+//
+// The printing card is named when it is not the creature the sentence
+// is about, because that is the card the player has to answer.
+func (e *BlockRefusedError) requirementSentence(blocker, attacker string) string {
+	var s, subject string
+	switch e.Requirement.Kind {
+	case BlockRequirementBlocks:
+		s, subject = blocker+" must block this combat if able", e.BlockerName
+	case BlockRequirementLure, BlockRequirementBlocksAttacker, BlockRequirementBlocksEach:
+		s, subject = blocker+" must block "+attacker+" if able", e.AttackerName
+	case BlockRequirementMustBeBlocked:
+		s, subject = attacker+" must be blocked if able", e.AttackerName
+	case BlockRequirementExactlyOne:
+		s, subject = attacker+" must be blocked by exactly one creature if able", e.AttackerName
+	default:
+		s = "A creature must block this combat if able"
+	}
+	if e.SourceName != "" && e.SourceName != subject {
+		s += " (" + e.SourceName + ")"
+	}
+	return s + "."
 }
 
 // notDefendingSentence is Sentence's not_defending arm: "Grizzly Bears

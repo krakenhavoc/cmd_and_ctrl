@@ -291,7 +291,7 @@ func TestB16TrueConvictionGrantsDoubleStrikeAndLifelink(t *testing.T) {
 	}
 }
 
-func TestB16BraveTheSandsGrantsVigilanceAndDeclaresTheBlockGap(t *testing.T) {
+func TestB16BraveTheSandsGrantsVigilanceAndAnExtraBlock(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
 	bear := b16Creature(g, me.ID, "Bear", "Creature — Bear", 2, 2, "G")
@@ -304,9 +304,18 @@ func TestB16BraveTheSandsGrantsVigilanceAndDeclaresTheBlockGap(t *testing.T) {
 	if b16Tapped(t, g, bear) {
 		t.Error("a vigilant attacker stays untapped")
 	}
+	// #1706: the second line is live — each of your creatures can
+	// block two attackers, an opponent's still one.
+	theirs := b16Creature(g, opp.ID, "Their Bear", "Creature — Bear", 2, 2, "G")
+	if c := e2Card(t, g, bear); game.BlockCapacity(&c) != 2 {
+		t.Errorf("your creature's block capacity = %d, want 2", game.BlockCapacity(&c))
+	}
+	if c := e2Card(t, g, theirs); game.BlockCapacity(&c) != 1 {
+		t.Errorf("an opponent's creature's block capacity = %d, want 1", game.BlockCapacity(&c))
+	}
 	spec, _ := Lookup(b16BraveTheSandsOracle)
-	if spec.Completeness != CompletenessCaveats || len(spec.Caveats) != 1 {
-		t.Error("the extra-block gap must be declared")
+	if spec.Completeness != CompletenessFull || len(spec.Caveats) != 0 {
+		t.Error("Brave the Sands is complete since #1706")
 	}
 }
 
@@ -575,10 +584,8 @@ func TestB16FlameOfAnorIsChooseOneAndResolvesEachMode(t *testing.T) {
 	if opp.Hand.Size() != hand+2 {
 		t.Errorf("the target player drew %d, want 2", opp.Hand.Size()-hand)
 	}
-	spec, _ := Lookup(b16FlameOfAnorOracle)
-	if spec.Modes.Max != 1 || spec.Completeness != CompletenessCaveats {
-		t.Error("the Wizard bonus gap must be declared, and the spell stays choose-one")
-	}
+	// Choosing two, with and without a Wizard, is
+	// conditional_mode_count_test.go's (#1590).
 }
 
 func TestB16CircuitousRouteFetchesBasicsAndGatesTapped(t *testing.T) {

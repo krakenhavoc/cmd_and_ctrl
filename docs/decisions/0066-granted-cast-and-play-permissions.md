@@ -2363,3 +2363,175 @@ stronger.
 Proof cards: Hostage Taker, Gonti, Night Minister and Outrageous Robbery, all
 `full`. Tracker [#885](https://github.com/krakenhavoc/cmd_and_ctrl/issues/885);
 deck tracker [#1565](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1565).
+
+## Amendment — 2026-09-28 (#1589): a Phyrexian symbol keeps its life half under a spend grant
+
+The #1573 amendment stated one inherited trade: under either "spend mana as
+though" clause, a Phyrexian slot folded to generic and lost its "or 2 life"
+half. That was weaker than printed, never stronger, but it was wrong. CR 107.4c
+says a Phyrexian symbol is paid with one mana of its colour **or** 2 life, and
+CR 107.4f says the same of the ten hybrid Phyrexian symbols. A grant that says
+"spend mana as though it were mana of any color" (or "of any type") widens
+which mana pays the first half. It says nothing about the second half.
+
+Before this, a Dismember (`{1}{B/P}{B/P}`) that Gonti exiled cost three mana.
+Worse, the view still stamped `phyrexian_symbols: 2` from the printed cost, so
+the client offered a life payment that `strikePhyrexianLifeLocked` then refused
+as an over-claim.
+
+### Decision — widen the slot, don't fold it
+
+`spendAsThoughAny` is still the one reading, called in `printedCostLocked`,
+the one pricer. Both folds now keep every Phyrexian requirement and mark it
+`ColorRequirement.AnyMana`. The slot stays Phyrexian, so `PhyrexianSymbols`
+counts it and the strike may claim it for 2 life. Its mana half admits any
+mana. Everything else folds exactly as before: coloured slots always, `{C}`
+under any type only (CR 106.1b). A `{C}` under any colour is still not payable
+by coloured mana.
+
+`Options` stays as printed, and so does `String()`. So `cast_prices` and the
+preview's `cost` render `{1}{B/P}{B/P}` rather than `{3}`, and the
+missing-mana breakdown names `{B/P}`. There is no Scryfall symbol for "any
+mana or 2 life". The printed symbol plus the grant's `any_color` / `any_type`
+label is the honest rendering.
+
+**One predicate for the mana half.** `ColorRequirement.Admits(color)` is
+`AnyMana || matchColor(color, Options)`. Every payment path asks it instead of
+reading `Options`: the pool solver (`attemptSpend`, `MissingFor`), the
+auto-tapper's slot match (`pickMatchingSlot`), the Phyrexian strike's ranking
+(`PhyrexianLifePlan`), pay-time colour picks (`mostRestrictiveRequirement`,
+which also sorts a widened slot as the widest), and convoke's colour cover
+(`payerCoversRequirement`). So the hand payment, the auto-tapper, the auto-tap
+preview, the bot enumerator's affordability probe and `cast_prices` still
+agree without a line of their own. They all read the one pricer's cost, and
+that cost is paid through one predicate.
+
+**A widened slot is paid last.** The pool solver pays requirements greedily,
+first match wins. A slot that admits anything, walked before a narrower one,
+could take the only token the narrower one needed. Picture a cost modifier
+appending `{W}` after the fold: without the ordering, the wildcard would take
+the Plains and the `{W}` would go unpaid. So the folds emit widened slots
+last, and `widenedLast` reorders them at the pool solver and at the
+auto-tapper's `solveColored` too. The auto-tapper backtracks, so there the
+ordering saves search budget rather than answers.
+
+### What does not change
+
+Nothing new is stored. `AnyMana` lives on a `ParsedCost` the pricer computes
+on every read, and no snapshot or wire struct carries a `ColorRequirement`.
+The wire keys are unchanged; only the content of a `cast_prices` string under
+a grant changes. [protocol.md](../protocol.md) says so beside
+`exile_play.any_type`. A cast with no grant never sets `AnyMana`, so its
+requirements are exactly the parse.
+
+### Out of scope, stated
+
+- **The cast enumerator never pays a spell's Phyrexian symbol with life.**
+  `legal/cast.go` prices the mana path only, while `affordablePayment`
+  (`legal/abilities.go`) offers the life path for activated abilities. A bot
+  holding a stolen Dismember and one land gets no move, grant or not. That
+  gap was there before this amendment and is not this seam.
+- **Convoke under a spend grant.** A convoked creature pays a widened slot
+  when it has any colour. A colourless creature still pays it only as
+  generic, as it would with no grant. No printed card puts convoke and a
+  Phyrexian symbol on a stolen spell.
+
+Tracker [#887](https://github.com/krakenhavoc/cmd_and_ctrl/issues/887).
+
+---
+
+## Amendment — 2026-09-28 (#1665): miracle, a hand permission that opens one printed offer
+
+Miracle (CR 702.94) is madness moved one zone over: a keyword that lets a
+player cast a card for an alternative cost during the resolution of a
+triggered ability. It is built from the pieces this ADR and its #657
+amendment already have, and adds three small things. The code is
+`server/internal/game/miracle.go`.
+
+**1. The price is a printed offer, and the permission is the right to
+claim it.** A miracle card declares
+`AlternativeCosts: []game.AlternativeCost{Miracle("{W}")}`. Like
+`Flashback` and `Escape`, the constructor bundles the rewrite with the
+price. For miracle the rewrite is one new field,
+`AlternativeCost.RequiresGrant`: the offer can be claimed only while a live
+`CastPermission` for the card object carries the same key.
+`validateCastPathLocked` checks this. `CastSpell` and `CastOffersForLocked`
+both call it, so the view, the bot enumerator and the announce path cannot
+disagree about when `{W}` is on the menu. A refused claim returns
+`ErrAltCostNotGranted`. Madness puts the price on the permission (`Cost`).
+Miracle cannot do that: the card sits in a hand, where every cast of it
+would read the permission, and `CastCostFor` would then reprice the
+printed cast too. So the miracle permission carries no `Cost`, and the
+printed offer does the pricing.
+
+**2. The hand is a permission zone for exactly one kind of grant.**
+`CastPermissionForLocked` no longer answers nil for a hand. It returns
+a live stored `ScopeCards` permission naming the card object, and nothing
+else. A standing permission is never read there. The hand still needs no
+permission to be cast from (CR 601.2). What the miracle grant adds is
+`TimingFlash` (CR 608.2g), which lets a Terminus drawn in an opponent's
+upkeep be cast there. The same timing would turn a hard-cast Terminus into
+an instant, so a hand permission is scoped to its own claim by
+`CastPermission.ForClaim`. That returns nil for a cast that claims any
+other offer. `CastSpell` narrows as soon as the claim is resolved, before
+the price, the CR 107.3b rule and the timing gate. The enumerator narrows
+per offer in `castMovesForCard`. So the printed cost keeps sorcery timing
+while the grant is live, and a bot is offered the miracle cast at instant
+speed but the printed one only where a sorcery could be cast. Every
+non-hand permission passes through `ForClaim` unchanged.
+
+**3. The trigger watches draws from the hand.** `TriggeredAbility.Zones`
+gains `ZoneHand` (the #925 dimension; `supportedTriggerZones`). The
+per-event index keeps the walk narrow: a hand is walked only for
+`EventDrawCard`, and only when some registered card declares a hand
+trigger. "The first card you've drawn this turn" is read off
+`Game.DrawnThisTurn`, which `actuallyDrawCardLocked` appends to before it
+emits the event. It is a fact about the draw, not a count the harvest has
+to trust. A draw on another player's turn counts. The CR 702.94a "you may
+reveal" is the trigger's `OptionalPrompt` ("Reveal Terminus for its
+miracle cost {W}?"), so the client needs nothing new. A "yes" reveals the
+card to the table through `RevealForEffect` and puts a keyed item
+(`miracle/offer`, ADR 0041 P9) on the stack. The item carries the revealed
+object as `Params.Object` (instance and CR 400.7 epoch). `effects.buildDef`
+grows the trigger from the `Miracle` cost, the same bargain madness makes:
+a card file declares the keyword once.
+
+**The window, and where it is still wider than paper.** CR 702.94b: a
+card that has left the hand is not the card that was revealed. That
+includes a card that left and came back, which has a new epoch. The
+resolution then grants nothing. When it does grant, the permission names
+the object, so the cast itself ends it (CR 400.7). As with madness, the
+cast is an ordinary `cast_spell` after the trigger resolves, not an inline
+cast. The window madness bounds with an end-step cleanup is shut much
+tighter here, because an open-ended "{W} at instant speed" in a hand would
+be stronger than printed:
+
+- the holder **passing priority** closes it (`closeMiracleWindowLocked`,
+  called from `PassPriority` before the pass runs, because that pass can
+  resolve the next miracle trigger);
+- the permission's zero `Duration` still ends it at the end of the turn
+  at the latest.
+
+What is left is CR 117.3b. When the miracle card was drawn on another
+player's turn, the active player receives priority first after the trigger
+resolves. They may act before the owner casts, and the owner may then cast
+the miracle in response. Madness declares the same gap. For a draw-step
+miracle, where the owner is the active player, nothing is wider.
+`Game.AdvanceStep` (the sandbox step driver) passes through
+`passPriorityLocked` and not `PassPriority`, so a window left open when a
+player advances the step by hand lasts to the end of the turn.
+
+**Out of scope, stated.** The client's cost picker still lists "Its mana
+cost" beside "Miracle {W}" while the grant is live. `alternative_cost_required`
+stays false, because the printed cost is claimable, just not at every
+moment. Picking it outside a sorcery window gets the ordinary
+`ErrSorcerySpeedRequired` toast. Topdeck the Halls ("decorated cards in
+your hand have miracle {S}") grants the keyword and is not legal in
+Commander. Temporal Mastery waits on extra turns (the engine cannot add a
+turn). Revenge of the Hunted was waiting on "all creatures able to block it do
+so", which #1597 has since shipped, so it is one card file away and not
+built here. Also still open: Bonfire of the Damned on a "target player
+or planeswalker" clause whose sweep follows the chosen target's
+controller.
+
+Tracker [#885](https://github.com/krakenhavoc/cmd_and_ctrl/issues/885).

@@ -17,35 +17,37 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // (b14CreaturesControlled — the printed "target player" may be you,
 // and the damage mode counts your creatures at that moment).
 //
-// SANDBOX GAP, weaker than printed — the Drown in Dreams posture:
-// the "choose both" rider is not offered. Each mode carries its own
-// target, and a modal spec whose maximum is above one may carry a
-// target on at most one option (per-mode target slots are the open
-// multi-target work), so the card is "choose one" whether or not a
-// commander is on the board. Never stronger: the wider choice is
-// simply absent.
+// The commander rider is the conditional mode count #1590 built:
+// `OrUpToIf(2, YouControlACommander)`, read at announce (CR 601.2b)
+// and fixed from then on. With both chosen the bullets run in PRINTED
+// order (CR 608.2c) whatever order they were clicked in, and that is
+// observable: the Warriors are made first, so the damage bullet
+// counts them.
 func init() {
 	Register(Spec{
 		OracleID:     "d8df9813-0376-4d30-8cdc-30451fb67726",
 		Name:         "Will of the Mardu",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"Choosing both modes when you control a commander isn't implemented — you always choose one."},
+		Completeness: CompletenessFull,
 		Modes: ChooseOne(
 			Mode("Create a number of 1/1 red Warrior creature tokens equal to the number of creatures target player controls.", TargetPlayer("target player")),
 			Mode("Will of the Mardu deals damage to target creature equal to the number of creatures you control.", TargetCreature("target creature")),
-		),
+		).OrUpToIf(2, YouControlACommander),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			if len(item.Targets) == 0 {
-				return nil
+			if ctx.HasMode(0) {
+				for _, t := range OptionTargets(ctx, 0) {
+					n := b14CreaturesControlled(ctx.Game, t.ID)
+					if err := (CreateToken{Controller: ctx.Controller(), Template: TokenCard("1/1 red Warrior"), N: n}).Apply(ctx); err != nil {
+						return err
+					}
+				}
 			}
-			target := item.Targets[0]
-			if ctx.HasMode(0) && target.Kind == game.TargetPlayer {
-				n := b14CreaturesControlled(ctx.Game, target.ID)
-				return CreateToken{Controller: ctx.Controller(), Template: TokenCard("1/1 red Warrior"), N: n}.Apply(ctx)
-			}
-			if ctx.HasMode(1) && target.Kind == game.TargetCard {
-				n := b14CreaturesControlled(ctx.Game, ctx.Controller())
-				return DealDamage{Source: ctx.Source(), Target: target.ID, Amount: n}.Apply(ctx)
+			if ctx.HasMode(1) {
+				for _, t := range OptionTargets(ctx, 1) {
+					n := b14CreaturesControlled(ctx.Game, ctx.Controller())
+					if err := (DealDamage{Source: ctx.Source(), Target: t.ID, Amount: n}).Apply(ctx); err != nil {
+						return err
+					}
+				}
 			}
 			return nil
 		},

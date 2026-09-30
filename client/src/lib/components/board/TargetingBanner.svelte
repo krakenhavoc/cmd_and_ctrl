@@ -47,6 +47,24 @@
     return `${n} picked`;
   });
   const doubledLabel = $derived(doubledTriggerLabel(state?.doubledBy, state?.doubledByName));
+  // #1659: the CURRENT step's divided amount, so a player sees "divide
+  // 4 damage among up to 3 targets" while still picking rather than
+  // only once the picks close and DivideDamageModal opens. X-based
+  // amounts show the announced X when the walk resolved it (the
+  // ordinary case — X is always collected before targeting starts);
+  // divideFromXUnresolved is the defensive fallback for the one that
+  // hasn't, so this never prints the 0 an unresolved X would otherwise
+  // resolve to.
+  const divideText = $derived.by(() => {
+    if (!state || state.divide === undefined) return "";
+    const amount =
+      (state.divideUpTo ? "up to " : "") + (state.divideFromXUnresolved ? "X" : `${state.divide}`);
+    const targets =
+      state.max > 0
+        ? `up to ${state.max} target${state.max === 1 ? "" : "s"}`
+        : "any number of targets";
+    return `divide ${amount} damage among ${targets}`;
+  });
 
   function modeHint(mode: string | undefined): string {
     switch (mode) {
@@ -114,6 +132,9 @@
       {/if}
       {#if doubledLabel}
         <span class="count">· {doubledLabel}</span>
+      {/if}
+      {#if divideText}
+        <span class="count">· {divideText}</span>
       {/if}
       {#if multi}
         <span class="count">· {tally}</span>

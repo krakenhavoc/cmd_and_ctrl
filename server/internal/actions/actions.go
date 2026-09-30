@@ -504,6 +504,12 @@ func dispatch(g *game.Game, a Action) error {
 			// (CR 702.174a). Present exactly when optional_costs
 			// names the card's gift cost.
 			GiftOpponent string `json:"gift_opponent,omitempty"`
+			// #1703 — the creatures tapped to pay an announced
+			// teamwork cost (CR 702.194a), and the one creature an
+			// announced blight cost puts its -1/-1 counters on
+			// (CR 701.68a). Absent unless optional_costs names one.
+			TeamworkIDs []string `json:"teamwork_ids,omitempty"`
+			BlightIDs   []string `json:"blight_ids,omitempty"`
 			// S22 — the untapped permanents tapped to help pay
 			// (convoke, waterbend). Optional even on a card that
 			// offers the cost: tapping nothing and paying the whole
@@ -606,6 +612,22 @@ func dispatch(g *game.Game, a Action) error {
 				params.TapIDs = append(params.TapIDs, id)
 			}
 		}
+		for _, l := range []struct {
+			name string
+			raw  []string
+			dst  *[]uuid.UUID
+		}{
+			{"teamwork_ids", p.TeamworkIDs, &params.TeamworkIDs},
+			{"blight_ids", p.BlightIDs, &params.BlightIDs},
+		} {
+			for i, raw := range l.raw {
+				id, err := uuid.Parse(raw)
+				if err != nil {
+					return fmt.Errorf("cast_spell %s[%d]: %w", l.name, i, err)
+				}
+				*l.dst = append(*l.dst, id)
+			}
+		}
 		if len(p.LockedSources) > 0 {
 			params.LockedSources = make([]uuid.UUID, 0, len(p.LockedSources))
 			for i, raw := range p.LockedSources {
@@ -626,16 +648,11 @@ func dispatch(g *game.Game, a Action) error {
 				params.Targets = append(params.Targets, ref)
 			}
 		}
-		if len(p.Distribution) > 0 {
-			params.Distribution = make(map[uuid.UUID]int, len(p.Distribution))
-			for k, v := range p.Distribution {
-				id, err := uuid.Parse(k)
-				if err != nil {
-					return fmt.Errorf("cast_spell distribution key %q: %w", k, err)
-				}
-				params.Distribution[id] = v
-			}
+		dist, err := parseDistribution(p.Distribution)
+		if err != nil {
+			return fmt.Errorf("cast_spell %w", err)
 		}
+		params.Distribution = dist
 		return g.CastSpell(a.Player, instanceID, params)
 
 	case TypeMoveCard:
@@ -1289,6 +1306,10 @@ func dispatch(g *game.Game, a Action) error {
 				}
 				refs = append(refs, ref)
 			}
+			dist, err := parseDistribution(p.Distribution)
+			if err != nil {
+				return fmt.Errorf("activate_ability: %w", err)
+			}
 			return g.ActivateCatalogAbility(a.Player, srcID, *p.AbilityIndex, game.ActivateAbilityParams{
 				Ref:              p.Ref,
 				SacrificeIDs:     sacIDs,
@@ -1303,6 +1324,9 @@ func dispatch(g *game.Game, a Action) error {
 				ReturnIDs:        returnIDs,
 				WaterbendIDs:     waterbendIDs,
 				Targets:          refs,
+				// #1563, CR 601.2d via 602.2b: the division, with
+				// the targets it divides among.
+				Distribution: dist,
 				// #764, CR 602.2b: a modal activated ability announces
 				// its modes with its targets, in one indivisible step.
 				Modes: append([]int(nil), p.Modes...),
@@ -1431,6 +1455,11 @@ func dispatch(g *game.Game, a Action) error {
 			// pick_target prompt whose clause takes several targets
 			// ("up to two target creatures"). Ordered as clicked.
 			Targets []castTargetWire `json:"targets"`
+			// Distribution rides a pick_target answer whose clause
+			// divides (#1563, CR 601.2d via CR 603.3d): target id →
+			// share. Absent for every other answer, and for a lone
+			// target, which takes the whole amount.
+			Distribution map[string]int `json:"distribution,omitempty"`
 			// Bottom / TopOrder answer a PendingChoiceScry (CR
 			// 701.22): the looked-at cards going under the library,
 			// and the ones staying on top listed TOP-FIRST. Every
@@ -1606,7 +1635,11 @@ func dispatch(g *game.Game, a Action) error {
 			if kind, ok := g.PendingChoiceKindFor(choiceID); ok && kind == game.PendingChoiceRetarget {
 				return g.ResolveRetarget(choiceID, a.Player, []game.TargetRef{ref})
 			}
-			return g.ResolvePickTarget(choiceID, a.Player, ref)
+			dist, err := parseDistribution(p.Distribution)
+			if err != nil {
+				return fmt.Errorf("resolve_choice %w", err)
+			}
+			return g.ResolvePickTargetsDivided(choiceID, a.Player, []game.TargetRef{ref}, dist)
 		}
 		if p.Targets != nil {
 			refs := make([]game.TargetRef, 0, len(p.Targets))
@@ -1645,7 +1678,11 @@ func dispatch(g *game.Game, a Action) error {
 			if kind, ok := g.PendingChoiceKindFor(choiceID); ok && kind == game.PendingChoiceRetarget {
 				return g.ResolveRetarget(choiceID, a.Player, refs)
 			}
-			return g.ResolvePickTargets(choiceID, a.Player, refs)
+			dist, err := parseDistribution(p.Distribution)
+			if err != nil {
+				return fmt.Errorf("resolve_choice %w", err)
+			}
+			return g.ResolvePickTargetsDivided(choiceID, a.Player, refs, dist)
 		}
 		if p.OptionalApply != nil {
 			// Five yes/no kinds share the {apply: bool} payload
@@ -2123,15 +2160,28 @@ func buildAbilityParams(label string, targets []castTargetWire, modes []int, xVa
 			out.Targets = append(out.Targets, ref)
 		}
 	}
-	if len(distribution) > 0 {
-		out.Distribution = make(map[uuid.UUID]int, len(distribution))
-		for k, v := range distribution {
-			id, err := uuid.Parse(k)
-			if err != nil {
-				return game.AbilityParams{}, fmt.Errorf("distribution key %q: %w", k, err)
-			}
-			out.Distribution[id] = v
+	dist, err := parseDistribution(distribution)
+	if err != nil {
+		return game.AbilityParams{}, err
+	}
+	out.Distribution = dist
+	return out, nil
+}
+
+// parseDistribution decodes a wire `distribution` — target id → share,
+// the division of a "divided as you choose" clause (#1563, CR 601.2d) —
+// into the engine's map. Nil for an absent or empty one.
+func parseDistribution(distribution map[string]int) (map[uuid.UUID]int, error) {
+	if len(distribution) == 0 {
+		return nil, nil
+	}
+	out := make(map[uuid.UUID]int, len(distribution))
+	for k, v := range distribution {
+		id, err := uuid.Parse(k)
+		if err != nil {
+			return nil, fmt.Errorf("distribution key %q: %w", k, err)
 		}
+		out[id] = v
 	}
 	return out, nil
 }

@@ -56,17 +56,32 @@ type TargetDifference struct {
 	Key func(g *Game, c Card, zone ZoneKind) (key string, ok bool)
 }
 
-// xBoundAdmits applies ManaValueAtMostX to a candidate card: true
-// when the clause has no bound, or the bound is not yet known (a hand
-// snapshot, built before X is announced), or the card's mana value is
-// at most X. A card whose cost cannot be read does not meet a bound
-// it might not meet — Card.ParsedManaValue's rule.
+// hasXBound reports whether a clause carries either X-bound flag
+// (#1723): ManaValueAtMostX ("X or less") or ManaValueEqualsX
+// ("exactly X"). The two share one bind-and-recheck mechanism and
+// differ only in the comparison xBoundAdmits makes.
+func hasXBound(s *TargetSpec) bool {
+	return s != nil && (s.ManaValueAtMostX || s.ManaValueEqualsX)
+}
+
+// xBoundAdmits applies ManaValueAtMostX / ManaValueEqualsX to a
+// candidate card: true when the clause has no bound, or the bound is
+// not yet known (a hand snapshot, built before X is announced), or
+// the card's mana value meets the bound — at most X, or exactly X.
+// A card whose cost cannot be read does not meet a bound it might not
+// meet — Card.ParsedManaValue's rule.
 func (s *TargetSpec) xBoundAdmits(c Card) bool {
-	if s == nil || !s.ManaValueAtMostX || !s.xBoundSet {
+	if s == nil || !hasXBound(s) || !s.xBoundSet {
 		return true
 	}
 	mv, ok := c.ParsedManaValue()
-	return ok && mv <= s.xBound
+	if !ok {
+		return false
+	}
+	if s.ManaValueEqualsX {
+		return mv == s.xBound
+	}
+	return mv <= s.xBound
 }
 
 // bindStepsX writes the announced X onto every X-bounded step of an
@@ -75,7 +90,7 @@ func (s *TargetSpec) xBoundAdmits(c Card) bool {
 // reasoning resolveStepCountsFromX gives for CountFromX.
 func bindStepsX(steps []AnnouncedClause, x int) {
 	for i := range steps {
-		if steps[i].Clause.ManaValueAtMostX {
+		if hasXBound(&steps[i].Clause) {
 			steps[i].Clause.xBound, steps[i].Clause.xBoundSet = x, true
 		}
 	}
@@ -90,10 +105,10 @@ func BindStepsXForEffect(steps []AnnouncedClause, x int) {
 }
 
 // StepsBoundByX reports whether any step's legality depends on the
-// announced X through ManaValueAtMostX. Pure.
+// announced X through ManaValueAtMostX or ManaValueEqualsX. Pure.
 func StepsBoundByX(steps []AnnouncedClause) bool {
 	for i := range steps {
-		if steps[i].Clause.ManaValueAtMostX {
+		if hasXBound(&steps[i].Clause) {
 			return true
 		}
 	}
@@ -295,9 +310,10 @@ func (g *Game) withoutSetRuleConflictsLocked(clause *TargetClause, lt LegalTarge
 }
 
 // TargetsWithinXForEffect reports whether every pick that answers an
-// X-bounded step ("with mana value X or less") meets that bound at x
-// (#1559) — the enumerator's re-check for a set it priced at an X
-// other than the one it bound the steps to. Picks of other steps pass.
+// X-bounded step ("with mana value X or less" / "with mana value X")
+// meets that bound at x (#1559, #1723) — the enumerator's re-check for
+// a set it priced at an X other than the one it bound the steps to.
+// Picks of other steps pass.
 //
 // Caller must hold g.mu.
 func (g *Game) TargetsWithinXForEffect(steps []AnnouncedClause, targets []TargetRef, x int) bool {
@@ -306,14 +322,25 @@ func (g *Game) TargetsWithinXForEffect(steps []AnnouncedClause, targets []Target
 			continue
 		}
 		for i := range steps {
-			if steps[i].Mode != t.Mode || steps[i].Slot != t.Slot || !steps[i].Clause.ManaValueAtMostX {
+			clause := &steps[i].Clause
+			if steps[i].Mode != t.Mode || steps[i].Slot != t.Slot || !hasXBound(clause) {
 				continue
 			}
 			c := g.findCardByIDLocked(t.ID)
 			if c == nil {
 				return false
 			}
-			if mv, ok := c.ParsedManaValue(); !ok || mv > x {
+			mv, ok := c.ParsedManaValue()
+			if !ok {
+				return false
+			}
+			if clause.ManaValueEqualsX {
+				if mv != x {
+					return false
+				}
+				continue
+			}
+			if mv > x {
 				return false
 			}
 		}

@@ -60,11 +60,23 @@ var redactedCardKeys = map[string]bool{
 	"attacking_target":      true,
 	"attacking_target_kind": true,
 	"blocking_target":       true,
-	"goaded_by":             true,
+	// #1706: every attacker a multi-blocker blocks, and how many it
+	// can — the second read off the effective characteristic, which
+	// for a face-down creature holds only what OTHER permanents give
+	// it (it prints nothing, CR 708.2).
+	"blocking_targets":  true,
+	"block_capacity":    true,
+	"blocks_any_number": true,
+	"goaded_by":         true,
+	// #1598: every goader, as public as the latest one.
+	"goaders": true,
 	// #1571: that a creature owes an attack is public — its sources
 	// (goad, Grand Melee, Bident) are on the board, and a face-down
 	// permanent prints no requirement of its own (CR 708.2).
 	"must_attack": true,
+	// #1597: likewise that it owes a block — Lure, Grand Melee and the
+	// attacker's own "must be blocked" are on the board.
+	"must_block":  true,
 	"attached_to": true,
 	"no_untap":    true,
 	// #1339: who is defending against an attack is as public as what
@@ -232,8 +244,13 @@ func everyFieldCardView(owner string, knowers map[string]bool) CardView {
 		ProtectorPlayer:     "protector",
 		Defense:             4,
 		BlockingTarget:      "attacker",
+		BlockingTargets:     []string{"attacker", "attacker-2"},
+		BlockCapacity:       2,
+		BlocksAnyNumber:     true,
 		GoadedBy:            "goader",
+		Goaders:             []string{"goader"},
 		MustAttack:          true,
+		MustBlock:           true,
 		AttachedTo:          &TargetRefView{Kind: "card", ID: "host"},
 		NoUntap:             &NoUntapView{Static: true, Next: []string{"next-player"}},
 		Auto:                true,
@@ -255,6 +272,7 @@ func everyFieldCardView(owner string, knowers map[string]bool) CardView {
 		ClassLevel:        3,
 		Solved:            true,
 		Harnessed:         true,
+		Monstrous:         true,
 		Prepared:          true,
 		// #781. Deliberately NOT added to redactedCardKeys: both are
 		// public on a card the viewer can see and both are stripped
@@ -264,6 +282,7 @@ func everyFieldCardView(owner string, knowers map[string]bool) CardView {
 		ChosenColor:   "G",
 		NamedTribe:    "Elf",
 		ChosenName:    "Sol Ring",
+		ChosenOption:  "Khans",
 		ManaCost:      "{2}{U}",
 		ManaAbilities: []ManaAbilityView{{Index: 0, Label: "Add {U}"}},
 		// ADR 0093: the granted-ability text list. Redacted with the
@@ -312,11 +331,18 @@ func everyFieldCastSurface(lt *LegalTargetsView) CastSurfaceView {
 			Key: "overload", Label: "Overload {6}{U}", ManaCost: "{6}{U}", Life: 1, PayLabel: "a blue card",
 			TargetMode: "creature", LegalTargets: lt, PayOptions: lt,
 			XLockedAtZero: true, PhyrexianSymbols: 1,
+			// #1686.
+			TimingClosed: true,
 		}},
 		// #1012: the flag that says the printed cost is not one of
 		// the prices this cast may claim. Redacted with the offer
 		// list it is only meaningful beside.
 		AlternativeCostRequired: true,
+		// #1686: the printed cost's own timing-closed signal — see the
+		// field doc for why it is independent of AlternativeCostRequired
+		// (both may be true at once on a real card; this fixture just
+		// needs both non-zero).
+		PrintedCostTimingClosed: true,
 		TapCost:                 &TapCostView{Key: "convoke", Options: lt},
 		TargetCostNotes:         []string{"This spell costs {1} more to cast for each target beyond the first."},
 		PhyrexianSymbols:        1,
@@ -695,6 +721,10 @@ var castSurfaceScopes = map[string]castSurfaceScope{
 	"Modes":                   surfacePublicPile,
 	"AlternativeCosts":        surfacePublicPile,
 	"AlternativeCostRequired": surfacePublicPile,
+	// #1686: derived from whose turn it is, the stack, and the
+	// battlefield's own grants — all public, the same reasoning
+	// ActivatedAbilityView.TimingClosed's doc gives.
+	"PrintedCostTimingClosed": surfacePublicPile,
 	"TapCost":                 surfacePublicPile,
 	"PhyrexianSymbols":        surfacePublicPile,
 	"TargetCostNotes":         surfacePublicPile,
@@ -769,6 +799,9 @@ var alternativeCostScopes = map[string]castSurfaceScope{
 	// CR 601.2h) but one seat's all the same.
 	"LegalTargets": surfacePrivate,
 	"PayOptions":   surfacePrivate,
+	// #1686: same reasoning as PrintedCostTimingClosed above — public
+	// board state, not per-viewer.
+	"TimingClosed": surfacePublicPile,
 }
 
 // TestHandPublicCastSurfaceIsAnAllowlist is the #1169 guard, and it is

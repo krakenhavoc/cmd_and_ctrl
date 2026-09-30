@@ -65,12 +65,12 @@ func b13CreatureDealtDamageToYou(ev game.Event, source *game.Card, g *game.Game)
 // exile, a library tuck. EventLTB carries the destination in
 // NewZone, so "without dying" is the one comparison CR 700.4 makes.
 //
-// The card is read post-move (diedCreature's posture): the printed
-// type line and the Controller field survive the move, so "creature
-// you control" is the creature that just left under the source's
-// controller's control. A creature that was a creature only through
-// a layer effect, or a stolen creature that went back to its owner's
-// hand, is not counted — weaker than printed, never stronger.
+// "You control" is the controller the creature had as it left
+// (leftUnderControlOf, #1682), so a stolen creature bounced to its
+// owner's hand counts for the thief, under whose control it left, and
+// not for the owner. "Creature" is its type as it last existed
+// (leftAsType, #1675), so a crewed Vehicle or an animated land that
+// is bounced counts.
 func b13OtherCreatureYouControlLeftWithoutDying(ev game.Event, source *game.Card, g *game.Game) bool {
 	return ev.CardID != source.InstanceID && creatureYouControlLeftWithoutDying(ev, source, g)
 }
@@ -85,7 +85,7 @@ func creatureYouControlLeftWithoutDying(ev game.Event, source *game.Card, g *gam
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.CardID)
-	return ok && c.IsCreature() && c.Controller == source.Controller
+	return ok && leftAsType(ev, c, "creature") && leftUnderControlOf(ev, c) == source.Controller
 }
 
 // --- counters read back off the log ------------------------------
@@ -119,6 +119,23 @@ func b13LastKnownCounters(g *game.Game, cardID uuid.UUID, kind string) int {
 		return false
 	})
 	return total
+}
+
+// b13LastKnownPTDelta is the power and toughness `cardID`'s P/T
+// counters added when it last left the battlefield — every P/T kind,
+// not just +1/+1 and -1/-1 (#1664, CR 122.1a). Same walk and same
+// newest-total-per-kind rule as b13LastKnownCounterTotal, summed
+// through game.PTCounterDelta so a departed creature's P/T is computed
+// by the rule the live one's was.
+func b13LastKnownPTDelta(g *game.Game, cardID uuid.UUID) (power, toughness int) {
+	last := map[string]int{}
+	b13LastKnownCounterWalk(g, cardID, func(ev game.Event) bool {
+		if _, seen := last[ev.Label]; !seen {
+			last[ev.Label] = ev.Amount
+		}
+		return true
+	})
+	return game.PTCounterDelta(last)
 }
 
 // b13LastKnownCounterTotal is the total number of counters of every
@@ -182,10 +199,11 @@ func b13LastKnownCounterWalk(g *game.Game, cardID uuid.UUID, visit func(ev game.
 
 // b13LastKnownPower is a dead creature's power as it last was on the
 // battlefield: the harvester's LKI characteristic (layers applied)
-// plus its +1/+1 counters, minus its -1/-1 counters, floored at zero
-// the way CurrentPower floors it.
+// plus what its P/T counters added — every kind, CR 122.1a (#1664) —
+// floored at zero the way CurrentPower floors it.
 func b13LastKnownPower(g *game.Game, cardID uuid.UUID, lki game.Characteristic) int {
-	p := lki.Power + b13LastKnownCounters(g, cardID, "+1/+1") - b13LastKnownCounters(g, cardID, "-1/-1")
+	dp, _ := b13LastKnownPTDelta(g, cardID)
+	p := lki.Power + dp
 	if p < 0 {
 		return 0
 	}

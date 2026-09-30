@@ -108,6 +108,17 @@ export const BLOCK_REFUSAL_REASONS = [
   // whole-combat count limit — Silent Arbiter's "no more than one
   // creature can block each combat" (CR 509.1b).
   "declaration_limit",
+  // #1597 (CR 509.1c): the declaration — or the defending player's
+  // pass / finish_blocks that ends it — leaves a blocking requirement
+  // unobeyed that it could obey (Lure, "blocks each combat if able",
+  // "must be blocked if able"). `card_id` is the creature that could
+  // obey it; the message names the requirement.
+  "block_requirement",
+  // #1706 (CR 509.1a/b): one more attacker than the blocker can block —
+  // a creature that "can block an additional creature" already blocking
+  // two. Only a creature that can block more than one is ever refused
+  // this; an ordinary blocker's second block re-points it.
+  "blocker_capacity",
 ] as const;
 export type BlockRefusalReason = (typeof BLOCK_REFUSAL_REASONS)[number];
 
@@ -608,6 +619,11 @@ export type LogKind =
   // and otherwise untouched — CR 201.2 admits any card name, so
   // there is no canonical spelling to report (#1210).
   | "choose_name"
+  // A player answered an "as this enters, choose <A> or <B>" prompt
+  // whose options are words printed on the card (CR 614.12): a
+  // Siege's anchor word. `choice` is the word ("Khans", "Temur")
+  // (#1572).
+  | "choose_option"
   // #1214: a player answered one of the three resolution-time picks
   // (CR 608.2) — an opponent choosing from a revealed set, a seat
   // choosing among another player's permanents, a seat choosing N of
@@ -1165,6 +1181,10 @@ export interface DamageAssignmentView {
   attacker_power: number;
   allow_trample?: boolean;
   has_deathtouch?: boolean;
+  // #1706, CR 510.1d: the card in attacker_card_id is a BLOCKER that
+  // blocks every creature in blocker_card_ids, and its controller
+  // divides its damage among them freely — no order, no trample.
+  blocker_divides?: boolean;
 }
 
 // DelayedTriggerView mirrors `protocol.DelayedTriggerView`
@@ -1446,12 +1466,24 @@ export interface ZoneView {
 export interface ModeSpecView {
   prompt: string;
   min: number;
+  // #1590: the bound THIS caster is held to right now — the printed
+  // max, raised while a conditional mode count holds (Jeska's Will's
+  // "if you control a commander as you cast this spell, you may choose
+  // both instead"). The server stamps it per caster, so a picker that
+  // offers up to `max` never offers a selection the gate refuses.
   max: number;
   options: ModeOptionView[];
   // #764, CR 700.2d: "you may choose the same mode more than once"
   // (Mystic Confluence). The picker offers a count per option rather
   // than a toggle, and each occurrence is asked for its own targets.
   repeatable?: boolean;
+  // #1655: the bounds with the card's optional costs announced —
+  // Inscription of Ruin's "if this spell was kicked, choose any number
+  // instead", Depth Defiler-shaped "choose both instead". `min` / `max`
+  // above are the bounds with none announced; the picker switches to
+  // these when the caster ticked an optional cost. Absent when paying
+  // changes nothing.
+  if_optional_paid?: { min: number; max: number };
 }
 
 // AdditionalCostView is the "As an additional cost to cast this
@@ -1511,6 +1543,19 @@ export interface OptionalCostView {
   // list).
   chooses_opponent?: boolean;
   opponent_options?: string[];
+  // #1703: teamwork (CR 702.194a) — tap any number of your untapped
+  // creatures with total power `teamwork` or more. `teamwork_options`
+  // is who may be tapped; present-and-empty means the whole set falls
+  // short and the offer cannot be taken. The picks ride cast_spell as
+  // `teamwork_ids`.
+  teamwork?: number;
+  teamwork_options?: LegalTargetsView;
+  // #1703: blight N (CR 701.68a) — put `blight` -1/-1 counters on one
+  // creature you control. `blight_options` is your creatures;
+  // present-and-empty means you control none. The pick rides
+  // cast_spell as `blight_ids`.
+  blight?: number;
+  blight_options?: LegalTargetsView;
   // #1267: the target clause the spell has WHEN THIS COST IS PAID —
   // Long River's Pull counters any spell once the gift is promised.
   // Same shape and meaning as AlternativeCostView's trio; absent when
@@ -1568,6 +1613,15 @@ export interface AlternativeCostView {
   // offer a payment the announce gate rejects. Absent for every offer
   // that prints none, which is all of them today.
   phyrexian_symbols?: number;
+  // #1686: the engine will refuse THIS offer right now for timing (CR
+  // 307.1) even though its zone and payability both check out. Every
+  // S22 keyword here answers to the card's own printed timing (or a
+  // wider per-player grant) the same way the printed cost does, so
+  // this stays absent for them; a live miracle grant is the first
+  // offer with a clock of its own that can disagree with the printed
+  // cost's. Read by the cost picker via castableAlternativeCostsOf
+  // (targeting.ts), which drops an offer this is set on.
+  timing_closed?: boolean;
 }
 
 // TapCostView is the "tap permanents you control to help pay for
@@ -1971,6 +2025,28 @@ export interface LegalTargetsView {
   // and a card with no entry (an unreadable cost) meets no bound.
   mana_value_at_most_x?: boolean;
   mana_values?: Record<string, number>;
+  // #1563, CR 601.2d: the clause's effect is "divided as you choose"
+  // among its picks. The picker asks for a share per pick once a step
+  // has two or more — each at least 1, summing to the amount — and
+  // sends them as the action's `distribution`. Absent on every clause
+  // that divides nothing.
+  divide?: DivideView;
+}
+
+// DivideView is the amount a clause divides (#1563): a fixed `total`,
+// or — with `from_x` — the X collected in the cost prompts, doubled
+// once X reaches `double_from_x` (Shatterskull Smashing). A pick_target
+// prompt's amount is always a fixed `total`.
+export interface DivideView {
+  total?: number;
+  from_x?: boolean;
+  double_from_x?: number;
+  // #1657: "distribute UP TO that many" (Lathiel) — the shares may add
+  // up to less than the amount, each pick still at least 1. An amount
+  // read off the board (Ureni's lands, Orca's power, Avacyn's
+  // Judgment's madness X) arrives already resolved into the fields
+  // above; there is nothing for the client to compute.
+  up_to?: boolean;
 }
 
 // TargetDifferenceView is a clause's set rule (#1559): `label`
@@ -2038,13 +2114,25 @@ export interface CastSurfaceView {
   // is castable at its flashback cost and at nothing else; a card a
   // permission PRICES is the same shape.
   //
-  // Absent — every hand cast, every command-zone cast, and a
+  // Absent — every ordinary hand cast, every command-zone cast, and a
   // Gravecrawler whose graveyard permission carries no price — means
   // the printed cost is on the menu as usual. `castable_here` is one
   // bit and says only that a cast is possible from here; this is the
   // other half of the sentence, and the client must not infer it from
   // the shape of the offer list.
   alternative_cost_required?: boolean;
+  // #1686: the printed cost IS one of the prices (`alternative_cost_required`
+  // is false) but the engine will refuse it RIGHT NOW for timing (CR
+  // 307.1) — the one hand-zone exception to "absent means the printed
+  // cost is on the menu as usual" above. A live miracle grant opens
+  // its OWN claim at instant speed and says nothing about the printed
+  // one, which stays whatever timing the card prints; drawn on another
+  // player's turn, the printed sorcery cast is still on the menu but
+  // not choosable until the caster's own main phase. Read via
+  // printedCostCastableNow (targeting.ts), not printedCostClaimable —
+  // the zone browser's button label and canCastFromHand's tooltip stay
+  // on the zone-and-payability question alone.
+  printed_cost_timing_closed?: boolean;
   // ADR 0073 (#664): the "you may pay an additional cost" offers this
   // card makes — kicker, multikicker, buyback. Rendered inside the
   // same picker the alternative costs open, because CR 601.2b
@@ -2310,17 +2398,37 @@ export interface CardView extends CastSurfaceView {
   // Omitted when not declared as blocker. Cleared on zone exit and
   // by clear_combat. Added in S08.
   blocking_target?: string;
-  // Player ID who goaded this creature, or omitted when not goaded.
-  // Cleared on zone exit. Added in S10; enforced server-side since
-  // #1571 (CR 701.15b — attacks each combat if able, and a player
-  // other than the goader if able).
+  // #1706: every attacker this card blocks, in declaration order, when
+  // it blocks two or more (High Ground, Palace Guard). Omitted for an
+  // ordinary blocker — read blockedAttackersOf rather than either field.
+  blocking_targets?: string[];
+  // #1706: how many attackers this creature can block when an effect
+  // lets it block more than one; blocks_any_number instead when it can
+  // block any number. Both omitted for the ordinary one-attacker case.
+  block_capacity?: number;
+  blocks_any_number?: boolean;
+  // Player ID whose goad on this creature is the most recent, or
+  // omitted when not goaded. Cleared on zone exit. Added in S10;
+  // enforced server-side since #1571 (CR 701.15b — attacks each combat
+  // if able, and a player other than the goader if able).
   goaded_by?: string;
+  // #1598 (CR 701.15c): every player whose goad is on this creature,
+  // oldest first; its last entry equals goaded_by. Omitted when not
+  // goaded, and by a server from before #1598.
+  goaders?: string[];
   // #1571 (ADR 0045 Decision 51): true on a creature the active player
   // owes an attack with right now — during declare_attackers, while the
   // declaration could still obey a CR 508.1d requirement it does not
   // (Zurgo, goad, Bident of Thassa). Server-computed; the client
   // renders it and never derives a requirement. Omitted otherwise.
   must_attack?: boolean;
+  // #1597 (CR 509.1c): true on a creature a defending player owes a
+  // block with right now — during declare_blockers, while their
+  // declaration is pending and could still obey a requirement it does
+  // not (Lure, Grand Melee, "blocks each combat if able", "must be
+  // blocked if able"). Server-computed; the client renders it and never
+  // derives a requirement. Omitted otherwise.
+  must_block?: boolean;
   // S24 (ADR 0036): the attachment relation for an Equipment or an
   // Aura — the permanent (`kind: "card"`) or player
   // (`kind: "player"`) this card is attached to. Omitted for every
@@ -2421,6 +2529,21 @@ export interface CardView extends CastSurfaceView {
   // arrives as an ordinary exile card with an `exile_play` stamp
   // naming face 1. Absent — not `false` — for everything else.
   prepared?: boolean;
+  // ADR 0071 amendment, #1321 (CR 701.64): this permanent is
+  // harnessed — the marker that switches its printed "∞ — [ability]"
+  // lines on. Unlike `class_level` / `solved` it carries no subtype
+  // gate: any permanent can print "Harness [this permanent]", so the
+  // field is read straight off the card once it is on the
+  // battlefield. Absent — not `false` — for everything else.
+  harnessed?: boolean;
+  // ADR 0071 amendment, #1700 (CR 701.37b): this permanent is
+  // monstrous — set by the monstrosity keyword action ("{cost}:
+  // Monstrosity N.") and kept until the permanent leaves the
+  // battlefield. Switches on its "as long as this creature is
+  // monstrous" lines. Read straight off the card the same way
+  // `harnessed` is — no card type owns monstrosity. Absent — not
+  // `false` — for everything else.
+  monstrous?: boolean;
   // #781 (CR 105.4 / CR 614.12): the answers this permanent's
   // controller gave to its "as this enters, choose a color" and "as
   // this enters, choose a creature type" instructions — one uppercase
@@ -2440,6 +2563,17 @@ export interface CardView extends CastSurfaceView {
   // what "G" means.
   chosen_color?: string;
   named_tribe?: string;
+  // #1210 (CR 614.12): the CARD NAME this permanent's "as this enters,
+  // choose a card name" instruction was answered with — Pithing
+  // Needle, Phyrexian Revoker, Sorcerous Spyglass. Same lifecycle,
+  // PUBLIC/redaction and rendering module as chosen_color above.
+  chosen_name?: string;
+  // #1572 (ADR 0071): the NAMED OPTION this permanent's "as this
+  // enters, choose <A> or <B>" instruction was answered with — a
+  // Siege's anchor word, "Khans" or "Temur". Decides which of the
+  // permanent's OWN printed abilities exists. Same lifecycle,
+  // PUBLIC/redaction and rendering module as chosen_color above.
+  chosen_option?: string;
   // S15: raw Scryfall mana-cost string ("{1}{R}", "{W/U}", "{X}{B}"),
   // rendered as a read-only chip on hand-zone cards. Omitted for
   // lands and for placeholder / demo-seed cards. Also zeroed on the

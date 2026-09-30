@@ -24,28 +24,21 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // less: you draw the cards first and the loss can kill you, which is
 // the printed card.
 //
-// DECLARED SIMPLIFICATION (#259) on mode 2. The printed bullet
-// distributes two counters among ONE OR TWO target creatures; this
-// spec offers one target and puts both counters there. A single
-// target is one of the printed card's own legal distributions, so the
-// mode is never stronger than printed — only less flexible. The
-// missing half is multi-target distribution, tracked by #764; when
-// that lands, this mode becomes a second target slot and the caveat
-// comes off.
+// Mode 2 distributes (#1563, CR 601.2d): one or two target
+// creatures, and the caster announces the split with the targets —
+// both counters on one, or one each. A target that leaves in response
+// takes nothing and its counter is lost, not moved to the other.
 func init() {
 	Register(Spec{
 		OracleID:     "4137a22c-f793-4e27-a9b2-72740a6e2121",
 		Name:         "Abzan Charm",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"The +1/+1 counter mode puts both counters on a single target creature; you cannot split them between two creatures.",
-		},
+		Completeness: CompletenessFull,
 		Modes: ChooseOne(
 			Mode("Exile target creature with power 3 or greater.",
 				TargetCreature("target creature with power 3 or greater", PowerGE(3))),
 			Mode("You draw two cards and you lose 2 life."),
-			Mode("Put two +1/+1 counters on target creature.",
-				TargetCreature("target creature")),
+			Mode("Distribute two +1/+1 counters among one or two target creatures.",
+				TargetCreature("one or two target creatures").WithCount(1, 2).Dividing(Divide(2))),
 		),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			switch {
@@ -60,10 +53,7 @@ func init() {
 				}
 				return GainLife{Player: ctx.Controller(), Amount: -2}.Apply(ctx)
 			case ctx.HasMode(2):
-				if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
-					return nil
-				}
-				return AddCounter{Target: item.Targets[0].ID, Kind: game.CounterPlusOne, N: 2}.Apply(ctx)
+				return PutDividedCounters(ctx, game.CounterPlusOne)
 			}
 			return nil
 		},

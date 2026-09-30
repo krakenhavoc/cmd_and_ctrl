@@ -45,7 +45,9 @@ var (
 	// Kiki-Jiki's token).
 	sacrificeListedCardsBody = game.SimpleDelayedBody("sacrifice/listed-cards", b33SacrificeListedCards)
 
-	// Clear the goad on the listed permanents.
+	// "The goad ends" — a no-op sweep since #1598 (the engine ends each
+	// goad itself), kept registered and scheduled for restore points
+	// read by an older binary. See b33ClearListedGoads.
 	clearListedGoadsBody = game.SimpleDelayedBody("goad/clear-listed", b33ClearListedGoads)
 
 	// Return the listed cards from a graveyard to their owners' hands
@@ -100,6 +102,12 @@ var (
 	// turn": an EventCast by the trigger's controller whose spell
 	// passes CondParams.Filter.
 	youNextCastCondition = game.DelayedCondition("cast/you-next-cast", youNextCast)
+
+	// The event condition of "until an opponent becomes the monarch"
+	// (Palace Jailer, #1722): an EventMonarchChanged whose new monarch
+	// is not the trigger's controller.
+	anOpponentBecameTheMonarchCondition = game.DelayedCondition("monarch/an-opponent-became",
+		anOpponentBecameTheMonarchSince)
 )
 
 // maxManaDrainRefund bounds the refund a restored Mana Drain may add. No

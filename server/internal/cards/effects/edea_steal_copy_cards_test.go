@@ -703,11 +703,13 @@ func TestShatterskullSmashingSplitsXAmongTwoTargets(t *testing.T) {
 	opp := g.Seats[1]
 	a := b12Creature(g, opp.ID, "Wall", "Creature — Wall", 0, 30)
 	b := b12Creature(g, opp.ID, "Wall Two", "Creature — Wall", 0, 30)
+	// #1563: the caster divides — 1/2, the reverse of the old even
+	// division's 2/1.
 	b12PlayFromHand(t, g, "Shatterskull Smashing", "Sorcery", shatterskullOracle,
-		game.CastSpellParams{XValue: 3, Targets: cardRefs(a, b)})
+		game.CastSpellParams{XValue: 3, Targets: cardRefs(a, b), Distribution: map[uuid.UUID]int{a: 1, b: 2}})
 	passPriorityAroundTable(t, g)
-	if d1, d2 := e2Card(t, g, a).DamageMarked, e2Card(t, g, b).DamageMarked; d1 != 2 || d2 != 1 {
-		t.Errorf("X=3 over two targets: %d/%d, want 2/1", d1, d2)
+	if d1, d2 := e2Card(t, g, a).DamageMarked, e2Card(t, g, b).DamageMarked; d1 != 1 || d2 != 2 {
+		t.Errorf("X=3 over two targets divided 1/2: got %d/%d", d1, d2)
 	}
 }
 

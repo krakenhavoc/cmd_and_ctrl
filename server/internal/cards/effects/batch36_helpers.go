@@ -166,11 +166,12 @@ func b36SelfDealtCombatDamageToPlayer(ev game.Event, source *game.Card, g *game.
 }
 
 // b36AngelYouControlDied is Bishop of Wings' second condition: an
-// Angel its controller controlled died. The card in the graveyard
-// still reads as an Angel; a changeling counts.
+// Angel its controller controlled died — an Angel as it last existed
+// (leftAsSubtype, #1679), so a changeling counts and so does a
+// creature that was an Angel only through a grant.
 func b36AngelYouControlDied(ev game.Event, source *game.Card, g *game.Game) bool {
 	dead, ok := diedCreature(ev, g)
-	return ok && dead.Controller == source.Controller && dead.HasSubtype("Angel")
+	return ok && leftUnderControlOf(ev, dead) == source.Controller && leftAsSubtype(ev, dead, "Angel")
 }
 
 // b36AnotherFaerieYouControlDied is Tegwyll, Duke of Splendor's
@@ -179,7 +180,7 @@ func b36AngelYouControlDied(ev game.Event, source *game.Card, g *game.Game) bool
 func b36AnotherFaerieYouControlDied(ev game.Event, source *game.Card, g *game.Game) bool {
 	dead, ok := diedCreature(ev, g)
 	return ok && dead.InstanceID != source.InstanceID &&
-		dead.Controller == source.Controller && dead.HasSubtype("Faerie")
+		leftUnderControlOf(ev, dead) == source.Controller && leftAsSubtype(ev, dead, "Faerie")
 }
 
 // b36EndStepAndAnOpponentLostThree is Sygg, River Cutthroat's

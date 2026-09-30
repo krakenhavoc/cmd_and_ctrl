@@ -17,9 +17,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // stack, so it is a legal answer and the usual one with an empty
 // board, making it a 3/2 menace. Menace rides PrintedKeywords. The
 // drain is Undead Augur's Zombie-dies read narrowed to "another":
-// the dead card is read post-move, so a changeling counts and a
-// Zombie that was one only through a layer effect does not; the life
-// is LOST, not dealt, so no prevention shield sees it.
+// the Zombie is read as it last existed on the battlefield (CR
+// 603.10a, #1679), so a changeling counts and so does a creature
+// that was a Zombie only through a grant; the life is LOST, not
+// dealt, so no prevention shield sees it.
 //
 // No simplification.
 func init() {

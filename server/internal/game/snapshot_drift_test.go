@@ -272,7 +272,9 @@ var cardFields = plan(
 	"IsCommander", carried, "",
 	"AttackingTarget", carried, "",
 	"BlockingTarget", carried, "",
-	"GoadedBy", carried, "",
+	// #1706: a multi-blocker's further attackers.
+	"AlsoBlocking", carried, "",
+	"Goads", carried, "",
 	"DamageMarked", carried, "",
 	// #667 regeneration shields. Carried for the reason DamageMarked
 	// is: it is per-turn state on one permanent that nothing can
@@ -341,6 +343,10 @@ var cardFields = plan(
 	// it is printed as. Pure data by construction — see copy.go on
 	// why PrintedValues carries no closures.
 	"PrintedSelf", carried, "",
+	// #1593: the layer-1 baseline under a duration copy — a Clone's
+	// entry copy that a Cytoshape overwrote. Not derivable from the
+	// board once the copy has landed, so carried like PrintedSelf.
+	"DurationCopyBase", carried, "",
 	// #665 / CR 707.9a: the ability bundles a copy effect's "except"
 	// clause granted. Carried, and carriable at all, because it holds
 	// catalog KEYS rather than closures — the abilities themselves
@@ -363,6 +369,10 @@ var cardFields = plan(
 	// three above there is not even a vocabulary to rebuild it from,
 	// because CR 201.2 lets a player name any card name at all.
 	"ChosenName", carried, "",
+	// #1572, CR 614.12: the named option (a Siege's anchor word)
+	// chosen as the permanent entered. A player's choice, so nothing
+	// can rebuild it — and it decides which printed ability exists.
+	"ChosenOption", carried, "",
 	// #653 / #664, CR 400.7d: what the spell that became this
 	// permanent was cast for — the alternative cost and the optional
 	// additional costs, one record. Carried, and it is the field here
@@ -384,6 +394,9 @@ var cardFields = plan(
 	// is a legal state, so a restore that dropped it would come back
 	// wrong and say nothing.
 	"Harnessed", carried, "",
+	// ADR 0071 amendment (#1700): the CR 701.37b monstrous
+	// designation, carried for Harnessed's reason.
+	"Monstrous", carried, "",
 	// ADR 0090 (#1328): the CR 722.3a prepared designation, the
 	// CR 722.3c copy's not-a-card marker, and the permanent object the
 	// copy is kept in exile by. Carried for Solved's reason — every

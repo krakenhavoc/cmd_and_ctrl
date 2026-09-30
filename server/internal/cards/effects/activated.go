@@ -176,6 +176,12 @@ func Plus(costs ...game.AbilityCost) game.AbilityCost {
 		if c.Life != 0 {
 			out.Life = c.Life
 		}
+		// #1594: without this a composed "{3}, {T}, Pay life equal to
+		// …" drops its life and War Room draws for {3} alone —
+		// stronger than printed, the #259 direction.
+		if !c.LifeFrom.IsZero() {
+			out.LifeFrom = c.LifeFrom
+		}
 		if c.Loyalty != nil {
 			out.Loyalty = c.Loyalty
 		}

@@ -131,8 +131,8 @@
   );
 
   // Live P/T comes straight off the wire: since S16 the server sends
-  // CurrentPower()/CurrentToughness() — effective P/T with +1/+1 and
-  // -1/-1 counter deltas already baked in — so re-adding counters
+  // CurrentPower()/CurrentToughness() — effective P/T with every P/T
+  // counter kind's delta already baked in (#1664) — so re-adding counters
   // here would double-count them. The printed parenthetical reads the
   // Scryfall metadata (string-typed; handles "*" stats) and only
   // renders once the meta fetch lands and the values actually differ.
@@ -235,7 +235,16 @@
                it to finish the sentence. -->
           {#each chosen as chip (chip.kind)}
             <span class="state state-chosen" title={chip.title}>
-              {chip.kind === "color" ? "chosen color" : "chosen type"}: {chip.label}
+              {#if chip.kind === "color"}
+                chosen color: {chip.label}
+              {:else if chip.kind === "tribe"}
+                chosen type: {chip.label}
+              {:else}
+                <!-- option/name labels already carry their own prefix
+                     ("Mode: Temur", "Named: Sol Ring") — see
+                     chosenValues.ts. -->
+                {chip.label}
+              {/if}
             </span>
           {/each}
           {#if card.tapped}
@@ -248,7 +257,10 @@
             <span class="state state-attack">attacking</span>
           {/if}
           {#if card.blocking_target}
-            <span class="state">blocking</span>
+            <span class="state"
+              >blocking{#if (card.blocking_targets?.length ?? 0) > 1}
+                ×{card.blocking_targets?.length}{/if}</span
+            >
           {/if}
           {#if card.goaded_by}
             <span class="state state-attack">goaded</span>

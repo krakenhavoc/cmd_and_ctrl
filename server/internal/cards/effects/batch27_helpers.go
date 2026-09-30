@@ -78,7 +78,7 @@ func b27SelfOrNontokenZombieYouControlDied(ev game.Event, source *game.Card, g *
 		return false
 	}
 	dead, ok := diedCreature(ev, g)
-	return ok && dead.Controller == source.Controller && dead.HasSubtype("Zombie") && !IsToken(dead)
+	return ok && leftUnderControlOf(ev, dead) == source.Controller && leftAsSubtype(ev, dead, "Zombie") && !IsToken(dead)
 }
 
 // b27ColorlessSpellWithManaValueAtLeastCastByYou is Sanctum of
@@ -587,27 +587,6 @@ func b27OtherCreaturesYouControlEnterWithACounter(label string) game.Replacement
 }
 
 // --- statics -----------------------------------------------------
-
-// b27LoseKeyword is a layer-6 "lose <keyword>" — Archetype of
-// Aggression's "creatures your opponents control lose trample". It
-// strips the keyword from whatever the layers had granted so far in
-// timestamp order; a grant from a source newer than the Archetype
-// lands after it and is not caught, which is the declared gap.
-func b27LoseKeyword(applies func(target *game.Card, g *game.Game, source *game.Card) bool, keyword string) game.StaticAbility {
-	return game.StaticAbility{
-		Layer:     game.Layer6Ability,
-		AppliesTo: applies,
-		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
-			kept := c.Abilities[:0]
-			for _, a := range c.Abilities {
-				if !equalFoldASCIIEffects(a, keyword) {
-					kept = append(kept, a)
-				}
-			}
-			c.Abilities = kept
-		},
-	}
-}
 
 // b27CreaturesOpponentsControl is "creatures your opponents control".
 func b27CreaturesOpponentsControl(target *game.Card, _ *game.Game, source *game.Card) bool {

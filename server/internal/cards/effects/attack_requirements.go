@@ -18,7 +18,7 @@ import (
 //	OpponentsCreaturesAttackIfAble{Duration: DurationUntilEndOfTurn(ctx)}.Apply(ctx) // Bident of Thassa
 //
 // Goad needs none of this: goad stamps the engine's per-object marker
-// (Card.GoadedBy — b33Goad), and the engine reads goad's two
+// (Card.Goads — b33Goad), and the engine reads each goad's two
 // requirements off it.
 //
 // # Why a requirement is not a Restriction bit

@@ -383,16 +383,47 @@ type TargetSpec struct {
 	// narrows that superset by the X it collected, from the mana
 	// values the view ships beside it.
 	//
-	// Only on a clause whose announcement HAS an X: a spell's or an
-	// activated ability's. effects.Register refuses it on a trigger.
+	// Only on a clause whose announcement HAS an X: a spell's, or
+	// since #1723 an activated ability whose own cost demands one
+	// (CR 602.2b) — effects.Register checks the ability's cost rather
+	// than refusing the flag outright. A trigger announces no X ever,
+	// so it is still refused there.
 	ManaValueAtMostX bool
 
-	// xBound is ManaValueAtMostX's X once an announcement has bound
-	// it; xBoundSet says whether it has. Unexported and never set on
-	// a catalog spec — only on the value copies AnnouncedClauses
-	// hands out — so the shared declaration is never mutated.
+	// ManaValueEqualsX is "with mana value X" (#1723, Lazav, the
+	// Multifarious's "target creature card in your graveyard with
+	// mana value X") — the same announced-X mechanism as
+	// ManaValueAtMostX, with an exact comparison instead of "or
+	// less". Unlike ManaValueAtMostX the legal set is NOT monotonic
+	// in X: raising X can both add and remove candidates, so a
+	// caller that only tries the largest affordable X (the way the
+	// cast path picks one X for ManaValueAtMostX) can miss a legal
+	// announcement a smaller X would have had. See
+	// internal/legal/abilities.go's X ladder for the activation
+	// enumerator's answer.
+	//
+	// Register refuses a clause that sets both flags — "or less" and
+	// "exactly" are different clauses, never one card's.
+	ManaValueEqualsX bool
+
+	// xBound is the announced X once an announcement has bound
+	// ManaValueAtMostX or ManaValueEqualsX; xBoundSet says whether it
+	// has. Unexported and never set on a catalog spec — only on the
+	// value copies AnnouncedClauses hands out — so the shared
+	// declaration is never mutated.
 	xBound    int
 	xBoundSet bool
+
+	// Divide marks a clause whose effect is "divided as you choose
+	// among" its targets (#1563, CR 601.2d / 700.2i) — Fury's "4
+	// damage divided as you choose among any number of target
+	// creatures and/or planeswalkers". The caster announces the
+	// division with the targets; the announce gate refuses a division
+	// that gives a target 0 or does not add up to the amount, and the
+	// division rides StackItem.Distribution to resolution. Nil — every
+	// clause that divides nothing — means no division. Build it with
+	// Dividing and the effects package's Divide / DivideX constructors.
+	Divide *DivideSpec
 
 	// Rest holds clauses 2..n of a multi-clause statement, in
 	// printed order. Empty — which is every clause the catalog
@@ -478,6 +509,14 @@ func (s *TargetSpec) EachDifferent(d *TargetDifference) *TargetSpec {
 // (#1559). Mutates and returns the receiver, as WithCount does.
 func (s *TargetSpec) WithManaValueAtMostX() *TargetSpec {
 	s.ManaValueAtMostX = true
+	return s
+}
+
+// WithManaValueEqualsX marks the clause "with mana value X" (#1723,
+// Lazav, the Multifarious). Mutates and returns the receiver, as
+// WithCount does.
+func (s *TargetSpec) WithManaValueEqualsX() *TargetSpec {
+	s.ManaValueEqualsX = true
 	return s
 }
 
@@ -589,7 +628,7 @@ func (g *Game) specMatchesLocked(src TargetSource, spec *TargetSpec, targeting b
 		for _, z := range g.zonesOfKindLocked(zk) {
 			for i := range z.Cards {
 				c := z.Cards[i]
-				if targeting && !CanBeTargetedBy(&c, zk, src) {
+				if targeting && !g.canBeTargetedByLocked(&c, zk, src) {
 					continue
 				}
 				if spec.CardOK != nil && !spec.CardOK(g, src.Controller, c, zk) {
@@ -833,7 +872,7 @@ func (g *Game) specMatchLocked(src TargetSource, spec *TargetSpec, ref TargetRef
 			if c.InstanceID != ref.ID {
 				continue
 			}
-			if targeting && !CanBeTargetedBy(&c, z.Kind, src) {
+			if targeting && !g.canBeTargetedByLocked(&c, z.Kind, src) {
 				return false
 			}
 			if !spec.xBoundAdmits(c) {

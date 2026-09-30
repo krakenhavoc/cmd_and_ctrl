@@ -195,6 +195,17 @@ func (e *enumerator) combatMoves() {
 			if atk == nil {
 				continue
 			}
+			// #1597, CR 509.1c: the option the seat's requirements are
+			// owed. While it is on offer the seat's pass is withheld
+			// (blockRequirementOwed), and nothing another seat can do
+			// in this seat's priority window makes the engine refuse
+			// it, so it is the declaration's unconditional answer — a
+			// defender whose policy declines is not left holding the
+			// table. The attack side's AlwaysLegal (#1571), mirrored.
+			if opt.Required {
+				e.add(requiredBlockMove(g, e.seat, opt))
+				continue
+			}
 			if len(opt.Blocks) == 1 {
 				blk := cardByID(g, first.Blocker)
 				if blk == nil {
@@ -249,6 +260,51 @@ func attackRequirementOwed(g *game.Game, seat uuid.UUID) bool {
 		return false
 	}
 	return g.AttackRequirementsUnmetForEffect() != nil
+}
+
+// blockRequirementOwed reports whether `seat` is a defending player in
+// declare_blockers whose pending declaration could still obey a
+// CR 509.1c requirement it does not (#1597) — the case the engine
+// refuses their pass in. Caller holds the enumerator's read lock.
+func blockRequirementOwed(g *game.Game, seat uuid.UUID) bool {
+	if g.Turn.Step != game.StepDeclareBlockers {
+		return false
+	}
+	return g.BlockRequirementsUnmetForEffect(seat) != nil
+}
+
+// requiredBlockMove is the move for a BlockOption the seat's
+// requirements are owed: the whole witness as one declare_blockers
+// (or declare_blocker, for one block), marked AlwaysLegal.
+func requiredBlockMove(g *game.Game, seat uuid.UUID, opt game.BlockOption) Move {
+	parts := make([]string, 0, len(opt.Blocks))
+	set := blocksParams{Blocks: make([]blockParams, 0, len(opt.Blocks))}
+	for _, d := range opt.Blocks {
+		name, atkName := "a creature", "an attacker"
+		if b := cardByID(g, d.Blocker); b != nil {
+			name = b.Name
+		}
+		if a := cardByID(g, d.Attacker); a != nil {
+			atkName = a.Name
+		}
+		parts = append(parts, atkName+" with "+name)
+		set.Blocks = append(set.Blocks, blockParams{Blocker: d.Blocker.String(), Attacker: d.Attacker.String()})
+	}
+	m := Move{
+		Player:      seat,
+		Kind:        KindBlock,
+		Label:       "Block as required: " + joinNames(parts),
+		Source:      opt.Blocks[0].Blocker,
+		AlwaysLegal: true,
+	}
+	if len(set.Blocks) == 1 {
+		m.Type = TypeDeclareBlocker
+		m.Params = mustJSON(set.Blocks[0])
+		return m
+	}
+	m.Type = TypeDeclareBlockers
+	m.Params = mustJSON(set)
+	return m
 }
 
 // owedPair reports whether (attacker, target) is one of the attacks

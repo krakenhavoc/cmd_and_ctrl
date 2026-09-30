@@ -271,14 +271,14 @@ func TestChosenModeEffectsRunInAnnounceOrder(t *testing.T) {
 // A repeated index is refused when the spec does not say CR 700.2d.
 func TestRepeatedModeRefusedWithoutRepeatable(t *testing.T) {
 	spec := &ModeSpec{Options: make([]ModeOption, 3), Min: 2, Max: 2}
-	if err := validateModes(spec, []int{0, 0}); err != ErrInvalidParam {
+	if err := validateModes(spec, spec.Min, spec.Max, []int{0, 0}); err != ErrInvalidParam {
 		t.Errorf("repeat without Repeatable: %v, want ErrInvalidParam", err)
 	}
 	spec.Repeatable = true
-	if err := validateModes(spec, []int{0, 0}); err != nil {
+	if err := validateModes(spec, spec.Min, spec.Max, []int{0, 0}); err != nil {
 		t.Errorf("repeat with Repeatable: %v", err)
 	}
-	if err := validateModes(spec, []int{0, 0, 0}); err != ErrInvalidParam {
+	if err := validateModes(spec, spec.Min, spec.Max, []int{0, 0, 0}); err != ErrInvalidParam {
 		t.Errorf("three when Max is 2: %v, want ErrInvalidParam", err)
 	}
 }

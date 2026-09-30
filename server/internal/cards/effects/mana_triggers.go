@@ -90,6 +90,39 @@ func WheneverYouTapALandForMana(
 	}
 }
 
+// WheneverYouTapALandForManaOfTheChosenColor is "Whenever a land's
+// ability causes you to add one or more mana of the chosen color, add
+// an additional one mana of that color" — Caged Sun. Unlike
+// WheneverYouTapALandForMana, this one also asks WHAT the land
+// produced: it fires only when the production actually included the
+// chosen colour, and it always adds exactly ONE more of that colour —
+// never one per token of it the land made, and never for a colour
+// that isn't the chosen one. Before a colour is chosen it adds
+// nothing, the same weaker reading every ChosenColor consumer takes.
+func WheneverYouTapALandForManaOfTheChosenColor(label string) game.ManaTrigger {
+	return game.ManaTrigger{
+		Label: label,
+		AppliesTo: func(prod game.ManaProduced, source *game.Card, g *game.Game) bool {
+			if !prod.Source.IsLand() || prod.Controller != source.Controller {
+				return false
+			}
+			chosen := g.ChosenColorOf(source.InstanceID)
+			if chosen == "" {
+				return false
+			}
+			for _, c := range prod.Colors {
+				if c == chosen {
+					return true
+				}
+			}
+			return false
+		},
+		// Same "one mana of the chosen colour, or nothing before one
+		// is chosen" the mana ability reader uses (Utopia Sprawl).
+		Produced: AddsOneManaOfTheChosenColor(),
+	}
+}
+
 // AddsFixedMana is the produced callback for a clause that names its
 // mana outright — "{G}", "{G}{G}", "{B}". The overwhelming majority.
 func AddsFixedMana(produced string) func(game.ManaProduced, *game.Card, *game.Game) string {

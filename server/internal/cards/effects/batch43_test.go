@@ -722,18 +722,19 @@ func TestB43DragonlordAtarkaSplitsFiveAmongOpposingCreaturesOnly(t *testing.T) {
 	if hasID(p.PickTargetCards, mine) {
 		t.Error("\"your opponents control\" keeps your own creatures off the list")
 	}
-	if err := g.ResolvePickTargets(p.ID, me.ID, []game.TargetRef{
+	// #1563: the caster divides — 1 to the first pick, 4 to the second,
+	// which the old even division (3 / 2) never offered.
+	if err := g.ResolvePickTargetsDivided(p.ID, me.ID, []game.TargetRef{
 		{Kind: game.TargetCard, ID: a}, {Kind: game.TargetCard, ID: b},
-	}); err != nil {
-		t.Fatalf("ResolvePickTargets: %v", err)
+	}, map[uuid.UUID]int{a: 1, b: 4}); err != nil {
+		t.Fatalf("ResolvePickTargetsDivided: %v", err)
 	}
 	passPriorityAroundTable(t, g)
-	// Divided as evenly as possible, remainder to the earliest pick.
-	if dmg := b12Card(t, g, a).DamageMarked; dmg != 3 {
-		t.Errorf("first pick takes 3: %d", dmg)
+	if dmg := b12Card(t, g, a).DamageMarked; dmg != 1 {
+		t.Errorf("first pick was assigned 1: %d", dmg)
 	}
-	if dmg := b12Card(t, g, b).DamageMarked; dmg != 2 {
-		t.Errorf("second pick takes 2: %d", dmg)
+	if g.Battlefield.Contains(b) {
+		t.Errorf("second pick was assigned 4 — lethal on a 4/4")
 	}
 }
 

@@ -82,54 +82,6 @@ func b35CountersOnArtifactsAndCreaturesYouControl(g *game.Game, controller uuid.
 	return n
 }
 
-// b35WasAttackingWhenItLeft reports whether `cardID` was an attacking
-// creature at the moment of the event at `seq` — Garna's "if it was
-// attacking". The battlefield-leave choke point clears
-// AttackingTarget before the dies event fires and the LKI
-// characteristic carries no combat state, so the answer is read off
-// the log: walking back from the event, an EventAttack naming the
-// card means it was declared this combat, while reaching a step
-// boundary that is not one of the steps an attacker stays in combat
-// through (declare attackers, declare blockers, combat damage, end
-// of combat — CR 511.3 removes attackers as that last step ENDS)
-// means either no attack was declared or the combat it attacked in
-// has ended. A creature that attacked and left combat by leaving the
-// battlefield came back as a new object with no attack of its own, so
-// it reads as not attacking, as printed.
-//
-// The walk is bounded by g.EventsThisTurn() — combat does not span
-// turns, and the slice starts at the real turn boundary (#1009). The
-// separate EventBeginUpkeep case it used to carry was redundant once
-// bounded: EventStepBegan announces the upkeep too, and "upkeep" is
-// not one of the steps above.
-func b35WasAttackingWhenItLeft(g *game.Game, cardID uuid.UUID, seq uint64) bool {
-	inCombat := map[string]bool{
-		string(game.StepDeclareAttackers):  true,
-		string(game.StepDeclareBlockers):   true,
-		string(game.StepFirstStrikeDamage): true,
-		string(game.StepCombatDamage):      true,
-		string(game.StepEndCombat):         true,
-	}
-	turn := g.EventsThisTurn()
-	for i := len(turn) - 1; i >= 0; i-- {
-		ev := turn[i]
-		if ev.Seq > seq {
-			continue
-		}
-		switch ev.Kind {
-		case game.EventAttack:
-			if ev.CardID == cardID {
-				return true
-			}
-		case game.EventStepBegan:
-			if !inCombat[ev.Label] {
-				return false
-			}
-		}
-	}
-	return false
-}
-
 // b35TwoNonlandCardsShareAColor is Sphinx's Tutelage's repeat test:
 // exactly the two milled cards, both nonland, with at least one
 // colour in common. Colours are the printed ones — Scryfall's
@@ -156,15 +108,15 @@ func b35TwoNonlandCardsShareAColor(g *game.Game, milled []uuid.UUID) bool {
 
 // anotherZombieYouControlDied is Plague Belcher's condition: a
 // Zombie the source's controller controlled, other than the source,
-// died. The dead card is read post-move, so a changeling counts and a
-// Zombie that was one only through a layer effect does not — weaker,
-// never stronger (Undead Augur's read).
+// died. Whether it was a Zombie is its last-known subtypes
+// (leftAsSubtype, #1679): a changeling counts, and so does a creature
+// that was a Zombie only through a grant (Undead Augur's read).
 func anotherZombieYouControlDied(ev game.Event, source *game.Card, g *game.Game) bool {
 	if ev.CardID == source.InstanceID {
 		return false
 	}
 	dead, ok := diedCreature(ev, g)
-	return ok && dead.Controller == source.Controller && dead.HasSubtype("Zombie")
+	return ok && leftUnderControlOf(ev, dead) == source.Controller && leftAsSubtype(ev, dead, "Zombie")
 }
 
 // anotherCreatureYouControlDied is Garna's condition: a creature
@@ -174,7 +126,7 @@ func anotherCreatureYouControlDied(ev game.Event, source *game.Card, g *game.Gam
 		return false
 	}
 	dead, ok := diedCreature(ev, g)
-	return ok && dead.Controller == source.Controller
+	return ok && leftUnderControlOf(ev, dead) == source.Controller
 }
 
 // b35SelfWasDealtDamage is Screaming Nemesis's condition: the source

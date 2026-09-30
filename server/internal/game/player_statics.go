@@ -439,8 +439,11 @@ func (g *Game) canPlayerBeTargetedByLocked(p *Player, src TargetSource) bool {
 	)
 	g.playerAbilityTokensLocked(p, func(tok string) bool {
 		if tok == KeywordHexproof {
-			// CR 702.11d asks WHO, and only who.
-			if p.ID != src.Controller {
+			// CR 702.11d asks WHO, and only who — unless a static
+			// on the battlefield lets this source's controller
+			// target the player as though they didn't have it
+			// (Kaya, Bane of the Dead; #1560).
+			if p.ID != src.Controller && !g.playerHexproofBypassedLocked(p, src.Controller) {
 				allowed = false
 				return false
 			}

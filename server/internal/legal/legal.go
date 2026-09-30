@@ -155,6 +155,17 @@ type MoveCost struct {
 	// life total legally may, which is the trap.
 	Life int `json:"life,omitempty"`
 
+	// PhyrexianLife is the part of Life that pays Phyrexian symbols
+	// instead of mana (CR 107.4c, #1677) — 2 per symbol the move's
+	// `phyrexian_life` names. It is already INCLUDED in Life; it is
+	// broken out because it buys nothing. A printed life cost is the
+	// only evidence of how much an ability does, so a policy may read
+	// it as a payoff proxy (heuristic Config.LifePayoff); life spent
+	// on a Phyrexian symbol is the same spell at a different price,
+	// and a policy that proxied it would prefer paying life to paying
+	// mana it has.
+	PhyrexianLife int `json:"phyrexian_life,omitempty"`
+
 	// Loyalty is a loyalty ability's counter delta (CR 606.4),
 	// SIGNED as printed: +1 adds a counter, −3 removes three. Zero
 	// covers both "[0]" and "not a loyalty ability"; the two are the
@@ -212,6 +223,25 @@ func moveCost(life, loyalty int) *MoveCost {
 	}
 	return &MoveCost{Life: life, Loyalty: loyalty}
 
+}
+
+// withPhyrexianLife adds `symbols` Phyrexian symbols paid with life
+// to a (possibly nil) MoveCost — to Life, because that is what the
+// controller pays at announce, and to PhyrexianLife, because that
+// part of it buys nothing (#1677). Returns a fresh value; nil stays
+// nil for zero symbols.
+func withPhyrexianLife(c *MoveCost, symbols int) *MoveCost {
+	if symbols <= 0 {
+		return c
+	}
+	out := MoveCost{}
+	if c != nil {
+		out = *c
+	}
+	points := symbols * game.PhyrexianLifePerSymbol
+	out.Life += points
+	out.PhyrexianLife += points
+	return &out
 }
 
 // withCounterPrice adds a counter-removal component to a (possibly
@@ -421,7 +451,11 @@ func enumerateLocked(g *game.Game, seat uuid.UUID, opts Options) []Move {
 		// function answers both sides (#544) — and the attack moves
 		// that would answer the requirement are marked AlwaysLegal
 		// in combatMoves, so a seat that declines has one to take.
-		if !attackRequirementOwed(g, seat) {
+		//
+		// #1597 / CR 509.1c: the same for a defending player's pass in
+		// declare_blockers, the block declaration's checkpoint — the
+		// required blocks are offered as one AlwaysLegal move.
+		if !attackRequirementOwed(g, seat) && !blockRequirementOwed(g, seat) {
 			e.out = append(e.out, Move{
 				Type:        TypePassPriority,
 				Player:      seat,

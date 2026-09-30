@@ -84,6 +84,21 @@ func (c CreateTokenCopy) Apply(ctx *Context) error {
 	return CreateToken{Controller: c.Controller, Template: tmpl, N: c.N}.Apply(ctx)
 }
 
+// TokenCopyGainsHaste is the "except it has haste" exception clause
+// shared by every hasty-token-copy card — Reflection of Kiki-Jiki's
+// activated ability and Electroduplicate's sorcery both print exactly
+// this fragment on top of a scheduled sacrifice. Haste rides the
+// token's printed Keywords, not a Layer 6 grant: a token has no
+// catalog key of its own to hang one off.
+func TokenCopyGainsHaste(t *game.Card) {
+	for _, kw := range t.Keywords {
+		if kw == "haste" {
+			return
+		}
+	}
+	t.Keywords = append(t.Keywords, "haste")
+}
+
 // TokenCopyOfSingleTarget is the whole body of the "create a token
 // that's a copy of target <thing>" family — Cackling Counterpart's
 // creature, Relm's Sketching's artifact, creature or land. The target

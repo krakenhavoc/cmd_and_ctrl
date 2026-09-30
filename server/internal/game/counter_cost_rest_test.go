@@ -535,11 +535,51 @@ func TestAddCounterCostIsPaidAtAnnounce(t *testing.T) {
 	}
 }
 
-// CR 614.16: a counter-doubling replacement applies only to a counter
-// placed by an effect, so a counter DOUBLER does
-// nothing to an add-a-counter cost. Doubling Season must not make
-// Devoted Druid's untapper cost two counters.
-func TestAddCounterCostIsNotReplaceable(t *testing.T) {
+// CR 614.16: a counter-doubling replacement that names "an effect"
+// (Doubling Season's own wording) applies only to a counter placed by
+// the effect of a resolving spell or ability, so it does nothing to an
+// add-a-counter cost — Doubling Season must not make Devoted Druid's
+// untapper cost two counters. #1710 moved this cost onto the CR 614
+// window (it used to bypass the window outright, which happened to
+// reach the same answer for THIS replacement but the wrong one for
+// Vizier of Remedies and Winding Constrictor below); the window is
+// what CounterFromCost is for.
+func TestAddCounterCostReplacementNamingAnEffectDoesNotApply(t *testing.T) {
+	g := newActiveGame(t)
+	advanceTo(t, g, StepPrecombatMain)
+	me := g.Seats[0]
+	src := pushCounterCostSource(g, me, AbilityCost{
+		AddCounter: &CounterAddCost{Counter: "-1/-1", N: 1},
+	}, nil)
+	g.mu.Lock()
+	g.RegisterReplacementForTest(ReplacementEffect{
+		Watches: []EventKind{EventCounterPlaced},
+		AppliesTo: func(ev *ReplacementEvent, _ *Game, _ *Card) bool {
+			return ev.Kind == RepEventCounter && ev.CounterDelta > 0 && !ev.CounterFromCost
+		},
+		Replace: func(ev *ReplacementEvent, _ *Game, _ *Card) error {
+			ev.CounterDelta *= 2
+			return nil
+		},
+		Label: "Doubling-Season-style",
+	})
+	g.mu.Unlock()
+
+	if err := g.ActivateCatalogAbility(me.ID, src, 0, ActivateAbilityParams{}); err != nil {
+		t.Fatalf("activate: %v", err)
+	}
+	if got := counterOf(g, src, "-1/-1"); got != 1 {
+		t.Errorf("-1/-1 counters %d, want 1 — a replacement naming an effect does not reach a cost", got)
+	}
+}
+
+// CR 614.16's other case: a replacement that names NO effect at all —
+// "if one or more counters would be put" (Vizier of Remedies, Winding
+// Constrictor) rather than "if an effect would put" (Doubling Season)
+// — replaces the event whether it came from an effect or a cost. #1710
+// is exactly the Devoted Druid + Vizier of Remedies ruling: the cost's
+// counter is as reachable as any other placement.
+func TestAddCounterCostReplacementNamingNoEffectApplies(t *testing.T) {
 	g := newActiveGame(t)
 	advanceTo(t, g, StepPrecombatMain)
 	me := g.Seats[0]
@@ -556,15 +596,15 @@ func TestAddCounterCostIsNotReplaceable(t *testing.T) {
 			ev.CounterDelta *= 2
 			return nil
 		},
-		Label: "Doubling-Season-style",
+		Label: "Winding-Constrictor-style",
 	})
 	g.mu.Unlock()
 
 	if err := g.ActivateCatalogAbility(me.ID, src, 0, ActivateAbilityParams{}); err != nil {
 		t.Fatalf("activate: %v", err)
 	}
-	if got := counterOf(g, src, "-1/-1"); got != 1 {
-		t.Errorf("-1/-1 counters %d, want 1 — a cost is not a replaceable event", got)
+	if got := counterOf(g, src, "-1/-1"); got != 2 {
+		t.Errorf("-1/-1 counters %d, want 2 — a replacement naming no effect applies to a cost too", got)
 	}
 }
 

@@ -24,8 +24,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // in TIMESTAMP order. A flying grant from a source attached after the
 // Hammer — Lightning Greaves is not one, but a later Aura could be —
 // lands after this removal and survives it. That is the layer system
-// working, not a leak, and it is the same limit b27LoseKeyword
-// declares for Archetype of Aggression.
+// working, not a leak. Only a printed "can't have" beats a later grant
+// (LoseAndCantHave, #1651), and the Hammer prints no such thing.
 //
 // No simplification.
 func init() {

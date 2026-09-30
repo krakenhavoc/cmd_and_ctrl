@@ -301,3 +301,236 @@ reputation but not by structure, which is why it landed without
 needing anything this ADR argued about: it is unparameterised, it is
 read off `Effective().Abilities` like every other keyword, and its
 consumers — the destruction path — are already holding the card.
+
+## Amendment (2026-09-27, #1560): waiving hexproof, and ward that doesn't trigger
+
+Nowhere to Run (#1565, the Edea deck) prints two statics this ADR had
+no shape for: "Creatures your opponents control can be the targets of
+spells and abilities as though they didn't have hexproof" (CR 702.11)
+and "Ward abilities of those creatures don't trigger" (CR 702.21).
+Kaya, Bane of the Dead prints the first one for players as well.
+
+### A1. A waiver at the choke point, not a layer-6 removal
+
+"As though it didn't have hexproof" is not "loses hexproof". Glaring
+Spotlight's ruling says so directly: the creature keeps the ability,
+and only the targeting is affected. Removing `"hexproof"` from
+`Characteristic.Abilities` would work today, because targeting is
+hexproof's only reader. It would still be wrong in three ways. The
+badge would disappear from the creature's own controller's view. A
+second waiver would be timestamp-ordered against every other layer-6
+grant. And a Shadowspear that removed hexproof would become the same
+object as a Nowhere to Run that waived it. Shadowspear's "lose
+hexproof" stays a layer-6 `RemoveKeywordsMod`.
+
+So the waiver is a new catalog slot, `Spec.HexproofBypasses
+[]game.HexproofBypass`. `game/hexproof_bypass.go` reads it live off
+the battlefield, keyed by `CatalogAbilityKey`, the way `BlockRules`
+and `PlayerKeywords` are read. Nothing is stored, so undo, the
+snapshot and restore points have nothing new to carry. A source that
+has lost all its abilities waives nothing (CR 613.1f).
+
+### A2. Only hexproof, and only when hexproof is what refuses
+
+`canBeTargetedBy` (keywords.go) checks shroud first, then hexproof,
+then protection, as before. It asks for a waiver only when hexproof
+alone would refuse the target, so a board with no hexproof on it
+never walks the battlefield looking for one. Shroud (CR 702.18) and
+protection (CR 702.16b) are separate refusals, and a hexproof waiver
+does not affect them. The exported `CanBeTargetedBy` has no `*Game`
+and so honours no waiver. Both targeting call sites in `targets.go`
+now use `g.canBeTargetedByLocked`.
+
+The announce gate (CR 601.2c) and the resolution re-check
+(CR 608.2b) go through the same function, so decision 1 covers them
+both again. If Nowhere to Run leaves while a spell aimed at a
+hexproof creature is on the stack, the target becomes illegal. That
+is the card's 2024-09-20 ruling, and the resolution path needed no
+change for it. The bot's enumerator reaches targeting through
+`LegalTargetsForEffect` and gets the waiver for free, as decision 5
+predicted.
+
+### A3. Whose spells: `YoursOnly`
+
+The printed cards differ on one word. Glaring Spotlight, Kaya and
+Detection Tower say "spells and abilities **you control**". Nowhere to
+Run says only "spells and abilities", so any player's spell may
+target the creature, including one cast by the creature's other
+opponents. `HexproofBypass.YoursOnly` carries that difference as data.
+The effects constructors name it (`BySpellsAndAbilities` /
+`BySpellsAndAbilitiesYouControl`), so a card file cannot leave it out
+without choosing.
+
+The affected set is read live on every check. A static ability has
+no locked set (CR 611.3a). A creature that enters or changes control
+afterwards is covered for exactly as long as it matches.
+
+### A4. The player half
+
+`HexproofBypass.Player` waives a player's hexproof (CR 702.11d). It
+is read by `canPlayerBeTargetedByLocked`, the player half of the same
+choke point, in the same place: only once player hexproof would
+refuse. Kaya, Bane of the Dead is the card that needs it.
+
+### A5. Ward suppression lives on the trigger
+
+`Spec.WardSuppressions []game.WardSuppression` is read by
+`Game.WardSuppressedForEffect`. The one caller is the trigger
+condition in `effects.WardGranted`. Every ward in the catalog uses
+that condition: printed `Ward`, a granted ward (Lavaspur Boots), an
+emblem's (Teferi Akosa), and a face-down permanent's. Three details
+matter:
+
+- It is asked about the **warded permanent**, never the trigger's
+  source. A granted ward's trigger belongs to the Equipment or
+  emblem, but "ward abilities of those creatures" is about the
+  creature that has the ward.
+- It is asked **when the ability would trigger**, and at no other
+  time. Removing Nowhere to Run later does not make ward trigger
+  retroactively (the card's second ruling). A ward trigger that is
+  already on the stack still resolves.
+- It suppresses **ward** only. Diffusion Sliver's "counter it unless
+  its controller pays {2}" works like ward but is not a ward ability,
+  and it is not built on `WardGranted`. Leaving it alone is what the
+  printed text says.
+
+### A6. Not built here
+
+- **A waiver with a duration.** Detection Tower's "{1}, {T}: Until
+  end of turn, your opponents and creatures your opponents control
+  with hexproof can be the targets…" would be a `ScopedEffect` mod
+  kind that the same two readers walk. No card in a tracked deck needs
+  it yet, and it is the only missing piece for Detection Tower.
+- **"Lose hexproof and can't have hexproof"** (Arcane Lighthouse,
+  Archetype of Endurance). This is a layer-6 removal plus a rule that
+  stops the ability being gained again. It is a different seam.
+- **Glaring Spotlight.** Its static is this seam. Its second ability
+  says "creatures you control … can't be blocked this turn", and the
+  card's ruling covers creatures that arrive after the ability
+  resolves. `RestrictUntilEOT` locks its set at resolution, so the
+  card would ship weaker than printed. It is left out until
+  "can't be blocked" can be read over a live set.
+
+## Amendment (2026-09-28, #1651): a waiver with a duration, and "can't have hexproof"
+
+A6 left two shapes unbuilt. This amendment builds both.
+
+### B1. A turn-scoped waiver is a `ScopedEffect` mod, read at the same choke point
+
+Detection Tower: "{1}, {T}: Until end of turn, your opponents and
+creatures your opponents control with hexproof can be the targets of
+spells and abilities you control as though they didn't have hexproof."
+
+This is A1's waiver, created by a resolving ability (CR 611.2) instead
+of printed on a permanent. It is an ADR 0041 data record with a new mod
+kind, `waiveHexproof` (`game.WaiveHexproofMod`), under a new affected
+scope, `opponentsAndTheirCreatures`. The kind has its own reader,
+`readerTargeting`. The layer adapter skips it, because it is not a
+characteristic. `hexproofBypassedLocked` and
+`playerHexproofBypassedLocked` walk `Game.ScopedEffects` after the
+battlefield statics. So the announce gate, the CR 608.2b re-check and
+the bot's enumerator all get it from the same two functions, as A2 said
+they would.
+
+Three details are fixed by the printed text:
+
+- **The beneficiary is the record's `Controller`.** That is the
+  ability's controller as it resolved (CR 611.2c reads "you" once).
+  Every card that prints a timed waiver says "spells and abilities you
+  control", so the kind always behaves like A3's `YoursOnly`. A
+  third player gets nothing, and the kind has no flag to say
+  otherwise. If a card ever prints an unrestricted timed waiver, it
+  gets a new kind.
+- **The set is live.** A waiver changes no characteristic and no
+  control, so CR 611.2c does not lock it (the same reading #1571 and
+  #1650 used for attack requirements and restrictions). A creature
+  that an opponent casts after the Tower resolves is covered, and so
+  is one that changes control to an opponent. The scope matches
+  opponents' **creatures** only. A hexproof noncreature permanent
+  (for example, an animated manland that stops being a creature) is
+  not covered, because the Tower does not name it.
+- **The player half.** The new scope is the first one that names
+  players. `scopeCoversPlayer` answers for it. Every other scope
+  covers no player, so no existing record changes meaning.
+
+The record is data. Undo copies it with the registry, and the snapshot
+writes it verbatim. The cleanup sweep ends it like every other
+until-end-of-turn record. No new state was needed. The restore-time
+key check refuses an unknown scope or kind, as ADR 0041 P4 requires.
+
+### B2. "Can't have" is a post-layer-6 strip, recorded on the characteristic
+
+Arcane Lighthouse: "Until end of turn, creatures your opponents control
+lose hexproof and shroud and can't have hexproof or shroud." The
+Archetype cycle prints the static form: "Creatures your opponents
+control lose <keyword> and can't have or gain <keyword>."
+
+"Can't have" is a CR 101.2 "can't". It beats every "can", whatever the
+timestamps. A layer-6 removal alone is not enough, because layer 6
+runs in timestamp order (CR 613.7). A grant sorted after the removal,
+such as a Heroic Intervention cast afterwards or a catalog creature's
+own `PrintedKeywords` static, appends the keyword again and keeps it.
+That was the declared gap on Archetype of Aggression and Archetype of
+Courage.
+
+There were two ways to model it:
+
+1. **A flag that the keyword reader checks.** `HasKeyword` would
+   answer false for a keyword the object can't have, and the
+   keyword would stay in `Characteristic.Abilities`.
+2. **A strip after layer 6.** Effects record what the object can't
+   have, and when the layer-6 bucket finishes, the engine removes
+   those keywords from `Abilities`.
+
+This amendment uses (2). Under (1), the keyword would still be in
+`Abilities`, so the wire would ship a hexproof badge on a creature
+that has no hexproof. Every reader that walks the list instead of
+calling `HasKeyword`, such as the protection-quality walk and the
+view, would need to learn the rule, and a missed reader would be a
+silent leak. Under (2), every downstream reader sees the right list
+without being changed. That is the argument `materialiseControlLocked`
+made for layer 2.
+
+How it works:
+
+- **`Characteristic.CantHave []string`** holds the keyword tokens the
+  object can't have. It works like `Restrictions`. A layer-6 effect
+  appends to it. Nothing clears it, including a CR 613.1f "loses all
+  abilities". The can't-have belongs to the effect's source, not to
+  the object.
+- **`enforceCantHaveLocked`** runs once, right after the layer-6
+  bucket (`layerPassLocked`). It removes every listed token from
+  `Abilities`, compared case-insensitively. Layer 7 and everything
+  after the pass see the stripped list. The timestamp of the
+  effect that recorded the can't-have does not matter, because the
+  strip runs after the whole bucket. That is the point of the rule.
+- **CR 613.6 still applies to the source.** The recording happens
+  inside the ordinary layer-6 `Apply`. So an Archetype that has lost
+  its abilities records nothing, and its opponents' creatures can have
+  the keyword again. This needed no extra code.
+- **The static form** is `effects.LoseAndCantHave(applies, keywords…)`,
+  which is one layer-6 `StaticAbility`. **The scoped form** is the
+  mod kind `cantHaveKeywords` (`game.CantHaveKeywordsMod`), which is a
+  layer-6 mod whose `Apply` records the tokens. Arcane Lighthouse
+  changes characteristics, so CR 611.2c locks its set. It is a
+  pinned record over the opponents' creatures as the ability
+  resolves. A creature that comes under an opponent's control later
+  keeps its hexproof.
+- **"Lose" needs no separate removal.** The strip removes the keyword
+  whatever added it, including the printed baseline. "Loses X and
+  can't have X" is therefore one record or one static, not two.
+
+`CantHave` is part of the characteristic's snapshot shape. It appears
+on last-known information like every other field there. It is
+`omitempty`, so every existing fixture renders byte-for-byte as before.
+`clone` copies it, and `sameCharacteristic` compares it.
+
+### B3. Cards
+
+- **Detection Tower** (B1) and **Arcane Lighthouse** (B2, scoped) ship
+  `full`.
+- **Archetype of Endurance**, **Archetype of Imagination** and
+  **Archetype of Finality** (B2, static) ship `full`.
+- **Archetype of Aggression** and **Archetype of Courage** are moved
+  onto `LoseAndCantHave`. Their caveats described exactly this gap,
+  so they now ship `full`.

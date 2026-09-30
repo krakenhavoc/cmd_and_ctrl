@@ -109,6 +109,34 @@ type ColorRequirement struct {
 	// Snow marks a requirement parsed from {S} rather than {C}. See
 	// the type doc above.
 	Snow bool
+	// AnyMana marks a Phyrexian slot whose MANA half a "spend mana as
+	// though it were mana of any color / any type" grant has widened
+	// to any mana (#1589, CR 107.4f). Never set by ParseCost: only
+	// spendAsThoughAny sets it, on a Phyrexian requirement it keeps
+	// rather than folding into generic, so the "or 2 life" half
+	// survives the grant. Options, Phyrexian and String still describe
+	// the printed symbol; what changes is Admits.
+	AnyMana bool
+}
+
+// Admits reports whether one mana of `color` ("W" … "G", or "C") can
+// pay this slot: any mana at all when a spend grant widened it
+// (AnyMana), otherwise a colour in Options. Every payment path —
+// the pool solver, the auto-tapper, the Phyrexian strike's ranking
+// and convoke — asks this rather than reading Options, so a widened
+// slot cannot be payable to one of them and not another.
+func (r ColorRequirement) Admits(color string) bool {
+	return r.AnyMana || matchColor(color, r.Options)
+}
+
+// width is how many kinds of mana can pay the slot — the "fewest
+// ways to be satisfied" the restriction-first solvers sort on. A
+// widened slot admits all six (WUBRG and C), so it is satisfied last.
+func (r ColorRequirement) width() int {
+	if r.AnyMana || len(r.Options) == 0 {
+		return 6
+	}
+	return len(r.Options)
 }
 
 // ManaValue is what one coloured-mana slot contributes to a mana

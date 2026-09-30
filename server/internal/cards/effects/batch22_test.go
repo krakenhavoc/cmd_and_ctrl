@@ -528,7 +528,7 @@ func TestB22EreborFlamesmithPingsOnInstantsAndSorceriesOnly(t *testing.T) {
 	}
 }
 
-func TestB22FuryDividesFourDamageEvenlyAndEvokesForARedCard(t *testing.T) {
+func TestB22FuryDividesFourDamageAsChosenAndEvokesForARedCard(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
 	a := b12Creature(g, opp.ID, "Bear A", "Creature — Bear", 3, 3)
@@ -540,14 +540,12 @@ func TestB22FuryDividesFourDamageEvenlyAndEvokesForARedCard(t *testing.T) {
 	if !hasAbility(effectiveAbilities(t, g, fury), "double strike") {
 		t.Error("printed double strike did not reach the effective abilities")
 	}
-	// Three targets in the order picked: 2 / 1 / 1.
-	b17PickCards(t, g, me.ID, a, b, c)
+	// #1563: the caster divides — 1 / 2 / 1, a split the old even
+	// division (2 / 1 / 1, remainder to the first pick) never offered.
+	b17PickCardsDivided(t, g, me.ID, map[uuid.UUID]int{a: 1, b: 2, c: 1}, a, b, c)
 	passPriorityAroundTable(t, g)
-	if got := damageMarkedOn(g, a); got != 2 {
-		t.Errorf("the first pick takes the remainder: %d damage, want 2", got)
-	}
-	if damageMarkedOn(g, b) != 1 || damageMarkedOn(g, c) != 1 {
-		t.Errorf("the rest take 1 each: %d / %d", damageMarkedOn(g, b), damageMarkedOn(g, c))
+	if got := [3]int{damageMarkedOn(g, a), damageMarkedOn(g, b), damageMarkedOn(g, c)}; got != [3]int{1, 2, 1} {
+		t.Errorf("the announced division 1/2/1 was not dealt: got %v", got)
 	}
 
 	// Evoke: pitch a red card, the ETB still fires, then Fury dies.

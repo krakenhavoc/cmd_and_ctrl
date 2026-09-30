@@ -69,7 +69,7 @@ func init() {
 				Watches: []game.EventKind{game.EventLTB},
 				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 					left, ok := g.LookupCardForEffect(ev.CardID)
-					if !ok || !left.IsCreature() || left.Controller != source.Controller {
+					if !ok || !leftAsType(ev, left, "creature") || leftUnderControlOf(ev, left) != source.Controller {
 						return false
 					}
 					return len(g.LastKnownCountersForEffect(ev.CardID)) > 0

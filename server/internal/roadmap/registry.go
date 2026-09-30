@@ -341,6 +341,13 @@ var items = []Item{
 		Mechanic: "flashback",
 	},
 	{
+		Slug: "miracle", Name: "Miracle", Kind: KindMechanic, Status: StatusImplemented,
+		Summary:  "Reveal a miracle card as the first card you draw in a turn, and you may cast it for its miracle cost right then, even on another player's turn.",
+		Rules:    []string{"702.94"},
+		ADR:      "0066-granted-cast-and-play-permissions.md",
+		Mechanic: "miracle",
+	},
+	{
 		Slug: "escape", Name: "Escape", Kind: KindMechanic, Status: StatusImplemented,
 		Summary:  "Cast a card from your graveyard for its escape cost, exiling other cards from your graveyard to pay for it.",
 		Rules:    []string{"702.138"},
@@ -383,6 +390,14 @@ var items = []Item{
 		Summary:          "Spells that let you pay life rather than their mana cost when a condition holds.",
 		Mechanic:         "pay life instead",
 		NoCatalogExample: "Its only catalogued card hasn't been reviewed yet, so none is listed as fully automated.",
+	},
+	{
+		Slug: "computed-life-cost", Name: "Life costs that are counted", Kind: KindMechanic, Status: StatusImplemented,
+		Summary:  "Abilities whose life cost is worked out when you activate them, like paying life equal to the colors in your commanders' identity, or half your life.",
+		Rules:    []string{"601.2f", "602.2b"},
+		ADR:      "0020-activated-abilities.md",
+		Mechanic: "computed life cost",
+		Examples: []string{"War Room", "Murderous Betrayal"},
 	},
 	{
 		Slug: "cast-from-graveyard", Name: "Casting from your graveyard", Kind: KindMechanic, Status: StatusImplemented,
@@ -638,6 +653,15 @@ var items = []Item{
 		Summary: "Harness a permanent to switch on the ability printed after its infinity symbol.",
 		Rules:   []string{"701.64"},
 		Probe:   designation(game.DesignationHarnessed),
+	},
+	{
+		Slug: "monstrosity", Name: "Monstrosity", Kind: KindMechanic, Status: StatusImplemented,
+		Summary:  "Once per creature, pay to put +1/+1 counters on it and make it monstrous, which can trigger an ability or switch one on.",
+		Rules:    []string{"701.37"},
+		ADR:      "0071-designations-that-switch-abilities-on.md",
+		Probe:    anyOf(activatedAction("Monstrosity"), designation(game.DesignationMonstrous)),
+		Printed:  `(?i):\s*monstrosity\b`, // the keyword action after a cost, not a card named "Monstrosity of the Lake"
+		Examples: []string{"Stormbreath Dragon"},
 	},
 	{
 		Slug: "hideaway", Name: "Hideaway", Kind: KindMechanic, Status: StatusImplemented,
@@ -928,12 +952,12 @@ var items = []Item{
 	{
 		Slug: "ability-suppression", Name: "Stopping abilities", Kind: KindSeam, Status: StatusPartial,
 		Summary:     "\"Loses all abilities\" works on the permanent an Aura or Equipment is attached to, and abilities on the stack can be countered.",
-		Missing:     "Making every creature lose its abilities, taking one keyword away from a group, and stopping enters abilities from triggering (Torpor Orb) aren't supported yet.",
+		Missing:     "Making every creature lose its abilities and stopping enters abilities from triggering (Torpor Orb) aren't supported yet.",
 		Issue:       1210,
 		Tracked:     "#1210",
-		Waiting:     []string{"Dress Down", "Archetype of Imagination", "Tishana's Tidebinder", "Torpor Orb"},
+		Waiting:     []string{"Dress Down", "Tishana's Tidebinder", "Torpor Orb"},
 		Examples:    []string{"Darksteel Mutation", "Stifle"},
-		EngineNotes: "**the stated primitive is built and the row text was stale.** `game/ability_removal.go` (S24, refined by #668/#669/#670 and [ADR 0067](decisions/0067-layer-dependency-ordering.md)) makes CR 613.1f authoritative OVER the catalog: `CatalogAbilityKey` returns `\"\"` for an object carrying `Characteristic.AbilitiesRemoved`, and every `Catalog*` hook treats an empty key as \"no entry\" — triggered, activated, mana, static, replacements, cost modifiers, untap permissions, and since #760 cast restrictions and since #1210 activation restrictions. `effects.LoseAllAbilities(keep…)` is the card-side declaration and Darksteel Mutation, Kenrith's Transformation and Kitesail Larcenist ship on it. The row's second clause (\"a later grant can re-add a stripped keyword\") describes CR 613.6, which is CORRECT and deliberate: the layer-6 bucket is timestamp-sorted, so a Rancor cast after a Darksteel Mutation really does grant trample. What is ACTUALLY left is one gap per card, and none of them is this one: (1) a SCOPED ability removal — `LoseAllAbilities` hardcodes `AppliesTo: AttachedToSource`, so \"creatures lose all abilities\" board-wide has no helper (one line on the returned struct, no engine change); (2) removal of ONE named keyword from a scoped group (\"creatures your opponents control lose flying\"); (3) ~~COUNTERING an activated or triggered ability on the stack, which nothing can do~~ — **closed by #1211**: Stifle, Tale's End, Voidslime and Disallow ship, and Tishana's Tidebinder still waits only on (1); (4) suppressing the TRIGGERING of abilities on entry (Torpor Orb), which is a replacement on the trigger event and not an ability removal at all. Re-checked 2026-09-24: `effects.LoseAllAbilities` still hardcodes `AppliesTo: AttachedToSource`, and nothing suppresses a trigger on entry.",
+		EngineNotes: "**the stated primitive is built and the row text was stale.** `game/ability_removal.go` (S24, refined by #668/#669/#670 and [ADR 0067](decisions/0067-layer-dependency-ordering.md)) makes CR 613.1f authoritative OVER the catalog: `CatalogAbilityKey` returns `\"\"` for an object carrying `Characteristic.AbilitiesRemoved`, and every `Catalog*` hook treats an empty key as \"no entry\" — triggered, activated, mana, static, replacements, cost modifiers, untap permissions, and since #760 cast restrictions and since #1210 activation restrictions. `effects.LoseAllAbilities(keep…)` is the card-side declaration and Darksteel Mutation, Kenrith's Transformation and Kitesail Larcenist ship on it. The row's second clause (\"a later grant can re-add a stripped keyword\") describes CR 613.6, which is CORRECT and deliberate: the layer-6 bucket is timestamp-sorted, so a Rancor cast after a Darksteel Mutation really does grant trample. What is ACTUALLY left is one gap per card, and none of them is this one: (1) a SCOPED ability removal — `LoseAllAbilities` hardcodes `AppliesTo: AttachedToSource`, so \"creatures lose all abilities\" board-wide has no helper (one line on the returned struct, no engine change); (2) ~~removal of ONE named keyword from a scoped group (\"creatures your opponents control lose flying\")~~ — **closed by #1651** ([ADR 0038 amendment 2026-09-28](decisions/0038-protection-style-keywords.md)): `effects.LoseAndCantHave` records the keyword on `Characteristic.CantHave` and the engine strips it after the whole layer-6 bucket, so the printed \"can't have or gain\" beats a later grant too, and Archetype of Imagination ships `full`; (3) ~~COUNTERING an activated or triggered ability on the stack, which nothing can do~~ — **closed by #1211**: Stifle, Tale's End, Voidslime and Disallow ship, and Tishana's Tidebinder still waits only on (1); (4) suppressing the TRIGGERING of abilities on entry (Torpor Orb), which is a replacement on the trigger event and not an ability removal at all. Re-checked 2026-09-24: `effects.LoseAllAbilities` still hardcodes `AppliesTo: AttachedToSource`, and nothing suppresses a trigger on entry.",
 	},
 	{
 		Slug: "set-level-sacrifice-cost", Name: "Rules about a whole set of sacrificed permanents", Kind: KindSeam, Status: StatusPartial,

@@ -81,8 +81,8 @@ func TestB295CursedMirrorTapsForRed(t *testing.T) {
 	if !ok {
 		t.Fatal("Cursed Mirror is registered")
 	}
-	if spec.Completeness != CompletenessCaveats || len(spec.Caveats) == 0 {
-		t.Error("Cursed Mirror should declare a caveat for the unbuilt copy-until-end-of-turn ETB")
+	if spec.Completeness != CompletenessFull || len(spec.Caveats) != 0 {
+		t.Error("Cursed Mirror is full since #1593 built its copy-until-end-of-turn ETB")
 	}
 }
 
@@ -165,8 +165,8 @@ func TestB295CagedSunPumpsCreaturesOfTheChosenColor(t *testing.T) {
 	if !ok {
 		t.Fatal("Caged Sun is registered")
 	}
-	if spec.Completeness != CompletenessCaveats || len(spec.Caveats) == 0 {
-		t.Error("Caged Sun should declare a caveat for the unbuilt land-mana-doubling clause")
+	if spec.Completeness != CompletenessFull {
+		t.Errorf("Completeness = %v, want CompletenessFull — the mana-doubling clause is implemented too (#1600)", spec.Completeness)
 	}
 }
 

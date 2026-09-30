@@ -16,16 +16,18 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // per-turn tally's table-wide death count, the way Bloodchief
 // Ascension reads the life-lost cell.
 //
-// Sandbox gap, weaker than printed: the dead are recognised by where
-// they sit now, so a creature card that has since left every tracked
-// zone, or a permanent that was a creature only through a layer
-// effect when it died, earns no Treasure.
+// The tally is bumped as each death happens, off the permanent's
+// last-known types (CR 603.10a), so a crewed Vehicle or an animated
+// land that died is counted and a card that has since left the
+// graveyard still is. The caveat this card carried for that ("only a
+// creature because of another effect isn't counted") was stale; #1675
+// pinned the behaviour (TestMahadiCountsACrewedVehicleAndAnAnimatedLand)
+// and cleared it.
 func init() {
 	Register(Spec{
 		OracleID:     "1b3e841e-0f8f-467d-9983-f9b8d081a67f",
 		Name:         "Mahadi, Emporium Master",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"A permanent that was only a creature because of another effect isn't counted when it dies."},
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			AtYourEndStep("Mahadi, Emporium Master — a Treasure for each creature that died this turn", func(g *game.Game, item *game.StackItem) error {
 				n := b11CreaturesDiedThisTurn(g)

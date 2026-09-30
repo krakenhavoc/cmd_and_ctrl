@@ -17,6 +17,7 @@ import {
   isMultiPick,
   isPicked,
   modeOptionCastable,
+  modesUnderChoices,
   setConfirmHandler,
   togglePick,
   isLegalCardTarget,
@@ -31,6 +32,36 @@ import type { ActivatedAbilityView, CardView, PendingChoiceView } from "./protoc
 function card(extras: Partial<CardView> = {}): CardView {
   return { instance_id: "spell", name: "Spell", owner: "p0", controller: "p0", ...extras };
 }
+
+describe("modesUnderChoices — #1655 mode counts from optional costs", () => {
+  const ruin = card({
+    modes: {
+      prompt: "Choose one",
+      min: 1,
+      max: 1,
+      options: [{ label: "a" }, { label: "b" }, { label: "c" }],
+      if_optional_paid: { min: 1, max: 3 },
+    },
+  });
+
+  it("keeps the printed count when no optional cost is ticked", () => {
+    expect(modesUnderChoices(ruin, {}).modes).toMatchObject({ min: 1, max: 1 });
+    expect(modesUnderChoices(ruin, { optionalCosts: [] }).modes).toMatchObject({ min: 1, max: 1 });
+  });
+
+  it("switches to the kicked count when the kicker is ticked", () => {
+    const kicked = modesUnderChoices(ruin, { optionalCosts: [0] });
+    expect(kicked.modes).toMatchObject({ min: 1, max: 3 });
+    expect(ruin.modes).toMatchObject({ min: 1, max: 1 });
+  });
+
+  it("leaves a card whose count does not depend on the kicker alone", () => {
+    const plain = card({
+      modes: { prompt: "Choose one", min: 1, max: 1, options: [{ label: "a" }] },
+    });
+    expect(modesUnderChoices(plain, { optionalCosts: [0] })).toBe(plain);
+  });
+});
 
 describe("targeting store — S20 legal sets", () => {
   it("uses the server legal set when the card carries one", () => {
@@ -390,6 +421,48 @@ describe("activated-ability targeting", () => {
       counter_source_ids: ["c-walker"],
       counter_kind: "stun",
     });
+    cancel();
+  });
+
+  // #1659: an activated ability's own X (announced before targeting,
+  // same as a spell's) has to reach stepsFor so a divide-from-X clause
+  // resolves against it instead of silently landing on 0 — the two
+  // call sites used to drop the ability's xValue on the floor.
+  it("resolves a divide-from-X clause against the ability's announced X", () => {
+    const divideAbility = {
+      index: 0,
+      label: "{X}: deal X damage divided as you choose among any number of targets",
+      target_mode: "any",
+      legal_targets: { min: 0, max: 0, divide: { from_x: true } },
+    } as unknown as ActivatedAbilityView;
+
+    beginForAbility(bombardment, divideAbility, [], [], 4);
+
+    const t = get(targeting)!;
+    expect(t.divide).toBe(4);
+    expect(t.divideFromXUnresolved).toBeFalsy();
+    cancel();
+  });
+
+  it("a modal activated ability's divide-from-X clause also sees the announced X", () => {
+    const modalDivideAbility = {
+      index: 0,
+      label: "Choose one —",
+      modes: {
+        options: [
+          {
+            label: "deal X damage divided as you choose",
+            target_mode: "any",
+            legal_targets: { min: 0, max: 0, divide: { from_x: true } },
+          },
+        ],
+      },
+    } as unknown as ActivatedAbilityView;
+
+    beginForAbility(bombardment, modalDivideAbility, [], [], 3, undefined, [0]);
+
+    const t = get(targeting)!;
+    expect(t.divide).toBe(3);
     cancel();
   });
 });

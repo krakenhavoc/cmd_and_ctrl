@@ -375,9 +375,18 @@ func TestBastionProtectorOnlyBuffsCommanders(t *testing.T) {
 // TestZurgoIsIndestructibleOnlyOnHisControllersTurn is the
 // conditional static — the case a "grant once" implementation of the
 // keyword would have got wrong.
+//
+// #1599: Zurgo's own "attacks each combat if able" is now enforced
+// (AttacksEachCombat, attack_requirements.go), so this test declares
+// him as an attacker at his controller's declare-attackers step
+// before moving on — otherwise the free ride through
+// advanceToNextSeatsTurn hits the CR 508.1d refusal that is this
+// card's whole point elsewhere (attack_requirement_cards_test.go).
 func TestZurgoIsIndestructibleOnlyOnHisControllersTurn(t *testing.T) {
 	g := newCatalogGame(t)
-	me := g.Seats[g.Turn.ActiveSeat]
+	seat := g.Turn.ActiveSeat
+	me := g.Seats[seat]
+	opp := g.Seats[(seat+1)%len(g.Seats)]
 
 	zurgo := pushBattlefieldCardWithTimestamp(g, game.Card{
 		InstanceID: uuid.New(),
@@ -395,6 +404,14 @@ func TestZurgoIsIndestructibleOnlyOnHisControllersTurn(t *testing.T) {
 	}
 	if !hasEffectiveKeyword(t, g, zurgo, "haste") {
 		t.Error("Zurgo lacks his printed haste")
+	}
+
+	advanceToDeclareAttackersOf(t, g, seat)
+	if err := g.DeclareAttacker(zurgo, opp.ID); err != nil {
+		t.Fatalf("DeclareAttacker(Zurgo): %v", err)
+	}
+	if err := g.PassPriority(); err != nil {
+		t.Fatalf("pass with Zurgo attacking: %v", err)
 	}
 
 	advanceToNextSeatsTurn(t, g)

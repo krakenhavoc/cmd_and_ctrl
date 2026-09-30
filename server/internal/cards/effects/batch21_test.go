@@ -373,14 +373,8 @@ func TestB21WillOfTheMarduMakesWarriorsOrBurnsACreature(t *testing.T) {
 	if g.Battlefield.Contains(theirs) {
 		t.Error("five creatures you control: 5 damage kills the 5/5")
 	}
-	// The declared gap: never both.
-	id := handCardFull(me, "Will of the Mardu", "Instant", "{2}{W}", b21WillOfTheMarduOracle, nil)
-	if err := g.CastSpell(me.ID, id, game.CastSpellParams{Modes: []int{0, 1}, Targets: b16TargetPlayer(opp.ID)}); err == nil {
-		t.Error("choose one — both modes is refused (the commander rider is the declared gap)")
-	}
-	if spec, _ := Lookup(b21WillOfTheMarduOracle); spec.Completeness != CompletenessCaveats {
-		t.Error("the choose-both gap must be declared")
-	}
+	// Choosing both, with and without a commander, is
+	// conditional_mode_count_test.go's (#1590).
 }
 
 func TestB21BrilliantRestorationReturnsArtifactsAndEnchantments(t *testing.T) {

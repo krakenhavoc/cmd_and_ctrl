@@ -250,6 +250,45 @@ describe("buildMenuSections — battlefield", () => {
     expect(sectionIDs(buildMenuSections(v, c, "a", false))).not.toContain("special_actions");
   });
 
+  // #1598 (CR 701.15c): goads stack, one per player. The menu on a
+  // card another seat controls is an admin's, hence isAdmin below.
+  it("offers goad to a viewer who has not goaded it, beside clear", () => {
+    const goaded = card("g1", "a", {
+      type_line: "Creature — Bear",
+      goaded_by: "b",
+      goaders: ["b"],
+    });
+    const v2 = view([seat("a", "Alice"), seat("b", "Bob"), seat("c", "Cy")], {
+      battlefield: [goaded],
+    });
+    const asC = buildMenuSections(v2, goaded, "c", true);
+    expect(itemById(asC, "goad")?.action).toEqual({
+      type: "set_goaded",
+      params: { instance_id: "g1", by: "c" },
+    });
+    expect(itemById(asC, "goad-clear")?.label).toBe("Clear goad");
+    const asB = buildMenuSections(v2, goaded, "b", true);
+    expect(itemById(asB, "goad")).toBeUndefined();
+    expect(itemById(asB, "goad-clear")).toBeDefined();
+  });
+
+  it("reads every goader, falling back to goaded_by for an older server", () => {
+    const twice = card("g2", "a", {
+      type_line: "Creature — Bear",
+      goaded_by: "c",
+      goaders: ["b", "c"],
+    });
+    const v2 = view([seat("a", "Alice"), seat("b", "Bob"), seat("c", "Cy")], {
+      battlefield: [twice],
+    });
+    const asB = buildMenuSections(v2, twice, "b", true);
+    expect(itemById(asB, "goad")).toBeUndefined();
+    expect(itemById(asB, "goad-clear")?.label).toBe("Clear goads");
+    const legacy = card("g3", "a", { type_line: "Creature — Bear", goaded_by: "b" });
+    expect(itemById(buildMenuSections(v2, legacy, "b", true), "goad")).toBeUndefined();
+    expect(itemById(buildMenuSections(v, c, "a", false), "goad-clear")).toBeUndefined();
+  });
+
   it("disables the no-op half of the tap toggle", () => {
     const sections = buildMenuSections(v, c, "a", false);
     expect(itemById(sections, "tap")?.disabled).toBe(true);
@@ -545,6 +584,44 @@ describe("buildMenuSections — combat", () => {
     const sections = buildMenuSections(v, mine, "b", false);
     const offered = (itemById(sections, "combat-block")?.items ?? []).map((i) => i.id);
     expect(offered.sort()).toEqual(["combat-block-x-b", "combat-block-x-s", "combat-block-x-w"]);
+  });
+
+  // #1706: a creature that can block more than one attacker and has
+  // room is offered "Also block" with only the attackers it does not
+  // block yet; once full it is back to "Re-declare blocker".
+  it("offers a multi-blocker with room only the attackers it is not blocking", () => {
+    const at = (id: string) =>
+      card(id, "a", {
+        attacking_target: "b",
+        attacking_target_kind: "player",
+        defending_player: "b",
+      });
+    const x1 = at("x-1");
+    const x2 = at("x-2");
+    const x3 = at("x-3");
+    const giant = card("g", "b", { blocking_target: "x-1", block_capacity: 2 });
+    const v = view([seat("a", "Alice"), seat("b", "Bob")], {
+      battlefield: [giant, x1, x2, x3],
+      step: "declare_blockers",
+    });
+    const row = itemById(buildMenuSections(v, giant, "b", false), "combat-block");
+    expect(row?.label).toBe("Also block");
+    expect((row?.items ?? []).map((i) => i.id).sort()).toEqual([
+      "combat-block-x-2",
+      "combat-block-x-3",
+    ]);
+
+    const full = card("g", "b", {
+      blocking_target: "x-1",
+      blocking_targets: ["x-1", "x-2"],
+      block_capacity: 2,
+    });
+    const v2 = view([seat("a", "Alice"), seat("b", "Bob")], {
+      battlefield: [full, x1, x2, x3],
+      step: "declare_blockers",
+    });
+    const fullRow = itemById(buildMenuSections(v2, full, "b", false), "combat-block");
+    expect(fullRow?.label).toBe("Re-declare blocker");
   });
 
   it("offers no block row when every attacker is aimed at somebody else", () => {

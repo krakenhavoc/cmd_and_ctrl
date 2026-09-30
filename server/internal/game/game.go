@@ -414,7 +414,7 @@ type Game struct {
 	// re-done trigger, and the reverse would double-fire it — and an
 	// undo that dropped the blocked state would hand a blocked
 	// attacker's damage to the defending player.
-	announcedBlocks  map[uuid.UUID]uuid.UUID
+	announcedBlocks  map[uuid.UUID][]uuid.UUID
 	blockedAttackers map[uuid.UUID]bool
 
 	// announcedAttacks is the same bookkeeping for the ATTACK
@@ -1142,6 +1142,24 @@ func (g *Game) AdvanceStep() (Turn, error) {
 	if g.State != StateActive {
 		return Turn{}, ErrGameNotActive
 	}
+	// #1686: the sandbox's own doc for this function calls it "pass
+	// priority until this step ends" — which is exactly what a live
+	// miracle grant treats as the decline (CR 702.94a, miracle.go).
+	// PassPriority closes the window for whoever it moves priority
+	// away from; this skip-ahead moves priority away from every seat
+	// it walks past without giving this specific caller a chance to
+	// name which ones, so it closes the window for every seat with the
+	// SAME call PassPriority makes. A no-op for every seat holding no
+	// grant, which is every seat on every advance that isn't following
+	// a miracle reveal — closeMiracleWindowLocked already documents
+	// that cost as free. Without this, a miracle grant survived a
+	// manual advance and stayed open until the turn's cleanup swept it,
+	// long after the paper decline it stands in for.
+	for _, seat := range g.Seats {
+		if seat != nil {
+			g.closeMiracleWindowLocked(seat.ID)
+		}
+	}
 	// #1571 / CR 508.1d: leaving declare_attackers ends the attack
 	// declaration, so it runs the same requirement checkpoint as the
 	// active player's pass. The sandbox's skip-ahead is not a way to
@@ -1150,6 +1168,16 @@ func (g *Game) AdvanceStep() (Turn, error) {
 	if g.Turn.Step == StepDeclareAttackers {
 		if err := g.attackCheckpointLocked(); err != nil {
 			return g.Turn, err
+		}
+	}
+	// #1597 / CR 509.1c: leaving declare_blockers completes every
+	// pending declaration (completion point 4), so each one is judged
+	// first. The skip-ahead does not wave off Lure or Grand Melee.
+	if g.Turn.Step == StepDeclareBlockers {
+		for _, seat := range g.defendingSeatsAPNAPLocked() {
+			if err := g.blockCheckpointLocked(seat); err != nil {
+				return g.Turn, err
+			}
 		}
 	}
 	// #830 / CR 509.2a, and #859 / CR 508.2: leaving a step completes

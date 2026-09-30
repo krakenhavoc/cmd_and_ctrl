@@ -50,13 +50,10 @@ func init() {
 // defines "dies" for creatures only) and EventLTB with a graveyard
 // destination is how the engine says both.
 //
-// The controller test reads the card where it now is, which is the
-// graveyard: control is not a characteristic that survives the move
-// in the rules, but Card.Controller is not cleared by it and is the
-// only reading available to an AppliesTo. It is the same reading
-// every dies-trigger in the catalog makes (helpers.go's diedCreature)
-// and it is right for every board that does not change control of a
-// permanent in the same event that destroys it.
+// The controller test is the controller the artifact had as it left
+// (leftUnderControlOf, #1682): a card in a graveyard has no controller
+// (CR 108.4), so the exit stamps the one the permanent had on the
+// event, and every dies-trigger in the catalog reads it there.
 func scrapTrawlerArtifactHitTheYard(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	if ev.Kind != game.EventLTB || ev.NewZone != game.ZoneGraveyard {
 		return false
@@ -65,7 +62,7 @@ func scrapTrawlerArtifactHitTheYard(ev game.Event, source *game.Card, _ game.Cha
 		return true
 	}
 	c, ok := g.LookupCardForEffect(ev.CardID)
-	return ok && c.IsArtifact() && c.Controller == source.Controller
+	return ok && leftAsType(ev, c, "artifact") && leftUnderControlOf(ev, c) == source.Controller
 }
 
 // scrapTrawlerCheaperArtifactClause builds the target clause from the

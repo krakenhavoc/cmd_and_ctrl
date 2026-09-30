@@ -218,14 +218,25 @@ func (g *Game) AddCounterByMustSettleNowForEffect(placer, cardID uuid.UUID, name
 	if name == "" {
 		return 0, ErrInvalidParam
 	}
-	ev := &ReplacementEvent{
+	return g.addCounterMustSettleNowLocked(&ReplacementEvent{
 		Kind:          RepEventCounter,
 		CounterTarget: cardID,
 		CounterName:   name,
 		CounterDelta:  delta,
 		CounterPlacer: placer,
-		mustSettleNow: true,
-	}
+	})
+}
+
+// addCounterMustSettleNowLocked is the body of
+// AddCounterByMustSettleNowForEffect, taking the event so a caller can
+// mark it — blightLocked sets CounterFromCost (#1703). It sets
+// mustSettleNow itself. The event's counter fields must be filled in
+// and its delta must be non-zero.
+//
+// Caller must hold g.mu.
+func (g *Game) addCounterMustSettleNowLocked(ev *ReplacementEvent) (int, error) {
+	cardID, name, delta, placer := ev.CounterTarget, ev.CounterName, ev.CounterDelta, ev.CounterPlacer
+	ev.mustSettleNow = true
 	out, err := g.applyReplacementsLocked(ev)
 	if err != nil && !errors.Is(err, ErrReplacementIterationExceeded) {
 		// mustSettleNow forecloses errReplacementPending, so the only

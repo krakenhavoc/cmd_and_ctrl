@@ -112,6 +112,22 @@ type AbilityCost struct {
 	// total above the payment; the SBA loop handles the rest.
 	Life int
 
+	// LifeFrom is a life payment whose amount the card states as a
+	// rule rather than a number (#1594, ADR 0020 Decision 47) — War
+	// Room's "Pay life equal to the number of colors in your
+	// commanders' color identity", Murderous Betrayal's "Pay half
+	// your life, rounded up". Zero means no such component, which is
+	// every other ability.
+	//
+	// A registered KEY (LifeCount, life_cost_count.go), not a func,
+	// because an AbilityCost is reachable from Game and the ADR 0041
+	// closure ratchet admits no new func-typed route. The amount is
+	// read ONCE, at announce (CR 601.2f–g via CR 602.2b), by
+	// AbilityLifeCostLocked — the one reader the engine, the legal
+	// enumerator and the view share — and is added to Life. What was
+	// charged is on PaidCost.LifePaid; nothing re-reads the count.
+	LifeFrom LifeCostCount
+
 	// Loyalty is the loyalty-counter component of a planeswalker's
 	// loyalty ability (CR 606.4): +N adds N counters to the source,
 	// −N removes N, and [0] neither. Nil means "this is not a
@@ -790,6 +806,14 @@ type ActivateAbilityParams struct {
 	// clauses of the chosen modes (#764).
 	Targets []TargetRef
 
+	// Distribution is the announced division for an ability whose
+	// clause divides ("It deals 3 damage divided as you choose among
+	// one, two, or three targets"), keyed by target id — CR 601.2d
+	// through CR 602.2b, validated by the same settleDistribution the
+	// cast path uses. Empty for every ability that divides nothing,
+	// and for a lone target, which takes the whole amount. #1563.
+	Distribution map[uuid.UUID]int
+
 	// Modes are the mode indexes announced for a modal activated
 	// ability (CR 602.2b, CR 700.2), in the order chosen; a repeated
 	// index is legal only when the ability's ModeSpec is Repeatable
@@ -1184,7 +1208,13 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	if err := g.validateExileSelfCostLocked(srcZone, ab.Cost); err != nil {
 		return err
 	}
-	if !g.CanPayLifeLocked(p, ab.Cost.Life) {
+	// #1594, CR 601.2f–g via CR 602.2b: the life component's amount
+	// is determined HERE, before anything is paid, and is what the
+	// payment below charges — a computed count (War Room) is read
+	// once and locked in, so nothing that happens after the
+	// announcement changes what was paid.
+	lifeCost, lifeOK := g.AbilityLifeCostLocked(playerID, cardID, ab.Cost)
+	if !lifeOK || !g.CanPayLifeLocked(p, lifeCost) {
 		// CR 119.4 forbids paying more life than you have. Paying
 		// down to exactly 0 is legal; the SBA loop ends the game
 		// after. CR 119.8 forbids it outright while the player's life
@@ -1194,7 +1224,8 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// CR 602.2b / 700.2: the modes are announced with the targets, in
 	// that order — the chosen bullets are what decide which target
 	// clauses the activation even has (#764).
-	if err := validateModes(ab.Modes, params.Modes); err != nil {
+	modeMin, modeMax := g.modeBoundsLocked(ab.Modes, g.modeQueryForSourceLocked(*source, playerID))
+	if err := validateModes(ab.Modes, modeMin, modeMax, params.Modes); err != nil {
 		return err
 	}
 	if ab.Modes == nil && len(params.Modes) > 0 {
@@ -1208,6 +1239,8 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// #1559: "with mana value X or less" — X is announced before
 	// targets (CR 601.2b / 602.2b), so the bound is known here.
 	bindStepsX(steps, params.XValue)
+	// #1657: a divided amount read off the board, fixed at activation.
+	g.bindDivideAmountsLocked(steps, DivideAmountArgs{Controller: playerID, Source: cardID})
 	params.Targets = assignAnnouncedSlots(steps, params.Targets)
 	for _, i := range xSteps {
 		if n := stepTargetCount(steps[i], params.Targets); n != params.XValue {
@@ -1221,6 +1254,12 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	if err := g.validateAnnouncedTargetsLocked(SourceObject(playerID, source), steps, params.Targets); err != nil {
 		return err
 	}
+	// #1563, CR 601.2d via CR 602.2b: the division, with the targets.
+	dist, err := settleDistribution(steps, params.Targets, params.Distribution, params.XValue)
+	if err != nil {
+		return err
+	}
+	params.Distribution = dist
 
 	// #1397: every card this payment is about to move, asked about
 	// BEFORE anything is paid. A commander among them whose owner has
@@ -1347,19 +1386,21 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// #793: the cost path — CR 602.2b activates an ability in one
 	// indivisible step, so the payment runs the CR 614 window
 	// (CR 119.4) but never stops to ask a CR 616 ordering question.
-	if ab.Cost.Life > 0 {
-		if err := g.PayLifeForEffect(cardID, playerID, ab.Cost.Life); err != nil {
+	if lifeCost > 0 {
+		if err := g.PayLifeForEffect(cardID, playerID, lifeCost); err != nil {
 			return err
 		}
-		paid.LifePaid += ab.Cost.Life
+		paid.LifePaid += lifeCost
 	}
 	if ab.Cost.Loyalty != nil {
-		// applyCounterLocked, not AddCounterForEffect: a counter placed
-		// by a COST isn't placed by an effect (CR 614.16), so counter-doubling
-		// replacements do NOT apply to a loyalty ability's + cost.
-		// Doubling Season really does nothing here, and routing
-		// through the CR 614 pipeline would silently make it.
-		if err := g.applyCounterLocked(cardID, CounterLoyalty, *ab.Cost.Loyalty); err != nil {
+		// payCostCounterLocked (counter_cost.go), not applyCounterLocked:
+		// a counter placed by a COST isn't placed by an EFFECT (CR
+		// 614.16), so Doubling Season really does nothing to a loyalty
+		// ability's cost — but a replacement that names no effect
+		// (Vorinclex, Monstrous Raider) does apply, which is why this
+		// goes through the CR 614 window at all rather than writing the
+		// map directly. ADR 0073's 2026-09-28 amendment, #1710.
+		if _, err := g.payCostCounterLocked(playerID, cardID, CounterLoyalty, *ab.Cost.Loyalty); err != nil {
 			return err
 		}
 		if g.LoyaltyActivatedThisTurn == nil {
@@ -1382,10 +1423,11 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// for the same reason the removal is: the source has to still be
 	// on the battlefield.
 	if ac := ab.Cost.AddCounter; ac != nil {
-		if err := g.payCounterAddLocked(cardID, ac); err != nil {
+		added, err := g.payCounterAddLocked(playerID, cardID, ac)
+		if err != nil {
 			return err
 		}
-		paid.CountersAdded = ac.N
+		paid.CountersAdded = added
 	}
 	// Sacrifices last: they move cards, which invalidates `source`.
 	// One payment is one simultaneous exit (#747, CR 603.10a).
@@ -1470,6 +1512,7 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		Label:        ab.Label,
 		Targets:      append([]TargetRef(nil), params.Targets...),
 		Modes:        append([]int(nil), params.Modes...),
+		Distribution: cloneDistributionLocked(params.Distribution),
 		// CR 602.2b: X was announced above and is locked here. The
 		// effect reads it back through Context.X(), the same
 		// accessor an X spell's OnResolve uses, and the wire ships

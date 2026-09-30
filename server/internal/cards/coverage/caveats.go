@@ -167,6 +167,14 @@ var mechanics = []Mechanic{
 		Adopt:      `AlternativeCosts: []game.AlternativeCost{Warp("{cost}")} — the exile clause rides the constructor`,
 	},
 	{
+		Name:       "miracle",
+		Phrases:    []string{"miracle"},
+		Implements: altCost("miracle"),
+		Evidence:   `game.AlternativeCostByKey(oracleID, "miracle") resolves`,
+		Confidence: Exact,
+		Adopt:      `AlternativeCosts: []game.AlternativeCost{Miracle("{cost}")} — the reveal-on-draw trigger is grown from it (#1665)`,
+	},
+	{
 		Name: "free cast",
 		Phrases: []string{
 			"free cast", "free spell", "cast it for free",
@@ -216,6 +224,26 @@ var mechanics = []Mechanic{
 		Evidence:   `game.AlternativeCostByKey(oracleID, "pay_life") resolves`,
 		Confidence: Exact,
 		Adopt:      `PayLifeInstead(label, life, condition)`,
+	},
+	{
+		// #1594: War Room shipped caveated because its life cost is
+		// computed ("that life cost scales per deck"). The phrases are
+		// the caveat's words for an ability-cost count; the probe reads
+		// the declaration, so it cannot misfire on a card that merely
+		// mentions life.
+		Name:    "computed life cost",
+		Phrases: []string{"life cost scales", "pay life equal to", "pay half your life"},
+		Implements: func(s effects.Spec) bool {
+			for _, a := range s.Activated {
+				if !a.Cost.LifeFrom.IsZero() {
+					return true
+				}
+			}
+			return false
+		},
+		Evidence:   "an Activated ability's Cost.LifeFrom names a registered count",
+		Confidence: Exact,
+		Adopt:      `PayLifeCount(LifeEqualToCommanderColors)`,
 	},
 	{
 		// Phrases here are deliberately CAST-shaped. "from your

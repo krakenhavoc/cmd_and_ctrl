@@ -7,6 +7,28 @@ import "github.com/google/uuid"
 type TriggerDoubler struct {
 	Label   string
 	Applies func(g *Game, q TriggerDoublingQuery) bool
+
+	// ActiveWhen is the ADR 0071 designation gate: this doubler is
+	// active only while its source permanent has the named
+	// designation. The zero value (DesignationAlways) means "always
+	// active" — every doubler declared before #1647.
+	//
+	// A TriggerDoubler is not an ability-list entry (it is consulted
+	// directly by triggerDoublersLocked, never through
+	// TriggersForCard / StaticAbilitiesForCard), so it cannot reach
+	// the ordinary designation gate the way a TriggeredAbility or
+	// StaticAbility does. This field is that gate's own doorway onto
+	// the doubler: Windcrag Siege's Mardu mode sets
+	// ActiveWhen: ChosenIs("Mardu"), so the doubler exists only while
+	// "Mardu" is the permanent's chosen option (Card.ChosenOption),
+	// and — because DesignationChosenOption never matches an empty
+	// answer — not at all before the controller answers the as-enters
+	// prompt.
+	//
+	// Checked against the DOUBLER's own card (TriggerDoublingQuery.Doubler),
+	// the permanent this ability is printed on, never against Source
+	// (the permanent whose trigger is being doubled).
+	ActiveWhen Designation
 }
 
 type TriggerDoublingQuery struct {
@@ -148,6 +170,9 @@ func (g *Game) triggerDoublersLocked(p *harvestPass, source Card, lki Characteri
 		}
 		for _, doubler := range candidate.doublers {
 			if doubler.Applies == nil {
+				continue
+			}
+			if doubler.ActiveWhen.IsGate() && !doubler.ActiveWhen.Active(candidate.card) {
 				continue
 			}
 			q := TriggerDoublingQuery{Event: p.ev, Doubler: candidate.card, DoublerLKI: candidate.lki, Source: source, SourceLKI: lki, FromSpell: fromSpell, Ability: &decl, Subject: p.subject, SubjectLKI: p.subjectLKI, HasSubject: p.hasSubject}

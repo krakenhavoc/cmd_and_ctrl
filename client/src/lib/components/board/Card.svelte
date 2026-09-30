@@ -83,6 +83,13 @@
     // the window is a property of the turn, so PlayerPanel derives it
     // once and hands it down.
     sorcerySpeedBlocked?: string;
+    // #1695: the paying player's current life, for the mana popover's
+    // life-cost check. Same threading as sorcerySpeedBlocked — a
+    // battlefield row only ever holds one seat's own permanents, so
+    // BattlefieldRow hands down that seat's life once per row.
+    // Undefined leaves the popover's life-cost check unblocked, same
+    // as every card surface this prop hasn't reached yet.
+    payerLife?: number;
     // S24 (ADR 0036 decision 14 item 3): the name of the player this
     // permanent enchants, for a Curse. A card attached to a PLAYER has
     // no host card to be drawn behind, so without this the board shows
@@ -97,6 +104,11 @@
     // marking every card on the table high is the same as marking
     // none of them, so the default is no hint at all.
     priority?: boolean;
+    // #1724: a token group's card stands for every member of its
+    // half, so the targeting ring asks about all of them — a group
+    // whose drawn member is not a legal target but another member is
+    // still lights up, and never hides a legal target.
+    memberIDs?: readonly string[];
     onClick?: (card: CardView, ev: MouseEvent) => void;
   }
 
@@ -104,12 +116,14 @@
   // set get a ring so the player can see what they may click.
   const targetable = $derived.by(() => {
     const t = $targeting;
-    return t !== null && isLegalCardTarget(t, card.instance_id);
+    if (t === null) return false;
+    return (memberIDs ?? [card.instance_id]).some((id) => isLegalCardTarget(t, id));
   });
   // S20 sub-PR 5: already picked in a multi-target prompt.
   const picked = $derived.by(() => {
     const t = $targeting;
-    return t !== null && isPicked(t, card.instance_id);
+    if (t === null) return false;
+    return (memberIDs ?? [card.instance_id]).some((id) => isPicked(t, id));
   });
 
   const {
@@ -124,8 +138,10 @@
     onRawTap,
     onActivateAbility,
     sorcerySpeedBlocked = "",
+    payerLife,
     enchantedPlayer,
     priority = false,
+    memberIDs,
     onClick,
   }: Props = $props();
 
@@ -224,6 +240,15 @@
   // designation (CR 722.3a), which says its prepare spell is waiting
   // in exile to be cast. A Class or a Case is never a preparation
   // card, so the slot still holds one badge at most.
+  //
+  // ADR 0071's addendums add a fourth and fifth tenant, #1705:
+  // HARNESSED (CR 701.64) and MONSTROUS (CR 701.37b). Unlike Class /
+  // Case / preparation, neither carries a subtype gate — any
+  // permanent can be harnessed, any creature can become monstrous —
+  // so in principle a card could someday carry two of these at once
+  // (a harnessed monstrous creature). No printed card does today, and
+  // this slot still shows at most one badge; if that combination ever
+  // ships, this priority chain is where to widen it.
   const designationBadge = $derived(
     card.solved
       ? "SOLVED"
@@ -231,14 +256,22 @@
         ? `LVL ${card.class_level}`
         : card.prepared
           ? "PREPARED"
-          : "",
+          : card.harnessed
+            ? "HARNESSED"
+            : card.monstrous
+              ? "MONSTROUS"
+              : "",
   );
   const designationTitle = $derived(
     card.solved
       ? "this Case is solved"
       : card.prepared
         ? "prepared — you may cast a copy of its spell from exile"
-        : `Class level ${card.class_level ?? 1}`,
+        : card.harnessed
+          ? "harnessed — its ∞ ability lines are on (CR 701.64)"
+          : card.monstrous
+            ? 'monstrous — its "as long as this creature is monstrous" lines are on (CR 701.37b)'
+            : `Class level ${card.class_level ?? 1}`,
   );
 
   // Hover delay (settings.display.hoverDelayMs) defers the write to
@@ -435,6 +468,11 @@
         >MUST ATTACK</span
       >
     {/if}
+    {#if card.must_block}
+      <span class="badge must-attack" title="must block this combat" aria-label="must block"
+        >MUST BLOCK</span
+      >
+    {/if}
     {#if enchantedPlayer}
       <span
         class="badge curse"
@@ -463,6 +501,8 @@
       abilities={card.abilities}
       chosenColor={card.chosen_color}
       namedTribe={card.named_tribe}
+      chosenOption={card.chosen_option}
+      chosenName={card.chosen_name}
       protection={card.protection}
     />
     {#if (card.damage_marked ?? 0) > 0}
@@ -524,6 +564,11 @@
         >MUST ATTACK</span
       >
     {/if}
+    {#if card.must_block}
+      <span class="badge must-attack" title="must block this combat" aria-label="must block"
+        >MUST BLOCK</span
+      >
+    {/if}
     {#if enchantedPlayer}
       <span
         class="badge curse"
@@ -547,6 +592,8 @@
       abilities={card.abilities}
       chosenColor={card.chosen_color}
       namedTribe={card.named_tribe}
+      chosenOption={card.chosen_option}
+      chosenName={card.chosen_name}
       protection={card.protection}
     />
     {#if (card.damage_marked ?? 0) > 0}
@@ -600,6 +647,7 @@
         onActivateAbility={(idx) => onActivateAbility?.(idx)}
         summoningSick={!!card.summoning_sick}
         {sorcerySpeedBlocked}
+        {payerLife}
         onRawTap={onRawTap && onActivateManaAbility && menuManaAbilities.length > 0 && !card.tapped
           ? onRawTap
           : undefined}

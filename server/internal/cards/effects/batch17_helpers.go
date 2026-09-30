@@ -170,7 +170,7 @@ func b17PermanentSacrificedToPay(g *game.Game, item *game.StackItem) (uuid.UUID,
 // b17LastKnownPowerOffBattlefield is the power a card had when it
 // last left the battlefield, read without the harvester's LKI
 // characteristic (which only a dies trigger receives): its printed
-// power plus the +1/+1 and -1/-1 counters read back off the log,
+// power plus every P/T counter read back off the log (#1664),
 // floored at zero the way CurrentPower floors it. A static bonus
 // from another permanent is not in it — declared on the card that
 // reads this.
@@ -179,7 +179,8 @@ func b17LastKnownPowerOffBattlefield(g *game.Game, cardID uuid.UUID) int {
 	if !ok {
 		return 0
 	}
-	p := c.Power + b13LastKnownCounters(g, cardID, "+1/+1") - b13LastKnownCounters(g, cardID, "-1/-1")
+	dp, _ := b13LastKnownPTDelta(g, cardID)
+	p := c.Power + dp
 	if p < 0 {
 		return 0
 	}
@@ -255,11 +256,11 @@ func b17GreatestManaValue(g *game.Game, ids []uuid.UUID) (uuid.UUID, bool) {
 // --- trigger conditions ------------------------------------------
 
 // b17SelfOrZombieYouControlDied is Undead Augur's condition: the
-// Augur itself died, or a Zombie its controller controlled did. The
-// dead card is read post-move (its printed type line and its
-// controller survive the move), so a changeling counts and a Zombie
-// that was one only through a layer effect does not — weaker, never
-// stronger.
+// Augur itself died, or a Zombie its controller controlled did. Its
+// controller is the one it had as it died (leftUnderControlOf,
+// #1682); whether it was a Zombie is its last-known subtypes (leftAsSubtype, #1679), so a
+// changeling counts and so does a creature that was a Zombie only
+// through a grant (Maskwood Nexus).
 func b17SelfOrZombieYouControlDied(ev game.Event, source *game.Card, g *game.Game) bool {
 	if cardDied(ev, source) {
 		return true
@@ -268,7 +269,7 @@ func b17SelfOrZombieYouControlDied(ev game.Event, source *game.Card, g *game.Gam
 		return false
 	}
 	dead, ok := diedCreature(ev, g)
-	return ok && dead.Controller == source.Controller && dead.HasSubtype("Zombie")
+	return ok && leftUnderControlOf(ev, dead) == source.Controller && leftAsSubtype(ev, dead, "Zombie")
 }
 
 // b17SelfOrAnotherCreatureDied is Cordial Vampire's condition: any

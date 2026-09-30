@@ -24,15 +24,7 @@ func init() {
 		Gift: GiftACard().Instead(
 			TargetCardInGraveyard("two target permanent cards from your graveyard", YouOwn(), Permanent()).WithCount(2, 2)),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			for _, t := range ctx.LegalTargets() {
-				if t.Kind != game.TargetCard {
-					continue
-				}
-				if err := (ReturnFromGraveyard{Target: t.ID, Dest: game.ZoneHand}).Apply(ctx); err != nil {
-					return err
-				}
-			}
-			return nil
+			return returnLegalGraveyardTargetsToHand(ctx)
 		},
 	})
 }

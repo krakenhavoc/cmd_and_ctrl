@@ -11,6 +11,12 @@
   // #/deck-check?url=<link> for the full report the ephemeral message
   // only summarises.
   //
+  // Moxfield blocks the server (ADR 0095, amendment 2026-09-25), so a
+  // Moxfield link fails with the server's "paste the list instead"
+  // sentence and a `paste_list` hint; the page shows the sentence and a
+  // button that switches to the paste tab. A pasted list is requestable
+  // like a link — the request resends exactly what was checked.
+  //
   // "Request these cards" needs a session with a Discord identity
   // (POST /deck-requests, ADR 0095 §3) — a signed-out or guest visitor
   // sees a sign-in prompt instead of a button that would 403. The
@@ -33,12 +39,14 @@
     groupCardsByBucket,
     canRequestCards,
     deckRequestOutcomeMessage,
+    shouldOfferPaste,
     BUCKET_ORDER,
     BUCKET_LABELS,
     BUCKET_BLURBS,
     DeckCheckError,
     type CoverageReport,
     type CoverageBucket,
+    type DeckCheckRequest,
     type DeckRequestResponse,
     type DeckCoverageViolation,
   } from "../lib/deckcheck";
@@ -52,7 +60,11 @@
   let loading = $state(false);
   let errorMessage = $state("");
   let errorViolations = $state<DeckCoverageViolation[]>([]);
+  // offerPaste: the error says to paste the list instead (a Moxfield link).
+  let offerPaste = $state(false);
   let report = $state<CoverageReport | null>(null);
+  // checked is what `report` was built from — the request sends the same.
+  let checked = $state<DeckCheckRequest | null>(null);
 
   let requestBusy = $state(false);
   let requestError = $state("");
@@ -93,15 +105,24 @@
     loading = true;
     errorMessage = "";
     errorViolations = [];
+    offerPaste = false;
     report = null;
+    checked = null;
     requestResult = null;
     requestError = "";
+    const req: DeckCheckRequest = isLink ? { url: value } : { text: value };
     try {
-      report = await checkDeck(isLink ? { url: value } : { text: value });
+      report = await checkDeck(req);
+      checked = req;
     } catch (err) {
       if (err instanceof DeckCheckError) {
         errorMessage = err.message;
-        if (err.violations && err.violations.length > 0) errorViolations = err.violations;
+        offerPaste = shouldOfferPaste(err);
+        // The hint's sentence says it all; the fetch violation under it
+        // would only repeat the link.
+        if (!offerPaste && err.violations && err.violations.length > 0) {
+          errorViolations = err.violations;
+        }
       } else {
         errorMessage = "Couldn't check that deck.";
       }
@@ -115,13 +136,21 @@
     void runCheck();
   }
 
+  function switchToPaste(): void {
+    tab = "paste";
+    offerPaste = false;
+  }
+
   async function fileRequest(): Promise<void> {
-    if (!report?.source_url) return;
+    if (!report || !checked) return;
+    // A link check requests the canonical link the report names; a
+    // pasted check resends the list, which the server keys by its cards.
+    const req: DeckCheckRequest = report.source_url ? { url: report.source_url } : checked;
     requestBusy = true;
     requestError = "";
     requestResult = null;
     try {
-      requestResult = await requestDeck(report.source_url);
+      requestResult = await requestDeck(req);
     } catch (err) {
       requestError = err instanceof Error ? err.message : "Couldn't file that request.";
     } finally {
@@ -161,9 +190,9 @@
       <p class="eyebrow">How much of your deck plays itself</p>
       <h1>Deck check</h1>
       <p class="lede">
-        Paste a Moxfield or Archidekt link, or a plain decklist, and see how much of it the rules
-        engine automates before you sit down. Anything missing can be requested straight from the
-        report.
+        Paste an Archidekt link, or a plain decklist, and see how much of it the rules engine
+        automates before you sit down. Anything missing can be requested straight from the report.
+        On Moxfield, open the deck → Export → Copy plain text, and paste that.
       </p>
     </div>
 
@@ -195,7 +224,7 @@
         <input
           type="text"
           class="url-field"
-          placeholder="https://moxfield.com/decks/AbC123"
+          placeholder="https://archidekt.com/decks/123456"
           aria-label="deck link"
           bind:value={urlInput}
         />
@@ -221,6 +250,13 @@
         <Icon name="x" size={14} />
         <span>{errorMessage}</span>
       </p>
+      {#if offerPaste}
+        <div class="row-actions start">
+          <button type="button" class="ghost" onclick={switchToPaste}>
+            Paste the list instead
+          </button>
+        </div>
+      {/if}
       {#if errorViolations.length > 0}
         <ul class="violations">
           {#each errorViolations as v (v.code + (v.card ?? "") + v.message)}
@@ -472,6 +508,9 @@
   .row-actions {
     display: flex;
     justify-content: flex-end;
+  }
+  .row-actions.start {
+    justify-content: flex-start;
   }
   .lg {
     height: 38px;

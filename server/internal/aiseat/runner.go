@@ -758,9 +758,11 @@ func (r *Runner) decide(ctx context.Context, in Input, maxThink time.Duration) o
 		// #1571: no pass, but an answer the enumerator promises the
 		// engine will take. That is a declaration this seat owes with
 		// priority in hand — an attack a CR 508.1d requirement asks
-		// for — and a decline would sleep holding the table. A
-		// defender with only block moves has no always-legal answer
-		// and still declines, as before.
+		// for — and a decline would sleep holding the table. #1597:
+		// the same for a defending player's blocks a CR 509.1c
+		// requirement asks for, offered as one AlwaysLegal move. A
+		// defender with only ordinary block moves has no always-legal
+		// answer and still declines, as before.
 		if si := SafeIndex(in.Moves); si >= 0 {
 			out.index, out.reason, out.fallback = si, "decline → always-legal answer", FallbackDeclineAlwaysLegal
 			return out

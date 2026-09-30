@@ -69,6 +69,29 @@ const (
 	// ModAddRestrictions is: not a characteristic, written where the
 	// text sits, only ever appended to (attack_requirements.go).
 	ModAddAttackRequirement ModKind = "addAttackRequirement" // layer 6
+	// ModAddBlockRequirement is a CR 509.1c block requirement (#1597):
+	// Text names which one (BlockRequirementKind — "blocks", "lure",
+	// "mustBeBlocked", "exactlyOne", "blocksAttacker"). Layer 6 for
+	// ModAddAttackRequirement's reason (block_requirements.go).
+	// Irresistible Prey's "target creature must be blocked this turn if
+	// able", Taunting Challenge's "all creatures able to block target
+	// creature this turn do so", and — with Objects naming the attacker
+	// (#1684) — Provoke's "block it if able".
+	ModAddBlockRequirement ModKind = "addBlockRequirement" // layer 6
+	// ModAddBlockCapacity is "can block an additional creature this
+	// turn" from a resolving spell or ability (#1715): Coastline
+	// Chimera's and Mounted Archers' activations, Act of Heroism,
+	// Yare's "up to two additional creatures". Reads Amount, the number
+	// of ADDITIONAL attackers (at least 1), added to
+	// Characteristic.AdditionalBlocks exactly as CanBlockAdditional's
+	// static adds it, so several add up. Layer 6 for the reason the
+	// static is: "can block" is an ability the effect grants.
+	ModAddBlockCapacity ModKind = "addBlockCapacity" // layer 6
+	// ModBlockAnyNumber is "can block any number of creatures this
+	// turn" (#1715): Give No Ground, Valor Made Real, Blaze of Glory.
+	// Reads nothing; sets Characteristic.BlocksAnyNumber, which beats
+	// any count. Layer 6, like ModAddBlockCapacity.
+	ModBlockAnyNumber ModKind = "blockAnyNumber" // layer 6
 )
 
 // ModGrantAbilities gives each affected object the named catalog
@@ -146,6 +169,44 @@ const (
 	ModLimitBlockersPerDefender ModKind = "limitBlockersPerDefender"
 )
 
+// The hexproof kinds (#1651, ADR 0038's amendment of 2026-09-28). See
+// cant_have.go and hexproof_bypass.go for what each one does.
+const (
+	// ModCantHaveKeywords is "loses <keywords> and can't have
+	// <keywords>" (Arcane Lighthouse, CR 101.2). Reads Keywords. Layer
+	// 6: its Apply records the tokens on Characteristic.CantHave, and
+	// the strip after the layer-6 bucket removes them whatever granted
+	// them, so a later grant cannot put one back.
+	ModCantHaveKeywords ModKind = "cantHaveKeywords" // layer 6
+	// ModWaiveHexproof is "<affected> can be the targets of spells and
+	// abilities you control as though they didn't have hexproof"
+	// (Detection Tower, CR 702.11). Reads nothing; the beneficiary is
+	// the record's Controller. Not a layer operation: the targeting
+	// choke point reads it (hexproof_bypass.go).
+	ModWaiveHexproof ModKind = "waiveHexproof"
+)
+
+// ModBecomeCopy is "<affected> becomes a copy of <object> [until end of
+// turn]" (#1593, ADR 0043's amendment of 2026-09-28): a CR 707.2 copy
+// effect with a duration and a timestamp of its own, applied to a
+// permanent that is already on the battlefield. Mirage Mirror,
+// Cytoshape, Mirrorweave, Shifting Woodland's delirium, Unstable
+// Shapeshifter, Lazav.
+//
+// Reads Copy, which holds exactly ONE PrintedValues: the copied
+// object's copiable values as they were when the effect began, with the
+// card's "except" clause already applied. Values, never a reference —
+// the copied card may be in a graveyard (Shifting Woodland, Lazav) and
+// may leave it, and the copy does not end when it does.
+//
+// Not a layer-pass operation. A copy has to change the oracle ID every
+// catalog hook keys on, which no Characteristic field carries (ADR 0043
+// Decision 1), so it is MATERIALISED onto the permanent's flat printed
+// fields before the layer pass runs, by materialiseDurationCopiesLocked
+// (duration_copy.go). That is layer 1 by construction: layers 2-7 then
+// run on its result (CR 613.1a).
+const ModBecomeCopy ModKind = "becomeCopy"
+
 // AffectedScope is a ScopedEffect's affected set as a RULE read live at
 // every layer pass, instead of a set of objects locked when the effect
 // began (#1571). CR 611.2c locks the set only for an effect that
@@ -175,12 +236,29 @@ const (
 	// Intervention). A replacement effect is not a characteristic, so
 	// CR 611.2c does not lock its set.
 	ScopeYourPermanents AffectedScope = "yourPermanents"
+	// ScopeYourCreatures is "creatures you control", read live — the
+	// "you" being the record's Controller (#1650, Glaring Spotlight's
+	// "creatures you control … can't be blocked this turn").
+	ScopeYourCreatures AffectedScope = "yourCreatures"
+	// ScopeCreaturesWithoutFlying is "creatures without flying", every
+	// player's, read live (#1650, Falter). Whether a creature has
+	// flying is a layer-6 result, so a record with this scope may only
+	// carry mods that are read after the layer pass is finished — see
+	// foldRuleScopedRestrictionsLocked. Registration enforces it.
+	ScopeCreaturesWithoutFlying AffectedScope = "creaturesWithoutFlying"
+	// ScopeOpponentsAndTheirCreatures is "your opponents and creatures
+	// your opponents control", read live — the "you" being the record's
+	// Controller (#1651, Detection Tower). The one scope that also
+	// names PLAYERS (scopeCoversPlayer); as a permanent predicate it is
+	// ScopeOpponentsCreatures.
+	ScopeOpponentsAndTheirCreatures AffectedScope = "opponentsAndTheirCreatures"
 )
 
 // KnownAffectedScope reports whether this binary can interpret s.
 func KnownAffectedScope(s AffectedScope) bool {
 	switch s {
-	case ScopeNone, ScopeOpponentsCreatures, ScopeGame, ScopeYourPermanents:
+	case ScopeNone, ScopeOpponentsCreatures, ScopeGame, ScopeYourPermanents,
+		ScopeYourCreatures, ScopeCreaturesWithoutFlying, ScopeOpponentsAndTheirCreatures:
 		return true
 	}
 	return false
@@ -221,6 +299,19 @@ type Mod struct {
 	// with haste", "Spirits" — read by the refusal sentence
 	// (BlockRule.Label).
 	Text string `json:"text,omitempty"`
+	// Objects are the objects a mod names — today only the one
+	// attacking object a "blocksAttacker" block requirement names
+	// (#1684; BlocksAttackerMod), Provoke's "block IT". Required (one
+	// entry) on that kind and refused on every other mod. A slice, so
+	// every other mod writes nothing and the record stays plain data
+	// (ADR 0041 P1); an older binary refuses a file carrying one
+	// (ADR 0041 P4), which the unknown kind already guarantees.
+	Objects []ObjectRef `json:"objects,omitempty"`
+	// Copy is ModBecomeCopy's copied values (#1593): exactly one entry,
+	// required on that kind and refused on every other. A slice for the
+	// reason Objects is one — every other mod writes nothing, and the
+	// record stays plain data with no pointer in it (ADR 0041 P1).
+	Copy []PrintedValues `json:"copy,omitempty"`
 }
 
 // AffectedObject is one member of a ScopedEffect's affected set: the
@@ -297,7 +388,8 @@ type ScopedEffect struct {
 	// every pass (#1571): the record affects whatever the rule matches
 	// now, including objects that did not exist when it began. Only
 	// for an effect that changes neither characteristics nor control
-	// (CR 611.2c) — today, an attack requirement.
+	// (CR 611.2c): an attack requirement, a block rule, a replacement,
+	// or (#1650) a restriction such as Falter's "can't block".
 	Scope AffectedScope `json:"scope,omitempty"`
 
 	// Mods are applied each in its own layer, all at Timestamp. One
@@ -348,6 +440,11 @@ const (
 	readerLayer modReader = iota
 	readerReplacement
 	readerBlockRule
+	// readerTargeting is the targeting choke point (#1651).
+	readerTargeting
+	// readerCopy is the layer-1 materialiser (#1593,
+	// duration_copy.go): it runs before the layer pass, not in it.
+	readerCopy
 )
 
 // modKindSpec is where a kind lives: its reader, and for a layer kind
@@ -377,6 +474,11 @@ var modKinds = map[ModKind]modKindSpec{
 	ModModifyPT:         {layer: Layer7PT, subLayer: SubLayer7C_Modify},
 	// #1571
 	ModAddAttackRequirement: {layer: Layer6Ability},
+	// #1597
+	ModAddBlockRequirement: {layer: Layer6Ability},
+	// #1715
+	ModAddBlockCapacity: {layer: Layer6Ability},
+	ModBlockAnyNumber:   {layer: Layer6Ability},
 	// #1584, ADR 0093 PR 4
 	ModGrantAbilities: {layer: Layer6Ability},
 	// Tier 3b (ADR 0041 P8): replacement effects, not layer operations.
@@ -387,6 +489,12 @@ var modKinds = map[ModKind]modKindSpec{
 	// Tier 3b (ADR 0041 P8): block-rule effects, not layer operations.
 	ModCantBeBlockedExceptBy:    {reader: readerBlockRule},
 	ModLimitBlockersPerDefender: {reader: readerBlockRule},
+	// #1651: "can't have" is a layer-6 record; the waiver is read by
+	// targeting.
+	ModCantHaveKeywords: {layer: Layer6Ability},
+	ModWaiveHexproof:    {reader: readerTargeting},
+	// #1593: layer 1, applied to the printed baseline before the pass.
+	ModBecomeCopy: {reader: readerCopy, layer: Layer1Copy},
 }
 
 // KnownModKind reports whether this binary can interpret k.
@@ -476,6 +584,66 @@ func AddAttackRequirementMod(otherThan uuid.UUID) Mod {
 	return Mod{Kind: ModAddAttackRequirement, Player: otherThan}
 }
 
+// AddBlockRequirementMod is a CR 509.1c block requirement (#1597) of
+// the given kind. The requirement is attributed to the record's source,
+// so a refusal names the card. Registration refuses a kind this binary
+// does not know, and so does restore (ErrUnknownEffectKey).
+func AddBlockRequirementMod(kind BlockRequirementKind) Mod {
+	return Mod{Kind: ModAddBlockRequirement, Text: string(kind)}
+}
+
+// BlocksAttackerMod is "<affected creature> blocks <attacker> this turn
+// if able" (#1684): Provoke, Grappling Hook, Turntimber Basilisk. The
+// requirement names the attacking OBJECT, so it asks nothing once that
+// creature has left the battlefield, even if its card comes back.
+func BlocksAttackerMod(attacker ObjectRef) Mod {
+	return Mod{Kind: ModAddBlockRequirement, Text: string(BlockRequirementBlocksAttacker), Objects: []ObjectRef{attacker}}
+}
+
+// AddBlockCapacityMod is "can block N additional creatures this turn"
+// (#1715): N more attackers on top of the one every creature may
+// block. Reads Amount; registration refuses N < 1.
+func AddBlockCapacityMod(n int) Mod { return Mod{Kind: ModAddBlockCapacity, Amount: n} }
+
+// BlockAnyNumberMod is "can block any number of creatures this turn"
+// (#1715).
+func BlockAnyNumberMod() Mod { return Mod{Kind: ModBlockAnyNumber} }
+
+// blockCapacityModProblem is the registration and restore check for
+// ModAddBlockCapacity: a positive count. "" when the mod is sound. A
+// record with none would be an effect that grants nothing, and one
+// with a negative count would TAKE capacity, which no card prints.
+func blockCapacityModProblem(m Mod) string {
+	if m.Kind == ModAddBlockCapacity && m.Amount < 1 {
+		return fmt.Sprintf("an addBlockCapacity mod needs an amount of at least 1, got %d", m.Amount)
+	}
+	return ""
+}
+
+// blockRequirementModProblem is the registration check for a
+// block-requirement mod: a known kind, and an attacker object exactly
+// when the kind names one. "" when the mod is sound.
+func blockRequirementModProblem(m Mod) string {
+	if m.Kind != ModAddBlockRequirement {
+		if len(m.Objects) != 0 {
+			return fmt.Sprintf("mod %q names objects, which only a blocksAttacker requirement reads", m.Kind)
+		}
+		return ""
+	}
+	kind := BlockRequirementKind(m.Text)
+	if !KnownBlockRequirementKind(kind) {
+		return fmt.Sprintf("names unknown block requirement %q", m.Text)
+	}
+	names := len(m.Objects) == 1 && m.Objects[0].ID != uuid.Nil
+	if (kind == BlockRequirementBlocksAttacker) != names {
+		return fmt.Sprintf("block requirement %q needs one attacking object exactly when it is blocksAttacker", m.Text)
+	}
+	if kind != BlockRequirementBlocksAttacker && len(m.Objects) != 0 {
+		return fmt.Sprintf("block requirement %q names objects it does not read", m.Text)
+	}
+	return ""
+}
+
 // GrantAbilitiesMod is "gains '<ability>'" (layer 6, ADR 0093 PR 4):
 // each affected object gets the named catalog bundles, with the
 // record's source as the grantor. Reads Grants. Keys are stored in
@@ -562,6 +730,16 @@ func (g *Game) RegisterScopedRuleEffectForEffect(sourceID uuid.UUID, scope Affec
 	if scope == ScopeNone || !KnownAffectedScope(scope) || len(mods) == 0 {
 		return false
 	}
+	if scope == ScopeCreaturesWithoutFlying {
+		// #1650: this scope reads a layer-6 result, so only a mod the
+		// post-layer fold applies may use it. A layer mod would read
+		// the keyword half-way through the pass.
+		for _, m := range mods {
+			if !foldedAfterLayers(scope, m.Kind) {
+				panic(fmt.Sprintf("game: scoped effect %q: scope %q carries only addRestrictions, got %q", label, scope, m.Kind))
+			}
+		}
+	}
 	return g.appendScopedEffectLocked(sourceID, nil, scope, controller, mods, d, label, timeNowUnixNano())
 }
 
@@ -578,13 +756,25 @@ func (g *Game) appendScopedEffectLocked(sourceID uuid.UUID, affected []AffectedO
 		if m.Kind == ModGrantAbilities && len(m.Grants) == 0 {
 			panic(fmt.Sprintf("game: scoped effect %q grants no ability bundle", label))
 		}
+		if problem := blockRequirementModProblem(m); problem != "" {
+			panic(fmt.Sprintf("game: scoped effect %q %s", label, problem))
+		}
 		if problem := replacementModProblem(m); problem != "" {
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
 		if problem := blockRuleModProblem(m); problem != "" {
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
-		if modKinds[m.Kind].reader != readerLayer {
+		if problem := hexproofModProblem(m); problem != "" {
+			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
+		}
+		if problem := copyModProblem(m); problem != "" {
+			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
+		}
+		if problem := blockCapacityModProblem(m); problem != "" {
+			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
+		}
+		if r := modKinds[m.Kind].reader; r != readerLayer && r != readerCopy {
 			named = true
 		}
 	}
@@ -625,6 +815,8 @@ func cloneMods(mods []Mod) []Mod {
 		m.Colors = copyStrings(m.Colors)
 		m.Keywords = copyStrings(m.Keywords)
 		m.Grants = copyStrings(m.Grants)
+		m.Objects = append([]ObjectRef(nil), m.Objects...)
+		m.Copy = clonePrintedValuesSlice(m.Copy)
 		out[i] = m
 	}
 	return out
@@ -819,6 +1011,11 @@ func adaptScopedEffects(records []ScopedEffect) []ContinuousEffect {
 				// gather reads it (scoped_replacements.go).
 				continue
 			}
+			if foldedAfterLayers(e.Scope, m.Kind) {
+				// #1650: a live-rule restriction is applied once the
+				// pass is over (foldRuleScopedRestrictionsLocked).
+				continue
+			}
 			out = append(out, staticContinuousEffect{
 				ability: StaticAbility{
 					Layer:            spec.layer,
@@ -868,7 +1065,7 @@ func affectedPredicate(set []AffectedObject) func(*Card, *Game, *Card) bool {
 // restore both refuse one.
 func scopePredicate(scope AffectedScope, controller uuid.UUID) func(*Card, *Game, *Card) bool {
 	switch scope {
-	case ScopeOpponentsCreatures:
+	case ScopeOpponentsCreatures, ScopeOpponentsAndTheirCreatures:
 		return func(target *Card, _ *Game, _ *Card) bool {
 			return target != nil && target.IsCreature() && target.Controller != controller
 		}
@@ -876,9 +1073,77 @@ func scopePredicate(scope AffectedScope, controller uuid.UUID) func(*Card, *Game
 		return func(target *Card, _ *Game, _ *Card) bool {
 			return target != nil && target.Controller == controller
 		}
+	case ScopeYourCreatures:
+		return func(target *Card, _ *Game, _ *Card) bool {
+			return target != nil && target.IsCreature() && target.Controller == controller
+		}
+	case ScopeCreaturesWithoutFlying:
+		return func(target *Card, _ *Game, _ *Card) bool {
+			return target != nil && target.IsCreature() && !HasKeyword(target, "flying")
+		}
 	}
 	// ScopeGame names no object, so it matches none.
 	return func(*Card, *Game, *Card) bool { return false }
+}
+
+// foldedAfterLayers reports whether a record's mod is applied by
+// foldRuleScopedRestrictionsLocked rather than in its layer bucket: a
+// restriction whose affected set is a live rule (#1650).
+func foldedAfterLayers(scope AffectedScope, kind ModKind) bool {
+	return scope != ScopeNone && kind == ModAddRestrictions
+}
+
+// foldRuleScopedRestrictionsLocked applies every live-rule restriction
+// record once the layer pass is over (#1650). Two examples are Falter's
+// "creatures without flying can't block this turn" and Glaring
+// Spotlight's "creatures you control … can't be blocked this turn".
+//
+// WHY THE SET IS LIVE. CR 611.2c locks the affected set of an effect
+// from a resolving spell or ability only when the effect changes
+// characteristics or control. "Can't block" and "can't be blocked"
+// change neither, and CR 613 gives a restriction no layer at all
+// (restrictions.go). So the effect reaches a creature that arrives,
+// becomes a creature, or loses flying after the spell resolved, and
+// stops reaching one that gains flying. A pinned record (`Affected`,
+// the single-target RestrictUntilEOT) is a different effect, "target
+// creature can't block", and stays in its layer.
+//
+// WHY AFTER THE PASS. The scope reads the object's FINISHED
+// characteristics. "Without flying" is a layer-6 result, and a layer-6
+// bucket sorted by timestamp would ask the question before a
+// later-timestamped flying grant had applied. Restriction bits are only
+// ever OR'd in and no layer reads them, so applying them after layer 7
+// changes nothing else. The records are read afresh on every pass and
+// hold no closure, so undo and a restore point carry them as data.
+//
+// Caller must hold g.mu in write mode (the layer pass does).
+func (g *Game) foldRuleScopedRestrictionsLocked() {
+	if g.Battlefield == nil {
+		return
+	}
+	for i := range g.ScopedEffects {
+		e := &g.ScopedEffects[i]
+		if e.Scope == ScopeNone {
+			continue
+		}
+		var bits Restriction
+		for _, m := range e.Mods {
+			if foldedAfterLayers(e.Scope, m.Kind) {
+				bits |= m.Restrictions
+			}
+		}
+		if bits == 0 {
+			continue
+		}
+		applies := scopePredicate(e.Scope, e.Controller)
+		for j := range g.Battlefield.Cards {
+			target := &g.Battlefield.Cards[j]
+			if target.effective == nil || !applies(target, g, nil) {
+				continue
+			}
+			target.effective.Restrictions |= bits
+		}
+	}
 }
 
 // modApply is the interpreter: what each kind does to a
@@ -967,6 +1232,8 @@ func modApply(m Mod) func(*Characteristic, *Card, *Game, *Card) {
 		return func(ch *Characteristic, _ *Card, _ *Game, _ *Card) {
 			ch.Restrictions |= bits
 		}
+	case ModCantHaveKeywords:
+		return cantHaveApply(m.Keywords)
 	case ModSetBasePower:
 		n := m.Power
 		return func(ch *Characteristic, _ *Card, _ *Game, _ *Card) { ch.Power = n }
@@ -981,6 +1248,28 @@ func modApply(m Mod) func(*Characteristic, *Card, *Game, *Card) {
 				r.Source, r.SourceName = src.InstanceID, src.Name
 			}
 			ch.AttackRequirements = append(ch.AttackRequirements, r)
+		}
+	case ModAddBlockRequirement:
+		kind := BlockRequirementKind(m.Text)
+		var attacker ObjectRef
+		if len(m.Objects) > 0 {
+			attacker = m.Objects[0]
+		}
+		return func(ch *Characteristic, _ *Card, _ *Game, src *Card) {
+			r := BlockRequirement{Kind: kind, Attacker: attacker}
+			if src != nil {
+				r.Source, r.SourceName = src.InstanceID, src.Name
+			}
+			ch.BlockRequirements = append(ch.BlockRequirements, r)
+		}
+	case ModAddBlockCapacity:
+		n := m.Amount
+		return func(ch *Characteristic, _ *Card, _ *Game, _ *Card) {
+			ch.AdditionalBlocks += n
+		}
+	case ModBlockAnyNumber:
+		return func(ch *Characteristic, _ *Card, _ *Game, _ *Card) {
+			ch.BlocksAnyNumber = true
 		}
 	case ModModifyPT:
 		p, t := m.Power, m.Toughness

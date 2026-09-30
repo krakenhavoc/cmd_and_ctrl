@@ -345,10 +345,11 @@ A restore point written by yesterday's binary has to restore in today's. Three t
 ### Discord bot (Go, `server/cmd/bot/`)
 - Separate binary from the game server; runs as `cmd-and-ctrl-bot.service` on the prod VPS. See [docs/decisions/0004-discord-identity.md](docs/decisions/0004-discord-identity.md).
 - `make -C server build-bot` — produces `server/bin/cmd_and_ctrl-bot`
-- Commands: `/c2-invite [name]` (channel-visible invite URL), `/c2-games` (ephemeral list), `/c2-end <game>` (confirm, then archive; #614), `/c2-deck-check <link>` and `/c2-deck-req <link>` (ADR 0095 §4 — deck coverage checks and deck requests).
+- Commands: `/c2-invite [name]` (channel-visible invite URL), `/c2-games` (ephemeral list), `/c2-end <game>` (confirm, then archive; #614), `/c2-deck-check [link]` and `/c2-deck-req [link]` (ADR 0095 §4 — deck coverage checks and deck requests; with no link, a paste modal, per the ADR's 2026-09-25 amendment).
 - **Registration is a bulk overwrite** ([#1631](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1631), ADR 0095): `RegisterCommands` calls `ApplicationCommandBulkOverwrite` once per guild instead of creating one command at a time, so a stale registration (the old `cc-` names, or any command removed from `commandDefinitions`) disappears on the first boot of a new binary rather than needing a manual cleanup step.
 - **Deferred replies.** `/c2-deck-check` and `/c2-deck-req` are the bot's first deferred interactions: both defer with `InteractionResponseDeferredChannelMessageWithSource`, ephemeral, giving about 20s instead of the other commands' 4s HTTP budget (a deck fetch plus a GitHub call can run long). A deferred response's visibility is fixed at defer time — `WebhookEdit` has no `Flags` field — so a command whose final reply must be channel-visible (`/c2-deck-req` on `filed` or `joined`) defers ephemerally, deletes that placeholder once the result is known, and posts the visible half as a follow-up message instead of an edit.
 - `/c2-deck-check <link>` calls the public `POST /deck-coverage` with the bot's admin session (its own, larger rate bucket) and replies ephemerally with the bucket counts, up to ~15 `manual` card names, a link to the site's full report, and — when there is something to request — a **Request these cards** button. The button's custom ID carries the deck link URL-encoded; when that would exceed Discord's 100-character cap it stores the link server-side instead (same in-memory-with-TTL trade-off as `/c2-end`'s confirmations: a bot restart drops it, run the check again) and carries a short token. Pressing it runs the same request flow as `/c2-deck-req`, attributed to whoever clicked.
+- **Pasted lists (ADR 0095, amendment 2026-09-25).** Moxfield blocks the server (a Cloudflare 403 on every endpoint), so both deck commands take `link` as optional. With no link the bot answers at once with a modal (`InteractionResponseModal`, custom ID `c2-deck-paste:check` or `c2-deck-paste:req`, one required paragraph input of up to 4000 characters). A modal must be the first response, so the deferral happens on submit: `Dispatch` handles `InteractionModalSubmit` behind the same guild allow-list and runs the same deferred flow with `{text}`. A pasted check's "Request these cards" button always carries a token into the in-memory store (which holds a link or a list), and its full-report line links `#/deck-check` plainly. A server error with `hint: "paste_list"` (any Moxfield fetch error) is shown with "Run `/c2-deck-check` with no link to paste it."
 - `/c2-deck-req <link>` calls `POST /deck-requests` with the bot's admin session and `requester: {discord_id, display_name}` (`Member.Nick`, then `User.GlobalName`, then `User.Username`). `filed` and `joined` (a fresh comment) reply in the channel with the issue link; `joined` with `already_requested`, `nothing_to_add`, `rate_limited` and every error reply ephemerally.
 - `/c2-end` is **host or admin** (S34 [#1044](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1044) added `games.created_by`; [#1098](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1098) wired it into `server/internal/bot/end.go`). "Admin" is a Discord user on `CMDCTRL_DISCORD_ADMIN_USER_IDS` or a guild member holding a role on `CMDCTRL_DISCORD_ADMIN_ROLE_IDS`. "Host" is the game's own **creator** — whoever called `POST /games` while signed in — checked via `GET /games/{id}/creator?discord_id=<snowflake>` (admin-only; the bot calls it with its own admin session, per `Handler.mayEnd`). The server never says who a game's creator actually is, to the bot or anyone else — that route answers only "does this one Discord id match", so the bot never learns a creator's identity by asking about someone else's. Games with no creator (an admin session created the table, or it was restored from a pre-ADR-0051 file import) always answer `false` there, so the two allowlists are the only route for those. Both allowlists unset **and** no creator still refuses everyone with an ephemeral message naming the two variables — it never fails open. Confirmation is an ephemeral Confirm/Cancel prompt naming the table, players and created time; only the invoker's clicks count, and the prompt expires 60s after it's shown (`confirmTTL` in `end.go`).
 - Env vars (bot binary reads these; server binary does not yet — ADR 0051 Decision 5's DM invites, #613, will add the bot token to the server's env too):
@@ -953,6 +954,7 @@ func init() {
 - Type-add — append to `c.Types` after checking idempotency
 - Keyword grant — `c.Abilities = game.AppendKeywordAbility(c.Abilities, kw)`, which dedupes a redundant keyword and keeps every instance of a cumulative one (toxic, #748)
 - CDA P/T — `c.Power = computed; c.Toughness = computed + 1`
+- Keyword lockout ("lose X and can't have or gain X", the Archetypes) — not a hand-written removal, which a later grant undoes (CR 613.7). Use `effects.LoseAndCantHave(applies, "x")`, or `LoseAndCantHaveUntilEOT` for a resolving ability (Arcane Lighthouse). The engine strips the keyword after the whole layer-6 bucket (ADR 0038, amendment of 2026-09-28)
 
 **Tests** — see [anthem_test.go](server/internal/cards/effects/anthem_test.go) and [tarmogoyf_test.go](server/internal/cards/effects/tarmogoyf_test.go) for the layer-aware pattern. Use `pushBattlefieldCardWithTimestamp` (fires `EventZoneMove` so the listener stamps `EnteredBattlefieldAt` + bumps `layerVersion`); read effective characteristics via `effectivePower` / `effectiveToughness` / `effectiveTypes` / `effectiveAbilities` helpers.
 
@@ -971,7 +973,7 @@ func init() {
 | "for as long as ~ remains on the battlefield" / "for as long as you control ~" | `DurationWhileSourceRemains(ctx, src)` / `DurationWhileYouControlSource(ctx, src, p)` | when the condition goes false, checked at the top of every layer pass (CR 611.2b) |
 | no duration printed at all | `game.IndefiniteDuration()` | never (CR 611.2a) |
 
-Reach for `BoostUntilEOT` / `GrantKeywordUntilEOT` for the first row and `ScopedEffectFor{Target|Match, Mods, Duration, Label}` for everything else — a DATA record over the closed `game.*Mod` vocabulary (`SetBasePTMods`, `AddSubtypesMod`, `RemoveTypesMod`, `SetControllerMod`, … in `game/scoped_effects.go`), which the snapshot carries, so a table holding one is still a restore point ([ADR 0041](docs/decisions/0041-game-persistence.md) phase 3, #1497). Every other until-end-of-turn builder (`RestrictUntilEOT`, `GrantAllCreatureTypesUntilEOT`, `BecomeCreatureUntilEOT` / crew) and prowess write the same record. So does a granted ABILITY for a duration, `GrantAbilitiesFor` (the `grantAbilities` mod; see "Granting an ability to another permanent" below). The closure-taking registry (`StaticForDuration`, `StaticUntilEOT`, `RegisterScopedStaticForEffect`, `Game.ScopedStatics`) was deleted in tier 3a, so nothing accepts a closure for one any more; an effect none of the mods can say is a new mod kind, not a closure. There is deliberately no `StaticUntilYourNextTurn` wrapper. A one-shot continuous effect from a resolving spell must pin its affected set at resolution (CR 611.2c): `ScopedEffectFor` does that itself — its `Match` is resolved once, into `(InstanceID, EnteredBattlefieldAt)` pairs, so a permanent flickered in response is correctly a new object (CR 400.7). An indefinite effect pinned to its object survives that object phasing out and in (CR 702.26d); a "for as long as" duration that tracks a source ends when the source phases out (CR 702.26f). The two "for as long as" builders return `(Duration, bool)` and the bool is load-bearing: CR 611.2b says an effect whose condition is already false as it would begin never begins, so register nothing. See [ADR 0063](docs/decisions/0063-durations-and-control.md) and [ADR 0035](docs/decisions/0035-until-end-of-turn-effects.md).
+Reach for `BoostUntilEOT` / `GrantKeywordUntilEOT` for the first row and `ScopedEffectFor{Target|Match, Mods, Duration, Label}` for everything else — a DATA record over the closed `game.*Mod` vocabulary (`SetBasePTMods`, `AddSubtypesMod`, `RemoveTypesMod`, `SetControllerMod`, … in `game/scoped_effects.go`), which the snapshot carries, so a table holding one is still a restore point ([ADR 0041](docs/decisions/0041-game-persistence.md) phase 3, #1497). Every other until-end-of-turn builder (`RestrictUntilEOT`, `GrantAllCreatureTypesUntilEOT`, `BecomeCreatureUntilEOT` / crew) and prowess write the same record. So does a granted ABILITY for a duration, `GrantAbilitiesFor` (the `grantAbilities` mod; see "Granting an ability to another permanent" below). The closure-taking registry (`StaticForDuration`, `StaticUntilEOT`, `RegisterScopedStaticForEffect`, `Game.ScopedStatics`) was deleted in tier 3a, so nothing accepts a closure for one any more; an effect none of the mods can say is a new mod kind, not a closure. There is deliberately no `StaticUntilYourNextTurn` wrapper. A one-shot continuous effect from a resolving spell that changes characteristics or control must pin its affected set at resolution (CR 611.2c). A mass restriction changes neither and reads a live set instead (`RestrictUntilEOT{Scope}`, #1650). `ScopedEffectFor` does the pinning itself — its `Match` is resolved once, into `(InstanceID, EnteredBattlefieldAt)` pairs, so a permanent flickered in response is correctly a new object (CR 400.7). An indefinite effect pinned to its object survives that object phasing out and in (CR 702.26d); a "for as long as" duration that tracks a source ends when the source phases out (CR 702.26f). The two "for as long as" builders return `(Duration, bool)` and the bool is load-bearing: CR 611.2b says an effect whose condition is already false as it would begin never begins, so register nothing. See [ADR 0063](docs/decisions/0063-durations-and-control.md) and [ADR 0035](docs/decisions/0035-until-end-of-turn-effects.md).
 
 **Control from effects (CR 613.1b, CR 701.12, S38).** "Gain control of target permanent" is `GainControl{Target, Controller, Duration, Label}` and "exchange control" is `ExchangeControl{A, B}`. Both are layer-2 scoped effects — data records with one `setController` mod (#1497) — in the same bucket Mind Control's Aura uses, which is what makes control revert by itself (`Card.BaseController`) and makes two control effects sort by timestamp (CR 613.7) with no card-side work. Do NOT write `Card.Controller`. Three things ride along and are why the printed cards look the way they do: the permanent leaves combat (CR 506.4, declaration and announcement both), it is summoning-sick under its new controller however long it has been in play (CR 302.6 — which is why Act of Treason also grants haste), and ownership never changes (CR 108.3). An exchange is ONE effect: both objects are checked before either half is registered and the two halves share a timestamp, so it fails whole (CR 701.12b). `Controller` defaults to the effect's controller; pass it explicitly for "target opponent gains control of ~" — that card still waits on the choose-a-player prompt, not on this primitive.
 
@@ -1161,6 +1163,16 @@ priced at the madness cost, keyed `"madness"` and `TimingFlash`
 (CR 702.35b). `Register` refuses an unparseable cost at boot. The
 engine side, and the two declared simplifications it shares with
 cascade, are in `server/internal/game/madness.go`.
+
+**Miracle is one constructor** (#1665, CR 702.94):
+`AlternativeCosts: []game.AlternativeCost{Miracle("{W}")}`. `buildDef`
+grows the reveal-on-draw trigger from it. The offer carries
+`RequiresGrant`, so it is claimable only after the trigger has resolved
+for that card object. The grant is a hand `CastPermission` with
+`TimingFlash`, and `CastPermission.ForClaim` scopes it to the miracle
+claim, so the printed cost keeps its own timing. Never hand-roll the
+cost: without `RequiresGrant` the card would be castable for its miracle
+cost from any hand at any time. See `server/internal/game/miracle.go`.
 
 Unlike static abilities, replacements fire **before** the event
 happens — the pipeline constructs a `game.ReplacementEvent`, the
@@ -1698,6 +1710,20 @@ triggers, statics, replacements and abilities for free. It does NOT
 bring counters, damage, status, or any other layer's effect. See
 [ADR 0043](docs/decisions/0043-copy-effects.md).
 
+**"Becomes a copy … until end of turn" is a different primitive.** A
+permanent that is ALREADY on the battlefield becoming a copy (Mirage
+Mirror, Cytoshape, Mirrorweave, Unstable Shapeshifter, Lazav) is
+`BecomeCopy{Targets, Of, Indefinite, Except}` in
+[become_copy.go](server/internal/cards/effects/become_copy.go) — a
+duration copy with a timestamp of its own that ENDS, putting the
+permanent back to its entry copy or to itself (#1593, ADR 0043's
+2026-09-28 amendment). The except clause takes the same
+`PrintedValues` edits, plus `AddKeyword` for "except it has haste".
+"As this enters … until end of turn" (Cursed Mirror) is
+`EntersAsCopyOfUntilEndOfTurn`. Never write a copy by setting a card's
+printed fields from a card file: the record is what lets it end, undo
+and survive a restart.
+
 **Don't reach for this for a token copy.** "Create a token that's a
 copy of target creature" (Follow the Spirit, Kiki-Jiki) is
 `CreateTokenCopy` in
@@ -2018,7 +2044,19 @@ Static: []game.StaticAbility{
 },
 // …or, from a spell or an activated ability's Effect:
 RestrictUntilEOT{Target: id, Restrictions: game.CantBeBlocked}.Apply(ctx)
+// …or the mass form, whose set is read LIVE until cleanup (#1650):
+RestrictUntilEOT{Scope: game.ScopeCreaturesWithoutFlying, Restrictions: game.CantBlock}.Apply(ctx)
 ```
+
+**A mass "can't" is not snapshotted.** CR 611.2c locks the affected
+set only for an effect that changes characteristics or control, so
+Falter's "creatures without flying can't block this turn" also stops
+a creature flashed in afterwards. The mass form therefore takes a
+closed `game.AffectedScope` (`yourCreatures`, `opponentsCreatures`,
+`creaturesWithoutFlying`, …), not a `CardPredicate`, and
+`ScopedEffectFor{Match}` refuses an `addRestrictions` mod. A printed
+set no scope names needs a new scope in `game/scoped_effects.go`.
+See [ADR 0045](docs/decisions/0045-combat-restrictions.md) Decision 54.
 
 Five bits: `CantAttack`, `CantBlock`, `CantBeBlocked`, `CantActivate`,
 `CantActivateMana` (plus `CantAttackOrBlock` for the common pair).
@@ -4046,7 +4084,8 @@ and still unimplemented: that is CR 613 layer 1, deferred to S16.5.
 | "When ~ dies" | `EventLTB` | `cardDied(ev, source)` (graveyard-only; bounce / exile don't count) |
 | "Whenever you sacrifice a permanent" | `EventSacrifice` | `ev.Actor == source.Controller` — fires while the permanent is still on the battlefield, before its `EventLTB` |
 | "Whenever a player sacrifices a permanent" | `EventSacrifice` | `ev.CardID != uuid.Nil` (Mayhem Devil) — any player, any permanent type |
-| "Whenever another creature dies" | `EventLTB` | `diedCreature(ev, g)` — resolves the dying card post-move; add `dead.Controller == source.Controller` for "you control", `!IsToken(dead)` for "nontoken" |
+| "Whenever another creature dies" | `EventLTB` | `diedCreature(ev, g)` — resolves the dying card post-move, but "was a creature" is its type as it last existed (`ev.LastKnownTypes`, CR 603.10a), so a crewed Vehicle or an animated land counts. Test any other card type of a departed permanent with `leftAsType(ev, c, "artifact")`, never `c.IsArtifact()` on the moved card. Test a subtype the same way — `leftAsSubtype(ev, dead, "Zombie")`, never `dead.HasSubtype` — so a creature that was a Zombie only through Maskwood Nexus or a lord's grant counts, and a supertype with `leftAsSupertype(ev, dead, "Legendary")`, so a Clone of a legend counts, and a colour with `leftAsColor(ev, dead, "B")`, never `dead.HasColor` — so a creature painted black only by Darkest Hour or another effect counts. Add `leftUnderControlOf(ev, dead) == source.Controller` for "you control" (`!=` for "an opponent controls") — never `dead.Controller`: a card in a graveyard has no controller (CR 108.4), and a stolen creature its thief sacrificed died under the thief's control. `!IsToken(dead)` for "nontoken" |
+| "Whenever an attacking creature dies" / "a blocking creature dies" | `EventLTB` | `diedWhileAttacking(ev, g)` / `diedWhileBlocking(ev, g)` (Kardur, Doomscourge; Death Tyrant) — the combat state rides the event (`ev.AttackingTarget`, `ev.BlockingTarget`, `ev.Blocked`, CR 603.10a), because the exit clears it from the card before any watcher runs. Never read `AttackingTarget` off the dead card. Add `leftUnderControlOf(ev, dead) == source.Controller` for "you control"; a creature removed from combat before it died reads as neither |
 | "Whenever ~ attacks" | `EventAttack` | `attackDeclared(ev, source)` — `EventAttack` carries the attacking creature in `CardID`, exactly as `EventETB` carries the entering permanent |
 | "Whenever a creature you control attacks" | `EventAttack` | `attackDeclaredByYou(ev, source.Controller)` — reads `ev.Actor` (the attacker's controller); fires **once per attacking creature**, so a three-creature alpha strike triggers three times. Add `ev.CardID != source.InstanceID` for "another". `ev.Target` is the defending player |
 | "Whenever ~ enters or attacks" | `EventETB` + `EventAttack` on **one** ability | `ev.CardID == source.InstanceID` — one printed ability with two trigger conditions is one `TriggeredAbility` watching two kinds, not two declarations (Sun Titan) |
@@ -4055,6 +4094,7 @@ and still unimplemented: that is CR 613 layer 1, deferred to S16.5.
 | "Whenever another creature you control becomes the target…" | `EventBecomesTarget` | `targetedAnotherCreatureYouControl(ev, source, g)` (Monk Gyatso) — excludes the source, checks the target is still on the battlefield, then reads its type and controller. Fires once per target **slot** (CR 115.3), at **announce** (CR 601.2c), so the trigger goes on the stack ABOVE the spell that targeted and resolves first — which is the whole card |
 | "At the beginning of your upkeep" | `EventBeginUpkeep` | `ev.Actor == source.Controller` |
 | "At the beginning of your end step" | `EventBeginEndStep` | `ev.Actor == source.Controller` — drop the check for "the beginning of the end step" (any player's) |
+| "Whenever you become the monarch" / "Whenever an opponent becomes the monarch" | `EventMonarchChanged` | `YouBecameTheMonarch` (Custodi Lich, via `WheneverYouBecomeTheMonarch`) / `AnOpponentBecameTheMonarch` (Knights of the Black Rose). Actor is the new monarch, `uuid.Nil` when the crown was cleared; emitted only on a real change of holder, so "become" never fires for a player already wearing it. "You become the monarch" itself is `BecomeTheMonarch{}` / `WhenThisEntersYouBecomeTheMonarch(name)`; "if you're the monarch" is `YoureTheMonarch(g, you)` ([ADR 0096](docs/decisions/0096-the-monarch-from-a-card-effect.md)) |
 | "At the beginning of combat on your turn" / "your postcombat main phase" / "end of combat" (any step without a kind of its own) | `EventStepBegan` | `StepBegan(game.StepBeginCombat, true)` — or the constructors `AtBeginningOfYourCombat`, `AtYourPostcombatMain`, `AtEndOfYourCombat`, `AtYourStep(step, …)`, `AtEachStep(step, …)` (#588) |
 | "Whenever you cast a creature spell" | `EventCast` | `ev.Actor == source.Controller` + `g.LookupCardForEffect(ev.CardID)` for the spell's type |
 | "Whenever an opponent casts their first noncreature spell each turn" | `EventCast` | `g.CastTallyFor(ev.Actor).Noncreature == 1` (tally is bumped before the event fires) |

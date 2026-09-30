@@ -11,8 +11,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 Whenever an opponent discards a card, you may gain 3 life."
 //
 // Two optional lifegain triggers, one per printed ability: the
-// dead creature is read post-move (its controller survives the
-// move), and the discarding player is the discard event's Actor.
+// dead creature's controller is the one it had as it died
+// (leftUnderControlOf, #1682), and the discarding player is the
+// discard event's Actor.
 // A wheel against three opponents is one prompt per card, as
 // printed.
 //

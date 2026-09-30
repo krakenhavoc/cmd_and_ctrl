@@ -222,8 +222,56 @@ type Characteristic struct {
 	// combat if able" does go with its abilities: the catalog static
 	// that writes it is not applied once CatalogAbilityKey answers
 	// empty, CR 613.1f.) One entry per requirement, because CR 508.1d
-	// COUNTS them. Goad's pair is not here: it rides Card.GoadedBy.
+	// COUNTS them. Goad's pairs are not here: they ride Card.Goads.
 	AttackRequirements []AttackRequirement
+
+	// BlockRequirements are the CR 509.1c requirements this object
+	// carries — "blocks each combat if able" on a would-be blocker
+	// (Watchdog, Grand Melee's second line), and on an attacker "all
+	// creatures able to block this creature do so" (Lure), "must be
+	// blocked if able" (Gaea's Protector) and "must be blocked by
+	// exactly one creature if able". #1597, block_requirements.go.
+	// #1684 adds "blocks <that attacker> this turn if able" on a
+	// would-be blocker (Provoke; BlockRequirement.Attacker) and the
+	// filtered Lure (Marble Priest's Walls; BlockRequirement.Filter).
+	//
+	// AttackRequirements' twin, for the same reasons: written by
+	// ordinary layer statics and by ADR 0041 data records, only ever
+	// appended to, never cleared by a layer-6 ability removal, one entry
+	// per requirement because CR 509.1c counts them.
+	BlockRequirements []BlockRequirement
+
+	// CantHave are the keyword tokens this object can't have (CR
+	// 101.2, #1651): Arcane Lighthouse's "can't have hexproof or
+	// shroud", an Archetype's "can't have or gain trample".
+	// Restrictions' twin: written by a layer-6 effect's Apply, only
+	// ever appended to, and never cleared by a CR 613.1f ability
+	// removal, because the can't-have belongs to the effect's source.
+	//
+	// It is read once, by enforceCantHaveLocked, straight after the
+	// layer-6 bucket, which strips every listed token from Abilities.
+	// That is what makes the "can't" beat a grant whatever its
+	// timestamp. See cant_have.go.
+	CantHave []string `json:",omitempty"`
+
+	// AdditionalBlocks and BlocksAnyNumber are how many attackers this
+	// creature can block (CR 509.1a/b, #1706): one, plus
+	// AdditionalBlocks ("can block an additional creature each
+	// combat" — High Ground, Two-Headed Giant of Foriys; "an
+	// additional ninety-nine" — a monstrous Hundred-Handed One), or
+	// any number at all when BlocksAnyNumber is set (Palace Guard).
+	// BlockCapacity is the one reader.
+	//
+	// Restrictions' twin in shape: written by ordinary layer statics,
+	// only ever added to, never cleared by a layer-6 ability removal.
+	// Several "an additional creature" effects add up (High Ground's
+	// ruling), and "any number" beats any count. A creature's OWN
+	// "can block any number" still goes with its abilities, because
+	// the catalog static that writes it is not applied once
+	// CatalogAbilityKey answers empty (CR 613.1f); High Ground's does
+	// not, because the effect is High Ground's.
+	AdditionalBlocks int  `json:",omitempty"`
+	BlocksAnyNumber  bool `json:",omitempty"`
 }
 
 // printedCharacteristic builds a Characteristic from the card's
@@ -342,6 +390,8 @@ func (c Characteristic) clone() Characteristic {
 	out.Abilities = append([]string(nil), c.Abilities...)
 	out.GrantedAbilities = append([]GrantedAbility(nil), c.GrantedAbilities...)
 	out.AttackRequirements = append([]AttackRequirement(nil), c.AttackRequirements...)
+	out.BlockRequirements = append([]BlockRequirement(nil), c.BlockRequirements...)
+	out.CantHave = append([]string(nil), c.CantHave...)
 	return out
 }
 

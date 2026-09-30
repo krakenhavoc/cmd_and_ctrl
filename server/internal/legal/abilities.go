@@ -58,6 +58,10 @@ type activateParams struct {
 	// every ability that does not print the clause.
 	TapIDs []string `json:"tap_ids,omitempty"`
 	XValue int      `json:"x_value,omitempty"`
+	// Distribution is the division of a "divided as you choose"
+	// clause (#1563), announced as game.EvenDistribution — see
+	// castParams.Distribution.
+	Distribution map[string]int `json:"distribution,omitempty"`
 	// #917, CR 107.4f: how many of the mana component's Phyrexian
 	// symbols this activation pays with 2 life each. Omitted for
 	// every ability that prints none, which is nearly all of them.
@@ -259,7 +263,14 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 		// ActivateCatalogAbility validates with (#544, #1200): a
 		// policy is never offered a life cost the engine refuses,
 		// including one a locked life total makes unpayable.
-		if !g.CanPayLifeLocked(p, ab.Cost.Life) {
+		//
+		// #1594: the amount is the COMPUTED one — War Room's "pay
+		// life equal to the number of colors in your commanders'
+		// color identity" — read through the engine's own
+		// AbilityLifeCostLocked, so the move the bot is offered and
+		// the payment the engine charges are the same number.
+		life, lifeOK := g.AbilityLifeCostLocked(e.seat, source.InstanceID, ab.Cost)
+		if !lifeOK || !g.CanPayLifeLocked(p, life) {
 			continue
 		}
 		// CR 602.2b: X is announced with the activation, so the
@@ -425,7 +436,7 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 		// same product a modal cast does.
 		modeSets := [][]int{nil}
 		if ab.Modes != nil {
-			modeSets = e.legalModeSets(abilitySrc, ab.Modes)
+			modeSets = e.legalModeSets(abilitySrc, ab.Modes, e.g.ModeQueryForSourceForEffect(*source, e.seat))
 			if len(modeSets) == 0 {
 				continue
 			}
@@ -433,13 +444,56 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 		type announcement struct {
 			modes   []int
 			targets []game.TargetRef
+			steps   []game.AnnouncedClause
+			// xValue is the X this announcement's target clause was
+			// bound to (#1723), or -1 when nothing bound one — the
+			// overwhelming majority, which reads pay.xValue exactly as
+			// before.
+			xValue int
 		}
 		var announcements []announcement
 		for _, modes := range modeSets {
 			steps := game.AnnouncedClauses(ab.Targets, ab.Modes, modes)
+			// #1657: a divided amount read off the board, sized as
+			// the activation gate will size it.
+			g.BindDivideAmountsForEffect(steps, game.DivideAmountArgs{Controller: e.seat, Source: source.InstanceID})
+			if game.StepsBoundByX(steps) {
+				// #1723: an X-bound target clause ("with mana value
+				// X") is NOT monotonic in X the way "X or less" is —
+				// a larger X can have FEWER legal targets, not more —
+				// so the single "largest affordable X" cast.go picks
+				// for the "or less" case would routinely offer
+				// nothing here, when a smaller X has a legal target
+				// and the largest affordable one does not. So this
+				// tries every affordable X from the floor up and
+				// keeps only the (X, target) pairs that are actually
+				// legal — #544's rule, one dimension over from the
+				// count ladders (variableSacrificePayments and
+				// friends) already do for a cost's X.
+				//
+				// Only the plain mana-{X} shape is supported: an
+				// ability whose PRICE reads its targets, or whose X is
+				// announced by a sacrifice/tap count rather than mana,
+				// has no catalog card combining that with an X-bound
+				// target yet, so it is left unenumerated rather than
+				// guessed at.
+				if perTarget || ab.Cost.XSlots() == 0 {
+					continue
+				}
+				floor := enumeratedXFloor(game.CatalogAbilityKey(*source), ab.Cost.FloorX())
+				for x := floor; x <= basePay.xValue; x++ {
+					xs := game.AnnouncedClauses(ab.Targets, ab.Modes, modes)
+					g.BindDivideAmountsForEffect(xs, game.DivideAmountArgs{Controller: e.seat, Source: source.InstanceID})
+					game.BindStepsXForEffect(xs, x)
+					for _, ts := range e.legalStepSets(abilitySrc, xs, budget) {
+						announcements = append(announcements, announcement{modes: modes, targets: ts, steps: xs, xValue: x})
+					}
+				}
+				continue
+			}
 			sets := e.legalStepSets(abilitySrc, steps, budget)
 			for _, ts := range sets {
-				announcements = append(announcements, announcement{modes: modes, targets: ts})
+				announcements = append(announcements, announcement{modes: modes, targets: ts, steps: steps, xValue: -1})
 			}
 		}
 		if len(announcements) == 0 {
@@ -478,7 +532,19 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 				// payment it carries. Register refuses a cost that
 				// also puts {X} in its mana component, so there is
 				// never a second claimant on this number.
+				//
+				// #1723: `ann.xValue >= 0` only for an ability whose
+				// mana cost has {X} (the ladder above requires
+				// ab.Cost.XSlots() > 0), and effects.Register already
+				// refuses {X} in the mana cost alongside
+				// SacrificeCountFromX (#1213) — one announced X
+				// cannot pay both. So the two conditions below can
+				// never both hold for the same ability, and reading
+				// one after the other here is never a clobber.
 				xValue := pay.xValue
+				if ann.xValue >= 0 {
+					xValue = ann.xValue
+				}
 				if game.SacrificeCountFromX(ab.Cost.SacrificeOther) {
 					xValue = len(sacs)
 				}
@@ -509,6 +575,12 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 								game.WithAutoTapExclusions(abilityExcluded, sacs, discardIDs, exileIDs, taps)) {
 							continue
 						}
+						// #1563: the division this activation announces
+						// under its X — none refused by the gate (#544).
+						dist, ok := game.EvenDistribution(ann.steps, targets, tapXValue)
+						if !ok {
+							continue
+						}
 						for _, cc := range counterChoices {
 							if budget <= 0 {
 								break
@@ -534,8 +606,10 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 							// controller pays at announce, so the
 							// Phyrexian half counts — a policy that saw
 							// only the printed component would read a
-							// four-life activation as free.
-							cost := moveCost(ab.Cost.Life+phyrexianLife*game.PhyrexianLifePerSymbol, loyalty)
+							// four-life activation as free. #1594: and
+							// the computed component is `life`, the
+							// amount the engine will charge.
+							cost := withPhyrexianLife(moveCost(life, loyalty), phyrexianLife)
 							for _, price := range cc.prices() {
 								cost = withCounterPrice(cost, price)
 							}
@@ -568,6 +642,7 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 									WaterbendIDs:     idStrings(waterbendIDs),
 									TapIDs:           idStrings(taps),
 									XValue:           tapXValue,
+									Distribution:     distributionWire(dist),
 									PhyrexianLife:    phyrexianLife,
 									Strict:           true,
 									AutoTap:          true,
@@ -650,7 +725,11 @@ func (e *enumerator) abilityManaPayment(source *game.Card, zone game.ZoneKind, a
 		pay.excluded = game.WithAutoTapExclusions(excluded, taps)
 		return pay, true
 	}
-	x, life, ok := e.affordablePayment(cost, game.ManaSpendForAbility(*source), floor, ab.Cost.Life, excluded)
+	// #1594: the life held back from the Phyrexian strike is the
+	// COMPUTED component, the amount the engine charges beside it. The
+	// caller already refused an unpriceable one, so ok is not re-read.
+	reserved, _ := e.g.AbilityLifeCostLocked(e.seat, source.InstanceID, ab.Cost)
+	x, life, ok := e.affordablePayment(cost, game.ManaSpendForAbility(*source), floor, reserved, excluded)
 	if !ok {
 		return abilityManaPayment{}, false
 	}
@@ -906,10 +985,14 @@ func (e *enumerator) affordablePayment(
 	if x, ok := e.affordableXExcluding(cost, spend, floor, excluded); ok {
 		return x, 0, true
 	}
-	budget := e.p.Life - reservedLife
 	for n := 1; n <= cost.PhyrexianSymbols(); n++ {
 		reduced, life := game.PhyrexianLifePlan(cost, e.p.ManaPool, spend, n)
-		if life > budget {
+		// #1677: the engine's own predicate — CR 119.4's "down to 0"
+		// and CR 119.8's locked life total — rather than a bare
+		// subtraction that knew only the first half, so a seat under
+		// a life lock is not offered a Phyrexian activation the
+		// strike refuses.
+		if !e.g.CanPayLifeLocked(e.p, reservedLife+life) {
 			break
 		}
 		if x, ok := e.affordableXExcluding(reduced, spend, floor, excluded); ok {

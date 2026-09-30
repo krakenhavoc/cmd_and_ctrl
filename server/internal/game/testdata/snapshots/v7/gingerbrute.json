@@ -1272,7 +1272,7 @@
           "goadedBy": "00000000-0000-0000-0000-000000000000",
           "damageMarked": 0,
           "faceDown": false,
-          "enteredBattlefieldAt": 0,
+          "enteredBattlefieldAt": 1790208000000001000,
           "summonedThisTurn": false,
           "markedLethalByDeathtouch": false,
           "attachedTo": {
@@ -1345,7 +1345,7 @@
         "affected": [
           {
             "id": "f741ee16-199e-4aed-b0d3-0879abb67d3b",
-            "unstamped": true,
+            "enteredAt": 1790208000000001000,
             "controller": "00000000-0000-0000-0000-000000000000"
           }
         ],
@@ -1365,7 +1365,7 @@
         },
         "sourceName": "Gingerbrute",
         "controller": "d79c6390-785b-4e71-abdd-a7d5525a67dc",
-        "timestamp": 1790208000000001000,
+        "timestamp": 1790208000000002000,
         "duration": {
           "Kind": 0,
           "Player": "d79c6390-785b-4e71-abdd-a7d5525a67dc",
@@ -1415,7 +1415,10 @@
         "label": "untap",
         "step": "untap",
         "cause_controller": "00000000-0000-0000-0000-000000000000",
-        "cause_item": "00000000-0000-0000-0000-000000000000"
+        "cause_item": "00000000-0000-0000-0000-000000000000",
+        "attacking_target": "00000000-0000-0000-0000-000000000000",
+        "blocking_target": "00000000-0000-0000-0000-000000000000",
+        "last_known_controller": "00000000-0000-0000-0000-000000000000"
       },
       {
         "seq": 2,
@@ -1431,7 +1434,10 @@
         "label": "upkeep",
         "step": "upkeep",
         "cause_controller": "00000000-0000-0000-0000-000000000000",
-        "cause_item": "00000000-0000-0000-0000-000000000000"
+        "cause_item": "00000000-0000-0000-0000-000000000000",
+        "attacking_target": "00000000-0000-0000-0000-000000000000",
+        "blocking_target": "00000000-0000-0000-0000-000000000000",
+        "last_known_controller": "00000000-0000-0000-0000-000000000000"
       },
       {
         "seq": 3,
@@ -1443,10 +1449,30 @@
         "card_id": "00000000-0000-0000-0000-000000000000",
         "stack_item_id": "00000000-0000-0000-0000-000000000000",
         "cause_controller": "00000000-0000-0000-0000-000000000000",
-        "cause_item": "00000000-0000-0000-0000-000000000000"
+        "cause_item": "00000000-0000-0000-0000-000000000000",
+        "attacking_target": "00000000-0000-0000-0000-000000000000",
+        "blocking_target": "00000000-0000-0000-0000-000000000000",
+        "last_known_controller": "00000000-0000-0000-0000-000000000000"
       },
       {
         "seq": 4,
+        "batch": 2,
+        "kind": "zone_move",
+        "actor": "00000000-0000-0000-0000-000000000000",
+        "source": "00000000-0000-0000-0000-000000000000",
+        "target": "00000000-0000-0000-0000-000000000000",
+        "card_id": "f741ee16-199e-4aed-b0d3-0879abb67d3b",
+        "stack_item_id": "00000000-0000-0000-0000-000000000000",
+        "old_zone": "hand",
+        "new_zone": "battlefield",
+        "cause_controller": "00000000-0000-0000-0000-000000000000",
+        "cause_item": "00000000-0000-0000-0000-000000000000",
+        "attacking_target": "00000000-0000-0000-0000-000000000000",
+        "blocking_target": "00000000-0000-0000-0000-000000000000",
+        "last_known_controller": "00000000-0000-0000-0000-000000000000"
+      },
+      {
+        "seq": 5,
         "batch": 2,
         "kind": "mana_spent",
         "actor": "d79c6390-785b-4e71-abdd-a7d5525a67dc",
@@ -1456,10 +1482,13 @@
         "stack_item_id": "00000000-0000-0000-0000-000000000000",
         "amount": 1,
         "cause_controller": "00000000-0000-0000-0000-000000000000",
-        "cause_item": "00000000-0000-0000-0000-000000000000"
+        "cause_item": "00000000-0000-0000-0000-000000000000",
+        "attacking_target": "00000000-0000-0000-0000-000000000000",
+        "blocking_target": "00000000-0000-0000-0000-000000000000",
+        "last_known_controller": "00000000-0000-0000-0000-000000000000"
       },
       {
-        "seq": 5,
+        "seq": 6,
         "batch": 2,
         "kind": "trigger",
         "actor": "d79c6390-785b-4e71-abdd-a7d5525a67dc",
@@ -1468,10 +1497,13 @@
         "card_id": "f741ee16-199e-4aed-b0d3-0879abb67d3b",
         "stack_item_id": "00000000-0000-0000-0000-000000000000",
         "cause_controller": "00000000-0000-0000-0000-000000000000",
-        "cause_item": "00000000-0000-0000-0000-000000000000"
+        "cause_item": "00000000-0000-0000-0000-000000000000",
+        "attacking_target": "00000000-0000-0000-0000-000000000000",
+        "blocking_target": "00000000-0000-0000-0000-000000000000",
+        "last_known_controller": "00000000-0000-0000-0000-000000000000"
       },
       {
-        "seq": 6,
+        "seq": 7,
         "batch": 2,
         "kind": "activate_ability",
         "actor": "d79c6390-785b-4e71-abdd-a7d5525a67dc",
@@ -1481,10 +1513,13 @@
         "stack_item_id": "e426252a-47ed-45d5-bdf1-d1d94a93d1a7",
         "label": "{1}: This creature can't be blocked this turn except by creatures with haste.",
         "cause_controller": "00000000-0000-0000-0000-000000000000",
-        "cause_item": "00000000-0000-0000-0000-000000000000"
+        "cause_item": "00000000-0000-0000-0000-000000000000",
+        "attacking_target": "00000000-0000-0000-0000-000000000000",
+        "blocking_target": "00000000-0000-0000-0000-000000000000",
+        "last_known_controller": "00000000-0000-0000-0000-000000000000"
       },
       {
-        "seq": 7,
+        "seq": 8,
         "batch": 3,
         "kind": "resolve",
         "actor": "d79c6390-785b-4e71-abdd-a7d5525a67dc",
@@ -1494,10 +1529,13 @@
         "stack_item_id": "00000000-0000-0000-0000-000000000000",
         "label": "{1}: This creature can't be blocked this turn except by creatures with haste.",
         "cause_controller": "00000000-0000-0000-0000-000000000000",
-        "cause_item": "00000000-0000-0000-0000-000000000000"
+        "cause_item": "00000000-0000-0000-0000-000000000000",
+        "attacking_target": "00000000-0000-0000-0000-000000000000",
+        "blocking_target": "00000000-0000-0000-0000-000000000000",
+        "last_known_controller": "00000000-0000-0000-0000-000000000000"
       }
     ],
-    "eventSeq": 7,
+    "eventSeq": 8,
     "eventBatch": 3,
     "rng": {
       "kind": "keyed",
@@ -1533,8 +1571,8 @@
       "f807e0d6-b3b4-463d-9fdb-4cf3d55c940c": 9,
       "f9793d3c-834c-4181-99a0-b756cc28042b": 65537
     },
-    "layerVersion": 1,
-    "lastResolvedVersion": 1,
+    "layerVersion": 2,
+    "lastResolvedVersion": 2,
     "continuations": {}
   }
 }

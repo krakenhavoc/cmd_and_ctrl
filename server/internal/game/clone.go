@@ -302,7 +302,7 @@ func (g *Game) cloneLocked() *Game {
 	// declaration. An undo across a re-point that kept them would
 	// swallow the re-done "becomes blocked"; dropping them would
 	// announce the same attacker twice.
-	out.announcedBlocks = copyUUIDPairMap(g.announcedBlocks)
+	out.announcedBlocks = copyUUIDListMap(g.announcedBlocks)
 	out.blockedAttackers = copyBoolMap(g.blockedAttackers)
 	// #859: the attack declaration's announcements rewind with it for
 	// the same reason — an undo across a re-point that kept them
@@ -464,6 +464,10 @@ func cloneCard(c Card) Card {
 	if len(c.Colors) > 0 {
 		out.Colors = append([]string(nil), c.Colors...)
 	}
+	// #1706: a multi-blocker's further attackers.
+	if len(c.AlsoBlocking) > 0 {
+		out.AlsoBlocking = append([]uuid.UUID(nil), c.AlsoBlocking...)
+	}
 	// ADR 0034 faces. ActiveFace and Layout are scalars and ride the
 	// value copy, but Faces is a slice of structs each holding its
 	// own Colors slice — two levels of aliasing, both of which would
@@ -486,6 +490,10 @@ func cloneCard(c Card) Card {
 	// values through the shared pointer and the undo would find it
 	// already un-cloned.
 	out.PrintedSelf = copyPrintedValues(c.PrintedSelf)
+	// #1593: the duration-copy baseline is a pointer for the same
+	// reason, and an undo that shared it would revert a Cytoshape to
+	// whatever the live game's baseline had become.
+	out.DurationCopyBase = copyPrintedValues(c.DurationCopyBase)
 	// #1270: the listed face-down body is a pointer too. Never
 	// mutated through, but copied for PrintedSelf's reason — an undo
 	// snapshot must not share anything with the live card.
@@ -503,6 +511,9 @@ func cloneCard(c Card) Card {
 	} else {
 		out.NextUntapSkips = nil
 	}
+	// #1598: one entry per goader. A value copy would share the backing
+	// array, so a goad added after the snapshot could surface in it.
+	out.Goads = cloneGoads(c.Goads)
 	// CR 400.7d (#653 / ADR 0073): what the spell that became this
 	// permanent was cast for. Its one slice would alias the live
 	// record into every undo snapshot under a value copy.
@@ -714,6 +725,7 @@ func clonePickTargetFrame(f *pickTargetFrame) *pickTargetFrame {
 	out := *f
 	out.picked = append([]TargetRef(nil), f.picked...)
 	out.modes = append([]int(nil), f.modes...)
+	out.dist = cloneDistributionLocked(f.dist)
 	return &out
 }
 

@@ -961,3 +961,217 @@ Gogo, Master of Mimicry comes off its caveat and ships `full`.
 Lithoform Engine, Strionic Resonator and Rings of Brighthearth are
 unchanged and now refuse a Gogo activation. The tests are in
 `server/internal/cards/effects/gogo_sephiroth_hooks_test.go`.
+
+## Amendment 2026-09-28 (#1593): a copy effect with a duration (CR 707.2, CR 611.2, CR 613.1a, CR 613.7) · Accepted · S45
+
+Issue [#1593](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1593).
+Tracker #888. No new ADR number: Decision 1 above reserved `Layer1Copy`
+for exactly this class, and the Consequences and the #665 amendment's
+"Still not covered" both name it.
+
+### What was missing
+
+"This artifact becomes a copy of target artifact … until end of turn"
+(Mirage Mirror) is a copy effect created by a resolving spell or ability
+(CR 611.2) on a permanent that is ALREADY on the battlefield. Three
+things separate it from an entry copy:
+
+- it has a **timestamp** of its own (CR 613.7), so two of them on one
+  permanent are ordered, and an entry copy is under both;
+- it **ends**, and when it does the permanent is whatever it was
+  underneath — for a Clone that is the Clone's entry copy, not Clone;
+- the copied object may be a **card in a graveyard** (Shifting Woodland,
+  Lazav) that can leave while the copy lasts.
+
+Decision 1's reason for materialising a copy onto the flat printed
+fields still holds for all of it: the oracle ID, the printed P/T the
+CR 704.5f check reads between recomputes, and the mana cost, keywords,
+layout and faces live on no `Characteristic`. So a duration copy is
+materialised too. What changes is that it has to be re-derived, not
+settled once.
+
+### Decision 21. The effect is a `ScopedEffect` carrying the copied values BY VALUE
+
+A duration copy is an ADR 0041 data record: a `ScopedEffect` whose one
+mod is **`becomeCopy`** (`ModBecomeCopy`), with the copied
+`PrintedValues` — the except clause already applied — in
+`Mod.Copy` (exactly one entry; `copyModProblem` refuses anything else at
+registration and at restore). The affected set is pinned per CR 611.2c,
+the duration is an ADR 0063 `Duration`, and the sweep, the pin's garbage
+collection, undo and the snapshot are the ones every other record has.
+Nothing about it is a closure, so a game holding one is a restore point.
+
+Values, never a reference. The copied card is read ONCE, as the effect
+begins — Cytoshape's ruling says so — so exiling Shifting Woodland's
+graveyard card, or shuffling away Lazav's, changes nothing. A record
+whose values name a granted ability bundle this binary's catalog does
+not register is refused at restore, exactly as a `grantAbilities` mod
+naming one is.
+
+`becomeCopy` has its own reader (`readerCopy`), so the layer-pass
+adapter, the replacement gather and the block-rule walk all skip it.
+
+### Decision 22. Layer 1 is applied BEFORE the pass, by a materialiser, in timestamp order
+
+`materialiseDurationCopiesLocked` (`server/internal/game/duration_copy.go`)
+walks the battlefield and, for each permanent, finds the duration copies
+that apply to it. Each copy effect sets every copiable value, with its
+own except clause folded in, so applying them in timestamp order on top
+of the entry copy leaves exactly the values of the latest one; that is
+what it writes. Ties keep registration order, as the layer pass sorts
+ties. It runs:
+
+- at the top of every layer recompute, after the duration sweep and
+  before `layerPassLocked`, so layers 2–7 run on its result (CR 613.1a);
+- whenever the sweep drops a record, so the cleanup step's revert is
+  visible to the next reader of `Card.OracleID` rather than only to the
+  next recompute;
+- when a record is registered, so the resolving ability's own
+  continuation already sees the copy.
+
+It is idempotent (a permanent already carrying the right values is not
+touched), bumps the layer version when it writes, and emits no event —
+it runs inside the recompute, where a listener would read a half-built
+board (#930). `BecomeCopyForEffect` emits `EventCopyApplied` per
+permanent after it has materialised.
+
+`Layer1Copy` stays in `layerOrder` as the layer's name; no layer-pass
+effect is filed in it, and the header comments that called it "for
+copies with a duration, not supported yet" are corrected.
+
+### Decision 23. `Card.DurationCopyBase` is the second baseline
+
+`PrintedSelf` is still the card's OWN values, what CR 400.7 restores on
+battlefield leave. `DurationCopyBase` is new: the layer-1 baseline UNDER
+the duration copies — the entry copy for a Clone, the card's own values
+for anything else. The first duration copy stashes it (and sets
+`PrintedSelf` too, if no entry copy had), and when no duration copy
+applies any longer the materialiser writes it back and clears it,
+dropping `PrintedSelf` as well when the baseline IS the card's own, so
+`IsCopy` is false again. The battlefield-leave path clears it with
+`PrintedSelf`.
+
+It is the one piece of state that cannot be re-derived: once a Cytoshape
+has overwritten a Clone's printed fields, nothing else on the board
+remembers what the Clone had copied. So it is `carried` in the drift
+plan, in the snapshot mirror (`durationCopyBase`, additive — absent is
+what every older file correctly says), and deep-copied by `clone.go`.
+No schema bump: a binary that predates it refuses any file with a live
+duration copy anyway, because the `becomeCopy` kind and the `copy` key
+are both unknown to it (ADR 0041 P4).
+
+The card-carried mana and activated ability slices are cleared whenever
+a duration copy changes a permanent's identity, in either direction.
+Both are catalog-rebuildable, and the reader falls back to the catalog
+under the NEW key when they are empty — a copied token's key comes with
+its copied values (#521).
+
+### Decision 24. Catalog hooks switch because the KEY switches
+
+Nothing in the trigger harvester, the static gather, the replacement
+gather, `ActivateCatalogAbility` or the mana-ability reader changed.
+They all key on `CatalogKey`, which reads the flat `OracleID` and
+`GrantedAbilities` the materialiser writes, so the copy's triggered,
+static, activated and mana abilities are the permanent's while the copy
+lasts and are gone the moment it ends. That was Decision 1's payoff for
+entry copies, and it is the same payoff here. An except clause that says
+"and it has this ability" (Unstable Shapeshifter, Lazav, Dimir
+Doppelganger) is a Decision 6 grant in the stored values; a keyword
+("except it has haste", Cursed Mirror) is the new
+`PrintedValues.AddKeyword`, a copiable value like any other printed
+keyword.
+
+An INDEFINITE copy of a single permanent drops the older copy records
+that name exactly that permanent: they are invisible for as long as the
+new one lasts, which is as long as the permanent does. Without it an
+Unstable Shapeshifter would carry one `PrintedValues` per creature it
+ever saw enter.
+
+### Decision 25. "As this enters … until end of turn" is an entry copy that is re-filed
+
+Cursed Mirror's copy lands as the artifact ENTERS, so its ETB triggers
+must be the copied creature's — an entry copy's job. But its end has to
+be a record pinned to the object's entry stamp, and the stamp is written
+by the zone-move listener, after the copy lands. So
+`CopySelector.UntilEndOfTurn` lands it as an ordinary entry copy, and
+`settleTimedEntryCopyLocked` re-files it between the zone-move event and
+`EventETB`: the flat fields stay, `DurationCopyBase` becomes the card's
+own values, and an until-end-of-turn record pinned to the stamped object
+is registered. Nothing in between can revert it, because until the
+record exists the permanent has no `DurationCopyBase` and looks like any
+Clone.
+
+### Cards
+
+Shifting Woodland and Cursed Mirror come off their caveats and ship
+`full`. Mirage Mirror, Cytoshape, Mirrorweave, Lazav, Dimir Mastermind
+and Dimir Doppelganger are new and `full`. Unstable Shapeshifter is new
+with one caveat (below). Card side: `effects.BecomeCopy`
+(`become_copy.go`), `EntersAsCopyOfUntilEndOfTurn`, and
+`game.OwnPrintedValues` for "that card" read as last-known information.
+The engine tests are `server/internal/game/duration_copy_test.go`; the
+card tests are `server/internal/cards/effects/duration_copy_test.go`.
+
+### Still not covered
+
+- **Last-known copiable values of a permanent.** Unstable Shapeshifter
+  copies "that creature"; if it left the battlefield before the trigger
+  resolved, the engine has only the card, so a creature that was itself
+  a copy (a Clone) is copied as the card rather than as what it was
+  copying. Declared as the card's caveat. Lazav and Dimir Doppelganger
+  copy a CARD, whose last-known values are its own, so they are exact.
+- A duration copy on a **face-down** permanent, and a permanent that
+  **transforms** while a duration copy is on it, have no printed card
+  in the catalog that reaches them and are not specifically handled.
+
+## Amendment (2026-09-28, #1723): a third duration — CR 611.2b's "until your next turn"
+
+The "Still not covered" list above named Shapesharer and said
+`BecomeCopy` would take the duration as a field "and wait only for a
+card batch." That deferral is spent.
+
+`BecomeCopy.Indefinite bool` covered exactly two durations — "until
+end of turn" (false, the zero value) and no stated duration at all
+(true) — which was every printed card of the class through Mizzium
+Transreliquat. Shapesharer's "{2}{U}: Target Shapeshifter becomes a
+copy of target creature **until your next turn**" is CR 611.2b's third
+duration, and it does not fit a bool: a card cannot say "until end of
+turn AND until your next turn" by setting two flags, and the two are
+easy to confuse in exactly the way that matters here — "until your
+next turn" ends as that turn BEGINS (CR 500.1), "until end of turn"
+ends at the cleanup the turn already has.
+
+`Indefinite` is replaced with `Duration CopyDuration`, a three-value
+enum (`CopyUntilEndOfTurn` — the zero value, so every card registered
+before this change reads exactly as it did; `CopyIndefinite`;
+`CopyUntilYourNextTurn`). `Apply` builds the `game.Duration` from it,
+reading "your" off `ctx.Controller()` for the new case — the ability's
+controller, per CR 611.2b — rather than adding a field to carry a
+player ID nothing else on the struct needs. `game.UntilYourNextTurn` is
+not a new engine kind: it already exists (`UntilYourNextTurnDuration`,
+used by cast bans and cast-permission windows) and `durationExpiredLocked`
+already handles it generically for any scoped effect, `BecomeCopyMod`
+included. So this is entirely a catalog-side change — one field, one
+switch in `become_copy.go` — with nothing new to teach the sweep, the
+snapshot, or undo.
+
+### Cards
+
+**Shapesharer** (new, `CompletenessFull`): `Duration:
+CopyUntilYourNextTurn`. Two target clauses (#764) — "target
+Shapeshifter" (`OfCreatureType("Shapeshifter")`, which a changeling
+card, this one included, always satisfies) and "target creature" —
+read positionally with `ctx.ClauseTarget(0)` / `ClauseTarget(1)`, the
+Bite Down shape. **Lazav, the Multifarious** (new, `CompletenessFull`)
+also uses `BecomeCopy`, with `Duration: CopyIndefinite` — the same
+shape as Lazav, Dimir Mastermind one Lazav over — but its actual seam
+is the second half of [#1723](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1723):
+an activated ability's target bound to its own announced X. See
+[ADR 0019](0019-structured-targeting.md)'s amendment of the same date.
+
+### Tests
+
+`server/internal/cards/effects/shapesharer_test.go` pins the duration
+itself: the copy survives the cleanup of the turn it was made on (an
+`UntilEndOfTurn` copy would not) and reverts only once the controller's
+own next turn begins, after every other seat at the table has had one.

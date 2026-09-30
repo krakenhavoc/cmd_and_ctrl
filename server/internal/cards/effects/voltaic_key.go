@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // Voltaic Key — Artifact {1} (EDHREC rank 1752):
 //
 //	"{1}, {T}: Untap target artifact."
@@ -21,14 +19,7 @@ func init() {
 			Label:   "{1}, {T}: Untap target artifact.",
 			Cost:    Plus(ManaCost("{1}"), TapCost()),
 			Targets: TargetPermanent("target artifact", Artifact()),
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				id, ok := b16FirstLegalTargetCard(ctx)
-				if !ok {
-					return nil
-				}
-				return UntapTarget{Target: id}.Apply(ctx)
-			},
+			Effect:  untapFirstLegalTarget,
 		}},
 	})
 }

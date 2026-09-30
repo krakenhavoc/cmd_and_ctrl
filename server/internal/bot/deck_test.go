@@ -11,14 +11,14 @@ import (
 	"github.com/bwmarrin/discordgo"
 )
 
-// --- buildDeckRequestCustomID / resolveDeckRequestLink round trip ---
+// --- buildDeckRequestCustomID / resolveDeckRequestSource round trip ---
 
 func TestDeckRequestCustomID_ShortLinkRoundTrips(t *testing.T) {
-	store := newDeckLinkStore()
+	store := newDeckSourceStore()
 	now := time.Now()
 	link := "https://moxfield.com/decks/AbC123"
 
-	id := buildDeckRequestCustomID(link, store, now)
+	id := buildDeckRequestCustomID(DeckSource{URL: link}, store, now)
 	if len(id) > discordCustomIDMax {
 		t.Fatalf("custom id exceeds Discord's cap: %d chars", len(id))
 	}
@@ -26,23 +26,23 @@ func TestDeckRequestCustomID_ShortLinkRoundTrips(t *testing.T) {
 		t.Errorf("short link should be embedded directly, got %q", id)
 	}
 
-	got, err := resolveDeckRequestLink(id, store, now)
+	got, err := resolveDeckRequestSource(id, store, now)
 	if err != nil {
-		t.Fatalf("resolveDeckRequestLink: %v", err)
+		t.Fatalf("resolveDeckRequestSource: %v", err)
 	}
-	if got != link {
-		t.Errorf("round trip: got %q, want %q", got, link)
+	if got != (DeckSource{URL: link}) {
+		t.Errorf("round trip: got %+v, want %q", got, link)
 	}
 }
 
 func TestDeckRequestCustomID_LongLinkUsesTokenStore(t *testing.T) {
-	store := newDeckLinkStore()
+	store := newDeckSourceStore()
 	now := time.Now()
 	// A link long enough that url.QueryEscape(link) plus the prefix
 	// blows past Discord's 100-char cap.
 	link := "https://archidekt.com/decks/1234567?" + strings.Repeat("query=value&", 10)
 
-	id := buildDeckRequestCustomID(link, store, now)
+	id := buildDeckRequestCustomID(DeckSource{URL: link}, store, now)
 	if len(id) > discordCustomIDMax {
 		t.Fatalf("custom id exceeds Discord's cap: %d chars (%q)", len(id), id)
 	}
@@ -50,57 +50,57 @@ func TestDeckRequestCustomID_LongLinkUsesTokenStore(t *testing.T) {
 		t.Errorf("long link should fall back to a token, got %q", id)
 	}
 
-	got, err := resolveDeckRequestLink(id, store, now)
+	got, err := resolveDeckRequestSource(id, store, now)
 	if err != nil {
-		t.Fatalf("resolveDeckRequestLink: %v", err)
+		t.Fatalf("resolveDeckRequestSource: %v", err)
 	}
-	if got != link {
-		t.Errorf("round trip via token: got %q, want %q", got, link)
+	if got != (DeckSource{URL: link}) {
+		t.Errorf("round trip via token: got %+v, want %q", got, link)
 	}
 }
 
 func TestDeckRequestCustomID_TokenExpires(t *testing.T) {
-	store := newDeckLinkStore()
+	store := newDeckSourceStore()
 	now := time.Now()
 	token := "tok-1"
-	store.put(token, "https://moxfield.com/decks/x", now)
+	store.put(token, DeckSource{URL: "https://moxfield.com/decks/x"}, now)
 
-	_, err := resolveDeckRequestLink(deckRequestCustomIDPrefix+"tok:"+token, store, now.Add(deckLinkTTL+time.Second))
-	if !errors.Is(err, errDeckLinkExpired) {
-		t.Errorf("want errDeckLinkExpired, got %v", err)
+	_, err := resolveDeckRequestSource(deckRequestCustomIDPrefix+"tok:"+token, store, now.Add(deckSourceTTL+time.Second))
+	if !errors.Is(err, errDeckSourceExpired) {
+		t.Errorf("want errDeckSourceExpired, got %v", err)
 	}
 }
 
 func TestDeckRequestCustomID_UnknownToken(t *testing.T) {
-	store := newDeckLinkStore()
-	_, err := resolveDeckRequestLink(deckRequestCustomIDPrefix+"tok:missing", store, time.Now())
-	if !errors.Is(err, errDeckLinkExpired) {
-		t.Errorf("want errDeckLinkExpired for an unknown token, got %v", err)
+	store := newDeckSourceStore()
+	_, err := resolveDeckRequestSource(deckRequestCustomIDPrefix+"tok:missing", store, time.Now())
+	if !errors.Is(err, errDeckSourceExpired) {
+		t.Errorf("want errDeckSourceExpired for an unknown token, got %v", err)
 	}
 }
 
 func TestDeckRequestCustomID_Malformed(t *testing.T) {
-	store := newDeckLinkStore()
+	store := newDeckSourceStore()
 	cases := []string{
 		deckRequestCustomIDPrefix + "noseparator",
 		deckRequestCustomIDPrefix + "weird:",
 		deckRequestCustomIDPrefix + "weird:x",
 	}
 	for _, id := range cases {
-		if _, err := resolveDeckRequestLink(id, store, time.Now()); err == nil {
-			t.Errorf("resolveDeckRequestLink(%q): want an error", id)
+		if _, err := resolveDeckRequestSource(id, store, time.Now()); err == nil {
+			t.Errorf("resolveDeckRequestSource(%q): want an error", id)
 		}
 	}
 }
 
-func TestDeckLinkStore_PutSweepsExpired(t *testing.T) {
-	s := newDeckLinkStore()
+func TestDeckSourceStore_PutSweepsExpired(t *testing.T) {
+	s := newDeckSourceStore()
 	base := time.Now()
-	s.put("old", "link-a", base)
+	s.put("old", DeckSource{URL: "link-a"}, base)
 	// A later put, past "old"'s TTL, should sweep it — same pattern
 	// endConfirmations.put already relies on.
-	later := base.Add(deckLinkTTL + time.Second)
-	s.put("new", "link-b", later)
+	later := base.Add(deckSourceTTL + time.Second)
+	s.put("new", DeckSource{Text: "1 Sol Ring"}, later)
 
 	if _, found := s.get("old", later); found {
 		t.Error("expired entry should have been swept on the next put")
@@ -128,7 +128,7 @@ func sampleReport() DeckCoverageReport {
 
 func TestDeckCheckContent_NamesCountsAndLink(t *testing.T) {
 	report := sampleReport()
-	content := deckCheckContent(report, "https://cmd.labxp.io", "https://moxfield.com/decks/AbC123")
+	content := deckCheckContent(report, "https://cmd.labxp.io", DeckSource{URL: "https://moxfield.com/decks/AbC123"})
 
 	if !strings.Contains(content, "Needy Deck") {
 		t.Errorf("content missing deck name: %q", content)
@@ -149,7 +149,7 @@ func TestDeckCheckContent_NamesCountsAndLink(t *testing.T) {
 
 func TestDeckCheckContent_EmptyDeckNameFallsBack(t *testing.T) {
 	report := DeckCoverageReport{Counts: map[DeckCoverageBucket]int{}}
-	content := deckCheckContent(report, "https://cmd.labxp.io", "https://moxfield.com/decks/x")
+	content := deckCheckContent(report, "https://cmd.labxp.io", DeckSource{URL: "https://moxfield.com/decks/x"})
 	if !strings.Contains(content, "This deck") {
 		t.Errorf("want a fallback name, got %q", content)
 	}
@@ -198,12 +198,12 @@ func TestDeckCheckWantsButton(t *testing.T) {
 }
 
 func TestDeckCheckReply_IncludesButtonWhenSomethingToRequest(t *testing.T) {
-	store := newDeckLinkStore()
+	store := newDeckSourceStore()
 	now := time.Now()
 	report := sampleReport() // has manual cards
 	link := "https://moxfield.com/decks/AbC123"
 
-	content, components := deckCheckReply(report, "https://cmd.labxp.io", link, store, now)
+	content, components := deckCheckReply(report, "https://cmd.labxp.io", DeckSource{URL: link}, store, now)
 	if content == "" {
 		t.Fatal("want non-empty content")
 	}
@@ -219,18 +219,18 @@ func TestDeckCheckReply_IncludesButtonWhenSomethingToRequest(t *testing.T) {
 		t.Fatalf("want the Request these cards button, got %+v", row.Components[0])
 	}
 	// The button's custom ID must resolve back to the checked link.
-	got, err := resolveDeckRequestLink(btn.CustomID, store, now)
+	got, err := resolveDeckRequestSource(btn.CustomID, store, now)
 	if err != nil {
-		t.Fatalf("resolveDeckRequestLink: %v", err)
+		t.Fatalf("resolveDeckRequestSource: %v", err)
 	}
-	if got != link {
-		t.Errorf("button custom id resolves to %q, want %q", got, link)
+	if got != (DeckSource{URL: link}) {
+		t.Errorf("button custom id resolves to %+v, want %q", got, link)
 	}
 }
 
 func TestDeckCheckReply_NoButtonWhenNothingToRequest(t *testing.T) {
 	report := DeckCoverageReport{Counts: map[DeckCoverageBucket]int{BucketAutomated: 40, BucketCaveats: 6, BucketNoEffect: 29}}
-	_, components := deckCheckReply(report, "https://cmd.labxp.io", "https://moxfield.com/decks/x", newDeckLinkStore(), time.Now())
+	_, components := deckCheckReply(report, "https://cmd.labxp.io", DeckSource{URL: "https://moxfield.com/decks/x"}, newDeckSourceStore(), time.Now())
 	if components != nil {
 		t.Errorf("want no button when nothing needs requesting, got %+v", components)
 	}
@@ -243,7 +243,7 @@ func TestCheckDeck_Success(t *testing.T) {
 	fs.deckCoverageBody = DeckCoverageReport{DeckName: "Needy Deck", Counts: map[DeckCoverageBucket]int{BucketManual: 2}}
 	h := NewHandler(Config{}, c, discardLogger())
 
-	report, err := h.checkDeck(context.Background(), "https://moxfield.com/decks/AbC123")
+	report, err := h.checkDeck(context.Background(), DeckSource{URL: "https://moxfield.com/decks/AbC123"})
 	if err != nil {
 		t.Fatalf("checkDeck: %v", err)
 	}
@@ -278,7 +278,7 @@ func TestRequestDeck_Success(t *testing.T) {
 	fs.deckRequestBody = DeckRequestResult{Status: DeckRequestFiled, IssueURL: "https://x/issues/1"}
 	h := NewHandler(Config{}, c, discardLogger())
 
-	result, err := h.requestDeck(context.Background(), "https://moxfield.com/decks/x", DeckRequester{DiscordID: "1", DisplayName: "Alice"})
+	result, err := h.requestDeck(context.Background(), DeckSource{URL: "https://moxfield.com/decks/x"}, DeckRequester{DiscordID: "1", DisplayName: "Alice"})
 	if err != nil {
 		t.Fatalf("requestDeck: %v", err)
 	}
@@ -295,7 +295,7 @@ func TestDeckRequestOutcomeMessage(t *testing.T) {
 		Status: DeckRequestFiled, IssueURL: "https://x/issues/7",
 		Report: &DeckCoverageReport{Counts: map[DeckCoverageBucket]int{BucketManual: 5, BucketUnreviewed: 2}},
 	}
-	content, visible := deckRequestOutcomeMessage(filed, "https://moxfield.com/decks/x")
+	content, visible := deckRequestOutcomeMessage(filed, DeckSource{URL: "https://moxfield.com/decks/x"})
 	if !visible {
 		t.Error("filed should be channel-visible")
 	}
@@ -304,7 +304,7 @@ func TestDeckRequestOutcomeMessage(t *testing.T) {
 	}
 
 	joined := DeckRequestResult{Status: DeckRequestJoined, IssueURL: "https://x/issues/7"}
-	content, visible = deckRequestOutcomeMessage(joined, "link")
+	content, visible = deckRequestOutcomeMessage(joined, DeckSource{URL: "link"})
 	if !visible {
 		t.Error("joined (fresh comment) should be channel-visible")
 	}
@@ -313,7 +313,7 @@ func TestDeckRequestOutcomeMessage(t *testing.T) {
 	}
 
 	alreadyAsked := DeckRequestResult{Status: DeckRequestJoined, IssueURL: "https://x/issues/7", AlreadyRequested: true}
-	content, visible = deckRequestOutcomeMessage(alreadyAsked, "https://moxfield.com/decks/x")
+	content, visible = deckRequestOutcomeMessage(alreadyAsked, DeckSource{URL: "https://moxfield.com/decks/x"})
 	if visible {
 		t.Error("already_requested should be ephemeral")
 	}
@@ -322,7 +322,7 @@ func TestDeckRequestOutcomeMessage(t *testing.T) {
 	}
 
 	nothing := DeckRequestResult{Status: DeckRequestNothingToAdd, Report: &DeckCoverageReport{Counts: map[DeckCoverageBucket]int{BucketAutomated: 40}}}
-	content, visible = deckRequestOutcomeMessage(nothing, "link")
+	content, visible = deckRequestOutcomeMessage(nothing, DeckSource{URL: "link"})
 	if visible {
 		t.Error("nothing_to_add should be ephemeral")
 	}
@@ -331,7 +331,7 @@ func TestDeckRequestOutcomeMessage(t *testing.T) {
 	}
 
 	limited := DeckRequestResult{Status: DeckRequestRateLimited, RetryAfter: 3661}
-	content, visible = deckRequestOutcomeMessage(limited, "link")
+	content, visible = deckRequestOutcomeMessage(limited, DeckSource{URL: "link"})
 	if visible {
 		t.Error("rate_limited should be ephemeral")
 	}
@@ -376,11 +376,11 @@ func TestDeckRequestErrorMessage(t *testing.T) {
 	}
 }
 
-func TestDeckLinkResolveErrorMessage(t *testing.T) {
-	if got := deckLinkResolveErrorMessage(errDeckLinkExpired); !strings.Contains(got, "expired") {
+func TestDeckSourceResolveErrorMessage(t *testing.T) {
+	if got := deckSourceResolveErrorMessage(errDeckSourceExpired); !strings.Contains(got, "expired") {
 		t.Errorf("got %q", got)
 	}
-	if got := deckLinkResolveErrorMessage(errors.New("bad")); !strings.Contains(got, "c2-deck-check") {
+	if got := deckSourceResolveErrorMessage(errors.New("bad")); !strings.Contains(got, "c2-deck-check") {
 		t.Errorf("got %q", got)
 	}
 }

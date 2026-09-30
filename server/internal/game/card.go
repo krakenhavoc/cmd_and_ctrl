@@ -251,17 +251,35 @@ type Card struct {
 	// declared to block. uuid.Nil means "not declared as blocker".
 	// Set by DeclareBlocker, cleared by ClearCombat or zone exit.
 	// Only meaningful on the battlefield. Added in S08.
+	//
+	// Since #1706 it is the FIRST attacker this card blocks: a creature
+	// that can block more than one (BlockCapacity) keeps the rest, in
+	// declaration order, in AlsoBlocking. Every "is it blocking" reader
+	// keeps reading this field; a reader that asks WHICH attackers
+	// reads BlockedAttackers.
 	BlockingTarget uuid.UUID
 
-	// GoadedBy is the player ID who goaded this creature. uuid.Nil
-	// means "not goaded". A goaded creature attacks each combat if
-	// able and attacks a player other than the goader if able
-	// (CR 701.15b); since #1571 those two requirements are enforced
-	// (attack_requirements.go). One goader: a second goad replaces the
-	// first, which loses CR 701.15c's extra requirements (weaker than
-	// printed). Cleared on zone exit alongside Tapped /
-	// AttackingTarget. Added in S10.
-	GoadedBy uuid.UUID
+	// AlsoBlocking is every attacker this card blocks after
+	// BlockingTarget (CR 509.1a/b, #1706) — Palace Guard's second and
+	// third. Nil for every ordinary blocker, and always nil when
+	// BlockingTarget is uuid.Nil: the two are written and cleared
+	// together (setBlockingSet, clearBlocking).
+	AlsoBlocking []uuid.UUID
+
+	// Goads is every player who has goaded this creature and whose goad
+	// has not ended, one entry per goader, oldest goad first (#1598,
+	// CR 701.15c). Nil means "not goaded". Each goaded creature attacks
+	// each combat if able and attacks a player other than that goader
+	// if able (CR 701.15b), and since #1571 those requirements are
+	// enforced (attack_requirements.go) — two per entry, so a creature
+	// goaded by two players must attack a player who goaded it neither
+	// time if it can. Each entry ends as ITS goader's next turn begins
+	// (CR 701.15a, sweepExpiredGoadsLocked); a second goad by the same
+	// player refreshes that entry rather than adding one. Written only
+	// through goadLocked / clearGoadsLocked (goad.go). Cleared on zone
+	// exit alongside Tapped / AttackingTarget. Added in S10 as a single
+	// GoadedBy ID.
+	Goads []Goad
 
 	// PhasedOutBy is the player who controlled this permanent AT THE
 	// MOMENT IT PHASED OUT (CR 702.26a), and it is meaningful only
@@ -443,7 +461,8 @@ type Card struct {
 	// `out := c` and deep-copies only the slice / map fields by
 	// hand, so a pointer here would alias between the live game and
 	// every undo snapshot. Same reason AttackingTarget /
-	// BlockingTarget / GoadedBy are uuid.Nil-sentinel values.
+	// BlockingTarget are uuid.Nil-sentinel values (and why cloneCard
+	// copies Goads by hand).
 	//
 	// Cleared on battlefield exit by MoveCard alongside Tapped and
 	// the combat relations. The REVERSE direction (a host that
@@ -575,6 +594,34 @@ type Card struct {
 	// choose_card_name.go.
 	ChosenName string
 
+	// ChosenOption is the NAMED OPTION chosen for this permanent by an
+	// "as this enters, choose <A> or <B>" instruction (CR 614.12) —
+	// the anchor words of the Siege cycles: "choose Khans or Dragons"
+	// (Citadel Siege, Palace Siege), "choose Jeskai or Temur"
+	// (Frostcliff Siege). Empty means no option has been chosen, which
+	// is both "this card has no such instruction" and the window
+	// between the permanent entering and its controller answering.
+	//
+	// The fifth member of the family, and the one whose vocabulary is
+	// the CARD's: the options are the words printed on it, offered as
+	// an option_pick and stored verbatim. What reads it is the ADR 0071
+	// designation gate (DesignationChosenOption) — the ability printed
+	// after an anchor word exists only while that word is the chosen
+	// one, so the other ability is not in the list the permanent hands
+	// the layer pass, the harvester or the enumerator at all.
+	//
+	// Same lifecycle as its four siblings: per INSTANCE (two Sieges
+	// can choose differently), carried by the snapshot and by clone,
+	// and cleared when the permanent leaves the battlefield (CR 400.7)
+	// — a Siege that is bounced and recast chooses again. NOT a
+	// copiable value (CR 707.2): CopiableValuesOf never looks here, so
+	// a copy of a Siege makes its own choice as IT enters.
+	//
+	// Written by the as-enters prompt in choose_option.go and by
+	// nothing else; read with ChosenOptionOf or the gate. Added for
+	// #1572; see ADR 0071's amendment of 2026-09-27.
+	ChosenOption string
+
 	// Provenance is what this permanent remembers about the SPELL it
 	// came from — CR 400.7d, "an ability of a permanent can reference
 	// information about the spell that became that permanent as it
@@ -644,6 +691,22 @@ type Card struct {
 	// else, and a restore that lost it would resurrect every clone
 	// on the board as a 0/0. Added in S16.5 (#159 / #335).
 	PrintedSelf *PrintedValues
+
+	// DurationCopyBase is the layer-1 baseline UNDER this permanent's
+	// duration copy effects (#1593, duration_copy.go): what its flat
+	// printed fields go back to when the last "becomes a copy … until
+	// end of turn" ends. For a Clone it is the Clone's entry copy — a
+	// Cytoshape on a Clone of Llanowar Elves reverts to the Elves, not
+	// to Clone — and for anything else it is the card's own values.
+	// nil while no duration copy applies.
+	//
+	// Stashed by the first duration copy, restored and cleared by the
+	// materialiser when none is left, and cleared with PrintedSelf on
+	// the CR 400.7 battlefield-leave path. Carried by the snapshot and
+	// deep-copied by clone.go for PrintedSelf's reason: once the copy
+	// has overwritten the printed fields nothing else remembers what
+	// the Clone had copied.
+	DurationCopyBase *PrintedValues
 
 	// FaceDownListed is the CR 708.2 body an effect LISTED for this
 	// face-down object — Cyber Conversion's "It's a 2/2 Cyberman
@@ -948,6 +1011,20 @@ type Card struct {
 	// battlefield (CR 400.7), carried by the snapshot.
 	Harnessed bool
 
+	// Monstrous is the CR 701.37b designation — the marker the
+	// monstrosity keyword action sets (ADR 0071 amendment, #1700).
+	//
+	// Set by MonstrosityForEffect, from a "Monstrosity N" activated
+	// ability's resolution, and by nothing else. Once set it STAYS set
+	// for as long as the permanent is on the battlefield (CR 701.37b:
+	// "Once a permanent has become monstrous, it stays monstrous until
+	// it leaves the battlefield"), and CR 701.37b also says it is
+	// "neither an ability nor part of the permanent's copiable values"
+	// — so it is Harnessed's field in every respect: not copiable,
+	// cleared when the permanent leaves the battlefield (CR 400.7),
+	// carried by clone and the snapshot.
+	Monstrous bool
+
 	// Prepared is the CR 722.3a designation on a permanent with a
 	// prepare spell (ADR 0090): while it is set, the permanent's
 	// controller may cast the CR 722.3c copy of its prepare spell that
@@ -1061,8 +1138,9 @@ func (c *Card) IsKnownTo(viewerID uuid.UUID) bool {
 }
 
 // CurrentPower returns the card's combat-relevant power: the
-// post-layer effective power (S16: anthems, CDAs, etc.) plus any
-// +1/+1 counters, minus any -1/-1 counters. Reads via Effective()
+// post-layer effective power (S16: anthems, CDAs, etc.) plus what
+// every P/T counter on it adds (+1/+1, -1/-1, -2/-1, +1/+0 … —
+// CR 122.1a, #1664). Reads via Effective()
 // so layer-7c modifications (Glorious Anthem) and layer-7a CDAs
 // (Tarmogoyf) flow through naturally without combat code needing
 // to know about the layer engine.
@@ -1090,15 +1168,17 @@ func (c Card) CurrentPower() int {
 func (c Card) PowerForComparison() int {
 	p := c.Effective().Power
 	if c.Counters != nil {
-		p += c.Counters["+1/+1"]
-		p -= c.Counters["-1/-1"]
+		// #1664: every P/T counter kind (CR 122.1a), not just
+		// +1/+1 and -1/-1 — see pt_counters.go.
+		dp, _ := PTCounterDelta(c.Counters)
+		p += dp
 	}
 	return p
 }
 
 // CurrentToughness returns the card's combat-relevant toughness:
-// the post-layer effective toughness (S16: anthems, CDAs) plus any
-// +1/+1 counters, minus any -1/-1 counters. Used by the lethal-
+// the post-layer effective toughness (S16: anthems, CDAs) plus what
+// every P/T counter on it adds (CR 122.1a, #1664). Used by the lethal-
 // damage and 0-toughness SBAs (S13.1). May be zero or negative —
 // callers compare against DamageMarked directly. NOT clamped (cf.
 // CurrentPower) because the SBAs need to tell a real 0 from the
@@ -1111,8 +1191,8 @@ func (c Card) PowerForComparison() int {
 func (c Card) CurrentToughness() int {
 	t := c.Effective().Toughness
 	if c.Counters != nil {
-		t += c.Counters["+1/+1"]
-		t -= c.Counters["-1/-1"]
+		_, dt := PTCounterDelta(c.Counters)
+		t += dt
 	}
 	return t
 }

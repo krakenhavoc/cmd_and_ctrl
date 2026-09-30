@@ -220,13 +220,13 @@ func (p ManaPool) attemptSpend(cost ParsedCost, xValue int, ctx ManaSpendContext
 	// the pass that decides whether a cost can be paid at all, and a
 	// colour preference that could steer it into a dead end would
 	// make payability depend on what the spell happens to read.
-	for _, req := range cost.Required {
+	for _, req := range widenedLast(cost.Required) {
 		idx := -1
 		for _, i := range order {
 			if used[i] {
 				continue
 			}
-			if matchColor(work[i].Color, req.Options) {
+			if req.Admits(work[i].Color) {
 				idx = i
 				break
 			}
@@ -385,6 +385,40 @@ func spendOrder(pool ManaPool, ctx ManaSpendContext) []int {
 	return order
 }
 
+// widenedLast returns reqs with every AnyMana slot (#1589) moved
+// behind the slots that still name their colours, order otherwise
+// kept. The pool solver pays requirements greedily, first match wins,
+// so a slot that admits any mana must choose last or it can take the
+// one token a narrower slot behind it needed — a Dismember under an
+// any-colour grant, taxed {W} by a cost modifier, would spend the
+// only Plains on a {B/P} any Swamp could have paid. Returns reqs
+// itself, unallocated, when nothing is widened — every cost with no
+// spend grant.
+func widenedLast(reqs []ColorRequirement) []ColorRequirement {
+	widened := -1
+	for i, r := range reqs {
+		if r.AnyMana {
+			widened = i
+			break
+		}
+	}
+	if widened < 0 {
+		return reqs
+	}
+	out := make([]ColorRequirement, 0, len(reqs))
+	for _, r := range reqs {
+		if !r.AnyMana {
+			out = append(out, r)
+		}
+	}
+	for _, r := range reqs {
+		if r.AnyMana {
+			out = append(out, r)
+		}
+	}
+	return out
+}
+
 // matchColor reports whether `color` is in `options`. Empty options
 // means "any color" — never produced by ParseCost today, but cheap
 // to handle defensively for future requirement shapes.
@@ -423,13 +457,13 @@ func (p ManaPool) MissingFor(cost ParsedCost, xValue int, ctx ManaSpendContext) 
 	order := spendOrder(work, ctx)
 	var missing []string
 
-	for _, req := range cost.Required {
+	for _, req := range widenedLast(cost.Required) {
 		idx := -1
 		for _, i := range order {
 			if used[i] {
 				continue
 			}
-			if matchColor(work[i].Color, req.Options) {
+			if req.Admits(work[i].Color) {
 				idx = i
 				break
 			}

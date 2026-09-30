@@ -132,8 +132,10 @@ func (g *Game) BlockDeclarationSeatsLocked() (pending, declared []int) {
 // Errors: ErrGameNotActive, ErrWrongStep outside declare_blockers, a
 // *ChoicePendingError while a blocking prompt is open (#730, the gate a
 // pass obeys — completing may queue triggers and move priority),
-// ErrPlayerNotFound for an unknown seat, and ErrNotDefending for a seat
-// nothing is attacking. Idempotent: a seat whose declaration is already
+// ErrPlayerNotFound for an unknown seat, ErrNotDefending for a seat
+// nothing is attacking, and — #1597 — a *BlockRefusedError with reason
+// block_requirement while the seat's staged declaration leaves a
+// CR 509.1c requirement unobeyed that it could obey. Idempotent: a seat whose declaration is already
 // complete gets nil and nothing happens.
 func (g *Game) FinishBlocks(seat uuid.UUID) error {
 	g.mu.Lock()
@@ -153,6 +155,11 @@ func (g *Game) FinishBlocks(seat uuid.UUID) error {
 	g.RecomputeLayersIfStaleLocked()
 	if !g.isDefendingPlayerLocked(seat) {
 		return ErrNotDefending
+	}
+	// #1597 / CR 509.1c: finishing is the declaration's checkpoint,
+	// exactly as the defender's pass is.
+	if err := g.blockCheckpointLocked(seat); err != nil {
+		return err
 	}
 	if g.completeBlockDeclarationLocked(seat) {
 		g.closeBlockDeclarationIfCompleteLocked()
@@ -186,6 +193,30 @@ func (g *Game) isDefendingPlayerLocked(seat uuid.UUID) bool {
 		}
 	}
 	return false
+}
+
+// IsDefendingPlayerForEffect reports whether `seat` is a defending
+// player in the sense a spell or ability cast during combat means —
+// Yare's and Blaze of Glory's "target creature defending player
+// controls" (#1715). Commander plays with the attack-multiple-players
+// option, under which "all the attacking player's opponents are
+// defending players during the combat phase" from the moment it
+// starts (CR 802.2), and a two-player game says the same of its one
+// nonactive player (CR 506.2). So: any live player other than the
+// active player, during the combat phase — which is what gives Blaze
+// of Glory a target in the beginning of combat step, before anything
+// attacks. Outside the combat phase there is no defending player.
+//
+// Not the block verb's question: WHO MAY BLOCK a given attacker is
+// isDefendingPlayerLocked's, the player that attack is aimed at.
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) IsDefendingPlayerForEffect(seat uuid.UUID) bool {
+	if PhaseOf(g.Turn.Step) != PhaseCombat || seat == uuid.Nil || seat == g.activeSeatIDLocked() {
+		return false
+	}
+	p := g.playerByIDLocked(seat)
+	return p != nil && !p.Eliminated
 }
 
 // defendingSeatsAPNAPLocked returns the defending players in APNAP

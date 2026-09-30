@@ -104,13 +104,15 @@ func b25DamageDealtByCounteredCreature(ev game.Event, g *game.Game) bool {
 
 // b25AnotherGoblinYouControlDied is the second half of Pashalik
 // Mons' condition: a creature the source's controller controlled
-// went to a graveyard from the battlefield, and it is a Goblin. Read
-// post-move (diedCreature), where the printed type line and the last
-// controller survive; a changeling counts. The source's own death
+// went to a graveyard from the battlefield, and it was a Goblin as it
+// last existed (leftAsSubtype, #1679) — a changeling counts, and so
+// does a creature that was a Goblin only through a grant. The
+// controller is the one it had as it died (leftUnderControlOf,
+// #1682). The source's own death
 // is cardDied's business, so this excludes it.
 func b25AnotherGoblinYouControlDied(ev game.Event, source *game.Card, g *game.Game) bool {
 	dead, ok := diedCreature(ev, g)
-	return ok && dead.InstanceID != source.InstanceID && dead.Controller == source.Controller && dead.HasSubtype("Goblin")
+	return ok && dead.InstanceID != source.InstanceID && leftUnderControlOf(ev, dead) == source.Controller && leftAsSubtype(ev, dead, "Goblin")
 }
 
 // b25AttackersHaveDoubleStrike is "attacking creatures you control

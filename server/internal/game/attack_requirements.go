@@ -67,7 +67,7 @@ import (
 // every creature, Bident's floating one on "creatures your opponents
 // control"), so the layer pass decides WHO is affected and a duration
 // decides WHEN it ends — no second vocabulary. Goad's pair is read off
-// Card.GoadedBy here, because goad is a per-object marker with its own
+// Card.Goads here, because goad is a per-object marker with its own
 // lifetime (CR 701.15a), not a continuous effect a static describes.
 //
 // # The search
@@ -131,12 +131,19 @@ func (r AttackRequirement) obeyedBy(g *Game, target uuid.UUID) bool {
 
 // attackRequirementsOfLocked is every requirement on `c` right now:
 // what the layer pass wrote onto its effective characteristic, plus
-// goad's pair (CR 701.15b).
+// goad's pair (CR 701.15b) for every player whose goad is on it.
 //
 // Goad adds TWO requirements, not one, and the difference is
 // observable under CR 508.1d's counting: attacking the goader obeys
 // one of them, attacking anybody else obeys both, so a goaded creature
 // that can reach another player must.
+//
+// And each goader adds their own pair (#1598, CR 701.15c). Goaded by A
+// and B, an attack on C obeys all four, one on A or B obeys three, so
+// the counting alone makes the creature attack a player who goaded it
+// neither time when it can. Goaded by EVERY opponent, each attack on a
+// player obeys the same number, so it must attack and may attack any
+// of them — which is CR 701.15c's fallback, with no case of its own.
 //
 // Caller must hold g.mu with fresh layers.
 func (g *Game) attackRequirementsOfLocked(c *Card) []AttackRequirement {
@@ -147,10 +154,10 @@ func (g *Game) attackRequirementsOfLocked(c *Card) []AttackRequirement {
 	if eff := c.Effective(); len(eff.AttackRequirements) > 0 {
 		out = append(out, eff.AttackRequirements...)
 	}
-	if c.GoadedBy != uuid.Nil {
+	for _, gd := range c.Goads {
 		out = append(out,
-			AttackRequirement{GoadedBy: c.GoadedBy},
-			AttackRequirement{GoadedBy: c.GoadedBy, OtherThan: c.GoadedBy},
+			AttackRequirement{GoadedBy: gd.By},
+			AttackRequirement{GoadedBy: gd.By, OtherThan: gd.By},
 		)
 	}
 	return out
@@ -452,7 +459,7 @@ func (g *Game) anyAttackRequirementLocked(ap uuid.UUID) bool {
 		if c.Controller != ap || !c.IsCreature() {
 			continue
 		}
-		if c.GoadedBy != uuid.Nil || len(c.Effective().AttackRequirements) > 0 {
+		if c.IsGoaded() || len(c.Effective().AttackRequirements) > 0 {
 			return true
 		}
 	}

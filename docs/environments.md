@@ -145,6 +145,50 @@ without them still deploys green, with no bot; once the
 `::warning::` pointing back at the steps. See
 [deploy/README.md](../deploy/README.md#one-time-host-setup-repeat-after-every-rebuild).
 
+### SSH host keys
+
+Every job that SSHes to a VM (the two deploys and the weekly Scryfall
+refresh) checks the host's key against a repo variable (#1739):
+
+| Variable | Host |
+|---|---|
+| `CMDCTRL_HOST_KEY` | production (`CMDCTRL_HOST`) |
+| `CMDCTRL_DEV_HOST_KEY` | the develop preview (`CMDCTRL_DEV_HOST`) |
+
+`scripts/pin-host-key.sh` writes the variable into a `known_hosts`
+file private to the job and connects with `StrictHostKeyChecking=yes`
+against that file only. Nothing reads a runner's own
+`~/.ssh/known_hosts`. That matters because these jobs run on any of the
+self-hosted runners, and before this each runner held its own copy of
+the old key.
+
+**A rebuild changes the host key.** Every deploy then fails at its
+first ssh with `REMOTE HOST IDENTIFICATION HAS CHANGED`. That is the
+check working: nothing trusts a new key until you do. After a
+`terraform apply` that rebuilt a VM:
+
+1. On the VM's console (Proxmox, not over the network), read its
+   fingerprint:
+   ```sh
+   ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub
+   ```
+2. From your workstation, scan the key and compare fingerprints. They
+   must match step 1:
+   ```sh
+   ssh-keyscan -t ed25519 <host> > /tmp/k && ssh-keygen -lf /tmp/k
+   ```
+3. Set the variable to the scanned line, either the whole
+   `ssh-keyscan` line or just `ssh-ed25519 AAAA…`:
+   ```sh
+   gh variable set CMDCTRL_DEV_HOST_KEY --body "$(cut -d' ' -f2- /tmp/k)"
+   ```
+4. Re-run the failed deploy (`gh run rerun <id> --failed`).
+
+A variable that is unset falls back to the old behaviour: the runner's
+own `known_hosts` with `accept-new`, plus a `::warning::` naming the
+variable. A value that is not a parseable public key fails the job
+before any ssh.
+
 ### Secrets
 
 | Where | Name | Notes |
@@ -455,6 +499,27 @@ forward again, the importer renames the files once more. For a game
 that already has a row, the row wins, so a change the older binary made
 to that game's seats in the meantime is not carried forward. A game
 created during the rollback is imported as new.
+
+**Rolling back past a database migration.** Migrations are forward-only
+and an older binary refuses a schema newer than it knows
+(`db.ErrSchemaTooNew`): it will not start. When the migrations it does
+not know only ADD tables, undo them by hand before starting the older
+binary. Migration 0006 (ADR 0095, the deck-request tables) is that
+shape:
+
+```sh
+sudo apt-get install -y sqlite3   # not on the hosts by default
+sudo systemctl stop cmd-and-ctrl
+sudo sqlite3 /var/lib/cmd_and_ctrl/data/db/cmdctrl.sqlite \
+  "DROP TABLE deck_request_asks; DROP TABLE deck_requests; DELETE FROM schema_migrations WHERE version = 6;"
+# install the older binary, then:
+sudo systemctl start cmd-and-ctrl
+```
+
+It costs only the deck-request dedup rows and the per-person request
+history; rolling forward recreates the empty tables. A migration that
+changes an existing table cannot be undone this way — restore
+`db/cmdctrl.backup.sqlite` (or the nightly off-site copy) instead.
 
 **Session lifetimes.** A Discord sign-in from the login page mints an
 identity session that lasts `CMDCTRL_IDENTITY_TTL` (default `720h`, 30

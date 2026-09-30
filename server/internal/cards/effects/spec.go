@@ -622,6 +622,30 @@ type Spec struct {
 	// NoMoreThanNCanBlockEachCombat. Nil for nearly every card.
 	AttackLimits []game.AttackLimit
 
+	// HexproofBypasses are this permanent's printed "<these> can be
+	// the targets of spells and abilities [you control] as though
+	// they didn't have hexproof" statics (CR 702.11, #1560) —
+	// Nowhere to Run, Kaya, Bane of the Dead.
+	//
+	//	HexproofBypasses: []game.HexproofBypass{
+	//		AsThoughNoHexproof(BySpellsAndAbilities, And(Creature(), OpponentControls())),
+	//	},
+	//
+	// NOT a layer-6 "loses hexproof" (that is Shadowspear's
+	// RemoveKeywordsMod): the creature keeps its hexproof, and the
+	// targeting choke point waives it for the sources this names.
+	// Read live, keyed by CatalogAbilityKey. Build the entries with
+	// the constructors in hexproof_bypass.go. Nil for nearly every
+	// card.
+	HexproofBypasses []game.HexproofBypass
+
+	// WardSuppressions are this permanent's printed "ward abilities
+	// of <these> don't trigger" statics (CR 702.21, #1560) — Nowhere
+	// to Run. Build them with WardDoesNotTrigger. Read by the ward
+	// trigger itself (WardGranted), so every ward in the catalog
+	// honours them. Nil for nearly every card.
+	WardSuppressions []game.WardSuppression
+
 	// CastableZones is the S29 "you may cast this card from
 	// somewhere other than your hand" declaration (CR 601.2, and
 	// every keyword in CR 702 that grants an alternative cast
@@ -1550,8 +1574,9 @@ type ManaAbilityCost struct {
 	// as one.
 	RemoveCounters *game.CounterRemovalCost
 
-	// AddCounter is a cost that puts a counter on the source. No
-	// printed mana ability has one; the slot exists because the
+	// AddCounter is a cost that puts a counter on the source — Wall
+	// of Roots' "Put a -0/-1 counter on this creature: Add {G}"
+	// (#1664, the first printed mana ability to use it). The
 	// component is declared once and owned by both ability kinds.
 	// Build it with AddCounterToThis(kind, n).AddCounter.
 	AddCounter *game.CounterAddCost

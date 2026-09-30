@@ -70,6 +70,59 @@ func TestGoadedCreatureMovesAgreeWithTheEngine(t *testing.T) {
 	}
 }
 
+// TestTwoGoadersMovesAgreeWithTheEngine — #1598, CR 701.15c. Goaded by
+// the next two seats, the creature is offered exactly one attack: at the
+// one opponent who goaded it neither time. Goaded by all three, it is
+// offered all three and the pass is still withheld.
+func TestTwoGoadersMovesAgreeWithTheEngine(t *testing.T) {
+	g := newTable(t)
+	s := g.Turn.ActiveSeat
+	me := g.Seats[s]
+	a, b, c := g.Seats[(s+1)%4], g.Seats[(s+2)%4], g.Seats[(s+3)%4]
+	clearHand(me)
+	bear := freshCreature(g, me, "Twice-Goaded Bear")
+	for _, p := range []*game.Player{a, b} {
+		if err := g.SetGoaded(bear, p.ID); err != nil {
+			t.Fatal(err)
+		}
+	}
+	advanceTo(t, g, game.StepDeclareAttackers)
+
+	offered := func() []string {
+		moves := legal.EnumerateFor(g, me.ID)
+		dispatchAll(t, g, me.ID, moves)
+		if countKind(moves, legal.KindPass) != 0 {
+			t.Fatalf("pass offered while the goaded creature owes an attack: %v", labels(moves))
+		}
+		var out []string
+		for _, m := range moves {
+			if m.Kind != legal.KindAttack || m.Source != bear {
+				continue
+			}
+			if !m.AlwaysLegal {
+				t.Errorf("an attack that answers the goads is not AlwaysLegal: %q", m.Label)
+			}
+			out = append(out, decodeAttack(t, m).Target)
+		}
+		return out
+	}
+	if got := offered(); len(got) != 1 || got[0] != c.ID.String() {
+		t.Fatalf("goaded by A and B: offered attacks at %v, want only C (%s)", got, c.ID)
+	}
+	for _, p := range []*game.Player{a, b} {
+		if err := g.Clone().DeclareAttacker(bear, p.ID); !errors.Is(err, game.ErrAttackRequirement) {
+			t.Errorf("engine accepted the withheld attack at a goader: %v", err)
+		}
+	}
+
+	if err := g.SetGoaded(bear, c.ID); err != nil {
+		t.Fatal(err)
+	}
+	if got := offered(); len(got) != 3 {
+		t.Fatalf("goaded by every opponent: offered attacks at %v, want all three", got)
+	}
+}
+
 // TestUngoadedTableOffersThePassAsBefore — nothing changes at a table
 // with no requirement on it: the pass is offered and no attack is
 // AlwaysLegal.

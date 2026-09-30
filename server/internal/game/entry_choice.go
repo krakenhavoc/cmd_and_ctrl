@@ -544,6 +544,10 @@ func (g *Game) announceEntryLocked(l entryLanding) {
 			Played:  l.played,
 		})
 	}
+	// #1593: an "as this enters … until end of turn" copy gets its end
+	// here, once the zone move above has stamped the object the
+	// record has to name, and before EventETB.
+	g.settleTimedEntryCopyLocked(ev, l.entered)
 	// S16.5: the two jobs stack resolution does that no other entry
 	// site does. Both need the StackItem, which is why carrying it
 	// across the pause is what made the stack site resumable at all.

@@ -21,41 +21,42 @@ const deckRequestCustomIDPrefix = "c2-deck-req:"
 // discordCustomIDMax is Discord's hard cap on a component CustomID.
 const discordCustomIDMax = 100
 
-// deckLinkTTL is how long a deck link stashed behind a short token
+// deckSourceTTL is how long a deck source stashed behind a short token
 // (see buildDeckRequestCustomID) stays resolvable. In-memory only,
 // same "no SIGHUP reload" trade-off end.go's confirmations accept: a
-// bot restart drops it and the operator re-runs /c2-deck-check. An
+// bot restart drops it and the player re-runs /c2-deck-check. An
 // hour is generous headroom for someone to notice the button and
 // click it without holding the token forever.
-const deckLinkTTL = time.Hour
+const deckSourceTTL = time.Hour
 
-// errDeckLinkExpired is returned by resolveDeckRequestLink when a
+// errDeckSourceExpired is returned by resolveDeckRequestSource when a
 // token custom ID names an entry that has aged out of the store.
-var errDeckLinkExpired = errors.New("deck link no longer available")
+var errDeckSourceExpired = errors.New("deck source no longer available")
 
-// deckLinkEntry is one stashed deck link.
-type deckLinkEntry struct {
-	Link      string
+// deckSourceEntry is one stashed deck source.
+type deckSourceEntry struct {
+	Source    DeckSource
 	ExpiresAt time.Time
 }
 
-// deckLinkStore holds deck links behind a /c2-deck-check "Request
-// these cards" button whose URL-encoded form doesn't fit Discord's
-// 100-character CustomID cap. Keyed by a random token, the same
+// deckSourceStore holds what a /c2-deck-check "Request these cards"
+// button asks for when it does not fit in Discord's 100-character
+// CustomID: a long link, or a pasted list (which never fits — ADR
+// 0095, amendment 2026-09-25). Keyed by a random token, the same
 // pattern endConfirmations uses for /c2-end.
-type deckLinkStore struct {
+type deckSourceStore struct {
 	mu      sync.Mutex
-	entries map[string]deckLinkEntry
+	entries map[string]deckSourceEntry
 }
 
-func newDeckLinkStore() *deckLinkStore {
-	return &deckLinkStore{entries: make(map[string]deckLinkEntry)}
+func newDeckSourceStore() *deckSourceStore {
+	return &deckSourceStore{entries: make(map[string]deckSourceEntry)}
 }
 
-// put stores link under token, sweeping every already-expired entry
+// put stores src under token, sweeping every already-expired entry
 // along the way — same cheap, opportunistic cleanup endConfirmations.put
 // does.
-func (s *deckLinkStore) put(token, link string, now time.Time) {
+func (s *deckSourceStore) put(token string, src DeckSource, now time.Time) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for k, v := range s.entries {
@@ -63,106 +64,230 @@ func (s *deckLinkStore) put(token, link string, now time.Time) {
 			delete(s.entries, k)
 		}
 	}
-	s.entries[token] = deckLinkEntry{Link: link, ExpiresAt: now.Add(deckLinkTTL)}
+	s.entries[token] = deckSourceEntry{Source: src, ExpiresAt: now.Add(deckSourceTTL)}
 }
 
-func (s *deckLinkStore) get(token string, now time.Time) (string, bool) {
+func (s *deckSourceStore) get(token string, now time.Time) (DeckSource, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	e, ok := s.entries[token]
 	if !ok || now.After(e.ExpiresAt) {
-		return "", false
+		return DeckSource{}, false
 	}
-	return e.Link, true
+	return e.Source, true
 }
 
 // buildDeckRequestCustomID builds the "Request these cards" button's
-// CustomID for link. It embeds the URL-encoded link directly when
-// that fits Discord's 100-character cap (true for every Moxfield and
-// Archidekt link seen so far); otherwise it stashes the link in store
-// under a random token and embeds the token instead (#1631, ADR 0095 §4).
-func buildDeckRequestCustomID(link string, store *deckLinkStore, now time.Time) string {
-	direct := deckRequestCustomIDPrefix + "link:" + url.QueryEscape(link)
-	if len(direct) <= discordCustomIDMax {
-		return direct
+// CustomID for src. A link is embedded URL-encoded when that fits
+// Discord's 100-character cap (true for every Moxfield and Archidekt
+// link seen so far). A longer link, and every pasted list, is stashed
+// in store under a random token and the token embedded instead (#1631,
+// ADR 0095 §4 and its 2026-09-25 amendment).
+func buildDeckRequestCustomID(src DeckSource, store *deckSourceStore, now time.Time) string {
+	if !src.IsList() {
+		direct := deckRequestCustomIDPrefix + "link:" + url.QueryEscape(src.URL)
+		if len(direct) <= discordCustomIDMax {
+			return direct
+		}
 	}
 	token := randomToken()
-	store.put(token, link, now)
+	store.put(token, src, now)
 	return deckRequestCustomIDPrefix + "tok:" + token
 }
 
-// resolveDeckRequestLink is buildDeckRequestCustomID's inverse: given
-// a button's CustomID, recover the deck link it names.
-func resolveDeckRequestLink(customID string, store *deckLinkStore, now time.Time) (string, error) {
+// resolveDeckRequestSource is buildDeckRequestCustomID's inverse:
+// given a button's CustomID, recover the link or list it names.
+func resolveDeckRequestSource(customID string, store *deckSourceStore, now time.Time) (DeckSource, error) {
 	rest := strings.TrimPrefix(customID, deckRequestCustomIDPrefix)
 	kind, val, ok := strings.Cut(rest, ":")
 	if !ok || val == "" {
-		return "", errors.New("malformed deck-request custom id")
+		return DeckSource{}, errors.New("malformed deck-request custom id")
 	}
 	switch kind {
 	case "link":
 		decoded, err := url.QueryUnescape(val)
 		if err != nil {
-			return "", fmt.Errorf("decode deck link: %w", err)
+			return DeckSource{}, fmt.Errorf("decode deck link: %w", err)
 		}
-		return decoded, nil
+		return DeckSource{URL: decoded}, nil
 	case "tok":
-		link, found := store.get(val, now)
+		src, found := store.get(val, now)
 		if !found {
-			return "", errDeckLinkExpired
+			return DeckSource{}, errDeckSourceExpired
 		}
-		return link, nil
+		return src, nil
 	default:
-		return "", errors.New("malformed deck-request custom id")
+		return DeckSource{}, errors.New("malformed deck-request custom id")
 	}
+}
+
+// --- the paste modal (ADR 0095, amendment 2026-09-25) ---
+
+// Moxfield blocks the server, so a Moxfield player's route is Export
+// and paste. /c2-deck-check and /c2-deck-req with no link answer with
+// a modal asking for the list; submitting it runs the same deferred
+// flow with {text}.
+const (
+	// deckPasteModalPrefix namespaces the modals' CustomIDs.
+	deckPasteModalPrefix = "c2-deck-paste:"
+	// deckPasteCheckModalID / deckPasteReqModalID say which flow a
+	// submitted list runs.
+	deckPasteCheckModalID = deckPasteModalPrefix + "check"
+	deckPasteReqModalID   = deckPasteModalPrefix + "req"
+	// deckPasteInputID is the modal's one text input.
+	deckPasteInputID = "decklist"
+	// deckPasteMaxLength is the input's cap: Discord's own ceiling for
+	// a text input, and room for a 100-card list with set codes.
+	deckPasteMaxLength = 4000
+
+	deckPasteModalTitle = "Paste your decklist"
+	// deckPasteInputLabel is capped at 45 characters by Discord.
+	deckPasteInputLabel = "From Moxfield: Export → Copy plain text"
+	// deckPastePlaceholder is capped at 100 characters by Discord.
+	deckPastePlaceholder = "Or any list of \"1 Card Name\" lines, e.g.\n1 Sol Ring\n1 Arcane Signet"
+)
+
+// deckPasteModal is the modal both deck commands answer with when
+// they are run without a link. A modal must be the interaction's first
+// response, inside Discord's 3-second deadline, so it is sent before
+// any deferral; the deferral happens on submit.
+func deckPasteModal(customID string) *discordgo.InteractionResponse {
+	return &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseModal,
+		Data: &discordgo.InteractionResponseData{
+			CustomID: customID,
+			Title:    deckPasteModalTitle,
+			Components: []discordgo.MessageComponent{
+				discordgo.ActionsRow{Components: []discordgo.MessageComponent{
+					discordgo.TextInput{
+						CustomID:    deckPasteInputID,
+						Label:       deckPasteInputLabel,
+						Style:       discordgo.TextInputParagraph,
+						Placeholder: deckPastePlaceholder,
+						Required:    true,
+						MaxLength:   deckPasteMaxLength,
+					},
+				}},
+			},
+		},
+	}
+}
+
+// modalTextValue reads the value of the text input named id out of a
+// modal submission. discordgo decodes a submission's rows and inputs
+// as pointers; a hand-built one (a test) may hold values. Both are
+// read.
+func modalTextValue(data discordgo.ModalSubmitInteractionData, id string) string {
+	for _, c := range data.Components {
+		var row discordgo.ActionsRow
+		switch r := c.(type) {
+		case *discordgo.ActionsRow:
+			row = *r
+		case discordgo.ActionsRow:
+			row = r
+		default:
+			continue
+		}
+		for _, inner := range row.Components {
+			switch in := inner.(type) {
+			case *discordgo.TextInput:
+				if in.CustomID == id {
+					return in.Value
+				}
+			case discordgo.TextInput:
+				if in.CustomID == id {
+					return in.Value
+				}
+			}
+		}
+	}
+	return ""
+}
+
+// dispatchModalSubmit routes a submitted paste modal to the flow its
+// CustomID names, with the pasted list as the deck.
+func (h *Handler) dispatchModalSubmit(ctx context.Context, s *discordgo.Session, i *discordgo.InteractionCreate, data discordgo.ModalSubmitInteractionData) {
+	text := strings.TrimSpace(modalTextValue(data, deckPasteInputID))
+	switch data.CustomID {
+	case deckPasteCheckModalID, deckPasteReqModalID:
+	default:
+		h.log.Warn("unknown modal", "custom_id", data.CustomID)
+		_ = s.InteractionRespond(i.Interaction, ephemeralResponse("Something went wrong with that form."))
+		return
+	}
+	if text == "" {
+		_ = s.InteractionRespond(i.Interaction, ephemeralResponse("Paste a decklist first."))
+		return
+	}
+	src := DeckSource{Text: text}
+	if data.CustomID == deckPasteCheckModalID {
+		h.runDeckCheck(ctx, s, i, src)
+		return
+	}
+	h.runDeckRequest(ctx, s, i, src)
 }
 
 // --- /c2-deck-check ---
 
-// handleDeckCheck runs /c2-deck-check: defer ephemerally (a deck
-// fetch can run long), check coverage, and edit the deferred reply
-// with the report — always ephemeral, per ADR 0095 §4.
+// handleDeckCheck runs /c2-deck-check. With a link it checks it; with
+// none it asks for the list in a modal, whose submission comes back
+// through dispatchModalSubmit.
 func (h *Handler) handleDeckCheck(ctx context.Context, s *discordgo.Session, i *discordgo.InteractionCreate, data discordgo.ApplicationCommandInteractionData) {
+	link := strings.TrimSpace(stringOption(data.Options, "link"))
+	if link == "" {
+		_ = s.InteractionRespond(i.Interaction, deckPasteModal(deckPasteCheckModalID))
+		return
+	}
+	h.runDeckCheck(ctx, s, i, DeckSource{URL: link})
+}
+
+// runDeckCheck is the shared body of /c2-deck-check and its paste
+// modal: defer ephemerally (a deck fetch can run long), check
+// coverage, and edit the deferred reply with the report — always
+// ephemeral, per ADR 0095 §4.
+func (h *Handler) runDeckCheck(ctx context.Context, s *discordgo.Session, i *discordgo.InteractionCreate, src DeckSource) {
 	_ = s.InteractionRespond(i.Interaction, deferredEphemeralResponse())
 
-	link := stringOption(data.Options, "link")
-	report, err := h.checkDeck(ctx, link)
+	report, err := h.checkDeck(ctx, src)
 	if err != nil {
-		h.log.Warn("deck-coverage failed", "error", err.Error(), "link", link)
+		h.log.Warn("deck-coverage failed", "error", err.Error(), "link", src.URL, "pasted", src.IsList())
 		h.editEphemeral(s, i, deckCoverageErrorMessage(err), nil)
 		return
 	}
 
-	content, components := deckCheckReply(report, h.cfg.ClientBaseURL, link, h.deckLinks, h.now())
+	content, components := deckCheckReply(report, h.cfg.ClientBaseURL, src, h.deckSources, h.now())
 	h.editEphemeral(s, i, content, components)
 }
 
 // checkDeck is /c2-deck-check's server call, split from the Discord
 // response so it can be tested without a live session (the
 // createInviteGame pattern).
-func (h *Handler) checkDeck(ctx context.Context, link string) (DeckCoverageReport, error) {
-	return h.client.DeckCoverage(ctx, link)
+func (h *Handler) checkDeck(ctx context.Context, src DeckSource) (DeckCoverageReport, error) {
+	return h.client.DeckCoverage(ctx, src)
 }
 
 // deckCheckReply builds the full /c2-deck-check reply — content and,
 // when the report has anything worth requesting, the "Request these
 // cards" button — split out from handleDeckCheck so the assembly is
 // testable without a live Discord session.
-func deckCheckReply(report DeckCoverageReport, clientBaseURL, link string, store *deckLinkStore, now time.Time) (string, []discordgo.MessageComponent) {
-	content := deckCheckContent(report, clientBaseURL, link)
+func deckCheckReply(report DeckCoverageReport, clientBaseURL string, src DeckSource, store *deckSourceStore, now time.Time) (string, []discordgo.MessageComponent) {
+	content := deckCheckContent(report, clientBaseURL, src)
 	if !deckCheckWantsButton(report) {
 		return content, nil
 	}
-	customID := buildDeckRequestCustomID(link, store, now)
+	customID := buildDeckRequestCustomID(src, store, now)
 	return content, []discordgo.MessageComponent{deckRequestButtonRow(customID)}
 }
 
 // deckCheckContent renders the ephemeral /c2-deck-check reply: the
 // bucket counts in player words, up to ~15 manual card names, and a
 // link to the site's full report.
-func deckCheckContent(report DeckCoverageReport, clientBaseURL, link string) string {
+func deckCheckContent(report DeckCoverageReport, clientBaseURL string, src DeckSource) string {
 	var b strings.Builder
 	name := report.DeckName
+	if name == "" && src.IsList() {
+		name = "Your pasted list"
+	}
 	if name == "" {
 		name = "This deck"
 	}
@@ -174,7 +299,7 @@ func deckCheckContent(report DeckCoverageReport, clientBaseURL, link string) str
 		b.WriteString(names)
 		b.WriteString("\n")
 	}
-	b.WriteString(fullReportURL(clientBaseURL, link))
+	b.WriteString(fullReportURL(clientBaseURL, src))
 	return b.String()
 }
 
@@ -200,8 +325,14 @@ func manualCardNamesLine(report DeckCoverageReport, max int) string {
 }
 
 // fullReportURL builds the link to the site's full deck-check report.
-func fullReportURL(clientBaseURL, link string) string {
-	return fmt.Sprintf("Full report: %s/#/deck-check?url=%s", strings.TrimRight(clientBaseURL, "/"), url.QueryEscape(link))
+// A link check opens straight onto it; a pasted list cannot ride in a
+// URL, so it gets the page itself and is pasted there.
+func fullReportURL(clientBaseURL string, src DeckSource) string {
+	base := strings.TrimRight(clientBaseURL, "/")
+	if src.IsList() {
+		return fmt.Sprintf("Full report: paste the list at %s/#/deck-check", base)
+	}
+	return fmt.Sprintf("Full report: %s/#/deck-check?url=%s", base, url.QueryEscape(src.URL))
 }
 
 // deckCheckWantsButton reports whether the report has anything worth
@@ -231,7 +362,7 @@ func deckRequestButtonRow(customID string) discordgo.ActionsRow {
 func deckCoverageErrorMessage(err error) string {
 	var apiErr *DeckAPIError
 	if errors.As(err, &apiErr) && apiErr.Message != "" {
-		return apiErr.Message
+		return apiErr.Message + pasteHintSuffix(apiErr, CmdDeckCheck)
 	}
 	switch {
 	case errors.Is(err, ErrServerUnreachable):
@@ -243,25 +374,40 @@ func deckCoverageErrorMessage(err error) string {
 	}
 }
 
+// pasteHintSuffix finishes the server's Moxfield sentence ("…then
+// paste the list here instead") for Discord, where "here" is the same
+// command run without a link. Empty for any other error.
+func pasteHintSuffix(apiErr *DeckAPIError, cmd string) string {
+	if apiErr == nil || apiErr.Hint != DeckHintPasteList {
+		return ""
+	}
+	return fmt.Sprintf("\nRun `/%s` with no link to paste it.", cmd)
+}
+
 // --- /c2-deck-req and the "Request these cards" button ---
 
-// handleDeckReq runs /c2-deck-req.
+// handleDeckReq runs /c2-deck-req. With no link it asks for the list
+// in a modal, as /c2-deck-check does.
 func (h *Handler) handleDeckReq(ctx context.Context, s *discordgo.Session, i *discordgo.InteractionCreate, data discordgo.ApplicationCommandInteractionData) {
-	link := stringOption(data.Options, "link")
-	h.runDeckRequest(ctx, s, i, link)
+	link := strings.TrimSpace(stringOption(data.Options, "link"))
+	if link == "" {
+		_ = s.InteractionRespond(i.Interaction, deckPasteModal(deckPasteReqModalID))
+		return
+	}
+	h.runDeckRequest(ctx, s, i, DeckSource{URL: link})
 }
 
 // dispatchDeckRequestComponent handles a "Request these cards" button
 // click, running the same request flow as /c2-deck-req for whoever
 // pressed it (ADR 0095 §4).
 func (h *Handler) dispatchDeckRequestComponent(ctx context.Context, s *discordgo.Session, i *discordgo.InteractionCreate, customID string) {
-	link, err := resolveDeckRequestLink(customID, h.deckLinks, h.now())
+	src, err := resolveDeckRequestSource(customID, h.deckSources, h.now())
 	if err != nil {
 		h.log.Warn("deck-request button resolve failed", "error", err.Error(), "custom_id", customID)
-		_ = s.InteractionRespond(i.Interaction, ephemeralResponse(deckLinkResolveErrorMessage(err)))
+		_ = s.InteractionRespond(i.Interaction, ephemeralResponse(deckSourceResolveErrorMessage(err)))
 		return
 	}
-	h.runDeckRequest(ctx, s, i, link)
+	h.runDeckRequest(ctx, s, i, src)
 }
 
 // runDeckRequest is the shared body of /c2-deck-req and the deck-
@@ -276,26 +422,26 @@ func (h *Handler) dispatchDeckRequestComponent(ctx context.Context, s *discordgo
 // (filed, or joined without already_requested) deletes that ephemeral
 // placeholder and posts the visible half as a follow-up message
 // instead of an edit; an ephemeral result just edits the placeholder.
-func (h *Handler) runDeckRequest(ctx context.Context, s *discordgo.Session, i *discordgo.InteractionCreate, link string) {
+func (h *Handler) runDeckRequest(ctx context.Context, s *discordgo.Session, i *discordgo.InteractionCreate, src DeckSource) {
 	_ = s.InteractionRespond(i.Interaction, deferredEphemeralResponse())
 
 	requester := deckRequester(i.Interaction)
-	result, err := h.requestDeck(ctx, link, requester)
+	result, err := h.requestDeck(ctx, src, requester)
 	if err != nil {
-		h.log.Warn("deck-request failed", "error", err.Error(), "link", link)
+		h.log.Warn("deck-request failed", "error", err.Error(), "link", src.URL, "pasted", src.IsList())
 		h.editEphemeral(s, i, deckRequestErrorMessage(err), nil)
 		return
 	}
 
-	content, channelVisible := deckRequestOutcomeMessage(result, link)
+	content, channelVisible := deckRequestOutcomeMessage(result, src)
 	h.finishDeckRequest(s, i, content, channelVisible)
 }
 
 // requestDeck is /c2-deck-req's (and the button's) server call, split
 // from the Discord response so it can be tested without a live
 // session (the createInviteGame pattern).
-func (h *Handler) requestDeck(ctx context.Context, link string, requester DeckRequester) (DeckRequestResult, error) {
-	return h.client.DeckRequest(ctx, link, requester)
+func (h *Handler) requestDeck(ctx context.Context, src DeckSource, requester DeckRequester) (DeckRequestResult, error) {
+	return h.client.DeckRequest(ctx, src, requester)
 }
 
 // deckRequester builds the {discord_id, display_name} POST
@@ -336,13 +482,17 @@ func invokerDisplayName(i *discordgo.Interaction) string {
 //   - joined: channel-visible, unless already_requested (ephemeral).
 //   - nothing_to_add: ephemeral, with the counts.
 //   - rate_limited: ephemeral, with the wait in hours/minutes.
-func deckRequestOutcomeMessage(result DeckRequestResult, link string) (string, bool) {
+func deckRequestOutcomeMessage(result DeckRequestResult, src DeckSource) (string, bool) {
+	what := src.URL
+	if src.IsList() {
+		what = "this list"
+	}
 	switch result.Status {
 	case DeckRequestFiled:
 		return fmt.Sprintf("Requested! %s — %d cards to add", result.IssueURL, manualPlusUnreviewed(result.Report)), true
 	case DeckRequestJoined:
 		if result.AlreadyRequested {
-			return fmt.Sprintf("You already asked for this deck: %s", link), false
+			return fmt.Sprintf("You already asked for this deck: %s", alreadyAskedRef(result, src)), false
 		}
 		return fmt.Sprintf("Added your request to %s", result.IssueURL), true
 	case DeckRequestNothingToAdd:
@@ -350,8 +500,17 @@ func deckRequestOutcomeMessage(result DeckRequestResult, link string) (string, b
 	case DeckRequestRateLimited:
 		return fmt.Sprintf("You've already asked for a few decks today — try again in %s.", retryAfterWords(result.RetryAfter)), false
 	default:
-		return fmt.Sprintf("Something unexpected happened requesting %s.", link), false
+		return fmt.Sprintf("Something unexpected happened requesting %s.", what), false
 	}
+}
+
+// alreadyAskedRef is what the "already asked" reply points at: the
+// deck link, or — for a pasted list, which has none — its issue.
+func alreadyAskedRef(result DeckRequestResult, src DeckSource) string {
+	if !src.IsList() {
+		return src.URL
+	}
+	return result.IssueURL
 }
 
 // manualPlusUnreviewed is "N cards to add" — the manual and
@@ -406,7 +565,7 @@ func deckRequestErrorMessage(err error) string {
 			return "Deck requests aren't set up on this server."
 		}
 		if apiErr.Message != "" {
-			return apiErr.Message
+			return apiErr.Message + pasteHintSuffix(apiErr, CmdDeckReq)
 		}
 	}
 	switch {
@@ -419,10 +578,10 @@ func deckRequestErrorMessage(err error) string {
 	}
 }
 
-// deckLinkResolveErrorMessage maps a resolveDeckRequestLink error to
-// a user-visible string for a stale or malformed button.
-func deckLinkResolveErrorMessage(err error) string {
-	if errors.Is(err, errDeckLinkExpired) {
+// deckSourceResolveErrorMessage maps a resolveDeckRequestSource error
+// to a user-visible string for a stale or malformed button.
+func deckSourceResolveErrorMessage(err error) string {
+	if errors.Is(err, errDeckSourceExpired) {
 		return "This button has expired. Run `/c2-deck-check` again."
 	}
 	return "Something went wrong with that button. Run `/c2-deck-check` again."

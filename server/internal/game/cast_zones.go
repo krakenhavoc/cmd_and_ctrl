@@ -244,6 +244,18 @@ func AlternativeCostsOfferedFromZone(oracleID string, zone ZoneKind) []Alternati
 //
 // Each entry points at a freshly copied value, so a caller may hold
 // one past the call. Caller must hold g.mu.
+//
+// Deliberately NOT filtered by timing (CR 307.1). This answers "what
+// may this cast claim out of this zone", and "is now the right moment"
+// is a separate question CastTimingOpenLocked answers on its own —
+// castable_here folds both together, and the exile strip's
+// informational cast_prices (#1389) reads this list on purpose while a
+// sorcery is between windows, so a caster can still see what a card
+// will cost later this turn. #1686 needed the picker to know which
+// offer is timing-open RIGHT NOW without losing that; see
+// AlternativeCostView.TimingClosed and CastSurfaceView.
+// PrintedCostTimingClosed, computed alongside this list rather than
+// inside it.
 func (g *Game) CastOffersForLocked(playerID uuid.UUID, card Card, zone ZoneKind, grant *CastPermission) []*AlternativeCost {
 	var out []*AlternativeCost
 	if g.validateCastPathLocked(card, zone, nil, grant) == nil {
@@ -307,6 +319,13 @@ func (g *Game) validateCastPathLocked(card Card, srcKind ZoneKind, alt *Alternat
 	key := CatalogKey(card)
 	if alt != nil && alt.FromZone != "" && alt.FromZone != srcKind {
 		return ErrCastZoneNotAllowed
+	}
+	// #1665, miracle: an offer that needs a permission to be claimed
+	// is claimable only under a live one that names its key. Asked of
+	// the grant BEFORE any ForClaim narrowing, because this is the
+	// question the grant exists to answer.
+	if alt != nil && alt.RequiresGrant && (grant == nil || grant.AltCostKey != alt.Key) {
+		return ErrAltCostNotGranted
 	}
 	switch srcKind {
 	case ZoneHand, ZoneCommand:

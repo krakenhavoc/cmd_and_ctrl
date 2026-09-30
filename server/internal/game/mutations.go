@@ -370,6 +370,17 @@ type CastSpellParams struct {
 	// caster simply pays the whole cost with mana. Added in S22.
 	TapIDs []uuid.UUID
 
+	// TeamworkIDs names the untapped creatures tapped to pay an
+	// announced teamwork cost (CR 702.194a): any number of them whose
+	// total effective power reaches the teamwork number. BlightIDs
+	// names the ONE creature an announced blight cost puts its -1/-1
+	// counters on (CR 701.68a). Same discipline as SacrificeIDs:
+	// validated at announce, paid with the spell on the stack, and
+	// refused rather than ignored when the announcement pays no such
+	// cost. Added for #1703.
+	TeamworkIDs []uuid.UUID
+	BlightIDs   []uuid.UUID
+
 	// AlternativeCost names the cost the caster is paying INSTEAD of
 	// the mana cost (CR 118.9) — the Key of one of the card's
 	// declared game.AlternativeCost entries, "overload" / "evoke" /
@@ -714,6 +725,12 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		)
 		return err
 	}
+	// #1665: a HAND permission (miracle) opens one claim and nothing
+	// else. From here down — the price, the X rule, the timing gate —
+	// a cast that pays the printed cost reads no permission at all, so
+	// a live miracle grant does not make a hard-cast sorcery an
+	// instant. A no-op for every other zone. See CastPermission.ForClaim.
+	grant = grant.ForClaim(alt)
 	// CR 708.4, ADR 0082 decision 2: the whole of "casting a card
 	// face down" is this line, and where it sits is the decision.
 	//
@@ -816,17 +833,6 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		)
 		return ErrInvalidParam
 	}
-	// S20 sub-PR 4: modal spells — the chosen modes must be distinct,
-	// in range and the right count (CR 601.2b, 700.2).
-	modeSpec := ModeSpecFor(CatalogKey(card))
-	if err := validateModes(modeSpec, params.Modes); err != nil {
-		slog.Warn("cast_spell rejected: bad mode choice",
-			"card_name", card.Name,
-			"oracle_id", card.OracleID,
-			"modes_received", params.Modes,
-		)
-		return err
-	}
 	// ADR 0073, CR 601.2b: the optional additional costs the caster
 	// chooses to pay — kicker, multikicker, buyback. Announced HERE,
 	// with the modes and before the targets, for two reasons that
@@ -861,6 +867,34 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 			"oracle_id", card.OracleID,
 			"gift_opponent", params.GiftOpponent,
 			"optional_costs", params.OptionalCosts,
+		)
+		return err
+	}
+	// S20 sub-PR 4: modal spells — the chosen modes must be distinct,
+	// in range and the right count (CR 601.2b, 700.2). #1590: the
+	// count's bounds are read HERE, "as you cast this spell", for a
+	// conditional mode count (Jeska's Will's "if you control a
+	// commander … choose both instead") — and only here: the choice
+	// lands on StackItem.Modes and nothing re-asks the condition, so a
+	// commander that leaves in response changes nothing.
+	//
+	// #1655: AFTER the optional-cost choice above, because CR 601.2b
+	// announces both in one step and "if this spell was kicked, choose
+	// any number instead" (Inscription of Ruin) reads the kicker the
+	// caster is announcing alongside the modes.
+	modeSpec := ModeSpecFor(CatalogKey(card))
+	modeMin, modeMax := g.modeBoundsLocked(modeSpec, ModeCountQuery{
+		Chooser:       playerID,
+		OracleID:      CatalogKey(card),
+		OptionalCosts: params.OptionalCosts,
+	})
+	if err := validateModes(modeSpec, modeMin, modeMax, params.Modes); err != nil {
+		slog.Warn("cast_spell rejected: bad mode choice",
+			"card_name", card.Name,
+			"oracle_id", card.OracleID,
+			"modes_received", params.Modes,
+			"mode_min", modeMin,
+			"mode_max", modeMax,
 		)
 		return err
 	}
@@ -910,6 +944,12 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// #1559: "with mana value X or less" — X is announced before
 	// targets (CR 601.2b / 602.2b), so the bound is known here.
 	bindStepsX(steps, params.XValue)
+	// #1657, CR 601.2d: a divided amount read off the board or off the
+	// claimed alternative cost ("X if its madness cost was paid") is
+	// fixed here, with the targets, and never re-read.
+	g.bindDivideAmountsLocked(steps, DivideAmountArgs{
+		Controller: playerID, Source: cardID, AltCost: params.AlternativeCost,
+	})
 	params.Targets = assignAnnouncedSlots(steps, params.Targets)
 	for _, i := range xSteps {
 		// Max 0 reads as "unbounded" to the ordinary count check, so
@@ -973,6 +1013,20 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		)
 		return err
 	}
+	// #1563, CR 601.2d: the division is announced with the targets,
+	// against the amount the announced X gives. The settled copy — a
+	// lone target handed the whole amount — is what the item stores.
+	dist, err := settleDistribution(steps, params.Targets, params.Distribution, params.XValue)
+	if err != nil {
+		slog.Warn("cast_spell rejected: bad division",
+			"card_name", card.Name,
+			"oracle_id", card.OracleID,
+			"x_value", params.XValue,
+			"err", err,
+		)
+		return err
+	}
+	params.Distribution = dist
 	// S21 sub-PR 5: additional costs (CR 601.2f). Validated here,
 	// with the rest of the announce-time choices, and paid further
 	// down once the spell is on the stack — validate-all-then-pay,
@@ -992,6 +1046,27 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 			"discards_received", len(params.DiscardIDs),
 			"sacrifices_received", len(params.SacrificeIDs),
 			"optional_costs", params.OptionalCosts,
+			"err", err,
+		)
+		return err
+	}
+	// #1703: the two components whose payment names creatures on
+	// the board — teamwork's taps (CR 702.194a) and blight's one
+	// creature (CR 701.68a). Same plan, same validate-all-then-pay.
+	if err := g.validateTeamworkLocked(playerID, costPlan, params.TeamworkIDs, params.TapIDs); err != nil {
+		slog.Warn("cast_spell rejected: bad teamwork payment",
+			"card_name", card.Name,
+			"oracle_id", card.OracleID,
+			"teamwork_received", len(params.TeamworkIDs),
+			"err", err,
+		)
+		return err
+	}
+	if err := g.validateBlightLocked(playerID, costPlan, params.BlightIDs); err != nil {
+		slog.Warn("cast_spell rejected: bad blight payment",
+			"card_name", card.Name,
+			"oracle_id", card.OracleID,
+			"blight_received", len(params.BlightIDs),
 			"err", err,
 		)
 		return err
@@ -1166,8 +1241,9 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	moving := append(append(append([]uuid.UUID(nil), params.DiscardIDs...), params.SacrificeIDs...), params.AltCostIDs...)
 	// #1445 / #1427: a card an EFFECT has already paused on its way
 	// out cannot pay — moved, or tapped to convoke / waterbend
-	// (TapIDs). See refusePausedCostCardsLocked.
-	if err := g.refusePausedCostCardsLocked(moving, params.TapIDs); err != nil {
+	// (TapIDs), tapped to teamwork or blighted (#1703). See
+	// refusePausedCostCardsLocked.
+	if err := g.refusePausedCostCardsLocked(moving, params.TapIDs, params.TeamworkIDs, params.BlightIDs); err != nil {
 		return err
 	}
 	asked, answers := g.askCostCommanderLocked(playerID, moving, params.commanderAnswers, card.Name,
@@ -1378,6 +1454,18 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// above it. The mana side of the payment was already folded into
 	// the cost gate above; this is the board half.
 	g.payTapPermanentsCostLocked(playerID, params.TapIDs)
+	// #1703: teamwork's taps and blight's counters, in the same
+	// window and for the same reason. A creature the blight kills
+	// dies at the closing state-based check, with the cost paid.
+	g.payTeamworkLocked(playerID, params.TeamworkIDs)
+	if err := g.payBlightLocked(playerID, costPlan, params.BlightIDs); err != nil {
+		slog.Error("cast_spell: blight cost failed after validation",
+			"card_name", card.Name,
+			"oracle_id", card.OracleID,
+			"err", err,
+		)
+		return err
+	}
 	if splitSecond {
 		g.SplitSecondActive = true
 	}
@@ -2265,10 +2353,10 @@ func mostRestrictiveRequirement(options []string, pending []ColorRequirement) (i
 	for i := range pending {
 		req := pending[i]
 		for _, opt := range options {
-			if !matchColor(opt, req.Options) {
+			if !req.Admits(opt) {
 				continue
 			}
-			if best < 0 || len(req.Options) < len(pending[best].Options) {
+			if best < 0 || req.width() < pending[best].width() {
 				best, bestOpt = i, opt
 			}
 			break
@@ -2409,6 +2497,9 @@ func (g *Game) printedCostLocked(p *Player, card Card, params CastSpellParams) (
 	if err != nil {
 		return ParsedCost{}, CastCost{}, err
 	}
+	// #1665: a hand permission prices only the claim it opens, the same
+	// narrowing CastSpell makes. See CastPermission.ForClaim.
+	grant = grant.ForClaim(alt)
 	chosen := CastCostFor(card, alt, grant)
 	cost, err := ParseCost(chosen.Paid)
 	if err != nil {
@@ -3396,13 +3487,17 @@ func (g *Game) ActivateLoyalty(playerID, planeswalkerID uuid.UUID, label string,
 	if delta < 0 && pw.Counters[CounterLoyalty] < -delta {
 		return ErrInsufficientLoyalty
 	}
-	// applyCounterLocked deletes the key at zero and emits the
-	// counter event, which is what every other counter mutation in
-	// the engine does; the hand-rolled map write here predated it.
-	// A counter-doubling replacement applies only to a counter placed
-	// by an effect (CR 614.16), so this
-	// deliberately bypasses the CR 614 counter-replacement pipeline.
-	if err := g.applyCounterLocked(planeswalkerID, CounterLoyalty, delta); err != nil {
+	// payCostCounterLocked (counter_cost.go): a loyalty ability's
+	// counter change is a COST (CR 606.4), not an effect, so a
+	// replacement that names "an effect" (Doubling Season) still does
+	// not apply — but this now opens the CR 614 window with
+	// CounterFromCost set, so a replacement that names no effect at all
+	// (Vorinclex, Monstrous Raider) does, matching the catalogued
+	// activation path in activated.go. This used to call
+	// applyCounterLocked directly and bypass the window entirely, which
+	// was right about Doubling Season and wrong about Vorinclex — ADR
+	// 0073's 2026-09-28 amendment, #1710.
+	if _, err := g.payCostCounterLocked(playerID, planeswalkerID, CounterLoyalty, delta); err != nil {
 		return err
 	}
 	if g.LoyaltyActivatedThisTurn == nil {
@@ -3660,6 +3755,11 @@ func (g *Game) stateBasedActionsLocked() (fired, left bool) {
 
 	// Counter cancel (704.5q). Must run before destruction so the
 	// post-cancel state is what the lethal-damage SBA sees.
+	//
+	// #1664: ONLY +1/+1 against -1/-1. Every other P/T counter kind
+	// changes power and toughness (PTCounterDelta), but CR 704.5q
+	// names these two and no others: a +1/+0 and a -1/-0 on one
+	// creature both stay, as do a +1/+1 and a -2/-1.
 	for i := range g.Battlefield.Cards {
 		c := &g.Battlefield.Cards[i]
 		if !c.IsCreature() || c.Counters == nil {
@@ -4581,7 +4681,7 @@ func (g *Game) finishBattlefieldLeaveLocked(ev *ReplacementEvent, owner *Player)
 		closeBatch = g.publishSimultaneousExitLocked(ev.zoneRoute.simultaneousExit)
 	}
 	defer closeBatch()
-	moveErr := g.executeBattlefieldLeaveLocked(ev.CardID, ev.NewZone, ev.NewZoneOwner, owner)
+	moveErr := g.executeBattlefieldLeaveLocked(ev.CardID, ev.NewZone, ev.NewZoneOwner, owner, ev.ShuffleDestinationLibrary)
 	tailErr := g.runRouteTailLocked(ev.zoneRoute)
 	if moveErr != nil {
 		return moveErr
@@ -4604,8 +4704,15 @@ func (g *Game) finishBattlefieldLeaveLocked(ev *ReplacementEvent, owner *Player)
 // until the cleanup step (CR 514.2) like every other damaged
 // permanent.
 //
+// shuffleAfter is ADR 0013 §5ah's ShuffleDestinationLibrary carried
+// down as a plain bool, since this function takes the settled
+// destination apart from the *ReplacementEvent it came from. True
+// only for a replacement that redirected NewZone to ZoneLibrary as a
+// genuine shuffle-in (Blightsteel Colossus, the Eldrazi titans)
+// rather than a placement; every other caller passes false.
+//
 // Caller must hold g.mu.
-func (g *Game) executeBattlefieldLeaveLocked(cardID uuid.UUID, dest ZoneKind, destOwner uuid.UUID, owner *Player) error {
+func (g *Game) executeBattlefieldLeaveLocked(cardID uuid.UUID, dest ZoneKind, destOwner uuid.UUID, owner *Player, shuffleAfter bool) error {
 	var destZone *Zone
 	var actor uuid.UUID
 	switch dest {
@@ -4675,11 +4782,21 @@ func (g *Game) executeBattlefieldLeaveLocked(cardID uuid.UUID, dest ZoneKind, de
 	// that killed it, which MoveCard's exit cleanup zeroes a line
 	// later (#816) — and the Game-side forget of what this object did
 	// this turn (#630, CR 400.7). See battlefield_exit.go.
-	g.battlefieldExitLocked(cardID)
+	lki := g.battlefieldExitLocked(cardID)
 	if _, err := MoveCard(g.Battlefield, destZone, cardID); err != nil {
 		return err
 	}
 	g.markCardKnownInZoneLocked(destZone, cardID)
+	// ADR 0013 §5ah: the card has now actually landed in `dest`, so a
+	// caller that asked for a shuffle-in gets it here — the one place
+	// both this route and executeZoneRouteLocked perform the physical
+	// landing. ShuffleLibraryForEffect also clears every card's
+	// Known-by in that library (its own #1335 contract), which is what
+	// makes this the honest "reveal it, then it's hidden again" rather
+	// than a card that keeps the knowledge a battlefield death gave it.
+	if shuffleAfter && dest == ZoneLibrary {
+		_ = g.ShuffleLibraryForEffect(destZone.Owner)
+	}
 	g.EmitEvent(Event{
 		Kind:    EventZoneMove,
 		Actor:   actor,
@@ -4687,7 +4804,9 @@ func (g *Game) executeBattlefieldLeaveLocked(cardID uuid.UUID, dest ZoneKind, de
 		OldZone: ZoneBattlefield,
 		NewZone: dest,
 	})
-	g.EmitEvent(Event{Kind: EventLTB, CardID: cardID, Actor: actor, NewZone: dest})
+	ltb := Event{Kind: EventLTB, CardID: cardID, Actor: actor, NewZone: dest}
+	lki.stamp(&ltb)
+	g.EmitEvent(ltb)
 	// A permanent leaving the battlefield is the one event that can
 	// invalidate a queued "sacrifice a creature of your choice" prompt
 	// (Grave Pact), so re-check them here rather than in
@@ -5307,12 +5426,13 @@ func (g *Game) moveCardByRefLocked(src, dst ZoneRef, cardID uuid.UUID, asCommand
 		// already is. Nothing to do.
 		return nil
 	}
+	var lki exitLKI
 	if srcZone.Kind == ZoneBattlefield {
 		// LKI, and the CR 400.7 forget — battlefield_exit.go. The
 		// sandbox move is a battlefield exit like any other: a
 		// planeswalker shoved to hand from the context menu is as new
 		// an object when it comes back as one Venser bounced.
-		g.battlefieldExitLocked(cardID)
+		lki = g.battlefieldExitLocked(cardID)
 	}
 	if _, err := MoveCard(srcZone, dstZone, cardID); err != nil {
 		return err
@@ -5347,7 +5467,9 @@ func (g *Game) moveCardByRefLocked(src, dst ZoneRef, cardID uuid.UUID, asCommand
 		NewZone: dstZone.Kind,
 	})
 	if srcZone.Kind == ZoneBattlefield {
-		g.EmitEvent(Event{Kind: EventLTB, CardID: cardID, NewZone: dstZone.Kind})
+		ltb := Event{Kind: EventLTB, CardID: cardID, NewZone: dstZone.Kind}
+		lki.stamp(&ltb)
+		g.EmitEvent(ltb)
 	}
 	if dstZone.Kind == ZoneBattlefield {
 		g.EmitEvent(Event{Kind: EventETB, CardID: cardID})
@@ -5953,10 +6075,11 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 	}
 	paid.CountersRemoved = counters.total
 	if ab.AddCounter != nil {
-		if err := g.payCounterAddLocked(cardID, ab.AddCounter); err != nil {
+		added, err := g.payCounterAddLocked(playerID, cardID, ab.AddCounter)
+		if err != nil {
 			return err
 		}
-		paid.CountersAdded = ab.AddCounter.N
+		paid.CountersAdded = added
 	}
 	// S21 sub-PR 1 made sacrifice-self costs real (Treasure, Eldrazi
 	// Spawn, Lotus Petal); the mana-cost pass adds sacrifice-another
@@ -6935,6 +7058,12 @@ func seatOfPlayerLocked(g *Game, id uuid.UUID) int {
 func (g *Game) PassPriority() error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
+	// #1665: passing is the decline of a resolved miracle's cast
+	// (CR 702.94a) — see miracle.go. Before the pass, because this
+	// pass can resolve the next miracle trigger.
+	if h := g.Turn.PriorityHolder; h >= 0 && h < len(g.Seats) && g.Seats[h] != nil {
+		g.closeMiracleWindowLocked(g.Seats[h].ID)
+	}
 	return g.passPriorityLocked()
 }
 
@@ -6986,6 +7115,15 @@ func (g *Game) passPriorityLocked() error {
 	// post-declaration window.
 	if g.Turn.Step == StepDeclareBlockers {
 		if h := g.Turn.PriorityHolder; h >= 0 && h < numSeats && g.Seats[h] != nil {
+			// #1597 / CR 509.1c: and so it is the declaration's
+			// requirement checkpoint — refused, with the requirement
+			// named, while a legal addition would still obey one more
+			// ("Grizzly Bears must block Prized Unicorn if able").
+			// Only while this defender's declaration is pending; the
+			// fast path keeps every table without a requirement out.
+			if err := g.blockCheckpointLocked(g.Seats[h].ID); err != nil {
+				return err
+			}
 			if g.completeBlockDeclarationLocked(g.Seats[h].ID) && g.closeBlockDeclarationIfCompleteLocked() {
 				return nil
 			}
@@ -7265,7 +7403,7 @@ func (g *Game) DeclareAttackerWith(attackerID, targetPlayerID uuid.UUID, params 
 			// A card declared as attacker can't simultaneously be a
 			// blocker — clearing the other field keeps the per-card
 			// combat state coherent.
-			card.BlockingTarget = uuid.Nil
+			card.clearBlocking()
 			return nil
 		}
 	}
@@ -7461,7 +7599,7 @@ func (g *Game) DeclareAttackersWith(decls []AttackDeclaration, params DeclareAtt
 			card.Tapped = true
 		}
 		// Attacking and blocking are mutually exclusive per card.
-		card.BlockingTarget = uuid.Nil
+		card.clearBlocking()
 		declared = append(declared, d.Attacker)
 	}
 	if len(declared) == 0 {
@@ -7725,10 +7863,19 @@ func (g *Game) assignAndDealCombatDamageLocked(step string) {
 	firstStrike := step == CombatStepFirstStrike
 
 	blockersByAttacker := make(map[uuid.UUID][]int, len(g.Battlefield.Cards))
+	// #1706: a blocker that still blocks two or more live attackers
+	// divides its damage among them (CR 510.1d) through a prompt,
+	// queued after the attacker loop, instead of dealing it to each.
+	var dividing []uuid.UUID
+	divides := map[uuid.UUID]bool{}
 	for i := range g.Battlefield.Cards {
 		c := &g.Battlefield.Cards[i]
-		if c.BlockingTarget != uuid.Nil {
-			blockersByAttacker[c.BlockingTarget] = append(blockersByAttacker[c.BlockingTarget], i)
+		for _, atk := range c.BlockedAttackers() {
+			blockersByAttacker[atk] = append(blockersByAttacker[atk], i)
+		}
+		if len(c.AlsoBlocking) > 0 && len(g.liveBlockedAttackersLocked(c)) >= 2 {
+			divides[c.InstanceID] = true
+			dividing = append(dividing, c.InstanceID)
 		}
 	}
 
@@ -7769,7 +7916,7 @@ func (g *Game) assignAndDealCombatDamageLocked(step string) {
 		liveBlockers := make([]uuid.UUID, 0, len(blkIdxs))
 		for _, bi := range blkIdxs {
 			blk := &g.Battlefield.Cards[bi]
-			if blk.BlockingTarget != atkID {
+			if !blk.IsBlockingAttacker(atkID) {
 				continue // reverted earlier in this step
 			}
 			liveBlockers = append(liveBlockers, blk.InstanceID)
@@ -7843,6 +7990,9 @@ func (g *Game) assignAndDealCombatDamageLocked(step string) {
 		// strike blocker can still hit a vanilla attacker in the
 		// first-strike step (CR 510.4).
 		for _, blkID := range liveBlockers {
+			if divides[blkID] {
+				continue // divides its damage below (#1706)
+			}
 			blk := findBattlefieldCard(g, blkID)
 			if blk == nil || !g.participatesInStepLocked(blk, firstStrike) {
 				continue
@@ -7852,6 +8002,26 @@ func (g *Game) assignAndDealCombatDamageLocked(step string) {
 				continue
 			}
 			g.markCombatDamageOnCardLocked(atkID, blkPower, blkID, step)
+		}
+	}
+
+	// #1706, CR 510.1d: a blocker blocking two or more attackers
+	// assigns its combat damage "divided as its controller chooses
+	// among them". The CR 510.1c prompt carries it, with the roles
+	// turned round (queueBlockerDamageDivisionLocked). Its set is
+	// re-read now, after the attackers' damage, because the
+	// simultaneity is the prompt's: every mark it makes is on the same
+	// board the other blockers' marks landed on, and SBAs run only once
+	// the step's marks are all down.
+	for _, blkID := range dividing {
+		blk := findBattlefieldCard(g, blkID)
+		if blk == nil || !g.participatesInStepLocked(blk, firstStrike) || power[blkID] <= 0 {
+			continue
+		}
+		if live := g.liveBlockedAttackersLocked(blk); len(live) >= 2 {
+			g.queueBlockerDamageDivisionLocked(blk, live, power[blkID], step)
+		} else if len(live) == 1 {
+			g.markCombatDamageOnCardLocked(live[0], power[blkID], blkID, step)
 		}
 	}
 }
@@ -8068,7 +8238,7 @@ func (g *Game) clearCombatLocked() {
 			attackerLeft = true
 		}
 		g.Battlefield.Cards[i].AttackingTarget = uuid.Nil
-		g.Battlefield.Cards[i].BlockingTarget = uuid.Nil
+		g.Battlefield.Cards[i].clearBlocking()
 	}
 	if attackerLeft {
 		g.invalidateLayersForAttackChangeLocked()
@@ -8502,20 +8672,28 @@ func (g *Game) SetCommanderDamage(from, to uuid.UUID, amount int) error {
 // moves and draws without anybody clicking it. The action stays
 // because a card has to be able to hand the crown out in the first
 // place, and because the sandbox posture is that a table can always
-// correct the board by hand.
+// correct the board by hand. A card's effect uses SetMonarchForEffect,
+// under the lock it already holds (#1722).
 //
-// Returns ErrPlayerNotFound if playerID isn't seated, or
-// ErrGameNotActive in lobby/ended state.
+// Returns ErrPlayerNotFound if playerID isn't seated or has left the
+// game, or ErrGameNotActive in lobby/ended state.
 func (g *Game) SetMonarch(playerID uuid.UUID) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	if g.State != StateActive {
 		return ErrGameNotActive
 	}
-	if playerID != uuid.Nil && g.playerByIDLocked(playerID) == nil {
-		return ErrPlayerNotFound
+	if playerID != uuid.Nil {
+		if p := g.playerByIDLocked(playerID); p == nil || p.Eliminated {
+			return ErrPlayerNotFound
+		}
 	}
-	g.Monarch = playerID
+	// #1722: the same write, and the same EventMonarchChanged, as a
+	// card's "you become the monarch" (SetMonarchForEffect) — so a
+	// table correcting the crown by hand fires "whenever you become
+	// the monarch" and re-reads every "as long as you're the monarch"
+	// static exactly as the card would have.
+	g.becomeMonarchLocked(playerID)
 	return nil
 }
 
@@ -8537,13 +8715,16 @@ func (g *Game) SetInitiative(playerID uuid.UUID) error {
 	return nil
 }
 
-// SetGoaded marks a battlefield creature as goaded by the given player.
-// Pass uuid.Nil for `by` to clear the goad. The card must be on the
-// battlefield; goading a card in any other zone is meaningless.
+// SetGoaded is the sandbox goad: `by` goads the battlefield creature,
+// adding to any other player's goad on it (CR 701.15c) or refreshing
+// `by`'s own (goadLocked), and the goad ends as `by`'s next turn begins
+// like any other (CR 701.15a). Pass uuid.Nil for `by` to clear EVERY
+// goad on the creature. The card must be on the battlefield; goading a
+// card in any other zone is meaningless.
 //
-// Since #1571 the marker is enforced: the goaded creature's two
-// CR 701.15b requirements are judged with every other CR 508.1d
-// requirement (attack_requirements.go).
+// Since #1571 the marker is enforced: the goaded creature's CR 701.15b
+// requirements are judged with every other CR 508.1d requirement
+// (attack_requirements.go).
 func (g *Game) SetGoaded(cardID, by uuid.UUID) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
@@ -8555,7 +8736,11 @@ func (g *Game) SetGoaded(cardID, by uuid.UUID) error {
 	}
 	for i := range g.Battlefield.Cards {
 		if g.Battlefield.Cards[i].InstanceID == cardID {
-			g.Battlefield.Cards[i].GoadedBy = by
+			if by == uuid.Nil {
+				g.Battlefield.Cards[i].Goads = nil
+			} else {
+				g.goadLocked(&g.Battlefield.Cards[i], by)
+			}
 			return nil
 		}
 	}

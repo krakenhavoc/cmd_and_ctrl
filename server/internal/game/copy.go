@@ -1,5 +1,7 @@
 package game
 
+import "strings"
+
 // copy.go — CR 707 copy effects (Clone, Phyrexian Metamorph, Spark
 // Double, Sakashima the Impostor). The S16.5 half of #159 that a
 // real card finally asked for, and the fix for #335.
@@ -43,13 +45,16 @@ package game
 // printed baseline, which is what CR 613.1a asks for: layer 1 is
 // applied, and layers 2-7 then run on its result.
 //
-// Layer1Copy stays in `layerOrder` for the effect class this does
-// NOT cover: a copy effect with a DURATION and a timestamp of its
-// own (Mirage Mirror's "becomes a copy until end of turn",
-// Cytoshape). Those have to be re-applied on every recompute and
-// ordered against other layer-1 effects; an entry copy never does,
-// because it is settled once, as the permanent enters, and never
-// changes again while the permanent is on the battlefield.
+// A copy effect with a DURATION and a timestamp of its own (Mirage
+// Mirror's "becomes a copy until end of turn", Cytoshape) is the
+// other half of layer 1, and it is materialised the same way — onto
+// the same flat fields, before the layer pass — but re-derived on
+// every recompute from a data record and ordered by timestamp. See
+// duration_copy.go (#1593). An entry copy never needs that, because
+// it is settled once, as the permanent enters, and never changes
+// again while the permanent is on the battlefield. `Layer1Copy` stays
+// in `layerOrder` as the name of the layer; no layer-pass effect is
+// filed in it.
 //
 // # Why the original values are kept
 //
@@ -399,6 +404,21 @@ func (v *PrintedValues) GrantAbility(name string) {
 	v.GrantedAbilities = append(v.GrantedAbilities, key)
 }
 
+// AddKeyword is "except it has <keyword>" for a KEYWORD ability —
+// Cursed Mirror's haste, Lazav's hexproof (CR 707.9a). A keyword is a
+// printed value here like any other (Card.Keywords, merged into the
+// printed abilities by printedCharacteristic), so a later copy copies
+// it too, as the rule says. Idempotent case-insensitively, because the
+// importer stamps Scryfall's "Haste" and the catalog writes "haste".
+func (v *PrintedValues) AddKeyword(kw string) {
+	for _, existing := range v.Keywords {
+		if strings.EqualFold(existing, kw) {
+			return
+		}
+	}
+	v.Keywords = append(v.Keywords, kw)
+}
+
 // MakeToken stamps the "Token" supertype on the copiable values —
 // what CR 111.13 and CR 608.3f ask for when a copy of a permanent
 // spell becomes a token as it resolves.
@@ -561,6 +581,10 @@ func (c *Card) setPrintedValues(v PrintedValues) {
 // disposition for them), the restored oracle ID is what rebuilds
 // them, and off the battlefield nothing reads them at all.
 func (c *Card) restorePrintedSelf() {
+	// #1593: a duration copy ends with the object it applied to, and
+	// its baseline goes with it. PrintedSelf is always set alongside
+	// it, so the restore below puts the card's own values back.
+	c.DurationCopyBase = nil
 	if c.PrintedSelf == nil {
 		return
 	}

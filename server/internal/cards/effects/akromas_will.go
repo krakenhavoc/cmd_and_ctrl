@@ -27,22 +27,18 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // which is why an Ugin still kills the team and is the difference
 // between this and "protection from everything".
 //
-// DECLARED SIMPLIFICATION, weaker than printed: the commander clause
-// is not offered. "If you control a commander as you cast this spell,
-// you may choose both instead" is a mode COUNT that depends on the
-// board at announce, and `game.ModeSpec` bounds the count with plain
-// Min/Max integers read at Register time — there is nowhere for a
-// condition to live. Offering both unconditionally would be stronger
-// than printed (#259), so the card asks for one bullet, always. The
-// seam is a conditional mode count; see the batch issue.
+// "If you control a commander as you cast this spell, you may choose
+// both instead" is the conditional mode count #1590 built:
+// `OrUpToIf(2, YouControlACommander)`, read at announce (CR 601.2b)
+// and fixed from then on. Until then the card asked for one bullet
+// always. The two grants touch the same snapshotted creatures and
+// neither reads the other, so the order they run in is not
+// observable.
 func init() {
 	Register(Spec{
 		OracleID:     "fd949f82-fc10-4e37-8aa9-6c7569fe3c55",
 		Name:         "Akroma's Will",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"You pick one of the two lists of keywords. Picking both while you control a commander isn't implemented.",
-		},
+		Completeness: CompletenessFull,
 		Modes: ChooseOne(
 			ModeDoing("Creatures you control gain flying, vigilance, and double strike until end of turn.", nil,
 				func(_ *game.StackItem, ctx *Context, _ int) error {
@@ -60,7 +56,7 @@ func init() {
 						Label:    "Akroma's Will — lifelink, indestructible and protection from each color",
 					}.Apply(ctx)
 				}),
-		),
+		).OrUpToIf(2, YouControlACommander),
 	})
 }
 

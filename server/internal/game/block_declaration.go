@@ -29,8 +29,8 @@ import "github.com/google/uuid"
 // The validator below is a list of set checks: the per-pair ones, the
 // per-attacker count bounds, and — #1507, Decision 43 — the
 // whole-combat BlockRule.Limit (Silent Arbiter's "no more than one
-// creature can block each combat"). Not here yet: the CR 509.1c
-// blocking REQUIREMENTS of Decision 15, which will be one more entry.
+// creature can block each combat"), and — #1597 — the CR 509.1c
+// blocking REQUIREMENTS of Decision 15 (block_requirements.go).
 
 // BlockDeclaration is one (blocker, attacker) pairing in a block
 // declaration. A declaration is a slice of them, applied as a unit.
@@ -111,12 +111,19 @@ func (g *Game) declareBlockersLocked(decls []BlockDeclaration) error {
 	// this turn, menace granted by an aura, a land Urborg made a
 	// Swamp.
 	g.RecomputeLayersIfStaleLocked()
-	entries, err := g.checkBlockDeclarationLocked(g.currentBlockAssignmentLocked(), decls)
+	entries, after, err := g.checkBlockDeclarationAfterLocked(g.currentBlockAssignmentLocked(), decls, nil)
 	if err != nil {
 		return err
 	}
+	if after == nil {
+		// A re-declaration of pairings already stored: nothing moves.
+		return nil
+	}
 	for _, e := range entries {
-		e.blocker.BlockingTarget = e.attacker.InstanceID
+		// #1706: the blocker's whole set as the action leaves it — one
+		// attacker for an ordinary blocker, every attacker it now blocks
+		// for one that can block more.
+		e.blocker.setBlockingSet(after[e.blocker.InstanceID])
 		// Attacking and blocking are mutually exclusive per card.
 		e.blocker.AttackingTarget = uuid.Nil
 	}
@@ -124,20 +131,21 @@ func (g *Game) declareBlockersLocked(decls []BlockDeclaration) error {
 }
 
 // currentBlockAssignmentLocked is the block declaration as it stands:
-// blocker instance ID → the attacker it is pointed at. The validator's
+// blocker instance ID → the attackers it is pointed at (#1706: more
+// than one for a creature that can block more). The validator's
 // starting point, and the thing a proposed declaration is applied on
 // top of.
 //
 // Caller must hold g.mu (read or write).
-func (g *Game) currentBlockAssignmentLocked() map[uuid.UUID]uuid.UUID {
-	out := map[uuid.UUID]uuid.UUID{}
+func (g *Game) currentBlockAssignmentLocked() blockAssignment {
+	out := blockAssignment{}
 	if g.Battlefield == nil {
 		return out
 	}
 	for i := range g.Battlefield.Cards {
 		c := &g.Battlefield.Cards[i]
-		if c.BlockingTarget != uuid.Nil {
-			out[c.InstanceID] = c.BlockingTarget
+		if atks := c.BlockedAttackers(); len(atks) > 0 {
+			out[c.InstanceID] = atks
 		}
 	}
 	return out
@@ -154,8 +162,11 @@ func (g *Game) currentBlockAssignmentLocked() map[uuid.UUID]uuid.UUID {
 //
 // `base` is the assignment the declaration starts from, normally
 // currentBlockAssignmentLocked(). An entry naming a blocker that is
-// already blocking RE-POINTS it, which is how the sandbox's
-// "re-declare blocker" works.
+// already blocking RE-POINTS it when the blocker can block only one
+// attacker, which is how the sandbox's "re-declare blocker" works; for
+// a blocker that can block more (#1706, BlockCapacity) it ADDS the
+// attacker, and is refused with blocker_capacity once there is no room
+// left.
 //
 // What is checked, in order:
 //
@@ -177,14 +188,58 @@ func (g *Game) currentBlockAssignmentLocked() map[uuid.UUID]uuid.UUID {
 // restrictions are checked only as blockers are declared), and so
 // does one whose second blocker has died (CR 509.1h, #715).
 //
+//   - and, last, the CR 509.1c requirements (#1597,
+//     blockRequirementRefusalLocked): a declaration that makes a
+//     requirement the defending player could still obey unobeyable is
+//     refused, the one set check Decision 15 left for later.
+//
 // Caller must hold g.mu with fresh layers.
-func (g *Game) checkBlockDeclarationLocked(base map[uuid.UUID]uuid.UUID, decls []BlockDeclaration) ([]blockEntry, error) {
+func (g *Game) checkBlockDeclarationLocked(base blockAssignment, decls []BlockDeclaration) ([]blockEntry, error) {
+	entries, _, err := g.checkBlockDeclarationAfterLocked(base, decls, nil)
+	return entries, err
+}
+
+// checkBlockDeclarationAfterLocked is checkBlockDeclarationLocked that
+// also hands back the assignment the action would leave behind — nil
+// when it changes nothing, a re-declaration of pairings already stored
+// — which is what the verb writes (#1706: a blocker's whole set). The
+// cache memoises reach(base) per defending player for a caller judging
+// many declarations against one base (blockOptionsLocked); nil caches
+// nothing.
+//
+// Caller must hold g.mu with fresh layers.
+func (g *Game) checkBlockDeclarationAfterLocked(base blockAssignment, decls []BlockDeclaration, cache blockReachCache) ([]blockEntry, blockAssignment, error) {
+	entries, after, err := g.checkBlockRestrictionsLocked(base, decls)
+	if err != nil || after == nil {
+		return entries, after, err
+	}
+	if e := g.blockRequirementRefusalLocked(base, after, decls, cache); e != nil {
+		return nil, nil, e
+	}
+	return entries, after, nil
+}
+
+// checkBlockDeclarationCachedLocked is the validator's verdict alone,
+// with a memo of reach(base) per defending player, for a caller judging
+// many declarations against one base (blockOptionsLocked).
+//
+// Caller must hold g.mu with fresh layers.
+func (g *Game) checkBlockDeclarationCachedLocked(base blockAssignment, decls []BlockDeclaration, cache blockReachCache) error {
+	_, _, err := g.checkBlockDeclarationAfterLocked(base, decls, cache)
+	return err
+}
+
+// checkBlockRestrictionsLocked is every check of the validator but the
+// requirements: the per-pair, count and limit checks. It returns the
+// entries and the assignment the action would leave behind — nil when
+// the action changes nothing. The requirement search reads it to judge
+// its own witness, so the search never recurses into itself.
+//
+// Caller must hold g.mu with fresh layers. Reads only.
+func (g *Game) checkBlockRestrictionsLocked(base blockAssignment, decls []BlockDeclaration) ([]blockEntry, blockAssignment, error) {
 	entries := make([]blockEntry, 0, len(decls))
 	// after is the assignment the action would leave behind.
-	after := make(map[uuid.UUID]uuid.UUID, len(base)+len(decls))
-	for b, a := range base {
-		after[b] = a
-	}
+	after := base.clone()
 	// touched is every attacker whose blocker set changes, in the
 	// order it was first touched, so the refusal a caller sees is
 	// stable. A slice, not a set: a declaration is a handful of
@@ -207,14 +262,14 @@ func (g *Game) checkBlockDeclarationLocked(base map[uuid.UUID]uuid.UUID, decls [
 		// has.
 		attacker := findBattlefieldCard(g, d.Attacker)
 		if attacker == nil {
-			return nil, ErrCardNotFound
+			return nil, nil, ErrCardNotFound
 		}
 		blocker := findBattlefieldCard(g, d.Blocker)
 		if blocker == nil {
-			return nil, ErrCardNotFound
+			return nil, nil, ErrCardNotFound
 		}
 		if !blocker.IsCreature() {
-			return nil, ErrNotACreature
+			return nil, nil, ErrNotACreature
 		}
 		// CR 802.4a / 509.1a (#1339): a defending player blocks only
 		// creatures attacking THEM, a planeswalker they control or a
@@ -230,9 +285,9 @@ func (g *Game) checkBlockDeclarationLocked(base map[uuid.UUID]uuid.UUID, decls [
 		// a declaration that repeats that pairing — alone or beside a
 		// new one — must not be refused for a block the rules say is
 		// still standing.
-		if base[d.Blocker] != d.Attacker {
+		if !base.has(d.Blocker, d.Attacker) {
 			if r := g.blockDefenderRefusalLocked(attacker, blocker); !r.Legal() {
-				return nil, g.blockRefusedErrorLocked(attacker, blocker, r)
+				return nil, nil, g.blockRefusedErrorLocked(attacker, blocker, r)
 			}
 		}
 		// CR 509.1b, per pair: restrictions, evasion keywords and the
@@ -245,31 +300,45 @@ func (g *Game) checkBlockDeclarationLocked(base map[uuid.UUID]uuid.UUID, decls [
 		// menace blockers and make every menace attacker unblockable.
 		// A count is judged below, where the whole set is known.
 		if r := g.BlockPairRefusalLocked(attacker, blocker); !r.Legal() {
-			return nil, g.blockRefusedErrorLocked(attacker, blocker, r)
+			return nil, nil, g.blockRefusedErrorLocked(attacker, blocker, r)
 		}
-		if prev, ok := after[d.Blocker]; ok && prev != d.Attacker {
-			mark(prev)
-		}
-		if after[d.Blocker] != d.Attacker {
-			mark(d.Attacker)
-		}
-		after[d.Blocker] = d.Attacker
 		entries = append(entries, blockEntry{blocker: blocker, attacker: attacker})
+		if after.has(d.Blocker, d.Attacker) {
+			// Already pointed there: idempotent, and not re-judged.
+			continue
+		}
+		// #1706, CR 509.1a/b: how many attackers this blocker may
+		// block. One — the ordinary creature — RE-POINTS it, exactly
+		// as the sandbox always has, and the attacker it leaves is
+		// touched. More, and the attacker is ADDED while there is room;
+		// a full blocker is refused, never silently re-pointed, because
+		// dropping an attacker the defender chose would be a block
+		// they did not ask to take back.
+		switch capacity, cur := BlockCapacity(blocker), after[d.Blocker]; {
+		case capacity == 1:
+			for _, prev := range cur {
+				mark(prev)
+			}
+			after[d.Blocker] = []uuid.UUID{d.Attacker}
+		case capacity == 0 || len(cur) < capacity:
+			after[d.Blocker] = append(cur, d.Attacker)
+		default:
+			return nil, nil, g.blockRefusedErrorLocked(attacker, blocker,
+				BlockRefusal{Reason: BlockReasonBlockerCapacity, Source: blocker.InstanceID, N: capacity})
+		}
+		mark(d.Attacker)
 	}
 	if len(touched) == 0 {
-		return entries, nil
+		return entries, nil, nil
 	}
-	counts := map[uuid.UUID]int{}
-	for _, atk := range after {
-		counts[atk]++
-	}
+	counts := after.blockerCounts()
 	for _, atkID := range touched {
 		atk := findBattlefieldCard(g, atkID)
 		if atk == nil {
 			continue
 		}
 		if err := g.blockCountRefusalLocked(atk, counts[atkID], decls); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	}
 	// #1507, CR 509.1b: the whole-combat limit. After the per-attacker
@@ -277,9 +346,9 @@ func (g *Game) checkBlockDeclarationLocked(base map[uuid.UUID]uuid.UUID, decls [
 	// too_few_blockers, the refusal about the declaration itself,
 	// rather than a combat-wide one about something else.
 	if err := g.blockLimitRefusalLocked(base, after, decls); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return entries, nil
+	return entries, after, nil
 }
 
 // blockDefenderRefusalLocked reports whether `blocker`'s controller is
@@ -368,6 +437,11 @@ func (g *Game) blockCountRefusalLocked(attacker *Card, n int, decls []BlockDecla
 // only as a group, such as the two creatures a menace attacker takes.
 type BlockOption struct {
 	Blocks []BlockDeclaration
+	// Required marks the block the seat's CR 509.1c requirements are
+	// owed (#1597): the witness the checkpoint wants, offered whole so
+	// a seat whose pass is refused always has the answer in one move.
+	// The enumerator marks it AlwaysLegal.
+	Required bool
 }
 
 // BlockOptionsLocked is the ONE option generator (ADR 0045 addendum,
@@ -459,11 +533,30 @@ func (g *Game) blockOptionsLocked(seat uuid.UUID, perAttackerCap, maxTotal int) 
 	}
 	base := g.currentBlockAssignmentLocked()
 	var out []BlockOption
+	// #1597: the blocks a CR 509.1c requirement is owed come first,
+	// as one option. The singles and groups below may not contain them
+	// in one piece (a Lure'd menace attacker's three blockers), and a
+	// seat that owes a requirement must always be offered — and the
+	// #328 signal must always see — a way to obey it.
+	if w := g.blockRequirementWitnessLocked(seat); len(w) > 0 {
+		out = append(out, BlockOption{Blocks: w, Required: true})
+		if maxTotal > 0 && len(out) >= maxTotal {
+			return out
+		}
+	}
+	cache := blockReachCache{}
 	for _, atk := range attackers {
 		// The blockers that may pair with this attacker at all. The
 		// count is judged on the sets built from them.
 		var pool []*Card
 		for _, b := range eligible {
+			// #1706: a creature that can block more than one attacker
+			// stays eligible while it has room, but is never offered an
+			// attacker it already blocks — that entry would change
+			// nothing.
+			if base.has(b.InstanceID, atk.InstanceID) {
+				continue
+			}
 			if g.CanBlockLocked(atk, b) {
 				pool = append(pool, b)
 			}
@@ -473,7 +566,7 @@ func (g *Game) blockOptionsLocked(seat uuid.UUID, perAttackerCap, maxTotal int) 
 		}
 		for _, b := range pool {
 			decls := []BlockDeclaration{{Blocker: b.InstanceID, Attacker: atk.InstanceID}}
-			if _, err := g.checkBlockDeclarationLocked(base, decls); err == nil {
+			if err := g.checkBlockDeclarationCachedLocked(base, decls, cache); err == nil {
 				out = append(out, BlockOption{Blocks: decls})
 				if maxTotal > 0 && len(out) >= maxTotal {
 					return out
@@ -487,13 +580,7 @@ func (g *Game) blockOptionsLocked(seat uuid.UUID, perAttackerCap, maxTotal int) 
 		if min < 2 {
 			continue
 		}
-		blocked := 0
-		for _, target := range base {
-			if target == atk.InstanceID {
-				blocked++
-			}
-		}
-		if blocked > 0 {
+		if base.blockerCounts()[atk.InstanceID] > 0 {
 			continue
 		}
 		for _, combo := range blockerCombinations(pool, min, perAttackerCap) {
@@ -501,7 +588,7 @@ func (g *Game) blockOptionsLocked(seat uuid.UUID, perAttackerCap, maxTotal int) 
 			for _, b := range combo {
 				decls = append(decls, BlockDeclaration{Blocker: b.InstanceID, Attacker: atk.InstanceID})
 			}
-			if _, err := g.checkBlockDeclarationLocked(base, decls); err == nil {
+			if err := g.checkBlockDeclarationCachedLocked(base, decls, cache); err == nil {
 				out = append(out, BlockOption{Blocks: decls})
 				if maxTotal > 0 && len(out) >= maxTotal {
 					return out

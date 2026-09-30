@@ -1,6 +1,7 @@
 package effects
 
 import (
+	"fmt"
 	"sort"
 
 	"github.com/google/uuid"
@@ -40,7 +41,10 @@ type ScopedEffectFor struct {
 	// Match selects the affected permanents, evaluated ONCE, now
 	// (CR 611.2c). The set is locked on {instance, entry stamp}, so a
 	// permanent that leaves and returns is a new object the effect no
-	// longer follows (CR 400.7).
+	// longer follows (CR 400.7). Only for mods that change
+	// characteristics or control: an addRestrictions mod under a Match
+	// is refused, because a mass restriction's set is live (#1650,
+	// RestrictUntilEOT{Scope}).
 	Match CardPredicate
 
 	// Mods are the operations, each applied in the layer its kind
@@ -67,6 +71,17 @@ func (s ScopedEffectFor) Apply(ctx *Context) error {
 	// catalog registers (duration_grants.go).
 	if err := checkGrantMods(s.Mods); err != nil {
 		return err
+	}
+	// #1650: a restriction is not a characteristic, so CR 611.2c does
+	// not lock a mass one to the permanents present now. A Match here
+	// would take exactly that snapshot; RestrictUntilEOT{Scope} reads
+	// the set live instead.
+	if s.Match != nil {
+		for _, m := range s.Mods {
+			if m.Kind == game.ModAddRestrictions {
+				return fmt.Errorf("effects: ScopedEffectFor %q: a mass restriction covers later arrivals too (CR 611.2c); use RestrictUntilEOT{Scope}", s.Label)
+			}
+		}
 	}
 	set := eotSnapshot(ctx, s.Target, s.Match)
 	if set == nil {

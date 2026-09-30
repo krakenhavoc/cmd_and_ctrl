@@ -2720,3 +2720,104 @@ Executioner**, **Nyx Weaver**, **Feldon's Cane**, all `full`.
   battlefield-picking exile clause with a count. Neither is `ExileSelf`, and one
   cost that moves several permanents would need the simultaneous-exit batch
   `payCostSacrificesLocked` uses. The exile-self leg is a single-card exit.
+
+## Amendment (2026-09-28, [#1594](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1594)): a computed life cost
+
+**Sprint:** S44 — Mana and cost components. Tracker [#887](https://github.com/krakenhavoc/cmd_and_ctrl/issues/887).
+Decisions 45–46 are the #1404 amendment above; this one starts at 47.
+
+### Context
+
+```
+War Room             {3}, {T}, Pay life equal to the number of colors in your
+                     commanders' color identity: Draw a card.
+Murderous Betrayal   {B}{B}, Pay half your life, rounded up: Destroy target
+                     nonblack creature. It can't be regenerated.
+Lurking Evil         Pay half your life, rounded up: This enchantment becomes a
+                     4/4 Phyrexian Horror creature with flying.
+```
+
+`AbilityCost.Life` is a printed number. These three print a rule for the
+number. Slice 294-c (#1592) shipped War Room with only its mana ability and a
+caveat, because a flat life cost would have made the card stronger or weaker
+than printed depending on the deck. War Room is rank 141 on the play-rate table
+in `docs/decklists/top-100-commander-staples.md`, the one entry under "Cost
+amounts computed at activation". A scan of the Sep-23 Scryfall dump for
+activated costs whose life component is not a printed number found five real
+cards: these three, Krumar Initiate ("Pay X life"), and an Un-card.
+
+### Decision 47: `AbilityCost.LifeFrom` — a registered count, read at announce
+
+The component is `LifeFrom game.LifeCostCount`, a KEY into a registry
+(`game.LifeCount(key, fn)`, `life_cost_count.go`). It is not a func. An
+`AbilityCost` is reachable from `Game` through every card's
+`ActivatedAbilities`, and ADR 0041 phase 3's closure ratchet
+(`testdata/closure_fields.txt`) admits no new func-typed route. The shape copies
+`ModeCountCondition` (#1590): the key field is unexported, so the only way to
+hold a non-zero count is the constructor, and a func literal on a cost does not
+compile. A cloned or snapshot-restored game finds the same function under the
+same key, because the catalog registers it at init.
+
+The count's signature is `func(g, activator, source) int`. `activator` is the
+card's "you". The amount charged is `Life + count` (negative reads as 0).
+
+**When it is read.** CR 601.2f–g (through CR 602.2b) fixes the total cost before
+any of it is paid. `ActivateCatalogAbility` reads the count once, beside the CR
+119.4 check and before the first payment, and charges exactly that amount. The
+amount is recorded on `PaidCost.LifePaid` with the Phyrexian life. Nothing reads
+the count again. A commander that changes after the announcement, or a life
+total that moves, changes nothing about an activation already on the stack.
+`TestWarRoomAmountIsFixedAtAnnounce` pins this. An announcement parked on the
+CR 903.9 cost-commander question (#1397) has paid nothing, so re-making it
+re-reads the count. That is a new announcement, not a re-price.
+
+**One reader.** `(*Game).AbilityLifeCostLocked` is the function all three
+callers use, so they cannot disagree:
+
+- the engine's gate and payment (`activated.go`);
+- the legal enumerator (`internal/legal/abilities.go`). It drops an activation
+  whose computed amount the seat cannot pay (CR 119.4 and CR 119.8, #695's
+  "never offer what the engine refuses"). It holds that amount back from the
+  Phyrexian strike and puts it on `Move.Cost.Life`, which is what the heuristic
+  bot prices a life payment by;
+- the view. `ActivatedAbilityView.life_cost` is the computed amount for the
+  permanent's controller, re-priced every snapshot. The client's existing "pay
+  N life" chip therefore shows the real price with no client change.
+
+An unregistered key reads as "cannot be paid", never as "free", because free
+is the stronger-than-printed direction. A cost built through `LifeCount` cannot
+hold one.
+
+**The War Room count** is `CommanderIdentityColorCountForEffect`. It is the
+length of `commanderIdentityFor`'s colours, the same union over every commander
+the player owns, in every zone, that Command Tower and Arcane Signet narrow by.
+So a partner pair or a background counts both halves once each. No commander is
+0, and a colourless commander is 0, so the ability is free.
+
+### Decision 48: "Pay X life" on an ability is not this component
+
+Krumar Initiate's "{X}{B}, {T}, Pay X life" has the announced X as its amount,
+and the life total is then a CEILING on X. On the cast path that is Toxic
+Deluge's `AdditionalCost.PayLifeX`, where the enumerator solves X against life.
+A count that took X as an argument would compute the payment correctly, but
+the ability enumerator's X search would not see it and would offer an X the
+engine refuses (#544). So the count's signature has no X. Krumar Initiate also
+needs endure, which the engine does not implement.
+
+### Cards
+
+**War Room** (caveat removed, `full`), **Murderous Betrayal** and **Lurking
+Evil** (new, `full`). Lurking Evil's "becomes a 4/4 Phyrexian Horror creature"
+has no "in addition to its other types" and no "artifact creature", so under
+CR 205.1a it SETS the card type: the animated permanent is no longer an
+enchantment. It is one pinned, indefinite ScopedEffect record.
+
+### Still out of scope
+
+- **"Pay X life" on an activated ability**: Decision 48 (Krumar Initiate).
+- **A computed life cost on a MANA ability.** `ManaAbilityShape.LifeCost` is
+  still a fixed int. No printed card needs a computed one.
+- **The client greys no row for an unaffordable life cost**, fixed or computed.
+  The server refuses the activation and the enumerator never offers it, but the
+  row stays clickable. This predates #1594 (Greed's "Pay 2 life" at 1 life
+  behaves the same way).

@@ -369,6 +369,29 @@ type ReplacementEvent struct {
 	NewZone      ZoneKind
 	NewZoneOwner uuid.UUID
 
+	// ShuffleDestinationLibrary is a replacement's declaration that its
+	// redirected NewZone == ZoneLibrary is a SHUFFLE-in, not merely a
+	// placement — "shuffle it into its owner's library instead"
+	// (Blightsteel Colossus, the Eldrazi titans' graveyard clause),
+	// as opposed to Library of Leng's "put it on top" or a tuck's
+	// unshuffled bottom/depth placement.
+	//
+	// Set by the SAME `Replace` that rewrites NewZone, never derived:
+	// nothing about a library destination says whether the printed
+	// text shuffled or placed, and guessing would either shuffle a
+	// Library of Leng discard (wrong) or leave a Blightsteel on top
+	// (the S17-era caveat this field closes).
+	//
+	// Consumed once, after the move has actually landed in a library —
+	// never before, and never on a destination a further replacement
+	// or a missing player redirected elsewhere — by
+	// executeZoneRouteLocked and executeBattlefieldLeaveLocked, the
+	// two functions that perform every replaced move's physical
+	// landing. A card that never reaches the library it was aimed at
+	// (canceled, or resolved to exile for a departed owner) shuffles
+	// nothing. See ADR 0013 §5ah.
+	ShuffleDestinationLibrary bool
+
 	// Destruction says this battlefield exit is a DESTRUCTION
 	// (CR 701.7a), as opposed to the other things that take the same
 	// exit — a sacrifice (CR 701.21a), the legend rule, an illegally
@@ -485,6 +508,13 @@ type ReplacementEvent struct {
 	// PrintedValues cannot carry — see copy.go) and so the copy
 	// event names what was copied.
 	copySourceID uuid.UUID
+
+	// copyUntilEndOfTurn marks EntersAsCopyOf as a copy WITH A
+	// DURATION — "as this enters, you may have it become a copy of …
+	// until end of turn" (Cursed Mirror, #1593). The entry path lands
+	// it like any entry copy, and settleTimedEntryCopyLocked re-files
+	// it as a duration copy once the permanent has its entry stamp.
+	copyUntilEndOfTurn bool
 
 	// stackItem is the resolving spell's StackItem, carried across a
 	// paused entry so the resume can finish the two jobs only stack
@@ -826,6 +856,21 @@ type ReplacementEvent struct {
 	// doubling combat-damage counters the moment the tail branches is
 	// not something to leave for the PR that branches it.
 	CounterFromCombatDamage bool
+
+	// CounterFromCost marks a placement that PAYS A COST rather than
+	// one an effect makes: a blight paid as an additional cost to cast
+	// (#1703, CR 701.68a at CR 601.2h).
+	//
+	// It is CounterFromCombatDamage's sibling, for the same card and
+	// the same rule. CR 614.16 says a replacement worded "if an effect
+	// would put one or more counters" applies to the effect of a
+	// resolving spell or ability. A cost payment is neither, so
+	// Doubling Season does not double a blight. A replacement that
+	// names no effect (Vorinclex, Winding Constrictor, Vizier of
+	// Remedies) replaces the event itself and is not gated on this.
+	// That is the Devoted Druid + Vizier ruling, and it is why a
+	// cost's counters open this window at all.
+	CounterFromCost bool
 
 	// --- RepEventLife fields ---
 

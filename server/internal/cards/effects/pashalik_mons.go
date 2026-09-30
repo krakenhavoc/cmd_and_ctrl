@@ -13,9 +13,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // The Goblin deck's Blood Artist and its own sacrifice outlet. The
 // dies trigger is the source's own death (cardDied) or another
 // Goblin the controller controlled going to a graveyard from the
-// battlefield (b25AnotherGoblinYouControlDied — the card is read
-// post-move, where its printed types and last controller survive; a
-// changeling counts). It targets, so the ping is picked as the
+// battlefield (b25AnotherGoblinYouControlDied — a Goblin as it last
+// existed on the battlefield, CR 603.10a and #1679, so a changeling
+// counts and so does a creature that was a Goblin only through a
+// grant). It targets, so the ping is picked as the
 // trigger goes on the stack and re-checked at resolution; the damage
 // is attributed to Mons whether or not he is still on the
 // battlefield, as CR 113.7a's last-known information allows. The

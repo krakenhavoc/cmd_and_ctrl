@@ -102,6 +102,14 @@ func activatedLabel(prefix string) func(effects.Spec) bool {
 	return activated(func(ab effects.ActivatedAbility) bool { return strings.HasPrefix(ab.Label, prefix) })
 }
 
+// activatedAction matches an activated ability whose Label names a
+// keyword action after its cost ("{5}{R}{R}: Monstrosity 3."). Only
+// used for keyword-action constructors that write their own label
+// from the cost, so the ": Word " seam is the constructor's signature.
+func activatedAction(word string) func(effects.Spec) bool {
+	return activated(func(ab effects.ActivatedAbility) bool { return strings.Contains(ab.Label, ": "+word+" ") })
+}
+
 // specialAction reports whether the card declares a CR 116.2 special
 // action of the given kind.
 func specialAction(kind game.SpecialActionKind) func(effects.Spec) bool {

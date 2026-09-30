@@ -25,16 +25,31 @@ type castParams struct {
 	// claimed cost (CR 601.2b) — Force of Will's pitched blue card,
 	// Daze's Island, escape's N other cards from the graveyard.
 	// Exactly CardPaymentCount entries, or none.
-	AltCostIDs   []string     `json:"alt_cost_ids,omitempty"`
-	Targets      []targetWire `json:"targets,omitempty"`
-	Modes        []int        `json:"modes,omitempty"`
-	XValue       int          `json:"x_value,omitempty"`
-	DiscardIDs   []string     `json:"discard_ids,omitempty"`
-	SacrificeIDs []string     `json:"sacrifice_ids,omitempty"`
+	AltCostIDs []string `json:"alt_cost_ids,omitempty"`
+	// PhyrexianLife is how many of the cost's Phyrexian symbols the
+	// cast pays with 2 life each instead of mana (CR 107.4c, CR
+	// 601.2b, #1677) — CastSpellParams.PhyrexianLife. See
+	// castPayment for which counts are offered.
+	PhyrexianLife int          `json:"phyrexian_life,omitempty"`
+	Targets       []targetWire `json:"targets,omitempty"`
+	Modes         []int        `json:"modes,omitempty"`
+	XValue        int          `json:"x_value,omitempty"`
+	DiscardIDs    []string     `json:"discard_ids,omitempty"`
+	SacrificeIDs  []string     `json:"sacrifice_ids,omitempty"`
 	// OptionalCosts are the optional additional costs this move pays
 	// (CR 601.2b, ADR 0073), as positions in the card's OptionalCosts
 	// slice, repeated once per payment for a multikicker.
 	OptionalCosts []int `json:"optional_costs,omitempty"`
+	// TeamworkIDs / BlightIDs pay an announced teamwork or blight cost
+	// (#1703) — CastSpellParams.TeamworkIDs / BlightIDs.
+	TeamworkIDs []string `json:"teamwork_ids,omitempty"`
+	BlightIDs   []string `json:"blight_ids,omitempty"`
+	// Distribution is the division of a "divided as you choose"
+	// clause (#1563, CR 601.2d), target id → share. The enumerator
+	// always announces game.EvenDistribution — the amount split as
+	// evenly as possible, the remainder to the earliest targets — so
+	// every divided move it offers is one the gate accepts.
+	Distribution map[string]int `json:"distribution,omitempty"`
 	// GiftOpponent is the opponent a gift is promised to (CR
 	// 702.174a, ADR 0089) — set exactly when OptionalCosts names the
 	// card's gift cost.
@@ -313,6 +328,12 @@ func (e *enumerator) castMovesForCard(card game.Card, from string, kind game.Zon
 	if offer != nil && offer.FaceDown != nil {
 		card.SetFaceDown(offer.FaceDown.Kind)
 	}
+	// #1665: a HAND permission (miracle) applies to the one offer it
+	// opens and to nothing else — the same narrowing CastSpell makes
+	// once the claim is known, so the miracle cast is offered at
+	// instant speed and the printed cast only where a sorcery could be
+	// cast. A no-op for every other zone. See game.CastPermission.ForClaim.
+	perm = perm.ForClaim(offer)
 	// Timing (CR 307.1 / 702.8), #1195: THE engine's own read, the
 	// same one CastSpell calls and the view stamps `castable_here`
 	// from — so a bot is never offered a cast the engine will refuse
@@ -699,6 +720,14 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	// sweep). Both live in x.go.
 	xFloor := enumeratedXFloor(game.CatalogKey(card), 0)
 	xLifeCeiling := xCeilingFromCost(addCost, p.Life)
+	// #1677: Phyrexian symbols paid with life (CR 107.4c). The offer's
+	// own life (Force of Will's "pay 1 life") is held back so the two
+	// together never claim more than the seat has (CR 119.4). A "pay X
+	// life" additional cost turns the life path off: X and the symbol
+	// count would both be priced out of one life total, no printed
+	// card prints both, and the mana path is still offered.
+	lifeReserved := offerLife(offer)
+	lifeAllowed := addCost == nil || !addCost.PayLifeX
 
 	// Modes → each choice of modes yields its own clause list, and
 	// each clause its own picks (#764). Options with no legal target
@@ -715,7 +744,14 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	modeSpec := game.ModeSpecFor(game.CatalogKey(card))
 	modeSets := [][]int{nil}
 	if modeSpec != nil {
-		modeSets = e.legalModeSets(castSrc, modeSpec)
+		// #1655: under THIS announcement's optional costs — a kicked
+		// Inscription of Ruin may take every bullet, an unkicked one
+		// exactly one, and each is its own move.
+		modeSets = e.legalModeSets(castSrc, modeSpec, game.ModeCountQuery{
+			Chooser:       e.seat,
+			OracleID:      game.CatalogKey(card),
+			OptionalCosts: chosen,
+		})
 		if len(modeSets) == 0 {
 			return
 		}
@@ -802,8 +838,18 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 		}
 	}
 
+	// #1703: teamwork's taps and blight's creature. ONE payment each,
+	// not every subset — crewPayment's discipline, and for crew's
+	// reason: the number is a floor, and the policy has nothing to
+	// choose between two sets that clear it. A set of optional costs
+	// the seat cannot pay is not announced at all.
+	teamIDs, blightIDs, ok := e.teamworkBlightPayment(optional, chosen)
+	if !ok {
+		return
+	}
+
 	budget := e.opts.MaxExpansionPerSource
-	emit := e.castMoveEmitter(g, card, from, offer, optional, chosen, giftTo)
+	emit := e.castMoveEmitter(g, card, from, offer, optional, chosen, giftTo, teamIDs, blightIDs)
 	// #1013: the first announcement the expansion makes, kept so the
 	// ALTERNATIVE cost payments can be offered against it below.
 	var first *announcedCast
@@ -819,12 +865,19 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 			continue
 		}
 		x := 0
+		// #1677: how many Phyrexian symbols this announcement pays with
+		// life — solved with X, because striking a symbol changes what
+		// X the pool can afford (the same pair affordablePayment solves
+		// for an ability).
+		phyLife := 0
 		// #1242: the priced cost the X was solved against, kept for the
 		// per-payment affordability check in the expansion below. Solved
 		// per MODE SELECTION now rather than once for the card, because
 		// modeCost — and so this price — can differ between selections
-		// (Spree, S45).
-		var pricedAll game.ParsedCost
+		// (Spree, S45). Since #1677 it is the cost LEFT FOR MANA once
+		// the life has struck its symbols; printedAll is the cost
+		// before the strike, which the all-life payment below reads.
+		var pricedAll, printedAll game.ParsedCost
 		if !perTarget {
 			priced, err := e.g.ApplyCostModifiersForEffect(modeCost, game.CostQuery{
 				Card:       card,
@@ -834,18 +887,23 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 			if err != nil {
 				continue
 			}
-			var ok bool
-			x, ok = e.announcedX(priced, spend, xFloor, xLifeCeiling)
+			pay, ok := e.castPayment(priced, spend, xFloor, xLifeCeiling, lifeReserved, lifeAllowed)
 			if !ok {
 				continue
 			}
-			pricedAll = priced
+			x, phyLife, pricedAll, printedAll = pay.x, pay.phyrexianLife, pay.cost, priced
 		}
 		// The budget is spent MODES-outermost: every mode selection
 		// gets at least one target set before any gets a second, so a
 		// bot is never offered only the first bullet of a charm
 		// (ADR 0065 §6).
 		steps := game.AnnouncedClauses(cardSpec, modeSpec, modes)
+		// #1657: a divided amount read off the board or off the offer
+		// this expansion claims (Avacyn's Judgment's madness X), sized
+		// exactly as CastSpell's gate will size it.
+		e.g.BindDivideAmountsForEffect(steps, game.DivideAmountArgs{
+			Controller: e.seat, Source: card.InstanceID, AltCost: offerKey(offer),
+		})
 		// #619, CR 601.2c. Crackle with Power's target count IS X
 		// ("deals five times X damage to each of up to X targets"),
 		// and the announce path refuses any cast where the two
@@ -895,8 +953,8 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 			continue
 		}
 		for _, targets := range targetSets {
-			setX := x
-			setCost := pricedAll
+			setX, setLife := x, phyLife
+			setCost, setPrinted := pricedAll, printedAll
 			if perTarget {
 				// §14: priced with this set's targets. An unaffordable
 				// set is skipped before any budget is spent on it, so
@@ -911,12 +969,11 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 				if err != nil {
 					continue
 				}
-				var ok bool
-				setX, ok = e.announcedX(priced, spend, xFloor, xLifeCeiling)
+				pay, ok := e.castPayment(priced, spend, xFloor, xLifeCeiling, lifeReserved, lifeAllowed)
 				if !ok {
 					continue
 				}
-				setCost = priced
+				setX, setLife, setCost, setPrinted = pay.x, pay.phyrexianLife, pay.cost, priced
 			}
 			if len(xSteps) > 0 {
 				// setX is the largest announcement this seat can pay
@@ -933,6 +990,13 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 			if xBound && setX != x && !e.g.TargetsWithinXForEffect(steps, targets, setX) {
 				continue
 			}
+			// #1563: a divided clause needs a share of at least 1 per
+			// target out of the amount this X gives, so a set with more
+			// targets than that is a cast the engine refuses (#544).
+			dist, ok := game.EvenDistribution(steps, targets, setX)
+			if !ok {
+				continue
+			}
 			for _, discards := range discardSets {
 				for _, sacs := range sacrificeSets {
 					if budget <= 0 {
@@ -945,10 +1009,16 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 					// these named. Village Rites naming the Eldrazi Spawn
 					// that was also its {B} is a cast the engine refuses;
 					// offering it is #544.
-					if len(discards)+len(sacs) > 0 &&
+					//
+					// #1703: and the same for the creatures tapped to
+					// teamwork — a Llanowar Elves in the team cannot
+					// also make the {G}.
+					if len(discards)+len(sacs)+len(teamIDs)+len(blightIDs) > 0 &&
 						!e.canPayExcluding(setCost, setX, spend, game.CastAutoTapExclusions(game.CastSpellParams{
 							DiscardIDs:   discards,
 							SacrificeIDs: sacs,
+							TeamworkIDs:  teamIDs,
+							BlightIDs:    blightIDs,
 						})) {
 						continue
 					}
@@ -958,11 +1028,16 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 							modes:    modes,
 							targets:  targets,
 							x:        setX,
+							life:     setLife,
+							printed:  setPrinted,
+							dist:     dist,
 							discards: discards,
 							sacs:     sacs,
+							team:     teamIDs,
+							blight:   blightIDs,
 						}
 					}
-					emit(altCostSets[0], modes, targets, setX, discards, sacs)
+					emit(altCostSets[0], modes, targets, setX, setLife, dist, discards, sacs)
 				}
 			}
 		}
@@ -981,23 +1056,43 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	if first == nil {
 		return
 	}
+	// #1677: the ALL-LIFE payment of the first announcement, out of
+	// the same leftover budget and for the same reason — it is the
+	// same spell with the same targets at a different price, so it
+	// must not displace a target set. See castPayment for why this is
+	// the one extra count offered.
+	if budget > 0 && lifeAllowed {
+		if n, ok := e.allLifePayment(first, spend, lifeReserved); ok {
+			budget--
+			emit(altCostSets[0], first.modes, first.targets, first.x, n, first.dist, first.discards, first.sacs)
+		}
+	}
 	for _, altPaid := range altCostSets[1:] {
 		if budget <= 0 {
 			return
 		}
 		budget--
-		emit(altPaid, first.modes, first.targets, first.x, first.discards, first.sacs)
+		emit(altPaid, first.modes, first.targets, first.x, first.life, first.dist, first.discards, first.sacs)
 	}
 }
 
 // announcedCast is one announcement the expansion has already emitted:
 // what an alternative-cost payment is offered AGAINST (#1013).
 type announcedCast struct {
-	modes    []int
-	targets  []game.TargetRef
-	x        int
+	modes   []int
+	targets []game.TargetRef
+	x       int
+	// life is how many Phyrexian symbols the announcement pays with
+	// life (#1677); printed is its cost before that strike.
+	life     int
+	printed  game.ParsedCost
+	dist     map[uuid.UUID]int
 	discards []uuid.UUID
 	sacs     []uuid.UUID
+	// team and blight are the #1703 payments, excluded from the
+	// auto-tap plan the all-life payment is re-checked against.
+	team   []uuid.UUID
+	blight []uuid.UUID
 }
 
 // castEmitter writes one concrete cast move.
@@ -1007,7 +1102,7 @@ type announcedCast struct {
 // label and the params — the #815 / #866 lesson at the move layer: two
 // writers of one move shape drift, and the one that drifts is the one
 // nobody reads.
-type castEmitter func(altPaid []uuid.UUID, modes []int, targets []game.TargetRef, setX int, discards, sacs []uuid.UUID)
+type castEmitter func(altPaid []uuid.UUID, modes []int, targets []game.TargetRef, setX, phyLife int, dist map[uuid.UUID]int, discards, sacs []uuid.UUID)
 
 // castMoveEmitter builds that writer for one (card, zone, offer,
 // optional-cost) announcement. Everything it closes over is fixed for
@@ -1020,8 +1115,9 @@ func (e *enumerator) castMoveEmitter(
 	optional []game.AdditionalCost,
 	chosen []int,
 	giftTo uuid.UUID,
+	teamIDs, blightIDs []uuid.UUID,
 ) castEmitter {
-	return func(altPaid []uuid.UUID, modes []int, targets []game.TargetRef, setX int, discards, sacs []uuid.UUID) {
+	return func(altPaid []uuid.UUID, modes []int, targets []game.TargetRef, setX, phyLife int, dist map[uuid.UUID]int, discards, sacs []uuid.UUID) {
 		label := "Cast " + card.Name
 		switch from {
 		case "command":
@@ -1044,6 +1140,9 @@ func (e *enumerator) castMoveEmitter(
 		if giftTo != uuid.Nil {
 			label += " → " + playerName(g, giftTo)
 		}
+		if phyLife > 0 {
+			label += fmt.Sprintf(" paying %d life for Phyrexian mana", phyLife*game.PhyrexianLifePerSymbol)
+		}
 		label += targetLabel(g, targets)
 		e.add(Move{
 			Type:   TypeCastSpell,
@@ -1054,7 +1153,9 @@ func (e *enumerator) castMoveEmitter(
 			// CR 119.4: the life half of the offer is a price Params
 			// cannot name, so a policy reading only the payload would
 			// price Force of Will's pitch as free. See MoveCost.
-			Cost: moveCost(offerLife(offer), 0),
+			// #1677: and the Phyrexian symbols this move pays with
+			// life, which Params names only as a count.
+			Cost: withPhyrexianLife(moveCost(offerLife(offer), 0), phyLife),
 			// A modal spell may have a counter mode and a burn mode
 			// in the same expansion (Cryptic Command); the flag is
 			// per ANNOUNCEMENT, not per card, so only the modes that
@@ -1065,12 +1166,16 @@ func (e *enumerator) castMoveEmitter(
 				FromZone:        from,
 				AlternativeCost: offerKey(offer),
 				AltCostIDs:      idStrings(altPaid),
+				PhyrexianLife:   phyLife,
 				Targets:         wireTargets(targets),
 				Modes:           modes,
 				XValue:          setX,
 				DiscardIDs:      idStrings(discards),
 				SacrificeIDs:    idStrings(sacs),
 				OptionalCosts:   chosen,
+				TeamworkIDs:     idStrings(teamIDs),
+				BlightIDs:       idStrings(blightIDs),
+				Distribution:    distributionWire(dist),
 				GiftOpponent:    giftWire(giftTo),
 				Strict:          true,
 				AutoTap:         true,
@@ -1080,6 +1185,19 @@ func (e *enumerator) castMoveEmitter(
 			}),
 		})
 	}
+}
+
+// distributionWire is a division on the wire: target id string →
+// share. Nil for the announcement that divides nothing.
+func distributionWire(dist map[uuid.UUID]int) map[string]int {
+	if len(dist) == 0 {
+		return nil
+	}
+	out := make(map[string]int, len(dist))
+	for id, v := range dist {
+		out[id.String()] = v
+	}
+	return out
 }
 
 // cheapestFuelFirst orders the candidates for a cost's CARD-shaped half
@@ -1189,10 +1307,113 @@ func (e *enumerator) canPayExcluding(
 	return ok
 }
 
-// legalModeSets lists every distinct mode selection of size
-// Min..Max, excluding any with more than one targeted option (the
-// engine's castTargetSpec rejects those).
-func (e *enumerator) legalModeSets(src game.TargetSource, ms *game.ModeSpec) [][]int {
+// castPaymentSolve is one priced way to pay a cast's mana cost: the X
+// it announces, how many Phyrexian symbols it pays with life, and the
+// cost left for mana once those symbols are struck.
+type castPaymentSolve struct {
+	x             int
+	phyrexianLife int
+	cost          game.ParsedCost
+}
+
+// castPayment solves a cast's mana cost for the pair CR 601.2b makes
+// the caster announce: the X, and how many of the cost's Phyrexian
+// symbols are paid with 2 life each (CR 107.4c, #1677). The spell
+// twin of affordablePayment, which does the same for an activated
+// ability (#917); before #1677 a cast was priced on the mana path only,
+// so a bot holding Dismember and one Swamp was never offered it, at
+// any life total.
+//
+// WHICH COUNTS, and why only these. A cost printing n Phyrexian
+// symbols has n+1 legal announcements, and every one of them is the
+// same spell with the same targets at a different price, so offering
+// all of them would make the symbol count an arity of the target
+// cross product — the thing ADR 0033 §1's corollary forbids a cost
+// variable to become. Two are enough to carry every decision a policy
+// has to make:
+//
+//   - The PRIMARY payment, solved here: all mana when the seat can pay
+//     it, otherwise the FEWEST symbols by life that make the cast
+//     affordable. Mana first because life is a real cost and the
+//     enumerator never spends it to save mana the board could produce;
+//     fewest because every further symbol is 2 life that buys nothing
+//     the smaller count did not already buy.
+//   - The ALL-LIFE payment (allLifePayment), offered once per card out
+//     of whatever budget the target walk left: the free cast that
+//     saves the mana for something else — Gitaxian Probe with an
+//     Island untapped, Dismember off an empty board before a second
+//     spell.
+//
+// Every intermediate count (more than the fewest, fewer than all) is
+// the same trade as one of those two, paid partly, and is not offered.
+//
+// Bounded by the same two things the engine validates against, so an
+// offered payment is one CastSpell accepts: the symbols the cost
+// actually prints, and game.CanPayLifeLocked — CR 119.4's "down to 0"
+// and CR 119.8's locked total. `reserved` is life the announcement
+// already owes elsewhere (the offer's own life component), so the two
+// together can never claim more than the seat has. The strike itself
+// is game.PhyrexianLifePlan, the function the engine reduces the cost
+// with, read against the same pool.
+func (e *enumerator) castPayment(
+	priced game.ParsedCost,
+	spend game.ManaSpendContext,
+	floor, lifeCeiling, reserved int,
+	lifeAllowed bool,
+) (castPaymentSolve, bool) {
+	if x, ok := e.announcedX(priced, spend, floor, lifeCeiling); ok {
+		return castPaymentSolve{x: x, cost: priced}, true
+	}
+	if !lifeAllowed {
+		return castPaymentSolve{}, false
+	}
+	for n := 1; n <= priced.PhyrexianSymbols(); n++ {
+		reduced, life := game.PhyrexianLifePlan(priced, e.p.ManaPool, spend, n)
+		if !e.g.CanPayLifeLocked(e.p, reserved+life) {
+			break
+		}
+		if x, ok := e.announcedX(reduced, spend, floor, lifeCeiling); ok {
+			return castPaymentSolve{x: x, phyrexianLife: n, cost: reduced}, true
+		}
+	}
+	return castPaymentSolve{}, false
+}
+
+// allLifePayment is the second count castPayment's comment names:
+// every Phyrexian symbol of an announcement already emitted paid with
+// life, at that announcement's X and with its additional-cost
+// payments. Reports false when the first announcement already paid
+// every symbol with life, when the seat cannot pay that much life, or
+// when the mana left over is somehow unaffordable — striking more
+// symbols only removes requirements, so the last is a belt, but the
+// enumerator offers nothing it has not priced.
+func (e *enumerator) allLifePayment(first *announcedCast, spend game.ManaSpendContext, reserved int) (int, bool) {
+	n := first.printed.PhyrexianSymbols()
+	if n == 0 || n <= first.life {
+		return 0, false
+	}
+	reduced, life := game.PhyrexianLifePlan(first.printed, e.p.ManaPool, spend, n)
+	if !e.g.CanPayLifeLocked(e.p, reserved+life) {
+		return 0, false
+	}
+	if !e.canPayExcluding(reduced, first.x, spend, game.CastAutoTapExclusions(game.CastSpellParams{
+		DiscardIDs:   first.discards,
+		SacrificeIDs: first.sacs,
+		TeamworkIDs:  first.team,
+		BlightIDs:    first.blight,
+	})) {
+		return 0, false
+	}
+	return n, true
+}
+
+// legalModeSets lists every distinct mode selection of size lo..hi,
+// the bounds the announce gate will hold this announcement to — the
+// printed Min / Max, or the raised ones while a conditional mode count
+// holds (#1590, #1655, game.ModeBoundsForEffect). A seat without a
+// commander is never offered Jeska's Will's "both", and a kicked
+// Depth Defiler-shaped count is never offered one bullet.
+func (e *enumerator) legalModeSets(src game.TargetSource, ms *game.ModeSpec, q game.ModeCountQuery) [][]int {
 	// ADR 0065 §6, "prefer the modes that have legal targets": an
 	// option whose clause cannot be filled is dropped before any
 	// combination is built, so the budget never goes on a selection
@@ -1201,7 +1422,12 @@ func (e *enumerator) legalModeSets(src game.TargetSource, ms *game.ModeSpec) [][
 	if !game.EnoughChoosableModes(len(options), ms) {
 		return nil
 	}
-	hi := ms.Max
+	lo, hi := e.g.ModeBoundsForEffect(ms, q)
+	if !ms.Repeatable && lo > len(options) {
+		// A forced count the board cannot fill: the gate refuses every
+		// selection, so there is no move (#544).
+		return nil
+	}
 	if hi <= 0 || (!ms.Repeatable && hi > len(options)) {
 		hi = len(options)
 	}
@@ -1211,12 +1437,11 @@ func (e *enumerator) legalModeSets(src game.TargetSource, ms *game.ModeSpec) [][
 		out = append(out, append([]int(nil), sel...))
 		return len(out) < budget
 	}
-	if ms.Min == 0 {
+	if lo == 0 {
 		if !add(nil) {
 			return out
 		}
 	}
-	lo := ms.Min
 	if lo < 1 {
 		lo = 1
 	}

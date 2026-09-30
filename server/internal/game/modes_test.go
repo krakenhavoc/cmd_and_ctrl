@@ -56,7 +56,8 @@ func TestValidateModes(t *testing.T) {
 		{"choose two, one", two, []int{2}, ErrInvalidParam},
 	}
 	for _, tc := range cases {
-		if got := validateModes(tc.spec, tc.modes); got != tc.want {
+		lo, hi := (&Game{}).modeBoundsLocked(tc.spec, ModeCountQuery{})
+		if got := validateModes(tc.spec, lo, hi, tc.modes); got != tc.want {
 			t.Errorf("%s: got %v, want %v", tc.name, got, tc.want)
 		}
 	}

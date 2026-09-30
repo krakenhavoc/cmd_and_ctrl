@@ -73,9 +73,9 @@ func commandDefinitions() []*discordgo.ApplicationCommand {
 			Options: []*discordgo.ApplicationCommandOption{
 				{
 					Name:        "link",
-					Description: "Moxfield or Archidekt deck link.",
+					Description: "Archidekt or Moxfield deck link. Leave it out to paste the list instead.",
 					Type:        discordgo.ApplicationCommandOptionString,
-					Required:    true,
+					Required:    false,
 					MaxLength:   300,
 				},
 			},
@@ -86,9 +86,9 @@ func commandDefinitions() []*discordgo.ApplicationCommand {
 			Options: []*discordgo.ApplicationCommandOption{
 				{
 					Name:        "link",
-					Description: "Moxfield or Archidekt deck link.",
+					Description: "Archidekt or Moxfield deck link. Leave it out to paste the list instead.",
 					Type:        discordgo.ApplicationCommandOptionString,
-					Required:    true,
+					Required:    false,
 					MaxLength:   300,
 				},
 			},
@@ -146,11 +146,12 @@ type Handler struct {
 	// restart drops any confirmation mid-flight and the operator
 	// just runs /c2-end again.
 	confirmations *endConfirmations
-	// deckLinks holds the full deck link behind a /c2-deck-check
-	// "Request these cards" button whose URL doesn't fit in Discord's
-	// 100-character custom-ID cap (ADR 0095 §4, #1631). Same in-memory,
-	// no-SIGHUP-reload trade-off as confirmations above.
-	deckLinks *deckLinkStore
+	// deckSources holds what a /c2-deck-check "Request these cards"
+	// button asks for when it doesn't fit in Discord's 100-character
+	// custom-ID cap: a long link, or a pasted list (ADR 0095 §4 and
+	// its 2026-09-25 amendment). Same in-memory, no-SIGHUP-reload
+	// trade-off as confirmations above.
+	deckSources *deckSourceStore
 }
 
 // NewHandler wires the bot's configuration and HTTP client into
@@ -159,7 +160,7 @@ func NewHandler(cfg Config, client *ServerClient, log *slog.Logger) *Handler {
 	return &Handler{
 		cfg: cfg, client: client, log: log, now: time.Now,
 		confirmations: newEndConfirmations(),
-		deckLinks:     newDeckLinkStore(),
+		deckSources:   newDeckSourceStore(),
 	}
 }
 
@@ -207,10 +208,11 @@ func componentTimeout(customID string) time.Duration {
 // gates on the guild allow-list (defense-in-depth; the commands
 // should not even be registered on non-allowed guilds) for every
 // interaction type this bot handles, then routes to per-command,
-// per-autocomplete or per-component handlers.
+// per-autocomplete, per-component or per-modal handlers.
 func (h *Handler) Dispatch(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	switch i.Type {
-	case discordgo.InteractionApplicationCommand, discordgo.InteractionApplicationCommandAutocomplete, discordgo.InteractionMessageComponent:
+	case discordgo.InteractionApplicationCommand, discordgo.InteractionApplicationCommandAutocomplete,
+		discordgo.InteractionMessageComponent, discordgo.InteractionModalSubmit:
 		// handled below
 	default:
 		return
@@ -237,6 +239,13 @@ func (h *Handler) Dispatch(s *discordgo.Session, i *discordgo.InteractionCreate)
 		ctx, cancel := context.WithTimeout(context.Background(), componentTimeout(customID))
 		defer cancel()
 		h.dispatchComponent(ctx, s, i, customID)
+		return
+	case discordgo.InteractionModalSubmit:
+		// The only modals are the deck commands' paste forms, and their
+		// submission runs the deferred deck flow.
+		ctx, cancel := context.WithTimeout(context.Background(), deckInteractionTimeout)
+		defer cancel()
+		h.dispatchModalSubmit(ctx, s, i, i.ModalSubmitData())
 		return
 	}
 

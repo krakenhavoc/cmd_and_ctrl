@@ -14,8 +14,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // triggers, statics and activated abilities all come along, exactly
 // as printed. "Except the token isn't legendary" and "gains haste"
 // are both TEMPLATE edits (Except): the haste half reuses
-// reflectionOfKikiJikiHasteException verbatim (Reflection of
-// Kiki-Jiki's own "except it has haste"), and the legendary half is
+// TokenCopyGainsHaste (token_copy.go) verbatim — Reflection of
+// Kiki-Jiki's and Electroduplicate's own "except it has haste" share
+// the same body — and the legendary half is
 // removeLegendaryFromTypeLine, legendaryTypeLine's mirror image.
 //
 // With nothing equipped the trigger fires and does nothing — there is
@@ -54,7 +55,7 @@ func helmOfTheHostCopyEquippedCreature(g *game.Game, item *game.StackItem) error
 		N:          1,
 		Except: func(t *game.Card) {
 			t.TypeLine = removeLegendaryFromTypeLine(t.TypeLine)
-			reflectionOfKikiJikiHasteException(t)
+			TokenCopyGainsHaste(t)
 		},
 	}.Apply(NewContext(g, item))
 }

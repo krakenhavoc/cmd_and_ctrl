@@ -447,6 +447,23 @@ type DeckCoverageReport struct {
 	Violations []DeckViolation            `json:"violations"`
 }
 
+// DeckSource is what a deck check or request is about: a Moxfield or
+// Archidekt link, or a pasted list. Exactly one field is set. It
+// marshals to the `{url}` / `{text}` body both routes take (ADR 0095,
+// amendment 2026-09-25).
+type DeckSource struct {
+	URL  string `json:"url,omitempty"`
+	Text string `json:"text,omitempty"`
+}
+
+// IsList reports whether the source is a pasted list.
+func (s DeckSource) IsList() bool { return s.URL == "" }
+
+// DeckHintPasteList is the `hint` the server puts on every Moxfield
+// fetch error: Moxfield blocks the server, so the way forward is to
+// export the list and paste it (ADR 0095, amendment 2026-09-25).
+const DeckHintPasteList = "paste_list"
+
 // DeckAPIError is returned by DeckCoverage and DeckRequest for any
 // non-2xx response the two routes' error tables describe (docs/lobby.md):
 // a fetch error with a code and violations, or the uniform {error}
@@ -456,6 +473,9 @@ type DeckAPIError struct {
 	StatusCode int
 	Message    string
 	Code       string
+	// Hint is DeckHintPasteList on a Moxfield fetch error; empty
+	// otherwise.
+	Hint       string
 	Violations []DeckViolation
 }
 
@@ -468,10 +488,10 @@ func (e *DeckAPIError) Error() string {
 
 // DeckCoverage calls POST /deck-coverage with the cached admin
 // session (re-logging in once on a 401) — the bot's own, larger rate
-// bucket rather than the public per-IP one (ADR 0095 §4). link must
-// be a Moxfield or Archidekt deck URL.
-func (c *ServerClient) DeckCoverage(ctx context.Context, link string) (DeckCoverageReport, error) {
-	body, err := json.Marshal(map[string]string{"url": link})
+// bucket rather than the public per-IP one (ADR 0095 §4). src is a
+// Moxfield or Archidekt deck URL, or a pasted list.
+func (c *ServerClient) DeckCoverage(ctx context.Context, src DeckSource) (DeckCoverageReport, error) {
+	body, err := json.Marshal(src)
 	if err != nil {
 		return DeckCoverageReport{}, err
 	}
@@ -538,19 +558,19 @@ type DeckRequestResult struct {
 
 // DeckRequest calls POST /deck-requests with the cached admin session
 // (re-logging in once on a 401), naming requester as the guild member
-// the request is filed on behalf of. link must be a deck URL — the
-// route refuses pasted text.
+// the request is filed on behalf of. src is a deck URL or a pasted
+// list; the server deduplicates a list by a hash of its cards.
 //
 // A 429 carrying {"status":"rate_limited", ...} is a normal result,
 // not an error: it is one of the four documented outcomes. A 429
 // carrying only {"error":...} (the IP limiter's shape, which this
 // route should not reach given the admin session, but is handled
 // defensively) surfaces as a DeckAPIError instead.
-func (c *ServerClient) DeckRequest(ctx context.Context, link string, requester DeckRequester) (DeckRequestResult, error) {
+func (c *ServerClient) DeckRequest(ctx context.Context, src DeckSource, requester DeckRequester) (DeckRequestResult, error) {
 	body, err := json.Marshal(struct {
-		URL       string        `json:"url"`
+		DeckSource
 		Requester DeckRequester `json:"requester"`
-	}{URL: link, Requester: requester})
+	}{DeckSource: src, Requester: requester})
 	if err != nil {
 		return DeckRequestResult{}, err
 	}
@@ -601,6 +621,7 @@ func decodeDeckAPIError(resp *http.Response) error {
 	var body struct {
 		Error      string          `json:"error"`
 		Code       string          `json:"code"`
+		Hint       string          `json:"hint"`
 		Violations []DeckViolation `json:"violations"`
 	}
 	_ = json.Unmarshal(b, &body)
@@ -608,7 +629,7 @@ func decodeDeckAPIError(resp *http.Response) error {
 	if msg == "" {
 		msg = strings.TrimSpace(string(b))
 	}
-	return &DeckAPIError{StatusCode: resp.StatusCode, Message: msg, Code: body.Code, Violations: body.Violations}
+	return &DeckAPIError{StatusCode: resp.StatusCode, Message: msg, Code: body.Code, Hint: body.Hint, Violations: body.Violations}
 }
 
 // statusErr builds an informative error for an unexpected

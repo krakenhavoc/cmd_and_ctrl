@@ -170,7 +170,7 @@ func GrantToAttached(keywords ...string) game.StaticAbility {
 //
 // It strips whatever the layers have granted SO FAR, in timestamp
 // order, which is the same shape (and the same declared limit) as
-// b27LoseKeyword: a grant from a source with a later timestamp than
+// any plain "loses X": a grant from a source with a later timestamp than
 // this Equipment lands after this removal and survives it. That is
 // CR 613.7 working correctly, not a bug — a Lightning Greaves
 // equipped after the Hammer really does give the creature back its

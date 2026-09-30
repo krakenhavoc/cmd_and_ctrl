@@ -78,6 +78,7 @@
   import { registerShortcutHandlers, setShortcutContext } from "../lib/shortcutRuntime";
   import { effectiveBindings, formatChord, isMacLike } from "../lib/shortcuts";
   import ModalLayer from "../lib/components/ModalLayer.svelte";
+  import { modalOpen } from "../lib/modalLayers";
   import { devFeature } from "../lib/env";
   import { gameWSURL } from "../lib/gameURL";
   import { openingRollText, openingRollWinner } from "../lib/startingPlayer";
@@ -976,6 +977,16 @@
     if (!params) return;
     sendBulkAttack(defenderSeatID, params);
   }
+  // #1724: "Attack <seat> with N" from a token group's list. The same
+  // bulk declaration the picker above confirms — one action, one undo —
+  // so an attack tax or a count limit is refused and offered back
+  // exactly as it is for "attack with all".
+  function declareGroupAttackers(attackerIDs: string[], defenderSeatID: string): void {
+    if (!canDeclareAttackers) return;
+    const params = attackAllParams(attackPlan, defenderSeatID, { only: attackerIDs });
+    if (!params) return;
+    sendBulkAttack(defenderSeatID, params);
+  }
   function cancelAttackPicker(): void {
     attackPickerDefenderID = null;
     attackPickerLimitReason = null;
@@ -1533,6 +1544,7 @@
           onSelectCombatCard={handleSelectCombatCard}
           onDeclareAttack={declareAttackTarget}
           onDeclareBlock={declareBlockTarget}
+          onDeclareAttackers={declareGroupAttackers}
           {autopassEnabled}
           {loopNotice}
           onPassPriority={passPriority}
@@ -2081,15 +2093,27 @@
 <svelte:window
   onkeydown={(ev: KeyboardEvent) => {
     if (ev.key === "Escape") {
-      cancelTargeting();
       menuOpen = false;
       concedeConfirm = false;
       tableSettingsOpen = false;
       spawnerOpen = false;
+      // #1659: a modal open during a cast/targeting flow (mode picker,
+      // X prompt, sacrifice/discard cost, divide damage, alt-cost,
+      // ChoicePromptModal, …) owns Escape while it's on screen — every
+      // one of them registers a layer via ModalLayer (lib/modalLayers.ts).
+      // Without this check, Escape both closes that modal AND cancels
+      // the targeting walk underneath it, which is a second, unwanted
+      // effect of the same keypress.
+      if (!$modalOpen) cancelTargeting();
     }
     // S20 sub-PR 5: Enter confirms a multi-target pick list (no-op
     // for single-target prompts and when fewer than min are picked).
-    if (ev.key === "Enter" && !(ev.target instanceof HTMLInputElement)) confirmTargeting();
+    // #1659: same modal-precedence rule as Escape above — a modal's
+    // own Enter handler (confirm the mode / X / cost picked) should
+    // not also confirm the targeting walk it's sitting on top of.
+    if (ev.key === "Enter" && !(ev.target instanceof HTMLInputElement) && !$modalOpen) {
+      confirmTargeting();
+    }
   }}
 />
 

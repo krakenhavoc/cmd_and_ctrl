@@ -32,34 +32,30 @@ import (
 // per-instance and expires with the turn; cards left in exile stay
 // there.
 //
-// DECLARED SIMPLIFICATION, weaker than printed: the commander clause
-// is not offered. "If you control a commander as you cast this spell,
-// you may choose both instead" is a mode COUNT that depends on the
-// board at announce, and `game.ModeSpec` bounds the count with plain
-// Min/Max integers read at Register time. Offering both
-// unconditionally would be stronger than printed (#259), so the card
-// asks for one bullet, always — the same seam Akroma's Will records.
+// "If you control a commander as you cast this spell, you may choose
+// both instead" is a conditional mode count (#1590, ADR 0065's
+// 2026-09-27 amendment): `OrUpToIf(2, YouControlACommander)` raises the
+// bound to two while the caster controls a commander permanent —
+// anybody's, including one they have stolen — read at announce (CR
+// 601.2b) and never again, so a commander that dies in response still
+// leaves both bullets on the stack. Until #1590 the card asked for one
+// bullet always, the weaker-than-printed posture #259 demands.
 //
-// Re-audited for #1565: still true on current develop.
-// `game.CatalogModeSpec` takes only an oracle ID (no game or player
-// state), so there is nowhere for "as you cast this" to be evaluated.
-// The seam is the same conditional-mode-count gap both cards share;
-// no new engine work has closed it.
+// Both bullets are ModeDoing bodies run in announce order; they touch
+// different things (a mana pool, the top of your library), so the
+// order the caster clicked them in is not observable.
 func init() {
 	Register(Spec{
 		OracleID:     "0fd114c4-092b-4e28-b0dc-ef529f3bc73e",
 		Name:         "Jeska's Will",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"You pick one of the two bullets. Picking both while you control a commander isn't implemented.",
-		},
+		Completeness: CompletenessFull,
 		Modes: ChooseOne(
 			ModeDoing("Add {R} for each card in target opponent's hand.",
 				TargetPlayer("target opponent", Opponent()),
 				jeskasWillRitual),
 			ModeDoing("Exile the top three cards of your library. You may play them this turn.", nil,
 				jeskasWillImpulse),
-		),
+		).OrUpToIf(2, YouControlACommander),
 	})
 }
 

@@ -45,14 +45,33 @@
     // a CardView so this component keeps taking only what it renders.
     chosenColor?: string;
     namedTribe?: string;
+    // #1648: the other two members of the same as-enters-choice family
+    // — a Siege's anchor word (ADR 0071) and a Pithing Needle's named
+    // card (#1210).
+    chosenOption?: string;
+    chosenName?: string;
     // #662, CR 702.16. The qualities the SERVER parsed; the client
     // owns no protection grammar.
     protection?: ProtectionView[];
   }
 
-  const { abilities = [], chosenColor, namedTribe, protection = [] }: Props = $props();
+  const {
+    abilities = [],
+    chosenColor,
+    namedTribe,
+    chosenOption,
+    chosenName,
+    protection = [],
+  }: Props = $props();
 
-  const chosen = $derived(chosenValueChips({ chosen_color: chosenColor, named_tribe: namedTribe }));
+  const chosen = $derived(
+    chosenValueChips({
+      chosen_color: chosenColor,
+      named_tribe: namedTribe,
+      chosen_option: chosenOption,
+      chosen_name: chosenName,
+    }),
+  );
 
   // CR 702.16m: a permanent can have the same protection twice (two
   // Swords of Fire and Ice on one creature). It is ONE quality for
@@ -212,5 +231,11 @@
   }
   .kw-chosen-tribe {
     background: rgba(28, 40, 66, 0.82);
+  }
+  .kw-chosen-option {
+    background: rgba(66, 42, 20, 0.82);
+  }
+  .kw-chosen-name {
+    background: rgba(58, 28, 58, 0.82);
   }
 </style>

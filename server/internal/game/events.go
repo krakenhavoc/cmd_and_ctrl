@@ -757,6 +757,22 @@ const (
 	// do (ADR 0071 amendment, #1321).
 	EventHarnessed EventKind = "harnessed"
 
+	// EventBecameMonstrous — a permanent became monstrous (CR 701.37,
+	// ADR 0071 amendment #1700). Source / CardID / Target = the
+	// permanent, Actor = its controller, Amount = the N of the
+	// "Monstrosity N" instruction that made it monstrous — the X a
+	// "when this creature becomes monstrous" trigger reads (CR
+	// 701.37c). The ANNOUNCED N, not the number of counters that
+	// landed: a Doubling Season that turns three counters into six
+	// leaves Polukranos's X at three (the Theros rulings).
+	//
+	// Emitted once per object: MonstrosityForEffect does nothing for a
+	// permanent that is already monstrous, so a second activation
+	// fires no "becomes monstrous" trigger (CR 701.37c). Bumps the
+	// layer version for the reason EventHarnessed does — an "as long
+	// as this creature is monstrous" static switches on.
+	EventBecameMonstrous EventKind = "became_monstrous"
+
 	// EventTurnBegan — one real (not skipped) turn began. Actor is the
 	// active player, Amount is Turn.Seq, and Label is "extra" for an
 	// extra turn. Emitted after every per-turn reset and before the new
@@ -805,6 +821,14 @@ const (
 	//
 	// Added in S31 sub-PR 0 for the public game log; moved to the
 	// lock-in in #830.
+	//
+	// #1706: a creature that blocks several attackers gets one event
+	// per attacker, and Amount is the pair's 1-based place among them
+	// (1 for its first — and only, for an ordinary blocker). That is
+	// CR 509.3b's "whenever this blocks A CREATURE", once per attacker.
+	// CR 509.3a's plain "whenever this creature blocks" triggers once
+	// however many it blocks, so it reads only Amount <= 1 (a
+	// hand-built event in a test carries 0) — effects.selfBlocksOnce.
 	EventBlock EventKind = "block"
 
 	// EventBecomesBlocked — the attacker named by Source / CardID /
@@ -1269,6 +1293,93 @@ type Event struct {
 	// was created in, not the one current when it lands. Added for
 	// #187 (ADR 0053 Decision 1).
 	CombatStep string `json:"combat_step,omitempty"`
+
+	// AttackingTarget, BlockingTarget and Blocked are a leaving
+	// permanent's COMBAT STATE as it last existed on the battlefield,
+	// on EventLTB only (#1661, CR 603.10a): the player, planeswalker
+	// or battle it was attacking (Card.AttackingTarget's domain), the
+	// attacker it was blocking (Card.BlockingTarget), and whether it
+	// was a blocked attacker (CR 509.1h). All zero for a permanent
+	// that was not in combat, or had been removed from it (CR 506.4)
+	// before it left.
+	//
+	// On the event because the card cannot say any more. Leaving the
+	// battlefield takes a permanent out of combat, and MoveCard clears
+	// both fields before the event fires — so "whenever an attacking
+	// creature dies" (Kardur, Doomscourge), "whenever a blocking
+	// creature dies" (Death Tyrant) and Garna's "if it was attacking"
+	// read them here, as every other watcher reads Actor and NewZone.
+	// Taken in battlefieldExitLocked, the one step every battlefield
+	// exit runs, so combat damage, a removal spell mid-combat and a
+	// sacrifice all report the same facts. Engine-internal:
+	// protocol/log.go does not project them. See ADR 0027's
+	// 2026-09-28 amendment.
+	AttackingTarget uuid.UUID `json:"attacking_target,omitempty"`
+	BlockingTarget  uuid.UUID `json:"blocking_target,omitempty"`
+	Blocked         bool      `json:"blocked,omitempty"`
+
+	// LastKnownTypes is a leaving permanent's CARD TYPES as it last
+	// existed on the battlefield, on EventLTB only (#1675, CR
+	// 603.10a): its post-layer Characteristic.Types ("Creature",
+	// "Artifact", …), read with the card still on the battlefield.
+	//
+	// On the event for the same reason as the combat state above. A
+	// permanent that was a creature only because of an effect — a
+	// crewed Vehicle, an animated manland, a Gideon on his own turn —
+	// is not one in the graveyard, where every effect that made it
+	// one has stopped applying. "Whenever a creature dies" (Blood
+	// Artist, Grave Pact) reads the type here, never off the card it
+	// finds in the graveyard. Nil on every other kind; read it through
+	// WasType, which also says whether the event carries it at all.
+	// Engine-internal: protocol/log.go does not project it. See ADR
+	// 0027's 2026-09-28 amendment (#1675).
+	LastKnownTypes []string `json:"last_known_types,omitempty"`
+
+	// LastKnownSubtypes / LastKnownAllCreatureTypes are the same
+	// permanent's SUBTYPES as it last existed, on EventLTB only
+	// (#1679, CR 603.10a): its post-layer Characteristic.Subtypes, and
+	// whether it was every creature type (a changeling, or a creature
+	// under Maskwood Nexus) — one flag rather than ~345 subtypes. A
+	// creature that was a Zombie only through a grant is not one in
+	// the graveyard, so "whenever another Zombie you control dies"
+	// (Diregraf Captain) reads the subtype here. Read them through
+	// WasSubtype, which answers as Card.HasSubtype did on the
+	// battlefield. Engine-internal, like LastKnownTypes. See ADR
+	// 0027's 2026-09-28 amendment (#1679).
+	LastKnownSubtypes         []string `json:"last_known_subtypes,omitempty"`
+	LastKnownAllCreatureTypes bool     `json:"last_known_all_creature_types,omitempty"`
+
+	// LastKnownSupertypes is the same permanent's SUPERTYPES as it
+	// last existed, on EventLTB only (#1682, CR 603.10a): its
+	// post-layer Characteristic.Supertypes ("Legendary", "Snow", …). A
+	// Clone that copied a legend was legendary on the battlefield and
+	// is a plain Clone in the graveyard, so "whenever a legendary
+	// creature you control dies" (Rakdos Joins Up) reads it here, via
+	// WasSupertype. Engine-internal, like LastKnownTypes. See ADR
+	// 0027's 2026-09-28 amendment (#1682).
+	LastKnownSupertypes []string `json:"last_known_supertypes,omitempty"`
+
+	// LastKnownController is the player who controlled the same
+	// permanent as it last existed, on EventLTB only (#1682, CR
+	// 603.10a). "Whenever a creature you control dies" asks about the
+	// permanent, and a card in a graveyard has no controller (CR
+	// 108.4); a stolen creature sacrificed by its thief died under
+	// the thief's control, whoever owns the card. Read it through
+	// LeftUnderControlOf, which also says whether the event carries
+	// it. uuid.Nil on every other kind and on an unstamped EventLTB.
+	// Engine-internal, like LastKnownTypes. See ADR 0027's 2026-09-28
+	// amendment (#1682).
+	LastKnownController uuid.UUID `json:"last_known_controller,omitempty"`
+
+	// LastKnownColors is the same permanent's COLOURS as it last
+	// existed, on EventLTB only (#1689, CR 603.10a): its post-layer
+	// Card.EffectiveColors ("B", "U", …). A creature that was black
+	// only because of an effect (Darkest Hour, a black-making static,
+	// an Aura) is not one in the graveyard, so "whenever another black
+	// creature you control dies" (Teysa, Orzhov Scion) reads the
+	// colour here, via WasColor. Engine-internal, like LastKnownTypes.
+	// See ADR 0027's 2026-09-28 amendment (#1689).
+	LastKnownColors []string `json:"last_known_colors,omitempty"`
 
 	// SettingOld / SettingNew are a table setting's value before and
 	// after an EventSettingsChanged, formatted as text: an int as

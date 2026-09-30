@@ -58,6 +58,9 @@ func (p *Policy) valueOf(st *state, m legal.Move) (float64, string) {
 	if m.Cost == nil {
 		return v, reason
 	}
+	if m.Cost.PhyrexianLife > 0 && st.myLife()-m.Cost.Life < phyrexianLifeFloor {
+		return phyrexianLifeDeclined, "Phyrexian life would take it below the floor"
+	}
 	c, refuse := p.costValue(st, st.bf[m.Source.String()], *m.Cost)
 	if refuse {
 		return suicideValue, "would pay its last life"
@@ -98,7 +101,15 @@ func (p *Policy) costValue(st *state, src *protocol.CardView, c legal.MoveCost) 
 		// in the life paid and the price is quadratic near death, so
 		// one ability is a profit at 40 and a refusal at 9 without a
 		// second rule saying so.
-		v += p.cfg.LifePayoff*float64(c.Life) - st.w.LifeCostValue(life, c.Life)
+		//
+		// #1677: the proxy is withheld from the life that pays a
+		// Phyrexian symbol. That life buys the same spell the mana
+		// would have — nothing more — so it is a pure price, and the
+		// all-mana payment of the same announcement always scores
+		// above it. Proxied, the bot would pay 4 life for a Dismember
+		// with three Swamps untapped because the arithmetic called it
+		// a profit.
+		v += p.cfg.LifePayoff*float64(c.Life-c.PhyrexianLife) - st.w.LifeCostValue(life, c.Life)
 	}
 	if c.Loyalty != 0 {
 		// Loyalty counters are board value the evaluation already
@@ -121,6 +132,40 @@ func (p *Policy) costValue(st *state, src *protocol.CardView, c legal.MoveCost) 
 		v -= st.w.counterRemovalValue(st.bf[cp.CardID.String()], cp.Counter, cp.N)
 	}
 	return v, false
+}
+
+// phyrexianLifeFloor is the life total the policy will not pay
+// Phyrexian symbols below (CR 107.4c, #1677): a move whose
+// legal.MoveCost.PhyrexianLife is non-zero is declined when paying its
+// whole Life would leave the seat under this number.
+//
+// Ten, the default Weights.DangerLife — where the quadratic danger
+// term starts to bite. Above it, 2 life for a symbol the board cannot
+// pay is a cheap way to cast a spell the seat would otherwise hold;
+// below it the life total is what the seat is racing with, and a
+// Dismember that costs 4 of the last 12 is a spell that should wait
+// for the mana. A constant rather than a Config field because it is a
+// rule about this one cost shape, not a weight a tier tunes.
+//
+// It is a floor on PAYING life, not a reason to prefer it: above the
+// floor the all-mana payment still wins wherever the enumerator
+// offers one, because Phyrexian life gets no payoff proxy (costValue).
+const phyrexianLifeFloor = 10
+
+// phyrexianLifeDeclined is what a Phyrexian life payment under
+// phyrexianLifeFloor is worth: below passing, so the policy never
+// takes it, without the "would pay its last life" reason the
+// CR 704.5a refusal carries — the seat would survive, it just should
+// not spend that much.
+const phyrexianLifeDeclined = -1.0
+
+// myLife is the seat's own life total, or 0 when the view does not
+// carry an evaluation for it.
+func (st *state) myLife() int {
+	if st.myEval == nil {
+		return 0
+	}
+	return st.myEval.Life
 }
 
 // genericCounterValue is what one counter of a kind the evaluation

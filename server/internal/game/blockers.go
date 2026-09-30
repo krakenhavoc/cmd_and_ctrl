@@ -37,7 +37,9 @@ import "github.com/google/uuid"
 // BlockerEligible reports whether card b could be declared as a
 // blocker by `seat` right now, ignoring which attacker it would be
 // pointed at: b is a creature that seat controls, it is untapped
-// (CR 509.1a), and it is not already blocking something.
+// (CR 509.1a), and it is not already blocking something — or, since
+// #1706, it can block more attackers than it already does (High
+// Ground, Palace Guard; BlockCapacity).
 //
 // Summoning sickness deliberately does NOT disqualify a blocker.
 // CR 302.6 restricts attacking and {T} / {Q} abilities only — a
@@ -57,7 +59,7 @@ func BlockerEligible(b *Card, seat uuid.UUID) bool {
 	if b.Tapped {
 		return false
 	}
-	return b.BlockingTarget == uuid.Nil
+	return b.BlockingTarget == uuid.Nil || blockerHasRoom(b)
 }
 
 // SeatOwesBlockDecision reports whether the seat with the given
@@ -201,7 +203,20 @@ func (g *Game) blockDeclarationPendingLocked() bool {
 		if c.BlockingTarget == uuid.Nil || !g.blockAnnounceableLocked(c) {
 			continue
 		}
-		if g.announcedBlocks[c.InstanceID] != c.BlockingTarget {
+		for _, atk := range c.BlockedAttackers() {
+			if !announcedPair(g.announcedBlocks[c.InstanceID], atk) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// announcedPair reports whether `atk` is among the attackers a
+// blocker's EventBlock events have already named.
+func announcedPair(announced []uuid.UUID, atk uuid.UUID) bool {
+	for _, a := range announced {
+		if a == atk {
 			return true
 		}
 	}
@@ -245,11 +260,15 @@ func (g *Game) commitBlockDeclarationLocked() {
 		blocker  uuid.UUID
 		attacker uuid.UUID
 		actor    uuid.UUID
+		// nth is the pair's 1-based place among the attackers its
+		// blocker blocks (#1706) — EventBlock.Amount.
+		nth int
 	}
 	var fresh []pairing
+	announced := map[uuid.UUID][]uuid.UUID{}
 	for i := range g.Battlefield.Cards {
 		c := &g.Battlefield.Cards[i]
-		if c.BlockingTarget == uuid.Nil || g.announcedBlocks[c.InstanceID] == c.BlockingTarget {
+		if c.BlockingTarget == uuid.Nil {
 			continue
 		}
 		// #1279: only a COMPLETED declaration announces. A defender
@@ -260,13 +279,30 @@ func (g *Game) commitBlockDeclarationLocked() {
 		if !g.blockAnnounceableLocked(c) {
 			continue
 		}
-		fresh = append(fresh, pairing{blocker: c.InstanceID, attacker: c.BlockingTarget, actor: c.Controller})
+		// #1706: one pair per attacker the blocker blocks. A pair
+		// already announced is not announced again; the blocker's
+		// record becomes its whole set, so a one-attacker blocker
+		// re-pointed after the lock-in announces its new pair exactly as
+		// it did before #1706.
+		atks := c.BlockedAttackers()
+		prev := g.announcedBlocks[c.InstanceID]
+		changed := false
+		for n, atk := range atks {
+			if announcedPair(prev, atk) {
+				continue
+			}
+			changed = true
+			fresh = append(fresh, pairing{blocker: c.InstanceID, attacker: atk, actor: c.Controller, nth: n + 1})
+		}
+		if changed {
+			announced[c.InstanceID] = atks
+		}
 	}
 	if g.announcedBlocks == nil {
-		g.announcedBlocks = map[uuid.UUID]uuid.UUID{}
+		g.announcedBlocks = map[uuid.UUID][]uuid.UUID{}
 	}
-	for _, p := range fresh {
-		g.announcedBlocks[p.blocker] = p.attacker
+	for b, atks := range announced {
+		g.announcedBlocks[b] = atks
 	}
 	for _, p := range fresh {
 		g.EmitEvent(Event{
@@ -275,6 +311,7 @@ func (g *Game) commitBlockDeclarationLocked() {
 			Source: p.blocker,
 			CardID: p.blocker,
 			Target: p.attacker,
+			Amount: p.nth,
 		})
 	}
 	// Pass 2: the attackers that are now BLOCKED (CR 509.1h) — which
@@ -386,7 +423,7 @@ func (g *Game) UnblockedAttackerForEffect(id uuid.UUID) bool {
 		return false
 	}
 	for i := range g.Battlefield.Cards {
-		if g.Battlefield.Cards[i].BlockingTarget == id {
+		if g.Battlefield.Cards[i].IsBlockingAttacker(id) {
 			return false
 		}
 	}

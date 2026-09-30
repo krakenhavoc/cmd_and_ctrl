@@ -599,3 +599,106 @@ for exactly that difference.
 - **Binding a spell's pick to a chosen player** (Windgrace's Judgment's
   remaining caveat) — a per-target record on the stack item nothing
   else needs yet.
+
+## Amendment (2026-09-28, #1723): an exact mana value, and X binding for activated abilities
+
+§5 above closed with "`effects.Register` refuses the flag on a
+trigger's or an activated ability's clause: a trigger announces no X,
+and the bot's activation enumerator does not bind one." Lazav, the
+Multifarious's `"{X}: Lazav becomes a copy of target creature card in
+your graveyard with mana value X, ..."` needed both halves of that
+sentence to stop being true for an ACTIVATED ability specifically —
+triggers still announce nothing.
+
+### 1. `ManaValueEqualsX`, the exact twin of `ManaValueAtMostX`
+
+"With mana value X" is not "X or less": `TargetSpec.ManaValueEqualsX`
+is the same announced-X mechanism (`xBound` / `xBoundSet`, written by
+`bindStepsX` at announce and again from `StackItem.XValue` at
+resolution) with `xBoundAdmits` comparing `==` instead of `<=`.
+`effects.Register` refuses a clause that sets both — they are
+different printed clauses, never one card's, and a spec with both
+would have the second call silently overridden by the first the
+reader checks.
+
+**This is NOT monotonic in X, and that is the whole reason it needed
+its own enumerator answer (§3).** Raising X does not grow the legal
+set the way "or less" does — it usually REPLACES it, with a
+completely different (possibly empty) set of cards.
+
+### 2. X binding for an activated ability: the ability's OWN cost, not the spell path
+
+CR 602.2b announces an activated ability's X the same way CR 601.2b
+announces a spell's, so the engine machinery needed nothing new: the
+announce path (`ActivateCatalogAbility`) already called `bindStepsX(steps,
+params.XValue)` before this, and the resolution re-check
+(`itemAnnouncedClauses`) already read `StackItem.XValue` for
+`item.targetSpec`, an ability item's included — both were written
+generically over "the announcement," never specifically over "the
+cast." An X-bound clause on an activated ability was refused not
+because the plumbing was spell-only, but because
+`effects.Register`'s `checkNoXBound` panicked before any card could
+reach it.
+
+The fix is at that one boot check: `checkNoXBound` takes an
+`xAvailable bool` the caller supplies — `a.Cost.DemandsX()` (the same
+predicate `#1213`'s two-X-claimants check already reads: `{X}` in the
+mana cost, or a variable sacrifice/tap count) for an activated
+ability's clause, and its per-mode clauses; always `false` for a
+trigger's, which still announces nothing whatever the card's other
+abilities cost. A spell's top-level `Targets` was never routed through
+this check at all — nothing changed there.
+
+### 3. The enumerator cannot pick ONE X here — #544's rule over a pair
+
+Every other `{X}` ability in `internal/legal` (`x_abilities_test.go`)
+offers exactly one move, at the largest affordable X — sound for "or
+less," because a bigger X only ever admits a superset. It is UNSOUND
+for "exactly X": the largest affordable X (say 5, from five untapped
+lands) can have zero graveyard creatures at mana value 5 while mana
+value 0, 1 and 3 each have one, and "offer the largest X" would offer
+NOTHING for an ability that plainly has three legal activations.
+
+`abilityMovesForSource` (`internal/legal/abilities.go`) answers this by
+trying every X from the announcement's floor (`enumeratedXFloor`, same
+as the ordinary case) up to the largest affordable one
+(`basePay.xValue`, already solved once for the ordinary case) and
+keeping only the `(X, target)` pairs `legalStepSets` actually returns —
+an X with no matching graveyard card contributes no move, exactly as a
+target clause with no legal candidate always has. This is the pairwise
+form of #544's rule ("never offer a move the engine refuses"), over the
+announcement's two free variables instead of one.
+
+Two things the ladder deliberately does NOT try to solve, because no
+catalog card needs them yet and guessing would risk offering something
+illegal: an ability whose PRICE reads its targets (`perTarget`), and an
+X announced by a sacrifice or tap count rather than by mana
+(`ab.Cost.XSlots() == 0`). Both cases are `continue`d out of — under-
+enumerated, never over-enumerated.
+
+### Cards
+
+**Lazav, the Multifarious** (new, `CompletenessFull`). Its duration-
+copy half — `BecomeCopy{Duration: CopyIndefinite}` — is
+[ADR 0043](0043-copy-effects.md)'s amendment of the same date, not this
+one; this ADR is only the target clause.
+
+### Tests
+
+`server/internal/game/target_set_test.go`'s
+`TestManaValueEqualsXBindsToTheAnnouncedX` is `xBoundAdmits` /
+`bindStepsX` in isolation, the same shape
+`TestManaValueAtMostXBindsToTheAnnouncedX` already used.
+`server/internal/cards/effects/lazav_the_multifarious_test.go` is the
+card-level announce gate and the CR 608.2b re-check (a target's mana
+value changing between announce and resolution).
+`server/internal/legal/lazav_the_multifarious_test.go` is §3's
+non-monotonic ladder, with `dispatchAll` as the soundness check every
+enumerator test in that package carries.
+
+### Out of scope (still)
+
+Everything §6's "not this seam" list and the original "Out of scope"
+section named is still out of scope. This amendment only widens WHO
+may set `ManaValueAtMostX` / `ManaValueEqualsX`, not what either flag
+can express.

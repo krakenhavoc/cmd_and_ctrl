@@ -92,6 +92,23 @@ func b17PickCards(t *testing.T, g *game.Game, chooser uuid.UUID, ids ...uuid.UUI
 	}
 }
 
+// b17PickCardsDivided answers the newest pick_target prompt with
+// `ids` and the division announced with them (#1563, CR 601.2d).
+func b17PickCardsDivided(t *testing.T, g *game.Game, chooser uuid.UUID, dist map[uuid.UUID]int, ids ...uuid.UUID) {
+	t.Helper()
+	p := latestPickTarget(g, chooser)
+	if p == nil {
+		t.Fatalf("no pick_target prompt for %s", chooser)
+	}
+	refs := make([]game.TargetRef, 0, len(ids))
+	for _, id := range ids {
+		refs = append(refs, game.TargetRef{Kind: game.TargetCard, ID: id})
+	}
+	if err := g.ResolvePickTargetsDivided(p.ID, chooser, refs, dist); err != nil {
+		t.Fatalf("ResolvePickTargetsDivided: %v", err)
+	}
+}
+
 // --- registration --------------------------------------------------
 
 // Every card in the batch, pinned by oracle ID → name. Boros

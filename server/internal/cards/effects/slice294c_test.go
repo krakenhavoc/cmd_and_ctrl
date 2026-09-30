@@ -345,7 +345,10 @@ func TestViridescentBogRefusesWithoutTheGenericMana(t *testing.T) {
 
 // --- War Room ------------------------------------------------------------
 
-func TestWarRoomTapsForColourlessAndDeclaresOnlyThat(t *testing.T) {
+// The draw ability landed with #1594 (computed_life_cost_test.go); this
+// test keeps the mana half and pins that the draw is costed by the
+// computed count, never by a flat number or not at all.
+func TestWarRoomTapsForColourlessAndCostsItsDrawByTheCount(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
 	room := seedPermanentWithOracle(g, me.ID, "War Room", "Land", slice294cWarRoomOracle)
@@ -361,11 +364,14 @@ func TestWarRoomTapsForColourlessAndDeclaresOnlyThat(t *testing.T) {
 	if !ok {
 		t.Fatal("War Room is not registered")
 	}
-	if spec.Completeness != CompletenessCaveats {
-		t.Errorf("Completeness = %v, want CompletenessCaveats (the draw ability is not implemented)", spec.Completeness)
+	if spec.Completeness != CompletenessFull {
+		t.Errorf("Completeness = %v, want CompletenessFull", spec.Completeness)
 	}
-	if len(spec.Activated) != 0 {
-		t.Error("War Room declares an activated ability it cannot cost correctly; it should declare none")
+	if len(spec.Activated) != 1 {
+		t.Fatalf("War Room declares %d activated abilities, want the draw", len(spec.Activated))
+	}
+	if c := spec.Activated[0].Cost; c.LifeFrom != LifeEqualToCommanderColors || c.Life != 0 {
+		t.Errorf("the draw's life is %d + %q, want the commander-colour count alone", c.Life, c.LifeFrom.Key())
 	}
 }
 
@@ -402,7 +408,7 @@ func TestShiftingWoodlandEntersUntappedWithAForest(t *testing.T) {
 	if !ok {
 		t.Fatal("Shifting Woodland is not registered")
 	}
-	if spec.Completeness != CompletenessCaveats {
-		t.Errorf("Completeness = %v, want CompletenessCaveats (the Delirium copy ability is not implemented)", spec.Completeness)
+	if spec.Completeness != CompletenessFull {
+		t.Errorf("Completeness = %v, want CompletenessFull (#1593 built the Delirium copy ability)", spec.Completeness)
 	}
 }

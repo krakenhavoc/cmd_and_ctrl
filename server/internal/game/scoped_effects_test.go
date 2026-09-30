@@ -125,6 +125,37 @@ func TestEveryModKindAppliesInItsLayer(t *testing.T) {
 				t.Errorf("attack requirements = %+v, want a plain one and one naming the player", c.AttackRequirements)
 			}
 		}},
+		// #1651: "can't have" beats even a grant in the same record, and
+		// is recorded for the strip.
+		{"cantHaveKeywords", []Mod{CantHaveKeywordsMod("hexproof"), AddKeywordsMod("hexproof")}, func(t *testing.T, _, c Characteristic, _ *Game) {
+			for _, a := range c.Abilities {
+				if a == "hexproof" {
+					t.Errorf("abilities = %v, want hexproof stripped", c.Abilities)
+				}
+			}
+			if !reflect.DeepEqual(c.CantHave, []string{"hexproof"}) {
+				t.Errorf("CantHave = %v, want [hexproof]", c.CantHave)
+			}
+		}},
+		// #1597: one block requirement per mod, of the kind it names.
+		{"addBlockRequirement", []Mod{AddBlockRequirementMod(BlockRequirementMustBeBlocked), AddBlockRequirementMod(BlockRequirementLure)}, func(t *testing.T, _, c Characteristic, _ *Game) {
+			if len(c.BlockRequirements) != 2 || c.BlockRequirements[0].Kind != BlockRequirementMustBeBlocked ||
+				c.BlockRequirements[1].Kind != BlockRequirementLure {
+				t.Errorf("block requirements = %+v, want must-be-blocked then lure", c.BlockRequirements)
+			}
+		}},
+		// #1715: capacity from a resolving effect, onto the fields the
+		// statics write.
+		{"addBlockCapacity", []Mod{AddBlockCapacityMod(2)}, func(t *testing.T, b, c Characteristic, _ *Game) {
+			if c.AdditionalBlocks != b.AdditionalBlocks+2 {
+				t.Errorf("AdditionalBlocks = %d, want %d", c.AdditionalBlocks, b.AdditionalBlocks+2)
+			}
+		}},
+		{"blockAnyNumber", []Mod{BlockAnyNumberMod()}, func(t *testing.T, _, c Characteristic, _ *Game) {
+			if !c.BlocksAnyNumber {
+				t.Error("BlocksAnyNumber is not set")
+			}
+		}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -160,6 +191,7 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		ModAllCreatureTypes: true, ModSetColors: true, ModAddKeywords: true, ModRemoveKeywords: true,
 		ModLoseAllAbilities: true, ModAddRestrictions: true, ModSetBasePower: true,
 		ModSetBaseToughness: true, ModModifyPT: true, ModAddAttackRequirement: true,
+		ModAddBlockRequirement: true, ModAddBlockCapacity: true, ModBlockAnyNumber: true,
 		// ADR 0093 PR 4 (#1584): its cases are in scoped_grants_test.go,
 		// because a grant needs a catalog bundle to mean anything.
 		ModGrantAbilities: true,
@@ -172,6 +204,14 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// layer applies either. Their cases are in
 		// scoped_block_rules_test.go here and in cards/effects.
 		ModCantBeBlockedExceptBy: true, ModLimitBlockersPerDefender: true,
+		// #1651: cantHaveKeywords has a case above; waiveHexproof is read
+		// by targeting, not a layer, and its cases are in
+		// cant_have_1651_test.go here and in cards/effects.
+		ModCantHaveKeywords: true, ModWaiveHexproof: true,
+		// #1593: becomeCopy is layer 1, materialised onto the printed
+		// baseline before the pass rather than applied in it. Its cases
+		// are in duration_copy_test.go here and in cards/effects.
+		ModBecomeCopy: true,
 	}
 	for _, k := range ModKinds() {
 		if !covered[k] {

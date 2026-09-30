@@ -43,6 +43,7 @@ func Register(spec Spec) {
 		if spec.Modes.Repeatable && spec.Modes.Max == 1 {
 			panic(fmt.Sprintf("effects.Register: %q is Repeatable with Max 1 — there is nothing to repeat", spec.Name))
 		}
+		checkRaisedModeMax(spec.Name, "Modes", spec.Modes)
 		for i, o := range spec.Modes.Options {
 			if o.Label == "" {
 				panic(fmt.Sprintf("effects.Register: %q mode %d has no label — the bullet is the whole of what the picker shows", spec.Name, i))
@@ -56,16 +57,22 @@ func Register(spec Spec) {
 	checkPlayerKeywords(spec)
 	for _, a := range spec.Activated {
 		checkFlatClauses(spec.Name, a.Targets)
-		checkNoXBound(spec.Name, "an activated ability's", a.Targets)
+		// #1723: an X-bound target clause is allowed on an activated
+		// ability whose OWN cost announces an X (CR 602.2b) — Lazav,
+		// the Multifarious's "{X}: ... with mana value X". Still
+		// refused when the cost has none: the flag would be a bound
+		// nothing on the wire ever sets.
+		checkNoXBound(spec.Name, "an activated ability's", a.Targets, a.Cost.DemandsX())
 		if a.Modes != nil {
 			for _, o := range a.Modes.Options {
-				checkNoXBound(spec.Name, "an activated mode's", o.Targets)
+				checkNoXBound(spec.Name, "an activated mode's", o.Targets, a.Cost.DemandsX())
 			}
 		}
 		if a.Modes != nil {
 			if a.Targets != nil {
 				panic(fmt.Sprintf("effects.Register: %q declares an activated ability with both Targets and Modes — put the target clause on the mode", spec.Name))
 			}
+			checkRaisedModeMax(spec.Name, "an activated ability's Modes", a.Modes)
 			for i, o := range a.Modes.Options {
 				if o.Label == "" {
 					panic(fmt.Sprintf("effects.Register: %q activated mode %d has no label", spec.Name, i))
@@ -77,16 +84,21 @@ func Register(spec Spec) {
 	}
 	for _, t := range spec.Triggered {
 		checkFlatClauses(spec.Name, t.Targets)
-		checkNoXBound(spec.Name, "a trigger's", t.Targets)
+		// A trigger announces no X, ever (#1559) — unlike an activated
+		// ability (#1723), there is no cost to check.
+		checkNoXBound(spec.Name, "a trigger's", t.Targets, false)
+		checkNoDivideX(spec.Name, "a trigger's", t.Targets)
 		if t.Modes != nil {
 			for _, o := range t.Modes.Options {
-				checkNoXBound(spec.Name, "a trigger mode's", o.Targets)
+				checkNoXBound(spec.Name, "a trigger mode's", o.Targets, false)
+				checkNoDivideX(spec.Name, "a trigger mode's", o.Targets)
 			}
 		}
 		if t.Modes != nil && t.Targets != nil {
 			panic(fmt.Sprintf("effects.Register: %q declares a trigger with both Targets and Modes — put the target clause on the mode", spec.Name))
 		}
 		if t.Modes != nil {
+			checkRaisedModeMax(spec.Name, "a trigger's Modes", t.Modes)
 			for i, o := range t.Modes.Options {
 				checkModeCost(spec.Name, "trigger mode", i, o.Cost, false)
 			}
@@ -170,6 +182,7 @@ func Register(spec Spec) {
 	// ADR 0073: the optional additional costs. Six boot checks, each
 	// for a shape that compiles and then behaves as something the card
 	// does not print.
+	checkTeamworkBlight(spec)
 	if spec.AdditionalCost != nil && spec.AdditionalCost.Optional {
 		panic(fmt.Sprintf("effects.Register: %q puts an Optional cost in AdditionalCost — the mandatory slot is never optional; declare it in OptionalCosts", spec.Name))
 	}
@@ -953,23 +966,111 @@ func checkFlatClauses(name string, spec *game.TargetSpec) {
 		}
 	}
 	for i := 0; i < spec.ClauseCount(); i++ {
+		checkDivide(name, i, spec.Clause(i))
 		if d := spec.Clause(i).Different; d != nil && (d.Key == nil || d.Label == "") {
 			panic(fmt.Sprintf("effects.Register: %q target clause %d has a set rule with no Key or no Label — build it with EachDifferentManaValue / EachDifferentController / EachDifferentName", name, i))
+		}
+		// #1723: "mana value X or less" and "mana value X" are
+		// different clauses — no printed card is both, and a spec
+		// that set both would have the second WithManaValue...X()
+		// call silently mean nothing (xBoundAdmits reads
+		// ManaValueEqualsX first).
+		if c := spec.Clause(i); c.ManaValueAtMostX && c.ManaValueEqualsX {
+			panic(fmt.Sprintf("effects.Register: %q target clause %d sets both ManaValueAtMostX and ManaValueEqualsX", name, i))
 		}
 	}
 }
 
-// checkNoXBound refuses ManaValueAtMostX on a clause whose owner
-// announces no X the engine binds it to (#1559). Only a SPELL's
-// clauses are bound — at cast and again from StackItem.XValue at
-// resolution. A trigger announces no X at all, and the bot's
-// activation enumerator does not bind one, so on either owner the
-// flag would be a bound nothing enforces consistently.
-func checkNoXBound(name, owner string, spec *game.TargetSpec) {
-	for i := 0; i < spec.ClauseCount(); i++ {
-		if spec.Clause(i).ManaValueAtMostX {
-			panic(fmt.Sprintf("effects.Register: %q declares \"mana value X or less\" on %s target clause %d — only a spell's clause is bound to an announced X", name, owner, i))
+// checkDivide validates a divided clause (#1563): the amount is a
+// positive constant, the announced X, or a registered amount rule
+// standing alone (#1657), a doubling threshold only
+// means something on an X amount, and the clause may not let one
+// object fill two of its slots — the division is keyed by target id,
+// so two picks of the same object could not be told apart (and CR
+// 601.2d's "each target" is about distinct targets anyway).
+func checkDivide(name string, i int, c *game.TargetClause) {
+	d := c.Divide
+	if d == nil {
+		return
+	}
+	switch {
+	case !d.AmountKey.IsZero() && (d.Total != 0 || d.FromX || d.DoubleFromX != 0):
+		panic(fmt.Sprintf("effects.Register: %q target clause %d names an amount rule AND a fixed or X amount — the rule replaces them; use DivideBy(rule)", name, i))
+	case !d.AmountKey.IsZero():
+		// The rule sizes the division at announce (#1657); nothing
+		// here to check but AllowSame, below.
+		if c.AllowSame {
+			panic(fmt.Sprintf("effects.Register: %q target clause %d divides among picks that may repeat — a division is keyed by target", name, i))
 		}
+	case !d.FromX && d.Total < 1:
+		panic(fmt.Sprintf("effects.Register: %q target clause %d divides a fixed amount of %d — use Divide(n) with n ≥ 1, or DivideX()", name, i, d.Total))
+	case d.DoubleFromX > 0 && !d.FromX:
+		panic(fmt.Sprintf("effects.Register: %q target clause %d doubles a fixed divided amount — DoubleFromX only applies to DivideX", name, i))
+	case c.AllowSame:
+		panic(fmt.Sprintf("effects.Register: %q target clause %d divides among picks that may repeat — a division is keyed by target", name, i))
+	}
+}
+
+// checkNoDivideX refuses DivideX on a trigger's clause: a trigger
+// announces no X, so the amount would always be 0 and no target could
+// ever be chosen (#1563).
+func checkNoDivideX(name, owner string, spec *game.TargetSpec) {
+	for i := 0; i < spec.ClauseCount(); i++ {
+		if d := spec.Clause(i).Divide; d != nil && d.FromX {
+			panic(fmt.Sprintf("effects.Register: %q divides X on %s target clause %d — a trigger announces no X", name, owner, i))
+		}
+	}
+}
+
+// checkNoXBound refuses an X-bound target clause (ManaValueAtMostX or
+// ManaValueEqualsX) on an owner that announces no X the engine can
+// bind it to (#1559, #1723). `xAvailable` is the caller's answer to
+// "does this owner announce an X": always true for a spell (no call
+// site checks one — a spell's Targets is never passed here at all),
+// `a.Cost.DemandsX()` for an activated ability (CR 602.2b's X is that
+// ability's own cost, not the spell path's), and always false for a
+// trigger, which announces none.
+func checkNoXBound(name, owner string, spec *game.TargetSpec, xAvailable bool) {
+	if xAvailable {
+		return
+	}
+	for i := 0; i < spec.ClauseCount(); i++ {
+		c := spec.Clause(i)
+		switch {
+		case c.ManaValueAtMostX:
+			panic(fmt.Sprintf("effects.Register: %q declares \"mana value X or less\" on %s target clause %d — %s announces no X", name, owner, i, owner))
+		case c.ManaValueEqualsX:
+			panic(fmt.Sprintf("effects.Register: %q declares \"mana value X\" on %s target clause %d — %s announces no X", name, owner, i, owner))
+		}
+	}
+}
+
+// checkRaisedModeMax validates a conditional mode count (#1590, ADR
+// 0065's 2026-09-27 amendment): RaisedMax and RaiseMaxIf come as a
+// pair, the raise must actually raise a bounded Max, and — unless the
+// spec is Repeatable — it may not promise more distinct bullets than
+// the card prints; a raised minimum (#1655) must sit between the
+// printed Min and the raised Max. Each is a card that would otherwise
+// register silently and ship a mode count the printed card does not
+// have.
+func checkRaisedModeMax(name, owner string, ms *game.ModeSpec) {
+	if ms.RaiseMaxIf.IsZero() && ms.RaisedMax == 0 {
+		return
+	}
+	if ms.RaiseMaxIf.IsZero() || ms.RaisedMax == 0 {
+		panic(fmt.Sprintf("effects.Register: %q %s declares half a conditional mode count — use OrUpToIf / InsteadIf / AnyNumberIf", name, owner))
+	}
+	if ms.Max <= 0 || ms.RaisedMax <= ms.Max {
+		panic(fmt.Sprintf("effects.Register: %q %s raises Max %d to %d — a conditional count must raise a bounded Max", name, owner, ms.Max, ms.RaisedMax))
+	}
+	if !ms.Repeatable && ms.RaisedMax > len(ms.Options) {
+		panic(fmt.Sprintf("effects.Register: %q %s raises Max to %d with only %d bullets", name, owner, ms.RaisedMax, len(ms.Options)))
+	}
+	// #1655: a forced count ("choose both instead", InsteadIf) raises
+	// the minimum too, and never past the raised maximum or below the
+	// printed minimum — either would be a count no printed card has.
+	if ms.RaisedMin != 0 && (ms.RaisedMin <= ms.Min || ms.RaisedMin > ms.RaisedMax) {
+		panic(fmt.Sprintf("effects.Register: %q %s raises Min %d to %d with a raised Max of %d", name, owner, ms.Min, ms.RaisedMin, ms.RaisedMax))
 	}
 }
 

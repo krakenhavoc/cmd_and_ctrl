@@ -80,11 +80,14 @@
     castSacrificeClause,
     castSacrificeLabel,
     optionalCostsOf,
+    castTeamworkOffer,
+    castBlightOffer,
     tapCostOf,
     tapCostLimit,
     alternativeCostsOf,
     alternativeCostByKey,
     castTargetOverride,
+    modesUnderChoices,
     altCostPayOptions,
     applyCastChoices,
     castChoicesBase,
@@ -95,6 +98,9 @@
     togglePick,
     canConfirm,
     setConfirmHandler,
+    needsDivision,
+    withDivision,
+    distributionOf,
     type CastChoices,
     type CastSourceZone,
     type TargetingState,
@@ -104,6 +110,7 @@
   import { castPreviewParams } from "../../castPreview";
   import { orderSacrificeOptions, sacrificeCount, sacrificeRange } from "../../sacrificeCost";
   import XCostModal from "./XCostModal.svelte";
+  import DivideDamageModal from "./DivideDamageModal.svelte";
   import SacrificeCostModal from "./SacrificeCostModal.svelte";
   import CrewCostModal from "./CrewCostModal.svelte";
   import CounterCostModal from "./CounterCostModal.svelte";
@@ -144,6 +151,9 @@
     onSelectCombatCard: (cardID: string) => void;
     onDeclareAttack: (targetPlayerID: string) => void;
     onDeclareBlock: (attackerCardID: string) => void;
+    // #1724: a token group's "Attack <seat> with N" — forwarded to the
+    // viewer's own PlayerPanel. See PlayerPanel's prop of the same name.
+    onDeclareAttackers?: (attackerIDs: string[], defenderSeatID: string) => void;
     // #519: connectionBanner.ts's actionsDisabled(status), computed by
     // Game.svelte and handed down rather than recomputed here — Board
     // has no socket of its own to ask. Dims the table and turns every
@@ -177,6 +187,7 @@
     onSelectCombatCard,
     onDeclareAttack,
     onDeclareBlock,
+    onDeclareAttackers,
     disabled = false,
     autopassEnabled,
     loopNotice = "",
@@ -468,7 +479,62 @@
     sacrificePromptCard = null;
     sacrificePromptChoices = {};
     if (!card) return;
-    afterCastCosts(card, { ...choices, sacrificeIDs: instanceIDs });
+    afterSacrificeCost(card, { ...choices, sacrificeIDs: instanceIDs });
+  }
+
+  // #1703: a claimed teamwork offer asks which creatures to tap — the
+  // crew picker, since CR 702.194a is crew's sentence on a spell — and
+  // a claimed blight asks which one creature takes the counters. Both
+  // after the sacrifice step and before X, in the order the server
+  // validates the announcement.
+  let teamworkPrompt = $state<{ card: CardView; n: number; choices: CastChoices } | null>(null);
+  let teamworkPromptOptionIDs = $state<string[]>([]);
+  const teamworkOptions = $derived.by(() => {
+    const ids = new Set(teamworkPromptOptionIDs);
+    return view.battlefield.cards.filter((c) => ids.has(c.instance_id));
+  });
+  let blightPrompt = $state<{
+    card: CardView;
+    label: string;
+    choices: CastChoices;
+  } | null>(null);
+  let blightPromptOptionIDs = $state<string[]>([]);
+  const blightOptions = $derived.by(() =>
+    orderSacrificeOptions(view.battlefield.cards, blightPromptOptionIDs),
+  );
+
+  function afterSacrificeCost(card: CardView, choices: CastChoices): void {
+    const tw = castTeamworkOffer(card, choices);
+    if (tw && choices.teamworkIDs === undefined) {
+      teamworkPromptOptionIDs = tw.options;
+      teamworkPrompt = { card, n: tw.n, choices };
+      return;
+    }
+    const bl = castBlightOffer(card, choices);
+    if (bl && choices.blightIDs === undefined) {
+      blightPromptOptionIDs = bl.options;
+      blightPrompt = {
+        card,
+        label: `a creature you control for ${bl.offer.label ?? `Blight ${bl.n}`} (it gets ${bl.n} -1/-1 counter${bl.n === 1 ? "" : "s"})`,
+        choices,
+      };
+      return;
+    }
+    afterCastCosts(card, choices);
+  }
+
+  function confirmTeamwork(ids: string[]): void {
+    const p = teamworkPrompt;
+    teamworkPrompt = null;
+    if (!p) return;
+    afterSacrificeCost(p.card, { ...p.choices, teamworkIDs: ids });
+  }
+
+  function confirmBlight(ids: string[]): void {
+    const p = blightPrompt;
+    blightPrompt = null;
+    if (!p) return;
+    afterSacrificeCost(p.card, { ...p.choices, blightIDs: ids });
   }
 
   // S22: convoke / waterbend — "you may tap your own untapped
@@ -586,7 +652,7 @@
       sacrificePromptCard = card;
       return;
     }
-    afterCastCosts(card, choices);
+    afterSacrificeCost(card, choices);
   }
 
   function afterCastCosts(card: CardView, choices: CastChoices): void {
@@ -594,7 +660,7 @@
     // and it is 0, so the picker is skipped and nothing is sent. The
     // server refuses a non-zero X on such a cast, which is what makes
     // this a prompt decision rather than a rule the client enforces.
-    if (hasXCost(card) && !castLocksXAtZero(card, choices.altCost)) {
+    if (hasXCost(card, choices.altCost) && !castLocksXAtZero(card, choices.altCost)) {
       xPromptChoices = choices;
       xPromptCard = card;
       return;
@@ -787,7 +853,8 @@
   function continueCast(card: CardView, choices: CastChoices): void {
     if (isModal(card)) {
       modePromptChoices = choices;
-      modePromptCard = card;
+      // #1655: a ticked kicker can change how many bullets it may take.
+      modePromptCard = modesUnderChoices(card, choices);
       return;
     }
     // S14: if the card declares a target_mode (catalog cards with
@@ -846,7 +913,42 @@
   // another clause to ask about opens the next prompt; a finished
   // walk fires the one action carrying every pick, each stamped with
   // the clause it answered.
+  //
+  // #1563: a divided step with two or more picks asks for the shares
+  // first (CR 601.2d — the division is announced with the targets),
+  // and the walk carries on from confirmDivision.
   function stepOrFire(state: TargetingState): void {
+    if (needsDivision(state)) {
+      dividePrompt = state;
+      return;
+    }
+    continueWalk(state);
+  }
+
+  // dividePrompt is the walk paused on a divided step's shares; the
+  // targeting store stays live underneath so Back returns to the picks.
+  let dividePrompt = $state<TargetingState | null>(null);
+  const divideTargets = $derived.by(() => {
+    const p = dividePrompt;
+    if (!p) return [];
+    const names = new Map<string, string>();
+    for (const c of view.battlefield.cards) names.set(c.instance_id, c.name);
+    for (const seat of view.seats) names.set(seat.id, seat.name);
+    return p.picked.map((ref) => ({ id: ref.id, name: names.get(ref.id) ?? ref.id.slice(0, 8) }));
+  });
+  // A walk that ends underneath the prompt — cancelled, or a trigger's
+  // pick_target answered elsewhere — takes the prompt with it.
+  $effect(() => {
+    if (!$targeting && dividePrompt) dividePrompt = null;
+  });
+  function confirmDivision(dist: Record<string, number>): void {
+    const state = dividePrompt;
+    dividePrompt = null;
+    if (!state) return;
+    continueWalk(withDivision(state, dist));
+  }
+
+  function continueWalk(state: TargetingState): void {
     const next = advance(state);
     if (next) {
       targeting.set(next);
@@ -864,11 +966,11 @@
       // S20 sub-PR 2: answering a triggered ability's pick_target
       // prompt. The store clears when the next snapshot no longer
       // carries the choice (see the effect below).
-      guardedSendAction(
-        "resolve_choice",
-        { choice_id: state.choiceID, targets },
-        viewerID ?? undefined,
-      );
+      // #1563: a divided trigger's shares ride the same answer.
+      const answer: Record<string, unknown> = { choice_id: state.choiceID, targets };
+      const dist = distributionOf(state);
+      if (dist) answer.distribution = dist;
+      guardedSendAction("resolve_choice", answer, viewerID ?? undefined);
       targeting.set(null);
       return;
     }
@@ -902,6 +1004,9 @@
       // these targets, and sent in the same message.
       if (state.ability.phyrexianLife) params.phyrexian_life = state.ability.phyrexianLife;
       if (state.modes !== undefined) params.modes = state.modes;
+      // #1563: the division, announced with the targets (CR 602.2b).
+      const abilityDist = distributionOf(state);
+      if (abilityDist) params.distribution = abilityDist;
       // #1310: the waterbend taps chosen before the targeting step.
       if (abilityWaterbendIDs && abilityWaterbendIDs.length > 0) {
         params.waterbend_ids = abilityWaterbendIDs;
@@ -919,6 +1024,9 @@
     }
     const params: Record<string, unknown> = { instance_id: state.card.instance_id, targets };
     if (state.modes !== undefined) params.modes = state.modes;
+    // #1563: the division, announced with the targets (CR 601.2d).
+    const castDist = distributionOf(state);
+    if (castDist) params.distribution = castDist;
     // #764: a modal activated ability sends its modes beside its
     // targets (CR 602.2b) — handled in the ability branch above.
     applyCastChoices(params, state.choices);
@@ -2046,6 +2154,7 @@
               onActivateAbility={handleActivateAbility}
               onManaAbilityCost={handleManaAbilityCost}
               considering={seat.id === consideringSeatID}
+              onDeclareAttackers={pos === "self" && !disabled ? onDeclareAttackers : undefined}
             />
           {/if}
         </div>
@@ -2155,6 +2264,27 @@
     options={crewOptions}
     onConfirm={confirmCrew}
     onCancel={() => (crewPrompt = null)}
+  />
+  <!-- #1703: teamwork (CR 702.194a) is crew's picker on a spell. -->
+  <CrewCostModal
+    card={teamworkPrompt?.card ?? null}
+    ability={null}
+    threshold={teamworkPrompt?.n}
+    keyword="Teamwork"
+    rule="CR 702.194"
+    options={teamworkOptions}
+    onConfirm={confirmTeamwork}
+    onCancel={() => (teamworkPrompt = null)}
+  />
+  <!-- #1703: blight N (CR 701.68a) — one creature you control. -->
+  <SacrificeCostModal
+    source={blightPrompt?.card ?? null}
+    label={blightPrompt?.label ?? "a creature you control"}
+    options={blightOptions}
+    count={1}
+    verb="Choose"
+    onConfirm={confirmBlight}
+    onCancel={() => (blightPrompt = null)}
   />
   <CounterCostModal
     card={counterPrompt?.card ?? manaCounterPrompt?.card ?? null}
@@ -2319,10 +2449,23 @@
       sacrificePromptChoices = {};
     }}
   />
+  <!-- #1563, CR 601.2d: the shares of a divided step, asked once its
+       two or more targets are picked. -->
+  <DivideDamageModal
+    sourceName={dividePrompt ? dividePrompt.card.name : null}
+    targets={divideTargets}
+    total={dividePrompt?.divide ?? 0}
+    upTo={dividePrompt?.divideUpTo === true}
+    onConfirm={confirmDivision}
+    onCancel={() => (dividePrompt = null)}
+  />
   <XCostModal
     gameID={view.id}
     card={xPromptCard}
     suggestedMax={suggestedX}
+    costLabel={xPromptCard
+      ? alternativeCostByKey(xPromptCard, xPromptChoices.altCost)?.mana_cost
+      : undefined}
     castParams={castPreviewParams(xPromptChoices)}
     onConfirm={confirmX}
     onCancel={() => {

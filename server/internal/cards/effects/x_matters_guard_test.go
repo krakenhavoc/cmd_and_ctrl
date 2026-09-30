@@ -56,8 +56,10 @@ import (
 // that happens whatever X is.
 var xMattersAllowlist = map[string]string{
 	"benevolent_hydra.go Benevolent Hydra":     "1/1 body: the Hydra survives at X=0 with its counter-boosting replacement and its {T} ability",
+	"domesticated_hydra.go Domesticated Hydra": "Monstrosity X at X=0 still makes it monstrous, and a monstrous Hydra has trample (#1700)",
 	"farmer_cotton.go Farmer Cotton":           "1/1 legendary body: the creature stays even when it brings no Halflings and no Food",
 	"fated_firepower.go Fated Firepower":       "an enchantment with flash: the permanent stays on the battlefield at X=0, amplifying by the 0 fire counters it entered with",
+	"lightning_serpent.go Lightning Serpent":   "2/1 trample haste body: at X=0 it still attacks for 2 before the end-step sacrifice",
 	"pull_from_tomorrow.go Pull from Tomorrow": "\"then discard a card\" is fixed: X=0 draws nothing and still discards, so it is a bad play rather than a no-op",
 	"spiteful_banditry.go Spiteful Banditry":   "the Treasure-on-death trigger never reads X: at X=0 the enchantment deals no damage and is still an engine",
 	"springleaf_parade.go Springleaf Parade":   "the \"creature tokens you control have {T}: Add one mana of any color\" static never reads X",
@@ -209,11 +211,24 @@ var xHolders = map[string]bool{"ctx": true, "cast": true}
 // readsXDirectly reports whether the subtree reads the announced X in
 // any spelling the catalog uses: `ctx.X()` on an effect Context,
 // `cast.X` on a game.CastCounts, or `item.XValue` off the stack item.
+//
+// #1563 adds a fourth, a DECLARATION rather than a read: a divided
+// clause whose amount is the announced X (`game.DivideSpec{FromX:
+// true}`, built by DivideX / DivideXDoublingFrom). The engine reads X
+// for it at announce, and the card's resolution only honours the
+// division — so Shatterskull Smashing reaches X through its target
+// clause, and X=0 does nothing at all.
 func readsXDirectly(n ast.Node) bool {
 	found := false
 	ast.Inspect(n, func(n ast.Node) bool {
 		if found {
 			return false
+		}
+		if kv, ok := n.(*ast.KeyValueExpr); ok {
+			if key, ok := kv.Key.(*ast.Ident); ok && key.Name == "FromX" {
+				found = true
+				return false
+			}
 		}
 		sel, ok := n.(*ast.SelectorExpr)
 		if !ok {

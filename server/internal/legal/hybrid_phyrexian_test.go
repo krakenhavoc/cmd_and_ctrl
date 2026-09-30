@@ -15,11 +15,10 @@ import (
 // guard in castMovesForCard then dropped the card: a compleated
 // planeswalker could not be cast at all, from the board or by a bot.
 //
-// The cast the enumerator offers is the MANA payment — the life half
-// (CR 107.4f) is an announce-time claim the caster makes, not a
-// second move. That keeps #695's complaint from spreading: nothing
-// here advertises a life payment a life total could not cover,
-// because nothing here advertises a life payment.
+// The cast the enumerator offers first is the MANA payment. Since
+// #1677 the life half (CR 107.4f) is offered too — as the announce-time
+// `phyrexian_life` count, bounded by the life total the way #695 asks
+// — when the mana alone cannot pay; see phyrexian_cast_life_test.go.
 
 // TestHybridPhyrexianCastIsEnumerated — with mana for either half of
 // the symbol, the cast is offered.
@@ -58,7 +57,9 @@ func TestHybridPhyrexianCastIsEnumerated(t *testing.T) {
 // TestHybridPhyrexianCastNeedsTheManaForTheSymbol — the offer is still
 // affordability-gated: three lands cannot pay a four-symbol cost, and
 // the enumerator does not quietly treat the Phyrexian symbol as free
-// just because it has a life alternative the move does not claim.
+// just because it has a life alternative. Since #1677 the cast IS
+// offered — but only with the life claimed on the move, never as a
+// mana payment the lands cannot make.
 func TestHybridPhyrexianCastNeedsTheManaForTheSymbol(t *testing.T) {
 	g := newTable(t)
 	active := g.Seats[g.Turn.ActiveSeat]
@@ -78,8 +79,8 @@ func TestHybridPhyrexianCastNeedsTheManaForTheSymbol(t *testing.T) {
 	dispatchAll(t, g, active.ID, moves)
 
 	for _, m := range moves {
-		if m.Source == sage {
-			t.Errorf("offered a cast three lands cannot pay: %q", m.Label)
+		if m.Source == sage && phyrexianLifeOf(t, m) == 0 {
+			t.Errorf("offered a mana payment three lands cannot make: %q", m.Label)
 		}
 	}
 }
@@ -89,10 +90,8 @@ func TestHybridPhyrexianCastNeedsTheManaForTheSymbol(t *testing.T) {
 // An activated ability's mana component has an announce for the life
 // half now (ActivateAbilityParams.PhyrexianLife, CR 602.2b), so the
 // enumerator solves for the pair: the X and how many symbols the
-// life buys. Unlike the cast above it DOES offer the life payment,
-// and the reason the two differ is the reason #695 gave — an offer
-// is safe exactly when it is bounded by the life total, which this
-// one is and a cast's unbounded one would not have been.
+// life buys. It is bounded by the life total, which is what #695 asked
+// of any life offer; #1677 brought the cast above to the same shape.
 
 // phyrexianLifeOf pulls phyrexian_life out of an activate_ability
 // move's params.
@@ -170,8 +169,11 @@ func TestActivationOffersTheLifeOptionWhenManaIsShort(t *testing.T) {
 	}
 	// #74: the price rides the Move, so a policy can see what the
 	// activation costs in life.
-	if got[0].Cost == nil || got[0].Cost.Life != game.PhyrexianLifePerSymbol {
-		t.Errorf("move cost = %+v, want Life = %d", got[0].Cost, game.PhyrexianLifePerSymbol)
+	// #1677: and the part of it that buys nothing, so a policy does
+	// not read Phyrexian life as a payoff proxy.
+	if got[0].Cost == nil || got[0].Cost.Life != game.PhyrexianLifePerSymbol ||
+		got[0].Cost.PhyrexianLife != game.PhyrexianLifePerSymbol {
+		t.Errorf("move cost = %+v, want Life = PhyrexianLife = %d", got[0].Cost, game.PhyrexianLifePerSymbol)
 	}
 	// #544: the engine accepts exactly what the list offered.
 	dispatchAll(t, g, active.ID, moves)
@@ -208,5 +210,26 @@ func TestActivationDoesNotOfferLifeItCannotPay(t *testing.T) {
 		if tc.offer {
 			dispatchAll(t, g, active.ID, moves)
 		}
+	}
+}
+
+// TestActivationDoesNotOfferPhyrexianLifeToALockedSeat — CR 119.8,
+// the half of the life rule a bare "life >= cost" check missed
+// (#1677): a seat whose life total can't change can't pay life, the
+// strike refuses the claim, and the Pod with no green source is not
+// offered.
+func TestActivationDoesNotOfferPhyrexianLifeToALockedSeat(t *testing.T) {
+	g := newTable(t)
+	active := g.Seats[g.Turn.ActiveSeat]
+	clearHand(active)
+	pod := phyrexianPod(g, active)
+	battlefieldCard(g, active, basic("Island", "Island"))
+	advanceTo(t, g, game.StepPrecombatMain)
+	g.WithWriteLock(func() {
+		g.GrantLifeTotalLockForEffect(active.ID, "Test — your life total can't change",
+			uuid.Nil, g.UntilYourNextTurnDuration(active.ID))
+	})
+	if got := activationsOf(legal.EnumerateFor(g, active.ID), pod); len(got) != 0 {
+		t.Errorf("a locked seat was offered %q", got[0].Label)
 	}
 }

@@ -46,3 +46,35 @@ func TestBotsObeyGoadInFourSeats(t *testing.T) {
 		})
 	}
 }
+
+// TestBotsObeyTwoGoadersInFourSeats — #1598: goaded by the next two
+// seats, the creature attacks the one opponent who goaded it neither
+// time, and the combat still ends under every policy.
+func TestBotsObeyTwoGoadersInFourSeats(t *testing.T) {
+	for name, pol := range map[string]aiseat.Policy{"heuristic": heuristic.New(), "aggressive": aggressive()} {
+		t.Run(name, func(t *testing.T) {
+			g := limitTable(t, 4)
+			s := g.Turn.ActiveSeat
+			active := g.Seats[s]
+			free := g.Seats[(s+3)%4]
+			goaded := limitPush(g, active, "Twice-Goaded Ogre", "Creature — Ogre", "", 1, 1)
+			for _, p := range []int{(s + 1) % 4, (s + 2) % 4} {
+				if err := g.SetGoaded(goaded, g.Seats[p].ID); err != nil {
+					t.Fatal(err)
+				}
+			}
+			attackedAt := map[uuid.UUID]bool{}
+			driveOneCombatWatching(t, g, pol, func() {
+				for i := range g.Battlefield.Cards {
+					c := &g.Battlefield.Cards[i]
+					if c.InstanceID == goaded && c.AttackingTarget != uuid.Nil {
+						attackedAt[c.AttackingTarget] = true
+					}
+				}
+			})
+			if len(attackedAt) != 1 || !attackedAt[free.ID] {
+				t.Fatalf("the twice-goaded creature attacked %v, want only the non-goader %s", attackedAt, free.ID)
+			}
+		})
+	}
+}

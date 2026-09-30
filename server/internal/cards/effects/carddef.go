@@ -123,6 +123,8 @@ func buildDef(spec Spec) *game.CardDef {
 		AttackTaxes:                spec.AttackTaxes,
 		BlockRules:                 spec.BlockRules,
 		AttackLimits:               spec.AttackLimits,
+		HexproofBypasses:           spec.HexproofBypasses,
+		WardSuppressions:           spec.WardSuppressions,
 		CastableZones:              spec.CastableZones,
 		SpecialActions:             spec.SpecialActions,
 		SpecialActionGrants:        spec.SpecialActionGrants,
@@ -185,6 +187,17 @@ func buildDef(spec Spec) *game.CardDef {
 	if gift := spec.Gift; gift != nil {
 		d.OptionalCosts = append(append([]game.AdditionalCost(nil), d.OptionalCosts...), gift.cost())
 		d.Triggered = append(append([]game.TriggeredAbility(nil), d.Triggered...), gift.entryTrigger(spec.Name))
+	}
+	// #1665 / CR 702.94a: miracle's trigger belongs to the KEYWORD,
+	// grown here from the card's Miracle alternative cost for the
+	// reason madness's pair is — the cost is the declaration, and the
+	// "reveal it as you draw it" half cannot be forgotten.
+	for _, ac := range spec.AlternativeCosts {
+		if ac.Key == game.AltCostKeyMiracle {
+			d.Triggered = append(append([]game.TriggeredAbility(nil), d.Triggered...),
+				game.MiracleTrigger(spec.Name, ac.ManaCost))
+			break
+		}
 	}
 	if spec.Madness != "" {
 		d.Replacements = append(append([]game.ReplacementEffect(nil), d.Replacements...),

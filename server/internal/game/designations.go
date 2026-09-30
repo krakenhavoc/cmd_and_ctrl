@@ -13,6 +13,8 @@ import "github.com/google/uuid"
 //	CR 721.2   a station THRESHOLD  "as long as this has N or more charge counters, it has …"
 //	CR 709.5   a Room's UNLOCKED    a locked door has no rules text at all
 //	           DOOR                 (designed here, built by #886)
+//	CR 614.12  a CHOSEN OPTION      "choose Khans or Dragons. • Khans — …"
+//	           (anchor word)        (#1572, ADR 0071 amendment 2026-09-27)
 //
 // Four printed mechanics, one sentence. So one field, one predicate,
 // one place — and nowhere else in the engine asks the question.
@@ -112,6 +114,30 @@ const (
 	// the build if a card file tries. #886 adds the state and the
 	// unlock special action; nothing else here changes when it does.
 	DesignationDoorUnlocked
+
+	// DesignationChosenOption is CR 614.12's anchor-word form: "As
+	// this enters, choose Khans or Dragons. • Khans — [ability]
+	// • Dragons — [ability]". The ability printed after an anchor word
+	// exists only while that word is the permanent's chosen option
+	// (Card.ChosenOption), so a Siege has exactly one of its two
+	// abilities once its controller has answered, and neither in the
+	// window before (#1572). Option is the anchor word.
+	//
+	// Not a designation in CR 701's sense — nothing names a chosen
+	// option one — but exactly the thing this gate exists to ask:
+	// per-permanent battlefield state, not copiable, cleared by CR
+	// 400.7, whose only job is to switch one of the permanent's own
+	// printed abilities on. See ADR 0071's 2026-09-27 amendment.
+	DesignationChosenOption
+
+	// DesignationMonstrous is CR 701.37b's "monstrous" designation:
+	// "As long as this creature is monstrous, it has hexproof and
+	// indestructible" (Fleecemane Lion). Set by the monstrosity
+	// keyword action (MonstrosityForEffect) and kept until the
+	// permanent leaves the battlefield. ADR 0071 amendment, #1700.
+	// Appended rather than slotted beside Harnessed so no existing
+	// kind's value moves.
+	DesignationMonstrous
 )
 
 // DoorSide names which half of a Room a DesignationDoorUnlocked gate
@@ -141,6 +167,13 @@ type Designation struct {
 
 	// Door is which half of a Room a DoorUnlocked gate is printed on.
 	Door DoorSide
+
+	// Option is the anchor word a ChosenOption gate is printed after —
+	// "Khans", "Temur". Compared exactly against Card.ChosenOption,
+	// which the as-enters prompt stamps from the same card's own
+	// option list, so the two spellings cannot drift. Empty for every
+	// other kind.
+	Option string
 }
 
 // Active reports whether this gate is satisfied by the object right
@@ -165,6 +198,14 @@ func (d Designation) Active(c Card) bool {
 		return c.Counters[CounterCharge] >= d.N
 	case DesignationHarnessed:
 		return c.Harnessed
+	case DesignationMonstrous:
+		return c.Monstrous
+	case DesignationChosenOption:
+		// An unanswered prompt ("") matches no anchor word, so a
+		// Siege has NEITHER ability before its controller chooses —
+		// never both, which would be the stronger-than-printed
+		// direction.
+		return d.Option != "" && c.ChosenOption == d.Option
 	case DesignationDoorUnlocked:
 		// Reserved. Nothing can unlock a door yet, so nothing is
 		// unlocked — and no registered card declares this gate, so
@@ -198,6 +239,16 @@ func ChargeCounters(n int) Designation {
 // Harnessed builds a CR 701.64 / 702.186b gate: the ability exists
 // while the permanent is harnessed.
 func Harnessed() Designation { return Designation{Kind: DesignationHarnessed} }
+
+// Monstrous builds a CR 701.37b gate: the ability exists while the
+// permanent is monstrous (#1700).
+func Monstrous() Designation { return Designation{Kind: DesignationMonstrous} }
+
+// ChosenOptionIs builds a CR 614.12 anchor-word gate: the ability
+// exists while `option` is the permanent's chosen option (#1572).
+func ChosenOptionIs(option string) Designation {
+	return Designation{Kind: DesignationChosenOption, Option: option}
+}
 
 // ClassLevelOf is the permanent's current Class level (CR 716.2b): a
 // Class permanent with no level designation is level 1, so the zero
@@ -493,4 +544,77 @@ func (g *Game) HarnessForEffect(cardID uuid.UUID) error {
 func (g *Game) IsHarnessed(cardID uuid.UUID) bool {
 	card := findBattlefieldCard(g, cardID)
 	return card != nil && card.Harnessed
+}
+
+// MonstrosityForEffect is the CR 701.37a keyword action "Monstrosity
+// N": "If this permanent isn't monstrous, put N +1/+1 counters on it
+// and it becomes monstrous." ADR 0071 amendment, #1700. The one
+// writer of Card.Monstrous outside the snapshot restore.
+//
+// Three rules, each a line below:
+//
+//   - The "isn't monstrous" check is made HERE, at resolution, not at
+//     activation. CR 701.37a is an "if", not an activation
+//     restriction, so a second activation is legal and simply does
+//     nothing — including one activated in response to the first,
+//     which finds the permanent already monstrous when it resolves.
+//     No counters, no event, no second trigger (CR 701.37c).
+//   - The counters go through the CR 614 pipeline, placed by the
+//     permanent's controller, so a Doubling Season or a Hardened
+//     Scales applies — and, when both do, the CR 616 ordering prompt
+//     pauses the placement. The designation and the event are the
+//     continuation, so a trigger never sees the creature before its
+//     counters are on it.
+//   - The event carries N, the ANNOUNCED amount, not the number that
+//     landed. "X" in "when this creature becomes monstrous, … X" is
+//     the X of the monstrosity instruction (CR 701.37c; Polukranos's
+//     ruling), so a doubled placement does not double the trigger.
+//
+// It becomes monstrous even when the counters are replaced away
+// entirely (CR 614.10 / a "can't have counters" effect): the
+// instruction's second half is not conditional on the first. N below
+// zero is treated as zero.
+//
+// A permanent that is not on the battlefield does nothing and is not
+// an error: the ability's source left in response, which is ordinary
+// play, and CR 701.37b says only permanents can become monstrous.
+//
+// Caller must hold g.mu in write mode.
+func (g *Game) MonstrosityForEffect(cardID uuid.UUID, n int) error {
+	card := findBattlefieldCard(g, cardID)
+	if card == nil || card.Monstrous {
+		return nil
+	}
+	if n < 0 {
+		n = 0
+	}
+	placer := card.Controller
+	return g.AddCounterByThenForEffect(placer, cardID, CounterPlusOne, n, func(g *Game, _ int) error {
+		// Re-find: the placement may have paused on a CR 616 prompt,
+		// and the permanent pointer is not stable across an action.
+		c := findBattlefieldCard(g, cardID)
+		if c == nil || c.Monstrous {
+			return nil
+		}
+		c.Monstrous = true
+		g.EmitEvent(Event{
+			Kind:   EventBecameMonstrous,
+			Actor:  c.Controller,
+			Source: cardID,
+			CardID: cardID,
+			Target: cardID,
+			Amount: n,
+		})
+		return nil
+	})
+}
+
+// IsMonstrous reports whether the named battlefield permanent is
+// monstrous. False for anything not on the battlefield — CR 400.7, a
+// permanent that left is a new object and is not monstrous.
+//
+// Caller must hold g.mu.
+func (g *Game) IsMonstrous(cardID uuid.UUID) bool {
+	card := findBattlefieldCard(g, cardID)
+	return card != nil && card.Monstrous
 }

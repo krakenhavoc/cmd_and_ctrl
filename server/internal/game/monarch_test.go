@@ -10,7 +10,7 @@ import (
 // abilities (CR 724.2), not a sticker. Combat damage to the monarch
 // hands the crown to the attacker's controller, and the monarch draws
 // at the beginning of their own end step. Both go through the stack,
-// and CR 725.4 keeps the crown on the table when its holder leaves.
+// and CR 724.4 keeps the crown on the table when its holder leaves.
 
 // settleMonarchStack passes priority until nothing is on, or headed
 // for, the stack — answering any CR 603.3b trigger-ordering prompt in
@@ -177,7 +177,7 @@ func TestMonarchNoTransferWithoutAMonarch(t *testing.T) {
 }
 
 // TestMonarchMultipleAttackersInOneStep: two creatures connecting is
-// two triggers (CR 725.3 — the crown changes hands once per creature),
+// two triggers (CR 724.3 — the crown changes hands once per creature),
 // and they share a controller so the table is not asked to order a
 // choice with one outcome.
 func TestMonarchMultipleAttackersInOneStep(t *testing.T) {
@@ -269,9 +269,9 @@ func TestMonarchEndStepDrawFollowsTheCrownWithinTheTurn(t *testing.T) {
 }
 
 // TestMonarchCrownPassesToActivePlayerWhenItsHolderIsEliminated is
-// CR 725.4. Lethal combat damage is the case that matters: the
+// CR 724.4. Lethal combat damage is the case that matters: the
 // transfer trigger is controlled by the dying monarch, so CR 800.4a
-// takes it off the stack with them — without 725.4 the crown would be
+// takes it off the stack with them — without 724.4 the crown would be
 // stuck on an empty seat forever.
 func TestMonarchCrownPassesToActivePlayerWhenItsHolderIsEliminated(t *testing.T) {
 	g := newFourPlayerActiveGame(t)
@@ -286,7 +286,7 @@ func TestMonarchCrownPassesToActivePlayerWhenItsHolderIsEliminated(t *testing.T)
 		t.Fatalf("setup: monarch survived 10 damage at 3 life")
 	}
 	if g.Monarch != attacker.ID {
-		t.Errorf("monarch = %v, want the active player %v (CR 725.4)", g.Monarch, attacker.ID)
+		t.Errorf("monarch = %v, want the active player %v (CR 724.4)", g.Monarch, attacker.ID)
 	}
 }
 
@@ -368,5 +368,173 @@ func TestMonarchSurvivesCloneAndRestore(t *testing.T) {
 	}
 	if len(g.Listeners) != len(before.Listeners) {
 		t.Errorf("restore dropped listeners: %d, want %d", len(g.Listeners), len(before.Listeners))
+	}
+}
+
+// --- #1722: the crown from a card effect ------------------------------
+
+// monarchChangesSince returns the EventMonarchChanged events from event
+// index `from` on.
+func monarchChangesSince(g *Game, from int) []Event {
+	var out []Event
+	for _, ev := range g.Events[from:] {
+		if ev.Kind == EventMonarchChanged {
+			out = append(out, ev)
+		}
+	}
+	return out
+}
+
+// TestSetMonarchForEffectUnderTheCallersLock is the seam itself: from
+// inside a write-locked frame — where every resolving effect runs —
+// SetMonarch deadlocked; SetMonarchForEffect crowns the player and
+// announces it exactly as the manual set does.
+func TestSetMonarchForEffectUnderTheCallersLock(t *testing.T) {
+	g := newFourPlayerActiveGame(t)
+	a, b := g.Seats[1], g.Seats[2]
+	start := len(g.Events)
+
+	g.WithWriteLock(func() {
+		if err := g.SetMonarchForEffect(a.ID); err != nil {
+			t.Errorf("SetMonarchForEffect: %v", err)
+		}
+	})
+	crown(t, g, b.ID)
+
+	got := monarchChangesSince(g, start)
+	if len(got) != 2 {
+		t.Fatalf("%d monarch changes, want 2 (one per route)", len(got))
+	}
+	if got[0].Actor != a.ID || got[0].Target != uuid.Nil {
+		t.Errorf("effect route announced %v <- %v, want %v <- nobody", got[0].Actor, got[0].Target, a.ID)
+	}
+	if got[1].Actor != b.ID || got[1].Target != a.ID {
+		t.Errorf("manual route announced %v <- %v, want %v <- %v", got[1].Actor, got[1].Target, b.ID, a.ID)
+	}
+}
+
+// TestMonarchBecomingItAgainIsNoChange: CR 724.3 — one monarch, and
+// becoming it is a change of holder. Re-crowning the holder, by either
+// route, announces nothing, so "whenever you become the monarch" cannot
+// fire twice.
+func TestMonarchBecomingItAgainIsNoChange(t *testing.T) {
+	g := newActiveGame(t)
+	me := g.Seats[0]
+	crown(t, g, me.ID)
+	start := len(g.Events)
+	crown(t, g, me.ID)
+	g.WithWriteLock(func() {
+		if err := g.SetMonarchForEffect(me.ID); err != nil {
+			t.Errorf("SetMonarchForEffect: %v", err)
+		}
+	})
+	if got := monarchChangesSince(g, start); len(got) != 0 {
+		t.Errorf("re-crowning the monarch announced %d changes, want 0", len(got))
+	}
+}
+
+// TestSetMonarchForEffectRefusesAPlayerWhoLeft: the crown never goes
+// to a seat that has left (CR 800.4a), from either route, and an ID
+// that names no seat is a caller bug.
+func TestSetMonarchForEffectRefusesAPlayerWhoLeft(t *testing.T) {
+	g := newFourPlayerActiveGame(t)
+	gone := g.Seats[2]
+	if err := g.Concede(gone.ID); err != nil {
+		t.Fatalf("Concede: %v", err)
+	}
+	g.WithWriteLock(func() {
+		if err := g.SetMonarchForEffect(gone.ID); err != nil {
+			t.Errorf("SetMonarchForEffect on a departed seat: %v, want a quiet no-op", err)
+		}
+		if err := g.SetMonarchForEffect(uuid.New()); err != ErrPlayerNotFound {
+			t.Errorf("SetMonarchForEffect on no seat: %v, want ErrPlayerNotFound", err)
+		}
+	})
+	if err := g.SetMonarch(gone.ID); err != ErrPlayerNotFound {
+		t.Errorf("SetMonarch on a departed seat: %v, want ErrPlayerNotFound", err)
+	}
+	if g.Monarch != uuid.Nil {
+		t.Errorf("monarch = %v, want nobody", g.Monarch)
+	}
+}
+
+// TestMonarchCrownPassesToTheNextPlayerWhenTheActiveMonarchLeaves is
+// CR 724.4's second clause: "If the active player is leaving the game
+// …, the next player in turn order becomes the monarch."
+func TestMonarchCrownPassesToTheNextPlayerWhenTheActiveMonarchLeaves(t *testing.T) {
+	g := newFourPlayerActiveGame(t)
+	active, next := g.Seats[0], g.Seats[1]
+	crown(t, g, active.ID)
+	start := len(g.Events)
+	if err := g.Concede(active.ID); err != nil {
+		t.Fatalf("Concede: %v", err)
+	}
+	if g.Monarch != next.ID {
+		t.Fatalf("monarch = %v, want the next player in turn order %v", g.Monarch, next.ID)
+	}
+	got := monarchChangesSince(g, start)
+	if len(got) != 1 || got[0].Actor != next.ID || got[0].Target != active.ID {
+		t.Errorf("the hand-on announced %+v, want one change %v <- %v", got, next.ID, active.ID)
+	}
+}
+
+// TestMonarchUnmovedWhenSomebodyElseLeaves: CR 724.4 is about the
+// MONARCH leaving.
+func TestMonarchUnmovedWhenSomebodyElseLeaves(t *testing.T) {
+	g := newFourPlayerActiveGame(t)
+	monarch, leaver := g.Seats[2], g.Seats[3]
+	crown(t, g, monarch.ID)
+	start := len(g.Events)
+	if err := g.Concede(leaver.ID); err != nil {
+		t.Fatalf("Concede: %v", err)
+	}
+	if g.Monarch != monarch.ID {
+		t.Errorf("monarch = %v, want it unchanged at %v", g.Monarch, monarch.ID)
+	}
+	if got := monarchChangesSince(g, start); len(got) != 0 {
+		t.Errorf("%d monarch changes when a non-monarch left, want 0", len(got))
+	}
+}
+
+// TestMonarchChangeInvalidatesTheLayers: "as long as you're the
+// monarch" is a layer input no permanent moving stands in for.
+func TestMonarchChangeInvalidatesTheLayers(t *testing.T) {
+	g := newActiveGame(t)
+	before := g.layerVersion.Load()
+	crown(t, g, g.Seats[1].ID)
+	if g.layerVersion.Load() == before {
+		t.Error("the crown changed hands and the layer version did not move")
+	}
+}
+
+// TestMonarchAsTurnBeganIsStampedAtTheTurnBoundary: Knights of the
+// Black Rose's "if you were the monarch as the turn began" reads a
+// stamp taken as each turn begins — a mid-turn change does not move
+// it, the next turn's boundary does, and an undo restores it.
+func TestMonarchAsTurnBeganIsStampedAtTheTurnBoundary(t *testing.T) {
+	g := newActiveGame(t)
+	a, b := g.Seats[0], g.Seats[1]
+	if g.MonarchAsTurnBegan() != uuid.Nil {
+		t.Fatalf("turn 1 began with a monarch: %v", g.MonarchAsTurnBegan())
+	}
+	crown(t, g, a.ID)
+	if g.MonarchAsTurnBegan() != uuid.Nil {
+		t.Errorf("a mid-turn crown moved the turn-start stamp to %v", g.MonarchAsTurnBegan())
+	}
+	advanceTo(t, g, StepCleanup)
+	advanceTo(t, g, StepUpkeep)
+	if g.MonarchAsTurnBegan() != a.ID {
+		t.Fatalf("the next turn began with %v stamped, want %v", g.MonarchAsTurnBegan(), a.ID)
+	}
+	snap := g.Clone()
+	crown(t, g, b.ID)
+	advanceTo(t, g, StepCleanup)
+	advanceTo(t, g, StepUpkeep)
+	if g.MonarchAsTurnBegan() != b.ID {
+		t.Fatalf("stamp = %v, want %v", g.MonarchAsTurnBegan(), b.ID)
+	}
+	g.RestoreFrom(snap)
+	if g.MonarchAsTurnBegan() != a.ID {
+		t.Errorf("after undo the stamp is %v, want %v", g.MonarchAsTurnBegan(), a.ID)
 	}
 }

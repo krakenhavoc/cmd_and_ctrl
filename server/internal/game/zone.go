@@ -192,8 +192,8 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 		c.BattleX = 0
 		c.BattleY = 0
 		c.AttackingTarget = uuid.Nil
-		c.BlockingTarget = uuid.Nil
-		c.GoadedBy = uuid.Nil
+		c.clearBlocking()
+		c.Goads = nil
 		// #816 / CR 400.7: marked damage and the CR 702.2c deathtouch
 		// flag belong to the permanent that took them, and the card in
 		// the new zone is a new object. This is the ONE battlefield
@@ -243,6 +243,10 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 		// also what stops the restriction reader having to ask what
 		// zone the Needle is in.
 		c.ChosenName = ""
+		// #1572 / CR 614.12: and so does the chosen OPTION. A Siege
+		// that is bounced and recast chooses its anchor word again,
+		// and one in a graveyard has neither ability.
+		c.ChosenOption = ""
 		// #653 / #664, CR 400.7: how the SPELL was cast is a fact
 		// about the permanent that spell became, and CR 400.7d's
 		// licence to read it back ends with that permanent. A Phlage
@@ -264,6 +268,10 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 		// CR 701.64 harnessed designation — a permanent that leaves
 		// and comes back is a new object and is not harnessed.
 		c.Harnessed = false
+		// ADR 0071 amendment (#1700) / CR 400.7 + CR 701.37b: and so
+		// is monstrous — a flickered Polukranos is a new object that
+		// can become monstrous again.
+		c.Monstrous = false
 		// ADR 0090 / CR 400.7: and so is the CR 722.3a prepared
 		// designation. The copy it kept in exile names this OBJECT's
 		// epoch, which the increment above has just retired, so the

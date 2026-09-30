@@ -398,6 +398,13 @@ type GameSnapshot struct {
 	// mid-combat blocked state rather than losing it.
 	AnnouncedBlocks  map[uuid.UUID]uuid.UUID `json:"announcedBlocks,omitempty"`
 	BlockedAttackers map[uuid.UUID]bool      `json:"announcedBecameBlocked,omitempty"`
+	// AnnouncedAlsoBlocks is the rest of a blocker's announced pairs
+	// when it blocks more than one attacker (#1706): AnnouncedBlocks
+	// keeps the first, so a file this binary writes is read by an
+	// older one as "announced against its first attacker", and an
+	// older file — which has no key — restores every blocker with the
+	// one pair it could have. Additive, no schema bump.
+	AnnouncedAlsoBlocks map[uuid.UUID][]uuid.UUID `json:"announcedAlsoBlocks,omitempty"`
 
 	// AnnouncedAttacks is the attack declaration's half of the same
 	// bookkeeping (#859, attackers.go): the creatures that have had
@@ -609,54 +616,67 @@ type zoneSnapshot struct {
 // snapshotCard always sets it, so every file this binary writes
 // carries the key; restore backfills it when the key is missing.
 type cardSnapshot struct {
-	InstanceID               uuid.UUID           `json:"instanceId"`
-	Name                     string              `json:"name"`
-	ScryfallID               string              `json:"scryfallId,omitempty"`
-	OracleID                 string              `json:"oracleId,omitempty"`
-	TokenKey                 string              `json:"tokenKey,omitempty"`
-	TypeLine                 string              `json:"typeLine,omitempty"`
-	Power                    int                 `json:"power"`
-	Toughness                int                 `json:"toughness"`
-	VariableToughness        *bool               `json:"variableToughness,omitempty"`
-	ManaCost                 string              `json:"manaCost,omitempty"`
-	ProducedMana             []string            `json:"producedMana,omitempty"`
-	Colors                   []string            `json:"colors,omitempty"`
-	ColorIdentity            []string            `json:"colorIdentity,omitempty"`
-	StartingLoyalty          int                 `json:"startingLoyalty"`
-	Keywords                 []string            `json:"keywords,omitempty"`
-	GrantedAbilities         []string            `json:"grantedAbilities,omitempty"`
-	Layout                   string              `json:"layout,omitempty"`
-	Faces                    []Face              `json:"faces,omitempty"`
-	ActiveFace               int                 `json:"activeFace,omitempty"`
-	PrintedSelf              *PrintedValues      `json:"printedSelf,omitempty"`
-	NeedsEffect              bool                `json:"needsEffect"`
-	Owner                    uuid.UUID           `json:"owner"`
-	Controller               uuid.UUID           `json:"controller"`
-	Tapped                   bool                `json:"tapped"`
-	NextUntapSkips           []untapSkipSnapshot `json:"nextUntapSkips,omitempty"`
-	BattleX                  float64             `json:"battleX"`
-	BattleY                  float64             `json:"battleY"`
-	Counters                 map[string]int      `json:"counters,omitempty"`
-	IsCommander              bool                `json:"isCommander"`
-	AttackingTarget          uuid.UUID           `json:"attackingTarget"`
-	BlockingTarget           uuid.UUID           `json:"blockingTarget"`
-	GoadedBy                 uuid.UUID           `json:"goadedBy"`
-	DamageMarked             int                 `json:"damageMarked"`
-	RegenerationShields      int                 `json:"regenerationShields,omitempty"`
-	FaceDown                 bool                `json:"faceDown"`
-	FaceDownKind             FaceDownKind        `json:"faceDownKind,omitempty"`
-	KnownBy                  map[uuid.UUID]bool  `json:"knownBy,omitempty"`
-	EnteredBattlefieldAt     int64               `json:"enteredBattlefieldAt"`
-	ObjectEpoch              int                 `json:"objectEpoch,omitempty"`
-	SummonedThisTurn         bool                `json:"summonedThisTurn"`
-	MarkedLethalByDeathtouch bool                `json:"markedLethalByDeathtouch"`
-	LostLastCounter          bool                `json:"lostLastCounter,omitempty"`
-	PrintedPTKnown           bool                `json:"printedPTKnown,omitempty"`
-	AttachedTo               TargetRef           `json:"attachedTo,omitempty"`
-	AttachedAt               int64               `json:"attachedAt,omitempty"`
-	BaseController           uuid.UUID           `json:"baseController,omitempty"`
-	FaceDownListed           *FaceDownListing    `json:"faceDownListed,omitempty"`
-	FaceTurnedAt             int64               `json:"faceTurnedAt,omitempty"`
+	InstanceID        uuid.UUID      `json:"instanceId"`
+	Name              string         `json:"name"`
+	ScryfallID        string         `json:"scryfallId,omitempty"`
+	OracleID          string         `json:"oracleId,omitempty"`
+	TokenKey          string         `json:"tokenKey,omitempty"`
+	TypeLine          string         `json:"typeLine,omitempty"`
+	Power             int            `json:"power"`
+	Toughness         int            `json:"toughness"`
+	VariableToughness *bool          `json:"variableToughness,omitempty"`
+	ManaCost          string         `json:"manaCost,omitempty"`
+	ProducedMana      []string       `json:"producedMana,omitempty"`
+	Colors            []string       `json:"colors,omitempty"`
+	ColorIdentity     []string       `json:"colorIdentity,omitempty"`
+	StartingLoyalty   int            `json:"startingLoyalty"`
+	Keywords          []string       `json:"keywords,omitempty"`
+	GrantedAbilities  []string       `json:"grantedAbilities,omitempty"`
+	Layout            string         `json:"layout,omitempty"`
+	Faces             []Face         `json:"faces,omitempty"`
+	ActiveFace        int            `json:"activeFace,omitempty"`
+	PrintedSelf       *PrintedValues `json:"printedSelf,omitempty"`
+	// DurationCopyBase is Card.DurationCopyBase (#1593): the layer-1
+	// baseline under a duration copy. Additive; absent means no
+	// duration copy applies, which is what every older file says.
+	DurationCopyBase *PrintedValues      `json:"durationCopyBase,omitempty"`
+	NeedsEffect      bool                `json:"needsEffect"`
+	Owner            uuid.UUID           `json:"owner"`
+	Controller       uuid.UUID           `json:"controller"`
+	Tapped           bool                `json:"tapped"`
+	NextUntapSkips   []untapSkipSnapshot `json:"nextUntapSkips,omitempty"`
+	BattleX          float64             `json:"battleX"`
+	BattleY          float64             `json:"battleY"`
+	Counters         map[string]int      `json:"counters,omitempty"`
+	IsCommander      bool                `json:"isCommander"`
+	AttackingTarget  uuid.UUID           `json:"attackingTarget"`
+	BlockingTarget   uuid.UUID           `json:"blockingTarget"`
+	// AlsoBlocking is Card.AlsoBlocking (#1706): the attackers a
+	// multi-blocker blocks after blockingTarget. Omitted for every
+	// ordinary blocker, so an older file restores exactly as before.
+	AlsoBlocking []uuid.UUID `json:"alsoBlocking,omitempty"`
+	// GoadedBy is the pre-#1598 single goader, still written (as
+	// Card.LatestGoader) for a binary that predates Goads, and read
+	// only when a file has no `goads` key (restoreGoads).
+	GoadedBy uuid.UUID `json:"goadedBy"`
+	// Goads is every goad on the card with its end (#1598).
+	Goads                    []goadSnapshot     `json:"goads,omitempty"`
+	DamageMarked             int                `json:"damageMarked"`
+	RegenerationShields      int                `json:"regenerationShields,omitempty"`
+	FaceDown                 bool               `json:"faceDown"`
+	FaceDownKind             FaceDownKind       `json:"faceDownKind,omitempty"`
+	KnownBy                  map[uuid.UUID]bool `json:"knownBy,omitempty"`
+	EnteredBattlefieldAt     int64              `json:"enteredBattlefieldAt"`
+	ObjectEpoch              int                `json:"objectEpoch,omitempty"`
+	SummonedThisTurn         bool               `json:"summonedThisTurn"`
+	MarkedLethalByDeathtouch bool               `json:"markedLethalByDeathtouch"`
+	LostLastCounter          bool               `json:"lostLastCounter,omitempty"`
+	PrintedPTKnown           bool               `json:"printedPTKnown,omitempty"`
+	AttachedTo               TargetRef          `json:"attachedTo,omitempty"`
+	AttachedAt               int64              `json:"attachedAt,omitempty"`
+	BaseController           uuid.UUID          `json:"baseController,omitempty"`
+	FaceDownListed           *FaceDownListing   `json:"faceDownListed,omitempty"`
+	FaceTurnedAt             int64              `json:"faceTurnedAt,omitempty"`
 	// NamedTribe is the CR 614.12 "as this enters, choose a creature
 	// type" answer (S26). Carried rather than rebuilt: the choice was
 	// made by a player and nothing in the catalog can re-derive it, so
@@ -682,6 +702,12 @@ type cardSnapshot struct {
 	// came back with an empty name would silently stop restricting
 	// the card it was played to stop.
 	ChosenName string `json:"chosenName,omitempty"`
+	// ChosenOption is the CR 614.12 "as this enters, choose <A> or
+	// <B>" answer (#1572) — a Siege's anchor word. Carried for
+	// ChosenPlayer's reason: it is the whole of what decides which of
+	// the permanent's two printed abilities exists, so a restore that
+	// lost it would bring a Siege back with neither.
+	ChosenOption string `json:"chosenOption,omitempty"`
 	// Provenance is CR 400.7d: what the spell that became this
 	// permanent was cast for — the alternative cost (#653) and the
 	// optional additional costs (#664, ADR 0073 §5), in one record.
@@ -722,6 +748,12 @@ type cardSnapshot struct {
 	// key decodes as "not harnessed", which is what every game before
 	// this amendment was.
 	Harnessed bool `json:"harnessed,omitempty"`
+	// Monstrous is the CR 701.37b monstrous designation (ADR 0071
+	// amendment, #1700), carried for Harnessed's reason: "not
+	// monstrous" is a legal zero value, so a restore that dropped it
+	// would silently hand a monstrous Polukranos a second
+	// "becomes monstrous" trigger.
+	Monstrous bool `json:"monstrous,omitempty"`
 	// Prepared, PrepareCopy and PreparedBy are ADR 0090's CR 722.3
 	// state: the designation on the permanent, and the not-a-card
 	// marker and permanent link on the copy it keeps in exile. Carried
@@ -1414,7 +1446,7 @@ func (g *Game) captureSnapshotLocked() *GameSnapshot {
 		turnSeqPresent:        true,
 	}
 	s.OncePerBatchFired = copyStringUint64Map(g.oncePerBatchFired)
-	s.AnnouncedBlocks = copyUUIDPairMap(g.announcedBlocks)
+	s.AnnouncedBlocks, s.AnnouncedAlsoBlocks = splitAnnouncedBlocks(g.announcedBlocks)
 	s.BlockedAttackers = copyBoolMap(g.blockedAttackers)
 	s.AnnouncedAttacks = copyBoolMap(g.announcedAttacks)
 	s.AttackDefenders = copyUUIDPairMap(g.attackDefenders)
@@ -1674,6 +1706,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		Faces:                    copyFaces(c.Faces),
 		ActiveFace:               c.ActiveFace,
 		PrintedSelf:              copyPrintedValues(c.PrintedSelf),
+		DurationCopyBase:         copyPrintedValues(c.DurationCopyBase),
 		NeedsEffect:              c.NeedsEffect,
 		Owner:                    c.Owner,
 		Controller:               c.Controller,
@@ -1685,7 +1718,9 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		IsCommander:              c.IsCommander,
 		AttackingTarget:          c.AttackingTarget,
 		BlockingTarget:           c.BlockingTarget,
-		GoadedBy:                 c.GoadedBy,
+		AlsoBlocking:             copyUUIDSlice(c.AlsoBlocking),
+		GoadedBy:                 c.LatestGoader(),
+		Goads:                    snapshotGoads(c.Goads),
 		DamageMarked:             c.DamageMarked,
 		RegenerationShields:      c.RegenerationShields,
 		FaceDown:                 c.FaceDown,
@@ -1707,9 +1742,11 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		ChosenColor:              c.ChosenColor,
 		ChosenPlayer:             c.ChosenPlayer,
 		ChosenName:               c.ChosenName,
+		ChosenOption:             c.ChosenOption,
 		ClassLevel:               c.ClassLevel,
 		Solved:                   c.Solved,
 		Harnessed:                c.Harnessed,
+		Monstrous:                c.Monstrous,
 		Prepared:                 c.Prepared,
 		PrepareCopy:              c.PrepareCopy,
 		PreparedBy:               c.PreparedBy,
@@ -2178,7 +2215,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.eventBatch = s.EventBatch
 	g.resolutionOpen = s.ResolutionOpen
 	g.oncePerBatchFired = copyStringUint64Map(s.OncePerBatchFired)
-	g.announcedBlocks = copyUUIDPairMap(s.AnnouncedBlocks)
+	g.announcedBlocks = joinAnnouncedBlocks(s.AnnouncedBlocks, s.AnnouncedAlsoBlocks)
 	g.blockedAttackers = copyBoolMap(s.BlockedAttackers)
 	g.announcedAttacks = copyBoolMap(s.AnnouncedAttacks)
 	g.attackDefenders = copyUUIDPairMap(s.AttackDefenders)
@@ -2216,6 +2253,9 @@ func (s *GameSnapshot) restoreGame() *Game {
 			}
 		}
 	}
+	// #1598: a pre-#1598 goad came back unstamped; it ends as its
+	// goader's next turn begins, which needs the restored TurnsBegun.
+	g.backfillLegacyGoadsLocked()
 
 	// ADR 0041 P9 / Q3: the sources of stack abilities this binary's
 	// catalog no longer has, flagged once every zone is restored.
@@ -2399,6 +2439,7 @@ func restoreCard(c *cardSnapshot) Card {
 		Faces:                    copyFaces(c.Faces),
 		ActiveFace:               c.ActiveFace,
 		PrintedSelf:              copyPrintedValues(c.PrintedSelf),
+		DurationCopyBase:         copyPrintedValues(c.DurationCopyBase),
 		NeedsEffect:              c.NeedsEffect,
 		Owner:                    c.Owner,
 		Controller:               c.Controller,
@@ -2410,7 +2451,8 @@ func restoreCard(c *cardSnapshot) Card {
 		IsCommander:              c.IsCommander,
 		AttackingTarget:          c.AttackingTarget,
 		BlockingTarget:           c.BlockingTarget,
-		GoadedBy:                 c.GoadedBy,
+		AlsoBlocking:             copyUUIDSlice(c.AlsoBlocking),
+		Goads:                    restoreGoads(c.Goads, c.GoadedBy),
 		DamageMarked:             c.DamageMarked,
 		RegenerationShields:      c.RegenerationShields,
 		FaceDown:                 c.FaceDown,
@@ -2432,9 +2474,11 @@ func restoreCard(c *cardSnapshot) Card {
 		ChosenColor:              c.ChosenColor,
 		ChosenPlayer:             c.ChosenPlayer,
 		ChosenName:               c.ChosenName,
+		ChosenOption:             c.ChosenOption,
 		ClassLevel:               c.ClassLevel,
 		Solved:                   c.Solved,
 		Harnessed:                c.Harnessed,
+		Monstrous:                c.Monstrous,
 		Prepared:                 c.Prepared,
 		PrepareCopy:              c.PrepareCopy,
 		PreparedBy:               c.PreparedBy,

@@ -55,6 +55,19 @@ func (g *Game) queueModePickLocked(tc TriggerContext, source Card, lki Character
 	if !EnoughChoosableModes(len(options), ms) {
 		return false
 	}
+	// #1590 / #1655: the bounds as they stand NOW, as the trigger goes
+	// on the stack (CR 603.3c) — the prompt carries them, so the
+	// answer gate and the enumerator read the same numbers. A forced
+	// count ("choose both instead" — Prophetic Titan, Depth Defiler)
+	// raises the minimum too, but CR 603.3c says a mode with no legal
+	// target "can't be chosen" rather than that the ability is
+	// removed, so a raised minimum asks for no more than the bullets
+	// actually on offer. The printed Min keeps its old meaning, which
+	// EnoughChoosableModes has already enforced above.
+	modeMin, modeMax := g.modeBoundsLocked(ms, g.modeQueryForSourceLocked(source, source.Controller))
+	if !ms.Repeatable && modeMin > len(options) {
+		modeMin = max(ms.Min, len(options))
+	}
 	labels := make([]string, 0, len(options))
 	for _, i := range options {
 		labels = append(labels, ms.Options[i].Label)
@@ -71,8 +84,8 @@ func (g *Game) queueModePickLocked(tc TriggerContext, source Card, lki Character
 		Reason:          prompt,
 		ModeOptionIndex: options,
 		ModeOptionLabel: labels,
-		ModeMin:         ms.Min,
-		ModeMax:         ms.Max,
+		ModeMin:         modeMin,
+		ModeMax:         modeMax,
 		ModeRepeatable:  ms.Repeatable,
 		modePickResume: &modePickFrame{
 			tc:        tc,

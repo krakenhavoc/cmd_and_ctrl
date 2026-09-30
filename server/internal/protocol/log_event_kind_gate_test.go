@@ -136,17 +136,28 @@ var silentEventKinds = map[string]string{
 	// permission. The kind exists for "when this card becomes plotted"
 	// to watch, not for the log to say a third time.
 	"EventBecomesPlotted": "the plot special action's LogSpecialAction line, or the LogResolve of the effect that plotted it plus its LogZone exile, already tells the table (#1382)",
+	// #1722 / ADR 0096. The crown moves three ways and the table is
+	// told each time by the line that moved it: a card's "you become
+	// the monarch" and the CR 724.2 steal are both the LogResolve of
+	// an ability whose label says so ("Palace Jailer — you become the
+	// monarch", "the monarch — Bob becomes the monarch"), and the
+	// CR 724.4 hand-on happens inside the LogEliminated line of the
+	// player who left. The holder itself is GameView.monarch. The kind
+	// exists for "whenever you become the monarch" to watch and for
+	// the layer pass to invalidate on.
+	"EventMonarchChanged": "the LogResolve of the ability that moved the crown (or the LogEliminated of the monarch who left, CR 724.4) already says so, and GameView.monarch carries the holder (#1722)",
 
 	// --- visible board state -------------------------------------------
-	"EventTapCard":        silentBoardStateIsVisible,
-	"EventUntapCard":      silentBoardStateIsVisible,
-	"EventAttach":         silentBoardStateIsVisible,
-	"EventUnattach":       silentBoardStateIsVisible,
-	"EventCopyApplied":    silentBoardStateIsVisible,
-	"EventCaseSolved":     silentBoardStateIsVisible,
-	"EventHarnessed":      silentBoardStateIsVisible,
-	"EventRegenerated":    silentImpliedByAnotherLine,
-	"EventBattleDefeated": silentBoardStateIsVisible,
+	"EventTapCard":         silentBoardStateIsVisible,
+	"EventUntapCard":       silentBoardStateIsVisible,
+	"EventAttach":          silentBoardStateIsVisible,
+	"EventUnattach":        silentBoardStateIsVisible,
+	"EventCopyApplied":     silentBoardStateIsVisible,
+	"EventCaseSolved":      silentBoardStateIsVisible,
+	"EventHarnessed":       silentBoardStateIsVisible,
+	"EventBecameMonstrous": silentBoardStateIsVisible,
+	"EventRegenerated":     silentImpliedByAnotherLine,
+	"EventBattleDefeated":  silentBoardStateIsVisible,
 
 	// --- hidden-zone work ----------------------------------------------
 	"EventSearchLibrary": "the number of matches is itself hidden information about a hidden zone (see the search_library prompt's redaction)",
