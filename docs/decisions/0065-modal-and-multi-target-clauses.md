@@ -241,8 +241,9 @@ The same struct is read by `Spec.Modes` (spells, unchanged),
   own target group (`ref.Mode == 0, 1, 2`). `ctx.HasMode(i)` keeps
   its meaning ("some occurrence chose option i"); `ctx.ModeCount(i)`
   is the count, and `ctx.Modes()` is the ordered multiset.
-- **Resolution order is announce order (CR 608.2c).** Options with an
-  `Effect` run in `item.Modes` order, once per occurrence. A card that
+- **Resolution order is ~~announce order~~ printed order (CR 608.2c;
+  amended 2026-09-30, see the amendment at the end).** Options with an
+  `Effect` run once per occurrence. A card that
   prefers the old shape keeps writing `if ctx.HasMode(0) { … }` in
   `OnResolve`; both read the same data, and `Effect` exists so a
   *trigger* or *activated ability* — which has no `OnResolve` to hang
@@ -1152,7 +1153,8 @@ printed.
 
 ### Decision: bullets whose order is observable run in printed order
 
-The engine walks `ModeOption.Effect` in announce order (§3 above).
+The engine walked `ModeOption.Effect` in announce order (§3 above;
+superseded by the 2026-09-30 amendment below).
 Three of this change's cards have bullets that see each other: Depth
 Defiler's bounce feeds its discard, Wail of the Forgotten's bounce
 feeds its discard, and Inscription of Abundance's counters feed its
@@ -1196,3 +1198,41 @@ because their bullets cannot observe one another.
   cast that also takes "X is the number of cards in their hand" would
   count the hand BEFORE the draw. Printed order needs a bullet walk
   that waits for a prompt to be answered, and nothing has one yet.
+
+## Amendment 2026-09-30: chosen modes run in printed order (#1653)
+
+**Decision (owner, 2026-09-30).** A modal spell or ability carries out
+its chosen modes in the order they are WRITTEN on the card, not the
+order the player announced them in. CR 608.2c: "The controller of the
+spell or ability follows its instructions in the order written." This
+reverses §3's "resolution order is announce order", which the #1655
+cards had to work around.
+
+**What changed.**
+
+- `game.PrintedModeOrder(modes)` gives the occurrence indexes sorted by
+  option, with repeats of one option (CR 700.2d) keeping their announce
+  order. `runChosenModeEffectsLocked` walks it, for spells, triggers
+  and activated abilities alike, so every `ModeOption.Effect`
+  (`ModeDoing`) runs in printed order.
+- **Storage is unchanged.** `StackItem.Modes` and `TargetRef.Mode` stay
+  in announce order, because an occurrence's index is what pairs it
+  with its target group. Only the order the bodies run in moves, so
+  `ModeTargets(occurrence)` and `item.Targets` still name the right
+  targets after the reorder. The announce-time prompts, the wire's
+  `modes` and the bot's move list are untouched. `mode_labels` on the
+  stack item is now in resolution (printed) order, which is what the
+  overlay is for.
+- `effects.Context.ModeOccurrences()` is the same order for an
+  `OnResolve` that walks occurrences by hand. `if ctx.HasMode(i)`
+  chains were already printed order.
+- `effects.BulletsInPrintedOrder` is deleted. Depth Defiler, Wail of
+  the Forgotten, Inscription of Abundance, Atlantis Attacks, HULK
+  SMASH!, Murdock's Crusade, Pyrrhic Strike and Widow's Bite now
+  declare `ModeDoing` bullets and no `OnResolve`. (Depth Defiler keeps
+  an empty trigger `Effect`, which a row with a `Build` must declare.)
+
+Tests: `modes_printed_order_test.go` announces a spell, a triggered
+ability and an activated ability in reverse and a repeatable mode
+interleaved, and checks both the run order and each occurrence's
+target.

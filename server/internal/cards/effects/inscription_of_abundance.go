@@ -13,8 +13,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	   control."
 //
 // Inscription of Ruin's count (#1655, AnyNumberIf(WasKicked)) on a
-// green body. The bullets run in printed order (CR 608.2c,
-// BulletsInPrintedOrder) whatever order they were clicked in, and that
+// green body. The engine runs the bullets in printed order (CR 608.2c) whatever order they were clicked in, and that
 // order is observable: kicked with all three on one creature, the
 // counters land first, so the life bullet reads the bigger power and
 // the fight deals it. X is read at resolution over layered power.
@@ -32,22 +31,19 @@ func init() {
 			Kicker("{2}{G}"),
 		},
 		Modes: ChooseOne(
-			Mode("Put two +1/+1 counters on target creature.",
-				TargetCreature("target creature")),
-			Mode("Target player gains X life, where X is the greatest power among creatures they control.",
-				TargetPlayer("target player")),
-			Mode("Target creature you control fights target creature you don't control.",
+			ModeDoing("Put two +1/+1 counters on target creature.",
+				TargetCreature("target creature"),
+				inscriptionOfAbundanceCounters),
+			ModeDoing("Target player gains X life, where X is the greatest power among creatures they control.",
+				TargetPlayer("target player"),
+				inscriptionOfAbundanceLife),
+			ModeDoing("Target creature you control fights target creature you don't control.",
 				Clauses(
 					TargetCreature("target creature you control", YouControl()),
 					TargetCreature("target creature you don't control", OpponentControls()),
-				)),
+				),
+				inscriptionOfAbundanceFight),
 		).AnyNumberIf(WasKicked),
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			return BulletsInPrintedOrder(item, ctx,
-				inscriptionOfAbundanceCounters,
-				inscriptionOfAbundanceLife,
-				inscriptionOfAbundanceFight)
-		},
 	})
 }
 

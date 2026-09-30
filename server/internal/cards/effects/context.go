@@ -288,15 +288,26 @@ func (c *Context) ModeCount(i int) int {
 }
 
 // Mode is the OPTION index chosen at occurrence `n` of the announced
-// mode list, or -1 when there is no such occurrence. Modes resolve in
-// announce order (CR 608.2c), so a card that walks its occurrences
-// walks this. Added by #764.
+// mode list, or -1 when there is no such occurrence. Occurrence
+// indexes are announce order and pair a mode with its target group;
+// modes RESOLVE in printed order (CR 608.2c), so a card that walks its
+// occurrences walks ModeOccurrences, not 0..n. Added by #764.
 func (c *Context) Mode(n int) int {
 	modes := c.Modes()
 	if n < 0 || n >= len(modes) {
 		return -1
 	}
 	return modes[n]
+}
+
+// ModeOccurrences is the occurrence indexes of the chosen modes in the
+// order they are carried out: printed order (CR 608.2c), repeats of one
+// mode in announce order (CR 700.2d). A card that resolves its modes
+// by hand in OnResolve and walks them one occurrence at a time walks
+// this; `ctx.Mode(occ)` and `ctx.ModeTargets(occ)` then name that
+// occurrence's option and target group. Added by #1653.
+func (c *Context) ModeOccurrences() []int {
+	return game.PrintedModeOrder(c.Modes())
 }
 
 // ModeTargets is the target group announced for occurrence `n` — the
