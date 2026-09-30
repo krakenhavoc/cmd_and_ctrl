@@ -608,6 +608,16 @@ Reach for `BoostUntilEOT` / `GrantKeywordUntilEOT` for the first row and `Scoped
 
 **Control from effects (CR 613.1b, CR 701.12, S38).** "Gain control of target permanent" is `GainControl{Target, Controller, Duration, Label}` and "exchange control" is `ExchangeControl{A, B}`. Both are layer-2 scoped effects — data records with one `setController` mod (#1497) — in the same bucket Mind Control's Aura uses, which is what makes control revert by itself (`Card.BaseController`) and makes two control effects sort by timestamp (CR 613.7) with no card-side work. Do NOT write `Card.Controller`. Three things ride along and are why the printed cards look the way they do: the permanent leaves combat (CR 506.4, declaration and announcement both), it is summoning-sick under its new controller however long it has been in play (CR 302.6 — which is why Act of Treason also grants haste), and ownership never changes (CR 108.3). An exchange is ONE effect: both objects are checked before either half is registered and the two halves share a timestamp, so it fails whole (CR 701.12b). `Controller` defaults to the effect's controller; pass it explicitly for "target opponent gains control of ~" — that card still waits on the choose-a-player prompt, not on this primitive.
 
+**Control of a SPELL (ADR 0104, #1745).** "Gain control of target spell. You may choose new targets for it." is `GainControlOfSpell{Spell, ChooseNewTargets: true}`, and "exchange control of this creature and that spell" is `ExchangeControlOfSpellAnd{Spell, Permanent, ChooseNewTargets}`. It is the same layer-2 record as above, pinned to the stack object, so do NOT write `StackItem.Controller` either. The stack step of the layer pass materialises it before the primitive returns, and everything else follows with no card-side work:
+
+- the spell's "you" is the thief at resolution (CR 608.2c);
+- "choose new targets" is asked of the new controller, with legality judged for them (CR 115.7d);
+- a permanent spell enters under the thief with the caster as its default controller (CR 110.2b, CR 400.7a);
+- a thief leaving the game hands everything back (CR 800.4a);
+- "if you cast it" (`Card.CastByItsController`) is false for the thief.
+
+An optional "you may" that trades the source for the spell declares `OptionalPrompt.Trade`, so a bot can weigh the trade (Perplexing Chimera).
+
 ### Granting an ability to another permanent (ADR 0093, #754)
 
 "Creatures you control have '{T}: Add one mana of any color.'" is a

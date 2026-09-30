@@ -304,6 +304,14 @@ type PendingChoiceView struct {
 	// Absent on every other kind.
 	ControlPurpose string `json:"control_purpose,omitempty"`
 
+	// TradeFor populates a "trigger_prompt" whose "yes" TRADES the
+	// source for the object the trigger is about (ADR 0104): Perplexing
+	// Chimera's "you may exchange control of this creature and that
+	// spell". The id of that spell, public because it is on the stack.
+	// A bot reads it to weigh the trade rather than accept every "you
+	// may" it controls. Absent on every other prompt.
+	TradeFor string `json:"trade_for,omitempty"`
+
 	// TypeOptions populates the S26 "choose_creature_type" kind: every
 	// creature type the engine knows (CR 205.3m), for the picker to
 	// filter. Materialised here from game.AllCreatureTypes rather than
@@ -5966,6 +5974,9 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 			if doubledBy != uuid.Nil {
 				v.DoubledBy = doubledBy.String()
 				v.DoubledByName = doubledByName
+			}
+			if subject := c.TradeSubject(); subject != uuid.Nil {
+				v.TradeFor = subject.String()
 			}
 		}
 		// For discard_from_hand, inline the source player's hand

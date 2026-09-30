@@ -986,6 +986,21 @@ type triggerResumeFrame struct {
 	doubledBy doublerRef
 }
 
+// TradeSubject is the object a "you may" trigger would trade its
+// source for — the triggering event's card, on a prompt whose
+// ability declares TriggerOptionalPrompt.Trade (Perplexing Chimera's
+// spell, ADR 0104). uuid.Nil on every other prompt.
+func (c *PendingChoice) TradeSubject() uuid.UUID {
+	if c == nil || c.triggerResume == nil {
+		return uuid.Nil
+	}
+	p := c.triggerResume.ability.OptionalPrompt
+	if p == nil || !p.Trade {
+		return uuid.Nil
+	}
+	return c.triggerResume.tc.Event.CardID
+}
+
 // TriggerDoubler returns the doubler attribution carried by a harvested
 // trigger's optional or target prompt. Ordinary prompts return zero values.
 func (c *PendingChoice) TriggerDoubler() (uuid.UUID, string) {

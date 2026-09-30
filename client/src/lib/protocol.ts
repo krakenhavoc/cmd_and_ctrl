@@ -1081,6 +1081,10 @@ export interface PendingChoiceView {
   // entering permanent away does to the seat that receives it. The
   // picker reads it only for its wording.
   control_purpose?: "harm" | "benefit" | string;
+  // ADR 0104: on a "trigger_prompt" whose yes TRADES the source for a
+  // spell (Perplexing Chimera) — that spell's instance ID. The client
+  // does not read it; the bot weighs the trade with it.
+  trade_for?: string;
   // S26: populated for kind "choose_creature_type" — every creature
   // type the engine knows, sorted. The list is long by design (the CR
   // 205.3m vocabulary is ~345 entries), so the picker filters it
