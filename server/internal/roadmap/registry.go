@@ -943,11 +943,11 @@ var items = []Item{
 		Summary:     "Classes and Cases work; Rooms are the third kind of card that switches abilities on as it changes state.",
 		Missing:     "Rooms can't be cast yet: unlocking doors and casting either half of a Room aren't supported.",
 		Rules:       []string{"709.5"},
-		Issue:       886,
+		Issue:       1756,
 		ADR:         "0071-designations-that-switch-abilities-on.md",
 		Waiting:     []string{"Funeral Room // Awakening Hall", "Unholy Annex // Ritual Chamber", "Roaring Furnace // Steaming Sauna"},
 		Examples:    []string{"Wizard Class"},
-		EngineNotes: "**Classes and Cases shipped** ([ADR 0071](decisions/0071-designations-that-switch-abilities-on.md), #757): one `ActiveWhen Designation` field on every printed-ability slot, evaluated by one predicate in the object-level accessors (`game/designations.go`), plus `Card.ClassLevel` (CR 716.2), `Card.Solved` (CR 719.3), the `LevelUp` / `ToSolve` constructors and `class_level` / `solved` on the wire. What is left is ROOMS (CR 709.5): the two unlocked flags, the `DoorUnlocked` gate (reserved, and refused at boot until it is built — re-checked 2026-09-24, `effects.Register` still panics on it), casting either half of a split card (CR 709.3, no issue of its own), and the unlock special action. Tracked for #886. The Class and Case cards this row used to list (Caretaker's Talent, Case of the Ransacked Lab, Cleric Class, Druid Class, Artist's Talent) wait on nothing here any more, and the audit's 32 only-blocker cards were mostly Classes, so Unblocks is 0.",
+		EngineNotes: "**Classes and Cases shipped** ([ADR 0071](decisions/0071-designations-that-switch-abilities-on.md), #757): one `ActiveWhen Designation` field on every printed-ability slot, evaluated by one predicate in the object-level accessors (`game/designations.go`), plus `Card.ClassLevel` (CR 716.2), `Card.Solved` (CR 719.3), the `LevelUp` / `ToSolve` constructors and `class_level` / `solved` on the wire. What is left is ROOMS (CR 709.5): the two unlocked flags, the `DoorUnlocked` gate (reserved, and refused at boot until it is built — re-checked 2026-09-24, `effects.Register` still panics on it), casting either half of a split card (CR 709.3, no issue of its own), and the unlock special action. Tracked for #1756. The Class and Case cards this row used to list (Caretaker's Talent, Case of the Ransacked Lab, Cleric Class, Druid Class, Artist's Talent) wait on nothing here any more, and the audit's 32 only-blocker cards were mostly Classes, so Unblocks is 0.",
 	},
 	{
 		Slug: "ability-suppression", Name: "Stopping abilities", Kind: KindSeam, Status: StatusPartial,
