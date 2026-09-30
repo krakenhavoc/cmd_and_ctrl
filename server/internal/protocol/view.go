@@ -734,7 +734,11 @@ type AdditionalCostView struct {
 	// sacrificeCostOptions. The picked instance IDs ride back on
 	// cast_spell's sacrifice_ids. Absent when the cost has
 	// no sacrifice component; present-and-empty means the cost is
-	// unpayable, which makes the spell uncastable.
+	// unpayable, which makes the spell uncastable — unless the
+	// count may be zero. ADR 0100 §3: "sacrifice any number of
+	// creatures" ships min 0 / max 0, an open count from zero, and
+	// "sacrifice X lands" ships count_from_x, the number picked being
+	// the x_value the same cast_spell announces.
 	SacrificeOptions *LegalTargetsView `json:"sacrifice_options,omitempty"`
 	// DemandsX marks a "pay X life" clause (Toxic Deluge). The
 	// client must open its X prompt for this card even though the
@@ -8505,9 +8509,10 @@ func sacrificeCostOptions(g *game.Game, controller uuid.UUID, spec *game.TargetS
 	// validates against and the enumerator pays from, so the picker
 	// cannot enforce a count the engine refuses (#544). A VARIABLE
 	// clause ships its real bounds — "one or more" is min 1 with max
-	// 0 (LegalTargetsView's "unbounded"), and "Sacrifice X" ships
-	// CountFromX so the client knows the count is the X it is about
-	// to announce rather than a number it picks.
+	// 0 (LegalTargetsView's "unbounded"), "any number" (a cast's
+	// additional cost, ADR 0100 §3) is min 0 with max 0, and
+	// "Sacrifice X" ships CountFromX so the client knows the count is
+	// the X it is about to announce rather than a number it picks.
 	lo, hi := game.SacrificeCostBounds(spec, 0)
 	out := &LegalTargetsView{Min: lo, Max: hi, CountFromX: spec != nil && spec.CountFromX}
 	for _, id := range g.SacrificePaymentOrderForEffect(ids, sourceID) {

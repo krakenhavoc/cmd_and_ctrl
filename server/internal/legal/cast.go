@@ -852,6 +852,16 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	}
 	discardSets := [][]uuid.UUID{nil}
 	sacrificeSets := [][]uuid.UUID{nil}
+	// ADR 0100 §6: a VARIABLE sacrifice clause on a cast — "sacrifice X
+	// lands", "you may sacrifice any number of creatures". Its count is
+	// part of the announcement, so each count is its own move, priced on
+	// its own: Torgaar's "{2} less for each creature sacrificed this way"
+	// reads the count at CR 601.2f (CostQuery.Sacrificing), and for the X
+	// form the count IS the X (CR 107.3i). Register holds such a plan to
+	// this one sacrifice clause, so the payment is the whole list.
+	varSac := sacrifice != nil && game.SacrificeCostVariable(sacrifice)
+	sacFromX := varSac && game.SacrificeCountFromX(sacrifice)
+	var sacOrdered []uuid.UUID
 	if discards > 0 {
 		var pool []uuid.UUID
 		for _, h := range p.Hand.Cards {
@@ -873,9 +883,14 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 				pool = append(pool, id)
 			}
 		}
-		// #747: N from the clause, one payment per cast for N ≥ 2,
-		// nothing offered when the caster controls fewer than N.
-		sacrificeSets = e.sacrificePayments(pool, sacrifice, uuid.Nil)
+		if varSac {
+			sacOrdered = g.SacrificePaymentOrderForEffect(e.cheapestFuelFirst(pool), uuid.Nil)
+			sacrificeSets = castVariableSacrificePayments(sacOrdered, sacrifice, xFloor)
+		} else {
+			// #747: N from the clause, one payment per cast for N ≥ 2,
+			// nothing offered when the caster controls fewer than N.
+			sacrificeSets = e.sacrificePayments(pool, sacrifice, uuid.Nil)
+		}
 		if len(sacrificeSets) == 0 {
 			return
 		}
@@ -936,7 +951,12 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 		// budget, which is offered once, against the first announcement.
 		var delveIDs []uuid.UUID
 		var delveFull *delvePayment
-		if !perTarget {
+		// ADR 0100 §6: a variable sacrifice is priced per payment below,
+		// because its count changes the price — so there is no one
+		// up-front price to gate on. A Torgaar the seat cannot afford at
+		// full price may well be affordable with three creatures
+		// sacrificed.
+		if !perTarget && !varSac {
 			priced, err := e.g.ApplyCostModifiersForEffect(modeCost, game.CostQuery{
 				Card:       card,
 				Controller: e.seat,
@@ -971,7 +991,7 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 		// and the X it announces is how many it picked.
 		xSteps := stepsCountedByX(steps)
 		if len(xSteps) > 0 {
-			if modeCost.XSlots == 0 {
+			if modeCost.XSlots == 0 && !sacFromX {
 				// The step's X is announced by a cost this package
 				// cannot price — Waterbender's Restoration's
 				// waterbend {X}, paid by tapping artifacts and
@@ -992,6 +1012,12 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 			bound := x
 			if perTarget {
 				bound = e.opts.MaxX
+			}
+			// ADR 0100 §6: "Sacrifice X creatures. Destroy X target
+			// creatures" — X is the sacrifice count, so the arities are
+			// bounded by the permanents the seat can sacrifice.
+			if sacFromX {
+				bound = min(len(sacOrdered), e.opts.MaxX)
 			}
 			if bound < 1 {
 				continue
@@ -1036,14 +1062,29 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 				setX, setLife, setCost, setPrinted = pay.x, pay.phyrexianLife, pay.cost, priced
 				setDelve, setDelveFull = pay.delve, pay.delveFull
 			}
+			// The payments this target set is offered with. For
+			// "sacrifice X … destroy X target …" the targets fix X, and
+			// so the ONE payment: the first X of the payment order (ADR
+			// 0100 §6 — for the X form the X search and the payment are
+			// a single dimension).
+			sacSets := sacrificeSets
 			if len(xSteps) > 0 {
 				// setX is the largest announcement this seat can pay
 				// for; a set that filled more X-counted slots than
 				// that is a cast it cannot make. The cost is monotonic
 				// in X, so the comparison is the whole affordability
-				// check.
+				// check. For a sacrifice-X card the bound is the
+				// permanents it can sacrifice instead.
 				k, ok := announcedXCount(steps, xSteps, targets)
-				if !ok || k < 1 || k > setX {
+				if !ok || k < 1 {
+					continue
+				}
+				if sacFromX {
+					if k > len(sacOrdered) {
+						continue
+					}
+					sacSets = [][]uuid.UUID{sacOrdered[:k]}
+				} else if k > setX {
 					continue
 				}
 				setX = k
@@ -1059,9 +1100,48 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 				continue
 			}
 			for _, discards := range discardSets {
-				for _, sacs := range sacrificeSets {
+				for _, sacs := range sacSets {
 					if budget <= 0 {
 						return
+					}
+					payX, payLife, payCost, payPrinted := setX, setLife, setCost, setPrinted
+					payDelve, payDelveFull := setDelve, setDelveFull
+					if varSac {
+						// ADR 0100 §6: priced with THIS payment's count,
+						// through the pricer CastSpell charges with — the
+						// discount (CostQuery.Sacrificing) and, for the X
+						// form, the X the count announces.
+						if sacFromX {
+							payX = len(sacs)
+						}
+						var tgts []game.TargetRef
+						if perTarget {
+							tgts = targets
+						}
+						priced, err := e.g.ApplyCostModifiersForEffect(modeCost, game.CostQuery{
+							Card:        card,
+							Controller:  e.seat,
+							FromZone:    fromZone,
+							XValue:      payX,
+							Targets:     tgts,
+							Sacrificing: len(sacs),
+						})
+						if err != nil {
+							continue
+						}
+						pay, ok := e.solveCast(priced, spend, xFloor, xLifeCeiling, lifeReserved, lifeAllowed, delvePool)
+						if !ok {
+							continue
+						}
+						if !sacFromX {
+							if len(xSteps) == 0 {
+								payX = pay.x
+							} else if pay.x < payX {
+								continue
+							}
+						}
+						payLife, payCost, payPrinted = pay.phyrexianLife, pay.cost, priced
+						payDelve, payDelveFull = pay.delve, pay.delveFull
 					}
 					// #1242: CastSpell's auto-tap will not spend a card
 					// or permanent this cast names to its additional cost
@@ -1075,7 +1155,7 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 					// teamwork — a Llanowar Elves in the team cannot
 					// also make the {G}.
 					if len(discards)+len(sacs)+len(teamIDs)+len(blightIDs) > 0 &&
-						!e.canPayExcluding(setCost, setX, spend, game.CastAutoTapExclusions(game.CastSpellParams{
+						!e.canPayExcluding(payCost, payX, spend, game.CastAutoTapExclusions(game.CastSpellParams{
 							DiscardIDs:   discards,
 							SacrificeIDs: sacs,
 							TeamworkIDs:  teamIDs,
@@ -1088,19 +1168,19 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 						first = &announcedCast{
 							modes:     modes,
 							targets:   targets,
-							x:         setX,
-							life:      setLife,
-							printed:   setPrinted,
+							x:         payX,
+							life:      payLife,
+							printed:   payPrinted,
 							dist:      dist,
 							discards:  discards,
 							sacs:      sacs,
 							team:      teamIDs,
 							blight:    blightIDs,
-							delve:     setDelve,
-							delveFull: setDelveFull,
+							delve:     payDelve,
+							delveFull: payDelveFull,
 						}
 					}
-					emit(altCostSets[0], modes, targets, setX, setLife, dist, discards, sacs, setDelve)
+					emit(altCostSets[0], modes, targets, payX, payLife, dist, discards, sacs, payDelve)
 				}
 			}
 		}
@@ -1232,6 +1312,11 @@ func (e *enumerator) castMoveEmitter(
 		// same line in the move log.
 		if len(delve) > 0 {
 			label += fmt.Sprintf(" delving %d", len(delve))
+		}
+		// ADR 0100 §6: the counts of a variable sacrifice are otherwise
+		// the same line in the move log.
+		if paying != nil && game.SacrificeCostVariable(paying.Sacrifice) {
+			label += sacrificeLabel(g, sacs)
 		}
 		label += targetLabel(g, targets)
 		e.add(Move{

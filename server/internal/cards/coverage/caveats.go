@@ -171,6 +171,18 @@ var mechanics = []Mechanic{
 		Adopt:      "AdditionalCost: EitherCost(…Keyed(\"…\"), …) — see ADR 0100",
 	},
 	{
+		// ADR 0100 sub-PR 4: "sacrifice X …" and "(you may) sacrifice
+		// any number of …" as a cast's mandatory additional cost.
+		Name:    "variable sacrifice cost",
+		Phrases: []string{"variable sacrifice cost", "sacrifice any number", "variable sacrifice"},
+		Implements: func(s effects.Spec) bool {
+			return s.AdditionalCost != nil && game.SacrificeCostVariable(s.AdditionalCost.Sacrifice)
+		},
+		Evidence:   "Spec.AdditionalCost.Sacrifice is a variable clause",
+		Confidence: Exact,
+		Adopt:      "AdditionalCost: SacrificeAnyNumberCost(…) or SacrificeXCost(…) — see ADR 0100",
+	},
+	{
 		Name:       "escape",
 		Phrases:    []string{"escape"},
 		Implements: altCost("escape"),

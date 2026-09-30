@@ -173,12 +173,17 @@ export function canConfirmSacrificeRange(
 // toggleSacrificePickInRange is one click in a ranged picker. A
 // single-pick clause (ceiling 1) replaces the pick, exactly as
 // toggleSacrificePick does; anything wider adds until the ceiling and
-// removes on a second click.
+// removes on a second click. ADR 0100: when zero is a legal count
+// (`min` 0 — "sacrifice any number of creatures" with one creature on
+// the board), a second click on the one pick clears it, so the player
+// can go back to paying nothing.
 export function toggleSacrificePickInRange(
   chosen: string[],
   id: string,
   ceiling: number,
+  min = 1,
 ): string[] {
+  if (min <= 0 && chosen.length === 1 && chosen[0] === id) return [];
   return toggleSacrificePick(chosen, id, ceiling);
 }
 
@@ -196,4 +201,32 @@ export function sacrificeRangeShortfall(
   if (have >= need) return "";
   if (need === 1) return `nothing to sacrifice (${label})`;
   return `needs ${label} (you have ${have})`;
+}
+
+// --- ADR 0100 §3: a variable count on a CAST ----------------------------
+//
+// A spell's additional cost can print two more counts, and in both of
+// them zero is a legal payment:
+//
+//   "sacrifice any number of creatures"   min 0, max 0 (explicitly sent)
+//   "sacrifice X lands"                   count_from_x; X may be 0
+//
+// The fixed vocabulary above reads a 0 / 0 view as the one-permanent
+// clause a bounds-less fixture was before #747, and the activated
+// abilities keep that reading. These read the additional cost's view,
+// where the server always sends its real bounds, so 0 / 0 is the open
+// count ADR 0100 §4 says it is.
+
+// castSacrificeRange is the bounds a cast's sacrifice picker enforces.
+// Any other clause reads exactly as sacrificeRange reads it.
+export function castSacrificeRange(opts: SacrificeOptionsShape | undefined): SacrificeRange {
+  if (opts?.count_from_x) return { min: 0, max: 0 };
+  if (opts?.min === 0 && opts?.max === 0) return { min: 0, max: 0 };
+  return sacrificeRange(opts);
+}
+
+// castSacrificeFloor is how many permanents the cast must be able to
+// sacrifice to be castable at all — 0 for the two variable counts.
+export function castSacrificeFloor(opts: SacrificeOptionsShape | undefined): number {
+  return castSacrificeRange(opts).min;
 }

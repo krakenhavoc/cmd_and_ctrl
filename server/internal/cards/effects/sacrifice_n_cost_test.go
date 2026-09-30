@@ -423,7 +423,8 @@ func TestSacrificeSelfAndOtherIsOneSimultaneousExit(t *testing.T) {
 // ADR 0020 addendum §12: a sacrifice clause is a fixed count of at
 // least one. Every other shape panics at boot, at all three sites, so
 // no card can declare a variable count and have it read as something
-// else.
+// else — except the shapes #1213 and ADR 0100 §3 opened, each on the
+// site that can announce it.
 func TestRegisterRejectsVariableSacrificeClauses(t *testing.T) {
 	noop := func(*game.Game, *game.StackItem) error { return nil }
 	ability := func(id string, spec *game.TargetSpec) Spec {
@@ -462,7 +463,9 @@ func TestRegisterRejectsVariableSacrificeClauses(t *testing.T) {
 			Cost:     ManaAbilityCost{SacrificeOther: fromX("X creatures")},
 			Produced: "{C}",
 		}}}, "no X to announce"},
-		{"variable count on a cast", Spec{OracleID: "sac-guard-spell", Name: "sac-guard-spell", AdditionalCost: &game.AdditionalCost{
+		// ADR 0100 §3: a cast's mandatory slot prints "sacrifice X" and
+		// "any number", never "one or more" with a floor above zero.
+		{"one or more on a cast", Spec{OracleID: "sac-guard-spell", Name: "sac-guard-spell", AdditionalCost: &game.AdditionalCost{
 			Sacrifice: sacrificeSpec("one or more creatures", Creature()).WithCount(1, 0),
 		}}, "additional cost"},
 		// #1224: an AdditionalCost in OptionalCosts carries the same
@@ -475,9 +478,15 @@ func TestRegisterRejectsVariableSacrificeClauses(t *testing.T) {
 			Label:     "Buyback—Sacrifice any number of creatures",
 			Sacrifice: sacrificeSpec("any number of creatures", Creature()).WithCount(0, 0),
 		}}}, "optional cost"},
-		{"count from X on a cast", Spec{OracleID: "sac-guard-spell-x", Name: "sac-guard-spell-x", AdditionalCost: &game.AdditionalCost{
+		// "Sacrifice X" on a cast's MANDATORY slot is legal since ADR 0100
+		// §3 (TestRegisterAcceptsCastVariableSacrifices); in an optional
+		// cost there is still no X to announce for it.
+		{"count from X on an optional cost", Spec{OracleID: "sac-guard-spell-x", Name: "sac-guard-spell-x", OptionalCosts: []game.AdditionalCost{{
+			Optional:  true,
+			Key:       game.KickerKey,
+			Label:     "Kicker—Sacrifice X creatures",
 			Sacrifice: fromX("X creatures"),
-		}}, "no X to announce"},
+		}}}, "no X to announce"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

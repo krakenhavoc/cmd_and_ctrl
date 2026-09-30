@@ -3739,6 +3739,7 @@ turnTally.phasesBegun	map:string
 turnTally.phasesBegun{}	number:int
 turnTally.players	map:array
 turnTally.players{}	object
+turnTally.players{}.artifactsOrCreaturesSacrificed	number:int
 turnTally.players{}.attacksDeclared	number:int
 turnTally.players{}.cardsDiscarded	number:int
 turnTally.players{}.cardsDrawn	number:int
