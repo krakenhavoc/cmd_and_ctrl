@@ -212,18 +212,25 @@ func (g *Game) offerMadnessCastLocked(owner, cardID uuid.UUID, cost string) erro
 		return nil
 	}
 	name := c.Name
-	return g.QueueMayCastForEffect(owner, cardID, cardID,
-		"Madness — cast "+name+" for its madness cost "+cost+"?",
-		func(g *Game) error {
+	return g.QueueMayCastPromptForEffect(MayCastPrompt{
+		Chooser:      owner,
+		Source:       cardID,
+		Card:         cardID,
+		Question:     "Madness — cast " + name + " for its madness cost " + cost + "?",
+		Keyword:      MayCastKeywordMadness,
+		AcceptLabel:  "Cast it for " + cost,
+		DeclineLabel: "Put it into your graveyard",
+		OnAccept: func(g *Game) error {
 			g.grantMadnessCastLocked(owner, cardID, cost)
 			g.scheduleMadnessGraveyardLocked(owner, cardID, name)
 			return nil
 		},
-		func(g *Game) error {
+		OnDecline: func(g *Game) error {
 			// CR 702.35b. Immediately, inside this resolution, which
 			// is where the card prints it.
 			return g.madnessToGraveyardLocked(cardID)
-		})
+		},
+	})
 }
 
 // grantMadnessCastLocked stamps the cast on the one exiled object the
@@ -273,9 +280,10 @@ func (g *Game) grantMadnessCastLocked(owner, cardID uuid.UUID, cost string) {
 // beginning of the next end step, a madness card still sitting in
 // exile under its madness grant is put into its owner's graveyard.
 //
-// This is what keeps the grant from being STRONGER than printed, and
-// it is cascade's scheduleCascadeBottomLocked with a different
-// destination — see that function for the argument.
+// This is what keeps the grant from being STRONGER than printed. It is
+// the shape cascade used before ADR 0099 moved cascade onto a
+// pass-closed window (CastPermission.LapseOnPass); madness keeps the
+// end-step cleanup.
 //
 // Deliberately narrow, and narrowed by CR 400.7 rather than by the
 // grant: it fires only if the exiled card is still the SAME OBJECT the

@@ -200,6 +200,12 @@ var (
 	// names this card — a miracle cost claimed for a card whose miracle
 	// trigger has not resolved (CR 702.94a, #1665).
 	ErrAltCostNotGranted = errors.New("game: that alternative cost is not open to this card right now")
+	// ErrSpellManaValueTooHigh: the permission this cast uses caps the
+	// resulting spell's mana value (CastPermission.MaxSpellManaValue)
+	// and this face is over it — discover's "if the resulting spell's
+	// mana value is less than or equal to N" (CR 701.57a) and cascade's
+	// "less than this spell's mana value" (CR 702.85a). ADR 0099.
+	ErrSpellManaValueTooHigh = errors.New("game: that spell's mana value is too high for this free cast")
 
 	// ErrNoManaCost is returned by cast_spell when a non-land card
 	// with no mana cost (Ancestral Vision, Living End) is cast by

@@ -1145,6 +1145,16 @@ type Spec struct {
 	// abilities of a card that has both (Soothsaying's {3}{U}{U}
 	// shuffle and its {X} look) are never confused by one flag.
 	XMatters bool
+
+	// Discovers declares that the card's text discovers (CR 701.57, ADR
+	// 0099) — that some effect of the card calls Discover or DiscoverN.
+	// Nothing in the engine reads it: discover is an instruction inside
+	// a closure, and a closure cannot be asked what it does. It is for
+	// cards/coverage, which reads it to fail the build on a caveat that
+	// still says a discover "isn't implemented" after the card has
+	// grown one. discover_guard_test.go holds the declaration and the
+	// source to each other in both directions.
+	Discovers bool
 }
 
 // ActivatedAbility is one activated ability on a permanent. Mirrors

@@ -327,6 +327,14 @@ func (g *Game) validateCastPathLocked(card Card, srcKind ZoneKind, alt *Alternat
 	if alt != nil && alt.RequiresGrant && (grant == nil || grant.AltCostKey != alt.Key) {
 		return ErrAltCostNotGranted
 	}
+	// ADR 0099: a discover or cascade grant caps the mana value of the
+	// spell it opens, judged against the face the caller materialised —
+	// CastSpell and the enumerator both SetFace before asking — so a
+	// modal DFC's expensive back face is refused here, in the one gate
+	// the view, the bot and the engine share.
+	if !spellManaValueWithinCap(card, grant) {
+		return ErrSpellManaValueTooHigh
+	}
 	switch srcKind {
 	case ZoneHand, ZoneCommand:
 		return nil

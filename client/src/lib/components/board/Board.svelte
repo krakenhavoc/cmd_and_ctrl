@@ -56,6 +56,7 @@
   import VotingPanel from "./VotingPanel.svelte";
   import ZoneBrowserModal from "./ZoneBrowserModal.svelte";
   import { zoneBrowser, closeZoneBrowser } from "../../zoneBrowser";
+  import { freeCastRequest, freeCastTarget } from "../../freeCastRequest";
   import { phasedOutCards } from "../../phasedOut";
   import { canActivateSorcerySpeedAbility } from "../../timing";
   import CardContextMenu from "./CardContextMenu.svelte";
@@ -857,6 +858,20 @@
     }
     afterFace(card, base);
   }
+
+  // ADR 0099 §7: "Cast it free" on a discover or cascade prompt starts
+  // the cast chain for the exiled card as soon as the snapshot carrying
+  // its grant arrives. Cancelling the chain leaves the card in exile
+  // with its ordinary cast button; passing puts it where the keyword
+  // sends it.
+  $effect(() => {
+    const id = $freeCastRequest;
+    if (!id) return;
+    const target = freeCastTarget(view.exile?.cards, id);
+    if (target === undefined) return;
+    freeCastRequest.set(null);
+    if (target) handlePlayCard(target, "exile");
+  });
 
   // S20 sub-PR 4: a modal spell asks for its mode(s) after X and
   // before targeting. The picker's confirm continues with the

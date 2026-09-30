@@ -365,6 +365,18 @@ type PendingChoiceView struct {
 	AcceptLabel  string `json:"accept_label,omitempty"`
 	DeclineLabel string `json:"decline_label,omitempty"`
 
+	// MayCastKeyword names the rule a "may_cast" is asked under —
+	// "cascade", "discover", "suspend", "madness" — so the prompt can
+	// name it and word what declining does (ADR 0099 §7). A may_cast
+	// also carries AcceptLabel / DeclineLabel when the engine named its
+	// branches. Absent for an offer that is only its card's text.
+	MayCastKeyword string `json:"may_cast_keyword,omitempty"`
+	// MayCastCard is the instance id of the card a "may_cast" offers.
+	// The card is in exile face up, so its CardView is already on the
+	// wire; this says which one, so the client can show it and, after
+	// "Cast it free", start the cast chain on it.
+	MayCastCard string `json:"may_cast_card,omitempty"`
+
 	// LifeCost is the life a "confirm" prompt's ACCEPT branch charges
 	// (Sylvan Library's 4). Zero for a branch that costs no life.
 	// Carried for the same reason legal.MoveCost.Life is (#547): a
@@ -5836,6 +5848,14 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 			v.AcceptLabel = c.AcceptLabel
 			v.DeclineLabel = c.DeclineLabel
 			v.LifeCost = c.LifeCost
+		}
+		if c.Kind == game.PendingChoiceMayCast {
+			v.AcceptLabel = c.AcceptLabel
+			v.DeclineLabel = c.DeclineLabel
+			v.MayCastKeyword = c.MayCastKeyword
+			if c.MayCastCard != uuid.Nil {
+				v.MayCastCard = c.MayCastCard.String()
+			}
 		}
 		// PendingChoiceLoopShortcut — the CR 726 proposal (#804). The
 		// count is the N in "has resolved N times this turn" and the

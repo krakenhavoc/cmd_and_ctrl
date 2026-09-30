@@ -683,6 +683,14 @@ type PendingChoice struct {
 	// instead of quoting a name into a sentence.
 	MayCastCard uuid.UUID
 
+	// MayCastKeyword names the rule a PendingChoiceMayCast is asked
+	// under — "cascade", "discover", "suspend", "madness" — so the
+	// client can name it and word the decline (ADR 0099 §7). Empty for
+	// an offer whose card text is the whole story (hideaway, Malcolm).
+	// The branch names ride AcceptLabel / DeclineLabel, as a confirm's
+	// do. Wire-serialised.
+	MayCastKeyword string
+
 	// mayCastResume is the server-only continuation for a
 	// PendingChoiceMayCast: what to do on each answer. Not
 	// serialised. Added in S28.
@@ -3320,6 +3328,52 @@ func (g *Game) QueueMayCastForEffect(
 		mayCastResume: &mayCastFrame{
 			onAccept:  onAccept,
 			onDecline: onDecline,
+		},
+	})
+	return nil
+}
+
+// MayCastPrompt is QueueMayCastForEffect's question with its words:
+// the rule it is asked under and the names of its two branches (ADR
+// 0099 §3). Every field but the card and the two branches is optional.
+type MayCastPrompt struct {
+	Chooser, Source, Card uuid.UUID
+	// Question is the dialog header.
+	Question string
+	// Keyword is the rule's name — PendingChoice.MayCastKeyword.
+	Keyword string
+	// AcceptLabel / DeclineLabel name the two buttons. Empty renders
+	// the client's defaults.
+	AcceptLabel, DeclineLabel string
+	OnAccept, OnDecline       func(g *Game) error
+}
+
+// QueueMayCastPromptForEffect is QueueMayCastForEffect with the
+// prompt's words. The same kind, the same frame and the same answer;
+// only what the client shows differs. A chooser who has left gets the
+// decline, exactly as QueueMayCastForEffect does.
+//
+// Caller must hold g.mu.
+func (g *Game) QueueMayCastPromptForEffect(p MayCastPrompt) error {
+	if pl := g.playerByIDLocked(p.Chooser); pl == nil || pl.Eliminated {
+		if p.OnDecline != nil {
+			return p.OnDecline(g)
+		}
+		return nil
+	}
+	g.QueueChoiceForEffect(PendingChoice{
+		Kind:           PendingChoiceMayCast,
+		Chooser:        p.Chooser,
+		Count:          1,
+		Source:         p.Source,
+		Reason:         p.Question,
+		MayCastCard:    p.Card,
+		MayCastKeyword: p.Keyword,
+		AcceptLabel:    p.AcceptLabel,
+		DeclineLabel:   p.DeclineLabel,
+		mayCastResume: &mayCastFrame{
+			onAccept:  p.OnAccept,
+			onDecline: p.OnDecline,
 		},
 	})
 	return nil

@@ -1165,10 +1165,19 @@ func (g *Game) AdvanceStep() (Turn, error) {
 	// that cost as free. Without this, a miracle grant survived a
 	// manual advance and stayed open until the turn's cleanup swept it,
 	// long after the paper decline it stands in for.
+	//
+	// ADR 0099 §4: the same call closes a discover's or a cascade's
+	// pass-closed free cast, and for the same reason. A lapse that
+	// raised a trigger or a prompt is left for the drive below, which
+	// resolves what went on the stack and halts on a prompt.
+	lapsed := false
 	for _, seat := range g.Seats {
-		if seat != nil {
-			g.closeMiracleWindowLocked(seat.ID)
+		if seat != nil && g.closePassWindowsLocked(seat.ID) {
+			lapsed = true
 		}
+	}
+	if lapsed {
+		g.runStateChecksLocked()
 	}
 	// #1571 / CR 508.1d: leaving declare_attackers ends the attack
 	// declaration, so it runs the same requirement checkpoint as the

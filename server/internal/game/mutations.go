@@ -1580,6 +1580,16 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// a "whenever a player casts a spell" trigger queue in printed
 	// order.
 	g.emitBecameTargetLocked(playerID, cardID, cardID, params.Targets)
+	// ADR 0099 §5: a cast that used a pass-closed grant (discover,
+	// cascade) spends it, so the caster's next pass does not lapse a
+	// card that is already on the stack — and a discover grant's cast
+	// is what completes the discover (CR 701.57b), announced here,
+	// after EventCast, so "whenever you discover" goes on the stack
+	// above the discovered spell. `card` is still the exile object the
+	// grant named: the copy was taken before the move bumped its epoch.
+	if grant != nil && grant.LapseOnPass != "" {
+		g.consumePassClosedGrantLocked(playerID, card)
+	}
 	// The caster receives priority right after casting (CR 117.3c),
 	// and CR 603.3 puts any cast-triggered abilities (Rhystic Study,
 	// Beast Whisperer) on the stack at that moment — above the
@@ -7158,8 +7168,22 @@ func (g *Game) PassPriority() error {
 	// #1665: passing is the decline of a resolved miracle's cast
 	// (CR 702.94a) — see miracle.go. Before the pass, because this
 	// pass can resolve the next miracle trigger.
+	//
+	// ADR 0099 §4: passing is also the decline of a discover's or a
+	// cascade's free cast. The card goes to hand (discover) or to the
+	// bottom (cascade) before the pass runs. When that moved something
+	// that asks or triggers — a commander's CR 903.9 offer, a "whenever
+	// you discover" payoff — the holder keeps priority with it on the
+	// stack or on the table, exactly as if the discover had put the
+	// card into their hand during its resolution; they pass again to
+	// move on.
 	if h := g.Turn.PriorityHolder; h >= 0 && h < len(g.Seats) && g.Seats[h] != nil {
-		g.closeMiracleWindowLocked(g.Seats[h].ID)
+		if g.closePassWindowsLocked(g.Seats[h].ID) {
+			if g.blockingChoiceLocked() != nil || len(g.PendingTriggers) > 0 {
+				g.runStateChecksLocked()
+				return nil
+			}
+		}
 	}
 	return g.passPriorityLocked()
 }
