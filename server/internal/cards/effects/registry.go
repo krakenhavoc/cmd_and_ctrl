@@ -1158,6 +1158,11 @@ func checkExhaustAbilities(spec Spec) {
 	// it answers to the same three rules.
 	for i, a := range spec.ManaAbilities {
 		checkOneExhaustAbility(spec.Name, "mana ability", i, a.Label, a.Exhaust, seen)
+		// #1621: "Activate only once each turn" reads the same record
+		// by the same key, so it has the same need of a label.
+		if a.OncePerTurn && a.Label == "" {
+			panic(fmt.Sprintf("effects.Register: %q mana ability %d is once-each-turn with no Label — the label is the record's key", spec.Name, i))
+		}
 	}
 	// #1184: the permission that suspends the gate. A nil Applies
 	// would grant it to every player at every moment, which no card

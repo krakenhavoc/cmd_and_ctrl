@@ -205,6 +205,11 @@ func corpusBoards() []corpusBoard {
 		// regeneration of gingerbrute.json and whip_redirect.json that
 		// unblocked it (ADR 0044's 2026-09-28 #1712 amendment).
 		{"duration_copy", corpusDurationCopy},
+		// v7, added by ADR 0101 (#1753) as a new file: keyword counters
+		// and their CR 613.7c timestamps (counterStampedAt), one older and
+		// one newer than a "loses all abilities" record on the same
+		// creature, so a restore keeps the order.
+		{"keyword_counters", corpusKeywordCounters},
 		// v7, added by ADR 0100 sub-PR 1 as a new file: a delved spell
 		// on the stack — PaidCost.Delved, the objects in exile, on disk.
 		{"delved_spell_on_stack", corpusDelvedSpellOnStack},
@@ -226,6 +231,37 @@ func corpusDelvedSpellOnStack(t *testing.T) *game.Game {
 	if it := g.StackMeta[id]; it == nil || len(it.Paid.Delved) != 3 {
 		t.Fatal("setup: want Treasure Cruise on the stack with three delved cards")
 	}
+	return g
+}
+
+// corpusKeywordCounters is two Bears, each with a flying counter and a
+// "loses all abilities" scoped effect. On the first the counter came
+// first, so the removal takes flying; on the second the removal came
+// first, so the counter's flying applies after it (CR 613.3, 613.7c).
+func corpusKeywordCounters(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[0].ID
+	grounded := pushBattlefieldCardWithTimestamp(g, corpusCreature(me, "Grizzly Bears", 2, 2))
+	flier := pushBattlefieldCardWithTimestamp(g, corpusCreature(me, "Runeclaw Bear", 2, 2))
+	lose := func(id uuid.UUID) {
+		g.WithWriteLock(func() {
+			if !g.RegisterScopedEffectForEffect(uuid.Nil, g.PinnedObjectsLocked(id),
+				[]game.Mod{game.LoseAllAbilitiesMod()}, game.IndefiniteDuration(), "corpus — loses all abilities") {
+				t.Fatal("setup: the removal registered nothing")
+			}
+		})
+	}
+	counter := func(id uuid.UUID) {
+		g.WithWriteLock(func() {
+			if err := g.AddCounterForEffect(id, game.CounterFlying, 1); err != nil {
+				t.Fatalf("setup: flying counter: %v", err)
+			}
+		})
+	}
+	counter(grounded)
+	lose(grounded)
+	lose(flier)
+	counter(flier)
 	return g
 }
 

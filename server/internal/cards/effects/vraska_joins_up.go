@@ -16,23 +16,16 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // dealer, read post-layer (b24LegendaryCreatureYouControlDealtCombatDamageToPlayer),
 // one card per legendary creature that connects.
 //
-// DECLARED SIMPLIFICATION, weaker than printed: the engine reads no
-// keyword counters of its own (CR 122.1b), so Vraska carries that
-// rule for the counters it places — a Layer 6 static granting
-// deathtouch to every creature with a deathtouch counter
-// (b24KeywordCounterGrant), any creature's, anyone's, exactly the
-// rule and never more. It lives on Vraska, so it stops when Vraska
-// leaves the battlefield: the counters stay on the creatures and go
-// inert, where the printed card's would keep granting. The gap runs
-// the weaker way; it closes when the engine reads keyword counters
-// itself, at which point this static becomes a no-op and comes out.
+// The deathtouch counters need nothing more: the engine reads keyword
+// counters itself (CR 122.1b, ADR 0101), so each creature keeps
+// deathtouch for as long as it keeps the counter, whether or not
+// Vraska is still on the battlefield. Until ADR 0101 Vraska carried the
+// rule in a static of its own, which stopped when Vraska left.
 func init() {
 	Register(Spec{
 		OracleID:     "c91b0dd5-4c63-49a5-95bf-c342b6ff2076",
 		Name:         "Vraska Joins Up",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"Deathtouch counters only grant deathtouch while Vraska Joins Up is on the battlefield — once it leaves, the counters stay but stop working."},
-		Static:       []game.StaticAbility{b24KeywordCounterGrant("deathtouch")},
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Vraska Joins Up — put a deathtouch counter on each creature you control", func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
@@ -40,7 +33,7 @@ func init() {
 					if z := g.FindCardZoneForEffect(id); z == nil || z.Kind != game.ZoneBattlefield {
 						continue
 					}
-					if err := (AddCounter{Target: id, Kind: "deathtouch", N: 1}).Apply(ctx.asGroupMember()); err != nil {
+					if err := (AddCounter{Target: id, Kind: game.CounterDeathtouch, N: 1}).Apply(ctx.asGroupMember()); err != nil {
 						return err
 					}
 				}

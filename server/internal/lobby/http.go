@@ -1907,6 +1907,10 @@ func writeAutoTapPreview(
 		Tap        bool   `json:"tap,omitempty"`
 		Sacrifice  bool   `json:"sacrifice,omitempty"`
 		ExileCards bool   `json:"exile,omitempty"`
+		// #1621: a costless once-each-turn ability (Vivi Ornitier's
+		// {0}) — nothing tapped, sacrificed or exiled, only this
+		// turn's one use spent.
+		OncePerTurn bool `json:"once_per_turn,omitempty"`
 	}
 	type response struct {
 		OK      bool     `json:"ok"`
@@ -1926,12 +1930,13 @@ func writeAutoTapPreview(
 		for i, e := range plan {
 			body.Plan[i] = e.CardID.String()
 			body.Sources[i] = source{
-				CardID:     e.CardID.String(),
-				Name:       e.Name,
-				Zone:       string(e.Zone),
-				Tap:        e.Taps,
-				Sacrifice:  e.Sacrifices,
-				ExileCards: e.Exiles,
+				CardID:      e.CardID.String(),
+				Name:        e.Name,
+				Zone:        string(e.Zone),
+				Tap:         e.Taps,
+				Sacrifice:   e.Sacrifices,
+				ExileCards:  e.Exiles,
+				OncePerTurn: e.OncePerTurn,
 			}
 		}
 	} else {

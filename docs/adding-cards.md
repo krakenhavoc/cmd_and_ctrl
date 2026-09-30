@@ -440,10 +440,23 @@ Eldrazi Spawn, Eldrazi Scion) is plannable too — the executor cracks it
 without tapping it, and a tapped one is still a source — and inside the
 sacrifice tier a CREATURE the cost eats comes after a Treasure or a Gold.
 What the planner still demands is that the ability cost the source
-SOMETHING: a `{T}` or the source itself. Order the abilities so the
-cheapest is FIRST; the planner takes one ability per permanent, in order
+SOMETHING: a `{T}` or the source itself. The one exception (#1621) is an
+ability that costs NOTHING and declares `OncePerTurn: true`. That is
+Vivi Ornitier's "{0}: Add X mana … Activate only during your turn and
+only once each turn", written `OncePerTurn: true, Condition:
+DuringYourTurn()`. Write "Activate only once each turn" on a mana
+ability as that field, never as a `Condition`. The field is what the
+planner can read, and `Register` folds the gate into the ability's
+`Condition` for you, per object and per label. Such an ability is the
+LAST tier, planned only when nothing else can pay: after every land,
+every frozen source, every Treasure and every Spirit Guide in hand.
+Its output is priced the way the activation computes it, so a power-0
+Vivi is not a source. A once-each-turn ability with any other cost,
+such as Ramos's five +1/+1 counters, stays out of the plan. Order the
+abilities so the cheapest is FIRST; the planner takes one ability per
+permanent, in order
 ([ADR 0011](decisions/0011-mana-pool-and-auto-tapper.md)
-amendments 2026-09-22 and 2026-09-23).
+amendments 2026-09-22, 2026-09-23 and 2026-09-30).
 
 **Counter costs (#789).** `ManaAbilityCost.RemoveCounters` is the SAME
 `*game.CounterRemovalCost` a CR 602 ability's cost carries — one
@@ -1450,6 +1463,22 @@ canonicalised forms the engine expects. Canonical tokens:
 | `"toxic N"` | Toxic (CR 702.164) — #748, N extra poison on combat damage to a player. Numbered AND cumulative: read it with `game.ToxicTotal`, never `HasKeyword`, and grant it through `game.AppendKeywordAbility` so a second instance adds up ([ADR 0056](decisions/0056-infect-wither-toxic.md)) |
 | `"prowess"` | Prowess (CR 702.108) — #706, the first TRIGGERED keyword in the table: `TriggersForCard` turns each instance on the effective ability list into one trigger (`game/prowess.go`). Cumulative like toxic, so grant it through `game.AppendKeywordAbility`. Never write a prowess trigger by hand — declare the token ([ADR 0014 amendment 2026-09-24](decisions/0014-combat-keywords.md)) |
 | `"split second"` | Split second (CR 702.61) — #1519, a SPELL's keyword: `castHasSplitSecond` (`game/split_second.go`) stamps `StackItem.SplitSecond` at announce, and while it is on the stack nobody casts or activates a non-mana ability. Declare it on an instant or sorcery exactly like flash; never pass the sandbox `SplitSecond` cast flag from a card ([ADR 0007 amendment 2026-09-24](decisions/0007-stack-foundation.md)) |
+
+**A keyword counter needs no grant** (CR 122.1b, [ADR 0101](decisions/0101-keyword-counters.md)).
+"Put a flying counter on it" is `AddCounter{Target: id, Kind:
+game.CounterFlying, N: 1}`, and that is the whole card side: the
+engine reads the counter itself, as a layer-6 effect at the counter's
+own CR 613.7c timestamp, so the keyword lasts as long as the counter
+does whatever put it there. Do not add a static that grants the
+keyword to "creatures with a flying counter" (the retired
+`b24KeywordCounterGrant`): it stops when its source leaves, it is
+silenced by the source losing its abilities, and it has the wrong
+timestamp. "Returns … with a hexproof counter on it" rides the entry
+event (`ReturnFromGraveyardWithCountersForEffect`, Perennation). The
+kinds are the thirteen in `game.KeywordCounterKinds()`, spelled as the
+keyword token (`game.CounterFirstStrike` is `"first strike"`). Decayed,
+exalted and "hexproof from" counters are not read yet, because those
+keywords are not enforced: a card that places one ships with a caveat.
 
 **A keyword that is a trigger** has two shapes, and ADR 0014's
 2026-09-24 amendment says which to use. A constructor on

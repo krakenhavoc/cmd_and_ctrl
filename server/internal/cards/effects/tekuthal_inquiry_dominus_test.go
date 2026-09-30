@@ -66,9 +66,8 @@ func TestTekuthalRemovesThreeCountersOfAnyKindsForIndestructible(t *testing.T) {
 	if got := counterCount(g, tekuthal, "indestructible"); got != 1 {
 		t.Fatalf("Tekuthal has %d indestructible counters, want 1", got)
 	}
-	// CR 122.1b: the counter grants the keyword. The engine reads no
-	// keyword counters of its own, so Tekuthal's own static carries
-	// the rule (b24KeywordCounterGrant).
+	// CR 122.1b: the counter grants the keyword, read by the engine
+	// itself (ADR 0101).
 	if !containsString(effectiveAbilities(t, g, tekuthal), "indestructible") {
 		t.Error("an indestructible counter did not make Tekuthal indestructible")
 	}
