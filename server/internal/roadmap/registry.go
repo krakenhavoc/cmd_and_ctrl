@@ -1049,6 +1049,14 @@ var items = []Item{
 		EngineNotes: "prompt inside an entry replacement: #1198's `ReplacementEffect.EntryHandReveal` is the nearest shape — a card choice over the hand, asked inside the CR 614 entry window through `PendingChoiceEntryRevealFromHand` — but it only REVEALS the chosen card. Mox Diamond needs the pick DISCARDED through `discardCardsLocked` (so madness and discard payoffs see it), and the \"if you don't\" answer has to redirect the entering artifact to its owner's graveyard. A `mustSettleNow` entry (a spell putting it onto the battlefield) needs a declared answer too, and the weaker one is to bin the Mox without asking. Shipping the card without this would make it a free Mox, stronger than printed, so it stays out of the catalog. Noted earlier on #295 and #1600.",
 	},
 	{
+		Slug: "aura-on-a-graveyard-card", Name: "Auras that enchant a card in a graveyard", Kind: KindSeam, Status: StatusMissing,
+		Summary:     "Auras like Animate Dead, which enchant a creature card in a graveyard and bring it back as they enter.",
+		Missing:     "An Aura can't yet enchant a card in a graveyard, so Animate Dead isn't available.",
+		Issue:       1780,
+		Waiting:     []string{"Animate Dead"},
+		EngineNotes: "attachment to a non-battlefield object: `Card.AttachedTo` can name a card ID in a graveyard, but `attachmentLegalLocked` (CR 704.5m) only looks for the host on the battlefield, so the Aura resolves and is swept before its enters trigger runs. Animate Dead also rewrites its own enchant clause as it enters (\"loses 'enchant creature card in a graveyard' and gains 'enchant creature put onto the battlefield with this Aura'\"), which the 704.5m re-check would have to read. Building it without the clause would be a Reanimate with no target, which is stronger than printed, so it stays out of the catalog.",
+	},
+	{
 		Slug: "enters-under-an-opponents-control", Name: "Entering under an opponent's control", Kind: KindSeam, Status: StatusMissing,
 		Summary:     "Permanents that enter the battlefield under the control of an opponent of your choice, such as Captive Audience.",
 		Missing:     "A permanent can't yet enter under an opponent's control, so Captive Audience isn't available.",
