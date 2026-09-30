@@ -1613,7 +1613,12 @@ authenticated, you are just not a person.
 
 - Every time is **Unix milliseconds** (the unit the tables store), and
   a time that has not happened is `null`. `winner_seat` is `null` until
-  the engine reports a winner.
+  the engine reports a winner. `outcome` (`"win"` or `"draw"`) says how
+  an ended table finished, which `winner_seat` alone cannot: a draw and
+  a table an admin closed are both `winner_seat: null`. It is omitted
+  when unknown, for a table that has not ended, one an admin closed,
+  and any game that ended before `games.outcome` existed (migration
+  0007, [ADR 0057](decisions/0057-win-and-lose-by-effect.md) Decision 7).
 - `seat` is the caller's seat. `others` is every other seat in seat
   order. A seat's `name` is its user's current display name when it
   has one, so a friend who renamed themselves on Discord reads
