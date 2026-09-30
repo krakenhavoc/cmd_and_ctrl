@@ -287,6 +287,18 @@ func eventCardHasType(ev game.Event, g *game.Game, words ...string) bool {
 	return false
 }
 
+// damageEachOpponentThenGainLife is "~ deals N damage to each opponent
+// and you gain N life" as a whole effect (Y'shtola, Night's Blessed;
+// Quintorius Kand).
+func damageEachOpponentThenGainLife(n int) Effect {
+	return func(g *game.Game, item *game.StackItem) error {
+		if err := damageToEachOpponent(g, item, n); err != nil {
+			return err
+		}
+		return GainLife{Player: item.Controller, Amount: n}.Apply(NewContext(g, item))
+	}
+}
+
 // damageToEachOpponent deals n damage to every opponent of the
 // source's controller. The shared body of the "pings the table"
 // pirates.
