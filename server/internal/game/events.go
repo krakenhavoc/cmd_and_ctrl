@@ -390,6 +390,28 @@ const (
 	// an ordinary scry. Added in S22.
 	EventSurveil EventKind = "surveil"
 
+	// EventDiscover — Actor finished a discover (CR 701.57b). Source
+	// is the card that discovered, Amount is N, and CardID is the
+	// discovered card (CR 701.57c), or uuid.Nil when the walk found
+	// none. "Whenever you discover" (Curator of Sun's Creation) reads
+	// it, and Amount is Curator's "the same value".
+	//
+	// Emitted when the discovered card's fate is settled, which is
+	// when the process is complete (ADR 0099 §5): after it reaches a
+	// hand on a decline or on the pass that closes its grant, and
+	// right after the EventCast of the spell that used the grant. That
+	// last one is why it is not emitted at the prompt's answer: a
+	// "whenever you discover" trigger goes on the stack ABOVE the
+	// discovered spell and resolves first, as in paper. A walk that
+	// found nothing, and a discoverer who has left, emit it at once —
+	// CR 701.57b's "even if some or all of those actions were
+	// impossible".
+	//
+	// Its own kind rather than a flag on EventKeywordAction, for the
+	// reason EventSurveil gives: a discover payoff must not fire on a
+	// scry.
+	EventDiscover EventKind = "discover"
+
 	// EventSacrifice — a permanent was sacrificed (CR 701.21):
 	// its controller moved it to the graveyard as a cost or as
 	// part of an effect's instruction. Emitted immediately BEFORE

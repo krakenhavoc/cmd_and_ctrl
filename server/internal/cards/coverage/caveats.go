@@ -522,6 +522,17 @@ var mechanics = []Mechanic{
 		Adopt:      `Triggered: []game.TriggeredAbility{Storm()}`,
 	},
 	{
+		// ADR 0099: discover is an instruction inside a closure, so the
+		// only machine-readable signal is the Spec's own declaration,
+		// which effects/discover_guard_test.go holds to the source.
+		Name:       "discover",
+		Phrases:    []string{"discover"},
+		Implements: func(s effects.Spec) bool { return s.Discovers },
+		Evidence:   "the spec declares Spec.Discovers",
+		Confidence: Exact,
+		Adopt:      `Discover{N: n}.Apply(ctx) or DiscoverN(n), and Discovers: true on the Spec — see effects/discover.go`,
+	},
+	{
 		// #706: prowess is a canonicalKeywords token, not a
 		// constructor — the engine derives the trigger from the
 		// ability list (game/prowess.go). A card that DECLARES it in

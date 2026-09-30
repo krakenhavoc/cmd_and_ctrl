@@ -646,6 +646,9 @@ export type LogKind =
   | "counters"
   | "scry"
   | "surveil"
+  // ADR 0099: a finished discover (CR 701.57b). `amount` is the N and
+  // `card_id` the discovered card, absent when nothing was found.
+  | "discover"
   | "saga_chapter"
   | "class_level"
   // ADR 0075 §2.3: the host or the admin changed a table setting.
@@ -1094,6 +1097,12 @@ export interface PendingChoiceView {
 
   accept_label?: string;
   decline_label?: string;
+  // ADR 0099 §7: populated for kind "may_cast". The rule the offer is
+  // asked under ("cascade", "discover", "suspend", "madness") and the
+  // instance id of the exiled card it offers. A may_cast also carries
+  // accept_label / decline_label when the server named its branches.
+  may_cast_keyword?: string;
+  may_cast_card?: string;
   // #74: populated for kind "confirm" — the life the ACCEPT branch
   // charges (Sylvan Library's 4). Absent when the branch costs no
   // life. The label already says it; this is the number, for anything

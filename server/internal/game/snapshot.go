@@ -1160,6 +1160,7 @@ type pendingChoiceSnapshot struct {
 	SearchCards     []uuid.UUID `json:"searchCards,omitempty"`
 	SearchMax       int         `json:"searchMax"`
 	MayCastCard     uuid.UUID   `json:"mayCastCard,omitempty"`
+	MayCastKeyword  string      `json:"mayCastKeyword,omitempty"`
 	AcceptLabel     string      `json:"acceptLabel,omitempty"`
 	LifeCost        int         `json:"lifeCost,omitempty"`
 	DeclineLabel    string      `json:"declineLabel,omitempty"`
@@ -2056,6 +2057,7 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		SearchCards:          copyUUIDs(c.SearchCards),
 		SearchMax:            c.SearchMax,
 		MayCastCard:          c.MayCastCard,
+		MayCastKeyword:       c.MayCastKeyword,
 		AcceptLabel:          c.AcceptLabel,
 		DeclineLabel:         c.DeclineLabel,
 		LifeCost:             c.LifeCost,
@@ -2797,6 +2799,7 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		SearchCards:          copyUUIDs(c.SearchCards),
 		SearchMax:            c.SearchMax,
 		MayCastCard:          c.MayCastCard,
+		MayCastKeyword:       c.MayCastKeyword,
 		AcceptLabel:          c.AcceptLabel,
 		DeclineLabel:         c.DeclineLabel,
 		LifeCost:             c.LifeCost,

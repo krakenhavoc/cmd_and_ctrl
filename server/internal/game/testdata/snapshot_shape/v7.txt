@@ -1278,6 +1278,7 @@ pendingChoices[].manaRiders[].when[]	string
 pendingChoices[].manaSourceKinds	number:uint16
 pendingChoices[].manaTapped	bool
 pendingChoices[].mayCastCard	custom(uuid.UUID)
+pendingChoices[].mayCastKeyword	string
 pendingChoices[].midResolution	bool
 pendingChoices[].modeMax	number:int
 pendingChoices[].modeMin	number:int
@@ -1847,6 +1848,9 @@ seats[].castPermissions[].cards[].epoch	number:int
 seats[].castPermissions[].cards[].id	custom(uuid.UUID)
 seats[].castPermissions[].castOnly	bool
 seats[].castPermissions[].cost	string
+seats[].castPermissions[].discover	object
+seats[].castPermissions[].discover.n	number:int
+seats[].castPermissions[].discover.source	custom(uuid.UUID)
 seats[].castPermissions[].duration	object
 seats[].castPermissions[].duration.Condition	number:int
 seats[].castPermissions[].duration.ExpiresAfterTurnsBegun	number:int
@@ -1873,7 +1877,9 @@ seats[].castPermissions[].filter.noncreatureOnly	bool
 seats[].castPermissions[].filter.sorceryOnly	bool
 seats[].castPermissions[].grantsHaste	bool
 seats[].castPermissions[].label	string
+seats[].castPermissions[].lapseOnPass	string
 seats[].castPermissions[].lifeEqualToManaValue	bool
+seats[].castPermissions[].maxSpellManaValue	number:int
 seats[].castPermissions[].notBeforeSeq	number:int
 seats[].castPermissions[].notBeforeTurn	number:int
 seats[].castPermissions[].player	custom(uuid.UUID)

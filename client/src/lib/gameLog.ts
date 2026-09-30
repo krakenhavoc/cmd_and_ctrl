@@ -105,6 +105,7 @@ const LOG_TONE: Record<LogKind, string> = {
   counters: "tone-quiet",
   scry: "tone-quiet",
   surveil: "tone-quiet",
+  discover: "tone-zone",
   saga_chapter: "tone-resolve",
   class_level: "tone-resolve",
   // ADR 0075 §2.3. Not a beat of the game but a change to the rules
