@@ -23,6 +23,7 @@
     ActionPayload,
     ActionType,
     ActivatedAbilityView,
+    AdditionalCostView,
     CardView,
     GameView,
     LegalTargetsView,
@@ -79,6 +80,8 @@
     castLocksXAtZero,
     isModal,
     discardCostOf,
+    castAdditionalCost,
+    costBranchesOf,
     castSacrificeClause,
     castSacrificeLabel,
     optionalCostsOf,
@@ -131,7 +134,8 @@
   import { exileCostNote, exileCostOptionCards, exileCostWhere } from "../../exileCost";
   import AlternativeCostModal from "./AlternativeCostModal.svelte";
   import FacePickerModal from "./FacePickerModal.svelte";
-  import { cardAsFace, needsFacePicker } from "../../faces";
+  import { cardAsFace, cardAsFused, faceOptions, needsFacePicker } from "../../faces";
+  import { unlockParams, unlockRequest } from "../../roomDoors";
   import TapCostModal from "./TapCostModal.svelte";
   import DelveCostModal from "./DelveCostModal.svelte";
   import { delveOptionIDs, hasDelveChoice } from "../../delve";
@@ -407,6 +411,7 @@
     key: string | undefined,
     optional: number[],
     giftOpponent?: string,
+    costBranch?: number,
   ): void {
     const card = altCostPromptCard;
     const choices = altCostPromptChoices;
@@ -422,6 +427,9 @@
     // #1267: the gift's opponent is part of the same announcement; the
     // modal only hands one back when the gift toggle is on.
     if (giftOpponent !== undefined) next = { ...next, giftOpponent };
+    // ADR 0100: the either/or branch is announced in the same step
+    // (CR 601.2b); the branch's own picker opens next in the chain.
+    if (costBranch !== undefined) next = { ...next, costBranch };
     afterAltCost(card, next);
   }
 
@@ -433,6 +441,9 @@
   // them once the spell is on the stack.
   let discardPromptCard = $state<CardView | null>(null);
   let discardPromptChoices: CastChoices = {};
+  // ADR 0100: the additional cost this cast pays, settled when the
+  // prompt opens — the chosen either/or branch, or the card's own.
+  let discardPromptCost = $state<AdditionalCostView | undefined>(undefined);
 
   // Everything in the caster's hand except the spell itself — CR
   // 601.2a puts it on the stack before costs are paid, so it can't
@@ -671,7 +682,9 @@
   }
 
   function afterAltCostPayment(card: CardView, choices: CastChoices): void {
-    if (discardCostOf(card) > 0) {
+    // ADR 0100: an either/or cost's discard is the chosen branch's.
+    if (discardCostOf(card, choices) > 0) {
+      discardPromptCost = castAdditionalCost(card, choices);
       discardPromptChoices = choices;
       discardPromptCard = card;
       return;
@@ -770,12 +783,22 @@
   // #1508: the choices the cast started with — its zone and whether it
   // was dragged — so the face picker's confirm carries both on.
   let facePromptBase: CastChoices = {};
-  function confirmFace(face: number): void {
+  // ADR 0103: the zone of the cast the picker is open for, as state so
+  // the picker re-reads it — which halves it offers depends on it.
+  let facePromptZone = $state<CastSourceZone | undefined>(undefined);
+  function confirmFace(face: number, fused = false): void {
     const card = facePromptCard;
     const base = facePromptBase;
     facePromptCard = null;
     facePromptBase = {};
     if (!card) return;
+    // ADR 0103, CR 702.102: the FUSED cast of a split card with fuse —
+    // both halves, the server's fused announce block, and `fuse: true`
+    // on the cast.
+    if (fused) {
+      afterFace(cardAsFused(card), { ...base, fuse: true });
+      return;
+    }
     // Run the rest of the chain against the CHOSEN face, so the
     // prompts and the cast-timing checks see its type line, its cost
     // and — since #992 — its own announce data: the cost picker, the
@@ -797,7 +820,14 @@
     // same picker with only the add-ons showing — one prompt for one
     // question (CR 601.2b), rather than a second modal asking the
     // other half of it.
-    if (alternativeCostsOf(card).length > 0 || optionalCostsOf(card).length > 0) {
+    //
+    // ADR 0100: and an either/or additional cost's branch radio, the
+    // same "what am I paying for this?" question.
+    if (
+      alternativeCostsOf(card).length > 0 ||
+      optionalCostsOf(card).length > 0 ||
+      costBranchesOf(card).length > 0
+    ) {
       altCostPromptChoices = choices;
       altCostPromptCard = card;
       return;
@@ -852,12 +882,31 @@
       return;
     }
     if (needsFacePicker(card)) {
+      // ADR 0103: a split card may have only one half this zone allows
+      // (an aftermath card in hand) — then there is nothing to ask.
+      const options = faceOptions(card, fromZone);
+      if (options.length === 1) {
+        const only = options[0];
+        afterFace(only.view, only.fused ? { ...base, fuse: true } : { ...base, face: only.face });
+        return;
+      }
       facePromptBase = base;
+      facePromptZone = base.fromZone;
       facePromptCard = card;
       return;
     }
     afterFace(card, base);
   }
+
+  // ADR 0103: a door button on a Room (Card.svelte's door strip) asks
+  // for an unlock through the roomDoors store; the Board is the one
+  // place that sends it, as the context menu's rows are.
+  $effect(() => {
+    const req = $unlockRequest;
+    if (!req) return;
+    unlockRequest.set(null);
+    guardedSendAction("special_action", unlockParams(req.cardID, req.door), viewerID ?? undefined);
+  });
 
   // ADR 0099 §7: "Cast it free" on a discover or cascade prompt starts
   // the cast chain for the exiled card as soon as the snapshot carrying
@@ -2349,6 +2398,7 @@
   />
   <FacePickerModal
     card={facePromptCard}
+    zone={facePromptZone}
     onConfirm={confirmFace}
     onCancel={() => (facePromptCard = null)}
   />
@@ -2371,9 +2421,13 @@
       altPayPromptChoices = {};
     }}
   />
+  <!-- ADR 0100: the count and the label are the cost THIS cast pays —
+       the chosen branch of an either/or cost, or the card's own. -->
   <DiscardCostModal
     card={discardPromptCard}
     options={discardCostOptions}
+    need={discardPromptCost?.discard_cards}
+    label={discardPromptCost?.label}
     onConfirm={confirmDiscardCost}
     onCancel={() => {
       discardPromptCard = null;

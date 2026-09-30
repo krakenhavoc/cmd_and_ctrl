@@ -881,6 +881,8 @@ export async function fetchAutoTapPreview(
       params.set("delve_ids", cast.delveIDs.join(","));
     }
     if (cast.face) params.set("face", String(cast.face));
+    // ADR 0100 §2: the either/or branch, whose mana joins the total.
+    if (cast.costBranch !== undefined) params.set("cost_branch", String(cast.costBranch));
     // #1242: named payments the plan must not also spend on mana.
     if (cast.sacrificeIDs && cast.sacrificeIDs.length > 0) {
       params.set("sacrifice_ids", cast.sacrificeIDs.join(","));

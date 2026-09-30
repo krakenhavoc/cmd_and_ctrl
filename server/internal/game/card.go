@@ -29,6 +29,8 @@ type Card struct {
 	// CMDCTRL_SEED_DEMO). The client uses this to resolve image URIs
 	// by hitting GET /cards/{id}/image.
 	ScryfallID string
+	// TokenArtOnly lives in the bool block at the end of this struct
+	// (TestCardHasNoInteriorPadding) — see it there for what it means.
 
 	// OracleID is the Scryfall oracle-level card identity, stable
 	// across printings (every printing of Lightning Bolt shares one
@@ -1121,6 +1123,46 @@ type Card struct {
 	// later snapshot, and goes away only when the card itself leaves
 	// the game. Carried by the snapshot. Added in S33 (#522).
 	AbilitiesLostOnRestore bool
+
+	// Fused marks a FUSED split spell on the stack (CR 702.102a, ADR
+	// 0103 Decision 3): both halves were cast together from hand. The
+	// card then carries both halves' combined characteristics
+	// (CR 702.102b, 709.4d) and keys on FusedCatalogKey. Set only by
+	// the cast path and cleared by MoveCard, so it never outlives the
+	// stack. Carried by the snapshot, for a restore point taken with a
+	// fused spell on the stack.
+	Fused bool
+
+	// Unlocked is a Room's two CR 709.5c designations, "left half
+	// unlocked" and "right half unlocked" (ADR 0103). Battlefield state:
+	// set as the permanent enters by the half that was cast (CR
+	// 709.5d) and by UnlockDoorForEffect / LockDoorForEffect, cleared
+	// when it leaves the battlefield (CR 400.7), not copiable (nothing
+	// in the copy path reads it), and read by Designation.Active for
+	// the door gate. One byte in the bool block. Carried by the
+	// snapshot.
+	Unlocked DoorMask
+
+	// TokenArtOnly marks a ScryfallID (above) that ADR 0078's
+	// token-art resolver chose for its PICTURE, as opposed to one
+	// that names what the object IS. Set only by mintTokenLocked
+	// (token_create.go), and only on the resolver's own stamp — a
+	// token COPY (TokenCopyTemplate, tokenCopyOfSpell) carries the
+	// COPIED card's real printing id and leaves this false, because
+	// that ScryfallID genuinely is a printed identity (CR 707.2): a
+	// token copy of a printed 0/0 still dies to CR 704.5f.
+	//
+	// ToughnessIsKnown and fromScryfallPrinting both read
+	// `ScryfallID != ""` as "a printing stands behind this object".
+	// That reading breaks the moment a vanilla token gets ART with no
+	// identity behind it — a 0/0 Construct or Spirit Cleric token
+	// would start dying to CR 704.5f the instant it had a picture, and
+	// would start reporting a colour identity it doesn't print. This
+	// bit is what lets both predicates keep meaning what their own
+	// doc comments say while still telling a real copy from a bare
+	// art stamp. See ADR 0078, "Two predicates that read
+	// ScryfallID != ''".
+	TokenArtOnly bool
 }
 
 // AddKnower marks `viewerID` as having seen this card. No-op for
@@ -1294,7 +1336,18 @@ func (c Card) ToughnessIsKnown() bool {
 	if c.VariableToughness {
 		return false
 	}
-	return c.PrintedPTKnown || c.LostLastCounter || c.ScryfallID != ""
+	// ADR 0078: `ScryfallID != ""` used to mean "a printing stands
+	// behind this object, so its 0 is a real printed 0" — true for
+	// every card that had gone through deck import and false for a
+	// conjured object (a token, a test fixture, the demo seed). ADR
+	// 0078 stamps a token's ScryfallID with a resolved ART id, which
+	// is not that signal at all: a 0/0 Construct or Spirit Cleric
+	// token would otherwise read as "printed 0" the moment it got art
+	// and fall into CR 704.5f the instant it lost its counters.
+	// `!c.TokenArtOnly` keeps this reading `ScryfallID` the way its
+	// own doc comment says to, while still trusting the id a token
+	// COPY carries (TokenArtOnly is false there — see its doc).
+	return c.PrintedPTKnown || c.LostLastCounter || (c.ScryfallID != "" && !c.TokenArtOnly)
 }
 
 // --- card-type predicates ------------------------------------

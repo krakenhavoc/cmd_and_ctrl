@@ -370,6 +370,9 @@ type entryLanding struct {
 	// entered is its battlefield ID: the NEW one when the entry minted
 	// a new object.
 	entered uuid.UUID
+	// doors are the Room doors the landing unlocked as it entered
+	// (CR 709.5d), announced after EventETB (CR 709.5h).
+	doors DoorMask
 	// played is CR 305.4's distinction, carried from the settled
 	// event's landPlay flag to the record announceEntryLocked reads
 	// rather than reaching back into ev for it: true for the one
@@ -519,6 +522,11 @@ func (g *Game) landEntryLocked(ev *ReplacementEvent) (l entryLanding, ok bool, e
 	// copy above, so a Clone copying a preparation card prepares the
 	// prepare spell it copied, and before EventETB.
 	g.applyEntersPreparedLocked(entered, ev.EntersPrepared)
+	// ADR 0103, CR 709.5d: a Room spell's cast door, given as the
+	// permanent enters and before EventETB, so the door's statics apply
+	// as it arrives. After the copy above: a Clone-like entry of a Room
+	// is not the spell that was cast, and its doors stay locked.
+	doors := g.applyEntersUnlockedLocked(entered, ev.EntersUnlocked)
 	// Per-turn land-drop tally. The land branch in CastSpell bumps
 	// this on the path where nothing pauses; this branch is the same
 	// land play finishing after a prompt, and it was never bumping
@@ -546,7 +554,12 @@ func (g *Game) landEntryLocked(ev *ReplacementEvent) (l entryLanding, ok bool, e
 		}
 		g.LandsPlayedThisTurn[landPlayer]++
 	}
-	return entryLanding{ev: ev, moved: moved, srcKind: srcKind, entered: entered, played: ev.landPlay}, true, nil
+	if doors != 0 {
+		if c := findBattlefieldCard(g, entered); c != nil {
+			moved = *c
+		}
+	}
+	return entryLanding{ev: ev, moved: moved, srcKind: srcKind, entered: entered, played: ev.landPlay, doors: doors}, true, nil
 }
 
 // announceEntryLocked emits what a landed permanent's arrival owes the
@@ -598,6 +611,18 @@ func (g *Game) announceEntryLocked(l entryLanding) {
 		Actor:  ev.Actor,
 		CardID: l.entered,
 	})
+	// ADR 0103, CR 709.5h: "when you unlock this door" triggers on a
+	// door unlocked as the permanent enters, too. After EventETB, in
+	// the same batch.
+	if l.doors != 0 {
+		if c := findBattlefieldCard(g, l.entered); c != nil {
+			actor := ev.Actor
+			if actor == uuid.Nil {
+				actor = c.Controller
+			}
+			g.announceDoorsUnlockedLocked(*c, l.doors, actor, true)
+		}
+	}
 }
 
 // runEntryHooksLocked runs the catalog's AsEnters hook for a landed and

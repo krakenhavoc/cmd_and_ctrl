@@ -745,6 +745,35 @@ type AdditionalCostView struct {
 	// Label is the clause as printed ("Discard a card"), shown
 	// above the picker.
 	Label string `json:"label,omitempty"`
+
+	// Branches is an either/or additional cost (ADR 0100 §2): "sacrifice
+	// an artifact or discard a card". Each entry is one branch in the
+	// same shape as this view — its own discard count, sacrifice
+	// options, mana, life and blight — plus its `key` and whether the
+	// viewer could pay it right now (`payable`). The caster names the
+	// chosen branch's index on cast_spell as `cost_branch`, and pays that
+	// branch's cards on the usual lists. A cost with branches carries no
+	// components of its own; absent on every other card.
+	Branches []AdditionalCostView `json:"branches,omitempty"`
+	// Key is a branch's identity ("discard", "mana"). Branches only.
+	Key string `json:"key,omitempty"`
+	// ManaCost is a branch's mana ("{5}"), in brace notation. It joins
+	// the total the auto-tap preview prices once `cost_branch` is sent.
+	ManaCost string `json:"mana_cost,omitempty"`
+	// PayLife is a branch's fixed "pay N life" (CR 119.4).
+	PayLife int `json:"pay_life,omitempty"`
+	// Blight is a branch's "blight N" (CR 701.68a), and BlightOptions
+	// the viewer's creatures that could take the counters, in the shape
+	// OptionalCostView gives an optional blight. The one pick rides
+	// cast_spell as `blight_ids`.
+	Blight        int               `json:"blight,omitempty"`
+	BlightOptions *LegalTargetsView `json:"blight_options,omitempty"`
+	// Payable marks a branch the viewer could pay right now:
+	// game.AdditionalCostBranchPayableLocked, the predicate CastSpell and
+	// the bot enumerator ask. Absent means the branch cannot be taken
+	// (CR 118.3) — the client shows it disabled. Mana is never asked
+	// (CR 601.2g lets the caster tap afterwards). Branches only.
+	Payable bool `json:"payable,omitempty"`
 }
 
 // OptionalCostView is the wire shape of one optional additional cost
@@ -1434,6 +1463,17 @@ type CardView struct {
 	Owner      string `json:"owner"`
 	Controller string `json:"controller"`
 	ScryfallID string `json:"scryfall_id,omitempty"`
+	// IsToken reports whether this object is a token (CR 111,
+	// game.Card.IsToken — the printed type line's "Token" supertype,
+	// same test as the CR 704.5d state-based action). ADR 0078: a
+	// token's `scryfall_id`, when present, is a resolved Scryfall
+	// TOKEN PRINTING chosen by the server for its art — not a card
+	// this player owns or could look up as a purchasable printing.
+	// PUBLIC: everyone at a paper table can see a token is a token
+	// (CR 111.8), so this survives the non-knower redaction and the
+	// face-down-permanent's public-body carve-out untouched — see
+	// face_down_view_test.go's redactedCardKeys.
+	IsToken bool `json:"is_token,omitempty"`
 	// TypeLine is Scryfall's printed type line ("Legendary Creature
 	// — Human Wizard"). Carried so the client can filter "creatures
 	// only" UIs (the combat panel) without a Scryfall round-trip.
@@ -1900,6 +1940,15 @@ type CardView struct {
 	// state, not catalog state — exactly as an uncatalogued Saga
 	// still shows its lore counters.
 	ClassLevel int `json:"class_level,omitempty"`
+	// Doors is a Room's two CR 709.5c designations (ADR 0103): which
+	// doors are unlocked. Present only for a face-up Room on the
+	// battlefield, so `false` inside it is meaningful — a locked door —
+	// and its absence means "not a Room on the battlefield". Public: a
+	// Room's doors are visible to everyone in paper. The doors' names,
+	// costs and art ride on `faces`; a fully locked Room has no name
+	// (CR 709.5), so `name` is empty and the client labels it from
+	// `faces`.
+	Doors *RoomDoorsView `json:"doors,omitempty"`
 	// Solved is a Case permanent's CR 719.3 solved designation
 	// (ADR 0071). Public for the same reason, and absent — not
 	// `false` — for every card that is not a solved Case.
@@ -2075,6 +2124,14 @@ type CardView struct {
 	// What this feeds is the face picker and the hover overlay's
 	// back-face panel. Absent for single-faced cards.
 	Faces []CardFaceView `json:"faces,omitempty"`
+
+	// Fused is the announce surface of a FUSED cast of this split card
+	// — both halves at once, from hand (CR 702.102a, ADR 0103): the
+	// combined name and cost, and the two halves' target clauses in
+	// order. Present only for a split card with fuse in its owner's
+	// hand; the client's face picker offers it as a third choice and
+	// sends `fuse: true`. Same per-viewer split as Faces.
+	Fused *CardFaceView `json:"fused,omitempty"`
 
 	// ActiveFace indexes Faces. Omitted when zero, which is the
 	// front face and every single-faced card.
@@ -2495,6 +2552,17 @@ type SpecialActionView struct {
 	// never hide the keyword — a player has to be able to see that
 	// the card has it.
 	Available bool `json:"available,omitempty"`
+	// Door is the door an "unlock" row unlocks — "left" or "right"
+	// (ADR 0103) — and what the action payload names back. Empty for
+	// every other kind.
+	Door string `json:"door,omitempty"`
+}
+
+// RoomDoorsView is a Room's unlocked designations (CR 709.5c, ADR
+// 0103): true is an unlocked door.
+type RoomDoorsView struct {
+	Left  bool `json:"left"`
+	Right bool `json:"right"`
 }
 
 type ExilePlayView struct {
@@ -4276,6 +4344,10 @@ type castFace struct {
 	index    int
 	key      string
 	manaCost string
+	// fused is a FUSED cast of both halves of a split card with fuse
+	// (CR 702.102a, ADR 0103): key is game.FusedCatalogKey and
+	// manaCost both halves' costs together.
+	fused bool
 }
 
 // activeFace is the castFace for the half the view is SHOWING — every
@@ -4283,11 +4355,28 @@ type castFace struct {
 // 712.8a, MoveCard), so for all of them this is face 0 and the key is
 // the bare oracle ID, exactly as the pre-#992 call sites passed.
 func activeFace(c *CardView) castFace {
+	cost := c.ManaCost
+	// ADR 0103: a split card in a pile shows its WHOLE card (CR 709.4)
+	// — both costs together — but the half a plain cast announces is
+	// the one that is up, so its own printed cost is the one to price.
+	if c.ActiveFace >= 0 && c.ActiveFace < len(c.Faces) && c.Layout == game.LayoutSplit {
+		cost = c.Faces[c.ActiveFace].ManaCost
+	}
 	return castFace{
 		index:    c.ActiveFace,
 		key:      game.CatalogKeyForFace(c.oracleID, c.ActiveFace),
-		manaCost: c.ManaCost,
+		manaCost: cost,
 	}
+}
+
+// fusedFace is the castFace for a fused cast of a split card with
+// fuse (ADR 0103): both halves at once, under the synthetic key.
+func fusedFace(c *CardView) castFace {
+	cost := ""
+	for _, f := range c.Faces {
+		cost += f.ManaCost
+	}
+	return castFace{key: game.FusedCatalogKey(c.oracleID), manaCost: cost, fused: true}
 }
 
 // castFaceOf is activeFace for a face the card is NOT showing, read
@@ -4331,11 +4420,29 @@ func stampCastableFaces(g *game.Game, caster uuid.UUID, c *CardView, kind game.Z
 		if i < 0 || i >= len(c.Faces) {
 			continue
 		}
+		// ADR 0103, CR 702.127a: no surface for an aftermath half
+		// outside a graveyard — the zone forbids its cast.
+		if !game.FaceCastableFromZone(live, i, kind) {
+			continue
+		}
 		s := castStampsFor(g, caster, c, castFaceOf(c, i), kind, grant)
 		if public {
 			s.applyPublicToFace(&c.Faces[i], kind)
 		}
 		c.Faces[i].stampsFor(caster, s)
+	}
+	// ADR 0103, CR 702.102a: a split card with fuse in its owner's hand
+	// also offers the fused cast of both halves.
+	if kind == game.ZoneHand && grant == nil && game.HasFuse(live) && !game.FusedHalvesDeclareExtras(live.OracleID) {
+		if c.Fused == nil {
+			fused := game.FusedSpell(live)
+			c.Fused = &CardFaceView{Name: fused.Name, TypeLine: fused.TypeLine, ManaCost: fused.ManaCost}
+		}
+		s := castStampsFor(g, caster, c, fusedFace(c), kind, grant)
+		if public {
+			s.applyPublicToFace(c.Fused, kind)
+		}
+		c.Fused.stampsFor(caster, s)
 	}
 }
 
@@ -4411,6 +4518,9 @@ func castStampsFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, kind
 	if haveLive {
 		live.SetFace(f.index)
 		live = grantedFace(live, grant)
+		if f.fused {
+			live = game.FusedSpell(live)
+		}
 	}
 	// S14: the announce-time target kind, read off the catalog entry
 	// of the half being cast. Stamped HERE since #992 rather than
@@ -4421,18 +4531,16 @@ func castStampsFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, kind
 		out.Modes = viewOfCastModeSpec(g, caster, key, src, ms)
 	}
 	if ac := game.AdditionalCostFor(key); !ac.Empty() {
-		out.AdditionalCost = &AdditionalCostView{
-			DiscardCards: ac.DiscardCards,
-			DemandsX:     ac.PayLifeX,
-			Label:        ac.Label,
-		}
-		if ac.Sacrifice != nil {
-			// SpecCandidatesForEffect, not LegalTargetsForEffect: an
-			// additional sacrifice cost doesn't target, so the
-			// hexproof / shroud gate must not narrow the list the
-			// client offers. The same list, count and order the
-			// abilities ship (#747).
-			out.AdditionalCost.SacrificeOptions = sacrificeCostOptions(g, caster, ac.Sacrifice, uuid.Nil, false)
+		out.AdditionalCost = viewOfAdditionalCost(g, caster, ac)
+		// ADR 0100 §2: an either/or cost ships each branch in the same
+		// shape, stamped with whether the viewer could pay it — the
+		// predicate CastSpell and the enumerator ask, so a branch shown
+		// payable is one the server accepts.
+		for i := range ac.Either {
+			b := viewOfAdditionalCost(g, caster, &ac.Either[i])
+			b.Key = ac.Either[i].Key
+			b.Payable = haveLive && g.AdditionalCostBranchPayableLocked(caster, live, i)
+			out.AdditionalCost.Branches = append(out.AdditionalCost.Branches, *b)
 		}
 	}
 	// ADR 0073: the optional costs this card OFFERS. Stamped next to
@@ -4644,7 +4752,11 @@ func castableNow(g *game.Game, caster uuid.UUID, card game.Card, kind game.ZoneK
 		}
 		return g.LandPlayOpenForEffect(caster)
 	}
-	return cantCast == "" && len(offers) > 0 && g.CastTimingOpenLocked(caster, card, kind, grant)
+	// ADR 0100 §2, CR 601.2h: "Unpayable costs can't be paid" — a card
+	// whose every either/or branch is out of reach is not castable here.
+	// True for every card without branches.
+	return cantCast == "" && len(offers) > 0 && g.CastTimingOpenLocked(caster, card, kind, grant) &&
+		g.AnyAdditionalCostBranchPayableLocked(caster, card)
 }
 
 // viewOfCastPrices prices every offer a cast out of exile may claim,
@@ -5026,6 +5138,33 @@ func printedCostAmong(offers []*game.AlternativeCost) bool {
 		}
 	}
 	return false
+}
+
+// viewOfAdditionalCost is the wire shape of ONE mandatory additional
+// cost, or of one branch of an either/or cost (ADR 0100 §2) — the same
+// components in the same shape, so the client's pickers read a branch
+// exactly as they read the card's cost. Caller must hold g.mu.
+func viewOfAdditionalCost(g *game.Game, caster uuid.UUID, ac *game.AdditionalCost) *AdditionalCostView {
+	out := &AdditionalCostView{
+		DiscardCards: ac.DiscardCards,
+		DemandsX:     ac.PayLifeX,
+		Label:        ac.Label,
+		ManaCost:     ac.ManaCost,
+		PayLife:      ac.PayLife,
+	}
+	if ac.Sacrifice != nil {
+		// SpecCandidatesForEffect, not LegalTargetsForEffect: an
+		// additional sacrifice cost doesn't target, so the hexproof /
+		// shroud gate must not narrow the list the client offers. The
+		// same list, count and order the abilities ship (#747).
+		out.SacrificeOptions = sacrificeCostOptions(g, caster, ac.Sacrifice, uuid.Nil, false)
+	}
+	if ac.Blight > 0 {
+		// The engine's own walk (#1703), as for an optional blight.
+		out.Blight = ac.Blight
+		out.BlightOptions = &LegalTargetsView{Min: 1, Max: 1, Cards: cardIDStrings(g.BlightOptionsForEffect(caster))}
+	}
+	return out
 }
 
 // viewOfOptionalCosts projects a card's "you may pay an additional
@@ -5453,6 +5592,7 @@ func viewOfSpecialActions(g *game.Game, card game.Card, owner uuid.UUID, zone ga
 			Label:     sa.Label,
 			Cost:      sa.Cost,
 			Available: g.SpecialActionTimingOKLocked(owner, card, sa.Kind),
+			Door:      game.DoorName(sa.Door),
 		}
 		// #1319: the charged price, after every CR 601.2f cost
 		// modifier on the battlefield — Ranar the Ever-Watchful's
@@ -7091,6 +7231,17 @@ func applyAbilityOffersFor(z ZoneView, viewerID string) ZoneView {
 // One allocation per multi-face card per viewer, and none at all for
 // a single-faced card or one whose faces carry no stamps.
 func applyFaceCastStampsFor(c *CardView, viewerID string, mine bool) {
+	// ADR 0103: the fused block is one more face, promoted the same
+	// way off a copy of the pointer.
+	if c.Fused != nil && c.Fused.castOffers != nil {
+		f := *c.Fused
+		stamps, ok := f.castOffers[viewerID]
+		f.castOffers = nil
+		if ok && mine {
+			stamps.applyToFace(&f)
+		}
+		c.Fused = &f
+	}
 	stamped := false
 	for i := range c.Faces {
 		if c.Faces[i].castOffers != nil {
@@ -7219,6 +7370,7 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	// Restoration that still shipped "Sea Gate, Reborn // Land" in
 	// its faces array would be the loudest leak on the wire.
 	out.Faces = nil
+	out.Fused = nil
 	out.Layout = ""
 	out.ActiveFace = 0
 	// #95: everything below is read off the card's own text or type
@@ -7282,6 +7434,7 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	// neither. Cleared with the rest of the type-derived bits.
 	out.ClassLevel = 0
 	out.Solved = false
+	out.Doors = nil
 	// ADR 0071 amendment (#1321): a face-down permanent (CR 708.2)
 	// prints none of its own abilities, so it cannot have harnessed
 	// one on.
@@ -7507,6 +7660,7 @@ func viewOfCard(c game.Card) CardView {
 		Owner:      c.Owner.String(),
 		Controller: c.Controller.String(),
 		ScryfallID: c.ScryfallID,
+		IsToken:    c.IsToken(),
 		TypeLine:   effectiveTypeLine(c, eff),
 		Colors:     append([]string(nil), eff.Colors...),
 		Protection: viewOfProtection(&c),
@@ -7610,6 +7764,13 @@ func viewOfCard(c game.Card) CardView {
 		view.Harnessed = c.Harnessed
 		view.Monstrous = c.Monstrous
 		view.Prepared = c.Prepared
+		// ADR 0103: a face-up Room's doors.
+		if game.HasSharedTypeLine(c) {
+			view.Doors = &RoomDoorsView{
+				Left:  c.Unlocked.Has(game.DoorLeft),
+				Right: c.Unlocked.Has(game.DoorRight),
+			}
+		}
 	}
 	if c.BlockingTarget != uuid.Nil {
 		view.BlockingTarget = c.BlockingTarget.String()

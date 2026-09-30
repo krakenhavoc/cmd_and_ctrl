@@ -21,8 +21,16 @@ import (
 // components the announced optional costs demand. Nil lists for a set
 // that demands neither, which is every announcement in the catalog
 // before #1703.
-func (e *enumerator) teamworkBlightPayment(optional []game.AdditionalCost, chosen []int) (team, blight []uuid.UUID, ok bool) {
+//
+// `mandatory` is the cost the announcement pays in the mandatory slot —
+// for an either/or card, the chosen branch, whose "blight 2" (Wild
+// Unraveling, ADR 0100 §2) is paid through the same walk.
+func (e *enumerator) teamworkBlightPayment(mandatory *game.AdditionalCost, optional []game.AdditionalCost, chosen []int) (team, blight []uuid.UUID, ok bool) {
 	teamwork, blightN := 0, 0
+	if mandatory != nil {
+		teamwork += mandatory.Teamwork
+		blightN += mandatory.Blight
+	}
 	for _, i := range chosen {
 		if i < 0 || i >= len(optional) {
 			continue

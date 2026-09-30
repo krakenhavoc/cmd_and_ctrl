@@ -1217,11 +1217,27 @@ the policy for choosing the sets is what keeps that product finite
   unbounded in paper, but an announcement has to be finite and a
   decision loop has to terminate. Three is a policy number, not a
   rule, and it lives in `legal.maxEnumeratedRepeats`.
-- **Priced through the engine's own helper.** `game.AddOptionalCostMana`
-  adds the claimed costs' mana at CR 601.2f, and both the cast path
-  and the enumerator call it — so a kicked line is never advertised at
-  the unkicked price, which is the same #544 discipline the cost
-  modifiers follow.
+- **Priced through the engine's own helper.** `game.AdditionalCostMana`
+  (which replaced `AddOptionalCostMana` in ADR 0100 sub-PR 3) adds the
+  claimed costs' mana at CR 601.2f, and both the cast path and the
+  enumerator reach it through `PriceCast` — so a kicked line is never
+  advertised at the unkicked price, which is the same #544 discipline
+  the cost modifiers follow.
+- **An either/or additional cost is one move per payable branch**
+  ([ADR 0100](decisions/0100-delve-either-or-and-variable-sacrifice-costs.md)
+  §6). "Sacrifice an artifact or discard a card" is at most three
+  announcements, each carrying its `cost_branch` and priced with it, so
+  Lightning Axe's "pay {5}" move costs `{5}{R}` and its discard move
+  `{R}`. A branch the engine's `AdditionalCostBranchPayableLocked` says
+  the seat cannot pay is not offered, and a card with no payable branch
+  is not offered at all (CR 601.2h). Each branch's cards are paid by the
+  ordinary payment search — the same discard, sacrifice and blight
+  payments a mandatory cost gets. One policy on top of the rule: a
+  "pay N life" branch is not offered to a seat at N life or less, the
+  line the alternative cost's life already refuses (CR 119.4 would allow
+  it, and the next state-based check would kill the bot). The life a
+  branch pays rides `MoveCost.Life`, and the move label names the branch
+  ("Cast Lightning Axe (Pay {5})").
 - **The move label names the kick** ("Cast Burst Lightning (Kicker
   {4})", "... (Multikicker {G} x3)"), so the kicked and unkicked casts
   of one card are distinguishable in the move list and in a bot-eval

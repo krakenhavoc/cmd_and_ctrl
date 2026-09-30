@@ -385,6 +385,33 @@ func (c *Context) OptionalCostTimes(key string) int {
 	return game.OptionalCostTimesPaid(card, c.Item.Paid.OptionalCosts, key)
 }
 
+// PaidCostBranch reports whether the either/or additional cost's
+// branch keyed `key` was the one the caster paid (ADR 0100 §2) — "if
+// the modified creature was sacrificed" (Lethal Throwdown). Keyed, so a
+// resolution never has to know its declaration order. False on a cast
+// with no either/or cost, and on an ability item.
+func (c *Context) PaidCostBranch(key string) bool {
+	if c.Item == nil || c.Item.Paid.CostBranch == 0 {
+		return false
+	}
+	card, ok := c.Game.LookupCardForEffect(c.Item.ID)
+	if !ok {
+		return false
+	}
+	return c.Item.Paid.PaidCostBranch(game.CatalogKey(card), key)
+}
+
+// Discarded is the cards the spell's additional cost discarded, in the
+// order named (ADR 0100, owner decision 6) — "the discarded card" of
+// Grab the Prize. A fact about the ANNOUNCEMENT, read back the way
+// Exiled and Sacrificed are. The cards keep their instance IDs wherever
+// they have gone since, so an effect looks them up with
+// LookupCardForEffect. Nil when the cost discarded nothing; the
+// returned slice is a copy.
+func (c *Context) Discarded() []uuid.UUID {
+	return append([]uuid.UUID(nil), c.Paid().Discarded...)
+}
+
 // WasKicked is CR 702.33's "if this spell was kicked" — the read a
 // kicked spell's own resolution branches on, the same shape
 // PaidAltCost gives an overloaded one:

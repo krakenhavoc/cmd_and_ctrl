@@ -40,6 +40,10 @@ type castParams struct {
 	// (CR 601.2b, ADR 0073), as positions in the card's OptionalCosts
 	// slice, repeated once per payment for a multikicker.
 	OptionalCosts []int `json:"optional_costs,omitempty"`
+	// CostBranch is the either/or additional cost's branch this move
+	// pays (CR 601.2b, ADR 0100 §6) — CastSpellParams.CostBranch. Nil
+	// for every card without one.
+	CostBranch *int `json:"cost_branch,omitempty"`
 	// TeamworkIDs / BlightIDs pay an announced teamwork or blight cost
 	// (#1703) — CastSpellParams.TeamworkIDs / BlightIDs.
 	TeamworkIDs []string `json:"teamwork_ids,omitempty"`
@@ -62,6 +66,9 @@ type castParams struct {
 	// Face is the printed face being cast or played (ADR 0034).
 	// Omitted — the front — for every single-faced card.
 	Face int `json:"face,omitempty"`
+	// Fuse casts both halves of a split card with fuse from hand
+	// (CR 702.102a, ADR 0103) — CastSpellParams.Fuse.
+	Fuse bool `json:"fuse,omitempty"`
 }
 
 // castZone is one pile the walk below looks in. `mine` says the pile
@@ -264,6 +271,16 @@ func (e *enumerator) castMovesFromZone(c game.Card, kind game.ZoneKind, from str
 			e.castMovesForCard(card, from, kind, perm, offer)
 		}
 	}
+	// ADR 0103, CR 702.102a: a split card with fuse in hand may also be
+	// cast as both halves, for both costs, with no alternative cost.
+	if kind == game.ZoneHand && perm == nil && game.HasFuse(c) && !game.FusedHalvesDeclareExtras(c.OracleID) {
+		fused := game.FusedSpell(c)
+		for _, offer := range g.CastOffersForLocked(e.seat, fused, kind, perm) {
+			if offer == nil {
+				e.castMovesForCard(fused, from, kind, perm, nil)
+			}
+		}
+	}
 }
 
 // landPlayMove emits the one move for playing a land out of `kind`,
@@ -378,7 +395,13 @@ func (e *enumerator) castMovesForCard(card game.Card, from string, kind game.Zon
 		// only the first seat could never choose to feed the player
 		// who is furthest behind.
 		for _, to := range giftRecipients(e.g, e.seat, optional, chosen) {
-			e.castMovesPayingOptional(card, from, perm, offer, chosen, to)
+			// ADR 0100 §6: an either/or additional cost is one
+			// announcement per branch the seat can pay — at most
+			// three — each priced with its own cost_branch. [nil] for
+			// every card without branches, so the loop runs once.
+			for _, branch := range e.castCostBranches(card) {
+				e.castMovesPayingOptional(card, from, perm, offer, chosen, to, branch)
+			}
 		}
 	}
 }
@@ -564,7 +587,10 @@ func costPaymentDemands(mandatory *game.AdditionalCost, optional []game.Addition
 //
 // `giftTo` is the opponent a gift is promised to when `chosen` names a
 // gift cost, and uuid.Nil otherwise (ADR 0089).
-func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *game.CastPermission, offer *game.AlternativeCost, chosen []int, giftTo uuid.UUID) {
+//
+// `branch` is the either/or branch this expansion pays (ADR 0100 §6),
+// nil for a card without one.
+func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *game.CastPermission, offer *game.AlternativeCost, chosen []int, giftTo uuid.UUID, branch *int) {
 	g, p := e.g, e.p
 	// #662: the spell IS its own source (CR 702.16b), so every legal
 	// set below is computed against the card's colour and type. An
@@ -643,9 +669,15 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 		AlternativeCost: offerKey(offer),
 		OptionalCosts:   chosen,
 		GiftOpponent:    giftTo,
+		// ADR 0100 §2: the branch's mana joins the price here, in the
+		// one pricer, so Lightning Axe's "pay {5}" move is priced at
+		// {5}{R} exactly as CastSpell charges it.
+		CostBranch: branch,
 		// ADR 0034: `card` has already had SetFace applied by the
 		// caller, so this is the face the move announces.
 		Face: card.ActiveFace,
+		// ADR 0103: and a fused copy announces the fused cast.
+		Fuse: card.Fused,
 	}
 	price, err := e.g.PriceCastForEffect(e.seat, card, announce)
 	if err != nil {
@@ -713,7 +745,13 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	// one of them can PRICE X: Toxic Deluge's "pay X life" is the
 	// whole of its X, and the mana cost it prints has no {X} slot at
 	// all (#957). The payments themselves are expanded below.
-	addCost := game.AdditionalCostFor(game.CatalogKey(card))
+	//
+	// ADR 0100 §2: for an either/or cost, the branch this expansion
+	// announces — the one ChosenAdditionalCost hands CastSpell's plan.
+	addCost, err := game.ChosenAdditionalCost(game.AdditionalCostFor(game.CatalogKey(card)), branch)
+	if err != nil {
+		return
+	}
 	// #810: the one X rule. A spell whose whole effect is X (Fireball,
 	// Stroke of Genius) is not offered at X=0, where it would resolve
 	// for nothing; a spell with a fixed rider still is. #957 is the
@@ -729,7 +767,9 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	// life" additional cost turns the life path off: X and the symbol
 	// count would both be priced out of one life total, no printed
 	// card prints both, and the mana path is still offered.
-	lifeReserved := offerLife(offer)
+	// ADR 0100 §2: a branch's fixed "pay 3 life" is held back the same
+	// way.
+	lifeReserved := offerLife(offer) + branchLife(addCost)
 	lifeAllowed := addCost == nil || !addCost.PayLifeX
 
 	// Modes → each choice of modes yields its own clause list, and
@@ -846,7 +886,8 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	// reason: the number is a floor, and the policy has nothing to
 	// choose between two sets that clear it. A set of optional costs
 	// the seat cannot pay is not announced at all.
-	teamIDs, blightIDs, ok := e.teamworkBlightPayment(optional, chosen)
+	// ADR 0100 §2: a branch's blight is paid through the same walk.
+	teamIDs, blightIDs, ok := e.teamworkBlightPayment(addCost, optional, chosen)
 	if !ok {
 		return
 	}
@@ -861,7 +902,7 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	}
 
 	budget := e.opts.MaxExpansionPerSource
-	emit := e.castMoveEmitter(g, card, from, offer, optional, chosen, giftTo, teamIDs, blightIDs)
+	emit := e.castMoveEmitter(g, card, from, offer, optional, chosen, giftTo, teamIDs, blightIDs, branch, addCost)
 	// #1013: the first announcement the expansion makes, kept so the
 	// ALTERNATIVE cost payments can be offered against it below.
 	var first *announcedCast
@@ -1153,6 +1194,8 @@ func (e *enumerator) castMoveEmitter(
 	chosen []int,
 	giftTo uuid.UUID,
 	teamIDs, blightIDs []uuid.UUID,
+	branch *int,
+	paying *game.AdditionalCost,
 ) castEmitter {
 	return func(altPaid []uuid.UUID, modes []int, targets []game.TargetRef, setX, phyLife int, dist map[uuid.UUID]int, discards, sacs, delve []uuid.UUID) {
 		label := "Cast " + card.Name
@@ -1174,6 +1217,11 @@ func (e *enumerator) castMoveEmitter(
 		// same line in the move log, and a bot eval that cannot tell
 		// them apart cannot explain why the bot kicked.
 		label += optionalCostLabel(optional, chosen)
+		// ADR 0100: the two branches of an either/or cost are otherwise
+		// the same line in the move log.
+		if branch != nil && paying != nil {
+			label += " (" + paying.Label + ")"
+		}
 		if giftTo != uuid.Nil {
 			label += " → " + playerName(g, giftTo)
 		}
@@ -1197,7 +1245,8 @@ func (e *enumerator) castMoveEmitter(
 			// price Force of Will's pitch as free. See MoveCost.
 			// #1677: and the Phyrexian symbols this move pays with
 			// life, which Params names only as a count.
-			Cost: withPhyrexianLife(moveCost(offerLife(offer), 0), phyLife),
+			// ADR 0100: and a branch's fixed "pay 3 life".
+			Cost: withPhyrexianLife(moveCost(offerLife(offer)+branchLife(paying), 0), phyLife),
 			// A modal spell may have a counter mode and a burn mode
 			// in the same expansion (Cryptic Command); the flag is
 			// per ANNOUNCEMENT, not per card, so only the modes that
@@ -1215,6 +1264,7 @@ func (e *enumerator) castMoveEmitter(
 				DiscardIDs:      idStrings(discards),
 				SacrificeIDs:    idStrings(sacs),
 				OptionalCosts:   chosen,
+				CostBranch:      branch,
 				TeamworkIDs:     idStrings(teamIDs),
 				BlightIDs:       idStrings(blightIDs),
 				DelveIDs:        idStrings(delve),
@@ -1225,6 +1275,7 @@ func (e *enumerator) castMoveEmitter(
 				// ADR 0034: `card` has already had SetFace applied by
 				// the caller, so ActiveFace IS the face this move casts.
 				Face: card.ActiveFace,
+				Fuse: card.Fused,
 			}),
 		})
 	}

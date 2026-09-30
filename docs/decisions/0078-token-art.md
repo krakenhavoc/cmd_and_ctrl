@@ -1,6 +1,6 @@
 # ADR 0078 — Tokens get real artwork: a Scryfall token printing, resolved at runtime
 
-**Status:** Proposed · 2026-09-19 · S35 — Playtest stabilisation, round 2
+**Status:** Accepted · 2026-09-19 · S35 — Playtest stabilisation, round 2
 **Tracking issue:** [#1115](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1115)
 **Depends on:** [ADR 0010](0010-card-effect-catalog.md) (the oracle-ID-keyed
 catalog and the hook-variable seam the engine reads it through),
@@ -752,3 +752,41 @@ template in `tokens_table.go` is a name, a type line, P/T and colours, and
 picking an oracle id for it is the same matching problem one level up, plus an
 oracle id to pin. If templates ever carry an id, they should carry a printing id
 and skip the rule entirely — which is the pinning alternative above.
+
+## Amendment (2026-09-30, #1115): `Card.TokenArtOnly`, not `!c.IsToken()`
+
+Implementation found a case the "two predicates" section above did not: the
+literal fix it names for `ToughnessIsKnown` and `fromScryfallPrinting` —
+`c.ScryfallID != "" && !c.IsToken()` — collides with
+`TestTokenCopyOfAPrintedZeroZeroDiesOnArrival` and
+`TestTokenCopyOfAPermanentSpellReadsTheCopiedBody`, both pre-existing. A token
+COPY (`tokenCopyOfSpell`, CR 707.2) is also a token, and its `ScryfallID` is
+the copied card's REAL printed identity, not art — a token copy of a printed
+Hangarback Walker 0/0 has to keep dying to CR 704.5f, exactly as the original
+does. `!c.IsToken()` cannot tell that case from a vanilla Construct token that
+merely got a picture; both are tokens, and the copy's source fixture in the
+test that pins this deliberately carries no `OracleID` either, so "does it
+have an oracle id" does not separate them.
+
+The fix is a new field, `Card.TokenArtOnly bool`, set **only** by
+`mintTokenLocked` and **only** on its own resolver stamp — never by
+`TokenCopyTemplate`, `tokenCopyOfSpell`, or any other construction path. Both
+predicates read `c.ScryfallID != "" && !c.TokenArtOnly` in place of
+`!c.IsToken()`. A plain resolver-stamped token (Construct, Spirit Cleric)
+gets `TokenArtOnly: true` and both predicates keep answering exactly as they
+did before this ADR; a token copy's `TokenArtOnly` is false (the zero value,
+never touched), so both predicates answer exactly as they did before this ADR
+for that case too — CR 704.5f still reaches a copied printed 0/0.
+
+This is a second field where decision 1 argued for reusing one
+(`ScryfallID`), and the reasoning is not in tension: decision 1 was about
+avoiding a second **id** — a second UUID needing its own wire projection,
+image-route plumbing and cache handling, five places changed to avoid
+changing two. `TokenArtOnly` is a single bit read by two predicates that
+already exist, carried by the snapshot (`cardSnapshot.TokenArtOnly`,
+`snapshot_drift_test.go`'s `cardFields` plan) for the same reason
+`ScryfallID` itself is: a live 0/0 Construct token must answer
+`ToughnessIsKnown` identically before and after a restore, independent of
+what the resolver would say about its template on the restoring binary's
+dump. Lives in `Card`'s bool block, per `TestCardHasNoInteriorPadding`, not
+beside `ScryfallID` where it was first drafted.

@@ -112,8 +112,8 @@ describe("needsFacePicker", () => {
     expect(needsFacePicker({ ...seaGate(), layout: "adventure" })).toBe(true);
   });
 
-  it("is false for split, whose fusing is deferred", () => {
-    expect(needsFacePicker({ ...seaGate(), layout: "split" })).toBe(false);
+  it("is true for split: either half is cast (CR 709.3, ADR 0103)", () => {
+    expect(needsFacePicker({ ...seaGate(), layout: "split" })).toBe(true);
   });
 
   it("is false for an adventure card that arrived without faces", () => {
