@@ -2437,6 +2437,12 @@ export interface CardView extends CastSurfaceView {
   owner: string;
   controller: string;
   scryfall_id?: string;
+  // ADR 0078: true for a token (CR 111), absent for a real card.
+  // Public — survives the non-knower redaction — because everyone at
+  // a paper table can see a token is a token. When present alongside
+  // `scryfall_id`, that id is a resolved Scryfall TOKEN PRINTING
+  // chosen for its art, not a card this player owns.
+  is_token?: boolean;
   // Scryfall printed type line ("Legendary Creature — Human Wizard").
   // Used by the client to filter creature-only UIs (combat panel)
   // and to label cards. Omitted for placeholder demo cards. S08.
