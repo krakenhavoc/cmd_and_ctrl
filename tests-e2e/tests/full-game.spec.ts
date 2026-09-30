@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { adminLogin, createGame, uploadDeckAs, startGameAs, getGameAs } from "./lobby-api";
 import { makeCommanderDeck } from "./deck-fixture";
 import { joinAsPlayer } from "./players";
@@ -79,35 +79,39 @@ test.describe("full game", () => {
       });
     }
 
-    // ---- 7. Play round 1: Alice (seat 0) passes her turn. ----
-    // pass_turn jumps to the next seat's untap step. Only the active
-    // seat's button is enabled; the other browser sees it disabled.
-    const aliceIsActive = alice.page.getByRole("button", { name: "pass turn" });
-    await expect(aliceIsActive).toBeEnabled({ timeout: 10_000 });
-    await expect(bob.page.getByRole("button", { name: "pass turn" })).toBeDisabled();
+    // ---- 7. Play round 1: the starting seat passes its turn. ----
+    // The game rolls for the starting player (#1486), so it is not
+    // always Alice. pass_turn jumps to the next seat's untap step. Only
+    // the active seat's button is enabled; the other browser sees it
+    // disabled. Wait for exactly one of the two to be enabled.
+    const passOf = (p: { page: Page }) => p.page.getByRole("button", { name: "pass turn" });
+    const a0 = alice;
+    const b0 = bob;
+    await expect
+      .poll(async () => (await passOf(a0).isEnabled()) !== (await passOf(b0).isEnabled()), {
+        timeout: 10_000,
+      })
+      .toBe(true);
+    const aliceStarts = await passOf(a0).isEnabled();
+    const first = aliceStarts ? a0 : b0;
+    const second = aliceStarts ? b0 : a0;
+    await expect(passOf(second)).toBeDisabled();
 
-    await aliceIsActive.click();
+    await passOf(first).click();
 
     // Snapshot ordering: server bumps seq on every accepted action.
-    // Both pages should now show the same new active seat (Bob).
-    await expect(bob.page.getByRole("button", { name: "pass turn" })).toBeEnabled({
-      timeout: 10_000,
-    });
-    await expect(alice.page.getByRole("button", { name: "pass turn" })).toBeDisabled();
+    // Both pages should now show the same new active seat.
+    await expect(passOf(second)).toBeEnabled({ timeout: 10_000 });
+    await expect(passOf(first)).toBeDisabled();
 
-    // ---- 8. Play round 2: Bob passes his turn. Turn number should
-    //         increment from 1 to 2 when we wrap back to seat 0. ----
-    await bob.page.getByRole("button", { name: "pass turn" }).click();
-    await expect(alice.page.getByRole("button", { name: "pass turn" })).toBeEnabled({
-      timeout: 10_000,
-    });
+    // ---- 8. Play round 2: the second seat passes its turn. ----
+    await passOf(second).click();
+    await expect(passOf(first)).toBeEnabled({ timeout: 10_000 });
 
-    // ---- 9. Round 3: Alice passes again to prove the cursor really
-    //         walks through turns, not just seats. ----
-    await alice.page.getByRole("button", { name: "pass turn" }).click();
-    await expect(bob.page.getByRole("button", { name: "pass turn" })).toBeEnabled({
-      timeout: 10_000,
-    });
+    // ---- 9. Round 3: the first seat passes again to prove the
+    //         cursor really walks through turns, not just seats. ----
+    await passOf(first).click();
+    await expect(passOf(second)).toBeEnabled({ timeout: 10_000 });
 
     // ---- 10. Final assertion on authoritative state via WS snapshot
     //          snooping. The server doesn't expose an HTTP "get turn"
@@ -147,13 +151,11 @@ test.describe("full game", () => {
       });
     });
 
-    // After 3 pass_turns in a 2-player game:
-    //   start:            turn=1 seat=0 (Alice)
-    //   after pass #1 :   turn=1 seat=1 (Bob)
-    //   after pass #2 :   turn=2 seat=0 (Alice, number++ on wrap)
-    //   after pass #3 :   turn=2 seat=1 (Bob)
-    expect(snapshotTurn.number).toBe(2);
-    expect(snapshotTurn.active_seat).toBe(1);
+    // After 3 pass_turns in a 2-player game the cursor is on the seat
+    // that did not start (Alice is seat 0, Bob seat 1), and the turn
+    // number has wrapped at least once.
+    expect(snapshotTurn.number).toBeGreaterThanOrEqual(2);
+    expect(snapshotTurn.active_seat).toBe(aliceStarts ? 1 : 0);
 
     await alice.context.close();
     await bob.context.close();
