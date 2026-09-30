@@ -307,9 +307,9 @@ what changed around them.
     decision 5 and `POST /games/{id}/invites/dm` (S34 sub-PR 6,
     [docs/lobby.md](../lobby.md#post-gamesidinvitesdm)). The server
     needs `CMDCTRL_DISCORD_BOT_TOKEN` too (production only) and answers
-    503 naming it when unset. A `/c2-invite-dm` slash command that calls
-    that route with the bot's admin session is tracked in #613. The
-    sending path is unchanged; the bot only calls it.
+    503 naming it when unset. The `/c2-invite-dm <user> [game] [name]` slash
+    command (#613, below) calls that route with the bot's admin session.
+    The sending path is unchanged; the bot only calls it.
   - *Rich Presence.* Not built. Tracked with the S12.5 leftovers in #607.
   - *Re-link after the fact.* Shipped as `GET /auth/discord/link`
     (S34 sub-PR 4); the session-settings UI half follows in #607.
@@ -322,3 +322,30 @@ what changed around them.
   AGENTS.md section 5 has the current one.
 - **The bot is production-only.** CD never installs or restarts it from
   `develop`: two processes on one application answer every command twice.
+
+### 2026-09-30 · `/c2-invite-dm` (#613)
+
+A sixth command, `/c2-invite-dm <user> [game] [name]`, ships. It is a
+client of the server's route, as ADR 0051 decision 5's acceptance note
+says; it adds no DM-sending path to the bot and the gateway still never
+opens a DM.
+
+- **Credential.** The bot calls `POST /games/{id}/invites/dm` with its
+  admin session and the target's Discord snowflake (`discord_id`, which
+  the route accepts from an admin session only, so the target need not
+  have signed in to the site).
+- **Who may use it, enforced by the bot.** The server trusts that admin
+  session, so the bot is the only gate. With no `game` it creates a table
+  the way `/c2-invite` does (the invoker hosts) and DMs that invite, open
+  to anyone allowed in the guild like `/c2-invite`. With a `game` (id or
+  name prefix), only the game's creator or a `/c2-end` admin may use it
+  (same check as `/c2-end`). A bot user as target is refused.
+- **Replies.** Deferred and ephemeral with the deck commands' 20s budget
+  (two server calls plus the server's two Discord calls). A 503 from the
+  route (no `CMDCTRL_DISCORD_BOT_TOKEN` or public origin on the server) is
+  shown as "DM invites are not set up", naming the variable; that is the
+  permanent state on `develop`, since CD writes the token on production
+  only. If a new game was created and the DM then failed, the invoker gets
+  the game's link ephemerally.
+- **Registration** needs nothing manual: the bulk overwrite on the bot's
+  next boot (production deploys only) registers it.

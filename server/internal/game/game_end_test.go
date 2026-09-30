@@ -395,6 +395,35 @@ func TestEveryoneLosingAtOnceIsADraw(t *testing.T) {
 	}
 }
 
+// TestOutcomeKind: games.outcome's source (#1520). A rules-driven end
+// reports its kind, an admin closing the table reports none.
+func TestOutcomeKind(t *testing.T) {
+	g := newActiveGame(t)
+	if k := g.OutcomeKind(); k != "" {
+		t.Errorf("running game: %q, want none", k)
+	}
+	g.Seats[0].Life = 0
+	g.Seats[1].Life = 0
+	runChecks(g)
+	if k := g.OutcomeKind(); k != OutcomeDraw {
+		t.Errorf("drawn game: %q, want %q", k, OutcomeDraw)
+	}
+
+	w := newActiveGameWithSeats(t, 3)
+	w.Seats[0].Life = 0
+	w.Seats[1].Life = 0
+	runChecks(w)
+	if k := w.OutcomeKind(); k != OutcomeWin {
+		t.Errorf("won game: %q, want %q", k, OutcomeWin)
+	}
+
+	closed := newActiveGameWithSeats(t, 3)
+	closed.End()
+	if k := closed.OutcomeKind(); k != "" {
+		t.Errorf("admin-closed game: %q, want none", k)
+	}
+}
+
 // TestStateLossesNameTheirCause: each SBA loss labels its elimination.
 func TestStateLossesNameTheirCause(t *testing.T) {
 	cases := []struct {

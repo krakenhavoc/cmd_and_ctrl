@@ -527,7 +527,7 @@ Every "out of scope" deferral from the initial planning pass is pulled into this
 
 - [x] New top-level directory `bot/` or a cmd under `server/cmd/bot/` — picked `server/cmd/bot/` + `server/internal/bot/` in ADR 0004 (shared module, separate binary). Go, using `bwmarrin/discordgo`. Allow-list gate via `CMDCTRL_DISCORD_GUILD_IDS`.
 - [x] Slash command `/c2-invite [name]` — calls server `POST /games` with admin credentials (bot holds `CMDCTRL_ADMIN_TOKEN` via env), posts the invite link back to the channel (channel-visible embed; ephemeral-toggle deferred).
-- [ ] Slash command `/c2-invite-dm @user [name]` — moved to [#613](https://github.com/krakenhavoc/cmd_and_ctrl/issues/613): now a thin client of the server route `POST /games/{id}/invites/dm` (ADR 0051 decision 5), not a gateway DM.
+- [x] Slash command `/c2-invite-dm <user> [game] [name]` — shipped in [#613](https://github.com/krakenhavoc/cmd_and_ctrl/issues/613): now a thin client of the server route `POST /games/{id}/invites/dm` (ADR 0051 decision 5), not a gateway DM.
 - [x] Slash command `/c2-games` — ephemeral list of active/lobby games (invite tokens already stripped by `Lobby.List`). `/c2-end <id>` deferred (destructive, wants confirmation UX) — shipped as an S34 follow-up, [#614](https://github.com/krakenhavoc/cmd_and_ctrl/issues/614).
 - [x] Bot deploys as a second systemd unit on the same VPS (S12 infra). Unit at `deploy/cmd-and-ctrl-bot.service`; env file separate from the server's (ADR 0004 §6).
 
@@ -2656,12 +2656,12 @@ The server has only ever had seats. A session bound one socket to one game and o
 
 ### Sub-PR 6 — tablemates, invite picker, DM invites
 
-**Open — the only sub-PR left.** [#613](https://github.com/krakenhavoc/cmd_and_ctrl/issues/613) (the `/c2-invite-dm` slash command) is a thin client of this sub-PR's route and follows it.
+[#613](https://github.com/krakenhavoc/cmd_and_ctrl/issues/613) (the `/c2-invite-dm` slash command, a thin client of this sub-PR's route) has shipped.
 
 - [ ] Tablemates query (ADR 0051 decision 8): people who share a `seats` row with the caller, recency-ordered, offered as suggestions when inviting
 - [ ] Invite picker UI over that query
 - [ ] `POST /games/{id}/invites/dm` — the server sends the DM itself over Discord REST with a bot token; the gateway bot does not open the DM
-- [ ] [#613](https://github.com/krakenhavoc/cmd_and_ctrl/issues/613) — `/c2-invite-dm @user`, a thin client of the route above
+- [x] [#613](https://github.com/krakenhavoc/cmd_and_ctrl/issues/613) — `/c2-invite-dm @user`, a thin client of the route above
 
 ### Sub-PR 7 — `sessions_invalid_before`: logout-everywhere, admin remove-user
 

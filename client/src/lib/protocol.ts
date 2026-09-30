@@ -686,6 +686,10 @@ export type LogKind =
   // the log says which.
   | "phase_out"
   | "phase_in"
+  // ADR 0059 Decision 11 (#753): an effect gave a player an extra turn
+  // (CR 500.7). `seat` is who will take it and `card_id` the card whose
+  // effect created it; one entry per turn.
+  | "extra_turn"
   // #1209, ADR 0082's 2026-09-23 amendment: a permanent that was
   // face up was turned face down (CR 708.2a). `card_id` is the
   // permanent; `target` is the object that did it (Ixidron, Cyber
@@ -2892,6 +2896,13 @@ export interface TurnView {
   priority_holder: number;
   phase: string;
   step: string;
+  // ADR 0059 Decision 11 (#753): this turn was created by an effect
+  // (CR 500.7). `number` is still the round, so the board keeps "T3"
+  // and adds an "Extra turn" mark. Absent on a normal turn.
+  extra?: boolean;
+  // Seat indices of queued extra turns, in the order they will be
+  // taken (next first). Turns of players who have left are omitted.
+  extra_turns?: number[];
   // #328: seat indices that owe a declare-blockers decision — under
   // attack, holding at least one creature that could legally block
   // one of the attackers. Absent outside the declare_blockers step.

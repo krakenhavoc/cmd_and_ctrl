@@ -79,6 +79,12 @@ type GameRecord struct {
 	EndedAt    *time.Time
 	ArchivedAt *time.Time
 	WinnerSeat *int
+	// Outcome is "win" or "draw" for an ended game with a recorded
+	// result (migration 0007, ADR 0057 Decision 7), "" (NULL) when it
+	// is unknown: not ended, closed by an admin, or ended before the
+	// column existed. It is what tells a draw from an abandoned table,
+	// which winner_seat cannot.
+	Outcome string
 	// HostPlayerID is the table host's seat (ADR 0075 §2.1, migration
 	// 0004); uuid.Nil (NULL) when nobody hosts. Mutable.
 	HostPlayerID uuid.UUID
@@ -142,7 +148,7 @@ type Store interface {
 	// CreateGame inserts a game and its invites atomically.
 	CreateGame(ctx context.Context, g GameRecord, invites []InviteRecord) error
 	// UpdateGame rewrites a game's mutable columns: name, state,
-	// started_at, ended_at, archived_at, winner_seat, host_player_id,
+	// started_at, ended_at, archived_at, winner_seat, outcome, host_player_id,
 	// host_discord_id.
 	UpdateGame(ctx context.Context, g GameRecord) error
 	// ReplaceSeats makes seats the game's complete seat list.

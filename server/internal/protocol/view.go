@@ -3097,6 +3097,15 @@ type TurnView struct {
 	PriorityHolder int    `json:"priority_holder"`
 	Phase          string `json:"phase"`
 	Step           string `json:"step"`
+	// Extra marks an extra turn (CR 500.7, ADR 0059 Decision 11).
+	// Number stays the round, so the board shows the same "T3" with an
+	// "Extra turn" mark rather than a new number (owner decision 1).
+	Extra bool `json:"extra,omitempty"`
+	// ExtraTurns lists the seat indices of queued extra turns in the
+	// order they will be taken, next first. A queued turn of a player
+	// who has left is omitted: it will not begin (CR 800.4k). Public
+	// information — the spell that queued it was public.
+	ExtraTurns []int `json:"extra_turns,omitempty"`
 	// BlockDecisionSeats lists the seat indices that owe a
 	// declare-blockers decision right now — under attack, with at
 	// least one creature that could legally block one of the
@@ -3243,6 +3252,8 @@ func ViewOfGame(g *game.Game) GameView {
 				PriorityHolder: g.Turn.PriorityHolder,
 				Phase:          string(g.Turn.Phase),
 				Step:           string(g.Turn.Step),
+				Extra:          g.Turn.Extra,
+				ExtraTurns:     viewOfExtraTurns(g),
 				// #328: who still owes a block declaration. Read
 				// surface takes the lock we already hold and the
 				// layers ReadSnapshot just refreshed.
@@ -8417,4 +8428,18 @@ func modeMemoryWire(m game.ModeMemory) string {
 		return "ever"
 	}
 	return ""
+}
+
+// viewOfExtraTurns is TurnView.ExtraTurns: the queued extra turns'
+// seats, next first, without the turns of players who have left.
+// Caller holds g's read lock.
+func viewOfExtraTurns(g *game.Game) []int {
+	var out []int
+	for _, et := range g.ExtraTurnsQueuedForEffect() {
+		if et.Seat < 0 || et.Seat >= len(g.Seats) || g.Seats[et.Seat] == nil || g.Seats[et.Seat].Eliminated {
+			continue
+		}
+		out = append(out, et.Seat)
+	}
+	return out
 }

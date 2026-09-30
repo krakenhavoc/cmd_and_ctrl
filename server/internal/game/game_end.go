@@ -85,6 +85,33 @@ type GameOutcome struct {
 	Source uuid.UUID `json:"source,omitempty"`
 }
 
+// OutcomeKind is the kind of an ended game's result, for the lobby's
+// games.outcome column (ADR 0057 Decision 7): OutcomeWin, OutcomeDraw,
+// or "" when it is unknown — the game has not ended, an admin closed
+// it (End leaves Outcome nil and no one standing alone), or it is a
+// restore point from before the engine recorded an Outcome.
+//
+// A game ended with no Outcome but exactly one seat left standing is a
+// win, the same fallback WinnerSeat applies.
+func (g *Game) OutcomeKind() string {
+	g.mu.RLock()
+	ended, kind := g.State == StateEnded, ""
+	if g.Outcome != nil {
+		kind = g.Outcome.Kind
+	}
+	g.mu.RUnlock()
+	if !ended {
+		return ""
+	}
+	if kind != "" {
+		return kind
+	}
+	if _, ok := g.WinnerSeat(); ok {
+		return OutcomeWin
+	}
+	return ""
+}
+
 // ErrStopResolution is returned by a catalog effect whose resolution
 // cannot go on: the game has ended, or the player who controls the
 // resolving spell or ability has left the game (CR 800.4a — the

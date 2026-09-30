@@ -172,6 +172,16 @@ type Game struct {
 	// delayed.go. Added in S22.
 	DelayedTriggers []*DelayedTrigger
 
+	// ExtraTurns is the CR 500.7 extra-turn queue (ADR 0059 Decision 5,
+	// extra_turns.go). A STACK: the LAST element is the turn taken
+	// next, which is CR 500.7's "most recently created first". Popped
+	// by the rotation seam, beginNextTurnLocked.
+	ExtraTurns []ExtraTurn
+
+	// NextExtraRef mints ExtraTurn.Ref. Per game and never reused, so a
+	// delayed trigger bound to "that turn" can never match a later one.
+	NextExtraRef int
+
 	// SplitSecondActive mirrors "any item on the stack has
 	// SplitSecond set" (CR 702.61). While true, cast_spell and
 	// activate_ability return ErrSplitSecondActive. Mana abilities

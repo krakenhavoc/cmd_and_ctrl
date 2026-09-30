@@ -1427,8 +1427,8 @@ Send one person this table's invite link as a Discord direct message
 6). The server opens the DM itself, with a bot token and two plain
 REST calls — `POST /users/@me/channels` then `POST
 /channels/{id}/messages`. The gateway bot binary is not involved. The
-`/c2-invite-dm` slash command ([#613](https://github.com/krakenhavoc/cmd_and_ctrl/issues/613))
-is a thin client of this route, so there is exactly one place that
+`/c2-invite-dm <user> [game] [name]` slash command ([#613](https://github.com/krakenhavoc/cmd_and_ctrl/issues/613))
+is a thin client of this route (it sends `discord_id` with the bot's admin session), so there is exactly one place that
 builds and sends an invite DM.
 
 **Nothing is minted.** The DM carries the game's *current* player
@@ -1613,7 +1613,12 @@ authenticated, you are just not a person.
 
 - Every time is **Unix milliseconds** (the unit the tables store), and
   a time that has not happened is `null`. `winner_seat` is `null` until
-  the engine reports a winner.
+  the engine reports a winner. `outcome` (`"win"` or `"draw"`) says how
+  an ended table finished, which `winner_seat` alone cannot: a draw and
+  a table an admin closed are both `winner_seat: null`. It is omitted
+  when unknown, for a table that has not ended, one an admin closed,
+  and any game that ended before `games.outcome` existed (migration
+  0007, [ADR 0057](decisions/0057-win-and-lose-by-effect.md) Decision 7).
 - `seat` is the caller's seat. `others` is every other seat in seat
   order. A seat's `name` is its user's current display name when it
   has one, so a friend who renamed themselves on Discord reads

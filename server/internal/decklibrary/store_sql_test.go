@@ -166,6 +166,47 @@ func TestListOrdersNewestUpdatedFirst(t *testing.T) {
 	}
 }
 
+// A frozen clock is the worst case of two saves inside one
+// millisecond: every stamp ties. The newer save must still list first,
+// and an in-place update must jump ahead of a deck saved after it (#1165).
+func TestListOrderIsDeterministicWithinOneMillisecond(t *testing.T) {
+	s, d := openStore(t)
+	owner := mustUser(t, d, "Alice")
+	clock(s, time.UnixMilli(5000))
+	ctx := context.Background()
+
+	first, err := s.Upsert(ctx, owner, "First", "text", "x", nil, 100)
+	if err != nil {
+		t.Fatalf("Upsert: %v", err)
+	}
+	second, err := s.Upsert(ctx, owner, "Second", "text", "x", nil, 100)
+	if err != nil {
+		t.Fatalf("Upsert: %v", err)
+	}
+	if !second.UpdatedAt.After(first.UpdatedAt) {
+		t.Fatalf("second stamp %v not after first %v", second.UpdatedAt, first.UpdatedAt)
+	}
+	decks, err := s.List(ctx, owner)
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+	if len(decks) != 2 || decks[0].ID != second.ID || decks[1].ID != first.ID {
+		t.Fatalf("List order = %v, want [Second, First]", decks)
+	}
+
+	// Re-saving First inside the same millisecond puts it on top.
+	if _, err := s.Upsert(ctx, owner, "First", "text", "y", nil, 100); err != nil {
+		t.Fatalf("Upsert (re-save): %v", err)
+	}
+	decks, err = s.List(ctx, owner)
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+	if len(decks) != 2 || decks[0].ID != first.ID || decks[1].ID != second.ID {
+		t.Fatalf("List order after re-save = %v, want [First, Second]", decks)
+	}
+}
+
 func TestListIsScopedToOwner(t *testing.T) {
 	s, d := openStore(t)
 	alice := mustUser(t, d, "Alice")
