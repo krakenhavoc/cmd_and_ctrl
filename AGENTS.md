@@ -475,6 +475,7 @@ Subsections of [docs/adding-cards.md](docs/adding-cards.md):
   - [Adding a trigger doubler (#752)](docs/adding-cards.md#adding-a-trigger-doubler-752)
   - [Emblems (#623)](docs/adding-cards.md#emblems-623)
   - [Designations: Class levels, solved Cases, station thresholds (#757, #759)](docs/adding-cards.md#designations-class-levels-solved-cases-station-thresholds-757-759)
+  - [Adding a Room or a split card (ADR 0103, #1756)](docs/adding-cards.md#adding-a-room-or-a-split-card-adr-0103-1756)
   - [Abilities from the hand (#660)](docs/adding-cards.md#abilities-from-the-hand-660)
   - [Special actions from the hand (#658, #659)](docs/adding-cards.md#special-actions-from-the-hand-658-659)
   - [Adding a `Spec` slot (#622)](docs/adding-cards.md#adding-a-spec-slot-622)

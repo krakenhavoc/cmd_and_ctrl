@@ -213,7 +213,36 @@ func corpusBoards() []corpusBoard {
 		// v7, added by ADR 0100 sub-PR 1 as a new file: a delved spell
 		// on the stack — PaidCost.Delved, the objects in exile, on disk.
 		{"delved_spell_on_stack", corpusDelvedSpellOnStack},
+		// v7, added by ADR 0103 as a new file: a Room on the battlefield
+		// with one door unlocked (Card.Unlocked on disk) and a Room spell
+		// on the stack cast as its RIGHT half (ActiveFace 1 on a split
+		// card whose catalog key stays bare). Registered only: the corpus
+		// writer refuses on develop until #1801 lands, so the file is
+		// written by the first -write-corpus run after it.
+		{"room_doors", corpusRoomDoors},
 	}
+}
+
+// corpusRoomDoors is a Room that entered with its right door unlocked
+// (CR 709.5d) and a second Room's right half waiting on the stack.
+func corpusRoomDoors(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	first, second := testRoomCard(me.ID), testRoomCard(me.ID)
+	me.Hand.PushTop(first)
+	me.Hand.PushTop(second)
+	if err := g.CastSpell(me.ID, first.InstanceID, game.CastSpellParams{Face: 1}); err != nil {
+		t.Fatalf("setup: cast the first Room's right half: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if !g.Battlefield.Contains(first.InstanceID) {
+		t.Fatal("setup: the first Room did not resolve")
+	}
+	if err := g.CastSpell(me.ID, second.InstanceID, game.CastSpellParams{Face: 1}); err != nil {
+		t.Fatalf("setup: cast the second Room's right half: %v", err)
+	}
+	return g
 }
 
 // corpusDelvedSpellOnStack is a Treasure Cruise on the stack that
