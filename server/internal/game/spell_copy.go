@@ -492,6 +492,13 @@ func (g *Game) resolveCopyTargetsLocked(idx int, cf *copyFrame, targets []Target
 //
 // Caller must hold g.mu.
 func (g *Game) resolvePermanentSpellCopyLocked(top Card, item *StackItem) error {
+	// ADR 0104 (CR 400.7a, CR 110.2b): a copy whose control was
+	// changed on the stack keeps that change as the token it becomes.
+	// The copy's object is gone before the token exists, so the
+	// records are copied out here and re-pinned in the creation's
+	// continuation; the originals end with the stack object.
+	controlRecords := g.spellControlRecordsLocked(top.InstanceID, top.ObjectEpoch)
+	controlBase := item.BaseController
 	g.ceaseToExistLocked(top.InstanceID)
 	tmpl := tokenCopyOfSpell(top)
 	// CR 707.10b / CR 400.7d: the optional additional costs the copy
@@ -524,6 +531,7 @@ func (g *Game) resolvePermanentSpellCopyLocked(top Card, item *StackItem) error 
 	}, func(g *Game, created []uuid.UUID) error {
 		for _, id := range created {
 			g.attachResolvedAuraLocked(id, &StackItem{Targets: targets})
+			g.adoptSpellControlLocked(controlRecords, id, controlBase)
 		}
 		return nil
 	})

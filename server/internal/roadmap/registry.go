@@ -1129,10 +1129,12 @@ var items = []Item{
 	{
 		Slug: "control-of-a-spell", Name: "Gaining control of a spell", Kind: KindSeam, Status: StatusMissing,
 		Summary:     "Effects that take control of a spell on the stack, such as Invert Polarity and Commandeer.",
-		Missing:     "Nothing can take control of a spell yet, so a spell always resolves for the player who cast it.",
+		Missing:     "The engine can hand a spell to another player now, but the cards that do it aren't in the catalog yet.",
+		Rules:       []string{"110.2b", "400.7a", "613.1b"},
 		Issue:       1745,
+		ADR:         "0104-gaining-control-of-a-spell.md",
 		Waiting:     []string{"Invert Polarity"},
-		EngineNotes: "primitive: control effects are layer-2 effects on PERMANENTS ([ADR 0063](decisions/0063-durations-and-control.md), `GainControlForEffect`); a spell's controller is `StackItem.Controller`, fixed at cast, and nothing rewrites it. A change has to carry who resolves the spell, who a permanent spell enters under, and whom a copy or a cast record names. The other halves of Invert Polarity already exist — the won/lost coin flip (ADR 0054), countering a spell, and choosing new targets for a spell (#1196's `ChangeTargets`) — so the card is this one primitive away. #756's Closed seams row names the gap (\"control of a SPELL (Commandeer) … is not layer 2 at all\").",
+		EngineNotes: "**engine shipped (ADR 0104, option B):** a steal is a `setController` `ScopedEffect` pinned to the stack object (`AffectedObject.OnStack`/`Epoch`, `Duration.PinnedOnStack`), a stack step of the layer pass (`stackControlPassLocked`) materialises `StackItem.Controller` and the stack card's `Card.Controller`, and at resolution the record is re-pinned to the permanent by its epoch with `Card.BaseController` set to the caster (CR 110.2b, CR 400.7a). `GainControlOfSpellForEffect` / `ExchangeControlOfSpellAndPermanentForEffect`, card-side `GainControlOfSpell` / `ExchangeControlOfSpellAnd`. A departed player's control effects now end (CR 800.4a), which also fixed Act of Treason's reversion. Still to land: the cards themselves.",
 	},
 	{
 		Slug: "suspended-card-abilities", Name: "Abilities of a suspended card", Kind: KindSeam, Status: StatusPartial,

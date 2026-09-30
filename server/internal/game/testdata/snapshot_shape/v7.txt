@@ -163,6 +163,8 @@ battlefield.cards[].nextUntapSkips[].while.ExpiresAtTurnsBegun	number:int
 battlefield.cards[].nextUntapSkips[].while.Kind	number:int
 battlefield.cards[].nextUntapSkips[].while.Pinned	custom(uuid.UUID)
 battlefield.cards[].nextUntapSkips[].while.PinnedEnteredAt	number:int64
+battlefield.cards[].nextUntapSkips[].while.PinnedEpoch	number:int
+battlefield.cards[].nextUntapSkips[].while.PinnedOnStack	bool
 battlefield.cards[].nextUntapSkips[].while.PinnedUnstamped	bool
 battlefield.cards[].nextUntapSkips[].while.Player	custom(uuid.UUID)
 battlefield.cards[].nextUntapSkips[].while.Source	custom(uuid.UUID)
@@ -222,6 +224,7 @@ battlefield.cards[].producedMana[]	string
 battlefield.cards[].protectorPlayerId	custom(uuid.UUID)
 battlefield.cards[].provenance	object
 battlefield.cards[].provenance.altCost	string
+battlefield.cards[].provenance.caster	custom(uuid.UUID)
 battlefield.cards[].provenance.fromZone	string
 battlefield.cards[].provenance.giftOpponent	custom(uuid.UUID)
 battlefield.cards[].provenance.mana	array
@@ -308,6 +311,8 @@ delayedTriggers[].duration.ExpiresAtTurnsBegun	number:int
 delayedTriggers[].duration.Kind	number:int
 delayedTriggers[].duration.Pinned	custom(uuid.UUID)
 delayedTriggers[].duration.PinnedEnteredAt	number:int64
+delayedTriggers[].duration.PinnedEpoch	number:int
+delayedTriggers[].duration.PinnedOnStack	bool
 delayedTriggers[].duration.PinnedUnstamped	bool
 delayedTriggers[].duration.Player	custom(uuid.UUID)
 delayedTriggers[].duration.Source	custom(uuid.UUID)
@@ -535,6 +540,8 @@ exile.cards[].nextUntapSkips[].while.ExpiresAtTurnsBegun	number:int
 exile.cards[].nextUntapSkips[].while.Kind	number:int
 exile.cards[].nextUntapSkips[].while.Pinned	custom(uuid.UUID)
 exile.cards[].nextUntapSkips[].while.PinnedEnteredAt	number:int64
+exile.cards[].nextUntapSkips[].while.PinnedEpoch	number:int
+exile.cards[].nextUntapSkips[].while.PinnedOnStack	bool
 exile.cards[].nextUntapSkips[].while.PinnedUnstamped	bool
 exile.cards[].nextUntapSkips[].while.Player	custom(uuid.UUID)
 exile.cards[].nextUntapSkips[].while.Source	custom(uuid.UUID)
@@ -594,6 +601,7 @@ exile.cards[].producedMana[]	string
 exile.cards[].protectorPlayerId	custom(uuid.UUID)
 exile.cards[].provenance	object
 exile.cards[].provenance.altCost	string
+exile.cards[].provenance.caster	custom(uuid.UUID)
 exile.cards[].provenance.fromZone	string
 exile.cards[].provenance.giftOpponent	custom(uuid.UUID)
 exile.cards[].provenance.mana	array
@@ -892,6 +900,8 @@ lastKnownStack[].card.nextUntapSkips[].while.ExpiresAtTurnsBegun	number:int
 lastKnownStack[].card.nextUntapSkips[].while.Kind	number:int
 lastKnownStack[].card.nextUntapSkips[].while.Pinned	custom(uuid.UUID)
 lastKnownStack[].card.nextUntapSkips[].while.PinnedEnteredAt	number:int64
+lastKnownStack[].card.nextUntapSkips[].while.PinnedEpoch	number:int
+lastKnownStack[].card.nextUntapSkips[].while.PinnedOnStack	bool
 lastKnownStack[].card.nextUntapSkips[].while.PinnedUnstamped	bool
 lastKnownStack[].card.nextUntapSkips[].while.Player	custom(uuid.UUID)
 lastKnownStack[].card.nextUntapSkips[].while.Source	custom(uuid.UUID)
@@ -951,6 +961,7 @@ lastKnownStack[].card.producedMana[]	string
 lastKnownStack[].card.protectorPlayerId	custom(uuid.UUID)
 lastKnownStack[].card.provenance	object
 lastKnownStack[].card.provenance.altCost	string
+lastKnownStack[].card.provenance.caster	custom(uuid.UUID)
 lastKnownStack[].card.provenance.fromZone	string
 lastKnownStack[].card.provenance.giftOpponent	custom(uuid.UUID)
 lastKnownStack[].card.provenance.mana	array
@@ -989,6 +1000,7 @@ lastKnownStack[].card.variableToughness	bool
 lastKnownStack[].item	object
 lastKnownStack[].item.altCost	string
 lastKnownStack[].item.altCostExiles	bool
+lastKnownStack[].item.baseController	custom(uuid.UUID)
 lastKnownStack[].item.body	string
 lastKnownStack[].item.castFromZone	string
 lastKnownStack[].item.commutes	bool
@@ -1347,6 +1359,7 @@ pendingTriggers	array
 pendingTriggers[]	object
 pendingTriggers[].altCost	string
 pendingTriggers[].altCostExiles	bool
+pendingTriggers[].baseController	custom(uuid.UUID)
 pendingTriggers[].body	string
 pendingTriggers[].castFromZone	string
 pendingTriggers[].commutes	bool
@@ -1651,6 +1664,8 @@ phasedOut.cards[].nextUntapSkips[].while.ExpiresAtTurnsBegun	number:int
 phasedOut.cards[].nextUntapSkips[].while.Kind	number:int
 phasedOut.cards[].nextUntapSkips[].while.Pinned	custom(uuid.UUID)
 phasedOut.cards[].nextUntapSkips[].while.PinnedEnteredAt	number:int64
+phasedOut.cards[].nextUntapSkips[].while.PinnedEpoch	number:int
+phasedOut.cards[].nextUntapSkips[].while.PinnedOnStack	bool
 phasedOut.cards[].nextUntapSkips[].while.PinnedUnstamped	bool
 phasedOut.cards[].nextUntapSkips[].while.Player	custom(uuid.UUID)
 phasedOut.cards[].nextUntapSkips[].while.Source	custom(uuid.UUID)
@@ -1710,6 +1725,7 @@ phasedOut.cards[].producedMana[]	string
 phasedOut.cards[].protectorPlayerId	custom(uuid.UUID)
 phasedOut.cards[].provenance	object
 phasedOut.cards[].provenance.altCost	string
+phasedOut.cards[].provenance.caster	custom(uuid.UUID)
 phasedOut.cards[].provenance.fromZone	string
 phasedOut.cards[].provenance.giftOpponent	custom(uuid.UUID)
 phasedOut.cards[].provenance.mana	array
@@ -1767,7 +1783,9 @@ scopedEffects[].affected	array
 scopedEffects[].affected[]	object
 scopedEffects[].affected[].controller	custom(uuid.UUID)
 scopedEffects[].affected[].enteredAt	number:int64
+scopedEffects[].affected[].epoch	number:int
 scopedEffects[].affected[].id	custom(uuid.UUID)
+scopedEffects[].affected[].onStack	bool
 scopedEffects[].affected[].unstamped	bool
 scopedEffects[].controller	custom(uuid.UUID)
 scopedEffects[].duration	object
@@ -1777,6 +1795,8 @@ scopedEffects[].duration.ExpiresAtTurnsBegun	number:int
 scopedEffects[].duration.Kind	number:int
 scopedEffects[].duration.Pinned	custom(uuid.UUID)
 scopedEffects[].duration.PinnedEnteredAt	number:int64
+scopedEffects[].duration.PinnedEpoch	number:int
+scopedEffects[].duration.PinnedOnStack	bool
 scopedEffects[].duration.PinnedUnstamped	bool
 scopedEffects[].duration.Player	custom(uuid.UUID)
 scopedEffects[].duration.Source	custom(uuid.UUID)
@@ -1877,6 +1897,8 @@ seats[].castPermissions[].duration.ExpiresAtTurnsBegun	number:int
 seats[].castPermissions[].duration.Kind	number:int
 seats[].castPermissions[].duration.Pinned	custom(uuid.UUID)
 seats[].castPermissions[].duration.PinnedEnteredAt	number:int64
+seats[].castPermissions[].duration.PinnedEpoch	number:int
+seats[].castPermissions[].duration.PinnedOnStack	bool
 seats[].castPermissions[].duration.PinnedUnstamped	bool
 seats[].castPermissions[].duration.Player	custom(uuid.UUID)
 seats[].castPermissions[].duration.Source	custom(uuid.UUID)
@@ -2050,6 +2072,8 @@ seats[].command.cards[].nextUntapSkips[].while.ExpiresAtTurnsBegun	number:int
 seats[].command.cards[].nextUntapSkips[].while.Kind	number:int
 seats[].command.cards[].nextUntapSkips[].while.Pinned	custom(uuid.UUID)
 seats[].command.cards[].nextUntapSkips[].while.PinnedEnteredAt	number:int64
+seats[].command.cards[].nextUntapSkips[].while.PinnedEpoch	number:int
+seats[].command.cards[].nextUntapSkips[].while.PinnedOnStack	bool
 seats[].command.cards[].nextUntapSkips[].while.PinnedUnstamped	bool
 seats[].command.cards[].nextUntapSkips[].while.Player	custom(uuid.UUID)
 seats[].command.cards[].nextUntapSkips[].while.Source	custom(uuid.UUID)
@@ -2109,6 +2133,7 @@ seats[].command.cards[].producedMana[]	string
 seats[].command.cards[].protectorPlayerId	custom(uuid.UUID)
 seats[].command.cards[].provenance	object
 seats[].command.cards[].provenance.altCost	string
+seats[].command.cards[].provenance.caster	custom(uuid.UUID)
 seats[].command.cards[].provenance.fromZone	string
 seats[].command.cards[].provenance.giftOpponent	custom(uuid.UUID)
 seats[].command.cards[].provenance.mana	array
@@ -2297,6 +2322,8 @@ seats[].emblems.cards[].nextUntapSkips[].while.ExpiresAtTurnsBegun	number:int
 seats[].emblems.cards[].nextUntapSkips[].while.Kind	number:int
 seats[].emblems.cards[].nextUntapSkips[].while.Pinned	custom(uuid.UUID)
 seats[].emblems.cards[].nextUntapSkips[].while.PinnedEnteredAt	number:int64
+seats[].emblems.cards[].nextUntapSkips[].while.PinnedEpoch	number:int
+seats[].emblems.cards[].nextUntapSkips[].while.PinnedOnStack	bool
 seats[].emblems.cards[].nextUntapSkips[].while.PinnedUnstamped	bool
 seats[].emblems.cards[].nextUntapSkips[].while.Player	custom(uuid.UUID)
 seats[].emblems.cards[].nextUntapSkips[].while.Source	custom(uuid.UUID)
@@ -2356,6 +2383,7 @@ seats[].emblems.cards[].producedMana[]	string
 seats[].emblems.cards[].protectorPlayerId	custom(uuid.UUID)
 seats[].emblems.cards[].provenance	object
 seats[].emblems.cards[].provenance.altCost	string
+seats[].emblems.cards[].provenance.caster	custom(uuid.UUID)
 seats[].emblems.cards[].provenance.fromZone	string
 seats[].emblems.cards[].provenance.giftOpponent	custom(uuid.UUID)
 seats[].emblems.cards[].provenance.mana	array
@@ -2534,6 +2562,8 @@ seats[].graveyard.cards[].nextUntapSkips[].while.ExpiresAtTurnsBegun	number:int
 seats[].graveyard.cards[].nextUntapSkips[].while.Kind	number:int
 seats[].graveyard.cards[].nextUntapSkips[].while.Pinned	custom(uuid.UUID)
 seats[].graveyard.cards[].nextUntapSkips[].while.PinnedEnteredAt	number:int64
+seats[].graveyard.cards[].nextUntapSkips[].while.PinnedEpoch	number:int
+seats[].graveyard.cards[].nextUntapSkips[].while.PinnedOnStack	bool
 seats[].graveyard.cards[].nextUntapSkips[].while.PinnedUnstamped	bool
 seats[].graveyard.cards[].nextUntapSkips[].while.Player	custom(uuid.UUID)
 seats[].graveyard.cards[].nextUntapSkips[].while.Source	custom(uuid.UUID)
@@ -2593,6 +2623,7 @@ seats[].graveyard.cards[].producedMana[]	string
 seats[].graveyard.cards[].protectorPlayerId	custom(uuid.UUID)
 seats[].graveyard.cards[].provenance	object
 seats[].graveyard.cards[].provenance.altCost	string
+seats[].graveyard.cards[].provenance.caster	custom(uuid.UUID)
 seats[].graveyard.cards[].provenance.fromZone	string
 seats[].graveyard.cards[].provenance.giftOpponent	custom(uuid.UUID)
 seats[].graveyard.cards[].provenance.mana	array
@@ -2770,6 +2801,8 @@ seats[].hand.cards[].nextUntapSkips[].while.ExpiresAtTurnsBegun	number:int
 seats[].hand.cards[].nextUntapSkips[].while.Kind	number:int
 seats[].hand.cards[].nextUntapSkips[].while.Pinned	custom(uuid.UUID)
 seats[].hand.cards[].nextUntapSkips[].while.PinnedEnteredAt	number:int64
+seats[].hand.cards[].nextUntapSkips[].while.PinnedEpoch	number:int
+seats[].hand.cards[].nextUntapSkips[].while.PinnedOnStack	bool
 seats[].hand.cards[].nextUntapSkips[].while.PinnedUnstamped	bool
 seats[].hand.cards[].nextUntapSkips[].while.Player	custom(uuid.UUID)
 seats[].hand.cards[].nextUntapSkips[].while.Source	custom(uuid.UUID)
@@ -2829,6 +2862,7 @@ seats[].hand.cards[].producedMana[]	string
 seats[].hand.cards[].protectorPlayerId	custom(uuid.UUID)
 seats[].hand.cards[].provenance	object
 seats[].hand.cards[].provenance.altCost	string
+seats[].hand.cards[].provenance.caster	custom(uuid.UUID)
 seats[].hand.cards[].provenance.fromZone	string
 seats[].hand.cards[].provenance.giftOpponent	custom(uuid.UUID)
 seats[].hand.cards[].provenance.mana	array
@@ -3010,6 +3044,8 @@ seats[].library.cards[].nextUntapSkips[].while.ExpiresAtTurnsBegun	number:int
 seats[].library.cards[].nextUntapSkips[].while.Kind	number:int
 seats[].library.cards[].nextUntapSkips[].while.Pinned	custom(uuid.UUID)
 seats[].library.cards[].nextUntapSkips[].while.PinnedEnteredAt	number:int64
+seats[].library.cards[].nextUntapSkips[].while.PinnedEpoch	number:int
+seats[].library.cards[].nextUntapSkips[].while.PinnedOnStack	bool
 seats[].library.cards[].nextUntapSkips[].while.PinnedUnstamped	bool
 seats[].library.cards[].nextUntapSkips[].while.Player	custom(uuid.UUID)
 seats[].library.cards[].nextUntapSkips[].while.Source	custom(uuid.UUID)
@@ -3069,6 +3105,7 @@ seats[].library.cards[].producedMana[]	string
 seats[].library.cards[].protectorPlayerId	custom(uuid.UUID)
 seats[].library.cards[].provenance	object
 seats[].library.cards[].provenance.altCost	string
+seats[].library.cards[].provenance.caster	custom(uuid.UUID)
 seats[].library.cards[].provenance.fromZone	string
 seats[].library.cards[].provenance.giftOpponent	custom(uuid.UUID)
 seats[].library.cards[].provenance.mana	array
@@ -3158,6 +3195,8 @@ seats[].statics[].duration.ExpiresAtTurnsBegun	number:int
 seats[].statics[].duration.Kind	number:int
 seats[].statics[].duration.Pinned	custom(uuid.UUID)
 seats[].statics[].duration.PinnedEnteredAt	number:int64
+seats[].statics[].duration.PinnedEpoch	number:int
+seats[].statics[].duration.PinnedOnStack	bool
 seats[].statics[].duration.PinnedUnstamped	bool
 seats[].statics[].duration.Player	custom(uuid.UUID)
 seats[].statics[].duration.Source	custom(uuid.UUID)
@@ -3343,6 +3382,8 @@ stack.cards[].nextUntapSkips[].while.ExpiresAtTurnsBegun	number:int
 stack.cards[].nextUntapSkips[].while.Kind	number:int
 stack.cards[].nextUntapSkips[].while.Pinned	custom(uuid.UUID)
 stack.cards[].nextUntapSkips[].while.PinnedEnteredAt	number:int64
+stack.cards[].nextUntapSkips[].while.PinnedEpoch	number:int
+stack.cards[].nextUntapSkips[].while.PinnedOnStack	bool
 stack.cards[].nextUntapSkips[].while.PinnedUnstamped	bool
 stack.cards[].nextUntapSkips[].while.Player	custom(uuid.UUID)
 stack.cards[].nextUntapSkips[].while.Source	custom(uuid.UUID)
@@ -3402,6 +3443,7 @@ stack.cards[].producedMana[]	string
 stack.cards[].protectorPlayerId	custom(uuid.UUID)
 stack.cards[].provenance	object
 stack.cards[].provenance.altCost	string
+stack.cards[].provenance.caster	custom(uuid.UUID)
 stack.cards[].provenance.fromZone	string
 stack.cards[].provenance.giftOpponent	custom(uuid.UUID)
 stack.cards[].provenance.mana	array
@@ -3443,6 +3485,7 @@ stackMeta	array
 stackMeta[]	object
 stackMeta[].altCost	string
 stackMeta[].altCostExiles	bool
+stackMeta[].baseController	custom(uuid.UUID)
 stackMeta[].body	string
 stackMeta[].castFromZone	string
 stackMeta[].commutes	bool

@@ -1305,6 +1305,10 @@ export interface StackItemView {
   id: string;
   kind: "spell" | "activated" | "triggered";
   controller: string;
+  // ADR 0104: the player a stolen spell was put on the stack by — its
+  // caster (CR 110.2b). Present only while it differs from
+  // `controller`, i.e. while somebody else has taken the spell.
+  default_controller?: string;
   owner: string;
   source_card_id: string;
   label?: string;

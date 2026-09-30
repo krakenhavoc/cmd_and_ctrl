@@ -1015,14 +1015,20 @@ type ReplacementOptionView struct {
 // metadata. Mirrors `game.StackItem` with UUIDs serialised as
 // strings. See server/internal/game/stack.go for field semantics.
 type StackItemView struct {
-	ID           string          `json:"id"`
-	Kind         string          `json:"kind"`
-	Controller   string          `json:"controller"`
-	Owner        string          `json:"owner"`
-	SourceCardID string          `json:"source_card_id"`
-	Label        string          `json:"label,omitempty"`
-	Targets      []TargetRefView `json:"targets,omitempty"`
-	Modes        []int           `json:"modes,omitempty"`
+	ID         string `json:"id"`
+	Kind       string `json:"kind"`
+	Controller string `json:"controller"`
+	// DefaultController is the player a stolen spell was put on the
+	// stack by — its caster, or for a copy the player who made it
+	// (ADR 0104, CR 110.2b). Sent only when it differs from
+	// Controller, so the client can say "taken from X" and a bot
+	// prompt can say who cast it; empty for every spell nobody took.
+	DefaultController string          `json:"default_controller,omitempty"`
+	Owner             string          `json:"owner"`
+	SourceCardID      string          `json:"source_card_id"`
+	Label             string          `json:"label,omitempty"`
+	Targets           []TargetRefView `json:"targets,omitempty"`
+	Modes             []int           `json:"modes,omitempty"`
 	// ModeLabels is the oracle bullet of each chosen mode, in
 	// printed (resolution) order and with repeats — what "modes: 0, 2" used to
 	// make the table guess. The caster's hand card is gone by the
@@ -6288,6 +6294,9 @@ func viewOfStackItem(it *game.StackItem) StackItemView {
 		ManaSpent:        it.Paid.ManaSpentCount(),
 		ColorsSpent:      it.Paid.ColorsSpent(),
 		ManaSpentUnknown: !it.Paid.Known(),
+	}
+	if it.BaseController != uuid.Nil && it.BaseController != it.Controller {
+		view.DefaultController = it.BaseController.String()
 	}
 	if it.Paid.GiftPromised() {
 		view.GiftTo = it.Paid.GiftOpponent.String()

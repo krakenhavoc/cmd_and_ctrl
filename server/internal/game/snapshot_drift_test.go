@@ -545,6 +545,10 @@ var stackItemFields = plan(
 	"ID", carried, "",
 	"Kind", carried, "",
 	"Controller", carried, "",
+	// ADR 0104: the player a stolen spell reverts to (CR 110.2b).
+	// Carried: nothing on the restored board says who put a stolen
+	// spell on the stack.
+	"BaseController", carried, "",
 	"Owner", carried, "",
 	"SourceCardID", carried, "",
 	// CR 400.7 (#812): which OBJECT an ability's source was at

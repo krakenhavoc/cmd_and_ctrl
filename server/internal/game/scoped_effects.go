@@ -341,11 +341,58 @@ type Mod struct {
 // Controller, when set, narrows the member further: the object is
 // affected only while that player controls it. Suspend's haste again —
 // "it has haste until that player loses control of it".
+//
+// OnStack and Epoch are the stack's pin (ADR 0104, #1745): the member
+// is a SPELL, named by its instance ID and the Card.ObjectEpoch it has
+// on the stack. MoveCard bumps the epoch on every zone change, so the
+// same card cast again is a new object the pin does not match
+// (CR 400.7). A stack member never matches a permanent: the battlefield
+// pass skips it (affectedPredicate), and only the stack step of the
+// layer pass reads it (stackControlPassLocked). Built with
+// PinStackObject, never by hand.
+//
+// Epoch on a BATTLEFIELD member (OnStack false, EnteredAt 0, Unstamped
+// false, Epoch above zero) pins the permanent by its ObjectEpoch
+// instead of its entry stamp: PinObjectByEpoch. It exists for the one
+// pin that has to be taken before the entry stamp is — the permanent a
+// stolen permanent spell becomes, re-pinned as it lands and before the
+// zone-move event stamps it (ADR 0104, CR 400.7a). An epoch is final
+// the moment MoveCard lands the card, and a card that moved from the
+// stack has an epoch of at least 1, so zero stays the wildcard.
 type AffectedObject struct {
 	ID         uuid.UUID `json:"id"`
 	EnteredAt  int64     `json:"enteredAt,omitempty"`
 	Unstamped  bool      `json:"unstamped,omitempty"`
 	Controller uuid.UUID `json:"controller,omitempty"`
+	OnStack    bool      `json:"onStack,omitempty"`
+	Epoch      int       `json:"epoch,omitempty"`
+}
+
+// PinStackObject is the affected-set member for the spell `id` on the
+// stack, as the object it is now: its instance plus its ObjectEpoch
+// (ADR 0104).
+func PinStackObject(id uuid.UUID, epoch int) AffectedObject {
+	return AffectedObject{ID: id, OnStack: true, Epoch: epoch}
+}
+
+// PinObjectByEpoch is the battlefield member for the permanent `id` as
+// the object with ObjectEpoch `epoch` (ADR 0104). `epoch` must be above
+// zero; zero would be the wildcard.
+func PinObjectByEpoch(id uuid.UUID, epoch int) AffectedObject {
+	return AffectedObject{ID: id, Epoch: epoch}
+}
+
+// memberMatches reports whether the permanent `target` is the object
+// the battlefield member `a` names — by epoch for an epoch pin, by
+// entry stamp otherwise. A stack member never matches a permanent.
+func memberMatches(a AffectedObject, target *Card) bool {
+	if a.OnStack || a.ID != target.InstanceID {
+		return false
+	}
+	if a.Epoch > 0 && a.EnteredAt == 0 && !a.Unstamped {
+		return target.ObjectEpoch == a.Epoch
+	}
+	return entryMatches(a.EnteredAt, a.Unstamped, target.EnteredBattlefieldAt)
 }
 
 // PinObject is the affected-set member for the permanent `id` that
@@ -778,6 +825,9 @@ func (g *Game) appendScopedEffectLocked(sourceID uuid.UUID, affected []AffectedO
 			named = true
 		}
 	}
+	if problem := stackPinProblem(affected, mods); problem != "" {
+		panic(fmt.Sprintf("game: scoped effect %q %s", label, problem))
+	}
 	e := ScopedEffect{
 		Affected:  append([]AffectedObject(nil), affected...),
 		Scope:     scope,
@@ -1045,10 +1095,9 @@ func affectedPredicate(set []AffectedObject) func(*Card, *Game, *Card) bool {
 			return false
 		}
 		for _, a := range set {
-			if a.ID != target.InstanceID {
-				continue
-			}
-			if !entryMatches(a.EnteredAt, a.Unstamped, target.EnteredBattlefieldAt) {
+			// A stack member names a spell, and this pass is asking
+			// about a permanent (ADR 0104).
+			if !memberMatches(a, target) {
 				continue
 			}
 			if a.Controller != uuid.Nil && target.Controller != a.Controller {
