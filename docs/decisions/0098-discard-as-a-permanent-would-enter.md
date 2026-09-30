@@ -1,10 +1,10 @@
 # ADR 0098 — Discarding a card as a permanent would enter (Mox Diamond)
 
-**Status:** Proposed · 2026-09-30 · Post-S30 — Rolling deck-driven catalog growth
+**Status:** Accepted · 2026-09-30 · Post-S30 — Rolling deck-driven catalog growth
 **Issue:** [#1744](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1744). The card is on the ViviVoltron deck request [#1640](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1640), and was noted earlier on batch issue #295 and on #1600.
 **Numbering:** checked with the AGENTS.md §4 sweep on 2026-09-30. I ran `git fetch --all --prune`, then read every `docs/decisions/` file name on every remote branch (36 heads, and 34 at the re-check before pushing). The highest number anywhere is **0097** (`0097-modes-that-havent-been-chosen.md`).
 **Builds on:** [ADR 0013](0013-replacement-effects.md) — §5z (the reveal-from-hand entry choice, #1198), §5o (an entry can pause), §5g and §5af (a discard is an exit, and a cost settles now); [ADR 0061](0061-token-creation-and-discard-are-replaceable-events.md) §4–5 (`RepEventDiscard` and the discard cause) and its 2026-09-23 amendment (the resumable batch entry); [ADR 0062](0062-abilities-and-special-actions-from-the-hand.md) §3 (what a cost discard is, for contrast).
-**Owner decisions:** none yet. This ADR is for review. The questions are at the end.
+**Owner decisions:** 2026-09-30. All seven questions are answered; see [Owner decisions](#owner-decisions-2026-09-30) below. The owner widened the scope (question 2) to the seven "sacrifice … instead" lands, which Decision 11 covers.
 
 ---
 
@@ -72,7 +72,7 @@ Chrome Mox is not in the table. It prints "When this artifact enters", so its im
 
 ## Options
 
-**A. Generalise `EntryHandReveal` into a hand choice with an action (recommended).** One declaration, `EntryHandChoice`, gains `Action` (`reveal` or `discard`). The offer, its three inline guards, the choose-cards payload and the resolver are shared; the action decides what happens to the picked cards and which prompt kind is queued. The ten reveal-lands keep `reveal`, the zero value.
+**A. Generalise `EntryHandReveal` into a hand choice with an action (recommended).** One declaration, `EntryHandChoice` (implemented as `EntryCardChoice`, see Decision 1), gains `Action` (`reveal` or `discard`). The offer, its three inline guards, the choose-cards payload and the resolver are shared; the action decides what happens to the picked cards and which prompt kind is queued. The ten reveal-lands keep `reveal`, the zero value.
 
 **B. A sibling shape, `EntryDiscard`.** A fifth branch on the apply-loop with its own offer, prompt and resolver. It reads well at the declaration site, but it copies every guard and the resolver from `entry_reveal.go`. That is the pair §5z warned drifts, and it would need its own arm in the ordering loop and the skip rule — the two places gaps 3 and 4 above already show drifting.
 
@@ -84,23 +84,24 @@ Chrome Mox is not in the table. It prints "When this artifact enters", so its im
 
 ---
 
-## Decisions (recommended)
+## Decisions
 
-### 1. `EntryHandChoice` with an `Action`
+### 1. `EntryCardChoice` with an `Action`
 
-`ReplacementEffect.EntryHandReveal *EntryHandReveal` becomes `EntryHandChoice *EntryHandChoice`:
+`ReplacementEffect.EntryHandReveal *EntryHandReveal` becomes `EntryCardChoice *EntryCardChoice`. (Question 1 approved the name `EntryHandChoice`; question 2 then put a battlefield action in the same declaration, so the implementation names it for the card rather than the zone. The shape is the one approved.)
 
 ```go
-type EntryHandAction string
+type EntryCardAction string
 
 const (
-	EntryHandReveal  EntryHandAction = ""        // CR 701.20 — the ten reveal-lands (zero value)
-	EntryHandDiscard EntryHandAction = "discard" // CR 701.9 — Mox Diamond
+	EntryCardReveal    EntryCardAction = ""          // CR 701.20 — a card in hand; the ten reveal-lands (zero value)
+	EntryCardDiscard   EntryCardAction = "discard"   // CR 701.9 — a card in hand; Mox Diamond
+	EntryCardSacrifice EntryCardAction = "sacrifice" // CR 701.21 — a permanent the chooser controls; Decision 11
 )
 
-type EntryHandChoice struct {
-	Action   EntryHandAction
-	Matches  func(c Card) bool // printed characteristics of a card in hand; unchanged rules
+type EntryCardChoice struct {
+	Action   EntryCardAction
+	Matches  func(c Card) bool // a card in hand: printed characteristics; a permanent: its effective ones
 	Min, Max int
 	Question string
 	Then     func(g *Game, picked []uuid.UUID) error
@@ -122,7 +123,7 @@ The rename moves three lines of `server/internal/game/testdata/closure_fields.tx
 
 ### 2. One more prompt kind, the fourth card-set pick
 
-`PendingChoiceEntryDiscardFromHand` (`"entry_discard_from_hand"`) joins `isCardSetPickKind`. It carries the same payload as the reveal kind: `ChooseCards`, `ChooseMin`/`ChooseMax`, `chooseCardsFrame{zone: ZoneHand}`, and the `replacementResume` frame. One resolver serves both kinds (`ResolveEntryHandChoice`; `ResolveEntryRevealFromHand` stays as a wrapper if the actions dispatch wants it).
+`PendingChoiceEntryDiscardFromHand` (`"entry_discard_from_hand"`) joins `isCardSetPickKind`. It carries the same payload as the reveal kind: `ChooseCards`, `ChooseMin`/`ChooseMax`, `chooseCardsFrame{zone: ZoneHand}`, and the `replacementResume` frame. One resolver serves both kinds (`ResolveEntryCardChoice`; `ResolveEntryRevealFromHand` stays as a wrapper if the actions dispatch wants it).
 
 It is a separate *kind* rather than a flag on the reveal kind for §5z's own reason, the third one: **the sign is inverted for a bot**. A revealed card is kept, so any reveal beats none. A discarded card is spent. The client's sentence also differs ("Discard a land card?" against "Reveal an Island or Swamp card?"), and the kind is what the client renders from.
 
@@ -174,7 +175,7 @@ The sandbox `move_card` verb already honours a rewritten destination, so it need
 // "you didn't" branch — the shockland's enters-tapped, the
 // reveal-land's enters-tapped, Mox Diamond's graveyard.
 func declineIsReplace(e ReplacementEffect) bool {
-	return e.EntryLifeCost > 0 || e.EntryHandChoice != nil
+	return e.EntryLifeCost > 0 || e.EntryCardChoice != nil
 }
 ```
 
@@ -190,7 +191,7 @@ The apply-loop's single-applicable arm and `ResolveReplacementOrder`'s chosen-or
 func (g *Game) offerOwnQuestionLocked(ev *ReplacementEvent, chosen activeReplacement) bool
 ```
 
-It dispatches `CopySelector`, `EntryLifeCost`, `EntryHandChoice` and `Optional` in that order. After that, adding a question kind means one branch, and the two loops cannot drift again (the #847 lesson).
+It dispatches `CopySelector`, `EntryLifeCost`, `EntryCardChoice` and `Optional` in that order. After that, adding a question kind means one branch, and the two loops cannot drift again (the #847 lesson).
 
 ### 7. CR 614.13 in a simultaneous entry
 
@@ -217,16 +218,38 @@ In the resumable batch (`entry_batch.go`), each member's window is asked in turn
 - Closure ratchet: three renamed lines, same class and same count (Decision 1). No new route (Decision 3).
 - The fixture corpus is untouched. No existing restore point can hold a Mox Diamond or an entry prompt.
 
+### 11. The battlefield sacrifice (owner decision, question 2)
+
+The seven lands print "sacrifice <N> <kind> instead" with the same "If you do / If you don't" tail. They use Decisions 4–6 unchanged, plus a third action:
+
+- **`EntryCardSacrifice`** picks from the battlefield, over the permanents the chooser controls. `Matches` sees a permanent, so it reads **effective** characteristics (`Card.Effective()`): an Urborg-made Swamp is a Swamp for Lake of the Dead. It is the one action whose candidates are a public zone.
+- **It is not a "may".** None of the seven says "you may", so the prompt's floor and ceiling are both N (`Min == Max`). The only way not to sacrifice is to be unable to: with fewer than N candidates, the three inline guards apply `Replace` and the land goes to its owner's graveyard. Lotus Vale with one untapped land sacrifices nothing (the ruling: "If you don't sacrifice the lands, Lotus Vale never enters"). A prompt with a floor above zero has no `AlwaysLegal` answer, which is safe here because an open prompt blocks the table and so its candidates cannot leave.
+- **The sacrifice is an effect's**, through `SacrificeAllThenForEffect` with the entering card as source: one simultaneous exit, `EventSacrifice` for each, and each leg may pause on CR 903.9 exactly as a discard may. The paused entry rides the same frozen copy (Decision 3). "If you do" is all N sacrificed (`sacrificedThisWayLocked`); fewer, and `Replace` runs.
+- **"Untapped"** (Balduvian Trading Post, Soldevi Excavations, Lotus Vale, Scorched Ruins) is part of `Matches`.
+- **A land play that goes to the graveyard spends the land drop** (question 7, CR 116.2a and 305.2).
+- **Prompt kind `entry_sacrifice`**, the fifth card-set pick. Same sign as the discard for a bot (a spent card): the heuristic sacrifices the cheapest candidates by `fuelValue`, tapped before untapped where the clause allows both.
+
+The catalog side is one constructor, `EntersOnlyIfYouSacrifice(name, n, clause, matches)`, and the seven lands are rows in one table.
+
+---
+
+## Owner decisions (2026-09-30)
+
+1. **Shape.** Option A, as recommended: one declaration with an `Action`, and a new prompt kind `entry_discard_from_hand`. The declaration is implemented as `EntryCardChoice` rather than `EntryHandChoice`, because answer 2 put a battlefield action in it (Decision 1).
+2. **Scope.** Mox Diamond **and** the seven "sacrifice … instead" lands, with the battlefield-sacrifice action (Decision 11). This is wider than the recommendation. Indominus Rex, Alpha stays out and is added to the seam's `Waiting` list in the roadmap registry.
+3. **Pause.** The discard may pause, carrying the paused entry in a frozen copy. As recommended.
+4. **Cause.** `DiscardCauseEffect`. As recommended.
+5. **"If you do".** The card actually left the hand (`discardedThisWayLocked`). As recommended.
+6. **`move_card`.** No sandbox exception: a Mox Diamond dragged onto the battlefield goes to its owner's graveyard, as a reveal-land dragged there enters tapped. As recommended.
+7. **Land drop.** A redirected land play spends the land drop (CR 116.2a). As recommended.
+
 ---
 
 ## Cards
 
-**Covered by this ADR:** Mox Diamond. It ships `CompletenessFull`.
+**Covered by this ADR:** Mox Diamond, and the seven lands Heart of Yavimaya, Kjeldoran Outpost, Lake of the Dead, Balduvian Trading Post, Soldevi Excavations, Lotus Vale and Scorched Ruins. All ship `CompletenessFull` unless the implementing PR finds an honest caveat.
 
-**Made one constructor away, not in scope** (open question 2):
-
-- The seven "sacrifice … instead" lands: Heart of Yavimaya, Kjeldoran Outpost, Lake of the Dead, Balduvian Trading Post, Soldevi Excavations, Lotus Vale and Scorched Ruins. They need Decisions 4–6 unchanged, plus a battlefield-sacrifice action (`From: ZoneBattlefield`, the `own_permanents` pick shape, `SacrificeAllThenForEffect` for the move), and "untapped" for three of them.
-- Indominus Rex, Alpha: a hand discard with no redirect. It needs `Then` to be handed the entering event so it can add counters (`ev.AddCounterAtETB`).
+**Waiting, not in scope:** Indominus Rex, Alpha — a hand discard with no redirect, whose follow-on needs `Then` to be handed the entering event so it can add counters (`ev.AddCounterAtETB`). Listed on the seam's `Waiting` row.
 
 **Not covered:** the ETB "sacrifice it unless you …" triggers (a CR 118.12 cost at resolution, a separate seam); champion; Shimatsu, Mimeoplasm and Sheltered Valley (other zones, no redirect).
 
@@ -234,7 +257,7 @@ In the resumable batch (`entry_batch.go`), each member's window is asked in turn
 
 ## Consequences
 
-- Mox Diamond ships complete, and the roadmap row "Discarding a card as a permanent would enter" (`roadmap/registry.go`, `discard-as-it-would-enter`) closes with a fragment in `docs/engine-seams/closed/`.
+- Mox Diamond and the seven lands ship complete, and the roadmap row "Discarding a card as a permanent would enter" (`roadmap/registry.go`, `discard-as-it-would-enter`) closes with a fragment in `docs/engine-seams/closed/`.
 - Two latent bugs close before a card can reach them: a redirected spell or land entry landing on the battlefield anyway, and an un-asked shockland or reveal-land entering untapped.
 - The two question loops share one dispatcher.
 - One more card-set-pick kind means four readers of `isCardSetPickKind`, which is the direction §5z chose over a copy of the validation.
@@ -242,7 +265,7 @@ In the resumable batch (`entry_batch.go`), each member's window is asked in turn
 
 ---
 
-## Open questions for the owner
+## Open questions for the owner (answered 2026-09-30, see above)
 
 1. **Is the recommended shape right?** That is, `EntryHandReveal` renamed to `EntryHandChoice` with an `Action`, and a second prompt kind (Option A). Or do you prefer a separate sibling declaration (Option B), accepting the duplicated guards and resolver?
 
