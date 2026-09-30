@@ -113,7 +113,7 @@
   } from "../../targeting";
   import { suggestedAbilityX as suggestedAbilityXFor } from "../../abilityX";
   import { castPreviewParams } from "../../castPreview";
-  import { orderSacrificeOptions, sacrificeCount, sacrificeRange } from "../../sacrificeCost";
+  import { castSacrificeRange, orderSacrificeOptions, sacrificeRange } from "../../sacrificeCost";
   import XCostModal from "./XCostModal.svelte";
   import DivideDamageModal from "./DivideDamageModal.svelte";
   import SacrificeCostModal from "./SacrificeCostModal.svelte";
@@ -487,14 +487,33 @@
     if (!sacrificePromptCard) return [];
     return orderSacrificeOptions(view.battlefield.cards, sacrificePromptClause?.cards);
   });
+  // ADR 0100 §3: the bounds the cast's picker enforces. A fixed clause is
+  // N..N as before; "sacrifice any number of creatures" and "sacrifice X
+  // lands" run from zero with no ceiling but the board.
+  const castSacrificeBounds = $derived(castSacrificeRange(sacrificePromptClause));
 
   function confirmSacrificeCost(instanceIDs: string[]): void {
     const card = sacrificePromptCard;
     const choices = sacrificePromptChoices;
+    const clause = sacrificePromptClause;
     sacrificePromptCard = null;
     sacrificePromptChoices = {};
     if (!card) return;
-    afterSacrificeCost(card, { ...choices, sacrificeIDs: instanceIDs });
+    afterSacrificeCost(card, withCastSacrifice(choices, clause, instanceIDs));
+  }
+
+  // withCastSacrifice records the permanents a cast's sacrifice clause
+  // names. ADR 0100 §3: for "sacrifice X …" the number picked IS the
+  // announced X (CR 107.3i), so it rides as the x_value and the X prompt
+  // never opens — the tap-X rule (ADR 0073 Decision 10).
+  function withCastSacrifice(
+    choices: CastChoices,
+    clause: LegalTargetsView | undefined,
+    ids: string[],
+  ): CastChoices {
+    const out: CastChoices = { ...choices, sacrificeIDs: ids };
+    if (clause?.count_from_x) out.xValue = ids.length;
+    return out;
   }
 
   // #1703: a claimed teamwork offer asks which creatures to tap — the
@@ -699,6 +718,16 @@
     // clause this cast is actually paying, so the modal's options,
     // count and label all come from one place.
     const clause = castSacrificeClause(card, choices);
+    // ADR 0100 §3: a count that may be zero, with nothing on the board
+    // to pay it, has one answer — none — so there is nothing to ask.
+    if (
+      clause !== undefined &&
+      castSacrificeRange(clause).min === 0 &&
+      (clause.cards ?? []).length === 0
+    ) {
+      afterSacrificeCost(card, withCastSacrifice(choices, clause, []));
+      return;
+    }
     if (clause !== undefined) {
       sacrificePromptClause = clause;
       sacrificePromptLabel = castSacrificeLabel(card, choices);
@@ -2546,7 +2575,9 @@
     source={sacrificePromptCard}
     label={sacrificePromptLabel}
     options={castSacrificeOptions}
-    count={sacrificeCount(sacrificePromptClause)}
+    count={castSacrificeBounds.max}
+    min={castSacrificeBounds.min}
+    countIsX={sacrificePromptClause?.count_from_x === true}
     onConfirm={confirmSacrificeCost}
     onCancel={() => {
       sacrificePromptCard = null;

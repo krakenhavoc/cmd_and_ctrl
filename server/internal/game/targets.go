@@ -306,10 +306,12 @@ type TargetSpec struct {
 	// ManaAbilityShape.SacrificeOther, AdditionalCost.Sacrifice) they
 	// count the permanents sacrificed instead, and Min == Max == N:
 	// "Sacrifice two artifacts" is 2 / 2 (#747). A sacrifice clause
-	// is still a predicate, not targeting (CR 601.2h). effects.Register
-	// refuses a sacrifice clause with Min != Max, a count below 1,
-	// CountFromX, AllowSame or Players — variable counts have no seam
-	// yet. See SacrificeCostCount.
+	// is still a predicate, not targeting (CR 601.2h). The variable
+	// shapes are "one or more" (Min ≥ 1, Max 0, #1213), CountFromX
+	// (#1213; ADR 0100 §3 on a cast) and "any number" (0 / 0, a cast's
+	// additional cost only, ADR 0100 §3); effects.Register refuses each
+	// where it cannot be announced, and AllowSame and Players
+	// everywhere. See SacrificeCostBounds.
 	Min, Max int
 
 	// CountFromX makes the clause's target count the announced X

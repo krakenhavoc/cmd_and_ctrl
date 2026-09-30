@@ -1357,3 +1357,19 @@ changes meaning:
 - **The blight deferral above is half answered.** A MANDATORY blight exists as
   an either/or branch ("blight 2 or pay {1}", Wild Unraveling). A variable
   blight and blight as an activated ability's cost are still out.
+
+## Note (2026-09-30, [#1732](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1732)): a variable sacrifice on a cast
+
+The #1213 amendment gave an activated ability a variable sacrifice count and
+kept casts out, because the plan's flat `sacrifice_ids` list gave a clause
+with no printed width no way to be told apart from the next clause's payment.
+[ADR 0100](0100-delve-either-or-and-variable-sacrifice-costs.md) sub-PR 4
+answers that with a rule rather than a wire shape: **a cast's plan may hold at
+most one variable sacrifice clause, and if it holds one, no other entry may
+sacrifice.** `effects.Register` enforces it across the mandatory slot, the
+either/or branches and `OptionalCosts`, and the variable clause — only ever
+the mandatory one — takes the whole list. §4's plan, validator and payer are
+otherwise unchanged. The #1213 guard ("a cost that can be paid with nothing is
+free") still holds for abilities; on a cast, "sacrifice any number of" prints
+zero as a legal count. Neither variable shape may sit in an optional cost:
+no printed kicker or buyback has one.

@@ -70,6 +70,13 @@ type PlayerTurnTally struct {
 	// Change of Fortune's "for each card you've discarded this
 	// turn").
 	CardsDiscarded int `json:"cardsDiscarded,omitempty"`
+	// ArtifactsOrCreaturesSacrificed counts the artifacts and creatures
+	// this player sacrificed (ADR 0100 §3) — Dargo, the Shipwrecker's
+	// "{2} less to cast for each other artifact or creature you've
+	// sacrificed this turn". Read off the permanent as it is sacrificed,
+	// while it is still on the battlefield (EventSacrifice fires then),
+	// so an artifact creature counts once.
+	ArtifactsOrCreaturesSacrificed int `json:"artifactsOrCreaturesSacrificed,omitempty"`
 }
 
 // TurnTally is the per-turn record on Game. Reset on turn advance.
@@ -830,6 +837,9 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 		if ev.CardID != uuid.Nil && ev.Actor != uuid.Nil {
 			if c := g.findCardByIDLocked(ev.CardID); c != nil {
 				g.recordSacrificedSubtypesLocked(ev.Actor, c)
+				if c.IsArtifact() || c.IsCreature() {
+					g.bumpPlayerTally(ev.Actor, func(p *PlayerTurnTally) { p.ArtifactsOrCreaturesSacrificed++ })
+				}
 			}
 		}
 	case EventAttack:

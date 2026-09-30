@@ -323,6 +323,11 @@ type Spec struct {
 	// ADR 0100 §2: an either/or cost ("sacrifice an artifact or discard
 	// a card") is EitherCost over keyed branches, in this same slot —
 	// the caster announces which branch on cast_spell's cost_branch.
+	//
+	// ADR 0100 §3: a variable sacrifice — SacrificeXCost ("sacrifice X
+	// lands") or SacrificeAnyNumberCost ("(you may) sacrifice any number
+	// of creatures") — lives only in this slot, and a plan that holds
+	// one holds no other sacrifice.
 	AdditionalCost *game.AdditionalCost
 
 	// OptionalCosts are the additional costs the caster may CHOOSE to

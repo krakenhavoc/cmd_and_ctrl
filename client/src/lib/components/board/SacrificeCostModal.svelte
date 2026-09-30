@@ -51,6 +51,9 @@
     // return-to-hand cost is the same picker one verb over, so it
     // says "Return" rather than "Sacrifice".
     verb?: string;
+    // ADR 0100 §3: the number picked is the spell's X ("sacrifice X
+    // lands"), which the caller sends as the x_value.
+    countIsX?: boolean;
     onConfirm: (instanceIDs: string[]) => void;
     onCancel: () => void;
   }
@@ -62,6 +65,7 @@
     count = 1,
     min,
     verb = "Sacrifice",
+    countIsX = false,
     onConfirm,
     onCancel,
   }: Props = $props();
@@ -99,7 +103,7 @@
   const chooseForMeButton = $derived(chooseForMeState(range.min, options.length));
 
   function pick(id: string): void {
-    chosen = toggleSacrificePickInRange(chosen, id, ceiling);
+    chosen = toggleSacrificePickInRange(chosen, id, ceiling, range.min);
   }
 
   function chooseForMe(): void {
@@ -141,6 +145,11 @@
         <span class="prompt-src" aria-hidden="true">additional cost</span>
       </h2>
       <p class="prompt-hint">{verb} {label} to pay for this ability.</p>
+      {#if countIsX}
+        <p class="prompt-hint">The number you pick is X.</p>
+      {:else if range.min === 0 && options.length > 0}
+        <p class="prompt-hint">Pick as many as you like, or none.</p>
+      {/if}
       {#if options.length === 0}
         <p class="prompt-hint error">Nothing you control can pay this cost.</p>
       {:else}

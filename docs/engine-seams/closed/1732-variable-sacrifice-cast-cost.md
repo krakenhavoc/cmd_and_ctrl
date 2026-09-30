@@ -1,0 +1,6 @@
+---
+title: "Variable sacrifice costs on spells"
+date: 2026-09-30
+issues: [1732]
+---
+**Variable sacrifice costs on spells** (#1732, [ADR 0100](decisions/0100-delve-either-or-and-variable-sacrifice-costs.md) sub-PR 4) — "As an additional cost to cast this spell, sacrifice X lands" and "(you may) sacrifice any number of creatures" are two variable shapes of a cast's mandatory sacrifice clause: `SacrificeXCost` (the count is the announced X, CR 107.3a / 107.3i) and `SacrificeAnyNumberCost` (Min 0 / Max 0 — "you may" and "any number" mean the same thing, because sacrificing none is not paying). A cast's plan holds at most one variable clause and, with one, no other sacrifice, so the clause takes the whole flat `sacrifice_ids` list; `Register` enforces the rule across the mandatory slot, the either/or branches and `OptionalCosts`. The count is `PaidCost.Sacrificed`, and `CostQuery.Sacrificing` carries it to the per-sacrifice discount `CostsLessPerSacrificed` at CR 601.2f, so the preview, the bot and `CastSpell` charge one price. Bots are offered zero plus up to three counts, each priced on its own. 10 cards shipped. Still open: Corpse Cobble, which reads the sacrificed creatures' total power (last-known information for a list); see the Variable sacrifice costs on spells row.

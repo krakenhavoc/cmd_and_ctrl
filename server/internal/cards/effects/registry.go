@@ -251,11 +251,11 @@ func Register(spec Spec) {
 		// validateAdditionalCostLocked through the same plan and the same
 		// flat sacrifice_ids walk — so every shape the guard refuses on
 		// the mandatory slot below is refusable here too.
-		// #1213: an optional cost is a CAST cost, so neither variable
-		// shape has a shape here — the flat payment lists are walked
-		// in plan order and need a fixed width, exactly as the
-		// mandatory slot above.
-		checkSacrificeClause(spec.Name, fmt.Sprintf("optional cost %q", oc.Key), oc.Sacrifice, false, false)
+		// #1213, ADR 0100 §3: no variable shape here. A cast's plan may
+		// hold one variable clause, and only in the mandatory slot, where
+		// every printed one sits (checkVariableSacrificePlan); no card
+		// prints a variable kicker or buyback.
+		checkSacrificeClause(spec.Name, fmt.Sprintf("optional cost %q", oc.Key), oc.Sacrifice, false, false, false)
 		if oc.Empty() {
 			panic(fmt.Sprintf("effects.Register: %q optional cost %q demands nothing", spec.Name, oc.Key))
 		}
@@ -453,7 +453,7 @@ func Register(spec Spec) {
 			panic(fmt.Sprintf("effects.Register: %q ability %d sets a negative MinX %d", spec.Name, i, ab.Cost.MinX))
 		}
 		checkCounterCost(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.RemoveCounters, ab.Cost.AddCounter)
-		checkSacrificeClause(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.SacrificeOther, true, true)
+		checkSacrificeClause(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.SacrificeOther, true, true, false)
 		checkReturnClause(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.ReturnToHand)
 		checkTapOthersClause(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.TapOthers, true)
 		// #660: a discard clause that discards nothing would make
@@ -545,7 +545,7 @@ func Register(spec Spec) {
 		// #1213: `false` — a mana ability has no stack item and no
 		// announced X (CR 605.3b), so a "Sacrifice X …" clause there
 		// has nothing to read its count from.
-		checkSacrificeClause(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.SacrificeOther, true, false)
+		checkSacrificeClause(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.SacrificeOther, true, false, false)
 		checkTapOthersClause(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.TapOthers, false)
 		// #1228 / CR 113.6: the MANA half of the zone dimension, held
 		// to the same three rules the activated half is held to —
@@ -570,8 +570,13 @@ func Register(spec Spec) {
 		}
 	}
 	if spec.AdditionalCost != nil {
-		checkSacrificeClause(spec.Name, "additional cost", spec.AdditionalCost.Sacrifice, false, false)
+		// ADR 0100 §3: a cast's mandatory additional cost may print
+		// "sacrifice X …" or "sacrifice any number of …"; the cross-slot
+		// rule that makes the flat payment list unambiguous is
+		// checkVariableSacrificePlan's.
+		checkSacrificeClause(spec.Name, "additional cost", spec.AdditionalCost.Sacrifice, false, true, true)
 	}
+	checkVariableSacrificePlan(spec)
 	// #801: a replacement's per-instance ReplacementEffectID packs the
 	// source's battlefield index and its slot in this slice into one
 	// number, with game.MaxCatalogReplacementSlots as the stride. A
@@ -748,39 +753,6 @@ func checkTriggerZones(card, what string, triggers []game.TriggeredAbility) {
 	}
 }
 
-// checkSacrificeClause is #747's registration guard, narrowed by
-// #1213 (ADR 0020 addendum §12, ADR 0073's 2026-09-22 amendment).
-//
-// #747 accepted exactly one shape — a FIXED count of at least one,
-// written Min == Max == N — because a variable count had no announced
-// count and no record of what was paid. Both exist now
-// (SacrificeCostBounds and PaidCost.Sacrificed), so two more shapes
-// are legal:
-//
-//   - an OPEN count, Min ≥ 1 with Max 0: "Sacrifice one or more
-//     artifacts" (Radiant Lotus). The activator names how many.
-//   - CountFromX: "Sacrifice X Treasures" (Grim Hireling). The
-//     announced X is the count on both sides.
-//
-// Everything still refused is a card-file mistake that would ship the
-// card as something it does not print:
-//
-//   - a floor below one: a cost that can be paid with nothing is free.
-//   - a ceiling below the floor.
-//   - CountFromX where there is no X to announce — `allowX` is false
-//     for a mana ability, which has no stack item to carry one
-//     (CR 605.3b).
-//   - AllowSame: one permanent cannot pay two sacrifices.
-//   - Players: a player is not a permanent.
-//
-// Nil (no sacrifice component) is fine.
-//
-// Register calls it on the three sites the ADR names: spec.Activated,
-// spec.ManaAbilities and spec.AdditionalCost. An ability granted at
-// runtime (a static grant, an Equipment's "equipped creature has …")
-// is built after registration and is not checked here. Every such
-// grant with a sacrifice clause today is a count of one, so nothing
-// escapes the guard yet; a grant with a variable count would.
 // checkCounterCost holds a counter cost to the shapes the engine can
 // actually pay, at boot rather than as a mysteriously-refused
 // activation mid-game. One function for both owners (#789), because
@@ -831,17 +803,68 @@ func checkCounterCost(card, where string, rc *game.CounterRemovalCost, ac *game.
 	}
 }
 
-func checkSacrificeClause(card, where string, spec *game.TargetSpec, allowOpen, allowX bool) {
+// checkSacrificeClause is #747's registration guard, narrowed by
+// #1213 (ADR 0020 addendum §12, ADR 0073's 2026-09-22 amendment) and
+// again by ADR 0100 §3.
+//
+// #747 accepted exactly one shape — a FIXED count of at least one,
+// written Min == Max == N — because a variable count had no announced
+// count and no record of what was paid. Both exist now
+// (SacrificeCostBounds and PaidCost.Sacrificed), so three more shapes
+// are legal where the site can announce them:
+//
+//   - an OPEN count, Min ≥ 1 with Max 0: "Sacrifice one or more
+//     artifacts" (Radiant Lotus). The activator names how many.
+//     `allowOpen`: an activated or mana ability.
+//   - CountFromX: "Sacrifice X Treasures" (Grim Hireling), "sacrifice
+//     X lands" (Devastating Summons). The announced X is the count on
+//     both sides. `allowX`: an activated ability, or a cast's
+//     mandatory additional cost (CR 107.3a).
+//   - ANY NUMBER, Min 0 with Max 0 (game.SacrificeAnyNumber): "sacrifice
+//     any number of creatures" (Vicious Betrayal), "you may sacrifice
+//     any number of creatures" (Torgaar). `allowZero`: a cast's
+//     mandatory additional cost only, where zero is printed.
+//
+// A cast's plan is walked against ONE flat sacrifice_ids list, so a
+// variable clause on a cast is sound only as the plan's one sacrifice;
+// checkVariableSacrificePlan holds that across the slots.
+//
+// Everything still refused is a card-file mistake that would ship the
+// card as something it does not print:
+//
+//   - a floor below one outside a cast: a cost that can be paid with
+//     nothing is free (#1213's guard, which stays for abilities).
+//   - a ceiling below the floor.
+//   - CountFromX where there is no X to announce — `allowX` is false
+//     for a mana ability, which has no stack item to carry one
+//     (CR 605.3b), and for an optional cost or an either/or branch.
+//   - AllowSame: one permanent cannot pay two sacrifices.
+//   - Players: a player is not a permanent.
+//
+// Nil (no sacrifice component) is fine.
+//
+// Register calls it on the sites the ADRs name: spec.Activated,
+// spec.ManaAbilities, spec.AdditionalCost, its either/or branches and
+// spec.OptionalCosts. An ability granted at runtime (a static grant,
+// an Equipment's "equipped creature has …") is built after
+// registration and is not checked here. Every such grant with a
+// sacrifice clause today is a count of one, so nothing escapes the
+// guard yet; a grant with a variable count would.
+func checkSacrificeClause(card, where string, spec *game.TargetSpec, allowOpen, allowX, allowZero bool) {
 	if spec == nil {
 		return
 	}
+	anyNumber := game.SacrificeAnyNumber(spec)
 	switch {
 	case spec.CountFromX && !allowX:
-		panic(fmt.Sprintf("effects.Register: %q %s sacrifices X permanents, but there is no X to announce here (CR 605.3b / the flat cast payment list, #1213)", card, where))
-	case game.SacrificeCostVariable(spec) && !spec.CountFromX && !allowOpen:
-		panic(fmt.Sprintf("effects.Register: %q %s sacrifices %d to %d permanents, but a variable count has no shape here — a cast's payment lists are walked in plan order and need a fixed width (#1213)",
+		panic(fmt.Sprintf("effects.Register: %q %s sacrifices X permanents, but there is no X to announce here (CR 605.3b; only an activated ability or a cast's mandatory additional cost announces one, #1213, ADR 0100 §3)", card, where))
+	case anyNumber && !allowZero:
+		panic(fmt.Sprintf("effects.Register: %q %s sacrifices %d to %d permanents — a sacrifice cost pays at least one, so its floor is at least one (SacrificeN, SacrificeOneOrMore); only a cast's additional cost prints \"any number\" (SacrificeAnyNumberCost, ADR 0100 §3)",
 			card, where, spec.Min, spec.Max))
-	case !spec.CountFromX && spec.Min < 1:
+	case game.SacrificeCostVariable(spec) && !spec.CountFromX && !anyNumber && !allowOpen:
+		panic(fmt.Sprintf("effects.Register: %q %s sacrifices %d to %d permanents, but that variable count has no shape here — a cast's additional cost prints only \"sacrifice X\" (SacrificeXCost) or \"any number\" (SacrificeAnyNumberCost), ADR 0100 §3",
+			card, where, spec.Min, spec.Max))
+	case !spec.CountFromX && !anyNumber && spec.Min < 1:
 		panic(fmt.Sprintf("effects.Register: %q %s sacrifices %d to %d permanents — a sacrifice cost pays at least one, so its floor is at least one (SacrificeN, SacrificeOneOrMore)",
 			card, where, spec.Min, spec.Max))
 	case !spec.CountFromX && spec.Max != 0 && spec.Max < spec.Min:

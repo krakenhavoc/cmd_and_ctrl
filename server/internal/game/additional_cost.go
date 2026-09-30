@@ -585,7 +585,19 @@ func (g *Game) validateAdditionalCostLocked(playerID, castID uuid.UUID, plan []c
 		if cost.Sacrifice == nil {
 			continue
 		}
-		n := SacrificeCostCount(cost.Sacrifice)
+		// ADR 0100 §3: a VARIABLE clause — "sacrifice X creatures",
+		// "sacrifice any number of creatures" — takes whatever is left of
+		// the flat list. That is sound only because effects.Register
+		// holds a cast's plan to at most one variable clause and, when
+		// there is one, to no other sacrifice at all
+		// (checkVariableSacrificePlan), so everything left IS this
+		// clause's payment and there is no next clause to split it
+		// from. A FIXED clause takes exactly its printed count, as
+		// before.
+		n := len(sacrificeIDs) - si
+		if !SacrificeCostVariable(cost.Sacrifice) {
+			n = SacrificeCostCount(cost.Sacrifice)
+		}
 		if si+n > len(sacrificeIDs) {
 			return ErrInvalidParam
 		}
@@ -597,19 +609,16 @@ func (g *Game) validateAdditionalCostLocked(playerID, castID uuid.UUID, plan []c
 			sacrificed[id] = true
 		}
 		// The sacrifice clause reuses the activated-ability validator,
-		// so "you may only sacrifice what you control" (CR 701.21a)
-		// and the spec's own predicate are enforced in one place
-		// rather than two.
+		// so "you may only sacrifice what you control" (CR 701.21a),
+		// the spec's own predicate and the count (SacrificeCountLegal)
+		// are enforced in one place rather than two.
 		//
-		// #1213: a cast's sacrifice clause is always a FIXED count —
-		// effects.Register refuses a variable one here, because the
-		// flat wire lists are walked in plan order and a clause with
-		// no fixed width could not be split from the next one's
-		// payment. So there is no announced X to pass, and 0 reads
-		// the clause exactly as it did before.
+		// The announced X rides along for "sacrifice X …" (CR 107.3a,
+		// 601.2b): the count must equal it (CR 107.3i — every X on the
+		// object is the same number). A fixed clause ignores it.
 		if _, err := g.validateSacrificeCostLocked(playerID, castID, AbilityCost{
 			SacrificeOther: cost.Sacrifice,
-		}, slice, 0); err != nil {
+		}, slice, xValue); err != nil {
 			return err
 		}
 		si += n

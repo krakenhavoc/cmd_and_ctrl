@@ -2302,6 +2302,40 @@ branch, and components on the branched cost itself. Reveal, behold,
 forage have no branch component yet: leave those cards out (the
 Either/or additional costs registry row lists them).
 
+**Variable sacrifice costs on a cast (ADR 0100 sub-PR 4):** two more
+shapes of the mandatory sacrifice clause, beside `SacrificeCost` and
+`SacrificeNCost`:
+
+```go
+AdditionalCost: SacrificeAnyNumberCost("any number of creatures", Creature()), // Vicious Betrayal
+AdditionalCost: SacrificeAnyNumberCost("one or more creatures", Creature()),   // Plumb the Forbidden ("you may sacrifice one or more")
+AdditionalCost: SacrificeXCost("X lands", Land()),                             // Devastating Summons
+SelfCostModifiers: []game.CostModifier{
+    CostsLessPerSacrificed("{2}", "This spell costs {2} less to cast for each creature sacrificed this way"),
+},                                                                             // Torgaar, Famine Incarnate
+```
+
+"Sacrifice any number of", "you may sacrifice any number of" and "you
+may sacrifice one or more" are all `SacrificeAnyNumberCost`: sacrificing
+none is not paying, so "you may" and "any number" mean the same thing,
+and it is the MANDATORY slot, not an optional cost. The count is read
+back with `ctx.Sacrificed()` (`PaidCost.Sacrificed`); a "when you do"
+that follows it (Plumb the Forbidden) is a cast trigger that fires when
+the count is at least one. `SacrificeXCost`'s count is the announced X
+(`ctx.X()`, CR 107.3a / 107.3i), so "destroy X target creatures" is the
+ordinary `CountFromX` target clause. A per-sacrifice discount is
+`CostsLessPerSacrificed` in `SelfCostModifiers`; it reads
+`CostQuery.Sacrificing`, so the preview, the bot and `CastSpell` all
+charge the discounted price. Register refuses a variable clause in an
+optional cost or an either/or branch, beside any other sacrifice in the
+plan (a sacrificing kicker or buyback), and "sacrifice X" beside "pay X
+life"; "any number" on an ability is still refused, because a cost an
+ability can pay with nothing is free. A card whose text reads the
+SACRIFICED permanents themselves — Corpse Cobble's "the total power of
+the sacrificed creatures" — needs last-known information for the list,
+which does not exist yet: leave it out (the Variable sacrifice costs on spells
+registry row lists it).
+
 **Gift (CR 702.174, [ADR 0089](decisions/0089-gift.md)):** one
 field, and never a hand-rolled optional cost:
 

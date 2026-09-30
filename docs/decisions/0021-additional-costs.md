@@ -283,3 +283,26 @@ a second kind of cost:
   additional cost discarded, for Grab the Prize's "if the discarded card wasn't
   a land card" (ADR 0100 owner decision 6), and `PaidCost.CostBranch` keeps the
   branch.
+
+## Amendment (2026-09-30): a variable sacrifice count (ADR 0100 sub-PR 4, #1732)
+
+§1's sacrifice component paid a printed count. [ADR
+0100](0100-delve-either-or-and-variable-sacrifice-costs.md) §3 lets a cast's
+mandatory additional cost print two variable counts, with no new component:
+
+- **"Sacrifice any number of …"** (Vicious Betrayal) and its "you may"
+  spellings (Torgaar, Famine Incarnate; Plumb the Forbidden's "you may
+  sacrifice one or more") are one clause whose count runs from zero:
+  `effects.SacrificeAnyNumberCost`, a `Sacrifice` spec with `Min` 0 and `Max`
+  0 (`game.SacrificeAnyNumber`). Sacrificing none is not paying, so "you may"
+  needs no optional slot.
+- **"Sacrifice X …"** (Devastating Summons, Eliminate the Competition) is
+  `effects.SacrificeXCost`, the `CountFromX` clause; X is the announced
+  `CastSpellParams.XValue` (CR 107.3a), the same X the spell's text reads
+  (CR 107.3i).
+- **§2 stands.** There is still one validator and one payer. A variable
+  clause takes whatever is left of the flat `sacrifice_ids` list, which is
+  unambiguous because `effects.Register` holds a cast's plan to at most one
+  variable clause and, with one, no other sacrifice (`checkVariableSacrificePlan`).
+  The count lands in `PaidCost.Sacrificed`, and a per-sacrifice discount reads
+  it at CR 601.2f through `CostQuery.Sacrificing` (`effects.CostsLessPerSacrificed`).
