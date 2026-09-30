@@ -321,6 +321,18 @@ func b16FirstLegalTargetCard(ctx *Context) (uuid.UUID, bool) {
 	return uuid.Nil, false
 }
 
+// untapFirstLegalTarget is "untap target <thing>" as an activated
+// ability's whole body — Voltaic Key's and Sonic Screwdriver's own
+// untap bullet, which differ only in the clause on the ability.
+func untapFirstLegalTarget(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	id, ok := b16FirstLegalTargetCard(ctx)
+	if !ok {
+		return nil
+	}
+	return UntapTarget{Target: id}.Apply(ctx)
+}
+
 // --- replacements ------------------------------------------------
 
 // b16LandsYouControlEnterUntapped is Horizon Explorer's "Lands you
