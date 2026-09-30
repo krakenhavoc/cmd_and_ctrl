@@ -253,6 +253,7 @@ battlefield.cards[].startingLoyalty	number:int
 battlefield.cards[].summonedThisTurn	bool
 battlefield.cards[].tapOnPhaseIn	bool
 battlefield.cards[].tapped	bool
+battlefield.cards[].tokenArtOnly	bool
 battlefield.cards[].tokenKey	string
 battlefield.cards[].toughness	number:int
 battlefield.cards[].typeLine	string
@@ -625,6 +626,7 @@ exile.cards[].startingLoyalty	number:int
 exile.cards[].summonedThisTurn	bool
 exile.cards[].tapOnPhaseIn	bool
 exile.cards[].tapped	bool
+exile.cards[].tokenArtOnly	bool
 exile.cards[].tokenKey	string
 exile.cards[].toughness	number:int
 exile.cards[].typeLine	string
@@ -982,6 +984,7 @@ lastKnownStack[].card.startingLoyalty	number:int
 lastKnownStack[].card.summonedThisTurn	bool
 lastKnownStack[].card.tapOnPhaseIn	bool
 lastKnownStack[].card.tapped	bool
+lastKnownStack[].card.tokenArtOnly	bool
 lastKnownStack[].card.tokenKey	string
 lastKnownStack[].card.toughness	number:int
 lastKnownStack[].card.typeLine	string
@@ -1741,6 +1744,7 @@ phasedOut.cards[].startingLoyalty	number:int
 phasedOut.cards[].summonedThisTurn	bool
 phasedOut.cards[].tapOnPhaseIn	bool
 phasedOut.cards[].tapped	bool
+phasedOut.cards[].tokenArtOnly	bool
 phasedOut.cards[].tokenKey	string
 phasedOut.cards[].toughness	number:int
 phasedOut.cards[].typeLine	string
@@ -2140,6 +2144,7 @@ seats[].command.cards[].startingLoyalty	number:int
 seats[].command.cards[].summonedThisTurn	bool
 seats[].command.cards[].tapOnPhaseIn	bool
 seats[].command.cards[].tapped	bool
+seats[].command.cards[].tokenArtOnly	bool
 seats[].command.cards[].tokenKey	string
 seats[].command.cards[].toughness	number:int
 seats[].command.cards[].typeLine	string
@@ -2387,6 +2392,7 @@ seats[].emblems.cards[].startingLoyalty	number:int
 seats[].emblems.cards[].summonedThisTurn	bool
 seats[].emblems.cards[].tapOnPhaseIn	bool
 seats[].emblems.cards[].tapped	bool
+seats[].emblems.cards[].tokenArtOnly	bool
 seats[].emblems.cards[].tokenKey	string
 seats[].emblems.cards[].toughness	number:int
 seats[].emblems.cards[].typeLine	string
@@ -2624,6 +2630,7 @@ seats[].graveyard.cards[].startingLoyalty	number:int
 seats[].graveyard.cards[].summonedThisTurn	bool
 seats[].graveyard.cards[].tapOnPhaseIn	bool
 seats[].graveyard.cards[].tapped	bool
+seats[].graveyard.cards[].tokenArtOnly	bool
 seats[].graveyard.cards[].tokenKey	string
 seats[].graveyard.cards[].toughness	number:int
 seats[].graveyard.cards[].typeLine	string
@@ -2860,6 +2867,7 @@ seats[].hand.cards[].startingLoyalty	number:int
 seats[].hand.cards[].summonedThisTurn	bool
 seats[].hand.cards[].tapOnPhaseIn	bool
 seats[].hand.cards[].tapped	bool
+seats[].hand.cards[].tokenArtOnly	bool
 seats[].hand.cards[].tokenKey	string
 seats[].hand.cards[].toughness	number:int
 seats[].hand.cards[].typeLine	string
@@ -3100,6 +3108,7 @@ seats[].library.cards[].startingLoyalty	number:int
 seats[].library.cards[].summonedThisTurn	bool
 seats[].library.cards[].tapOnPhaseIn	bool
 seats[].library.cards[].tapped	bool
+seats[].library.cards[].tokenArtOnly	bool
 seats[].library.cards[].tokenKey	string
 seats[].library.cards[].toughness	number:int
 seats[].library.cards[].typeLine	string
@@ -3433,6 +3442,7 @@ stack.cards[].startingLoyalty	number:int
 stack.cards[].summonedThisTurn	bool
 stack.cards[].tapOnPhaseIn	bool
 stack.cards[].tapped	bool
+stack.cards[].tokenArtOnly	bool
 stack.cards[].tokenKey	string
 stack.cards[].toughness	number:int
 stack.cards[].typeLine	string

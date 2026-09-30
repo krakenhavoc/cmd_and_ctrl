@@ -163,6 +163,44 @@ var IsCatalogCard func(oracleID string) bool
 // cast-targeting UI.
 var CatalogTargetMode func(oracleID string) string
 
+// TokenArtRequest is what a token creation offers the ADR 0078 art
+// resolver: the template's printed characteristics, plus who is
+// making the token and at which table. Controller and GameID are
+// unused by the matching rule (ADR 0078 decisions 3-4 read
+// characteristics only) and exist so a later per-game or per-player
+// override can sit in front of the rule without a second hook
+// signature — see decision 6. Passing them from day one, even
+// unused, is the whole point of the seam.
+type TokenArtRequest struct {
+	// Template is the token as it is about to be minted: Name,
+	// TypeLine, Power, Toughness, Colors and Keywords are what the
+	// matching rule reads. Everything else on it (InstanceID, Owner,
+	// …) is not yet stamped when this fires and must not be read.
+	Template Card
+	// Controller is whose token this is. Unused today.
+	Controller uuid.UUID
+	// GameID is which table is making it. Unused today.
+	GameID uuid.UUID
+}
+
+// TokenArtResolver returns a Scryfall PRINTING id for a token about
+// to be created, or "" for "no art — render the name" (ADR 0078
+// decision 8). Nil means no resolver is wired, which is the state of
+// every game-package test and of a server built with no Scryfall
+// index at all; tokens then behave exactly as they did before ADR
+// 0078 — an empty ScryfallID and the client's name-fallback render.
+//
+// Set from main.go over an internal/cards/tokenart.Resolver built on
+// the loaded *cards.Index (internal/game cannot import internal/cards
+// directly — see the EffectResolver doc above for the same cycle).
+// Called from mintTokenLocked (token_create.go), after the CR 701.7b
+// replacement window has settled the token's characteristics and
+// before it enters the battlefield, and only when the template does
+// not already carry a ScryfallID — a token COPY (CreateTokenCopy)
+// already stamped the copied card's printing id via CopiableValuesOf,
+// and this must never overwrite that with a generic-Soldier printing.
+var TokenArtResolver func(req TokenArtRequest) string
+
 // ManaAbilityShape is the minimal mana-ability surface the game
 // package consumes. Mirrors effects.ManaAbility but lives in `game`
 // to avoid an import cycle (the effects package already imports

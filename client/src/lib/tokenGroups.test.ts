@@ -42,6 +42,14 @@ describe("isToken", () => {
     expect(isToken({ type_line: "Creature — Soldier" })).toBe(false);
     expect(isToken({ type_line: undefined })).toBe(false);
   });
+
+  it("ADR 0078: prefers the wire's own is_token when the server sends it", () => {
+    expect(isToken({ type_line: "Creature — Soldier", is_token: true })).toBe(true);
+    expect(isToken({ type_line: "Token Creature — Soldier", is_token: false })).toBe(false);
+    // Undefined is_token (a pre-ADR-0078 view, or a fixture that never
+    // set it) falls back to the type-line test unchanged.
+    expect(isToken({ type_line: "Token Creature — Soldier", is_token: undefined })).toBe(true);
+  });
 });
 
 describe("ptCounterDelta", () => {

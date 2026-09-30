@@ -158,6 +158,14 @@ type Card struct {
 	// ("non-black creature") read this via game.Card.Colors. Added
 	// in S20 sub-PR 1.
 	Colors []string `json:"colors"`
+	// BorderColor is Scryfall's printed border colour — "black",
+	// "white", "silver", "gold", "borderless". Every ordinary
+	// tournament-legal printing is "black"; the others mark
+	// Collectors'-Edition / World-Championship reprints and Un-set
+	// cards. Carried so the token-art pool (ADR 0078 decision 3a) can
+	// exclude the 106 non-black-bordered token records without a
+	// second field lookup elsewhere. Added in ADR 0078.
+	BorderColor string `json:"border_color"`
 }
 
 // CardFace is one printed side of a double-faced / split / flip
@@ -238,8 +246,37 @@ type Index struct {
 	// playable print over a junk one and then takes the last seen,
 	// which in the bulk dump's ordering is the most recent printing.
 	byOracle map[uuid.UUID]Card
-	loaded   time.Time
-	path     string
+	// tokenPool is the ADR 0078 decision 3a eligible pool: every
+	// English, black-bordered, art-bearing "token" layout record,
+	// minus the joke / minigame / memorabilia set types. Built once
+	// per Load in the same pass that builds byID, so a caller doesn't
+	// pay a second full scan to find it. internal/cards/tokenart
+	// builds its identity buckets from a copy of this slice; nothing
+	// in this package reads it otherwise.
+	tokenPool []Card
+	loaded    time.Time
+	path      string
+}
+
+// tokenPoolExcludedSetTypes are the ADR 0078 decision 3a set types
+// excluded from the token-art pool even though they carry
+// `"layout":"token"` — joke sets, minigames (Learn to Play tokens)
+// and memorabilia (World Championship / Collectors' Edition token
+// reprints), none of which are ordinary token printings.
+var tokenPoolExcludedSetTypes = map[string]bool{
+	"memorabilia": true,
+	"minigame":    true,
+	"funny":       true,
+}
+
+// isTokenArtPoolCandidate reports whether c belongs in the ADR 0078
+// decision 3a eligible pool.
+func isTokenArtPoolCandidate(c Card) bool {
+	return c.Layout == "token" &&
+		c.Lang == "en" &&
+		len(c.ImageURIs) > 0 &&
+		c.BorderColor == "black" &&
+		!tokenPoolExcludedSetTypes[c.SetType]
 }
 
 // NewIndex returns an empty Index. Call Load to populate it from a
@@ -281,6 +318,7 @@ func (i *Index) Load(path string) (int, error) {
 	loaded := make(map[uuid.UUID]Card, 40_000) // ballpark for default_cards
 	byName := make(map[string]Card, 40_000)
 	byOracle := make(map[uuid.UUID]Card, 40_000)
+	var tokenPool []Card // ADR 0078 decision 3a/5: one pass, built here
 	for dec.More() {
 		var c Card
 		if err := dec.Decode(&c); err != nil {
@@ -290,6 +328,9 @@ func (i *Index) Load(path string) (int, error) {
 			continue // a record without an ID is useless; skip rather than reject
 		}
 		loaded[c.ID] = c
+		if isTokenArtPoolCandidate(c) {
+			tokenPool = append(tokenPool, c)
+		}
 		// Build the name index. Index both the full printed name and
 		// the front-face name for split / double-faced cards, since
 		// deck exports vary ("Fire // Ice" vs "Fire").
@@ -341,10 +382,25 @@ func (i *Index) Load(path string) (int, error) {
 	i.byID = loaded
 	i.byName = byName
 	i.byOracle = byOracle
+	i.tokenPool = tokenPool
 	i.loaded = time.Now().UTC()
 	i.path = path
 	i.mu.Unlock()
 	return len(loaded), nil
+}
+
+// TokenPrintingPool returns a copy of the ADR 0078 decision 3a
+// eligible pool — every token-art candidate printing this Index
+// loaded. Empty (never nil) on a zero-value Index or one whose dump
+// hasn't been loaded, which is what lets internal/cards/tokenart
+// degrade to "no printing ever resolves" rather than panicking when
+// CI has no Scryfall dump.
+func (i *Index) TokenPrintingPool() []Card {
+	i.mu.RLock()
+	defer i.mu.RUnlock()
+	out := make([]Card, len(i.tokenPool))
+	copy(out, i.tokenPool)
+	return out
 }
 
 // Get returns the card for id, or (zero, false) if no such card is
