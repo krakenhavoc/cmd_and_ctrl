@@ -200,6 +200,7 @@ func enrich(t *testing.T, g *Game) {
 			Label:              "return the exiled creature",
 			At:                 StepEnd,
 			ControllerTurnOnly: true,
+			TurnOf:             p1.ID, // #1538
 			CreatedSeq:         1,
 			Cards:              []uuid.UUID{uuid.New()},
 		}}

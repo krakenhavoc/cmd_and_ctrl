@@ -339,6 +339,7 @@ delayedTriggers[].sourceCardId	custom(uuid.UUID)
 delayedTriggers[].sourceObject	object
 delayedTriggers[].sourceObject.epoch	number:int
 delayedTriggers[].sourceObject.id	custom(uuid.UUID)
+delayedTriggers[].turnOf	custom(uuid.UUID)
 discardPending	map:array
 discardPending{}	number:int
 drawnThisTurn	map:array
