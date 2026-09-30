@@ -19,37 +19,23 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // (Morbid Opportunist's own gate) shuts the SECOND batch of the turn
 // out entirely, which OncePerBatch alone would not do.
 //
-// # The Glimmer half is deliberately left out
+// The dies-and-return clause is the Enduring cycle's shared trigger
+// (WhenThisDiesReturnItAsAnEnchantment, glimmer_return.go): the card
+// comes back once as an enchantment that is not a creature, and a
+// second death finds "if it was a creature" false and leaves it in
+// the graveyard.
 //
-// This is the Enduring cycle's shared gap — see Enduring Vitality and
-// Enduring Tenacity, which dropped the identical clause for the
-// identical reason: there is no per-instance "lost its creature type
-// permanently" state to hang a returned object's stripped Creature
-// type on, and the layer-4 machinery that WOULD strip it is keyed on
-// the catalog entry shared by every copy of the card, not on one
-// instance.
-//
-// Shipping the return WITHOUT the type strip would make this a free,
-// unkillable, infinitely recursive card-draw engine — far STRONGER
-// than printed, which the #259 rule forbids. Dropping the clause
-// instead leaves a 2/1 lifelinker that dies once, which is weaker
-// than printed and is the right direction.
-//
-// The clause becomes writable once the engine can carry a
-// per-instance type override through a battlefield entry — the same
-// state every other Enduring card is waiting on.
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID:        "98a389f4-2905-47f3-b60e-3d4afb3e5cb0",
 		Name:            "Enduring Innocence",
-		Completeness:    CompletenessCaveats,
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"lifelink"},
-		Caveats: []string{
-			"When this dies, it doesn't return to the battlefield as an enchantment — it goes to the graveyard like any other creature.",
-		},
 		Triggered: []game.TriggeredAbility{
 			OncePerBatch(On(game.EventETB, enduringInnocenceLowPowerCreatureEntered,
 				enduringInnocenceDrawLabel, Do(DrawCards{N: 1}))),
+			WhenThisDiesReturnItAsAnEnchantment("Enduring Innocence"),
 		},
 	})
 }

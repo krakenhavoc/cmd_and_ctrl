@@ -11,28 +11,22 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 the battlefield under its owner's control. It's an enchantment.
 //	 (It's not a creature.)"
 //
-// Vigilance and the mana grant are ordinary printed abilities and
-// ship complete. The dies-and-return clause is the Enduring cycle's
-// shared gap (see Enduring Tenacity, Enduring Curiosity): there is no
-// per-instance "lost its creature type permanently" state to hang a
-// returned object's stripped Creature type on, and the layer-4
-// machinery is keyed on the catalog entry shared by every copy of the
-// card. Shipping the return WITHOUT the type change would make this a
-// free, unkillable, infinitely recursive 4/3 mana dork — far
-// STRONGER than printed — so the clause is dropped rather than
-// approximated, same as its cycle-mates. The card as registered dies
-// once, which is weaker than printed and therefore the right
-// direction.
+// Vigilance and the mana grant are ordinary printed abilities. The
+// dies-and-return clause is the Enduring cycle's shared trigger
+// (WhenThisDiesReturnItAsAnEnchantment, glimmer_return.go): the card
+// comes back once as an enchantment that is not a creature, and a
+// second death finds "if it was a creature" false. The returned
+// enchantment is no longer a creature, so it stops granting the mana
+// ability to itself, as printed.
+//
+// No simplification.
 func init() {
 	const grant = "enduring-vitality/any-color"
 	Register(Spec{
 		OracleID:        "3577c47e-76d3-4659-b922-31c4b74be3a0",
 		Name:            "Enduring Vitality",
-		Completeness:    CompletenessCaveats,
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"vigilance"},
-		Caveats: []string{
-			"When this dies, it doesn't return to the battlefield as an enchantment — it goes to the graveyard like any other creature.",
-		},
 		Grants: []AbilityGrant{{
 			Key:  grant,
 			Text: "{T}: Add one mana of any color.",
@@ -44,6 +38,9 @@ func init() {
 		}},
 		Static: []game.StaticAbility{
 			GrantAbilities(b16CreaturesYouControl, grant),
+		},
+		Triggered: []game.TriggeredAbility{
+			WhenThisDiesReturnItAsAnEnchantment("Enduring Vitality"),
 		},
 	})
 }
