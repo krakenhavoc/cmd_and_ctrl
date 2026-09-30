@@ -573,7 +573,7 @@ func EnoughChoosableModes(n int, ms *ModeSpec) bool {
 
 // AddModeCostMana is CR 702.172a's Spree, the mana half: the sum of
 // every CHOSEN mode's own Cost, added into `cost` at CR 601.2f beside
-// AddOptionalCostMana (ADR 0073 §3) — the same point in the
+// AdditionalCostMana (ADR 0073 §3) — the same point in the
 // precedence and the same reason. Thalia taxes a Spree spell once for
 // the whole announced total, and the cast path, the bot enumerator
 // and the auto-tap preview must price one mode selection identically

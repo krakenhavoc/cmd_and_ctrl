@@ -341,6 +341,16 @@ export function canCastFromHand(
       named(blocked, need > 1 ? `Needs ${need} permanents to sacrifice` : "Nothing to sacrifice"),
     );
   }
+  // ADR 0100: an either/or additional cost none of whose branches the
+  // viewer can pay — the server's own `payable` per branch.
+  const branchOK = (face: CardView): boolean => {
+    const branches = face.additional_cost?.branches ?? [];
+    return branches.length === 0 || branches.some((b) => b.payable === true);
+  };
+  if (!faces.some(branchOK)) {
+    const blocked = faces.find((f) => !branchOK(f)) ?? card;
+    return deny(named(blocked, "No additional cost you can pay"));
+  }
 
   // Nothing card-specific to say. The seat holds priority and the
   // server still did not offer this card, which leaves timing, the

@@ -1,0 +1,6 @@
+---
+title: "Either/or additional costs"
+date: 2026-09-30
+issues: [1732]
+---
+**Either/or additional costs** (#1732, [ADR 0100](decisions/0100-delve-either-or-and-variable-sacrifice-costs.md) sub-PR 3) — "As an additional cost to cast this spell, sacrifice an artifact or discard a card" is one mandatory `AdditionalCost` whose `Either` branches are ordinary costs with a `Key`. The caster announces the branch as `cost_branch` (CR 601.2b), required on a branched card and refused on any other, and the chosen branch becomes the plan's mandatory entry, so there is still one validator and one payer. A branch may carry mana (priced at CR 601.2f by `AdditionalCostMana`, next to the kicker's), a discard, a fixed sacrifice, a fixed life payment (`PayLife`, CR 119.4) or a blight. `AdditionalCostBranchPayableLocked` answers the view's `payable`, the bot's one-move-per-branch policy and `CastSpell` alike (CR 118.3, 601.2h). `PaidCost.CostBranch` and `PaidCost.Discarded` record the branch and the discarded cards (Grab the Prize, owner decision 6). 22 cards shipped. Still open: the branch components the cast path has no shape for — reveal, behold, tap an artifact, exile from the graveyard, forage — and an either/or ward; see the Either/or additional costs row.

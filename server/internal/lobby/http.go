@@ -1422,6 +1422,11 @@ func gameCreator(c Config, w http.ResponseWriter, r *http.Request) error {
 //	                            repeated once per payment for a
 //	                            multikicker, so the preview prices the
 //	                            kicked cast the caster is announcing.
+//	?cost_branch=<i>          — optional (ADR 0100 §2). The branch of
+//	                            an either/or additional cost being
+//	                            paid; its mana ("pay {5}") joins the
+//	                            total. Omitted, the quote carries no
+//	                            branch mana.
 //	?tap_ids=<uuid>,<uuid>... — optional. Permanents being tapped for
 //	                            convoke or waterbend. They pay part of
 //	                            the cost, so the plan must not also
@@ -1734,6 +1739,16 @@ func castParamsFromPreviewQuery(r *http.Request, xValue int) (game.CastSpellPara
 			}
 			params.OptionalCosts = append(params.OptionalCosts, v)
 		}
+	}
+	// ADR 0100 §2: the either/or branch being paid. Its mana joins the
+	// total, so Lightning Axe previews at {R} with the discard branch
+	// and at {5}{R} with the mana one.
+	if cb := q.Get("cost_branch"); cb != "" {
+		v, err := strconv.Atoi(cb)
+		if err != nil || v < 0 {
+			return params, httpError(http.StatusBadRequest, "cost_branch must be a non-negative integer")
+		}
+		params.CostBranch = &v
 	}
 	ids, err := uuidListParam(q.Get("tap_ids"), "tap_ids")
 	if err != nil {

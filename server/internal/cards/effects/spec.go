@@ -319,6 +319,10 @@ type Spec struct {
 	// stack so discard payoffs (Mary Read and Anne Bonny, Marauding
 	// Mako) trigger above it. Build it with DiscardCost(n). Nil for
 	// cards with no additional cost.
+	//
+	// ADR 0100 §2: an either/or cost ("sacrifice an artifact or discard
+	// a card") is EitherCost over keyed branches, in this same slot —
+	// the caster announces which branch on cast_spell's cost_branch.
 	AdditionalCost *game.AdditionalCost
 
 	// OptionalCosts are the additional costs the caster may CHOOSE to

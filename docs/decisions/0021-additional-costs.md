@@ -256,3 +256,30 @@ What changed, and what did not:
 - **Still out, and now for a narrower reason:** escalate and entwine. Their
   cost is per extra *mode*, which is a mode-and-cost product that ADR 0073's
   index-list announcement cannot express (ADR 0073, Consequences).
+
+## Amendment (2026-09-30): either/or additional costs (ADR 0100 sub-PR 3, #1732)
+
+"As an additional cost to cast this spell, sacrifice an artifact or discard a
+card" (Demand Answers) is a mandatory cost that offers a choice, which the
+struct of §1 could not say: it demanded every component it named. [ADR
+0100](0100-delve-either-or-and-variable-sacrifice-costs.md) §2 adds it without
+a second kind of cost:
+
+- **`AdditionalCost.Either`.** A cost with branches has no components of its
+  own; each branch is an ordinary `AdditionalCost` with a `Key`. It stays in
+  the mandatory slot, because the cost is mandatory and CR 601.2b asks only
+  *which* branch.
+- **Two components join the struct:** a fixed `PayLife` (CR 119.4, Bitter
+  Triumph's "pay 3 life"), and a mandatory `ManaCost` inside a branch
+  (Lightning Axe's "pay {5}"), priced at CR 601.2f next to the optional costs'
+  mana by `game.AdditionalCostMana`. Blight, until now optional only, may be a
+  branch.
+- **§2 stands.** The branch is announced (`CastSpellParams.CostBranch`,
+  required on a branched card and refused on any other) and the chosen branch
+  becomes the plan's mandatory entry, so the validator and the payer this ADR
+  describes are still the only ones, and the flat `discard_ids` /
+  `sacrifice_ids` lists are walked against the branch that was announced.
+- **The discard is now recorded.** `PaidCost.Discarded` keeps the cards the
+  additional cost discarded, for Grab the Prize's "if the discarded card wasn't
+  a land card" (ADR 0100 owner decision 6), and `PaidCost.CostBranch` keeps the
+  branch.
