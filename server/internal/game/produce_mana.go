@@ -310,7 +310,7 @@ func (g *Game) producesManaReplacementsExistLocked() bool {
 	}
 	for i := range g.Battlefield.Cards {
 		for _, eff := range CatalogReplacements(CatalogAbilityKey(g.Battlefield.Cards[i])) {
-			if eventKindMatches(eff.Watches, RepEventProduceMana) {
+			if eff.ActiveWhen.Active(g.Battlefield.Cards[i]) && eventKindMatches(eff.Watches, RepEventProduceMana) {
 				return true
 			}
 		}

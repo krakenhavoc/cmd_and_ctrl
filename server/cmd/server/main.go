@@ -140,6 +140,7 @@ import (
 	// this is the one place that knows both the catalog and the
 	// lobby's config.
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/tokenart"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/catalog"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/db"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/deck"
@@ -375,6 +376,12 @@ func main() {
 	// recomputes it from the printing (game/snapshot_backfill.go).
 	// With no index it falls back to the pre-#683 rule.
 	game.PrintedVariableToughness = deck.PrintedVariableToughness(cardIdx)
+	// ADR 0078: resolve a Scryfall TOKEN PRINTING id for each token as
+	// it is created, so the client has art instead of a name-fallback
+	// card. Same nil-idx shape as the line above — a server with no
+	// Scryfall index at all leaves TokenArtResolver nil, and every
+	// token keeps today's text rendering.
+	game.TokenArtResolver = tokenart.HookFunc(cardIdx, log)
 	// Timed and logged unconditionally (#524): the strong hypothesis
 	// on #515 is that startup — not this restore pass — dominates the
 	// restart window, and that hypothesis needs a number rather than

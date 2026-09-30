@@ -167,6 +167,7 @@ func buildDef(spec Spec) *game.CardDef {
 		DrawStep:                   spec.DrawStep,
 		CantBeCountered:            spec.CantBeCountered,
 		NoMaxHandSize:              spec.NoMaxHandSize,
+		NoMaxHandSizeWhen:          spec.NoMaxHandSizeWhen,
 		PlayerKeywords:             spec.PlayerKeywords,
 		PlayerLifeTotalLocked:      spec.PlayerLifeTotalLocked,
 		GameEndGates:               spec.GameEndGates,

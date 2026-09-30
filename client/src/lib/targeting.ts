@@ -2,6 +2,7 @@ import { type Writable } from "svelte/store";
 import { guardedWritable } from "./guardedStore";
 import type {
   ActivatedAbilityView,
+  AdditionalCostView,
   AlternativeCostView,
   CardView,
   DivideView,
@@ -93,6 +94,11 @@ export interface CastChoices {
   // when `optionalCosts` claims the gift offer; the server rejects it
   // on a cast that does not.
   giftOpponent?: string;
+  // ADR 0100 §2: which branch of an either/or additional cost is being
+  // paid — an index into `additional_cost.branches`. Required by the
+  // server on a card with branches and refused on any other, so it is
+  // set only by the cost picker's branch radio.
+  costBranch?: number;
   // S22: the untapped permanents tapped to help pay — convoke and
   // waterbend. Undefined and empty are the same thing to the server;
   // tapping nothing is always legal.
@@ -122,6 +128,9 @@ export interface CastChoices {
   // Gate, Reborn have different types, different costs and, via
   // the composite catalog key, different rules.
   face?: number;
+  // ADR 0103 (CR 702.102a): cast BOTH halves of a split card with fuse,
+  // from hand. Sent as `fuse: true`; the face stays 0.
+  fuse?: boolean;
   // S29: the zone the cast comes out of. Undefined is the hand,
   // which is every cast the Board's own surfaces fire.
   //
@@ -178,6 +187,9 @@ export function applyCastChoices(
   // error server-side, not a no-op.
   if (choices.giftOpponent !== undefined && choices.giftOpponent !== "")
     params.gift_opponent = choices.giftOpponent;
+  // ADR 0100: sent whenever chosen, branch 0 included — the server
+  // never defaults a missing branch.
+  if (choices.costBranch !== undefined) params.cost_branch = choices.costBranch;
   if (choices.tapIDs !== undefined && choices.tapIDs.length > 0) params.tap_ids = choices.tapIDs;
   // ADR 0100: omitted when empty, the server default.
   if (choices.delveIDs !== undefined && choices.delveIDs.length > 0)
@@ -195,6 +207,7 @@ export function applyCastChoices(
   // default, and `omitempty` on the Go side means an explicit zero
   // and an absent field are the same byte on the wire anyway.
   if (choices.face !== undefined && choices.face > 0) params.face = choices.face;
+  if (choices.fuse) params.fuse = true;
   // S29: omitted for a hand cast, for the same reason face 0 is.
   if (choices.fromZone !== undefined) params.from_zone = choices.fromZone;
   // #1508: a dragged cast always pays strictly and lets the engine tap
@@ -718,9 +731,40 @@ export function isModal(card: CardView): boolean {
 
 // discardCostOf returns how many cards a card demands as an
 // additional cost to cast, or 0 for the vast majority that demand
-// none.
-export function discardCostOf(card: CardView): number {
-  return card.additional_cost?.discard_cards ?? 0;
+// none. For an either/or cost pass the cast's choices: the discard is
+// the chosen branch's (castAdditionalCost).
+export function discardCostOf(card: CardView, choices?: CastChoices): number {
+  return castAdditionalCost(card, choices)?.discard_cards ?? 0;
+}
+
+// costBranchesOf returns the branches of a card's either/or additional
+// cost (ADR 0100 §2), or an empty list for every other card.
+export function costBranchesOf(card: CardView): AdditionalCostView[] {
+  return card.additional_cost?.branches ?? [];
+}
+
+// castAdditionalCost is the mandatory additional cost THIS cast pays:
+// the card's own, or — for an either/or cost — the branch the cast has
+// chosen. Undefined for a branched card with no branch chosen yet, and
+// for a card with no additional cost at all.
+export function castAdditionalCost(
+  card: CardView,
+  choices: CastChoices | undefined,
+): AdditionalCostView | undefined {
+  const ac = card.additional_cost;
+  if (!ac) return undefined;
+  const branches = ac.branches ?? [];
+  if (branches.length === 0) return ac;
+  const i = choices?.costBranch;
+  return i === undefined ? undefined : branches[i];
+}
+
+// firstPayableBranch is the default the branch radio opens on: the
+// first branch the server says the viewer can pay, or undefined when
+// none can (the cast is then not offered at all — CR 601.2h).
+export function firstPayableBranch(card: CardView): number | undefined {
+  const i = costBranchesOf(card).findIndex((b) => b.payable === true);
+  return i < 0 ? undefined : i;
 }
 
 // sacrificeCostOptions returns the permanents that may pay a
@@ -752,7 +796,8 @@ export function castSacrificeClause(
   card: CardView,
   choices: CastChoices | undefined,
 ): LegalTargetsView | undefined {
-  const mandatory = card.additional_cost?.sacrifice_options;
+  // ADR 0100: an either/or cost's chosen branch is the mandatory one.
+  const mandatory = castAdditionalCost(card, choices)?.sacrifice_options;
   if (mandatory) return mandatory;
   for (const index of choices?.optionalCosts ?? []) {
     const offer = optionalCostsOf(card)[index];
@@ -768,8 +813,9 @@ export function castSacrificeLabel(
   choices: CastChoices | undefined,
 ): string {
   if (!card) return "a permanent";
-  if (card.additional_cost?.sacrifice_options) {
-    return card.additional_cost.label ?? "a permanent";
+  const mandatory = castAdditionalCost(card, choices);
+  if (mandatory?.sacrifice_options) {
+    return mandatory.label ?? "a permanent";
   }
   for (const index of choices?.optionalCosts ?? []) {
     const offer = optionalCostsOf(card)[index];
@@ -954,7 +1000,9 @@ export function optionalCostPayOptions(offer: OptionalCostView): string[] | unde
 // number the card prints and the creatures the server says could pay
 // it (#1703).
 export interface ClaimedCreatureCost {
-  offer: OptionalCostView;
+  // The claimed optional offer, or (ADR 0100) the chosen branch of an
+  // either/or cost; only its printed label is read.
+  offer: Pick<OptionalCostView, "label">;
   n: number;
   options: string[];
 }
@@ -996,6 +1044,12 @@ export function castBlightOffer(
   card: CardView,
   choices: CastChoices | undefined,
 ): ClaimedCreatureCost | undefined {
+  // ADR 0100: a chosen either/or branch that blights ("blight 2 or pay
+  // {1}") asks the same question with the same picker.
+  const branch = costBranchesOf(card).length > 0 ? castAdditionalCost(card, choices) : undefined;
+  if (branch?.blight !== undefined && branch.blight > 0) {
+    return { offer: branch, n: branch.blight, options: branch.blight_options?.cards ?? [] };
+  }
   return claimedOffer(
     card,
     choices,

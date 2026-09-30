@@ -161,6 +161,16 @@ var mechanics = []Mechanic{
 		Adopt:      "Delve: true on the Spec — see ADR 0100",
 	},
 	{
+		// ADR 0100 sub-PR 3: one mandatory additional cost with
+		// branches, declared as AdditionalCost.Either.
+		Name:       "either/or additional cost",
+		Phrases:    []string{"either/or additional cost", "either/or cost"},
+		Implements: func(s effects.Spec) bool { return s.AdditionalCost.Branched() },
+		Evidence:   "Spec.AdditionalCost has Either branches",
+		Confidence: Exact,
+		Adopt:      "AdditionalCost: EitherCost(…Keyed(\"…\"), …) — see ADR 0100",
+	},
+	{
 		Name:       "escape",
 		Phrases:    []string{"escape"},
 		Implements: altCost("escape"),

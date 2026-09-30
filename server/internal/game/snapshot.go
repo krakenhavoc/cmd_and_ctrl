@@ -334,7 +334,9 @@ type GameSnapshot struct {
 	// Decisions 3 and 10). Pure data, additive within v7. A file
 	// without them (written before the plan, or by an older binary)
 	// restores with the template's tail after the current step, which
-	// is the only plan such a game can have had. An older binary
+	// is the only plan such a game can have had, and with the ordinals
+	// and step/phase counts that walk implies
+	// (derivePrePlanOrdinalsLocked). An older binary
 	// reading a newer file drops them and loses any added phase still
 	// to come: weaker, never stronger, until the next deploy.
 	TurnPlan    []PlannedStep `json:"turnPlan,omitempty"`
@@ -633,9 +635,15 @@ type zoneSnapshot struct {
 // snapshotCard always sets it, so every file this binary writes
 // carries the key; restore backfills it when the key is missing.
 type cardSnapshot struct {
-	InstanceID        uuid.UUID      `json:"instanceId"`
-	Name              string         `json:"name"`
-	ScryfallID        string         `json:"scryfallId,omitempty"`
+	InstanceID uuid.UUID `json:"instanceId"`
+	Name       string    `json:"name"`
+	ScryfallID string    `json:"scryfallId,omitempty"`
+	// TokenArtOnly: carried, not derived — ADR 0078. A restored 0/0
+	// Construct token must keep answering ToughnessIsKnown exactly as
+	// it did before the restore; recomputing this from the CURRENT
+	// resolver state would let a dump refresh between capture and
+	// restore change the answer for a token that already existed.
+	TokenArtOnly      bool           `json:"tokenArtOnly,omitempty"`
 	OracleID          string         `json:"oracleId,omitempty"`
 	TokenKey          string         `json:"tokenKey,omitempty"`
 	TypeLine          string         `json:"typeLine,omitempty"`
@@ -781,6 +789,12 @@ type cardSnapshot struct {
 	// would silently hand a monstrous Polukranos a second
 	// "becomes monstrous" trigger.
 	Monstrous bool `json:"monstrous,omitempty"`
+	// Unlocked is a Room's two CR 709.5c unlocked designations and
+	// Fused a fused split spell's mark on the stack (ADR 0103). Both
+	// carried: a restore that dropped Unlocked would bring a Room back
+	// with its door abilities switched off, a legal-looking state.
+	Unlocked DoorMask `json:"unlocked,omitempty"`
+	Fused    bool     `json:"fused,omitempty"`
 	// Prepared, PrepareCopy and PreparedBy are ADR 0090's CR 722.3
 	// state: the designation on the permanent, and the not-a-card
 	// marker and permanent link on the copy it keeps in exile. Carried
@@ -1735,6 +1749,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		InstanceID:               c.InstanceID,
 		Name:                     c.Name,
 		ScryfallID:               c.ScryfallID,
+		TokenArtOnly:             c.TokenArtOnly,
 		OracleID:                 c.OracleID,
 		TokenKey:                 c.TokenKey,
 		TypeLine:                 c.TypeLine,
@@ -1795,6 +1810,8 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		Solved:                   c.Solved,
 		Harnessed:                c.Harnessed,
 		Monstrous:                c.Monstrous,
+		Unlocked:                 c.Unlocked,
+		Fused:                    c.Fused,
 		Prepared:                 c.Prepared,
 		PrepareCopy:              c.PrepareCopy,
 		PreparedBy:               c.PreparedBy,
@@ -2380,6 +2397,9 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.NextExtraRef = s.NextExtraRef
 	g.TurnPlan = clonePlan(s.TurnPlan)
 	g.NextPhaseID = s.NextPhaseID
+	// A file from before the plan names no nextPhaseId at all: every
+	// game with a plan has at least the template's 5 (#753).
+	prePlan := len(s.TurnPlan) == 0 && s.NextPhaseID == 0 && g.Turn.Step != ""
 	if len(g.TurnPlan) > 0 || g.Turn.Step == StepCleanup {
 		// A file written with the plan: it describes this cursor.
 		g.planAt = g.planCursorLocked()
@@ -2396,6 +2416,9 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.SpellsCastThisTurn = copyTallyMap(s.SpellsCastThisTurn)
 	g.ForetoldThisTurn = copyIntMap(s.ForetoldThisTurn)
 	g.TurnTally = cloneTurnTally(s.TurnTally)
+	if prePlan && len(g.TurnTally.StepsBegun) == 0 && len(g.TurnTally.PhasesBegun) == 0 {
+		g.derivePrePlanOrdinalsLocked()
+	}
 	g.Activations = cloneActivationTally(s.Activations)
 	g.LoopNotice = cloneLoopNotice(s.LoopNotice)
 	g.LoopThreshold = s.LoopThreshold
@@ -2512,6 +2535,7 @@ func restoreCard(c *cardSnapshot) Card {
 		InstanceID:               c.InstanceID,
 		Name:                     c.Name,
 		ScryfallID:               c.ScryfallID,
+		TokenArtOnly:             c.TokenArtOnly,
 		OracleID:                 c.OracleID,
 		TokenKey:                 c.TokenKey,
 		TypeLine:                 c.TypeLine,
@@ -2570,6 +2594,8 @@ func restoreCard(c *cardSnapshot) Card {
 		Solved:                   c.Solved,
 		Harnessed:                c.Harnessed,
 		Monstrous:                c.Monstrous,
+		Unlocked:                 c.Unlocked,
+		Fused:                    c.Fused,
 		Prepared:                 c.Prepared,
 		PrepareCopy:              c.PrepareCopy,
 		PreparedBy:               c.PreparedBy,

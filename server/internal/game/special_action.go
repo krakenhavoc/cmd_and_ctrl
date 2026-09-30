@@ -89,6 +89,15 @@ const (
 	// cast half is PlotExiledCardForEffect, shared with "it becomes
 	// plotted" on Aven Interrupter (#1318); #1342 added the keyword.
 	SpecialActionPlot SpecialActionKind = "plot"
+
+	// SpecialActionUnlock is CR 116.2m / CR 709.5e (ADR 0103) — pay the
+	// mana cost of a locked door of a Room you control to give it that
+	// door's unlocked designation. Like turn_face_up its card is on the
+	// BATTLEFIELD and the actor is its controller, and like
+	// turn_face_up its offer is DERIVED from the card (UnlockOffers),
+	// never declared, so an uncatalogued Room can be unlocked. One
+	// offer per locked door; SpecialActionParams.Door picks which.
+	SpecialActionUnlock SpecialActionKind = "unlock"
 )
 
 // SpecialAction is one CR 116.2 special action a card offers, as the
@@ -131,6 +140,10 @@ type SpecialAction struct {
 	// second door onto the card under a face-down object (ADR 0082
 	// decision 4).
 	FaceUpCounter bool
+
+	// Door is the door an `unlock` offer unlocks (ADR 0103). DoorNone
+	// for every other kind.
+	Door DoorSide
 
 	// Label is the menu row and the log line: "Foretell {2}",
 	// "Suspend 1—{R}", "Turn face up {1}{U}".
@@ -178,6 +191,9 @@ func SpecialActionsOfferedByCard(c Card) []SpecialAction {
 	if up := TurnFaceUpOffer(c); up != nil {
 		out = append(out, *up)
 	}
+	// ADR 0103: the unlock offers are derived from the card too — a
+	// face-up Room with a locked door (CR 709.5e).
+	out = append(out, UnlockOffers(c)...)
 	return append(out, SpecialActionsFor(CatalogKey(c))...)
 }
 
@@ -199,6 +215,12 @@ func SpecialActionsOfferedByCard(c Card) []SpecialAction {
 func SpecialActionOffered(c Card, kind SpecialActionKind) *SpecialAction {
 	if kind == SpecialActionTurnFaceUp {
 		return TurnFaceUpOffer(c)
+	}
+	if kind == SpecialActionUnlock {
+		if offers := UnlockOffers(c); len(offers) > 0 {
+			return &offers[0]
+		}
+		return nil
 	}
 	for _, sa := range SpecialActionsFor(CatalogKey(c)) {
 		if sa.Kind == kind {
@@ -227,7 +249,7 @@ func specialActionZone(kind SpecialActionKind) ZoneKind {
 	switch kind {
 	case SpecialActionForetell, SpecialActionSuspend, SpecialActionPlot:
 		return ZoneHand
-	case SpecialActionTurnFaceUp:
+	case SpecialActionTurnFaceUp, SpecialActionUnlock:
 		return ZoneBattlefield
 	}
 	return ""
@@ -254,6 +276,11 @@ type SpecialActionParams struct {
 	// AutoTap asks the server to plan and execute a tap-and-fill
 	// before the cost check. Implies Strict.
 	AutoTap bool
+
+	// Door is which door an `unlock` action unlocks (ADR 0103). Required
+	// for that kind — two doors can print the same cost, so the cost
+	// cannot pick one — and refused on every other kind.
+	Door DoorSide
 }
 
 // SpecialActionTimingOKLocked is the per-kind timing table, and the
@@ -326,6 +353,16 @@ func (g *Game) SpecialActionTimingOKLocked(playerID uuid.UUID, card Card, kind S
 		// matters while a split-second spell is ON the stack, and
 		// this window requires the stack to be empty.
 		return g.SorcerySpeedOpenLocked(playerID)
+
+	case SpecialActionUnlock:
+		// CR 709.5e / 116.2m: "any time they have priority and the
+		// stack is empty during a main phase of their turn" — sorcery
+		// timing, the same predicate plot and an ordinary sorcery cast
+		// ask. Split second never matters: it needs a spell on the
+		// stack, and this window needs the stack empty. Effects that
+		// stop casting or activating do not stop it (a special action
+		// is neither), and nothing here asks them.
+		return g.SorcerySpeedOpenLocked(playerID)
 	}
 	return false
 }
@@ -373,7 +410,10 @@ func (g *Game) PerformSpecialAction(playerID, cardID uuid.UUID, kind SpecialActi
 	// window, and whether it has flash. Fast-path no-op when nothing
 	// changed.
 	g.RecomputeLayersIfStaleLocked()
-	sa := g.specialActionOfferLocked(playerID, card, zone, kind, params.Cost)
+	if (kind == SpecialActionUnlock) != (params.Door != DoorNone) {
+		return ErrInvalidParam
+	}
+	sa := g.specialActionOfferLocked(playerID, card, zone, kind, params.Cost, params.Door)
 	if sa == nil {
 		return ErrSpecialActionNotOffered
 	}
@@ -423,7 +463,7 @@ func (g *Game) PerformSpecialAction(playerID, cardID uuid.UUID, kind SpecialActi
 		if _, err := g.payAbilityManaCostLocked(p, cardID, card.Name, saCost, ActivateAbilityParams{
 			Strict:  params.Strict,
 			AutoTap: params.AutoTap,
-		}, ManaSpendContext{}, nil); err != nil {
+		}, specialActionSpendContext(kind), nil); err != nil {
 			return err
 		}
 	}
@@ -458,6 +498,8 @@ func specialActionPerformer(kind SpecialActionKind) func(*Game, *Player, uuid.UU
 		return (*Game).turnFaceUpLocked
 	case SpecialActionPlot:
 		return (*Game).plotLocked
+	case SpecialActionUnlock:
+		return (*Game).unlockLocked
 	}
 	return nil
 }
@@ -491,7 +533,8 @@ func (g *Game) specialActionCardLocked(p *Player, cardID uuid.UUID, kind Special
 			if c.InstanceID != cardID {
 				continue
 			}
-			// CR 708.6: the CONTROLLER turns it face up. Anyone else
+			// CR 708.6: the CONTROLLER turns it face up, and CR
+			// 709.5e: the controller unlocks a Room. Anyone else
 			// is told the card is not there rather than that it is
 			// not theirs — a face-down permanent's identity is not
 			// theirs to probe.
@@ -516,4 +559,30 @@ func (g *Game) specialActionCardLocked(p *Player, cardID uuid.UUID, kind Special
 // an ability with a cost its zone cannot pay gets.
 func SpecialActionKindBuilt(kind SpecialActionKind) bool {
 	return specialActionPerformer(kind) != nil
+}
+
+// specialActionSpendContext is what the mana a special action spends
+// is spent ON. The zero context — matching no restricted mana — for
+// every kind but unlock, whose cost is "an unlock cost" (CR 709.5e):
+// mana restricted to "unlock doors" pays it (Smoky Lounge, Creeping
+// Peeper), and mana restricted to casting does not (ADR 0103).
+func specialActionSpendContext(kind SpecialActionKind) ManaSpendContext {
+	if kind == SpecialActionUnlock {
+		return ManaSpendContext{Purpose: SpendPurposeUnlock}
+	}
+	return ManaSpendContext{}
+}
+
+// SpecialActionSpendContext is specialActionSpendContext for the
+// legal-move enumerator, which prices an offer with the same context
+// the engine pays it with.
+func SpecialActionSpendContext(kind SpecialActionKind) ManaSpendContext {
+	return specialActionSpendContext(kind)
+}
+
+// unlockLocked is the unlock performer (CR 709.5e): the cost is paid,
+// so the door is unlocked. The offer was priced against the door's
+// half and names the door.
+func (g *Game) unlockLocked(p *Player, cardID uuid.UUID, sa SpecialAction) error {
+	return g.UnlockDoorForEffect(cardID, sa.Door, p.ID)
 }

@@ -241,6 +241,10 @@ func (g *Game) priceCastLocked(playerID uuid.UUID, card Card, params CastSpellPa
 	}
 	params.Face = face
 	card.SetFace(face)
+	// ADR 0103, CR 702.102c: a fused cast is priced as both halves.
+	if params.Fuse {
+		card.materialiseFused()
+	}
 	base, chosen, err := g.printedCostLocked(p, card, params)
 	if err != nil {
 		return CastPrice{}, err

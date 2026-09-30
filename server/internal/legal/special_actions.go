@@ -15,6 +15,8 @@ type specialActionParams struct {
 	AutoTap bool   `json:"auto_tap,omitempty"`
 	// Cost picks between two offers of one kind on one card (#1391).
 	Cost string `json:"cost,omitempty"`
+	// Door is the door an unlock unlocks (ADR 0103).
+	Door string `json:"door,omitempty"`
 }
 
 // specialActionMoves enumerates the CR 116.2 special actions the seat
@@ -61,7 +63,9 @@ func (e *enumerator) specialActionMoves() {
 	if g.Battlefield != nil {
 		for i := range g.Battlefield.Cards {
 			card := g.Battlefield.Cards[i]
-			if !card.FaceDownIsPermanent() || card.Controller != e.seat {
+			// ADR 0103: and a face-up Room offers an unlock per
+			// locked door (CR 709.5e).
+			if !(card.FaceDownIsPermanent() || game.HasSharedTypeLine(card)) || card.Controller != e.seat {
 				continue
 			}
 			e.specialActionMovesForCard(card, game.ZoneBattlefield)
@@ -95,7 +99,7 @@ func (e *enumerator) specialActionMovesForCard(card game.Card, zone game.ZoneKin
 			if err != nil {
 				continue
 			}
-			if !e.canPay(cost, 0, game.ManaSpendContext{}) {
+			if !e.canPay(cost, 0, game.SpecialActionSpendContext(sa.Kind)) {
 				continue
 			}
 		}
@@ -107,7 +111,7 @@ func (e *enumerator) specialActionMovesForCard(card game.Card, zone game.ZoneKin
 		// would read "Turn face up {1}{U} " with a dangling space.
 		// The label alone is the whole of what the seat is choosing
 		// between.
-		if card.Name != "" {
+		if card.Name != "" && sa.Kind != game.SpecialActionUnlock {
 			label += " " + card.Name
 		}
 		params := specialActionParams{
@@ -115,6 +119,7 @@ func (e *enumerator) specialActionMovesForCard(card game.Card, zone game.ZoneKin
 			Kind:    string(sa.Kind),
 			Strict:  true,
 			AutoTap: true,
+			Door:    game.DoorName(sa.Door),
 		}
 		// #1391: an offer a grant opened in another zone names its
 		// price, because the card may offer the same kind twice

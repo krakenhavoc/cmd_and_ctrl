@@ -319,6 +319,10 @@ type Spec struct {
 	// stack so discard payoffs (Mary Read and Anne Bonny, Marauding
 	// Mako) trigger above it. Build it with DiscardCost(n). Nil for
 	// cards with no additional cost.
+	//
+	// ADR 0100 §2: an either/or cost ("sacrifice an artifact or discard
+	// a card") is EitherCost over keyed branches, in this same slot —
+	// the caster announces which branch on cast_spell's cost_branch.
 	AdditionalCost *game.AdditionalCost
 
 	// OptionalCosts are the additional costs the caster may CHOOSE to
@@ -774,6 +778,16 @@ type Spec struct {
 	//
 	// Issue #338.
 	NoMaxHandSize bool
+
+	// NoMaxHandSizeWhen gates NoMaxHandSize on a designation (ADR
+	// 0071's gate) — a Room's Steaming Sauna door (ADR 0103). Zero is
+	// no gate. The Room constructor sets it; a card file seldom does.
+	NoMaxHandSizeWhen game.Designation
+
+	// room marks a Spec built by Room (ADR 0103), so Register holds it
+	// to the door-gate rules (checkRoomSpec). Unexported: a card file
+	// gets it only by building its Spec with Room.
+	room bool
 
 	// PlayerKeywords declares a printed static that gives this
 	// permanent's CONTROLLER an ability — "You have hexproof"

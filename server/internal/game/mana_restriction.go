@@ -61,6 +61,12 @@ const (
 	// (CR 602.2b). Includes mana abilities with a mana component —
 	// a Signet's {1} is an activation payment.
 	SpendPurposeActivate ManaSpendPurpose = "activate"
+
+	// SpendPurposeUnlock is paying an unlock cost (CR 709.5e, ADR
+	// 0103): the special action that unlocks a Room's door. Neither a
+	// cast nor an activation, so mana restricted to either does not
+	// pay it; ManaRestrictUnlock is the restriction that does.
+	SpendPurposeUnlock ManaSpendPurpose = "unlock"
 )
 
 // Restriction tag constants and constructors. Card files build tags
@@ -72,6 +78,11 @@ const (
 	// ManaRestrictActivate permits the token only on an activated
 	// ability's cost.
 	ManaRestrictActivate = "purpose:activate"
+	// ManaRestrictUnlock permits the token only on an unlock cost
+	// (CR 709.5e, ADR 0103) — the "unlock doors" half of Smoky
+	// Lounge's and Creeping Peeper's restrictions. Combine it with a
+	// cast clause through ManaRestrictAnyOf.
+	ManaRestrictUnlock = "purpose:unlock"
 	// ManaRestrictColorless permits the token only when the object
 	// being paid for is colorless (CR 105.2c) — Shrine of the
 	// Forsaken Gods, Eldrazi Temple.
@@ -113,6 +124,32 @@ func ManaRestrictColor(c string) string { return "color:" + c }
 func ManaRestrictAnyType(types ...string) string {
 	return "type:" + strings.Join(types, "|")
 }
+
+// ManaRestrictAnyOf builds ONE tag that admits a payment satisfying
+// ANY of the alternatives, each alternative being a list of tags that
+// must ALL hold — "spend this mana only to cast Room spells and unlock
+// doors" (Smoky Lounge) is
+//
+//	ManaRestrictAnyOf(
+//	    []string{ManaRestrictCast, ManaRestrictSubtype("Room")},
+//	    []string{ManaRestrictUnlock},
+//	)
+//
+// Tags on a token AND, and a restriction like that is an OR of ANDs,
+// so it is one tag rather than several. ADR 0103.
+func ManaRestrictAnyOf(alternatives ...[]string) string {
+	parts := make([]string, 0, len(alternatives))
+	for _, alt := range alternatives {
+		parts = append(parts, strings.Join(alt, anyOfAnd))
+	}
+	return anyOfPrefix + strings.Join(parts, anyOfOr)
+}
+
+const (
+	anyOfPrefix = "anyof:"
+	anyOfOr     = "||"
+	anyOfAnd    = "&&"
+)
 
 // ManaSpendContext describes the object a mana payment is being made
 // for, so restricted tokens can be admitted or refused. Built once
@@ -208,6 +245,14 @@ func (ctx ManaSpendContext) allows(restrictions []string) bool {
 // false — see the file comment: unknown means unspendable, never
 // unrestricted.
 func (ctx ManaSpendContext) matchesRestriction(r string) bool {
+	if rest, ok := strings.CutPrefix(r, anyOfPrefix); ok {
+		for _, alt := range strings.Split(rest, anyOfOr) {
+			if alt != "" && ctx.allows(strings.Split(alt, anyOfAnd)) {
+				return true
+			}
+		}
+		return false
+	}
 	switch r {
 	case "":
 		// Defensive: an empty tag is a card-file bug, not a
@@ -217,6 +262,8 @@ func (ctx ManaSpendContext) matchesRestriction(r string) bool {
 		return ctx.Purpose == SpendPurposeCast
 	case ManaRestrictActivate:
 		return ctx.Purpose == SpendPurposeActivate
+	case ManaRestrictUnlock:
+		return ctx.Purpose == SpendPurposeUnlock
 	case ManaRestrictNotNonartifactSpell:
 		switch ctx.Purpose {
 		case SpendPurposeActivate:
