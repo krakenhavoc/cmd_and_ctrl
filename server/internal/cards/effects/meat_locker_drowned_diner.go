@@ -17,13 +17,14 @@ func init() {
 			WhenYouUnlockThisDoor(game.DoorLeft, "Meat Locker — tap up to one target creature and put two stun counters on it",
 				func(g *game.Game, item *game.StackItem) error {
 					ctx := NewContext(g, item)
-					for _, t := range ctx.LegalTargets() {
-						if err := (TapTarget{Target: t.ID}).Apply(ctx); err != nil {
-							return err
-						}
-						return AddCounter{Target: t.ID, Kind: game.CounterStun, N: 2}.Apply(ctx)
+					targets := ctx.LegalTargets()
+					if len(targets) == 0 {
+						return nil
 					}
-					return nil
+					if err := (TapTarget{Target: targets[0].ID}).Apply(ctx); err != nil {
+						return err
+					}
+					return AddCounter{Target: targets[0].ID, Kind: game.CounterStun, N: 2}.Apply(ctx)
 				}),
 			TargetCreature("up to one target creature").WithCount(0, 1),
 		)}},
