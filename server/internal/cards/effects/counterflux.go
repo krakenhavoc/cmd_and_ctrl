@@ -14,9 +14,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // does nothing (server/internal/game/cant_be_countered.go). "You
 // don't control" is OpponentControls(), the same predicate every
 // other "target X you don't control" clause in the catalog composes
-// with; a spell's Card.Controller is stamped from its owner when it
-// enters a hand and carries unchanged onto the stack for an ordinary
-// cast, so this reads correctly without any spell-specific plumbing.
+// with; CastSpell stamps the spell card's Card.Controller with its
+// caster, and the stack step of the layer pass keeps it in step with a
+// spell another player has taken (ADR 0104), so this reads correctly
+// without any spell-specific plumbing.
 //
 // Overload is the S22 alternative-cost constructor: it bundles the
 // {1}{U}{U}{R} price with deleting the target clause (CR 702.96), so
