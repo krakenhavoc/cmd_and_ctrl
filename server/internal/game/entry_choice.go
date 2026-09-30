@@ -394,8 +394,9 @@ type entryLanding struct {
 // Caller must hold g.mu.
 func (g *Game) landEntryLocked(ev *ReplacementEvent) (l entryLanding, ok bool, err error) {
 	var (
-		srcKind ZoneKind
-		moved   Card
+		srcKind    ZoneKind
+		moved      Card
+		stackEpoch int
 	)
 	src := g.findCardZoneLocked(ev.CardID)
 	switch {
@@ -420,6 +421,17 @@ func (g *Game) landEntryLocked(ev *ReplacementEvent) (l entryLanding, ok bool, e
 			return entryLanding{}, false, nil
 		}
 		srcKind = src.Kind
+		if src.Kind == ZoneStack {
+			// ADR 0104: the object's epoch AS A SPELL, read before
+			// MoveCard bumps it (CR 400.7) — the key the records
+			// that changed its control are pinned by.
+			for i := range src.Cards {
+				if src.Cards[i].InstanceID == ev.CardID {
+					stackEpoch = src.Cards[i].ObjectEpoch
+					break
+				}
+			}
+		}
 		m, err := MoveCard(src, g.Battlefield, ev.CardID)
 		if err != nil {
 			return entryLanding{}, false, err
@@ -491,6 +503,14 @@ func (g *Game) landEntryLocked(ev *ReplacementEvent) (l entryLanding, ok bool, e
 	// resolving spell, and writes nothing. See cast_provenance.go.
 	g.stampCastProvenanceLocked(entered, ev.stackItem)
 	moved.Provenance = g.CastProvenanceForEffect(entered)
+	// ADR 0104 (CR 110.2b, CR 400.7a): a permanent spell whose control
+	// was changed on the stack keeps that change as a permanent, and
+	// its default controller is the player who put the spell on the
+	// stack. Before any event about the entry goes out, so nothing
+	// sees a permanent whose control has not settled.
+	if srcKind == ZoneStack && ev.stackItem != nil {
+		g.inheritSpellControlLocked(entered, ev.CardID, stackEpoch, ev.stackItem, ev.Actor)
+	}
 	// CR 707.2 — the copy lands before the counters and before any
 	// event, so an ETB trigger never sees the permanent as its own
 	// printed self.

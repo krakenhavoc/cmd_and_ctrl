@@ -1020,18 +1020,22 @@ func (s *GameSnapshot) AbilityShortfalls() []AbilityShortfall {
 // stackItemSnapshot mirrors StackItem. Effect and targetSpec are both
 // func-bearing; see rehydrateStackItem for which ones come back.
 type stackItemSnapshot struct {
-	ID            uuid.UUID     `json:"id"`
-	Kind          StackItemKind `json:"kind"`
-	Controller    uuid.UUID     `json:"controller"`
-	Owner         uuid.UUID     `json:"owner"`
-	SourceCardID  uuid.UUID     `json:"sourceCardId"`
-	SourceEpoch   int           `json:"sourceEpoch,omitempty"`
-	SourceObject  *ObjectRef    `json:"sourceObject,omitempty"` // #1418; nil = unstamped
-	Label         string        `json:"label,omitempty"`
-	DoubledBy     uuid.UUID     `json:"doubledBy,omitempty"`
-	DoubledByName string        `json:"doubledByName,omitempty"`
-	Targets       []TargetRef   `json:"targets,omitempty"`
-	Payload       []TargetRef   `json:"payload,omitempty"`
+	ID         uuid.UUID     `json:"id"`
+	Kind       StackItemKind `json:"kind"`
+	Controller uuid.UUID     `json:"controller"`
+	// BaseController is StackItem.BaseController (ADR 0104): the
+	// player a stolen spell reverts to. Omitted when zero, which is
+	// every item nothing ever took.
+	BaseController uuid.UUID   `json:"baseController,omitempty"`
+	Owner          uuid.UUID   `json:"owner"`
+	SourceCardID   uuid.UUID   `json:"sourceCardId"`
+	SourceEpoch    int         `json:"sourceEpoch,omitempty"`
+	SourceObject   *ObjectRef  `json:"sourceObject,omitempty"` // #1418; nil = unstamped
+	Label          string      `json:"label,omitempty"`
+	DoubledBy      uuid.UUID   `json:"doubledBy,omitempty"`
+	DoubledByName  string      `json:"doubledByName,omitempty"`
+	Targets        []TargetRef `json:"targets,omitempty"`
+	Payload        []TargetRef `json:"payload,omitempty"`
 	// Trigger is the triggering event (#1223). Carried, and it has
 	// to be: a targeted trigger waiting on its CR 603.3d prompt is a
 	// restorable snapshot, and a restore that lost the event would
@@ -1897,41 +1901,42 @@ func snapshotStackItem(g *Game, s *StackItem, cen *ContinuationCensus) stackItem
 // no zone at all).
 func snapshotStackItemAs(s *StackItem, oracleID string, cen *ContinuationCensus) stackItemSnapshot {
 	out := stackItemSnapshot{
-		ID:            s.ID,
-		Kind:          s.Kind,
-		Controller:    s.Controller,
-		Owner:         s.Owner,
-		SourceCardID:  s.SourceCardID,
-		SourceEpoch:   s.SourceEpoch,
-		SourceObject:  s.SourceObject.stamped(),
-		Label:         s.Label,
-		DoubledBy:     s.DoubledBy,
-		DoubledByName: s.DoubledByName,
-		Targets:       copyTargetRefs(s.Targets),
-		Payload:       copyTargetRefs(s.Payload),
-		Trigger:       cloneTriggerContext(s.Trigger),
-		Modes:         copyInts(s.Modes),
-		XValue:        s.XValue,
-		Distribution:  copyIntMap(s.Distribution),
-		HoldPriority:  s.HoldPriority,
-		CastFromZone:  s.CastFromZone,
-		AltCost:       s.AltCost,
-		Foretold:      s.Foretold,
-		FaceDown:      s.FaceDown,
-		AltCostExiles: s.AltCostExiles,
-		SplitSecond:   s.SplitSecond,
-		IsCopy:        s.IsCopy,
-		Uncopyable:    s.Uncopyable,
-		Seq:           s.Seq,
-		Ordered:       s.Ordered,
-		Commutes:      s.Commutes,
-		Paid:          clonePaidCost(s.Paid),
-		HasEffect:     s.Effect != nil,
-		HasTargetSpec: s.targetSpec != nil,
-		HasModeSpec:   s.modeSpec != nil,
-		OracleID:      oracleID,
-		Body:          s.Body,
-		Params:        effectParamsOrNil(s.Params),
+		ID:             s.ID,
+		Kind:           s.Kind,
+		Controller:     s.Controller,
+		BaseController: s.BaseController,
+		Owner:          s.Owner,
+		SourceCardID:   s.SourceCardID,
+		SourceEpoch:    s.SourceEpoch,
+		SourceObject:   s.SourceObject.stamped(),
+		Label:          s.Label,
+		DoubledBy:      s.DoubledBy,
+		DoubledByName:  s.DoubledByName,
+		Targets:        copyTargetRefs(s.Targets),
+		Payload:        copyTargetRefs(s.Payload),
+		Trigger:        cloneTriggerContext(s.Trigger),
+		Modes:          copyInts(s.Modes),
+		XValue:         s.XValue,
+		Distribution:   copyIntMap(s.Distribution),
+		HoldPriority:   s.HoldPriority,
+		CastFromZone:   s.CastFromZone,
+		AltCost:        s.AltCost,
+		Foretold:       s.Foretold,
+		FaceDown:       s.FaceDown,
+		AltCostExiles:  s.AltCostExiles,
+		SplitSecond:    s.SplitSecond,
+		IsCopy:         s.IsCopy,
+		Uncopyable:     s.Uncopyable,
+		Seq:            s.Seq,
+		Ordered:        s.Ordered,
+		Commutes:       s.Commutes,
+		Paid:           clonePaidCost(s.Paid),
+		HasEffect:      s.Effect != nil,
+		HasTargetSpec:  s.targetSpec != nil,
+		HasModeSpec:    s.modeSpec != nil,
+		OracleID:       oracleID,
+		Body:           s.Body,
+		Params:         effectParamsOrNil(s.Params),
 	}
 	// ADR 0041 P9 (#1497, tier 4): the census fold. An item is counted
 	// ONCE, whatever it holds, because the question is one question —
@@ -2729,37 +2734,38 @@ func restorePlayer(p *playerSnapshot) *Player {
 // caller flags its source.
 func restoreStackItem(s *stackItemSnapshot) (*StackItem, bool) {
 	out := &StackItem{
-		ID:            s.ID,
-		Kind:          s.Kind,
-		Controller:    s.Controller,
-		Owner:         s.Owner,
-		SourceCardID:  s.SourceCardID,
-		SourceEpoch:   s.SourceEpoch,
-		SourceObject:  s.SourceObject.value(),
-		Label:         s.Label,
-		DoubledBy:     s.DoubledBy,
-		DoubledByName: s.DoubledByName,
-		Targets:       copyTargetRefs(s.Targets),
-		Payload:       copyTargetRefs(s.Payload),
-		Trigger:       cloneTriggerContext(s.Trigger),
-		Modes:         copyInts(s.Modes),
-		XValue:        s.XValue,
-		Distribution:  copyIntMap(s.Distribution),
-		HoldPriority:  s.HoldPriority,
-		CastFromZone:  s.CastFromZone,
-		AltCost:       s.AltCost,
-		Foretold:      s.Foretold,
-		FaceDown:      s.FaceDown,
-		AltCostExiles: s.AltCostExiles,
-		SplitSecond:   s.SplitSecond,
-		IsCopy:        s.IsCopy,
-		Uncopyable:    s.Uncopyable,
-		Seq:           s.Seq,
-		Ordered:       s.Ordered,
-		Commutes:      s.Commutes,
-		Paid:          clonePaidCost(s.Paid),
-		Body:          s.Body,
-		Params:        effectParamsValue(s.Params),
+		ID:             s.ID,
+		Kind:           s.Kind,
+		Controller:     s.Controller,
+		BaseController: s.BaseController,
+		Owner:          s.Owner,
+		SourceCardID:   s.SourceCardID,
+		SourceEpoch:    s.SourceEpoch,
+		SourceObject:   s.SourceObject.value(),
+		Label:          s.Label,
+		DoubledBy:      s.DoubledBy,
+		DoubledByName:  s.DoubledByName,
+		Targets:        copyTargetRefs(s.Targets),
+		Payload:        copyTargetRefs(s.Payload),
+		Trigger:        cloneTriggerContext(s.Trigger),
+		Modes:          copyInts(s.Modes),
+		XValue:         s.XValue,
+		Distribution:   copyIntMap(s.Distribution),
+		HoldPriority:   s.HoldPriority,
+		CastFromZone:   s.CastFromZone,
+		AltCost:        s.AltCost,
+		Foretold:       s.Foretold,
+		FaceDown:       s.FaceDown,
+		AltCostExiles:  s.AltCostExiles,
+		SplitSecond:    s.SplitSecond,
+		IsCopy:         s.IsCopy,
+		Uncopyable:     s.Uncopyable,
+		Seq:            s.Seq,
+		Ordered:        s.Ordered,
+		Commutes:       s.Commutes,
+		Paid:           clonePaidCost(s.Paid),
+		Body:           s.Body,
+		Params:         effectParamsValue(s.Params),
 		// Effect stays nil unless the item is keyed. A SPELL does not
 		// need one — resolution dispatches through EffectResolver by
 		// oracle ID — but an ability does, which is why a stack item

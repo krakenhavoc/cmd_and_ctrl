@@ -1149,6 +1149,21 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		}
 		return base, true
 
+	case game.EventSpellControlChanged:
+		// ADR 0104: "Bob gained control of Alice's Lightning Bolt" — the
+		// same sentence as a permanent's control change, about a SPELL.
+		// Its own event kind in the engine (so no permanent's
+		// "gains control" trigger can see a spell), one line here,
+		// because to the table it is the same thing said out loud. The
+		// card name goes the usual way for a face-down spell the viewer
+		// may not look at (redactLogForViewer).
+		base.Kind = LogControl
+		base.CardID = uuidStringOrEmpty(ev.CardID)
+		if seat := seatOf(ev.Target); seat != NoSeat {
+			base.TargetSeat = &seat
+		}
+		return base, true
+
 	case game.EventSettingsChanged:
 		// ADR 0075 §2.3: every change is logged, because the settings
 		// are the rules the table agreed to play under and a change to

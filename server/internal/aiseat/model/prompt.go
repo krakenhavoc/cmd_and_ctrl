@@ -208,7 +208,7 @@ func (p *Policy) buildDelta(in aiseat.Input, cands []heuristic.Candidate, fallba
 		b.WriteString("\nSTACK (bottom first — the last entry resolves next)\n")
 		for i := range v.StackItems {
 			it := &v.StackItems[i]
-			fmt.Fprintf(&b, "  %s — cast by %s", stackLabel(it, v), seatLabelByID(v, it.Controller, me))
+			fmt.Fprintf(&b, "  %s — %s", stackLabel(it, v), stackOwnership(it, v, me))
 			if len(it.Targets) > 0 {
 				fmt.Fprintf(&b, " — targets: %s", targetList(v, it.Targets, me))
 			}
@@ -461,6 +461,18 @@ func seatLabelByID(v *protocol.GameView, id, me string) string {
 		}
 	}
 	return "someone"
+}
+
+// stackOwnership is who a stack item belongs to, as the prompt says it:
+// "cast by X" for an ordinary item, and "controlled by X (cast by Y)"
+// for a spell another player took on the stack (ADR 0104) — the model
+// has to know that the spell now acts for X, and that Y is who lost it.
+func stackOwnership(it *protocol.StackItemView, v *protocol.GameView, me string) string {
+	if it.DefaultController == "" {
+		return "cast by " + seatLabelByID(v, it.Controller, me)
+	}
+	return "controlled by " + seatLabelByID(v, it.Controller, me) +
+		" (cast by " + seatLabelByID(v, it.DefaultController, me) + ")"
 }
 
 func stackLabel(it *protocol.StackItemView, v *protocol.GameView) string {

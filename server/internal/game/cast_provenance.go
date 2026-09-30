@@ -125,6 +125,17 @@ type CastProvenance struct {
 	// or uuid.Nil. What a gift PERMANENT's "when this enters, if the
 	// gift was promised" reads, and who its gift trigger gives to.
 	GiftOpponent uuid.UUID `json:"giftOpponent,omitempty"`
+	// Caster is the player who CAST the spell that became this
+	// permanent (ADR 0104, #1745): StackItem.BaseController when a
+	// control-changing effect stamped one, StackItem.Controller
+	// otherwise. It differs from the permanent's controller when the
+	// spell was stolen on the stack, and that is the whole reason it
+	// is here — "if you cast it" is false for the thief (CR 601.2a:
+	// the caster is the player who put it on the stack). Zero for a
+	// permanent that was not cast, and for one restored from a file
+	// written before the field existed; readers treat zero as "no
+	// answer" and fall back to what they read before.
+	Caster uuid.UUID `json:"caster,omitempty"`
 
 	// Mana is the tokens that paid for the spell, copied off
 	// StackItem.Paid.Mana at the entry finisher (#1212) — each still
@@ -190,7 +201,23 @@ func (p CastProvenance) Spent() ManaSpent {
 // Any reports whether this record says anything at all.
 func (p CastProvenance) Any() bool {
 	return p.AltCost != "" || p.FromZone != "" || len(p.OptionalCosts) > 0 ||
-		len(p.Mana) > 0 || p.ManaOnPaper || p.GiftOpponent != uuid.Nil || p.X != 0
+		len(p.Mana) > 0 || p.ManaOnPaper || p.GiftOpponent != uuid.Nil || p.X != 0 ||
+		p.Caster != uuid.Nil
+}
+
+// CastByItsController reports whether the permanent `c` was cast by
+// the player who controls it now — "if you cast it" (ADR 0104). A
+// permanent from a spell another player stole on the stack answers
+// false: the thief controls it and did not cast it.
+//
+// `known` is false when the record has no caster (the permanent was
+// not cast, or was restored from a file older than the field), so a
+// caller can fall back to the reading it had before.
+func (c Card) CastByItsController() (cast, known bool) {
+	if c.Provenance.Caster == uuid.Nil {
+		return false, false
+	}
+	return c.Provenance.Caster == c.Controller, true
 }
 
 // Clone deep-copies the record. Two reference-typed fields now —
@@ -310,6 +337,15 @@ func (g *Game) stampCastProvenanceLocked(cardID uuid.UUID, item *StackItem) {
 		// #1312 (CR 107.3m): X, for the same reason and at the same
 		// last moment.
 		X: item.XValue,
+	}
+	// ADR 0104: who cast it. A copy was never cast (CR 707.10), and
+	// its token takes another path (resolvePermanentSpellCopyLocked),
+	// so the check here is belt and braces.
+	if !item.IsCopy {
+		prov.Caster = item.BaseController
+		if prov.Caster == uuid.Nil {
+			prov.Caster = item.Controller
+		}
 	}
 	prov.Mana = cloneManaTokens(item.Paid.Mana)
 	if !prov.Any() {

@@ -208,6 +208,20 @@ const (
 	// one batch. Added for #930.
 	EventControlChanged EventKind = "control_changed"
 
+	// EventSpellControlChanged — the SPELL CardID changed controller
+	// on the stack (ADR 0104, #1745; CR 611.1, CR 613.1b). Actor is
+	// the player who GAINED control, Target the player who LOST it,
+	// Source the object whose effect did it (uuid.Nil when control
+	// reverted because the effect ended — a thief leaving the game).
+	//
+	// Its own kind rather than EventControlChanged on purpose: every
+	// watcher of that kind is about a PERMANENT ("an opponent gains
+	// control of a permanent you own", "when you lose control of
+	// this"), and a spell reaching them would be read as one. Emitted
+	// from the stack step of the layer pass, after the store, exactly
+	// as EventControlChanged is (#930).
+	EventSpellControlChanged EventKind = "spell_control_changed"
+
 	// EventCounterPlaced — a counter of Label (see CounterKind /
 	// KnownCardCounters) was placed on or removed from a card.
 	// TARGET names the card — not CardID, which this one leaves

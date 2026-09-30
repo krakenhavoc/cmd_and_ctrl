@@ -222,7 +222,45 @@ func corpusBoards() []corpusBoard {
 		// on the stack cast as its RIGHT half (ActiveFace 1 on a split
 		// card whose catalog key stays bare).
 		{"room_doors", corpusRoomDoors},
+		// v7, added by ADR 0104 (#1745) as a new file: control of a
+		// spell — a setController record pinned to a spell on the stack
+		// (affected onStack/epoch, duration PinnedOnStack/PinnedEpoch,
+		// StackItem.baseController), and a stolen permanent spell that
+		// has resolved, its record re-pinned to the permanent by epoch
+		// and its baseController the caster.
+		{"stolen_spell", corpusStolenSpell},
 	}
+}
+
+// corpusStolenSpell is ADR 0104 on disk: a creature spell stolen on the
+// stack and resolved under the thief, then an instant stolen and still
+// waiting on the stack.
+func corpusStolenSpell(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	advanceToMain(t, g)
+	caster := g.Seats[g.Turn.ActiveSeat]
+	thief := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	cast := func(name, typeLine string) uuid.UUID {
+		c := game.Card{InstanceID: uuid.New(), Name: name, TypeLine: typeLine, ManaCost: "{0}",
+			Owner: caster.ID, Controller: caster.ID}
+		if c.IsCreature() {
+			c.Power, c.Toughness = 2, 2
+		}
+		g.WithWriteLock(func() { caster.Hand.PushTop(c) })
+		if err := g.CastSpell(caster.ID, c.InstanceID, game.CastSpellParams{}); err != nil {
+			t.Fatalf("setup: cast %s: %v", name, err)
+		}
+		g.WithWriteLock(func() {
+			if !g.GainControlOfSpellForEffect(uuid.Nil, c.InstanceID, thief.ID, "corpus — Aethersnatch") {
+				t.Fatalf("setup: the steal of %s registered nothing", name)
+			}
+		})
+		return c.InstanceID
+	}
+	cast("Grizzly Bears", "Creature — Bear")
+	passPriorityAroundTable(t, g)
+	cast("Divination", "Sorcery")
+	return g
 }
 
 // corpusRoomDoors is a Room that entered with its right door unlocked

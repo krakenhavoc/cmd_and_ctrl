@@ -137,11 +137,26 @@ func b16DeathBaronApplies(target *game.Card, _ *game.Game, source *game.Card) bo
 // fetched, flickered or played-as-a-land permanent comes from
 // somewhere else. Read back off the log: the most recent zone move
 // onto the battlefield for this card.
+//
+// ADR 0104: "if YOU cast it" is also about who cast it. A permanent
+// spell stolen on the stack (Aethersnatch, Commandeer) entered from
+// the stack under a player who did not cast it, so the permanent's
+// cast record is asked too: false when it names a caster who is not
+// the permanent's controller. A record with no caster (a permanent
+// restored from a file older than the field) keeps the log's answer.
 func b16EnteredFromStack(g *game.Game, cardID uuid.UUID) bool {
 	for i := len(g.Events) - 1; i >= 0; i-- {
 		ev := g.Events[i]
 		if ev.Kind == game.EventZoneMove && ev.CardID == cardID && ev.NewZone == game.ZoneBattlefield {
-			return ev.OldZone == game.ZoneStack
+			if ev.OldZone != game.ZoneStack {
+				return false
+			}
+			if c, ok := g.LookupCardForEffect(cardID); ok {
+				if cast, known := c.CastByItsController(); known {
+					return cast
+				}
+			}
+			return true
 		}
 	}
 	return false
