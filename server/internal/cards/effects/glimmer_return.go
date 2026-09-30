@@ -9,8 +9,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 battlefield under its owner's control. It's an enchantment. (It's
 //	 not a creature.)"
 //
-// Written once for Enduring Curiosity and shared with Enduring
-// Tenacity; the other Enduring cards print the same sentence.
+// Written once for Enduring Curiosity and shared by Enduring Tenacity,
+// Enduring Vitality and Enduring Innocence.
 //
 // "If it was a creature" is CR 603.4's intervening-if, checked once
 // against the CR 603.10 last-known information the harvester hands
