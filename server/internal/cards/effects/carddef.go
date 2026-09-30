@@ -149,6 +149,7 @@ func buildDef(spec Spec) *game.CardDef {
 		AlternativeCosts:           spec.AlternativeCosts,
 		TapCost:                    spec.TapCost,
 		Delve:                      spec.Delve,
+		SpellsYouCastHaveDelve:     spec.SpellsYouCastHaveDelve,
 		CostModifiers:              spec.CostModifiers,
 		SelfCostModifiers:          spec.SelfCostModifiers,
 		ExhaustPermissions:         spec.ExhaustPermissions,

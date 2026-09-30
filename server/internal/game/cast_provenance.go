@@ -148,6 +148,22 @@ type CastProvenance struct {
 	// through Spent() and never by ranging this slice.
 	Mana []ManaToken `json:"mana,omitempty"`
 
+	// Delved is PaidCost.Delved carried across the entry (CR 400.7d,
+	// ADR 0100 sub-PR 2): the objects delve exiled from the caster's
+	// graveyard to pay for the spell, as they landed in exile, in the
+	// order named.
+	//
+	// It is what CR 607.2q links the permanent's "exiled with [this
+	// object]" to — "the second ability refers only to cards exiled to
+	// pay the cost of the spell that became that permanent" — so a
+	// list of objects and not a count: Soulflayer reads the keywords
+	// of those cards and Ethereal Forager returns one of them. A card
+	// that has since left exile is a new object (CR 400.7) and is no
+	// longer one of them, which is what the epoch lets a reader see;
+	// read the cards through Game.DelvedCardsForEffect, which applies
+	// that rule, and never by ranging this slice against a zone.
+	Delved []ObjectRef `json:"delved,omitempty"`
+
 	// X is StackItem.XValue at the moment the spell became this
 	// permanent (CR 107.3m, #1312): "if an object's enters-the-
 	// battlefield triggered ability … refers to X, and the spell that
@@ -202,7 +218,7 @@ func (p CastProvenance) Spent() ManaSpent {
 func (p CastProvenance) Any() bool {
 	return p.AltCost != "" || p.FromZone != "" || len(p.OptionalCosts) > 0 ||
 		len(p.Mana) > 0 || p.ManaOnPaper || p.GiftOpponent != uuid.Nil || p.X != 0 ||
-		p.Caster != uuid.Nil
+		p.Caster != uuid.Nil || len(p.Delved) > 0
 }
 
 // CastByItsController reports whether the permanent `c` was cast by
@@ -233,6 +249,9 @@ func (p CastProvenance) Clone() CastProvenance {
 	// whose Applied stamps are what a Hall of the Bandit Lord's haste
 	// reads off this permanent.
 	p.Mana = cloneManaTokens(p.Mana)
+	if len(p.Delved) > 0 {
+		p.Delved = append([]ObjectRef(nil), p.Delved...)
+	}
 	return p
 }
 
@@ -276,6 +295,18 @@ func (c Card) ManaSpentToCast() ManaSpent { return c.Provenance.Spent() }
 // cost — see CastProvenance.X for the one documented ambiguity that
 // leaves unclaimed.
 func (c Card) CastX() int { return c.Provenance.X }
+
+// Delved is CR 607.2q's "cards exiled with [this object]" for a
+// permanent whose spell had delve: the objects delve exiled to pay for
+// the spell that became it (ADR 0100 sub-PR 2). On Card for the reason
+// CastX is — a static ability's Apply and a trigger's Build are handed
+// `source *Card` and nothing else.
+//
+// These are REFS, not the cards: resolve them with
+// Game.DelvedCardsForEffect, which keeps only the ones still in exile
+// as the object that landed there. Nil for a permanent that was not
+// cast, or was cast without delving.
+func (c Card) Delved() []ObjectRef { return c.Provenance.Delved }
 
 // CastProvenanceForEffect returns what the permanent with this ID
 // remembers about the spell it came from, or the zero record when the
@@ -337,6 +368,11 @@ func (g *Game) stampCastProvenanceLocked(cardID uuid.UUID, item *StackItem) {
 		// #1312 (CR 107.3m): X, for the same reason and at the same
 		// last moment.
 		X: item.XValue,
+	}
+	// ADR 0100 sub-PR 2 (CR 607.2q): the cards delve exiled, its own
+	// backing array for the reason OptionalCosts has one.
+	if len(item.Paid.Delved) > 0 {
+		prov.Delved = append([]ObjectRef(nil), item.Paid.Delved...)
 	}
 	// ADR 0104: who cast it. A copy was never cast (CR 707.10), and
 	// its token takes another path (resolvePermanentSpellCopyLocked),

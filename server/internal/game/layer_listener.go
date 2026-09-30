@@ -171,6 +171,19 @@ func (layerVersionBump) OnEvent(g *Game, ev Event) {
 		ev.OldZone != ZoneBattlefield && ev.NewZone != ZoneBattlefield {
 		g.layerVersion.Add(1)
 	}
+	// ADR 0100 sub-PR 2, a fifth CONDITIONAL bump in the hand one's
+	// mould: a card LEAVING exile, while something declares
+	// StaticAbility.DependsOnExile. Soulflayer is the card — its
+	// keywords come from the cards delve exiled for it, and one that
+	// leaves exile is a new object that no longer counts (CR 400.7,
+	// 607.2q). Only departures: a card arriving in exile is a new
+	// object too, so it can never join a delve link. A move to the
+	// battlefield or a graveyard has bumped above already.
+	if ev.OldZone == ZoneExile && ev.NewZone != ZoneExile &&
+		ev.NewZone != ZoneBattlefield && ev.NewZone != ZoneGraveyard &&
+		exileStaticIsLiveLocked(g) {
+		g.layerVersion.Add(1)
+	}
 	switch ev.Kind {
 	case EventZoneMove:
 		if ev.OldZone == ZoneBattlefield || ev.NewZone == ZoneBattlefield {
@@ -418,6 +431,12 @@ func handSizeStaticIsLiveLocked(g *Game) bool {
 // corner case, it is most of what the card does.
 func lifeTotalStaticIsLiveLocked(g *Game) bool {
 	return staticOnBattlefieldLocked(g, func(ab StaticAbility) bool { return ab.DependsOnLifeTotal })
+}
+
+// exileStaticIsLiveLocked is handSizeStaticIsLiveLocked for a card
+// leaving exile (ADR 0100 sub-PR 2). Soulflayer is the card.
+func exileStaticIsLiveLocked(g *Game) bool {
+	return staticOnBattlefieldLocked(g, func(ab StaticAbility) bool { return ab.DependsOnExile })
 }
 
 // attackingStatusStaticIsLiveLocked is handSizeStaticIsLiveLocked for

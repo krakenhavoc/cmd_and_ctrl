@@ -43,7 +43,8 @@ import (
 //  2. ONE VOCABULARY, NAMED. CastCounts is the whole list of things
 //     a CR 614.1c clause is allowed to read off the announcement, and
 //     it is short on purpose: the announced X, the number of times the
-//     spell was kicked, and the colours of mana spent on it. Anything
+//     spell was kicked, the colours of mana spent on it, and the cards
+//     delve exiled to pay for it (ADR 0100 sub-PR 2). Anything
 //     else a future card needs is a documented field here rather than
 //     a card reaching into PaidCost on its own.
 //
@@ -57,7 +58,7 @@ import (
 // read off the spell that is becoming this permanent.
 //
 // A value, computed once per entry, rather than the StackItem itself:
-// the catalog declares arithmetic over these three numbers and cannot
+// the catalog declares arithmetic over these fields and cannot
 // reach anything else, so the engine keeps one reader of the
 // announcement record instead of thirteen.
 type CastCounts struct {
@@ -81,6 +82,18 @@ type CastCounts struct {
 	// weaker-than-printed answer ADR 0068 §3 requires of every reader
 	// of that record.
 	ColorsSpent int
+
+	// Delved is CR 607.2q's "cards exiled with it" for a spell with
+	// delve (ADR 0100 sub-PR 2): the cards delve exiled to pay for the
+	// spell (PaidCost.Delved) that are still in exile as those objects
+	// when it enters, as value copies read where they sit. A card that
+	// left exile in the meantime is a new object (CR 400.7) and is not
+	// here. Murktide Regent's "a +1/+1 counter on it for each instant
+	// and sorcery card exiled with it" is CountersPerDelved over this.
+	//
+	// Nil for a spell that delved nothing, and for a CR 707.10 copy,
+	// which paid nothing (PaidCost.Delved is not copied).
+	Delved []Card
 }
 
 // EntryCountersFromCast is one printed "this permanent enters with N
@@ -119,8 +132,10 @@ func EntersWithCountersFromCastFor(oracleID string) []EntryCountersFromCast {
 }
 
 // castCountsFor reads the three numbers a CR 614.1c clause may use off
-// one resolving announcement. The ONE place the entry pipeline reads
-// the paid-cost record.
+// one resolving announcement. With the Delved line in
+// applyCastEntryCountersLocked, which needs the exile zone and so the
+// game, it is the ONE place the entry pipeline reads the paid-cost
+// record.
 //
 // `card` is needed alongside the item because "the number of times it
 // was kicked" is positions in the CARD's OptionalCosts slice, and only
@@ -182,6 +197,7 @@ func (g *Game) applyCastEntryCountersLocked(ev *ReplacementEvent, card Card, ite
 		return
 	}
 	cast := castCountsFor(card, item)
+	cast.Delved = g.DelvedCardsForEffect(item.Paid.Delved)
 	for _, clause := range clauses {
 		if clause.Count == nil {
 			continue

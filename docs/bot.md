@@ -1381,7 +1381,10 @@ offered once against the first announcement out of the leftover
 budget, like an alternative-cost payment. Murktide Regent and
 Soulflayer want the second. `valueOfCast` charges every delved card its
 fuel price, exactly as it charges escape's exiles, so the policy
-compares the two on what each spends.
+compares the two on what each spends. A seat that controls Teval,
+Arbiter of Virtue ("Spells you cast have delve", ADR 0100 sub-PR 2)
+gets the same two payments on every cast: the enumerator asks the one
+`DelveForLocked`, which reads the grant off the battlefield.
 
 **And the extra payments spend no target budget.** They are offered in
 a second pass, out of whatever `MaxExpansionPerSource` the target walk

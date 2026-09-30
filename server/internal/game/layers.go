@@ -292,6 +292,21 @@ type StaticAbility struct {
 	// arm.
 	DependsOnSpellsCast bool
 
+	// DependsOnExile is DependsOnHandSize for a card LEAVING exile —
+	// Soulflayer's "if a creature card with flying was exiled with this
+	// creature's delve ability, this creature has flying" (ADR 0100
+	// sub-PR 2). The cards it reads are linked by object (CR 607.2q), so
+	// one that leaves exile stops counting (CR 400.7), and a departure
+	// that goes anywhere but the battlefield or a graveyard bumps
+	// nothing else: an exiled card cast, put into a hand, or shuffled
+	// into a library.
+	//
+	// Same contract as the flags above, and opt-in for their reason:
+	// impulse draw, foretell and adventures move cards out of exile at
+	// most tables, and gating the bump is what keeps those free for the
+	// tables with no such card in play. See layerVersionBump.OnEvent.
+	DependsOnExile bool
+
 	// ActiveWhen is the CR 716 / 719 / 721 / 709.5 designation gate:
 	// this static exists only while its source permanent has the
 	// designation named — level N or greater, solved, N or more

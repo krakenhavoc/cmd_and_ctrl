@@ -305,3 +305,16 @@ The questions as they were put. The answers are above.
 5. **Corpse Cobble.** Ship the cost in sub-PR 4 and leave the card out until last-known information exists for a list (`PaidCost` gaining a `PaidTap`-style entry for each sacrificed permanent)? Or add that record in sub-PR 4 as well?
 6. **Grab the Prize (#1732, row 5).** "If the discarded card wasn't a land card" needs `PaidCost.Discarded []uuid.UUID`, a record of the discard, which is one field next to `CostBranch`. Should sub-PR 3 add it and take Grab the Prize, or should it stay its own row?
 7. **Registry rows now or later.** This ADR adds no registry rows, because the PR is a document only. Each sub-PR adds its own row with its `Waiting` list, as listed above. Would you rather have the three rows added now, in their own small PR, so the public roadmap shows the gap before the work lands?
+
+## Amendment (2026-09-30): sub-PR 2 as built (#1732)
+
+Sub-PR 2 is the last of the four, and with it the ADR's scope is done. It follows §1's "Readers" paragraph, with four details the paragraph did not settle:
+
+- **One resolver.** `Game.DelvedCardsForEffect(refs)` turns a delve link into the cards still in exile as the objects delve put there (CR 400.7). `CastCounts.Delved`, Soulflayer's static and Ethereal Forager's trigger all read through it, so the rule is written once.
+- **Last-known information carries the link.** `PermanentInfo.Delved` copies `CastProvenance.Delved` into the CR 608.2h record. Ethereal Forager's 2020-04-17 ruling is that its trigger still finds the cards after the Forager has left, and `ctx.SourcePermanent()` is where it finds them. Additive within v7, like `CastProvenance.Delved`; the new corpus board is `delve_linked_permanents.json`.
+- **The layers are told when a linked card leaves exile.** `StaticAbility.DependsOnExile` is a fifth conditional invalidation, in the mould of `DependsOnHandSize`: a departure from exile to a hand, a library or the stack bumps nothing else, and Soulflayer would keep a keyword it had lost.
+- **The grant is a `Spec` bit.** `Spec.SpellsYouCastHaveDelve` is read off the caster's permanents in `DelveForLocked`, keyed by `CatalogAbilityKey`, so a Teval that has lost its abilities grants nothing. CR 607.2q links only a delve ability printed on the spell, and every card that reads the link prints delve, so the payment record does not note where the delve came from.
+
+A CR 707.10 copy of a delve spell still links to nothing, as sub-PR 1 decided. CR 707.10's sentence about "objects used to pay its costs" could be read to give a token copy of Murktide Regent the original's cards; no ruling says so, and reading it that way would be stronger than the engine can prove, so the weaker reading stands. Soulflayer ships with one caveat: the engine has no "hexproof from" keyword (ADR 0038 §6), so a creature card with one gives it nothing.
+
+Temporal Trespass, listed above as waiting on extra turns, ships in this sub-PR, because ADR 0059's extra turns have landed. Still waiting on other text: Tasigur, the Golden Fang, Afterlife from the Loam and Sorcerous Squall (the Delve row); Hogaak, Arisen Necropolis ("You can't spend mana to cast this spell"); and Necropolis Fiend (a variable exile on an activated ability, the #1297 remainder).

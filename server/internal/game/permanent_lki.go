@@ -121,6 +121,17 @@ type PermanentInfo struct {
 	// MoveCard clears the flag on the way out, a line after the
 	// record is written.
 	Tapped bool `json:"tapped,omitempty"`
+
+	// Delved is the permanent's CR 607.2q link to the cards delve
+	// exiled to pay for the spell that became it (CastProvenance.Delved,
+	// ADR 0100 sub-PR 2). Last-known information like the rest of the
+	// record: Ethereal Forager's attack trigger "can still find the
+	// cards exiled with Ethereal Forager's delve ability" after the
+	// Forager has left the battlefield (its 2020-04-17 ruling), and
+	// this is where it finds them. Resolve it with
+	// Game.DelvedCardsForEffect. Nil for a permanent that delved
+	// nothing.
+	Delved []ObjectRef `json:"delved,omitempty"`
 }
 
 // permanentInfoOf reads a battlefield card into a PermanentInfo. The
@@ -135,6 +146,7 @@ func permanentInfoOf(c *Card) PermanentInfo {
 		Counters:       copyStringIntMap(c.Counters),
 		AttachedTo:     c.AttachedTo,
 		Tapped:         c.Tapped,
+		Delved:         append([]ObjectRef(nil), c.Provenance.Delved...),
 	}
 }
 

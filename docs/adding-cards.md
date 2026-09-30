@@ -5061,8 +5061,18 @@ and then discard the change to `docs/engine-seams.md`.
   paying the generic mana, priced next to convoke by the one pricer
   (`CastPrice.DelveBudget`); the engine exiles the named graveyard
   cards at CR 601.2h and records them in `PaidCost.Delved`. A card that
-  reads the cards "exiled with it" — Murktide Regent, Soulflayer — waits
-  on sub-PR 2's readers.) (Ordinary activated abilities built from
+  reads the cards "exiled with it" (CR 607.2q, ADR 0100 sub-PR 2) never
+  ranges that record itself: "enters with a counter for each … card
+  exiled with it" is `CountersPerDelved(kind, match)` in
+  `EntersWithCountersFromCast` (Murktide Regent); a static or a trigger
+  reads the permanent's link, `source.Delved()` or
+  `ctx.SourcePermanent()`'s `Delved` (which survives the permanent
+  leaving), and resolves it with `g.DelvedCardsForEffect`, which keeps
+  only the cards still in exile as the objects delve put there
+  (Soulflayer, Ethereal Forager). A static that reads them sets
+  `DependsOnExile`, or it goes stale when one leaves exile. "Spells you
+  cast have delve" is `SpellsYouCastHaveDelve: true` (Teval, Arbiter of
+  Virtue).) (Ordinary activated abilities built from
   those components are fine since S21: see `Spec.Activated`
   above.) Shipping a card with a cost the engine
   can't express simply omitted makes it **stronger than printed**, which
