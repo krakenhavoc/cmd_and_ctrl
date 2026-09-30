@@ -1432,6 +1432,11 @@ func gameCreator(c Config, w http.ResponseWriter, r *http.Request) error {
 //	                            change the price; the plan must not
 //	                            also spend them on mana (a named
 //	                            Eldrazi Spawn, a named Spirit Guide).
+//	?delve_ids=<uuid>,...     — optional (ADR 0100). Graveyard cards
+//	                            exiled to delve. Each pays {1} of the
+//	                            generic, so the plan covers the rest.
+//	                            The response's `delve_budget` is how
+//	                            many the announcement may name.
 //	?face=<int>              — optional. The printed face being cast
 //	                            (ADR 0034). A modal DFC's back face
 //	                            has its own mana cost.
@@ -1631,7 +1636,7 @@ func autoTapPreview(c Config, w http.ResponseWriter, r *http.Request) error {
 		// `cost` stays the printed string, as on the cast branch: the
 		// modifiers are generic, and plan / missing carry the total.
 		return writeAutoTapPreview(g, p.PlayerID, cost, xValue, excluded,
-			price.Ability.Cost.Mana, spend, 0, w)
+			price.Ability.Cost.Mana, spend, 0, 0, w)
 	}
 	// #696: the whole of the cast's price, from the engine's one
 	// pricer. The alternative cost claimed at announce, a granted
@@ -1686,8 +1691,12 @@ func autoTapPreview(c Config, w http.ResponseWriter, r *http.Request) error {
 	// UI would be paid off a Sol Ring and draw nothing, while the
 	// same cast with AutoTap set would be paid off the Treasure and
 	// draw. Two routes, one answer.
+	// ADR 0100 §4: the delve budget for the announcement as it stands
+	// — CastPrice.DelveBudget, the one number the validator refuses a
+	// longer delve_ids list against — so the client's picker is capped
+	// by the server and never works a budget out of a mana string.
 	return writeAutoTapPreview(g, p.PlayerID, cost, xValue, excluded,
-		price.Paid, spend, game.WantedManaSourcesFor(price.Card), w)
+		price.Paid, spend, game.WantedManaSourcesFor(price.Card), price.DelveBudget, w)
 }
 
 // castParamsFromPreviewQuery reads the announce-time half of the cast
@@ -1745,6 +1754,12 @@ func castParamsFromPreviewQuery(r *http.Request, xValue int) (game.CastSpellPara
 		return params, err
 	}
 	if params.BlightIDs, err = uuidListParam(q.Get("blight_ids"), "blight_ids"); err != nil {
+		return params, err
+	}
+	// ADR 0100: the graveyard cards named to delve. They DO change the
+	// price — each pays {1} of the generic — so the preview plans the
+	// taps for what is left.
+	if params.DelveIDs, err = uuidListParam(q.Get("delve_ids"), "delve_ids"); err != nil {
 		return params, err
 	}
 	return params, nil
@@ -1874,6 +1889,7 @@ func writeAutoTapPreview(
 	costStr string,
 	spend game.ManaSpendContext,
 	prefer game.ManaSourceKinds,
+	delveBudget int,
 	w http.ResponseWriter,
 ) error {
 	plan, ok := g.AutoTapPlanPreferringExcluding(playerID, cost, xValue, excluded, prefer)
@@ -1898,8 +1914,12 @@ func writeAutoTapPreview(
 		Sources []source `json:"sources,omitempty"`
 		Missing []string `json:"missing,omitempty"`
 		Cost    string   `json:"cost"`
+		// DelveBudget is how many graveyard cards the announcement may
+		// exile to delve (ADR 0100 §4). Absent for a card with no delve
+		// and on the ability branch.
+		DelveBudget int `json:"delve_budget,omitempty"`
 	}
-	body := response{OK: ok, Cost: costStr}
+	body := response{OK: ok, Cost: costStr, DelveBudget: delveBudget}
 	if ok {
 		body.Plan = make([]string, len(plan))
 		body.Sources = make([]source, len(plan))

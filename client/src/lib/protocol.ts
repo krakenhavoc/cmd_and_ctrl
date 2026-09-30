@@ -1666,6 +1666,18 @@ export interface AlternativeCostView {
 // legal — but unlike one it replaces nothing: it spends against a
 // cost that is still owed. The picked instance IDs ride cast_spell
 // as `tap_ids`.
+// DelveView is a card's delve (CR 702.66, ADR 0100 §4): the graveyard
+// cards the caster may exile, each paying for {1} of the generic mana.
+export interface DelveView {
+  // The caster's own graveyard, in the server's payment order: lands
+  // first, then cards with no graveyard cast surface, then the rest,
+  // oldest first. "Choose for me" fills the budget from the front.
+  options?: LegalTargetsView;
+  // The budget for the default announcement (this zone, X = 0, nothing
+  // tapped). A hint only — the preview's `delve_budget` is the cap.
+  max?: number;
+}
+
 export interface TapCostView {
   // "convoke" or "waterbend".
   key: string;
@@ -2195,6 +2207,11 @@ export interface CastSurfaceView {
   // flow opens a picker after X and before targeting. Absent for
   // nearly every card.
   tap_cost?: TapCostView;
+  // ADR 0100: delve (CR 702.66) — the caster's graveyard cards that may
+  // be exiled to pay generic mana, in the server's payment order, and a
+  // hint of how many. The picker's real cap is the auto-tap preview's
+  // `delve_budget`. Absent for every card without delve.
+  delve?: DelveView;
   // #746 (ADR 0048 addendum): the printed clauses of this card's own
   // cost modifiers whose price depends on its targets — Fireball's
   // "This spell costs {1} more to cast for each target beyond the

@@ -610,6 +610,17 @@ func returnTargetCardToHand(g *game.Game, item *game.StackItem) error {
 	return ReturnFromGraveyard{Target: item.Targets[0].ID, Dest: game.ZoneHand}.Apply(NewContext(g, item))
 }
 
+// putTargetOnTopOfOwnersLibrary is "put target <permanent> on top of
+// its owner's library" as a spell's whole effect — Submerge, Set
+// Adrift. The tuck is the last instruction, so the fire-and-forget
+// form is right: nothing reads where the card went.
+func putTargetOnTopOfOwnersLibrary(item *game.StackItem, ctx *Context) error {
+	if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
+		return nil
+	}
+	return ctx.Game.TuckToLibraryForEffect(item.Targets[0].ID, false)
+}
+
 func destroyChosenPermanent(g *game.Game, item *game.StackItem) error {
 	if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
 		return nil

@@ -151,6 +151,16 @@ var mechanics = []Mechanic{
 		Adopt:      `CastableZones: []game.ZoneKind{game.ZoneGraveyard} plus Flashback("{cost}") — see alternative_cost.go`,
 	},
 	{
+		// ADR 0100 sub-PR 1: CR 702.66, a way of paying rather than a
+		// cost, declared with one bit.
+		Name:       "delve",
+		Phrases:    []string{"delve"},
+		Implements: func(s effects.Spec) bool { return s.Delve },
+		Evidence:   "Spec.Delve is set",
+		Confidence: Exact,
+		Adopt:      "Delve: true on the Spec — see ADR 0100",
+	},
+	{
 		Name:       "escape",
 		Phrases:    []string{"escape"},
 		Implements: altCost("escape"),

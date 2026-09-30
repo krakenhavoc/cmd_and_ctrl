@@ -920,6 +920,25 @@ type TapCostView struct {
 	DemandsX bool `json:"demands_x,omitempty"`
 }
 
+// DelveView is the wire shape of a card's delve (CR 702.66, ADR 0100
+// §4): the graveyard cards the caster may exile, and a hint of how
+// many.
+type DelveView struct {
+	// Options are the cards in the caster's own graveyard that may be
+	// exiled, in the server's payment order (lands first, then cards
+	// with no graveyard cast surface, then the rest, oldest first) —
+	// the order a bot with no fuel policy pays from, which is what the
+	// picker's "Choose for me" button fills from (ADR 0100 owner
+	// decision 2). The spell itself is never among them.
+	Options *LegalTargetsView `json:"options,omitempty"`
+	// Max is the delve budget for the DEFAULT announcement — this
+	// zone, no alternative or optional cost, X = 0, nothing tapped —
+	// and is a hint only. The picker's real cap is the auto-tap
+	// preview's `delve_budget`, priced for the announcement as it
+	// stands, because a kicker, an X or a convoke tap all change it.
+	Max int `json:"max,omitempty"`
+}
+
 // DamageAssignmentView is the wire shape of the CR 510.1c
 // multi-blocker damage-assignment prompt. The attacker's
 // controller orders the blockers and assigns damage across them
@@ -2162,6 +2181,11 @@ type CastSurfaceView struct {
 	// the overwhelming majority of cards. Optional like the
 	// alternative costs — tapping nothing is always a legal cast.
 	TapCost *TapCostView `json:"tap_cost,omitempty"`
+	// Delve is CR 702.66's "you may exile cards from your graveyard to
+	// pay generic mana" for a card the viewer could cast (ADR 0100 §4).
+	// Absent for every card without delve. Optional like the taps —
+	// exiling nothing is always a legal cast.
+	Delve *DelveView `json:"delve,omitempty"`
 	// PhyrexianSymbols is how many symbols in the cost this card is
 	// being offered at carry CR 107.4's "or 2 life" option — {U/P}
 	// on Gitaxian Probe, {B/P}{B/P} on Dismember, {G/W/P} on a
@@ -4336,6 +4360,13 @@ func castStampsFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, kind
 	if tc := game.TapPermanentsCostFor(key); !tc.Empty() {
 		out.TapCost = viewOfTapCost(g, caster, f.manaCost, tc)
 	}
+	// ADR 0100 §4: delve. The options walk is the engine's own
+	// (DelveOptionsForEffect) and the hint is CastPrice.DelveBudget for
+	// the default announcement out of this zone, so neither is a
+	// second answer to "how many may I exile".
+	if haveLive && g.DelveForLocked(caster, live) {
+		out.Delve = viewOfDelve(g, caster, live, kind, f.index)
+	}
 	// #746: the printed clauses of a per-target price, for the X
 	// picker's note.
 	out.TargetCostNotes = game.TargetPricedCostClauses(key)
@@ -4750,6 +4781,36 @@ func viewOfTapCost(g *game.Game, caster uuid.UUID, manaCost string, tc *game.Tap
 	v.Options = opts
 	v.Max = game.TapPermanentsBudgetFor(tc, manaCost, 0)
 	return v
+}
+
+// viewOfDelve projects a card's delve for `caster` casting it out of
+// `kind` (ADR 0100 §4). Caller must hold g.mu.
+func viewOfDelve(g *game.Game, caster uuid.UUID, live game.Card, kind game.ZoneKind, face int) *DelveView {
+	v := &DelveView{Options: &LegalTargetsView{Cards: cardIDStrings(g.DelveOptionsForEffect(caster, live.InstanceID))}}
+	if price, err := g.PriceCastForEffect(caster, live, game.CastSpellParams{
+		FromZone: delveZoneWire(kind),
+		Face:     face,
+	}); err == nil {
+		v.Max = price.DelveBudget
+	}
+	return v
+}
+
+// delveZoneWire is the cast_spell `from_zone` word for a zone, the
+// inverse of the engine's castZoneFromWire: the hand is the empty
+// string, which is what every hand cast sends.
+func delveZoneWire(kind game.ZoneKind) string {
+	switch kind {
+	case game.ZoneCommand:
+		return "command"
+	case game.ZoneGraveyard:
+		return "graveyard"
+	case game.ZoneExile:
+		return "exile"
+	case game.ZoneLibrary:
+		return "library"
+	}
+	return ""
 }
 
 // viewOfWaterbend projects a waterbend clause that is not a spell's —
@@ -7018,6 +7079,8 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	out.Clauses = nil
 	out.CantCast = ""
 	out.TapCost = nil
+	// ADR 0100: "delve" names the card as loudly as its mana cost.
+	out.Delve = nil
 	// #916: derived from the mana cost, which is cleared above, so
 	// it goes with it — "two Phyrexian symbols" on a face-down card
 	// would name Dismember out loud.

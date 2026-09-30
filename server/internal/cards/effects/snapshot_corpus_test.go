@@ -205,7 +205,28 @@ func corpusBoards() []corpusBoard {
 		// regeneration of gingerbrute.json and whip_redirect.json that
 		// unblocked it (ADR 0044's 2026-09-28 #1712 amendment).
 		{"duration_copy", corpusDurationCopy},
+		// v7, added by ADR 0100 sub-PR 1 as a new file: a delved spell
+		// on the stack — PaidCost.Delved, the objects in exile, on disk.
+		{"delved_spell_on_stack", corpusDelvedSpellOnStack},
 	}
+}
+
+// corpusDelvedSpellOnStack is a Treasure Cruise on the stack that
+// delved three cards (CR 702.66a, ADR 0100): its payment record names
+// the three objects that landed in exile, which is what a restore has
+// to carry for sub-PR 2's "exiled with it" readers (CR 607.2q).
+func corpusDelvedSpellOnStack(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	fuel := delveFuel(me, 3)
+	id, err := castCruise(t, g, game.CastSpellParams{DelveIDs: fuel})
+	if err != nil {
+		t.Fatalf("setup: CastSpell: %v", err)
+	}
+	if it := g.StackMeta[id]; it == nil || len(it.Paid.Delved) != 3 {
+		t.Fatal("setup: want Treasure Cruise on the stack with three delved cards")
+	}
+	return g
 }
 
 // corpusDurationCopy is a Clone of Grizzly Bears that Cytoshape turned

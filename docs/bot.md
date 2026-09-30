@@ -1329,6 +1329,19 @@ Neither floor is zero: a card nobody can use today is still one
 tomorrow's delve or flashback might want, and zero would make every
 unreadable card the first thing a cost ate.
 
+**Delve** (CR 702.66, [ADR 0100](decisions/0100-delve-either-or-and-variable-sacrifice-costs.md)
+owner decision 3) is priced out of the same fuel. A delve cast is
+offered TWO payments, both drawn from the graveyard in the seat's
+`OrderCostFuel` order: the FEWEST cards that make the cast affordable
+at the largest X the seat can reach (the ordinary move, emitted per
+target set — the empty payment when the pool already pays), and the
+FULL budget, `min(CastPrice.DelveBudget, graveyard size)` cards,
+offered once against the first announcement out of the leftover
+budget, like an alternative-cost payment. Murktide Regent and
+Soulflayer want the second. `valueOfCast` charges every delved card its
+fuel price, exactly as it charges escape's exiles, so the policy
+compares the two on what each spends.
+
 **And the extra payments spend no target budget.** They are offered in
 a second pass, out of whatever `MaxExpansionPerSource` the target walk
 did not use, against the FIRST announcement it made — the same spell

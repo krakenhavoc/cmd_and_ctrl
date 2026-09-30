@@ -408,6 +408,13 @@ func (p *Policy) valueOfCast(st *state, m legal.Move) (float64, string) {
 	for _, id := range cp.AltCostIDs {
 		v -= p.fuelValue(st, id)
 	}
+	// ADR 0100: delve's exiles are graveyard fuel too, priced by the
+	// same function the enumerator ordered the delve pool by, so the
+	// fewest-cards payment and the full-budget one are compared on what
+	// each actually spends.
+	for _, id := range cp.DelveIDs {
+		v -= p.fuelValue(st, id)
+	}
 	// Additional costs are paid out of the same pool of resources.
 	v -= st.w.Hand * float64(len(cp.DiscardIDs))
 	for _, id := range cp.SacrificeIDs {

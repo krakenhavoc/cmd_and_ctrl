@@ -4815,7 +4815,14 @@ and then discard the change to `docs/engine-seams.md`.
   a counter — `AddCounterToThis(kind, n)`, Devoted Druid — with #789.) (Convoke and waterbend on a *spell* do have one since
   S22: `Spec.TapCost`, built with `Convoke()` / `Waterbend("{X}")`. The
   activated-ability seam is separate and still open — Katara, Water
-  Tribe's Hope is the card waiting on it.) (Ordinary activated abilities built from
+  Tribe's Hope is the card waiting on it.) (**Delve** has a shape since
+  ADR 0100 sub-PR 1: `Delve: true` on the Spec and nothing else. It is
+  not an additional or alternative cost (CR 702.66b) but a way of
+  paying the generic mana, priced next to convoke by the one pricer
+  (`CastPrice.DelveBudget`); the engine exiles the named graveyard
+  cards at CR 601.2h and records them in `PaidCost.Delved`. A card that
+  reads the cards "exiled with it" — Murktide Regent, Soulflayer — waits
+  on sub-PR 2's readers.) (Ordinary activated abilities built from
   those components are fine since S21: see `Spec.Activated`
   above.) Shipping a card with a cost the engine
   can't express simply omitted makes it **stronger than printed**, which

@@ -132,6 +132,8 @@
   import FacePickerModal from "./FacePickerModal.svelte";
   import { cardAsFace, needsFacePicker } from "../../faces";
   import TapCostModal from "./TapCostModal.svelte";
+  import DelveCostModal from "./DelveCostModal.svelte";
+  import { delveOptionIDs, hasDelveChoice } from "../../delve";
   import { shouldAskAbilityWaterbend, waterbendLimit } from "../../waterbend";
   import PhyrexianCostModal from "./PhyrexianCostModal.svelte";
   import {
@@ -565,7 +567,44 @@
     tapPromptCard = null;
     tapPromptChoices = {};
     if (!card) return;
-    continueCast(card, { ...choices, tapIDs: ids });
+    afterTapCost(card, { ...choices, tapIDs: ids });
+  }
+
+  // ADR 0100: delve — "you may exile cards from your graveyard to pay
+  // generic mana" (CR 702.66a). Opens after the convoke picker, because
+  // the taps change how much generic is left to delve, and before
+  // targeting, like the taps. Exiling nothing is always legal. The
+  // modal asks the server for the cap; the options are the server's.
+  let delvePromptCard = $state<CardView | null>(null);
+  let delvePromptChoices = $state<CastChoices>({});
+
+  const delveCostOptions = $derived.by(() => {
+    const card = delvePromptCard;
+    if (!card || !viewerID) return [];
+    const me = view.seats.find((s) => s.id === viewerID);
+    const pile = me?.graveyard.cards ?? [];
+    const byID = new Map(pile.map((c) => [c.instance_id, c]));
+    return delveOptionIDs(card)
+      .map((id) => byID.get(id))
+      .filter((c): c is CardView => c !== undefined);
+  });
+
+  function afterTapCost(card: CardView, choices: CastChoices): void {
+    if (hasDelveChoice(card)) {
+      delvePromptChoices = choices;
+      delvePromptCard = card;
+      return;
+    }
+    continueCast(card, choices);
+  }
+
+  function confirmDelve(ids: string[]): void {
+    const card = delvePromptCard;
+    const choices = delvePromptChoices;
+    delvePromptCard = null;
+    delvePromptChoices = {};
+    if (!card) return;
+    continueCast(card, ids.length > 0 ? { ...choices, delveIDs: ids } : choices);
   }
 
   // S28: the non-mana half of a chosen alternative cost — Force of
@@ -697,7 +736,7 @@
       tapPromptCard = card;
       return;
     }
-    continueCast(card, choices);
+    afterTapCost(card, choices);
   }
 
   // #916: the cast's Phyrexian stepper. One reactive object rather
@@ -2518,6 +2557,21 @@
     onCancel={() => {
       tapPromptCard = null;
       tapPromptChoices = {};
+    }}
+  />
+  <!-- ADR 0100: delve's graveyard picker, capped by the server's
+       delve_budget for the announcement so far. -->
+  <DelveCostModal
+    gameID={view.id}
+    card={delvePromptCard}
+    options={delveCostOptions}
+    xValue={delvePromptChoices.xValue ?? 0}
+    phyrexianLife={delvePromptChoices.phyrexianLife ?? 0}
+    castParams={castPreviewParams(delvePromptChoices)}
+    onConfirm={confirmDelve}
+    onCancel={() => {
+      delvePromptCard = null;
+      delvePromptChoices = {};
     }}
   />
   <!-- #1310: the same picker for an activated ability's "Waterbend
