@@ -1,11 +1,12 @@
 # ADR 0104 — Gaining control of a spell on the stack
 
-**Status:** Proposed · 2026-09-30 · S50 — Seams from the deck re-checks
+**Status:** Accepted · 2026-09-30 · S50 — Seams from the deck re-checks
+**Owner decisions:** 2026-09-30. All eight open questions are answered; see [Owner decisions](#owner-decisions-2026-09-30) at the end. The owner chose option B, extending layer 2 to the stack.
 **Issue:** [#1745](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1745). Invert Polarity is waiting on it in the ViviVoltron deck request, [#1640](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1640).
 **Numbering:** checked with the AGENTS.md §4 sweep on 2026-09-30. I ran `git fetch --all --prune` and read every `docs/decisions/` file name on all remote heads. Numbers 0103 and 0105 are reserved for ADRs being written in parallel, and 0105 already exists on a branch. No branch has 0104, so this one takes **0104**.
 **Builds on:** [ADR 0063](0063-durations-and-control.md) (layer-2 control from a spell or ability), [ADR 0102](0102-entering-under-another-players-control.md) (the would-be controller of an entering permanent), [ADR 0060](0060-leaving-the-game.md) (CR 800.4), [ADR 0019](0019-structured-targeting.md) and its 2026-09-22 amendment (choosing new targets, #1196), [ADR 0054](0054-dice-rolls-and-coin-flips.md) (the won/lost coin flip), [ADR 0043](0043-copy-effects.md) (copying a spell), [ADR 0040](0040-mana-pipeline.md) (mana spent and spend riders), [ADR 0066](0066-granted-cast-and-play-permissions.md) (cast permissions), [ADR 0033](0033-ai-bot-seat.md) (the bot) and [ADR 0041](0041-game-persistence.md) (restore points).
 
-This PR is the ADR only. No engine code changes until the owner has answered the questions at the end.
+This ADR was written plan-first. The engine and card changes land in separate PRs that follow it.
 
 ---
 
@@ -87,75 +88,62 @@ The steal writes the new player into the field and remembers nothing.
   - CR 800.4a's reversion. A thief who leaves would have the spell exiled rather than handed back.
   - Two steals in a row. If the second thief leaves, the spell should go back to the first thief, not to the caster.
 
-### B. Extend layer 2 to the stack
+### B. Extend layer 2 to the stack (chosen)
 
-Make the steal a `ScopedEffect` with a `setController` mod pinned to the stack object. Teach the layer pass to walk the stack and write `StackItem.Controller` from the result. Re-pin the record to the permanent at resolution.
+Make the steal a `ScopedEffect` with a `setController` mod pinned to the stack object. Give the layer pass a stack step that reads those records and writes `StackItem.Controller` from the result. Re-pin the record to the permanent at resolution.
 
-- **For:** it is the rule as written. One registry, one duration model and one timestamp sort cover spells and permanents alike.
-- **Against:** it is the largest change by far, for six cards. The layer pass, its invalidation, the affected-set pins, the duration sweep's garbage collection and the snapshot's `AffectedObject` all assume battlefield objects. Nothing else wants a stack object in layer 2. No catalogued static ability changes a spell's control, and no printed card does either ("spells you cast" statics change characteristics, which the engine already handles differently).
+- **For:** it is the rule as written. Control of a spell is a continuous effect (CR 611.1) applied in layer 2 (CR 613.1b), and CR 400.7a carries it onto the permanent. One registry, one duration model and one timestamp sort cover spells and permanents alike. The reversions the rules ask for — a thief leaving the game, a second steal, a permanent's default controller — all fall out of machinery that already answers them for permanents.
+- **Against:** it is the largest of the three. The affected-set pin, the duration pin and the layer pass all learn about a stack object. Nothing else in the catalog wants a stack object in layer 2 yet, so for now the stack step applies layer 2 only.
 
-### C. A control record on the stack item, handed to layer 2 at resolution (recommended)
+### C. A control record on the stack item, handed to layer 2 at resolution
 
-Keep `StackItem.Controller` as the one value everyone reads. Record *why* it is what it is as data on the item, and hand that record to the existing layer-2 machinery at the moment CR 400.7a says it carries over.
+Keep a list of steals on the `StackItem`, turn it into `StackItem.Controller` with a small function of its own, and hand it to layer 2 only when the spell becomes a permanent.
 
-- **For:** every reader stays as it is. The three things option A forgets are data that can be replayed. The permanent side is `ScopedEffect`, which already exists. Everything is plain data, so a table with a stolen spell is a restore point.
-- **Against:** the stack gets a small layer-2 answer of its own, alongside the battlefield's. It is one function over a list sorted by timestamp. It exists only because nothing but a resolving spell ever changes a spell's control, and while the object is on the stack that is the only kind of effect it needs to answer.
+- **For:** smaller than B, and every reader stays as it is.
+- **Against:** it is a second answer to "who controls this object", written beside the layer engine rather than in it. Every rule the layer engine already applies to control — timestamps, durations, the end of a departed player's effects — would have to be restated for the stack's copy.
 
 ---
 
-## Decision (proposed): option C
+## Decision: option B
+
+The owner chose B on 2026-09-30: "I am always going to favor being stringent to the rules." A and C stay above as the alternatives considered.
 
 ### 1. How control of a stack object is represented
 
-Two new fields on `StackItem`:
+**The steal is a `ScopedEffect`.** It has one `setController` mod, an `Indefinite` duration (every printed card states none, CR 611.2a) and a CR 613.7b timestamp taken when it is created. The record is data, like every other `ScopedEffect`.
 
-```go
-// DefaultController is the player under whose control this item was
-// put on the stack — the caster, or for a copy the player who made it
-// (CR 110.2b, CR 707.10). Zero means "Controller is the default",
-// exactly as Card.BaseController does on the battlefield; the first
-// control change stamps it. No build site changes.
-DefaultController uuid.UUID
+**It is pinned to the stack object.** Two pins learn the stack, each with two additive fields:
 
-// ControlChanges are the effects that have given this spell to another
-// player since, oldest first (CR 611.1, CR 613.7b).
-ControlChanges []SpellControlChange
+- `AffectedObject.OnStack` and `AffectedObject.Epoch` name the spell by instance ID and by the `Card.ObjectEpoch` it has on the stack. `MoveCard` bumps the epoch on every zone change, so CR 400.7 is checked, not assumed: the same card cast again is a new object the record does not match.
+- `Duration.PinnedOnStack` and `Duration.PinnedEpoch` are the same pin on the duration. `durationExpiredLocked` ends a stack-pinned record once that object is no longer on the stack, so a stolen spell that is countered or resolves as an instant leaves no record behind.
 
-type SpellControlChange struct {
-	Player     uuid.UUID // who gained control
-	Timestamp  int64     // CR 613.7b: when the effect was created
-	Source     ObjectRef // the spell or ability that did it
-	SourceName string
-}
-```
+**Only `setController` is accepted on a stack pin.** Registration panics on any other mod kind with a stack pin, as it does on every malformed record. A future card that changes a spell's other characteristics this way extends the stack step to its layer in the same change.
 
-**One materialiser:** `stackControllerLocked(item)`. It returns the player of the latest change who is still in the game, or `DefaultController`. `StackItem.Controller` is always its answer, so no reader changes.
+**The default controller.** `StackItem.BaseController` is the player who put the item on the stack: the caster, or for a copy the player who made it (CR 110.2b, CR 707.10). It is captured lazily, exactly as `Card.BaseController` is: zero means "the current controller is the base", and the stack step stamps it before it applies the first record.
 
-**One writer:** `GainControlOfSpellForEffect(sourceID, spellID, player, label) bool`. It:
+**The stack step of the layer pass.** `recomputeLayersLocked` runs `stackControlPassLocked` after the battlefield pass. For each spell on the stack it:
 
-1. refuses anything but a spell on the stack, a departed player (CR 800.4b) and a no-op (the player already controls it);
-2. stamps `DefaultController` if it is zero;
-3. appends the change and re-materialises;
-4. **re-stamps `Card.Controller` on the spell card in the stack zone**, so the target predicates read the same answer (finding 1);
-5. for a face-down spell, adds the new controller as a knower (CR 708.5; see open question 7);
-6. emits one `EventSpellControlChanged` (§8).
+1. reseeds the controller from `BaseController`;
+2. applies every live `setController` record pinned to that object, in CR 613.7 timestamp order, the same sort the battlefield bucket uses;
+3. materialises the answer into `StackItem.Controller` **and** into the spell card's `Card.Controller` in the stack zone;
+4. collects each delta by value, to be emitted after the store as `EventSpellControlChanged` (#930's pattern).
 
-`CastSpell` stamps the stack card's `Card.Controller` from the caster for every cast, not just a face-down one. That closes finding 1 for the casts that are wrong today.
+Because the step materialises into the field every reader already reads, about 660 card files and the engine's readers do not change.
 
-**The exchange:** `ExchangeControlOfSpellAndPermanentForEffect(sourceID, spellID, permanentID, label) bool` covers Perplexing Chimera and Sudden Substitution. It checks both objects first and does nothing if either is gone, or if one player controls both (CR 701.12a/b). Then it writes the spell's change and registers the permanent's `setController` record with **one shared timestamp**. That is how `ExchangeControlForEffect` already makes two permanents one effect.
+**The writers.** In the engine:
 
-**Card side** (`cards/effects/control.go`):
+- `GainControlOfSpellForEffect(sourceID, spellID, player, label) bool`. It refuses anything but a spell on the stack, a departed player (CR 800.4b) and a no-op (the player already controls it). Then it registers the record and recomputes, so the controller has changed by the time it returns.
+- `ExchangeControlOfSpellAndPermanentForEffect(sourceID, spellID, permanentID, label) bool`. It checks both objects first and does nothing if either is gone or one player controls both (CR 701.12a/b). Then it registers the spell's record and the permanent's record with **one shared timestamp**, as `ExchangeControlForEffect` does for two permanents.
 
-- `GainControlOfSpell{Spell, Controller, ChooseNewTargets}`. `Controller` defaults to the resolving item's controller, as `GainControl` does.
-- `ExchangeControlOfSpellAnd{Spell, Permanent, ChooseNewTargets}`.
+On the card side (`cards/effects/control.go`): `GainControlOfSpell{Spell, Controller, ChooseNewTargets}` and `ExchangeControlOfSpellAnd{Spell, Permanent, ChooseNewTargets}`. `Controller` defaults to the resolving item's controller.
 
-Neither takes a duration. Every printed card is indefinite, and on the stack "indefinite" means "until it leaves".
+**The stack card's controller.** `CastSpell` stamps the spell card's `Card.Controller` from the caster for every cast, not just a face-down one. That closes the first finding: "target spell you don't control" is judged by the spell's controller for a spell cast off another player's card.
 
-**Abilities are refused.** No printed card gains control of an ability. The writer is for spells, so `DefaultController` and `ControlChanges` are meaningless on an ability item.
+**Abilities are not covered.** No printed card gains control of an ability, and the writer refuses one.
 
 ### 2. What "you" means at resolution
 
-The spell's current controller, because `ctx.Controller()` reads `item.Controller` and that is now the materialised answer (CR 608.2c, 109.5). A stolen Lightning Bolt deals its damage as the thief's. A stolen Divination draws for the thief. A stolen Wrath's "you" is the thief.
+The spell's current controller, because `ctx.Controller()` reads `item.Controller` and the stack step keeps it current (CR 608.2c, 109.5). A stolen Lightning Bolt deals its damage as the thief's. A stolen Divination draws for the thief. A stolen Wrath's "you" is the thief.
 
 Three things follow and need no code:
 
@@ -165,165 +153,161 @@ Three things follow and need no code:
 
 ### 3. Who controls the permanent a stolen permanent spell becomes
 
-The permanent **enters under the spell's controller** (the thief). The entry event keeps `Actor: item.Controller`, so the would-be controller of ADR 0102, the self-replacements and the ETB triggers all see the thief (CR 110.2b's first half, CR 603.3a). In addition, as the permanent lands:
+The permanent **enters under the spell's controller** (the thief). The entry event keeps `Actor: item.Controller`, so the would-be controller of ADR 0102, the self-replacements and the ETB triggers all see the thief (CR 110.2b's first half, CR 603.3a).
 
-- **`Card.BaseController` is stamped to `DefaultController`,** not captured lazily from `Controller`. That is CR 110.2b's second half: the permanent's default controller is the player who put the spell on the stack.
-- **Each `SpellControlChange` becomes an indefinite `setController` `ScopedEffect` pinned to the new permanent,** with the change's **original timestamp** (CR 400.7a, 613.7b). This uses `registerScopedEffectLocked`, which takes an explicit timestamp.
+As the permanent lands (`landEntryLocked`, before any event goes out):
 
-The first layer pass reseeds control from `BaseController` (the caster), applies the records, and lands on the thief. `Card.Controller` already equals that, so **no control-change event fires on entry**, and no "whenever an opponent gains control" trigger fires by accident.
+- **`Card.BaseController` is stamped with the stack item's default controller.** That is CR 110.2b's second half: the permanent's controller by default is the player who put the spell on the stack. When an ADR 0102 entry-controller replacement changed whom the permanent enters under, the default is that player instead (CR 110.2).
+- **Each record pinned to the stack object is re-pinned to the permanent** (CR 400.7a). The record is replaced, never edited: the same mods, timestamp and sequence number, with the pin moved to `PinObject(permanent, entry stamp)` and the duration moved to `PinnedTo(permanent)`. A copy of a permanent spell becomes a token with a new instance ID. The re-pin follows whatever ID actually entered.
 
-The permanent then behaves like any stolen permanent. An Act of Treason later sorts against it by timestamp. If the thief leaves the game, the record ends and the permanent goes back to the caster (§7).
-
-A stolen permanent spell whose own replacement changes the entering controller (ADR 0102's Captive Audience, stolen) enters under the player that replacement names. The carried record still applies on top in layer 2, so the thief controls it. `BaseController` is then the replacement's player, because that is who it entered under (CR 110.2). This is a corner, not a question. The implementation PR pins it with a test.
+The next pass reseeds from `BaseController`, applies the record and lands on the thief. `Card.Controller` already equals that, so **no control-change event fires on entry**, and no "whenever an opponent gains control" trigger fires by accident. From then on the permanent is an ordinary stolen permanent: a later Act of Treason sorts against the record by timestamp, and a thief leaving the game hands it back (§7).
 
 ### 4. Choosing new targets
 
-"You may choose new targets for it" is the existing retarget offer. It is `ChangeTargets{StackID, Policy: RetargetChooseNew, Optional: true}`, asked of the **new** controller, **after** the control change. The order matters and is enforced by the card-side primitive (`ChooseNewTargets: true`), not left to each card:
+"You may choose new targets for it" is the existing retarget offer: `ChangeTargets{StackID, Policy: RetargetChooseNew, Optional: true}`. It is asked of the **new** controller, **after** the control change. The card-side primitive enforces the order (`ChooseNewTargets: true`), so no card has to get it right:
 
-- The legal set is built by `stackItemSourceLocked`, which reads `item.Controller`. So it has to be the thief's by then, or "target opponent" and hexproof are judged for the wrong player.
+- The legal set is built by `stackItemSourceLocked`, which reads `item.Controller`. It has to be the thief's by then, or "target opponent" and hexproof are judged for the wrong player. The writer's recompute is what makes it so.
 - CR 115.7d/e (keep any, change to legal ones only, judge the final set) is already `retargetCheckLocked`'s job.
 
-Sudden Substitution's "then the spell's controller may choose new targets" is the same call. The chooser is `item.Controller` after the exchange, which is how the card reads.
+Sudden Substitution's "then the spell's controller may choose new targets" is the same call. The chooser is the spell's controller after the exchange.
 
-`PendingChoiceRetarget` is data, not a closure. A table paused on it is still a restore point, and its CR 800.4 row ("dropped, targets unchanged") already fits: if the thief leaves before answering, the targets stay.
+`PendingChoiceRetarget` is data, not a closure. A table paused on it is still a restore point. Its CR 800.4 row ("dropped, targets unchanged") already fits: if the thief leaves before answering, the targets stay.
 
 ### 5. Invert Polarity's coin flip
 
-The card is one flip whose result chooses the branch:
+The card is one called flip whose result chooses the branch. `FlipCoinForEffect` queues the `coin_call` prompt. Its continuation, which captures only IDs, takes one of two branches:
 
-```go
-Targets: TargetSpell("target spell"),
-OnResolve: func(item *game.StackItem, ctx *Context) error {
-	spell, me, src := item.Targets[0].ID, ctx.Controller(), ctx.Source()
-	ctx.Game.FlipCoinForEffect(game.CoinFlipSpec{
-		Flipper: me, Source: src, Coins: 1,
-		Question: "Invert Polarity — call the flip",
-		Then: func(g *game.Game, r game.CoinFlipResult) error {
-			if len(r.Won) == 1 && r.Won[0] {
-				return g.GainControlOfSpellThenRetarget(src, spell, me, true) // §1 + §4
-			}
-			return g.CounterSpellForEffect(src, spell) // honours "can't be countered"
-		},
-	})
-	return nil
-},
-```
+- **Won:** `GainControlOfSpell{ChooseNewTargets: true}`.
+- **Lost:** the ordinary counter.
 
-(The two `g.` calls in the sketch are placeholders for the §1 writer with §4's offer, and the existing counter door. The PR names them for real.)
+Rules and consequences:
 
-- **The spell is a target.** If it has left by resolution, Invert Polarity does nothing and nobody flips (CR 608.2b). While the call is open, no other move is legal, so the spell cannot leave in between.
-- **The player who flips calls the coin** (CR 705.2). That is the existing `coin_call` prompt, which the client and the bot already answer.
+- **The spell is a target.** If it has left by resolution, Invert Polarity does nothing and nobody flips (CR 608.2b). While the call is open no other move is legal, so the spell cannot leave in between.
+- **The player who flips calls the coin** (CR 705.2). The client and the bot already answer `coin_call`.
 - **Losing the flip is an ordinary counter.** A Cavern-protected spell is neither countered nor stolen.
-- **The continuation captures only IDs**, as ADR 0054 requires, so an undo resolves it against the restored game.
-- **Restore points:** `CoinFlipSpec.Then` is a closure, counted as `census:ChoiceResumeFrames`. A table paused on the call is not a restore point, which is true of every won/lost flip today. Once the call is answered, the stolen spell (and any retarget prompt) is plain data again.
+- **Restore points.** `CoinFlipSpec.Then` is a closure (`census:ChoiceResumeFrames`), so a table paused on the call is not a restore point. That is true of every called flip today. Once the call is answered, the stolen spell and any retarget prompt are plain data again.
 
 ### 6. Cast permissions, copies, cast records and mana riders
 
-This is the carried question: how should a change of a spell's controller carry through permissions, copies and cast records? One principle answers every row. **What happened while the spell was being cast stays with the cast. What happens as it resolves or later belongs to the controller at that time, unless the rule names the owner.**
+One principle answers every row. **What happened while the spell was cast stays with the cast. What happens as it resolves, or later, belongs to the controller at that time, unless the rule names the owner.**
 
 | Record | After the steal | Why |
 |---|---|---|
-| `EventCast`, `CastTally`, storm's count, "spells cast this turn", `WheneverYouCast` | Unchanged. The caster cast it and the thief did not. | CR 601.2a. The cast is a past event. |
+| `EventCast`, `CastTally`, storm's count, "spells cast this turn", `WheneverYouCast` | Unchanged. The caster cast it, the thief did not. | CR 601.2a. The cast is a past event. |
 | `StackItem.Paid` (mana, X, kicker, sacrificed or exiled objects, gift's promised opponent) | Carried untouched. | These are decisions and costs of the cast. CR 707.10's "decisions made for it" says the same about copies. |
-| Mana spend riders (ADR 0040) | Unchanged. They fired at the spend, and their `Applied` stamps ride `Paid.Mana`. Cavern's "can't be countered" still protects the stolen spell. Hall of the Bandit Lord's haste still reaches the permanent. A Goggles trigger was queued for the caster before the steal. | The rider is a fact about the mana, not about who holds the spell. |
-| `CastProvenance` on the permanent | Carried, plus a new field, `Caster`. | "If you cast it" (The One Ring, Zacama, Tiamat) must be false for a thief. Today `b16EnteredFromStack` answers "it came from the stack", which a stolen spell also did. The readers become `Provenance.Caster == controller`. That also stops a token from a copied permanent spell (never cast) from passing. |
-| Permissions that let it be cast | Spent. Any rider the permission put on the spell (`ExileOnLeavingStack`, `ExileOnResolution`) rides the item and still applies. | CR 400.7g/h. The permission's job ended at the cast. |
-| Permissions **created at resolution** | Adventure: the **controller** at resolution (CR 715.3d; finding 3). Warp's later cast: the **owner** (CR 702.185a). | The rule names who. |
-| Where the card goes | Buyback: the owner's hand. Flashback: exile. Dash: the owner's hand. A plain instant: the owner's graveyard. | CR 702.27a, 702.34a, 702.109a, 608.2n. None of them changes. |
+| Mana spend riders (ADR 0040) | Unchanged. They fired at the spend, and their `Applied` stamps ride `Paid.Mana`. Cavern's "can't be countered" still protects the stolen spell. Hall of the Bandit Lord's haste still reaches the permanent. A Goggles trigger was already queued for the caster. | The rider is a fact about the mana, not about who holds the spell. |
+| `CastProvenance` on the permanent | Carried, plus a new field, `Caster`: the player who cast the spell, empty for a copy. | "If you cast it" must be false for a thief. The readers become `Provenance.Caster == controller`. |
+| Permissions that let it be cast | Spent. A rider the permission put on the spell (`ExileOnLeavingStack`, `ExileOnResolution`) rides the item and still applies. | CR 400.7g/h. |
+| Permissions **created at resolution** | Adventure: the **controller** at resolution (CR 715.3d). Warp's later cast: the **owner** (CR 702.185a). | The rule names who. |
+| Where the card goes | Buyback: the owner's hand. Flashback: exile. Dash: the owner's hand. A plain instant: the owner's graveyard. | CR 702.27a, 702.34a, 702.109a, 608.2n. |
 | Evoke's sacrifice, gift's "gives a gift" | The controller: the thief sacrifices the evoked creature and is the player who gives the gift. | CR 702.74a, 702.174c. |
-| Copies of a stolen spell | Controlled and owned by whoever makes the copy. A storm trigger that resolves after the steal still makes the caster's copies, because the trigger is the caster's. | CR 707.10. `CopySpellForEffect` already takes the copier as `controller`. |
-| A stolen copy | Same record as a card. Its owner never changes. If it is countered it ceases to exist, as now. | CR 707.10, 707.10a. |
+| Copies of a stolen spell | Controlled and owned by whoever makes the copy. A storm trigger that resolves after the steal still makes the caster's copies, because the trigger is the caster's. | CR 707.10. |
+| A stolen copy | The same record as a card. Its owner never changes. Countered, it ceases to exist, as now. | CR 707.10, 707.10a. |
+| A stolen face-down spell | Only the new controller may look. The caster loses the look. | CR 708.5, applied literally (owner decision 7). |
 
 ### 7. Countering, and CR 800.4a
 
-**Countering** needs nothing new. A countered stolen spell goes to its **owner's** graveyard (CR 701.6a), because `routeStackCardToGraveyardLocked` already routes by owner. "Counter target spell you don't control" reads the stack card's `Card.Controller`, which §1 keeps in step. "Counter unless its controller pays" asks the thief.
+**Countering** needs nothing new. A countered stolen spell goes to its **owner's** graveyard (CR 701.6a), because `routeStackCardToGraveyardLocked` already routes by owner. "Counter target spell you don't control" reads the spell card's `Card.Controller`, which the stack step keeps in step. "Counter unless its controller pays" asks the thief.
 
-**A player leaving the game** is the one place the record earns its keep. `cleanupStackForEliminatedLocked` gains a step before its sweep, following CR 800.4a's order.
+**A player leaving the game** follows CR 800.4a's order. `cleanupStackForEliminatedLocked` gains a first step, `endControlEffectsForLocked`. It drops every `ScopedEffect` record that gives the departed player control, whether the record is pinned to a spell or a permanent, and recomputes. Then the existing sweep runs.
 
-- **The thief leaves.** Their `SpellControlChange` entries end (step 2), and the spell re-materialises to the previous thief or to the default controller. Only then does the sweep look for items the departed player still controls. A copy they still control ceases to exist (step 3). A card they still control is exiled (step 4). That happens only if the spell reverts to nobody who is still in the game. That is also the CR 800.4c case.
-- **The caster leaves.** A spell they own leaves the game with them (step 1, already done by `removeObjectsOwnedByLocked`). A spell they cast but do not own (cast off another player's card) stays under the thief.
-- **A stolen permanent spell that has resolved.** Its control is now a `ScopedEffect`. **PR 1 ends every `setController` record that names a departed player** in `leaveGameObjectsLocked` step 2. That is finding 2, and it fixes Act of Treason at the same time. The permanent reverts to its `BaseController`. If that player has left too, the existing `exileGhostControlledLocked` (CR 800.4c) exiles it.
-- **A steal aimed at a departed player** does nothing (CR 800.4b). `GainControlOfSpellForEffect` refuses it.
+- **The thief leaves.** Their records end (step 2), and the spell falls back to the previous thief or to its default controller. Only then does the sweep look for items the departed player still controls. A copy they still control ceases to exist (step 3), and a card they still control is exiled (step 4).
+- **The spell falls back to a player who has already left** (CR 800.4c). The sweep treats a spell controlled by *any* departed player as unowned by anyone still in the game, and exiles it.
+- **The caster leaves.** A spell they own leaves the game with them (step 1, already done by `removeObjectsOwnedByLocked`). A spell they cast but do not own stays under the thief.
+- **A stolen permanent spell that has resolved.** Its record is an ordinary battlefield `ScopedEffect` now, and the same `endControlEffectsForLocked` ends it. It goes back to its `BaseController`, or is exiled by the existing `exileGhostControlledLocked` when that player has left too. This is the second finding: it fixes Act of Treason's reversion at the same time.
+- **A steal aimed at a departed player** does nothing (CR 800.4b). The writer refuses it.
 
 ### 8. The wire, the client and the bot
 
-**Event.** A new `EventSpellControlChanged{CardID: spell, Actor: gained, Target: lost, Source}`. It is not `EventControlChanged`, on purpose. `AnOpponentGainedControlOfAPermanentYouOwn` looks the card up with `LookupCardForEffect`, which finds a stack card, and would fire on a stolen spell. That is "a permanent you own" misfiring on a spell. A separate kind makes the misfire impossible rather than needing a zone check in every predicate. The log gate needs an arm: "Bob gained control of Alice's Lightning Bolt."
+**Event.** A new `EventSpellControlChanged{CardID: spell, Actor: gained, Target: lost, Source}`. It is deliberately not `EventControlChanged`. `AnOpponentGainedControlOfAPermanentYouOwn` looks the card up with `LookupCardForEffect`, which finds a stack card, and would fire on a stolen spell. The log gate gets an arm: "Bob gained control of Alice's Lightning Bolt". A face-down spell's name is redacted for anyone who may not look.
 
-**Wire.** `StackItemView.controller` stays the live controller. It gains `default_controller`, sent only when it differs from `controller`. The stack card's `CardView.controller` follows §1's re-stamp. There is no new verb and no new `PendingChoiceKind`. The coin call, the "you may" prompt and the retarget prompt already exist, so the choice-gate and departure tables are unchanged.
+**Wire.** `StackItemView.controller` stays the live controller, and gains `default_controller`, sent only when it differs. The spell card's `CardView.controller` follows the stack step. There is no new verb and no new `PendingChoiceKind`: the coin call, the "you may" prompt and the retarget prompt already exist.
 
-**Client.** `stackLane.ts` labels `item.controller` as the "caster" (`casterSeat`, `casterName`). The lane keeps the controller's colour and adds a chip, "taken from Alice", when `default_controller` is present (open question 6). Target phrases already read the stack item's controller, so "targets your Lightning Bolt" follows the steal.
+**Client.** A "taken from X" chip in two places:
 
-**Bot.** The enumerator (`internal/legal`) needs nothing new. "Target spell" is an existing clause, the `may` prompt and the coin call are existing answers, and the retarget prompt is enumerated since #1196. The policy reads `controller` from the filtered view, which is live, so a bot does not counter a spell it now controls. Three small changes:
+- **The stack lane**, while a stolen spell is on the stack. X is the default controller.
+- **Any permanent controlled by a player who does not own it.** X is the owner. This covers a permanent from a stolen spell and every other stolen permanent alike, and it is derived from the `controller` and `owner` the wire already carries.
 
-- The model prompt prints "cast by <controller>" (`aiseat/model/prompt.go`, `improvise.go`). It becomes "controlled by X" plus "(cast by Y)" when `default_controller` is present.
-- The heuristic scores "gain control of target spell" like a counter of an opponent's spell, plus the spell's value to the thief, and never targets its own spell.
-- Perplexing Chimera's "you may exchange" is answered yes when the spell's mana value is at least the Chimera's (5) or the spell is a permanent spell. This is a starting heuristic. The arena report is what it gets judged by.
+**Bot.** The enumerator needs nothing new: "target spell" is an existing clause, and the `may` prompt, the coin call and the retarget prompt are existing answers. The policy reads `controller` from the filtered view, which is live, so a bot does not counter a spell it now controls. The rest:
+
+- **Model prompt.** It prints "cast by <controller>" today. It becomes "controlled by X" plus "(cast by Y)" when `default_controller` is present.
+- **Perplexing Chimera.** The bot exchanges when the spell's mana value is 5 or more, or it is a permanent spell (owner decision 8).
 
 ### 9. Snapshots
 
-Everything is data, and there is no new closure field:
+Everything is data, and no new closure route is added. The new fields are all additive:
 
-- **`StackItem.DefaultController` and `StackItem.ControlChanges`** are additive. The shape file is updated with `-update-shape`. Since #1497, a binary refuses a stack-item field it does not know, so a rollback refuses a file carrying a steal. That is the designed rollback case, not a bump.
-- **`CastProvenance.Caster`** is an additive `Card` field, recorded the same way.
-- **The carried permanent control** is an ordinary `setController` `ScopedEffect`.
-- **The closure ratchet** gains no route.
-- **The corpus** gets one new board in the current `v<N>/`: a stolen spell on the stack with a retarget prompt open. The writer allows a new board without a bump.
+- `AffectedObject.OnStack` and `AffectedObject.Epoch`;
+- `Duration.PinnedOnStack` and `Duration.PinnedEpoch`;
+- `StackItem.BaseController`;
+- `CastProvenance.Caster`.
 
-The one pause that is not a restore point is Invert Polarity's open coin call (§5), and that is already true of every called flip.
+The shape file is updated with `-update-shape` under the current schema version. Older binaries refuse an unknown affected-set field (ADR 0041 P4) and an unknown stack-item field (#1497), so a rollback refuses a file carrying a steal. That is the designed rollback case, not a bump.
+
+The one pause that is not a restore point is Invert Polarity's open coin call (§5). That is already true of every called flip.
 
 ### 10. Cards covered, and how it ships
 
-**PR 1 (engine).**
+**Engine PR:**
 
-- The §1 fields, writer, materialiser and exchange.
-- The stack-card `Controller` stamp at cast.
-- §3's hand-off at resolution.
-- §7's CR 800.4a step, and ending departed `setController` records.
-- The event and its log arm, the wire field, the client chip and the bot prompt text.
-- The card-side `GainControlOfSpell` and `ExchangeControlOfSpellAnd`.
-- `CastProvenance.Caster`, with the "if you cast it" readers moved to it.
-- The Adventure permission holder (question 4).
-- Tests: engine tests with fixture spells, and a test that pins Act of Treason's reversion first.
+- the stack pins, the stack step and the two writers;
+- the stack card's `Controller` stamp;
+- the re-pin at resolution;
+- `endControlEffectsForLocked` and the CR 800.4c sweep;
+- the event, its log arm, the wire field, both chips and the bot's prompt text;
+- `CastProvenance.Caster` and the "if you cast it" readers;
+- the Adventure permission (CR 715.3d);
+- the literal CR 708.5 knowledge change;
+- the card-side primitives.
 
-**PR 2 (cards).**
+Each rule gets a test first, including the two latent bugs.
 
-- Invert Polarity, Aethersnatch and Perplexing Chimera.
-- Sudden Substitution.
-- Commandeer, with `ExileFromHand` taking a count (the escape-style `Min`).
-- One oracle-text fixture per card.
-- The registry's `control-of-a-spell` seam flipped to implemented, and a closed-seam fragment.
+**Cards PR:** Invert Polarity, Aethersnatch, Perplexing Chimera and Sudden Substitution. Commandeer joins them if giving `ExileFromHand` a count is small and clean; otherwise it waits on its own seam row.
 
-**Waiting:** Chef's Kiss, unless the owner puts it in scope (question 2).
-
-That is **five of the six cards**, with the sixth waiting on one decision.
+**Waiting:** Chef's Kiss, on a new "random retarget" seam row.
 
 ---
 
 ## Consequences
 
-- `StackItem.Controller` is no longer "the player who cast it". Code that needs the caster reads `DefaultController` (zero means `Controller`) or, for a permanent, `Provenance.Caster`. The field comment changes to say so.
-- A spell's control has two homes: the stack record while it is a spell, and a `ScopedEffect` once it is a permanent. They meet at one function, at resolution.
-- The stack card's `Card.Controller` is kept equal to the item's. That fixes "spell you don't control" for spells cast off another player's card, which is a behaviour change today.
-- Act of Treason and every other resolving-spell theft now revert when the thief leaves the game, instead of exiling the permanent. This is a behaviour change, and it is the one CR 800.4a's example describes.
-- The Adventure permission follows CR 715.3d's controller if question 4 is answered that way. That is a behaviour change for Adventures cast off another player's card.
-- `docs/engine-seams.md` and the roadmap registry stop saying control of a spell "is not layer 2 at all". It is layer 2 in the rules, and the engine answers it in two places.
+- `StackItem.Controller` is no longer "the player who cast it". It is layer 2's answer for a spell. Code that needs the caster reads `BaseController` (zero means `Controller`) or, for a permanent, `Provenance.Caster`.
+- The layer pass writes to the stack as well as the battlefield. The stack step is layer 2 only, and it says so.
+- The stack card's `Card.Controller` is kept equal to the item's. That fixes "spell you don't control" for spells cast off another player's card, a behaviour change today.
+- Act of Treason and every other resolving-spell theft now revert when the thief leaves the game, instead of exiling the permanent. This is the behaviour CR 800.4a's example describes.
+- The Adventure permission follows CR 715.3d's controller. That is a behaviour change for Adventures cast off another player's card.
+- A face-down spell stops being visible to its caster once it is stolen (CR 708.5).
+- `docs/engine-seams.md` and the roadmap registry stop saying control of a spell "is not layer 2 at all".
 
 ## Out of scope
 
 - **Control of an ability** on the stack. No printed card does it.
 - **Control of a player's turn** (Mindslaver). It is a different rule (CR 723) and a different seam.
-- **A random retarget** ("reselect the targets at random"), unless question 2 brings Chef's Kiss in.
+- **A random retarget** ("reselect the targets at random"). Chef's Kiss waits on it.
 - **Desertion** ("put that card onto the battlefield under your control instead"). It is a counter-redirect and already expressible (ADR 0102, "Out of scope").
+- **Other layers on the stack.** No catalogued effect changes a spell's characteristics through a `ScopedEffect` yet.
 
 ---
 
 ## Open questions for the owner
 
+These are the questions as asked. The owner's answers follow.
+
 1. **The shape.** Should control of a spell be a record on the stack item, handed to layer 2 when the spell resolves (option C, recommended)? The alternatives are to extend the layer pass to the stack (option B: most faithful, largest), or to rewrite `StackItem.Controller` with no memory (option A: smallest, and it gets CR 110.2b and CR 800.4a wrong).
-2. **Chef's Kiss.** Should PR 2 include it, which needs a random retarget that excludes "you or a permanent you control"? Or should it wait on a new seam row (recommended: the other five do not need it, and a random retarget is its own small design)?
-3. **The two latent bugs.** Should PR 1 fix the stale stack-card `Controller` for spells cast off another player's card, and end `setController` records that name a departed player (the Act of Treason reversion)? Both are needed by this design, and the recommendation is to fix both in PR 1, each with its own test first. The alternative is to file them as separate issues and land them ahead of PR 1.
-4. **The Adventure permission.** CR 715.3d says the spell's **controller** may cast the card from exile later. The engine grants it to the **owner** and cites the older rule number. Should PR 1 follow CR 715.3d (recommended)? That also changes Adventures cast off another player's card today.
-5. **The event.** Should a stolen spell emit its own `EventSpellControlChanged` (recommended, so no "gains control of a permanent" trigger can see a spell)? Or should it reuse `EventControlChanged`, with a zone check added to every predicate that reads it?
-6. **What the table sees.** Should the stack lane show a "taken from Alice" chip while a stolen spell is on the stack (recommended)? Should the permanent it becomes show one too, the way a stolen creature does not today?
-7. **A stolen face-down spell** (a morph cast face down, taken by Aethersnatch). Should the thief become able to look at it while the caster keeps knowing it (recommended: knowledge cannot be taken back)? Or should the engine follow CR 708.5 literally and remove the caster's look?
-8. **The bot and Perplexing Chimera.** Is "exchange when the spell's mana value is at least 5 or it is a permanent spell" the right starting rule? Or should the bot decline until the arena has measured the card?
+2. **Chef's Kiss.** Should the cards PR include it, which needs a random retarget that excludes "you or a permanent you control"? Or should it wait on a new seam row (recommended)?
+3. **The two latent bugs.** Should the engine PR fix the stale stack-card `Controller` for spells cast off another player's card, and end `setController` records that name a departed player (the Act of Treason reversion), each with its own test first (recommended)? Or should they be separate issues that land first?
+4. **The Adventure permission.** CR 715.3d says the spell's **controller** may cast the card from exile later. The engine grants it to the **owner** and cites the older rule number. Should the engine PR follow CR 715.3d (recommended)?
+5. **The event.** Should a stolen spell emit its own `EventSpellControlChanged` (recommended)? Or should it reuse `EventControlChanged`, with a zone check added to every predicate that reads it?
+6. **What the table sees.** Should the stack lane show a "taken from Alice" chip while a stolen spell is on the stack (recommended)? Should the permanent it becomes show one too?
+7. **A stolen face-down spell.** Should the thief become able to look at it while the caster keeps knowing it (recommended)? Or should the engine follow CR 708.5 literally and remove the caster's look?
+8. **The bot and Perplexing Chimera.** Is "exchange when the spell's mana value is at least 5 or it is a permanent spell" the right starting rule?
+
+## Owner decisions (2026-09-30)
+
+1. **Option B: extend the layer pass to the stack.** "I am always going to favor being stringent to the rules." C, which the draft recommended, is kept above with A as the alternatives considered.
+2. **Chef's Kiss waits** on its own seam row, "random retarget", with a reason on the registry's `Waiting` list.
+3. **Both latent bugs are fixed in the engine PR, each test-first.** These are the stale stack-card `Controller` for spells cast off another player's card, and ending `setController` records that name a departed player (Act of Treason's reversion, CR 800.4a).
+4. **CR 715.3d.** The Adventure's later cast goes to the spell's controller.
+5. **A new `EventSpellControlChanged`.**
+6. **The chip appears on the stack lane and on the permanent.** The permanent's chip is general: any permanent controlled by a player who does not own it shows it.
+7. **CR 708.5 literally.** A stolen face-down spell can be looked at by its new controller only. The caster loses the look.
+8. **The bot exchanges with Perplexing Chimera** when the spell's mana value is 5 or more, or it is a permanent spell.
