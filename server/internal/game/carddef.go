@@ -87,8 +87,12 @@ type CardDef struct {
 	TapCost          *TapPermanentsCost
 	// Delve is CR 702.66: this spell may exile cards from its caster's
 	// graveyard to pay generic mana (ADR 0100). Read through DelveFor.
-	Delve         bool
-	CostModifiers []CostModifier
+	Delve bool
+	// SpellsYouCastHaveDelve is a permanent's "Spells you cast have
+	// delve" (Teval, Arbiter of Virtue; ADR 0100 sub-PR 2). Read from
+	// the battlefield through DelveForLocked.
+	SpellsYouCastHaveDelve bool
+	CostModifiers          []CostModifier
 	// SelfCostModifiers change what THIS card costs to cast (ADR 0048
 	// addendum §11), read by SelfCostModifiersFor for the spell being
 	// priced and never from the battlefield.
@@ -478,6 +482,12 @@ func init() {
 	CatalogDelve = func(key string) bool {
 		if d := catalogDef(key); d != nil {
 			return d.Delve
+		}
+		return false
+	}
+	CatalogSpellsHaveDelve = func(key string) bool {
+		if d := catalogDef(key); d != nil {
+			return d.SpellsYouCastHaveDelve
 		}
 		return false
 	}

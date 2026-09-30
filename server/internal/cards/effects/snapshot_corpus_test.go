@@ -229,7 +229,55 @@ func corpusBoards() []corpusBoard {
 		// has resolved, its record re-pinned to the permanent by epoch
 		// and its baseController the caster.
 		{"stolen_spell", corpusStolenSpell},
+		// v7, added by ADR 0100 sub-PR 2 as a new file: the CR 607.2q
+		// delve link on a permanent (CastProvenance.Delved) and on a
+		// departed one's last-known information (PermanentInfo.Delved).
+		{"delve_linked_permanents", corpusDelveLinkedPermanents},
 	}
+}
+
+// corpusDelveLinkedPermanents is a Murktide Regent on the battlefield
+// that delved two instants and entered with their counters, and an
+// Ethereal Forager that delved one and has since left: the permanent
+// carries its link to the cards in exile, and the Forager's last-known
+// information carries its own, which is how its attack trigger finds
+// them after it has gone (ADR 0100 sub-PR 2).
+func corpusDelveLinkedPermanents(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	murktide, err := castWithTapParams(t, g, "Murktide Regent", "Creature — Dragon", "{5}{U}{U}",
+		murktideRegentOracle, game.CastSpellParams{DelveIDs: delveFuel(me, 2)})
+	if err != nil {
+		t.Fatalf("setup: cast Murktide Regent: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	forager, err := castWithTapParams(t, g, "Ethereal Forager", "Creature — Elemental Whale", "{4}{U}{U}",
+		etherealForagerOracle, game.CastSpellParams{DelveIDs: delveFuel(me, 1)})
+	if err != nil {
+		t.Fatalf("setup: cast Ethereal Forager: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	g.WithWriteLock(func() {
+		if err := g.BounceToHandForEffect(forager); err != nil {
+			t.Fatalf("setup: bounce the Forager: %v", err)
+		}
+	})
+	var linked int
+	for _, c := range g.Battlefield.Cards {
+		if c.InstanceID == murktide {
+			linked = len(c.Delved())
+		}
+	}
+	if linked != 2 {
+		t.Fatalf("setup: want Murktide Regent on the battlefield linked to two cards, got %d", linked)
+	}
+	var lki game.PermanentInfo
+	var ok bool
+	g.WithWriteLock(func() { lki, ok = g.LastKnownPermanentForEffect(forager) })
+	if !ok || len(lki.Delved) != 1 {
+		t.Fatal("setup: want the departed Forager's last-known information to carry its delve link")
+	}
+	return g
 }
 
 // corpusStolenSpell is ADR 0104 on disk: a creature spell stolen on the

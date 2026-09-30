@@ -519,9 +519,22 @@ type Spec struct {
 	// nothing is always legal. The engine does the rest: the budget
 	// (CastPrice.DelveBudget), the exile at CR 601.2h, and the record
 	// of what was exiled (PaidCost.Delved, CR 607.2q). A card that
-	// reads the cards "exiled with it" (Murktide Regent, Soulflayer)
-	// waits on ADR 0100 sub-PR 2's readers.
+	// reads the cards "exiled with it" reads them off the permanent
+	// (ADR 0100 sub-PR 2): CountersPerDelved for "enters with a counter
+	// for each … card exiled with it" (Murktide Regent), and
+	// game.Card.Delved resolved through Game.DelvedCardsForEffect for a
+	// static or a trigger (Soulflayer, Ethereal Forager).
 	Delve bool
+
+	// SpellsYouCastHaveDelve is a permanent's "Spells you cast have
+	// delve" (Teval, Arbiter of Virtue; ADR 0100 sub-PR 2). A static
+	// ability of the permanent (CR 604.1), read off the battlefield as a
+	// spell is priced, validated and paid for, so it gives delve to
+	// every spell its controller casts while it is there, and to none
+	// once it has gone or lost its abilities:
+	//
+	//	SpellsYouCastHaveDelve: true, // Teval, Arbiter of Virtue
+	SpellsYouCastHaveDelve bool
 
 	// CostModifiers is the S28 "spells cost {N} more / {N} less to
 	// cast" static (CR 601.2f) the card contributes while it is on

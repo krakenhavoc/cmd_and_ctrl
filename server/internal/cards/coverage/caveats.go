@@ -152,11 +152,12 @@ var mechanics = []Mechanic{
 	},
 	{
 		// ADR 0100 sub-PR 1: CR 702.66, a way of paying rather than a
-		// cost, declared with one bit.
+		// cost, declared with one bit. Sub-PR 2 added the second bit, a
+		// permanent's "Spells you cast have delve" (Teval).
 		Name:       "delve",
 		Phrases:    []string{"delve"},
-		Implements: func(s effects.Spec) bool { return s.Delve },
-		Evidence:   "Spec.Delve is set",
+		Implements: func(s effects.Spec) bool { return s.Delve || s.SpellsYouCastHaveDelve },
+		Evidence:   "Spec.Delve or Spec.SpellsYouCastHaveDelve is set",
 		Confidence: Exact,
 		Adopt:      "Delve: true on the Spec — see ADR 0100",
 	},
