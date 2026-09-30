@@ -232,6 +232,52 @@ func (g *Game) noteStepBegunLocked() {
 	g.Turn.StepOrdinal = t.StepsBegun[g.Turn.Step]
 }
 
+// derivePrePlanOrdinalsLocked fills in the ordinals for a restore
+// point written before the turn plan existed (ADR 0059 Decision 8,
+// #753). Such a file carries no Turn.PhaseOrdinal or StepOrdinal and
+// no StepsBegun, PhasesBegun or PhaseStarted, so without this the
+// counts start again from zero at the restored step: a Relentless
+// Assault cast in the restored second main phase adds a combat that
+// then reads as the FIRST combat of the turn (PhaseOrdinal 1), and
+// Karlach would add yet another.
+//
+// No phase or step can have been added in a turn written before the
+// plan, so the turn so far is the template up to the cursor, and the
+// counts are what noteStepBegunLocked would have recorded walking it.
+// Two steps of the template are left out, both the way a live game
+// leaves them out: #717's first-strike damage step before the cursor
+// (it exists only when a combatant had first or double strike, which
+// the file cannot say; usually it did not), and, while the mulligan
+// window is open, the untap and upkeep steps it holds (they have not
+// begun).
+//
+// Caller must hold g.mu in write mode.
+func (g *Game) derivePrePlanOrdinalsLocked() {
+	if g.MulligansOpen && (g.Turn.Step == StepUntap || g.Turn.Step == StepUpkeep) {
+		return
+	}
+	idx := indexOfStep(g.Turn.Step)
+	if idx < 0 {
+		return
+	}
+	t := &g.TurnTally
+	t.StepsBegun = map[Step]int{}
+	t.PhasesBegun = map[PhaseKind]int{}
+	t.PhaseStarted = 0
+	for i, step := range turnSequence[:idx+1] {
+		if step == StepFirstStrikeDamage && i != idx {
+			continue
+		}
+		if id := templatePhaseID(step); id != t.PhaseStarted {
+			t.PhasesBegun[PhaseKindOf(PhaseOf(step))]++
+			t.PhaseStarted = id
+		}
+		t.StepsBegun[step]++
+	}
+	g.Turn.PhaseOrdinal = t.PhasesBegun[PhaseKindOf(PhaseOf(g.Turn.Step))]
+	g.Turn.StepOrdinal = t.StepsBegun[g.Turn.Step]
+}
+
 // AnchorKind names which phase an added phase goes after.
 type AnchorKind int
 
