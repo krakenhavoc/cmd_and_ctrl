@@ -273,6 +273,7 @@ var cardFields = plan(
 	"BattleX", carried, "",
 	"BattleY", carried, "",
 	"Counters", carried, "",
+	"CounterStampedAt", carried, "",
 	"IsCommander", carried, "",
 	"AttackingTarget", carried, "",
 	"BlockingTarget", carried, "",

@@ -491,6 +491,14 @@ func forEachAbilityToken(c *Card, fn func(token string) bool) {
 			return
 		}
 	}
+	// CR 122.1b / ADR 0101 Decision 4: a keyword counter on a card in
+	// another zone gives it that keyword. On the battlefield the layer
+	// pass has already put it in `effective` above.
+	for _, a := range keywordCounterTokens(c) {
+		if !fn(a) {
+			return
+		}
+	}
 	if CatalogPrintedKeywords == nil {
 		return
 	}
