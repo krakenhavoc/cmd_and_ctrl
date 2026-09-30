@@ -34,8 +34,13 @@ type MyGame struct {
 	Name  string    `json:"name"`
 	State string    `json:"state"` // lobby | active | ended
 	// Seat is the caller's seat index at this table.
-	Seat       int      `json:"seat"`
-	WinnerSeat *int     `json:"winner_seat"`
+	Seat       int  `json:"seat"`
+	WinnerSeat *int `json:"winner_seat"`
+	// Outcome is "win" or "draw" for an ended game with a recorded
+	// result, and absent when unknown (not ended, closed by an admin,
+	// or ended before games.outcome existed). It is how a draw is told
+	// from an abandoned table, which winner_seat cannot.
+	Outcome    string   `json:"outcome,omitempty"`
 	CreatedAt  int64    `json:"created_at"`
 	StartedAt  *int64   `json:"started_at"`
 	EndedAt    *int64   `json:"ended_at"`
@@ -141,6 +146,7 @@ func (l *Lobby) MyGames(userID uuid.UUID) ([]MyGame, error) {
 			State:      g.State,
 			Seat:       r.Seat,
 			WinnerSeat: g.WinnerSeat,
+			Outcome:    g.Outcome,
 			CreatedAt:  g.CreatedAt.UnixMilli(),
 			StartedAt:  millisPtr(g.StartedAt),
 			EndedAt:    millisPtr(g.EndedAt),
@@ -158,6 +164,7 @@ func (l *Lobby) MyGames(userID uuid.UUID) ([]MyGame, error) {
 			mg.EndedAt = millisPtr(entry.endedAt)
 			mg.ArchivedAt = millisPtr(entry.meta.ArchivedAt)
 			mg.WinnerSeat = entry.winnerSeat
+			mg.Outcome = entry.outcome
 			if !entry.meta.Archived() {
 				mg.Rejoin = rejoinPath(g.ID)
 			}
