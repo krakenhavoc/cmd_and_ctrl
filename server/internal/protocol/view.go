@@ -276,6 +276,15 @@ type PendingChoiceView struct {
 	// every other kind. Added by #780.
 	ColorPurpose string `json:"color_purpose,omitempty"`
 
+	// ControlPurpose populates the "entry_controller" kind (ADR 0102):
+	// what giving the entering permanent away does to the seat that
+	// receives it — "harm" (Captive Audience) or "benefit" (Pendant of
+	// Prosperity), game.ControlPurpose. Public for ColorPurpose's
+	// reason: it is a reading of the card's own printed text. The
+	// seats themselves ride PickOptions, each with its Player set.
+	// Absent on every other kind.
+	ControlPurpose string `json:"control_purpose,omitempty"`
+
 	// TypeOptions populates the S26 "choose_creature_type" kind: every
 	// creature type the engine knows (CR 205.3m), for the picker to
 	// filter. Materialised here from game.AllCreatureTypes rather than
@@ -5842,7 +5851,11 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 		// the client renders faces rather than quoting names into a
 		// sentence, and they go through the same per-viewer redaction
 		// as every other Options list in filterPendingChoices.
-		if c.Kind == game.PendingChoiceOptionPick && len(c.PickOptions) > 0 {
+		//
+		// ADR 0102's entry_controller rides the same projection: its
+		// options are seats (Player set), and its purpose goes beside
+		// them.
+		if (c.Kind == game.PendingChoiceOptionPick || c.Kind == game.PendingChoiceEntryController) && len(c.PickOptions) > 0 {
 			v.PickOptions = make([]PickOptionView, 0, len(c.PickOptions))
 			for _, opt := range c.PickOptions {
 				out := PickOptionView{Label: opt.Label, LifeCost: opt.LifeCost}
@@ -5856,6 +5869,9 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 				}
 				v.PickOptions = append(v.PickOptions, out)
 			}
+		}
+		if c.Kind == game.PendingChoiceEntryController {
+			v.ControlPurpose = string(c.ControlPurpose)
 		}
 		// PendingChoiceModePick — #764, CR 603.3c: a modal trigger's
 		// bullets, chosen as the ability is put on the stack. Public

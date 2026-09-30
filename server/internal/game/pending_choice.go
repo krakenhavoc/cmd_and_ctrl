@@ -351,6 +351,12 @@ type PendingChoice struct {
 	// `color_purpose`; see ColorPurpose.
 	ColorPurpose ColorPurpose
 
+	// ControlPurpose is what giving the entering permanent away does to
+	// its recipient, for a PendingChoiceEntryController (ADR 0102).
+	// Unused for every other kind. Carried for ColorPurpose's reason —
+	// only the card knows — and projected as `control_purpose`.
+	ControlPurpose ControlPurpose
+
 	// ManaRestrictions are the spend restrictions the token minted
 	// by this PendingChoiceMana will carry — Delighted Halfling's
 	// "spend this mana only to cast a legendary spell". Empty for
@@ -2481,6 +2487,7 @@ func (g *Game) finishSettledReplacementLocked(ev, out *ReplacementEvent) error {
 		// battlefield (CR 111.1), so one whose entry was replaced away
 		// simply ceases to be; the rest of its batch still lands,
 		// through the entry tail.
+		g.restoreEntryControllerLocked(ev)
 		g.dropEnteringTokenLocked(ev.CardID)
 		if err := g.runRouteTailLocked(ev.zoneRoute); err != nil {
 			return err
@@ -4060,13 +4067,22 @@ func setCardSetCandidates(c *PendingChoice, live []uuid.UUID) {
 func (g *Game) pruneDepartedSeatOptionsLocked() {
 	for i := len(g.PendingChoices) - 1; i >= 0; i-- {
 		c := g.PendingChoices[i]
-		if c == nil || c.Kind != PendingChoiceOptionPick || len(c.PickOptions) == 0 {
+		if c == nil || (c.Kind != PendingChoiceOptionPick && c.Kind != PendingChoiceEntryController) || len(c.PickOptions) == 0 {
 			continue
 		}
 		opts, ok := keepSeats(c.PickOptions, func(id uuid.UUID) bool {
 			p := g.playerByIDLocked(id)
 			return p != nil && !p.Eliminated
 		})
+		if !ok && c.Kind == PendingChoiceEntryController {
+			// ADR 0102: every opponent the permanent could have been
+			// given to has left. The entry still happens — under its
+			// would-be controller, the no-opponent rule reached late —
+			// so the paused event is resumed rather than dropped.
+			g.removeChoiceAtLocked(i)
+			g.settleEntryControllerWithoutChoiceLocked(c)
+			continue
+		}
 		if !ok {
 			g.EmitEvent(Event{
 				Kind:   EventPendingChoiceDropped,

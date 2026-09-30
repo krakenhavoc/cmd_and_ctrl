@@ -355,3 +355,35 @@ The following already work today, and this ADR does not change them:
 6. **The bot gives a harmful permanent to the opponent with the highest `SeatEval.Strength`,** and a helpful one to the opponent with the lowest.
 7. **The choice gets its own narrated log line:** "Alice chose Bob to control Captive Audience."
 8. **Xantcha's other two blockers get registry seam rows and issues:** "any player may activate this ability" and "can't attack its owner or planeswalkers its owner controls". Xantcha is listed in both `Waiting` lists.
+
+---
+
+## Amendment (2026-09-30, #1759): what PR 1 built, and where it differs
+
+PR 1 is the engine half. Three details differ from the text above, all
+in the direction of reusing what exists:
+
+- **The seats ride `PickOptions`, not a new `EntryControllerOptions`
+  field.** An `option_pick` over players already carries seats as
+  `ChoiceOption{Label, Player}`, and that list is already snapshotted,
+  cloned for undo, projected to the wire as `pick_options` and pruned
+  when a seat leaves (`pruneDepartedSeatOptionsLocked`, which now visits
+  this kind too). The only new `PendingChoice` field is
+  `ControlPurpose`, recorded in the snapshot shape as an additive field.
+  The answer is `{option_index}`, the same payload `option_pick` takes.
+- **An offered seat that leaves the game while the prompt is open** is
+  pruned. If every offered seat has gone, the paused entry is resumed
+  with no control change (the no-opponent rule, reached late) rather
+  than dropped.
+- **Decision 6's copy-aware gather is general.** Once a Clone has chosen
+  what to copy, the self-replacement gather also collects the COPIED
+  card's entry replacements (CR 614.12), in their own ID stride so a
+  copied slot is never mistaken for the Clone's own applied selector. A
+  copied copy selector is not collected. This is what makes a Clone
+  copying Abby enter under an opponent; it equally makes a Clone copying
+  any creature with its own "enters tapped" or "enters with" clause
+  honour it.
+
+The log line is `choose_controller` ("P1 chose P2 to control Captive
+Audience"), from the new `EventEntryControllerChosen`. It is emitted
+however the choice was reached, a forced one included.

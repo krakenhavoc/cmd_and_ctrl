@@ -416,6 +416,9 @@ func (g *Game) abandonZoneRouteLocked(frame *replacementResumeFrame) error {
 		// reading "the cards milled this way" still has to be told.
 		return g.abandonMillLocked(ev)
 	case RepEventMove, RepEventDiscard:
+		// ADR 0102: a card an entry-controller effect re-stamped goes
+		// back to what it carried. A no-op for every other move.
+		g.restoreEntryControllerLocked(ev)
 		// #762: an abandoned ENTRY of a CREATED TOKEN leaves the token
 		// staged and unentered. It never reached the battlefield, so it
 		// never existed (CR 111.1). A no-op for every other entry.

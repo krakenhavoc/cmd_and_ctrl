@@ -90,6 +90,7 @@ const LOG_TONE: Record<LogKind, string> = {
   choose_color: "tone-quiet",
   choose_type: "tone-quiet",
   choose_player: "tone-quiet",
+  choose_controller: "tone-quiet",
   choose_name: "tone-quiet",
   choose_option: "tone-quiet",
   // #1214: a resolution-time pick over cards or permanents. Quiet for

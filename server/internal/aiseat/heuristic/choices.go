@@ -45,6 +45,7 @@ const (
 	choiceEntrySacrifice      = "entry_sacrifice"
 	choiceColor               = "choose_color"
 	choiceCoinCall            = "coin_call"
+	choiceEntryController     = "entry_controller"
 )
 
 // decideChoice takes the highest-valued answer. Ties go to the lowest
@@ -98,6 +99,8 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 	}
 
 	switch kind {
+	case choiceEntryController:
+		return st.entryControllerValue(ch, cp.OptionIndex)
 	case choiceDamageAssignment:
 		// The enumerator offers exactly one canonical split: the
 		// prefix-lethal one a player makes almost every time.
@@ -629,4 +632,33 @@ func (st *state) seatHand() []protocol.CardView {
 		return nil
 	}
 	return st.seat.Hand.Cards
+}
+
+// entryControllerValue scores one seat of an entry_controller prompt —
+// "this enters under the control of an opponent of your choice"
+// (ADR 0102). The prompt's control_purpose says which way round the
+// gift cuts (owner decision 6, 2026-09-30):
+//
+//   - "harm" (Captive Audience, Xantcha): the STRONGEST opponent, by
+//     SeatEval.Strength. Not Threat, which ranks a seat by how close it
+//     is to dying — "your life total becomes 4" costs a seat at 5 life
+//     almost nothing, and punishes the leader most.
+//   - "benefit" (Pendant of Prosperity): the WEAKEST opponent, so the
+//     help goes where it threatens the bot least.
+//
+// A seat the view has no evaluation for scores as neither, so the
+// enumerator's first offered seat wins the tie.
+func (st *state) entryControllerValue(ch *protocol.PendingChoiceView, index *int) (float64, string) {
+	if ch == nil || index == nil || *index < 0 || *index >= len(ch.PickOptions) {
+		return 0, "entry controller: first offered opponent"
+	}
+	opt := ch.PickOptions[*index]
+	e := st.evals[opt.Player]
+	if e == nil {
+		return 0, "entry controller: " + opt.Label
+	}
+	if ch.ControlPurpose == "benefit" {
+		return -e.Strength, "give it to the weakest opponent (" + opt.Label + ")"
+	}
+	return e.Strength, "give it to the strongest opponent (" + opt.Label + ")"
 }
