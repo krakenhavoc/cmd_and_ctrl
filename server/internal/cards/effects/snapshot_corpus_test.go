@@ -213,7 +213,31 @@ func corpusBoards() []corpusBoard {
 		// v7, added by ADR 0100 sub-PR 1 as a new file: a delved spell
 		// on the stack — PaidCost.Delved, the objects in exile, on disk.
 		{"delved_spell_on_stack", corpusDelvedSpellOnStack},
+		// v7, added by ADR 0100 sub-PR 3 as a new file: an either/or
+		// spell on the stack — PaidCost.CostBranch and
+		// PaidCost.Discarded on disk.
+		{"either_or_spell_on_stack", corpusEitherOrSpellOnStack},
 	}
+}
+
+// corpusEitherOrSpellOnStack is a Demand Answers on the stack that paid
+// its discard branch (ADR 0100 §2): the record names the branch and the
+// discarded card, which a restore has to carry for "the discarded card"
+// (Grab the Prize) and "if the modified creature was sacrificed"
+// (Lethal Throwdown).
+func corpusEitherOrSpellOnStack(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	pitch := handCard(me, "Pitch", "Instant")
+	id, err := castWithTapParams(t, g, "Demand Answers", "Instant", "{1}{R}", demandAnswersOracle,
+		game.CastSpellParams{CostBranch: branch(1), DiscardIDs: []uuid.UUID{pitch}})
+	if err != nil {
+		t.Fatalf("setup: CastSpell: %v", err)
+	}
+	if it := g.StackMeta[id]; it == nil || it.Paid.CostBranch != 2 || len(it.Paid.Discarded) != 1 {
+		t.Fatal("setup: want Demand Answers on the stack with its discard branch recorded")
+	}
+	return g
 }
 
 // corpusDelvedSpellOnStack is a Treasure Cruise on the stack that

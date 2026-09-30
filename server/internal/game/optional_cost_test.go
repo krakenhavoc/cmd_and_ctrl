@@ -151,17 +151,17 @@ func TestKickerAddsItsManaToTheCost(t *testing.T) {
 		{Optional: true, Key: KickerKey, ManaCost: "{2}{W}", Label: "Kicker {2}{W}"},
 	}
 
-	unkicked, err := AddOptionalCostMana(base, costs, nil)
+	unkicked, err := AdditionalCostMana(base, nil, costs, nil)
 	if err != nil {
-		t.Fatalf("AddOptionalCostMana(nil): %v", err)
+		t.Fatalf("AdditionalCostMana(nil): %v", err)
 	}
 	if unkicked.Generic != base.Generic || len(unkicked.Required) != len(base.Required) {
 		t.Errorf("declining the kicker changed the cost: %+v", unkicked)
 	}
 
-	kicked, err := AddOptionalCostMana(base, costs, []int{0})
+	kicked, err := AdditionalCostMana(base, nil, costs, []int{0})
 	if err != nil {
-		t.Fatalf("AddOptionalCostMana([0]): %v", err)
+		t.Fatalf("AdditionalCostMana([0]): %v", err)
 	}
 	if kicked.Generic != base.Generic+2 {
 		t.Errorf("kicked generic = %d, want %d", kicked.Generic, base.Generic+2)
@@ -172,9 +172,9 @@ func TestKickerAddsItsManaToTheCost(t *testing.T) {
 
 	// Multikicker paid three times charges three times.
 	multi := []AdditionalCost{{Optional: true, Key: MultikickerKey, ManaCost: "{1}", Repeat: 9}}
-	thrice, err := AddOptionalCostMana(base, multi, []int{0, 0, 0})
+	thrice, err := AdditionalCostMana(base, nil, multi, []int{0, 0, 0})
 	if err != nil {
-		t.Fatalf("AddOptionalCostMana([0,0,0]): %v", err)
+		t.Fatalf("AdditionalCostMana([0,0,0]): %v", err)
 	}
 	if thrice.Generic != base.Generic+3 {
 		t.Errorf("thrice-kicked generic = %d, want %d", thrice.Generic, base.Generic+3)

@@ -1609,6 +1609,22 @@ export interface AdditionalCostView {
   // spell's own text uses.
   demands_x?: boolean;
   label?: string;
+  // ADR 0100 §2: an either/or additional cost — "sacrifice an artifact
+  // or discard a card". Each branch is one of these views, with its
+  // own `key` and whether the viewer could pay it right now
+  // (`payable`; absent means it cannot be taken). The chosen branch's
+  // index rides cast_spell as `cost_branch`, and its cards ride the
+  // usual lists. A cost with branches carries no components of its own.
+  branches?: AdditionalCostView[];
+  // Branches only: the branch's identity, its mana ("{5}", joins the
+  // total the preview prices once `cost_branch` is sent), its fixed
+  // life, its blight N and the creatures that could take the counters.
+  key?: string;
+  mana_cost?: string;
+  pay_life?: number;
+  blight?: number;
+  blight_options?: LegalTargetsView;
+  payable?: boolean;
 }
 
 // OptionalCostView is one "you may pay an additional cost as you
