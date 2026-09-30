@@ -3478,7 +3478,13 @@ Set `ControllerTurnOnly: true` when the printed text says "at the
 beginning of **your** next <step>" (Mana Drain): a matching step on
 another player's turn then leaves the trigger queued. Leave it unset
 for "the next turn's upkeep" (Arcane Denial), which the very next
-upkeep at the table satisfies.
+upkeep at the table satisfies. Set `TurnOf: <player>` for "at the
+beginning of **that player's** next <step>" (The Eternal Wanderer's +1
+returns the exiled card on its owner's end step, #1538): the trigger
+waits for a step of that one player's turn, and is dropped if they
+leave the game. It is not a stand-in for `Controller` — the delayed
+ability stays controlled by whoever's effect made it (CR 603.7d), so
+never hand the owner the trigger just to borrow `ControllerTurnOnly`.
 The instruction lives on the `Game`, not on a card — the spell that
 created it is usually in a graveyard by the time it fires — and it goes
 on the stack when the step begins, so every player gets a response
