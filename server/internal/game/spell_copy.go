@@ -506,11 +506,26 @@ func (g *Game) resolvePermanentSpellCopyLocked(top Card, item *StackItem) error 
 		tmpl.Provenance.OptionalCosts = append([]int(nil), item.Paid.OptionalCosts...)
 	}
 	tmpl.Provenance.GiftOpponent = item.Paid.GiftOpponent
+	// A copy of an AURA spell enters attached to the object or player
+	// it targets (CR 303.4f, CR 707.10): the same attach a resolving
+	// Aura card gets in attachResolvedAuraLocked. The token is created
+	// with no host, so without this the CR 704.5m check would put it
+	// straight into the graveyard and a storm or Fork on an Aura would
+	// do nothing. Done in the creation's continuation — before the
+	// state-based actions run, and after a pause on a CR 616 prompt —
+	// and from a copy of the targets, so nothing captured is the live
+	// stack item.
+	targets := append([]TargetRef(nil), item.Targets...)
 	return g.CreateTokensThenForEffect(TokenCreation{
 		Controller: item.Controller,
 		Groups:     []TokenGroup{{Template: tmpl, Count: 1}},
 		Source:     item.SourceCardID,
-	}, nil)
+	}, func(g *Game, created []uuid.UUID) error {
+		for _, id := range created {
+			g.attachResolvedAuraLocked(id, &StackItem{Targets: targets})
+		}
+		return nil
+	})
 }
 
 // tokenCopyOfSpell builds the token template a resolving copy of a

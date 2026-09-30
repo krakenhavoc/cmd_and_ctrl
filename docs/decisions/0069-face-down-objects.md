@@ -165,6 +165,8 @@ Three consequences worth stating:
   contract: the empty viewer ID knows every card). A face-down object is
   hidden from *players*, and the sandbox's spectator view is a debugging
   surface, not a seat. Stated because #656 asked; unchanged from develop.
+  **Superseded for spectators by the 2026-09-30 amendment below**: the
+  debug surface is the admin's alone.
 
 ### 3. Characteristics: the CR 708.2 body is the printed characteristic
 
@@ -494,3 +496,37 @@ field.
 second visibility channel next to `KnownBy`, and the wire projection reads
 `KnownBy`. Two sources of truth for "who can see this" is the bug class this
 ADR exists to close, not one to add.
+
+## Amendment 2026-09-30: spectators see public information only (#1588)
+
+The owner decided on 2026-09-30 that **a spectator learns only what every seat
+publicly knows**. Decision 2 above (and its bullet on spectators and admins)
+treated the spectator view as a debugging surface that knows every card, which
+meant a spectator could read every face-down card: a foretold card, a hideaway
+card, Necropotence's exile, a Gonti card and a morph. That was a leak in a
+live game, not a debug aid.
+
+The rule now:
+
+- **`FilterViewFor` has three kinds of viewer, not two.** A seat (its player UUID
+  string), the **admin** (the empty string, unchanged: every card is known, the
+  omniscient debug view) and a **spectator** (`protocol.SpectatorViewerID`, a
+  sentinel that is not a UUID, so no seat can collide with it and no `KnownBy`
+  set can contain it).
+- **A spectator knows a card only if every seat knows it.** `KnownBy` is still the
+  single source of truth; the spectator's knower test is "every seat in the view
+  is a knower". Public-zone cards are marked known to every seat as they arrive,
+  so they are shown in full; a face-down card (known to one seat or none), a card
+  revealed to a single seat and every hand card read exactly as they do to a
+  non-knower seat: the redacted allowlist, `face_down` and `face_down_kind`
+  public, `face_visible` false. A hand or library card is shown only if every seat
+  knows it, which today means a whole-table reveal.
+- **The WebSocket hub picks the viewer by session, not by seat.** A seatless
+  connection that is not the admin is a spectator; the admin without `?player=`
+  keeps `""`. The replay download for a non-admin non-seat is filtered as a
+  spectator. The admin's replay and pinned bug-report artifacts stay verbatim and
+  admin-only.
+- **Nothing else changes for the spectator.** Move lists, cast stamps, ability-row
+  offers and search / choose-cards prompts were already seat-only. Pending-choice
+  options and log entries go through the same knower predicate, so a spectator
+  gets only what every seat knows.

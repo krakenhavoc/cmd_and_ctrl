@@ -1,6 +1,8 @@
 package effects
 
 import (
+	"strings"
+
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -90,14 +92,28 @@ func colorsAmongPermanentsControlledBy(g *game.Game, source *game.Card) int {
 	return len(seen)
 }
 
-// removeLegendaryFromTypeLine strips a leading "Legendary" supertype
-// from a token template's type line — Helm of the Host's "except the
-// token isn't legendary". A type line that never carried it is
-// returned unchanged.
+// removeLegendaryFromTypeLine strips the "Legendary" supertype from a
+// token template's type line — Helm of the Host's and Miirym's "except
+// the token isn't legendary". A token template's line is "Token
+// Legendary Creature — Dragon" (TokenCopyTemplate prepends the Token
+// supertype), so the word is removed wherever it stands among the
+// supertypes, not only at the front. A type line that never carried
+// it is returned unchanged.
 func removeLegendaryFromTypeLine(tl string) string {
-	const prefix = "Legendary "
-	if len(tl) > len(prefix) && tl[:len(prefix)] == prefix {
-		return tl[len(prefix):]
+	const word = "Legendary "
+	for i := 0; i+len(word) <= len(tl); i++ {
+		if tl[i:i+len(word)] != word {
+			continue
+		}
+		// Whole word: at the start or after a space, and before the
+		// dash that ends the supertypes and card types.
+		if i > 0 && tl[i-1] != ' ' {
+			continue
+		}
+		if dash := strings.Index(tl, "—"); dash >= 0 && dash < i {
+			continue
+		}
+		return tl[:i] + tl[i+len(word):]
 	}
 	return tl
 }

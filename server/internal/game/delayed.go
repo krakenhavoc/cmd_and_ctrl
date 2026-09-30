@@ -117,6 +117,20 @@ type DelayedTrigger struct {
 	// skipping the extra turn that is gained, you do not lose the game."
 	OnExtraTurn int
 
+	// TurnOf restricts the trigger to a step of ONE NAMED PLAYER's
+	// turn: "at the beginning of THAT PLAYER's next end step" (The
+	// Eternal Wanderer's +1 returns an opponent's card on the
+	// opponent's turn, #1538). It is the named-player sibling of
+	// ControllerTurnOnly and is checked beside it: both must hold
+	// when both are set. Unlike making that player the trigger's
+	// Controller, it leaves CR 603.7d alone: the delayed ability is
+	// still controlled by whoever's effect created it, so they get the
+	// stack item and their APNAP slot. uuid.Nil means no restriction.
+	// A step of another player's turn leaves the trigger queued; if the
+	// named player has left the game their turn never comes and the
+	// trigger is dropped.
+	TurnOf uuid.UUID
+
 	// CreatedSeq identifies the turn the trigger was scheduled on.
 	// Not used for firing (see the "next is free" note above) —
 	// it's there for the wire view and for debugging a queue that
@@ -298,11 +312,19 @@ func (g *Game) fireDelayedTriggersLocked(step Step) {
 		return
 	}
 	var keep, fire []*DelayedTrigger
+	dropped := false
 	for _, dt := range g.DelayedTriggers {
 		if dt == nil {
 			continue
 		}
+		if dt.TurnOf != uuid.Nil && !g.playerStillInLocked(dt.TurnOf) {
+			// Their turn will never come (CR 800.4a), and what the
+			// trigger would act on left with them.
+			dropped = true
+			continue
+		}
 		if dt.At == step && (!dt.ControllerTurnOnly || g.activePlayerIDLocked() == dt.Controller) &&
+			(dt.TurnOf == uuid.Nil || g.activePlayerIDLocked() == dt.TurnOf) &&
 			(dt.OnExtraTurn == 0 || dt.OnExtraTurn == g.Turn.ExtraRef) {
 			fire = append(fire, dt)
 			if dt.repeatsAtStep() {
@@ -316,7 +338,7 @@ func (g *Game) fireDelayedTriggersLocked(step Step) {
 		}
 		keep = append(keep, dt)
 	}
-	if len(fire) == 0 {
+	if len(fire) == 0 && !dropped {
 		return
 	}
 	g.DelayedTriggers = keep
@@ -375,6 +397,7 @@ func cloneDelayedTrigger(dt *DelayedTrigger) *DelayedTrigger {
 		At:                 dt.At,
 		ControllerTurnOnly: dt.ControllerTurnOnly,
 		OnExtraTurn:        dt.OnExtraTurn,
+		TurnOf:             dt.TurnOf,
 		CreatedSeq:         dt.CreatedSeq,
 		Body:               dt.Body,
 		Params:             cloneEffectParams(dt.Params),
@@ -397,6 +420,17 @@ func cloneDelayedTrigger(dt *DelayedTrigger) *DelayedTrigger {
 
 // activePlayerIDLocked is the ID of the seat whose turn it is, or
 // uuid.Nil before the game has an active seat. Caller must hold g.mu.
+// playerStillInLocked reports whether id is a seated player who has not
+// left the game. Caller must hold g.mu.
+func (g *Game) playerStillInLocked(id uuid.UUID) bool {
+	for _, p := range g.Seats {
+		if p != nil && p.ID == id {
+			return !p.Eliminated
+		}
+	}
+	return false
+}
+
 func (g *Game) activePlayerIDLocked() uuid.UUID {
 	if g.Turn.ActiveSeat < 0 || g.Turn.ActiveSeat >= len(g.Seats) || g.Seats[g.Turn.ActiveSeat] == nil {
 		return uuid.Nil

@@ -23,13 +23,13 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //   - The draw happens ONCE, for the whole table, after the table has
 //     discarded — which is the printed card. It used to arrive one
 //     card per answer, and that was a declared cosmetic simplification.
-//   - It counts what CR 701.8a counts. A madness card exiled instead
+//   - It counts what CR 701.9a counts. A madness card exiled instead
 //     of binned (CR 702.35a) was still discarded and still buys a
 //     card; a leg the CR 614 window cancelled did not and does not.
 //     The old count was "how many prompts had a Then", which is
 //     neither.
 //   - The empty-hand skip is the engine's rule, not this card's. An
-//     opponent with nothing in hand is never asked (CR 701.8a discards
+//     opponent with nothing in hand is never asked (CR 701.9a discards
 //     as many as you can), gets no entry in the run's answer, and buys
 //     the caster nothing — which used to need a guard here, written
 //     precisely because the prompt's own Then fires for an empty hand

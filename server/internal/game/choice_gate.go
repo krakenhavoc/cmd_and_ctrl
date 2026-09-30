@@ -231,6 +231,11 @@ var choiceGateDecisions = map[PendingChoiceKind]bool{
 	// suspended on the answer, so a table that could walk past the
 	// question would be answering it by entering.
 	PendingChoiceEntryRevealFromHand: true,
+	// ADR 0098: "if this would enter, you may discard a land card
+	// instead" and "sacrifice a Forest instead". The same reason: the
+	// entry is suspended on the answer.
+	PendingChoiceEntryDiscardFromHand: true,
+	PendingChoiceEntrySacrifice:       true,
 }
 
 // ChoiceBlocksTable is THE question "does an unanswered prompt of this

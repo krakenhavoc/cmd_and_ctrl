@@ -399,8 +399,8 @@ func TestEveryRevealLandIsRegistered(t *testing.T) {
 		if spec.Name != name {
 			t.Errorf("%s: registered under the name %q", name, spec.Name)
 		}
-		if len(spec.Replacements) != 1 || spec.Replacements[0].EntryHandReveal == nil {
-			t.Errorf("%s: no EntryHandReveal clause", name)
+		if len(spec.Replacements) != 1 || spec.Replacements[0].EntryCardChoice == nil {
+			t.Errorf("%s: no EntryCardChoice clause", name)
 		}
 		if spec.Completeness != CompletenessFull || len(spec.Caveats) != 0 {
 			t.Errorf("%s: completeness %q with %d caveats", name, spec.Completeness, len(spec.Caveats))

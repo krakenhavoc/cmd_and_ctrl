@@ -137,7 +137,7 @@ func (r *promptRun) answer() []SeatCards {
 // belongs to, and reports whether it went up at all — a seat with
 // nothing the instruction can take is skipped rather than handed an
 // empty question (CR 701.21a's "if you can" for a sacrifice, CR
-// 701.8a's "as many as you can" for a discard). It is the only thing
+// 701.9a's "as many as you can" for a discard). It is the only thing
 // the two verbs do differently at queue time.
 //
 // It reports how many prompts it queued, which is what the

@@ -6456,6 +6456,29 @@ func viewOfZone(z *game.Zone) ZoneView {
 	}
 }
 
+// SpectatorViewerID is the viewerID of a spectator: a connection with
+// no seat that is not the admin (#1588, ADR 0069's 2026-09-30
+// amendment). It is not a UUID, so no seat's ID can equal it and no
+// card's knower set can contain it. The empty viewerID stays the
+// admin's omniscient debug view.
+const SpectatorViewerID = "spectator"
+
+// knownToEverySeat is the spectator's whole notion of "public": every
+// seat in the game knows the card. A card in a public zone is marked
+// known to every seat as it arrives; a face-down, foretold, hidden or
+// privately revealed card is not. A game with no seats knows nothing.
+func knownToEverySeat(c CardView, seatIDs []string) bool {
+	if len(seatIDs) == 0 {
+		return false
+	}
+	for _, id := range seatIDs {
+		if !c.knowers[id] {
+			return false
+		}
+	}
+	return true
+}
+
 // FilterViewFor returns a copy of v with zones hidden from the given
 // viewer zeroed out. The input is not mutated; only the copy's seat
 // entries for non-viewer players get new (empty) card slices.
@@ -6470,17 +6493,31 @@ func viewOfZone(z *game.Zone) ZoneView {
 //   - Shared zones (battlefield, stack, exile, phased_out):
 //     unchanged but for the per-card redaction every zone gets.
 //
-// viewerID is the player UUID string; pass the empty string to get a
-// "spectator" view where every opponent hand and library is hidden
-// (i.e. no seat is treated as "own"). An observer without a claimed
-// seat ends up here.
+// viewerID is the player UUID string. Two other values are not seats:
+//   - "" is the ADMIN's omniscient debug view: every card is known, but
+//     every hand and library is still hidden wholesale and no seat's
+//     move list or cast stamps are promoted.
+//   - SpectatorViewerID is a spectator (#1588, ADR 0069's 2026-09-30
+//     amendment): public information only. A card is known to a
+//     spectator only when EVERY seat knows it, so a face-down, foretold
+//     or hidden card, or one revealed to a single seat, reads as it
+//     does to a non-knower seat, and every hand stays hidden.
 func FilterViewFor(v GameView, viewerID string) GameView {
 	// S13.5: build a per-card "is the viewer a knower" closure that
-	// every zone projection consults. Empty viewerID = admin /
-	// spectator → knows everything.
+	// every zone projection consults. Empty viewerID = admin → knows
+	// everything. SpectatorViewerID knows what every seat knows.
+	seatIDs := make([]string, 0, len(v.Seats))
+	for _, p := range v.Seats {
+		if p.ID != "" {
+			seatIDs = append(seatIDs, p.ID)
+		}
+	}
 	isKnower := func(c CardView) bool {
-		if viewerID == "" {
+		switch viewerID {
+		case "":
 			return true
+		case SpectatorViewerID:
+			return knownToEverySeat(c, seatIDs)
 		}
 		return c.knowers[viewerID]
 	}
@@ -6686,8 +6723,12 @@ func filterPendingChoices(src []PendingChoiceView, isKnower func(CardView) bool,
 		// itself information about it. Every seat sees that the
 		// prompt is open and whose it is; what was actually revealed
 		// reaches them afterwards as an EventRevealCards run.
+		// ADR 0098's entry_discard_from_hand (Mox Diamond) is the same
+		// pool, the same rule. entry_sacrifice is NOT here: its
+		// candidates are permanents the whole table can see.
 		if (c.Kind == string(game.PendingChoiceChooseCards) ||
-			c.Kind == string(game.PendingChoiceEntryRevealFromHand)) && c.Chooser != viewerID {
+			c.Kind == string(game.PendingChoiceEntryRevealFromHand) ||
+			c.Kind == string(game.PendingChoiceEntryDiscardFromHand)) && c.Chooser != viewerID {
 			out[i].Options = nil
 			out[i].ChooseMin = 0
 			out[i].ChooseMax = 0

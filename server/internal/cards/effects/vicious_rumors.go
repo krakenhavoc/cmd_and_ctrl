@@ -17,7 +17,7 @@ import (
 // that was printed as filler. Roadmap batch 42 (#449), "no new
 // machinery".
 //
-// The discard is a real CR 701.8a choice — each opponent picks, in
+// The discard is a real CR 701.9a choice — each opponent picks, in
 // their own prompt — rather than the "at random" primitive. That
 // distinction is #651's rule and it is load-bearing here: an opponent
 // choosing which card to pitch is a meaningfully different card from
@@ -33,7 +33,7 @@ import (
 // would happen BEFORE they chose, and the card they milled would be a
 // card they could no longer discard. DiscardPrompt.Then also fires
 // immediately for an opponent with an empty hand, which is right:
-// CR 701.8a discards as many as you can (none), and "then mills a
+// CR 701.9a discards as many as you can (none), and "then mills a
 // card" is not conditional on there having been a card to pitch.
 //
 // The LIFE GAIN is a separate printed sentence about the caster, so it

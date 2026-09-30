@@ -80,7 +80,7 @@ func (r GraveyardBecomesExile) Build() game.ReplacementEffect {
 		// #650 split the discard off into its own event, so "from
 		// anywhere" has to include a discarded card and a discard no
 		// longer arrives as a plain move. The discard still HAPPENED
-		// (CR 701.8a defines it by the move out of the hand), so
+		// (CR 701.9a defines it by the move out of the hand), so
 		// Megrim and the rest of the family still see it; only the
 		// destination changes.
 		Watches: []game.EventKind{game.EventZoneMove, game.EventDiscardCard},

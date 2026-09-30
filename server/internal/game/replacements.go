@@ -27,7 +27,7 @@ import (
 //   - MoveCardByIDAsCommander → RepEventMove (carries EntersTapped,
 //     EntersWithCounters, asCommanderMove breadcrumb)
 //   - routeCardToZoneLocked → RepEventMove, or RepEventDiscard when the
-//     route is a discard (CR 701.8, #650)
+//     route is a discard (CR 701.9, #650)
 //   - createTokensLocked → RepEventCreateTokens, then one
 //     RepEventMove battlefield entry per token created (CR 701.7b,
 //     #762)
@@ -50,7 +50,7 @@ import (
 //	"draw"         — RepEventDraw    — DrawPlayer, DrawCount (CR 121.2)
 //	"produce_mana" — RepEventProduceMana — ManaPlayer, ManaSource, ManaColors (CR 106.12b)
 //	"move"         — RepEventMove    — CardID, OldZone, NewZone, NewZoneOwner, EntersTapped, EntersAttacking, EntersWithCounters, asCommanderMove
-//	"discard"      — RepEventDiscard — CardID, DiscardPlayer, DiscardCause, NewZone, NewZoneOwner (CR 701.8)
+//	"discard"      — RepEventDiscard — CardID, DiscardPlayer, DiscardCause, NewZone, NewZoneOwner (CR 701.9)
 //	"counter"      — RepEventCounter — CounterTarget OR CounterPlayer,
 //	                 CounterName, CounterDelta, CounterPlacer,
 //	                 CounterFromCombatDamage
@@ -69,7 +69,7 @@ const (
 	RepEventLife    ReplacementEventKind = "life"
 	RepEventDamage  ReplacementEventKind = "damage"
 
-	// RepEventDiscard is a discard (CR 701.8a) — the one exit whose
+	// RepEventDiscard is a discard (CR 701.9a) — the one exit whose
 	// keyword action is defined by where the card comes FROM, so it is
 	// its own event kind rather than a flag on RepEventMove. Library of
 	// Leng, madness (#657) and the Obstinate Baloth family all key on
@@ -646,7 +646,7 @@ type ReplacementEvent struct {
 
 	// DiscardPlayer is the player discarding the card — its owner,
 	// because every hand in this engine holds only its owner's cards
-	// (CR 701.8a moves the card to that player's graveyard).
+	// (CR 701.9a moves the card to that player's graveyard).
 	DiscardPlayer uuid.UUID
 
 	// DiscardCause is why the discard is happening: an effect's
@@ -953,7 +953,7 @@ type ReplacementEvent struct {
 	//
 	// Several things set it, and they fall into two families: paying a
 	// cost (life, CR 118.3, payLifeAsCostLocked in life_tail.go; a
-	// discard, CR 701.8a, discard.go, through zoneRoute.MustSettleNow;
+	// discard, CR 701.9a, discard.go, through zoneRoute.MustSettleNow;
 	// a counter placement mid-ability, #1370,
 	// AddCounterMustSettleNowForEffect in counter_tail.go) — CR 601.2h
 	// pays a spell's costs as one indivisible step and CR 601.2 rewinds
@@ -1103,26 +1103,25 @@ type ReplacementEffect struct {
 	// See entry_choice.go. Added with the shockland cycle.
 	EntryLifeCost int
 
-	// EntryHandReveal, when non-nil, makes this a "you may reveal
-	// <a card matching this> from your hand; if you don't,
-	// <replacement>" effect — the ten reveal-lands, Choked Estuary
-	// and its cycle. The apply-loop queues a
-	// PendingChoiceEntryRevealFromHand pick and bails; revealing
-	// means Replace NEVER runs, declining (or having nothing that
-	// matches) means it does.
+	// EntryCardChoice, when non-nil, makes this a "<reveal / discard /
+	// sacrifice> <cards matching this>; if you don't, <replacement>"
+	// effect — the ten reveal-lands (#1198), Mox Diamond and the seven
+	// "sacrifice … instead" lands (#1744, ADR 0098). The apply-loop
+	// queues a card-set pick and bails; naming cards (and, for a
+	// discard or a sacrifice, their really leaving) means Replace
+	// NEVER runs, declining — or having nothing that matches — means
+	// it does.
 	//
 	// EntryLifeCost's inversion with a CARD where the shockland has
-	// a number, which is why it is not Optional either. A reveal is
-	// not a cost and not a zone change (CR 701.20b): the named card
-	// is still in hand afterwards. A player with no matching card is
-	// not prompted and the replacement applies — the absence of the
-	// question, not a refusal of it.
+	// a number, which is why it is not Optional either, and why
+	// declineIsReplace lists it: in a window that cannot ask, the
+	// weaker branch is to RUN Replace.
 	//
 	// Takes precedence over Optional, which is meaningless alongside
 	// it. No printed card combines it with EntryLifeCost or
-	// CopySelector. See entry_reveal.go and ADR 0013 §5z. Added with
-	// the reveal-land cycle (#1198).
-	EntryHandReveal *EntryHandReveal
+	// CopySelector. See entry_card_choice.go, ADR 0013 §5z and
+	// ADR 0098.
+	EntryCardChoice *EntryCardChoice
 
 	// CopySelector, when non-nil, makes this an "as this permanent
 	// enters, you may have it enter as a copy of X" effect (CR
@@ -1462,59 +1461,19 @@ func (g *Game) applyReplacementsLocked(ev *ReplacementEvent) (*ReplacementEvent,
 			// effect that would ask its controller a question cannot
 			// fire on an event that cannot pause, and firing it blind
 			// would answer the question for them in the direction that
-			// favours it. Skipped un-applied — weaker than printed,
-			// never stronger, which is the posture
-			// optionalReplacementResumableLocked takes for an entry
-			// with nothing to resume it.
-			g.replacementsAppliedThisEvent[ev.ID][chosen.id] = true
+			// favours it. Settled on its weaker branch — skipped for a
+			// "may", its decline run for a shockland, a reveal-land or
+			// a Mox Diamond (ADR 0098 Decision 5).
+			g.skipOwnQuestionLocked(ev, chosen)
 			continue
 		}
-		if chosen.effect.CopySelector != nil {
-			// "You may have this enter as a copy of ..." — the
-			// picker and its decline-inline cases live in
-			// copy_choice.go. A queued prompt bails; anything else
-			// has already marked the effect applied and falls
-			// through to the next iteration.
-			if g.offerCopyChoiceLocked(ev, chosen) {
-				return ev, errReplacementPending
-			}
-			continue
-		}
-		if chosen.effect.EntryLifeCost > 0 {
-			// "As this enters, you may pay N life." The prompt (and
-			// the unaffordable-so-apply-it-inline case) lives in
-			// entry_choice.go; a queued prompt bails, an inline
-			// apply falls through to the next iteration.
-			if g.offerEntryLifePaymentLocked(ev, chosen) {
-				return ev, errReplacementPending
-			}
-			continue
-		}
-		if chosen.effect.EntryHandReveal != nil {
-			// "As this enters, you may reveal an Island or Swamp
-			// card from your hand." The same shape one line up with
-			// a card where the shockland has a number: the prompt
-			// and its three apply-it-inline cases live in
-			// entry_reveal.go, a queued prompt bails and an inline
-			// apply falls through to the next iteration (#1198,
-			// ADR 0013 §5z).
-			if g.offerEntryHandRevealLocked(ev, chosen) {
-				return ev, errReplacementPending
-			}
-			continue
-		}
-		if chosen.effect.Optional {
-			// "may" — owner decides each time. Queue a
-			// yes/no prompt; the resume path either fires Replace
-			// (yes) or marks applied and skips (no). The two cases
-			// that decline it inline instead — a chooser who has left
-			// the game, an event with nothing to resume it (#359) —
-			// live in the helper with the prompt, because
-			// ResolveReplacementOrder's chosen-order loop needs the
-			// same three answers and used to have none of them
-			// (#847). A queued prompt bails; a decline falls through
-			// to the next iteration.
-			if g.offerOptionalReplacementLocked(ev, chosen) {
+		// An effect with a question inside it — a copy selector, a
+		// shockland's life, an entry card choice, a "may". The prompt
+		// and each shape's apply-it-inline cases live with the shape;
+		// a queued prompt bails, anything else has already marked the
+		// effect applied and falls through to the next iteration.
+		if pending, handled := g.offerOwnQuestionLocked(ev, chosen); handled {
+			if pending {
 				return ev, errReplacementPending
 			}
 			continue
@@ -1633,7 +1592,72 @@ func sameModification(applicable []activeReplacement) bool {
 // prompt; the guard is here so a future one fails loudly by prompting
 // rather than quietly by deciding.
 func asksItsOwnQuestion(e ReplacementEffect) bool {
-	return e.Optional || e.EntryLifeCost > 0 || e.EntryHandReveal != nil || e.CopySelector != nil
+	return e.Optional || e.EntryLifeCost > 0 || e.EntryCardChoice != nil || e.CopySelector != nil
+}
+
+// declineIsReplace reports that this effect's Replace IS the "you
+// didn't" branch of its question — the shockland's enters-tapped, the
+// reveal-land's enters-tapped, Mox Diamond's and Heart of Yavimaya's
+// graveyard (ADR 0098 Decision 5).
+//
+// asksItsOwnQuestion answers "may this be fired blind?". This answers
+// the other question a window that cannot ask has to answer: which
+// branch is the weaker one? For an Optional "may" and a copy selector,
+// NOT applying is weaker, so such a window skips them. For these two,
+// not applying would be the STRONGER branch — a free untapped
+// shockland, a free Mox — so the window runs Replace instead.
+func declineIsReplace(e ReplacementEffect) bool {
+	return e.EntryLifeCost > 0 || e.EntryCardChoice != nil
+}
+
+// skipOwnQuestionLocked settles an effect that asks its own question
+// in a window that cannot ask it (mustSettleNow, an ordering whose
+// affected player has left): it is marked applied, and its Replace
+// runs only when that is its weaker branch (declineIsReplace).
+//
+// Caller must hold g.mu, and must have allocated the once-per-event
+// map entry for ev.ID.
+func (g *Game) skipOwnQuestionLocked(ev *ReplacementEvent, a activeReplacement) {
+	g.replacementsAppliedThisEvent[ev.ID][a.id] = true
+	if !declineIsReplace(a.effect) || a.effect.Replace == nil || ev.Canceled {
+		return
+	}
+	if err := a.effect.Replace(ev, g, a.source); err != nil {
+		g.EmitEvent(Event{Kind: EventEffectError, ErrorMsg: err.Error()})
+	}
+}
+
+// offerOwnQuestionLocked puts an effect's own question to its player,
+// or settles its un-asked branch inline. `handled` is false for an
+// effect that asks nothing; `pending` is true when a prompt is now
+// queued and the caller must bail.
+//
+// The ONE dispatcher for the four question shapes, shared by the
+// apply-loop's single-applicable arm and ResolveReplacementOrder's
+// chosen-order loop. They used to keep two lists, and the second had
+// lost the reveal-land branch (ADR 0098 gap 4) the way it had lost the
+// "may" before #847.
+//
+// Caller must hold g.mu.
+func (g *Game) offerOwnQuestionLocked(ev *ReplacementEvent, chosen activeReplacement) (pending, handled bool) {
+	switch {
+	case chosen.effect.CopySelector != nil:
+		// "You may have this enter as a copy of ..." — copy_choice.go.
+		return g.offerCopyChoiceLocked(ev, chosen), true
+	case chosen.effect.EntryLifeCost > 0:
+		// "As this enters, you may pay N life." — entry_choice.go.
+		return g.offerEntryLifePaymentLocked(ev, chosen), true
+	case chosen.effect.EntryCardChoice != nil:
+		// "You may reveal / discard …", "sacrifice … instead" —
+		// entry_card_choice.go.
+		return g.offerEntryCardChoiceLocked(ev, chosen), true
+	case chosen.effect.Optional:
+		// A "may" (#847) — the owner decides each time. The two cases
+		// that decline it inline — a chooser who has left, an event
+		// with nothing to resume it (#359) — live in the helper.
+		return g.offerOptionalReplacementLocked(ev, chosen), true
+	}
+	return false, false
 }
 
 // applyFirstGatheredLocked fires the FIRST gathered replacement and
@@ -1693,7 +1717,10 @@ func (g *Game) skipQuestionsLocked(ev *ReplacementEvent, applicable []activeRepl
 	out := make([]activeReplacement, 0, len(applicable))
 	for _, a := range applicable {
 		if asksItsOwnQuestion(a.effect) {
-			g.replacementsAppliedThisEvent[ev.ID][a.id] = true
+			// ADR 0098 Decision 5: marked applied, and its decline run
+			// when the decline IS Replace (a shockland, a reveal-land,
+			// a Mox Diamond), so the un-asked branch is the weaker one.
+			g.skipOwnQuestionLocked(ev, a)
 			continue
 		}
 		out = append(out, a)
@@ -2061,7 +2088,7 @@ func eventKindMatches(watches []EventKind, kind ReplacementEventKind) bool {
 	case RepEventMove:
 		want = EventZoneMove
 	case RepEventDiscard:
-		// CR 701.8a. A discard is a move out of the hand, but what a
+		// CR 701.9a. A discard is a move out of the hand, but what a
 		// discard replacement watches for is the DISCARD — Library of
 		// Leng, madness, "if you would discard a card, exile it
 		// instead" — so it keys on the discard event, not the zone

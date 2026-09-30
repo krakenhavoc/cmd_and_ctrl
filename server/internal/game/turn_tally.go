@@ -64,7 +64,7 @@ type PlayerTurnTally struct {
 	// creatures dealt to players.
 	CombatDamageToPlayers int `json:"combatDamageToPlayers,omitempty"`
 	// CardsDiscarded counts cards this player discarded (one event
-	// per card, CR 701.8a), whatever the discard's cause or eventual
+	// per card, CR 701.9a), whatever the discard's cause or eventual
 	// destination — a madness card exiled instead of binned, or one
 	// redirected to the top of the library, still counts (#1112,
 	// Change of Fortune's "for each card you've discarded this
