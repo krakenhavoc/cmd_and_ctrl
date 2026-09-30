@@ -1427,8 +1427,8 @@ Send one person this table's invite link as a Discord direct message
 6). The server opens the DM itself, with a bot token and two plain
 REST calls — `POST /users/@me/channels` then `POST
 /channels/{id}/messages`. The gateway bot binary is not involved. The
-`/c2-invite-dm` slash command ([#613](https://github.com/krakenhavoc/cmd_and_ctrl/issues/613))
-is a thin client of this route, so there is exactly one place that
+`/c2-invite-dm <user> [game] [name]` slash command ([#613](https://github.com/krakenhavoc/cmd_and_ctrl/issues/613))
+is a thin client of this route (it sends `discord_id` with the bot's admin session), so there is exactly one place that
 builds and sends an invite DM.
 
 **Nothing is minted.** The DM carries the game's *current* player
