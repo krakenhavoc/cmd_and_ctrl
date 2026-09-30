@@ -87,11 +87,11 @@ type execer interface {
 func insertGame(ctx context.Context, x execer, g GameRecord) error {
 	_, err := x.ExecContext(ctx,
 		`INSERT INTO games (id, name, created_by, state, created_at, started_at, ended_at, archived_at, winner_seat,
-		                    host_player_id, host_discord_id)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		                    outcome, host_player_id, host_discord_id)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		g.ID.String(), g.Name, nullString(g.CreatedBy), g.State, toMillis(g.CreatedAt),
 		nullMillis(g.StartedAt), nullMillis(g.EndedAt), nullMillis(g.ArchivedAt), nullInt(g.WinnerSeat),
-		nullUUID(g.HostPlayerID), nullString(g.HostDiscordID))
+		nullString(g.Outcome), nullUUID(g.HostPlayerID), nullString(g.HostDiscordID))
 	return err
 }
 
@@ -149,10 +149,10 @@ func (s *SQLStore) CreateGame(ctx context.Context, g GameRecord, invites []Invit
 func (s *SQLStore) UpdateGame(ctx context.Context, g GameRecord) error {
 	res, err := s.db.ExecContext(ctx,
 		`UPDATE games SET name = ?, state = ?, started_at = ?, ended_at = ?, archived_at = ?, winner_seat = ?,
-		                  host_player_id = ?, host_discord_id = ?
+		                  outcome = ?, host_player_id = ?, host_discord_id = ?
 		 WHERE id = ?`,
 		g.Name, g.State, nullMillis(g.StartedAt), nullMillis(g.EndedAt), nullMillis(g.ArchivedAt),
-		nullInt(g.WinnerSeat), nullUUID(g.HostPlayerID), nullString(g.HostDiscordID), g.ID.String())
+		nullInt(g.WinnerSeat), nullString(g.Outcome), nullUUID(g.HostPlayerID), nullString(g.HostDiscordID), g.ID.String())
 	if err != nil {
 		return err
 	}
@@ -196,13 +196,14 @@ func (s *SQLStore) LoadGame(ctx context.Context, id uuid.UUID) (GameRecord, []Se
 		startedAt, endedAt, archivedAt sql.NullInt64
 		winner                         sql.NullInt64
 		hostPlayer, hostDiscord        sql.NullString
+		outcome                        sql.NullString
 	)
 	err := s.db.QueryRowContext(ctx,
 		`SELECT name, created_by, state, created_at, started_at, ended_at, archived_at, winner_seat,
-		        host_player_id, host_discord_id
+		        outcome, host_player_id, host_discord_id
 		 FROM games WHERE id = ?`, id.String()).
 		Scan(&g.Name, &createdBy, &g.State, &createdAt, &startedAt, &endedAt, &archivedAt, &winner,
-			&hostPlayer, &hostDiscord)
+			&outcome, &hostPlayer, &hostDiscord)
 	if errors.Is(err, sql.ErrNoRows) {
 		return GameRecord{}, nil, ErrStoreNotFound
 	}
@@ -214,6 +215,7 @@ func (s *SQLStore) LoadGame(ctx context.Context, id uuid.UUID) (GameRecord, []Se
 	g.CreatedAt = fromMillis(createdAt)
 	g.StartedAt, g.EndedAt, g.ArchivedAt = timePtr(startedAt), timePtr(endedAt), timePtr(archivedAt)
 	g.WinnerSeat = intPtr(winner)
+	g.Outcome = outcome.String
 	if hostPlayer.Valid {
 		h, err := uuid.Parse(hostPlayer.String)
 		if err != nil {

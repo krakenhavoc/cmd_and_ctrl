@@ -99,6 +99,10 @@ var gameFields = plan(
 	"StackMeta", carried, "",
 	"PendingTriggers", carried, "",
 	"DelayedTriggers", carried, "",
+	// ADR 0059 Decision 10: the CR 500.7 extra-turn queue and its ref
+	// counter. Plain data.
+	"ExtraTurns", carried, "",
+	"NextExtraRef", carried, "",
 	"SplitSecondActive", carried, "",
 	"LoyaltyActivatedThisTurn", carried, "",
 	"SpellsCastThisTurn", carried, "",
@@ -631,6 +635,8 @@ var delayedTriggerFields = plan(
 	"Label", carried, "",
 	"At", carried, "",
 	"ControllerTurnOnly", carried, "",
+	// ADR 0059 Decision 8: the binding to one extra turn.
+	"OnExtraTurn", carried, "",
 	"CreatedSeq", carried, "",
 	"Cards", carried, "",
 	// #663's event condition. The data half comes back so a restored

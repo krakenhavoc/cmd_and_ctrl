@@ -15,12 +15,8 @@ package effects
 // cards at exactly that value plus one, and puts the pick onto the
 // battlefield untapped. Sorcery speed, as printed.
 //
-// "Another" is enforced by NAME rather than by instance, because the
-// sacrifice clause is declared at init() before any Bay exists. In a
-// singleton format that is the same artifact; a token copy of the
-// Bay would also be excluded — weaker than printed, never stronger,
-// and not worth a caveat: nobody pods away a Repurposing Bay with a
-// Repurposing Bay.
+// "Another" is object identity (effects.Another, CR 109.1), so a
+// second Repurposing Bay can be sacrificed to the first.
 //
 // Rides the catalog-wide deterministic search pick when only one
 // card qualifies — the S22 chooser asks only when there is a choice.
@@ -33,7 +29,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:        "{2}, {T}, Sacrifice another artifact: Search your library for an artifact card with mana value equal to 1 plus the sacrificed artifact's mana value, put that card onto the battlefield, then shuffle. Activate only as a sorcery.",
-			Cost:         Plus(ManaCost("{2}"), TapCost(), b36SacrificeAnotherArtifact("Repurposing Bay")),
+			Cost:         Plus(ManaCost("{2}"), TapCost(), b36SacrificeAnotherArtifact()),
 			SorcerySpeed: true,
 			Effect:       b36RepurposingBaySearch,
 		}},

@@ -24,10 +24,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // not a pause in the effect — which is invisible here because
 // nothing in the card reads the board between the two.
 //
-// Inherited gap: the Powerstone's "this mana can't be spent to cast
-// a nonartifact spell" restriction is not modelled (see
-// PowerstoneToken in tokens.go), so the token taps for unrestricted
-// {C}. That makes this card stronger than printed, not weaker.
+// The Powerstone's "can't be spent to cast a nonartifact spell" is
+// modelled on the shared token (see PowerstoneToken in tokens.go).
 func init() {
 	Register(Spec{
 		OracleID: "8315aa34-08b8-403e-a2e6-796a2d6978ad",

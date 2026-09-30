@@ -300,6 +300,7 @@ type gameEntry struct {
 	startedAt  *time.Time
 	endedAt    *time.Time
 	winnerSeat *int
+	outcome    string // "win" | "draw" | "" (games.outcome)
 	// startedKnown is false for a game that was already running when
 	// it came into this lobby with no start time on record (imported
 	// from lobby/*.json). syncStateLocked will not invent one.

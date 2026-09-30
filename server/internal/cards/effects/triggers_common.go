@@ -845,3 +845,24 @@ func PutChosenTargetOnTopOfLibrary(g *game.Game, item *game.StackItem) error {
 	}
 	return nil
 }
+
+// WheneverEnchantedCreatureAttacks — "Whenever enchanted creature
+// attacks" (also equipped: the attachment relation is the same). The
+// trigger belongs to the ATTACHMENT, so "you" is the Aura's
+// controller (CR 109.5), however the creature is controlled.
+func WheneverEnchantedCreatureAttacks(label string, effect Effect) game.TriggeredAbility {
+	return On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+		return attachedCreatureAttacked(ev, source)
+	}, label, effect)
+}
+
+// WhenEnchantedCreatureDies — "When enchanted creature dies" (also
+// equipped). It is harvested while the attachment is still attached —
+// the dies event is emitted before the state-based action that puts a
+// fallen-off Aura into the graveyard — and reads the trigger off
+// item.Trigger.Event.CardID, the creature that died.
+func WhenEnchantedCreatureDies(label string, effect Effect) game.TriggeredAbility {
+	return On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+		return equippedCreatureDied(ev, source)
+	}, label, effect)
+}

@@ -57,6 +57,9 @@ const (
 	ManaRestrictActivate = game.ManaRestrictActivate
 	// ManaRestrictColorless — spend only on a colorless object.
 	ManaRestrictColorless = game.ManaRestrictColorless
+	// ManaRestrictNotNonartifactSpell — "can't be spent to cast a
+	// nonartifact spell" (Powerstone).
+	ManaRestrictNotNonartifactSpell = game.ManaRestrictNotNonartifactSpell
 )
 
 // ManaRestrictType restricts a token to objects with the named card

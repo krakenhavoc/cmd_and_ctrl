@@ -394,8 +394,8 @@ func TestMarchOfSwirlingMistPhasesOutXCreatures(t *testing.T) {
 	}
 }
 
-// The declared simplification: X targets exactly, never fewer.
-func TestMarchOfSwirlingMistNeedsExactlyXTargets(t *testing.T) {
+// "Up to X targets" (#1738): fewer than X is fine; more is not.
+func TestMarchOfSwirlingMistTakesUpToXTargets(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
 	a := pushVoltronCreature(g, me, "Mine")
@@ -405,11 +405,11 @@ func TestMarchOfSwirlingMistNeedsExactlyXTargets(t *testing.T) {
 		OracleID: marchOfSwirlingMistOracle, Owner: me.ID, Controller: me.ID})
 	err := g.CastSpell(me.ID, id, game.CastSpellParams{XValue: 2,
 		Targets: []game.TargetRef{{Kind: game.TargetCard, ID: a}}})
-	if err == nil {
-		t.Fatal("one target with X = 2 should be refused")
+	if err != nil {
+		t.Fatalf("one target with X = 2 is \"up to X\": %v", err)
 	}
 	spec, _ := Lookup(marchOfSwirlingMistOracle)
-	if spec.Completeness != CompletenessCaveats || len(spec.Caveats) != 2 {
-		t.Errorf("March of Swirling Mist declares its two caveats: %q %v", spec.Completeness, spec.Caveats)
+	if spec.Completeness != CompletenessCaveats || len(spec.Caveats) != 1 {
+		t.Errorf("March of Swirling Mist keeps only its discount caveat: %q %v", spec.Completeness, spec.Caveats)
 	}
 }

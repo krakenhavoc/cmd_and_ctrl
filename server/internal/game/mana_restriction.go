@@ -76,6 +76,12 @@ const (
 	// being paid for is colorless (CR 105.2c) — Shrine of the
 	// Forsaken Gods, Eldrazi Temple.
 	ManaRestrictColorless = "colorless"
+	// ManaRestrictNotNonartifactSpell is a NEGATIVE clause — "this mana
+	// can't be spent to cast a nonartifact spell" (Powerstone, #1727).
+	// It admits an activation payment and a cast of an artifact spell,
+	// and refuses a cast of anything else. Tags AND and every other tag
+	// is positive, so the clause cannot be spelled as two of them.
+	ManaRestrictNotNonartifactSpell = "not:nonartifact-spell"
 )
 
 // ManaRestrictType builds a "the object has this card type" tag —
@@ -211,6 +217,14 @@ func (ctx ManaSpendContext) matchesRestriction(r string) bool {
 		return ctx.Purpose == SpendPurposeCast
 	case ManaRestrictActivate:
 		return ctx.Purpose == SpendPurposeActivate
+	case ManaRestrictNotNonartifactSpell:
+		switch ctx.Purpose {
+		case SpendPurposeActivate:
+			return true
+		case SpendPurposeCast:
+			return containsFold(ctx.Types, "Artifact")
+		}
+		return false
 	case ManaRestrictColorless:
 		// An unknown purpose has no object, so it has no colour
 		// either — refuse rather than read "no colours" as

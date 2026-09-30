@@ -106,6 +106,17 @@ type DelayedTrigger struct {
 	// queued instead of firing it.
 	ControllerTurnOnly bool
 
+	// OnExtraTurn binds the trigger to ONE extra turn (ADR 0059
+	// Decision 8): the ExtraTurn.Ref TakeExtraTurnsForEffect returned.
+	// Zero is unbound — any turn's matching step fires it. Bound, a
+	// matching step fires it only while Turn.ExtraRef is that ref, which
+	// is "at the beginning of THAT turn's end step" (Final Fortune, Last
+	// Chance). A bound trigger whose turn is dropped (its player left,
+	// CR 800.4k) or ends without reaching the step is swept at the next
+	// turn change, which is the Final Fortune ruling: "If you end up
+	// skipping the extra turn that is gained, you do not lose the game."
+	OnExtraTurn int
+
 	// CreatedSeq identifies the turn the trigger was scheduled on.
 	// Not used for firing (see the "next is free" note above) —
 	// it's there for the wire view and for debugging a queue that
@@ -216,6 +227,11 @@ func (g *Game) ScheduleDelayedTriggerForEffect(dt DelayedTrigger) uuid.UUID {
 		effectKeyFault(fmt.Sprintf("game: delayed trigger %q names a spell filter outside CR 205.2a's card types — dropped", dt.Label))
 		return uuid.Nil
 	}
+	if dt.OnExtraTurn != 0 && !g.extraTurnPendingLocked(dt.OnExtraTurn) {
+		// Bound to a turn that is neither in progress nor queued: it
+		// can never fire, so it is never queued.
+		return uuid.Nil
+	}
 	if dt.ID == uuid.Nil {
 		dt.ID = uuid.New()
 	}
@@ -280,7 +296,8 @@ func (g *Game) fireDelayedTriggersLocked(step Step) {
 		if dt == nil {
 			continue
 		}
-		if dt.At == step && (!dt.ControllerTurnOnly || g.activePlayerIDLocked() == dt.Controller) {
+		if dt.At == step && (!dt.ControllerTurnOnly || g.activePlayerIDLocked() == dt.Controller) &&
+			(dt.OnExtraTurn == 0 || dt.OnExtraTurn == g.Turn.ExtraRef) {
 			fire = append(fire, dt)
 			continue
 		}
@@ -336,6 +353,7 @@ func cloneDelayedTrigger(dt *DelayedTrigger) *DelayedTrigger {
 		Label:              dt.Label,
 		At:                 dt.At,
 		ControllerTurnOnly: dt.ControllerTurnOnly,
+		OnExtraTurn:        dt.OnExtraTurn,
 		CreatedSeq:         dt.CreatedSeq,
 		Body:               dt.Body,
 		Params:             cloneEffectParams(dt.Params),
@@ -509,6 +527,35 @@ func (g *Game) clearExpiredDelayedTriggersLocked(endOfTurn bool) {
 	kept := make([]*DelayedTrigger, 0, len(g.DelayedTriggers))
 	for _, dt := range g.DelayedTriggers {
 		if dt != nil && dt.Duration != nil && g.durationExpiredLocked(*dt.Duration, endOfTurn) {
+			continue
+		}
+		kept = append(kept, dt)
+	}
+	if len(kept) == len(g.DelayedTriggers) {
+		return
+	}
+	if len(kept) == 0 {
+		kept = nil
+	}
+	g.DelayedTriggers = kept
+}
+
+// sweepUnreachableBoundTriggersLocked drops every delayed trigger bound
+// to an extra turn (OnExtraTurn) that is neither the turn now beginning
+// nor still queued. Such a trigger's turn has ended without reaching its
+// step, or was dropped because its player left (CR 800.4k), and it can
+// never fire. Called by the rotation seam once the new turn is stamped.
+//
+// A fresh slice, for the reason clearExpiredDelayedTriggersLocked gives.
+//
+// Caller must hold g.mu.
+func (g *Game) sweepUnreachableBoundTriggersLocked() {
+	if len(g.DelayedTriggers) == 0 {
+		return
+	}
+	kept := make([]*DelayedTrigger, 0, len(g.DelayedTriggers))
+	for _, dt := range g.DelayedTriggers {
+		if dt != nil && dt.OnExtraTurn != 0 && !g.extraTurnPendingLocked(dt.OnExtraTurn) {
 			continue
 		}
 		kept = append(kept, dt)

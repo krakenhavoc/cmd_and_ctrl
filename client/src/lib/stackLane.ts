@@ -534,6 +534,14 @@ export function buildStackLane(input: StackLaneInput): StackLaneModel {
       chips.push({ label: `modes: ${item.modes.join(", ")}`, tone: "plain" });
     }
     if (item.split_second) chips.push({ label: "split-second", tone: "flag" });
+    // #1553: tell the table before a Counterspell finds out the hard way.
+    if (item.cant_be_countered) {
+      chips.push({
+        label: "can't be countered",
+        tone: "flag",
+        title: "this spell can't be countered — by its own text or by the mana that paid for it",
+      });
+    }
     if (item.hold_priority) chips.push({ label: "held priority", tone: "flag" });
     return chips;
   }

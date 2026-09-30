@@ -18,7 +18,7 @@ import (
 // spell" is b15OpponentCastSpell, "this creature died" is cardDied,
 // the X-counter-on-resolve shape is Goldvein Hydra's, the +1/+1
 // doubling body is b08DoubleCountersOnEachCreatureYouControl, the
-// counter LKI read is b13LastKnownCounters, the mass-damage body is
+// counter LKI read is game.LastKnownPermanentForEffect, the mass-damage body is
 // damageEachMatching, the two-basics fetch is Explosive Vegetation's
 // SearchLibrary, and the tribal keyword grant is TribalKeywordGrant.
 
@@ -191,14 +191,18 @@ func b23DamageEachCreatureAndEachPlayer(ctx *Context, n int) error {
 // charge counter on the source, then a card for each charge counter
 // on it. An Engine that left the battlefield in response cannot take
 // the counter, and the draw reads its last-known count (CR 113.7a),
-// which the counter LKI on the event log supplies.
+// which the source's departure record supplies.
 func b23ChargeThenDrawPerCharge(g *game.Game, item *game.StackItem) error {
 	id := item.SourceCardID
 	// #1432: an Engine that left and came back is a new object — it
 	// takes no counter, and the draw is the departed Engine's count.
 	if z := g.FindCardZoneForEffect(id); z == nil || z.Kind != game.ZoneBattlefield || sourceIsNewObject(g, item) {
-		charges := b13LastKnownCounters(g, id, "charge")
-		return DrawCards{Player: item.Controller, N: charges}.Apply(NewContext(g, item))
+		ctx := NewContext(g, item)
+		charges := 0
+		if info, ok := ctx.SourcePermanent(); ok {
+			charges = info.Counters["charge"]
+		}
+		return DrawCards{Player: item.Controller, N: charges}.Apply(ctx)
 	}
 	// #1290: the draw reads the charge count AFTER the counter
 	// LANDS, not on the next line — a Doubling Season / Hardened

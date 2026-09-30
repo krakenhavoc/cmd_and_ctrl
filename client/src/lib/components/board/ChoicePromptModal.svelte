@@ -21,6 +21,7 @@
     ReplacementOptionView,
   } from "../../protocol";
   import Card from "./Card.svelte";
+  import { isBoardAnsweredChoice } from "../../boardAnsweredChoice";
   import ModalLayer from "../ModalLayer.svelte";
   import {
     rejectionForPrompt,
@@ -59,7 +60,10 @@
       // #1196: the CR 115.7 retarget prompt is answered the same way
       // — click the new target on the board — so it is not a modal
       // either.
-      if (c.kind === "pick_target" || c.kind === "retarget") continue;
+      // #1623: the legend rule and choose_protector are board-answered
+      // too (Board.svelte drives them through the targeting banner);
+      // the one shared list says so, for both sides.
+      if (isBoardAnsweredChoice(c.kind)) continue;
       // #844, CR 903.4f: a colour prompt with no colours on offer is
       // not a choice anybody can answer, and an empty picker modal
       // would block the board. The server stopped queueing one when a

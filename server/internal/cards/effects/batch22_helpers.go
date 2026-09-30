@@ -20,7 +20,7 @@ import (
 // spell" is creatureSpellCastByYou / instantOrSorceryCastByYou,
 // landfall is b13LandYouControlEntered, "an opponent cast a spell" is
 // b15OpponentCastSpell, the dead-creature counter read is
-// b13LastKnownCounters, the counter doubler is b17DoubleCountersOn,
+// game.LastKnownPermanentForEffect, the counter doubler is b17DoubleCountersOn,
 // the mass sacrifice is b08SacrificeAllMatching, the damage doubler
 // shape is Angrath's Marauders', the evoke-by-pitch cost is
 // EvokePitch, and the Food / Soldier templates live in tokens.go.
@@ -58,13 +58,14 @@ func b22CreatureYouControlDied(ev game.Event, source *game.Card, g *game.Game) b
 // b22SlimedCreatureYouDontControlDied is Toxrill's third ability: a
 // creature the source's controller did not control died with a slime
 // counter on it. The card's counters are cleared on the way out
-// (CR 400.7), so the count is read back off the log.
+// (CR 400.7), so the count is read off the departure record.
 func b22SlimedCreatureYouDontControlDied(ev game.Event, source *game.Card, g *game.Game) bool {
 	dead, ok := diedCreature(ev, g)
 	if !ok || leftUnderControlOf(ev, dead) == source.Controller {
 		return false
 	}
-	return b13LastKnownCounters(g, dead.InstanceID, "slime") > 0
+	info, ok := g.LastKnownPermanentForEffect(dead.InstanceID)
+	return ok && info.Counters["slime"] > 0
 }
 
 // b22SelfDiedOrWasExiledFromBattlefield is God-Eternal Oketra's

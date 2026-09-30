@@ -15,17 +15,15 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // so the creatures and everything attached to them leave together
 // (CR 702.26a, 702.26g) — Clever Concealment's shape.
 //
-// Two declared simplifications, both weaker than printed:
+// One declared simplification, weaker than printed:
 //
 //   - The optional exile-blue-cards discount is not offered. An
 //     additional cost that exiles a variable number of cards from hand
 //     and reduces the price per card has no shape (no Spec slot pairs
 //     an exile-from-hand cost with a per-card reduction), so the spell
 //     always costs its full {X}{U}.
-//   - "Up to X targets" is exactly X targets. The clause is
-//     CountFromX, Crackle with Power's hook, which pins both bounds to
-//     the announced X; there is no X-bounded "up to" shape (#1738). A
-//     caster who wants fewer targets announces a smaller X.
+//   - "Up to X targets" is CountFromX with UpToX: the announced X is the
+//     ceiling and fewer targets are legal (#1738).
 func init() {
 	Register(Spec{
 		OracleID:     "debc69ea-372a-4720-838a-16856cd50b07",
@@ -33,7 +31,6 @@ func init() {
 		Completeness: CompletenessCaveats,
 		Caveats: []string{
 			"You can't exile blue cards from your hand to make it cheaper, so it always costs its full price.",
-			"You must choose exactly X target creatures rather than up to X.",
 		},
 		Targets: marchOfSwirlingMistTargets(),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
@@ -42,10 +39,10 @@ func init() {
 	})
 }
 
-// marchOfSwirlingMistTargets is "up to X target creatures", read as
-// exactly X (see the caveat).
+// marchOfSwirlingMistTargets is "up to X target creatures".
 func marchOfSwirlingMistTargets() *game.TargetSpec {
-	spec := TargetCreature("X target creatures")
+	spec := TargetCreature("up to X target creatures")
 	spec.CountFromX = true
+	spec.UpToX = true
 	return spec
 }

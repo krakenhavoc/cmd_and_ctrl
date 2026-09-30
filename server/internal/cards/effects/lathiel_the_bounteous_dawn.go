@@ -46,8 +46,7 @@ func init() {
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b33EndStepAndYouGainedLifeThisTurn(ev, source, g)
 			},
-			Targets: TargetCreature("any number of other target creatures",
-				b03NotNamed("Lathiel, the Bounteous Dawn")).WithCount(0, 0).
+			Targets: Another(TargetCreature("any number of other target creatures")).WithCount(0, 0).
 				Dividing(UpTo(DivideBy(DivideLifeYouGainedThisTurn))),
 			Key:    "Lathiel, the Bounteous Dawn — distribute +1/+1 counters among the chosen creatures",
 			Effect: lathielDistributeCounters,

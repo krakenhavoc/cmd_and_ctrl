@@ -780,6 +780,14 @@ const (
 	// second public-log line beside the step spine (ADR 0059).
 	EventTurnBegan EventKind = "turn_began"
 
+	// EventExtraTurnAdded — an effect gave a player an extra turn
+	// (CR 500.7, ADR 0059 Decision 5). Actor is the player who will take
+	// it, Source the card whose effect created it, Amount the turn's
+	// ExtraTurn.Ref. One per turn: Time Stretch emits two. Emitted as the
+	// turn is QUEUED; EventTurnBegan with Label "extra" follows when it
+	// begins, and a queued turn of a player who leaves never does.
+	EventExtraTurnAdded EventKind = "extra_turn_added"
+
 	// EventStepBegan — the turn cursor entered a step. Actor is the
 	// active player, Step the step (typed), Amount the turn sequence,
 	// Round the table-facing rotation, and Label the step name. Emitted

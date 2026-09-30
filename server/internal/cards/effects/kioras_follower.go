@@ -12,12 +12,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // printed. A tap ability on a creature, so summoning sickness applies
 // (CR 302.6); the engine enforces that at activation.
 //
-// "Another" is Warren Soultrader's b03NotNamed: a target clause never
-// sees its source, so the Follower is excluded by name — which in a
-// singleton format is the same creature — and the effect also
-// declines its own instance at resolution. A token copy of the
-// Follower would be excluded too, which is weaker than printed,
-// never stronger.
+// "Another" is object identity (effects.Another, CR 109.1): the
+// Follower itself is never a target, and a token copy of it is, as
+// printed. The effect also declines its own instance at resolution.
 //
 // No further simplification.
 func init() {
@@ -28,7 +25,7 @@ func init() {
 		Activated: []ActivatedAbility{{
 			Label:   "{T}: Untap another target permanent.",
 			Cost:    TapCost(),
-			Targets: TargetPermanent("another target permanent", b03NotNamed("Kiora's Follower")),
+			Targets: Another(TargetPermanent("another target permanent")),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				for _, t := range ctx.LegalTargets() {

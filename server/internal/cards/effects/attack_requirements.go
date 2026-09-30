@@ -73,6 +73,34 @@ func AttacksEachCombatWhere(appliesTo func(target *game.Card, g *game.Game, sour
 	}
 }
 
+// GoadAttached is "enchanted creature is goaded" as a STATIC ability
+// (Shiny Impetus): the goading player is the attachment's controller
+// and the goad lasts exactly as long as the Aura is attached.
+//
+// A goad made by a resolving effect is a per-object marker the engine
+// ends at the goader's next turn (Card.Goads, CR 701.15a). A static
+// goad has no such end, so it is written the way goad's own two
+// requirements are (CR 701.15b): one "attacks each combat if able"
+// and one "attacks a player other than the goader if able", both
+// counted by CR 508.1d. It is NOT in Card.Goads, so a card that asks
+// whether a creature is goaded does not see it — the one thing it is
+// weaker than printed at.
+func GoadAttached() game.StaticAbility {
+	return game.StaticAbility{
+		Layer: game.Layer6Ability,
+		AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
+			return target.IsCreature() && AttachedToSource(target, g, source)
+		},
+		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, source *game.Card) {
+			plain := requirementFrom(source, uuid.Nil)
+			plain.GoadedBy = source.Controller
+			other := requirementFrom(source, source.Controller)
+			other.GoadedBy = source.Controller
+			c.AttackRequirements = append(c.AttackRequirements, plain, other)
+		},
+	}
+}
+
 // OpponentsCreaturesAttackIfAble is a RESOLVING effect's requirement on
 // "creatures your opponents control", for a duration:
 //

@@ -30,8 +30,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "b8020a8b-557b-465d-865d-b59fecd7abc1",
 		Name:         "Threefold Thunderhulk",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The sacrifice cost won't accept another Threefold Thunderhulk — every other artifact you control is fine."},
+		Completeness: CompletenessFull,
 		Replacements: []game.ReplacementEffect{
 			b10EntersWithCounters("+1/+1", 3, "Threefold Thunderhulk: enters with three +1/+1 counters"),
 		},
@@ -51,7 +50,7 @@ func init() {
 		Activated: []ActivatedAbility{{
 			Label: "{2}, Sacrifice another artifact: Put a +1/+1 counter on Threefold Thunderhulk",
 			Cost: Plus(ManaCost("{2}"), game.AbilityCost{
-				SacrificeOther: sacrificeSpec("another artifact", Artifact(), b03NotNamed("Threefold Thunderhulk")),
+				SacrificeOther: Another(sacrificeSpec("another artifact", Artifact())),
 			}),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return AddCounter{Target: item.SourceCardID, Kind: game.CounterPlusOne, N: 1}.Apply(NewContext(g, item))

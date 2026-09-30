@@ -632,6 +632,7 @@ func TestNoCardActsOnItsOwnSourceThroughAGameMutatorWithoutAsking(t *testing.T) 
 	spells := map[string]bool{
 		"teferis_protection.go": true, "teferis_reproach.go": true,
 		"avatars_wrath.go": true, "blue_suns_zenith.go": true,
+		"temporal_mastery.go": true,
 	}
 	isSelf := func(e ast.Expr) bool {
 		s := exprString(e)
