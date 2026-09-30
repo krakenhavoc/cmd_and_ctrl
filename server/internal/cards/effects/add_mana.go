@@ -40,6 +40,10 @@ type AddMana struct {
 	// commander's color identity"; "any color" (Lotus Cobra, Deathrite
 	// Shaman) leaves it off and offers all five, identity first.
 	NarrowToCommanderIdentity bool
+
+	// Restrictions is "spend this mana only to …" (game.ManaRestrict*),
+	// for fixed-colour output. Smoky Lounge.
+	Restrictions []string
 }
 
 func (a AddMana) Apply(ctx *Context) error {
@@ -51,5 +55,5 @@ func (a AddMana) Apply(ctx *Context) error {
 		player = ctx.Controller()
 	}
 	return ctx.Game.AddManaWithOptionsForEffect(player, ctx.Source(), a.Produced,
-		game.AddManaOptions{NarrowToCommanderIdentity: a.NarrowToCommanderIdentity})
+		game.AddManaOptions{NarrowToCommanderIdentity: a.NarrowToCommanderIdentity, Restrictions: a.Restrictions})
 }
