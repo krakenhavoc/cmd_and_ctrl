@@ -1,0 +1,96 @@
+// @vitest-environment jsdom
+//
+// #1623: a legend-rule prompt opened ChoicePromptModal as well as the
+// board's targeting banner. The modal had no branch for the kind, so it
+// fell through to the discard-from-a-revealed-hand copy ("Pick 1 card
+// from opponent's revealed hand. opponent will discard your pick") and
+// put a full-screen backdrop over the board the real answer is clicked
+// on. The prompt that is answered on the board must not open the modal,
+// and every OTHER choice owed to the viewer must still reach it — even
+// when a board-answered one is queued ahead of it.
+
+import { describe, it, expect, afterEach } from "vitest";
+
+import ChoicePromptModal from "./components/board/ChoicePromptModal.svelte";
+import { isBoardAnsweredChoice } from "./boardAnsweredChoice";
+import type { ActionType, GameView } from "./protocol";
+import { render, cleanup } from "./test/render.svelte";
+
+afterEach(cleanup);
+
+const legendRule = {
+  id: "legend-1",
+  kind: "legend_rule",
+  chooser: "me",
+  from_player: "me",
+  count: 1,
+  reason: "Legend rule — keep one Vivi Ornitier",
+  pick_target_cards: ["vivi-a", "vivi-b"],
+  options: [],
+};
+
+const payUnless = {
+  id: "pay-1",
+  kind: "pay_unless",
+  chooser: "me",
+  from_player: "me",
+  pay_cost: "{2}",
+  reason: "Pay {2} or Propaganda stops the attack",
+  options: [],
+};
+
+const snapWith = (choices: unknown[]): GameView =>
+  ({
+    id: "g",
+    state: "active",
+    seats: [
+      { id: "me", name: "Me" },
+      { id: "them", name: "Them" },
+    ],
+    battlefield: { kind: "battlefield", count: 0, cards: [] },
+    stack: { kind: "stack", count: 0, cards: [] },
+    exile: { kind: "exile", count: 0, cards: [] },
+    turn: { number: 6, active_seat: 1, priority_holder: 0, phase: "main2", step: "main" },
+    mulligans_open: false,
+    pending_choices: choices,
+  }) as unknown as GameView;
+
+function mount(choices: unknown[]): HTMLElement {
+  return render(
+    ChoicePromptModal as never,
+    {
+      snap: snapWith(choices),
+      viewerID: "me",
+      sendAction: (_t: ActionType) => {},
+      lastError: null,
+    } as never,
+  ).container;
+}
+
+describe("choices answered on the board", () => {
+  it("names the four board-answered kinds and nothing else", () => {
+    for (const k of ["pick_target", "legend_rule", "choose_protector", "retarget"]) {
+      expect(isBoardAnsweredChoice(k), k).toBe(true);
+    }
+    for (const k of ["pay_unless", "choose_cards", "discard_from_hand", "reveal_pick"]) {
+      expect(isBoardAnsweredChoice(k), k).toBe(false);
+    }
+  });
+
+  it("does not open the modal for a legend-rule prompt", () => {
+    const container = mount([legendRule]);
+    expect(container.querySelector(".prompt-backdrop")).toBeNull();
+    expect(container.textContent).not.toContain("revealed hand");
+  });
+
+  it("does not open the modal for choose_protector", () => {
+    const container = mount([{ ...legendRule, id: "p-1", kind: "choose_protector" }]);
+    expect(container.querySelector(".prompt-backdrop")).toBeNull();
+  });
+
+  it("still opens the next owed choice when a board-answered one is ahead of it", () => {
+    const container = mount([legendRule, payUnless]);
+    const title = container.querySelector("#choice-title");
+    expect(title?.textContent).toContain("Pay {2} or Propaganda stops the attack");
+  });
+});
