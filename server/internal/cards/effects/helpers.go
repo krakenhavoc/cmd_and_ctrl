@@ -206,7 +206,7 @@ func combatDamageToPlayerBy(ev game.Event, controller uuid.UUID, g *game.Game) b
 // combatDamageToPlayerBy, which all print "combat damage" and must
 // keep reading it that way.
 //
-// A SIBLING, not a broadened combatDamageToPlayerBy: AGENTS.md's
+// A SIBLING, not a broadened combatDamageToPlayerBy: docs/adding-cards.md's
 // shared-file rule is append a function, never change an existing
 // one's behaviour, and every existing caller of
 // combatDamageToPlayerBy would silently widen if the combat check

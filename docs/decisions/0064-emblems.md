@@ -161,7 +161,7 @@ CR 704.5d state-based action sweeps the command zone.
 ### 3. The abilities come from the catalog, through one new `Spec` slot
 
 A card that makes an emblem declares it once, next to the ability that
-creates it (AGENTS.md §7 "Adding a `Spec` slot"):
+creates it (AGENTS.md §7 (now docs/adding-cards.md) "Adding a `Spec` slot"):
 
 ```go
 Register(Spec{

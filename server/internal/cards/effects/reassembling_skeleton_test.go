@@ -15,7 +15,7 @@ const reassemblingSkeletonOracle = "9dbc3530-b278-4c8d-b2cc-a09dfac9d5e5"
 // discipline temples_test.go uses for the Temple cycle's self-entry
 // replacement: an OnETB tap would leave the permanent Tapped too, so
 // only counting EventTapCard tells a replacement (zero taps, entered
-// tapped) from the enters-then-gets-tapped workaround AGENTS.md warns
+// tapped) from the enters-then-gets-tapped workaround docs/adding-cards.md warns
 // against.
 func TestReassemblingSkeletonReturnsFromGraveyardTapped(t *testing.T) {
 	g := newCatalogGame(t)

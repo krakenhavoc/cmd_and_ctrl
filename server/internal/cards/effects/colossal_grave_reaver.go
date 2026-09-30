@@ -17,7 +17,7 @@ const b17GraveReaverReturnLabel = "Colossal Grave-Reaver — put a milled creatu
 // The second watches EventMill — the engine emits one per card, so
 // "one or more" is the per-label dedup: the first creature card of
 // a mill fires the trigger and the rest of that mill are declined as
-// later events of the same batch (OncePerBatch; see AGENTS.md §7).
+// later events of the same batch (OncePerBatch; see docs/adding-cards.md).
 // At resolution the batch is read back off the event log
 // (b17MilledCreatureCards) — every creature card that mill put into
 // the controller's graveyard and is still there — and one of them

@@ -25,7 +25,7 @@ import (
 //     Devil's shape): "you sacrifice" is ev.Actor == the Captain's
 //     own controller, and "a Treasure" is read off the sacrificed
 //     card BEFORE it leaves the battlefield — EventSacrifice fires
-//     while the permanent is still there (AGENTS.md §7's trigger
+//     while the permanent is still there (docs/adding-cards.md's trigger
 //     table), so g.LookupCardForEffect(ev.CardID) still finds it and
 //     hasSubtype checks the Treasure subtype rather than the token's
 //     name, so a Treasure that is a copy of something else still

@@ -11,7 +11,7 @@ import (
 const skysovereignConsulFlagshipOracle = "50b14338-9318-4327-a1dd-c0ef38903cc4"
 
 // TestSkysovereignDealsDamageOnETB pins the "enters or attacks" shape
-// (AGENTS.md §7, the Sun Titan pattern): entering puts the ability on
+// (docs/adding-cards.md, the Sun Titan pattern): entering puts the ability on
 // the stack, the controller picks the target as it goes on the stack
 // (CR 603.3d), and 3 damage lands on resolution. The victim is a 6/6
 // so the 3 damage does not kill it — a dead permanent's marked damage

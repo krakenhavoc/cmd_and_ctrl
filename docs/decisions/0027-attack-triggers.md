@@ -204,7 +204,7 @@ uncatalogued card does.
 | *Katara, Waterbending Master* | "there is no player-scoped counter store" | `Player.Counters` with `CounterExperience` ([counter_types.go](../../server/internal/game/counter_types.go)) |
 
 None of the three is written; all three are now ordinary card work
-rather than blocked card work. This is the failure mode AGENTS.md §7
+rather than blocked card work. This is the failure mode AGENTS.md §7 (now docs/adding-cards.md)
 warns about one level down, where a *caveat* goes stale the day
 someone else implements the mechanic: a deferral that was true the day
 it was written and is load-bearing and false a month later. The
@@ -308,7 +308,7 @@ controls" and for "return that card") and `ok` when the event says it
 was attacking / blocking. Neither checks `IsCreature` on the graveyard
 card: only a creature attacks or blocks, and a crewed Vehicle that died
 attacking is an artifact again by the time it is in the graveyard. The
-event-picker table in AGENTS.md §7 has the row.
+event-picker table in AGENTS.md §7 (now docs/adding-cards.md) has the row.
 
 ### Cards
 

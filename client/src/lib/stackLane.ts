@@ -35,7 +35,7 @@
 // sources and nothing else:
 //
 //   1. an ability's own label, which the server writes as
-//      "<card> — <what happens>" (AGENTS.md §7); the part after the
+//      "<card> — <what happens>" (docs/adding-cards.md); the part after the
 //      dash is the summary;
 //   2. a modal spell's chosen mode labels (#764), which are oracle
 //      bullets;

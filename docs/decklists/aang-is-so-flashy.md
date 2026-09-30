@@ -167,7 +167,7 @@ guard at `:485`). `SelfEntersTapped()` is built on it, and the whole
 conditional-dual-land cycle — Temples, checklands, fastlands, slowlands,
 shocklands, battle lands, bond lands, surveil lands — depends on it. The
 Worn Powerstone "enter untapped, then tap" workaround is retired; the
-pattern in AGENTS.md §7 is reachable and exercised.
+pattern in docs/adding-cards.md is reachable and exercised.
 
 **"Nothing returns a card to the battlefield" — false in both
 directions.** `ReturnFromGraveyard{Dest: game.ZoneBattlefield}`

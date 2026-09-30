@@ -80,7 +80,7 @@ The review's benchmark is committed as `bench_test.go`.
 
 ## Consequences
 
-- The batch brief and AGENTS.md §7 change under D1: "append to a
+- The batch brief and AGENTS.md §7 (now docs/adding-cards.md) change under D1: "append to a
   vocabulary file" replaces "never edit shared files"; the `bNN` prefix
   goes.
 - The roadmap resumes at batch 37 after the constructors (#579) land, so

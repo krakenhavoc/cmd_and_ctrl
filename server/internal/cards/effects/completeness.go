@@ -6,7 +6,7 @@ import (
 )
 
 // completeness.go — the machine-readable half of the catalog's
-// long-standing "declared simplification" convention (AGENTS.md §7).
+// long-standing "declared simplification" convention (docs/adding-cards.md).
 //
 // # Why this exists
 //
@@ -121,7 +121,7 @@ var playerFacingJargon = []string{
 
 // PlayerFacingProblems reports why text is not a player-facing
 // sentence, or nil when it is. It is the tone rule every published
-// Caveat is held to (AGENTS.md §7: "Write Caveats for a player, not
+// Caveat is held to (docs/adding-cards.md: "Write Caveats for a player, not
 // for the next engineer"): long enough to say something, a sentence,
 // and free of the engine vocabulary a card file's doc comment is for.
 //

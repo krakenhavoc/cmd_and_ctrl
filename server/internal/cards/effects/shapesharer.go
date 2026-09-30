@@ -13,7 +13,7 @@ import (
 //	 until your next turn."
 //
 // Changeling (CR 702.73a) needs no catalog entry of its own — see
-// AGENTS.md §7's tribal section — so the whole card is the activated
+// docs/adding-cards.md's tribal section — so the whole card is the activated
 // ability, and the whole ability is #1723's first seam: BecomeCopy
 // had no way to say "until your next turn" (CR 611.2b) before this,
 // only "until end of turn" or no stated duration at all.

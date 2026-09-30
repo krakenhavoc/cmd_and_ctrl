@@ -28,7 +28,7 @@ import (
 // creatures attacking that player). The engine emits one EventAttack
 // per attacker, so both bullets are batched by the OncePerBatch guard
 // Professional Face-Breaker uses: one declaration is one batch (see
-// AGENTS.md §7). Without that, three attackers would make three
+// docs/adding-cards.md). Without that, three attackers would make three
 // Golds, which is STRONGER than printed and not shippable.
 //
 // "EACH OPPONENT ATTACKING THAT PLAYER DOES THE SAME" — closed

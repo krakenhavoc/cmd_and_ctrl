@@ -253,8 +253,7 @@ func TestTarriansSoulcleaverGrowsWhenAnotherCreatureDies(t *testing.T) {
 // currentPowerFor reads Card.CurrentPower() — the layer-effective
 // power PLUS any +1/+1 / -1/-1 counters (CR 613's counters step,
 // which effectivePower's plain Effective().Power deliberately
-// excludes; counter math is never modelled as a layer, per AGENTS.md
-// §7).
+// excludes; counter math is never modelled as a layer, per docs/adding-cards.md).
 func currentPowerFor(t *testing.T, g *game.Game, id uuid.UUID) int {
 	t.Helper()
 	var p int

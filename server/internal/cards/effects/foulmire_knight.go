@@ -23,7 +23,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // (face 0, the creature), so a client asked to cast face 1 has no
 // picker to open. The engine and the bot enumerator are already
 // face-correct; it is the human client that would be short a prompt.
-// See the note in AGENTS.md §7 and `client/src/lib/faces.ts`.
+// See the note in docs/adding-cards.md and `client/src/lib/faces.ts`.
 //
 // So the two halves here are deliberately boring, and what the card
 // demonstrates is the LIFECYCLE: cast Profane Insight from hand, it

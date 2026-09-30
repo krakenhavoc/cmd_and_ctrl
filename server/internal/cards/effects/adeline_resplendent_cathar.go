@@ -23,7 +23,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //     The engine emits EventAttack per creature, so OncePerBatch
 //     declines every later event of the SAME batch — and one attack
 //     declaration is one batch however many DeclareAttacker clicks
-//     the sandbox splits it across (see AGENTS.md §7) — without
+//     the sandbox splits it across (see docs/adding-cards.md) — without
 //     which a three-creature attack would make three times the
 //     tokens, which is the #259 direction.
 //

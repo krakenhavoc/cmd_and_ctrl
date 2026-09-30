@@ -13,7 +13,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // shape): the engine emits EventAttack per creature, so the ability
 // fires on the declaration that brings the controller to two
 // attackers, and the dedup — every later event of the same batch
-// (OncePerBatch, see AGENTS.md §7), then the rest of the turn —
+// (OncePerBatch, see docs/adding-cards.md), then the rest of the turn —
 // declines every later one.
 //
 // The Knight-making ability is a CR 602 activation with a discard

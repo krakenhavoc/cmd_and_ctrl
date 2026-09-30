@@ -506,5 +506,5 @@ Springleaf Parade and Spiteful Banditry's `OnResolve` workarounds are now
 stale — the wall their comments describe is gone — but converting all four is
 out of scope for the PR that closed the wall (#1312/#1335/#1323 is a
 three-seam PR, not a caveat sweep). Filed as a tech-debt follow-up per
-AGENTS.md §7's "a caveat goes stale the day someone else implements the
+AGENTS.md §7 (now docs/adding-cards.md)'s "a caveat goes stale the day someone else implements the
 mechanic" rule.
