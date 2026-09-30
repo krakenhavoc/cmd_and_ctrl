@@ -500,6 +500,12 @@ func dispatch(g *game.Game, a Action) error {
 			// ordinary "decline them all" case, and absent on a card
 			// that offers none is every cast the engine has ever had.
 			OptionalCosts []int `json:"optional_costs,omitempty"`
+			// ADR 0100 §2 — which branch of an either/or additional
+			// cost is paid, as an index into the card's branches
+			// ("sacrifice an artifact or discard a card"). Required on
+			// a card with such a cost and refused on any other; a
+			// pointer, so an absent field is not branch 0.
+			CostBranch *int `json:"cost_branch,omitempty"`
 			// ADR 0089 (#1267) — the opponent a gift is promised to
 			// (CR 702.174a). Present exactly when optional_costs
 			// names the card's gift cost.
@@ -593,6 +599,10 @@ func dispatch(g *game.Game, a Action) error {
 		// engine stamps this slice onto a stack item that does.
 		if len(p.OptionalCosts) > 0 {
 			params.OptionalCosts = append([]int(nil), p.OptionalCosts...)
+		}
+		if p.CostBranch != nil {
+			b := *p.CostBranch
+			params.CostBranch = &b
 		}
 		if p.GiftOpponent != "" {
 			id, err := uuid.Parse(p.GiftOpponent)

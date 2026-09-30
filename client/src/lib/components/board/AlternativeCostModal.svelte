@@ -49,8 +49,18 @@
   // refuses a gift announced with nobody to receive it.
   import { onDestroy } from "svelte";
   import type { CardView, PlayerView } from "../../protocol";
+  //
+  // ADR 0100 §5: an either/or additional cost ("sacrifice an artifact
+  // or discard a card") is one more radio group here — the same
+  // "what am I paying for this?" question, which CR 601.2b announces
+  // with the others. It is NOT optional: one branch must be chosen, it
+  // starts on the first branch the server says is payable, and an
+  // unpayable branch is shown disabled. The chosen branch's own picker
+  // (discard, sacrifice, blight) opens next in the chain.
   import {
     castableAlternativeCostsOf,
+    costBranchesOf,
+    firstPayableBranch,
     optionalCostMaxTimes,
     optionalCostOpponentOptions,
     optionalCostPayOptions,
@@ -67,7 +77,14 @@
     // printed mana cost") and the optional costs being paid, as
     // repeated indices. #1267: plus the opponent a gift is promised
     // to, present exactly when a gift offer is being paid.
-    onConfirm: (key: string | undefined, optional: number[], giftOpponent?: string) => void;
+    // ADR 0100: and the either/or branch, present exactly when the card
+    // has branches.
+    onConfirm: (
+      key: string | undefined,
+      optional: number[],
+      giftOpponent?: string,
+      costBranch?: number,
+    ) => void;
     onCancel: () => void;
     // #1267: the table, so a gift's opponent picker can name players
     // rather than print their IDs.
@@ -127,7 +144,14 @@
       ? giftTo
       : undefined,
   );
-  const canConfirm = $derived(giftOffer === undefined || giftOpponent !== undefined);
+  // ADR 0100: the either/or branches, and the one being paid. Required
+  // when the card has any, so Cast waits for a payable one.
+  const branches = $derived(card ? costBranchesOf(card) : []);
+  let branch = $state<number | undefined>(undefined);
+  const branchOK = $derived(
+    branches.length === 0 || (branch !== undefined && branches[branch]?.payable === true),
+  );
+  const canConfirm = $derived((giftOffer === undefined || giftOpponent !== undefined) && branchOK);
 
   function timesPaid(index: number): number {
     return paying.get(index) ?? 0;
@@ -163,12 +187,18 @@
       chosen = printedOK ? undefined : offers[0]?.key;
       paying = new Map();
       giftTo = undefined;
+      branch = card ? firstPayableBranch(card) : undefined;
     }
   });
 
   function confirm(): void {
     if (!canConfirm) return;
-    onConfirm(chosen, optionalCostSelection(paying), giftOpponent);
+    onConfirm(
+      chosen,
+      optionalCostSelection(paying),
+      giftOpponent,
+      branches.length > 0 ? branch : undefined,
+    );
   }
 
   function handleKey(e: KeyboardEvent): void {
@@ -198,11 +228,13 @@
         <span class="prompt-src" aria-hidden="true">alternative cost · CR 118.9</span>
       </h2>
       <p class="prompt-hint">
-        {offers.length === 0
-          ? "Pay any additional costs?"
-          : printedOK
-            ? "Cast this for which cost?"
-            : "Cast this for which cost? Its mana cost can't be paid from here."}
+        {offers.length === 0 && addOns.length === 0
+          ? "Pay which additional cost?"
+          : offers.length === 0
+            ? "Pay any additional costs?"
+            : printedOK
+              ? "Cast this for which cost?"
+              : "Cast this for which cost? Its mana cost can't be paid from here."}
       </p>
       {#if offers.length > 0}
         <ul class="prompt-options">
@@ -236,6 +268,34 @@
                 <span class="name">{offer.label ?? offer.key}</span>
                 {#if offer.mana_cost}
                   <span class="note cost">{offer.mana_cost}</span>
+                {/if}
+              </button>
+            </li>
+          {/each}
+        </ul>
+      {/if}
+      {#if branches.length > 0}
+        <p class="prompt-hint add-on-hint">
+          {card.additional_cost?.label ?? "Additional cost"}
+          <span class="prompt-src" aria-hidden="true">CR 601.2b</span>
+        </p>
+        <ul class="prompt-options" role="radiogroup" aria-label="Additional cost">
+          {#each branches as b, i (i)}
+            <li>
+              <button
+                type="button"
+                class="prompt-opt"
+                role="radio"
+                class:on={branch === i}
+                aria-checked={branch === i}
+                disabled={b.payable !== true}
+                title={b.payable === true ? undefined : "You can't pay this right now"}
+                onclick={() => (branch = i)}
+              >
+                <span class="prompt-radio" aria-hidden="true"></span>
+                <span class="name">{b.label ?? b.key}</span>
+                {#if b.mana_cost}
+                  <span class="note cost">{b.mana_cost}</span>
                 {/if}
               </button>
             </li>
@@ -326,7 +386,11 @@
           type="button"
           class="primary"
           disabled={!canConfirm}
-          title={canConfirm ? undefined : "Choose an opponent to promise the gift to"}
+          title={canConfirm
+            ? undefined
+            : branchOK
+              ? "Choose an opponent to promise the gift to"
+              : "Choose an additional cost you can pay"}
           onclick={confirm}
         >
           Cast <span class="kbd">↵</span>

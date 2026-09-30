@@ -346,6 +346,18 @@ type CastSpellParams struct {
 	// one is rejected, not ignored. Added in ADR 0073 (#664).
 	OptionalCosts []int
 
+	// CostBranch names which branch of an either/or additional cost the
+	// caster is paying (CR 601.2b, ADR 0100 §2) — an index into the
+	// card's AdditionalCost.Either: Demand Answers' "sacrifice an
+	// artifact or discard a card". REQUIRED on a branched card and
+	// refused on any other; never defaulted to 0, because silently
+	// paying a branch the player did not choose is the worst failure
+	// available. The branch is then the plan's mandatory entry, so its
+	// cards ride DiscardIDs / SacrificeIDs / BlightIDs as any mandatory
+	// cost's do, and its mana joins the total at CR 601.2f. Lands on
+	// StackItem.Paid.CostBranch.
+	CostBranch *int
+
 	// GiftOpponent is the opponent the caster chooses while paying a
 	// gift cost (CR 702.174a) — the other half of announcing one.
 	// Required exactly when OptionalCosts names the card's gift cost,
@@ -910,6 +922,25 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		)
 		return err
 	}
+	// ADR 0100 §2, CR 601.2b: an either/or additional cost announces
+	// WHICH branch is paid, here with the optional costs — before any
+	// price is quoted, because the branch's mana is part of the total
+	// (CR 601.2f). Required on a branched card, refused on any other,
+	// and refused for a branch the caster cannot pay (CR 601.2h:
+	// "Unpayable costs can't be paid"; CR 118.3), which is the same
+	// predicate the view's `payable` stamp and the bot enumerator ask.
+	addCost, err := ChosenAdditionalCost(AdditionalCostFor(CatalogKey(card)), params.CostBranch)
+	if err == nil && params.CostBranch != nil && !g.AdditionalCostBranchPayableLocked(playerID, card, *params.CostBranch) {
+		err = ErrCostBranch
+	}
+	if err != nil {
+		slog.Warn("cast_spell rejected: bad either/or cost branch",
+			"card_name", card.Name,
+			"oracle_id", card.OracleID,
+			"cost_branch", params.CostBranch,
+		)
+		return err
+	}
 	// S20 sub-PR 4: modal spells — the chosen modes must be distinct,
 	// in range and the right count (CR 601.2b, 700.2). #1590: the
 	// count's bounds are read HERE, "as you cast this spell", for a
@@ -1077,7 +1108,10 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// in index order, once per payment — so there is still exactly
 	// one validator and one payer, and the flat discard / sacrifice
 	// lists are walked in an order the client can reproduce.
-	addCost := AdditionalCostFor(CatalogKey(card))
+	//
+	// ADR 0100 §2: `addCost` is the branch the announcement chose for
+	// an either/or cost (settled above), so the validator and the payer
+	// below never learn that the card had a choice at all.
 	costPlan := castCostPayments(addCost, optionalCosts, params.OptionalCosts)
 	if err := g.validateAdditionalCostLocked(playerID, cardID, costPlan, params.DiscardIDs, params.SacrificeIDs, params.XValue); err != nil {
 		slog.Warn("cast_spell rejected: bad additional cost payment",
@@ -1463,8 +1497,14 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		// one on a cast), so this is never news here; it is recorded
 		// anyway so a reader of PaidCost.Sacrificed never has to ask
 		// which kind of announcement it is looking at.
-		Paid: paidWithGift(paidWithSacrifices(paidWithOptionalCosts(paid, costPlan), len(params.SacrificeIDs)), params.GiftOpponent),
-		Seq:  g.nextStackSeqLocked(),
+		//
+		// ADR 0100 §2: and which either/or branch was paid and which
+		// cards the additional cost discarded — Grab the Prize's "if
+		// the discarded card wasn't a land card".
+		Paid: paidWithBranchAndDiscards(
+			paidWithGift(paidWithSacrifices(paidWithOptionalCosts(paid, costPlan), len(params.SacrificeIDs)), params.GiftOpponent),
+			params.CostBranch, params.DiscardIDs),
+		Seq: g.nextStackSeqLocked(),
 		// S20: remember the clause the targets were validated under so
 		// the resolution re-check and per-slot effect checks use it.
 		// #764: and the ModeSpec, so a per-mode target group can be
@@ -1497,10 +1537,10 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// sacrifice — that triggers off it must resolve before the
 	// spell does. Validation happened at announce, so a failure
 	// past this point is an engine bug rather than a bad request.
-	payLife := 0
-	if addCost != nil && addCost.PayLifeX {
-		payLife = params.XValue
-	}
+	// The life the whole plan pays — a "pay X life" at the announced X,
+	// and a chosen branch's fixed "pay 3 life" (ADR 0100 §2) — the same
+	// sum the validator checked against CR 119.4.
+	payLife := planLife(costPlan, params.XValue)
 	if err := g.payAdditionalCostLocked(playerID, params.DiscardIDs, params.SacrificeIDs, payLife, params.commanderAnswers); err != nil {
 		slog.Error("cast_spell: additional cost failed after validation",
 			"card_name", card.Name,
@@ -2660,7 +2700,18 @@ func (g *Game) printedCostLocked(p *Player, card Card, params CastSpellParams) (
 	// One helper, called from here and from the bot enumerator, so
 	// the price a bot is offered and the price the engine charges
 	// cannot drift (#544).
-	cost, err = AddOptionalCostMana(cost, OptionalCostsFor(CatalogKey(card)), params.OptionalCosts)
+	//
+	// ADR 0100 §2: and the chosen either/or branch's mana — Lightning
+	// Axe's "pay {5}" — at the same point, as the plan's mandatory
+	// entry. An announcement that has not named its branch yet (the
+	// view's badge, a preview opened before the radio was answered)
+	// prices at no branch mana: CastSpell refuses a missing branch
+	// before anything is priced, so this is only ever a quote.
+	mandatory, berr := ChosenAdditionalCost(AdditionalCostFor(CatalogKey(card)), params.CostBranch)
+	if berr != nil {
+		mandatory = nil
+	}
+	cost, err = AdditionalCostMana(cost, mandatory, OptionalCostsFor(CatalogKey(card)), params.OptionalCosts)
 	if err != nil {
 		return ParsedCost{}, chosen, err
 	}

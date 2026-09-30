@@ -1,7 +1,9 @@
 package effects
 
 import (
+	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
@@ -76,6 +78,174 @@ func SacrificeNCost(n int, label string, preds ...CardPredicate) *game.Additiona
 // the life loss triggers above it.
 func PayXLifeCost() *game.AdditionalCost {
 	return &game.AdditionalCost{PayLifeX: true, Label: "Pay X life"}
+}
+
+// --- either/or additional costs (ADR 0100 §2, #1732) ---------------
+//
+// "As an additional cost to cast this spell, sacrifice an artifact or
+// discard a card" is ONE mandatory cost with branches: the caster
+// announces which branch (cast_spell's cost_branch, CR 601.2b) and the
+// engine pays that branch as the mandatory entry of the plan. Each
+// branch is an ordinary cost with a Key, which is what the card's
+// resolution asks for (ctx.PaidCostBranch), built with the usual
+// constructors and .Keyed:
+//
+//	AdditionalCost: EitherCost(
+//	    SacrificeCost("an artifact", Artifact()).Keyed("sacrifice"),
+//	    DiscardCost(1).Keyed("discard"),
+//	), // Demand Answers
+//	AdditionalCost: EitherCost(DiscardCost(1).Keyed("discard"), ManaAdditionalCost("{5}").Keyed("mana")), // Lightning Axe
+//
+// A branch may carry mana (ManaAdditionalCost), a discard, a
+// fixed-count sacrifice, a fixed life payment (PayLifeCost) or a blight
+// (BlightCost). Register refuses the rest: see checkEitherCost.
+
+// EitherCost is an either/or additional cost over two or more branches,
+// in printed order. Its Label spells the whole clause ("Discard a card
+// or pay {5}") for the prompt heading.
+func EitherCost(branches ...*game.AdditionalCost) *game.AdditionalCost {
+	out := &game.AdditionalCost{}
+	labels := make([]string, 0, len(branches))
+	for _, b := range branches {
+		if b == nil {
+			panic("effects.EitherCost: a nil branch")
+		}
+		out.Either = append(out.Either, *b)
+		labels = append(labels, b.Label)
+	}
+	out.Label = joinBranchLabels(labels)
+	return out
+}
+
+// joinBranchLabels reads "Sacrifice a creature", "Discard a card" as
+// "Sacrifice a creature or discard a card", and three branches as
+// "A, b, or c" — the way the card prints the clause.
+func joinBranchLabels(labels []string) string {
+	for i := 1; i < len(labels); i++ {
+		labels[i] = lowerFirst(labels[i])
+	}
+	switch len(labels) {
+	case 0:
+		return ""
+	case 1:
+		return labels[0]
+	case 2:
+		return labels[0] + " or " + labels[1]
+	}
+	out := ""
+	for i, l := range labels {
+		switch {
+		case i == 0:
+			out = l
+		case i == len(labels)-1:
+			out += ", or " + l
+		default:
+			out += ", " + l
+		}
+	}
+	return out
+}
+
+func lowerFirst(s string) string {
+	if s == "" {
+		return s
+	}
+	return strings.ToLower(s[:1]) + s[1:]
+}
+
+// ManaAdditionalCost is a branch that pays mana — Lightning Axe's "pay
+// {5}". It joins the total at CR 601.2f like a kicker's mana does, so a
+// cost modifier sees it (ADR 0100 §2). Only meaningful as a branch of
+// EitherCost; Register refuses it anywhere else.
+func ManaAdditionalCost(mana string) *game.AdditionalCost {
+	return &game.AdditionalCost{ManaCost: mana, Label: "Pay " + mana}
+}
+
+// PayLifeCost is a branch that pays a fixed amount of life — Bitter
+// Triumph's "pay 3 life" (CR 119.4). Refused at announce when the
+// caster's life total is below it.
+func PayLifeCost(n int) *game.AdditionalCost {
+	return &game.AdditionalCost{PayLife: n, Label: fmt.Sprintf("Pay %d life", n)}
+}
+
+// BlightCost is a branch that blights (CR 701.68a) — Wild Unraveling's
+// "blight 2 or pay {1}": put N -1/-1 counters on a creature you
+// control. The caster names the creature on cast_spell as blight_ids,
+// exactly as for an optional blight (OptionalBlight).
+func BlightCost(n int) *game.AdditionalCost {
+	return &game.AdditionalCost{Blight: n, Label: fmt.Sprintf("Blight %d", n)}
+}
+
+// checkEitherCost is Register's guard for an either/or cost (ADR 0100
+// §2). Each refused shape compiles and then pays something the card
+// does not print:
+//
+//   - a branched cost that also has components of its own;
+//   - fewer than two branches;
+//   - a branch that is empty, Optional, repeating or itself branched;
+//   - a missing or duplicate branch Key;
+//   - a variable sacrifice clause in a branch (no printed card has
+//     one, and it would reopen the flat sacrifice_ids width question);
+//   - a branch component the cast path has no shape for — teamwork, a
+//     gift's opponent, "pay X life";
+//   - an unparseable branch mana cost.
+//
+// And, outside a branch, the two components that exist only for one:
+// a fixed PayLife in an optional cost and a mandatory mana cost.
+func checkEitherCost(spec Spec) {
+	for _, oc := range spec.OptionalCosts {
+		if oc.PayLife != 0 || len(oc.Either) > 0 {
+			panic(fmt.Sprintf("effects.Register: %q optional cost %q pays fixed life or has branches — both exist only on a branch of the mandatory EitherCost (ADR 0100)", spec.Name, oc.Key))
+		}
+	}
+	ac := spec.AdditionalCost
+	if ac == nil {
+		return
+	}
+	if !ac.Branched() {
+		if ac.ManaCost != "" {
+			panic(fmt.Sprintf("effects.Register: %q declares a mandatory additional MANA cost — mana on the mandatory slot is a branch of EitherCost (ADR 0100); a single mana cost is part of the mana cost", spec.Name))
+		}
+		return
+	}
+	own := *ac
+	own.Either = nil
+	own.Label = ""
+	if !own.Empty() || own.Key != "" || own.Targets != nil {
+		panic(fmt.Sprintf("effects.Register: %q declares an either/or cost with components of its own — every component belongs to a branch (ADR 0100)", spec.Name))
+	}
+	if len(ac.Either) < 2 {
+		panic(fmt.Sprintf("effects.Register: %q declares an either/or cost with %d branch(es) — build it with EitherCost over two or more", spec.Name, len(ac.Either)))
+	}
+	seen := make(map[string]bool, len(ac.Either))
+	for i, b := range ac.Either {
+		where := fmt.Sprintf("either/or branch %d (%q)", i, b.Key)
+		switch {
+		case b.Empty():
+			panic(fmt.Sprintf("effects.Register: %q %s demands nothing", spec.Name, where))
+		case b.Optional:
+			panic(fmt.Sprintf("effects.Register: %q %s is Optional — a branch is paid when it is announced", spec.Name, where))
+		case b.MaxPayments() > 1:
+			panic(fmt.Sprintf("effects.Register: %q %s repeats — a branch is paid once", spec.Name, where))
+		case len(b.Either) > 0:
+			panic(fmt.Sprintf("effects.Register: %q %s is itself branched", spec.Name, where))
+		case b.Key == "":
+			panic(fmt.Sprintf("effects.Register: %q either/or branch %d has no Key — build it with .Keyed(\"…\")", spec.Name, i))
+		case seen[b.Key]:
+			panic(fmt.Sprintf("effects.Register: %q declares two either/or branches keyed %q", spec.Name, b.Key))
+		case b.Teamwork != 0 || b.ChoosesOpponent || b.PayLifeX || b.Targets != nil:
+			panic(fmt.Sprintf("effects.Register: %q %s carries a component a branch has no shape for (teamwork, gift, pay X life, a target rewrite)", spec.Name, where))
+		case b.Blight < 0 || b.PayLife < 0 || b.DiscardCards < 0:
+			panic(fmt.Sprintf("effects.Register: %q %s has a negative component", spec.Name, where))
+		}
+		seen[b.Key] = true
+		if b.ManaCost != "" {
+			if _, err := game.ParseCost(b.ManaCost); err != nil {
+				panic(fmt.Sprintf("effects.Register: %q %s declares an unparseable mana cost %q: %v", spec.Name, where, b.ManaCost, err))
+			}
+		}
+		checkSacrificeClause(spec.Name, where, b.Sacrifice, false, false)
+	}
 }
 
 // --- optional additional costs (ADR 0073, #664) -------------------

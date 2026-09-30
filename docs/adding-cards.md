@@ -2257,6 +2257,41 @@ before the X / mode / target prompts; they ride `cast_spell` as
 itself is never a legal pick — CR 601.2a already moved it to the
 stack). See [ADR 0021](decisions/0021-additional-costs.md).
 
+"The discarded card" (Grab the Prize: "if the discarded card wasn't a
+land card") is `ctx.Discarded()`, the instance IDs the additional cost
+discarded, in the order named (`PaidCost.Discarded`, ADR 0100). Look the
+card up with `LookupCardForEffect`; it keeps its ID wherever it has gone
+since, and a copy of the spell reads the original's (CR 707.10).
+
+**Either/or additional costs (ADR 0100 sub-PR 3):** "As an additional
+cost to cast this spell, sacrifice an artifact or discard a card" is ONE
+mandatory cost with branches, in the same `Spec.AdditionalCost` slot.
+Each branch is an ordinary cost with a `Key`, in printed order:
+
+```go
+AdditionalCost: EitherCost(
+    SacrificeCost("an artifact", Artifact()).Keyed("sacrifice"),
+    DiscardCost(1).Keyed("discard"),
+),                                                                  // Demand Answers
+AdditionalCost: EitherCost(DiscardCost(1).Keyed("discard"), ManaAdditionalCost("{5}").Keyed("mana")), // Lightning Axe
+AdditionalCost: EitherCost(DiscardCost(1).Keyed("discard"), PayLifeCost(3).Keyed("life")),            // Bitter Triumph
+AdditionalCost: EitherCost(BlightCost(2).Keyed("blight"), ManaAdditionalCost("{1}").Keyed("mana")),   // Wild Unraveling
+```
+
+A branch may carry mana (`ManaAdditionalCost`, priced at CR 601.2f like
+a kicker's, so a cost modifier sees it), a discard, a fixed-count
+sacrifice, a fixed life payment (`PayLifeCost`) or a blight
+(`BlightCost`). The caster announces the branch as `cost_branch`; the
+client offers it as a radio in the cost picker, and the bot is offered
+one move per payable branch. A resolution that cares which branch was
+paid reads `ctx.PaidCostBranch("modified")` (Lethal Throwdown). Register
+refuses fewer than two branches, a branch without a unique `Key`, an
+empty, optional, repeating or nested branch, a variable sacrifice in a
+branch, and components on the branched cost itself. Reveal, behold,
+"tap an untapped artifact", "exile two cards from your graveyard" and
+forage have no branch component yet: leave those cards out (the
+Either/or additional costs registry row lists them).
+
 **Gift (CR 702.174, [ADR 0089](decisions/0089-gift.md)):** one
 field, and never a hand-rolled optional cost:
 

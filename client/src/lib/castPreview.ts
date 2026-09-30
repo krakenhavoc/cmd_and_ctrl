@@ -47,6 +47,9 @@ export interface AutoTapCastParams {
   // ADR 0100: the graveyard cards named to delve. They DO change the
   // price — each pays {1} of the generic.
   delveIDs?: string[];
+  // ADR 0100 §2: the either/or branch being paid. Its mana ("pay {5}")
+  // joins the total, so the preview has to know which.
+  costBranch?: number;
 }
 
 // castPreviewParams projects the choices announced so far onto the
@@ -73,6 +76,7 @@ export function castPreviewParams(choices: CastChoices | null | undefined): Auto
   }
   if (choices.blightIDs && choices.blightIDs.length > 0) out.blightIDs = [...choices.blightIDs];
   if (choices.delveIDs && choices.delveIDs.length > 0) out.delveIDs = [...choices.delveIDs];
+  if (choices.costBranch !== undefined) out.costBranch = choices.costBranch;
   return out;
 }
 
@@ -124,5 +128,12 @@ export function castPreviewParamsFromPayload(
   if (blight.length > 0) out.blightIDs = blight;
   const delve = stringIDs(payload.delve_ids);
   if (delve.length > 0) out.delveIDs = delve;
+  if (
+    typeof payload.cost_branch === "number" &&
+    Number.isInteger(payload.cost_branch) &&
+    payload.cost_branch >= 0
+  ) {
+    out.costBranch = payload.cost_branch;
+  }
   return out;
 }

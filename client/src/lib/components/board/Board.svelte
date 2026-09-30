@@ -23,6 +23,7 @@
     ActionPayload,
     ActionType,
     ActivatedAbilityView,
+    AdditionalCostView,
     CardView,
     GameView,
     LegalTargetsView,
@@ -79,6 +80,8 @@
     castLocksXAtZero,
     isModal,
     discardCostOf,
+    castAdditionalCost,
+    costBranchesOf,
     castSacrificeClause,
     castSacrificeLabel,
     optionalCostsOf,
@@ -407,6 +410,7 @@
     key: string | undefined,
     optional: number[],
     giftOpponent?: string,
+    costBranch?: number,
   ): void {
     const card = altCostPromptCard;
     const choices = altCostPromptChoices;
@@ -422,6 +426,9 @@
     // #1267: the gift's opponent is part of the same announcement; the
     // modal only hands one back when the gift toggle is on.
     if (giftOpponent !== undefined) next = { ...next, giftOpponent };
+    // ADR 0100: the either/or branch is announced in the same step
+    // (CR 601.2b); the branch's own picker opens next in the chain.
+    if (costBranch !== undefined) next = { ...next, costBranch };
     afterAltCost(card, next);
   }
 
@@ -433,6 +440,9 @@
   // them once the spell is on the stack.
   let discardPromptCard = $state<CardView | null>(null);
   let discardPromptChoices: CastChoices = {};
+  // ADR 0100: the additional cost this cast pays, settled when the
+  // prompt opens — the chosen either/or branch, or the card's own.
+  let discardPromptCost = $state<AdditionalCostView | undefined>(undefined);
 
   // Everything in the caster's hand except the spell itself — CR
   // 601.2a puts it on the stack before costs are paid, so it can't
@@ -671,7 +681,9 @@
   }
 
   function afterAltCostPayment(card: CardView, choices: CastChoices): void {
-    if (discardCostOf(card) > 0) {
+    // ADR 0100: an either/or cost's discard is the chosen branch's.
+    if (discardCostOf(card, choices) > 0) {
+      discardPromptCost = castAdditionalCost(card, choices);
       discardPromptChoices = choices;
       discardPromptCard = card;
       return;
@@ -797,7 +809,14 @@
     // same picker with only the add-ons showing — one prompt for one
     // question (CR 601.2b), rather than a second modal asking the
     // other half of it.
-    if (alternativeCostsOf(card).length > 0 || optionalCostsOf(card).length > 0) {
+    //
+    // ADR 0100: and an either/or additional cost's branch radio, the
+    // same "what am I paying for this?" question.
+    if (
+      alternativeCostsOf(card).length > 0 ||
+      optionalCostsOf(card).length > 0 ||
+      costBranchesOf(card).length > 0
+    ) {
       altCostPromptChoices = choices;
       altCostPromptCard = card;
       return;
@@ -2371,9 +2390,13 @@
       altPayPromptChoices = {};
     }}
   />
+  <!-- ADR 0100: the count and the label are the cost THIS cast pays —
+       the chosen branch of an either/or cost, or the card's own. -->
   <DiscardCostModal
     card={discardPromptCard}
     options={discardCostOptions}
+    need={discardPromptCost?.discard_cards}
+    label={discardPromptCost?.label}
     onConfirm={confirmDiscardCost}
     onCancel={() => {
       discardPromptCard = null;
