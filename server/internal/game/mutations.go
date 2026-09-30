@@ -395,6 +395,19 @@ type CastSpellParams struct {
 	// overload is the worst available failure. Added in S22.
 	AlternativeCost string
 
+	// DelveIDs names the cards in the caster's graveyard exiled to
+	// delve the spell (CR 702.66a, ADR 0100 §1): each one pays for
+	// {1} of the generic mana in the total cost, in the order named.
+	// Empty is always legal — pay the whole cost with mana. At most
+	// CastPrice.DelveBudget of them; a card with no delve that arrives
+	// with any is refused rather than ignored.
+	//
+	// A list of its own rather than AltCostIDs, which escape's
+	// graveyard exile rides: delve is not an alternative or an
+	// additional cost (CR 702.66b), and a permanent linked to "cards
+	// exiled with it" (CR 607.2q) must count these and only these.
+	DelveIDs []uuid.UUID
+
 	// AltCostIDs names the cards paid to the NON-MANA half of the
 	// claimed alternative cost — Force of Will's "exile a blue card
 	// from your hand", Daze's "return an Island you control to its
@@ -1094,6 +1107,24 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 			return err
 		}
 	}
+	// ADR 0100 §1, CR 702.66a: the graveyard cards named to delve.
+	// Checked with the other announce-time choices and exiled further
+	// down once the spell is on the stack. The budget is the generic
+	// the cast still owes after the modifiers and the taps — the same
+	// number CastPrice.DelveBudget reports to the preview and the bot.
+	if len(params.DelveIDs) > 0 {
+		budget := g.delveBudgetLocked(p, card, params)
+		if err := g.validateDelveLocked(playerID, cardID, card, params.DelveIDs, params.AltCostIDs, budget); err != nil {
+			slog.Warn("cast_spell rejected: bad delve payment",
+				"card_name", card.Name,
+				"oracle_id", card.OracleID,
+				"delve_received", len(params.DelveIDs),
+				"budget", budget,
+				"err", err,
+			)
+			return err
+		}
+	}
 	// Timing (CR 307.1). ONE read, in cast_timing.go, shared with the
 	// bot enumerator and the view so the three cannot disagree about
 	// when a cast is open (#1195, ADR 0066's 2026-09-22 amendment).
@@ -1243,6 +1274,9 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// the card still where it was; the answer casts it again. See
 	// cost_commander_choice.go.
 	moving := append(append(append([]uuid.UUID(nil), params.DiscardIDs...), params.SacrificeIDs...), params.AltCostIDs...)
+	// ADR 0100: and the graveyard cards delve exiles — a delved
+	// commander is asked about CR 903.9 before anything is paid.
+	moving = append(moving, params.DelveIDs...)
 	// #1445 / #1427: a card an EFFECT has already paused on its way
 	// out cannot pay — moved, or tapped to convoke / waterbend
 	// (TapIDs), tapped to teamwork or blighted (#1703). See
@@ -1458,6 +1492,25 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// above it. The mana side of the payment was already folded into
 	// the cost gate above; this is the board half.
 	g.payTapPermanentsCostLocked(playerID, params.TapIDs)
+	// ADR 0100 §1: delve's exiles, in the same window and for the same
+	// reason as escape's — with the spell already on the stack, so a
+	// "whenever a card leaves your graveyard" watcher triggers above
+	// it. The record names the objects that landed in exile, which is
+	// what CR 607.2q links the permanent to.
+	if len(params.DelveIDs) > 0 {
+		delved, err := g.payDelveLocked(params.DelveIDs, params.commanderAnswers)
+		if item := g.StackMeta[cardID]; item != nil {
+			item.Paid.Delved = delved
+		}
+		if err != nil {
+			slog.Error("cast_spell: delve failed after validation",
+				"card_name", card.Name,
+				"oracle_id", card.OracleID,
+				"err", err,
+			)
+			return err
+		}
+	}
 	// #1703: teamwork's taps and blight's counters, in the same
 	// window and for the same reason. A creature the blight kills
 	// dies at the closing state-based check, with the cost paid.
@@ -2448,11 +2501,50 @@ func (g *Game) costAfterModifiersLocked(cost ParsedCost, p *Player, card Card, p
 	// all have to have settled before we know what the tapped
 	// permanents are paying for. A card with no such cost, or a cast
 	// that tapped nothing, gets the cost back unchanged.
+	cost = g.costAfterTapsLocked(cost, card, params)
+	// ADR 0100 §1, CR 702.66b: delve applies "only after the total
+	// cost of the spell with delve is determined", and after the taps,
+	// because convoke may pay a coloured symbol and delve only a
+	// generic one. A cast that names no graveyard cards gets the cost
+	// back unchanged.
+	if len(params.DelveIDs) > 0 && g.DelveForLocked(p.ID, card) {
+		cost = delveAdjusted(cost, len(params.DelveIDs), params.XValue)
+	}
+	return cost, nil
+}
+
+// costAfterTapsLocked is the convoke / waterbend subtraction on its
+// own. Split out of costAfterModifiersLocked so the delve budget can be
+// read off the cost the taps leave, which is what CR 702.66a measures
+// it against. Caller must hold g.mu.
+func (g *Game) costAfterTapsLocked(cost ParsedCost, card Card, params CastSpellParams) ParsedCost {
 	tapCost := TapPermanentsCostFor(CatalogKey(card))
 	if !tapCost.Empty() {
 		cost = tapPermanentsAdjusted(cost, tapCost, g.tapPermanentsPayersLocked(params.TapIDs), params.XValue)
 	}
-	return cost, nil
+	return cost
+}
+
+// delveBudgetLocked is CastPrice.DelveBudget computed on its own, for
+// the announce-time validator: the generic the cast still owes after
+// the cost modifiers and the announced taps. Zero for a card with no
+// delve, and for a cost that cannot be priced (the cast is refused
+// for that elsewhere). Caller must hold g.mu.
+func (g *Game) delveBudgetLocked(p *Player, card Card, params CastSpellParams) int {
+	if !g.DelveForLocked(p.ID, card) {
+		return 0
+	}
+	base, _, err := g.printedCostLocked(p, card, params)
+	if err != nil {
+		return 0
+	}
+	noDelve := params
+	noDelve.DelveIDs = nil
+	pre, err := g.costAfterModifiersLocked(base, p, card, noDelve)
+	if err != nil {
+		return 0
+	}
+	return delveBudget(pre, params.XValue)
 }
 
 // printedCostLocked is effectiveCostLocked minus the tap-permanents

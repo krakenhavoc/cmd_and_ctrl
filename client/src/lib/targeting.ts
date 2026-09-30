@@ -97,6 +97,10 @@ export interface CastChoices {
   // waterbend. Undefined and empty are the same thing to the server;
   // tapping nothing is always legal.
   tapIDs?: string[];
+  // ADR 0100: the graveyard cards exiled to delve (CR 702.66a), each
+  // paying {1} of the generic. Undefined and empty are the same thing
+  // to the server; exiling nothing is always legal.
+  delveIDs?: string[];
   // #1703: the creatures tapped for a claimed teamwork offer, and the
   // one creature a claimed blight puts its -1/-1 counters on. Set only
   // when `optionalCosts` claims that offer; the server refuses them on
@@ -175,6 +179,9 @@ export function applyCastChoices(
   if (choices.giftOpponent !== undefined && choices.giftOpponent !== "")
     params.gift_opponent = choices.giftOpponent;
   if (choices.tapIDs !== undefined && choices.tapIDs.length > 0) params.tap_ids = choices.tapIDs;
+  // ADR 0100: omitted when empty, the server default.
+  if (choices.delveIDs !== undefined && choices.delveIDs.length > 0)
+    params.delve_ids = choices.delveIDs;
   // #1703: omitted unless the offer was claimed and paid.
   if (choices.teamworkIDs !== undefined && choices.teamworkIDs.length > 0)
     params.teamwork_ids = choices.teamworkIDs;

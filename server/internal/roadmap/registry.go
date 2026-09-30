@@ -864,6 +864,21 @@ var items = []Item{
 		Examples: []string{"Springleaf Drum", "Heritage Druid", "Relic of Legends", "The Seriema"},
 	},
 	{
+		Slug: "delve", Name: "Delve", Kind: KindSeam, Status: StatusPartial,
+		Summary:  "Spells with delve let you exile cards from your graveyard to pay for the generic mana in their cost.",
+		Missing:  "Cards that care about the cards exiled with them, like Murktide Regent, and effects that give your spells delve aren't supported yet.",
+		Rules:    []string{"702.66", "607.2q"},
+		Issue:    1732,
+		ADR:      "0100-delve-either-or-and-variable-sacrifice-costs.md",
+		Mechanic: "delve",
+		Examples: []string{"Treasure Cruise", "Dig Through Time", "Murderous Cut"},
+		Waiting: []string{
+			"Murktide Regent", "Soulflayer", "Ethereal Forager", "Teval, Arbiter of Virtue",
+			"Tasigur, the Golden Fang", "Afterlife from the Loam", "Sorcerous Squall",
+		},
+		EngineNotes: "**The payment shipped** (ADR 0100 sub-PR 1): `Spec.Delve`, read through `game.DelveFor` / `Game.DelveForLocked`; `CastPrice.DelveBudget` (the generic after the cost modifiers and the convoke / waterbend taps, X folded in, minus `ParsedCost.FoldedColored`); the exile at CR 601.2h through `payDelveLocked` with the #1397 commander ask; and `PaidCost.Delved []ObjectRef`, the objects that landed in exile. The wire is `delve_ids` on `cast_spell`, `CardView.delve`, and the auto-tap preview's `?delve_ids=` / `delve_budget`; bots are offered the fewest-cards and the full-budget payments. **Still open** (ADR 0100 sub-PR 2): the CR 607.2q readers of the linked cards — `CastCounts.Delved` for Murktide Regent's entry counters, `CastProvenance.Delved` for Soulflayer's keywords and Ethereal Forager's attack trigger — and Teval's granted delve in `DelveForLocked`. Three delve cards pay with delve today and are held for their OTHER text, which has no shape: Tasigur, the Golden Fang (\"a nonland card of an opponent's choice\" — an opponent choosing from your graveyard, with no ruling here on which opponent chooses in a multiplayer game), Afterlife from the Loam (\"for each player, choose up to one target creature card in that player's graveyard\" — a target clause per player on a spell), and Sorcerous Squall (casting a spell from an opponent's graveyard mid-resolution, exiled if it would go to a graveyard).",
+	},
+	{
 		Slug: "variable-count-tap-others-cost", Name: "Variable-count tap-others cost", Kind: KindSeam, Status: StatusImplemented,
 		Summary: "An activated ability can tap X eligible permanents as a cost, with the number picked becoming its announced X.",
 		Issue:   1421,

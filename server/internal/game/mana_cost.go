@@ -71,6 +71,17 @@ type ParsedCost struct {
 	// sources as identical to generic sources — the flag is
 	// informational for S17's snow-routing work.
 	HasSnow bool
+
+	// FoldedColored is how many of the symbols in Generic are really
+	// COLOURED (or colourless) symbols that a "spend mana as though it
+	// were mana of any colour / type" grant folded into the generic
+	// demand (asAnyColorCost, asAnyTypeCost). The fold is right for
+	// the mana solver, which may now pay them with anything, and wrong
+	// for delve, which pays only generic mana (CR 702.66a): a
+	// Breeches-granted Murktide Regent must not delve away its {U}{U}.
+	// delveBudget subtracts it. Zero for every cost no grant touched.
+	// ADR 0100 §1.
+	FoldedColored int
 }
 
 // ColorRequirement is one colored-mana slot — ONE symbol, whatever
