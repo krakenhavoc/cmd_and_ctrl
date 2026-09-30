@@ -127,7 +127,7 @@ func TestADiscardOpensADiscardEventWithItsCause(t *testing.T) {
 // TestAnExileInsteadReplacementRedirectsADiscard — the mandatory,
 // every-cause shape madness (#657) and the Obstinate Baloth family
 // will use. The card goes to exile, and it was still DISCARDED
-// (CR 701.8a defines the keyword action by the move out of the hand).
+// (CR 701.9a defines the keyword action by the move out of the hand).
 func TestAnExileInsteadReplacementRedirectsADiscard(t *testing.T) {
 	g := newActiveGame(t)
 	p := g.Seats[1]

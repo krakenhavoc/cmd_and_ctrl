@@ -1827,6 +1827,13 @@ func dispatch(g *game.Game, a Action) error {
 				// the land enter tapped, so it is routed here ahead
 				// of the count guards like the two above it.
 				return g.ResolveEntryRevealFromHand(choiceID, a.Player, ids)
+			case game.PendingChoiceEntryDiscardFromHand, game.PendingChoiceEntrySacrifice:
+				// ADR 0098: "you may discard a land card instead"
+				// (Mox Diamond, floor zero — the empty list is the
+				// decline that puts it into its owner's graveyard) and
+				// "sacrifice a Forest instead" (floor N). The same
+				// payload and resolver as the reveal above.
+				return g.ResolveEntryCardChoice(choiceID, a.Player, ids)
 			case game.PendingChoiceRevealPick:
 				// #1214, CR 608.2 / CR 701.20: "an opponent chooses
 				// two of those cards". Same payload and the same

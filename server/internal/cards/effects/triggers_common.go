@@ -866,3 +866,52 @@ func WhenEnchantedCreatureDies(label string, effect Effect) game.TriggeredAbilit
 		return equippedCreatureDied(ev, source)
 	}, label, effect)
 }
+
+// AnotherNontokenCreatureOfTypeEnteredUnderYourControl — "whenever
+// another nontoken <type> you control enters" (Lathliss, Miirym). A
+// changeling counts as every type, and a token of the type does not
+// trigger it.
+func AnotherNontokenCreatureOfTypeEnteredUnderYourControl(subtype string) When {
+	return func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		c, ok := enteredUnderYourControl(ev, source, g, true)
+		return ok && c.IsCreature() && !c.IsToken() && c.HasSubtype(subtype)
+	}
+}
+
+// AnotherCreatureOrArtifactYouControlWasPutIntoAGraveyard — "whenever
+// another creature or artifact you control is put into a graveyard
+// from the battlefield" (Marionette Apprentice). Read from the
+// departure (CR 603.10a): the permanent's types and controller are
+// the ones it had on the battlefield, so a crewed Vehicle counts as a
+// creature and a stolen creature counts for whoever controlled it as
+// it died. A token counts; it is put into a graveyard before it
+// ceases to exist.
+func AnotherCreatureOrArtifactYouControlWasPutIntoAGraveyard(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	return ev.CardID != source.InstanceID && permanentYouControlWasPutIntoAGraveyard(ev, source, g, "creature", "artifact")
+}
+
+// AnArtifactYouControlWasPutIntoAGraveyard — "whenever an artifact you
+// control is put into a graveyard from the battlefield" (Marionette
+// Master), the source itself included if it is one.
+func AnArtifactYouControlWasPutIntoAGraveyard(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	return permanentYouControlWasPutIntoAGraveyard(ev, source, g, "artifact")
+}
+
+// permanentYouControlWasPutIntoAGraveyard is the shared test: a move
+// from the battlefield to a graveyard of a permanent that had any of
+// `cardTypes` and was under the source's controller's control.
+func permanentYouControlWasPutIntoAGraveyard(ev game.Event, source *game.Card, g *game.Game, cardTypes ...string) bool {
+	if ev.Kind != game.EventLTB || ev.NewZone != game.ZoneGraveyard {
+		return false
+	}
+	c, ok := g.LookupCardForEffect(ev.CardID)
+	if !ok || leftUnderControlOf(ev, c) != source.Controller {
+		return false
+	}
+	for _, t := range cardTypes {
+		if leftAsType(ev, c, t) {
+			return true
+		}
+	}
+	return false
+}

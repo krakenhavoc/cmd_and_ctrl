@@ -238,6 +238,11 @@ var choiceGateDecisions = map[PendingChoiceKind]bool{
 	// answering it by entering — and Xantcha's ruling is that nobody may
 	// act while it is on the battlefield before an opponent controls it.
 	PendingChoiceEntryController: true,
+	// ADR 0098: "if this would enter, you may discard a land card
+	// instead" and "sacrifice a Forest instead". The same reason: the
+	// entry is suspended on the answer.
+	PendingChoiceEntryDiscardFromHand: true,
+	PendingChoiceEntrySacrifice:       true,
 }
 
 // ChoiceBlocksTable is THE question "does an unanswered prompt of this

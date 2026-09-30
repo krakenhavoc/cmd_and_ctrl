@@ -189,7 +189,7 @@ func TestRummageDiscardsBeforeItDraws(t *testing.T) {
 	}
 }
 
-// TestEffectDiscardWithAnEmptyHandQueuesNothing — CR 701.8a discards as
+// TestEffectDiscardWithAnEmptyHandQueuesNothing — CR 701.9a discards as
 // many as you can, and a prompt with no candidates and a floor of one
 // is a prompt nobody can answer, holding the whole table (#544).
 func TestEffectDiscardWithAnEmptyHandQueuesNothing(t *testing.T) {

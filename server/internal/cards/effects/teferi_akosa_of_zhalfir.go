@@ -52,7 +52,7 @@ import (
 // (ChooseCardsPickLegalLocked) and a bot is never offered a set the
 // resolver will refuse.
 //
-// A hand smaller than two discards as many as it can (CR 701.8a), and
+// A hand smaller than two discards as many as it can (CR 701.9a), and
 // the "two" the rule compares against is that smaller number, frozen
 // when the prompt is queued — exactly the scalar
 // ChooseCardsPrompt.Validate's doc says a card must capture rather
@@ -162,7 +162,7 @@ func teferiAkosaDrawThenDiscard(g *game.Game, item *game.StackItem) error {
 // discard a creature card" pick.
 //
 // `need` is the printed two, or the whole hand when it is smaller
-// (CR 701.8a discards as many as you can). It is captured HERE, when
+// (CR 701.9a discards as many as you can). It is captured HERE, when
 // the prompt is queued, rather than read back later: the hand moves
 // under an asynchronous prompt, and the number the rule compares
 // against is the one the ability asked with.

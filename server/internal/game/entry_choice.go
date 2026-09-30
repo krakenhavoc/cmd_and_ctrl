@@ -313,6 +313,14 @@ func (g *Game) executeEntryToBattlefieldLocked(ev *ReplacementEvent) (entered uu
 			err = tailErr
 		}
 	}()
+	if ev.NewZone != ZoneBattlefield {
+		// ADR 0098 Decision 4: the window REDIRECTED the entry — Mox
+		// Diamond's "if you don't, put it into its owner's graveyard",
+		// and whatever a later replacement did to that (CR 616.2). It
+		// never enters (CR 614.6), so nothing entered, and the tail is
+		// told so.
+		return uuid.Nil, g.moveRedirectedEntryLocked(ev)
+	}
 	if g.findCardZoneLocked(ev.CardID) == g.Battlefield {
 		// Something already resolved the entry; don't double-push.
 		return ev.CardID, nil

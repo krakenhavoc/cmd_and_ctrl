@@ -17,7 +17,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // resolution, since the stack item does not carry the cost it paid
 // (b17PermanentSacrificedToPay, the same read Jarad, Golgari Lich
 // Lord uses). "Discard three cards" is the player's own choice
-// (CR 701.8a), not a random discard, so it goes through the prompted
+// (CR 701.9a), not a random discard, so it goes through the prompted
 // discard path and self-clamps to whatever the hand holds after the
 // draw.
 //

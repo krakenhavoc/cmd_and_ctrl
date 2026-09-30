@@ -83,7 +83,7 @@ func TestMadnessExilesTheCardWhateverCausedTheDiscard(t *testing.T) {
 }
 
 // A card that leaves the hand some OTHER way is not touched: the
-// replacement watches the discard event and CR 701.8a defines a
+// replacement watches the discard event and CR 701.9a defines a
 // discard by the move out of the hand, so a plain hand → graveyard
 // move is not one.
 func TestMadnessIgnoresANonDiscardExitFromTheHand(t *testing.T) {
@@ -131,7 +131,7 @@ func TestANonMadnessCardIsOfferedNothing(t *testing.T) {
 	}
 }
 
-// CR 701.8a: the discard HAPPENED, wherever the card ended up. Megrim,
+// CR 701.9a: the discard HAPPENED, wherever the card ended up. Megrim,
 // Marauding Mako and every other discard payoff still see it.
 func TestTheDiscardEventStillFiresForAMadnessDiscard(t *testing.T) {
 	g := newActiveGame(t)

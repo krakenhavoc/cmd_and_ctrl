@@ -49,7 +49,7 @@ import (
 //
 // A madness card milled, tutored, sacrificed off the battlefield or
 // pitched to Force of Will's alternative cost is not discarded, and
-// none of those opens a RepEventDiscard. CR 701.8a defines a discard
+// none of those opens a RepEventDiscard. CR 701.9a defines a discard
 // by the move OUT of the hand, so the one event kind is the whole
 // test.
 //
@@ -159,7 +159,7 @@ func MadnessReplacement() ReplacementEffect {
 //
 // It watches EventDiscardCard from ZoneExile, which is the reflexive
 // "when you do" written in the vocabulary the engine has: the discard
-// event is emitted once the move has LANDED (CR 701.8a defines a
+// event is emitted once the move has LANDED (CR 701.9a defines a
 // discard by the move out of the hand, so it fires wherever the card
 // ends up), so by the time the harvest runs the card is sitting in
 // exile and the zone walk finds it there.
@@ -335,7 +335,7 @@ func init() {
 // zone (CR 903.9).
 //
 // It is NOT a discard: the card left the hand a while ago, and
-// CR 701.8a's keyword action is the move out of a hand. So no discard
+// CR 701.9a's keyword action is the move out of a hand. So no discard
 // payoff fires a second time for one discarded card.
 //
 // Caller must hold g.mu (write).
