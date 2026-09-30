@@ -60,7 +60,7 @@ func init() {
 		Activated: []ActivatedAbility{{
 			Label:   "{3}{U}: Another target creature you control can't be blocked this turn except by Spirits.",
 			Cost:    ManaCost("{3}{U}"),
-			Targets: TargetCreature("another target creature you control", YouControl(), b03NotNamed("Departed Deckhand")),
+			Targets: Another(TargetCreature("another target creature you control", YouControl())),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				// CR 608.2b: a target that left in response is

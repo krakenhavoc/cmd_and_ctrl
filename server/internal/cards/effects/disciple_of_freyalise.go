@@ -36,7 +36,7 @@ func init() {
 			Watches:        []game.EventKind{game.EventETB},
 			AppliesTo:      b06SelfETB,
 			OptionalPrompt: &game.TriggerOptionalPrompt{Question: "Disciple of Freyalise — sacrifice another creature to gain that much life and draw that many cards?"},
-			Targets:        TargetCreature("another creature you control", YouControl(), b03NotNamed("Disciple of Freyalise")),
+			Targets:        Another(TargetCreature("another creature you control", YouControl())),
 			Key:            "Disciple of Freyalise — sacrifice a creature, gain life and draw equal to its power",
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {

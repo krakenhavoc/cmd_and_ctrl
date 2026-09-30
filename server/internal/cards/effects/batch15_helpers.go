@@ -128,18 +128,6 @@ func b15LandsEnteredThisTurn(g *game.Game) map[uuid.UUID]int {
 	return lands
 }
 
-// b15ResolvedThisTurn counts how many times an ability of `source`
-// with the given stack label has RESOLVED this turn — Gala
-// Greeters' "hasn't been chosen this turn". The engine emits
-// EventResolve, carrying the source and the label, immediately
-// before it runs an item's effect, so during the Nth resolution the
-// count is N. Counting resolutions rather than triggers (which
-// b11TriggeredThisTurn does) is what keeps two triggers queued
-// together from both reading the same tally.
-func b15ResolvedThisTurn(g *game.Game, source uuid.UUID, label string) int {
-	return g.ResolvedThisTurn(source, label)
-}
-
 // --- predicates --------------------------------------------------
 
 // b15IsEnchanted reports whether an Aura is attached to the

@@ -28,7 +28,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // The discard used to be random, with a caveat saying so, because the
 // catalog had no prompt for a chosen discard that anything waited on.
 // #651 gave it one, so the controller picks their own pitch as
-// printed (CR 701.8a), from the hand the two cards have already been
+// printed (CR 701.9a), from the hand the two cards have already been
 // drawn into.
 func init() {
 	Register(Spec{

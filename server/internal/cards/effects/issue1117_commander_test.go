@@ -82,9 +82,9 @@ func e2CountersOn(g *game.Game, id uuid.UUID) int {
 
 // The commander's end step: counters equal to the life gained, and a
 // reanimation bounded by the life lost. Both clauses target "up to
-// one", and they arrive as two separate triggers (the declared
-// caveat), so the prompts are answered by what each one offers rather
-// than by a fixed order.
+// one" and belong to ONE trigger, so the pick asks the battlefield
+// clause first and the graveyard clause second, and there is nothing
+// to order.
 func TestE2BetorCountersAndReanimatesOffTheTurnsLifeSwing(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
@@ -105,46 +105,45 @@ func TestE2BetorCountersAndReanimatesOffTheTurnsLifeSwing(t *testing.T) {
 	e2ChangeLife(g, me.ID, -2)
 	advanceToEndStepOf(t, g, 0)
 
-	sawCounters, sawReturn := false, false
-	for i := 0; i < 6; i++ {
-		b04WaitForPick(t, g, me.ID)
-		p := latestPickTarget(g, me.ID)
-		switch {
-		case hasID(p.PickTargetCards, ally):
-			sawCounters = true
-			if p.PickTargetMin != 0 {
-				t.Errorf("up to ONE other target creature you control: min %d", p.PickTargetMin)
-			}
-			if hasID(p.PickTargetCards, betor) {
-				t.Error("OTHER target creature — Betor may not choose itself")
-			}
-			if hasID(p.PickTargetCards, theirs) {
-				t.Error("a creature you control — not an opponent's")
-			}
-			pickCard(t, g, me.ID, ally)
-		case hasID(p.PickTargetCards, cheap):
-			sawReturn = true
-			if hasID(p.PickTargetCards, expensive) {
-				t.Error("mana value 6 is above the two life lost this turn")
-			}
-			if hasID(p.PickTargetCards, notMine) {
-				t.Error("from YOUR graveyard only")
-			}
-			pickCard(t, g, me.ID, cheap)
-		default:
-			t.Fatalf("unexpected pick_target prompt: %+v", p)
-		}
-		if sawCounters && sawReturn {
-			break
-		}
+	// Clause 0: up to one other creature you control.
+	b04WaitForPick(t, g, me.ID)
+	p := latestPickTarget(g, me.ID)
+	if !hasID(p.PickTargetCards, ally) {
+		t.Fatalf("the first clause offers your other creature: %+v", p)
 	}
-	if !sawCounters || !sawReturn {
-		t.Fatalf("both end-step clauses ask for a target (counters=%v return=%v)", sawCounters, sawReturn)
+	if p.PickTargetMin != 0 {
+		t.Errorf("up to ONE other target creature you control: min %d", p.PickTargetMin)
 	}
-	// #1529: the two targeted end-step triggers are one CR 603.3b
-	// batch, ordered once both targets are chosen.
-	if !answerTriggerOrderLastQueuedFirst(t, g) {
-		t.Error("Betor's two end-step triggers were not offered for ordering")
+	if hasID(p.PickTargetCards, betor) {
+		t.Error("OTHER target creature — Betor may not choose itself")
+	}
+	if hasID(p.PickTargetCards, theirs) {
+		t.Error("a creature you control — not an opponent's")
+	}
+	if hasID(p.PickTargetCards, cheap) {
+		t.Error("the battlefield clause does not offer a graveyard card")
+	}
+	pickCard(t, g, me.ID, ally)
+
+	// Clause 1, same trigger: up to one creature card in your
+	// graveyard within the life lost.
+	p = latestPickTarget(g, me.ID)
+	if p == nil || !hasID(p.PickTargetCards, cheap) {
+		t.Fatalf("the second clause offers the affordable creature card: %+v", p)
+	}
+	if hasID(p.PickTargetCards, expensive) {
+		t.Error("mana value 6 is above the two life lost this turn")
+	}
+	if hasID(p.PickTargetCards, notMine) {
+		t.Error("from YOUR graveyard only")
+	}
+	if hasID(p.PickTargetCards, ally) {
+		t.Error("the graveyard clause does not offer a creature on the battlefield")
+	}
+	pickCard(t, g, me.ID, cheap)
+
+	if n := triggersOnStackFrom(g, betor); n != 1 {
+		t.Errorf("Betor's end step is ONE trigger on the stack, got %d", n)
 	}
 	passPriorityAroundTable(t, g)
 
@@ -280,7 +279,7 @@ func TestE2RodolfDecliningThePaymentReturnsNothing(t *testing.T) {
 
 // --- Enduring Tenacity --------------------------------------------
 
-func TestE2EnduringTenacityDrainsAndStaysDead(t *testing.T) {
+func TestE2EnduringTenacityDrainsAndReturnsAsAnEnchantment(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
 	tenacity := b12Push(g, me.ID, "Enduring Tenacity", "Enchantment Creature — Snake Glimmer", e2EnduringTenacityOracle, 4, 3)
@@ -298,14 +297,36 @@ func TestE2EnduringTenacityDrainsAndStaysDead(t *testing.T) {
 		t.Errorf("the opponent loses the 4 life gained: %d", before-opp.Life)
 	}
 
-	// The declared caveat: it dies like any other creature.
+	// The Glimmer half: it dies as a creature and comes back as an
+	// enchantment that is not a creature.
+	g.WithWriteLock(func() { _ = g.DestroyPermanentForEffect(tenacity) })
+	passPriorityAroundTable(t, g)
+	if !g.Battlefield.Contains(tenacity) {
+		t.Fatal("it returns to the battlefield")
+	}
+	types := effectiveTypes(t, g, tenacity)
+	if containsString(types, "Creature") || !containsString(types, "Enchantment") {
+		t.Errorf("it's an enchantment, not a creature: %v", types)
+	}
+
+	// Its drain still works as an enchantment.
+	before = opp.Life
+	e2ChangeLife(g, me.ID, 2)
+	b04WaitForPick(t, g, me.ID)
+	pickPlayer(t, g, me.ID, opp.ID)
+	passPriorityAroundTable(t, g)
+	if opp.Life != before-2 {
+		t.Errorf("the returned enchantment still drains: %d", before-opp.Life)
+	}
+
+	// Dying again as a noncreature, it stays in the graveyard.
 	g.WithWriteLock(func() { _ = g.DestroyPermanentForEffect(tenacity) })
 	passPriorityAroundTable(t, g)
 	if g.Battlefield.Contains(tenacity) {
-		t.Error("it does not return to the battlefield as an enchantment")
+		t.Error("a second death, as an enchantment, does not return it again")
 	}
 	if !me.Graveyard.Contains(tenacity) {
-		t.Error("it goes to the graveyard")
+		t.Error("it stays in the graveyard")
 	}
 }
 

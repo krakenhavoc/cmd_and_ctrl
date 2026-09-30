@@ -645,8 +645,11 @@ func (g *Game) dispatchTriggerInstanceLocked(ev Event, source Card, lki Characte
 		g.anyClauseUnfillableLocked(src, AnnouncedClauses(spec, nil, nil)) {
 		return
 	}
+	// ADR 0097: the ability's own "hasn't been chosen" memory is part
+	// of the same question — an instance left with too few unused
+	// modes is removed here, before any prompt (CR 700.2b).
 	if t.Modes != nil &&
-		!EnoughChoosableModes(len(g.choosableModeOptionsLocked(src, t.Modes)), t.Modes) {
+		!EnoughChoosableModes(len(g.choosableModeOptionsLocked(src, t.Modes, ModeAbilityOf(source, t.Key))), t.Modes) {
 		return
 	}
 	if t.OptionalPrompt != nil {

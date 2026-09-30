@@ -46,7 +46,7 @@ planned just-in-time from the S12 pain-point triage.
 | S11      | Polish III — hover preview, undo, spectator                          | 5     | [#11](https://github.com/krakenhavoc/cmd_and_ctrl/issues/11)   | 2026-09-11 | **done**    |
 | S11.5    | Per-user settings and preferences (mini)                             | 5     | [#82](https://github.com/krakenhavoc/cmd_and_ctrl/issues/82)   | 2026-09-18 | **done**    |
 | S12      | Deploy + 4-player go-live with friends                               | 6     | [#12](https://github.com/krakenhavoc/cmd_and_ctrl/issues/12)   | 2026-09-25 | **done**    |
-| S12.5    | Discord identity for players (OAuth + bot + presence)                | 6     | [#59](https://github.com/krakenhavoc/cmd_and_ctrl/issues/59)   | 2026-10-09 | planned     |
+| S12.5    | Discord identity for players (OAuth + bot + presence)                | 6     | [#59](https://github.com/krakenhavoc/cmd_and_ctrl/issues/59)   | 2026-10-09 | in progress |
 | S13      | Priority foundation (rules graft kickoff)                            | 7     | [#62](https://github.com/krakenhavoc/cmd_and_ctrl/issues/62)   | 2026-05-17 | **done**    |
 | S13.1    | Stack: cast/resolve/target/counter/trigger/SBA                       | 7     | [#63](https://github.com/krakenhavoc/cmd_and_ctrl/issues/63)   | 2026-06-14 | **done**    |
 | S13.2    | Counter mechanics (SBAs + player counters + UI)                      | 7     | [#79](https://github.com/krakenhavoc/cmd_and_ctrl/issues/79)   | 2026-06-28 | **done**    |
@@ -79,6 +79,21 @@ planned just-in-time from the S12 pain-point triage.
 | S33      | Surviving a deploy: reconnect, resume, and schema safety             | 6     | [#515](https://github.com/krakenhavoc/cmd_and_ctrl/issues/515) | 2027-10-10 | partial     |
 | S34      | Persistent user database: people, their games, and their decks       | 6     | [#607](https://github.com/krakenhavoc/cmd_and_ctrl/issues/607) | —          | partial     |
 | S35      | Playtest stabilisation, round 2                                      | 6     | [#734](https://github.com/krakenhavoc/cmd_and_ctrl/issues/734)  | —          | partial     |
+| S36     | Tables that wedge: the engine's dead ends                            | 7     | [#879](https://github.com/krakenhavoc/cmd_and_ctrl/issues/879) | —          | **done**    |
+| S37     | Combat correctness: damage steps, removal from combat, block legality| 7     | [#880](https://github.com/krakenhavoc/cmd_and_ctrl/issues/880) | —          | in progress |
+| S38     | Layers: dependency ordering, ability grants, ability removal         | 7     | [#881](https://github.com/krakenhavoc/cmd_and_ctrl/issues/881) | —          | **done**    |
+| S39     | The CR 614 replacement surface and its paused continuations          | 7     | [#882](https://github.com/krakenhavoc/cmd_and_ctrl/issues/882) | —          | **done**    |
+| S40     | S30's tail: protection, regeneration, emblems, winning by effect     | 7     | [#883](https://github.com/krakenhavoc/cmd_and_ctrl/issues/883) | —          | **done**    |
+| S41     | Turn machinery and per-turn accounting                               | 7     | [#884](https://github.com/krakenhavoc/cmd_and_ctrl/issues/884) | —          | in progress |
+| S42     | Casting from non-hand zones: granted permissions and alternative costs| 7     | [#885](https://github.com/krakenhavoc/cmd_and_ctrl/issues/885) | —          | **done**    |
+| S43     | Hand special actions and face-down objects                           | 7     | [#886](https://github.com/krakenhavoc/cmd_and_ctrl/issues/886) | —          | **done**    |
+| S44     | Mana and cost components                                             | 7     | [#887](https://github.com/krakenhavoc/cmd_and_ctrl/issues/887) | —          | **done**    |
+| S45     | Modal spells, multi-target clauses and copy effects                  | 7     | [#888](https://github.com/krakenhavoc/cmd_and_ctrl/issues/888) | —          | **done**    |
+| S46     | Permanents that change what they are                                 | 7     | [#889](https://github.com/krakenhavoc/cmd_and_ctrl/issues/889) | —          | **done**    |
+| S47     | Bot seat, round 2: wire it, measure it, sharpen it                   | 7     | [#890](https://github.com/krakenhavoc/cmd_and_ctrl/issues/890) | —          | in progress |
+| S48     | Client robustness and the surfaces that lie                          | 7     | [#891](https://github.com/krakenhavoc/cmd_and_ctrl/issues/891) | —          | in progress |
+| S49     | Operability, CI currency, and the hygiene tail                       | 7     | [#892](https://github.com/krakenhavoc/cmd_and_ctrl/issues/892) | —          | in progress |
+| S50     | Seams from the deck re-checks                                        | 7     | [#1784](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1784) | —        | in progress |
 
 ### How to read the status column
 
@@ -495,40 +510,40 @@ Every "out of scope" deferral from the initial planning pass is pulled into this
 
 **Discord OAuth (core):**
 
-- [ ] Register the Discord application; `CMDCTRL_DISCORD_CLIENT_ID` / `CMDCTRL_DISCORD_CLIENT_SECRET` env vars (dev + prod). Callback URLs for both environments registered with Discord.
-- [ ] Server routes: `GET /auth/discord/start?game=<id>&t=<invite>` builds the Discord authorize URL with PKCE + state; `GET /auth/discord/callback` exchanges the code, calls `/users/@me`, completes `Lobby.Join` on the bound invite, mints the session.
-- [ ] Server-side state store (`game_id`, `invite_token`, `pkce_verifier`, 5-minute TTL) — reuse the pattern from `auth.MemoryAuthenticator`; no schema migration.
-- [ ] Extend `auth.Principal` with optional `DiscordID`, `DiscordUsername`, `DiscordAvatarHash`, `DisplayName`. `MemoryAuthenticator` preserves them across `Validate`.
-- [ ] Extend `lobby.SeatInfo` with `display_name` (Discord `global_name`, fallback username, final fallback manual name) and `avatar_url`.
-- [ ] Client: `Join.svelte` gets a primary "Sign in with Discord" button; manual name-entry kept as fallback.
+- [x] Register the Discord application; `CMDCTRL_DISCORD_CLIENT_ID` / `CMDCTRL_DISCORD_CLIENT_SECRET` env vars (dev + prod). Callback URLs for both environments registered with Discord.
+- [x] Server routes: `GET /auth/discord/start?game=<id>&t=<invite>` builds the Discord authorize URL with PKCE + state; `GET /auth/discord/callback` exchanges the code, calls `/users/@me`, completes `Lobby.Join` on the bound invite, mints the session.
+- [x] Server-side state store (`game_id`, `invite_token`, `pkce_verifier`, 5-minute TTL) — reuse the pattern from `auth.MemoryAuthenticator`; no schema migration.
+- [x] Extend `auth.Principal` with optional `DiscordID`, `DiscordUsername`, `DiscordAvatarHash`, `DisplayName`. `MemoryAuthenticator` preserves them across `Validate`.
+- [x] Extend `lobby.SeatInfo` with `display_name` (Discord `global_name`, fallback username, final fallback manual name) and `avatar_url`. *(Shipped as `discord_id` + `discord_avatar_hash`; the client builds the avatar URL, there is no `avatar_url` field.)*
+- [x] Client: `Join.svelte` gets a primary "Sign in with Discord" button; manual name-entry kept as fallback.
 
 **Avatar rendering:**
 
 - [ ] `client/src/lib/protocol.ts` — `PlayerView` / `SeatInfo` grow the two optional fields.
-- [ ] `PlayerHeader.svelte` — render a 24px circular avatar before `.seat-dot` when present.
-- [ ] Lobby seat list, any S10 politics / commander-damage UI that names seats — pick up `displayName` / `avatarUrl`.
-- [ ] Server-side avatar cache (`$CMDCTRL_DATA_DIR/avatars/<discord_id>/<hash>.png`): on first fetch hit `cdn.discordapp.com`, cache with immutable headers, re-fetch when hash changes. Client requests `/avatars/<discord_id>`; server serves from cache or proxies on miss. (Avoids embedding Discord CDN URLs directly in the state stream.)
+- [x] `PlayerHeader.svelte` — render a 24px circular avatar before `.seat-dot` when present.
+- [x] Lobby seat list, any S10 politics / commander-damage UI that names seats — pick up `displayName` / `avatarUrl`.
+- [x] Server-side avatar cache (`$CMDCTRL_DATA_DIR/avatars/<discord_id>/<hash>.png`): on first fetch hit `cdn.discordapp.com`, cache with immutable headers, re-fetch when hash changes. Client requests `/avatars/<discord_id>`; server serves from cache or proxies on miss. (Avoids embedding Discord CDN URLs directly in the state stream.)
 
 **Discord bot (`cmd_and_ctrl-bot`):**
 
 - [x] New top-level directory `bot/` or a cmd under `server/cmd/bot/` — picked `server/cmd/bot/` + `server/internal/bot/` in ADR 0004 (shared module, separate binary). Go, using `bwmarrin/discordgo`. Allow-list gate via `CMDCTRL_DISCORD_GUILD_IDS`.
 - [x] Slash command `/c2-invite [name]` — calls server `POST /games` with admin credentials (bot holds `CMDCTRL_ADMIN_TOKEN` via env), posts the invite link back to the channel (channel-visible embed; ephemeral-toggle deferred).
-- [ ] Slash command `/c2-invite-dm @user [name]` — deferred (needs invite-side pre-bind of DiscordID; not in MVP).
+- [x] Slash command `/c2-invite-dm <user> [game] [name]` — shipped in [#613](https://github.com/krakenhavoc/cmd_and_ctrl/issues/613): now a thin client of the server route `POST /games/{id}/invites/dm` (ADR 0051 decision 5), not a gateway DM.
 - [x] Slash command `/c2-games` — ephemeral list of active/lobby games (invite tokens already stripped by `Lobby.List`). `/c2-end <id>` deferred (destructive, wants confirmation UX) — shipped as an S34 follow-up, [#614](https://github.com/krakenhavoc/cmd_and_ctrl/issues/614).
 - [x] Bot deploys as a second systemd unit on the same VPS (S12 infra). Unit at `deploy/cmd-and-ctrl-bot.service`; env file separate from the server's (ADR 0004 §6).
 
 **Rich Presence:**
 
-- [ ] Opt-in toggle in the client ("Show this game on Discord"); stored in `localStorage` alongside the session.
-- [ ] When enabled, client uses Discord's RPC over the local IPC socket (`discord-rpc` from npm or a thin WebSocket wrapper) to publish presence: "In a Commander game — Turn 5, 3 opponents alive".
-- [ ] Presence updates on phase change + life change (throttled to 1 update / 15 s to stay inside Discord's rate limits).
-- [ ] Presence clears on game end / browser close.
+- [ ] Opt-in toggle in the client ("Show this game on Discord"); stored in `localStorage` alongside the session. *(Not built; tracked with the S12.5 leftovers in [#607](https://github.com/krakenhavoc/cmd_and_ctrl/issues/607).)*
+- [ ] When enabled, client uses Discord's RPC over the local IPC socket (`discord-rpc` from npm or a thin WebSocket wrapper) to publish presence: "In a Commander game — Turn 5, 3 opponents alive". *(Not built; tracked with the S12.5 leftovers in [#607](https://github.com/krakenhavoc/cmd_and_ctrl/issues/607).)*
+- [ ] Presence updates on phase change + life change (throttled to 1 update / 15 s to stay inside Discord's rate limits). *(Not built; tracked with the S12.5 leftovers in [#607](https://github.com/krakenhavoc/cmd_and_ctrl/issues/607).)*
+- [ ] Presence clears on game end / browser close. *(Not built; tracked with the S12.5 leftovers in [#607](https://github.com/krakenhavoc/cmd_and_ctrl/issues/607).)*
 
 **Re-link after the fact:**
 
-- [ ] `GET /auth/discord/link` — already-signed-in player reopens the invite/OAuth loop to attach (or swap) their Discord identity onto an existing seat without leaving the game.
-- [ ] Client surfaces a "Link Discord" row in a session-settings panel (new — probably a small menu in the corner of `Game.svelte`).
-- [ ] Server merges Discord fields onto the existing `Principal` + broadcasts a `SeatInfo` update delta so opponents immediately see the avatar/name swap.
+- [x] `GET /auth/discord/link` — already-signed-in player reopens the invite/OAuth loop to attach (or swap) their Discord identity onto an existing seat without leaving the game.
+- [x] Client surfaces a "Link Discord" row in a session-settings panel (new — probably a small menu in the corner of `Game.svelte`).
+- [x] Server merges Discord fields onto the existing `Principal` + broadcasts a `SeatInfo` update delta so opponents immediately see the avatar/name swap.
 
 **Docs:**
 
@@ -554,6 +569,7 @@ Every "out of scope" deferral from the initial planning pass is pulled into this
 6. All four of the above work against the deployed VPS from S12.
 
 ---
+
 
 ## S13 — Priority foundation (rules graft kickoff)
 
@@ -2641,12 +2657,12 @@ The server has only ever had seats. A session bound one socket to one game and o
 
 ### Sub-PR 6 — tablemates, invite picker, DM invites
 
-**Open — the only sub-PR left.** [#613](https://github.com/krakenhavoc/cmd_and_ctrl/issues/613) (the `/c2-invite-dm` slash command) is a thin client of this sub-PR's route and follows it.
+[#613](https://github.com/krakenhavoc/cmd_and_ctrl/issues/613) (the `/c2-invite-dm` slash command, a thin client of this sub-PR's route) has shipped.
 
 - [ ] Tablemates query (ADR 0051 decision 8): people who share a `seats` row with the caller, recency-ordered, offered as suggestions when inviting
 - [ ] Invite picker UI over that query
 - [ ] `POST /games/{id}/invites/dm` — the server sends the DM itself over Discord REST with a bot token; the gateway bot does not open the DM
-- [ ] [#613](https://github.com/krakenhavoc/cmd_and_ctrl/issues/613) — `/c2-invite-dm @user`, a thin client of the route above
+- [x] [#613](https://github.com/krakenhavoc/cmd_and_ctrl/issues/613) — `/c2-invite-dm @user`, a thin client of the route above
 
 ### Sub-PR 7 — `sessions_invalid_before`: logout-everywhere, admin remove-user
 
@@ -2758,5 +2774,331 @@ Work that carries `Sprint: S35` in its commit trailer and is not on #734's check
 **Left this sprint:** [#343](https://github.com/krakenhavoc/cmd_and_ctrl/issues/343), the transform verb, moved to S46. The five non-report engine items #534 raised and #734 left to the owner were taken into later sprints rather than this one: [#492](https://github.com/krakenhavoc/cmd_and_ctrl/issues/492) into S37, [#489](https://github.com/krakenhavoc/cmd_and_ctrl/issues/489), [#478](https://github.com/krakenhavoc/cmd_and_ctrl/issues/478) and [#360](https://github.com/krakenhavoc/cmd_and_ctrl/issues/360) into S39; [#482](https://github.com/krakenhavoc/cmd_and_ctrl/issues/482) is closed with no milestone.
 
 **Explicitly not in this sprint**, per #734: S33's deploy survival ([#515](https://github.com/krakenhavoc/cmd_and_ctrl/issues/515)), S34's user database ([#607](https://github.com/krakenhavoc/cmd_and_ctrl/issues/607)), store and boundary hardening ([#720](https://github.com/krakenhavoc/cmd_and_ctrl/issues/720)), token redaction in bug reports ([#721](https://github.com/krakenhavoc/cmd_and_ctrl/issues/721)), `pruneOrphanMeta` ([#525](https://github.com/krakenhavoc/cmd_and_ctrl/issues/525)), adventure cards ([#719](https://github.com/krakenhavoc/cmd_and_ctrl/issues/719)), and catalog growth beyond the reported cards.
+
+---
+
+## S36 — Tables that wedge: the engine's dead ends
+
+**Phase:** 7 · **Goal:** no game can reach a state where every seat has zero legal moves. Tracking issue [#879](https://github.com/krakenhavoc/cmd_and_ctrl/issues/879).
+
+Planned 2026-09-18 in the S36–S49 backlog pass over the open issues; the tracker was built from titles and bodies, so the members below carry their **current** issue state and the tracker holds the detail.
+
+- [x] [#864](https://github.com/krakenhavoc/cmd_and_ctrl/issues/864) — A pending choice whose chooser has been eliminated wedges the table forever (pick_target,…
+- [x] [#809](https://github.com/krakenhavoc/cmd_and_ctrl/issues/809) — A targeted trigger that fires while a spell resolves can offer only that spell as a target, and the…
+- [x] [#810](https://github.com/krakenhavoc/cmd_and_ctrl/issues/810) — The bot enumerator offers a free {X} activation at X=0 forever, so a table with Soothsaying can loop…
+- [x] [#619](https://github.com/krakenhavoc/cmd_and_ctrl/issues/619) — Enumerator offers Crackle with Power with X=0 and one target — an X-defined target count the engine…
+- [x] [#794](https://github.com/krakenhavoc/cmd_and_ctrl/issues/794) — legal.anyChoiceOpen blocks on pay_unless too, so bots idle while a human owes a Rhystic tax (stricter…
+- [x] [#804](https://github.com/krakenhavoc/cmd_and_ctrl/issues/804) — CR 726 shortcut prompt: after the loop breaker fires, let the loop's controller run K more iterations…
+- [x] [#769](https://github.com/krakenhavoc/cmd_and_ctrl/issues/769) — Leaving the game (CR 800.4a): a departed player's objects stay on the battlefield and in every zone,…
+- [x] [#877](https://github.com/krakenhavoc/cmd_and_ctrl/issues/877) — ws tests: Game.PlayerByID inside a ReadSnapshot body is a recursive RLock that deadlocks under a…
+
+### Status
+
+**Done.** All 8 members are closed. Tracker [#879](https://github.com/krakenhavoc/cmd_and_ctrl/issues/879) stays open until the owner closes it.
+
+---
+
+## S37 — Combat correctness: damage steps, removal from combat, block legality
+
+**Phase:** 7 · **Goal:** the combat phase matches CR 506-511 beat for beat. Tracking issue [#880](https://github.com/krakenhavoc/cmd_and_ctrl/issues/880).
+
+Planned 2026-09-18 in the S36–S49 backlog pass over the open issues; the tracker was built from titles and bodies, so the members below carry their **current** issue state and the tracker holds the detail.
+
+- [x] [#702](https://github.com/krakenhavoc/cmd_and_ctrl/issues/702) — Combat: the regular damage substep resolves while a first-strike multi-blocker assignment prompt is…
+- [x] [#716](https://github.com/krakenhavoc/cmd_and_ctrl/issues/716) — Combat: the regular damage pass reads first strike after it changed mid-combat, so a creature can…
+- [x] [#717](https://github.com/krakenhavoc/cmd_and_ctrl/issues/717) — Model the second combat damage step with its own priority window (CR 510.4) when first or double…
+- [x] [#715](https://github.com/krakenhavoc/cmd_and_ctrl/issues/715) — Combat: a blocked attacker whose blockers are removed hits the player (CR 509.1h), and menace blocks…
+- [x] [#785](https://github.com/krakenhavoc/cmd_and_ctrl/issues/785) — Creatures are removed from combat as the end of combat step begins, not as it ends (CR 511.3)
+- [x] [#492](https://github.com/krakenhavoc/cmd_and_ctrl/issues/492) — DeclareBlocker runs no state checks, so block triggers resolve after combat damage
+- [x] [#750](https://github.com/krakenhavoc/cmd_and_ctrl/issues/750) — ADR then implementation: conditional blocking restrictions (CR 509.1b) — "can't be blocked except…
+- [ ] [#672](https://github.com/krakenhavoc/cmd_and_ctrl/issues/672) — Context menu: remove a single creature from combat (server verb + menu row)
+- [x] [#784](https://github.com/krakenhavoc/cmd_and_ctrl/issues/784) — "Whenever one or more creatures deal combat damage to a player" triggers once per damage step instead…
+- [x] [#1279](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1279) — Give the declare-blockers action a completion point before anything can depend on "unblocked"
+- [x] [#1376](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1376) — An attacked planeswalker that changes control must leave combat (CR 506.4)
+
+### Status
+
+**In progress.** 10 of 11 members closed. Still open: [#672](https://github.com/krakenhavoc/cmd_and_ctrl/issues/672).
+
+---
+
+## S38 — Layers: dependency ordering, ability grants, ability removal
+
+**Phase:** 7 · **Goal:** CR 613.6-613.8 hold under interacting continuous effects. Tracking issue [#881](https://github.com/krakenhavoc/cmd_and_ctrl/issues/881).
+
+Planned 2026-09-18 in the S36–S49 backlog pass over the open issues; the tracker was built from titles and bodies, so the members below carry their **current** issue state and the tracker holds the detail.
+
+- [x] [#668](https://github.com/krakenhavoc/cmd_and_ctrl/issues/668) — ADR: CR 613.8 dependency ordering in layer 4 — Urborg + Song of the Dryads / Arixmethes, Maskwood +…
+- [x] [#754](https://github.com/krakenhavoc/cmd_and_ctrl/issues/754) — ADR then implementation: abilities granted to other permanents (CR 113.10, layer 6) — Cryptolith…
+- [x] [#755](https://github.com/krakenhavoc/cmd_and_ctrl/issues/755) — ADR then implementation: continuous effects that outlast the turn (CR 611.2a–b) — "until your next…
+- [x] [#756](https://github.com/krakenhavoc/cmd_and_ctrl/issues/756) — ADR then implementation: gain and exchange control from spells and abilities (CR 613.1b, 701.12) —…
+- [x] [#669](https://github.com/krakenhavoc/cmd_and_ctrl/issues/669) — Ability removal drops a silenced source from every layer (CR 613.6), and Song of the Dryads wipes…
+- [x] [#670](https://github.com/krakenhavoc/cmd_and_ctrl/issues/670) — "Every creature type" is stored as a keyword, so layer-6 ability removal wipes a layer-4 grant…
+- [x] [#690](https://github.com/krakenhavoc/cmd_and_ctrl/issues/690) — Toughness SBA still skips coded */* CDA creatures at computed toughness 0 (Consuming Aberration, Lord…
+- [x] [#691](https://github.com/krakenhavoc/cmd_and_ctrl/issues/691) — Printed 0/0 X-counter creatures survive an X=0 cast: player-facing caveats (and fix Wildwood…
+
+### Status
+
+**Done.** All 8 members are closed. Tracker [#881](https://github.com/krakenhavoc/cmd_and_ctrl/issues/881) stays open until the owner closes it.
+
+---
+
+## S39 — The CR 614 replacement surface and its paused continuations
+
+**Phase:** 7 · **Goal:** every event a card can replace actually runs the window, and a paused pipeline never strands a card. Tracking issue [#882](https://github.com/krakenhavoc/cmd_and_ctrl/issues/882).
+
+Planned 2026-09-18 in the S36–S49 backlog pass over the open issues; the tracker was built from titles and bodies, so the members below carry their **current** issue state and the tracker holds the detail.
+
+- [x] [#650](https://github.com/krakenhavoc/cmd_and_ctrl/issues/650) — ADR: discard as a replaceable event with a cause — every discard bypasses CR 614 (amend ADR 0013 §10)
+- [x] [#762](https://github.com/krakenhavoc/cmd_and_ctrl/issues/762) — ADR then implementation: token creation as a replaceable event (CR 701.7b, 614) — Parallel Lives,…
+- [x] [#569](https://github.com/krakenhavoc/cmd_and_ctrl/issues/569) — A replacement kind for the mill amount — Bruvac the Grandiloquent
+- [x] [#783](https://github.com/krakenhavoc/cmd_and_ctrl/issues/783) — A tuck paused on the CR 903.9 command-zone prompt doesn't wait: Chaos Warp shuffles and reveals…
+- [x] [#870](https://github.com/krakenhavoc/cmd_and_ctrl/issues/870) — Winds of Abandon counts a basic land per ExileTarget call that returned no error, so a paused or…
+- [x] [#478](https://github.com/krakenhavoc/cmd_and_ctrl/issues/478) — A fetched permanent is stranded in the library when its entry queues a replacement prompt
+- [x] [#489](https://github.com/krakenhavoc/cmd_and_ctrl/issues/489) — A spell that exiles or tucks itself on resolution errors out and skips the post-resolution state checks
+- [x] [#360](https://github.com/krakenhavoc/cmd_and_ctrl/issues/360) — azorius_chancery.go claims self-replacement is impossible — three land cycles now depend on it
+- [x] [#732](https://github.com/krakenhavoc/cmd_and_ctrl/issues/732) — Spelunking's remaining caveat may be stale: the search path already seeds EntersTapped, so its…
+
+### Status
+
+**Done.** All 9 members are closed. Tracker [#882](https://github.com/krakenhavoc/cmd_and_ctrl/issues/882) stays open until the owner closes it.
+
+---
+
+## S40 — S30's tail: protection, regeneration, emblems, winning by effect
+
+**Phase:** 7 · **Goal:** close the object kinds and keywords S30 deferred. Tracking issue [#883](https://github.com/krakenhavoc/cmd_and_ctrl/issues/883).
+
+Planned 2026-09-18 in the S36–S49 backlog pass over the open issues; the tracker was built from titles and bodies, so the members below carry their **current** issue state and the tracker holds the detail.
+
+- [x] [#662](https://github.com/krakenhavoc/cmd_and_ctrl/issues/662) — ADR then implementation: protection (CR 702.16) — DEBT checked against the source object; supersedes…
+- [x] [#667](https://github.com/krakenhavoc/cmd_and_ctrl/issues/667) — Regeneration (CR 701.19) — Asceticism and the regeneration batch skips
+- [x] [#748](https://github.com/krakenhavoc/cmd_and_ctrl/issues/748) — ADR then implementation: infect, wither and toxic (CR 702.90, 702.80, 702.164) — damage results as…
+- [x] [#749](https://github.com/krakenhavoc/cmd_and_ctrl/issues/749) — ADR then implementation: winning the game by effect (CR 104.2b), "can't lose / can't win the game",…
+- [x] [#623](https://github.com/krakenhavoc/cmd_and_ctrl/issues/623) — ADR: emblems (CR 114) — representation, persistence, wire and client
+- [x] [#626](https://github.com/krakenhavoc/cmd_and_ctrl/issues/626) — Invasion of New Phyrexia (S27 battle 4/4) — blocked on emblems, set-level Validate and a reflexive…
+- [x] [#796](https://github.com/krakenhavoc/cmd_and_ctrl/issues/796) — A resolving ability needs a free yes/no for its own controller at resolution ("you may …" inside an…
+- [x] [#568](https://github.com/krakenhavoc/cmd_and_ctrl/issues/568) — An opponent's non-mana choice at resolution — Fact or Fiction and 5 more
+
+### Status
+
+**Done.** All 8 members are closed. Tracker [#883](https://github.com/krakenhavoc/cmd_and_ctrl/issues/883) stays open until the owner closes it.
+
+---
+
+## S41 — Turn machinery and per-turn accounting
+
+**Phase:** 7 · **Goal:** extra turns, extra phases, the untap step and the cleanup step all behave. Tracking issue [#884](https://github.com/krakenhavoc/cmd_and_ctrl/issues/884).
+
+Planned 2026-09-18 in the S36–S49 backlog pass over the open issues; the tracker was built from titles and bodies, so the members below carry their **current** issue state and the tracker holds the detail.
+
+- [ ] [#753](https://github.com/krakenhavoc/cmd_and_ctrl/issues/753) — ADR then implementation: turn machinery — extra combat and main phases (CR 500.8) and extra turns (CR…
+- [x] [#826](https://github.com/krakenhavoc/cmd_and_ctrl/issues/826) — ADR then implementation: untap-step choices (CR 502.3) — "untap no more than N" and "may choose not…
+- [x] [#661](https://github.com/krakenhavoc/cmd_and_ctrl/issues/661) — CR 514.3a not implemented: a trigger during cleanup waits until the next player's upkeep instead of…
+- [x] [#567](https://github.com/krakenhavoc/cmd_and_ctrl/issues/567) — Cumulative upkeep (CR 702.24) — Mystic Remora
+- [x] [#630](https://github.com/krakenhavoc/cmd_and_ctrl/issues/630) — Loyalty 'already activated this turn' survives a planeswalker leaving and returning the same turn (CR…
+- [x] [#811](https://github.com/krakenhavoc/cmd_and_ctrl/issues/811) — Hobgoblin Bandit Lord counts Goblins as they are now, not as they entered, so it can count creatures…
+
+### Status
+
+**In progress.** 5 of 6 members closed. Still open: [#753](https://github.com/krakenhavoc/cmd_and_ctrl/issues/753).
+
+---
+
+## S42 — Casting from non-hand zones: granted permissions and alternative costs
+
+**Phase:** 7 · **Goal:** a spell can be cast from wherever a card says it can be, priced correctly. Tracking issue [#885](https://github.com/krakenhavoc/cmd_and_ctrl/issues/885).
+
+Planned 2026-09-18 in the S36–S49 backlog pass over the open issues; the tracker was built from titles and bodies, so the members below carry their **current** issue state and the tracker holds the detail.
+
+- [x] [#652](https://github.com/krakenhavoc/cmd_and_ctrl/issues/652) — ADR: granted cast permissions — Snapcaster Mage, Past in Flames, The Grim Captain's Locker,…
+- [x] [#765](https://github.com/krakenhavoc/cmd_and_ctrl/issues/765) — ADR (after #652) then implementation: play and cast from the top of your library (CR 401.5) — Future…
+- [x] [#653](https://github.com/krakenhavoc/cmd_and_ctrl/issues/653) — Cast provenance on permanents, "unless it escaped" — Phlage, Uro, Kroxa, Tizerus Charger, Skyway…
+- [x] [#664](https://github.com/krakenhavoc/cmd_and_ctrl/issues/664) — ADR: optional additional costs — kicker and buyback, including non-mana (Constant Mists)
+- [x] [#760](https://github.com/krakenhavoc/cmd_and_ctrl/issues/760) — ADR then implementation: one announce-time cast gate — "can't cast" restrictions (CR 101.2) and "cast…
+- [x] [#719](https://github.com/krakenhavoc/cmd_and_ctrl/issues/719) — Adventure cards (CR 715): cast the adventure half, exile on resolution, cast the creature from exile…
+- [x] [#673](https://github.com/krakenhavoc/cmd_and_ctrl/issues/673) — Bots don't enumerate graveyard or exile casts, or alternative costs — flashback, escape, warp,…
+- [x] [#696](https://github.com/krakenhavoc/cmd_and_ctrl/issues/696) — Auto-tap preview prices the printed cost: alternative costs, exile-grant overrides and non-hand casts…
+- [x] [#695](https://github.com/krakenhavoc/cmd_and_ctrl/issues/695) — Alternative-cost offers with a life component are shown below that life total, then rejected (Force…
+- [x] [#874](https://github.com/krakenhavoc/cmd_and_ctrl/issues/874) — Client: the exile-zone impulse cast button sends a bare cast_spell with no prompt chain, so an {X}…
+- [x] [#1352](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1352) — Sorcery-speed legality ignores unresolved abilities on StackMeta
+- [x] [#1275](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1275) — Per-player activation timing derived from an emblem in the command zone
+- [x] [#1278](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1278) — Commander ninjutsu: put a commander onto the battlefield from the command zone
+
+### Status
+
+**Done.** All 13 members are closed. Tracker [#885](https://github.com/krakenhavoc/cmd_and_ctrl/issues/885) stays open until the owner closes it.
+
+---
+
+## S43 — Hand special actions and face-down objects
+
+**Phase:** 7 · **Goal:** cards that live in the hand, or under a face-down projection, work. Tracking issue [#886](https://github.com/krakenhavoc/cmd_and_ctrl/issues/886).
+
+Planned 2026-09-18 in the S36–S49 backlog pass over the open issues; the tracker was built from titles and bodies, so the members below carry their **current** issue state and the tracker holds the detail.
+
+- [x] [#655](https://github.com/krakenhavoc/cmd_and_ctrl/issues/655) — ADR: hand special actions and activated abilities from hand — foretell, suspend, cycling
+- [x] [#656](https://github.com/krakenhavoc/cmd_and_ctrl/issues/656) — ADR: face-down objects (CR 406.3a / 708) — owner-known exile, 2/2 projection, catalog suppression
+- [x] [#658](https://github.com/krakenhavoc/cmd_and_ctrl/issues/658) — Foretell (CR 702.143) — Saw It Coming, Behold the Multiverse, Cosmic Intervention
+- [x] [#659](https://github.com/krakenhavoc/cmd_and_ctrl/issues/659) — Suspend (CR 702.62) — Rift Bolt, Lotus Bloom, Ancestral Vision; retire the declared-ZoneExile shape
+- [x] [#660](https://github.com/krakenhavoc/cmd_and_ctrl/issues/660) — Cycling (CR 702.29): activated abilities from hand with a discard-this-card cost — six catalog cards…
+- [x] [#657](https://github.com/krakenhavoc/cmd_and_ctrl/issues/657) — Madness (CR 702.35) — Fiery Temper, Big Game Hunter
+- [x] [#697](https://github.com/krakenhavoc/cmd_and_ctrl/issues/697) — Face-down flag survives admin moves and casts out of exile (CR 400.7); StackOverlay hover guard never…
+- [x] [#1382](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1382) — Plot needs a "becomes plotted" event for exile-zone triggers
+
+### Status
+
+**Done.** All 8 members are closed. Tracker [#886](https://github.com/krakenhavoc/cmd_and_ctrl/issues/886) stays open until the owner closes it.
+
+---
+
+## S44 — Mana and cost components
+
+**Phase:** 7 · **Goal:** the mana pipeline and the auto-tapper agree with the engine on what is payable. Tracking issue [#887](https://github.com/krakenhavoc/cmd_and_ctrl/issues/887).
+
+Planned 2026-09-18 in the S36–S49 backlog pass over the open issues; the tracker was built from titles and bodies, so the members below carry their **current** issue state and the tracker holds the detail.
+
+- [x] [#763](https://github.com/krakenhavoc/cmd_and_ctrl/issues/763) — ADR then implementation: triggered mana abilities (CR 605.1b, 605.4a) that know the colour produced —…
+- [x] [#779](https://github.com/krakenhavoc/cmd_and_ctrl/issues/779) — Auto-tapper skips "N mana of any one color" sources (Gilded Lotus, Lotus Field, Nyx Lotus), so a…
+- [x] [#782](https://github.com/krakenhavoc/cmd_and_ctrl/issues/782) — Exotic Orchard and Reflecting Pool read the wrong colours from chosen-colour lands (producibleFrom…
+- [x] [#758](https://github.com/krakenhavoc/cmd_and_ctrl/issues/758) — ADR 0020 addendum then implementation: "tap N untapped [permanents] you control" as an ability cost —…
+- [x] [#789](https://github.com/krakenhavoc/cmd_and_ctrl/issues/789) — ADR 0020 addendum then implementation: the rest of counter costs — on mana abilities (Vivid lands,…
+- [x] [#761](https://github.com/krakenhavoc/cmd_and_ctrl/issues/761) — ADR then implementation: record the mana spent to cast a spell on its stack item — converge, sunburst…
+- [x] [#787](https://github.com/krakenhavoc/cmd_and_ctrl/issues/787) — ParseCost rejects hybrid Phyrexian symbols ({G/W/P}), so those cards can't be cast and read mana value 0
+
+### Status
+
+**Done.** All 7 members are closed. Tracker [#887](https://github.com/krakenhavoc/cmd_and_ctrl/issues/887) stays open until the owner closes it.
+
+---
+
+## S45 — Modal spells, multi-target clauses and copy effects
+
+**Phase:** 7 · **Goal:** per-slot and per-mode targeting exists, and a copy can differ from its original. Tracking issue [#888](https://github.com/krakenhavoc/cmd_and_ctrl/issues/888).
+
+Planned 2026-09-18 in the S36–S49 backlog pass over the open issues; the tracker was built from titles and bodies, so the members below carry their **current** issue state and the tracker holds the detail.
+
+- [x] [#764](https://github.com/krakenhavoc/cmd_and_ctrl/issues/764) — ADR then implementation: modal and multi-target clauses (CR 700.2, 601.2c) — per-slot target clauses,…
+- [x] [#665](https://github.com/krakenhavoc/cmd_and_ctrl/issues/665) — Copy effects that grant an ability (CR 707.9a) or add a subtype — Phantasmal Image; clears…
+- [x] [#666](https://github.com/krakenhavoc/cmd_and_ctrl/issues/666) — A copy of a permanent spell becomes a token (CR 608.3f / 111.13) — Double Major
+- [x] [#786](https://github.com/krakenhavoc/cmd_and_ctrl/issues/786) — Clone gate passes a new copy of a body that is already in the baseline
+- [x] [#663](https://github.com/krakenhavoc/cmd_and_ctrl/issues/663) — "When you next cast" delayed triggers — Doublecast, Galvanic Iteration (ADR 0026 amendment or…
+
+### Status
+
+**Done.** All 5 members are closed. Tracker [#888](https://github.com/krakenhavoc/cmd_and_ctrl/issues/888) stays open until the owner closes it.
+
+---
+
+## S46 — Permanents that change what they are
+
+**Phase:** 7 · **Goal:** transform, Classes, Station, and attachments that stop being attachments. Tracking issue [#889](https://github.com/krakenhavoc/cmd_and_ctrl/issues/889).
+
+Planned 2026-09-18 in the S36–S49 backlog pass over the open issues; the tracker was built from titles and bodies, so the members below carry their **current** issue state and the tracker holds the detail.
+
+- [x] [#343](https://github.com/krakenhavoc/cmd_and_ctrl/issues/343) — [in-app] Anng swift savior transform missing
+- [x] [#757](https://github.com/krakenhavoc/cmd_and_ctrl/issues/757) — ADR then implementation: Classes (CR 716) and Cases (CR 719) first, Rooms (CR 709.5) later —…
+- [x] [#759](https://github.com/krakenhavoc/cmd_and_ctrl/issues/759) — ADR then implementation: Station (CR 702.184, 721) — charge counters from a tapped creature, {N+}…
+- [x] [#706](https://github.com/krakenhavoc/cmd_and_ctrl/issues/706) — Prowess: pick the keyword pattern and implement it (unblocks Ty Lee, #339)
+- [x] [#675](https://github.com/krakenhavoc/cmd_and_ctrl/issues/675) — CR 704.5p not implemented: an Aura or Equipment that stops being one stays attached, and works again…
+- [x] [#812](https://github.com/krakenhavoc/cmd_and_ctrl/issues/812) — Equip resolving after its Equipment left the battlefield logs an effect error instead of doing…
+- [x] [#726](https://github.com/krakenhavoc/cmd_and_ctrl/issues/726) — S24 theme-deck smoke test for attachments (equip, auras, 704.5m/n, Mind Control) — the last S24 gap
+
+### Status
+
+**Done.** All 7 members are closed. Tracker [#889](https://github.com/krakenhavoc/cmd_and_ctrl/issues/889) stays open until the owner closes it.
+
+---
+
+## S47 — Bot seat, round 2: wire it, measure it, sharpen it
+
+**Phase:** 7 · **Goal:** a lobby bot is the tiered policy that was actually built, not RandomPolicy with 99 Mountains. Tracking issue [#890](https://github.com/krakenhavoc/cmd_and_ctrl/issues/890).
+
+Planned 2026-09-18 in the S36–S49 backlog pass over the open issues; the tracker was built from titles and bodies, so the members below carry their **current** issue state and the tracker holds the detail.
+
+- [x] [#501](https://github.com/krakenhavoc/cmd_and_ctrl/issues/501) — S31: the curated decks and every policy tier above `random` are built but unwired — a lobby bot is…
+- [x] [#686](https://github.com/krakenhavoc/cmd_and_ctrl/issues/686) — Bot improvisation: a production Improviser for the assisted/strong tiers (closes out #501)
+- [x] [#505](https://github.com/krakenhavoc/cmd_and_ctrl/issues/505) — S31: per-decision latency percentiles are never computed and no admin surface can read the bot metrics
+- [ ] [#735](https://github.com/krakenhavoc/cmd_and_ctrl/issues/735) — Measure per-game model spend for the assisted/strong bot tiers once a keyed endpoint is used (S31…
+- [x] [#685](https://github.com/krakenhavoc/cmd_and_ctrl/issues/685) — Nightly: heuristic-20 and 100-game random soak as standing S31 gates (race-free step, env-overridable…
+- [x] [#687](https://github.com/krakenhavoc/cmd_and_ctrl/issues/687) — Legal enumerator: order target expansion by threat inside MaxExpansionPerSource (ADR 0033 §1)
+- [x] [#688](https://github.com/krakenhavoc/cmd_and_ctrl/issues/688) — BOT chip tooltip: show the deck's archetype/name, not the deck ID
+- [x] [#727](https://github.com/krakenhavoc/cmd_and_ctrl/issues/727) — Bot heuristic double-counts attached permanents — split Equipment/buff Auras from removal and control…
+- [x] [#780](https://github.com/krakenhavoc/cmd_and_ctrl/issues/780) — Bot answers every "choose a color" with its own main colour, so a bot's Wash Out bounces its own board
+- [ ] [#837](https://github.com/krakenhavoc/cmd_and_ctrl/issues/837) — Bot decision harness and eval loop for the local model (qwen3:14b) — ADR 0052
+
+### Status
+
+**In progress.** 8 of 10 members closed. Still open: [#735](https://github.com/krakenhavoc/cmd_and_ctrl/issues/735), [#837](https://github.com/krakenhavoc/cmd_and_ctrl/issues/837).
+
+---
+
+## S48 — Client robustness and the surfaces that lie
+
+**Phase:** 7 · **Goal:** the board never freezes silently, and never shows a state the server disagrees with. Tracking issue [#891](https://github.com/krakenhavoc/cmd_and_ctrl/issues/891).
+
+Planned 2026-09-18 in the S36–S49 backlog pass over the open issues; the tracker was built from titles and bodies, so the members below carry their **current** issue state and the tracker holds the detail.
+
+- [x] [#720](https://github.com/krakenhavoc/cmd_and_ctrl/issues/720) — Client hardening from #266: guard every store and derived against the shared subscriber queue, and…
+- [x] [#740](https://github.com/krakenhavoc/cmd_and_ctrl/issues/740) — Board froze once with state_unsafe_mutation in a Board.svelte-owned effect (attack declaration,…
+- [x] [#689](https://github.com/krakenhavoc/cmd_and_ctrl/issues/689) — Client: a DOM test environment for Svelte component render tests
+- [x] [#703](https://github.com/krakenhavoc/cmd_and_ctrl/issues/703) — Life popup shows only the last life change per frame, and nothing once life_history hits its cap
+- [x] [#781](https://github.com/krakenhavoc/cmd_and_ctrl/issues/781) — A permanent's chosen colour or creature type isn't shown to players once the prompt closes…
+- [ ] [#671](https://github.com/krakenhavoc/cmd_and_ctrl/issues/671) — reveal_card: "Reveal to table" and "Show to <player>" from the admin context menu (ADR 0028 amendment…
+- [x] [#805](https://github.com/krakenhavoc/cmd_and_ctrl/issues/805) — docs: protocol.md's GameView field list is partial, and bot.md should name the loop-breaker stop
+- [ ] [#554](https://github.com/krakenhavoc/cmd_and_ctrl/issues/554) — More pre-built decks: four is enough to ship the picker, not enough to keep it
+
+### Status
+
+**In progress.** 6 of 8 members closed. Still open: [#671](https://github.com/krakenhavoc/cmd_and_ctrl/issues/671), [#554](https://github.com/krakenhavoc/cmd_and_ctrl/issues/554).
+
+---
+
+## S49 — Operability, CI currency, and the hygiene tail
+
+**Phase:** 7 · **Goal:** a deploy, a crash loop, or a stale comment cannot go unnoticed for a month again. Tracking issue [#892](https://github.com/krakenhavoc/cmd_and_ctrl/issues/892).
+
+Planned 2026-09-18 in the S36–S49 backlog pass over the open issues; the tracker was built from titles and bodies, so the members below carry their **current** issue state and the tracker holds the detail.
+
+- [ ] [#598](https://github.com/krakenhavoc/cmd_and_ctrl/issues/598) — S12 deploy follow-ups: pin the hosts, bound the restarts, watch /healthz, make the runner stateless
+- [x] [#525](https://github.com/krakenhavoc/cmd_and_ctrl/issues/525) — pruneOrphanMeta deletes the lobby metadata of an abandoned game, so ADR 0041's roll-back recovery…
+- [x] [#474](https://github.com/krakenhavoc/cmd_and_ctrl/issues/474) — CI: actions/setup-go@v5 targets Node.js 20, forced onto Node 24 by the runner
+- [x] [#633](https://github.com/krakenhavoc/cmd_and_ctrl/issues/633) — game.Card padding guard: recurse into embedded structs, and regroup ExilePlayPermission's bools (13 B)
+- [x] [#832](https://github.com/krakenhavoc/cmd_and_ctrl/issues/832) — Chore: detached SetPoison doc comment, a stale untapPermanentLocked comment, and an unused…
+- [x] [#693](https://github.com/krakenhavoc/cmd_and_ctrl/issues/693) — Rules citations: the tail of the Aug 2026 edition sweep (#684 follow-up)
+- [ ] [#615](https://github.com/krakenhavoc/cmd_and_ctrl/issues/615) — Docs: Discord sign-in routes, avatars and SeatInfo fields; ADR 0004 and S12.5 tracker catch-up (from #59)
+- [x] [#678](https://github.com/krakenhavoc/cmd_and_ctrl/issues/678) — S30 exit criterion: the theme-deck test — Avacyn, Reverberate, Clone and a fog through four turns
+- [x] [#1381](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1381) — Five stale card caveats describe activated-ability cost shapes that now exist
+
+### Status
+
+**In progress.** 7 of 9 members closed. Still open: [#598](https://github.com/krakenhavoc/cmd_and_ctrl/issues/598), [#615](https://github.com/krakenhavoc/cmd_and_ctrl/issues/615).
+
+---
+
+## S50 — Seams from the deck re-checks
+
+**Phase:** 7 · **Goal:** close the engine seams the 2026-09-29/30 deck re-checks and batch slices ran into, so the deck trackers (#1640, #1112, #1117, #1306, #1565) empty out. Tracking issue [#1784](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1784).
+
+Planned 2026-09-30 from that day's triage of every open issue. It holds the implementations of ADRs 0098, 0100, 0101 and 0102, which were accepted that day, plus the leftover gaps from slices 295-b and 296-a/d/e/m. Discover (ADR 0099) is tracked on #1112, and turn machinery on #753 (S41).
+
+- [ ] [#1744](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1744) — Mox Diamond, plus the seven "sacrifice a land instead" lands (ADR 0098)
+- [ ] [#1732](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1732) — Delve, either/or additional costs, variable sacrifice (ADR 0100)
+- [ ] [#1753](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1753) — Keyword counters read by the engine, plus Perennation (ADR 0101)
+- [ ] [#1759](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1759) — Entering under an opponent's control (ADR 0102)
+- [ ] [#1755](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1755) — Nightly playwright job (fix in #1763; waiting on a green nightly run)
+- [ ] [#1727](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1727) — Dread Return: sacrifice as an alternative-cost component
+- [ ] [#1735](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1735) — Mockingbird, Elesh Norn, Blightsteel
+- [ ] [#1743](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1743) — Spellskite pinned retarget; Explore the Vastlands
+- [ ] [#1600](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1600) — The remaining mana-rock seams
+- [ ] [#1729](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1729) — Monarch follow-ups (Palace Jailer, Court of Locthwain)
+- [ ] [#1604](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1604) — Counter-conditioned durations; "loses all land types"
+- [ ] [#1745](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1745) — Gain control of a spell on the stack (needs an ADR)
+- [ ] [#1756](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1756) — Rooms, CR 709 (needs an ADR)
+- [ ] [#1780](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1780) — An Aura that enchants a graveyard card, Animate Dead (needs an ADR)
+
+### Status
+
+**In progress.** 0 of 14 members closed. Four ADR implementations are running.
 
 ---

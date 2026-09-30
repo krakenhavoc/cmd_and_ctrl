@@ -2,6 +2,8 @@ package game
 
 import (
 	"fmt"
+	"slices"
+	"sort"
 	"sync"
 
 	"github.com/google/uuid"
@@ -29,7 +31,8 @@ import (
 // target group through TargetRef.Mode. The catalog reads the choice
 // back through effects.Context.HasMode / ModeCount / Modes, or lets
 // the engine dispatch each chosen bullet's ModeOption.Effect in
-// announce order (CR 608.2c).
+// PRINTED order (CR 608.2c, PrintedModeOrder; the storage order is
+// what pairs an occurrence with its targets, the run order is not).
 
 // ModeOption is one bullet of a modal spell or ability.
 type ModeOption struct {
@@ -151,6 +154,21 @@ type ModeSpec struct {
 	RaisedMax  int
 	RaisedMin  int
 	RaiseMaxIf ModeCountCondition
+
+	// NotChosen is "choose one that hasn't been chosen [this turn]"
+	// (ADR 0097, #1749): the options this OBJECT's ability has already
+	// chosen are withheld from its later choices, for the rest of the
+	// turn (ModeMemoryThisTurn) or for as long as the object exists
+	// (ModeMemoryEver). The zero value is no restriction.
+	//
+	// Read through choosableModeOptionsLocked, the one filter every
+	// mode path asks, with the ability's identity (ModeAbility); a
+	// caller with no identity — a spell — excludes nothing.
+	// effects.Register refuses it on a Repeatable spec (CR 700.2d
+	// says the opposite) and on a spell's Spec.Modes (no spell prints
+	// it, and a spell has no object to remember with). See
+	// mode_memory.go.
+	NotChosen ModeMemory
 }
 
 // ModeCountCondition names a registered "if <condition> as you cast
@@ -427,18 +445,36 @@ func castTargetSpecForItem(oracleID string, item *StackItem) *TargetSpec {
 	return TargetSpecUnderOptionalCosts(spec, OptionalCostsFor(oracleID), item.Paid.OptionalCosts)
 }
 
+// PrintedModeOrder is the order a modal spell or ability's chosen
+// modes are carried out: the occurrence indexes of `modes`, sorted by
+// option (the order the modes are WRITTEN on the card) with repeats of
+// one option keeping their announce order (CR 608.2c, CR 700.2d). The
+// stored StackItem.Modes stays in announce order, because an
+// occurrence's index is what pairs it with its target group
+// (TargetRef.Mode); only the order the bodies RUN in is printed order.
+// The owner decided this on 2026-09-30 (#1653, ADR 0065 §3 amendment).
+func PrintedModeOrder(modes []int) []int {
+	occs := make([]int, len(modes))
+	for i := range occs {
+		occs[i] = i
+	}
+	sort.SliceStable(occs, func(a, b int) bool { return modes[occs[a]] < modes[occs[b]] })
+	return occs
+}
+
 // runChosenModeEffectsLocked runs each chosen bullet's ModeOption
-// Effect in announce order, once per occurrence (CR 608.2c, and CR
-// 700.2d for a repeated mode). A nil Effect means the card resolves
-// its modes inside its own OnResolve instead, which is the older and
-// still-supported shape.
+// Effect in PRINTED order, once per occurrence (CR 608.2c, and CR
+// 700.2d for a repeated mode), whatever order the modes were announced
+// in. A nil Effect means the card resolves its modes inside its own
+// OnResolve instead, which is the older and still-supported shape.
 //
 // Caller must hold g.mu in write mode.
 func (g *Game) runChosenModeEffectsLocked(item *StackItem, ms *ModeSpec) {
 	if item == nil || ms == nil {
 		return
 	}
-	for occ, opt := range item.Modes {
+	for _, occ := range PrintedModeOrder(item.Modes) {
+		opt := item.Modes[occ]
 		if opt < 0 || opt >= len(ms.Options) {
 			continue
 		}
@@ -458,19 +494,30 @@ func (g *Game) runChosenModeEffectsLocked(item *StackItem, ms *ModeSpec) {
 }
 
 // choosableModeOptionsLocked lists the option indexes a chooser may
-// pick right now: every option, minus those whose clause list cannot
-// be filled from the current board (CR 603.3d — an option with no
-// legal target is not on offer). `src` names the spell or ability
-// doing the choosing, because whether a clause is fillable depends on
-// the source under CR 702.16b as well as on the chooser (#662).
+// pick right now: every option, minus those the ability `ab` has
+// already chosen under the spec's NotChosen restriction (ADR 0097),
+// minus those whose clause list cannot be filled from the current
+// board (CR 603.3d — an option with no legal target is not on offer).
+// `src` names the spell or ability doing the choosing, because whether
+// a clause is fillable depends on the source under CR 702.16b as well
+// as on the chooser (#662). `ab` is the zero ModeAbility for a spell,
+// which excludes nothing.
+//
+// The used modes are dropped FIRST, so the harvest check, the
+// mode_pick prompt, the activation gate, the enumerator and the view
+// all see an exhausted ability the same way.
 //
 // Caller must hold g.mu.
-func (g *Game) choosableModeOptionsLocked(src TargetSource, ms *ModeSpec) []int {
+func (g *Game) choosableModeOptionsLocked(src TargetSource, ms *ModeSpec, ab ModeAbility) []int {
 	if ms == nil {
 		return nil
 	}
+	used := g.modesChosenLocked(ms, ab)
 	out := make([]int, 0, len(ms.Options))
 	for i, o := range ms.Options {
+		if slices.Contains(used, i) {
+			continue
+		}
 		if o.Targets != nil && g.anyClauseUnfillableLocked(src, AnnouncedClauses(o.Targets, nil, nil)) {
 			continue
 		}
@@ -480,15 +527,17 @@ func (g *Game) choosableModeOptionsLocked(src TargetSource, ms *ModeSpec) []int 
 }
 
 // ModeLabels is the oracle bullet of each chosen mode of this item,
-// in announce order and with repeats — what the stack overlay shows
-// instead of a row of indexes. Empty for a non-modal item and for
+// in the order they will be carried out (printed order, CR 608.2c) and
+// with repeats — what the stack overlay shows instead of a row of
+// indexes. Empty for a non-modal item and for
 // one whose ModeSpec could not be re-derived after a restore.
 func (s *StackItem) ModeLabels() []string {
 	if s == nil || s.modeSpec == nil || len(s.Modes) == 0 {
 		return nil
 	}
 	out := make([]string, 0, len(s.Modes))
-	for _, m := range s.Modes {
+	for _, occ := range PrintedModeOrder(s.Modes) {
+		m := s.Modes[occ]
 		if m < 0 || m >= len(s.modeSpec.Options) {
 			continue
 		}
@@ -500,9 +549,11 @@ func (s *StackItem) ModeLabels() []string {
 // ChoosableModeOptionsForEffect is choosableModeOptionsLocked on the
 // *ForEffect surface: which of a ModeSpec's options the spell or
 // ability `src` could take right now, for callers already under g.mu
-// — the bot's move enumerator and the protocol projection.
-func (g *Game) ChoosableModeOptionsForEffect(src TargetSource, ms *ModeSpec) []int {
-	return g.choosableModeOptionsLocked(src, ms)
+// — the bot's move enumerator and the protocol projection. `ab` names
+// the ability whose "hasn't been chosen" memory applies; the zero
+// value (a spell) excludes nothing.
+func (g *Game) ChoosableModeOptionsForEffect(src TargetSource, ms *ModeSpec, ab ModeAbility) []int {
+	return g.choosableModeOptionsLocked(src, ms, ab)
 }
 
 // EnoughChoosableModes reports whether `n` takeable options can fill a

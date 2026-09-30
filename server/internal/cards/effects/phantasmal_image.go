@@ -23,7 +23,7 @@ import (
 // ability_grant.go and server/internal/game/copy_grants.go.
 //
 // Shipping it without the drawback would have been strictly stronger
-// than printed, which AGENTS.md §7 forbids — the whole cost of the
+// than printed, which docs/adding-cards.md forbids — the whole cost of the
 // card is that any removal spell, any Swords, any ward trigger, even
 // a friendly Giant Growth kills it outright.
 const phantasmalImageIllusionGrant = "phantasmal-image/illusion"

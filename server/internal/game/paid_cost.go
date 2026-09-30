@@ -186,6 +186,22 @@ type PaidCost struct {
 	// PaidTap for why the number here is a fallback and not the
 	// answer. ADR 0071, addendum 2026-09-23.
 	TappedOthers []PaidTap `json:"tappedOthers,omitempty"`
+
+	// Delved is what delve exiled from the caster's graveyard to pay
+	// for the spell (CR 702.66a, ADR 0100 §1), in the order named: the
+	// objects AS THEY LANDED IN EXILE, instance ID and epoch. Nil for a
+	// cast that delved nothing, which is nearly every cast.
+	//
+	// A list of objects rather than a count because CR 607.2q links the
+	// permanent the spell becomes to exactly "cards exiled to pay the
+	// cost of the spell" — Murktide Regent counts the instants and
+	// sorceries among them, Soulflayer reads their keywords — and a
+	// card that has since left exile is a new object (CR 400.7) that
+	// no longer counts. The epoch is what lets a reader tell.
+	//
+	// Not copied onto a CR 707.10 copy of the spell: a copy was not
+	// cast, and nothing was exiled to pay for it.
+	Delved []ObjectRef `json:"delved,omitempty"`
 }
 
 // PaidTap is one permanent a TapOthers cost tapped, as the payment
@@ -316,7 +332,7 @@ func (p PaidCost) IsZero() bool {
 	return len(p.Mana) == 0 && !p.OnPaper &&
 		p.CountersRemoved == 0 && p.CountersAdded == 0 && p.LifePaid == 0 &&
 		p.Sacrificed == 0 && p.ReturnedAttacking == uuid.Nil && len(p.OptionalCosts) == 0 &&
-		len(p.TappedOthers) == 0 && len(p.Exiled) == 0
+		len(p.TappedOthers) == 0 && len(p.Exiled) == 0 && len(p.Delved) == 0
 }
 
 // clonePaidCost deep-copies the record. The ManaToken slice is
@@ -336,6 +352,9 @@ func clonePaidCost(p PaidCost) PaidCost {
 	}
 	if len(p.Exiled) > 0 {
 		out.Exiled = append([]uuid.UUID(nil), p.Exiled...)
+	}
+	if len(p.Delved) > 0 {
+		out.Delved = append([]ObjectRef(nil), p.Delved...)
 	}
 	return out
 }

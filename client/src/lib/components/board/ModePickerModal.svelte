@@ -172,7 +172,13 @@
               {#if repeatable && times > 0}
                 <span class="times">&times;{times}</span>
               {/if}
-              {#if !castable}
+              {#if option.used}
+                <span class="note"
+                  >{spec.not_chosen === "this_turn"
+                    ? "already chosen this turn"
+                    : "already chosen"}</span
+                >
+              {:else if !castable}
                 <span class="note">no legal target</span>
               {/if}
             </button>

@@ -99,6 +99,16 @@ var gameFields = plan(
 	"StackMeta", carried, "",
 	"PendingTriggers", carried, "",
 	"DelayedTriggers", carried, "",
+	// ADR 0059 Decision 10: the CR 500.7 extra-turn queue and its ref
+	// counter. Plain data.
+	"ExtraTurns", carried, "",
+	"NextExtraRef", carried, "",
+	// ADR 0059 Decisions 3 and 10: the rest of the turn and its phase-id
+	// counter. Plain data. planAt is derived: it names the cursor the
+	// plan describes, and restore stamps it from the restored cursor.
+	"TurnPlan", carried, "",
+	"NextPhaseID", carried, "",
+	"planAt", rebuilt, "derived from the restored cursor: a restored plan describes the cursor it was captured with",
 	"SplitSecondActive", carried, "",
 	"LoyaltyActivatedThisTurn", carried, "",
 	"SpellsCastThisTurn", carried, "",
@@ -269,6 +279,7 @@ var cardFields = plan(
 	"BattleX", carried, "",
 	"BattleY", carried, "",
 	"Counters", carried, "",
+	"CounterStampedAt", carried, "",
 	"IsCommander", carried, "",
 	"AttackingTarget", carried, "",
 	"BlockingTarget", carried, "",
@@ -373,6 +384,9 @@ var cardFields = plan(
 	// chosen as the permanent entered. A player's choice, so nothing
 	// can rebuild it — and it decides which printed ability exists.
 	"ChosenOption", carried, "",
+	// ADR 0097: the "hasn't been chosen" memory with no duration —
+	// player choices nothing can re-derive.
+	"ModesChosen", carried, "",
 	// #653 / #664, CR 400.7d: what the spell that became this
 	// permanent was cast for — the alternative cost and the optional
 	// additional costs, one record. Carried, and it is the field here
@@ -628,6 +642,9 @@ var delayedTriggerFields = plan(
 	"Label", carried, "",
 	"At", carried, "",
 	"ControllerTurnOnly", carried, "",
+	// ADR 0059 Decision 8: the binding to one extra turn.
+	"OnExtraTurn", carried, "",
+	"TurnOf", carried, "",
 	"CreatedSeq", carried, "",
 	"Cards", carried, "",
 	// #663's event condition. The data half comes back so a restored
@@ -660,6 +677,9 @@ var pendingChoiceFields = plan(
 	"CoinWins", carried, "",
 	"ColorOptions", carried, "",
 	"ColorPurpose", carried, "",
+	// ADR 0102: an entry_controller prompt's purpose, carried beside
+	// ColorPurpose for the same reason.
+	"ControlPurpose", carried, "",
 	// Added by the mana pipeline (#352/#356). A restricted mana token
 	// is game state that survives undo — clone.go deep-copies it at
 	// clone.go:135 — so the snapshot must carry it too, or a restored
@@ -705,6 +725,11 @@ var pendingChoiceFields = plan(
 	"ModeMin", carried, "",
 	"ModeMax", carried, "",
 	"ModeRepeatable", carried, "",
+	// ADR 0097: the used half of the offer and which restriction it
+	// is — shown greyed by the picker, so carried with the offer.
+	"ModeUsedIndex", carried, "",
+	"ModeUsedLabel", carried, "",
+	"ModeNotChosen", carried, "",
 	"SacrificeOptions", carried, "",
 	"CopyOptions", carried, "",
 	"ScryCards", carried, "",
@@ -731,6 +756,9 @@ var pendingChoiceFields = plan(
 	// a restored game that forgot it would render an offer about
 	// nothing.
 	"MayCastCard", carried, "",
+	// ADR 0099: the rule the may_cast is asked under, so a restored
+	// prompt words itself the same way.
+	"MayCastKeyword", carried, "",
 	// The chained-choice prompts (chained_choice.go). The labels are
 	// the card's own words for the two branches and the candidate set
 	// / bounds are what the enumerator reads to offer legal answers —

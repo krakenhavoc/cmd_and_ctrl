@@ -18,7 +18,7 @@ const b33SidisiZombieLabel = "Sidisi, Brood Tyrant — create a 2/2 black Zombie
 // Grave-Reaver's: it watches EventMill — the engine emits one per
 // card — so the first creature card of a mill fires it and the rest
 // of that mill are declined as later events of the same batch
-// (OncePerBatch; see AGENTS.md §7). Two separate mills in one turn
+// (OncePerBatch; see docs/adding-cards.md). Two separate mills in one turn
 // make two Zombies, as printed. A creature card that reaches the
 // graveyard from the library some other way — a search that puts it
 // there — is not a mill and does not fire it; no card in the catalog

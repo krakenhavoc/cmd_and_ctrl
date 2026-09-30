@@ -390,6 +390,28 @@ const (
 	// an ordinary scry. Added in S22.
 	EventSurveil EventKind = "surveil"
 
+	// EventDiscover — Actor finished a discover (CR 701.57b). Source
+	// is the card that discovered, Amount is N, and CardID is the
+	// discovered card (CR 701.57c), or uuid.Nil when the walk found
+	// none. "Whenever you discover" (Curator of Sun's Creation) reads
+	// it, and Amount is Curator's "the same value".
+	//
+	// Emitted when the discovered card's fate is settled, which is
+	// when the process is complete (ADR 0099 §5): after it reaches a
+	// hand on a decline or on the pass that closes its grant, and
+	// right after the EventCast of the spell that used the grant. That
+	// last one is why it is not emitted at the prompt's answer: a
+	// "whenever you discover" trigger goes on the stack ABOVE the
+	// discovered spell and resolves first, as in paper. A walk that
+	// found nothing, and a discoverer who has left, emit it at once —
+	// CR 701.57b's "even if some or all of those actions were
+	// impossible".
+	//
+	// Its own kind rather than a flag on EventKeywordAction, for the
+	// reason EventSurveil gives: a discover payoff must not fire on a
+	// scry.
+	EventDiscover EventKind = "discover"
+
 	// EventSacrifice — a permanent was sacrificed (CR 701.21):
 	// its controller moved it to the graveyard as a cost or as
 	// part of an effect's instruction. Emitted immediately BEFORE
@@ -779,6 +801,23 @@ const (
 	// turn's first EventStepBegan. It is an engine boundary event, not a
 	// second public-log line beside the step spine (ADR 0059).
 	EventTurnBegan EventKind = "turn_began"
+
+	// EventExtraTurnAdded — an effect gave a player an extra turn
+	// (CR 500.7, ADR 0059 Decision 5). Actor is the player who will take
+	// it, Source the card whose effect created it, Amount the turn's
+	// ExtraTurn.Ref. One per turn: Time Stretch emits two. Emitted as the
+	// turn is QUEUED; EventTurnBegan with Label "extra" follows when it
+	// begins, and a queued turn of a player who leaves never does.
+	EventExtraTurnAdded EventKind = "extra_turn_added"
+
+	// EventPhasesAdded — an effect added phases or a step to the
+	// current turn (CR 500.8 / 500.9, ADR 0059 Decision 4). Actor is the
+	// active player (whose turn gets them), Source the card whose effect
+	// added them, Amount how many phases or steps. For phases, Label is
+	// the kinds in the order they will occur, comma-separated
+	// ("combat,main"); for a step, Step is the step added and Label its
+	// name. Emitted as the plan is edited, before any of them begins.
+	EventPhasesAdded EventKind = "phases_added"
 
 	// EventStepBegan — the turn cursor entered a step. Actor is the
 	// active player, Step the step (typed), Amount the turn sequence,
@@ -1209,7 +1248,7 @@ type Event struct {
 
 	// DiscardCause is why a discard happened, on EventDiscardCard: an
 	// effect's instruction, a cost, or the cleanup step's turn-based
-	// action (CR 701.8a, 601.2h, 514.1). Empty on every other kind.
+	// action (CR 701.9a, 601.2h, 514.1). Empty on every other kind.
 	//
 	// It is the distinction the rules draw — ADR 0013 §10a withdrew
 	// the voluntary/involuntary framing — and it rides the public event

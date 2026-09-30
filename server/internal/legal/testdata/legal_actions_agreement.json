@@ -1,0 +1,1916 @@
+[
+  {
+    "name": "main_phase_ready",
+    "note": "active seat, precombat main, empty stack, land drop unused",
+    "viewer": "00000001-0000-4000-8000-000000000000",
+    "view": {
+      "id": "00000002-0000-4000-8000-000000000000",
+      "state": "active",
+      "seats": [
+        {
+          "id": "00000001-0000-4000-8000-000000000000",
+          "name": "Seat 1",
+          "seat": 0,
+          "life": 40,
+          "library": {
+            "kind": "library",
+            "owner": "00000001-0000-4000-8000-000000000000",
+            "count": 3,
+            "cards": [
+              {
+                "instance_id": "00000003-0000-4000-8000-000000000000",
+                "name": "",
+                "owner": "00000001-0000-4000-8000-000000000000",
+                "controller": "00000001-0000-4000-8000-000000000000"
+              },
+              {
+                "instance_id": "00000004-0000-4000-8000-000000000000",
+                "name": "",
+                "owner": "00000001-0000-4000-8000-000000000000",
+                "controller": "00000001-0000-4000-8000-000000000000"
+              },
+              {
+                "instance_id": "00000005-0000-4000-8000-000000000000",
+                "name": "",
+                "owner": "00000001-0000-4000-8000-000000000000",
+                "controller": "00000001-0000-4000-8000-000000000000"
+              }
+            ]
+          },
+          "hand": {
+            "kind": "hand",
+            "owner": "00000001-0000-4000-8000-000000000000",
+            "count": 3,
+            "cards": [
+              {
+                "instance_id": "00000006-0000-4000-8000-000000000000",
+                "name": "Forest",
+                "owner": "00000001-0000-4000-8000-000000000000",
+                "controller": "00000001-0000-4000-8000-000000000000",
+                "type_line": "Basic Land — Forest",
+                "known_by_you": true,
+                "mana_abilities": [
+                  {
+                    "index": 0,
+                    "ref": "land:G",
+                    "label": "Add {G}",
+                    "tap_cost": true,
+                    "produced": "{G}"
+                  }
+                ]
+              },
+              {
+                "instance_id": "00000007-0000-4000-8000-000000000000",
+                "name": "Lightning Bolt",
+                "owner": "00000001-0000-4000-8000-000000000000",
+                "controller": "00000001-0000-4000-8000-000000000000",
+                "type_line": "Instant",
+                "colors": [
+                  "R"
+                ],
+                "known_by_you": true,
+                "auto": true,
+                "target_mode": "any",
+                "legal_targets": {
+                  "players": [
+                    "00000001-0000-4000-8000-000000000000",
+                    "00000008-0000-4000-8000-000000000000"
+                  ],
+                  "cards": [
+                    "00000009-0000-4000-8000-000000000000",
+                    "0000000a-0000-4000-8000-000000000000"
+                  ],
+                  "min": 1,
+                  "max": 1
+                },
+                "mana_cost": "{R}"
+              },
+              {
+                "instance_id": "0000000b-0000-4000-8000-000000000000",
+                "name": "Concentrate",
+                "owner": "00000001-0000-4000-8000-000000000000",
+                "controller": "00000001-0000-4000-8000-000000000000",
+                "type_line": "Sorcery",
+                "colors": [
+                  "U"
+                ],
+                "known_by_you": true,
+                "mana_cost": "{2}{U}{U}"
+              }
+            ]
+          },
+          "graveyard": {
+            "kind": "graveyard",
+            "owner": "00000001-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "command": {
+            "kind": "command",
+            "owner": "00000001-0000-4000-8000-000000000000",
+            "count": 1,
+            "cards": [
+              {
+                "instance_id": "0000000c-0000-4000-8000-000000000000",
+                "name": "Commander 1",
+                "owner": "00000001-0000-4000-8000-000000000000",
+                "controller": "00000001-0000-4000-8000-000000000000",
+                "is_commander": true,
+                "known_by_you": true
+              }
+            ]
+          },
+          "commander_damage": {},
+          "life_history": [],
+          "hand_kept": true,
+          "undos_remaining": 1,
+          "max_hand_size": 7,
+          "land_drops_per_turn": 1,
+          "lands_played_this_turn": 0
+        },
+        {
+          "id": "00000008-0000-4000-8000-000000000000",
+          "name": "Seat 2",
+          "seat": 1,
+          "life": 40,
+          "library": {
+            "kind": "library",
+            "owner": "00000008-0000-4000-8000-000000000000",
+            "count": 3,
+            "cards": []
+          },
+          "hand": {
+            "kind": "hand",
+            "owner": "00000008-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "graveyard": {
+            "kind": "graveyard",
+            "owner": "00000008-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "command": {
+            "kind": "command",
+            "owner": "00000008-0000-4000-8000-000000000000",
+            "count": 1,
+            "cards": [
+              {
+                "instance_id": "0000000d-0000-4000-8000-000000000000",
+                "name": "Commander 2",
+                "owner": "00000008-0000-4000-8000-000000000000",
+                "controller": "00000008-0000-4000-8000-000000000000",
+                "is_commander": true,
+                "known_by_you": true
+              }
+            ]
+          },
+          "commander_damage": {},
+          "life_history": [],
+          "hand_kept": true,
+          "undos_remaining": 1,
+          "max_hand_size": 7,
+          "land_drops_per_turn": 1,
+          "lands_played_this_turn": 0
+        }
+      ],
+      "battlefield": {
+        "kind": "battlefield",
+        "count": 5,
+        "cards": [
+          {
+            "instance_id": "0000000e-0000-4000-8000-000000000000",
+            "name": "Mountain",
+            "owner": "00000001-0000-4000-8000-000000000000",
+            "controller": "00000001-0000-4000-8000-000000000000",
+            "type_line": "Basic Land — Mountain",
+            "known_by_you": true,
+            "battle_x": 0,
+            "battle_y": 0,
+            "mana_abilities": [
+              {
+                "index": 0,
+                "ref": "land:R",
+                "label": "Add {R}",
+                "tap_cost": true,
+                "produced": "{R}"
+              }
+            ]
+          },
+          {
+            "instance_id": "0000000f-0000-4000-8000-000000000000",
+            "name": "Mountain",
+            "owner": "00000001-0000-4000-8000-000000000000",
+            "controller": "00000001-0000-4000-8000-000000000000",
+            "type_line": "Basic Land — Mountain",
+            "known_by_you": true,
+            "battle_x": 0,
+            "battle_y": 0,
+            "mana_abilities": [
+              {
+                "index": 0,
+                "ref": "land:R",
+                "label": "Add {R}",
+                "tap_cost": true,
+                "produced": "{R}"
+              }
+            ]
+          },
+          {
+            "instance_id": "00000010-0000-4000-8000-000000000000",
+            "name": "Goblin Bombardment",
+            "owner": "00000001-0000-4000-8000-000000000000",
+            "controller": "00000001-0000-4000-8000-000000000000",
+            "type_line": "Enchantment",
+            "colors": [
+              "R"
+            ],
+            "known_by_you": true,
+            "battle_x": 0,
+            "battle_y": 0,
+            "auto": true,
+            "activated_abilities": [
+              {
+                "index": 0,
+                "label": "Sacrifice a creature: deal 1 damage to any target",
+                "ref": "own:0",
+                "sacrifice_label": "a creature",
+                "sacrifice_options": {
+                  "cards": [
+                    "00000009-0000-4000-8000-000000000000",
+                    "0000000a-0000-4000-8000-000000000000"
+                  ],
+                  "min": 1,
+                  "max": 1
+                },
+                "target_mode": "any",
+                "legal_targets": {
+                  "players": [
+                    "00000001-0000-4000-8000-000000000000",
+                    "00000008-0000-4000-8000-000000000000"
+                  ],
+                  "cards": [
+                    "00000009-0000-4000-8000-000000000000",
+                    "0000000a-0000-4000-8000-000000000000"
+                  ],
+                  "min": 1,
+                  "max": 1
+                }
+              }
+            ],
+            "mana_cost": "{1}{R}"
+          },
+          {
+            "instance_id": "00000009-0000-4000-8000-000000000000",
+            "name": "Sacrificial Bear",
+            "owner": "00000001-0000-4000-8000-000000000000",
+            "controller": "00000001-0000-4000-8000-000000000000",
+            "type_line": "Creature — Beast",
+            "colors": [
+              "G"
+            ],
+            "power": 2,
+            "toughness": 2,
+            "known_by_you": true,
+            "battle_x": 0,
+            "battle_y": 0,
+            "mana_cost": "{1}{G}"
+          },
+          {
+            "instance_id": "0000000a-0000-4000-8000-000000000000",
+            "name": "Vivi Ornitier",
+            "owner": "00000001-0000-4000-8000-000000000000",
+            "controller": "00000001-0000-4000-8000-000000000000",
+            "type_line": "Legendary Creature — Wizard",
+            "colors": [
+              "U",
+              "R"
+            ],
+            "power": 1,
+            "toughness": 3,
+            "known_by_you": true,
+            "battle_x": 0,
+            "battle_y": 0,
+            "auto": true,
+            "mana_cost": "{1}{U}{R}",
+            "mana_abilities": [
+              {
+                "index": 0,
+                "ref": "own:0",
+                "label": "{0}: Add X mana in any combination of {U} and/or {R}, where X is Vivi Ornitier's power. Activate only during your turn and only once each turn",
+                "color_options": [
+                  [
+                    "U",
+                    "R"
+                  ]
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "stack": {
+        "kind": "stack",
+        "count": 0,
+        "cards": []
+      },
+      "exile": {
+        "kind": "exile",
+        "count": 0,
+        "cards": []
+      },
+      "phased_out": {
+        "kind": "phased_out",
+        "count": 0,
+        "cards": []
+      },
+      "turn": {
+        "seq": 1,
+        "number": 1,
+        "active_seat": 0,
+        "priority_holder": 0,
+        "phase": "precombat_main",
+        "step": "precombat_main",
+        "phase_id": 2,
+        "phase_ordinal": 1,
+        "upcoming": [
+          {
+            "step": "begin_combat",
+            "phase_id": 3
+          },
+          {
+            "step": "declare_attackers",
+            "phase_id": 3
+          },
+          {
+            "step": "declare_blockers",
+            "phase_id": 3
+          },
+          {
+            "step": "first_strike_damage",
+            "phase_id": 3
+          },
+          {
+            "step": "combat_damage",
+            "phase_id": 3
+          },
+          {
+            "step": "end_combat",
+            "phase_id": 3
+          },
+          {
+            "step": "postcombat_main",
+            "phase_id": 4
+          },
+          {
+            "step": "end",
+            "phase_id": 5
+          },
+          {
+            "step": "cleanup",
+            "phase_id": 5
+          }
+        ]
+      },
+      "mulligans_open": false,
+      "undo_limit": 1,
+      "settings": {
+        "undo_limit": 1,
+        "undo_scope": "own",
+        "starting_life": 40,
+        "commander_damage": 21,
+        "bot_pace": "normal",
+        "allow_spawn": false
+      },
+      "starting_seat": 0,
+      "legal_moves": [
+        {
+          "type": "pass_priority",
+          "player": "00000001-0000-4000-8000-000000000000",
+          "kind": "pass",
+          "label": "Pass priority",
+          "source": "00000000-0000-0000-0000-000000000000",
+          "always_legal": true
+        },
+        {
+          "type": "cast_spell",
+          "player": "00000001-0000-4000-8000-000000000000",
+          "params": {
+            "instance_id": "00000006-0000-4000-8000-000000000000",
+            "from_zone": "hand"
+          },
+          "kind": "land",
+          "label": "Play Forest",
+          "source": "00000006-0000-4000-8000-000000000000"
+        },
+        {
+          "type": "cast_spell",
+          "player": "00000001-0000-4000-8000-000000000000",
+          "params": {
+            "instance_id": "00000007-0000-4000-8000-000000000000",
+            "from_zone": "hand",
+            "targets": [
+              {
+                "kind": "player",
+                "id": "00000001-0000-4000-8000-000000000000"
+              }
+            ],
+            "strict": true,
+            "auto_tap": true
+          },
+          "kind": "cast",
+          "label": "Cast Lightning Bolt targeting Seat 1",
+          "source": "00000007-0000-4000-8000-000000000000"
+        },
+        {
+          "type": "cast_spell",
+          "player": "00000001-0000-4000-8000-000000000000",
+          "params": {
+            "instance_id": "00000007-0000-4000-8000-000000000000",
+            "from_zone": "hand",
+            "targets": [
+              {
+                "kind": "player",
+                "id": "00000008-0000-4000-8000-000000000000"
+              }
+            ],
+            "strict": true,
+            "auto_tap": true
+          },
+          "kind": "cast",
+          "label": "Cast Lightning Bolt targeting Seat 2",
+          "source": "00000007-0000-4000-8000-000000000000"
+        },
+        {
+          "type": "cast_spell",
+          "player": "00000001-0000-4000-8000-000000000000",
+          "params": {
+            "instance_id": "00000007-0000-4000-8000-000000000000",
+            "from_zone": "hand",
+            "targets": [
+              {
+                "kind": "card",
+                "id": "00000009-0000-4000-8000-000000000000"
+              }
+            ],
+            "strict": true,
+            "auto_tap": true
+          },
+          "kind": "cast",
+          "label": "Cast Lightning Bolt targeting Sacrificial Bear",
+          "source": "00000007-0000-4000-8000-000000000000"
+        },
+        {
+          "type": "cast_spell",
+          "player": "00000001-0000-4000-8000-000000000000",
+          "params": {
+            "instance_id": "00000007-0000-4000-8000-000000000000",
+            "from_zone": "hand",
+            "targets": [
+              {
+                "kind": "card",
+                "id": "0000000a-0000-4000-8000-000000000000"
+              }
+            ],
+            "strict": true,
+            "auto_tap": true
+          },
+          "kind": "cast",
+          "label": "Cast Lightning Bolt targeting Vivi Ornitier",
+          "source": "00000007-0000-4000-8000-000000000000"
+        },
+        {
+          "type": "cast_spell",
+          "player": "00000001-0000-4000-8000-000000000000",
+          "params": {
+            "instance_id": "0000000c-0000-4000-8000-000000000000",
+            "from_zone": "command",
+            "strict": true,
+            "auto_tap": true
+          },
+          "kind": "cast",
+          "label": "Cast Commander 1 from the command zone",
+          "source": "0000000c-0000-4000-8000-000000000000"
+        },
+        {
+          "type": "activate_ability",
+          "player": "00000001-0000-4000-8000-000000000000",
+          "params": {
+            "source_card_id": "00000010-0000-4000-8000-000000000000",
+            "ability_index": 0,
+            "ref": "own:0",
+            "targets": [
+              {
+                "kind": "player",
+                "id": "00000001-0000-4000-8000-000000000000"
+              }
+            ],
+            "sacrifice_ids": [
+              "00000009-0000-4000-8000-000000000000"
+            ],
+            "strict": true,
+            "auto_tap": true
+          },
+          "kind": "activate",
+          "label": "Goblin Bombardment: Sacrifice a creature: deal 1 damage to any target (sacrificing Sacrificial Bear) targeting Seat 1",
+          "source": "00000010-0000-4000-8000-000000000000"
+        },
+        {
+          "type": "activate_ability",
+          "player": "00000001-0000-4000-8000-000000000000",
+          "params": {
+            "source_card_id": "00000010-0000-4000-8000-000000000000",
+            "ability_index": 0,
+            "ref": "own:0",
+            "targets": [
+              {
+                "kind": "player",
+                "id": "00000001-0000-4000-8000-000000000000"
+              }
+            ],
+            "sacrifice_ids": [
+              "0000000a-0000-4000-8000-000000000000"
+            ],
+            "strict": true,
+            "auto_tap": true
+          },
+          "kind": "activate",
+          "label": "Goblin Bombardment: Sacrifice a creature: deal 1 damage to any target (sacrificing Vivi Ornitier) targeting Seat 1",
+          "source": "00000010-0000-4000-8000-000000000000"
+        },
+        {
+          "type": "activate_ability",
+          "player": "00000001-0000-4000-8000-000000000000",
+          "params": {
+            "source_card_id": "00000010-0000-4000-8000-000000000000",
+            "ability_index": 0,
+            "ref": "own:0",
+            "targets": [
+              {
+                "kind": "player",
+                "id": "00000008-0000-4000-8000-000000000000"
+              }
+            ],
+            "sacrifice_ids": [
+              "00000009-0000-4000-8000-000000000000"
+            ],
+            "strict": true,
+            "auto_tap": true
+          },
+          "kind": "activate",
+          "label": "Goblin Bombardment: Sacrifice a creature: deal 1 damage to any target (sacrificing Sacrificial Bear) targeting Seat 2",
+          "source": "00000010-0000-4000-8000-000000000000"
+        },
+        {
+          "type": "activate_ability",
+          "player": "00000001-0000-4000-8000-000000000000",
+          "params": {
+            "source_card_id": "00000010-0000-4000-8000-000000000000",
+            "ability_index": 0,
+            "ref": "own:0",
+            "targets": [
+              {
+                "kind": "player",
+                "id": "00000008-0000-4000-8000-000000000000"
+              }
+            ],
+            "sacrifice_ids": [
+              "0000000a-0000-4000-8000-000000000000"
+            ],
+            "strict": true,
+            "auto_tap": true
+          },
+          "kind": "activate",
+          "label": "Goblin Bombardment: Sacrifice a creature: deal 1 damage to any target (sacrificing Vivi Ornitier) targeting Seat 2",
+          "source": "00000010-0000-4000-8000-000000000000"
+        },
+        {
+          "type": "activate_ability",
+          "player": "00000001-0000-4000-8000-000000000000",
+          "params": {
+            "source_card_id": "00000010-0000-4000-8000-000000000000",
+            "ability_index": 0,
+            "ref": "own:0",
+            "targets": [
+              {
+                "kind": "card",
+                "id": "00000009-0000-4000-8000-000000000000"
+              }
+            ],
+            "sacrifice_ids": [
+              "00000009-0000-4000-8000-000000000000"
+            ],
+            "strict": true,
+            "auto_tap": true
+          },
+          "kind": "activate",
+          "label": "Goblin Bombardment: Sacrifice a creature: deal 1 damage to any target (sacrificing Sacrificial Bear) targeting Sacrificial Bear",
+          "source": "00000010-0000-4000-8000-000000000000"
+        },
+        {
+          "type": "activate_ability",
+          "player": "00000001-0000-4000-8000-000000000000",
+          "params": {
+            "source_card_id": "00000010-0000-4000-8000-000000000000",
+            "ability_index": 0,
+            "ref": "own:0",
+            "targets": [
+              {
+                "kind": "card",
+                "id": "00000009-0000-4000-8000-000000000000"
+              }
+            ],
+            "sacrifice_ids": [
+              "0000000a-0000-4000-8000-000000000000"
+            ],
+            "strict": true,
+            "auto_tap": true
+          },
+          "kind": "activate",
+          "label": "Goblin Bombardment: Sacrifice a creature: deal 1 damage to any target (sacrificing Vivi Ornitier) targeting Sacrificial Bear",
+          "source": "00000010-0000-4000-8000-000000000000"
+        },
+        {
+          "type": "activate_ability",
+          "player": "00000001-0000-4000-8000-000000000000",
+          "params": {
+            "source_card_id": "00000010-0000-4000-8000-000000000000",
+            "ability_index": 0,
+            "ref": "own:0",
+            "targets": [
+              {
+                "kind": "card",
+                "id": "0000000a-0000-4000-8000-000000000000"
+              }
+            ],
+            "sacrifice_ids": [
+              "00000009-0000-4000-8000-000000000000"
+            ],
+            "strict": true,
+            "auto_tap": true
+          },
+          "kind": "activate",
+          "label": "Goblin Bombardment: Sacrifice a creature: deal 1 damage to any target (sacrificing Sacrificial Bear) targeting Vivi Ornitier",
+          "source": "00000010-0000-4000-8000-000000000000"
+        },
+        {
+          "type": "activate_ability",
+          "player": "00000001-0000-4000-8000-000000000000",
+          "params": {
+            "source_card_id": "00000010-0000-4000-8000-000000000000",
+            "ability_index": 0,
+            "ref": "own:0",
+            "targets": [
+              {
+                "kind": "card",
+                "id": "0000000a-0000-4000-8000-000000000000"
+              }
+            ],
+            "sacrifice_ids": [
+              "0000000a-0000-4000-8000-000000000000"
+            ],
+            "strict": true,
+            "auto_tap": true
+          },
+          "kind": "activate",
+          "label": "Goblin Bombardment: Sacrifice a creature: deal 1 damage to any target (sacrificing Vivi Ornitier) targeting Vivi Ornitier",
+          "source": "00000010-0000-4000-8000-000000000000"
+        },
+        {
+          "type": "activate_mana_ability",
+          "player": "00000001-0000-4000-8000-000000000000",
+          "params": {
+            "card_id": "0000000e-0000-4000-8000-000000000000",
+            "ability_index": 0,
+            "ref": "land:R"
+          },
+          "kind": "mana",
+          "label": "Mountain: Add {R}",
+          "source": "0000000e-0000-4000-8000-000000000000"
+        },
+        {
+          "type": "activate_mana_ability",
+          "player": "00000001-0000-4000-8000-000000000000",
+          "params": {
+            "card_id": "0000000f-0000-4000-8000-000000000000",
+            "ability_index": 0,
+            "ref": "land:R"
+          },
+          "kind": "mana",
+          "label": "Mountain: Add {R}",
+          "source": "0000000f-0000-4000-8000-000000000000"
+        },
+        {
+          "type": "activate_mana_ability",
+          "player": "00000001-0000-4000-8000-000000000000",
+          "params": {
+            "card_id": "0000000a-0000-4000-8000-000000000000",
+            "ability_index": 0,
+            "ref": "own:0"
+          },
+          "kind": "mana",
+          "label": "Vivi Ornitier: {0}: Add X mana in any combination of {U} and/or {R}, where X is Vivi Ornitier's power. Activate only during your turn and only once each turn",
+          "source": "0000000a-0000-4000-8000-000000000000"
+        }
+      ],
+      "legal_actions": {
+        "pass": true,
+        "sources": {
+          "00000006-0000-4000-8000-000000000000": {
+            "kinds": [
+              "land"
+            ],
+            "moves": 1,
+            "zones": [
+              "hand"
+            ]
+          },
+          "00000007-0000-4000-8000-000000000000": {
+            "kinds": [
+              "cast"
+            ],
+            "moves": 4,
+            "zones": [
+              "hand"
+            ],
+            "faces": [
+              0
+            ]
+          },
+          "0000000c-0000-4000-8000-000000000000": {
+            "kinds": [
+              "cast"
+            ],
+            "moves": 1,
+            "zones": [
+              "command"
+            ],
+            "faces": [
+              0
+            ]
+          },
+          "00000010-0000-4000-8000-000000000000": {
+            "kinds": [
+              "activate"
+            ],
+            "moves": 8,
+            "abilities": [
+              "own:0"
+            ]
+          },
+          "0000000e-0000-4000-8000-000000000000": {
+            "kinds": [
+              "mana"
+            ],
+            "moves": 1,
+            "mana_abilities": [
+              "land:R"
+            ]
+          },
+          "0000000f-0000-4000-8000-000000000000": {
+            "kinds": [
+              "mana"
+            ],
+            "moves": 1,
+            "mana_abilities": [
+              "land:R"
+            ]
+          },
+          "0000000a-0000-4000-8000-000000000000": {
+            "kinds": [
+              "mana"
+            ],
+            "moves": 1,
+            "mana_abilities": [
+              "own:0"
+            ]
+          }
+        }
+      },
+      "log": [
+        {
+          "seq": 1,
+          "kind": "step",
+          "turn": 1,
+          "round": 1,
+          "step": "untap",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · untap"
+        },
+        {
+          "seq": 2,
+          "kind": "step",
+          "turn": 1,
+          "round": 1,
+          "step": "upkeep",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · upkeep"
+        },
+        {
+          "seq": 4,
+          "kind": "step",
+          "turn": 1,
+          "round": 1,
+          "step": "draw",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · draw"
+        },
+        {
+          "seq": 5,
+          "kind": "step",
+          "turn": 1,
+          "round": 1,
+          "step": "precombat_main",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · precombat main"
+        }
+      ]
+    },
+    "pass": true,
+    "expect": [
+      {
+        "instance_id": "00000006-0000-4000-8000-000000000000",
+        "name": "Forest",
+        "ready": true,
+        "kinds": [
+          "land"
+        ],
+        "zones": [
+          "hand"
+        ],
+        "why": "CR 305: main phase, empty stack, your turn, land drop unused"
+      },
+      {
+        "instance_id": "00000007-0000-4000-8000-000000000000",
+        "name": "Lightning Bolt",
+        "ready": true,
+        "kinds": [
+          "cast"
+        ],
+        "zones": [
+          "hand"
+        ],
+        "faces": [
+          0
+        ],
+        "why": "an instant, and {R} is payable off a Mountain"
+      },
+      {
+        "instance_id": "0000000b-0000-4000-8000-000000000000",
+        "name": "Concentrate",
+        "ready": false,
+        "why": "{2}{U}{U} is four mana; the board makes three"
+      },
+      {
+        "instance_id": "00000010-0000-4000-8000-000000000000",
+        "name": "Goblin Bombardment",
+        "ready": true,
+        "kinds": [
+          "activate"
+        ],
+        "abilities": [
+          "own:0"
+        ],
+        "why": "a creature to sacrifice is on the board"
+      },
+      {
+        "instance_id": "00000009-0000-4000-8000-000000000000",
+        "name": "Sacrificial Bear",
+        "ready": false,
+        "why": "no ability, and no attack outside combat; being sacrificed is Bombardment's move"
+      },
+      {
+        "instance_id": "0000000e-0000-4000-8000-000000000000",
+        "name": "Mountain",
+        "ready": true,
+        "kinds": [
+          "mana"
+        ],
+        "mana_abilities": [
+          "land:R"
+        ],
+        "why": "an untapped land's mana ability is legal; drawing no pip for it is the client's rule (ADR 0105 §4)"
+      },
+      {
+        "instance_id": "0000000a-0000-4000-8000-000000000000",
+        "name": "Vivi Ornitier",
+        "ready": true,
+        "kinds": [
+          "mana"
+        ],
+        "mana_abilities": [
+          "own:0"
+        ],
+        "why": "{0}, your turn, not yet used this turn (#1621)"
+      }
+    ]
+  },
+  {
+    "name": "no_decision_owed",
+    "note": "the non-active seat during the active seat's main phase: legal_actions is absent",
+    "viewer": "00000012-0000-4000-8000-000000000000",
+    "view": {
+      "id": "00000013-0000-4000-8000-000000000000",
+      "state": "active",
+      "seats": [
+        {
+          "id": "00000014-0000-4000-8000-000000000000",
+          "name": "Seat 1",
+          "seat": 0,
+          "life": 40,
+          "library": {
+            "kind": "library",
+            "owner": "00000014-0000-4000-8000-000000000000",
+            "count": 3,
+            "cards": []
+          },
+          "hand": {
+            "kind": "hand",
+            "owner": "00000014-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "graveyard": {
+            "kind": "graveyard",
+            "owner": "00000014-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "command": {
+            "kind": "command",
+            "owner": "00000014-0000-4000-8000-000000000000",
+            "count": 1,
+            "cards": [
+              {
+                "instance_id": "00000015-0000-4000-8000-000000000000",
+                "name": "Commander 1",
+                "owner": "00000014-0000-4000-8000-000000000000",
+                "controller": "00000014-0000-4000-8000-000000000000",
+                "is_commander": true,
+                "known_by_you": true
+              }
+            ]
+          },
+          "commander_damage": {},
+          "life_history": [],
+          "hand_kept": true,
+          "undos_remaining": 1,
+          "max_hand_size": 7,
+          "land_drops_per_turn": 1,
+          "lands_played_this_turn": 0
+        },
+        {
+          "id": "00000012-0000-4000-8000-000000000000",
+          "name": "Seat 2",
+          "seat": 1,
+          "life": 40,
+          "library": {
+            "kind": "library",
+            "owner": "00000012-0000-4000-8000-000000000000",
+            "count": 3,
+            "cards": [
+              {
+                "instance_id": "00000016-0000-4000-8000-000000000000",
+                "name": "",
+                "owner": "00000012-0000-4000-8000-000000000000",
+                "controller": "00000012-0000-4000-8000-000000000000"
+              },
+              {
+                "instance_id": "00000017-0000-4000-8000-000000000000",
+                "name": "",
+                "owner": "00000012-0000-4000-8000-000000000000",
+                "controller": "00000012-0000-4000-8000-000000000000"
+              },
+              {
+                "instance_id": "00000018-0000-4000-8000-000000000000",
+                "name": "",
+                "owner": "00000012-0000-4000-8000-000000000000",
+                "controller": "00000012-0000-4000-8000-000000000000"
+              }
+            ]
+          },
+          "hand": {
+            "kind": "hand",
+            "owner": "00000012-0000-4000-8000-000000000000",
+            "count": 1,
+            "cards": [
+              {
+                "instance_id": "00000019-0000-4000-8000-000000000000",
+                "name": "Lightning Bolt",
+                "owner": "00000012-0000-4000-8000-000000000000",
+                "controller": "00000012-0000-4000-8000-000000000000",
+                "type_line": "Instant",
+                "colors": [
+                  "R"
+                ],
+                "known_by_you": true,
+                "auto": true,
+                "target_mode": "any",
+                "legal_targets": {
+                  "players": [
+                    "00000014-0000-4000-8000-000000000000",
+                    "00000012-0000-4000-8000-000000000000"
+                  ],
+                  "min": 1,
+                  "max": 1
+                },
+                "mana_cost": "{R}"
+              }
+            ]
+          },
+          "graveyard": {
+            "kind": "graveyard",
+            "owner": "00000012-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "command": {
+            "kind": "command",
+            "owner": "00000012-0000-4000-8000-000000000000",
+            "count": 1,
+            "cards": [
+              {
+                "instance_id": "0000001a-0000-4000-8000-000000000000",
+                "name": "Commander 2",
+                "owner": "00000012-0000-4000-8000-000000000000",
+                "controller": "00000012-0000-4000-8000-000000000000",
+                "is_commander": true,
+                "known_by_you": true
+              }
+            ]
+          },
+          "commander_damage": {},
+          "life_history": [],
+          "hand_kept": true,
+          "undos_remaining": 1,
+          "max_hand_size": 7,
+          "land_drops_per_turn": 1,
+          "lands_played_this_turn": 0
+        }
+      ],
+      "battlefield": {
+        "kind": "battlefield",
+        "count": 1,
+        "cards": [
+          {
+            "instance_id": "0000001b-0000-4000-8000-000000000000",
+            "name": "Mountain",
+            "owner": "00000012-0000-4000-8000-000000000000",
+            "controller": "00000012-0000-4000-8000-000000000000",
+            "type_line": "Basic Land — Mountain",
+            "known_by_you": true,
+            "battle_x": 0,
+            "battle_y": 0,
+            "mana_abilities": [
+              {
+                "index": 0,
+                "ref": "land:R",
+                "label": "Add {R}",
+                "tap_cost": true,
+                "produced": "{R}"
+              }
+            ]
+          }
+        ]
+      },
+      "stack": {
+        "kind": "stack",
+        "count": 0,
+        "cards": []
+      },
+      "exile": {
+        "kind": "exile",
+        "count": 0,
+        "cards": []
+      },
+      "phased_out": {
+        "kind": "phased_out",
+        "count": 0,
+        "cards": []
+      },
+      "turn": {
+        "seq": 1,
+        "number": 1,
+        "active_seat": 0,
+        "priority_holder": 0,
+        "phase": "precombat_main",
+        "step": "precombat_main",
+        "phase_id": 2,
+        "phase_ordinal": 1,
+        "upcoming": [
+          {
+            "step": "begin_combat",
+            "phase_id": 3
+          },
+          {
+            "step": "declare_attackers",
+            "phase_id": 3
+          },
+          {
+            "step": "declare_blockers",
+            "phase_id": 3
+          },
+          {
+            "step": "first_strike_damage",
+            "phase_id": 3
+          },
+          {
+            "step": "combat_damage",
+            "phase_id": 3
+          },
+          {
+            "step": "end_combat",
+            "phase_id": 3
+          },
+          {
+            "step": "postcombat_main",
+            "phase_id": 4
+          },
+          {
+            "step": "end",
+            "phase_id": 5
+          },
+          {
+            "step": "cleanup",
+            "phase_id": 5
+          }
+        ]
+      },
+      "mulligans_open": false,
+      "undo_limit": 1,
+      "settings": {
+        "undo_limit": 1,
+        "undo_scope": "own",
+        "starting_life": 40,
+        "commander_damage": 21,
+        "bot_pace": "normal",
+        "allow_spawn": false
+      },
+      "starting_seat": 0,
+      "log": [
+        {
+          "seq": 1,
+          "kind": "step",
+          "turn": 1,
+          "round": 1,
+          "step": "untap",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · untap"
+        },
+        {
+          "seq": 2,
+          "kind": "step",
+          "turn": 1,
+          "round": 1,
+          "step": "upkeep",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · upkeep"
+        },
+        {
+          "seq": 4,
+          "kind": "step",
+          "turn": 1,
+          "round": 1,
+          "step": "draw",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · draw"
+        },
+        {
+          "seq": 5,
+          "kind": "step",
+          "turn": 1,
+          "round": 1,
+          "step": "precombat_main",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · precombat main"
+        }
+      ]
+    },
+    "pass": false,
+    "expect": [
+      {
+        "instance_id": "00000019-0000-4000-8000-000000000000",
+        "name": "Lightning Bolt",
+        "ready": false,
+        "why": "CR 117.1: you cannot cast without priority"
+      }
+    ]
+  },
+  {
+    "name": "declare_attackers",
+    "note": "active seat in declare attackers with one untapped creature",
+    "viewer": "0000001c-0000-4000-8000-000000000000",
+    "view": {
+      "id": "0000001d-0000-4000-8000-000000000000",
+      "state": "active",
+      "seats": [
+        {
+          "id": "0000001c-0000-4000-8000-000000000000",
+          "name": "Seat 1",
+          "seat": 0,
+          "life": 40,
+          "library": {
+            "kind": "library",
+            "owner": "0000001c-0000-4000-8000-000000000000",
+            "count": 3,
+            "cards": [
+              {
+                "instance_id": "0000001e-0000-4000-8000-000000000000",
+                "name": "",
+                "owner": "0000001c-0000-4000-8000-000000000000",
+                "controller": "0000001c-0000-4000-8000-000000000000"
+              },
+              {
+                "instance_id": "0000001f-0000-4000-8000-000000000000",
+                "name": "",
+                "owner": "0000001c-0000-4000-8000-000000000000",
+                "controller": "0000001c-0000-4000-8000-000000000000"
+              },
+              {
+                "instance_id": "00000020-0000-4000-8000-000000000000",
+                "name": "",
+                "owner": "0000001c-0000-4000-8000-000000000000",
+                "controller": "0000001c-0000-4000-8000-000000000000"
+              }
+            ]
+          },
+          "hand": {
+            "kind": "hand",
+            "owner": "0000001c-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "graveyard": {
+            "kind": "graveyard",
+            "owner": "0000001c-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "command": {
+            "kind": "command",
+            "owner": "0000001c-0000-4000-8000-000000000000",
+            "count": 1,
+            "cards": [
+              {
+                "instance_id": "00000021-0000-4000-8000-000000000000",
+                "name": "Commander 1",
+                "owner": "0000001c-0000-4000-8000-000000000000",
+                "controller": "0000001c-0000-4000-8000-000000000000",
+                "is_commander": true,
+                "known_by_you": true
+              }
+            ]
+          },
+          "commander_damage": {},
+          "life_history": [],
+          "hand_kept": true,
+          "undos_remaining": 1,
+          "max_hand_size": 7,
+          "land_drops_per_turn": 1,
+          "lands_played_this_turn": 0
+        },
+        {
+          "id": "00000022-0000-4000-8000-000000000000",
+          "name": "Seat 2",
+          "seat": 1,
+          "life": 40,
+          "library": {
+            "kind": "library",
+            "owner": "00000022-0000-4000-8000-000000000000",
+            "count": 3,
+            "cards": []
+          },
+          "hand": {
+            "kind": "hand",
+            "owner": "00000022-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "graveyard": {
+            "kind": "graveyard",
+            "owner": "00000022-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "command": {
+            "kind": "command",
+            "owner": "00000022-0000-4000-8000-000000000000",
+            "count": 1,
+            "cards": [
+              {
+                "instance_id": "00000023-0000-4000-8000-000000000000",
+                "name": "Commander 2",
+                "owner": "00000022-0000-4000-8000-000000000000",
+                "controller": "00000022-0000-4000-8000-000000000000",
+                "is_commander": true,
+                "known_by_you": true
+              }
+            ]
+          },
+          "commander_damage": {},
+          "life_history": [],
+          "hand_kept": true,
+          "undos_remaining": 1,
+          "max_hand_size": 7,
+          "land_drops_per_turn": 1,
+          "lands_played_this_turn": 0
+        }
+      ],
+      "battlefield": {
+        "kind": "battlefield",
+        "count": 1,
+        "cards": [
+          {
+            "instance_id": "00000024-0000-4000-8000-000000000000",
+            "name": "Hill Giant",
+            "owner": "0000001c-0000-4000-8000-000000000000",
+            "controller": "0000001c-0000-4000-8000-000000000000",
+            "type_line": "Creature — Beast",
+            "colors": [
+              "R"
+            ],
+            "power": 3,
+            "toughness": 3,
+            "known_by_you": true,
+            "battle_x": 0,
+            "battle_y": 0,
+            "mana_cost": "{3}{R}"
+          }
+        ]
+      },
+      "stack": {
+        "kind": "stack",
+        "count": 0,
+        "cards": []
+      },
+      "exile": {
+        "kind": "exile",
+        "count": 0,
+        "cards": []
+      },
+      "phased_out": {
+        "kind": "phased_out",
+        "count": 0,
+        "cards": []
+      },
+      "turn": {
+        "seq": 1,
+        "number": 1,
+        "active_seat": 0,
+        "priority_holder": 0,
+        "phase": "combat",
+        "step": "declare_attackers",
+        "phase_id": 3,
+        "phase_ordinal": 1,
+        "upcoming": [
+          {
+            "step": "declare_blockers",
+            "phase_id": 3
+          },
+          {
+            "step": "first_strike_damage",
+            "phase_id": 3
+          },
+          {
+            "step": "combat_damage",
+            "phase_id": 3
+          },
+          {
+            "step": "end_combat",
+            "phase_id": 3
+          },
+          {
+            "step": "postcombat_main",
+            "phase_id": 4
+          },
+          {
+            "step": "end",
+            "phase_id": 5
+          },
+          {
+            "step": "cleanup",
+            "phase_id": 5
+          }
+        ],
+        "attack_targets": [
+          {
+            "kind": "player",
+            "id": "00000022-0000-4000-8000-000000000000"
+          }
+        ]
+      },
+      "mulligans_open": false,
+      "undo_limit": 1,
+      "settings": {
+        "undo_limit": 1,
+        "undo_scope": "own",
+        "starting_life": 40,
+        "commander_damage": 21,
+        "bot_pace": "normal",
+        "allow_spawn": false
+      },
+      "starting_seat": 0,
+      "legal_moves": [
+        {
+          "type": "pass_priority",
+          "player": "0000001c-0000-4000-8000-000000000000",
+          "kind": "pass",
+          "label": "Pass priority",
+          "source": "00000000-0000-0000-0000-000000000000",
+          "always_legal": true
+        },
+        {
+          "type": "declare_attacker",
+          "player": "0000001c-0000-4000-8000-000000000000",
+          "params": {
+            "attacker": "00000024-0000-4000-8000-000000000000",
+            "target": "00000022-0000-4000-8000-000000000000"
+          },
+          "kind": "attack",
+          "label": "Attack Seat 2 with Hill Giant",
+          "source": "00000024-0000-4000-8000-000000000000"
+        }
+      ],
+      "legal_actions": {
+        "pass": true,
+        "sources": {
+          "00000024-0000-4000-8000-000000000000": {
+            "kinds": [
+              "attack"
+            ],
+            "moves": 1,
+            "attack_targets": [
+              "00000022-0000-4000-8000-000000000000"
+            ]
+          }
+        }
+      },
+      "log": [
+        {
+          "seq": 1,
+          "kind": "step",
+          "turn": 1,
+          "round": 1,
+          "step": "untap",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · untap"
+        },
+        {
+          "seq": 2,
+          "kind": "step",
+          "turn": 1,
+          "round": 1,
+          "step": "upkeep",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · upkeep"
+        },
+        {
+          "seq": 4,
+          "kind": "step",
+          "turn": 1,
+          "round": 1,
+          "step": "draw",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · draw"
+        },
+        {
+          "seq": 5,
+          "kind": "step",
+          "turn": 1,
+          "round": 1,
+          "step": "precombat_main",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · precombat main"
+        },
+        {
+          "seq": 7,
+          "kind": "step",
+          "turn": 1,
+          "round": 1,
+          "step": "begin_combat",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · begin combat"
+        },
+        {
+          "seq": 8,
+          "kind": "step",
+          "turn": 1,
+          "round": 1,
+          "step": "declare_attackers",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · declare attackers"
+        }
+      ]
+    },
+    "pass": true,
+    "expect": [
+      {
+        "instance_id": "00000024-0000-4000-8000-000000000000",
+        "name": "Hill Giant",
+        "ready": true,
+        "kinds": [
+          "attack"
+        ],
+        "attack_targets": [
+          "00000022-0000-4000-8000-000000000000"
+        ],
+        "why": "CR 508.1a: an untapped creature that has been under your control since the turn began"
+      }
+    ]
+  },
+  {
+    "name": "declare_blockers",
+    "note": "the defending seat, one attacker pointed at it, two untapped creatures; it owes a declaration but holds no priority, so there is no pass move (#328)",
+    "viewer": "00000025-0000-4000-8000-000000000000",
+    "view": {
+      "id": "00000026-0000-4000-8000-000000000000",
+      "state": "active",
+      "seats": [
+        {
+          "id": "00000027-0000-4000-8000-000000000000",
+          "name": "Seat 1",
+          "seat": 0,
+          "life": 40,
+          "library": {
+            "kind": "library",
+            "owner": "00000027-0000-4000-8000-000000000000",
+            "count": 3,
+            "cards": []
+          },
+          "hand": {
+            "kind": "hand",
+            "owner": "00000027-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "graveyard": {
+            "kind": "graveyard",
+            "owner": "00000027-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "command": {
+            "kind": "command",
+            "owner": "00000027-0000-4000-8000-000000000000",
+            "count": 1,
+            "cards": [
+              {
+                "instance_id": "00000028-0000-4000-8000-000000000000",
+                "name": "Commander 1",
+                "owner": "00000027-0000-4000-8000-000000000000",
+                "controller": "00000027-0000-4000-8000-000000000000",
+                "is_commander": true,
+                "known_by_you": true
+              }
+            ]
+          },
+          "commander_damage": {},
+          "life_history": [],
+          "hand_kept": true,
+          "undos_remaining": 1,
+          "max_hand_size": 7,
+          "land_drops_per_turn": 1,
+          "lands_played_this_turn": 0
+        },
+        {
+          "id": "00000025-0000-4000-8000-000000000000",
+          "name": "Seat 2",
+          "seat": 1,
+          "life": 40,
+          "library": {
+            "kind": "library",
+            "owner": "00000025-0000-4000-8000-000000000000",
+            "count": 3,
+            "cards": [
+              {
+                "instance_id": "00000029-0000-4000-8000-000000000000",
+                "name": "",
+                "owner": "00000025-0000-4000-8000-000000000000",
+                "controller": "00000025-0000-4000-8000-000000000000"
+              },
+              {
+                "instance_id": "0000002a-0000-4000-8000-000000000000",
+                "name": "",
+                "owner": "00000025-0000-4000-8000-000000000000",
+                "controller": "00000025-0000-4000-8000-000000000000"
+              },
+              {
+                "instance_id": "0000002b-0000-4000-8000-000000000000",
+                "name": "",
+                "owner": "00000025-0000-4000-8000-000000000000",
+                "controller": "00000025-0000-4000-8000-000000000000"
+              }
+            ]
+          },
+          "hand": {
+            "kind": "hand",
+            "owner": "00000025-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "graveyard": {
+            "kind": "graveyard",
+            "owner": "00000025-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "command": {
+            "kind": "command",
+            "owner": "00000025-0000-4000-8000-000000000000",
+            "count": 1,
+            "cards": [
+              {
+                "instance_id": "0000002c-0000-4000-8000-000000000000",
+                "name": "Commander 2",
+                "owner": "00000025-0000-4000-8000-000000000000",
+                "controller": "00000025-0000-4000-8000-000000000000",
+                "is_commander": true,
+                "known_by_you": true
+              }
+            ]
+          },
+          "commander_damage": {},
+          "life_history": [],
+          "hand_kept": true,
+          "undos_remaining": 1,
+          "max_hand_size": 7,
+          "land_drops_per_turn": 1,
+          "lands_played_this_turn": 0
+        }
+      ],
+      "battlefield": {
+        "kind": "battlefield",
+        "count": 3,
+        "cards": [
+          {
+            "instance_id": "0000002d-0000-4000-8000-000000000000",
+            "name": "Hill Giant",
+            "owner": "00000027-0000-4000-8000-000000000000",
+            "controller": "00000027-0000-4000-8000-000000000000",
+            "type_line": "Creature — Beast",
+            "colors": [
+              "R"
+            ],
+            "power": 3,
+            "toughness": 3,
+            "tapped": true,
+            "known_by_you": true,
+            "battle_x": 0,
+            "battle_y": 0,
+            "attacking_target": "00000025-0000-4000-8000-000000000000",
+            "attacking_target_kind": "player",
+            "defending_player": "00000025-0000-4000-8000-000000000000",
+            "mana_cost": "{3}{R}"
+          },
+          {
+            "instance_id": "0000002e-0000-4000-8000-000000000000",
+            "name": "Wall of Wood",
+            "owner": "00000025-0000-4000-8000-000000000000",
+            "controller": "00000025-0000-4000-8000-000000000000",
+            "type_line": "Creature — Beast",
+            "colors": [
+              "G"
+            ],
+            "toughness": 3,
+            "known_by_you": true,
+            "battle_x": 0,
+            "battle_y": 0,
+            "mana_cost": "{G}"
+          },
+          {
+            "instance_id": "0000002f-0000-4000-8000-000000000000",
+            "name": "Bear Cub",
+            "owner": "00000025-0000-4000-8000-000000000000",
+            "controller": "00000025-0000-4000-8000-000000000000",
+            "type_line": "Creature — Beast",
+            "colors": [
+              "G"
+            ],
+            "power": 2,
+            "toughness": 2,
+            "known_by_you": true,
+            "battle_x": 0,
+            "battle_y": 0,
+            "mana_cost": "{1}{G}"
+          }
+        ]
+      },
+      "stack": {
+        "kind": "stack",
+        "count": 0,
+        "cards": []
+      },
+      "exile": {
+        "kind": "exile",
+        "count": 0,
+        "cards": []
+      },
+      "phased_out": {
+        "kind": "phased_out",
+        "count": 0,
+        "cards": []
+      },
+      "turn": {
+        "seq": 1,
+        "number": 1,
+        "active_seat": 0,
+        "priority_holder": 0,
+        "phase": "combat",
+        "step": "declare_blockers",
+        "phase_id": 3,
+        "phase_ordinal": 1,
+        "upcoming": [
+          {
+            "step": "first_strike_damage",
+            "phase_id": 3
+          },
+          {
+            "step": "combat_damage",
+            "phase_id": 3
+          },
+          {
+            "step": "end_combat",
+            "phase_id": 3
+          },
+          {
+            "step": "postcombat_main",
+            "phase_id": 4
+          },
+          {
+            "step": "end",
+            "phase_id": 5
+          },
+          {
+            "step": "cleanup",
+            "phase_id": 5
+          }
+        ],
+        "block_decision_seats": [
+          1
+        ],
+        "block_pending_seats": [
+          1
+        ]
+      },
+      "mulligans_open": false,
+      "undo_limit": 1,
+      "settings": {
+        "undo_limit": 1,
+        "undo_scope": "own",
+        "starting_life": 40,
+        "commander_damage": 21,
+        "bot_pace": "normal",
+        "allow_spawn": false
+      },
+      "starting_seat": 0,
+      "legal_moves": [
+        {
+          "type": "declare_blocker",
+          "player": "00000025-0000-4000-8000-000000000000",
+          "params": {
+            "blocker": "0000002e-0000-4000-8000-000000000000",
+            "attacker": "0000002d-0000-4000-8000-000000000000"
+          },
+          "kind": "block",
+          "label": "Block Hill Giant with Wall of Wood",
+          "source": "0000002e-0000-4000-8000-000000000000"
+        },
+        {
+          "type": "declare_blocker",
+          "player": "00000025-0000-4000-8000-000000000000",
+          "params": {
+            "blocker": "0000002f-0000-4000-8000-000000000000",
+            "attacker": "0000002d-0000-4000-8000-000000000000"
+          },
+          "kind": "block",
+          "label": "Block Hill Giant with Bear Cub",
+          "source": "0000002f-0000-4000-8000-000000000000"
+        }
+      ],
+      "legal_actions": {
+        "sources": {
+          "0000002e-0000-4000-8000-000000000000": {
+            "kinds": [
+              "block"
+            ],
+            "moves": 1,
+            "blocks": [
+              "0000002d-0000-4000-8000-000000000000"
+            ]
+          },
+          "0000002f-0000-4000-8000-000000000000": {
+            "kinds": [
+              "block"
+            ],
+            "moves": 1,
+            "blocks": [
+              "0000002d-0000-4000-8000-000000000000"
+            ]
+          }
+        }
+      },
+      "log": [
+        {
+          "seq": 1,
+          "kind": "step",
+          "turn": 1,
+          "round": 1,
+          "step": "untap",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · untap"
+        },
+        {
+          "seq": 2,
+          "kind": "step",
+          "turn": 1,
+          "round": 1,
+          "step": "upkeep",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · upkeep"
+        },
+        {
+          "seq": 4,
+          "kind": "step",
+          "turn": 1,
+          "round": 1,
+          "step": "draw",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · draw"
+        },
+        {
+          "seq": 5,
+          "kind": "step",
+          "turn": 1,
+          "round": 1,
+          "step": "precombat_main",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · precombat main"
+        },
+        {
+          "seq": 7,
+          "kind": "step",
+          "turn": 1,
+          "round": 1,
+          "step": "begin_combat",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · begin combat"
+        },
+        {
+          "seq": 8,
+          "kind": "step",
+          "turn": 1,
+          "round": 1,
+          "step": "declare_attackers",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · declare attackers"
+        },
+        {
+          "seq": 9,
+          "kind": "attack",
+          "turn": 1,
+          "seat": 0,
+          "target_seat": 1,
+          "card_id": "0000002d-0000-4000-8000-000000000000",
+          "text": "Hill Giant attacks Seat 2"
+        },
+        {
+          "seq": 10,
+          "kind": "step",
+          "turn": 1,
+          "round": 1,
+          "step": "declare_blockers",
+          "seat": 0,
+          "text": "Turn 1 — Seat 1 · declare blockers"
+        }
+      ]
+    },
+    "pass": false,
+    "expect": [
+      {
+        "instance_id": "0000002e-0000-4000-8000-000000000000",
+        "name": "Wall of Wood",
+        "ready": true,
+        "kinds": [
+          "block"
+        ],
+        "blocks": [
+          "0000002d-0000-4000-8000-000000000000"
+        ],
+        "why": "CR 509.1a: an untapped creature may block an attacker attacking its controller"
+      },
+      {
+        "instance_id": "0000002f-0000-4000-8000-000000000000",
+        "name": "Bear Cub",
+        "ready": true,
+        "kinds": [
+          "block"
+        ],
+        "blocks": [
+          "0000002d-0000-4000-8000-000000000000"
+        ],
+        "why": "the same, for the second creature"
+      }
+    ]
+  }
+]

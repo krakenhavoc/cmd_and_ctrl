@@ -114,7 +114,7 @@ func (c *AvatarCache) Serve(w http.ResponseWriter, r *http.Request, id, hash str
 		// Someone else populated the cache (or failed). Re-check
 		// on disk; on a hit we serve it, on a miss the cooperating
 		// fetcher's error already surfaced to their request, so we
-		// just 502 the waiter rather than hammer the CDN again.
+		// just fail the waiter (424) rather than hammer the CDN again.
 		if _, err := os.Stat(path); err == nil {
 			c.writeCacheHeaders(w)
 			http.ServeFile(w, r, path)

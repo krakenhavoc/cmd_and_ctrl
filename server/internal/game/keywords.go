@@ -408,7 +408,7 @@ func CanonicalKeywords(s string) ([]string, bool) {
 }
 
 // HasKeyword reports whether the card has the named keyword. kw
-// must be a canonical lowercase token (see AGENTS.md §7 "Adding a
+// must be a canonical lowercase token (see docs/adding-cards.md "Adding a
 // combat-keyword card" for the table): "flying", "reach",
 // "first strike", "double strike", "deathtouch", "lifelink",
 // "trample", "vigilance", "menace", "defender", "haste", "flash",
@@ -487,6 +487,14 @@ func forEachAbilityToken(c *Card, fn func(token string) bool) {
 	// the Card and always were), then the catalog. Lookup-miss
 	// (non-catalog card) returns nil → no keywords.
 	for _, a := range c.Keywords {
+		if !fn(a) {
+			return
+		}
+	}
+	// CR 122.1b / ADR 0101 Decision 4: a keyword counter on a card in
+	// another zone gives it that keyword. On the battlefield the layer
+	// pass has already put it in `effective` above.
+	for _, a := range keywordCounterTokens(c) {
 		if !fn(a) {
 			return
 		}

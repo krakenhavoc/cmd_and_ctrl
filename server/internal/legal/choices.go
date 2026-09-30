@@ -511,8 +511,40 @@ func (e *enumerator) choiceMoves() bool {
 				})
 			}
 
+		case game.PendingChoiceEntryController:
+			// ADR 0102, CR 614.12a: "enters under the control of an
+			// opponent of your choice". One answer per offered seat.
+			// ResolveEntryController accepts every one of them — the
+			// options are the chooser's opponents still in the game, and
+			// the seat prune takes a departed one off the open prompt —
+			// so each is legal, and the first is marked always-legal as
+			// option_pick's is. Which seat is right is the policy's
+			// decision, read off the prompt's control_purpose.
+			for i, opt := range c.PickOptions {
+				p := base()
+				idx := i
+				p.OptionIndex = &idx
+				label := opt.Label
+				if label == "" {
+					label = "seat " + strconv.Itoa(i+1)
+				}
+				if i == 0 {
+					e.addAlwaysLegalChoice(c, reason+": "+label, p)
+					continue
+				}
+				e.add(Move{
+					Type:   TypeResolveChoice,
+					Player: e.seat,
+					Kind:   KindChoice,
+					Label:  reason + ": " + label,
+					Source: c.Source,
+					Params: mustJSON(p),
+				})
+			}
+
 		case game.PendingChoiceChooseCards, game.PendingChoiceUntapChoice,
-			game.PendingChoiceEntryRevealFromHand, game.PendingChoiceRevealPick,
+			game.PendingChoiceEntryRevealFromHand, game.PendingChoiceEntryDiscardFromHand,
+			game.PendingChoiceEntrySacrifice, game.PendingChoiceRevealPick,
 			game.PendingChoiceTheirPermanents, game.PendingChoiceOwnPermanents:
 			// "Choose N of these cards." The bounds ride on the
 			// choice, and a prompt may also carry a set-level
@@ -575,6 +607,17 @@ func (e *enumerator) choiceMoves() bool {
 				verb = ": untap"
 			case game.PendingChoiceEntryRevealFromHand:
 				verb = ": reveal"
+			case game.PendingChoiceEntryDiscardFromHand:
+				// ADR 0098: Mox Diamond. Floor zero, so "choose
+				// nothing" (the Mox goes to the graveyard) is the
+				// AlwaysLegal answer above.
+				verb = ": discard"
+			case game.PendingChoiceEntrySacrifice:
+				// ADR 0098 Decision 11: Heart of Yavimaya, Lotus
+				// Vale. Floor N: the offer only asks when N
+				// candidates exist, and an open prompt blocks the
+				// table, so they are still there to be named.
+				verb = ": sacrifice"
 			case game.PendingChoiceTheirPermanents:
 				// The label says WHOSE board is on offer, because a
 				// run of these is one prompt per player and four
@@ -1397,7 +1440,9 @@ func (e *enumerator) cardSetPickPool(c *game.PendingChoice) []uuid.UUID {
 	switch c.Kind {
 	case game.PendingChoiceTheirPermanents, game.PendingChoiceRevealPick:
 		return e.mostValuableFirst(c.ChooseCards)
-	case game.PendingChoiceOwnPermanents:
+	case game.PendingChoiceOwnPermanents, game.PendingChoiceEntryDiscardFromHand, game.PendingChoiceEntrySacrifice:
+		// ADR 0098: a discard or a sacrifice SPENDS what it names, so
+		// the cheapest cards come first and survive the budget.
 		return e.cheapestFuelFirst(c.ChooseCards)
 	}
 	return c.ChooseCards

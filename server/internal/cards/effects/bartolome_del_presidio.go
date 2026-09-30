@@ -11,25 +11,18 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // The free sac outlet. One activated ability whose whole cost is the
 // sacrifice — Warren Soultrader's shape without the life — over "a
 // creature or artifact" that isn't Bartolomé himself. "Another" is
-// read by name (b03NotNamed), because the sacrifice clause is built
-// once at init with no instance to compare against; the only thing
-// that excludes is a second Bartolomé, which the legend rule already
-// forbids, and a token copy of him, which is weaker than printed and
-// declared.
-//
-// Sandbox simplification, declared: a token copy of Bartolomé cannot
-// be fed to his own ability.
+// object identity (effects.Another, CR 109.1), so a token copy of him
+// can be fed to his own ability, as printed.
 func init() {
 	Register(Spec{
 		OracleID:     "f47e4c56-0a0b-422d-bf3d-7a20ee289f15",
 		Name:         "Bartolomé del Presidio",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"A token copy of Bartolomé del Presidio can't be sacrificed to his own ability."},
+		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label: "Sacrifice another creature or artifact: Put a +1/+1 counter on Bartolomé del Presidio.",
 			Cost: game.AbilityCost{
-				SacrificeOther: sacrificeSpec("another creature or artifact",
-					Or(Creature(), Artifact()), b03NotNamed("Bartolomé del Presidio")),
+				SacrificeOther: Another(sacrificeSpec("another creature or artifact",
+					Or(Creature(), Artifact()))),
 			},
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				if !b15OnBattlefield(g, item.SourceCardID) {

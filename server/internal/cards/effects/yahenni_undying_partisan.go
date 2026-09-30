@@ -20,10 +20,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // reason a steal-and-sac deck plays the card for the sacrifice outlet,
 // not the counters.
 //
-// "Sacrifice another creature" excludes Yahenni by name, the
-// convention every legendary sac outlet in the catalog uses
-// (b03NotNamed): in a singleton format the same name is the same
-// creature.
+// "Sacrifice another creature" is object identity (effects.SacrificeAnotherN,
+// CR 109.1).
 //
 // No simplification.
 func init() {
@@ -43,7 +41,7 @@ func init() {
 		},
 		Activated: []ActivatedAbility{{
 			Label: "Sacrifice another creature: Yahenni gains indestructible until end of turn.",
-			Cost:  SacrificeN(1, "another creature", Creature(), b03NotNamed("Yahenni, Undying Partisan")),
+			Cost:  SacrificeAnotherN(1, "another creature", Creature()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return GrantKeywordUntilEOT{
 					Target:   item.SourceCardID,

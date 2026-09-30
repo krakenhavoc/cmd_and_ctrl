@@ -25,8 +25,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // THE DEATH TRIGGER READS THE LAST-KNOWN COUNTERS, not the card in
 // the graveyard, which has none (CR 400.7 clears them the moment it
 // moves). CR 603.10 has a dies-trigger look at the game state just
-// before the permanent left, and b13LastKnownCounters is that read,
-// reconstructed from the event log. So a Walker that entered with
+// before the permanent left, and the departure record
+// (ctx.TriggeringPermanent) is that read. So a Walker that entered with
 // three counters, grew two, and then died draws five — and a Walker
 // that had its counters removed in response draws only what it still
 // held.
@@ -69,20 +69,17 @@ func init() {
 				return cardDied(ev, source)
 			},
 			Key: "Marketback Walker — draw a card for each +1/+1 counter on it",
-			// The dies trigger reads the LAST-KNOWN counter count, which
-			// is a fact about the moment it died (ADR 0041 P9's fill-in
-			// Build), not something the resolving item can re-derive
-			// from a board the permanent has already left.
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
-				item := game.NewTriggeredItem(source, "Marketback Walker — draw a card for each +1/+1 counter on it")
-				item.Params.Amount = b13LastKnownCounters(g, source.InstanceID, game.CounterPlusOne)
-				return item
-			},
+			// The dies trigger reads the LAST-KNOWN counters of the
+			// permanent it is about (CR 608.2h): a fact about the moment
+			// it died, which the resolving item reads back off the
+			// engine's departure record.
 			Effect: func(g *game.Game, item *game.StackItem) error {
-				if item.Params.Amount <= 0 {
+				ctx := NewContext(g, item)
+				info, ok := ctx.TriggeringPermanent()
+				if !ok || info.Counters[game.CounterPlusOne] <= 0 {
 					return nil
 				}
-				return DrawCards{Player: item.Controller, N: item.Params.Amount}.Apply(NewContext(g, item))
+				return DrawCards{Player: item.Controller, N: info.Counters[game.CounterPlusOne]}.Apply(ctx)
 			},
 		}},
 	})

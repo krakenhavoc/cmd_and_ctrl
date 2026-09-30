@@ -748,7 +748,7 @@ export interface BugReportDraft {
 // so it stays the default rather than becoming a legacy path.
 //
 // Throws LobbyApiError on 400 (validation), 413 (too large), 429 (rate
-// limit), 502 (GitHub upstream failure), 503 (feature disabled).
+// limit), 424 (GitHub upstream failure), 503 (feature disabled).
 //
 // Every text field is redacted before it leaves the browser (#721): a
 // reporter who pastes their invite link into the description, or a log
@@ -811,6 +811,9 @@ export interface AutoTapPreview {
   sources?: AutoTapPreviewSource[];
   missing?: string[];
   cost: string;
+  // ADR 0100: how many graveyard cards the announcement may exile to
+  // delve. Absent for a card with no delve.
+  delve_budget?: number;
 }
 
 // AutoTapPreviewSource is one planned source: where it is and what
@@ -823,6 +826,9 @@ export interface AutoTapPreviewSource {
   tap?: boolean;
   sacrifice?: boolean;
   exile?: boolean;
+  // #1621: a costless "once each turn" ability (Vivi Ornitier's {0}) —
+  // nothing tapped, sacrificed or exiled; this turn's one use is spent.
+  once_per_turn?: boolean;
 }
 
 // fetchAutoTapPreview asks the server which permanents the auto-
@@ -869,6 +875,10 @@ export async function fetchAutoTapPreview(
     }
     if (cast.tapIDs && cast.tapIDs.length > 0) {
       params.set("tap_ids", cast.tapIDs.join(","));
+    }
+    // ADR 0100: each delved card pays {1}, so the plan covers the rest.
+    if (cast.delveIDs && cast.delveIDs.length > 0) {
+      params.set("delve_ids", cast.delveIDs.join(","));
     }
     if (cast.face) params.set("face", String(cast.face));
     // #1242: named payments the plan must not also spend on mana.

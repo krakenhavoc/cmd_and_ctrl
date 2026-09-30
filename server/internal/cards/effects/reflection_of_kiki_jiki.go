@@ -17,11 +17,8 @@ import (
 // so the {T} in this cost cannot be paid until the following one,
 // which is what the printed card does.
 //
-// "Another" is the b03NotNamed clause rather than NotSelf: a target
-// spec is built once at Register and has no instance to compare
-// against. It is also why a token copy of Reflection cannot target the
-// original, which is the same (slightly over-strict) reading every
-// other "another target creature you control" in the catalog takes.
+// "Another" is object identity (effects.Another, CR 109.1): a token copy of
+// Reflection can target the original, as printed.
 //
 // The delayed sacrifice is a CR 603.7 trigger scheduled onto the Game
 // rather than a closure held by this ability: the ability is long gone
@@ -43,8 +40,8 @@ func init() {
 		Activated: []ActivatedAbility{{
 			Label: "{1}, {T}: Create a token that's a copy of another target nonlegendary creature you control, except it has haste. Sacrifice it at the beginning of the next end step.",
 			Cost:  Plus(ManaCost("{1}"), TapCost()),
-			Targets: TargetCreature("another target nonlegendary creature you control",
-				YouControl(), Not(Legendary()), b03NotNamed("Reflection of Kiki-Jiki")),
+			Targets: Another(TargetCreature("another target nonlegendary creature you control",
+				YouControl(), Not(Legendary()))),
 			Effect: reflectionOfKikiJikiCopyWithHaste,
 		}},
 	})

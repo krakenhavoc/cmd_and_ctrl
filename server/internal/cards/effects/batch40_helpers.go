@@ -20,7 +20,7 @@ import (
 // damageToEachOpponent, "this ability triggers only once each turn"
 // is b11TriggeredThisTurn, "whenever you gain life" is
 // WheneverYouGainLife, the pain rider is PainRider, the dual pipe is
-// dualManaAbility, and "another" by name is b03NotNamed.
+// dualManaAbility, and "another" is Another.
 
 // --- land cycles ---------------------------------------------------
 

@@ -12,7 +12,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // "Enters or attacks" is ONE printed ability with two trigger
 // conditions, so it is one TriggeredAbility watching two event kinds
-// — the Sun Titan shape from AGENTS.md §7. Both EventETB and
+// — the Sun Titan shape from docs/adding-cards.md. Both EventETB and
 // EventAttack carry the permanent in ev.CardID, which is what lets
 // the single predicate cover both.
 //

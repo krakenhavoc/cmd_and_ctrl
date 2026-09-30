@@ -35,7 +35,7 @@
 // sources and nothing else:
 //
 //   1. an ability's own label, which the server writes as
-//      "<card> — <what happens>" (AGENTS.md §7); the part after the
+//      "<card> — <what happens>" (docs/adding-cards.md); the part after the
 //      dash is the summary;
 //   2. a modal spell's chosen mode labels (#764), which are oracle
 //      bullets;
@@ -534,6 +534,14 @@ export function buildStackLane(input: StackLaneInput): StackLaneModel {
       chips.push({ label: `modes: ${item.modes.join(", ")}`, tone: "plain" });
     }
     if (item.split_second) chips.push({ label: "split-second", tone: "flag" });
+    // #1553: tell the table before a Counterspell finds out the hard way.
+    if (item.cant_be_countered) {
+      chips.push({
+        label: "can't be countered",
+        tone: "flag",
+        title: "this spell can't be countered — by its own text or by the mana that paid for it",
+      });
+    }
     if (item.hold_priority) chips.push({ label: "held priority", tone: "flag" });
     return chips;
   }

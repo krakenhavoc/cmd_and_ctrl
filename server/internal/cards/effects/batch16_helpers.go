@@ -20,7 +20,7 @@ import (
 // tutor to hand is b06TutorToHand, the basic-land fetch body is
 // b07SearchBasicOntoBattlefield, the per-label "one or more" dedup is
 // OncePerBatch, the once-per-turn tally is
-// b11TriggeredThisTurn, the resolution tally is b15ResolvedThisTurn,
+// b11TriggeredThisTurn, the resolution tally is g.ResolvedThisTurn,
 // a dead creature's power is b13LastKnownPower, the attackers a
 // player controls are b13AttackingCreaturesYouControl, and "any
 // number of lands you control, untapped" is b02UntapLandsYouControl.
@@ -199,7 +199,7 @@ func b16AnotherCreatureYouControlEnteredOrDied(ev game.Event, source *game.Card,
 // ONE trigger per declaration, and the engine emits EventAttack per
 // creature, so the ability fires on the declaration that reaches n
 // and declines every later one — every later event of the SAME batch
-// (OncePerBatch, keyed on Event.Batch; see AGENTS.md §7) and,
+// (OncePerBatch, keyed on Event.Batch; see docs/adding-cards.md) and,
 // because the sandbox lets attackers be declared after the trigger
 // has resolved, the rest of the turn (b11TriggeredThisTurn). Only
 // the active player attacks in a turn and the engine has no extra

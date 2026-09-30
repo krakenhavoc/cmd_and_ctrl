@@ -15,7 +15,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // Keeper of Fables's ability triggers for each of those players"),
 // not one per creature and not one per damage step. The engine emits
 // one damage event per creature, so the guard is
-// OncePerBatchPerPlayer (see AGENTS.md §7): three non-Humans on one
+// OncePerBatchPerPlayer (see docs/adding-cards.md): three non-Humans on one
 // opponent draw one card, three on three opponents draw three.
 // First-strike and regular damage are two damage steps and two
 // batches (CR 510.4), so a draw for each (step, player) pair, as in

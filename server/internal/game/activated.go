@@ -329,7 +329,7 @@ type AbilityCost struct {
 	//
 	// DiscardSelf's sibling, one zone over, and written as a second
 	// bit rather than as a zone on one "the source pays" component
-	// because the two are different rules: discarding is a CR 701.8
+	// because the two are different rules: discarding is a CR 701.9
 	// keyword action that puts the card in a graveyard and fires
 	// EventDiscardCard (and, for cycling, EventCycle); exiling as a
 	// cost is a plain CR 406 move that fires neither. A card file
@@ -1231,6 +1231,15 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	if ab.Modes == nil && len(params.Modes) > 0 {
 		return ErrInvalidParam
 	}
+	// ADR 0097: "{1}: Choose one that hasn't been chosen this turn"
+	// (Kargan Intimidator). The identity is read HERE, before any cost
+	// is paid, for activationKey's reason — a cost that moves the
+	// source ends the object. A mode this object's ability has already
+	// chosen is refused with nothing paid.
+	modeAbility := ModeAbilityOf(*source, ab.Label)
+	if g.anyModeChosenLocked(ab.Modes, modeAbility, params.Modes) {
+		return ErrInvalidParam
+	}
 	steps := AnnouncedClauses(ab.Targets, ab.Modes, params.Modes)
 	if len(steps) == 0 && len(params.Targets) > 0 {
 		return ErrInvalidParam
@@ -1243,7 +1252,7 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	g.bindDivideAmountsLocked(steps, DivideAmountArgs{Controller: playerID, Source: cardID})
 	params.Targets = assignAnnouncedSlots(steps, params.Targets)
 	for _, i := range xSteps {
-		if n := stepTargetCount(steps[i], params.Targets); n != params.XValue {
+		if _, bad := xCountMismatch(steps[i], params.Targets, params.XValue); bad {
 			return ErrInvalidParam
 		}
 	}
@@ -1559,6 +1568,10 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// taken above, before the costs ran, so a sacrifice-this cost has
 	// not moved the object out from under it.
 	g.noteAbilityActivationLocked(activationKey)
+	// ADR 0097 Decision 4: the modes are used as the activation puts
+	// the ability on the stack — here, after every refusal is behind
+	// us, so a failed activation records nothing.
+	g.recordModesChosenLocked(ab.Modes, modeAbility, params.Modes)
 	g.EmitEvent(Event{
 		Kind:   EventTrigger,
 		Actor:  playerID,
@@ -1762,6 +1775,11 @@ func (g *Game) validateSacrificeCostLocked(playerID, sourceID uuid.UUID, cost Ab
 		// payment.
 		if cost.SacrificeSelf && id == sourceID {
 			return nil, ErrInvalidParam
+		}
+		// "Sacrifice ANOTHER creature": the source is not a legal pick
+		// (compared by object, not by name).
+		if cost.SacrificeOther.ExcludeSource && id == sourceID {
+			return nil, ErrIllegalTarget
 		}
 	}
 	return append(out, chosen...), nil

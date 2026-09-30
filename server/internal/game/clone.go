@@ -89,6 +89,15 @@ func (g *Game) cloneLocked() *Game {
 			out.DelayedTriggers[i] = cloneDelayedTrigger(d)
 		}
 	}
+	// ADR 0059 Decision 10: the extra-turn queue is plain data. An undo
+	// past the Time Warp that queued a turn must un-queue it.
+	out.ExtraTurns = cloneExtraTurns(g.ExtraTurns)
+	out.NextExtraRef = g.NextExtraRef
+	// ADR 0059 Decision 10: the turn plan is plain data too. An undo
+	// past a Relentless Assault must take its phases back out.
+	out.TurnPlan = clonePlan(g.TurnPlan)
+	out.NextPhaseID = g.NextPhaseID
+	out.planAt = g.planAt
 	if len(g.LoyaltyActivatedThisTurn) > 0 {
 		out.LoyaltyActivatedThisTurn = make(map[uuid.UUID]bool, len(g.LoyaltyActivatedThisTurn))
 		for k, v := range g.LoyaltyActivatedThisTurn {
@@ -204,6 +213,13 @@ func (g *Game) cloneLocked() *Game {
 			}
 			if len(c.ModeOptionLabel) > 0 {
 				cloned.ModeOptionLabel = append([]string(nil), c.ModeOptionLabel...)
+			}
+			// ADR 0097: the used half of the offer, for the same reason.
+			if len(c.ModeUsedIndex) > 0 {
+				cloned.ModeUsedIndex = append([]int(nil), c.ModeUsedIndex...)
+			}
+			if len(c.ModeUsedLabel) > 0 {
+				cloned.ModeUsedLabel = append([]string(nil), c.ModeUsedLabel...)
 			}
 			// S22 search chooser: the candidate list is a slice, so
 			// it needs its own backing array for the same reason
@@ -498,6 +514,12 @@ func cloneCard(c Card) Card {
 	// mutated through, but copied for PrintedSelf's reason — an undo
 	// snapshot must not share anything with the live card.
 	out.FaceDownListed = c.FaceDownListed.clone()
+	// ADR 0097: the "hasn't been chosen" memory is a map of slices,
+	// and a value copy would share both levels with the live card.
+	out.ModesChosen = copyModesChosen(c.ModesChosen)
+	// ADR 0101: the keyword counters' timestamps ride an undo with the
+	// counters they order.
+	out.CounterStampedAt = copyStringInt64Map(c.CounterStampedAt)
 	if len(c.Counters) > 0 {
 		out.Counters = make(map[string]int, len(c.Counters))
 		for k, v := range c.Counters {
@@ -915,6 +937,11 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.StackMeta = src.StackMeta
 	g.PendingTriggers = src.PendingTriggers
 	g.DelayedTriggers = src.DelayedTriggers
+	g.ExtraTurns = src.ExtraTurns
+	g.NextExtraRef = src.NextExtraRef
+	g.TurnPlan = src.TurnPlan
+	g.NextPhaseID = src.NextPhaseID
+	g.planAt = src.planAt
 	g.LoyaltyActivatedThisTurn = src.LoyaltyActivatedThisTurn
 	g.SpellsCastThisTurn = src.SpellsCastThisTurn
 	g.ForetoldThisTurn = src.ForetoldThisTurn

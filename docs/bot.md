@@ -276,6 +276,15 @@ offers only sets the engine accepts (the cap solver runs inside
 in a step where nobody holds priority, so a seat with no answer here
 would stop the game outright rather than merely stall its own turn.
 
+**Whom to give it to (`entry_controller`, ADR 0102, CR 614.12a).** "This
+enters under the control of an opponent of your choice" is offered as
+one answer per opponent. The heuristic reads the prompt's
+`control_purpose`: a harmful permanent (Captive Audience, Xantcha) goes
+to the opponent with the highest `SeatEval.Strength`, a helpful one
+(Pendant of Prosperity) to the lowest. It does not use `Threat`, which
+ranks a seat by how close it is to dying — "your life total becomes 4"
+costs a seat at 5 life almost nothing.
+
 **Whether to reveal (`entry_reveal_from_hand`, #1198, CR 614.1c).** The
 one card-set pick whose answer is FREE, and the reason it is a branch
 of its own rather than a second spelling of `choose_cards`. "As this
@@ -1328,6 +1337,19 @@ The heuristic's answer is `heuristic.fuelValue`
 Neither floor is zero: a card nobody can use today is still one
 tomorrow's delve or flashback might want, and zero would make every
 unreadable card the first thing a cost ate.
+
+**Delve** (CR 702.66, [ADR 0100](decisions/0100-delve-either-or-and-variable-sacrifice-costs.md)
+owner decision 3) is priced out of the same fuel. A delve cast is
+offered TWO payments, both drawn from the graveyard in the seat's
+`OrderCostFuel` order: the FEWEST cards that make the cast affordable
+at the largest X the seat can reach (the ordinary move, emitted per
+target set — the empty payment when the pool already pays), and the
+FULL budget, `min(CastPrice.DelveBudget, graveyard size)` cards,
+offered once against the first announcement out of the leftover
+budget, like an alternative-cost payment. Murktide Regent and
+Soulflayer want the second. `valueOfCast` charges every delved card its
+fuel price, exactly as it charges escape's exiles, so the policy
+compares the two on what each spends.
 
 **And the extra payments spend no target budget.** They are offered in
 a second pass, out of whatever `MaxExpansionPerSource` the target walk

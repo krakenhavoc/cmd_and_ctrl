@@ -11,8 +11,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // The Vampire token engine: one token per combat in which any
 // nontoken Vampire — Mavren himself included — attacks. The engine
 // emits one attack event per creature, so the condition carries the
-// OncePerBatch dedup: one declaration is one batch (see AGENTS.md
-// §7), so the second Vampire's event is a later event of the batch
+// OncePerBatch dedup: one declaration is one batch (see docs/adding-cards.md), so the second Vampire's event is a later event of the batch
 // that already fired and is declined. Without it the card would ship
 // STRONGER than printed. The tokens it makes are Vampires but are
 // tokens, so they never fire it on their own.

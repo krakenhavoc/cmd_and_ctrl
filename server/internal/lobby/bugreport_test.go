@@ -254,12 +254,18 @@ func TestBugReportDisabled503(t *testing.T) {
 	}
 }
 
-func TestBugReportUpstreamFailureIs502(t *testing.T) {
+// 424, not 502: Cloudflare replaces an origin 502's body, so the
+// sentence below would never reach the reporter (#1644).
+func TestBugReportUpstreamFailureIs424(t *testing.T) {
 	srv, tok := newBugReportStack(t, &recordingReporter{err: errors.New("github: create issue: status 500")})
 	resp := postBugReport(t, srv, tok, map[string]any{"title": "x"})
 	defer func() { _ = resp.Body.Close() }()
-	if resp.StatusCode != http.StatusBadGateway {
-		t.Fatalf("status = %d, want 502", resp.StatusCode)
+	if resp.StatusCode != http.StatusFailedDependency {
+		t.Fatalf("status = %d, want 424", resp.StatusCode)
+	}
+	raw, _ := io.ReadAll(resp.Body)
+	if !strings.Contains(string(raw), "filing the issue failed") {
+		t.Errorf("body %q does not carry the error sentence", raw)
 	}
 }
 

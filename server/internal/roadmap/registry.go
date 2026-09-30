@@ -794,17 +794,18 @@ var items = []Item{
 		EngineNotes: "primitive: \"has all activated abilities of …\" (Marvin, Necrotic Ooze, Drana and Linvala, Hazel's Brewmaster) grants ANOTHER OBJECT'S text, computed each layer pass. ADR 0093's grant is a catalog bundle with a fixed key; this grant has no bundle key at all, so it is Decision 10's out-of-scope case and needs its own ADR. Re-checked 2026-09-24.",
 	},
 	{
-		Slug: "extra-combats", Name: "Extra combat and main phases", Kind: KindSeam, Status: StatusMissing,
-		Summary:  "Spells and abilities that give you an additional combat phase, usually followed by an additional main phase.",
-		Missing:  "The turn's phases are fixed, so nothing can add another combat or main phase yet.",
-		Issue:    753,
-		Unblocks: 28,
-		Waiting: []string{
-			"Relentless Assault", "Aggravated Assault", "Seize the Day", "Karlach, Fury of Avernus",
-			"Hellkite Charger", "Aurelia, the Warleader", "Full Throttle",
-		},
-		Phrases:     []string{"additional combat", "extra combat"},
-		EngineNotes: "primitive: the turn's step sequence is fixed, so no effect can add a combat phase or a main phase after it (CR 500.8), and there is no per-turn combat ordinal for \"the first combat\" or a delayed trigger bound to \"that combat\". Planned with extra turns (\"Extra turns\") as one turn-machinery ADR; overlaps #717's second combat damage step. Re-checked 2026-09-24: the step sequence is still fixed.",
+		Slug: "extra-combats", Name: "Extra combat and main phases", Kind: KindSeam, Status: StatusPartial,
+		Summary:     "Spells and abilities that give you an additional combat phase, usually followed by an additional main phase, and cards that add a beginning phase or an end step to the turn.",
+		Missing:     "An additional phase after a particular main phase of the turn, and an ability that triggers at the beginning of one particular additional combat, aren't supported yet.",
+		Rules:       []string{"500.8", "500.9", "505.1a"},
+		Issue:       753,
+		ADR:         "0059-turn-machinery.md",
+		Unblocks:    0,
+		Waiting:     []string{"World at War", "Moraug, Fury of Akoum"},
+		Printed:     `(?i)\b(there (is|are) (an|two) additional (combat|beginning) phases?|an additional end step)\b`,
+		Examples:    []string{"Relentless Assault", "Aurelia, the Warleader", "Sphinx of the Second Sun"},
+		Phrases:     []string{"additional combat", "extra combat", "additional end step"},
+		EngineNotes: "**The turn plan shipped** (ADR 0059 Decisions 3, 4 and 8, sub-PR 2b, #753; see Closed seams): the rest of the turn is `Game.TurnPlan`, which `advanceCursorLocked` pops, and `AddPhasesForEffect` (anchors \"after this phase\" and \"after this main phase\") and `AddStepAfterCurrentForEffect` splice into it, newest first (CR 500.8 / 500.9). An added main phase is postcombat (CR 505.1a). `Turn.PhaseID` / `PhaseOrdinal` / `StepOrdinal` answer \"the first combat phase\" and \"the first end step\", and `TurnTally.Attacks` answers \"attacked this turn\" per object. What is left is Decision 4's `AnchorNthMainPhase` (World at War's \"after the second main phase\", which also waits on rebound) and Decision 8's `DelayedTrigger.OnPhaseID` binding (Moraug's and World at War's \"at the beginning of that combat\"); both ship with the first card that uses them. Cards that add a combat but wait on something else are listed on their own seams: Combat Celebrant (exert), Port Razer and Bloodthirster (a per-target attack restriction), Savage Beating (entwine). The audit's only-blocker cards shipped here, so Unblocks is 0.",
 	},
 	{
 		Slug: "infect-wither-toxic", Name: "Infect, wither and toxic", Kind: KindSeam, Status: StatusImplemented,
@@ -864,6 +865,21 @@ var items = []Item{
 		Examples: []string{"Springleaf Drum", "Heritage Druid", "Relic of Legends", "The Seriema"},
 	},
 	{
+		Slug: "delve", Name: "Delve", Kind: KindSeam, Status: StatusPartial,
+		Summary:  "Spells with delve let you exile cards from your graveyard to pay for the generic mana in their cost.",
+		Missing:  "Cards that care about the cards exiled with them, like Murktide Regent, and effects that give your spells delve aren't supported yet.",
+		Rules:    []string{"702.66", "607.2q"},
+		Issue:    1732,
+		ADR:      "0100-delve-either-or-and-variable-sacrifice-costs.md",
+		Mechanic: "delve",
+		Examples: []string{"Treasure Cruise", "Dig Through Time", "Murderous Cut"},
+		Waiting: []string{
+			"Murktide Regent", "Soulflayer", "Ethereal Forager", "Teval, Arbiter of Virtue",
+			"Tasigur, the Golden Fang", "Afterlife from the Loam", "Sorcerous Squall",
+		},
+		EngineNotes: "**The payment shipped** (ADR 0100 sub-PR 1): `Spec.Delve`, read through `game.DelveFor` / `Game.DelveForLocked`; `CastPrice.DelveBudget` (the generic after the cost modifiers and the convoke / waterbend taps, X folded in, minus `ParsedCost.FoldedColored`); the exile at CR 601.2h through `payDelveLocked` with the #1397 commander ask; and `PaidCost.Delved []ObjectRef`, the objects that landed in exile. The wire is `delve_ids` on `cast_spell`, `CardView.delve`, and the auto-tap preview's `?delve_ids=` / `delve_budget`; bots are offered the fewest-cards and the full-budget payments. **Still open** (ADR 0100 sub-PR 2): the CR 607.2q readers of the linked cards — `CastCounts.Delved` for Murktide Regent's entry counters, `CastProvenance.Delved` for Soulflayer's keywords and Ethereal Forager's attack trigger — and Teval's granted delve in `DelveForLocked`. Three delve cards pay with delve today and are held for their OTHER text, which has no shape: Tasigur, the Golden Fang (\"a nonland card of an opponent's choice\" — an opponent choosing from your graveyard, with no ruling here on which opponent chooses in a multiplayer game), Afterlife from the Loam (\"for each player, choose up to one target creature card in that player's graveyard\" — a target clause per player on a spell), and Sorcerous Squall (casting a spell from an opponent's graveyard mid-resolution, exiled if it would go to a graveyard).",
+	},
+	{
 		Slug: "variable-count-tap-others-cost", Name: "Variable-count tap-others cost", Kind: KindSeam, Status: StatusImplemented,
 		Summary: "An activated ability can tap X eligible permanents as a cost, with the number picked becoming its announced X.",
 		Issue:   1421,
@@ -917,14 +933,17 @@ var items = []Item{
 	},
 	{
 		Slug: "extra-turns", Name: "Extra turns", Kind: KindSeam, Status: StatusPartial,
-		Summary:          "Spells and abilities that let a player take an extra turn.",
-		Missing:          "The turn plan cannot queue or insert extra turns yet.",
-		Issue:            753,
-		Unblocks:         14,
-		Waiting:          []string{"Time Warp", "Time Stretch", "Avatar Kuruk"},
-		Phrases:          []string{"extra turn"},
-		NoCatalogExample: "The landed identity foundation is internal turn machinery; no card can take an extra turn until the queue lands.",
-		EngineNotes:      "ADR 0059's identity foundation has landed: `Turn.Seq` changes every turn, `Turn.Round` is display-only, `TurnsBegun` counts per seat, and every early turn ending uses one rotation seam. The remaining blocker is ADR 0059 sub-PR 2's turn plan and queued extra-turn machinery. Nothing in `internal/game` takes an extra turn yet.",
+		Summary:     "Spells and abilities that let a player take an extra turn, including \"at the beginning of that turn's end step, you lose the game\".",
+		Missing:     "Effects that make a player skip a turn aren't supported yet, so a card that stops a player taking an extra turn doesn't work.",
+		Rules:       []string{"500.7"},
+		Issue:       753,
+		ADR:         "0059-turn-machinery.md",
+		Unblocks:    0,
+		Waiting:     []string{"Ugin's Nexus", "Savor the Moment", "Magosi, the Waterveil"},
+		Printed:     `(?i)\btakes? (an|two) extra turns?\b`,
+		Examples:    []string{"Time Warp", "Final Fortune", "Magistrate's Scepter"},
+		Phrases:     []string{"extra turn"},
+		EngineNotes: "**The extra-turn queue shipped** (ADR 0059 Decision 5, #753; see Closed seams): `Game.ExtraTurns` is a stack popped by the one rotation seam (`beginNextTurnLocked`), so the most recently created turn is taken first (CR 500.7), normal rotation resumes from `Turn.OrderSeat`, and a departed player's queued turn is dropped but still counted toward `TurnsBegun` (CR 800.4k / 800.4m). `TakeExtraTurnsForEffect` is the one door, and `DelayedTrigger.OnExtraTurn` binds \"at the beginning of that turn's end step\" to the turn (Final Fortune). What is left is SKIPPING a turn (CR 614.10): Trouble in Pairs' and Ugin's Nexus's \"if a player would begin an extra turn, that player skips that turn instead\", Magosi's \"skip your next turn\" and Savor the Moment's \"skip the untap step of that turn\" need a replaceable \"a turn would begin\" event, which ADR 0059 Decision 14 leaves out of scope. The audit's 14 only-blocker cards are the ones that shipped here, so Unblocks is 0.",
 	},
 	{
 		Slug: "face-down-objects", Name: "Face-down cards", Kind: KindSeam, Status: StatusPartial,
@@ -943,11 +962,11 @@ var items = []Item{
 		Summary:     "Classes and Cases work; Rooms are the third kind of card that switches abilities on as it changes state.",
 		Missing:     "Rooms can't be cast yet: unlocking doors and casting either half of a Room aren't supported.",
 		Rules:       []string{"709.5"},
-		Issue:       886,
+		Issue:       1756,
 		ADR:         "0071-designations-that-switch-abilities-on.md",
-		Waiting:     []string{"Funeral Room // Awakening Hall", "Unholy Annex // Ritual Chamber"},
+		Waiting:     []string{"Funeral Room // Awakening Hall", "Unholy Annex // Ritual Chamber", "Roaring Furnace // Steaming Sauna"},
 		Examples:    []string{"Wizard Class"},
-		EngineNotes: "**Classes and Cases shipped** ([ADR 0071](decisions/0071-designations-that-switch-abilities-on.md), #757): one `ActiveWhen Designation` field on every printed-ability slot, evaluated by one predicate in the object-level accessors (`game/designations.go`), plus `Card.ClassLevel` (CR 716.2), `Card.Solved` (CR 719.3), the `LevelUp` / `ToSolve` constructors and `class_level` / `solved` on the wire. What is left is ROOMS (CR 709.5): the two unlocked flags, the `DoorUnlocked` gate (reserved, and refused at boot until it is built — re-checked 2026-09-24, `effects.Register` still panics on it), casting either half of a split card (CR 709.3, no issue of its own), and the unlock special action. Tracked for #886. The Class and Case cards this row used to list (Caretaker's Talent, Case of the Ransacked Lab, Cleric Class, Druid Class, Artist's Talent) wait on nothing here any more, and the audit's 32 only-blocker cards were mostly Classes, so Unblocks is 0.",
+		EngineNotes: "**Classes and Cases shipped** ([ADR 0071](decisions/0071-designations-that-switch-abilities-on.md), #757): one `ActiveWhen Designation` field on every printed-ability slot, evaluated by one predicate in the object-level accessors (`game/designations.go`), plus `Card.ClassLevel` (CR 716.2), `Card.Solved` (CR 719.3), the `LevelUp` / `ToSolve` constructors and `class_level` / `solved` on the wire. What is left is ROOMS (CR 709.5): the two unlocked flags, the `DoorUnlocked` gate (reserved, and refused at boot until it is built — re-checked 2026-09-24, `effects.Register` still panics on it), casting either half of a split card (CR 709.3, no issue of its own), and the unlock special action. Tracked for #1756. The Class and Case cards this row used to list (Caretaker's Talent, Case of the Ransacked Lab, Cleric Class, Druid Class, Artist's Talent) wait on nothing here any more, and the audit's 32 only-blocker cards were mostly Classes, so Unblocks is 0.",
 	},
 	{
 		Slug: "ability-suppression", Name: "Stopping abilities", Kind: KindSeam, Status: StatusPartial,
@@ -965,7 +984,7 @@ var items = []Item{
 		Missing:     "A sacrifice cost with a rule about the whole set, like \"three artifact tokens with different names\", can't be paid yet.",
 		Issue:       998,
 		Tracked:     "#998 (prompt half, closed)",
-		Waiting:     []string{"Transmutation Font"},
+		Waiting:     []string{"Transmutation Font", "Jarad, Golgari Lich Lord"},
 		Examples:    []string{"Ao, the Dawn Sky"},
 		EngineNotes: "cost component / prompt: since #747 a sacrifice clause pays a fixed count of N permanents, but its predicate judges each permanent alone, so a restriction on the SET (\"three artifact tokens with different names\") can't be written, and the enumerator's first-N payment would have to become a search for a valid set. A set-level `Validate` in the style of #682's search validator is the likely shape. Transmutation Font ships with a caveat for it. The PROMPT half is a shorter reach and was found by #952's re-triage: `game.ChooseCardsPrompt.Validate func(picked []Card) bool` already exists, is enforced on submit and inside `legal.EnumerateFor`, and `effects.b23TotalManaValueAtMost` is already written — but `effects.PutFromLibraryOntoBattlefield` and `effects.TakeFromLibraryToHand` build their `choose_cards` prompt without forwarding it, so \"any number of nonland permanent cards with total mana value 4 or less from among them\" cannot be stated over a look at the top seven. **The PROMPT half closed with #998** (see Closed seams): `PutFromLibraryOntoBattlefield.Validate` and `TakeFromLibraryToHand.Validate` forward the field, Ao, the Dawn Sky ships `full` on it, and what is left on this row is only the COST half — a sacrifice clause whose predicate judges each permanent alone, which Transmutation Font still waits on. Re-checked 2026-09-24: the sacrifice clause's predicate still judges each permanent alone.",
 	},
@@ -1007,6 +1026,113 @@ var items = []Item{
 		Waiting:     []string{"Echocasting Symposium", "Improvisation Capstone"},
 		Phrases:     []string{"paradigm"},
 		EngineNotes: "keyword: three clauses and no shape for any of them. The spell EXILES ITSELF instead of going to the graveyard; a per-NAME \"have you resolved a spell with this name yet\" record is kept for the rest of the game; and from then on, at the beginning of each of the controller's first main phases, they are offered a cast of a **copy** of the card out of exile for no mana. The third clause is the one with nothing behind it: every cast permission in the engine ([ADR 0066](decisions/0066-granted-cast-and-play-permissions.md)) opens the CARD, and \"cast a copy of a card in exile\" exists nowhere — `CreateTokenCopy` mints a permanent, not a spell on the stack. The other two are reachable on their own (`CastPermission.ExileOnResolution` is the self-exile's sibling, and a per-name record is a tally), but a card shipped with only those would be all drawback and no payoff, so both Lessons defer the whole keyword.",
+	},
+	{
+		Slug: "discover", Name: "Discover", Kind: KindSeam, Status: StatusImplemented,
+		Summary:  "Discover N exiles cards from the top of your library until a nonland card with mana value N or less. You may cast it without paying its mana cost, or put it into your hand; if you choose to cast it and then pass without casting, it goes into your hand.",
+		Rules:    []string{"701.57"},
+		Issue:    1112,
+		ADR:      "0099-discover.md",
+		Mechanic: "discover",
+		Examples: []string{"Primordial Gnawer"},
+		Phrases:  []string{"discover"},
+	},
+	{
+		Slug: "modes-not-chosen", Name: "Modes that haven't been chosen", Kind: KindSeam, Status: StatusImplemented,
+		Summary:  "Abilities that say \"choose one that hasn't been chosen\" or \"choose one that hasn't been chosen this turn\": each mode can be chosen once, a used mode is shown greyed out, and an ability with no modes left does nothing.",
+		Rules:    []string{"700.2b"},
+		Issue:    1749,
+		ADR:      "0097-modes-that-havent-been-chosen.md",
+		Probe:    declaresModesNotChosen,
+		Examples: []string{"Gala Greeters", "Monument to Endurance", "Silent Hallcreeper"},
+		Phrases:  []string{"hasn't been chosen"},
+	},
+	{
+		Slug: "evolve", Name: "Evolve", Kind: KindMechanic, Status: StatusMissing,
+		Summary:     "Whenever a creature enters under your control with greater power or toughness than a creature with evolve, that creature gets a +1/+1 counter.",
+		Missing:     "Evolve isn't implemented, so a creature with evolve never grows.",
+		Rules:       []string{"702.100"},
+		Issue:       1805,
+		Waiting:     []string{"Dinosaur Egg"},
+		EngineNotes: "keyword (CR 702.100): no trigger for it. It is an intervening-if ETB watcher (CR 702.100b compares the entering creature's power and toughness with the evolving creature's, both on entry and on resolution) and would be a `canonicalKeywords` token with an engine-side trigger, like prowess, so a printed or granted evolve works without a catalog entry. Dinosaur Egg ships with its discover and a caveat for evolve.",
+	},
+	{
+		Slug: "cant-be-countered-grant", Name: "Making other spells uncounterable", Kind: KindSeam, Status: StatusMissing,
+		Summary:     "Permanents that say spells you control, or some of them, can't be countered.",
+		Missing:     "A permanent can't yet stop your other spells from being countered.",
+		Issue:       1806,
+		Waiting:     []string{"Chimil, the Inner Sun"},
+		EngineNotes: "continuous effect over the stack: `spellCantBeCounteredLocked` (`game/cant_be_countered.go`) reads only a spell's own printed rider and the mana that paid for it (#1547). A static on a permanent (\"spells you control can't be countered\", \"creature spells you control can't be countered\") reaches no spell, because the layer system does not apply to objects on the stack (ADR 0012). The fix is one more source at that one gate, read off the battlefield. Chimil, the Inner Sun ships with its discover and a caveat for this line.",
+	},
+	{
+		Slug: "targets-from-one-graveyard", Name: "Targets that must share a graveyard", Kind: KindSeam, Status: StatusMissing,
+		Summary:     "Abilities that target several cards \"from a single graveyard\".",
+		Missing:     "A card can't yet require that all of its targets come from the same graveyard.",
+		Issue:       1807,
+		Waiting:     []string{"Digsite Conservator"},
+		EngineNotes: "target set rule: `game.TargetDifference` says two picks must DIFFER on a key; \"from a single graveyard\" needs the opposite, a key every pick must SHARE (the owner of the graveyard). Without it the ability would reach several graveyards at once, which is stronger than printed, so Digsite Conservator waits whole even though its discover half is buildable.",
+	},
+	{
+		Slug: "keyword-counters", Name: "Keyword counters", Kind: KindSeam, Status: StatusImplemented,
+		Summary:  "Counters that give a permanent a keyword, like a flying counter, a deathtouch counter or an indestructible counter. The keyword lasts as long as the counter does, whatever put it there.",
+		Rules:    []string{"122.1b", "613.1f", "613.7c"},
+		Issue:    1753,
+		ADR:      "0101-keyword-counters.md",
+		Printed:  `(?i)\b(flying|first strike|double strike|deathtouch|haste|hexproof|indestructible|lifelink|menace|reach|shadow|trample|vigilance) counters?\b`,
+		Examples: []string{"Perennation", "Vraska Joins Up"},
+		Phrases:  []string{"keyword counter"},
+	},
+	{
+		Slug: "discard-as-it-would-enter", Name: "Discarding a card as a permanent would enter", Kind: KindSeam, Status: StatusPartial,
+		Summary:     "Cards like Mox Diamond and Heart of Yavimaya, which ask you to discard a card or sacrifice a permanent as they would enter, and go to the graveyard if you don't.",
+		Missing:     "A card that discards cards as it enters and then reads what it discarded, like Indominus Rex, Alpha, isn't supported yet.",
+		Rules:       []string{"614.1a", "614.13"},
+		Issue:       1744,
+		ADR:         "0098-discard-as-a-permanent-would-enter.md",
+		Probe:       enterOnlyIfProbe,
+		Examples:    []string{"Mox Diamond", "Heart of Yavimaya", "Lotus Vale"},
+		Waiting:     []string{"Indominus Rex, Alpha"},
+		EngineNotes: "**shipped in #1744 (ADR 0098):** `ReplacementEffect.EntryCardChoice` (renamed from #1198's `EntryHandReveal`) carries an `Action` — reveal, discard or sacrifice — and the entry kinds `entry_discard_from_hand` and `entry_sacrifice` join `entry_reveal_from_hand`. The discard goes through `discardCardsLocked` with `DiscardCauseEffect` and the sacrifice through `SacrificeAllThenForEffect`; either may pause, and the paused entry rides a frozen copy of the event (cloned again when the continuation runs). A redirected entry is now MOVED, by `moveRedirectedEntryLocked` inside the one entry finisher, where three sites used to treat it as a cancel and two put the card onto the battlefield anyway; a window that cannot ask runs a shockland's, reveal-land's or Mox's decline (`declineIsReplace`); and the apply-loop and `ResolveReplacementOrder` share one question dispatcher (`offerOwnQuestionLocked`). Shipped on Mox Diamond and the seven \"sacrifice … instead\" lands. Still missing: Indominus Rex, Alpha's \"discard any number of creature cards\" with no redirect, whose follow-on (a counter for each keyword among the discarded cards) needs `EntryCardChoice.Then` to be handed the entering event.",
+	},
+	{
+		Slug: "aura-on-a-graveyard-card", Name: "Auras that enchant a card in a graveyard", Kind: KindSeam, Status: StatusMissing,
+		Summary:     "Auras like Animate Dead, which enchant a creature card in a graveyard and bring it back as they enter.",
+		Missing:     "An Aura can't yet enchant a card in a graveyard, so Animate Dead isn't available.",
+		Issue:       1780,
+		Waiting:     []string{"Animate Dead"},
+		EngineNotes: "attachment to a non-battlefield object: `Card.AttachedTo` can name a card ID in a graveyard, but `attachmentLegalLocked` (CR 704.5m) only looks for the host on the battlefield, so the Aura resolves and is swept before its enters trigger runs. Animate Dead also rewrites its own enchant clause as it enters (\"loses 'enchant creature card in a graveyard' and gains 'enchant creature put onto the battlefield with this Aura'\"), which the 704.5m re-check would have to read. Building it without the clause would be a Reanimate with no target, which is stronger than printed, so it stays out of the catalog.",
+	},
+	{
+		Slug: "enters-under-an-opponents-control", Name: "Entering under an opponent's control", Kind: KindSeam, Status: StatusImplemented,
+		Summary:  "Permanents that enter the battlefield under the control of an opponent of your choice, such as Captive Audience and Pendant of Prosperity.",
+		Rules:    []string{"110.2", "614.12", "616.1b"},
+		Issue:    1759,
+		ADR:      "0102-entering-under-another-players-control.md",
+		Examples: []string{"Captive Audience", "Pendant of Prosperity"},
+	},
+	{
+		Slug: "any-player-may-activate", Name: "Abilities any player may activate", Kind: KindSeam, Status: StatusMissing,
+		Summary:     "Activated abilities that any player may activate, not only the permanent's controller, such as Xantcha, Sleeper Agent's.",
+		Missing:     "Only a permanent's controller can activate its abilities, so an ability printed \"Any player may activate this ability\" isn't available.",
+		Issue:       1793,
+		Waiting:     []string{"Xantcha, Sleeper Agent"},
+		EngineNotes: "primitive: `ActivatedAbility` has no \"who may activate\" field; `ActivateCatalogAbility`, the legal-move enumerator and the view's per-seat ability stamps all assume the activator is the controller. \"You\" in the effect is the ACTIVATOR (the stack item's controller) and pays the cost, while \"Xantcha's controller\" is read off the permanent. Xantcha's entry under an opponent shipped with ADR 0102; this and #1794 are what it still waits on.",
+	},
+	{
+		Slug: "cant-attack-its-owner", Name: "A creature that can't attack its owner", Kind: KindSeam, Status: StatusMissing,
+		Summary:     "A creature that attacks each combat but can't attack its owner or planeswalkers its owner controls, such as Xantcha, Sleeper Agent.",
+		Missing:     "No attack restriction names the creature's owner yet, so a creature that can't attack its owner isn't available.",
+		Issue:       1794,
+		Waiting:     []string{"Xantcha, Sleeper Agent"},
+		EngineNotes: "primitive: `AttacksEachCombat()` exists (ADR 0045 attack requirements) but no restriction names a defending player by relation to the attacker's OWNER; attack taxes key on the tax's controller and `AttackRequirement.OtherThan` on a fixed player. The restriction has to reach both declaration verbs, the enumerator and the client's attack targets, planeswalkers included, and CR 508.1d decides the requirement it overrides. Xantcha's entry under an opponent shipped with ADR 0102; this and #1793 are what it still waits on.",
+	},
+	{
+		Slug: "control-of-a-spell", Name: "Gaining control of a spell", Kind: KindSeam, Status: StatusMissing,
+		Summary:     "Effects that take control of a spell on the stack, such as Invert Polarity and Commandeer.",
+		Missing:     "Nothing can take control of a spell yet, so a spell always resolves for the player who cast it.",
+		Issue:       1745,
+		Waiting:     []string{"Invert Polarity"},
+		EngineNotes: "primitive: control effects are layer-2 effects on PERMANENTS ([ADR 0063](decisions/0063-durations-and-control.md), `GainControlForEffect`); a spell's controller is `StackItem.Controller`, fixed at cast, and nothing rewrites it. A change has to carry who resolves the spell, who a permanent spell enters under, and whom a copy or a cast record names. The other halves of Invert Polarity already exist — the won/lost coin flip (ADR 0054), countering a spell, and choosing new targets for a spell (#1196's `ChangeTargets`) — so the card is this one primitive away. #756's Closed seams row names the gap (\"control of a SPELL (Commandeer) … is not layer 2 at all\").",
 	},
 	{
 		Slug: "suspended-card-abilities", Name: "Abilities of a suspended card", Kind: KindSeam, Status: StatusPartial,
@@ -1082,4 +1208,33 @@ var items = []Item{
 		Summary:  "Cards that remember what they exiled, and abilities that read the counters a permanent had when it left.",
 		Examples: []string{"The Ozolith", "Valakut Exploration", "Currency Converter"},
 	},
+}
+
+// declaresModesNotChosen is the "that hasn't been chosen" probe (ADR
+// 0097): a triggered or activated ability whose ModeSpec declares the
+// restriction.
+func declaresModesNotChosen(s effects.Spec) bool {
+	for _, t := range s.Triggered {
+		if t.Modes != nil && t.Modes.NotChosen != game.ModeMemoryNone {
+			return true
+		}
+	}
+	for _, a := range s.Activated {
+		if a.Modes != nil && a.Modes.NotChosen != game.ModeMemoryNone {
+			return true
+		}
+	}
+	return false
+}
+
+// enterOnlyIfProbe is the "discard / sacrifice as it would enter" probe
+// (ADR 0098): a replacement whose entry card choice discards or
+// sacrifices rather than reveals.
+func enterOnlyIfProbe(s effects.Spec) bool {
+	for _, r := range s.Replacements {
+		if c := r.EntryCardChoice; c != nil && (c.Action == game.EntryCardDiscard || c.Action == game.EntryCardSacrifice) {
+			return true
+		}
+	}
+	return false
 }

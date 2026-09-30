@@ -43,7 +43,9 @@ func filterViewDeliberatelyZeroed(viewerID string) map[string]bool {
 	// specific seat's hand; there is no seat an unseated viewer's
 	// moves could be, so LegalMoves is the one field a spectator is
 	// deliberately handed zero for.
-	return map[string]bool{"LegalMoves": true}
+	// LegalActions (ADR 0105) is the digest of that same list and
+	// follows the same rule.
+	return map[string]bool{"LegalMoves": true, "LegalActions": true}
 }
 
 // everyFieldGameView returns a GameView with every top-level exported
@@ -110,6 +112,9 @@ func everyFieldGameView(ownerID, oppID string) GameView {
 	v.legalBySeat = map[string][]LegalMoveView{
 		ownerID: {{Type: "pass_priority", Player: uuid.MustParse(ownerID), Label: "Pass"}},
 	}
+	v.legalActionsBySeat = map[string]*LegalActionsView{
+		ownerID: {Pass: true},
+	}
 	return v
 }
 
@@ -118,16 +123,16 @@ func everyFieldGameView(ownerID, oppID string) GameView {
 // — the same discipline assertEveryExportedFieldSet enforces for
 // CardView, so a new GameView field added later is caught here rather
 // than silently exempted by being left at its zero value in the
-// fixture. LegalMoves is excluded by name: it is legitimately zero on
-// every unfiltered GameView (see everyFieldGameView's doc comment),
-// and is checked separately below.
+// fixture. LegalMoves and LegalActions are excluded by name: they are
+// legitimately zero on every unfiltered GameView (see
+// everyFieldGameView's doc comment), and are checked separately below.
 func assertGameViewFixtureComplete(t *testing.T, v GameView) {
 	t.Helper()
 	rv := reflect.ValueOf(v)
 	rt := rv.Type()
 	for i := 0; i < rt.NumField(); i++ {
 		f := rt.Field(i)
-		if !f.IsExported() || f.Name == "LegalMoves" {
+		if !f.IsExported() || f.Name == "LegalMoves" || f.Name == "LegalActions" {
 			continue
 		}
 		if rv.Field(i).IsZero() {

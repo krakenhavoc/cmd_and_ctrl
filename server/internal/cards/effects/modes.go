@@ -106,6 +106,33 @@ func ChooseNRepeating(prompt string, min, max int, options ...game.ModeOption) *
 	return &game.ModeSpec{Prompt: prompt, Options: options, Min: min, Max: max, Repeatable: true}
 }
 
+// ChooseOneNotChosenThisTurn — "Choose one that hasn't been chosen
+// this turn —" (ADR 0097: Gala Greeters, Monument to Endurance,
+// Kargan Intimidator). For a TRIGGERED or ACTIVATED ability only:
+// each bullet may be chosen once per turn by this object's ability,
+// and an instance with none left is removed (CR 700.2b). The engine
+// keeps the memory — per object, recorded when the mode is chosen,
+// kept across a change of control — so the card file declares the
+// restriction and nothing else.
+func ChooseOneNotChosenThisTurn(options ...game.ModeOption) *game.ModeSpec {
+	return &game.ModeSpec{
+		Prompt: "Choose one that hasn't been chosen this turn", Options: options, Min: 1, Max: 1,
+		NotChosen: game.ModeMemoryThisTurn,
+	}
+}
+
+// ChooseOneNotChosen — "Choose one that hasn't been chosen —" with no
+// duration (ADR 0097: Silent Hallcreeper, Demonic Pact): each bullet
+// once, ever, for this object's ability. The memory ends when the
+// object does (CR 400.7), so a permanent that leaves and returns may
+// choose every bullet again.
+func ChooseOneNotChosen(options ...game.ModeOption) *game.ModeSpec {
+	return &game.ModeSpec{
+		Prompt: "Choose one that hasn't been chosen", Options: options, Min: 1, Max: 1,
+		NotChosen: game.ModeMemoryEver,
+	}
+}
+
 // SpreeMode declares one Spree bullet (CR 702.172a): its own printed
 // additional cost — mana, brace notation — paid only if this bullet
 // is chosen, on top of the spell's own cost and every other chosen
@@ -180,32 +207,6 @@ func OptionTargets(ctx *Context, option int) []game.TargetRef {
 		}
 	}
 	return out
-}
-
-// BulletsInPrintedOrder runs each chosen bullet's body in PRINTED
-// order (CR 608.2c) — option 0's occurrences first, then option 1's —
-// whatever order the caster clicked them in. `bodies[i]` is option i's
-// body, handed the occurrence so it reads its own target group.
-//
-// For a card whose bullets can see each other (#1655: Depth Defiler's
-// bounce before its draw-then-discard, Inscription of Abundance's
-// counters before its "greatest power"), where the engine's ModeOption
-// Effect walk — announce order — would let the caster reorder them.
-// Declare the bullets with Mode, not ModeDoing, and call this from
-// OnResolve (a spell) or the ability's Effect (a trigger).
-func BulletsInPrintedOrder(item *game.StackItem, ctx *Context, bodies ...func(item *game.StackItem, ctx *Context, occ int) error) error {
-	modes := ctx.Modes()
-	for opt, body := range bodies {
-		for occ, m := range modes {
-			if m != opt || body == nil {
-				continue
-			}
-			if err := body(item, ctx, occ); err != nil {
-				return err
-			}
-		}
-	}
-	return nil
 }
 
 // DestroyTheModesTarget is "destroy target <thing>" as a modal

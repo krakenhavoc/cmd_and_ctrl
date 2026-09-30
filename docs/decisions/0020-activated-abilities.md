@@ -269,7 +269,7 @@ The census counts 29 cards where this is the only core blocker.
 Add `ActivatedAbilityShape.Condition` and `effects.ActivatedAbility.Condition`,
 both typed `func(g *Game, controller, source uuid.UUID) bool`. They are
 carried through `effects.buildDef` like every other field of the ability
-(AGENTS.md §7, "Adding a `Spec` slot"). Nil means no condition, which is
+(AGENTS.md §7 (now docs/adding-cards.md), "Adding a `Spec` slot"). Nil means no condition, which is
 every ability in the catalog today.
 
 The contract is the mana ability's, word for word:

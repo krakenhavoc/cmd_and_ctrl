@@ -59,7 +59,7 @@ func init() {
 			Optional(
 				Targeting(
 					AtYourEndStep(b29ZiatoraSacrificeLabel, b29SacrificeChosenCreature),
-					TargetCreature("another creature you control", YouControl(), b03NotNamed("Ziatora, the Incinerator"))),
+					Another(TargetCreature("another creature you control", YouControl()))),
 				"Ziatora, the Incinerator — sacrifice another creature to deal damage equal to its power and make three Treasures?"),
 		},
 	})

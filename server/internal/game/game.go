@@ -172,6 +172,34 @@ type Game struct {
 	// delayed.go. Added in S22.
 	DelayedTriggers []*DelayedTrigger
 
+	// ExtraTurns is the CR 500.7 extra-turn queue (ADR 0059 Decision 5,
+	// extra_turns.go). A STACK: the LAST element is the turn taken
+	// next, which is CR 500.7's "most recently created first". Popped
+	// by the rotation seam, beginNextTurnLocked.
+	ExtraTurns []ExtraTurn
+
+	// NextExtraRef mints ExtraTurn.Ref. Per game and never reused, so a
+	// delayed trigger bound to "that turn" can never match a later one.
+	NextExtraRef int
+
+	// TurnPlan is the steps still to come in this turn, in order (ADR
+	// 0059 Decision 3, turn_plan.go): the template after the current
+	// step, plus every phase and step an effect has added. Empty at
+	// cleanup. advanceCursorLocked pops its head.
+	TurnPlan []PlannedStep
+
+	// NextPhaseID mints PlannedStep.PhaseID for added phases. Per
+	// turn: the template's five phases are 1..5, so the first added
+	// phase is 6.
+	NextPhaseID int
+
+	// planAt is the cursor position TurnPlan was built or last popped
+	// for. A cursor that moved some other way (a test setting
+	// Turn.Step, a snapshot from before the plan) no longer matches,
+	// and the plan is rebuilt from the template before it is read.
+	// Derived: restore sets it from the restored cursor.
+	planAt TurnStep
+
 	// SplitSecondActive mirrors "any item on the stack has
 	// SplitSecond set" (CR 702.61). While true, cast_spell and
 	// activate_ability return ErrSplitSecondActive. Mana abilities
@@ -1155,10 +1183,19 @@ func (g *Game) AdvanceStep() (Turn, error) {
 	// that cost as free. Without this, a miracle grant survived a
 	// manual advance and stayed open until the turn's cleanup swept it,
 	// long after the paper decline it stands in for.
+	//
+	// ADR 0099 §4: the same call closes a discover's or a cascade's
+	// pass-closed free cast, and for the same reason. A lapse that
+	// raised a trigger or a prompt is left for the drive below, which
+	// resolves what went on the stack and halts on a prompt.
+	lapsed := false
 	for _, seat := range g.Seats {
-		if seat != nil {
-			g.closeMiracleWindowLocked(seat.ID)
+		if seat != nil && g.closePassWindowsLocked(seat.ID) {
+			lapsed = true
 		}
+	}
+	if lapsed {
+		g.runStateChecksLocked()
 	}
 	// #1571 / CR 508.1d: leaving declare_attackers ends the attack
 	// declaration, so it runs the same requirement checkpoint as the
@@ -1356,11 +1393,13 @@ func (g *Game) advanceCursorLocked() {
 	// strike damage and regular damage are two batches, as in paper.
 	// See event_batch.go.
 	g.beginEventBatchLocked()
-	if g.Turn.Step == StepCleanup {
-		g.beginNextTurnLocked()
+	// ADR 0059 Decision 3: the next step is the head of the turn plan,
+	// which is the template plus every phase and step an effect added.
+	// An empty plan is the end of the turn.
+	if g.popTurnPlanLocked() {
 		return
 	}
-	g.Turn = g.Turn.advance(len(g.Seats), g.StartingSeat)
+	g.beginNextTurnLocked()
 }
 
 // CardsDrawnThisTurnFor returns the instance IDs playerID has drawn
@@ -1598,6 +1637,9 @@ func (g *Game) finishStepEntryLocked(canceled bool) {
 	if g.MulligansOpen && (g.Turn.Step == StepUntap || g.Turn.Step == StepUpkeep) {
 		return
 	}
+	// ADR 0059 Decision 8: the step has really begun, so it counts —
+	// Turn.StepOrdinal, and Turn.PhaseOrdinal when it opens a phase.
+	g.noteStepBegunLocked()
 	// S31 sub-PR 0: announce the step for the public game log, and
 	// since #588 for the trigger harvester too. Placed after the
 	// skip-step replacement window so a cancelled step never

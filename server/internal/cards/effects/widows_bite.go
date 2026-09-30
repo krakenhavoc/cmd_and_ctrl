@@ -21,27 +21,24 @@ func init() {
 		Completeness:  CompletenessFull,
 		OptionalCosts: []game.AdditionalCost{Teamwork(3)},
 		Modes: ChooseOne(
-			Mode("Target creature gains deathtouch until end of turn.",
-				TargetCreature("target creature")),
-			Mode("Target creature gets -2/-2 until end of turn.",
-				TargetCreature("target creature")),
-		).InsteadIf(2, TeamworkUsed),
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			return BulletsInPrintedOrder(item, ctx,
+			ModeDoing("Target creature gains deathtouch until end of turn.",
+				TargetCreature("target creature"),
 				func(_ *game.StackItem, ctx *Context, occ int) error {
 					t, ok := ModeTarget(ctx, occ)
 					if !ok {
 						return nil
 					}
 					return GrantKeywordUntilEOT{Target: t.ID, Keywords: []string{"deathtouch"}, Label: "Widow's Bite"}.Apply(ctx)
-				},
+				}),
+			ModeDoing("Target creature gets -2/-2 until end of turn.",
+				TargetCreature("target creature"),
 				func(_ *game.StackItem, ctx *Context, occ int) error {
 					t, ok := ModeTarget(ctx, occ)
 					if !ok {
 						return nil
 					}
 					return BoostUntilEOT{Target: t.ID, Power: -2, Toughness: -2, Label: "Widow's Bite"}.Apply(ctx)
-				})
-		},
+				}),
+		).InsteadIf(2, TeamworkUsed),
 	})
 }

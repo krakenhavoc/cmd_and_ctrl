@@ -62,7 +62,7 @@ func init() {
 			Watches:        []game.EventKind{game.EventETB},
 			AppliesTo:      b06SelfETB,
 			OptionalPrompt: &game.TriggerOptionalPrompt{Question: "Ruthless Technomancer — sacrifice another creature for Treasures equal to its power?"},
-			Targets:        TargetCreature("another creature you control", YouControl(), b03NotNamed("Ruthless Technomancer")),
+			Targets:        Another(TargetCreature("another creature you control", YouControl())),
 			Key:            "Ruthless Technomancer — sacrifice a creature, Treasures equal to its power",
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {

@@ -113,3 +113,75 @@ func exileTargetsThenScheduleReturn(ctx *Context, label string) error {
 		}.Apply(NewContext(g, item))
 	})
 }
+
+// exileTargetsThenReturnOnOwnersEndStep is "exile <targets>. Return
+// that card to the battlefield under its owner's control at the
+// beginning of that player's next end step" (The Eternal Wanderer's
+// +1, #1538). It is exileTargetsThenScheduleReturn with the return
+// bound to the OWNER's turn: one delayed trigger per owner among the
+// cards that reached exile, each carrying ScheduleDelayedTrigger.TurnOf,
+// so the delayed ability is still the resolving ability's controller's
+// (CR 603.7d) and only the moment it fires is the owner's.
+func exileTargetsThenReturnOnOwnersEndStep(ctx *Context, label string) error {
+	var ids []uuid.UUID
+	for _, t := range ctx.LegalTargets() {
+		if t.Kind != game.TargetCard || t.ID == uuid.Nil {
+			continue
+		}
+		ids = append(ids, t.ID)
+	}
+	item := ctx.Item
+	return ctx.Game.ExileCardsThenForEffect(ids, func(g *game.Game, exiled []uuid.UUID) error {
+		// Group by owner, in the order the cards reached exile, so
+		// the schedule order is stable.
+		var owners []uuid.UUID
+		byOwner := map[uuid.UUID][]uuid.UUID{}
+		for _, id := range exiled {
+			c, ok := g.LookupCardForEffect(id)
+			if !ok || c.Owner == uuid.Nil {
+				continue
+			}
+			if _, seen := byOwner[c.Owner]; !seen {
+				owners = append(owners, c.Owner)
+			}
+			byOwner[c.Owner] = append(byOwner[c.Owner], id)
+		}
+		for _, owner := range owners {
+			if err := (ScheduleDelayedTrigger{
+				At:     game.StepEnd,
+				Label:  label,
+				TurnOf: owner,
+				Cards:  byOwner[owner],
+				Body:   returnExiledToOwnersBody,
+			}).Apply(NewContext(g, item)); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
+// exileThisThenReturnUnderAnOpponentsControl is "Exile <this>, then
+// return it to the battlefield under an opponent's control" (Sol'Kanar
+// the Tainted, Zuko, Conflicted): the controller names the opponent,
+// and the permanent comes back under that player's control as a new
+// object (CR 400.7). Only the permanent the ability came from moves —
+// one that died or was flickered in response has nothing to exile —
+// and with no opponent left to name nothing happens.
+func exileThisThenReturnUnderAnOpponentsControl(ctx *Context, item *game.StackItem, name string) error {
+	if !sourceIsStillThisPermanent(ctx.Game, item) {
+		return nil
+	}
+	self := item.SourceCardID
+	return ChoosePlayer{
+		Among:    Opponents,
+		Question: name + " — choose an opponent to return it under",
+		Then: func(ctx *Context) error {
+			opp := ctx.ChosenPlayer()
+			if opp == uuid.Nil {
+				return nil
+			}
+			return Flicker{Target: self, Controller: opp}.Apply(ctx)
+		},
+	}.Apply(ctx)
+}

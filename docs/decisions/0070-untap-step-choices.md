@@ -278,7 +278,7 @@ type UntapCap struct {
 var CatalogUntapCaps func(oracleID string) []UntapCap
 ```
 
-declared as `Spec.UntapCaps []game.UntapCap` (the four edits AGENTS.md §7
+declared as `Spec.UntapCaps []game.UntapCap` (the four edits AGENTS.md §7 (now docs/adding-cards.md)
 "Adding a `Spec` slot" lists), read through `CatalogAbilityKey` so an orb that
 has lost its abilities caps nothing, after `RecomputeLayersIfStaleLocked` so
 "nonbasic" and "land" are the effective types.
@@ -442,7 +442,7 @@ and a seat that has left the game cannot be the active seat.
 
 ## Decision 8 — Docs that change with the code
 
-- **AGENTS.md §7** — the untap section gains the cap / opt-out slots and the
+- **AGENTS.md §7 (now docs/adding-cards.md)** — the untap section gains the cap / opt-out slots and the
   rule that a paused turn-based action has one exit function.
 - **`docs/bot.md`** — the `untap_choice` prompt and how the heuristic scores it.
 - **`docs/protocol.md`** — the new `pending_choice.kind`.

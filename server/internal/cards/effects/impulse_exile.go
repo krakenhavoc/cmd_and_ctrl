@@ -119,3 +119,11 @@ func damagedOpponentByAnyDamage(ev game.Event, controller uuid.UUID, g *game.Gam
 	}
 	return ev.Target
 }
+
+// exileTopCardYouMayPlayThisTurn is the impulse bullet Breeches, Eager
+// Pillager and Parapet Thrasher share: "Exile the top card of your
+// library. You may play it this turn." Play, not cast, so a land may be
+// played from exile; the grant's zero duration is "this turn".
+func exileTopCardYouMayPlayThisTurn(item *game.StackItem, ctx *Context, _ int) error {
+	return ExileTopWithPermission{From: item.Controller, GrantTo: item.Controller, N: 1}.Apply(ctx)
+}

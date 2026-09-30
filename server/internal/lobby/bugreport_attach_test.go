@@ -283,8 +283,8 @@ func TestBugReportDiscardsArtifactsWhenFilingFails(t *testing.T) {
 
 	resp := postMultipartReport(t, srv, tok, map[string]any{"title": "x"}, pngBytes(32))
 	defer func() { _ = resp.Body.Close() }()
-	if resp.StatusCode != http.StatusBadGateway {
-		t.Fatalf("status = %d, want 502", resp.StatusCode)
+	if resp.StatusCode != http.StatusFailedDependency {
+		t.Fatalf("status = %d, want 424", resp.StatusCode)
 	}
 	// Prune with a zero window is a cheap way to ask "is anything
 	// still here?" without reaching into the store's private dir.

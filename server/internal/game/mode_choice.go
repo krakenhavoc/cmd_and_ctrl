@@ -51,7 +51,11 @@ type modePickFrame struct {
 // Caller must hold g.mu.
 func (g *Game) queueModePickLocked(tc TriggerContext, source Card, lki Characteristic, t TriggeredAbility, doubledBy doublerRef) bool {
 	ms := t.Modes
-	options := g.choosableModeOptionsLocked(SourceObject(source.Controller, &source), ms)
+	// ADR 0097: the modes this object's ability has already chosen are
+	// not on offer. They ride the prompt as the USED list, so the
+	// picker can show them greyed out rather than silently missing.
+	ab := ModeAbilityOf(source, t.Key)
+	options := g.choosableModeOptionsLocked(SourceObject(source.Controller, &source), ms, ab)
 	if !EnoughChoosableModes(len(options), ms) {
 		return false
 	}
@@ -76,6 +80,7 @@ func (g *Game) queueModePickLocked(tc TriggerContext, source Card, lki Character
 	if prompt == "" {
 		prompt = "Choose one"
 	}
+	usedIdx, usedLabel := usedModeOptions(ms, g.modesChosenLocked(ms, ab))
 	g.QueueChoiceForEffect(PendingChoice{
 		Kind:            PendingChoiceModePick,
 		Chooser:         source.Controller,
@@ -87,6 +92,9 @@ func (g *Game) queueModePickLocked(tc TriggerContext, source Card, lki Character
 		ModeMin:         modeMin,
 		ModeMax:         modeMax,
 		ModeRepeatable:  ms.Repeatable,
+		ModeUsedIndex:   usedIdx,
+		ModeUsedLabel:   usedLabel,
+		ModeNotChosen:   ms.NotChosen,
 		modePickResume: &modePickFrame{
 			tc:        tc,
 			source:    source,
@@ -129,11 +137,23 @@ func (g *Game) ResolveModePick(choiceID, chooserID uuid.UUID, modes []int) error
 		return err
 	}
 	frame := choice.modePickResume
+	// ADR 0097: the answer gate re-checks the LIVE memory, not only the
+	// prompt's offer list, so an answer can never name a mode another
+	// instance of the same ability took first.
+	if frame != nil && g.anyModeChosenLocked(frame.ability.Modes, ModeAbilityOf(frame.source, frame.ability.Key), modes) {
+		return ErrInvalidParam
+	}
 	g.dequeueChoiceLocked(idx)
 	if frame == nil {
 		g.runStateChecksLocked()
 		return nil
 	}
+	// ADR 0097 Decision 4: the mode is used the moment it is chosen,
+	// not when the ability resolves — a trigger countered on the stack
+	// still spent it. Recorded after the prompt has left the queue, so
+	// the re-narrowing of the ability's other open prompts never
+	// touches this one.
+	g.recordModesChosenLocked(frame.ability.Modes, ModeAbilityOf(frame.source, frame.ability.Key), modes)
 	g.buildOrPickTriggerLocked(frame.tc, frame.source, frame.lki, frame.ability, frame.doubledBy, append([]int(nil), modes...))
 	// Answering is the moment the ability is put on the stack (CR
 	// 603.3), so drain and run SBAs here rather than waiting for the

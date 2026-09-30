@@ -49,6 +49,31 @@ func TestDiscipleOfBolasSacrificesForLifeAndCards(t *testing.T) {
 	}
 }
 
+// TestDiscipleOfBolasCountsAnAnthemInTheSacrificedPower — X is the
+// sacrificed creature's power as it last existed, so an anthem's +1
+// counts: a printed 2/2 under Glorious Anthem is X = 3.
+func TestDiscipleOfBolasCountsAnAnthemInTheSacrificedPower(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	pushGloriousAnthemFor(g, me.ID)
+	bear := pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Bear", TypeLine: "Creature — Bear",
+		Power: 2, Toughness: 2, Owner: me.ID, Controller: me.ID,
+	})
+
+	beforeLife, beforeHand := me.Life, me.Hand.Size()
+	castCatalogSpell(t, g, "Disciple of Bolas", "Creature — Human Wizard", discipleOfBolasOracle, nil)
+	passPriorityAroundTable(t, g)
+	answerSacrifice(t, g, me.ID, bear)
+
+	if got := me.Life; got != beforeLife+3 {
+		t.Errorf("life %d, want %d (gain 3 — the anthem counts)", got, beforeLife+3)
+	}
+	if got := me.Hand.Size(); got != beforeHand+3 {
+		t.Errorf("hand %d, want %d (draw 3 — the anthem counts)", got, beforeHand+3)
+	}
+}
+
 // TestDiscipleOfBolasWithNoOtherCreatureDoesNothing — the trigger
 // must not error when there is nothing else to sacrifice.
 func TestDiscipleOfBolasWithNoOtherCreatureDoesNothing(t *testing.T) {

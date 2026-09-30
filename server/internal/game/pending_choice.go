@@ -351,6 +351,12 @@ type PendingChoice struct {
 	// `color_purpose`; see ColorPurpose.
 	ColorPurpose ColorPurpose
 
+	// ControlPurpose is what giving the entering permanent away does to
+	// its recipient, for a PendingChoiceEntryController (ADR 0102).
+	// Unused for every other kind. Carried for ColorPurpose's reason —
+	// only the card knows — and projected as `control_purpose`.
+	ControlPurpose ControlPurpose
+
 	// ManaRestrictions are the spend restrictions the token minted
 	// by this PendingChoiceMana will carry — Delighted Halfling's
 	// "spend this mana only to cast a legendary spell". Empty for
@@ -515,6 +521,17 @@ type PendingChoice struct {
 	ModeMin, ModeMax int
 	ModeRepeatable   bool
 
+	// ModeUsedIndex / ModeUsedLabel are the options the ability has
+	// ALREADY chosen under its "that hasn't been chosen" restriction
+	// (ADR 0097), in printed order — not on offer, and never a legal
+	// answer, but carried so the picker can show them greyed out
+	// ("already chosen this turn"). ModeNotChosen says which of the
+	// two restrictions applies. All three empty for an ordinary modal
+	// trigger.
+	ModeUsedIndex []int
+	ModeUsedLabel []string
+	ModeNotChosen ModeMemory
+
 	// modePickResume is the server-only continuation for a
 	// PendingChoiceModePick: the captured trigger, so the answer
 	// continues into the CR 603.3d target walk and then Build.
@@ -665,6 +682,14 @@ type PendingChoice struct {
 	// Options entry so the client's prompt can show the card face
 	// instead of quoting a name into a sentence.
 	MayCastCard uuid.UUID
+
+	// MayCastKeyword names the rule a PendingChoiceMayCast is asked
+	// under — "cascade", "discover", "suspend", "madness" — so the
+	// client can name it and word the decline (ADR 0099 §7). Empty for
+	// an offer whose card text is the whole story (hideaway, Malcolm).
+	// The branch names ride AcceptLabel / DeclineLabel, as a confirm's
+	// do. Wire-serialised.
+	MayCastKeyword string
 
 	// mayCastResume is the server-only continuation for a
 	// PendingChoiceMayCast: what to do on each answer. Not
@@ -1862,7 +1887,7 @@ func affectedPlayerForEvent(ev *ReplacementEvent, applicable []activeReplacement
 		// #982. A discard is a move out of a hand, but the affected
 		// player is not "the controller of the card" the move branch
 		// above looks up — a card in a hand has no controller, and
-		// CR 701.8a puts it into THAT PLAYER'S graveyard. The
+		// CR 701.9a puts it into THAT PLAYER'S graveyard. The
 		// discarding player is on the event; read it.
 		//
 		// Not observable while every discard replacement in the catalog
@@ -2031,43 +2056,18 @@ func (g *Game) ResolveReplacementOrder(choiceID, chooserID uuid.UUID, ordered []
 			// it up if a later effect switches it back on.
 			continue
 		}
-		if chosen.effect.CopySelector != nil {
-			// Same reason as the pay-life branch below: an effect
-			// with a CHOICE inside it can't be fired blind. Clone's
-			// controller still picks what it copies when a Kismet is
-			// also replacing the entry. Firing Replace here instead
-			// would mark the selector applied and silently drop the
-			// copy — the permanent would enter as a 0/0 and nobody
-			// would be asked anything.
-			if g.offerCopyChoiceLocked(ev, chosen) {
-				return nil
-			}
-			continue
-		}
-		if chosen.effect.EntryLifeCost > 0 {
-			// An effect with a payment inside it can't be fired
-			// blind — the shockland's controller still has to answer
-			// "pay 2 life?" even when a Kismet is also replacing this
-			// entry. Queue that prompt and bail; the effects later in
-			// the chosen order are still unapplied, so the apply-loop
-			// re-entry after the answer picks them up.
-			if g.offerEntryLifePaymentLocked(ev, chosen) {
-				return nil
-			}
-			continue
-		}
-		if chosen.effect.Optional {
-			// #847: and a "may" is the third of them. This
-			// branch was missing, so a "may" ordered alongside any
-			// other effect fired without ever being offered — the
-			// engine said yes on its controller's behalf, which is
-			// precisely what the two branches above exist to prevent.
-			// Same pause-and-bail, same one resume: the chain
-			// continues from this effect when
-			// ResolveOptionalReplacement re-enters the apply-loop,
-			// with the effects later in the chosen order still
-			// unapplied and therefore still gatherable.
-			if g.offerOptionalReplacementLocked(ev, chosen) {
+		// An effect with a CHOICE inside it can't be fired blind: a
+		// Clone's controller still picks what it copies, a shockland's
+		// still answers "pay 2 life?", a reveal-land's and a Mox
+		// Diamond's still pick from hand, and a "may" (#847) is still
+		// offered, when a Kismet is also replacing the entry. Queue
+		// that prompt and bail; the effects later in the chosen order
+		// are still unapplied, so the apply-loop re-entry after the
+		// answer picks them up. One dispatcher with the apply-loop
+		// (offerOwnQuestionLocked), because this list had already lost
+		// the reveal-land branch once (ADR 0098 gap 4).
+		if pending, handled := g.offerOwnQuestionLocked(ev, chosen); handled {
+			if pending {
 				return nil
 			}
 			continue
@@ -2285,10 +2285,14 @@ func (g *Game) applyResolvedReplacementEventLocked(ev *ReplacementEvent) error {
 		// destination if owner said "no", or ZoneCommand if they
 		// said "yes"). Run the physical move through the shared
 		// executeBattlefieldLeaveLocked helper.
-		if ev.entryResumable && ev.NewZone == ZoneBattlefield && ev.OldZone != ZoneBattlefield {
+		if ev.entryResumable && ev.OldZone != ZoneBattlefield {
 			// A paused ENTRY — the shockland's pay-2-life prompt, a
 			// CR 616 ordering prompt between two enters-tapped effects,
-			// Clone's "choose what to copy". The pipeline function
+			// Clone's "choose what to copy". Since ADR 0098 also one the
+			// window REDIRECTED (Mox Diamond's "if you don't, put it into
+			// its owner's graveyard"): the finisher moves it there
+			// (moveRedirectedEntryLocked) rather than dropping it, which
+			// stranded a resolving Mox on the stack. The pipeline function
 			// bailed before moving anything, so the push happens here,
 			// through exactly the finisher the unpaused path runs
 			// (executeEntryToBattlefieldLocked), and the effect's own
@@ -2309,18 +2313,13 @@ func (g *Game) applyResolvedReplacementEventLocked(ev *ReplacementEvent) error {
 			return nil
 		}
 		if ev.OldZone != ZoneBattlefield {
-			// What is left here is a battlefield entry the window
-			// REDIRECTED (it settled on some zone other than the
-			// battlefield), or one that is not entryResumable at all —
-			// since #1322 that is only the sandbox move_card verb,
-			// which never pauses. A redirected effect-side entry is
-			// treated as a cancel, the posture
-			// enterBattlefieldThroughPipelineLocked takes inline, so
-			// the caller's continuation is still told nothing entered;
-			// it used to be dropped here, which stranded a search whose
-			// fetched card a paused window redirected. Since #707 no
-			// EXIT lands here: every one of them carries a zoneRoute or
-			// comes off the battlefield.
+			// What is left here is an entry that is not entryResumable
+			// at all — since #1322 only the sandbox move_card verb,
+			// which never pauses. (A redirected resumable entry is
+			// finished by the branch above since ADR 0098.) The
+			// caller's continuation is still told nothing entered.
+			// Since #707 no EXIT lands here: every one of them carries
+			// a zoneRoute or comes off the battlefield.
 			return g.runEntryTailLocked(ev, uuid.Nil)
 		}
 		var owner *Player
@@ -2496,6 +2495,7 @@ func (g *Game) finishSettledReplacementLocked(ev, out *ReplacementEvent) error {
 		// battlefield (CR 111.1), so one whose entry was replaced away
 		// simply ceases to be; the rest of its batch still lands,
 		// through the entry tail.
+		g.restoreEntryControllerLocked(ev)
 		g.dropEnteringTokenLocked(ev.CardID)
 		if err := g.runRouteTailLocked(ev.zoneRoute); err != nil {
 			return err
@@ -3269,6 +3269,35 @@ func (g *Game) QueueMayPayForEffect(
 	cost, question string,
 	onPay func(g *Game) error,
 ) error {
+	return g.queueMayPayLocked(chooser, source, cost, question, onPay, TurnStep{})
+}
+
+// QueueMayPayInThisStepForEffect is QueueMayPayForEffect for a "you may
+// pay. If you do, …" whose consequence is about the step or phase in
+// progress: Hellkite Charger's "untap all attacking creatures and after
+// this phase, there is an additional combat phase". The prompt is
+// anchored to the current step (PendingChoice.OwedInStep, #997's
+// anchor), so the table cannot walk out of the combat before the
+// answer — an answer given in the next phase would add the combat after
+// the wrong one.
+//
+// Caller must hold g.mu.
+func (g *Game) QueueMayPayInThisStepForEffect(
+	chooser, source uuid.UUID,
+	cost, question string,
+	onPay func(g *Game) error,
+) error {
+	return g.queueMayPayLocked(chooser, source, cost, question, onPay, g.currentTurnStepLocked())
+}
+
+// queueMayPayLocked is the one body behind both may-pay doors. `owed`
+// is the step the prompt must be answered in, or the zero TurnStep.
+func (g *Game) queueMayPayLocked(
+	chooser, source uuid.UUID,
+	cost, question string,
+	onPay func(g *Game) error,
+	owed TurnStep,
+) error {
 	parsed, err := ParseCost(cost)
 	if err != nil {
 		g.EmitEvent(Event{
@@ -3282,12 +3311,13 @@ func (g *Game) QueueMayPayForEffect(
 		return nil
 	}
 	g.QueueChoiceForEffect(PendingChoice{
-		Kind:    PendingChoicePayUnless,
-		Chooser: chooser,
-		Count:   1,
-		Source:  source,
-		Reason:  question,
-		PayCost: cost,
+		Kind:       PendingChoicePayUnless,
+		Chooser:    chooser,
+		Count:      1,
+		Source:     source,
+		Reason:     question,
+		PayCost:    cost,
+		OwedInStep: owed,
 		payUnlessResume: &payUnlessFrame{
 			cost:  parsed,
 			onPay: onPay,
@@ -3328,6 +3358,52 @@ func (g *Game) QueueMayCastForEffect(
 		mayCastResume: &mayCastFrame{
 			onAccept:  onAccept,
 			onDecline: onDecline,
+		},
+	})
+	return nil
+}
+
+// MayCastPrompt is QueueMayCastForEffect's question with its words:
+// the rule it is asked under and the names of its two branches (ADR
+// 0099 §3). Every field but the card and the two branches is optional.
+type MayCastPrompt struct {
+	Chooser, Source, Card uuid.UUID
+	// Question is the dialog header.
+	Question string
+	// Keyword is the rule's name — PendingChoice.MayCastKeyword.
+	Keyword string
+	// AcceptLabel / DeclineLabel name the two buttons. Empty renders
+	// the client's defaults.
+	AcceptLabel, DeclineLabel string
+	OnAccept, OnDecline       func(g *Game) error
+}
+
+// QueueMayCastPromptForEffect is QueueMayCastForEffect with the
+// prompt's words. The same kind, the same frame and the same answer;
+// only what the client shows differs. A chooser who has left gets the
+// decline, exactly as QueueMayCastForEffect does.
+//
+// Caller must hold g.mu.
+func (g *Game) QueueMayCastPromptForEffect(p MayCastPrompt) error {
+	if pl := g.playerByIDLocked(p.Chooser); pl == nil || pl.Eliminated {
+		if p.OnDecline != nil {
+			return p.OnDecline(g)
+		}
+		return nil
+	}
+	g.QueueChoiceForEffect(PendingChoice{
+		Kind:           PendingChoiceMayCast,
+		Chooser:        p.Chooser,
+		Count:          1,
+		Source:         p.Source,
+		Reason:         p.Question,
+		MayCastCard:    p.Card,
+		MayCastKeyword: p.Keyword,
+		AcceptLabel:    p.AcceptLabel,
+		DeclineLabel:   p.DeclineLabel,
+		mayCastResume: &mayCastFrame{
+			onAccept:  p.OnAccept,
+			onDecline: p.OnDecline,
 		},
 	})
 	return nil
@@ -3864,7 +3940,7 @@ func (g *Game) pruneSacrificeChoicesLocked() {
 // card stops (Torment of Hailfire's sacrifice branch is the case).
 //
 // The bounds move with the list (setCardSetCandidates): a pick of two
-// from a hand that now holds one is CR 701.8a's "as many as you can",
+// from a hand that now holds one is CR 701.9a's "as many as you can",
 // and a floor left above the candidate count is the same wedge one
 // card later.
 //
@@ -3941,7 +4017,7 @@ func (g *Game) pruneCardSetChoicesLocked() {
 		// each one's drop action is dropDiscard, which strands the
 		// paused untap step or the paused CR 614 entry it is
 		// pausing — forever, with nothing to settle it.
-		if c.Kind == PendingChoiceUntapChoice || c.Kind == PendingChoiceEntryRevealFromHand {
+		if c.Kind == PendingChoiceUntapChoice || isEntryCardChoiceKind(c.Kind) {
 			continue
 		}
 		frame := c.chooseCardsResume
@@ -3985,7 +4061,7 @@ func (g *Game) pruneCardSetChoicesLocked() {
 //
 // Two callers, one rule: an enumerator that offers a bigger set than
 // the resolver accepts is the #544 wedge, and so is a floor no
-// remaining set can reach. Clamping down is CR 701.8a's "as many as
+// remaining set can reach. Clamping down is CR 701.9a's "as many as
 // you can" for a discard and the same arithmetic for every other
 // pick.
 //
@@ -4045,13 +4121,22 @@ func setCardSetCandidates(c *PendingChoice, live []uuid.UUID) {
 func (g *Game) pruneDepartedSeatOptionsLocked() {
 	for i := len(g.PendingChoices) - 1; i >= 0; i-- {
 		c := g.PendingChoices[i]
-		if c == nil || c.Kind != PendingChoiceOptionPick || len(c.PickOptions) == 0 {
+		if c == nil || (c.Kind != PendingChoiceOptionPick && c.Kind != PendingChoiceEntryController) || len(c.PickOptions) == 0 {
 			continue
 		}
 		opts, ok := keepSeats(c.PickOptions, func(id uuid.UUID) bool {
 			p := g.playerByIDLocked(id)
 			return p != nil && !p.Eliminated
 		})
+		if !ok && c.Kind == PendingChoiceEntryController {
+			// ADR 0102: every opponent the permanent could have been
+			// given to has left. The entry still happens — under its
+			// would-be controller, the no-opponent rule reached late —
+			// so the paused event is resumed rather than dropped.
+			g.removeChoiceAtLocked(i)
+			g.settleEntryControllerWithoutChoiceLocked(c)
+			continue
+		}
 		if !ok {
 			g.EmitEvent(Event{
 				Kind:   EventPendingChoiceDropped,

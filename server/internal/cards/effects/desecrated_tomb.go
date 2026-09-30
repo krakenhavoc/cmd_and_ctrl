@@ -18,7 +18,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // one zone-move event per card, so OncePerBatch is what turns that
 // stream back into the single trigger the card prints — it fires on
 // the first event of a batch and declines every later event of the
-// same batch (#829, AGENTS.md §7).
+// same batch (#829, docs/adding-cards.md).
 //
 // LEAVE, in any direction: to the battlefield, to hand, to exile, to
 // the library. The Tomb does not care where they went, only that they

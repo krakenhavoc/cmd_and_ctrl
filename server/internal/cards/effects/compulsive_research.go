@@ -29,7 +29,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // unreachable. Min 1 is the floor the card prints: you discard
 // something, and the set rule decides whether one is enough.
 //
-// Three shapes, because CR 701.8a says a player discards as many as
+// Three shapes, because CR 701.9a says a player discards as many as
 // they can and no more:
 //
 //   - An empty hand discards nothing and the spell is done.

@@ -181,6 +181,14 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 	// covered by the rule rather than by a code review. See
 	// Card.ObjectEpoch and ObjectTallyKey (#936).
 	c.ObjectEpoch++
+	// ADR 0097 / CR 400.7: the "hasn't been chosen" memory belongs to
+	// the object that is ending, for every source and destination —
+	// the same unconditional forgetting as the epoch above.
+	c.ModesChosen = nil
+	// ADR 0101 / CR 122.2: a keyword counter's timestamp is per object,
+	// like the counters themselves — unconditional, so an exit that
+	// keeps no counters also keeps no stamps.
+	c.CounterStampedAt = nil
 	// Cards leaving the battlefield lose their tapped state and
 	// battlefield-only position by convention; rules-level effects can
 	// re-tap if needed, and positions are re-stamped on re-entry.

@@ -704,6 +704,50 @@ describe("arrowIDsFor", () => {
     expect(arrowIDsFor([dmgCard(121, "ace", "bears", 1)], stale)).toEqual([]);
   });
 
+  // ADR 0059 Decision 11 (#753): a turn with two combats. The Bears
+  // blocked Ace in the first combat; in the second, Ace fights the
+  // Ogre unblocked by the Bears. Damage between Ace and the Bears in
+  // the second combat did not travel along the first combat's block.
+  it("groups blocks by combat, not by turn", () => {
+    const log = [
+      step(100, "begin_combat"),
+      step(101, "declare_attackers"),
+      attack(102, "ace"),
+      step(103, "declare_blockers"),
+      block(104, "bears", "ace"),
+      step(105, "combat_damage"),
+      step(106, "end_combat"),
+      step(200, "begin_combat"),
+      step(201, "declare_attackers"),
+      attack(202, "ace"),
+      step(203, "declare_blockers"),
+      block(204, "ogre", "ace"),
+      step(205, "combat_damage"),
+    ];
+    // First combat: the Bears' block.
+    expect(arrowIDsFor([{ ...dmgCard(0, "ace", "bears", 1), seq: 150 }], log)).toEqual([
+      "blk-bears",
+    ]);
+    // Second combat: the Ogre's block, and nothing for the Bears.
+    expect(arrowIDsFor([{ ...dmgCard(0, "ace", "ogre", 1), seq: 250 }], log)).toEqual(["blk-ogre"]);
+    expect(arrowIDsFor([{ ...dmgCard(0, "ace", "bears", 1), seq: 250 }], log)).toEqual([]);
+  });
+
+  it("opens a combat at a combat step after end of combat when begin combat was skipped", () => {
+    const log = [
+      step(100, "declare_attackers"),
+      step(103, "declare_blockers"),
+      block(104, "bears", "ace"),
+      step(106, "end_combat"),
+      step(201, "declare_attackers"),
+      step(203, "declare_blockers"),
+    ];
+    expect(arrowIDsFor([{ ...dmgCard(0, "ace", "bears", 1), seq: 250 }], log)).toEqual([]);
+    expect(arrowIDsFor([{ ...dmgCard(0, "ace", "bears", 1), seq: 150 }], log)).toEqual([
+      "blk-bears",
+    ]);
+  });
+
   it("names no arrow for an attack on a planeswalker or a redacted source", () => {
     const log = [attack(101, "ace")];
     expect(arrowIDsFor([dmgCard(121, "ace", "walker", 2)], log)).toEqual([]);

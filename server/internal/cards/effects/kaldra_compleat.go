@@ -16,20 +16,21 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // is answered, because the Equipment's own indestructible survives
 // anything that kills the body.
 //
-// THE LAST CLAUSE IS NOT IMPLEMENTED, and it is the one that makes
-// Kaldra terrifying in a creature mirror. "Whenever this creature
-// deals combat damage to a creature, exile that creature" grants a
-// TRIGGERED ABILITY to another permanent, which
-// docs/engine-seams.md lists as an open seam: a layer-6 static can
-// grant a KEYWORD the engine honours, and the catalog's trigger
-// harvester reads triggers off the source card's own catalog entry,
-// so there is nowhere for a granted trigger on a host to live. The
-// seam is the PR, not this card — see the Caveat, which is the whole
-// of the gap and is published on the catalog page.
+// THE LAST CLAUSE IS A GRANTED TRIGGER (ADR 0093). "Whenever this
+// creature deals combat damage to a creature, exile that creature" is
+// a quoted ability the Equipment gives its host, so it is a catalog
+// bundle named by a layer-6 grant (GrantAbilitiesToAttached), exactly
+// as Thornbite Staff's untap trigger is. "This creature" is the HOST:
+// the trigger watches the host's combat damage, goes on the stack
+// under the host's controller, and a removal on the host takes it.
+// Moving Kaldra moves it.
 //
-// Shipping the clause silently omitted would have been the #259
-// mistake: the card is strictly weaker than printed without it,
-// which is the direction a simplification is allowed to go.
+// "That creature" is the object that was dealt the damage. Its epoch
+// is read as the trigger is built (the ADR 0041 P9 fill-in Build, as
+// Ares, God of War reads its dead creature's), so a creature that
+// died to the damage and came back before the trigger resolves is a
+// new object (CR 400.7) and is not exiled. A creature the damage did
+// not kill — indestructible, or big enough — is.
 //
 // The other four grants are real and all four have live consumers:
 // first strike splits the damage step, trample assigns the excess,
@@ -45,18 +46,40 @@ func init() {
 	Register(Spec{
 		OracleID:        "7359e82b-db79-488d-a1d4-75a00f12a4cf",
 		Name:            "Kaldra Compleat",
-		Completeness:    CompletenessCaveats,
-		Caveats:         []string{"The equipped creature does not exile creatures it deals combat damage to — that part of the card does nothing. Everything else works: +5/+5, first strike, trample, indestructible, haste, and the Germ token."},
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"indestructible"},
+		Grants: []AbilityGrant{{
+			Key: kaldraCompleatExile,
+			Triggered: []game.TriggeredAbility{{
+				Watches:   []game.EventKind{game.EventDealDamage},
+				AppliesTo: thisDealtCombatDamageToACreature,
+				Key:       kaldraCompleatExileLabel,
+				Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
+					item := game.NewTriggeredItem(source, kaldraCompleatExileLabel)
+					item.Params.Object = damagedCreatureRef(g, ev.Target)
+					return item
+				},
+				Effect: exileDamagedCreature,
+			}},
+			Text: "Whenever this creature deals combat damage to a creature, exile that creature.",
+		}},
 		Triggered: []game.TriggeredAbility{
 			LivingWeapon("Kaldra Compleat"),
 		},
 		Static: []game.StaticAbility{
 			PumpAttached(5, 5),
 			GrantToAttached("first strike", "trample", "indestructible", "haste"),
+			GrantAbilitiesToAttached(kaldraCompleatExile),
 		},
 		Activated: []ActivatedAbility{
 			EquipAbility("{7}"),
 		},
 	})
 }
+
+// kaldraCompleatExile is the granted bundle's key, and
+// kaldraCompleatExileLabel the trigger's stack label.
+const (
+	kaldraCompleatExile      = "kaldra-compleat/exile"
+	kaldraCompleatExileLabel = "Kaldra Compleat — exile the creature this creature dealt combat damage to"
+)

@@ -252,12 +252,11 @@ func printedBloodToken() tokenTemplate {
 // PowerstoneToken — "{T}: Add {C}. This mana can't be spent to cast
 // a nonartifact spell."
 //
-// Sandbox gap: the spend restriction isn't modelled. ManaToken
-// carries a colour and a source, not a restriction, so enforcing it
-// wants a restriction field on the pool plus a check at every spend
-// site. The Powerstone therefore taps for unrestricted {C} — a real
-// power increase over the printed card, so it stays out of any
-// deck fixture until the restriction lands.
+// The restriction is the negative tag ManaRestrictNotNonartifactSpell
+// (#1727): the mana pays for an artifact spell and for any activated
+// ability, and is refused for every other spell. Restricted mana is
+// invisible to the auto-tapper (autotap.go), so a Powerstone is tapped
+// by hand — weaker than printed, never stronger.
 func PowerstoneToken() game.Card { return tokenFromCatalog(printedPowerstoneToken) }
 
 // printedPowerstoneToken is the Powerstone as PRINTED — the abilities
@@ -273,9 +272,10 @@ func printedPowerstoneToken() tokenTemplate {
 			TypeLine: "Token Artifact — Powerstone",
 		},
 		Mana: []game.ManaAbilityShape{{
-			TapCost:  true,
-			Produced: "{C}",
-			Label:    "{T}: Add {C} (spend restriction not yet modelled)",
+			TapCost:      true,
+			Produced:     "{C}",
+			Label:        "{T}: Add {C} (can't be spent to cast a nonartifact spell)",
+			Restrictions: []string{ManaRestrictNotNonartifactSpell},
 		}},
 		Text: "{T}: Add {C}. This mana can't be spent to cast a nonartifact spell.",
 	}

@@ -436,7 +436,7 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 		// same product a modal cast does.
 		modeSets := [][]int{nil}
 		if ab.Modes != nil {
-			modeSets = e.legalModeSets(abilitySrc, ab.Modes, e.g.ModeQueryForSourceForEffect(*source, e.seat))
+			modeSets = e.legalModeSets(abilitySrc, ab.Modes, e.g.ModeQueryForSourceForEffect(*source, e.seat), game.ModeAbilityOf(*source, ab.Label))
 			if len(modeSets) == 0 {
 				continue
 			}
@@ -1260,7 +1260,7 @@ func (e *enumerator) sacrificePool(sourceID uuid.UUID, selfToo bool, spec *game.
 	lt := e.g.SpecCandidatesForEffect(e.seat, spec)
 	var pool []uuid.UUID
 	for _, id := range lt.Cards {
-		if selfToo && id == sourceID {
+		if (selfToo || spec.ExcludeSource) && id == sourceID {
 			continue
 		}
 		if c := findBattlefield(e.g, id); c != nil && c.Controller == e.seat {

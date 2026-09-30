@@ -270,7 +270,7 @@ func b33YouPutMinusCountersOnACreature(ev game.Event, source *game.Card, g *game
 // read). The engine emits one EventMill per card, so the first
 // creature card of a mill fires the trigger and the rest are
 // declined as later events of the same batch (OncePerBatch; see
-// AGENTS.md §7).
+// docs/adding-cards.md).
 func b33CreatureCardMilledIntoYourGraveyard(ev game.Event, source *game.Card, g *game.Game) bool {
 	if ev.Kind != game.EventMill || ev.Actor != source.Controller || ev.NewZone != game.ZoneGraveyard {
 		return false

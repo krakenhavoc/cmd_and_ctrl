@@ -21,7 +21,7 @@ const (
 // emits EventAttack per creature, so the ability fires on the
 // declaration that brings the attacking player to two, and the
 // dedup — every later event of the same batch (OncePerBatch, see
-// AGENTS.md §7), then the rest of the turn — declines every later
+// docs/adding-cards.md), then the rest of the turn — declines every later
 // one. The second ability's "if none of those creatures attacked
 // you" is not an intervening if — it is checked
 // as the trigger resolves, against every creature that player has

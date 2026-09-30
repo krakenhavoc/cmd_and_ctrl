@@ -1432,6 +1432,11 @@ func gameCreator(c Config, w http.ResponseWriter, r *http.Request) error {
 //	                            change the price; the plan must not
 //	                            also spend them on mana (a named
 //	                            Eldrazi Spawn, a named Spirit Guide).
+//	?delve_ids=<uuid>,...     — optional (ADR 0100). Graveyard cards
+//	                            exiled to delve. Each pays {1} of the
+//	                            generic, so the plan covers the rest.
+//	                            The response's `delve_budget` is how
+//	                            many the announcement may name.
 //	?face=<int>              — optional. The printed face being cast
 //	                            (ADR 0034). A modal DFC's back face
 //	                            has its own mana cost.
@@ -1631,7 +1636,7 @@ func autoTapPreview(c Config, w http.ResponseWriter, r *http.Request) error {
 		// `cost` stays the printed string, as on the cast branch: the
 		// modifiers are generic, and plan / missing carry the total.
 		return writeAutoTapPreview(g, p.PlayerID, cost, xValue, excluded,
-			price.Ability.Cost.Mana, spend, 0, w)
+			price.Ability.Cost.Mana, spend, 0, 0, w)
 	}
 	// #696: the whole of the cast's price, from the engine's one
 	// pricer. The alternative cost claimed at announce, a granted
@@ -1686,8 +1691,12 @@ func autoTapPreview(c Config, w http.ResponseWriter, r *http.Request) error {
 	// UI would be paid off a Sol Ring and draw nothing, while the
 	// same cast with AutoTap set would be paid off the Treasure and
 	// draw. Two routes, one answer.
+	// ADR 0100 §4: the delve budget for the announcement as it stands
+	// — CastPrice.DelveBudget, the one number the validator refuses a
+	// longer delve_ids list against — so the client's picker is capped
+	// by the server and never works a budget out of a mana string.
 	return writeAutoTapPreview(g, p.PlayerID, cost, xValue, excluded,
-		price.Paid, spend, game.WantedManaSourcesFor(price.Card), w)
+		price.Paid, spend, game.WantedManaSourcesFor(price.Card), price.DelveBudget, w)
 }
 
 // castParamsFromPreviewQuery reads the announce-time half of the cast
@@ -1745,6 +1754,12 @@ func castParamsFromPreviewQuery(r *http.Request, xValue int) (game.CastSpellPara
 		return params, err
 	}
 	if params.BlightIDs, err = uuidListParam(q.Get("blight_ids"), "blight_ids"); err != nil {
+		return params, err
+	}
+	// ADR 0100: the graveyard cards named to delve. They DO change the
+	// price — each pays {1} of the generic — so the preview plans the
+	// taps for what is left.
+	if params.DelveIDs, err = uuidListParam(q.Get("delve_ids"), "delve_ids"); err != nil {
 		return params, err
 	}
 	return params, nil
@@ -1874,6 +1889,7 @@ func writeAutoTapPreview(
 	costStr string,
 	spend game.ManaSpendContext,
 	prefer game.ManaSourceKinds,
+	delveBudget int,
 	w http.ResponseWriter,
 ) error {
 	plan, ok := g.AutoTapPlanPreferringExcluding(playerID, cost, xValue, excluded, prefer)
@@ -1891,6 +1907,10 @@ func writeAutoTapPreview(
 		Tap        bool   `json:"tap,omitempty"`
 		Sacrifice  bool   `json:"sacrifice,omitempty"`
 		ExileCards bool   `json:"exile,omitempty"`
+		// #1621: a costless once-each-turn ability (Vivi Ornitier's
+		// {0}) — nothing tapped, sacrificed or exiled, only this
+		// turn's one use spent.
+		OncePerTurn bool `json:"once_per_turn,omitempty"`
 	}
 	type response struct {
 		OK      bool     `json:"ok"`
@@ -1898,20 +1918,25 @@ func writeAutoTapPreview(
 		Sources []source `json:"sources,omitempty"`
 		Missing []string `json:"missing,omitempty"`
 		Cost    string   `json:"cost"`
+		// DelveBudget is how many graveyard cards the announcement may
+		// exile to delve (ADR 0100 §4). Absent for a card with no delve
+		// and on the ability branch.
+		DelveBudget int `json:"delve_budget,omitempty"`
 	}
-	body := response{OK: ok, Cost: costStr}
+	body := response{OK: ok, Cost: costStr, DelveBudget: delveBudget}
 	if ok {
 		body.Plan = make([]string, len(plan))
 		body.Sources = make([]source, len(plan))
 		for i, e := range plan {
 			body.Plan[i] = e.CardID.String()
 			body.Sources[i] = source{
-				CardID:     e.CardID.String(),
-				Name:       e.Name,
-				Zone:       string(e.Zone),
-				Tap:        e.Taps,
-				Sacrifice:  e.Sacrifices,
-				ExileCards: e.Exiles,
+				CardID:      e.CardID.String(),
+				Name:        e.Name,
+				Zone:        string(e.Zone),
+				Tap:         e.Taps,
+				Sacrifice:   e.Sacrifices,
+				ExileCards:  e.Exiles,
+				OncePerTurn: e.OncePerTurn,
 			}
 		}
 	} else {
@@ -2017,13 +2042,14 @@ func downloadReplay(c Config, w http.ResponseWriter, r *http.Request) error {
 
 // replayViewerID converts a principal into the viewerID string
 // protocol.FilterViewFor expects. A seated player is their own UUID;
-// anyone else is "", the spectator view. The uuid.Nil coercion
-// matters — Nil stringifies to the all-zero UUID, which matches no
-// seat and is NOT what FilterViewFor documents as "no seat". Mirrors
+// anyone else is a spectator and gets protocol.SpectatorViewerID,
+// public information only (#1588). The admin never reaches here: the
+// admin's replay is streamed verbatim. The uuid.Nil coercion matters —
+// Nil stringifies to the all-zero UUID, which matches no seat. Mirrors
 // ws.viewerIDForFilter, which is unexported in that package.
 func replayViewerID(p auth.Principal) string {
 	if p.Role != auth.RolePlayer || p.PlayerID == uuid.Nil {
-		return ""
+		return protocol.SpectatorViewerID
 	}
 	return p.PlayerID.String()
 }
@@ -2212,7 +2238,21 @@ func resolveDeckSource(ctx context.Context, c Config, w http.ResponseWriter, for
 			// down, etc.) surface via FetchViolation as typed 422
 			// entries so the client renders them the same way it
 			// renders validation violations.
+			//
+			// The summary is the same player sentence /deck-coverage
+			// shows (a Moxfield link says to export and paste the
+			// list, with hint "paste_list"), and the status stays 422
+			// with the violations shape: the client reads .violations
+			// on 422, and Cloudflare passes a 422 body through (#1644).
 			if v, ok := deck.FetchViolation(strings.TrimSpace(source), perr); ok {
+				var fe *deckFetchError
+				if errors.As(newDeckFetchError(strings.TrimSpace(source), perr), &fe) {
+					body := map[string]any{"error": fe.msg, "code": v.Code, "violations": []deck.Violation{v}}
+					if fe.hint != "" {
+						body["hint"] = fe.hint
+					}
+					return nil, nil, true, writeJSON(w, http.StatusUnprocessableEntity, body)
+				}
 				return nil, nil, true, writeDeckViolations(w, perr.Error(), []deck.Violation{v}, nil)
 			}
 			// Unknown-mechanic inside the fetched payload (e.g. a

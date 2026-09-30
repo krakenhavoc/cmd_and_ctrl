@@ -90,6 +90,7 @@ const LOG_TONE: Record<LogKind, string> = {
   choose_color: "tone-quiet",
   choose_type: "tone-quiet",
   choose_player: "tone-quiet",
+  choose_controller: "tone-quiet",
   choose_name: "tone-quiet",
   choose_option: "tone-quiet",
   // #1214: a resolution-time pick over cards or permanents. Quiet for
@@ -105,12 +106,19 @@ const LOG_TONE: Record<LogKind, string> = {
   counters: "tone-quiet",
   scry: "tone-quiet",
   surveil: "tone-quiet",
+  discover: "tone-zone",
   saga_chapter: "tone-resolve",
   class_level: "tone-resolve",
   // ADR 0075 §2.3. Not a beat of the game but a change to the rules
   // it is being played under, which is why it is toned like a step —
   // the spine of the log, not a whisper in it.
   settings: "tone-step",
+  // ADR 0059 (#753). An extra turn changes who plays next, which is
+  // the turn structure the step spine narrates — toned like it.
+  extra_turn: "tone-step",
+  // Added phases change the turn's structure too — another combat is
+  // coming — so they are toned like the step spine as well.
+  extra_phase: "tone-step",
   // A spawn is not a play. It reads like one on the board, which is
   // exactly why the line has to stand out from the turn around it.
   spawn: "tone-cast",

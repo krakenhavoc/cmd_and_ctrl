@@ -323,6 +323,23 @@ type GameSnapshot struct {
 	PendingTriggers []stackItemSnapshot      `json:"pendingTriggers,omitempty"`
 	DelayedTriggers []delayedTriggerSnapshot `json:"delayedTriggers,omitempty"`
 
+	// ExtraTurns / NextExtraRef are the CR 500.7 extra-turn queue (ADR
+	// 0059 Decision 10). Pure data, additive within v7: an older binary
+	// drops the queue, which loses the queued turns (weaker, never
+	// stronger) until the next deploy.
+	ExtraTurns   []ExtraTurn `json:"extraTurns,omitempty"`
+	NextExtraRef int         `json:"nextExtraRef,omitempty"`
+
+	// TurnPlan / NextPhaseID are the rest of the turn (ADR 0059
+	// Decisions 3 and 10). Pure data, additive within v7. A file
+	// without them (written before the plan, or by an older binary)
+	// restores with the template's tail after the current step, which
+	// is the only plan such a game can have had. An older binary
+	// reading a newer file drops them and loses any added phase still
+	// to come: weaker, never stronger, until the next deploy.
+	TurnPlan    []PlannedStep `json:"turnPlan,omitempty"`
+	NextPhaseID int           `json:"nextPhaseId,omitempty"`
+
 	// ScopedEffects is ADR 0041 phase 3's data-backed continuous
 	// effects (scoped_effects.go, #1497): carried verbatim, because a
 	// record holds nothing but data. v7.
@@ -648,9 +665,14 @@ type cardSnapshot struct {
 	BattleX          float64             `json:"battleX"`
 	BattleY          float64             `json:"battleY"`
 	Counters         map[string]int      `json:"counters,omitempty"`
-	IsCommander      bool                `json:"isCommander"`
-	AttackingTarget  uuid.UUID           `json:"attackingTarget"`
-	BlockingTarget   uuid.UUID           `json:"blockingTarget"`
+	// CounterStampedAt is Card.CounterStampedAt (ADR 0101): the CR
+	// 613.7c timestamp of each keyword counter kind. Additive within v7;
+	// an older file has none, and an unstamped keyword counter is
+	// ordered at its permanent's own timestamp.
+	CounterStampedAt map[string]int64 `json:"counterStampedAt,omitempty"`
+	IsCommander      bool             `json:"isCommander"`
+	AttackingTarget  uuid.UUID        `json:"attackingTarget"`
+	BlockingTarget   uuid.UUID        `json:"blockingTarget"`
 	// AlsoBlocking is Card.AlsoBlocking (#1706): the attackers a
 	// multi-blocker blocks after blockingTarget. Omitted for every
 	// ordinary blocker, so an older file restores exactly as before.
@@ -708,6 +730,11 @@ type cardSnapshot struct {
 	// the permanent's two printed abilities exists, so a restore that
 	// lost it would bring a Siege back with neither.
 	ChosenOption string `json:"chosenOption,omitempty"`
+	// ModesChosen is ADR 0097's "hasn't been chosen" memory with no
+	// duration. Carried for ChosenPlayer's reason: a player made the
+	// choices and nothing can re-derive them, so a restore that lost
+	// it would hand Silent Hallcreeper its used modes back.
+	ModesChosen map[string][]int `json:"modesChosen,omitempty"`
 	// Provenance is CR 400.7d: what the spell that became this
 	// permanent was cast for — the alternative cost (#653) and the
 	// optional additional costs (#664, ADR 0073 §5), in one record.
@@ -1047,17 +1074,23 @@ type stackItemSnapshot struct {
 }
 
 type delayedTriggerSnapshot struct {
-	ID                 uuid.UUID   `json:"id"`
-	Controller         uuid.UUID   `json:"controller"`
-	SourceCardID       uuid.UUID   `json:"sourceCardId"`
-	SourceObject       *ObjectRef  `json:"sourceObject,omitempty"` // #1418
-	Label              string      `json:"label,omitempty"`
-	At                 Step        `json:"at"`
-	ControllerTurnOnly bool        `json:"controllerTurnOnly"`
-	CreatedSeq         int         `json:"createdSeq,omitempty"`
-	CreatedTurn        int         `json:"createdTurn,omitempty"`
-	Cards              []uuid.UUID `json:"cards,omitempty"`
-	HasEffect          bool        `json:"hasEffect,omitempty"`
+	ID                 uuid.UUID  `json:"id"`
+	Controller         uuid.UUID  `json:"controller"`
+	SourceCardID       uuid.UUID  `json:"sourceCardId"`
+	SourceObject       *ObjectRef `json:"sourceObject,omitempty"` // #1418
+	Label              string     `json:"label,omitempty"`
+	At                 Step       `json:"at"`
+	ControllerTurnOnly bool       `json:"controllerTurnOnly"`
+	TurnOf             *uuid.UUID `json:"turnOf,omitempty"` // #1538
+	// OnExtraTurn is ADR 0059 Decision 8's binding to one extra turn.
+	// Additive: an older binary drops it, but every card that binds a
+	// trigger also names a body that binary lacks, so it refuses the
+	// file (ErrUnknownEffectKey) rather than firing the trigger early.
+	OnExtraTurn int         `json:"onExtraTurn,omitempty"`
+	CreatedSeq  int         `json:"createdSeq,omitempty"`
+	CreatedTurn int         `json:"createdTurn,omitempty"`
+	Cards       []uuid.UUID `json:"cards,omitempty"`
+	HasEffect   bool        `json:"hasEffect,omitempty"`
 	// #663: the event condition. On and ExpiresAfterTurn are data
 	// and come back; the AppliesTo predicate and the Optional prompt
 	// are closures and do not, exactly as Effect does not — and the
@@ -1098,6 +1131,7 @@ type pendingChoiceSnapshot struct {
 	CoinWins             int                    `json:"coinWins,omitempty"`
 	ColorOptions         []string               `json:"colorOptions,omitempty"`
 	ColorPurpose         ColorPurpose           `json:"colorPurpose,omitempty"`
+	ControlPurpose       ControlPurpose         `json:"controlPurpose,omitempty"`
 	ManaRestrictions     []string               `json:"manaRestrictions,omitempty"`
 	ManaRiders           []ManaSpendRider       `json:"manaRiders,omitempty"`
 	ManaSourceKinds      ManaSourceKinds        `json:"manaSourceKinds,omitempty"`
@@ -1127,6 +1161,9 @@ type pendingChoiceSnapshot struct {
 	ModeMin          int            `json:"modeMin,omitempty"`
 	ModeMax          int            `json:"modeMax,omitempty"`
 	ModeRepeatable   bool           `json:"modeRepeatable,omitempty"`
+	ModeUsedIndex    []int          `json:"modeUsedIndex,omitempty"`
+	ModeUsedLabel    []string       `json:"modeUsedLabel,omitempty"`
+	ModeNotChosen    ModeMemory     `json:"modeNotChosen,omitempty"`
 	SacrificeOptions []uuid.UUID    `json:"sacrificeOptions,omitempty"`
 	CopyOptions      []uuid.UUID    `json:"copyOptions,omitempty"`
 	ScryCards        []uuid.UUID    `json:"scryCards,omitempty"`
@@ -1140,6 +1177,7 @@ type pendingChoiceSnapshot struct {
 	SearchCards     []uuid.UUID `json:"searchCards,omitempty"`
 	SearchMax       int         `json:"searchMax"`
 	MayCastCard     uuid.UUID   `json:"mayCastCard,omitempty"`
+	MayCastKeyword  string      `json:"mayCastKeyword,omitempty"`
 	AcceptLabel     string      `json:"acceptLabel,omitempty"`
 	LifeCost        int         `json:"lifeCost,omitempty"`
 	DeclineLabel    string      `json:"declineLabel,omitempty"`
@@ -1494,6 +1532,10 @@ func (g *Game) captureSnapshotLocked() *GameSnapshot {
 			s.DelayedTriggers[i] = snapshotDelayedTrigger(d, cen)
 		}
 	}
+	s.ExtraTurns = cloneExtraTurns(g.ExtraTurns)
+	s.NextExtraRef = g.NextExtraRef
+	s.TurnPlan = clonePlan(g.TurnPlan)
+	s.NextPhaseID = g.NextPhaseID
 	// ADR 0041 phase 3 (#1497): data, so carried whole and never
 	// counted by the census.
 	s.ScopedEffects = deepCopyScopedEffects(g.ScopedEffects)
@@ -1715,6 +1757,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		BattleX:                  c.BattleX,
 		BattleY:                  c.BattleY,
 		Counters:                 copyStringIntMap(c.Counters),
+		CounterStampedAt:         copyStringInt64Map(c.CounterStampedAt),
 		IsCommander:              c.IsCommander,
 		AttackingTarget:          c.AttackingTarget,
 		BlockingTarget:           c.BlockingTarget,
@@ -1743,6 +1786,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		ChosenPlayer:             c.ChosenPlayer,
 		ChosenName:               c.ChosenName,
 		ChosenOption:             c.ChosenOption,
+		ModesChosen:              copyModesChosen(c.ModesChosen),
 		ClassLevel:               c.ClassLevel,
 		Solved:                   c.Solved,
 		Harnessed:                c.Harnessed,
@@ -1940,6 +1984,23 @@ func oracleIDOfLocked(g *Game, cardID uuid.UUID) string {
 	return ""
 }
 
+// uuidPtrOrNil is id as a pointer, nil for the zero UUID, so an absent
+// optional id is absent from the JSON rather than written as zeros.
+func uuidPtrOrNil(id uuid.UUID) *uuid.UUID {
+	if id == uuid.Nil {
+		return nil
+	}
+	return &id
+}
+
+// uuidOrNil is the inverse of uuidPtrOrNil.
+func uuidOrNil(id *uuid.UUID) uuid.UUID {
+	if id == nil {
+		return uuid.Nil
+	}
+	return *id
+}
+
 func snapshotDelayedTrigger(d *DelayedTrigger, cen *ContinuationCensus) delayedTriggerSnapshot {
 	if d == nil {
 		return delayedTriggerSnapshot{}
@@ -1952,6 +2013,8 @@ func snapshotDelayedTrigger(d *DelayedTrigger, cen *ContinuationCensus) delayedT
 		Label:              d.Label,
 		At:                 d.At,
 		ControllerTurnOnly: d.ControllerTurnOnly,
+		OnExtraTurn:        d.OnExtraTurn,
+		TurnOf:             uuidPtrOrNil(d.TurnOf),
 		CreatedSeq:         d.CreatedSeq,
 		HasEffect:          d.Body.key != "",
 		Body:               d.Body.key,
@@ -1997,6 +2060,7 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		CoinWins:             c.CoinWins,
 		ColorOptions:         copyStrings(c.ColorOptions),
 		ColorPurpose:         c.ColorPurpose,
+		ControlPurpose:       c.ControlPurpose,
 		ManaRestrictions:     copyStrings(c.ManaRestrictions),
 		ManaRiders:           copyManaRiders(c.ManaRiders),
 		ManaSourceKinds:      c.ManaSourceKinds,
@@ -2018,6 +2082,9 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		ModeMin:              c.ModeMin,
 		ModeMax:              c.ModeMax,
 		ModeRepeatable:       c.ModeRepeatable,
+		ModeUsedIndex:        copyInts(c.ModeUsedIndex),
+		ModeUsedLabel:        copyStrings(c.ModeUsedLabel),
+		ModeNotChosen:        c.ModeNotChosen,
 		SacrificeOptions:     copyUUIDs(c.SacrificeOptions),
 		CopyOptions:          copyUUIDs(c.CopyOptions),
 		ScryCards:            copyUUIDs(c.ScryCards),
@@ -2029,6 +2096,7 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		SearchCards:          copyUUIDs(c.SearchCards),
 		SearchMax:            c.SearchMax,
 		MayCastCard:          c.MayCastCard,
+		MayCastKeyword:       c.MayCastKeyword,
 		AcceptLabel:          c.AcceptLabel,
 		DeclineLabel:         c.DeclineLabel,
 		LifeCost:             c.LifeCost,
@@ -2303,6 +2371,22 @@ func (s *GameSnapshot) restoreGame() *Game {
 		}
 	}
 
+	g.ExtraTurns = cloneExtraTurns(s.ExtraTurns)
+	g.NextExtraRef = s.NextExtraRef
+	g.TurnPlan = clonePlan(s.TurnPlan)
+	g.NextPhaseID = s.NextPhaseID
+	if len(g.TurnPlan) > 0 || g.Turn.Step == StepCleanup {
+		// A file written with the plan: it describes this cursor.
+		g.planAt = g.planCursorLocked()
+		if g.Turn.PhaseID == 0 {
+			g.Turn.PhaseID = templatePhaseID(g.Turn.Step)
+		}
+	} else if g.Turn.Step != "" {
+		// A file from before the plan: no added phase can exist, so
+		// the template's tail is exactly the rest of its turn.
+		g.resetTurnPlanLocked()
+	}
+
 	g.LoyaltyActivatedThisTurn = copyBoolMap(s.LoyaltyActivatedThisTurn)
 	g.SpellsCastThisTurn = copyTallyMap(s.SpellsCastThisTurn)
 	g.ForetoldThisTurn = copyIntMap(s.ForetoldThisTurn)
@@ -2448,6 +2532,7 @@ func restoreCard(c *cardSnapshot) Card {
 		BattleX:                  c.BattleX,
 		BattleY:                  c.BattleY,
 		Counters:                 copyStringIntMap(c.Counters),
+		CounterStampedAt:         copyStringInt64Map(c.CounterStampedAt),
 		IsCommander:              c.IsCommander,
 		AttackingTarget:          c.AttackingTarget,
 		BlockingTarget:           c.BlockingTarget,
@@ -2475,6 +2560,7 @@ func restoreCard(c *cardSnapshot) Card {
 		ChosenPlayer:             c.ChosenPlayer,
 		ChosenName:               c.ChosenName,
 		ChosenOption:             c.ChosenOption,
+		ModesChosen:              copyModesChosen(c.ModesChosen),
 		ClassLevel:               c.ClassLevel,
 		Solved:                   c.Solved,
 		Harnessed:                c.Harnessed,
@@ -2693,6 +2779,8 @@ func restoreDelayedTrigger(d *delayedTriggerSnapshot) *DelayedTrigger {
 		Label:              d.Label,
 		At:                 d.At,
 		ControllerTurnOnly: d.ControllerTurnOnly,
+		OnExtraTurn:        d.OnExtraTurn,
+		TurnOf:             uuidOrNil(d.TurnOf),
 		CreatedSeq:         d.CreatedSeq,
 		// checkEffectKeys has already refused a key this binary has
 		// no body or condition for, so these refs are registered ones.
@@ -2730,6 +2818,7 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		CoinWins:             c.CoinWins,
 		ColorOptions:         copyStrings(c.ColorOptions),
 		ColorPurpose:         c.ColorPurpose,
+		ControlPurpose:       c.ControlPurpose,
 		ManaRestrictions:     copyStrings(c.ManaRestrictions),
 		ManaRiders:           copyManaRiders(c.ManaRiders),
 		ManaSourceKinds:      c.ManaSourceKinds,
@@ -2751,6 +2840,9 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		ModeMin:              c.ModeMin,
 		ModeMax:              c.ModeMax,
 		ModeRepeatable:       c.ModeRepeatable,
+		ModeUsedIndex:        copyInts(c.ModeUsedIndex),
+		ModeUsedLabel:        copyStrings(c.ModeUsedLabel),
+		ModeNotChosen:        c.ModeNotChosen,
 		SacrificeOptions:     copyUUIDs(c.SacrificeOptions),
 		CopyOptions:          copyUUIDs(c.CopyOptions),
 		ScryCards:            copyUUIDs(c.ScryCards),
@@ -2762,6 +2854,7 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		SearchCards:          copyUUIDs(c.SearchCards),
 		SearchMax:            c.SearchMax,
 		MayCastCard:          c.MayCastCard,
+		MayCastKeyword:       c.MayCastKeyword,
 		AcceptLabel:          c.AcceptLabel,
 		DeclineLabel:         c.DeclineLabel,
 		LifeCost:             c.LifeCost,

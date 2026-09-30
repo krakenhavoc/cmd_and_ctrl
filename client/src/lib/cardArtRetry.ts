@@ -1,7 +1,7 @@
 // cardArtRetry.ts — what happens when a card-art <img> fails (#33).
 //
 // `GET /cards/{id}/image` makes exactly one upstream request to the
-// Scryfall CDN and answers any failure with a JSON 502. An <img>
+// Scryfall CDN and answers any failure with a JSON 424. An <img>
 // pointed at that fires `error` and paints nothing, permanently, with
 // no signal to the player and no way back short of a reload. A cold
 // cache on launch is exactly when the CDN hiccups, so one transient

@@ -65,7 +65,7 @@ func init() {
 								N:      1,
 							}.Apply(ctx)
 						}),
-					PermanentYouControl("another creature you control", Creature(), b03NotNamed("High-Society Hunter"))),
+					Another(PermanentYouControl("another creature you control", Creature()))),
 				"High-Society Hunter — sacrifice another creature to put a +1/+1 counter on it?"),
 			On(game.EventLTB,
 				func(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {

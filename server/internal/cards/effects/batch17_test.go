@@ -767,6 +767,32 @@ func TestB17JaradGrowsWithCreatureCardsAndFlingsTheSacrifice(t *testing.T) {
 	}
 }
 
+// The fling reads the sacrificed creature as it last existed, so an
+// anthem's bonus counts: a 4/4 under Glorious Anthem drains 5.
+func TestB17JaradFlingCountsAnAnthem(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	jarad := b12Push(g, me.ID, "Jarad, Golgari Lich Lord", "Legendary Creature — Zombie Elf", b17JaradOracle, 2, 2)
+	pushGloriousAnthemFor(g, me.ID)
+	beast := pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Beast", TypeLine: "Creature — Beast", Power: 4, Toughness: 4,
+		Owner: me.ID, Controller: me.ID,
+	})
+	advanceToMain(t, g)
+	before := b17Life(g)
+	b06AddMana(me, "C", "B", "G")
+	b16Activate(t, g, me.ID, jarad, 0, game.ActivateAbilityParams{SacrificeIDs: []uuid.UUID{beast}})
+	for i, p := range g.Seats {
+		want := before[i]
+		if i != 0 {
+			want -= 5
+		}
+		if p.Life != want {
+			t.Errorf("seat %d life %d, want %d (the anthem's +1 is part of the sacrificed power)", i, p.Life, want)
+		}
+	}
+}
+
 func TestB17ArwenGivesOtherCreaturesCountersEqualToHerToughness(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]

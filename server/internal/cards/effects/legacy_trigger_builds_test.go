@@ -37,7 +37,7 @@ import (
 //     Effect now, or it is gone: delete the line (that is the tail of
 //     tier 4 working); and
 //   - when a row needs listing and is not listed — a NEW hand-written
-//     Build. Declare the Effect instead (AGENTS.md, "Adding a
+//     Build. Declare the Effect instead (docs/adding-cards.md, "Adding a
 //     triggered ability").
 //
 // Tail batches (tier 4-3 … 4-10) each convert a run of cards and delete
@@ -187,7 +187,7 @@ const legacyTriggerBuildsHeader = `# legacy_trigger_builds.txt — ADR 0041 P9's
 # restore point back while it waits on the stack.
 #
 # One row per line, sorted: <card name> | <catalog key> | <row index>.
-# The list ONLY SHRINKS. Convert a card by declaring its Effect (AGENTS.md,
+# The list ONLY SHRINKS. Convert a card by declaring its Effect (docs/adding-cards.md,
 # "Adding a triggered ability") and delete its line, or run
 #   go test ./internal/cards/effects -run TestLegacyTriggerBuildsOnlyShrink -args -update-legacy-triggers
 # which deletes stale lines and never adds one. A new hand-written Build

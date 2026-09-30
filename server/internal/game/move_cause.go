@@ -118,7 +118,7 @@ func (c MoveCause) stampCause(ev *Event) {
 	ev.CauseItem = c.Item
 }
 
-// discardMoveCause maps a discard's CR 701.8a cause onto the move
+// discardMoveCause maps a discard's CR 701.9a cause onto the move
 // cause its events carry: a cost discard names its payer, the cleanup
 // step's is a rule, and an effect's is left for routeCardToZoneLocked
 // to fill from the resolving item.

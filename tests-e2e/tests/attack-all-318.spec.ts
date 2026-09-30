@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { adminLogin, createGame, startGameAs, uploadDeckAs } from "./lobby-api";
-import { makeCommanderDeck, COMMANDER_NAME } from "./deck-fixture";
+import { COMMANDER_NAME } from "./deck-fixture";
 import { closeAll, joinAsPlayer, type JoinedPlayer } from "./players";
 import {
   adminMoveByName,
@@ -59,8 +59,8 @@ test.describe("#318 attack with all", () => {
   }) => {
     test.slow();
 
-    let attacker: JoinedPlayer | null = null;
-    let defender: JoinedPlayer | null = null;
+    let first: JoinedPlayer | null = null;
+    let second: JoinedPlayer | null = null;
     let admin: AdminClient | null = null;
 
     try {
@@ -68,16 +68,19 @@ test.describe("#318 attack with all", () => {
       const game = await createGame(request, adminToken, `Attack all 318 ${Date.now()}`);
       if (!game.invite_token) throw new Error("invite token missing on fresh game");
 
-      attacker = await joinAsPlayer(browser, game.id, game.invite_token, "Attacker");
-      defender = await joinAsPlayer(browser, game.id, game.invite_token, "Defender");
+      first = await joinAsPlayer(browser, game.id, game.invite_token, "Seat One");
+      second = await joinAsPlayer(browser, game.id, game.invite_token, "Seat Two");
 
-      await uploadDeckAs(request, adminToken, game.id, attacker.playerID, makeBearDeck());
-      await uploadDeckAs(request, adminToken, game.id, defender.playerID, makeCommanderDeck());
+      // Both seats get the bear deck: the game rolls for the starting
+      // player (#1486), so which seat attacks is not known until the
+      // game starts, and the attacker's library must hold the bears.
+      await uploadDeckAs(request, adminToken, game.id, first.playerID, makeBearDeck());
+      await uploadDeckAs(request, adminToken, game.id, second.playerID, makeBearDeck());
       await startGameAs(request, adminToken, game.id);
 
-      admin = await openAdminClient(adminToken, game.id, attacker.playerID, defender.playerID);
-      await admin.sendActionAsPlayer(attacker.playerID, "keep_hand", {});
-      await admin.sendActionAsPlayer(defender.playerID, "keep_hand", {});
+      admin = await openAdminClient(adminToken, game.id, first.playerID, second.playerID);
+      await admin.sendActionAsPlayer(first.playerID, "keep_hand", {});
+      await admin.sendActionAsPlayer(second.playerID, "keep_hand", {});
       await admin.waitFor((v) => v.state === "active", "game state active");
       await admin.waitFor(
         (v) => v.turn?.step === "precombat_main" && v.turn?.priority_holder === v.turn?.active_seat,
@@ -85,12 +88,12 @@ test.describe("#318 attack with all", () => {
         15_000,
       );
 
-      // Seat 0 is the attacker (first to join, first to act).
-      const active = admin.snapshot().turn?.active_seat;
-      expect(
-        admin.snapshot().seats[active ?? 0]?.id,
-        "attacker must be the active seat for the declare-attackers step",
-      ).toBe(attacker.playerID);
+      // Whoever the roll made the active seat is the attacker.
+      const snap = admin.snapshot();
+      const activeID = snap.seats[snap.turn?.active_seat ?? 0]?.id;
+      const attacker = activeID === first.playerID ? first : second;
+      const defender = attacker === first ? second : first;
+      expect([first.playerID, second.playerID]).toContain(activeID);
 
       for (const bear of BEARS) {
         await adminMoveByName(admin, attacker.playerID, bear, "library", "battlefield");
@@ -142,12 +145,12 @@ test.describe("#318 attack with all", () => {
       // renders the single named button. Either way the control names
       // the defender — "attack all" on its own is ambiguous in
       // Commander and the UI never leaves it unsaid.
-      const attackAll = cluster.getByRole("button", { name: /Attack Defender with all 3/ });
+      const attackAll = cluster.getByRole("button", { name: new RegExp(`Attack ${defender.name} with all 3`) });
       await expect(attackAll).toBeVisible();
       await attackAll.click();
 
       await admin.waitFor(
-        (v) => attackersAt(v, defender!.playerID).length === 3,
+        (v) => attackersAt(v, defender.playerID).length === 3,
         "three attackers declared at the defender",
         15_000,
       );
@@ -164,7 +167,7 @@ test.describe("#318 attack with all", () => {
       await undo.click();
 
       await admin.waitFor(
-        (v) => attackersAt(v, defender!.playerID).length === 0,
+        (v) => attackersAt(v, defender.playerID).length === 0,
         "one undo cleared every declaration",
         15_000,
       );
@@ -178,7 +181,7 @@ test.describe("#318 attack with all", () => {
       }
     } finally {
       admin?.close();
-      await closeAll(attacker, defender);
+      await closeAll(first, second);
     }
   });
 });

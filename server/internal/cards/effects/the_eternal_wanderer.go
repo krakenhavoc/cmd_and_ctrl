@@ -32,24 +32,17 @@ import (
 //     player): the Wanderer's controller picks one creature on each
 //     board, then every creature not picked is sacrificed as one
 //     event. A player with no creatures is skipped.
-//   - The +1 is the flicker.go delayed blink
-//     (exileTargetsThenScheduleReturn). DECLARED WEAKER THAN PRINTED:
-//     the return fires at the NEXT end step, not "that player's" —
-//     a CR 603.7 delayed trigger can be bound to its controller's turn
-//     (ControllerTurnOnly) but not to a third player's, and binding it
-//     by making the owner its controller would misstate CR 603.7d. So
-//     an opponent's creature exiled on your turn comes back at your
-//     end step instead of theirs; your own comes back exactly when
-//     printed, since the ability is activated on your turn. The gap is
-//     a DelayedTrigger field (a named turn-owner), not this card.
+//   - The +1 is flicker.go's delayed blink bound to the owner's turn
+//     (exileTargetsThenReturnOnOwnersEndStep, #1538): the return waits
+//     for the end step of the exiled card's OWNER, through
+//     DelayedTrigger.TurnOf, while the delayed ability stays the
+//     Wanderer controller's (CR 603.7d). Until #1538 it fired at the
+//     next end step whoever owned the card, and carried a caveat.
 func init() {
 	Register(Spec{
 		OracleID:     "20a1671d-e8a4-4cf1-87a7-f2f6319f4b9e",
 		Name:         "The Eternal Wanderer",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"The +1 returns the exiled card at the next end step, even when that isn't its owner's turn.",
-		},
+		Completeness: CompletenessFull,
 		// The fallback for tokens, fixtures and the dev spawner; an
 		// imported deck reads printed loyalty (ADR 0032 §1).
 		StartingLoyalty: 5,
@@ -65,7 +58,7 @@ func init() {
 					if len(item.Targets) == 0 {
 						return nil
 					}
-					return exileTargetsThenScheduleReturn(NewContext(g, item), "The Eternal Wanderer — return the exiled card")
+					return exileTargetsThenReturnOnOwnersEndStep(NewContext(g, item), "The Eternal Wanderer — return the exiled card")
 				},
 			},
 			{

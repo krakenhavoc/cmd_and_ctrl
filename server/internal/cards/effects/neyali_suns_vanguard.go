@@ -14,7 +14,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // triggered ability, "whenever one or more creature tokens you
 // control attack A PLAYER" — one declaration is one batch and the
 // guard declines every later event of it aimed at the same player
-// (see AGENTS.md §7), so a wide attack on one player fires it once,
+// (see docs/adding-cards.md), so a wide attack on one player fires it once,
 // while "it triggers for each player you are attacking with one or
 // more tokens" (ruling) is the guard's player dimension
 // (OncePerBatchPerPlayer, CR 603.2c / #784) — whose body

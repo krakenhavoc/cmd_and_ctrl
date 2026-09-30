@@ -21,7 +21,7 @@ import (
 // a noncreature spell" is b10NoncreatureSpellCastByYou, "this
 // creature dealt combat damage to a player" is
 // combatDamageToPlayerBy, "if you cast it" is b16EnteredFromStack,
-// the counters a permanent had when it left are b13LastKnownCounters,
+// the counters a permanent had when it left are game.LastKnownPermanentForEffect,
 // the permanent sacrificed to pay an activation is
 // b17PermanentSacrificedToPay, "creatures you control have X" is
 // b16GrantKeywords over b16CreaturesYouControl, the per-source
@@ -133,12 +133,13 @@ func b29SpiritsControlled(g *game.Game, controller uuid.UUID) int {
 // bonus from another permanent is not in it; declared on the card
 // that reads this.
 func b29LastKnownToughnessOffBattlefield(g *game.Game, cardID uuid.UUID) int {
-	c, ok := g.LookupCardForEffect(cardID)
-	if !ok {
-		return 0
+	if info, ok := g.LastKnownPermanentForEffect(cardID); ok {
+		return info.Toughness
 	}
-	_, dt := b13LastKnownPTDelta(g, cardID)
-	return c.Toughness + dt
+	if c, ok := g.LookupCardForEffect(cardID); ok {
+		return c.Toughness
+	}
+	return 0
 }
 
 // b29AuraNamesControlled is the set of names among the Auras
@@ -198,12 +199,14 @@ func b29SpellCastOffTurn(ev game.Event, g *game.Game) bool {
 // b29CreatureWithMinusCounterDied is Blowfly Infestation's
 // intervening-if: a creature died, and it had a -1/-1 counter on it
 // when it left — read back off the log, because MoveCard cleared
-// its counters on the way out (b13LastKnownCounters).
+// its counters on the way out (the departure record,
+// Game.LastKnownPermanentForEffect).
 func b29CreatureWithMinusCounterDied(ev game.Event, g *game.Game) bool {
 	if _, ok := diedCreature(ev, g); !ok {
 		return false
 	}
-	return b13LastKnownCounters(g, ev.CardID, "-1/-1") > 0
+	info, ok := g.LastKnownPermanentForEffect(ev.CardID)
+	return ok && info.Counters["-1/-1"] > 0
 }
 
 // b29PowerAsItLastStood is a creature's power for a "that creature's

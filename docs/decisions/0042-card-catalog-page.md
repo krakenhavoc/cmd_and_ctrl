@@ -14,7 +14,7 @@ entirety."
 The last clause is the hard part. Not every registered card is fully
 implemented. Since S14 the catalog has carried a convention of
 *declared simplifications*: a card ships with a comment explaining the
-clause the engine does not model (AGENTS.md §7). A page that listed a
+clause the engine does not model (AGENTS.md §7 (now docs/adding-cards.md)). A page that listed a
 partially-implemented card as "working" would be worse than no page at
 all, because it makes a promise the engine does not keep.
 
@@ -152,7 +152,7 @@ This ships in production, which is the whole point.
   no oracle-id lookup before; the catalog is keyed by oracle_id, so
   the join needed one.
 - `isPlayablePrint` now also rejects the `"Card"` / `"Card // Card"`
-  placeholder type lines. AGENTS.md §7 warns about these and the
+  placeholder type lines. AGENTS.md §7 (now docs/adding-cards.md) warns about these and the
   layout/set_type switches did not catch all of them.
 - **60 modal double-faced cards register only their land back**
   (`<oracle_id>#1`) and nothing automates the creature front. No card

@@ -203,7 +203,7 @@ implemented for layer 4, detected by trial application rather than by
 the declared read/write set this section priced and declined. Every
 pair in the table above now comes out the same whichever card entered
 first, the caveats are off Urborg, Song of the Dryads, Arixmethes,
-Maskwood Nexus and The Warring Triad, and the AGENTS.md §7 hold list
+Maskwood Nexus and The Warring Triad, and the AGENTS.md §7 (now docs/adding-cards.md) hold list
 is released. The paragraphs above are left as written, as the record
 of why #414 did not build it.
 

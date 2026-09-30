@@ -21,7 +21,7 @@ import (
 // Every test here asserts BOTH halves, the way commander_zone_routes_test.go
 // does: the prompt is offered, AND the card lands where the answer
 // says it should. It also asserts the halves that are new to a
-// discard — that EventDiscardCard fires either way (CR 701.8a: a card
+// discard — that EventDiscardCard fires either way (CR 701.9a: a card
 // put into the command zone instead was still discarded), that a
 // multi-card batch asks once per commander and runs its "then" once at
 // the end, and that a COST never asks at all (CR 601.2h).
@@ -79,7 +79,7 @@ func commanderPromptCard(t *testing.T, c *PendingChoice) uuid.UUID {
 func assertOneDiscardEvent(t *testing.T, w *discardWatcher, actor, cardID uuid.UUID, landed ZoneKind) {
 	t.Helper()
 	if len(w.discards) != 1 {
-		t.Fatalf("EventDiscardCard x %d, want 1 — a commander put into the command zone was still discarded (CR 701.8a)", len(w.discards))
+		t.Fatalf("EventDiscardCard x %d, want 1 — a commander put into the command zone was still discarded (CR 701.9a)", len(w.discards))
 	}
 	ev := w.discards[0]
 	if ev.Actor != actor || ev.CardID != cardID {
@@ -252,7 +252,7 @@ func TestTwoDiscardedCommandersAskTwiceAndRunThenOnce(t *testing.T) {
 
 // --- (d) the random discard ------------------------------------------
 
-// TestRandomDiscardOfACommanderOffersTheCommandZone — CR 701.8b picks
+// TestRandomDiscardOfACommanderOffersTheCommandZone — CR 701.9b picks
 // the card, CR 903.9 still asks about it. A one-card hand makes the
 // random pick the commander.
 func TestRandomDiscardOfACommanderOffersTheCommandZone(t *testing.T) {
@@ -394,7 +394,7 @@ func TestCostDiscardOfACommanderAsksBeforePaying(t *testing.T) {
 	if !g.Stack.Contains(spell) {
 		t.Error("the spell was not cast")
 	}
-	// CR 701.8a: a commander put into the command zone instead was
+	// CR 701.9a: a commander put into the command zone instead was
 	// still discarded.
 	assertOneDiscardEvent(t, w, me.ID, cmdID, ZoneCommand)
 }

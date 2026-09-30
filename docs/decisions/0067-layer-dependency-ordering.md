@@ -314,7 +314,7 @@ right answer by recomputing, and no schema version moves.
 
 ## Consequences
 
-- **Cards released from the AGENTS.md §7 hold list.** Magus of the
+- **Cards released from the AGENTS.md §7 (now docs/adding-cards.md) hold list.** Magus of the
   Moon ships in this change and is the CR 613.6 and CR 305.7 proof.
   Arcane Adaptation, Leyline of Transformation, Encroaching Mycosynth,
   Yavimaya, Cradle of Growth and Prismatic Omen are unblocked: each is

@@ -14,26 +14,20 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // Mishra's Command's exact shape one mana symbol over: choose two of
 // four X-scaled bullets, each with its own target group (#764,
-// ModeDoing), resolved in announce order (CR 608.2c). The first
+// ModeDoing), resolved in printed order (CR 608.2c). The first
 // bullet reuses the printed Eldrazi Spawn template; the second rides
 // Scry's Then the same way Preordain does; the third narrows its
 // battlefield clause with WithManaValueAtMostX, the announced-X
 // binding Agadeem's Awakening uses for its graveyard clause.
 //
-// Declared simplification on the fourth bullet only: "up to X target
-// cards from graveyards" is CountFromX, which is EXACTLY X rather than
-// a real "up to" — the same declared gap as Crackle with Power, for
-// the same reason (no "up to X" target-count shape exists yet). A
-// caster who wants fewer than X exiled announces a smaller X —
-// weaker than printed, never stronger. The other three bullets have
-// no such gap.
+// The fourth bullet's "up to X target cards from graveyards" is
+// CountFromX with UpToX: the announced X is the ceiling (#1738).
 func init() {
 	Register(Spec{
 		OracleID:     "2f2c549d-0293-4b9d-b9a8-ff392800f3a5",
 		Name:         "Kozilek's Command",
 		XMatters:     true,
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The graveyard-exile mode exiles exactly X cards rather than up to X."},
+		Completeness: CompletenessFull,
 		Modes: ChooseN("Choose two", 2, 2,
 			ModeDoing("Target player creates X 0/1 colorless Eldrazi Spawn creature tokens "+
 				"with \"Sacrifice this token: Add {C}.\"",
@@ -78,10 +72,10 @@ func init() {
 }
 
 // kozilekGraveyardTargets is the fourth bullet's clause: X cards from
-// any graveyard, count bound to the announced X (see the file
-// comment's declared caveat on "up to").
+// any graveyard, count capped at the announced X.
 func kozilekGraveyardTargets() *game.TargetSpec {
 	spec := TargetCardInGraveyard("up to X target cards from graveyards")
 	spec.CountFromX = true
+	spec.UpToX = true
 	return spec
 }

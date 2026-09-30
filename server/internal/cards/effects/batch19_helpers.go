@@ -21,8 +21,8 @@ import (
 // the permanent a cost sacrificed is b17PermanentSacrificedToPay,
 // the Gnome is b17GnomeToken, the Zombie is BlackZombieToken, the
 // tapped Treasure is tappedTreasureToken, the permanents a player
-// controls are b11PermanentsControlled, "not the source, by name" is
-// b03NotNamed, and the Guildgate is a row in guildgates.go.
+// controls are b11PermanentsControlled, "not the source" is
+// Another, and the Guildgate is a row in guildgates.go.
 
 // --- token templates ---------------------------------------------
 

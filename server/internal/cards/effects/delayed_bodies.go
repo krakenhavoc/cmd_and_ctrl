@@ -59,6 +59,18 @@ var (
 	returnListedPermanentsToHandBody = game.SimpleDelayedBody("sakashima/return-listed-to-hand",
 		sakashimaReturnListedPermanentsToHand)
 
+	// The trigger's controller loses the game (Final Fortune, Last
+	// Chance, Warrior's Oath: "at the beginning of that turn's end
+	// step, you lose the game"). Scheduled bound to the extra turn
+	// (DelayedTrigger.OnExtraTurn, ADR 0059 Decision 8).
+	loseTheGameAtThatTurnsEndBody = game.SimpleDelayedBody("extra-turn/lose-the-game", loseTheGameAtThatTurn)
+
+	// Untap all creatures that attacked this turn (Full Throttle's
+	// "at the beginning of each combat this turn", ADR 0059 sub-PR 2b).
+	// Scheduled with ScheduleDelayedTrigger.EachThisTurn, so it fires
+	// at every beginning of combat until cleanup.
+	untapCreaturesThatAttackedBody = game.SimpleDelayedBody("extra-combat/untap-creatures-that-attacked", untapCreaturesThatAttackedThisTurn)
+
 	// Draw a card (Urza's Bauble, Portent).
 	drawOneBody     = game.SimpleDelayedBody("draw/one-card", b27DrawOne)
 	portentDrawBody = game.SimpleDelayedBody("portent/draw", portentDraw)
@@ -70,6 +82,10 @@ var (
 	// Zara, Renegade Recruiter: return the creature <Object> to its
 	// owner's hand at the next end step, if it is still that object.
 	zaraReturnToHandBody = game.DelayedBody("zara/return-to-hand", zaraReturnToHand)
+
+	// Gift of Immortality: return the Aura the item names and attach it
+	// to the creature <Object>, if that is still the same object.
+	giftOfImmortalityReturnAuraBody = game.DelayedBody("gift-of-immortality/return-aura", giftOfImmortalityReturnAura)
 
 	// Copy the spell the event-conditioned trigger fired on (Doublecast,
 	// Galvanic Iteration).

@@ -41,8 +41,12 @@ const (
 	choiceChooseCards         = "choose_cards"
 	choiceUntapChoice         = "untap_choice"
 	choiceEntryRevealFromHand = "entry_reveal_from_hand"
+	choiceEntryDiscard        = "entry_discard_from_hand"
+	choiceEntrySacrifice      = "entry_sacrifice"
 	choiceColor               = "choose_color"
 	choiceCoinCall            = "coin_call"
+	choiceEntryController     = "entry_controller"
+	choiceMayCast             = "may_cast"
 )
 
 // decideChoice takes the highest-valued answer. Ties go to the lowest
@@ -96,6 +100,8 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 	}
 
 	switch kind {
+	case choiceEntryController:
+		return st.entryControllerValue(ch, cp.OptionIndex)
 	case choiceDamageAssignment:
 		// The enumerator offers exactly one canonical split: the
 		// prefix-lethal one a player makes almost every time.
@@ -295,6 +301,42 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 		}
 		return 0.5, "reveal nothing"
 
+	case choiceEntryDiscard:
+		// ADR 0098, Mox Diamond: "you may discard a land card instead.
+		// If you don't, put it into its owner's graveyard."
+		//
+		// The reveal's shape with the OPPOSITE sign on what is named:
+		// a discarded card is spent. So among discards the seat names
+		// its cheapest land (fuelValue, #1028 — the price of a card a
+		// cost eats), and it discards rather than lose the permanent
+		// unless the land is one it cannot spare: the only land card in
+		// hand while it controls fewer than three lands. Declining is
+		// the enumerator's AlwaysLegal answer, so either way the seat
+		// has one.
+		if len(cp.CardIDs) == 0 {
+			return 0.5, "discard nothing: keep the land"
+		}
+		if st.onlyLandInHandAndShort(cp.CardIDs) {
+			return 0.25, "discard: the only land in hand, and lands are short"
+		}
+		var fuel float64
+		for _, id := range cp.CardIDs {
+			fuel += p.fuelValue(st, id)
+		}
+		return 2 - fuel/(1+fuel), "discard the cheapest land"
+
+	case choiceEntrySacrifice:
+		// ADR 0098 Decision 11, Heart of Yavimaya and Lotus Vale:
+		// "sacrifice <N> instead" is not a "may", so every offered set
+		// has the same size and the only question is which. Spend the
+		// cheapest permanents, priced as the rest of the evaluation
+		// prices them (fuelValue → permanentValue).
+		var fuel float64
+		for _, id := range cp.CardIDs {
+			fuel += p.fuelValue(st, id)
+		}
+		return -fuel, "sacrifice the cheapest"
+
 	case choiceConfirm:
 		// The chained-choice two-way prompt. Both branches are always
 		// legal — a confirm is a choice between two consequences, not
@@ -347,6 +389,20 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 			return 1, "yes"
 		}
 		return 0.5, "no"
+
+	case choiceMayCast:
+		// Cascade's, discover's, suspend's and madness's "you may cast
+		// it without paying its mana cost". Taking the offer only
+		// opens a free cast; whether to CAST is the ordinary priority
+		// policy's call on the next decision, where the card is scored
+		// like any other castable card. Since ADR 0099 a discover or
+		// cascade grant closes on the seat's next pass and the card goes
+		// where declining would have sent it, so accepting is never
+		// worse than declining — say yes.
+		if cp.Apply != nil && *cp.Apply {
+			return 1, "may cast: take the free cast"
+		}
+		return 0.5, "may cast: decline"
 
 	case choiceReplacementOrder, choiceTriggerOrder:
 		// Either canonical order is as good as the other at this
@@ -591,4 +647,33 @@ func (st *state) seatHand() []protocol.CardView {
 		return nil
 	}
 	return st.seat.Hand.Cards
+}
+
+// entryControllerValue scores one seat of an entry_controller prompt —
+// "this enters under the control of an opponent of your choice"
+// (ADR 0102). The prompt's control_purpose says which way round the
+// gift cuts (owner decision 6, 2026-09-30):
+//
+//   - "harm" (Captive Audience, Xantcha): the STRONGEST opponent, by
+//     SeatEval.Strength. Not Threat, which ranks a seat by how close it
+//     is to dying — "your life total becomes 4" costs a seat at 5 life
+//     almost nothing, and punishes the leader most.
+//   - "benefit" (Pendant of Prosperity): the WEAKEST opponent, so the
+//     help goes where it threatens the bot least.
+//
+// A seat the view has no evaluation for scores as neither, so the
+// enumerator's first offered seat wins the tie.
+func (st *state) entryControllerValue(ch *protocol.PendingChoiceView, index *int) (float64, string) {
+	if ch == nil || index == nil || *index < 0 || *index >= len(ch.PickOptions) {
+		return 0, "entry controller: first offered opponent"
+	}
+	opt := ch.PickOptions[*index]
+	e := st.evals[opt.Player]
+	if e == nil {
+		return 0, "entry controller: " + opt.Label
+	}
+	if ch.ControlPurpose == "benefit" {
+		return -e.Strength, "give it to the weakest opponent (" + opt.Label + ")"
+	}
+	return e.Strength, "give it to the strongest opponent (" + opt.Label + ")"
 }

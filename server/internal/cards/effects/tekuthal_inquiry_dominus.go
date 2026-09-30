@@ -22,22 +22,15 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // the same component and the same constructor, with the kind question
 // asked once per permanent instead of once per payment.
 //
-// "Other" is b03NotNamed, the posture every "sacrifice another" cost
-// in the catalog takes: a cost clause is built at registration, before
-// any instance exists, so the source is excluded by name. Tekuthal is
-// legendary, so in a Commander game the name IS the instance — the
-// usual "a token copy would be excluded too" gap cannot bite here,
-// because the legend rule would not let the copy live under the same
-// controller (CR 704.5j).
+// "Other" is object identity (effects.RemoveCountersAmongOthers, CR 109.1):
+// the counters come off permanents other than Tekuthal himself.
 //
 // The indestructible counter is CR 122.1b: a permanent with an
-// indestructible counter on it has indestructible. The engine reads no
-// keyword counters of its own, so Tekuthal carries the rule for the
-// counters it places, exactly as Vraska Joins Up carries it for its
-// deathtouch counters (b24KeywordCounterGrant). Vraska's declared gap
-// — the grant stops when the source leaves — cannot bite here: the
-// counter and the static are on the same permanent, so when Tekuthal
-// leaves, its counters leave with it.
+// indestructible counter on it has indestructible. The engine reads
+// keyword counters itself (ADR 0101), in layer 6 at the counter's own
+// timestamp, so the card declares nothing for it — and a Tekuthal that
+// lost all its abilities BEFORE the counter arrived is still
+// indestructible, which the static it used to carry got wrong.
 //
 // The {U/P} symbols are payable either way since #971 put the
 // activation-time Phyrexian announcement on ActivateAbilityParams
@@ -61,7 +54,6 @@ func init() {
 		Name:            "Tekuthal, Inquiry Dominus",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
-		Static:          []game.StaticAbility{b24KeywordCounterGrant("indestructible")},
 		Replacements: []game.ReplacementEffect{
 			ProliferateTwice("Tekuthal, Inquiry Dominus — proliferate twice"),
 		},
@@ -69,11 +61,10 @@ func init() {
 			Label: "{1}{U/P}{U/P}, Remove three counters from among other artifacts, creatures, and planeswalkers you control: Put an indestructible counter on Tekuthal, Inquiry Dominus.",
 			Cost: Plus(
 				ManaCost("{1}{U/P}{U/P}"),
-				RemoveCountersAmong("", 3, "other artifacts, creatures, and planeswalkers you control",
-					Or(Artifact(), Creature(), Planeswalker()),
-					b03NotNamed("Tekuthal, Inquiry Dominus")),
+				RemoveCountersAmongOthers("", 3, "other artifacts, creatures, and planeswalkers you control",
+					Or(Artifact(), Creature(), Planeswalker())),
 			),
-			Effect: putCounterOnSourceWhileOnBattlefield("indestructible", 1),
+			Effect: putCounterOnSourceWhileOnBattlefield(game.CounterIndestructible, 1),
 		}},
 	})
 }

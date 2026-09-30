@@ -28,7 +28,7 @@
 //
 // What a drop DOES is not decided here either: a "cast" outcome hands
 // the card to Board.svelte's handlePlayCard — the one cast entry point
-// (AGENTS.md §7) — with the drag flag set, so the same prompt chain a
+// (docs/adding-cards.md) — with the drag flag set, so the same prompt chain a
 // click runs (face, costs, X, modes, targets) runs after the drop. The
 // only difference is the mana posture: applyCastChoices stamps
 // `strict: true, auto_tap: true` on a dragged cast, whatever the
@@ -307,6 +307,9 @@ export function previewDecidesMana(card: CardView): boolean {
   if (alternativeCostsOf(card).length > 0) return false;
   if (!printedCostClaimable(card)) return false;
   if (tapCostOf(card)) return false;
+  // ADR 0100: delve pays generic mana out of the graveyard, which the
+  // printed-cost preview never counts.
+  if (card.delve) return false;
   if ((card.phyrexian_symbols ?? 0) > 0) return false;
   return true;
 }

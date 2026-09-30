@@ -21,6 +21,7 @@
     ReplacementOptionView,
   } from "../../protocol";
   import Card from "./Card.svelte";
+  import { isBoardAnsweredChoice } from "../../boardAnsweredChoice";
   import ModalLayer from "../ModalLayer.svelte";
   import {
     rejectionForPrompt,
@@ -33,6 +34,8 @@
   import { colorPickOptions } from "../../manaSource";
   import ManaSymbolPicker from "./ManaSymbolPicker.svelte";
   import { payUnlessAnswer, waterbendLimit } from "../../waterbend";
+  import { mayCastCopy } from "../../mayCast";
+  import { freeCastRequest, mayCastKeywordsThatOpenACast } from "../../freeCastRequest";
 
   interface Props {
     snap: GameView;
@@ -59,7 +62,10 @@
       // #1196: the CR 115.7 retarget prompt is answered the same way
       // — click the new target on the board — so it is not a modal
       // either.
-      if (c.kind === "pick_target" || c.kind === "retarget") continue;
+      // #1623: the legend rule and choose_protector are board-answered
+      // too (Board.svelte drives them through the targeting banner);
+      // the one shared list says so, for both sides.
+      if (isBoardAnsweredChoice(c.kind)) continue;
       // #844, CR 903.4f: a colour prompt with no colours on offer is
       // not a choice anybody can answer, and an empty picker modal
       // would block the board. The server stopped queueing one when a
@@ -199,6 +205,14 @@
   // bluff rather than a formality.
   const isEntryReveal = $derived(active?.kind === "entry_reveal_from_hand");
 
+  // ADR 0098 — the same entry pause with a card that is SPENT. Mox
+  // Diamond's "you may discard a land card instead" (floor zero: showing
+  // nothing puts the Mox into its owner's graveyard, so the decline
+  // button says so) and Heart of Yavimaya's "sacrifice a Forest instead"
+  // (floor = ceiling: not a "may").
+  const isEntryDiscard = $derived(active?.kind === "entry_discard_from_hand");
+  const isEntrySacrifice = $derived(active?.kind === "entry_sacrifice");
+
   // #1214 — the three resolution-time picks (CR 608.2). Same
   // {choice_id, card_ids} payload and the same choose_min / choose_max
   // bounds as choose_cards, so they render through the same grid;
@@ -218,7 +232,13 @@
   const isPermanentPick = $derived(isTheirPermanents || isOwnPermanents);
   // The kinds that share the bounded card-set grid.
   const isCardSetPick = $derived(
-    isChooseCards || isUntapChoice || isEntryReveal || isRevealPick || isPermanentPick,
+    isChooseCards ||
+      isUntapChoice ||
+      isEntryReveal ||
+      isEntryDiscard ||
+      isEntrySacrifice ||
+      isRevealPick ||
+      isPermanentPick,
   );
 
   // How many cards this prompt accepts, and how few it will settle
@@ -470,8 +490,20 @@
   // the exiled card, which then casts out of exile like any other
   // impulse grant; "No" puts it on the bottom of the library with
   // the rest of the cards cascade turned over.
+  //
+  // ADR 0099 §7: the same prompt serves discover, suspend and madness,
+  // each of which does something different on "no". The server names
+  // the rule (may_cast_keyword) and the branches; mayCastCopy words
+  // them. The offered card is in exile face up, found by may_cast_card.
   const isMayCast = $derived(active?.kind === "may_cast");
-  const mayCastCard = $derived(active?.options?.[0]);
+  const mayCastCard = $derived(
+    active?.may_cast_card
+      ? snap.exile?.cards?.find((c) => c.instance_id === active.may_cast_card)
+      : active?.options?.[0],
+  );
+  const mayCastWords = $derived(
+    mayCastCopy(active?.may_cast_keyword, active?.accept_label, active?.decline_label),
+  );
 
   // Shockland entry branch — "as this land enters, you may pay 2
   // life. If you don't, it enters tapped." Same {choice_id, apply}
@@ -514,6 +546,18 @@
     answer({ option_index: index });
   }
 
+  // ADR 0102 entry_controller — "enters under the control of an
+  // opponent of your choice" (CR 614.12a). The same seat buttons and
+  // the same {option_index} answer as option_pick; what differs is the
+  // sentence. The permanent is not on the battlefield yet, and nothing
+  // can happen until an opponent is named.
+  const isEntryController = $derived(active?.kind === "entry_controller");
+  const entryControllerHint = $derived(
+    active?.control_purpose === "benefit"
+      ? "Whoever you choose will control it and get what it does."
+      : "Whoever you choose will control it and live with what it does.",
+  );
+
   // #764 mode_pick — CR 603.3c. A modal TRIGGERED ability's bullet,
   // chosen as the ability is put on the stack. A spell and an
   // activated ability need no prompt (the player who announces is
@@ -530,6 +574,25 @@
   const modeMin = $derived(active?.mode_min ?? 1);
   const modeMax = $derived(active?.mode_max ?? 1);
   const modeRepeatable = $derived(active?.mode_repeatable ?? false);
+  // ADR 0097 (#1749): every bullet in printed order, the ones this
+  // object's ability has already chosen marked used. The used ones
+  // ride beside the offer (`mode_used_*`), so they are merged in here
+  // by index and rendered disabled — never sent.
+  const modeRows = $derived.by(() => {
+    const rows: { idx: number; label: string; used: boolean }[] = modeLabels.map((label, i) => ({
+      idx: modeIndexes[i] ?? i,
+      label,
+      used: false,
+    }));
+    const usedLabels = active?.mode_used_options ?? [];
+    (active?.mode_used_indexes ?? []).forEach((idx, i) => {
+      rows.push({ idx, label: usedLabels[i] ?? "", used: true });
+    });
+    return rows.sort((a, b) => a.idx - b.idx);
+  });
+  const modeUsedNote = $derived(
+    active?.mode_not_chosen === "this_turn" ? "already chosen this turn" : "already chosen",
+  );
   // The chosen bullets IN THE ORDER CHOSEN — CR 608.2c resolves them
   // in that order, and CR 700.2d lets the same one appear twice.
   let modePicks = $state<number[]>([]);
@@ -823,6 +886,16 @@
       answer(payUnlessAnswer(active, apply, payTaps));
       return;
     }
+    // ADR 0099 §7: "Cast it free" hands the card to Board's cast chain
+    // once the snapshot carrying the grant arrives.
+    if (
+      apply &&
+      isMayCast &&
+      active.may_cast_card &&
+      mayCastKeywordsThatOpenACast.has(active.may_cast_keyword ?? "")
+    ) {
+      freeCastRequest.set(active.may_cast_card);
+    }
     answer({ apply });
   }
 
@@ -833,6 +906,29 @@
   // lookup has to span destination zones. Falls back to a generic
   // string when the card isn't visible to the viewer (redacted
   // CardView entries arrive with empty names).
+  // ADR 0098: the name of the card whose entry an entry prompt is
+  // pausing. It is not on the battlefield yet — it is on the stack (a
+  // spell resolving), in a hand, a library, a graveyard or exile — so
+  // triggerSourceName's search does not reach it. Falls back to "it".
+  function enteringCardName(sourceID?: string): string {
+    if (!sourceID) return "it";
+    const seek = (cards: CardView[] | undefined) =>
+      cards?.find((c) => c.instance_id === sourceID && c.name)?.name;
+    const zones: (CardView[] | undefined)[] = [
+      snap.stack?.cards,
+      snap.battlefield?.cards,
+      snap.exile?.cards,
+    ];
+    for (const p of snap.seats ?? []) {
+      zones.push(p.hand?.cards, p.graveyard?.cards);
+    }
+    for (const z of zones) {
+      const name = seek(z);
+      if (name) return name;
+    }
+    return "it";
+  }
+
   function triggerSourceName(sourceID?: string): string {
     if (!sourceID) return "Triggered ability";
     const seek = (cards: CardView[] | undefined) => {
@@ -1286,20 +1382,20 @@
       {:else if isMayCast}
         <h2 id="choice-title">
           {active.reason || "Cast it without paying its mana cost?"}
-          <span class="prompt-src" aria-hidden="true">cascade · CR 702.85</span>
+          <span class="prompt-src" aria-hidden="true">{mayCastWords.source}</span>
         </h2>
         <p class="prompt-hint">
           {#if mayCastCard}
             <strong>{mayCastCard.name}</strong> is exiled face up.
           {/if}
-          Say yes and it stays in exile, castable for nothing until end of turn. Say no and it goes to
-          the bottom of your library with everything else cascade turned over.
+          {mayCastWords.hint}
         </p>
         <div class="prompt-foot">
           <span class="prompt-count"><span class="kbd">Y</span> / <span class="kbd">N</span></span>
-          <button type="button" onclick={() => answerOptional(false)}>To the bottom</button>
+          <button type="button" onclick={() => answerOptional(false)}>{mayCastWords.decline}</button
+          >
           <button type="button" class="primary" onclick={() => answerOptional(true)}>
-            Cast it free
+            {mayCastWords.accept}
           </button>
         </div>
       {:else if isEntryPayLife}
@@ -1343,6 +1439,24 @@
             </li>
           {/each}
         </ul>
+      {:else if isEntryController}
+        <h2 id="choice-title">
+          {active.reason || "Choose an opponent"}
+          <span class="prompt-src" aria-hidden="true">choose an opponent · CR 614.12a</span>
+        </h2>
+        <p class="prompt-hint">
+          It hasn't entered yet: it enters under the control of the opponent you choose.
+          {entryControllerHint}
+        </p>
+        <ul class="pick-options">
+          {#each pickOptions as opt, i (i)}
+            <li>
+              <button type="button" class="pick-option" onclick={() => answerOptionPick(i)}>
+                <span class="pick-label">{opt.label}</span>
+              </button>
+            </li>
+          {/each}
+        </ul>
       {:else if isModePick}
         <h2 id="choice-title">
           {triggerSourceName(active.source)}
@@ -1356,8 +1470,8 @@
           {/if}
         </p>
         <ul class="prompt-options" role={modeSingle ? "radiogroup" : "group"}>
-          {#each modeLabels as label, i (i)}
-            {@const idx = modeIndexes[i] ?? i}
+          {#each modeRows as row (row.idx)}
+            {@const idx = row.idx}
             {@const times = modeTimes(idx)}
             <li>
               <button
@@ -1366,10 +1480,17 @@
                 class:on={times > 0}
                 role={modeSingle ? "radio" : "checkbox"}
                 aria-checked={times > 0}
-                onclick={() => toggleMode(idx)}
+                aria-disabled={row.used}
+                disabled={row.used}
+                onclick={() => {
+                  if (!row.used) toggleMode(idx);
+                }}
               >
                 <span class="prompt-radio" aria-hidden="true"></span>
-                <span class="mode-label">{label}</span>
+                <span class="mode-label">{row.label}</span>
+                {#if row.used}
+                  <span class="note">{modeUsedNote}</span>
+                {/if}
                 {#if modeRepeatable && times > 0}
                   <span class="mode-times">&times;{times}</span>
                 {/if}
@@ -1601,6 +1722,12 @@
           {:else if isEntryReveal}
             {active.reason || "Reveal a card from your hand?"}
             <span class="prompt-src" aria-hidden="true">reveal · CR 614</span>
+          {:else if isEntryDiscard}
+            {active.reason || "Discard a card so it enters?"}
+            <span class="prompt-src" aria-hidden="true">discard · CR 614</span>
+          {:else if isEntrySacrifice}
+            {active.reason || "Sacrifice so it enters"}
+            <span class="prompt-src" aria-hidden="true">sacrifice · CR 614</span>
           {:else if isChooseCards}
             {active.reason || "Choose cards"}
             <span class="prompt-src" aria-hidden="true">choose</span>
@@ -1643,6 +1770,13 @@
             Show {pickMax === 1 ? "one of these" : `up to ${pickMax} of these`} to the table and it enters
             untapped. Revealing costs nothing — the card stays in your hand — but everyone gets to see
             it, and you may show nothing instead.
+          {:else if isEntryDiscard}
+            Discard one of these and {enteringCardName(active.source)} enters the battlefield. Discard
+            nothing and it goes to its owner's graveyard instead — it never enters.
+          {:else if isEntrySacrifice}
+            Sacrifice {pickMax === 1 ? "one of these" : `${pickMax} of these`} and {enteringCardName(
+              active.source,
+            )} enters the battlefield. This isn't optional.
           {:else if isChooseCards}
             {#if pickMin === pickMax}
               Pick {pickMax} of these.
@@ -1726,6 +1860,12 @@
               Untap
             {:else if isEntryReveal}
               {selected.size === 0 ? "Reveal nothing" : "Reveal"}
+            {:else if isEntryDiscard}
+              {selected.size === 0
+                ? `Don't discard — put ${enteringCardName(active.source)} into its owner's graveyard`
+                : "Discard"}
+            {:else if isEntrySacrifice}
+              Sacrifice
             {:else if isChooseCards || isRevealPick || isPermanentPick}
               Choose
             {:else}

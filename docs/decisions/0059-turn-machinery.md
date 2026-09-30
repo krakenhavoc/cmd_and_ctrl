@@ -1,6 +1,6 @@
 # ADR 0059 — Turn machinery: extra turns, extra phases and steps, and one turn identity
 
-**Status:** Accepted · 2026-09-17 · unscheduled (card-coverage audit, wave 2) · tracked on [#753](https://github.com/krakenhavoc/cmd_and_ctrl/issues/753). The owner's answers to the open questions are recorded in [Decided (2026-09-17)](#decided-2026-09-17).
+**Status:** Accepted · 2026-09-17 · unscheduled (card-coverage audit, wave 2) · tracked on [#753](https://github.com/krakenhavoc/cmd_and_ctrl/issues/753). The owner's answers to the open questions are recorded in [Decided (2026-09-17)](#decided-2026-09-17). **Amended 2026-09-30:** sub-PR 2 is split, and its first half (extra turns) has shipped — see [Amendment (2026-09-30)](#amendment-2026-09-30--sub-pr-2-is-split-2a-is-extra-turns). Its second half (the turn plan, added phases and steps) shipped the same day — see [Amendment (2026-09-30, 2b)](#amendment-2026-09-30-2b--the-turn-plan-shipped).
 **Numbering:** 0052 is reserved for the emblems ADR
 ([#623](https://github.com/krakenhavoc/cmd_and_ctrl/issues/623)), and
 0056-0058 are being drafted in parallel for
@@ -1109,3 +1109,163 @@ proposed. The chosen one is marked.
    and only in the rest of one turn. The visible difference is that other
    players' "at the beginning of each end step" triggers skip that one
    turn.
+
+## Amendment (2026-09-30) — sub-PR 2 is split; 2a is extra turns
+
+Sub-PR 2 as planned is the whole of Decisions 3, 4, 5 and half of 8:
+the turn plan, added phases and steps, extra turns, bound delayed
+triggers and attack history. That is two independent mechanisms. The
+extra-turn queue never touches the step cursor inside a turn: it is
+read only by the rotation seam (Decision 6), which already exists. The
+plan rewrites `advanceCursorLocked` and `stepExistsLocked` (#717). So
+sub-PR 2 ships in two halves, one per PR, and nothing in either decision
+changes:
+
+- **2a — extra turns (shipped, #753).** Decision 5 in full;
+  `DelayedTrigger.OnExtraTurn` from Decision 8; the Decision 10
+  snapshot fields for those two (`extraTurns`, `nextExtraRef`,
+  `delayedTriggers[].onExtraTurn`, additive within v7); from Decision
+  11, `TurnView.extra`, `TurnView.extra_turns`, `EventExtraTurnAdded`
+  and its log line; from sub-PR 4, the board's "Extra turn" mark and
+  "Next: Alice (extra)" (they read only those two fields); from
+  Decision 13, the model prompt's "(extra turn)" and the catalog soak's
+  `Seq` cap; and the extra-turn half of the first wave.
+- **2b — the plan and added phases and steps (next).** Decisions 3 and
+  4 (`TurnPlan`, `PlannedStep`, `NextPhaseID`, `AddPhasesForEffect`,
+  `AddStepAfterCurrentForEffect`, `EventPhasesAdded`), the ordinals and
+  `TurnTally.Attacks` from Decision 8, `TurnView.phase_id`,
+  `phase_ordinal` and `upcoming`, the `combatBeats.ts` grouping, and the
+  extra-combat half of the first wave. Sub-PR 3 (bots and soak) and the
+  remaining sub-PR 4 presentation ("Combat 2", added phases on the
+  strip) follow it as planned.
+
+What 2a settled that the decisions left open, or states more exactly:
+
+1. **Rotation resumes from `OrderSeat` only after an extra turn.** A
+   normal turn has `OrderSeat == ActiveSeat` by construction, so
+   rotating from `OrderSeat` always and rotating from it only when
+   `Turn.Extra` is set are the same rule. The second is written, so a
+   hand-built cursor in a test (which sets `ActiveSeat` alone) still
+   rotates from the seat it names.
+2. **One effect's turns keep their order.** `TakeExtraTurnsForEffect(p,
+   src, n)` mints n refs and pushes them so that they come off the stack
+   in ref order and all ahead of anything queued earlier. Time Stretch's
+   two turns are refs k and k+1, taken in that order. A turn created
+   during the first of them goes between them (CR 500.7, test 3).
+3. **A departed or unseated player gets nothing.** The call returns nil
+   and queues nothing for a player who has already left (CR 800.4a).
+   A player who leaves after the turn is queued is handled as Decision 5
+   says: the turn is dropped as it would begin and counted toward
+   `TurnsBegun`. The wire omits such a turn from `extra_turns` straight
+   away, because it will not begin.
+4. **Bound triggers are swept at the turn boundary, and refused when
+   unreachable.** `sweepUnreachableBoundTriggersLocked` runs in the
+   rotation seam once the new turn is stamped and before the per-turn
+   resets, and drops every trigger whose `OnExtraTurn` is neither the
+   turn now beginning nor still queued. `ScheduleDelayedTriggerForEffect`
+   refuses such a binding up front, so it is never queued.
+5. **The step spine is unchanged.** The extra turn begins with ordinary
+   `step` lines. What says "extra" is the `extra_turn` line when the turn
+   is queued and `TurnView.extra` while it runs. `EventTurnBegan`'s
+   "extra" label stays an engine event with no line of its own, as its
+   silence row already says.
+6. **Rollback.** An older binary restoring a file with a queued turn
+   drops `extraTurns` and loses the turn: weaker, and only until the
+   next deploy. A bound trigger is not the same risk. Unbound, Final
+   Fortune's loss would fire in the wrong end step. But every card that
+   binds one names a body key an older binary does not have
+   (`extra-turn/lose-the-game`), so that binary refuses the file with
+   `ErrUnknownEffectKey` and keeps it (ADR 0041 phase 3).
+7. **Cards.** The seven extra-turn cards of the first wave shipped (Time
+   Warp, Time Stretch, Temporal Manipulation, Capture of Jingzhou,
+   Magistrate's Scepter, Final Fortune, Last Chance), plus two with the
+   same text and nothing else outside the seam: Warrior's Oath (Last
+   Chance's text) and Temporal Mastery (miracle and self-exile, both
+   already built). Teferi, Master of Time's −10 and Avatar Kuruk's
+   exhaust ability are wired, and both cards are now `full`. Trouble in
+   Pairs keeps a caveat. Its "if an opponent would begin an extra turn,
+   that player skips that turn instead" is skipping a turn, which
+   Decision 14 leaves out of scope. Ugin's Nexus waits on the same
+   thing.
+
+## Amendment (2026-09-30, 2b) — the turn plan shipped
+
+Sub-PR 2b is merged (#753): Decisions 3 and 4, the ordinals and the
+attack history of Decision 8, the plan's half of Decision 10, and
+Decision 11's `phase_id`, `phase_ordinal`, `upcoming` and `combatBeats`
+grouping. It fitted in one PR, so it is not split further. What it
+settled or changed:
+
+1. **The plan knows which cursor it describes.** `Game.planAt` (not
+   serialised; restore stamps it from the restored cursor) records the
+   step the plan was built or last popped for. A cursor moved some other
+   way — a test setting `Turn.Step`, a snapshot written before the plan
+   — no longer matches, and the plan is rebuilt from the template tail
+   before anything reads or edits it (`ensureTurnPlanLocked`). That is
+   the fixed walk's behaviour for every such cursor, so no existing test
+   needed a change, and it is what Decision 10's "rebuilt from the
+   template after the current step" does for an old file. The wire reads
+   the same answer without rebuilding (`UpcomingStepsForEffect`), so the
+   view stays read-only.
+2. **#717's step is a plan entry, decided as it would begin.** Every
+   combat phase in the plan, template or added, lists
+   `first_strike_damage`, and `stepExistsLocked` still walks the cursor
+   through it when no combatant has first or double strike. The question
+   is about the board as the combat damage step would begin, which no
+   plan written earlier in the turn can answer, so "absorbing" the
+   predicate means the plan carries the step and the predicate stays
+   where it was. First-strike behaviour is unchanged, and `upcoming`
+   shows the step in every combat.
+3. **Ordinals are counted in the turn tally.** `TurnTally.StepsBegun`,
+   `PhasesBegun` and `PhaseStarted` (the phase id whose first step last
+   began) are reset with the rest of the tally, and `noteStepBegunLocked`
+   stamps `Turn.StepOrdinal` / `PhaseOrdinal` from them after the
+   CR 500.11 skip window and the mulligan hold. A second cleanup step
+   (CR 514.3a) counts as a second cleanup. `IsFirstCombatPhase` and
+   `IsFirstStepOfItsKindForEffect` treat ordinal 0 (a phase that has not
+   begun) as the first.
+4. **Attack history is per object by epoch, not by entry timestamp.**
+   `AttackRecord` carries the attacker's `Card.ObjectEpoch` rather than
+   `EnteredBattlefieldAt`: the epoch is the engine's CR 400.7 identity
+   (the once-each-turn gates key on it since #936), and it changes on
+   every zone change, including a bounce and recast that keeps the
+   instance ID.
+5. **One event and one log line for phases and steps.**
+   `EventPhasesAdded` carries the kinds in `Label` for phases and the
+   step in `Step` for a step; the log kind is `extra_phase`, with `label`
+   `"combat,main"` or `"step:end"`.
+6. **A step-conditioned delayed trigger with a duration repeats**
+   (CR 603.7b). Full Throttle's "at the beginning of each combat this
+   turn" needed it: `ScheduleDelayedTrigger.EachThisTurn` stamps an
+   until-end-of-turn duration, `fireDelayedTriggersLocked` keeps such a
+   trigger queued after it fires, and the cleanup duration sweep removes
+   it. Event-conditioned triggers still fire once (#663).
+7. **A "you may pay" about the current phase holds the step.** Hellkite
+   Charger's payment is `MayPay{InThisStep: true}`
+   (`QueueMayPayInThisStepForEffect`), anchored with #997's
+   `OwedInStep`, so the answer cannot arrive after the combat it adds a
+   combat after.
+8. **CR 724.2 ends only this combat.** `EndCombatPhaseForEffect` walks
+   out of the current phase id, not out of every combat step, so an
+   added combat straight after it still happens.
+9. **Rollback.** An older binary drops `turnPlan`, `nextPhaseId` and the
+   three `Turn` fields, rebuilds the template, and loses any added phase
+   still to come: weaker, until the next deploy. Full Throttle's waiting
+   trigger names a body key an older binary lacks
+   (`extra-combat/untap-creatures-that-attacked`), so that file is
+   refused and kept (ADR 0041 phase 3).
+10. **Cards.** Shipped: Relentless Assault, Seize the Day, Aggravated
+    Assault, Full Throttle, Hellkite Charger, Aurelia, the Warleader,
+    Sphinx of the Second Sun and Éomer, Marshal of Rohan (#1564), all
+    full; Karlach, Fury of Avernus with the Choose a Background caveat
+    Jaheira carries; and Y'shtola Rhul's additional end step, which
+    makes that card full. World at War stays out (rebound, and
+    `AnchorNthMainPhase`), and so does Moraug (the `OnPhaseID`
+    binding); both wait on the extra-combats registry row.
+11. **Not in 2b.** Sub-PR 3 (enumerator agreement tests for a second
+    combat, the soak pool, the model prompt's "combat 2") and the rest
+    of sub-PR 4 ("Combat 2" / "Main 3" labels and added phases on the
+    strip, from `phase_ordinal` and `upcoming`) are next, in that order.
+    The CR 103.8a first-turn draw skip still keys on `Seq == 1`, so an
+    added draw step on a two-player game's first turn would be skipped
+    too; no card can add one that early.

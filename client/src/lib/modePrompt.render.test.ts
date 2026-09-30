@@ -117,6 +117,45 @@ describe("ChoicePromptModal — mode_pick (#764, CR 603.3c)", () => {
     expect(sent[0].params).toMatchObject({ modes: [1, 0, 1] });
   });
 
+  it("shows a mode already chosen this turn greyed out, in printed order, and never sends it (ADR 0097)", () => {
+    // Gala Greeters' second trigger of the turn: the Treasure is used.
+    const { container, sent } = mount({
+      reason: "Choose one that hasn't been chosen this turn",
+      mode_options: ["Put a +1/+1 counter on this creature.", "You gain 2 life."],
+      mode_indexes: [0, 2],
+      mode_used_options: ["Create a tapped Treasure token."],
+      mode_used_indexes: [1],
+      mode_not_chosen: "this_turn",
+      mode_min: 1,
+      mode_max: 1,
+    });
+    const opts = optionButtons(container);
+    expect(opts.length).toBe(3);
+    expect(opts[1].textContent).toContain("Create a tapped Treasure token.");
+    expect(opts[1].textContent).toContain("already chosen this turn");
+    expect((opts[1] as HTMLButtonElement).disabled).toBe(true);
+    click(opts[1]);
+    expect(primary(container).disabled).toBe(true);
+    click(opts[2]);
+    click(primary(container));
+    expect(sent[0].params).toMatchObject({ choice_id: "choice-1", modes: [2] });
+  });
+
+  it("says a mode with no duration was already chosen, not 'this turn'", () => {
+    const { container } = mount({
+      mode_options: ["Draw a card."],
+      mode_indexes: [1],
+      mode_used_options: ["Put two +1/+1 counters on this creature."],
+      mode_used_indexes: [0],
+      mode_not_chosen: "ever",
+      mode_min: 1,
+      mode_max: 1,
+    });
+    const used = optionButtons(container)[0];
+    expect(used.textContent).toContain("already chosen");
+    expect(used.textContent).not.toContain("this turn");
+  });
+
   it("says the ability is not on the stack until the mode is chosen", () => {
     const { container } = mount({
       mode_options: ["Draw a card."],

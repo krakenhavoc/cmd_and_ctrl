@@ -108,9 +108,11 @@ type ActivationTally struct {
 	Ever map[string]int `json:"ever,omitempty"`
 
 	// Turn is the same count for the current turn, emptied on the
-	// turn advance beside TurnTally. No card reads it yet — it is the
-	// half "Activate only once each turn" (Quirion Ranger, Wirewood
-	// Symbiote) and boast (CR 702.142a) want.
+	// turn advance beside TurnTally. Its first reader is a mana
+	// ability's "Activate only once each turn" (#1621 —
+	// ManaAbilityShape.OncePerTurn: Vivi Ornitier, Ramos); it is also
+	// the half the CR 602 once-each-turn cards (Quirion Ranger,
+	// Wirewood Symbiote) and boast (CR 702.142a) want.
 	Turn map[string]int `json:"turn,omitempty"`
 }
 

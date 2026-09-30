@@ -38,7 +38,7 @@ func stubRevealLandCatalog(t *testing.T) {
 			SelfReplacement: true,
 			Label:           "Test Reveal Land",
 			PromptQuestion:  "Test Reveal Land — reveal a Swamp card from your hand?",
-			EntryHandReveal: &game.EntryHandReveal{
+			EntryCardChoice: &game.EntryCardChoice{
 				Matches: func(c game.Card) bool { return c.IsLand() && c.HasSubtype("swamp") },
 				Max:     1,
 			},

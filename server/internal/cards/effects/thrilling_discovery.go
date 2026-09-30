@@ -26,7 +26,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // therefore a ceiling of two with a set-level check that refuses any
 // answer of exactly one, which makes it the yes-or-no the card
 // prints. A player with fewer than two cards in hand cannot take the
-// deal at all and draws nothing, which is CR 701.8a applied to an
+// deal at all and draws nothing, which is CR 701.9a applied to an
 // "if you do" clause: you cannot pay half a cost and collect.
 //
 // The count is the prompted-discard RUN's — see
