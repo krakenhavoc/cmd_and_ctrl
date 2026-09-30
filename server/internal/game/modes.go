@@ -2,6 +2,7 @@ package game
 
 import (
 	"fmt"
+	"slices"
 	"sync"
 
 	"github.com/google/uuid"
@@ -151,6 +152,21 @@ type ModeSpec struct {
 	RaisedMax  int
 	RaisedMin  int
 	RaiseMaxIf ModeCountCondition
+
+	// NotChosen is "choose one that hasn't been chosen [this turn]"
+	// (ADR 0097, #1749): the options this OBJECT's ability has already
+	// chosen are withheld from its later choices, for the rest of the
+	// turn (ModeMemoryThisTurn) or for as long as the object exists
+	// (ModeMemoryEver). The zero value is no restriction.
+	//
+	// Read through choosableModeOptionsLocked, the one filter every
+	// mode path asks, with the ability's identity (ModeAbility); a
+	// caller with no identity — a spell — excludes nothing.
+	// effects.Register refuses it on a Repeatable spec (CR 700.2d
+	// says the opposite) and on a spell's Spec.Modes (no spell prints
+	// it, and a spell has no object to remember with). See
+	// mode_memory.go.
+	NotChosen ModeMemory
 }
 
 // ModeCountCondition names a registered "if <condition> as you cast
@@ -458,19 +474,30 @@ func (g *Game) runChosenModeEffectsLocked(item *StackItem, ms *ModeSpec) {
 }
 
 // choosableModeOptionsLocked lists the option indexes a chooser may
-// pick right now: every option, minus those whose clause list cannot
-// be filled from the current board (CR 603.3d — an option with no
-// legal target is not on offer). `src` names the spell or ability
-// doing the choosing, because whether a clause is fillable depends on
-// the source under CR 702.16b as well as on the chooser (#662).
+// pick right now: every option, minus those the ability `ab` has
+// already chosen under the spec's NotChosen restriction (ADR 0097),
+// minus those whose clause list cannot be filled from the current
+// board (CR 603.3d — an option with no legal target is not on offer).
+// `src` names the spell or ability doing the choosing, because whether
+// a clause is fillable depends on the source under CR 702.16b as well
+// as on the chooser (#662). `ab` is the zero ModeAbility for a spell,
+// which excludes nothing.
+//
+// The used modes are dropped FIRST, so the harvest check, the
+// mode_pick prompt, the activation gate, the enumerator and the view
+// all see an exhausted ability the same way.
 //
 // Caller must hold g.mu.
-func (g *Game) choosableModeOptionsLocked(src TargetSource, ms *ModeSpec) []int {
+func (g *Game) choosableModeOptionsLocked(src TargetSource, ms *ModeSpec, ab ModeAbility) []int {
 	if ms == nil {
 		return nil
 	}
+	used := g.modesChosenLocked(ms, ab)
 	out := make([]int, 0, len(ms.Options))
 	for i, o := range ms.Options {
+		if slices.Contains(used, i) {
+			continue
+		}
 		if o.Targets != nil && g.anyClauseUnfillableLocked(src, AnnouncedClauses(o.Targets, nil, nil)) {
 			continue
 		}
@@ -500,9 +527,11 @@ func (s *StackItem) ModeLabels() []string {
 // ChoosableModeOptionsForEffect is choosableModeOptionsLocked on the
 // *ForEffect surface: which of a ModeSpec's options the spell or
 // ability `src` could take right now, for callers already under g.mu
-// — the bot's move enumerator and the protocol projection.
-func (g *Game) ChoosableModeOptionsForEffect(src TargetSource, ms *ModeSpec) []int {
-	return g.choosableModeOptionsLocked(src, ms)
+// — the bot's move enumerator and the protocol projection. `ab` names
+// the ability whose "hasn't been chosen" memory applies; the zero
+// value (a spell) excludes nothing.
+func (g *Game) ChoosableModeOptionsForEffect(src TargetSource, ms *ModeSpec, ab ModeAbility) []int {
+	return g.choosableModeOptionsLocked(src, ms, ab)
 }
 
 // EnoughChoosableModes reports whether `n` takeable options can fill a

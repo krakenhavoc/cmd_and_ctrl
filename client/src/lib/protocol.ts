@@ -1132,7 +1132,19 @@ export interface PendingChoiceView {
   mode_min?: number;
   mode_max?: number;
   mode_repeatable?: boolean;
+  // ADR 0097 (#1749): the bullets this object's ability has ALREADY
+  // chosen under "choose one that hasn't been chosen [this turn]", in
+  // printed order and parallel to each other. Beside the offer, not in
+  // it — `mode_indexes` is still what may be answered. The picker
+  // shows them disabled; `mode_not_chosen` words the note.
+  mode_used_options?: string[];
+  mode_used_indexes?: number[];
+  mode_not_chosen?: ModeNotChosen;
 }
+
+// ModeNotChosen is a "that hasn't been chosen" restriction (ADR 0097):
+// once per turn, or once ever, for one object's ability.
+export type ModeNotChosen = "this_turn" | "ever";
 
 // ReplacementOptionView mirrors protocol.ReplacementOptionView —
 // one entry in a replacement_order prompt's candidate list. ID is
@@ -1484,6 +1496,10 @@ export interface ModeSpecView {
   // these when the caster ticked an optional cost. Absent when paying
   // changes nothing.
   if_optional_paid?: { min: number; max: number };
+  // ADR 0097 (#1749): "choose one that hasn't been chosen [this
+  // turn]" on an activated ability. Each option this object's ability
+  // has already chosen carries `used: true`.
+  not_chosen?: ModeNotChosen;
 }
 
 // AdditionalCostView is the "As an additional cost to cast this
@@ -1991,6 +2007,10 @@ export interface ModeOptionView {
   // OTHER chosen bullet's. Absent for an ordinary modal bullet, which
   // is every modal card before S45.
   cost?: string;
+  // ADR 0097 (#1749): this object's ability has already chosen this
+  // bullet, so it cannot be chosen again (this turn, or ever — see
+  // ModeSpecView.not_chosen). The server refuses it.
+  used?: boolean;
 }
 
 // LegalTargetsView is a clause's legal set right now plus its

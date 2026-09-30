@@ -1019,6 +1019,25 @@ var items = []Item{
 		EngineNotes: "keyword action (CR 701.57): no primitive anywhere in `internal/game` or `internal/cards/effects` (re-checked 2026-09-30). Cascade's exile-until walk and free cast (`cascade.go`) are most of the shape; what discover adds is the choice to put the hit into HAND instead of casting it (CR 701.57a), and that it is an instruction a resolving effect gives rather than a cast trigger. Brass's Tunnel-Grinder ships with its back face's \"discover X\" trigger omitted and a caveat saying so; Hit the Mother Lode waits whole.",
 	},
 	{
+		Slug: "modes-not-chosen", Name: "Modes that haven't been chosen", Kind: KindSeam, Status: StatusImplemented,
+		Summary:  "Abilities that say \"choose one that hasn't been chosen\" or \"choose one that hasn't been chosen this turn\": each mode can be chosen once, a used mode is shown greyed out, and an ability with no modes left does nothing.",
+		Rules:    []string{"700.2b"},
+		Issue:    1749,
+		ADR:      "0097-modes-that-havent-been-chosen.md",
+		Probe:    declaresModesNotChosen,
+		Examples: []string{"Gala Greeters", "Monument to Endurance", "Silent Hallcreeper"},
+		Phrases:  []string{"hasn't been chosen"},
+	},
+	{
+		Slug: "keyword-counters", Name: "Keyword counters", Kind: KindSeam, Status: StatusMissing,
+		Summary:     "Counters that give a creature a keyword, like a deathtouch counter or an indestructible counter.",
+		Missing:     "A keyword counter only works when the card that put it there says so. On its own it does nothing yet.",
+		Rules:       []string{"122.1b"},
+		Issue:       1753,
+		Waiting:     []string{"Perennation"},
+		EngineNotes: "rule (CR 122.1b): the engine reads no keyword counters of its own — a `deathtouch` entry in `Card.Counters` grants nothing. The catalog carries the rule per card instead, with `b24KeywordCounterGrant` (a layer-6 static on the card that PLACED the counters, granting the keyword to every creature with one). That is exact where the counter and the static sit on the same permanent (Tekuthal, Solphim and Drivnod's indestructible counters), and weaker than printed where they do not: Vraska Joins Up's deathtouch counters and Sorin of House Markov's lifelink counter stop working once the card that placed them leaves, and both declare it. Perennation has no permanent to carry the grant at all, so it waits whole. The fix is one engine-side layer-6 read of keyword counters, after which the per-card grants are deleted.",
+	},
+	{
 		Slug: "discard-as-it-would-enter", Name: "Discarding a card as a permanent would enter", Kind: KindSeam, Status: StatusMissing,
 		Summary:     "Cards like Mox Diamond, which ask you to discard a card from your hand as they would enter and go to the graveyard if you don't.",
 		Missing:     "A card can't yet be discarded as another would enter, so Mox Diamond isn't available.",
@@ -1108,4 +1127,21 @@ var items = []Item{
 		Summary:  "Cards that remember what they exiled, and abilities that read the counters a permanent had when it left.",
 		Examples: []string{"The Ozolith", "Valakut Exploration", "Currency Converter"},
 	},
+}
+
+// declaresModesNotChosen is the "that hasn't been chosen" probe (ADR
+// 0097): a triggered or activated ability whose ModeSpec declares the
+// restriction.
+func declaresModesNotChosen(s effects.Spec) bool {
+	for _, t := range s.Triggered {
+		if t.Modes != nil && t.Modes.NotChosen != game.ModeMemoryNone {
+			return true
+		}
+	}
+	for _, a := range s.Activated {
+		if a.Modes != nil && a.Modes.NotChosen != game.ModeMemoryNone {
+			return true
+		}
+	}
+	return false
 }

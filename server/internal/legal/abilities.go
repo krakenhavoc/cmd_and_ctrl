@@ -436,7 +436,7 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 		// same product a modal cast does.
 		modeSets := [][]int{nil}
 		if ab.Modes != nil {
-			modeSets = e.legalModeSets(abilitySrc, ab.Modes, e.g.ModeQueryForSourceForEffect(*source, e.seat))
+			modeSets = e.legalModeSets(abilitySrc, ab.Modes, e.g.ModeQueryForSourceForEffect(*source, e.seat), game.ModeAbilityOf(*source, ab.Label))
 			if len(modeSets) == 0 {
 				continue
 			}

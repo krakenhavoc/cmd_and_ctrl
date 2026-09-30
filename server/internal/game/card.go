@@ -622,6 +622,23 @@ type Card struct {
 	// #1572; see ADR 0071's amendment of 2026-09-27.
 	ChosenOption string
 
+	// ModesChosen is "choose one that hasn't been chosen" with no
+	// duration (ADR 0097, #1749 — Silent Hallcreeper, Demonic Pact):
+	// the option indexes each modal ability of THIS OBJECT has chosen,
+	// ascending, keyed by the ability's label (a triggered row's Key,
+	// an activated row's Label). Written when the mode is chosen, not
+	// at resolution; read through Game.modesChosenLocked.
+	//
+	// Per object: MoveCard clears it with the rest of CR 400.7's
+	// forgetting, so a permanent that leaves and returns remembers
+	// nothing (the Silent Hallcreeper ruling). Not per controller: a
+	// change of control leaves it where it is (the Demonic Pact
+	// ruling). NOT a copiable value (CR 707.2) — CopiableValuesOf never
+	// reads it, so a Clone or a token copy starts empty. Carried by the
+	// snapshot and deep-copied by clone. The "this turn" half lives on
+	// TurnTally.ModesChosen instead, where the turn boundary flushes it.
+	ModesChosen map[string][]int
+
 	// Provenance is what this permanent remembers about the SPELL it
 	// came from — CR 400.7d, "an ability of a permanent can reference
 	// information about the spell that became that permanent as it

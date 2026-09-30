@@ -530,6 +530,25 @@
   const modeMin = $derived(active?.mode_min ?? 1);
   const modeMax = $derived(active?.mode_max ?? 1);
   const modeRepeatable = $derived(active?.mode_repeatable ?? false);
+  // ADR 0097 (#1749): every bullet in printed order, the ones this
+  // object's ability has already chosen marked used. The used ones
+  // ride beside the offer (`mode_used_*`), so they are merged in here
+  // by index and rendered disabled — never sent.
+  const modeRows = $derived.by(() => {
+    const rows: { idx: number; label: string; used: boolean }[] = modeLabels.map((label, i) => ({
+      idx: modeIndexes[i] ?? i,
+      label,
+      used: false,
+    }));
+    const usedLabels = active?.mode_used_options ?? [];
+    (active?.mode_used_indexes ?? []).forEach((idx, i) => {
+      rows.push({ idx, label: usedLabels[i] ?? "", used: true });
+    });
+    return rows.sort((a, b) => a.idx - b.idx);
+  });
+  const modeUsedNote = $derived(
+    active?.mode_not_chosen === "this_turn" ? "already chosen this turn" : "already chosen",
+  );
   // The chosen bullets IN THE ORDER CHOSEN — CR 608.2c resolves them
   // in that order, and CR 700.2d lets the same one appear twice.
   let modePicks = $state<number[]>([]);
@@ -1356,8 +1375,8 @@
           {/if}
         </p>
         <ul class="prompt-options" role={modeSingle ? "radiogroup" : "group"}>
-          {#each modeLabels as label, i (i)}
-            {@const idx = modeIndexes[i] ?? i}
+          {#each modeRows as row (row.idx)}
+            {@const idx = row.idx}
             {@const times = modeTimes(idx)}
             <li>
               <button
@@ -1366,10 +1385,17 @@
                 class:on={times > 0}
                 role={modeSingle ? "radio" : "checkbox"}
                 aria-checked={times > 0}
-                onclick={() => toggleMode(idx)}
+                aria-disabled={row.used}
+                disabled={row.used}
+                onclick={() => {
+                  if (!row.used) toggleMode(idx);
+                }}
               >
                 <span class="prompt-radio" aria-hidden="true"></span>
-                <span class="mode-label">{label}</span>
+                <span class="mode-label">{row.label}</span>
+                {#if row.used}
+                  <span class="note">{modeUsedNote}</span>
+                {/if}
                 {#if modeRepeatable && times > 0}
                   <span class="mode-times">&times;{times}</span>
                 {/if}

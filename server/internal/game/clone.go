@@ -205,6 +205,13 @@ func (g *Game) cloneLocked() *Game {
 			if len(c.ModeOptionLabel) > 0 {
 				cloned.ModeOptionLabel = append([]string(nil), c.ModeOptionLabel...)
 			}
+			// ADR 0097: the used half of the offer, for the same reason.
+			if len(c.ModeUsedIndex) > 0 {
+				cloned.ModeUsedIndex = append([]int(nil), c.ModeUsedIndex...)
+			}
+			if len(c.ModeUsedLabel) > 0 {
+				cloned.ModeUsedLabel = append([]string(nil), c.ModeUsedLabel...)
+			}
 			// S22 search chooser: the candidate list is a slice, so
 			// it needs its own backing array for the same reason
 			// every other slice here does — an undo that shared it
@@ -498,6 +505,9 @@ func cloneCard(c Card) Card {
 	// mutated through, but copied for PrintedSelf's reason — an undo
 	// snapshot must not share anything with the live card.
 	out.FaceDownListed = c.FaceDownListed.clone()
+	// ADR 0097: the "hasn't been chosen" memory is a map of slices,
+	// and a value copy would share both levels with the live card.
+	out.ModesChosen = copyModesChosen(c.ModesChosen)
 	if len(c.Counters) > 0 {
 		out.Counters = make(map[string]int, len(c.Counters))
 		for k, v := range c.Counters {

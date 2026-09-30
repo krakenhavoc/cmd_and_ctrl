@@ -3,6 +3,7 @@ package protocol
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"sort"
 	"time"
 
@@ -426,6 +427,16 @@ type PendingChoiceView struct {
 	ModeMin        int      `json:"mode_min,omitempty"`
 	ModeMax        int      `json:"mode_max,omitempty"`
 	ModeRepeatable bool     `json:"mode_repeatable,omitempty"`
+	// ModeUsedOptions / ModeUsedIndexes are the bullets the ability
+	// has ALREADY chosen under "choose one that hasn't been chosen
+	// [this turn]" (ADR 0097), in printed order, beside the offered
+	// list rather than inside it — so `mode_indexes` keeps meaning
+	// "what may be answered". The picker shows them greyed out and
+	// never sends one. ModeNotChosen is "this_turn" or "ever", which
+	// words the note. All three absent for an ordinary modal trigger.
+	ModeUsedOptions []string `json:"mode_used_options,omitempty"`
+	ModeUsedIndexes []int    `json:"mode_used_indexes,omitempty"`
+	ModeNotChosen   string   `json:"mode_not_chosen,omitempty"`
 	// DoubledBy / DoubledByName identify the public permanent that
 	// caused this additional trigger (CR 603.2d). They are
 	// present only on trigger_prompt and pick_target choices.
@@ -594,6 +605,11 @@ type ModeSpecView struct {
 	// changes nothing, which is every card but these. Per caster, and
 	// dropped from the public copy, like `max`.
 	IfOptionalPaid *ModeBoundsView `json:"if_optional_paid,omitempty"`
+	// NotChosen is the card's "choose one that hasn't been chosen"
+	// restriction (ADR 0097): "this_turn", "ever", or absent for an
+	// ordinary modal card. Printed text, so public; the options the
+	// ability has used are marked `used` on each ModeOptionView.
+	NotChosen string `json:"not_chosen,omitempty"`
 
 	// printedMin / printedMax are the spec's own Min / Max, before any
 	// conditional raise, for publicModeSpec: the raise is the asking
@@ -611,6 +627,12 @@ type ModeBoundsView struct {
 
 type ModeOptionView struct {
 	Label string `json:"label"`
+	// Used marks a bullet this object's ability has already chosen
+	// under "that hasn't been chosen" (ADR 0097): shown disabled, and
+	// refused by the activation gate. Read by the same filter the gate
+	// and the enumerator read, so what is greyed and what is refused
+	// cannot disagree. Absent for every other bullet.
+	Used bool `json:"used,omitempty"`
 	// TargetMode / LegalTargets mirror CardView.target_mode /
 	// legal_targets for the option's FIRST target clause; both absent
 	// for untargeted options.
@@ -4919,7 +4941,7 @@ func viewOfOptionalCosts(g *game.Game, caster uuid.UUID, src game.TargetSource, 
 // on `if_optional_paid`, which the picker reads when the caster has
 // ticked one. Caller must hold g.mu.
 func viewOfCastModeSpec(g *game.Game, caster uuid.UUID, key string, src game.TargetSource, ms *game.ModeSpec) *ModeSpecView {
-	out := viewOfModeSpec(g, game.ModeCountQuery{Chooser: caster, OracleID: key}, src, ms)
+	out := viewOfModeSpec(g, game.ModeCountQuery{Chooser: caster, OracleID: key}, src, ms, game.ModeAbility{})
 	optional := game.OptionalCostsFor(key)
 	if len(optional) == 0 || ms.RaiseMaxIf.IsZero() {
 		return out
@@ -4938,8 +4960,10 @@ func viewOfCastModeSpec(g *game.Game, caster uuid.UUID, key string, src game.Tar
 // viewOfModeSpec projects a modal card's options with each targeted
 // option's legal set from the caster's point of view, and the mode
 // count's bounds as the choice `q` describes would be held to them
-// right now (#1590, #1655). Caller must hold g.mu.
-func viewOfModeSpec(g *game.Game, q game.ModeCountQuery, src game.TargetSource, ms *game.ModeSpec) *ModeSpecView {
+// right now (#1590, #1655). `ab` names the ability whose "that hasn't
+// been chosen" memory marks options `used` (ADR 0097); a spell passes
+// the zero value. Caller must hold g.mu.
+func viewOfModeSpec(g *game.Game, q game.ModeCountQuery, src game.TargetSource, ms *game.ModeSpec, ab game.ModeAbility) *ModeSpecView {
 	lo, hi := g.ModeBoundsForEffect(ms, q)
 	out := &ModeSpecView{
 		Prompt:     ms.Prompt,
@@ -4948,10 +4972,12 @@ func viewOfModeSpec(g *game.Game, q game.ModeCountQuery, src game.TargetSource, 
 		printedMin: ms.Min,
 		printedMax: ms.Max,
 		Repeatable: ms.Repeatable,
+		NotChosen:  modeMemoryWire(ms.NotChosen),
 		Options:    make([]ModeOptionView, 0, len(ms.Options)),
 	}
-	for _, o := range ms.Options {
-		ov := ModeOptionView{Label: o.Label, Cost: o.Cost}
+	used := g.ModesChosenForEffect(ms, ab)
+	for i, o := range ms.Options {
+		ov := ModeOptionView{Label: o.Label, Cost: o.Cost, Used: slices.Contains(used, i)}
 		if o.Targets != nil {
 			ov.TargetMode = o.Targets.Mode
 			ov.LegalTargets = viewOfTargetClause(g, src, "", g.LegalTargetsForEffect(src, o.Targets), o.Targets)
@@ -5801,6 +5827,9 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 			v.ModeMin = c.ModeMin
 			v.ModeMax = c.ModeMax
 			v.ModeRepeatable = c.ModeRepeatable
+			v.ModeUsedOptions = append([]string(nil), c.ModeUsedLabel...)
+			v.ModeUsedIndexes = append([]int(nil), c.ModeUsedIndex...)
+			v.ModeNotChosen = modeMemoryWire(c.ModeNotChosen)
 		}
 		// PendingChoiceMana carries a color-option list server-
 		// filtered against the chooser's commander identity (see
@@ -7867,7 +7896,7 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 		// its targets, so the menu needs the same picker a modal
 		// spell's hand card gets.
 		if a.Modes != nil {
-			v.Modes = viewOfModeSpec(g, g.ModeQueryForSourceForEffect(c, caster), abilitySrc, a.Modes)
+			v.Modes = viewOfModeSpec(g, g.ModeQueryForSourceForEffect(c, caster), abilitySrc, a.Modes, game.ModeAbilityOf(c, a.Label))
 		}
 		out = append(out, v)
 	}
@@ -8359,4 +8388,16 @@ func viewOfTableSettings(s game.TableSettings) *TableSettingsView {
 		BotPace:         string(s.BotPace),
 		AllowSpawn:      s.AllowSpawn,
 	}
+}
+
+// modeMemoryWire is the wire spelling of a "that hasn't been chosen"
+// restriction (ADR 0097): "this_turn", "ever", or "" for none.
+func modeMemoryWire(m game.ModeMemory) string {
+	switch m {
+	case game.ModeMemoryThisTurn:
+		return "this_turn"
+	case game.ModeMemoryEver:
+		return "ever"
+	}
+	return ""
 }

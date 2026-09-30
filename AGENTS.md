@@ -564,6 +564,26 @@ surface tiny.
    `ctx.ModeTargets(occurrence)` — never `item.Targets[0]`, which
    belongs to whichever bullet was chosen first.
 
+   **"Choose one that hasn't been chosen [this turn]" (#1749,
+   [ADR 0097](docs/decisions/0097-modes-that-havent-been-chosen.md))**
+   is a constructor, not a tally in the card file:
+   `ChooseOneNotChosenThisTurn(…)` (Gala Greeters, Monument to
+   Endurance) or `ChooseOneNotChosen(…)` for the form with no
+   duration (Silent Hallcreeper). They are for a trigger or an
+   activated ability only. `Register` refuses them on a spell's
+   `Spec.Modes`, on a `Repeatable` spec, and on an ability with no
+   label, because the label keys the memory. The engine keeps the
+   memory **per object and ability**. It lives in
+   `TurnTally.ModesChosen` or `Card.ModesChosen`, and a permanent that
+   leaves and returns chooses afresh (CR 400.7). It is **never per
+   controller**, so a change of control keeps it. A mode is recorded
+   **when it is chosen**: a countered trigger still used its mode, and
+   a copy records nothing (CR 700.2g). An instance with too few unused
+   modes is removed before any prompt (CR 700.2b), and several
+   instances waiting at once take each other's used modes off their
+   open prompts. Never count resolutions to fake it. That was Teval's
+   Judgment's old shape, and it is the wrong event.
+
 4. **Write the card file.** One file per card at
    `server/internal/cards/effects/<snake_name>.go`:
    ```go

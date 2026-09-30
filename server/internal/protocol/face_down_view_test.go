@@ -324,7 +324,7 @@ func everyFieldCastSurface(lt *LegalTargetsView) CastSurfaceView {
 		// a strip rather than a struct that was empty anyway.
 		Modes: &ModeSpecView{Prompt: "Choose one", Min: 1, Max: 1, Options: []ModeOptionView{{
 			Label: "mode", TargetMode: "creature", LegalTargets: lt, Clauses: []LegalTargetsView{*lt, *lt},
-			Cost: "{1}{U}",
+			Cost: "{1}{U}", Used: true,
 		}}},
 		AdditionalCost: &AdditionalCostView{DiscardCards: 1},
 		AlternativeCosts: []AlternativeCostView{{
@@ -774,6 +774,11 @@ var modeOptionScopes = map[string]castSurfaceScope{
 	// cost is the printed clause ("+ {1}{U} — ..."), not a board-
 	// derived answer, so it travels with Label and TargetMode.
 	"Cost": surfacePublicPile,
+	// ADR 0097: whether this object's ability has already chosen the
+	// bullet. Off the board, but the same answer for every viewer —
+	// the choice was made in public — and never set on a hand card,
+	// whose modes are a spell's and remember nothing.
+	"Used": surfacePublicPile,
 	// #1172: the legal sets. Narrowed by hexproof, shroud, protection
 	// and "target opponent", so seat A's is not seat B's to read.
 	"LegalTargets": surfacePrivate,

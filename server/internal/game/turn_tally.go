@@ -221,6 +221,16 @@ type TurnTally struct {
 	// log, so it clones, snapshots and undoes with the rest of the
 	// turn's record. uuid.Nil when nobody was.
 	MonarchAtStart uuid.UUID `json:"monarchAtStart,omitempty"`
+	// ModesChosen is "choose one that hasn't been chosen this turn"
+	// (ADR 0097, #1749): the option indexes each modal ability has
+	// chosen this turn, ascending, keyed by ObjectTallyKey(source,
+	// epoch, label) — PER OBJECT for #936's reason, so a permanent
+	// that left and came back chooses afresh, and never per
+	// controller, so a change of control keeps it (the Demonic Pact
+	// ruling). Written when the mode is CHOSEN, not at resolution,
+	// and flushed with the rest of the tally when the turn begins.
+	// Read through Game.modesChosenLocked. See mode_memory.go.
+	ModesChosen map[string][]int `json:"modesChosen,omitempty"`
 }
 
 // TallyKey names one printed ability of one CARD: the source's
@@ -658,6 +668,7 @@ func cloneTurnTally(t TurnTally) TurnTally {
 	out.Triggered = copyStringIntMap(t.Triggered)
 	out.LoopRun = copyStringIntMap(t.LoopRun)
 	out.LoopAllowance = copyStringIntMap(t.LoopAllowance)
+	out.ModesChosen = copyModesChosen(t.ModesChosen)
 	// #1238: a fresh backing array, not the same slice header. The
 	// clone is an undo restore point and the live game keeps
 	// appending to its own list; sharing the array would let a cast

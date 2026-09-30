@@ -373,6 +373,9 @@ var cardFields = plan(
 	// chosen as the permanent entered. A player's choice, so nothing
 	// can rebuild it — and it decides which printed ability exists.
 	"ChosenOption", carried, "",
+	// ADR 0097: the "hasn't been chosen" memory with no duration —
+	// player choices nothing can re-derive.
+	"ModesChosen", carried, "",
 	// #653 / #664, CR 400.7d: what the spell that became this
 	// permanent was cast for — the alternative cost and the optional
 	// additional costs, one record. Carried, and it is the field here
@@ -705,6 +708,11 @@ var pendingChoiceFields = plan(
 	"ModeMin", carried, "",
 	"ModeMax", carried, "",
 	"ModeRepeatable", carried, "",
+	// ADR 0097: the used half of the offer and which restriction it
+	// is — shown greyed by the picker, so carried with the offer.
+	"ModeUsedIndex", carried, "",
+	"ModeUsedLabel", carried, "",
+	"ModeNotChosen", carried, "",
 	"SacrificeOptions", carried, "",
 	"CopyOptions", carried, "",
 	"ScryCards", carried, "",

@@ -708,6 +708,11 @@ type cardSnapshot struct {
 	// the permanent's two printed abilities exists, so a restore that
 	// lost it would bring a Siege back with neither.
 	ChosenOption string `json:"chosenOption,omitempty"`
+	// ModesChosen is ADR 0097's "hasn't been chosen" memory with no
+	// duration. Carried for ChosenPlayer's reason: a player made the
+	// choices and nothing can re-derive them, so a restore that lost
+	// it would hand Silent Hallcreeper its used modes back.
+	ModesChosen map[string][]int `json:"modesChosen,omitempty"`
 	// Provenance is CR 400.7d: what the spell that became this
 	// permanent was cast for — the alternative cost (#653) and the
 	// optional additional costs (#664, ADR 0073 §5), in one record.
@@ -1127,6 +1132,9 @@ type pendingChoiceSnapshot struct {
 	ModeMin          int            `json:"modeMin,omitempty"`
 	ModeMax          int            `json:"modeMax,omitempty"`
 	ModeRepeatable   bool           `json:"modeRepeatable,omitempty"`
+	ModeUsedIndex    []int          `json:"modeUsedIndex,omitempty"`
+	ModeUsedLabel    []string       `json:"modeUsedLabel,omitempty"`
+	ModeNotChosen    ModeMemory     `json:"modeNotChosen,omitempty"`
 	SacrificeOptions []uuid.UUID    `json:"sacrificeOptions,omitempty"`
 	CopyOptions      []uuid.UUID    `json:"copyOptions,omitempty"`
 	ScryCards        []uuid.UUID    `json:"scryCards,omitempty"`
@@ -1743,6 +1751,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		ChosenPlayer:             c.ChosenPlayer,
 		ChosenName:               c.ChosenName,
 		ChosenOption:             c.ChosenOption,
+		ModesChosen:              copyModesChosen(c.ModesChosen),
 		ClassLevel:               c.ClassLevel,
 		Solved:                   c.Solved,
 		Harnessed:                c.Harnessed,
@@ -2018,6 +2027,9 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		ModeMin:              c.ModeMin,
 		ModeMax:              c.ModeMax,
 		ModeRepeatable:       c.ModeRepeatable,
+		ModeUsedIndex:        copyInts(c.ModeUsedIndex),
+		ModeUsedLabel:        copyStrings(c.ModeUsedLabel),
+		ModeNotChosen:        c.ModeNotChosen,
 		SacrificeOptions:     copyUUIDs(c.SacrificeOptions),
 		CopyOptions:          copyUUIDs(c.CopyOptions),
 		ScryCards:            copyUUIDs(c.ScryCards),
@@ -2475,6 +2487,7 @@ func restoreCard(c *cardSnapshot) Card {
 		ChosenPlayer:             c.ChosenPlayer,
 		ChosenName:               c.ChosenName,
 		ChosenOption:             c.ChosenOption,
+		ModesChosen:              copyModesChosen(c.ModesChosen),
 		ClassLevel:               c.ClassLevel,
 		Solved:                   c.Solved,
 		Harnessed:                c.Harnessed,
@@ -2751,6 +2764,9 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		ModeMin:              c.ModeMin,
 		ModeMax:              c.ModeMax,
 		ModeRepeatable:       c.ModeRepeatable,
+		ModeUsedIndex:        copyInts(c.ModeUsedIndex),
+		ModeUsedLabel:        copyStrings(c.ModeUsedLabel),
+		ModeNotChosen:        c.ModeNotChosen,
 		SacrificeOptions:     copyUUIDs(c.SacrificeOptions),
 		CopyOptions:          copyUUIDs(c.CopyOptions),
 		ScryCards:            copyUUIDs(c.ScryCards),
