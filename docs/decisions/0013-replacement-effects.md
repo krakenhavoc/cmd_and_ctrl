@@ -8,6 +8,7 @@
 **Amended:** 2026-09-17 · Branch `fix/815-847-replacement-outcomes` — §5d's landed-outcome rule now decides the destruction COUNT as well, see [§5i](#5i-amendment-2026-09-17-destroyed-this-way-counts-what-was-destroyed)
 **Amended:** 2026-09-19 · Branch `feat/1027-1026-discard-continuation-and-springbloom` — §5x's run is shared with the prompted DISCARD, and §5g's "no continuation form" note is closed, see [§5y](#5y-amendment-2026-09-19-a-prompted-discard-is-the-same-run-and-both-verbs-share-one-body)
 **Amended:** 2026-09-22 · Branch `feat/amount-replacements` — §13's deferred `RepEventManaProduced` is answered and the draw event grows a COUNT, see [§5ab](#5ab-amendment-2026-09-22-the-last-two-amount-replacements--mana-produced-and-cards-drawn)
+**Amended:** 2026-09-29 · Branch `fix/shuffle-after-replacement-1735` — a redirected library destination can now be a genuine shuffle, not just a placement, see [§5ah](#5ah-amendment-2026-09-29-a-redirected-library-destination-can-ask-for-a-shuffle)
 
 ## Context
 
@@ -3884,6 +3885,122 @@ permanent is a use of it even when nothing is paid.
 The refusal is `ErrChoicePending` with nothing moved or paid. Once the
 owner answers, the card is wherever the answer sent it and is cast from
 there as usual (from the command zone, for a commander the owner kept).
+
+### 5ah. Amendment, 2026-09-29: a redirected library destination can ask for a shuffle
+
+*Amendment, 2026-09-29, branch `fix/shuffle-after-replacement-1735`.
+Relates to [#1735](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1735).*
+
+§2's `NewZone` lets a `Replace` redirect a move's destination — Library
+of Leng's hand → top-of-library, Stone of Erech's graveyard → exile,
+Blightsteel Colossus's graveyard → library. What none of them could say
+is HOW the card lands there. Library of Leng means it, literally, on
+top; Blightsteel Colossus's printed text is "shuffle it into its
+owner's library instead," and the engine had no way to tell the two
+apart. Before this amendment Blightsteel shipped as a declared caveat:
+the card landed on top of its own library, a real information leak —
+every player at the table knows the top card — that "reveal" does not
+excuse, because the printed card reveals WHICH card, never WHERE it
+ends up. The Eldrazi titans' own graveyard clause turned out NOT to be
+the same shape on inspection (closing note below) and is untouched by
+this amendment.
+
+**1. `ShuffleDestinationLibrary` is a bool on the event, set by the
+same `Replace` that rewrites `NewZone`.** Declared, not derived, for
+the same reason `Destruction` and `Mill` are (§5d, §5s): nothing about
+a library destination says whether the printed text placed the card or
+shuffled it, and guessing wrong is either a Library of Leng discard
+that shuffles when it should sit on top, or a Blightsteel that stays
+on top when it should shuffle. It rides `ReplacementEvent`
+(`replacements.go`), next to `NewZone`/`NewZoneOwner`, because it is
+consumed exactly once, by whichever of the two exit primitives
+actually performs the landing.
+
+**2. Consumed at the landing, not at the redirect — the two places a
+replaced move actually happens.** `Replace` runs before anything
+moves; the shuffle has to run after, once the card is actually IN a
+library, or a further replacement (or a redirect to a missing player)
+could still send it somewhere else. Two functions perform every
+replaced move's physical landing — `executeBattlefieldLeaveLocked`
+(a battlefield exit: destroy, sacrifice, an SBA) and
+`executeZoneRouteLocked` (every other exit: discard, mill, exile,
+bounce, tuck, counter, `zone_route.go`) — and both now read the flag
+off the settled event and call `ShuffleLibraryForEffect` on whichever
+player's library the card landed in, never on a destination the window
+redirected elsewhere. `executeBattlefieldLeaveLocked` grew a
+`shuffleAfter bool` parameter rather than reading the flag off an
+event, because its signature already outlives the `*ReplacementEvent`
+that produced it (`finishBattlefieldLeaveLocked` calls it with the
+settled `dest`/`destOwner` apart from `ev`); every other caller (the
+two `leave_game.go` cleanup sweeps) passes `false`.
+
+**3. A redirect back into the SAME library the card started in is
+still a shuffle, not a no-op.** `executeZoneRouteLocked` already
+special-cases `dstZone == src` as nothing-to-do — a card whose
+redirected destination is the exact zone it is already in never runs
+`MoveCard`. That is correct for a placement (Library of Leng redirects
+hand → library, never triggering this case), but it is exactly the
+shape a MILLED Blightsteel takes: the card is already in its owner's
+library (that is where a mill reads it from), so the redirected
+`NewZone == ZoneLibrary` resolves to the very `*Zone` it started in,
+and the pre-existing early return skipped the card entirely — leaving
+a milled Blightsteel exactly on top, un-shuffled, silently not milled.
+`ShuffleDestinationLibrary` is now checked inside that branch too: no
+move is needed (there is nowhere to move it FROM), but the shuffle
+still runs, because "shuffle it into its own library" is true even
+when the library in question is the one the card never left.
+
+**4. `ShuffleLibraryForEffect` already did the information-theoretic
+work; this only had to call it in the right place.** It shuffles with
+the game's own RNG stream and clears every card's Known-by in that
+library (#1335) — the "reveal it, then it's hidden again" contract —
+so no extra plumbing was needed for the knowledge side once the hook
+existed. It also emits `EventSearchLibrary` with `Label: "shuffle"`,
+which is what a test (or a future Storm-Kiln-Artist-style payoff)
+reads to confirm a shuffle actually ran, as distinct from a card that
+merely ended up in the right zone.
+
+**5. A discard is its own `ReplacementEventKind` (§5g), and a catalog
+card that wants "from anywhere" has to say so twice.** Blightsteel's
+`AppliesTo` checked only `RepEventMove`, and §5g's closing note flagged
+why that was survivable at the time: "every `RepEventMove` watcher in
+the catalog gates on `OldZone == ZoneBattlefield` or
+`NewZone == ZoneBattlefield`," so nothing in the catalog cared that a
+discard is `RepEventDiscard` under a different `Watches` key
+(`EventDiscardCard`, not `EventZoneMove`) rather than a special case of
+the ordinary move. Blightsteel is the first catalog card whose
+`AppliesTo` genuinely means "from anywhere" including a discard, and it
+now declares both keys and checks `ev.Kind == RepEventMove ||
+ev.Kind == RepEventDiscard` — the same pair `isExitMove` already
+names internally for the engine's own exit bookkeeping, now spelled
+out because a card file cannot call an unexported helper. The next
+"from a graveyard/hand/anywhere" catalog card should do the same
+rather than rediscover the gap.
+
+**Closing note: the Eldrazi titans are not this card's shape.**
+Ulamog, the Infinite Gyre; Kozilek, Butcher of Truth; and Emrakul, the
+Aeons Torn all print "When ~ is put into a graveyard from anywhere,
+its owner shuffles THEIR GRAVEYARD into their library" — a triggered
+ability that shuffles the whole graveyard, fired AFTER the titan has
+actually settled into it, not a replacement that redirects the titan's
+own destination before it lands. It reads as the same clause at a
+glance and is a different mechanic: no `ReplacementEffect` is
+involved, the titan really does go to the graveyard (and could be
+brought back by a graveyard-recursion effect an instant before the
+trigger resolves), and the payoff is "shuffle everything a player's
+graveyard holds," not "shuffle this one card in." None of the three
+are catalogued today, and none is a one-file addition regardless: each
+also prints Annihilator (CR 702.86), which the engine does not
+implement, and a cast trigger of its own (destroy a permanent /
+draw four / take an extra turn). Cataloguing any of them without
+Annihilator would ship a titan strictly weaker than printed in one
+respect and require the shuffle-the-graveyard trigger this amendment
+does not build; cataloguing one WITH a hand-rolled Annihilator would be
+new engine machinery disguised as a card file, which is a seam of its
+own and out of scope here. Filed for the record rather than as a
+tracked follow-up: the graveyard-shuffle trigger is straightforward
+whenever a titan is chosen for the catalog, and Annihilator is the
+actual gate.
 
 ### 6. Six pipeline integration points (five mutations + step transition)
 

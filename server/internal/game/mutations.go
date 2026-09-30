@@ -4681,7 +4681,7 @@ func (g *Game) finishBattlefieldLeaveLocked(ev *ReplacementEvent, owner *Player)
 		closeBatch = g.publishSimultaneousExitLocked(ev.zoneRoute.simultaneousExit)
 	}
 	defer closeBatch()
-	moveErr := g.executeBattlefieldLeaveLocked(ev.CardID, ev.NewZone, ev.NewZoneOwner, owner)
+	moveErr := g.executeBattlefieldLeaveLocked(ev.CardID, ev.NewZone, ev.NewZoneOwner, owner, ev.ShuffleDestinationLibrary)
 	tailErr := g.runRouteTailLocked(ev.zoneRoute)
 	if moveErr != nil {
 		return moveErr
@@ -4704,8 +4704,15 @@ func (g *Game) finishBattlefieldLeaveLocked(ev *ReplacementEvent, owner *Player)
 // until the cleanup step (CR 514.2) like every other damaged
 // permanent.
 //
+// shuffleAfter is ADR 0013 §5ah's ShuffleDestinationLibrary carried
+// down as a plain bool, since this function takes the settled
+// destination apart from the *ReplacementEvent it came from. True
+// only for a replacement that redirected NewZone to ZoneLibrary as a
+// genuine shuffle-in (Blightsteel Colossus, the Eldrazi titans)
+// rather than a placement; every other caller passes false.
+//
 // Caller must hold g.mu.
-func (g *Game) executeBattlefieldLeaveLocked(cardID uuid.UUID, dest ZoneKind, destOwner uuid.UUID, owner *Player) error {
+func (g *Game) executeBattlefieldLeaveLocked(cardID uuid.UUID, dest ZoneKind, destOwner uuid.UUID, owner *Player, shuffleAfter bool) error {
 	var destZone *Zone
 	var actor uuid.UUID
 	switch dest {
@@ -4780,6 +4787,16 @@ func (g *Game) executeBattlefieldLeaveLocked(cardID uuid.UUID, dest ZoneKind, de
 		return err
 	}
 	g.markCardKnownInZoneLocked(destZone, cardID)
+	// ADR 0013 §5ah: the card has now actually landed in `dest`, so a
+	// caller that asked for a shuffle-in gets it here — the one place
+	// both this route and executeZoneRouteLocked perform the physical
+	// landing. ShuffleLibraryForEffect also clears every card's
+	// Known-by in that library (its own #1335 contract), which is what
+	// makes this the honest "reveal it, then it's hidden again" rather
+	// than a card that keeps the knowledge a battlefield death gave it.
+	if shuffleAfter && dest == ZoneLibrary {
+		_ = g.ShuffleLibraryForEffect(destZone.Owner)
+	}
 	g.EmitEvent(Event{
 		Kind:    EventZoneMove,
 		Actor:   actor,

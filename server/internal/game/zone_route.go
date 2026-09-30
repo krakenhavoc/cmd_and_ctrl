@@ -649,13 +649,30 @@ func (g *Game) executeZoneRouteLocked(ev *ReplacementEvent) (err error) {
 		g.spellCopyLeavesStackLocked(ev.CardID, r)
 		return nil
 	}
-	dstZone, actor, err := g.routeDestinationLocked(ev.CardID, ev.NewZone, ev.NewZoneOwner)
+	// dstOwnerID is kept alongside `actor` because the two diverge: a
+	// route's own Actor (below) is who is stamped on the emitted event
+	// (the mover), while dstOwnerID is whoever's ZONE the card actually
+	// landed in — the one ShuffleDestinationLibrary below needs, since
+	// "shuffle it into ITS OWNER'S library" names the card's owner, not
+	// necessarily the player the move is attributed to.
+	dstZone, dstOwnerID, err := g.routeDestinationLocked(ev.CardID, ev.NewZone, ev.NewZoneOwner)
 	if err != nil {
 		return err
 	}
 	if dstZone == src {
+		// The redirected destination is the zone the card is already
+		// in — a mill or a library-search redirecting a card BACK into
+		// the same library it was about to leave (Blightsteel milled
+		// from the top). There is no move to make, MoveCard included,
+		// but ShuffleDestinationLibrary still means something here: the
+		// card is not going anywhere, and it still has to end up at a
+		// random position rather than exactly where it started. #1735.
+		if ev.ShuffleDestinationLibrary && dstZone.Kind == ZoneLibrary {
+			_ = g.ShuffleLibraryForEffect(dstOwnerID)
+		}
 		return nil
 	}
+	actor := dstOwnerID
 	if r.Actor != uuid.Nil {
 		actor = r.Actor
 	}
@@ -735,6 +752,19 @@ func (g *Game) executeZoneRouteLocked(ev *ReplacementEvent) (err error) {
 		} else {
 			dstZone.InsertFromTop(c, r.Depth)
 		}
+	}
+	// ADR 0013 §5ah: "shuffle it into its owner's library instead" is
+	// a genuine shuffle, not a placement — Blightsteel Colossus and
+	// the Eldrazi titans' graveyard clause both leak the card's
+	// position if it merely lands. Runs after any ToBottom/Depth
+	// reposition above (moot against a full shuffle, but this is the
+	// one place both can never race each other) and only once the
+	// card has actually settled in a library — dstZone.Kind is the
+	// SETTLED destination, already past any further redirect this
+	// window applied. dstOwnerID is a real player ID here or
+	// routeDestinationLocked would have returned ErrPlayerNotFound.
+	if ev.ShuffleDestinationLibrary && dstZone.Kind == ZoneLibrary {
+		_ = g.ShuffleLibraryForEffect(dstOwnerID)
 	}
 	if src.Kind == ZoneStack {
 		// #1318: the source zone decides, not a flag on the route. A
