@@ -511,6 +511,37 @@ func (e *enumerator) choiceMoves() bool {
 				})
 			}
 
+		case game.PendingChoiceEntryController:
+			// ADR 0102, CR 614.12a: "enters under the control of an
+			// opponent of your choice". One answer per offered seat.
+			// ResolveEntryController accepts every one of them — the
+			// options are the chooser's opponents still in the game, and
+			// the seat prune takes a departed one off the open prompt —
+			// so each is legal, and the first is marked always-legal as
+			// option_pick's is. Which seat is right is the policy's
+			// decision, read off the prompt's control_purpose.
+			for i, opt := range c.PickOptions {
+				p := base()
+				idx := i
+				p.OptionIndex = &idx
+				label := opt.Label
+				if label == "" {
+					label = "seat " + strconv.Itoa(i+1)
+				}
+				if i == 0 {
+					e.addAlwaysLegalChoice(c, reason+": "+label, p)
+					continue
+				}
+				e.add(Move{
+					Type:   TypeResolveChoice,
+					Player: e.seat,
+					Kind:   KindChoice,
+					Label:  reason + ": " + label,
+					Source: c.Source,
+					Params: mustJSON(p),
+				})
+			}
+
 		case game.PendingChoiceChooseCards, game.PendingChoiceUntapChoice,
 			game.PendingChoiceEntryRevealFromHand, game.PendingChoiceEntryDiscardFromHand,
 			game.PendingChoiceEntrySacrifice, game.PendingChoiceRevealPick,

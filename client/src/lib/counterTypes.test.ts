@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { COUNTER_MINUS_ONE, COUNTER_PLUS_ONE, COUNTER_STYLES, counterStyle } from "./counterTypes";
+import {
+  COUNTER_MINUS_ONE,
+  COUNTER_PLUS_ONE,
+  COUNTER_STYLES,
+  KEYWORD_COUNTER_KINDS,
+  counterStyle,
+} from "./counterTypes";
 
 // counterTypes.test.ts — #1664. Every P/T counter kind changes power
 // and toughness on the server now, so the pip has to say which kind it
@@ -24,5 +30,24 @@ describe("counterStyle", () => {
     expect(counterStyle("polyp").abbr).toBe("pol");
     expect(counterStyle("1/1").abbr).toBe("1/1");
     expect(counterStyle("+X/+X").abbr).toBe("+X/");
+  });
+});
+
+describe("keyword counters (ADR 0101)", () => {
+  it("pins a style for every keyword counter kind, all one colour", () => {
+    const colors = new Set<string>();
+    for (const kind of KEYWORD_COUNTER_KINDS) {
+      const style = COUNTER_STYLES[kind];
+      expect(style, kind).toBeDefined();
+      expect(counterStyle(kind)).toBe(style);
+      if (style) colors.add(style.color);
+    }
+    expect(colors.size).toBe(1);
+    expect(KEYWORD_COUNTER_KINDS).toHaveLength(13);
+  });
+
+  it("gives each keyword counter a distinct abbreviation", () => {
+    const abbrs = KEYWORD_COUNTER_KINDS.map((k) => counterStyle(k).abbr);
+    expect(new Set(abbrs).size).toBe(abbrs.length);
   });
 });

@@ -655,9 +655,14 @@ type cardSnapshot struct {
 	BattleX          float64             `json:"battleX"`
 	BattleY          float64             `json:"battleY"`
 	Counters         map[string]int      `json:"counters,omitempty"`
-	IsCommander      bool                `json:"isCommander"`
-	AttackingTarget  uuid.UUID           `json:"attackingTarget"`
-	BlockingTarget   uuid.UUID           `json:"blockingTarget"`
+	// CounterStampedAt is Card.CounterStampedAt (ADR 0101): the CR
+	// 613.7c timestamp of each keyword counter kind. Additive within v7;
+	// an older file has none, and an unstamped keyword counter is
+	// ordered at its permanent's own timestamp.
+	CounterStampedAt map[string]int64 `json:"counterStampedAt,omitempty"`
+	IsCommander      bool             `json:"isCommander"`
+	AttackingTarget  uuid.UUID        `json:"attackingTarget"`
+	BlockingTarget   uuid.UUID        `json:"blockingTarget"`
 	// AlsoBlocking is Card.AlsoBlocking (#1706): the attackers a
 	// multi-blocker blocks after blockingTarget. Omitted for every
 	// ordinary blocker, so an older file restores exactly as before.
@@ -1116,6 +1121,7 @@ type pendingChoiceSnapshot struct {
 	CoinWins             int                    `json:"coinWins,omitempty"`
 	ColorOptions         []string               `json:"colorOptions,omitempty"`
 	ColorPurpose         ColorPurpose           `json:"colorPurpose,omitempty"`
+	ControlPurpose       ControlPurpose         `json:"controlPurpose,omitempty"`
 	ManaRestrictions     []string               `json:"manaRestrictions,omitempty"`
 	ManaRiders           []ManaSpendRider       `json:"manaRiders,omitempty"`
 	ManaSourceKinds      ManaSourceKinds        `json:"manaSourceKinds,omitempty"`
@@ -1739,6 +1745,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		BattleX:                  c.BattleX,
 		BattleY:                  c.BattleY,
 		Counters:                 copyStringIntMap(c.Counters),
+		CounterStampedAt:         copyStringInt64Map(c.CounterStampedAt),
 		IsCommander:              c.IsCommander,
 		AttackingTarget:          c.AttackingTarget,
 		BlockingTarget:           c.BlockingTarget,
@@ -2041,6 +2048,7 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		CoinWins:             c.CoinWins,
 		ColorOptions:         copyStrings(c.ColorOptions),
 		ColorPurpose:         c.ColorPurpose,
+		ControlPurpose:       c.ControlPurpose,
 		ManaRestrictions:     copyStrings(c.ManaRestrictions),
 		ManaRiders:           copyManaRiders(c.ManaRiders),
 		ManaSourceKinds:      c.ManaSourceKinds,
@@ -2499,6 +2507,7 @@ func restoreCard(c *cardSnapshot) Card {
 		BattleX:                  c.BattleX,
 		BattleY:                  c.BattleY,
 		Counters:                 copyStringIntMap(c.Counters),
+		CounterStampedAt:         copyStringInt64Map(c.CounterStampedAt),
 		IsCommander:              c.IsCommander,
 		AttackingTarget:          c.AttackingTarget,
 		BlockingTarget:           c.BlockingTarget,
@@ -2784,6 +2793,7 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		CoinWins:             c.CoinWins,
 		ColorOptions:         copyStrings(c.ColorOptions),
 		ColorPurpose:         c.ColorPurpose,
+		ControlPurpose:       c.ControlPurpose,
 		ManaRestrictions:     copyStrings(c.ManaRestrictions),
 		ManaRiders:           copyManaRiders(c.ManaRiders),
 		ManaSourceKinds:      c.ManaSourceKinds,

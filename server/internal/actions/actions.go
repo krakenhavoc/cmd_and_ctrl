@@ -1536,6 +1536,12 @@ func dispatch(g *game.Game, a Action) error {
 		if kind, ok := g.PendingChoiceKindFor(choiceID); ok && kind == game.PendingChoiceOptionPick {
 			return g.ResolveOptionPick(choiceID, a.Player, p.OptionIndex)
 		}
+		// ADR 0102, CR 614.12a: "enters under the control of an
+		// opponent of your choice". The same {option_index} payload as
+		// option_pick, routed by kind for the same reason.
+		if kind, ok := g.PendingChoiceKindFor(choiceID); ok && kind == game.PendingChoiceEntryController {
+			return g.ResolveEntryController(choiceID, a.Player, p.OptionIndex)
+		}
 		// #764, CR 603.3c: the mode of a modal triggered ability,
 		// chosen as the ability is put on the stack. Routed by kind
 		// for the same reason the two above are.

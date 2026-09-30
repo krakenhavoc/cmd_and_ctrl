@@ -180,6 +180,7 @@ func (g *Game) enterBattlefieldThroughPipelineLocked(ev *ReplacementEvent) (ente
 	}
 	defer g.clearReplacementEventLocked(ev.ID)
 	if out == nil || out.Canceled {
+		g.restoreEntryControllerLocked(ev)
 		// CR 614.10 with a null replacement. The caller's continuation
 		// still runs — see runEntryTailLocked.
 		return uuid.Nil, nil
@@ -234,12 +235,20 @@ func (g *Game) moveRedirectedEntryLocked(ev *ReplacementEvent) error {
 	if src.Kind != ev.OldZone || src.Kind == ZoneBattlefield {
 		return nil
 	}
-	if ev.landPlay && ev.Actor != uuid.Nil {
+	// ADR 0102: the land drop is the player's who played it, and an
+	// entry-controller effect's re-stamp does not follow the card
+	// anywhere but the battlefield.
+	landPlayer := ev.landPlayer
+	if landPlayer == uuid.Nil {
+		landPlayer = ev.Actor
+	}
+	if ev.landPlay && landPlayer != uuid.Nil {
 		if g.LandsPlayedThisTurn == nil {
 			g.LandsPlayedThisTurn = make(map[uuid.UUID]int)
 		}
-		g.LandsPlayedThisTurn[ev.Actor]++
+		g.LandsPlayedThisTurn[landPlayer]++
 	}
+	g.restoreEntryControllerLocked(ev)
 	dst, _, err := g.routeDestinationLocked(ev.CardID, ev.NewZone, ev.NewZoneOwner)
 	if err != nil {
 		return err
@@ -286,6 +295,7 @@ func (g *Game) resetAsNewObjectLocked(oldID uuid.UUID) uuid.UUID {
 		c.Tapped = false
 		c.NextUntapSkips = nil
 		c.Counters = nil
+		c.CounterStampedAt = nil
 		c.LostLastCounter = false
 		c.KnownBy = nil
 		c.DamageMarked = 0

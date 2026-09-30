@@ -18,6 +18,26 @@ export const COUNTER_SHIELD = "shield";
 export const COUNTER_LORE = "lore";
 export const COUNTER_AGE = "age";
 
+// Keyword counter kinds (CR 122.1b, ADR 0101). Mirrors
+// keywordCounterKinds in server/internal/game/keyword_counters.go: the
+// kind IS the keyword it grants, and the server adds that keyword to the
+// card's `abilities`, so the badge row shows it beside this pip.
+export const KEYWORD_COUNTER_KINDS: readonly string[] = [
+  "flying",
+  "first strike",
+  "double strike",
+  "deathtouch",
+  "haste",
+  "hexproof",
+  "indestructible",
+  "lifelink",
+  "menace",
+  "reach",
+  "shadow",
+  "trample",
+  "vigilance",
+];
+
 // Player-level counter type identifiers.
 export const COUNTER_POISON = "poison";
 export const COUNTER_ENERGY = "energy";
@@ -37,6 +57,9 @@ export interface CounterStyle {
   glyph?: string;
 }
 
+// KEYWORD_COUNTER_COLOR is the pip colour every keyword counter shares.
+const KEYWORD_COUNTER_COLOR = "#4f7fbf";
+
 // COUNTER_STYLES is the iconography pin map. Unknown counter names
 // fall back to neutral styling (see counterStyle() below).
 export const COUNTER_STYLES: Record<string, CounterStyle> = {
@@ -54,6 +77,21 @@ export const COUNTER_STYLES: Record<string, CounterStyle> = {
   [COUNTER_ENERGY]: { abbr: "E", color: "#e0c050", glyph: "⚡" },
   [COUNTER_EXPERIENCE]: { abbr: "Exp", color: "#d0a050", glyph: "⭐" },
   [COUNTER_RAD]: { abbr: "Rad", color: "#a8c050", glyph: "☢" },
+  // Keyword counters (ADR 0101): one colour for the family, and an
+  // abbreviation that names the keyword.
+  flying: { abbr: "Fly", color: KEYWORD_COUNTER_COLOR },
+  "first strike": { abbr: "1st", color: KEYWORD_COUNTER_COLOR },
+  "double strike": { abbr: "2x", color: KEYWORD_COUNTER_COLOR },
+  deathtouch: { abbr: "DT", color: KEYWORD_COUNTER_COLOR },
+  haste: { abbr: "Hst", color: KEYWORD_COUNTER_COLOR },
+  hexproof: { abbr: "Hex", color: KEYWORD_COUNTER_COLOR },
+  indestructible: { abbr: "Ind", color: KEYWORD_COUNTER_COLOR },
+  lifelink: { abbr: "LL", color: KEYWORD_COUNTER_COLOR },
+  menace: { abbr: "Men", color: KEYWORD_COUNTER_COLOR },
+  reach: { abbr: "Rch", color: KEYWORD_COUNTER_COLOR },
+  shadow: { abbr: "Shd", color: KEYWORD_COUNTER_COLOR },
+  trample: { abbr: "Trm", color: KEYWORD_COUNTER_COLOR },
+  vigilance: { abbr: "Vig", color: KEYWORD_COUNTER_COLOR },
 };
 
 const NEUTRAL_STYLE: CounterStyle = { abbr: "?", color: "#6c7a99" };

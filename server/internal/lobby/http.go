@@ -1891,6 +1891,10 @@ func writeAutoTapPreview(
 		Tap        bool   `json:"tap,omitempty"`
 		Sacrifice  bool   `json:"sacrifice,omitempty"`
 		ExileCards bool   `json:"exile,omitempty"`
+		// #1621: a costless once-each-turn ability (Vivi Ornitier's
+		// {0}) — nothing tapped, sacrificed or exiled, only this
+		// turn's one use spent.
+		OncePerTurn bool `json:"once_per_turn,omitempty"`
 	}
 	type response struct {
 		OK      bool     `json:"ok"`
@@ -1906,12 +1910,13 @@ func writeAutoTapPreview(
 		for i, e := range plan {
 			body.Plan[i] = e.CardID.String()
 			body.Sources[i] = source{
-				CardID:     e.CardID.String(),
-				Name:       e.Name,
-				Zone:       string(e.Zone),
-				Tap:        e.Taps,
-				Sacrifice:  e.Sacrifices,
-				ExileCards: e.Exiles,
+				CardID:      e.CardID.String(),
+				Name:        e.Name,
+				Zone:        string(e.Zone),
+				Tap:         e.Taps,
+				Sacrifice:   e.Sacrifices,
+				ExileCards:  e.Exiles,
+				OncePerTurn: e.OncePerTurn,
 			}
 		}
 	} else {
@@ -2017,13 +2022,14 @@ func downloadReplay(c Config, w http.ResponseWriter, r *http.Request) error {
 
 // replayViewerID converts a principal into the viewerID string
 // protocol.FilterViewFor expects. A seated player is their own UUID;
-// anyone else is "", the spectator view. The uuid.Nil coercion
-// matters — Nil stringifies to the all-zero UUID, which matches no
-// seat and is NOT what FilterViewFor documents as "no seat". Mirrors
+// anyone else is a spectator and gets protocol.SpectatorViewerID,
+// public information only (#1588). The admin never reaches here: the
+// admin's replay is streamed verbatim. The uuid.Nil coercion matters —
+// Nil stringifies to the all-zero UUID, which matches no seat. Mirrors
 // ws.viewerIDForFilter, which is unexported in that package.
 func replayViewerID(p auth.Principal) string {
 	if p.Role != auth.RolePlayer || p.PlayerID == uuid.Nil {
-		return ""
+		return protocol.SpectatorViewerID
 	}
 	return p.PlayerID.String()
 }

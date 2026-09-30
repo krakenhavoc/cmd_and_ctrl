@@ -1190,6 +1190,9 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 			// a fetched, reanimated or blinked land can pause there now
 			// and was never PLAYED.
 			landPlay: true,
+			// ADR 0102: whose land drop this spends, kept apart from
+			// Actor, which an entry-controller effect may rewrite.
+			landPlayer: playerID,
 		}
 		out, err := g.applyReplacementsLocked(ev)
 		if errors.Is(err, errReplacementPending) {
@@ -1202,6 +1205,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		}
 		defer g.clearReplacementEventLocked(ev.ID)
 		if out == nil || out.Canceled {
+			g.restoreEntryControllerLocked(ev)
 			setFaceInZoneLocked(src, cardID, wasFace)
 			return nil
 		}
@@ -2961,6 +2965,7 @@ func (g *Game) resolveTopOfStackLocked() error {
 		}
 		defer g.clearReplacementEventLocked(ev.ID)
 		if out == nil || out.Canceled {
+			g.restoreEntryControllerLocked(ev)
 			return nil
 		}
 		// #653: THE push, rather than a second copy of it. This branch
@@ -8618,6 +8623,9 @@ func (g *Game) applyCounterByLocked(cardID uuid.UUID, name string, delta int, pl
 			}
 			z.Cards[i].Counters[name] += delta
 			newAmount := z.Cards[i].Counters[name]
+			// ADR 0101 / CR 613.7c: a keyword counter's timestamp moves
+			// on every placement and stays put on a removal.
+			z.Cards[i].stampKeywordCounter(name, delta, newAmount, timeNowUnixNano)
 			if z.Cards[i].Counters[name] <= 0 {
 				delete(z.Cards[i].Counters, name)
 				if len(z.Cards[i].Counters) == 0 {
