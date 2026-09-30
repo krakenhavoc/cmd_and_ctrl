@@ -111,8 +111,9 @@ const PendingChoiceChooseCards PendingChoiceKind = "choose_cards"
 // isCardSetPickKind reports whether a prompt carries the choose-cards
 // payload — ChooseCards / ChooseMin / ChooseMax and a chooseCardsFrame.
 //
-// SIX kinds do. This one; CR 502.3's untap_choice (ADR 0070
-// Decision 2); #1198's entry_reveal_from_hand (ADR 0013 §5z); and
+// EIGHT kinds do. This one; CR 502.3's untap_choice (ADR 0070
+// Decision 2); #1198's entry_reveal_from_hand (ADR 0013 §5z) and
+// ADR 0098's entry_discard_from_hand and entry_sacrifice; and
 // #1214's three resolution-time picks (resolution_pick.go). Each
 // shares the SHAPE and differs in what the player is being asked, in
 // how a bot should score the answer, and — for the three picks — in
@@ -127,11 +128,13 @@ const PendingChoiceChooseCards PendingChoiceKind = "choose_cards"
 //
 // What they do NOT all share is the RESOLVER: entry_reveal_from_hand's
 // continuation is a paused replacement event rather than a card's next
-// sentence, so it settles through its own ResolveEntryRevealFromHand
+// sentence, so it (and ADR 0098's entry_discard_from_hand and
+// entry_sacrifice) settles through ResolveEntryCardChoice
 // instead of resolveCardSetPick.
 func isCardSetPickKind(kind PendingChoiceKind) bool {
 	switch kind {
-	case PendingChoiceChooseCards, PendingChoiceUntapChoice, PendingChoiceEntryRevealFromHand:
+	case PendingChoiceChooseCards, PendingChoiceUntapChoice, PendingChoiceEntryRevealFromHand,
+		PendingChoiceEntryDiscardFromHand, PendingChoiceEntrySacrifice:
 		return true
 	}
 	return isResolutionPickKind(kind)

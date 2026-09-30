@@ -35,7 +35,7 @@ const demonicPactLabel = "Demonic Pact — choose one that hasn't been chosen"
 // "You gain 4 life" happens even if the damage is prevented, because
 // the sentence is not "if you do"; a target that became illegal takes
 // the whole instance with it (CR 608.2b). "Target opponent discards
-// two cards" is the opponent's choice of cards (CR 701.8a).
+// two cards" is the opponent's choice of cards (CR 701.9a).
 //
 // No simplification.
 func init() {

@@ -148,7 +148,7 @@ type zoneRoute struct {
 	// never milled, and no mill payoff should see it.
 	Mill bool
 
-	// Discard flags a discard (CR 701.8a) so the completed move emits
+	// Discard flags a discard (CR 701.9a) so the completed move emits
 	// EventDiscardCard rather than EventZoneMove — the single event
 	// every "whenever you discard a card" payoff keys on, and the one
 	// Syr Konrad's "put into a graveyard from anywhere other than the
@@ -160,7 +160,7 @@ type zoneRoute struct {
 	// payoffs see it; what changed is only where the card ended up.
 	// A mill is the other way round because CR 701.17a defines the
 	// keyword action by its destination ("puts the top N cards of
-	// their library into their graveyard") while CR 701.8a defines a
+	// their library into their graveyard") while CR 701.9a defines a
 	// discard by its SOURCE ("move it from its owner's hand").
 	Discard bool
 
@@ -360,7 +360,7 @@ func (g *Game) runRouteTailLocked(r *zoneRoute) error {
 // nothing (see routeCardToZoneLocked), so the card is still in its old
 // zone and the route's own bookkeeping never happened — which is the
 // same shape a CR 614.10 cancellation has, and the reason a discard
-// abandoned here fires no EventDiscardCard: CR 701.8a defines a
+// abandoned here fires no EventDiscardCard: CR 701.9a defines a
 // discard as the move OUT of the hand, and there was none.
 //
 // WHAT IT OWES IS THE CONTINUATION. #808 made "the player left" a
@@ -795,7 +795,7 @@ func (g *Game) executeZoneRouteLocked(ev *ReplacementEvent) (err error) {
 		r.Cause.stampCause(&out)
 		g.EmitEvent(out)
 	case r.Discard:
-		// CR 701.8a: the discard is the move OUT of the hand, so it
+		// CR 701.9a: the discard is the move OUT of the hand, so it
 		// happened whatever the window did with the destination — a
 		// commander put into the command zone instead was still
 		// discarded, Library of Leng putting it on top of the library

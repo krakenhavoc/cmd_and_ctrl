@@ -512,7 +512,8 @@ func (e *enumerator) choiceMoves() bool {
 			}
 
 		case game.PendingChoiceChooseCards, game.PendingChoiceUntapChoice,
-			game.PendingChoiceEntryRevealFromHand, game.PendingChoiceRevealPick,
+			game.PendingChoiceEntryRevealFromHand, game.PendingChoiceEntryDiscardFromHand,
+			game.PendingChoiceEntrySacrifice, game.PendingChoiceRevealPick,
 			game.PendingChoiceTheirPermanents, game.PendingChoiceOwnPermanents:
 			// "Choose N of these cards." The bounds ride on the
 			// choice, and a prompt may also carry a set-level
@@ -575,6 +576,17 @@ func (e *enumerator) choiceMoves() bool {
 				verb = ": untap"
 			case game.PendingChoiceEntryRevealFromHand:
 				verb = ": reveal"
+			case game.PendingChoiceEntryDiscardFromHand:
+				// ADR 0098: Mox Diamond. Floor zero, so "choose
+				// nothing" (the Mox goes to the graveyard) is the
+				// AlwaysLegal answer above.
+				verb = ": discard"
+			case game.PendingChoiceEntrySacrifice:
+				// ADR 0098 Decision 11: Heart of Yavimaya, Lotus
+				// Vale. Floor N: the offer only asks when N
+				// candidates exist, and an open prompt blocks the
+				// table, so they are still there to be named.
+				verb = ": sacrifice"
 			case game.PendingChoiceTheirPermanents:
 				// The label says WHOSE board is on offer, because a
 				// run of these is one prompt per player and four
@@ -1397,7 +1409,9 @@ func (e *enumerator) cardSetPickPool(c *game.PendingChoice) []uuid.UUID {
 	switch c.Kind {
 	case game.PendingChoiceTheirPermanents, game.PendingChoiceRevealPick:
 		return e.mostValuableFirst(c.ChooseCards)
-	case game.PendingChoiceOwnPermanents:
+	case game.PendingChoiceOwnPermanents, game.PendingChoiceEntryDiscardFromHand, game.PendingChoiceEntrySacrifice:
+		// ADR 0098: a discard or a sacrifice SPENDS what it names, so
+		// the cheapest cards come first and survive the budget.
 		return e.cheapestFuelFirst(c.ChooseCards)
 	}
 	return c.ChooseCards

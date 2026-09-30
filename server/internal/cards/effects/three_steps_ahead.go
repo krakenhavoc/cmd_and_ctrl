@@ -23,7 +23,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // legal to differ, and each re-checked against its OWN clause at
 // resolution (ADR 0065 §2).
 //
-// The discard is the player's OWN choice (CR 701.8a): draw two, THEN
+// The discard is the player's OWN choice (CR 701.9a): draw two, THEN
 // queue the discard prompt, so both freshly drawn cards are legal to
 // keep or discard, exactly as Stern Lesson's identical clause does.
 //

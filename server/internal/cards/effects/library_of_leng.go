@@ -32,7 +32,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // "Discard it, but you may put it on top of your library instead" is
 // exactly what the engine does: the discard HAPPENED — EventDiscardCard
-// fires with the destination the window settled on (CR 701.8a defines
+// fires with the destination the window settled on (CR 701.9a defines
 // a discard by the move out of the hand) — and only where the card
 // ended up changed. So Megrim, Containment Construct and every other
 // "whenever you discard" payoff still sees it.

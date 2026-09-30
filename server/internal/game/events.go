@@ -1217,7 +1217,7 @@ type Event struct {
 
 	// DiscardCause is why a discard happened, on EventDiscardCard: an
 	// effect's instruction, a cost, or the cleanup step's turn-based
-	// action (CR 701.8a, 601.2h, 514.1). Empty on every other kind.
+	// action (CR 701.9a, 601.2h, 514.1). Empty on every other kind.
 	//
 	// It is the distinction the rules draw — ADR 0013 §10a withdrew
 	// the voluntary/involuntary framing — and it rides the public event

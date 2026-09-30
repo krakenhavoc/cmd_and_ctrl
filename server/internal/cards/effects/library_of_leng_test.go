@@ -80,7 +80,7 @@ func TestLibraryOfLengPutsAnEffectDiscardOnTopOfYourLibrary(t *testing.T) {
 	if top := me.Library.Cards[len(me.Library.Cards)-1]; top.InstanceID != card {
 		t.Error("the card is in the library but not on TOP of it")
 	}
-	// CR 701.8a: it was still discarded, so every "whenever you
+	// CR 701.9a: it was still discarded, so every "whenever you
 	// discard" payoff still sees it.
 	if len(w.discards) != 1 {
 		t.Fatalf("EventDiscardCard x %d, want 1", len(w.discards))
