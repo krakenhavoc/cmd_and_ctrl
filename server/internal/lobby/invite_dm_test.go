@@ -363,7 +363,8 @@ func TestInviteDMSurfacesDiscordFailures(t *testing.T) {
 	}{
 		{"403 — no shared guild or DMs closed", http.StatusForbidden, http.StatusUnprocessableEntity, "direct messages closed"},
 		{"429 — Discord throttled the bot", http.StatusTooManyRequests, http.StatusTooManyRequests, "rate-limited"},
-		{"401 — the bot token was rejected", http.StatusUnauthorized, http.StatusBadGateway, "bot credentials"},
+		{"401 — the bot token was rejected", http.StatusUnauthorized, http.StatusFailedDependency, "bot credentials"},
+		{"500 — Discord failed for another reason", http.StatusInternalServerError, http.StatusFailedDependency, "could not send the DM"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

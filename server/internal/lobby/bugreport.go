@@ -361,10 +361,10 @@ func bugReport(c Config, w http.ResponseWriter, r *http.Request) error {
 	url, number, label, err := fileBugIssue(r.Context(), c, bugTitlePrefix+redact.Secrets(title), renderBugIssueBody(in), kind.Label)
 	if err != nil {
 		report.discard()
-		// 502: the report was well-formed, the upstream filing
+		// 424 (not 502, which Cloudflare replaces, #1644): the upstream filing
 		// failed. The client shows a "try again / tell the admin"
 		// message; err carries no secrets (github.Client redacts).
-		return httpError(http.StatusBadGateway, fmt.Sprintf("filing the issue failed: %s", err))
+		return httpError(http.StatusFailedDependency, fmt.Sprintf("filing the issue failed: %s", err))
 	}
 	if report != nil {
 		gameID := ""
@@ -419,7 +419,7 @@ type statusCoder interface{ StatusCode() int }
 // request outright (403 permission, 422 validation), because those
 // are the ones where the issue was definitively NOT created. A
 // timeout or a 5xx is never retried: GitHub may well have created
-// the issue already, and a duplicate is worse than a 502 the
+// the issue already, and a duplicate is worse than a 424 the
 // reporter can act on.
 func fileBugIssue(ctx context.Context, c Config, title, body, label string) (string, int, string, error) {
 	var labels []string

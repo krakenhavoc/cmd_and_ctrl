@@ -2212,7 +2212,21 @@ func resolveDeckSource(ctx context.Context, c Config, w http.ResponseWriter, for
 			// down, etc.) surface via FetchViolation as typed 422
 			// entries so the client renders them the same way it
 			// renders validation violations.
+			//
+			// The summary is the same player sentence /deck-coverage
+			// shows (a Moxfield link says to export and paste the
+			// list, with hint "paste_list"), and the status stays 422
+			// with the violations shape: the client reads .violations
+			// on 422, and Cloudflare passes a 422 body through (#1644).
 			if v, ok := deck.FetchViolation(strings.TrimSpace(source), perr); ok {
+				var fe *deckFetchError
+				if errors.As(newDeckFetchError(strings.TrimSpace(source), perr), &fe) {
+					body := map[string]any{"error": fe.msg, "code": v.Code, "violations": []deck.Violation{v}}
+					if fe.hint != "" {
+						body["hint"] = fe.hint
+					}
+					return nil, nil, true, writeJSON(w, http.StatusUnprocessableEntity, body)
+				}
 				return nil, nil, true, writeDeckViolations(w, perr.Error(), []deck.Violation{v}, nil)
 			}
 			// Unknown-mechanic inside the fetched payload (e.g. a

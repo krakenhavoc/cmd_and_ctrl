@@ -467,7 +467,7 @@ const DeckHintPasteList = "paste_list"
 // DeckAPIError is returned by DeckCoverage and DeckRequest for any
 // non-2xx response the two routes' error tables describe (docs/lobby.md):
 // a fetch error with a code and violations, or the uniform {error}
-// shape a bad body / 503 / 502 uses. Message is always the
+// shape a bad body / 503 / 424 uses. Message is always the
 // player-readable sentence the server sent.
 type DeckAPIError struct {
 	StatusCode int

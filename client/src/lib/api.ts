@@ -748,7 +748,7 @@ export interface BugReportDraft {
 // so it stays the default rather than becoming a legacy path.
 //
 // Throws LobbyApiError on 400 (validation), 413 (too large), 429 (rate
-// limit), 502 (GitHub upstream failure), 503 (feature disabled).
+// limit), 424 (GitHub upstream failure), 503 (feature disabled).
 //
 // Every text field is redacted before it leaves the browser (#721): a
 // reporter who pastes their invite link into the description, or a log

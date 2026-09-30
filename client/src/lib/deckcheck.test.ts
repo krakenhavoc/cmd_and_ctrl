@@ -199,8 +199,8 @@ describe("checkDeck", () => {
       "fetch",
       vi.fn().mockResolvedValue({
         ok: false,
-        status: 502,
-        statusText: "Bad Gateway",
+        status: 424,
+        statusText: "Failed Dependency",
         json: async () => ({
           error:
             "Moxfield blocks our server. On Moxfield, open the deck → Export → Copy plain text, then paste the list here instead.",
@@ -218,7 +218,7 @@ describe("checkDeck", () => {
   });
 
   it("offers no paste on an error without the hint", () => {
-    expect(shouldOfferPaste(new DeckCheckError(502, "x", "upstream_blocked"))).toBe(false);
+    expect(shouldOfferPaste(new DeckCheckError(424, "x", "upstream_blocked"))).toBe(false);
     expect(shouldOfferPaste(new Error("x"))).toBe(false);
   });
 

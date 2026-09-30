@@ -260,7 +260,7 @@ export const cardArt: Action<HTMLImageElement, CardArtParam> = (img, param) => {
   img.addEventListener("error", onError);
   img.addEventListener("load", onLoad);
   // An image can fail before the action attaches — its fetch starts
-  // when `src` is set, and a fast 502 can land first. `complete` with
+  // when `src` is set, and a fast 424 can land first. `complete` with
   // no pixels is a broken image; one still loading, or deferred by
   // loading="lazy", reports complete === false and waits for events.
   if (img.complete && img.naturalWidth === 0) onError();

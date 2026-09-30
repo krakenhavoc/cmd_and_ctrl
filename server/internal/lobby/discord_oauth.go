@@ -120,11 +120,11 @@ func discordCallback(c Config, w http.ResponseWriter, r *http.Request) error {
 	}
 	token, err := c.Discord.ExchangeCode(r.Context(), client, code, entry.CodeVerifier)
 	if err != nil {
-		return httpError(http.StatusBadGateway, err.Error())
+		return httpError(http.StatusFailedDependency, err.Error())
 	}
 	user, err := c.Discord.FetchUser(r.Context(), client, token.AccessToken)
 	if err != nil {
-		return httpError(http.StatusBadGateway, err.Error())
+		return httpError(http.StatusFailedDependency, err.Error())
 	}
 
 	identity := DiscordIdentity{
@@ -405,7 +405,7 @@ func discordAvatar(c Config, w http.ResponseWriter, r *http.Request) error {
 		return httpError(http.StatusBadRequest, "invalid avatar id or hash")
 	}
 	if err != nil {
-		return httpError(http.StatusBadGateway, err.Error())
+		return httpError(http.StatusFailedDependency, err.Error())
 	}
 	return nil
 }

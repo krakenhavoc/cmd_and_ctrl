@@ -117,7 +117,7 @@ lobby bucket.
 - Reports require a session (any role — spectators hit bugs too);
   drive-by spam needs an invite token first, and the rate limit caps
   what a hijacked session can file.
-- If GitHub is down, reports fail with a 502 and the modal says try
+- If GitHub is down, reports fail with a 424 (not 502: Cloudflare replaces an origin 502's body, #1644) and the modal says try
   again / tell the admin — reports are not queued server-side. At
   this scale, a lost report during a GitHub outage is acceptable;
   a persistence queue is not worth its failure modes.
@@ -326,7 +326,7 @@ the reporter said they were filing.
 ### 8.5 A label may never cost the report
 
 A label that doesn't exist, or a token that may not apply it, must not
-turn a report into a 502. When GitHub **rejects** the create (403 or
+turn a report into a 424. When GitHub **rejects** the create (403 or
 422 — the issue was definitively not created), the server re-files it
 unlabelled and logs at error level; the 201 then carries no `label`,
 so the modal doesn't claim one. An unlabelled issue costs one click in
@@ -335,7 +335,7 @@ the report, and nobody ever finds out.
 
 Delivery failures are deliberately *not* retried. A timeout or a 5xx
 may mean GitHub created the issue and lost the response; a duplicate
-issue is worse than the 502 the reporter can act on. That distinction
+issue is worse than the 424 the reporter can act on. That distinction
 is why `github.CreateIssue` now returns a typed `*APIError` carrying
 the status — the decision is made from the status, not by grepping an
 error string.
