@@ -1,6 +1,6 @@
 # ADR 0105 — Highlighting every legal action
 
-**Status:** Proposed · 2026-09-30 · S48 — Client robustness and the surfaces that lie
+**Status:** Accepted · 2026-09-30 (owner decisions below) · S48 — Client robustness and the surfaces that lie
 **Issue:** [#1789](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1789). Relates to [#1621](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1621) (Vivi as a mana source: this ADR is its "make it obvious" half; the auto-tap half is being built separately as a last-resort tier) and [#1622](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1622) (casting from exile).
 **Numbering:** checked with the AGENTS.md §4 sweep on 2026-09-30. I ran `git fetch --all --prune` and listed every `docs/decisions/` file name ever committed on any branch, local or remote (`git log --all --name-only -- docs/decisions/`). The highest number in use is 0102; 0103 and 0104 are reserved for ADRs being written in parallel. No branch has 0105, so this one takes **0105**.
 **Builds on:** [ADR 0033](0033-ai-bot-seat.md) §1 (the legal-move enumerator, "shared with the client"), [ADR 0009](0009-smart-priority-autopass.md) and its #1307 amendment (autopass reads the same move list), [ADR 0047](0047-keyboard-shortcuts.md) §4 ("a shortcut is enabled exactly when the move is legal, and the server says so"), [ADR 0066](0066-granted-cast-and-play-permissions.md) (per-holder cast permissions), [ADR 0062](0062-abilities-and-special-actions-from-the-hand.md) (special actions), [ADR 0093](0093-abilities-granted-to-other-permanents.md) (ability `ref`s), [ADR 0037](0037-unimplemented-card-signal.md) (the unimplemented flag) and [ADR 0077](0077-opponent-board-summary.md) (opponent summary panels).
@@ -85,7 +85,7 @@ Add booleans to `CardView` and the ability rows, computed by new predicates in t
 
 - **Rejected.** This is a second answer to "is this legal now", next to the enumerator. It is the exact shape of #1012 (the view and the enumerator answering "which prices may this cast claim" with two functions) and of #544 (a bot offered what the engine refuses). Most of these stamps would also be private, and then need #1037's per-holder machinery on every surface. The enumerator already runs; stamping from its output is option C.
 
-### C. A digest of the same enumeration, next to the list — recommended
+### C. A digest of the same enumeration, next to the list — chosen
 
 In `enumerateLegalMoves`, **before** `capLegalMoves`, fold each seat's full move list into a compact per-source digest. Ship it beside `legal_moves` through the same unexported-map projection, so it is own-seat only by construction.
 
@@ -98,7 +98,7 @@ Extend `abilityBlocked`: `tap_cost` plus `tapped` plus `summoning_sick` plus `ti
 
 - **Rejected.** It is the S13.3 timing layer that S31 sub-PR 2 deleted. It cannot answer affordability. It would also be wrong silently on every new cost component.
 
-**Recommendation: C.** Highlight from the enumerator's own output, and add the digest so the output survives the cap. If the owner would rather not touch the server at all, A is an acceptable first step: the card-level highlights ship identically, and only the row-level precision and the counts wait.
+**Decision: C** (owner, 2026-09-30). Highlight from the enumerator's own output, and add the digest so the output survives the cap.
 
 ---
 
@@ -167,7 +167,7 @@ What highlights do **not** say:
 
 ### 3. Timing: only while you owe a decision
 
-Highlights render **only on a frame that carries `legal_actions`**, which is exactly when the seat owes a decision. On an opponent's turn with nothing on the stack and no priority for you, nothing glows. When the priority cursor reaches you, what you can do lights. This is recommended because:
+Highlights render **only on a frame that carries `legal_actions`**, which is exactly when the seat owes a decision (owner decision 1). On an opponent's turn with nothing on the stack and no priority for you, nothing glows. When the priority cursor reaches you, what you can do lights. The reasons:
 
 - It is the only honest answer the server has. A "you could activate this once you get priority" tier would need a hypothetical enumeration ("as if this seat held priority now"). That is a second, speculative answer. It would also be wrong often, because priority arrives after something has changed.
 - A board that glows all the time stops meaning anything.
@@ -179,10 +179,11 @@ Two details:
 
 ### 4. Mana abilities and noise
 
-If every mana move lit up, every untapped land would glow on every priority window, and the one signal #1621 needs (Vivi's free ability) would drown. The recommended rule, which is open question 2:
+If every mana move lit up, every untapped land would glow on every priority window, and the one signal #1621 needs (Vivi's free ability) would drown. The rule (owner decision 2):
 
 - **Lands' mana abilities get no pip.** Whether a land is untapped is already visible, and every player knows a land makes mana.
 - **A mana ability gets the drop pip when it is not the obvious kind:** a nonland source, a source in hand (a Spirit Guide), or an ability without a `{T}` cost (Vivi, a Treasure's sacrifice, a Lotus Petal). All of these are facts on the `ManaAbilityView` row (`tap_cost`, `sacrifice_cost`) and on the card (`type_line`). This is presentation, not legality: legality still comes only from the digest.
+- **There is no separate toggle for mana pips.** They follow `gameplay.highlightLegalActions` like every other highlight (§6).
 
 ### 5. Performance
 
@@ -198,7 +199,9 @@ If every mana move lit up, every untapped land would glow on every priority wind
 
 Add one toggle: **`gameplay.highlightLegalActions: boolean`, default on.** This bumps the settings schema from v14 to v15, with a migration that adds the key as `true`. It goes on the Gameplay tab next to the autopass settings, with the usual "✓ saved" pattern. It is a per-player, browser-local preference in `localStorage` like every other client setting, not a table setting (ADR 0075 is house rules).
 
-**Off** removes the ready rings, pips, counts and menu-row accents. It does not remove today's dimming or disabled rows, because those are gates (the click is withheld), not decoration. Whether mana pips get their own sub-toggle is open question 2.
+It defaults to on for everyone, existing players included (owner decision 4): the v15 migration writes `true` whatever the stored settings say.
+
+**Off** removes the ready rings, pips, counts and menu-row accents. It does not remove today's dimming or disabled rows, because those are gates (the click is withheld), not decoration. There is no sub-toggle for mana pips (owner decision 2); this one setting covers every highlight.
 
 ### 7. Accessibility and phone width
 
@@ -208,7 +211,7 @@ Add one toggle: **`gameplay.highlightLegalActions: boolean`, default on.** This 
   - The ring is outset so it never overlaps the keyboard focus ring, which is inset under `alwaysShowFocus`.
 - **Screen readers.** A ready card's accessible name gains one phrase: "castable", "playable land", "has an ability you can activate", "can attack" or "can block". A menu row's name gains "available". The phase display's live region says "N actions available" once, when priority arrives, not on every frame.
 - **Phone width.** The board has no width media queries today; card size is a CSS variable. The ring and pips scale with `--card-size`, and pips have a 16px minimum hit and draw size. At the `small` card size, counts are hidden and the pip shows alone.
-- **A touch route to the highlighted action.** Ability and special-action menus open only on right-click today, and there is no long-press in the client. Tapping a pip therefore **opens the same popover** a right-click opens. This is the smallest change that makes every highlight actionable on a phone. It is in sub-PR 4, and it is open question 6 whether it belongs here or in its own issue.
+- **A touch route to the highlighted action.** Ability and special-action menus open only on right-click today, and there is no long-press in the client. Tapping a pip therefore **opens the same popover** a right-click opens. This is the smallest change that makes every highlight actionable on a phone. It is in scope here, as sub-PR 4 (owner decision 6).
 - **Special actions reach the ordinary menu.** Foretell, suspend, plot and turn face up move from the admin-only context menu into the default popover, as rows next to the abilities. Without that, the pip in §2 would point at nothing for anyone not running admin overrides.
 
 ### 8. The bot does not change
@@ -286,12 +289,14 @@ Sub-PRs 2–6 depend on 1 only for row precision. Sub-PR 2's fallback means the 
 
 ---
 
-## Open questions for the owner
+## Owner decisions, 2026-09-30
 
-1. **Timing.** Should highlights show only while you owe a decision (priority, a combat declaration, a choice), or also a dimmer "you could, once you get priority" tier at other times? *Recommended: only while you owe a decision (§3). The server has no honest answer for the other tier.*
-2. **Mana sources.** Should ordinary lands' mana abilities be marked? *Recommended: no. Mark only nonland, from-hand or no-`{T}` mana abilities (Vivi, Spirit Guides, Treasures) (§4).* And should mana pips get their own on/off sub-toggle?
-3. **One colour or several.** Should there be one "ready" colour with pip shapes for the kind, or a colour per kind (cast, ability, mana, combat)? *Recommended: one colour plus pips (§2).*
-4. **Default.** Should the toggle default to on for everyone, existing players included? *Recommended: on.*
-5. **Autopass.** Should highlights be hidden on a frame smart autopass is about to pass, or always drawn for the instant the frame is on screen? *Recommended: hidden (§3).*
-6. **Touch route.** Should tapping a pip opening the ability popover be in scope here (sub-PR 4), or split into its own issue about phone access to ability menus? *Recommended: in scope. Otherwise the highlight points at an action a phone player cannot take.*
-7. **Server digest or client only.** Should sub-PR 1 add `legal_actions` (option C), or should the client read `legal_moves` as it is and accept that row-level highlights and counts go vague on boards past 48 moves (option A)? *Recommended: C.*
+The owner answered the seven open questions on 2026-09-30. Every answer was the recommended option.
+
+1. **Timing.** Highlights show only while you owe a decision: priority, a combat declaration, a choice. There is no dimmer "you could, once you get priority" tier (§3).
+2. **Mana sources.** Ordinary lands' mana abilities get no pip. Only nonland, from-hand or no-`{T}` mana abilities are marked (Vivi, Spirit Guides, Treasures) (§4). There is **no** separate on/off toggle for mana pips; `gameplay.highlightLegalActions` covers them.
+3. **Colour.** One "ready" colour, with pip shapes for the kind (§2).
+4. **Default.** `gameplay.highlightLegalActions` defaults to on for everyone, existing players included (§6).
+5. **Autopass.** Highlights are hidden on a frame smart autopass is about to pass (§3).
+6. **Touch route.** Tapping a pip to open the ability popover stays in scope, as sub-PR 4 (§7, §10).
+7. **Server digest.** Option C: sub-PR 1 adds the server `legal_actions` digest (§1).
