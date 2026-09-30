@@ -247,9 +247,10 @@ func brassTunnelGrinder() cards.Card {
 // monumentToEndurance — #369, "discarding a card does not trigger it
 // with selection". The discard half of what the card wants exists and
 // works: EventDiscardCard is emitted by the one discard path and Mary
-// Read and Anne Bonny consumes it in the same game. What is missing is
-// the card file, and behind it the per-source "choose one that hasn't
-// been chosen this turn" tally (#764, ADR 0065 §5).
+// Read and Anne Bonny consumes it in the same game. The card file
+// landed with ADR 0097 (#1749), which built the per-object "choose one
+// that hasn't been chosen this turn" memory it was waiting on; this
+// fixture stays because it pins the scanner, not the catalog.
 //
 // The bullets are the interesting shape for the scanner: a modal line
 // starts with "•", which is not a keyword, so each one reads as a

@@ -1,6 +1,6 @@
 # ADR 0097 — Modes "that hasn't been chosen"
 
-**Status:** Proposed · 2026-09-30 · Post-S30 — Rolling deck-driven catalog growth
+**Status:** Accepted · 2026-09-30 · Post-S30 — Rolling deck-driven catalog growth
 **Issue:** [#1749](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1749). It relates to the deck re-checks on #1107, #1112 and #1117.
 **Numbering:** checked with the AGENTS.md §4 sweep on 2026-09-30. I ran `git fetch --all --prune`, then read every `docs/decisions/` file name on every remote branch (35 heads). The highest number anywhere is **0096** (`0096-the-monarch-from-a-card-effect.md`).
 **Builds on:** [ADR 0065](0065-modal-and-multi-target-clauses.md), which covers modes and the trigger's `mode_pick`, and lists "that hasn't been chosen" under Out of scope. It also builds on [ADR 0041](0041-game-persistence.md) for the snapshot shape rule, and on #936, which keys the per-object turn tally.
@@ -115,3 +115,17 @@ The work lands in two PRs.
 
 - Non-mode "hasn't been chosen" choices: Garth One-Eye's card names, Interrogation Robot's question words, and Fortunate Few's cards. Those are choice prompts of another kind.
 - Showing the memory on the permanent itself (a chip). The owner chose the picker only. The data is on the wire if that changes.
+
+## Amendment (2026-09-30, #1749): what PR 1 built, and where it differs
+
+PR 1 built Decisions 1 to 5 as written. These are the places where the code says more than the ADR, or says it differently.
+
+- **The identity is a value, `game.ModeAbility`.** It holds `{Source, Epoch, Label}` and is built with `ModeAbilityOf(card, label)`. `choosableModeOptionsLocked` and `ChoosableModeOptionsForEffect` take it as a third argument, and the zero value (a spell) excludes nothing. The enumerator's `legalModeSets` and the view's `viewOfModeSpec` take it too, so there is still one filter.
+- **The `mode_pick` prompt carries the used modes beside the offer, not inside it.** Decision 5 says the prompt carries every option and marks the used ones. The prompt instead keeps `mode_options` / `mode_indexes` as the offer, meaning what may be answered, and adds `mode_used_options` / `mode_used_indexes` and `mode_not_chosen` (`"this_turn"` / `"ever"`). This keeps `ModePickSelections`, `validateModePick` and every client that reads `mode_indexes` unchanged. The picker merges the two lists by index and shows the used ones disabled. `ModeSpecView` does what Decision 5 says: each option carries `used: true`, and the spec carries `not_chosen`.
+- **There is no "only possible answer taken without asking" path.** A trigger with one mode left still asks, so the one recording site for a trigger is `ResolveModePick`. It records after the answered prompt has left the queue, so the re-narrowing never touches that prompt.
+- **An exile return that mints a new instance also forgets.** `Card.ModesChosen` is cleared by `MoveCard`, as written, and also by the new-object reset of an exile return (`resetAsNewObjectLocked`). A phased-out permanent is still the same object (CR 702.26d), so the "ever" lookup also finds it in `PhasedOut`.
+- **`effects.Register` refuses a third combination.** It also refuses `NotChosen` on an ability with no label, because the label is half of the memory's key.
+- **Silent Hallcreeper's copy bullet is built.** It uses `BecomeCopy` with `CopyIndefinite`. "Another target creature you control" excludes the Hallcreeper by name (`b03NotNamed`), as Departed Deckhand does, because a mode's static target clause is never handed its source. The card is `CompletenessFull`.
+- **Registry rows.** The `discover` row already existed, from #1751. PR 1 added `modes-not-chosen` (implemented) and `keyword-counters` (missing, #1753).
+- **Kargan Intimidator waits for PR 2.** A registered fixture with Kargan's shape covers the activated path: the refusal with nothing paid, and the enumerator. A protocol test covers the view's `used` mark.
+

@@ -144,6 +144,9 @@ battlefield.cards[].lostLastCounter	bool
 battlefield.cards[].manaAbilityCount	number:int
 battlefield.cards[].manaCost	string
 battlefield.cards[].markedLethalByDeathtouch	bool
+battlefield.cards[].modesChosen	map:string
+battlefield.cards[].modesChosen{}	array
+battlefield.cards[].modesChosen{}[]	number:int
 battlefield.cards[].monstrous	bool
 battlefield.cards[].name	string
 battlefield.cards[].namedTribe	string
@@ -509,6 +512,9 @@ exile.cards[].lostLastCounter	bool
 exile.cards[].manaAbilityCount	number:int
 exile.cards[].manaCost	string
 exile.cards[].markedLethalByDeathtouch	bool
+exile.cards[].modesChosen	map:string
+exile.cards[].modesChosen{}	array
+exile.cards[].modesChosen{}[]	number:int
 exile.cards[].monstrous	bool
 exile.cards[].name	string
 exile.cards[].namedTribe	string
@@ -856,6 +862,9 @@ lastKnownStack[].card.lostLastCounter	bool
 lastKnownStack[].card.manaAbilityCount	number:int
 lastKnownStack[].card.manaCost	string
 lastKnownStack[].card.markedLethalByDeathtouch	bool
+lastKnownStack[].card.modesChosen	map:string
+lastKnownStack[].card.modesChosen{}	array
+lastKnownStack[].card.modesChosen{}[]	number:int
 lastKnownStack[].card.monstrous	bool
 lastKnownStack[].card.name	string
 lastKnownStack[].card.namedTribe	string
@@ -1265,11 +1274,16 @@ pendingChoices[].mayCastCard	custom(uuid.UUID)
 pendingChoices[].midResolution	bool
 pendingChoices[].modeMax	number:int
 pendingChoices[].modeMin	number:int
+pendingChoices[].modeNotChosen	number:int
 pendingChoices[].modeOptionIndex	array
 pendingChoices[].modeOptionIndex[]	number:int
 pendingChoices[].modeOptionLabel	array
 pendingChoices[].modeOptionLabel[]	string
 pendingChoices[].modeRepeatable	bool
+pendingChoices[].modeUsedIndex	array
+pendingChoices[].modeUsedIndex[]	number:int
+pendingChoices[].modeUsedLabel	array
+pendingChoices[].modeUsedLabel[]	string
 pendingChoices[].noLegalTarget	bool
 pendingChoices[].owedInStep	object
 pendingChoices[].owedInStep.Step	string
@@ -1593,6 +1607,9 @@ phasedOut.cards[].lostLastCounter	bool
 phasedOut.cards[].manaAbilityCount	number:int
 phasedOut.cards[].manaCost	string
 phasedOut.cards[].markedLethalByDeathtouch	bool
+phasedOut.cards[].modesChosen	map:string
+phasedOut.cards[].modesChosen{}	array
+phasedOut.cards[].modesChosen{}[]	number:int
 phasedOut.cards[].monstrous	bool
 phasedOut.cards[].name	string
 phasedOut.cards[].namedTribe	string
@@ -1982,6 +1999,9 @@ seats[].command.cards[].lostLastCounter	bool
 seats[].command.cards[].manaAbilityCount	number:int
 seats[].command.cards[].manaCost	string
 seats[].command.cards[].markedLethalByDeathtouch	bool
+seats[].command.cards[].modesChosen	map:string
+seats[].command.cards[].modesChosen{}	array
+seats[].command.cards[].modesChosen{}[]	number:int
 seats[].command.cards[].monstrous	bool
 seats[].command.cards[].name	string
 seats[].command.cards[].namedTribe	string
@@ -2224,6 +2244,9 @@ seats[].emblems.cards[].lostLastCounter	bool
 seats[].emblems.cards[].manaAbilityCount	number:int
 seats[].emblems.cards[].manaCost	string
 seats[].emblems.cards[].markedLethalByDeathtouch	bool
+seats[].emblems.cards[].modesChosen	map:string
+seats[].emblems.cards[].modesChosen{}	array
+seats[].emblems.cards[].modesChosen{}[]	number:int
 seats[].emblems.cards[].monstrous	bool
 seats[].emblems.cards[].name	string
 seats[].emblems.cards[].namedTribe	string
@@ -2456,6 +2479,9 @@ seats[].graveyard.cards[].lostLastCounter	bool
 seats[].graveyard.cards[].manaAbilityCount	number:int
 seats[].graveyard.cards[].manaCost	string
 seats[].graveyard.cards[].markedLethalByDeathtouch	bool
+seats[].graveyard.cards[].modesChosen	map:string
+seats[].graveyard.cards[].modesChosen{}	array
+seats[].graveyard.cards[].modesChosen{}[]	number:int
 seats[].graveyard.cards[].monstrous	bool
 seats[].graveyard.cards[].name	string
 seats[].graveyard.cards[].namedTribe	string
@@ -2687,6 +2713,9 @@ seats[].hand.cards[].lostLastCounter	bool
 seats[].hand.cards[].manaAbilityCount	number:int
 seats[].hand.cards[].manaCost	string
 seats[].hand.cards[].markedLethalByDeathtouch	bool
+seats[].hand.cards[].modesChosen	map:string
+seats[].hand.cards[].modesChosen{}	array
+seats[].hand.cards[].modesChosen{}[]	number:int
 seats[].hand.cards[].monstrous	bool
 seats[].hand.cards[].name	string
 seats[].hand.cards[].namedTribe	string
@@ -2922,6 +2951,9 @@ seats[].library.cards[].lostLastCounter	bool
 seats[].library.cards[].manaAbilityCount	number:int
 seats[].library.cards[].manaCost	string
 seats[].library.cards[].markedLethalByDeathtouch	bool
+seats[].library.cards[].modesChosen	map:string
+seats[].library.cards[].modesChosen{}	array
+seats[].library.cards[].modesChosen{}[]	number:int
 seats[].library.cards[].monstrous	bool
 seats[].library.cards[].name	string
 seats[].library.cards[].namedTribe	string
@@ -3250,6 +3282,9 @@ stack.cards[].lostLastCounter	bool
 stack.cards[].manaAbilityCount	number:int
 stack.cards[].manaCost	string
 stack.cards[].markedLethalByDeathtouch	bool
+stack.cards[].modesChosen	map:string
+stack.cards[].modesChosen{}	array
+stack.cards[].modesChosen{}[]	number:int
 stack.cards[].monstrous	bool
 stack.cards[].name	string
 stack.cards[].namedTribe	string
@@ -3552,6 +3587,9 @@ turnTally.loopAllowance	map:string
 turnTally.loopAllowance{}	number:int
 turnTally.loopRun	map:string
 turnTally.loopRun{}	number:int
+turnTally.modesChosen	map:string
+turnTally.modesChosen{}	array
+turnTally.modesChosen{}[]	number:int
 turnTally.monarchAtStart	custom(uuid.UUID)
 turnTally.players	map:array
 turnTally.players{}	object

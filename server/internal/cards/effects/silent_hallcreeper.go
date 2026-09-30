@@ -1,6 +1,14 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
+
+// silentHallcreeperLabel is the trigger's stack label, and with it the
+// key its "hasn't been chosen" memory is kept under.
+const silentHallcreeperLabel = "Silent Hallcreeper — choose one"
 
 // Silent Hallcreeper — Enchantment Creature — Horror {1}{U}, 1/1
 // (slice 296-m):
@@ -15,34 +23,37 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // The evasion is a plain RestrictSelf(CantBeBlocked). The damage
 // trigger is combatDamageToPlayerBy's own shape, with a real mode
-// choice (Gala Greeters' TriggeredAbility.Modes / ChooseOne, #764) so
-// the controller answers a mode_pick prompt rather than the engine
-// picking for them.
+// choice (TriggeredAbility.Modes, #764) answered through a mode_pick
+// prompt.
 //
-// Two declared simplifications:
+// "That hasn't been chosen" is ChooseOneNotChosen (ADR 0097, #1749):
+// the engine remembers, on this OBJECT, which bullets its ability has
+// chosen, for as long as the object exists. The 2024-09-20 ruling
+// says exactly that — a Hallcreeper that leaves the battlefield and
+// returns "will be a new object with no memory of the modes that were
+// chosen" — and MoveCard's CR 400.7 forgetting is what delivers it. A
+// fourth trigger, with all three used, is removed with no effect.
 //
-//   - "That hasn't been chosen" is a per-permanent tally with no seam
-//     (ADR 0065 "Out of scope", the same gap Gala Greeters ships
-//     with): every bullet is offered every time, so the same mode can
-//     be taken on repeated triggers.
-//   - The third bullet — "this creature becomes a copy of another
-//     target creature you control" — is not offered at all. The
-//     catalog's copy machinery (EntersAsCopyOf, S16.5) only replaces
-//     an object's OWN entry to the battlefield; there is no primitive
-//     for an object already on the battlefield turning into a copy of
-//     something else later (that is CR 707's layer-1 "becomes a
-//     copy" effect, distinct from "enters as a copy", and unbuilt).
-//     Leaving it out is the WEAKER direction the #259 rule requires.
+// The third bullet is the duration-copy primitive, BecomeCopy (#1593,
+// ADR 0043's 2026-09-28 amendment), with no stated duration
+// (CopyIndefinite, CR 611.2a). The rulings ask for nothing more: the
+// Hallcreeper copies the target's copiable values and nothing else
+// (CR 707.2), it is not entering the battlefield so no "enters"
+// ability fires, and the copy lasts indefinitely. It keeps its
+// counters, and — being the same object — its memory, though as a copy
+// it no longer has this trigger to consult it.
+//
+// "Another" is the catalog's by-name exclusion (b03NotNamed), because
+// a mode's target clause is static and is never handed its source: a
+// second creature named Silent Hallcreeper — a Clone of this one — is
+// not offered. Weaker than printed in that corner only, never
+// stronger, the reading Departed Deckhand ships with.
 func init() {
 	Register(Spec{
 		OracleID:     "6aea681e-88d2-48df-a717-3ce0bc95205b",
 		Name:         "Silent Hallcreeper",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"You choose the mode each time it deals combat damage, but \"that hasn't been chosen\" isn't enforced — the same mode can be chosen more than once.",
-			"The \"becomes a copy of another target creature you control\" mode isn't offered — the engine has no way for a permanent already on the battlefield to become a copy of another one later.",
-		},
-		Static: []game.StaticAbility{RestrictSelf(game.CantBeBlocked)},
+		Completeness: CompletenessFull,
+		Static:       []game.StaticAbility{RestrictSelf(game.CantBeBlocked)},
 		Triggered: []game.TriggeredAbility{
 			silentHallcreeperTrigger(),
 		},
@@ -52,8 +63,8 @@ func init() {
 func silentHallcreeperTrigger() game.TriggeredAbility {
 	t := On(game.EventDealDamage, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 		return ev.Source == source.InstanceID && combatDamageToPlayerBy(ev, source.Controller, g)
-	}, "Silent Hallcreeper — choose one", func(_ *game.Game, _ *game.StackItem) error { return nil })
-	t.Modes = ChooseOne(
+	}, silentHallcreeperLabel, func(_ *game.Game, _ *game.StackItem) error { return nil })
+	t.Modes = ChooseOneNotChosen(
 		ModeDoing("Put two +1/+1 counters on this creature.", nil,
 			func(item *game.StackItem, ctx *Context, _ int) error {
 				return AddCounter{Target: item.SourceCardID, Kind: game.CounterPlusOne, N: 2}.Apply(ctx)
@@ -61,6 +72,20 @@ func silentHallcreeperTrigger() game.TriggeredAbility {
 		ModeDoing("Draw a card.", nil,
 			func(item *game.StackItem, ctx *Context, _ int) error {
 				return DrawCards{Player: item.Controller, N: 1}.Apply(ctx)
+			}),
+		ModeDoing("This creature becomes a copy of another target creature you control.",
+			TargetCreature("another target creature you control", YouControl(), b03NotNamed("Silent Hallcreeper")),
+			func(item *game.StackItem, ctx *Context, occ int) error {
+				t, ok := ModeTarget(ctx, occ)
+				if !ok {
+					return nil
+				}
+				return BecomeCopy{
+					Targets:  []uuid.UUID{ctx.Source()},
+					Of:       t.ID,
+					Duration: CopyIndefinite,
+					Label:    "Silent Hallcreeper — becomes a copy",
+				}.Apply(ctx)
 			}),
 	)
 	return t

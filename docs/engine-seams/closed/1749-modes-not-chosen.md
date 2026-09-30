@@ -1,0 +1,6 @@
+---
+title: "Modes that haven't been chosen"
+date: 2026-09-30
+issues: [1749]
+---
+**Modes that haven't been chosen** (#1749, [ADR 0097](decisions/0097-modes-that-havent-been-chosen.md)): "choose one that hasn't been chosen [this turn]" is `ModeSpec.NotChosen`, written with `ChooseOneNotChosenThisTurn` / `ChooseOneNotChosen`. The engine keeps the memory per OBJECT and ability (`ObjectTallyKey` on `TurnTally.ModesChosen` for "this turn", `Card.ModesChosen` for "ever", which `MoveCard` clears with CR 400.7), records a mode when it is CHOSEN (a countered trigger has still used its mode, a copy records nothing), and keeps it across a change of control. `choosableModeOptionsLocked` drops the used modes before the no-legal-target filter, so the harvest check removes an exhausted trigger (CR 700.2b), the activation gate refuses a used mode with nothing paid, the enumerator never offers one, and simultaneous instances re-narrow each other's open `mode_pick` prompts. The picker shows used modes greyed out. Gala Greeters and Teval's Judgment moved to the real shape, Silent Hallcreeper lost its "not enforced" caveat and gained its copy bullet (`BecomeCopy`, #1593), and Monument to Endurance joined the catalog. Breeches, Demonic Pact, Kargan Intimidator and the rest of the ADR's list are PR 2's.

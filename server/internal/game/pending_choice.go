@@ -515,6 +515,17 @@ type PendingChoice struct {
 	ModeMin, ModeMax int
 	ModeRepeatable   bool
 
+	// ModeUsedIndex / ModeUsedLabel are the options the ability has
+	// ALREADY chosen under its "that hasn't been chosen" restriction
+	// (ADR 0097), in printed order — not on offer, and never a legal
+	// answer, but carried so the picker can show them greyed out
+	// ("already chosen this turn"). ModeNotChosen says which of the
+	// two restrictions applies. All three empty for an ordinary modal
+	// trigger.
+	ModeUsedIndex []int
+	ModeUsedLabel []string
+	ModeNotChosen ModeMemory
+
 	// modePickResume is the server-only continuation for a
 	// PendingChoiceModePick: the captured trigger, so the answer
 	// continues into the CR 603.3d target walk and then Build.

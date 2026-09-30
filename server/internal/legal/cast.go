@@ -751,7 +751,7 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 			Chooser:       e.seat,
 			OracleID:      game.CatalogKey(card),
 			OptionalCosts: chosen,
-		})
+		}, game.ModeAbility{})
 		if len(modeSets) == 0 {
 			return
 		}
@@ -1413,12 +1413,17 @@ func (e *enumerator) allLifePayment(first *announcedCast, spend game.ManaSpendCo
 // holds (#1590, #1655, game.ModeBoundsForEffect). A seat without a
 // commander is never offered Jeska's Will's "both", and a kicked
 // Depth Defiler-shaped count is never offered one bullet.
-func (e *enumerator) legalModeSets(src game.TargetSource, ms *game.ModeSpec, q game.ModeCountQuery) [][]int {
+//
+// `ab` names the ability whose "that hasn't been chosen" memory
+// applies (ADR 0097); a spell passes the zero value. A used mode is
+// never offered, because the filter below is the one the activation
+// gate and the trigger's mode_pick read (#544).
+func (e *enumerator) legalModeSets(src game.TargetSource, ms *game.ModeSpec, q game.ModeCountQuery, ab game.ModeAbility) [][]int {
 	// ADR 0065 §6, "prefer the modes that have legal targets": an
 	// option whose clause cannot be filled is dropped before any
 	// combination is built, so the budget never goes on a selection
 	// the engine would refuse at announce.
-	options := e.g.ChoosableModeOptionsForEffect(src, ms)
+	options := e.g.ChoosableModeOptionsForEffect(src, ms, ab)
 	if !game.EnoughChoosableModes(len(options), ms) {
 		return nil
 	}

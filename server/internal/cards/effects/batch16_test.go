@@ -1,6 +1,7 @@
 package effects
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/google/uuid"
@@ -1102,10 +1103,13 @@ func TestB16PsychicCorrosionMillsEachOpponentTwoPerDraw(t *testing.T) {
 	}
 }
 
-func TestB16TevalsJudgmentTakesItsModesInPrintedOrder(t *testing.T) {
+// ADR 0097 (#1749): the controller chooses each mode, and "that
+// hasn't been chosen this turn" is the engine's memory of what this
+// enchantment's ability chose.
+func TestB16TevalsJudgmentChoosesAModeNotChosenThisTurn(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
-	b12Push(g, me.ID, "Teval's Judgment", "Enchantment", b16TevalsJudgmentOracle, 0, 0)
+	teval := b12Push(g, me.ID, "Teval's Judgment", "Enchantment", b16TevalsJudgmentOracle, 0, 0)
 	advanceToMain(t, g)
 	graveyard := func(p *game.Player, n int) []uuid.UUID {
 		var ids []uuid.UUID
@@ -1118,60 +1122,81 @@ func TestB16TevalsJudgmentTakesItsModesInPrintedOrder(t *testing.T) {
 	// An opponent's graveyard leaving is not yours.
 	theirs := graveyard(opp, 1)
 	g.WithWriteLock(func() { _ = g.ExileCardForEffect(theirs[0]) })
-	passPriorityAroundTable(t, g)
-	hand := me.Hand.Size()
-	if me.Hand.Size() != hand {
+	if modePickChoiceFor(g, me.ID) != nil {
 		t.Fatal("an opponent's graveyard is not yours")
 	}
 
-	// Two cards at once: one trigger, first mode — draw.
+	// Two cards at once: ONE trigger, and its controller chooses —
+	// here the Zombie Druid first, which the old printed-order shape
+	// could never give.
 	first := graveyard(me, 2)
 	g.WithWriteLock(func() { _ = g.ExileCardsForEffect(first) })
-	if n := len(g.PendingTriggers) + len(g.StackMeta); n != 1 {
-		t.Fatalf("one or more cards leaving is one trigger, got %d", n)
+	if n := len(modePickChoicesFor(g, me.ID)); n != 1 {
+		t.Fatalf("one or more cards leaving is one trigger, got %d prompts", n)
 	}
+	answerMode(t, g, modePickChoiceFor(g, me.ID), me.ID, 2)
 	passPriorityAroundTable(t, g)
-	if me.Hand.Size() != hand+1 {
-		t.Errorf("first batch draws: %d", me.Hand.Size()-hand)
+	if b16CountNamed(g, "Zombie Druid") != 1 {
+		t.Fatal("the chosen mode made a Zombie Druid")
 	}
 
-	// Second: a Treasure. Third: a Zombie Druid. Fourth: nothing.
-	for i, want := range []struct {
-		name string
-		n    int
-	}{{"Treasure", 1}, {"Zombie Druid", 1}, {"Zombie Druid", 1}} {
-		card := graveyard(me, 1)
-		g.WithWriteLock(func() { _ = g.BounceToHandForEffect(card[0]) })
-		passPriorityAroundTable(t, g)
-		if got := b16CountNamed(g, want.name); got != want.n {
-			t.Errorf("batch %d: %d %s on the battlefield, want %d", i+2, got, want.name, want.n)
-		}
-	}
-	if me.Hand.Size() != hand+1+3 {
-		t.Errorf("hand grew by %d: one draw plus the three bounced cards, no more", me.Hand.Size()-hand)
-	}
-
-	// A new turn resets the tally: the first batch draws again.
-	advanceToMainOf(t, g, 1)
-	hand = me.Hand.Size()
+	// Second batch: the Zombie is used.
 	card := graveyard(me, 1)
+	g.WithWriteLock(func() { _ = g.BounceToHandForEffect(card[0]) })
+	c := modePickChoiceFor(g, me.ID)
+	if c == nil || !slices.Equal(c.ModeOptionIndex, []int{0, 1}) || !slices.Equal(c.ModeUsedIndex, []int{2}) {
+		t.Fatalf("the draw and the Treasure remain: %+v", c)
+	}
+	answerMode(t, g, c, me.ID, 1)
+	passPriorityAroundTable(t, g)
+
+	// Third: the draw alone. Fourth: nothing at all (CR 700.2b).
+	hand := me.Hand.Size()
+	card = graveyard(me, 1)
 	g.WithWriteLock(func() { _ = g.ExileCardForEffect(card[0]) })
+	c = modePickChoiceFor(g, me.ID)
+	if c == nil || !slices.Equal(c.ModeOptionIndex, []int{0}) {
+		t.Fatalf("the draw alone: %+v", c)
+	}
+	answerMode(t, g, c, me.ID, 0)
 	passPriorityAroundTable(t, g)
 	if me.Hand.Size() != hand+1 {
-		t.Error("next turn, the first mode is available again")
+		t.Errorf("the third batch drew: %d", me.Hand.Size()-hand)
+	}
+	card = graveyard(me, 1)
+	g.WithWriteLock(func() { _ = g.ExileCardForEffect(card[0]) })
+	if modePickChoiceFor(g, me.ID) != nil || triggerOnStack(g, teval) != nil {
+		t.Fatal("with all three used, the fourth trigger is removed")
+	}
+	if b16CountNamed(g, "Treasure") != 1 || b16CountNamed(g, "Zombie Druid") != 1 {
+		t.Error("one of each, no more")
 	}
 
-	// A flashback cast leaves the graveyard too: on my next turn,
-	// flashing back Faithless Looting is the first batch — a draw,
-	// on top of the Looting's own two.
+	// A new turn resets the memory.
+	advanceToMainOf(t, g, 1)
+	card = graveyard(me, 1)
+	g.WithWriteLock(func() { _ = g.ExileCardForEffect(card[0]) })
+	if c := modePickChoiceFor(g, me.ID); c == nil || len(c.ModeOptionIndex) != 3 {
+		t.Fatalf("next turn, every mode is available again: %+v", c)
+	}
+	answerMode(t, g, modePickChoiceFor(g, me.ID), me.ID, 1)
+	passPriorityAroundTable(t, g)
+
+	// A flashback cast leaves the graveyard too: the trigger goes on
+	// the stack above the spell once its mode is chosen.
 	advanceToMainOf(t, g, 0)
 	looting := seedGraveyardCard(t, g, "Faithless Looting", "Sorcery", "3d6fa57a-aa53-4b5c-b8af-a7612c823117")
 	hand = me.Hand.Size()
 	if err := g.CastSpell(me.ID, looting, game.CastSpellParams{FromZone: "graveyard", AlternativeCost: "flashback"}); err != nil {
 		t.Fatalf("flashback: %v", err)
 	}
-	if triggerOnStack(g, findBattlefieldByName(g, "Teval's Judgment")) == nil {
-		t.Fatal("a flashback cast leaves the graveyard: the trigger goes on the stack above the spell")
+	c = modePickChoiceFor(g, me.ID)
+	if c == nil {
+		t.Fatal("a flashback cast leaves the graveyard: the trigger asks for its mode")
+	}
+	answerMode(t, g, c, me.ID, 0)
+	if triggerOnStack(g, teval) == nil {
+		t.Fatal("the trigger goes on the stack above the spell")
 	}
 	passPriorityAroundTable(t, g)
 	if me.Hand.Size() != hand+3 {

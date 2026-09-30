@@ -44,6 +44,12 @@ func Register(spec Spec) {
 			panic(fmt.Sprintf("effects.Register: %q is Repeatable with Max 1 — there is nothing to repeat", spec.Name))
 		}
 		checkRaisedModeMax(spec.Name, "Modes", spec.Modes)
+		// ADR 0097: no printed spell says "that hasn't been chosen",
+		// and a spell has no permanent object to remember with — the
+		// restriction would read the zero identity and never apply.
+		if spec.Modes.NotChosen != game.ModeMemoryNone {
+			panic(fmt.Sprintf("effects.Register: %q declares \"that hasn't been chosen\" on a spell's Modes — only a triggered or activated ability has an object to remember with", spec.Name))
+		}
 		for i, o := range spec.Modes.Options {
 			if o.Label == "" {
 				panic(fmt.Sprintf("effects.Register: %q mode %d has no label — the bullet is the whole of what the picker shows", spec.Name, i))
@@ -73,6 +79,7 @@ func Register(spec Spec) {
 				panic(fmt.Sprintf("effects.Register: %q declares an activated ability with both Targets and Modes — put the target clause on the mode", spec.Name))
 			}
 			checkRaisedModeMax(spec.Name, "an activated ability's Modes", a.Modes)
+			checkNotChosen(spec.Name, "an activated ability's Modes", a.Modes, a.Label)
 			for i, o := range a.Modes.Options {
 				if o.Label == "" {
 					panic(fmt.Sprintf("effects.Register: %q activated mode %d has no label", spec.Name, i))
@@ -99,6 +106,7 @@ func Register(spec Spec) {
 		}
 		if t.Modes != nil {
 			checkRaisedModeMax(spec.Name, "a trigger's Modes", t.Modes)
+			checkNotChosen(spec.Name, "a trigger's Modes", t.Modes, t.Key)
 			for i, o := range t.Modes.Options {
 				checkModeCost(spec.Name, "trigger mode", i, o.Cost, false)
 			}
@@ -1071,6 +1079,24 @@ func checkRaisedModeMax(name, owner string, ms *game.ModeSpec) {
 	// printed minimum — either would be a count no printed card has.
 	if ms.RaisedMin != 0 && (ms.RaisedMin <= ms.Min || ms.RaisedMin > ms.RaisedMax) {
 		panic(fmt.Sprintf("effects.Register: %q %s raises Min %d to %d with a raised Max of %d", name, owner, ms.Min, ms.RaisedMin, ms.RaisedMax))
+	}
+}
+
+// checkNotChosen validates a "that hasn't been chosen" restriction
+// (ADR 0097) on a triggered or activated ability's modes. Refused on a
+// Repeatable spec — CR 700.2d's "you may choose the same mode more
+// than once" says the opposite — and on an ability with no label,
+// because the label is half of the memory's key and an empty one
+// would never be remembered.
+func checkNotChosen(name, owner string, ms *game.ModeSpec, label string) {
+	if ms == nil || ms.NotChosen == game.ModeMemoryNone {
+		return
+	}
+	if ms.Repeatable {
+		panic(fmt.Sprintf("effects.Register: %q %s is both Repeatable and \"that hasn't been chosen\" — CR 700.2d and the restriction contradict each other", name, owner))
+	}
+	if label == "" {
+		panic(fmt.Sprintf("effects.Register: %q %s declares \"that hasn't been chosen\" on an ability with no label — the label keys the memory", name, owner))
 	}
 }
 

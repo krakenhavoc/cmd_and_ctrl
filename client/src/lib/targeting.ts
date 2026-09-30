@@ -1041,9 +1041,11 @@ export function altCostPayCount(offer: AlternativeCostView | undefined): number 
 }
 
 // modeOptionCastable reports whether an option can be chosen right
-// now: untargeted options always can; targeted ones need at least
-// one legal target.
+// now: not one the ability has already used (ADR 0097), untargeted
+// options otherwise always can, and targeted ones need at least one
+// legal target.
 export function modeOptionCastable(option: ModeOptionView): boolean {
+  if (option.used) return false;
   const lt = option.legal_targets;
   if (!lt) return true;
   return (lt.players?.length ?? 0) + (lt.cards?.length ?? 0) >= (lt.min ?? 1);

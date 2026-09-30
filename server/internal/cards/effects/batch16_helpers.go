@@ -20,7 +20,7 @@ import (
 // tutor to hand is b06TutorToHand, the basic-land fetch body is
 // b07SearchBasicOntoBattlefield, the per-label "one or more" dedup is
 // OncePerBatch, the once-per-turn tally is
-// b11TriggeredThisTurn, the resolution tally is b15ResolvedThisTurn,
+// b11TriggeredThisTurn, the resolution tally is g.ResolvedThisTurn,
 // a dead creature's power is b13LastKnownPower, the attackers a
 // player controls are b13AttackingCreaturesYouControl, and "any
 // number of lands you control, untapped" is b02UntapLandsYouControl.

@@ -191,6 +191,11 @@ describe("modal targeting", () => {
     expect(modeOptionCastable(charm.modes!.options[2])).toBe(true);
   });
 
+  it("modeOptionCastable refuses a mode the ability has already chosen (ADR 0097)", () => {
+    expect(modeOptionCastable({ label: "Draw a card.", used: true })).toBe(false);
+    expect(modeOptionCastable({ label: "Draw a card.", used: false })).toBe(true);
+  });
+
   it("beginForModes takes the option's legal set and label, and carries the modes", () => {
     expect(beginForModes(charm, [0], { xValue: 3 })).toBe(true);
     const t = get(targeting)!;

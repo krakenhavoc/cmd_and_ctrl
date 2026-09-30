@@ -10,7 +10,7 @@ import (
 
 // once_each_turn_object_test.go — #936 from the catalog's side. The
 // "only once each turn" gates in the catalog are b11TriggeredThisTurn
-// and b15ResolvedThisTurn, and neither had to change: they ask
+// and Game.ResolvedThisTurn, and neither had to change: they ask
 // Game.TriggeredThisTurn / ResolvedThisTurn, which read the tally
 // through the object's own key. This is the proof that the reader
 // they share now answers per object (CR 400.7).
