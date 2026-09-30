@@ -24,12 +24,9 @@ const solKanarLabel = "Sol'Kanar the Tainted — beginning of your end step"
 // all four — the Demon passes round the table.
 //
 // "Up to one other target" may name nothing, so the bullet is always on
-// offer. "Other" is the catalog's by-name exclusion (b03NotNamed),
-// because a mode's target clause is fixed on the card and is never
-// handed its source; a second creature named Sol'Kanar the Tainted is
-// therefore not offered either — weaker in that corner only, the
-// reading Silent Hallcreeper ships with. The drain is life loss, not
-// damage.
+// offer. "Other" is object identity (effects.Another, CR 109.1): a
+// second creature named Sol'Kanar the Tainted is a legal target. The
+// drain is life loss, not damage.
 //
 // No simplification.
 func init() {
@@ -53,8 +50,8 @@ func solKanarTrigger() game.TriggeredAbility {
 		ModeDoing("Each opponent loses 2 life and you gain 2 life.", nil,
 			eachOpponentLosesTwoYouGainTwo),
 		ModeDoing("Sol'Kanar deals 3 damage to up to one other target creature or planeswalker.",
-			TargetPermanent("up to one other target creature or planeswalker",
-				Or(Creature(), Planeswalker()), b03NotNamed("Sol'Kanar the Tainted")).WithCount(0, 1),
+			Another(TargetPermanent("up to one other target creature or planeswalker",
+				Or(Creature(), Planeswalker()))).WithCount(0, 1),
 			func(item *game.StackItem, ctx *Context, occ int) error {
 				t, ok := ModeTarget(ctx, occ)
 				if !ok {

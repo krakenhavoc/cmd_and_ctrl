@@ -1252,7 +1252,7 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	g.bindDivideAmountsLocked(steps, DivideAmountArgs{Controller: playerID, Source: cardID})
 	params.Targets = assignAnnouncedSlots(steps, params.Targets)
 	for _, i := range xSteps {
-		if n := stepTargetCount(steps[i], params.Targets); n != params.XValue {
+		if _, bad := xCountMismatch(steps[i], params.Targets, params.XValue); bad {
 			return ErrInvalidParam
 		}
 	}
@@ -1775,6 +1775,11 @@ func (g *Game) validateSacrificeCostLocked(playerID, sourceID uuid.UUID, cost Ab
 		// payment.
 		if cost.SacrificeSelf && id == sourceID {
 			return nil, ErrInvalidParam
+		}
+		// "Sacrifice ANOTHER creature": the source is not a legal pick
+		// (compared by object, not by name).
+		if cost.SacrificeOther.ExcludeSource && id == sourceID {
+			return nil, ErrIllegalTarget
 		}
 	}
 	return append(out, chosen...), nil

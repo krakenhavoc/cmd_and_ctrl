@@ -30,7 +30,7 @@ func init() {
 		Activated: []ActivatedAbility{{
 			Label: "Pay 2 life, Sacrifice another creature: Search your library for a card and put it into your hand",
 			Cost: Plus(PayLife(2), game.AbilityCost{
-				SacrificeOther: sacrificeSpec("another creature", Creature(), b03NotNamed("Razaketh, the Foulblooded")),
+				SacrificeOther: Another(sacrificeSpec("another creature", Creature())),
 			}),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return SearchLibrary{

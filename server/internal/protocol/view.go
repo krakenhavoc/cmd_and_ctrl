@@ -486,6 +486,10 @@ type LegalTargetsView struct {
 	// client substitutes the X it collected in the cost prompts.
 	// Added in S22 alongside convoke / waterbend.
 	CountFromX bool `json:"count_from_x,omitempty"`
+	// UpToX, with CountFromX, makes the announced X a ceiling rather
+	// than the exact count: "up to X target cards". The picker lets
+	// the player confirm with fewer.
+	UpToX bool `json:"up_to_x,omitempty"`
 
 	// Label is the clause's printed wording — "target creature you
 	// control". Absent for a single-clause statement, where the
@@ -4690,7 +4694,7 @@ func stampTargetSetRule(g *game.Game, v *LegalTargetsView, cards []uuid.UUID, sp
 }
 
 func viewOfLegalTargets(lt game.LegalTargets, spec *game.TargetSpec) *LegalTargetsView {
-	view := &LegalTargetsView{Min: spec.Min, Max: spec.Max, CountFromX: spec.CountFromX, Distinct: spec.Distinct, Divide: divideView(spec.Divide)}
+	view := &LegalTargetsView{Min: spec.Min, Max: spec.Max, CountFromX: spec.CountFromX, UpToX: spec.CountFromX && spec.UpToX, Distinct: spec.Distinct, Divide: divideView(spec.Divide)}
 	for _, id := range lt.Players {
 		view.Players = append(view.Players, id.String())
 	}
@@ -8097,7 +8101,7 @@ func sacrificeCostOptions(g *game.Game, controller uuid.UUID, spec *game.TargetS
 	lt := g.SpecCandidatesForEffect(controller, spec)
 	var ids []uuid.UUID
 	for _, id := range lt.Cards {
-		if selfToo && id == sourceID {
+		if (selfToo || spec.ExcludeSource) && id == sourceID {
 			continue
 		}
 		if c, ok := g.LookupCardForEffect(id); ok && c.Controller == controller {

@@ -16,7 +16,7 @@ import (
 // b06TutorToHand, the Overlook land shape is b08OverlookLand, the
 // entered-this-turn read is b06EnteredThisTurn (the two per-turn
 // reads below are the same tally), "sacrifice ANOTHER
-// creature" by name is b03NotNamed, and the Treasure and Food are
+// creature" is SacrificeAnotherN, and the Treasure and Food are
 // tokens.go's.
 
 // --- token templates ---------------------------------------------

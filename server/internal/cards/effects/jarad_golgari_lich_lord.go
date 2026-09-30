@@ -56,7 +56,7 @@ func init() {
 		Activated: []ActivatedAbility{{
 			Label: "{1}{B}{G}, Sacrifice another creature: Each opponent loses life equal to the sacrificed creature's power",
 			Cost: Plus(ManaCost("{1}{B}{G}"), game.AbilityCost{
-				SacrificeOther: sacrificeSpec("another creature", Creature(), b03NotNamed("Jarad, Golgari Lich Lord")),
+				SacrificeOther: Another(sacrificeSpec("another creature", Creature())),
 			}),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				fed, ok := b17PermanentSacrificedToPay(g, item)

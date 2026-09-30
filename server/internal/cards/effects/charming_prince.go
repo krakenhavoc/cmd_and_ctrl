@@ -25,12 +25,8 @@ import (
 // and "under your control" name the same player, so the shared flicker
 // body is exactly the printed effect.
 //
-// Declared simplification: "another" on the third bullet is enforced
-// by NAME (b03NotNamed), the catalog's standing convention for a
-// modal option's target clause — ModeOption.Targets has no per-source
-// rewrite the way a plain triggered ability's TargetsFrom does. The
-// bullet cannot target a second Charming Prince, which the printed
-// card allows.
+// "Another" on the third bullet is object identity (effects.Another, CR 109.1):
+// a second Charming Prince, or a token copy of this one, is a legal target.
 func init() {
 	prince := WhenThisEnters("Charming Prince — choose one",
 		func(*game.Game, *game.StackItem) error { return nil })
@@ -43,14 +39,13 @@ func init() {
 		}),
 		ModeDoing("Exile another target creature you own. Return it to the battlefield "+
 			"under your control at the beginning of the next end step.",
-			TargetCreature("another target creature you own", YouOwn(), b03NotNamed("Charming Prince")),
+			Another(TargetCreature("another target creature you own", YouOwn())),
 			charmingPrinceExileAndReturn),
 	)
 	Register(Spec{
 		OracleID:     "c48d844c-3976-4fa5-8e0d-3f0e535e7619",
 		Name:         "Charming Prince",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The exile mode can't target another Charming Prince."},
+		Completeness: CompletenessFull,
 		Triggered:    []game.TriggeredAbility{prince},
 	})
 }

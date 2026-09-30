@@ -2025,6 +2025,9 @@ export interface LegalTargetsView {
   // meaningless until X is chosen, so the picker substitutes the X
   // collected in the cost prompts.
   count_from_x?: boolean;
+  // With count_from_x: the announced X is a ceiling ("up to X target
+  // cards"), so the picker confirms with any number from 0 to X.
+  up_to_x?: boolean;
   // #764: the clause's printed wording, shown in the picker banner
   // when a statement has more than one clause and the banner has to
   // say which question it is asking.

@@ -48,7 +48,7 @@ func init() {
 		Activated: []ActivatedAbility{{
 			Label:   "{4}{W}, {T}: Exile another target creature you control, then return it to the battlefield under its owner's control.",
 			Cost:    Plus(ManaCost("{4}{W}"), TapCost()),
-			Targets: TargetCreature("another target creature you control", YouControl(), b03NotNamed("Distinguished Conjurer")),
+			Targets: Another(TargetCreature("another target creature you control", YouControl())),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
 					return nil

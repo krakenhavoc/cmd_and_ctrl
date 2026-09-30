@@ -25,7 +25,7 @@ import (
 // was sacrificed to pay the cost: it is in the graveyard with its
 // counters cleared by the time the ability resolves (CR 400.7), so
 // the count is read back off the event log — the most recent total
-// of every counter kind it carried, b13LastKnownCounterTotal. Every
+// of every counter kind it carried, the departure record (ctx.SourcePermanent). Every
 // kind counts, as printed: a +1/+1 counter from elsewhere makes a
 // Spider too.
 //
@@ -48,8 +48,14 @@ func init() {
 			Cost:         Plus(TapCost(), SacrificeThis()),
 			SorcerySpeed: true,
 			Effect: func(g *game.Game, item *game.StackItem) error {
-				n := b13LastKnownCounterTotal(g, item.SourceCardID)
-				return CreateToken{Controller: item.Controller, Template: TokenCard("2/2 green Spider with reach"), N: n}.Apply(NewContext(g, item))
+				ctx := NewContext(g, item)
+				n := 0
+				if info, ok := ctx.SourcePermanent(); ok {
+					for _, c := range info.Counters {
+						n += c
+					}
+				}
+				return CreateToken{Controller: item.Controller, Template: TokenCard("2/2 green Spider with reach"), N: n}.Apply(ctx)
 			},
 		}},
 	})
