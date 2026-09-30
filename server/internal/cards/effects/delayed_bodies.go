@@ -77,6 +77,10 @@ var (
 	// owner's hand at the next end step, if it is still that object.
 	zaraReturnToHandBody = game.DelayedBody("zara/return-to-hand", zaraReturnToHand)
 
+	// Gift of Immortality: return the Aura the item names and attach it
+	// to the creature <Object>, if that is still the same object.
+	giftOfImmortalityReturnAuraBody = game.DelayedBody("gift-of-immortality/return-aura", giftOfImmortalityReturnAura)
+
 	// Copy the spell the event-conditioned trigger fired on (Doublecast,
 	// Galvanic Iteration).
 	copyTheSpellBody = game.SimpleDelayedBody("copy/the-spell-you-just-cast", copyTheSpellYouJustCast)
