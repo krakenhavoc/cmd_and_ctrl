@@ -72,3 +72,14 @@ func drainTargetedOpponent(amount int) Effect {
 		return nil
 	}
 }
+
+// eachOpponentLosesTwoYouGainTwo is the mode bullet "Each opponent
+// loses 2 life and you gain 2 life" (Sol'Kanar the Tainted, Gollum,
+// Riddle Master). Life loss, not damage, and you gain 2 once, however
+// many opponents lost it.
+func eachOpponentLosesTwoYouGainTwo(item *game.StackItem, ctx *Context, _ int) error {
+	if err := eachOpponentLosesLife(ctx.Game, item, 2); err != nil {
+		return err
+	}
+	return GainLife{Player: item.Controller, Amount: 2}.Apply(ctx)
+}
