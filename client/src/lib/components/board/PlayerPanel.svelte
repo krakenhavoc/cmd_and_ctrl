@@ -543,7 +543,12 @@
     {#if isSelf}
       <!-- #1389: the exiled cards this seat may cast, as a second
            hand. Renders nothing when there are none. -->
-      <ExileStrip {view} {viewerID} onCastCard={onPlayCard} />
+      <ExileStrip
+        {view}
+        {viewerID}
+        onCastCard={onPlayCard}
+        onDragCast={(c, zone, face) => onPlayCard(c, zone, face, true)}
+      />
     {/if}
     {#if !isSelf}
       <PromisesRow {view} {viewerID} opponentID={seat.id} {sendAction} />
