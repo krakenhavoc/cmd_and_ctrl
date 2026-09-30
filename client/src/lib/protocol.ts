@@ -361,6 +361,12 @@ export interface GameView {
   // omits it entirely. Client predicates stay permissive when it is
   // missing and let the server do the rejecting.
   legal_moves?: LegalMoveView[];
+  // ADR 0105 (#1789): a per-card digest of the same enumeration, built
+  // before the 48-move cap, so it stays exact down to the ability row.
+  // Own seat only, like legal_moves. Absent means "highlight nothing",
+  // never "nothing is legal". Nothing reads it yet: the highlights
+  // arrive in ADR 0105 sub-PR 2.
+  legal_actions?: LegalActionsView;
   // The public game log (S31 sub-PR 0, ADR 0033 §4): the last ~200
   // table-visible events, oldest first. Every card reference in it has
   // been through the same visibility filter as the zones above, so an
@@ -489,6 +495,37 @@ export interface RevealedCardView {
 // invariant you may rely on is "every card with a legal move has at
 // least one entry here". Do NOT read it as the complete set of legal
 // targets; that is what CardView.legal_targets is for.
+// GameView.legal_actions (ADR 0105): what each of the viewer's cards
+// may do right now, folded from the uncapped legal-move list. Keyed by
+// card instance ID. See docs/protocol.md "LegalActionsView".
+export interface LegalActionsView {
+  // A pass_priority move exists.
+  pass?: boolean;
+  sources?: Record<string, LegalSourceView>;
+}
+
+export interface LegalSourceView {
+  // Distinct move kinds, in enumeration order. Never pass, choice or
+  // mulligan.
+  kinds: Exclude<LegalMoveView["kind"], "pass" | "choice" | "mulligan">[];
+  // Moves in the uncapped list that involve this card.
+  moves: number;
+  // ADR 0093 refs of live activated_abilities / zone_abilities rows.
+  abilities?: string[];
+  // Refs of live mana_abilities / zone_mana_abilities rows.
+  mana_abilities?: string[];
+  // Live special-action kinds: foretell, suspend, turn_face_up, plot.
+  special_actions?: string[];
+  // from_zone of each cast or land move.
+  zones?: string[];
+  // Printed faces the cast moves cast (0 is the front).
+  faces?: number[];
+  // Players, planeswalkers and battles this creature may attack.
+  attack_targets?: string[];
+  // Attackers this creature may block, alone or in a group.
+  blocks?: string[];
+}
+
 export interface LegalMoveView {
   type: string;
   player: string;

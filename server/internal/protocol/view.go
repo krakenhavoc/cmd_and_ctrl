@@ -152,6 +152,22 @@ type GameView struct {
 	// unfiltered view that goes to the crash dump and the replay log
 	// carries no seat's moves at all. Added in S31 sub-PR 2.
 	LegalMoves []LegalMoveView `json:"legal_moves,omitempty"`
+	// LegalActions is a per-card digest of the same enumeration
+	// (ADR 0105 §1, #1789): for each card the viewer's seat may do
+	// something with, which kinds of move, which ability rows (by
+	// ADR 0093 ref), which zones and faces it may be cast from, and
+	// whom it may attack or block. Built from the UNCAPPED list,
+	// before capLegalMoves degrades it, so it stays exact down to the
+	// ability row on a board past legalMovesWireCap. It is what the
+	// client's legal-action highlights read.
+	//
+	// OWN SEAT ONLY, by the same construction as LegalMoves: it is
+	// projected out of the unexported legalActionsBySeat map by
+	// FilterViewFor, so the unfiltered view, the admin, spectators and
+	// every other seat carry none. It reveals nothing LegalMoves does
+	// not already hand the same viewer. Absent whenever the seat owes
+	// no decision, so a quiet frame costs 0 bytes.
+	LegalActions *LegalActionsView `json:"legal_actions,omitempty"`
 	// legalBySeat is the per-seat enumeration, keyed by player UUID
 	// string. Unexported, so encoding/json never writes it: the only
 	// way a move list reaches a client is through FilterViewFor
@@ -159,6 +175,9 @@ type GameView struct {
 	// every filtered copy, which keeps repeated FilterViewFor calls
 	// idempotent.
 	legalBySeat map[string][]LegalMoveView
+	// legalActionsBySeat is the per-seat LegalActions digest, keyed
+	// and projected exactly as legalBySeat is.
+	legalActionsBySeat map[string]*LegalActionsView
 	// Log is the public game log: the last PublicLogMax table-visible
 	// events, oldest first. A projection of game.Game.Events, not a
 	// stored buffer — see log.go. Every card reference in it goes
@@ -3309,7 +3328,7 @@ func ViewOfGame(g *game.Game) GameView {
 		stampZoneAbilities(g, view.Seats, &view.Exile)
 		stampCombatTargets(g, &view)
 		stampNoUntap(g, &view.Battlefield)
-		view.legalBySeat = enumerateLegalMoves(g)
+		view.legalBySeat, view.legalActionsBySeat = enumerateLegalMoves(g)
 		// S31 sub-PR 0: the public log resolves card names and knower
 		// sets out of the view that was just assembled, so it must run
 		// last — and inside the same read lock, so the log and the
@@ -3341,24 +3360,36 @@ func ViewOfGame(g *game.Game) GameView {
 // (the active player still does), and blocking is the window a
 // client must never be left guessing about (#328).
 //
+// The second map is ADR 0105's digest of each seat's list. It is
+// folded from the UNCAPPED enumeration, before capLegalMoves, which is
+// the whole reason it is built here rather than from the wire list:
+// one enumeration, two projections of it.
+//
 // A nil map is fine — FilterViewFor reads it with a comma-less index
 // and gets nil back for every seat.
-func enumerateLegalMoves(g *game.Game) map[string][]LegalMoveView {
+func enumerateLegalMoves(g *game.Game) (map[string][]LegalMoveView, map[string]*LegalActionsView) {
 	var out map[string][]LegalMoveView
+	var digests map[string]*LegalActionsView
 	for _, p := range g.Seats {
 		if p == nil {
 			continue
 		}
-		moves := capLegalMoves(legal.EnumerateLocked(g, p.ID, legal.Options{}))
-		if len(moves) == 0 {
+		all := legal.EnumerateLocked(g, p.ID, legal.Options{})
+		if len(all) == 0 {
 			continue
+		}
+		if d := digestLegalMoves(all); d != nil {
+			if digests == nil {
+				digests = make(map[string]*LegalActionsView, len(g.Seats))
+			}
+			digests[p.ID.String()] = d
 		}
 		if out == nil {
 			out = make(map[string][]LegalMoveView, len(g.Seats))
 		}
-		out[p.ID.String()] = moves
+		out[p.ID.String()] = capLegalMoves(all)
 	}
-	return out
+	return out, digests
 }
 
 // legalMovesWireCap bounds how many moves one seat's list may put on
@@ -6606,6 +6637,8 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		DiscardPending:    v.DiscardPending,
 		PendingChoices:    filterPendingChoices(v.PendingChoices, isKnower, viewerID),
 		LegalMoves:        legalMovesFor(v.legalBySeat, viewerID),
+		// ADR 0105: the digest of the same list, under the same rule.
+		LegalActions: legalActionsFor(v.legalActionsBySeat, viewerID),
 		// S31 sub-PR 0: the public log rides the same isKnower closure
 		// as every zone above it. Not a parallel visibility model —
 		// literally the same predicate, applied to the card each entry
@@ -6632,15 +6665,15 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 // legalMovesFor picks the viewer's own move list out of the per-seat
 // enumeration and drops every other seat's.
 //
-// The empty viewerID — spectator, admin, replay reader — gets
-// nothing, which is the one place this parts company with the rest of
-// FilterViewFor's "empty means see everything" convention. A move
+// The empty viewerID — admin, replay reader — and SpectatorViewerID
+// get nothing, which is the one place this parts company with the rest
+// of FilterViewFor's "empty means see everything" convention. A move
 // list is not a view of the board, it is a view of what a specific
 // player is holding: "cast Lightning Bolt targeting Kess" names a
 // card in a hand. There is no seat whose moves an unseated viewer is
 // entitled to, so there is nothing to hand back.
 func legalMovesFor(bySeat map[string][]LegalMoveView, viewerID string) []LegalMoveView {
-	if viewerID == "" || len(bySeat) == 0 {
+	if viewerID == "" || viewerID == SpectatorViewerID || len(bySeat) == 0 {
 		return nil
 	}
 	return bySeat[viewerID]
