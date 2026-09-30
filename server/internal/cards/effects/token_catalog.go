@@ -179,6 +179,9 @@ var tokenTemplates = []tokenTemplateBuilder{
 
 	// #750: the first token whose printed text is a block rule.
 	printedKurukSpiritToken,
+
+	// ADR 0103: Spiked Corridor's Devil.
+	printedDevilToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init
