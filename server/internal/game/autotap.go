@@ -70,6 +70,17 @@ import (
 // untapped permanent nor a crackable one could pay. See
 // tapSource.LeavesHand for the whole ordering in one sentence.
 //
+// …and behind THAT, since #1621, a mana ability that costs its source
+// NOTHING: Vivi Ornitier's "{0}: Add X mana …, Activate only during your
+// turn and only once each turn". Nothing about paying it is spent for
+// good, but the turn's one activation is — a Vivi booked for a two-drop
+// is a Vivi that cannot fund the spell after it — so the owner's ruling
+// (2026-09-30) is "only when nothing else can pay": the tier below every
+// other tier, the hand included. And a costless ability is plannable
+// only when something BOUNDS it: the declared OncePerTurn, which the
+// planner can read and a Condition closure is not. See
+// autoTapFreeOncePerTurn and tapSource.FreeOncePerTurn.
+//
 // …unless the spell being cast ASKED for it. #1212's source wish
 // (tapSource.Wanted) is read before the last-resort tier in both
 // comparators, because a card that reads "if mana from a Treasure was
@@ -210,6 +221,12 @@ type AutoTapPlanEntry struct {
 	Taps       bool
 	Sacrifices bool
 	Exiles     bool
+	// OncePerTurn: the payment spends nothing but this turn's one use
+	// of a costless "Activate only once each turn" ability (#1621 —
+	// Vivi Ornitier's {0}). Taps, Sacrifices and Exiles are all false
+	// for it, and without this bit the entry would read as a tap, which
+	// it is not.
+	OncePerTurn bool
 }
 
 // AutoTapPlanPreferringExcluding is AutoTapForCostPreferringExcluding
@@ -256,6 +273,7 @@ func (g *Game) describePlanLocked(controller uuid.UUID, plan tapPlan) []AutoTapP
 			entry.Name, entry.Zone = c.Name, ZoneBattlefield
 			if ab := g.autoTapAbilityForRef(controller, c, planned.Ref); ab != nil {
 				entry.Taps, entry.Sacrifices = ab.TapCost, ab.SacrificeCost
+				entry.OncePerTurn = autoTapFreeOncePerTurn(*ab)
 			}
 			out = append(out, entry)
 			continue
@@ -412,6 +430,12 @@ func (g *Game) autoTapPreferringLocked(
 		// the same order and the rest of the argument.
 		if sources[i].Wanted != sources[j].Wanted {
 			return sources[i].Wanted
+		}
+		// #1621: the costless once-each-turn ability is the LAST tier,
+		// below even a card out of hand — tested first of the tiers
+		// because the first key to differ decides.
+		if sources[i].FreeOncePerTurn != sources[j].FreeOncePerTurn {
+			return !sources[i].FreeOncePerTurn
 		}
 		// #1215: a source the cost EATS sorts behind everything else,
 		// frozen sources included — the coloured pass takes the first
@@ -572,6 +596,20 @@ type tapSource struct {
 	// ordinary source, as it always was, and so is a noncreature's
 	// grant (a Forest under Chromatic Lantern).
 	GrantedCreature bool
+
+	// FreeOncePerTurn marks a candidate whose mana ability costs its
+	// source NOTHING and is bounded by "Activate only once each turn"
+	// (#1621) — Vivi Ornitier's "{0}". See autoTapFreeOncePerTurn for
+	// what "nothing" admits.
+	//
+	// The LAST tier of both comparators, below LeavesHand (owner
+	// decision 2026-09-30: "only when nothing else can pay"). Paying
+	// with it destroys nothing and taps nothing, but it spends the
+	// turn's single activation, and a planner that reached for it to
+	// save a Mountain would leave the player without it for the spell
+	// they cast next. Below the hand tier too, because the ruling was
+	// a floor under everything, not a slot between two tiers.
+	FreeOncePerTurn bool
 }
 
 // lastResort is the tier #1215 opened for the sources a plan should
@@ -715,6 +753,10 @@ func gatherTapSources(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool
 				// ADR 0093 Decision 6 (owner decision): a creature's
 				// GRANTED mana is a last resort.
 				GrantedCreature: cand.granted && c.IsCreature(),
+				// #1621: the picker accepted an ability with no {T} and
+				// no sacrifice, which it does only for a costless
+				// once-each-turn one.
+				FreeOncePerTurn: autoTapFreeOncePerTurn(*picked),
 			}, slots)
 		}
 	}
@@ -995,6 +1037,12 @@ func appendTapSource(out []tapSource, proto tapSource, slots []ProducedManaEntry
 // Eldrazi Scion — "Sacrifice this: Add …" and nothing else — out of
 // every plan.
 //
+// #1621 adds the one exception, and it is bounded rather than free: an
+// ability that costs NOTHING and declares "Activate only once each
+// turn" (Vivi Ornitier's {0}) — see autoTapFreeOncePerTurn. The bound
+// is the declared bit, which is what keeps it from being the unlimited
+// source the demand exists to refuse.
+//
 // Then eight exclusions, all for the same reason — the auto-tapper's
 // contract is "no further player decisions and no hidden costs":
 //
@@ -1166,7 +1214,10 @@ func (g *Game) autoTapAbilityAccepts(asker uuid.UUID, source Card, a ManaAbility
 	// (a Gold token, an Eldrazi Spawn) is a plan entry like any
 	// other now — the executor reads ab.TapCost to decide whether
 	// to tap it. See the demand in the doc above.
-	if !a.TapCost && !a.SacrificeCost {
+	//
+	// #1621: OR nothing at all, bounded by a declared "once each
+	// turn" (Vivi Ornitier's {0}) — the last-resort tier.
+	if !a.TapCost && !a.SacrificeCost && !autoTapFreeOncePerTurn(a) {
 		return false
 	}
 	// #1215: the sacrifice-OTHER half only. Sacrificing the source
@@ -1233,6 +1284,60 @@ func (g *Game) autoTapAbilityAccepts(asker uuid.UUID, source Card, a ManaAbility
 	// #1283: the exile-a-card clause, on the discard's ground one
 	// verb over — Cadaverous Bloom asks which card leaves the hand.
 	if a.ExileCards != nil {
+		return false
+	}
+	return true
+}
+
+// autoTapFreeOncePerTurn reports whether a battlefield mana ability
+// costs its source NOTHING and is bounded by a declared "Activate only
+// once each turn" (#1621, owner decision 2026-09-30) — Vivi Ornitier's
+// "{0}: Add X mana …". The one costless shape the planner takes, and
+// only as its last-resort tier (tapSource.FreeOncePerTurn).
+//
+// Three demands, each the auto-tapper's standing contract applied to a
+// cost with nothing in it:
+//
+//   - BOUNDED. OncePerTurn is the bound, and it is a declaration the
+//     planner can read — a Condition is an opaque closure, and a
+//     costless ability with nothing bounding it would be a source the
+//     planner books on every cast. The bit's enforcement travels with
+//     it (effects.manaShapes folds the gate into Condition), so the
+//     planner's gather and the executor, which both ask Condition,
+//     refuse a second use this turn the way the click path does.
+//
+//   - NO OTHER COST. Every component, not only the ones the picker's
+//     exclusions refuse: a counter removal (Ramos's five +1/+1
+//     counters) is plannable on a {T} source by manaCounterCostPlannable,
+//     but a costless-tier ability that shrank its source would be a
+//     non-mana cost the player never agreed to pay. A mana cost, a
+//     life cost, a rider or a pre-rider, a discard, an exile, a
+//     tap-others or a sacrifice-others are each refused below too.
+//
+//   - PREDICTABLE OUTPUT. The output is read by the same
+//     manaPlannableSlotsLocked every source goes through — Vivi's
+//     power-scaled ProducedFunc evaluated as the plan is made, so a
+//     power-0 Vivi prices at nothing and is not a source. The one
+//     output the planner cannot price is one computed from the
+//     PAYMENT (ProducedForPaid), and with nothing paid that is not a
+//     prediction, so it is refused.
+//
+// Pipe slots are fine: the executor answers each greedily against the
+// cost (pickColorForSlot), as it does for a Birds of Paradise.
+//
+// A pure function of the shape, so the planner, the executor (through
+// autoTapAbilityForRef) and the preview's description read one answer.
+func autoTapFreeOncePerTurn(a ManaAbilityShape) bool {
+	if !a.OncePerTurn || a.TapCost || a.SacrificeCost {
+		return false
+	}
+	if a.SacrificeOther != nil || !a.TapOthers.Empty() || a.LifeCost > 0 || a.ManaCost != "" {
+		return false
+	}
+	if a.RemoveCounters != nil || a.AddCounter != nil || a.DiscardCards != nil || a.ExileCards != nil || a.ExileSelf {
+		return false
+	}
+	if a.Rider != nil || a.PreRider != nil || a.ProducedForPaid != nil {
 		return false
 	}
 	return true
@@ -1583,10 +1688,14 @@ func recruitGeneric(
 //
 // ADR 0093: a creature's GRANTED mana ability (Cryptolith Rite) sits in
 // the sacrifice tier too — see tapSource.GrantedCreature.
+//
+// #1621: and a costless once-each-turn ability (Vivi Ornitier) comes
+// after everything, the hand included — see tapSource.FreeOncePerTurn.
 func orderUnusedByGenericPreference(sources []tapSource, used []bool) []int {
 	type rank struct {
 		idx        int
 		wanted     bool
+		free       bool
 		leavesHand bool
 		sacrifices bool
 		creature   bool
@@ -1603,6 +1712,7 @@ func orderUnusedByGenericPreference(sources []tapSource, used []bool) []int {
 		out = append(out, rank{
 			idx:        i,
 			wanted:     s.Wanted,
+			free:       s.FreeOncePerTurn,
 			leavesHand: s.LeavesHand,
 			sacrifices: s.lastResort(),
 			creature:   s.SacrificesCreature,
@@ -1632,6 +1742,14 @@ func orderUnusedByGenericPreference(sources []tapSource, used []bool) []int {
 		// the planner spends the cheapest thing on the board.
 		if out[a].wanted != out[b].wanted {
 			return out[a].wanted
+		}
+		// #1621: the costless once-each-turn tier, last of all. A Vivi
+		// at power 3 is three any-colour slots and would otherwise be
+		// recruited for a generic pip ahead of the basic land beside it
+		// — and the generic half is exactly where its one activation is
+		// cheapest to waste.
+		if out[a].free != out[b].free {
+			return !out[a].free
 		}
 		// #1228: the generic half is where the hand tier matters most,
 		// for the reason the sacrifice tier does — a Spirit Guide is a

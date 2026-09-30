@@ -58,6 +58,8 @@ battlefield.cards[].colorIdentity[]	string
 battlefield.cards[].colors	array
 battlefield.cards[].colors[]	string
 battlefield.cards[].controller	custom(uuid.UUID)
+battlefield.cards[].counterStampedAt	map:string
+battlefield.cards[].counterStampedAt{}	number:int64
 battlefield.cards[].counters	map:string
 battlefield.cards[].counters{}	number:int
 battlefield.cards[].damageMarked	number:int
@@ -428,6 +430,8 @@ exile.cards[].colorIdentity[]	string
 exile.cards[].colors	array
 exile.cards[].colors[]	string
 exile.cards[].controller	custom(uuid.UUID)
+exile.cards[].counterStampedAt	map:string
+exile.cards[].counterStampedAt{}	number:int64
 exile.cards[].counters	map:string
 exile.cards[].counters{}	number:int
 exile.cards[].damageMarked	number:int
@@ -783,6 +787,8 @@ lastKnownStack[].card.colorIdentity[]	string
 lastKnownStack[].card.colors	array
 lastKnownStack[].card.colors[]	string
 lastKnownStack[].card.controller	custom(uuid.UUID)
+lastKnownStack[].card.counterStampedAt	map:string
+lastKnownStack[].card.counterStampedAt{}	number:int64
 lastKnownStack[].card.counters	map:string
 lastKnownStack[].card.counters{}	number:int
 lastKnownStack[].card.damageMarked	number:int
@@ -1530,6 +1536,8 @@ phasedOut.cards[].colorIdentity[]	string
 phasedOut.cards[].colors	array
 phasedOut.cards[].colors[]	string
 phasedOut.cards[].controller	custom(uuid.UUID)
+phasedOut.cards[].counterStampedAt	map:string
+phasedOut.cards[].counterStampedAt{}	number:int64
 phasedOut.cards[].counters	map:string
 phasedOut.cards[].counters{}	number:int
 phasedOut.cards[].damageMarked	number:int
@@ -1922,6 +1930,8 @@ seats[].command.cards[].colorIdentity[]	string
 seats[].command.cards[].colors	array
 seats[].command.cards[].colors[]	string
 seats[].command.cards[].controller	custom(uuid.UUID)
+seats[].command.cards[].counterStampedAt	map:string
+seats[].command.cards[].counterStampedAt{}	number:int64
 seats[].command.cards[].counters	map:string
 seats[].command.cards[].counters{}	number:int
 seats[].command.cards[].damageMarked	number:int
@@ -2167,6 +2177,8 @@ seats[].emblems.cards[].colorIdentity[]	string
 seats[].emblems.cards[].colors	array
 seats[].emblems.cards[].colors[]	string
 seats[].emblems.cards[].controller	custom(uuid.UUID)
+seats[].emblems.cards[].counterStampedAt	map:string
+seats[].emblems.cards[].counterStampedAt{}	number:int64
 seats[].emblems.cards[].counters	map:string
 seats[].emblems.cards[].counters{}	number:int
 seats[].emblems.cards[].damageMarked	number:int
@@ -2402,6 +2414,8 @@ seats[].graveyard.cards[].colorIdentity[]	string
 seats[].graveyard.cards[].colors	array
 seats[].graveyard.cards[].colors[]	string
 seats[].graveyard.cards[].controller	custom(uuid.UUID)
+seats[].graveyard.cards[].counterStampedAt	map:string
+seats[].graveyard.cards[].counterStampedAt{}	number:int64
 seats[].graveyard.cards[].counters	map:string
 seats[].graveyard.cards[].counters{}	number:int
 seats[].graveyard.cards[].damageMarked	number:int
@@ -2636,6 +2650,8 @@ seats[].hand.cards[].colorIdentity[]	string
 seats[].hand.cards[].colors	array
 seats[].hand.cards[].colors[]	string
 seats[].hand.cards[].controller	custom(uuid.UUID)
+seats[].hand.cards[].counterStampedAt	map:string
+seats[].hand.cards[].counterStampedAt{}	number:int64
 seats[].hand.cards[].counters	map:string
 seats[].hand.cards[].counters{}	number:int
 seats[].hand.cards[].damageMarked	number:int
@@ -2874,6 +2890,8 @@ seats[].library.cards[].colorIdentity[]	string
 seats[].library.cards[].colors	array
 seats[].library.cards[].colors[]	string
 seats[].library.cards[].controller	custom(uuid.UUID)
+seats[].library.cards[].counterStampedAt	map:string
+seats[].library.cards[].counterStampedAt{}	number:int64
 seats[].library.cards[].counters	map:string
 seats[].library.cards[].counters{}	number:int
 seats[].library.cards[].damageMarked	number:int
@@ -3205,6 +3223,8 @@ stack.cards[].colorIdentity[]	string
 stack.cards[].colors	array
 stack.cards[].colors[]	string
 stack.cards[].controller	custom(uuid.UUID)
+stack.cards[].counterStampedAt	map:string
+stack.cards[].counterStampedAt{}	number:int64
 stack.cards[].counters	map:string
 stack.cards[].counters{}	number:int
 stack.cards[].damageMarked	number:int

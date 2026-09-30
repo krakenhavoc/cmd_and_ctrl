@@ -572,7 +572,16 @@ func (c Card) Effective() Characteristic {
 	if c.effective != nil {
 		return *c.effective
 	}
-	return c.printedCharacteristic()
+	ch := c.printedCharacteristic()
+	// CR 122.1b / ADR 0101 Decision 4: a keyword counter on a card in
+	// another zone gives it that keyword. No layer pass runs there, so
+	// the counter's keyword is added straight onto the baseline — the
+	// same keywordCounterTokens forEachAbilityToken reads, so the view
+	// and HasKeyword cannot disagree.
+	for _, kw := range keywordCounterTokens(&c) {
+		ch.Abilities = AppendKeywordAbility(ch.Abilities, kw)
+	}
+	return ch
 }
 
 // ParseTypeLine splits a Scryfall-style type line into supertypes,

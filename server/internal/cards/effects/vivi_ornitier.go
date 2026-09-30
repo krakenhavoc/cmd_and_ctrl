@@ -27,10 +27,8 @@ import (
 // printed clause rather than a convenience:
 //
 //   - "{0}" is a cost with no components at all — ManaAbilityCost{}.
-//     Vivi does not tap for it, so a summoning-sick Vivi could fire
-//     it (and the once-per-turn gate is what stops that mattering),
-//     and the auto-tapper never plans it, because an ability with no
-//     {T} is not a tap source.
+//     Vivi does not tap for it, so a summoning-sick Vivi (or a tapped
+//     one — it attacked) can still fire it.
 //   - "X … where X is Vivi Ornitier's power" is the SCALED shape of
 //     ProducedFunc: the pipe slot repeated once per point of power.
 //     Power is read at activation, post-layers and with counters
@@ -46,12 +44,28 @@ import (
 //     about a commander's identity, so the offer is exactly {U} or
 //     {R} whatever the commander is.
 //   - "Activate only during your turn and only once each turn" is
-//     TWO conditions, ANDed (AllConditions). Both are CR 602.1b
-//     gates checked before anything is paid. The second is
-//     ManaAbilityNotUsedThisTurn, which counts this permanent's
-//     EventManaAbilityActivated in the turn's own slice of the event
-//     log; Vivi has exactly one mana ability, so the helper's
-//     per-permanent key is exact here.
+//     TWO gates, both CR 602.1b restrictions checked before anything
+//     is paid. The first is the Condition, DuringYourTurn. The second
+//     is the declared OncePerTurn bit, which Register folds into the
+//     same Condition over the per-turn activation record — per
+//     OBJECT, so a flickered Vivi is a new object with a fresh use
+//     (CR 400.7), and per label.
+//
+// The AUTO-TAPPER plans the ability (#1621, owner decision
+// 2026-09-30), and only as its LAST resort: behind every land and
+// rock, behind every frozen source, behind every Treasure and behind
+// every Spirit Guide in hand. The declared OncePerTurn is what makes a
+// costless ability plannable at all — a {0} with nothing bounding it
+// would be a source the planner could book on every cast — and its
+// output is the same power-scaled ProducedFunc the activation reads,
+// evaluated when the plan is made, so a power-0 Vivi is not a source
+// and a power-3 Vivi is three {U|R} slots the executor picks greedily
+// against the cost. Using it spends the turn's one activation, so a
+// cast the lands can pay never touches it, and a plan that does reach
+// for it lets whatever the cast does not need float, as any surplus
+// does (CR 106.4). Summoning sickness, a tapped Vivi and a frozen
+// untap are no bar: the ability taps nothing. See ADR 0011's
+// 2026-09-30 amendment.
 //
 // The trigger is "whenever YOU cast a NONCREATURE spell" — any
 // noncreature spell, including one that is countered afterwards,
@@ -73,7 +87,8 @@ func init() {
 			Cost:         ManaAbilityCost{},
 			ProducedFunc: viviManaFromPower,
 			Label:        "{0}: Add X mana in any combination of {U} and/or {R}, where X is Vivi Ornitier's power. Activate only during your turn and only once each turn",
-			Condition:    AllConditions(DuringYourTurn(), ManaAbilityNotUsedThisTurn()),
+			OncePerTurn:  true,
+			Condition:    DuringYourTurn(),
 		}},
 		Triggered: []game.TriggeredAbility{
 			WheneverYouCast(Noncreature(), "Vivi Ornitier — +1/+1 counter and 1 damage to each opponent",

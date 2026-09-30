@@ -517,6 +517,9 @@ func cloneCard(c Card) Card {
 	// ADR 0097: the "hasn't been chosen" memory is a map of slices,
 	// and a value copy would share both levels with the live card.
 	out.ModesChosen = copyModesChosen(c.ModesChosen)
+	// ADR 0101: the keyword counters' timestamps ride an undo with the
+	// counters they order.
+	out.CounterStampedAt = copyStringInt64Map(c.CounterStampedAt)
 	if len(c.Counters) > 0 {
 		out.Counters = make(map[string]int, len(c.Counters))
 		for k, v := range c.Counters {
