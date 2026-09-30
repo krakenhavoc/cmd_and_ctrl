@@ -334,7 +334,9 @@ type GameSnapshot struct {
 	// Decisions 3 and 10). Pure data, additive within v7. A file
 	// without them (written before the plan, or by an older binary)
 	// restores with the template's tail after the current step, which
-	// is the only plan such a game can have had. An older binary
+	// is the only plan such a game can have had, and with the ordinals
+	// and step/phase counts that walk implies
+	// (derivePrePlanOrdinalsLocked). An older binary
 	// reading a newer file drops them and loses any added phase still
 	// to come: weaker, never stronger, until the next deploy.
 	TurnPlan    []PlannedStep `json:"turnPlan,omitempty"`
@@ -2375,6 +2377,9 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.NextExtraRef = s.NextExtraRef
 	g.TurnPlan = clonePlan(s.TurnPlan)
 	g.NextPhaseID = s.NextPhaseID
+	// A file from before the plan names no nextPhaseId at all: every
+	// game with a plan has at least the template's 5 (#753).
+	prePlan := len(s.TurnPlan) == 0 && s.NextPhaseID == 0 && g.Turn.Step != ""
 	if len(g.TurnPlan) > 0 || g.Turn.Step == StepCleanup {
 		// A file written with the plan: it describes this cursor.
 		g.planAt = g.planCursorLocked()
@@ -2391,6 +2396,9 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.SpellsCastThisTurn = copyTallyMap(s.SpellsCastThisTurn)
 	g.ForetoldThisTurn = copyIntMap(s.ForetoldThisTurn)
 	g.TurnTally = cloneTurnTally(s.TurnTally)
+	if prePlan && len(g.TurnTally.StepsBegun) == 0 && len(g.TurnTally.PhasesBegun) == 0 {
+		g.derivePrePlanOrdinalsLocked()
+	}
 	g.Activations = cloneActivationTally(s.Activations)
 	g.LoopNotice = cloneLoopNotice(s.LoopNotice)
 	g.LoopThreshold = s.LoopThreshold
