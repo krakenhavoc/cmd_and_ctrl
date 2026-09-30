@@ -191,6 +191,8 @@ func Register(spec Spec) {
 	// for a shape that compiles and then behaves as something the card
 	// does not print.
 	checkTeamworkBlight(spec)
+	// ADR 0100 §2: the either/or cost's shapes.
+	checkEitherCost(spec)
 	if spec.AdditionalCost != nil && spec.AdditionalCost.Optional {
 		panic(fmt.Sprintf("effects.Register: %q puts an Optional cost in AdditionalCost — the mandatory slot is never optional; declare it in OptionalCosts", spec.Name))
 	}

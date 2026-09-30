@@ -737,6 +737,35 @@ type AdditionalCostView struct {
 	// Label is the clause as printed ("Discard a card"), shown
 	// above the picker.
 	Label string `json:"label,omitempty"`
+
+	// Branches is an either/or additional cost (ADR 0100 §2): "sacrifice
+	// an artifact or discard a card". Each entry is one branch in the
+	// same shape as this view — its own discard count, sacrifice
+	// options, mana, life and blight — plus its `key` and whether the
+	// viewer could pay it right now (`payable`). The caster names the
+	// chosen branch's index on cast_spell as `cost_branch`, and pays that
+	// branch's cards on the usual lists. A cost with branches carries no
+	// components of its own; absent on every other card.
+	Branches []AdditionalCostView `json:"branches,omitempty"`
+	// Key is a branch's identity ("discard", "mana"). Branches only.
+	Key string `json:"key,omitempty"`
+	// ManaCost is a branch's mana ("{5}"), in brace notation. It joins
+	// the total the auto-tap preview prices once `cost_branch` is sent.
+	ManaCost string `json:"mana_cost,omitempty"`
+	// PayLife is a branch's fixed "pay N life" (CR 119.4).
+	PayLife int `json:"pay_life,omitempty"`
+	// Blight is a branch's "blight N" (CR 701.68a), and BlightOptions
+	// the viewer's creatures that could take the counters, in the shape
+	// OptionalCostView gives an optional blight. The one pick rides
+	// cast_spell as `blight_ids`.
+	Blight        int               `json:"blight,omitempty"`
+	BlightOptions *LegalTargetsView `json:"blight_options,omitempty"`
+	// Payable marks a branch the viewer could pay right now:
+	// game.AdditionalCostBranchPayableLocked, the predicate CastSpell and
+	// the bot enumerator ask. Absent means the branch cannot be taken
+	// (CR 118.3) — the client shows it disabled. Mana is never asked
+	// (CR 601.2g lets the caster tap afterwards). Branches only.
+	Payable bool `json:"payable,omitempty"`
 }
 
 // OptionalCostView is the wire shape of one optional additional cost
@@ -4407,18 +4436,16 @@ func castStampsFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, kind
 		out.Modes = viewOfCastModeSpec(g, caster, key, src, ms)
 	}
 	if ac := game.AdditionalCostFor(key); !ac.Empty() {
-		out.AdditionalCost = &AdditionalCostView{
-			DiscardCards: ac.DiscardCards,
-			DemandsX:     ac.PayLifeX,
-			Label:        ac.Label,
-		}
-		if ac.Sacrifice != nil {
-			// SpecCandidatesForEffect, not LegalTargetsForEffect: an
-			// additional sacrifice cost doesn't target, so the
-			// hexproof / shroud gate must not narrow the list the
-			// client offers. The same list, count and order the
-			// abilities ship (#747).
-			out.AdditionalCost.SacrificeOptions = sacrificeCostOptions(g, caster, ac.Sacrifice, uuid.Nil, false)
+		out.AdditionalCost = viewOfAdditionalCost(g, caster, ac)
+		// ADR 0100 §2: an either/or cost ships each branch in the same
+		// shape, stamped with whether the viewer could pay it — the
+		// predicate CastSpell and the enumerator ask, so a branch shown
+		// payable is one the server accepts.
+		for i := range ac.Either {
+			b := viewOfAdditionalCost(g, caster, &ac.Either[i])
+			b.Key = ac.Either[i].Key
+			b.Payable = haveLive && g.AdditionalCostBranchPayableLocked(caster, live, i)
+			out.AdditionalCost.Branches = append(out.AdditionalCost.Branches, *b)
 		}
 	}
 	// ADR 0073: the optional costs this card OFFERS. Stamped next to
@@ -4630,7 +4657,11 @@ func castableNow(g *game.Game, caster uuid.UUID, card game.Card, kind game.ZoneK
 		}
 		return g.LandPlayOpenForEffect(caster)
 	}
-	return cantCast == "" && len(offers) > 0 && g.CastTimingOpenLocked(caster, card, kind, grant)
+	// ADR 0100 §2, CR 601.2h: "Unpayable costs can't be paid" — a card
+	// whose every either/or branch is out of reach is not castable here.
+	// True for every card without branches.
+	return cantCast == "" && len(offers) > 0 && g.CastTimingOpenLocked(caster, card, kind, grant) &&
+		g.AnyAdditionalCostBranchPayableLocked(caster, card)
 }
 
 // viewOfCastPrices prices every offer a cast out of exile may claim,
@@ -5012,6 +5043,33 @@ func printedCostAmong(offers []*game.AlternativeCost) bool {
 		}
 	}
 	return false
+}
+
+// viewOfAdditionalCost is the wire shape of ONE mandatory additional
+// cost, or of one branch of an either/or cost (ADR 0100 §2) — the same
+// components in the same shape, so the client's pickers read a branch
+// exactly as they read the card's cost. Caller must hold g.mu.
+func viewOfAdditionalCost(g *game.Game, caster uuid.UUID, ac *game.AdditionalCost) *AdditionalCostView {
+	out := &AdditionalCostView{
+		DiscardCards: ac.DiscardCards,
+		DemandsX:     ac.PayLifeX,
+		Label:        ac.Label,
+		ManaCost:     ac.ManaCost,
+		PayLife:      ac.PayLife,
+	}
+	if ac.Sacrifice != nil {
+		// SpecCandidatesForEffect, not LegalTargetsForEffect: an
+		// additional sacrifice cost doesn't target, so the hexproof /
+		// shroud gate must not narrow the list the client offers. The
+		// same list, count and order the abilities ship (#747).
+		out.SacrificeOptions = sacrificeCostOptions(g, caster, ac.Sacrifice, uuid.Nil, false)
+	}
+	if ac.Blight > 0 {
+		// The engine's own walk (#1703), as for an optional blight.
+		out.Blight = ac.Blight
+		out.BlightOptions = &LegalTargetsView{Min: 1, Max: 1, Cards: cardIDStrings(g.BlightOptionsForEffect(caster))}
+	}
+	return out
 }
 
 // viewOfOptionalCosts projects a card's "you may pay an additional

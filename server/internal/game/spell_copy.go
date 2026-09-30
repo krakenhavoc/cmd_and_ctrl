@@ -405,6 +405,15 @@ func (g *Game) createSpellCopyLocked(src Card, item *StackItem, controller uuid.
 	// the gift cost is paid by that choice (CR 702.174a), and a copy
 	// of a promised spell gives its gift to the same opponent.
 	meta.Paid.GiftOpponent = item.Paid.GiftOpponent
+	// ADR 0100 §2: the either/or branch is one of the "additional or
+	// alternative costs" CR 707.10 copies, and the discarded cards are
+	// "objects used to pay its costs", which a copy reads off the
+	// original — so a copied Grab the Prize asks about the card the
+	// original discarded.
+	meta.Paid.CostBranch = item.Paid.CostBranch
+	if len(item.Paid.Discarded) > 0 {
+		meta.Paid.Discarded = append([]uuid.UUID(nil), item.Paid.Discarded...)
+	}
 	g.StackMeta[copyCard.InstanceID] = meta
 	g.recomputeSplitSecondLocked()
 
