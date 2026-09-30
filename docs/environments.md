@@ -306,6 +306,15 @@ are Luke's):
 old public key from Settings → Deploy keys. Step 4 does not need to
 change — it names the actor type, not a specific key.
 
+**Why a census commit starts no run.** `ci-cd.yml`'s `push` trigger has a
+`paths-ignore` naming the two generated files, so a push that changes only
+those (which is exactly what `census-publish` pushes) starts no run: no
+tests, and no redeploy of dev or prod. The commit message carries no
+skip-CI marker. GitHub applies that marker to pull-request runs too, on any
+PR whose head is the marked commit. The develop → main promotion PR's head
+is develop's tip, so every promotion opened just after a census publish got
+no checks and could not merge (#1810).
+
 ## Dev-only features
 
 Enabled only when `CMDCTRL_ENV=dev`. Each may be individually turned
