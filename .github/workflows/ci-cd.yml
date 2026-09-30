@@ -789,8 +789,6 @@ jobs:
       # deploy. Consumed only by the bot steps, which are all prod-gated.
       BOT_TOKEN_SET: ${{ secrets.CMDCTRL_DISCORD_BOT_TOKEN != '' }}
 
-      SSH_OPTS: -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10
-
       # Identical on both VMs -- written by the HomeLab cloud-init
       # template, which is the single source of truth for both hosts.
       # Named here rather than inlined so the steps below read the same
@@ -808,8 +806,10 @@ jobs:
       # Used only by the post-deploy environment check below.
       LOCAL_PORT: "8080"
 
-      # CMDCTRL_HOST is deliberately NOT declared here. It is resolved
-      # in the first step and exported through $GITHUB_ENV; see there.
+      # CMDCTRL_HOST and SSH_OPTS are deliberately NOT declared here.
+      # Both are resolved in the first step and exported through
+      # $GITHUB_ENV; see there. (A job-level `env:` value would win over
+      # $GITHUB_ENV, so declaring either here would pin it.)
     steps: &cd-steps
       - name: Checkout code
         uses: actions/checkout@v6
@@ -834,13 +834,19 @@ jobs:
         env:
           PROD_HOST: ${{ vars.CMDCTRL_HOST }}
           DEV_HOST: ${{ vars.CMDCTRL_DEV_HOST }}
+          PROD_HOST_KEY: ${{ vars.CMDCTRL_HOST_KEY }}
+          DEV_HOST_KEY: ${{ vars.CMDCTRL_DEV_HOST_KEY }}
         run: |
           if [ "${IS_DEV}" = "true" ]; then
             host="${DEV_HOST}"
             host_var="CMDCTRL_DEV_HOST"
+            host_key="${DEV_HOST_KEY}"
+            key_var="CMDCTRL_DEV_HOST_KEY"
           else
             host="${PROD_HOST}"
             host_var="CMDCTRL_HOST"
+            host_key="${PROD_HOST_KEY}"
+            key_var="CMDCTRL_HOST_KEY"
           fi
 
           if [ -z "${host}" ]; then
@@ -860,6 +866,10 @@ jobs:
           fi
 
           echo "CMDCTRL_HOST=${host}" >> "${GITHUB_ENV}"
+
+          # SSH trust is pinned by a repo variable, not by each runner's
+          # own known_hosts (#1739); the script says why.
+          HOST_KEY="${host_key}" scripts/pin-host-key.sh "${host}" "${key_var}"
 
           echo "Deploy target: krkn@${host}  (from ${host_var})"
           echo "Environment:   ${APP_ENV}"
