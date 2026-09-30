@@ -923,6 +923,13 @@ Violation codes (stable strings, keyable by the client):
   401/403; only publicly-readable decks are supported at S06.5
 - `external_api_unavailable` — URL-based import where the upstream
   timed out or returned 5xx; treat as retry-after-a-bit
+
+  A failed URL import stays a 422 with this violations shape (it is not a
+  502, which Cloudflare would replace with its own page, #1644). The body
+  also carries `code`, and `error` is the same player sentence
+  `POST /deck-coverage` uses. Moxfield blocks this server, so any failed
+  Moxfield link says to export the list and paste it, and adds
+  `"hint": "paste_list"`.
 - `sideboard_not_supported_in_commander` — **warning only**, delivered
   under `warnings` on both success and 422 responses (the server
   ignores the sideboard either way)
@@ -1504,7 +1511,7 @@ link the table has already shared, which is a startling side effect of
 | 409 | this process no longer holds the table's invite plaintext (rotate first) |
 | 422 | the target has no Discord identity here, or Discord refused the DM (no shared server / DMs closed) |
 | 429 | rate-limited, by us or by Discord |
-| 502 | Discord rejected this server's bot credentials, or failed for another reason |
+| 424 | Discord rejected this server's bot credentials, or failed for another reason (not 502: Cloudflare, in front of both hosts, replaces an origin 502's body with its own "error code: 502" page (#1644)) |
 | 503 | `CMDCTRL_DISCORD_BOT_TOKEN` or the invite origin is not configured |
 
 ### `GET /games/{id}/creator` *(admin only)*
@@ -2052,7 +2059,7 @@ because of the label — the repo doesn't have it, or the token may not
 apply it (403/422) — the server re-files the issue **unlabelled** and
 logs the failure at error level. Delivery failures (a timeout, a 5xx)
 are *not* retried: GitHub may have created the issue already, and a
-duplicate is worse than the 502 the reporter can act on.
+duplicate is worse than the 424 the reporter can act on.
 
 `log` is the reporter's client-side activity ring buffer — up to 200
 entries, kept from the tail:
@@ -2140,7 +2147,7 @@ that is true.
 | 401 | no valid session |
 | 413 | an image over 4 MiB, attachments over 10 MiB, or a request over 12 MiB |
 | 429 | rate-limited |
-| 502 | GitHub rejected or timed out; retry later |
+| 424 | GitHub rejected or timed out; retry later (not 502: Cloudflare, in front of both hosts, replaces an origin 502's body with its own "error code: 502" page (#1644)) |
 | 503 | bug reporting not configured (`CMDCTRL_GITHUB_TOKEN` unset), or attachments sent to a server with no artifact storage |
 
 A rejected attachment fails the whole report — no issue is filed — and
@@ -2235,8 +2242,8 @@ CDN and writes to `$CMDCTRL_DATA_DIR/images/<aa>/<id>.<size>.jpg`.
 `png`, `art_crop`, `border_crop`. Response carries `Cache-Control:
 public, max-age=604800, immutable` — Scryfall card UUIDs are immutable.
 
-A failed CDN download is not retried server-side: it answers `502`
-with a JSON error body and **no** cache headers, and writes nothing to
+A failed CDN download is not retried server-side: it answers `424`
+(Failed Dependency; not 502: Cloudflare, in front of both hosts, replaces an origin 502's body with its own "error code: 502" page (#1644)) with a JSON error body and **no** cache headers, and writes nothing to
 the disk cache, so the same URL re-attempts the CDN on the next
 request. The client relies on that — every card-art `<img>` retries
 the plain URL once after ~2 s, then shows a click-to-retry marker

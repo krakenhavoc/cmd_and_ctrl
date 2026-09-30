@@ -210,12 +210,12 @@ func dmSendError(c Config, err error) error {
 	case errors.Is(err, discord.ErrBotUnauthorized):
 		// An operator problem, not a caller problem. Logged once here
 		// (without the token, which never leaves the header) so it is
-		// findable; the caller gets a 502 they can do nothing about.
+		// findable; the caller gets a 424 they can do nothing about.
 		c.logger().Error("Discord rejected the bot token", "env", discord.BotTokenEnv)
-		return httpError(http.StatusBadGateway, "Discord rejected this server's bot credentials")
+		return httpError(http.StatusFailedDependency, "Discord rejected this server's bot credentials")
 	default:
 		c.logger().Error("sending an invite DM failed", "err", err)
-		return httpError(http.StatusBadGateway, "could not send the DM; try again")
+		return httpError(http.StatusFailedDependency, "could not send the DM; try again")
 	}
 }
 

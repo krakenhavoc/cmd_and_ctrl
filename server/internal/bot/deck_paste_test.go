@@ -232,7 +232,7 @@ func TestDeckRequestOutcomeMessage_PastedList(t *testing.T) {
 
 func TestDeckErrorMessages_MoxfieldHint(t *testing.T) {
 	hinted := &DeckAPIError{
-		StatusCode: http.StatusBadGateway, Code: "upstream_blocked", Hint: DeckHintPasteList,
+		StatusCode: http.StatusFailedDependency, Code: "upstream_blocked", Hint: DeckHintPasteList,
 		Message: "Moxfield blocks our server. On Moxfield, open the deck → Export → Copy plain text, then paste the list here instead.",
 	}
 	got := deckCoverageErrorMessage(hinted)
@@ -243,7 +243,7 @@ func TestDeckErrorMessages_MoxfieldHint(t *testing.T) {
 	if !strings.HasPrefix(got, "Moxfield blocks our server.") || !strings.Contains(got, "Run `/c2-deck-req` with no link") {
 		t.Errorf("request: %q", got)
 	}
-	plain := &DeckAPIError{StatusCode: http.StatusBadGateway, Code: "upstream_blocked", Message: "Archidekt is blocking us."}
+	plain := &DeckAPIError{StatusCode: http.StatusFailedDependency, Code: "upstream_blocked", Message: "Archidekt is blocking us."}
 	if got := deckCoverageErrorMessage(plain); got != "Archidekt is blocking us." {
 		t.Errorf("unhinted: %q", got)
 	}

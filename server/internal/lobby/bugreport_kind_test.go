@@ -258,7 +258,7 @@ func TestBugReportRefilesUnlabelledWhenGitHubRejectsTheLabel(t *testing.T) {
 // TestBugReportDoesNotRetryWhenDeliveryFailed: a timeout or a 5xx may
 // mean GitHub created the issue anyway, so the unlabelled retry is
 // confined to the statuses that mean it definitively did not. A
-// duplicate issue is worse than a 502 the reporter can act on.
+// duplicate issue is worse than a 424 the reporter can act on.
 func TestBugReportDoesNotRetryWhenDeliveryFailed(t *testing.T) {
 	for name, err := range map[string]error{
 		"no status": errors.New("github: create issue: context deadline exceeded"),
@@ -272,8 +272,8 @@ func TestBugReportDoesNotRetryWhenDeliveryFailed(t *testing.T) {
 			srv, tok := newBugReportStack(t, rep)
 			resp := postBugReport(t, srv, tok, map[string]any{"title": "x", "kind": "bug"})
 			defer func() { _ = resp.Body.Close() }()
-			if resp.StatusCode != http.StatusBadGateway {
-				t.Fatalf("status = %d, want 502", resp.StatusCode)
+			if resp.StatusCode != http.StatusFailedDependency {
+				t.Fatalf("status = %d, want 424", resp.StatusCode)
 			}
 			if rep.calls != 1 {
 				t.Errorf("CreateIssue calls = %d, want 1 — no retry on a failed delivery", rep.calls)

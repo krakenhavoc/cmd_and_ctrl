@@ -114,7 +114,7 @@ func Handler(idx *cards.Index, cache *cards.ImageCache) http.Handler {
 			case errors.Is(err, os.ErrNotExist):
 				writeErr(w, http.StatusNotFound, "unknown card")
 			default:
-				writeErr(w, http.StatusBadGateway, err.Error())
+				writeErr(w, http.StatusFailedDependency, err.Error())
 			}
 			return
 		}

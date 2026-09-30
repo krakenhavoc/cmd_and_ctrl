@@ -723,7 +723,7 @@ func TestDeckRoutes_SendAPastedListAsText(t *testing.T) {
 
 func TestDeckCoverage_MoxfieldHint(t *testing.T) {
 	fs, c := newFakeServer(t)
-	fs.deckCoverageStatus = http.StatusBadGateway
+	fs.deckCoverageStatus = http.StatusFailedDependency
 	fs.deckCoverageBody = map[string]any{
 		"error": "Moxfield blocks our server. On Moxfield, open the deck → Export → Copy plain text, then paste the list here instead.",
 		"code":  "upstream_blocked",

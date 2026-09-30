@@ -1475,6 +1475,51 @@ func TestUploadDeckURLNotFound(t *testing.T) {
 	}
 }
 
+// TestUploadDeckMoxfieldFailureCarriesPasteHint: Moxfield always fails
+// from the servers, so an upload of a Moxfield link answers with the
+// player sentence (export and paste the list) and hint "paste_list",
+// on the same 422-with-violations shape the client already reads
+// (#1644). 422, not 502: Cloudflare replaces an origin 502's body.
+func TestUploadDeckMoxfieldFailureCarriesPasteHint(t *testing.T) {
+	idx := buildMinimalDeckIndex(t)
+	moxStub := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		http.Error(w, "down", http.StatusInternalServerError)
+	}))
+	t.Cleanup(moxStub.Close)
+	deck.TestingSetMoxfieldAPIHost(t, moxStub.URL)
+
+	srv, l := newTestHTTPStackFull(t, idx, moxStub.Client())
+	meta, _ := l.Create("FNM")
+	r := postJSON(t, srv, "/games/"+meta.ID.String()+"/join", "",
+		joinRequest{InviteToken: meta.InviteToken, Name: "Alice"})
+	var joined sessionResponse
+	_ = json.NewDecoder(r.Body).Decode(&joined)
+	r.Body.Close()
+
+	resp := postJSON(t, srv, "/games/"+meta.ID.String()+"/decks", joined.Token,
+		uploadDeckRequest{Format: "url", Source: "https://moxfield.com/decks/down", PlayerID: joined.PlayerID})
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusUnprocessableEntity {
+		t.Fatalf("status = %d, want 422", resp.StatusCode)
+	}
+	var body struct {
+		Error      string                  `json:"error"`
+		Code       string                  `json:"code"`
+		Hint       string                  `json:"hint"`
+		Violations []struct{ Code string } `json:"violations"`
+	}
+	_ = json.NewDecoder(resp.Body).Decode(&body)
+	if body.Hint != deckFetchHintPasteList {
+		t.Errorf("hint = %q, want %q", body.Hint, deckFetchHintPasteList)
+	}
+	if !strings.Contains(body.Error, "paste the list") {
+		t.Errorf("error %q does not tell the player to paste the list", body.Error)
+	}
+	if body.Code != "external_api_unavailable" || len(body.Violations) != 1 {
+		t.Errorf("code/violations: %q %+v", body.Code, body.Violations)
+	}
+}
+
 // newTestHTTPStackFull is a superset of newTestHTTPStackWithCards that
 // also wires a DeckHTTPClient. Used by the S06.5 URL-import tests so
 // the upload path hits an httptest stub instead of the live Moxfield

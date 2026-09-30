@@ -262,3 +262,28 @@ func TestDiscordCallbackSurfacesUserDeny(t *testing.T) {
 func swapDiscordEndpoints(token, user string) func() {
 	return discord.SwapEndpointsForTesting(token, user)
 }
+
+// A Discord token exchange that fails is an upstream failure: 424, not
+// 502, because Cloudflare replaces an origin 502's body (#1644).
+func TestDiscordCallbackUpstreamFailureIs424(t *testing.T) {
+	srv, l, stub, store := newDiscordTestStack(t)
+	meta, _ := l.Create("FNM")
+	state, _, err := store.Start(meta.ID, meta.InviteToken)
+	if err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+	stub.mu.Lock()
+	stub.tokenStatus = http.StatusInternalServerError
+	stub.tokenBody = `{"error":"boom"}`
+	stub.mu.Unlock()
+
+	resp := doGet(t, srv, "/auth/discord/callback?state="+state+"&code=code-1", "")
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusFailedDependency {
+		t.Fatalf("status = %d, want 424", resp.StatusCode)
+	}
+	raw, _ := io.ReadAll(resp.Body)
+	if !strings.Contains(string(raw), `"error"`) {
+		t.Errorf("body %q carries no error sentence", raw)
+	}
+}

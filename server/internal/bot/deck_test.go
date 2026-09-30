@@ -363,7 +363,7 @@ func TestDeckRequestErrorMessage(t *testing.T) {
 		t.Errorf("503 should get the fixed player-facing message, got %q", got)
 	}
 
-	other := &DeckAPIError{StatusCode: http.StatusBadGateway, Message: "GitHub is unavailable"}
+	other := &DeckAPIError{StatusCode: http.StatusFailedDependency, Message: "GitHub is unavailable"}
 	if got := deckRequestErrorMessage(other); got != "GitHub is unavailable" {
 		t.Errorf("non-503 should use the server's sentence, got %q", got)
 	}
