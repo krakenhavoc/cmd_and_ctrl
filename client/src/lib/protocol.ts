@@ -294,7 +294,7 @@ export interface GameView {
   mulligans_open: boolean;
   // Player ID of the current monarch (Conspiracy mechanic). Empty /
   // omitted when no monarch is set. Since #375 the server enforces
-  // CR 724.2 itself — the monarch's end-step draw, and the transfer
+  // CR 725.2 itself — the monarch's end-step draw, and the transfer
   // to whoever deals combat damage to them — so this field moves on
   // its own and the crown below follows it. The set_monarch action
   // stays as the way a card (or a table fixing the board) hands the
@@ -364,8 +364,8 @@ export interface GameView {
   // ADR 0105 (#1789): a per-card digest of the same enumeration, built
   // before the 48-move cap, so it stays exact down to the ability row.
   // Own seat only, like legal_moves. Absent means "highlight nothing",
-  // never "nothing is legal". Nothing reads it yet: the highlights
-  // arrive in ADR 0105 sub-PR 2.
+  // never "nothing is legal". Read through lib/legalActions.ts, never
+  // directly, so every highlight comes from one lookup.
   legal_actions?: LegalActionsView;
   // The public game log (S31 sub-PR 0, ADR 0033 §4): the last ~200
   // table-visible events, oldest first. Every card reference in it has
@@ -421,6 +421,16 @@ export interface OutcomeView {
 
 // GameEndGateView is one "can't lose" / "can't win" gate on a seat
 // (ADR 0057 Decision 7): where it comes from and what it stops.
+// One "can't be countered" grant or unspent promise on a seat (ADR
+// 0106 §4, #1806). `text` is the clause as printed; `next_only` marks a
+// promise the seat's next matching spell will spend.
+export interface CounterShieldView {
+  source?: string;
+  source_name: string;
+  text: string;
+  next_only?: boolean;
+}
+
 export interface GameEndGateView {
   source?: string;
   source_name: string;
@@ -682,6 +692,11 @@ export type LogKind =
   // the chapter or level in `amount`.
   | "control"
   | "special_action"
+  // ADR 0106 §1 decision 6 (#1793): a player activated the "Any player
+  // may activate this ability" row of a permanent another player
+  // controls — "Bob activated Alice's Xantcha, Sleeper Agent".
+  // `target_seat` is the permanent's controller.
+  | "activate_across"
   | "cycle"
   | "counters"
   | "scry"
@@ -1542,6 +1557,12 @@ export interface PlayerView {
   cant_lose?: string[];
   cant_win?: boolean;
   end_gates?: GameEndGateView[];
+  // ADR 0106 §4 decision 6 (#1806): this seat's live "can't be
+  // countered" grants and unspent one-use promises, in the order they
+  // were made — Veil of Summer's "Spells you control can't be countered
+  // this turn", an unused Insist. Public, and absent for nearly every
+  // seat.
+  counter_shields?: CounterShieldView[];
 }
 
 // One emblem (CR 114). `label` is the board name ("Elspeth, Sun's
@@ -1734,7 +1755,15 @@ export interface AlternativeCostView {
   // with nothing to pay it is not offered at all, for the same reason
   // one whose life half is unpayable is not.
   pay_options?: LegalTargetsView;
-  // S28: the picker's prompt copy for `pay_options` ("a blue card").
+  // #1727: the cost's card-shaped half when it is a SACRIFICE — Dread
+  // Return's "Flashback—Sacrifice three creatures", Fireblast's two
+  // Mountains. Set instead of `pay_options`, in the same shape (and
+  // payment order) as the additional cost's `sacrifice_options`, so
+  // the cast flow opens SacrificeCostModal for it. The picked IDs
+  // still ride `alt_cost_ids`, not `sacrifice_ids`.
+  sacrifice_options?: LegalTargetsView;
+  // S28: the picker's prompt copy for `pay_options` ("a blue card"),
+  // or for `sacrifice_options` ("three creatures").
   pay_label?: string;
   // CR 107.3b (#831): the card prints an {X} in its mana cost and
   // this offer does not, so claiming it fixes X at 0 — the cast flow
@@ -1894,7 +1923,8 @@ export type ExileCostZone = "hand" | "graveyard";
 // ActivatedAbilityView is one CR 602 activated ability on a
 // battlefield permanent (S21 sub-PR 2). Public information, so it
 // rides every viewer's snapshot; the client only offers the menu on
-// permanents the viewer controls. `index` is what the
+// permanents the viewer controls, plus a permanent's `any_player` rows
+// to every other seat (ADR 0106 §1). `index` is what the
 // activate_ability payload carries as `ability_index`.
 export interface ActivatedAbilityView {
   index: number;
@@ -2126,6 +2156,26 @@ export interface ActivatedAbilityView {
   // shows the same mode picker a modal spell's hand card gets.
   clauses?: LegalTargetsView[];
   modes?: ModeSpecView;
+  // ADR 0106 §1 decision 5 (#1793): the ability's own "Any player may
+  // activate this ability" (CR 602.2). Every seat may open this row on
+  // the permanent, not only its controller, and each seat's copy of
+  // the row is stamped with THAT seat as the activator: the charged
+  // price, life_cost, condition_unmet, timing_closed and the cost
+  // options are the viewer's (CR 602.1a, CR 109.5). Whether the row is
+  // live for the viewer right now is still the digest's answer
+  // (`legal_actions`), never the row's. Absent on every other row.
+  any_player?: boolean;
+  // ADR 0106 §1 decision 8: what the row buys an activator who does
+  // not control the permanent. Bot data; the client does not read it.
+  purpose?: ActivationPurposeView;
+}
+
+// ActivationPurposeView is the printed amounts an any-player row buys
+// its activator (ADR 0106 §1 decision 8): the cards they draw and the
+// life the permanent's controller loses.
+export interface ActivationPurposeView {
+  draws?: number;
+  controller_loses_life?: number;
 }
 
 // CounterCostOptionView is one permanent that could pay a "remove N
@@ -2184,6 +2234,11 @@ export interface LegalTargetsView {
   // whose key a pick of THIS clause already holds, and says the rule.
   // A card missing from `keys` collides with nothing.
   different?: TargetDifferenceView;
+  // #1807: the opposite rule — every pick must SHARE one key ("from a
+  // single graveyard", keyed on the card's owner). The picker greys a
+  // candidate whose key differs from a pick of THIS clause, and says
+  // the rule. A card missing from `keys` fits any group.
+  same?: TargetDifferenceView;
   // #1559: "with mana value X or less", X the announced X. Like
   // count_from_x, the server built this legal set before X was chosen,
   // so it is a superset: the picker drops every card whose
@@ -2812,6 +2867,14 @@ export interface CardView extends CastSurfaceView {
   // pile of client-side rules re-derivation and this must not start
   // a new one.
   restrictions?: string[];
+  // ADR 0106 §2 (#1794) — this creature's restrictions on WHOM it may
+  // attack: Xantcha's "can't attack its owner or planeswalkers its
+  // owner controls", with the owner already resolved to a seat id.
+  // Draws the card's "CAN'T ATTACK <name>" chip (cantAttack.ts) and
+  // nothing else: which targets an attacker may pick is the
+  // legal_actions digest's `attack_targets`. Absent for nearly every
+  // card, and for a restriction naming the creature's own controller.
+  attack_target_restrictions?: AttackTargetRestrictionView[];
   // ADR 0034 — Scryfall's printing layout, absent for the ordinary
   // single-faced card. "modal_dfc" is the one the client acts on:
   // it means playing this card needs a face choice first.
@@ -2856,6 +2919,17 @@ export interface GrantedAbilityView {
   text: string;
   source_id?: string;
   source_name?: string;
+}
+
+// ADR 0106 §2 (#1794): one CR 508.1c restriction on whom a creature may
+// attack. Mirrors protocol.AttackTargetRestrictionView.
+export interface AttackTargetRestrictionView {
+  // The seat the creature can't attack (its owner).
+  player: string;
+  // Also "or planeswalkers that player controls".
+  planeswalkers?: boolean;
+  // The card whose text imposes it.
+  source?: string;
 }
 
 export interface ProtectionView {

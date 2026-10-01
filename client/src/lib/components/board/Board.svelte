@@ -94,6 +94,7 @@
     castTargetOverride,
     modesUnderChoices,
     altCostPayOptions,
+    altCostSacrificeClause,
     applyCastChoices,
     castChoicesBase,
     isLegalCardTarget,
@@ -141,6 +142,7 @@
   import { delveOptionIDs, hasDelveChoice } from "../../delve";
   import { shouldAskAbilityWaterbend, waterbendLimit } from "../../waterbend";
   import PhyrexianCostModal from "./PhyrexianCostModal.svelte";
+  import { NO_LEGAL_ACTIONS, type LegalActions } from "../../legalActions";
   import {
     phyrexianSymbolsForAbility,
     phyrexianSymbolsForCast,
@@ -183,6 +185,16 @@
     // prime again instead of cueing what they missed (reconnect, replay
     // toggle). Passed straight to CombatArrows.
     beatsPrimeKey?: string;
+    // ADR 0105 (#1789): the frame's legal-action lookup, built once in
+    // Game.svelte and already "nothing" while highlights are off or
+    // smart autopass is about to pass this frame. Handed to the
+    // viewer's own panel and the zone browser for their ready rings,
+    // and to the card menu for its ready rows.
+    legal?: LegalActions;
+    // ADR 0105 sub-PR 3: the frame's FULL lookup, which neither the
+    // highlight setting nor autopass touches. Only the ability
+    // popover's sorcery-speed gate reads it.
+    legalGate?: LegalActions;
   }
 
   const {
@@ -203,6 +215,8 @@
     onToggleAutopass,
     attention,
     beatsPrimeKey,
+    legal = NO_LEGAL_ACTIONS,
+    legalGate = NO_LEGAL_ACTIONS,
   }: Props = $props();
 
   // #519: every action this component initiates funnels through here
@@ -680,6 +694,32 @@
     afterAltCostPayment(card, { ...choices, altCostIDs: instanceIDs });
   }
 
+  // #1727: an offer whose card half is a SACRIFICE (Dread Return's
+  // flashback, Fireblast) opens the one sacrifice picker every other
+  // sacrifice cost uses — payment order, "Choose for me" — instead of
+  // AltCostPaymentModal. The clause is stashed when the prompt opens,
+  // as the cast's own sacrifice prompt does; the picks pay THIS offer,
+  // so they ride alt_cost_ids, not sacrifice_ids.
+  let altSacPromptCard = $state<CardView | null>(null);
+  let altSacPromptChoices: CastChoices = {};
+  let altSacPromptClause = $state<LegalTargetsView | undefined>(undefined);
+  let altSacPromptLabel = $state("a permanent");
+  const altSacOptions = $derived.by(() => {
+    if (!altSacPromptCard) return [];
+    return orderSacrificeOptions(view.battlefield.cards, altSacPromptClause?.cards);
+  });
+  const altSacBounds = $derived(castSacrificeRange(altSacPromptClause));
+
+  function confirmAltSacrifice(instanceIDs: string[]): void {
+    const card = altSacPromptCard;
+    const choices = altSacPromptChoices;
+    altSacPromptCard = null;
+    altSacPromptChoices = {};
+    altSacPromptClause = undefined;
+    if (!card) return;
+    afterAltCostPayment(card, { ...choices, altCostIDs: instanceIDs });
+  }
+
   // afterAltCost / afterDiscardCost / afterCastCosts are the seams
   // between the cost prompts and the rest of the cast flow, so adding
   // a cost kind doesn't mean editing every earlier prompt's confirm.
@@ -692,7 +732,16 @@
     // The chosen offer may charge a card as well as — or instead of —
     // mana. Ask for it before anything else, matching the order the
     // server validates the cast in.
-    if (altCostPayOptions(alternativeCostByKey(card, choices.altCost)) !== undefined) {
+    const offer = alternativeCostByKey(card, choices.altCost);
+    const sacClause = altCostSacrificeClause(offer);
+    if (sacClause !== undefined) {
+      altSacPromptClause = sacClause;
+      altSacPromptLabel = offer?.pay_label ?? offer?.label ?? "a permanent";
+      altSacPromptChoices = choices;
+      altSacPromptCard = card;
+      return;
+    }
+    if (altCostPayOptions(offer) !== undefined) {
       altPayPromptChoices = choices;
       altPayPromptCard = card;
       return;
@@ -2232,6 +2281,7 @@
               onTargetCard={handleTargetCard}
               onExpand={() => (pinnedSeatID = nextPinnedSeat(pinned, seat.id))}
               considering={seat.id === consideringSeatID}
+              {legalGate}
             />
           {:else}
             {#if decision.reason === "pinned"}
@@ -2283,6 +2333,8 @@
               onManaAbilityCost={handleManaAbilityCost}
               considering={seat.id === consideringSeatID}
               onDeclareAttackers={pos === "self" && !disabled ? onDeclareAttackers : undefined}
+              {legal}
+              {legalGate}
             />
           {/if}
         </div>
@@ -2448,6 +2500,22 @@
     onCancel={() => {
       altPayPromptCard = null;
       altPayPromptChoices = {};
+    }}
+  />
+  <!-- #1727: an alternative cost's sacrifice ("Flashback—Sacrifice
+       three creatures") is the sacrifice picker; the picks pay the
+       offer, on alt_cost_ids. -->
+  <SacrificeCostModal
+    source={altSacPromptCard}
+    label={altSacPromptLabel}
+    options={altSacOptions}
+    count={altSacBounds.max}
+    min={altSacBounds.min}
+    onConfirm={confirmAltSacrifice}
+    onCancel={() => {
+      altSacPromptCard = null;
+      altSacPromptChoices = {};
+      altSacPromptClause = undefined;
     }}
   />
   <!-- ADR 0100: the count and the label are the cost THIS cast pays —
@@ -2716,6 +2784,8 @@
       onCastCard={handlePlayCard}
       onActivateAbility={handleActivateAbility}
       sorcerySpeedBlocked={browsedZoneSorcerySpeedBlocked}
+      {legal}
+      {legalGate}
     />
   {/if}
   {#if $manaSourcePicker}
@@ -2738,6 +2808,8 @@
       sendAction={guardedSendAction}
       onActivate={handleMenuActivate}
       onClose={closeCardMenu}
+      {legal}
+      {legalGate}
     />
   {/if}
 </div>

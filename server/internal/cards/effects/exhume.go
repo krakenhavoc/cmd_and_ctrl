@@ -31,8 +31,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // the card came out of that player's own graveyard — is that player.
 // Nothing changes hands.
 //
-// The creatures arrive as ordinary entries, so enters-the-battlefield
-// triggers fire and the usual entry replacements apply.
+// The players choose in APNAP order, each seeing the choices before
+// theirs (CR 101.4, 101.4b), and the creatures then arrive together,
+// as one entry (#1867): the usual entry replacements apply and every
+// enters-the-battlefield trigger sees all of them (CR 603.6a).
 //
 // No simplification.
 func init() {

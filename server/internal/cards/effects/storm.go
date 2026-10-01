@@ -18,8 +18,8 @@ import (
 // ADR 0086.
 //
 // STORM IS CR 702.40 IN THE PINNED EDITION, not 702.39. The rules this
-// tree cites are the ones effective August 7, 2026 (AGENTS.md §6), in
-// which 702.39 is PROVOKE. Issue #1238 and the roadmap comments that
+// tree cites are the edition AGENTS.md §6 pins, in which 702.39 is
+// PROVOKE. Issue #1238 and the roadmap comments that
 // fed it carry the older number; every citation here is checked
 // against the pinned text.
 

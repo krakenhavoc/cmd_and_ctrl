@@ -317,6 +317,9 @@ export interface TargetingState {
   // #1559: the CURRENT step's rule over its chosen set, when it has
   // one — like `legal`, it always describes the step being asked.
   different?: SetRule;
+  // #1807: the CURRENT step's sameness rule ("from a single
+  // graveyard"), when it has one — every pick must share its key.
+  same?: SetRule;
   // #1563: the CURRENT step's divided amount, when its clause is
   // "divided as you choose" — like `legal`, it always describes the
   // step being asked. Already resolved against the X the caster
@@ -335,8 +338,9 @@ export interface TargetingState {
 }
 
 // SetRule is a clause's rule over the chosen SET of its picks (#1559,
-// CR 601.2c): no two picks may share a key. `label` completes "those
-// targets must …". A card missing from `keys` collides with nothing.
+// CR 601.2c): under `different` no two picks may share a key, under
+// `same` (#1807) every pick must. `label` completes "those targets
+// must …". A card missing from `keys` collides with nothing.
 export interface SetRule {
   label: string;
   keys: Record<string, string>;
@@ -361,6 +365,8 @@ export interface TargetStep {
   distinct: boolean;
   // #1559: the clause's set rule, when it prints one.
   different?: SetRule;
+  // #1807: the clause's sameness rule, when it prints one.
+  same?: SetRule;
   // #1563: the amount the clause divides among its picks, resolved
   // against the announced X. Undefined for a clause that divides
   // nothing.
@@ -436,6 +442,7 @@ export function stepsFor(
     slot,
     distinct: c.distinct === true,
     different: c.different ? { label: c.different.label, keys: c.different.keys ?? {} } : undefined,
+    same: c.same ? { label: c.same.label, keys: c.same.keys ?? {} } : undefined,
     divide: c.divide ? divideTotal(c.divide, choices?.xValue) : undefined,
     divideFromXUnresolved: c.divide?.from_x === true && choices?.xValue === undefined,
     divideUpTo: c.divide?.up_to === true ? true : undefined,
@@ -551,6 +558,7 @@ export function openWalk(
     step: 0,
     done: [],
     different: first.different,
+    same: first.same,
     divide: first.divide,
     divideUpTo: first.divideUpTo,
     divideFromXUnresolved: first.divideFromXUnresolved,
@@ -600,6 +608,7 @@ export function advance(t: TargetingState): TargetingState | null {
     step: next,
     done,
     different: s.different,
+    same: s.same,
     divide: s.divide,
     divideUpTo: s.divideUpTo,
     divideFromXUnresolved: s.divideFromXUnresolved,
@@ -1087,6 +1096,18 @@ export function altCostPayOptions(offer: AlternativeCostView | undefined): strin
   return offer.pay_options.cards ?? [];
 }
 
+// altCostSacrificeClause returns an offer's sacrifice half (#1727) —
+// Dread Return's "Flashback—Sacrifice three creatures", Fireblast's two
+// Mountains — or undefined when the offer sacrifices nothing. The cast
+// flow opens SacrificeCostModal on it rather than AltCostPaymentModal,
+// because a sacrifice is the picker every other sacrifice cost uses;
+// the picks still ride `alt_cost_ids`.
+export function altCostSacrificeClause(
+  offer: AlternativeCostView | undefined,
+): LegalTargetsView | undefined {
+  return offer?.sacrifice_options;
+}
+
 // altCostPayCount is how many cards the offer's card-shaped half
 // demands. One for every S28 shape — Force of Will pitches a card,
 // Daze bounces an Island — and N for S29's escape, whose cost is
@@ -1258,12 +1279,33 @@ export function isLegalPlayerTarget(t: TargetingState, playerID: string): boolea
 // different mana value" with a 2-drop already picked, for another
 // 2-drop. A card already picked never breaks the rule against itself,
 // so it stays clickable to un-pick.
+//
+// #1807: under a sameness rule it is the other way round — picking
+// `id` breaks the rule when an earlier pick's key DIFFERS from its
+// own ("from a single graveyard", with a card from another graveyard
+// already picked). With no pick yet every candidate is open.
 export function breaksSetRule(t: TargetingState, id: string): boolean {
+  return breaksDifferent(t, id) || breaksSame(t, id);
+}
+
+function breaksDifferent(t: TargetingState, id: string): boolean {
   const rule = t.different;
   if (!rule) return false;
   const key = rule.keys[id];
   if (key === undefined) return false;
   return t.picked.some((p) => p.id !== id && rule.keys[p.id] === key);
+}
+
+function breaksSame(t: TargetingState, id: string): boolean {
+  const rule = t.same;
+  if (!rule) return false;
+  const key = rule.keys[id];
+  if (key === undefined) return false;
+  return t.picked.some((p) => {
+    if (p.id === id) return false;
+    const other = rule.keys[p.id];
+    return other !== undefined && other !== key;
+  });
 }
 
 // legalTargetCount is the banner's "N legal targets" figure; -1 when

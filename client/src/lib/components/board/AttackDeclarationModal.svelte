@@ -51,9 +51,11 @@
     attackTaxLabelForCount,
     attackTaxOn,
     planAttackAll,
+    eligibleAt,
     seedAttackSelection,
     toggleAttackSelection,
   } from "../../attackAll";
+  import { NO_LEGAL_ACTIONS, type LegalActions } from "../../legalActions";
   import { usableManaAbilities } from "../../seatSummary";
   import ModalLayer from "../ModalLayer.svelte";
 
@@ -67,6 +69,11 @@
     // picker ("No more than one creature can attack each combat (Silent
     // Arbiter)."). Null when the picker opened some other way.
     limitReason?: string | null;
+    // ADR 0105 sub-PR 5: the frame's FULL legal-action lookup, so the
+    // picker lists the creatures the server would declare, the same set
+    // the "attack with all" button counts. Absent means no information:
+    // the row fields decide, as they did before.
+    legalGate?: LegalActions;
     onConfirm: (attackerIDs: string[], lockedSources: string[]) => void;
     onCancel: () => void;
   }
@@ -76,11 +83,15 @@
     viewerID,
     defenderSeatID,
     limitReason = null,
+    legalGate = NO_LEGAL_ACTIONS,
     onConfirm,
     onCancel,
   }: Props = $props();
 
-  const plan = $derived(planAttackAll(view, viewerID));
+  const plan = $derived(planAttackAll(view, viewerID, legalGate));
+  // ADR 0106 §2: only the creatures the server lets attack THIS seat —
+  // a creature that can't attack its owner is not offered at the owner.
+  const eligible = $derived(defenderSeatID ? eligibleAt(plan, defenderSeatID) : plan.eligible);
   const defender = $derived(plan.defenders.find((s) => s.id === defenderSeatID) ?? null);
   const defenderName = $derived(defender ? defender.display_name || defender.name : "");
   const each = $derived(defenderSeatID ? attackTaxOn(view, defenderSeatID) : "");
@@ -101,7 +112,7 @@
   $effect(() => {
     if (defenderSeatID !== lastDefenderSeatID) {
       lastDefenderSeatID = defenderSeatID;
-      selected = seedAttackSelection(plan.eligible, cap);
+      selected = seedAttackSelection(eligible, cap);
       lockedSources = [];
     }
   });
@@ -112,7 +123,7 @@
   // than only at confirm time) keeps the checked count and the price
   // label honest with what will actually be declared.
   const liveSelected = $derived.by(() => {
-    const eligibleIDs = new Set(plan.eligible.map((c) => c.instance_id));
+    const eligibleIDs = new Set(eligible.map((c) => c.instance_id));
     return selected.filter((id) => eligibleIDs.has(id));
   });
   const atCap = $derived(cap !== null && liveSelected.length >= cap);
@@ -139,7 +150,7 @@
   }
 
   function selectAll(): void {
-    selected = seedAttackSelection(plan.eligible, cap);
+    selected = seedAttackSelection(eligible, cap);
   }
   function selectNone(): void {
     selected = [];
@@ -196,7 +207,7 @@
         {/if}
       </p>
       <ul class="prompt-options" role="group" aria-label="attackers">
-        {#each plan.eligible as c (c.instance_id)}
+        {#each eligible as c (c.instance_id)}
           {@const on = selected.includes(c.instance_id)}
           <li>
             <button
@@ -219,11 +230,11 @@
           {#if cap !== null}
             {liveSelected.length} / {cap} allowed
           {:else}
-            {liveSelected.length} / {plan.eligible.length} attacking
+            {liveSelected.length} / {eligible.length} attacking
           {/if}
         </span>
         <button type="button" class="ghost" onclick={selectAll}
-          >{cap !== null && cap < plan.eligible.length ? "First " + cap : "All"}</button
+          >{cap !== null && cap < eligible.length ? "First " + cap : "All"}</button
         >
         <button type="button" class="ghost" onclick={selectNone}>None</button>
       </div>

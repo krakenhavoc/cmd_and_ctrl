@@ -249,8 +249,8 @@ const b25TevalLeftGraveyardLabel = "Teval, the Balanced Scale — cards left you
 // b25MillThreeThenReturnChosenLandTapped is Teval's attack trigger:
 // mill three, then return the land chosen when the trigger went on
 // the stack — if one was chosen and it is still in the graveyard —
-// to the battlefield, tapped. The return is ReturnFromGraveyard
-// followed by a tap, Lumra's declared gap.
+// to the battlefield tapped, with "tapped" on the entry event rather
+// than a tap after it (#1872).
 func b25MillThreeThenReturnChosenLandTapped(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	if err := (MillCards{Player: item.Controller, N: 3}).Apply(ctx); err != nil {
@@ -260,10 +260,7 @@ func b25MillThreeThenReturnChosenLandTapped(g *game.Game, item *game.StackItem) 
 		if t.Kind != game.TargetCard {
 			continue
 		}
-		if err := (ReturnFromGraveyard{Target: t.ID, Dest: game.ZoneBattlefield}).Apply(ctx); err != nil {
-			return err
-		}
-		return TapTarget{Target: t.ID}.Apply(ctx)
+		return ReturnFromGraveyard{Target: t.ID, Dest: game.ZoneBattlefield, Tapped: true}.Apply(ctx)
 	}
 	return nil
 }

@@ -56,10 +56,19 @@ import (
 // skip the rest of the batch.
 
 // BatchEntry names one card of a simultaneous entry and the zone it is
-// put from. From is ZoneHand, ZoneLibrary, ZoneExile or ZoneCommand; a
-// card put from exile returns as a NEW OBJECT (CR 400.7) exactly as
-// ReturnFromExileToBattlefieldForEffect's does, so the entered ID the
-// continuation is told about is the new one.
+// put from. From is ZoneHand, ZoneLibrary, ZoneGraveyard, ZoneExile or
+// ZoneCommand; a card put from exile returns as a NEW OBJECT (CR 400.7)
+// exactly as ReturnFromExileToBattlefieldForEffect's does, so the
+// entered ID the continuation is told about is the new one.
+//
+// A card put from a GRAVEYARD (#1867: Reveillark, Pull, Replenish)
+// keeps its ID, as the single-card reanimation door
+// (returnFromGraveyardFaceLocked) does: it is a new object all the
+// same, and the battlefield landing re-mints its object epoch as it
+// does for every card that arrives there. Before #1867 every
+// multi-card return from a graveyard was a loop over that single-card
+// door, so the first card was announced before the second moved and
+// only the first saw the second enter.
 //
 // A card put from the COMMAND ZONE (#1278, commander ninjutsu,
 // CR 702.49c) keeps its ID, as a hand or library card does, and for a
@@ -188,7 +197,7 @@ func (g *Game) startEntryBatchLocked(cards []BatchEntry, opts ZoneEntryOptions, 
 		}
 		seen[e.CardID] = true
 		switch e.From {
-		case ZoneHand, ZoneLibrary, ZoneExile, ZoneCommand:
+		case ZoneHand, ZoneLibrary, ZoneGraveyard, ZoneExile, ZoneCommand:
 		default:
 			return refuse(ErrInvalidParam)
 		}
@@ -219,9 +228,18 @@ func (g *Game) startEntryBatchLocked(cards []BatchEntry, opts ZoneEntryOptions, 
 			// it. Refused like a nonpermanent.
 			return refuse(ErrInvalidParam)
 		}
+		// "Under its owner's control" is the CARD's owner. The zone's
+		// owner is the same player for a hand, library, graveyard or
+		// command zone, but exile is shared and owned by nobody, so a
+		// card returned from it would carry no controller while its
+		// CR 614 window is open (#1872) — and Authority of the Consuls
+		// asks whose permanent is entering.
 		controller := opts.Controller
 		if controller == uuid.Nil || g.playerByIDLocked(controller) == nil {
-			controller = src.Owner
+			controller = c.Owner
+			if controller == uuid.Nil {
+				controller = src.Owner
+			}
 		}
 		b.members = append(b.members, entryBatchMember{
 			cardID:          e.CardID,

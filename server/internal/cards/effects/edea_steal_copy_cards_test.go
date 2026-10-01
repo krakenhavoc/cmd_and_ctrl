@@ -392,7 +392,7 @@ func TestHostageTakerCastingTheCardKeepsIt(t *testing.T) {
 	}
 }
 
-// TestHostageTakerThatLeftFirstExilesNothing pins CR 610.3c.
+// TestHostageTakerThatLeftFirstExilesNothing pins CR 610.3b.
 func TestHostageTakerThatLeftFirstExilesNothing(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]

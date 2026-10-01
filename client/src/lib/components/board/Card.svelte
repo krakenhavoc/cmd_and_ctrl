@@ -21,6 +21,7 @@
   // within-row reordering when the UX is designed for it.
 
   import type { CardView } from "../../protocol";
+  import type { CantAttackChip } from "../../cantAttack";
   import { cardImageURL } from "../../cardImage";
   import { cardArt } from "../../cardArt";
   import { showsCardBack } from "../../cardBack";
@@ -32,11 +33,27 @@
   import { autoTapHighlight } from "../../dragCast";
   import { noUntapAppliesToController } from "../../noUntap";
   import { openCardMenu } from "../../contextMenu";
+  import { menuAbilityRows, specialActionItems, type MenuAction } from "../../contextMenu.logic";
   import CounterPips from "./CounterPips.svelte";
   import KeywordBadgeRow from "./KeywordBadgeRow.svelte";
   import ManaAbilityMenu from "./ManaAbilityMenu.svelte";
   import RoomDoorStrip from "./RoomDoorStrip.svelte";
   import { displayName } from "../../faces";
+  import {
+    DROP_PIP_LABEL,
+    NO_LEGAL_ACTIONS,
+    NO_PIPS,
+    boltPipLabel,
+    pipCount,
+    readyCardLabel,
+    readyPhrases,
+    specialPipTitle,
+    starPipLabel,
+    type CombatPip,
+    type LegalActions,
+    type ReadyPips,
+    type ReadyZone,
+  } from "../../legalActions";
 
   interface Props {
     card: CardView;
@@ -45,6 +62,48 @@
     selected?: boolean;
     attacking?: boolean;
     blocking?: boolean;
+    // ADR 0105 (#1789): the viewer has a legal action with this card
+    // right now — the cyan "ready" ring. The caller decides (from
+    // legalActions.ts, and only while highlights are live); the card
+    // only draws it.
+    ready?: boolean;
+    // ADR 0105 sub-PR 5: this card is what the selected creature may be
+    // declared against: a planeswalker or battle it may attack, or an
+    // attacker it may block. Set with `ready`. An attacker is always
+    // wearing the red attacking ring, which `ready` yields to, so this
+    // draws the ready ring OUTSIDE it and both read.
+    combatTarget?: boolean;
+    // ADR 0105 §2 (sub-PR 3): the pips on a card: a bolt for live
+    // activated abilities (with a count from two up), a drop for a
+    // mana ability worth marking (§4), and (sub-PR 4) a star for a
+    // live special action. The caller reads them off the lookup
+    // (legalActions.ts readyPips), as it does `ready`. The card only
+    // draws them. NO_PIPS draws none.
+    //
+    // A pip is a button: tapping or clicking it, or Enter / Space on
+    // it, opens the same popover a right-click opens (§7, owner
+    // decision 6). It is the touch route into the popover.
+    pips?: ReadyPips;
+    // ADR 0105 §7 (sub-PR 6): the zone the card is drawn in, so a
+    // ready card's accessible name can say WHY it is ready
+    // ("castable", "playable land", "can attack") the way the ring and
+    // pips show it (legalActions.ts readyPhrases). The phrases read
+    // `legal`, so a caller that sets `ready` hands `legal` down too.
+    readyZone?: ReadyZone;
+    // ADR 0105 §7 (sub-PR 6): a combat candidate's pip, a sword (may
+    // attack) or a shield (may block), beside its ready ring. It is
+    // decorative: no popover sits behind a declaration, so it is not a
+    // button, and the accessible name already carries "can attack" /
+    // "can block". It also tells "may block" from "is blocking" by
+    // shape where the cyan and pale-blue rings are hard to tell apart.
+    combatPip?: CombatPip | null;
+    // ADR 0105: the lookups the ability popover reads for this card.
+    // `legal` is what may be highlighted: ready rows take the accent
+    // and sort first. `legalGate` is the frame's full lookup, for the
+    // popover's sorcery-speed gate. The highlight setting never
+    // touches it. Both default to "no information".
+    legal?: LegalActions;
+    legalGate?: LegalActions;
     // size: which Scryfall-resolved image to request from the server.
     // "small" is the default (~146×204) and is what we use everywhere
     // on the table; the hover zoom overlay requests "normal".
@@ -78,9 +137,17 @@
     // ride `zone_abilities` rather than `activated_abilities`. One
     // callback for both: the index means the same thing on the wire.
     onActivateAbility?: (abilityIndex: number) => void;
+    // ADR 0105 sub-PR 4 (#1789): sends a CR 116.2 special action
+    // (foretell, suspend, plot, turn face up) chosen from the popover.
+    // When set, the card's `special_actions` become rows in the
+    // popover, built by the admin menu's own row builder so the payload
+    // is the one that menu sends. Set by Hand and BattlefieldRow on the
+    // viewer's own cards that offer one. Undefined: no rows, no star.
+    onSpecialAction?: (action: MenuAction) => void;
     // S31: why the CR 307.1 sorcery-speed window is shut, or "" when
     // it is open. Passed straight through to ManaAbilityMenu, which
-    // greys `sorcery_speed` abilities with it. Card has no snapshot
+    // since ADR 0105 uses it only as the WORDS for a row the server
+    // has shut (`timing_closed`, the digest). Card has no snapshot
     // of its own, and computing this per card would be wasteful —
     // the window is a property of the turn, so PlayerPanel derives it
     // once and hands it down.
@@ -104,6 +171,11 @@
     // stolen spell became. Supplied by BattlefieldRow; undefined when
     // the controller is the owner.
     takenFrom?: string;
+    // ADR 0106 §2 (owner decision 3): whom this creature can't attack —
+    // its owner, for Xantcha — drawn as a CAN'T ATTACK chip beside the
+    // greyed target ring. Supplied by BattlefieldRow from the card
+    // view's attack_target_restrictions; undefined for nearly every card.
+    cantAttack?: CantAttackChip;
     // #33: request this card's art with fetchpriority="high". Opt-in,
     // set only by Hand.svelte for the viewer's own hand — the art
     // that is above the fold and latency-visible. Card is shared by
@@ -143,15 +215,24 @@
     selected = false,
     attacking = false,
     blocking = false,
+    ready = false,
+    combatTarget = false,
+    pips = NO_PIPS,
+    readyZone = "battlefield",
+    combatPip = null,
+    legal = NO_LEGAL_ACTIONS,
+    legalGate = NO_LEGAL_ACTIONS,
     size = "small",
     showManaCost = false,
     onActivateManaAbility,
     onRawTap,
     onActivateAbility,
+    onSpecialAction,
     sorcerySpeedBlocked = "",
     payerLife,
     enchantedPlayer,
     takenFrom,
+    cantAttack,
     priority = false,
     memberIDs,
     viewerID,
@@ -167,16 +248,58 @@
   // #660: a card projects EITHER list, never both — the server
   // filters by the zone the card is in (CR 113.6) — so one menu reads
   // whichever is present and the indices stay the card's own.
-  const menuAbilities = $derived(card.activated_abilities ?? card.zone_abilities ?? []);
+  //
+  // ADR 0106 §1 decision 6 (#1793): on a permanent the viewer does not
+  // control, only its "Any player may activate this ability" rows
+  // (CR 602.2); every other row is its controller's, and the server
+  // would refuse it (contextMenu.logic.ts menuAbilityRows). A card with
+  // no viewer in scope (no `viewerID` prop) lists every row as before.
+  const menuAbilities = $derived(menuAbilityRows(card, viewerID));
+  // Those rows are the viewer's to activate on another player's
+  // permanent, and the popover greys any the exact digest leaves out.
+  const across = $derived(
+    !!viewerID && !!card.activated_abilities && (card.controller || card.owner) !== viewerID,
+  );
   // #1228: and the same sentence for the CR 605 list. A permanent
   // publishes `mana_abilities`; a card in hand whose mana ability
   // functions there (a Spirit Guide) publishes `zone_mana_abilities`,
   // and the index means the same thing on the wire either way.
   const menuManaAbilities = $derived(card.mana_abilities ?? card.zone_mana_abilities ?? []);
-  const hasManaAbilities = $derived(
-    (!!onActivateManaAbility && menuManaAbilities.length > 0) ||
-      (!!onActivateAbility && menuAbilities.length > 0),
+  // ADR 0105 sub-PR 4: the special-action rows, from the same builder
+  // the admin card menu uses, with the actor it would use: a face-down
+  // permanent is turned up by its controller (CR 708.6), and a hand
+  // card's controller is its owner. `legal` lights and lifts a ready
+  // row; `legalGate` greys an available row the exact digest refuses.
+  const specialRows = $derived(
+    onSpecialAction
+      ? specialActionItems(card, card.controller || card.owner, legal, legalGate)
+      : [],
   );
+  // hasMenu: the popover has at least one row to show.
+  const hasMenu = $derived(
+    (!!onActivateManaAbility && menuManaAbilities.length > 0) ||
+      (!!onActivateAbility && menuAbilities.length > 0) ||
+      specialRows.length > 0,
+  );
+  // ADR 0105: a pip is drawn only where the popover it points at is
+  // wired. A pip on a card whose abilities this viewer cannot open is
+  // worse than none (ADR 0105, Context, fact 3).
+  const boltPips = $derived(onActivateAbility ? pips.abilities : 0);
+  const dropPip = $derived(!!onActivateManaAbility && pips.mana);
+  const starPip = $derived(specialRows.length > 0 && pips.special > 0);
+  const anyPip = $derived(hasMenu && (boltPips > 0 || dropPip || starPip));
+  // ADR 0105 §7: the combat pip goes with the ring it explains.
+  const swordPip = $derived(ready && combatPip === "attack");
+  const shieldPip = $derived(ready && combatPip === "block");
+
+  // ADR 0105 §7: a ready card's accessible name gains a phrase saying
+  // what it is ready FOR. Built only while the ring is drawn.
+  const accessibleName = $derived.by(() => {
+    if (showBack) return "face-down card";
+    const name = displayName(card);
+    if (!ready) return name;
+    return readyCardLabel(name, true, readyPhrases(legal, card, readyZone, combatTarget));
+  });
 
   // cardImageURL defaults to the card's ACTIVE face, so a modal DFC
   // played as its land half — or, later, a transformed permanent —
@@ -357,10 +480,40 @@
       openCardMenu({ card, x: ev.clientX, y: ev.clientY });
       return;
     }
-    if (!hasManaAbilities) return;
+    if (!hasMenu) return;
     ev.preventDefault();
     ev.stopPropagation();
     manaMenuOpen = !manaMenuOpen;
+  }
+
+  // ADR 0105 §7 (owner decision 6): a pip is the touch route into the
+  // popover. It opens what a right-click on this card opens: the
+  // override menu under admin overrides, otherwise the ability popover.
+  // The event stops here, so the card's own click (cast, tap, select)
+  // and its Enter key never fire as well.
+  //
+  // It OPENS rather than toggles. Enter and Space are handled on
+  // keydown, where preventDefault cancels the native button click in
+  // every engine we target; if one ever let that click through as
+  // well, a toggle would open and shut in one press, and an open
+  // cannot. The popover closes as it always has: Escape, choosing a
+  // row, or a click on the card.
+  function openFromPip(ev: Event): void {
+    ev.preventDefault();
+    ev.stopPropagation();
+    if (phasedOut) return;
+    if ($settings.gameplay.adminOverrides) {
+      const r = (ev.currentTarget as HTMLElement | null)?.getBoundingClientRect();
+      manaMenuOpen = false;
+      openCardMenu({ card, x: r?.right ?? 0, y: r?.top ?? 0 });
+      return;
+    }
+    if (hasMenu) manaMenuOpen = true;
+  }
+
+  function handlePipKeydown(ev: KeyboardEvent): void {
+    if (ev.key !== "Enter" && ev.key !== " ") return;
+    openFromPip(ev);
   }
 
   function handleKeydown(ev: KeyboardEvent): void {
@@ -404,6 +557,8 @@
   class:autotap-planned={$autoTapHighlight.has(card.instance_id)}
   class:attacking
   class:blocking
+  class:ready
+  class:combat-target={combatTarget}
   class:clickable={interactive}
   class:phased-out={phasedOut}
   class:menu-open={manaMenuOpen}
@@ -411,7 +566,7 @@
   data-tapped={card.tapped ? "true" : "false"}
   role={interactive ? "button" : "img"}
   tabindex={interactive ? 0 : undefined}
-  aria-label={showBack ? "face-down card" : displayName(card)}
+  aria-label={accessibleName}
   title={showBack ? "" : displayName(card)}
   onpointerenter={handleEnter}
   onpointerleave={handleLeave}
@@ -504,6 +659,16 @@
         aria-label={`taken from ${takenFrom}`}
       >
         TAKEN FROM {takenFrom}
+      </span>
+    {/if}
+    {#if cantAttack}
+      <!-- ADR 0106 §2: read off the server's restriction, never derived. -->
+      <span
+        class="badge cant-attack"
+        title={cantAttack.title}
+        aria-label={`can't attack ${cantAttack.label}`}
+      >
+        CAN'T ATTACK {cantAttack.label}
       </span>
     {/if}
     {#if card.auto}
@@ -613,6 +778,16 @@
         TAKEN FROM {takenFrom}
       </span>
     {/if}
+    {#if cantAttack}
+      <!-- ADR 0106 §2: read off the server's restriction, never derived. -->
+      <span
+        class="badge cant-attack"
+        title={cantAttack.title}
+        aria-label={`can't attack ${cantAttack.label}`}
+      >
+        CAN'T ATTACK {cantAttack.label}
+      </span>
+    {/if}
     {#if card.auto}
       <span
         class="badge auto"
@@ -672,22 +847,112 @@
       {designationBadge}
     </span>
   {/if}
+  {#if anyPip || swordPip || shieldPip}
+    <!-- ADR 0105 §2/§7 (#1789): what this card can do right now, by
+         shape: a star for a special action (any kind, including one
+         this client has no name for), a bolt for an activated ability,
+         a drop for a mana ability worth marking (§4), and a sword or
+         shield for a combat candidate. The first three are buttons
+         that open the popover a right-click opens (§7, sub-PR 4), each
+         named for what it opens onto. The combat pips are drawing
+         only: a declaration has no popover behind it, and the card's
+         own name already says "can attack" / "can block". -->
+    <span class="ready-pips">
+      {#if starPip}
+        {@const kinds = legal.readySpecialActions(card.instance_id)}
+        <button
+          type="button"
+          class="ready-pip star"
+          data-pip="star"
+          aria-label={starPipLabel(kinds)}
+          aria-haspopup="menu"
+          aria-expanded={manaMenuOpen}
+          title={specialPipTitle(kinds)}
+          onclick={openFromPip}
+          onkeydown={handlePipKeydown}
+        >
+          <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true"
+            ><path
+              d="M12 2.5l2.9 6.2 6.8.8-5 4.7 1.3 6.8L12 17.6 6 21l1.3-6.8-5-4.7 6.8-.8z"
+            /></svg
+          >
+        </button>
+      {/if}
+      {#if boltPips > 0}
+        <button
+          type="button"
+          class="ready-pip bolt"
+          data-pip="bolt"
+          aria-label={boltPipLabel(boltPips)}
+          aria-haspopup="menu"
+          aria-expanded={manaMenuOpen}
+          onclick={openFromPip}
+          onkeydown={handlePipKeydown}
+        >
+          <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true"
+            ><path d="M13.5 2 4 13.5h6.5L9.5 22 20 9.5h-6.5z" /></svg
+          >
+          {#if pipCount(boltPips)}<span class="pip-count" aria-hidden="true"
+              >{pipCount(boltPips)}</span
+            >{/if}
+        </button>
+      {/if}
+      {#if dropPip}
+        <button
+          type="button"
+          class="ready-pip drop"
+          data-pip="drop"
+          aria-label={DROP_PIP_LABEL}
+          aria-haspopup="menu"
+          aria-expanded={manaMenuOpen}
+          onclick={openFromPip}
+          onkeydown={handlePipKeydown}
+        >
+          <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true"
+            ><path d="M12 2.5S5 10.4 5 15.2a7 7 0 0 0 14 0C19 10.4 12 2.5 12 2.5z" /></svg
+          >
+        </button>
+      {/if}
+      {#if swordPip}
+        <span class="ready-pip combat" data-pip="sword" aria-hidden="true" title="can attack">
+          <svg viewBox="0 0 24 24" focusable="false"
+            ><path
+              d="M19 3h2v2l-9.5 9.5-2-2zM6.5 12.5 8 11l5 5-1.5 1.5zM8.5 15.5l1 1-4 4-1-1zM2.3 20.2a1.6 1.6 0 1 0 3.2 0 1.6 1.6 0 1 0-3.2 0z"
+            /></svg
+          >
+        </span>
+      {/if}
+      {#if shieldPip}
+        <span class="ready-pip combat" data-pip="shield" aria-hidden="true" title="can block">
+          <svg viewBox="0 0 24 24" focusable="false"
+            ><path d="M12 2l8 3v6c0 5-3.5 9.3-8 11-4.5-1.7-8-6-8-11V5z" /></svg
+          >
+        </span>
+      {/if}
+    </span>
+  {/if}
   {#if card.doors && !showBack}
     <!-- ADR 0103: a Room's doors; the unlock buttons are its
          controller's (CR 709.5e). -->
     <RoomDoorStrip {card} canUnlock={!!viewerID && card.controller === viewerID} />
   {/if}
-  {#if manaMenuOpen && hasManaAbilities}
+  {#if manaMenuOpen && hasMenu}
     <div class="mana-menu-anchor">
       <ManaAbilityMenu
+        special={specialRows}
+        onSpecialAction={(action) => onSpecialAction?.(action)}
         abilities={onActivateManaAbility ? menuManaAbilities : []}
         tapped={!!card.tapped}
         onActivate={(idx) => onActivateManaAbility?.(idx)}
         activated={onActivateAbility ? menuAbilities : []}
         onActivateAbility={(idx) => onActivateAbility?.(idx)}
         summoningSick={!!card.summoning_sick}
-        {sorcerySpeedBlocked}
+        timingReason={sorcerySpeedBlocked}
+        cardID={card.instance_id}
+        {legal}
+        {legalGate}
         {payerLife}
+        {across}
         onRawTap={onRawTap && onActivateManaAbility && menuManaAbilities.length > 0 && !card.tapped
           ? onRawTap
           : undefined}
@@ -943,6 +1208,26 @@
     border-color: rgba(255, 145, 170, 0.55);
     font-size: 7px;
   }
+  .badge.cant-attack {
+    /* ADR 0106 §2 (#1794): a player's NAME, so full width and
+       truncating like TAKEN FROM, one row above it — Xantcha wears
+       both at once (its owner is the one it was taken from and the one
+       it can't attack). The red of a combat restriction, like MUST
+       ATTACK. */
+    top: auto;
+    bottom: 31px;
+    left: 3px;
+    right: 3px;
+    max-width: calc(100% - 6px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: center;
+    color: var(--danger);
+    background: rgba(60, 0, 0, 0.85);
+    border-color: rgba(255, 122, 122, 0.5);
+    font-size: 7px;
+  }
   .badge.curse {
     /* A Curse is drawn in its controller's row with no host behind it,
        so the badge is the only thing on the card that names its
@@ -1059,6 +1344,140 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+  /* ADR 0105 (#1789): the "ready" ring. Static on purpose — forty
+     cards animating a box-shadow is the cost §5 rules out. Two parts:
+     an OUTSET outline (outlines are not clipped by the card's
+     overflow: hidden, and they follow its radius), and a soft glow
+     drawn by a pseudo-element just inside the frame. Both scale with
+     the card, so the ring reads at every card size and in a thumb.
+     Declared before every other ring so a target prompt, a pick, a
+     selection or a combat role wins where they meet; and the focus
+     ring below replaces it while the card has focus rather than
+     drawing over it. */
+  .card.ready {
+    outline: max(2px, calc(var(--card-w, 80px) * 0.022)) solid var(--ready);
+    outline-offset: max(1px, calc(var(--card-w, 80px) * 0.015));
+  }
+  .card.ready::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    border-radius: inherit;
+    pointer-events: none;
+    box-shadow: inset 0 0 calc(var(--card-w, 80px) * 0.14) var(--ready-glow);
+  }
+  /* ADR 0105 §2/§7 (#1789): the pips. They sit on the upper-left edge,
+     below the top badge row (CMD) and the failed-art pip (22px): that
+     is the part of a tile still visible where tiles overlap (the land
+     strip's piles, the hand's top-55% peek), and the one edge with no
+     always-on badge. The kind is carried by shape, and the colour is
+     the one --ready. A pip scales with the card and never draws under
+     16px (§7). Each pip is a button and the touch route into the
+     popover (sub-PR 4), so the pip itself takes pointer events and
+     the column between pips does not: a press in the gap still lands
+     on the card. */
+  .ready-pips {
+    --pip: max(16px, calc(var(--card-w, 80px) * 0.17));
+    position: absolute;
+    top: max(38px, 30%);
+    left: 3px;
+    z-index: 4;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 3px;
+    pointer-events: none;
+  }
+  .ready-pip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1px;
+    box-sizing: border-box;
+    min-width: var(--pip);
+    height: var(--pip);
+    margin: 0;
+    padding: 0 calc(var(--pip) * 0.12);
+    border-radius: 999px;
+    background: var(--ready);
+    color: var(--ready-ink);
+    border: 1px solid rgba(0, 0, 0, 0.55);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.55);
+    font: inherit;
+    line-height: 1;
+    cursor: pointer;
+    pointer-events: auto;
+    /* A tap on a pip is a tap, never the start of a pan or a hand drag. */
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .ready-pip:hover {
+    filter: brightness(1.12);
+  }
+  /* ADR 0105 §7 (sub-PR 6): the sword and shield are drawing only. A
+     press on one is a press on the card, which is the declaration. */
+  .ready-pip.combat {
+    cursor: inherit;
+    pointer-events: none;
+  }
+  .ready-pip.combat:hover {
+    filter: none;
+  }
+  .ready-pip:focus-visible {
+    outline: 2px solid var(--ready-ink);
+    outline-offset: 1px;
+    box-shadow:
+      0 0 0 3px var(--ready),
+      0 1px 4px rgba(0, 0, 0, 0.55);
+  }
+  .ready-pip svg {
+    width: calc(var(--pip) * 0.68);
+    height: calc(var(--pip) * 0.68);
+    flex: 0 0 auto;
+    fill: currentColor;
+  }
+  .pip-count {
+    font-family: ui-monospace, Menlo, monospace;
+    font-size: calc(var(--pip) * 0.62);
+    font-weight: 900;
+    font-variant-numeric: tabular-nums;
+    padding-right: calc(var(--pip) * 0.08);
+  }
+  /* §7: at the small card size the count goes and the pip shows alone. */
+  :global(:root[data-card-size="small"]) .pip-count {
+    display: none;
+  }
+  .card.ready.targetable,
+  .card.ready.picked,
+  .card.ready.selected,
+  .card.ready.attacking,
+  .card.ready.blocking {
+    outline: none;
+  }
+  /* ADR 0105 sub-PR 5: an attacker the selected blocker may block. It
+     is attacking by definition, so the rule above would hide the one
+     ring that says "you can block this". The red ring is a box-shadow
+     hugging the frame and the ready ring an outline, so the outline
+     steps out past the red one and both read. A target prompt, a pick
+     or a selection still wins. */
+  .card.ready.combat-target:is(.attacking, .blocking):not(.targetable, .picked, .selected) {
+    outline: max(2px, calc(var(--card-w, 80px) * 0.022)) solid var(--ready);
+    outline-offset: max(5px, calc(var(--card-w, 80px) * 0.05));
+  }
+  /* ADR 0105 §7 (sub-PR 6): the high-contrast theme draws the ring as
+     a solid 3px outline and no glow. The theme's tokens already make
+     --ready-glow transparent; dropping the pseudo-element says so
+     outright. Dormant until App.svelte applies data-theme, which it
+     does not yet (the theme select is disabled; see App.svelte). The
+     second selector out-specifies the combat-target rule above. */
+  :global(:root[data-theme="high-contrast"]) .card.ready,
+  :global(:root[data-theme="high-contrast"]) .card.ready.combat-target:is(.attacking, .blocking) {
+    outline-width: 3px;
+  }
+  :global(:root[data-theme="high-contrast"]) .card.ready::after {
+    display: none;
   }
   .card.selected {
     box-shadow:

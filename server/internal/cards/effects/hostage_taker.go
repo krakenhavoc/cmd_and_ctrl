@@ -21,7 +21,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //   - "ANOTHER target" is built per trigger from the source's own
 //     instance (TargetsFrom + OtherThan), so Hostage Taker cannot
 //     exile itself, and a second Hostage Taker can take the first.
-//   - CR 610.3c: if Hostage Taker has already left the battlefield when
+//   - CR 610.3b: if Hostage Taker has already left the battlefield when
 //     its entry trigger resolves, nothing is exiled at all. Otherwise
 //     the card would be exiled with nothing left to bring it back.
 //   - The cast permission is ExileWithPermission's airbend grant,
@@ -59,7 +59,7 @@ const hostageTakerExileLabel = "Hostage Taker — exile another target creature 
 // hostageTakerExile is the entry trigger's resolution.
 func hostageTakerExile(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	// CR 610.3c: a Hostage Taker that has already left exiles nothing.
+	// CR 610.3b: a Hostage Taker that has already left exiles nothing.
 	if info, ok := ctx.SourcePermanent(); !ok || info.Left {
 		return nil
 	}

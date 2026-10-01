@@ -227,6 +227,7 @@ func checkGrantAbilities(name string, gr AbilityGrant) {
 		if offBattlefield(a.Zones) {
 			panic(where("activated ability", i) + " functions outside the battlefield — a granted ability is a permanent's")
 		}
+		checkAnyPlayerAbility(name, fmt.Sprintf("ability grant %s activated ability %d", gr.Key, i), a)
 	}
 	for i, m := range gr.Mana {
 		if offBattlefield(m.Zones) {

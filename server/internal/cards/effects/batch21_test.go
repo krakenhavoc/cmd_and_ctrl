@@ -1236,17 +1236,24 @@ func TestB21OblivionSowerExilesFourAndTakesTheirLands(t *testing.T) {
 	if !opp.Library.Contains(fifth) {
 		t.Error("only the top four")
 	}
+	// "You may put any number": every land card that player owns in
+	// exile is offered, and the Swamp is left behind.
+	etChooseCards(t, g, me.ID, 3, island, earlier)
+	passPriorityAroundTable(t, g)
 	// A returned card is a new object (CR 400.7), so look by name.
-	for _, name := range []string{"Their Island", "Their Swamp", "Their Exiled Mountain"} {
+	for _, name := range []string{"Their Island", "Their Exiled Mountain"} {
 		id := findBattlefieldByName(g, name)
 		if id == uuid.Nil || controllerOf(t, g, id) != me.ID {
 			t.Errorf("%s — a land that player owns in exile — enters under your control", name)
 		}
 	}
-	for _, id := range []uuid.UUID{island, swamp, earlier} {
+	for _, id := range []uuid.UUID{island, earlier} {
 		if inExile(g, id) {
 			t.Error("the land left exile")
 		}
+	}
+	if !inExile(g, swamp) {
+		t.Error("a land that was not chosen stays in exile")
 	}
 	if !inExile(g, notTheirs) {
 		t.Error("a land another player owns stays in exile")
@@ -1254,7 +1261,7 @@ func TestB21OblivionSowerExilesFourAndTakesTheirLands(t *testing.T) {
 	if !g.Battlefield.Contains(sower) {
 		t.Error("the Sower resolves after its trigger")
 	}
-	if spec, _ := Lookup(b21OblivionSowerOracle); spec.Completeness != CompletenessCaveats {
-		t.Error("the no-choice gap must be declared")
+	if spec, _ := Lookup(b21OblivionSowerOracle); spec.Completeness != CompletenessFull {
+		t.Error("the Sower's choice is printed, so it is Full")
 	}
 }

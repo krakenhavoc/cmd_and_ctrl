@@ -31,8 +31,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // fail at resolution — but it is judged there all the same.
 //
 // The cards return under their owner's control — the caster's, since
-// "from your graveyard" — in announce order, each through the ordinary
-// reanimation path, as Eerie Ultimatum's do.
+// "from your graveyard" — together, as one entry (#1867, CR 603.6a),
+// as Eerie Ultimatum's do.
 //
 // "Any number" includes none: X=0 with no targets is a legal cast that
 // does nothing, and a creature card of mana value 0 is a legal target

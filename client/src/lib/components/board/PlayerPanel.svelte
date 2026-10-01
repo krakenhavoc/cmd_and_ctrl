@@ -42,6 +42,7 @@
   } from "../../protocol";
   import { defendingPlayerOf } from "../../attackTargets";
   import { takenFromByCard } from "../../takenFrom";
+  import { cantAttackByCard } from "../../cantAttack";
   import { bucketForBattlefield, isCreature } from "../../cardTypes";
   import { battlefieldClickIntent } from "../../contextMenu.logic";
   import { canActivateSorcerySpeedAbility } from "../../timing";
@@ -64,7 +65,17 @@
   import PromisesRow from "./PromisesRow.svelte";
   import TokenGroupModal from "./TokenGroupModal.svelte";
   import { groupMembersOf } from "../../tokenGroups";
-  import { canOverride } from "../../contextMenu.logic";
+  import { canOverride, type MenuAction } from "../../contextMenu.logic";
+  import {
+    NO_COMBAT_RINGS,
+    NO_LEGAL_ACTIONS,
+    acrossActions,
+    actionableCount,
+    attackTargetListed,
+    attackTargetOpen,
+    combatRings,
+    type LegalActions,
+  } from "../../legalActions";
 
   type ActionSender = (type: ActionType, params?: ActionPayload["params"], player?: string) => void;
 
@@ -108,7 +119,9 @@
     // S21 sub-PR 2: a CR 602 activated ability on one of this
     // seat's permanents was chosen from the card menu. Board owns
     // the follow-up (sacrifice pick, targeting) because those are
-    // board-wide modals. Only wired for the viewer's own panel.
+    // board-wide modals. On an opponent's panel the popover reaches it
+    // only for an "Any player may activate this ability" row, the one
+    // kind of row the viewer may activate there (ADR 0106 §1).
     onActivateAbility?: (card: CardView, abilityIndex: number) => void;
     // S21, widened in #789: a mana ability on one of this seat's
     // permanents needs a cost choice before it can be activated — a
@@ -149,6 +162,15 @@
     // Undefined hides the list's attack buttons; "Use this one" still
     // selects a single attacker the two-click way.
     onDeclareAttackers?: (attackerIDs: string[], defenderSeatID: string) => void;
+    // ADR 0105 (#1789): the frame's legal-action lookup, already
+    // "nothing" while highlights are off or autopass is about to pass
+    // (Game.svelte). Handed to the cast surfaces for their ready rings
+    // and counts; it gates nothing.
+    legal?: LegalActions;
+    // ADR 0105 sub-PR 3: the frame's FULL lookup, which the highlight
+    // setting never touches. Read only by the ability popover's gate,
+    // which greys a sorcery-speed row the server's digest leaves out.
+    legalGate?: LegalActions;
   }
 
   const {
@@ -184,7 +206,79 @@
     spectator = false,
     considering = false,
     onDeclareAttackers,
+    legal = NO_LEGAL_ACTIONS,
+    legalGate = NO_LEGAL_ACTIONS,
   }: Props = $props();
+
+  // ADR 0105: the battlefield rows read the lookups on the viewer's own
+  // panel. A spectator never has a digest.
+  //
+  // ADR 0106 §1 decisions 5 and 6 (#1793): on an opponent's panel they
+  // read `acrossActions`, which answers only for that panel's
+  // "Any player may activate this ability" rows. The digest is the
+  // viewer's own moves, so it lists another player's permanent exactly
+  // when the viewer may activate such a row on it right now; that
+  // permanent then wears the bolt pip and ring, and its popover's gate
+  // reads the same answer. Nothing else lights through these lookups on
+  // an opponent's panel; the combat rings below have their own.
+  const battlefieldCards = $derived(view.battlefield?.cards ?? []);
+  const rowLegal = $derived(
+    spectator
+      ? NO_LEGAL_ACTIONS
+      : isSelf
+        ? legal
+        : acrossActions(legal, battlefieldCards, viewerID),
+  );
+  const rowGate = $derived(
+    spectator
+      ? NO_LEGAL_ACTIONS
+      : isSelf
+        ? legalGate
+        : acrossActions(legalGate, battlefieldCards, viewerID),
+  );
+  // #1695: the life the popover's life-cost check reads. On the
+  // viewer's own panel that is the seat's. On an opponent's panel the
+  // only rows the popover lists are any-player rows, and the player
+  // who activates one pays its cost (CR 602.1a): the viewer.
+  const payerLife = $derived(isSelf ? seat.life : view.seats.find((s) => s.id === viewerID)?.life);
+  // ADR 0105 §7 (sub-PR 6): how many of this seat's cards wear a
+  // highlight, for the phase display's "N actions available". Only the
+  // viewer's own panel mounts the phase display.
+  const readyActions = $derived(isSelf ? actionableCount(rowLegal, view, seat.id) : 0);
+
+  // ADR 0105 sub-PR 5: the combat rings. Unlike the pips these reach
+  // an opponent's panel, because what the SELECTED creature may be
+  // declared against is on the other side of the table: the
+  // planeswalkers and battles a selected attacker may attack, the
+  // attackers a selected blocker may block. Both are facts of the
+  // viewer's own digest about cards it already sees, so they reveal
+  // nothing. The candidates half only ever lights the viewer's own
+  // creatures, which are the only ones the digest has entries for. A
+  // spectator has no digest.
+  const rings = $derived(
+    spectator
+      ? NO_COMBAT_RINGS
+      : combatRings(legal, combatMode, selectedCombatCardID, controlledCards),
+  );
+
+  // ADR 0105 sub-PR 4 (#1789): a CR 116.2 special action chosen from a
+  // card's ability popover: foretell, suspend or plot from the hand,
+  // turn face up on a face-down permanent. Until this PR these rows
+  // lived only in the admin override menu. The row is built by the
+  // same function that menu uses (contextMenu.logic.ts
+  // specialActionItems), so this sends exactly what that menu's row
+  // sends, through the same guarded sender. The viewer's own panel
+  // only; the server strips `special_actions` from everyone else.
+  const sendSpecialAction = $derived(
+    isSelf && !spectator
+      ? (action: MenuAction) =>
+          sendAction(
+            action.type,
+            action.params as ActionPayload["params"],
+            action.player ?? seat.id,
+          )
+      : undefined,
+  );
 
   // The seat's commander, wherever it is right now: the command zone
   // first, then the shared zones (battlefield, stack, exile) and its
@@ -240,6 +334,9 @@
   // ADR 0104 (owner decision 6): the owner of each permanent another
   // player controls, for Card's TAKEN FROM badge.
   const takenFrom = $derived(takenFromByCard(view.battlefield?.cards, view.seats));
+  // ADR 0106 §2 (owner decision 3): whom each creature can't attack,
+  // read off the card view, for Card's CAN'T ATTACK chip.
+  const cantAttack = $derived(cantAttackByCard(view.battlefield?.cards, view.seats));
 
   // Every battlefield card that is drawn behind a host rather than in
   // its own type row. A dangling attachment — the host has left but
@@ -265,10 +362,24 @@
   // opponent's turn and came back rejected — the live example
   // ADR 0033 §1 cites for why the client stopped re-deriving timing.
   //
+  // ADR 0105 sub-PR 3: it is the popover's WORDS now, not its verdict.
+  // Whether a row is shut is the server's answer, from the row's
+  // `timing_closed` and the legal-action digest (`legalGate`). This
+  // string only says why.
+  //
   // Empty string means "open, no opinion"; opponents' panels are
   // never gated on the VIEWER's window, so they get "" too.
   const sorcerySpeedBlocked = $derived(
     isSelf ? (canActivateSorcerySpeedAbility(view, viewerID).reason ?? "") : "",
+  );
+  // ADR 0106 §1: the battlefield rows' words. An opponent's permanent
+  // offers the viewer only its any-player rows, whose timing is the
+  // ACTIVATOR's (CR 109.5), so a row the server shut is explained in the
+  // viewer's window there too. A spectator opens no popover.
+  const rowTimingWords = $derived(
+    isSelf || spectator
+      ? sorcerySpeedBlocked
+      : (canActivateSorcerySpeedAbility(view, viewerID).reason ?? ""),
   );
 
   // #1724: the token group whose member list is open, by group key.
@@ -357,8 +468,23 @@
       : undefined,
   );
 
+  // ADR 0105 sub-PR 5: the player half of "the selected attacker's
+  // defenders light" — the identity's green ring, which is also the
+  // click. Read off the FULL lookup: it withholds a click the server
+  // would refuse, and the highlight setting must not change that. No
+  // list, or a re-point of an attacker already declared, keeps the old
+  // rule (attackTargetOpen).
   const attackTargetable = $derived(
-    !isSelf && !seat.eliminated && combatMode === "attack" && !!selectedCombatCardID,
+    !isSelf &&
+      !seat.eliminated &&
+      combatMode === "attack" &&
+      !!selectedCombatCardID &&
+      attackTargetOpen(
+        legalGate,
+        view.battlefield?.cards?.find((c) => c.instance_id === selectedCombatCardID),
+        selectedCombatCardID,
+        seat.id,
+      ),
   );
 
   function handleCardClick(card: CardView, ev?: MouseEvent): void {
@@ -391,6 +517,18 @@
       isCreature(card)
     ) {
       onSelectCombatCard(card.instance_id);
+      return;
+    }
+    // ADR 0105 sub-PR 5: an attack-mode click on a planeswalker or a
+    // battle the selected attacker may attack declares that attack
+    // (CR 508.1d). It is the card the ready ring is on, and a ring
+    // that pointed at nothing would be worse than none. Only what the
+    // server lists: with no list the click stays what it was.
+    if (
+      combatMode === "attack" &&
+      attackTargetListed(legalGate, selectedCombatCardID, card.instance_id)
+    ) {
+      onDeclareAttack(card.instance_id);
       return;
     }
     // Block-mode click on an incoming attacker commits the block.
@@ -479,6 +617,7 @@
       {attachmentsByHost}
       {curseTargets}
       {takenFrom}
+      {cantAttack}
       cards={buckets.creature}
       {viewerID}
       {selectedCombatCardID}
@@ -486,8 +625,12 @@
       onActivateManaAbility={activateManaAbility}
       onRawTap={activateManaAbility ? onTapToggle : undefined}
       {onActivateAbility}
-      {sorcerySpeedBlocked}
-      payerLife={seat.life}
+      sorcerySpeedBlocked={rowTimingWords}
+      {payerLife}
+      legal={rowLegal}
+      combat={rings}
+      legalGate={rowGate}
+      onSpecialAction={sendSpecialAction}
       onGroupClick={(k) => (openGroupKey = k)}
     />
   </div>
@@ -500,6 +643,7 @@
       {attachmentsByHost}
       {curseTargets}
       {takenFrom}
+      {cantAttack}
       cards={buckets.land}
       compact
       strip
@@ -509,8 +653,12 @@
       onActivateManaAbility={activateManaAbility}
       onRawTap={activateManaAbility ? onTapToggle : undefined}
       {onActivateAbility}
-      {sorcerySpeedBlocked}
-      payerLife={seat.life}
+      sorcerySpeedBlocked={rowTimingWords}
+      {payerLife}
+      legal={rowLegal}
+      combat={rings}
+      legalGate={rowGate}
+      onSpecialAction={sendSpecialAction}
       onGroupClick={(k) => (openGroupKey = k)}
     />
     <BattlefieldRow
@@ -518,6 +666,7 @@
       {attachmentsByHost}
       {curseTargets}
       {takenFrom}
+      {cantAttack}
       cards={buckets.right}
       compact
       {viewerID}
@@ -526,8 +675,12 @@
       onActivateManaAbility={activateManaAbility}
       onRawTap={activateManaAbility ? onTapToggle : undefined}
       {onActivateAbility}
-      {sorcerySpeedBlocked}
-      payerLife={seat.life}
+      sorcerySpeedBlocked={rowTimingWords}
+      {payerLife}
+      legal={rowLegal}
+      combat={rings}
+      legalGate={rowGate}
+      onSpecialAction={sendSpecialAction}
       onGroupClick={(k) => (openGroupKey = k)}
     />
   </div>
@@ -546,6 +699,9 @@
         {sorcerySpeedBlocked}
         snap={view}
         {viewerID}
+        {legal}
+        legalGate={rowGate}
+        onSpecialAction={sendSpecialAction}
       />
     </div>
     {#if isSelf}
@@ -556,6 +712,7 @@
         {viewerID}
         onCastCard={onPlayCard}
         onDragCast={(c, zone, face) => onPlayCard(c, zone, face, true)}
+        {legal}
       />
     {/if}
     {#if !isSelf}
@@ -571,6 +728,7 @@
         {loopNotice}
         onPassPriority={onPassPriority ?? (() => {})}
         onToggleAutopass={onToggleAutopass ?? (() => {})}
+        {readyActions}
       />
     {/if}
   </div>
@@ -602,6 +760,10 @@
       {onPlayCard}
       onActivateAbility={isSelf ? onActivateAbility : undefined}
       {sorcerySpeedBlocked}
+      {view}
+      {viewerID}
+      {legal}
+      legalGate={rowGate}
     />
   </div>
   <TokenGroupModal
@@ -618,6 +780,7 @@
     onAttack={isSelf ? onDeclareAttackers : undefined}
     onBlock={isSelf ? declareGroupBlockers : undefined}
     onClose={() => (openGroupKey = null)}
+    legalGate={rowGate}
   />
 </div>
 

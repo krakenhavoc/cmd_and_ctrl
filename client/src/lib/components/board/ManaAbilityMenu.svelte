@@ -17,7 +17,15 @@
     chargedManaCostLabel,
     chargedManaCostNote,
     type AbilityCost,
+    type MenuAction,
+    type MenuItem,
   } from "../../contextMenu.logic";
+  import {
+    NO_LEGAL_ACTIONS,
+    digestRefusesRow,
+    readyFirst,
+    type LegalActions,
+  } from "../../legalActions";
   import ModalLayer from "../ModalLayer.svelte";
 
   interface Props {
@@ -31,16 +39,40 @@
     activated?: ActivatedAbilityView[];
     onActivateAbility?: (abilityIndex: number) => void;
     summoningSick?: boolean;
-    // S31: why the CR 307.1 sorcery-speed window is shut right now,
-    // or "" when it is open. Computed once per panel by PlayerPanel
-    // (which has the snapshot) rather than per card, and consulted
-    // only for abilities that carry `sorcery_speed`.
+    // The WORDS for a shut activation window ("Not your turn", "Stack
+    // isn't empty"), or "" when the panel's window reads open.
+    // PlayerPanel computes it once per panel and threads it down as
+    // `sorcerySpeedBlocked`.
     //
-    // Until S31 this popover greyed on tap / sacrifice / target and
-    // nothing else, so an "activate only as a sorcery" ability stayed
-    // clickable all through combat and an opponent's turn and came
-    // back rejected. The flag had been on the wire since S21.
-    sorcerySpeedBlocked?: string;
+    // Words only, since ADR 0105 sub-PR 3. It used to be a VERDICT too:
+    // any `sorcery_speed` row greyed while it was non-empty. That was a
+    // client re-derivation of timing. It keyed on the printed clause,
+    // so it greyed a Leonin Shikari's equip in combat, which the engine
+    // accepts. The verdict is now the server's: the row's own
+    // `timing_closed` (#1208) and the legal-action digest (`legalGate`
+    // below). This string only explains it, as `timingReason` does in
+    // contextMenu.logic.ts.
+    timingReason?: string;
+    // ADR 0105 (#1789): the card these rows belong to, and two lookups
+    // for it. `legal` is what the board may HIGHLIGHT. It is the lookup
+    // that knows nothing while highlights are off or autopass is
+    // passing. A ready row gets the accent and sorts first. `legalGate`
+    // is the frame's full lookup, which the setting never touches: a
+    // sorcery-speed row whose ref the exact digest leaves out greys.
+    // Both default to "no information", which greys nothing new.
+    cardID?: string;
+    legal?: LegalActions;
+    legalGate?: LegalActions;
+    // ADR 0105 sub-PR 4 (#1789): the card's CR 116.2 special actions
+    // (foretell, suspend, plot, turn face up), built by Card with the
+    // admin menu's own row builder (contextMenu.logic.ts
+    // specialActionItems), so the ready accent, the order, the greying
+    // and the payload are that function's. Listed first: a face-down
+    // permanent has nothing else (CR 708.2a). A row fires
+    // `onSpecialAction` with its action unaltered. Empty hides the
+    // section.
+    special?: MenuItem[];
+    onSpecialAction?: (action: MenuAction) => void;
     // #1438: a left-click on a mana source taps it FOR mana now, so
     // turning it sideways WITHOUT making mana lives here, labelled so
     // nobody mistakes it for the mana row. Undefined hides it.
@@ -55,6 +87,12 @@
     // here with nothing to judge against — the server's CR 119.4
     // refusal is still the real gate.
     payerLife?: number;
+    // ADR 0106 §1 decision 6 (#1793): the rows are another player's
+    // permanent's "Any player may activate this ability" rows, opened
+    // by a viewer who does not control it. Their verdict is the
+    // digest's (decision 5), so any row the exact digest leaves out
+    // greys, not only a sorcery-speed one. No digest greys nothing new.
+    across?: boolean;
   }
 
   const {
@@ -64,11 +102,28 @@
     activated = [],
     onActivateAbility,
     summoningSick = false,
-    sorcerySpeedBlocked = "",
+    timingReason = "",
+    cardID = "",
+    legal = NO_LEGAL_ACTIONS,
+    legalGate = NO_LEGAL_ACTIONS,
+    special = [],
+    onSpecialAction,
     onRawTap,
     onClose,
     payerLife,
+    across = false,
   }: Props = $props();
+
+  function fireSpecial(item: MenuItem): void {
+    if (item.disabled || !item.action) return;
+    onSpecialAction?.(item.action);
+    onClose?.();
+  }
+
+  // The fallback sentence when the server shut a window the panel's
+  // words call open: a per-player restriction, or a digest that
+  // leaves the row out for a reason other than timing (the cost).
+  const NOT_RIGHT_NOW = "Can't activate this right now";
 
   function activate(index: number): void {
     onActivate(index);
@@ -85,21 +140,59 @@
   // unaffordable "Pay N life" ability stay clickable here after #1690
   // fixed the context menu's copy).
   //
-  // The one check kept local is the sorcery-speed override: PlayerPanel
-  // computes `sorcerySpeedBlocked` once per panel and threads it down
-  // as a plain string — Card, Hand, PileBar, CommandZone and
-  // ZoneBrowserModal all take the same prop — rather than the
-  // LoyaltyContext + GameView the context menu has directly in scope.
-  // Checked first, exactly where it sat before; everything else
-  // (including the shared function's own `timing_closed` fallback,
-  // for a row this prop doesn't cover) comes from the shared
-  // predicate now.
-  function abilityBlocked(a: AbilityCost): string {
+  // Timing is the server's answer, in two parts (ADR 0105 sub-PR 3):
+  //
+  //   - `timing_closed`, the row's own verdict (#1208). Checked here
+  //     rather than left to the shared predicate so that it covers
+  //     loyalty rows too: the shared predicate reads those only with a
+  //     LoyaltyContext, which this popover does not have. The words
+  //     are the panel's.
+  //   - the digest, after every row-field reason so that a more
+  //     specific sentence wins. A sorcery-speed row the exact digest
+  //     leaves out greys: the server would refuse it, whether for
+  //     priority or for the cost. Only sorcery-speed rows, which are
+  //     the rows the old client gate covered. An instant-speed row the
+  //     digest misses stays live, so a gap in the enumerator leaves
+  //     the row unmarked but never greys a move the engine accepts
+  //     (ADR 0105, Consequences).
+  //
+  // With no digest (no decision owed, an older server, the capped
+  // fallback) only the row fields judge, so nothing is newly greyed.
+  function abilityBlocked(a: AbilityCost & { ref?: string }, activated: boolean): string {
     if (a.tap_cost && tapped) return "already tapped";
     if (a.tap_cost && summoningSick) return "summoning sickness";
-    if (a.sorcery_speed && sorcerySpeedBlocked) return sorcerySpeedBlocked;
-    return sharedAbilityBlocked(a, tapped, summoningSick, undefined, payerLife);
+    if (a.timing_closed) return timingReason || NOT_RIGHT_NOW;
+    const fromRow = sharedAbilityBlocked(a, tapped, summoningSick, undefined, payerLife);
+    if (fromRow) return fromRow;
+    if (activated && (a.sorcery_speed || across) && digestRefusesRow(legalGate, cardID, a.ref)) {
+      return NOT_RIGHT_NOW;
+    }
+    return "";
   }
+
+  // ADR 0105 §2: a row the server would accept right now takes the
+  // ready accent and sorts first. Legality is the digest's ref list
+  // and nothing else. A row the row fields grey is never accented,
+  // even if the two ever disagreed: an accent on a disabled button
+  // would say two things at once.
+  interface Row<T> {
+    a: T;
+    blocked: string;
+    ready: boolean;
+  }
+  function rows<T extends AbilityCost & { ref?: string }>(
+    list: readonly T[],
+    refs: readonly string[],
+    activated: boolean,
+  ): Row<T>[] {
+    const out = list.map((a) => {
+      const blocked = abilityBlocked(a, activated);
+      return { a, blocked, ready: !blocked && !!a.ref && refs.includes(a.ref) };
+    });
+    return readyFirst(out, (r) => r.ready);
+  }
+  const manaRows = $derived(rows(abilities, legal.readyManaRefs(cardID), false));
+  const activatedRows = $derived(rows(activated, legal.readyAbilityRefs(cardID), true));
 
   function activateAbility(index: number): void {
     onActivateAbility?.(index);
@@ -119,12 +212,34 @@
 <ModalLayer />
 
 <div class="mana-menu" role="menu" aria-label="abilities">
-  {#each abilities as a (a.index)}
-    {@const blocked = abilityBlocked(a)}
+  {#each special as item (item.id)}
+    <button
+      type="button"
+      class="menu-item special"
+      class:ready={item.ready}
+      role="menuitem"
+      disabled={item.disabled}
+      title={item.hint || item.label}
+      data-special={item.id}
+      onclick={(ev) => {
+        ev.stopPropagation();
+        fireSpecial(item);
+      }}
+    >
+      <span class="label">{item.label}</span>
+      {#if item.ready}<span class="sr-only">, available</span>{/if}
+      <span class="cost" aria-hidden="true">✦</span>
+    </button>
+  {/each}
+  {#if special.length > 0 && (abilities.length > 0 || activated.length > 0)}
+    <div class="divider" role="separator"></div>
+  {/if}
+  {#each manaRows as { a, blocked, ready } (a.index)}
     {@const costNote = chargedManaCostNote(a)}
     <button
       type="button"
       class="menu-item"
+      class:ready
       role="menuitem"
       disabled={!!blocked}
       title={blocked || (a.produced ? `produces ${a.produced}` : a.label)}
@@ -134,6 +249,7 @@
       }}
     >
       <span class="label">{a.label || a.produced || "activate"}</span>
+      {#if ready}<span class="sr-only">, available</span>{/if}
       {#if a.tap_cost}
         <span class="cost" aria-label="tap cost">↻</span>
       {/if}
@@ -163,12 +279,12 @@
     {#if abilities.length > 0}
       <div class="divider" role="separator"></div>
     {/if}
-    {#each activated as a (a.index)}
-      {@const blocked = abilityBlocked(a)}
+    {#each activatedRows as { a, blocked, ready } (a.index)}
       {@const costNote = chargedManaCostNote(a)}
       <button
         type="button"
         class="menu-item"
+        class:ready
         role="menuitem"
         disabled={!!blocked}
         title={blocked || a.label}
@@ -178,6 +294,7 @@
         }}
       >
         <span class="label">{a.label || "activate"}</span>
+        {#if ready}<span class="sr-only">, available</span>{/if}
         {#if a.tap_cost}
           <span class="cost" aria-label="tap cost">↻</span>
         {/if}
@@ -259,11 +376,37 @@
     opacity: 0.45;
     cursor: not-allowed;
   }
+  /* ADR 0105 (#1789): the server would accept this row right now. The
+     one --ready colour, as a left rule plus a tint, so it reads in a
+     list of gold rows without relying on hue alone. */
+  .menu-item.ready {
+    color: var(--ready);
+    background: var(--ready-soft);
+    box-shadow: inset 2px 0 0 var(--ready);
+  }
+  .menu-item.ready:hover,
+  .menu-item.ready:focus-visible {
+    background: var(--ready-soft);
+    border-color: var(--ready);
+  }
   .label {
     flex: 1;
   }
   .cost {
     font-weight: 700;
     opacity: 0.75;
+  }
+  /* ADR 0105 §7 (sub-PR 6): a ready row's accessible name gains
+     "available". Spoken, not drawn: the accent already draws it. */
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
   }
 </style>

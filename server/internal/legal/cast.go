@@ -1154,12 +1154,18 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 					// #1703: and the same for the creatures tapped to
 					// teamwork — a Llanowar Elves in the team cannot
 					// also make the {G}.
-					if len(discards)+len(sacs)+len(teamIDs)+len(blightIDs) > 0 &&
+					//
+					// #1727: and for the alternative cost's own card
+					// component — an Eldrazi Spawn named to Dread
+					// Return's "sacrifice three creatures" cannot also
+					// make the {1} a Thalia adds to the flashback.
+					if len(discards)+len(sacs)+len(teamIDs)+len(blightIDs)+len(altCostSets[0]) > 0 &&
 						!e.canPayExcluding(payCost, payX, spend, game.CastAutoTapExclusions(game.CastSpellParams{
 							DiscardIDs:   discards,
 							SacrificeIDs: sacs,
 							TeamworkIDs:  teamIDs,
 							BlightIDs:    blightIDs,
+							AltCostIDs:   altCostSets[0],
 						})) {
 						continue
 					}
@@ -1170,12 +1176,14 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 							targets:   targets,
 							x:         payX,
 							life:      payLife,
+							cost:      payCost,
 							printed:   payPrinted,
 							dist:      dist,
 							discards:  discards,
 							sacs:      sacs,
 							team:      teamIDs,
 							blight:    blightIDs,
+							alt:       altCostSets[0],
 							delve:     payDelve,
 							delveFull: payDelveFull,
 						}
@@ -1224,6 +1232,13 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 		if budget <= 0 {
 			return
 		}
+		// #1727: the same affordability, with THIS payment's cards
+		// kept away from the auto-tapper (game.CastAutoTapExclusions) —
+		// a different three creatures may include the Spawn the first
+		// payment left free to make the mana.
+		if !e.canPayExcluding(first.cost, first.x, spend, first.autoTapExclusions(altPaid)) {
+			continue
+		}
 		budget--
 		emit(altPaid, first.modes, first.targets, first.x, first.life, first.dist, first.discards, first.sacs, first.delve)
 	}
@@ -1236,8 +1251,10 @@ type announcedCast struct {
 	targets []game.TargetRef
 	x       int
 	// life is how many Phyrexian symbols the announcement pays with
-	// life (#1677); printed is its cost before that strike.
+	// life (#1677); printed is its cost before that strike, and cost
+	// the mana it pays after it.
 	life     int
+	cost     game.ParsedCost
 	printed  game.ParsedCost
 	dist     map[uuid.UUID]int
 	discards []uuid.UUID
@@ -1246,6 +1263,10 @@ type announcedCast struct {
 	// auto-tap plan the all-life payment is re-checked against.
 	team   []uuid.UUID
 	blight []uuid.UUID
+	// alt is the alternative cost's card payment the announcement was
+	// emitted with (#1727) — excluded from the auto-tap plan like the
+	// rest.
+	alt []uuid.UUID
 	// delve is the announcement's delve payment (ADR 0100 §6), and
 	// delveFull the full-budget one offered beside it — nil when the
 	// two are the same set.
@@ -1575,15 +1596,24 @@ func (e *enumerator) allLifePayment(first *announcedCast, spend game.ManaSpendCo
 	if !e.g.CanPayLifeLocked(e.p, reserved+life) {
 		return 0, false
 	}
-	if !e.canPayExcluding(reduced, first.x, spend, game.CastAutoTapExclusions(game.CastSpellParams{
-		DiscardIDs:   first.discards,
-		SacrificeIDs: first.sacs,
-		TeamworkIDs:  first.team,
-		BlightIDs:    first.blight,
-	})) {
+	if !e.canPayExcluding(reduced, first.x, spend, first.autoTapExclusions(first.alt)) {
 		return 0, false
 	}
 	return n, true
+}
+
+// autoTapExclusions is what CastSpell's auto-tap will not spend on this
+// announcement's mana (game.CastAutoTapExclusions): its additional-cost
+// payments, its teamwork and blight creatures, and `alt`, the
+// alternative cost's card payment it is being offered with (#1727).
+func (a *announcedCast) autoTapExclusions(alt []uuid.UUID) map[uuid.UUID]bool {
+	return game.CastAutoTapExclusions(game.CastSpellParams{
+		DiscardIDs:   a.discards,
+		SacrificeIDs: a.sacs,
+		TeamworkIDs:  a.team,
+		BlightIDs:    a.blight,
+		AltCostIDs:   alt,
+	})
 }
 
 // legalModeSets lists every distinct mode selection of size lo..hi,
@@ -1801,7 +1831,12 @@ func (e *enumerator) legalTargetSets(src game.TargetSource, spec *game.TargetSpe
 	// #1559: a clause with a set rule ("each with a different mana
 	// value") never yields a set two of whose picks share a key — the
 	// engine refuses that set at announce, and offering it is #544.
-	keys := e.g.TargetDifferenceKeysForEffect(spec, lt.Cards)
+	// #1807: nor one whose picks hold two keys under a sameness rule
+	// ("from a single graveyard"), so every set stays in one group.
+	keys := setRuleKeys{
+		different: e.g.TargetDifferenceKeysForEffect(spec, lt.Cards),
+		same:      e.g.TargetSamenessKeysForEffect(spec, lt.Cards),
+	}
 	lo, hi := spec.Min, spec.Max
 	if hi <= 0 || hi > len(cands) {
 		hi = len(cands)
@@ -1827,7 +1862,7 @@ func (e *enumerator) legalTargetSets(src game.TargetSource, spec *game.TargetSpe
 				return
 			}
 			for i := start; i < len(cands); i++ {
-				if keys != nil && sharesSetKey(keys, cur, cands[i]) {
+				if keys.breaks(cur, cands[i]) {
 					continue
 				}
 				rec(i+1, append(cur, cands[i]))
@@ -1836,6 +1871,22 @@ func (e *enumerator) legalTargetSets(src game.TargetSource, spec *game.TargetSpe
 		rec(0, nil)
 	}
 	return out
+}
+
+// setRuleKeys is a clause's set-rule keys, per legal card: `different`
+// for a rule no two picks may share a key under (#1559), `same` for
+// one every pick must share a key under (#1807). Either is nil when
+// the clause has no such rule.
+type setRuleKeys struct {
+	different map[uuid.UUID]string
+	same      map[uuid.UUID]string
+}
+
+// breaks reports whether adding cand to cur would give a set the
+// engine's announce gate refuses.
+func (k setRuleKeys) breaks(cur []game.TargetRef, cand game.TargetRef) bool {
+	return (k.different != nil && sharesSetKey(k.different, cur, cand)) ||
+		(k.same != nil && leavesSetKey(k.same, cur, cand))
 }
 
 // sharesSetKey reports whether cand's set-rule key is already held by
@@ -1847,6 +1898,22 @@ func sharesSetKey(keys map[uuid.UUID]string, cur []game.TargetRef, cand game.Tar
 	}
 	for _, p := range cur {
 		if pk, ok := keys[p.ID]; ok && pk == k {
+			return true
+		}
+	}
+	return false
+}
+
+// leavesSetKey reports whether cand's sameness key differs from one a
+// pick in cur holds (#1807): a card from a second graveyard. A pick
+// with no key fits any group.
+func leavesSetKey(keys map[uuid.UUID]string, cur []game.TargetRef, cand game.TargetRef) bool {
+	k, ok := keys[cand.ID]
+	if !ok {
+		return false
+	}
+	for _, p := range cur {
+		if pk, ok := keys[p.ID]; ok && pk != k {
 			return true
 		}
 	}

@@ -77,15 +77,13 @@ var silentEventKinds = map[string]string{
 	// label and its source (projectAbilityItem), redacted with the
 	// source — log_ability_resolve_test.go pins both halves.
 	"EventTrigger": "a trigger reaching the stack is told by the LogResolve of the ability it becomes, which names it by its label and source (#1257)",
-	// #1184: the same argument as the row above, for the other half of
-	// the same announcement. An activation reaching the stack is told
-	// by the LogResolve of the ability it becomes, and the stack view
-	// carries it in the meantime; a second line at the announce would
-	// say the same thing twice about one click. The kind exists so
-	// TRIGGERS can watch an activation, not so the log can narrate
-	// one.
-	"EventActivateAbility": "an activation reaching the stack is told by the LogResolve of the ability it becomes, which names it by its label and source (#1257)",
-	"EventKeywordAction":   silentImpliedByAnotherLine,
+	// #1184's EventActivateAbility is no longer on this list: since
+	// ADR 0106 §1 it has an arm (LogActivateAcross) for the one
+	// activation the resolve line cannot tell — a player reaching
+	// across to another player's permanent. Every other activation is
+	// still told by the LogResolve of the ability it becomes, and the
+	// arm returns nothing for it.
+	"EventKeywordAction": silentImpliedByAnotherLine,
 
 	// --- the step spine ----------------------------------------------
 	"EventTurnBegan":          "the first EventStepBegan announces the same boundary to the table; this kind exists for engine consumers after per-turn resets",
@@ -138,14 +136,14 @@ var silentEventKinds = map[string]string{
 	"EventBecomesPlotted": "the plot special action's LogSpecialAction line, or the LogResolve of the effect that plotted it plus its LogZone exile, already tells the table (#1382)",
 	// #1722 / ADR 0096. The crown moves three ways and the table is
 	// told each time by the line that moved it: a card's "you become
-	// the monarch" and the CR 724.2 steal are both the LogResolve of
+	// the monarch" and the CR 725.2 steal are both the LogResolve of
 	// an ability whose label says so ("Palace Jailer — you become the
 	// monarch", "the monarch — Bob becomes the monarch"), and the
-	// CR 724.4 hand-on happens inside the LogEliminated line of the
+	// CR 725.4 hand-on happens inside the LogEliminated line of the
 	// player who left. The holder itself is GameView.monarch. The kind
 	// exists for "whenever you become the monarch" to watch and for
 	// the layer pass to invalidate on.
-	"EventMonarchChanged": "the LogResolve of the ability that moved the crown (or the LogEliminated of the monarch who left, CR 724.4) already says so, and GameView.monarch carries the holder (#1722)",
+	"EventMonarchChanged": "the LogResolve of the ability that moved the crown (or the LogEliminated of the monarch who left, CR 725.4) already says so, and GameView.monarch carries the holder (#1722)",
 
 	// --- visible board state -------------------------------------------
 	"EventTapCard":         silentBoardStateIsVisible,
@@ -158,6 +156,7 @@ var silentEventKinds = map[string]string{
 	"EventBecameMonstrous": silentBoardStateIsVisible,
 	"EventRegenerated":     silentImpliedByAnotherLine,
 	"EventBattleDefeated":  silentBoardStateIsVisible,
+	"EventEvolved":         silentImpliedByAnotherLine, // #1805: the +1/+1 counter is the `counters` line
 
 	// --- hidden-zone work ----------------------------------------------
 	"EventSearchLibrary": "the number of matches is itself hidden information about a hidden zone (see the search_library prompt's redaction)",

@@ -82,6 +82,15 @@ var adoptableGaps = map[string]string{
 		a permanent that is not its source. That is the "granted
 		keyword" seam, not this one, and the caveat stays true until it
 		lands.`,
+	"Lier, Disciple of the Drowned / flashback": `A phrase collision, pinned
+		rather than dodged (ADR 0106 PR 2, #1806). Lier's granted
+		flashback works (a standing CastPermission, Underworld Breach's
+		shape). The caveat is about precedence: a card that prints its
+		own flashback is offered only that one, because
+		resolveAlternativeCostLocked judges the printed offer before a
+		granted one, and CR 702.34 would let its owner pick either cost.
+		Past in Flames has the same gap. Closing it means offering both
+		offers under one key, which is its own change to the cast path.`,
 	"Damping Sphere / storm": `A phrase collision, pinned rather than dodged
 		(#1258 added the storm row). The caveat's "storm tax" is Damping
 		Sphere's own "each spell costs {1} more for each other spell
@@ -106,19 +115,6 @@ var adoptableGaps = map[string]string{
 		Swat's cycle; narrowing the probe to dodge this caveat would
 		blind it to a real "you control a commander" free cast on the
 		next card.`,
-	"Dread Return / flashback": `Slice 296-d (#296). Flashback() covers a
-		MANA cost bound to the graveyard; Dread Return's printed
-		flashback cost is "Sacrifice three creatures" — no mana at
-		all. game.AlternativeCost has ManaCost, Life, and three
-		card-naming components (ExileFromHand, ReturnToHand,
-		ExileFromGraveyard), none of which pay with a sacrifice of the
-		caster's own permanents, so there is no way to build this
-		specific offer with the existing constructor. Adopting
-		Flashback("{cost}") verbatim would misrepresent the printed
-		cost rather than implement it. Nothing to adopt until
-		AlternativeCost grows a sacrifice component; narrowing the
-		probe to dodge this caveat would blind it to a real "flashback
-		isn't implemented" on the next mana-cost flashback card.`,
 }
 
 // TestAdoptableGapsArePinned fails on any movement in that set.

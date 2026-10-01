@@ -130,6 +130,11 @@
              that would break it are greyed; this says why. -->
         <span class="count">· targets must {state.different.label}</span>
       {/if}
+      {#if state.same}
+        <!-- #1807: "from a single graveyard" — candidates outside the
+             first pick's group are greyed; this says why. -->
+        <span class="count">· targets must {state.same.label}</span>
+      {/if}
       {#if doubledLabel}
         <span class="count">· {doubledLabel}</span>
       {/if}

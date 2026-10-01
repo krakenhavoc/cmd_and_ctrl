@@ -333,6 +333,17 @@ func costCommanderCases() []costCommanderCase {
 					return g.CastSpell(g.Seats[0].ID, spell.InstanceID, CastSpellParams{AlternativeCost: "daze", AltCostIDs: []uuid.UUID{id}})
 				}, spellOnStack(spell.InstanceID)}
 		}},
+		{"spell: flashback, sacrifice a creature (#1727)", func(t *testing.T, g *Game, cmd bool) costCommanderSetup {
+			const oracle = "test-1727-flashback-sacrifice"
+			me := g.Seats[0]
+			withCatalogCastableZones(t, castableZonesFor(oracle, ZoneGraveyard))
+			withCatalogAlternativeCosts(t, altCostFor(oracle, sacrificeFlashback(1)))
+			spell := looterInGraveyard(t, g, me, oracle)
+			id := seedCostCard(g.Battlefield, me.ID, me.ID, cmd, nil)
+			return costCommanderSetup{0, id, battlefieldZone, graveyardOf(0),
+				func(g *Game) error { return castSacrificeFlashback(g, spell, []uuid.UUID{id}) },
+				spellOnStack(spell)}
+		}},
 		{"spell: escape, exile another card from your graveyard", func(t *testing.T, g *Game, cmd bool) costCommanderSetup {
 			const oracle = "test-1397-escape"
 			me := g.Seats[0]

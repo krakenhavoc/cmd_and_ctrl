@@ -296,6 +296,8 @@ func everyFieldCardView(owner string, knowers map[string]bool) CardView {
 		GrantedAbilities: []GrantedAbilityView{{Text: "{T}: Add one mana of any color.", SourceID: "grantor", SourceName: "Cryptolith Rite"}},
 		Abilities:        []string{"flying"},
 		Restrictions:     []string{"cant_block"},
+		// ADR 0106 §2: redacted with Restrictions.
+		AttackTargetRestrictions: []AttackTargetRestrictionView{{Player: "p-owner", Planeswalkers: true, Source: "Xantcha, Sleeper Agent"}},
 		// ADR 0083. Public on a token the viewer can see, and a token
 		// is known to every seat, so this cell can never fire in a
 		// real game — it is here because the field is a catalog read
@@ -340,7 +342,10 @@ func everyFieldCastSurface(lt *LegalTargetsView) CastSurfaceView {
 		AlternativeCosts: []AlternativeCostView{{
 			Key: "overload", Label: "Overload {6}{U}", ManaCost: "{6}{U}", Life: 1, PayLabel: "a blue card",
 			TargetMode: "creature", LegalTargets: lt, PayOptions: lt,
-			XLockedAtZero: true, PhyrexianSymbols: 1,
+			// #1727: never set beside pay_options on a real offer, but
+			// the redaction table has to see it filled.
+			SacrificeOptions: lt,
+			XLockedAtZero:    true, PhyrexianSymbols: 1,
 			// #1686.
 			TimingClosed: true,
 		}},
@@ -858,6 +863,9 @@ var alternativeCostScopes = map[string]castSurfaceScope{
 	// CR 601.2h) but one seat's all the same.
 	"LegalTargets": surfacePrivate,
 	"PayOptions":   surfacePrivate,
+	// #1727: "the creatures YOU control" for a sacrifice price — the
+	// same per-seat list as pay_options, in the sacrifice picker's shape.
+	"SacrificeOptions": surfacePrivate,
 	// #1686: same reasoning as PrintedCostTimingClosed above — public
 	// board state, not per-viewer.
 	"TimingClosed": surfacePublicPile,
@@ -949,7 +957,8 @@ func TestHandPublicCastSurfaceIsAnAllowlist(t *testing.T) {
 		if full.Modes.Options[0].LegalTargets == nil || full.Modes.Options[0].Clauses == nil {
 			t.Errorf("%s: the public strip reached through into the seat's own `modes`", kind)
 		}
-		if full.AlternativeCosts[0].LegalTargets == nil || full.AlternativeCosts[0].PayOptions == nil {
+		if full.AlternativeCosts[0].LegalTargets == nil || full.AlternativeCosts[0].PayOptions == nil ||
+			full.AlternativeCosts[0].SacrificeOptions == nil {
 			t.Errorf("%s: the public strip reached through into the seat's own `alternative_costs`", kind)
 		}
 	}

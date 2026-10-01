@@ -306,6 +306,13 @@ func (g *Game) validateAnnouncedTargetsWithLocked(src TargetSource, steps []Anno
 	// #1559: per step, the set-rule key each pick holds and whether
 	// that pick's predicate was waived (an unchanged retarget slot).
 	keys := make([]map[string]bool, len(steps))
+	// #1807: the same, for the sameness rule, as a list — a pick must
+	// agree with every earlier one, not just be unseen.
+	type heldKey struct {
+		key    string
+		waived bool
+	}
+	sameKeys := make([][]heldKey, len(steps))
 	cursor := 0
 	for i, t := range targets {
 		if t.Kind == TargetSelf || t.Kind == TargetNone {
@@ -367,6 +374,21 @@ func (g *Game) validateAnnouncedTargetsWithLocked(src TargetSource, steps []Anno
 				return targetSetError(clause.Different)
 			}
 			keys[idx][k] = waived
+		}
+		// #1807, CR 601.2c: the sameness rule — every pick of the
+		// clause shares one key ("from a single graveyard"). Judged
+		// pairwise over the final list, so a retarget that moves
+		// EVERY slot to another graveyard is legal (CR 115.7e), while
+		// one that moves some of them away from the unchanged ones is
+		// not (CR 115.7d). Two unchanged slots that disagree are left
+		// alone, as above.
+		if k, ok := g.targetSamenessKeyLocked(clause, t); ok {
+			for _, prev := range sameKeys[idx] {
+				if prev.key != k && !(prev.waived && waived) {
+					return targetSameError(clause.Same)
+				}
+			}
+			sameKeys[idx] = append(sameKeys[idx], heldKey{key: k, waived: waived})
 		}
 	}
 	for i := range steps {

@@ -20,9 +20,11 @@
   // (S13.1) off the seat's PlayerView — no local bookkeeping, so every
   // viewer (not just the caster's tab) sees the same tax.
 
-  import type { ActionPayload, ActionType, CardView, ZoneView } from "../../protocol";
+  import type { ActionPayload, ActionType, CardView, GameView, ZoneView } from "../../protocol";
   import Card from "./Card.svelte";
   import { openZoneBrowser } from "../../zoneBrowser";
+  import { canCastFromHand, type Legality } from "../../timing";
+  import { NO_LEGAL_ACTIONS, withAvailable, type LegalActions } from "../../legalActions";
 
   type ActionSender = (type: ActionType, params?: ActionPayload["params"], player?: string) => void;
 
@@ -45,6 +47,21 @@
     // Why the CR 307.1 sorcery-speed window is shut, or "" when open —
     // passed through to the popover as the hand passes it.
     sorcerySpeedBlocked?: string;
+    // ADR 0105 (#1789): the frame and viewer, for the cast GATE — the
+    // same server verdict that greys an uncastable hand card
+    // (timing.ts canCastFromHand), so a commander you cannot cast no
+    // longer looks castable. Absent (a caller with no frame) leaves
+    // the hint live, as it always was.
+    view?: GameView | null;
+    viewerID?: string | null;
+    // ADR 0105: the frame's legal-action lookup, "nothing" while
+    // highlights are off or autopass is about to pass. The ready ring
+    // on the commander and the hint's accent read it; the gate above
+    // does not. The popover's ready-row accent reads it too.
+    legal?: LegalActions;
+    // ADR 0105 sub-PR 3: the frame's full lookup, for the popover's
+    // sorcery-speed gate. The highlight setting never touches it.
+    legalGate?: LegalActions;
   }
 
   const {
@@ -55,6 +72,10 @@
     commanderCasts,
     onActivateAbility,
     sorcerySpeedBlocked = "",
+    view = null,
+    viewerID = null,
+    legal = NO_LEGAL_ACTIONS,
+    legalGate = NO_LEGAL_ACTIONS,
   }: Props = $props();
 
   // The card slot, so the "ability" hint can open the Card's own
@@ -77,8 +98,21 @@
     visibleIndex = (visibleIndex + 1) % commanders.length;
   }
 
+  // The cast gate for the visible commander. Permissive without a
+  // frame, and permissive on a frame with no move list unless the
+  // viewer lacks priority — canCastFromHand's own reading, shared with
+  // the hand so the two never disagree about what is castable.
+  const castGate = $derived.by((): Legality => {
+    if (!isSelf || !visibleCard || !view) return { legal: true };
+    return canCastFromHand(visibleCard, view, viewerID);
+  });
+  const castReady = $derived(
+    isSelf && !!visibleCard && legal.castableFrom(visibleCard.instance_id, "command"),
+  );
+
   function castVisible(): void {
     if (!isSelf || !visibleCard) return;
+    if (!castGate.legal) return;
     // Game.svelte's sendAction shim stamps the strict flag and stashes
     // the payload for the cast-anyway / auto-tap retry paths, which
     // replay it verbatim — so from_zone survives those retries too.
@@ -151,9 +185,13 @@
     {#if visibleCard}
       <Card
         card={visibleCard}
+        ready={castReady}
+        readyZone="command"
         onClick={isSelf ? handleClick : openBrowser}
         onActivateAbility={activateVisible}
         {sorcerySpeedBlocked}
+        legal={isSelf ? legal : undefined}
+        legalGate={isSelf ? legalGate : undefined}
       />
       {#if visibleTax > 0}
         <span class="tax-badge" title={`commander tax · +${visibleTax} mana`}>+{visibleTax}</span>
@@ -189,10 +227,12 @@
       <button
         type="button"
         class="cast-hint"
+        class:ready={castReady}
+        disabled={!castGate.legal}
         onclick={castVisible}
         ondblclick={handleDoubleClick}
-        title="cast commander"
-        aria-label="cast commander"
+        title={castGate.legal ? "cast commander" : (castGate.reason ?? "Can't cast right now")}
+        aria-label={withAvailable("cast commander", castReady)}
       >
         cast
       </button>
@@ -345,6 +385,25 @@
     background: var(--accent-soft);
     color: var(--gold-strong);
     border-color: var(--gold);
+  }
+  /* ADR 0105: the hint is a gate. With no cast move it greys and
+     withholds the click, like an uncastable hand card; with one, and
+     highlights live, it takes the ready accent. */
+  .cast-hint:disabled {
+    cursor: not-allowed;
+    color: var(--fg-dim);
+    border-color: var(--border);
+    opacity: 0.6;
+  }
+  .cast-hint:disabled:hover {
+    background: transparent;
+    color: var(--fg-dim);
+    border-color: var(--border);
+  }
+  .cast-hint.ready:not(:disabled) {
+    color: var(--ready);
+    border-color: var(--ready);
+    background: var(--ready-soft);
   }
   .browse-hint:hover {
     background: var(--accent-soft);

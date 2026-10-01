@@ -98,7 +98,7 @@ cmd_and_ctrl/
     ├── engine-seams/closed/ # one fragment per closed seam; CI generates engine-seams.md's Closed list from them (#1461)
     ├── adding-cards.md  # the catalog card guide: recipes for cards, mechanics and engine seams (moved out of AGENTS.md §7, #1747)
     ├── sprints.md       # sprint plan
-    └── decisions/       # ADRs (0001 WS library … 0105 highlighting every legal action) — see §4 on numbering
+    └── decisions/       # ADRs (0001 WS library … 0106 five small seams from the S50 re-checks) — see §4 on numbering
 ```
 
 When you create a new top-level directory, add it here.
@@ -389,14 +389,16 @@ A restore point written by yesterday's binary has to restore in today's. Three t
 ### Rules citations
 
 `CR NNN.Nx` in code, tests and docs means the **Magic: The Gathering
-Comprehensive Rules effective August 7, 2026**, from
+Comprehensive Rules effective September 25, 2026**, from
 [magic.wizards.com/en/rules](https://magic.wizards.com/en/rules) (the TXT
-download is `MagicCompRules 20260819.txt`; its text says "effective as of
-August 7, 2026"). Check a number against that text before you write it. Do not
+download is `MagicCompRules 20260925.txt`; its text says "effective as of
+September 25, 2026"). Check a number against that text before you write it. Do not
 cite from memory: rule numbers move between editions. The June 2025 edition
 re-sorted every keyword action in 701, so discard went from 701.8 to 701.9 and
 reveal from 701.16 to 701.20. The 2026 edition added a new 310.8, which moved
-the battle protector rules to 310.9.
+the battle protector rules to 310.9. The September 2026 edition added a new
+506.6 ("attacks a player alone"), which moved "had to attack" to 506.7 and the
+combat timing rules for spells (old 506.7–506.7g) to 506.8–506.8g.
 
 To move the pin to a newer edition, do it in one PR of its own. Download the
 new TXT. For every section the tree cites, compare the rule's text in the two
@@ -451,10 +453,12 @@ Subsections of [docs/adding-cards.md](docs/adding-cards.md):
   - [Adding a mana ability (S15+)](docs/adding-cards.md#adding-a-mana-ability-s15)
   - [Adding a static ability (S16+)](docs/adding-cards.md#adding-a-static-ability-s16)
   - [Granting an ability to another permanent (ADR 0093, #754)](docs/adding-cards.md#granting-an-ability-to-another-permanent-adr-0093-754)
+  - [Abilities any player may activate (ADR 0106, #1793)](docs/adding-cards.md#abilities-any-player-may-activate-adr-0106-1793)
   - [Adding a replacement effect (S17+)](docs/adding-cards.md#adding-a-replacement-effect-s17)
   - [Adding a copy effect (S16.5+)](docs/adding-cards.md#adding-a-copy-effect-s165)
   - [Adding a combat-keyword card (S18+)](docs/adding-cards.md#adding-a-combat-keyword-card-s18)
   - [Adding a "can't" card (S24+)](docs/adding-cards.md#adding-a-cant-card-s24)
+  - ["Spells you control can't be countered" (ADR 0106, #1806)](docs/adding-cards.md#spells-you-control-cant-be-countered-adr-0106-1806)
   - [Attaching, and an ability whose source has gone (#812)](docs/adding-cards.md#attaching-and-an-ability-whose-source-has-gone-812)
   - [Adding a block-rule card (S37+, #750)](docs/adding-cards.md#adding-a-block-rule-card-s37-750)
   - [Adding a triggered ability (S19+)](docs/adding-cards.md#adding-a-triggered-ability-s19)

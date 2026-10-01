@@ -535,6 +535,43 @@ func TestB02cUntimelyMalfunctionChangesTheTargetOfASingleTargetSpell(t *testing.
 	}
 }
 
+func TestB02cUntimelyMalfunctionRedirectsAnAbility(t *testing.T) {
+	g := newCatalogGame(t)
+	advanceToMain(t, g)
+	me, opp, third := g.Seats[0], g.Seats[1], g.Seats[2]
+	shredder := b12Push(g, opp.ID, "Codex Shredder", "Artifact", b22CodexShredderOracle, 0, 0)
+	if err := g.ActivateCatalogAbility(opp.ID, shredder, 0, game.ActivateAbilityParams{
+		Targets: []game.TargetRef{{Kind: game.TargetPlayer, ID: me.ID}},
+	}); err != nil {
+		t.Fatalf("ActivateCatalogAbility: %v", err)
+	}
+	ability := acItemLabelled(g, "{T}: Target player mills a card.")
+	if ability == uuid.Nil {
+		t.Fatal("the activation is not on the stack")
+	}
+	mine, theirs := me.Library.Size(), third.Library.Size()
+
+	b02cCastModalSpell(t, g, "Untimely Malfunction", "Instant", b02cUntimelyMalfunctionOracle,
+		[]int{1}, []game.TargetRef{{Kind: game.TargetCard, ID: ability}})
+	passPriorityAroundTable(t, g)
+
+	prompt := latestRetarget(g, me.ID)
+	if prompt == nil {
+		t.Fatal("Untimely Malfunction opened no retarget prompt for the ability")
+	}
+	if err := g.ResolveRetarget(prompt.ID, me.ID,
+		[]game.TargetRef{{Kind: game.TargetPlayer, ID: third.ID}}); err != nil {
+		t.Fatalf("ResolveRetarget: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if me.Library.Size() != mine {
+		t.Error("the mill still landed on the original target")
+	}
+	if third.Library.Size() != theirs-1 {
+		t.Errorf("the redirected ability did not mill the new target: %d -> %d", theirs, third.Library.Size())
+	}
+}
+
 func TestB02cUntimelyMalfunctionPreventsBlocking(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]

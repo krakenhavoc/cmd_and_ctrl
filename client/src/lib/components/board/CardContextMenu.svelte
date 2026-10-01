@@ -34,6 +34,7 @@
     type MenuAction,
     type MenuItem,
   } from "../../contextMenu.logic";
+  import { NO_LEGAL_ACTIONS, type LegalActions } from "../../legalActions";
 
   type ActionSender = (type: ActionType, params?: ActionPayload["params"], player?: string) => void;
 
@@ -47,9 +48,28 @@
     // picker and the targeting flow an activation may need.
     onActivate: (card: CardView, activate: MenuActivate) => void;
     onClose: () => void;
+    // ADR 0105 (#1789): the frame's highlight lookup ("nothing" while
+    // highlights are off or autopass is passing). Ability rows the
+    // server would accept right now take the ready accent and sort
+    // first. It greys nothing.
+    legal?: LegalActions;
+    // ADR 0106 §1 (#1793): the frame's FULL lookup. On a permanent the
+    // viewer does not control, the menu is its "Any player may activate
+    // this ability" rows, and one the exact digest leaves out greys.
+    legalGate?: LegalActions;
   }
 
-  const { view, viewerID, isAdmin, open, sendAction, onActivate, onClose }: Props = $props();
+  const {
+    view,
+    viewerID,
+    isAdmin,
+    open,
+    sendAction,
+    onActivate,
+    onClose,
+    legal = NO_LEGAL_ACTIONS,
+    legalGate = NO_LEGAL_ACTIONS,
+  }: Props = $props();
 
   // Re-resolve the card from the live snapshot so counter totals,
   // tapped state and marked damage stay current while the menu is
@@ -59,7 +79,7 @@
   const card = $derived(findCard(view, open.card.instance_id) ?? open.card);
   const where = $derived(locateCard(view, open.card.instance_id));
   const zoneLabel = $derived(where ? ZONE_LABELS[where.zone] : "gone");
-  const sections = $derived(buildMenuSections(view, card, viewerID, isAdmin));
+  const sections = $derived(buildMenuSections(view, card, viewerID, isAdmin, legal, legalGate));
 
   // trail is the drill-down path, held as item IDs rather than item
   // objects so a snapshot arriving while a submenu is open refreshes
@@ -202,6 +222,7 @@
     type="button"
     class="ctx-item"
     class:danger={item.danger}
+    class:ready={item.ready}
     role="menuitem"
     disabled={item.disabled}
     title={item.hint || item.label}
@@ -211,6 +232,7 @@
     }}
   >
     <span class="ctx-text">{item.label}</span>
+    {#if item.ready}<span class="sr-only">, available</span>{/if}
     {#if item.items}
       <span class="ctx-more" aria-hidden="true">›</span>
     {:else if item.prompt}
@@ -358,6 +380,18 @@
     background: rgba(120, 20, 20, 0.35);
     border-color: rgba(255, 122, 122, 0.5);
   }
+  /* ADR 0105 (#1789): the server would accept this row right now —
+     the same accent the ability popover uses. */
+  .ctx-item.ready {
+    color: var(--ready);
+    background: var(--ready-soft);
+    box-shadow: inset 2px 0 0 var(--ready);
+  }
+  .ctx-item.ready:hover,
+  .ctx-item.ready:focus-visible {
+    background: var(--ready-soft);
+    border-color: var(--ready);
+  }
   .ctx-item.back {
     opacity: 0.75;
   }
@@ -414,5 +448,18 @@
   .ctx-item.apply {
     justify-content: center;
     border-color: rgba(200, 168, 106, 0.45);
+  }
+  /* ADR 0105 §7 (sub-PR 6): a ready row's accessible name gains
+     "available". Spoken, not drawn: the accent already draws it. */
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
   }
 </style>

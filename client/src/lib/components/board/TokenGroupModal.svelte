@@ -30,7 +30,8 @@
   import { onDestroy } from "svelte";
   import type { CardView, GameView, PlayerView } from "../../protocol";
   import { targeting, isLegalCardTarget } from "../../targeting";
-  import { attackBlocker, BLOCKER_LABELS, planAttackAll, seatLabel } from "../../attackAll";
+  import { attackRefusal, BLOCKER_LABELS, planAttackAll, seatLabel } from "../../attackAll";
+  import { NO_LEGAL_ACTIONS, type LegalActions } from "../../legalActions";
   import { attackersDefendedBy } from "../../attackTargets";
   import {
     bulkCandidates,
@@ -61,6 +62,11 @@
     onAttack?: (attackerIDs: string[], defenderSeatID: string) => void;
     onBlock?: (blockerIDs: string[], attackerID: string) => void;
     onClose: () => void;
+    // ADR 0105 sub-PR 5: the frame's FULL legal-action lookup, so the
+    // members that can attack are the ones the server would declare.
+    // Passed for the viewer's own group only; absent means no
+    // information, and the row fields decide as they did before.
+    legalGate?: LegalActions;
   }
 
   const {
@@ -77,6 +83,7 @@
     onAttack,
     onBlock,
     onClose,
+    legalGate = NO_LEGAL_ACTIONS,
   }: Props = $props();
 
   const open = $derived(members.length > 0);
@@ -87,12 +94,12 @@
     return t !== null && isLegalCardTarget(t, c.instance_id);
   };
   const cantAttack = (c: CardView) => {
-    const r = attackBlocker(c);
+    const r = attackRefusal(c, legalGate);
     return r ? BLOCKER_LABELS[r] : null;
   };
 
   const incoming = $derived(viewerID ? attackersDefendedBy(view, viewerID) : []);
-  const defenders = $derived<PlayerView[]>(planAttackAll(view, viewerID).defenders);
+  const defenders = $derived<PlayerView[]>(planAttackAll(view, viewerID, legalGate).defenders);
 
   const mode = $derived.by((): GroupListMode => {
     if ($targeting !== null && !!onTarget && members.some(legal)) return "target";

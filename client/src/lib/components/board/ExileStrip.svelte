@@ -63,6 +63,7 @@
   } from "../../exileStrip";
   import type { CastSourceZone } from "../../targeting";
   import type { Legality } from "../../timing";
+  import { NO_LEGAL_ACTIONS, type LegalActions } from "../../legalActions";
 
   interface Props {
     view: GameView;
@@ -73,12 +74,28 @@
     // the same cast chain a click does, with the drag flag. Undefined
     // turns the gesture off.
     onDragCast?: (card: CardView, fromZone: CastSourceZone, face?: number) => void;
+    // ADR 0105 (#1789): the frame's legal-action lookup, "nothing"
+    // while highlights are off or autopass is about to pass. Drives
+    // the ready ring and the chip's ready count; the click gate
+    // (legalityFor) never reads it.
+    legal?: LegalActions;
   }
 
-  const { view, viewerID, onCastCard, onDragCast }: Props = $props();
+  const { view, viewerID, onCastCard, onDragCast, legal = NO_LEGAL_ACTIONS }: Props = $props();
 
   const entries = $derived(exileStripEntries(view, viewerID));
-  const readyCount = $derived(entries.filter((e) => e.state === "now").length);
+  // ADR 0105: what the server's move list says the viewer can cast
+  // from exile this instant, mana included. The chip's cyan count, and
+  // (sub-PR 6, §7) the count its accessible name says. It used to say
+  // how many cards castable_here opened a window for, which counts a
+  // card the viewer cannot pay for. With no digest (highlights off,
+  // autopass passing, or no decision owed) the label says no count at
+  // all rather than one the board is not drawing.
+  const readyCount = $derived(legal.readyCount("exile"));
+  const chipLabel = $derived(
+    `${entries.length} exiled ${entries.length === 1 ? "card" : "cards"} you may cast` +
+      (legal.known ? `, ${readyCount} ready` : ""),
+  );
   // Two cards sit side by side; from three on they overlap like the
   // hand, tightening with handOverlap so a long strip cannot outgrow
   // the panel (#956's rule).
@@ -364,11 +381,14 @@
       type="button"
       class="strip-toggle"
       aria-expanded={open}
-      aria-label={`${entries.length} exiled ${entries.length === 1 ? "card" : "cards"} you may cast, ${readyCount} ready`}
+      aria-label={chipLabel}
       onclick={() => (open = !open)}
     >
       <span class="toggle-label">exile</span>
-      <span class="toggle-count" class:ready={readyCount > 0}>{entries.length}</span>
+      <span class="toggle-count">{entries.length}</span>
+      {#if readyCount > 0}
+        <span class="toggle-count ready" aria-hidden="true">{readyCount} ready</span>
+      {/if}
     </button>
     <div class="strip-body" style:--strip-overlap={overlap}>
       <span class="strip-tag" aria-hidden="true">from exile</span>
@@ -388,13 +408,16 @@
             onclickcapture={dragEnabled ? onSlotClickCapture : undefined}
             class:blocked={!leg.legal}
             class:later={e.state === "later"}
-            class:ready={leg.legal}
+            class:castable={leg.legal}
             title={leg.legal ? undefined : leg.reason}
           >
             <div class="deal-wrap" in:dealIn out:dealOut>
               <Card
                 card={e.card}
                 showManaCost={badge === null}
+                ready={legal.castableFrom(e.card.instance_id, "exile")}
+                readyZone="exile"
+                {legal}
                 onClick={leg.legal && onCastCard ? () => cast(e) : undefined}
               />
               {#if badge}
@@ -549,20 +572,17 @@
   .strip-slot:last-child .cost-tag {
     right: -5px;
   }
-  .strip-slot.ready:hover {
+  .strip-slot.castable:hover {
     transform: translateY(-6px);
     z-index: 2;
   }
   .deal-wrap {
     position: relative;
   }
-  /* A castable card glows faintly gold — the one thing on it that says
-     "this is yours to play" before you read the badge. */
-  .strip-slot.ready .deal-wrap :global(.card) {
-    box-shadow:
-      0 0 0 1px rgba(217, 180, 92, 0.55),
-      0 0 12px rgba(217, 180, 92, 0.25);
-  }
+  /* ADR 0105: the faint gold glow a castable card used to wear is the
+     board-wide cyan ready ring now (Card's `ready`), drawn from the
+     server's move list — mana included — and only while highlights
+     are live. */
   /* Dimmed with a filter rather than opacity: the cards overlap, and a
      translucent card lets the one beneath it — its badges included —
      show through, which reads as two cards smeared together. */
@@ -676,8 +696,10 @@
       letter-spacing: 0;
     }
     .toggle-count.ready {
-      background: var(--gold);
-      color: var(--accent-fg, #1c1503);
+      padding: 0 6px;
+      background: var(--ready);
+      color: var(--ready-ink);
+      letter-spacing: 0.04em;
     }
     .strip-body {
       display: none;

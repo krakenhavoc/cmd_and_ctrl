@@ -85,7 +85,7 @@ import (
 // # The recursion guard is CR 106.7 itself, exactly (#1323)
 //
 // There is no CR 106.6b in the pinned edition (MagicCompRules
-// 20260819) — the circular case is the last sentence of 106.7 itself:
+// 20260925, AGENTS.md §6) — the circular case is the last sentence of 106.7 itself:
 // "If that permanent wouldn't produce any mana under these
 // conditions, OR NO TYPE OF MANA CAN BE DEFINED THIS WAY, there's no
 // type of mana it could produce." A chain of "could produce" reads

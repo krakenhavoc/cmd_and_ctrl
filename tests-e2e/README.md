@@ -20,6 +20,7 @@ tests-e2e/
     ├── full-game.spec.ts      # 2-player game: join → upload → start → mulligan → turns
     ├── game.spec.ts           # game route WS handshake
     ├── join.spec.ts           # invite-link → join flow
+    ├── legal-highlights-1789.spec.ts # ADR 0105 ready rings: lit on your main phase, dark on theirs
     ├── lobby-api.ts           # thin HTTP wrapper for test setup shortcuts
     ├── lobby.spec.ts          # admin lobby create / list / refresh / table cards
     ├── mulligan.spec.ts       # keep / mulligan dialog + the opening-hand roll call

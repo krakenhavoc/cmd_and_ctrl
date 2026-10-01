@@ -9,9 +9,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // The seven-mana Replenish-and-more. Every artifact and enchantment
 // card in the caster's graveyard comes back under its owner's
-// control — an artifact creature is an artifact and counts — each
-// through the ordinary reanimation path, so its own enters-tapped
-// clause and every ETB trigger fire. Not targeted, as printed, and
+// control — an artifact creature is an artifact and counts — all of
+// them as one entry (#1867), so its own enters-tapped clause runs and
+// every ETB trigger sees the whole batch (CR 603.6a). Not targeted, as printed, and
 // castable with an empty graveyard to no effect.
 //
 // Sandbox simplification, declared: an Aura returned this way comes

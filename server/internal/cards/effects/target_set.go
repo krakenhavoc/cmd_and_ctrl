@@ -73,3 +73,27 @@ func EachDifferentName() *game.TargetDifference {
 		},
 	}
 }
+
+// FromASingleGraveyard is "from a single graveyard" (#1807, ADR 0106
+// §5) — the OPPOSITE kind of set rule, attached with
+// TargetSpec.AllShare: every pick must share one key, the card's
+// owner, which for a card in a graveyard is the graveyard it is in
+// (CR 400.3). Digsite Conservator, Decompose, Carrion Beetles.
+//
+// Without it "up to four target cards from a single graveyard" would
+// reach four graveyards at once, which is stronger than printed.
+func FromASingleGraveyard() *game.TargetSameness {
+	return &game.TargetSameness{
+		Label: "come from a single graveyard",
+		Key:   game.TargetShareOwner,
+	}
+}
+
+// UpToCardsFromASingleGraveyard is the clause nearly every card of the
+// family prints: "up to <n> target cards from a single graveyard". The
+// label is the printed wording, passed through; preds narrow the cards
+// ("creature cards", "sorcery cards") exactly as TargetCardInGraveyard's
+// do.
+func UpToCardsFromASingleGraveyard(label string, n int, preds ...CardPredicate) *game.TargetSpec {
+	return TargetCardInGraveyard(label, preds...).WithCount(0, n).AllShare(FromASingleGraveyard())
+}

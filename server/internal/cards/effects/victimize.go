@@ -35,12 +35,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //     additional cost, so the creature is still on the battlefield
 //     when the graveyard is scanned for legal targets.
 //
-// Second simplification: the returned creatures enter untapped and
-// are tapped a beat later, because ReturnFromGraveyard has no tapped
-// flag (its exile-side twin does). Anything watching for a tap
-// event sees one; nothing watching for an untapped permanent
-// entering gets a window to act, because both happen inside one
-// resolution.
+// The two creatures enter together and tapped (#1867): one entry, so
+// each sees the other enter (CR 603.6a), with the tapped clause on the
+// entry event rather than a tap a beat later.
 func init() {
 	Register(Spec{
 		OracleID:     "240e85d3-e495-4877-8609-4b4056c402f7",
@@ -51,21 +48,7 @@ func init() {
 			Creature(), YouOwn()).WithCount(2, 2),
 		AdditionalCost: SacrificeCost("a creature", Creature()),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			for _, t := range ctx.LegalTargets() {
-				if t.Kind != game.TargetCard {
-					continue
-				}
-				if err := (ReturnFromGraveyard{
-					Target: t.ID,
-					Dest:   game.ZoneBattlefield,
-				}).Apply(ctx); err != nil {
-					return err
-				}
-				if err := (TapTarget{Target: t.ID}).Apply(ctx); err != nil {
-					return err
-				}
-			}
-			return nil
+			return ReturnFromGraveyardTogether{Targets: legalTargetCardIDs(ctx), Tapped: true}.Apply(ctx)
 		},
 	})
 }

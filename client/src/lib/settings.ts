@@ -233,6 +233,11 @@ export interface Settings {
     // bot, not a leak of yours (a policy never sees another seat's
     // hidden state), but it does make the game easier.
     showBotReasoning: boolean;
+    // ADR 0105 (#1789): mark what you can do right now — a ring on a
+    // castable card or a playable land, "N ready" on a pile — while
+    // you owe a decision. Off removes only that positive treatment;
+    // the dimming of a card you cannot play is a gate and stays.
+    highlightLegalActions: boolean;
   };
 
   shortcuts: {
@@ -268,7 +273,7 @@ export interface Settings {
   };
 }
 
-export const SETTINGS_VERSION = 14;
+export const SETTINGS_VERSION = 15;
 const STORAGE_KEY = "cmdctrl.settings.v1";
 const LEGACY_MUTED_KEY = "cmdctrl.muted";
 
@@ -403,6 +408,8 @@ export function defaultSettings(): Settings {
       // regardless; this only adds the per-move narration, which is
       // a debug surface and a lot of lines.
       showBotReasoning: false,
+      // ADR 0105 default: ON, for everyone (owner decision 4).
+      highlightLegalActions: true,
     },
     shortcuts: {
       // v10 default: ON. The defaults are chosen not to collide with
@@ -591,6 +598,17 @@ function migrate(raw: unknown): Settings {
   // rather than to no stack at all.
   if (!isStackStyle(merged.display.stackStyle)) {
     merged.display.stackStyle = "compact";
+  }
+  // v14 → v15 (ADR 0105, #1789): gameplay.highlightLegalActions. Not
+  // the usual shallow-merge fill: the owner decided the highlights
+  // start ON for every player, existing ones included (ADR 0105 owner
+  // decision 4), so the upgrade writes `true` whatever the stored blob
+  // says — a value left over from a hand edit or a pre-release build
+  // does not survive it. From v15 on, the stored choice is honoured.
+  if (storedVersion < 15) {
+    merged.gameplay.highlightLegalActions = true;
+  } else if (typeof merged.gameplay.highlightLegalActions !== "boolean") {
+    merged.gameplay.highlightLegalActions = true;
   }
   merged.shortcuts = {
     enabled: merged.shortcuts?.enabled !== false,

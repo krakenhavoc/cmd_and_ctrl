@@ -68,6 +68,9 @@ var activatedRowScopes = map[string]rowScope{
 	"ExileSelf": rowPublic, "CrewCost": rowPublic, "DemandsX": rowPublic,
 	"MinX": rowPublic, "XSlots": rowPublic, "PhyrexianSymbols": rowPublic,
 	"TargetMode": rowPublic, "Modes": rowPublic,
+	// ADR 0106 §1: the printed "Any player may activate this ability"
+	// and the catalog's declared purpose for it.
+	"AnyPlayer": rowPublic, "Purpose": rowPublic,
 	// The printed discard clause: the count in "Discard two cards"
 	// and the clause's words. Public — the issue's own line.
 	"DiscardCostN": rowPublic, "DiscardCostLabel": rowPublic,

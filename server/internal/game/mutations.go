@@ -1124,6 +1124,19 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		)
 		return err
 	}
+	// #1727, CR 118.3: one permanent pays one sacrifice. The
+	// alternative cost's sacrifice (AltCostIDs) and the additional
+	// cost's (SacrificeIDs) are validated separately above, each
+	// against its own clause, so a creature named to both would pass
+	// both and then be sacrificed once and found missing the second
+	// time — after the spell was already on the stack.
+	if alt != nil && alt.Sacrifice != nil && sharesAnID(params.AltCostIDs, params.SacrificeIDs) {
+		slog.Warn("cast_spell rejected: one permanent named to two sacrifice costs",
+			"card_name", card.Name,
+			"oracle_id", card.OracleID,
+		)
+		return ErrInvalidParam
+	}
 	// #1703: the two components whose payment names creatures on
 	// the board — teamwork's taps (CR 702.194a) and blight's one
 	// creature (CR 701.68a). Same plan, same validate-all-then-pay.
@@ -1638,6 +1651,11 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 			g.unprepareLocked(perm)
 		}
 	}
+	// CR 601.2i (ADR 0106 §4 decision 3): the spell becomes cast here,
+	// which is the moment "the next spell you cast this turn can't be
+	// countered" is decided. Every live promise of the caster's that
+	// this spell matches is spent on it and becomes a mark on its item.
+	g.spendCounterShieldPromisesLocked(playerID, cardID)
 	// S22 airbend: OldZone stamps where the spell was cast FROM.
 	// CR 601.2a moves the card to the stack and nothing on the card
 	// remembers the zone it left, so "whenever you cast a spell from
@@ -7586,7 +7604,10 @@ func (g *Game) DeclareAttackerWith(attackerID, targetPlayerID uuid.UUID, params 
 			if !card.IsCreature() {
 				return ErrNotACreature
 			}
-			if err := g.canAttackTargetLocked(card.Controller, targetPlayerID); err != nil {
+			// ADR 0106 §2 (#1794): the creature's own CR 508.1c target
+			// restrictions ("can't attack its owner") ride the same
+			// check, refused with a sentence naming them.
+			if err := g.canAttackTargetWithLocked(card, targetPlayerID); err != nil {
 				return err
 			}
 			if HasKeyword(card, "defender") {
@@ -7794,8 +7815,10 @@ func (g *Game) DeclareAttackersWith(decls []AttackDeclaration, params DeclareAtt
 		// battle. canAttackTargetLocked folds in "not yourself", "not
 		// a planeswalker you control" and "not a battle you protect",
 		// which is what the bare controller comparison used to cover
-		// for the player-only case.
-		if g.canAttackTargetLocked(card.Controller, d.Target) != nil {
+		// for the player-only case. ADR 0106 §2 (#1794): and the
+		// creature's own target restrictions, so a Xantcha pointed at
+		// its owner is skipped like any other illegal entry.
+		if g.canAttackTargetWithLocked(card, d.Target) != nil {
 			continue
 		}
 		eligible = append(eligible, d)
@@ -8925,13 +8948,13 @@ func (g *Game) SetCommanderDamage(from, to uuid.UUID, amount int) error {
 	return nil
 }
 
-// SetMonarch designates the given player as the monarch (CR 724 —
+// SetMonarch designates the given player as the monarch (CR 725 —
 // "an effect instructs a player to become the monarch"). Pass uuid.Nil
 // to clear (no current monarch — the rare case where a card explicitly
 // removes monarchy).
 //
 // #375: this is the ENTRY to the designation, not the whole mechanic
-// any more. Once a player is the monarch, monarch.go runs CR 724.2's
+// any more. Once a player is the monarch, monarch.go runs CR 725.2's
 // two inherent triggered abilities — the end-step draw and the
 // combat-damage transfer — off the listener registry, so the crown
 // moves and draws without anybody clicking it. The action stays

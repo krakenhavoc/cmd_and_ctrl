@@ -267,11 +267,13 @@ func b21RevealUntilBasicLandToHand(ctx *Context, player uuid.UUID) error {
 
 // b21ExileTopFourThenTakeTheirLands is Oblivion Sower's cast-trigger
 // body: the targeted opponent exiles the top four cards of their
-// library (an exile, not a mill — no mill payoff sees it), then every
-// land card that player OWNS in exile — the four just exiled and any
-// exiled earlier by anything else, as printed — is put onto the
-// battlefield under the controller's control. The exile zone is
-// walked once before the first move, because a return mutates it.
+// library (an exile, not a mill — no mill payoff sees it), then the
+// controller picks any number of the land cards that player OWNS in
+// exile — the four just exiled and any exiled earlier by anything
+// else, as printed — and they are put onto the battlefield under the
+// controller's control as ONE entry (#1872), so a landfall payoff
+// sees every land. The candidates are read once, before anything
+// moves; the pick is re-checked against exile on submit.
 func b21ExileTopFourThenTakeTheirLands(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetPlayer {
@@ -287,20 +289,28 @@ func b21ExileTopFourThenTakeTheirLands(g *game.Game, item *game.StackItem) error
 		// exile — a commander among them stops to answer CR 903.9, and
 		// a card that takes the offer never reaches exile at all.
 		Then: func(ctx *Context, _ []uuid.UUID) error {
-			if ctx.Game.Exile == nil {
+			// CR 406.3a: a card exiled face down (a foretold card) has
+			// no characteristics, so it is not a land card and is not
+			// offered.
+			lands := exiledCardIDs(ctx, func(c game.Card) bool {
+				return c.Owner == victim && !c.FaceDown && c.IsLand()
+			})
+			if len(lands) == 0 {
 				return nil
 			}
-			var lands []uuid.UUID
-			for _, c := range ctx.Game.Exile.Cards {
-				if c.Owner == victim && c.IsLand() {
-					lands = append(lands, c.InstanceID)
-				}
-			}
-			for _, id := range lands {
-				if err := (ReturnFromExile{Target: id, Controller: item.Controller}).Apply(ctx); err != nil {
-					return err
-				}
-			}
+			ctx.Game.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
+				Chooser:    item.Controller,
+				FromPlayer: victim,
+				Source:     item.SourceCardID,
+				Question:   "Oblivion Sower — put any number of these land cards onto the battlefield under your control",
+				Cards:      lands,
+				Min:        0,
+				Max:        len(lands),
+				Zone:       game.ZoneExile,
+				Then: func(g *game.Game, picked []uuid.UUID) error {
+					return ReturnFromExileTogether{Targets: picked, Controller: item.Controller}.Apply(NewContext(g, item))
+				},
+			})
 			return nil
 		},
 	}.Apply(ctx)
@@ -308,26 +318,14 @@ func b21ExileTopFourThenTakeTheirLands(g *game.Game, item *game.StackItem) error
 
 // b21ReturnAllArtifactAndEnchantmentCards is Brilliant Restoration's
 // body: every artifact and enchantment card in `player`'s graveyard
-// returns to the battlefield under its owner's control. The IDs are
-// snapshotted before the first move, because ReturnFromGraveyard
-// mutates the pile being walked; each card enters through the
-// ordinary reanimation path, so its own enters-tapped clause and
-// every ETB trigger fire.
+// returns to the battlefield under its owner's control. The cards are
+// read before anything moves and enter together (#1867), each through
+// the CR 614 entry window, so its own enters-tapped clause runs and
+// every ETB trigger sees the whole batch (CR 603.6a).
 func b21ReturnAllArtifactAndEnchantmentCards(ctx *Context, player uuid.UUID) error {
-	p := ctx.PlayerByID(player)
-	if p == nil || p.Graveyard == nil {
-		return nil
-	}
-	var ids []uuid.UUID
-	for _, c := range p.Graveyard.Cards {
-		if c.IsArtifact() || c.IsEnchantment() {
-			ids = append(ids, c.InstanceID)
-		}
-	}
-	for _, id := range ids {
-		if err := (ReturnFromGraveyard{Target: id, Dest: game.ZoneBattlefield}).Apply(ctx); err != nil {
-			return err
-		}
-	}
-	return nil
+	return ReturnFromGraveyardTogether{
+		Targets: graveyardCardIDs(ctx, player, func(c game.Card) bool {
+			return c.IsArtifact() || c.IsEnchantment()
+		}),
+	}.Apply(ctx)
 }

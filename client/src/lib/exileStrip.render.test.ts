@@ -12,6 +12,7 @@ import { describe, it, expect, afterEach } from "vitest";
 import ExileStrip from "./components/board/ExileStrip.svelte";
 import type { CardView, GameView, LegalMoveView } from "./protocol";
 import type { CastSourceZone } from "./targeting";
+import { legalActionsOf, type LegalActions } from "./legalActions";
 import { render, click, cleanup } from "./test/render.svelte";
 
 afterEach(cleanup);
@@ -49,7 +50,7 @@ interface Handed {
   face?: number;
 }
 
-function mount(view: GameView) {
+function mount(view: GameView, legal?: LegalActions) {
   const handed: Handed[] = [];
   const r = render(
     ExileStrip as never,
@@ -58,6 +59,7 @@ function mount(view: GameView) {
       viewerID: ME,
       onCastCard: (card: CardView, zone: CastSourceZone, face?: number) =>
         handed.push({ card, zone, face }),
+      ...(legal ? { legal } : {}),
     } as never,
   );
   return { container: r.container, handed, r };
@@ -147,10 +149,31 @@ describe("ExileStrip — #1389", () => {
   });
 
   it("offers the collapsed chip with the count and how many are ready", () => {
-    const { container } = mount(snap([plotted], [castMove("plotted")]));
+    const view = snap([plotted], [castMove("plotted")]);
+    const { container } = mount(view, legalActionsOf(view));
     const chip = container.querySelector(".strip-toggle");
     expect(chip?.getAttribute("aria-label")).toBe("1 exiled card you may cast, 1 ready");
     click(chip!);
     expect(container.querySelector(".exile-strip.open")).not.toBeNull();
+  });
+
+  // ADR 0105 §7 (sub-PR 6): the ready count the chip's name says is the
+  // move list's, the number its cyan count draws. It used to count the
+  // cards castable_here opened a window for, which includes a card the
+  // viewer cannot pay for.
+  it("says the move list's ready count, not castable_here's", () => {
+    const view = snap(
+      [plotted],
+      [{ type: "pass_priority", player: ME, kind: "pass", label: "Pass" }],
+    );
+    const { container } = mount(view, legalActionsOf(view));
+    const chip = container.querySelector(".strip-toggle");
+    expect(chip?.getAttribute("aria-label")).toBe("1 exiled card you may cast, 0 ready");
+  });
+
+  it("says no ready count while highlights are off", () => {
+    const { container } = mount(snap([plotted], [castMove("plotted")]));
+    const chip = container.querySelector(".strip-toggle");
+    expect(chip?.getAttribute("aria-label")).toBe("1 exiled card you may cast");
   });
 });

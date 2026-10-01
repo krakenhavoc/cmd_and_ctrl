@@ -7,7 +7,7 @@ every `docs/decisions/` file name in the history of every remote branch (37 head
 number present anywhere is **0095** (`0095-deck-coverage-and-deck-requests.md`), and no open
 issue's claim comment reserves 0096. Reserved on #1722 before any code was written.
 **Why a new ADR:** no ADR owns the monarch. The mechanic arrived with #375 / #899 as a bug fix
-(`game/monarch.go`, the two CR 724.2 triggered abilities driven by a listener); ADR 0041 mentions
+(`game/monarch.go`, the two CR 725.2 triggered abilities driven by a listener); ADR 0041 mentions
 it only as two keyed bodies (`monarch/crown`, `monarch/draw`).
 **Builds on:** [ADR 0026](0026-delayed-triggers.md) and its 2026-09-18 amendment (event-conditioned
 delayed triggers, #663), [ADR 0041](0041-game-persistence.md) (keyed bodies and conditions, the
@@ -19,8 +19,8 @@ effect-key ledger, the snapshot shape record), [ADR 0063](0063-durations-and-con
 
 ## Context
 
-The monarch (CR 724) is a designation, two inherent triggered abilities (CR 724.2) and a rule for
-when its holder leaves (CR 724.4). All three were in the engine. What was missing was the one
+The monarch (CR 725) is a designation, two inherent triggered abilities (CR 725.2) and a rule for
+when its holder leaves (CR 725.4). All three were in the engine. What was missing was the one
 thing every monarch card prints: **"you become the monarch."**
 
 `Game.SetMonarch` is the sandbox action behind `set_monarch`, and it takes `g.mu` itself. A
@@ -43,12 +43,12 @@ Two more things a card needs were also missing:
 ### 1. One write, and it announces itself
 
 `becomeMonarchLocked` (`game/monarch.go`) is the only write to `Game.Monarch`. Every route goes
-through it: the card effect (`SetMonarchForEffect`), the CR 724.2 combat-damage steal
-(`monarch/crown`), the CR 724.4 hand-on (`monarchLeftTheGameLocked`) and the sandbox's manual
+through it: the card effect (`SetMonarchForEffect`), the CR 725.2 combat-damage steal
+(`monarch/crown`), the CR 725.4 hand-on (`monarchLeftTheGameLocked`) and the sandbox's manual
 `SetMonarch`. It emits **`EventMonarchChanged`**, with `Actor` = the new monarch (`uuid.Nil` when
 the designation is cleared) and `Target` = the previous one.
 
-It emits **only on a real change**. CR 724.3 has one monarch, and "as a player becomes the
+It emits **only on a real change**. CR 725.3 has one monarch, and "as a player becomes the
 monarch" is a change of holder: a player who is already the monarch and is told to become it again
 does not become it. So a second Court entering while you wear the crown does not trigger your
 Custodi Lich, and nothing on the card side has to guard for it.
@@ -135,21 +135,20 @@ holder. No wire change.
   Court of Ire, Queen Marchesa, Palace Jailer, Entourage of Trest, Custodi Lich, Knights of the
   Black Rose, Regal Behemoth and Throne of the High City. Eleven are `full`; Palace Jailer carries
   one caveat (below).
-- A test for CR 724.4's second clause (the active player is the monarch and leaves: the NEXT
-  player takes it) now exists beside the first; the miscited "CR 725.3 / 725.4" in `monarch.go` and
-  its test are corrected to 724.
+- A test for CR 725.4's second clause (the active player is the monarch and leaves: the NEXT
+  player takes it) now exists beside the first.
 - The effect-key ledger gains `condition monarch/an-opponent-became`.
 
 ### Open
 
 - **Palace Jailer when its controller leaves.** `eliminatePlayerLocked` drops the departed
-  player's delayed triggers (CR 800.4a) *before* the CR 724.4 hand-on crowns someone else, so the
+  player's delayed triggers (CR 800.4a) *before* the CR 725.4 hand-on crowns someone else, so the
   jailed creature stays exiled for good even though the player who takes the crown is an opponent
   of the one who left. Declared as the card's caveat and pinned by
   `TestPalaceJailerControllerLeavingKeepsTheCreatureExiled`. Closing it means deciding what an
   "until" return owes when the player whose effect created it is gone — a question for every
   event-keyed "until", not for this card.
-- **The return uses the stack.** CR 610.3c makes an "until" return an immediate one-shot; here it
+- **The return uses the stack.** CR 610.3 makes an "until" return an immediate one-shot; here it
   is a delayed trigger, so there is a response window with the creature still in exile. This is the
   posture the Oblivion Ring family (Ossification, Hostage Taker) already takes, uncaveated.
 - **Court of Locthwain is not built.** Its first half is `ExileTopWithPermission` (any type,

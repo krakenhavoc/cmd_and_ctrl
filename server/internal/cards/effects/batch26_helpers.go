@@ -322,24 +322,14 @@ func b26TuckAttackersTopOrBottomByOwnersChoice(ctx *Context) error {
 // b26ReturnCreatureCardsWithManaValueAtMostFromGraveyard is Raise the
 // Past: every creature card with mana value at most n in `player`'s
 // graveyard comes back to the battlefield under its owner's control.
-// Snapshot then move, so the reanimations don't disturb the walk.
+// Read before anything moves, and entering together (#1867), so each
+// sees the others enter (CR 603.6a).
 func b26ReturnCreatureCardsWithManaValueAtMostFromGraveyard(ctx *Context, player uuid.UUID, n int) error {
-	p := ctx.PlayerByID(player)
-	if p == nil || p.Graveyard == nil {
-		return nil
-	}
-	var ids []uuid.UUID
-	for _, c := range p.Graveyard.Cards {
-		if c.IsCreature() && c.ManaValue() <= n {
-			ids = append(ids, c.InstanceID)
-		}
-	}
-	for _, id := range ids {
-		if err := (ReturnFromGraveyard{Target: id, Dest: game.ZoneBattlefield}).Apply(ctx); err != nil {
-			return err
-		}
-	}
-	return nil
+	return ReturnFromGraveyardTogether{
+		Targets: graveyardCardIDs(ctx, player, func(c game.Card) bool {
+			return c.IsCreature() && c.ManaValue() <= n
+		}),
+	}.Apply(ctx)
 }
 
 // b26ExileFirstLegalTargetOwnerMayCast is Aerial Extortionist's

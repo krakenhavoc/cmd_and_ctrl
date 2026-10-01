@@ -163,6 +163,11 @@ func isResolutionPickKind(kind PendingChoiceKind) bool {
 // effect admits, so CR 608.2's "as much as possible" excused it — has
 // no entry at all. `Picked` reads the same for it as for a seat that
 // was asked and chose nothing.
+//
+// ChooseCardsRunThenForEffect (#1743) hands its continuation the same
+// type, and there the seat on each entry IS the chooser: every seat
+// chooses from its own look, so "whose cards" and "who chose" are one
+// player.
 type PromptedPicks []SeatCards
 
 // By returns the permanents chosen from `seat`, or nil.

@@ -59,6 +59,7 @@
   import {
     attackAllLabel,
     attackAllParams,
+    eligibleAt,
     attackAllTaxLabel,
     attackLimitOn,
     attackTaxOn,
@@ -73,6 +74,7 @@
   import { hasPassMove, stackEmpty } from "../lib/timing";
   import { consumeManualStop, manualStops } from "../lib/priorityStops";
   import { autopassDecision, isBluff, type AutopassGates } from "../lib/autopassDecision";
+  import { highlightsLive, legalActionsOf, visibleHighlights } from "../lib/legalActions";
   import { bluffArmed, bluffDelayMs, initBluffArmed, setBluffStatus } from "../lib/bluff";
   import { holdPriority, ownsEveryStackItem, toggleHoldPriority } from "../lib/holdPriority";
   import { registerShortcutHandlers, setShortcutContext } from "../lib/shortcutRuntime";
@@ -332,7 +334,10 @@
   });
   onDestroy(cancelBluff);
 
-  $effect(() => {
+  // The gates and the verdict are derived, not computed inside the
+  // effect below, because ADR 0105 §3 reads the verdict too: a frame
+  // smart autopass is about to pass shows no highlights.
+  const autopassGates = $derived.by((): AutopassGates => {
     const step = view?.turn?.step;
     const gp = $settings.gameplay;
     // #1307: what counts as a response, per the "Stop for" settings.
@@ -343,7 +348,7 @@
       special: gp.respondSpecialActions,
     };
     const kw = keyWindow(view, viewerID);
-    const gates: AutopassGates = {
+    return {
       viewerHasPriority,
       tableBusy: mulligansOpen || gameEnded || viewerEliminated,
       // Never auto-pass while the viewer has an open choice to make
@@ -394,8 +399,14 @@
       bluffInstant: gp.bluffInstant && $bluffArmed,
       bluffManual: gp.bluffMode === "manual",
     };
+  });
+  const autopassVerdict = $derived(autopassDecision(autopassGates));
+
+  $effect(() => {
+    const gates = autopassGates;
+    const gp = $settings.gameplay;
     latestGates = gates;
-    const verdict = autopassDecision(gates);
+    const verdict = autopassVerdict;
 
     if (isBluff(verdict)) {
       if (verdict.manual) {
@@ -622,6 +633,24 @@
   const viewerID = $derived(sess?.principal.role === "spectator" ? null : (sess?.playerID ?? null));
   const viewerSeat = $derived(seats.find((s) => s.id === viewerID) ?? null);
   const viewerHasPriority = $derived(viewerID !== null && priorityPlayer?.id === viewerID);
+
+  // ADR 0105 (#1789): the frame's legal-action lookup, built once per
+  // snapshot so every card reads it in O(1), and what the board is
+  // allowed to draw from it. Highlights are live while the player has
+  // them on and smart autopass is not about to pass this frame (§3);
+  // otherwise the board gets the lookup that knows nothing. The gates
+  // (greying, disabled buttons) never read this. The one gate that
+  // reads the lookup at all, the ability popover's sorcery-speed row
+  // gate (sub-PR 3), gets the full `legalActions` as `legalGate`. So do
+  // the combat gates (sub-PR 5): attack-with-all's eligible set and
+  // which defenders a selected attacker may be pointed at.
+  const legalActions = $derived(legalActionsOf(view));
+  const legalHighlights = $derived(
+    visibleHighlights(
+      legalActions,
+      highlightsLive($settings.gameplay.highlightLegalActions, autopassVerdict),
+    ),
+  );
   const viewerIsActive = $derived(viewerID !== null && activePlayer?.id === viewerID);
   const viewerEliminated = $derived(viewerSeat?.eliminated === true);
 
@@ -873,7 +902,10 @@
   // broadcast per creature — a twelve-creature alpha strike would
   // need twelve undo presses against a per-turn budget of one. One
   // action means one snapshot and one exact inverse.
-  const attackPlan = $derived(planAttackAll(view, viewerID));
+  // ADR 0105 sub-PR 5: which creatures are eligible is the server's
+  // answer (the frame's FULL lookup, which the highlight setting never
+  // touches); the row fields only name why the rest are not.
+  const attackPlan = $derived(planAttackAll(view, viewerID, legalActions));
   const attackAllReady = $derived(
     canDeclareAttackers && attackPlan.eligible.length > 0 && attackPlan.defenders.length > 0,
   );
@@ -1550,6 +1582,8 @@
           onPassPriority={passPriority}
           onToggleAutopass={toggleAutopass}
           {beatsPrimeKey}
+          legal={legalHighlights}
+          legalGate={legalActions}
         >
           <!-- Everything that asks for the viewer's attention shares the
                board's strip (under the stack card): targeting prompt,
@@ -1605,6 +1639,7 @@
                       type="button"
                       class="primary att-btn"
                       title={attackAllTitle(attackPlan.defenders[0]) + keyHint(keys.attackAll)}
+                      disabled={eligibleAt(attackPlan, attackPlan.defenders[0].id).length === 0}
                       onclick={() => attackAllAt(attackPlan.defenders[0].id)}
                     >
                       {attackAllLabel(attackPlan, attackPlan.defenders[0])}
@@ -1641,6 +1676,7 @@
                         type="button"
                         class="att-btn opp-btn"
                         title={attackAllTitle(opp)}
+                        disabled={eligibleAt(attackPlan, opp.id).length === 0}
                         onclick={() => attackAllAt(opp.id)}
                       >
                         <span class="seat-dot" style="background:{seatColor(opp.seat)}"></span>
@@ -2023,6 +2059,7 @@
         {viewerID}
         defenderSeatID={attackPickerDefenderID}
         limitReason={attackPickerLimitReason}
+        legalGate={legalActions}
         onConfirm={confirmAttackPicker}
         onCancel={cancelAttackPicker}
       />

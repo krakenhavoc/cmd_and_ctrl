@@ -34,7 +34,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // controller controls — post-layer types, so an animated land
 // counts.
 //
-// Three declared simplifications, all weaker than printed:
+// The land enters tapped: "tapped" rides its entry event (#1872), so
+// nothing sees an untapped land arrive or a land become tapped.
+//
+// Two declared simplifications, both weaker than printed:
 //
 //   - The land to return is picked when the trigger goes on the
 //     stack, before the three cards are milled, so a land milled by
@@ -42,10 +45,6 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //     see the pick before it resolves. A pick that left the
 //     graveyard in response counters the trigger (CR 608.2b) and the
 //     mill does not happen either.
-//   - The returned land enters untapped and is tapped a beat later
-//     inside the same resolution (Lumra's gap — the graveyard return
-//     path has no tapped flag), so anything watching for a land
-//     being tapped sees one.
 //   - The activated-ability discount is not implemented. The
 //     engine's cost modifiers price SPELLS at cast (CR 601.2f) and
 //     nothing prices an activation, so a land's ability costs its
@@ -58,7 +57,6 @@ func init() {
 		Completeness: CompletenessCaveats,
 		Caveats: []string{
 			"The land to return is picked when the trigger goes on the stack, before the three cards are milled — so a land milled by the trigger itself can't be the one that comes back.",
-			"The returned land enters untapped and is tapped immediately afterwards, so anything watching for a land being tapped sees one.",
 			"Activated abilities of lands you control don't cost {1} less — the discount isn't implemented.",
 		},
 		Static: []game.StaticAbility{{

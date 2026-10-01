@@ -56,7 +56,7 @@ type GameView struct {
 	MulligansOpen bool `json:"mulligans_open"`
 	// Monarch is the player ID currently designated as the monarch,
 	// or empty string if no monarch is set. Since #375 the engine
-	// moves this itself: CR 724.2's two inherent triggered abilities
+	// moves this itself: CR 725.2's two inherent triggered abilities
 	// (the end-step draw, and the transfer to whoever deals combat
 	// damage to the monarch) are enforced server-side, so a client
 	// that renders this field renders a crown that moves on its own.
@@ -559,6 +559,13 @@ type LegalTargetsView struct {
 	// clause without one, which is nearly all of them.
 	Different *TargetDifferenceView `json:"different,omitempty"`
 
+	// Same is the opposite rule (#1807, ADR 0106 §5): every pick must
+	// share one key — "from a single graveyard", keyed on the card's
+	// owner. The picker greys every candidate whose key differs from
+	// the first pick's, and says the rule in its banner. Same wire
+	// shape as Different; absent on every clause without one.
+	Same *TargetDifferenceView `json:"same,omitempty"`
+
 	// ManaValueAtMostX marks a clause bounded by the announced X —
 	// "with mana value X or less" (#1559). Like CountFromX, the
 	// server builds this legal set before X is chosen, so it is a
@@ -610,10 +617,24 @@ func divideView(d *game.DivideSpec) *DivideView {
 // TargetDifferenceView is the wire shape of game.TargetDifference: the
 // printed rule, completing "those targets must …", and each legal
 // card's key. A card with no key (an unreadable cost) is absent and
-// collides with nothing. Added by #1559.
+// collides with nothing. Added by #1559. Since #1807 it is also the
+// shape of game.TargetSameness, under `same`, where a card with no
+// key fits any group.
 type TargetDifferenceView struct {
 	Label string            `json:"label"`
 	Keys  map[string]string `json:"keys,omitempty"`
+}
+
+// setRuleView projects a set rule's label and its keys, by wire id.
+func setRuleView(label string, keys map[uuid.UUID]string) *TargetDifferenceView {
+	v := &TargetDifferenceView{Label: label}
+	if len(keys) > 0 {
+		v.Keys = make(map[string]string, len(keys))
+		for id, k := range keys {
+			v.Keys[id.String()] = k
+		}
+	}
+	return v
 }
 
 // clausesView projects every clause of a multi-clause statement,
@@ -920,9 +941,27 @@ type AlternativeCostView struct {
 	// public pile, where the offer stays and the list does not.
 	PayOptions *LegalTargetsView `json:"pay_options,omitempty"`
 
-	// PayLabel is the picker's prompt copy for PayOptions ("a blue
-	// card", "an Island you control"). Absent when there is nothing
-	// to pick.
+	// SacrificeOptions is the cost's card-shaped half when that half
+	// is a SACRIFICE (#1727) — Dread Return's "Flashback—Sacrifice
+	// three creatures", Fireblast's two Mountains. The same block, in
+	// the same payment order and with the same min / max, that the
+	// additional cost's `sacrifice_options` ships (sacrificeCostOptions),
+	// so the client opens the one sacrifice picker it already has, with
+	// its "Choose for me". The chosen instance IDs still ride back on
+	// cast_spell as `alt_cost_ids` — the offer's list, not the
+	// additional cost's `sacrifice_ids`.
+	//
+	// Set INSTEAD of `pay_options`, never beside it: an offer has one
+	// card component. Absent for every offer that sacrifices nothing.
+	// An offer the caster cannot pay (fewer permanents than the count)
+	// is not stamped at all — CastOffersForLocked drops it — so a
+	// flashback that cannot be paid is a card that is not castable
+	// from the graveyard. Per viewer, like `pay_options` (#1172).
+	SacrificeOptions *LegalTargetsView `json:"sacrifice_options,omitempty"`
+
+	// PayLabel is the picker's prompt copy for PayOptions or
+	// SacrificeOptions ("a blue card", "an Island you control", "three
+	// creatures"). Absent when there is nothing to pick.
 	PayLabel string `json:"pay_label,omitempty"`
 
 	// XLockedAtZero is CR 107.3b for THIS offer: the card prints an
@@ -1383,6 +1422,33 @@ type PlayerView struct {
 	CantLose []string          `json:"cant_lose,omitempty"`
 	CantWin  bool              `json:"cant_win,omitempty"`
 	EndGates []GameEndGateView `json:"end_gates,omitempty"`
+
+	// CounterShields is this seat's live "can't be countered" grants
+	// and unspent one-use promises, in the order they were made —
+	// Veil of Summer's "Spells you control can't be countered this
+	// turn", an unused Insist's "The next creature spell you cast this
+	// turn can't be countered". ADR 0106 §4 decision 6 (#1806).
+	//
+	// Read from the seat's stored statics on every projection, so a
+	// promise disappears the moment a spell spends it (that spell's
+	// stack chip takes over) and every entry disappears at cleanup.
+	// PUBLIC and unredacted, like end_gates: each came from a spell or
+	// ability every player watched resolve, and it changes what a
+	// counterspell will do. The printed statics (Chimil) are not
+	// listed here: they are on the battlefield for everyone to read.
+	// Omitempty: absent for nearly every seat.
+	CounterShields []CounterShieldView `json:"counter_shields,omitempty"`
+}
+
+// CounterShieldView is one "can't be countered" grant or unspent
+// promise on a seat. Text is the clause as printed; SourceName names
+// the card it came from; NextOnly marks a one-use promise that the
+// seat's next matching spell will spend.
+type CounterShieldView struct {
+	Source     string `json:"source,omitempty"`
+	SourceName string `json:"source_name"`
+	Text       string `json:"text"`
+	NextOnly   bool   `json:"next_only,omitempty"`
 }
 
 // GameEndGateView is one "can't lose" / "can't win" gate that applies
@@ -2109,6 +2175,20 @@ type CardView struct {
 	// the thing #429 spent a PR deleting.
 	Restrictions []string `json:"restrictions,omitempty"`
 
+	// AttackTargetRestrictions are this creature's CR 508.1c
+	// restrictions on WHOM it may attack (ADR 0106 §2, #1794), with
+	// the player each names already resolved: Xantcha's "can't attack
+	// its owner or planeswalkers its owner controls" arrives as its
+	// owner's seat id and planeswalkers: true. The client draws the
+	// card's "Can't attack <name>" chip from this (owner decision 3)
+	// and never reads the rule itself; which targets an attacker may
+	// pick is the legal_actions digest's answer, not this field's.
+	//
+	// One row per restriction. A row naming the creature's own
+	// controller is not sent: no creature can attack its controller
+	// anyway (CR 506.2), so it would say nothing.
+	AttackTargetRestrictions []AttackTargetRestrictionView `json:"attack_target_restrictions,omitempty"`
+
 	// Layout is Scryfall's printing layout ("modal_dfc",
 	// "transform", "adventure", …), omitted for the ordinary
 	// single-faced card. The client reads it to decide whether
@@ -2636,8 +2716,10 @@ type ExilePlayView struct {
 // battlefield permanent, from its controller's point of view. The
 // cost flags tell the client what to collect before firing
 // activate_ability with `ability_index`: a sacrifice pick from
-// SacrificeOptions, a target from LegalTargets. Only stamped for
-// the controller — an opponent's menu isn't theirs to open.
+// SacrificeOptions, a target from LegalTargets. Stamped for the
+// controller — an opponent's menu isn't theirs to open — except an
+// `any_player` row, which every seat's copy carries stamped for that
+// seat (ADR 0106 §1, stampAnyPlayerOffers).
 // Added in S21 sub-PR 2.
 type ActivatedAbilityView struct {
 	Index int    `json:"index"`
@@ -2961,6 +3043,31 @@ type ActivatedAbilityView struct {
 	// modal. Both absent for the ordinary ability. Added by #764.
 	Clauses []LegalTargetsView `json:"clauses,omitempty"`
 	Modes   *ModeSpecView      `json:"modes,omitempty"`
+	// AnyPlayer marks the ability's own "Any player may activate this
+	// ability" (CR 602.2, ADR 0106 §1 decision 5, #1793): every seat may
+	// open this row on the permanent, not only its controller. Absent on
+	// every other row.
+	//
+	// Every viewer's copy of such a row is stamped with THAT viewer as
+	// the activator (stampAnyPlayerOffers): the costs, the condition,
+	// the timing verdict and the price are the activator's (CR 602.1a,
+	// CR 109.5). Whether the row is live for the viewer right now is
+	// still the digest's answer (`legal_actions`), never the row's.
+	AnyPlayer bool `json:"any_player,omitempty"`
+	// Purpose is what the row does for an activator who does not
+	// control the permanent (ADR 0106 §1 decision 8): the cards they
+	// draw and the life the permanent's controller loses. Catalog data,
+	// read by the bot; absent when the card declares none, and a bot
+	// never activates another player's row without one.
+	Purpose *ActivationPurposeView `json:"purpose,omitempty"`
+}
+
+// ActivationPurposeView is game.ActivationPurpose on the wire: the
+// printed amounts an any-player row buys its activator (ADR 0106 §1
+// decision 8).
+type ActivationPurposeView struct {
+	Draws               int `json:"draws,omitempty"`
+	ControllerLosesLife int `json:"controller_loses_life,omitempty"`
 }
 
 // CounterCostView describes the counter components of an ability's
@@ -4127,6 +4234,8 @@ func publicAlternativeCosts(offers []AlternativeCostView) []AlternativeCostView 
 	for i, o := range offers {
 		o.LegalTargets = nil
 		o.PayOptions = nil
+		// #1727: "the creatures YOU control", one seat's answer.
+		o.SacrificeOptions = nil
 		out[i] = o
 	}
 	return out
@@ -4885,6 +4994,44 @@ func viewOfProtection(c *game.Card) []ProtectionView {
 	return out
 }
 
+// AttackTargetRestrictionView is one CR 508.1c restriction on whom a
+// creature may attack (ADR 0106 §2, #1794), resolved for the client:
+// the player it names, and whether it also covers planeswalkers that
+// player controls.
+type AttackTargetRestrictionView struct {
+	// Player is the seat the creature can't attack — its owner, read
+	// live off the creature (CR 108.3), so a copy names its own owner.
+	Player string `json:"player"`
+	// Planeswalkers adds "or planeswalkers <player> controls".
+	Planeswalkers bool `json:"planeswalkers,omitempty"`
+	// Source names the permanent whose text imposes it, for the chip's
+	// tooltip.
+	Source string `json:"source,omitempty"`
+}
+
+// viewOfAttackTargetRestrictions projects c's attack-target
+// restrictions. Nil for nearly every card, and for a restriction that
+// names the creature's own controller, which CR 506.2 already forbids.
+func viewOfAttackTargetRestrictions(c *game.Card, eff game.Characteristic) []AttackTargetRestrictionView {
+	if len(eff.AttackTargetRestrictions) == 0 || c.Owner == uuid.Nil || c.Owner == c.Controller {
+		return nil
+	}
+	var out []AttackTargetRestrictionView
+	for _, r := range eff.AttackTargetRestrictions {
+		// Every printed one forbids the owner; a planeswalkers-only row
+		// has no card behind it and no chip that would say it right.
+		if !r.NotOwner {
+			continue
+		}
+		out = append(out, AttackTargetRestrictionView{
+			Player:        c.Owner.String(),
+			Planeswalkers: r.NotOwnersPlaneswalkers,
+			Source:        r.SourceName,
+		})
+	}
+	return out
+}
+
 // viewOfTargetClause is viewOfLegalTargets for a TARGET clause, with
 // the clause's set rule and X bound stamped on (#1559). Cost-payment
 // projections keep viewOfLegalTargets: a cost is not targeting and
@@ -4923,14 +5070,10 @@ func stampTargetSetRule(g *game.Game, v *LegalTargetsView, cards []uuid.UUID, sp
 		return
 	}
 	if d := spec.Different; d != nil {
-		dv := &TargetDifferenceView{Label: d.Label}
-		if keys := g.TargetDifferenceKeysForEffect(spec, cards); len(keys) > 0 {
-			dv.Keys = make(map[string]string, len(keys))
-			for id, k := range keys {
-				dv.Keys[id.String()] = k
-			}
-		}
-		v.Different = dv
+		v.Different = setRuleView(d.Label, g.TargetDifferenceKeysForEffect(spec, cards))
+	}
+	if s := spec.Same; s != nil {
+		v.Same = setRuleView(s.Label, g.TargetSamenessKeysForEffect(spec, cards))
 	}
 	if spec.ManaValueAtMostX {
 		v.ManaValueAtMostX = true
@@ -5121,6 +5264,11 @@ func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, src game.TargetSourc
 			opts.Cards = withoutID(opts.Cards, self)
 			opts.Players = nil
 			v.PayOptions = opts
+		} else if paySpec := ac.Sacrifice; paySpec != nil {
+			// #1727: the additional cost's sacrifice picker, verbatim —
+			// the caster's own permanents (CR 701.21a), in payment
+			// order, bounded by the clause's count.
+			v.SacrificeOptions = sacrificeCostOptions(g, caster, paySpec, uuid.Nil, false)
 		}
 		out = append(out, v)
 	}
@@ -5399,6 +5547,74 @@ func stampActivatedAbilities(g *game.Game, bf *ZoneView) {
 		// to the controller alone; every other viewer, spectators
 		// included, gets the rows without them.
 		c.fileAbilityOffers(controller)
+		// ADR 0106 §1 decision 5: and after that, each OTHER seat's copy
+		// of an "Any player may activate" row, stamped with that seat as
+		// the activator.
+		c.stampAnyPlayerOffers(g, card, controller, restricted)
+	}
+}
+
+// stampAnyPlayerOffers files, for every seat that does not control the
+// permanent, its own copy of the permanent's "Any player may activate
+// this ability" rows (ADR 0106 §1 decision 5, #1793).
+//
+// Every other field on such a row is computed with an activator in
+// mind — the charged price (CR 601.2f via 602.2b), the life the
+// activator has to pay, the condition and timing verdicts (CR 109.5:
+// "you" is the activator), the sacrifice and discard options out of the
+// ACTIVATOR's board and hand (CR 602.1a). The exported row is the
+// controller's. A seat that is not the controller gets the same row
+// re-stamped with itself, through the per-seat carrier the hidden-zone
+// lists already ride (abilityOffers, #1369), so a discard option out of
+// that seat's hand reaches that seat alone.
+//
+// The non-AnyPlayer rows in the seat's copy are the public ones,
+// unchanged: they are not that seat's to activate, and the client lists
+// only the AnyPlayer rows for a non-controller. Nothing is filed for a
+// permanent with no AnyPlayer row, which is nearly every permanent.
+//
+// Whether the row is live for the seat right now is NOT stamped here:
+// that is the digest's answer (legal_actions), from the enumerator.
+func (c *CardView) stampAnyPlayerOffers(g *game.Game, card game.Card, controller uuid.UUID, restricted bool) {
+	anyRow := false
+	for _, a := range c.ActivatedAbilities {
+		if a.AnyPlayer {
+			anyRow = true
+			break
+		}
+	}
+	if !anyRow {
+		return
+	}
+	for _, p := range g.Seats {
+		if p == nil || p.ID == controller {
+			continue
+		}
+		mine := viewOfActivatedAbilities(g, card, p.ID, game.ZoneBattlefield, restricted)
+		byIndex := make(map[int]ActivatedAbilityView, len(mine))
+		for _, a := range mine {
+			if a.AnyPlayer {
+				byIndex[a.Index] = a
+			}
+		}
+		rows := make([]ActivatedAbilityView, len(c.ActivatedAbilities))
+		for i, a := range c.ActivatedAbilities {
+			if own, ok := byIndex[a.Index]; ok && a.AnyPlayer {
+				// The grantor's name rides the exported row only
+				// (stampGrantedAbilities); keep it on this copy too.
+				own.GrantedBy = a.GrantedBy
+				rows[i] = own
+				continue
+			}
+			rows[i] = a
+		}
+		if c.abilityOffers == nil {
+			c.abilityOffers = make(map[string]abilityOfferRows, len(g.Seats))
+		}
+		c.abilityOffers[p.ID.String()] = abilityOfferRows{
+			ActivatedAbilities: rows,
+			ManaAbilities:      c.ManaAbilities,
+		}
 	}
 }
 
@@ -6249,14 +6465,10 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 			// #1559: a trigger clause's set rule rides its prompt, so
 			// the picker greys a colliding candidate here too.
 			if d, keys := g.PickTargetSetRuleForEffect(c); d != nil {
-				dv := &TargetDifferenceView{Label: d.Label}
-				if len(keys) > 0 {
-					dv.Keys = make(map[string]string, len(keys))
-					for id, k := range keys {
-						dv.Keys[id.String()] = k
-					}
-				}
-				pt.Different = dv
+				pt.Different = setRuleView(d.Label, keys)
+			}
+			if s, keys := g.PickTargetSameRuleForEffect(c); s != nil {
+				pt.Same = setRuleView(s.Label, keys)
 			}
 			// #1563: a divided trigger clause asks for the shares
 			// with the picks.
@@ -6566,7 +6778,26 @@ func viewOfPlayer(g *game.Game, p *game.Player) PlayerView {
 		CantLose:            lossCauseStrings(g.CantLoseCausesForEffect(p)),
 		CantWin:             g.CantWinForEffect(p),
 		EndGates:            viewOfGameEndGates(g.GameEndGatesForEffect(p)),
+		CounterShields:      viewOfCounterShields(g.CounterShieldGrantsForEffect(p)),
 	}
+}
+
+// viewOfCounterShields projects a seat's live "can't be countered"
+// grants and promises. Nil for none, so omitempty drops the field.
+func viewOfCounterShields(in []game.CounterShieldGrantSource) []CounterShieldView {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make([]CounterShieldView, len(in))
+	for i, s := range in {
+		out[i] = CounterShieldView{
+			Source:     uuidStringOrEmpty(s.Source),
+			SourceName: s.SourceName,
+			Text:       s.Text,
+			NextOnly:   s.NextOnly,
+		}
+	}
+	return out
 }
 
 // lossCauseStrings projects engine loss causes onto the wire. Nil for
@@ -7413,6 +7644,7 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	// same reason.
 	out.SpecialActions = nil
 	out.Restrictions = nil
+	out.AttackTargetRestrictions = nil
 	out.ExilePlay = nil
 	// The hand / command / graveyard stamps are only meaningful to a
 	// player who can read the card, and each one quotes it: a mode
@@ -7710,6 +7942,8 @@ func viewOfCard(c game.Card) CardView {
 		SummoningSick: game.HasSummoningSickness(&c),
 		Abilities:     viewOfAbilityBadges(eff),
 		Restrictions:  eff.Restrictions.Names(),
+		// ADR 0106 §2 (#1794): the owner chip's data, resolved here.
+		AttackTargetRestrictions: viewOfAttackTargetRestrictions(&c, eff),
 		// #781. Straight off the card, with no zone gate and no
 		// catalog lookup: both are cleared on every battlefield exit
 		// (game/zone.go, game/entry_tail.go), so "non-empty" already
@@ -8176,6 +8410,14 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 			LifeCost:      a.Cost.Life,
 			SorcerySpeed:  a.SorcerySpeed,
 			LoyaltyCost:   a.Cost.Loyalty,
+			AnyPlayer:     a.AnyPlayer,
+		}
+		// ADR 0106 §1 decision 8: the bot's reason to reach across.
+		if !a.Purpose.IsZero() {
+			v.Purpose = &ActivationPurposeView{
+				Draws:               a.Purpose.Draws,
+				ControllerLosesLife: a.Purpose.ControllerLosesLife,
+			}
 		}
 		// #1594: a computed life component (War Room's "pay life
 		// equal to the number of colors in your commanders' color

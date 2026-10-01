@@ -574,6 +574,12 @@ const (
 	// Two kinds and not one because the two paths differ in what a
 	// watcher may assume — a mana ability used no stack and granted
 	// nobody priority.
+	//
+	// Target is the permanent's CONTROLLER, set only when somebody else
+	// activated its "Any player may activate this ability" row (ADR 0106
+	// §1, CR 602.2), and uuid.Nil for every ordinary activation. The
+	// public log narrates the first kind ("Bob activated Alice's
+	// Xantcha, Sleeper Agent") and stays quiet for the second.
 	EventActivateAbility EventKind = "activate_ability"
 
 	// EventEffectError — an effect primitive (S14 catalog) failed
@@ -836,6 +842,24 @@ const (
 	// layer version for the reason EventHarnessed does — an "as long
 	// as this creature is monstrous" static switches on.
 	EventBecameMonstrous EventKind = "became_monstrous"
+
+	// EventEvolved — a creature evolved (CR 702.100b): one or more
+	// +1/+1 counters were put on it as a result of its evolve ability
+	// resolving. CardID / Target / Source = the creature, Actor = the
+	// evolve ability's controller, Amount = the counters that landed
+	// (after Hardened Scales and the rest of the CR 614 window).
+	//
+	// Emitted by resolveEvolve (evolve.go) behind the placement, and
+	// only when at least one counter landed: an evolve trigger whose
+	// CR 603.4 re-check failed, or whose counter was replaced away, is
+	// not an evolution. "Whenever this creature evolves" (Renegade
+	// Krasis, Watchful Radstag) watches it.
+	//
+	// A dedicated kind rather than a predicate over EventCounterPlaced:
+	// that event does not say which effect put the counters, and
+	// "evolves" is a fact about the effect, not the counter. Added by
+	// #1805 (ADR 0106 §3).
+	EventEvolved EventKind = "evolved"
 
 	// EventTurnBegan — one real (not skipped) turn began. Actor is the
 	// active player, Amount is Turn.Seq, and Label is "extra" for an

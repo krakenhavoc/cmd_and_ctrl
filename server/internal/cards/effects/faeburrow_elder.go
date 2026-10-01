@@ -17,7 +17,7 @@ import (
 //	 of that color."
 //
 // Vigilance rides PrintedKeywords. The pump is a self-only Layer 7c
-// modify (not a CDA — CR 613.3a reserves layer 7a for "power and
+// modify (not a CDA — CR 613.4a reserves layer 7a for "power and
 // toughness are each equal to X", and this is a boost on top of a
 // printed 0/0 base, not a definition of it), counting colours the
 // same way the mana ability does: colorsAmongPermanentsYouControl

@@ -294,33 +294,16 @@ func b10EachPlayerWheels(g *game.Game, item *game.StackItem) error {
 
 // b10ReturnAllLandCardsFromGraveyardTapped is Splendid Reclamation's
 // body, shared with Lumra's ETB: every land card in `player`'s
-// graveyard returns to the battlefield under its owner's control and
-// is tapped. The IDs are snapshotted before the first move, because
-// ReturnFromGraveyard mutates the pile being walked.
-//
-// Same declared gap as the Reclamation: ReturnFromGraveyard has no
-// tapped flag, so each land enters untapped and is tapped a beat
-// later inside the same resolution.
+// graveyard returns to the battlefield under its owner's control,
+// tapped. The lands are read once, before anything moves, and enter
+// together (#1867), tapped on the entry event: each sees the others
+// enter (CR 603.6a). Also Aftermath Analyst's and Splendid
+// Reclamation's.
 func b10ReturnAllLandCardsFromGraveyardTapped(ctx *Context, player uuid.UUID) error {
-	p := ctx.PlayerByID(player)
-	if p == nil || p.Graveyard == nil {
-		return nil
-	}
-	var lands []uuid.UUID
-	for _, c := range p.Graveyard.Cards {
-		if c.IsLand() {
-			lands = append(lands, c.InstanceID)
-		}
-	}
-	for _, id := range lands {
-		if err := (ReturnFromGraveyard{Target: id, Dest: game.ZoneBattlefield}).Apply(ctx); err != nil {
-			return err
-		}
-		if err := (TapTarget{Target: id}).Apply(ctx); err != nil {
-			return err
-		}
-	}
-	return nil
+	return ReturnFromGraveyardTogether{
+		Targets: graveyardCardIDs(ctx, player, game.Card.IsLand),
+		Tapped:  true,
+	}.Apply(ctx)
 }
 
 // b10Fight is CR 701.14: each creature deals damage equal to its

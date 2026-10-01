@@ -237,6 +237,13 @@ func (g *Game) attackRequirementCandidatesLocked(ap uuid.UUID, assign map[uuid.U
 		}
 		cand := reqCandidate{id: c.InstanceID, name: c.Effective().Name, reqs: reqs}
 		for _, t := range targets {
+			// ADR 0106 §2 (#1794), CR 508.1d "without disobeying any
+			// restrictions": a target this creature may not attack
+			// (Xantcha's owner) obeys nothing, so with only its owner
+			// to attack, nothing is owed.
+			if g.attackTargetRestrictionRefusalLocked(c, t.ID) != nil {
+				continue
+			}
 			w := g.requirementWeightLocked(reqs, t.ID)
 			if w == 0 {
 				continue

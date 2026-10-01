@@ -387,12 +387,29 @@ type Spec struct {
 	// nothing (CR 701.6a), which is a different and observable thing
 	// from the counterspell fizzling.
 	//
-	// Only a card's OWN printed rider belongs here. A GRANT
-	// ("creature spells you control can't be countered", Cavern of
-	// Souls) is a continuous effect over the stack and the layer
-	// system does not reach the stack; see
+	// Only a card's OWN printed rider belongs here. A permanent's
+	// "<these> spells you control can't be countered" is
+	// SpellsCantBeCountered below, and mana that says so (Cavern of
+	// Souls) is a spend rider; see
 	// server/internal/game/cant_be_countered.go.
 	CantBeCountered bool
+
+	// SpellsCantBeCountered are this permanent's printed "<these>
+	// spells can't be countered" statics (ADR 0106 §4, #1806). Build
+	// them with the constructors in counter_shields.go, whose name
+	// says whose spells:
+	//
+	//	SpellsCantBeCountered: []game.CounterShieldStatic{
+	//		SpellsYouControlCantBeCountered("Spells you control can't be countered."), // Chimil
+	//		SpellsYouCastCantBeCountered("…", ManaValueGE(5)),                          // Thryx
+	//		AnyPlayersSpellsCantBeCountered("Creature spells can't be countered.", Creature()), // Gaea's Herald
+	//	},
+	//
+	// NOT a layer effect: "can't be countered" modifies the rules of
+	// the game (CR 613.11), so the counter gate reads these live off
+	// the battlefield, keyed by CatalogAbilityKey, every time a spell
+	// would be countered. Nil for nearly every card.
+	SpellsCantBeCountered []game.CounterShieldStatic
 
 	// AlternativeCosts is the S22 "you may cast this spell for its
 	// overload / evoke / cleave cost" clause (CR 118.9) — a cost paid
@@ -1266,7 +1283,22 @@ type ActivatedAbility struct {
 	// for a copy clause (the copy just isn't made) and for Stifle.
 	// See game.ActivatedAbilityShape.Uncopyable (#1574).
 	Uncopyable bool
-	Effect     func(g *game.Game, item *game.StackItem) error
+	// AnyPlayer is the ability's printed "Any player may activate this
+	// ability" (CR 602.2, CR 602.1b; ADR 0106 §1, #1793). "You" in the
+	// effect is then whoever activated it (CR 109.5) — Context.Controller
+	// — and "this permanent's controller" is Context.SourcePermanent()'s.
+	// Register refuses it beside a {T}, loyalty, crew or sacrifice-this
+	// component and on an ability with a non-battlefield zone. See
+	// game.ActivatedAbilityShape.AnyPlayer.
+	AnyPlayer bool
+	// Purpose is what the ability buys an activator who does NOT control
+	// its source, for the bot (ADR 0106 §1 decision 8, owner decision 2).
+	// Leave it zero unless the printed effect is plainly worth it to that
+	// player: a row with no purpose is never chosen by a bot reaching
+	// across the table. Register refuses it without AnyPlayer. See
+	// game.ActivationPurpose.
+	Purpose game.ActivationPurpose
+	Effect  func(g *game.Game, item *game.StackItem) error
 }
 
 // ManaAbility is one mana-producing activated ability on a permanent.

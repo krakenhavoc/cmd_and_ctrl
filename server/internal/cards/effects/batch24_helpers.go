@@ -282,23 +282,18 @@ func b24PlayerSacrificesGreatestPowerCreatureAndLosesLife(g *game.Game, item *ga
 
 // b24ReturnGraveyardTargetsToBattlefield puts up to `n` of the
 // spell's still-legal graveyard targets onto the battlefield under
-// their owner's control, in announce order — Lich-Knights' Conquest's
-// return half.
+// their owner's control — Lich-Knights' Conquest's return half, and
+// Reveillark's. The first `n` in announce order are taken, and they
+// enter together (#1867, CR 603.6a), so each sees the others enter.
 func b24ReturnGraveyardTargetsToBattlefield(ctx *Context, n int) error {
-	returned := 0
-	for _, t := range ctx.LegalTargets() {
-		if returned >= n {
-			break
-		}
-		if t.Kind != game.TargetCard {
-			continue
-		}
-		if err := (ReturnFromGraveyard{Target: t.ID, Dest: game.ZoneBattlefield}).Apply(ctx); err != nil {
-			return err
-		}
-		returned++
+	ids := legalTargetCardIDs(ctx)
+	if n < 0 {
+		n = 0
 	}
-	return nil
+	if len(ids) > n {
+		ids = ids[:n]
+	}
+	return ReturnFromGraveyardTogether{Targets: ids}.Apply(ctx)
 }
 
 // b24RemoveHitCounterDrawAndTreasures is the body of the ability

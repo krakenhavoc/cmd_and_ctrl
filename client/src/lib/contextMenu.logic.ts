@@ -38,7 +38,14 @@ import {
 } from "./attackTargets";
 import { isCreature, isLand, isPlaneswalker } from "./cardTypes";
 import { counterCostBlocked } from "./counterCost";
-import type { ActionType, CardView, GameView } from "./protocol";
+import {
+  NO_LEGAL_ACTIONS,
+  digestRefusesRow,
+  digestRefusesSpecial,
+  readyFirst,
+  type LegalActions,
+} from "./legalActions";
+import type { ActionType, ActivatedAbilityView, CardView, GameView } from "./protocol";
 import { sacrificeRangeShortfall } from "./sacrificeCost";
 import { targetPriceRange } from "./targetPrices";
 import {
@@ -160,6 +167,10 @@ export interface MenuItem {
   danger?: boolean;
   // Rendered but not clickable (e.g. "Remove +1/+1" with none on).
   disabled?: boolean;
+  // ADR 0105 (#1789): the server would accept this row right now (its
+  // ref is in the legal-action digest). Drawn with the ready accent,
+  // and sorted first in its section. Never set on a disabled row.
+  ready?: boolean;
   action?: MenuAction;
   prompt?: MenuPrompt;
   activate?: MenuActivate;
@@ -250,6 +261,44 @@ export function canOverride(card: CardView, viewerID: string | null, isAdmin: bo
   return card.controller === viewerID;
 }
 
+// anyPlayerRows is a permanent's "Any player may activate this
+// ability" rows (CR 602.2, ADR 0106 §1). Only `activated_abilities`:
+// the declaration is refused on a mana ability, and no printed
+// any-player ability functions from a hidden zone.
+export function anyPlayerRows(card: CardView): ActivatedAbilityView[] {
+  return (card.activated_abilities ?? []).filter((a) => a.any_player === true);
+}
+
+// mayActivateAcross is CR 602.2's exception for the client: a SEATED
+// viewer who does not control the permanent may still open it for its
+// any-player rows (ADR 0106 §1 decision 6). A spectator never may: a
+// spectator activates nothing. The viewer's own permanent answers
+// false, because its controller already has the whole menu.
+export function mayActivateAcross(card: CardView, viewerID: string | null): boolean {
+  if (!viewerID) return false;
+  if ((card.controller || card.owner) === viewerID) return false;
+  return anyPlayerRows(card).length > 0;
+}
+
+// menuAbilityRows is the activated-ability rows the ability popover
+// lists for this viewer: every row for the permanent's controller, and
+// only the any-player rows for anyone else (ADR 0106 §1 decision 6).
+// A row a non-controller cannot activate is one the server would
+// refuse, and a row that opens a refusal is worse than none.
+// `viewerID` undefined means the caller has no viewer in scope (a hand
+// card, the zone browser), and the rows pass through unchanged. A
+// spectator (null) gets none of a permanent's rows.
+export function menuAbilityRows(
+  card: CardView,
+  viewerID: string | null | undefined,
+): ActivatedAbilityView[] {
+  const rows = card.activated_abilities ?? card.zone_abilities ?? [];
+  if (viewerID === undefined || !card.activated_abilities) return rows;
+  if (viewerID === null) return [];
+  if ((card.controller || card.owner) === viewerID) return rows;
+  return rows.filter((a) => a.any_player === true);
+}
+
 // BattlefieldClickIntent is what a plain left-click on a
 // battlefield permanent should do.
 //
@@ -311,7 +360,14 @@ export function battlefieldClickIntent(
   isAdmin: boolean,
   opts: BattlefieldClickOptions = {},
 ): BattlefieldClickIntent {
-  if (!canOverride(card, viewerID, isAdmin)) return "none";
+  // ADR 0106 §1 decision 6 (#1793): a permanent with an "Any player may
+  // activate this ability" row is clickable by every seat (CR 602.2).
+  // For a viewer who does not control it the click opens the menu,
+  // which lists only those rows. Nothing else about the permanent is
+  // theirs to drive, so there is no tap and no mana branch for them.
+  if (!canOverride(card, viewerID, isAdmin)) {
+    return mayActivateAcross(card, viewerID) ? "abilities" : "none";
+  }
   if (opts.rawTap) return "tap";
   if (isPlaneswalker(card)) return "abilities";
   // ADR 0093 Decision 8 (owner decision, 2026-09-24): a permanent that
@@ -772,7 +828,23 @@ function withGrantor(label: string, row: { granted_by?: { name?: string } }): st
 // dedicated ManaAbilityMenu popover; with the admin menu bound to
 // the same gesture, these rows keep that surface reachable instead
 // of the override menu shadowing it.
-function abilityItems(card: CardView, view: GameView, viewerID: string | null): MenuItem[] {
+//
+// ADR 0105 (#1789): `legal` is the frame's highlight lookup. A row whose
+// ref is in its digest, and that the row fields do not grey, is marked
+// `ready` and sorted to the top of the section. The lookup that knows
+// nothing (highlights off, no digest) leaves the menu exactly as it
+// was. It never greys a row: the row fields keep that job, because
+// they supply the sentence.
+function abilityItems(
+  card: CardView,
+  view: GameView,
+  viewerID: string | null,
+  legal: LegalActions = NO_LEGAL_ACTIONS,
+): MenuItem[] {
+  const readyMana = legal.readyManaRefs(card.instance_id);
+  const readyAbilities = legal.readyAbilityRefs(card.instance_id);
+  const isReady = (blocked: string, refs: readonly string[], ref: string | undefined) =>
+    !blocked && !!ref && refs.includes(ref);
   const tapped = !!card.tapped;
   const sick = !!card.summoning_sick;
   const loyalty: LoyaltyContext = { card, view, viewerID };
@@ -789,10 +861,8 @@ function abilityItems(card: CardView, view: GameView, viewerID: string | null): 
   // Fetters spares mana abilities, which is why the two bits are
   // checked separately rather than as one "restricted" flag.
   const restrictions = card.restrictions ?? [];
-  const restricted = restrictions.includes("cant_activate") ? "an effect stops its abilities" : "";
-  const manaRestricted = restrictions.includes("cant_activate_mana")
-    ? "an effect stops its abilities"
-    : "";
+  const restricted = activationRestricted(card);
+  const manaRestricted = restrictions.includes("cant_activate_mana") ? EFFECT_STOPS_ABILITIES : "";
   const items: MenuItem[] = [];
   // #1228: a card projects EITHER the battlefield mana list or the
   // in-zone one, never both — the server filters by the zone the card
@@ -813,6 +883,7 @@ function abilityItems(card: CardView, view: GameView, viewerID: string | null): 
       label: withGrantor(a.label || a.produced || "add mana", a),
       hint: blocked || chargedManaCostNote(a) || undefined,
       disabled: !!blocked,
+      ready: isReady(blocked, readyMana, a.ref) || undefined,
       activate: { kind: "mana", index: a.index },
     });
   }
@@ -823,21 +894,81 @@ function abilityItems(card: CardView, view: GameView, viewerID: string | null): 
   // engine either way.
   for (const a of card.activated_abilities ?? card.zone_abilities ?? []) {
     const blocked = restricted || abilityBlocked(a, tapped, sick, loyalty, payerLife);
-    // #1296: a price that depends on the target (Dragonfire Blade)
-    // says its range here; the targeting banner names each target's.
-    items.push({
-      id: `ability-${a.index}`,
-      label: withGrantor(a.label || "activate", a),
-      hint:
-        blocked ||
-        targetPriceRange(a.target_charged_mana_costs) ||
-        chargedManaCostNote(a) ||
-        undefined,
-      disabled: !!blocked,
-      activate: { kind: "ability", index: a.index },
-    });
+    items.push(activatedItem(a, blocked, isReady(blocked, readyAbilities, a.ref)));
   }
-  return items;
+  return readyFirst(items, (i) => i.ready === true);
+}
+
+// EFFECT_STOPS_ABILITIES is the reason on a row an Arrest-style "its
+// activated abilities can't be activated" greys.
+const EFFECT_STOPS_ABILITIES = "an effect stops its abilities";
+
+// ABILITY_NOT_RIGHT_NOW is the reason on an any-player row the exact
+// digest leaves out (ADR 0106 §1 decision 6): the server would refuse
+// it, and the row fields say nothing more specific. The same sentence
+// the ability popover uses for a row the digest shuts.
+export const ABILITY_NOT_RIGHT_NOW = "Can't activate this right now";
+
+// activationRestricted: S24's "its activated abilities can't be
+// activated" (Arrest, Faith's Fetters), read off the wire. It restricts
+// the object, not the activator, so it greys an any-player row for
+// every seat (ADR 0106 §1 decision 2).
+function activationRestricted(card: CardView): string {
+  return (card.restrictions ?? []).includes("cant_activate") ? EFFECT_STOPS_ABILITIES : "";
+}
+
+// activatedItem is one CR 602 activated-ability row of the menu.
+// #1296: a price that depends on the target (Dragonfire Blade) says
+// its range in the hint; the targeting banner names each target's.
+function activatedItem(a: ActivatedAbilityView, blocked: string, ready: boolean): MenuItem {
+  return {
+    id: `ability-${a.index}`,
+    label: withGrantor(a.label || "activate", a),
+    hint:
+      blocked ||
+      targetPriceRange(a.target_charged_mana_costs) ||
+      chargedManaCostNote(a) ||
+      undefined,
+    disabled: !!blocked,
+    ready: ready || undefined,
+    activate: { kind: "ability", index: a.index },
+  };
+}
+
+// anyPlayerAbilityItems is the whole menu a seated viewer gets on a
+// permanent somebody else controls: its "Any player may activate this
+// ability" rows and nothing else (ADR 0106 §1 decision 6). The rows are
+// the viewer's copy, stamped by the server with the viewer as the
+// activator, so their costs, condition and timing verdicts are the
+// viewer's (CR 602.1a, CR 109.5).
+//
+//   - The life check reads the VIEWER's life: the activator pays the
+//     cost (CR 602.1a), not the permanent's controller.
+//   - `legal` gives the ready accent and order, exactly as on the
+//     viewer's own permanents.
+//   - `gate`, the frame's full lookup, greys a row the exact digest
+//     leaves out. The rows are live exactly when the digest lists their
+//     ref. No digest, or the capped fallback, greys nothing new (ADR
+//     0105 §3): the row fields keep that job.
+function anyPlayerAbilityItems(
+  card: CardView,
+  view: GameView,
+  viewerID: string,
+  legal: LegalActions,
+  gate: LegalActions,
+): MenuItem[] {
+  const readyAbilities = legal.readyAbilityRefs(card.instance_id);
+  const payerLife = view.seats.find((s) => s.id === viewerID)?.life;
+  const loyalty: LoyaltyContext = { card, view, viewerID };
+  const restricted = activationRestricted(card);
+  const items = anyPlayerRows(card).map((a) => {
+    const blocked =
+      restricted ||
+      abilityBlocked(a, !!card.tapped, !!card.summoning_sick, loyalty, payerLife) ||
+      (digestRefusesRow(gate, card.instance_id, a.ref) ? ABILITY_NOT_RIGHT_NOW : "");
+    return activatedItem(a, blocked, !blocked && !!a.ref && readyAbilities.includes(a.ref));
+  });
+  return readyFirst(items, (i) => i.ready === true);
 }
 
 // MAX_MANUAL_MINUS caps the manual minus rows. Karn Liberated's −14
@@ -1235,19 +1366,49 @@ function moveItems(card: CardView, location: CardLocation): MenuItem[] {
 // `charged_mana_cost`). Availability still wins the hint slot when
 // the row is greyed — a player needs to know it's not their turn
 // more than they need the price note.
-function specialActionItems(card: CardView, actor: string): MenuItem[] {
-  return (card.special_actions ?? []).map((sa) => {
+//
+// ADR 0105 sub-PR 4 (#1789): the same rows are the ability popover's
+// special-action section (ManaAbilityMenu), which is how foretell,
+// suspend, plot and turn face up stopped being admin-only. Two lookups
+// ride along, exactly as for the ability rows:
+//
+//   - `legal`, the frame's highlight lookup: a live row whose kind is in
+//     the digest takes the ready accent and sorts first. The lookup that
+//     knows nothing (highlights off, no digest) leaves the rows exactly
+//     as they were.
+//   - `gate`, the frame's FULL lookup, which the popover passes and the
+//     admin menu does not (that menu never greys on the digest, as for
+//     its ability rows). An `available` row the exact digest leaves out
+//     is greyed: the timing is open, so the server would refuse it on
+//     the price. No digest, or the capped fallback, greys nothing new.
+export const SPECIAL_NOT_RIGHT_NOW = "Can't do this right now";
+
+export function specialActionItems(
+  card: CardView,
+  actor: string,
+  legal: LegalActions = NO_LEGAL_ACTIONS,
+  gate: LegalActions = NO_LEGAL_ACTIONS,
+): MenuItem[] {
+  const readyKinds = legal.readySpecialActions(card.instance_id);
+  const items = (card.special_actions ?? []).map((sa) => {
     const costNote = chargedManaCostNote({
       mana_cost: sa.cost,
       charged_mana_cost: sa.charged_cost,
     });
+    const refused = !!sa.available && digestRefusesSpecial(gate, card.instance_id, sa.kind);
+    const disabled = !sa.available || refused;
     return {
       // ADR 0103: a Room offers one unlock per door, so the door is
       // part of the id and of the payload.
       id: sa.door ? `special-${sa.kind}-${sa.door}` : `special-${sa.kind}`,
       label: sa.label || sa.kind,
-      hint: sa.available ? costNote || undefined : "not right now",
-      disabled: !sa.available,
+      hint: !sa.available
+        ? "not right now"
+        : refused
+          ? SPECIAL_NOT_RIGHT_NOW
+          : costNote || undefined,
+      disabled,
+      ready: (!disabled && readyKinds.includes(sa.kind)) || undefined,
       action: {
         type: "special_action" as ActionType,
         params: sa.door
@@ -1263,6 +1424,7 @@ function specialActionItems(card: CardView, actor: string): MenuItem[] {
       },
     };
   });
+  return readyFirst(items, (i) => i.ready === true);
 }
 
 // buildMenuSections is the whole menu for one card, in render order.
@@ -1273,9 +1435,30 @@ export function buildMenuSections(
   card: CardView,
   viewerID: string | null,
   isAdmin: boolean,
+  // ADR 0105: the frame's highlight lookup, for the ability rows'
+  // ready accent and order. Omitted: no information, no accent.
+  legal: LegalActions = NO_LEGAL_ACTIONS,
+  // ADR 0106 §1: the frame's FULL lookup, which greys an any-player row
+  // the exact digest leaves out on a permanent the viewer does not
+  // control. Read for those rows only; the controller's and the admin's
+  // menus never grey on the digest. Omitted: no information.
+  gate: LegalActions = NO_LEGAL_ACTIONS,
 ): MenuSection[] {
   const location = locateCard(view, card.instance_id);
   if (!location) return [];
+  // ADR 0106 §1 decision 6 (#1793): a seated non-controller gets one
+  // section on a permanent with "Any player may activate this ability"
+  // rows: those rows. No state, counters, moves or sacrifice, which
+  // stay the controller's (and an admin's, who keeps the full menu).
+  if (
+    location.zone === "battlefield" &&
+    !isAdmin &&
+    viewerID &&
+    mayActivateAcross(card, viewerID)
+  ) {
+    const items = anyPlayerAbilityItems(card, view, viewerID, legal, gate);
+    return [{ id: "abilities", label: "abilities", items }];
+  }
   if (!canOverride(card, viewerID, isAdmin)) return [];
 
   const sections: MenuSection[] = [];
@@ -1290,11 +1473,11 @@ export function buildMenuSections(
     // suspend below: the server decides what is offered and whether it
     // is available, and every other permanent on the board arrives
     // with an empty list.
-    const special = specialActionItems(card, card.controller || card.owner);
+    const special = specialActionItems(card, card.controller || card.owner, legal);
     if (special.length > 0) {
       sections.push({ id: "special_actions", label: "special actions", items: special });
     }
-    const abilities = abilityItems(card, view, viewerID);
+    const abilities = abilityItems(card, view, viewerID, legal);
     if (abilities.length > 0) {
       sections.push({ id: "abilities", label: "abilities", items: abilities });
     }
@@ -1319,7 +1502,7 @@ export function buildMenuSections(
     // card's menu, above "move to". They are only ever present on the
     // viewer's own hand — the server strips `special_actions` from
     // every other seat's, as it strips `zone_abilities`.
-    const special = specialActionItems(card, card.owner);
+    const special = specialActionItems(card, card.owner, legal);
     if (special.length > 0) {
       sections.push({ id: "special_actions", label: "special actions", items: special });
     }

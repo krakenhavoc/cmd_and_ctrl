@@ -423,7 +423,12 @@ func (e ExileThenIfItWas) Apply(ctx *Context) error {
 // (CR 400.7) and re-triggers ETB — both the `Triggered` /
 // `EventETB` path and the direct `OnETB` hook. A target that is no
 // longer in exile is silently skipped: a delayed return whose card
-// moved on in the meantime does nothing rather than erroring.
+// moved on in the meantime does nothing rather than erroring. So is a
+// token, which can't come back onto the battlefield (CR 111.8): the
+// engine's door leaves it in exile (#1872).
+//
+// This is ONE card. Several cards returned by one instruction enter
+// together: use ReturnFromExileTogether.
 type ReturnFromExile struct {
 	Target     uuid.UUID
 	Controller uuid.UUID

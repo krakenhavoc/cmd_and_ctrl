@@ -199,6 +199,11 @@ func corpusBoards() []corpusBoard {
 		// Tier 4-0's prowess/pump body, which merged while 4-2 was open:
 		// an engine trigger with no catalog row, keyed by its body.
 		{"prowess_on_stack", corpusProwessOnStack},
+		// v7, added by #1805 (ADR 0106 §3) as a new file: an evolve
+		// trigger — the second engine keyword trigger, keyed by its
+		// evolve/grow body — waiting on the stack, carrying the entered
+		// creature on its trigger context.
+		{"evolve_on_stack", corpusEvolveOnStack},
 		// v7, added by #1593: duration copy effects — the becomeCopy mod
 		// carrying its copied values, and the carried durationCopyBase
 		// under a Cytoshaped Clone. Written by #1712, alongside the
@@ -233,7 +238,42 @@ func corpusBoards() []corpusBoard {
 		// delve link on a permanent (CastProvenance.Delved) and on a
 		// departed one's last-known information (PermanentInfo.Delved).
 		{"delve_linked_permanents", corpusDelveLinkedPermanents},
+		// v7, added by ADR 0106 PR 3 (#1806) as a new file: "can't be
+		// countered" as data — a turn grant and an unspent one-use
+		// promise on a seat (PlayerStatic.CantBeCountered), and a spell
+		// on the stack with two marks (StackItem.CantBeCountered), one
+		// from a spent promise and one from Vexing Shusher.
+		{"counter_shields", corpusCounterShields},
 	}
+}
+
+// corpusCounterShields is ADR 0106 §4's three stored shapes at once.
+// Insist resolved and its promise was spent by the Grizzly Bears on the
+// stack, which Vexing Shusher then marked again; Veil of Summer's turn
+// grant is on the caster, and so is Mistrise Village's promise, which
+// nothing has spent yet.
+func corpusCounterShields(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	castCatalogSpell(t, g, "Insist", "Sorcery", cgInsistOracle, nil)
+	passPriorityAroundTable(t, g)
+	castCatalogSpell(t, g, "Veil of Summer", "Instant", cgVeilOfSummerOracle, nil)
+	passPriorityAroundTable(t, g)
+	village := pushCatalogPermanent(g, me.ID, "Mistrise Village", "Land", cgMistriseVillageOracle, false)
+	shusher := pushCatalogPermanent(g, me.ID, "Vexing Shusher", "Creature — Goblin Shaman", cgVexingShusherOracle, false)
+	bear := castCatalogSpell(t, g, "Grizzly Bears", "Creature — Bear", "", nil)
+	if err := g.ActivateCatalogAbility(me.ID, village, 0, game.ActivateAbilityParams{}); err != nil {
+		t.Fatalf("setup: Mistrise Village: %v", err)
+	}
+	cgResolveTop(t, g)
+	if err := g.ActivateCatalogAbility(me.ID, shusher, 0, game.ActivateAbilityParams{Targets: cardRefs(bear)}); err != nil {
+		t.Fatalf("setup: Vexing Shusher: %v", err)
+	}
+	cgResolveTop(t, g)
+	if it := g.StackMeta[bear]; it == nil || len(it.CantBeCountered) != 2 || len(me.Statics) != 2 {
+		t.Fatalf("setup: want the Bears with two marks and two statics on the caster, got %+v / %+v", it, me.Statics)
+	}
+	return g
 }
 
 // corpusDelveLinkedPermanents is a Murktide Regent on the battlefield
@@ -1359,6 +1399,20 @@ func corpusProwessOnStack(t *testing.T) *game.Game {
 		[]game.TargetRef{{Kind: game.TargetPlayer, ID: opp}})
 	if it := corpusSettleTrigger(t, g, monk); it.Body != "prowess/pump" {
 		t.Fatalf("setup: the prowess trigger names body %q, want prowess/pump", it.Body)
+	}
+	return g
+}
+
+// corpusEvolveOnStack is an evolve trigger — an engine trigger with no
+// catalog row, keyed by its evolve/grow body (#1805) — waiting on the
+// stack after a bigger creature entered under its controller's control.
+func corpusEvolveOnStack(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat].ID
+	raptor := pushEvolveCreature(g, me, "Cloudfin Raptor", 0, 1, "flying", game.KeywordEvolve)
+	enterCreature(t, g, me, "Grizzly Bears", 2, 2)
+	if it := corpusSettleTrigger(t, g, raptor); it.Body != "evolve/grow" {
+		t.Fatalf("setup: the evolve trigger names body %q, want evolve/grow", it.Body)
 	}
 	return g
 }

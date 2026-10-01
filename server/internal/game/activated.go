@@ -637,6 +637,33 @@ type ActivatedAbilityShape struct {
 	// can't be countered: the copy simply isn't made.
 	Uncopyable bool
 
+	// AnyPlayer is the ability's own "Any player may activate this
+	// ability" (CR 602.2, CR 602.1b) — Xantcha, Sleeper Agent, Feral
+	// Hydra, Excavation. ADR 0106 §1, #1793.
+	//
+	// The permission is part of the ability: a copy or a layer-6 grant
+	// of the row carries it, and losing the ability loses it. Read in
+	// ONE place, MayActivate (any_player_activation.go), which the
+	// activation path, the legal-move enumerator and the view share.
+	// Everything downstream already reads the activator: the costs are
+	// the activator's to pay (CR 602.1a), the stack item is the
+	// activator's (CR 113.8), and "you" in the effect is the activator
+	// (CR 109.5). "This permanent's controller" is read off the source
+	// (Context.SourcePermanent), live or last-known.
+	//
+	// effects.Register refuses it beside a {T}, loyalty, crew or
+	// sacrifice-this component, and on an ability that functions from
+	// anywhere but the battlefield: no printed any-player ability has
+	// one, and who may tap somebody else's permanent is a rule nobody
+	// has tested.
+	AnyPlayer bool
+
+	// Purpose is what the ability does for an activator who does not
+	// control its source (ADR 0106 §1 decision 8). The engine never
+	// reads it; see ActivationPurpose. Meaningful only with AnyPlayer,
+	// and effects.Register refuses it without.
+	Purpose ActivationPurpose
+
 	// Effect runs at resolution against the live game. Same contract
 	// as TriggeredAbility's stack items: never capture a *Card,
 	// read what you need off the item and the game.
@@ -920,7 +947,12 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		return ErrCardNotFound
 	}
 	if srcZone == ZoneBattlefield {
-		if source.Controller != playerID {
+		// CR 602.2: the controller, unless the ability says otherwise
+		// (ADR 0106 §1). A non-controller is let past here only when the
+		// permanent offers at least one "Any player may activate" row;
+		// the row actually named is held to MayActivate below, after the
+		// index lookup, so the answer is about THAT ability.
+		if source.Controller != playerID && !HasAnyPlayerAbility(*source) {
 			return ErrCardCallerMismatch
 		}
 		// CR 602.5: "its activated abilities can't be activated"
@@ -959,6 +991,20 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		return ErrInvalidParam
 	}
 	ab := abilities[index]
+	// CR 602.2 / ADR 0106 §1 decision 2: may THIS player activate THIS
+	// row. The one predicate the enumerator and the view also ask.
+	// Before anything is validated or paid, so a refusal costs nothing.
+	if !MayActivate(playerID, *source, srcZone, ab) {
+		return ErrCardCallerMismatch
+	}
+	// Who controlled the permanent when another player reached across
+	// to it, for EventActivateAbility's Target below. Nil for the
+	// ordinary activation by the controller (or owner, off the
+	// battlefield).
+	var anyPlayerActivatedFrom uuid.UUID
+	if srcZone == ZoneBattlefield && source.Controller != playerID {
+		anyPlayerActivatedFrom = source.Controller
+	}
 	// ADR 0041 P9 (#1497, tier 4): which catalog row this is, named
 	// while the source is still the object that has it — a cost below
 	// may move it. The item carries the name so a restore point taken
@@ -1609,6 +1655,11 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		StackItemID: itemID,
 		Label:       ab.Label,
 		Exhaust:     ab.Exhaust,
+		// ADR 0106 §1 decision 6: the permanent's controller, set only
+		// when somebody else activated its "Any player may activate"
+		// row — the log's "Bob activated Alice's Xantcha". Read before
+		// the costs ran, because a cost may have moved the source.
+		Target: anyPlayerActivatedFrom,
 	})
 	// CR 602.2b / 115.3: the ability's targets were chosen as it was
 	// put on the stack. S22, for "whenever ~ becomes the target of a

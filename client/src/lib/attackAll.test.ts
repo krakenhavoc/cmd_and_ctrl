@@ -1,13 +1,16 @@
 import { describe, expect, it } from "vitest";
-import type { CardView, GameView, PlayerView, ZoneView } from "./protocol";
+import type { CardView, GameView, LegalActionsView, PlayerView, ZoneView } from "./protocol";
+import { NO_LEGAL_ACTIONS, legalActionsOf } from "./legalActions";
 import {
   attackAllLabel,
   attackAllParams,
   attackAllTaxLabel,
   attackBlocker,
+  attackRefusal,
   attackTaxLabelForCount,
   attackTaxOn,
   blockedSummary,
+  eligibleAt,
   planAttackAll,
 } from "./attackAll";
 
@@ -176,6 +179,100 @@ describe("planAttackAll", () => {
   it("returns an empty plan without a view or a viewer", () => {
     expect(planAttackAll(null, "a").eligible).toHaveLength(0);
     expect(planAttackAll(view([alice, bob]), null).defenders).toHaveLength(0);
+  });
+});
+
+// ADR 0105 sub-PR 5: eligibility is the server's. The row fields only
+// name the reason, and decide only on a frame with no list at all.
+describe("planAttackAll reads eligibility from the legal-action digest", () => {
+  const alice = seat("a", "Alice");
+  const bob = seat("b", "Bob", { seat: 1 });
+
+  const withDigest = (cards: CardView[], sources: LegalActionsView["sources"]): GameView => ({
+    ...view([alice, bob], cards),
+    legal_actions: { pass: true, sources },
+  });
+
+  const board = () => [
+    // The server lists it: eligible.
+    creature("ok", "a"),
+    // Nothing on the row says why, but the server leaves it out: an
+    // attack tax it can't pay, a count limit, a goad. The old
+    // re-derivation would have swept it in.
+    creature("taxed", "a"),
+    // Sick by the row fields, and absent from the list: the reason is
+    // still the row's sentence.
+    creature("sick", "a", { summoning_sick: true }),
+    // A "can't attack" effect the row fields carry.
+    creature("pacified", "a", { restrictions: ["cant_attack"] }),
+    // Defender on the row, but an effect lets it attack (the server
+    // lists it): the server wins.
+    creature("wall", "a", { abilities: ["defender"] }),
+    creature("already", "a", { attacking_target: "b", tapped: true }),
+  ];
+  const sources: LegalActionsView["sources"] = {
+    ok: { kinds: ["attack"], moves: 1, attack_targets: ["b"] },
+    wall: { kinds: ["attack"], moves: 1, attack_targets: ["b"] },
+  };
+
+  it("eligible is exactly the creatures the server lists", () => {
+    const v = withDigest(board(), sources);
+    const plan = planAttackAll(v, "a", legalActionsOf(v));
+    expect(plan.eligible.map((c) => c.instance_id)).toEqual(["ok", "wall"]);
+    expect(plan.declared.map((c) => c.instance_id)).toEqual(["already"]);
+    expect(Object.fromEntries(plan.blocked.map((b) => [b.card.instance_id, b.reason]))).toEqual({
+      taxed: "unavailable",
+      sick: "summoning-sick",
+      pacified: "restricted",
+    });
+    expect(blockedSummary(plan.blocked)).toBe(
+      "1 can't attack, 1 summoning sick, 1 can't attack right now",
+    );
+  });
+
+  it("a creature the old re-derivation allowed is withheld when the server says no", () => {
+    const v = withDigest([creature("unlisted", "a")], {});
+    // The row fields see an untapped, unrestricted creature,
+    expect(attackBlocker(v.battlefield.cards[0])).toBeNull();
+    // and the server's answer wins.
+    expect(attackRefusal(v.battlefield.cards[0], legalActionsOf(v))).toBe("unavailable");
+    expect(planAttackAll(v, "a", legalActionsOf(v)).eligible).toEqual([]);
+  });
+
+  it("reads the capped legal_moves list the same way (an older server)", () => {
+    const v: GameView = {
+      ...view([alice, bob], [creature("ok", "a"), creature("taxed", "a")]),
+      legal_moves: [
+        {
+          type: "declare_attacker",
+          player: "a",
+          kind: "attack",
+          label: "Attack Bob with ok",
+          source: "ok",
+          params: { attacker: "ok", target: "b" },
+        },
+      ],
+    };
+    const plan = planAttackAll(v, "a", legalActionsOf(v));
+    expect(plan.eligible.map((c) => c.instance_id)).toEqual(["ok"]);
+    expect(plan.blocked.map((b) => b.reason)).toEqual(["unavailable"]);
+  });
+
+  it("no list is no information: the row fields decide, and nothing is newly withheld", () => {
+    const v = view([alice, bob], board());
+    const plans = [
+      planAttackAll(v, "a"),
+      planAttackAll(v, "a", legalActionsOf(v)),
+      planAttackAll(v, "a", NO_LEGAL_ACTIONS),
+    ];
+    for (const plan of plans) {
+      expect(plan.eligible.map((c) => c.instance_id)).toEqual(["ok", "taxed"]);
+      expect(plan.blocked.map((b) => b.reason).sort()).toEqual([
+        "defender",
+        "restricted",
+        "summoning-sick",
+      ]);
+    }
   });
 });
 
@@ -457,5 +554,47 @@ describe("attackAllTaxLabel", () => {
     expect(attackAllTaxLabel(v, planAttackAll(v, "a"), "b")).toBe(
       "costs {2}{2} each, {2}{2}{2}{2} for all 2",
     );
+  });
+});
+
+// ADR 0106 §2 (#1794): a creature that "can't attack its owner" is
+// eligible, and the server lists every opponent for it but its owner.
+// "Attack with all" is per seat, so it counts and sends the creature at
+// every seat but that one.
+describe("attack with all, per seat", () => {
+  const alice = seat("a", "Alice");
+  const bob = seat("b", "Bob", { seat: 1 });
+  const carol = seat("c", "Carol", { seat: 2 });
+  const v: GameView = {
+    ...view([alice, bob, carol], [creature("bear", "a"), creature("xantcha", "a", { owner: "b" })]),
+    legal_actions: {
+      pass: true,
+      sources: {
+        bear: { kinds: ["attack"], moves: 2, attack_targets: ["b", "c"] },
+        xantcha: { kinds: ["attack"], moves: 1, attack_targets: ["c"] },
+      },
+    },
+  };
+  const plan = planAttackAll(v, "a", legalActionsOf(v));
+
+  it("leaves the creature out at its owner's seat only", () => {
+    expect(plan.eligible.map((c) => c.instance_id)).toEqual(["bear", "xantcha"]);
+    expect(eligibleAt(plan, "b").map((c) => c.instance_id)).toEqual(["bear"]);
+    expect(eligibleAt(plan, "c").map((c) => c.instance_id)).toEqual(["bear", "xantcha"]);
+  });
+
+  it("sends and counts what that seat may be attacked by", () => {
+    expect(attackAllParams(plan, "b")?.attackers).toEqual([{ attacker: "bear", target: "b" }]);
+    expect(attackAllParams(plan, "c")?.attackers.map((a) => a.attacker)).toEqual([
+      "bear",
+      "xantcha",
+    ]);
+    expect(attackAllLabel(plan, bob)).toBe("Attack Bob with all 1 creature");
+    expect(attackAllLabel(plan, carol)).toBe("Attack Carol with all 2 creatures");
+  });
+
+  it("a frame with no list counts every eligible creature at every seat, as before", () => {
+    const bare = planAttackAll(view([alice, bob, carol], v.battlefield.cards), "a");
+    expect(eligibleAt(bare, "b").map((c) => c.instance_id)).toEqual(["bear", "xantcha"]);
   });
 });

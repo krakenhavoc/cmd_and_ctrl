@@ -275,3 +275,54 @@ describe("keyWindow", () => {
     expect(keyWindow(s, null)).toEqual({ stackOpp: false, combat: false, oppEnd: false });
   });
 });
+
+// ADR 0106 §1 decision 7 (owner decision 1, #1793): an "Any player may
+// activate this ability" row on a permanent somebody else controls is a
+// legal move at every window, so it must not hold smart autopass.
+describe("an activation of another player's permanent", () => {
+  const xantcha = card("xantcha", { owner: "p1", controller: "p1" });
+  const mine = card("mine");
+  const across = move("activate", { source: "xantcha" });
+  const own = move("activate", { source: "mine" });
+  const board = [xantcha, mine];
+
+  it("classifies as none with the frame's controllers, and as before without them", () => {
+    const controllers = new Map([
+      ["xantcha", "p1"],
+      ["mine", "p0"],
+    ]);
+    expect(classifyMove(across, false, controllers, "p0")).toBe("none");
+    expect(classifyMove(across, true, controllers, "p0")).toBe("none");
+    expect(classifyMove(own, false, controllers, "p0")).toBe("ability");
+    // The existing two-argument call is unchanged.
+    expect(classifyMove(across, false)).toBe("ability");
+    // A source the map does not know keeps today's class.
+    const elsewhere = move("activate", { source: "elsewhere" });
+    expect(classifyMove(elsewhere, false, controllers, "p0")).toBe("ability");
+  });
+
+  it("hasResponse ignores it on an opponent's upkeep, and still counts the viewer's own", () => {
+    const opp = (moves: LegalMoveView[]) =>
+      snap({ step: "upkeep", active: 1, holder: 0, moves, battlefield: board });
+    expect(hasResponse(opp([pass, across]), "p0", ALL_RESPONSES)).toBe(false);
+    expect(hasResponse(opp([pass, across, own]), "p0", ALL_RESPONSES)).toBe(true);
+  });
+
+  it("hasPlay ignores it in the viewer's own main, and still counts the viewer's own", () => {
+    const main = (moves: LegalMoveView[]) => snap({ moves, battlefield: board });
+    expect(hasPlay(main([pass, across]), "p0", ALL_RESPONSES)).toBe(false);
+    expect(hasPlay(main([pass, own]), "p0", ALL_RESPONSES)).toBe(true);
+  });
+
+  it("the controller's own move on it still counts for the controller", () => {
+    // p1 is the viewer now, and Xantcha is theirs.
+    const s = snap({
+      step: "upkeep",
+      active: 0,
+      holder: 1,
+      moves: [pass, across],
+      battlefield: board,
+    });
+    expect(hasResponse(s, "p1", ALL_RESPONSES)).toBe(true);
+  });
+});

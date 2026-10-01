@@ -74,6 +74,25 @@ surface tiny.
    matters, as in Arc Trail) so a target that left in response is
    skipped rather than erroring.
 
+   **Rules over the chosen set (#1559, #1807).** A clause whose picks
+   are judged against each other carries a set rule from
+   [target_set.go](../server/internal/cards/effects/target_set.go),
+   never a hand-written predicate. "That each have a different mana
+   value" is `.EachDifferent(EachDifferentManaValue())` (no two picks
+   share a key). "From a single graveyard" is the opposite rule, every
+   pick shares one key, and has its own constructor:
+   ```go
+   Targets: UpToCardsFromASingleGraveyard("up to three target cards from a single graveyard", 3), // Decompose
+   Targets: TargetCardInGraveyard("X target cards from a single graveyard").
+       WithCount(0, 0).AllShare(FromASingleGraveyard()),                                       // an exact count
+   ```
+   The engine enforces both at announce, re-judges them over the
+   surviving picks at resolution, counts only the largest group when
+   it asks whether a clause can be filled, and ships the keys so the
+   picker greys what doesn't fit ([ADR 0106 §5](decisions/0106-five-small-seams-from-the-s50-rechecks.md)).
+   `ExileTargetCards` (single_graveyard.go) is the shared body for
+   "exile up to N target cards from a single graveyard".
+
    **Target clauses (#764).** A count is one predicate chosen N
    times. When the slots have DIFFERENT predicates — Bite Down's
    "target creature you control" then "target creature or
@@ -702,6 +721,61 @@ naming an unregistered bundle is refused with `ErrUnknownEffectKey`. A
 `fake_your_own_death.go`, `retraction_helix.go` and `urzas_saga.go`.
 Still no shape: a duration that lasts "for as long as it has a <kind>
 counter on it" (Ultima, Origin of Oblivion).
+
+### Abilities any player may activate (ADR 0106, #1793)
+
+"Any player may activate this ability" (CR 602.2, CR 602.1b) is one bit
+on the row. Everything else about the activation already reads the
+ACTIVATOR, so the card file writes the effect with the activator as
+"you":
+
+```go
+Activated: []ActivatedAbility{{
+	Label:     "{3}: Xantcha's controller loses 2 life and you draw a card. Any player may activate this ability.",
+	Cost:      game.AbilityCost{Mana: "{3}"},
+	AnyPlayer: true,
+	Purpose:   game.ActivationPurpose{Draws: 1, ControllerLosesLife: 2},
+	Effect: func(g *game.Game, item *game.StackItem) error {
+		ctx := NewContext(g, item)
+		if info, ok := ctx.SourcePermanent(); ok { // "Xantcha's controller", last-known if gone
+			if err := g.ChangePlayerLifeForEffect(ctx.Source(), info.Controller, -2); err != nil {
+				return err
+			}
+		}
+		return DrawCards{Player: item.Controller, N: 1}.Apply(ctx) // "you": the activator
+	},
+}},
+```
+
+- **"You" is `item.Controller`** — the player who activated it (CR 109.5,
+  CR 602.2a). "This creature's controller" is
+  `ctx.SourcePermanent().Controller`, read live or as it last existed
+  (CR 608.2h). They are different players whenever somebody reaches
+  across the table.
+- **The costs are the activator's** (CR 602.1a): mana from their pool, a
+  "Sacrifice a land" from their lands, a "Discard a card" from their
+  hand. Nothing to write.
+- **"…but only during their turn" / "only as a sorcery" / "only during
+  their draw step"** are activation instructions (CR 602.1b): a
+  `Condition` (whose `controller` argument is the activator) or
+  `SorcerySpeed`, as on any row.
+- **`Purpose` is for the bot only** (owner decision 2). Set it when the
+  effect plainly helps a player who does not control the permanent, in
+  the printed amounts: `{Draws: 1}` for Excavation and Well of Knowledge.
+  Leave it zero for a pump, a shrink, a "loses flying" or anything
+  symmetric: a bot never activates another player's row that declares
+  none.
+- `effects.Register` refuses `AnyPlayer` beside a `{T}`, loyalty, crew or
+  sacrifice-this component and on a non-battlefield zone, and refuses a
+  `Purpose` without `AnyPlayer`. An any-player MANA ability (Mana Cache)
+  and an ability of a spell on the stack (Lightning Storm) are not
+  modelled.
+
+The rest is the engine's: `game.MayActivate` is the one gate the
+activation path, the enumerator and the view share; every seat's copy of
+the row is stamped with that seat as the activator; the client opens the
+ability popover on another player's permanent for its `any_player` rows;
+and smart autopass does not stop for them.
 
 ### Adding a replacement effect (S17+)
 
@@ -1516,6 +1590,7 @@ canonicalised forms the engine expects. Canonical tokens:
 | `"wither"` | Wither (CR 702.80) — #748, the damage tail: -1/-1 counters on a creature |
 | `"toxic N"` | Toxic (CR 702.164) — #748, N extra poison on combat damage to a player. Numbered AND cumulative: read it with `game.ToxicTotal`, never `HasKeyword`, and grant it through `game.AppendKeywordAbility` so a second instance adds up ([ADR 0056](decisions/0056-infect-wither-toxic.md)) |
 | `"prowess"` | Prowess (CR 702.108) — #706, the first TRIGGERED keyword in the table: `TriggersForCard` turns each instance on the effective ability list into one trigger (`game/prowess.go`). Cumulative like toxic, so grant it through `game.AppendKeywordAbility`. Never write a prowess trigger by hand — declare the token ([ADR 0014 amendment 2026-09-24](decisions/0014-combat-keywords.md)) |
+| `"evolve"` | Evolve (CR 702.100) — #1805, the second TRIGGERED keyword, built exactly like prowess: one trigger per instance (`game/evolve.go`), the CR 702.100a comparison made on entry and again on resolution (CR 603.4), and `game.EventEvolved` when a counter lands (CR 702.100b) — "whenever this creature evolves" is `WhenThisEvolves(label, effect)`. Cumulative, so grant it through `KeywordGrant` / `game.AppendKeywordAbility`. A creature whose only text is evolve and other tokens here needs no card file. Never write an evolve trigger by hand ([ADR 0106 §3](decisions/0106-five-small-seams-from-the-s50-rechecks.md#3-evolve-1805)) |
 | `"split second"` | Split second (CR 702.61) — #1519, a SPELL's keyword: `castHasSplitSecond` (`game/split_second.go`) stamps `StackItem.SplitSecond` at announce, and while it is on the stack nobody casts or activates a non-mana ability. Declare it on an instant or sorcery exactly like flash; never pass the sandbox `SplitSecond` cast flag from a card ([ADR 0007 amendment 2026-09-24](decisions/0007-stack-foundation.md)) |
 
 **A keyword counter needs no grant** (CR 122.1b, [ADR 0101](decisions/0101-keyword-counters.md)).
@@ -1538,7 +1613,7 @@ keywords are not enforced: a card that places one ships with a caveat.
 2026-09-24 amendment says which to use. A constructor on
 `Spec.Triggered` (`Cascade()`, `Storm()`, `Ward(...)`) when the keyword
 carries a parameter a bare token cannot hold or triggers from the
-stack; a token here with an engine-side trigger (prowess) when it lives
+stack; a token here with an engine-side trigger (prowess, evolve) when it lives
 on permanents, is granted and printed on tokens, and needs to work on a
 card with no catalog entry. Either way the trigger carries its name in
 `game.TriggeredAbility.Keyword`, which `cards/coverage` reads (#1258).
@@ -1776,6 +1851,27 @@ same PR, and assert `dispatchAll` over the enumerated moves.
 Restrictions are checked **at declaration only** (CR 508.1c, 509.1b).
 A creature pacified after attackers were declared keeps attacking.
 
+**"Can't attack its owner"** ([ADR 0106 §2](decisions/0106-five-small-seams-from-the-s50-rechecks.md),
+#1794) is not a bit either: it says WHOM the creature may not attack,
+so it is data on `Characteristic.AttackTargetRestrictions`, written by
+one of two statics:
+
+```go
+Static: []game.StaticAbility{AttacksEachCombat(), CantAttackItsOwnerOrItsOwnersPlaneswalkers()}, // Xantcha, Sleeper Agent
+Static: []game.StaticAbility{AttacksEachCombat(), CantAttackItsOwner()},                         // Alexios, Deimos of Kosmos
+```
+
+The owner is read live, so a copy may not attack ITS owner, and a
+battle the owner protects is still a legal target. Both declaration
+verbs, the CR 508.1d requirement search and the enumerator's
+per-attacker list (`AttackTargetsForAttackerForEffect`) share one check,
+`canAttackTargetWithLocked`; a creature that must attack and has only
+its owner to attack owes nothing. A reselection (CR 508.7b) and a
+creature put onto the battlefield attacking (CR 508.4c) ignore it. The
+card shows a "CAN'T ATTACK <name>" chip. A RESOLVED effect that grants
+it (Elrond of the White Council) has no mod kind yet. See
+`xantcha_sleeper_agent.go` for the printed card.
+
 [ADR 0045](decisions/0045-combat-restrictions.md) has the
 taxonomy, including what the vocabulary deliberately cannot say:
 Silent Arbiter's and Crawlspace's count limits, which are set-shaped
@@ -1810,6 +1906,75 @@ it at CR 508.1a before anything is staged, ALL OR NOTHING, and
 never offered (#544). It pays through the same
 `payAbilityManaCostLocked` an activated ability uses, so `ManaTrigger`
 fires for the taps and nothing about mana is duplicated.
+
+### "Spells you control can't be countered" (ADR 0106, #1806)
+
+Three different statements, three different slots:
+
+| Printed | Slot |
+|---|---|
+| "This spell can't be countered." | `Spec.CantBeCountered: true` |
+| "…and that spell can't be countered" on mana | a spend rider, `SpentSpellCantBeCountered` |
+| "<These> spells [you control / you cast] can't be countered." on a permanent | `Spec.SpellsCantBeCountered` |
+
+The third is a list of `game.CounterShieldStatic`, built with the
+constructor whose name says whose spells, and filtered with ordinary
+`CardPredicate`s:
+
+```go
+SpellsCantBeCountered: []game.CounterShieldStatic{
+    SpellsYouControlCantBeCountered("Green spells you control can't be countered.", OfColor("G")), // Allosaurus Shepherd
+    SpellsYouCastCantBeCountered("…", ManaValueGE(5)),                                       // Thryx
+    AnyPlayersSpellsCantBeCountered("Creature spells can't be countered.", Creature()),      // Gaea's Herald
+},
+```
+
+- **"You control" and "you cast" differ.** "Control" is the spell's
+  current controller, so a stolen spell (ADR 0104) is the thief's.
+  "Cast" is the caster, and a copy is never covered (CR 707.10).
+- **It is not a layer effect** (CR 613.11). The counter gate,
+  `spellCantBeCounteredLocked`, reads it off the battlefield every time
+  something tries to counter a spell, so do not stamp anything onto the
+  stack item. Every counter verb and the stack chip already ask the
+  gate.
+- The predicates see the spell as it sits on the stack: printed types,
+  colours and power, with X in the mana value.
+- A card that prints both the rider and a static (Prowling Serpopard)
+  declares both. Neither does the other's job.
+
+The other three shapes are effects, not slots: a card's `OnResolve` or
+ability `Effect` applies a primitive from the same file (ADR 0106 PR 3).
+
+| Printed | Primitive |
+|---|---|
+| "<These> spells you control / you cast can't be countered this turn." | `GrantCounterShield{From, Grant: SpellsCantBeCounteredThisTurn(text, whose, filter)}` |
+| "The next <these> spell you cast this turn can't be countered." | `GrantCounterShield{From, Grant: NextSpellYouCastCantBeCountered(text, filter)}` |
+| "Target spell can't be countered." | `MarkTargetSpellsCantBeCountered{From, Label}` over a `TargetSpell` clause |
+
+```go
+GrantCounterShield{From: "Insist", Grant: NextSpellYouCastCantBeCountered(
+    "The next creature spell you cast this turn can't be countered.",
+    game.PermissionFilter{CreatureOnly: true})}                          // Insist
+GrantCounterShield{From: "Determined", ExceptThis: true, Grant: SpellsCantBeCounteredThisTurn(
+    "Other spells you control can't be countered this turn.",
+    game.CounterShieldYouControl, game.PermissionFilter{})}              // Bound // Determined
+```
+
+- **The filter is a `game.PermissionFilter`, not a `CardPredicate`.**
+  A grant is stored on the player, so it is in the restore point, and a
+  closure could not be. If the filter you need is not on
+  `PermissionFilter`, add a field there.
+- **A turn grant is read at the gate**, so it covers spells already on
+  the stack and spells cast later this turn (CR 611.2c), and it ends at
+  cleanup. "Other spells" is `ExceptThis`.
+- **A promise is not read at the gate.** The first matching spell its
+  player casts spends it as it becomes cast (CR 601.2i), whether or not
+  anything was going to counter that spell, and carries a mark from
+  then on. A copy is not cast and spends nothing.
+- **A mark lasts while that object is on the stack** (CR 400.7). A
+  stolen spell keeps it; a copy does not get it (CR 707.2).
+- `From` is the card's name, shown on the seat's NO COUNTER badge
+  (`counter_shields` on the player view) beside the printed `text`.
 
 ### Attaching, and an ability whose source has gone (#812)
 
@@ -3129,6 +3294,34 @@ drops a paused CR 903.9 leg from the accounting, and nothing watching a
 bounce should see a library take. `TakeRestOnBottomInRandomOrder` and
 `TakeRestIntoGraveyard` are the two rests.
 
+**Two kinds of card from one look are `Slots`, and "each player" is
+`EachPlayerTakesFromLibrary` (#1743).** "May reveal a land card and/or
+an instant or sorcery card from among them" is one prompt, not two:
+
+```go
+EachPlayerTakesFromLibrary{             // "each player looks at the top five …"
+    N: 5,
+    Take: TakeFromLibraryToHand{
+        Slots: []TakeSlot{
+            {Label: "a land card", Match: Land(), Max: 1},
+            {Label: "an instant or sorcery card", Match: Or(Instant(), Sorcery()), Max: 1},
+        },
+        Optional: true, Reveal: true,
+        Then: TakeRestOnBottomInRandomOrder,   // each player's own rest
+    },
+    Then: func(g *game.Game, _ []TakeFromLibraryResult) error { … },  // "each player gains 3 life"
+}.Apply(ctx)
+```
+
+A card fitting both slots fills one of them, and the prompt's ceiling is
+what the slots can hold out of the real candidates, so don't set `Max`
+alongside `Slots`. The fan-out asks every player at once, APNAP, each
+about their own look only, and acts on nothing until the last answer is
+in — so the rest of the card goes in the outer `Then`, never on the next
+line. See
+[wandering_archaic.go](../server/internal/cards/effects/wandering_archaic.go)
+and [ADR 0013 §5ai](decisions/0013-replacement-effects.md#5ai-amendment-2026-10-01-a-card-set-pick-is-a-run-too--every-player-chooses-from-their-own-look).
+
 "Put the rest on the bottom in a random order" anywhere else is
 `g.PutOnBottomInRandomOrderForEffect(actor, from, ids)`, which draws
 from the game's keyed RNG (`random_order` stream, ADR 0054) — never
@@ -3261,7 +3454,9 @@ The `Key` is the wire contract: it rides `cast_spell` as
 `alternative_cost`, lands on `StackItem.AltCost`, and the card's
 `OnResolve` branches on `ctx.PaidAltCost("overload")`. Keys must be
 non-empty and unique per card; `Register` panics otherwise. Only
-overload / evoke / cleave / flashback / warp / escape exist —
+overload / evoke / cleave / flashback / warp / escape exist, plus the
+non-mana prices below (pitch, pay life, return, and since #1727 a
+sacrifice) —
 spree has no shape yet, and a card carrying it ships without it (say
 so in the card comment). Preparation cards are a layout, not a cost —
 see "Adding a preparation card" below. Foretell,
@@ -3323,6 +3518,48 @@ is a *price* rather than a permission:
   other, and escapes again next time. Copying flashback's constructor
   and swapping the key would ship a card that exiles itself, which is
   not what any escape card does.
+
+**A sacrifice as the price (#1727).** "Flashback—Sacrifice three
+creatures" (Dread Return) and "you may sacrifice two Mountains rather
+than pay this spell's mana cost" (Fireblast) are
+`AlternativeCost.Sacrifice`, built with one of two constructors:
+
+```go
+CastableZones:    []game.ZoneKind{game.ZoneGraveyard},                           // Dread Return
+AlternativeCosts: []game.AlternativeCost{FlashbackSacrifice(3, "three creatures", Creature())},
+
+AlternativeCosts: []game.AlternativeCost{                                          // Fireblast
+    SacrificeInstead(2, "two Mountains", 0, HasSubtype("Mountain")),
+},
+AlternativeCosts: []game.AlternativeCost{                                          // Demon of Death's Gate
+    SacrificeInstead(3, "three black creatures", 6, OfColor("B"), Creature()),     // "pay 6 life and sacrifice…"
+},
+```
+
+`FlashbackSacrifice` is `Flashback` with the price swapped: it keeps
+the graveyard binding and `ExileOnLeavingStack`. Do not write
+`Flashback("")` and bolt the sacrifice on — the empty string is "free"
+and the label reads "Flashback ". The clause is the additional cost's
+own shape (`sacrificeSpec`, count on `Min` == `Max`), and the engine
+validates it with the same `validateSacrificeCostLocked` and pays it
+with the same `payCostSacrificesLocked`: exactly N, each named once,
+each yours (CR 701.21a), all leaving as one simultaneous exit with the
+spell already on the stack, so the dies triggers resolve first and a
+counter gives nothing back. The caster names them in `alt_cost_ids`,
+never `sacrifice_ids` — they pay the offer, not an additional cost, and
+`ctx.Sacrificed()` and the per-sacrifice discounts count only the
+additional cost's list. The view ships the offer's options as
+`sacrifice_options` (not `pay_options`), so the client opens its
+sacrifice picker.
+
+`Register` refuses a variable count here ("sacrifice X", "any number",
+"one or more") — no printed alternative cost has one — and refuses an
+offer with two card-shaped components, because `alt_cost_ids` is one
+list. Not covered yet: emerge (the sacrificed creature's mana value
+REDUCES the mana half, which the pricer does not read), Firecat Blitz's
+"Sacrifice X Mountains" on a flashback, and a "Flashback—Tap N
+creatures" price (Battle Screech, Prismatic Strands), which is a tap
+component the struct does not have.
 
 **"Unless it escaped" — cast provenance (#653, CR 400.7d).** A
 permanent remembers how the spell that became it was cast:

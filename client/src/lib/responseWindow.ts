@@ -30,7 +30,8 @@ import { ownsEveryStackItem } from "./holdPriority";
 import { hasPriority, isActivePlayer, isMainPhase, stackEmpty } from "./timing";
 
 // MoveClass is what a move means to autopass.
-//   none        — pass, mana: never a reason to hold.
+//   none        — pass, mana, and an activation of a permanent another
+//                 player controls (ADR 0106 §1): never a reason to hold.
 //   play        — a land, or a cast / activation in the viewer's own
 //                 sorcery window. Only ever counts on a ticked step.
 //   counter     — a cast or activation that targets the stack.
@@ -75,7 +76,26 @@ export const ALL_RESPONSES: ResponseCategories = {
 // reads as `instant`. With both categories on (the default) that
 // changes nothing; it only matters to a player who turned instants
 // off and kept counters on.
-export function classifyMove(m: LegalMoveView, sorceryWindow: boolean): MoveClass {
+//
+// ADR 0106 §1 decision 7 (owner decision 1, #1793): `controllers` maps
+// a battlefield permanent's instance ID to its controller, and `me` is
+// the viewer. An activate move whose source is a permanent somebody
+// else controls is an "Any player may activate this ability" row
+// (CR 602.2), and that is a legal move for every seat at every
+// priority window while the permanent is on the table. Counting it
+// would stop smart autopass on every window for the rest of the game,
+// so it is `none`: neither a response nor a play. A source the map
+// does not know (a card in hand, a caller with no map) keeps the
+// ordinary classification.
+export function classifyMove(
+  m: LegalMoveView,
+  sorceryWindow: boolean,
+  controllers?: ReadonlyMap<string, string>,
+  me?: string | null,
+): MoveClass {
+  if (m.kind === "activate" && controllers && me && activatesAcross(m, controllers, me)) {
+    return "none";
+  }
   switch (m.kind) {
     case "pass":
     case "mana":
@@ -95,6 +115,30 @@ export function classifyMove(m: LegalMoveView, sorceryWindow: boolean): MoveClas
     default:
       return "other";
   }
+}
+
+// activatesAcross: the move's source is on the battlefield under a
+// controller other than `me`.
+function activatesAcross(
+  m: LegalMoveView,
+  controllers: ReadonlyMap<string, string>,
+  me: string,
+): boolean {
+  if (!m.source) return false;
+  const controller = controllers.get(m.source);
+  return !!controller && controller !== me;
+}
+
+// battlefieldControllers is classifyMove's `controllers` for a frame:
+// the controller of every permanent on the battlefield, by instance ID.
+export function battlefieldControllers(
+  view: GameView | null | undefined,
+): ReadonlyMap<string, string> {
+  const out = new Map<string, string>();
+  for (const c of view?.battlefield?.cards ?? []) {
+    if (c.controller) out.set(c.instance_id, c.controller);
+  }
+  return out;
 }
 
 // inSorceryWindow: the viewer's own main phase, stack empty.
@@ -132,7 +176,8 @@ export function hasResponse(
   const moves = view.legal_moves;
   if (!moves) return true;
   const sw = inSorceryWindow(view, me);
-  return moves.some((m) => isEnabledResponse(classifyMove(m, sw), cats));
+  const controllers = battlefieldControllers(view);
+  return moves.some((m) => isEnabledResponse(classifyMove(m, sw, controllers, me), cats));
 }
 
 // hasPlay reports whether a ticked step has anything in it for the
@@ -156,8 +201,9 @@ export function hasPlay(
   const moves = view.legal_moves;
   if (!moves) return true;
   const sw = inSorceryWindow(view, me);
+  const controllers = battlefieldControllers(view);
   return moves.some((m) => {
-    const c = classifyMove(m, sw);
+    const c = classifyMove(m, sw, controllers, me);
     if (c === "play" || c === "declaration" || c === "other") return true;
     return isEnabledResponse(c, cats);
   });

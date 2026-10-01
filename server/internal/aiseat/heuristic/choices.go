@@ -233,9 +233,13 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 		// "up to two" prompt takes the smallest legal answer, and a
 		// loot, whose count is fixed, has no count left to settle.
 		//
+		// #1831: when the candidates are cards in the bot's OWN
+		// library, naming one is TAKING it — the opposite sign. See
+		// valueTakenFromLibrary for the callers that make that true.
+		//
 		// Every other choose_cards keeps the flat score. Which cards a
 		// bot WANTS to name there depends entirely on what the card
-		// then does with them — a Ward sacrifice, a library pick, a
+		// then does with them — a Ward sacrifice, a graveyard pick, a
 		// reveal — and the wire carries nothing that would say which,
 		// so the enumerator's order decides. What matters is that an
 		// answer is always chosen: a seat owing a choice is offered
@@ -243,6 +247,9 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 		// (#544).
 		if v, ok := st.valueKeptInHand(p.cfg, ch, cp.CardIDs); ok {
 			return v, "name the worst, keep the rest"
+		}
+		if v, ok := st.valueTakenFromLibrary(p.cfg, ch, cp.CardIDs); ok {
+			return v, "take the best from the library"
 		}
 		return 0.5, "choose cards"
 
@@ -444,8 +451,9 @@ func (st *state) tradeIsWorthIt(spellID string) bool {
 // hand by the total cardValue of the candidates the answer does NOT
 // name — what the bot is left holding if it answers this way. The
 // second return is false for a prompt this rule has no opinion about:
-// candidates on the battlefield or in a library, or in a hand that is
-// not the bot's, where naming a card is not giving it up.
+// candidates on the battlefield or in a library (valueTakenFromLibrary
+// prices the bot's own), or in a hand that is not the bot's, where
+// naming a card is not giving it up.
 //
 // Cost is one cardValue per candidate per answer, and cardValue is a
 // type-line switch over a card already in memory. The widest prompt
@@ -476,6 +484,71 @@ func (st *state) valueKeptInHand(cfg Config, ch *protocol.PendingChoiceView, nam
 		kept += st.cardValue(cfg, c)
 	}
 	return kept, true
+}
+
+// libraryTakeFloor is what naming one card out of a library look is
+// worth before its cardValue. A taken card is never worth less than
+// nothing — it is a card the bot did not have — but cardValue prices a
+// zero-cost spell, or a card the view shows redacted, at exactly zero,
+// and a zero would tie with "take nothing", which the enumerator
+// offers first. Small enough never to outbid a real difference
+// between two cards.
+const libraryTakeFloor = 0.01
+
+// valueTakenFromLibrary scores one choose_cards answer over the bot's
+// own library by the total cardValue of the candidates it NAMES (#1831)
+// — the opposite sign of valueKeptInHand, because a card named out of a
+// library look is a card the bot gets. The second return is false for a
+// prompt this rule has no opinion about: any candidate that is not in
+// the bot's own library.
+//
+// The zone is the whole signal, and that is a claim about the catalog
+// rather than about the wire, so here is the evidence. Every
+// choose_cards prompt whose candidates are cards in the chooser's own
+// library comes from one of three helpers in cards/effects, and in all
+// three a named card goes somewhere the chooser wants it:
+//
+//   - TakeFromLibraryToHand / EachPlayerTakesFromLibrary — into the
+//     hand (Horn of the Mark, Explore the Vastlands);
+//   - PutFromLibraryOntoBattlefield — onto the battlefield under the
+//     chooser's control;
+//   - hideaway — exiled face down, to be played later for free.
+//
+// The cards a look does NOT name go to the bottom, or stay where they
+// were; nothing names a library card to mill it, exile it for good or
+// bury it — those are put_in_library and scry, kinds of their own. A
+// pile split over a revealed library is a reveal_pick since #1214, not
+// a choose_cards. If a card ever asks "choose cards from your library"
+// to put them somewhere bad, it needs a purpose on the prompt (the way
+// choose_color carries ColorPurpose), and this branch must read it.
+//
+// Max, Min and any set rule (Explore the Vastlands' land-and/or-spell
+// slots) are the enumerator's to enforce: every answer reaching this
+// function is one the engine accepts, so this is a preference over
+// legal sets and never a filter. "Any number" therefore takes every
+// card, and "up to one" takes the best one.
+func (st *state) valueTakenFromLibrary(cfg Config, ch *protocol.PendingChoiceView, named []string) (float64, bool) {
+	if ch == nil || len(ch.Options) == 0 || st.seat == nil {
+		return 0, false
+	}
+	lib := st.seat.Library.Cards
+	inLibrary := make(map[string]bool, len(lib))
+	for i := range lib {
+		inLibrary[lib[i].InstanceID] = true
+	}
+	opts := make(map[string]*protocol.CardView, len(ch.Options))
+	for i := range ch.Options {
+		id := ch.Options[i].InstanceID
+		if !inLibrary[id] {
+			return 0, false
+		}
+		opts[id] = &ch.Options[i]
+	}
+	var v float64
+	for _, id := range named {
+		v += libraryTakeFloor + st.cardValue(cfg, opts[id])
+	}
+	return v, true
 }
 
 // --- "choose a color" (#780) -----------------------------------------

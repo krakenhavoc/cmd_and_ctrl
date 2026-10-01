@@ -661,6 +661,27 @@
             <label>
               <input
                 type="checkbox"
+                checked={$settings.gameplay.highlightLegalActions}
+                onchange={(e) =>
+                  change("gameplay", "highlightLegalActions", e.currentTarget.checked)}
+              />
+              Highlight what you can do right now
+              {#if isFresh("gameplay.highlightLegalActions")}<span class="saved">✓ saved</span>{/if}
+            </label>
+            <p class="help">
+              While you owe a decision, a card you can cast or a land you can play gets a cyan ring,
+              and a pile shows how many of its cards are ready. A permanent with an ability you can
+              use gets a small pip (a bolt for an ability, a drop for a mana ability, a star for a
+              special action; tap one to open its menu), and a creature that can attack or block
+              gets a sword or shield. Screen readers hear what each card is ready for, and "N
+              actions available" once when the decision arrives. Nothing lights on a window
+              auto-pass is about to skip. Turning this off removes the rings, pips and counts only:
+              a card you cannot play is still greyed out.
+            </p>
+
+            <label>
+              <input
+                type="checkbox"
                 checked={$settings.gameplay.autoPassPriority}
                 onchange={(e) => change("gameplay", "autoPassPriority", e.currentTarget.checked)}
               />
@@ -1073,6 +1094,10 @@
               {#if isFresh("accessibility.colorblindPalette")}<span class="saved">✓ saved</span
                 >{/if}
             </label>
+            <p class="help">
+              Today this changes the ring on cards you can play from cyan to white, so it no longer
+              looks like the blue blocking ring. The seat colours themselves do not change yet.
+            </p>
 
             <label>
               <input

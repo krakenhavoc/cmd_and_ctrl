@@ -55,16 +55,17 @@ import (
 // or a noncreature permanent — is a rider, and so is a fixed clause
 // that happens whatever X is.
 var xMattersAllowlist = map[string]string{
-	"benevolent_hydra.go Benevolent Hydra":     "1/1 body: the Hydra survives at X=0 with its counter-boosting replacement and its {T} ability",
-	"domesticated_hydra.go Domesticated Hydra": "Monstrosity X at X=0 still makes it monstrous, and a monstrous Hydra has trample (#1700)",
-	"farmer_cotton.go Farmer Cotton":           "1/1 legendary body: the creature stays even when it brings no Halflings and no Food",
-	"fated_firepower.go Fated Firepower":       "an enchantment with flash: the permanent stays on the battlefield at X=0, amplifying by the 0 fire counters it entered with",
-	"lightning_serpent.go Lightning Serpent":   "2/1 trample haste body: at X=0 it still attacks for 2 before the end-step sacrifice",
-	"pull_from_tomorrow.go Pull from Tomorrow": "\"then discard a card\" is fixed: X=0 draws nothing and still discards, so it is a bad play rather than a no-op",
-	"spiteful_banditry.go Spiteful Banditry":   "the Treasure-on-death trigger never reads X: at X=0 the enchantment deals no damage and is still an engine",
-	"springleaf_parade.go Springleaf Parade":   "the \"creature tokens you control have {T}: Add one mana of any color\" static never reads X",
-	"the_goose_mother.go The Goose Mother":     "2/2 flying body and an attack trigger that never reads X",
-	"voracious_hydra.go Voracious Hydra":       "0/1 body survives at X=0, and the enters-the-battlefield fight mode is X-independent",
+	"benevolent_hydra.go Benevolent Hydra":              "1/1 body: the Hydra survives at X=0 with its counter-boosting replacement and its {T} ability",
+	"domesticated_hydra.go Domesticated Hydra":          "Monstrosity X at X=0 still makes it monstrous, and a monstrous Hydra has trample (#1700)",
+	"farmer_cotton.go Farmer Cotton":                    "1/1 legendary body: the creature stays even when it brings no Halflings and no Food",
+	"fated_firepower.go Fated Firepower":                "an enchantment with flash: the permanent stays on the battlefield at X=0, amplifying by the 0 fire counters it entered with",
+	"lightning_serpent.go Lightning Serpent":            "2/1 trample haste body: at X=0 it still attacks for 2 before the end-step sacrifice",
+	"pull_from_tomorrow.go Pull from Tomorrow":          "\"then discard a card\" is fixed: X=0 draws nothing and still discards, so it is a bad play rather than a no-op",
+	"spiteful_banditry.go Spiteful Banditry":            "the Treasure-on-death trigger never reads X: at X=0 the enchantment deals no damage and is still an engine",
+	"springleaf_parade.go Springleaf Parade":            "the \"creature tokens you control have {T}: Add one mana of any color\" static never reads X",
+	"the_goose_mother.go The Goose Mother":              "2/2 flying body and an attack trigger that never reads X",
+	"thryx_the_sudden_storm.go Thryx, the Sudden Storm": "no {X} of its own: SpellManaValueAtLeast reads the X of the OTHER spell being priced (CR 202.3e), never an X Thryx was cast for",
+	"voracious_hydra.go Voracious Hydra":                "0/1 body survives at X=0, and the enters-the-battlefield fight mode is X-independent",
 }
 
 // xMattersFinding is one disagreement between a Spec's source and its

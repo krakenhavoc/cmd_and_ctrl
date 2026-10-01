@@ -16,23 +16,22 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // exiles and still takes the lands. The four cards are an EXILE from
 // the library, not a mill, so no mill payoff sees them; then every
 // land card that player owns in exile — the four just exiled and any
-// exiled earlier by anything else, as printed — enters under the
-// controller's control through the ordinary return-from-exile path,
-// each as a new object with its own enters-tapped clause and ETB
-// triggers.
+// exiled earlier by anything else, as printed — is offered to the
+// controller, who picks any number of them (#1872: "you may put any
+// number" was taken at its maximum before, with no prompt). The picks
+// enter under the controller's control as ONE entry, each as a new
+// object with its own enters-tapped clause and ETB triggers, so each
+// sees the others enter (CR 603.6a).
 //
-// Sandbox simplification, declared: "you may put any number" is
-// taken at its maximum — every land card that player owns in exile
-// comes, with no prompt. The engine has no pick-from-exile prompt
-// with a continuation, and the printed choice can always be "all",
-// so this is never stronger than printed; a controller who would
-// rather leave a land in exile cannot.
+// A card exiled face down has no characteristics (CR 406.3a), so a
+// foretold land is not a land card and is not offered.
+//
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID:     "d39b9f64-dc9b-413f-8d05-e21ef46d6756",
 		Name:         "Oblivion Sower",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"You don't get to choose — every land card that player owns in exile is put onto the battlefield under your control."},
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{{
 			FromStack: true,
 			Watches:   []game.EventKind{game.EventCast},

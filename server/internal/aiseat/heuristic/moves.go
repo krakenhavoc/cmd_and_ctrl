@@ -254,6 +254,22 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 			return zeroXActivation, "activate for X=0"
 		}
 		v := p.cfg.ActivateBase
+		reason := "activate"
+		// ADR 0106 §1 decision 8 (owner decision 2): an "Any player may
+		// activate this ability" row on a permanent somebody else
+		// controls is worth only what the row DECLARES it buys this
+		// seat. The generic ActivateBase is positive, and an opponent's
+		// Flailing Ogre pumped or Feral Hydra grown by this seat's mana
+		// is a gift; so a row with no purpose is never chosen.
+		src := st.bf[cp.SourceCardID]
+		across := src != nil && src.Controller != "" && src.Controller != st.me
+		if across {
+			pv, ok := st.anyPlayerPurposeValue(src, cp.AbilityIndex)
+			if !ok {
+				return anyPlayerDeclined, "another player's ability with no declared purpose"
+			}
+			v, reason = pv, "activate another player's ability"
+		}
 		v += st.targetsValue(p.cfg, cp.Targets)
 		for _, id := range cp.SacrificeIDs {
 			if c := st.bf[id]; c != nil {
@@ -280,7 +296,7 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 		if cp.XValue > 0 {
 			v += p.cfg.SpellPerMana * float64(cp.XValue)
 		}
-		if src := st.bf[cp.SourceCardID]; src != nil && isCreature(src) && !src.Tapped {
+		if src != nil && !across && isCreature(src) && !src.Tapped {
 			// Tapping a creature for an ability costs us a blocker.
 			v -= 0.3
 		}
@@ -329,7 +345,7 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 				v -= st.w.Power * float64(c.Power)
 			}
 		}
-		return v, "activate"
+		return v, reason
 
 	case legal.KindMana:
 		// Casts already carry auto_tap, so floating mana buys the bot
@@ -492,6 +508,43 @@ func isPermanentSpell(c *protocol.CardView) bool {
 // A policy may not import internal/game (ADR 0033 §3), and this is
 // what that rule looks like in practice: the fact is already on the
 // wire, so the policy reads it rather than reaching for the engine.
+// anyPlayerDeclined is what an "Any player may activate" row on
+// another player's permanent is worth when the catalog declares no
+// purpose for it (ADR 0106 §1 decision 8): below passing, so the
+// policy never takes it.
+const anyPlayerDeclined = -1.0
+
+// anyPlayerPurposeValue prices an "Any player may activate this
+// ability" row on a permanent this seat does not control, from the
+// purpose the catalog declared on it (ADR 0106 §1 decision 8, owner
+// decision 2): the cards this seat draws, plus the life the
+// permanent's controller loses — counted only while that controller is
+// an opponent still in the game whose life can matter. Reports false
+// when the row declares no purpose, or is not an any-player row at all,
+// and then the move is never chosen.
+//
+// The purpose comes off the wire row (`purpose`), the only place a
+// policy may read catalog data from (ADR 0033 §3).
+func (st *state) anyPlayerPurposeValue(src *protocol.CardView, index int) (float64, bool) {
+	var row *protocol.ActivatedAbilityView
+	for i := range src.ActivatedAbilities {
+		if src.ActivatedAbilities[i].Index == index {
+			row = &src.ActivatedAbilities[i]
+			break
+		}
+	}
+	if row == nil || !row.AnyPlayer || row.Purpose == nil {
+		return 0, false
+	}
+	v := st.w.Hand * float64(row.Purpose.Draws)
+	if n := row.Purpose.ControllerLosesLife; n > 0 {
+		if e := st.evals[src.Controller]; e != nil && !e.Eliminated && !e.CantLoseLife {
+			v += (st.w.Life + st.w.ThreatLifeRev) * float64(n)
+		}
+	}
+	return v, v > 0
+}
+
 func (st *state) abilityDemandsX(sourceID string, index int) bool {
 	c := st.bf[sourceID]
 	if c == nil || index < 0 || index >= len(c.ActivatedAbilities) {

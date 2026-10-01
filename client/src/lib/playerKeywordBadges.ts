@@ -23,7 +23,7 @@
 // copy of either would be free to drift from the card badge's.
 
 import { KEYWORD_ICONS } from "./keywordIcons";
-import type { GameEndGateView } from "./protocol";
+import type { CounterShieldView, GameEndGateView } from "./protocol";
 
 export interface PlayerKeywordBadge {
   // The raw wire token — also the {#each} key, since two Leylines
@@ -144,6 +144,26 @@ export function endGateBadges(gates?: SeatEndGates): PlayerKeywordBadge[] {
   return badges;
 }
 
+// ADR 0106 §4 decision 6 (#1806): a seat's live "can't be countered"
+// grants and unspent promises (Veil of Summer, an unused Insist). Not
+// ability tokens either, so one badge of its own, after the gates, with
+// each line and its source in the tooltip.
+export interface SeatCounterShields {
+  counter_shields?: CounterShieldView[];
+}
+
+/**
+ * The "can't be countered" badge for one seat, or none.
+ */
+export function counterShieldBadges(seat?: SeatCounterShields): PlayerKeywordBadge[] {
+  const shields = seat?.counter_shields ?? [];
+  if (shields.length === 0) return [];
+  const lines = shields.map((s) => `${s.text} — ${s.source_name}`);
+  return [
+    { key: "counter-shields", short: "NO COUNTER", title: lines.join("\n"), kind: "protection" },
+  ];
+}
+
 /**
  * Turns PlayerView.keywords (and #1200's life_total_locked) into the
  * badges the seat tile renders, one per distinct token, in wire order
@@ -153,7 +173,7 @@ export function endGateBadges(gates?: SeatEndGates): PlayerKeywordBadge[] {
 export function playerKeywordBadges(
   keywords?: string[],
   lifeTotalLocked?: boolean,
-  endGates?: SeatEndGates,
+  endGates?: SeatEndGates & SeatCounterShields,
 ): PlayerKeywordBadge[] {
   const seen = new Set<string>();
   const badges: PlayerKeywordBadge[] = [];
@@ -195,5 +215,6 @@ export function playerKeywordBadges(
   }
   if (lifeTotalLocked) badges.push(LIFE_LOCK_BADGE);
   badges.push(...endGateBadges(endGates));
+  badges.push(...counterShieldBadges(endGates));
   return badges;
 }

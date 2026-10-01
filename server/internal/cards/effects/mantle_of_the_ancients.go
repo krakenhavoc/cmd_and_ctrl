@@ -51,37 +51,37 @@ func init() {
 	})
 }
 
-// mantleOfTheAncientsReturn returns each still-legal target to the
-// battlefield and attaches it to the enchanted creature.
+// mantleOfTheAncientsReturn returns every still-legal target that could
+// be attached to the enchanted creature, all of them as one entry
+// (#1867, CR 603.6a), and then attaches each one that arrived.
 func mantleOfTheAncientsReturn(g *game.Game, item *game.StackItem) error {
 	host := attachedHostFor(g, item.SourceCardID)
 	if host == nil {
 		return nil
 	}
-	hostRef := game.TargetRef{Kind: game.TargetCard, ID: host.InstanceID}
-	for _, t := range NewContext(g, item).LegalTargets() {
-		if t.Kind != game.TargetCard {
-			continue
-		}
-		card, ok := g.LookupCardForEffect(t.ID)
-		if !ok || !canBeAttachedTo(g, item.Controller, card, host.InstanceID) {
-			continue
-		}
-		back, err := g.ReturnToBattlefieldForEffect(t.ID, uuid.Nil, false)
-		if errors.Is(err, game.ErrCardNotFound) {
-			continue
-		}
-		if err != nil {
-			return err
-		}
-		if back == uuid.Nil {
-			back = t.ID
-		}
-		if err := g.AttachForEffect(back, hostRef); err != nil {
-			return err
+	hostID := host.InstanceID
+	var ids []uuid.UUID
+	for _, id := range legalTargetCardIDs(NewContext(g, item)) {
+		card, ok := g.LookupCardForEffect(id)
+		if ok && canBeAttachedTo(g, item.Controller, card, hostID) {
+			ids = append(ids, id)
 		}
 	}
-	return nil
+	return ReturnFromGraveyardTogether{
+		Targets: ids,
+		Then: func(ctx *Context, entered []uuid.UUID) error {
+			hostRef := game.TargetRef{Kind: game.TargetCard, ID: hostID}
+			for _, id := range entered {
+				if !onBattlefield(ctx.Game, id) {
+					continue
+				}
+				if err := ctx.Game.AttachForEffect(id, hostRef); err != nil && !errors.Is(err, game.ErrCardNotFound) {
+					return err
+				}
+			}
+			return nil
+		},
+	}.Apply(NewContext(g, item))
 }
 
 // canBeAttachedTo reports whether `attachment` (a card about to enter)

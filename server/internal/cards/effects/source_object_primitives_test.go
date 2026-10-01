@@ -461,12 +461,14 @@ func TestADiesTriggerStillActsOnTheCardInTheZoneItWentTo(t *testing.T) {
 // decides which.
 func TestEveryPrimitiveThatActsOnACardAsksAboutItsSource(t *testing.T) {
 	exempt := map[string]string{
-		"DealDamage":           "damage FROM the source reads last-known information (CR 608.2h); damage TO it is dealt by a mass-effect loop as often as by \"this\", and is not an act the source's text names as \"this\"",
-		"ReturnFromGraveyard":  "follows the card: the card is in a graveyard, never a permanent that left and came back",
-		"ReturnFromExile":      "follows the card: the card is in exile",
-		"GrantFlashbackToCard": "a card in a graveyard",
-		"PlotExiled":           "a card in exile",
-		"CreateTokenCopy":      "reads copiable values; last-known information is the answer for a source that left (CR 707.4)",
+		"DealDamage":                  "damage FROM the source reads last-known information (CR 608.2h); damage TO it is dealt by a mass-effect loop as often as by \"this\", and is not an act the source's text names as \"this\"",
+		"ReturnFromGraveyard":         "follows the card: the card is in a graveyard, never a permanent that left and came back",
+		"ReturnFromGraveyardTogether": "follows the cards: each is in a graveyard, never a permanent that left and came back",
+		"ReturnFromExile":             "follows the card: the card is in exile",
+		"ReturnFromExileTogether":     "follows the cards: each is in exile, never a permanent that left and came back",
+		"GrantFlashbackToCard":        "a card in a graveyard",
+		"PlotExiled":                  "a card in exile",
+		"CreateTokenCopy":             "reads copiable values; last-known information is the answer for a source that left (CR 707.4)",
 	}
 	ps := scanPrimitives(t)
 	structs, applies, guarded := ps.structs, ps.applies, ps.guarded
@@ -633,6 +635,9 @@ func TestNoCardActsOnItsOwnSourceThroughAGameMutatorWithoutAsking(t *testing.T) 
 		"teferis_protection.go": true, "teferis_reproach.go": true,
 		"avatars_wrath.go": true, "blue_suns_zenith.go": true,
 		"temporal_mastery.go": true, "temporal_trespass.go": true,
+		"bound_determined.go": true, // Bound's "Exile this card." (ADR 0106 PR 3)
+		// Restorative Burst, the sorcery back face: "Exile Restorative Burst."
+		"pestilent_cauldron.go": true,
 	}
 	isSelf := func(e ast.Expr) bool {
 		s := exprString(e)

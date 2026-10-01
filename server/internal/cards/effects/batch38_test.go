@@ -924,18 +924,25 @@ func TestB38ExhumeLetsEachPlayerReanimateTheirOwn(t *testing.T) {
 	if hasID(mineAsk.ChooseCards, shock) {
 		t.Error("an instant is not a creature card")
 	}
-	if latestChooseCardsFor(g, opp.ID) == nil {
-		t.Fatal("each player is prompted, not just the caster")
+	// CR 101.4: APNAP order, one player at a time.
+	if latestChooseCardsFor(g, opp.ID) != nil {
+		t.Fatal("the opponent is asked only after the active player has chosen")
 	}
 	if err := g.ResolveChooseCards(mineAsk.ID, me.ID, []uuid.UUID{mine}); err != nil {
 		t.Fatalf("ResolveChooseCards: %v", err)
 	}
-	if !g.Battlefield.Contains(mine) {
-		t.Error("the chosen creature arrives")
+	if g.Battlefield.Contains(mine) {
+		t.Error("nothing enters until every player has chosen (#1867)")
 	}
 	oppAsk := latestChooseCardsFor(g, opp.ID)
+	if oppAsk == nil {
+		t.Fatal("each player is prompted, not just the caster")
+	}
 	if err := g.ResolveChooseCards(oppAsk.ID, opp.ID, []uuid.UUID{theirs}); err != nil {
 		t.Fatalf("ResolveChooseCards (opponent): %v", err)
+	}
+	if !g.Battlefield.Contains(mine) || !g.Battlefield.Contains(theirs) {
+		t.Error("both chosen creatures arrive, together")
 	}
 	var back game.Card
 	g.ReadSnapshot(func() {

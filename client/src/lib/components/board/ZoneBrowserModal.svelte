@@ -41,7 +41,8 @@
   // the same card.
   import { exileCostBadge, exileEntryFor, exileEntryLegality } from "../../exileStrip";
   import ManaSymbol from "./ManaSymbol.svelte";
-  import type { Legality } from "../../timing";
+  import { canCastFromHand, type Legality } from "../../timing";
+  import { NO_LEGAL_ACTIONS, withAvailable, type LegalActions } from "../../legalActions";
 
   type ActionSender = (type: ActionType, params?: ActionPayload["params"], player?: string) => void;
 
@@ -87,6 +88,17 @@
     // the battlefield's does, rather than being clickable and
     // refused.
     sorcerySpeedBlocked?: string;
+    // ADR 0105 (#1789): the frame's legal-action lookup, "nothing"
+    // while highlights are off or autopass is about to pass. A browsed
+    // card with a legal move gets the ready ring, and a cast button
+    // whose card the server would accept takes the ready accent.
+    // Gates nothing: the buttons' disabled states read the frame. The
+    // ability popover's ready-row accent reads it too.
+    legal?: LegalActions;
+    // ADR 0105 sub-PR 3: the frame's full lookup, for the popover's
+    // sorcery-speed gate (unearth, embalm, scavenge). The highlight
+    // setting never touches it.
+    legalGate?: LegalActions;
   }
 
   const {
@@ -100,6 +112,8 @@
     onCastCard,
     onActivateAbility,
     sorcerySpeedBlocked = "",
+    legal = NO_LEGAL_ACTIONS,
+    legalGate = NO_LEGAL_ACTIONS,
   }: Props = $props();
 
   // #1221: the activation callback for ONE browsed card, or undefined
@@ -193,6 +207,16 @@
   const castableFor = (card: CardView) =>
     castableFromZone(card, zoneKind) && onCastCard !== undefined;
 
+  // ADR 0105 (#1789): `castable_here` says the graveyard permission's
+  // window is open; it deliberately does not say the viewer can pay
+  // (CR 601.2g, #695). The move list does. So the button is SHOWN on
+  // `castable_here`, as before, and DISABLED when the list has no cast
+  // for the card — "you cannot afford it" is visible, with a reason,
+  // instead of a click the server refuses. The same verdict greys an
+  // uncastable hand card, and it stays permissive on a frame with no
+  // list.
+  const graveLegalityFor = (card: CardView): Legality => canCastFromHand(card, view, viewerID);
+
   // #1440: the VERB for the graveyard button and its labels — "play"
   // for a land (CR 305.1, CR 116.2a — a land is played, not cast) and
   // "cast" for everything else. Kept separate from castLabelFor below,
@@ -225,6 +249,7 @@
 
   function castFromZone(card: CardView): void {
     if (!onCastCard || zoneKind !== "graveyard") return;
+    if (!graveLegalityFor(card).legal) return;
     onCastCard(card, "graveyard");
     onClose();
   }
@@ -356,9 +381,13 @@
           <li class="cell">
             <Card
               {card}
+              ready={legal.isReady(card.instance_id)}
+              readyZone={zoneKind === "stack" ? undefined : zoneKind}
               onClick={onTargetCard ? () => void onTargetCard?.(card) : undefined}
               onActivateAbility={activateHandlerFor(card)}
               {sorcerySpeedBlocked}
+              {legal}
+              {legalGate}
             />
             {#if labelFor(card)}
               {@const leg = exileLegalityFor(card)}
@@ -385,6 +414,7 @@
                 <button
                   type="button"
                   class="act impulse"
+                  class:ready={legal.castableFrom(card.instance_id, "exile")}
                   disabled={!leg.legal}
                   title={leg.legal
                     ? grantFor(card)?.any_type
@@ -393,7 +423,10 @@
                         ? "spend mana as though it were any colour"
                         : "playable until end of turn"
                     : (leg.reason ?? "Not castable from exile right now")}
-                  aria-label={`${labelFor(card)} ${grantedName(card)} from exile`}
+                  aria-label={withAvailable(
+                    `${labelFor(card)} ${grantedName(card)} from exile`,
+                    legal.castableFrom(card.instance_id, "exile"),
+                  )}
                   onclick={() => playFromExile(card)}
                 >
                   {labelFor(card)}
@@ -414,12 +447,20 @@
                    in the graveyard is a resource, and a player who
                    has to hover to discover that will not discover
                    it. -->
+              {@const graveLeg = graveLegalityFor(card)}
               <div class="actions always" aria-label={`${castVerbFor(card)} from graveyard`}>
                 <button
                   type="button"
                   class="act impulse"
-                  title={`${castVerbFor(card)} from your graveyard`}
-                  aria-label={`${castVerbFor(card)} ${card.name || "card"} from graveyard`}
+                  class:ready={legal.castableFrom(card.instance_id, "graveyard")}
+                  disabled={!graveLeg.legal}
+                  title={graveLeg.legal
+                    ? `${castVerbFor(card)} from your graveyard`
+                    : (graveLeg.reason ?? "Not castable from your graveyard right now")}
+                  aria-label={withAvailable(
+                    `${castVerbFor(card)} ${card.name || "card"} from graveyard`,
+                    legal.castableFrom(card.instance_id, "graveyard"),
+                  )}
                   onclick={() => castFromZone(card)}
                 >
                   {castLabelFor(card)}
@@ -578,6 +619,13 @@
   /* #1406: a shut timing window (end step, wrong phase, a cant_cast
      clause) greys the button instead of hiding it, so the reason is
      still readable on hover. */
+  /* ADR 0105: the server's move list says this one goes through right
+     now, mana included. */
+  .act.impulse.ready:not(:disabled) {
+    border-color: var(--ready);
+    color: var(--ready);
+    background: var(--ready-soft);
+  }
   .act:disabled {
     opacity: 0.45;
     cursor: not-allowed;

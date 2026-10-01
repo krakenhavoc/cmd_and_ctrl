@@ -225,6 +225,20 @@ type Characteristic struct {
 	// COUNTS them. Goad's pairs are not here: they ride Card.Goads.
 	AttackRequirements []AttackRequirement
 
+	// AttackTargetRestrictions are the CR 508.1c restrictions on WHAT
+	// this object may attack, keyed on the object itself: "can't attack
+	// its owner" (Alexios), "… or planeswalkers its owner controls"
+	// (Xantcha, Sleeper Agent). ADR 0106 §2, #1794,
+	// attack_target_restrictions.go.
+	//
+	// AttackRequirements' twin, for the same reasons: written by
+	// ordinary layer statics, only ever appended to, never cleared by a
+	// layer-6 ability removal (a creature's OWN restriction goes with
+	// its abilities because its catalog static stops being applied,
+	// CR 613.1f). The owner each one names is read live off the
+	// creature, never stored here.
+	AttackTargetRestrictions []AttackTargetRestriction `json:",omitempty"`
+
 	// BlockRequirements are the CR 509.1c requirements this object
 	// carries — "blocks each combat if able" on a would-be blocker
 	// (Watchdog, Grand Melee's second line), and on an attacker "all
@@ -390,6 +404,7 @@ func (c Characteristic) clone() Characteristic {
 	out.Abilities = append([]string(nil), c.Abilities...)
 	out.GrantedAbilities = append([]GrantedAbility(nil), c.GrantedAbilities...)
 	out.AttackRequirements = append([]AttackRequirement(nil), c.AttackRequirements...)
+	out.AttackTargetRestrictions = append([]AttackTargetRestriction(nil), c.AttackTargetRestrictions...)
 	out.BlockRequirements = append([]BlockRequirement(nil), c.BlockRequirements...)
 	out.CantHave = append([]string(nil), c.CantHave...)
 	return out

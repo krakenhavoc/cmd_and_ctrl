@@ -1,0 +1,32 @@
+package effects
+
+// Warmonger — Creature — Minotaur Monger {3}{R}, 3/3:
+//
+//	"{2}: This creature deals 1 damage to each creature without flying
+//	 and each player. Any player may activate this ability."
+//
+// An any-player row (CR 602.2, 602.1b): whoever activates it pays the
+// {2} out of their own pool (CR 602.1a). Warmonger is the source of the
+// damage (CR 120.3), read as it last existed if it has left (CR
+// 113.7a), and it is a creature without flying, so it hits itself.
+// "Without flying" is read post-layer as the ability resolves, and
+// every player is hit, the activator included
+// (effects_damage_each_creature_and_player.go).
+//
+// No Purpose: the effect is symmetric, so the bot does not reach across
+// the table for it (ADR 0106 owner decision 2).
+//
+// No simplification.
+func init() {
+	Register(Spec{
+		OracleID:     "bae92332-1a0b-476b-8719-190e8d8cc03a",
+		Name:         "Warmonger",
+		Completeness: CompletenessFull,
+		Activated: []ActivatedAbility{{
+			Label:     "{2}: This creature deals 1 damage to each creature without flying and each player. Any player may activate this ability.",
+			Cost:      ManaCost("{2}"),
+			AnyPlayer: true,
+			Effect:    thisDealsDamageToEachCreatureMatchingAndEachPlayer(WithoutKeyword("flying"), 1),
+		}},
+	})
+}

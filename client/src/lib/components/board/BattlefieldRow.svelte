@@ -10,10 +10,21 @@
   // a 2-D placement meaningless, and the server already defaults
   // both axes to 0 for cards that have never been positioned.
 
+  import type { CantAttackChip } from "../../cantAttack";
   import type { CardView } from "../../protocol";
   import Card from "./Card.svelte";
   import { etbPulse } from "../../animations";
   import { rowEntries } from "../../tokenGroups";
+  import {
+    NO_COMBAT_RINGS,
+    NO_LEGAL_ACTIONS,
+    combatPipFor,
+    readyPips,
+    type CombatRings,
+    type LegalActions,
+    type ReadyPips,
+  } from "../../legalActions";
+  import type { MenuAction } from "../../contextMenu.logic";
 
   interface Props {
     label: string;
@@ -68,12 +79,39 @@
     // controls — a stolen permanent, or the permanent a stolen spell
     // became. Derived by PlayerPanel, for curseTargets' reason.
     takenFrom?: Record<string, string>;
+    // ADR 0106 §2 (#1794): the CAN'T ATTACK chip for each creature that
+    // can't attack its owner, keyed by instance ID. Derived by
+    // PlayerPanel from the card views, for curseTargets' reason.
+    cantAttack?: Record<string, CantAttackChip>;
     // #1724: identical tokens fold into a group drawn as at most two
     // cards (untapped, tapped) with a count; clicking one calls this
     // with the group's key and the panel opens the member list
     // (TokenGroupModal). Undefined turns grouping off, so a row with
     // nowhere to open the list never hides a token behind a count.
     onGroupClick?: (groupKey: string) => void;
+    // ADR 0105 (#1789): the frame's legal-action lookups. `legal` is
+    // what may be highlighted ("nothing" while highlights are off or
+    // autopass is passing; on an opponent's panel only that panel's
+    // any-player rows, ADR 0106 §1, legalActions.ts acrossActions). It
+    // draws each permanent's bolt / drop / star pips, and the ring that
+    // goes with a bolt or a star (a drop pip alone gets no ring, §2).
+    // `legalGate` is the full lookup, for the ability popover's gates
+    // only. Both default to "no information".
+    legal?: LegalActions;
+    legalGate?: LegalActions;
+    // ADR 0105 sub-PR 4: sends a CR 116.2 special action chosen from a
+    // permanent's ability popover: a face-down permanent's turn face
+    // up, a Room's unlock. Wired on the viewer's own panel only.
+    // Undefined keeps those rows, and their star pip, out of the
+    // popover.
+    onSpecialAction?: (action: MenuAction) => void;
+    // ADR 0105 sub-PR 5: the combat rings (legalActions.ts
+    // combatRings), already empty while highlights are off. A
+    // candidate (a creature that may attack or block) wears the ready
+    // ring. A target of the selected creature (a planeswalker or
+    // battle it may attack, an attacker it may block) wears it too,
+    // drawn so it reads over the red attacking ring.
+    combat?: CombatRings;
   }
 
   const {
@@ -92,8 +130,29 @@
     attachmentsByHost = {},
     curseTargets = {},
     takenFrom = {},
+    cantAttack = {},
     onGroupClick,
+    legal = NO_LEGAL_ACTIONS,
+    legalGate = NO_LEGAL_ACTIONS,
+    onSpecialAction,
+    combat = NO_COMBAT_RINGS,
   }: Props = $props();
+
+  // ADR 0105 §2: the special-action rows go only to a card that offers
+  // any. The server strips `special_actions` from every seat but the
+  // card's controller, so an opponent's card has none anyway.
+  const specialFor = (c: CardView) =>
+    onSpecialAction && (c.special_actions?.length ?? 0) > 0 ? onSpecialAction : undefined;
+  // The ready ring on a permanent: a live activated ability (the
+  // bolt), or a live special action (the star: a face-down permanent's
+  // turn face up). A drop pip alone gets no ring (§2). Each only where
+  // its popover is wired, as the pips are.
+  const ringFor = (c: CardView, p: ReadyPips) =>
+    (!!onActivateAbility && p.abilities > 0) || (!!specialFor(c) && p.special > 0);
+  // A token group's card stands for every member, so it lights when
+  // any member does, the way its selection ring does.
+  const anyIn = (ids: ReadonlySet<string>, c: CardView, memberIDs: string[] | undefined) =>
+    ids.size > 0 && (memberIDs ?? [c.instance_id]).some((id) => ids.has(id));
 
   const sorted = $derived.by(() => {
     const byX = [...cards].sort((a, b) => (a.battle_x ?? 0) - (b.battle_x ?? 0));
@@ -196,14 +255,23 @@
         {#each p.cards as c, i (c.instance_id)}
           {@const attached = attachmentsFor(p, c)}
           {@const memberIDs = p.group?.members.map((m) => m.instance_id)}
+          {@const cPips = readyPips(legal, c, "battlefield")}
+          {@const cTarget = anyIn(combat.targets, c, memberIDs)}
           <div role="listitem" class:tapped={!!c.tapped} style:--i={i} use:etbPulse>
             <div class="host-stack" class:has-attachments={attached.length > 0}>
               {#each attached as a (a.instance_id)}
+                {@const aPips = readyPips(legal, a, "battlefield")}
                 <div class="attachment">
                   <Card
                     card={a}
+                    ready={ringFor(a, aPips)}
+                    pips={aPips}
+                    onSpecialAction={specialFor(a)}
+                    {legal}
+                    {legalGate}
                     enchantedPlayer={curseTargets[a.instance_id]}
                     takenFrom={takenFrom[a.instance_id]}
+                    cantAttack={cantAttack[a.instance_id]}
                     onClick={onCardClick}
                     onActivateManaAbility={onActivateManaAbility
                       ? (idx) => onActivateManaAbility(a, idx)
@@ -221,8 +289,16 @@
               <div class="host">
                 <Card
                   card={c}
+                  ready={ringFor(c, cPips) || cTarget || anyIn(combat.candidates, c, memberIDs)}
+                  combatTarget={cTarget}
+                  combatPip={combatPipFor(legal, combat, memberIDs ?? [c.instance_id])}
+                  pips={cPips}
+                  onSpecialAction={specialFor(c)}
+                  {legal}
+                  {legalGate}
                   enchantedPlayer={curseTargets[c.instance_id]}
                   takenFrom={takenFrom[c.instance_id]}
+                  cantAttack={cantAttack[c.instance_id]}
                   selected={memberIDs
                     ? !!selectedCombatCardID && memberIDs.includes(selectedCombatCardID)
                     : selectedCombatCardID === c.instance_id}
