@@ -53,6 +53,10 @@
     // server would accept right now take the ready accent and sort
     // first. It greys nothing.
     legal?: LegalActions;
+    // ADR 0106 §1 (#1793): the frame's FULL lookup. On a permanent the
+    // viewer does not control, the menu is its "Any player may activate
+    // this ability" rows, and one the exact digest leaves out greys.
+    legalGate?: LegalActions;
   }
 
   const {
@@ -64,6 +68,7 @@
     onActivate,
     onClose,
     legal = NO_LEGAL_ACTIONS,
+    legalGate = NO_LEGAL_ACTIONS,
   }: Props = $props();
 
   // Re-resolve the card from the live snapshot so counter totals,
@@ -74,7 +79,7 @@
   const card = $derived(findCard(view, open.card.instance_id) ?? open.card);
   const where = $derived(locateCard(view, open.card.instance_id));
   const zoneLabel = $derived(where ? ZONE_LABELS[where.zone] : "gone");
-  const sections = $derived(buildMenuSections(view, card, viewerID, isAdmin, legal));
+  const sections = $derived(buildMenuSections(view, card, viewerID, isAdmin, legal, legalGate));
 
   // trail is the drill-down path, held as item IDs rather than item
   // objects so a snapshot arriving while a submenu is open refreshes

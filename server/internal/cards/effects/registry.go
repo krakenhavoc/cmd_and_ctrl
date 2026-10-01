@@ -466,6 +466,8 @@ func Register(spec Spec) {
 		// mana owner is held to (checkExileCardsClause).
 		checkExileCardsClause(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.ExileCards)
 		checkAbilityCostModifiers(spec.Name, i, ab)
+		// ADR 0106 §1 decision 1: "Any player may activate this ability".
+		checkAnyPlayerAbility(spec.Name, fmt.Sprintf("ability %d", i), ab)
 		// CR 113.6 / ADR 0062 Decision 1: an ability that functions
 		// somewhere other than the battlefield has no permanent to
 		// tap, sacrifice, crew or put loyalty counters on. Such a

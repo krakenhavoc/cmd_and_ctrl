@@ -2757,6 +2757,7 @@
       onActivate={handleMenuActivate}
       onClose={closeCardMenu}
       {legal}
+      {legalGate}
     />
   {/if}
 </div>

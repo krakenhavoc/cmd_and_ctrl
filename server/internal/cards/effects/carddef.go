@@ -51,6 +51,8 @@ func activatedShapes(in []ActivatedAbility) []game.ActivatedAbilityShape {
 			Exhaust:       a.Exhaust,
 			CostModifiers: a.CostModifiers,
 			Uncopyable:    a.Uncopyable,
+			AnyPlayer:     a.AnyPlayer,
+			Purpose:       a.Purpose,
 			Effect:        a.Effect,
 		}
 	}

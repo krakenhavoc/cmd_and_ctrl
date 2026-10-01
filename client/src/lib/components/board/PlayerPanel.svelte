@@ -69,6 +69,7 @@
   import {
     NO_COMBAT_RINGS,
     NO_LEGAL_ACTIONS,
+    acrossActions,
     actionableCount,
     attackTargetListed,
     attackTargetOpen,
@@ -118,7 +119,9 @@
     // S21 sub-PR 2: a CR 602 activated ability on one of this
     // seat's permanents was chosen from the card menu. Board owns
     // the follow-up (sacrifice pick, targeting) because those are
-    // board-wide modals. Only wired for the viewer's own panel.
+    // board-wide modals. On an opponent's panel the popover reaches it
+    // only for an "Any player may activate this ability" row, the one
+    // kind of row the viewer may activate there (ADR 0106 §1).
     onActivateAbility?: (card: CardView, abilityIndex: number) => void;
     // S21, widened in #789: a mana ability on one of this seat's
     // permanents needs a cost choice before it can be activated — a
@@ -208,13 +211,36 @@
   }: Props = $props();
 
   // ADR 0105: the battlefield rows read the lookups on the viewer's own
-  // panel only. The digest is the viewer's, so an opponent's permanent
-  // has no entry in it anyway. Their popover is not wired either, and a
-  // pip that points at nothing is worse than none. A spectator never
-  // has a digest. Opponents' rows are not gated on the viewer's digest
-  // either, just as `sorcerySpeedBlocked` below is "" for them.
-  const rowLegal = $derived(isSelf && !spectator ? legal : NO_LEGAL_ACTIONS);
-  const rowGate = $derived(isSelf && !spectator ? legalGate : NO_LEGAL_ACTIONS);
+  // panel. A spectator never has a digest.
+  //
+  // ADR 0106 §1 decisions 5 and 6 (#1793): on an opponent's panel they
+  // read `acrossActions`, which answers only for that panel's
+  // "Any player may activate this ability" rows. The digest is the
+  // viewer's own moves, so it lists another player's permanent exactly
+  // when the viewer may activate such a row on it right now; that
+  // permanent then wears the bolt pip and ring, and its popover's gate
+  // reads the same answer. Nothing else lights through these lookups on
+  // an opponent's panel; the combat rings below have their own.
+  const battlefieldCards = $derived(view.battlefield?.cards ?? []);
+  const rowLegal = $derived(
+    spectator
+      ? NO_LEGAL_ACTIONS
+      : isSelf
+        ? legal
+        : acrossActions(legal, battlefieldCards, viewerID),
+  );
+  const rowGate = $derived(
+    spectator
+      ? NO_LEGAL_ACTIONS
+      : isSelf
+        ? legalGate
+        : acrossActions(legalGate, battlefieldCards, viewerID),
+  );
+  // #1695: the life the popover's life-cost check reads. On the
+  // viewer's own panel that is the seat's. On an opponent's panel the
+  // only rows the popover lists are any-player rows, and the player
+  // who activates one pays its cost (CR 602.1a): the viewer.
+  const payerLife = $derived(isSelf ? seat.life : view.seats.find((s) => s.id === viewerID)?.life);
   // ADR 0105 §7 (sub-PR 6): how many of this seat's cards wear a
   // highlight, for the phase display's "N actions available". Only the
   // viewer's own panel mounts the phase display.
@@ -345,6 +371,15 @@
   // never gated on the VIEWER's window, so they get "" too.
   const sorcerySpeedBlocked = $derived(
     isSelf ? (canActivateSorcerySpeedAbility(view, viewerID).reason ?? "") : "",
+  );
+  // ADR 0106 §1: the battlefield rows' words. An opponent's permanent
+  // offers the viewer only its any-player rows, whose timing is the
+  // ACTIVATOR's (CR 109.5), so a row the server shut is explained in the
+  // viewer's window there too. A spectator opens no popover.
+  const rowTimingWords = $derived(
+    isSelf || spectator
+      ? sorcerySpeedBlocked
+      : (canActivateSorcerySpeedAbility(view, viewerID).reason ?? ""),
   );
 
   // #1724: the token group whose member list is open, by group key.
@@ -590,8 +625,8 @@
       onActivateManaAbility={activateManaAbility}
       onRawTap={activateManaAbility ? onTapToggle : undefined}
       {onActivateAbility}
-      {sorcerySpeedBlocked}
-      payerLife={seat.life}
+      sorcerySpeedBlocked={rowTimingWords}
+      {payerLife}
       legal={rowLegal}
       combat={rings}
       legalGate={rowGate}
@@ -618,8 +653,8 @@
       onActivateManaAbility={activateManaAbility}
       onRawTap={activateManaAbility ? onTapToggle : undefined}
       {onActivateAbility}
-      {sorcerySpeedBlocked}
-      payerLife={seat.life}
+      sorcerySpeedBlocked={rowTimingWords}
+      {payerLife}
       legal={rowLegal}
       combat={rings}
       legalGate={rowGate}
@@ -640,8 +675,8 @@
       onActivateManaAbility={activateManaAbility}
       onRawTap={activateManaAbility ? onTapToggle : undefined}
       {onActivateAbility}
-      {sorcerySpeedBlocked}
-      payerLife={seat.life}
+      sorcerySpeedBlocked={rowTimingWords}
+      {payerLife}
       legal={rowLegal}
       combat={rings}
       legalGate={rowGate}

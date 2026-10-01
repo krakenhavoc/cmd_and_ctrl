@@ -804,7 +804,7 @@ canonical type definition. High-level shape:
   Two engine event kinds about **prompts that changed hands when a player left the game** are deliberately server-side only and are **not** projected into `log`: `pending_choice_dropped` (#864) and `pending_choice_reassigned` (#902, CR 800.4g/h — `actor` the departed chooser, `target` the player who inherits, `source` the object, `label` the `PendingChoiceKind`). Both are diagnostics for a stalled table. What a player needs to see is already on the wire without them: the prompt itself, which the very next `snapshot` carries under its new `PendingChoiceView.chooser` — no new field, and no client change, because the picker already renders a prompt exactly when `chooser` is the viewer.
 - **LogEvent** (S31, omitempty): `{ seq, kind, turn?, round?, step?, seat, target_seat?, card_id?, target?, amount?, old_zone?, new_zone?, combat?, combat_step?, choice?, label?, cause?, actor_is_host?, text }` — one line of the **public game log** ([ADR 0033](decisions/0033-ai-bot-seat.md) §4). `turn` is the per-turn sequence identity carried forward from the latest step entry; `round` is present on `step` entries and is the table-facing number used in their rendered text. `GameView.log` is the last 200 table-visible events, **oldest first**, and it is a projection of the engine's own event log rather than a stored buffer — nothing on `game.Game` holds it, so it survives an undo, a snapshot restore and a deploy by riding `Game.Events`, which already does.
 
-  `kind` is one of `step`, `cast`, `resolve`, `fizzle`, `counter`, `zone`, `draw`, `life`, `damage`, `attack`, `block`, `no_blocks`, `token`, `sacrifice`, `eliminated`, `game_over`, `win_prevented`, `reveal`, `roll`, `flip`, `choose_color`, `choose_type`, `choose_player`, `choose_controller`, `choose_name`, `choose_option`, `control`, `special_action`, `cycle`, `counters`, `scry`, `surveil`, `discover`, `saga_chapter`, `class_level`, `door_unlocked`, `door_locked`, `room_fully_unlocked`, `settings`, `spawn`, `transform`, `phase_out`, `phase_in`, `storm`, `turn_face_down`, `extra_turn`, `extra_phase` — deliberately coarser than the engine's event kinds, because several engine events are one line to a reader and most engine events are no line at all. **Which** engine kinds get no line is no longer a matter of taste: `server/internal/protocol/log_event_kind_gate_test.go` (#984) reads every declared `game.EventKind` and fails unless the projection has an arm for it or the file lists it as a deliberate silence with a written reason.
+  `kind` is one of `step`, `cast`, `resolve`, `fizzle`, `counter`, `zone`, `draw`, `life`, `damage`, `attack`, `block`, `no_blocks`, `token`, `sacrifice`, `eliminated`, `game_over`, `win_prevented`, `reveal`, `roll`, `flip`, `choose_color`, `choose_type`, `choose_player`, `choose_controller`, `choose_name`, `choose_option`, `control`, `special_action`, `activate_across`, `cycle`, `counters`, `scry`, `surveil`, `discover`, `saga_chapter`, `class_level`, `door_unlocked`, `door_locked`, `room_fully_unlocked`, `settings`, `spawn`, `transform`, `phase_out`, `phase_in`, `storm`, `turn_face_down`, `extra_turn`, `extra_phase` — deliberately coarser than the engine's event kinds, because several engine events are one line to a reader and most engine events are no line at all. **Which** engine kinds get no line is no longer a matter of taste: `server/internal/protocol/log_event_kind_gate_test.go` (#984) reads every declared `game.EventKind` and fails unless the projection has an arm for it or the file lists it as a deliberate silence with a written reason.
 
   **Leaving and ending the game ([ADR 0057](decisions/0057-win-and-lose-by-effect.md) Decision 7, #749).** An `eliminated` entry carries `cause` — `"life"`, `"empty_draw"`, `"poison"`, `"commander_damage"`, `"effect"` or `"concede"` — and its text says why: "Alice lost the game (0 or less life)", "… (drew from an empty library)", "… (10 poison counters)", "… (commander damage)", "… (Pact of Negation)" with `card_id` the source of an effect loss, and "Alice conceded". `amount` is still 1 on a concession for older clients. A concession is ONE line: the engine's separate concede event is silent. A loss a "can't lose the game" effect stopped writes nothing (it would repeat on every check while a player sits at 0 life; `PlayerView.cant_lose` shows the state instead). A `game_over` entry closes a game that ended with a result: `seat` is the winner (`NoSeat` for a draw), `cause` is the outcome cause, `card_id` the winning source of an effect win — "Alice won the game (Felidar Sovereign)", "Alice won the game: every opponent has left", "The game is a draw". A `win_prevented` entry is an effect win a "can't win the game" gate stopped: `seat` would have won, `card_id` is the winning source and `target` the gate's source — "Alice would have won the game (Laboratory Maniac), but can't (Platinum Angel)". Once per prevented win.
 
@@ -816,6 +816,7 @@ canonical type definition. High-level shape:
 
   - `control` — a permanent changed controller (CR 613.1b). `seat` is the player who GAINED control and `target_seat` the one who lost it, which is one sentence for a gain, an exchange (CR 701.12) and a duration expiring: "P1 gained control of Grizzly Bears from P2".
   - `special_action` — a CR 116.2 special action: foretell, suspend, plot, turning face up. `label` is the action as the card prints it ("Foretell {2}"). The card's zone move says only that a card left a hand for exile; this says which action it was.
+  - `activate_across` — a player activated the "Any player may activate this ability" row of a permanent another player controls (CR 602.2, [ADR 0106 §1](decisions/0106-five-small-seams-from-the-s50-rechecks.md), #1793): "Bob activated Alice's Xantcha, Sleeper Agent". `actor` is the activator, `card_id` the permanent and `target_seat` its controller. An activation by the permanent's own controller has no entry.
   - `cycle` — a cycling (CR 702.29b). It **replaces** the `zone` entry for the discard that paid the cost, the way a `sacrifice` entry replaces the zone move it causes, and keeps that entry's `seq`.
   - `counters` — the count of one counter kind on one card changed (CR 122). `label` is the kind (`"+1/+1"`), `amount` the count **after** the change — the engine's event carries no delta, so a placement and a removal are the same line with a different number, and `amount` ≤ 0 means the last one came off. **Loyalty and lore counters get no line**: a planeswalker's loyalty moves on every activation and every point of damage, both of which are already entries, and a lore counter's advance is the `saga_chapter` line below. The rule is `counterKindIsNarrated` in `log.go`.
 
@@ -2198,6 +2199,43 @@ the recipient's summoning sickness. Three things reach the wire.
 Identical grants are not merged: two grantors give two rows, each
 labelled with its grantor (CR 113.2c; the working default until the
 owner settles ADR 0093's open presentation question).
+
+## Abilities any player may activate (ADR 0106 §1, #1793, 2026-10-01)
+
+Additive, `v` unmoved. CR 602.2 lets an ability say who may activate
+it, and "Any player may activate this ability" (Xantcha, Sleeper Agent,
+Feral Hydra, Excavation) says everyone.
+
+- **`any_player: true` on the `activated_abilities[i]` row.** Absent on
+  every other row. A non-controller may send `activate_ability` for that
+  row (`ability_index` and `ref` as usual); the server refuses any other
+  row of a permanent the caller does not control with `game: caller does
+  not control this card`. The activator pays the cost from their own
+  pool, hand and board (CR 602.1a), the ability on the stack is theirs
+  (CR 602.2a, 113.8), and "you" in its text is the activator (CR 109.5).
+- **Each seat's copy is stamped for that seat.** For a seat that does
+  not control the permanent, every `any_player` row is computed with that
+  seat as the activator: `charged_mana_cost`, `life_cost`,
+  `condition_unmet`, `timing_closed`, `exhausted`, `cant_activate`, and
+  the cost-option lists (`sacrifice_options`, `discard_cost_options`, …)
+  out of that seat's own board and hand. A hand-read list reaches its
+  own seat alone, through the #1369 per-seat carrier; spectators get the
+  controller's public row. The other rows on that copy are the
+  controller's public ones.
+- **`purpose: {draws?, controller_loses_life?}` on such a row.** What the
+  row buys an activator who does not control the permanent, declared by
+  the catalog (ADR 0106 §1 decision 8). The bot reads it; a client may
+  ignore it.
+- **The digest.** `legal_actions.sources` (ADR 0105) is built from the
+  viewer's own move list, so another player's permanent appears there,
+  for the viewer alone, exactly when the viewer may activate one of its
+  `any_player` rows right now: `{"kinds": ["activate"], "abilities":
+  ["own:0"], …}`. The move's `label` names the controller ("Xantcha,
+  Sleeper Agent (controlled by Alice): …").
+- **The log.** `activate_across` is a new `log` kind: "Bob activated
+  Alice's Xantcha, Sleeper Agent", with `target_seat` the controller.
+  An activation by the permanent's own controller is not narrated, as
+  before.
 
 ## Schema evolution rules
 

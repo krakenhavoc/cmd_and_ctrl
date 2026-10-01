@@ -226,6 +226,13 @@ const (
 	// it ("Foretell {2}"), and the entry is the only thing that
 	// says WHICH action a card leaving a hand for exile was.
 	LogSpecialAction LogKind = "special_action"
+	// LogActivateAcross — a player activated the "Any player may
+	// activate this ability" row of a permanent ANOTHER player controls
+	// (ADR 0106 §1 decision 6, CR 602.2): "Bob activated Alice's Xantcha,
+	// Sleeper Agent". `target_seat` is that controller. An ordinary
+	// activation by a permanent's controller is not narrated: its stack
+	// item already is.
+	LogActivateAcross LogKind = "activate_across"
 	// LogCycle — a player cycled a card (CR 702.29b). It REPLACES
 	// the LogZone line for the discard that paid the cost, which is
 	// the same motion in words that do not say "cycled".
@@ -1212,6 +1219,21 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		}
 		return base, true
 
+	case game.EventActivateAbility:
+		// ADR 0106 §1 decision 6. The event carries the permanent's
+		// controller in Target only when somebody else activated its
+		// "Any player may activate this ability" row; every other
+		// activation stays off the log, as it always has.
+		if ev.Target == uuid.Nil {
+			return LogEvent{}, false
+		}
+		base.Kind = LogActivateAcross
+		base.CardID = uuidStringOrEmpty(ev.CardID)
+		if seat := seatOf(ev.Target); seat != NoSeat {
+			base.TargetSeat = &seat
+		}
+		return base, true
+
 	case game.EventCycle:
 		// CR 702.29b. The cost's discard already produced a LogZone
 		// line for the same motion; publicLogOf REPLACES it with this
@@ -1891,6 +1913,13 @@ func renderLogText(e LogEvent, cardName, targetName string) string {
 			return fmt.Sprintf("%s took a special action on %s", actor, card)
 		}
 		return fmt.Sprintf("%s used %s on %s", actor, e.Label, card)
+	case LogActivateAcross:
+		// "Bob activated Alice's Xantcha, Sleeper Agent". `target` is
+		// the controller's seat name (or "a player").
+		if e.TargetSeat == nil {
+			return fmt.Sprintf("%s activated %s", actor, card)
+		}
+		return fmt.Sprintf("%s activated %s's %s", actor, target, card)
 	case LogCycle:
 		return fmt.Sprintf("%s cycled %s", actor, card)
 	case LogCounters:

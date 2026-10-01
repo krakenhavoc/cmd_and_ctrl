@@ -38,6 +38,17 @@ func printedWords(words string) string {
 	return `(?i)\b` + regexp.QuoteMeta(words) + `\b`
 }
 
+// declaresAnyPlayerActivation reports whether the spec prints an "Any
+// player may activate this ability" row (ADR 0106 §1, #1793).
+func declaresAnyPlayerActivation(s effects.Spec) bool {
+	for _, a := range s.Activated {
+		if a.AnyPlayer {
+			return true
+		}
+	}
+	return false
+}
+
 // hasKeyword reports whether the spec declares one of the canonical
 // keyword tokens in PrintedKeywords. A token ending in a space is a
 // prefix ("protection from ").

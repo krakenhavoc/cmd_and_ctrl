@@ -1571,6 +1571,27 @@ predicates exist to prevent. The view's `cant_cast` stamp is the third
 reader of the same answer, so the human client greys exactly what the
 bot is not offered.
 
+## Another player's "any player may activate" ability (#1793)
+
+Some activated abilities say "Any player may activate this ability"
+(Xantcha, Sleeper Agent, Feral Hydra, Excavation; CR 602.2). The
+enumerator offers such a row to every seat with priority and the mana
+to pay, on whoever's permanent it is, through the same
+`game.MayActivate` the engine refuses on (ADR 0106 §1). The move's
+label names the permanent's controller — "Xantcha, Sleeper Agent
+(controlled by Alice): {3}: …" — so a model tier can read whose
+permanent it is reaching across to.
+
+The heuristic takes such a move on ANOTHER player's permanent only when
+the catalog row declares a purpose for the activator (owner decision 2,
+ADR 0106 §1 decision 8). The purpose rides the wire row as
+`purpose: {draws, controller_loses_life}`, and the policy prices it as
+the cards it draws plus the life the controller loses, the second only
+while that controller is a live opponent whose life can matter. A row
+with no purpose scores below passing, so a bot never pumps an
+opponent's Flailing Ogre or grows an opponent's Feral Hydra with its own
+mana. Its own permanents' rows are scored like any other ability.
+
 ## Never offered an attack it cannot pay for (#1063)
 
 The same shape, one step over. Propaganda, Ghostly Prison and Sphere of

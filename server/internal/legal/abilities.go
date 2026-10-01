@@ -71,7 +71,9 @@ type activateParams struct {
 }
 
 // activatedMoves enumerates catalog activated abilities on the
-// seat's permanents. Requires priority (checked by the caller).
+// seat's permanents, and since ADR 0106 §1 the "Any player may
+// activate this ability" rows on everybody else's. Requires priority
+// (checked by the caller).
 // Mirrors game.ActivateCatalogAbility's validation: split second,
 // the board-wide activation gate (#1210), the CR 602.5d / CR 606.3
 // timing read (#1208), activation condition (#743), tap cost
@@ -88,7 +90,13 @@ func (e *enumerator) activatedMoves() {
 	restricted := g.AnyActivationRestrictionsForEffect()
 	for i := range g.Battlefield.Cards {
 		source := &g.Battlefield.Cards[i]
-		if source.Controller != e.seat {
+		// CR 602.2 / ADR 0106 §1 decision 4: another player's permanent
+		// is visited only for its "Any player may activate this ability"
+		// rows, and abilityMovesForSource holds each row to the same
+		// game.MayActivate the engine refuses on. The fast negative
+		// keeps the walk off every permanent that has none, which is
+		// nearly all of them.
+		if source.Controller != e.seat && !game.HasAnyPlayerAbility(*source) {
 			continue
 		}
 		// CR 602.5: an Arrested or Fettered permanent's activated
@@ -195,6 +203,13 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 		// hand card's battlefield abilities are never offered and
 		// a permanent's cycling never is either.
 		if !game.AbilityFunctionsFromZone(ab, zone) {
+			continue
+		}
+		// CR 602.2 / ADR 0106 §1: may this seat activate this row at
+		// all — its controller always, anyone else only when the row
+		// says "Any player may activate this ability". The predicate
+		// ActivateCatalogAbility refuses on (#544).
+		if !game.MayActivate(e.seat, *source, zone, ab) {
 			continue
 		}
 		// #1208: ONE identity for both reads below, built the way
@@ -586,7 +601,7 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 								break
 							}
 							budget--
-							label := source.Name + ": " + ab.Label
+							label := abilityMoveLabel(g, source, e.seat, ab.Label)
 							if tapXValue > 0 {
 								label += fmt.Sprintf(" for X=%d", tapXValue)
 							}
@@ -654,6 +669,23 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 			}
 		}
 	}
+}
+
+// abilityMoveLabel is the head of an activate move's label: the
+// source's name and the ability's text. For a permanent the seat does
+// not control — an "Any player may activate" row on somebody else's
+// permanent (ADR 0106 §1 decision 8) — it names that controller too,
+// "Xantcha, Sleeper Agent (controlled by Alice): …", so a model tier
+// reading the list knows whose permanent it is reaching across to.
+func abilityMoveLabel(g *game.Game, source *game.Card, seat uuid.UUID, abilityLabel string) string {
+	if source.Controller == seat || source.Controller == uuid.Nil {
+		return source.Name + ": " + abilityLabel
+	}
+	who := "another player"
+	if p := g.PlayerByIDForEffect(source.Controller); p != nil && p.Name != "" {
+		who = p.Name
+	}
+	return source.Name + " (controlled by " + who + "): " + abilityLabel
 }
 
 // abilityManaPayment is the solved mana half of one activation: the

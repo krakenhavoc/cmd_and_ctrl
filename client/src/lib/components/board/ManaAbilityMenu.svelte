@@ -87,6 +87,12 @@
     // here with nothing to judge against — the server's CR 119.4
     // refusal is still the real gate.
     payerLife?: number;
+    // ADR 0106 §1 decision 6 (#1793): the rows are another player's
+    // permanent's "Any player may activate this ability" rows, opened
+    // by a viewer who does not control it. Their verdict is the
+    // digest's (decision 5), so any row the exact digest leaves out
+    // greys, not only a sorcery-speed one. No digest greys nothing new.
+    across?: boolean;
   }
 
   const {
@@ -105,6 +111,7 @@
     onRawTap,
     onClose,
     payerLife,
+    across = false,
   }: Props = $props();
 
   function fireSpecial(item: MenuItem): void {
@@ -157,7 +164,7 @@
     if (a.timing_closed) return timingReason || NOT_RIGHT_NOW;
     const fromRow = sharedAbilityBlocked(a, tapped, summoningSick, undefined, payerLife);
     if (fromRow) return fromRow;
-    if (activated && a.sorcery_speed && digestRefusesRow(legalGate, cardID, a.ref)) {
+    if (activated && (a.sorcery_speed || across) && digestRefusesRow(legalGate, cardID, a.ref)) {
       return NOT_RIGHT_NOW;
     }
     return "";

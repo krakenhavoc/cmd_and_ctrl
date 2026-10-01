@@ -574,6 +574,12 @@ const (
 	// Two kinds and not one because the two paths differ in what a
 	// watcher may assume — a mana ability used no stack and granted
 	// nobody priority.
+	//
+	// Target is the permanent's CONTROLLER, set only when somebody else
+	// activated its "Any player may activate this ability" row (ADR 0106
+	// §1, CR 602.2), and uuid.Nil for every ordinary activation. The
+	// public log narrates the first kind ("Bob activated Alice's
+	// Xantcha, Sleeper Agent") and stays quiet for the second.
 	EventActivateAbility EventKind = "activate_ability"
 
 	// EventEffectError — an effect primitive (S14 catalog) failed

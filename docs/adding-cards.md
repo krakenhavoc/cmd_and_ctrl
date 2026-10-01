@@ -722,6 +722,61 @@ naming an unregistered bundle is refused with `ErrUnknownEffectKey`. A
 Still no shape: a duration that lasts "for as long as it has a <kind>
 counter on it" (Ultima, Origin of Oblivion).
 
+### Abilities any player may activate (ADR 0106, #1793)
+
+"Any player may activate this ability" (CR 602.2, CR 602.1b) is one bit
+on the row. Everything else about the activation already reads the
+ACTIVATOR, so the card file writes the effect with the activator as
+"you":
+
+```go
+Activated: []ActivatedAbility{{
+	Label:     "{3}: Xantcha's controller loses 2 life and you draw a card. Any player may activate this ability.",
+	Cost:      game.AbilityCost{Mana: "{3}"},
+	AnyPlayer: true,
+	Purpose:   game.ActivationPurpose{Draws: 1, ControllerLosesLife: 2},
+	Effect: func(g *game.Game, item *game.StackItem) error {
+		ctx := NewContext(g, item)
+		if info, ok := ctx.SourcePermanent(); ok { // "Xantcha's controller", last-known if gone
+			if err := g.ChangePlayerLifeForEffect(ctx.Source(), info.Controller, -2); err != nil {
+				return err
+			}
+		}
+		return DrawCards{Player: item.Controller, N: 1}.Apply(ctx) // "you": the activator
+	},
+}},
+```
+
+- **"You" is `item.Controller`** — the player who activated it (CR 109.5,
+  CR 602.2a). "This creature's controller" is
+  `ctx.SourcePermanent().Controller`, read live or as it last existed
+  (CR 608.2h). They are different players whenever somebody reaches
+  across the table.
+- **The costs are the activator's** (CR 602.1a): mana from their pool, a
+  "Sacrifice a land" from their lands, a "Discard a card" from their
+  hand. Nothing to write.
+- **"…but only during their turn" / "only as a sorcery" / "only during
+  their draw step"** are activation instructions (CR 602.1b): a
+  `Condition` (whose `controller` argument is the activator) or
+  `SorcerySpeed`, as on any row.
+- **`Purpose` is for the bot only** (owner decision 2). Set it when the
+  effect plainly helps a player who does not control the permanent, in
+  the printed amounts: `{Draws: 1}` for Excavation and Well of Knowledge.
+  Leave it zero for a pump, a shrink, a "loses flying" or anything
+  symmetric: a bot never activates another player's row that declares
+  none.
+- `effects.Register` refuses `AnyPlayer` beside a `{T}`, loyalty, crew or
+  sacrifice-this component and on a non-battlefield zone, and refuses a
+  `Purpose` without `AnyPlayer`. An any-player MANA ability (Mana Cache)
+  and an ability of a spell on the stack (Lightning Storm) are not
+  modelled.
+
+The rest is the engine's: `game.MayActivate` is the one gate the
+activation path, the enumerator and the view share; every seat's copy of
+the row is stamped with that seat as the activator; the client opens the
+ability popover on another player's permanent for its `any_player` rows;
+and smart autopass does not stop for them.
+
 ### Adding a replacement effect (S17+)
 
 Replacement effects ("enters tapped", "if that would place counters,
@@ -1814,7 +1869,8 @@ per-attacker list (`AttackTargetsForAttackerForEffect`) share one check,
 its owner to attack owes nothing. A reselection (CR 508.7b) and a
 creature put onto the battlefield attacking (CR 508.4c) ignore it. The
 card shows a "CAN'T ATTACK <name>" chip. A RESOLVED effect that grants
-it (Elrond of the White Council) has no mod kind yet.
+it (Elrond of the White Council) has no mod kind yet. See
+`xantcha_sleeper_agent.go` for the printed card.
 
 [ADR 0045](decisions/0045-combat-restrictions.md) has the
 taxonomy, including what the vocabulary deliberately cannot say:
