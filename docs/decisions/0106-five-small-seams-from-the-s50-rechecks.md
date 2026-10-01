@@ -1,11 +1,12 @@
 # ADR 0106 — Five small seams from the S50 re-checks
 
-**Status:** Proposed · 2026-10-01 · S50 — Seams from the deck re-checks (tracker [#1784](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1784))
+**Status:** Accepted · 2026-10-01 · S50 — Seams from the deck re-checks (tracker [#1784](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1784))
+**Owner decisions:** 2026-10-01. All six open questions are answered; see [Owner decisions](#owner-decisions-2026-10-01) at the end. Five took the recommended option. Question 4 took the larger option (c), so §4 covers four shapes and ships in two PRs.
 **Issues:** [#1793](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1793) (abilities any player may activate), [#1794](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1794) (a creature that can't attack its owner), [#1805](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1805) (evolve), [#1806](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1806) (a permanent that makes your other spells uncounterable), [#1807](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1807) (targets from a single graveyard).
 **Numbering:** checked with the AGENTS.md §4 sweep on 2026-10-01. I ran `git fetch --all --prune` and read every `docs/decisions/` file name on all 36 remote heads (`origin/develop`, `origin/main` and 34 feature, chore, docs, fix, repro and wip branches) and all 522 local branches, and listed every name ever committed on any of them (`git log --all --name-only -- docs/decisions/`). The highest number anywhere is 0105. No open PR carries an ADR. This one takes **0106**.
 **Builds on:** [ADR 0033](0033-ai-bot-seat.md) §1 (the legal-move enumerator), [ADR 0105](0105-legal-action-highlights.md) (the `legal_actions` digest), [ADR 0102](0102-entering-under-another-players-control.md) (Xantcha's entry), [ADR 0104](0104-gaining-control-of-a-spell.md) (a spell's controller and its caster), [ADR 0045](0045-combat-restrictions.md) and its 2026-09-24 amendment (attack requirements), [ADR 0080](0080-attack-taxes.md), [ADR 0014](0014-combat-keywords.md)'s 2026-09-24 amendment (prowess, the first keyword trigger), [ADR 0019](0019-structured-targeting.md)'s 2026-09-24 amendment (the target set rule), [ADR 0072](0072-protection.md)'s 2026-09-22 amendment (player statics), [ADR 0093](0093-abilities-granted-to-other-permanents.md) (ability refs), [ADR 0009](0009-smart-priority-autopass.md) (autopass) and [ADR 0041](0041-game-persistence.md) (restore points).
 
-This ADR was written plan-first. No engine or card code changes until the owner answers the questions at the end.
+This ADR was written plan-first. The engine and card changes land in the PRs listed under Delivery.
 
 ---
 
@@ -45,10 +46,10 @@ Two things the registry says are wrong, and the PRs below correct them:
 
 ### Options
 
-- **A. A declaration on the ability (recommended).** `ActivatedAbility.AnyPlayer bool`, mirrored on `game.ActivatedAbilityShape`. The controller check becomes "the controller, or anyone if `AnyPlayer`". Everything downstream already reads the activator. This is CR 602.1b exactly: the permission is part of the ability, so a copy of the ability or a layer-6 grant of it carries the permission with it, and an ability-removal effect removes it.
+- **A. A declaration on the ability (chosen).** `ActivatedAbility.AnyPlayer bool`, mirrored on `game.ActivatedAbilityShape`. The controller check becomes "the controller, or anyone if `AnyPlayer`". Everything downstream already reads the activator. This is CR 602.1b exactly: the permission is part of the ability, so a copy of the ability or a layer-6 grant of it carries the permission with it, and an ability-removal effect removes it.
 - **B. A per-player permission** ("player P may activate abilities of permanent X"), in the shape of a cast permission. It fits no printed card. Every one says it of its own ability, and a separate record could outlive or miss the ability it describes.
 
-### Decision (recommended: A)
+### Decision (A)
 
 1. **The declaration.** `AnyPlayer bool` on the catalog row. Register refuses it on a mana ability (the mana path is separate, and Mana Cache, the one legal any-player mana ability, also needs "only during their turn before the end step"). Register also refuses it with a `{T}`, `{Q}`, loyalty, crew or self-sacrifice cost component. No printed any-player card has one, and who may tap another player's permanent would be a rule nobody has tested.
 2. **The gate.** One function, `mayActivateLocked(player, source, ab)`, is used by the activation path, the enumerator and the view. On the battlefield it answers `source.Controller == player || ab.AnyPlayer`. Off the battlefield the CR 108.4a owner check is unchanged, because no printed any-player ability functions from a hidden zone. Arrest's `CanActivateAbilities` still applies to every player: it restricts the object, not the activator.
@@ -56,7 +57,8 @@ Two things the registry says are wrong, and the PRs below correct them:
 4. **The enumerator.** `activatedMoves` visits every battlefield permanent. For one the seat does not control, it offers only `AnyPlayer` rows, through the same body (`abilityMovesForSource`), so the timing, condition, gate and cost checks are the activator's.
 5. **The digest and the view.** ADR 0105's digest needs no change. It is built from the seat's own move list, and keyed by source instance ID, so another player's Xantcha appears under the activator's key with `abilities: ["own:0"]`. The digest stays "own seat only": it describes the viewer's moves, not the permanent's controller's. `ActivatedAbilityView` gains `any_player: true`. The shared row's stamps stay the controller's. A non-controller's verdict (is this row usable by *me* right now) comes from the digest (`legalGate`), and the activator's charged price rides the per-seat carrier the way cast stamps do.
 6. **The client.** A permanent with an `any_player` row is clickable by every seat. The click opens the ability popover, which lists only the `any_player` rows for a non-controller. The rows are enabled exactly when the digest lists their ref. ADR 0105's bolt pip appears on an opponent's permanent when the digest says so. The log line names both players: "Bob activated Alice's Xantcha, Sleeper Agent".
-7. **Autopass and the bot** are open questions 1 and 2. An any-player ability on the table is a legal move for every seat at every priority window. Without a decision, smart autopass would hold every seat with three mana open (`hasResponse` counts any activate move in `legal_moves`), and the heuristic would pump an opponent's Flailing Ogre because `ActivateBase` is positive for any activation.
+7. **Autopass** (owner decision 1). An any-player ability on the table is a legal move for every seat at every priority window, and `hasResponse` counts any activate move in `legal_moves`. So `classifyMove` (`responseWindow.ts`) classes an activate move whose source the viewer does not control as neither a response nor a play, and smart autopass passes over it. The ready pip still shows on frames where the viewer stops for another reason.
+8. **The bot** (owner decision 2). An any-player row may declare a `Purpose` for the activator, in the shape of ADR 0102's entry purpose. Xantcha's is "you draw a card; its controller loses 2 life", and the heuristic values it as a draw plus life loss for that controller, scored only when the controller is an opponent. A row with no purpose is never chosen by a seat that does not control its source, so the generic positive `ActivateBase` never pumps an opponent's Flailing Ogre. The model tiers see the move in their list, labelled with the permanent's controller ("Xantcha, Sleeper Agent — controlled by Alice").
 
 ### Snapshot impact
 
@@ -64,7 +66,7 @@ None. The flag is catalog data and is not serialised. The stack item already rec
 
 ### Cards
 
-Xantcha, Sleeper Agent, once §2 lands too: **Full**. 38 other Commander-legal cards print "Any player may activate this ability"; none is catalogued. Open question 6 asks how many join.
+Xantcha, Sleeper Agent, once §2 lands too: **Full**. 38 other Commander-legal cards print "Any player may activate this ability"; none is catalogued. Per owner decision 6, every one that needs nothing else lands with it, each verified against its full oracle text. Each gets a declared `Purpose`, or the bot leaves it alone. Any that needs more goes on the row's `Waiting` list with the reason.
 
 ---
 
@@ -85,15 +87,15 @@ Xantcha, Sleeper Agent, once §2 lands too: **Full**. 38 other Commander-legal c
 
 ### Options
 
-- **A. A data restriction on the characteristic (recommended).** `Characteristic.AttackTargetRestrictions []AttackTargetRestriction{Source, SourceName, NotOwner, NotOwnersPlaneswalkers}`, written by an ordinary layer static like `AttackRequirements`, and only ever appended to. One predicate, `canAttackTargetWithLocked(attacker, target)`, is the old controller check plus this list. Every declaration-time caller moves to it.
+- **A. A data restriction on the characteristic (chosen).** `Characteristic.AttackTargetRestrictions []AttackTargetRestriction{Source, SourceName, NotOwner, NotOwnersPlaneswalkers}`, written by an ordinary layer static like `AttackRequirements`, and only ever appended to. One predicate, `canAttackTargetWithLocked(attacker, target)`, is the old controller check plus this list. Every declaration-time caller moves to it.
 - **B. A `Restriction` bit, `CantAttackOwner`.** It is smaller, but a bit cannot say "and planeswalkers its owner controls", which Xantcha has and Alexios does not. It also cannot be granted by a resolved effect (Elrond's "This creature can't attack its owner"), which ADR 0041 phase 3 says must be data.
 
-### Decision (recommended: A)
+### Decision (A)
 
 1. **The predicate.** `canAttackTargetWithLocked(attacker *Card, target)` refuses an attack on `attacker.Owner`, and, with `NotOwnersPlaneswalkers`, on a planeswalker the owner controls. Battles are never refused by it. The owner is read live, so a copy uses its own owner.
 2. **Who calls it.** Both declaration verbs, `attackRequirementCandidatesLocked` (so CR 508.1d's maximum is computed over restriction-legal targets), and the enumerator's attack loop, which walks a new per-attacker `AttackTargetsForAttackerForEffect`. The digest's `attack_targets` is built from those moves, so it follows.
 3. **Who does not call it.** `attack_reselect.go` (CR 508.7b) and the "put onto the battlefield attacking" path (CR 508.4c) keep the controller-only check, because the rules exempt them.
-4. **The view.** `Turn.AttackTargets` stays per seat: it prices taxes and limits, which are per target. The per-attacker answer is the digest's. The card gets a restriction chip naming the owner (open question 3).
+4. **The view.** `Turn.AttackTargets` stays per seat: it prices taxes and limits, which are per target. The per-attacker answer is the digest's. The card gets a restriction chip naming the owner, "Can't attack Alice", beside the greyed target ring (owner decision 3). It is drawn from the restriction on the card view, not from the client's own reading of the rule.
 5. **Ability removal.** Xantcha's own static is applied only while `CatalogAbilityKey` answers (CR 613.1f), exactly as its "attacks each combat" requirement is. A creature that loses all abilities may attack its owner.
 
 ### Snapshot impact
@@ -127,14 +129,14 @@ Xantcha (with §1). Alexios, Deimos of Kosmos still waits on "can't be sacrifice
 
 ### Options
 
-- **A. An engine keyword trigger, like prowess (recommended).** `evolve` joins `canonicalKeywords` and is cumulative (702.100d). `keywordTriggersFor` returns one evolve trigger per token. A printed, granted (Tyranid Prime, Propagator Drone) or token-carried evolve works with no catalog entry.
+- **A. An engine keyword trigger, like prowess (chosen).** `evolve` joins `canonicalKeywords` and is cumulative (702.100d). `keywordTriggersFor` returns one evolve trigger per token. A printed, granted (Tyranid Prime, Propagator Drone) or token-carried evolve works with no catalog entry.
 - **B. A catalog constructor, `effects.Evolve()`, on `Spec.Triggered`.** Each evolve card needs an entry, and a granted evolve reaches nothing. This is less faithful to how the cards are printed and granted.
 
-### Decision (recommended: A)
+### Decision (A)
 
 1. **The trigger.** It watches `EventETB`. `AppliesTo` holds when the entered permanent is a creature under the source's controller, the source is a creature, and the entered creature's power or toughness (counters included, among them any it entered with) is greater than the source's. Comparing with a noncreature on either side is false (702.100c).
 2. **The resolution check.** A keyed body `evolve/grow` re-runs the same comparison (603.4). It reads the entered creature through the item's carried trigger object, live or last-known (608.2h). It reads the evolving creature live, and does nothing if that object has left or changed (CR 400.7, the prowess rule). If the check holds, it puts one +1/+1 counter through the ordinary counter path, so Hardened Scales and "can't have counters" apply.
-3. **"Evolves".** The body emits `EventEvolved{CardID}` when at least one counter was actually put on (702.100b). Renegade Krasis and Watchful Radstag watch it.
+3. **"Evolves".** The body emits `EventEvolved{CardID}` when at least one counter was actually put on (702.100b). Renegade Krasis and Watchful Radstag watch it. It ships in the same PR as the keyword (owner decision 5).
 4. **Commuting.** Evolve triggers do not commute the way prowess triggers do. Each one changes the power and toughness another one's condition reads, so ordering is a real choice (CR 603.3b) and the prompt is kept.
 
 ### Snapshot impact
@@ -145,7 +147,7 @@ No new fields. `evolve/grow` is a new keyed body: an on-disk identity, never ren
 
 - Dinosaur Egg drops its caveat: **Full**.
 - Seven creatures whose only text is evolve plus canonical keywords play with no catalog entry: Adaptive Snapjaw, Battering Krasis, Clinging Anemones, Cloudfin Raptor, Crocanura, Gluttonous Slug and Shambleshark.
-- 14 more Commander-legal evolve cards need entries for their other lines, and Propagator Drone grants evolve. Open questions 5 and 6 decide how many land.
+- 14 more Commander-legal evolve cards need entries for their other lines, and Propagator Drone grants evolve. Every one that needs nothing else lands in the evolve PR (owner decision 6). Any that needs more goes on the row's `Waiting` list with the reason.
 
 ---
 
@@ -154,42 +156,79 @@ No new fields. `evolve/grow` is a new keyed body: an on-disk identity, never ren
 ### What exists, what is missing
 
 - **One gate, two sources.** `spellCantBeCounteredLocked` (`game/cant_be_countered.go`) reads the spell's own printed rider (`CatalogCantBeCountered`) and the mana that paid for it (#1547). Every counter verb goes through it, and the view's chip (#1553) reads it.
-- **No source on the battlefield.** Chimil, the Inner Sun is catalogued with the caveat "Chimil doesn't stop your spells from being countered."
-- **The pattern for the rest exists.** `Player.Statics` holds abilities a player has for a duration (Teferi's Protection, Emergence Zone's timing). Its rule is that a *derived* statement is read off the battlefield on every query, and only a *granted-for-a-duration* one is stored. `PermissionFilter` is a data spell filter already used by cast bans and timing statements.
+- **No other source exists.** Nothing on the battlefield, nothing granted to a player, and nothing marked on one spell reaches the gate. Chimil, the Inner Sun is catalogued with the caveat "Chimil doesn't stop your spells from being countered."
+- **There is no "the next spell you cast" machinery of any kind.** No one-use promise exists in `game/` for any effect.
+- **The pattern for the player half exists.** `Player.Statics` holds abilities a player has for a duration (Teferi's Protection, Emergence Zone's timing). Its rule is that a *derived* statement is read off the battlefield on every query, and only a *granted-for-a-duration* one is stored. `PermissionFilter` is a data spell filter already used by cast bans and timing statements.
 
 ### The rules
 
 - **CR 613.11:** "Some continuous effects affect game rules rather than objects. … These effects are applied after all other continuous effects have been applied."
 - **CR 611.3a:** a static's effect "isn't 'locked in'; it applies at any given moment to whatever its text indicates."
-- **CR 611.2c:** a resolving spell's effect that does not modify characteristics or control "modifies the rules of the game, so it can affect objects that weren't affected when that continuous effect began." Veil of Summer covers a spell cast after it resolved.
+- **CR 611.2c:** a resolving spell's effect that does not modify characteristics or control "modifies the rules of the game, so it can affect objects that weren't affected when that continuous effect began." Veil of Summer and Insist both cover a spell cast after they resolved.
+- **CR 514.2:** in the cleanup step, "all 'until end of turn' and 'this turn' effects end."
+- **CR 601.2i:** after the casting steps, "the spell becomes cast." That is the moment "the next spell you cast" is decided.
+- **CR 707.10:** "a copy of a spell isn't cast". **CR 707.2:** a copy takes the copiable values (printed text) and the choices made for it, not other effects. So a copy never uses up a "next spell" promise, and it does not inherit a mark that an effect put on the original. It does keep a printed "This spell can't be countered".
+- **CR 400.7:** a spell that leaves the stack is a new object with no memory, so a mark on it ends there.
 - **CR 101.2:** "can't" beats "can". **CR 701.6a:** to counter is to remove from the stack.
-- ADR 0104's split: "Spells you **control**" is the spell's current controller; "spells you **cast**" (Cunning Nightbonder, Thryx) is the caster (`StackItem.BaseController`, zero meaning `Controller`).
+- ADR 0104's split: "Spells you **control**" is the spell's current controller; "spells you **cast**" (Cunning Nightbonder, Thryx, Domri's +1, and every "next spell you cast") is the caster (`StackItem.BaseController`, zero meaning `Controller`).
 
-So a "can't be countered" static is a rule-modifying effect, read when something tries to counter. It is not a characteristic of the spell, and it does not belong in the layer pass.
+So every form of "can't be countered" is a rule-modifying effect, read when something tries to counter. It is not a characteristic of the spell, and it does not belong in the layer pass.
+
+### The four shapes the owner put in scope
+
+| Shape | Printed example | Duration and ending | Stored in |
+|---|---|---|---|
+| A static on a permanent | Chimil, "Spells you control can't be countered" | While the permanent is on the battlefield with the ability (CR 611.3a) | Nowhere: catalog data, read off the battlefield |
+| A grant for a turn | Veil of Summer, "Spells you control can't be countered this turn" | Until cleanup (CR 514.2) | `Player.Statics` |
+| A one-use promise | Insist, "The next creature spell you cast this turn can't be countered" | Used up by the first matching spell its player casts, or ended at cleanup, whichever comes first | `Player.Statics` until used up, then a mark on that spell |
+| A mark on one spell | Vexing Shusher, "Target spell can't be countered" | While that object is on the stack (CR 400.7) | `StackItem` |
 
 ### Options
 
-- **A. A third and fourth source at the gate (recommended).** The derived source is a catalog declaration on a permanent, read off the battlefield at the gate. The granted source is a `PlayerStatic` payload for "this turn" grants. The gate is CR 613.11's own shape, and it is the gate every counter verb already uses.
-- **B. Stamp a "can't be countered" bit on stack items in the layer pass's stack step.** It treats a rules effect as a characteristic (wrong under 613.11). It widens ADR 0104's layer-2-only stack step for no rule's sake. It still needs a separate answer for "you cast".
+- **A. More sources at the one gate (chosen).** Each shape is data, stored where its duration lives, and `spellCantBeCounteredLocked` asks all of them. The gate is CR 613.11's own shape, and it is the gate every counter verb already uses.
+- **B. Stamp a "can't be countered" bit on stack items in the layer pass's stack step.** It treats a rules effect as a characteristic (wrong under 613.11). It widens ADR 0104's layer-2-only stack step for no rule's sake. It still needs a separate answer for "you cast", for a promise that is used up, and for a copy that must not inherit the bit.
 
-### Decision (recommended: A)
+### Decision (A)
 
-1. **The derived source.** `Spec.SpellsCantBeCountered []CounterShield{Label, Whose, Spell}`:
+1. **The static (derived).** `Spec.SpellsCantBeCountered []CounterShield{Label, Whose, Spell}`:
    - `Whose` is `YouControl` (the zero value, and the narrower reading), `YouCast` or `AnyPlayer` ("Creature spells can't be countered", Gaea's Herald).
    - `Spell` is a predicate over the spell card on the stack (creature, green, power 5 or greater, Dragon).
 
-   It is read through an accessor that drops a shield when `CatalogAbilityKey` answers empty (CR 613.1f) or the permanent is phased out, as `AttackTaxesForCard` does.
-2. **The granted source.** A `PlayerStatic` payload, `CantBeCountered{Filter PermissionFilter, Others bool}`, with a CR 611.2 duration, for "Spells you control can't be countered this turn" (Veil of Summer) and "Other spells you control …" (Bound // Determined: the resolving spell itself is excluded). It is in scope only if open question 4 says so.
-3. **The gate.** `spellCantBeCounteredLocked` asks all four sources. The view's chip and every counter verb follow with no change.
-4. **What it doesn't do.** "Can't be countered" does not make a spell an illegal target. Counterspell can still target it and does nothing on resolution. That is already how the printed rider behaves.
+   It is read through an accessor that drops a shield when `CatalogAbilityKey` answers empty (CR 613.1f) or the permanent is phased out, as `AttackTaxesForCard` does. It is catalog data, so a predicate is allowed here.
+2. **The grant for a turn.** A `PlayerStatic` payload, `CantBeCountered CounterShieldGrant{Filter PermissionFilter, Whose, NextOnly, Except ObjectRef, Source, Label}`, with an until-end-of-turn duration. `Whose` is `YouControl` (Veil of Summer) or `YouCast` (Domri, Anarch of Bolas's +1). `Except` names the spell that created the grant, for "Other spells you control …" (Bound // Determined). It is read live at the gate, so it covers spells cast after it began (CR 611.2c). Cleanup ends it through the existing duration sweep (CR 514.2).
+3. **The one-use promise.** It is the same payload with `NextOnly: true`, and it is always `YouCast`. It is not read at the gate. It is used up at cast:
+   - At CR 601.2i, in `CastSpell` just before `EventCast` is emitted, each of the caster's live `NextOnly` grants whose `Filter` matches the spell is removed from `Player.Statics` and written onto that spell's stack item as a mark (decision 4).
+   - It is spent by the first matching spell whether or not the spell needed it. A spell that does not match (a sorcery under Insist) leaves it in place.
+   - Two promises that match the same spell are both spent on it. Each becomes its own mark.
+   - A copy is not cast (CR 707.10), so it spends nothing. A land is not cast, so it spends nothing. A spell cast from any zone, by any route, does.
+   - A promise nobody uses ends at cleanup (CR 514.2) like any "this turn" grant.
+4. **The mark on one spell.** `StackItem.CantBeCountered []CounterShieldMark{Source, SourceName, Label}`. It is written by "Target spell can't be countered" when it resolves (Vexing Shusher's ability is an ordinary target-spell activation), and by decision 3's promise. It goes when the item goes: resolved, countered by a verb that ignores the gate, or moved, and a new object has none (CR 400.7). Spell-copy code clears it on the copy, because an effect is not copiable (CR 707.2). A test writes that first. A stolen spell keeps it (ADR 0104), because the mark is on the object, not the player.
+5. **The gate.** `spellCantBeCounteredLocked` asks five sources in order and stops at the first yes:
+   1. the printed rider;
+   2. the mana rider;
+   3. the item's marks;
+   4. the battlefield statics, judged against the spell's current controller or its caster as each says;
+   5. the "this turn" grants of that controller or caster, skipping `NextOnly` and the `Except` object.
+
+   The view's chip and every counter verb follow with no change. The chip is already drawn from this gate (#1553).
+6. **What the table sees.** A live grant or an unused promise is listed on its player's panel ("Your next creature spell this turn can't be countered — Insist"). This is a new `counter_shields` line on the player view, read from `Player.Statics`. A marked spell shows the existing stack chip.
+7. **What it doesn't do.** "Can't be countered" does not make a spell an illegal target. Counterspell can still target it, and does nothing on resolution. That is already how the printed rider behaves. The bot's enumerator and policy are unchanged.
 
 ### Snapshot impact
 
-The derived source is catalog data, so none. The granted source, if in scope, adds one additive field to `seats[].statics[]`, recorded with `-update-shape` under the current version.
+- The static is catalog data: no snapshot change.
+- The grant and the promise add one additive payload field to `seats[].statics[]` (`cantBeCountered`, all plain data), recorded with `-update-shape` under the current schema version.
+- The mark adds one field to the stack item (`cantBeCountered`), which also reaches `lastKnownStack`. AGENTS.md §5: every stack-item field unknown to a binary is refused for a file of the current schema, so an older binary refuses a file carrying a mark. That is the designed rollback case, and it needs no bump.
+- No closure route is added. A promise that has been used up is a mark, which is data, so a table with either on it is still a restore point.
 
 ### Cards
 
-Chimil drops its caveat: **Full**. About 20 Commander-legal permanents print a "… spells (you control) can't be countered" static, and three resolving cards grant it for a turn. None but Chimil is catalogued. Open questions 4 and 6 set the scope.
+- Chimil drops its caveat: **Full**.
+- Printed statics: about 20 Commander-legal permanents. None is catalogued.
+- Grants for a turn: Veil of Summer, Bound // Determined and Domri, Anarch of Bolas.
+- One-use promises: Insist, Overmaster and Mistrise Village.
+- Marks: Vexing Shusher.
+- Each is verified against its full oracle text in its PR (owner decision 6). Savage Summoning stays on the row's `Waiting` list: its "next creature spell can be cast as though it had flash" and "enters with an additional +1/+1 counter" are two more one-use promises the engine does not have.
 
 ---
 
@@ -209,11 +248,11 @@ Chimil drops its caveat: **Full**. About 20 Commander-legal permanents print a "
 
 ### Options
 
-- **A. A sibling set rule, `TargetSpec.Same *TargetSameness{Label, Key}` (recommended).** The same four readers each gain a "share" branch. The wire gains `same: {label, keys}` beside `different`. It is additive, and no existing clause changes.
+- **A. A sibling set rule, `TargetSpec.Same *TargetSameness{Label, Key}` (chosen).** The same four readers each gain a "share" branch. The wire gains `same: {label, keys}` beside `different`. It is additive, and no existing clause changes.
 - **B. Generalise `TargetDifference` into one `TargetSetRule` with a kind.** It means the same work plus renaming the type, the wire field and three catalog constructors, with no behaviour gained.
 - **C. Ask for a graveyard first, then for cards from it.** The graveyard's owner becomes an extra announced choice that the card does not print. The graveyard's owner is not a target, and nothing printed asks anyone to choose a graveyard. It also does not match CR 115.7e's retarget, where only the final set is judged. It is less faithful.
 
-### Decision (recommended: A)
+### Decision (A)
 
 1. **The constructor.** `effects.FromASingleGraveyard()` returns a `TargetSameness` keyed on the card's owner, labelled "come from a single graveyard".
 2. **The four readers:**
@@ -231,7 +270,7 @@ None. The clause is rebuilt from the catalog row on restore. A `pick_target` pau
 
 ### Cards
 
-Digsite Conservator: **Full** (its discover half is ADR 0099's). 24 other Commander-legal cards target "from a single graveyard", and two more pay a cost from one; none is catalogued. Several need nothing else, for example Decompose, Carrion Beetles, Rag Dealer, Famished Ghoul, Griffnaut Tracker and Scarab Feast (open question 6).
+Digsite Conservator: **Full** (its discover half is ADR 0099's). 24 other Commander-legal cards target "from a single graveyard", and two more pay a cost from one; none is catalogued. Several look as if they need nothing else, for example Decompose, Carrion Beetles, Rag Dealer, Famished Ghoul, Griffnaut Tracker and Scarab Feast. Per owner decision 6, every one that does lands with Digsite Conservator, each verified against its full oracle text, and the rest go on the row's `Waiting` list with the reason.
 
 ---
 
@@ -240,39 +279,52 @@ Digsite Conservator: **Full** (its discover half is ADR 0099's). 24 other Comman
 - **Xantcha needs §1 and §2 together.** The card lands only in the second of the two PRs, and then as **Full**. Control comes from ADR 0102's entry (control: an opponent), ownership from CR 108.3 (owner: the player whose deck it came from). §1 reads "may this player activate", where the controller is just one of the players who may. §2 reads the owner, never the controller.
 - **The enumerator is the source of truth for both.** Per ADR 0033 §1 and the #544 rule, every gate is one function shared by the engine verb and `internal/legal`: `mayActivateLocked` for §1 and `canAttackTargetWithLocked` for §2. ADR 0105's digest is built from the enumerator, so the client's ready pips (§1) and per-attacker attack rings (§2) follow without a second rule in the client.
 - **The client's popover on another player's permanent** (§1) is the one new client surface. §2's client work is a chip.
-- **Snapshots.** Only §2 (one `lastKnownBattlefield` field), §3 (one keyed body) and optionally §4 (one player-static field) touch the snapshot. All three are additive or keyed within the current schema version, and none adds a closure route.
+- **Snapshots.** Only §2, §3 and §4 touch the snapshot: §2 adds one `lastKnownBattlefield` field, §3 one keyed body, and §4 one player-static field and one stack-item field. All are additive or keyed within the current schema version, and none adds a closure route.
 
 ## Delivery
 
 Each PR lands its engine change and its cards together, test first. Each also flips its registry row to implemented, adds a closed-seam fragment under `docs/engine-seams/closed/`, and corrects the row's stale notes (see Context). They are independent except where noted.
 
-1. **Single graveyard (#1807).** The sameness rule, its four readers, the wire field and the picker. Digsite Conservator (Full), plus whichever plain exilers open question 6 admits.
-2. **Uncounterable (#1806).** The derived shield, the granted payload if open question 4 says so, and the gate. Chimil (Caveats → Full), plus the statics question 6 admits.
-3. **Evolve (#1805).** The token, the trigger, `evolve/grow`, `EventEvolved`, and the keyword-only creatures. Dinosaur Egg (Caveats → Full), plus the catalog cards questions 5 and 6 admit.
-4. **Can't attack its owner (#1794).** The restriction, the predicate and its callers, the per-attacker target list and the chip. No card lands yet: Xantcha also needs PR 5.
-5. **Any player may activate (#1793).** The flag, the gate, the enumerator, the view field, the client popover, and the autopass and bot rules from open questions 1 and 2. **Xantcha, Sleeper Agent** lands here (Full), plus whichever any-player cards question 6 admits.
+Every PR lands its named card plus every other card of its seam that needs no other missing primitive, each verified against its full oracle text. Any that needs more goes on the row's `Waiting` list with the reason (owner decision 6).
 
-PRs 1–3 are small and touch nothing in combat or priority, so they can go in parallel. PR 4 goes before PR 5 so that Xantcha can land in PR 5.
+1. **Single graveyard (#1807).** The sameness rule, its four readers, the wire field and the picker. Digsite Conservator (Full), plus the plain exilers.
+2. **Uncounterable, part 1: statics (#1806).** The gate is restructured into its five-source order, and the battlefield static is added. Chimil (Caveats → Full), plus the printed statics. The registry row stays partial.
+3. **Uncounterable, part 2: grants, promises and marks (#1806).** It needs PR 2.
+   - The `CounterShieldGrant` player-static payload, for the turn grant and the one-use promise.
+   - The promise's spend at CR 601.2i.
+   - The stack-item mark, and clearing it on a copy (test first).
+   - The two snapshot fields.
+   - The `counter_shields` player-view line.
+
+   Cards: Veil of Summer, Bound // Determined, Domri, Anarch of Bolas, Insist, Overmaster, Mistrise Village and Vexing Shusher. The row flips to implemented here. Savage Summoning goes on its `Waiting` list.
+4. **Evolve (#1805).** The token, the trigger, `evolve/grow`, `EventEvolved`, and the keyword-only creatures. Dinosaur Egg (Caveats → Full), plus the evolve cards that need nothing else, including Tyranid Prime, Propagator Drone, Renegade Krasis and Watchful Radstag if their other lines check out.
+5. **Can't attack its owner (#1794).** The restriction, the predicate and its callers, the per-attacker target list and the owner chip. No card lands yet: Xantcha also needs PR 6.
+6. **Any player may activate (#1793).** The flag, the gate, the enumerator, the view field, the client popover, the autopass classification and the bot's declared purpose. **Xantcha, Sleeper Agent** lands here (Full), plus the any-player cards that need nothing else.
+
+PRs 1, 2 and 4 are small and touch nothing in combat or priority, so they can go in parallel. PR 3 follows PR 2. PR 5 goes before PR 6 so that Xantcha can land in PR 6.
 
 ## Consequences
 
 - An activated ability is no longer always its controller's to activate. Any new code that asks "may this player activate this" must go through `mayActivateLocked`.
 - Attack target legality becomes a question about a creature, not just a seat. `AttackTargetsForEffect(seat)` stays for the per-target view (taxes, limits). Legality per attacker comes from the new per-attacker list.
 - Evolve is the second engine-derived keyword trigger. Printed evolve creatures with no other text need no catalog entry.
-- "Can't be countered" has four sources, read at one gate. It stays outside the layer pass, by CR 613.11.
+- "Can't be countered" has five sources, read at one gate: the printed rider, the mana, a mark on the spell, a static on the battlefield, and a player's grant for the turn. It stays outside the layer pass, by CR 613.11.
+- The engine gains its first one-use "the next spell you cast" promise. It is stored as data on the player and turned into a mark on the spell at CR 601.2i. Later one-use promises (Savage Summoning's flash and its entry counter) can use the same spend point.
 - The target set rule gains its opposite, and every future "from a single …" or "that share a …" clause uses it.
 
 ## Out of scope
 
 - Any-player **mana** abilities (Mana Cache), and any-player abilities on a spell (Lightning Storm).
 - A ScopedEffect mod kind that grants "can't attack its owner" (Elrond), and "can't be sacrificed" (Alexios).
-- "The next spell you cast this turn can't be countered" (Insist, Overmaster, Mistrise Village, Savage Summoning) and "Target spell can't be countered" (Vexing Shusher). These are a one-use promise and a mark on one stack object, each its own shape. They would go on the `cant-be-countered-grant` row's `Waiting` list.
+- Savage Summoning's other two one-use promises ("can be cast as though it had flash" and "enters with an additional +1/+1 counter"). It waits on the `cant-be-countered-grant` row.
 - "Can't be countered by blue or black spells" (Autumn's Veil), which depends on the counterer.
 - Costs from a single graveyard (Night Soil, Jötun Grunt).
 
 ---
 
-## Open questions for the owner
+## Open questions for the owner (answered)
+
+These are the questions as asked. The owner's answers follow.
 
 1. **Autopass and another player's Xantcha (#1793).** While Xantcha is out, every seat with {3} open has a legal instant-speed activation at every priority window.
    - **(a) Recommended:** an ability on a permanent you don't control does not count as a response for smart autopass. You see its ready pip only on frames where you stop anyway.
@@ -295,3 +347,22 @@ PRs 1–3 are small and touch nothing in combat or priority, so they can go in p
 6. **How many cards each PR lands.**
    - **(a) Recommended:** the named waiting card, plus every other card of that seam that needs no other missing primitive. Each is verified against its full oracle text in the PR, and any that turns out to need more goes on a `Waiting` list with the reason. The pools are about 38 any-player cards, 24 single-graveyard cards, 15 evolve cards with other text (Propagator Drone included) and about 20 uncounterable statics.
    - (b) Only the named waiting cards (Xantcha, Digsite Conservator, Dinosaur Egg's and Chimil's caveats). The rest are listed on each row's `Waiting` list for later batches.
+
+---
+
+## Owner decisions, 2026-10-01
+
+The owner answered the six open questions on 2026-10-01. Five answers were the recommended option. Question 4 was not: the owner chose (c), the largest scope.
+
+1. **Autopass.** An ability on a permanent you don't control does not count as a response for smart autopass (§1, decision 7).
+2. **The bot.** The heuristic activates another player's ability only when the row declares a purpose for the activator. The model tiers see the move labelled with the permanent's controller (§1, decision 8).
+3. **Xantcha's restriction.** A restriction chip naming the owner ("Can't attack Alice") sits beside the greyed target ring (§2, decision 4).
+4. **Uncounterable: option (c).** The scope is:
+   - the printed statics;
+   - the "this turn" player grants;
+   - the one-use "next spell you cast can't be countered" promise;
+   - "target spell can't be countered".
+
+   §4 covers all four shapes: their durations and endings, where each is stored, and how each reaches `spellCantBeCounteredLocked`. The work is split across Delivery PRs 2 and 3.
+5. **Evolve.** The keyword, its trigger and the CR 702.100b "evolves" event ship in one PR (§3, decision 3).
+6. **Cards.** Each PR lands its named card plus every other card of its seam that needs no other missing primitive, each verified against its full oracle text. Any that needs more goes on the row's `Waiting` list with the reason.
