@@ -136,6 +136,23 @@ func Register(spec Spec) {
 			panic(fmt.Sprintf("effects.Register: %q offers %q from %s but does not list that zone in CastableZones",
 				spec.Name, ac.Key, ac.FromZone))
 		}
+		// #1727: an offer's card component rides ONE wire list
+		// (alt_cost_ids) and is read by one accessor that picks the
+		// first component it finds, so an offer that declared two would
+		// silently charge only one of them — a cheaper card than the one
+		// printed. No printed alternative cost names two card-shaped
+		// payments; Demon of Death's Gate's "pay 6 life and sacrifice
+		// three black creatures" is life plus ONE.
+		if n := altCostCardComponents(ac); n > 1 {
+			panic(fmt.Sprintf("effects.Register: %q offers %q with %d card-shaped payments — an alternative cost carries at most one of ExileFromHand, ReturnToHand, ExileFromGraveyard and Sacrifice",
+				spec.Name, ac.Key, n))
+		}
+		// The sacrifice component is the additional cost's clause and
+		// is held to the same shape, minus the two variable forms: no
+		// printed alternative cost sacrifices "X" or "any number", and
+		// a fixed count is what the announce path, the picker and the
+		// enumerator all read off it.
+		checkSacrificeClause(spec.Name, fmt.Sprintf("alternative cost %q", ac.Key), ac.Sacrifice, false, false, false)
 		if ac.FaceDown == nil {
 			continue
 		}
@@ -948,6 +965,18 @@ func zoneDeclared(zones []game.ZoneKind, zone game.ZoneKind) bool {
 		}
 	}
 	return false
+}
+
+// altCostCardComponents counts an alternative cost's card-shaped
+// payments (#1727) — the ones whose cards ride alt_cost_ids.
+func altCostCardComponents(ac game.AlternativeCost) int {
+	n := 0
+	for _, spec := range []*game.TargetSpec{ac.ExileFromHand, ac.ReturnToHand, ac.ExileFromGraveyard, ac.Sacrifice} {
+		if spec != nil {
+			n++
+		}
+	}
+	return n
 }
 
 // Lookup returns the Spec for a given oracle ID. The second return

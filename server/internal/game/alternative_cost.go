@@ -146,9 +146,43 @@ type AlternativeCost struct {
 	// place, this is the price, and the two are still independent.
 	ExileFromGraveyard *TargetSpec
 
-	// PayLabel is the picker's prompt copy for the ExileFromHand /
-	// ReturnToHand component ("a blue card", "an Island you
-	// control"). Empty falls back to Label.
+	// Sacrifice is a "sacrifice N <permanents>" component of the
+	// price — Dread Return's "Flashback—Sacrifice three creatures",
+	// Fireblast's "you may sacrifice two Mountains rather than pay this
+	// spell's mana cost" (#1727). Added after the four card components
+	// above, and the first of them that pays with a SACRIFICE: a
+	// ReturnToHand with a graveyard destination would emit no
+	// EventSacrifice, so Blood Artist would never see the three
+	// creatures Dread Return ate.
+	//
+	// The clause is the SAME shape the additional cost's sacrifice and
+	// the activated ability's SacrificeOther carry — a TargetSpec over
+	// permanents whose count is its Min == Max, built by effects'
+	// sacrificeSpec — and it is validated by the same
+	// validateSacrificeCostLocked those two use: exactly N, all
+	// distinct, each on the battlefield under the CASTER's control (CR
+	// 701.21a) and each matching the clause. Matched, never targeted
+	// (CR 601.2h), so hexproof does not hide your own creature from
+	// your own flashback cost.
+	//
+	// The caster names the permanents in CastSpellParams.AltCostIDs,
+	// not SacrificeIDs: they pay THIS offer, which vanishes when the
+	// caster declines it, and SacrificeIDs is the additional cost's
+	// list — the one PaidCost.Sacrificed and a per-sacrifice discount
+	// (CostQuery.Sacrificing) count. Paid with the spell already on the
+	// stack and as one simultaneous exit (payCostSacrificesLocked), so
+	// every dies trigger lands ABOVE the spell, and a countered Dread
+	// Return leaves the three creatures dead.
+	//
+	// A fixed count only: effects.Register refuses "sacrifice X" and
+	// "any number" here, because no printed alternative cost has a
+	// variable sacrifice that the announce path could price.
+	Sacrifice *TargetSpec
+
+	// PayLabel is the picker's prompt copy for the card component —
+	// ExileFromHand, ReturnToHand, ExileFromGraveyard or Sacrifice ("a
+	// blue card", "an Island you control", "three creatures"). Empty
+	// falls back to Label.
 	PayLabel string
 
 	// SacrificeOnEntry is evoke's "it's sacrificed when it enters".
@@ -303,6 +337,11 @@ func (a *AlternativeCost) cardComponent() (*TargetSpec, ZoneKind, int) {
 			n = 1
 		}
 		return a.ExileFromGraveyard, ZoneGraveyard, n
+	case a.Sacrifice != nil:
+		// #1727: the count every other sacrifice cost reads, off the
+		// same clause shape (#747) — Register holds it to a fixed
+		// count, so this is the printed N.
+		return a.Sacrifice, ZoneBattlefield, SacrificeCostCount(a.Sacrifice)
 	}
 	return nil, "", 0
 }
@@ -531,9 +570,22 @@ func (g *Game) AlternativeCostPayableLocked(playerID, castID uuid.UUID, alt *Alt
 // Not a target — a cost is not targeted (CR 601.2h), so hexproof and
 // shroud do not apply and the spec is matched directly against the
 // card rather than through the targeting gate. Caller must hold g.mu.
+//
+// #1727: a PERMANENT is matched by specMatchLocked(…, false), the
+// non-targeting match every other battlefield cost component reads —
+// validateSacrificeCostLocked, the return / tap-others / counter
+// costs. For Daze's Island that is the CardOK call it always was; for
+// the sacrifice component it makes the offer the view stamps and the
+// candidates the enumerator pays from the same rule the announce
+// validator then judges the named permanents by.
 func (g *Game) altCostCardOKLocked(p *Player, spec *TargetSpec, zone ZoneKind, c Card) bool {
-	if zone == ZoneBattlefield && c.Controller != p.ID {
-		return false
+	if zone == ZoneBattlefield {
+		// CR 701.21a for the sacrifice, "an Island YOU CONTROL" for the
+		// bounce: a cost is paid with your own permanents.
+		if c.Controller != p.ID {
+			return false
+		}
+		return g.specMatchLocked(SourceChooser(p.ID), spec, TargetRef{Kind: TargetCard, ID: c.InstanceID}, false)
 	}
 	return spec.CardOK == nil || spec.CardOK(g, p.ID, c, zone)
 }
@@ -579,6 +631,17 @@ func (g *Game) validateAlternativeCostPaymentLocked(playerID, castID uuid.UUID, 
 			return ErrInvalidParam
 		}
 		return nil
+	}
+	if alt.Sacrifice != nil {
+		// #1727: the one sacrifice validator the additional cost, the
+		// activated abilities and the mana abilities share — exactly N
+		// (SacrificeCountLegal), each named once, each on the
+		// battlefield under the caster's control (CR 701.21a) and each
+		// matching the clause, with nothing moved on any failure. The
+		// spell being cast is on the stack (CR 601.2a), so it cannot be
+		// among them; there is no X to announce for a fixed clause.
+		_, err := g.validateSacrificeCostLocked(playerID, castID, AbilityCost{SacrificeOther: alt.Sacrifice}, ids, 0)
+		return err
 	}
 	// Exactly `want`, not "at least": escape's five is a price, and
 	// a caster who named four has not paid it while one who named
@@ -675,6 +738,13 @@ func (g *Game) AltCostCandidatesLocked(playerID, castID uuid.UUID, alt *Alternat
 		}
 		out = append(out, c.InstanceID)
 	}
+	if alt.Sacrifice != nil {
+		// #1727: a sacrifice payment is offered in the order every
+		// other sacrifice cost is (#747) — tokens first, then the
+		// cheapest — so the bot pays what the client's "Choose for me"
+		// would, before a policy re-sorts it.
+		return g.SacrificePaymentOrderForEffect(out, uuid.Nil)
+	}
 	return out
 }
 
@@ -745,6 +815,16 @@ func (g *Game) payAlternativeCostLocked(playerID uuid.UUID, alt *AlternativeCost
 				return err
 			}
 		}
+	case alt.Sacrifice != nil:
+		// #1727: the additional cost's payer, verbatim. Each permanent
+		// is SACRIFICED — EventSacrifice, then its own route to its
+		// owner's graveyard — and the N leave as one simultaneous exit,
+		// so a Blood Artist among them sees every death (CR 603.10a).
+		// With the spell already on the stack, so the dies triggers
+		// resolve first; and nothing gives them back if it is
+		// countered. The CR 903.9 answers ride along as they do for the
+		// moves above (#1397).
+		return g.payCostSacrificesLocked(ids, answers)
 	}
 	return nil
 }
@@ -952,4 +1032,23 @@ func warpExile(g *Game, it *StackItem, p EffectParams) error {
 		}
 	}
 	return nil
+}
+
+// sharesAnID reports whether any ID appears in both lists — the CR
+// 118.3 check that one object is not named to pay two cost components
+// (#1727: an alternative cost's sacrifice and an additional cost's).
+func sharesAnID(a, b []uuid.UUID) bool {
+	if len(a) == 0 || len(b) == 0 {
+		return false
+	}
+	seen := make(map[uuid.UUID]bool, len(a))
+	for _, id := range a {
+		seen[id] = true
+	}
+	for _, id := range b {
+		if seen[id] {
+			return true
+		}
+	}
+	return false
 }

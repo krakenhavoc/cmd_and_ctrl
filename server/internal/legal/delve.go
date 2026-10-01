@@ -132,10 +132,5 @@ func (e *enumerator) delveFullAffordable(first *announcedCast, spend game.ManaSp
 	if full == nil {
 		return false
 	}
-	return e.canPayExcluding(full.cost, full.x, spend, game.CastAutoTapExclusions(game.CastSpellParams{
-		DiscardIDs:   first.discards,
-		SacrificeIDs: first.sacs,
-		TeamworkIDs:  first.team,
-		BlightIDs:    first.blight,
-	}))
+	return e.canPayExcluding(full.cost, full.x, spend, first.autoTapExclusions(first.alt))
 }

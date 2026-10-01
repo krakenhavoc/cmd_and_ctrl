@@ -1124,6 +1124,19 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		)
 		return err
 	}
+	// #1727, CR 118.3: one permanent pays one sacrifice. The
+	// alternative cost's sacrifice (AltCostIDs) and the additional
+	// cost's (SacrificeIDs) are validated separately above, each
+	// against its own clause, so a creature named to both would pass
+	// both and then be sacrificed once and found missing the second
+	// time — after the spell was already on the stack.
+	if alt != nil && alt.Sacrifice != nil && sharesAnID(params.AltCostIDs, params.SacrificeIDs) {
+		slog.Warn("cast_spell rejected: one permanent named to two sacrifice costs",
+			"card_name", card.Name,
+			"oracle_id", card.OracleID,
+		)
+		return ErrInvalidParam
+	}
 	// #1703: the two components whose payment names creatures on
 	// the board — teamwork's taps (CR 702.194a) and blight's one
 	// creature (CR 701.68a). Same plan, same validate-all-then-pay.

@@ -941,9 +941,27 @@ type AlternativeCostView struct {
 	// public pile, where the offer stays and the list does not.
 	PayOptions *LegalTargetsView `json:"pay_options,omitempty"`
 
-	// PayLabel is the picker's prompt copy for PayOptions ("a blue
-	// card", "an Island you control"). Absent when there is nothing
-	// to pick.
+	// SacrificeOptions is the cost's card-shaped half when that half
+	// is a SACRIFICE (#1727) — Dread Return's "Flashback—Sacrifice
+	// three creatures", Fireblast's two Mountains. The same block, in
+	// the same payment order and with the same min / max, that the
+	// additional cost's `sacrifice_options` ships (sacrificeCostOptions),
+	// so the client opens the one sacrifice picker it already has, with
+	// its "Choose for me". The chosen instance IDs still ride back on
+	// cast_spell as `alt_cost_ids` — the offer's list, not the
+	// additional cost's `sacrifice_ids`.
+	//
+	// Set INSTEAD of `pay_options`, never beside it: an offer has one
+	// card component. Absent for every offer that sacrifices nothing.
+	// An offer the caster cannot pay (fewer permanents than the count)
+	// is not stamped at all — CastOffersForLocked drops it — so a
+	// flashback that cannot be paid is a card that is not castable
+	// from the graveyard. Per viewer, like `pay_options` (#1172).
+	SacrificeOptions *LegalTargetsView `json:"sacrifice_options,omitempty"`
+
+	// PayLabel is the picker's prompt copy for PayOptions or
+	// SacrificeOptions ("a blue card", "an Island you control", "three
+	// creatures"). Absent when there is nothing to pick.
 	PayLabel string `json:"pay_label,omitempty"`
 
 	// XLockedAtZero is CR 107.3b for THIS offer: the card prints an
@@ -4216,6 +4234,8 @@ func publicAlternativeCosts(offers []AlternativeCostView) []AlternativeCostView 
 	for i, o := range offers {
 		o.LegalTargets = nil
 		o.PayOptions = nil
+		// #1727: "the creatures YOU control", one seat's answer.
+		o.SacrificeOptions = nil
 		out[i] = o
 	}
 	return out
@@ -5244,6 +5264,11 @@ func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, src game.TargetSourc
 			opts.Cards = withoutID(opts.Cards, self)
 			opts.Players = nil
 			v.PayOptions = opts
+		} else if paySpec := ac.Sacrifice; paySpec != nil {
+			// #1727: the additional cost's sacrifice picker, verbatim —
+			// the caster's own permanents (CR 701.21a), in payment
+			// order, bounded by the clause's count.
+			v.SacrificeOptions = sacrificeCostOptions(g, caster, paySpec, uuid.Nil, false)
 		}
 		out = append(out, v)
 	}

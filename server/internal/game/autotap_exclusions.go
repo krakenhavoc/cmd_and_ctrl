@@ -39,9 +39,17 @@ import "github.com/google/uuid"
 // named to HULK SMASH!'s teamwork cannot also tap for its {R} — and the
 // creature named to a blight, which a sacrifice-for-mana plan (an
 // Eldrazi Spawn) would otherwise eat before the counters could land.
+//
+// #1727: and the cards and permanents named to the ALTERNATIVE cost's
+// card component (AltCostIDs). A sacrifice alternative cost has no mana
+// of its own, but a cost increase gives it some — Dread Return
+// flashed back under Thalia owes {1} — and an Eldrazi Spawn named to
+// "sacrifice three creatures" must not be cracked for that {1} first.
+// The same was already true, and unexercised, of a Spirit Guide named
+// to a pitch cost.
 func CastAutoTapExclusions(params CastSpellParams) map[uuid.UUID]bool {
 	return unionIDs(params.LockedSources, params.TapIDs, params.SacrificeIDs, params.DiscardIDs,
-		params.TeamworkIDs, params.BlightIDs)
+		params.TeamworkIDs, params.BlightIDs, params.AltCostIDs)
 }
 
 // AbilityAutoTapExclusions is the same set for a CR 602 activation's

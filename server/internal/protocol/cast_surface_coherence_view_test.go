@@ -958,5 +958,9 @@ func assertNoNestedTargets(t *testing.T, label, path string, s CastSurfaceView) 
 			t.Errorf("%s: a bystander got %salternative_costs[%d].pay_options: %+v",
 				label, path, i, o.PayOptions)
 		}
+		if o.SacrificeOptions != nil {
+			t.Errorf("%s: a bystander got %salternative_costs[%d].sacrifice_options: %+v",
+				label, path, i, o.SacrificeOptions)
+		}
 	}
 }

@@ -3454,7 +3454,9 @@ The `Key` is the wire contract: it rides `cast_spell` as
 `alternative_cost`, lands on `StackItem.AltCost`, and the card's
 `OnResolve` branches on `ctx.PaidAltCost("overload")`. Keys must be
 non-empty and unique per card; `Register` panics otherwise. Only
-overload / evoke / cleave / flashback / warp / escape exist —
+overload / evoke / cleave / flashback / warp / escape exist, plus the
+non-mana prices below (pitch, pay life, return, and since #1727 a
+sacrifice) —
 spree has no shape yet, and a card carrying it ships without it (say
 so in the card comment). Preparation cards are a layout, not a cost —
 see "Adding a preparation card" below. Foretell,
@@ -3516,6 +3518,48 @@ is a *price* rather than a permission:
   other, and escapes again next time. Copying flashback's constructor
   and swapping the key would ship a card that exiles itself, which is
   not what any escape card does.
+
+**A sacrifice as the price (#1727).** "Flashback—Sacrifice three
+creatures" (Dread Return) and "you may sacrifice two Mountains rather
+than pay this spell's mana cost" (Fireblast) are
+`AlternativeCost.Sacrifice`, built with one of two constructors:
+
+```go
+CastableZones:    []game.ZoneKind{game.ZoneGraveyard},                           // Dread Return
+AlternativeCosts: []game.AlternativeCost{FlashbackSacrifice(3, "three creatures", Creature())},
+
+AlternativeCosts: []game.AlternativeCost{                                          // Fireblast
+    SacrificeInstead(2, "two Mountains", 0, HasSubtype("Mountain")),
+},
+AlternativeCosts: []game.AlternativeCost{                                          // Demon of Death's Gate
+    SacrificeInstead(3, "three black creatures", 6, OfColor("B"), Creature()),     // "pay 6 life and sacrifice…"
+},
+```
+
+`FlashbackSacrifice` is `Flashback` with the price swapped: it keeps
+the graveyard binding and `ExileOnLeavingStack`. Do not write
+`Flashback("")` and bolt the sacrifice on — the empty string is "free"
+and the label reads "Flashback ". The clause is the additional cost's
+own shape (`sacrificeSpec`, count on `Min` == `Max`), and the engine
+validates it with the same `validateSacrificeCostLocked` and pays it
+with the same `payCostSacrificesLocked`: exactly N, each named once,
+each yours (CR 701.21a), all leaving as one simultaneous exit with the
+spell already on the stack, so the dies triggers resolve first and a
+counter gives nothing back. The caster names them in `alt_cost_ids`,
+never `sacrifice_ids` — they pay the offer, not an additional cost, and
+`ctx.Sacrificed()` and the per-sacrifice discounts count only the
+additional cost's list. The view ships the offer's options as
+`sacrifice_options` (not `pay_options`), so the client opens its
+sacrifice picker.
+
+`Register` refuses a variable count here ("sacrifice X", "any number",
+"one or more") — no printed alternative cost has one — and refuses an
+offer with two card-shaped components, because `alt_cost_ids` is one
+list. Not covered yet: emerge (the sacrificed creature's mana value
+REDUCES the mana half, which the pricer does not read), Firecat Blitz's
+"Sacrifice X Mountains" on a flashback, and a "Flashback—Tap N
+creatures" price (Battle Screech, Prismatic Strands), which is a tap
+component the struct does not have.
 
 **"Unless it escaped" — cast provenance (#653, CR 400.7d).** A
 permanent remembers how the spell that became it was cast:

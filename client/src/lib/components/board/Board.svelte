@@ -94,6 +94,7 @@
     castTargetOverride,
     modesUnderChoices,
     altCostPayOptions,
+    altCostSacrificeClause,
     applyCastChoices,
     castChoicesBase,
     isLegalCardTarget,
@@ -693,6 +694,32 @@
     afterAltCostPayment(card, { ...choices, altCostIDs: instanceIDs });
   }
 
+  // #1727: an offer whose card half is a SACRIFICE (Dread Return's
+  // flashback, Fireblast) opens the one sacrifice picker every other
+  // sacrifice cost uses — payment order, "Choose for me" — instead of
+  // AltCostPaymentModal. The clause is stashed when the prompt opens,
+  // as the cast's own sacrifice prompt does; the picks pay THIS offer,
+  // so they ride alt_cost_ids, not sacrifice_ids.
+  let altSacPromptCard = $state<CardView | null>(null);
+  let altSacPromptChoices: CastChoices = {};
+  let altSacPromptClause = $state<LegalTargetsView | undefined>(undefined);
+  let altSacPromptLabel = $state("a permanent");
+  const altSacOptions = $derived.by(() => {
+    if (!altSacPromptCard) return [];
+    return orderSacrificeOptions(view.battlefield.cards, altSacPromptClause?.cards);
+  });
+  const altSacBounds = $derived(castSacrificeRange(altSacPromptClause));
+
+  function confirmAltSacrifice(instanceIDs: string[]): void {
+    const card = altSacPromptCard;
+    const choices = altSacPromptChoices;
+    altSacPromptCard = null;
+    altSacPromptChoices = {};
+    altSacPromptClause = undefined;
+    if (!card) return;
+    afterAltCostPayment(card, { ...choices, altCostIDs: instanceIDs });
+  }
+
   // afterAltCost / afterDiscardCost / afterCastCosts are the seams
   // between the cost prompts and the rest of the cast flow, so adding
   // a cost kind doesn't mean editing every earlier prompt's confirm.
@@ -705,7 +732,16 @@
     // The chosen offer may charge a card as well as — or instead of —
     // mana. Ask for it before anything else, matching the order the
     // server validates the cast in.
-    if (altCostPayOptions(alternativeCostByKey(card, choices.altCost)) !== undefined) {
+    const offer = alternativeCostByKey(card, choices.altCost);
+    const sacClause = altCostSacrificeClause(offer);
+    if (sacClause !== undefined) {
+      altSacPromptClause = sacClause;
+      altSacPromptLabel = offer?.pay_label ?? offer?.label ?? "a permanent";
+      altSacPromptChoices = choices;
+      altSacPromptCard = card;
+      return;
+    }
+    if (altCostPayOptions(offer) !== undefined) {
       altPayPromptChoices = choices;
       altPayPromptCard = card;
       return;
@@ -2464,6 +2500,22 @@
     onCancel={() => {
       altPayPromptCard = null;
       altPayPromptChoices = {};
+    }}
+  />
+  <!-- #1727: an alternative cost's sacrifice ("Flashback—Sacrifice
+       three creatures") is the sacrifice picker; the picks pay the
+       offer, on alt_cost_ids. -->
+  <SacrificeCostModal
+    source={altSacPromptCard}
+    label={altSacPromptLabel}
+    options={altSacOptions}
+    count={altSacBounds.max}
+    min={altSacBounds.min}
+    onConfirm={confirmAltSacrifice}
+    onCancel={() => {
+      altSacPromptCard = null;
+      altSacPromptChoices = {};
+      altSacPromptClause = undefined;
     }}
   />
   <!-- ADR 0100: the count and the label are the cost THIS cast pays —

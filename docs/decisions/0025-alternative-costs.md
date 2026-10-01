@@ -210,3 +210,72 @@ the sacrifice inverts.
 - **Spree and the modal-cost cards** need a cost *per chosen mode*,
   which is a `ModeSpec` × `AlternativeCost` cross product this does not
   attempt. The slice shape is the half of it that exists.
+
+## Amendment (2026-10-01, #1727): a sacrifice as an alternative cost
+
+The "alternative costs that are not mana" limitation above was closed
+piecemeal: S28 added `Life`, `ExileFromHand` and `ReturnToHand`, S29
+`ExileFromGraveyard`. Each was one more card-shaped component on the
+struct, read through one accessor (`cardComponent`) and named on the
+wire in one list (`alt_cost_ids`). Dread Return's "Flashback—Sacrifice
+three creatures" needed the one cost shape still missing, and that is
+the whole of this amendment.
+
+**Decision 1 — `AlternativeCost.Sacrifice` is the additional cost's
+clause, not a new one.** It is a `*TargetSpec` over permanents with the
+count on `Min` == `Max`, the shape `AdditionalCost.Sacrifice`,
+`AbilityCost.SacrificeOther` and `ManaAbilityShape.SacrificeOther`
+already carry (#747), built by the same `sacrificeSpec`. It is
+validated by `validateSacrificeCostLocked` — exactly N, each named
+once, each on the battlefield under the caster's control (CR 701.21a),
+each matching the clause, nothing moved on any failure — and paid by
+`payCostSacrificesLocked`, one simultaneous exit with an
+`EventSacrifice` per permanent. So there is still one sacrifice
+validator and one sacrifice payer in the engine. It is NOT a
+`ReturnToHand` with a graveyard destination: that would emit no
+sacrifice event, and Blood Artist would never see the three creatures.
+
+**Decision 2 — the picks ride `alt_cost_ids`, not `sacrifice_ids`.**
+The code had already answered this. `CastSpellParams.AltCostIDs` is
+"the cards paid to the non-mana half of the claimed alternative cost",
+kept separate from `SacrificeIDs` because the two pay different costs:
+one vanishes when the caster declines the offer and one is charged
+whichever price is paid. `SacrificeIDs` also has readers that must not
+see an alternative cost's sacrifice — `PaidCost.Sacrificed`
+(`ctx.Sacrificed()`) and the per-sacrifice discount
+(`CostQuery.Sacrificing`) count the additional cost's list, and
+`validateAdditionalCostLocked` refuses a non-empty list on a card with
+no sacrifice clause. A permanent named to both lists is refused (CR
+118.3).
+
+**Decision 3 — the view ships `sacrifice_options`, not `pay_options`.**
+The offer's options are built by `sacrificeCostOptions`, the function
+the additional and optional costs' pickers read, so they come in
+payment order with the clause's bounds, and the client opens its
+existing `SacrificeCostModal` on them. An offer whose clause the
+caster's board cannot fill is never stamped — `AlternativeCostPayableLocked`
+counts the candidates, as it does for escape — so a flashback that
+cannot be paid leaves the card not `castable_here`. The enumerator
+reads the same `CardPaymentCount` and `AltCostCandidatesLocked` it reads
+for escape and Daze, and candidates come in sacrifice payment order.
+
+**Decision 4 — an alternative cost's cards are kept away from the
+auto-tapper.** `CastAutoTapExclusions` now includes `AltCostIDs`. A
+sacrifice price has no mana, but a cost increase gives it some (Dread
+Return flashed back under Thalia owes {1}), and an Eldrazi Spawn named
+to the sacrifice must not be cracked for that {1} first. The enumerator
+checks affordability with the same exclusion.
+
+**Decision 5 — two keyword constructors.** `effects.FlashbackSacrifice(n,
+label, preds…)` keeps everything `Flashback` bundles (graveyard binding,
+`ExileOnLeavingStack`) and swaps the price; `effects.SacrificeInstead(n,
+label, life, preds…)` is the from-hand "you may sacrifice … rather than
+pay this spell's mana cost", with an optional life half. `Register`
+refuses a variable count on the component and an offer with two
+card-shaped components.
+
+Proof cards: Dread Return (adopted, now `full`), Lava Dart, Fireblast
+and Demon of Death's Gate. Still not covered: emerge (CR 702.119 —
+the sacrificed creature's mana value reduces the mana half), Firecat
+Blitz's "Flashback—{R}{R}, Sacrifice X Mountains", and Cabal Therapy
+(its front half needs a card-name choice at resolution).

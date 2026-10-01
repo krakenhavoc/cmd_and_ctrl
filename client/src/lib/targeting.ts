@@ -1096,6 +1096,18 @@ export function altCostPayOptions(offer: AlternativeCostView | undefined): strin
   return offer.pay_options.cards ?? [];
 }
 
+// altCostSacrificeClause returns an offer's sacrifice half (#1727) —
+// Dread Return's "Flashback—Sacrifice three creatures", Fireblast's two
+// Mountains — or undefined when the offer sacrifices nothing. The cast
+// flow opens SacrificeCostModal on it rather than AltCostPaymentModal,
+// because a sacrifice is the picker every other sacrifice cost uses;
+// the picks still ride `alt_cost_ids`.
+export function altCostSacrificeClause(
+  offer: AlternativeCostView | undefined,
+): LegalTargetsView | undefined {
+  return offer?.sacrifice_options;
+}
+
 // altCostPayCount is how many cards the offer's card-shaped half
 // demands. One for every S28 shape — Force of Will pitches a card,
 // Daze bounces an Island — and N for S29's escape, whose cost is
