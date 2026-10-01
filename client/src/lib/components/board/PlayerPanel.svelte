@@ -155,6 +155,10 @@
     // (Game.svelte). Handed to the cast surfaces for their ready rings
     // and counts; it gates nothing.
     legal?: LegalActions;
+    // ADR 0105 sub-PR 3: the frame's FULL lookup, which the highlight
+    // setting never touches. Read only by the ability popover's gate,
+    // which greys a sorcery-speed row the server's digest leaves out.
+    legalGate?: LegalActions;
   }
 
   const {
@@ -191,7 +195,17 @@
     considering = false,
     onDeclareAttackers,
     legal = NO_LEGAL_ACTIONS,
+    legalGate = NO_LEGAL_ACTIONS,
   }: Props = $props();
+
+  // ADR 0105: the battlefield rows read the lookups on the viewer's own
+  // panel only. The digest is the viewer's, so an opponent's permanent
+  // has no entry in it anyway. Their popover is not wired either, and a
+  // pip that points at nothing is worse than none. A spectator never
+  // has a digest. Opponents' rows are not gated on the viewer's digest
+  // either, just as `sorcerySpeedBlocked` below is "" for them.
+  const rowLegal = $derived(isSelf && !spectator ? legal : NO_LEGAL_ACTIONS);
+  const rowGate = $derived(isSelf && !spectator ? legalGate : NO_LEGAL_ACTIONS);
 
   // The seat's commander, wherever it is right now: the command zone
   // first, then the shared zones (battlefield, stack, exile) and its
@@ -271,6 +285,11 @@
   // so those abilities stayed clickable through combat and an
   // opponent's turn and came back rejected — the live example
   // ADR 0033 §1 cites for why the client stopped re-deriving timing.
+  //
+  // ADR 0105 sub-PR 3: it is the popover's WORDS now, not its verdict.
+  // Whether a row is shut is the server's answer, from the row's
+  // `timing_closed` and the legal-action digest (`legalGate`). This
+  // string only says why.
   //
   // Empty string means "open, no opinion"; opponents' panels are
   // never gated on the VIEWER's window, so they get "" too.
@@ -495,6 +514,8 @@
       {onActivateAbility}
       {sorcerySpeedBlocked}
       payerLife={seat.life}
+      legal={rowLegal}
+      legalGate={rowGate}
       onGroupClick={(k) => (openGroupKey = k)}
     />
   </div>
@@ -518,6 +539,8 @@
       {onActivateAbility}
       {sorcerySpeedBlocked}
       payerLife={seat.life}
+      legal={rowLegal}
+      legalGate={rowGate}
       onGroupClick={(k) => (openGroupKey = k)}
     />
     <BattlefieldRow
@@ -535,6 +558,8 @@
       {onActivateAbility}
       {sorcerySpeedBlocked}
       payerLife={seat.life}
+      legal={rowLegal}
+      legalGate={rowGate}
       onGroupClick={(k) => (openGroupKey = k)}
     />
   </div>
@@ -554,6 +579,7 @@
         snap={view}
         {viewerID}
         {legal}
+        legalGate={rowGate}
       />
     </div>
     {#if isSelf}
@@ -614,6 +640,7 @@
       {view}
       {viewerID}
       {legal}
+      legalGate={rowGate}
     />
   </div>
   <TokenGroupModal

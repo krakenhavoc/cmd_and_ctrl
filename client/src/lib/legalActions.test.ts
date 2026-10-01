@@ -20,9 +20,14 @@ import { describe, it, expect } from "vitest";
 
 import {
   NO_LEGAL_ACTIONS,
+  NO_PIPS,
+  digestRefusesRow,
   highlightsLive,
   legalActionsOf,
   notableManaRefs,
+  pipCount,
+  readyFirst,
+  readyPips,
   visibleHighlights,
   type LegalActions,
   type ReadyZone,
@@ -424,5 +429,142 @@ describe("notableManaRefs", () => {
 
   it("nothing ready, nothing marked", () => {
     expect(notableManaRefs(vivi, [], "battlefield")).toEqual([]);
+  });
+});
+
+// ---- pips, menu order and the popover gate (ADR 0105 sub-PR 3) -------
+
+describe("readyPips: bolt and drop, from the digest, after §4", () => {
+  const card = (id: string, type_line: string, mana: object[] = []): CardView =>
+    ({
+      instance_id: id,
+      name: id,
+      owner: ME,
+      controller: ME,
+      type_line,
+      mana_abilities: mana,
+    }) as unknown as CardView;
+  const forest = card("forest", "Basic Land — Forest", [
+    { index: 0, ref: "own:0", tap_cost: true },
+  ]);
+  const vivi = card("vivi", "Legendary Creature — Wizard", [{ index: 0, ref: "own:0" }]);
+  const treasure = card("treasure", "Token Artifact — Treasure", [
+    { index: 0, ref: "own:0", tap_cost: true, sacrifice_cost: true },
+  ]);
+  const solRing = card("sol", "Artifact", [{ index: 0, ref: "own:0", tap_cost: true }]);
+  const guide = {
+    ...card("guide", "Creature — Elemental Spirit"),
+    mana_abilities: undefined,
+    zone_mana_abilities: [{ index: 0, ref: "own:0" }],
+  } as unknown as CardView;
+  const legal = legalActionsOf(
+    frame({
+      legal_actions: {
+        pass: true,
+        sources: {
+          forest: { kinds: ["mana"], moves: 1, mana_abilities: ["own:0"] },
+          vivi: { kinds: ["mana"], moves: 1, mana_abilities: ["own:0"] },
+          treasure: { kinds: ["mana"], moves: 1, mana_abilities: ["own:0"] },
+          sol: { kinds: ["mana"], moves: 1, mana_abilities: ["own:0"] },
+          guide: { kinds: ["mana"], moves: 1, mana_abilities: ["own:0"] },
+          equip: { kinds: ["activate"], moves: 3, abilities: ["own:0", "own:1"] },
+          one: {
+            kinds: ["activate", "mana"],
+            moves: 2,
+            abilities: ["own:2"],
+            mana_abilities: ["own:0"],
+          },
+        },
+      },
+    }),
+  );
+
+  it("a basic land's {T} mana ability: no pip", () => {
+    expect(readyPips(legal, forest, "battlefield")).toBe(NO_PIPS);
+  });
+  it("Vivi's free mana ability (no {T}): drop pip, no bolt", () => {
+    expect(readyPips(legal, vivi, "battlefield")).toEqual({ abilities: 0, mana: true });
+  });
+  it("a Treasure's sacrifice: drop pip", () => {
+    expect(readyPips(legal, treasure, "battlefield").mana).toBe(true);
+  });
+  it("a nonland {T} rock: drop pip", () => {
+    expect(readyPips(legal, solRing, "battlefield").mana).toBe(true);
+  });
+  it("a Spirit Guide in hand: drop pip", () => {
+    expect(readyPips(legal, guide, "hand").mana).toBe(true);
+  });
+  it("counts the live activated-ability rows for the bolt", () => {
+    expect(readyPips(legal, card("equip", "Artifact — Equipment"), "battlefield")).toEqual({
+      abilities: 2,
+      mana: false,
+    });
+    const one = card("one", "Artifact", [{ index: 0, ref: "own:0" }]);
+    expect(readyPips(legal, one, "battlefield")).toEqual({ abilities: 1, mana: true });
+  });
+  it("no digest, highlights off, or a card not in it: no pip", () => {
+    expect(readyPips(NO_LEGAL_ACTIONS, vivi, "battlefield")).toBe(NO_PIPS);
+    expect(readyPips(visibleHighlights(legal, false), vivi, "battlefield")).toBe(NO_PIPS);
+    expect(readyPips(legal, card("theirs", "Artifact"), "battlefield")).toBe(NO_PIPS);
+  });
+});
+
+describe("pipCount", () => {
+  it("prints nothing for one and the count from two up", () => {
+    expect(pipCount(0)).toBe("");
+    expect(pipCount(1)).toBe("");
+    expect(pipCount(2)).toBe("2");
+    expect(pipCount(5)).toBe("5");
+  });
+});
+
+describe("readyFirst", () => {
+  it("moves ready rows up and keeps each half's order", () => {
+    const rows = ["a", "B", "c", "D", "e"];
+    expect(readyFirst(rows, (r) => r === r.toUpperCase())).toEqual(["B", "D", "a", "c", "e"]);
+  });
+  it("leaves a list with no ready row as it was", () => {
+    expect(readyFirst([3, 1, 2], () => false)).toEqual([3, 1, 2]);
+  });
+});
+
+describe("digestRefusesRow: the popover's gate", () => {
+  const digest = legalActionsOf(
+    frame({
+      legal_actions: {
+        pass: true,
+        sources: { shikari: { kinds: ["activate"], moves: 1, abilities: ["own:0"] } },
+      },
+    }),
+  );
+
+  it("the exact digest refuses a row it leaves out, and not one it lists", () => {
+    expect(digest.exact).toBe(true);
+    expect(digestRefusesRow(digest, "shikari", "own:0")).toBe(false);
+    expect(digestRefusesRow(digest, "shikari", "own:1")).toBe(true);
+    // A card with no entry has no live row at all.
+    expect(digestRefusesRow(digest, "other", "own:0")).toBe(true);
+  });
+
+  it("no information refuses nothing: no digest, the capped list, a row with no ref", () => {
+    expect(digestRefusesRow(NO_LEGAL_ACTIONS, "shikari", "own:1")).toBe(false);
+    expect(digestRefusesRow(legalActionsOf(frame()), "shikari", "own:1")).toBe(false);
+    const capped = legalActionsOf(
+      frame({
+        legal_moves: [
+          move({
+            kind: "activate",
+            type: "activate_ability",
+            source: "shikari",
+            params: { ref: "own:0" },
+          }),
+        ],
+      }),
+    );
+    expect(capped.known).toBe(true);
+    expect(capped.exact).toBe(false);
+    expect(capped.readyAbilityRefs("shikari")).toEqual(["own:0"]);
+    expect(digestRefusesRow(capped, "shikari", "own:1")).toBe(false);
+    expect(digestRefusesRow(digest, "shikari", undefined)).toBe(false);
   });
 });

@@ -34,6 +34,7 @@
     type MenuAction,
     type MenuItem,
   } from "../../contextMenu.logic";
+  import { NO_LEGAL_ACTIONS, type LegalActions } from "../../legalActions";
 
   type ActionSender = (type: ActionType, params?: ActionPayload["params"], player?: string) => void;
 
@@ -47,9 +48,23 @@
     // picker and the targeting flow an activation may need.
     onActivate: (card: CardView, activate: MenuActivate) => void;
     onClose: () => void;
+    // ADR 0105 (#1789): the frame's highlight lookup ("nothing" while
+    // highlights are off or autopass is passing). Ability rows the
+    // server would accept right now take the ready accent and sort
+    // first. It greys nothing.
+    legal?: LegalActions;
   }
 
-  const { view, viewerID, isAdmin, open, sendAction, onActivate, onClose }: Props = $props();
+  const {
+    view,
+    viewerID,
+    isAdmin,
+    open,
+    sendAction,
+    onActivate,
+    onClose,
+    legal = NO_LEGAL_ACTIONS,
+  }: Props = $props();
 
   // Re-resolve the card from the live snapshot so counter totals,
   // tapped state and marked damage stay current while the menu is
@@ -59,7 +74,7 @@
   const card = $derived(findCard(view, open.card.instance_id) ?? open.card);
   const where = $derived(locateCard(view, open.card.instance_id));
   const zoneLabel = $derived(where ? ZONE_LABELS[where.zone] : "gone");
-  const sections = $derived(buildMenuSections(view, card, viewerID, isAdmin));
+  const sections = $derived(buildMenuSections(view, card, viewerID, isAdmin, legal));
 
   // trail is the drill-down path, held as item IDs rather than item
   // objects so a snapshot arriving while a submenu is open refreshes
@@ -202,6 +217,7 @@
     type="button"
     class="ctx-item"
     class:danger={item.danger}
+    class:ready={item.ready}
     role="menuitem"
     disabled={item.disabled}
     title={item.hint || item.label}
@@ -357,6 +373,18 @@
   .ctx-item.danger:hover:not(:disabled) {
     background: rgba(120, 20, 20, 0.35);
     border-color: rgba(255, 122, 122, 0.5);
+  }
+  /* ADR 0105 (#1789): the server would accept this row right now —
+     the same accent the ability popover uses. */
+  .ctx-item.ready {
+    color: var(--ready);
+    background: var(--ready-soft);
+    box-shadow: inset 2px 0 0 var(--ready);
+  }
+  .ctx-item.ready:hover,
+  .ctx-item.ready:focus-visible {
+    background: var(--ready-soft);
+    border-color: var(--ready);
   }
   .ctx-item.back {
     opacity: 0.75;

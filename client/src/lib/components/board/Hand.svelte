@@ -88,8 +88,13 @@
     // ADR 0105 (#1789): the frame's legal-action lookup, already
     // narrowed to "nothing" when highlights are off or smart autopass
     // is about to pass this frame (Game.svelte). Drives the ready ring
-    // only: the .timing-disabled gate above never reads it.
+    // only: the .timing-disabled gate above never reads it. Also the
+    // ability popover's ready accent (sub-PR 3).
     legal?: LegalActions;
+    // ADR 0105 sub-PR 3: the frame's full lookup, for the ability
+    // popover's gate on a sorcery-speed row. The setting never
+    // touches it.
+    legalGate?: LegalActions;
   }
 
   const {
@@ -103,6 +108,7 @@
     snap = null,
     viewerID = null,
     legal = NO_LEGAL_ACTIONS,
+    legalGate = NO_LEGAL_ACTIONS,
   }: Props = $props();
 
   // ---- #1524: the viewer's own order --------------------------------
@@ -659,6 +665,8 @@
             ? (idx) => onActivateManaAbility?.(c, idx)
             : undefined}
           {sorcerySpeedBlocked}
+          legal={isSelf ? legal : undefined}
+          legalGate={isSelf ? legalGate : undefined}
           ready={isSelf && legal.castableFrom(c.instance_id, "hand")}
           onClick={isSelf && leg.legal ? () => handleCardClick(c) : undefined}
         />

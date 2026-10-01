@@ -14,6 +14,7 @@
   import Card from "./Card.svelte";
   import { etbPulse } from "../../animations";
   import { rowEntries } from "../../tokenGroups";
+  import { NO_LEGAL_ACTIONS, readyPips, type LegalActions } from "../../legalActions";
 
   interface Props {
     label: string;
@@ -74,6 +75,14 @@
     // (TokenGroupModal). Undefined turns grouping off, so a row with
     // nowhere to open the list never hides a token behind a count.
     onGroupClick?: (groupKey: string) => void;
+    // ADR 0105 (#1789): the frame's legal-action lookups. `legal` is
+    // what may be highlighted ("nothing" while highlights are off or
+    // autopass is passing, and on every panel but the viewer's own). It
+    // draws each permanent's bolt / drop pips, and the ring that goes
+    // with a bolt (a drop pip alone gets no ring, §2). `legalGate` is the full lookup, for the ability
+    // popover's gate only. Both default to "no information".
+    legal?: LegalActions;
+    legalGate?: LegalActions;
   }
 
   const {
@@ -93,6 +102,8 @@
     curseTargets = {},
     takenFrom = {},
     onGroupClick,
+    legal = NO_LEGAL_ACTIONS,
+    legalGate = NO_LEGAL_ACTIONS,
   }: Props = $props();
 
   const sorted = $derived.by(() => {
@@ -196,12 +207,18 @@
         {#each p.cards as c, i (c.instance_id)}
           {@const attached = attachmentsFor(p, c)}
           {@const memberIDs = p.group?.members.map((m) => m.instance_id)}
+          {@const cPips = readyPips(legal, c, "battlefield")}
           <div role="listitem" class:tapped={!!c.tapped} style:--i={i} use:etbPulse>
             <div class="host-stack" class:has-attachments={attached.length > 0}>
               {#each attached as a (a.instance_id)}
+                {@const aPips = readyPips(legal, a, "battlefield")}
                 <div class="attachment">
                   <Card
                     card={a}
+                    ready={!!onActivateAbility && aPips.abilities > 0}
+                    pips={aPips}
+                    {legal}
+                    {legalGate}
                     enchantedPlayer={curseTargets[a.instance_id]}
                     takenFrom={takenFrom[a.instance_id]}
                     onClick={onCardClick}
@@ -221,6 +238,10 @@
               <div class="host">
                 <Card
                   card={c}
+                  ready={!!onActivateAbility && cPips.abilities > 0}
+                  pips={cPips}
+                  {legal}
+                  {legalGate}
                   enchantedPlayer={curseTargets[c.instance_id]}
                   takenFrom={takenFrom[c.instance_id]}
                   selected={memberIDs

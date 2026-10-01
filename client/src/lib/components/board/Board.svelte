@@ -187,8 +187,13 @@
     // ADR 0105 (#1789): the frame's legal-action lookup, built once in
     // Game.svelte and already "nothing" while highlights are off or
     // smart autopass is about to pass this frame. Handed to the
-    // viewer's own panel and the zone browser for their ready rings.
+    // viewer's own panel and the zone browser for their ready rings,
+    // and to the card menu for its ready rows.
     legal?: LegalActions;
+    // ADR 0105 sub-PR 3: the frame's FULL lookup, which neither the
+    // highlight setting nor autopass touches. Only the ability
+    // popover's sorcery-speed gate reads it.
+    legalGate?: LegalActions;
   }
 
   const {
@@ -210,6 +215,7 @@
     attention,
     beatsPrimeKey,
     legal = NO_LEGAL_ACTIONS,
+    legalGate = NO_LEGAL_ACTIONS,
   }: Props = $props();
 
   // #519: every action this component initiates funnels through here
@@ -2291,6 +2297,7 @@
               considering={seat.id === consideringSeatID}
               onDeclareAttackers={pos === "self" && !disabled ? onDeclareAttackers : undefined}
               {legal}
+              {legalGate}
             />
           {/if}
         </div>
@@ -2725,6 +2732,7 @@
       onActivateAbility={handleActivateAbility}
       sorcerySpeedBlocked={browsedZoneSorcerySpeedBlocked}
       {legal}
+      {legalGate}
     />
   {/if}
   {#if $manaSourcePicker}
@@ -2747,6 +2755,7 @@
       sendAction={guardedSendAction}
       onActivate={handleMenuActivate}
       onClose={closeCardMenu}
+      {legal}
     />
   {/if}
 </div>
