@@ -1233,6 +1233,19 @@ Four additive changes, none of them breaking (`v` unchanged):
   zone's OWNER and is public; `castable_here` is the VIEWER's own
   answer (#1055), which covers both the owner's printed cast and the
   case where somebody else holds the permission (#1022 below).
+- **A disturb offer casts the card's BACK face** (#1855, [ADR 0107
+  §4](decisions/0107-state-triggers-rebound-disturb-and-damage-prevention.md),
+  CR 702.146a, 712.11a). A disturb card in its owner's graveyard is
+  stamped front face up, as it sits there (CR 712.8a), with
+  `castable_here`, `alternative_cost_required: true` and one
+  `alternative_costs` entry, `{ key: "disturb", label: "Disturb {1}{U}",
+  mana_cost: "{1}{U}" }`. That entry's `target_mode` / `legal_targets`
+  are the BACK face's clause — a disturbed Aura's "enchant creature" —
+  because the spell is the back face (CR 712.8c); the front face's own
+  clause is not used. `cast_spell` claims it with `from_zone:
+  "graveyard"`, `alternative_cost: "disturb"` and `face` 0 or 1: the
+  server turns the card over itself, and refuses any other face. No new
+  field.
 - **An opponent's `library.cards` may now carry exactly one card** —
   the top one, when "play with the top card of your library revealed"
   (Oracle of Mul Daya, Courser of Kruphix) is in force and the viewer

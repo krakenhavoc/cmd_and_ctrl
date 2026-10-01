@@ -4714,8 +4714,16 @@ func castStampsFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, kind
 	// a Rule of Law or Grafdigger's Cage stamped `cant_cast` onto a
 	// land, which `castIsForbidden` and friends would then read as
 	// "this land can't be played" even though it always could.
+	// #1012's price list, read here so the gate below can judge the
+	// face the cast would put on the stack (castGateFace). It is
+	// stamped further down.
+	var offers []*game.AlternativeCost
+	if haveLive {
+		offers = g.CastOffersForLocked(caster, live, kind, grant)
+	}
+	gated := castGateFace(live, offers)
 	if haveLive && !live.IsLand() {
-		if err := g.CastGateLocked(caster, live, kind, game.CastSpellParams{}); err != nil {
+		if err := g.CastGateLocked(caster, gated, kind, game.CastSpellParams{}); err != nil {
 			// A card the gate refuses is not a cast surface, whatever
 			// opened the zone — but the bit itself is derived below,
 			// once, out of this refusal and the price list together.
@@ -4740,12 +4748,13 @@ func castStampsFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, kind
 	// offers, a wholesale overwrite of the grant's offer, and
 	// silence about whether the printed cost was on the menu at all.
 	// Stamped before the early-out below, because a card can offer a
-	// price without having any target clause of its own.
-	var offers []*game.AlternativeCost
+	// price without having any target clause of its own. (Read above,
+	// before the gate.)
+	var faced *game.Card
 	if haveLive {
-		offers = g.CastOffersForLocked(caster, live, kind, grant)
+		faced = &live
 	}
-	out.AlternativeCosts = viewOfAlternativeCosts(g, caster, src, c.InstanceID, f.manaCost, spec, offers)
+	out.AlternativeCosts = viewOfAlternativeCosts(g, caster, src, c.InstanceID, f.manaCost, spec, faced, offers)
 	// #1012: and the wire says so when the printed cost is not one of
 	// them. `castable_here` is one bit and means "you may cast this
 	// from here", never "you may cast this from here for the cost in
@@ -4774,7 +4783,9 @@ func castStampsFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, kind
 		for i := range out.AlternativeCosts {
 			for _, o := range offers {
 				if o != nil && o.Key == out.AlternativeCosts[i].Key {
-					out.AlternativeCosts[i].TimingClosed = !g.CastTimingOpenLocked(caster, live, kind, grant.ForClaim(o))
+					// ADR 0107 §4: a disturb offer is timed as the back
+					// face it casts, as CastSpell times it.
+					out.AlternativeCosts[i].TimingClosed = !g.CastTimingOpenLocked(caster, o.CastFaceOf(live), kind, grant.ForClaim(o))
 					break
 				}
 			}
@@ -4810,14 +4821,14 @@ func castStampsFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, kind
 	// out of a rule it reimplemented.
 	switch kind {
 	case game.ZoneGraveyard, game.ZoneLibrary:
-		out.CastableHere = haveLive && castableNow(g, caster, live, kind, grant, out.CantCast, offers)
+		out.CastableHere = haveLive && castableNow(g, caster, gated, kind, grant, out.CantCast, offers)
 	case game.ZoneExile:
 		// #1389: exile joins them, for the castable-from-exile strip.
 		// A seat reaches this only through stampGrantedPermissions,
 		// which asks the engine for a LIVE permission first, so warp's
 		// and foretell's "on a later turn" never gets here early.
 		if haveLive {
-			out.CastableHere = castableNow(g, caster, live, kind, grant, out.CantCast, offers)
+			out.CastableHere = castableNow(g, caster, gated, kind, grant, out.CantCast, offers)
 			out.CastPrices = viewOfCastPrices(g, caster, live, offers)
 		}
 	}
@@ -4827,6 +4838,30 @@ func castStampsFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, kind
 	out.LegalTargets = viewOfTargetClause(g, src, "", g.LegalTargetsForEffect(src, spec), spec)
 	out.Clauses = viewOfClauses(g, src, spec)
 	return out
+}
+
+// castGateFace is the face a cast surface's gate and timing are judged
+// by: the card as it sits in its zone, unless every price the cast may
+// claim from here casts one other face — a disturb card in its owner's
+// graveyard (ADR 0107 §4), whose only cast is its back face (CR
+// 712.11a). The spell is then that face (CR 712.8c), so Steel Golem's
+// "You can't cast creature spells" refuses Hook-Haunt Drifter and not
+// Spectral Binding, as CastSpell does. A mixed list (a disturb offer
+// beside a granted escape of the front face) keeps the front face:
+// cant_cast is one answer for the card, and the announce path judges
+// each claim itself.
+func castGateFace(live game.Card, offers []*game.AlternativeCost) game.Card {
+	face := 0
+	for _, o := range offers {
+		if o == nil || o.CastsFace == 0 || (face != 0 && o.CastsFace != face) {
+			return live
+		}
+		face = o.CastsFace
+	}
+	if face == 0 {
+		return live
+	}
+	return offers[0].CastFaceOf(live)
 }
 
 // phyrexianSymbolsIn counts CR 107.4's "or 2 life" symbols in a cost
@@ -5233,7 +5268,7 @@ func viewOfWaterbend(g *game.Game, player, exclude uuid.UUID, wb *game.TapPerman
 // one looks on the wire. The nil entry in that list is the printed
 // mana cost, which is not an alternative cost and is projected as
 // `alternative_cost_required` instead.
-func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, src game.TargetSource, self, printedCost string, base *game.TargetSpec, offers []*game.AlternativeCost) []AlternativeCostView {
+func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, src game.TargetSource, self, printedCost string, base *game.TargetSpec, live *game.Card, offers []*game.AlternativeCost) []AlternativeCostView {
 	// A nil result rather than a present-and-empty one: `absent`
 	// is what the field means for a card with no offers, and every
 	// card in every cast surface reaches this function since #1012.
@@ -5246,6 +5281,16 @@ func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, src game.TargetSourc
 			continue
 		}
 		ac := *offers[i]
+		// ADR 0107 §4, CR 712.8c: a disturb offer casts the BACK
+		// face, so the clause and the printed cost the offer is
+		// judged against are the back face's — Spectral Binding's
+		// "enchant creature", not Binding Geist's empty clause. Every
+		// other offer keeps the face being stamped.
+		offerBase, offerPrinted := base, printedCost
+		if ac.CastsFace != 0 && live != nil {
+			cast := ac.CastFaceOf(*live)
+			offerBase, offerPrinted = game.TargetSpecFor(game.CatalogKey(cast)), cast.ManaCost
+		}
 		// S28 asked the offer's Condition here and #695 widened it to
 		// the whole of CR 601.2b — "a greyed-out button the server
 		// would reject is worse than no button". Neither test lives
@@ -5263,13 +5308,13 @@ func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, src game.TargetSourc
 			// cascade's {0}, airbend's {2} — never reaches this
 			// function; `exile_play.x_locked_at_zero` is where the
 			// same predicate answers for those.
-			XLockedAtZero: game.CastCost{Printed: printedCost, Paid: ac.ManaCost}.LocksXAtZero(),
+			XLockedAtZero: game.CastCost{Printed: offerPrinted, Paid: ac.ManaCost}.LocksXAtZero(),
 			// #916: the offer replaces the mana cost, so it replaces
 			// the "or 2 life" count the client's stepper is bounded
 			// by.
 			PhyrexianSymbols: phyrexianSymbolsIn(ac.ManaCost),
 		}
-		if spec := game.TargetSpecUnderAlternativeCost(base, &ac); spec != nil {
+		if spec := game.TargetSpecUnderAlternativeCost(offerBase, &ac); spec != nil {
 			v.TargetMode = spec.Mode
 			v.LegalTargets = viewOfTargetClause(g, src, ac.Key, g.LegalTargetsForEffect(src, spec), spec)
 		}
