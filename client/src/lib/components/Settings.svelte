@@ -661,6 +661,23 @@
             <label>
               <input
                 type="checkbox"
+                checked={$settings.gameplay.highlightLegalActions}
+                onchange={(e) =>
+                  change("gameplay", "highlightLegalActions", e.currentTarget.checked)}
+              />
+              Highlight what you can do right now
+              {#if isFresh("gameplay.highlightLegalActions")}<span class="saved">✓ saved</span>{/if}
+            </label>
+            <p class="help">
+              While you owe a decision, a card you can cast or a land you can play gets a cyan ring,
+              and a pile shows how many of its cards are ready. Nothing lights on a window auto-pass
+              is about to skip. Turning this off removes the rings and counts only: a card you
+              cannot play is still greyed out.
+            </p>
+
+            <label>
+              <input
+                type="checkbox"
                 checked={$settings.gameplay.autoPassPriority}
                 onchange={(e) => change("gameplay", "autoPassPriority", e.currentTarget.checked)}
               />

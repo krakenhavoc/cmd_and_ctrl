@@ -103,7 +103,13 @@ export function hasNonPassMove(snap: GameView | null | undefined): boolean | und
 // Undefined move list → undefined answer, same contract as movesFor
 // and hasNonPassMove. `pass` is flagged `always_legal` server-side,
 // so when the list exists at all this is an exact answer.
+//
+// ADR 0105: the digest's `pass` answers it first. It is built from the
+// uncapped list, and a frame that carries a digest carries the list
+// too, so the two agree; the scan below is the fallback for a server
+// older than the digest.
 export function hasPassMove(snap: GameView | null | undefined): boolean | undefined {
+  if (snap?.legal_actions) return snap.legal_actions.pass === true;
   const all = snap?.legal_moves;
   if (!all) return undefined;
   return all.some((m) => m.kind === "pass");

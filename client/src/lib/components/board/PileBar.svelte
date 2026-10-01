@@ -12,7 +12,14 @@
   // (GameView.exile), so callers pass a pre-filtered ZoneView containing
   // just this player's owned exiled cards.
 
-  import type { ActionPayload, ActionType, CardView, PlayerView, ZoneView } from "../../protocol";
+  import type {
+    ActionPayload,
+    ActionType,
+    CardView,
+    GameView,
+    PlayerView,
+    ZoneView,
+  } from "../../protocol";
   import PileButton from "./PileButton.svelte";
   import CommandZone from "./CommandZone.svelte";
   import { openZoneBrowser } from "../../zoneBrowser";
@@ -22,6 +29,7 @@
     visibleLibraryTop,
   } from "../../libraryTop";
   import type { CastSourceZone } from "../../targeting";
+  import { NO_LEGAL_ACTIONS, type LegalActions } from "../../legalActions";
 
   type ActionSender = (type: ActionType, params?: ActionPayload["params"], player?: string) => void;
 
@@ -45,6 +53,13 @@
     // greys with. Passed straight through to CommandZone.
     onActivateAbility?: (card: CardView, abilityIndex: number) => void;
     sorcerySpeedBlocked?: string;
+    // ADR 0105 (#1789): the frame and viewer for the command zone's
+    // cast gate, and the legal-action lookup ("nothing" while
+    // highlights are off) for the piles' "N ready" counts, the
+    // library-top pill's accent and the commander's ready ring.
+    view?: GameView | null;
+    viewerID?: string | null;
+    legal?: LegalActions;
   }
 
   const {
@@ -56,7 +71,17 @@
     onPlayCard,
     onActivateAbility,
     sorcerySpeedBlocked = "",
+    view = null,
+    viewerID = null,
+    legal = NO_LEGAL_ACTIONS,
   }: Props = $props();
+
+  // "N ready" per pile. The exile pile is this seat's own slice, so it
+  // counts by owner — an impulse-exiled card the viewer may cast sits
+  // on its owner's pile, and that is where it is counted.
+  const graveReady = $derived(legal.readyCount("graveyard", seat.id));
+  const exileReady = $derived(legal.readyCount("exile", seat.id));
+  const libraryReady = $derived(legal.readyCount("library", seat.id));
 
   // S42 / CR 401.5: "you may look at the top card of your library any
   // time" and "play with the top card of your library revealed" both
@@ -73,6 +98,9 @@
   // server stamps per viewer (#1055), so Oracle of Mul Daya reveals a
   // sorcery to the whole table with no button on it anywhere.
   const libraryTopAction = $derived(onPlayCard ? libraryTopActionLabel(seat.library) : null);
+  const libraryTopReady = $derived(
+    libraryTop !== null && legal.castableFrom(libraryTop.instance_id, "library"),
+  );
 
   function playLibraryTop(): void {
     if (!onPlayCard || !libraryTop) return;
@@ -110,6 +138,7 @@
       faceDown={libraryTop === null}
       disabled={!isSelf || !onDrawCard}
       onClick={isSelf ? onDrawCard : undefined}
+      readyCount={libraryReady}
     />
     {#if libraryTopAction || libraryTopSpecial.length > 0}
       <div class="pile-actions">
@@ -124,6 +153,7 @@
           <button
             type="button"
             class="pile-action"
+            class:ready={libraryTopReady}
             title={`${libraryTopAction} from the top of your library`}
             aria-label={`${libraryTopAction} ${libraryTop?.name || "card"} from the top of the library`}
             onclick={playLibraryTop}
@@ -148,8 +178,8 @@
       </div>
     {/if}
   </div>
-  <PileButton label="grave" zone={seat.graveyard} onClick={openGraveyard} />
-  <PileButton label="exile" zone={exile} onClick={openExile} />
+  <PileButton label="grave" zone={seat.graveyard} onClick={openGraveyard} readyCount={graveReady} />
+  <PileButton label="exile" zone={exile} onClick={openExile} readyCount={exileReady} />
   <CommandZone
     seat={{ id: seat.id, name: seat.name }}
     zone={seat.command}
@@ -158,6 +188,9 @@
     commanderCasts={seat.commander_casts}
     onActivateAbility={isSelf ? onActivateAbility : undefined}
     {sorcerySpeedBlocked}
+    {view}
+    {viewerID}
+    {legal}
   />
 </div>
 
@@ -207,6 +240,13 @@
   }
   .pile-action:hover {
     background: var(--surface-hover);
+  }
+  /* ADR 0105: the server's move list says this top card can be played
+     right now, mana included — the ready accent. */
+  .pile-action.ready {
+    color: var(--ready);
+    border-color: var(--ready);
+    background: var(--ready-soft);
   }
   .pile-action:focus-visible {
     outline: 2px solid var(--accent);

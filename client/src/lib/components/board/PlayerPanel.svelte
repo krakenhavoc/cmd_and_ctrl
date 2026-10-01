@@ -65,6 +65,7 @@
   import TokenGroupModal from "./TokenGroupModal.svelte";
   import { groupMembersOf } from "../../tokenGroups";
   import { canOverride } from "../../contextMenu.logic";
+  import { NO_LEGAL_ACTIONS, type LegalActions } from "../../legalActions";
 
   type ActionSender = (type: ActionType, params?: ActionPayload["params"], player?: string) => void;
 
@@ -149,6 +150,11 @@
     // Undefined hides the list's attack buttons; "Use this one" still
     // selects a single attacker the two-click way.
     onDeclareAttackers?: (attackerIDs: string[], defenderSeatID: string) => void;
+    // ADR 0105 (#1789): the frame's legal-action lookup, already
+    // "nothing" while highlights are off or autopass is about to pass
+    // (Game.svelte). Handed to the cast surfaces for their ready rings
+    // and counts; it gates nothing.
+    legal?: LegalActions;
   }
 
   const {
@@ -184,6 +190,7 @@
     spectator = false,
     considering = false,
     onDeclareAttackers,
+    legal = NO_LEGAL_ACTIONS,
   }: Props = $props();
 
   // The seat's commander, wherever it is right now: the command zone
@@ -546,6 +553,7 @@
         {sorcerySpeedBlocked}
         snap={view}
         {viewerID}
+        {legal}
       />
     </div>
     {#if isSelf}
@@ -556,6 +564,7 @@
         {viewerID}
         onCastCard={onPlayCard}
         onDragCast={(c, zone, face) => onPlayCard(c, zone, face, true)}
+        {legal}
       />
     {/if}
     {#if !isSelf}
@@ -602,6 +611,9 @@
       {onPlayCard}
       onActivateAbility={isSelf ? onActivateAbility : undefined}
       {sorcerySpeedBlocked}
+      {view}
+      {viewerID}
+      {legal}
     />
   </div>
   <TokenGroupModal

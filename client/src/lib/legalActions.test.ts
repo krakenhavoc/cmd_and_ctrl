@@ -1,0 +1,428 @@
+// legalActions.test.ts — ADR 0105 §9, the client half of the
+// legal-action contract (#1789).
+//
+// The fixture is server/internal/legal/testdata/legal_actions_agreement.json.
+// Each scenario declares BY HAND which cards are ready and what the
+// digest must say about them; server/internal/legal/
+// legal_actions_agreement_test.go asserts the Go digest matches that
+// declaration, and this file asserts legalActions.ts's lookups match
+// the same declaration against the real filtered frame. Neither side
+// is the other's oracle.
+//
+// Regenerate the fixture after any enumerator or digest change:
+//
+//   go test ./internal/legal/ -run TestLegalActionsAgreement -update
+
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+
+import { describe, it, expect } from "vitest";
+
+import {
+  NO_LEGAL_ACTIONS,
+  highlightsLive,
+  legalActionsOf,
+  notableManaRefs,
+  visibleHighlights,
+  type LegalActions,
+  type ReadyZone,
+} from "./legalActions";
+import { autopassDecision, type AutopassGates } from "./autopassDecision";
+import { hasPassMove } from "./timing";
+import type { CardView, GameView, LegalMoveView } from "./protocol";
+
+interface Expectation {
+  instance_id: string;
+  name: string;
+  ready: boolean;
+  kinds?: string[];
+  abilities?: string[];
+  mana_abilities?: string[];
+  zones?: string[];
+  faces?: number[];
+  attack_targets?: string[];
+  blocks?: string[];
+  why: string;
+}
+
+interface Scenario {
+  name: string;
+  note: string;
+  viewer: string;
+  view: GameView;
+  pass: boolean;
+  expect: Expectation[];
+}
+
+const fixtureURL = new URL(
+  "../../../server/internal/legal/testdata/legal_actions_agreement.json",
+  import.meta.url,
+);
+const scenarios: Scenario[] = JSON.parse(readFileSync(fileURLToPath(fixtureURL), "utf8"));
+
+const ZONES: ReadyZone[] = ["hand", "graveyard", "exile", "library", "command", "battlefield"];
+
+const sorted = <T>(xs: readonly T[] | undefined): T[] => [...(xs ?? [])].sort();
+
+// checkAgainst asserts one lookup against one scenario's declarations.
+function checkAgainst(la: LegalActions, sc: Scenario, label: string): void {
+  for (const e of sc.expect) {
+    const id = e.instance_id;
+    const msg = `${label} ${sc.name} / ${e.name}: ${e.why}`;
+    expect(la.isReady(id), msg).toBe(e.ready);
+    expect(sorted(la.kinds(id)), msg).toEqual(sorted(e.kinds));
+    expect(sorted(la.readyAbilityRefs(id)), msg).toEqual(sorted(e.abilities));
+    expect(sorted(la.readyManaRefs(id)), msg).toEqual(sorted(e.mana_abilities));
+    expect(sorted(la.attackTargets(id)), msg).toEqual(sorted(e.attack_targets));
+    expect(sorted(la.blockableAttackers(id)), msg).toEqual(sorted(e.blocks));
+    expect(la.canAttack(id), msg).toBe((e.kinds ?? []).includes("attack"));
+    const castish = (e.kinds ?? []).some((k) => k === "cast" || k === "land");
+    for (const z of ZONES) {
+      expect(la.castableFrom(id, z), `${msg} (from ${z})`).toBe(
+        castish && (e.zones ?? []).includes(z),
+      );
+    }
+  }
+}
+
+describe("legalActions.ts agrees with the server digest", () => {
+  it("the fixture is present and non-trivial", () => {
+    expect(scenarios.length).toBeGreaterThan(0);
+    for (const sc of scenarios) {
+      expect(sc.expect.length, `${sc.name} declares nothing`).toBeGreaterThan(0);
+    }
+  });
+
+  for (const sc of scenarios) {
+    describe(sc.name, () => {
+      it("every declared card reads as declared", () => {
+        checkAgainst(legalActionsOf(sc.view), sc, "digest");
+      });
+
+      it("pass is the declared pass, and hasPassMove agrees", () => {
+        const la = legalActionsOf(sc.view);
+        if (!sc.view.legal_actions && !sc.view.legal_moves) {
+          // No decision owed: no information, which is not "no".
+          expect(la.known).toBe(false);
+          expect(la.pass).toBeUndefined();
+          expect(hasPassMove(sc.view)).toBeUndefined();
+          expect(sc.pass).toBe(false);
+          return;
+        }
+        expect(la.known).toBe(true);
+        expect(la.pass).toBe(sc.pass);
+        expect(hasPassMove(sc.view)).toBe(sc.pass);
+      });
+
+      // The other direction, as an invariant: every source the digest
+      // names is ready, and nothing it does not name is.
+      it("every digested source is ready, and only those", () => {
+        const la = legalActionsOf(sc.view);
+        const named = new Set(Object.keys(sc.view.legal_actions?.sources ?? {}));
+        const everyCard = [
+          ...sc.view.seats.flatMap((s) => [
+            ...(s.hand?.cards ?? []),
+            ...(s.graveyard?.cards ?? []),
+            ...(s.library?.cards ?? []),
+            ...(s.command?.cards ?? []),
+          ]),
+          ...(sc.view.battlefield?.cards ?? []),
+          ...(sc.view.exile?.cards ?? []),
+        ];
+        for (const c of everyCard) {
+          expect(la.isReady(c.instance_id), c.name || c.instance_id).toBe(named.has(c.instance_id));
+        }
+      });
+
+      // ADR 0105 sub-PR 2: an older server sends the list and no
+      // digest. Every fixture board is under the wire cap, so folding
+      // the list must give the same answers the digest does.
+      it("falls back to legal_moves when the digest is absent", () => {
+        const older = { ...sc.view, legal_actions: undefined } as GameView;
+        const la = legalActionsOf(older);
+        checkAgainst(la, sc, "fallback");
+        if (sc.view.legal_moves) {
+          expect(la.pass).toBe(sc.pass);
+          expect(hasPassMove(older)).toBe(sc.pass);
+        }
+      });
+    });
+  }
+
+  it("counts ready cards per zone on the main-phase board", () => {
+    const sc = scenarios.find((s) => s.name === "main_phase_ready");
+    expect(sc).toBeDefined();
+    const la = legalActionsOf(sc!.view);
+    const seat = sc!.view.seats.find((s) => s.id === sc!.viewer)!;
+    const sources = sc!.view.legal_actions?.sources ?? {};
+    const want = (cards: CardView[] | undefined) =>
+      (cards ?? []).filter((c) => c.instance_id in sources).length;
+    expect(la.readyCount("hand", seat.id)).toBe(want(seat.hand.cards));
+    expect(la.readyCount("hand", seat.id)).toBeGreaterThanOrEqual(2); // Forest, Bolt
+    expect(la.readyCount("command", seat.id)).toBe(want(seat.command.cards));
+    expect(la.readyCount("command", seat.id)).toBe(1);
+    expect(la.readyCount("graveyard", seat.id)).toBe(want(seat.graveyard.cards));
+    // A per-seat zone needs a seat.
+    expect(la.readyCount("hand")).toBe(0);
+    // The opponent's hand holds nothing the viewer can act on.
+    const other = sc!.view.seats.find((s) => s.id !== sc!.viewer)!;
+    expect(la.readyCount("hand", other.id)).toBe(0);
+  });
+});
+
+// ---- the absent-list rule ---------------------------------------------
+
+const ME = "me";
+
+function frame(over: Partial<GameView> = {}): GameView {
+  return {
+    id: "g",
+    state: "active",
+    seats: [
+      {
+        id: ME,
+        name: "Me",
+        hand: { kind: "hand", count: 1, cards: [{ instance_id: "bolt", name: "Bolt" }] },
+        graveyard: { kind: "graveyard", count: 0, cards: [] },
+        library: { kind: "library", count: 0, cards: [] },
+        command: { kind: "command", count: 0, cards: [] },
+      },
+    ],
+    battlefield: { kind: "battlefield", count: 0, cards: [] },
+    stack: { kind: "stack", count: 0, cards: [] },
+    exile: { kind: "exile", count: 0, cards: [] },
+    turn: { seq: 1, number: 1, active_seat: 0, priority_holder: 0, phase: "main1", step: "main" },
+    ...over,
+  } as unknown as GameView;
+}
+
+const move = (m: Partial<LegalMoveView> & Pick<LegalMoveView, "kind">): LegalMoveView => ({
+  type: "cast_spell",
+  player: ME,
+  label: m.kind,
+  ...m,
+});
+
+describe("absent digest and absent list: no information", () => {
+  it("highlights nothing, counts nothing, and does not say no to passing", () => {
+    for (const la of [legalActionsOf(frame()), legalActionsOf(null), NO_LEGAL_ACTIONS]) {
+      expect(la.known).toBe(false);
+      expect(la.pass).toBeUndefined();
+      expect(la.isReady("bolt")).toBe(false);
+      expect(la.castableFrom("bolt", "hand")).toBe(false);
+      expect(la.readyAbilityRefs("bolt")).toEqual([]);
+      expect(la.readyCount("hand", ME)).toBe(0);
+    }
+  });
+
+  it("an empty list is information: nothing is ready", () => {
+    const la = legalActionsOf(frame({ legal_moves: [] }));
+    expect(la.known).toBe(true);
+    expect(la.pass).toBe(false);
+    expect(la.isReady("bolt")).toBe(false);
+  });
+
+  it("the digest wins over the list when both are present", () => {
+    const la = legalActionsOf(
+      frame({
+        legal_moves: [move({ kind: "cast", source: "bolt", params: { from_zone: "hand" } })],
+        legal_actions: { sources: {} },
+      }),
+    );
+    expect(la.isReady("bolt")).toBe(false);
+    expect(la.pass).toBe(false);
+  });
+});
+
+// ---- the fallback fold -------------------------------------------------
+
+describe("the legal_moves fallback", () => {
+  it("reads the same params the server digest reads", () => {
+    const la = legalActionsOf(
+      frame({
+        legal_moves: [
+          move({
+            kind: "pass",
+            type: "pass_priority",
+            source: "00000000-0000-0000-0000-000000000000",
+          }),
+          move({ kind: "cast", source: "bolt", params: { from_zone: "hand" } }),
+          move({ kind: "cast", source: "adv", params: { from_zone: "hand", face: 1 } }),
+          move({ kind: "activate", source: "bomb", params: { ref: "own:0" } }),
+          move({ kind: "activate", source: "bomb", params: { ref: "own:0" } }),
+          move({ kind: "mana", source: "vivi", params: { ref: "own:0" } }),
+          move({ kind: "special_action", source: "fore", params: { kind: "foretell" } }),
+          move({ kind: "choice", source: "bolt" }),
+        ],
+      }),
+    );
+    expect(la.pass).toBe(true);
+    expect(la.castableFrom("bolt", "hand")).toBe(true);
+    expect(la.castableFrom("bolt", "graveyard")).toBe(false);
+    expect(la.readyAbilityRefs("bomb")).toEqual(["own:0"]);
+    expect(la.readyManaRefs("vivi")).toEqual(["own:0"]);
+    expect(la.readySpecialActions("fore")).toEqual(["foretell"]);
+    expect(la.kinds("bolt")).toEqual(["cast"]); // a choice move is not digested
+    expect(la.isReady("00000000-0000-0000-0000-000000000000")).toBe(false);
+  });
+
+  it("gives every creature in a grouped block declaration its pair", () => {
+    const la = legalActionsOf(
+      frame({
+        legal_moves: [
+          move({
+            kind: "block",
+            type: "declare_blockers",
+            source: "a",
+            params: {
+              blocks: [
+                { blocker: "a", attacker: "menace" },
+                { blocker: "b", attacker: "menace" },
+              ],
+            },
+          }),
+        ],
+      }),
+    );
+    expect(la.blockableAttackers("a")).toEqual(["menace"]);
+    expect(la.blockableAttackers("b")).toEqual(["menace"]);
+    expect(la.kinds("b")).toEqual(["block"]);
+  });
+
+  it("a cast whose zone the wire does not name counts for any zone", () => {
+    const la = legalActionsOf(frame({ legal_moves: [move({ kind: "cast", source: "bolt" })] }));
+    expect(la.castableFrom("bolt", "hand")).toBe(true);
+    expect(la.castableFrom("bolt", "exile")).toBe(true);
+  });
+});
+
+// ---- the toggle and autopass suppression (ADR 0105 §3, §6) -----------
+
+function gates(over: Partial<AutopassGates> = {}): AutopassGates {
+  return {
+    viewerHasPriority: true,
+    tableBusy: false,
+    hasPendingChoice: false,
+    owesBlockDecision: false,
+    owesAttackRequirement: false,
+    loopSuspended: false,
+    step: "upkeep",
+    autopassToggle: false,
+    viewerIsActive: false,
+    autopassPersistThroughTurns: false,
+    manualStop: false,
+    autoPassPriority: true,
+    stackEmpty: true,
+    holdPriority: false,
+    autoPassOwnStack: true,
+    ownsEveryStackItem: false,
+    stepStop: false,
+    smartAutoPass: true,
+    alwaysStopOpponentStack: false,
+    hasResponse: false,
+    hasPlay: false,
+    combatWindow: false,
+    oppEndWindow: false,
+    bluffCounter: false,
+    bluffInstant: false,
+    bluffManual: false,
+    ...over,
+  };
+}
+
+describe("when highlights show", () => {
+  const live = legalActionsOf(
+    frame({ legal_moves: [move({ kind: "cast", source: "bolt", params: { from_zone: "hand" } })] }),
+  );
+
+  it("the setting off shows nothing, whatever autopass says", () => {
+    for (const v of ["hold", "pass", "clear-toggle", { kind: "bluff", manual: false }] as const) {
+      expect(highlightsLive(false, v)).toBe(false);
+    }
+    expect(visibleHighlights(live, false).isReady("bolt")).toBe(false);
+  });
+
+  it("a frame smart autopass is about to pass shows nothing", () => {
+    const verdict = autopassDecision(gates());
+    expect(verdict).toBe("pass");
+    expect(highlightsLive(true, verdict)).toBe(false);
+    expect(visibleHighlights(live, highlightsLive(true, verdict)).isReady("bolt")).toBe(false);
+  });
+
+  it("a window that stays with the player shows what is ready", () => {
+    // A ticked step with something to play holds.
+    const hold = autopassDecision(gates({ stepStop: true, hasPlay: true }));
+    expect(hold).toBe("hold");
+    expect(highlightsLive(true, hold)).toBe(true);
+    expect(visibleHighlights(live, highlightsLive(true, hold)).isReady("bolt")).toBe(true);
+    // A bluff and the safety belt both leave the cursor with the player.
+    expect(highlightsLive(true, { kind: "bluff", manual: false })).toBe(true);
+    expect(highlightsLive(true, "clear-toggle")).toBe(true);
+    // No verdict yet (no frame): nothing to suppress.
+    expect(highlightsLive(true, null)).toBe(true);
+  });
+
+  it("suppressing the highlights never touches the pass answer the gates read", () => {
+    const f = frame({ legal_moves: [move({ kind: "pass", type: "pass_priority" })] });
+    expect(visibleHighlights(legalActionsOf(f), false).pass).toBeUndefined();
+    expect(hasPassMove(f)).toBe(true);
+  });
+});
+
+// ---- the mana-noise rule (ADR 0105 §4) --------------------------------
+
+describe("notableManaRefs", () => {
+  const mountain: CardView = {
+    instance_id: "m",
+    name: "Mountain",
+    owner: ME,
+    controller: ME,
+    type_line: "Basic Land — Mountain",
+  };
+  const vivi: CardView = {
+    instance_id: "v",
+    name: "Vivi Ornitier",
+    owner: ME,
+    controller: ME,
+    type_line: "Legendary Creature — Wizard",
+    mana_abilities: [{ index: 0, ref: "own:0", label: "{0}: Add X mana" }],
+  } as unknown as CardView;
+
+  it("a land's ordinary {T} mana ability gets no pip", () => {
+    expect(notableManaRefs(mountain, ["land:R"], "battlefield")).toEqual([]);
+    const tapLand = {
+      ...mountain,
+      mana_abilities: [{ index: 0, ref: "own:0", tap_cost: true }],
+    } as unknown as CardView;
+    expect(notableManaRefs(tapLand, ["own:0"], "battlefield")).toEqual([]);
+  });
+
+  it("a land's mana ability without {T} does (a sacrifice, a once-a-turn)", () => {
+    const sacLand = {
+      ...mountain,
+      mana_abilities: [
+        { index: 0, ref: "own:0", tap_cost: true },
+        { index: 1, ref: "own:1", sacrifice_cost: true },
+      ],
+    } as unknown as CardView;
+    expect(notableManaRefs(sacLand, ["own:0", "own:1"], "battlefield")).toEqual(["own:1"]);
+  });
+
+  it("a nonland source does, {T} or not (#1621's Vivi)", () => {
+    expect(notableManaRefs(vivi, ["own:0"], "battlefield")).toEqual(["own:0"]);
+    const rock = {
+      ...vivi,
+      type_line: "Artifact",
+      mana_abilities: [{ index: 0, ref: "own:0", tap_cost: true }],
+    } as unknown as CardView;
+    expect(notableManaRefs(rock, ["own:0"], "battlefield")).toEqual(["own:0"]);
+  });
+
+  it("a source in hand does (a Spirit Guide)", () => {
+    expect(notableManaRefs(mountain, ["own:0"], "hand")).toEqual(["own:0"]);
+  });
+
+  it("nothing ready, nothing marked", () => {
+    expect(notableManaRefs(vivi, [], "battlefield")).toEqual([]);
+  });
+});
