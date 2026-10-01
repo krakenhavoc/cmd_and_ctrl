@@ -29,6 +29,15 @@ var knownOracleMismatches = map[string]string{
 	// also the string the bot's counter-cost test keys on.
 	"Heart of Kiran | cost not printed | crew — remove a loyalty counter from a planeswalker you control": "alternative crew cost; the card prints it as prose, not a cost line",
 
+	// Tidal Control prints one ability with a choice of cost, "Pay 2
+	// life or {2}", written as two rows (Heart of Kiran's shape,
+	// docs/adding-cards.md "Rather than pay") so the activator picks
+	// the cost by picking the row. Each row's label names the cost it
+	// charges, so neither is the printed cost line (#1793).
+	"Tidal Control | cost not printed | pay 2 life":                      "one choice of cost written as two rows; this is the life row",
+	"Tidal Control | cost not printed | {2}":                             "one choice of cost written as two rows; this is the mana row",
+	"Tidal Control | printed ability not registered | pay 2 life or {2}": "registered as two rows, one per cost",
+
 	// No cost shape yet (#1381 lists them).
 	"Jarad, Golgari Lich Lord | printed ability not registered | sacrifice a swamp and a forest":                           "two differently-typed sacrifice clauses in one cost",
 	"Kozilek, the Great Distortion | printed ability not registered | discard a card with mana value x":                    "X is read off the discarded card",
