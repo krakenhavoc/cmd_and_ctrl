@@ -1373,6 +1373,11 @@ pendingChoices[].retargetOptional	bool
 pendingChoices[].retargetPolicy	number:uint8
 pendingChoices[].retargetReason	string
 pendingChoices[].retargetSlot	number:int
+pendingChoices[].retargetTo	object
+pendingChoices[].retargetTo.ID	custom(uuid.UUID)
+pendingChoices[].retargetTo.Kind	string
+pendingChoices[].retargetTo.Mode	number:int
+pendingChoices[].retargetTo.Slot	number:int
 pendingChoices[].sacrificeOptions	array
 pendingChoices[].sacrificeOptions[]	custom(uuid.UUID)
 pendingChoices[].scryCards	array

@@ -639,6 +639,18 @@ its own. Everything else about the announcement survives the walk — the
 modes, X, the cost that was paid, and the division of damage, which
 moves with the slot rather than staying on the old target's id.
 
+**A retarget TO a fixed object** (#1743 — Spellskite, Mizzium Meddler,
+Hydroelectric Specimen: "change a target … to this creature") uses the
+same `kind: "retarget"` and the same payload, but its options mean
+something else: they are the spell's or ability's CURRENT targets that
+could legally become that object, and clicking one changes that target
+to it. The destination is never among the options and is never sent.
+It opens only when there is a choice — two or more such targets, or a
+printed "you may" (`min` 0, and `targets: []` declines); a single
+forced change is made with no prompt, and a spell nothing could move
+onto the object asks nothing at all. The `reason` text says which
+object the target is changing to.
+
 ### `chat` (both directions) — added in S07
 
 A chat message addressed to every client bound to the same game.

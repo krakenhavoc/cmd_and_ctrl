@@ -36,8 +36,15 @@ import "github.com/google/uuid"
 //     validateAnnouncedTargetsWithLocked and the only change this
 //     seam made to the announce path.
 //
+// A fourth printed shape rides the same gate: "change a target of
+// target spell or ability TO THIS CREATURE" (Spellskite, Mizzium
+// Meddler, Hydroelectric Specimen, #1743). Its destination is fixed,
+// so it asks no "where" — RetargetOffer.To pins it, and a slot is
+// changed only if the pinned object passes exactly the check a free
+// choice of it would (pinnedRetargetSlotsLocked).
+//
 // See docs/decisions/0019-structured-targeting.md, the 2026-09-22
-// amendment.
+// and 2026-10-01 amendments.
 
 // PendingChoiceRetarget is the CR 115.7 prompt: "choose the new
 // target for …", addressed to the RETARGETING effect's controller
@@ -69,11 +76,14 @@ const (
 	// ability" (CR 115.7b): at most ONE of the item's target slots
 	// may end up different.
 	//
-	// Every card that prints it also prints "with a single target",
-	// so OfferRetargetForEffect refuses the prompt for an item with
-	// more than one — a multi-slot "change a target" would have to
-	// ask WHICH slot first, and there is no card to design that
-	// prompt against.
+	// Every card that prints it with a free choice also prints "with
+	// a single target", so OfferRetargetForEffect refuses the prompt
+	// for an item with more than one — a multi-slot "change a target"
+	// would have to ask WHICH slot first and then WHERE, and there is
+	// no card to design that prompt against. A PINNED offer
+	// (RetargetOffer.To, #1743) is exempt: Spellskite's "change a
+	// target … to this creature" fixes the where, so which slot is
+	// the only question left, and it is asked.
 	RetargetChangeOne RetargetPolicy = iota
 
 	// RetargetChooseNew is "choose new targets for" (CR 115.7c):
@@ -112,6 +122,36 @@ type RetargetOffer struct {
 	// Reason is the prompt header ("Deflecting Swat — choose a new
 	// target"). Empty falls back to the clause label.
 	Reason string
+
+	// To pins the DESTINATION (#1743): "change a target of target
+	// spell or ability to this creature" (Spellskite, Mizzium
+	// Meddler, Hydroelectric Specimen). The zero value (Kind "") is
+	// the free choice every other retarget card prints.
+	//
+	// A pinned offer asks no "where": the only target a slot can be
+	// changed to is To, and only when To is a legal new target for
+	// that slot under the very gate a free choice runs
+	// (retargetCheckLocked) — the slot's own clause and zones, the
+	// item's controller's view for hexproof / shroud / protection,
+	// the same-clause duplicate rule, Distinct and the set rules, so
+	// a change that would make another target illegal is refused
+	// (the 2020-08-07 Spellskite ruling). A slot To already holds is
+	// not a change. With no slot eligible the offer does nothing
+	// (CR 115.7a). See pinnedRetargetSlotsLocked.
+	//
+	// The one question a pinned offer can still ask is WHICH slot:
+	// "change A target" over an item with several (CR 115.7b), which
+	// the chooser decides as the ability resolves. So a pinned offer
+	// takes RetargetChangeOne over an item with any number of
+	// targets — the restriction a free RetargetChangeOne carries
+	// exists because it would have to ask both questions at once.
+	To TargetRef
+}
+
+// pinnedRetarget reports whether `to` names a destination — the
+// RetargetOffer.To / PendingChoice.RetargetTo "is this pinned" test.
+func pinnedRetarget(to TargetRef) bool {
+	return to.Kind == TargetCard || to.Kind == TargetPlayer
 }
 
 // RetargetableForEffect reports whether an item on the stack can be
@@ -379,8 +419,9 @@ func remapDistributionLocked(dist map[uuid.UUID]int, old, next []TargetRef) map[
 // Errors: ErrCardNotFound (the item is no longer on the stack — its
 // controller may have had it countered in response, a normal outcome
 // callers should treat as "the effect did nothing"), ErrInvalidParam
-// (the item has no targets, or RetargetChangeOne was offered for an
-// item with more than one).
+// (the item has no targets, a free RetargetChangeOne was offered for
+// an item with more than one, or a pinned offer — RetargetOffer.To —
+// came with any policy but RetargetChangeOne).
 //
 // Caller must hold g.mu.
 func (g *Game) OfferRetargetForEffect(offer RetargetOffer) error {
@@ -391,6 +432,15 @@ func (g *Game) OfferRetargetForEffect(offer RetargetOffer) error {
 	n := countRealTargets(item.Targets)
 	if n == 0 {
 		return ErrInvalidParam
+	}
+	if pinnedRetarget(offer.To) {
+		if offer.Policy != RetargetChangeOne {
+			// "Choose new targets … to X" is not a printed sentence:
+			// every pinned card says "change the target" or "change
+			// a target".
+			return ErrInvalidParam
+		}
+		return g.offerPinnedRetargetLocked(offer, item)
 	}
 	if offer.Policy == RetargetChangeOne && n > 1 {
 		// See RetargetChangeOne's doc comment: no printed card gets
@@ -518,6 +568,198 @@ func retargetAlternatives(lt LegalTargets, targets []TargetRef, slot int, clause
 	return out
 }
 
+// pinnedRetargetSlotsLocked is the slots of `item` whose target can be
+// changed to `to` — the whole of the pinned variant's legality, and
+// deliberately no new rule: each candidate is the item's list with
+// that ONE slot replaced by `to`, run through retargetCheckLocked
+// under RetargetChangeOne, the exact check a free "change the target"
+// answer passes. So everything Spellskite's rulings ask for falls out
+// of the gate rather than being restated:
+//
+//   - `to` must satisfy the slot's own clause — its predicate, its
+//     zones (a Spellskite that left the battlefield is in no
+//     battlefield clause's zones), and CanBeTargetedBy judged for the
+//     ITEM's controller, so an opponent's spell cannot be pulled onto
+//     a hexproof Spellskite and nobody's onto a shrouded one;
+//   - the whole new list must stand: `to` may not join a clause that
+//     already names it unless the clause is AllowSame, and may not
+//     land where a Distinct clause or a set rule forbids it — "if
+//     changing one target … would make other targets … illegal, that
+//     target can't be changed";
+//   - a slot `to` already holds is not a change (CR 115.7a's
+//     "ANOTHER legal target"), so it is never eligible.
+//
+// Slots with no structured clause (a free-form S13.1 announcement)
+// are skipped, as queueRetargetStepLocked skips them: nothing can say
+// what a legal new target for them would be, and the announce walk
+// accepts anything for a list with no clauses.
+//
+// Caller must hold g.mu.
+func (g *Game) pinnedRetargetSlotsLocked(item *StackItem, to TargetRef) []int {
+	if item == nil || !pinnedRetarget(to) {
+		return nil
+	}
+	steps := g.itemAnnouncedClauses(item)
+	src := g.retargetSourceLocked(item)
+	var out []int
+	for i, ref := range item.Targets {
+		if ref.Kind != TargetCard && ref.Kind != TargetPlayer {
+			continue
+		}
+		if ref.Kind == to.Kind && ref.ID == to.ID {
+			continue
+		}
+		if retargetClauseFor(steps, ref) == nil {
+			continue
+		}
+		next := pinnedRetargetList(item.Targets, i, to)
+		if g.retargetCheckLocked(src, steps, item.Targets, next, RetargetChangeOne) == nil {
+			out = append(out, i)
+		}
+	}
+	return out
+}
+
+// pinnedRetargetList is `targets` with slot `i` changed to `to`. The
+// replacement keeps the slot's (Mode, Slot) — a retarget never moves a
+// ref between clauses.
+func pinnedRetargetList(targets []TargetRef, i int, to TargetRef) []TargetRef {
+	next := append([]TargetRef(nil), targets...)
+	next[i] = TargetRef{Kind: to.Kind, ID: to.ID, Mode: targets[i].Mode, Slot: targets[i].Slot}
+	return next
+}
+
+// offerPinnedRetargetLocked is OfferRetargetForEffect for a pinned
+// offer (#1743). Three outcomes, by what could be changed to the
+// destination:
+//
+//   - NOTHING: nothing happens, and nobody is asked. CR 115.7a — the
+//     original target is unchanged — and Spellskite's ruling that its
+//     ability may be activated at a spell it cannot steal, or at one
+//     with no targets at all, "in which case no targets are changed".
+//   - ONE object, and the change is mandatory: it is made, with no
+//     prompt. There is no choice to ask about.
+//   - otherwise: a PendingChoiceRetarget asking WHICH target to
+//     change — "you choose which one target you're changing … as
+//     Spellskite's ability resolves" — or, for a "you may" (Mizzium
+//     Meddler), whether to change it at all. The options are the
+//     objects CURRENTLY in the eligible slots, so the board picker
+//     answers it unchanged; `RetargetTo` is what tells the answer
+//     apart from a free retarget's.
+//
+// Two eligible slots that hold the SAME object (two instances of the
+// word "target" that chose one creature, CR 601.2c) are one option on
+// the board, and the answer changes the earlier of them —
+// resolvePinnedRetargetLocked. The board cannot point at a slot, only
+// at an object.
+//
+// Caller must hold g.mu.
+func (g *Game) offerPinnedRetargetLocked(offer RetargetOffer, item *StackItem) error {
+	eligible := g.pinnedRetargetSlotsLocked(item, offer.To)
+	if len(eligible) == 0 {
+		return nil
+	}
+	var players, cards []uuid.UUID
+	seen := make(map[uuid.UUID]bool, len(eligible))
+	for _, i := range eligible {
+		ref := item.Targets[i]
+		if seen[ref.ID] {
+			continue
+		}
+		seen[ref.ID] = true
+		if ref.Kind == TargetPlayer {
+			players = append(players, ref.ID)
+		} else {
+			cards = append(cards, ref.ID)
+		}
+	}
+	if len(seen) == 1 && !offer.Optional {
+		// One thing the board could offer, and no "you may": the
+		// answer is forced, so it is made rather than asked. It is the
+		// earliest eligible slot — the one the prompt's answer would
+		// have changed. RetargetStackItemForEffect re-runs the check
+		// that slot just passed.
+		return g.RetargetStackItemForEffect(item.ID, offer.Chooser, RetargetChangeOne,
+			pinnedRetargetList(item.Targets, eligible[0], offer.To))
+	}
+	min := 1
+	if offer.Optional {
+		min = 0
+	}
+	reason := offer.Reason
+	if reason == "" {
+		reason = "Choose the target to change"
+	}
+	g.QueueChoiceForEffect(PendingChoice{
+		Kind:              PendingChoiceRetarget,
+		Chooser:           offer.Chooser,
+		Count:             1,
+		Source:            offer.Source,
+		Reason:            reason,
+		PickTargetPlayers: players,
+		PickTargetCards:   cards,
+		PickTargetMin:     min,
+		PickTargetMax:     1,
+		RetargetItem:      offer.ItemID,
+		RetargetPolicy:    RetargetChangeOne,
+		RetargetOptional:  offer.Optional,
+		RetargetSlot:      eligible[0],
+		RetargetReason:    offer.Reason,
+		RetargetTo:        offer.To,
+	})
+	return nil
+}
+
+// resolvePinnedRetargetLocked answers a pinned retarget prompt. The
+// one ref, if any, names the object CURRENTLY in the slot to change;
+// the destination is the prompt's RetargetTo, never the answer.
+//
+// Eligibility is recomputed rather than read off the prompt, so the
+// change is judged against the board as it is answered. If no slot is
+// eligible any more the prompt is dropped and nothing moves (CR
+// 115.7a); an answer naming an object that is in no eligible slot is
+// refused and the prompt stays open.
+//
+// Caller must hold g.mu.
+func (g *Game) resolvePinnedRetargetLocked(idx int, choice *PendingChoice, item *StackItem, targets []TargetRef) error {
+	switch len(targets) {
+	case 0:
+		if choice.PickTargetMin > 0 {
+			return ErrInvalidParam
+		}
+		g.dequeueChoiceLocked(idx)
+	case 1:
+		t := targets[0]
+		if t.Kind != TargetPlayer && t.Kind != TargetCard {
+			return ErrInvalidParam
+		}
+		eligible := g.pinnedRetargetSlotsLocked(item, choice.RetargetTo)
+		if len(eligible) == 0 {
+			g.dequeueChoiceLocked(idx)
+			break
+		}
+		slot := -1
+		for _, i := range eligible {
+			if item.Targets[i].Kind == t.Kind && item.Targets[i].ID == t.ID {
+				slot = i
+				break
+			}
+		}
+		if slot < 0 {
+			return ErrIllegalTarget
+		}
+		if err := g.RetargetStackItemForEffect(item.ID, choice.Chooser, RetargetChangeOne,
+			pinnedRetargetList(item.Targets, slot, choice.RetargetTo)); err != nil {
+			return err
+		}
+		g.dequeueChoiceLocked(idx)
+	default:
+		return ErrInvalidParam
+	}
+	g.runStateChecksLocked()
+	return nil
+}
+
 // ResolveRetarget is the submit half of the CR 115.7 prompt: the
 // chooser's answer for one slot, which is either one ref or — when
 // declining is allowed — none.
@@ -567,6 +809,10 @@ func (g *Game) ResolveRetarget(choiceID, chooserID uuid.UUID, targets []TargetRe
 		g.dequeueChoiceLocked(idx)
 		g.runStateChecksLocked()
 		return nil
+	}
+	if pinnedRetarget(choice.RetargetTo) {
+		// #1743: the answer names WHICH slot, not where it goes.
+		return g.resolvePinnedRetargetLocked(idx, choice, item, targets)
 	}
 	slot := choice.RetargetSlot
 	if slot < 0 || slot >= len(item.Targets) {

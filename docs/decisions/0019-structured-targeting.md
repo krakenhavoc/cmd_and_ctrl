@@ -702,3 +702,144 @@ Everything §6's "not this seam" list and the original "Out of scope"
 section named is still out of scope. This amendment only widens WHO
 may set `ManaValueAtMostX` / `ManaValueEqualsX`, not what either flag
 can express.
+
+## Amendment (2026-10-01, #1743): a retarget whose destination is fixed (CR 115.7b)
+
+The #1196 amendment's Out of scope ended with **"Changing a target TO a
+named object"** — Spellskite's "change a target of target spell or
+ability to this creature" — and #1211's repeated it. Two printed
+siblings say the same thing from an enters trigger: Mizzium Meddler
+("you may change a target of target spell or ability to this
+creature") and Hydroelectric Specimen ("you may change the target of
+target instant or sorcery spell with a single target to this
+creature"), which shipped with its trigger caveated for exactly this
+gap.
+
+It is the same observation one more time: **the destination is a
+candidate answer, and the gate already knows how to judge an answer.**
+So the variant is a field on the existing offer and a branch in the
+existing answer, not a second retarget.
+
+### 1. `RetargetOffer.To` pins the destination
+
+`game.RetargetOffer` gains `To TargetRef`; its zero value (`Kind ""`)
+is the free choice every earlier card prints. Card side,
+`effects.ChangeTargets` gains `To` and `ToSource` — the latter is the
+printed "to this creature", resolved to the ability's source
+permanent at resolution.
+
+A slot is **eligible** when the item's target list with that ONE slot
+replaced by `To` passes `retargetCheckLocked` under
+`RetargetChangeOne` — the check a free "change the target" answer
+passes (`pinnedRetargetSlotsLocked`). So each of Spellskite's
+2020-08-07 rulings is the gate's behaviour rather than new code:
+
+- **Spellskite must be a legal target for the slot**, judged for the
+  ITEM's controller (§2 of the #1196 amendment): the slot's clause and
+  zones, and `CanBeTargetedBy` — so an opponent's spell cannot be
+  pulled onto a hexproof Spellskite, and nobody's onto a shrouded one.
+- **"If changing one target … would make other targets … illegal,
+  that target can't be changed"**: the whole new list is validated, so
+  `To` may not join a clause that already names it (unless
+  `AllowSame`), nor land where a `Distinct` clause or a #1559 set rule
+  forbids.
+- **A slot `To` already holds is not a change** (CR 115.7a's
+  "another legal target") and is never eligible.
+- **No eligible slot is an outcome, not an error**: "You can activate
+  Spellskite's ability even if Spellskite isn't a legal target … or
+  even if that spell or ability has no targets. In this case, no
+  targets are changed." Nobody is asked.
+- **Spellskite leaving the battlefield** before the ability resolves
+  changes nothing. A destroyed Spellskite is in no battlefield clause's
+  zones, so the gate refuses it; a Spellskite that left and came back
+  is a NEW OBJECT with the same instance ID (CR 400.7), which every
+  clause would accept, so `ToSource` reads the ability's
+  `SourcePermanent()` (#1418) and offers nothing when it has `Left`.
+
+A pinned offer takes only `RetargetChangeOne` (`ErrInvalidParam`
+otherwise — no card prints "choose new targets … to X"), and, unlike a
+free one, over an item with any number of targets: the free variant's
+single-target restriction exists because a multi-slot "change a
+target" would have to ask which slot AND where, and a pinned one has
+already answered where.
+
+### 2. The one question is WHICH slot
+
+"If the spell or ability has multiple instances of the word 'target,'
+you choose which one target you're changing to Spellskite as
+Spellskite's ability resolves" — and the same for several targets
+under one instance (Deepglow Skate). So:
+
+- one eligible OBJECT and a mandatory change: it is made, no prompt;
+- otherwise — two or more eligible objects, or a printed "you may"
+  (Mizzium Meddler, Hydroelectric Specimen) — a `PendingChoiceRetarget`
+  whose options are the objects CURRENTLY in the eligible slots, with
+  `min` 0 for a "you may" and 1 otherwise.
+
+The prompt carries the new `PendingChoice.RetargetTo`, and that field
+is the whole difference on the answer side: `ResolveRetarget` hands a
+pinned prompt to `resolvePinnedRetargetLocked`, which reads the one
+ref as "the slot currently holding this object" and changes it to
+`RetargetTo`. Eligibility is recomputed against the board as the
+answer arrives; with nothing eligible any more the prompt is dropped
+and nothing moves, and an answer naming an object in no eligible slot
+is `ErrIllegalTarget` with the prompt left open.
+
+**It stays one prompt kind.** The question shape (one ref out of a
+server-computed set, decline when `min` is 0), the departure row
+(`{}` — dropped, targets unchanged), the board picker and the
+`internal/legal` case are all exactly right as they stand; what the
+options MEAN is the server's business. No wire field changes: the
+client never needed `RetargetSlot` either.
+
+`RetargetTo` is carried by the snapshot (additive within v7: its zero
+value is the free retarget every older file holds; a pre-#1743 binary
+cannot hold a game with a pinned prompt correctly, but every card that
+can open one has catalog abilities that binary lacks, which restore
+already flags as `AbilitiesLostOnRestore`).
+
+### 3. Two instances of "target" naming the same object
+
+CR 601.2c lets two DIFFERENT instances of "target" choose the same
+object unless one says "another". The board can point at an object but
+not at an instance of a word, so two eligible slots holding one object
+are one option, and choosing it changes the EARLIER slot. It matters
+only when the two clauses do different things to that object (Soul's
+Fire aimed at one creature twice), and the result is weaker than
+printed, never stronger. Spellskite and Mizzium Meddler declare it as a
+caveat; Hydroelectric Specimen cannot reach it ("with a single
+target") and is `full`.
+
+### Cards
+
+**Spellskite** (new, caveat §3), **Mizzium Meddler** (new, caveat §3),
+**Hydroelectric Specimen** (caveat cleared, `full`).
+
+### Tests
+
+`server/internal/game/retarget_pinned_test.go` — legal destination
+moves with no prompt (card and player), every refusal the gate makes
+(predicate, hexproof for the item's controller, shroud, already the
+target, left the battlefield), hexproof on the item controller's OWN
+creature allowed, the which-slot prompt and its refusals, a change
+that would break another slot, the same object in two clauses, the
+"you may" decline, the destination leaving under an open prompt, the
+item gone, the policy restriction, and the prompt surviving a
+snapshot round trip. `server/internal/legal/retarget_pinned_choice_test.go`
+— every enumerated answer accepted and moving its own slot, and the
+optional decline. `server/internal/cards/effects/pinned_retarget_test.go`
+— the three cards on a real board, including {U/P} paid with life and
+with {U}, an activated ability redirected, Arc Trail's two instances,
+and Spellskite destroyed or flickered in response.
+
+### Out of scope (still)
+
+- **"Change the target to enchanted creature if able"** (Captured by
+  the Consulate) and **"to the player with the lowest result"**
+  (Ricochet) — both can use `RetargetOffer.To`; neither card is in a
+  batch yet, and Ricochet also needs its die-roll trigger.
+- **Muck Drubb**'s "target spell that targets only a single creature"
+  is a clause predicate over what the slot NAMES, not how many slots
+  there are — the same gap the random-retarget row (#1815) records for
+  Chef's Kiss.
+- **A free multi-slot "change a target"** — still no printed card.
