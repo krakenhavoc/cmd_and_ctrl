@@ -17,6 +17,7 @@ import (
 //	Leyline of the Void  an OPPONENT's graveyard only
 //	Dauthi Voidwalker    an opponent's, and the exiled card gets a
 //	                     void counter and may be cast — its own work
+//	a disturb back face  itself only (SelfOnly, ADR 0107 §4)
 //
 // "From anywhere" is the load-bearing half, and it is why this could
 // not be written before #931: a replacement only ever runs for a mover
@@ -67,6 +68,22 @@ type GraveyardBecomesExile struct {
 	// the move.
 	NotControlledByYou bool
 
+	// SelfOnly restricts the effect to its own source — "If [this]
+	// would be put into a graveyard from anywhere, exile it instead",
+	// the line every disturb back face prints (ADR 0107 §4). Blightsteel
+	// Colossus's shape with exile as the destination, and the family's
+	// one replacement whose source is the object it moves.
+	//
+	// It works from every zone the source can be in with that face up,
+	// and from none other, which is CR 712.8a doing the work rather
+	// than this field: the entry it sits on is a back face's
+	// ("<oracle_id>#1"), and a double-faced card has its back face's
+	// characteristics only on the stack and the battlefield. So a
+	// disturbed Aura that falls off, a disturbed creature that dies and
+	// a disturbed spell that is countered are all exiled, and the same
+	// card discarded from a hand goes to the graveyard as usual.
+	SelfOnly bool
+
 	// Label is the CR 616 prompt header, shown when this and another
 	// replacement both apply to the same move.
 	Label string
@@ -91,6 +108,9 @@ func (r GraveyardBecomesExile) Build() game.ReplacementEffect {
 			if ev.NewZone != game.ZoneGraveyard {
 				return false
 			}
+			if r.SelfOnly && (src == nil || ev.CardID != src.InstanceID) {
+				return false
+			}
 			if r.OpponentsOnly && (ev.NewZoneOwner == uuid.Nil || ev.NewZoneOwner == src.Controller) {
 				return false
 			}
@@ -110,6 +130,16 @@ func (r GraveyardBecomesExile) Build() game.ReplacementEffect {
 		Controller: func(_ *game.ReplacementEvent, _ *game.Game, src *game.Card) uuid.UUID {
 			return src.Controller
 		},
-		Label: r.Label,
+		SelfReplacement: r.SelfOnly,
+		Label:           r.Label,
 	}
+}
+
+// DisturbedExile is a disturb back face's "If [name] would be put into
+// a graveyard from anywhere, exile it instead" (ADR 0107 §4), declared
+// on the back face's entry:
+//
+//	Replacements: []game.ReplacementEffect{DisturbedExile("Hook-Haunt Drifter")},
+func DisturbedExile(name string) game.ReplacementEffect {
+	return GraveyardBecomesExile{SelfOnly: true, Label: name + ": exiled instead of put into a graveyard"}.Build()
 }

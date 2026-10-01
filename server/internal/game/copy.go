@@ -648,6 +648,7 @@ func copyFaceSlice(in []Face) []Face {
 	copy(out, in)
 	for i := range out {
 		out[i].Colors = copyStringSlice(in[i].Colors)
+		out[i].Keywords = copyStringSlice(in[i].Keywords)
 	}
 	return out
 }
