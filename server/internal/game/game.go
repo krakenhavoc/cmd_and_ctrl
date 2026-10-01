@@ -105,7 +105,7 @@ type Game struct {
 	MulligansOpen bool
 
 	// Monarch is the player ID currently designated as the monarch
-	// (CR 724). uuid.Nil means "no monarch currently". Handed out by
+	// (CR 725). uuid.Nil means "no monarch currently". Handed out by
 	// the set_monarch action or by a card effect; from #375 onward the
 	// engine then enforces the designation's two inherent triggered
 	// abilities — the monarch's end-step draw and the transfer to
@@ -850,7 +850,7 @@ func NewGame() *Game {
 	// entries onto PendingTriggers. See triggers.go.
 	g.Listeners = append(g.Listeners, triggerHarvester{})
 	// #375: the two inherent triggered abilities of the monarch
-	// (CR 724.2) have no source card for the harvester above to find
+	// (CR 725.2) have no source card for the harvester above to find
 	// them on, so they ride the listener registry instead. Registered
 	// AFTER the harvester so that when a card trigger and a monarch
 	// trigger watch the same event, the card's lands on

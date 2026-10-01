@@ -26,7 +26,7 @@ import (
 //
 // The copy is CopySpell with ChooseNewTargets, CR 707.10's own
 // "you may choose new targets for the copy" prompt — a copy of a
-// permanent spell becomes a token per CR 706.9, which CopySpell
+// permanent spell becomes a token per CR 707.10f, which CopySpell
 // already handles for every other copy effect in the catalog. The
 // counter is CounterTarget on the cast spell directly: this ability
 // does not target ("counter THAT spell", not "counter target

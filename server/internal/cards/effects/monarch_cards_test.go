@@ -9,7 +9,7 @@ import (
 )
 
 // monarch_cards_test.go pins #1722: a card effect can make a player
-// the monarch (CR 724), and the twelve catalog cards built on it.
+// the monarch (CR 725), and the twelve catalog cards built on it.
 
 const (
 	courtOfGraceOracle          = "f63c2438-27d4-449a-828f-f0a2ea86ff16"
@@ -90,7 +90,7 @@ func monTokens(g *game.Game, controller uuid.UUID, name string) int {
 
 // TestACardMakesYouTheMonarchAndYouDrawAtYourEndStep is the headline:
 // the ETB crowns its controller through SetMonarchForEffect (it would
-// have deadlocked through SetMonarch), and CR 724.2's end-step draw
+// have deadlocked through SetMonarch), and CR 725.2's end-step draw
 // then pays out as it does for a crown set by hand.
 func TestACardMakesYouTheMonarchAndYouDrawAtYourEndStep(t *testing.T) {
 	g := newCatalogGame(t)
@@ -138,7 +138,7 @@ func TestAnOpponentStealsACardGivenCrownWithCombatDamage(t *testing.T) {
 
 // TestCustodiLichFiresOnceAndNotAgainWhileYouHoldTheCrown: the Lich's
 // own ETB crowns you and its edict fires; a second "you become the
-// monarch" while you still hold it is no change of holder (CR 724.3),
+// monarch" while you still hold it is no change of holder (CR 725.3),
 // so nothing triggers.
 func TestCustodiLichFiresOnceAndNotAgainWhileYouHoldTheCrown(t *testing.T) {
 	g := newCatalogGame(t)
@@ -670,7 +670,7 @@ func TestPalaceJailerExileSurvivesASnapshotRoundTrip(t *testing.T) {
 
 // TestPalaceJailerControllerLeavingKeepsTheCreatureExiled pins the
 // declared caveat: the Jailer's controller concedes while wearing the
-// crown, CR 724.4 hands it to an opponent of theirs — which is the
+// crown, CR 725.4 hands it to an opponent of theirs — which is the
 // printed "until" — but the delayed trigger left with its controller
 // (CR 800.4a), so the creature stays exiled. Flip this when the gap
 // closes, and clear the caveat.
@@ -684,7 +684,7 @@ func TestPalaceJailerControllerLeavingKeepsTheCreatureExiled(t *testing.T) {
 	}
 	monSettle(t, g)
 	if g.Monarch == uuid.Nil || g.Monarch == me.ID {
-		t.Fatalf("CR 724.4: monarch = %v, want a player still in the game", g.Monarch)
+		t.Fatalf("CR 725.4: monarch = %v, want a player still in the game", g.Monarch)
 	}
 	if z := e2Zone(g, victim); z != game.ZoneExile {
 		t.Errorf("the creature is in %q — the caveat has closed; update the card and this test", z)
