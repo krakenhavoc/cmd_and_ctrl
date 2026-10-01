@@ -711,6 +711,10 @@ func cloneStackItem(s *StackItem) *StackItem {
 		out.Targets = make([]TargetRef, len(s.Targets))
 		copy(out.Targets, s.Targets)
 	}
+	// ADR 0106 §4 (#1806): the spell's "can't be countered" marks.
+	// Plain values, so a fresh backing array is all the isolation an
+	// undo snapshot needs.
+	out.CantBeCountered = copyCounterShieldMarks(s.CantBeCountered)
 	// #1223: the triggering event, deep-copied for the same reason
 	// the payload is — an undo that shared the slices inside it
 	// would let the restored game mutate the live one.

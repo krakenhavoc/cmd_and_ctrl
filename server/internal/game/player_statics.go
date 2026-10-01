@@ -59,6 +59,10 @@ import "github.com/google/uuid"
 // playerLifeTotalCantChangeLocked in life_lock.go) and a granted
 // cast-BAN (PlayerStatic.CastBan, castBanForbidsLocked in cast_ban.go).
 // None of the three carries a Keyword, so none reaches the walk below.
+// Nor do the two that came later: "you can't lose this turn"
+// (PlayerStatic.GameEnd, game_end_gates.go) and "your spells can't be
+// countered this turn" (PlayerStatic.CantBeCountered,
+// counter_shield_grants.go).
 //
 // The bot's move enumerator and the client's legal_targets follow by
 // construction: both read legalTargetsLocked, which is the targeting
@@ -197,6 +201,24 @@ type PlayerStatic struct {
 	// No `omitzero`, for Timing's reason above (#1492): it is always
 	// written, and a zero grant reads back as "says nothing".
 	GameEnd GameEndGrant `json:"gameEnd"`
+
+	// CantBeCountered is a granted "<these> spells can't be countered
+	// this turn" (Veil of Summer, Domri, Anarch of Bolas's +1) or a
+	// one-use "the next <this kind of> spell you cast this turn can't
+	// be countered" (Insist, Mistrise Village). ADR 0106 §4 decisions 2
+	// and 3, #1806, counter_shield_grants.go.
+	//
+	// The SIXTH payload. Its presence bit is CounterShieldGrant.Active,
+	// for CastBan's reason: the zero grant (every spell, "you
+	// control") is Veil of Summer's real one, not "nothing to say".
+	// Like every payload but Keyword it carries no Keyword, which keeps
+	// it out of playerAbilityTokensLocked's answer. Its READERS are the
+	// counter gate (counterShieldGrantedLocked, for a turn grant) and
+	// the cast (spendCounterShieldPromisesLocked, for a promise, which
+	// is never read at the gate).
+	//
+	// No `omitzero`, for Timing's reason above (#1492).
+	CantBeCountered CounterShieldGrant `json:"cantBeCountered"`
 
 	// Source is the card that granted it, for the log and for the
 	// view's attribution. Never read by any rule: a granted ability

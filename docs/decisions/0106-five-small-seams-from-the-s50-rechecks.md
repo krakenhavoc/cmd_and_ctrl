@@ -366,3 +366,16 @@ The owner answered the six open questions on 2026-10-01. Five answers were the r
    §4 covers all four shapes: their durations and endings, where each is stored, and how each reaches `spellCantBeCounteredLocked`. The work is split across Delivery PRs 2 and 3.
 5. **Evolve.** The keyword, its trigger and the CR 702.100b "evolves" event ship in one PR (§3, decision 3).
 6. **Cards.** Each PR lands its named card plus every other card of its seam that needs no other missing primitive, each verified against its full oracle text. Any that needs more goes on the row's `Waiting` list with the reason.
+
+---
+
+## Amendment (2026-10-01): §4 delivery PR 3 as built (#1806)
+
+§4 shipped as decided. Four details differ from the text above, none of them in behaviour:
+
+- **Names.** The printed static is `game.CounterShieldStatic` (PR 2), because `game.CounterShield` is the shield counter. The player-static payload is `game.CounterShieldGrant` and the mark is `game.CounterShieldMark`, as decided.
+- **The grant's fields.** `CounterShieldGrant` is `{Active, Whose, Filter, NextOnly, Except, Text}`. `Active` is the presence bit, because the zero grant (every spell, "you control") is Veil of Summer's real one, the argument `CastBanRule.Kind` makes. `Text` is the printed clause, for the player panel. `Source` and `Label` are the `PlayerStatic`'s own fields, as on every other payload, not copies inside the grant.
+- **Savage Summoning's row.** Decision 6 and Delivery put it on this row's `Waiting` list while the row flips to implemented, and the registry refuses an implemented row with cards waiting on it (`TestWaitingCardsAreNotComplete`). It is on a new missing row, `next-spell-promises`, with the reason. The five printed-static cards PR 2 left on the row moved to rows for their real blockers: Spider-Punk to `riot`, and new rows `damage-cant-be-prevented` (Frenzied Baloth), `rebound` (Taigam, Ojutai Master), `disturb` (Malevolent Hermit // Benevolent Geist) and `more-than-meets-the-eye` (Goldbug). The new rows are tracked on the S50 tracker, #1784, until each has an issue of its own.
+- **Veil of Summer** is Caveats, not Full: "hexproof from blue and from black" is not a keyword the engine has (ADR 0038 §6), so that sentence grants nothing, which is weaker than printed.
+
+The player view's `counter_shields` line is public, like `end_gates`, and the client shows it as a NO COUNTER badge on the seat.

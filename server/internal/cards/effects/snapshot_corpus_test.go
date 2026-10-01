@@ -233,7 +233,42 @@ func corpusBoards() []corpusBoard {
 		// delve link on a permanent (CastProvenance.Delved) and on a
 		// departed one's last-known information (PermanentInfo.Delved).
 		{"delve_linked_permanents", corpusDelveLinkedPermanents},
+		// v7, added by ADR 0106 PR 3 (#1806) as a new file: "can't be
+		// countered" as data — a turn grant and an unspent one-use
+		// promise on a seat (PlayerStatic.CantBeCountered), and a spell
+		// on the stack with two marks (StackItem.CantBeCountered), one
+		// from a spent promise and one from Vexing Shusher.
+		{"counter_shields", corpusCounterShields},
 	}
+}
+
+// corpusCounterShields is ADR 0106 §4's three stored shapes at once.
+// Insist resolved and its promise was spent by the Grizzly Bears on the
+// stack, which Vexing Shusher then marked again; Veil of Summer's turn
+// grant is on the caster, and so is Mistrise Village's promise, which
+// nothing has spent yet.
+func corpusCounterShields(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	castCatalogSpell(t, g, "Insist", "Sorcery", cgInsistOracle, nil)
+	passPriorityAroundTable(t, g)
+	castCatalogSpell(t, g, "Veil of Summer", "Instant", cgVeilOfSummerOracle, nil)
+	passPriorityAroundTable(t, g)
+	village := pushCatalogPermanent(g, me.ID, "Mistrise Village", "Land", cgMistriseVillageOracle, false)
+	shusher := pushCatalogPermanent(g, me.ID, "Vexing Shusher", "Creature — Goblin Shaman", cgVexingShusherOracle, false)
+	bear := castCatalogSpell(t, g, "Grizzly Bears", "Creature — Bear", "", nil)
+	if err := g.ActivateCatalogAbility(me.ID, village, 0, game.ActivateAbilityParams{}); err != nil {
+		t.Fatalf("setup: Mistrise Village: %v", err)
+	}
+	cgResolveTop(t, g)
+	if err := g.ActivateCatalogAbility(me.ID, shusher, 0, game.ActivateAbilityParams{Targets: cardRefs(bear)}); err != nil {
+		t.Fatalf("setup: Vexing Shusher: %v", err)
+	}
+	cgResolveTop(t, g)
+	if it := g.StackMeta[bear]; it == nil || len(it.CantBeCountered) != 2 || len(me.Statics) != 2 {
+		t.Fatalf("setup: want the Bears with two marks and two statics on the caster, got %+v / %+v", it, me.Statics)
+	}
+	return g
 }
 
 // corpusDelveLinkedPermanents is a Murktide Regent on the battlefield

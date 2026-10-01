@@ -633,6 +633,7 @@ func TestNoCardActsOnItsOwnSourceThroughAGameMutatorWithoutAsking(t *testing.T) 
 		"teferis_protection.go": true, "teferis_reproach.go": true,
 		"avatars_wrath.go": true, "blue_suns_zenith.go": true,
 		"temporal_mastery.go": true, "temporal_trespass.go": true,
+		"bound_determined.go": true, // Bound's "Exile this card." (ADR 0106 PR 3)
 	}
 	isSelf := func(e ast.Expr) bool {
 		s := exprString(e)
