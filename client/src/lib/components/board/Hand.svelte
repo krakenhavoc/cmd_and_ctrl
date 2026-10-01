@@ -693,6 +693,7 @@
           legal={isSelf ? legal : undefined}
           legalGate={isSelf ? legalGate : undefined}
           pips={cPips}
+          readyZone="hand"
           ready={isSelf && (legal.castableFrom(c.instance_id, "hand") || hasPips(cPips))}
           onClick={isSelf && leg.legal ? () => handleCardClick(c) : undefined}
         />

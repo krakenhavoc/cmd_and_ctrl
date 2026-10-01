@@ -220,6 +220,7 @@
       }}
     >
       <span class="label">{item.label}</span>
+      {#if item.ready}<span class="sr-only">, available</span>{/if}
       <span class="cost" aria-hidden="true">✦</span>
     </button>
   {/each}
@@ -241,6 +242,7 @@
       }}
     >
       <span class="label">{a.label || a.produced || "activate"}</span>
+      {#if ready}<span class="sr-only">, available</span>{/if}
       {#if a.tap_cost}
         <span class="cost" aria-label="tap cost">↻</span>
       {/if}
@@ -285,6 +287,7 @@
         }}
       >
         <span class="label">{a.label || "activate"}</span>
+        {#if ready}<span class="sr-only">, available</span>{/if}
         {#if a.tap_cost}
           <span class="cost" aria-label="tap cost">↻</span>
         {/if}
@@ -385,5 +388,18 @@
   .cost {
     font-weight: 700;
     opacity: 0.75;
+  }
+  /* ADR 0105 §7 (sub-PR 6): a ready row's accessible name gains
+     "available". Spoken, not drawn: the accent already draws it. */
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
   }
 </style>

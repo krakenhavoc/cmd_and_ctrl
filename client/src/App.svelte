@@ -24,6 +24,7 @@
   import { route, navigate } from "./lib/router";
   import { session, sessionFromOAuth, setSession } from "./lib/session";
   import { settings } from "./lib/settings";
+  import { applyRootSettings } from "./lib/rootSettings";
   import { armMusicOnFirstGesture } from "./lib/music";
   import { loadAppConfig } from "./lib/env";
 
@@ -118,13 +119,7 @@
   // persists but is inert — the Settings panel disables the
   // select with a "coming soon" note so users know.
   $effect(() => {
-    const s = $settings;
-    const root = document.documentElement;
-    root.style.setProperty("--font-scale", String(s.accessibility.textScale));
-    root.dataset.cardSize = s.display.cardSize;
-    root.dataset.tableLayout = s.display.tableLayout;
-    root.dataset.reduceMotion = s.accessibility.reduceMotion ? "1" : "0";
-    root.dataset.alwaysShowFocus = s.accessibility.alwaysShowFocus ? "1" : "0";
+    applyRootSettings(document.documentElement, $settings);
   });
 </script>
 

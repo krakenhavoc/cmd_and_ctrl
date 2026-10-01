@@ -113,10 +113,16 @@ function mountHand(view: GameView, legal: LegalActions) {
   );
 }
 
-const slotOf = (c: HTMLElement, name: string) =>
-  c.querySelector<HTMLElement>(`.card[aria-label='${name}']`)?.closest<HTMLElement>(".hand-slot");
+// A ready card's accessible name is its name plus what it is ready for
+// ("Lightning Bolt, castable", ADR 0105 §7), so match the name as the
+// label's first part.
 const cardOf = (c: HTMLElement, name: string) =>
-  c.querySelector<HTMLElement>(`.card[aria-label='${name}']`);
+  [...c.querySelectorAll<HTMLElement>(".card")].find((el) => {
+    const label = el.getAttribute("aria-label") ?? "";
+    return label === name || label.startsWith(`${name}, `);
+  }) ?? null;
+const slotOf = (c: HTMLElement, name: string) =>
+  cardOf(c, name)?.closest<HTMLElement>(".hand-slot");
 
 describe("hand: the ready ring", () => {
   const view = frame([passMove, castMove("bolt", "hand")]);

@@ -62,7 +62,7 @@
   class:ready={readyCount > 0}
   {disabled}
   onclick={onClick}
-  aria-label={`${label}: ${zone.count} card${zone.count === 1 ? "" : "s"}`}
+  aria-label={`${label}: ${zone.count} card${zone.count === 1 ? "" : "s"}${readyCount > 0 ? `, ${readyCount} ready` : ""}`}
   title={readyCount > 0
     ? `${label} · ${zone.count} · ${readyCount} ready`
     : `${label} · ${zone.count}`}

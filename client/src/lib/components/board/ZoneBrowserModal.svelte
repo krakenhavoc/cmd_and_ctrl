@@ -42,7 +42,7 @@
   import { exileCostBadge, exileEntryFor, exileEntryLegality } from "../../exileStrip";
   import ManaSymbol from "./ManaSymbol.svelte";
   import { canCastFromHand, type Legality } from "../../timing";
-  import { NO_LEGAL_ACTIONS, type LegalActions } from "../../legalActions";
+  import { NO_LEGAL_ACTIONS, withAvailable, type LegalActions } from "../../legalActions";
 
   type ActionSender = (type: ActionType, params?: ActionPayload["params"], player?: string) => void;
 
@@ -382,6 +382,7 @@
             <Card
               {card}
               ready={legal.isReady(card.instance_id)}
+              readyZone={zoneKind === "stack" ? undefined : zoneKind}
               onClick={onTargetCard ? () => void onTargetCard?.(card) : undefined}
               onActivateAbility={activateHandlerFor(card)}
               {sorcerySpeedBlocked}
@@ -422,7 +423,10 @@
                         ? "spend mana as though it were any colour"
                         : "playable until end of turn"
                     : (leg.reason ?? "Not castable from exile right now")}
-                  aria-label={`${labelFor(card)} ${grantedName(card)} from exile`}
+                  aria-label={withAvailable(
+                    `${labelFor(card)} ${grantedName(card)} from exile`,
+                    legal.castableFrom(card.instance_id, "exile"),
+                  )}
                   onclick={() => playFromExile(card)}
                 >
                   {labelFor(card)}
@@ -453,7 +457,10 @@
                   title={graveLeg.legal
                     ? `${castVerbFor(card)} from your graveyard`
                     : (graveLeg.reason ?? "Not castable from your graveyard right now")}
-                  aria-label={`${castVerbFor(card)} ${card.name || "card"} from graveyard`}
+                  aria-label={withAvailable(
+                    `${castVerbFor(card)} ${card.name || "card"} from graveyard`,
+                    legal.castableFrom(card.instance_id, "graveyard"),
+                  )}
                   onclick={() => castFromZone(card)}
                 >
                   {castLabelFor(card)}

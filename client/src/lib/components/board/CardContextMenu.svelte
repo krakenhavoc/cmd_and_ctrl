@@ -227,6 +227,7 @@
     }}
   >
     <span class="ctx-text">{item.label}</span>
+    {#if item.ready}<span class="sr-only">, available</span>{/if}
     {#if item.items}
       <span class="ctx-more" aria-hidden="true">›</span>
     {:else if item.prompt}
@@ -442,5 +443,18 @@
   .ctx-item.apply {
     justify-content: center;
     border-color: rgba(200, 168, 106, 0.45);
+  }
+  /* ADR 0105 §7 (sub-PR 6): a ready row's accessible name gains
+     "available". Spoken, not drawn: the accent already draws it. */
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
   }
 </style>

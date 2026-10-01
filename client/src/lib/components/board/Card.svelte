@@ -39,12 +39,19 @@
   import RoomDoorStrip from "./RoomDoorStrip.svelte";
   import { displayName } from "../../faces";
   import {
+    DROP_PIP_LABEL,
     NO_LEGAL_ACTIONS,
     NO_PIPS,
+    boltPipLabel,
     pipCount,
+    readyCardLabel,
+    readyPhrases,
     specialPipTitle,
+    starPipLabel,
+    type CombatPip,
     type LegalActions,
     type ReadyPips,
+    type ReadyZone,
   } from "../../legalActions";
 
   interface Props {
@@ -76,6 +83,19 @@
     // it, opens the same popover a right-click opens (§7, owner
     // decision 6). It is the touch route into the popover.
     pips?: ReadyPips;
+    // ADR 0105 §7 (sub-PR 6): the zone the card is drawn in, so a
+    // ready card's accessible name can say WHY it is ready
+    // ("castable", "playable land", "can attack") the way the ring and
+    // pips show it (legalActions.ts readyPhrases). The phrases read
+    // `legal`, so a caller that sets `ready` hands `legal` down too.
+    readyZone?: ReadyZone;
+    // ADR 0105 §7 (sub-PR 6): a combat candidate's pip, a sword (may
+    // attack) or a shield (may block), beside its ready ring. It is
+    // decorative: no popover sits behind a declaration, so it is not a
+    // button, and the accessible name already carries "can attack" /
+    // "can block". It also tells "may block" from "is blocking" by
+    // shape where the cyan and pale-blue rings are hard to tell apart.
+    combatPip?: CombatPip | null;
     // ADR 0105: the lookups the ability popover reads for this card.
     // `legal` is what may be highlighted: ready rows take the accent
     // and sort first. `legalGate` is the frame's full lookup, for the
@@ -192,6 +212,8 @@
     ready = false,
     combatTarget = false,
     pips = NO_PIPS,
+    readyZone = "battlefield",
+    combatPip = null,
     legal = NO_LEGAL_ACTIONS,
     legalGate = NO_LEGAL_ACTIONS,
     size = "small",
@@ -248,6 +270,18 @@
   const dropPip = $derived(!!onActivateManaAbility && pips.mana);
   const starPip = $derived(specialRows.length > 0 && pips.special > 0);
   const anyPip = $derived(hasMenu && (boltPips > 0 || dropPip || starPip));
+  // ADR 0105 §7: the combat pip goes with the ring it explains.
+  const swordPip = $derived(ready && combatPip === "attack");
+  const shieldPip = $derived(ready && combatPip === "block");
+
+  // ADR 0105 §7: a ready card's accessible name gains a phrase saying
+  // what it is ready FOR. Built only while the ring is drawn.
+  const accessibleName = $derived.by(() => {
+    if (showBack) return "face-down card";
+    const name = displayName(card);
+    if (!ready) return name;
+    return readyCardLabel(name, true, readyPhrases(legal, card, readyZone, combatTarget));
+  });
 
   // cardImageURL defaults to the card's ACTIVE face, so a modal DFC
   // played as its land half — or, later, a transformed permanent —
@@ -514,7 +548,7 @@
   data-tapped={card.tapped ? "true" : "false"}
   role={interactive ? "button" : "img"}
   tabindex={interactive ? 0 : undefined}
-  aria-label={showBack ? "face-down card" : displayName(card)}
+  aria-label={accessibleName}
   title={showBack ? "" : displayName(card)}
   onpointerenter={handleEnter}
   onpointerleave={handleLeave}
@@ -775,24 +809,27 @@
       {designationBadge}
     </span>
   {/if}
-  {#if anyPip}
-    <!-- ADR 0105 §2 (#1789): what this card can do right now, by
+  {#if anyPip || swordPip || shieldPip}
+    <!-- ADR 0105 §2/§7 (#1789): what this card can do right now, by
          shape: a star for a special action (any kind, including one
          this client has no name for), a bolt for an activated ability,
-         a drop for a mana ability worth marking (§4). Each pip is a
-         button that opens the popover a right-click opens (§7, sub-PR
-         4). "Open actions" is a placeholder name; sub-PR 6 gives the
-         pips their real accessible names. -->
+         a drop for a mana ability worth marking (§4), and a sword or
+         shield for a combat candidate. The first three are buttons
+         that open the popover a right-click opens (§7, sub-PR 4), each
+         named for what it opens onto. The combat pips are drawing
+         only: a declaration has no popover behind it, and the card's
+         own name already says "can attack" / "can block". -->
     <span class="ready-pips">
       {#if starPip}
+        {@const kinds = legal.readySpecialActions(card.instance_id)}
         <button
           type="button"
           class="ready-pip star"
           data-pip="star"
-          aria-label="Open actions"
+          aria-label={starPipLabel(kinds)}
           aria-haspopup="menu"
           aria-expanded={manaMenuOpen}
-          title={specialPipTitle(legal.readySpecialActions(card.instance_id))}
+          title={specialPipTitle(kinds)}
           onclick={openFromPip}
           onkeydown={handlePipKeydown}
         >
@@ -808,7 +845,7 @@
           type="button"
           class="ready-pip bolt"
           data-pip="bolt"
-          aria-label="Open actions"
+          aria-label={boltPipLabel(boltPips)}
           aria-haspopup="menu"
           aria-expanded={manaMenuOpen}
           onclick={openFromPip}
@@ -827,7 +864,7 @@
           type="button"
           class="ready-pip drop"
           data-pip="drop"
-          aria-label="Open actions"
+          aria-label={DROP_PIP_LABEL}
           aria-haspopup="menu"
           aria-expanded={manaMenuOpen}
           onclick={openFromPip}
@@ -837,6 +874,22 @@
             ><path d="M12 2.5S5 10.4 5 15.2a7 7 0 0 0 14 0C19 10.4 12 2.5 12 2.5z" /></svg
           >
         </button>
+      {/if}
+      {#if swordPip}
+        <span class="ready-pip combat" data-pip="sword" aria-hidden="true" title="can attack">
+          <svg viewBox="0 0 24 24" focusable="false"
+            ><path
+              d="M19 3h2v2l-9.5 9.5-2-2zM6.5 12.5 8 11l5 5-1.5 1.5zM8.5 15.5l1 1-4 4-1-1zM2.3 20.2a1.6 1.6 0 1 0 3.2 0 1.6 1.6 0 1 0-3.2 0z"
+            /></svg
+          >
+        </span>
+      {/if}
+      {#if shieldPip}
+        <span class="ready-pip combat" data-pip="shield" aria-hidden="true" title="can block">
+          <svg viewBox="0 0 24 24" focusable="false"
+            ><path d="M12 2l8 3v6c0 5-3.5 9.3-8 11-4.5-1.7-8-6-8-11V5z" /></svg
+          >
+        </span>
       {/if}
     </span>
   {/if}
@@ -1304,6 +1357,15 @@
   .ready-pip:hover {
     filter: brightness(1.12);
   }
+  /* ADR 0105 §7 (sub-PR 6): the sword and shield are drawing only. A
+     press on one is a press on the card, which is the declaration. */
+  .ready-pip.combat {
+    cursor: inherit;
+    pointer-events: none;
+  }
+  .ready-pip.combat:hover {
+    filter: none;
+  }
   .ready-pip:focus-visible {
     outline: 2px solid var(--ready-ink);
     outline-offset: 1px;
@@ -1344,6 +1406,19 @@
   .card.ready.combat-target:is(.attacking, .blocking):not(.targetable, .picked, .selected) {
     outline: max(2px, calc(var(--card-w, 80px) * 0.022)) solid var(--ready);
     outline-offset: max(5px, calc(var(--card-w, 80px) * 0.05));
+  }
+  /* ADR 0105 §7 (sub-PR 6): the high-contrast theme draws the ring as
+     a solid 3px outline and no glow. The theme's tokens already make
+     --ready-glow transparent; dropping the pseudo-element says so
+     outright. Dormant until App.svelte applies data-theme, which it
+     does not yet (the theme select is disabled; see App.svelte). The
+     second selector out-specifies the combat-target rule above. */
+  :global(:root[data-theme="high-contrast"]) .card.ready,
+  :global(:root[data-theme="high-contrast"]) .card.ready.combat-target:is(.attacking, .blocking) {
+    outline-width: 3px;
+  }
+  :global(:root[data-theme="high-contrast"]) .card.ready::after {
+    display: none;
   }
   .card.selected {
     box-shadow:

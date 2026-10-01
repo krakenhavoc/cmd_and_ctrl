@@ -68,6 +68,7 @@
   import {
     NO_COMBAT_RINGS,
     NO_LEGAL_ACTIONS,
+    actionableCount,
     attackTargetListed,
     attackTargetOpen,
     combatRings,
@@ -213,6 +214,10 @@
   // either, just as `sorcerySpeedBlocked` below is "" for them.
   const rowLegal = $derived(isSelf && !spectator ? legal : NO_LEGAL_ACTIONS);
   const rowGate = $derived(isSelf && !spectator ? legalGate : NO_LEGAL_ACTIONS);
+  // ADR 0105 §7 (sub-PR 6): how many of this seat's cards wear a
+  // highlight, for the phase display's "N actions available". Only the
+  // viewer's own panel mounts the phase display.
+  const readyActions = $derived(isSelf ? actionableCount(rowLegal, view, seat.id) : 0);
 
   // ADR 0105 sub-PR 5: the combat rings. Unlike the pips these reach
   // an opponent's panel, because what the SELECTED creature may be
@@ -681,6 +686,7 @@
         {loopNotice}
         onPassPriority={onPassPriority ?? (() => {})}
         onToggleAutopass={onToggleAutopass ?? (() => {})}
+        {readyActions}
       />
     {/if}
   </div>

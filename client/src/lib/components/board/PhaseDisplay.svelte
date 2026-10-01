@@ -25,6 +25,7 @@
   import { settings } from "../../settings";
   import { effectiveBindings, formatChord, isMacLike } from "../../shortcuts";
   import PhaseIcon from "./PhaseIcon.svelte";
+  import { QUIET_ANNOUNCER, announceArrival, type ReadyAnnouncer } from "../../legalActions";
 
   interface Props {
     turn: TurnView;
@@ -43,6 +44,12 @@
     loopNotice?: string;
     onPassPriority: () => void;
     onToggleAutopass: () => void;
+    // ADR 0105 §7 (sub-PR 6): how many of the viewer's cards have a
+    // highlighted action on this frame (legalActions.ts
+    // actionableCount over the HIGHLIGHT lookup, so 0 while highlights
+    // are off or autopass is about to pass). The live region below
+    // says it once, when a decision arrives.
+    readyActions?: number;
   }
 
   const {
@@ -54,7 +61,19 @@
     loopNotice = "",
     onPassPriority,
     onToggleAutopass,
+    readyActions = 0,
   }: Props = $props();
+
+  // ADR 0105 §7: "N actions available", once per arrival. The
+  // announcer is plain state on purpose: it is read and written only
+  // by the effect, which depends on readyActions alone, so a frame
+  // that repeats the same decision changes nothing the region shows.
+  let announcer: ReadyAnnouncer = QUIET_ANNOUNCER;
+  let readyLine = $state("");
+  $effect(() => {
+    announcer = announceArrival(announcer, readyActions);
+    readyLine = announcer.text;
+  });
 
   // The toggle reads "paused" rather than "off": the player's intent
   // is untouched and it resumes the moment somebody makes a real
@@ -276,6 +295,14 @@
   {#if bluffLine}
     <div class="row bluff-status" role="status">{bluffLine}</div>
   {/if}
+
+  <!-- ADR 0105 §7 (#1789): the spoken half of the ready highlights.
+       Always mounted, so a screen reader is already listening when the
+       line arrives; empty between decisions, so the same line is news
+       again the next time priority comes round. -->
+  <span class="sr-only" role="status" aria-live="polite" aria-atomic="true" data-ready-announcer
+    >{readyLine}</span
+  >
 
   <!-- #628 (CR 726): the loop breaker. Lives directly under the
        toggle it is talking about, because "why has autopass stopped
@@ -555,5 +582,16 @@
   .loop-text {
     font-size: 0.72rem;
     opacity: 0.9;
+  }
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
   }
 </style>

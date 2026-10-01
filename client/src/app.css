@@ -138,6 +138,37 @@
   --ready-ink: #000;
 }
 
+/* ADR 0105 §7 (#1789): accessibility.colorblindPalette swaps the
+   "ready" colour for the alternate set. Under protanopia and
+   deuteranopia every hue on the board collapses toward one blue-yellow
+   axis, and the default cyan lands next to the pale-blue .blocking
+   ring: "may block" and "is blocking" look alike. The alternate is a
+   near-white, which differs from every hue-coded ring (green target,
+   yellow pick, red attack, blue block, gold priority) by lightness
+   and saturation rather than hue, so it survives every common colour-
+   vision deficiency. App.svelte sets data-colorblind (rootSettings.ts).
+   Declared after the theme blocks so it wins under each of them. */
+:root[data-colorblind="1"] {
+  --ready: #f4f4f4;
+  --ready-glow: rgba(244, 244, 244, 0.38);
+  --ready-soft: rgba(244, 244, 244, 0.14);
+  --ready-ink: #000;
+}
+/* The light theme's page is near-white, so its alternate is near-black. */
+:root[data-colorblind="1"][data-theme="light"] {
+  --ready: #141414;
+  --ready-glow: rgba(20, 20, 20, 0.3);
+  --ready-soft: rgba(20, 20, 20, 0.1);
+  --ready-ink: #fff;
+}
+/* High contrast keeps no halo whichever colour the ring is. */
+:root[data-colorblind="1"][data-theme="high-contrast"] {
+  --ready: #fff;
+  --ready-glow: transparent;
+  --ready-soft: rgba(255, 255, 255, 0.25);
+  --ready-ink: #000;
+}
+
 /* Respect the user's reduce-motion preference. */
 :root[data-reduce-motion="1"] * {
   animation-duration: 0.01ms !important;
