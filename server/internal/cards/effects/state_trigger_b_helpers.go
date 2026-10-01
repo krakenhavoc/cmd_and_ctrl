@@ -28,19 +28,19 @@ func removeAllCountersFromThis(kind string) Effect {
 	}
 }
 
-// whileExactlyCounters is a layer-7c static that applies `dp`/`dt` to
-// every creature `who` accepts while the source has exactly `n` counters
-// of `kind` on it — Homarid's "As long as there is exactly one tide
+// whileExactlyTideCounters is a layer-7c static that applies `dp`/`dt` to
+// every creature `who` accepts while the source has exactly `n` tide counters
+// on it — Homarid's "As long as there is exactly one tide
 // counter on this creature, it gets -1/-1", Tidal Influence's "As long
 // as there are exactly three tide counters on this enchantment, all blue
 // creatures get +2/+0". The layer engine recomputes on every counter
 // change, so the count is read as it stands.
-func whileExactlyCounters(kind string, n int, who func(target, source *game.Card) bool, dp, dt int) game.StaticAbility {
+func whileExactlyTideCounters(n int, who func(target, source *game.Card) bool, dp, dt int) game.StaticAbility {
 	return game.StaticAbility{
 		Layer:    game.Layer7PT,
 		SubLayer: game.SubLayer7C_Modify,
 		AppliesTo: func(target *game.Card, _ *game.Game, source *game.Card) bool {
-			return source.Counters[kind] == n && target.IsCreature() && who(target, source)
+			return source.Counters["tide"] == n && target.IsCreature() && who(target, source)
 		},
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
 			c.Power += dp
@@ -49,7 +49,7 @@ func whileExactlyCounters(kind string, n int, who func(target, source *game.Card
 	}
 }
 
-// thisCreatureOnly is the `who` of a self-only whileExactlyCounters.
+// thisCreatureOnly is the `who` of a self-only whileExactlyTideCounters.
 func thisCreatureOnly(target, source *game.Card) bool { return target.InstanceID == source.InstanceID }
 
 // blueCreatures is the `who` of "all blue creatures", anyone's.
