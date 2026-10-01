@@ -5,10 +5,10 @@ import "github.com/google/uuid"
 // monarch.go turns the monarch from a marker a player toggles by hand
 // into the two triggered abilities the rules actually give it.
 //
-// CR 724 (the monarch), reproduced because both halves of this file
+// CR 725 (the monarch), reproduced because both halves of this file
 // are a transcription of it:
 //
-//	724.2. There are two inherent triggered abilities associated with
+//	725.2. There are two inherent triggered abilities associated with
 //	being the monarch. These triggered abilities have no source and
 //	are controlled by the player who was the monarch at the time the
 //	abilities triggered. The full texts of these abilities are "At the
@@ -16,10 +16,10 @@ import "github.com/google/uuid"
 //	"Whenever a creature deals combat damage to the monarch, that
 //	creature's controller becomes the monarch."
 //
-//	724.3. Only one player can be the monarch at a time. As a player
+//	725.3. Only one player can be the monarch at a time. As a player
 //	becomes the monarch, the current monarch ceases to be the monarch.
 //
-//	724.4. If the monarch leaves the game, the active player becomes
+//	725.4. If the monarch leaves the game, the active player becomes
 //	the monarch at the same time as that player leaves the game. If
 //	the active player is leaving the game or if there is no active
 //	player, the next player in turn order becomes the monarch. If no
@@ -46,7 +46,7 @@ import "github.com/google/uuid"
 // harvested card trigger does, so the table gets its response window
 // (the crown can be Stifled, and a player can act knowing the draw is
 // about to happen). The items carry SourceCardID uuid.Nil because CR
-// 724.2 says they have no source; StackOverlay already falls back to
+// 725.2 says they have no source; StackOverlay already falls back to
 // the label for a sourceless item, which is how delayed triggers with
 // no source render today.
 type monarchTriggers struct{}
@@ -64,7 +64,7 @@ func (monarchTriggers) OnEvent(g *Game, ev Event) {
 	}
 }
 
-// monarchCombatDamageTriggerLocked is CR 724.2's second ability:
+// monarchCombatDamageTriggerLocked is CR 725.2's second ability:
 // "whenever a creature deals combat damage to the monarch, that
 // creature's controller becomes the monarch".
 //
@@ -77,7 +77,7 @@ func (monarchTriggers) OnEvent(g *Game, ev Event) {
 // only way to see all of them at once, and it is why a first-strike
 // hit and a regular hit both count.
 //
-// One trigger per creature that connects, which is what CR 724.3
+// One trigger per creature that connects, which is what CR 725.3
 // means by "as a player becomes the monarch, the current monarch
 // ceases to be": two creatures under different controllers both
 // connecting put two triggers on the stack, the monarch orders them
@@ -118,11 +118,11 @@ func (g *Game) monarchCombatDamageTriggerLocked(ev Event) {
 	params := EffectParams{Player: newMonarch}
 	g.queueHarvestedTriggerLocked(&StackItem{
 		Kind: StackItemTriggered,
-		// CR 724.2: controlled by the player who WAS the monarch when
+		// CR 725.2: controlled by the player who WAS the monarch when
 		// the ability triggered — the one losing the crown, not the
 		// one taking it. That is what makes CR 800.4a correct when
 		// the hit is lethal: the trigger leaves with its controller
-		// and the crown is handed on by CR 724.4 below instead.
+		// and the crown is handed on by CR 725.4 below instead.
 		Controller: g.Monarch,
 		Owner:      g.Monarch,
 		Label:      "the monarch — " + claimant.Name + " becomes the monarch",
@@ -143,7 +143,7 @@ var monarchCrownBody = DelayedBody("monarch/crown", func(g *Game, _ *StackItem, 
 	return nil
 })
 
-// monarchEndStepTriggerLocked is CR 724.2's first ability: "at the
+// monarchEndStepTriggerLocked is CR 725.2's first ability: "at the
 // beginning of the monarch's end step, that player draws a card".
 //
 // THE MONARCH'S end step, not every end step: the draw happens once a
@@ -186,7 +186,7 @@ var monarchDrawBody = DelayedBody("monarch/draw", func(g *Game, _ *StackItem, p 
 	return g.DrawNForEffect(p.Player, 1)
 })
 
-// monarchLeftTheGameLocked is CR 724.4: the crown never falls off the
+// monarchLeftTheGameLocked is CR 725.4: the crown never falls off the
 // table. When the monarch leaves, the active player takes it; if the
 // active player is the one leaving, the next player in turn order
 // does.
@@ -195,7 +195,7 @@ var monarchDrawBody = DelayedBody("monarch/draw", func(g *Game, _ *StackItem, p 
 // AFTER advancePastEliminatedLocked has already walked the cursor off
 // an eliminated active seat. So "the active player" here is by
 // construction a player still in the game, and the two halves of
-// CR 724.4 collapse into one lookup.
+// CR 725.4 collapse into one lookup.
 //
 // This is a reassignment by game rule, not a triggered ability: it
 // happens immediately, not on the stack ("at the same time as that
@@ -227,8 +227,8 @@ func (g *Game) monarchLeftTheGameLocked() {
 
 // becomeMonarchLocked is the one write to Game.Monarch. Every route
 // that moves the crown goes through it — a card's "you become the
-// monarch" (SetMonarchForEffect), the CR 724.2 combat-damage steal
-// (monarchCrownBody), the CR 724.4 hand-on above and the sandbox's
+// monarch" (SetMonarchForEffect), the CR 725.2 combat-damage steal
+// (monarchCrownBody), the CR 725.4 hand-on above and the sandbox's
 // manual SetMonarch — so every one of them announces the move the
 // same way. Refuses to crown a player who is no longer seated or who
 // has been eliminated between the trigger and its resolution;
@@ -237,7 +237,7 @@ func (g *Game) monarchLeftTheGameLocked() {
 // #1722: it emits EventMonarchChanged, and ONLY when the designation
 // actually changes. A player who is already the monarch and is told
 // to become it again (a second Court entering, a Palace Jailer while
-// wearing the crown) does not become it — CR 724.3 has one monarch
+// wearing the crown) does not become it — CR 725.3 has one monarch
 // and "as a player becomes the monarch" is a change of holder — so
 // "whenever you become the monarch" (Custodi Lich) does not trigger a
 // second time. The event is also the layer-invalidation input for
@@ -264,9 +264,9 @@ func (g *Game) becomeMonarchLocked(playerID uuid.UUID) {
 	})
 }
 
-// EventMonarchChanged — the monarch designation (CR 724) moved.
+// EventMonarchChanged — the monarch designation (CR 725) moved.
 // Actor is the NEW monarch, uuid.Nil when the designation was cleared
-// (CR 724.4's "the game continues with no monarch", or a manual
+// (CR 725.4's "the game continues with no monarch", or a manual
 // clear); Target is the previous monarch, uuid.Nil when there was
 // none.
 //

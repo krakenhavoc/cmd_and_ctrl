@@ -56,7 +56,7 @@ type GameView struct {
 	MulligansOpen bool `json:"mulligans_open"`
 	// Monarch is the player ID currently designated as the monarch,
 	// or empty string if no monarch is set. Since #375 the engine
-	// moves this itself: CR 724.2's two inherent triggered abilities
+	// moves this itself: CR 725.2's two inherent triggered abilities
 	// (the end-step draw, and the transfer to whoever deals combat
 	// damage to the monarch) are enforced server-side, so a client
 	// that renders this field renders a crown that moves on its own.

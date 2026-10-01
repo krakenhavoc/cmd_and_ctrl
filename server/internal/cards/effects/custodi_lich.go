@@ -11,10 +11,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // The first catalog card to watch EventMonarchChanged (#1722). Its own
 // ETB crowns you, which triggers the edict — the card's printed
 // synergy — and so does every later becoming: taking the crown back in
-// combat, a Court entering while an opponent held it, a CR 724.4
+// combat, a Court entering while an opponent held it, a CR 725.4
 // hand-on. It does NOT trigger when you are already the monarch and an
 // effect tells you to become it: that is no change of holder (CR
-// 724.3), and the engine emits nothing.
+// 725.3), and the engine emits nothing.
 //
 // The target is a PLAYER; the creature is that player's choice, so
 // hexproof on their creatures is irrelevant and a player with no

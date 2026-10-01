@@ -6,7 +6,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
-// monarch.go is the card half of the monarch (CR 724, #1722, ADR
+// monarch.go is the card half of the monarch (CR 725, #1722, ADR
 // 0096). The mechanic itself — the designation, the end-step draw and
 // the combat-damage steal — is engine (game/monarch.go). What a card
 // needs from it is four things, and they are all here:
@@ -34,7 +34,7 @@ import (
 // # "Become" is a change
 //
 // A player who is already the monarch and is told to become it again
-// does not become it (CR 724.3: one monarch; "as a player becomes the
+// does not become it (CR 725.3: one monarch; "as a player becomes the
 // monarch" is a change of holder). The engine emits nothing, so a
 // second Court entering while you wear the crown does not trigger your
 // Custodi Lich. Nothing here has to check for it.
