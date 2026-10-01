@@ -191,7 +191,7 @@ func designation(kinds ...game.DesignationKind) func(effects.Spec) bool {
 // trigger (ADR 0107 §1, #1858): a triggered row with a State condition.
 func declaresStateTrigger(s effects.Spec) bool {
 	for _, t := range s.Triggered {
-		if t.State != nil {
+		if t.State != "" {
 			return true
 		}
 	}

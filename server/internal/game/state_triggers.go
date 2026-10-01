@@ -1,6 +1,7 @@
 package game
 
 import (
+	"fmt"
 	"strings"
 	"sync"
 
@@ -77,12 +78,63 @@ var stateTriggerKeys struct {
 	keys map[string]struct{}
 }
 
+// StateCondition is a state trigger's condition (TriggeredAbility.State
+// names one): is the game in the printed state, for this permanent and
+// its controller? A pure read of the board, called under g.mu in write
+// mode; it MUST NOT call public locking mutators.
+type StateCondition func(g *Game, source *Card, controller uuid.UUID) bool
+
+// stateConditions is the registry TriggeredAbility.State keys into. It
+// is package-level and no Game field reaches it, which is the point:
+// the condition is code, and the row carries only its name.
+var stateConditions struct {
+	sync.RWMutex
+	m map[string]StateCondition
+}
+
+// RegisterStateCondition files `cond` under `key`, for a catalog row to
+// name in TriggeredAbility.State. Call it at init, from the catalog's
+// constructors (effects.WhenState). Panics on an empty key, a nil
+// condition or a key already taken, the way the catalog's Register
+// does: two rows that meant different conditions under one name would
+// otherwise silently share one.
+//
+// The key never reaches a snapshot (see TriggeredAbility.State), so an
+// unknown key is not a restore question. A row naming a key this binary
+// has not registered never triggers; the catalog's Register refuses such
+// a row at boot, so that can only be a hand-built test row.
+func RegisterStateCondition(key string, cond StateCondition) {
+	if key == "" {
+		panic("game: a state condition needs a key")
+	}
+	if cond == nil {
+		panic(fmt.Sprintf("game: state condition %q has no function", key))
+	}
+	stateConditions.Lock()
+	defer stateConditions.Unlock()
+	if stateConditions.m == nil {
+		stateConditions.m = make(map[string]StateCondition)
+	}
+	if _, dup := stateConditions.m[key]; dup {
+		panic(fmt.Sprintf("game: state condition %q is already registered", key))
+	}
+	stateConditions.m[key] = cond
+}
+
+// StateConditionFor is the condition registered under key.
+func StateConditionFor(key string) (StateCondition, bool) {
+	stateConditions.RLock()
+	defer stateConditions.RUnlock()
+	cond, ok := stateConditions.m[key]
+	return cond, ok
+}
+
 // noteStateTriggerKey records that key's definition carries a state
 // trigger. Called by IdentifyCatalogRows.
 func noteStateTriggerKey(key string, d *CardDef) {
 	has := false
 	for i := range d.Triggered {
-		if d.Triggered[i].State != nil {
+		if d.Triggered[i].State != "" {
 			has = true
 			break
 		}
@@ -207,13 +259,14 @@ func (g *Game) stateTriggersLocked() {
 			continue
 		}
 		for _, t := range TriggersForCard(*c) {
-			if t.State == nil || !TriggerWatchesFromZone(t, ZoneBattlefield) {
+			if t.State == "" || !TriggerWatchesFromZone(t, ZoneBattlefield) {
 				continue
 			}
-			if g.stateTriggerLatchedLocked(c, t) {
+			cond, ok := StateConditionFor(t.State)
+			if !ok || g.stateTriggerLatchedLocked(c, t) {
 				continue
 			}
-			if !t.State(g, c, c.Controller) {
+			if !cond(g, c, c.Controller) {
 				continue
 			}
 			matches = append(matches, match{source: *c, t: t})

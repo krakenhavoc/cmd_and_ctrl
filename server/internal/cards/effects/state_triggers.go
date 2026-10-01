@@ -26,18 +26,32 @@ import (
 // per state, and misses every way the state can arise that the card file
 // did not think of.
 
-// StateCondition is the TriggeredAbility.State signature: is the game
-// in the printed state, for this permanent and its controller? A pure
-// read of the board, under the game lock.
-type StateCondition = func(g *game.Game, source *game.Card, controller uuid.UUID) bool
+// StateCondition is a state trigger's condition: is the game in the
+// printed state, for this permanent and its controller? A pure read of
+// the board, under the game lock.
+type StateCondition = game.StateCondition
 
 // WhenState is the general state-trigger constructor: the ability
 // triggers whenever `cond` holds and it is not already waiting or on the
 // stack, and resolves as `label` with `effect`. Reach for it when the
 // printed condition has no named helper below.
+//
+// The row carries the condition's KEY, not the condition: WhenState
+// files `cond` with game.RegisterStateCondition under StateKeyFor(label)
+// and puts the key in TriggeredAbility.State, so the declaration holds
+// no func and the ADR 0041 closure ratchet gains no route. The label is
+// already the ability's unique name on the stack, so it names the
+// condition too; a second card declaring the same label panics at boot.
+// Call it at init (from a Spec literal), never inside a test body.
 func WhenState(label string, cond StateCondition, effect Effect) game.TriggeredAbility {
-	return game.TriggeredAbility{State: cond, Key: label, Effect: effect}
+	key := StateKeyFor(label)
+	game.RegisterStateCondition(key, cond)
+	return game.TriggeredAbility{State: key, Key: label, Effect: effect}
 }
+
+// StateKeyFor is the state-condition key WhenState files a row's
+// condition under.
+func StateKeyFor(label string) string { return "state:" + label }
 
 // WhenYouControlNo is "When you control no <permanents matching q>":
 // Barbarian Outcast's Swamps, Covetous Dragon's artifacts, Serendib
@@ -159,10 +173,12 @@ func ExileThisThen(then func(ctx *Context) error) Effect {
 // table with one waiting is a restore point, ADR 0041 P9), and lives on
 // the battlefield, the only zone the engine asks.
 func checkStateTrigger(name string, t game.TriggeredAbility) {
-	if t.State == nil {
+	if t.State == "" {
 		return
 	}
 	switch {
+	case !stateConditionKnown(t.State):
+		panic(fmt.Sprintf("effects.Register: %q declares state condition %q, which nothing registered — build the row with WhenState", name, t.State))
 	case len(t.Watches) > 0:
 		panic(fmt.Sprintf("effects.Register: %q declares a state trigger that also watches events — a CR 603.8 state trigger watches no event", name))
 	case t.Effect == nil:
@@ -176,4 +192,9 @@ func checkStateTrigger(name string, t game.TriggeredAbility) {
 	case t.OncePerBatch || t.FromStack:
 		panic(fmt.Sprintf("effects.Register: %q declares a state trigger with an event-batch or cast-from-stack flag — neither means anything for a state", name))
 	}
+}
+
+func stateConditionKnown(key string) bool {
+	_, ok := game.StateConditionFor(key)
+	return ok
 }

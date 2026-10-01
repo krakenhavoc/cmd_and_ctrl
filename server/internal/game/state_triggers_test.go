@@ -20,14 +20,39 @@ const (
 	stCrocKey      = "State Croc — sacrifice it"
 )
 
+// The conditions, filed once under their keys as the catalog's
+// constructors file theirs (TriggeredAbility.State is a key).
+const (
+	stTwoChargeState  = "test/two-or-more-charge-counters"
+	stNoOtherCreature = "test/no-other-creature"
+	stLifeState       = "test/life-at-least-starting-plus-two"
+)
+
+func init() {
+	RegisterStateCondition(stTwoChargeState, func(_ *Game, source *Card, _ uuid.UUID) bool {
+		return source.Counters[CounterCharge] >= 2
+	})
+	RegisterStateCondition(stNoOtherCreature, func(g *Game, source *Card, controller uuid.UUID) bool {
+		for i := range g.Battlefield.Cards {
+			c := &g.Battlefield.Cards[i]
+			if c.InstanceID != source.InstanceID && c.Controller == controller && c.IsCreature() {
+				return false
+			}
+		}
+		return true
+	})
+	RegisterStateCondition(stLifeState, func(g *Game, _ *Card, controller uuid.UUID) bool {
+		p := g.playerByIDLocked(controller)
+		return p != nil && p.Life >= StartingLife+2
+	})
+}
+
 // stThresholdRow is "When there are two or more charge counters on this
 // permanent, remove them": resolving it ends the state.
 func stThresholdRow() TriggeredAbility {
 	return TriggeredAbility{
-		Key: stThresholdKey,
-		State: func(_ *Game, source *Card, _ uuid.UUID) bool {
-			return source.Counters[CounterCharge] >= 2
-		},
+		Key:   stThresholdKey,
+		State: stTwoChargeState,
 		Effect: func(g *Game, item *StackItem) error {
 			c := g.findCardByIDLocked(item.SourceCardID)
 			if c == nil {
@@ -42,10 +67,8 @@ func stThresholdRow() TriggeredAbility {
 // state alone, so it triggers again each time it leaves the stack.
 func stStubbornRow() TriggeredAbility {
 	return TriggeredAbility{
-		Key: stStubbornKey,
-		State: func(_ *Game, source *Card, _ uuid.UUID) bool {
-			return source.Counters[CounterCharge] >= 2
-		},
+		Key:   stStubbornKey,
+		State: stTwoChargeState,
 		Effect: func(g *Game, item *StackItem) error {
 			return g.ChangePlayerLifeForEffect(item.SourceCardID, item.Controller, 1)
 		},
@@ -56,16 +79,8 @@ func stStubbornRow() TriggeredAbility {
 // creatures, sacrifice this creature".
 func stCrocRow() TriggeredAbility {
 	return TriggeredAbility{
-		Key: stCrocKey,
-		State: func(g *Game, source *Card, controller uuid.UUID) bool {
-			for i := range g.Battlefield.Cards {
-				c := &g.Battlefield.Cards[i]
-				if c.InstanceID != source.InstanceID && c.Controller == controller && c.IsCreature() {
-					return false
-				}
-			}
-			return true
-		},
+		Key:   stCrocKey,
+		State: stNoOtherCreature,
 		Effect: func(g *Game, item *StackItem) error {
 			return g.SacrificePermanentForEffect(item.SourceCardID)
 		},
@@ -340,14 +355,14 @@ func TestStateTriggerWaitingIsARestorePoint(t *testing.T) {
 func TestStateTriggerDoesNotSeeHalfOfCombatDamage(t *testing.T) {
 	g := newActiveGame(t)
 	attacker, defender := g.Seats[0], g.Seats[1]
-	threshold := defender.Life + 2
+	if defender.Life != StartingLife {
+		t.Fatalf("defender starts at %d, want %d", defender.Life, StartingLife)
+	}
+	threshold := StartingLife + 2
 	const key = "State Probe — life threshold"
 	withStateCatalog(t, TriggeredAbility{
-		Key: key,
-		State: func(g *Game, _ *Card, controller uuid.UUID) bool {
-			p := g.playerByIDLocked(controller)
-			return p != nil && p.Life >= threshold
-		},
+		Key:    key,
+		State:  stLifeState,
 		Effect: func(*Game, *StackItem) error { return nil },
 	})
 	probe := uuid.New()

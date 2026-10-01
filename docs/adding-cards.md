@@ -4472,6 +4472,12 @@ Triggered: []game.TriggeredAbility{
   loop breaker of ADR 0055 handles).
 - A condition must be a pure read of the board. It runs on every event
   while its permanent is on the battlefield.
+- The row carries the condition's KEY, not the condition:
+  `TriggeredAbility.State` names a `game.StateCondition` that the
+  constructors file with `game.RegisterStateCondition` under the row's
+  label (`effects.StateKeyFor`), so the ADR 0041 closure ratchet gains no
+  route. Build the row with a constructor in the `Spec` literal, never in
+  a test body: a second registration of one label panics.
 - In a test, push the permanents a condition needs BEFORE the card: a
   Task Mage Assembly that enters onto an empty board is sacrificed at
   once, which is the card.

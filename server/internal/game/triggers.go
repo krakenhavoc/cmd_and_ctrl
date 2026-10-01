@@ -122,10 +122,17 @@ type TriggeredAbility struct {
 	// A state trigger watches nothing (Register refuses Watches beside
 	// State) and must declare its Effect, so its stack item is keyed
 	// (ADR 0041 P9) and a table with one waiting is a restore point.
-	// Catalog data, rebuilt from the row like AppliesTo, and called
-	// under g.mu in write mode: it must be a pure read of the board and
-	// MUST NOT call public locking mutators.
-	State func(g *Game, source *Card, controller uuid.UUID) bool
+	//
+	// The field is a KEY, not the condition: the condition is a
+	// StateCondition registered under it (RegisterStateCondition), in a
+	// package-level registry no Game reaches. So the declaration a
+	// trigger's resume frame carries holds no new func, and the ADR 0041
+	// closure ratchet gains no route (AGENTS.md §5). The key lives only
+	// on catalog rows, which the running binary rebuilds on restore; it
+	// is never written to a snapshot, because a queued or stacked state
+	// trigger names its ROW (AbilityRef), not its condition. Empty means
+	// "not a state trigger".
+	State string
 
 	// AppliesTo decides whether this specific event triggers this
 	// specific source card. Receives a live pointer to the source on

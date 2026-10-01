@@ -40,10 +40,6 @@
 # lastKnownSpell.card to census:IntrinsicAbilityCards (now 49), the
 # counter an unkeyed stack item is folded into; and lastKnownSpell.item
 # to keyed (a countered spell's clauses come back by oracle ID).
-# ADR 0107 §1 (#1858) added TriggeredAbility.State, one more field of
-# the declaration a trigger's resume frame already carries whole, so
-# census:ChoiceResumeFrames is 120. It blocks nothing new: a queued or
-# stacked state trigger is a keyed catalog item.
 #
 # Owner decision 4 (2026-09-24): census:ChoiceResumeFrames is the one
 # counter that stays allowed after tier 4 — resume frames are out of
@@ -172,7 +168,6 @@ TriggeredAbility.Effect                      census:ChoiceResumeFrames          
 TriggeredAbility.HasLegalTarget              census:ChoiceResumeFrames          # Game.PendingChoices.pickTargetResume.ability.HasLegalTarget
 TriggeredAbility.Modes                       census:ChoiceResumeFrames          # Game.PendingChoices.pickTargetResume.ability.Modes
 TriggeredAbility.OptionalPrompt              census:ChoiceResumeFrames          # Game.PendingChoices.pickTargetResume.ability.OptionalPrompt
-TriggeredAbility.State                       census:ChoiceResumeFrames          # Game.PendingChoices.pickTargetResume.ability.State
 TriggeredAbility.Targets                     census:ChoiceResumeFrames          # Game.PendingChoices.pickTargetResume.ability.Targets
 TriggeredAbility.TargetsFrom                 census:ChoiceResumeFrames          # Game.PendingChoices.pickTargetResume.ability.TargetsFrom
 Zone.Cards                                   census:IntrinsicAbilityCards       # Game.Battlefield.Cards
