@@ -146,10 +146,10 @@ func TestFaceForCastUnderAGrant(t *testing.T) {
 	card := transformFixture(me)
 
 	// No grant: CR 712.11, front only.
-	if face, ok := faceForCastLocked(card, 0, nil, me); !ok || face != 0 {
+	if face, ok := faceForCastLocked(card, 0, nil, me, ""); !ok || face != 0 {
 		t.Errorf("ungranted face 0 = (%d, %v), want (0, true)", face, ok)
 	}
-	if _, ok := faceForCastLocked(card, 1, nil, me); ok {
+	if _, ok := faceForCastLocked(card, 1, nil, me, ""); ok {
 		t.Error("a transform card's back face is castable without a grant")
 	}
 
@@ -157,16 +157,16 @@ func TestFaceForCastUnderAGrant(t *testing.T) {
 	// The grant SETS the face: an unset request (the wire's default,
 	// and what every existing client sends from the exile pile) still
 	// announces the back.
-	if face, ok := faceForCastLocked(card, 0, grant, me); !ok || face != 1 {
+	if face, ok := faceForCastLocked(card, 0, grant, me, ""); !ok || face != 1 {
 		t.Errorf("granted, face unset = (%d, %v), want (1, true)", face, ok)
 	}
-	if face, ok := faceForCastLocked(card, 1, grant, me); !ok || face != 1 {
+	if face, ok := faceForCastLocked(card, 1, grant, me, ""); !ok || face != 1 {
 		t.Errorf("granted, face 1 = (%d, %v), want (1, true)", face, ok)
 	}
 	// Somebody else's grant does not narrow anything, and does not
 	// open anything either.
 	other := uuid.New()
-	if face, ok := faceForCastLocked(card, 0, grant, other); !ok || face != 0 {
+	if face, ok := faceForCastLocked(card, 0, grant, other, ""); !ok || face != 0 {
 		t.Errorf("another player under my grant = (%d, %v), want (0, true)", face, ok)
 	}
 
@@ -174,7 +174,7 @@ func TestFaceForCastUnderAGrant(t *testing.T) {
 	// than clamped to 0 — clamping would turn a Siege whose back face
 	// never imported into a free cast of the battle itself.
 	single := Card{InstanceID: uuid.New(), Name: "Plain", TypeLine: "Instant"}
-	if _, ok := faceForCastLocked(single, 0, grant, me); ok {
+	if _, ok := faceForCastLocked(single, 0, grant, me, ""); ok {
 		t.Error("a grant for face 1 on a single-faced card was honoured")
 	}
 }

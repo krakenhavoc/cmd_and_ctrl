@@ -348,6 +348,14 @@ func (e *enumerator) castMovesForCard(card game.Card, from string, kind game.Zon
 	if offer != nil && offer.FaceDown != nil {
 		card.SetFaceDown(offer.FaceDown.Kind)
 	}
+	// ADR 0107 §4, CR 712.11a: the other offer that changes what the
+	// spell IS. A disturb cast puts the card on the stack back face up,
+	// and CastSpell turns its own copy over before the target, timing
+	// and cast gates read it, so this walk reads the back face too —
+	// Spectral Binding's "enchant creature", not Binding Geist's empty
+	// clause. The move's Face is the back face, which CastSpell accepts
+	// for this claim.
+	card = offer.CastFaceOf(card)
 	// #1665: a HAND permission (miracle) applies to the one offer it
 	// opens and to nothing else — the same narrowing CastSpell makes
 	// once the claim is known, so the miracle cast is offered at

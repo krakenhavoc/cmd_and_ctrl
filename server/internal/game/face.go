@@ -1,6 +1,10 @@
 package game
 
-import "github.com/google/uuid"
+import (
+	"slices"
+
+	"github.com/google/uuid"
+)
 
 // face.go — the multi-face card model (ADR 0034).
 //
@@ -98,6 +102,43 @@ type Face struct {
 	// wire so the client's hover overlay can show the back face
 	// without a Scryfall round-trip.
 	OracleText string
+
+	// Keywords is this face's own canonical keyword tokens, for a
+	// `transform` or `modal_dfc` card (ADR 0107 §4). The deck importer
+	// fills it per face, confirming Scryfall's card-level keyword list
+	// (a union over every face) against the face's own keyword lines,
+	// and SetFace materialises the face that is up onto Card.Keywords —
+	// so a disturbed Lanterns' Lift is not left carrying Lantern
+	// Bearer's flying, and a transformed werewolf picks up its back
+	// face's keywords (CR 712.8d, 712.8e: a face that is up has only
+	// its own characteristics).
+	//
+	// Nil on every face of a card imported before this field existed,
+	// and SetFace then leaves Card.Keywords alone, as it always did; see
+	// facesCarryKeywords.
+	Keywords []string `json:",omitempty"`
+}
+
+// facesCarryKeywords reports whether the importer recorded per-face
+// keywords for this card: any face carries one. A card none of whose
+// faces prints a keyword reads the same either way (Card.Keywords is
+// empty), so the empty answer needs no marker.
+func facesCarryKeywords(faces []Face) bool {
+	for i := range faces {
+		if len(faces[i].Keywords) > 0 {
+			return true
+		}
+	}
+	return false
+}
+
+// FaceKeywordsApply reports whether a card of this layout has its
+// keywords read per face — the double-faced layouts, whose faces are
+// separate sets of characteristics (CR 712.8). Split, adventure and
+// prepare cards keep their card-level keywords. Exported for the deck
+// importer.
+func FaceKeywordsApply(layout string) bool {
+	return layout == LayoutTransform || layout == LayoutModalDFC
 }
 
 // Multi-face layouts, as Scryfall spells them. Only the ones the
@@ -171,6 +212,15 @@ func (c *Card) SetFace(i int) {
 	c.VariableToughness = f.VariableToughness
 	c.StartingLoyalty = f.StartingLoyalty
 	c.StartingDefense = f.StartingDefense
+	// ADR 0107 §4: a double-faced card's printed keywords are the face
+	// that is up's too (CR 712.8d, 712.8e). Only when the importer
+	// recorded them per face — an older card keeps its card-level list.
+	if FaceKeywordsApply(c.Layout) && facesCarryKeywords(c.Faces) {
+		c.Keywords = append([]string(nil), f.Keywords...)
+		if len(c.Keywords) == 0 {
+			c.Keywords = nil
+		}
+	}
 }
 
 // ColorsInManaCost returns the unique WUBRG letters in a printed
@@ -318,7 +368,12 @@ func faceCastable(c Card, i int) bool {
 // cast that fails for no reason a player can see. A grant naming
 // SEVERAL faces is back to being a choice, so it narrows `want`
 // instead of answering for it.
-func faceForCastLocked(c Card, want int, grant *CastPermission, playerID uuid.UUID) (int, bool) {
+func faceForCastLocked(c Card, want int, grant *CastPermission, playerID uuid.UUID, claim string) (int, bool) {
+	// ADR 0107 §4: an offer that casts a face (disturb) answers the
+	// question itself, ahead of both rules above. See faceForClaimLocked.
+	if offer := faceCastingClaim(c, claim); offer != nil {
+		return faceForClaimLocked(c, want, grant, playerID, offer)
+	}
 	if faces, ok := grant.GrantsFaces(playerID); ok {
 		// A grant for a face the card does not have is REFUSED, not
 		// clamped. SetFace clamps, by design, so a card is never left
@@ -346,6 +401,96 @@ func faceForCastLocked(c Card, want int, grant *CastPermission, playerID uuid.UU
 		return 0, false
 	}
 	return want, true
+}
+
+// faceCastingClaim returns the offer `claim` names on the card as it
+// sits in its zone when that offer casts another face — disturb's
+// "cast this card transformed" (CR 702.146a) — and nil for every other
+// claim, including the empty one.
+//
+// Read off the zone's face because that is where the offer is printed:
+// a double-faced card in a graveyard has only its front face's
+// characteristics (CR 712.8a). A caller pricing a copy it has already
+// turned to the back face (the bot enumerator) is answered off the
+// front face instead, through frontFaceCastOffer.
+func faceCastingClaim(c Card, claim string) *AlternativeCost {
+	if claim == "" {
+		return nil
+	}
+	alt := AlternativeCostByKey(castOfferKey(c), claim)
+	if alt == nil {
+		alt = frontFaceCastOffer(c, claim)
+	}
+	if alt == nil || alt.CastsFace == 0 {
+		return nil
+	}
+	return alt
+}
+
+// faceForClaimLocked is faceForCastLocked for a cast that claims an
+// offer naming a face (ADR 0107 §4). The offer is the ANSWER, the way a
+// grant naming one face is: "cast this card transformed" has exactly
+// one legal face, so a caller may send that face or leave the face
+// unset (0). Any other face is refused, never clamped.
+//
+// Refused outright, too, on a card that is not a `transform` card or
+// has no such face. CR 712.11a casts only a double-faced card
+// transformed, and SetFace would clamp a missing face to the front —
+// a cast of the front face at the disturb price, which is exactly the
+// cast the offer does not make. A grant that names faces must name
+// this one: a permission that opens only the front face does not open
+// the back.
+func faceForClaimLocked(c Card, want int, grant *CastPermission, playerID uuid.UUID, offer *AlternativeCost) (int, bool) {
+	face := offer.CastsFace
+	if c.Layout != LayoutTransform || face < 1 || face >= c.FaceCount() {
+		return 0, false
+	}
+	if want != 0 && want != face {
+		return 0, false
+	}
+	if faces, ok := grant.GrantsFaces(playerID); ok && !slices.Contains(faces, face) {
+		return 0, false
+	}
+	return face, true
+}
+
+// frontFaceCastOffer is CR 712.11d's half of the offer lookup: "If an
+// ability of a double-faced card's front face allows it to be cast
+// 'transformed' … that ability is also considered when evaluating that
+// spell to determine if it can be cast." Once a disturb cast has turned
+// the card to its back face, every catalog read keys on the back face
+// (CatalogKey's "<oracle_id>#1"), which prints no disturb — so the
+// claim, and the zone it opens, are judged off the front face here.
+//
+// Answers only for a `transform` card turned to exactly the face the
+// front face's offer casts. Nil for every other card, every other key,
+// and a card showing its front face, whose own entry the ordinary
+// lookup already reads.
+func frontFaceCastOffer(c Card, key string) *AlternativeCost {
+	if key == "" || c.ActiveFace == 0 || c.Layout != LayoutTransform {
+		return nil
+	}
+	front := c
+	front.SetFace(0)
+	alt := AlternativeCostByKey(castOfferKey(front), key)
+	if alt == nil || alt.CastsFace != c.ActiveFace {
+		return nil
+	}
+	return alt
+}
+
+// castPathKey is the catalog key validateCastPathLocked reads the
+// card's castable zones and zone-bound offers off: the face being
+// cast, except under CR 712.11d, where a claimed disturb offer was
+// printed on the front face and so the zone it opens is the front
+// face's too.
+func castPathKey(c Card, alt *AlternativeCost) string {
+	if alt != nil && alt.CastsFace != 0 && c.ActiveFace == alt.CastsFace && c.Layout == LayoutTransform {
+		front := c
+		front.SetFace(0)
+		return CatalogKey(front)
+	}
+	return CatalogKey(c)
 }
 
 // faceOnResolve returns the face the PERMANENT keeps, given the face

@@ -321,7 +321,9 @@ func (g *Game) CastOffersForLocked(playerID uuid.UUID, card Card, zone ZoneKind,
 //
 // Caller must hold g.mu.
 func (g *Game) validateCastPathLocked(card Card, srcKind ZoneKind, alt *AlternativeCost, grant *CastPermission) error {
-	key := CatalogKey(card)
+	// ADR 0107 §4, CR 712.11d: a disturbed card is judged by the zone
+	// its FRONT face opens, though the spell is its back face.
+	key := castPathKey(card, alt)
 	if alt != nil && alt.FromZone != "" && alt.FromZone != srcKind {
 		return ErrCastZoneNotAllowed
 	}

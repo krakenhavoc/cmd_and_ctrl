@@ -307,6 +307,46 @@ type AlternativeCost struct {
 	// both call, so an offer this gates is neither shown, enumerated
 	// nor accepted. See miracle.go.
 	RequiresGrant bool
+
+	// CastsFace is the face this offer casts — disturb's "you may cast
+	// this card TRANSFORMED from your graveyard" (CR 702.146a, ADR 0107
+	// §4). Zero, the overwhelming majority, casts the face the caster
+	// chose, exactly as before.
+	//
+	// The seventh clause a keyword staples to a price, and the second,
+	// after FaceDown, that changes what the SPELL IS. The offer is
+	// printed on the FRONT face, so it is read off the card as it sits
+	// in its zone (CR 712.8a: a double-faced card in a graveyard has
+	// only its front face's characteristics), and claiming it puts the
+	// card on the stack back face up (CR 712.11a) with only the back
+	// face's characteristics (CR 712.8c). CR 712.11d is the rule that
+	// joins the two halves: the front face's ability "is also
+	// considered when evaluating that spell to determine if it can be
+	// cast", so the zone and the price come from the front face
+	// (castOfferByKey, castPathKey) and every other announce gate — the
+	// target clause, the timing, the cast restrictions — reads the back.
+	//
+	// faceForCastLocked turns the claim into the face, and refuses it
+	// on a card that is not a `transform` card or has no such face.
+	// effects.Register refuses it on a back-face entry, since CR
+	// 702.146a puts disturb on the front face.
+	CastsFace int
+}
+
+// CastFaceOf returns the card as a cast claiming this offer puts it on
+// the stack: turned to CastsFace for a disturb offer (CR 712.11a), and
+// unchanged for every other offer and for nil.
+//
+// The bot enumerator and the view stamp read the card through this so
+// that the target clause, the timing and the cast gate they judge are
+// the back face's — the same face CastSpell materialises before it
+// asks them. Nil-safe.
+func (a *AlternativeCost) CastFaceOf(c Card) Card {
+	if a == nil || a.CastsFace == 0 || c.ActiveFace == a.CastsFace {
+		return c
+	}
+	c.SetFace(a.CastsFace)
+	return c
 }
 
 // cardComponent returns the card-shaped half of this cost: the spec
@@ -427,6 +467,12 @@ func (g *Game) resolveAlternativeCostLocked(card Card, grant *CastPermission, ke
 		return nil, nil
 	}
 	if alt, err := validateAlternativeCost(castOfferKey(card), key, targets); err == nil {
+		return alt, nil
+	}
+	// ADR 0107 §4, CR 712.11d: a disturb claim on a card the cast has
+	// already turned to its back face is judged by the offer its FRONT
+	// face prints. The back face's own entry has never heard of it.
+	if alt := frontFaceCastOffer(card, key); alt != nil && !(alt.ClearsTargets && len(targets) > 0) {
 		return alt, nil
 	}
 	granted := grant.AlternativeCostFor(card)
