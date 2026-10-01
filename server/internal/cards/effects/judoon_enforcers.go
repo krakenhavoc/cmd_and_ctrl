@@ -12,7 +12,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // A Crawlspace with a bound of one on an 8/8 body (#1507). Trample is
 // an engine keyword, and suspend is the keyword's own machinery end to
 // end — the special action, the countdown, the free cast and the
-// CR 702.62e haste (#659) — so the card file is three declarations.
+// CR 702.62a haste (#659) — so the card file is three declarations.
 func init() {
 	Register(Spec{
 		OracleID:        "ca04089c-24b6-465e-9303-ea28c0d6f3c7",

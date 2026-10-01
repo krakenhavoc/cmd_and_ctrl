@@ -10,7 +10,7 @@ package effects
 // effect is BecomeTheMonarch. Its costs are paid at announce, so the
 // land is gone before the ability resolves and a Stifle leaves you with
 // neither. Activating it while you already hold the crown changes
-// nothing: you are not "becoming" the monarch (CR 724.3), so nothing
+// nothing: you are not "becoming" the monarch (CR 725.3), so nothing
 // that watches for it triggers.
 //
 // No simplification.

@@ -50,7 +50,7 @@ import (
 //     Taker) takes the same posture and is not caveated for it.
 //   - THE DECLARED CAVEAT. A delayed trigger belongs to its controller,
 //     and eliminatePlayerLocked drops a departed player's delayed
-//     triggers (CR 800.4a) BEFORE the CR 724.4 hand-on crowns somebody
+//     triggers (CR 800.4a) BEFORE the CR 725.4 hand-on crowns somebody
 //     else. So if the Jailer's controller leaves the game, the creature
 //     stays exiled for good — even though the player who takes the
 //     crown as they leave is an opponent of theirs, and the printed

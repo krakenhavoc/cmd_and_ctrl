@@ -294,7 +294,7 @@ export interface GameView {
   mulligans_open: boolean;
   // Player ID of the current monarch (Conspiracy mechanic). Empty /
   // omitted when no monarch is set. Since #375 the server enforces
-  // CR 724.2 itself — the monarch's end-step draw, and the transfer
+  // CR 725.2 itself — the monarch's end-step draw, and the transfer
   // to whoever deals combat damage to them — so this field moves on
   // its own and the crown below follows it. The set_monarch action
   // stays as the way a card (or a table fixing the board) hands the

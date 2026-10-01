@@ -8948,13 +8948,13 @@ func (g *Game) SetCommanderDamage(from, to uuid.UUID, amount int) error {
 	return nil
 }
 
-// SetMonarch designates the given player as the monarch (CR 724 —
+// SetMonarch designates the given player as the monarch (CR 725 —
 // "an effect instructs a player to become the monarch"). Pass uuid.Nil
 // to clear (no current monarch — the rare case where a card explicitly
 // removes monarchy).
 //
 // #375: this is the ENTRY to the designation, not the whole mechanic
-// any more. Once a player is the monarch, monarch.go runs CR 724.2's
+// any more. Once a player is the monarch, monarch.go runs CR 725.2's
 // two inherent triggered abilities — the end-step draw and the
 // combat-damage transfer — off the listener registry, so the crown
 // moves and draws without anybody clicking it. The action stays
