@@ -64,7 +64,7 @@
   import PromisesRow from "./PromisesRow.svelte";
   import TokenGroupModal from "./TokenGroupModal.svelte";
   import { groupMembersOf } from "../../tokenGroups";
-  import { canOverride } from "../../contextMenu.logic";
+  import { canOverride, type MenuAction } from "../../contextMenu.logic";
   import { NO_LEGAL_ACTIONS, type LegalActions } from "../../legalActions";
 
   type ActionSender = (type: ActionType, params?: ActionPayload["params"], player?: string) => void;
@@ -206,6 +206,25 @@
   // either, just as `sorcerySpeedBlocked` below is "" for them.
   const rowLegal = $derived(isSelf && !spectator ? legal : NO_LEGAL_ACTIONS);
   const rowGate = $derived(isSelf && !spectator ? legalGate : NO_LEGAL_ACTIONS);
+
+  // ADR 0105 sub-PR 4 (#1789): a CR 116.2 special action chosen from a
+  // card's ability popover: foretell, suspend or plot from the hand,
+  // turn face up on a face-down permanent. Until this PR these rows
+  // lived only in the admin override menu. The row is built by the
+  // same function that menu uses (contextMenu.logic.ts
+  // specialActionItems), so this sends exactly what that menu's row
+  // sends, through the same guarded sender. The viewer's own panel
+  // only; the server strips `special_actions` from everyone else.
+  const sendSpecialAction = $derived(
+    isSelf && !spectator
+      ? (action: MenuAction) =>
+          sendAction(
+            action.type,
+            action.params as ActionPayload["params"],
+            action.player ?? seat.id,
+          )
+      : undefined,
+  );
 
   // The seat's commander, wherever it is right now: the command zone
   // first, then the shared zones (battlefield, stack, exile) and its
@@ -516,6 +535,7 @@
       payerLife={seat.life}
       legal={rowLegal}
       legalGate={rowGate}
+      onSpecialAction={sendSpecialAction}
       onGroupClick={(k) => (openGroupKey = k)}
     />
   </div>
@@ -541,6 +561,7 @@
       payerLife={seat.life}
       legal={rowLegal}
       legalGate={rowGate}
+      onSpecialAction={sendSpecialAction}
       onGroupClick={(k) => (openGroupKey = k)}
     />
     <BattlefieldRow
@@ -560,6 +581,7 @@
       payerLife={seat.life}
       legal={rowLegal}
       legalGate={rowGate}
+      onSpecialAction={sendSpecialAction}
       onGroupClick={(k) => (openGroupKey = k)}
     />
   </div>
@@ -580,6 +602,7 @@
         {viewerID}
         {legal}
         legalGate={rowGate}
+        onSpecialAction={sendSpecialAction}
       />
     </div>
     {#if isSelf}

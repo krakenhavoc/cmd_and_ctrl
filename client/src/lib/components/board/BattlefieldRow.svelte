@@ -14,7 +14,13 @@
   import Card from "./Card.svelte";
   import { etbPulse } from "../../animations";
   import { rowEntries } from "../../tokenGroups";
-  import { NO_LEGAL_ACTIONS, readyPips, type LegalActions } from "../../legalActions";
+  import {
+    NO_LEGAL_ACTIONS,
+    readyPips,
+    type LegalActions,
+    type ReadyPips,
+  } from "../../legalActions";
+  import type { MenuAction } from "../../contextMenu.logic";
 
   interface Props {
     label: string;
@@ -78,11 +84,18 @@
     // ADR 0105 (#1789): the frame's legal-action lookups. `legal` is
     // what may be highlighted ("nothing" while highlights are off or
     // autopass is passing, and on every panel but the viewer's own). It
-    // draws each permanent's bolt / drop pips, and the ring that goes
-    // with a bolt (a drop pip alone gets no ring, §2). `legalGate` is the full lookup, for the ability
-    // popover's gate only. Both default to "no information".
+    // draws each permanent's bolt / drop / star pips, and the ring that
+    // goes with a bolt or a star (a drop pip alone gets no ring, §2).
+    // `legalGate` is the full lookup, for the ability popover's gates
+    // only. Both default to "no information".
     legal?: LegalActions;
     legalGate?: LegalActions;
+    // ADR 0105 sub-PR 4: sends a CR 116.2 special action chosen from a
+    // permanent's ability popover: a face-down permanent's turn face
+    // up, a Room's unlock. Wired on the viewer's own panel only.
+    // Undefined keeps those rows, and their star pip, out of the
+    // popover.
+    onSpecialAction?: (action: MenuAction) => void;
   }
 
   const {
@@ -104,7 +117,20 @@
     onGroupClick,
     legal = NO_LEGAL_ACTIONS,
     legalGate = NO_LEGAL_ACTIONS,
+    onSpecialAction,
   }: Props = $props();
+
+  // ADR 0105 §2: the special-action rows go only to a card that offers
+  // any. The server strips `special_actions` from every seat but the
+  // card's controller, so an opponent's card has none anyway.
+  const specialFor = (c: CardView) =>
+    onSpecialAction && (c.special_actions?.length ?? 0) > 0 ? onSpecialAction : undefined;
+  // The ready ring on a permanent: a live activated ability (the
+  // bolt), or a live special action (the star: a face-down permanent's
+  // turn face up). A drop pip alone gets no ring (§2). Each only where
+  // its popover is wired, as the pips are.
+  const ringFor = (c: CardView, p: ReadyPips) =>
+    (!!onActivateAbility && p.abilities > 0) || (!!specialFor(c) && p.special > 0);
 
   const sorted = $derived.by(() => {
     const byX = [...cards].sort((a, b) => (a.battle_x ?? 0) - (b.battle_x ?? 0));
@@ -215,8 +241,9 @@
                 <div class="attachment">
                   <Card
                     card={a}
-                    ready={!!onActivateAbility && aPips.abilities > 0}
+                    ready={ringFor(a, aPips)}
                     pips={aPips}
+                    onSpecialAction={specialFor(a)}
                     {legal}
                     {legalGate}
                     enchantedPlayer={curseTargets[a.instance_id]}
@@ -238,8 +265,9 @@
               <div class="host">
                 <Card
                   card={c}
-                  ready={!!onActivateAbility && cPips.abilities > 0}
+                  ready={ringFor(c, cPips)}
                   pips={cPips}
+                  onSpecialAction={specialFor(c)}
                   {legal}
                   {legalGate}
                   enchantedPlayer={curseTargets[c.instance_id]}

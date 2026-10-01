@@ -337,31 +337,107 @@ export function notableManaRefs(
 // ---- presentation: pips and menu rows (ADR 0105 §2, sub-PR 3) --------
 
 /**
- * What a permanent's pips say. `abilities` is how many of its
+ * What a card's pips say. `abilities` is how many of its
  * activated-ability rows are live: the bolt pip, with a count from two
  * up, and the ready ring. `mana` is whether a mana ability worth
  * marking is live: the drop pip, after §4's noise rule, with no ring
- * of its own.
+ * of its own on a permanent. `special` is how many CR 116.2 special
+ * actions are live (foretell, suspend and plot from a hand; turn face
+ * up on a face-down permanent): the star pip, with the ready ring
+ * (sub-PR 4).
  */
 export interface ReadyPips {
   readonly abilities: number;
   readonly mana: boolean;
+  readonly special: number;
 }
 
-export const NO_PIPS: ReadyPips = Object.freeze({ abilities: 0, mana: false });
+export const NO_PIPS: ReadyPips = Object.freeze({ abilities: 0, mana: false, special: 0 });
 
 /**
  * readyPips reads one card's pips off the lookup. Legality comes from
- * the digest alone (`readyAbilityRefs`, `readyManaRefs`). The only
- * decision made here is §4's presentation rule for the drop pip
- * (`notableManaRefs`). The lookup that knows nothing gives NO_PIPS:
- * highlights off, autopass passing, a spectator, an opponent's card.
+ * the digest alone (`readyAbilityRefs`, `readyManaRefs`,
+ * `readySpecialActions`). The only decision made here is §4's
+ * presentation rule for the drop pip (`notableManaRefs`). The lookup
+ * that knows nothing gives NO_PIPS: highlights off, autopass passing,
+ * a spectator, an opponent's card.
+ *
+ * Every special-action kind counts, including one this client has no
+ * name for (a Room's unlock, or whatever lands next). The star is the
+ * generic glyph, so a new kind lights with no client change (ADR 0105
+ * §2, "Room doors").
  */
 export function readyPips(legal: LegalActions, card: CardView, zone: ReadyZone): ReadyPips {
   const abilities = legal.readyAbilityRefs(card.instance_id).length;
   const mana = notableManaRefs(card, legal.readyManaRefs(card.instance_id), zone).length > 0;
-  if (abilities === 0 && !mana) return NO_PIPS;
-  return { abilities, mana };
+  const special = legal.readySpecialActions(card.instance_id).length;
+  if (abilities === 0 && !mana && special === 0) return NO_PIPS;
+  return { abilities, mana, special };
+}
+
+/** The card wears at least one pip. */
+export function hasPips(p: ReadyPips): boolean {
+  return p.abilities > 0 || p.mana || p.special > 0;
+}
+
+/**
+ * handHasAction is ADR 0105 §2's "not castable, but not dead either":
+ * a hand card the server would let the viewer DO something with other
+ * than cast it. That is a special action (foretell, plot, suspend), an
+ * ability that functions from the hand (cycling), or a mana ability
+ * that does (a Spirit Guide). Such a card is not dimmed even when it
+ * cannot be cast.
+ *
+ * The hand reads it off the frame's FULL lookup (`legalGate`), never
+ * off `visibleHighlights`. Dimming is the negative half, and the
+ * highlight setting and autopass only ever turn off the positive one
+ * (§3, §6). The lookup that knows nothing answers false, so an absent
+ * digest dims exactly what it dimmed before.
+ */
+export function handHasAction(gate: LegalActions, cardID: string): boolean {
+  return (
+    gate.readySpecialActions(cardID).length > 0 ||
+    gate.readyAbilityRefs(cardID).length > 0 ||
+    gate.readyManaRefs(cardID).length > 0
+  );
+}
+
+// The special-action kinds this client has words for. A kind missing
+// here still lights its pip and still gets its menu row (the row's
+// label is the server's); it only borrows the generic name.
+const SPECIAL_ACTION_NAMES: Readonly<Record<string, string>> = Object.freeze({
+  foretell: "foretell",
+  suspend: "suspend",
+  plot: "plot",
+  turn_face_up: "turn face up",
+  unlock: "unlock a door",
+});
+
+/** The generic name of a special action, and of the star pip. */
+export const SPECIAL_ACTION_GENERIC = "special action";
+
+/**
+ * specialActionName is the short name of a special-action kind, for
+ * the star pip's tooltip: "foretell", "turn face up", and, for a kind
+ * this client does not know, the generic "special action".
+ */
+export function specialActionName(kind: string): string {
+  return Object.hasOwn(SPECIAL_ACTION_NAMES, kind)
+    ? SPECIAL_ACTION_NAMES[kind]
+    : SPECIAL_ACTION_GENERIC;
+}
+
+/**
+ * specialPipTitle is the star pip's tooltip: the live kinds' names,
+ * deduplicated, in the digest's order.
+ */
+export function specialPipTitle(kinds: readonly string[]): string {
+  const names: string[] = [];
+  for (const k of kinds) {
+    const n = specialActionName(k);
+    if (!names.includes(n)) names.push(n);
+  }
+  return names.length > 0 ? names.join(", ") : SPECIAL_ACTION_GENERIC;
 }
 
 /**
@@ -405,4 +481,22 @@ export function digestRefusesRow(
 ): boolean {
   if (!gate.exact || !ref) return false;
   return !gate.readyAbilityRefs(cardID).includes(ref);
+}
+
+/**
+ * digestRefusesSpecial is digestRefusesRow for a special-action row:
+ * true when the frame carries the exact digest and the card's live
+ * special-action kinds leave `kind` out. The row's own `available` is
+ * the server's timing answer. This adds what `available` does not say:
+ * the price, since the enumerator runs a real auto-tap solve (ADR 0105,
+ * Context). The digest names kinds, not a Room's doors, so a Room's
+ * two unlock rows share one answer.
+ *
+ * As with digestRefusesRow, anything less than the exact digest is no
+ * information and refuses nothing, and the caller passes the frame's
+ * FULL lookup, never `visibleHighlights`.
+ */
+export function digestRefusesSpecial(gate: LegalActions, cardID: string, kind: string): boolean {
+  if (!gate.exact || !kind) return false;
+  return !gate.readySpecialActions(cardID).includes(kind);
 }

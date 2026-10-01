@@ -38,7 +38,12 @@ import {
 } from "./attackTargets";
 import { isCreature, isLand, isPlaneswalker } from "./cardTypes";
 import { counterCostBlocked } from "./counterCost";
-import { NO_LEGAL_ACTIONS, readyFirst, type LegalActions } from "./legalActions";
+import {
+  NO_LEGAL_ACTIONS,
+  digestRefusesSpecial,
+  readyFirst,
+  type LegalActions,
+} from "./legalActions";
 import type { ActionType, CardView, GameView } from "./protocol";
 import { sacrificeRangeShortfall } from "./sacrificeCost";
 import { targetPriceRange } from "./targetPrices";
@@ -1258,19 +1263,49 @@ function moveItems(card: CardView, location: CardLocation): MenuItem[] {
 // `charged_mana_cost`). Availability still wins the hint slot when
 // the row is greyed — a player needs to know it's not their turn
 // more than they need the price note.
-function specialActionItems(card: CardView, actor: string): MenuItem[] {
-  return (card.special_actions ?? []).map((sa) => {
+//
+// ADR 0105 sub-PR 4 (#1789): the same rows are the ability popover's
+// special-action section (ManaAbilityMenu), which is how foretell,
+// suspend, plot and turn face up stopped being admin-only. Two lookups
+// ride along, exactly as for the ability rows:
+//
+//   - `legal`, the frame's highlight lookup: a live row whose kind is in
+//     the digest takes the ready accent and sorts first. The lookup that
+//     knows nothing (highlights off, no digest) leaves the rows exactly
+//     as they were.
+//   - `gate`, the frame's FULL lookup, which the popover passes and the
+//     admin menu does not (that menu never greys on the digest, as for
+//     its ability rows). An `available` row the exact digest leaves out
+//     is greyed: the timing is open, so the server would refuse it on
+//     the price. No digest, or the capped fallback, greys nothing new.
+export const SPECIAL_NOT_RIGHT_NOW = "Can't do this right now";
+
+export function specialActionItems(
+  card: CardView,
+  actor: string,
+  legal: LegalActions = NO_LEGAL_ACTIONS,
+  gate: LegalActions = NO_LEGAL_ACTIONS,
+): MenuItem[] {
+  const readyKinds = legal.readySpecialActions(card.instance_id);
+  const items = (card.special_actions ?? []).map((sa) => {
     const costNote = chargedManaCostNote({
       mana_cost: sa.cost,
       charged_mana_cost: sa.charged_cost,
     });
+    const refused = !!sa.available && digestRefusesSpecial(gate, card.instance_id, sa.kind);
+    const disabled = !sa.available || refused;
     return {
       // ADR 0103: a Room offers one unlock per door, so the door is
       // part of the id and of the payload.
       id: sa.door ? `special-${sa.kind}-${sa.door}` : `special-${sa.kind}`,
       label: sa.label || sa.kind,
-      hint: sa.available ? costNote || undefined : "not right now",
-      disabled: !sa.available,
+      hint: !sa.available
+        ? "not right now"
+        : refused
+          ? SPECIAL_NOT_RIGHT_NOW
+          : costNote || undefined,
+      disabled,
+      ready: (!disabled && readyKinds.includes(sa.kind)) || undefined,
       action: {
         type: "special_action" as ActionType,
         params: sa.door
@@ -1286,6 +1321,7 @@ function specialActionItems(card: CardView, actor: string): MenuItem[] {
       },
     };
   });
+  return readyFirst(items, (i) => i.ready === true);
 }
 
 // buildMenuSections is the whole menu for one card, in render order.
@@ -1316,7 +1352,7 @@ export function buildMenuSections(
     // suspend below: the server decides what is offered and whether it
     // is available, and every other permanent on the board arrives
     // with an empty list.
-    const special = specialActionItems(card, card.controller || card.owner);
+    const special = specialActionItems(card, card.controller || card.owner, legal);
     if (special.length > 0) {
       sections.push({ id: "special_actions", label: "special actions", items: special });
     }
@@ -1345,7 +1381,7 @@ export function buildMenuSections(
     // card's menu, above "move to". They are only ever present on the
     // viewer's own hand — the server strips `special_actions` from
     // every other seat's, as it strips `zone_abilities`.
-    const special = specialActionItems(card, card.owner);
+    const special = specialActionItems(card, card.owner, legal);
     if (special.length > 0) {
       sections.push({ id: "special_actions", label: "special actions", items: special });
     }
