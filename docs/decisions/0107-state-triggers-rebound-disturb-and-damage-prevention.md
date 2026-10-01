@@ -1,11 +1,12 @@
 # ADR 0107 — State triggers, rebound, disturb and damage prevention
 
-**Status:** Proposed · 2026-10-01 · S50 — Seams from the deck re-checks (tracker [#1784](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1784))
-**Issues:** [#1858](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1858) (state triggers), [#1854](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1854) (rebound), [#1855](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1855) (disturb), [#1853](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1853) (damage that can't be prevented), [#1860](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1860) (the next damage from a source). §2 is a seam with no registry row or issue yet. It is tracked on #1784 until it has one.
+**Status:** Accepted · 2026-10-01 · S50 — Seams from the deck re-checks (tracker [#1784](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1784))
+**Owner decisions:** 2026-10-01. All six questions are answered, each with the recommended option (a). See [Owner decisions](#owner-decisions-2026-10-01) at the end. The sections and the Delivery plan below are written as decided; the options not chosen are kept as considered options.
+**Issues:** [#1858](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1858) (state triggers), [#1854](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1854) (rebound), [#1855](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1855) (disturb), [#1853](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1853) (damage that can't be prevented), [#1860](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1860) (the next damage from a source), [#1879](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1879) (a creature that can't attack unless the defending player controls something, §2) and [#1880](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1880) (players can't gain life, §5 owner decision 5).
 **Numbering:** checked with the AGENTS.md §4 sweep on 2026-10-01. I ran `git fetch --all --prune` and read the `docs/decisions/` file names on all 35 remote heads (`origin/develop`, `origin/main` and 33 chore, docs, feat, fix, repro and wip branches). I also listed every name ever committed on any ref (`git log --all --name-only -- docs/decisions/`). The highest number anywhere is 0106, and no open PR carries an ADR. This one takes **0107**.
 **Builds on:** [ADR 0106](0106-five-small-seams-from-the-s50-rechecks.md) (§2's attack-target restrictions, §4's one-gate rules effect, and owner decision 6), [ADR 0104](0104-gaining-control-of-a-spell.md) (the stack step of the layer pass), [ADR 0079](0079-transforming-a-permanent.md) (transform), [ADR 0066](0066-granted-cast-and-play-permissions.md) (cast permissions), [ADR 0072](0072-protection.md) (protection's prevention), [ADR 0033](0033-ai-bot-seat.md) §1 (the legal-move enumerator) and [ADR 0041](0041-game-persistence.md) (restore points).
 
-This ADR was written plan-first. No engine or card code changes until the owner answers the questions at the end.
+This ADR was written plan-first. The engine and card changes land in the PRs listed under Delivery.
 
 ---
 
@@ -26,11 +27,11 @@ The seams doc runs stale. Every "missing" claim below was checked in the code at
 | Seam | Issue | Printed | Not in catalog | Alone (est.) | Engine work | Verdict |
 |---|---|---:|---:|---:|---|---|
 | State triggers | #1858 | 40 | 40 | ~18 (~31 with §2) | medium | **§1** |
-| Can't attack unless defending player controls X | none | 34 | 34 | ~32 (14 shared with §1) | small | **§2** |
-| Rebound | #1854 | 38 | 38 | ~32 (~36 with Q3) | small (printed), medium (granted) | **§3** |
+| Can't attack unless defending player controls X | #1879 | 34 | 34 | ~32 (14 shared with §1) | small | **§2** |
+| Rebound | #1854 | 38 | 38 | ~36 (with the granters, decision 3) | small (printed), medium (granted) | **§3** |
 | Disturb | #1855 | 25 | 25 | ~20 | small | **§4** |
-| Damage that can't be prevented | #1853 | 31 | 29 + 2 caveats | ~20 (~24 with Q5) | medium | **§5** |
-| The next damage from a source | #1860 | 45 | 45 | ~34 (~43 with Q4) | medium | **§6** |
+| Damage that can't be prevented | #1853 | 31 | 29 + 2 caveats | ~24 (with "can't gain life", decision 5) | medium | **§5** |
+| The next damage from a source | #1860 | 45 | 45 | ~43 (with "prevented this way", decision 4) | medium | **§6** |
 | Assist | #1857 | 16 | 15 + 1 caveat | ~15 | medium-large: a second payer mid-cast, and a client prompt | deferred |
 | Discarded by an opponent | #1861 | 16 | 16 | ~14 | medium: the cause's controller on the discard, and a redirect through the entry pipeline | deferred |
 | More Than Meets the Eye, convert, living metal | #1856 | 15 | 15 | ~4 | large: three mechanics, and every card has more | deferred |
@@ -51,13 +52,13 @@ Notes on the counts:
 
 - **State triggers.** 14 of the 40 also print "can't attack unless defending player controls an Island" (Sea Serpent and the rest). Nothing in the engine has that restriction (`restrictions.go` has only attack taxes). That is why §2 exists.
 - **Rebound.** 34 cards print the keyword. Four more grant it to a spell: Cast Through Time, Narset Transcendent, Ojer Pakpatiq, Deepest Epoch and Taigam, Ojutai Master.
-- **Can't be prevented.** Banefire and Bonecrusher Giant are catalogued with caveats for this gap, and both drop them. Five of the cards (Skullcrack, Call In a Professional, Sunspine Lynx, Leyline of Punishment and Everlasting Torment) also print "players can't gain life". That is a separate gap: Screaming Nemesis and Sulfuric Vortex carry it as a caveat, and 21 uncatalogued Commander-legal cards print it. Question 5 asks whether it joins §5.
-- **Next damage from a source.** The registry row names only Mercenaries ("the next time this creature would deal damage to you"). The rule it waits on, CR 615.8, is also the rule behind the whole Circle of Protection family, which chooses its source as the shield is made (CR 609.7a, 615.9). Nine of the 45 also do something with "the damage prevented this way" (CR 615.5). Question 4 asks whether that joins §6.
+- **Can't be prevented.** Banefire and Bonecrusher Giant are catalogued with caveats for this gap, and both drop them. Five of the cards (Skullcrack, Call In a Professional, Sunspine Lynx, Leyline of Punishment and Everlasting Torment) also print "players can't gain life". That is a separate gap: Screaming Nemesis and Sulfuric Vortex carry it as a caveat, and 21 uncatalogued Commander-legal cards print it. Owner decision 5 puts it in §5's PR, tracked on #1880.
+- **Next damage from a source.** The registry row names only Mercenaries ("the next time this creature would deal damage to you"). The rule it waits on, CR 615.8, is also the rule behind the whole Circle of Protection family, which chooses its source as the shield is made (CR 609.7a, 615.9). Nine of the 45 also do something with "the damage prevented this way" (CR 615.5). Owner decision 4 puts that in §6.
 - **Lose one printed ability** counts only Glittering Lion and Glittering Lynx. **Trigger per counter** counts the four cards with no "only once each turn" limit (Bloodcrazed Hoplite, Fathom Mage, Flourishing Defenses, Sigurd, Jarl of Ravensthorpe). **Target bounded by counters removed** counts only Simic Manipulator: the other four "removed this way" cards bound an amount of damage, not a target.
 
 ### Why these six
 
-The six chosen seams cover 199 distinct printed cards, and an estimated 155 to 172 of them need nothing else (the higher figure takes the recommended option of every question). Each one either reuses machinery the engine already has, or adds one gate in the shape ADR 0106 already used:
+The six chosen seams cover 199 distinct printed cards, and an estimated 172 of them need nothing else under the owner's decisions. Each one either reuses machinery the engine already has, or adds one gate in the shape ADR 0106 already used:
 
 - §2 is one more field on ADR 0106 §2's `AttackTargetRestriction`.
 - §3 and §4 are an exile route like an Adventure's, a delayed trigger, and a cast permission like suspend's or a defeated Siege's.
@@ -87,11 +88,11 @@ The deferred seams are either small in cards (ten of them unblock five cards or 
 
 ### Options
 
-- **A. A state condition on the trigger, checked after every event and in the CR 704.3 loop (recommended).** `TriggeredAbility.State` is a condition over the board, the source and its controller. A trigger with a `State` watches no event. The engine asks every battlefield permanent's state triggers after each event it emits and in each pass of `runStateChecksLocked`. That is what makes CR 603.8's own example come out right: a hand that is empty for a moment during a resolution triggers "Whenever you have no cards in hand".
+- **A. A state condition on the trigger, checked after every event and in the CR 704.3 loop (chosen, owner decision 1).** `TriggeredAbility.State` is a condition over the board, the source and its controller. A trigger with a `State` watches no event. The engine asks every battlefield permanent's state triggers after each event it emits and in each pass of `runStateChecksLocked`. That is what makes CR 603.8's own example come out right: a hand that is empty for a moment during a resolution triggers "Whenever you have no cards in hand".
 - **B. The same condition, checked only in the CR 704.3 loop.** It is simpler, and it only misses states that come and go within one resolution. None of the 40 cards is likely to notice, but the rule's own example does.
 - **C. Approximate each card with event triggers** (watch a land leaving, a counter being removed). This is what the registry row warns against. It triggers once per event instead of once per state, and it misses every way a state can arise that the card file did not think of.
 
-### Decision (A, pending question 1)
+### Decision (A, owner decision 1)
 
 1. **The declaration.** `TriggeredAbility.State func(g *Game, source *Card, controller uuid.UUID) bool`. It is catalog data, rebuilt from the row like `AppliesTo`, so the ADR 0041 closure ratchet gains no route. Register refuses a row that sets both `State` and `Watches`. A state trigger must also declare its `Effect` (ADR 0041 tier 4-final), so its stack item is keyed and a table with one waiting is a restore point.
 2. **The check.** `stateTriggersLocked` walks the battlefield's state triggers (an index built in the layer pass, so the common case of no state triggers costs nothing). For each one whose condition holds and that is not latched, it queues an ordinary pending trigger with the permanent as the source. It is called from the event emitter after the zone-walk harvest, and from each pass of `runStateChecksLocked` before the drain.
@@ -110,7 +111,7 @@ About 18 land with §1 alone: Barbarian Outcast, Covetous Dragon, Dark Depths, D
 
 ---
 
-## 2. A creature that can't attack unless the defending player controls something (no row yet)
+## 2. A creature that can't attack unless the defending player controls something (#1879)
 
 ### What exists, what is missing
 
@@ -126,10 +127,10 @@ So in Commander, Sea Serpent may attack any opponent who controls an Island, and
 
 ### Options
 
-- **A. One more field on the existing restriction (recommended).** `AttackTargetRestriction.DefenderMustControl *PermanentQuery`, where `PermanentQuery` is a closed data struct (any of: card types, subtypes, supertypes, colours, a keyword, "enchanted"). The predicate works out the defending player of each target (CR 508.5) and refuses the target if that player controls no matching permanent.
+- **A. One more field on the existing restriction (chosen, owner decision 2).** `AttackTargetRestriction.DefenderMustControl *PermanentQuery`, where `PermanentQuery` is a closed data struct (any of: card types, subtypes, supertypes, colours, a keyword, "enchanted"). The predicate works out the defending player of each target (CR 508.5) and refuses the target if that player controls no matching permanent.
 - **B. A restriction bit per land type.** That covers Island, Swamp, Forest and Mountain. It does not cover "a snow land", "a blue permanent", "an enchantment or an enchanted permanent" (Godhunter Octopus) or "a creature with flying" (Lurking Green Dragon), all of which are printed.
 
-### Decision (A)
+### Decision (A, owner decision 2)
 
 1. **The query is data.** The restriction reaches the snapshot through `lastKnownBattlefield`, so it cannot hold a func. `PermanentQuery` is plain fields. Every printed condition in the 34 is one of: a land subtype, "a snow land", a colour, an enchantment or an enchanted permanent, or a creature with flying.
 2. **The predicate.** `canAttackTargetWithLocked` gains one branch. It reads the board live at declaration, which is the only time CR 508.1c asks (an Island that leaves after attackers are declared changes nothing).
@@ -172,28 +173,28 @@ About 18 land with §2 alone: Armored Galleon, Deep-Sea Serpent, Dreamwinder, Et
 
 There is one reasonable design. Rebound joins `canonicalKeywords`, and `routeStackCardToGraveyardLocked` gains a fourth arm, after flashback.
 
-### Options for granted rebound (question 3)
+### Options for granted rebound
 
-- **A. Widen the stack step of the layer pass to layer-6 keyword grants (recommended).** `stackPinProblem` admits `ModAddKeywords` on a stack pin. The stack step applies those records and battlefield statics over spells ("Instant and sorcery spells you control have rebound") to each spell's keywords, in timestamp order, as the battlefield pass does. Taigam's "that spell gains rebound" is then an ordinary `ScopedEffect` pinned to the spell, and it ends with the object (CR 400.7). This is the rule as written. It also gives the next stack keyword grant (storm or split second, for example) a place to land.
+- **A. Widen the stack step of the layer pass to layer-6 keyword grants (chosen, owner decision 3).** `stackPinProblem` admits `ModAddKeywords` on a stack pin. The stack step applies those records and battlefield statics over spells ("Instant and sorcery spells you control have rebound") to each spell's keywords, in timestamp order, as the battlefield pass does. Taigam's "that spell gains rebound" is then an ordinary `ScopedEffect` pinned to the spell, and it ends with the object (CR 400.7). This is the rule as written. It also gives the next stack keyword grant (storm or split second, for example) a place to land.
 - **B. A rebound-only mark on `StackItem`, plus a battlefield static read at resolution.** It is smaller, and it is the shape ADR 0106 §4 chose for "can't be countered". But "can't be countered" is a rules effect (CR 613.11) and rebound is an ability (CR 702.88a), so this would treat an ability grant as a marker.
 - **C. Printed rebound only.** The four granters wait on the row.
 
-### Decision (printed keyword; A for granted, pending question 3)
+### Decision (printed keyword; A for granted, owner decision 3)
 
-1. **The keyword.** `rebound` joins `canonicalKeywords`. Its presence is read from the spell's keywords at resolution: printed, or, under option A, granted by the stack step.
+1. **The keyword.** `rebound` joins `canonicalKeywords`. Its presence is read from the spell's keywords at resolution: printed, or granted by the stack step.
 2. **The resolution arm.** If the spell resolved, it has rebound, it is not a copy, and `item.CastFromZone == ZoneHand`, the route's destination becomes exile. Its continuation schedules a delayed trigger for the spell's controller with `At: StepUpkeep` and `ControllerTurnOnly: true`, pinned to the exiled card's `ObjectRef`. The order against the other arms follows the existing comment's reasoning: flashback first, because CR 702.34a replaces every exit (and a flashed-back spell was not cast from a hand anyway). Rebound and buyback replace the same event, so CR 616.1 gives the choice to the spell's controller. The engine asks only when both apply, which no printed card does.
 3. **The upkeep cast.** A keyed body, `rebound/cast`, offers the cast through the same `may_cast` prompt suspend uses. It grants a `{0}`-priced per-card permission with flash timing, so a sorcery can be cast in the upkeep (CR 608.2g). Declining leaves the card in exile.
 4. **Copies.** A copy of a rebound spell was not cast (CR 707.10), so it was not cast from a hand, and it ceases to exist off the stack (CR 707.10a). The arm skips it, as the flashback arm does.
-5. **Granted rebound (A).** Taigam's and Ojer Pakpatiq's "that spell gains rebound" write a `ScopedEffect` pinned to the spell with `ModAddKeywords{"rebound"}`. Narset's −2 is a delayed trigger on `EventCast` ("when you next cast an instant or sorcery spell from your hand this turn") that writes the same record. Cast Through Time is a static over spells, applied in the stack step.
+5. **Granted rebound.** Taigam's and Ojer Pakpatiq's "that spell gains rebound" write a `ScopedEffect` pinned to the spell with `ModAddKeywords{"rebound"}`. Narset's −2 is a delayed trigger on `EventCast` ("when you next cast an instant or sorcery spell from your hand this turn") that writes the same record. Cast Through Time is a static over spells, applied in the stack step.
 
 ### Snapshot impact
 
 - `rebound/cast` is a new keyed body: an on-disk identity, never renamed. An older binary refuses a file naming it with `ErrUnknownEffectKey`, which is the designed rollback case.
-- Under option A a stack pin may now carry `ModAddKeywords`. The record shape is unchanged. The PR checks that an older binary refuses such a file rather than restoring a spell without its rebound (the `stackPinProblem` check has to run on restore as well as at registration). That is the same rollback case.
+- A stack pin may now carry `ModAddKeywords`. The record shape is unchanged. The PR checks that an older binary refuses such a file rather than restoring a spell without its rebound (the `stackPinProblem` check has to run on restore as well as at registration). That is the same rollback case.
 
 ### Cards
 
-About 32 of the 34 printed rebound spells, each verified in the PR. Blossoming Calm ("you gain hexproof until your next turn") and World at War (an additional combat and main phase after the second main phase) are the two I could not confirm. Under option A, Cast Through Time, Narset Transcendent, Ojer Pakpatiq, Deepest Epoch and Taigam, Ojutai Master land too.
+About 32 of the 34 printed rebound spells, each verified in the PR. Blossoming Calm ("you gain hexproof until your next turn") and World at War (an additional combat and main phase after the second main phase) are the two I could not confirm. Cast Through Time, Narset Transcendent, Ojer Pakpatiq, Deepest Epoch and Taigam, Ojutai Master land too.
 
 ---
 
@@ -264,7 +265,7 @@ About 20 of 25. Covert Cutpurse ("a creature you don't control that was dealt da
 
 ### Options
 
-- **A. A rules gate read when damage is dealt, plus a prevention flag on replacements (recommended).** Every prevention effect declares itself as one. One gate, `damageUnpreventableLocked(ev)`, asks every source in the table above. While a damage event is unpreventable, the replacement loop applies each prevention effect once (CR 615.12a), lets it run its additional effects, and keeps the damage and the shield's charge unchanged.
+- **A. A rules gate read when damage is dealt, plus a prevention flag on replacements (chosen).** Every prevention effect declares itself as one. One gate, `damageUnpreventableLocked(ev)`, asks every source in the table above. While a damage event is unpreventable, the replacement loop applies each prevention effect once (CR 615.12a), lets it run its additional effects, and keeps the damage and the shield's charge unchanged.
 - **B. Skip prevention effects entirely for unpreventable damage.** It is smaller, but it is wrong under CR 615.12: a prevention effect's additional effects would be skipped and its shield would never be "applied".
 
 ### Decision (A)
@@ -278,17 +279,17 @@ About 20 of 25. Covert Cutpurse ("a creature you don't control that was dealt da
 3. **The replacement loop.** When the gate says yes, a `Prevention` replacement is applied once. Its `Replace` is skipped. If it has an additional effect, that effect runs with zero damage prevented (CR 615.12, 615.5). A charged shield's charge is not reduced, and a one-use shield (§6) is not used up. A non-prevention replacement (doubling, redirection) is unaffected.
 4. **"Can't be dealt instead to another permanent or player"** (Lava Burst, Whippoorwill) is a redirection ban beside the prevention clause. It ships in the same PR if the redirection replacements prove to be as easy to flag as the prevention ones. Otherwise those two cards go on the row's `Waiting` list.
 5. **What the table sees.** The stack chip and the log say "damage can't be prevented" for a marked spell. A live turn grant is a line on the game banner ("Damage can't be prevented this turn — Skullcrack").
-6. **Players can't gain life** (question 5). Under option (a) it ships in the same PR. It is the same kind of effect, a rules effect at one gate, with the same three durations (a static, a turn grant, and Screaming Nemesis's rest of the game). CR 119.7 is its only extra rule. The gate is asked at every life gain, before the replacement window, so "If you would gain life" replacements never see a gain that can't happen (CR 119.10).
+6. **Players can't gain life** (owner decision 5, #1880). It ships in the same PR. It is the same kind of effect, a rules effect at one gate, with the same three durations (a static, a turn grant, and Screaming Nemesis's rest of the game). CR 119.7 is its only extra rule. The gate is asked at every life gain, before the replacement window, so "If you would gain life" replacements never see a gain that can't happen (CR 119.10).
 
 ### Snapshot impact
 
-- `ModDamageCantBePrevented` (and, under question 5, `ModCantGainLife`) are new mod kinds: on-disk identities, refused by an older binary with `ErrUnknownEffectKey`. That is the rollback case.
+- `ModDamageCantBePrevented` and `ModCantGainLife` are new mod kinds: on-disk identities, refused by an older binary with `ErrUnknownEffectKey`. That is the rollback case.
 - The per-event mark is transient and never captured.
 - The `Prevention` flag is catalog data.
 
 ### Cards
 
-About 20 of 31, counting Banefire and Bonecrusher Giant dropping their caveats. With question 5's option (a), Skullcrack, Call In a Professional, Sunspine Lynx and Leyline of Punishment land too. Volcano Hellion (echo {X} where X is your life total), Everlasting Torment (all damage as though it had wither) and Spider-Punk (riot) go on `Waiting` lists for their own blockers.
+About 20 of 31, counting Banefire and Bonecrusher Giant dropping their caveats. With "can't gain life" (decision 5), Skullcrack, Call In a Professional, Sunspine Lynx and Leyline of Punishment land too, and Screaming Nemesis drops its caveat. The other "can't gain life" cards on #1880 land in the same PR where they need nothing else. Volcano Hellion (echo {X} where X is your life total), Everlasting Torment (all damage as though it had wither) and Spider-Punk (riot) go on `Waiting` lists for their own blockers.
 
 ---
 
@@ -313,10 +314,10 @@ About 20 of 31, counting Banefire and Bonecrusher Giant dropping their caveats. 
 
 ### Options
 
-- **A. One new scoped prevention kind, a source choice, and a "prevented this way" follow-up (recommended, question 4).** `ModPreventNextFromSource` holds the source (a chosen object, or "this object" for Mercenaries), the protected player or object, an optional property recheck, and an optional follow-up body key. The follow-up runs with the amount prevented (CR 615.5). Reverse Damage, Deflecting Palm, Bone Mask and six others need it.
-- **B. The shield and the source choice only.** The nine "prevented this way" cards wait on the row.
+- **A. One new scoped prevention kind, a source choice, and a "prevented this way" follow-up (chosen, owner decision 4).** `ModPreventNextFromSource` holds the source (a chosen object, or "this object" for Mercenaries), the protected player or object, an optional property recheck, and an optional follow-up body key. The follow-up runs with the amount prevented (CR 615.5). Reverse Damage, Deflecting Palm, Bone Mask and six others need it.
+- **B. The shield and the source choice only.** The nine "prevented this way" cards would have waited on the row.
 
-### Decision (A, pending questions 4 and 6)
+### Decision (A, owner decisions 4 and 6)
 
 1. **The mod kind.** `ModPreventNextFromSource`, with four fields:
    - `Source` pins one object (CR 400.7).
@@ -325,7 +326,7 @@ About 20 of 31, counting Banefire and Bonecrusher Giant dropping their caveats. 
    - `Then` is a registered body key (the `ModExileInsteadOfGraveyard` precedent), run after the prevention with the amount prevented.
 
    It is spent whole by the first damage event it prevents, whatever the amount (CR 615.8). It is not spent by an event whose source fails the recheck, or by unpreventable damage (§5).
-2. **Choosing a source.** A new pending choice, `choose_source`, made as the shield is created (CR 609.7a). It lists the permanents on the battlefield, the spells on the stack, and the face-up objects in the command zone, filtered by the card's property ("a black or red source", "a creature of the chosen type"). Question 6 asks whether it also lists the objects that are only referred to by something on the stack or by a waiting effect, as the rule allows.
+2. **Choosing a source.** A new pending choice, `choose_source`, made as the shield is created (CR 609.7a). It lists the permanents on the battlefield, the spells on the stack, and the face-up objects in the command zone, filtered by the card's property ("a black or red source", "a creature of the chosen type"). Per owner decision 6 it also lists everything else CR 609.7a allows: any object referred to by an object on the stack, by a prevention or replacement effect waiting to apply, or by a delayed trigger waiting to trigger, even if that object has left the zone it was in.
 3. **Helpers.** `effects.PreventNextDamageFromChosenSource(query, protected)` covers the Circle of Protection, Rune of Protection and Pentagram families. `effects.PreventNextDamageFromThis()` covers Mercenaries. Each takes an optional `Then`.
 4. **The bot.** The heuristic answers `choose_source` with the legal source controlled by an opponent that has the most power, and otherwise the first listed. The model tiers see the list with each source's controller.
 
@@ -335,7 +336,7 @@ A new mod kind with plain-data fields, recorded under the current schema version
 
 ### Cards
 
-About 34 land with option (b): the seven Circles of Protection, the seven Runes of Protection, Circle of Solace, Story Circle, Prismatic Circle, Greater Realm of Preservation, Haazda Shield Mate, Invulnerability, Kithkin Armor, Martyr's Cause, Mercenaries, Penance, Pentagram of the Ages, the two Pilgrims, Righteous Aura, Samite Blessing, Sanctum Guardian, Seasoned Tactician, Charm Peddler, Circle of Despair and Dazzling Reflection. Option (a) adds Awe Strike, Bone Mask, Cho-Arrim Alchemist, Deflecting Palm, Honorable Passage, Intervention Pact, New Way Forward, Reverse Damage and Shadowbane. Rhystic Circle and Desperate Gambit are checked in the PR.
+About 43 land. The plain shields: the seven Circles of Protection, the seven Runes of Protection, Circle of Solace, Story Circle, Prismatic Circle, Greater Realm of Preservation, Haazda Shield Mate, Invulnerability, Kithkin Armor, Martyr's Cause, Mercenaries, Penance, Pentagram of the Ages, the two Pilgrims, Righteous Aura, Samite Blessing, Sanctum Guardian, Seasoned Tactician, Charm Peddler, Circle of Despair and Dazzling Reflection. The "prevented this way" follow-up (decision 4) adds Awe Strike, Bone Mask, Cho-Arrim Alchemist, Deflecting Palm, Honorable Passage, Intervention Pact, New Way Forward, Reverse Damage and Shadowbane. Rhystic Circle and Desperate Gambit are checked in the PR.
 
 ---
 
@@ -348,15 +349,15 @@ About 34 land with option (b): the seven Circles of Protection, the seven Runes 
 
 ## Delivery
 
-Each PR lands its engine change and its cards together, test first. Each also flips its registry row to implemented (or partial), adds a closed-seam fragment under `docs/engine-seams/closed/`, adds the rows §2 (and question 5) need, and corrects the stale notes listed above. Every PR lands every card its seam unblocks, each verified against its full oracle text. Any that needs more goes on a `Waiting` list with the reason (ADR 0106 decision 6).
+Each PR lands its engine change and its cards together, test first. Each also flips its registry row to implemented (or partial), adds a closed-seam fragment under `docs/engine-seams/closed/`, adds the registry rows #1879 and #1880 need, and corrects the stale notes listed above. Every PR lands every card its seam unblocks, each verified against its full oracle text. Any that needs more goes on a `Waiting` list with the reason (ADR 0106 decision 6).
 
 1. **State triggers (#1858).** `TriggeredAbility.State`, the check, the derived latch and the three helpers. About 18 cards.
-2. **Can't attack unless the defending player controls something.** `PermanentQuery`, the restriction field, the predicate branch and the chip sentence. About 18 cards. The 14 cards that need both PR 1 and PR 2 land in whichever merges second.
+2. **Can't attack unless the defending player controls something (#1879).** `PermanentQuery`, the restriction field, the predicate branch and the chip sentence. About 18 cards. The 14 cards that need both PR 1 and PR 2 land in whichever merges second.
 3. **Rebound (#1854).** The keyword, the resolution arm, the delayed trigger and `rebound/cast`. About 32 cards.
-4. **Granted rebound (#1854, question 3).** The layer-6 stack step for keyword grants. It lands Cast Through Time, Narset Transcendent, Ojer Pakpatiq and Taigam. It needs PR 3.
+4. **Granted rebound (#1854).** The layer-6 stack step for keyword grants. It lands Cast Through Time, Narset Transcendent, Ojer Pakpatiq and Taigam. It needs PR 3.
 5. **Disturb (#1855).** `AlternativeCost.CastsFace`, `effects.Disturb`, the self-only exile replacement and the keyword. About 20 cards.
-6. **Damage that can't be prevented (#1853).** The `Prevention` flag and its census, the gate and its four sources, the CR 615.12 loop, `ModDamageCantBePrevented`, and (question 5) "can't gain life". About 20 cards, about 24 with question 5.
-7. **The next damage from a source (#1860).** `ModPreventNextFromSource`, `choose_source` (engine, view, client picker and bot answer), the helpers and (question 4) the follow-up body. About 34 cards, about 43 with question 4. It needs PR 6.
+6. **Damage that can't be prevented (#1853).** The `Prevention` flag and its census, the gate and its four sources, the CR 615.12 loop, `ModDamageCantBePrevented`, and "players can't gain life" (#1880: its gate and `ModCantGainLife`). About 24 cards from #1853, plus the #1880 cards that need nothing else.
+7. **The next damage from a source (#1860).** `ModPreventNextFromSource`, `choose_source` (engine, view, client picker and bot answer), the helpers and the "prevented this way" follow-up body. About 43 cards. It needs PR 6.
 
 PRs 1, 2, 3, 5 and 6 touch different code and can go in parallel. PR 4 follows PR 3, and PR 7 follows PR 6.
 
@@ -364,7 +365,7 @@ PRs 1, 2, 3, 5 and 6 touch different code and can go in parallel. PR 4 follows P
 
 - Triggers can watch a game state as well as an event. Any future "when there are no …" or "when you have no …" card uses `TriggeredAbility.State`, and nothing stores a latch.
 - Attack legality can depend on what the defending player controls. It is still one predicate per attacker and target.
-- A spell can gain an ability on the stack (if question 3 takes option A). The stack step of the layer pass is layers 2 and 6, keywords only.
+- A spell can gain an ability on the stack. The stack step of the layer pass is layers 2 and 6, keywords only.
 - An alternative cost can cast a card's other face. A future "cast it transformed" keyword (More Than Meets the Eye) uses `CastsFace`.
 - Every prevention effect is marked as one, and a test keeps it that way. "Can't be prevented" is read at one gate, like "can't be countered".
 - A shield can be keyed on a source as well as a target, and a prevention effect can report what it prevented.
@@ -377,7 +378,9 @@ PRs 1, 2, 3, 5 and 6 touch different code and can go in parallel. PR 4 follows P
 
 ---
 
-## Questions for the owner
+## Questions for the owner (answered)
+
+These are the questions as asked. The owner's answers follow.
 
 1. **When are state triggers checked (§1, #1858)?**
    - **(a) Recommended:** after every event the engine emits, and in each pass of the CR 704.3 loop. A state that lasts only a moment during a resolution still triggers, as in CR 603.8's own example.
@@ -398,3 +401,16 @@ PRs 1, 2, 3, 5 and 6 touch different code and can go in parallel. PR 4 follows P
 6. **What a player may choose as "a source of your choice" (§6, #1860).**
    - **(a) Recommended:** everything CR 609.7a allows: permanents, spells on the stack, face-up objects in the command zone, and objects that are referred to by something on the stack, by a waiting prevention or replacement effect, or by a waiting delayed trigger.
    - (b) Permanents, spells on the stack and the command zone only. This covers nearly every real choice and makes a simpler picker, but it is narrower than the rule.
+
+---
+
+## Owner decisions, 2026-10-01
+
+The owner answered the six questions on 2026-10-01. Every answer was the recommended option (a).
+
+1. **State-trigger timing.** State triggers are checked after every event the engine emits and in each pass of the CR 704.3 loop, so a momentary state during a resolution triggers (§1, decision 2).
+2. **Can't attack unless the defending player controls something.** It ships in this ADR as §2, one data field on ADR 0106 §2's per-target restriction. Tracked on #1879.
+3. **Granted rebound.** The stack step of the layer pass is widened to layer-6 keyword grants, so "that spell gains rebound" and "spells you control have rebound" are ordinary ability-adding effects (CR 613.1f). Taigam, Ojer Pakpatiq, Narset Transcendent and Cast Through Time land in Delivery PR 4.
+4. **"The damage prevented this way."** The source shield reports the amount it prevented, and its follow-up body runs immediately afterward with that amount (CR 615.5). The nine follow-up cards land in Delivery PR 7.
+5. **"Players can't gain life."** It ships in the same PR as damage that can't be prevented (Delivery PR 6), as a second rules gate with the same three durations. Tracked on #1880.
+6. **"A source of your choice."** `choose_source` offers everything CR 609.7a allows: permanents, spells on the stack, face-up objects in the command zone, and objects referred to by an object on the stack, by a waiting prevention or replacement effect, or by a waiting delayed trigger.
