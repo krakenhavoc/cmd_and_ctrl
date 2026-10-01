@@ -20,6 +20,12 @@ import (
 // The owner is read live by the engine, so a Clone copying Xantcha may
 // not attack the Clone's owner rather than Xantcha's.
 //
+// ADR 0107 §2 (#1879) adds the third form, "This creature can't attack
+// unless defending player controls <a permanent>", as data the engine
+// asks of each target's defending player (CR 508.5):
+//
+//	Static: []game.StaticAbility{CantAttackUnlessDefendingPlayerControls(QuerySubtype("Island"))}, // Sea Serpent
+//
 // "This creature can't attack its owner" GRANTED by a resolved effect
 // (Elrond of the White Council) is not this: it needs a ScopedEffect
 // mod kind that writes the same restriction, which ADR 0106 leaves out
@@ -38,13 +44,40 @@ func CantAttackItsOwnerOrItsOwnersPlaneswalkers() game.StaticAbility {
 }
 
 func cantAttackOwnerStatic(planeswalkers bool) game.StaticAbility {
+	return selfAttackTargetRestriction(game.AttackTargetRestriction{NotOwner: true, NotOwnersPlaneswalkers: planeswalkers})
+}
+
+// CantAttackUnlessDefendingPlayerControls is "This creature can't attack
+// unless defending player controls <a permanent>" (ADR 0107 §2, #1879,
+// CR 508.1c). The queries are any-of: Godhunter Octopus's "an enchantment
+// or an enchanted permanent" is two of them.
+//
+//	Static: []game.StaticAbility{CantAttackUnlessDefendingPlayerControls(QuerySubtype("Island"))}, // Sea Serpent
+//
+// The engine works out the defending player of each target (CR 508.5: the
+// player, a planeswalker's controller, a battle's protector), so in
+// Commander the creature may attack the opponents who control an Island
+// and nobody else. Like the owner clauses it is the creature's own ability
+// and goes with its abilities (CR 613.1f).
+func CantAttackUnlessDefendingPlayerControls(queries ...game.PermanentQuery) game.StaticAbility {
+	return selfAttackTargetRestriction(game.AttackTargetRestriction{DefenderMustControl: queries})
+}
+
+// QuerySubtype is "a permanent with this subtype": an Island, a Mountain.
+func QuerySubtype(subtype string) game.PermanentQuery {
+	return game.PermanentQuery{Subtypes: []string{subtype}}
+}
+
+// selfAttackTargetRestriction writes r onto the creature whose ability it
+// is, naming that creature as the source.
+func selfAttackTargetRestriction(r game.AttackTargetRestriction) game.StaticAbility {
 	return game.StaticAbility{
 		Layer: game.Layer6Ability,
 		AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
 			return target.IsCreature() && selfOnly(target, g, source)
 		},
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, source *game.Card) {
-			r := game.AttackTargetRestriction{NotOwner: true, NotOwnersPlaneswalkers: planeswalkers}
+			r := r
 			if source != nil {
 				r.Source, r.SourceName = source.InstanceID, source.Name
 			}

@@ -1872,6 +1872,26 @@ card shows a "CAN'T ATTACK <name>" chip. A RESOLVED effect that grants
 it (Elrond of the White Council) has no mod kind yet. See
 `xantcha_sleeper_agent.go` for the printed card.
 
+**"Can't attack unless defending player controls an Island"**
+([ADR 0107 §2](decisions/0107-state-triggers-rebound-disturb-and-damage-prevention.md),
+#1879) is the same list's third form. It names what the DEFENDING player
+must control, as `game.PermanentQuery` data (any of the queries given):
+
+```go
+Static: []game.StaticAbility{CantAttackUnlessDefendingPlayerControls(QuerySubtype("Island"))},               // Sea Serpent
+Static: []game.StaticAbility{CantAttackUnlessDefendingPlayerControls(
+    game.PermanentQuery{Types: []string{"enchantment"}}, game.PermanentQuery{Enchanted: true})},           // Godhunter Octopus
+Static: []game.StaticAbility{CantAttackUnlessDefendingPlayerControls(
+    game.PermanentQuery{Types: []string{"creature"}, Keyword: "flying"})},                                  // Lurking Green Dragon
+```
+
+The engine works out each target's defending player (CR 508.5: the
+player, a planeswalker's controller, a battle's protector), so in
+Commander the creature may attack the opponents who control a match and
+nobody else. The chip names each opponent it can't attack and why ("Bob
+controls no Island"). A condition that is not "controls a permanent"
+(poisoned, the monarch, more creatures than you) is not this field.
+
 [ADR 0045](decisions/0045-combat-restrictions.md) has the
 taxonomy, including what the vocabulary deliberately cannot say:
 Silent Arbiter's and Crawlspace's count limits, which are set-shaped
