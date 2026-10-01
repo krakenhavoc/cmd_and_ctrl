@@ -25,7 +25,7 @@ import (
 // # The rules number
 //
 // Amass is **CR 701.47** in the pinned edition (MagicCompRules
-// 20260819). #1236 and the roadmap's detector both say "CR 701.35",
+// 20260925, AGENTS.md §6). #1236 and the roadmap's detector both say "CR 701.35",
 // which is the number amass had before Alchemy's keyword actions were
 // inserted ahead of it; 701.51 is Open an Attraction. Corrected here
 // for the same reason #1260 corrected storm's.
