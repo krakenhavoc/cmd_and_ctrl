@@ -86,6 +86,14 @@ func (g *Game) changeLifeThroughReplacementsLocked(ev *ReplacementEvent) (paused
 	if ev == nil {
 		return false, nil
 	}
+	if g.lifeGainForbiddenLocked(ev) {
+		// CR 119.7 (ADR 0107 §5): the player can't gain life, so there
+		// is no gain for an "if you would gain life" replacement to
+		// replace — the gate runs BEFORE the window, not inside it.
+		// Nothing happens and no EventChangeLife is emitted; the
+		// continuation is told zero, as for a cancelled change.
+		return false, g.runLifeTailLocked(ev, 0)
+	}
 	out, err := g.applyReplacementsLocked(ev)
 	if errors.Is(err, errReplacementPending) {
 		return true, nil

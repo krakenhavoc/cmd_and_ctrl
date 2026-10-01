@@ -25,23 +25,8 @@ func init() {
 		Name:         "Wound Reflection",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			On(game.EventBeginEndStep, AnyPlayer, "Wound Reflection — each opponent loses the life they lost this turn", func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				opponents := ctx.Opponents()
-				amounts := make([]int, len(opponents))
-				for i, opp := range opponents {
-					amounts[i] = b18LifeLostThisTurn(g, opp)
-				}
-				for i, opp := range opponents {
-					if amounts[i] <= 0 {
-						continue
-					}
-					if err := g.ChangePlayerLifeForEffect(item.SourceCardID, opp, -amounts[i]); err != nil {
-						return err
-					}
-				}
-				return nil
-			}),
+			On(game.EventBeginEndStep, AnyPlayer, "Wound Reflection — each opponent loses the life they lost this turn",
+				eachOpponentLosesTheLifeTheyLostThisTurn),
 		},
 	})
 }

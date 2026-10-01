@@ -119,6 +119,10 @@ func replacementModProblem(m Mod) string {
 		if m.Then == "" || !KnownEffectBody(m.Then) {
 			return fmt.Sprintf("exileInsteadOfGraveyard names delayed-trigger body %q, which is not registered", m.Then)
 		}
+	case ModGainNoLife:
+		if m.Player == uuid.Nil {
+			return "a gainNoLife replacement names no player"
+		}
 	}
 	return ""
 }
@@ -126,6 +130,7 @@ func replacementModProblem(m Mod) string {
 var (
 	watchDamage   = []EventKind{EventDealDamage}
 	watchZoneMove = []EventKind{EventZoneMove}
+	watchLife     = []EventKind{EventChangeLife}
 )
 
 // scopedReplacementWatches is the watch key of a replacement kind — the
@@ -136,6 +141,8 @@ func scopedReplacementWatches(kind ModKind) []EventKind {
 		return watchDamage
 	case ModExileInsteadOfLeaving, ModExileInsteadOfGraveyard:
 		return watchZoneMove
+	case ModGainNoLife:
+		return watchLife
 	}
 	return nil
 }
@@ -292,6 +299,10 @@ func (g *Game) scopedReplacementsWatchLocked(kind ReplacementEventKind) bool {
 func scopedReplacementEffect(seq int64, mod int, kind ModKind, label string) ReplacementEffect {
 	eff := ReplacementEffect{
 		Watches: scopedReplacementWatches(kind),
+		// CR 615.1a: both damage shields say "prevent", so CR 615.12
+		// reads them (unpreventable_damage.go). The two exile
+		// redirects and "gains no life instead" are replacements.
+		Prevention: scopedKindPrevents(kind),
 		AppliesTo: func(ev *ReplacementEvent, g *Game, _ *Card) bool {
 			e, m, ok := g.scopedReplacementModLocked(seq, mod, kind)
 			return ok && scopedReplacementAppliesLocked(g, e, m, ev)
@@ -320,6 +331,12 @@ func scopedReplacementEffect(seq int64, mod int, kind ModKind, label string) Rep
 		Label: label,
 	}
 	return eff
+}
+
+// scopedKindPrevents reports whether a replacement kind is a CR 615
+// prevention effect.
+func scopedKindPrevents(kind ModKind) bool {
+	return kind == ModPreventCombatDamage || kind == ModPreventDamage
 }
 
 // scopedReplacementAppliesLocked is the AppliesTo of each kind. Caller
@@ -354,6 +371,10 @@ func scopedReplacementAppliesLocked(g *Game, e ScopedEffect, m Mod, ev *Replacem
 		}
 		c, ok := g.LookupCardForEffect(ev.CardID)
 		return ok && c.Controller == e.Controller
+	case ModGainNoLife:
+		// CR 119.10: "if a player would gain life" — a positive change
+		// only. A gain of 0 is no life gain event at all.
+		return ev.Kind == RepEventLife && ev.LifeDelta > 0 && ev.LifePlayer == m.Player
 	}
 	return false
 }
@@ -394,6 +415,11 @@ func (g *Game) applyScopedReplacementLocked(e ScopedEffect, mod int, m Mod, ev *
 		g.setShieldChargeLocked(e.Seq, mod, left)
 	case ModExileInsteadOfLeaving:
 		ev.NewZone = ZoneExile
+	case ModGainNoLife:
+		// "That player gains no life instead": CR 614.10's null
+		// replacement. No EventChangeLife, so "whenever you gain life"
+		// sees nothing.
+		ev.Cancel()
 	case ModExileInsteadOfGraveyard:
 		ev.NewZone = ZoneExile
 		ev.NewZoneOwner = uuid.Nil

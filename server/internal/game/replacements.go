@@ -1239,6 +1239,38 @@ type ReplacementEffect struct {
 	// observable. Added in #710.
 	PureCancel bool
 
+	// Prevention declares a PREVENTION effect (CR 615.1a: an effect
+	// that uses the word "prevent"): one that watches a damage event
+	// and prevents some or all of it. Protection's built-in (CR
+	// 702.16e), Fog's and Mending Hands' scoped shields and every
+	// catalog "prevent all damage that would be dealt to …" set it.
+	//
+	// It is what CR 615.12 reads. While a damage event can't be
+	// prevented (damageUnpreventableLocked, unpreventable_damage.go),
+	// a prevention effect is still applied to it, once (CR 615.12a),
+	// and prevents nothing: its Replace is not run, so the damage and
+	// a charged shield's charge are both left as they were. A
+	// replacement that is NOT a prevention effect — a doubler, a
+	// redirection, a shield counter's "remove a counter instead" — is
+	// untouched by "can't be prevented", which is why the flag is
+	// declared rather than inferred from what Replace does.
+	//
+	// TestDamageReplacementsDeclareWhetherTheyPrevent
+	// (cards/effects) fails a damage replacement whose Replace cancels
+	// or reduces the damage without declaring this or RedirectsDamage.
+	Prevention bool
+
+	// RedirectsDamage declares a REDIRECTION: a replacement that has
+	// damage "dealt instead" to another permanent or player (CR
+	// 614.1a). It is not a prevention effect (CR 615.12 does not stop
+	// it), but "that damage can't be … dealt instead to another
+	// permanent or player" (Lava Burst, Whippoorwill) does: while an
+	// event can't be redirected (damageCantBeRedirectedLocked), a
+	// redirection is applied without running its Replace, exactly as a
+	// prevention effect is under CR 615.12. No catalog card redirects
+	// damage today; the flag is here so the first one says so.
+	RedirectsDamage bool
+
 	// PromptQuestion is the text rendered in the yes/no Optional
 	// prompt. Short — fits in a modal header. Defaults to Label
 	// when empty.
@@ -1446,6 +1478,11 @@ func (g *Game) applyReplacementsLocked(ev *ReplacementEvent) (*ReplacementEvent,
 			return nil, nil
 		}
 		applicable := g.gatherActiveReplacementsLocked(ev)
+		// CR 615.12: a prevention effect applied to damage that can't
+		// be prevented prevents nothing, and is applied only once
+		// (CR 615.12a). Settled here, before any prompt is built, so a
+		// shield that will do nothing is never an ordering question.
+		applicable = g.settleUnpreventableLocked(ev, applicable)
 		if len(applicable) == 0 {
 			return ev, nil
 		}

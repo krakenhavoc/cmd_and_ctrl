@@ -173,6 +173,18 @@ describe("stack lane items", () => {
     expect(no.top?.chips.map((c) => c.label)).not.toContain("can't be countered");
   });
 
+  // ADR 0107 §5: the spell's own "the damage can't be prevented".
+  it("shows a damage-can't-be-prevented chip, and only when the wire says so", () => {
+    const yes = buildStackLane(
+      input({ stackItems: [spell("combust", ME, { damage_cant_be_prevented: true })] }),
+    );
+    const chip = yes.top?.chips.find((c) => c.label === "damage can't be prevented");
+    expect(chip?.tone).toBe("flag");
+
+    const no = buildStackLane(input({ stackItems: [spell("bolt", ME, {})] }));
+    expect(no.top?.chips.map((c) => c.label)).not.toContain("damage can't be prevented");
+  });
+
   // ADR 0104: a spell another player took on the stack says who it was
   // taken from, and the lane's caster is its new controller.
   it("shows a taken-from chip on a stolen spell, and only then", () => {

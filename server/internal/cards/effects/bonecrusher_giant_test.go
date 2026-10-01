@@ -182,7 +182,8 @@ func TestBothFacesOfBonecrusherGiantAreRegistered(t *testing.T) {
 		want      Completeness
 	}{
 		{bonecrusherGiantOracleID, "Bonecrusher Giant", CompletenessFull},
-		{bonecrusherGiantOracleID + "#1", "Stomp", CompletenessCaveats},
+		// ADR 0107 §5: "Damage can't be prevented this turn" shipped.
+		{bonecrusherGiantOracleID + "#1", "Stomp", CompletenessFull},
 	} {
 		spec, ok := Lookup(tc.key)
 		if !ok {
