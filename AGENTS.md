@@ -455,6 +455,7 @@ Subsections of [docs/adding-cards.md](docs/adding-cards.md):
   - [Adding a copy effect (S16.5+)](docs/adding-cards.md#adding-a-copy-effect-s165)
   - [Adding a combat-keyword card (S18+)](docs/adding-cards.md#adding-a-combat-keyword-card-s18)
   - [Adding a "can't" card (S24+)](docs/adding-cards.md#adding-a-cant-card-s24)
+  - ["Spells you control can't be countered" (ADR 0106, #1806)](docs/adding-cards.md#spells-you-control-cant-be-countered-adr-0106-1806)
   - [Attaching, and an ability whose source has gone (#812)](docs/adding-cards.md#attaching-and-an-ability-whose-source-has-gone-812)
   - [Adding a block-rule card (S37+, #750)](docs/adding-cards.md#adding-a-block-rule-card-s37-750)
   - [Adding a triggered ability (S19+)](docs/adding-cards.md#adding-a-triggered-ability-s19)
