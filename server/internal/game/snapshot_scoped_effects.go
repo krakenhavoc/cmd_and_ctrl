@@ -67,6 +67,13 @@ func (s *GameSnapshot) checkEffectKeys() error {
 				unknown = append(unknown, "scoped-effect then body "+m.Then)
 			}
 		}
+		// ADR 0107 §3: a stack pin may carry only what this binary's
+		// stack step applies (layer 2 control, layer-6 keywords). A
+		// newer binary's spell effect would otherwise restore as a
+		// record that silently does nothing.
+		if problem := stackPinProblem(e.Affected, e.Mods); problem != "" {
+			unknown = append(unknown, "scoped effect "+problem)
+		}
 		if !KnownAffectedScope(e.Scope) {
 			unknown = append(unknown, "scoped-effect scope "+string(e.Scope))
 		}

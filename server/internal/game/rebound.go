@@ -76,12 +76,13 @@ import "github.com/google/uuid"
 // # Granted rebound
 //
 // Whether the spell has rebound is HasKeyword at resolution, which
-// reads the card's effective abilities when the layer pass has stamped
-// any. That is the door ADR 0107 §3 decision 5 (owner decision 3)
-// walks through: once the stack step of the layer pass applies layer-6
-// keyword grants to a spell, "that spell gains rebound" and "instant
-// and sorcery spells you control have rebound" reach this file with no
-// change here.
+// reads the keywords the stack step of the layer pass gave the spell
+// (Card.stackGranted, spell_keywords.go) beside its printed ones. That
+// is the door ADR 0107 §3 decision 5 (owner decision 3) walks through:
+// "that spell gains rebound" and "instant and sorcery spells you
+// control have rebound" reach this file with no change here. When a
+// granted rebound meets buyback or an Adventure's exile on one spell,
+// the controller chooses (CR 616.1, resolution_exits.go).
 
 // KeywordRebound is CR 702.88's canonical token — Scryfall's
 // "Rebound", lowercased.
@@ -107,7 +108,7 @@ const LapseStaysInExile PermissionLapse = "exile"
 //
 // Four facts, all of them the rule's:
 //
-//   - the spell has rebound — printed, or (with ADR 0107 PR 4) granted
+//   - the spell has rebound — printed, or (ADR 0107 PR 4) granted
 //     by a layer-6 effect, which HasKeyword reads through the card's
 //     effective abilities. One instance or several, the answer is the
 //     same (CR 702.88c);

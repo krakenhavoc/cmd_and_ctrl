@@ -456,6 +456,7 @@ var cardFields = plan(
 	"ManaAbilities", rebuilt, "closures; re-looked-up from the catalog by oracle ID, or by TokenKey for a token (#521), and censused only when the catalog cannot return them",
 	"ActivatedAbilities", rebuilt, "same as ManaAbilities",
 	"effective", rebuilt, "layer-engine characteristic cache; restore forces a recompute",
+	"stackGranted", rebuilt, "the keywords the stack step gave a spell (ADR 0107 §3); rebuilt from the ScopedEffect records and battlefield statics by the recompute restore forces",
 )
 
 var playerFields = plan(

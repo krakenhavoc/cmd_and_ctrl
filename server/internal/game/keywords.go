@@ -500,6 +500,15 @@ func forEachAbilityToken(c *Card, fn func(token string) bool) {
 		}
 		return
 	}
+	// ADR 0107 §3, CR 613.1f: a keyword the stack step of the layer
+	// pass gave a SPELL ("that spell gains rebound"). Before the
+	// face-down guard below, because a face-down spell has no text of
+	// its own but can still be given an ability by an effect.
+	for _, a := range c.stackGranted {
+		if !fn(a) {
+			return
+		}
+	}
 	// CR 708.2a, ADR 0069: a face-down permanent has no text and so
 	// no keywords. CatalogKey already answers "" for it, but
 	// Card.Keywords is the deck importer's own road and bypasses the

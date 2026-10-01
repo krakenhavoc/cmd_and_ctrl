@@ -345,6 +345,10 @@ func (g *Game) createSpellCopyLocked(src Card, item *StackItem, controller uuid.
 	copyCard.LostLastCounter = false
 	copyCard.AttachedTo = TargetRef{}
 	copyCard.effective = nil
+	// CR 707.2: a keyword an effect GAVE the original spell (ADR 0107
+	// §3) is not a copiable value. The next stack step gives the copy
+	// whatever applies to it on its own.
+	copyCard.stackGranted = nil
 	// CR 903.3: the commander designation is an attribute of the
 	// physical card, not a copiable characteristic (CR 707.2), so a
 	// copy is never a commander — issue #1363. Left uncleared, a copy

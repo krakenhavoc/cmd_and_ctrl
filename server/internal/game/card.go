@@ -877,6 +877,22 @@ type Card struct {
 	// sub-PR 3.
 	effective *Characteristic
 
+	// stackGranted is the keyword abilities the stack step of the layer
+	// pass gave this SPELL (CR 613.1f, ADR 0107 §3, #1854): "that spell
+	// gains rebound", "instant and sorcery spells you control have
+	// rebound". Written by stackKeywordPassLocked (spell_keywords.go)
+	// for every spell on the stack, read by HasKeyword and Effective()
+	// beside the printed keywords. Nil for every card that is not a
+	// spell something has given a keyword to.
+	//
+	// A derived cache like `effective`: never snapshotted (a restore
+	// forces a recompute, which rebuilds it from the ScopedEffect
+	// records and the battlefield statics), always replaced with a
+	// fresh slice and never written in place, and cleared by MoveCard
+	// on every zone change, because a grant to a spell ends with the
+	// object (CR 400.7).
+	stackGranted []string
+
 	// --- bools --------------------------------------------------------
 	//
 	// Every bool on Card lives here, together, rather than beside the

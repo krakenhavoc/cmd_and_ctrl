@@ -260,7 +260,32 @@ func corpusBoards() []corpusBoard {
 		// damageCantBePrevented + damageCantBeRedirected pair (Whippoorwill's
 		// shape) and a rest-of-the-game cantGainLife on one player.
 		{"rules_gates", corpusRulesGates},
+		// v7, added by ADR 0107 PR 4 (#1854) as a new file: a spell
+		// GIVEN rebound — a ScopedEffect pinned to the spell on the
+		// stack with an addKeywords mod, the record Taigam's trigger
+		// writes, with a Taigam on the battlefield as its source.
+		{"granted_rebound_on_stack", corpusGrantedReboundOnStack},
 	}
+}
+
+// corpusGrantedReboundOnStack is Lightning Bolt cast from hand and
+// given rebound on the stack by Taigam, Ojutai Master (#1854).
+func corpusGrantedReboundOnStack(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	foe := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	taigam := pushCatalogPermanent(g, me.ID, "Taigam, Ojutai Master", "Legendary Creature — Human Monk", taigamOracle, false)
+	id := castCatalogSpell(t, g, "Lightning Bolt", "Instant", boltOracleCombat,
+		[]game.TargetRef{{Kind: game.TargetPlayer, ID: foe.ID}})
+	var ok bool
+	g.WithWriteLock(func() {
+		ok = g.GrantKeywordsToSpellForEffect(taigam, id, []string{game.KeywordRebound},
+			"Taigam, Ojutai Master — that spell gains rebound")
+	})
+	if !ok {
+		t.Fatal("setup: Lightning Bolt was not given rebound")
+	}
+	return g
 }
 
 // corpusReboundWaiting is Staggershock cast from hand, resolved and
