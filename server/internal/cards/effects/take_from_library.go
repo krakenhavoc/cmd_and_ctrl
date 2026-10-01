@@ -1,6 +1,8 @@
 package effects
 
 import (
+	"strings"
+
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -42,6 +44,13 @@ import (
 //     your hand" (Horn of the Mark): Optional, Max 1, Reveal.
 //   - "Put any number of them into your hand" : Optional, Max 0,
 //     meaning no ceiling.
+//   - "You may reveal a land card and/or an instant or sorcery card
+//     from among them" (Explore the Vastlands): Optional, Reveal, and
+//     two Slots of one card each.
+//
+// "EACH player looks at the top N cards of their library and may …"
+// is this question asked of every player at once, each over their own
+// look: EachPlayerTakesFromLibrary.
 //
 // A mandatory clause whose only legal answer is every candidate is not
 // asked either: a prompt with one possible answer is a click, not a
@@ -77,8 +86,26 @@ type TakeFromLibraryToHand struct {
 	// 108.2) whatever Match says.
 	Match CardPredicate
 
-	// Max is "a" (1) or "any number" (0). Ignored with All.
+	// Max is "a" (1) or "any number" (0). Ignored with All, and with
+	// Slots, whose capacities are the ceiling.
 	Max int
+
+	// Slots is a clause that names more than one kind of card from the
+	// same look — "may reveal a land card and/or an instant or sorcery
+	// card from among them" (Explore the Vastlands) is two slots of
+	// one card each. A card is a candidate when it fits any slot (and
+	// Match, when Match is also set); the picked set must fit the
+	// slots at once — each card in one slot it matches, no slot over
+	// its Max — so a card matching both slots fills only one. See
+	// TakeSlot.
+	//
+	// Still ONE choose_cards prompt with a set-level rule, so the wire
+	// is choose_cards' own and internal/legal answers it through
+	// ChooseCardsPickLegalLocked like any other Validate. The prompt's
+	// ceiling is the largest set the slots can hold out of the actual
+	// candidates (three lands and no spell is "up to one"), and for a
+	// mandatory clause the floor is that same number.
+	Slots []TakeSlot
 
 	// Optional is the printed "you MAY". It sets the prompt's floor to
 	// zero.
@@ -141,11 +168,88 @@ func (p TakeFromLibraryToHand) Apply(ctx *Context) error {
 		player = ctx.Controller()
 	}
 	source := ctx.Source()
+	finish := p.finisher(source, player)
+	prompt, answer := p.ask(ctx.Game, player, source)
+	if prompt == nil {
+		return finish(ctx.Game, answer)
+	}
+	prompt.Then = finish
+	ctx.Game.QueueChooseCardsForEffect(*prompt)
+	return nil
+}
+
+// ask is the question this take puts to `player`: the choose_cards
+// prompt to queue, with its Then left for the caller to set — or, when
+// there is no choice to make, nil and the answer itself (nil when
+// there is nothing to take).
+//
+// Split out of Apply so EachPlayerTakesFromLibrary asks every player
+// exactly the question a single take would, as one leg of a run.
+func (p TakeFromLibraryToHand) ask(g *game.Game, player, source uuid.UUID) (*game.ChooseCardsPrompt, []uuid.UUID) {
+	candidates := libraryCardsTakeable(g, player, p.Cards, p.candidateMatch())
+	if len(candidates) == 0 {
+		return nil, nil
+	}
+	if p.All {
+		return nil, candidates
+	}
+	hi := p.Max
+	var slots *takeSlotRule
+	if len(p.Slots) > 0 {
+		// The ceiling is how many of the candidates the slots can
+		// hold AT ONCE, not the sum of the slots: three lands and no
+		// instant fill one slot of "a land card and/or an instant or
+		// sorcery card", so the prompt asks for at most one.
+		slots = newTakeSlotRule(g, player, p.Slots, candidates)
+		hi = slots.fill(candidates)
+	}
+	if hi <= 0 || hi > len(candidates) {
+		hi = len(candidates)
+	}
+	lo := hi
+	if p.Optional {
+		lo = 0
+	}
+	if lo == len(candidates) && p.Validate == nil {
+		// The only legal answer is every candidate. Not so with a
+		// set rule: it is the rule, not the count, that decides
+		// which subsets are answers, and taking the shortcut would
+		// perform a set the prompt would have refused. The slots'
+		// own rule does not switch it off: a floor equal to the
+		// candidate count is only reached when the slots can hold
+		// all of them at once, so "all of them" is an answer.
+		return nil, candidates
+	}
+	question := p.Label
+	if question == "" {
+		question = p.defaultQuestion()
+	}
+	validate := p.Validate
+	if slots != nil {
+		validate = slots.validate(p.Validate)
+	}
+	return &game.ChooseCardsPrompt{
+		Chooser:  player,
+		Source:   source,
+		Question: question,
+		Cards:    candidates,
+		Min:      lo,
+		Max:      hi,
+		// Re-checked on submit: every pick must still be in a library
+		// when the answer arrives.
+		Zone:     game.ZoneLibrary,
+		Validate: validate,
+	}, nil
+}
+
+// finisher is what happens once `player`'s picks are known: reveal
+// them if the clause reveals, move them, and hand Then the result.
+func (p TakeFromLibraryToHand) finisher(source, player uuid.UUID) func(g *game.Game, picked []uuid.UUID) error {
 	cards := append([]uuid.UUID(nil), p.Cards...)
 	then := p.Then
 	reveal, label := p.Reveal, p.Label
 
-	finish := func(g *game.Game, picked []uuid.UUID) error {
+	return func(g *game.Game, picked []uuid.UUID) error {
 		reported := false
 		report := func(g *game.Game, taken []uuid.UUID) error {
 			reported = true
@@ -163,15 +267,7 @@ func (p TakeFromLibraryToHand) Apply(ctx *Context) error {
 			return report(g, nil)
 		}
 		if reveal {
-			// The taken cards become public while they are still in
-			// the library — a reveal is not a move, and doing it after
-			// the move would be a reveal of cards in a hand.
-			g.RevealForEffect(game.RevealSpec{
-				Player: player,
-				Source: source,
-				Reason: label,
-				Cards:  cardsStillInALibrary(g, picked),
-			})
+			revealTaken(g, player, source, label, picked)
 		}
 		moveErr := g.TakeFromLibraryToHandThenForEffect(player, picked, report)
 		if moveErr != nil && !reported {
@@ -192,47 +288,169 @@ func (p TakeFromLibraryToHand) Apply(ctx *Context) error {
 		}
 		return moveErr
 	}
+}
 
-	candidates := libraryCardsTakeable(ctx.Game, player, cards, p.Match)
-	if len(candidates) == 0 {
-		return finish(ctx.Game, nil)
+// revealTaken makes the TAKEN cards public while they are still in the
+// library — a reveal is not a move, and doing it after the move would
+// be a reveal of cards in a hand. The rest of a look stays private.
+func revealTaken(g *game.Game, player, source uuid.UUID, label string, picked []uuid.UUID) {
+	if len(picked) == 0 {
+		return
 	}
-	if p.All {
-		return finish(ctx.Game, candidates)
-	}
-	hi := p.Max
-	if hi <= 0 || hi > len(candidates) {
-		hi = len(candidates)
-	}
-	lo := hi
-	if p.Optional {
-		lo = 0
-	}
-	if lo == len(candidates) && p.Validate == nil {
-		// The only legal answer is every candidate. Not so with a
-		// set rule: it is the rule, not the count, that decides
-		// which subsets are answers, and taking the shortcut would
-		// perform a set the prompt would have refused.
-		return finish(ctx.Game, candidates)
-	}
-	question := label
-	if question == "" {
-		question = "Put a card from among them into your hand"
-	}
-	ctx.Game.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
-		Chooser:  player,
-		Source:   source,
-		Question: question,
-		Cards:    candidates,
-		Min:      lo,
-		Max:      hi,
-		// Re-checked on submit: every pick must still be in a library
-		// when the answer arrives.
-		Zone:     game.ZoneLibrary,
-		Validate: p.Validate,
-		Then:     finish,
+	g.RevealForEffect(game.RevealSpec{
+		Player: player,
+		Source: source,
+		Reason: label,
+		Cards:  cardsStillInALibrary(g, picked),
 	})
-	return nil
+}
+
+// candidateMatch is the per-card filter: Match alone, or — with
+// Slots — Match and at least one slot's predicate.
+func (p TakeFromLibraryToHand) candidateMatch() CardPredicate {
+	if len(p.Slots) == 0 {
+		return p.Match
+	}
+	fitsASlot := make([]CardPredicate, len(p.Slots))
+	for i, s := range p.Slots {
+		fitsASlot[i] = s.matcher()
+	}
+	if p.Match == nil {
+		return Or(fitsASlot...)
+	}
+	return And(p.Match, Or(fitsASlot...))
+}
+
+// defaultQuestion is the prompt header when Label is empty.
+func (p TakeFromLibraryToHand) defaultQuestion() string {
+	if len(p.Slots) == 0 {
+		return "Put a card from among them into your hand"
+	}
+	labels := make([]string, 0, len(p.Slots))
+	for _, s := range p.Slots {
+		if s.Label != "" {
+			labels = append(labels, s.Label)
+		}
+	}
+	return "Put " + strings.Join(labels, " and/or ") + " from among them into your hand"
+}
+
+// TakeSlot is one "a [kind] card" of a take whose sentence names more
+// than one kind of card from the same look — Explore the Vastlands'
+// "a land card and/or an instant or sorcery card" is two slots.
+//
+// A slot is not a second prompt. The whole pick is one choose_cards
+// question over every candidate that fits ANY slot, with a rule about
+// the picked set: each card fills one slot it matches, no slot holds
+// more than its Max, and no card fills two. A card that matches both
+// slots may fill either, but only one of them.
+type TakeSlot struct {
+	// Label is the printed clause, "a land card". It names the slot
+	// in the default prompt header; nothing parses it.
+	Label string
+
+	// Match is which cards may fill the slot. Nil means any card.
+	Match CardPredicate
+
+	// Max is how many cards the slot holds: "a" is 1, and 0 means no
+	// ceiling — TakeFromLibraryToHand.Max's own convention.
+	Max int
+}
+
+func (s TakeSlot) matcher() CardPredicate {
+	if s.Match != nil {
+		return s.Match
+	}
+	return func(*game.Game, uuid.UUID, game.Card) bool { return true }
+}
+
+// takeSlotRule is a slotted take's rule about the picked SET.
+//
+// Which slots each candidate fits is read ONCE, when the prompt is
+// asked, and frozen here with the slot capacities. That is
+// game.ChooseCardsPrompt.Validate's contract — it is handed no *Game,
+// so anything the rule depends on is a scalar the queuing effect
+// captures when it asks, exactly as Cards, Min and Max are — and it is
+// sound for this rule: a card's characteristics in a library are its
+// printed ones and do not move under an open prompt.
+type takeSlotRule struct {
+	caps []int
+	fits map[uuid.UUID][]int
+}
+
+func newTakeSlotRule(g *game.Game, player uuid.UUID, slots []TakeSlot, candidates []uuid.UUID) *takeSlotRule {
+	r := &takeSlotRule{
+		caps: make([]int, len(slots)),
+		fits: make(map[uuid.UUID][]int, len(candidates)),
+	}
+	for i, s := range slots {
+		r.caps[i] = s.Max
+		if s.Max <= 0 {
+			r.caps[i] = len(candidates)
+		}
+	}
+	for _, id := range candidates {
+		c, ok := g.LookupCardForEffect(id)
+		if !ok {
+			continue
+		}
+		for i, s := range slots {
+			if s.matcher()(g, player, c) {
+				r.fits[id] = append(r.fits[id], i)
+			}
+		}
+	}
+	return r
+}
+
+// fill is how many of `cards` the slots can hold at once — each card
+// in a slot it fits, no slot over its capacity, no card in two. A
+// maximum bipartite matching by augmenting paths, which for two slots
+// and a five-card look is a handful of steps.
+func (r *takeSlotRule) fill(cards []uuid.UUID) int {
+	holders := make([][]int, len(r.caps))
+	var place func(card int, tried []bool) bool
+	place = func(card int, tried []bool) bool {
+		for _, s := range r.fits[cards[card]] {
+			if tried[s] {
+				continue
+			}
+			tried[s] = true
+			if len(holders[s]) < r.caps[s] {
+				holders[s] = append(holders[s], card)
+				return true
+			}
+			for k, other := range holders[s] {
+				if place(other, tried) {
+					holders[s][k] = card
+					return true
+				}
+			}
+		}
+		return false
+	}
+	n := 0
+	for i := range cards {
+		if place(i, make([]bool, len(r.caps))) {
+			n++
+		}
+	}
+	return n
+}
+
+// validate is the prompt's set rule: the slots hold every picked card
+// at once, and `also` (the take's own Validate) agrees.
+func (r *takeSlotRule) validate(also func([]game.Card) bool) func([]game.Card) bool {
+	return func(picked []game.Card) bool {
+		ids := make([]uuid.UUID, len(picked))
+		for i, c := range picked {
+			ids[i] = c.InstanceID
+		}
+		if r.fill(ids) != len(ids) {
+			return false
+		}
+		return also == nil || also(picked)
+	}
 }
 
 // libraryCardsTakeable filters `ids` to the cards still in a library
@@ -333,4 +551,146 @@ func RevealTopThenTakeToHand(ctx *Context, player uuid.UUID, n int, match CardPr
 		Label:  label,
 		Then:   TakeRestOnBottomInAnyOrder,
 	}.Apply(ctx)
+}
+
+// EachPlayerTakesFromLibrary is TakeFromLibraryToHand asked of every
+// player at once, each over a look at the top of their OWN library —
+// "each player looks at the top five cards of their library and may
+// reveal a land card and/or an instant or sorcery card from among
+// them. Each player puts the cards they revealed this way into their
+// hand and the rest on the bottom of their library in a random order"
+// (Explore the Vastlands, #1743).
+//
+// # One question per player, one instruction
+//
+// Every player is asked exactly the question Take would ask them alone
+// — the same candidates, bounds and set rule, from
+// TakeFromLibraryToHand's own ask — as one leg of a choose_cards run
+// (game.ChooseCardsRunThenForEffect). The legs go up together in
+// Players order and may be answered in any order, which is CR 101.4's
+// APNAP order for a choice made face down (CR 101.4a): nothing is
+// revealed and nothing moves until the last player has answered.
+//
+// # Hidden information
+//
+// It is a LOOK. Each player becomes a knower of their own N cards and
+// of nobody else's, and no seat sees another seat's prompt
+// (choose_cards' non-chooser redaction). With Take.Reveal the cards
+// each player TOOK become public — every player's, before any card
+// moves, because the choices are made in turn and the actions happen
+// together — and the rest of every look stays private. "The rest on
+// the bottom of their library in a random order" is Take.Then =
+// TakeRestOnBottomInRandomOrder, run for each player with their own
+// result, on that player's own random-order stream.
+//
+// # After the answers
+//
+// In Players order, each player's picks move to their hand and that
+// player's Take.Then runs; the next player's cards move from inside
+// that continuation, so a commander's CR 903.9 pause holds the rest of
+// the table's moves behind it rather than being overtaken. Then runs
+// last, once, with every result. A short library is looked at as far
+// as it goes and an empty one is a look at nothing; a player with no
+// candidate is not asked, and their whole look is "the rest".
+type EachPlayerTakesFromLibrary struct {
+	// Players are asked, and their cards move, in this order. Nil
+	// means every player still in the game, APNAP from the active
+	// player (CR 101.4). A player must not appear twice.
+	Players []uuid.UUID
+
+	// N is how many cards each player looks at off the top of their
+	// own library.
+	N int
+
+	// Take is one player's clause — Match or Slots, Max, Optional,
+	// Reveal, Validate, Label — and Take.Then is that player's own
+	// "the rest". Take.Player and Take.Cards are filled in per player;
+	// whatever they hold here is ignored.
+	Take TakeFromLibraryToHand
+
+	// Then runs once, after every player's take has finished, with one
+	// result per player in Players order — "each player gains 3 life".
+	// It runs with g.mu held, may queue further prompts, and must
+	// capture only scalars.
+	Then func(g *game.Game, res []TakeFromLibraryResult) error
+}
+
+func (e EachPlayerTakesFromLibrary) Apply(ctx *Context) error {
+	g := ctx.Game
+	source := ctx.Source()
+	players := e.Players
+	if players == nil {
+		players = apnapPlayers(g)
+	}
+	// Frozen before the run starts and never written after: the run's
+	// continuation shares them with every undo snapshot.
+	takes := make([]TakeFromLibraryToHand, len(players))
+	answers := make([][]uuid.UUID, len(players))
+	asked := make([]bool, len(players))
+	var legs []game.ChooseCardsPrompt
+	for i, player := range players {
+		t := e.Take
+		t.Player = player
+		t.Cards = g.LookAtTopOfLibraryForEffect(player, e.N)
+		takes[i] = t
+		prompt, answer := t.ask(g, player, source)
+		if prompt == nil {
+			answers[i] = answer
+			continue
+		}
+		asked[i] = true
+		legs = append(legs, *prompt)
+	}
+	reveal, label, then := e.Take.Reveal, e.Take.Label, e.Then
+	_, err := g.ChooseCardsRunThenForEffect(legs, func(g *game.Game, picks game.PromptedPicks) error {
+		chosen := make([][]uuid.UUID, len(takes))
+		for i, t := range takes {
+			chosen[i] = answers[i]
+			if asked[i] {
+				chosen[i] = picks.By(t.Player)
+			}
+		}
+		if reveal {
+			for i, t := range takes {
+				revealTaken(g, t.Player, source, label, chosen[i])
+			}
+		}
+		return eachPlayerTakeMoves(g, source, takes, chosen, nil, then)
+	})
+	return err
+}
+
+// eachPlayerTakeMoves finishes the take of player len(done) — moves
+// their picks and runs their own Then — and goes on to the next player
+// from inside that continuation, then runs `then` with every result.
+//
+// `done` is copied at every step rather than appended in place: the
+// continuation can outlive this frame (a paused CR 903.9 leg), and an
+// undone-then-replayed answer must not see the first run's entries.
+func eachPlayerTakeMoves(g *game.Game, source uuid.UUID, takes []TakeFromLibraryToHand, chosen [][]uuid.UUID,
+	done []TakeFromLibraryResult, then func(*game.Game, []TakeFromLibraryResult) error,
+) error {
+	i := len(done)
+	if i == len(takes) {
+		if then == nil {
+			return nil
+		}
+		return then(g, done)
+	}
+	t := takes[i]
+	// Every player's take was revealed together, before any card moved.
+	t.Reveal = false
+	own := t.Then
+	t.Then = func(g *game.Game, res TakeFromLibraryResult) error {
+		var ownErr error
+		if own != nil {
+			ownErr = own(g, res)
+		}
+		next := append(append(make([]TakeFromLibraryResult, 0, i+1), done...), res)
+		if err := eachPlayerTakeMoves(g, source, takes, chosen, next, then); err != nil {
+			return err
+		}
+		return ownErr
+	}
+	return t.finisher(source, t.Player)(g, chosen[i])
 }

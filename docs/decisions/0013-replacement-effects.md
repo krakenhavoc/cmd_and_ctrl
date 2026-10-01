@@ -9,6 +9,7 @@
 **Amended:** 2026-09-19 · Branch `feat/1027-1026-discard-continuation-and-springbloom` — §5x's run is shared with the prompted DISCARD, and §5g's "no continuation form" note is closed, see [§5y](#5y-amendment-2026-09-19-a-prompted-discard-is-the-same-run-and-both-verbs-share-one-body)
 **Amended:** 2026-09-22 · Branch `feat/amount-replacements` — §13's deferred `RepEventManaProduced` is answered and the draw event grows a COUNT, see [§5ab](#5ab-amendment-2026-09-22-the-last-two-amount-replacements--mana-produced-and-cards-drawn)
 **Amended:** 2026-09-29 · Branch `fix/shuffle-after-replacement-1735` — a redirected library destination can now be a genuine shuffle, not just a placement, see [§5ah](#5ah-amendment-2026-09-29-a-redirected-library-destination-can-ask-for-a-shuffle)
+**Amended:** 2026-10-01 · Branch `feat/1743-explore-the-vastlands` — §5x's run takes an arbitrary choose_cards leg per seat, and a look-and-take can name two kinds of card at once, see [§5ai](#5ai-amendment-2026-10-01-a-card-set-pick-is-a-run-too--every-player-chooses-from-their-own-look)
 
 ## Context
 
@@ -4001,6 +4002,94 @@ own and out of scope here. Filed for the record rather than as a
 tracked follow-up: the graveyard-shuffle trigger is straightforward
 whenever a titan is chosen for the catalog, and Annihilator is the
 actual gate.
+
+### 5ai. Amendment, 2026-10-01: a card-set pick is a RUN too — every player chooses from their own look
+
+*Amendment, 2026-10-01, branch `feat/1743-explore-the-vastlands`.
+Closes item 3 of [#1743](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1743).*
+
+Explore the Vastlands (the back face of Wandering Archaic) prints:
+"Each player looks at the top five cards of their library and may
+reveal a land card and/or an instant or sorcery card from among them.
+Each player puts the cards they revealed this way into their hand and
+the rest on the bottom of their library in a random order. Each player
+gains 3 life." Two things in that sentence had no shape. Every "look
+at the top N" primitive was ONE player choosing at most one card
+against ONE predicate (`effects.TakeFromLibraryToHand`, Horn of the
+Mark), and nothing could ask that question of every player as one
+instruction, with the rest of the card waiting for all of them.
+
+**1. The fan-out is §5x's run, with choose_cards as the leg.** §5y
+already made the discard leg a `choose_cards` prompt with a run link;
+what no caller could do was hand the run an ARBITRARY choose_cards
+question per seat, because the link (`ChooseCardsPrompt.promptRun`) is
+unexported on purpose. `Game.ChooseCardsRunThenForEffect(legs, then)`
+(`server/internal/game/choose_cards_run.go`) is that entry point: one
+leg per seat, each an ordinary `ChooseCardsPrompt` with its own chooser,
+candidates, bounds, zone re-check and `Validate`, and `then` handed
+`PromptedPicks` once, after the last leg settles. Everything about
+answering a leg is `choose_cards`' own and unchanged —
+`checkChooseCardsPicksLocked`, `ChooseCardsPickLegalLocked`, the
+non-chooser redaction, the candidate prunes, the departure row
+(`dropDefault` already settles a run leg through the link, §5y) and the
+deep copy an undo needs (`clonePromptRuns`). A leg with no candidates
+is not asked and has no entry: "you may choose" over nothing is not a
+question.
+
+**2. Order: queued APNAP, answered in any order, acted on together.**
+CR 101.4 has the active player choose first and the actions happen
+simultaneously; CR 101.4a lets a choice of cards in a hidden zone stay
+face down as it is made. So the legs go up together, in APNAP order,
+and no seat learns another's answer until the run's continuation acts
+on all of them. Sequential prompts would cost three players a wait for
+no information they are entitled to. A card whose choices are PUBLIC
+as they are made (Selective Obliteration's colour) still asks one seat
+at a time, and is not this door.
+
+**3. Two predicates, one look, one prompt: `TakeSlot`.** "A land card
+and/or an instant or sorcery card" is not two prompts — it is one
+`choose_cards` question over every card that fits ANY slot, with a rule
+about the picked SET: each card fills one slot it matches, no slot over
+its `Max`, no card in two. `TakeFromLibraryToHand.Slots` carries it; the
+rule is a maximum bipartite matching (`takeSlotRule.fill`), riding the
+prompt's existing `Validate`, with which slots each candidate fits
+frozen when the prompt is asked (`Validate` is handed no `*Game`, and a
+card's characteristics in a library do not move under an open prompt).
+Two consequences are deliberate:
+
+- **The ceiling is what the slots can hold out of the ACTUAL
+  candidates**, not the sum of the slots. Three lands and no spell is
+  "up to one", so the client's own `choose_max` stops a second land
+  before the server has to refuse it; and a mandatory slotted clause
+  gets that same number as its floor, so it can never queue a prompt
+  no set satisfies (the #544 wedge).
+- **A card matching both slots fills one.** An artifact creature under
+  "a creature card and/or an artifact card" may go in either slot, so
+  it plus a plain creature is legal and two plain creatures are not.
+
+The wire does not change: it is a `choose_cards` prompt with a set
+rule, which the client already answers and whose refusal it already
+shows inline (#624). `internal/legal` needed nothing — every set it
+offers goes through `ChooseCardsPickLegalLocked`, which is the slot
+rule.
+
+**4. The card side is `effects.EachPlayerTakesFromLibrary`.** Each
+player LOOKS at their own N (only they become a knower) and is asked
+exactly the question `TakeFromLibraryToHand` would ask them alone — the
+same `ask`, split out of `Apply` for it. When the run settles, every
+player's picks are revealed (all of them before any card moves, which
+is CR 101.4's "then the actions happen simultaneously"), then each
+player's picks move to hand and that player's own `Take.Then` runs —
+`TakeRestOnBottomInRandomOrder`, on that player's own `random_order`
+stream, clearing every knower so the look leaks no library order —
+with the next player's move chained from inside that continuation so a
+commander's CR 903.9 pause is not overtaken. The fan-out's own `Then`
+runs last, once: "each player gains 3 life".
+
+**Not closed here.** "Each player REVEALS the top N" (a public look)
+would be the same fan-out with `RevealTopOfLibraryForEffect` in place
+of the look; no card in the catalog's gap needs it yet, so the field
+was not added.
 
 ### 6. Six pipeline integration points (five mutations + step transition)
 

@@ -331,8 +331,9 @@ type ChooseCardsPrompt struct {
 
 	// promptRun links the queued prompt to the RUN it is one leg of
 	// (PendingChoice.promptRun, prompt_run.go). Unexported because it
-	// is engine plumbing: one caller sets it, the discard prompt
-	// (#1027), and the catalog never builds a run by hand.
+	// is engine plumbing: two callers set it, the discard prompt
+	// (#1027) and ChooseCardsRunThenForEffect (#1743), and the catalog
+	// never builds a run by hand.
 	promptRun uuid.UUID
 }
 

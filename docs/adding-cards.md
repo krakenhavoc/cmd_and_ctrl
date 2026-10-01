@@ -3129,6 +3129,34 @@ drops a paused CR 903.9 leg from the accounting, and nothing watching a
 bounce should see a library take. `TakeRestOnBottomInRandomOrder` and
 `TakeRestIntoGraveyard` are the two rests.
 
+**Two kinds of card from one look are `Slots`, and "each player" is
+`EachPlayerTakesFromLibrary` (#1743).** "May reveal a land card and/or
+an instant or sorcery card from among them" is one prompt, not two:
+
+```go
+EachPlayerTakesFromLibrary{             // "each player looks at the top five …"
+    N: 5,
+    Take: TakeFromLibraryToHand{
+        Slots: []TakeSlot{
+            {Label: "a land card", Match: Land(), Max: 1},
+            {Label: "an instant or sorcery card", Match: Or(Instant(), Sorcery()), Max: 1},
+        },
+        Optional: true, Reveal: true,
+        Then: TakeRestOnBottomInRandomOrder,   // each player's own rest
+    },
+    Then: func(g *game.Game, _ []TakeFromLibraryResult) error { … },  // "each player gains 3 life"
+}.Apply(ctx)
+```
+
+A card fitting both slots fills one of them, and the prompt's ceiling is
+what the slots can hold out of the real candidates, so don't set `Max`
+alongside `Slots`. The fan-out asks every player at once, APNAP, each
+about their own look only, and acts on nothing until the last answer is
+in — so the rest of the card goes in the outer `Then`, never on the next
+line. See
+[wandering_archaic.go](../server/internal/cards/effects/wandering_archaic.go)
+and [ADR 0013 §5ai](decisions/0013-replacement-effects.md#5ai-amendment-2026-10-01-a-card-set-pick-is-a-run-too--every-player-chooses-from-their-own-look).
+
 "Put the rest on the bottom in a random order" anywhere else is
 `g.PutOnBottomInRandomOrderForEffect(actor, from, ids)`, which draws
 from the game's keyed RNG (`random_order` stream, ADR 0054) — never
