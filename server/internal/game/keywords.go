@@ -222,6 +222,14 @@ var canonicalKeywords = map[string]bool{
 	// catalog entry. CUMULATIVE (CR 702.100d: each instance triggers
 	// separately), so AppendKeywordAbility keeps every granted instance.
 	KeywordEvolve: true,
+	// rebound (CR 702.88) joins with #1854 (ADR 0107 §3), in the same
+	// change that teaches the engine to honour it. Its consumer is the
+	// stack's graveyard route (routeStackCardToGraveyardLocked, through
+	// spellRebounds in rebound.go), which reads it off the resolving
+	// spell with HasKeyword, so a deck-imported card works with no
+	// catalog entry. Redundant (CR 702.88c): one instance or several
+	// is one exile and one delayed trigger.
+	KeywordRebound: true,
 	// split second (CR 702.61) joins with #1519, in the same change
 	// that teaches the engine to READ it. The rule itself was built in
 	// S13.1 — CastSpell, both activation paths, the enumerator and the
@@ -423,7 +431,7 @@ func CanonicalKeywords(s string) ([]string, bool) {
 // "trample", "vigilance", "menace", "defender", "haste", "flash",
 // "hexproof", "shroud", "indestructible", "changeling", fear,
 // intimidate, shadow, horsemanship, skulk, infect, wither, prowess, evolve,
-// "split second", and the landwalk tokens ("islandwalk", "nonbasic landwalk", …). Toxic is NOT
+// "split second", rebound, and the landwalk tokens ("islandwalk", "nonbasic landwalk", …). Toxic is NOT
 // asked through here: its token carries an amount, so it is read with
 // ToxicTotal.
 //

@@ -1249,3 +1249,92 @@ func sourceDealsDamageToEachLegalTarget(amount int) func(g *game.Game, item *gam
 		return nil
 	}
 }
+
+// bounceTheTarget is the OnResolve "Return target <permanent> to its
+// owner's hand" as a spell's whole effect (Void Squall): the first
+// target still legal as it resolves (CR 608.2b).
+func bounceTheTarget(_ *game.StackItem, ctx *Context) error {
+	id, ok := b16FirstLegalTargetCard(ctx)
+	if !ok {
+		return nil
+	}
+	return BounceToHand{Target: id}.Apply(ctx)
+}
+
+// flickerTheTargetToItsOwner is the OnResolve "Exile target creature
+// you control, then return it to the battlefield under its owner's
+// control" (Momentary Blink, Ephemerate): the creature comes back as a
+// new object (CR 400.7) under its OWNER's control, which is the
+// difference from Cloudshift's "under your control".
+func flickerTheTargetToItsOwner(_ *game.StackItem, ctx *Context) error {
+	id, ok := b16FirstLegalTargetCard(ctx)
+	if !ok {
+		return nil
+	}
+	return Flicker{Target: id}.Apply(ctx)
+}
+
+// boostTheTargetUntilEOT is the OnResolve "Target creature gets +P/+T
+// until end of turn": the one target slot, pumped until cleanup (CR
+// 514.2). A target that became illegal never gets here (CR 608.2b: a
+// spell whose only target is illegal is countered by the game rules).
+// Artful Maneuver and Prey's Vengeance print it.
+func boostTheTargetUntilEOT(power, toughness int, label string) func(item *game.StackItem, ctx *Context) error {
+	return func(item *game.StackItem, ctx *Context) error {
+		if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
+			return nil
+		}
+		return BoostUntilEOT{Target: item.Targets[0].ID, Power: power, Toughness: toughness, Label: label}.Apply(ctx)
+	}
+}
+
+// boostTheTargetAndUnblockableThisTurn is the OnResolve "Target
+// creature gets +P/+0 until end of turn and can't be blocked this
+// turn" (Distortion Strike, Taigam's Strike): the pump and the
+// restriction, both ending at cleanup.
+func boostTheTargetAndUnblockableThisTurn(power int, name string) func(item *game.StackItem, ctx *Context) error {
+	return func(item *game.StackItem, ctx *Context) error {
+		if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
+			return nil
+		}
+		target := item.Targets[0].ID
+		if err := (BoostUntilEOT{Target: target, Power: power, Label: name + " — power boost"}).Apply(ctx); err != nil {
+			return err
+		}
+		return RestrictUntilEOT{Target: target, Restrictions: game.CantBeBlocked, Label: name + " — can't be blocked"}.Apply(ctx)
+	}
+}
+
+// protectionFromAChosenColorForTheTarget is the OnResolve "Target
+// creature you control gains protection from the color of your choice
+// until end of turn" (Center Soul, Emerge Unscathed): the colour is
+// chosen as the spell resolves, and asked as the colour the creature is
+// protected FROM (#780), so a bot names the biggest threat. A target
+// that left in response is asked nothing.
+func protectionFromAChosenColorForTheTarget(name string) func(item *game.StackItem, ctx *Context) error {
+	return func(item *game.StackItem, ctx *Context) error {
+		var target game.TargetRef
+		for _, t := range ctx.LegalTargets() {
+			if t.Kind == game.TargetCard {
+				target = t
+			}
+		}
+		if target.Kind != game.TargetCard {
+			return nil
+		}
+		ChooseColorThen(game.ColorForProtection, ctx.Game, item.Controller, item.SourceCardID,
+			name+" — choose a color",
+			func(g *game.Game, color string) error {
+				token := game.ProtectionFromColor(color)
+				if token == "" {
+					return nil
+				}
+				return GrantKeywordUntilEOT{
+					Target:   target.ID,
+					Keywords: []string{token},
+					Label:    name + " — " + token,
+				}.Apply(NewContext(g, item))
+			})
+		return nil
+	}
+}

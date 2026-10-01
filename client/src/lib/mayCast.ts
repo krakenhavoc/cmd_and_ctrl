@@ -1,9 +1,9 @@
 // mayCast.ts — the words on a "may_cast" prompt (ADR 0099 §7).
 //
-// One prompt kind serves cascade, discover, suspend and madness, and
-// what declining does is different for each: cascade bottoms the card,
-// discover puts it into your hand, suspend leaves it in exile and
-// madness puts it into your graveyard. The server names the rule in
+// One prompt kind serves cascade, discover, suspend, rebound and
+// madness, and what declining does is different for each: cascade
+// bottoms the card, discover puts it into your hand, suspend and
+// rebound leave it in exile and madness puts it into your graveyard. The server names the rule in
 // `may_cast_keyword` and the two branches in `accept_label` /
 // `decline_label`; this module turns that into the tag, the hint and
 // the buttons, falling back to generic copy for an offer that is only
@@ -47,6 +47,16 @@ export function mayCastCopy(
       copy = {
         source: "suspend · CR 702.62",
         hint: "The last time counter is gone. Cast it for nothing now, or leave it in exile.",
+        accept: "Cast it free",
+        decline: "Leave it in exile",
+      };
+      break;
+    case "rebound":
+      copy = {
+        source: "rebound · CR 702.88",
+        hint:
+          "Your next upkeep has come. Cast it for nothing now, or leave it in exile. If you choose to cast it " +
+          "and then pass without casting, it stays in exile.",
         accept: "Cast it free",
         decline: "Leave it in exile",
       };
