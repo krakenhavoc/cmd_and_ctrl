@@ -56,6 +56,70 @@ type TargetDifference struct {
 	Key func(g *Game, c Card, zone ZoneKind) (key string, ok bool)
 }
 
+// TargetSameness is the opposite set rule (#1807, ADR 0106 §5): EVERY
+// pick of the clause must share the value Key names — "up to four
+// target cards from a single graveyard". It is the sibling of
+// TargetDifference, read by the same four readers, each of which has
+// a "share" branch beside its "differ" one:
+//
+//   - the announce gate refuses a set whose picks hold two keys;
+//   - the CR 608.2b re-check judges the SURVIVING picks, with the
+//     weaker reading setRuleConflictLocked gives (two survivors that
+//     disagree are both illegal);
+//   - the enumerator builds sets within one key group;
+//   - the client's picker greys every candidate outside the first
+//     pick's group, from the map the view ships as `same`.
+//
+// Key is a closed vocabulary rather than a func, unlike
+// TargetDifference.Key: the rule hangs off TargetSpec, which a stack
+// item and a paused pick_target frame both reach, and a func there is
+// a new closure route the ADR 0041 ratchet would have to carry
+// (testdata/closure_fields.txt, whose ceilings may only fall). The
+// only printed family — "from a single graveyard" — keys on the
+// owner, so one value says it.
+type TargetSameness struct {
+	// Label is the printed rule in a form the picker and the refusal
+	// can both say after "the targets must": "come from a single
+	// graveyard".
+	Label string
+
+	// Key names the value every pick must share.
+	Key TargetShareKey
+}
+
+// TargetShareKey is what a TargetSameness compares.
+type TargetShareKey uint8
+
+const (
+	// TargetShareNone is the zero value: a rule with no key, which
+	// constrains nothing. effects.Register refuses it on a catalog
+	// clause.
+	TargetShareNone TargetShareKey = iota
+
+	// TargetShareOwner is the card's OWNER (CR 108.3). For a card in
+	// a graveyard that names the graveyard it is in: CR 400.3, a card
+	// that would go to a graveyard other than its owner's goes to its
+	// owner's instead, so no card is ever in another player's.
+	TargetShareOwner
+)
+
+// keyOf is the value a pick holds under the rule, or false when it has
+// none (a card with no owner, a rule with no key) — and a pick with no
+// key conflicts with nothing, TargetDifference's lenient reading.
+func (s *TargetSameness) keyOf(c Card) (string, bool) {
+	if s == nil {
+		return "", false
+	}
+	switch s.Key {
+	case TargetShareOwner:
+		if c.Owner == uuid.Nil {
+			return "", false
+		}
+		return c.Owner.String(), true
+	}
+	return "", false
+}
+
 // hasXBound reports whether a clause carries either X-bound flag
 // (#1723): ManaValueAtMostX ("X or less") or ManaValueEqualsX
 // ("exactly X"). The two share one bind-and-recheck mechanism and
@@ -121,7 +185,35 @@ func StepsBoundByX(steps []AnnouncedClause) bool {
 //
 // Caller must hold g.mu.
 func (g *Game) targetDifferenceKeyLocked(clause *TargetClause, ref TargetRef) (string, bool) {
-	if clause == nil || clause.Different == nil || clause.Different.Key == nil || ref.Kind != TargetCard {
+	if clause == nil || clause.Different == nil || clause.Different.Key == nil {
+		return "", false
+	}
+	return g.pickKeyLocked(ref, func(c Card, zone ZoneKind) (string, bool) {
+		return clause.Different.Key(g, c, zone)
+	})
+}
+
+// targetSamenessKeyLocked is targetDifferenceKeyLocked for the
+// sameness rule (#1807): the key one pick holds under clause.Same, or
+// false when the clause has no such rule or the pick has no key.
+//
+// Caller must hold g.mu.
+func (g *Game) targetSamenessKeyLocked(clause *TargetClause, ref TargetRef) (string, bool) {
+	if clause == nil || clause.Same == nil {
+		return "", false
+	}
+	return g.pickKeyLocked(ref, func(c Card, _ ZoneKind) (string, bool) {
+		return clause.Same.keyOf(c)
+	})
+}
+
+// pickKeyLocked finds the card a pick names, in whatever zone it is in
+// now, and reads a set-rule key off it. A player, or a card that is
+// gone, has no key.
+//
+// Caller must hold g.mu.
+func (g *Game) pickKeyLocked(ref TargetRef, key func(c Card, zone ZoneKind) (string, bool)) (string, bool) {
+	if ref.Kind != TargetCard {
 		return "", false
 	}
 	z := g.findCardZoneLocked(ref.ID)
@@ -130,7 +222,7 @@ func (g *Game) targetDifferenceKeyLocked(clause *TargetClause, ref TargetRef) (s
 	}
 	for i := range z.Cards {
 		if z.Cards[i].InstanceID == ref.ID {
-			return clause.Different.Key(g, z.Cards[i], z.Kind)
+			return key(z.Cards[i], z.Kind)
 		}
 	}
 	return "", false
@@ -147,6 +239,22 @@ func (g *Game) TargetDifferenceKeysForEffect(spec *TargetSpec, ids []uuid.UUID) 
 	out := make(map[uuid.UUID]string, len(ids))
 	for _, id := range ids {
 		if k, ok := g.targetDifferenceKeyLocked(spec, TargetRef{Kind: TargetCard, ID: id}); ok {
+			out[id] = k
+		}
+	}
+	return out
+}
+
+// TargetSamenessKeysForEffect is TargetDifferenceKeysForEffect for the
+// sameness rule (#1807): each card's key under spec.Same, nil when the
+// spec has none. Caller must hold g.mu.
+func (g *Game) TargetSamenessKeysForEffect(spec *TargetSpec, ids []uuid.UUID) map[uuid.UUID]string {
+	if spec == nil || spec.Same == nil {
+		return nil
+	}
+	out := make(map[uuid.UUID]string, len(ids))
+	for _, id := range ids {
+		if k, ok := g.targetSamenessKeyLocked(spec, TargetRef{Kind: TargetCard, ID: id}); ok {
 			out[id] = k
 		}
 	}
@@ -184,6 +292,15 @@ func targetSetError(d *TargetDifference) error {
 	return fmt.Errorf("%w: those targets must %s", ErrIllegalTarget, label)
 }
 
+// targetSameError is targetSetError for the sameness rule (#1807).
+func targetSameError(r *TargetSameness) error {
+	label := "share one key"
+	if r != nil && r.Label != "" {
+		label = r.Label
+	}
+	return fmt.Errorf("%w: those targets must %s", ErrIllegalTarget, label)
+}
+
 // setRuleConflictLocked is the CR 608.2b half of the set rule: does
 // ref, which has already passed its own clause's per-candidate
 // re-check, share its key with another SURVIVING pick of the same
@@ -202,10 +319,19 @@ func targetSetError(d *TargetDifference) error {
 // card leaving in response to Agadeem's Awakening costs exactly that
 // card.
 //
+// The sameness rule (#1807) is judged the same way from the other
+// side: ref conflicts with a surviving pick whose key DIFFERS from its
+// own, and again both are illegal. Under TargetShareOwner two
+// survivors can never disagree — a card in a graveyard does not change
+// owner, and one that left and came back is a new object and illegal
+// on its own (CR 400.7) — so the branch is the general one, written
+// for a key that could move.
+//
 // Caller must hold g.mu.
 func (g *Game) setRuleConflictLocked(item *StackItem, clause *TargetClause, ref TargetRef) bool {
-	key, ok := g.targetDifferenceKeyLocked(clause, ref)
-	if !ok {
+	diffKey, diffOK := g.targetDifferenceKeyLocked(clause, ref)
+	sameKey, sameOK := g.targetSamenessKeyLocked(clause, ref)
+	if !diffOK && !sameOK {
 		return false
 	}
 	src := g.stackItemSourceLocked(item)
@@ -219,8 +345,15 @@ func (g *Game) setRuleConflictLocked(item *StackItem, clause *TargetClause, ref 
 		if !g.targetLegalLocked(src, clause, other) {
 			continue
 		}
-		if k, ok := g.targetDifferenceKeyLocked(clause, other); ok && k == key {
-			return true
+		if diffOK {
+			if k, ok := g.targetDifferenceKeyLocked(clause, other); ok && k == diffKey {
+				return true
+			}
+		}
+		if sameOK {
+			if k, ok := g.targetSamenessKeyLocked(clause, other); ok && k != sameKey {
+				return true
+			}
 		}
 	}
 	return false
@@ -234,14 +367,57 @@ func (g *Game) setRuleConflictLocked(item *StackItem, clause *TargetClause, ref 
 // CR 603.3d / cast-offer check that counted candidates would open a
 // prompt nobody can answer.
 //
+// Under the sameness rule (#1807) it is the LARGEST key group, plus
+// the cards with no key, which fit any group — so an exact "exile four
+// target cards from a single graveyard" (Pestilent Cauldron) is not
+// offered when no one graveyard holds four.
+//
 // Caller must hold g.mu.
 func (g *Game) fillableCountLocked(clause *TargetClause, lt LegalTargets) int {
 	n := len(lt.Players)
-	if clause == nil || clause.Different == nil {
+	if clause == nil || (clause.Different == nil && clause.Same == nil) {
 		return n + len(lt.Cards)
 	}
-	seen := make(map[string]bool, len(lt.Cards))
+	if clause.Same == nil {
+		return n + g.differentCountLocked(clause, lt.Cards)
+	}
+	groups := map[string][]uuid.UUID{}
+	var order []string
+	var free []uuid.UUID
 	for _, id := range lt.Cards {
+		k, ok := g.targetSamenessKeyLocked(clause, TargetRef{Kind: TargetCard, ID: id})
+		if !ok {
+			free = append(free, id)
+			continue
+		}
+		if _, seen := groups[k]; !seen {
+			order = append(order, k)
+		}
+		groups[k] = append(groups[k], id)
+	}
+	best := g.differentCountLocked(clause, free)
+	for _, k := range order {
+		group := append(append([]uuid.UUID(nil), free...), groups[k]...)
+		if c := g.differentCountLocked(clause, group); c > best {
+			best = c
+		}
+	}
+	return n + best
+}
+
+// differentCountLocked is how many of ids one announcement could pick
+// under the clause's difference rule: cards sharing a key count once,
+// and a card with no key counts on its own. With no difference rule
+// it is every card.
+//
+// Caller must hold g.mu.
+func (g *Game) differentCountLocked(clause *TargetClause, ids []uuid.UUID) int {
+	if clause == nil || clause.Different == nil {
+		return len(ids)
+	}
+	n := 0
+	seen := make(map[string]bool, len(ids))
+	for _, id := range ids {
 		k, ok := g.targetDifferenceKeyLocked(clause, TargetRef{Kind: TargetCard, ID: id})
 		if !ok {
 			n++
@@ -274,6 +450,24 @@ func (g *Game) PickTargetSetRuleForEffect(c *PendingChoice) (*TargetDifference, 
 	return clause.Different, g.TargetDifferenceKeysForEffect(clause, c.PickTargetCards)
 }
 
+// PickTargetSameRuleForEffect is PickTargetSetRuleForEffect for the
+// sameness rule (#1807): the rule of the clause a pick_target prompt
+// is asking about, with each offered card's key. Nil when the clause
+// has none, or when the prompt carries no live frame (a restored
+// snapshot); the announce gate still enforces the rule on the answer.
+//
+// Caller must hold g.mu.
+func (g *Game) PickTargetSameRuleForEffect(c *PendingChoice) (*TargetSameness, map[uuid.UUID]string) {
+	if c == nil || c.Kind != PendingChoicePickTarget || c.pickTargetResume == nil {
+		return nil, nil
+	}
+	clause := c.pickTargetResume.currentClause()
+	if clause == nil || clause.Same == nil {
+		return nil, nil
+	}
+	return clause.Same, g.TargetSamenessKeysForEffect(clause, c.PickTargetCards)
+}
+
 // withoutSetRuleConflictsLocked narrows slot `slot`'s retarget
 // alternatives to the cards whose set-rule key no OTHER slot of the
 // same clause holds (#1559). CR 115.7c: the new target must not make
@@ -282,12 +476,20 @@ func (g *Game) PickTargetSetRuleForEffect(c *PendingChoice) (*TargetDifference, 
 // anyway; this keeps it off the offer, so a prompt never lists an
 // answer the engine would refuse.
 //
+// Under the sameness rule (#1807) it narrows the other way: to the
+// cards whose key matches the key the slots that STAY hold. That is
+// the one-slot-at-a-time offer only. The gate judges the final set
+// (CR 115.7e: "only the final set of targets is evaluated"), so a
+// change that moves every slot to another graveyard at once — a whole
+// list through RetargetStackItemForEffect — is accepted.
+//
 // Caller must hold g.mu.
 func (g *Game) withoutSetRuleConflictsLocked(clause *TargetClause, lt LegalTargets, targets []TargetRef, slot int) LegalTargets {
-	if clause == nil || clause.Different == nil || slot < 0 || slot >= len(targets) {
+	if clause == nil || (clause.Different == nil && clause.Same == nil) || slot < 0 || slot >= len(targets) {
 		return lt
 	}
 	held := make(map[string]bool, len(targets))
+	sameHeld := make(map[string]bool, len(targets))
 	for i, t := range targets {
 		if i == slot || t.Mode != targets[slot].Mode || t.Slot != targets[slot].Slot {
 			continue
@@ -295,13 +497,23 @@ func (g *Game) withoutSetRuleConflictsLocked(clause *TargetClause, lt LegalTarge
 		if k, ok := g.targetDifferenceKeyLocked(clause, t); ok {
 			held[k] = true
 		}
+		if k, ok := g.targetSamenessKeyLocked(clause, t); ok {
+			sameHeld[k] = true
+		}
 	}
-	if len(held) == 0 {
+	if len(held) == 0 && len(sameHeld) == 0 {
 		return lt
 	}
 	out := LegalTargets{Players: lt.Players}
 	for _, id := range lt.Cards {
-		if k, ok := g.targetDifferenceKeyLocked(clause, TargetRef{Kind: TargetCard, ID: id}); ok && held[k] {
+		ref := TargetRef{Kind: TargetCard, ID: id}
+		if k, ok := g.targetDifferenceKeyLocked(clause, ref); ok && held[k] {
+			continue
+		}
+		// A card with a key fits only when every staying slot holds
+		// that same key; staying slots that already disagree (left
+		// alone under CR 115.7d) admit no keyed card at all.
+		if k, ok := g.targetSamenessKeyLocked(clause, ref); ok && len(sameHeld) > 0 && (len(sameHeld) > 1 || !sameHeld[k]) {
 			continue
 		}
 		out.Cards = append(out.Cards, id)

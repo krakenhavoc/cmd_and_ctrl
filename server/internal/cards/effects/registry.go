@@ -1001,6 +1001,12 @@ func checkFlatClauses(name string, spec *game.TargetSpec) {
 		if d := spec.Clause(i).Different; d != nil && (d.Key == nil || d.Label == "") {
 			panic(fmt.Sprintf("effects.Register: %q target clause %d has a set rule with no Key or no Label — build it with EachDifferentManaValue / EachDifferentController / EachDifferentName", name, i))
 		}
+		// #1807: the sameness rule, likewise — a rule with no key
+		// constrains nothing, which is a card that reaches several
+		// graveyards at once.
+		if s := spec.Clause(i).Same; s != nil && (s.Key == game.TargetShareNone || s.Label == "") {
+			panic(fmt.Sprintf("effects.Register: %q target clause %d has a sameness rule with no Key or no Label — build it with FromASingleGraveyard", name, i))
+		}
 		// #1723: "mana value X or less" and "mana value X" are
 		// different clauses — no printed card is both, and a spec
 		// that set both would have the second WithManaValue...X()

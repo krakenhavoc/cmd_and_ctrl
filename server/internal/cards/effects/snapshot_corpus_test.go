@@ -199,6 +199,11 @@ func corpusBoards() []corpusBoard {
 		// Tier 4-0's prowess/pump body, which merged while 4-2 was open:
 		// an engine trigger with no catalog row, keyed by its body.
 		{"prowess_on_stack", corpusProwessOnStack},
+		// v7, added by #1805 (ADR 0106 §3) as a new file: an evolve
+		// trigger — the second engine keyword trigger, keyed by its
+		// evolve/grow body — waiting on the stack, carrying the entered
+		// creature on its trigger context.
+		{"evolve_on_stack", corpusEvolveOnStack},
 		// v7, added by #1593: duration copy effects — the becomeCopy mod
 		// carrying its copied values, and the carried durationCopyBase
 		// under a Cytoshaped Clone. Written by #1712, alongside the
@@ -1394,6 +1399,20 @@ func corpusProwessOnStack(t *testing.T) *game.Game {
 		[]game.TargetRef{{Kind: game.TargetPlayer, ID: opp}})
 	if it := corpusSettleTrigger(t, g, monk); it.Body != "prowess/pump" {
 		t.Fatalf("setup: the prowess trigger names body %q, want prowess/pump", it.Body)
+	}
+	return g
+}
+
+// corpusEvolveOnStack is an evolve trigger — an engine trigger with no
+// catalog row, keyed by its evolve/grow body (#1805) — waiting on the
+// stack after a bigger creature entered under its controller's control.
+func corpusEvolveOnStack(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat].ID
+	raptor := pushEvolveCreature(g, me, "Cloudfin Raptor", 0, 1, "flying", game.KeywordEvolve)
+	enterCreature(t, g, me, "Grizzly Bears", 2, 2)
+	if it := corpusSettleTrigger(t, g, raptor); it.Body != "evolve/grow" {
+		t.Fatalf("setup: the evolve trigger names body %q, want evolve/grow", it.Body)
 	}
 	return g
 }

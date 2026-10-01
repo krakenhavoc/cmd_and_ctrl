@@ -74,6 +74,25 @@ surface tiny.
    matters, as in Arc Trail) so a target that left in response is
    skipped rather than erroring.
 
+   **Rules over the chosen set (#1559, #1807).** A clause whose picks
+   are judged against each other carries a set rule from
+   [target_set.go](../server/internal/cards/effects/target_set.go),
+   never a hand-written predicate. "That each have a different mana
+   value" is `.EachDifferent(EachDifferentManaValue())` (no two picks
+   share a key). "From a single graveyard" is the opposite rule, every
+   pick shares one key, and has its own constructor:
+   ```go
+   Targets: UpToCardsFromASingleGraveyard("up to three target cards from a single graveyard", 3), // Decompose
+   Targets: TargetCardInGraveyard("X target cards from a single graveyard").
+       WithCount(0, 0).AllShare(FromASingleGraveyard()),                                       // an exact count
+   ```
+   The engine enforces both at announce, re-judges them over the
+   surviving picks at resolution, counts only the largest group when
+   it asks whether a clause can be filled, and ships the keys so the
+   picker greys what doesn't fit ([ADR 0106 §5](decisions/0106-five-small-seams-from-the-s50-rechecks.md)).
+   `ExileTargetCards` (single_graveyard.go) is the shared body for
+   "exile up to N target cards from a single graveyard".
+
    **Target clauses (#764).** A count is one predicate chosen N
    times. When the slots have DIFFERENT predicates — Bite Down's
    "target creature you control" then "target creature or
@@ -1516,6 +1535,7 @@ canonicalised forms the engine expects. Canonical tokens:
 | `"wither"` | Wither (CR 702.80) — #748, the damage tail: -1/-1 counters on a creature |
 | `"toxic N"` | Toxic (CR 702.164) — #748, N extra poison on combat damage to a player. Numbered AND cumulative: read it with `game.ToxicTotal`, never `HasKeyword`, and grant it through `game.AppendKeywordAbility` so a second instance adds up ([ADR 0056](decisions/0056-infect-wither-toxic.md)) |
 | `"prowess"` | Prowess (CR 702.108) — #706, the first TRIGGERED keyword in the table: `TriggersForCard` turns each instance on the effective ability list into one trigger (`game/prowess.go`). Cumulative like toxic, so grant it through `game.AppendKeywordAbility`. Never write a prowess trigger by hand — declare the token ([ADR 0014 amendment 2026-09-24](decisions/0014-combat-keywords.md)) |
+| `"evolve"` | Evolve (CR 702.100) — #1805, the second TRIGGERED keyword, built exactly like prowess: one trigger per instance (`game/evolve.go`), the CR 702.100a comparison made on entry and again on resolution (CR 603.4), and `game.EventEvolved` when a counter lands (CR 702.100b) — "whenever this creature evolves" is `WhenThisEvolves(label, effect)`. Cumulative, so grant it through `KeywordGrant` / `game.AppendKeywordAbility`. A creature whose only text is evolve and other tokens here needs no card file. Never write an evolve trigger by hand ([ADR 0106 §3](decisions/0106-five-small-seams-from-the-s50-rechecks.md#3-evolve-1805)) |
 | `"split second"` | Split second (CR 702.61) — #1519, a SPELL's keyword: `castHasSplitSecond` (`game/split_second.go`) stamps `StackItem.SplitSecond` at announce, and while it is on the stack nobody casts or activates a non-mana ability. Declare it on an instant or sorcery exactly like flash; never pass the sandbox `SplitSecond` cast flag from a card ([ADR 0007 amendment 2026-09-24](decisions/0007-stack-foundation.md)) |
 
 **A keyword counter needs no grant** (CR 122.1b, [ADR 0101](decisions/0101-keyword-counters.md)).
@@ -1538,7 +1558,7 @@ keywords are not enforced: a card that places one ships with a caveat.
 2026-09-24 amendment says which to use. A constructor on
 `Spec.Triggered` (`Cascade()`, `Storm()`, `Ward(...)`) when the keyword
 carries a parameter a bare token cannot hold or triggers from the
-stack; a token here with an engine-side trigger (prowess) when it lives
+stack; a token here with an engine-side trigger (prowess, evolve) when it lives
 on permanents, is granted and printed on tokens, and needs to work on a
 card with no catalog entry. Either way the trigger carries its name in
 `game.TriggeredAbility.Keyword`, which `cards/coverage` reads (#1258).

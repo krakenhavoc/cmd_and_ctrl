@@ -2200,6 +2200,11 @@ export interface LegalTargetsView {
   // whose key a pick of THIS clause already holds, and says the rule.
   // A card missing from `keys` collides with nothing.
   different?: TargetDifferenceView;
+  // #1807: the opposite rule — every pick must SHARE one key ("from a
+  // single graveyard", keyed on the card's owner). The picker greys a
+  // candidate whose key differs from a pick of THIS clause, and says
+  // the rule. A card missing from `keys` fits any group.
+  same?: TargetDifferenceView;
   // #1559: "with mana value X or less", X the announced X. Like
   // count_from_x, the server built this legal set before X was chosen,
   // so it is a superset: the picker drops every card whose

@@ -1090,13 +1090,38 @@ var items = []Item{
 		Phrases:  []string{"hasn't been chosen"},
 	},
 	{
-		Slug: "evolve", Name: "Evolve", Kind: KindMechanic, Status: StatusMissing,
-		Summary:     "Whenever a creature enters under your control with greater power or toughness than a creature with evolve, that creature gets a +1/+1 counter.",
-		Missing:     "Evolve isn't implemented, so a creature with evolve never grows.",
-		Rules:       []string{"702.100"},
-		Issue:       1805,
-		Waiting:     []string{"Dinosaur Egg"},
-		EngineNotes: "keyword (CR 702.100): no trigger for it. It is an intervening-if ETB watcher (CR 702.100b compares the entering creature's power and toughness with the evolving creature's, both on entry and on resolution) and would be a `canonicalKeywords` token with an engine-side trigger, like prowess, so a printed or granted evolve works without a catalog entry. Dinosaur Egg ships with its discover and a caveat for evolve.",
+		// #1805 (ADR 0106 §3): a canonical keyword token with an
+		// engine-side trigger, like prowess (game/evolve.go). The
+		// comparison is CR 702.100a's, made on entry and again on
+		// resolution (CR 603.4); CR 702.100b defines "evolves". A
+		// creature whose only text is evolve and other canonical
+		// keywords (Cloudfin Raptor, Shambleshark) needs no card file.
+		Slug: "evolve", Name: "Evolve", Kind: KindKeyword, Status: StatusImplemented,
+		Summary:  "Whenever a creature enters under your control with greater power or toughness than a creature with evolve, the creature with evolve gets a +1/+1 counter, once for each instance of evolve it has.",
+		Rules:    []string{"702.100"},
+		ADR:      "0106-five-small-seams-from-the-s50-rechecks.md",
+		Keywords: []string{game.KeywordEvolve},
+		Mechanic: "evolve",
+		Printed:  printedKeyword("evolve"),
+		Examples: []string{"Dinosaur Egg", "Tyranid Prime", "Renegade Krasis"},
+	},
+	{
+		Slug: "trigger-per-counter", Name: "Triggers once for each counter", Kind: KindSeam, Status: StatusMissing,
+		Summary:     "Abilities that say \"whenever a counter is put on\" a permanent trigger once for each counter, so two counters at once are two triggers.",
+		Missing:     "An ability that triggers for each counter put on a permanent can't trigger more than once for one placement yet.",
+		Rules:       []string{"603.2c"},
+		Issue:       1841,
+		Waiting:     []string{"Fathom Mage"},
+		EngineNotes: "harvester: one `EventCounterPlaced` per placement (post-change total), and a trigger fires at most once per event. \"Whenever one or more counters are put\" fits (Herd Baloth, Scurry Oak); \"whenever a counter is put\" is one trigger per counter (CR 603.2c), so a placement of two must be two stack objects. Likely a per-event multiplicity on `TriggeredAbility`, fed by the delta `b33CountersPlacedDelta` reads. Found landing the evolve cards (#1805).",
+	},
+	{
+		Slug: "target-bounded-by-counters-removed", Name: "Targets bounded by counters removed", Kind: KindSeam, Status: StatusMissing,
+		Summary:     "Abilities whose target must have power no greater than the number of counters removed to pay for them.",
+		Missing:     "A target can't yet be limited by how many counters were removed to activate the ability.",
+		Rules:       []string{"601.2c"},
+		Issue:       1842,
+		Waiting:     []string{"Simic Manipulator"},
+		EngineNotes: "targeting: `RemoveCountersXFromThis` announces its count at activation, before targets (CR 601.2c), but the only announced-X target bounds are `ManaValueAtMostX` / `ManaValueEqualsX`. Nothing binds a POWER bound to the counters removed, and without it Simic Manipulator could steal any creature (stronger than printed). Likely a `PowerAtMostX`-style clause flag on the same announce-time binding, re-checked at CR 608.2b. Found landing the evolve cards (#1805).",
 	},
 	{
 		Slug: "cant-be-countered-grant", Name: "Making other spells uncounterable", Kind: KindSeam, Status: StatusImplemented,
@@ -1164,12 +1189,18 @@ var items = []Item{
 		EngineNotes: "keywords: More Than Meets the Eye (CR 702.162) is an alternative cost that casts the card converted (back face up), convert (CR 701.28) follows the rules for transforming (CR 701.28a), and living metal (CR 702.161) makes a Vehicle a creature during its controller's turn. None is in the engine. Goldbug, Scrappy Scout's \"Human spells you control can't be countered\" is a battlefield static the counter gate already reads (ADR 0106 PR 2), on a face these cards cannot reach yet.",
 	},
 	{
-		Slug: "targets-from-one-graveyard", Name: "Targets that must share a graveyard", Kind: KindSeam, Status: StatusMissing,
-		Summary:     "Abilities that target several cards \"from a single graveyard\".",
-		Missing:     "A card can't yet require that all of its targets come from the same graveyard.",
-		Issue:       1807,
-		Waiting:     []string{"Digsite Conservator"},
-		EngineNotes: "target set rule: `game.TargetDifference` says two picks must DIFFER on a key; \"from a single graveyard\" needs the opposite, a key every pick must SHARE (the owner of the graveyard). Without it the ability would reach several graveyards at once, which is stronger than printed, so Digsite Conservator waits whole even though its discover half is buildable.",
+		Slug: "targets-from-one-graveyard", Name: "Targets that must share a graveyard", Kind: KindSeam, Status: StatusPartial,
+		Summary:  "Spells and abilities that target several cards \"from a single graveyard\" make you pick them all from one player's graveyard, like Digsite Conservator and Decompose.",
+		Missing:  "A few of these cards also do something that isn't supported yet: revealing cards from your hand as a cost, targeting a creature that was dealt damage this turn, an Omen that shuffles itself away, and casting a copy of a card in exile.",
+		Rules:    []string{"601.2c", "608.2b"},
+		Issue:    1807,
+		ADR:      "0106-five-small-seams-from-the-s50-rechecks.md",
+		Printed:  printedWords("from a single graveyard"),
+		Examples: []string{"Digsite Conservator", "Decompose"},
+		Waiting: []string{
+			"Martyr of Bones", "Qutrub Forayer", "Feral Deathgorger", "Spellweaver Helix",
+		},
+		EngineNotes: "**The rule shipped** (ADR 0106 §5, #1807): `TargetSpec.Same *game.TargetSameness`, the opposite of `TargetDifference` — every pick of the clause shares one key, the card's owner (`game.TargetShareOwner`, CR 400.3), built with `effects.FromASingleGraveyard()` / `UpToCardsFromASingleGraveyard`. The key is a closed enum rather than a func, so the ADR 0041 closure ratchet gains no route. The announce gate refuses a set with two keys, the CR 608.2b re-check judges the survivors, `fillableCountLocked` answers the largest group (so Pestilent Cauldron's exact four is offered only when one graveyard holds four), the retarget offer narrows to the staying slots' graveyard while the gate judges the final set (CR 115.7e), the enumerator builds sets inside one group, and the view ships `same: {label, keys}` for the picker. 21 cards shipped. **Still open:** four cards of the family are held for their OTHER text, each with no seam row of its own yet: Martyr of Bones (\"Reveal X black cards from your hand\" as an activation cost — `AbilityCost` has no reveal component), Qutrub Forayer (\"target creature that was dealt damage this turn\" — nothing records damage dealt to a creature this turn), Feral Deathgorger // Dusk Sight (an Omen, CR 720 — Scryfall lays it out as an Adventure, the Adventure path always exiles the resolved half, and CR 720.3d shuffles an Omen into its owner's library instead) and Spellweaver Helix (\"copy the other. … cast the copy\" — casting a copy of a card in exile). Night Soil and Jötun Grunt pay a COST from a single graveyard, which ADR 0106 leaves out of scope.",
 	},
 	{
 		Slug: "keyword-counters", Name: "Keyword counters", Kind: KindSeam, Status: StatusImplemented,
