@@ -33,9 +33,11 @@ import (
 //     StackItem.Controller and the spell card's Card.Controller — the
 //     same materialisation materialiseControlLocked does for a
 //     permanent, and for the same reason: every reader of "you" is
-//     right without being touched. Layer 2 only: registration refuses
-//     any other mod on a stack pin, because no card changes another
-//     characteristic of a spell this way yet.
+//     right without being touched. Since ADR 0107 §3 (#1854) the step
+//     is layers 2 and 6: stackKeywordPassLocked (spell_keywords.go)
+//     follows it with the keywords a spell has been given. Registration
+//     refuses any other mod on a stack pin, because no card changes
+//     another characteristic of a spell this way yet.
 //
 //  3. THE HAND-OFF at resolution (inheritSpellControlLocked). A stolen
 //     permanent spell enters under the thief, its default controller
@@ -327,12 +329,19 @@ func (g *Game) emitSpellControlChangesLocked(changed []controlChange) {
 // on the controller the permanent already has, so no control-change
 // event fires for the entry itself.
 //
-// A no-op for a spell nothing ever took (its item has no base), which
-// is every other permanent spell.
+// For a spell nothing ever took (its item has no base), which is every
+// other permanent spell, only the second half can apply: a keyword an
+// effect gave the spell (ADR 0107 §3) follows it onto the permanent,
+// which is CR 400.7a's "change the characteristics … of a permanent
+// spell". With no such record it is a no-op.
 //
 // Caller must hold g.mu (write).
 func (g *Game) inheritSpellControlLocked(entered uuid.UUID, spellID uuid.UUID, stackEpoch int, item *StackItem, enteredUnder uuid.UUID) {
-	if item == nil || item.BaseController == uuid.Nil {
+	if item == nil {
+		return
+	}
+	if item.BaseController == uuid.Nil {
+		g.repinSpellControlLocked(spellID, stackEpoch, entered)
 		return
 	}
 	perm, ok := g.battlefieldCardLocked(entered)
@@ -484,10 +493,15 @@ func givesControlTo(e ScopedEffect, playerID uuid.UUID) bool {
 	return false
 }
 
-// stackPinProblem is the registration check for a stack pin (ADR 0104):
-// a record that names a spell may only change its controller, because
-// the stack step of the layer pass is layer 2 alone. Empty when the
+// stackPinProblem is the check for a stack pin (ADR 0104): a record
+// that names a spell may only change its controller (layer 2) or add
+// keywords to it (layer 6, ADR 0107 §3), because those are the two
+// things the stack step of the layer pass applies. Empty when the
 // record is fine.
+//
+// Run at registration, where a failure is a programming error, and at
+// restore (checkEffectKeys), where it is a file from a newer binary
+// whose stack step applies something this one would silently drop.
 func stackPinProblem(affected []AffectedObject, mods []Mod) string {
 	onStack := false
 	for _, a := range affected {
@@ -500,9 +514,9 @@ func stackPinProblem(affected []AffectedObject, mods []Mod) string {
 		return ""
 	}
 	for _, m := range mods {
-		if m.Kind != ModSetController {
+		if m.Kind != ModSetController && m.Kind != ModAddKeywords {
 			return "pins a spell on the stack with a " + string(m.Kind) +
-				" mod; the stack step of the layer pass applies layer 2 (setController) only"
+				" mod; the stack step of the layer pass applies layer 2 (setController) and layer-6 keyword grants (addKeywords) only"
 		}
 	}
 	return ""

@@ -294,6 +294,25 @@ func (g *Game) AttackedThisTurn(cardID uuid.UUID) bool {
 	return g.TimesAttackedThisTurn(cardID) > 0
 }
 
+// ObjectAttackedThisTurn is AttackedThisTurn for an object named by
+// its ref rather than by where its card is now — an intervening "if ~
+// attacked this turn" rechecked as the ability resolves (CR 603.4),
+// which reads the source's last known information once it has left the
+// battlefield (CR 608.2h). Taigam, Ojutai Master.
+//
+// Caller must hold g.mu.
+func (g *Game) ObjectAttackedThisTurn(ref ObjectRef) bool {
+	if ref.ID == uuid.Nil {
+		return false
+	}
+	for _, a := range g.TurnTally.Attacks {
+		if a.Attacker == ref.ID && a.Epoch == ref.Epoch {
+			return true
+		}
+	}
+	return false
+}
+
 // AttackedPlayersThisTurn is the players the object `cardID` names has
 // attacked this turn, first attack first and each once. An attack on a
 // planeswalker or a battle is not an attack on a player.

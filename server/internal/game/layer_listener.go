@@ -370,6 +370,13 @@ func (layerVersionBump) OnEvent(g *Game, ev Event) {
 		if spellsCastStaticIsLiveLocked(g) {
 			g.layerVersion.Add(1)
 		}
+		// ADR 0107 §3: a static over SPELLS (Cast Through Time) reaches
+		// a spell the moment it is on the stack, and a cast moves
+		// nothing on the battlefield. Gated the same way, so a table
+		// with no such permanent pays nothing per cast.
+		if spellStaticIsLiveLocked(g) {
+			g.layerVersion.Add(1)
+		}
 	case EventTapCard, EventUntapCard:
 		// Tap state is an AppliesTo input, not just a display flag:
 		// The Wandering Rescuer grants hexproof to "other TAPPED

@@ -734,6 +734,20 @@ func shapeOfManaAbility(ma ManaAbility) game.ManaAbilityShape {
 // at boot with the reason.
 func checkStaticZones(card, what string, statics []game.StaticAbility) {
 	for i, s := range statics {
+		// ADR 0107 §3: a static over spells is a layer-6 keyword grant
+		// from the battlefield — the one thing the stack step applies.
+		if s.AffectsSpells {
+			switch {
+			case s.Layer != game.Layer6Ability:
+				panic(fmt.Sprintf("effects.Register: %q %s %d affects spells outside layer 6 — the stack step applies keywords only", card, what, i))
+			case s.AppliesTo == nil || s.Apply == nil:
+				panic(fmt.Sprintf("effects.Register: %q %s %d affects spells but has no AppliesTo or Apply", card, what, i))
+			case len(s.Zones) > 0:
+				panic(fmt.Sprintf("effects.Register: %q %s %d affects spells from a declared zone — only the battlefield's statics over spells are gathered", card, what, i))
+			case s.RemovesAbilities || len(s.GrantAbilities) > 0:
+				panic(fmt.Sprintf("effects.Register: %q %s %d affects spells with a removal or an ability bundle — the stack step applies keywords only", card, what, i))
+			}
+		}
 		for _, zone := range s.Zones {
 			if why := game.StaticZoneUnsupported(zone); why != "" {
 				panic(fmt.Sprintf("effects.Register: %q %s %d functions from %s — %s",

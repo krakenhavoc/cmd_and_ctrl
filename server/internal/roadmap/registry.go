@@ -1159,8 +1159,8 @@ var items = []Item{
 		// the resolving spell by the stack's graveyard route
 		// (game/rebound.go). The exile, the upkeep delayed trigger
 		// ("rebound/cast") and the free cast are data, so a table with
-		// one waiting is a restore point. A spell GIVEN rebound waits on
-		// the granted-rebound seam below (ADR 0107 PR 4).
+		// one waiting is a restore point. A spell GIVEN rebound is the
+		// granted-rebound seam below (ADR 0107 PR 4).
 		Slug: "rebound", Name: "Rebound", Kind: KindKeyword, Status: StatusImplemented,
 		Summary:  "Rebound exiles a spell cast from your hand as it resolves, and lets you cast it again for free at the beginning of your next upkeep.",
 		Rules:    []string{"702.88"},
@@ -1171,15 +1171,36 @@ var items = []Item{
 		Examples: []string{"Staggershock", "Ephemerate", "Distortion Strike"},
 	},
 	{
-		Slug: "granted-rebound", Name: "Giving a spell rebound", Kind: KindSeam, Status: StatusMissing,
+		// #1854 (ADR 0107 §3 decision 5, PR 4): the stack step of the
+		// layer pass is layers 2 and 6, keywords only
+		// (game/spell_keywords.go). Closed; history in Closed seams.
+		Slug: "granted-rebound", Name: "Giving a spell rebound", Kind: KindSeam, Status: StatusImplemented,
 		Summary:     "Effects that give rebound to a spell on the stack, such as \"that spell gains rebound\" or \"instant and sorcery spells you control have rebound\".",
-		Missing:     "A spell can't gain rebound while it's on the stack yet, so a spell given rebound goes to the graveyard as usual.",
-		Rules:       []string{"702.88", "613.1f"},
+		Rules:       []string{"702.88", "613.1f", "616.1", "400.7a"},
 		Issue:       1854,
-		Tracked:     "#1854 (S50 tracker #1784; ADR 0107 PR 4)",
-		Waiting:     []string{"Taigam, Ojutai Master", "Narset Transcendent", "Ojer Pakpatiq, Deepest Epoch // Temple of Cyclical Time", "Cast Through Time"},
-		Phrases:     []string{"gains rebound", "have rebound"},
-		EngineNotes: "layer pass: printed rebound shipped (ADR 0107 PR 3, see Closed seams), and `spellRebounds` reads `HasKeyword` on the resolving spell, so a grant needs nothing there. What is missing is the grant: the stack step of the layer pass (ADR 0104, `stackControlPassLocked`) applies layer 2 only, and `stackPinProblem` refuses any other mod on a stack pin. ADR 0107 §3 decision 5 (owner decision 3) widens it to layer-6 keyword grants: `ModAddKeywords` on a stack pin (Taigam's and Ojer Pakpatiq's \"that spell gains rebound\", Narset's \"when you next cast\" delayed trigger) and battlefield statics over spells (Cast Through Time). A granted rebound can meet buyback or an Adventure exile on the same spell, so the CR 616.1 choice between them ships with it.",
+		ADR:         "0107-state-triggers-rebound-disturb-and-damage-prevention.md",
+		Examples:    []string{"Cast Through Time", "Taigam, Ojutai Master"},
+		EngineNotes: "layer pass: the stack step (`stackControlPassLocked`, then `stackKeywordPassLocked` in `game/spell_keywords.go`) is layers 2 and 6, keywords only. A ScopedEffect pinned to a spell may carry `addKeywords` (`GrantKeywordsToSpellForEffect`, `effects.ThatSpellGains`), and a battlefield static declared `StaticAbility.AffectsSpells` (`effects.SpellsYouControlHave`) is applied to spells and never to permanents. Both land on `Card.stackGranted`, which `HasKeyword` reads, so the resolution's rebound check needed no change. Rebound, buyback and an Adventure's exile meeting on one spell ask its controller (CR 616.1, `game/resolution_exits.go`). See Closed seams.",
+	},
+	{
+		Slug: "emblem-cast-restrictions", Name: "Emblems that stop players casting spells", Kind: KindSeam, Status: StatusMissing,
+		Summary:     "Emblems with a \"can't cast\" ability, such as \"Your opponents can't cast noncreature spells\".",
+		Missing:     "An emblem can't stop anyone casting spells yet, so a planeswalker whose emblem does that can't be added.",
+		Rules:       []string{"114.4", "101.2"},
+		Issue:       1899,
+		Tracked:     "#1899 (S50 tracker #1784; found by ADR 0107 PR 4)",
+		Waiting:     []string{"Narset Transcendent"},
+		EngineNotes: "cast gate: `CastGateLocked` (`game/cast_gate.go`) collects \"can't cast\" statics from battlefield permanents (`CastRestrictionsForCard`) and from the spell's own condition, and `effects.EmblemSpec` has no `CastRestrictions` slot, so an emblem's restriction would be dead text. Narset Transcendent's other abilities are expressible: the +1 is Herald's Horn's look-at-the-top reveal, and the −2 is a \"when you next cast … from your hand\" delayed trigger whose body gives the spell rebound through the granted-rebound seam.",
+	},
+	{
+		Slug: "return-transformed", Name: "Returning a card to the battlefield transformed", Kind: KindSeam, Status: StatusMissing,
+		Summary:     "Effects that return a double-faced card from a graveyard to the battlefield with its back face up, such as the Ojer gods coming back as their Temples.",
+		Missing:     "A card can't be returned to the battlefield transformed from a graveyard yet, so a God that dies stays in the graveyard instead of coming back as its land.",
+		Rules:       []string{"712.14a", "701.27a"},
+		Issue:       1900,
+		Tracked:     "#1900 (S50 tracker #1784; found by ADR 0107 PR 4)",
+		Waiting:     []string{"Ojer Pakpatiq, Deepest Epoch // Temple of Cyclical Time"},
+		EngineNotes: "zone change: `ExileAndReturnTransformedForEffect` (ADR 0079) exiles a permanent and returns it back face up, but nothing returns a card already in a graveyard with its back face up (CR 712.14a), so \"When ~ dies, return it to the battlefield tapped and transformed under its owner's control\" can't be built. Ojer Axonil, Deepest Might ships without that trigger as a caveat for the same reason. Ojer Pakpatiq's other clauses are expressible: its cast trigger gives an instant rebound through the granted-rebound seam, Temple of Cyclical Time's \"Remove a time counter from this land\" is a `ManaAbility.Rider`, and its transform is `TransformThis` behind an activation condition.",
 	},
 	{
 		Slug: "disturb", Name: "Disturb", Kind: KindSeam, Status: StatusMissing,

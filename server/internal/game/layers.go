@@ -345,6 +345,20 @@ type StaticAbility struct {
 	// effects.Register refuses a zone the gather does not walk, so a
 	// declaration the engine would silently ignore fails at boot.
 	Zones []ZoneKind
+
+	// AffectsSpells declares a static whose objects are SPELLS on the
+	// stack rather than permanents (CR 613.1f over a spell, ADR 0107
+	// §3, #1854): Cast Through Time's "Instant and sorcery spells you
+	// control have rebound". AppliesTo is asked of each spell's stack
+	// card (its Controller is the spell's controller, already settled
+	// by layer 2) and Apply adds to a Characteristic whose keywords the
+	// stack step stamps onto the spell (spell_keywords.go).
+	//
+	// The battlefield pass never gathers it, so a predicate written for
+	// spells cannot reach a permanent by accident. effects.Register
+	// refuses one that is not a layer-6 keyword grant from the
+	// battlefield: the stack step applies keywords and nothing else.
+	AffectsSpells bool
 }
 
 // staticContinuousEffect is the internal `ContinuousEffect` adapter
@@ -519,6 +533,11 @@ func (g *Game) activeStaticAbilitiesLocked() []ContinuousEffect {
 			// ability, and the same predicate the declared-zone
 			// gather asks.
 			if !StaticFunctionsFromZone(ab, ZoneBattlefield) {
+				continue
+			}
+			// ADR 0107 §3: a static over SPELLS is the stack step's
+			// (spell_keywords.go), never the battlefield's.
+			if ab.AffectsSpells {
 				continue
 			}
 			out = append(out, staticContinuousEffect{
@@ -837,6 +856,11 @@ func (g *Game) recomputeLayersLocked() {
 	// StackItem.Controller. After the battlefield so an exchange of a
 	// spell and a permanent lands both halves in one pass.
 	spellChanged := g.stackControlPassLocked()
+	// ADR 0107 §3: then layer 6 for the spells — the keywords a pinned
+	// record or a static over spells gives them (spell_keywords.go).
+	// After layer 2, because "spells you control" reads the controller
+	// it settled (CR 613.1).
+	g.stackKeywordPassLocked()
 	// #1313: untap holds end with their CR 611.2b duration, and the
 	// board those durations read — who controls the source, whether it
 	// is still here — is settled only now, after layer 2 has been

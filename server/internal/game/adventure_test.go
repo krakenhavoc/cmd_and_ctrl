@@ -329,17 +329,17 @@ func TestAFizzledAdventureGoesToTheGraveyard(t *testing.T) {
 	}
 }
 
-// TestBuybackBeatsTheAdventureExile pins the precedence the two rules
-// meet at, now that they decide in one switch.
+// TestBuybackAndTheAdventureExileAskTheController pins the choice the
+// two rules meet at, now that they decide in one place.
 //
 // Both CR 702.27a and CR 715.3d replace the same event — "put it into
-// its owner's graveyard as it resolves" — so CR 616.1 would hand the
-// choice to the spell's controller. No printed card has both (an
-// adventure card prints no buyback), so this fixture is hypothetical;
-// it exists because the alternative to choosing is an accident, and a
-// reader should find the choice written down next to the code that
-// makes it. Buyback wins: the player spent mana to get the card back.
-func TestBuybackBeatsTheAdventureExile(t *testing.T) {
+// its owner's graveyard as it resolves" — so CR 616.1 hands the choice
+// to the spell's controller. No printed card has both (an adventure
+// card prints no buyback), so this fixture is hypothetical. Before ADR
+// 0107 §3 built the choice for granted rebound, buyback won by a stated
+// judgement call; the controller chooses now, and the answer applies
+// that replacement alone (CR 616.1f).
+func TestBuybackAndTheAdventureExileAskTheController(t *testing.T) {
 	const oracle = "test-adventure-with-buyback"
 	// The claim is indexed against the ADVENTURE half's key, which is
 	// the face on the stack when the cost is paid.
@@ -355,7 +355,15 @@ func TestBuybackBeatsTheAdventureExile(t *testing.T) {
 	if err := g.CastSpell(me.ID, id, CastSpellParams{Face: 1, OptionalCosts: []int{0}}); err != nil {
 		t.Fatalf("cast the Adventure half with buyback: %v", err)
 	}
-	passPriorityUntilResolvedForTest(t, g, id)
+	resolveTop(t, g)
+	choice := resolutionChoiceOutstanding(g)
+	if choice == nil || len(choice.PickOptions) != 2 || choice.Chooser != me.ID {
+		t.Fatalf("buyback and the Adventure exile did not ask the controller: %+v", choice)
+	}
+	// Buyback is offered before the Adventure.
+	if err := g.ResolveOptionPick(choice.ID, me.ID, 0); err != nil {
+		t.Fatalf("ResolveOptionPick: %v", err)
+	}
 
 	if !me.Hand.Contains(id) {
 		t.Fatalf("buyback did not return the card to hand (exile: %v, graveyard: %v)",
