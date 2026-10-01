@@ -17,7 +17,7 @@ func init() {
 		Name:         "Tethered Griffin",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			WhenYouControlNo(Enchantment(), "Tethered Griffin — sacrifice it", SacrificeThisIfStillOnBattlefield),
+			WhenYouControlNo(QueryType("enchantment"), "Tethered Griffin — sacrifice it", SacrificeThisIfStillOnBattlefield),
 		},
 	})
 }

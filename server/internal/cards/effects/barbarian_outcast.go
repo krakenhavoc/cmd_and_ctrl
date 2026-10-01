@@ -20,7 +20,7 @@ func init() {
 		Name:         "Barbarian Outcast",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			WhenYouControlNo(Subtype("Swamp"), "Barbarian Outcast — sacrifice it", SacrificeThisIfStillOnBattlefield),
+			WhenYouControlNo(QuerySubtype("Swamp"), "Barbarian Outcast — sacrifice it", SacrificeThisIfStillOnBattlefield),
 		},
 	})
 }

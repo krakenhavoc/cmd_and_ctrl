@@ -19,7 +19,7 @@ func init() {
 		Name:         "Skeleton Ship",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			WhenYouControlNo(Subtype("Island"), "Skeleton Ship — sacrifice it", SacrificeThisIfStillOnBattlefield),
+			WhenYouControlNo(QuerySubtype("Island"), "Skeleton Ship — sacrifice it", SacrificeThisIfStillOnBattlefield),
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "{T}: Put a -1/-1 counter on target creature.",

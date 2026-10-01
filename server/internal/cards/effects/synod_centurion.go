@@ -16,7 +16,7 @@ func init() {
 		Name:         "Synod Centurion",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			WhenYouControlNoOther(Artifact(), "Synod Centurion — sacrifice it", SacrificeThisIfStillOnBattlefield),
+			WhenYouControlNoOther(QueryType("artifact"), "Synod Centurion — sacrifice it", SacrificeThisIfStillOnBattlefield),
 		},
 	})
 }

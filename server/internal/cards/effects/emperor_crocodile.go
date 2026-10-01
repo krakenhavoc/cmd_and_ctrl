@@ -19,7 +19,7 @@ func init() {
 		Name:         "Emperor Crocodile",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			WhenYouControlNoOther(Creature(), "Emperor Crocodile — sacrifice it", SacrificeThisIfStillOnBattlefield),
+			WhenYouControlNoOther(QueryType("creature"), "Emperor Crocodile — sacrifice it", SacrificeThisIfStillOnBattlefield),
 		},
 	})
 }

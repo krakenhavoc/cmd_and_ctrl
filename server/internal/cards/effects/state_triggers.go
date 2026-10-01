@@ -39,31 +39,40 @@ func WhenState(label string, cond StateCondition, effect Effect) game.TriggeredA
 	return game.TriggeredAbility{State: cond, Key: label, Effect: effect}
 }
 
-// WhenYouControlNo is "When you control no <permanents matching pred>":
+// WhenYouControlNo is "When you control no <permanents matching q>":
 // Barbarian Outcast's Swamps, Covetous Dragon's artifacts, Serendib
-// Djinn's lands, Tethered Griffin's enchantments.
-func WhenYouControlNo(pred CardPredicate, label string, effect Effect) game.TriggeredAbility {
+// Djinn's lands, the serpents' Islands. The query is ADR 0107's shared
+// game.PermanentQuery, the one the serpents' attack clause reads
+// (QuerySubtype("Island")), so the two halves of a Sea Serpent ask one
+// question the same way.
+func WhenYouControlNo(q game.PermanentQuery, label string, effect Effect) game.TriggeredAbility {
 	return WhenState(label, func(g *game.Game, _ *game.Card, controller uuid.UUID) bool {
-		return !controlsAnyOther(g, controller, uuid.Nil, pred)
+		return !g.ControlsMatchingForEffect(controller, uuid.Nil, q)
 	}, effect)
 }
 
 // WhenYouControlNoOther is "When you control no OTHER <permanents
-// matching pred>" — the source itself does not count: Emperor
-// Crocodile's creatures, Synod Centurion's artifacts.
-func WhenYouControlNoOther(pred CardPredicate, label string, effect Effect) game.TriggeredAbility {
+// matching q>" — the source itself does not count: Emperor Crocodile's
+// creatures, Synod Centurion's artifacts.
+func WhenYouControlNoOther(q game.PermanentQuery, label string, effect Effect) game.TriggeredAbility {
 	return WhenState(label, func(g *game.Game, source *game.Card, controller uuid.UUID) bool {
-		return !controlsAnyOther(g, controller, source.InstanceID, pred)
+		return !g.ControlsMatchingForEffect(controller, source.InstanceID, q)
 	}, effect)
 }
 
-// WhenThereAreNo is "When there are no <permanents matching pred> on the
+// WhenThereAreNo is "When there are no <permanents matching q> on the
 // battlefield" — anyone's: Task Mage Assembly's creatures, Mana
 // Vortex's lands.
-func WhenThereAreNo(pred CardPredicate, label string, effect Effect) game.TriggeredAbility {
-	return WhenState(label, func(g *game.Game, _ *game.Card, controller uuid.UUID) bool {
-		return !battlefieldHasAny(g, controller, pred)
+func WhenThereAreNo(q game.PermanentQuery, label string, effect Effect) game.TriggeredAbility {
+	return WhenState(label, func(g *game.Game, _ *game.Card, _ uuid.UUID) bool {
+		return !g.AnyPermanentMatchingForEffect(q)
 	}, effect)
+}
+
+// QueryType is "a permanent of this card type": an artifact, a land, a
+// creature. The card-type sibling of QuerySubtype.
+func QueryType(cardType string) game.PermanentQuery {
+	return game.PermanentQuery{Types: []string{cardType}}
 }
 
 // WhenThisHasAtLeast is "When there are N or more <kind> counters on
@@ -84,34 +93,18 @@ func WhenThisHasNo(kind string, label string, effect Effect) game.TriggeredAbili
 	}, effect)
 }
 
-// controlsAnyOther reports whether `controller` controls a permanent
-// other than `except` that pred accepts. pred is asked with the
-// controller as its "caster", which is what every relative predicate
-// (YouControl, OpponentControls) reads.
-func controlsAnyOther(g *game.Game, controller, except uuid.UUID, pred CardPredicate) bool {
+// controlsAnyCard reports whether `controller` controls a permanent pred
+// accepts, for a state whose permanents no PermanentQuery describes
+// (Endangered Armodon's "a creature with toughness 2 or less"). pred is
+// asked with the controller as its "caster", which is what every
+// relative predicate reads.
+func controlsAnyCard(g *game.Game, controller uuid.UUID, pred CardPredicate) bool {
 	if g.Battlefield == nil {
 		return false
 	}
 	for i := range g.Battlefield.Cards {
 		c := &g.Battlefield.Cards[i]
-		if c.Controller != controller || c.InstanceID == except {
-			continue
-		}
-		if pred == nil || pred(g, controller, *c) {
-			return true
-		}
-	}
-	return false
-}
-
-// battlefieldHasAny reports whether any permanent pred accepts is on the
-// battlefield, whoever controls it.
-func battlefieldHasAny(g *game.Game, viewer uuid.UUID, pred CardPredicate) bool {
-	if g.Battlefield == nil {
-		return false
-	}
-	for i := range g.Battlefield.Cards {
-		if pred == nil || pred(g, viewer, g.Battlefield.Cards[i]) {
+		if c.Controller == controller && pred(g, controller, *c) {
 			return true
 		}
 	}

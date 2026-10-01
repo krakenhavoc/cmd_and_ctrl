@@ -3,6 +3,8 @@ package game
 import (
 	"strings"
 	"sync"
+
+	"github.com/google/uuid"
 )
 
 // state_triggers.go — CR 603.8 state triggers (ADR 0107 §1, #1858).
@@ -273,6 +275,47 @@ func (g *Game) stateTriggerLatchedLocked(source *Card, t TriggeredAbility) bool 
 			return true
 		case c.modePickResume != nil && sameRow(c.modePickResume.source, c.modePickResume.ability):
 			return true
+		}
+	}
+	return false
+}
+
+// ControlsMatchingForEffect reports whether `player` controls a
+// permanent other than `except` that matches any of qs — the read behind
+// "When you control no Islands" and "no OTHER creatures" (ADR 0107 §1,
+// effects.WhenYouControlNo). uuid.Nil for `except` excludes nothing. It
+// reads current characteristics, through the matcher ADR 0107 §2's
+// attack restriction uses. Caller must hold g.mu.
+func (g *Game) ControlsMatchingForEffect(player, except uuid.UUID, qs ...PermanentQuery) bool {
+	if g.Battlefield == nil || player == uuid.Nil {
+		return false
+	}
+	for i := range g.Battlefield.Cards {
+		c := &g.Battlefield.Cards[i]
+		if c.Controller != player || (except != uuid.Nil && c.InstanceID == except) {
+			continue
+		}
+		for _, q := range qs {
+			if q.matchesLocked(g, c) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// AnyPermanentMatchingForEffect reports whether any permanent on the
+// battlefield, whoever controls it, matches any of qs — "When there are
+// no creatures on the battlefield". Caller must hold g.mu.
+func (g *Game) AnyPermanentMatchingForEffect(qs ...PermanentQuery) bool {
+	if g.Battlefield == nil {
+		return false
+	}
+	for i := range g.Battlefield.Cards {
+		for _, q := range qs {
+			if q.matchesLocked(g, &g.Battlefield.Cards[i]) {
+				return true
+			}
 		}
 	}
 	return false

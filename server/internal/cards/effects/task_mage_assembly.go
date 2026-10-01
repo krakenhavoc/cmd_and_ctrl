@@ -31,7 +31,7 @@ func init() {
 		Name:         "Task Mage Assembly",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			WhenThereAreNo(Creature(), "Task Mage Assembly — sacrifice it", SacrificeThisIfStillOnBattlefield),
+			WhenThereAreNo(QueryType("creature"), "Task Mage Assembly — sacrifice it", SacrificeThisIfStillOnBattlefield),
 		},
 		Activated: []ActivatedAbility{{
 			Label:        "{2}: This enchantment deals 1 damage to target creature. Any player may activate this ability but only as a sorcery.",

@@ -17,7 +17,7 @@ func init() {
 		Name:         "Covetous Dragon",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			WhenYouControlNo(Artifact(), "Covetous Dragon — sacrifice it", SacrificeThisIfStillOnBattlefield),
+			WhenYouControlNo(QueryType("artifact"), "Covetous Dragon — sacrifice it", SacrificeThisIfStillOnBattlefield),
 		},
 	})
 }

@@ -25,7 +25,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			WhenState("Endangered Armodon — sacrifice it",
 				func(g *game.Game, _ *game.Card, controller uuid.UUID) bool {
-					return controlsAnyOther(g, controller, uuid.Nil, And(Creature(), ToughnessLE(2)))
+					return controlsAnyCard(g, controller, And(Creature(), ToughnessLE(2)))
 				}, SacrificeThisIfStillOnBattlefield),
 		},
 	})
