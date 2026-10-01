@@ -219,7 +219,7 @@ func TestShelteredByGhostsExilesUntilItLeavesAndGrantsLifelinkAndWard(t *testing
 	}
 }
 
-// CR 610.3c: an Aura that is gone before its trigger resolves never
+// CR 610.3b: an Aura that is gone before its trigger resolves never
 // starts the exile, so nothing is taken and nothing is left to return.
 func TestShelteredByGhostsDoesNothingIfTheAuraLeavesFirst(t *testing.T) {
 	g := newCatalogGame(t)

@@ -148,7 +148,7 @@ holder. No wire change.
   `TestPalaceJailerControllerLeavingKeepsTheCreatureExiled`. Closing it means deciding what an
   "until" return owes when the player whose effect created it is gone — a question for every
   event-keyed "until", not for this card.
-- **The return uses the stack.** CR 610.3c makes an "until" return an immediate one-shot; here it
+- **The return uses the stack.** CR 610.3 makes an "until" return an immediate one-shot; here it
   is a delayed trigger, so there is a response window with the creature still in exile. This is the
   posture the Oblivion Ring family (Ossification, Hostage Taker) already takes, uncaveated.
 - **Court of Locthwain is not built.** Its first half is `ExileTopWithPermission` (any type,
