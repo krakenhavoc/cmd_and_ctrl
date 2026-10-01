@@ -1189,6 +1189,17 @@ var items = []Item{
 		EngineNotes: "keywords: More Than Meets the Eye (CR 702.162) is an alternative cost that casts the card converted (back face up), convert (CR 701.28) follows the rules for transforming (CR 701.28a), and living metal (CR 702.161) makes a Vehicle a creature during its controller's turn. None is in the engine. Goldbug, Scrappy Scout's \"Human spells you control can't be countered\" is a battlefield static the counter gate already reads (ADR 0106 PR 2), on a face these cards cannot reach yet.",
 	},
 	{
+		Slug: "assist", Name: "Assist", Kind: KindSeam, Status: StatusMissing,
+		Summary:     "Assist lets another player help pay the generic mana of your spell.",
+		Missing:     "Assist isn't implemented, so the caster always pays the whole cost alone.",
+		Rules:       []string{"702.132a"},
+		Issue:       1784,
+		Tracked:     "#1784 (S50 tracker; found by ADR 0106 PR 6)",
+		Waiting:     []string{"Fan Favorite"},
+		Phrases:     []string{"assist"},
+		EngineNotes: "keyword: assist (CR 702.132a) is not in `canonicalKeywords`. It is a cast-time payment step, not an ability: before mana abilities are activated during CR 601.2g-h the caster may choose another player, who then has a chance to activate mana abilities and pay any amount of the spell's generic mana. The cast path has one payer (`castSpellLocked` pays from the caster's pool), and the client has no prompt for a second player mid-cast. Fan Favorite ships with a caveat: its any-player pump works (ADR 0106 PR 6), and the caster pays the whole {3}{B}, which is weaker than printed.",
+	},
+	{
 		Slug: "targets-from-one-graveyard", Name: "Targets that must share a graveyard", Kind: KindSeam, Status: StatusPartial,
 		Summary:  "Spells and abilities that target several cards \"from a single graveyard\" make you pick them all from one player's graveyard, like Digsite Conservator and Decompose.",
 		Missing:  "A few of these cards also do something that isn't supported yet: revealing cards from your hand as a cost, targeting a creature that was dealt damage this turn, an Omen that shuffles itself away, and casting a copy of a card in exile.",
@@ -1247,7 +1258,7 @@ var items = []Item{
 		Issue:       1793,
 		ADR:         "0106-five-small-seams-from-the-s50-rechecks.md",
 		Probe:       declaresAnyPlayerActivation,
-		Examples:    []string{"Xantcha, Sleeper Agent"},
+		Examples:    []string{"Xantcha, Sleeper Agent", "Well of Knowledge", "Flailing Ogre"},
 		EngineNotes: "`ActivatedAbility.AnyPlayer` (mirrored on `game.ActivatedAbilityShape`) is the row's own CR 602.1b permission, so a copy or a layer-6 grant carries it and ability removal takes it. One predicate, `game.MayActivate(player, source, zone, ab)` — the controller, or anyone for an AnyPlayer row on the battlefield, the CR 108.4a owner off it — is asked by `ActivateCatalogAbility`, the enumerator (`activatedMoves` visits other players' permanents for their AnyPlayer rows only) and the view. Everything after it already read the activator: costs (CR 602.1a), the gate, timing, `Condition`, and the stack item's controller (CR 602.2a, 113.8), so \"you\" is the activator (CR 109.5) and \"this permanent's controller\" is `ctx.SourcePermanent().Controller`, last-known if it has left. Register refuses AnyPlayer beside {T}, loyalty, crew or sacrifice-this, and off the battlefield. The view marks the row `any_player` and files each other seat's copy stamped with that seat as activator (`stampAnyPlayerOffers`, the #1369 per-seat carrier); the ADR 0105 digest lists it under the permanent for the non-controller's own seat with no change. `ActivatedAbility.Purpose` (`game.ActivationPurpose{Draws, ControllerLosesLife}`, wire `purpose`) is what the heuristic bot reads; a row with none is never chosen by a seat that does not control it, and the enumerator's label names the controller for the model tiers. Smart autopass does not count another player's ability as a response. Any-player mana abilities (Mana Cache) and abilities of a spell on the stack (Lightning Storm) are out of scope; see Closed seams.",
 	},
 	{
