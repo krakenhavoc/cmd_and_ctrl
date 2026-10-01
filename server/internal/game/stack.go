@@ -435,6 +435,28 @@ type StackItem struct {
 	// copy it.
 	Uncopyable bool
 
+	// CantBeCountered is the marks that say this one SPELL can't be
+	// countered (ADR 0106 §4 decision 4, #1806): "Target spell can't
+	// be countered" (Vexing Shusher) resolving against it, and a
+	// one-use "the next spell you cast this turn can't be countered"
+	// promise (Insist) that it spent as it became cast (CR 601.2i).
+	// One entry per source, so two promises spent on one spell are two
+	// marks. Read only by spellCantBeCounteredLocked, the gate every
+	// counter verb and the stack chip ask (cant_be_countered.go).
+	//
+	// It lives on the OBJECT, so it lasts exactly as long as this item
+	// is on the stack and no longer (CR 400.7): resolving, being
+	// countered by a verb that ignores the gate, or moving ends it with
+	// the item. A stolen spell keeps it (ADR 0104), because a mark is
+	// about the spell, not a player. A COPY never has it: an effect is
+	// not a copiable value (CR 707.2), and createSpellCopyLocked builds
+	// the copy's item from scratch, naming only what CR 707.10 copies.
+	//
+	// Plain data, and never mutated in place: a writer replaces the
+	// slice (markSpellCantBeCounteredLocked), so an undo snapshot that
+	// cloned the item before the mark keeps the item as it was.
+	CantBeCountered []CounterShieldMark
+
 	// SplitSecond marks an item as having split second (CR 702.61).
 	// While any stack item has SplitSecond set, no further casts /
 	// activations are legal except mana abilities and special

@@ -1886,9 +1886,39 @@ SpellsCantBeCountered: []game.CounterShieldStatic{
 - A card that prints both the rider and a static (Prowling Serpopard)
   declares both. Neither does the other's job.
 
-"Can't be countered this turn" (Veil of Summer), "the next spell you
-cast can't be countered" (Insist) and "target spell can't be countered"
-(Vexing Shusher) are ADR 0106 PR 3, not this slot.
+The other three shapes are effects, not slots: a card's `OnResolve` or
+ability `Effect` applies a primitive from the same file (ADR 0106 PR 3).
+
+| Printed | Primitive |
+|---|---|
+| "<These> spells you control / you cast can't be countered this turn." | `GrantCounterShield{From, Grant: SpellsCantBeCounteredThisTurn(text, whose, filter)}` |
+| "The next <these> spell you cast this turn can't be countered." | `GrantCounterShield{From, Grant: NextSpellYouCastCantBeCountered(text, filter)}` |
+| "Target spell can't be countered." | `MarkTargetSpellsCantBeCountered{From, Label}` over a `TargetSpell` clause |
+
+```go
+GrantCounterShield{From: "Insist", Grant: NextSpellYouCastCantBeCountered(
+    "The next creature spell you cast this turn can't be countered.",
+    game.PermissionFilter{CreatureOnly: true})}                          // Insist
+GrantCounterShield{From: "Determined", ExceptThis: true, Grant: SpellsCantBeCounteredThisTurn(
+    "Other spells you control can't be countered this turn.",
+    game.CounterShieldYouControl, game.PermissionFilter{})}              // Bound // Determined
+```
+
+- **The filter is a `game.PermissionFilter`, not a `CardPredicate`.**
+  A grant is stored on the player, so it is in the restore point, and a
+  closure could not be. If the filter you need is not on
+  `PermissionFilter`, add a field there.
+- **A turn grant is read at the gate**, so it covers spells already on
+  the stack and spells cast later this turn (CR 611.2c), and it ends at
+  cleanup. "Other spells" is `ExceptThis`.
+- **A promise is not read at the gate.** The first matching spell its
+  player casts spends it as it becomes cast (CR 601.2i), whether or not
+  anything was going to counter that spell, and carries a mark from
+  then on. A copy is not cast and spends nothing.
+- **A mark lasts while that object is on the stack** (CR 400.7). A
+  stolen spell keeps it; a copy does not get it (CR 707.2).
+- `From` is the card's name, shown on the seat's NO COUNTER badge
+  (`counter_shields` on the player view) beside the printed `text`.
 
 ### Attaching, and an ability whose source has gone (#812)
 

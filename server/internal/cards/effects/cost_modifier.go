@@ -347,9 +347,10 @@ func ColoredSpell(color string) CostPredicate {
 
 // SpellManaValueAtLeast passes when the mana value of the spell
 // being cast is at least n. It reads the mana cost, not the price:
-// CR 202.3c says a cost modifier changes what a spell costs and never
-// its mana value, so a Goblin Electromancer can't drop a spell below
-// n. {X} counts as the announced value (CR 202.3e). By the time the
+// mana value is the total mana in the MANA COST (CR 202.3), and a cost
+// modifier changes only the total cost the player pays (CR 601.2f),
+// never the mana cost, so a Goblin Electromancer can't drop a spell
+// below n. {X} counts as the announced value (CR 202.3e). By the time the
 // total cost is locked in, the spell is on the stack with X chosen
 // (CR 601.2b, 601.2f).
 func SpellManaValueAtLeast(n int) CostPredicate {

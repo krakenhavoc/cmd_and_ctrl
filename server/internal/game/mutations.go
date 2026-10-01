@@ -1638,6 +1638,11 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 			g.unprepareLocked(perm)
 		}
 	}
+	// CR 601.2i (ADR 0106 §4 decision 3): the spell becomes cast here,
+	// which is the moment "the next spell you cast this turn can't be
+	// countered" is decided. Every live promise of the caster's that
+	// this spell matches is spent on it and becomes a mark on its item.
+	g.spendCounterShieldPromisesLocked(playerID, cardID)
 	// S22 airbend: OldZone stamps where the spell was cast FROM.
 	// CR 601.2a moves the card to the stack and nothing on the card
 	// remembers the zone it left, so "whenever you cast a spell from

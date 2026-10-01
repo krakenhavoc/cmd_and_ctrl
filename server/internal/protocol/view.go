@@ -1404,6 +1404,33 @@ type PlayerView struct {
 	CantLose []string          `json:"cant_lose,omitempty"`
 	CantWin  bool              `json:"cant_win,omitempty"`
 	EndGates []GameEndGateView `json:"end_gates,omitempty"`
+
+	// CounterShields is this seat's live "can't be countered" grants
+	// and unspent one-use promises, in the order they were made —
+	// Veil of Summer's "Spells you control can't be countered this
+	// turn", an unused Insist's "The next creature spell you cast this
+	// turn can't be countered". ADR 0106 §4 decision 6 (#1806).
+	//
+	// Read from the seat's stored statics on every projection, so a
+	// promise disappears the moment a spell spends it (that spell's
+	// stack chip takes over) and every entry disappears at cleanup.
+	// PUBLIC and unredacted, like end_gates: each came from a spell or
+	// ability every player watched resolve, and it changes what a
+	// counterspell will do. The printed statics (Chimil) are not
+	// listed here: they are on the battlefield for everyone to read.
+	// Omitempty: absent for nearly every seat.
+	CounterShields []CounterShieldView `json:"counter_shields,omitempty"`
+}
+
+// CounterShieldView is one "can't be countered" grant or unspent
+// promise on a seat. Text is the clause as printed; SourceName names
+// the card it came from; NextOnly marks a one-use promise that the
+// seat's next matching spell will spend.
+type CounterShieldView struct {
+	Source     string `json:"source,omitempty"`
+	SourceName string `json:"source_name"`
+	Text       string `json:"text"`
+	NextOnly   bool   `json:"next_only,omitempty"`
 }
 
 // GameEndGateView is one "can't lose" / "can't win" gate that applies
@@ -6631,7 +6658,26 @@ func viewOfPlayer(g *game.Game, p *game.Player) PlayerView {
 		CantLose:            lossCauseStrings(g.CantLoseCausesForEffect(p)),
 		CantWin:             g.CantWinForEffect(p),
 		EndGates:            viewOfGameEndGates(g.GameEndGatesForEffect(p)),
+		CounterShields:      viewOfCounterShields(g.CounterShieldGrantsForEffect(p)),
 	}
+}
+
+// viewOfCounterShields projects a seat's live "can't be countered"
+// grants and promises. Nil for none, so omitempty drops the field.
+func viewOfCounterShields(in []game.CounterShieldGrantSource) []CounterShieldView {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make([]CounterShieldView, len(in))
+	for i, s := range in {
+		out[i] = CounterShieldView{
+			Source:     uuidStringOrEmpty(s.Source),
+			SourceName: s.SourceName,
+			Text:       s.Text,
+			NextOnly:   s.NextOnly,
+		}
+	}
+	return out
 }
 
 // lossCauseStrings projects engine loss causes onto the wire. Nil for

@@ -421,6 +421,16 @@ export interface OutcomeView {
 
 // GameEndGateView is one "can't lose" / "can't win" gate on a seat
 // (ADR 0057 Decision 7): where it comes from and what it stops.
+// One "can't be countered" grant or unspent promise on a seat (ADR
+// 0106 §4, #1806). `text` is the clause as printed; `next_only` marks a
+// promise the seat's next matching spell will spend.
+export interface CounterShieldView {
+  source?: string;
+  source_name: string;
+  text: string;
+  next_only?: boolean;
+}
+
 export interface GameEndGateView {
   source?: string;
   source_name: string;
@@ -1542,6 +1552,12 @@ export interface PlayerView {
   cant_lose?: string[];
   cant_win?: boolean;
   end_gates?: GameEndGateView[];
+  // ADR 0106 §4 decision 6 (#1806): this seat's live "can't be
+  // countered" grants and unspent one-use promises, in the order they
+  // were made — Veil of Summer's "Spells you control can't be countered
+  // this turn", an unused Insist. Public, and absent for nearly every
+  // seat.
+  counter_shields?: CounterShieldView[];
 }
 
 // One emblem (CR 114). `label` is the board name ("Elspeth, Sun's
