@@ -38,6 +38,7 @@ import {
 } from "./attackTargets";
 import { isCreature, isLand, isPlaneswalker } from "./cardTypes";
 import { counterCostBlocked } from "./counterCost";
+import { NO_LEGAL_ACTIONS, readyFirst, type LegalActions } from "./legalActions";
 import type { ActionType, CardView, GameView } from "./protocol";
 import { sacrificeRangeShortfall } from "./sacrificeCost";
 import { targetPriceRange } from "./targetPrices";
@@ -160,6 +161,10 @@ export interface MenuItem {
   danger?: boolean;
   // Rendered but not clickable (e.g. "Remove +1/+1" with none on).
   disabled?: boolean;
+  // ADR 0105 (#1789): the server would accept this row right now (its
+  // ref is in the legal-action digest). Drawn with the ready accent,
+  // and sorted first in its section. Never set on a disabled row.
+  ready?: boolean;
   action?: MenuAction;
   prompt?: MenuPrompt;
   activate?: MenuActivate;
@@ -772,7 +777,23 @@ function withGrantor(label: string, row: { granted_by?: { name?: string } }): st
 // dedicated ManaAbilityMenu popover; with the admin menu bound to
 // the same gesture, these rows keep that surface reachable instead
 // of the override menu shadowing it.
-function abilityItems(card: CardView, view: GameView, viewerID: string | null): MenuItem[] {
+//
+// ADR 0105 (#1789): `legal` is the frame's highlight lookup. A row whose
+// ref is in its digest, and that the row fields do not grey, is marked
+// `ready` and sorted to the top of the section. The lookup that knows
+// nothing (highlights off, no digest) leaves the menu exactly as it
+// was. It never greys a row: the row fields keep that job, because
+// they supply the sentence.
+function abilityItems(
+  card: CardView,
+  view: GameView,
+  viewerID: string | null,
+  legal: LegalActions = NO_LEGAL_ACTIONS,
+): MenuItem[] {
+  const readyMana = legal.readyManaRefs(card.instance_id);
+  const readyAbilities = legal.readyAbilityRefs(card.instance_id);
+  const isReady = (blocked: string, refs: readonly string[], ref: string | undefined) =>
+    !blocked && !!ref && refs.includes(ref);
   const tapped = !!card.tapped;
   const sick = !!card.summoning_sick;
   const loyalty: LoyaltyContext = { card, view, viewerID };
@@ -813,6 +834,7 @@ function abilityItems(card: CardView, view: GameView, viewerID: string | null): 
       label: withGrantor(a.label || a.produced || "add mana", a),
       hint: blocked || chargedManaCostNote(a) || undefined,
       disabled: !!blocked,
+      ready: isReady(blocked, readyMana, a.ref) || undefined,
       activate: { kind: "mana", index: a.index },
     });
   }
@@ -834,10 +856,11 @@ function abilityItems(card: CardView, view: GameView, viewerID: string | null): 
         chargedManaCostNote(a) ||
         undefined,
       disabled: !!blocked,
+      ready: isReady(blocked, readyAbilities, a.ref) || undefined,
       activate: { kind: "ability", index: a.index },
     });
   }
-  return items;
+  return readyFirst(items, (i) => i.ready === true);
 }
 
 // MAX_MANUAL_MINUS caps the manual minus rows. Karn Liberated's −14
@@ -1273,6 +1296,9 @@ export function buildMenuSections(
   card: CardView,
   viewerID: string | null,
   isAdmin: boolean,
+  // ADR 0105: the frame's highlight lookup, for the ability rows'
+  // ready accent and order. Omitted: no information, no accent.
+  legal: LegalActions = NO_LEGAL_ACTIONS,
 ): MenuSection[] {
   const location = locateCard(view, card.instance_id);
   if (!location) return [];
@@ -1294,7 +1320,7 @@ export function buildMenuSections(
     if (special.length > 0) {
       sections.push({ id: "special_actions", label: "special actions", items: special });
     }
-    const abilities = abilityItems(card, view, viewerID);
+    const abilities = abilityItems(card, view, viewerID, legal);
     if (abilities.length > 0) {
       sections.push({ id: "abilities", label: "abilities", items: abilities });
     }

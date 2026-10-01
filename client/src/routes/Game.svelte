@@ -638,7 +638,9 @@
   // allowed to draw from it. Highlights are live while the player has
   // them on and smart autopass is not about to pass this frame (§3);
   // otherwise the board gets the lookup that knows nothing. The gates
-  // (greying, disabled buttons) never read this.
+  // (greying, disabled buttons) never read this. The one gate that
+  // reads the lookup at all, the ability popover's sorcery-speed row
+  // gate (sub-PR 3), gets the full `legalActions` as `legalGate`.
   const legalActions = $derived(legalActionsOf(view));
   const legalHighlights = $derived(
     visibleHighlights(
@@ -1575,6 +1577,7 @@
           onToggleAutopass={toggleAutopass}
           {beatsPrimeKey}
           legal={legalHighlights}
+          legalGate={legalActions}
         >
           <!-- Everything that asks for the viewer's attention shares the
                board's strip (under the stack card): targeting prompt,

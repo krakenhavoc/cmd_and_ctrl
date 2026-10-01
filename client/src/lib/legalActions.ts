@@ -50,6 +50,15 @@ export interface LegalActions {
   /** A digest or a move list arrived on this frame. False: no information. */
   readonly known: boolean;
   /**
+   * The per-ROW answers are complete: the lookup was built from the
+   * server's uncapped `legal_actions` digest. False for the capped
+   * `legal_moves` fallback (the wire cap can cut a card's second
+   * ability row, ADR 0105 §1) and for no information. A gate that
+   * withholds a row because its ref is missing reads only an exact
+   * lookup; a highlight may read either.
+   */
+  readonly exact: boolean;
+  /**
    * A pass move exists. Undefined when the frame carried no list at
    * all, which callers must read as "don't know", never as "no".
    */
@@ -202,12 +211,18 @@ function cardsIn(view: GameView, zone: ReadyZone, seatID: string | undefined): C
   return seat?.[zone]?.cards ?? [];
 }
 
-function lookup(view: GameView | null, sources: Sources, pass: boolean | undefined): LegalActions {
+function lookup(
+  view: GameView | null,
+  sources: Sources,
+  pass: boolean | undefined,
+  exact = false,
+): LegalActions {
   const known = pass !== undefined;
   const counts = new Map<string, number>();
   const get = (id: string): LegalSourceView | undefined => sources.get(id);
   return {
     known,
+    exact: known && exact,
     pass,
     isReady: (id) => sources.has(id),
     kinds: (id) => get(id)?.kinds ?? NO_KINDS,
@@ -247,7 +262,7 @@ export const NO_LEGAL_ACTIONS: LegalActions = lookup(null, new Map(), undefined)
 export function legalActionsOf(view: GameView | null | undefined): LegalActions {
   if (!view) return NO_LEGAL_ACTIONS;
   if (view.legal_actions) {
-    return lookup(view, fromDigest(view.legal_actions), view.legal_actions.pass === true);
+    return lookup(view, fromDigest(view.legal_actions), view.legal_actions.pass === true, true);
   }
   if (view.legal_moves) {
     return lookup(
@@ -317,4 +332,77 @@ export function notableManaRefs(
     // {T}: Add one — the quiet answer.
     return row !== undefined && row.tap_cost !== true;
   });
+}
+
+// ---- presentation: pips and menu rows (ADR 0105 §2, sub-PR 3) --------
+
+/**
+ * What a permanent's pips say. `abilities` is how many of its
+ * activated-ability rows are live: the bolt pip, with a count from two
+ * up, and the ready ring. `mana` is whether a mana ability worth
+ * marking is live: the drop pip, after §4's noise rule, with no ring
+ * of its own.
+ */
+export interface ReadyPips {
+  readonly abilities: number;
+  readonly mana: boolean;
+}
+
+export const NO_PIPS: ReadyPips = Object.freeze({ abilities: 0, mana: false });
+
+/**
+ * readyPips reads one card's pips off the lookup. Legality comes from
+ * the digest alone (`readyAbilityRefs`, `readyManaRefs`). The only
+ * decision made here is §4's presentation rule for the drop pip
+ * (`notableManaRefs`). The lookup that knows nothing gives NO_PIPS:
+ * highlights off, autopass passing, a spectator, an opponent's card.
+ */
+export function readyPips(legal: LegalActions, card: CardView, zone: ReadyZone): ReadyPips {
+  const abilities = legal.readyAbilityRefs(card.instance_id).length;
+  const mana = notableManaRefs(card, legal.readyManaRefs(card.instance_id), zone).length > 0;
+  if (abilities === 0 && !mana) return NO_PIPS;
+  return { abilities, mana };
+}
+
+/**
+ * pipCount is the number printed on a pip: nothing for one, the count
+ * from two up. At the `small` card size the stylesheet hides it and
+ * the pip shows alone (ADR 0105 §7).
+ */
+export function pipCount(n: number): string {
+  return n >= 2 ? String(n) : "";
+}
+
+/**
+ * readyFirst is the menus' row order: the rows the server would accept
+ * right now first, then the rest, each half in its original order. It
+ * is stable, so a menu with no ready row is exactly the menu it was.
+ */
+export function readyFirst<T>(rows: readonly T[], isReady: (row: T) => boolean): T[] {
+  const ready: T[] = [];
+  const rest: T[] = [];
+  for (const r of rows) (isReady(r) ? ready : rest).push(r);
+  return [...ready, ...rest];
+}
+
+/**
+ * digestRefusesRow is the server's verdict on one activated-ability
+ * row: true when the frame carries the exact digest, the row names its
+ * ref, and that ref is not among the card's live activate refs. It
+ * replaces the ability popover's client-side sorcery-speed gate (ADR
+ * 0105 §1, sub-PR 3).
+ *
+ * Anything less is "no information" and answers false, so nothing is
+ * newly withheld: no digest (the seat owes no decision, or an older
+ * server), the capped `legal_moves` fallback, or a row with no ref.
+ * Pass the frame's FULL lookup here, never `visibleHighlights`: this is
+ * a gate, and the highlight setting must not open it.
+ */
+export function digestRefusesRow(
+  gate: LegalActions,
+  cardID: string,
+  ref: string | undefined,
+): boolean {
+  if (!gate.exact || !ref) return false;
+  return !gate.readyAbilityRefs(cardID).includes(ref);
 }

@@ -60,6 +60,9 @@
     view?: GameView | null;
     viewerID?: string | null;
     legal?: LegalActions;
+    // ADR 0105 sub-PR 3: the frame's full lookup, passed through to the
+    // commander's ability popover for its sorcery-speed gate.
+    legalGate?: LegalActions;
   }
 
   const {
@@ -74,6 +77,7 @@
     view = null,
     viewerID = null,
     legal = NO_LEGAL_ACTIONS,
+    legalGate = NO_LEGAL_ACTIONS,
   }: Props = $props();
 
   // "N ready" per pile. The exile pile is this seat's own slice, so it
@@ -191,6 +195,7 @@
     {view}
     {viewerID}
     {legal}
+    {legalGate}
   />
 </div>
 

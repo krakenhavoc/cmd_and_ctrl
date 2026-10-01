@@ -37,6 +37,13 @@
   import ManaAbilityMenu from "./ManaAbilityMenu.svelte";
   import RoomDoorStrip from "./RoomDoorStrip.svelte";
   import { displayName } from "../../faces";
+  import {
+    NO_LEGAL_ACTIONS,
+    NO_PIPS,
+    pipCount,
+    type LegalActions,
+    type ReadyPips,
+  } from "../../legalActions";
 
   interface Props {
     card: CardView;
@@ -50,6 +57,19 @@
     // legalActions.ts, and only while highlights are live); the card
     // only draws it.
     ready?: boolean;
+    // ADR 0105 §2 (sub-PR 3): the pips on a permanent: a bolt for
+    // live activated abilities (with a count from two up), a drop for
+    // a mana ability worth marking (§4). The caller reads them off the
+    // lookup (legalActions.ts readyPips), as it does `ready`. The card
+    // only draws them. NO_PIPS draws none.
+    pips?: ReadyPips;
+    // ADR 0105: the lookups the ability popover reads for this card.
+    // `legal` is what may be highlighted: ready rows take the accent
+    // and sort first. `legalGate` is the frame's full lookup, for the
+    // popover's sorcery-speed gate. The highlight setting never
+    // touches it. Both default to "no information".
+    legal?: LegalActions;
+    legalGate?: LegalActions;
     // size: which Scryfall-resolved image to request from the server.
     // "small" is the default (~146×204) and is what we use everywhere
     // on the table; the hover zoom overlay requests "normal".
@@ -85,7 +105,8 @@
     onActivateAbility?: (abilityIndex: number) => void;
     // S31: why the CR 307.1 sorcery-speed window is shut, or "" when
     // it is open. Passed straight through to ManaAbilityMenu, which
-    // greys `sorcery_speed` abilities with it. Card has no snapshot
+    // since ADR 0105 uses it only as the WORDS for a row the server
+    // has shut (`timing_closed`, the digest). Card has no snapshot
     // of its own, and computing this per card would be wasteful —
     // the window is a property of the turn, so PlayerPanel derives it
     // once and hands it down.
@@ -149,6 +170,9 @@
     attacking = false,
     blocking = false,
     ready = false,
+    pips = NO_PIPS,
+    legal = NO_LEGAL_ACTIONS,
+    legalGate = NO_LEGAL_ACTIONS,
     size = "small",
     showManaCost = false,
     onActivateManaAbility,
@@ -183,6 +207,11 @@
     (!!onActivateManaAbility && menuManaAbilities.length > 0) ||
       (!!onActivateAbility && menuAbilities.length > 0),
   );
+  // ADR 0105: a pip is drawn only where the popover it points at is
+  // wired. A pip on a card whose abilities this viewer cannot open is
+  // worse than none (ADR 0105, Context, fact 3).
+  const boltPips = $derived(onActivateAbility ? pips.abilities : 0);
+  const dropPip = $derived(!!onActivateManaAbility && pips.mana);
 
   // cardImageURL defaults to the card's ACTIVE face, so a modal DFC
   // played as its land half — or, later, a transformed permanent —
@@ -679,6 +708,31 @@
       {designationBadge}
     </span>
   {/if}
+  {#if boltPips > 0 || dropPip}
+    <!-- ADR 0105 §2 (#1789): what this permanent can do right now, by
+         shape: a bolt for an activated ability, a drop for a mana
+         ability worth marking (§4). Display-only in this sub-PR, so
+         the right-click and the click land on the card. Sub-PR 4 makes
+         a pip tap-open the popover, and sub-PR 6 gives it accessible
+         names. -->
+    <span class="ready-pips" aria-hidden="true">
+      {#if boltPips > 0}
+        <span class="ready-pip bolt" data-pip="bolt">
+          <svg viewBox="0 0 24 24" focusable="false"
+            ><path d="M13.5 2 4 13.5h6.5L9.5 22 20 9.5h-6.5z" /></svg
+          >
+          {#if pipCount(boltPips)}<span class="pip-count">{pipCount(boltPips)}</span>{/if}
+        </span>
+      {/if}
+      {#if dropPip}
+        <span class="ready-pip drop" data-pip="drop">
+          <svg viewBox="0 0 24 24" focusable="false"
+            ><path d="M12 2.5S5 10.4 5 15.2a7 7 0 0 0 14 0C19 10.4 12 2.5 12 2.5z" /></svg
+          >
+        </span>
+      {/if}
+    </span>
+  {/if}
   {#if card.doors && !showBack}
     <!-- ADR 0103: a Room's doors; the unlock buttons are its
          controller's (CR 709.5e). -->
@@ -693,7 +747,10 @@
         activated={onActivateAbility ? menuAbilities : []}
         onActivateAbility={(idx) => onActivateAbility?.(idx)}
         summoningSick={!!card.summoning_sick}
-        {sorcerySpeedBlocked}
+        timingReason={sorcerySpeedBlocked}
+        cardID={card.instance_id}
+        {legal}
+        {legalGate}
         {payerLife}
         onRawTap={onRawTap && onActivateManaAbility && menuManaAbilities.length > 0 && !card.tapped
           ? onRawTap
@@ -1089,6 +1146,59 @@
     border-radius: inherit;
     pointer-events: none;
     box-shadow: inset 0 0 calc(var(--card-w, 80px) * 0.14) var(--ready-glow);
+  }
+  /* ADR 0105 §2/§7 (#1789): the pips. They sit on the upper-left edge,
+     below the top badge row (CMD) and the failed-art pip (22px): that
+     is the part of a tile still visible where tiles overlap (the land
+     strip's piles, the hand's top-55% peek), and the one edge with no
+     always-on badge. The kind is carried by shape, and the colour is
+     the one --ready. A pip scales with the card and never draws under
+     16px (§7). It does not take pointer events yet: sub-PR 4 makes it
+     the touch route into the popover. */
+  .ready-pips {
+    --pip: max(16px, calc(var(--card-w, 80px) * 0.17));
+    position: absolute;
+    top: max(38px, 30%);
+    left: 3px;
+    z-index: 4;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 3px;
+    pointer-events: none;
+  }
+  .ready-pip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1px;
+    box-sizing: border-box;
+    min-width: var(--pip);
+    height: var(--pip);
+    padding: 0 calc(var(--pip) * 0.12);
+    border-radius: 999px;
+    background: var(--ready);
+    color: var(--ready-ink);
+    border: 1px solid rgba(0, 0, 0, 0.55);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.55);
+    line-height: 1;
+  }
+  .ready-pip svg {
+    width: calc(var(--pip) * 0.68);
+    height: calc(var(--pip) * 0.68);
+    flex: 0 0 auto;
+    fill: currentColor;
+  }
+  .pip-count {
+    font-family: ui-monospace, Menlo, monospace;
+    font-size: calc(var(--pip) * 0.62);
+    font-weight: 900;
+    font-variant-numeric: tabular-nums;
+    padding-right: calc(var(--pip) * 0.08);
+  }
+  /* §7: at the small card size the count goes and the pip shows alone. */
+  :global(:root[data-card-size="small"]) .pip-count {
+    display: none;
   }
   .card.ready.targetable,
   .card.ready.picked,

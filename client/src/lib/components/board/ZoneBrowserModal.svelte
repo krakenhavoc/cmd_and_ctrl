@@ -92,8 +92,13 @@
     // while highlights are off or autopass is about to pass. A browsed
     // card with a legal move gets the ready ring, and a cast button
     // whose card the server would accept takes the ready accent.
-    // Gates nothing: the buttons' disabled states read the frame.
+    // Gates nothing: the buttons' disabled states read the frame. The
+    // ability popover's ready-row accent reads it too.
     legal?: LegalActions;
+    // ADR 0105 sub-PR 3: the frame's full lookup, for the popover's
+    // sorcery-speed gate (unearth, embalm, scavenge). The highlight
+    // setting never touches it.
+    legalGate?: LegalActions;
   }
 
   const {
@@ -108,6 +113,7 @@
     onActivateAbility,
     sorcerySpeedBlocked = "",
     legal = NO_LEGAL_ACTIONS,
+    legalGate = NO_LEGAL_ACTIONS,
   }: Props = $props();
 
   // #1221: the activation callback for ONE browsed card, or undefined
@@ -379,6 +385,8 @@
               onClick={onTargetCard ? () => void onTargetCard?.(card) : undefined}
               onActivateAbility={activateHandlerFor(card)}
               {sorcerySpeedBlocked}
+              {legal}
+              {legalGate}
             />
             {#if labelFor(card)}
               {@const leg = exileLegalityFor(card)}

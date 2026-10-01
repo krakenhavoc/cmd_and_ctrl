@@ -57,8 +57,11 @@
     // ADR 0105: the frame's legal-action lookup, "nothing" while
     // highlights are off or autopass is about to pass. The ready ring
     // on the commander and the hint's accent read it; the gate above
-    // does not.
+    // does not. The popover's ready-row accent reads it too.
     legal?: LegalActions;
+    // ADR 0105 sub-PR 3: the frame's full lookup, for the popover's
+    // sorcery-speed gate. The highlight setting never touches it.
+    legalGate?: LegalActions;
   }
 
   const {
@@ -72,6 +75,7 @@
     view = null,
     viewerID = null,
     legal = NO_LEGAL_ACTIONS,
+    legalGate = NO_LEGAL_ACTIONS,
   }: Props = $props();
 
   // The card slot, so the "ability" hint can open the Card's own
@@ -185,6 +189,8 @@
         onClick={isSelf ? handleClick : openBrowser}
         onActivateAbility={activateVisible}
         {sorcerySpeedBlocked}
+        legal={isSelf ? legal : undefined}
+        legalGate={isSelf ? legalGate : undefined}
       />
       {#if visibleTax > 0}
         <span class="tax-badge" title={`commander tax · +${visibleTax} mana`}>+{visibleTax}</span>
