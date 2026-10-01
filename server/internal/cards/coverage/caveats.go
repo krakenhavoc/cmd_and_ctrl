@@ -200,6 +200,16 @@ var mechanics = []Mechanic{
 		Adopt:      `AlternativeCosts: []game.AlternativeCost{Warp("{cost}")} — the exile clause rides the constructor`,
 	},
 	{
+		// ADR 0107 §4 (#1855): CR 702.146, an alternative cost bound to
+		// the graveyard that casts the card's back face.
+		Name:       "disturb",
+		Phrases:    []string{"disturb"},
+		Implements: altCost("disturb"),
+		Evidence:   `game.AlternativeCostByKey(oracleID, "disturb") resolves`,
+		Confidence: Exact,
+		Adopt:      `CastableZones: []game.ZoneKind{game.ZoneGraveyard} plus Disturb("{cost}") on the front face, and DisturbedExile(name) on the back face's "<oracle_id>#1" entry`,
+	},
+	{
 		Name:       "miracle",
 		Phrases:    []string{"miracle"},
 		Implements: altCost("miracle"),

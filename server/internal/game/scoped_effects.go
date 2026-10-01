@@ -144,6 +144,41 @@ const (
 	// Intervention). Reads Then, a registered delayed-trigger body key.
 	// Scope ScopeYourPermanents.
 	ModExileInsteadOfGraveyard ModKind = "exileInsteadOfGraveyard"
+	// ModGainNoLife is "if <Player> would gain life this turn, that
+	// player gains no life instead" (Flames of the Blood Hand, ADR 0107
+	// §5): a CR 614 replacement on the life window, NOT CR 119.7's
+	// "can't gain life" (ModCantGainLife). The difference is CR 616:
+	// another "if you would gain life" replacement may be ordered
+	// before this one, where "can't" stops the gain before any
+	// replacement sees it. Reads Player. Scope ScopeGame.
+	ModGainNoLife ModKind = "gainNoLife"
+)
+
+// The rules kinds (ADR 0107 §5, #1853, #1880). Not layer operations and
+// not replacements: each is a CR 613.11 rule-modifying effect a
+// resolving spell or ability created, read at exactly one gate —
+// damageUnpreventableLocked, damageCantBeRedirectedLocked
+// (unpreventable_damage.go) or playerCantGainLifeLocked
+// (cant_gain_life.go). The ADR 0106 §4 "can't be countered" shape, with
+// a duration.
+const (
+	// ModDamageCantBePrevented is "damage can't be prevented this turn"
+	// (Skullcrack, CR 615.12). Scope ScopeGame: all damage. Pinned to
+	// one permanent: "damage that would be dealt to that creature this
+	// turn can't be prevented" (Whippoorwill). Reads nothing.
+	ModDamageCantBePrevented ModKind = "damageCantBePrevented"
+	// ModDamageCantBeRedirected is "… can't be dealt instead to another
+	// permanent or player" (Whippoorwill): pinned to the permanent the
+	// damage would be dealt to. Reads nothing.
+	ModDamageCantBeRedirected ModKind = "damageCantBeRedirected"
+	// ModCantGainLife is "<players> can't gain life" for a duration
+	// (CR 119.7): Skullcrack's "players … this turn", Atarka's
+	// Command's "your opponents … this turn", Screaming Nemesis's "they
+	// … for the rest of the game". Scope ScopeGame with Player set is
+	// that one player, and with Player zero every player;
+	// ScopeOpponentsAndTheirCreatures is the record Controller's
+	// opponents (scopeCoversPlayer). Reads Player.
+	ModCantGainLife ModKind = "cantGainLife"
 )
 
 // The block-rule kinds (ADR 0041 P8, tier 3b, #1497). These are not
@@ -492,6 +527,9 @@ const (
 	// readerCopy is the layer-1 materialiser (#1593,
 	// duration_copy.go): it runs before the layer pass, not in it.
 	readerCopy
+	// readerRule is a CR 613.11 rules gate (ADR 0107 §5): the damage
+	// prevention and redirection gates and the life-gain gate.
+	readerRule
 )
 
 // modKindSpec is where a kind lives: its reader, and for a layer kind
@@ -533,6 +571,12 @@ var modKinds = map[ModKind]modKindSpec{
 	ModPreventDamage:           {reader: readerReplacement},
 	ModExileInsteadOfLeaving:   {reader: readerReplacement},
 	ModExileInsteadOfGraveyard: {reader: readerReplacement},
+	// ADR 0107 §5 (#1880): Flames of the Blood Hand's replacement.
+	ModGainNoLife: {reader: readerReplacement},
+	// ADR 0107 §5 (#1853, #1880): rules gates.
+	ModDamageCantBePrevented:  {reader: readerRule},
+	ModDamageCantBeRedirected: {reader: readerRule},
+	ModCantGainLife:           {reader: readerRule},
 	// Tier 3b (ADR 0041 P8): block-rule effects, not layer operations.
 	ModCantBeBlockedExceptBy:    {reader: readerBlockRule},
 	ModLimitBlockersPerDefender: {reader: readerBlockRule},

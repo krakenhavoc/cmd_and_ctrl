@@ -164,6 +164,20 @@ export function counterShieldBadges(seat?: SeatCounterShields): PlayerKeywordBad
   ];
 }
 
+// ADR 0107 §5 (CR 119.7): "can't gain life" on a seat. A lifelinker
+// that gains nothing, or a Soul Warden that does nothing, is confusing
+// unless the seat says why.
+export interface SeatCantGainLife {
+  cant_gain_life?: boolean;
+}
+
+const CANT_GAIN_LIFE_BADGE: PlayerKeywordBadge = {
+  key: "cant-gain-life",
+  short: "NO GAIN",
+  title: "Can't gain life — lifelink and life gain do nothing for this player",
+  kind: "protection",
+};
+
 /**
  * Turns PlayerView.keywords (and #1200's life_total_locked) into the
  * badges the seat tile renders, one per distinct token, in wire order
@@ -173,7 +187,7 @@ export function counterShieldBadges(seat?: SeatCounterShields): PlayerKeywordBad
 export function playerKeywordBadges(
   keywords?: string[],
   lifeTotalLocked?: boolean,
-  endGates?: SeatEndGates & SeatCounterShields,
+  endGates?: SeatEndGates & SeatCounterShields & SeatCantGainLife,
 ): PlayerKeywordBadge[] {
   const seen = new Set<string>();
   const badges: PlayerKeywordBadge[] = [];
@@ -214,6 +228,9 @@ export function playerKeywordBadges(
     });
   }
   if (lifeTotalLocked) badges.push(LIFE_LOCK_BADGE);
+  // A locked total already says "no gain"; a second badge would only
+  // repeat it.
+  else if (endGates?.cant_gain_life) badges.push(CANT_GAIN_LIFE_BADGE);
   badges.push(...endGateBadges(endGates));
   badges.push(...counterShieldBadges(endGates));
   return badges;

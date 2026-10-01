@@ -212,6 +212,11 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// baseline before the pass rather than applied in it. Its cases
 		// are in duration_copy_test.go here and in cards/effects.
 		ModBecomeCopy: true,
+		// ADR 0107 §5: rules gates and Flames of the Blood Hand's life
+		// replacement, read by no layer. Their cases are in
+		// unpreventable_damage_test.go and cant_gain_life_test.go.
+		ModDamageCantBePrevented: true, ModDamageCantBeRedirected: true,
+		ModCantGainLife: true, ModGainNoLife: true,
 	}
 	for _, k := range ModKinds() {
 		if !covered[k] {
