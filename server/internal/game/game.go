@@ -607,6 +607,15 @@ type Game struct {
 	// snapshot is ever taken mid-sweep. Added in S23.
 	simultaneousExit []Card
 
+	// stateTriggerHold counts the open sections that the per-event
+	// CR 603.8 state-trigger check skips — combat damage being dealt
+	// and a state-based-action sweep, which the rules see as one event
+	// and the engine emits in pieces (ADR 0107 §1, state_triggers.go).
+	// stateTriggerChecking is the check's re-entrancy guard. Both are
+	// zero between actions, so neither is snapshotted or cloned.
+	stateTriggerHold     int
+	stateTriggerChecking bool
+
 	// enteringTokens holds the tokens whose CR 614 battlefield-entry
 	// window is open and which are therefore in NO zone yet: minted,
 	// not pushed. A card entering the battlefield sits in the zone it

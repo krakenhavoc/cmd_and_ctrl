@@ -190,6 +190,9 @@ func IdentifyCatalogRows(key string, d *CardDef) {
 		rows[i].row = catalogRowID{key: key, index: i}
 	}
 	d.Triggered = rows
+	// ADR 0107 §1: the per-event state-trigger walk asks only the
+	// permanents whose key names a state trigger.
+	noteStateTriggerKey(key, d)
 }
 
 // numberTriggerRowOccurrences gives each repeat of the same catalog row
