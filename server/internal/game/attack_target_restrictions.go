@@ -46,9 +46,27 @@ import (
 // never captured: a Clone copying Xantcha is owned by the Clone's
 // owner, and that is who it may not attack.
 //
-// Battles are never refused here. "Planeswalkers its owner controls"
-// says nothing about a battle the owner protects, so attacking one is
-// legal, and attacking it obeys "attacks each combat if able".
+// Battles are never refused by the owner clauses. "Planeswalkers its
+// owner controls" says nothing about a battle the owner protects, so
+// attacking one is legal, and attacking it obeys "attacks each combat if
+// able".
+//
+// # "Can't attack unless defending player controls an Island"
+//
+// ADR 0107 §2 (#1879) is the third clause, DefenderMustControl. CR 508.5
+// makes "defending player" a fact about each TARGET: the player attacked,
+// the controller of the planeswalker attacked, or the protector of the
+// battle attacked. CR 508.5a makes it one specific player, worked out
+// separately for each creature. So in Commander, Sea Serpent may attack an
+// opponent who controls an Island, a planeswalker that opponent controls
+// and a battle that opponent protects, and nothing else. The clause is
+// per target, which is this file's shape, and
+// defendingPlayerForAttackLocked already answers CR 508.5 for every
+// target kind.
+//
+// The board is read live, at declaration, which is the only time CR 508.1c
+// asks. An Island that leaves after attackers are declared changes
+// nothing (CR 506.4a).
 
 // AttackTargetRestriction is one CR 508.1c restriction on what one
 // creature may attack. Pure data, so the Characteristic that carries it
@@ -64,6 +82,20 @@ type AttackTargetRestriction struct {
 	// NotOwnersPlaneswalkers forbids attacking a planeswalker the
 	// creature's owner controls.
 	NotOwnersPlaneswalkers bool
+	// DefenderMustControl, when set, forbids attacking any target whose
+	// defending player (CR 508.5) controls no permanent matching ANY of
+	// these queries: "can't attack unless defending player controls an
+	// Island" (ADR 0107 §2, #1879). Plain data, so the Characteristic
+	// stays snapshot-safe.
+	DefenderMustControl []PermanentQuery `json:",omitempty"`
+}
+
+// Equal reports whether r and o are the same restriction. A method rather
+// than ==, because DefenderMustControl is a slice.
+func (r AttackTargetRestriction) Equal(o AttackTargetRestriction) bool {
+	return r.Source == o.Source && r.SourceName == o.SourceName &&
+		r.NotOwner == o.NotOwner && r.NotOwnersPlaneswalkers == o.NotOwnersPlaneswalkers &&
+		samePermanentQueries(r.DefenderMustControl, o.DefenderMustControl)
 }
 
 // AttackTargetRestrictionError is the refusal a declaration verb
@@ -77,6 +109,11 @@ type AttackTargetRestrictionError struct {
 	AttackerName string
 	// Restriction is the one that refused it.
 	Restriction AttackTargetRestriction
+	// For a DefenderMustControl refusal: TargetName is what was
+	// attacked (a player's or a permanent's name), and DefenderName the
+	// defending player who controls no matching permanent.
+	TargetName   string
+	DefenderName string
 }
 
 func (e *AttackTargetRestrictionError) Error() string {
@@ -90,6 +127,15 @@ func (e *AttackTargetRestrictionError) Unwrap() error { return ErrIllegalAttackT
 // when it is not the creature itself ("Grizzly Bears can't attack its
 // owner (Elrond of the White Council).").
 func (e *AttackTargetRestrictionError) Sentence() string {
+	if e.DefenderName != "" {
+		// "Sea Serpent can't attack Bob: Bob controls no Island."
+		s := e.AttackerName + " can't attack " + e.TargetName + ": " +
+			e.DefenderName + " controls no " + PermanentQueriesNoun(e.Restriction.DefenderMustControl)
+		if e.Restriction.SourceName != "" && e.Restriction.Source != e.Attacker {
+			s += " (" + e.Restriction.SourceName + ")"
+		}
+		return s + "."
+	}
 	what := "its owner"
 	switch {
 	case e.Restriction.NotOwner && e.Restriction.NotOwnersPlaneswalkers:
@@ -104,12 +150,32 @@ func (e *AttackTargetRestrictionError) Sentence() string {
 	return s + "."
 }
 
-// refuses reports whether r forbids `attacker` attacking `target`.
+// refuses reports whether r forbids `attacker` attacking `target`, and,
+// for a DefenderMustControl refusal, the defending player who controls
+// nothing it asks for.
 //
 // Caller must hold g.mu with fresh layers.
-func (r AttackTargetRestriction) refuses(g *Game, attacker *Card, target uuid.UUID) bool {
+func (r AttackTargetRestriction) refuses(g *Game, attacker *Card, target uuid.UUID) (bool, uuid.UUID) {
+	if r.ownerRefuses(g, attacker, target) {
+		return true, uuid.Nil
+	}
+	if len(r.DefenderMustControl) > 0 {
+		// CR 508.5: the player attacked, a planeswalker's controller,
+		// or a battle's protector.
+		defender := g.defendingPlayerForAttackLocked(target)
+		if defender != uuid.Nil && !g.controlsMatchingLocked(defender, r.DefenderMustControl) {
+			return true, defender
+		}
+	}
+	return false, uuid.Nil
+}
+
+// ownerRefuses is the two owner clauses (ADR 0106 §2).
+//
+// Caller must hold g.mu with fresh layers.
+func (r AttackTargetRestriction) ownerRefuses(g *Game, attacker *Card, target uuid.UUID) bool {
 	owner := attacker.Owner
-	if owner == uuid.Nil {
+	if owner == uuid.Nil || (!r.NotOwner && !r.NotOwnersPlaneswalkers) {
 		return false
 	}
 	switch g.classifyAttackTargetLocked(target) {
@@ -136,15 +202,73 @@ func (g *Game) attackTargetRestrictionRefusalLocked(attacker *Card, target uuid.
 		return nil
 	}
 	for _, r := range attacker.Effective().AttackTargetRestrictions {
-		if r.refuses(g, attacker, target) {
-			return &AttackTargetRestrictionError{
-				Attacker:     attacker.InstanceID,
-				AttackerName: attacker.Effective().Name,
-				Restriction:  r,
+		refused, defender := r.refuses(g, attacker, target)
+		if !refused {
+			continue
+		}
+		err := &AttackTargetRestrictionError{
+			Attacker:     attacker.InstanceID,
+			AttackerName: attacker.Effective().Name,
+			Restriction:  r,
+		}
+		if defender != uuid.Nil {
+			err.DefenderName = g.playerNameLocked(defender)
+			err.TargetName = err.DefenderName
+			if c := findBattlefieldCard(g, target); c != nil {
+				err.TargetName = c.Effective().Name
+			}
+		}
+		return err
+	}
+	return nil
+}
+
+// playerNameLocked is a seat's name for a sentence, or "that player".
+//
+// Caller must hold g.mu.
+func (g *Game) playerNameLocked(id uuid.UUID) string {
+	if p := g.playerByIDLocked(id); p != nil && p.Name != "" {
+		return p.Name
+	}
+	return "that player"
+}
+
+// DefenderRefusal is one opponent a creature can't attack right now under
+// a DefenderMustControl restriction, for the card's chip (ADR 0107 §2
+// decision 3): "can't attack Bob: Bob controls no Island".
+type DefenderRefusal struct {
+	// Player is the opponent who controls nothing the restriction asks
+	// for. The refusal covers their planeswalkers and the battles they
+	// protect too (CR 508.5).
+	Player uuid.UUID
+	// Restriction is the one that refuses them.
+	Restriction AttackTargetRestriction
+}
+
+// DefenderRefusalsForEffect lists, for each DefenderMustControl
+// restriction on `c`, every live opponent of its controller who controls
+// no matching permanent right now. Nil for nearly every card.
+//
+// Read-only. Caller must hold g.mu with fresh layers.
+func (g *Game) DefenderRefusalsForEffect(c *Card) []DefenderRefusal {
+	if c == nil {
+		return nil
+	}
+	var out []DefenderRefusal
+	for _, r := range c.Effective().AttackTargetRestrictions {
+		if len(r.DefenderMustControl) == 0 {
+			continue
+		}
+		for _, p := range g.Seats {
+			if p == nil || p.Eliminated || p.ID == c.Controller {
+				continue
+			}
+			if !g.controlsMatchingLocked(p.ID, r.DefenderMustControl) {
+				out = append(out, DefenderRefusal{Player: p.ID, Restriction: r})
 			}
 		}
 	}
-	return nil
+	return out
 }
 
 // canAttackTargetWithLocked reports whether `attacker` may be DECLARED

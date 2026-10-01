@@ -2930,6 +2930,10 @@ export interface AttackTargetRestrictionView {
   planeswalkers?: boolean;
   // The card whose text imposes it.
   source?: string;
+  // ADR 0107 §2 (#1879): on a "can't attack unless defending player
+  // controls <X>" row, the X this player controls none of ("Island").
+  // The row then names an opponent rather than the owner.
+  unless?: string;
 }
 
 export interface ProtectionView {

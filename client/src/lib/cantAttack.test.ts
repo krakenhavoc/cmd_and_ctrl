@@ -53,6 +53,24 @@ describe("cantAttackChip", () => {
     );
   });
 
+  // ADR 0107 §2 (#1879): "can't attack unless defending player controls
+  // an Island" names each opponent with no Island, and says why.
+  it("names every opponent with no Island, and why", () => {
+    const chip = cantAttackChip(
+      card("x", [
+        { player: "a", planeswalkers: true, source: "Sea Serpent", unless: "Island" },
+        { player: "b", planeswalkers: true, source: "Sea Serpent", unless: "Island" },
+      ]),
+      seats,
+    );
+    expect(chip).toEqual({
+      label: "Alice, Bob",
+      title:
+        "can't attack Alice or planeswalkers Alice controls: Alice controls no Island (Sea Serpent); " +
+        "can't attack Bob or planeswalkers Bob controls: Bob controls no Island (Sea Serpent)",
+    });
+  });
+
   it("falls back to a neutral name for a seat the frame does not list", () => {
     expect(cantAttackChip(card("x", [{ player: "gone" }]), seats)?.label).toBe("another player");
   });
