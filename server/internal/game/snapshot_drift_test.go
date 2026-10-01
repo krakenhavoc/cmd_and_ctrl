@@ -728,6 +728,9 @@ var pendingChoiceFields = plan(
 	"RetargetOptional", carried, "",
 	"RetargetSlot", carried, "",
 	"RetargetReason", carried, "",
+	// #1743: a pinned retarget's destination, which is what makes the
+	// answer "which slot" rather than "where to".
+	"RetargetTo", carried, "",
 	// #764 mode_pick. Carried for the same reason ChooseCards is:
 	// the offered options ARE the prompt, and a restored game that
 	// forgot them would put a question with no answers in front of a

@@ -1168,12 +1168,17 @@ type pendingChoiceSnapshot struct {
 	// whether declining is allowed, which slot is being asked, and
 	// the card's own header for the rest of the walk. A restored
 	// game with these missing would put a question about nothing in
-	// front of a seat.
+	// front of a seat. RetargetTo (#1743) is a pinned retarget's
+	// destination: without it a restored "which target becomes
+	// Spellskite" prompt would be answered as a free retarget, moving
+	// the chosen slot onto the object the chooser clicked — the
+	// target it already had.
 	RetargetItem     uuid.UUID      `json:"retargetItem,omitempty"`
 	RetargetPolicy   RetargetPolicy `json:"retargetPolicy,omitempty"`
 	RetargetOptional bool           `json:"retargetOptional,omitempty"`
 	RetargetSlot     int            `json:"retargetSlot,omitempty"`
 	RetargetReason   string         `json:"retargetReason,omitempty"`
+	RetargetTo       TargetRef      `json:"retargetTo,omitempty"`
 	ModeOptionIndex  []int          `json:"modeOptionIndex,omitempty"`
 	ModeOptionLabel  []string       `json:"modeOptionLabel,omitempty"`
 	ModeMin          int            `json:"modeMin,omitempty"`
@@ -2099,6 +2104,7 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		RetargetOptional:     c.RetargetOptional,
 		RetargetSlot:         c.RetargetSlot,
 		RetargetReason:       c.RetargetReason,
+		RetargetTo:           c.RetargetTo,
 		ModeOptionIndex:      copyInts(c.ModeOptionIndex),
 		ModeOptionLabel:      copyStrings(c.ModeOptionLabel),
 		ModeMin:              c.ModeMin,
@@ -2867,6 +2873,7 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		RetargetOptional:     c.RetargetOptional,
 		RetargetSlot:         c.RetargetSlot,
 		RetargetReason:       c.RetargetReason,
+		RetargetTo:           c.RetargetTo,
 		ModeOptionIndex:      copyInts(c.ModeOptionIndex),
 		ModeOptionLabel:      copyStrings(c.ModeOptionLabel),
 		ModeMin:              c.ModeMin,

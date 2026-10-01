@@ -495,6 +495,14 @@ type PendingChoice struct {
 	RetargetOptional bool
 	RetargetSlot     int
 	RetargetReason   string
+	// RetargetTo is a PINNED retarget's destination (#1743,
+	// RetargetOffer.To): "change a target of target spell or ability
+	// to this creature". Set, it turns the prompt's question from
+	// "where does this slot go" into "which slot goes there" — the
+	// PickTarget* options are the objects currently in the eligible
+	// slots, and the answer names one of them. Zero on every free
+	// retarget.
+	RetargetTo TargetRef
 
 	// pickTargetResume is the server-only continuation for a
 	// PendingChoicePickTarget: the captured event / source / LKI,

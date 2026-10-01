@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Hydroelectric Specimen // Hydroelectric Laboratory — the FRONT
 // face, Creature — Weird {2}{U}, 1/4:
 //
@@ -11,24 +13,33 @@ package effects
 // mdfc_lands.go row under "<oracle>#1"; this is face 0, which keeps
 // the bare oracle ID (game.CatalogKey). Flash rides PrintedKeywords.
 //
-// The ETB is left unbuilt. CR 115.7's engine primitive
-// (effects.ChangeTargets, retarget.go) is "change the target of …",
-// which always opens the RETARGETING PLAYER a picker over every
-// legal new target (Bolt Bend, Deflecting Swat) — CR 115.7b/c. This
-// card's clause has no picker at all: the new target is fixed, "to
-// this creature", with no choice offered. Building it on top of
-// ChangeTargets would let the controller point the spell anywhere
-// legal, which is STRONGER than printed (#259's wrong direction), so
-// it is left out rather than shipped wrong. What's missing is a
-// retarget primitive whose new target is a fixed object rather than a
-// chooser's pick — filed as a new seam alongside this slice's PR
-// (retarget-to-a-fixed-object).
+// The enters trigger waited on a retarget whose new target is a FIXED
+// object rather than a chooser's pick: ChangeTargets alone opens a
+// picker over every legal new target, which would let the controller
+// point the spell anywhere — stronger than printed (#259). #1743 added
+// the pinned variant (ChangeTargets.ToSource, ADR 0019's 2026-10-01
+// amendment): the spell's one target changes to this creature only if
+// this creature is a legal target for it, judged for the spell's
+// controller, and only while this creature is still on the
+// battlefield. Otherwise nothing changes (CR 115.7a).
+//
+// "You may" is asked at resolution, where the printed text puts it:
+// the trigger targets the spell when it goes on the stack (CR 603.3d),
+// and the prompt that opens as it resolves offers the spell's current
+// target, answered by clicking it or declined with nothing.
 func init() {
 	Register(Spec{
 		OracleID:        "573151f0-00d4-4a8a-8a09-745c5f376532",
 		Name:            "Hydroelectric Specimen",
-		Completeness:    CompletenessCaveats,
-		Caveats:         []string{"The enter-the-battlefield ability isn't implemented — this creature can't redirect a targeted instant or sorcery spell to itself."},
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flash"},
+		Triggered: []game.TriggeredAbility{{
+			Watches:   []game.EventKind{game.EventETB},
+			AppliesTo: b06SelfETB,
+			Targets: TargetSpell("target instant or sorcery spell with a single target",
+				Or(Instant(), Sorcery()), HasASingleTarget()),
+			Key:    "Hydroelectric Specimen — change the target to this creature",
+			Effect: changeATargetToThisCreature("Hydroelectric Specimen — change the target to Hydroelectric Specimen?", true),
+		}},
 	})
 }

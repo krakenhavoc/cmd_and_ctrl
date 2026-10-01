@@ -392,13 +392,15 @@ func TestNobleHierarchExaltedAndItsManaPipe(t *testing.T) {
 
 // --- Hydroelectric Specimen ----------------------------------------------
 
-func TestHydroelectricSpecimenHasFlashAndDeclaresTheRedirectUnimplemented(t *testing.T) {
+// The redirect itself is pinned_retarget_test.go's (#1743); this is
+// the face's printed keyword, and that nothing is left caveated.
+func TestHydroelectricSpecimenHasFlashAndIsComplete(t *testing.T) {
 	spec, ok := Lookup(hydroelectricSpecimenOracle)
 	if !ok {
 		t.Fatalf("Hydroelectric Specimen is not registered")
 	}
-	if spec.Completeness != CompletenessCaveats || len(spec.Caveats) == 0 {
-		t.Error("the missing redirect-to-a-fixed-target ability must be declared as a caveat")
+	if spec.Completeness != CompletenessFull || len(spec.Caveats) != 0 {
+		t.Errorf("the redirect is built since #1743; completeness = %v, caveats = %v", spec.Completeness, spec.Caveats)
 	}
 	g := newCatalogGame(t)
 	me := g.Seats[0]
