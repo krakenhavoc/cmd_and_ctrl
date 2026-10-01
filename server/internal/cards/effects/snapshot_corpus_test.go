@@ -204,6 +204,11 @@ func corpusBoards() []corpusBoard {
 		// evolve/grow body — waiting on the stack, carrying the entered
 		// creature on its trigger context.
 		{"evolve_on_stack", corpusEvolveOnStack},
+		// v7, added by #1858 (ADR 0107 §1) as a new file: a CR 603.8
+		// state trigger — a catalog row with a State condition and no
+		// event — waiting on the stack. Its latch is derived from this
+		// item, so the restored table must not trigger it again.
+		{"state_trigger_on_stack", corpusStateTriggerOnStack},
 		// v7, added by #1593: duration copy effects — the becomeCopy mod
 		// carrying its copied values, and the carried durationCopyBase
 		// under a Cytoshaped Clone. Written by #1712, alongside the
@@ -1413,6 +1418,24 @@ func corpusEvolveOnStack(t *testing.T) *game.Game {
 	enterCreature(t, g, me, "Grizzly Bears", 2, 2)
 	if it := corpusSettleTrigger(t, g, raptor); it.Body != "evolve/grow" {
 		t.Fatalf("setup: the evolve trigger names body %q, want evolve/grow", it.Body)
+	}
+	return g
+}
+
+// corpusStateTriggerOnStack is a real Emperor Crocodile alone on its
+// controller's side, its "When you control no other creatures, sacrifice
+// this creature" waiting on the stack: an own:0 triggered ref with no
+// trigger context.
+func corpusStateTriggerOnStack(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat].ID
+	croc := corpusCreature(me, "Emperor Crocodile", 5, 5)
+	croc.TypeLine, croc.OracleID = "Creature — Crocodile", stEmperorCrocodile
+	id := pushBattlefieldCardWithTimestamp(g, croc)
+	it := corpusSettleTrigger(t, g, id)
+	corpusRequireTriggeredStamp(t, it, "own:")
+	if it.Trigger != nil {
+		t.Fatalf("setup: a state trigger carries a trigger context %+v; it fired off no event", it.Trigger)
 	}
 	return g
 }

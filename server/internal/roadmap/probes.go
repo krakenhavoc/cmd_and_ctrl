@@ -187,6 +187,17 @@ func designation(kinds ...game.DesignationKind) func(effects.Spec) bool {
 	}
 }
 
+// declaresStateTrigger reports whether the spec prints a CR 603.8 state
+// trigger (ADR 0107 §1, #1858): a triggered row with a State condition.
+func declaresStateTrigger(s effects.Spec) bool {
+	for _, t := range s.Triggered {
+		if t.State != nil {
+			return true
+		}
+	}
+	return false
+}
+
 // anyOf is true when any probe is.
 func anyOf(ps ...func(effects.Spec) bool) func(effects.Spec) bool {
 	return func(s effects.Spec) bool {

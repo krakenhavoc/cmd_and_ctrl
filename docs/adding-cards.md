@@ -4393,6 +4393,53 @@ Tide, Bubbling Muck, left to #663).
 the engine rules themselves are in
 [mana_trigger_test.go](../server/internal/game/mana_trigger_test.go).
 
+### State triggers (ADR 0107, #1858)
+
+"When you control no Islands, sacrifice this creature", "When there are
+five or more plot counters on this enchantment", "When you have 20 or
+more life, you lose the game" are CR 603.8 **state triggers**: they
+trigger when the game is in a state, not when something happens. Declare
+one with the constructors in
+[state_triggers.go](../server/internal/cards/effects/state_triggers.go):
+
+```go
+Triggered: []game.TriggeredAbility{
+    WhenYouControlNo(QuerySubtype("Island"), "Sea Serpent — sacrifice it", SacrificeThisIfStillOnBattlefield),
+    WhenThisHasAtLeast("plot", 5, "Deadly Designs — …", SacrificeThisThen(then)),
+    WhenState("Transcendence — you lose the game", func(g *game.Game, src *game.Card, you uuid.UUID) bool { … }, Do(LoseTheGame{})),
+}
+```
+
+- `WhenYouControlNo`, `WhenYouControlNoOther`, `WhenThereAreNo` and
+  `WhenYouControlAtLeast` take ADR 0107's `game.PermanentQuery`, the same
+  query the serpents' "can't attack unless defending player controls an
+  Island" reads, so the two halves of a card ask one question.
+  `WhenThisHasAtLeast` / `WhenThisHasNo` are counter thresholds on the
+  source; `WhenState` takes any condition.
+- **Never approximate one with an event trigger** (watching a land
+  leave, a counter go on). That triggers once per event instead of once
+  per state and misses every way the state can arise that the card file
+  did not think of.
+- The engine asks the condition after every event and in each pass of
+  the CR 704.3 loop, and latches the ability while an item of it from the
+  same object is waiting, being announced, on the stack or resolving.
+  The card file writes none of that. Register refuses a state trigger
+  with `Watches`, a `Build`, no `Effect` or a zone other than the
+  battlefield.
+- An intervening "if" (CR 603.4, Veiled Crocodile's "if this permanent
+  is an enchantment") goes in the condition AND is checked again in the
+  effect.
+- A condition that is still true after the ability resolves triggers it
+  again (CR 603.8). Make sure the effect changes the state, or that the
+  card really loops (Darksteel Reactor under an opponent's Platinum
+  Angel does: a loop of mandatory actions, CR 104.4b and 732.4, which the
+  loop breaker of ADR 0055 handles).
+- A condition must be a pure read of the board. It runs on every event
+  while its permanent is on the battlefield.
+- In a test, push the permanents a condition needs BEFORE the card: a
+  Task Mage Assembly that enters onto an empty board is sacrificed at
+  once, which is the card.
+
 ### Choices made at resolution (#796, #568)
 
 Three shapes, all addressed by `Player` / `Chooser`, so "you may" and
