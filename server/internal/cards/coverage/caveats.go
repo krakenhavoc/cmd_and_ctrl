@@ -615,6 +615,18 @@ var mechanics = []Mechanic{
 		Confidence: Exact,
 		Adopt:      `PrintedKeywords: []string{"split second"} — the engine does the rest`,
 	},
+	{
+		// #1854 (ADR 0107 §3): rebound is a canonicalKeywords token
+		// read off the resolving spell by the stack's graveyard route
+		// (game/rebound.go). Same probe as split second, for the same
+		// reason.
+		Name:       "rebound",
+		Phrases:    []string{"rebound"},
+		Implements: printedKeywordProbe(game.KeywordRebound),
+		Evidence:   `game.CatalogPrintedKeywords(oracleID) contains "rebound"`,
+		Confidence: Exact,
+		Adopt:      `PrintedKeywords: []string{game.KeywordRebound} — the engine does the rest`,
+	},
 }
 
 // printedKeywordProbe is the exact probe for a canonical keyword token

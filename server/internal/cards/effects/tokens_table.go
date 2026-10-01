@@ -71,6 +71,7 @@ func TokenKeys() []string {
 var tokenTable = map[string]game.Card{
 	"1/1 green and white Citizen":                   {Name: "Citizen", TypeLine: "Token Creature — Citizen", Power: 1, Toughness: 1, Colors: []string{"G", "W"}},
 	"1/1 blue Faerie Dragon with flying":            {Name: "Faerie Dragon", TypeLine: "Token Creature — Faerie Dragon", Power: 1, Toughness: 1, Colors: []string{"U"}, Keywords: []string{"flying"}},
+	"2/2 blue Djinn Monk with flying":               {Name: "Djinn Monk", TypeLine: "Token Creature — Djinn Monk", Power: 2, Toughness: 2, Colors: []string{"U"}, Keywords: []string{"flying"}},
 	"0/0 black Phyrexian Germ":                      {Name: "Phyrexian Germ", TypeLine: "Token Creature — Phyrexian Germ", Power: 0, Toughness: 0, Colors: []string{"B"}, PrintedPTKnown: true},
 	"0/0 colorless Construct artifact":              {Name: "Construct", TypeLine: "Token Artifact Creature — Construct", Power: 0, Toughness: 0},
 	"0/0 white Spirit Cleric":                       {Name: "Spirit Cleric", TypeLine: "Token Creature — Spirit Cleric", Power: 0, Toughness: 0, Colors: []string{"W"}},
@@ -131,6 +132,7 @@ var tokenTable = map[string]game.Card{
 	"1/1 white Human Soldier":                       {Name: "Human Soldier", TypeLine: "Token Creature — Human Soldier", Power: 1, Toughness: 1, Colors: []string{"W"}},
 	"1/1 white Human Warrior":                       {Name: "Human Warrior", TypeLine: "Token Creature — Human Warrior", Power: 1, Toughness: 1, Colors: []string{"W"}},
 	"1/1 white Rabbit":                              {Name: "Rabbit", TypeLine: "Token Creature — Rabbit", Power: 1, Toughness: 1, Colors: []string{"W"}},
+	"1/1 white Kor Soldier":                         {Name: "Kor Soldier", TypeLine: "Token Creature — Kor Soldier", Power: 1, Toughness: 1, Colors: []string{"W"}},
 	"1/1 white Soldier":                             {Name: "Soldier", TypeLine: "Token Creature — Soldier", Power: 1, Toughness: 1, Colors: []string{"W"}},
 	"1/1 white Soldier with lifelink":               {Name: "Soldier", TypeLine: "Token Creature — Soldier", Power: 1, Toughness: 1, Colors: []string{"W"}, Keywords: []string{"lifelink"}},
 	"3/1 white Spirit with flying":                  {Name: "Spirit", TypeLine: "Token Creature — Spirit", Power: 3, Toughness: 1, Colors: []string{"W"}, Keywords: []string{"flying"}},

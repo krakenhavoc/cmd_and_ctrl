@@ -1592,6 +1592,7 @@ canonicalised forms the engine expects. Canonical tokens:
 | `"prowess"` | Prowess (CR 702.108) — #706, the first TRIGGERED keyword in the table: `TriggersForCard` turns each instance on the effective ability list into one trigger (`game/prowess.go`). Cumulative like toxic, so grant it through `game.AppendKeywordAbility`. Never write a prowess trigger by hand — declare the token ([ADR 0014 amendment 2026-09-24](decisions/0014-combat-keywords.md)) |
 | `"evolve"` | Evolve (CR 702.100) — #1805, the second TRIGGERED keyword, built exactly like prowess: one trigger per instance (`game/evolve.go`), the CR 702.100a comparison made on entry and again on resolution (CR 603.4), and `game.EventEvolved` when a counter lands (CR 702.100b) — "whenever this creature evolves" is `WhenThisEvolves(label, effect)`. Cumulative, so grant it through `KeywordGrant` / `game.AppendKeywordAbility`. A creature whose only text is evolve and other tokens here needs no card file. Never write an evolve trigger by hand ([ADR 0106 §3](decisions/0106-five-small-seams-from-the-s50-rechecks.md#3-evolve-1805)) |
 | `"split second"` | Split second (CR 702.61) — #1519, a SPELL's keyword: `castHasSplitSecond` (`game/split_second.go`) stamps `StackItem.SplitSecond` at announce, and while it is on the stack nobody casts or activates a non-mana ability. Declare it on an instant or sorcery exactly like flash; never pass the sandbox `SplitSecond` cast flag from a card ([ADR 0007 amendment 2026-09-24](decisions/0007-stack-foundation.md)) |
+| `"rebound"` | Rebound (CR 702.88) — #1854, a SPELL's keyword read as it RESOLVES: `spellRebounds` (`game/rebound.go`) exiles a spell cast from its controller's hand instead of putting it into the graveyard, and the upkeep delayed trigger `rebound/cast` offers the free cast. Declare it on an instant or sorcery; the card file writes only the rest of its text ([ADR 0107 §3](decisions/0107-state-triggers-rebound-disturb-and-damage-prevention.md#3-rebound-1854)) |
 
 **A keyword counter needs no grant** (CR 122.1b, [ADR 0101](decisions/0101-keyword-counters.md)).
 "Put a flying counter on it" is `AddCounter{Target: id, Kind:
@@ -1871,6 +1872,26 @@ creature put onto the battlefield attacking (CR 508.4c) ignore it. The
 card shows a "CAN'T ATTACK <name>" chip. A RESOLVED effect that grants
 it (Elrond of the White Council) has no mod kind yet. See
 `xantcha_sleeper_agent.go` for the printed card.
+
+**"Can't attack unless defending player controls an Island"**
+([ADR 0107 §2](decisions/0107-state-triggers-rebound-disturb-and-damage-prevention.md),
+#1879) is the same list's third form. It names what the DEFENDING player
+must control, as `game.PermanentQuery` data (any of the queries given):
+
+```go
+Static: []game.StaticAbility{CantAttackUnlessDefendingPlayerControls(QuerySubtype("Island"))},               // Sea Serpent
+Static: []game.StaticAbility{CantAttackUnlessDefendingPlayerControls(
+    game.PermanentQuery{Types: []string{"enchantment"}}, game.PermanentQuery{Enchanted: true})},           // Godhunter Octopus
+Static: []game.StaticAbility{CantAttackUnlessDefendingPlayerControls(
+    game.PermanentQuery{Types: []string{"creature"}, Keyword: "flying"})},                                  // Lurking Green Dragon
+```
+
+The engine works out each target's defending player (CR 508.5: the
+player, a planeswalker's controller, a battle's protector), so in
+Commander the creature may attack the opponents who control a match and
+nobody else. The chip names each opponent it can't attack and why ("Bob
+controls no Island"). A condition that is not "controls a permanent"
+(poisoned, the monarch, more creatures than you) is not this field.
 
 [ADR 0045](decisions/0045-combat-restrictions.md) has the
 taxonomy, including what the vocabulary deliberately cannot say:

@@ -804,7 +804,7 @@ var items = []Item{
 		Printed:     `(?i)\b(there (is|are) (an|two) additional (combat|beginning) phases?|an additional end step)\b`,
 		Examples:    []string{"Relentless Assault", "Aurelia, the Warleader", "Sphinx of the Second Sun"},
 		Phrases:     []string{"additional combat", "extra combat", "additional end step"},
-		EngineNotes: "**The turn plan shipped** (ADR 0059 Decisions 3, 4 and 8, sub-PR 2b, #753; see Closed seams): the rest of the turn is `Game.TurnPlan`, which `advanceCursorLocked` pops, and `AddPhasesForEffect` (anchors \"after this phase\" and \"after this main phase\") and `AddStepAfterCurrentForEffect` splice into it, newest first (CR 500.8 / 500.9). An added main phase is postcombat (CR 505.1a). `Turn.PhaseID` / `PhaseOrdinal` / `StepOrdinal` answer \"the first combat phase\" and \"the first end step\", and `TurnTally.Attacks` answers \"attacked this turn\" per object. What is left is Decision 4's `AnchorNthMainPhase` (World at War's \"after the second main phase\", which also waits on rebound) and Decision 8's `DelayedTrigger.OnPhaseID` binding (Moraug's and World at War's \"at the beginning of that combat\"); both ship with the first card that uses them. Cards that add a combat but wait on something else are listed on their own seams: Combat Celebrant (exert), Port Razer and Bloodthirster (a per-target attack restriction), Savage Beating (entwine). The audit's only-blocker cards shipped here, so Unblocks is 0.",
+		EngineNotes: "**The turn plan shipped** (ADR 0059 Decisions 3, 4 and 8, sub-PR 2b, #753; see Closed seams): the rest of the turn is `Game.TurnPlan`, which `advanceCursorLocked` pops, and `AddPhasesForEffect` (anchors \"after this phase\" and \"after this main phase\") and `AddStepAfterCurrentForEffect` splice into it, newest first (CR 500.8 / 500.9). An added main phase is postcombat (CR 505.1a). `Turn.PhaseID` / `PhaseOrdinal` / `StepOrdinal` answer \"the first combat phase\" and \"the first end step\", and `TurnTally.Attacks` answers \"attacked this turn\" per object. What is left is Decision 4's `AnchorNthMainPhase` (World at War's \"after the second main phase\") and Decision 8's `DelayedTrigger.OnPhaseID` binding (Moraug's and World at War's \"at the beginning of that combat\"); both ship with the first card that uses them. Cards that add a combat but wait on something else are listed on their own seams: Combat Celebrant (exert), Port Razer and Bloodthirster (a per-target attack restriction), Savage Beating (entwine). The audit's only-blocker cards shipped here, so Unblocks is 0.",
 	},
 	{
 		Slug: "infect-wither-toxic", Name: "Infect, wither and toxic", Kind: KindSeam, Status: StatusImplemented,
@@ -1155,15 +1155,31 @@ var items = []Item{
 		EngineNotes: "prevention gate: CR 615.12 is not modelled — `builtin_replacements.go` applies every prevention effect to every damage event, and nothing marks a damage event, a source or a whole turn as unpreventable. Frenzied Baloth's \"Combat damage can't be prevented\" is a battlefield static over combat damage; Spider-Punk's \"Damage can't be prevented\" (on the riot row) covers all damage; Banefire and Bonecrusher Giant ship with caveats for the same gap.",
 	},
 	{
-		Slug: "rebound", Name: "Rebound", Kind: KindSeam, Status: StatusMissing,
-		Summary:     "Rebound exiles a spell cast from your hand as it resolves, and lets you cast it again for free at the beginning of your next upkeep.",
-		Missing:     "Rebound isn't implemented, so a spell with it, or a spell given it, goes to the graveyard as usual.",
-		Rules:       []string{"702.88"},
+		// #1854 (ADR 0107 §3, PR 3): a canonical keyword token read off
+		// the resolving spell by the stack's graveyard route
+		// (game/rebound.go). The exile, the upkeep delayed trigger
+		// ("rebound/cast") and the free cast are data, so a table with
+		// one waiting is a restore point. A spell GIVEN rebound waits on
+		// the granted-rebound seam below (ADR 0107 PR 4).
+		Slug: "rebound", Name: "Rebound", Kind: KindKeyword, Status: StatusImplemented,
+		Summary:  "Rebound exiles a spell cast from your hand as it resolves, and lets you cast it again for free at the beginning of your next upkeep.",
+		Rules:    []string{"702.88"},
+		ADR:      "0107-state-triggers-rebound-disturb-and-damage-prevention.md",
+		Keywords: []string{game.KeywordRebound},
+		Mechanic: "rebound",
+		Printed:  printedKeyword("rebound"),
+		Examples: []string{"Staggershock", "Ephemerate", "Distortion Strike"},
+	},
+	{
+		Slug: "granted-rebound", Name: "Giving a spell rebound", Kind: KindSeam, Status: StatusMissing,
+		Summary:     "Effects that give rebound to a spell on the stack, such as \"that spell gains rebound\" or \"instant and sorcery spells you control have rebound\".",
+		Missing:     "A spell can't gain rebound while it's on the stack yet, so a spell given rebound goes to the graveyard as usual.",
+		Rules:       []string{"702.88", "613.1f"},
 		Issue:       1854,
-		Tracked:     "#1854 (S50 tracker #1784; moved off #1806 by ADR 0106 PR 3)",
-		Waiting:     []string{"Taigam, Ojutai Master"},
-		Phrases:     []string{"rebound"},
-		EngineNotes: "keyword: rebound (CR 702.88) is not in `canonicalKeywords`, and it is two pieces: a replacement on the spell's resolution (exile it instead of the graveyard, only if it was cast from a hand) and a delayed upkeep trigger that offers a free cast from exile. Taigam, Ojutai Master's \"Instant, sorcery, and Dragon spells you control can't be countered\" works today (a battlefield static, ADR 0106 PR 2); what it waits on is GRANTING rebound to a spell on the stack, which also needs rebound itself.",
+		Tracked:     "#1854 (S50 tracker #1784; ADR 0107 PR 4)",
+		Waiting:     []string{"Taigam, Ojutai Master", "Narset Transcendent", "Ojer Pakpatiq, Deepest Epoch // Temple of Cyclical Time", "Cast Through Time"},
+		Phrases:     []string{"gains rebound", "have rebound"},
+		EngineNotes: "layer pass: printed rebound shipped (ADR 0107 PR 3, see Closed seams), and `spellRebounds` reads `HasKeyword` on the resolving spell, so a grant needs nothing there. What is missing is the grant: the stack step of the layer pass (ADR 0104, `stackControlPassLocked`) applies layer 2 only, and `stackPinProblem` refuses any other mod on a stack pin. ADR 0107 §3 decision 5 (owner decision 3) widens it to layer-6 keyword grants: `ModAddKeywords` on a stack pin (Taigam's and Ojer Pakpatiq's \"that spell gains rebound\", Narset's \"when you next cast\" delayed trigger) and battlefield statics over spells (Cast Through Time). A granted rebound can meet buyback or an Adventure exile on the same spell, so the CR 616.1 choice between them ships with it.",
 	},
 	{
 		Slug: "disturb", Name: "Disturb", Kind: KindKeyword, Status: StatusImplemented,
@@ -1283,6 +1299,36 @@ var items = []Item{
 		EngineNotes: "**The restriction shipped** (ADR 0106 §2, #1794): `Characteristic.AttackTargetRestrictions []game.AttackTargetRestriction{Source, SourceName, NotOwner, NotOwnersPlaneswalkers}`, written by an ordinary layer-6 static (`effects.CantAttackItsOwner()`, `effects.CantAttackItsOwnerOrItsOwnersPlaneswalkers()`) and only ever appended to, like `AttackRequirements`. One predicate, `canAttackTargetWithLocked(attacker, target)` — CR 506.2's controller check plus the creature's own list, with the owner read live (CR 108.3, so a copy uses its own owner) and battles never refused — is called by both declaration verbs and by the CR 508.1d search (`attackRequirementCandidatesLocked`), so with only its owner to attack the creature owes nothing. The enumerator walks a per-attacker `AttackTargetsForAttackerForEffect`, so the ADR 0105 digest's `attack_targets` and the client's per-attacker gate follow; `Turn.AttackTargets` stays per seat for prices and limits. CR 508.7b's reselection and CR 508.4c's entry attacking keep the controller-only check. The card view carries `attack_target_restrictions` (owner resolved to a seat), which draws the \"Can't attack <name>\" chip. Xantcha, Sleeper Agent landed with \"any player may activate\" (#1793, ADR 0106 PR 6). **Still open:** Alexios, Deimos of Kosmos needs \"can't be sacrificed\", which nothing in the engine expresses. Elrond of the White Council needs secret council voting and a `ScopedEffect` mod kind that grants this restriction from a resolved effect (ADR 0041 phase 3 data); both are out of ADR 0106's scope.",
 	},
 	{
+		Slug: "cant-attack-unless-defender-controls", Name: "A creature that can't attack unless the defending player controls something", Kind: KindSeam, Status: StatusPartial,
+		Summary:     "A creature that can't attack unless the defending player controls a certain kind of permanent, such as Sea Serpent and an Island. In Commander it may attack only the opponents who control one, along with their planeswalkers and the battles they protect, and the card shows whom it can't attack and why.",
+		Missing:     "Veiled Serpent, which gets this rule only when it becomes a creature, isn't supported yet. Neither are other conditions on the defending player, such as being poisoned, being the monarch or controlling fewer creatures.",
+		Rules:       []string{"508.1c", "508.5", "508.5a"},
+		Issue:       1879,
+		ADR:         "0107-state-triggers-rebound-disturb-and-damage-prevention.md",
+		Printed:     printedWords("can't attack unless defending player controls"),
+		Examples:    []string{"Sea Monster", "Godhunter Octopus", "Lurking Green Dragon"},
+		Waiting:     []string{"Veiled Serpent", "Chained Throatseeker", "Crown-Hunter Hireling", "Goblin Goon", "Mogg Toady", "Monstrous Hound", "Vantress Gargoyle"},
+		EngineNotes: "**The restriction shipped** (ADR 0107 §2, #1879): `AttackTargetRestriction.DefenderMustControl []game.PermanentQuery`, an any-of list of closed, plain-data permanent filters (types, subtypes, supertypes, colours, a keyword, \"enchanted\"; `game/permanent_query.go`), written by `effects.CantAttackUnlessDefendingPlayerControls(...)` as an ordinary layer-6 self static. `canAttackTargetWithLocked` gains one branch: it works out the target's defending player with `defendingPlayerForAttackLocked` (CR 508.5: the player, a planeswalker's controller, a battle's protector) and refuses the target when that player controls no match, read live at declaration. So the CR 508.1d search, both verbs, the enumerator's per-attacker list and the ADR 0105 digest's `attack_targets` all follow, and the client's rings need no change. The card view's `attack_target_restrictions` gains one row per opponent with no match (`unless`: \"Island\"), stamped by `stampDefenderRefusals`, which the chip's tooltip turns into \"Bob controls no Island\". **Still open:** Veiled Serpent becomes a creature WITH the restriction from a resolved trigger, which needs a `ScopedEffect` mod kind that writes an `AttackTargetRestriction` (Elrond of the White Council's missing piece on the cant-attack-its-owner row too). Chained Throatseeker (\"defending player is poisoned\"), Crown-Hunter Hireling (\"is the monarch\"), Goblin Goon and Mogg Toady (\"you control more creatures than defending player\"), Monstrous Hound (\"more lands\") and Vantress Gargoyle (\"seven or more cards in their graveyard\") are other conditions on the defending player; each would be one more data field beside `DefenderMustControl`, and the comparisons also print a matching \"can't block unless\" half.",
+	},
+	{
+		Slug: "land-type-for-a-duration", Name: "A land that becomes a basic land type for a while", Kind: KindSeam, Status: StatusMissing,
+		Summary:     "Effects that make a land a different basic land type until end of turn, such as Tideshaper Mystic's and Dreamwinder's.",
+		Missing:     "A land can gain an extra land type, and a permanent can change land types while it's on the battlefield, but a spell or ability can't yet make a land a different basic land type until end of turn.",
+		Rules:       []string{"305.7", "611.2a"},
+		Issue:       1881,
+		Waiting:     []string{"Dreamwinder", "Floodchaser", "Kukemssa Serpent"},
+		EngineNotes: "a resolved effect can ADD a land type (`ModAddSubtypes`, The Legend of Kyoshi, Sealock Monster) and a static can SET one (`effects.SetsBasicLandType`, Spreading Seas, Magus of the Moon: CR 305.7's three clauses in layer 4), but no `ScopedEffect` mod kind sets a land's subtype for a duration. It needs that kind, doing what `SetsBasicLandType` does, plus a choice of basic land type at resolution for the \"of your choice\" cards. 21 Commander-legal cards print it, none catalogued. Dreamwinder and Floodchaser otherwise land with #1879; Kukemssa Serpent also needs state triggers (#1858).",
+	},
+	{
+		Slug: "attacked-during-your-last-turn", Name: "What a creature did during your last turn", Kind: KindSeam, Status: StatusMissing,
+		Summary:     "Rules about what a creature did during its controller's previous turn, such as Goblin Rock Sled, which doesn't untap if it attacked during your last turn.",
+		Missing:     "The game only remembers what creatures did during the current turn.",
+		Rules:       []string{"502.3", "508.1c"},
+		Issue:       1882,
+		Waiting:     []string{"Goblin Rock Sled", "Giant Turtle"},
+		EngineNotes: "`TurnTally.Attacks` is flushed when a turn begins, so nothing knows that a creature attacked during its controller's LAST turn. It needs a per-object record of the attacks of each player's previous turn (keyed by object, CR 400.7), read by an `UntapStepRestriction` (Goblin Rock Sled) and by an attack restriction (Giant Turtle). Goblin Rock Sled otherwise lands with #1879.",
+	},
+	{
 		Slug: "control-of-a-spell", Name: "Gaining control of a spell", Kind: KindSeam, Status: StatusImplemented,
 		Summary:  "Effects that take control of a spell on the stack, such as Invert Polarity and Commandeer. The spell then resolves for its new controller, and a permanent spell becomes a permanent under them.",
 		Rules:    []string{"110.2b", "400.7a", "613.1b", "701.12a"},
@@ -1301,12 +1347,16 @@ var items = []Item{
 	},
 	{
 		Slug: "state-triggers", Name: "Abilities that trigger on a game state", Kind: KindSeam, Status: StatusMissing,
-		Summary:     "Abilities that trigger as soon as something about the game is true, such as Task Mage Assembly's \"When there are no creatures on the battlefield, sacrifice this enchantment\".",
-		Missing:     "An ability can only trigger when something happens, not when the game reaches a particular state.",
-		Rules:       []string{"603.8"},
-		Issue:       1858,
-		Tracked:     "#1858 (S50 tracker #1784; found landing ADR 0106 PR 6, #1793)",
-		Waiting:     []string{"Deadly Designs", "Task Mage Assembly"},
+		Summary: "Abilities that trigger as soon as something about the game is true, such as Task Mage Assembly's \"When there are no creatures on the battlefield, sacrifice this enchantment\".",
+		Missing: "An ability can only trigger when something happens, not when the game reaches a particular state.",
+		Rules:   []string{"603.8"},
+		Issue:   1858,
+		Tracked: "#1858 (S50 tracker #1784; found landing ADR 0106 PR 6, #1793)",
+		Waiting: []string{"Deadly Designs", "Task Mage Assembly",
+			// ADR 0107 §2 (#1879) shipped their attack restriction; each
+			// also sacrifices itself "when you control no <lands>".
+			"Bog Serpent", "Dandân", "Giant Shark", "Gorilla Pack", "Island Fish Jasconius", "Manta Ray", "Marjhan",
+			"Merchant Ship", "Pirate Ship", "Ronom Serpent", "Sea Serpent", "Slipstream Serpent", "Vodalian Knights"},
 		EngineNotes: "state triggers (CR 603.8): every `TriggeredAbility` watches an `EventKind`, and nothing re-asks a condition over the board after each action. A state trigger triggers once when its condition becomes true and does not trigger again until the ability has resolved or left the stack, then re-checks; it needs a per-object \"is it waiting on the stack\" latch and a pass beside the state-based actions. Deadly Designs (\"When there are five or more plot counters on this enchantment, sacrifice it. If you do, destroy up to two target creatures.\") and Task Mage Assembly (\"When there are no creatures on the battlefield, sacrifice this enchantment.\") are both otherwise any-player cards (#1793) that need nothing else. Watching `EventCounterPlaced` would trigger once per placement instead of once per state, which is not the rule.",
 	},
 	{

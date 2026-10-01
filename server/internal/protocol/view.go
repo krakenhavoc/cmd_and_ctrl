@@ -3585,6 +3585,7 @@ func ViewOfGame(g *game.Game) GameView {
 		stampZoneAbilities(g, view.Seats, &view.Exile)
 		stampCombatTargets(g, &view)
 		stampNoUntap(g, &view.Battlefield)
+		stampDefenderRefusals(g, &view.Battlefield)
 		view.legalBySeat, view.legalActionsBySeat = enumerateLegalMoves(g)
 		// S31 sub-PR 0: the public log resolves card names and knower
 		// sets out of the view that was just assembled, so it must run
@@ -5035,13 +5036,21 @@ func viewOfProtection(c *game.Card) []ProtectionView {
 // player controls.
 type AttackTargetRestrictionView struct {
 	// Player is the seat the creature can't attack — its owner, read
-	// live off the creature (CR 108.3), so a copy names its own owner.
+	// live off the creature (CR 108.3), so a copy names its own owner;
+	// or, on an Unless row, an opponent who controls none of Unless.
 	Player string `json:"player"`
 	// Planeswalkers adds "or planeswalkers <player> controls".
 	Planeswalkers bool `json:"planeswalkers,omitempty"`
 	// Source names the permanent whose text imposes it, for the chip's
 	// tooltip.
 	Source string `json:"source,omitempty"`
+	// Unless is set on a "can't attack unless defending player controls
+	// <X>" row (ADR 0107 §2, #1879): the X the player controls none of,
+	// without an article ("Island", "enchantment or enchanted
+	// permanent"). The row names one opponent the creature can't attack
+	// right now, and it covers that opponent's planeswalkers and the
+	// battles they protect too (CR 508.5), so Planeswalkers is set.
+	Unless string `json:"unless,omitempty"`
 }
 
 // viewOfAttackTargetRestrictions projects c's attack-target
@@ -5053,8 +5062,10 @@ func viewOfAttackTargetRestrictions(c *game.Card, eff game.Characteristic) []Att
 	}
 	var out []AttackTargetRestrictionView
 	for _, r := range eff.AttackTargetRestrictions {
-		// Every printed one forbids the owner; a planeswalkers-only row
-		// has no card behind it and no chip that would say it right.
+		// Every printed owner row forbids the owner; a planeswalkers-only
+		// row has no card behind it and no chip that would say it right.
+		// A "defending player controls" row (ADR 0107 §2) needs the
+		// board and is stamped by stampDefenderRefusals.
 		if !r.NotOwner {
 			continue
 		}
@@ -6097,6 +6108,36 @@ func attackTaxProbe(g *game.Game, seat uuid.UUID) uuid.UUID {
 // Caller holds g's read lock. The view and battlefield slices are kept in
 // the same order by viewOfZone, so this pass can use the card index without
 // exposing the internal marker representation.
+// stampDefenderRefusals adds the "can't attack unless defending player
+// controls <X>" rows to each battlefield creature's
+// attack_target_restrictions (ADR 0107 §2 decision 3, #1879): one row per
+// opponent who controls none of X right now. They need the rest of the
+// board, which viewOfCard does not have, so they are stamped here.
+//
+// Caller must hold g's read lock with fresh layers (ReadSnapshot does).
+func stampDefenderRefusals(g *game.Game, view *ZoneView) {
+	if g == nil || g.Battlefield == nil || view == nil {
+		return
+	}
+	for i := range view.Cards {
+		if i >= len(g.Battlefield.Cards) {
+			break
+		}
+		card := &g.Battlefield.Cards[i]
+		if card.FaceDown {
+			continue
+		}
+		for _, r := range g.DefenderRefusalsForEffect(card) {
+			view.Cards[i].AttackTargetRestrictions = append(view.Cards[i].AttackTargetRestrictions, AttackTargetRestrictionView{
+				Player:        r.Player.String(),
+				Planeswalkers: true,
+				Source:        r.Restriction.SourceName,
+				Unless:        game.PermanentQueriesNoun(r.Restriction.DefenderMustControl),
+			})
+		}
+	}
+}
+
 func stampNoUntap(g *game.Game, view *ZoneView) {
 	if g == nil || g.Battlefield == nil || view == nil {
 		return
