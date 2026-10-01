@@ -91,7 +91,8 @@
     onGroupClick?: (groupKey: string) => void;
     // ADR 0105 (#1789): the frame's legal-action lookups. `legal` is
     // what may be highlighted ("nothing" while highlights are off or
-    // autopass is passing, and on every panel but the viewer's own). It
+    // autopass is passing; on an opponent's panel only that panel's
+    // any-player rows, ADR 0106 §1, legalActions.ts acrossActions). It
     // draws each permanent's bolt / drop / star pips, and the ring that
     // goes with a bolt or a star (a drop pip alone gets no ring, §2).
     // `legalGate` is the full lookup, for the ability popover's gates

@@ -692,6 +692,11 @@ export type LogKind =
   // the chapter or level in `amount`.
   | "control"
   | "special_action"
+  // ADR 0106 §1 decision 6 (#1793): a player activated the "Any player
+  // may activate this ability" row of a permanent another player
+  // controls — "Bob activated Alice's Xantcha, Sleeper Agent".
+  // `target_seat` is the permanent's controller.
+  | "activate_across"
   | "cycle"
   | "counters"
   | "scry"
@@ -1910,7 +1915,8 @@ export type ExileCostZone = "hand" | "graveyard";
 // ActivatedAbilityView is one CR 602 activated ability on a
 // battlefield permanent (S21 sub-PR 2). Public information, so it
 // rides every viewer's snapshot; the client only offers the menu on
-// permanents the viewer controls. `index` is what the
+// permanents the viewer controls, plus a permanent's `any_player` rows
+// to every other seat (ADR 0106 §1). `index` is what the
 // activate_ability payload carries as `ability_index`.
 export interface ActivatedAbilityView {
   index: number;
@@ -2142,6 +2148,26 @@ export interface ActivatedAbilityView {
   // shows the same mode picker a modal spell's hand card gets.
   clauses?: LegalTargetsView[];
   modes?: ModeSpecView;
+  // ADR 0106 §1 decision 5 (#1793): the ability's own "Any player may
+  // activate this ability" (CR 602.2). Every seat may open this row on
+  // the permanent, not only its controller, and each seat's copy of
+  // the row is stamped with THAT seat as the activator: the charged
+  // price, life_cost, condition_unmet, timing_closed and the cost
+  // options are the viewer's (CR 602.1a, CR 109.5). Whether the row is
+  // live for the viewer right now is still the digest's answer
+  // (`legal_actions`), never the row's. Absent on every other row.
+  any_player?: boolean;
+  // ADR 0106 §1 decision 8: what the row buys an activator who does
+  // not control the permanent. Bot data; the client does not read it.
+  purpose?: ActivationPurposeView;
+}
+
+// ActivationPurposeView is the printed amounts an any-player row buys
+// its activator (ADR 0106 §1 decision 8): the cards they draw and the
+// life the permanent's controller loses.
+export interface ActivationPurposeView {
+  draws?: number;
+  controller_loses_life?: number;
 }
 
 // CounterCostOptionView is one permanent that could pay a "remove N

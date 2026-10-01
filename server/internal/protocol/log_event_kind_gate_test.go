@@ -77,15 +77,13 @@ var silentEventKinds = map[string]string{
 	// label and its source (projectAbilityItem), redacted with the
 	// source — log_ability_resolve_test.go pins both halves.
 	"EventTrigger": "a trigger reaching the stack is told by the LogResolve of the ability it becomes, which names it by its label and source (#1257)",
-	// #1184: the same argument as the row above, for the other half of
-	// the same announcement. An activation reaching the stack is told
-	// by the LogResolve of the ability it becomes, and the stack view
-	// carries it in the meantime; a second line at the announce would
-	// say the same thing twice about one click. The kind exists so
-	// TRIGGERS can watch an activation, not so the log can narrate
-	// one.
-	"EventActivateAbility": "an activation reaching the stack is told by the LogResolve of the ability it becomes, which names it by its label and source (#1257)",
-	"EventKeywordAction":   silentImpliedByAnotherLine,
+	// #1184's EventActivateAbility is no longer on this list: since
+	// ADR 0106 §1 it has an arm (LogActivateAcross) for the one
+	// activation the resolve line cannot tell — a player reaching
+	// across to another player's permanent. Every other activation is
+	// still told by the LogResolve of the ability it becomes, and the
+	// arm returns nothing for it.
+	"EventKeywordAction": silentImpliedByAnotherLine,
 
 	// --- the step spine ----------------------------------------------
 	"EventTurnBegan":          "the first EventStepBegan announces the same boundary to the table; this kind exists for engine consumers after per-turn resets",

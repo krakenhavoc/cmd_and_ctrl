@@ -102,6 +102,9 @@ const LOG_TONE: Record<LogKind, string> = {
   // without raising their voice.
   control: "tone-bad",
   special_action: "tone-cast",
+  // ADR 0106 §1: reaching across the table to activate another
+  // player's permanent is a play, toned like the special action.
+  activate_across: "tone-cast",
   cycle: "tone-zone",
   counters: "tone-quiet",
   scry: "tone-quiet",

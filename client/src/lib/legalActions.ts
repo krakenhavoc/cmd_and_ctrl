@@ -298,6 +298,58 @@ export function visibleHighlights(actions: LegalActions, live: boolean): LegalAc
   return live ? actions : NO_LEGAL_ACTIONS;
 }
 
+/**
+ * acrossActions is the lookup an OPPONENT's panel reads (ADR 0106 §1
+ * decisions 5 and 6, #1793). The digest is the viewer's own moves, so
+ * the only entry it can hold for a permanent another player controls is
+ * an "Any player may activate this ability" row (CR 602.2) the viewer
+ * may activate right now. This answers exactly that: the live refs of
+ * `cards`' any-player rows, for the cards in it that `viewerID` does
+ * not control, and nothing for every other card or question. So the
+ * bolt pip and ring on an opponent's permanent mean what they mean on
+ * the viewer's own, and nothing else of the viewer's (a combat ring, a
+ * cast) leaks onto that panel through this lookup.
+ *
+ * Pass `visibleHighlights`'s lookup for the drawing and the frame's
+ * full lookup for the popover's gate; `known`, `exact` and `pass` are
+ * the input's, so the gate keeps its "no information" reading. A
+ * spectator (null) gets the lookup that knows nothing.
+ */
+export function acrossActions(
+  actions: LegalActions,
+  cards: readonly CardView[],
+  viewerID: string | null,
+): LegalActions {
+  if (!viewerID || !actions.known) return NO_LEGAL_ACTIONS;
+  const refs = new Map<string, readonly string[]>();
+  for (const c of cards) {
+    if ((c.controller || c.owner) === viewerID) continue;
+    const own = new Set(
+      (c.activated_abilities ?? []).filter((a) => a.any_player && a.ref).map((a) => a.ref),
+    );
+    if (own.size === 0) continue;
+    const live = actions.readyAbilityRefs(c.instance_id).filter((r) => own.has(r));
+    refs.set(c.instance_id, live);
+  }
+  const abilities = (id: string): readonly string[] => refs.get(id) ?? NONE;
+  const ACTIVATE: readonly ReadyKind[] = Object.freeze(["activate"]);
+  return {
+    known: actions.known,
+    exact: actions.exact,
+    pass: actions.pass,
+    isReady: (id) => abilities(id).length > 0,
+    kinds: (id) => (abilities(id).length > 0 ? ACTIVATE : NO_KINDS),
+    castableFrom: () => false,
+    readyAbilityRefs: abilities,
+    readyManaRefs: () => NONE,
+    readySpecialActions: () => NONE,
+    canAttack: () => false,
+    attackTargets: () => NONE,
+    blockableAttackers: () => NONE,
+    readyCount: () => 0,
+  };
+}
+
 // ---- presentation: the mana-noise rule (ADR 0105 §4) -----------------
 
 function isLand(card: CardView): boolean {
@@ -360,7 +412,8 @@ export const NO_PIPS: ReadyPips = Object.freeze({ abilities: 0, mana: false, spe
  * `readySpecialActions`). The only decision made here is §4's
  * presentation rule for the drop pip (`notableManaRefs`). The lookup
  * that knows nothing gives NO_PIPS: highlights off, autopass passing,
- * a spectator, an opponent's card.
+ * a spectator. An opponent's card reads `acrossActions`, which lights
+ * only its any-player rows (ADR 0106 §1).
  *
  * Every special-action kind counts, including one this client has no
  * name for (a Room's unlock, or whatever lands next). The star is the

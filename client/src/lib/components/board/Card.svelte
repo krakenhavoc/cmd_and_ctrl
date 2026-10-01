@@ -33,7 +33,7 @@
   import { autoTapHighlight } from "../../dragCast";
   import { noUntapAppliesToController } from "../../noUntap";
   import { openCardMenu } from "../../contextMenu";
-  import { specialActionItems, type MenuAction } from "../../contextMenu.logic";
+  import { menuAbilityRows, specialActionItems, type MenuAction } from "../../contextMenu.logic";
   import CounterPips from "./CounterPips.svelte";
   import KeywordBadgeRow from "./KeywordBadgeRow.svelte";
   import ManaAbilityMenu from "./ManaAbilityMenu.svelte";
@@ -248,7 +248,18 @@
   // #660: a card projects EITHER list, never both — the server
   // filters by the zone the card is in (CR 113.6) — so one menu reads
   // whichever is present and the indices stay the card's own.
-  const menuAbilities = $derived(card.activated_abilities ?? card.zone_abilities ?? []);
+  //
+  // ADR 0106 §1 decision 6 (#1793): on a permanent the viewer does not
+  // control, only its "Any player may activate this ability" rows
+  // (CR 602.2); every other row is its controller's, and the server
+  // would refuse it (contextMenu.logic.ts menuAbilityRows). A card with
+  // no viewer in scope (no `viewerID` prop) lists every row as before.
+  const menuAbilities = $derived(menuAbilityRows(card, viewerID));
+  // Those rows are the viewer's to activate on another player's
+  // permanent, and the popover greys any the exact digest leaves out.
+  const across = $derived(
+    !!viewerID && !!card.activated_abilities && (card.controller || card.owner) !== viewerID,
+  );
   // #1228: and the same sentence for the CR 605 list. A permanent
   // publishes `mana_abilities`; a card in hand whose mana ability
   // functions there (a Spirit Guide) publishes `zone_mana_abilities`,
@@ -941,6 +952,7 @@
         {legal}
         {legalGate}
         {payerLife}
+        {across}
         onRawTap={onRawTap && onActivateManaAbility && menuManaAbilities.length > 0 && !card.tapped
           ? onRawTap
           : undefined}

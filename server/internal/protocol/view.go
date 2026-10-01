@@ -2698,8 +2698,10 @@ type ExilePlayView struct {
 // battlefield permanent, from its controller's point of view. The
 // cost flags tell the client what to collect before firing
 // activate_ability with `ability_index`: a sacrifice pick from
-// SacrificeOptions, a target from LegalTargets. Only stamped for
-// the controller — an opponent's menu isn't theirs to open.
+// SacrificeOptions, a target from LegalTargets. Stamped for the
+// controller — an opponent's menu isn't theirs to open — except an
+// `any_player` row, which every seat's copy carries stamped for that
+// seat (ADR 0106 §1, stampAnyPlayerOffers).
 // Added in S21 sub-PR 2.
 type ActivatedAbilityView struct {
 	Index int    `json:"index"`
@@ -3023,6 +3025,31 @@ type ActivatedAbilityView struct {
 	// modal. Both absent for the ordinary ability. Added by #764.
 	Clauses []LegalTargetsView `json:"clauses,omitempty"`
 	Modes   *ModeSpecView      `json:"modes,omitempty"`
+	// AnyPlayer marks the ability's own "Any player may activate this
+	// ability" (CR 602.2, ADR 0106 §1 decision 5, #1793): every seat may
+	// open this row on the permanent, not only its controller. Absent on
+	// every other row.
+	//
+	// Every viewer's copy of such a row is stamped with THAT viewer as
+	// the activator (stampAnyPlayerOffers): the costs, the condition,
+	// the timing verdict and the price are the activator's (CR 602.1a,
+	// CR 109.5). Whether the row is live for the viewer right now is
+	// still the digest's answer (`legal_actions`), never the row's.
+	AnyPlayer bool `json:"any_player,omitempty"`
+	// Purpose is what the row does for an activator who does not
+	// control the permanent (ADR 0106 §1 decision 8): the cards they
+	// draw and the life the permanent's controller loses. Catalog data,
+	// read by the bot; absent when the card declares none, and a bot
+	// never activates another player's row without one.
+	Purpose *ActivationPurposeView `json:"purpose,omitempty"`
+}
+
+// ActivationPurposeView is game.ActivationPurpose on the wire: the
+// printed amounts an any-player row buys its activator (ADR 0106 §1
+// decision 8).
+type ActivationPurposeView struct {
+	Draws               int `json:"draws,omitempty"`
+	ControllerLosesLife int `json:"controller_loses_life,omitempty"`
 }
 
 // CounterCostView describes the counter components of an ability's
@@ -5495,6 +5522,74 @@ func stampActivatedAbilities(g *game.Game, bf *ZoneView) {
 		// to the controller alone; every other viewer, spectators
 		// included, gets the rows without them.
 		c.fileAbilityOffers(controller)
+		// ADR 0106 §1 decision 5: and after that, each OTHER seat's copy
+		// of an "Any player may activate" row, stamped with that seat as
+		// the activator.
+		c.stampAnyPlayerOffers(g, card, controller, restricted)
+	}
+}
+
+// stampAnyPlayerOffers files, for every seat that does not control the
+// permanent, its own copy of the permanent's "Any player may activate
+// this ability" rows (ADR 0106 §1 decision 5, #1793).
+//
+// Every other field on such a row is computed with an activator in
+// mind — the charged price (CR 601.2f via 602.2b), the life the
+// activator has to pay, the condition and timing verdicts (CR 109.5:
+// "you" is the activator), the sacrifice and discard options out of the
+// ACTIVATOR's board and hand (CR 602.1a). The exported row is the
+// controller's. A seat that is not the controller gets the same row
+// re-stamped with itself, through the per-seat carrier the hidden-zone
+// lists already ride (abilityOffers, #1369), so a discard option out of
+// that seat's hand reaches that seat alone.
+//
+// The non-AnyPlayer rows in the seat's copy are the public ones,
+// unchanged: they are not that seat's to activate, and the client lists
+// only the AnyPlayer rows for a non-controller. Nothing is filed for a
+// permanent with no AnyPlayer row, which is nearly every permanent.
+//
+// Whether the row is live for the seat right now is NOT stamped here:
+// that is the digest's answer (legal_actions), from the enumerator.
+func (c *CardView) stampAnyPlayerOffers(g *game.Game, card game.Card, controller uuid.UUID, restricted bool) {
+	anyRow := false
+	for _, a := range c.ActivatedAbilities {
+		if a.AnyPlayer {
+			anyRow = true
+			break
+		}
+	}
+	if !anyRow {
+		return
+	}
+	for _, p := range g.Seats {
+		if p == nil || p.ID == controller {
+			continue
+		}
+		mine := viewOfActivatedAbilities(g, card, p.ID, game.ZoneBattlefield, restricted)
+		byIndex := make(map[int]ActivatedAbilityView, len(mine))
+		for _, a := range mine {
+			if a.AnyPlayer {
+				byIndex[a.Index] = a
+			}
+		}
+		rows := make([]ActivatedAbilityView, len(c.ActivatedAbilities))
+		for i, a := range c.ActivatedAbilities {
+			if own, ok := byIndex[a.Index]; ok && a.AnyPlayer {
+				// The grantor's name rides the exported row only
+				// (stampGrantedAbilities); keep it on this copy too.
+				own.GrantedBy = a.GrantedBy
+				rows[i] = own
+				continue
+			}
+			rows[i] = a
+		}
+		if c.abilityOffers == nil {
+			c.abilityOffers = make(map[string]abilityOfferRows, len(g.Seats))
+		}
+		c.abilityOffers[p.ID.String()] = abilityOfferRows{
+			ActivatedAbilities: rows,
+			ManaAbilities:      c.ManaAbilities,
+		}
 	}
 }
 
@@ -8290,6 +8385,14 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 			LifeCost:      a.Cost.Life,
 			SorcerySpeed:  a.SorcerySpeed,
 			LoyaltyCost:   a.Cost.Loyalty,
+			AnyPlayer:     a.AnyPlayer,
+		}
+		// ADR 0106 §1 decision 8: the bot's reason to reach across.
+		if !a.Purpose.IsZero() {
+			v.Purpose = &ActivationPurposeView{
+				Draws:               a.Purpose.Draws,
+				ControllerLosesLife: a.Purpose.ControllerLosesLife,
+			}
 		}
 		// #1594: a computed life component (War Room's "pay life
 		// equal to the number of colors in your commanders' color

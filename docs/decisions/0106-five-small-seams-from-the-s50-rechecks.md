@@ -379,3 +379,16 @@ The owner answered the six open questions on 2026-10-01. Five answers were the r
 - **Veil of Summer** is Caveats, not Full: "hexproof from blue and from black" is not a keyword the engine has (ADR 0038 §6), so that sentence grants nothing, which is weaker than printed.
 
 The player view's `counter_shields` line is public, like `end_gates`, and the client shows it as a NO COUNTER badge on the seat.
+
+---
+
+## Amendment (2026-10-01): §1 delivery PR 6 as built (#1793)
+
+§1 shipped as decided. These details differ from the text above, none of them in behaviour:
+
+- **The gate's name.** It is `game.MayActivate(player, source, zone, ab)`, exported and lock-free: it reads only the card and the row, so the enumerator and the view call it as they are, without a `Locked` twin. The activation path asks it after the index lookup, so the answer is about the row named. Before the lookup it keeps the cheap refusal for a non-controller when the permanent has no any-player row at all (`HasAnyPlayerAbility`), so a refused activation still costs nothing and names nothing.
+- **The purpose's shape.** `game.ActivationPurpose{Draws, ControllerLosesLife}`, the printed amounts, on the wire as the row's `purpose: {draws, controller_loses_life}`. The zero value is "no purpose". Register refuses a purpose on a row that is not `AnyPlayer`.
+- **The per-seat row.** Decision 5 said the shared row's stamps stay the controller's and the activator's price rides a per-seat carrier. As built, every seat that does not control the permanent gets its own copy of each `AnyPlayer` row, re-stamped with that seat as the activator (price, life, condition, timing, exhaust, the board-wide gate's reason, and the cost-option lists), through the #1369 `abilityOffers` carrier, so a discard option out of that seat's hand reaches that seat alone. The other rows on that copy are the controller's public ones. Whether the row is live is still the digest's answer.
+- **The move label.** The enumerator's label for a row on a permanent the seat does not control is "Xantcha, Sleeper Agent (controlled by Alice): {3}: …".
+- **The log line.** A new public log kind, `activate_across`, narrates only an activation of another player's permanent. `EventActivateAbility` carries that permanent's controller in `Target` for it, and `uuid.Nil` for every ordinary activation, which stays off the log as before.
+- **ADR 0105 §2's "never mark opponents' cards"** now has one exception: a permanent another player controls lights exactly when the viewer's own digest lists it, which happens only for its any-player rows.

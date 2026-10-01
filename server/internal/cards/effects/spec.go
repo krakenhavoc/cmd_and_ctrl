@@ -1283,7 +1283,22 @@ type ActivatedAbility struct {
 	// for a copy clause (the copy just isn't made) and for Stifle.
 	// See game.ActivatedAbilityShape.Uncopyable (#1574).
 	Uncopyable bool
-	Effect     func(g *game.Game, item *game.StackItem) error
+	// AnyPlayer is the ability's printed "Any player may activate this
+	// ability" (CR 602.2, CR 602.1b; ADR 0106 §1, #1793). "You" in the
+	// effect is then whoever activated it (CR 109.5) — Context.Controller
+	// — and "this permanent's controller" is Context.SourcePermanent()'s.
+	// Register refuses it beside a {T}, loyalty, crew or sacrifice-this
+	// component and on an ability with a non-battlefield zone. See
+	// game.ActivatedAbilityShape.AnyPlayer.
+	AnyPlayer bool
+	// Purpose is what the ability buys an activator who does NOT control
+	// its source, for the bot (ADR 0106 §1 decision 8, owner decision 2).
+	// Leave it zero unless the printed effect is plainly worth it to that
+	// player: a row with no purpose is never chosen by a bot reaching
+	// across the table. Register refuses it without AnyPlayer. See
+	// game.ActivationPurpose.
+	Purpose game.ActivationPurpose
+	Effect  func(g *game.Game, item *game.StackItem) error
 }
 
 // ManaAbility is one mana-producing activated ability on a permanent.
