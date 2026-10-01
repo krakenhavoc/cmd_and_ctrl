@@ -336,9 +336,11 @@ func TestChimilDiscoversFiveAtYourEndStep(t *testing.T) {
 	advanceTo(t, g, game.StepEnd)
 	passPriorityAroundTable(t, g)
 	expectDiscovered(t, g, me.ID, hit)
+	// ADR 0106 PR 2 (#1806) closed the caveat ADR 0099's owner decision
+	// 5 shipped it with: its first line is now counter_shields_test.go's.
 	spec, _ := Lookup(chimilOracle)
-	if spec.Completeness != CompletenessCaveats || len(spec.Caveats) != 1 {
-		t.Errorf("Chimil must carry its can't-be-countered caveat (owner decision 5)")
+	if spec.Completeness != CompletenessFull || len(spec.Caveats) != 0 {
+		t.Errorf("Chimil is complete since #1806: %v %v", spec.Completeness, spec.Caveats)
 	}
 }
 
