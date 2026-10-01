@@ -42,7 +42,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Modes: ChooseOne(
 			Mode("Boros Charm deals 4 damage to target player or planeswalker.",
-				targetPlayerOrPlaneswalker("target player or planeswalker")),
+				targetPlayerOrPlaneswalker()),
 			Mode("Permanents you control gain indestructible until end of turn."),
 			Mode("Target creature gains double strike until end of turn.",
 				TargetCreature("target creature")),
@@ -80,10 +80,10 @@ func init() {
 // file-local rather than added to targets.go so a concurrent batch
 // touching that file doesn't collide; if a second card wants it,
 // move it there.
-func targetPlayerOrPlaneswalker(label string) *game.TargetSpec {
+func targetPlayerOrPlaneswalker() *game.TargetSpec {
 	return &game.TargetSpec{
 		Mode:    "any",
-		Label:   label,
+		Label:   "target player or planeswalker",
 		Players: true,
 		Zones:   []game.ZoneKind{game.ZoneBattlefield},
 		CardOK: func(_ *game.Game, _ uuid.UUID, c game.Card, _ game.ZoneKind) bool {

@@ -244,7 +244,34 @@ func corpusBoards() []corpusBoard {
 		// on the stack with two marks (StackItem.CantBeCountered), one
 		// from a spent promise and one from Vexing Shusher.
 		{"counter_shields", corpusCounterShields},
+		// v7, added by ADR 0107 PR 6 (#1853, #1880) as a new file: the
+		// rules gates as data — a resolved Skullcrack's
+		// damageCantBePrevented and cantGainLife turn grants, Flames of
+		// the Blood Hand's gainNoLife replacement, a pinned
+		// damageCantBePrevented + damageCantBeRedirected pair (Whippoorwill's
+		// shape) and a rest-of-the-game cantGainLife on one player.
+		{"rules_gates", corpusRulesGates},
 	}
+}
+
+// corpusRulesGates is ADR 0107 §5's four new mod kinds on one board.
+func corpusRulesGates(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	castCatalogSpell(t, g, "Skullcrack", "Instant", pr6SkullcrackOracle, pr6Player(opp.ID))
+	passPriorityAroundTable(t, g)
+	castCatalogSpell(t, g, "Flames of the Blood Hand", "Instant", pr6FlamesOracle, pr6Player(opp.ID))
+	passPriorityAroundTable(t, g)
+	bear := pushBattlefieldCardWithTimestamp(g, corpusCreature(opp.ID, "Grizzly Bears", 2, 2))
+	g.WithWriteLock(func() {
+		g.DamageToCantBePreventedThisTurnForEffect(uuid.Nil, bear, true, "Whippoorwill")
+		g.PlayerCantGainLifeForEffect(uuid.Nil, me.ID, game.IndefiniteDuration(), "Screaming Nemesis")
+	})
+	if n := len(g.ScopedEffects); n != 5 {
+		t.Fatalf("setup: %d scoped records, want 5 (two grants, a replacement, a pinned pair, a rest-of-game)", n)
+	}
+	return g
 }
 
 // corpusCounterShields is ADR 0106 §4's three stored shapes at once.

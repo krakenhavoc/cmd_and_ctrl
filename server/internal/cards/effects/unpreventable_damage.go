@@ -19,6 +19,63 @@ import (
 //	PlayersCantGainLifeThisTurn{}                        // Skullcrack: "Players can't gain life this turn."
 //	PlayerCantGainLifeForRestOfGame{Player: p}           // Screaming Nemesis
 
+// --- a spell's own conditional riders (Spec.SpellDamageCantBePrevented,
+// Spec.CantBeCounteredIf) ---------------------------------------------
+
+// Always is a rider with no condition: Combust's and Pinpoint
+// Avalanche's "The damage can't be prevented."
+func Always() game.SpellCondition {
+	return func(*game.Game, *game.StackItem) bool { return true }
+}
+
+// SpellXAtLeast is Banefire's "If X is 5 or more".
+func SpellXAtLeast(n int) game.SpellCondition {
+	return func(_ *game.Game, item *game.StackItem) bool { return item.XValue >= n }
+}
+
+// SpellWasKicked is "If this spell was kicked" (Urza's Rage), read off
+// the payment record the announcement left on the item (ADR 0073 §5).
+func SpellWasKicked() game.SpellCondition {
+	return func(g *game.Game, item *game.StackItem) bool { return NewContext(g, item).WasKicked() }
+}
+
+// SpellRaid is raid's "If you attacked this turn" (Arrow Storm),
+// about the spell's controller.
+func SpellRaid() game.SpellCondition {
+	return func(g *game.Game, item *game.StackItem) bool { return b18AttackedThisTurn(g, item.Controller) }
+}
+
+// SpellThreshold is threshold's "If there are seven or more cards in
+// your graveyard" (Lightning Surge), about the spell's controller.
+func SpellThreshold() game.SpellCondition {
+	return func(g *game.Game, item *game.StackItem) bool { return b31GraveyardSize(g, item.Controller) >= 7 }
+}
+
+// damageCantBePreventedThen is a spell that opens with "Damage can't be
+// prevented this turn." and then does `rest` (Stomp, Skullcrack's
+// second sentence, Impractical Joke): the grant begins first, so the
+// spell's own damage is covered.
+func damageCantBePreventedThen(rest func(item *game.StackItem, ctx *Context) error) func(item *game.StackItem, ctx *Context) error {
+	return func(item *game.StackItem, ctx *Context) error {
+		if err := (DamageCantBePreventedThisTurn{}).Apply(ctx); err != nil {
+			return err
+		}
+		return rest(item, ctx)
+	}
+}
+
+// skullcrackShape is "Players can't gain life this turn. Damage can't
+// be prevented this turn. ~ deals 3 damage to <target>." (Skullcrack,
+// Call In a Professional): both turn grants begin before the damage.
+func skullcrackShape(amount int) func(item *game.StackItem, ctx *Context) error {
+	return func(item *game.StackItem, ctx *Context) error {
+		if err := (PlayersCantGainLifeThisTurn{}).Apply(ctx); err != nil {
+			return err
+		}
+		return damageCantBePreventedThen(damageToFirstTarget(amount))(item, ctx)
+	}
+}
+
 // --- statics ---------------------------------------------------------
 
 // DamageCantBePreventedStatic is "Damage can't be prevented." (Leyline

@@ -39,21 +39,13 @@ import (
 // a real castable object whose coverage the catalog page should state
 // rather than leave blank.
 //
-// # ONE DECLARED SIMPLIFICATION, in Stomp's first sentence
+// # Stomp's first sentence
 //
-// "DAMAGE CAN'T BE PREVENTED THIS TURN" IS NOT MODELLED. Unpreventable
-// damage has no shape in the engine: the CR 615 prevention shield is a
-// replacement effect and nothing suppresses one (builtin_replacements.go
-// says so at CR 615.12), and the clause is a turn-scoped continuous
-// effect rather than a rider on this spell's own damage — it applies to
-// every source for the rest of the turn, which is why the printed card
-// is a fog-breaker rather than a Shock. Banefire ships the identical
-// caveat for the identical reason.
-//
-// Weaker than printed, which is the direction a simplification must
-// take (#259): a fog or a protective shield stops a Stomp here. The
-// damage half is live and it is the whole reason the card is being
-// cast.
+// "Damage can't be prevented this turn" is ADR 0107 §5's turn grant
+// (ModDamageCantBePrevented, CR 615.12): a rule that covers every
+// source for the rest of the turn, not a rider on this spell's own
+// damage, which is why the printed card is a fog-breaker rather than a
+// Shock. It begins before the 2 damage, so that is covered too.
 //
 // The creature half ships FULL. "Becomes the target of A SPELL" is
 // narrower than the "spell or ability" wording its family usually
@@ -112,16 +104,13 @@ func init() {
 	Register(Spec{
 		OracleID:     bonecrusherGiantOracleID + "#1",
 		Name:         "Stomp",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"Damage prevention still stops it — the \"damage can't be prevented this turn\" clause isn't implemented.",
-		},
-		Targets: TargetAny(),
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
+		Completeness: CompletenessFull,
+		Targets:      TargetAny(),
+		OnResolve: damageCantBePreventedThen(func(item *game.StackItem, ctx *Context) error {
 			for _, t := range ctx.LegalTargets() {
 				return DealDamage{Source: item.SourceCardID, Target: t.ID, Amount: 2}.Apply(ctx)
 			}
 			return nil
-		},
+		}),
 	})
 }

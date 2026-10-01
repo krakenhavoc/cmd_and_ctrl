@@ -145,6 +145,7 @@ func (n *normalizer) game(v protocol.GameView) protocol.GameView {
 	out.Vote = n.vote(v.Vote)
 	out.StartingSeat = v.StartingSeat
 	out.SplitSecondActive = v.SplitSecondActive
+	out.DamageCantBePrevented = v.DamageCantBePrevented
 	out.DiscardPending = n.idKeyedIntMap(v.DiscardPending)
 	out.LoopNotice = n.loopNotice(v.LoopNotice)
 	out.Outcome = n.outcome(v.Outcome)
@@ -506,8 +507,9 @@ func everyFieldGameViewForNormalizer() protocol.GameView {
 		PendingTriggers: []protocol.StackItemView{{ID: "item-2", Kind: "triggered", Controller: ownerID, Owner: ownerID, SourceCardID: cardID}},
 		DelayedTriggers: []protocol.DelayedTriggerView{{ID: "delayed-1", Controller: ownerID, At: "end_step"}},
 
-		SplitSecondActive: true,
-		DiscardPending:    map[string]int{ownerID: 1},
+		SplitSecondActive:     true,
+		DamageCantBePrevented: []string{"Skullcrack"},
+		DiscardPending:        map[string]int{ownerID: 1},
 		PendingChoices: []protocol.PendingChoiceView{{
 			ID: "choice-1", Kind: "choose_cards", Chooser: ownerID, FromPlayer: ownerID, Count: 1,
 			Options: []protocol.CardView{{InstanceID: uuid.NewString(), Name: "Choice Card", Owner: ownerID, Controller: ownerID}},
