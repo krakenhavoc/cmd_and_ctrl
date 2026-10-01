@@ -189,3 +189,17 @@ func OpponentsCantCastDuringYourTurn(label string, match CardPredicate) game.Cas
 		},
 	}
 }
+
+// PlayersCantCast is the symmetrical form with a filter and nothing
+// else: "Creature spells can't be cast" (Aether Storm). No player is
+// named, so it binds every player, the permanent's controller
+// included (CR 101.2: the "can't" wins over any permission to cast).
+// `match` narrows which spells; nil would be every spell.
+func PlayersCantCast(label string, match CardPredicate) game.CastRestriction {
+	return game.CastRestriction{
+		Label: label,
+		Forbids: func(q game.CastQuery) bool {
+			return matchCastCard(q.Game, match, q.Controller, q.Card)
+		},
+	}
+}
