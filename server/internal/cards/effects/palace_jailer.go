@@ -43,7 +43,7 @@ import (
 //
 // Two ways this differs from the printed text:
 //
-//   - The return goes on the stack as a trigger, where CR 610.3c makes
+//   - The return goes on the stack as a trigger, where CR 610.3 makes
 //     it an immediate one-shot. The table gets a window in which the
 //     creature is still in exile, and nothing in the catalog can stop
 //     it coming back. The Oblivion Ring family (Ossification, Hostage

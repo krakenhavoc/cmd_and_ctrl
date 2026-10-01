@@ -16,7 +16,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // One guard Ossification does not need: the exile is refused unless
 // the Aura is still the same permanent on the battlefield as the
-// trigger resolves (CR 610.3c — an "until" effect whose duration has
+// trigger resolves (CR 610.3b — an "until" effect whose duration has
 // already ended never starts). Without it an Aura removed in response
 // would exile the permanent for good, because the leave trigger it
 // would have used has already gone by. The object is named on the
