@@ -1755,7 +1755,15 @@ export interface AlternativeCostView {
   // with nothing to pay it is not offered at all, for the same reason
   // one whose life half is unpayable is not.
   pay_options?: LegalTargetsView;
-  // S28: the picker's prompt copy for `pay_options` ("a blue card").
+  // #1727: the cost's card-shaped half when it is a SACRIFICE — Dread
+  // Return's "Flashback—Sacrifice three creatures", Fireblast's two
+  // Mountains. Set instead of `pay_options`, in the same shape (and
+  // payment order) as the additional cost's `sacrifice_options`, so
+  // the cast flow opens SacrificeCostModal for it. The picked IDs
+  // still ride `alt_cost_ids`, not `sacrifice_ids`.
+  sacrifice_options?: LegalTargetsView;
+  // S28: the picker's prompt copy for `pay_options` ("a blue card"),
+  // or for `sacrifice_options` ("three creatures").
   pay_label?: string;
   // CR 107.3b (#831): the card prints an {X} in its mana cost and
   // this offer does not, so claiming it fixes X at 0 — the cast flow

@@ -14,25 +14,24 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // OWNER's control, which is the engine's reanimation default and the
 // printed answer for "target creature card in YOUR graveyard".
 //
-// Sandbox simplification, declared: the flashback clause is NOT
-// implemented. game.AlternativeCost has a mana cost, a life cost, and
-// three card-naming components (ExileFromHand, ReturnToHand,
-// ExileFromGraveyard) — nothing that pays with a SACRIFICE of the
-// caster's own permanents. "Sacrifice three creatures" as a
-// FLASHBACK cost (rather than an additional cost bolted onto the
-// printed mana cost, which Spec.AdditionalCost already covers) needs
-// a new field on AlternativeCost and the matching validate/pay/view
-// plumbing — engine machinery this card file cannot add. Weaker than
-// printed, never stronger: this card can only be cast from hand.
+// The flashback half (#1727) is FlashbackSacrifice: no mana at all,
+// three creatures the caster controls named in alt_cost_ids and
+// sacrificed with the spell already on the stack. So their dies
+// triggers resolve before the reanimation does, a countered Dread
+// Return leaves them dead, and CR 702.34a exiles the card however it
+// leaves the stack. The target is chosen before the cost is paid (CR
+// 601.2c before 601.2h), so none of the three can be the creature it
+// brings back — they are still on the battlefield when it targets.
 func init() {
 	Register(Spec{
-		OracleID:     "352b64d2-2ae5-44ee-a64f-94932ef545d3",
-		Name:         "Dread Return",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"Flashback isn't implemented — this spell can only be cast from your hand for its printed mana cost, never later from the graveyard by sacrificing three creatures.",
+		OracleID:      "352b64d2-2ae5-44ee-a64f-94932ef545d3",
+		Name:          "Dread Return",
+		Completeness:  CompletenessFull,
+		Targets:       TargetCardInGraveyard("target creature card in your graveyard", YouOwn(), Creature()),
+		CastableZones: []game.ZoneKind{game.ZoneGraveyard},
+		AlternativeCosts: []game.AlternativeCost{
+			FlashbackSacrifice(3, "three creatures", Creature()),
 		},
-		Targets: TargetCardInGraveyard("target creature card in your graveyard", YouOwn(), Creature()),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			return returnFirstLegalGraveyardTargetToBattlefield(ctx.Game, item)
 		},

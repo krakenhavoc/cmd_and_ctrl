@@ -4,6 +4,7 @@ import { get } from "svelte/store";
 import {
   altCostPayCount,
   altCostPayOptions,
+  altCostSacrificeClause,
   alternativeCostByKey,
   alternativeCostsOf,
   applyCastChoices,
@@ -281,5 +282,52 @@ describe("escape's multi-card payment", () => {
       alternative_cost: "escape",
       alt_cost_ids: ["a", "b", "c", "d", "e"],
     });
+  });
+});
+
+// #1727 — an offer whose card half is a SACRIFICE ships
+// `sacrifice_options`, not `pay_options`, so the cast flow opens the
+// sacrifice picker (payment order, "Choose for me") rather than the
+// card list. The picks still ride alt_cost_ids: they pay the offer,
+// and sacrifice_ids is the additional cost's list.
+describe("a sacrifice alternative cost", () => {
+  const dreadReturn = card({
+    instance_id: "dread",
+    name: "Dread Return",
+    type_line: "Sorcery",
+    mana_cost: "{2}{B}{B}",
+    castable_here: true,
+    alternative_costs: [
+      {
+        key: "flashback",
+        label: "Flashback—Sacrifice three creatures",
+        pay_label: "three creatures",
+        sacrifice_options: { cards: ["token", "bear", "wolf"], min: 3, max: 3 },
+      },
+    ],
+  });
+
+  it("reads the sacrifice clause off the offer, and nothing off a card offer", () => {
+    expect(altCostSacrificeClause(alternativeCostByKey(dreadReturn, "flashback"))).toEqual({
+      cards: ["token", "bear", "wolf"],
+      min: 3,
+      max: 3,
+    });
+    expect(altCostSacrificeClause(alternativeCostByKey(rift, "overload"))).toBeUndefined();
+    expect(altCostSacrificeClause(undefined)).toBeUndefined();
+  });
+
+  it("does not open the card picker for it", () => {
+    expect(altCostPayOptions(alternativeCostByKey(dreadReturn, "flashback"))).toBeUndefined();
+  });
+
+  it("sends the sacrificed permanents as alt_cost_ids", () => {
+    const params: Record<string, unknown> = {};
+    applyCastChoices(params, { altCost: "flashback", altCostIDs: ["token", "bear", "wolf"] });
+    expect(params).toEqual({
+      alternative_cost: "flashback",
+      alt_cost_ids: ["token", "bear", "wolf"],
+    });
+    expect(params).not.toHaveProperty("sacrifice_ids");
   });
 });

@@ -1154,12 +1154,18 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 					// #1703: and the same for the creatures tapped to
 					// teamwork — a Llanowar Elves in the team cannot
 					// also make the {G}.
-					if len(discards)+len(sacs)+len(teamIDs)+len(blightIDs) > 0 &&
+					//
+					// #1727: and for the alternative cost's own card
+					// component — an Eldrazi Spawn named to Dread
+					// Return's "sacrifice three creatures" cannot also
+					// make the {1} a Thalia adds to the flashback.
+					if len(discards)+len(sacs)+len(teamIDs)+len(blightIDs)+len(altCostSets[0]) > 0 &&
 						!e.canPayExcluding(payCost, payX, spend, game.CastAutoTapExclusions(game.CastSpellParams{
 							DiscardIDs:   discards,
 							SacrificeIDs: sacs,
 							TeamworkIDs:  teamIDs,
 							BlightIDs:    blightIDs,
+							AltCostIDs:   altCostSets[0],
 						})) {
 						continue
 					}
@@ -1170,12 +1176,14 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 							targets:   targets,
 							x:         payX,
 							life:      payLife,
+							cost:      payCost,
 							printed:   payPrinted,
 							dist:      dist,
 							discards:  discards,
 							sacs:      sacs,
 							team:      teamIDs,
 							blight:    blightIDs,
+							alt:       altCostSets[0],
 							delve:     payDelve,
 							delveFull: payDelveFull,
 						}
@@ -1224,6 +1232,13 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 		if budget <= 0 {
 			return
 		}
+		// #1727: the same affordability, with THIS payment's cards
+		// kept away from the auto-tapper (game.CastAutoTapExclusions) —
+		// a different three creatures may include the Spawn the first
+		// payment left free to make the mana.
+		if !e.canPayExcluding(first.cost, first.x, spend, first.autoTapExclusions(altPaid)) {
+			continue
+		}
 		budget--
 		emit(altPaid, first.modes, first.targets, first.x, first.life, first.dist, first.discards, first.sacs, first.delve)
 	}
@@ -1236,8 +1251,10 @@ type announcedCast struct {
 	targets []game.TargetRef
 	x       int
 	// life is how many Phyrexian symbols the announcement pays with
-	// life (#1677); printed is its cost before that strike.
+	// life (#1677); printed is its cost before that strike, and cost
+	// the mana it pays after it.
 	life     int
+	cost     game.ParsedCost
 	printed  game.ParsedCost
 	dist     map[uuid.UUID]int
 	discards []uuid.UUID
@@ -1246,6 +1263,10 @@ type announcedCast struct {
 	// auto-tap plan the all-life payment is re-checked against.
 	team   []uuid.UUID
 	blight []uuid.UUID
+	// alt is the alternative cost's card payment the announcement was
+	// emitted with (#1727) — excluded from the auto-tap plan like the
+	// rest.
+	alt []uuid.UUID
 	// delve is the announcement's delve payment (ADR 0100 §6), and
 	// delveFull the full-budget one offered beside it — nil when the
 	// two are the same set.
@@ -1575,15 +1596,24 @@ func (e *enumerator) allLifePayment(first *announcedCast, spend game.ManaSpendCo
 	if !e.g.CanPayLifeLocked(e.p, reserved+life) {
 		return 0, false
 	}
-	if !e.canPayExcluding(reduced, first.x, spend, game.CastAutoTapExclusions(game.CastSpellParams{
-		DiscardIDs:   first.discards,
-		SacrificeIDs: first.sacs,
-		TeamworkIDs:  first.team,
-		BlightIDs:    first.blight,
-	})) {
+	if !e.canPayExcluding(reduced, first.x, spend, first.autoTapExclusions(first.alt)) {
 		return 0, false
 	}
 	return n, true
+}
+
+// autoTapExclusions is what CastSpell's auto-tap will not spend on this
+// announcement's mana (game.CastAutoTapExclusions): its additional-cost
+// payments, its teamwork and blight creatures, and `alt`, the
+// alternative cost's card payment it is being offered with (#1727).
+func (a *announcedCast) autoTapExclusions(alt []uuid.UUID) map[uuid.UUID]bool {
+	return game.CastAutoTapExclusions(game.CastSpellParams{
+		DiscardIDs:   a.discards,
+		SacrificeIDs: a.sacs,
+		TeamworkIDs:  a.team,
+		BlightIDs:    a.blight,
+		AltCostIDs:   alt,
+	})
 }
 
 // legalModeSets lists every distinct mode selection of size lo..hi,

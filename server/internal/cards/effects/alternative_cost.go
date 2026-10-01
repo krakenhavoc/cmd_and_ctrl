@@ -117,6 +117,72 @@ func Flashback(cost string) game.AlternativeCost {
 	}
 }
 
+// FlashbackSacrifice is "Flashback—Sacrifice N <permanents>" — a
+// flashback cost with no mana in it at all: Dread Return's "Flashback—
+// Sacrifice three creatures" is
+//
+//	FlashbackSacrifice(3, "three creatures", Creature())
+//
+// and Lava Dart's "Flashback—Sacrifice a Mountain" is
+// FlashbackSacrifice(1, "a Mountain", HasSubtype("Mountain")). #1727.
+//
+// Flashback("") with the sacrifice bolted on would compile and be
+// wrong twice: free (the empty string is "without paying its mana
+// cost") and labelled "Flashback ". So the constructor keeps
+// everything Flashback bundles — the graveyard binding and CR
+// 702.34a's exile-on-leaving-the-stack replacement, the half that
+// keeps a sacrifice-for-value loop from recurring forever — and swaps
+// the price for game.AlternativeCost.Sacrifice: the additional cost's
+// clause shape (sacrificeSpec, count on Min == Max), validated and
+// paid by the engine's one sacrifice-cost validator and payer.
+//
+// The caster names the permanents in alt_cost_ids. They are
+// sacrificed with the spell already on the stack, so every dies
+// trigger resolves first, and a countered Dread Return leaves them
+// dead. The card file still opens the graveyard:
+//
+//	CastableZones:    []game.ZoneKind{game.ZoneGraveyard},
+//	AlternativeCosts: []game.AlternativeCost{FlashbackSacrifice(3, "three creatures", Creature())},
+func FlashbackSacrifice(n int, label string, preds ...CardPredicate) game.AlternativeCost {
+	ac := Flashback("")
+	ac.Label = "Flashback—Sacrifice " + label
+	ac.Sacrifice = sacrificeSpec(label, preds...).WithCount(n, n)
+	ac.PayLabel = label
+	return ac
+}
+
+// SacrificeInstead is the Fireblast clause: "You may sacrifice two
+// Mountains rather than pay this spell's mana cost" (#1727), paid from
+// hand:
+//
+//	SacrificeInstead(2, "two Mountains", 0, HasSubtype("Mountain"))
+//
+// `life` is the "pay N life and" half some of these print — Demon of
+// Death's Gate's "You may pay 6 life and sacrifice three black
+// creatures rather than pay this spell's mana cost" is
+// SacrificeInstead(3, "three black creatures", 6, OfColor("B"), Creature()).
+// Both halves are COSTS, validated before either is paid (Pitch's
+// discipline), so a player at 5 life is refused the Demon outright
+// rather than left with three dead creatures and a spell still in hand.
+//
+// The sacrifice is the same component FlashbackSacrifice carries, so
+// the permanents ride alt_cost_ids, die with the spell already on the
+// stack, and stay dead when it is countered.
+func SacrificeInstead(n int, label string, life int, preds ...CardPredicate) game.AlternativeCost {
+	clause := "Sacrifice " + label
+	if life > 0 {
+		clause = "Pay " + strconv.Itoa(life) + " life and sacrifice " + label
+	}
+	return game.AlternativeCost{
+		Key:       "sacrifice",
+		Label:     clause + " rather than pay this spell's mana cost",
+		ManaCost:  "",
+		Life:      life,
+		Sacrifice: sacrificeSpec(label, preds...).WithCount(n, n),
+		PayLabel:  label,
+	}
+}
+
 // Miracle is "Miracle {cost} (You may cast this card for its miracle
 // cost when you draw it if it's the first card you drew this turn.)"
 // — CR 702.94, #1665.
