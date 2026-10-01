@@ -7591,7 +7591,10 @@ func (g *Game) DeclareAttackerWith(attackerID, targetPlayerID uuid.UUID, params 
 			if !card.IsCreature() {
 				return ErrNotACreature
 			}
-			if err := g.canAttackTargetLocked(card.Controller, targetPlayerID); err != nil {
+			// ADR 0106 §2 (#1794): the creature's own CR 508.1c target
+			// restrictions ("can't attack its owner") ride the same
+			// check, refused with a sentence naming them.
+			if err := g.canAttackTargetWithLocked(card, targetPlayerID); err != nil {
 				return err
 			}
 			if HasKeyword(card, "defender") {
@@ -7799,8 +7802,10 @@ func (g *Game) DeclareAttackersWith(decls []AttackDeclaration, params DeclareAtt
 		// battle. canAttackTargetLocked folds in "not yourself", "not
 		// a planeswalker you control" and "not a battle you protect",
 		// which is what the bare controller comparison used to cover
-		// for the player-only case.
-		if g.canAttackTargetLocked(card.Controller, d.Target) != nil {
+		// for the player-only case. ADR 0106 §2 (#1794): and the
+		// creature's own target restrictions, so a Xantcha pointed at
+		// its owner is skipped like any other illegal entry.
+		if g.canAttackTargetWithLocked(card, d.Target) != nil {
 			continue
 		}
 		eligible = append(eligible, d)

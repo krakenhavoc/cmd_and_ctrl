@@ -59,6 +59,7 @@
   import {
     attackAllLabel,
     attackAllParams,
+    eligibleAt,
     attackAllTaxLabel,
     attackLimitOn,
     attackTaxOn,
@@ -1638,6 +1639,7 @@
                       type="button"
                       class="primary att-btn"
                       title={attackAllTitle(attackPlan.defenders[0]) + keyHint(keys.attackAll)}
+                      disabled={eligibleAt(attackPlan, attackPlan.defenders[0].id).length === 0}
                       onclick={() => attackAllAt(attackPlan.defenders[0].id)}
                     >
                       {attackAllLabel(attackPlan, attackPlan.defenders[0])}
@@ -1674,6 +1676,7 @@
                         type="button"
                         class="att-btn opp-btn"
                         title={attackAllTitle(opp)}
+                        disabled={eligibleAt(attackPlan, opp.id).length === 0}
                         onclick={() => attackAllAt(opp.id)}
                       >
                         <span class="seat-dot" style="background:{seatColor(opp.seat)}"></span>

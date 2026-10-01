@@ -21,6 +21,7 @@
   // within-row reordering when the UX is designed for it.
 
   import type { CardView } from "../../protocol";
+  import type { CantAttackChip } from "../../cantAttack";
   import { cardImageURL } from "../../cardImage";
   import { cardArt } from "../../cardArt";
   import { showsCardBack } from "../../cardBack";
@@ -170,6 +171,11 @@
     // stolen spell became. Supplied by BattlefieldRow; undefined when
     // the controller is the owner.
     takenFrom?: string;
+    // ADR 0106 §2 (owner decision 3): whom this creature can't attack —
+    // its owner, for Xantcha — drawn as a CAN'T ATTACK chip beside the
+    // greyed target ring. Supplied by BattlefieldRow from the card
+    // view's attack_target_restrictions; undefined for nearly every card.
+    cantAttack?: CantAttackChip;
     // #33: request this card's art with fetchpriority="high". Opt-in,
     // set only by Hand.svelte for the viewer's own hand — the art
     // that is above the fold and latency-visible. Card is shared by
@@ -226,6 +232,7 @@
     payerLife,
     enchantedPlayer,
     takenFrom,
+    cantAttack,
     priority = false,
     memberIDs,
     viewerID,
@@ -643,6 +650,16 @@
         TAKEN FROM {takenFrom}
       </span>
     {/if}
+    {#if cantAttack}
+      <!-- ADR 0106 §2: read off the server's restriction, never derived. -->
+      <span
+        class="badge cant-attack"
+        title={cantAttack.title}
+        aria-label={`can't attack ${cantAttack.label}`}
+      >
+        CAN'T ATTACK {cantAttack.label}
+      </span>
+    {/if}
     {#if card.auto}
       <span
         class="badge auto"
@@ -748,6 +765,16 @@
         aria-label={`taken from ${takenFrom}`}
       >
         TAKEN FROM {takenFrom}
+      </span>
+    {/if}
+    {#if cantAttack}
+      <!-- ADR 0106 §2: read off the server's restriction, never derived. -->
+      <span
+        class="badge cant-attack"
+        title={cantAttack.title}
+        aria-label={`can't attack ${cantAttack.label}`}
+      >
+        CAN'T ATTACK {cantAttack.label}
       </span>
     {/if}
     {#if card.auto}
@@ -1167,6 +1194,26 @@
     color: #ffc9d2;
     background: rgba(44, 12, 22, 0.9);
     border-color: rgba(255, 145, 170, 0.55);
+    font-size: 7px;
+  }
+  .badge.cant-attack {
+    /* ADR 0106 §2 (#1794): a player's NAME, so full width and
+       truncating like TAKEN FROM, one row above it — Xantcha wears
+       both at once (its owner is the one it was taken from and the one
+       it can't attack). The red of a combat restriction, like MUST
+       ATTACK. */
+    top: auto;
+    bottom: 31px;
+    left: 3px;
+    right: 3px;
+    max-width: calc(100% - 6px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: center;
+    color: var(--danger);
+    background: rgba(60, 0, 0, 0.85);
+    border-color: rgba(255, 122, 122, 0.5);
     font-size: 7px;
   }
   .badge.curse {

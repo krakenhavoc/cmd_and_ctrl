@@ -2157,6 +2157,20 @@ type CardView struct {
 	// the thing #429 spent a PR deleting.
 	Restrictions []string `json:"restrictions,omitempty"`
 
+	// AttackTargetRestrictions are this creature's CR 508.1c
+	// restrictions on WHOM it may attack (ADR 0106 §2, #1794), with
+	// the player each names already resolved: Xantcha's "can't attack
+	// its owner or planeswalkers its owner controls" arrives as its
+	// owner's seat id and planeswalkers: true. The client draws the
+	// card's "Can't attack <name>" chip from this (owner decision 3)
+	// and never reads the rule itself; which targets an attacker may
+	// pick is the legal_actions digest's answer, not this field's.
+	//
+	// One row per restriction. A row naming the creature's own
+	// controller is not sent: no creature can attack its controller
+	// anyway (CR 506.2), so it would say nothing.
+	AttackTargetRestrictions []AttackTargetRestrictionView `json:"attack_target_restrictions,omitempty"`
+
 	// Layout is Scryfall's printing layout ("modal_dfc",
 	// "transform", "adventure", …), omitted for the ordinary
 	// single-faced card. The client reads it to decide whether
@@ -4933,6 +4947,44 @@ func viewOfProtection(c *game.Card) []ProtectionView {
 	return out
 }
 
+// AttackTargetRestrictionView is one CR 508.1c restriction on whom a
+// creature may attack (ADR 0106 §2, #1794), resolved for the client:
+// the player it names, and whether it also covers planeswalkers that
+// player controls.
+type AttackTargetRestrictionView struct {
+	// Player is the seat the creature can't attack — its owner, read
+	// live off the creature (CR 108.3), so a copy names its own owner.
+	Player string `json:"player"`
+	// Planeswalkers adds "or planeswalkers <player> controls".
+	Planeswalkers bool `json:"planeswalkers,omitempty"`
+	// Source names the permanent whose text imposes it, for the chip's
+	// tooltip.
+	Source string `json:"source,omitempty"`
+}
+
+// viewOfAttackTargetRestrictions projects c's attack-target
+// restrictions. Nil for nearly every card, and for a restriction that
+// names the creature's own controller, which CR 506.2 already forbids.
+func viewOfAttackTargetRestrictions(c *game.Card, eff game.Characteristic) []AttackTargetRestrictionView {
+	if len(eff.AttackTargetRestrictions) == 0 || c.Owner == uuid.Nil || c.Owner == c.Controller {
+		return nil
+	}
+	var out []AttackTargetRestrictionView
+	for _, r := range eff.AttackTargetRestrictions {
+		// Every printed one forbids the owner; a planeswalkers-only row
+		// has no card behind it and no chip that would say it right.
+		if !r.NotOwner {
+			continue
+		}
+		out = append(out, AttackTargetRestrictionView{
+			Player:        c.Owner.String(),
+			Planeswalkers: r.NotOwnersPlaneswalkers,
+			Source:        r.SourceName,
+		})
+	}
+	return out
+}
+
 // viewOfTargetClause is viewOfLegalTargets for a TARGET clause, with
 // the clause's set rule and X bound stamped on (#1559). Cost-payment
 // projections keep viewOfLegalTargets: a cost is not targeting and
@@ -7472,6 +7524,7 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	// same reason.
 	out.SpecialActions = nil
 	out.Restrictions = nil
+	out.AttackTargetRestrictions = nil
 	out.ExilePlay = nil
 	// The hand / command / graveyard stamps are only meaningful to a
 	// player who can read the card, and each one quotes it: a mode
@@ -7769,6 +7822,8 @@ func viewOfCard(c game.Card) CardView {
 		SummoningSick: game.HasSummoningSickness(&c),
 		Abilities:     viewOfAbilityBadges(eff),
 		Restrictions:  eff.Restrictions.Names(),
+		// ADR 0106 §2 (#1794): the owner chip's data, resolved here.
+		AttackTargetRestrictions: viewOfAttackTargetRestrictions(&c, eff),
 		// #781. Straight off the card, with no zone gate and no
 		// catalog lookup: both are cleared on every battlefield exit
 		// (game/zone.go, game/entry_tail.go), so "non-empty" already

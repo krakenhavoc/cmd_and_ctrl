@@ -50,7 +50,10 @@ import (
 //     DECLARATION, which this is not).
 //   - 508.7c is canAttackTargetLocked, read against the attacking
 //     creature's controller — the same function the declaration uses,
-//     because 508.7c and CR 506.2 name the same set.
+//     because 508.7c and CR 506.2 name the same set. The declaration
+//     also checks the creature's own target restrictions ("can't
+//     attack its owner", ADR 0106 §2, canAttackTargetWithLocked);
+//     508.7b exempts a reselection from those, so this does not.
 //   - 508.7d does not apply. CR 903.2: a Commander game's default
 //     multiplayer setup is Free-for-All WITH the attack multiple
 //     players option, which is the only setup this engine plays.

@@ -10,6 +10,7 @@
   // a 2-D placement meaningless, and the server already defaults
   // both axes to 0 for cards that have never been positioned.
 
+  import type { CantAttackChip } from "../../cantAttack";
   import type { CardView } from "../../protocol";
   import Card from "./Card.svelte";
   import { etbPulse } from "../../animations";
@@ -78,6 +79,10 @@
     // controls — a stolen permanent, or the permanent a stolen spell
     // became. Derived by PlayerPanel, for curseTargets' reason.
     takenFrom?: Record<string, string>;
+    // ADR 0106 §2 (#1794): the CAN'T ATTACK chip for each creature that
+    // can't attack its owner, keyed by instance ID. Derived by
+    // PlayerPanel from the card views, for curseTargets' reason.
+    cantAttack?: Record<string, CantAttackChip>;
     // #1724: identical tokens fold into a group drawn as at most two
     // cards (untapped, tapped) with a count; clicking one calls this
     // with the group's key and the panel opens the member list
@@ -124,6 +129,7 @@
     attachmentsByHost = {},
     curseTargets = {},
     takenFrom = {},
+    cantAttack = {},
     onGroupClick,
     legal = NO_LEGAL_ACTIONS,
     legalGate = NO_LEGAL_ACTIONS,
@@ -264,6 +270,7 @@
                     {legalGate}
                     enchantedPlayer={curseTargets[a.instance_id]}
                     takenFrom={takenFrom[a.instance_id]}
+                    cantAttack={cantAttack[a.instance_id]}
                     onClick={onCardClick}
                     onActivateManaAbility={onActivateManaAbility
                       ? (idx) => onActivateManaAbility(a, idx)
@@ -290,6 +297,7 @@
                   {legalGate}
                   enchantedPlayer={curseTargets[c.instance_id]}
                   takenFrom={takenFrom[c.instance_id]}
+                  cantAttack={cantAttack[c.instance_id]}
                   selected={memberIDs
                     ? !!selectedCombatCardID && memberIDs.includes(selectedCombatCardID)
                     : selectedCombatCardID === c.instance_id}

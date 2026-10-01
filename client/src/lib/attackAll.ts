@@ -77,6 +77,13 @@ export interface AttackAllPlan {
   // Opponents who may legally be attacked (seated, not the viewer,
   // not eliminated), in seat order.
   defenders: PlayerView[];
+  // ADR 0106 §2 (#1794): for each eligible creature, the targets the
+  // server lists for it (the digest's attack_targets). A creature that
+  // "can't attack its owner" lists every opponent but one, so who an
+  // "attack with all" at one seat sends is per seat (eligibleAt).
+  // Absent for a creature on a frame that carries no list, which then
+  // counts at every seat, as it always did.
+  targets: Record<string, readonly string[]>;
 }
 
 // attackBlocker names, from the row fields, why a creature can't
@@ -135,7 +142,13 @@ export function planAttackAll(
   viewerID: string | null | undefined,
   gate: LegalActions = NO_LEGAL_ACTIONS,
 ): AttackAllPlan {
-  const plan: AttackAllPlan = { eligible: [], declared: [], blocked: [], defenders: [] };
+  const plan: AttackAllPlan = {
+    eligible: [],
+    declared: [],
+    blocked: [],
+    defenders: [],
+    targets: {},
+  };
   if (!view || !viewerID) return plan;
 
   for (const seat of view.seats ?? []) {
@@ -150,10 +163,26 @@ export function planAttackAll(
       continue;
     }
     const reason = attackRefusal(card, gate);
-    if (reason) plan.blocked.push({ card, reason });
-    else plan.eligible.push(card);
+    if (reason) {
+      plan.blocked.push({ card, reason });
+      continue;
+    }
+    plan.eligible.push(card);
+    if (gate.known) plan.targets[card.instance_id] = gate.attackTargets(card.instance_id);
   }
   return plan;
+}
+
+// eligibleAt is the part of the plan an "attack with all" at ONE seat
+// would send: every eligible creature the server lets attack that seat
+// (ADR 0106 §2). Xantcha is eligible, and is left out at its owner's
+// button only. A creature the frame lists no targets for counts at
+// every seat; the server's bulk verb still skips one it disagrees with.
+export function eligibleAt(plan: AttackAllPlan, defenderSeatID: string): CardView[] {
+  return plan.eligible.filter((c) => {
+    const t = plan.targets[c.instance_id];
+    return !t || t.includes(defenderSeatID);
+  });
 }
 
 // AttackAllParams is the wire shape of the bulk declare_attackers
@@ -208,9 +237,8 @@ export function attackAllParams(
   opts: AttackAllOptions = {},
 ): AttackAllParams | null {
   if (!plan.defenders.some((s) => s.id === defenderSeatID)) return null;
-  const attackers = opts.only
-    ? plan.eligible.filter((c) => opts.only!.includes(c.instance_id))
-    : plan.eligible;
+  const here = eligibleAt(plan, defenderSeatID);
+  const attackers = opts.only ? here.filter((c) => opts.only!.includes(c.instance_id)) : here;
   if (attackers.length === 0) return null;
   const params: AttackAllParams = {
     attackers: attackers.map((c) => ({
@@ -267,7 +295,10 @@ export function attackAllTaxLabel(
   plan: AttackAllPlan,
   defenderSeatID: string,
 ): string {
-  return attackTaxLabelForCount(attackTaxOn(view, defenderSeatID), plan.eligible.length);
+  return attackTaxLabelForCount(
+    attackTaxOn(view, defenderSeatID),
+    eligibleAt(plan, defenderSeatID).length,
+  );
 }
 
 // blockedSummary renders the "why not everything" hint: counts by
@@ -294,7 +325,7 @@ export function seatLabel(seat: PlayerView): string {
 // because "attack all" on its own is ambiguous at a four-player
 // table — the control the player presses has to say who gets hit.
 export function attackAllLabel(plan: AttackAllPlan, seat: PlayerView): string {
-  const n = plan.eligible.length;
+  const n = eligibleAt(plan, seat.id).length;
   return `Attack ${seatLabel(seat)} with all ${n} creature${n === 1 ? "" : "s"}`;
 }
 
@@ -336,7 +367,7 @@ export function attackLimitBinds(
   defenderSeatID: string,
 ): boolean {
   const room = attackLimitOn(view, defenderSeatID);
-  return room !== null && room < plan.eligible.length;
+  return room !== null && room < eligibleAt(plan, defenderSeatID).length;
 }
 
 // offersAttackPicker is whether the attack-all cluster shows the
