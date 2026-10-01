@@ -98,7 +98,7 @@ func QueryType(cardType string) game.PermanentQuery {
 }
 
 // WhenThisHasAtLeast is "When there are N or more <kind> counters on
-// this permanent" (Deadly Designs, Mazemind Tome, Nine Lives) and its
+// this permanent" (Deadly Designs, Mazemind Tome) and its
 // "this has N or more <kind> counters on it" wording (Darksteel Reactor,
 // Plague Boiler).
 func WhenThisHasAtLeast(kind string, n int, label string, effect Effect) game.TriggeredAbility {

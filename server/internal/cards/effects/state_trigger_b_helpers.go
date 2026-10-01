@@ -1,15 +1,11 @@
 package effects
 
-import (
-	"github.com/google/uuid"
-
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-)
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // state_trigger_b_helpers.go — shared bodies for the second batch of
 // ADR 0107 §1's state-trigger cards (#1858): the tide-counter pair
-// (Homarid, Tidal Influence), the damage-to-counters pair (Force Bubble,
-// Nine Lives) and The Millennium Calendar.
+// (Homarid, Tidal Influence), Force Bubble's end step and The Millennium
+// Calendar.
 //
 // Append-only, per the shared-vocabulary rule.
 
@@ -54,38 +50,3 @@ func thisCreatureOnly(target, source *game.Card) bool { return target.InstanceID
 
 // blueCreatures is the `who` of "all blue creatures", anyone's.
 func blueCreatures(target, _ *game.Card) bool { return target.HasColor("U") }
-
-// damageToYouBecomesCounters is the standing replacement of Force Bubble
-// ("If damage would be dealt to you, put that many depletion counters on
-// this enchantment instead") and Nine Lives ("If a source would deal
-// damage to you, prevent that damage and put an incarnation counter on
-// this enchantment"): damage to the source's controller is cancelled and
-// counters go on the source — that many (`perDamage`), or one per damage
-// event.
-//
-// The event is the damage to the PLAYER (CR 616.1: the affected player,
-// the controller here, orders it against other replacements). Combat and
-// noncombat alike. A source on which the counter cannot land still
-// cancels the damage: the replacement applied, and CR 614.6 says the
-// replaced event never happens.
-func damageToYouBecomesCounters(kind string, perDamage bool, label string) game.ReplacementEffect {
-	return game.ReplacementEffect{
-		Watches: []game.EventKind{game.EventDealDamage},
-		AppliesTo: func(ev *game.ReplacementEvent, _ *game.Game, src *game.Card) bool {
-			return src != nil && ev.Kind == game.RepEventDamage && ev.DamageAmount > 0 &&
-				ev.DamageTarget == src.Controller
-		},
-		Replace: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) error {
-			n := 1
-			if perDamage {
-				n = ev.DamageAmount
-			}
-			ev.Cancel()
-			return g.AddCounterForEffect(src.InstanceID, kind, n)
-		},
-		Controller: func(_ *game.ReplacementEvent, _ *game.Game, src *game.Card) uuid.UUID {
-			return src.Controller
-		},
-		Label: label,
-	}
-}

@@ -16,7 +16,6 @@ const (
 	stHomarid        = "5d02b0d9-cc53-4967-84bb-8b7f5c489b5c"
 	stTidalInfluence = "b1393388-b8b3-4c54-a086-f5e6d9908972"
 	stForceBubble    = "655ae8e7-372b-4d8d-b33f-4aca46831abb"
-	stNineLives      = "236e1f57-7ef5-455a-82a6-8ff6b85d8849"
 	stMillenniumCal  = "1f250443-8d5e-46c9-920e-8e9373780e32"
 )
 
@@ -155,32 +154,6 @@ func TestForceBubbleEmptiesAtTheEndStep(t *testing.T) {
 	passPriorityAroundTable(t, g)
 	if c := apaLive(g, fb); c == nil || c.Counters["depletion"] != 0 {
 		t.Fatalf("after the end step: %+v, want no depletion counters", c)
-	}
-}
-
-// Nine Lives prevents each damage event for one counter, exiles itself
-// at nine, and its controller loses the game as it leaves.
-func TestNineLivesPreventsThenCostsTheGame(t *testing.T) {
-	g := newCatalogGame(t)
-	me, bob := g.Seats[0], g.Seats[1]
-	nl := apaPush(g, me.ID, me.ID, stCard("Nine Lives", stNineLives, "Enchantment", 0, 0))
-	src := apaPush(g, bob.ID, bob.ID, stCard("Shock Source", "", "Creature — Goblin", 1, 1))
-	life := me.Life
-	stDamagePlayer(t, g, src, me.ID, 5)
-	if me.Life != life {
-		t.Fatalf("life %d -> %d: the damage was not prevented", life, me.Life)
-	}
-	if c := apaLive(g, nl); c.Counters["incarnation"] != 1 {
-		t.Fatalf("incarnation counters = %d, want 1 for one damage event", c.Counters["incarnation"])
-	}
-	stAddCounters(t, g, nl, "incarnation", 8)
-	passPriorityAroundTable(t, g)
-	if onBattlefield(g, nl) {
-		t.Fatal("Nine Lives is still on the battlefield with nine counters")
-	}
-	passPriorityAroundTable(t, g)
-	if !me.Eliminated {
-		t.Fatal("Nine Lives left the battlefield and its controller is still in the game")
 	}
 }
 

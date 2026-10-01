@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Force Bubble — Enchantment {2}{W}{W}:
 //
@@ -27,11 +31,43 @@ func init() {
 		Name:         "Force Bubble",
 		Completeness: CompletenessFull,
 		Replacements: []game.ReplacementEffect{
-			damageToYouBecomesCounters(depletion, true, "Force Bubble — put that many depletion counters on it instead"),
+			forceBubbleDepletion(),
 		},
 		Triggered: []game.TriggeredAbility{
 			WhenThisHasAtLeast(depletion, 4, "Force Bubble — sacrifice it", SacrificeThisIfStillOnBattlefield),
 			AtEachStep(game.StepEnd, "Force Bubble — remove all depletion counters", removeAllCountersFromThis(depletion)),
 		},
 	})
+}
+
+// forceBubbleDepletion is "If damage would be dealt to you, put that many
+// depletion counters on this enchantment instead": damage to the
+// Bubble's controller is cancelled and that many counters go on it. The
+// event is the damage to the PLAYER (CR 616.1: the affected player, the
+// controller here, orders it against other replacements), combat and
+// noncombat alike. A Bubble the counters cannot land on still cancels
+// the damage: the replacement applied, and CR 614.6 says the replaced
+// event never happens.
+//
+// Prevention is declared FALSE (ADR 0107 §5): the text says "instead",
+// not "prevent" (CR 614.1a, 615.1a), so damage that can't be prevented
+// (CR 615.12) is still turned into depletion counters.
+func forceBubbleDepletion() game.ReplacementEffect {
+	return game.ReplacementEffect{
+		Watches: []game.EventKind{game.EventDealDamage},
+		AppliesTo: func(ev *game.ReplacementEvent, _ *game.Game, src *game.Card) bool {
+			return src != nil && ev.Kind == game.RepEventDamage && ev.DamageAmount > 0 &&
+				ev.DamageTarget == src.Controller
+		},
+		Replace: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) error {
+			n := ev.DamageAmount
+			ev.Cancel()
+			return g.AddCounterForEffect(src.InstanceID, "depletion", n)
+		},
+		Controller: func(_ *game.ReplacementEvent, _ *game.Game, src *game.Card) uuid.UUID {
+			return src.Controller
+		},
+		Prevention: false,
+		Label:      "Force Bubble — put that many depletion counters on it instead",
+	}
 }
