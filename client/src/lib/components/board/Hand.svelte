@@ -21,6 +21,7 @@
   import { play } from "../../sounds";
   import { settings } from "../../settings";
   import { canCastFromHand, type Legality } from "../../timing";
+  import { NO_LEGAL_ACTIONS, type LegalActions } from "../../legalActions";
   import { fetchAutoTapPreview, type AutoTapPreview } from "../../api";
   import { cardImageURL } from "../../cardImage";
   import {
@@ -84,6 +85,11 @@
     // no per-card legality (we don't know what they are).
     snap?: GameView | null;
     viewerID?: string | null;
+    // ADR 0105 (#1789): the frame's legal-action lookup, already
+    // narrowed to "nothing" when highlights are off or smart autopass
+    // is about to pass this frame (Game.svelte). Drives the ready ring
+    // only: the .timing-disabled gate above never reads it.
+    legal?: LegalActions;
   }
 
   const {
@@ -96,6 +102,7 @@
     sorcerySpeedBlocked = "",
     snap = null,
     viewerID = null,
+    legal = NO_LEGAL_ACTIONS,
   }: Props = $props();
 
   // ---- #1524: the viewer's own order --------------------------------
@@ -652,6 +659,7 @@
             ? (idx) => onActivateManaAbility?.(c, idx)
             : undefined}
           {sorcerySpeedBlocked}
+          ready={isSelf && legal.castableFrom(c.instance_id, "hand")}
           onClick={isSelf && leg.legal ? () => handleCardClick(c) : undefined}
         />
       </div>

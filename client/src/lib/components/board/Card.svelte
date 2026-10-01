@@ -45,6 +45,11 @@
     selected?: boolean;
     attacking?: boolean;
     blocking?: boolean;
+    // ADR 0105 (#1789): the viewer has a legal action with this card
+    // right now — the cyan "ready" ring. The caller decides (from
+    // legalActions.ts, and only while highlights are live); the card
+    // only draws it.
+    ready?: boolean;
     // size: which Scryfall-resolved image to request from the server.
     // "small" is the default (~146×204) and is what we use everywhere
     // on the table; the hover zoom overlay requests "normal".
@@ -143,6 +148,7 @@
     selected = false,
     attacking = false,
     blocking = false,
+    ready = false,
     size = "small",
     showManaCost = false,
     onActivateManaAbility,
@@ -404,6 +410,7 @@
   class:autotap-planned={$autoTapHighlight.has(card.instance_id)}
   class:attacking
   class:blocking
+  class:ready
   class:clickable={interactive}
   class:phased-out={phasedOut}
   class:menu-open={manaMenuOpen}
@@ -1059,6 +1066,36 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+  /* ADR 0105 (#1789): the "ready" ring. Static on purpose — forty
+     cards animating a box-shadow is the cost §5 rules out. Two parts:
+     an OUTSET outline (outlines are not clipped by the card's
+     overflow: hidden, and they follow its radius), and a soft glow
+     drawn by a pseudo-element just inside the frame. Both scale with
+     the card, so the ring reads at every card size and in a thumb.
+     Declared before every other ring so a target prompt, a pick, a
+     selection or a combat role wins where they meet; and the focus
+     ring below replaces it while the card has focus rather than
+     drawing over it. */
+  .card.ready {
+    outline: max(2px, calc(var(--card-w, 80px) * 0.022)) solid var(--ready);
+    outline-offset: max(1px, calc(var(--card-w, 80px) * 0.015));
+  }
+  .card.ready::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    border-radius: inherit;
+    pointer-events: none;
+    box-shadow: inset 0 0 calc(var(--card-w, 80px) * 0.14) var(--ready-glow);
+  }
+  .card.ready.targetable,
+  .card.ready.picked,
+  .card.ready.selected,
+  .card.ready.attacking,
+  .card.ready.blocking {
+    outline: none;
   }
   .card.selected {
     box-shadow:

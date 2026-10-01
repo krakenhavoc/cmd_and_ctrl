@@ -364,8 +364,8 @@ export interface GameView {
   // ADR 0105 (#1789): a per-card digest of the same enumeration, built
   // before the 48-move cap, so it stays exact down to the ability row.
   // Own seat only, like legal_moves. Absent means "highlight nothing",
-  // never "nothing is legal". Nothing reads it yet: the highlights
-  // arrive in ADR 0105 sub-PR 2.
+  // never "nothing is legal". Read through lib/legalActions.ts, never
+  // directly, so every highlight comes from one lookup.
   legal_actions?: LegalActionsView;
   // The public game log (S31 sub-PR 0, ADR 0033 §4): the last ~200
   // table-visible events, oldest first. Every card reference in it has

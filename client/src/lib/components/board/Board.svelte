@@ -141,6 +141,7 @@
   import { delveOptionIDs, hasDelveChoice } from "../../delve";
   import { shouldAskAbilityWaterbend, waterbendLimit } from "../../waterbend";
   import PhyrexianCostModal from "./PhyrexianCostModal.svelte";
+  import { NO_LEGAL_ACTIONS, type LegalActions } from "../../legalActions";
   import {
     phyrexianSymbolsForAbility,
     phyrexianSymbolsForCast,
@@ -183,6 +184,11 @@
     // prime again instead of cueing what they missed (reconnect, replay
     // toggle). Passed straight to CombatArrows.
     beatsPrimeKey?: string;
+    // ADR 0105 (#1789): the frame's legal-action lookup, built once in
+    // Game.svelte and already "nothing" while highlights are off or
+    // smart autopass is about to pass this frame. Handed to the
+    // viewer's own panel and the zone browser for their ready rings.
+    legal?: LegalActions;
   }
 
   const {
@@ -203,6 +209,7 @@
     onToggleAutopass,
     attention,
     beatsPrimeKey,
+    legal = NO_LEGAL_ACTIONS,
   }: Props = $props();
 
   // #519: every action this component initiates funnels through here
@@ -2283,6 +2290,7 @@
               onManaAbilityCost={handleManaAbilityCost}
               considering={seat.id === consideringSeatID}
               onDeclareAttackers={pos === "self" && !disabled ? onDeclareAttackers : undefined}
+              {legal}
             />
           {/if}
         </div>
@@ -2716,6 +2724,7 @@
       onCastCard={handlePlayCard}
       onActivateAbility={handleActivateAbility}
       sorcerySpeedBlocked={browsedZoneSorcerySpeedBlocked}
+      {legal}
     />
   {/if}
   {#if $manaSourcePicker}

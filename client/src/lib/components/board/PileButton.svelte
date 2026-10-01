@@ -23,9 +23,21 @@
     faceDown?: boolean;
     disabled?: boolean;
     onClick?: () => void;
+    // ADR 0105 (#1789): how many cards in this pile the viewer can do
+    // something with right now (legalActions.ts readyCount). Zero —
+    // the default, and what every pile shows while highlights are off
+    // — draws nothing.
+    readyCount?: number;
   }
 
-  const { label, zone, faceDown = false, disabled = false, onClick }: Props = $props();
+  const {
+    label,
+    zone,
+    faceDown = false,
+    disabled = false,
+    onClick,
+    readyCount = 0,
+  }: Props = $props();
 
   const topCard = $derived(zone.cards.length > 0 ? zone.cards[zone.cards.length - 1] : null);
 
@@ -47,10 +59,13 @@
   class="pile"
   class:disabled
   class:has-cards={zone.count > 0}
+  class:ready={readyCount > 0}
   {disabled}
   onclick={onClick}
   aria-label={`${label}: ${zone.count} card${zone.count === 1 ? "" : "s"}`}
-  title={`${label} · ${zone.count}`}
+  title={readyCount > 0
+    ? `${label} · ${zone.count} · ${readyCount} ready`
+    : `${label} · ${zone.count}`}
 >
   <span class="thumb">
     {#if faceDown && zone.count > 0}
@@ -64,6 +79,9 @@
   <span class="meta">
     <span class="label">{label}</span>
     <span class="count">{zone.count}</span>
+    {#if readyCount > 0}
+      <span class="ready-count" aria-hidden="true">{readyCount} ready</span>
+    {/if}
   </span>
 </button>
 
@@ -132,6 +150,24 @@
     letter-spacing: 0.08em;
     color: var(--fg-dim);
     font-weight: 600;
+  }
+  /* ADR 0105: "N ready" in the one ready colour. A count, not a ring:
+     the thumb shows one card and the ready ones may be under it. */
+  .pile.ready {
+    border-color: var(--ready-soft);
+  }
+  .ready-count {
+    font-family: var(--font-mono);
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    line-height: 1;
+    padding: 1px 4px;
+    border-radius: 999px;
+    color: var(--ready-ink);
+    background: var(--ready);
+    white-space: nowrap;
   }
   .count {
     font-family: var(--font-mono);

@@ -311,12 +311,48 @@ describe("settings", () => {
     );
     const { settings, SETTINGS_VERSION } = await freshModule();
     const s = get(settings);
-    expect(SETTINGS_VERSION).toBe(14);
-    expect(s.__version).toBe(14);
+    expect(s.__version).toBe(SETTINGS_VERSION);
     expect(s.display.stackStyle).toBe("compact");
     expect(s.display.tableLayout).toBe("row");
     expect(s.display.handLayout).toBe("stacked");
     expect(s.gameplay.bluffInstant).toBe(true);
+  });
+
+  // ADR 0105 owner decision 4: the legal-action highlights start on
+  // for everyone, existing players included, whatever the stored blob
+  // says — and from v15 on the player's own choice is kept.
+  it("v14 → v15 writes highlightLegalActions true whatever was stored", async () => {
+    for (const stored of [false, true, "no", undefined]) {
+      localStorage.setItem(
+        "cmdctrl.settings.v1",
+        JSON.stringify({
+          __version: 14,
+          display: { stackStyle: "fan" },
+          gameplay: { highlightLegalActions: stored, smartAutoPass: false },
+        }),
+      );
+      const { settings, SETTINGS_VERSION } = await freshModule();
+      const s = get(settings);
+      expect(SETTINGS_VERSION).toBe(15);
+      expect(s.__version).toBe(15);
+      expect(s.gameplay.highlightLegalActions, `stored ${String(stored)}`).toBe(true);
+      expect(s.display.stackStyle).toBe("fan");
+      expect(s.gameplay.smartAutoPass).toBe(false);
+    }
+  });
+
+  it("v15 keeps a player's choice to turn the highlights off", async () => {
+    localStorage.setItem(
+      "cmdctrl.settings.v1",
+      JSON.stringify({ __version: 15, gameplay: { highlightLegalActions: false } }),
+    );
+    const { settings } = await freshModule();
+    expect(get(settings).gameplay.highlightLegalActions).toBe(false);
+  });
+
+  it("defaults highlightLegalActions on for a new player", async () => {
+    const { settings } = await freshModule();
+    expect(get(settings).gameplay.highlightLegalActions).toBe(true);
   });
 
   it("v14 keeps a chosen stack style across a load", async () => {

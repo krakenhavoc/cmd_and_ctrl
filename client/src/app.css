@@ -45,6 +45,16 @@
   --mint: #5fd4a4;
   --rose: #ff8aa5;
   --danger: #ff6b6b;
+  /* ADR 0105 (#1789): the one "ready" colour — this card, pile or
+     button has a legal action right now. A cool cyan, chosen to stay
+     apart from every other ring on the board: green .targetable,
+     yellow .picked, red .attacking, pale blue .blocking and the gold
+     priority ring. --ready-glow is the soft halo drawn inside the
+     ring; --ready-ink is text on a --ready fill. */
+  --ready: #2fd8ee;
+  --ready-glow: rgba(47, 216, 238, 0.42);
+  --ready-soft: rgba(47, 216, 238, 0.14);
+  --ready-ink: #03191d;
 
   --radius-sm: 4px;
   --radius: 8px;
@@ -93,6 +103,10 @@
   --accent-strong: #7a5f1e;
   --accent-soft: rgba(154, 122, 44, 0.14);
   --accent-fg: #ffffff;
+  --ready: #0a8ea3;
+  --ready-glow: rgba(10, 142, 163, 0.35);
+  --ready-soft: rgba(10, 142, 163, 0.12);
+  --ready-ink: #ffffff;
 }
 
 /* High contrast: strong fg-on-bg, brighter accent, thicker
@@ -117,6 +131,11 @@
   --accent-strong: #fff176;
   --accent-soft: rgba(255, 212, 0, 0.25);
   --accent-fg: #000;
+  /* Pure cyan, no halo: the ring alone carries it here. */
+  --ready: #00ffff;
+  --ready-glow: transparent;
+  --ready-soft: rgba(0, 255, 255, 0.25);
+  --ready-ink: #000;
 }
 
 /* Respect the user's reduce-motion preference. */
