@@ -1801,7 +1801,12 @@ func (e *enumerator) legalTargetSets(src game.TargetSource, spec *game.TargetSpe
 	// #1559: a clause with a set rule ("each with a different mana
 	// value") never yields a set two of whose picks share a key — the
 	// engine refuses that set at announce, and offering it is #544.
-	keys := e.g.TargetDifferenceKeysForEffect(spec, lt.Cards)
+	// #1807: nor one whose picks hold two keys under a sameness rule
+	// ("from a single graveyard"), so every set stays in one group.
+	keys := setRuleKeys{
+		different: e.g.TargetDifferenceKeysForEffect(spec, lt.Cards),
+		same:      e.g.TargetSamenessKeysForEffect(spec, lt.Cards),
+	}
 	lo, hi := spec.Min, spec.Max
 	if hi <= 0 || hi > len(cands) {
 		hi = len(cands)
@@ -1827,7 +1832,7 @@ func (e *enumerator) legalTargetSets(src game.TargetSource, spec *game.TargetSpe
 				return
 			}
 			for i := start; i < len(cands); i++ {
-				if keys != nil && sharesSetKey(keys, cur, cands[i]) {
+				if keys.breaks(cur, cands[i]) {
 					continue
 				}
 				rec(i+1, append(cur, cands[i]))
@@ -1836,6 +1841,22 @@ func (e *enumerator) legalTargetSets(src game.TargetSource, spec *game.TargetSpe
 		rec(0, nil)
 	}
 	return out
+}
+
+// setRuleKeys is a clause's set-rule keys, per legal card: `different`
+// for a rule no two picks may share a key under (#1559), `same` for
+// one every pick must share a key under (#1807). Either is nil when
+// the clause has no such rule.
+type setRuleKeys struct {
+	different map[uuid.UUID]string
+	same      map[uuid.UUID]string
+}
+
+// breaks reports whether adding cand to cur would give a set the
+// engine's announce gate refuses.
+func (k setRuleKeys) breaks(cur []game.TargetRef, cand game.TargetRef) bool {
+	return (k.different != nil && sharesSetKey(k.different, cur, cand)) ||
+		(k.same != nil && leavesSetKey(k.same, cur, cand))
 }
 
 // sharesSetKey reports whether cand's set-rule key is already held by
@@ -1847,6 +1868,22 @@ func sharesSetKey(keys map[uuid.UUID]string, cur []game.TargetRef, cand game.Tar
 	}
 	for _, p := range cur {
 		if pk, ok := keys[p.ID]; ok && pk == k {
+			return true
+		}
+	}
+	return false
+}
+
+// leavesSetKey reports whether cand's sameness key differs from one a
+// pick in cur holds (#1807): a card from a second graveyard. A pick
+// with no key fits any group.
+func leavesSetKey(keys map[uuid.UUID]string, cur []game.TargetRef, cand game.TargetRef) bool {
+	k, ok := keys[cand.ID]
+	if !ok {
+		return false
+	}
+	for _, p := range cur {
+		if pk, ok := keys[p.ID]; ok && pk != k {
 			return true
 		}
 	}

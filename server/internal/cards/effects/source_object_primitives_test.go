@@ -633,6 +633,8 @@ func TestNoCardActsOnItsOwnSourceThroughAGameMutatorWithoutAsking(t *testing.T) 
 		"teferis_protection.go": true, "teferis_reproach.go": true,
 		"avatars_wrath.go": true, "blue_suns_zenith.go": true,
 		"temporal_mastery.go": true, "temporal_trespass.go": true,
+		// Restorative Burst, the sorcery back face: "Exile Restorative Burst."
+		"pestilent_cauldron.go": true,
 	}
 	isSelf := func(e ast.Expr) bool {
 		s := exprString(e)

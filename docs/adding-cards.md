@@ -74,6 +74,25 @@ surface tiny.
    matters, as in Arc Trail) so a target that left in response is
    skipped rather than erroring.
 
+   **Rules over the chosen set (#1559, #1807).** A clause whose picks
+   are judged against each other carries a set rule from
+   [target_set.go](../server/internal/cards/effects/target_set.go),
+   never a hand-written predicate. "That each have a different mana
+   value" is `.EachDifferent(EachDifferentManaValue())` (no two picks
+   share a key). "From a single graveyard" is the opposite rule, every
+   pick shares one key, and has its own constructor:
+   ```go
+   Targets: UpToCardsFromASingleGraveyard("up to three target cards from a single graveyard", 3), // Decompose
+   Targets: TargetCardInGraveyard("X target cards from a single graveyard").
+       WithCount(0, 0).AllShare(FromASingleGraveyard()),                                       // an exact count
+   ```
+   The engine enforces both at announce, re-judges them over the
+   surviving picks at resolution, counts only the largest group when
+   it asks whether a clause can be filled, and ships the keys so the
+   picker greys what doesn't fit ([ADR 0106 §5](decisions/0106-five-small-seams-from-the-s50-rechecks.md)).
+   `ExileTargetCards` (single_graveyard.go) is the shared body for
+   "exile up to N target cards from a single graveyard".
+
    **Target clauses (#764).** A count is one predicate chosen N
    times. When the slots have DIFFERENT predicates — Bite Down's
    "target creature you control" then "target creature or
