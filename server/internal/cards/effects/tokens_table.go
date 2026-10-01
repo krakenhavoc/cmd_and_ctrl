@@ -85,6 +85,7 @@ var tokenTable = map[string]game.Card{
 	"1/1 black Rat":                                 {Name: "Rat", TypeLine: "Token Creature — Rat", Power: 1, Toughness: 1, Colors: []string{"B"}},
 	"1/1 black Rat with lifelink":                   {Name: "Rat", TypeLine: "Token Creature — Rat", Power: 1, Toughness: 1, Colors: []string{"B"}, Keywords: []string{"lifelink"}},
 	"1/1 black Slug":                                {Name: "Slug", TypeLine: "Token Creature — Slug", Power: 1, Toughness: 1, Colors: []string{"B"}},
+	"1/1 black Thrull":                              {Name: "Thrull", TypeLine: "Token Creature — Thrull", Power: 1, Toughness: 1, Colors: []string{"B"}},
 	"1/1 blue Bird Illusion with flying":            {Name: "Bird Illusion", TypeLine: "Token Creature — Bird Illusion", Power: 1, Toughness: 1, Colors: []string{"U"}, Keywords: []string{"flying"}},
 	"1/1 blue Bird with flying and vigilance":       {Name: "Bird", TypeLine: "Token Creature — Bird", Power: 1, Toughness: 1, Colors: []string{"U"}, Keywords: []string{"flying", "vigilance"}},
 	"1/1 blue Illusion with flying":                 {Name: "Illusion", TypeLine: "Token Creature — Illusion", Power: 1, Toughness: 1, Colors: []string{"U"}, Keywords: []string{"flying"}},
@@ -198,6 +199,7 @@ var tokenTable = map[string]game.Card{
 	"6/5 blue Leviathan with hexproof":              {Name: "Leviathan", TypeLine: "Token Creature — Leviathan", Power: 6, Toughness: 5, Colors: []string{"U"}, Keywords: []string{"hexproof"}},
 	"8/8 blue Scion of the Deep":                    {Name: "Scion of the Deep", TypeLine: "Token Legendary Creature — Octopus", Power: 8, Toughness: 8, Colors: []string{"U"}},
 	"9/9 blue Kraken":                               {Name: "Kraken", TypeLine: "Token Creature — Kraken", Power: 9, Toughness: 9, Colors: []string{"U"}},
+	"20/20 black Marit Lage":                        {Name: "Marit Lage", TypeLine: "Token Legendary Creature — Avatar", Power: 20, Toughness: 20, Colors: []string{"B"}, Keywords: []string{"flying", "indestructible"}},
 	"Munitions":                                     {Name: "Munitions", TypeLine: "Token Artifact"},
 
 	// A key longer than every row above: kept in its own block so gofmt

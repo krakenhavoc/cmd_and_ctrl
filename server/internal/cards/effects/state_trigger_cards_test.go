@@ -249,3 +249,231 @@ func TestDarksteelReactorWinsAtTwenty(t *testing.T) {
 		t.Fatalf("state %v outcome %+v, want the game over and won by the Reactor's controller", g.State, g.Outcome)
 	}
 }
+
+// The serpents (ADR 0107 §1 with §2): each carries the attack
+// restriction and is sacrificed when its controller's last land of the
+// type goes.
+func TestStateTriggerSerpentsNeedTheirLand(t *testing.T) {
+	cases := []struct {
+		name, oracle, typeLine string
+		land                   game.Card
+	}{
+		{"Sea Serpent", "c16495fc-784d-4bac-9a68-ed437008df73", "Creature — Serpent", stCard("Island", "", "Basic Land — Island", 0, 0)},
+		{"Bog Serpent", "9a9877b5-9f75-4c83-b11b-f006aecb075b", "Creature — Serpent", stCard("Swamp", "", "Basic Land — Swamp", 0, 0)},
+		{"Dandân", "88929373-b2c8-4a81-a809-fed87fd5b0d7", "Creature — Fish", stCard("Island", "", "Basic Land — Island", 0, 0)},
+		{"Gorilla Pack", "f2c8814b-581b-483b-a7ae-d3d7b962aec1", "Creature — Ape", stCard("Forest", "", "Basic Land — Forest", 0, 0)},
+		{"Ronom Serpent", "ff35e480-8ea2-47bb-bb2a-24cefe9c2139", "Snow Creature — Serpent", stCard("Snow-Covered Island", "", "Basic Snow Land — Island", 0, 0)},
+		{"Slipstream Serpent", "aa1152cb-255f-43fa-81f5-430304ce4d98", "Creature — Serpent", stCard("Island", "", "Basic Land — Island", 0, 0)},
+		{"Pirate Ship", "c6b3f924-806d-47d3-b044-72b48470196c", "Creature — Human Pirate", stCard("Island", "", "Basic Land — Island", 0, 0)},
+		{"Vodalian Knights", "f6daa28f-e5ce-440c-8dc2-b36f59ae0d4f", "Creature — Merfolk Knight", stCard("Island", "", "Basic Land — Island", 0, 0)},
+		{"Manta Ray", "d5129531-e4b6-454e-9c67-dae925c8f2ee", "Creature — Fish", stCard("Island", "", "Basic Land — Island", 0, 0)},
+		{"Merchant Ship", "69556f6c-c05b-4902-bac7-012f0ed81b75", "Creature — Human", stCard("Island", "", "Basic Land — Island", 0, 0)},
+		{"Marjhan", "3fdee2ab-7ec6-4fc6-ad99-f04571f94583", "Creature — Serpent", stCard("Island", "", "Basic Land — Island", 0, 0)},
+		{"Island Fish Jasconius", "bb217f12-532f-4833-a27a-99e290aa47d0", "Creature — Fish", stCard("Island", "", "Basic Land — Island", 0, 0)},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			g := newCatalogGame(t)
+			me := g.Seats[0]
+			// A plain Island under Ronom Serpent is not a snow land.
+			if tc.name == "Ronom Serpent" {
+				apaPush(g, me.ID, me.ID, stCard("Island", "", "Basic Land — Island", 0, 0))
+			}
+			land := apaPush(g, me.ID, me.ID, tc.land)
+			serpent := apaPush(g, me.ID, me.ID, stCard(tc.name, tc.oracle, tc.typeLine, 4, 4))
+			passPriorityAroundTable(t, g)
+			if !onBattlefield(g, serpent) {
+				t.Fatalf("%s left while its controller had the land", tc.name)
+			}
+			if c := apaLive(g, serpent); len(c.Effective().AttackTargetRestrictions) == 0 {
+				t.Errorf("%s has no attack-target restriction", tc.name)
+			}
+			stDestroy(t, g, land)
+			passPriorityAroundTable(t, g)
+			if onBattlefield(g, serpent) {
+				t.Fatalf("%s survived the loss of its last land", tc.name)
+			}
+		})
+	}
+}
+
+// Dark Depths: ten ice counters as it enters; the {3} row takes one off;
+// with none left it is sacrificed for Marit Lage.
+func TestDarkDepthsMakesMaritLage(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	depths := playLandFromHand(t, g, "Dark Depths", "c9b82110-7dfd-4617-9399-9510be449043")
+	passPriorityAroundTable(t, g)
+	if c := apaLive(g, depths); c == nil || c.Counters["ice"] != 10 {
+		t.Fatalf("Dark Depths entered with %v ice counters, want 10", c)
+	}
+	g.WithWriteLock(func() {
+		if err := g.AddCounterForEffect(depths, "ice", -9); err != nil {
+			t.Fatal(err)
+		}
+	})
+	apaMana(me, "C", "C", "C")
+	apaActivate(t, g, me, depths, 0, game.ActivateAbilityParams{})
+	passPriorityAroundTable(t, g)
+	if onBattlefield(g, depths) {
+		t.Fatal("Dark Depths with no ice counters is still on the battlefield")
+	}
+	if n := onBattlefieldNamed(g, "Marit Lage"); n != 1 {
+		t.Fatalf("%d Marit Lage tokens, want 1", n)
+	}
+}
+
+// Endrek Sahr: a creature spell of mana value 3 makes three Thrulls;
+// the seventh Thrull triggers the sacrifice.
+func TestEndrekSahrBreedsThrullsUntilSeven(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	endrek := apaPush(g, me.ID, me.ID, stCard("Endrek Sahr, Master Breeder", "47a0079f-3544-45bc-a32a-bd93844c8c43", "Legendary Creature — Human Wizard", 2, 2))
+	for g.Turn.Step != game.StepPrecombatMain {
+		if _, err := g.AdvanceStep(); err != nil {
+			t.Fatal(err)
+		}
+	}
+	spell := uuid.New()
+	me.Hand.PushTop(game.Card{InstanceID: spell, Name: "Bear", TypeLine: "Creature — Bear", ManaCost: "{2}{G}",
+		Power: 2, Toughness: 2, Owner: me.ID, Controller: me.ID})
+	apaMana(me, "G", "C", "C")
+	if err := g.CastSpell(me.ID, spell, game.CastSpellParams{}); err != nil {
+		t.Fatalf("cast: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if n := onBattlefieldNamed(g, "Thrull"); n != 3 {
+		t.Fatalf("%d Thrulls after a mana value 3 creature spell, want 3", n)
+	}
+	if !onBattlefield(g, endrek) {
+		t.Fatal("Endrek Sahr left with three Thrulls")
+	}
+	g.WithWriteLock(func() {
+		if err := g.CreateTokenForEffect(me.ID, TokenCard("1/1 black Thrull"), 4); err != nil {
+			t.Fatal(err)
+		}
+	})
+	passPriorityAroundTable(t, g)
+	if onBattlefield(g, endrek) {
+		t.Fatal("Endrek Sahr survived seven Thrulls")
+	}
+}
+
+// Last Laugh: a permanent going to a graveyard from the battlefield deals
+// 1 to each creature and each player; with no creatures left it goes.
+func TestLastLaughPingsAndLeavesWithTheLastCreature(t *testing.T) {
+	g := newCatalogGame(t)
+	me, bob := g.Seats[0], g.Seats[1]
+	bear := apaPush(g, bob.ID, bob.ID, stCard("Bear", "", "Creature — Bear", 2, 2))
+	wall := apaPush(g, bob.ID, bob.ID, stCard("Wall", "", "Creature — Wall", 0, 1))
+	laugh := apaPush(g, me.ID, me.ID, stCard("Last Laugh", "5facb256-b993-43f8-b971-b3a59a7434bf", "Enchantment", 0, 0))
+	passPriorityAroundTable(t, g)
+	if !onBattlefield(g, laugh) {
+		t.Fatal("Last Laugh left with creatures on the battlefield")
+	}
+	life := me.Life
+	stDestroy(t, g, bear)
+	passPriorityAroundTable(t, g)
+	if me.Life != life-1 {
+		t.Fatalf("life %d, want %d after one death", me.Life, life-1)
+	}
+	if onBattlefield(g, wall) {
+		t.Fatal("the 0/1 Wall survived Last Laugh's 1 damage")
+	}
+	// The Wall's death triggers the damage again, and the empty board
+	// triggers the sacrifice: two triggers of one controller to order.
+	for i := 0; i < 4 && onBattlefield(g, laugh); i++ {
+		answerAnyTriggerOrderPrompt(t, g, me.ID)
+		passPriorityAroundTable(t, g)
+	}
+	if onBattlefield(g, laugh) {
+		t.Fatal("Last Laugh stayed with no creatures on the battlefield")
+	}
+}
+
+// Lurebound Scarecrow: the colour is chosen as it enters, and it is
+// sacrificed when its controller has nothing of that colour.
+func TestLureboundScarecrowWatchesItsColor(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	red := game.Card{Name: "Goblin", TypeLine: "Creature — Goblin", Power: 1, Toughness: 1, Colors: []string{"R"}}
+	goblin := apaPush(g, me.ID, me.ID, red)
+	scarecrow := stCard("Lurebound Scarecrow", "8353f834-678a-4fa1-857a-8bfdfb8d6378", "Artifact Creature — Scarecrow", 4, 4)
+	scarecrow.ChosenColor = "R" // as if it had chosen red as it entered
+	sc := apaPush(g, me.ID, me.ID, scarecrow)
+	passPriorityAroundTable(t, g)
+	if !onBattlefield(g, sc) {
+		t.Fatal("the Scarecrow left while its controller had a red permanent")
+	}
+	stDestroy(t, g, goblin)
+	passPriorityAroundTable(t, g)
+	if onBattlefield(g, sc) {
+		t.Fatal("the Scarecrow survived the loss of its controller's last red permanent")
+	}
+}
+
+// Mazemind Tome: the fourth page counter is part of the cost, so it
+// triggers the exile at once; the exile gains 4 life.
+func TestMazemindTomeExilesOnTheFourthPage(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	tome := apaPush(g, me.ID, me.ID, stCard("Mazemind Tome", "800fb917-8898-4eba-9f94-aec6e9d75236", "Artifact — Book", 0, 0))
+	g.WithWriteLock(func() {
+		if err := g.AddCounterForEffect(tome, "page", 3); err != nil {
+			t.Fatal(err)
+		}
+	})
+	life := me.Life
+	apaMana(me, "C", "C")
+	apaActivate(t, g, me, tome, 1, game.ActivateAbilityParams{})
+	passPriorityAroundTable(t, g)
+	if onBattlefield(g, tome) {
+		t.Fatal("Mazemind Tome with four page counters is still on the battlefield")
+	}
+	if me.Life != life+4 {
+		t.Fatalf("life %d, want %d", me.Life, life+4)
+	}
+}
+
+// Plague Boiler: the third plague counter sacrifices it and destroys
+// every nonland permanent; lands stay.
+func TestPlagueBoilerWipesOnTheThirdCounter(t *testing.T) {
+	g := newCatalogGame(t)
+	me, bob := g.Seats[0], g.Seats[1]
+	boiler := apaPush(g, me.ID, me.ID, stCard("Plague Boiler", "fef502af-6e79-4c55-a86a-b45adb3fc64a", "Artifact", 0, 0))
+	bear := apaPush(g, bob.ID, bob.ID, stCard("Bear", "", "Creature — Bear", 2, 2))
+	land := apaPush(g, bob.ID, bob.ID, stCard("Forest", "", "Basic Land — Forest", 0, 0))
+	g.WithWriteLock(func() {
+		if err := g.AddCounterForEffect(boiler, "plague", 3); err != nil {
+			t.Fatal(err)
+		}
+	})
+	passPriorityAroundTable(t, g)
+	if onBattlefield(g, boiler) || onBattlefield(g, bear) || !onBattlefield(g, land) {
+		t.Fatalf("boiler %v bear %v land %v; want the boiler and the bear gone and the land kept",
+			onBattlefield(g, boiler), onBattlefield(g, bear), onBattlefield(g, land))
+	}
+}
+
+// Afiya Grove is sacrificed once its last +1/+1 counter is gone.
+func TestAfiyaGroveSacrificedWhenEmpty(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	apaPush(g, me.ID, me.ID, stCard("Bear", "", "Creature — Bear", 2, 2))
+	tmpl := stCard("Afiya Grove", "056a98aa-f3f7-4ac9-9755-3e8a60a59abb", "Enchantment", 0, 0)
+	tmpl.Counters = map[string]int{game.CounterPlusOne: 1}
+	grove := apaPush(g, me.ID, me.ID, tmpl)
+	passPriorityAroundTable(t, g)
+	if !onBattlefield(g, grove) {
+		t.Fatal("a Grove with a counter left the battlefield")
+	}
+	g.WithWriteLock(func() {
+		if err := g.AddCounterForEffect(grove, game.CounterPlusOne, -1); err != nil {
+			t.Fatal(err)
+		}
+	})
+	passPriorityAroundTable(t, g)
+	if onBattlefield(g, grove) {
+		t.Fatal("a Grove with no +1/+1 counters is still on the battlefield")
+	}
+}

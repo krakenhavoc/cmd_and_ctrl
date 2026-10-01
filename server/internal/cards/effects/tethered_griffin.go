@@ -13,9 +13,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID:     "909e1bff-237a-4259-9c0f-419185681782",
-		Name:         "Tethered Griffin",
-		Completeness: CompletenessFull,
+		OracleID:        "909e1bff-237a-4259-9c0f-419185681782",
+		Name:            "Tethered Griffin",
+		Completeness:    CompletenessFull,
+		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{
 			WhenYouControlNo(QueryType("enchantment"), "Tethered Griffin — sacrifice it", SacrificeThisIfStillOnBattlefield),
 		},

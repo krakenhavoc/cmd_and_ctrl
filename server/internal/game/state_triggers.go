@@ -304,6 +304,29 @@ func (g *Game) ControlsMatchingForEffect(player, except uuid.UUID, qs ...Permane
 	return false
 }
 
+// CountControlledMatchingForEffect is how many permanents `player`
+// controls that match any of qs — "When you control seven or more
+// Thrulls". Caller must hold g.mu.
+func (g *Game) CountControlledMatchingForEffect(player uuid.UUID, qs ...PermanentQuery) int {
+	if g.Battlefield == nil || player == uuid.Nil {
+		return 0
+	}
+	n := 0
+	for i := range g.Battlefield.Cards {
+		c := &g.Battlefield.Cards[i]
+		if c.Controller != player {
+			continue
+		}
+		for _, q := range qs {
+			if q.matchesLocked(g, c) {
+				n++
+				break
+			}
+		}
+	}
+	return n
+}
+
 // AnyPermanentMatchingForEffect reports whether any permanent on the
 // battlefield, whoever controls it, matches any of qs — "When there are
 // no creatures on the battlefield". Caller must hold g.mu.

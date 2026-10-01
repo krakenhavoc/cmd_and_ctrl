@@ -39,12 +39,7 @@ func init() {
 			Targets:      TargetCreature("target creature"),
 			SorcerySpeed: true,
 			AnyPlayer:    true,
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				if len(item.Targets) == 0 {
-					return nil
-				}
-				return DealDamage{Source: item.SourceCardID, Target: item.Targets[0].ID, Amount: 1}.Apply(NewContext(g, item))
-			},
+			Effect:       sourceDealsOneToFirstTarget,
 		}},
 	})
 }

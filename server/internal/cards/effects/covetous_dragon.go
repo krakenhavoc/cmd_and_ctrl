@@ -13,9 +13,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID:     "bf7710cb-70cb-42fb-b840-cc4f385daa7a",
-		Name:         "Covetous Dragon",
-		Completeness: CompletenessFull,
+		OracleID:        "bf7710cb-70cb-42fb-b840-cc4f385daa7a",
+		Name:            "Covetous Dragon",
+		Completeness:    CompletenessFull,
+		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{
 			WhenYouControlNo(QueryType("artifact"), "Covetous Dragon — sacrifice it", SacrificeThisIfStillOnBattlefield),
 		},

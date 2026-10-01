@@ -21,9 +21,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID:     "bc483bab-14fb-498d-9310-9c070766c7ae",
-		Name:         "Darksteel Reactor",
-		Completeness: CompletenessFull,
+		OracleID:        "bc483bab-14fb-498d-9310-9c070766c7ae",
+		Name:            "Darksteel Reactor",
+		Completeness:    CompletenessFull,
+		PrintedKeywords: []string{"indestructible"},
 		Triggered: []game.TriggeredAbility{
 			Optional(AtYourUpkeep("Darksteel Reactor — put a charge counter", putACounterOnThis(game.CounterCharge)),
 				"Darksteel Reactor — put a charge counter on it?"),

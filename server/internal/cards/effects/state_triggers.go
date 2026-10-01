@@ -69,6 +69,14 @@ func WhenThereAreNo(q game.PermanentQuery, label string, effect Effect) game.Tri
 	}, effect)
 }
 
+// WhenYouControlAtLeast is "When you control N or more <permanents
+// matching q>": Endrek Sahr's seven Thrulls.
+func WhenYouControlAtLeast(n int, q game.PermanentQuery, label string, effect Effect) game.TriggeredAbility {
+	return WhenState(label, func(g *game.Game, _ *game.Card, controller uuid.UUID) bool {
+		return g.CountControlledMatchingForEffect(controller, q) >= n
+	}, effect)
+}
+
 // QueryType is "a permanent of this card type": an artifact, a land, a
 // creature. The card-type sibling of QuerySubtype.
 func QueryType(cardType string) game.PermanentQuery {
