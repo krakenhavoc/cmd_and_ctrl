@@ -235,7 +235,7 @@ func (g *Game) priceCastLocked(playerID uuid.UUID, card Card, params CastSpellPa
 	// CastPermissionForLocked, which is #945's one liveness test.
 	srcKind, _ := castZoneFromWire(params.FromZone)
 	grant := g.CastPermissionForLocked(playerID, card, srcKind)
-	face, ok := faceForCastLocked(card, params.Face, grant, playerID)
+	face, ok := faceForCastLocked(card, params.Face, grant, playerID, params.AlternativeCost)
 	if !ok {
 		return CastPrice{}, ErrInvalidFace
 	}

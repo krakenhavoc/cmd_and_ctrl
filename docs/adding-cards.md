@@ -3454,7 +3454,7 @@ The `Key` is the wire contract: it rides `cast_spell` as
 `alternative_cost`, lands on `StackItem.AltCost`, and the card's
 `OnResolve` branches on `ctx.PaidAltCost("overload")`. Keys must be
 non-empty and unique per card; `Register` panics otherwise. Only
-overload / evoke / cleave / flashback / warp / escape exist, plus the
+overload / evoke / cleave / flashback / warp / escape / disturb exist, plus the
 non-mana prices below (pitch, pay life, return, and since #1727 a
 sacrifice) —
 spree has no shape yet, and a card carrying it ships without it (say
@@ -3518,6 +3518,41 @@ is a *price* rather than a permission:
   other, and escapes again next time. Copying flashback's constructor
   and swapping the key would ship a card that exiles itself, which is
   not what any escape card does.
+
+**Disturb (#1855, [ADR 0107 §4](decisions/0107-state-triggers-rebound-disturb-and-damage-prevention.md#4-disturb-1855))**
+is flashback's cast path with one more clause: `Disturb("{1}{U}")` sets
+`AlternativeCost.CastsFace: 1`, so the spell is the card's **back
+face** (CR 712.11a) and the permanent enters back face up (CR
+702.146b). The front face's entry declares the offer and the zone; the
+back face's entry (`"<oracle_id>#1"`) is the spell, and declares the
+back face's abilities, its target clause (an Aura's
+`EnchantCreature()`), and its exile line:
+
+```go
+Register(Spec{ // Baithook Angler, the front face
+    OracleID:         baithookAnglerOracleID,
+    CastableZones:    []game.ZoneKind{game.ZoneGraveyard},
+    AlternativeCosts: []game.AlternativeCost{Disturb("{1}{U}")},
+})
+Register(Spec{ // Hook-Haunt Drifter, the back face
+    OracleID:        baithookAnglerOracleID + "#1",
+    PrintedKeywords: []string{"flying"},
+    Replacements:    []game.ReplacementEffect{DisturbedExile("Hook-Haunt Drifter")},
+})
+```
+
+`DisturbedExile` is "If [this] would be put into a graveyard from
+anywhere, exile it instead" (`GraveyardBecomesExile{SelfOnly: true}`).
+Disturb has no `ExileOnLeavingStack`: the exile is the back face's own
+replacement, read only while that face is up (CR 712.8a), so a disturbed
+creature that dies, a disturbed Aura that falls off and a disturbed
+spell that is countered are exiled, while the same card discarded from
+a hand goes to the graveyard and can be disturbed. The offer and the
+zone are judged off the front face and everything else off the back
+(CR 712.11d); the cast's mana value is the front face's (CR 712.8c).
+`Register` refuses a face-casting offer on a back face's entry, and the
+cast path refuses one on any card that is not a `transform` card with
+that face.
 
 **A sacrifice as the price (#1727).** "Flashback—Sacrifice three
 creatures" (Dread Return) and "you may sacrifice two Mountains rather

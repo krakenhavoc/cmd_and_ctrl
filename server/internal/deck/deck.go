@@ -319,12 +319,22 @@ func printedDefense(c cards.Card) int {
 // trample"), so prose that merely mentions a keyword ("target
 // creature gains trample") can't smuggle one in.
 func printedKeywords(c cards.Card) []string {
+	return printedKeywordsForFace(c, 0)
+}
+
+// printedKeywordsForFace is printedKeywords narrowed to face `face` of
+// a multi-faced card rather than the front: Scryfall's union confirmed
+// against that face's own keyword lines. ADR 0107 §4 stamps each face
+// of a double-faced card with its own list (game.Face.Keywords), so a
+// back face cast with disturb, or reached by transforming, has its own
+// keywords and not the front face's (CR 712.8e).
+func printedKeywordsForFace(c cards.Card, face int) []string {
 	if len(c.Keywords) == 0 {
 		return nil
 	}
 	var front map[string]int
-	if len(c.CardFaces) > 1 {
-		front = keywordLineCounts(c.CardFaces[0].OracleText)
+	if len(c.CardFaces) > 1 && face >= 0 && face < len(c.CardFaces) {
+		front = keywordLineCounts(c.CardFaces[face].OracleText)
 	}
 	var scanned map[string]int
 	wantProtection := false
@@ -740,7 +750,8 @@ func printedFaces(c cards.Card) []game.Face {
 		return nil
 	}
 	out := make([]game.Face, 0, len(c.CardFaces))
-	for _, f := range c.CardFaces {
+	perFace := game.FaceKeywordsApply(c.Layout)
+	for i, f := range c.CardFaces {
 		// Same posture as the top-level parse: non-numeric printed
 		// values ("*", "1+*", "X") land as zero and stay a manual
 		// sandbox case.
@@ -760,6 +771,11 @@ func printedFaces(c cards.Card) []game.Face {
 			StartingDefense:   defense,
 			OracleText:        f.OracleText,
 		})
+		// ADR 0107 §4: a double-faced card's faces each carry their own
+		// keywords, which SetFace puts on the card as the face turns up.
+		if perFace {
+			out[i].Keywords = printedKeywordsForFace(c, i)
+		}
 	}
 	return out
 }

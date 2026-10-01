@@ -159,6 +159,15 @@ var canonicalKeywords = map[string]bool{
 	// job is the badge and the ADR 0037 coverage signal, and it must
 	// not arrive before the mechanic does.
 	"madness": true,
+	// disturb (CR 702.146) joins with #1855 (ADR 0107 §4), in the same
+	// change that teaches the engine to honour it: an alternative cost
+	// that casts the card's back face out of its owner's graveyard
+	// (AlternativeCost.CastsFace, faceForClaimLocked), on the stack and
+	// the battlefield back face up. Same reasoning as foretell and
+	// suspend above — the consumer is the card file's offer, not a
+	// table in this file, so the token's job is the badge and the ADR
+	// 0037 coverage signal.
+	"disturb": true,
 	// plot (CR 702.170) joins with #1342, in the same change that
 	// teaches the engine to honour it: the CR 116.2 special action
 	// from hand (SpecialActionPlot, plot.go) and the free later cast

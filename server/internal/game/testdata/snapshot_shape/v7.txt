@@ -73,6 +73,8 @@ battlefield.cards[].durationCopyBase.Faces	array
 battlefield.cards[].durationCopyBase.Faces[]	object
 battlefield.cards[].durationCopyBase.Faces[].Colors	array
 battlefield.cards[].durationCopyBase.Faces[].Colors[]	string
+battlefield.cards[].durationCopyBase.Faces[].Keywords	array
+battlefield.cards[].durationCopyBase.Faces[].Keywords[]	string
 battlefield.cards[].durationCopyBase.Faces[].ManaCost	string
 battlefield.cards[].durationCopyBase.Faces[].Name	string
 battlefield.cards[].durationCopyBase.Faces[].OracleText	string
@@ -115,6 +117,8 @@ battlefield.cards[].faces	array
 battlefield.cards[].faces[]	object
 battlefield.cards[].faces[].Colors	array
 battlefield.cards[].faces[].Colors[]	string
+battlefield.cards[].faces[].Keywords	array
+battlefield.cards[].faces[].Keywords[]	string
 battlefield.cards[].faces[].ManaCost	string
 battlefield.cards[].faces[].Name	string
 battlefield.cards[].faces[].OracleText	string
@@ -193,6 +197,8 @@ battlefield.cards[].printedSelf.Faces	array
 battlefield.cards[].printedSelf.Faces[]	object
 battlefield.cards[].printedSelf.Faces[].Colors	array
 battlefield.cards[].printedSelf.Faces[].Colors[]	string
+battlefield.cards[].printedSelf.Faces[].Keywords	array
+battlefield.cards[].printedSelf.Faces[].Keywords[]	string
 battlefield.cards[].printedSelf.Faces[].ManaCost	string
 battlefield.cards[].printedSelf.Faces[].Name	string
 battlefield.cards[].printedSelf.Faces[].OracleText	string
@@ -457,6 +463,8 @@ exile.cards[].durationCopyBase.Faces	array
 exile.cards[].durationCopyBase.Faces[]	object
 exile.cards[].durationCopyBase.Faces[].Colors	array
 exile.cards[].durationCopyBase.Faces[].Colors[]	string
+exile.cards[].durationCopyBase.Faces[].Keywords	array
+exile.cards[].durationCopyBase.Faces[].Keywords[]	string
 exile.cards[].durationCopyBase.Faces[].ManaCost	string
 exile.cards[].durationCopyBase.Faces[].Name	string
 exile.cards[].durationCopyBase.Faces[].OracleText	string
@@ -499,6 +507,8 @@ exile.cards[].faces	array
 exile.cards[].faces[]	object
 exile.cards[].faces[].Colors	array
 exile.cards[].faces[].Colors[]	string
+exile.cards[].faces[].Keywords	array
+exile.cards[].faces[].Keywords[]	string
 exile.cards[].faces[].ManaCost	string
 exile.cards[].faces[].Name	string
 exile.cards[].faces[].OracleText	string
@@ -577,6 +587,8 @@ exile.cards[].printedSelf.Faces	array
 exile.cards[].printedSelf.Faces[]	object
 exile.cards[].printedSelf.Faces[].Colors	array
 exile.cards[].printedSelf.Faces[].Colors[]	string
+exile.cards[].printedSelf.Faces[].Keywords	array
+exile.cards[].printedSelf.Faces[].Keywords[]	string
 exile.cards[].printedSelf.Faces[].ManaCost	string
 exile.cards[].printedSelf.Faces[].Name	string
 exile.cards[].printedSelf.Faces[].OracleText	string
@@ -840,6 +852,8 @@ lastKnownStack[].card.durationCopyBase.Faces	array
 lastKnownStack[].card.durationCopyBase.Faces[]	object
 lastKnownStack[].card.durationCopyBase.Faces[].Colors	array
 lastKnownStack[].card.durationCopyBase.Faces[].Colors[]	string
+lastKnownStack[].card.durationCopyBase.Faces[].Keywords	array
+lastKnownStack[].card.durationCopyBase.Faces[].Keywords[]	string
 lastKnownStack[].card.durationCopyBase.Faces[].ManaCost	string
 lastKnownStack[].card.durationCopyBase.Faces[].Name	string
 lastKnownStack[].card.durationCopyBase.Faces[].OracleText	string
@@ -882,6 +896,8 @@ lastKnownStack[].card.faces	array
 lastKnownStack[].card.faces[]	object
 lastKnownStack[].card.faces[].Colors	array
 lastKnownStack[].card.faces[].Colors[]	string
+lastKnownStack[].card.faces[].Keywords	array
+lastKnownStack[].card.faces[].Keywords[]	string
 lastKnownStack[].card.faces[].ManaCost	string
 lastKnownStack[].card.faces[].Name	string
 lastKnownStack[].card.faces[].OracleText	string
@@ -960,6 +976,8 @@ lastKnownStack[].card.printedSelf.Faces	array
 lastKnownStack[].card.printedSelf.Faces[]	object
 lastKnownStack[].card.printedSelf.Faces[].Colors	array
 lastKnownStack[].card.printedSelf.Faces[].Colors[]	string
+lastKnownStack[].card.printedSelf.Faces[].Keywords	array
+lastKnownStack[].card.printedSelf.Faces[].Keywords[]	string
 lastKnownStack[].card.printedSelf.Faces[].ManaCost	string
 lastKnownStack[].card.printedSelf.Faces[].Name	string
 lastKnownStack[].card.printedSelf.Faces[].OracleText	string
@@ -1638,6 +1656,8 @@ phasedOut.cards[].durationCopyBase.Faces	array
 phasedOut.cards[].durationCopyBase.Faces[]	object
 phasedOut.cards[].durationCopyBase.Faces[].Colors	array
 phasedOut.cards[].durationCopyBase.Faces[].Colors[]	string
+phasedOut.cards[].durationCopyBase.Faces[].Keywords	array
+phasedOut.cards[].durationCopyBase.Faces[].Keywords[]	string
 phasedOut.cards[].durationCopyBase.Faces[].ManaCost	string
 phasedOut.cards[].durationCopyBase.Faces[].Name	string
 phasedOut.cards[].durationCopyBase.Faces[].OracleText	string
@@ -1680,6 +1700,8 @@ phasedOut.cards[].faces	array
 phasedOut.cards[].faces[]	object
 phasedOut.cards[].faces[].Colors	array
 phasedOut.cards[].faces[].Colors[]	string
+phasedOut.cards[].faces[].Keywords	array
+phasedOut.cards[].faces[].Keywords[]	string
 phasedOut.cards[].faces[].ManaCost	string
 phasedOut.cards[].faces[].Name	string
 phasedOut.cards[].faces[].OracleText	string
@@ -1758,6 +1780,8 @@ phasedOut.cards[].printedSelf.Faces	array
 phasedOut.cards[].printedSelf.Faces[]	object
 phasedOut.cards[].printedSelf.Faces[].Colors	array
 phasedOut.cards[].printedSelf.Faces[].Colors[]	string
+phasedOut.cards[].printedSelf.Faces[].Keywords	array
+phasedOut.cards[].printedSelf.Faces[].Keywords[]	string
 phasedOut.cards[].printedSelf.Faces[].ManaCost	string
 phasedOut.cards[].printedSelf.Faces[].Name	string
 phasedOut.cards[].printedSelf.Faces[].OracleText	string
@@ -1890,6 +1914,8 @@ scopedEffects[].mods[].copy[].Faces	array
 scopedEffects[].mods[].copy[].Faces[]	object
 scopedEffects[].mods[].copy[].Faces[].Colors	array
 scopedEffects[].mods[].copy[].Faces[].Colors[]	string
+scopedEffects[].mods[].copy[].Faces[].Keywords	array
+scopedEffects[].mods[].copy[].Faces[].Keywords[]	string
 scopedEffects[].mods[].copy[].Faces[].ManaCost	string
 scopedEffects[].mods[].copy[].Faces[].Name	string
 scopedEffects[].mods[].copy[].Faces[].OracleText	string
@@ -2053,6 +2079,8 @@ seats[].command.cards[].durationCopyBase.Faces	array
 seats[].command.cards[].durationCopyBase.Faces[]	object
 seats[].command.cards[].durationCopyBase.Faces[].Colors	array
 seats[].command.cards[].durationCopyBase.Faces[].Colors[]	string
+seats[].command.cards[].durationCopyBase.Faces[].Keywords	array
+seats[].command.cards[].durationCopyBase.Faces[].Keywords[]	string
 seats[].command.cards[].durationCopyBase.Faces[].ManaCost	string
 seats[].command.cards[].durationCopyBase.Faces[].Name	string
 seats[].command.cards[].durationCopyBase.Faces[].OracleText	string
@@ -2095,6 +2123,8 @@ seats[].command.cards[].faces	array
 seats[].command.cards[].faces[]	object
 seats[].command.cards[].faces[].Colors	array
 seats[].command.cards[].faces[].Colors[]	string
+seats[].command.cards[].faces[].Keywords	array
+seats[].command.cards[].faces[].Keywords[]	string
 seats[].command.cards[].faces[].ManaCost	string
 seats[].command.cards[].faces[].Name	string
 seats[].command.cards[].faces[].OracleText	string
@@ -2173,6 +2203,8 @@ seats[].command.cards[].printedSelf.Faces	array
 seats[].command.cards[].printedSelf.Faces[]	object
 seats[].command.cards[].printedSelf.Faces[].Colors	array
 seats[].command.cards[].printedSelf.Faces[].Colors[]	string
+seats[].command.cards[].printedSelf.Faces[].Keywords	array
+seats[].command.cards[].printedSelf.Faces[].Keywords[]	string
 seats[].command.cards[].printedSelf.Faces[].ManaCost	string
 seats[].command.cards[].printedSelf.Faces[].Name	string
 seats[].command.cards[].printedSelf.Faces[].OracleText	string
@@ -2310,6 +2342,8 @@ seats[].emblems.cards[].durationCopyBase.Faces	array
 seats[].emblems.cards[].durationCopyBase.Faces[]	object
 seats[].emblems.cards[].durationCopyBase.Faces[].Colors	array
 seats[].emblems.cards[].durationCopyBase.Faces[].Colors[]	string
+seats[].emblems.cards[].durationCopyBase.Faces[].Keywords	array
+seats[].emblems.cards[].durationCopyBase.Faces[].Keywords[]	string
 seats[].emblems.cards[].durationCopyBase.Faces[].ManaCost	string
 seats[].emblems.cards[].durationCopyBase.Faces[].Name	string
 seats[].emblems.cards[].durationCopyBase.Faces[].OracleText	string
@@ -2352,6 +2386,8 @@ seats[].emblems.cards[].faces	array
 seats[].emblems.cards[].faces[]	object
 seats[].emblems.cards[].faces[].Colors	array
 seats[].emblems.cards[].faces[].Colors[]	string
+seats[].emblems.cards[].faces[].Keywords	array
+seats[].emblems.cards[].faces[].Keywords[]	string
 seats[].emblems.cards[].faces[].ManaCost	string
 seats[].emblems.cards[].faces[].Name	string
 seats[].emblems.cards[].faces[].OracleText	string
@@ -2430,6 +2466,8 @@ seats[].emblems.cards[].printedSelf.Faces	array
 seats[].emblems.cards[].printedSelf.Faces[]	object
 seats[].emblems.cards[].printedSelf.Faces[].Colors	array
 seats[].emblems.cards[].printedSelf.Faces[].Colors[]	string
+seats[].emblems.cards[].printedSelf.Faces[].Keywords	array
+seats[].emblems.cards[].printedSelf.Faces[].Keywords[]	string
 seats[].emblems.cards[].printedSelf.Faces[].ManaCost	string
 seats[].emblems.cards[].printedSelf.Faces[].Name	string
 seats[].emblems.cards[].printedSelf.Faces[].OracleText	string
@@ -2557,6 +2595,8 @@ seats[].graveyard.cards[].durationCopyBase.Faces	array
 seats[].graveyard.cards[].durationCopyBase.Faces[]	object
 seats[].graveyard.cards[].durationCopyBase.Faces[].Colors	array
 seats[].graveyard.cards[].durationCopyBase.Faces[].Colors[]	string
+seats[].graveyard.cards[].durationCopyBase.Faces[].Keywords	array
+seats[].graveyard.cards[].durationCopyBase.Faces[].Keywords[]	string
 seats[].graveyard.cards[].durationCopyBase.Faces[].ManaCost	string
 seats[].graveyard.cards[].durationCopyBase.Faces[].Name	string
 seats[].graveyard.cards[].durationCopyBase.Faces[].OracleText	string
@@ -2599,6 +2639,8 @@ seats[].graveyard.cards[].faces	array
 seats[].graveyard.cards[].faces[]	object
 seats[].graveyard.cards[].faces[].Colors	array
 seats[].graveyard.cards[].faces[].Colors[]	string
+seats[].graveyard.cards[].faces[].Keywords	array
+seats[].graveyard.cards[].faces[].Keywords[]	string
 seats[].graveyard.cards[].faces[].ManaCost	string
 seats[].graveyard.cards[].faces[].Name	string
 seats[].graveyard.cards[].faces[].OracleText	string
@@ -2677,6 +2719,8 @@ seats[].graveyard.cards[].printedSelf.Faces	array
 seats[].graveyard.cards[].printedSelf.Faces[]	object
 seats[].graveyard.cards[].printedSelf.Faces[].Colors	array
 seats[].graveyard.cards[].printedSelf.Faces[].Colors[]	string
+seats[].graveyard.cards[].printedSelf.Faces[].Keywords	array
+seats[].graveyard.cards[].printedSelf.Faces[].Keywords[]	string
 seats[].graveyard.cards[].printedSelf.Faces[].ManaCost	string
 seats[].graveyard.cards[].printedSelf.Faces[].Name	string
 seats[].graveyard.cards[].printedSelf.Faces[].OracleText	string
@@ -2803,6 +2847,8 @@ seats[].hand.cards[].durationCopyBase.Faces	array
 seats[].hand.cards[].durationCopyBase.Faces[]	object
 seats[].hand.cards[].durationCopyBase.Faces[].Colors	array
 seats[].hand.cards[].durationCopyBase.Faces[].Colors[]	string
+seats[].hand.cards[].durationCopyBase.Faces[].Keywords	array
+seats[].hand.cards[].durationCopyBase.Faces[].Keywords[]	string
 seats[].hand.cards[].durationCopyBase.Faces[].ManaCost	string
 seats[].hand.cards[].durationCopyBase.Faces[].Name	string
 seats[].hand.cards[].durationCopyBase.Faces[].OracleText	string
@@ -2845,6 +2891,8 @@ seats[].hand.cards[].faces	array
 seats[].hand.cards[].faces[]	object
 seats[].hand.cards[].faces[].Colors	array
 seats[].hand.cards[].faces[].Colors[]	string
+seats[].hand.cards[].faces[].Keywords	array
+seats[].hand.cards[].faces[].Keywords[]	string
 seats[].hand.cards[].faces[].ManaCost	string
 seats[].hand.cards[].faces[].Name	string
 seats[].hand.cards[].faces[].OracleText	string
@@ -2923,6 +2971,8 @@ seats[].hand.cards[].printedSelf.Faces	array
 seats[].hand.cards[].printedSelf.Faces[]	object
 seats[].hand.cards[].printedSelf.Faces[].Colors	array
 seats[].hand.cards[].printedSelf.Faces[].Colors[]	string
+seats[].hand.cards[].printedSelf.Faces[].Keywords	array
+seats[].hand.cards[].printedSelf.Faces[].Keywords[]	string
 seats[].hand.cards[].printedSelf.Faces[].ManaCost	string
 seats[].hand.cards[].printedSelf.Faces[].Name	string
 seats[].hand.cards[].printedSelf.Faces[].OracleText	string
@@ -3053,6 +3103,8 @@ seats[].library.cards[].durationCopyBase.Faces	array
 seats[].library.cards[].durationCopyBase.Faces[]	object
 seats[].library.cards[].durationCopyBase.Faces[].Colors	array
 seats[].library.cards[].durationCopyBase.Faces[].Colors[]	string
+seats[].library.cards[].durationCopyBase.Faces[].Keywords	array
+seats[].library.cards[].durationCopyBase.Faces[].Keywords[]	string
 seats[].library.cards[].durationCopyBase.Faces[].ManaCost	string
 seats[].library.cards[].durationCopyBase.Faces[].Name	string
 seats[].library.cards[].durationCopyBase.Faces[].OracleText	string
@@ -3095,6 +3147,8 @@ seats[].library.cards[].faces	array
 seats[].library.cards[].faces[]	object
 seats[].library.cards[].faces[].Colors	array
 seats[].library.cards[].faces[].Colors[]	string
+seats[].library.cards[].faces[].Keywords	array
+seats[].library.cards[].faces[].Keywords[]	string
 seats[].library.cards[].faces[].ManaCost	string
 seats[].library.cards[].faces[].Name	string
 seats[].library.cards[].faces[].OracleText	string
@@ -3173,6 +3227,8 @@ seats[].library.cards[].printedSelf.Faces	array
 seats[].library.cards[].printedSelf.Faces[]	object
 seats[].library.cards[].printedSelf.Faces[].Colors	array
 seats[].library.cards[].printedSelf.Faces[].Colors[]	string
+seats[].library.cards[].printedSelf.Faces[].Keywords	array
+seats[].library.cards[].printedSelf.Faces[].Keywords[]	string
 seats[].library.cards[].printedSelf.Faces[].ManaCost	string
 seats[].library.cards[].printedSelf.Faces[].Name	string
 seats[].library.cards[].printedSelf.Faces[].OracleText	string
@@ -3415,6 +3471,8 @@ stack.cards[].durationCopyBase.Faces	array
 stack.cards[].durationCopyBase.Faces[]	object
 stack.cards[].durationCopyBase.Faces[].Colors	array
 stack.cards[].durationCopyBase.Faces[].Colors[]	string
+stack.cards[].durationCopyBase.Faces[].Keywords	array
+stack.cards[].durationCopyBase.Faces[].Keywords[]	string
 stack.cards[].durationCopyBase.Faces[].ManaCost	string
 stack.cards[].durationCopyBase.Faces[].Name	string
 stack.cards[].durationCopyBase.Faces[].OracleText	string
@@ -3457,6 +3515,8 @@ stack.cards[].faces	array
 stack.cards[].faces[]	object
 stack.cards[].faces[].Colors	array
 stack.cards[].faces[].Colors[]	string
+stack.cards[].faces[].Keywords	array
+stack.cards[].faces[].Keywords[]	string
 stack.cards[].faces[].ManaCost	string
 stack.cards[].faces[].Name	string
 stack.cards[].faces[].OracleText	string
@@ -3535,6 +3595,8 @@ stack.cards[].printedSelf.Faces	array
 stack.cards[].printedSelf.Faces[]	object
 stack.cards[].printedSelf.Faces[].Colors	array
 stack.cards[].printedSelf.Faces[].Colors[]	string
+stack.cards[].printedSelf.Faces[].Keywords	array
+stack.cards[].printedSelf.Faces[].Keywords[]	string
 stack.cards[].printedSelf.Faces[].ManaCost	string
 stack.cards[].printedSelf.Faces[].Name	string
 stack.cards[].printedSelf.Faces[].OracleText	string
