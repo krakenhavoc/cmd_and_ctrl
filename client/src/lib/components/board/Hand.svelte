@@ -21,7 +21,15 @@
   import { play } from "../../sounds";
   import { settings } from "../../settings";
   import { canCastFromHand, type Legality } from "../../timing";
-  import { NO_LEGAL_ACTIONS, type LegalActions } from "../../legalActions";
+  import {
+    NO_LEGAL_ACTIONS,
+    NO_PIPS,
+    handHasAction,
+    hasPips,
+    readyPips,
+    type LegalActions,
+  } from "../../legalActions";
+  import type { MenuAction } from "../../contextMenu.logic";
   import { fetchAutoTapPreview, type AutoTapPreview } from "../../api";
   import { cardImageURL } from "../../cardImage";
   import {
@@ -93,8 +101,13 @@
     legal?: LegalActions;
     // ADR 0105 sub-PR 3: the frame's full lookup, for the ability
     // popover's gate on a sorcery-speed row. The setting never
-    // touches it.
+    // touches it. Sub-PR 4: also what keeps a card with a special
+    // action or a hand ability out of the .timing-disabled dim.
     legalGate?: LegalActions;
+    // ADR 0105 sub-PR 4: foretell, suspend and plot (CR 116.2), as rows
+    // in the card's ability popover. Self hands only; the server
+    // strips `special_actions` from every other seat's hand anyway.
+    onSpecialAction?: (action: MenuAction) => void;
   }
 
   const {
@@ -109,6 +122,7 @@
     viewerID = null,
     legal = NO_LEGAL_ACTIONS,
     legalGate = NO_LEGAL_ACTIONS,
+    onSpecialAction,
   }: Props = $props();
 
   // ---- #1524: the viewer's own order --------------------------------
@@ -367,8 +381,9 @@
     swallowClick = false;
     if (!dragEnabled || drag.phase !== "idle") return;
     if (ev.button !== 0 || ev.isPrimary === false) return;
-    // A press inside the card's ability popover belongs to the popover.
-    if ((ev.target as Element | null)?.closest?.('[role="menu"]')) return;
+    // A press inside the card's ability popover belongs to the popover,
+    // and a press on a ready pip opens it (ADR 0105 §7): neither is a drag.
+    if ((ev.target as Element | null)?.closest?.('[role="menu"], [data-pip]')) return;
     const slot = ev.currentTarget as HTMLElement;
     const handEl = slot.closest(".hand") as HTMLElement | null;
     const handRect = (handEl ?? slot).getBoundingClientRect();
@@ -628,8 +643,15 @@
   style:--hand-overlap={overlap}
   aria-label={isSelf ? "your hand" : "opponent hand"}
 >
+  <!-- ADR 0105 §2 (sub-PR 4): a hand card's pips (a star for
+       foretell / plot / suspend, a bolt for cycling, a drop for a
+       Spirit Guide's mana) and its ring are read off the highlight
+       lookup. The dim reads the FULL lookup instead: a card with
+       something to do is not dead, whatever the highlight setting. -->
   {#each cards as c, i (c.instance_id)}
     {@const leg = legalityFor(c)}
+    {@const cPips = isSelf ? readyPips(legal, c, "hand") : NO_PIPS}
+    {@const dim = isSelf && !leg.legal && !handHasAction(legalGate, c.instance_id)}
     {@const shift = gapShift(i, c)}
     {@const gapX = shift === 0 ? "" : `translateX(calc(var(--card-w, 80px) * ${shift * 0.3})) `}
     <!-- #1508: the pointer handler is the drag-to-cast gesture, a
@@ -638,7 +660,7 @@
     <!-- svelte-ignore a11y_no_static_element_interactions -->
     <div
       class="hand-slot"
-      class:timing-disabled={isSelf && !leg.legal}
+      class:timing-disabled={dim}
       class:draggable={dragEnabled}
       class:drag-source={dragging && dragCardID === c.instance_id}
       class:gap-left={shift < 0}
@@ -665,9 +687,13 @@
             ? (idx) => onActivateManaAbility?.(c, idx)
             : undefined}
           {sorcerySpeedBlocked}
+          onSpecialAction={isSelf && (c.special_actions?.length ?? 0) > 0
+            ? onSpecialAction
+            : undefined}
           legal={isSelf ? legal : undefined}
           legalGate={isSelf ? legalGate : undefined}
-          ready={isSelf && legal.castableFrom(c.instance_id, "hand")}
+          pips={cPips}
+          ready={isSelf && (legal.castableFrom(c.instance_id, "hand") || hasPips(cPips))}
           onClick={isSelf && leg.legal ? () => handleCardClick(c) : undefined}
         />
       </div>

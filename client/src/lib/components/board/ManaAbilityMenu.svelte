@@ -17,6 +17,8 @@
     chargedManaCostLabel,
     chargedManaCostNote,
     type AbilityCost,
+    type MenuAction,
+    type MenuItem,
   } from "../../contextMenu.logic";
   import {
     NO_LEGAL_ACTIONS,
@@ -61,6 +63,16 @@
     cardID?: string;
     legal?: LegalActions;
     legalGate?: LegalActions;
+    // ADR 0105 sub-PR 4 (#1789): the card's CR 116.2 special actions
+    // (foretell, suspend, plot, turn face up), built by Card with the
+    // admin menu's own row builder (contextMenu.logic.ts
+    // specialActionItems), so the ready accent, the order, the greying
+    // and the payload are that function's. Listed first: a face-down
+    // permanent has nothing else (CR 708.2a). A row fires
+    // `onSpecialAction` with its action unaltered. Empty hides the
+    // section.
+    special?: MenuItem[];
+    onSpecialAction?: (action: MenuAction) => void;
     // #1438: a left-click on a mana source taps it FOR mana now, so
     // turning it sideways WITHOUT making mana lives here, labelled so
     // nobody mistakes it for the mana row. Undefined hides it.
@@ -88,10 +100,18 @@
     cardID = "",
     legal = NO_LEGAL_ACTIONS,
     legalGate = NO_LEGAL_ACTIONS,
+    special = [],
+    onSpecialAction,
     onRawTap,
     onClose,
     payerLife,
   }: Props = $props();
+
+  function fireSpecial(item: MenuItem): void {
+    if (item.disabled || !item.action) return;
+    onSpecialAction?.(item.action);
+    onClose?.();
+  }
 
   // The fallback sentence when the server shut a window the panel's
   // words call open: a per-player restriction, or a digest that
@@ -185,6 +205,27 @@
 <ModalLayer />
 
 <div class="mana-menu" role="menu" aria-label="abilities">
+  {#each special as item (item.id)}
+    <button
+      type="button"
+      class="menu-item special"
+      class:ready={item.ready}
+      role="menuitem"
+      disabled={item.disabled}
+      title={item.hint || item.label}
+      data-special={item.id}
+      onclick={(ev) => {
+        ev.stopPropagation();
+        fireSpecial(item);
+      }}
+    >
+      <span class="label">{item.label}</span>
+      <span class="cost" aria-hidden="true">✦</span>
+    </button>
+  {/each}
+  {#if special.length > 0 && (abilities.length > 0 || activated.length > 0)}
+    <div class="divider" role="separator"></div>
+  {/if}
   {#each manaRows as { a, blocked, ready } (a.index)}
     {@const costNote = chargedManaCostNote(a)}
     <button

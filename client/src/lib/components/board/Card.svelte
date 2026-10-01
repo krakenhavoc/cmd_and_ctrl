@@ -32,6 +32,7 @@
   import { autoTapHighlight } from "../../dragCast";
   import { noUntapAppliesToController } from "../../noUntap";
   import { openCardMenu } from "../../contextMenu";
+  import { specialActionItems, type MenuAction } from "../../contextMenu.logic";
   import CounterPips from "./CounterPips.svelte";
   import KeywordBadgeRow from "./KeywordBadgeRow.svelte";
   import ManaAbilityMenu from "./ManaAbilityMenu.svelte";
@@ -41,6 +42,7 @@
     NO_LEGAL_ACTIONS,
     NO_PIPS,
     pipCount,
+    specialPipTitle,
     type LegalActions,
     type ReadyPips,
   } from "../../legalActions";
@@ -57,11 +59,16 @@
     // legalActions.ts, and only while highlights are live); the card
     // only draws it.
     ready?: boolean;
-    // ADR 0105 §2 (sub-PR 3): the pips on a permanent: a bolt for
-    // live activated abilities (with a count from two up), a drop for
-    // a mana ability worth marking (§4). The caller reads them off the
-    // lookup (legalActions.ts readyPips), as it does `ready`. The card
-    // only draws them. NO_PIPS draws none.
+    // ADR 0105 §2 (sub-PR 3): the pips on a card: a bolt for live
+    // activated abilities (with a count from two up), a drop for a
+    // mana ability worth marking (§4), and (sub-PR 4) a star for a
+    // live special action. The caller reads them off the lookup
+    // (legalActions.ts readyPips), as it does `ready`. The card only
+    // draws them. NO_PIPS draws none.
+    //
+    // A pip is a button: tapping or clicking it, or Enter / Space on
+    // it, opens the same popover a right-click opens (§7, owner
+    // decision 6). It is the touch route into the popover.
     pips?: ReadyPips;
     // ADR 0105: the lookups the ability popover reads for this card.
     // `legal` is what may be highlighted: ready rows take the accent
@@ -103,6 +110,13 @@
     // ride `zone_abilities` rather than `activated_abilities`. One
     // callback for both: the index means the same thing on the wire.
     onActivateAbility?: (abilityIndex: number) => void;
+    // ADR 0105 sub-PR 4 (#1789): sends a CR 116.2 special action
+    // (foretell, suspend, plot, turn face up) chosen from the popover.
+    // When set, the card's `special_actions` become rows in the
+    // popover, built by the admin menu's own row builder so the payload
+    // is the one that menu sends. Set by Hand and BattlefieldRow on the
+    // viewer's own cards that offer one. Undefined: no rows, no star.
+    onSpecialAction?: (action: MenuAction) => void;
     // S31: why the CR 307.1 sorcery-speed window is shut, or "" when
     // it is open. Passed straight through to ManaAbilityMenu, which
     // since ADR 0105 uses it only as the WORDS for a row the server
@@ -178,6 +192,7 @@
     onActivateManaAbility,
     onRawTap,
     onActivateAbility,
+    onSpecialAction,
     sorcerySpeedBlocked = "",
     payerLife,
     enchantedPlayer,
@@ -203,15 +218,29 @@
   // functions there (a Spirit Guide) publishes `zone_mana_abilities`,
   // and the index means the same thing on the wire either way.
   const menuManaAbilities = $derived(card.mana_abilities ?? card.zone_mana_abilities ?? []);
-  const hasManaAbilities = $derived(
+  // ADR 0105 sub-PR 4: the special-action rows, from the same builder
+  // the admin card menu uses, with the actor it would use: a face-down
+  // permanent is turned up by its controller (CR 708.6), and a hand
+  // card's controller is its owner. `legal` lights and lifts a ready
+  // row; `legalGate` greys an available row the exact digest refuses.
+  const specialRows = $derived(
+    onSpecialAction
+      ? specialActionItems(card, card.controller || card.owner, legal, legalGate)
+      : [],
+  );
+  // hasMenu: the popover has at least one row to show.
+  const hasMenu = $derived(
     (!!onActivateManaAbility && menuManaAbilities.length > 0) ||
-      (!!onActivateAbility && menuAbilities.length > 0),
+      (!!onActivateAbility && menuAbilities.length > 0) ||
+      specialRows.length > 0,
   );
   // ADR 0105: a pip is drawn only where the popover it points at is
   // wired. A pip on a card whose abilities this viewer cannot open is
   // worse than none (ADR 0105, Context, fact 3).
   const boltPips = $derived(onActivateAbility ? pips.abilities : 0);
   const dropPip = $derived(!!onActivateManaAbility && pips.mana);
+  const starPip = $derived(specialRows.length > 0 && pips.special > 0);
+  const anyPip = $derived(hasMenu && (boltPips > 0 || dropPip || starPip));
 
   // cardImageURL defaults to the card's ACTIVE face, so a modal DFC
   // played as its land half — or, later, a transformed permanent —
@@ -392,10 +421,40 @@
       openCardMenu({ card, x: ev.clientX, y: ev.clientY });
       return;
     }
-    if (!hasManaAbilities) return;
+    if (!hasMenu) return;
     ev.preventDefault();
     ev.stopPropagation();
     manaMenuOpen = !manaMenuOpen;
+  }
+
+  // ADR 0105 §7 (owner decision 6): a pip is the touch route into the
+  // popover. It opens what a right-click on this card opens: the
+  // override menu under admin overrides, otherwise the ability popover.
+  // The event stops here, so the card's own click (cast, tap, select)
+  // and its Enter key never fire as well.
+  //
+  // It OPENS rather than toggles. Enter and Space are handled on
+  // keydown, where preventDefault cancels the native button click in
+  // every engine we target; if one ever let that click through as
+  // well, a toggle would open and shut in one press, and an open
+  // cannot. The popover closes as it always has: Escape, choosing a
+  // row, or a click on the card.
+  function openFromPip(ev: Event): void {
+    ev.preventDefault();
+    ev.stopPropagation();
+    if (phasedOut) return;
+    if ($settings.gameplay.adminOverrides) {
+      const r = (ev.currentTarget as HTMLElement | null)?.getBoundingClientRect();
+      manaMenuOpen = false;
+      openCardMenu({ card, x: r?.right ?? 0, y: r?.top ?? 0 });
+      return;
+    }
+    if (hasMenu) manaMenuOpen = true;
+  }
+
+  function handlePipKeydown(ev: KeyboardEvent): void {
+    if (ev.key !== "Enter" && ev.key !== " ") return;
+    openFromPip(ev);
   }
 
   function handleKeydown(ev: KeyboardEvent): void {
@@ -708,28 +767,68 @@
       {designationBadge}
     </span>
   {/if}
-  {#if boltPips > 0 || dropPip}
-    <!-- ADR 0105 §2 (#1789): what this permanent can do right now, by
-         shape: a bolt for an activated ability, a drop for a mana
-         ability worth marking (§4). Display-only in this sub-PR, so
-         the right-click and the click land on the card. Sub-PR 4 makes
-         a pip tap-open the popover, and sub-PR 6 gives it accessible
-         names. -->
-    <span class="ready-pips" aria-hidden="true">
+  {#if anyPip}
+    <!-- ADR 0105 §2 (#1789): what this card can do right now, by
+         shape: a star for a special action (any kind, including one
+         this client has no name for), a bolt for an activated ability,
+         a drop for a mana ability worth marking (§4). Each pip is a
+         button that opens the popover a right-click opens (§7, sub-PR
+         4). "Open actions" is a placeholder name; sub-PR 6 gives the
+         pips their real accessible names. -->
+    <span class="ready-pips">
+      {#if starPip}
+        <button
+          type="button"
+          class="ready-pip star"
+          data-pip="star"
+          aria-label="Open actions"
+          aria-haspopup="menu"
+          aria-expanded={manaMenuOpen}
+          title={specialPipTitle(legal.readySpecialActions(card.instance_id))}
+          onclick={openFromPip}
+          onkeydown={handlePipKeydown}
+        >
+          <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true"
+            ><path
+              d="M12 2.5l2.9 6.2 6.8.8-5 4.7 1.3 6.8L12 17.6 6 21l1.3-6.8-5-4.7 6.8-.8z"
+            /></svg
+          >
+        </button>
+      {/if}
       {#if boltPips > 0}
-        <span class="ready-pip bolt" data-pip="bolt">
-          <svg viewBox="0 0 24 24" focusable="false"
+        <button
+          type="button"
+          class="ready-pip bolt"
+          data-pip="bolt"
+          aria-label="Open actions"
+          aria-haspopup="menu"
+          aria-expanded={manaMenuOpen}
+          onclick={openFromPip}
+          onkeydown={handlePipKeydown}
+        >
+          <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true"
             ><path d="M13.5 2 4 13.5h6.5L9.5 22 20 9.5h-6.5z" /></svg
           >
-          {#if pipCount(boltPips)}<span class="pip-count">{pipCount(boltPips)}</span>{/if}
-        </span>
+          {#if pipCount(boltPips)}<span class="pip-count" aria-hidden="true"
+              >{pipCount(boltPips)}</span
+            >{/if}
+        </button>
       {/if}
       {#if dropPip}
-        <span class="ready-pip drop" data-pip="drop">
-          <svg viewBox="0 0 24 24" focusable="false"
+        <button
+          type="button"
+          class="ready-pip drop"
+          data-pip="drop"
+          aria-label="Open actions"
+          aria-haspopup="menu"
+          aria-expanded={manaMenuOpen}
+          onclick={openFromPip}
+          onkeydown={handlePipKeydown}
+        >
+          <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true"
             ><path d="M12 2.5S5 10.4 5 15.2a7 7 0 0 0 14 0C19 10.4 12 2.5 12 2.5z" /></svg
           >
-        </span>
+        </button>
       {/if}
     </span>
   {/if}
@@ -738,9 +837,11 @@
          controller's (CR 709.5e). -->
     <RoomDoorStrip {card} canUnlock={!!viewerID && card.controller === viewerID} />
   {/if}
-  {#if manaMenuOpen && hasManaAbilities}
+  {#if manaMenuOpen && hasMenu}
     <div class="mana-menu-anchor">
       <ManaAbilityMenu
+        special={specialRows}
+        onSpecialAction={(action) => onSpecialAction?.(action)}
         abilities={onActivateManaAbility ? menuManaAbilities : []}
         tapped={!!card.tapped}
         onActivate={(idx) => onActivateManaAbility?.(idx)}
@@ -1153,8 +1254,10 @@
      strip's piles, the hand's top-55% peek), and the one edge with no
      always-on badge. The kind is carried by shape, and the colour is
      the one --ready. A pip scales with the card and never draws under
-     16px (§7). It does not take pointer events yet: sub-PR 4 makes it
-     the touch route into the popover. */
+     16px (§7). Each pip is a button and the touch route into the
+     popover (sub-PR 4), so the pip itself takes pointer events and
+     the column between pips does not: a press in the gap still lands
+     on the card. */
   .ready-pips {
     --pip: max(16px, calc(var(--card-w, 80px) * 0.17));
     position: absolute;
@@ -1175,13 +1278,30 @@
     box-sizing: border-box;
     min-width: var(--pip);
     height: var(--pip);
+    margin: 0;
     padding: 0 calc(var(--pip) * 0.12);
     border-radius: 999px;
     background: var(--ready);
     color: var(--ready-ink);
     border: 1px solid rgba(0, 0, 0, 0.55);
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.55);
+    font: inherit;
     line-height: 1;
+    cursor: pointer;
+    pointer-events: auto;
+    /* A tap on a pip is a tap, never the start of a pan or a hand drag. */
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .ready-pip:hover {
+    filter: brightness(1.12);
+  }
+  .ready-pip:focus-visible {
+    outline: 2px solid var(--ready-ink);
+    outline-offset: 1px;
+    box-shadow:
+      0 0 0 3px var(--ready),
+      0 1px 4px rgba(0, 0, 0, 0.55);
   }
   .ready-pip svg {
     width: calc(var(--pip) * 0.68);

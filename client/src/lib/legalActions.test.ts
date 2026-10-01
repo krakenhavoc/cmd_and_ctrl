@@ -483,7 +483,11 @@ describe("readyPips: bolt and drop, from the digest, after §4", () => {
     expect(readyPips(legal, forest, "battlefield")).toBe(NO_PIPS);
   });
   it("Vivi's free mana ability (no {T}): drop pip, no bolt", () => {
-    expect(readyPips(legal, vivi, "battlefield")).toEqual({ abilities: 0, mana: true });
+    expect(readyPips(legal, vivi, "battlefield")).toEqual({
+      abilities: 0,
+      mana: true,
+      special: 0,
+    });
   });
   it("a Treasure's sacrifice: drop pip", () => {
     expect(readyPips(legal, treasure, "battlefield").mana).toBe(true);
@@ -498,9 +502,14 @@ describe("readyPips: bolt and drop, from the digest, after §4", () => {
     expect(readyPips(legal, card("equip", "Artifact — Equipment"), "battlefield")).toEqual({
       abilities: 2,
       mana: false,
+      special: 0,
     });
     const one = card("one", "Artifact", [{ index: 0, ref: "own:0" }]);
-    expect(readyPips(legal, one, "battlefield")).toEqual({ abilities: 1, mana: true });
+    expect(readyPips(legal, one, "battlefield")).toEqual({
+      abilities: 1,
+      mana: true,
+      special: 0,
+    });
   });
   it("no digest, highlights off, or a card not in it: no pip", () => {
     expect(readyPips(NO_LEGAL_ACTIONS, vivi, "battlefield")).toBe(NO_PIPS);
