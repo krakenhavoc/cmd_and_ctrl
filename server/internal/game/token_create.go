@@ -422,6 +422,25 @@ func (g *Game) mintTokenLocked(grp TokenGroup, controller uuid.UUID) Card {
 	for _, seat := range g.Seats {
 		tok.AddKnower(seat.ID)
 	}
+	// ADR 0078 decision 1/2: stamp a Scryfall TOKEN PRINTING id at
+	// creation, after the replacement window (this runs from
+	// applyResolvedTokenCreationLocked, on the settled template) and
+	// before battlefield entry. Guarded on an empty ScryfallID so a
+	// token COPY — whose template already carries the copied card's
+	// printing id (TokenCopyTemplate, CR 707.2) — keeps that art
+	// rather than being matched against the generic pool. OracleID is
+	// deliberately left alone: nothing here touches it.
+	if tok.ScryfallID == "" && TokenArtResolver != nil {
+		if id := TokenArtResolver(TokenArtRequest{
+			Template:   grp.Template,
+			Controller: controller,
+			GameID:     g.ID,
+		}); id != "" {
+			tok.ScryfallID = id
+			// This id names ART, not identity — see Card.TokenArtOnly.
+			tok.TokenArtOnly = true
+		}
+	}
 	return tok
 }
 

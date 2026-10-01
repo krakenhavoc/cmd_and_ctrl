@@ -57,16 +57,91 @@ func DelveFor(card Card) bool {
 	return CatalogDelve(key)
 }
 
+// CatalogSpellsHaveDelve is the catalog hook for a permanent's "Spells
+// you cast have delve" (Teval, Arbiter of Virtue), wired at init
+// through CardDef.SpellsYouCastHaveDelve. Nil, or false, means the
+// permanent grants nothing.
+var CatalogSpellsHaveDelve func(key string) bool
+
 // DelveForLocked is DelveFor for a particular caster. It is the one
-// door the cast path, the pricer, the view and the enumerator ask,
-// so that a GRANTED delve — Teval, Arbiter of Virtue's "Spells you
-// cast have delve", ADR 0100 sub-PR 2 — joins here without a second
-// reader. Today it answers only for the card's own delve.
+// door the cast path, the pricer, the view and the enumerator ask, so
+// a GRANTED delve joins here without a second reader (ADR 0100 sub-PR
+// 2).
+//
+// The grant is Teval, Arbiter of Virtue's "Spells you cast have
+// delve": a static ability of a permanent on the battlefield (CR
+// 113.6, 604.1), read off the caster's permanents at the moment of
+// asking and stored nowhere, the way standingCastPermissionsLocked
+// derives a permission. It is keyed by CatalogAbilityKey, so a Teval
+// that has lost its abilities (CR 613.1f) grants nothing, and a
+// permanent that has left grants nothing because it is not there.
+// CR 702.66c makes a second source redundant, which is why this stops
+// at the first.
+//
+// A granted delve is a way to PAY, and nothing more. CR 607.2q links
+// "exiled with [this object]" only to a delve ability PRINTED on the
+// spell, and every card that reads the link prints delve itself, so
+// the record the payment leaves (PaidCost.Delved) needs no note of
+// where the delve came from.
 //
 // Caller must hold g.mu.
 func (g *Game) DelveForLocked(caster uuid.UUID, card Card) bool {
-	_ = caster
-	return DelveFor(card)
+	if DelveFor(card) {
+		return true
+	}
+	return g.spellsHaveDelveLocked(caster)
+}
+
+// spellsHaveDelveLocked reports whether a permanent `caster` controls
+// says "Spells you cast have delve".
+//
+// Caller must hold g.mu.
+func (g *Game) spellsHaveDelveLocked(caster uuid.UUID) bool {
+	if CatalogSpellsHaveDelve == nil || g.Battlefield == nil || caster == uuid.Nil {
+		return false
+	}
+	for i := range g.Battlefield.Cards {
+		c := &g.Battlefield.Cards[i]
+		if c.Controller != caster {
+			continue
+		}
+		if key := CatalogAbilityKey(*c); key != "" && CatalogSpellsHaveDelve(key) {
+			return true
+		}
+	}
+	return false
+}
+
+// DelvedCardsForEffect resolves CR 607.2q's "cards exiled with [this
+// object]" for a delve link (PaidCost.Delved, CastProvenance.Delved,
+// PermanentInfo.Delved): the cards that are STILL in exile as the
+// object delve put there, in the order the refs name them, as value
+// copies.
+//
+// A ref whose card has left exile is dropped, and so is one whose card
+// is in exile again as a NEW object (CR 400.7: it left and came back,
+// and nothing links the new object to the spell). That is the whole
+// reason the link is a list of ObjectRefs rather than a count, and the
+// one place the rule is applied — Murktide Regent's entry counters,
+// Soulflayer's keywords and Ethereal Forager's return all read through
+// here.
+//
+// Caller must hold g.mu.
+func (g *Game) DelvedCardsForEffect(refs []ObjectRef) []Card {
+	if len(refs) == 0 || g.Exile == nil {
+		return nil
+	}
+	out := make([]Card, 0, len(refs))
+	for _, ref := range refs {
+		for i := range g.Exile.Cards {
+			c := g.Exile.Cards[i]
+			if c.InstanceID == ref.ID && c.ObjectEpoch == ref.Epoch {
+				out = append(out, c)
+				break
+			}
+		}
+	}
+	return out
 }
 
 // delveBudget is how many cards delve may exile against `cost`: the

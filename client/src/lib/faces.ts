@@ -18,6 +18,50 @@ export const LAYOUT_MODAL_DFC = "modal_dfc";
 export const LAYOUT_ADVENTURE = "adventure";
 
 /**
+ * Scryfall's layout for a split card (CR 709) — Fire // Ice, the
+ * aftermath and fuse cards, and every Room (ADR 0103).
+ */
+export const LAYOUT_SPLIT = "split";
+
+/**
+ * isAftermathFace reports whether face `i` of a split card is its
+ * AFTERMATH half (CR 702.127a) — read, as the server reads it, off the
+ * face's own oracle text, because the keyword is not a canonical
+ * engine keyword.
+ */
+export function isAftermathFace(card: CardView, i: number): boolean {
+  if (card.layout !== LAYOUT_SPLIT) return false;
+  return /(^|\n)Aftermath\b/.test(card.faces?.[i]?.oracle_text ?? "");
+}
+
+/**
+ * faceCastableFrom mirrors the server's split rule for which zones a
+ * face may be cast out of (CR 702.127a): an aftermath half from a
+ * graveyard and nowhere else. `zone` is a cast zone as the Board names
+ * it — undefined is the hand. Every other face answers true; whether
+ * the ZONE is open at all is the card's surfaces' business.
+ */
+export function faceCastableFrom(card: CardView, i: number, zone?: string): boolean {
+  if (!isAftermathFace(card, i)) return true;
+  return zone === "graveyard";
+}
+
+/**
+ * displayName is a card's name for a label, and for every card but one
+ * it is `card.name`. The one is a Room with both doors locked, which
+ * has NO name (CR 709.5, ADR 0103 owner decision 6): the server sends
+ * an empty name and the client labels it from its halves.
+ */
+export function displayName(card: CardView): string {
+  if (card.name) return card.name;
+  const faces = card.faces ?? [];
+  if (card.layout === LAYOUT_SPLIT && faces.length >= 2) {
+    return faces.map((f) => f.name).join(" // ");
+  }
+  return card.name ?? "";
+}
+
+/**
  * needsFacePicker reports whether casting this card requires asking
  * which half first.
  *
@@ -46,7 +90,62 @@ export const LAYOUT_ADVENTURE = "adventure";
  */
 export function needsFacePicker(card: CardView): boolean {
   if ((card.faces?.length ?? 0) < 2) return false;
-  return card.layout === LAYOUT_MODAL_DFC || card.layout === LAYOUT_ADVENTURE;
+  // ADR 0103: a split card's halves are cast one at a time (CR 709.3)
+  // or, with fuse, together — a choice the picker asks too.
+  return (
+    card.layout === LAYOUT_MODAL_DFC ||
+    card.layout === LAYOUT_ADVENTURE ||
+    card.layout === LAYOUT_SPLIT
+  );
+}
+
+/**
+ * cardAsFused is a view of `card` as its FUSED cast (CR 702.102b, ADR
+ * 0103): both names, both costs, and the server's announce block for
+ * the fused cast — the left half's clauses then the right half's. The
+ * card itself when it offers no fused cast.
+ */
+export function cardAsFused(card: CardView): CardView {
+  const fused = card.fused;
+  if (!fused) return card;
+  return {
+    ...card,
+    name: fused.name,
+    type_line: fused.type_line ?? card.type_line,
+    mana_cost: fused.mana_cost,
+    active_face: 0,
+    ...castSurfaceOf(fused),
+    zone_abilities: undefined,
+    zone_mana_abilities: undefined,
+  };
+}
+
+/**
+ * FaceOption is one choice the face picker offers: a printed face, or
+ * the fused cast of both halves of a split card with fuse.
+ */
+export interface FaceOption {
+  face: number;
+  fused: boolean;
+  view: CardView;
+}
+
+/**
+ * faceOptions is what the picker lists for a cast of `card` out of
+ * `zone` (undefined is the hand): every face that zone allows
+ * (faceCastableFrom), then the fused cast when the server published one.
+ */
+export function faceOptions(card: CardView, zone?: string): FaceOption[] {
+  const out: FaceOption[] = [];
+  (card.faces ?? []).forEach((_, i) => {
+    if (faceCastableFrom(card, i, zone)) {
+      out.push({ face: i, fused: false, view: cardAsFace(card, i) });
+    }
+  });
+  if (card.fused && (zone === undefined || zone === "hand")) {
+    out.push({ face: 0, fused: true, view: cardAsFused(card) });
+  }
+  return out;
 }
 
 /**
@@ -168,9 +267,9 @@ export function cardAsFace(card: CardView, i: number): CardView {
  * (see its own docblock), so returning `[card]` rather than
  * `[cardAsFace(card, 0)]` for those costs nothing.
  */
-export function castableFaces(card: CardView): CardView[] {
+export function castableFaces(card: CardView, zone?: string): CardView[] {
   if (!needsFacePicker(card)) return [card];
-  return card.faces!.map((_, i) => cardAsFace(card, i));
+  return faceOptions(card, zone).map((o) => o.view);
 }
 
 /**
@@ -194,7 +293,11 @@ export function castableFaces(card: CardView): CardView[] {
  * every single-faced card: `castableFaces` returns just `[card]` for
  * those, and `card` is exactly what `isCastable` is asked about.
  */
-export function castableFaceIndex(card: CardView, isCastable: (face: CardView) => boolean): number {
-  const i = castableFaces(card).findIndex(isCastable);
+export function castableFaceIndex(
+  card: CardView,
+  isCastable: (face: CardView) => boolean,
+  zone?: string,
+): number {
+  const i = castableFaces(card, zone).findIndex(isCastable);
   return i === -1 ? 0 : i;
 }

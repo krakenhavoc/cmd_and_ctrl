@@ -37,7 +37,7 @@
 
 import type { CardView, GameView, LegalMoveView, LegalTargetsView } from "./protocol";
 import { castableFaces } from "./faces";
-import { sacrificeCount } from "./sacrificeCost";
+import { castSacrificeFloor } from "./sacrificeCost";
 import { castIsForbidden, printedCostClaimable } from "./targeting";
 
 // Legality is a predicate result: legal=true means "the action
@@ -328,18 +328,30 @@ export function canCastFromHand(
   // is exactly "nothing to sacrifice" — Village Rites with an empty
   // board is uncastable, not a failed click.
   // #747: "sacrifice two creatures" with one creature is the same
-  // verdict, and the reason says how many.
+  // verdict, and the reason says how many. ADR 0100 §3: "sacrifice any
+  // number of creatures" and "sacrifice X lands" can be paid with none,
+  // so an empty board never blocks them.
   const sacrificeOK = (face: CardView): boolean => {
     const opts = face.additional_cost?.sacrifice_options;
     if (!opts) return true;
-    return (opts.cards?.length ?? 0) >= sacrificeCount(opts);
+    return (opts.cards?.length ?? 0) >= castSacrificeFloor(opts);
   };
   if (!faces.some(sacrificeOK)) {
     const blocked = faces.find((f) => !sacrificeOK(f)) ?? card;
-    const need = sacrificeCount(blocked.additional_cost?.sacrifice_options);
+    const need = castSacrificeFloor(blocked.additional_cost?.sacrifice_options);
     return deny(
       named(blocked, need > 1 ? `Needs ${need} permanents to sacrifice` : "Nothing to sacrifice"),
     );
+  }
+  // ADR 0100: an either/or additional cost none of whose branches the
+  // viewer can pay — the server's own `payable` per branch.
+  const branchOK = (face: CardView): boolean => {
+    const branches = face.additional_cost?.branches ?? [];
+    return branches.length === 0 || branches.some((b) => b.payable === true);
+  };
+  if (!faces.some(branchOK)) {
+    const blocked = faces.find((f) => !branchOK(f)) ?? card;
+    return deny(named(blocked, "No additional cost you can pay"));
   }
 
   // Nothing card-specific to say. The seat holds priority and the

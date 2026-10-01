@@ -346,6 +346,18 @@ type CastSpellParams struct {
 	// one is rejected, not ignored. Added in ADR 0073 (#664).
 	OptionalCosts []int
 
+	// CostBranch names which branch of an either/or additional cost the
+	// caster is paying (CR 601.2b, ADR 0100 §2) — an index into the
+	// card's AdditionalCost.Either: Demand Answers' "sacrifice an
+	// artifact or discard a card". REQUIRED on a branched card and
+	// refused on any other; never defaulted to 0, because silently
+	// paying a branch the player did not choose is the worst failure
+	// available. The branch is then the plan's mandatory entry, so its
+	// cards ride DiscardIDs / SacrificeIDs / BlightIDs as any mandatory
+	// cost's do, and its mana joins the total at CR 601.2f. Lands on
+	// StackItem.Paid.CostBranch.
+	CostBranch *int
+
 	// GiftOpponent is the opponent the caster chooses while paying a
 	// gift cost (CR 702.174a) — the other half of announcing one.
 	// Required exactly when OptionalCosts names the card's gift cost,
@@ -445,6 +457,15 @@ type CastSpellParams struct {
 	// meant to play a land and got a seven-mana sorcery, or vice
 	// versa.
 	Face int
+
+	// Fuse announces a FUSED split spell (CR 702.102a, ADR 0103): both
+	// halves of a split card with fuse, cast together from hand, for
+	// both halves' mana costs (CR 702.102c). Face must be 0 with it.
+	// Refused, not ignored, for a card without fuse, from any zone but
+	// the hand, with a claimed alternative cost, or for a card whose
+	// halves declare modes or additional costs a fused announcement
+	// cannot carry.
+	Fuse bool
 
 	// PhyrexianLife is how many of the cost's Phyrexian symbols the
 	// caster is paying with life instead of mana — 2 life each
@@ -676,6 +697,24 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// gates were judged against.
 	params.Face = face
 	card.SetFace(params.Face)
+	// ADR 0103, CR 702.102a: a FUSED cast announces both halves of a
+	// split card with fuse, from hand, and the spell is both at once
+	// (CR 702.102b). Materialised here, on the copy every gate below
+	// reads, exactly as the face is: the cost gate sees both halves'
+	// costs (CR 702.102c), the target gate both halves' clauses, and
+	// the timing gate both halves' types.
+	if params.Fuse {
+		if err := fusedCastAllowed(card, src.Kind, params, grant); err != nil {
+			slog.Warn("cast_spell rejected: fuse not allowed",
+				"card_name", card.Name,
+				"oracle_id", card.OracleID,
+				"from_zone", src.Kind,
+				"err", err,
+			)
+			return err
+		}
+		card.materialiseFused()
+	}
 	// S21 sub-PR 6: casting out of exile needs a live permission
 	// naming this player. Checked before every other gate because
 	// it's the one that decides whether the card is yours to touch at
@@ -883,6 +922,25 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		)
 		return err
 	}
+	// ADR 0100 §2, CR 601.2b: an either/or additional cost announces
+	// WHICH branch is paid, here with the optional costs — before any
+	// price is quoted, because the branch's mana is part of the total
+	// (CR 601.2f). Required on a branched card, refused on any other,
+	// and refused for a branch the caster cannot pay (CR 601.2h:
+	// "Unpayable costs can't be paid"; CR 118.3), which is the same
+	// predicate the view's `payable` stamp and the bot enumerator ask.
+	addCost, err := ChosenAdditionalCost(AdditionalCostFor(CatalogKey(card)), params.CostBranch)
+	if err == nil && params.CostBranch != nil && !g.AdditionalCostBranchPayableLocked(playerID, card, *params.CostBranch) {
+		err = ErrCostBranch
+	}
+	if err != nil {
+		slog.Warn("cast_spell rejected: bad either/or cost branch",
+			"card_name", card.Name,
+			"oracle_id", card.OracleID,
+			"cost_branch", params.CostBranch,
+		)
+		return err
+	}
 	// S20 sub-PR 4: modal spells — the chosen modes must be distinct,
 	// in range and the right count (CR 601.2b, 700.2). #1590: the
 	// count's bounds are read HERE, "as you cast this spell", for a
@@ -1050,7 +1108,10 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// in index order, once per payment — so there is still exactly
 	// one validator and one payer, and the flat discard / sacrifice
 	// lists are walked in an order the client can reproduce.
-	addCost := AdditionalCostFor(CatalogKey(card))
+	//
+	// ADR 0100 §2: `addCost` is the branch the announcement chose for
+	// an either/or cost (settled above), so the validator and the payer
+	// below never learn that the card had a choice at all.
 	costPlan := castCostPayments(addCost, optionalCosts, params.OptionalCosts)
 	if err := g.validateAdditionalCostLocked(playerID, cardID, costPlan, params.DiscardIDs, params.SacrificeIDs, params.XValue); err != nil {
 		slog.Warn("cast_spell rejected: bad additional cost payment",
@@ -1336,14 +1397,21 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 			// the face has to be stamped on the real card, not just
 			// the copy the announce gates were judged against.
 			g.Stack.Cards[i].SetFace(params.Face)
-			if faceDown != FaceDownNone {
-				// The face-down viewers rule is "the CONTROLLER may
-				// look" (CR 708.5), and it is read off the card. A
-				// card that has just left a hand carries no
-				// controller, so the caster is stamped here, before
-				// the landing below asks.
-				g.Stack.Cards[i].Controller = playerID
+			// ADR 0103, CR 702.102b: a fused spell is both halves at
+			// once, with their combined characteristics.
+			if params.Fuse {
+				g.Stack.Cards[i].materialiseFused()
 			}
+			// CR 601.2a: the player who casts a spell becomes its
+			// controller — and the CARD on the stack says so, not just
+			// the StackItem (ADR 0104, #1745 finding 1). A card carries
+			// its owner as its controller from the deck load, so a
+			// spell cast off another player's card (Gonti, a Ragavan
+			// impulse, Wrexial) used to answer "target spell you don't
+			// control" by its owner. The face-down viewers rule
+			// (CR 708.5) reads it too, and needs it before the landing
+			// below asks.
+			g.Stack.Cards[i].Controller = playerID
 		}
 	}
 	if faceDown != FaceDownNone {
@@ -1405,7 +1473,11 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		// card given flashback by Snapcaster was cast for a cost the
 		// catalog has never heard of, and the permission that granted
 		// it may be gone by the time the spell leaves the stack.
-		AltCostExiles: alt != nil && alt.ExileOnLeavingStack,
+		// ADR 0103, CR 702.127a: an aftermath half cast from a
+		// graveyard is exiled instead of going anywhere else as it
+		// leaves the stack, however it leaves — the same replacement
+		// flashback's cost carries.
+		AltCostExiles: (alt != nil && alt.ExileOnLeavingStack) || (src.Kind == ZoneGraveyard && isAftermathHalf(card)),
 		CastFromZone:  src.Kind,
 		// #761: the mana that actually paid, or the fact that the
 		// engine waived the charge. Stamped here for the reason
@@ -1422,13 +1494,20 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		// orders produce the same record.
 		// #1213: and how many permanents the additional cost
 		// sacrificed, for the third time the same reason — by
-		// resolution they are in graveyards. A cast's clause is
-		// always a printed count (effects.Register refuses a variable
-		// one on a cast), so this is never news here; it is recorded
-		// anyway so a reader of PaidCost.Sacrificed never has to ask
-		// which kind of announcement it is looking at.
-		Paid: paidWithGift(paidWithSacrifices(paidWithOptionalCosts(paid, costPlan), len(params.SacrificeIDs)), params.GiftOpponent),
-		Seq:  g.nextStackSeqLocked(),
+		// resolution they are in graveyards. Since ADR 0100 §3 a
+		// cast's clause may be variable ("sacrifice any number of
+		// creatures", "sacrifice X lands"), and this record is the
+		// only place the count lives: Vicious Betrayal's "+2/+2 for
+		// each creature sacrificed this way" reads it through
+		// ctx.Sacrificed().
+		//
+		// ADR 0100 §2: and which either/or branch was paid and which
+		// cards the additional cost discarded — Grab the Prize's "if
+		// the discarded card wasn't a land card".
+		Paid: paidWithBranchAndDiscards(
+			paidWithGift(paidWithSacrifices(paidWithOptionalCosts(paid, costPlan), len(params.SacrificeIDs)), params.GiftOpponent),
+			params.CostBranch, params.DiscardIDs),
+		Seq: g.nextStackSeqLocked(),
 		// S20: remember the clause the targets were validated under so
 		// the resolution re-check and per-slot effect checks use it.
 		// #764: and the ModeSpec, so a per-mode target group can be
@@ -1461,10 +1540,10 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// sacrifice — that triggers off it must resolve before the
 	// spell does. Validation happened at announce, so a failure
 	// past this point is an engine bug rather than a bad request.
-	payLife := 0
-	if addCost != nil && addCost.PayLifeX {
-		payLife = params.XValue
-	}
+	// The life the whole plan pays — a "pay X life" at the announced X,
+	// and a chosen branch's fixed "pay 3 life" (ADR 0100 §2) — the same
+	// sum the validator checked against CR 119.4.
+	payLife := planLife(costPlan, params.XValue)
 	if err := g.payAdditionalCostLocked(playerID, params.DiscardIDs, params.SacrificeIDs, payLife, params.commanderAnswers); err != nil {
 		slog.Error("cast_spell: additional cost failed after validation",
 			"card_name", card.Name,
@@ -2501,6 +2580,10 @@ func (g *Game) costAfterModifiersLocked(cost ParsedCost, p *Player, card Card, p
 		FromZone:   fromZone,
 		XValue:     params.XValue,
 		Targets:    params.Targets,
+		// ADR 0100 §3: the announced sacrifice count, which CR 601.2b
+		// settles before 601.2f totals the cost (Torgaar's "{2} less
+		// for each creature sacrificed this way").
+		Sacrificing: len(params.SacrificeIDs),
 	})
 	if err != nil {
 		return ParsedCost{}, err
@@ -2624,7 +2707,18 @@ func (g *Game) printedCostLocked(p *Player, card Card, params CastSpellParams) (
 	// One helper, called from here and from the bot enumerator, so
 	// the price a bot is offered and the price the engine charges
 	// cannot drift (#544).
-	cost, err = AddOptionalCostMana(cost, OptionalCostsFor(CatalogKey(card)), params.OptionalCosts)
+	//
+	// ADR 0100 §2: and the chosen either/or branch's mana — Lightning
+	// Axe's "pay {5}" — at the same point, as the plan's mandatory
+	// entry. An announcement that has not named its branch yet (the
+	// view's badge, a preview opened before the radio was answered)
+	// prices at no branch mana: CastSpell refuses a missing branch
+	// before anything is priced, so this is only ever a quote.
+	mandatory, berr := ChosenAdditionalCost(AdditionalCostFor(CatalogKey(card)), params.CostBranch)
+	if berr != nil {
+		mandatory = nil
+	}
+	cost, err = AdditionalCostMana(cost, mandatory, OptionalCostsFor(CatalogKey(card)), params.OptionalCosts)
 	if err != nil {
 		return ParsedCost{}, chosen, err
 	}
@@ -2996,6 +3090,10 @@ func (g *Game) resolveTopOfStackLocked() error {
 		// TRANSFORMED". An adventure still resolves front-up: its
 		// creature half is the permanent no matter which half was cast.
 		// See faceOnResolve.
+		// ADR 0103, CR 709.5d: which door the permanent enters
+		// unlocked is the half that was CAST, read before the face is
+		// reset below.
+		castDoors := castDoorsOf(top, item)
 		setFaceInZoneLocked(g.Stack, top.InstanceID, faceOnResolve(top.Layout, top.ActiveFace))
 		top.SetFace(faceOnResolve(top.Layout, top.ActiveFace))
 		// Permanents resolve to the battlefield with the announce-time
@@ -3034,6 +3132,10 @@ func (g *Game) resolveTopOfStackLocked() error {
 			// entry — sees what is arriving, and so the pause-and-
 			// resume path carries it with everything else.
 			FaceDown: item.FaceDown,
+			// ADR 0103, CR 709.5d: the cast door, seeded like
+			// the counters below so the pause-and-resume path
+			// carries it.
+			EntersUnlocked: castDoors,
 		}
 		// S29: "this creature escapes with a +1/+1 counter on it"
 		// (CR 702.138c). Seeded onto the event BEFORE the pipeline
@@ -3381,10 +3483,20 @@ func (g *Game) routeStackCardToGraveyardLocked(c Card, item *StackItem, resolved
 		// continuation rather than the next line: a route that paused
 		// on a CR 903.9 prompt finishes later, and the grant has to
 		// land when it does. See adventure.go.
+		//
+		// CR 715.3d names the spell's CONTROLLER twice — "its
+		// controller exiles it" and "that player may play it" — so a
+		// stolen Adventure is the thief's to cast later (ADR 0104,
+		// owner decision 4). The owner stands in only for an item
+		// with no controller, which no cast produces.
 		cardID := c.InstanceID
-		r.Dst, r.DstOwner, r.Actor = ZoneExile, uuid.Nil, c.Owner
+		controller := c.Owner
+		if item != nil && item.Controller != uuid.Nil {
+			controller = item.Controller
+		}
+		r.Dst, r.DstOwner, r.Actor = ZoneExile, uuid.Nil, controller
 		r.then = func(g *Game) error {
-			g.grantAdventureCastFromExileLocked(cardID)
+			g.grantAdventureCastFromExileLocked(cardID, controller)
 			return nil
 		}
 	}
@@ -4355,10 +4467,30 @@ func (g *Game) settleDeparturesLocked() {
 //
 // S13.1.
 func (g *Game) cleanupStackForEliminatedLocked(playerID uuid.UUID) {
+	// CR 800.4a, in the rule's order (ADR 0104 §7): the effects that
+	// give the departed player control END before anything they still
+	// control is removed. A spell they had stolen goes back to the
+	// player it was taken from — or to its caster — rather than being
+	// exiled for a player who never cast it. The recompute is what
+	// hands it back (the stack step of the layer pass). The same drop
+	// ends a resolving spell's theft of a PERMANENT (Act of Treason),
+	// which leaveGameObjectsLocked's own recompute then hands back.
+	//
+	// Not on the departure that ENDS the game: that one keeps the
+	// final board as it was (ADR 0060 Decision 5).
+	if g.survivingSeatsLocked() > 1 && g.endControlEffectsForLocked(playerID) {
+		g.RecomputeLayersIfStaleLocked()
+	}
 	if len(g.StackMeta) > 0 {
 		toRemove := make([]uuid.UUID, 0, len(g.StackMeta))
 		for id, item := range g.StackMeta {
-			if item != nil && item.Controller == playerID {
+			// CR 800.4c for the stack: a spell that went back to a
+			// player who had ALREADY left has nobody to control it
+			// either, and goes the way this player's own does.
+			if item == nil {
+				continue
+			}
+			if p := g.playerByIDLocked(item.Controller); item.Controller == playerID || (p != nil && p.Eliminated) {
 				toRemove = append(toRemove, id)
 			}
 		}
@@ -7041,8 +7173,17 @@ func printedIdentityOf(c *Card) (colors []string, known bool) {
 // placeholder — the demo seed, a token template, a test fixture. Both
 // IDs come off the same record, so either one standing is the whole
 // answer.
+//
+// ADR 0078: `ScryfallID != ""` no longer means that on its own for a
+// token whose id is only a resolved ART printing (TokenArtOnly) — a
+// vanilla Treasure or Soldier does not become "imported" just because
+// it got a picture. `&& !c.TokenArtOnly` on that half keeps this
+// reading "was this instance stamped from deck import" exactly as
+// documented; a token COPY's ScryfallID is a real copied identity
+// (TokenArtOnly false there) and still answers true, as does the
+// OracleID half for anything that carries one.
 func (c Card) fromScryfallPrinting() bool {
-	return c.ScryfallID != "" || c.OracleID != ""
+	return (c.ScryfallID != "" && !c.TokenArtOnly) || c.OracleID != ""
 }
 
 // distinctColorsInManaCost extracts the unique WUBRG letters that

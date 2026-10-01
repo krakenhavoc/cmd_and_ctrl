@@ -176,6 +176,16 @@ func CopiableValuesOf(src Card) PrintedValues {
 	if src.FaceDownIsPermanent() {
 		return faceDownCopiableValues(src)
 	}
+	// ADR 0103, CR 709.5 / 709.5b: a Room's halves, and the two static
+	// abilities that lock them, are copiable; its unlocked designations
+	// are not. So the copy takes the WHOLE card — both halves — and then
+	// has whatever doors it has itself: none, on a permanent that
+	// enters as a copy (the landing materialises it fully locked).
+	if HasSharedTypeLine(src) {
+		whole := src
+		whole.materialiseSplitWhole()
+		return printedValuesOf(whole)
+	}
 	return printedValuesOf(src)
 }
 

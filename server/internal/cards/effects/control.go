@@ -82,3 +82,109 @@ func (e ExchangeControl) Apply(ctx *Context) error {
 		eotLabel(e.Label, "exchange control"))
 	return nil
 }
+
+// GainControlOfSpell is "gain control of target spell" (ADR 0104,
+// #1745; CR 611.1, CR 613.1b) — Aethersnatch, Commandeer, Invert
+// Polarity's won flip.
+//
+// It is the same layer-2 effect GainControl is, pinned to a spell on
+// the stack instead of a permanent: the spell's "you" becomes the new
+// controller at once (the stack step of the layer pass materialises it
+// before Apply returns), and a permanent spell becomes a permanent
+// under them whose default controller is still the caster (CR 110.2b,
+// CR 400.7a), so it goes home if the thief leaves the game.
+//
+// With ChooseNewTargets the new controller is then offered "you may
+// choose new targets for it" (CR 115.7d) — AFTER the control change,
+// because which targets are legal is judged for the spell's controller
+// and it has to be theirs by then. A spell that is no longer on the
+// stack, or one the player already controls, leaves the card doing
+// nothing.
+type GainControlOfSpell struct {
+	// Spell is the spell to take — the stack item's ID, which is the
+	// spell card's instance ID.
+	Spell uuid.UUID
+
+	// Controller is who gains control. Defaults to the effect's own
+	// controller.
+	Controller uuid.UUID
+
+	// ChooseNewTargets offers the new controller "you may choose new
+	// targets for it".
+	ChooseNewTargets bool
+
+	Label string
+}
+
+func (c GainControlOfSpell) Apply(ctx *Context) error {
+	if c.Spell == uuid.Nil {
+		return nil
+	}
+	controller := c.Controller
+	if controller == uuid.Nil {
+		controller = ctx.Controller()
+	}
+	if !ctx.Game.GainControlOfSpellForEffect(ctx.Source(), c.Spell, controller,
+		eotLabel(c.Label, "gain control of a spell")) {
+		return nil
+	}
+	if !c.ChooseNewTargets {
+		return nil
+	}
+	return ChangeTargets{
+		StackID:  c.Spell,
+		Chooser:  controller,
+		Policy:   game.RetargetChooseNew,
+		Optional: true,
+	}.Apply(ctx)
+}
+
+// ExchangeControlOfSpellAnd is "exchange control of <spell> and
+// <permanent>" (ADR 0104; CR 701.12) — Perplexing Chimera's "exchange
+// control of this creature and that spell", Sudden Substitution's
+// "exchange control of target noncreature spell and target creature".
+//
+// All or nothing (CR 701.12a): if either object is gone, nothing is
+// exchanged. If one player controls both, it does nothing (CR 701.12b).
+// Both halves are indefinite and share one CR 613.7 timestamp.
+//
+// With ChooseNewTargets "the spell's controller may choose new
+// targets for it" — the spell's controller AFTER the exchange.
+type ExchangeControlOfSpellAnd struct {
+	Spell     uuid.UUID
+	Permanent uuid.UUID
+
+	ChooseNewTargets bool
+
+	Label string
+}
+
+func (e ExchangeControlOfSpellAnd) Apply(ctx *Context) error {
+	_, err := e.ApplyAndReport(ctx)
+	return err
+}
+
+// ApplyAndReport is Apply that also says whether control was
+// exchanged — Perplexing Chimera's "if you do".
+func (e ExchangeControlOfSpellAnd) ApplyAndReport(ctx *Context) (bool, error) {
+	if e.Spell == uuid.Nil || e.Permanent == uuid.Nil {
+		return false, nil
+	}
+	if !ctx.Game.ExchangeControlOfSpellAndPermanentForEffect(ctx.Source(), e.Spell, e.Permanent,
+		eotLabel(e.Label, "exchange control")) {
+		return false, nil
+	}
+	if !e.ChooseNewTargets {
+		return true, nil
+	}
+	controller, ok := ctx.Game.SpellControllerForEffect(e.Spell)
+	if !ok {
+		return true, nil
+	}
+	return true, ChangeTargets{
+		StackID:  e.Spell,
+		Chooser:  controller,
+		Policy:   game.RetargetChooseNew,
+		Optional: true,
+	}.Apply(ctx)
+}

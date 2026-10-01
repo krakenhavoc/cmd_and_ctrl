@@ -222,5 +222,5 @@ export function grantedFace(card: CardView, grant: ExilePlayView | null): CardVi
 // faces a cast may choose.
 export function castableFromZone(card: CardView, zoneKind: BrowsableZone): boolean {
   if (zoneKind !== "graveyard") return false;
-  return castableFaces(card).some((f) => f.castable_here === true);
+  return castableFaces(card, "graveyard").some((f) => f.castable_here === true);
 }

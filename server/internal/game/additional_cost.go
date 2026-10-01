@@ -175,8 +175,95 @@ type AdditionalCost struct {
 	// creature in CastSpellParams.BlightIDs. The counters go through
 	// the CR 614 window marked CounterFromCost (blightLocked). Zero
 	// means no such component. effects.Register allows it only on an
-	// optional cost keyed BlightKey.
+	// optional cost keyed BlightKey — or on a branch of an Either cost
+	// ("blight 2 or pay {1}", Wild Unraveling, ADR 0100 §2).
 	Blight int
+
+	// PayLife is a FIXED "pay N life" (CR 119.4) — Bitter Triumph's
+	// "discard a card or pay 3 life". Paid on the cost path through
+	// PayLifeForEffect, as PayLifeX is, and refused at announce when
+	// the caster's life total is below it. Zero means no such
+	// component. Added by ADR 0100 §2 for the either/or branches.
+	PayLife int
+
+	// Either is an either/or additional cost (ADR 0100 §2): "As an
+	// additional cost to cast this spell, sacrifice an artifact or
+	// discard a card" (Demand Answers). Each entry is one BRANCH, an
+	// ordinary AdditionalCost with a Key and a Label; the caster names
+	// which one on CastSpellParams.CostBranch (CR 601.2b) and the plan
+	// pays that branch as the mandatory entry (castCostPayments).
+	//
+	// A cost with branches has no components of its own — the branch
+	// is the cost. effects.Register refuses the shapes that would
+	// compile and then pay something the card does not print: fewer
+	// than two branches, a branch that is empty, optional, repeated or
+	// itself branched, a missing or duplicate branch Key, and a
+	// variable sacrifice clause in a branch.
+	//
+	// It lives in the MANDATORY slot, Spec.AdditionalCost, because the
+	// cost is mandatory: CR 601.2b asks only which branch.
+	Either []AdditionalCost
+}
+
+// Branched reports whether this is an either/or cost (ADR 0100 §2).
+// Nil-safe.
+func (c *AdditionalCost) Branched() bool {
+	return c != nil && len(c.Either) > 0
+}
+
+// Keyed returns a copy of the cost with Key set — the branch identity
+// an either/or cost's resolution reads back through
+// ctx.PaidCostBranch (ADR 0100 §2):
+//
+//	EitherCost(SacrificeCost("an artifact", Artifact()).Keyed("sacrifice"), DiscardCost(1).Keyed("discard"))
+func (c *AdditionalCost) Keyed(key string) *AdditionalCost {
+	if c == nil {
+		return nil
+	}
+	out := *c
+	out.Key = key
+	return &out
+}
+
+// ErrCostBranch is returned when an announcement names no branch of an
+// either/or additional cost, a branch the cost does not have, a branch
+// on a card whose cost has none, or a branch the caster cannot pay
+// (ADR 0100 §2, CR 601.2b / 118.3).
+var ErrCostBranch = fmt.Errorf("%w: bad either/or additional cost branch", ErrInvalidParam)
+
+// ChosenAdditionalCost is the mandatory cost ONE announcement pays: the
+// card's cost itself, or — for an either/or cost — the branch
+// CastSpellParams.CostBranch names (ADR 0100 §2).
+//
+// The branch is REQUIRED on a branched cost and refused on any other,
+// the posture Face and PhyrexianLife take: silently casting at a
+// different price from the one the player chose is the worst failure
+// available, and for Lightning Axe branch 0 is "discard a card".
+//
+// Pure, so the pricer, the validator and the enumerator ask it the same
+// question. The returned pointer aliases the catalog's entry; callers
+// read it and never write through it.
+func ChosenAdditionalCost(mandatory *AdditionalCost, branch *int) (*AdditionalCost, error) {
+	if !mandatory.Branched() {
+		if branch != nil {
+			return nil, ErrCostBranch
+		}
+		return mandatory, nil
+	}
+	if branch == nil || *branch < 0 || *branch >= len(mandatory.Either) {
+		return nil, ErrCostBranch
+	}
+	return &mandatory.Either[*branch], nil
+}
+
+// CostBranchKey is the Key of branch `index` of a card's either/or
+// additional cost, or "" when the card has no such branch.
+func CostBranchKey(oracleID string, index int) string {
+	ac := AdditionalCostFor(oracleID)
+	if !ac.Branched() || index < 0 || index >= len(ac.Either) {
+		return ""
+	}
+	return ac.Either[index].Key
 }
 
 // MaxPayments is how many times this cost may be paid for one cast:
@@ -192,16 +279,19 @@ func (c *AdditionalCost) MaxPayments() int {
 // Empty reports whether the cost demands nothing. Nil-safe.
 func (c *AdditionalCost) Empty() bool {
 	return c == nil || (c.DiscardCards == 0 && c.Sacrifice == nil && !c.PayLifeX && c.ManaCost == "" && !c.ChoosesOpponent &&
-		c.Teamwork == 0 && c.Blight == 0)
+		c.Teamwork == 0 && c.Blight == 0 && c.PayLife == 0 && len(c.Either) == 0)
 }
 
 // CardsDemanded reports whether paying this cost needs the caster to
 // NAME something — cards to discard, permanents to sacrifice or tap,
 // a creature to blight. A mana-only cost needs no payment list, which
 // is what lets a multikicker be paid N times off one announcement
-// (ADR 0073 §4). Nil-safe.
+// (ADR 0073 §4). A fixed life payment names nothing either, but it is
+// a non-mana component all the same, so it is counted here and a
+// repeated one is refused with the rest. Nil-safe.
 func (c *AdditionalCost) CardsDemanded() bool {
-	return c != nil && (c.DiscardCards > 0 || c.Sacrifice != nil || c.PayLifeX || c.Teamwork > 0 || c.Blight > 0)
+	return c != nil && (c.DiscardCards > 0 || c.Sacrifice != nil || c.PayLifeX || c.Teamwork > 0 || c.Blight > 0 ||
+		c.PayLife > 0 || len(c.Either) > 0)
 }
 
 // CatalogAdditionalCost is the catalog hook the effects package
@@ -388,6 +478,26 @@ func paidWithSacrifices(paid PaidCost, n int) PaidCost {
 	return paid
 }
 
+// paidWithBranchAndDiscards folds the either/or branch the caster
+// announced and the cards the additional cost discarded into the
+// record (ADR 0100 §2, owner decision 6) — for the reason every fold
+// above gives: by resolution the discarded cards are in a graveyard and
+// the catalog cannot say which branch was taken.
+//
+// The branch is stored as its index plus one, so 0 keeps meaning "no
+// either/or cost", which is every cast but a handful. The discards are
+// the whole flat list, in the order named: the plan-wide discard of a
+// branch, a plain DiscardCost and a discarding optional cost alike.
+func paidWithBranchAndDiscards(paid PaidCost, branch *int, discards []uuid.UUID) PaidCost {
+	if branch != nil {
+		paid.CostBranch = *branch + 1
+	}
+	if len(discards) > 0 {
+		paid.Discarded = append([]uuid.UUID(nil), discards...)
+	}
+	return paid
+}
+
 // validateOptionalCostChoice checks the ANNOUNCEMENT itself (CR
 // 601.2b) before anything is priced or paid: every index names a cost
 // the card offers, and no cost is named more times than it may be
@@ -445,15 +555,20 @@ func (g *Game) validateAdditionalCostLocked(playerID, castID uuid.UUID, plan []c
 	discarded := make(map[uuid.UUID]bool, len(discardIDs))
 	sacrificed := make(map[uuid.UUID]bool, len(sacrificeIDs))
 	di, si := 0, 0
+	// CR 119.4: a player may pay N life only with a life total of at
+	// least N. Checked at announce with the rest of the choices, so an
+	// unpayable X is a rejected cast rather than a player at -3 — and
+	// summed across the plan, so "pay X life" and a branch's fixed
+	// "pay 3 life" cannot each pass against the whole total.
+	//
+	// CanPayLifeLocked is the one reader of CR 119.4 and of "you can't
+	// pay life" statements, the same predicate the alternative cost's
+	// life asks (lifePayableBy).
+	if owed := planLife(plan, xValue); owed > 0 && !g.CanPayLifeLocked(p, owed) {
+		return ErrInvalidParam
+	}
 	for _, pay := range plan {
 		cost := pay.cost
-		// CR 119.4: a player may pay N life only with a life total of
-		// at least N. Checked at announce with the rest of the
-		// choices, so an unpayable X is a rejected cast rather than a
-		// player at -3.
-		if cost.PayLifeX && xValue > p.Life {
-			return ErrInvalidParam
-		}
 		if di+cost.DiscardCards > len(discardIDs) {
 			return ErrInvalidParam
 		}
@@ -470,7 +585,19 @@ func (g *Game) validateAdditionalCostLocked(playerID, castID uuid.UUID, plan []c
 		if cost.Sacrifice == nil {
 			continue
 		}
-		n := SacrificeCostCount(cost.Sacrifice)
+		// ADR 0100 §3: a VARIABLE clause — "sacrifice X creatures",
+		// "sacrifice any number of creatures" — takes whatever is left of
+		// the flat list. That is sound only because effects.Register
+		// holds a cast's plan to at most one variable clause and, when
+		// there is one, to no other sacrifice at all
+		// (checkVariableSacrificePlan), so everything left IS this
+		// clause's payment and there is no next clause to split it
+		// from. A FIXED clause takes exactly its printed count, as
+		// before.
+		n := len(sacrificeIDs) - si
+		if !SacrificeCostVariable(cost.Sacrifice) {
+			n = SacrificeCostCount(cost.Sacrifice)
+		}
 		if si+n > len(sacrificeIDs) {
 			return ErrInvalidParam
 		}
@@ -482,19 +609,16 @@ func (g *Game) validateAdditionalCostLocked(playerID, castID uuid.UUID, plan []c
 			sacrificed[id] = true
 		}
 		// The sacrifice clause reuses the activated-ability validator,
-		// so "you may only sacrifice what you control" (CR 701.21a)
-		// and the spec's own predicate are enforced in one place
-		// rather than two.
+		// so "you may only sacrifice what you control" (CR 701.21a),
+		// the spec's own predicate and the count (SacrificeCountLegal)
+		// are enforced in one place rather than two.
 		//
-		// #1213: a cast's sacrifice clause is always a FIXED count —
-		// effects.Register refuses a variable one here, because the
-		// flat wire lists are walked in plan order and a clause with
-		// no fixed width could not be split from the next one's
-		// payment. So there is no announced X to pass, and 0 reads
-		// the clause exactly as it did before.
+		// The announced X rides along for "sacrifice X …" (CR 107.3a,
+		// 601.2b): the count must equal it (CR 107.3i — every X on the
+		// object is the same number). A fixed clause ignores it.
 		if _, err := g.validateSacrificeCostLocked(playerID, castID, AbilityCost{
 			SacrificeOther: cost.Sacrifice,
-		}, slice, 0); err != nil {
+		}, slice, xValue); err != nil {
 			return err
 		}
 		si += n
@@ -505,28 +629,47 @@ func (g *Game) validateAdditionalCostLocked(playerID, castID uuid.UUID, plan []c
 	return nil
 }
 
-// AddOptionalCostMana is the mana half of the announced optional
-// costs, added into `cost` at CR 601.2f. ONE helper, so the cast
-// path, the auto-tapper and the bot enumerator price a kicked spell
-// identically and a bot is never offered a kicked move at the
-// unkicked price (ADR 0073 §3, #544).
+// planLife is the life the plan pays: each entry's fixed PayLife, and
+// the announced X for a "pay X life" entry (ADR 0021 §3). One sum, read
+// by the validator's CR 119.4 check and by the payer, so the two cannot
+// disagree about how much life a cast costs.
+func planLife(plan []costPayment, xValue int) int {
+	n := 0
+	for _, pay := range plan {
+		n += pay.cost.PayLife
+		if pay.cost.PayLifeX {
+			n += xValue
+		}
+	}
+	return n
+}
+
+// AdditionalCostMana is the mana half of ONE announcement's whole
+// additional-cost plan — the chosen either/or branch's "pay {5}"
+// (ADR 0100 §2), then each announced payment of an optional cost
+// (kicker, multikicker, buyback — ADR 0073 §3) — added into `cost` at
+// CR 601.2f. `mandatory` is the cost the announcement pays, which for
+// an either/or card is the chosen branch (ChosenAdditionalCost).
 //
-// Exported because the enumerator lives in another package and there
-// is no second copy of this arithmetic to be had.
+// ONE helper, so the cast path, the auto-tapper, the preview and the
+// bot enumerator (all through PriceCast) price a kicked spell, and a
+// Lightning Axe paying {5}, identically: a bot is never offered a move
+// at a price the engine will not charge (#544), and Thalia taxes the
+// branch's mana once because it has joined the total before the
+// modifiers run.
 //
-// An unparseable optional cost string refuses the cast for the same
-// reason an unparseable printed cost does (#289): there is no price
-// for the player to have paid. Register refuses the same string at
-// boot, so reaching this branch means a card was built around the
-// catalog.
-func AddOptionalCostMana(cost ParsedCost, optional []AdditionalCost, chosen []int) (ParsedCost, error) {
-	for _, i := range chosen {
-		if i < 0 || i >= len(optional) || optional[i].ManaCost == "" {
+// An unparseable cost string refuses the cast for the same reason an
+// unparseable printed cost does (#289): there is no price for the
+// player to have paid. Register refuses the same string at boot, so
+// reaching this branch means a card was built around the catalog.
+func AdditionalCostMana(cost ParsedCost, mandatory *AdditionalCost, optional []AdditionalCost, chosen []int) (ParsedCost, error) {
+	for _, pay := range castCostPayments(mandatory, optional, chosen) {
+		if pay.cost.ManaCost == "" {
 			continue
 		}
-		add, err := ParseCost(optional[i].ManaCost)
+		add, err := ParseCost(pay.cost.ManaCost)
 		if err != nil {
-			return cost, fmt.Errorf("%w for %s: %w", ErrUnparseableCost, optional[i].Label, err)
+			return cost, fmt.Errorf("%w for %s: %w", ErrUnparseableCost, pay.cost.Label, err)
 		}
 		cost.Generic += add.Generic
 		cost.Required = append(cost.Required, add.Required...)
@@ -535,6 +678,91 @@ func AddOptionalCostMana(cost ParsedCost, optional []AdditionalCost, chosen []in
 		cost.HasSnow = cost.HasSnow || add.HasSnow
 	}
 	return cost, nil
+}
+
+// AdditionalCostBranchPayableLocked reports whether `playerID` could
+// pay branch `branch` of `card`'s either/or additional cost right now
+// (ADR 0100 §2) — AlternativeCostPayableLocked's sibling (#695), and
+// read by the same three readers: the view's `payable` stamp, the bot
+// enumerator and CastSpell.
+//
+//   - Discards: enough cards in hand other than the spell itself (CR
+//     601.2a has moved it to the stack by the time the cost is paid).
+//   - Sacrifice: enough permanents the caster controls that match the
+//     clause (CR 701.21a), counted by the engine's own candidate walk.
+//   - Life: CR 119.4, through CanPayLifeLocked.
+//   - Blight: a creature to put the counters on (CR 701.68b).
+//
+// MANA IS DELIBERATELY NOT ASKED, for the reason the alternative cost
+// gives: CR 601.2g lets the caster activate mana abilities after the
+// cost is settled. False for a card with no such branch.
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) AdditionalCostBranchPayableLocked(playerID uuid.UUID, card Card, branch int) bool {
+	ac := AdditionalCostFor(CatalogKey(card))
+	if !ac.Branched() || branch < 0 || branch >= len(ac.Either) {
+		return false
+	}
+	return g.additionalCostPayableLocked(playerID, card.InstanceID, &ac.Either[branch])
+}
+
+// AnyAdditionalCostBranchPayableLocked reports whether a card with an
+// either/or additional cost has at least one branch its caster could
+// pay — and true for every card without one. CR 601.2h: "Unpayable
+// costs can't be paid", so a cast whose every branch is unpayable is
+// no cast at all; CR 118.3 is why, when one branch is out, the other
+// is the only choice.
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) AnyAdditionalCostBranchPayableLocked(playerID uuid.UUID, card Card) bool {
+	ac := AdditionalCostFor(CatalogKey(card))
+	if !ac.Branched() {
+		return true
+	}
+	for i := range ac.Either {
+		if g.additionalCostPayableLocked(playerID, card.InstanceID, &ac.Either[i]) {
+			return true
+		}
+	}
+	return false
+}
+
+// additionalCostPayableLocked is the per-cost half of the two
+// predicates above. Caller must hold g.mu.
+func (g *Game) additionalCostPayableLocked(playerID, castID uuid.UUID, cost *AdditionalCost) bool {
+	p := g.playerByIDLocked(playerID)
+	if p == nil || cost == nil {
+		return false
+	}
+	if cost.PayLife > 0 && !g.CanPayLifeLocked(p, cost.PayLife) {
+		return false
+	}
+	if cost.DiscardCards > 0 {
+		have := 0
+		for _, c := range p.Hand.Cards {
+			if c.InstanceID != castID {
+				have++
+			}
+		}
+		if have < cost.DiscardCards {
+			return false
+		}
+	}
+	if cost.Sacrifice != nil {
+		have := 0
+		for _, id := range g.SpecCandidatesForEffect(playerID, cost.Sacrifice).Cards {
+			if c := findBattlefieldCard(g, id); c != nil && c.Controller == playerID {
+				have++
+			}
+		}
+		if have < SacrificeCostCount(cost.Sacrifice) {
+			return false
+		}
+	}
+	if cost.Blight > 0 && len(g.BlightOptionsForEffect(playerID)) == 0 {
+		return false
+	}
+	return true
 }
 
 // payAdditionalCostLocked pays the cost's components: sacrifices the

@@ -1337,3 +1337,39 @@ Still open, and out of scope here for the same reasons #1703 gave:
   far reads "how much loyalty did this activation actually add", so
   `PaidCost` grows no new field for it; `CountersAdded` already exists and
   needed only to start telling the truth.
+
+## Note (2026-09-30, [#1732](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1732)): the plan's mandatory entry may be a chosen branch
+
+[ADR 0100](0100-delve-either-or-and-variable-sacrifice-costs.md) sub-PR 3 adds
+either/or additional costs. Two things here change shape, and nothing here
+changes meaning:
+
+- **§3's helper is plan-wide.** `AddOptionalCostMana` is replaced by
+  `game.AdditionalCostMana(cost, mandatory, optional, chosen)`, which sums the
+  mana of the whole `castCostPayments` plan — the chosen either/or branch's
+  "pay {5}" and each announced optional payment — at the same CR 601.2f point.
+  `printedCostLocked` is still its one caller, so the cast path, the preview
+  and the enumerator still share one price.
+- **§4's plan takes the announced branch as its mandatory entry.**
+  `game.ChosenAdditionalCost` turns the card's cost and the announced
+  `CostBranch` into the cost the plan pays, so the validator and the payer
+  never learn that the card offered a choice.
+- **The blight deferral above is half answered.** A MANDATORY blight exists as
+  an either/or branch ("blight 2 or pay {1}", Wild Unraveling). A variable
+  blight and blight as an activated ability's cost are still out.
+
+## Note (2026-09-30, [#1732](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1732)): a variable sacrifice on a cast
+
+The #1213 amendment gave an activated ability a variable sacrifice count and
+kept casts out, because the plan's flat `sacrifice_ids` list gave a clause
+with no printed width no way to be told apart from the next clause's payment.
+[ADR 0100](0100-delve-either-or-and-variable-sacrifice-costs.md) sub-PR 4
+answers that with a rule rather than a wire shape: **a cast's plan may hold at
+most one variable sacrifice clause, and if it holds one, no other entry may
+sacrifice.** `effects.Register` enforces it across the mandatory slot, the
+either/or branches and `OptionalCosts`, and the variable clause — only ever
+the mandatory one — takes the whole list. §4's plan, validator and payer are
+otherwise unchanged. The #1213 guard ("a cost that can be paid with nothing is
+free") still holds for abilities; on a cast, "sacrifice any number of" prints
+zero as a legal count. Neither variable shape may sit in an optional cost:
+no printed kicker or buyback has one.

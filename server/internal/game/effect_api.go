@@ -3422,6 +3422,15 @@ type AddManaOptions struct {
 	// 2026-09-17). CR 903.4f (#844): with no commander, or a colourless
 	// one, such a pick adds nothing and is not queued.
 	NarrowToCommanderIdentity bool
+
+	// Restrictions is the "spend this mana only to …" clause the effect
+	// prints, as the same tags a mana ability's Restrictions carry
+	// (ManaRestrict*). Smoky Lounge's "add {R}{R}. Spend this mana only
+	// to cast Room spells and unlock doors" (ADR 0103). Supported for
+	// fixed-colour slots only: a slot with a colour pick would queue a
+	// prompt that cannot carry them, and minting it unrestricted would be
+	// stronger than printed, so that combination is ErrInvalidParam.
+	Restrictions []string
 }
 
 // AddManaWithOptionsForEffect is AddManaForEffect with options.
@@ -3434,7 +3443,7 @@ func (g *Game) AddManaWithOptionsForEffect(playerID, source uuid.UUID, produced 
 	if p == nil || p.Eliminated {
 		return nil
 	}
-	return g.addManaSlotsLocked(p, source, produced, opts.NarrowToCommanderIdentity, nil, addManaReason)
+	return g.addManaSlotsLocked(p, source, produced, opts.NarrowToCommanderIdentity, opts.Restrictions, nil, addManaReason)
 }
 
 // addManaSlotsLocked is the one slot walk behind every "an effect adds
@@ -3462,6 +3471,7 @@ func (g *Game) addManaSlotsLocked(
 	source uuid.UUID,
 	produced string,
 	narrow bool,
+	restrictions []string,
 	pending *[]ColorRequirement,
 	reason func(ProducedManaEntry) string,
 ) error {
@@ -3504,8 +3514,11 @@ func (g *Game) addManaSlotsLocked(
 			// own output (ADR 0074), and neither taps a permanent for
 			// mana, so neither is doubled by Mana Reflection. That is
 			// what the card says, not a simplification.
-			g.produceManaLocked(p, source, []string{colorOptions[0]}, nil, nil, srcKinds, false, pending)
+			g.produceManaLocked(p, source, []string{colorOptions[0]}, restrictions, nil, srcKinds, false, pending)
 			continue
+		}
+		if len(restrictions) > 0 {
+			return ErrInvalidParam
 		}
 		if pending != nil {
 			// The auto-tap mode: one greedy pick, minted now. A

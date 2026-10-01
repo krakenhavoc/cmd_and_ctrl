@@ -152,13 +152,36 @@ var mechanics = []Mechanic{
 	},
 	{
 		// ADR 0100 sub-PR 1: CR 702.66, a way of paying rather than a
-		// cost, declared with one bit.
+		// cost, declared with one bit. Sub-PR 2 added the second bit, a
+		// permanent's "Spells you cast have delve" (Teval).
 		Name:       "delve",
 		Phrases:    []string{"delve"},
-		Implements: func(s effects.Spec) bool { return s.Delve },
-		Evidence:   "Spec.Delve is set",
+		Implements: func(s effects.Spec) bool { return s.Delve || s.SpellsYouCastHaveDelve },
+		Evidence:   "Spec.Delve or Spec.SpellsYouCastHaveDelve is set",
 		Confidence: Exact,
 		Adopt:      "Delve: true on the Spec — see ADR 0100",
+	},
+	{
+		// ADR 0100 sub-PR 3: one mandatory additional cost with
+		// branches, declared as AdditionalCost.Either.
+		Name:       "either/or additional cost",
+		Phrases:    []string{"either/or additional cost", "either/or cost"},
+		Implements: func(s effects.Spec) bool { return s.AdditionalCost.Branched() },
+		Evidence:   "Spec.AdditionalCost has Either branches",
+		Confidence: Exact,
+		Adopt:      "AdditionalCost: EitherCost(…Keyed(\"…\"), …) — see ADR 0100",
+	},
+	{
+		// ADR 0100 sub-PR 4: "sacrifice X …" and "(you may) sacrifice
+		// any number of …" as a cast's mandatory additional cost.
+		Name:    "variable sacrifice cost",
+		Phrases: []string{"variable sacrifice cost", "sacrifice any number", "variable sacrifice"},
+		Implements: func(s effects.Spec) bool {
+			return s.AdditionalCost != nil && game.SacrificeCostVariable(s.AdditionalCost.Sacrifice)
+		},
+		Evidence:   "Spec.AdditionalCost.Sacrifice is a variable clause",
+		Confidence: Exact,
+		Adopt:      "AdditionalCost: SacrificeAnyNumberCost(…) or SacrificeXCost(…) — see ADR 0100",
 	},
 	{
 		Name:       "escape",

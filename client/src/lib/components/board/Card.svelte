@@ -35,6 +35,8 @@
   import CounterPips from "./CounterPips.svelte";
   import KeywordBadgeRow from "./KeywordBadgeRow.svelte";
   import ManaAbilityMenu from "./ManaAbilityMenu.svelte";
+  import RoomDoorStrip from "./RoomDoorStrip.svelte";
+  import { displayName } from "../../faces";
 
   interface Props {
     card: CardView;
@@ -97,6 +99,11 @@
     // to say who it is cursing — which is the entire card. Supplied by
     // BattlefieldRow; undefined for everything else.
     enchantedPlayer?: string;
+    // ADR 0104 (owner decision 6): the owner's name when another player
+    // controls this permanent — a stolen creature, or the permanent a
+    // stolen spell became. Supplied by BattlefieldRow; undefined when
+    // the controller is the owner.
+    takenFrom?: string;
     // #33: request this card's art with fetchpriority="high". Opt-in,
     // set only by Hand.svelte for the viewer's own hand — the art
     // that is above the fold and latency-visible. Card is shared by
@@ -109,6 +116,10 @@
     // whose drawn member is not a legal target but another member is
     // still lights up, and never hides a legal target.
     memberIDs?: readonly string[];
+    // ADR 0103: the viewing seat, so a Room's door strip offers its
+    // unlock buttons only to the Room's controller (CR 709.5e). Set by
+    // BattlefieldRow; undefined everywhere else, which offers none.
+    viewerID?: string | null;
     onClick?: (card: CardView, ev: MouseEvent) => void;
   }
 
@@ -140,8 +151,10 @@
     sorcerySpeedBlocked = "",
     payerLife,
     enchantedPlayer,
+    takenFrom,
     priority = false,
     memberIDs,
+    viewerID,
     onClick,
   }: Props = $props();
 
@@ -398,8 +411,8 @@
   data-tapped={card.tapped ? "true" : "false"}
   role={interactive ? "button" : "img"}
   tabindex={interactive ? 0 : undefined}
-  aria-label={showBack ? "face-down card" : card.name}
-  title={showBack ? "" : card.name}
+  aria-label={showBack ? "face-down card" : displayName(card)}
+  title={showBack ? "" : displayName(card)}
   onpointerenter={handleEnter}
   onpointerleave={handleLeave}
   onclick={handleClick}
@@ -426,7 +439,7 @@
          Front face only — the back above is a bundled asset. -->
     <img
       src={imgSrc}
-      alt={card.name}
+      alt={displayName(card)}
       loading="lazy"
       decoding="async"
       draggable="false"
@@ -482,6 +495,17 @@
         ENCHANTING {enchantedPlayer}
       </span>
     {/if}
+    {#if takenFrom}
+      <!-- ADR 0104: a permanent another player controls says whose it
+           is — a stolen creature, or the permanent a stolen spell became. -->
+      <span
+        class="badge taken"
+        title={`owned by ${takenFrom} — another player controls it`}
+        aria-label={`taken from ${takenFrom}`}
+      >
+        TAKEN FROM {takenFrom}
+      </span>
+    {/if}
     {#if card.auto}
       <span
         class="badge auto"
@@ -535,7 +559,7 @@
       {/if}
     {/if}
   {:else}
-    <span class="name-fallback">{card.name}</span>
+    <span class="name-fallback">{displayName(card)}</span>
     {#if card.token_text}
       <!-- ADR 0083: a token has no printing, so no art and no oracle
            text — the server sends what the token prints. A trigger or
@@ -576,6 +600,17 @@
         aria-label={`enchanting ${enchantedPlayer}`}
       >
         ENCHANTING {enchantedPlayer}
+      </span>
+    {/if}
+    {#if takenFrom}
+      <!-- ADR 0104: a permanent another player controls says whose it
+           is — a stolen creature, or the permanent a stolen spell became. -->
+      <span
+        class="badge taken"
+        title={`owned by ${takenFrom} — another player controls it`}
+        aria-label={`taken from ${takenFrom}`}
+      >
+        TAKEN FROM {takenFrom}
       </span>
     {/if}
     {#if card.auto}
@@ -636,6 +671,11 @@
     <span class="badge designation" title={designationTitle} aria-label={designationTitle}>
       {designationBadge}
     </span>
+  {/if}
+  {#if card.doors && !showBack}
+    <!-- ADR 0103: a Room's doors; the unlock buttons are its
+         controller's (CR 709.5e). -->
+    <RoomDoorStrip {card} canUnlock={!!viewerID && card.controller === viewerID} />
   {/if}
   {#if manaMenuOpen && hasManaAbilities}
     <div class="mana-menu-anchor">
@@ -882,6 +922,25 @@
     color: #b9d8ff;
     background: rgba(12, 35, 70, 0.9);
     border-color: rgba(145, 195, 255, 0.55);
+    font-size: 7px;
+  }
+  .badge.taken {
+    /* ADR 0104. A player's NAME, so full width and truncating like the
+       Curse badge — but one line higher, so a stolen Curse and a
+       phased-out stolen permanent can wear both without overlap. The
+       rose of "not yours" rather than gold's "property of the card". */
+    top: auto;
+    bottom: 17px;
+    left: 3px;
+    right: 3px;
+    max-width: calc(100% - 6px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: center;
+    color: #ffc9d2;
+    background: rgba(44, 12, 22, 0.9);
+    border-color: rgba(255, 145, 170, 0.55);
     font-size: 7px;
   }
   .badge.curse {

@@ -133,6 +133,8 @@ var tokenTable = map[string]game.Card{
 	"1/1 white Rabbit":                              {Name: "Rabbit", TypeLine: "Token Creature — Rabbit", Power: 1, Toughness: 1, Colors: []string{"W"}},
 	"1/1 white Soldier":                             {Name: "Soldier", TypeLine: "Token Creature — Soldier", Power: 1, Toughness: 1, Colors: []string{"W"}},
 	"1/1 white Soldier with lifelink":               {Name: "Soldier", TypeLine: "Token Creature — Soldier", Power: 1, Toughness: 1, Colors: []string{"W"}, Keywords: []string{"lifelink"}},
+	"3/1 white Spirit with flying":                  {Name: "Spirit", TypeLine: "Token Creature — Spirit", Power: 3, Toughness: 1, Colors: []string{"W"}, Keywords: []string{"flying"}},
+	"1/1 red Gremlin":                               {Name: "Gremlin", TypeLine: "Token Creature — Gremlin", Power: 1, Toughness: 1, Colors: []string{"R"}},
 	"1/1 white Spirit with flying":                  {Name: "Spirit", TypeLine: "Token Creature — Spirit", Power: 1, Toughness: 1, Colors: []string{"W"}, Keywords: []string{"flying"}},
 	"1/1 white Vampire with lifelink":               {Name: "Vampire", TypeLine: "Token Creature — Vampire", Power: 1, Toughness: 1, Colors: []string{"W"}, Keywords: []string{"lifelink"}},
 	"1/1 white Warrior":                             {Name: "Warrior", TypeLine: "Token Creature — Warrior", Power: 1, Toughness: 1, Colors: []string{"W"}},
@@ -208,4 +210,10 @@ var tokenTable = map[string]game.Card{
 	// Same reason (ADR 0102: Abby, Merciless Soldier). A named token:
 	// the key says the name the card prints.
 	"1/1 black Fungus Zombie named Cordyceps Infected": {Name: "Cordyceps Infected", TypeLine: "Token Creature — Fungus Zombie", Power: 1, Toughness: 1, Colors: []string{"B"}},
+
+	// ADR 0103 (Rooms): the tokens Dollmaker's Shop, Grand Entryway and
+	// Ritual Chamber make.
+	"1/1 white Toy artifact":        {Name: "Toy", TypeLine: "Token Artifact Creature — Toy", Power: 1, Toughness: 1, Colors: []string{"W"}},
+	"1/1 white Glimmer enchantment": {Name: "Glimmer", TypeLine: "Token Enchantment Creature — Glimmer", Power: 1, Toughness: 1, Colors: []string{"W"}},
+	"6/6 black Demon with flying":   {Name: "Demon", TypeLine: "Token Creature — Demon", Power: 6, Toughness: 6, Colors: []string{"B"}, Keywords: []string{"flying"}},
 }

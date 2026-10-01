@@ -41,6 +41,7 @@
     ZoneView,
   } from "../../protocol";
   import { defendingPlayerOf } from "../../attackTargets";
+  import { takenFromByCard } from "../../takenFrom";
   import { bucketForBattlefield, isCreature } from "../../cardTypes";
   import { battlefieldClickIntent } from "../../contextMenu.logic";
   import { canActivateSorcerySpeedAbility } from "../../timing";
@@ -235,6 +236,10 @@
     }
     return out;
   });
+
+  // ADR 0104 (owner decision 6): the owner of each permanent another
+  // player controls, for Card's TAKEN FROM badge.
+  const takenFrom = $derived(takenFromByCard(view.battlefield?.cards, view.seats));
 
   // Every battlefield card that is drawn behind a host rather than in
   // its own type row. A dangling attachment — the host has left but
@@ -473,6 +478,7 @@
       label="creatures"
       {attachmentsByHost}
       {curseTargets}
+      {takenFrom}
       cards={buckets.creature}
       {viewerID}
       {selectedCombatCardID}
@@ -493,6 +499,7 @@
       label="lands"
       {attachmentsByHost}
       {curseTargets}
+      {takenFrom}
       cards={buckets.land}
       compact
       strip
@@ -510,6 +517,7 @@
       label="enchant / artifact"
       {attachmentsByHost}
       {curseTargets}
+      {takenFrom}
       cards={buckets.right}
       compact
       {viewerID}

@@ -280,6 +280,11 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 		// is monstrous — a flickered Polukranos is a new object that
 		// can become monstrous again.
 		c.Monstrous = false
+		// ADR 0103 / CR 400.7: and so are a Room's unlocked
+		// designations (CR 709.5c) — a Room that leaves and comes back is
+		// a new object with both doors locked, unless it was cast (CR
+		// 709.5d), which the entry seeds afresh.
+		c.Unlocked = 0
 		// ADR 0090 / CR 400.7: and so is the CR 722.3a prepared
 		// designation. The copy it kept in exile names this OBJECT's
 		// epoch, which the increment above has just retired, so the
@@ -397,6 +402,29 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 	// moment before CR 704.5e removes it — never a Skycoach Conductor.
 	if c.ActiveFace != 0 && !c.PrepareCopy && dst.Kind != ZoneBattlefield && dst.Kind != ZoneStack {
 		c.SetFace(0)
+	}
+	// ADR 0103, CR 709.4 / 709.5: a SPLIT card is its two halves
+	// combined in every zone but the stack and the battlefield, a Room
+	// on the battlefield is the halves its doors have unlocked (none,
+	// on arrival — the entry seeds the cast door afterwards), and a
+	// fused spell's mark ends with the stack. The stack's own face is
+	// the cast path's to set (SetFace / materialiseFused), after this
+	// move.
+	if dst.Kind != ZoneStack {
+		c.Fused = false
+	}
+	if IsSplitCard(c) {
+		switch dst.Kind {
+		case ZoneStack:
+		case ZoneBattlefield:
+			if HasSharedTypeLine(c) {
+				c.materialiseDoors()
+			} else {
+				c.materialiseSplitWhole()
+			}
+		default:
+			c.materialiseSplitWhole()
+		}
 	}
 	dst.PushTop(c)
 	return c, nil

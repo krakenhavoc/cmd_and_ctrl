@@ -1242,13 +1242,23 @@ function specialActionItems(card: CardView, actor: string): MenuItem[] {
       charged_mana_cost: sa.charged_cost,
     });
     return {
-      id: `special-${sa.kind}`,
+      // ADR 0103: a Room offers one unlock per door, so the door is
+      // part of the id and of the payload.
+      id: sa.door ? `special-${sa.kind}-${sa.door}` : `special-${sa.kind}`,
       label: sa.label || sa.kind,
       hint: sa.available ? costNote || undefined : "not right now",
       disabled: !sa.available,
       action: {
         type: "special_action" as ActionType,
-        params: { card_id: card.instance_id, kind: sa.kind, strict: true, auto_tap: true },
+        params: sa.door
+          ? {
+              card_id: card.instance_id,
+              kind: sa.kind,
+              door: sa.door,
+              strict: true,
+              auto_tap: true,
+            }
+          : { card_id: card.instance_id, kind: sa.kind, strict: true, auto_tap: true },
         player: actor,
       },
     };

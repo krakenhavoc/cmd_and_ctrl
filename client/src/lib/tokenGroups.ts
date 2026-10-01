@@ -44,7 +44,14 @@ import type { CardView } from "./protocol";
 // isToken is the test the engine makes (game.Card.IsToken): "Token" is
 // a supertype on the type line, and the view's type line is the
 // effective one, which keeps the supertype.
-export function isToken(c: Pick<CardView, "type_line">): boolean {
+//
+// ADR 0078 puts the same answer on the wire directly (`is_token`), so
+// a server that has it wins outright — no reason to keep re-deriving
+// from a string once the field exists. The type-line test survives as
+// the fallback for a view (or a fixture) that predates the field, so
+// nothing here needed to change the day it shipped.
+export function isToken(c: Pick<CardView, "type_line" | "is_token">): boolean {
+  if (c.is_token !== undefined) return c.is_token;
   return !!c.type_line && /\btoken\b/i.test(c.type_line);
 }
 

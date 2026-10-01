@@ -608,6 +608,16 @@ Reach for `BoostUntilEOT` / `GrantKeywordUntilEOT` for the first row and `Scoped
 
 **Control from effects (CR 613.1b, CR 701.12, S38).** "Gain control of target permanent" is `GainControl{Target, Controller, Duration, Label}` and "exchange control" is `ExchangeControl{A, B}`. Both are layer-2 scoped effects — data records with one `setController` mod (#1497) — in the same bucket Mind Control's Aura uses, which is what makes control revert by itself (`Card.BaseController`) and makes two control effects sort by timestamp (CR 613.7) with no card-side work. Do NOT write `Card.Controller`. Three things ride along and are why the printed cards look the way they do: the permanent leaves combat (CR 506.4, declaration and announcement both), it is summoning-sick under its new controller however long it has been in play (CR 302.6 — which is why Act of Treason also grants haste), and ownership never changes (CR 108.3). An exchange is ONE effect: both objects are checked before either half is registered and the two halves share a timestamp, so it fails whole (CR 701.12b). `Controller` defaults to the effect's controller; pass it explicitly for "target opponent gains control of ~" — that card still waits on the choose-a-player prompt, not on this primitive.
 
+**Control of a SPELL (ADR 0104, #1745).** "Gain control of target spell. You may choose new targets for it." is `GainControlOfSpell{Spell, ChooseNewTargets: true}`, and "exchange control of this creature and that spell" is `ExchangeControlOfSpellAnd{Spell, Permanent, ChooseNewTargets}`. It is the same layer-2 record as above, pinned to the stack object, so do NOT write `StackItem.Controller` either. The stack step of the layer pass materialises it before the primitive returns, and everything else follows with no card-side work:
+
+- the spell's "you" is the thief at resolution (CR 608.2c);
+- "choose new targets" is asked of the new controller, with legality judged for them (CR 115.7d);
+- a permanent spell enters under the thief with the caster as its default controller (CR 110.2b, CR 400.7a);
+- a thief leaving the game hands everything back (CR 800.4a);
+- "if you cast it" (`Card.CastByItsController`) is false for the thief.
+
+An optional "you may" that trades the source for the spell declares `OptionalPrompt.Trade`, so a bot can weigh the trade (Perplexing Chimera).
+
 ### Granting an ability to another permanent (ADR 0093, #754)
 
 "Creatures you control have '{T}: Add one mana of any color.'" is a
@@ -2256,6 +2266,75 @@ before the X / mode / target prompts; they ride `cast_spell` as
 `discard_ids` and the engine validates them at announce (the spell
 itself is never a legal pick — CR 601.2a already moved it to the
 stack). See [ADR 0021](decisions/0021-additional-costs.md).
+
+"The discarded card" (Grab the Prize: "if the discarded card wasn't a
+land card") is `ctx.Discarded()`, the instance IDs the additional cost
+discarded, in the order named (`PaidCost.Discarded`, ADR 0100). Look the
+card up with `LookupCardForEffect`; it keeps its ID wherever it has gone
+since, and a copy of the spell reads the original's (CR 707.10).
+
+**Either/or additional costs (ADR 0100 sub-PR 3):** "As an additional
+cost to cast this spell, sacrifice an artifact or discard a card" is ONE
+mandatory cost with branches, in the same `Spec.AdditionalCost` slot.
+Each branch is an ordinary cost with a `Key`, in printed order:
+
+```go
+AdditionalCost: EitherCost(
+    SacrificeCost("an artifact", Artifact()).Keyed("sacrifice"),
+    DiscardCost(1).Keyed("discard"),
+),                                                                  // Demand Answers
+AdditionalCost: EitherCost(DiscardCost(1).Keyed("discard"), ManaAdditionalCost("{5}").Keyed("mana")), // Lightning Axe
+AdditionalCost: EitherCost(DiscardCost(1).Keyed("discard"), PayLifeCost(3).Keyed("life")),            // Bitter Triumph
+AdditionalCost: EitherCost(BlightCost(2).Keyed("blight"), ManaAdditionalCost("{1}").Keyed("mana")),   // Wild Unraveling
+```
+
+A branch may carry mana (`ManaAdditionalCost`, priced at CR 601.2f like
+a kicker's, so a cost modifier sees it), a discard, a fixed-count
+sacrifice, a fixed life payment (`PayLifeCost`) or a blight
+(`BlightCost`). The caster announces the branch as `cost_branch`; the
+client offers it as a radio in the cost picker, and the bot is offered
+one move per payable branch. A resolution that cares which branch was
+paid reads `ctx.PaidCostBranch("modified")` (Lethal Throwdown). Register
+refuses fewer than two branches, a branch without a unique `Key`, an
+empty, optional, repeating or nested branch, a variable sacrifice in a
+branch, and components on the branched cost itself. Reveal, behold,
+"tap an untapped artifact", "exile two cards from your graveyard" and
+forage have no branch component yet: leave those cards out (the
+Either/or additional costs registry row lists them).
+
+**Variable sacrifice costs on a cast (ADR 0100 sub-PR 4):** two more
+shapes of the mandatory sacrifice clause, beside `SacrificeCost` and
+`SacrificeNCost`:
+
+```go
+AdditionalCost: SacrificeAnyNumberCost("any number of creatures", Creature()), // Vicious Betrayal
+AdditionalCost: SacrificeAnyNumberCost("one or more creatures", Creature()),   // Plumb the Forbidden ("you may sacrifice one or more")
+AdditionalCost: SacrificeXCost("X lands", Land()),                             // Devastating Summons
+SelfCostModifiers: []game.CostModifier{
+    CostsLessPerSacrificed("{2}", "This spell costs {2} less to cast for each creature sacrificed this way"),
+},                                                                             // Torgaar, Famine Incarnate
+```
+
+"Sacrifice any number of", "you may sacrifice any number of" and "you
+may sacrifice one or more" are all `SacrificeAnyNumberCost`: sacrificing
+none is not paying, so "you may" and "any number" mean the same thing,
+and it is the MANDATORY slot, not an optional cost. The count is read
+back with `ctx.Sacrificed()` (`PaidCost.Sacrificed`); a "when you do"
+that follows it (Plumb the Forbidden) is a cast trigger that fires when
+the count is at least one. `SacrificeXCost`'s count is the announced X
+(`ctx.X()`, CR 107.3a / 107.3i), so "destroy X target creatures" is the
+ordinary `CountFromX` target clause. A per-sacrifice discount is
+`CostsLessPerSacrificed` in `SelfCostModifiers`; it reads
+`CostQuery.Sacrificing`, so the preview, the bot and `CastSpell` all
+charge the discounted price. Register refuses a variable clause in an
+optional cost or an either/or branch, beside any other sacrifice in the
+plan (a sacrificing kicker or buyback), and "sacrifice X" beside "pay X
+life"; "any number" on an ability is still refused, because a cost an
+ability can pay with nothing is free. A card whose text reads the
+SACRIFICED permanents themselves — Corpse Cobble's "the total power of
+the sacrificed creatures" — needs last-known information for the list,
+which does not exist yet: leave it out (the Variable sacrifice costs on spells
+registry row lists it).
 
 **Gift (CR 702.174, [ADR 0089](decisions/0089-gift.md)):** one
 field, and never a hand-rolled optional cost:
@@ -4982,8 +5061,18 @@ and then discard the change to `docs/engine-seams.md`.
   paying the generic mana, priced next to convoke by the one pricer
   (`CastPrice.DelveBudget`); the engine exiles the named graveyard
   cards at CR 601.2h and records them in `PaidCost.Delved`. A card that
-  reads the cards "exiled with it" — Murktide Regent, Soulflayer — waits
-  on sub-PR 2's readers.) (Ordinary activated abilities built from
+  reads the cards "exiled with it" (CR 607.2q, ADR 0100 sub-PR 2) never
+  ranges that record itself: "enters with a counter for each … card
+  exiled with it" is `CountersPerDelved(kind, match)` in
+  `EntersWithCountersFromCast` (Murktide Regent); a static or a trigger
+  reads the permanent's link, `source.Delved()` or
+  `ctx.SourcePermanent()`'s `Delved` (which survives the permanent
+  leaving), and resolves it with `g.DelvedCardsForEffect`, which keeps
+  only the cards still in exile as the objects delve put there
+  (Soulflayer, Ethereal Forager). A static that reads them sets
+  `DependsOnExile`, or it goes stale when one leaves exile. "Spells you
+  cast have delve" is `SpellsYouCastHaveDelve: true` (Teval, Arbiter of
+  Virtue).) (Ordinary activated abilities built from
   those components are fine since S21: see `Spec.Activated`
   above.) Shipping a card with a cost the engine
   can't express simply omitted makes it **stronger than printed**, which
@@ -5122,7 +5211,7 @@ Three things to know:
 A **designation** is a marker a permanent has on the battlefield that
 switches some of its own printed abilities on — a Class's level
 (CR 716.2), a Case being solved (CR 719.3), a station card's charge
-counters (CR 721.2), and later a Room's unlocked door (CR 709.5). Four
+counters (CR 721.2), and a Room's unlocked door (CR 709.5, below). Four
 printed mechanics, one gate:
 [ADR 0071](decisions/0071-designations-that-switch-abilities-on.md).
 
@@ -5153,6 +5242,54 @@ proliferates or doubles it, a copy does not take it (CR 716.2c,
 (CR 400.7). A new designation needs a kind, an arm in
 `Designation.Active`, and a layer-version bump on the event that
 changes it — nothing else.
+
+### Adding a Room or a split card (ADR 0103, #1756)
+
+A **Room** (CR 709.5) is one catalog entry for both doors, keyed on the
+bare oracle ID, built with `Room(RoomSpec{…})` in
+[rooms.go](../server/internal/cards/effects/rooms.go):
+
+```go
+Register(Room(RoomSpec{
+    OracleID: "d5f31713-d380-42ba-8052-4b8d9beb3958",
+    Name:     "Roaring Furnace // Steaming Sauna",
+    Left:  Door{Triggered: []game.TriggeredAbility{WhenYouUnlockThisDoor(game.DoorLeft, "Roaring Furnace — …", effect)}},
+    Right: Door{NoMaxHandSize: true, Triggered: []game.TriggeredAbility{AtYourEndStep("Steaming Sauna — draw a card", draw)}},
+}))
+```
+
+`Room` stamps `ActiveWhen: DoorUnlocked(side)` on every ability of each
+door, and Register refuses a Room with an ungated ability, or one with
+an ability in a slot a door cannot reach (a mana ability, an "as
+enters" hook), and a door gate on anything that is not a Room. A door
+may carry statics, triggers, activated abilities, cost modifiers,
+trigger doublers, gated cast permissions, replacements, untap-step
+permissions and "no maximum hand size".
+
+Write nothing else about the lifecycle — it is the engine's: casting
+either half, entering with the cast door unlocked (CR 709.5d), a locked
+half's missing name, cost and text, the `unlock` special action
+(CR 709.5e), and CR 400.7 relocking a Room that leaves. The trigger
+shapes are `WhenYouUnlockThisDoor(side, …)` (fires as the Room enters
+with that door too, CR 709.5h), `WheneverYouFullyUnlockARoom(…)` and
+`Eerie(…)`; the instructions are `UnlockADoor`, `LockOrUnlockADoor` and
+`UnlockALockedDoorOfARoomYouControl`; the readers are
+`UnlockedDoorsYouControl`, `UnlockedDoorNamesYouControl` and
+`IsFullyUnlocked`. Mana that may pay only for unlocking is
+`game.ManaRestrictUnlock`, combined with a cast clause through
+`game.ManaRestrictAnyOf` (Smoky Lounge). A card's names are
+`game.NamesOf(c)` — a split card has two (CR 709.4a).
+
+An ordinary **split card** registers its halves as ADR 0034 faces: the
+left under the bare oracle ID, the right under `"<oracle>#1"`. Either
+half is cast (CR 709.3); aftermath's half only from a graveyard
+(CR 702.127a) — found from the face's own oracle text, no declaration
+needed. A card with fuse can also be cast fused from hand
+(CR 702.102): the engine builds that spell's definition from the two
+halves' entries, its clauses the left half's then the right half's,
+resolving left then right, each half reading its own targets under its
+own clause numbering. A fused cast of a card whose halves declare modes
+or additional costs is refused.
 
 ### Abilities from the hand (#660)
 

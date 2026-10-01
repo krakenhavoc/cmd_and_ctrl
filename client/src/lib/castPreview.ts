@@ -35,9 +35,11 @@ export interface AutoTapCastParams {
   tapIDs?: string[];
   face?: number;
   // #1242: the cards and permanents named to the additional cost.
-  // They do not change the price; they change what the auto-tapper
-  // may spend on it — the server will not crack the Eldrazi Spawn a
-  // cast offers to Village Rites, so the preview must not either.
+  // They change what the auto-tapper may spend on it — the server will
+  // not crack the Eldrazi Spawn a cast offers to Village Rites, so the
+  // preview must not either. ADR 0100 §3: and the sacrifice count can
+  // change the PRICE — Torgaar's "{2} less for each creature sacrificed
+  // this way" — which the server reads off this list.
   sacrificeIDs?: string[];
   discardIDs?: string[];
   // #1703: the creatures tapped for teamwork and the one blighted. A
@@ -47,6 +49,9 @@ export interface AutoTapCastParams {
   // ADR 0100: the graveyard cards named to delve. They DO change the
   // price — each pays {1} of the generic.
   delveIDs?: string[];
+  // ADR 0100 §2: the either/or branch being paid. Its mana ("pay {5}")
+  // joins the total, so the preview has to know which.
+  costBranch?: number;
 }
 
 // castPreviewParams projects the choices announced so far onto the
@@ -73,6 +78,7 @@ export function castPreviewParams(choices: CastChoices | null | undefined): Auto
   }
   if (choices.blightIDs && choices.blightIDs.length > 0) out.blightIDs = [...choices.blightIDs];
   if (choices.delveIDs && choices.delveIDs.length > 0) out.delveIDs = [...choices.delveIDs];
+  if (choices.costBranch !== undefined) out.costBranch = choices.costBranch;
   return out;
 }
 
@@ -124,5 +130,12 @@ export function castPreviewParamsFromPayload(
   if (blight.length > 0) out.blightIDs = blight;
   const delve = stringIDs(payload.delve_ids);
   if (delve.length > 0) out.delveIDs = delve;
+  if (
+    typeof payload.cost_branch === "number" &&
+    Number.isInteger(payload.cost_branch) &&
+    payload.cost_branch >= 0
+  ) {
+    out.costBranch = payload.cost_branch;
+  }
   return out;
 }

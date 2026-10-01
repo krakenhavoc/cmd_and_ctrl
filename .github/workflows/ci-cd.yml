@@ -8,6 +8,20 @@ on:
     branches:
       - main
       - develop
+    # A push that changes nothing but the two generated files is
+    # census-publish's own commit (below): skip the whole run, so it
+    # neither re-tests nor redeploys dev or prod for a docs block.
+    # This used to be a skip-CI marker in that commit's message, but
+    # GitHub honours the marker for pull_request events too, on any PR
+    # whose head is that commit, and the develop -> main promotion
+    # PR's head is develop's tip. Whenever the census commit was the
+    # tip, the promotion got no checks and sat blocked (#1810). The
+    # filter is on `push` only, so a PR still runs on that head.
+    # A human push is skipped only if it touches these two files and
+    # nothing else, and neither file is part of what gets deployed.
+    paths-ignore:
+      - docs/decklists/card-coverage-roadmap.md
+      - docs/engine-seams.md
   pull_request:
   # Validate any branch on demand: Actions -> this workflow -> Run workflow.
   #
@@ -677,7 +691,7 @@ jobs:
 
           short_sha=$(git rev-parse --short HEAD)
           git add -- "${ALLOW_FILES[@]}"
-          git commit -m "chore(census): refresh the catalog census and closed seams for ${short_sha} [skip ci]"
+          git commit -m "chore(census): refresh the catalog census and closed seams for ${short_sha}"
 
           push_once() {
             git push "${REMOTE_URL}" "HEAD:${BRANCH}" 2>"${RUNNER_TEMP}/push.err"
@@ -725,7 +739,7 @@ jobs:
           fi
           short_sha=$(git rev-parse --short HEAD)
           git add -- "${ALLOW_FILES[@]}"
-          git commit -m "chore(census): refresh the catalog census and closed seams for ${short_sha} [skip ci]"
+          git commit -m "chore(census): refresh the catalog census and closed seams for ${short_sha}"
 
           if push_once; then
             echo "census refresh pushed for ${short_sha} (after one retry)"

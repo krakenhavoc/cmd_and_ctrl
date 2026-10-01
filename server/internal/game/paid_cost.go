@@ -202,6 +202,42 @@ type PaidCost struct {
 	// Not copied onto a CR 707.10 copy of the spell: a copy was not
 	// cast, and nothing was exiled to pay for it.
 	Delved []ObjectRef `json:"delved,omitempty"`
+
+	// CostBranch is which branch of an either/or additional cost the
+	// caster announced (CR 601.2b, ADR 0100 §2), as its index in the
+	// card's AdditionalCost.Either PLUS ONE, so 0 keeps meaning "this
+	// cast had no either/or cost" — every cast but a handful. Read by
+	// key through PaidCostBranch (Lethal Throwdown's "if the modified
+	// creature was sacrificed").
+	//
+	// A CR 707.10 copy keeps it: the copy copies "additional or
+	// alternative costs", as it keeps OptionalCosts. Not carried onto
+	// the permanent; no printed permanent reads it.
+	CostBranch int `json:"costBranch,omitempty"`
+
+	// Discarded is the cards the additional cost discarded (ADR 0100,
+	// owner decision 6), in the order named — a branch's discard, a
+	// plain DiscardCost and a discarding optional cost alike. Nil for a
+	// cast that discarded nothing. Grab the Prize reads it: "if the
+	// discarded card wasn't a land card".
+	//
+	// Instance IDs, for the reason Exiled gives: the printed clause
+	// asks about the card that was discarded, and the card is still
+	// findable under that ID wherever it has gone since. A CR 707.10
+	// copy keeps the list — "if an effect of the copy refers to objects
+	// used to pay its costs, it uses the objects used to pay the costs
+	// of the original spell".
+	Discarded []uuid.UUID `json:"discarded,omitempty"`
+}
+
+// PaidCostBranch reports whether the either/or branch keyed `key` was
+// the one paid (ADR 0100 §2). `oracleID` is the catalog key of the card
+// the cost belongs to — the spell for a stack item.
+func (p PaidCost) PaidCostBranch(oracleID, key string) bool {
+	if p.CostBranch <= 0 || key == "" {
+		return false
+	}
+	return CostBranchKey(oracleID, p.CostBranch-1) == key
 }
 
 // PaidTap is one permanent a TapOthers cost tapped, as the payment
@@ -332,7 +368,8 @@ func (p PaidCost) IsZero() bool {
 	return len(p.Mana) == 0 && !p.OnPaper &&
 		p.CountersRemoved == 0 && p.CountersAdded == 0 && p.LifePaid == 0 &&
 		p.Sacrificed == 0 && p.ReturnedAttacking == uuid.Nil && len(p.OptionalCosts) == 0 &&
-		len(p.TappedOthers) == 0 && len(p.Exiled) == 0 && len(p.Delved) == 0
+		len(p.TappedOthers) == 0 && len(p.Exiled) == 0 && len(p.Delved) == 0 &&
+		p.CostBranch == 0 && len(p.Discarded) == 0
 }
 
 // clonePaidCost deep-copies the record. The ManaToken slice is
@@ -355,6 +392,9 @@ func clonePaidCost(p PaidCost) PaidCost {
 	}
 	if len(p.Delved) > 0 {
 		out.Delved = append([]ObjectRef(nil), p.Delved...)
+	}
+	if len(p.Discarded) > 0 {
+		out.Discarded = append([]uuid.UUID(nil), p.Discarded...)
 	}
 	return out
 }

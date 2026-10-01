@@ -249,6 +249,13 @@ var cardFields = plan(
 	"InstanceID", carried, "",
 	"Name", carried, "",
 	"ScryfallID", carried, "",
+	// ADR 0078: whether ScryfallID above is a resolved ART id rather
+	// than a printed identity. Must be carried alongside it — a
+	// restored 0/0 Construct token has to keep answering
+	// ToughnessIsKnown / fromScryfallPrinting exactly as it did before
+	// the restore, independent of whatever the token-art resolver
+	// would say about a template today.
+	"TokenArtOnly", carried, "",
 	"OracleID", carried, "",
 	// #521: the synthetic catalog key a TOKEN carries instead of an
 	// oracle ID. Carried for the same reason GrantedAbilities is — it
@@ -411,6 +418,8 @@ var cardFields = plan(
 	// ADR 0071 amendment (#1700): the CR 701.37b monstrous
 	// designation, carried for Harnessed's reason.
 	"Monstrous", carried, "",
+	"Unlocked", carried, "",
+	"Fused", carried, "",
 	// ADR 0090 (#1328): the CR 722.3a prepared designation, the
 	// CR 722.3c copy's not-a-card marker, and the permanent object the
 	// copy is kept in exile by. Carried for Solved's reason — every
@@ -545,6 +554,10 @@ var stackItemFields = plan(
 	"ID", carried, "",
 	"Kind", carried, "",
 	"Controller", carried, "",
+	// ADR 0104: the player a stolen spell reverts to (CR 110.2b).
+	// Carried: nothing on the restored board says who put a stolen
+	// spell on the stack.
+	"BaseController", carried, "",
 	"Owner", carried, "",
 	"SourceCardID", carried, "",
 	// CR 400.7 (#812): which OBJECT an ability's source was at
@@ -715,6 +728,9 @@ var pendingChoiceFields = plan(
 	"RetargetOptional", carried, "",
 	"RetargetSlot", carried, "",
 	"RetargetReason", carried, "",
+	// #1743: a pinned retarget's destination, which is what makes the
+	// answer "which slot" rather than "where to".
+	"RetargetTo", carried, "",
 	// #764 mode_pick. Carried for the same reason ChooseCards is:
 	// the offered options ARE the prompt, and a restored game that
 	// forgot them would put a question with no answers in front of a

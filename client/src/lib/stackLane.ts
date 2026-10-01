@@ -490,6 +490,17 @@ export function buildStackLane(input: StackLaneInput): StackLaneModel {
     if (item.kind !== "spell") chips.push({ label: item.kind, tone: "plain" });
     const doubled = doubledTriggerLabel(item.doubled_by, item.doubled_by_name);
     if (doubled) chips.push({ label: doubled, tone: "flag" });
+    // ADR 0104: a spell another player took on the stack. The lane is
+    // coloured for its new controller; the chip says who it was taken
+    // from, which nothing else on the item does.
+    if (item.default_controller && item.default_controller !== item.controller) {
+      const from = seatByID.get(item.default_controller)?.name ?? "another player";
+      chips.push({
+        label: `taken from ${from}`,
+        tone: "flag",
+        title: `${from} cast this spell; it now resolves for ${seatByID.get(item.controller)?.name ?? "its new controller"}`,
+      });
+    }
     if (card?.auto) {
       chips.push({
         label: "auto",

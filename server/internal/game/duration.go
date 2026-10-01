@@ -257,6 +257,60 @@ type Duration struct {
 	// written before it reads the same; an older binary that ignores
 	// it gets the pre-#1558 wildcard back.
 	PinnedUnstamped bool `json:"PinnedUnstamped,omitempty"`
+
+	// PinnedOnStack and PinnedEpoch are the pin for a SPELL (ADR 0104,
+	// #1745): Pinned names an object on the stack, as the instance it
+	// is now plus the Card.ObjectEpoch it has there. The effect ends
+	// once that object is no longer on the stack, which is what
+	// collects the record of a stolen spell that is countered or
+	// resolves as an instant. A stolen PERMANENT spell's record is
+	// re-pinned to the permanent as it lands (CR 400.7a), before this
+	// check can see it gone. Omitted when false, so every duration
+	// written before them reads the same.
+	//
+	// PinnedEpoch without PinnedOnStack (and with PinnedEnteredAt 0 and
+	// PinnedUnstamped false) pins a PERMANENT by its ObjectEpoch rather
+	// than its entry stamp — PinnedToEpoch, AffectedObject's
+	// PinObjectByEpoch on the duration side.
+	PinnedOnStack bool `json:"PinnedOnStack,omitempty"`
+	PinnedEpoch   int  `json:"PinnedEpoch,omitempty"`
+}
+
+// PinnedToEpoch is PinnedTo for a permanent named by its ObjectEpoch
+// (ADR 0104): the pin a stolen permanent spell's record takes as the
+// permanent lands, before the entry stamp exists. `d` is returned
+// unchanged when `object` is not on the battlefield or has no epoch.
+//
+// Caller must hold g.mu.
+func (g *Game) PinnedToEpoch(d Duration, object uuid.UUID) Duration {
+	c, ok := g.battlefieldCardLocked(object)
+	if !ok || c.ObjectEpoch <= 0 {
+		return d
+	}
+	d.Pinned = object
+	d.PinnedEnteredAt = 0
+	d.PinnedUnstamped = false
+	d.PinnedOnStack = false
+	d.PinnedEpoch = c.ObjectEpoch
+	return d
+}
+
+// PinnedToStack is PinnedTo for a spell on the stack (ADR 0104): the
+// duration also ends when that object leaves the stack. `d` is
+// returned unchanged when `object` is not a card on the stack.
+//
+// Caller must hold g.mu.
+func (g *Game) PinnedToStack(d Duration, object uuid.UUID) Duration {
+	c, ok := g.stackCardLocked(object)
+	if !ok {
+		return d
+	}
+	d.Pinned = object
+	d.PinnedEnteredAt = 0
+	d.PinnedUnstamped = false
+	d.PinnedOnStack = true
+	d.PinnedEpoch = c.ObjectEpoch
+	return d
 }
 
 // UntilEndOfTurnDuration is "until end of turn" (CR 514.2), stamped
@@ -423,7 +477,19 @@ func (g *Game) durationExpiredLocked(d Duration, endOfTurn bool) bool {
 	// the one check that looks in g.PhasedOut: a ForAsLongAs condition
 	// below still reads the battlefield alone, because CR 702.26f ends
 	// a duration that tracks a permanent once it phases out.
-	if d.Pinned != uuid.Nil && !g.sameObjectPresentLocked(d.Pinned, d.PinnedEnteredAt, d.PinnedUnstamped) {
+	if d.Pinned != uuid.Nil && d.PinnedOnStack {
+		// ADR 0104: a spell's pin. Over once that object has left the
+		// stack, whatever the kind says.
+		if c, ok := g.stackCardLocked(d.Pinned); !ok || c.ObjectEpoch != d.PinnedEpoch {
+			return true
+		}
+	} else if d.Pinned != uuid.Nil && d.PinnedEpoch > 0 && d.PinnedEnteredAt == 0 && !d.PinnedUnstamped {
+		// ADR 0104: a permanent pinned by its epoch. Phasing keeps the
+		// object (CR 702.26d), so a phased-out one is still it.
+		if !g.sameEpochPresentLocked(d.Pinned, d.PinnedEpoch) {
+			return true
+		}
+	} else if d.Pinned != uuid.Nil && !g.sameObjectPresentLocked(d.Pinned, d.PinnedEnteredAt, d.PinnedUnstamped) {
 		return true
 	}
 	switch d.Kind {

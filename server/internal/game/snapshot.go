@@ -334,7 +334,9 @@ type GameSnapshot struct {
 	// Decisions 3 and 10). Pure data, additive within v7. A file
 	// without them (written before the plan, or by an older binary)
 	// restores with the template's tail after the current step, which
-	// is the only plan such a game can have had. An older binary
+	// is the only plan such a game can have had, and with the ordinals
+	// and step/phase counts that walk implies
+	// (derivePrePlanOrdinalsLocked). An older binary
 	// reading a newer file drops them and loses any added phase still
 	// to come: weaker, never stronger, until the next deploy.
 	TurnPlan    []PlannedStep `json:"turnPlan,omitempty"`
@@ -633,9 +635,15 @@ type zoneSnapshot struct {
 // snapshotCard always sets it, so every file this binary writes
 // carries the key; restore backfills it when the key is missing.
 type cardSnapshot struct {
-	InstanceID        uuid.UUID      `json:"instanceId"`
-	Name              string         `json:"name"`
-	ScryfallID        string         `json:"scryfallId,omitempty"`
+	InstanceID uuid.UUID `json:"instanceId"`
+	Name       string    `json:"name"`
+	ScryfallID string    `json:"scryfallId,omitempty"`
+	// TokenArtOnly: carried, not derived — ADR 0078. A restored 0/0
+	// Construct token must keep answering ToughnessIsKnown exactly as
+	// it did before the restore; recomputing this from the CURRENT
+	// resolver state would let a dump refresh between capture and
+	// restore change the answer for a token that already existed.
+	TokenArtOnly      bool           `json:"tokenArtOnly,omitempty"`
 	OracleID          string         `json:"oracleId,omitempty"`
 	TokenKey          string         `json:"tokenKey,omitempty"`
 	TypeLine          string         `json:"typeLine,omitempty"`
@@ -781,6 +789,12 @@ type cardSnapshot struct {
 	// would silently hand a monstrous Polukranos a second
 	// "becomes monstrous" trigger.
 	Monstrous bool `json:"monstrous,omitempty"`
+	// Unlocked is a Room's two CR 709.5c unlocked designations and
+	// Fused a fused split spell's mark on the stack (ADR 0103). Both
+	// carried: a restore that dropped Unlocked would bring a Room back
+	// with its door abilities switched off, a legal-looking state.
+	Unlocked DoorMask `json:"unlocked,omitempty"`
+	Fused    bool     `json:"fused,omitempty"`
 	// Prepared, PrepareCopy and PreparedBy are ADR 0090's CR 722.3
 	// state: the designation on the permanent, and the not-a-card
 	// marker and permanent link on the copy it keeps in exile. Carried
@@ -1006,18 +1020,22 @@ func (s *GameSnapshot) AbilityShortfalls() []AbilityShortfall {
 // stackItemSnapshot mirrors StackItem. Effect and targetSpec are both
 // func-bearing; see rehydrateStackItem for which ones come back.
 type stackItemSnapshot struct {
-	ID            uuid.UUID     `json:"id"`
-	Kind          StackItemKind `json:"kind"`
-	Controller    uuid.UUID     `json:"controller"`
-	Owner         uuid.UUID     `json:"owner"`
-	SourceCardID  uuid.UUID     `json:"sourceCardId"`
-	SourceEpoch   int           `json:"sourceEpoch,omitempty"`
-	SourceObject  *ObjectRef    `json:"sourceObject,omitempty"` // #1418; nil = unstamped
-	Label         string        `json:"label,omitempty"`
-	DoubledBy     uuid.UUID     `json:"doubledBy,omitempty"`
-	DoubledByName string        `json:"doubledByName,omitempty"`
-	Targets       []TargetRef   `json:"targets,omitempty"`
-	Payload       []TargetRef   `json:"payload,omitempty"`
+	ID         uuid.UUID     `json:"id"`
+	Kind       StackItemKind `json:"kind"`
+	Controller uuid.UUID     `json:"controller"`
+	// BaseController is StackItem.BaseController (ADR 0104): the
+	// player a stolen spell reverts to. Omitted when zero, which is
+	// every item nothing ever took.
+	BaseController uuid.UUID   `json:"baseController,omitempty"`
+	Owner          uuid.UUID   `json:"owner"`
+	SourceCardID   uuid.UUID   `json:"sourceCardId"`
+	SourceEpoch    int         `json:"sourceEpoch,omitempty"`
+	SourceObject   *ObjectRef  `json:"sourceObject,omitempty"` // #1418; nil = unstamped
+	Label          string      `json:"label,omitempty"`
+	DoubledBy      uuid.UUID   `json:"doubledBy,omitempty"`
+	DoubledByName  string      `json:"doubledByName,omitempty"`
+	Targets        []TargetRef `json:"targets,omitempty"`
+	Payload        []TargetRef `json:"payload,omitempty"`
 	// Trigger is the triggering event (#1223). Carried, and it has
 	// to be: a targeted trigger waiting on its CR 603.3d prompt is a
 	// restorable snapshot, and a restore that lost the event would
@@ -1150,12 +1168,17 @@ type pendingChoiceSnapshot struct {
 	// whether declining is allowed, which slot is being asked, and
 	// the card's own header for the rest of the walk. A restored
 	// game with these missing would put a question about nothing in
-	// front of a seat.
+	// front of a seat. RetargetTo (#1743) is a pinned retarget's
+	// destination: without it a restored "which target becomes
+	// Spellskite" prompt would be answered as a free retarget, moving
+	// the chosen slot onto the object the chooser clicked — the
+	// target it already had.
 	RetargetItem     uuid.UUID      `json:"retargetItem,omitempty"`
 	RetargetPolicy   RetargetPolicy `json:"retargetPolicy,omitempty"`
 	RetargetOptional bool           `json:"retargetOptional,omitempty"`
 	RetargetSlot     int            `json:"retargetSlot,omitempty"`
 	RetargetReason   string         `json:"retargetReason,omitempty"`
+	RetargetTo       TargetRef      `json:"retargetTo,omitempty"`
 	ModeOptionIndex  []int          `json:"modeOptionIndex,omitempty"`
 	ModeOptionLabel  []string       `json:"modeOptionLabel,omitempty"`
 	ModeMin          int            `json:"modeMin,omitempty"`
@@ -1731,6 +1754,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		InstanceID:               c.InstanceID,
 		Name:                     c.Name,
 		ScryfallID:               c.ScryfallID,
+		TokenArtOnly:             c.TokenArtOnly,
 		OracleID:                 c.OracleID,
 		TokenKey:                 c.TokenKey,
 		TypeLine:                 c.TypeLine,
@@ -1791,6 +1815,8 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		Solved:                   c.Solved,
 		Harnessed:                c.Harnessed,
 		Monstrous:                c.Monstrous,
+		Unlocked:                 c.Unlocked,
+		Fused:                    c.Fused,
 		Prepared:                 c.Prepared,
 		PrepareCopy:              c.PrepareCopy,
 		PreparedBy:               c.PreparedBy,
@@ -1880,41 +1906,42 @@ func snapshotStackItem(g *Game, s *StackItem, cen *ContinuationCensus) stackItem
 // no zone at all).
 func snapshotStackItemAs(s *StackItem, oracleID string, cen *ContinuationCensus) stackItemSnapshot {
 	out := stackItemSnapshot{
-		ID:            s.ID,
-		Kind:          s.Kind,
-		Controller:    s.Controller,
-		Owner:         s.Owner,
-		SourceCardID:  s.SourceCardID,
-		SourceEpoch:   s.SourceEpoch,
-		SourceObject:  s.SourceObject.stamped(),
-		Label:         s.Label,
-		DoubledBy:     s.DoubledBy,
-		DoubledByName: s.DoubledByName,
-		Targets:       copyTargetRefs(s.Targets),
-		Payload:       copyTargetRefs(s.Payload),
-		Trigger:       cloneTriggerContext(s.Trigger),
-		Modes:         copyInts(s.Modes),
-		XValue:        s.XValue,
-		Distribution:  copyIntMap(s.Distribution),
-		HoldPriority:  s.HoldPriority,
-		CastFromZone:  s.CastFromZone,
-		AltCost:       s.AltCost,
-		Foretold:      s.Foretold,
-		FaceDown:      s.FaceDown,
-		AltCostExiles: s.AltCostExiles,
-		SplitSecond:   s.SplitSecond,
-		IsCopy:        s.IsCopy,
-		Uncopyable:    s.Uncopyable,
-		Seq:           s.Seq,
-		Ordered:       s.Ordered,
-		Commutes:      s.Commutes,
-		Paid:          clonePaidCost(s.Paid),
-		HasEffect:     s.Effect != nil,
-		HasTargetSpec: s.targetSpec != nil,
-		HasModeSpec:   s.modeSpec != nil,
-		OracleID:      oracleID,
-		Body:          s.Body,
-		Params:        effectParamsOrNil(s.Params),
+		ID:             s.ID,
+		Kind:           s.Kind,
+		Controller:     s.Controller,
+		BaseController: s.BaseController,
+		Owner:          s.Owner,
+		SourceCardID:   s.SourceCardID,
+		SourceEpoch:    s.SourceEpoch,
+		SourceObject:   s.SourceObject.stamped(),
+		Label:          s.Label,
+		DoubledBy:      s.DoubledBy,
+		DoubledByName:  s.DoubledByName,
+		Targets:        copyTargetRefs(s.Targets),
+		Payload:        copyTargetRefs(s.Payload),
+		Trigger:        cloneTriggerContext(s.Trigger),
+		Modes:          copyInts(s.Modes),
+		XValue:         s.XValue,
+		Distribution:   copyIntMap(s.Distribution),
+		HoldPriority:   s.HoldPriority,
+		CastFromZone:   s.CastFromZone,
+		AltCost:        s.AltCost,
+		Foretold:       s.Foretold,
+		FaceDown:       s.FaceDown,
+		AltCostExiles:  s.AltCostExiles,
+		SplitSecond:    s.SplitSecond,
+		IsCopy:         s.IsCopy,
+		Uncopyable:     s.Uncopyable,
+		Seq:            s.Seq,
+		Ordered:        s.Ordered,
+		Commutes:       s.Commutes,
+		Paid:           clonePaidCost(s.Paid),
+		HasEffect:      s.Effect != nil,
+		HasTargetSpec:  s.targetSpec != nil,
+		HasModeSpec:    s.modeSpec != nil,
+		OracleID:       oracleID,
+		Body:           s.Body,
+		Params:         effectParamsOrNil(s.Params),
 	}
 	// ADR 0041 P9 (#1497, tier 4): the census fold. An item is counted
 	// ONCE, whatever it holds, because the question is one question —
@@ -2077,6 +2104,7 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		RetargetOptional:     c.RetargetOptional,
 		RetargetSlot:         c.RetargetSlot,
 		RetargetReason:       c.RetargetReason,
+		RetargetTo:           c.RetargetTo,
 		ModeOptionIndex:      copyInts(c.ModeOptionIndex),
 		ModeOptionLabel:      copyStrings(c.ModeOptionLabel),
 		ModeMin:              c.ModeMin,
@@ -2375,6 +2403,9 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.NextExtraRef = s.NextExtraRef
 	g.TurnPlan = clonePlan(s.TurnPlan)
 	g.NextPhaseID = s.NextPhaseID
+	// A file from before the plan names no nextPhaseId at all: every
+	// game with a plan has at least the template's 5 (#753).
+	prePlan := len(s.TurnPlan) == 0 && s.NextPhaseID == 0 && g.Turn.Step != ""
 	if len(g.TurnPlan) > 0 || g.Turn.Step == StepCleanup {
 		// A file written with the plan: it describes this cursor.
 		g.planAt = g.planCursorLocked()
@@ -2391,6 +2422,9 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.SpellsCastThisTurn = copyTallyMap(s.SpellsCastThisTurn)
 	g.ForetoldThisTurn = copyIntMap(s.ForetoldThisTurn)
 	g.TurnTally = cloneTurnTally(s.TurnTally)
+	if prePlan && len(g.TurnTally.StepsBegun) == 0 && len(g.TurnTally.PhasesBegun) == 0 {
+		g.derivePrePlanOrdinalsLocked()
+	}
 	g.Activations = cloneActivationTally(s.Activations)
 	g.LoopNotice = cloneLoopNotice(s.LoopNotice)
 	g.LoopThreshold = s.LoopThreshold
@@ -2507,6 +2541,7 @@ func restoreCard(c *cardSnapshot) Card {
 		InstanceID:               c.InstanceID,
 		Name:                     c.Name,
 		ScryfallID:               c.ScryfallID,
+		TokenArtOnly:             c.TokenArtOnly,
 		OracleID:                 c.OracleID,
 		TokenKey:                 c.TokenKey,
 		TypeLine:                 c.TypeLine,
@@ -2565,6 +2600,8 @@ func restoreCard(c *cardSnapshot) Card {
 		Solved:                   c.Solved,
 		Harnessed:                c.Harnessed,
 		Monstrous:                c.Monstrous,
+		Unlocked:                 c.Unlocked,
+		Fused:                    c.Fused,
 		Prepared:                 c.Prepared,
 		PrepareCopy:              c.PrepareCopy,
 		PreparedBy:               c.PreparedBy,
@@ -2703,37 +2740,38 @@ func restorePlayer(p *playerSnapshot) *Player {
 // caller flags its source.
 func restoreStackItem(s *stackItemSnapshot) (*StackItem, bool) {
 	out := &StackItem{
-		ID:            s.ID,
-		Kind:          s.Kind,
-		Controller:    s.Controller,
-		Owner:         s.Owner,
-		SourceCardID:  s.SourceCardID,
-		SourceEpoch:   s.SourceEpoch,
-		SourceObject:  s.SourceObject.value(),
-		Label:         s.Label,
-		DoubledBy:     s.DoubledBy,
-		DoubledByName: s.DoubledByName,
-		Targets:       copyTargetRefs(s.Targets),
-		Payload:       copyTargetRefs(s.Payload),
-		Trigger:       cloneTriggerContext(s.Trigger),
-		Modes:         copyInts(s.Modes),
-		XValue:        s.XValue,
-		Distribution:  copyIntMap(s.Distribution),
-		HoldPriority:  s.HoldPriority,
-		CastFromZone:  s.CastFromZone,
-		AltCost:       s.AltCost,
-		Foretold:      s.Foretold,
-		FaceDown:      s.FaceDown,
-		AltCostExiles: s.AltCostExiles,
-		SplitSecond:   s.SplitSecond,
-		IsCopy:        s.IsCopy,
-		Uncopyable:    s.Uncopyable,
-		Seq:           s.Seq,
-		Ordered:       s.Ordered,
-		Commutes:      s.Commutes,
-		Paid:          clonePaidCost(s.Paid),
-		Body:          s.Body,
-		Params:        effectParamsValue(s.Params),
+		ID:             s.ID,
+		Kind:           s.Kind,
+		Controller:     s.Controller,
+		BaseController: s.BaseController,
+		Owner:          s.Owner,
+		SourceCardID:   s.SourceCardID,
+		SourceEpoch:    s.SourceEpoch,
+		SourceObject:   s.SourceObject.value(),
+		Label:          s.Label,
+		DoubledBy:      s.DoubledBy,
+		DoubledByName:  s.DoubledByName,
+		Targets:        copyTargetRefs(s.Targets),
+		Payload:        copyTargetRefs(s.Payload),
+		Trigger:        cloneTriggerContext(s.Trigger),
+		Modes:          copyInts(s.Modes),
+		XValue:         s.XValue,
+		Distribution:   copyIntMap(s.Distribution),
+		HoldPriority:   s.HoldPriority,
+		CastFromZone:   s.CastFromZone,
+		AltCost:        s.AltCost,
+		Foretold:       s.Foretold,
+		FaceDown:       s.FaceDown,
+		AltCostExiles:  s.AltCostExiles,
+		SplitSecond:    s.SplitSecond,
+		IsCopy:         s.IsCopy,
+		Uncopyable:     s.Uncopyable,
+		Seq:            s.Seq,
+		Ordered:        s.Ordered,
+		Commutes:       s.Commutes,
+		Paid:           clonePaidCost(s.Paid),
+		Body:           s.Body,
+		Params:         effectParamsValue(s.Params),
 		// Effect stays nil unless the item is keyed. A SPELL does not
 		// need one — resolution dispatches through EffectResolver by
 		// oracle ID — but an ability does, which is why a stack item
@@ -2835,6 +2873,7 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		RetargetOptional:     c.RetargetOptional,
 		RetargetSlot:         c.RetargetSlot,
 		RetargetReason:       c.RetargetReason,
+		RetargetTo:           c.RetargetTo,
 		ModeOptionIndex:      copyInts(c.ModeOptionIndex),
 		ModeOptionLabel:      copyStrings(c.ModeOptionLabel),
 		ModeMin:              c.ModeMin,

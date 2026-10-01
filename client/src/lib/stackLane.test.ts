@@ -173,6 +173,21 @@ describe("stack lane items", () => {
     expect(no.top?.chips.map((c) => c.label)).not.toContain("can't be countered");
   });
 
+  // ADR 0104: a spell another player took on the stack says who it was
+  // taken from, and the lane's caster is its new controller.
+  it("shows a taken-from chip on a stolen spell, and only then", () => {
+    const stolen = buildStackLane(
+      input({ stackItems: [spell("bolt", BOT1, { default_controller: ME })] }),
+    );
+    const chip = stolen.top?.chips.find((c) => c.label.startsWith("taken from"));
+    expect(chip?.label).toBe("taken from LUke");
+    expect(chip?.tone).toBe("flag");
+    expect(stolen.top?.casterSeat).toBe(BOT1);
+
+    const plain = buildStackLane(input({ stackItems: [spell("bolt", ME, {})] }));
+    expect(plain.top?.chips.some((c) => c.label.startsWith("taken from"))).toBe(false);
+  });
+
   it("builds the chips in the order the docked card always drew them", () => {
     const x = spell("bolt", ME, {
       x_value: 3,

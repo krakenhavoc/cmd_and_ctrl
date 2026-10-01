@@ -208,6 +208,20 @@ const (
 	// one batch. Added for #930.
 	EventControlChanged EventKind = "control_changed"
 
+	// EventSpellControlChanged — the SPELL CardID changed controller
+	// on the stack (ADR 0104, #1745; CR 611.1, CR 613.1b). Actor is
+	// the player who GAINED control, Target the player who LOST it,
+	// Source the object whose effect did it (uuid.Nil when control
+	// reverted because the effect ended — a thief leaving the game).
+	//
+	// Its own kind rather than EventControlChanged on purpose: every
+	// watcher of that kind is about a PERMANENT ("an opponent gains
+	// control of a permanent you own", "when you lose control of
+	// this"), and a spell reaching them would be read as one. Emitted
+	// from the stack step of the layer pass, after the store, exactly
+	// as EventControlChanged is (#930).
+	EventSpellControlChanged EventKind = "spell_control_changed"
+
 	// EventCounterPlaced — a counter of Label (see CounterKind /
 	// KnownCardCounters) was placed on or removed from a card.
 	// TARGET names the card — not CardID, which this one leaves
@@ -767,6 +781,34 @@ const (
 	//
 	// Added in S46 (#757).
 	EventCaseSolved EventKind = "case_solved"
+
+	// EventDoorUnlocked — a Room was given one of its unlocked
+	// designations (CR 709.5c, ADR 0103). Source / CardID / Target =
+	// the Room, Actor = the player who unlocked it (the special
+	// action's taker, the instructed player, or the controller as the
+	// Room entered with its cast door unlocked), Amount = the door, as
+	// a DoorSide (1 left, 2 right), Label = that door's name.
+	//
+	// What "when you unlock this door" watches — including as the
+	// permanent enters (CR 709.5h), which is why the entry emits it
+	// right after EventETB. Emitted only on a real change, so an
+	// unlock of a door that is already unlocked says nothing. Bumps
+	// the layer version: a door changes a name, a cost, colours and
+	// which gated statics exist.
+	EventDoorUnlocked EventKind = "door_unlocked"
+
+	// EventDoorLocked — a Room lost one of its unlocked designations
+	// (CR 709.5g). Same fields as EventDoorUnlocked. Bumps the layer
+	// version for the same reason.
+	EventDoorLocked EventKind = "door_locked"
+
+	// EventRoomFullyUnlocked — a Room that had one unlocked
+	// designation got the other, or had neither and got both
+	// (CR 709.5i). Source / CardID / Target = the Room, Actor = the
+	// player who unlocked it. Emitted right after the EventDoorUnlocked
+	// that completed it. What "whenever you fully unlock a Room" (the
+	// eerie cards) watches.
+	EventRoomFullyUnlocked EventKind = "room_fully_unlocked"
 
 	// EventHarnessed — a permanent became harnessed (CR 701.64).
 	// Source / CardID / Target = the permanent, Actor = its

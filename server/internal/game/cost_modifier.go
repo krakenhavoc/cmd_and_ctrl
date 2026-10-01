@@ -171,6 +171,22 @@ type CostQuery struct {
 	// another (#544).
 	Targets []TargetRef
 
+	// Sacrificing is how many permanents the announcement's additional
+	// cost names to sacrifice (ADR 0100 §3) — Torgaar, Famine
+	// Incarnate's "This spell costs {2} less to cast for each creature
+	// sacrificed this way". CR 601.2b announces the count before 601.2f
+	// totals the cost, so a modifier may read it, the way it reads
+	// XValue.
+	//
+	// Filled from len(CastSpellParams.SacrificeIDs) by the one pricer
+	// (costAfterModifiersLocked), so CastSpell, the auto-tap preview and
+	// the enumerator (which passes the count of the payment it is
+	// pricing) agree on the discount. A card whose modifier reads it
+	// carries a variable sacrifice clause, and effects.Register holds
+	// such a plan to that clause alone, so the whole list is that
+	// clause's payment. Zero for an activation or special action.
+	Sacrificing int
+
 	// Cost is the cost as it stands at the moment this modifier is
 	// consulted: after the alternative-cost swap and the commander
 	// tax, after every increase for a reduction, after everything

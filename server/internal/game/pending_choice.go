@@ -495,6 +495,14 @@ type PendingChoice struct {
 	RetargetOptional bool
 	RetargetSlot     int
 	RetargetReason   string
+	// RetargetTo is a PINNED retarget's destination (#1743,
+	// RetargetOffer.To): "change a target of target spell or ability
+	// to this creature". Set, it turns the prompt's question from
+	// "where does this slot go" into "which slot goes there" — the
+	// PickTarget* options are the objects currently in the eligible
+	// slots, and the answer names one of them. Zero on every free
+	// retarget.
+	RetargetTo TargetRef
 
 	// pickTargetResume is the server-only continuation for a
 	// PendingChoicePickTarget: the captured event / source / LKI,
@@ -984,6 +992,21 @@ type triggerResumeFrame struct {
 	// item it builds can be named by its catalog row (ADR 0041 P9).
 	ability   TriggeredAbility
 	doubledBy doublerRef
+}
+
+// TradeSubject is the object a "you may" trigger would trade its
+// source for — the triggering event's card, on a prompt whose
+// ability declares TriggerOptionalPrompt.Trade (Perplexing Chimera's
+// spell, ADR 0104). uuid.Nil on every other prompt.
+func (c *PendingChoice) TradeSubject() uuid.UUID {
+	if c == nil || c.triggerResume == nil {
+		return uuid.Nil
+	}
+	p := c.triggerResume.ability.OptionalPrompt
+	if p == nil || !p.Trade {
+		return uuid.Nil
+	}
+	return c.triggerResume.tc.Event.CardID
 }
 
 // TriggerDoubler returns the doubler attribution carried by a harvested

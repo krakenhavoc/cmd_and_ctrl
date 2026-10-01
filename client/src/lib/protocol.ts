@@ -691,6 +691,12 @@ export type LogKind =
   | "discover"
   | "saga_chapter"
   | "class_level"
+  // ADR 0103: a Room's door was unlocked or locked (CR 709.5c/g);
+  // `label` is the door's name. `room_fully_unlocked` is the second
+  // door (CR 709.5i), its own line by owner decision.
+  | "door_unlocked"
+  | "door_locked"
+  | "room_fully_unlocked"
   // ADR 0075 §2.3: the host or the admin changed a table setting.
   // `label` is the setting's key ("undo_limit", "allow_spawn") and
   // `choice` its new value as text; `seat` is the host, or NoSeat when
@@ -1075,6 +1081,10 @@ export interface PendingChoiceView {
   // entering permanent away does to the seat that receives it. The
   // picker reads it only for its wording.
   control_purpose?: "harm" | "benefit" | string;
+  // ADR 0104: on a "trigger_prompt" whose yes TRADES the source for a
+  // spell (Perplexing Chimera) — that spell's instance ID. The client
+  // does not read it; the bot weighs the trade with it.
+  trade_for?: string;
   // S26: populated for kind "choose_creature_type" — every creature
   // type the engine knows, sorted. The list is long by design (the CR
   // 205.3m vocabulary is ~345 entries), so the picker filters it
@@ -1305,6 +1315,10 @@ export interface StackItemView {
   id: string;
   kind: "spell" | "activated" | "triggered";
   controller: string;
+  // ADR 0104: the player a stolen spell was put on the stack by — its
+  // caster (CR 110.2b). Present only while it differs from
+  // `controller`, i.e. while somebody else has taken the spell.
+  default_controller?: string;
   owner: string;
   source_card_id: string;
   label?: string;
@@ -1601,7 +1615,10 @@ export interface AdditionalCostView {
   // Present-and-empty means the cost is unpayable, so the spell is
   // uncastable. #747: min / max are the clause's count ("sacrifice
   // two creatures" is 2 / 2) and the cards come in payment order —
-  // see sacrificeCost.ts.
+  // see sacrificeCost.ts. ADR 0100 §3: "sacrifice any number of
+  // creatures" is min 0 / max 0, an open count from zero, and
+  // "sacrifice X lands" sets count_from_x — the number picked is the
+  // x_value. Either may be paid with none (castSacrificeRange).
   sacrifice_options?: LegalTargetsView;
   // S23: a "pay X life" clause (Toxic Deluge). The X prompt has to
   // open for this card even though its printed mana cost has no {X},
@@ -1609,6 +1626,22 @@ export interface AdditionalCostView {
   // spell's own text uses.
   demands_x?: boolean;
   label?: string;
+  // ADR 0100 §2: an either/or additional cost — "sacrifice an artifact
+  // or discard a card". Each branch is one of these views, with its
+  // own `key` and whether the viewer could pay it right now
+  // (`payable`; absent means it cannot be taken). The chosen branch's
+  // index rides cast_spell as `cost_branch`, and its cards ride the
+  // usual lists. A cost with branches carries no components of its own.
+  branches?: AdditionalCostView[];
+  // Branches only: the branch's identity, its mana ("{5}", joins the
+  // total the preview prices once `cost_branch` is sent), its fixed
+  // life, its blight N and the creatures that could take the counters.
+  key?: string;
+  mana_cost?: string;
+  pay_life?: number;
+  blight?: number;
+  blight_options?: LegalTargetsView;
+  payable?: boolean;
 }
 
 // OptionalCostView is one "you may pay an additional cost as you
@@ -1791,6 +1824,18 @@ export interface SpecialActionView {
   // `cost`), an empty string is a real "this now costs nothing".
   charged_cost?: string;
   available?: boolean;
+  // ADR 0103: the door an "unlock" row unlocks — "left" or "right" —
+  // and what the special_action payload names back. Absent on every
+  // other kind.
+  door?: "left" | "right";
+}
+
+// RoomDoorsView is a Room's two CR 709.5c designations (ADR 0103):
+// `true` is an unlocked door. Present only on a face-up Room on the
+// battlefield, so `false` is a locked door.
+export interface RoomDoorsView {
+  left: boolean;
+  right: boolean;
 }
 
 // ExilePlayView is the impulse-exile grant on a card in exile —
@@ -2403,6 +2448,12 @@ export interface CardView extends CastSurfaceView {
   owner: string;
   controller: string;
   scryfall_id?: string;
+  // ADR 0078: true for a token (CR 111), absent for a real card.
+  // Public — survives the non-knower redaction — because everyone at
+  // a paper table can see a token is a token. When present alongside
+  // `scryfall_id`, that id is a resolved Scryfall TOKEN PRINTING
+  // chosen for its art, not a card this player owns.
+  is_token?: boolean;
   // Scryfall printed type line ("Legendary Creature — Human Wizard").
   // Used by the client to filter creature-only UIs (combat panel)
   // and to label cards. Omitted for placeholder demo cards. S08.
@@ -2655,6 +2706,10 @@ export interface CardView extends CastSurfaceView {
   // arrives as an ordinary exile card with an `exile_play` stamp
   // naming face 1. Absent — not `false` — for everything else.
   prepared?: boolean;
+  // ADR 0103 (CR 709.5): a Room's doors. Present only for a face-up
+  // Room on the battlefield. A fully locked Room has no name (CR 709.5),
+  // so `name` is empty and the client labels it from `faces`.
+  doors?: RoomDoorsView;
   // ADR 0071 amendment, #1321 (CR 701.64): this permanent is
   // harnessed — the marker that switches its printed "∞ — [ability]"
   // lines on. Unlike `class_level` / `solved` it carries no subtype
@@ -2770,6 +2825,12 @@ export interface CardView extends CastSurfaceView {
   faces?: CardFaceView[];
   // ADR 0034 — index into `faces`. Absent (0) is the front face.
   active_face?: number;
+  // ADR 0103 (CR 702.102): a split card with fuse in its owner's hand
+  // also offers the FUSED cast of both halves — this is its announce
+  // surface (both names, both costs, the left half's clauses then the
+  // right half's). The face picker offers it as a third choice and the
+  // cast sends `fuse: true`.
+  fused?: CardFaceView;
 }
 
 // ManaAbilityView mirrors `protocol.ManaAbilityView` server-side —

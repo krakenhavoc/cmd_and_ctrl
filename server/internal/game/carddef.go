@@ -87,8 +87,12 @@ type CardDef struct {
 	TapCost          *TapPermanentsCost
 	// Delve is CR 702.66: this spell may exile cards from its caster's
 	// graveyard to pay generic mana (ADR 0100). Read through DelveFor.
-	Delve         bool
-	CostModifiers []CostModifier
+	Delve bool
+	// SpellsYouCastHaveDelve is a permanent's "Spells you cast have
+	// delve" (Teval, Arbiter of Virtue; ADR 0100 sub-PR 2). Read from
+	// the battlefield through DelveForLocked.
+	SpellsYouCastHaveDelve bool
+	CostModifiers          []CostModifier
 	// SelfCostModifiers change what THIS card costs to cast (ADR 0048
 	// addendum §11), read by SelfCostModifiersFor for the spell being
 	// priced and never from the battlefield.
@@ -191,6 +195,9 @@ type CardDef struct {
 
 	CantBeCountered bool
 	NoMaxHandSize   bool
+	// NoMaxHandSizeWhen gates NoMaxHandSize on a designation (ADR
+	// 0071, ADR 0103: Steaming Sauna's door). Zero is no gate.
+	NoMaxHandSizeWhen Designation
 	// PlayerKeywords are the abilities this permanent's printed
 	// static gives its CONTROLLER — "You have hexproof" (Leyline of
 	// Sanctity, Aegis of the Gods). Engine ability tokens, in the
@@ -342,6 +349,11 @@ func catalogDef(key string) *CardDef {
 	if strings.IndexByte(key, grantKeySeparator[0]) >= 0 {
 		return mergedCatalogDef(key)
 	}
+	// ADR 0103: a fused split spell's key is synthetic, answered from
+	// its two halves' own entries (split_fuse.go).
+	if strings.HasSuffix(key, fusedKeySuffix) {
+		return fusedCatalogDef(strings.TrimSuffix(key, fusedKeySuffix))
+	}
 	return CatalogLookup(key)
 }
 
@@ -470,6 +482,12 @@ func init() {
 	CatalogDelve = func(key string) bool {
 		if d := catalogDef(key); d != nil {
 			return d.Delve
+		}
+		return false
+	}
+	CatalogSpellsHaveDelve = func(key string) bool {
+		if d := catalogDef(key); d != nil {
+			return d.SpellsYouCastHaveDelve
 		}
 		return false
 	}

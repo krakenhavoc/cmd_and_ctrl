@@ -83,3 +83,29 @@ func SunburstCounters(kind string) game.EntryCountersFromCast {
 		Count: func(cast game.CastCounts) int { return cast.ColorsSpent },
 	}
 }
+
+// CountersPerDelved is "this permanent enters with a <kind> counter on
+// it for each <kind of> card exiled with it", where "exiled with it"
+// is CR 607.2q's link to the cards delve exiled to pay for the spell
+// (ADR 0100 sub-PR 2) — Murktide Regent's "a +1/+1 counter on it for
+// each instant and sorcery card exiled with it".
+//
+// `match` is asked of each linked card as it sits in exile (its
+// printed characteristics: a card off the battlefield has no layered
+// ones), and nil counts every one. A card that left exile before the
+// permanent entered is not asked at all: it is a new object (CR 400.7)
+// and CastCounts.Delved no longer holds it.
+func CountersPerDelved(kind string, match func(game.Card) bool) game.EntryCountersFromCast {
+	return game.EntryCountersFromCast{
+		Kind: kind,
+		Count: func(cast game.CastCounts) int {
+			n := 0
+			for _, c := range cast.Delved {
+				if match == nil || match(c) {
+					n++
+				}
+			}
+			return n
+		},
+	}
+}

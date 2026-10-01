@@ -30,21 +30,25 @@ import (
 //     picker with the same permanents a bot would pay.
 
 // SacrificeCostCount is how many permanents a FIXED sacrifice clause
-// pays: the spec's Max. A hand-built fixture clause that never set a
-// count is read as 1, the count every sacrifice cost had before #747.
-// Nil-safe: a nil clause pays nothing.
+// pays: the spec's Max. Nil-safe: a nil clause pays nothing.
 //
 // It answers for a fixed clause only. A VARIABLE one (#1213 —
-// "sacrifice one or more", "sacrifice X") has no single number to
-// give, and reads here as its floor, which is the weaker answer and
-// never the one a payment should be built from. Ask
-// SacrificeCostBounds instead, and SacrificeCostVariable first if you
-// need to know which kind you have.
+// "sacrifice one or more", "sacrifice X"; ADR 0100 §3 — "sacrifice any
+// number of") has no single number to give, and reads here as its
+// floor, which is the weaker answer and never the one a payment should
+// be built from. Ask SacrificeCostBounds instead, and
+// SacrificeCostVariable first if you need to know which kind you have.
+//
+// Min 0 with Max 0 is "any number" (ADR 0100 §3, SacrificeAnyNumber),
+// whose floor is zero. Before ADR 0100 that pair read as 1 — a
+// hand-built fixture that never set a count — and effects.Register
+// still refuses it everywhere but a cast's additional cost, where zero
+// is printed.
 func SacrificeCostCount(spec *TargetSpec) int {
 	if spec == nil {
 		return 0
 	}
-	if spec.CountFromX {
+	if spec.CountFromX || SacrificeAnyNumber(spec) {
 		return 0
 	}
 	if spec.Max < 1 {
@@ -56,6 +60,20 @@ func SacrificeCostCount(spec *TargetSpec) int {
 	return spec.Max
 }
 
+// SacrificeAnyNumber reports the "sacrifice any number of …" form
+// (ADR 0100 §3): Min 0 and Max 0, not CountFromX. Its bounds are 0 and
+// "no ceiling", so naming none is a legal payment. Only a CAST's
+// additional cost may carry it — Vicious Betrayal's "sacrifice any
+// number of creatures", Torgaar's "you may sacrifice any number of
+// creatures", Plumb the Forbidden's "you may sacrifice one or more":
+// for these cards "you may" and "any number" mean the same thing,
+// because sacrificing none is not paying. effects.Register refuses it
+// on an ability, where a cost that can be paid with nothing is free.
+// Nil-safe (false).
+func SacrificeAnyNumber(spec *TargetSpec) bool {
+	return spec != nil && !spec.CountFromX && spec.Min == 0 && spec.Max == 0
+}
+
 // SacrificeCostVariable reports a clause whose count the ACTIVATOR
 // announces rather than one the card prints (#1213):
 //
@@ -63,6 +81,8 @@ func SacrificeCostCount(spec *TargetSpec) int {
 //     one with no printed ceiling, Min ≥ 1 and Max 0.
 //   - "Sacrifice X Treasures" (Grim Hireling) — CountFromX, the count
 //     announced at CR 602.2b with the rest of the activation.
+//   - "Sacrifice any number of creatures" (Vicious Betrayal, ADR 0100
+//     §3) — Min 0 and Max 0, a cast's additional cost only.
 //
 // Nil-safe (false). The readers that care are the announce path (how
 // many IDs is this payment allowed to name), the protocol view (what
@@ -72,7 +92,7 @@ func SacrificeCostVariable(spec *TargetSpec) bool {
 	if spec == nil {
 		return false
 	}
-	return spec.CountFromX || spec.Max != spec.Min
+	return spec.CountFromX || spec.Max != spec.Min || SacrificeAnyNumber(spec)
 }
 
 // SacrificeCountFromX reports the "Sacrifice X …" form specifically —
@@ -95,6 +115,7 @@ func SacrificeCountFromX(spec *TargetSpec) bool {
 //
 //	fixed        Min == Max == N        lo = hi = N
 //	one or more  Min >= 1, Max == 0     lo = Min, hi = 0   (open)
+//	any number   Min == Max == 0        lo = 0,   hi = 0   (open, ADR 0100)
 //	X            CountFromX             lo = hi = x
 //
 // A CountFromX clause with a negative announced X reads as zero rather
@@ -114,6 +135,11 @@ func SacrificeCostBounds(spec *TargetSpec, x int) (lo, hi int) {
 			x = 0
 		}
 		return x, x
+	}
+	if SacrificeAnyNumber(spec) {
+		// "Any number": zero is a payment, and nothing but the board
+		// bounds the count (ADR 0100 §3).
+		return 0, 0
 	}
 	n := SacrificeCostCount(spec)
 	if spec.Max < 1 && spec.Min >= 1 {
