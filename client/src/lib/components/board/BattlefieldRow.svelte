@@ -17,6 +17,7 @@
   import {
     NO_COMBAT_RINGS,
     NO_LEGAL_ACTIONS,
+    combatPipFor,
     readyPips,
     type CombatRings,
     type LegalActions,
@@ -282,6 +283,7 @@
                   card={c}
                   ready={ringFor(c, cPips) || cTarget || anyIn(combat.candidates, c, memberIDs)}
                   combatTarget={cTarget}
+                  combatPip={combatPipFor(legal, combat, memberIDs ?? [c.instance_id])}
                   pips={cPips}
                   onSpecialAction={specialFor(c)}
                   {legal}

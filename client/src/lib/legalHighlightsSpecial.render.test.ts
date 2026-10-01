@@ -350,7 +350,7 @@ describe("a pip is the touch route into the popover", () => {
   it("is a labelled button", () => {
     const { pip } = mountCard();
     expect(pip.tagName).toBe("BUTTON");
-    expect(pip.getAttribute("aria-label")).toBe("Open actions");
+    expect(pip.getAttribute("aria-label")).toBe("Activate an ability — open actions");
     expect(pip.getAttribute("aria-haspopup")).toBe("menu");
   });
 

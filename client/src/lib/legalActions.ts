@@ -612,3 +612,199 @@ export function attackTargetListed(
   if (!attackerID || !gate.known) return false;
   return gate.attackTargets(attackerID).includes(targetID);
 }
+
+// ---- accessibility (ADR 0105 §7, sub-PR 6) ----------------------------
+
+// The screen-reader phrase for each special-action kind. A kind this
+// client has no words for gets the generic phrase, as its pip gets the
+// generic star.
+const SPECIAL_ACTION_PHRASES: Readonly<Record<string, string>> = Object.freeze({
+  foretell: "can be foretold",
+  suspend: "can be suspended",
+  plot: "can be plotted",
+  turn_face_up: "can be turned face up",
+  unlock: "has a door you can unlock",
+});
+
+/** The phrase for a ready card none of the specific phrases explain. */
+export const READY_PHRASE_GENERIC = "has an action available";
+
+/** The phrase a special-action kind adds to a ready card's name. */
+export function specialActionPhrase(kind: string): string {
+  return Object.hasOwn(SPECIAL_ACTION_PHRASES, kind)
+    ? SPECIAL_ACTION_PHRASES[kind]
+    : "has a special action";
+}
+
+/**
+ * readyPhrases is what a ready card's accessible name gains (ADR 0105
+ * §7): "castable", "playable land", "has an ability you can activate",
+ * "can attack", "can block", a special action's phrase ("can be
+ * foretold"), and, for a mana ability worth a drop pip, "has a mana
+ * ability you can use". Each phrase is the spoken twin of something
+ * drawn (the ring, a pip, a combat ring), so it reads the same lookup
+ * the drawing does, the HIGHLIGHT lookup, and applies the §4 noise
+ * rule the drop pip applies: a land's ordinary {T} mana ability adds
+ * nothing.
+ *
+ * `combatTarget` is the ring sub-PR 5 draws on what the SELECTED
+ * creature may be declared against. That card is an opponent's and has
+ * no moves of its own, so it says what may be done TO it: an attacker
+ * "can be blocked", a planeswalker or battle "can be attacked".
+ *
+ * The lookup that knows nothing gives no phrases.
+ */
+export function readyPhrases(
+  legal: LegalActions,
+  card: CardView,
+  zone: ReadyZone,
+  combatTarget = false,
+): string[] {
+  if (combatTarget) return [card.attacking_target ? "can be blocked" : "can be attacked"];
+  const id = card.instance_id;
+  if (!legal.isReady(id)) return [];
+  const out: string[] = [];
+  const add = (p: string) => {
+    if (!out.includes(p)) out.push(p);
+  };
+  if (legal.castableFrom(id, zone)) {
+    const kinds = legal.kinds(id);
+    if (kinds.includes("cast")) add("castable");
+    if (kinds.includes("land")) add("playable land");
+  }
+  if (legal.readyAbilityRefs(id).length > 0) add("has an ability you can activate");
+  if (notableManaRefs(card, legal.readyManaRefs(id), zone).length > 0) {
+    add("has a mana ability you can use");
+  }
+  for (const k of legal.readySpecialActions(id)) add(specialActionPhrase(k));
+  // A creature already declared wears its red or blue ring, not the
+  // ready one (combatRings), so it is not announced as a candidate.
+  if (!card.attacking_target && legal.canAttack(id)) add("can attack");
+  if (!card.blocking_target && legal.blockableAttackers(id).length > 0) add("can block");
+  return out;
+}
+
+/**
+ * readyCardLabel is a card's accessible name: its name, plus the
+ * phrases when it wears the ready ring. A ring the phrases cannot
+ * explain (a caller that drew it without handing the lookup down)
+ * still says something, so the ring is never silent.
+ */
+export function readyCardLabel(name: string, ready: boolean, phrases: readonly string[]): string {
+  if (!ready) return name;
+  const said = phrases.length > 0 ? phrases.join(", ") : READY_PHRASE_GENERIC;
+  return name ? `${name}, ${said}` : said;
+}
+
+/**
+ * withAvailable is a ready button's or menu row's accessible name: the
+ * label plus "available" (ADR 0105 §7). Not ready: the label alone.
+ */
+export function withAvailable(label: string, ready: boolean): string {
+  return ready ? `${label}, available` : label;
+}
+
+/** The bolt pip's accessible name: what it opens onto. */
+export function boltPipLabel(n: number): string {
+  return n >= 2
+    ? `${n} abilities you can activate — open actions`
+    : "Activate an ability — open actions";
+}
+
+/** The drop pip's accessible name. */
+export const DROP_PIP_LABEL = "Mana ability available — open actions";
+
+/** The star pip's accessible name: the live kinds, by name. */
+export function starPipLabel(kinds: readonly string[]): string {
+  const title = specialPipTitle(kinds);
+  return `${title.charAt(0).toUpperCase()}${title.slice(1)} available — open actions`;
+}
+
+/**
+ * The combat pip a candidate wears beside its ring: a sword for a
+ * creature that may attack, a shield for one that may block (ADR 0105
+ * §7: the kind is carried by pip shape). Decorative: a declaration has
+ * no popover behind it, so the pip is no button, and the card's
+ * accessible name already says "can attack" or "can block".
+ */
+export type CombatPip = "attack" | "block";
+
+/**
+ * combatPipFor reads a card's combat pip off the rings and the lookup.
+ * `ids` is every instance the card stands for (a token group's
+ * members), so a group shows a pip when any member is a candidate.
+ * Not a candidate: null.
+ */
+export function combatPipFor(
+  legal: LegalActions,
+  combat: CombatRings,
+  ids: readonly string[],
+): CombatPip | null {
+  for (const id of ids) {
+    if (!combat.candidates.has(id)) continue;
+    if (legal.canAttack(id)) return "attack";
+    if (legal.blockableAttackers(id).length > 0) return "block";
+  }
+  return null;
+}
+
+/**
+ * actionableCount is how many of `seatID`'s cards carry a highlight
+ * right now (a ring or a pip): the cards readyPhrases has something to
+ * say about, in every zone the board draws them in. It is the N
+ * of the phase display's "N actions available". It counts cards, not
+ * moves, so the number is what the player sees: one ring per card, not
+ * one per target permutation. A basic land's mana is no more an action
+ * worth announcing than it is worth a pip (§4).
+ *
+ * Pass the HIGHLIGHT lookup: with highlights off, or autopass about to
+ * pass, it is the lookup that knows nothing and the count is 0.
+ */
+export function actionableCount(
+  legal: LegalActions,
+  view: GameView | null | undefined,
+  seatID: string,
+): number {
+  if (!view || !legal.known) return 0;
+  const zones: ReadyZone[] = ["hand", "battlefield", "graveyard", "exile", "library", "command"];
+  let n = 0;
+  for (const zone of zones) {
+    for (const c of cardsIn(view, zone, seatID)) {
+      if (readyPhrases(legal, c, zone).length > 0) n++;
+    }
+  }
+  return n;
+}
+
+/** The live region's sentence for `n` actionable cards. */
+export function readyAnnouncement(n: number): string {
+  return n === 1 ? "1 action available" : `${n} actions available`;
+}
+
+/**
+ * The phase display's live-region state. `live` is whether the seat is
+ * inside a decision that has already been announced; `text` is what
+ * the region holds.
+ */
+export interface ReadyAnnouncer {
+  readonly live: boolean;
+  readonly text: string;
+}
+
+export const QUIET_ANNOUNCER: ReadyAnnouncer = Object.freeze({ live: false, text: "" });
+
+/**
+ * announceArrival is ADR 0105 §7's "once, when priority arrives". Fed
+ * each frame's actionableCount, it fills the region on the frame the
+ * count goes from nothing to something, and leaves it alone on every
+ * later frame of the same decision, so a screen reader hears the line
+ * once rather than on every broadcast. When the decision ends (the
+ * count drops to 0: priority moved on, highlights went off, autopass
+ * took the window) the region empties, so the same sentence is news
+ * again next time.
+ */
+export function announceArrival(prev: ReadyAnnouncer, count: number): ReadyAnnouncer {
+  if (count <= 0) return prev.live || prev.text !== "" ? QUIET_ANNOUNCER : prev;
+  if (prev.live) return prev;
+  return { live: true, text: readyAnnouncement(count) };
+}

@@ -300,3 +300,30 @@ The owner answered the seven open questions on 2026-09-30. Every answer was the 
 5. **Autopass.** Highlights are hidden on a frame smart autopass is about to pass (§3).
 6. **Touch route.** Tapping a pip to open the ability popover stays in scope, as sub-PR 4 (§7, §10).
 7. **Server digest.** Option C: sub-PR 1 adds the server `legal_actions` digest (§1).
+
+---
+
+## Delivery, 2026-10-01
+
+All six sub-PRs have landed on `develop`:
+
+1. [#1804](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1804): the server digest, `GameView.legal_actions`.
+2. [#1833](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1833): `legalActions.ts`, the `gameplay.highlightLegalActions` setting (v15), and the ready ring on the cast surfaces.
+3. [#1834](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1834): bolt and drop pips on permanents, and ready menu rows.
+4. [#1835](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1835): special-action rows in the default popover, star pips, and tap-a-pip.
+5. [#1837](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1837): attack and block candidate rings, and attack-all read from the digest.
+6. This PR: accessible names, the live-region line, sword and shield pips, the colour-blind and high-contrast variants, and the e2e spec.
+
+The sub-PRs departed from the text above in these places:
+
+- **Two lookups, not one.** The client builds one lookup per frame and hands it down twice: `legal` (what may be highlighted) and `legalGate` (the frame's full lookup). `legal` is empty while the setting is off or autopass is about to pass the frame. `legalGate` never is. Rings, pips, counts and row accents read `legal`. Dimming, disabled rows and the popover's sorcery-speed gate read `legalGate`. That way the setting turns off only the positive half, as §3 and §6 require, and it can never open a gate. §1 describes one lookup; the split is how that rule is kept.
+- **Combat clicks are gated on the digest too** (sub-PR 5). §2 asked only for rings. While an attacker is selected, a click on a defending player or permanent is checked against the attacker's `attack_targets`, through `attackTargetOpen` and `attackTargetListed`. With no list on the frame, or for an attacker already declared (the enumerator stops listing it), the old rule applies. A planeswalker or battle needs its ring before it can be clicked.
+- **Room doors got the star** (sub-PR 4). ADR 0103 landed `unlock` as a special-action kind while this ADR was being built, so the "Room doors" paragraph in §2 and the out-of-scope note no longer hold. `unlock` has a name and a star pip like any other special action. The digest names kinds, not doors, so a Room's two unlock rows share one answer.
+- **Pips sit on the upper-left edge, not in a corner** (sub-PR 3). They are placed below the top badge row and the failed-art pip. That is the part of a tile still visible where tiles overlap (the land strip's piles, the hand's peek), and the one edge with no badge that is always shown.
+- **No pulse was built.** §5 made the arrival pulse optional, and no sub-PR added it. The ring and glow are static, so `reduceMotion` and `prefers-reduced-motion` have nothing to switch off. `readyThemes.test.ts` checks that the ring has no `transition` or `animation`.
+- **Sword and shield pips are drawing only** (this PR). A declaration has no popover behind it, so these pips are not buttons. They are `aria-hidden`, because the card's accessible name already says "can attack" or "can block". They are drawn anyway because of the colour-blind case: the cyan "may block" ring and the pale-blue "is blocking" ring are hard to tell apart, and the shield separates them by shape.
+- **The colour-blind ready colour is near-white** (this PR). `accessibility.colorblindPalette` was stored but nothing read it, so this PR wires it to `:root[data-colorblind]` through `rootSettings.ts`. Its first consumer is `--ready`. Under protanopia and deuteranopia every hue on the board falls on one blue-yellow axis, and cyan lands next to the blocking ring's pale blue. Near-white differs from every ring by lightness rather than hue. The seat palette the setting is named for is still not built, and the Settings help text says so.
+- **The high-contrast ring is written but dormant.** `Card.svelte` draws a solid 3px outline with no glow under `:root[data-theme="high-contrast"]`. App.svelte still does not apply `data-theme`, and the theme picker is disabled. Most table chrome still hard-codes its colours, so turning a theme on would give a broken mix of light and dark panels. The ring will take effect, with no further change, when the theme does.
+- **The live region counts cards, and it counts any owed decision.** "N actions available" counts the viewer's cards that wear a highlight (a ring or a pip), not moves. One Lightning Bolt with three targets is one action, and a basic land's mana is not counted (§4). The region speaks when that count goes from 0 to something and is cleared when it drops to 0. So it also speaks when a combat declaration arrives, not only priority: those are the frames where the board lights.
+- **The exile chip's label drops its ready count when there is no digest.** It used to count the cards that `castable_here` opened a window for. It now says the digest's count, the same number the cyan chip draws. With highlights off, or no decision owed, it says no count at all.
+- **The e2e spec lives at `tests-e2e/tests/legal-highlights-1789.spec.ts`,** because the Playwright config's `testDir` is `./tests`. It runs in the nightly E2E workflow, and on demand with `workflow_dispatch`. It does not run on pull requests, which only typecheck `tests-e2e`.

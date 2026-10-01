@@ -84,12 +84,18 @@
   const { view, viewerID, onCastCard, onDragCast, legal = NO_LEGAL_ACTIONS }: Props = $props();
 
   const entries = $derived(exileStripEntries(view, viewerID));
-  // Whose window is open by castable_here — what the chip's label has
-  // always announced.
-  const nowCount = $derived(entries.filter((e) => e.state === "now").length);
   // ADR 0105: what the server's move list says the viewer can cast
-  // from exile this instant, mana included. The chip's cyan count.
+  // from exile this instant, mana included. The chip's cyan count, and
+  // (sub-PR 6, §7) the count its accessible name says. It used to say
+  // how many cards castable_here opened a window for, which counts a
+  // card the viewer cannot pay for. With no digest (highlights off,
+  // autopass passing, or no decision owed) the label says no count at
+  // all rather than one the board is not drawing.
   const readyCount = $derived(legal.readyCount("exile"));
+  const chipLabel = $derived(
+    `${entries.length} exiled ${entries.length === 1 ? "card" : "cards"} you may cast` +
+      (legal.known ? `, ${readyCount} ready` : ""),
+  );
   // Two cards sit side by side; from three on they overlap like the
   // hand, tightening with handOverlap so a long strip cannot outgrow
   // the panel (#956's rule).
@@ -375,7 +381,7 @@
       type="button"
       class="strip-toggle"
       aria-expanded={open}
-      aria-label={`${entries.length} exiled ${entries.length === 1 ? "card" : "cards"} you may cast, ${nowCount} ready`}
+      aria-label={chipLabel}
       onclick={() => (open = !open)}
     >
       <span class="toggle-label">exile</span>
@@ -410,6 +416,8 @@
                 card={e.card}
                 showManaCost={badge === null}
                 ready={legal.castableFrom(e.card.instance_id, "exile")}
+                readyZone="exile"
+                {legal}
                 onClick={leg.legal && onCastCard ? () => cast(e) : undefined}
               />
               {#if badge}

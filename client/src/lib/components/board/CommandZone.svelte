@@ -24,7 +24,7 @@
   import Card from "./Card.svelte";
   import { openZoneBrowser } from "../../zoneBrowser";
   import { canCastFromHand, type Legality } from "../../timing";
-  import { NO_LEGAL_ACTIONS, type LegalActions } from "../../legalActions";
+  import { NO_LEGAL_ACTIONS, withAvailable, type LegalActions } from "../../legalActions";
 
   type ActionSender = (type: ActionType, params?: ActionPayload["params"], player?: string) => void;
 
@@ -186,6 +186,7 @@
       <Card
         card={visibleCard}
         ready={castReady}
+        readyZone="command"
         onClick={isSelf ? handleClick : openBrowser}
         onActivateAbility={activateVisible}
         {sorcerySpeedBlocked}
@@ -231,7 +232,7 @@
         onclick={castVisible}
         ondblclick={handleDoubleClick}
         title={castGate.legal ? "cast commander" : (castGate.reason ?? "Can't cast right now")}
-        aria-label="cast commander"
+        aria-label={withAvailable("cast commander", castReady)}
       >
         cast
       </button>

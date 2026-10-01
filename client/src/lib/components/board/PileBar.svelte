@@ -29,7 +29,7 @@
     visibleLibraryTop,
   } from "../../libraryTop";
   import type { CastSourceZone } from "../../targeting";
-  import { NO_LEGAL_ACTIONS, type LegalActions } from "../../legalActions";
+  import { NO_LEGAL_ACTIONS, withAvailable, type LegalActions } from "../../legalActions";
 
   type ActionSender = (type: ActionType, params?: ActionPayload["params"], player?: string) => void;
 
@@ -159,7 +159,10 @@
             class="pile-action"
             class:ready={libraryTopReady}
             title={`${libraryTopAction} from the top of your library`}
-            aria-label={`${libraryTopAction} ${libraryTop?.name || "card"} from the top of the library`}
+            aria-label={withAvailable(
+              `${libraryTopAction} ${libraryTop?.name || "card"} from the top of the library`,
+              libraryTopReady,
+            )}
             onclick={playLibraryTop}
           >
             {libraryTopAction}
