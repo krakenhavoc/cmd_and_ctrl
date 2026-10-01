@@ -387,12 +387,29 @@ type Spec struct {
 	// nothing (CR 701.6a), which is a different and observable thing
 	// from the counterspell fizzling.
 	//
-	// Only a card's OWN printed rider belongs here. A GRANT
-	// ("creature spells you control can't be countered", Cavern of
-	// Souls) is a continuous effect over the stack and the layer
-	// system does not reach the stack; see
+	// Only a card's OWN printed rider belongs here. A permanent's
+	// "<these> spells you control can't be countered" is
+	// SpellsCantBeCountered below, and mana that says so (Cavern of
+	// Souls) is a spend rider; see
 	// server/internal/game/cant_be_countered.go.
 	CantBeCountered bool
+
+	// SpellsCantBeCountered are this permanent's printed "<these>
+	// spells can't be countered" statics (ADR 0106 §4, #1806). Build
+	// them with the constructors in counter_shields.go, whose name
+	// says whose spells:
+	//
+	//	SpellsCantBeCountered: []game.CounterShieldStatic{
+	//		SpellsYouControlCantBeCountered("Spells you control can't be countered."), // Chimil
+	//		SpellsYouCastCantBeCountered("…", ManaValueGE(5)),                          // Thryx
+	//		AnyPlayersSpellsCantBeCountered("Creature spells can't be countered.", Creature()), // Gaea's Herald
+	//	},
+	//
+	// NOT a layer effect: "can't be countered" modifies the rules of
+	// the game (CR 613.11), so the counter gate reads these live off
+	// the battlefield, keyed by CatalogAbilityKey, every time a spell
+	// would be countered. Nil for nearly every card.
+	SpellsCantBeCountered []game.CounterShieldStatic
 
 	// AlternativeCosts is the S22 "you may cast this spell for its
 	// overload / evoke / cleave cost" clause (CR 118.9) — a cost paid

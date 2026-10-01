@@ -194,7 +194,13 @@ type CardDef struct {
 	ActivationTimings []ActivationTiming
 
 	CantBeCountered bool
-	NoMaxHandSize   bool
+	// SpellsCantBeCountered are this permanent's printed "<these>
+	// spells can't be countered" statics (ADR 0106 §4, #1806) —
+	// Chimil, the Inner Sun. Read from the battlefield through
+	// CounterShieldsForCard, keyed by CatalogAbilityKey; see
+	// cant_be_countered.go.
+	SpellsCantBeCountered []CounterShieldStatic
+	NoMaxHandSize         bool
 	// NoMaxHandSizeWhen gates NoMaxHandSize on a designation (ADR
 	// 0071, ADR 0103: Steaming Sauna's door). Zero is no gate.
 	NoMaxHandSizeWhen Designation
@@ -602,6 +608,12 @@ func init() {
 	CatalogCantBeCountered = func(key string) bool {
 		d := catalogDef(key)
 		return d != nil && d.CantBeCountered
+	}
+	CatalogCounterShields = func(key string) []CounterShieldStatic {
+		if d := catalogDef(key); d != nil {
+			return d.SpellsCantBeCountered
+		}
+		return nil
 	}
 	CatalogNoMaxHandSize = func(key string) bool {
 		d := catalogDef(key)
