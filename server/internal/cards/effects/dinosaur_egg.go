@@ -11,20 +11,19 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 toughness."
 //
 // X is the Egg's toughness as it last existed on the battlefield,
-// counters included (CR 603.10a, ctx.TriggeringPermanent). Discover is
-// ADR 0099's (game/discover.go).
+// counters included (CR 603.10a, ctx.TriggeringPermanent), so every
+// +1/+1 counter evolve put on it raises the discover. Discover is
+// ADR 0099's (game/discover.go). Evolve is the engine's keyword trigger
+// (game/evolve.go, #1805), declared here as a printed keyword.
 //
-// Declared simplification, weaker than printed: evolve (CR 702.100) has
-// no engine support, so the Egg never grows and dies as the 0/3 it was
-// printed as, discovering 3 unless something else changed its
-// toughness. The roadmap's evolve row lists it.
+// No simplification.
 func init() {
 	Register(Spec{
-		OracleID:     "ac4d5a97-6177-4eac-b0f2-cf10531ad879",
-		Name:         "Dinosaur Egg",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"Evolve isn't implemented, so the Egg never gets +1/+1 counters from creatures entering."},
-		Discovers:    true,
+		OracleID:        "ac4d5a97-6177-4eac-b0f2-cf10531ad879",
+		Name:            "Dinosaur Egg",
+		Completeness:    CompletenessFull,
+		PrintedKeywords: []string{game.KeywordEvolve},
+		Discovers:       true,
 		Triggered: []game.TriggeredAbility{
 			Optional(WhenThisDies("Dinosaur Egg — discover X", func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)

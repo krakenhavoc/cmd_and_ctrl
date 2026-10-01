@@ -126,40 +126,60 @@ func resolveProwess(g *Game, item *StackItem) error {
 
 // keywordTriggersFor is the keyword triggers an object has right now:
 // one prowess trigger per prowess token in its ability list (CR
-// 702.108b).
+// 702.108b), then one evolve trigger per evolve token (CR 702.100d,
+// evolve.go).
 //
 // It reads the list through forEachAbilityToken, the same walk
 // HasKeyword uses, so the answer follows the layer engine on the
-// battlefield — a printed prowess, a token's, and a layer-6 grant all
+// battlefield — a printed instance, a token's, and a layer-6 grant all
 // count, and a CR 613.1f "loses all abilities" empties the list in its
 // own timestamp slot (ability_removal.go). A face-down permanent has
-// no tokens and so no prowess.
+// no tokens and so no keyword triggers.
 //
 // Off the battlefield the walk reads the card's printed keywords, and
-// the ability it returns declares no Zones — so it is a battlefield
-// ability and the zone harvesters skip it, exactly as they skip a
+// the abilities it returns declare no Zones — so they are battlefield
+// abilities and the zone harvesters skip them, exactly as they skip a
 // catalog trigger that did not declare their zone.
 func keywordTriggersFor(c *Card) []TriggeredAbility {
+	prowess, evolve := 0, 0
+	forEachAbilityToken(c, func(a string) bool {
+		switch a {
+		case KeywordProwess:
+			prowess++
+		case KeywordEvolve:
+			evolve++
+		}
+		return true
+	})
+	if prowess+evolve == 0 {
+		return nil
+	}
+	out := make([]TriggeredAbility, 0, prowess+evolve)
+	for i := 0; i < prowess; i++ {
+		out = append(out, prowessTrigger)
+	}
+	for i := 0; i < evolve; i++ {
+		out = append(out, evolveTrigger)
+	}
+	return out
+}
+
+// countAbilityTokens is how many times the token appears on the card's
+// ability list, through the walk keywordTriggersFor reads.
+func countAbilityTokens(c *Card, token string) int {
 	n := 0
 	forEachAbilityToken(c, func(a string) bool {
-		if a == KeywordProwess {
+		if a == token {
 			n++
 		}
 		return true
 	})
-	if n == 0 {
-		return nil
-	}
-	out := make([]TriggeredAbility, n)
-	for i := range out {
-		out[i] = prowessTrigger
-	}
-	return out
+	return n
 }
 
 // ProwessCount reports how many instances of prowess the card has — a
 // read for tests, the bot and the view, through the same walk the
 // harvester uses.
 func ProwessCount(c *Card) int {
-	return len(keywordTriggersFor(c))
+	return countAbilityTokens(c, KeywordProwess)
 }

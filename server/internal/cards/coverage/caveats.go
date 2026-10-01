@@ -581,6 +581,17 @@ var mechanics = []Mechanic{
 		Adopt:      `PrintedKeywords: []string{"prowess"} — the engine does the rest`,
 	},
 	{
+		// #1805 (ADR 0106 §3): evolve is prowess's twin — a
+		// canonicalKeywords token whose trigger the engine derives from
+		// the ability list (game/evolve.go). Same probe, same reason.
+		Name:       "evolve",
+		Phrases:    []string{"evolve", "evolves"},
+		Implements: printedKeywordProbe(game.KeywordEvolve),
+		Evidence:   `game.CatalogPrintedKeywords(oracleID) contains "evolve"`,
+		Confidence: Exact,
+		Adopt:      `PrintedKeywords: []string{game.KeywordEvolve} — the engine does the rest`,
+	},
+	{
 		// #1519: split second is a canonicalKeywords token read off
 		// the spell at announce (game/split_second.go). Same probe as
 		// prowess, for the same reason: the declaration is the fact,

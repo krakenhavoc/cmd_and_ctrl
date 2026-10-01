@@ -1090,13 +1090,38 @@ var items = []Item{
 		Phrases:  []string{"hasn't been chosen"},
 	},
 	{
-		Slug: "evolve", Name: "Evolve", Kind: KindMechanic, Status: StatusMissing,
-		Summary:     "Whenever a creature enters under your control with greater power or toughness than a creature with evolve, that creature gets a +1/+1 counter.",
-		Missing:     "Evolve isn't implemented, so a creature with evolve never grows.",
-		Rules:       []string{"702.100"},
-		Issue:       1805,
-		Waiting:     []string{"Dinosaur Egg"},
-		EngineNotes: "keyword (CR 702.100): no trigger for it. It is an intervening-if ETB watcher (CR 702.100b compares the entering creature's power and toughness with the evolving creature's, both on entry and on resolution) and would be a `canonicalKeywords` token with an engine-side trigger, like prowess, so a printed or granted evolve works without a catalog entry. Dinosaur Egg ships with its discover and a caveat for evolve.",
+		// #1805 (ADR 0106 §3): a canonical keyword token with an
+		// engine-side trigger, like prowess (game/evolve.go). The
+		// comparison is CR 702.100a's, made on entry and again on
+		// resolution (CR 603.4); CR 702.100b defines "evolves". A
+		// creature whose only text is evolve and other canonical
+		// keywords (Cloudfin Raptor, Shambleshark) needs no card file.
+		Slug: "evolve", Name: "Evolve", Kind: KindKeyword, Status: StatusImplemented,
+		Summary:  "Whenever a creature enters under your control with greater power or toughness than a creature with evolve, the creature with evolve gets a +1/+1 counter, once for each instance of evolve it has.",
+		Rules:    []string{"702.100"},
+		ADR:      "0106-five-small-seams-from-the-s50-rechecks.md",
+		Keywords: []string{game.KeywordEvolve},
+		Mechanic: "evolve",
+		Printed:  printedKeyword("evolve"),
+		Examples: []string{"Dinosaur Egg", "Tyranid Prime", "Renegade Krasis"},
+	},
+	{
+		Slug: "trigger-per-counter", Name: "Triggers once for each counter", Kind: KindSeam, Status: StatusMissing,
+		Summary:     "Abilities that say \"whenever a counter is put on\" a permanent trigger once for each counter, so two counters at once are two triggers.",
+		Missing:     "An ability that triggers for each counter put on a permanent can't trigger more than once for one placement yet.",
+		Rules:       []string{"603.2c"},
+		Issue:       1841,
+		Waiting:     []string{"Fathom Mage"},
+		EngineNotes: "harvester: one `EventCounterPlaced` per placement (post-change total), and a trigger fires at most once per event. \"Whenever one or more counters are put\" fits (Herd Baloth, Scurry Oak); \"whenever a counter is put\" is one trigger per counter (CR 603.2c), so a placement of two must be two stack objects. Likely a per-event multiplicity on `TriggeredAbility`, fed by the delta `b33CountersPlacedDelta` reads. Found landing the evolve cards (#1805).",
+	},
+	{
+		Slug: "target-bounded-by-counters-removed", Name: "Targets bounded by counters removed", Kind: KindSeam, Status: StatusMissing,
+		Summary:     "Abilities whose target must have power no greater than the number of counters removed to pay for them.",
+		Missing:     "A target can't yet be limited by how many counters were removed to activate the ability.",
+		Rules:       []string{"601.2c"},
+		Issue:       1842,
+		Waiting:     []string{"Simic Manipulator"},
+		EngineNotes: "targeting: `RemoveCountersXFromThis` announces its count at activation, before targets (CR 601.2c), but the only announced-X target bounds are `ManaValueAtMostX` / `ManaValueEqualsX`. Nothing binds a POWER bound to the counters removed, and without it Simic Manipulator could steal any creature (stronger than printed). Likely a `PowerAtMostX`-style clause flag on the same announce-time binding, re-checked at CR 608.2b. Found landing the evolve cards (#1805).",
 	},
 	{
 		Slug: "cant-be-countered-grant", Name: "Making other spells uncounterable", Kind: KindSeam, Status: StatusPartial,

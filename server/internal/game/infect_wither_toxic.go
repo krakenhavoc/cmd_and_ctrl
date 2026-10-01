@@ -170,7 +170,7 @@ func AppendKeywordAbility(abilities []string, kw string) []string {
 }
 
 // KeywordIsCumulative reports whether repeating this token means
-// something: prowess, by name, and toxic (CR 702.164b), which is
+// something: prowess and evolve, by name, and toxic (CR 702.164b), which is
 // recognised by its grammar rather than by a second table, so a
 // `toxic 2` that nothing has taught this file about still counts
 // twice when it is granted twice.
@@ -188,6 +188,10 @@ func KeywordIsCumulative(kw string) bool {
 	// instances of prowess, each triggers separately", so a second
 	// grant is a second trigger and must survive the append.
 	if kw == KeywordProwess {
+		return true
+	}
+	// Evolve (CR 702.100d, #1805): the same sentence, the same answer.
+	if kw == KeywordEvolve {
 		return true
 	}
 	_, ok := ToxicValue(kw)

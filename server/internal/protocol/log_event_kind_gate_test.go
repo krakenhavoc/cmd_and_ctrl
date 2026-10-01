@@ -158,6 +158,7 @@ var silentEventKinds = map[string]string{
 	"EventBecameMonstrous": silentBoardStateIsVisible,
 	"EventRegenerated":     silentImpliedByAnotherLine,
 	"EventBattleDefeated":  silentBoardStateIsVisible,
+	"EventEvolved":         silentImpliedByAnotherLine, // #1805: the +1/+1 counter is the `counters` line
 
 	// --- hidden-zone work ----------------------------------------------
 	"EventSearchLibrary": "the number of matches is itself hidden information about a hidden zone (see the search_library prompt's redaction)",
