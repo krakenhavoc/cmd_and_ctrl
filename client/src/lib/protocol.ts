@@ -342,6 +342,10 @@ export interface GameView {
   // split second is on the stack (S13.1, CR 702.61). Drives the
   // client's "no responses allowed" UI gating.
   split_second_active?: boolean;
+  // ADR 0107 §5 (CR 615.12): the live "damage can't be prevented this
+  // turn" grants, by their source's name (Skullcrack, Stomp), oldest
+  // first. Absent on nearly every turn.
+  damage_cant_be_prevented?: string[];
   // Cleanup-step pause map (S13.4, CR 402.2). Keys are player UUID
   // strings, values are the count each player must discard. Drives
   // DiscardPromptModal. Empty / absent when nobody owes discard.
@@ -1352,6 +1356,10 @@ export interface StackItemView {
   // mana that paid for it (Cavern of Souls). Read from the engine's one
   // counter gate; absent when false and on ability items.
   cant_be_countered?: boolean;
+  // ADR 0107 §5: the spell's own "the damage can't be prevented", under
+  // its condition as it stands now (Combust; Banefire with X of 5 or
+  // more). Absent when false.
+  damage_cant_be_prevented?: boolean;
   // S22: the alternative cost this spell was cast for — "overload",
   // "evoke", "cleave" — absent for an ordinary cast. Load-bearing
   // for anyone deciding whether to respond: an overloaded Cyclonic
@@ -1546,6 +1554,10 @@ export interface PlayerView {
   // Out are all off the table for this seat). Damage is still dealt
   // and still triggers; it just moves no life. Poison still lands.
   life_total_locked?: boolean;
+  // ADR 0107 §5 (CR 119.7): this seat can't gain life — a battlefield
+  // static (Leyline of Punishment), a turn grant (Skullcrack) or the
+  // rest of the game (Screaming Nemesis). Absent when false.
+  cant_gain_life?: boolean;
   // ADR 0057 (#749, CR 104.3): the "can't lose the game" / "can't win
   // the game" gates on this seat. `cant_lose` lists the causes that
   // can't make this player lose right now ("life", "empty_draw",

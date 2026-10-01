@@ -654,14 +654,14 @@ func (g *Game) DealDamageToPlayerForEffect(source, playerID uuid.UUID, amount in
 // dealt and `then` runs with zero (CR 800.4a, #808). The batch form
 // skips both rather than failing on them.
 func (g *Game) DealDamageToPlayerThenForEffect(source, playerID uuid.UUID, amount int, then func(g *Game, dealt int) error) error {
-	return g.dealDamageToPlayerLocked(source, nil, playerID, amount, then)
+	return g.dealDamageToPlayerLocked(source, nil, playerID, amount, DamageMarks{}, then)
 }
 
 // dealDamageToPlayerLocked is DealDamageToPlayerThenForEffect's body,
 // with the source OBJECT when the caller knows it (#1396,
 // DealDamageFromObjectForEffect). obj only changes where the tail reads
 // the source's lifelink from; see effectDamageTailLocked.
-func (g *Game) dealDamageToPlayerLocked(source uuid.UUID, obj *ObjectRef, playerID uuid.UUID, amount int, then func(g *Game, dealt int) error) error {
+func (g *Game) dealDamageToPlayerLocked(source uuid.UUID, obj *ObjectRef, playerID uuid.UUID, amount int, marks DamageMarks, then func(g *Game, dealt int) error) error {
 	if amount <= 0 {
 		// Not an event at all — "deals 0 damage" deals no damage
 		// (CR 120.8) and fires no window. The continuation is still an
@@ -712,6 +712,7 @@ func (g *Game) dealDamageToPlayerLocked(source uuid.UUID, obj *ObjectRef, player
 		// those are combat-damage business.
 		damageTail: g.effectDamageTailLocked(damageTailPlayer, source, obj),
 	}
+	ev.damageTail.marks = marks
 	ev.damageTail.then = then
 	_, err := g.damageThroughReplacementsLocked(ev)
 	return err
@@ -773,13 +774,13 @@ func (g *Game) DealDamageToCreatureForEffect(source, cardID uuid.UUID, amount in
 // much life" is the sentence this exists for; a card that only deals
 // the damage keeps using DealDamageToCreatureForEffect.
 func (g *Game) DealDamageToCreatureThenForEffect(source, cardID uuid.UUID, amount int, then func(g *Game, dealt int) error) error {
-	return g.dealDamageToPermanentLocked(source, nil, cardID, amount, then)
+	return g.dealDamageToPermanentLocked(source, nil, cardID, amount, DamageMarks{}, then)
 }
 
 // dealDamageToPermanentLocked is DealDamageToCreatureThenForEffect's
 // body, with the source OBJECT when the caller knows it (#1396). The
 // sibling of dealDamageToPlayerLocked.
-func (g *Game) dealDamageToPermanentLocked(source uuid.UUID, obj *ObjectRef, cardID uuid.UUID, amount int, then func(g *Game, dealt int) error) error {
+func (g *Game) dealDamageToPermanentLocked(source uuid.UUID, obj *ObjectRef, cardID uuid.UUID, amount int, marks DamageMarks, then func(g *Game, dealt int) error) error {
 	if amount <= 0 {
 		if then != nil {
 			return then(g, 0)
@@ -803,6 +804,7 @@ func (g *Game) dealDamageToPermanentLocked(source uuid.UUID, obj *ObjectRef, car
 		// after the source has died still applies what it dealt with.
 		damageTail: g.effectDamageTailLocked(damageTailPermanent, source, obj),
 	}
+	ev.damageTail.marks = marks
 	ev.damageTail.then = then
 	// Through the permanent-aware tail: a creature marks damage, a
 	// planeswalker loses loyalty (CR 120.3c, the #406 fix) and a
@@ -837,10 +839,37 @@ func (g *Game) dealDamageToPermanentLocked(source uuid.UUID, obj *ObjectRef, car
 // Caller must hold g.mu in write mode.
 func (g *Game) DealDamageFromObjectForEffect(source ObjectRef, target uuid.UUID, amount int) error {
 	if g.playerByIDLocked(target) != nil {
-		return g.dealDamageToPlayerLocked(source.ID, &source, target, amount, nil)
+		return g.dealDamageToPlayerLocked(source.ID, &source, target, amount, DamageMarks{}, nil)
 	}
 	if findBattlefieldCard(g, target) != nil {
-		return g.dealDamageToPermanentLocked(source.ID, &source, target, amount, nil)
+		return g.dealDamageToPermanentLocked(source.ID, &source, target, amount, DamageMarks{}, nil)
+	}
+	return nil
+}
+
+// DealMarkedDamageForEffect is the DealDamage primitive's entry point
+// for a damage instruction that carries its own CR 615.12 riders (ADR
+// 0107 §5): "the damage can't be prevented" (Combust, Pinpoint
+// Avalanche, Banefire with X of 5 or more) and Lava Burst's "or dealt
+// instead to another permanent or player". `source` deals `amount` to
+// `target`, a player or a battlefield permanent; anything else deals
+// nothing, as DealDamageFromObjectForEffect does. `obj`, when set,
+// names the source OBJECT (#1396). Fire-and-forget.
+//
+// The marks ride this one event's tail and nothing else: "the damage
+// can't be prevented" is about the damage this instruction deals, not
+// about the source's later damage (CR 615.12).
+//
+// Caller must hold g.mu in write mode.
+func (g *Game) DealMarkedDamageForEffect(source uuid.UUID, obj *ObjectRef, target uuid.UUID, amount int, marks DamageMarks) error {
+	if obj != nil {
+		source = obj.ID
+	}
+	if g.playerByIDLocked(target) != nil {
+		return g.dealDamageToPlayerLocked(source, obj, target, amount, marks, nil)
+	}
+	if findBattlefieldCard(g, target) != nil {
+		return g.dealDamageToPermanentLocked(source, obj, target, amount, marks, nil)
 	}
 	return nil
 }

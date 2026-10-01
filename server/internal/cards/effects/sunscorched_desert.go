@@ -25,7 +25,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{{
 			Watches:   []game.EventKind{game.EventETB},
 			AppliesTo: b06SelfETB,
-			Targets:   targetPlayerOrPlaneswalker("target player or planeswalker"),
+			Targets:   targetPlayerOrPlaneswalker(),
 			Key:       "Sunscorched Desert — 1 damage to target player or planeswalker",
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)

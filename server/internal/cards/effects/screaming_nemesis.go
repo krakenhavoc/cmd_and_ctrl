@@ -23,14 +23,13 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // clause cannot name the instance it hangs off): a Nemesis chosen as
 // its own target is skipped rather than damaged.
 //
-// Two declared simplifications, both weaker than printed:
+// "They can't gain life for the rest of the game" is ADR 0107 §5's
+// rest-of-the-game grant (CR 119.7, CR 611.2a, #1880), written only
+// when a player was actually dealt damage this way (see
+// b35RedirectDamageToChosen).
 //
-//   - "They can't gain life for the rest of the game" is NOT
-//     implemented. It is a permanent-duration player-scoped
-//     replacement, and the engine has no registry for a continuous
-//     effect that outlives its source and no per-player flag the
-//     life-gain path consults (Sulfuric Vortex's gap). A player the
-//     Nemesis hits gains life as normal.
+// One declared simplification, weaker than printed:
+//
 //   - The engine emits one damage event per SOURCE, so a Nemesis
 //     blocked by two creatures fires twice — once per blocker's
 //     damage, each with its own target — where the printed card
@@ -42,7 +41,6 @@ func init() {
 		Name:         "Screaming Nemesis",
 		Completeness: CompletenessCaveats,
 		Caveats: []string{
-			"A player it damages can still gain life — the \"can't gain life for the rest of the game\" clause isn't implemented.",
 			"If two or more sources damage it at the same time, it reflects each source's damage separately instead of the total in one go.",
 		},
 		PrintedKeywords: []string{"haste"},

@@ -122,6 +122,14 @@ type GameView struct {
 	// Drives the client's "no responses allowed" UI gating. Added
 	// in S13.1.
 	SplitSecondActive bool `json:"split_second_active,omitempty"`
+	// DamageCantBePrevented lists the live "damage can't be prevented
+	// this turn" grants by their source's name (Skullcrack, Stomp; CR
+	// 615.12, ADR 0107 §5 decision 5), oldest first — the game banner's
+	// line. Public: it changes what every Fog at the table does. Empty
+	// on nearly every turn. Battlefield statics ("Damage can't be
+	// prevented" on Leyline of Punishment) are not listed; the
+	// permanent is on the table for everyone to read.
+	DamageCantBePrevented []string `json:"damage_cant_be_prevented,omitempty"`
 	// DiscardPending is the cleanup-step pause map (S13.4): keys
 	// are player UUID strings, values are the count each player
 	// must discard. Drives the client's discard-prompt modal.
@@ -1126,6 +1134,12 @@ type StackItemView struct {
 	// gate, so the badge and the counter verbs cannot disagree. Public:
 	// it is a fact about a spell everyone can see. Added in #1553.
 	CantBeCountered bool `json:"cant_be_countered,omitempty"`
+	// DamageCantBePrevented is true for a spell whose own text says
+	// its damage can't be prevented, under its condition as it stands
+	// now (Combust; Banefire with X of 5 or more; ADR 0107 §5
+	// decision 5). Read from the engine's one gate, like
+	// CantBeCountered. Public.
+	DamageCantBePrevented bool `json:"damage_cant_be_prevented,omitempty"`
 	// AltCost is the key of the alternative cost this spell was cast
 	// for — "overload", "evoke", "cleave" — empty for an ordinary
 	// cast (S22). Public information the moment it is announced, and
@@ -1406,6 +1420,13 @@ type PlayerView struct {
 	// belong to. See ADR 0085 Decision 7 and game/life_lock.go.
 	// Added in S39 (#1200, ADR 0085).
 	LifeTotalLocked bool `json:"life_total_locked,omitempty"`
+
+	// CantGainLife is "this player can't gain life" (CR 119.7, ADR 0107
+	// §5): a battlefield static (Leyline of Punishment, Erebos), a turn
+	// grant (Skullcrack) or the rest of the game (Screaming Nemesis).
+	// Effective and public, for LifeTotalLocked's reasons: it changes
+	// what every lifelinker and Soul Warden at the table does.
+	CantGainLife bool `json:"cant_gain_life,omitempty"`
 
 	// CantLose lists the causes that can't make this player lose the
 	// game right now ("life", "empty_draw", "poison",
@@ -3535,21 +3556,22 @@ func ViewOfGame(g *game.Game) GameView {
 				// layers ReadSnapshot just refreshed.
 				BlockDecisionSeats: g.SeatsOwingBlockDecisionLocked(),
 			},
-			MulligansOpen:     g.MulligansOpen,
-			Monarch:           uuidStringOrEmpty(g.Monarch),
-			Initiative:        uuidStringOrEmpty(g.Initiative),
-			Promises:          viewOfPromises(g.Promises),
-			Vote:              viewOfVote(g.Vote),
-			UndoLimit:         g.Settings.UndoLimit,
-			Settings:          viewOfTableSettings(g.Settings),
-			StartingSeat:      g.StartingSeat,
-			StackItems:        viewOfStackItemsInStackOrder(g),
-			PendingTriggers:   viewOfStackItemSlice(g.PendingTriggers),
-			DelayedTriggers:   viewOfDelayedTriggers(g.DelayedTriggers),
-			SplitSecondActive: g.SplitSecondActive,
-			DiscardPending:    viewOfDiscardPending(g.DiscardPending),
-			PendingChoices:    viewOfPendingChoices(g),
-			LoopNotice:        viewOfLoopNotice(g.LoopNotice),
+			MulligansOpen:         g.MulligansOpen,
+			Monarch:               uuidStringOrEmpty(g.Monarch),
+			Initiative:            uuidStringOrEmpty(g.Initiative),
+			Promises:              viewOfPromises(g.Promises),
+			Vote:                  viewOfVote(g.Vote),
+			UndoLimit:             g.Settings.UndoLimit,
+			Settings:              viewOfTableSettings(g.Settings),
+			StartingSeat:          g.StartingSeat,
+			StackItems:            viewOfStackItemsInStackOrder(g),
+			PendingTriggers:       viewOfStackItemSlice(g.PendingTriggers),
+			DelayedTriggers:       viewOfDelayedTriggers(g.DelayedTriggers),
+			SplitSecondActive:     g.SplitSecondActive,
+			DamageCantBePrevented: g.DamageCantBePreventedThisTurnLabels(),
+			DiscardPending:        viewOfDiscardPending(g.DiscardPending),
+			PendingChoices:        viewOfPendingChoices(g),
+			LoopNotice:            viewOfLoopNotice(g.LoopNotice),
 		}
 		// #1279: where each defender's block declaration stands.
 		view.Turn.BlockPendingSeats, view.Turn.BlocksDeclaredSeats = g.BlockDeclarationSeatsLocked()
@@ -6641,6 +6663,7 @@ func viewOfStackItemsInStackOrder(g *game.Game) []StackItemView {
 			if item, ok := g.StackMeta[c.InstanceID]; ok && item != nil {
 				v := viewOfStackItem(item)
 				v.CantBeCountered = g.SpellCantBeCounteredForEffect(item.ID)
+				v.DamageCantBePrevented = g.SpellDamageCantBePreventedForEffect(item.ID)
 				entries = append(entries, entry{item.Seq, v})
 				seen[item.ID] = true
 			}
@@ -6861,6 +6884,7 @@ func viewOfPlayer(g *game.Game, p *game.Player) PlayerView {
 		Emblems:             emblems,
 		Keywords:            g.PlayerAbilitiesForEffect(p),
 		LifeTotalLocked:     g.PlayerLifeTotalCantChangeLocked(p),
+		CantGainLife:        g.PlayerCantGainLifeLocked(p),
 		CantLose:            lossCauseStrings(g.CantLoseCausesForEffect(p)),
 		CantWin:             g.CantWinForEffect(p),
 		EndGates:            viewOfGameEndGates(g.GameEndGatesForEffect(p)),
@@ -7217,23 +7241,24 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		// #1199: shared and public like the battlefield, and redacted
 		// the same way — a permanent can phase out face down, and the
 		// card under it is no more knowable for having phased.
-		PhasedOut:         redactZone(v.PhasedOut, isKnower),
-		Turn:              v.Turn,
-		MulligansOpen:     v.MulligansOpen,
-		Monarch:           v.Monarch,
-		Initiative:        v.Initiative,
-		Promises:          v.Promises,
-		Vote:              v.Vote,
-		UndoLimit:         v.UndoLimit,
-		Settings:          v.Settings,
-		StartingSeat:      v.StartingSeat,
-		StackItems:        v.StackItems,
-		PendingTriggers:   v.PendingTriggers,
-		DelayedTriggers:   v.DelayedTriggers,
-		SplitSecondActive: v.SplitSecondActive,
-		DiscardPending:    v.DiscardPending,
-		PendingChoices:    filterPendingChoices(v.PendingChoices, isKnower, viewerID),
-		LegalMoves:        legalMovesFor(v.legalBySeat, viewerID),
+		PhasedOut:             redactZone(v.PhasedOut, isKnower),
+		Turn:                  v.Turn,
+		MulligansOpen:         v.MulligansOpen,
+		Monarch:               v.Monarch,
+		Initiative:            v.Initiative,
+		Promises:              v.Promises,
+		Vote:                  v.Vote,
+		UndoLimit:             v.UndoLimit,
+		Settings:              v.Settings,
+		StartingSeat:          v.StartingSeat,
+		StackItems:            v.StackItems,
+		PendingTriggers:       v.PendingTriggers,
+		DelayedTriggers:       v.DelayedTriggers,
+		SplitSecondActive:     v.SplitSecondActive,
+		DamageCantBePrevented: v.DamageCantBePrevented,
+		DiscardPending:        v.DiscardPending,
+		PendingChoices:        filterPendingChoices(v.PendingChoices, isKnower, viewerID),
+		LegalMoves:            legalMovesFor(v.legalBySeat, viewerID),
 		// ADR 0105: the digest of the same list, under the same rule.
 		LegalActions: legalActionsFor(v.legalActionsBySeat, viewerID),
 		// S31 sub-PR 0: the public log rides the same isKnower closure

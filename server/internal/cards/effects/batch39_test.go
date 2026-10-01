@@ -1176,7 +1176,7 @@ func TestB39CatharticPyreTakesEitherModeAndNeverAPlayer(t *testing.T) {
 	}
 }
 
-func TestB39BanefireDealsXAndDeclaresItsMissingRiders(t *testing.T) {
+func TestB39BanefireDealsXAndDeclaresItsRiders(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
 	before := opp.Life
@@ -1188,10 +1188,11 @@ func TestB39BanefireDealsXAndDeclaresItsMissingRiders(t *testing.T) {
 
 	spec, _ := Lookup(b39BanefireOracle)
 	if spec.CantBeCountered {
-		t.Error("the uncounterable rider is conditional on X and is deliberately NOT set — setting it would make a small Banefire uncounterable, which is stronger than printed")
+		t.Error("the uncounterable rider is conditional on X; the unconditional flag would make a small Banefire uncounterable, which is stronger than printed")
 	}
-	if spec.Completeness != CompletenessCaveats || len(spec.Caveats) != 2 {
-		t.Errorf("both missing riders are declared: %v %v", spec.Completeness, spec.Caveats)
+	// ADR 0107 §5: both riders are conditional spell riders now.
+	if spec.CantBeCounteredIf == nil || spec.SpellDamageCantBePrevented == nil || spec.Completeness != CompletenessFull {
+		t.Errorf("both riders are declared on X: %v %v", spec.Completeness, spec.Caveats)
 	}
 	_ = me
 }

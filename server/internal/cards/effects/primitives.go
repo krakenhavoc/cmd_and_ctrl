@@ -40,11 +40,23 @@ type DealDamage struct {
 	SourceObject *game.ObjectRef
 	Target       uuid.UUID
 	Amount       int
+
+	// CantBePrevented is the instruction's own "The damage can't be
+	// prevented." (Combust, Pinpoint Avalanche; CR 615.12, ADR 0107 §5).
+	// It covers this damage only, not the source's later damage.
+	CantBePrevented bool
+	// CantBeRedirected is Lava Burst's "or dealt instead to another
+	// permanent or player": no redirection replacement applies to it.
+	CantBeRedirected bool
 }
 
 func (d DealDamage) Apply(ctx *Context) error {
 	if d.Amount <= 0 {
 		return nil
+	}
+	if d.CantBePrevented || d.CantBeRedirected {
+		return ctx.Game.DealMarkedDamageForEffect(d.Source, d.SourceObject, d.Target, d.Amount,
+			game.DamageMarks{CantBePrevented: d.CantBePrevented, CantBeRedirected: d.CantBeRedirected})
 	}
 	if d.SourceObject != nil {
 		return ctx.Game.DealDamageFromObjectForEffect(*d.SourceObject, d.Target, d.Amount)

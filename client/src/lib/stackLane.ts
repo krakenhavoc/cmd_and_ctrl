@@ -553,6 +553,14 @@ export function buildStackLane(input: StackLaneInput): StackLaneModel {
         title: "this spell can't be countered — by its own text or by the mana that paid for it",
       });
     }
+    // ADR 0107 §5: a Fog, a shield or protection will not stop this one.
+    if (item.damage_cant_be_prevented) {
+      chips.push({
+        label: "damage can't be prevented",
+        tone: "flag",
+        title: "this spell's damage can't be prevented — shields and protection don't stop it",
+      });
+    }
     if (item.hold_priority) chips.push({ label: "held priority", tone: "flag" });
     return chips;
   }

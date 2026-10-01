@@ -96,8 +96,9 @@ func everyFieldGameView(ownerID, oppID string) GameView {
 		PendingTriggers: []StackItemView{{ID: "item-2", Kind: "triggered", Controller: ownerID, Owner: ownerID, SourceCardID: "card-2"}},
 		DelayedTriggers: []DelayedTriggerView{{ID: "delayed-1", Controller: ownerID, At: "end_step"}},
 
-		SplitSecondActive: true,
-		DiscardPending:    map[string]int{ownerID: 1},
+		SplitSecondActive:     true,
+		DamageCantBePrevented: []string{"Skullcrack"},
+		DiscardPending:        map[string]int{ownerID: 1},
 		PendingChoices: []PendingChoiceView{{
 			ID: "choice-1", Kind: "choose_cards", Chooser: ownerID, FromPlayer: ownerID, Count: 1,
 			Options: []CardView{{InstanceID: uuid.NewString(), Name: "Choice Card", Owner: ownerID, Controller: ownerID}},

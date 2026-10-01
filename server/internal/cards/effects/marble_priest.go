@@ -26,7 +26,8 @@ func init() {
 		Completeness: CompletenessFull,
 		Static:       []game.StaticAbility{FilteredLure(game.BlockerFilterWall)},
 		Replacements: []game.ReplacementEffect{{
-			Watches: []game.EventKind{game.EventDealDamage},
+			Watches:    []game.EventKind{game.EventDealDamage},
+			Prevention: true, // CR 615.1a — "prevent"; CR 615.12 reads it
 			AppliesTo: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
 				if ev.Kind != game.RepEventDamage || !ev.IsCombatDamage || ev.DamageTarget != src.InstanceID {
 					return false

@@ -153,4 +153,16 @@ describe("endGateBadges", () => {
     const all = playerKeywordBadges(["hexproof"], true, { cant_win: true });
     expect(all.map((b) => b.key)).toEqual(["hexproof", "life-total-locked", "cant-win"]);
   });
+
+  // ADR 0107 §5 (CR 119.7): "can't gain life" is a badge of its own,
+  // and a locked life total, which already forbids a gain, swallows it.
+  it("shows can't-gain-life, unless the total is locked", () => {
+    expect(playerKeywordBadges([], false, { cant_gain_life: true }).map((b) => b.key)).toEqual([
+      "cant-gain-life",
+    ]);
+    expect(playerKeywordBadges([], true, { cant_gain_life: true }).map((b) => b.key)).toEqual([
+      "life-total-locked",
+    ]);
+    expect(playerKeywordBadges([], false, {}).map((b) => b.key)).toEqual([]);
+  });
 });

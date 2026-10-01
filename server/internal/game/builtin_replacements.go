@@ -176,9 +176,11 @@ var regenerationShieldReplacement = ReplacementEffect{
 // one sentence, so this is one rule with two stores rather than two
 // rules. ADR 0072's 2026-09-22 amendment.
 //
-// CR 615.12 ("this damage can't be prevented") is not modelled
-// anywhere in this engine, so it does not stop this either — the
-// pre-existing gap Banefire's caveat already names.
+// A PREVENTION EFFECT (CR 615.1a), so CR 615.12 applies to it:
+// damage that can't be prevented gets through protection (Banefire
+// with X of 5 or more, under Leyline of Punishment, from Excruciator).
+// The apply-loop settles it without running Replace
+// (settleUnpreventableLocked, unpreventable_damage.go).
 //
 // No Controller: CR 616.1 would ask the affected permanent's
 // controller, and a preemptive effect is never ordered against
@@ -186,6 +188,7 @@ var regenerationShieldReplacement = ReplacementEffect{
 var protectionPreventsDamageReplacement = ReplacementEffect{
 	Watches:    []EventKind{EventDealDamage},
 	Preemptive: true,
+	Prevention: true,
 	AppliesTo: func(ev *ReplacementEvent, g *Game, _ *Card) bool {
 		return g.protectionPreventsDamageLocked(ev)
 	},
