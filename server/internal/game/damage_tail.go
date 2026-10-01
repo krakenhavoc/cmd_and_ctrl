@@ -187,6 +187,24 @@ type damageTail struct {
 	// and a "you put" replacement then falls back to its heuristic.
 	controller uuid.UUID
 
+	// marks are the damage instruction's own CR 615.12 riders — "the
+	// damage can't be prevented" (Combust, Banefire with X of 5 or
+	// more) and Lava Burst's "or dealt instead to another permanent or
+	// player" — stamped by the entry point that dealt it
+	// (DealMarkedDamageForEffect). Transient: the event's, and never
+	// captured (ADR 0107 §5).
+	marks DamageMarks
+
+	// sourceUnpreventable is the damage source's own static "damage
+	// that would be dealt by this creature can't be prevented"
+	// (Excruciator), read once as the event is opened, from the
+	// source's last-known information when it has left
+	// (sourceDamageCantBePreventedLocked). Snapshotted with the source's
+	// other traits, for their reason: a paused event resumes after the
+	// source may have died.
+	sourceUnpreventable bool
+	sourceChecked       bool
+
 	// then is the CALLER's half of the tail (#807): the rest of the
 	// effect that asked for the damage, run with the amount that
 	// ACTUALLY landed once the CR 614 window has settled it. The exact
@@ -525,6 +543,12 @@ func (g *Game) damageThroughReplacementsLocked(ev *ReplacementEvent) (paused boo
 	// pipeline sees. CR 702.16e's built-in reads it there.
 	if ev.SourceLKI == nil && ev.damageTail != nil {
 		ev.SourceLKI = ev.damageTail.sourceLKI
+	}
+	// ADR 0107 §5: the source's own "can't be prevented" static is
+	// last-known information too, read as the event is opened.
+	if t := ev.damageTail; t != nil && !t.sourceChecked {
+		t.sourceChecked = true
+		t.sourceUnpreventable = g.sourceDamageCantBePreventedLocked(ev.DamageSource)
 	}
 	out, err := g.applyReplacementsLocked(ev)
 	if errors.Is(err, errReplacementPending) {

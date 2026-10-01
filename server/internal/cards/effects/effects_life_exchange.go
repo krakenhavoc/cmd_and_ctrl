@@ -78,6 +78,18 @@ func exchangeLifeTotalsThen(ctx *Context, a, b uuid.UUID, then func(g *game.Game
 	if lifeA == lifeB {
 		return finish(ctx.Game, 0)
 	}
+	// CR 119.7 and 119.8: a player who can't gain life can't make an
+	// exchange that would raise their total, and a player whose total
+	// can't change can't make one at all — "the exchange won't happen".
+	// Both halves are refused, not just the forbidden one (ADR 0107 §5).
+	gainer := pa
+	if lifeB < lifeA {
+		gainer = pb
+	}
+	if ctx.Game.PlayerCantGainLifeLocked(gainer) ||
+		ctx.Game.PlayerLifeTotalCantChangeLocked(pa) || ctx.Game.PlayerLifeTotalCantChangeLocked(pb) {
+		return finish(ctx.Game, 0)
+	}
 	source := ctx.Source()
 	return ctx.Game.ChangePlayerLifeThenForEffect(source, a, lifeB-lifeA, func(g *game.Game, applied int) error {
 		// The second half is written from the CAPTURED total, not

@@ -67,6 +67,10 @@ func init() {
 		},
 		Replacements: []game.ReplacementEffect{{
 			Watches: []game.EventKind{game.EventDealDamage},
+			// It only ever raises the amount ("deals damage equal to
+			// Ojer Axonil's power instead"), so it is not a CR 615
+			// prevention effect and "can't be prevented" leaves it be.
+			Prevention: false,
 			AppliesTo: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
 				if ev.Kind != game.RepEventDamage || ev.IsCombatDamage || src == nil {
 					return false

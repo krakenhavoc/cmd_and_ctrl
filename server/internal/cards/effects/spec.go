@@ -394,6 +394,23 @@ type Spec struct {
 	// server/internal/game/cant_be_countered.go.
 	CantBeCountered bool
 
+	// CantBeCounteredIf is the CONDITIONAL "this spell can't be
+	// countered": "If X is 5 or more, this spell can't be countered"
+	// (Banefire), "Hellbent — If you have no cards in hand, this spell
+	// can't be countered" (Demonfire). The condition is judged when
+	// something tries to counter the spell, through the same gate as
+	// CantBeCountered. Nil is never.
+	CantBeCounteredIf game.SpellCondition
+
+	// SpellDamageCantBePrevented is the spell's own "the damage can't
+	// be prevented" (CR 615.12, ADR 0107 §5) under its condition —
+	// Always() for Combust and Pinpoint Avalanche, X of 5 or more for
+	// Banefire. Judged as the spell deals its damage; the stack chip
+	// reads the same answer. Nil is never. An ABILITY's "the damage
+	// can't be prevented", or one that depends on the target (Lava
+	// Burst's "to a creature"), is DealDamage.CantBePrevented instead.
+	SpellDamageCantBePrevented game.SpellCondition
+
 	// SpellsCantBeCountered are this permanent's printed "<these>
 	// spells can't be countered" statics (ADR 0106 §4, #1806). Build
 	// them with the constructors in counter_shields.go, whose name
@@ -878,6 +895,32 @@ type Spec struct {
 	//
 	// Issue #1200, ADR 0085.
 	PlayerLifeTotalLocked bool
+
+	// DamageCantBePrevented declares this permanent's printed "damage
+	// can't be prevented" statics (CR 615.12, ADR 0107 §5):
+	//
+	//	DamageCantBePrevented: DamageCantBePreventedStatic(),          // Leyline of Punishment
+	//	DamageCantBePrevented: CombatDamageCantBePrevented(),          // Frenzied Baloth
+	//	DamageCantBePrevented: CombatDamageByYourCreaturesCantBePrevented(), // Questing Beast
+	//	DamageCantBePrevented: DamageByThisCantBePrevented(),          // Excruciator
+	//
+	// Read from the battlefield through game.CatalogUnpreventableDamage,
+	// keyed by CatalogAbilityKey. A spell's own "the damage can't be
+	// prevented" is a mark on its DealDamage, not this.
+	DamageCantBePrevented []game.UnpreventableDamageStatic
+
+	// CantGainLife declares this permanent's printed "can't gain life"
+	// statics (CR 119.7, ADR 0107 §5, #1880):
+	//
+	//	CantGainLife: PlayersCantGainLife(),          // Leyline of Punishment
+	//	CantGainLife: OpponentsCantGainLife(),        // Erebos, God of the Dead
+	//	CantGainLife: EnchantedPlayerCantGainLife(),  // Grievous Wound
+	//
+	// Read from the battlefield through game.CatalogCantGainLife, keyed
+	// by CatalogAbilityKey. The "this turn" and "for the rest of the
+	// game" forms are stored instead (PlayersCantGainLifeThisTurn,
+	// PlayerCantGainLifeForRestOfGame).
+	CantGainLife []game.CantGainLifeStatic
 
 	// GameEndGates declares a printed static "you can't lose the
 	// game" / "your opponents can't win the game" (CR 104.3 —
