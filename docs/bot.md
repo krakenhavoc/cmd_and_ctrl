@@ -188,10 +188,22 @@ to" is answered with as few cards as it will accept.
 The rule is about giving cards up, and it reads every hand prompt that
 way: asked to name a card from hand for something *good* — "you may
 put a land from your hand onto the battlefield" — a bot names its
-worst one, or, where the prompt allows it, declines. A prompt over
-anything but the bot's own hand (the battlefield, a library, an
-opponent's hand) carries nothing on the wire that says what naming a
-card costs, so the bot takes the first answer offered.
+worst one, or, where the prompt allows it, declines.
+
+**A prompt that asks a bot to name cards in its own library is scored
+by what the answer TAKES (#1831)** — the opposite sign. Every such
+prompt is a look at the top of the library that moves the named cards
+somewhere the bot wants them: into its hand (Horn of the Mark, Explore
+the Vastlands), onto the battlefield, or under a hideaway land. So the
+bot takes the most valuable card it may, by the same valuation the
+library search uses; "any number" takes them all, and a "you may" is
+never declined while there is a card to take. Which sets are legal
+(Explore the Vastlands' "a land and/or an instant or sorcery") is the
+enumerator's business, so the bot only ranks the answers it is offered.
+
+A prompt over anything else (the battlefield, a graveyard, an
+opponent's hand or library) carries nothing on the wire that says what
+naming a card costs, so the bot takes the first answer offered.
 
 ### What a bot answers when somebody else's card asks (#796 / #568 / #929)
 
