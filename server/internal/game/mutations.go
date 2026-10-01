@@ -4318,8 +4318,18 @@ func (g *Game) runStateChecksLocked() (sbaFired bool) {
 		// nothing legal is left. No-op when no pick_target is open,
 		// which is nearly every call. See trigger_target_timing.go.
 		g.refreshTargetChoicesLocked()
+		// ADR 0107 §1: the sweep is CR 704.3's "single event", so the
+		// per-event state-trigger check waits for it to finish, and the
+		// check below reads the board it settled on.
+		release := g.holdStateTriggersLocked()
 		fired, left := g.stateBasedActionsLocked()
+		release()
 		sbaFired = sbaFired || fired
+		// CR 603.8 / CR 704.3: state triggers are asked in every pass,
+		// after the state-based actions and before the waiting triggers
+		// go on the stack. A state no event announced — a continuous
+		// effect that began or ended in a layer pass — is caught here.
+		g.stateTriggersLocked()
 		// #864: belt-and-braces backstop, run every pass so nothing can
 		// leave this function about to hand a seat priority while a
 		// choice sits pending for a chooser this same pass (or an
@@ -8146,6 +8156,11 @@ func (g *Game) participatesInStepLocked(c *Card, firstStrike bool) bool {
 // Caller must hold g.mu.
 func (g *Game) assignAndDealCombatDamageLocked(step string) {
 	firstStrike := step == CombatStepFirstStrike
+	// ADR 0107 §1: combat damage is dealt simultaneously (CR 510.2),
+	// and this loop deals it attacker by attacker. A life total that has
+	// taken half of it is not a game state, so the per-event CR 603.8
+	// check waits until every assignment here has been dealt.
+	defer g.holdStateTriggersLocked()()
 
 	blockersByAttacker := make(map[uuid.UUID][]int, len(g.Battlefield.Cards))
 	// #1706: a blocker that still blocks two or more live attackers

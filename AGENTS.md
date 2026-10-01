@@ -98,7 +98,7 @@ cmd_and_ctrl/
     ├── engine-seams/closed/ # one fragment per closed seam; CI generates engine-seams.md's Closed list from them (#1461)
     ├── adding-cards.md  # the catalog card guide: recipes for cards, mechanics and engine seams (moved out of AGENTS.md §7, #1747)
     ├── sprints.md       # sprint plan
-    └── decisions/       # ADRs (0001 WS library … 0106 five small seams from the S50 re-checks) — see §4 on numbering
+    └── decisions/       # ADRs (0001 WS library … 0107 state triggers, rebound, disturb and damage prevention) — see §4 on numbering
 ```
 
 When you create a new top-level directory, add it here.

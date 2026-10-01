@@ -93,8 +93,39 @@ type TriggeredAbility struct {
 	// Kind isn't in this list — a cheap pre-filter that keeps the
 	// per-event walk linear in matching cards rather than total cards.
 	// Empty / nil means "never fires" — declaring a trigger with no
-	// Watches is a programming error and the harvester skips it.
+	// Watches is a programming error and the harvester skips it —
+	// unless State is set, which makes the row a state trigger that
+	// watches no event at all.
 	Watches []EventKind
+
+	// State makes this row a CR 603.8 STATE TRIGGER: "When you control
+	// no Islands, sacrifice this creature", "When there are five or
+	// more plot counters on this enchantment, …". It is a condition
+	// over the board, the source permanent and its controller, and the
+	// ability triggers as soon as the game state matches it — not when
+	// an event happens (CR 603.2's "or game state").
+	//
+	// The engine asks it after every event it emits and in each pass
+	// of the CR 704.3 loop (ADR 0107 §1, owner decision 1), so a state
+	// that holds only for a moment inside a resolution still triggers,
+	// as CR 603.8's own example says. It asks only battlefield
+	// permanents, through TriggersForCard, so a permanent that has lost
+	// its abilities (CR 613.1f) has no state triggers.
+	//
+	// The CR 603.8 latch — "doesn't trigger again until the ability has
+	// resolved, has been countered, or has otherwise left the stack" —
+	// is derived, never stored: the ability is latched while the stack,
+	// the trigger queue, the resolving slot or an open announcement
+	// prompt holds an item of this row from this OBJECT (CR 400.7). See
+	// state_triggers.go.
+	//
+	// A state trigger watches nothing (Register refuses Watches beside
+	// State) and must declare its Effect, so its stack item is keyed
+	// (ADR 0041 P9) and a table with one waiting is a restore point.
+	// Catalog data, rebuilt from the row like AppliesTo, and called
+	// under g.mu in write mode: it must be a pure read of the board and
+	// MUST NOT call public locking mutators.
+	State func(g *Game, source *Card, controller uuid.UUID) bool
 
 	// AppliesTo decides whether this specific event triggers this
 	// specific source card. Receives a live pointer to the source on
@@ -510,6 +541,11 @@ func (triggerHarvester) OnEvent(g *Game, ev Event) {
 	// and removes it. One hook, one place, no per-card case. See
 	// delayed.go and the 2026-09-18 amendment to ADR 0026.
 	g.fireEventDelayedTriggersLocked(ev)
+	// ADR 0107 §1, CR 603.8 (owner decision 1): a state trigger
+	// triggers as soon as the game state matches it, so the board this
+	// event left behind is asked too — after every event trigger above
+	// has been harvested. See state_triggers.go.
+	g.stateTriggersAfterEventLocked()
 }
 
 // harvestFromZone is the per-zone scan used for "live" triggers (ETB,

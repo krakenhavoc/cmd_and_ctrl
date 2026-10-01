@@ -1,0 +1,251 @@
+package effects
+
+import (
+	"strings"
+	"testing"
+
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
+
+// state_trigger_cards_test.go — the CR 603.8 state-trigger cards of ADR
+// 0107 delivery PR 1 (#1858). Each test makes the printed state arise
+// the way play would, passes priority so the trigger goes on the stack
+// and resolves, and checks the result.
+
+const (
+	stBarbarianOutcast  = "49d44e89-b94e-43f7-a996-f50651df9264"
+	stCovetousDragon    = "bf7710cb-70cb-42fb-b840-cc4f385daa7a"
+	stEmperorCrocodile  = "26eb7ee3-c0b6-4be0-bc80-92952f55a6f9"
+	stSynodCenturion    = "fe6337dc-df02-4baa-9fe0-b14e8d34186a"
+	stTetheredGriffin   = "909e1bff-237a-4259-9c0f-419185681782"
+	stEndangeredArmodon = "68879437-bbe2-4e99-b17b-ddec30bfd3d0"
+	stSkeletonShip      = "8c85887d-5935-46ec-a075-dc9f5133bb96"
+	stTaskMageAssembly  = "dfbbfbe1-d6c1-4b5b-8d09-949d70b9ff42"
+	stDeadlyDesigns     = "293c6f8f-9e6b-4267-a15d-1d5ce95fb5b4"
+	stDarksteelReactor  = "bc483bab-14fb-498d-9310-9c070766c7ae"
+)
+
+// stCard is a template for a test permanent.
+func stCard(name, oracle, typeLine string, power, toughness int) game.Card {
+	return game.Card{Name: name, OracleID: oracle, TypeLine: typeLine, Power: power, Toughness: toughness}
+}
+
+// stStateItems counts `source`'s triggered items, queued and on the
+// stack, whose label starts with `prefix`.
+func stStateItems(g *game.Game, source uuid.UUID, prefix string) int {
+	n := 0
+	for _, it := range g.PendingTriggers {
+		if it.SourceCardID == source && strings.HasPrefix(it.Label, prefix) {
+			n++
+		}
+	}
+	for _, it := range g.StackMeta {
+		if it.SourceCardID == source && it.Kind == game.StackItemTriggered && strings.HasPrefix(it.Label, prefix) {
+			n++
+		}
+	}
+	return n
+}
+
+// stDestroy destroys a permanent the way an effect would.
+func stDestroy(t *testing.T, g *game.Game, id uuid.UUID) {
+	t.Helper()
+	g.WithWriteLock(func() {
+		if err := g.DestroyPermanentForEffect(id); err != nil {
+			t.Fatalf("destroy: %v", err)
+		}
+	})
+}
+
+// The "when you control no <permanents>" family: with one of the named
+// permanents there is no trigger; once the last one goes, the trigger
+// goes on the stack and the creature is sacrificed.
+func TestStateTriggerControlNoCardsSacrifice(t *testing.T) {
+	cases := []struct {
+		name, oracle, typeLine string
+		needs                  game.Card
+	}{
+		{"Barbarian Outcast", stBarbarianOutcast, "Creature — Human Barbarian Beast",
+			stCard("Swamp", "", "Basic Land — Swamp", 0, 0)},
+		{"Covetous Dragon", stCovetousDragon, "Creature — Dragon",
+			stCard("Ornithopter", "", "Artifact Creature — Thopter", 0, 2)},
+		{"Tethered Griffin", stTetheredGriffin, "Creature — Griffin",
+			stCard("Test Aura", "", "Enchantment", 0, 0)},
+		{"Skeleton Ship", stSkeletonShip, "Legendary Creature — Skeleton",
+			stCard("Island", "", "Basic Land — Island", 0, 0)},
+		{"Emperor Crocodile", stEmperorCrocodile, "Creature — Crocodile",
+			stCard("Bear", "", "Creature — Bear", 2, 2)},
+		{"Synod Centurion", stSynodCenturion, "Artifact Creature — Construct",
+			stCard("Mox", "", "Artifact", 0, 0)},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			g := newCatalogGame(t)
+			me := g.Seats[0]
+			other := apaPush(g, me.ID, me.ID, tc.needs)
+			card := apaPush(g, me.ID, me.ID, stCard(tc.name, tc.oracle, tc.typeLine, 4, 4))
+			passPriorityAroundTable(t, g)
+			if !onBattlefield(g, card) || stStateItems(g, card, tc.name) != 0 {
+				t.Fatalf("%s triggered while its controller had what it needs", tc.name)
+			}
+			stDestroy(t, g, other)
+			if n := stStateItems(g, card, tc.name); n != 1 {
+				t.Fatalf("%s: %d state-trigger items after the last one went, want 1", tc.name, n)
+			}
+			passPriorityAroundTable(t, g)
+			if onBattlefield(g, card) {
+				t.Fatalf("%s is still on the battlefield after its trigger resolved", tc.name)
+			}
+		})
+	}
+}
+
+// Another player's Swamp does not keep Barbarian Outcast: "you control".
+func TestBarbarianOutcastCountsOnlyYourSwamps(t *testing.T) {
+	g := newCatalogGame(t)
+	me, bob := g.Seats[0], g.Seats[1]
+	apaPush(g, bob.ID, bob.ID, stCard("Swamp", "", "Basic Land — Swamp", 0, 0))
+	outcast := apaPush(g, me.ID, me.ID, stCard("Barbarian Outcast", stBarbarianOutcast, "Creature — Human Barbarian Beast", 2, 2))
+	passPriorityAroundTable(t, g)
+	if onBattlefield(g, outcast) {
+		t.Fatal("Barbarian Outcast survived with only an opponent's Swamp")
+	}
+}
+
+// Emperor Crocodile and its last companion dying in one wipe is one
+// event: the Crocodile never controls no other creatures while it is on
+// the battlefield, so nothing triggers.
+func TestEmperorCrocodileDiesWithTheOthersWithoutTriggering(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	apaPush(g, me.ID, me.ID, stCard("Bear", "", "Creature — Bear", 2, 2))
+	croc := apaPush(g, me.ID, me.ID, stCard("Emperor Crocodile", stEmperorCrocodile, "Creature — Crocodile", 5, 5))
+	g.WithWriteLock(func() {
+		ctx := NewContext(g, &game.StackItem{Controller: me.ID})
+		if err := (DestroyAllMatching{Match: Creature()}).Apply(ctx); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if n := stStateItems(g, croc, "Emperor Crocodile"); n != 0 {
+		t.Fatalf("the Crocodile triggered during a wipe that took it too (%d items)", n)
+	}
+}
+
+// Endangered Armodon is sacrificed when its controller controls a
+// creature with toughness 2 or less.
+func TestEndangeredArmodonSacrificedForASmallCreature(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	armodon := apaPush(g, me.ID, me.ID, stCard("Endangered Armodon", stEndangeredArmodon, "Creature — Elephant", 4, 5))
+	apaPush(g, me.ID, me.ID, stCard("Wall", "", "Creature — Wall", 0, 3))
+	passPriorityAroundTable(t, g)
+	if !onBattlefield(g, armodon) {
+		t.Fatal("a toughness-3 creature cost the Armodon")
+	}
+	apaPush(g, me.ID, me.ID, stCard("Bear", "", "Creature — Bear", 2, 2))
+	passPriorityAroundTable(t, g)
+	if onBattlefield(g, armodon) {
+		t.Fatal("Endangered Armodon survived a 2/2 under its controller's control")
+	}
+}
+
+// Skeleton Ship's tap ability puts a -1/-1 counter on its target.
+func TestSkeletonShipTapsForAMinusCounter(t *testing.T) {
+	g := newCatalogGame(t)
+	me, bob := g.Seats[0], g.Seats[1]
+	apaPush(g, me.ID, me.ID, stCard("Island", "", "Basic Land — Island", 0, 0))
+	ship := apaPush(g, me.ID, me.ID, stCard("Skeleton Ship", stSkeletonShip, "Legendary Creature — Skeleton", 0, 3))
+	bear := apaPush(g, bob.ID, bob.ID, stCard("Bear", "", "Creature — Bear", 2, 2))
+	apaActivate(t, g, me, ship, 0, game.ActivateAbilityParams{Targets: []game.TargetRef{{Kind: game.TargetCard, ID: bear}}})
+	if c := apaLive(g, bear); c.Counters[game.CounterMinusOne] != 1 {
+		t.Fatalf("the bear has %d -1/-1 counters, want 1", c.Counters[game.CounterMinusOne])
+	}
+}
+
+// Task Mage Assembly: any player may ping a creature at sorcery speed,
+// and the Assembly is sacrificed when there are no creatures at all.
+func TestTaskMageAssemblyPingsAndLeavesWithTheLastCreature(t *testing.T) {
+	g := newCatalogGame(t)
+	me, bob := g.Seats[0], g.Seats[1]
+	bear := apaPush(g, bob.ID, bob.ID, stCard("Bear", "", "Creature — Bear", 1, 1))
+	tma := apaPush(g, me.ID, me.ID, stCard("Task Mage Assembly", stTaskMageAssembly, "Enchantment", 0, 0))
+	passPriorityAroundTable(t, g)
+	if !onBattlefield(g, tma) {
+		t.Fatal("Task Mage Assembly left while a creature was on the battlefield")
+	}
+	rows := game.ActivatedAbilitiesForCard(game.Card{OracleID: stTaskMageAssembly})
+	if len(rows) != 1 || !rows[0].AnyPlayer || !rows[0].SorcerySpeed {
+		t.Fatalf("Task Mage Assembly's row = %+v, want one any-player sorcery-speed row", rows)
+	}
+	stDestroy(t, g, bear)
+	passPriorityAroundTable(t, g)
+	if onBattlefield(g, tma) {
+		t.Fatal("Task Mage Assembly stayed with no creatures on the battlefield")
+	}
+}
+
+// Deadly Designs: the fifth plot counter, from any player, triggers it
+// once; its controller targets up to two creatures, and the enchantment
+// is sacrificed and they are destroyed.
+func TestDeadlyDesignsFifthCounterDestroysTwoCreatures(t *testing.T) {
+	g := newCatalogGame(t)
+	me, bob := g.Seats[0], g.Seats[1]
+	dd := apaPush(g, me.ID, me.ID, stCard("Deadly Designs", stDeadlyDesigns, "Enchantment", 0, 0))
+	b1 := apaPush(g, bob.ID, bob.ID, stCard("Bear", "", "Creature — Bear", 2, 2))
+	b2 := apaPush(g, bob.ID, bob.ID, stCard("Bear", "", "Creature — Bear", 2, 2))
+	g.WithWriteLock(func() {
+		if err := g.AddCounterForEffect(dd, "plot", 4); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if n := stStateItems(g, dd, "Deadly Designs"); n != 0 {
+		t.Fatalf("four plot counters triggered it (%d items)", n)
+	}
+	// Bob pays for the fifth counter: the ability is any-player.
+	apaMana(bob, "C", "C")
+	if err := g.ActivateCatalogAbility(bob.ID, dd, 0, game.ActivateAbilityParams{Strict: true}); err != nil {
+		t.Fatalf("Bob activates Deadly Designs: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	choice := latestPickTarget(g, me.ID)
+	if choice == nil {
+		t.Fatal("no target prompt for the enchantment's controller")
+	}
+	if err := g.ResolvePickTargets(choice.ID, me.ID, []game.TargetRef{
+		{Kind: game.TargetCard, ID: b1}, {Kind: game.TargetCard, ID: b2},
+	}); err != nil {
+		t.Fatalf("ResolvePickTargets: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if onBattlefield(g, dd) || onBattlefield(g, b1) || onBattlefield(g, b2) {
+		t.Fatalf("after resolving: designs %v, bears %v %v; want all three gone",
+			onBattlefield(g, dd), onBattlefield(g, b1), onBattlefield(g, b2))
+	}
+}
+
+// Darksteel Reactor wins the game for its controller at twenty charge
+// counters.
+func TestDarksteelReactorWinsAtTwenty(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	reactor := apaPush(g, me.ID, me.ID, stCard("Darksteel Reactor", stDarksteelReactor, "Artifact", 0, 0))
+	g.WithWriteLock(func() {
+		if err := g.AddCounterForEffect(reactor, game.CounterCharge, 19); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if n := stStateItems(g, reactor, "Darksteel Reactor — you win"); n != 0 {
+		t.Fatalf("nineteen counters triggered the win (%d items)", n)
+	}
+	g.WithWriteLock(func() {
+		if err := g.AddCounterForEffect(reactor, game.CounterCharge, 1); err != nil {
+			t.Fatal(err)
+		}
+	})
+	passPriorityAroundTable(t, g)
+	if g.State == game.StateActive || g.Outcome == nil || g.Outcome.Winner != me.ID {
+		t.Fatalf("state %v outcome %+v, want the game over and won by the Reactor's controller", g.State, g.Outcome)
+	}
+}
