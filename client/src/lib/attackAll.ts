@@ -21,27 +21,43 @@
 // opponent rather than a bare "attack all", so the target is always
 // stated on the control the player presses.
 //
-// Nothing here is authoritative. The server re-checks every entry in
-// game.DeclareAttackers and silently skips whatever it disagrees with,
-// which matters while the printed-keyword pipeline is still being
-// repaired (#317): if `abilities` is missing a `defender` or
-// `vigilance` today, the worst case is a count that's off by one and
-// a creature the server declines to declare — never a failed action.
+// ELIGIBILITY IS THE SERVER'S (ADR 0105 §1, sub-PR 5). Which creatures
+// can attack comes from the legal-action lookup (legalActions.ts
+// `canAttack`): the enumerator's own answer, which runs the engine's
+// AttackerEligible plus the CR 508.1 tax, limit and requirement
+// checks. This module used to re-derive it from the row fields
+// (`attackBlocker` below), which is the drift class ADR 0033 §1 exists
+// to remove. The row fields now supply only the REASON sentence for a
+// creature the server leaves out, the way canCastFromHand builds its
+// tooltip. They decide eligibility only on a frame that carries no list
+// at all (an older server, or a seat that owes nothing), where the
+// lookup has no information and the plan keeps exactly the answer it
+// gave before.
+//
+// The server still re-checks every entry in game.DeclareAttackers and
+// silently skips whatever it disagrees with, so the worst a stale frame
+// can do is a count that is off by one, never a failed action.
 
 import { isCreature } from "./cardTypes";
+import { NO_LEGAL_ACTIONS, type LegalActions } from "./legalActions";
 import { ErrorCode } from "./protocol";
 import type { CardView, GameView, PlayerView } from "./protocol";
 
 // AttackBlocker is why a creature the viewer controls can't be added
 // to an attack-with-all. "declared" is tracked separately in the plan
 // because it isn't a problem — that creature is already attacking.
-export type AttackBlocker = "restricted" | "tapped" | "summoning-sick" | "defender";
+// "unavailable" is the server leaving a creature out for a reason the
+// row fields don't show: an attack tax it can't pay (CR 508.1a), a
+// count limit already reached (CR 508.1c), a requirement it would break
+// (CR 508.1d).
+export type AttackBlocker = "restricted" | "tapped" | "summoning-sick" | "defender" | "unavailable";
 
 export const BLOCKER_LABELS: Record<AttackBlocker, string> = {
   restricted: "can't attack",
   tapped: "tapped",
   "summoning-sick": "summoning sick",
   defender: "defender",
+  unavailable: "can't attack right now",
 };
 
 export interface BlockedAttacker {
@@ -63,15 +79,15 @@ export interface AttackAllPlan {
   defenders: PlayerView[];
 }
 
-// attackBlocker reports why a creature can't be swept into an
-// attack-with-all, or null when it can. Precedence runs from the most
+// attackBlocker names, from the row fields, why a creature can't
+// attack: the sentence for the hint. Precedence runs from the most
 // permanent reason to the most transient so the hint names the thing
-// the player would have to fix first.
+// the player would have to fix first. null means the row fields show
+// no reason, which is not the same as "it can attack": that is
+// attackRefusal's question, and the server's.
 //
-// Mirrors the server's eligibility check in game.DeclareAttackers.
-// Kept deliberately strict — the single-card declare_attacker verb is
-// laxer on purpose (sandbox hand-forcing), but a bulk button must not
-// quietly tap a creature that had no business attacking.
+// Not a gate on its own: attackRefusal reads it for the words, and for
+// the verdict only when the frame carries no list.
 export function attackBlocker(card: CardView): AttackBlocker | null {
   // S24: a "can't attack" restriction (Pacifism, Arrest, Faith's
   // Fetters) is the most permanent reason of the four and goes
@@ -85,13 +101,39 @@ export function attackBlocker(card: CardView): AttackBlocker | null {
   return null;
 }
 
+// attackRefusal is the eligibility verdict: why `card` can't be swept
+// into an attack-with-all right now, or null when it can.
+//
+// `gate` is the frame's FULL legal-action lookup (Game.svelte's
+// `legalActions`), never `visibleHighlights`: this withholds a creature
+// from a button, and the highlight setting must not change that. With a
+// list on the frame the server decides (`canAttack`), and the row
+// fields only name the reason, falling back to "unavailable" when they
+// show none. Without one there is no information, and the row fields
+// give the answer they always gave, so nothing is newly withheld.
+//
+// The lookup must be the plan's viewer's own: the digest is per seat,
+// and another seat's creatures have no entry in it. A caller planning
+// for a seat other than the frame's viewer (an admin's override menu)
+// passes nothing.
+export function attackRefusal(
+  card: CardView,
+  gate: LegalActions = NO_LEGAL_ACTIONS,
+): AttackBlocker | null {
+  if (!gate.known) return attackBlocker(card);
+  if (gate.canAttack(card.instance_id)) return null;
+  return attackBlocker(card) ?? "unavailable";
+}
+
 // planAttackAll buckets every creature the viewer controls on the
 // battlefield and lists the seats they may attack. Step gating is the
 // caller's job — both call sites already know whether the cursor is
-// in declare_attackers.
+// in declare_attackers. `gate` is attackRefusal's: the frame's full
+// lookup, when `viewerID` is the frame's viewer.
 export function planAttackAll(
   view: GameView | null | undefined,
   viewerID: string | null | undefined,
+  gate: LegalActions = NO_LEGAL_ACTIONS,
 ): AttackAllPlan {
   const plan: AttackAllPlan = { eligible: [], declared: [], blocked: [], defenders: [] };
   if (!view || !viewerID) return plan;
@@ -107,7 +149,7 @@ export function planAttackAll(
       plan.declared.push(card);
       continue;
     }
-    const reason = attackBlocker(card);
+    const reason = attackRefusal(card, gate);
     if (reason) plan.blocked.push({ card, reason });
     else plan.eligible.push(card);
   }

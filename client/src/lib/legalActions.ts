@@ -500,3 +500,115 @@ export function digestRefusesSpecial(gate: LegalActions, cardID: string, kind: s
   if (!gate.exact || !kind) return false;
   return !gate.readySpecialActions(cardID).includes(kind);
 }
+
+// ---- presentation: combat (ADR 0105 §2, sub-PR 5) ---------------------
+
+/** What a battlefield click means right now (Game.svelte's combatMode). */
+export type CombatMode = "idle" | "attack" | "block";
+
+/**
+ * The combat half of the ready treatment, as instance-ID sets.
+ *
+ * `candidates` are the viewer's creatures the server would let them
+ * declare right now: an attacker in declare attackers (`canAttack`:
+ * the digest's `attack_targets` is non-empty), a blocker in declare
+ * blockers (`blocks` is non-empty). They wear the ready ring.
+ *
+ * `targets` are what the SELECTED creature may be declared against:
+ * the players, planeswalkers and battles in its `attack_targets`, or
+ * the attackers in its `blocks`. They wear the ready ring too, drawn
+ * so it reads over an attacker's red ring, since an attacker a blocker
+ * may block is always attacking (Card.svelte's `combatTarget`).
+ */
+export interface CombatRings {
+  readonly candidates: ReadonlySet<string>;
+  readonly targets: ReadonlySet<string>;
+}
+
+const NO_IDS: ReadonlySet<string> = Object.freeze(new Set<string>());
+export const NO_COMBAT_RINGS: CombatRings = Object.freeze({
+  candidates: NO_IDS,
+  targets: NO_IDS,
+});
+
+/**
+ * combatRings reads the combat rings off the lookup. Legality is the
+ * digest's alone (`canAttack`, `attackTargets`, `blockableAttackers`).
+ * The one decision made here is presentation: a creature already
+ * declared (attacking, or blocking with room for another block, #1706)
+ * is not a candidate, because its red or blue ring already says it is
+ * in combat and the two would fight.
+ *
+ * Pass the HIGHLIGHT lookup (`legal`): these are rings, and the
+ * setting and autopass suppression turn them off. The lookup that
+ * knows nothing gives NO_COMBAT_RINGS.
+ */
+export function combatRings(
+  legal: LegalActions,
+  mode: CombatMode,
+  selectedID: string | null | undefined,
+  cards: readonly CardView[],
+): CombatRings {
+  if (!legal.known || mode === "idle") return NO_COMBAT_RINGS;
+  const candidates = new Set<string>();
+  for (const c of cards) {
+    if (mode === "attack") {
+      if (!c.attacking_target && legal.canAttack(c.instance_id)) candidates.add(c.instance_id);
+    } else if (!c.blocking_target && legal.blockableAttackers(c.instance_id).length > 0) {
+      candidates.add(c.instance_id);
+    }
+  }
+  const targets = new Set<string>(
+    !selectedID
+      ? []
+      : mode === "attack"
+        ? legal.attackTargets(selectedID)
+        : legal.blockableAttackers(selectedID),
+  );
+  if (candidates.size === 0 && targets.size === 0) return NO_COMBAT_RINGS;
+  return { candidates, targets };
+}
+
+/**
+ * attackTargetOpen is the gate on a defending PLAYER's click while an
+ * attacker is selected: whether the server would accept `attackerID`
+ * declared against `targetID`. Read it off the frame's FULL lookup
+ * (`legalGate`), never `visibleHighlights`, so the highlight setting
+ * opens or shuts nothing.
+ *
+ * Two cases are "no information" and keep today's rule, which offers
+ * every opponent still in the game:
+ *   - no list on this frame (an older server, or a seat that owes
+ *     nothing);
+ *   - an attacker that is already declared. Re-pointing it at another
+ *     defender is legal until the declaration locks in, but the
+ *     enumerator never lists it (a declared creature drops out of the
+ *     list), so there the digest is silent rather than "no".
+ */
+export function attackTargetOpen(
+  gate: LegalActions,
+  attacker: CardView | null | undefined,
+  attackerID: string,
+  targetID: string,
+): boolean {
+  if (!gate.known) return true;
+  if (attacker?.attacking_target) return true;
+  return gate.attackTargets(attackerID).includes(targetID);
+}
+
+/**
+ * attackTargetListed is the stricter question for a PERMANENT defender
+ * (a planeswalker, a battle): the digest names it as a target of the
+ * selected attacker. Clicking one on the board to declare the attack
+ * arrives with its ring (ADR 0105 §7: a ring must point at something
+ * the player can do), so no list means no click, which is what the
+ * board did before. Read it off the FULL lookup, as attackTargetOpen.
+ */
+export function attackTargetListed(
+  gate: LegalActions,
+  attackerID: string | null | undefined,
+  targetID: string,
+): boolean {
+  if (!attackerID || !gate.known) return false;
+  return gate.attackTargets(attackerID).includes(targetID);
+}

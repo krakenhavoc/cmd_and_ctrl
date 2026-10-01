@@ -65,7 +65,14 @@
   import TokenGroupModal from "./TokenGroupModal.svelte";
   import { groupMembersOf } from "../../tokenGroups";
   import { canOverride, type MenuAction } from "../../contextMenu.logic";
-  import { NO_LEGAL_ACTIONS, type LegalActions } from "../../legalActions";
+  import {
+    NO_COMBAT_RINGS,
+    NO_LEGAL_ACTIONS,
+    attackTargetListed,
+    attackTargetOpen,
+    combatRings,
+    type LegalActions,
+  } from "../../legalActions";
 
   type ActionSender = (type: ActionType, params?: ActionPayload["params"], player?: string) => void;
 
@@ -206,6 +213,21 @@
   // either, just as `sorcerySpeedBlocked` below is "" for them.
   const rowLegal = $derived(isSelf && !spectator ? legal : NO_LEGAL_ACTIONS);
   const rowGate = $derived(isSelf && !spectator ? legalGate : NO_LEGAL_ACTIONS);
+
+  // ADR 0105 sub-PR 5: the combat rings. Unlike the pips these reach
+  // an opponent's panel, because what the SELECTED creature may be
+  // declared against is on the other side of the table: the
+  // planeswalkers and battles a selected attacker may attack, the
+  // attackers a selected blocker may block. Both are facts of the
+  // viewer's own digest about cards it already sees, so they reveal
+  // nothing. The candidates half only ever lights the viewer's own
+  // creatures, which are the only ones the digest has entries for. A
+  // spectator has no digest.
+  const rings = $derived(
+    spectator
+      ? NO_COMBAT_RINGS
+      : combatRings(legal, combatMode, selectedCombatCardID, controlledCards),
+  );
 
   // ADR 0105 sub-PR 4 (#1789): a CR 116.2 special action chosen from a
   // card's ability popover: foretell, suspend or plot from the hand,
@@ -402,8 +424,23 @@
       : undefined,
   );
 
+  // ADR 0105 sub-PR 5: the player half of "the selected attacker's
+  // defenders light" — the identity's green ring, which is also the
+  // click. Read off the FULL lookup: it withholds a click the server
+  // would refuse, and the highlight setting must not change that. No
+  // list, or a re-point of an attacker already declared, keeps the old
+  // rule (attackTargetOpen).
   const attackTargetable = $derived(
-    !isSelf && !seat.eliminated && combatMode === "attack" && !!selectedCombatCardID,
+    !isSelf &&
+      !seat.eliminated &&
+      combatMode === "attack" &&
+      !!selectedCombatCardID &&
+      attackTargetOpen(
+        legalGate,
+        view.battlefield?.cards?.find((c) => c.instance_id === selectedCombatCardID),
+        selectedCombatCardID,
+        seat.id,
+      ),
   );
 
   function handleCardClick(card: CardView, ev?: MouseEvent): void {
@@ -436,6 +473,18 @@
       isCreature(card)
     ) {
       onSelectCombatCard(card.instance_id);
+      return;
+    }
+    // ADR 0105 sub-PR 5: an attack-mode click on a planeswalker or a
+    // battle the selected attacker may attack declares that attack
+    // (CR 508.1d). It is the card the ready ring is on, and a ring
+    // that pointed at nothing would be worse than none. Only what the
+    // server lists: with no list the click stays what it was.
+    if (
+      combatMode === "attack" &&
+      attackTargetListed(legalGate, selectedCombatCardID, card.instance_id)
+    ) {
+      onDeclareAttack(card.instance_id);
       return;
     }
     // Block-mode click on an incoming attacker commits the block.
@@ -534,6 +583,7 @@
       {sorcerySpeedBlocked}
       payerLife={seat.life}
       legal={rowLegal}
+      combat={rings}
       legalGate={rowGate}
       onSpecialAction={sendSpecialAction}
       onGroupClick={(k) => (openGroupKey = k)}
@@ -560,6 +610,7 @@
       {sorcerySpeedBlocked}
       payerLife={seat.life}
       legal={rowLegal}
+      combat={rings}
       legalGate={rowGate}
       onSpecialAction={sendSpecialAction}
       onGroupClick={(k) => (openGroupKey = k)}
@@ -580,6 +631,7 @@
       {sorcerySpeedBlocked}
       payerLife={seat.life}
       legal={rowLegal}
+      combat={rings}
       legalGate={rowGate}
       onSpecialAction={sendSpecialAction}
       onGroupClick={(k) => (openGroupKey = k)}
@@ -680,6 +732,7 @@
     onAttack={isSelf ? onDeclareAttackers : undefined}
     onBlock={isSelf ? declareGroupBlockers : undefined}
     onClose={() => (openGroupKey = null)}
+    legalGate={rowGate}
   />
 </div>
 
