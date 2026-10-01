@@ -2817,6 +2817,14 @@ export interface CardView extends CastSurfaceView {
   // pile of client-side rules re-derivation and this must not start
   // a new one.
   restrictions?: string[];
+  // ADR 0106 §2 (#1794) — this creature's restrictions on WHOM it may
+  // attack: Xantcha's "can't attack its owner or planeswalkers its
+  // owner controls", with the owner already resolved to a seat id.
+  // Draws the card's "CAN'T ATTACK <name>" chip (cantAttack.ts) and
+  // nothing else: which targets an attacker may pick is the
+  // legal_actions digest's `attack_targets`. Absent for nearly every
+  // card, and for a restriction naming the creature's own controller.
+  attack_target_restrictions?: AttackTargetRestrictionView[];
   // ADR 0034 — Scryfall's printing layout, absent for the ordinary
   // single-faced card. "modal_dfc" is the one the client acts on:
   // it means playing this card needs a face choice first.
@@ -2861,6 +2869,17 @@ export interface GrantedAbilityView {
   text: string;
   source_id?: string;
   source_name?: string;
+}
+
+// ADR 0106 §2 (#1794): one CR 508.1c restriction on whom a creature may
+// attack. Mirrors protocol.AttackTargetRestrictionView.
+export interface AttackTargetRestrictionView {
+  // The seat the creature can't attack (its owner).
+  player: string;
+  // Also "or planeswalkers that player controls".
+  planeswalkers?: boolean;
+  // The card whose text imposes it.
+  source?: string;
 }
 
 export interface ProtectionView {

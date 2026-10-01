@@ -42,6 +42,7 @@
   } from "../../protocol";
   import { defendingPlayerOf } from "../../attackTargets";
   import { takenFromByCard } from "../../takenFrom";
+  import { cantAttackByCard } from "../../cantAttack";
   import { bucketForBattlefield, isCreature } from "../../cardTypes";
   import { battlefieldClickIntent } from "../../contextMenu.logic";
   import { canActivateSorcerySpeedAbility } from "../../timing";
@@ -307,6 +308,9 @@
   // ADR 0104 (owner decision 6): the owner of each permanent another
   // player controls, for Card's TAKEN FROM badge.
   const takenFrom = $derived(takenFromByCard(view.battlefield?.cards, view.seats));
+  // ADR 0106 §2 (owner decision 3): whom each creature can't attack,
+  // read off the card view, for Card's CAN'T ATTACK chip.
+  const cantAttack = $derived(cantAttackByCard(view.battlefield?.cards, view.seats));
 
   // Every battlefield card that is drawn behind a host rather than in
   // its own type row. A dangling attachment — the host has left but
@@ -578,6 +582,7 @@
       {attachmentsByHost}
       {curseTargets}
       {takenFrom}
+      {cantAttack}
       cards={buckets.creature}
       {viewerID}
       {selectedCombatCardID}
@@ -603,6 +608,7 @@
       {attachmentsByHost}
       {curseTargets}
       {takenFrom}
+      {cantAttack}
       cards={buckets.land}
       compact
       strip
@@ -625,6 +631,7 @@
       {attachmentsByHost}
       {curseTargets}
       {takenFrom}
+      {cantAttack}
       cards={buckets.right}
       compact
       {viewerID}

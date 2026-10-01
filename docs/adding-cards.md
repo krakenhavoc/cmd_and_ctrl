@@ -1796,6 +1796,26 @@ same PR, and assert `dispatchAll` over the enumerated moves.
 Restrictions are checked **at declaration only** (CR 508.1c, 509.1b).
 A creature pacified after attackers were declared keeps attacking.
 
+**"Can't attack its owner"** ([ADR 0106 §2](decisions/0106-five-small-seams-from-the-s50-rechecks.md),
+#1794) is not a bit either: it says WHOM the creature may not attack,
+so it is data on `Characteristic.AttackTargetRestrictions`, written by
+one of two statics:
+
+```go
+Static: []game.StaticAbility{AttacksEachCombat(), CantAttackItsOwnerOrItsOwnersPlaneswalkers()}, // Xantcha, Sleeper Agent
+Static: []game.StaticAbility{AttacksEachCombat(), CantAttackItsOwner()},                         // Alexios, Deimos of Kosmos
+```
+
+The owner is read live, so a copy may not attack ITS owner, and a
+battle the owner protects is still a legal target. Both declaration
+verbs, the CR 508.1d requirement search and the enumerator's
+per-attacker list (`AttackTargetsForAttackerForEffect`) share one check,
+`canAttackTargetWithLocked`; a creature that must attack and has only
+its owner to attack owes nothing. A reselection (CR 508.7b) and a
+creature put onto the battlefield attacking (CR 508.4c) ignore it. The
+card shows a "CAN'T ATTACK <name>" chip. A RESOLVED effect that grants
+it (Elrond of the White Council) has no mod kind yet.
+
 [ADR 0045](decisions/0045-combat-restrictions.md) has the
 taxonomy, including what the vocabulary deliberately cannot say:
 Silent Arbiter's and Crawlspace's count limits, which are set-shaped

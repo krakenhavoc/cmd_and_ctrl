@@ -353,6 +353,13 @@ func (g *Game) defendingPlayerForAttackerLocked(attacker *Card) uuid.UUID {
 //	           attackable by you either, for the same reason the
 //	           fallback above makes you its defender)
 //
+// A restriction on the CREATURE ("can't attack its owner", ADR 0106
+// §2) is not here either: this takes only the controller, and is the
+// whole check for CR 508.7b's reselection and CR 508.4c's entry
+// attacking, which are exempt from restrictions on the declaration.
+// The declaration verbs call canAttackTargetWithLocked, which is this
+// plus the creature's own list (attack_target_restrictions.go).
+//
 // Goad and "attacks if able" are not here: they are CR 508.1d
 // REQUIREMENTS, judged over the whole declaration by the verbs through
 // attack_requirements.go (#1571), because goad's "a player other than
@@ -389,7 +396,9 @@ func (g *Game) canAttackTargetLocked(attackerController, target uuid.UUID) error
 // the client's picker, and the legal-move enumerator calls it to
 // price an attack. It does not consider the attacking creature at
 // all — summoning sickness, defender and tapped state gate the
-// ATTACKER, not the target, and are checked separately.
+// ATTACKER, not the target, and are checked separately. A creature's
+// own target restrictions (ADR 0106 §2) are not considered either:
+// the per-creature list is AttackTargetsForAttackerForEffect.
 func (g *Game) AttackTargetsForEffect(attackerController uuid.UUID) []AttackTargetRef {
 	var out []AttackTargetRef
 	for _, p := range g.Seats {

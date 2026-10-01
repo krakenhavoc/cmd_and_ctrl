@@ -10,6 +10,7 @@ import {
   attackTaxLabelForCount,
   attackTaxOn,
   blockedSummary,
+  eligibleAt,
   planAttackAll,
 } from "./attackAll";
 
@@ -553,5 +554,47 @@ describe("attackAllTaxLabel", () => {
     expect(attackAllTaxLabel(v, planAttackAll(v, "a"), "b")).toBe(
       "costs {2}{2} each, {2}{2}{2}{2} for all 2",
     );
+  });
+});
+
+// ADR 0106 §2 (#1794): a creature that "can't attack its owner" is
+// eligible, and the server lists every opponent for it but its owner.
+// "Attack with all" is per seat, so it counts and sends the creature at
+// every seat but that one.
+describe("attack with all, per seat", () => {
+  const alice = seat("a", "Alice");
+  const bob = seat("b", "Bob", { seat: 1 });
+  const carol = seat("c", "Carol", { seat: 2 });
+  const v: GameView = {
+    ...view([alice, bob, carol], [creature("bear", "a"), creature("xantcha", "a", { owner: "b" })]),
+    legal_actions: {
+      pass: true,
+      sources: {
+        bear: { kinds: ["attack"], moves: 2, attack_targets: ["b", "c"] },
+        xantcha: { kinds: ["attack"], moves: 1, attack_targets: ["c"] },
+      },
+    },
+  };
+  const plan = planAttackAll(v, "a", legalActionsOf(v));
+
+  it("leaves the creature out at its owner's seat only", () => {
+    expect(plan.eligible.map((c) => c.instance_id)).toEqual(["bear", "xantcha"]);
+    expect(eligibleAt(plan, "b").map((c) => c.instance_id)).toEqual(["bear"]);
+    expect(eligibleAt(plan, "c").map((c) => c.instance_id)).toEqual(["bear", "xantcha"]);
+  });
+
+  it("sends and counts what that seat may be attacked by", () => {
+    expect(attackAllParams(plan, "b")?.attackers).toEqual([{ attacker: "bear", target: "b" }]);
+    expect(attackAllParams(plan, "c")?.attackers.map((a) => a.attacker)).toEqual([
+      "bear",
+      "xantcha",
+    ]);
+    expect(attackAllLabel(plan, bob)).toBe("Attack Bob with all 1 creature");
+    expect(attackAllLabel(plan, carol)).toBe("Attack Carol with all 2 creatures");
+  });
+
+  it("a frame with no list counts every eligible creature at every seat, as before", () => {
+    const bare = planAttackAll(view([alice, bob, carol], v.battlefield.cards), "a");
+    expect(eligibleAt(bare, "b").map((c) => c.instance_id)).toEqual(["bear", "xantcha"]);
   });
 });

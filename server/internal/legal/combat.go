@@ -81,7 +81,14 @@ func (e *enumerator) combatMoves() {
 			// comes from the engine rather than from a walk over the
 			// seats. Enumerating only players would have left the bot
 			// unable to see a lethal swing at a planeswalker.
-			for _, t := range g.AttackTargetsForEffect(e.seat) {
+			//
+			// ADR 0106 §2 (#1794): per ATTACKER, not per seat — a
+			// creature that "can't attack its owner" (Xantcha) is not
+			// offered its owner, through the same restriction check
+			// both declaration verbs run (#544). The digest's
+			// attack_targets is built from these moves, so the
+			// client's per-attacker gate follows.
+			for _, t := range g.AttackTargetsForAttackerForEffect(c) {
 				decl := []game.AttackDeclaration{{Attacker: c.InstanceID, Target: t.ID}}
 				// #1507, CR 508.1c: a count limit (Silent Arbiter,
 				// Crawlspace) the declaration verb would refuse is
