@@ -2,29 +2,54 @@ package game
 
 import "github.com/google/uuid"
 
-// cant_be_countered.go — S23: the "This spell can't be countered"
-// rider (Supreme Verdict, Cavern of Souls' grant, Thrun).
+// cant_be_countered.go — every "can't be countered" in the engine, read
+// at one gate. S23's "This spell can't be countered" rider (Supreme
+// Verdict) started it; ADR 0106 §4 (#1806) gives the gate its full
+// shape.
 //
-// Deliberately NOT a keyword and not a continuous effect. It is a
-// per-card static statement about a spell on the stack, read at
-// exactly one moment — when something tries to counter it — so it
-// gets the same shape every other card-level static declaration in
-// this engine has: a catalog hook, consulted at the choke point.
+// NOT A KEYWORD, AND NOT A LAYER EFFECT. Every form of "can't be
+// countered" is an effect that modifies the rules of the game rather
+// than an object (CR 613.11), so it is applied after the layer pass
+// and read at exactly one moment: when something tries to counter a
+// spell. That is why none of it is stamped onto the stack item by the
+// layer pass's stack step (ADR 0104), and why a static on a permanent
+// reaches spells on the stack at all: it is not a characteristic of
+// the spell, it is a statement the gate asks about the spell.
 //
-// Two sources answer it. The spell's OWN printed rider (the catalog
-// hook), and since #1547 the MANA that paid for it: Cavern of Souls',
-// Delighted Halfling's and Boseiju's "that spell can't be countered"
-// is a spend rider on the token (mana_spend_rider.go), stamped Applied
-// on the item's payment record when the token paid. Both are read
-// here and nowhere else, so every counter verb — CounterTargetForEffect,
-// the to-zone and to-library counters, and the put_in_library prompt's
-// counterableSpellOnStackLocked — honours both through one gate.
+// THE FIVE SOURCES (ADR 0106 §4 decision 5), asked in this order, the
+// first yes winning:
 //
-// Still not modelled: a static GRANT over the stack ("creature spells
-// you control can't be countered", Allosaurus Shepherd) — a continuous
-// effect on spells, which the layer system does not reach (ADR 0012).
-// Nor the manual CounterSpell sandbox action, which honours neither
-// source by design: it is the table's override, not a rules verb.
+//  1. The spell's own printed rider — CatalogCantBeCountered.
+//  2. The mana that paid for it (#1547): Cavern of Souls', Delighted
+//     Halfling's and Boseiju's "that spell can't be countered" is a
+//     spend rider stamped Applied on the item's payment record
+//     (mana_spend_rider.go).
+//  3. Marks on the spell's stack item — "target spell can't be
+//     countered" (Vexing Shusher) and a spent one-use "the next spell
+//     you cast" promise (Insist). ADR 0106 delivery PR 3; nothing
+//     writes a mark yet, so the gate has no step for it.
+//  4. The battlefield statics — "Spells you control can't be
+//     countered" (Chimil, the Inner Sun) and its "you cast" and "any
+//     player" forms, read off the battlefield on every ask
+//     (counterShieldOnBattlefieldLocked, below).
+//  5. A player's "this turn" grants on Player.Statics — Veil of
+//     Summer, Bound // Determined, Domri, Anarch of Bolas's +1. ADR
+//     0106 delivery PR 3; no such grant exists yet, so the gate has no
+//     step for it.
+//
+// Every counter verb — CounterTargetForEffect, the to-zone and
+// to-library counters, and the put_in_library prompt's
+// counterableSpellOnStackLocked — asks spellCantBeCounteredLocked and
+// nothing else, and the stack chip (#1553) is drawn from the same
+// answer, so a new source added here reaches all of them at once.
+//
+// A spell that can't be countered is still a legal TARGET for a
+// counterspell (CR 101.2: the "can't" only beats the counter itself).
+// The counterspell resolves and does nothing; it does not fizzle.
+//
+// Not modelled, deliberately: the manual CounterSpell sandbox action
+// honours none of these sources. It is the table's override, not a
+// rules verb.
 
 // CatalogCantBeCountered is the catalog hook the effects package
 // wires at init, mirroring CatalogTargetSpec / CatalogModeSpec /
@@ -32,25 +57,59 @@ import "github.com/google/uuid"
 var CatalogCantBeCountered func(oracleID string) bool
 
 // spellCantBeCounteredLocked reports whether the spell on the stack
-// prints "this spell can't be countered", or was paid for with mana
-// whose rider says so (#1547).
+// can't be countered, asking the sources in the order the file comment
+// lists.
 //
-// Caller must hold g.mu.
+// Caller must hold g.mu with fresh layers (a battlefield static is
+// keyed by CatalogAbilityKey and judged against its source's layered
+// controller), as hexproofBypassedLocked's callers do. Reads only, so
+// the view may ask under the read lock.
 func (g *Game) spellCantBeCounteredLocked(spellID uuid.UUID) bool {
-	// #1547: the mana that paid for it said so.
-	if g.StackMeta[spellID].SpellCantBeCounteredByMana() {
+	item := g.StackMeta[spellID]
+	spell := g.spellCardOnStackLocked(spellID)
+
+	// 1. The spell's own printed rider.
+	if spell != nil && spellPrintsCantBeCountered(*spell) {
 		return true
 	}
-	if CatalogCantBeCountered == nil || g.Stack == nil {
-		return false
+	// 2. The mana that paid for it (#1547).
+	if item.SpellCantBeCounteredByMana() {
+		return true
+	}
+	// 3. Marks on the item: ADR 0106 PR 3.
+	// 4. The battlefield statics.
+	if spell != nil && g.counterShieldOnBattlefieldLocked(item, *spell) {
+		return true
+	}
+	// 5. The "this turn" grants on Player.Statics: ADR 0106 PR 3.
+	return false
+}
+
+// spellCardOnStackLocked is the card a spell on the stack is, or nil.
+//
+// Caller must hold g.mu.
+func (g *Game) spellCardOnStackLocked(spellID uuid.UUID) *Card {
+	if g.Stack == nil {
+		return nil
 	}
 	for i := range g.Stack.Cards {
 		if g.Stack.Cards[i].InstanceID == spellID {
-			oracle := CatalogKey(g.Stack.Cards[i])
-			return oracle != "" && CatalogCantBeCountered(oracle)
+			return &g.Stack.Cards[i]
 		}
 	}
-	return false
+	return nil
+}
+
+// spellPrintsCantBeCountered reports whether the spell's own text says
+// "This spell can't be countered". Keyed by CatalogKey, not
+// CatalogAbilityKey: the rider is a statement on the spell, not an
+// ability of a permanent (see CatalogAbilityKey's doc).
+func spellPrintsCantBeCountered(spell Card) bool {
+	if CatalogCantBeCountered == nil {
+		return false
+	}
+	oracle := CatalogKey(spell)
+	return oracle != "" && CatalogCantBeCountered(oracle)
 }
 
 // SpellCantBeCounteredForEffect is spellCantBeCounteredLocked for a caller
@@ -64,4 +123,127 @@ func (g *Game) SpellCantBeCounteredForEffect(id uuid.UUID) bool {
 		return false
 	}
 	return g.spellCantBeCounteredLocked(id)
+}
+
+// --- source 4: the battlefield statics (ADR 0106 §4 decision 1) ----
+
+// CounterShieldWhose is whose spells a "can't be countered" statement
+// covers. ADR 0106 PR 3's turn grants take the same vocabulary.
+type CounterShieldWhose uint8
+
+const (
+	// CounterShieldYouControl is "Spells you CONTROL can't be
+	// countered" (Chimil, the Inner Sun): a spell whose current
+	// controller (StackItem.Controller, CR 112.2) is the controller of
+	// the permanent with the static. A stolen spell (ADR 0104) is
+	// covered by the thief's Chimil, not the caster's, and a copy you
+	// control is a spell you control. The zero value, because it is
+	// the narrower of the two "you" readings.
+	CounterShieldYouControl CounterShieldWhose = iota
+
+	// CounterShieldYouCast is "Spells you CAST … can't be countered"
+	// (Thryx, the Sudden Storm; Cunning Nightbonder): a spell the
+	// static's controller cast. The caster is StackItem.BaseController
+	// (zero meaning Controller), which a change of control does not
+	// move. A copy of a spell is not cast (CR 707.10), so it is never
+	// covered.
+	CounterShieldYouCast
+
+	// CounterShieldAnyPlayer is the form with no "you" at all:
+	// "Creature spells can't be countered" (Gaea's Herald), "Spells
+	// can't be countered" (Lier, Disciple of the Drowned). Every
+	// player's matching spell is covered, opponents' included.
+	CounterShieldAnyPlayer
+)
+
+// CounterShieldStatic is one printed "<these> spells can't be countered"
+// static on a permanent. Build it with the constructors in
+// cards/effects/counter_shields.go rather than by hand.
+//
+// It is catalog data and is never stored: the gate reads it off the
+// battlefield every time it asks (CR 611.3a, a static's effect "isn't
+// locked in"), so it covers a spell cast before the permanent arrived,
+// stops covering anything the moment the permanent leaves, and two
+// of them compose for free.
+type CounterShieldStatic struct {
+	// Label is the clause as printed, for the log.
+	Label string
+
+	// Whose is whose spells the static covers.
+	Whose CounterShieldWhose
+
+	// Spell narrows which spells — "creature", "green", "with power 5
+	// or greater", "Sliver", "with mana value 5 or greater". `spell` is
+	// the card on the stack as it stands; `source` is the permanent
+	// with the static, live off the battlefield. Nil covers every
+	// spell. Treat the game as read-only.
+	Spell func(g *Game, spell Card, source *Card) bool
+}
+
+// CatalogCounterShields returns the "spells can't be countered"
+// statics a battlefield permanent with the given catalog key has.
+// carddef.go sets it from CardDef.SpellsCantBeCountered; a
+// game-package test may stub it directly.
+var CatalogCounterShields func(key string) []CounterShieldStatic
+
+// CounterShieldsForCard is the shields a permanent has right now: its
+// catalog entry's, keyed by CatalogAbilityKey so a Chimil that has
+// lost all its abilities (CR 613.1f) shields nothing. A phased-out
+// permanent is not in the battlefield slice (phasing.go), so the gate
+// never reaches one (CR 702.26b).
+func CounterShieldsForCard(c Card) []CounterShieldStatic {
+	if CatalogCounterShields == nil {
+		return nil
+	}
+	key := CatalogAbilityKey(c)
+	if key == "" {
+		return nil
+	}
+	return CatalogCounterShields(key)
+}
+
+// counterShieldOnBattlefieldLocked reports whether some permanent's
+// static says this spell can't be countered (CR 604.2: active while
+// the permanent is on the battlefield and has the ability).
+//
+// `item` is the spell's stack item; nil (a spell with no item, which
+// only a hand-built test makes) is judged as having no controller, so
+// only an any-player shield can cover it.
+//
+// Caller must hold g.mu.
+func (g *Game) counterShieldOnBattlefieldLocked(item *StackItem, spell Card) bool {
+	if CatalogCounterShields == nil || g.Battlefield == nil {
+		return false
+	}
+	var controller, caster uuid.UUID
+	copied := false
+	if item != nil {
+		controller, caster = item.Controller, item.BaseController
+		if caster == uuid.Nil {
+			caster = controller
+		}
+		copied = item.IsCopy
+	}
+	for i := range g.Battlefield.Cards {
+		src := &g.Battlefield.Cards[i]
+		for _, s := range CounterShieldsForCard(*src) {
+			switch s.Whose {
+			case CounterShieldYouControl:
+				if controller == uuid.Nil || controller != src.Controller {
+					continue
+				}
+			case CounterShieldYouCast:
+				if copied || caster == uuid.Nil || caster != src.Controller {
+					continue
+				}
+			case CounterShieldAnyPlayer:
+			default:
+				continue
+			}
+			if s.Spell == nil || s.Spell(g, spell, src) {
+				return true
+			}
+		}
+	}
+	return false
 }

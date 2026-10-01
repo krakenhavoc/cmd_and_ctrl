@@ -1811,6 +1811,45 @@ never offered (#544). It pays through the same
 `payAbilityManaCostLocked` an activated ability uses, so `ManaTrigger`
 fires for the taps and nothing about mana is duplicated.
 
+### "Spells you control can't be countered" (ADR 0106, #1806)
+
+Three different statements, three different slots:
+
+| Printed | Slot |
+|---|---|
+| "This spell can't be countered." | `Spec.CantBeCountered: true` |
+| "…and that spell can't be countered" on mana | a spend rider, `SpentSpellCantBeCountered` |
+| "<These> spells [you control / you cast] can't be countered." on a permanent | `Spec.SpellsCantBeCountered` |
+
+The third is a list of `game.CounterShieldStatic`, built with the
+constructor whose name says whose spells, and filtered with ordinary
+`CardPredicate`s:
+
+```go
+SpellsCantBeCountered: []game.CounterShieldStatic{
+    SpellsYouControlCantBeCountered("Green spells you control can't be countered.", OfColor("G")), // Allosaurus Shepherd
+    SpellsYouCastCantBeCountered("…", ManaValueGE(5)),                                       // Thryx
+    AnyPlayersSpellsCantBeCountered("Creature spells can't be countered.", Creature()),      // Gaea's Herald
+},
+```
+
+- **"You control" and "you cast" differ.** "Control" is the spell's
+  current controller, so a stolen spell (ADR 0104) is the thief's.
+  "Cast" is the caster, and a copy is never covered (CR 707.10).
+- **It is not a layer effect** (CR 613.11). The counter gate,
+  `spellCantBeCounteredLocked`, reads it off the battlefield every time
+  something tries to counter a spell, so do not stamp anything onto the
+  stack item. Every counter verb and the stack chip already ask the
+  gate.
+- The predicates see the spell as it sits on the stack: printed types,
+  colours and power, with X in the mana value.
+- A card that prints both the rider and a static (Prowling Serpopard)
+  declares both. Neither does the other's job.
+
+"Can't be countered this turn" (Veil of Summer), "the next spell you
+cast can't be countered" (Insist) and "target spell can't be countered"
+(Vexing Shusher) are ADR 0106 PR 3, not this slot.
+
 ### Attaching, and an ability whose source has gone (#812)
 
 Two rules, each at one choke point, and no card file checks either.
