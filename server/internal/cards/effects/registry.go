@@ -90,6 +90,7 @@ func Register(spec Spec) {
 		}
 	}
 	for _, t := range spec.Triggered {
+		checkStateTrigger(spec.Name, t)
 		checkFlatClauses(spec.Name, t.Targets)
 		// A trigger announces no X, ever (#1559) — unlike an activated
 		// ability (#1723), there is no cost to check.

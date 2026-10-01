@@ -1,6 +1,9 @@
 // cantAttack.ts — ADR 0106 §2 (#1794, owner decision 3): a creature
 // that "can't attack its owner" (Xantcha, Sleeper Agent) says so on the
-// card, naming the owner: "CAN'T ATTACK Alice".
+// card, naming the owner: "CAN'T ATTACK Alice". ADR 0107 §2 (#1879) adds
+// "can't attack unless defending player controls an Island" (Sea
+// Serpent): one row per opponent who controls none right now, and the
+// tooltip says why ("can't attack Bob …: Bob controls no Island").
 //
 // READ, NOT DERIVED. The chip is drawn from the server's
 // `attack_target_restrictions` on the card view, with the player it
@@ -32,12 +35,13 @@ export function cantAttackChip(
   const rows = card.attack_target_restrictions ?? [];
   if (rows.length === 0) return null;
   const names = new Map((seats ?? []).map((s) => [s.id, s.name]));
-  const byPlayer = new Map<string, { walkers: boolean; sources: string[] }>();
+  const byPlayer = new Map<string, { walkers: boolean; sources: string[]; unless: string[] }>();
   for (const r of rows) {
     if (!r.player) continue;
-    const e = byPlayer.get(r.player) ?? { walkers: false, sources: [] };
+    const e = byPlayer.get(r.player) ?? { walkers: false, sources: [], unless: [] };
     e.walkers = e.walkers || !!r.planeswalkers;
     if (r.source && !e.sources.includes(r.source)) e.sources.push(r.source);
+    if (r.unless && !e.unless.includes(r.unless)) e.unless.push(r.unless);
     byPlayer.set(r.player, e);
   }
   if (byPlayer.size === 0) return null;
@@ -48,6 +52,8 @@ export function cantAttackChip(
     labels.push(name);
     let t = `can't attack ${name}`;
     if (e.walkers) t += ` or planeswalkers ${name} controls`;
+    // ADR 0107 §2: why — "Bob controls no Island".
+    if (e.unless.length > 0) t += `: ${name} controls no ${e.unless.join(" or ")}`;
     if (e.sources.length > 0) t += ` (${e.sources.join(", ")})`;
     titles.push(t);
   }

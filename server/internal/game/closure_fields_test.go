@@ -116,8 +116,14 @@ var closureClassCeilings = map[string]int{
 	// census:TurnScopedReplacements lines tier 3b-1 moved
 	// (ReplacementEffect.*, CopySelector.*, EntryHandReveal.*) + the
 	// one census:StackEffects line tier 4-final moved here
-	// (StackItem.Effect, through resolving.item).
-	"census:ChoiceResumeFrames": 119,
+	// (StackItem.Effect, through resolving.item), + 1 for ADR 0107 §1's
+	// TriggeredAbility.State (#1858). That line is not a new blocker: it
+	// is one more field of a struct the resume frames already carry
+	// whole (pickTargetResume.ability, beside AppliesTo, Build and
+	// Effect), and a table with that frame open was never a restore
+	// point. A queued or stacked state trigger is a keyed catalog item
+	// (catalog/triggered), so the field adds no route anywhere else.
+	"census:ChoiceResumeFrames": 120,
 	// 45 + the four census:StackEffects lines tier 4-final moved here
 	// under ADR 0041 P11, the counter an unkeyed stack item is folded
 	// into (owner decision, 2026-09-25): Game.StackMeta,
