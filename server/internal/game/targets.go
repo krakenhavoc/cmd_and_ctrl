@@ -391,6 +391,15 @@ type TargetSpec struct {
 	// constructors.
 	Different *TargetDifference
 
+	// Same is the OPPOSITE set rule (#1807, ADR 0106 §5): every pick
+	// of the clause must share one key — "up to four target cards
+	// from a single graveyard", keyed on the card's owner (CR 400.3:
+	// a card in a graveyard is in its owner's). The readers that
+	// answer Different answer it too, each with a "share" branch. Nil
+	// — every clause but those — means no such rule. Build it with
+	// effects.FromASingleGraveyard.
+	Same *TargetSameness
+
 	// ManaValueAtMostX is "with mana value X or less", X being the X
 	// the announcement chose at CR 601.2b — which is BEFORE targets
 	// are chosen at CR 601.2c, so the bound is known by the time any
@@ -526,6 +535,14 @@ func (s *TargetSpec) Then(more ...*TargetSpec) *TargetSpec {
 // the receiver, as WithCount does.
 func (s *TargetSpec) EachDifferent(d *TargetDifference) *TargetSpec {
 	s.Different = d
+	return s
+}
+
+// AllShare attaches the sameness set rule to the clause (#1807) and
+// returns it — "from a single graveyard". Mutates and returns the
+// receiver, as EachDifferent does.
+func (s *TargetSpec) AllShare(r *TargetSameness) *TargetSpec {
+	s.Same = r
 	return s
 }
 
@@ -739,7 +756,8 @@ func (g *Game) TargetStillLegalForEffect(item *StackItem, ref TargetRef) bool {
 			// #1559: a clause with a set rule is re-judged over the
 			// picks that survived their own re-check — see
 			// setRuleConflictLocked for which reading and why.
-			return clause.Different == nil || !g.setRuleConflictLocked(item, clause, ref)
+			// #1807: so is one whose picks must all share a key.
+			return (clause.Different == nil && clause.Same == nil) || !g.setRuleConflictLocked(item, clause, ref)
 		}
 		return targetStillExistsLocked(g, ref)
 	}

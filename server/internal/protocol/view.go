@@ -559,6 +559,13 @@ type LegalTargetsView struct {
 	// clause without one, which is nearly all of them.
 	Different *TargetDifferenceView `json:"different,omitempty"`
 
+	// Same is the opposite rule (#1807, ADR 0106 §5): every pick must
+	// share one key — "from a single graveyard", keyed on the card's
+	// owner. The picker greys every candidate whose key differs from
+	// the first pick's, and says the rule in its banner. Same wire
+	// shape as Different; absent on every clause without one.
+	Same *TargetDifferenceView `json:"same,omitempty"`
+
 	// ManaValueAtMostX marks a clause bounded by the announced X —
 	// "with mana value X or less" (#1559). Like CountFromX, the
 	// server builds this legal set before X is chosen, so it is a
@@ -610,10 +617,24 @@ func divideView(d *game.DivideSpec) *DivideView {
 // TargetDifferenceView is the wire shape of game.TargetDifference: the
 // printed rule, completing "those targets must …", and each legal
 // card's key. A card with no key (an unreadable cost) is absent and
-// collides with nothing. Added by #1559.
+// collides with nothing. Added by #1559. Since #1807 it is also the
+// shape of game.TargetSameness, under `same`, where a card with no
+// key fits any group.
 type TargetDifferenceView struct {
 	Label string            `json:"label"`
 	Keys  map[string]string `json:"keys,omitempty"`
+}
+
+// setRuleView projects a set rule's label and its keys, by wire id.
+func setRuleView(label string, keys map[uuid.UUID]string) *TargetDifferenceView {
+	v := &TargetDifferenceView{Label: label}
+	if len(keys) > 0 {
+		v.Keys = make(map[string]string, len(keys))
+		for id, k := range keys {
+			v.Keys[id.String()] = k
+		}
+	}
+	return v
 }
 
 // clausesView projects every clause of a multi-clause statement,
@@ -4923,14 +4944,10 @@ func stampTargetSetRule(g *game.Game, v *LegalTargetsView, cards []uuid.UUID, sp
 		return
 	}
 	if d := spec.Different; d != nil {
-		dv := &TargetDifferenceView{Label: d.Label}
-		if keys := g.TargetDifferenceKeysForEffect(spec, cards); len(keys) > 0 {
-			dv.Keys = make(map[string]string, len(keys))
-			for id, k := range keys {
-				dv.Keys[id.String()] = k
-			}
-		}
-		v.Different = dv
+		v.Different = setRuleView(d.Label, g.TargetDifferenceKeysForEffect(spec, cards))
+	}
+	if s := spec.Same; s != nil {
+		v.Same = setRuleView(s.Label, g.TargetSamenessKeysForEffect(spec, cards))
 	}
 	if spec.ManaValueAtMostX {
 		v.ManaValueAtMostX = true
@@ -6249,14 +6266,10 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 			// #1559: a trigger clause's set rule rides its prompt, so
 			// the picker greys a colliding candidate here too.
 			if d, keys := g.PickTargetSetRuleForEffect(c); d != nil {
-				dv := &TargetDifferenceView{Label: d.Label}
-				if len(keys) > 0 {
-					dv.Keys = make(map[string]string, len(keys))
-					for id, k := range keys {
-						dv.Keys[id.String()] = k
-					}
-				}
-				pt.Different = dv
+				pt.Different = setRuleView(d.Label, keys)
+			}
+			if s, keys := g.PickTargetSameRuleForEffect(c); s != nil {
+				pt.Same = setRuleView(s.Label, keys)
 			}
 			// #1563: a divided trigger clause asks for the shares
 			// with the picks.
