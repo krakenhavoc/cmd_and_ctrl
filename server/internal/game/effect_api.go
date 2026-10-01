@@ -3250,6 +3250,20 @@ func (g *Game) returnFromExileToBattlefieldLocked(cardID, controller uuid.UUID, 
 		}
 		return uuid.Nil, ErrCardNotFound
 	}
+	// CR 111.8: a token that has left the battlefield can't come back
+	// onto it ("if such a token would change zones, it remains in its
+	// current zone instead"). An immediate blink of a token
+	// (Ephemerate, Cloudshift) exiles it and returns nothing, and the
+	// CR 704.5d sweep removes it from exile at the next state check.
+	// Not an error: the instruction legally does nothing (#1872).
+	for i := range g.Exile.Cards {
+		if g.Exile.Cards[i].InstanceID == cardID && g.Exile.Cards[i].IsToken() {
+			if then != nil {
+				return uuid.Nil, then(g, uuid.Nil)
+			}
+			return uuid.Nil, nil
+		}
+	}
 	// Resolve the destination controller before the pipeline runs: a
 	// replacement that asks "is the entering permanent mine?"
 	// (Authority of the Consuls) reads Card.Controller, and while the

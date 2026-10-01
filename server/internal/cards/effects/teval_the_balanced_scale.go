@@ -31,18 +31,16 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // and a Bojuka Bog on the graveyard fires it once. The token is the
 // Judgment's 2/2 black Zombie Druid.
 //
-// Two declared simplifications, both weaker than printed:
+// The land enters tapped: "tapped" rides its entry event (#1872), so
+// nothing sees an untapped land arrive or a land become tapped.
 //
-//   - The land to return is picked when the attack trigger goes on
-//     the stack, before the three cards are milled, so a land milled
-//     by the trigger itself cannot be the one returned and opponents
-//     see the pick before it resolves. A pick that left the
-//     graveyard in response counters the trigger (CR 608.2b) and the
-//     mill does not happen either; a pick of no land simply mills.
-//   - The returned land enters untapped and is tapped a beat later
-//     inside the same resolution (Lumra's gap — the graveyard return
-//     path has no tapped flag), so anything watching for a land
-//     being tapped sees one.
+// One declared simplification, weaker than printed: the land to
+// return is picked when the attack trigger goes on the stack, before
+// the three cards are milled, so a land milled by the trigger itself
+// cannot be the one returned and opponents see the pick before it
+// resolves. A pick that left the graveyard in response counters the
+// trigger (CR 608.2b) and the mill does not happen either; a pick of
+// no land simply mills.
 func init() {
 	Register(Spec{
 		OracleID:     "c8cbf0ec-ec98-4cb3-8068-60e92bbd740d",
@@ -50,7 +48,6 @@ func init() {
 		Completeness: CompletenessCaveats,
 		Caveats: []string{
 			"The land to return is picked when the attack trigger goes on the stack, before the three cards are milled — so a land milled by the trigger itself can't be the one that comes back.",
-			"The returned land enters untapped and is tapped immediately afterwards, so anything watching for a land being tapped sees one.",
 		},
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{

@@ -465,6 +465,7 @@ func TestEveryPrimitiveThatActsOnACardAsksAboutItsSource(t *testing.T) {
 		"ReturnFromGraveyard":         "follows the card: the card is in a graveyard, never a permanent that left and came back",
 		"ReturnFromGraveyardTogether": "follows the cards: each is in a graveyard, never a permanent that left and came back",
 		"ReturnFromExile":             "follows the card: the card is in exile",
+		"ReturnFromExileTogether":     "follows the cards: each is in exile, never a permanent that left and came back",
 		"GrantFlashbackToCard":        "a card in a graveyard",
 		"PlotExiled":                  "a card in exile",
 		"CreateTokenCopy":             "reads copiable values; last-known information is the answer for a source that left (CR 707.4)",

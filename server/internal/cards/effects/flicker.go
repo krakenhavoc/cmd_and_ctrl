@@ -38,21 +38,20 @@ import (
 // needs — which cards, whose trigger — it reads off the item it is
 // handed.
 //
-// A card that is no longer in exile when the trigger resolves is
-// skipped (ReturnFromExile no-ops on it), which is the right answer
-// for the one case that produces it: something else moved the card
-// on in the meantime.
+// The cards come back as ONE entry (#1872), so each sees the others
+// enter (CR 603.6a): two blinked Soul Wardens each gain a life for the
+// other. A card that is no longer in exile when the trigger resolves is
+// skipped (CR 603.7c), which is the right answer for the one case that
+// produces it: something else moved the card on in the meantime. A
+// token never comes back (CR 111.8).
 func returnExiledCardsToOwners(g *game.Game, item *game.StackItem) error {
-	ctx := NewContext(g, item)
+	var ids []uuid.UUID
 	for _, t := range item.Targets {
-		if t.Kind != game.TargetCard || t.ID == uuid.Nil {
-			continue
-		}
-		if err := (ReturnFromExile{Target: t.ID}).Apply(ctx); err != nil {
-			return err
+		if t.Kind == game.TargetCard && t.ID != uuid.Nil {
+			ids = append(ids, t.ID)
 		}
 	}
-	return nil
+	return ReturnFromExileTogether{Targets: ids}.Apply(NewContext(g, item))
 }
 
 // flickerFirstLegalTarget is the immediate-blink trigger body shared

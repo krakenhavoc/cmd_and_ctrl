@@ -228,9 +228,18 @@ func (g *Game) startEntryBatchLocked(cards []BatchEntry, opts ZoneEntryOptions, 
 			// it. Refused like a nonpermanent.
 			return refuse(ErrInvalidParam)
 		}
+		// "Under its owner's control" is the CARD's owner. The zone's
+		// owner is the same player for a hand, library, graveyard or
+		// command zone, but exile is shared and owned by nobody, so a
+		// card returned from it would carry no controller while its
+		// CR 614 window is open (#1872) — and Authority of the Consuls
+		// asks whose permanent is entering.
 		controller := opts.Controller
 		if controller == uuid.Nil || g.playerByIDLocked(controller) == nil {
-			controller = src.Owner
+			controller = c.Owner
+			if controller == uuid.Nil {
+				controller = src.Owner
+			}
 		}
 		b.members = append(b.members, entryBatchMember{
 			cardID:          e.CardID,
