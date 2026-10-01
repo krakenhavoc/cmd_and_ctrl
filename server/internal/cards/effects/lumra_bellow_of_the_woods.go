@@ -16,18 +16,15 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // shape) that SETS both values to the land count on every recompute,
 // so the lands the ETB returns are counted the moment they land. The
 // ETB is the mill then Splendid Reclamation's body — every land card
-// in the graveyard, the four just milled included, back at once.
+// in the graveyard, the four just milled included, back at once: one
+// entry, tapped as they enter (#1867).
 //
-// Sandbox simplification, declared (Splendid Reclamation's): the
-// lands enter untapped and are tapped a beat later inside the same
-// resolution, so anything watching for a land being tapped sees one.
-// Nothing gets a window to tap a land for mana in between.
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID:        "97a84e9d-bfc4-4ca2-b1e8-908dba56ccdb",
 		Name:            "Lumra, Bellow of the Woods",
-		Completeness:    CompletenessCaveats,
-		Caveats:         []string{"The returned lands enter untapped and are tapped immediately afterwards, so anything watching for a land being tapped sees one."},
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"reach", "vigilance"},
 		Static: []game.StaticAbility{{
 			Layer:    game.Layer7PT,

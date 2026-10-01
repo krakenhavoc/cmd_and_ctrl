@@ -1,10 +1,6 @@
 package effects
 
-import (
-	"github.com/google/uuid"
-
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-)
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // Rise of the Dark Realms — Sorcery {7}{B}{B} (EDHREC rank 501):
 //
@@ -14,11 +10,11 @@ import (
 // Nine mana to take every dead creature at the table. Every
 // graveyard is walked, the caster's included, and each creature
 // card returns UNDER THE CASTER'S CONTROL — the Controller field on
-// ReturnFromGraveyard, which is what makes an opponent's dead bomb
-// yours rather than theirs (the Reanimate lesson). The instance IDs
-// are snapshotted before any card moves, because each return
-// removes a card from the pile being ranged over, and every returned
-// creature fires its own ETB.
+// ReturnFromGraveyardTogether, which is what makes an opponent's dead
+// bomb yours rather than theirs (the Reanimate lesson). The cards are
+// read before any of them moves, and they enter together, as one
+// event (#1867): every returned creature fires its own ETB, and each
+// sees the others enter (CR 603.6a).
 //
 // No simplification.
 func init() {
@@ -27,27 +23,10 @@ func init() {
 		Name:         "Rise of the Dark Realms",
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			var dead []uuid.UUID
-			for _, p := range ctx.Game.Seats {
-				if p == nil || p.Graveyard == nil {
-					continue
-				}
-				for _, c := range p.Graveyard.Cards {
-					if c.IsCreature() {
-						dead = append(dead, c.InstanceID)
-					}
-				}
-			}
-			for _, id := range dead {
-				if err := (ReturnFromGraveyard{
-					Target:     id,
-					Dest:       game.ZoneBattlefield,
-					Controller: ctx.Controller(),
-				}).Apply(ctx); err != nil {
-					return err
-				}
-			}
-			return nil
+			return ReturnFromGraveyardTogether{
+				Targets:    allGraveyardsCardIDs(ctx, game.Card.IsCreature),
+				Controller: ctx.Controller(),
+			}.Apply(ctx)
 		},
 	})
 }

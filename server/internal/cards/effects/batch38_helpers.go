@@ -149,26 +149,34 @@ func b38TapOrUntapTarget(cardName string) Effect {
 // biggest thing in its own yard rather than by choosing.
 //
 // One prompt per player, addressed to that player and offering only
-// their own graveyard, the eachOpponentDiscardsOne posture. A player
-// with no creature card in their graveyard is skipped rather than
-// prompted — a mandatory instruction with nothing to do does nothing
-// (CR 608.2) — and each creature returns under its OWNER's control,
-// which for a card in that player's own graveyard is that player.
+// their own graveyard. A player with no creature card in their
+// graveyard is skipped rather than prompted — a mandatory instruction
+// with nothing to do does nothing (CR 608.2) — and each creature
+// returns under its OWNER's control, which for a card in that player's
+// own graveyard is that player.
+//
+// #1867, CR 101.4: the players choose in APNAP order, one at a time,
+// since a graveyard is public and each knows the choices before theirs
+// (CR 101.4b), and then the chosen cards enter together, as one event:
+// each newcomer sees the others enter (CR 603.6a). A prompt withdrawn
+// unanswered (its chooser left) runs on with nothing chosen.
 func b38EachPlayerReanimatesOne(g *game.Game, item *game.StackItem, question string) error {
-	for _, p := range g.Seats {
-		if p == nil || p.Eliminated || p.Graveyard == nil {
-			continue
-		}
-		var candidates []uuid.UUID
-		for _, c := range p.Graveyard.Cards {
-			if c.IsCreature() {
-				candidates = append(candidates, c.InstanceID)
-			}
-		}
+	return b38ReanimateAskNext(g, item, question, apnapPlayers(g), nil)
+}
+
+// b38ReanimateAskNext asks the first player in `order` who has a
+// creature card in their graveyard, carrying the cards chosen so far
+// by value (the continuation contract: an undo across a prompt must
+// replay identically), and puts them all onto the battlefield once
+// nobody is left to ask.
+func b38ReanimateAskNext(g *game.Game, item *game.StackItem, question string, order, chosen []uuid.UUID) error {
+	ctx := NewContext(g, item)
+	for i, owner := range order {
+		candidates := graveyardCardIDs(ctx, owner, game.Card.IsCreature)
 		if len(candidates) == 0 {
 			continue
 		}
-		owner := p.ID
+		rest := order[i+1:]
 		g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
 			Chooser:    owner,
 			FromPlayer: owner,
@@ -181,20 +189,13 @@ func b38EachPlayerReanimatesOne(g *game.Game, item *game.StackItem, question str
 			// between the question and the answer.
 			Zone: game.ZoneGraveyard,
 			Then: func(g *game.Game, picked []uuid.UUID) error {
-				for _, id := range picked {
-					if err := (ReturnFromGraveyard{
-						Target:     id,
-						Dest:       game.ZoneBattlefield,
-						Controller: owner,
-					}).Apply(NewContext(g, item)); err != nil {
-						return err
-					}
-				}
-				return nil
+				next := append(append([]uuid.UUID(nil), chosen...), picked...)
+				return b38ReanimateAskNext(g, item, question, rest, next)
 			},
 		})
+		return nil
 	}
-	return nil
+	return ReturnFromGraveyardTogether{Targets: chosen}.Apply(ctx)
 }
 
 // --- static scopes -------------------------------------------------

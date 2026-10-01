@@ -64,7 +64,7 @@ func TestSingleGraveyardCardsAreRegistered(t *testing.T) {
 		{oracleCeaseDesist, "Cease", true},
 		{oracleCeaseDesist + "#1", "Desist", true},
 		{oraclePushPull, "Push", true},
-		{oraclePushPull + "#1", "Pull", false},
+		{oraclePushPull + "#1", "Pull", true},
 		{pestilentCauldronOracleID, "Pestilent Cauldron", true},
 		{pestilentCauldronOracleID + "#1", "Restorative Burst", true},
 	} {

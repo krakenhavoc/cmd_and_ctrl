@@ -304,34 +304,25 @@ func b35LootOne(g *game.Game, item *game.StackItem) error {
 // every announced creature card that is still legal and still in the
 // controller's graveyard returns to the battlefield under its
 // owner's control ("from YOUR graveyard" — owner and controller
-// coincide), and each one that arrived gets a +1/+1 counter. The
-// counter lands a beat after the entry rather than as part of it,
-// Rakdos Joins Up's posture: the reanimation path carries no counter
-// option, and nothing in the catalog reads a creature's counters
-// between its arrival and the next event.
+// coincide), together as one entry (#1867, CR 603.6a), and each one
+// that arrived then gets a +1/+1 counter. "Put a +1/+1 counter on each
+// of them" is the sentence after the return, not an "enters with", so
+// the counters go on once the entry has finished.
 func b35ReturnChosenToBattlefieldWithCounter(g *game.Game, item *game.StackItem) error {
-	ctx := NewContext(g, item)
-	var returned []uuid.UUID
-	for _, t := range ctx.LegalTargets() {
-		if t.Kind != game.TargetCard {
-			continue
-		}
-		if z := g.FindCardZoneForEffect(t.ID); z == nil || z.Kind != game.ZoneGraveyard {
-			continue
-		}
-		if err := (ReturnFromGraveyard{Target: t.ID, Dest: game.ZoneBattlefield}).Apply(ctx); err != nil {
-			return err
-		}
-		if onBattlefield(g, t.ID) {
-			returned = append(returned, t.ID)
-		}
-	}
-	for _, id := range returned {
-		if err := (AddCounter{Target: id, Kind: game.CounterPlusOne, N: 1}).Apply(ctx); err != nil {
-			return err
-		}
-	}
-	return nil
+	return ReturnFromGraveyardTogether{
+		Targets: legalTargetCardIDs(NewContext(g, item)),
+		Then: func(ctx *Context, entered []uuid.UUID) error {
+			for _, id := range entered {
+				if !onBattlefield(ctx.Game, id) {
+					continue
+				}
+				if err := (AddCounter{Target: id, Kind: game.CounterPlusOne, N: 1}).Apply(ctx); err != nil {
+					return err
+				}
+			}
+			return nil
+		},
+	}.Apply(NewContext(g, item))
 }
 
 // b35NecrobloomLandfall is The Necrobloom's landfall body: a 0/1

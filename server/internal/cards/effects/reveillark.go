@@ -17,7 +17,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // at "up to two" creature cards in the controller's graveyard with
 // power 2 or less, read at announce and again at resolution
 // (CR 608.2b); a card that left the graveyard in response is skipped
-// and the rest still return. Evoke is the real alternative cost: the
+// and the rest still return. The two return together, as one event
+// (#1867), so each sees the other enter (CR 603.6a): a "whenever
+// another creature enters" ability on either triggers for the other.
+// Evoke is the real alternative cost: the
 // Lark enters, the sacrifice trigger goes on the stack, and the
 // leave trigger fires above the empty board. With no legal card in
 // the graveyard the trigger is removed (CR 603.3d) rather than
