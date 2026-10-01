@@ -17,6 +17,13 @@ describe("mayCastCopy (ADR 0099 §7)", () => {
     expect(c.decline).toBe("Put it on the bottom");
   });
 
+  it("words a rebound prompt around staying in exile", () => {
+    const c = mayCastCopy("rebound");
+    expect(c.source).toContain("702.88");
+    expect(c.decline).toBe("Leave it in exile");
+    expect(mayCastKeywordsThatOpenACast.has("rebound")).toBe(true);
+  });
+
   it("prefers the server's branch labels", () => {
     const c = mayCastCopy("madness", "Cast it for {R}", "Put it into your graveyard");
     expect(c.accept).toBe("Cast it for {R}");
