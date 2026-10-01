@@ -640,7 +640,9 @@
   // otherwise the board gets the lookup that knows nothing. The gates
   // (greying, disabled buttons) never read this. The one gate that
   // reads the lookup at all, the ability popover's sorcery-speed row
-  // gate (sub-PR 3), gets the full `legalActions` as `legalGate`.
+  // gate (sub-PR 3), gets the full `legalActions` as `legalGate`. So do
+  // the combat gates (sub-PR 5): attack-with-all's eligible set and
+  // which defenders a selected attacker may be pointed at.
   const legalActions = $derived(legalActionsOf(view));
   const legalHighlights = $derived(
     visibleHighlights(
@@ -899,7 +901,10 @@
   // broadcast per creature — a twelve-creature alpha strike would
   // need twelve undo presses against a per-turn budget of one. One
   // action means one snapshot and one exact inverse.
-  const attackPlan = $derived(planAttackAll(view, viewerID));
+  // ADR 0105 sub-PR 5: which creatures are eligible is the server's
+  // answer (the frame's FULL lookup, which the highlight setting never
+  // touches); the row fields only name why the rest are not.
+  const attackPlan = $derived(planAttackAll(view, viewerID, legalActions));
   const attackAllReady = $derived(
     canDeclareAttackers && attackPlan.eligible.length > 0 && attackPlan.defenders.length > 0,
   );
@@ -2051,6 +2056,7 @@
         {viewerID}
         defenderSeatID={attackPickerDefenderID}
         limitReason={attackPickerLimitReason}
+        legalGate={legalActions}
         onConfirm={confirmAttackPicker}
         onCancel={cancelAttackPicker}
       />

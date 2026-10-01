@@ -32,6 +32,7 @@
 
   import type { ActionPayload, ActionType, CardView, GameView, PlayerView } from "../../protocol";
   import { defendingPlayerOf } from "../../attackTargets";
+  import { NO_LEGAL_ACTIONS, attackTargetOpen, type LegalActions } from "../../legalActions";
   import { buildSeatSummary, manaLabel, MANA_ORDER } from "../../seatSummary";
   import { COLOR_META } from "../../manaPick";
   import { KEYWORD_ICONS } from "../../keywordIcons";
@@ -62,6 +63,10 @@
     // #1307: threaded straight through to PlayerIdentity — see its
     // prop doc.
     considering?: boolean;
+    // ADR 0105 sub-PR 5: the frame's FULL legal-action lookup, for the
+    // same defender gate PlayerPanel's identity uses (attackTargetOpen).
+    // Absent means no information, and every opponent stays clickable.
+    legalGate?: LegalActions;
   }
 
   const {
@@ -82,6 +87,7 @@
     onTargetCard,
     onExpand,
     considering = false,
+    legalGate = NO_LEGAL_ACTIONS,
   }: Props = $props();
 
   const summary = $derived(buildSeatSummary(seat, controlledCards, view.battlefield?.cards ?? []));
@@ -107,8 +113,17 @@
   // commanderScryfallID is derived from `view` above.
   const exileCount = $derived((view.exile?.cards ?? []).filter((c) => c.owner === seat.id).length);
 
+  // ADR 0105 sub-PR 5: as PlayerPanel's, read off the server's list.
   const attackTargetable = $derived(
-    !seat.eliminated && combatMode === "attack" && !!selectedCombatCardID,
+    !seat.eliminated &&
+      combatMode === "attack" &&
+      !!selectedCombatCardID &&
+      attackTargetOpen(
+        legalGate,
+        view.battlefield?.cards?.find((c) => c.instance_id === selectedCombatCardID),
+        selectedCombatCardID,
+        seat.id,
+      ),
   );
 
   // The colours with something behind them, in WUBRG order. An empty

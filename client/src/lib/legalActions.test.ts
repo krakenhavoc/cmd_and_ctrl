@@ -19,8 +19,12 @@ import { fileURLToPath } from "node:url";
 import { describe, it, expect } from "vitest";
 
 import {
+  NO_COMBAT_RINGS,
   NO_LEGAL_ACTIONS,
   NO_PIPS,
+  attackTargetListed,
+  attackTargetOpen,
+  combatRings,
   digestRefusesRow,
   highlightsLive,
   legalActionsOf,
@@ -34,6 +38,7 @@ import {
 } from "./legalActions";
 import { autopassDecision, type AutopassGates } from "./autopassDecision";
 import { hasPassMove } from "./timing";
+import { planAttackAll } from "./attackAll";
 import type { CardView, GameView, LegalMoveView } from "./protocol";
 
 interface Expectation {
@@ -575,5 +580,158 @@ describe("digestRefusesRow: the popover's gate", () => {
     expect(capped.readyAbilityRefs("shikari")).toEqual(["own:0"]);
     expect(digestRefusesRow(capped, "shikari", "own:1")).toBe(false);
     expect(digestRefusesRow(digest, "shikari", undefined)).toBe(false);
+  });
+});
+
+// ---- ADR 0105 sub-PR 5: combat --------------------------------------
+
+describe("combat against the server's fixture", () => {
+  const scenario = (name: string): Scenario => {
+    const sc = scenarios.find((x) => x.name === name);
+    if (!sc) throw new Error(`fixture has no ${name} scenario`);
+    return sc;
+  };
+
+  it("declare attackers: the creature with a target is a candidate, and its target lights", () => {
+    const sc = scenario("declare_attackers");
+    const la = legalActionsOf(sc.view);
+    const giant = sc.expect.find((e) => e.name === "Hill Giant")!;
+    const defender = giant.attack_targets![0];
+    const mine = sc.view.battlefield.cards.filter((c) => c.controller === sc.viewer);
+
+    const idle = combatRings(la, "attack", null, mine);
+    expect([...idle.candidates]).toEqual([giant.instance_id]);
+    expect(idle.targets.size).toBe(0);
+
+    const picked = combatRings(la, "attack", giant.instance_id, mine);
+    expect([...picked.targets]).toEqual([defender]);
+
+    // attack-with-all counts what the server would declare.
+    const plan = planAttackAll(sc.view, sc.viewer, la);
+    expect(plan.eligible.map((c) => c.instance_id)).toEqual([giant.instance_id]);
+    expect(plan.blocked).toEqual([]);
+  });
+
+  it("declare blockers: both creatures are candidates, and the attacker lights for either", () => {
+    const sc = scenario("declare_blockers");
+    const la = legalActionsOf(sc.view);
+    const mine = sc.view.battlefield.cards.filter((c) => c.controller === sc.viewer);
+    const blockers = sc.expect.filter((e) => (e.blocks ?? []).length > 0);
+    expect(blockers).toHaveLength(2);
+
+    const idle = combatRings(la, "block", null, mine);
+    expect(sorted([...idle.candidates])).toEqual(sorted(blockers.map((b) => b.instance_id)));
+    for (const b of blockers) {
+      expect([...combatRings(la, "block", b.instance_id, mine).targets]).toEqual(b.blocks);
+    }
+  });
+});
+
+describe("combatRings", () => {
+  const digest = legalActionsOf(
+    frame({
+      legal_actions: {
+        pass: true,
+        sources: {
+          bear: { kinds: ["attack"], moves: 2, attack_targets: ["opp", "walker"] },
+          elf: { kinds: ["attack"], moves: 1, attack_targets: ["opp"] },
+          wall: { kinds: ["block"], moves: 1, blocks: ["giant"] },
+          vet: { kinds: ["block"], moves: 1, blocks: ["giant", "ogre"] },
+        },
+      },
+    }),
+  );
+  const card = (id: string, extra: Partial<CardView> = {}): CardView =>
+    ({ instance_id: id, name: id, controller: ME, owner: ME, ...extra }) as CardView;
+
+  it("attack: candidates are the creatures with a target, never one already declared", () => {
+    const r = combatRings(digest, "attack", null, [
+      card("bear"),
+      card("elf", { attacking_target: "opp" }),
+      card("sick"),
+    ]);
+    expect([...r.candidates]).toEqual(["bear"]);
+    expect(r.targets.size).toBe(0);
+  });
+
+  it("attack: a selected attacker lights exactly its own targets", () => {
+    expect([...combatRings(digest, "attack", "bear", []).targets]).toEqual(["opp", "walker"]);
+    expect([...combatRings(digest, "attack", "elf", []).targets]).toEqual(["opp"]);
+    // One the digest has nothing for lights nothing.
+    expect(combatRings(digest, "attack", "sick", []).targets.size).toBe(0);
+  });
+
+  it("block: candidates are the creatures with an attacker to block, and the selection lights them", () => {
+    const r = combatRings(digest, "block", "vet", [
+      card("wall"),
+      card("vet"),
+      card("bear"),
+      card("old", { blocking_target: "giant" }),
+    ]);
+    expect([...r.candidates]).toEqual(["wall", "vet"]);
+    expect([...r.targets]).toEqual(["giant", "ogre"]);
+  });
+
+  it("idle, no information, or nothing to light: no rings", () => {
+    expect(combatRings(digest, "idle", "bear", [card("bear")])).toBe(NO_COMBAT_RINGS);
+    expect(combatRings(NO_LEGAL_ACTIONS, "attack", "bear", [card("bear")])).toBe(NO_COMBAT_RINGS);
+    expect(combatRings(legalActionsOf(frame()), "block", "vet", [card("vet")])).toBe(
+      NO_COMBAT_RINGS,
+    );
+    // Highlights off is the lookup that knows nothing.
+    expect(combatRings(visibleHighlights(digest, false), "attack", "bear", [card("bear")])).toBe(
+      NO_COMBAT_RINGS,
+    );
+  });
+
+  it("reads the legal_moves fallback the same way", () => {
+    const la = legalActionsOf(
+      frame({
+        legal_moves: [
+          move({
+            kind: "attack",
+            type: "declare_attacker",
+            source: "bear",
+            params: { attacker: "bear", target: "opp" },
+          }),
+        ],
+      }),
+    );
+    const r = combatRings(la, "attack", "bear", [card("bear"), card("elf")]);
+    expect([...r.candidates]).toEqual(["bear"]);
+    expect([...r.targets]).toEqual(["opp"]);
+  });
+});
+
+describe("attackTargetOpen and attackTargetListed: the defender gates", () => {
+  const gate = legalActionsOf(
+    frame({
+      legal_actions: {
+        pass: true,
+        sources: { bear: { kinds: ["attack"], moves: 1, attack_targets: ["opp"] } },
+      },
+    }),
+  );
+  const bear = { instance_id: "bear", name: "Bear" } as CardView;
+
+  it("opens a defender the selected attacker may attack, and shuts one it may not", () => {
+    expect(attackTargetOpen(gate, bear, "bear", "opp")).toBe(true);
+    expect(attackTargetOpen(gate, bear, "bear", "other")).toBe(false);
+    // A summoning-sick creature (no entry) may attack no one.
+    expect(attackTargetOpen(gate, undefined, "sick", "opp")).toBe(false);
+  });
+
+  it("no list, or a re-point of a declared attacker, keeps every defender open", () => {
+    expect(attackTargetOpen(NO_LEGAL_ACTIONS, bear, "bear", "other")).toBe(true);
+    expect(attackTargetOpen(legalActionsOf(frame()), bear, "bear", "other")).toBe(true);
+    const declared = { ...bear, attacking_target: "opp" };
+    expect(attackTargetOpen(gate, declared, "bear", "other")).toBe(true);
+  });
+
+  it("a permanent defender is clickable only when the list names it", () => {
+    expect(attackTargetListed(gate, "bear", "opp")).toBe(true);
+    expect(attackTargetListed(gate, "bear", "walker")).toBe(false);
+    expect(attackTargetListed(gate, null, "opp")).toBe(false);
+    expect(attackTargetListed(NO_LEGAL_ACTIONS, "bear", "opp")).toBe(false);
   });
 });

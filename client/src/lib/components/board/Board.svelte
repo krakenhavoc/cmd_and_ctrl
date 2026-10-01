@@ -2245,6 +2245,7 @@
               onTargetCard={handleTargetCard}
               onExpand={() => (pinnedSeatID = nextPinnedSeat(pinned, seat.id))}
               considering={seat.id === consideringSeatID}
+              {legalGate}
             />
           {:else}
             {#if decision.reason === "pinned"}

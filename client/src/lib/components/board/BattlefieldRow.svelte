@@ -15,8 +15,10 @@
   import { etbPulse } from "../../animations";
   import { rowEntries } from "../../tokenGroups";
   import {
+    NO_COMBAT_RINGS,
     NO_LEGAL_ACTIONS,
     readyPips,
+    type CombatRings,
     type LegalActions,
     type ReadyPips,
   } from "../../legalActions";
@@ -96,6 +98,13 @@
     // Undefined keeps those rows, and their star pip, out of the
     // popover.
     onSpecialAction?: (action: MenuAction) => void;
+    // ADR 0105 sub-PR 5: the combat rings (legalActions.ts
+    // combatRings), already empty while highlights are off. A
+    // candidate (a creature that may attack or block) wears the ready
+    // ring. A target of the selected creature (a planeswalker or
+    // battle it may attack, an attacker it may block) wears it too,
+    // drawn so it reads over the red attacking ring.
+    combat?: CombatRings;
   }
 
   const {
@@ -118,6 +127,7 @@
     legal = NO_LEGAL_ACTIONS,
     legalGate = NO_LEGAL_ACTIONS,
     onSpecialAction,
+    combat = NO_COMBAT_RINGS,
   }: Props = $props();
 
   // ADR 0105 §2: the special-action rows go only to a card that offers
@@ -131,6 +141,10 @@
   // its popover is wired, as the pips are.
   const ringFor = (c: CardView, p: ReadyPips) =>
     (!!onActivateAbility && p.abilities > 0) || (!!specialFor(c) && p.special > 0);
+  // A token group's card stands for every member, so it lights when
+  // any member does, the way its selection ring does.
+  const anyIn = (ids: ReadonlySet<string>, c: CardView, memberIDs: string[] | undefined) =>
+    ids.size > 0 && (memberIDs ?? [c.instance_id]).some((id) => ids.has(id));
 
   const sorted = $derived.by(() => {
     const byX = [...cards].sort((a, b) => (a.battle_x ?? 0) - (b.battle_x ?? 0));
@@ -234,6 +248,7 @@
           {@const attached = attachmentsFor(p, c)}
           {@const memberIDs = p.group?.members.map((m) => m.instance_id)}
           {@const cPips = readyPips(legal, c, "battlefield")}
+          {@const cTarget = anyIn(combat.targets, c, memberIDs)}
           <div role="listitem" class:tapped={!!c.tapped} style:--i={i} use:etbPulse>
             <div class="host-stack" class:has-attachments={attached.length > 0}>
               {#each attached as a (a.instance_id)}
@@ -265,7 +280,8 @@
               <div class="host">
                 <Card
                   card={c}
-                  ready={ringFor(c, cPips)}
+                  ready={ringFor(c, cPips) || cTarget || anyIn(combat.candidates, c, memberIDs)}
+                  combatTarget={cTarget}
                   pips={cPips}
                   onSpecialAction={specialFor(c)}
                   {legal}

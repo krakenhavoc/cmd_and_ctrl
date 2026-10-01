@@ -54,6 +54,7 @@
     seedAttackSelection,
     toggleAttackSelection,
   } from "../../attackAll";
+  import { NO_LEGAL_ACTIONS, type LegalActions } from "../../legalActions";
   import { usableManaAbilities } from "../../seatSummary";
   import ModalLayer from "../ModalLayer.svelte";
 
@@ -67,6 +68,11 @@
     // picker ("No more than one creature can attack each combat (Silent
     // Arbiter)."). Null when the picker opened some other way.
     limitReason?: string | null;
+    // ADR 0105 sub-PR 5: the frame's FULL legal-action lookup, so the
+    // picker lists the creatures the server would declare, the same set
+    // the "attack with all" button counts. Absent means no information:
+    // the row fields decide, as they did before.
+    legalGate?: LegalActions;
     onConfirm: (attackerIDs: string[], lockedSources: string[]) => void;
     onCancel: () => void;
   }
@@ -76,11 +82,12 @@
     viewerID,
     defenderSeatID,
     limitReason = null,
+    legalGate = NO_LEGAL_ACTIONS,
     onConfirm,
     onCancel,
   }: Props = $props();
 
-  const plan = $derived(planAttackAll(view, viewerID));
+  const plan = $derived(planAttackAll(view, viewerID, legalGate));
   const defender = $derived(plan.defenders.find((s) => s.id === defenderSeatID) ?? null);
   const defenderName = $derived(defender ? defender.display_name || defender.name : "");
   const each = $derived(defenderSeatID ? attackTaxOn(view, defenderSeatID) : "");

@@ -59,6 +59,12 @@
     // legalActions.ts, and only while highlights are live); the card
     // only draws it.
     ready?: boolean;
+    // ADR 0105 sub-PR 5: this card is what the selected creature may be
+    // declared against: a planeswalker or battle it may attack, or an
+    // attacker it may block. Set with `ready`. An attacker is always
+    // wearing the red attacking ring, which `ready` yields to, so this
+    // draws the ready ring OUTSIDE it and both read.
+    combatTarget?: boolean;
     // ADR 0105 §2 (sub-PR 3): the pips on a card: a bolt for live
     // activated abilities (with a count from two up), a drop for a
     // mana ability worth marking (§4), and (sub-PR 4) a star for a
@@ -184,6 +190,7 @@
     attacking = false,
     blocking = false,
     ready = false,
+    combatTarget = false,
     pips = NO_PIPS,
     legal = NO_LEGAL_ACTIONS,
     legalGate = NO_LEGAL_ACTIONS,
@@ -499,6 +506,7 @@
   class:attacking
   class:blocking
   class:ready
+  class:combat-target={combatTarget}
   class:clickable={interactive}
   class:phased-out={phasedOut}
   class:menu-open={manaMenuOpen}
@@ -1326,6 +1334,16 @@
   .card.ready.attacking,
   .card.ready.blocking {
     outline: none;
+  }
+  /* ADR 0105 sub-PR 5: an attacker the selected blocker may block. It
+     is attacking by definition, so the rule above would hide the one
+     ring that says "you can block this". The red ring is a box-shadow
+     hugging the frame and the ready ring an outline, so the outline
+     steps out past the red one and both read. A target prompt, a pick
+     or a selection still wins. */
+  .card.ready.combat-target:is(.attacking, .blocking):not(.targetable, .picked, .selected) {
+    outline: max(2px, calc(var(--card-w, 80px) * 0.022)) solid var(--ready);
+    outline-offset: max(5px, calc(var(--card-w, 80px) * 0.05));
   }
   .card.selected {
     box-shadow:
