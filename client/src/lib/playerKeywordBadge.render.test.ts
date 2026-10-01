@@ -144,4 +144,26 @@ describe("the seat keyword badge", () => {
     );
     expect(badges(container).map((b) => b.text)).toEqual(["ALL", "LIFE"]);
   });
+
+  // ADR 0106 §4 decision 6 (#1806): a live "can't be countered" grant
+  // or an unspent promise is one badge, each line in the tooltip.
+  it("shows a can't-be-countered badge listing each grant and its source", () => {
+    const s = {
+      ...seat(),
+      counter_shields: [
+        { source_name: "Veil of Summer", text: "Spells you control can't be countered this turn." },
+        {
+          source_name: "Insist",
+          text: "The next creature spell you cast this turn can't be countered.",
+          next_only: true,
+        },
+      ],
+    } as PlayerView;
+    const { container } = render(PlayerIdentity as never, props(s) as never);
+    const got = badges(container);
+    expect(got).toHaveLength(1);
+    expect(got[0].text).toBe("NO COUNTER");
+    expect(got[0].title).toContain("can't be countered this turn. — Veil of Summer");
+    expect(got[0].title).toContain("— Insist");
+  });
 });

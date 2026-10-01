@@ -1066,6 +1066,14 @@ type stackItemSnapshot struct {
 	Ordered       bool         `json:"ordered"`
 	Commutes      bool         `json:"commutes,omitempty"` // #1511
 
+	// CantBeCountered is StackItem.CantBeCountered (ADR 0106 §4,
+	// #1806): the marks that say this spell can't be countered.
+	// Carried, because a restore that lost one would let through a
+	// Counterspell the table watched Vexing Shusher pay to stop. A
+	// binary from before the field refuses the file (an unknown
+	// stack-item key), which is the designed rollback case.
+	CantBeCountered []CounterShieldMark `json:"cantBeCountered,omitempty"`
+
 	// Paid is what the announcement cost (#789 / #761). Carried: a
 	// restore that lost it would resolve a converge spell for zero
 	// and a "for each counter removed this way" ability for nothing,
@@ -1943,6 +1951,7 @@ func snapshotStackItemAs(s *StackItem, oracleID string, cen *ContinuationCensus)
 		Body:           s.Body,
 		Params:         effectParamsOrNil(s.Params),
 	}
+	out.CantBeCountered = copyCounterShieldMarks(s.CantBeCountered) // ADR 0106 §4 (#1806)
 	// ADR 0041 P9 (#1497, tier 4): the census fold. An item is counted
 	// ONCE, whatever it holds, because the question is one question —
 	// can restore rebuild this item — and it has one of two answers:
@@ -2778,6 +2787,7 @@ func restoreStackItem(s *stackItemSnapshot) (*StackItem, bool) {
 		// with an unkeyed Effect is counted in the census and keeps
 		// the snapshot from being a restore point.
 	}
+	out.CantBeCountered = copyCounterShieldMarks(s.CantBeCountered) // ADR 0106 §4 (#1806)
 	if _, ok := catalogBodySlot(s.Body); ok {
 		// A stamped activated or triggered ability (P9): the row gives
 		// back the Effect, the target clause and the mode clause

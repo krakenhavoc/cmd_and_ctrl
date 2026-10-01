@@ -381,6 +381,13 @@ func (g *Game) createSpellCopyLocked(src Card, item *StackItem, controller uuid.
 		IsCopy:       true,
 		Seq:          g.nextStackSeqLocked(),
 	}
+	// CantBeCountered is deliberately left empty too (ADR 0106 §4
+	// decision 4): a mark is an EFFECT on the original object, not a
+	// copiable value (CR 707.2), so a copy of a spell Vexing Shusher
+	// marked, or of one that spent an Insist, can be countered. A
+	// printed "This spell can't be countered" is copiable and still
+	// reaches the copy, through the oracle ID the gate reads.
+	//
 	// CastFromZone is deliberately left empty. The copy was not cast
 	// from anywhere (CR 707.10), so Wash Away's "target spell that
 	// wasn't cast from its owner's hand" reads it as exactly that.

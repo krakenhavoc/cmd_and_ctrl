@@ -26,16 +26,17 @@ import "github.com/google/uuid"
 //     (mana_spend_rider.go).
 //  3. Marks on the spell's stack item — "target spell can't be
 //     countered" (Vexing Shusher) and a spent one-use "the next spell
-//     you cast" promise (Insist). ADR 0106 delivery PR 3; nothing
-//     writes a mark yet, so the gate has no step for it.
+//     you cast" promise (Insist), StackItem.CantBeCountered
+//     (counter_shield_grants.go).
 //  4. The battlefield statics — "Spells you control can't be
 //     countered" (Chimil, the Inner Sun) and its "you cast" and "any
 //     player" forms, read off the battlefield on every ask
 //     (counterShieldOnBattlefieldLocked, below).
 //  5. A player's "this turn" grants on Player.Statics — Veil of
-//     Summer, Bound // Determined, Domri, Anarch of Bolas's +1. ADR
-//     0106 delivery PR 3; no such grant exists yet, so the gate has no
-//     step for it.
+//     Summer, Bound // Determined, Domri, Anarch of Bolas's +1
+//     (counterShieldGrantedLocked, counter_shield_grants.go). A
+//     one-use promise on the same slice is NOT read here: it is spent
+//     at the cast and becomes a source 3 mark.
 //
 // Every counter verb — CounterTargetForEffect, the to-zone and
 // to-library counters, and the put_in_library prompt's
@@ -76,13 +77,16 @@ func (g *Game) spellCantBeCounteredLocked(spellID uuid.UUID) bool {
 	if item.SpellCantBeCounteredByMana() {
 		return true
 	}
-	// 3. Marks on the item: ADR 0106 PR 3.
+	// 3. Marks on the item.
+	if item != nil && len(item.CantBeCountered) > 0 {
+		return true
+	}
 	// 4. The battlefield statics.
 	if spell != nil && g.counterShieldOnBattlefieldLocked(item, *spell) {
 		return true
 	}
-	// 5. The "this turn" grants on Player.Statics: ADR 0106 PR 3.
-	return false
+	// 5. The "this turn" grants on Player.Statics.
+	return spell != nil && g.counterShieldGrantedLocked(item, *spell)
 }
 
 // spellCardOnStackLocked is the card a spell on the stack is, or nil.
@@ -128,7 +132,8 @@ func (g *Game) SpellCantBeCounteredForEffect(id uuid.UUID) bool {
 // --- source 4: the battlefield statics (ADR 0106 §4 decision 1) ----
 
 // CounterShieldWhose is whose spells a "can't be countered" statement
-// covers. ADR 0106 PR 3's turn grants take the same vocabulary.
+// covers. The turn grants on Player.Statics take the same vocabulary,
+// judged against the player the grant is on.
 type CounterShieldWhose uint8
 
 const (
