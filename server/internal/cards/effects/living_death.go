@@ -24,7 +24,8 @@ import (
 //     indestructible doesn't save it and "whenever you sacrifice"
 //     payoffs fire;
 //  3. the cards exiled in step 1 → the battlefield under their
-//     OWNER's control (ReturnFromExile with Controller zero).
+//     OWNER's control, as ONE entry for every player
+//     (ReturnFromExileTogether with Controller zero).
 //
 // The creatures sacrificed in step 2 land in graveyards and stay
 // there — they were not exiled "this way" — which is the whole
@@ -58,15 +59,15 @@ import (
 // way" is step 1's list — so the sacrifice batch's landed list is
 // deliberately ignored. It waits for it, it does not read it.
 //
-// #478: a battlefield ENTRY can now pause too, and the return is no
-// longer DROPPED when it does. A creature whose entry stops for a
-// prompt (two "enters tapped" replacements on it, a shockland asked to
-// pay) arrives when the answer comes, and the rest of the pass carries
-// on around it in the meantime — the same fire-and-forget posture the
-// sacrifice below has, and it strands nothing: the card is in exile
-// until it arrives, and nothing in Living Death reads the returns. The
-// note this replaced said the return was dropped, which was true and
-// was the actual gap.
+// #1872: step 3 is ONE simultaneous entry for the whole table, not a
+// loop of single returns. Each player puts their cards onto the
+// battlefield at the same time (CR 101.4: the actions happen
+// simultaneously), so every returning creature sees every other one
+// enter (CR 603.6a) — two returned Soul Wardens each gain a life for
+// the other. A loop announced the first card before the second moved.
+// An entry that stops for a prompt (a Clone asked what to copy)
+// holds the whole batch until it is answered, and then everything
+// lands together; the cards wait in exile meanwhile.
 //
 // No simplification.
 func init() {
@@ -102,13 +103,7 @@ func init() {
 				// to do must not open a window for a move that cannot
 				// happen.
 				return g.SacrificeAllThenForEffect(item.SourceCardID, doomed, func(g *game.Game, _ []uuid.UUID) error {
-					ctx := NewContext(g, item)
-					for _, id := range exiled {
-						if err := (ReturnFromExile{Target: id}).Apply(ctx); err != nil {
-							return err
-						}
-					}
-					return nil
+					return ReturnFromExileTogether{Targets: exiled}.Apply(NewContext(g, item))
 				})
 			})
 		},

@@ -315,18 +315,13 @@ const b41OssificationExileLabel = "Ossification — exile target creature or pla
 // A card something else has since moved out of exile is not pulled
 // back out of wherever it went, which is what b27ExiledWith's
 // most-recent-move record buys.
+//
+// Several cards (a Hostage Taker whose entry trigger was doubled) come
+// back as ONE entry (#1872), so each sees the others enter (CR 603.6a).
 func b41ReturnCardsExiledWithToTheBattlefield(label string) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
-		ctx := NewContext(g, item)
-		for _, id := range b27ExiledWith(g, item.SourceCardID, label) {
-			c, ok := g.LookupCardForEffect(id)
-			if !ok {
-				continue
-			}
-			if err := (ReturnFromExile{Target: id, Controller: c.Owner}).Apply(ctx); err != nil {
-				return err
-			}
-		}
-		return nil
+		return ReturnFromExileTogether{
+			Targets: b27ExiledWith(g, item.SourceCardID, label),
+		}.Apply(NewContext(g, item))
 	}
 }

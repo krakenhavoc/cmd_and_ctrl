@@ -450,3 +450,90 @@ func TestBatchEntryPromptPrunedWhenItsCardLeaves(t *testing.T) {
 		t.Error("the milled card was pulled back out of the graveyard")
 	}
 }
+
+// TestBatchEntryFromExileEntersUnderEachCardsOwner is #1872: exile is
+// one shared zone that nobody owns, so "under its owner's control"
+// is the CARD's owner, and it is already the entry's controller while
+// the CR 614 window is open (Authority of the Consuls asks whose
+// permanent is entering). Before the fix the window saw no controller
+// at all and the landing fell back to the owner.
+func TestBatchEntryFromExileEntersUnderEachCardsOwner(t *testing.T) {
+	g := newActiveGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	mine := Card{InstanceID: uuid.New(), Name: "Bear", TypeLine: "Creature — Bear",
+		Power: 2, Toughness: 2, Owner: me.ID, Controller: opp.ID}
+	theirs := Card{InstanceID: uuid.New(), Name: "Wolf", TypeLine: "Creature — Wolf",
+		Power: 2, Toughness: 2, Owner: opp.ID, Controller: me.ID}
+	g.Exile.PushTop(mine)
+	g.Exile.PushTop(theirs)
+
+	actors := map[uuid.UUID]uuid.UUID{}
+	g.mu.Lock()
+	g.RegisterReplacementForTest(ReplacementEffect{
+		Watches: []EventKind{EventZoneMove},
+		AppliesTo: func(ev *ReplacementEvent, g *Game, _ *Card) bool {
+			if ev.Kind == RepEventMove && ev.NewZone == ZoneBattlefield {
+				actors[ev.CardID] = ev.Actor
+				if c, ok := g.cardInZoneLocked(g.Exile, ev.CardID); ok && c.Controller != ev.Actor {
+					t.Errorf("%s waits in exile under %s, entering under %s", c.Name, c.Controller, ev.Actor)
+				}
+			}
+			return false
+		},
+		Label: "test: entry controller watcher",
+	})
+	var entered []uuid.UUID
+	err := g.PutOntoBattlefieldTogetherThenForEffect([]BatchEntry{
+		{CardID: mine.InstanceID, From: ZoneExile},
+		{CardID: theirs.InstanceID, From: ZoneExile},
+	}, ZoneEntryOptions{}, func(_ *Game, in []uuid.UUID) error {
+		entered = in
+		return nil
+	})
+	g.mu.Unlock()
+	if err != nil {
+		t.Fatalf("put: %v", err)
+	}
+	if actors[mine.InstanceID] != me.ID || actors[theirs.InstanceID] != opp.ID {
+		t.Errorf("entry controllers = %v, want each card's owner", actors)
+	}
+	if len(entered) != 2 || entered[0] == mine.InstanceID || entered[1] == theirs.InstanceID {
+		t.Fatalf("entered = %v, want two NEW objects (CR 400.7)", entered)
+	}
+	for i, owner := range []uuid.UUID{me.ID, opp.ID} {
+		c, ok := g.battlefieldCardLocked(entered[i])
+		if !ok || c.Controller != owner {
+			t.Errorf("entered[%d] is not on the battlefield under its owner", i)
+		}
+	}
+}
+
+// TestExileReturnLeavesATokenInExile is CR 111.8 on the single-card
+// exile door (#1872): an immediate blink of a token (Ephemerate)
+// exiles it and returns nothing.
+func TestExileReturnLeavesATokenInExile(t *testing.T) {
+	g := newActiveGame(t)
+	me := g.Seats[0]
+	token := Card{InstanceID: uuid.New(), Name: "Soldier", TypeLine: "Token Creature — Soldier",
+		Power: 1, Toughness: 1, Owner: me.ID, Controller: me.ID}
+	g.Exile.PushTop(token)
+	called := false
+	g.mu.Lock()
+	err := g.ReturnFromExileToBattlefieldThenForEffect(token.InstanceID, uuid.Nil, false, func(_ *Game, entered uuid.UUID) error {
+		called = true
+		if entered != uuid.Nil {
+			t.Errorf("entered = %v, want nothing", entered)
+		}
+		return nil
+	})
+	g.mu.Unlock()
+	if err != nil {
+		t.Fatalf("return: %v", err)
+	}
+	if !called {
+		t.Error("the continuation is told nothing entered")
+	}
+	if g.Battlefield.Size() != 0 {
+		t.Error("a token that left the battlefield came back (CR 111.8)")
+	}
+}
