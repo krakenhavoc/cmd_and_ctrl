@@ -290,32 +290,20 @@ func b29ExileAttackersThenTheyFetchBasics(ctx *Context, player uuid.UUID) error 
 }
 
 // b29ReturnZombieCardsTappedThenDestroyHumans is Zombie Apocalypse:
-// every Zombie creature card in the controller's graveyard returns
-// to the battlefield and is tapped (the Splendid Reclamation posture
-// — ReturnFromGraveyard has no tapped flag, so each enters untapped
-// and is tapped a beat later inside the same resolution), then every
-// Human is destroyed. The IDs are snapshotted before the first
-// move, because ReturnFromGraveyard mutates the pile being walked.
+// every Zombie creature card in the controller's graveyard, read
+// before anything moves, returns to the battlefield as one entry,
+// tapped as it enters (#1867); then every Human is destroyed, once
+// that entry has finished.
 func b29ReturnZombieCardsTappedThenDestroyHumans(ctx *Context) error {
-	p := ctx.PlayerByID(ctx.Controller())
-	if p == nil || p.Graveyard == nil {
-		return nil
-	}
-	var zombies []uuid.UUID
-	for _, c := range p.Graveyard.Cards {
-		if c.IsCreature() && c.HasSubtype("Zombie") {
-			zombies = append(zombies, c.InstanceID)
-		}
-	}
-	for _, id := range zombies {
-		if err := (ReturnFromGraveyard{Target: id, Dest: game.ZoneBattlefield}).Apply(ctx); err != nil {
-			return err
-		}
-		if err := (TapTarget{Target: id}).Apply(ctx); err != nil {
-			return err
-		}
-	}
-	return DestroyAllMatching{Match: HasSubtype("Human")}.Apply(ctx)
+	return ReturnFromGraveyardTogether{
+		Targets: graveyardCardIDs(ctx, ctx.Controller(), func(c game.Card) bool {
+			return c.IsCreature() && c.HasSubtype("Zombie")
+		}),
+		Tapped: true,
+		Then: func(ctx *Context, _ []uuid.UUID) error {
+			return DestroyAllMatching{Match: HasSubtype("Human")}.Apply(ctx)
+		},
+	}.Apply(ctx)
 }
 
 // b29LightPawsLabel is the stack label of Light-Paws' Aura trigger.

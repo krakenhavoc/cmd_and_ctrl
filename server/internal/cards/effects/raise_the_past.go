@@ -9,8 +9,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // The white weenie mass reanimation. Every qualifying creature card
 // in the caster's graveyard comes back under its owner's control,
-// each through the ordinary reanimation path, so its own
-// enters-tapped clause and every ETB trigger fire. Not targeted, as
+// all of them as one entry (#1867), so its own enters-tapped clause
+// runs and every ETB trigger sees the whole batch (CR 603.6a). Not targeted, as
 // printed, and castable with an empty graveyard to no effect. Mana
 // value is the printed cost's; a card with no cost is 0.
 //

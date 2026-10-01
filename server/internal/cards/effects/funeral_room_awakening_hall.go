@@ -12,8 +12,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // Funeral Room is Zulaport Cutthroat's drain on the same dies trigger
 // (life loss, and you gain 1 once however many opponents lost it).
 // Awakening Hall is Raise the Past's sweep with no mana value bound:
-// the graveyard is snapshotted, then each creature card comes back
-// under its owner's control, which is you.
+// the graveyard is snapshotted, then the creature cards come back
+// together (#1867) under their owner's control, which is you.
 func init() {
 	Register(Room(RoomSpec{
 		OracleID:     "a39d541e-86c1-4595-a2e9-f107def5bbc6",

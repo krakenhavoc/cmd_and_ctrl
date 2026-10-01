@@ -308,26 +308,14 @@ func b21ExileTopFourThenTakeTheirLands(g *game.Game, item *game.StackItem) error
 
 // b21ReturnAllArtifactAndEnchantmentCards is Brilliant Restoration's
 // body: every artifact and enchantment card in `player`'s graveyard
-// returns to the battlefield under its owner's control. The IDs are
-// snapshotted before the first move, because ReturnFromGraveyard
-// mutates the pile being walked; each card enters through the
-// ordinary reanimation path, so its own enters-tapped clause and
-// every ETB trigger fire.
+// returns to the battlefield under its owner's control. The cards are
+// read before anything moves and enter together (#1867), each through
+// the CR 614 entry window, so its own enters-tapped clause runs and
+// every ETB trigger sees the whole batch (CR 603.6a).
 func b21ReturnAllArtifactAndEnchantmentCards(ctx *Context, player uuid.UUID) error {
-	p := ctx.PlayerByID(player)
-	if p == nil || p.Graveyard == nil {
-		return nil
-	}
-	var ids []uuid.UUID
-	for _, c := range p.Graveyard.Cards {
-		if c.IsArtifact() || c.IsEnchantment() {
-			ids = append(ids, c.InstanceID)
-		}
-	}
-	for _, id := range ids {
-		if err := (ReturnFromGraveyard{Target: id, Dest: game.ZoneBattlefield}).Apply(ctx); err != nil {
-			return err
-		}
-	}
-	return nil
+	return ReturnFromGraveyardTogether{
+		Targets: graveyardCardIDs(ctx, player, func(c game.Card) bool {
+			return c.IsArtifact() || c.IsEnchantment()
+		}),
+	}.Apply(ctx)
 }

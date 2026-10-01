@@ -228,30 +228,19 @@ func b36ReturnCardsExiledWithToOwnersHands(g *game.Game, item *game.StackItem) e
 
 // b36ReturnAllNonAuraEnchantmentCards is Replenish's body: every
 // enchantment card in the caster's graveyard that is not an Aura
-// returns to the battlefield under its owner's control, each through
-// the ordinary reanimation path so its ETB triggers fire. Auras stay
-// where they are — the printed "Auras with nothing to enchant remain
-// in your graveyard", applied to every Aura, because the reanimation
-// path has no CR 303.4f choose-what-to-enchant prompt (see the card
-// file). The IDs are snapshotted before the first move, because the
-// pile being walked mutates.
+// returns to the battlefield under its owner's control, all of them
+// as one entry (#1867), so every ETB trigger sees the whole batch
+// (CR 603.6a). Auras stay where they are — the printed "Auras with
+// nothing to enchant remain in your graveyard", applied to every Aura,
+// because the reanimation path has no CR 303.4f choose-what-to-enchant
+// prompt (see the card file). The cards are read before anything
+// moves.
 func b36ReturnAllNonAuraEnchantmentCards(ctx *Context) error {
-	p := ctx.PlayerByID(ctx.Controller())
-	if p == nil || p.Graveyard == nil {
-		return nil
-	}
-	var ids []uuid.UUID
-	for _, c := range p.Graveyard.Cards {
-		if c.IsEnchantment() && !c.IsAura() {
-			ids = append(ids, c.InstanceID)
-		}
-	}
-	for _, id := range ids {
-		if err := (ReturnFromGraveyard{Target: id, Dest: game.ZoneBattlefield}).Apply(ctx); err != nil {
-			return err
-		}
-	}
-	return nil
+	return ReturnFromGraveyardTogether{
+		Targets: graveyardCardIDs(ctx, ctx.Controller(), func(c game.Card) bool {
+			return c.IsEnchantment() && !c.IsAura()
+		}),
+	}.Apply(ctx)
 }
 
 // b36RepurposingBaySearch is Repurposing Bay's body — Oswald

@@ -1,10 +1,6 @@
 package effects
 
-import (
-	"github.com/google/uuid"
-
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-)
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // Open the Vaults — Sorcery {4}{W}{W} (EDHREC rank 3996):
 //
@@ -30,8 +26,9 @@ import (
 //   - "artifact and enchantment CARDS" — a token that died is gone
 //     (CR 111.7) and is not among them.
 //
-// The permanents arrive as ordinary entries, all in one sweep, so
-// enters-the-battlefield triggers fire and entry replacements apply.
+// The permanents arrive as one entry (#1867), every seat's together,
+// so entry replacements apply and every enters-the-battlefield trigger
+// sees the whole batch (CR 603.6a).
 //
 // # Declared simplification (weaker than printed): Auras stay put
 //
@@ -62,30 +59,14 @@ func init() {
 			"Aura cards are left in their graveyards — only the other artifacts and enchantments come back.",
 		},
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			var ids []uuid.UUID
-			for _, p := range ctx.Game.Seats {
-				if p == nil || p.Graveyard == nil {
-					continue
-				}
-				for _, c := range p.Graveyard.Cards {
-					if c.IsAura() {
-						continue
-					}
-					if c.IsArtifact() || c.IsEnchantment() {
-						ids = append(ids, c.InstanceID)
-					}
-				}
-			}
-			for _, id := range ids {
-				// Controller left zero: "under their owners' control"
-				// is exactly ReturnFromGraveyard's default, and
-				// naming the caster here is the mistake the field's
-				// doc comment exists to prevent.
-				if err := (ReturnFromGraveyard{Target: id, Dest: game.ZoneBattlefield}).Apply(ctx); err != nil {
-					return err
-				}
-			}
-			return nil
+			// Controller left zero: "under their owners' control" is
+			// exactly the default, and naming the caster here is the
+			// mistake the field's doc comment exists to prevent.
+			return ReturnFromGraveyardTogether{
+				Targets: allGraveyardsCardIDs(ctx, func(c game.Card) bool {
+					return !c.IsAura() && (c.IsArtifact() || c.IsEnchantment())
+				}),
+			}.Apply(ctx)
 		},
 	})
 }

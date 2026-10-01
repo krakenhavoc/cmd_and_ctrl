@@ -16,8 +16,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // Resolution (CR 608.2b): a card exiled in response is skipped and the
 // rest still return, under their owner's control — the caster's, since
-// "from your graveyard" — in announce order, each through the ordinary
-// reanimation path.
+// "from your graveyard" — together, as one entry (#1867, CR 603.6a).
 //
 // No simplifications.
 func init() {

@@ -32,7 +32,9 @@ import (
 // 608.2b — the spell does as much as it can). Each land returns under
 // its owner's control, the caster's, through the CR 614 entry pipeline
 // with EntersTapped, so it enters tapped rather than being tapped a
-// beat later.
+// beat later. The lands enter together, as one event (#1867,
+// CR 603.6a), and the counters wait for that entry to finish, so an
+// entry that stops to ask a question holds them too.
 func init() {
 	Register(Spec{
 		OracleID:     "951a0e34-e610-477f-b441-6680df55a29b",
@@ -65,20 +67,13 @@ func init() {
 // willOfTheSultaiLandsThenCounters is the rest of the first bullet and
 // then, if it was chosen, the second: the order the card prints them.
 func willOfTheSultaiLandsThenCounters(ctx *Context, _ []uuid.UUID) error {
-	if p := ctx.PlayerByID(ctx.Controller()); p != nil && p.Graveyard != nil {
-		var lands []uuid.UUID
-		for _, c := range p.Graveyard.Cards {
-			if c.IsLand() {
-				lands = append(lands, c.InstanceID)
-			}
-		}
-		for _, id := range lands {
-			if err := (ReturnFromGraveyard{Target: id, Dest: game.ZoneBattlefield, Tapped: true}).Apply(ctx); err != nil {
-				return err
-			}
-		}
-	}
-	return willOfTheSultaiCounters(ctx)
+	return ReturnFromGraveyardTogether{
+		Targets: graveyardCardIDs(ctx, ctx.Controller(), game.Card.IsLand),
+		Tapped:  true,
+		Then: func(ctx *Context, _ []uuid.UUID) error {
+			return willOfTheSultaiCounters(ctx)
+		},
+	}.Apply(ctx)
 }
 
 // willOfTheSultaiCounters is the second bullet: X +1/+1 counters, X

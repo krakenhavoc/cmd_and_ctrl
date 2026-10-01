@@ -1,6 +1,7 @@
 package game
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/google/uuid"
@@ -174,6 +175,80 @@ func TestBatchEntryCombinedCostsMustBePayable(t *testing.T) {
 	}
 	if me.Life != 1 {
 		t.Errorf("life = %d, want 1", me.Life)
+	}
+}
+
+// TestBatchEntryTakesCardsFromAGraveyard is #1867: the batch door takes
+// graveyard cards, from more than one graveyard, as the single-card
+// reanimation does — each keeps its ID, enters under the named
+// controller (or its owner's when none is named), and every window runs
+// against the board before any of them entered. A token in a graveyard
+// is refused, as it is from every other zone.
+func TestBatchEntryTakesCardsFromAGraveyard(t *testing.T) {
+	g := newActiveGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	mine := Card{InstanceID: uuid.New(), Name: "Bear", TypeLine: "Creature — Bear",
+		Power: 2, Toughness: 2, Owner: me.ID, Controller: me.ID}
+	theirs := Card{InstanceID: uuid.New(), Name: "Wolf", TypeLine: "Creature — Wolf",
+		Power: 2, Toughness: 2, Owner: opp.ID, Controller: opp.ID}
+	me.Graveyard.PushTop(mine)
+	opp.Graveyard.PushTop(theirs)
+
+	sawOther := false
+	g.mu.Lock()
+	g.RegisterReplacementForTest(ReplacementEffect{
+		Watches: []EventKind{EventZoneMove},
+		AppliesTo: func(ev *ReplacementEvent, g *Game, _ *Card) bool {
+			if ev.Kind == RepEventMove && ev.NewZone == ZoneBattlefield && g.Battlefield.Size() > 0 {
+				sawOther = true
+			}
+			return false
+		},
+		Label: "test: board watcher",
+	})
+	var entered []uuid.UUID
+	err := g.PutOntoBattlefieldTogetherThenForEffect([]BatchEntry{
+		{CardID: mine.InstanceID, From: ZoneGraveyard},
+		{CardID: theirs.InstanceID, From: ZoneGraveyard},
+	}, ZoneEntryOptions{}, func(_ *Game, in []uuid.UUID) error {
+		entered = in
+		return nil
+	})
+	g.mu.Unlock()
+	if err != nil {
+		t.Fatalf("put: %v", err)
+	}
+	if sawOther {
+		t.Error("a card's window saw the other card on the battlefield")
+	}
+	if len(entered) != 2 || entered[0] != mine.InstanceID || entered[1] != theirs.InstanceID {
+		t.Fatalf("entered = %v, want both, keeping their IDs", entered)
+	}
+	for _, want := range []struct {
+		id         uuid.UUID
+		controller uuid.UUID
+	}{{mine.InstanceID, me.ID}, {theirs.InstanceID, opp.ID}} {
+		c, ok := g.battlefieldCardLocked(want.id)
+		if !ok {
+			t.Fatalf("%s is not on the battlefield", want.id)
+		}
+		if c.Controller != want.controller {
+			t.Errorf("%s entered under %s, want its owner", c.Name, c.Controller)
+		}
+	}
+	if me.Graveyard.Contains(mine.InstanceID) || opp.Graveyard.Contains(theirs.InstanceID) {
+		t.Error("a card is still in its graveyard")
+	}
+
+	token := Card{InstanceID: uuid.New(), Name: "Soldier", TypeLine: "Token Creature — Soldier",
+		Power: 1, Toughness: 1, Owner: me.ID, Controller: me.ID}
+	me.Graveyard.PushTop(token)
+	g.mu.Lock()
+	err = g.PutOntoBattlefieldTogetherThenForEffect([]BatchEntry{{CardID: token.InstanceID, From: ZoneGraveyard}},
+		ZoneEntryOptions{}, nil)
+	g.mu.Unlock()
+	if !errors.Is(err, ErrInvalidParam) {
+		t.Errorf("a token in a graveyard: err = %v, want ErrInvalidParam (CR 111.8)", err)
 	}
 }
 

@@ -11,9 +11,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // The seven-mana mass reanimation. The choice is the caster's, so it
 // is asked through the graveyard picker as an "any number" clause
 // over permanent cards the caster owns, and the cards come back
-// under their owner's control — the caster's — in announce order,
-// each entering through the ordinary reanimation path so its own
-// enters-tapped clause and every ETB trigger fire.
+// under their owner's control — the caster's — together, as one entry
+// (#1867): each card's own enters-tapped clause runs, and every ETB
+// trigger sees the whole batch (CR 603.6a).
 //
 // "With different names" is the clause's set rule since #1559
 // (EachDifferentName): the picker greys a second card of a name
@@ -47,19 +47,12 @@ func init() {
 }
 
 // returnLegalGraveyardTargetsToBattlefield puts every still-legal
-// graveyard target onto the battlefield under its owner's control, in
-// announce order — the body of the set-rule reanimations (#1559):
-// Eerie Ultimatum, Agadeem's Awakening, Behold the Sinister Six!. The
-// set rule itself is the clause's; by the time this runs the CR 608.2b
-// re-check has already dropped any pick that breaks it.
+// graveyard target onto the battlefield under its owner's control, all
+// of them as one entry (#1867, CR 603.6a) — the body of the set-rule
+// reanimations (#1559): Eerie Ultimatum, Agadeem's Awakening, Behold
+// the Sinister Six!. The set rule itself is the clause's; by the time
+// this runs the CR 608.2b re-check has already dropped any pick that
+// breaks it.
 func returnLegalGraveyardTargetsToBattlefield(ctx *Context) error {
-	for _, t := range ctx.LegalTargets() {
-		if t.Kind != game.TargetCard {
-			continue
-		}
-		if err := (ReturnFromGraveyard{Target: t.ID, Dest: game.ZoneBattlefield}).Apply(ctx); err != nil {
-			return err
-		}
-	}
-	return nil
+	return ReturnFromGraveyardTogether{Targets: legalTargetCardIDs(ctx)}.Apply(ctx)
 }
