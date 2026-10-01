@@ -249,7 +249,85 @@ func corpusBoards() []corpusBoard {
 		// on the stack with two marks (StackItem.CantBeCountered), one
 		// from a spent promise and one from Vexing Shusher.
 		{"counter_shields", corpusCounterShields},
+		// v7, added by ADR 0107 PR 3 (#1854) as new files: rebound as
+		// data — a rebound card in exile with its upkeep delayed
+		// trigger queued (body rebound/cast, the exiled object in
+		// Params.Object), the same trigger fired and waiting on the
+		// stack, and the free cast granted after "yes" (a CastPermission
+		// whose LapseOnPass is "exile").
+		{"rebound_waiting", corpusReboundWaiting},
+		{"rebound_on_stack", corpusReboundOnStack},
+		{"rebound_free_cast_grant", corpusReboundFreeCastGrant},
 	}
+}
+
+// corpusReboundWaiting is Staggershock cast from hand, resolved and
+// exiled by rebound, its delayed trigger queued for its controller's
+// next upkeep (#1854).
+func corpusReboundWaiting(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	foe := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	id := castCatalogSpell(t, g, "Staggershock", "Instant", "056c3b7d-b603-40b8-8404-18c2eb7e7129",
+		[]game.TargetRef{{Kind: game.TargetPlayer, ID: foe.ID}})
+	passPriorityAroundTable(t, g)
+	if !g.Exile.Contains(id) || len(g.DelayedTriggers) != 1 {
+		t.Fatalf("setup: exiled %v, delayed triggers %d", g.Exile.Contains(id), len(g.DelayedTriggers))
+	}
+	return g
+}
+
+// corpusReboundOnStack is that trigger fired at the controller's next
+// upkeep and waiting on the stack, a keyed item (#1854).
+func corpusReboundOnStack(t *testing.T) *game.Game {
+	g := corpusReboundWaiting(t)
+	seat := g.Turn.ActiveSeat
+	advanceToUpkeepOf(t, g, (seat+1)%len(g.Seats))
+	advanceToUpkeepOf(t, g, seat)
+	found := false
+	for _, it := range g.PendingTriggers {
+		if it != nil && it.Body == "rebound/cast" {
+			found = true
+		}
+	}
+	for _, it := range g.StackMeta {
+		if it != nil && it.Body == "rebound/cast" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("setup: the rebound trigger is not waiting")
+	}
+	return g
+}
+
+// corpusReboundFreeCastGrant is the offer accepted: the free cast is a
+// per-object CastPermission that closes on its holder's pass and leaves
+// the card in exile (#1854).
+func corpusReboundFreeCastGrant(t *testing.T) *game.Game {
+	g := corpusReboundOnStack(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	for i := 0; i < 8 && latestChoiceOfKind(g, game.PendingChoiceMayCast) == nil; i++ {
+		if err := g.PassPriority(); err != nil {
+			t.Fatalf("PassPriority: %v", err)
+		}
+	}
+	offer := latestChoiceOfKind(g, game.PendingChoiceMayCast)
+	if offer == nil {
+		t.Fatal("setup: no rebound offer")
+	}
+	if err := g.ResolveMayCast(offer.ID, me.ID, true); err != nil {
+		t.Fatalf("ResolveMayCast: %v", err)
+	}
+	granted := false
+	for _, perm := range me.CastPermissions {
+		if perm.LapseOnPass == game.LapseStaysInExile {
+			granted = true
+		}
+	}
+	if !granted {
+		t.Fatal("setup: no rebound grant")
+	}
+	return g
 }
 
 // corpusCounterShields is ADR 0106 §4's three stored shapes at once.

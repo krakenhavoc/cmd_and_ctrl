@@ -21,6 +21,7 @@ export const mayCastKeywordsThatOpenACast: ReadonlySet<string> = new Set([
   "discover",
   "cascade",
   "suspend",
+  "rebound",
 ]);
 
 // freeCastTarget is Board's half: the exiled card a pending request

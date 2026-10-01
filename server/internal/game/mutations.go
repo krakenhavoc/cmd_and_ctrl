@@ -3423,7 +3423,7 @@ func (g *Game) resolveTopAbilityLocked() {
 // (sub-PR 3) when every target is illegal on resolve.
 //
 // THE ONE PLACE a spell leaving the stack chooses a destination.
-// Three rules replace the graveyard, and all three decide here rather
+// Four rules replace the graveyard, and all four decide here rather
 // than in the resolution frame, because a spell has exactly one
 // destination and a reader should be able to see the whole contest in
 // one switch:
@@ -3447,13 +3447,27 @@ func (g *Game) resolveTopAbilityLocked() {
 //     fact that tells them apart. Before #988 gave
 //     this helper that fact, the adventure leg had to live one frame
 //     up to get it.
+//   - REBOUND — "if this spell was cast from your hand, instead of
+//     putting it into your graveyard as it resolves, exile it and, at
+//     the beginning of your next upkeep, you may cast this card from
+//     exile" (CR 702.88a, rebound.go, #1854). Resolution only, like
+//     the two above it, and a fact about where the spell was CAST
+//     from, which the item records.
 //
-// `item` is the spell's stack item, because the first two are facts
-// about what was PAID; the third is a fact about the card and reads
-// the face instead.
+// `item` is the spell's stack item, because buyback and flashback are
+// facts about what was PAID and rebound is a fact about where it was
+// cast from; the Adventure is a fact about the card and reads the face
+// instead.
 //
-// PRECEDENCE. Flashback wins over both, because CR 702.34a replaces
-// every exit and the other two replace one of them. Between buyback
+// PRECEDENCE. Flashback wins over the rest, because CR 702.34a
+// replaces every exit and the others replace one of them (and a
+// flashed-back spell was not cast from a hand anyway). Rebound comes
+// next. Rebound, buyback and the Adventure exile all replace the same
+// "put it into its owner's graveyard as it resolves" event, so CR
+// 616.1 would hand the choice to the spell's controller; no printed
+// card has rebound and either of the other two, so no pair of them can
+// meet until rebound can be GRANTED to a spell (ADR 0107 PR 4), which
+// is where that choice belongs. Between buyback
 // and the Adventure exile the order is buyback, and that one is a
 // judgement call worth stating: both replace the same "put it into its
 // owner's graveyard as it resolves" event, so CR 616.1 would hand the
@@ -3490,6 +3504,18 @@ func (g *Game) routeStackCardToGraveyardLocked(c Card, item *StackItem, resolved
 	switch {
 	case altCostExilesFromStack(c, item):
 		r.Dst, r.DstOwner, r.Actor = ZoneExile, uuid.Nil, c.Owner
+	case resolved && spellRebounds(c, item):
+		// CR 702.88a, rebound.go: exile it and, at the beginning of
+		// its controller's next upkeep, offer the free cast. The
+		// delayed trigger rides the continuation for the reason the
+		// Adventure grant does: it is about the card IN EXILE, and is
+		// created only once the card is there.
+		cardID, controller := c.InstanceID, item.Controller
+		r.Dst, r.DstOwner, r.Actor = ZoneExile, uuid.Nil, controller
+		r.then = func(g *Game) error {
+			g.scheduleReboundLocked(cardID, controller)
+			return nil
+		}
 	case resolved && item != nil &&
 		OptionalCostTimesPaid(c, item.Paid.OptionalCosts, BuybackKey) > 0:
 		// CR 702.27a. Through the SAME exit primitive, so a

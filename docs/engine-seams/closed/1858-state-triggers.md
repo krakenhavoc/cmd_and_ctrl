@@ -1,5 +1,5 @@
 ---
-title: "Abilities that trigger on a game state"
+title: "State triggers"
 date: 2026-10-01
 issues: [1858]
 ---
