@@ -41,6 +41,8 @@
   import GameLogPanel from "../lib/components/board/GameLogPanel.svelte";
   import ActionDock from "../lib/components/board/ActionDock.svelte";
   import DockRequest from "../lib/components/board/DockRequest.svelte";
+  import GameMenu from "../lib/components/board/GameMenu.svelte";
+  import type { GameMenuOptions } from "../lib/gameMenu";
   import DockSheet from "../lib/components/board/DockSheet.svelte";
   import { attackRowRequest, blockRequest, combatSelectionRequest } from "../lib/combatDock";
   import { gameOverRequest, inlineRefusal, voteRequest } from "../lib/choiceDock";
@@ -790,14 +792,13 @@
     client.sendAction("shuffle_library", viewerID);
     play("shuffle");
   }
-  let mulliganTo = $state(7);
   let showLifeHistory = $state(false);
   // S31 sub-PR 0: the public game log drawer. Local to the tab —
   // whether you have the log open is not table state.
   let showGameLog = $state(false);
-  function mulligan(): void {
+  // The ⋯ menu's "Mulligan to N" (lib/gameMenu.ts clamps N).
+  function mulligan(n: number): void {
     if (!viewerID) return;
-    const n = Math.max(0, Math.min(20, Math.floor(mulliganTo)));
     client.sendAction("mulligan", viewerID, { hand_size: n });
     play("shuffle");
   }
@@ -1177,31 +1178,12 @@
     play("shuffle");
   }
 
-  // Concede is irreversible — it asks first, in a styled popover
-  // anchored to the command bar rather than window.confirm.
-  let concedeConfirm = $state(false);
-  function requestConcede(): void {
-    if (!viewerID || viewerEliminated || gameEnded) return;
-    menuOpen = false;
-    concedeConfirm = true;
-  }
-  function confirmConcede(): void {
-    concedeConfirm = false;
+  // Concede is irreversible: the ⋯ menu asks first, in a confirm that
+  // opens where the menu was (GameMenu.svelte). This runs once it is
+  // accepted.
+  function concede(): void {
     if (!viewerID || viewerEliminated || gameEnded) return;
     client.sendAction("concede", viewerID);
-  }
-
-  // The ⋯ menu in the command bar holds the sandbox utilities
-  // (draw / untap / shuffle / mulligan) and table actions so the bar
-  // itself stays status + its icon buttons. Pass turn and Undo are the
-  // action dock's (ADR 0111 §7).
-  let menuOpen = $state(false);
-  function closeMenu(): void {
-    menuOpen = false;
-  }
-  function viaMenu(fn: () => void): void {
-    menuOpen = false;
-    fn();
   }
 
   // ---- Keyboard shortcuts (ADR 0047) ----
@@ -1377,6 +1359,47 @@
   );
   const gameOverDockRequest = $derived(gameEnded ? gameOverRequest(back) : null);
 
+  // ---- The ⋯ menu (ADR 0111 PR 7, owner decision 3) ----
+  // The sandbox tools, life history, the table, spawn, the vote
+  // launcher, navigation and Concede. A seated player's is the last chip
+  // on the action dock's toggles row and opens upward. A viewer with no
+  // dock (a spectator, an admin with no seat here) keeps a smaller one
+  // on the command bar: life history, the table and navigation, nothing
+  // that acts on a seat. Neither is drawn while the dev replay scrubber
+  // shows a past frame: `view` is history then, and every entry acts on
+  // the LIVE game.
+  const menuOptions = $derived<GameMenuOptions>({
+    seated: dockShown,
+    eliminated: viewerEliminated,
+    gameEnded,
+    drawKey: keyHint(keys.drawCard) ? formatChord(keys.drawCard, mac) : "",
+    drawTitle: `draw a card${keyHint(keys.drawCard)}`,
+    canManage,
+    spawnAvailable,
+    discordLink: canLinkDiscord({
+      role: sess?.principal.role,
+      discordEnabled,
+      isBotSeat: Boolean(viewerSeat?.is_bot),
+    })
+      ? { href: discordLinkHref(gameID), label: linkDiscordLabel(Boolean(viewerSeat?.discord_id)) }
+      : null,
+    myGames: signedInUserID(sess) !== null,
+    voteOpen: !!view?.vote,
+    onDraw: draw,
+    onUntapAll: untapAll,
+    onShuffle: shuffle,
+    onMulligan: mulligan,
+    onLifeHistory: () => (showLifeHistory = true),
+    onTableSettings: () => (tableSettingsOpen = true),
+    onSpawn: () => (spawnerOpen = true),
+    onMyGames: () => navigate("#/my-games"),
+    onBack: back,
+    onConcede: concede,
+    onStartVote: (topic, options) =>
+      sendAction("start_vote", { topic, options }, viewerID ?? undefined),
+  });
+  const barMenuShown = $derived(!!view && !dockShown && !replaying);
+
   // The refused card's name, wherever it is (a hand, the command zone,
   // a graveyard or exile it is cast from).
   function cardNameAnywhere(cardID: string): string | undefined {
@@ -1408,7 +1431,7 @@
   class:sheet-open={dockShown && sheetW > 0}
   style:--sheet-w={dockShown && sheetW > 0 ? `${sheetW}px` : undefined}
 >
-  <header class="bar">
+  <header class="bar" class:menu-in-bar={barMenuShown}>
     <button class="ghost bar-nav" onclick={back}><Icon name="chevronLeft" size={14} /> Lobby</button
     >
     <span class="bar-sep" aria-hidden="true"></span>
@@ -1434,9 +1457,9 @@
       >
     {/if}
     <span class={`status status-${$status}`} title={`seq ${$lastSeq}`}>
-      <i class="dot" aria-hidden="true"></i>{$status === "session_ended"
-        ? "session ended"
-        : $status}
+      <i class="dot" aria-hidden="true"></i><span class="status-word"
+        >{$status === "session_ended" ? "session ended" : $status}</span
+      >
       <span class="seq">· seq {$lastSeq}</span>
     </span>
     <!-- Pass turn moved to the action dock's action bar (ADR 0111 §7). -->
@@ -1478,163 +1501,13 @@
           onclick={() => (bugReportOpen = true)}><Icon name="bug" size={17} /></button
         >
       {/if}
-      <!-- Withheld while the dev replay scrubber is showing a past frame:
-           `view` is history then, but the Sandbox entries, undo and
-           concede all mutate the LIVE game. See the replay-scrubber note
-           in the script block. -->
-      {#if view && viewerID && !replaying}
-        <div class="more">
-          <button
-            class="ibtn"
-            class:on={menuOpen}
-            aria-haspopup="menu"
-            aria-expanded={menuOpen}
-            aria-label="more actions"
-            title="sandbox actions and more"
-            onclick={() => (menuOpen = !menuOpen)}><Icon name="more" size={17} /></button
-          >
-          {#if menuOpen}
-            <ModalLayer />
-            <!-- svelte-ignore a11y_click_events_have_key_events -->
-            <!-- svelte-ignore a11y_no_static_element_interactions -->
-            <div class="menu-backdrop" onclick={closeMenu}></div>
-            <div class="menu" role="menu" aria-label="game actions">
-              <div class="menu-h">Sandbox</div>
-              <button
-                class="mi"
-                role="menuitem"
-                onclick={() => viaMenu(draw)}
-                title={`draw a card${keyHint(keys.drawCard)}`}
-              >
-                <Icon name="draw" size={15} /> Draw a card
-                {#if keyHint(keys.drawCard)}<span class="mi-r"
-                    >{formatChord(keys.drawCard, mac)}</span
-                  >{/if}
-              </button>
-              <button class="mi" role="menuitem" onclick={() => viaMenu(untapAll)}>
-                <Icon name="untap" size={15} /> Untap all
-              </button>
-              <button class="mi" role="menuitem" onclick={() => viaMenu(shuffle)}>
-                <Icon name="shuffle" size={15} /> Shuffle library
-              </button>
-              <div class="mi mi-row">
-                <Icon name="hand" size={15} />
-                <span>Mulligan to</span>
-                <input
-                  type="number"
-                  min="0"
-                  max="20"
-                  bind:value={mulliganTo}
-                  aria-label="mulligan hand size"
-                />
-                <button class="sm" onclick={() => viaMenu(mulligan)}>Go</button>
-              </div>
-              <!-- Undo is the action dock's, in its toggles row (ADR 0111 PR 3). -->
-              <button
-                class="mi"
-                role="menuitem"
-                onclick={() => viaMenu(() => (showLifeHistory = true))}
-              >
-                <Icon name="drop" size={15} /> Life history
-              </button>
-              <div class="sep"></div>
-              <div class="menu-h">Table</div>
-              <!-- ADR 0075 §2.5. Open to everyone, because the
-                   settings are public on purpose: how many take-backs
-                   this table allows, and whether a Treasure can
-                   appear from nowhere, are not the host's private
-                   business. The panel disables its own controls for
-                   anyone who is not the host or the admin. It
-                   replaced the stop-gap "Undo limit" row that sub-PR
-                   3 left in the Sandbox section — one setting, one
-                   control. -->
-              <button
-                class="mi"
-                role="menuitem"
-                onclick={() => viaMenu(() => (tableSettingsOpen = true))}
-                title={canManage
-                  ? "the table's house rules — undos, life, commander damage, bot speed, spawning"
-                  : "the table's house rules (only the host can change them)"}
-              >
-                <Icon name="gear" size={15} /> Table settings…
-                {#if !canManage}<span class="mi-r">view</span>{/if}
-              </button>
-              {#if spawnAvailable}
-                <!-- Both of the server's gates, checked together: the
-                     host or admin, AND the table's spawn switch. The
-                     entry is absent rather than disabled when the
-                     switch is off — an always-visible control for a
-                     feature most tables never turn on is clutter, and
-                     the switch itself is one entry above. -->
-                <button
-                  class="mi"
-                  role="menuitem"
-                  onclick={() => viaMenu(() => (spawnerOpen = true))}
-                  title="put a card or a token on the table — announced in the game log, and undoable"
-                >
-                  <Icon name="spark" size={15} /> Spawn a card or token…
-                </button>
-              {/if}
-              {#if canLinkDiscord( { role: sess?.principal.role, discordEnabled, isBotSeat: Boolean(viewerSeat?.is_bot) }, )}
-                <!-- A navigation, not a fetch: the server answers with a
-                     302 to Discord's consent screen and comes back to
-                     this table with the seat linked. -->
-                <a
-                  class="mi"
-                  role="menuitem"
-                  href={discordLinkHref(gameID)}
-                  title="sign in with Discord and put your Discord name and avatar on this seat"
-                >
-                  <Icon name="link" size={15} />
-                  {linkDiscordLabel(Boolean(viewerSeat?.discord_id))}
-                </a>
-              {/if}
-              {#if signedInUserID(sess)}
-                <button
-                  class="mi"
-                  role="menuitem"
-                  onclick={() => viaMenu(() => navigate("#/my-games"))}
-                >
-                  <Icon name="library" size={15} /> My games
-                </button>
-              {/if}
-              <button class="mi" role="menuitem" onclick={() => viaMenu(back)}>
-                <Icon name="chevronLeft" size={15} /> Back to lobby
-              </button>
-              <div class="sep"></div>
-              <button
-                class="mi danger"
-                role="menuitem"
-                onclick={requestConcede}
-                disabled={viewerEliminated || gameEnded}
-                title={viewerEliminated
-                  ? "you are already eliminated"
-                  : gameEnded
-                    ? "the game has ended"
-                    : "concede the game (irreversible)"}
-              >
-                <Icon name="flag" size={15} /> Concede…
-              </button>
-            </div>
-          {/if}
-        </div>
+      <!-- ADR 0111 PR 7 (owner decision 3): a seated player's ⋯ menu is
+           the action dock's, on its toggles row. A viewer with no dock
+           keeps this one: life history, the table and navigation. -->
+      {#if barMenuShown}
+        <GameMenu {...menuOptions} placement="down" />
       {/if}
     </div>
-    {#if concedeConfirm}
-      <ModalLayer />
-      <div class="confirm" role="dialog" aria-modal="true" aria-label="concede the game?">
-        <div class="confirm-title">Concede the game?</div>
-        <p class="confirm-body">
-          You'll be eliminated and keep watching as a spectator. This can't be undone.
-        </p>
-        <div class="confirm-actions">
-          <button onclick={() => (concedeConfirm = false)}>Keep playing</button>
-          <button class="danger" onclick={confirmConcede}
-            ><Icon name="flag" size={14} /> Concede</button
-          >
-        </div>
-      </div>
-    {/if}
     {#if showLifeHistory}
       <ModalLayer />
       <div class="life-history-popover" id="life-history-popover" role="dialog">
@@ -1984,6 +1857,7 @@
           onUndo={undo}
           onSize={onDockSize}
           onSheet={onDockSheet}
+          menu={menuOptions}
         />
       {/if}
       {#if viewerNeedsToDecide && dockShown}
@@ -2127,8 +2001,8 @@
 <svelte:window
   onkeydown={(ev: KeyboardEvent) => {
     if (ev.key === "Escape") {
-      menuOpen = false;
-      concedeConfirm = false;
+      // The ⋯ menu and Concede's confirm close themselves
+      // (GameMenu.svelte).
       tableSettingsOpen = false;
       spawnerOpen = false;
       // ADR 0111 PR 4: cancelling the targeting walk or a combat
@@ -2340,6 +2214,22 @@
     .status .seq {
       display: none;
     }
+    /* ADR 0111 PR 7: a viewer with no dock (a spectator) keeps the ⋯
+       menu here, and has the "spectating" tag too, so the bar has two
+       more things to fit than a seated player's. The game id and the
+       status word give way for them; the word stays for a screen
+       reader, and the dot keeps its colour. */
+    .bar.menu-in-bar :global(h1.crumb) {
+      display: none;
+    }
+    .bar.menu-in-bar .status-word {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      white-space: nowrap;
+    }
   }
   .ibtn {
     width: 32px;
@@ -2356,131 +2246,8 @@
     background: rgba(255, 255, 255, 0.06);
     border-color: var(--border);
   }
-  .more {
-    position: relative;
-  }
-  .menu-backdrop {
-    position: fixed;
-    inset: 0;
-    z-index: 50;
-  }
-  .menu {
-    position: absolute;
-    right: 0;
-    top: calc(100% + 6px);
-    width: 284px;
-    z-index: 60;
-    background: var(--surface);
-    border: 1px solid var(--border-strong);
-    border-radius: 12px;
-    box-shadow: var(--shadow-lg);
-    padding: 6px;
-    box-sizing: border-box;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-  .menu-h {
-    font-family: var(--font-mono);
-    font-size: 9.5px;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: var(--fg-dim);
-    padding: 8px 10px 4px;
-  }
-  .mi {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    height: 32px;
-    padding: 0 10px;
-    border-radius: 8px;
-    border: 1px solid transparent;
-    background: transparent;
-    color: var(--fg);
-    font-size: 12.5px;
-    font-weight: 500;
-    width: 100%;
-    justify-content: flex-start;
-    text-align: left;
-    box-shadow: none;
-    box-sizing: border-box;
-  }
-  /* "Link Discord" is a navigation, so it is a link styled as a row. */
-  a.mi {
-    text-decoration: none;
-    box-sizing: border-box;
-  }
-  .mi:hover:not(:disabled) {
-    background: rgba(255, 255, 255, 0.06);
-    border-color: transparent;
-  }
-  .mi:disabled {
-    opacity: 0.45;
-  }
-  .mi.danger {
-    color: var(--danger);
-  }
-  .mi-r {
-    margin-left: auto;
-    font-family: var(--font-mono);
-    font-size: 10.5px;
-    color: var(--fg-muted);
-    background: var(--surface-raised);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 2px 6px;
-  }
-  .mi-row {
-    cursor: default;
-  }
-  .mi-row input {
-    width: 44px;
-    padding: 3px 6px;
-    margin: 0 0 0 auto;
-    font-size: 12px;
-    font-family: var(--font-mono);
-    border-radius: 6px;
-  }
-  .mi-row .sm {
-    height: 24px;
-    padding: 0 8px;
-    font-size: 11.5px;
-    border-radius: 6px;
-  }
-  .sep {
-    height: 1px;
-    background: var(--border);
-    margin: 4px 6px;
-  }
-  .confirm {
-    position: absolute;
-    right: 60px;
-    top: calc(100% + 6px);
-    width: 300px;
-    z-index: 60;
-    background: var(--surface);
-    border: 1px solid var(--border-strong);
-    border-radius: 12px;
-    box-shadow: var(--shadow-lg);
-    padding: 14px 14px 12px;
-    box-sizing: border-box;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-  .confirm-title {
-    font-family: var(--font-display);
-    font-size: 15px;
-    font-weight: 700;
-    color: var(--fg);
-  }
-  .confirm-body {
-    margin: 0;
-    font-size: 12.5px;
-    color: var(--fg-muted);
-    line-height: 1.45;
-  }
+  /* The ⋯ menu and Concede's confirm are GameMenu.svelte's (ADR 0111
+     PR 7). The table-settings and spawner dialogs keep this row. */
   .confirm-actions {
     display: flex;
     justify-content: flex-end;

@@ -11,8 +11,10 @@
   //   2. Status line — the running bluff, the CR 732 loop notice, or
   //      what `next` will do. Always one row tall, so the dock does not
   //      change height (and move the self panel) on every priority pass.
-  //   3. Toggles row — hold, autopass, bluff and the one Undo, with
-  //      its count (`group "priority controls"`).
+  //   3. Toggles row — hold, autopass, bluff, the one Undo with its
+  //      count, and the ⋯ menu (`group "priority controls"`). PR 7
+  //      (owner decision 3): the ⋯ menu moved here from the command bar
+  //      and opens upward (GameMenu.svelte).
   //   4. Prompt area — the open request (lib/dock.ts, PR 3), if any:
   //      its question line, its row of options and a refusal it can
   //      answer, all inside one non-modal `role="dialog"` named as the
@@ -53,6 +55,8 @@
   import type { GameView } from "../../protocol";
   import PhaseDisplay from "./PhaseDisplay.svelte";
   import BluffChip from "./BluffChip.svelte";
+  import GameMenu from "./GameMenu.svelte";
+  import type { GameMenuOptions } from "../../gameMenu";
   import Icon from "../Icon.svelte";
   import {
     activeDockRequest,
@@ -100,6 +104,9 @@
     // PR 6: the open sheet's width (0 when none is open, or it is
     // minimised), so the hover zoom can move left of it (§4).
     onSheet?: (width: number) => void;
+    // PR 7 (owner decision 3): the ⋯ menu, last on the toggles row.
+    // Game.svelte builds it; omitted, the row has no ⋯.
+    menu?: GameMenuOptions;
   }
 
   const {
@@ -118,6 +125,7 @@
     onUndo = () => {},
     onSize,
     onSheet,
+    menu,
   }: Props = $props();
 
   // ---- keys --------------------------------------------------------
@@ -479,6 +487,11 @@
         >{undoCount}</span
       >
     </button>
+    <!-- ADR 0111 PR 7 (owner decision 3): the ⋯ menu, out of the command
+         bar. Last on the row, opening upward. -->
+    {#if menu}
+      <GameMenu {...menu} placement="up" />
+    {/if}
   </div>
 
   {#snippet actionButton(a: DockAction, cls: string)}
@@ -1281,8 +1294,9 @@
     .dock-btn.row-btn {
       min-height: 36px;
     }
-    /* Four toggles share 358px: Undo becomes an icon chip with its
-       count; its name is its aria-label either way. */
+    /* Five toggles share 358px: Undo becomes an icon chip with its
+       count, and ⋯ is one already; their names are their aria-labels
+       either way. */
     .undo-word {
       display: none;
     }

@@ -149,7 +149,10 @@ describe("Report a bug or idea on the game toolbar", () => {
   it("is no longer an item in the three-dot menu", async () => {
     stubConfig(true);
     const c = await mountGame();
-    const more = c.querySelector<HTMLElement>('button[aria-label="more actions"]');
+    // ADR 0111 PR 7: the three-dot menu is the action dock's now.
+    const more = c.querySelector<HTMLElement>(
+      'section[aria-label="actions"] button[aria-label="more actions"]',
+    );
     expect(more, "the three-dot menu should exist for a seated player").toBeTruthy();
     click(more!);
     flushSync();
@@ -169,13 +172,14 @@ describe("the command bar and the action dock", () => {
     expect(
       [...bar.querySelectorAll("button")].some((b) => /pass turn/i.test(b.textContent ?? "")),
     ).toBe(false);
-    // The icons keep their order: mute, log, settings, then the ⋯ menu.
-    const icons = [...bar.querySelectorAll(".bar-icons > button, .bar-icons > .more > button")];
+    // The icons keep their order: mute, log, settings. ADR 0111 PR 7:
+    // the ⋯ menu left the bar for the dock's toggles row (owner
+    // decision 3).
+    const icons = [...bar.querySelectorAll(".bar-icons button")];
     expect(icons.map((b) => b.getAttribute("aria-label"))).toEqual([
       "mute sound effects",
       "open game log",
       "open settings",
-      "more actions",
     ]);
 
     const dock = c.querySelector<HTMLElement>('.play-area > section[aria-label="actions"]');

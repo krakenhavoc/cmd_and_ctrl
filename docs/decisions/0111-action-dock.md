@@ -377,6 +377,24 @@ Each PR ships on its own, leaves no control drawn twice, works at 390px for what
 
 PRs 1 and 2 are the owner's two sentences: bluff visible bottom right, and the buttons pressed every turn in the same corner. PRs 3-6 bring each remaining kind of prompt into it. PR 7 is cleanup.
 
+### Delivery note (2026-10-02)
+
+All seven PRs shipped on 2026-10-02, into `develop`: PR 1 [#1969](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1969), PR 2 [#1976](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1976), PR 3 [#1978](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1978), PR 4 [#1980](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1980), PR 5 [#1981](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1981), PR 6 [#1982](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1982) and PR 7 this PR. The sprint is S56 in [docs/sprints.md](../sprints.md#s56--table-ux-one-action-dock-bottom-right).
+
+Where PR 7 went past what this ADR wrote down:
+
+- **Spectators keep a ⋯ menu on the command bar.** §1 gives a spectator no dock, and decision 3 moved the menu into it, so the ADR left a spectator without one. Before PR 7 a spectator had no ⋯ menu at all: the command-bar menu needed a seat. Now a viewer with no dock (a spectator, or an admin with no seat at this table) gets a smaller one on the command bar, opening downward: life history, table settings (read-only unless they may manage the table), spawn where both gates allow it, My games and Back to lobby. Nothing in it acts on a seat. At 390px that bar also hides the game id and the status word (the dot stays, and the word stays for a screen reader), so it fits beside the "spectating" tag.
+- **The vote launcher is a form inside the menu.** "Call a vote…" swaps the menu for the launcher's two fields (`vote topic`, `vote options`) and its start / cancel, where the menu was. The launcher left the board's top-left corner, and VotingPanel now draws only an open vote for a viewer with no dock. A spectator never could call a vote: the launcher needed a seat, so it was a dead button for them.
+- **Concede's confirm opens where the menu was**, inside the dock, rather than as a popover under the command bar. It keeps its name (`concede the game?`), stays `aria-modal`, and puts focus on Keep playing.
+- **Life history** still opens under the command bar, where it always was. It is a read-out, not a prompt.
+- **Keys:** the menu closes on Escape (focus returns to ⋯), on a press outside it and when focus tabs out. The arrow keys, Home and End move between its entries. While it is open it holds a ModalLayer, as the command-bar menu did, so the global shortcuts and the dock's Enter / Escape stand down.
+
+Known follow-ups, also listed in the S56 section:
+
+- [#1977](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1977), the phone board layout, which predates the dock (Out of scope, above).
+- PR 4's nuance: with keyboard focus on a board card during targeting, Enter picks the card rather than pressing Done (§1, "Enter … while focus is on the board or the body").
+- The `zone-browser.spec.ts` cross-socket flake ([#1468](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1468)), which PR 6's E2E run hit once and passed on retry.
+
 ---
 
 ## Consequences
