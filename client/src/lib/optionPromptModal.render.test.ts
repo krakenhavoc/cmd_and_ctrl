@@ -140,27 +140,33 @@ describe("ChoicePromptModal — option_pick (#568)", () => {
     expect(buttons[1].disabled).toBe(false);
   });
 
-  it("keeps an option pick whose options embed cards in the modal (a sheet, PR 6)", () => {
+  it("draws an option pick whose options embed cards as a dock sheet (PR 6)", () => {
     // Fact or Fiction's piles: the cards are the point, and they need
-    // room. Not inline.
+    // room. Not inline: a sheet that grows up out of the dock, in a
+    // dialog of the same name.
     const card = { instance_id: "c1", name: "Island" } as CardView;
     const { container, sent } = mountOptionPick([
       { label: "Pile 1", cards: [card] },
       { label: "Pile 2", cards: [] },
     ]);
-    expect(dockDialog(container)).toBeNull();
-    const modalButtons = [...container.querySelectorAll<HTMLButtonElement>("button.pick-option")];
+    const dlg = dockDialog(container)!;
+    expect(dlg).not.toBeNull();
+    expect(dlg.querySelector(".dock-sheet")).not.toBeNull();
+    expect(optionButtons(container)).toHaveLength(0);
+    expect(container.querySelector(".prompt-backdrop")).toBeNull();
+    const modalButtons = [...dlg.querySelectorAll<HTMLButtonElement>("button.pick-option")];
     expect(modalButtons).toHaveLength(2);
     expect(modalButtons[0].querySelector(".pick-cards")).not.toBeNull();
     click(modalButtons[1]);
     expect(sent[0].params).toMatchObject({ choice_id: "choice-1", option_index: 1 });
   });
 
-  it("keeps an option pick with more than six options, or a long label, in the modal", () => {
+  it("draws an option pick with more than six options, or a long label, as a sheet", () => {
     const seven = Array.from({ length: 7 }, (_, i) => ({ label: `Option ${i + 1}` }));
     const many = mountOptionPick(seven);
-    expect(dockDialog(many.container)).toBeNull();
-    expect(many.container.querySelectorAll("button.pick-option")).toHaveLength(7);
+    expect(dockDialog(many.container)?.querySelector(".dock-sheet")).not.toBeNull();
+    expect(optionButtons(many.container)).toHaveLength(0);
+    expect(many.container.querySelectorAll(".dock-sheet button.pick-option")).toHaveLength(7);
     cleanup();
     resetDock();
 
@@ -168,7 +174,7 @@ describe("ChoicePromptModal — option_pick (#568)", () => {
       { label: "Fame — its caster gains control of a creature you control until end of turn" },
       { label: "Fortune — its caster draws a card and creates a Treasure token" },
     ]);
-    expect(dockDialog(long.container)).toBeNull();
-    expect(long.container.querySelectorAll("button.pick-option")).toHaveLength(2);
+    expect(dockDialog(long.container)?.querySelector(".dock-sheet")).not.toBeNull();
+    expect(long.container.querySelectorAll(".dock-sheet button.pick-option")).toHaveLength(2);
   });
 });

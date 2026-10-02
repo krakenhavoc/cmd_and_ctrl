@@ -391,7 +391,7 @@ describe("the yes/no family, inline in the dock", () => {
     expect(buttons(c, "next")).toHaveLength(1);
   });
 
-  it("pay_unless with card picks stays in the modal (a sheet, PR 6)", async () => {
+  it("pay_unless with card picks is a sheet in the dock, not inline (PR 6)", async () => {
     const c = await mountGame(
       withChoice({
         kind: "pay_unless",
@@ -400,8 +400,10 @@ describe("the yes/no family, inline in the dock", () => {
         pay_cards: { action: "discard", count: 1, options: [] },
       }),
     );
-    expect(dialogNamed(dockOf(c), "Echo — discard a card?")).toBeNull();
-    expect(c.querySelector(".prompt-backdrop")).not.toBeNull();
+    const dlg = dialogNamed(dockOf(c), "Echo — discard a card?");
+    expect(dlg).not.toBeNull();
+    expect(dlg!.querySelector(".dock-sheet")).not.toBeNull();
+    expect(c.querySelector(".prompt-backdrop")).toBeNull();
   });
 });
 

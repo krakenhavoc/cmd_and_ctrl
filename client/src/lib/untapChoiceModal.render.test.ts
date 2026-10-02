@@ -15,8 +15,9 @@
 
 import { describe, it, expect, afterEach } from "vitest";
 
-import ChoicePromptModal from "./components/board/ChoicePromptModal.svelte";
+import ChoiceDockHarness from "./test/ChoiceDockHarness.svelte";
 import type { ActionType, CardView, GameView } from "./protocol";
+import { dockDialog, nameOf } from "./test/dockView";
 import { render, click, cleanup } from "./test/render.svelte";
 
 afterEach(cleanup);
@@ -54,7 +55,7 @@ const snapWithUntapChoice = (chooseMin: number, chooseMax: number, options: Card
 function mount(chooseMin: number, chooseMax: number, options: CardView[]) {
   const sent: { type: ActionType; params?: unknown }[] = [];
   const view = render(
-    ChoicePromptModal as never,
+    ChoiceDockHarness as never,
     {
       snap: snapWithUntapChoice(chooseMin, chooseMax, options),
       viewerID: "me",
@@ -71,14 +72,14 @@ const selected = (container: HTMLElement): string[] =>
   );
 
 const untapButton = (container: HTMLElement): HTMLButtonElement | undefined =>
-  [...container.querySelectorAll("button")].find((b) => (b.textContent ?? "").trim() === "Untap");
+  [...container.querySelectorAll("button")].find((b) => nameOf(b) === "Untap");
 
 describe("ChoicePromptModal — untap_choice (CR 502.3)", () => {
   it("renders the card picker with the step's own header", () => {
     const { container } = mount(1, 1, [card("a", "Forest"), card("b", "Island")]);
 
-    const title = container.querySelector("#choice-title");
-    expect(title?.textContent).toContain("Untap step");
+    const title = dockDialog(container);
+    expect(title?.getAttribute("aria-label")).toContain("Untap step");
     expect(title?.textContent).toContain("CR 502.3");
     expect(container.querySelectorAll(".card-pick")).toHaveLength(2);
   });

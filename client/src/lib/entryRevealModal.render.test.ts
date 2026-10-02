@@ -18,8 +18,9 @@
 
 import { describe, it, expect, afterEach } from "vitest";
 
-import ChoicePromptModal from "./components/board/ChoicePromptModal.svelte";
+import ChoiceDockHarness from "./test/ChoiceDockHarness.svelte";
 import type { ActionType, CardView, GameView } from "./protocol";
+import { dockDialog, nameOf } from "./test/dockView";
 import { render, click, cleanup } from "./test/render.svelte";
 
 afterEach(cleanup);
@@ -58,7 +59,7 @@ const snapWithEntryReveal = (options: CardView[]): GameView =>
 function mount(options: CardView[]) {
   const sent: { type: ActionType; params?: unknown }[] = [];
   const view = render(
-    ChoicePromptModal as never,
+    ChoiceDockHarness as never,
     {
       snap: snapWithEntryReveal(options),
       viewerID: "me",
@@ -75,14 +76,14 @@ const selected = (container: HTMLElement): string[] =>
   );
 
 const buttonNamed = (container: HTMLElement, text: string): HTMLButtonElement | undefined =>
-  [...container.querySelectorAll("button")].find((b) => (b.textContent ?? "").trim() === text);
+  [...container.querySelectorAll("button")].find((b) => nameOf(b) === text);
 
 describe("ChoicePromptModal — entry_reveal_from_hand (CR 614.1c)", () => {
   it("renders the card picker with the land's own question", () => {
     const { container } = mount([handCard("a", "Island"), handCard("b", "Swamp")]);
 
-    const title = container.querySelector("#choice-title");
-    expect(title?.textContent).toContain("Choked Estuary");
+    const title = dockDialog(container);
+    expect(title?.getAttribute("aria-label")).toContain("Choked Estuary");
     expect(container.querySelectorAll(".card-pick")).toHaveLength(2);
   });
 
