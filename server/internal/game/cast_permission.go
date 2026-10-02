@@ -175,6 +175,12 @@ type PermissionFilter struct {
 	// needs no opening.
 	SorceryOnly bool `json:"sorceryOnly,omitempty"`
 
+	// HistoricOnly is Crystal Skull, Isu Spyglass's "historic lands and
+	// historic spells": artifacts, legendaries and Sagas (CR 700.6),
+	// read from the card's effective characteristics. A land that is
+	// historic (an artifact or legendary land) qualifies as a play.
+	HistoricOnly bool `json:"historicOnly,omitempty"`
+
 	// FromChosenType marks a filter whose creature type is the one
 	// named as the SOURCE permanent entered (CR 614.12, S26's
 	// Card.NamedTribe) — Realmwalker. The catalog declares the flag;
@@ -207,6 +213,9 @@ func (f PermissionFilter) Matches(c Card) bool {
 		return false
 	}
 	if f.SorceryOnly && !c.IsSorcery() {
+		return false
+	}
+	if f.HistoricOnly && !c.IsArtifact() && !c.IsLegendary() && !c.HasSubtype("Saga") {
 		return false
 	}
 	if f.CreatureType != "" && !cardHasCreatureType(c, f.CreatureType) {
