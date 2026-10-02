@@ -1,11 +1,12 @@
 # ADR 0111 — Table UX: one action dock, bottom right
 
-**Status:** Proposed · 2026-10-02 · S56 — Table UX: one action dock, bottom right (tracker [#1958](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1958))
+**Status:** Accepted · 2026-10-02 · S56 — Table UX: one action dock, bottom right (tracker [#1958](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1958))
+**Owner decisions:** 2026-10-02. All five questions are answered, each with the recommended option (a). See [Owner decisions](#owner-decisions-2026-10-02) at the end. The sections and the Delivery plan below are written as decided; the options not chosen are kept as considered options.
 **Numbering:** checked with the AGENTS.md §4 sweep on 2026-10-02. I ran `git fetch --all --prune` and read the `docs/decisions/` file names on all 36 remote branches: `origin/develop`, `origin/main`, `origin/docs/adr-0110-remember-me` and 33 chore, docs, feat, fix, repro and wip branches. I also listed every ADR name ever committed on any ref (`git log --all --name-only -- docs/decisions/`) and the files of every open PR. 0110 is taken by the open PR [#1956](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1956) (remember me), which has not merged yet. Nothing anywhere uses 0111, so this one takes **0111**.
 **Amends:** [ADR 0076](0076-tutorial.md) §1 (the phase widget and stack bullets) and §2.3 (why the coach card goes bottom-left). [ADR 0009](0009-smart-priority-autopass.md)'s #1307 amendment, "Bluffing" (where the bluff button lives, and when it shows). A pointer line goes into each with the first PR that touches it.
 **Builds on:** [ADR 0009](0009-smart-priority-autopass.md) (autopass, the bluff verdict and the "considering" chip), [ADR 0047](0047-keyboard-shortcuts.md) (one dispatcher; Escape and Enter belong to the prompt on screen), [ADR 0105](0105-legal-action-highlights.md) (the ready highlights and their live region) and [ADR 0075](0075-table-settings-and-host-controls.md) (table settings).
 
-This ADR was written plan-first. No client code changed with it. The changes land in the PRs listed under [Delivery](#delivery).
+This ADR was written plan-first. No client code changed with it. "Decision N" below means the owner's answer N in [Owner decisions](#owner-decisions-2026-10-02). The changes land in the PRs listed under [Delivery](#delivery).
 
 ---
 
@@ -101,7 +102,7 @@ The board has no phone layout. Below 600px only the command bar changes (#1953: 
 | Combat-selection Cancel | Strip `:1751-1774` | An attacker or blocker is selected | Flow | Dock action bar, secondary slot, with the hint as the prompt line |
 | Attack / block targets (seat medallion, attacker card) | `PlayerIdentity.svelte:265`, the board | During a selection | Board answer | Stay on the board |
 | Combat damage assignment | ChoicePromptModal `damage_assignment` `:1636-1727`; centre modal | Multi-blocker damage | Primary | Dock sheet; "Deal damage" in the action bar |
-| Keep hand / Mulligan | Mulligan dialog `Game.svelte:2004-2049`; centre | Mulligans open, your hand not kept | Primary | Dock action bar; the hand shows in a dock sheet (Q2) |
+| Keep hand / Mulligan | Mulligan dialog `Game.svelte:2004-2049`; centre | Mulligans open, your hand not kept | Primary | Dock action bar; the hand shows in a dock sheet (decision 2) |
 | Bottom-N | Not implemented (`Game.svelte:2023`, `server/internal/game/mutations.go:8772`) | — | — | When it lands, a dock sheet |
 | Opening-hands roll-call | Strip `:1776-1806` | Mulligans open | Status | Stays in the strip |
 | Yes / No family: `trigger_prompt`, `optional_replacement`, `confirm`, `may_cast`, `entry_pay_life` | ChoicePromptModal `:1380-1447`, `:1538-1553`; centre modal | Pending choice | Primary | **Inline in the dock** (§2) |
@@ -122,8 +123,8 @@ The board has no phone layout. Below 600px only the command bar changes (#1953: 
 | Cost pickers: X, Phyrexian, sacrifice, discard, exile, tap, crew, teamwork, blight, delve, counters, alternative costs, alt-cost payment, face, modes, divide | Board.svelte `:2429-2774`; centre modals | During a cast or activation | Flow | Dock sheet; Cancel / confirm in the action bar |
 | Insufficient mana: Auto-tap & cast / Cast anyway | Strip toast `:1832-1853` | A strict cast refused | Flow | Dock prompt; the auto-tap preview becomes a dock sheet |
 | Auto-tap preview Cast / Cancel | AutoTapPreviewModal `:147-243`; centre | After Auto-tap & cast | Flow | Dock sheet, Cast in the action bar |
-| Card right-click menu, mana-ability menu, mana-source picker | CardContextMenu, ManaAbilityMenu, ManaSourcePicker; at the card | A click on a card | Card-local | Stay at the card (Q5) |
-| Token-group actions | TokenGroupModal `PlayerPanel.svelte:773`; centre | A click on a token group | Card-local | Stay as they are; revisit after Q2 |
+| Card right-click menu, mana-ability menu, mana-source picker | CardContextMenu, ManaAbilityMenu, ManaSourcePicker; at the card | A click on a card | Card-local | Stay at the card (decision 5) |
+| Token-group actions | TokenGroupModal `PlayerPanel.svelte:773`; centre | A click on a token group | Card-local | Stay as they are; revisit once the sheets (Delivery PR 6) have landed |
 | Stack `Counter` | StackOverlay `:251-262`, lanes | Stack item | Item-local | Stays on its stack item |
 | Life, poison, energy +/−; monarch, initiative | PlayerIdentity `:297-433`; rail | Always (sandbox) | Seat-local | Stay on the seat |
 | Promises | PromisesRow on opponent panels | Always (sandbox) | Seat-local | Stay |
@@ -131,8 +132,8 @@ The board has no phone layout. Below 600px only the command bar changes (#1953: 
 | Vote options, end vote | VotingPanel `:70-131`; top centre | A vote is open | Primary | Inline in the dock (option buttons) |
 | Vote launcher | VotingPanel `:143-147`; top left | Always (sandbox) | Secondary | Dock overflow (⋯) |
 | Undo (global) | ⋯ menu `Game.svelte:1339-1357` | Always; disabled without budget | Secondary | Dock toggles row, with the count left |
-| Sandbox: draw, untap all, shuffle, mulligan to N, life history | ⋯ menu `:1309-1364` | Always | Secondary | Dock overflow (Q3) |
-| Table settings, Spawn, Link Discord, My games, Back to lobby | ⋯ menu `:1366-1428` | Always | Secondary | Dock overflow (Q3) |
+| Sandbox: draw, untap all, shuffle, mulligan to N, life history | ⋯ menu `:1309-1364` | Always | Secondary | Dock overflow (decision 3) |
+| Table settings, Spawn, Link Discord, My games, Back to lobby | ⋯ menu `:1366-1428` | Always | Secondary | Dock overflow (decision 3) |
 | Concede | ⋯ menu `:1430-1442`, confirm `:1448-1462` | Always | Secondary, irreversible | Dock overflow, last, with its confirm |
 | Back to lobby (game over) | Strip `:1954-1956` | Game ended | Primary | Dock action bar, primary slot; the banner stays in the strip |
 | Mute, game log, settings, bug, Lobby link | Command bar `:1206`, `:1251-1288` | Always | App chrome | Stay in the command bar |
@@ -161,13 +162,13 @@ Put the buttons wherever the pointer is. No mousing at all, but nothing stays in
 
 ### 1. The dock
 
-`ActionDock.svelte` is mounted by Game.svelte as a sibling of `Board`, inside `.play-area`, and absolutely positioned at its bottom-right corner (Q1). It is not rendered for spectators, while the dev replay scrubber shows a past frame, or before the first snapshot. It is one `role="region"` named **"actions"**. That label is the tutorial anchor and an e2e contract (§10).
+`ActionDock.svelte` is mounted by Game.svelte as a sibling of `Board`, inside `.play-area`, and absolutely positioned at its bottom-right corner (decision 1). It is not rendered for spectators, while the dev replay scrubber shows a past frame, or before the first snapshot. It is one `role="region"` named **"actions"**. That label is the tutorial anchor and an e2e contract (§10).
 
 From top to bottom:
 
 1. **Header.** Today's PhaseDisplay, moved whole: turn number, active player, extra-turn marks, the phase track with its pins, the step label, "no priority", the turn-rule lines and the ready-actions live region. It keeps `aria-label="turn and phase indicator"`, `.turn-no` and `.step-label`. It is the only element with those classes, so the `.first()` reads in the e2e suite read the right one.
 2. **Status line.** One line, shown only when it has something to say: the running bluff ("bluffing — passes in 3s"), the CR 732 loop notice, or the hint for what `next` will do ("passing lets Lightning Bolt resolve", "passing moves to combat"). The hint comes from public state only: the top of the stack and the next step.
-3. **Toggles row.** Small, quiet buttons, always in the same order: `hold`, `autopass`, `bluff` (§5), Undo with the count left, and ⋯ (Q3). Each keeps its accessible name, `aria-pressed` and, for autopass, its `action autopass` class.
+3. **Toggles row.** Small, quiet buttons, always in the same order: `hold`, `autopass`, `bluff` (§5), Undo with the count left, and ⋯ (decision 3). Each keeps its accessible name, `aria-pressed` and, for autopass, its `action autopass` class.
 4. **Prompt area.** Present only when a request is open. It has a question line ("Lightning Bolt — choose a target, 1 of 1") and, for an inline request, the choice itself (§2). A sheet grows upward from here (§3).
 5. **Action bar.** One row, always the bottom of the dock, and its slots never move: secondary buttons on the left, **one primary on the right**. The primary is the gold button, which is the convention PhaseDisplay already uses for `next` (`PhaseDisplay.svelte:535-544`). The primary sits in the very corner, so the pointer's resting place is always the button that moves the game on.
 
@@ -215,7 +216,7 @@ The attack row is a secondary row, not the primary: in this engine you keep decl
 A pending choice is **inline** when its whole answer fits the prompt area and the action bar: a question plus at most about six short buttons, or a single number. Everything else is a **sheet** (§3).
 
 - **Inline:** `trigger_prompt`, `optional_replacement`, `confirm`, `may_cast`, `entry_pay_life`, `pay_unless` without card or tap picks, `coin_call`, `loop_shortcut`, `mana_pick`, `choose_color`, `option_pick` and `entry_controller` when every option is a short label, and an open vote's options.
-- **Sheet:** the scry family, every card-grid kind, `damage_assignment`, the two order kinds, `mode_pick`, `choose_creature_type`, `choose_card_name`, `pay_unless` with `pay_cards` or a tap list, the discard to hand size, the mulligan hand (Q2), every cost picker, the attack picker and the auto-tap preview.
+- **Sheet:** the scry family, every card-grid kind, `damage_assignment`, the two order kinds, `mode_pick`, `choose_creature_type`, `choose_card_name`, `pay_unless` with `pay_cards` or a tap list, the discard to hand size, the mulligan hand (decision 2), every cost picker, the attack picker and the auto-tap preview.
 
 An inline prompt is not a modal. It does not blur or block the board, so you can hover and read cards before you answer, which no prompt allows today. It still registers a `ModalLayer` while it owns keys (Y / N), so the global shortcuts stand down exactly as they do now.
 
@@ -231,7 +232,7 @@ The sheet bodies are today's modal bodies, moved. The shared `.prompt-modal` she
 
 ### 4. Placement, and what it must not cover
 
-- **The self panel keeps the corner clear.** Under Q1 (a), the rail spans the creature and middle rows only. The bottom row is the hand, the exile strip and an empty cell `var(--dock-w)` wide under the rail. The rail's piles end above the dock. The hand keeps the rest of the row, so nothing is covered at rest. The hand's hover lift goes up, not right, so it does not touch the dock.
+- **The self panel keeps the corner clear.** Under decision 1, the rail spans the creature and middle rows only. The bottom row is the hand, the exile strip and an empty cell `var(--dock-w)` wide under the rail. The rail's piles end above the dock. The hand keeps the rest of the row, so nothing is covered at rest. The hand's hover lift goes up, not right, so it does not touch the dock.
 - **A sheet may cover the self panel's right side** while it is open. That is a picker you opened, and it replaces a full-screen blur, so it covers less than today.
 - **The hover zoom** caps at `calc(100% - 20px - var(--dock-h))` so a long card stops above the dock. While a sheet is open, the zoom moves left of the sheet (`right: calc(var(--dock-w) + 20px)`), so hovering a card in a scry shows its text beside the sheet.
 - **The game log drawer** ends at `bottom: var(--dock-h)` and sits above the dock's top edge, so the log and the dock are both usable.
@@ -244,7 +245,7 @@ The sheet bodies are today's modal bodies, moved. The shared `.prompt-modal` she
 The `bluff` toggle is **always shown**, armed or not, set up or not. It is a split button: the left part toggles, the right part (`▾`) opens a small popover.
 
 - **One click arms or disarms** (`toggleBluffArmed`), and so does `b`. It reads `bluff` off, `bluff ✓` armed, and `bluffing 3s` or `bluffing` while a bluff is running. It uses the magenta "user override" colour `hold` uses. The running-bluff line moves from PhaseDisplay's row into the dock's status line.
-- **The popover (Q4 (a))** holds the two kinds as checkboxes ("Represent a counterspell", "Represent an instant") and the style ("Timed" / "Manual"). They write the same `gameplay.bluff*` settings the Settings panel writes, so the two never disagree. The pause range stays in Settings, with a link to it from the popover.
+- **The popover (decision 4)** holds the two kinds as checkboxes ("Represent a counterspell", "Represent an instant") and the style ("Timed" / "Manual"). They write the same `gameplay.bluff*` settings the Settings panel writes, so the two never disagree. The pause range stays in Settings, with a link to it from the popover.
 - **Nothing set up yet.** A click on a bluff with neither kind chosen arms it **and** turns on "Represent a counterspell", the narrower one, and the button says `bluff ✓ counter` so the player can see what they asked for. This is the only place the dock changes a stored setting without the popover, and it does so because the alternative is a button that does nothing.
 - **Smart autopass off.** The button is shown disabled, titled "bluffing needs smart auto-pass: with it off you stop at every opponent spell, so a pause gives nothing away".
 - **The game-mount default does not change.** `initBluffArmed` still arms the switch at mount when either kind is on.
@@ -265,7 +266,7 @@ Nothing is drawn twice. Each control below is deleted where it was in the PR tha
 - Pass turn leaves the command bar.
 - The strip's attack, block, combat-hint, mana-override and refusal clusters and the targeting banner leave the strip.
 - Undo leaves the ⋯ menu and the attack cluster. There is one Undo, in the dock.
-- Under Q3 (a), the ⋯ menu leaves the command bar. The bar keeps Lobby, the game crumb, the status, mute, log, settings and the bug button.
+- Under decision 3, the ⋯ menu leaves the command bar. The bar keeps Lobby, the game crumb, the status, mute, log, settings and the bug button.
 - Every centred `.prompt-backdrop` used during play is replaced by the dock. The full-screen modals that stay are the ones that are not about the turn: Settings, table settings, the bug report, deck import, spawn, the zone browser and the concede confirm.
 
 The one deliberate duplicate is the keyboard. Every dock button keeps its shortcut, so a player can still keep their hands off the mouse.
@@ -279,7 +280,7 @@ At `max-width: 599px`, the same break #1953 uses for the command bar:
 - The toggles row becomes icon chips with their names as `aria-label`s (hold, autopass, bluff, undo, ⋯).
 - The action bar's buttons are at least 44px tall. The primary takes the right half, and secondaries share the left half. Three or more secondaries move into a second row above.
 - A sheet is a bottom sheet, full width, up to 70% of the play area tall, above the bar.
-- The command bar's #1953 rules are unchanged, and it loses Pass turn and, under Q3 (a), the ⋯ button, so it has more room.
+- The command bar's #1953 rules are unchanged, and it loses Pass turn and, under decision 3, the ⋯ button, so it has more room.
 - Between 600px and about 1000px the desktop dock is used at its 300px floor.
 
 ### 9. Sketches
@@ -367,12 +368,12 @@ Each PR ships on its own, leaves no control drawn twice, works at 390px for what
 | PR | What lands | e2e and vitest | Tutorial anchors |
 |---|---|---|---|
 | 1 | **Bluff, always visible.** The split `bluff` button is always shown in PhaseDisplay's row, with the `▾` popover (kinds and style), the "nothing set up" rule and the disabled smart-autopass-off state (§5). The `toggleBluff` shortcut on `b`. Settings' Bluff help text names the button. ADR 0009's pointer line. | New `bluffChip.render.test.ts`. No e2e selector changes. `board-layout.spec.ts` asserts the bluff button. | None |
-| 2 | **The dock, with priority.** `ActionDock.svelte` at the bottom-right (Q1). PhaseDisplay moves in as the header. `next` and Pass turn (out of the command bar) in the action bar; hold, autopass and bluff in the toggles row. The status line and the `next` hint. Stack `Pass` and `hold` mirrors removed. `--dock-w` / `--dock-h`, the rail change, the hover-zoom and log-drawer clearances. The phone bar (§8). Enter / Escape / focus rules for `next`. | `.step-label` and `.turn-no` stay unique. `button.action.autopass` keeps its class and `aria-pressed`. "pass turn" moves but keeps its name and its disabled state. `gameToolbarBug.render.test.ts` drops Pass turn and keeps its order checks. `phaseDisplay.extraTurn.render.test.ts` mounts the header. `board-layout.spec.ts` asserts `region "actions"`. | Step 8 → `region "actions"`. ADR 0076's pointer line (§1, §2.3) |
+| 2 | **The dock, with priority.** `ActionDock.svelte` at the bottom-right (decision 1). PhaseDisplay moves in as the header. `next` and Pass turn (out of the command bar) in the action bar; hold, autopass and bluff in the toggles row. The status line and the `next` hint. Stack `Pass` and `hold` mirrors removed. `--dock-w` / `--dock-h`, the rail change, the hover-zoom and log-drawer clearances. The phone bar (§8). Enter / Escape / focus rules for `next`. | `.step-label` and `.turn-no` stay unique. `button.action.autopass` keeps its class and `aria-pressed`. "pass turn" moves but keeps its name and its disabled state. `gameToolbarBug.render.test.ts` drops Pass turn and keeps its order checks. `phaseDisplay.extraTurn.render.test.ts` mounts the header. `board-layout.spec.ts` asserts `region "actions"`. | Step 8 → `region "actions"`. ADR 0076's pointer line (§1, §2.3) |
 | 3 | **Combat.** `dock.ts`, the request store. The attack row (attack all, per-opponent, Choose attackers…), Done blocking / No blocks as primary, the combat-selection Cancel, the attack-tax and attack-limit refusal actions. **Undo** joins the toggles row with its count, and leaves both the ⋯ menu and the attack cluster in the same PR, so there is one Undo. The strip clusters go. | `attack-all-318.spec.ts:139,148,165` moves from `.att.attack-all` to `group "declare attackers"` inside `region "actions"`, and its Undo to the dock's one Undo. `gameToolbarBug.render.test.ts`'s menu-item list drops Undo. A new e2e for No blocks. | Step 10's attack-all lives in the dock |
 | 4 | **Targeting and payment.** TargetingBanner → dock question line plus Done / Cancel. The insufficient-mana toast's Auto-tap & cast and Cast anyway become a dock request. One Enter / Escape handler for every request; the per-modal key effects these flows used are deleted. The strip gets `region "attention"`. | `targetingBanner.render.test.ts` rewritten against the dock. `s19-triggers.spec.ts:68`'s "Select target for X" dialog name kept. | Step 9 → `region "attention"` |
-| 5 | **Inline choices.** The yes/no family, `pay_unless` without picks, `coin_call`, `loop_shortcut`, `mana_pick`, `choose_color`, short `option_pick` / `entry_controller`, vote options, Keep hand / Mulligan (Q2), and game-over Back to lobby (§2). ChoicePromptModal keeps only the sheet kinds. | `s19-triggers.spec.ts` dialog names and Yes / No / Pay / Don't pay unchanged. `mulligan.spec.ts:63,71,80` keeps its dialog scope (the dock request is the dialog). | None |
-| 6 | **Sheets.** The `.dock-sheet` shell and the minimise control. Every remaining ChoicePromptModal kind, DiscardPromptModal, every Board.svelte cost picker, AttackDeclarationModal and AutoTapPreviewModal render as sheets with their buttons in the action bar. Their own footers and key effects are deleted. Hover zoom moves left of an open sheet. | `state-freeze-266.spec.ts:95-104` (`.prompt-count`, `button.card-pick`, Discard) and `s19-triggers.spec.ts:510-511` ("Take") keep their dialog scope. The classes they read are kept or the selectors move to roles. A new e2e answers a scry from the dock. | None |
-| 7 | **Overflow and close-out.** The ⋯ menu moves into the dock (Q3 (a)): sandbox (draw, untap all, shuffle, mulligan to N, life history), table, vote launcher and Concede with its confirm. The AGENTS.md labels-are-a-contract line. The S56 section of `docs/sprints.md`. This ADR's delivery note. | `gameToolbarBug.render.test.ts`'s ⋯ checks move to the dock. A new e2e opens the dock's ⋯ and cancels a concede. | None |
+| 5 | **Inline choices.** The yes/no family, `pay_unless` without picks, `coin_call`, `loop_shortcut`, `mana_pick`, `choose_color`, short `option_pick` / `entry_controller`, vote options and game-over Back to lobby (§2). ChoicePromptModal keeps only the sheet kinds. | `s19-triggers.spec.ts` dialog names and Yes / No / Pay / Don't pay unchanged. | None |
+| 6 | **Sheets.** The `.dock-sheet` shell and the minimise control. Every remaining ChoicePromptModal kind, DiscardPromptModal, every Board.svelte cost picker, AttackDeclarationModal, AutoTapPreviewModal and the mulligan hand (decision 2, with Keep hand / Mulligan in the action bar) render as sheets with their buttons in the action bar. Their own footers and key effects are deleted. Hover zoom moves left of an open sheet. | `state-freeze-266.spec.ts:95-104` (`.prompt-count`, `button.card-pick`, Discard) and `s19-triggers.spec.ts:510-511` ("Take") keep their dialog scope, and so does `mulligan.spec.ts:63,71,80` (the dock request is the dialog). The classes they read are kept or the selectors move to roles. A new e2e answers a scry from the dock. | None |
+| 7 | **Overflow and close-out.** The ⋯ menu moves into the dock (decision 3): sandbox (draw, untap all, shuffle, mulligan to N, life history), table, vote launcher and Concede with its confirm. The AGENTS.md labels-are-a-contract line. The S56 section of `docs/sprints.md`. This ADR's delivery note. | `gameToolbarBug.render.test.ts`'s ⋯ checks move to the dock. A new e2e opens the dock's ⋯ and cancels a concede. | None |
 
 PRs 1 and 2 are the owner's two sentences: bluff visible bottom right, and the buttons pressed every turn in the same corner. PRs 3-6 bring each remaining kind of prompt into it. PR 7 is cleanup.
 
@@ -383,7 +384,7 @@ PRs 1 and 2 are the owner's two sentences: bluff visible bottom right, and the b
 - Every button the game waits on is in one corner, the primary is always in the same slot, and Enter / Escape do the same thing for every prompt.
 - Prompts stop blurring the board. A player can read the table while answering, and can minimise a sheet to look at it.
 - About twenty modal footers and their key handlers go. The dock's request store is a new shared seam: a new prompt registers a request instead of drawing buttons. A prompt that forgets is visible (its confirm is missing), not silent.
-- The self panel's rail loses its bottom cell under Q1 (a). On short panels the piles scroll sooner.
+- The self panel's rail loses its bottom cell under decision 1. On short panels the piles scroll sooner.
 - The dock covers part of the self panel while a sheet is open.
 - The e2e suite's class and dialog selectors move to the labels this ADR names, which is what `docs/e2e-review.md` asked for anyway.
 
@@ -391,24 +392,38 @@ PRs 1 and 2 are the owner's two sentences: bluff visible bottom right, and the b
 
 - A phone layout for the board itself.
 - London bottom-N (not implemented; when it lands it is a dock sheet).
-- Moving card-local menus off the card (Q5 (a)) or seat-local controls off the seat.
+- Moving card-local menus off the card (decision 5) or seat-local controls off the seat.
 - A read-only dock for spectators.
 - Any server change. Nothing here touches the protocol or `legal_moves`.
 
-## Questions for the owner
+## Questions for the owner (answered)
+
+All five were answered on 2026-10-02 with option (a). The (b) options are kept as considered options. See [Owner decisions](#owner-decisions-2026-10-02).
 
 1. **Which corner, exactly?**
-   - (a) **Recommended.** The screen's bottom-right corner. The self panel's rail (your identity and piles) stops above the dock, so the piles sit higher and the rail scrolls sooner on short screens.
-   - (b) Where the phase widget is today, in the self panel's bottom row to the left of the rail. The rail keeps its full height, and the dock sits about 112px in from the right edge.
+   - (a) **Recommended. Chosen.** The screen's bottom-right corner. The self panel's rail (your identity and piles) stops above the dock, so the piles sit higher and the rail scrolls sooner on short screens.
+   - (b) Considered, not chosen. Where the phase widget is today, in the self panel's bottom row to the left of the rail. The rail keeps its full height, and the dock sits about 112px in from the right edge.
 2. **Big pickers (scry, search, card grids, damage assignment, cost pickers, the mulligan hand).**
-   - (a) **Recommended.** They become sheets that grow up out of the dock, with their buttons in the dock's bottom row. The rest of the board stays visible, and a sheet can be minimised.
-   - (b) They stay centred modals that blur the board. Only the small prompts (yes/no, pay, coin, simple confirms) move into the dock.
+   - (a) **Recommended. Chosen.** They become sheets that grow up out of the dock, with their buttons in the dock's bottom row. The rest of the board stays visible, and a sheet can be minimised.
+   - (b) Considered, not chosen. They stay centred modals that blur the board. Only the small prompts (yes/no, pay, coin, simple confirms) move into the dock.
 3. **The ⋯ menu (undo, sandbox draw/untap/shuffle, life history, table settings, concede).**
-   - (a) **Recommended.** It moves into the dock as a ⋯ button on the toggles row, opening upward. The command bar keeps lobby, status, mute, log, settings and the bug button. Undo is in the dock either way.
-   - (b) It stays in the command bar. Only Undo comes out into the dock.
+   - (a) **Recommended. Chosen.** It moves into the dock as a ⋯ button on the toggles row, opening upward. The command bar keeps lobby, status, mute, log, settings and the bug button. Undo is in the dock either way.
+   - (b) Considered, not chosen. It stays in the command bar. Only Undo comes out into the dock.
 4. **Bluff options.**
-   - (a) **Recommended.** The dock's bluff button arms and disarms in one click. Its `▾` sets which bluff (counterspell, instant) and how (timed, manual), writing the same settings the Settings panel uses. A click with nothing set up arms "represent a counterspell". The pause range stays in Settings.
-   - (b) The dock's button only shows and toggles the armed state. Which bluff and how stay in Settings. With nothing set up, a click opens Settings at the Bluff section.
+   - (a) **Recommended. Chosen.** The dock's bluff button arms and disarms in one click. Its `▾` sets which bluff (counterspell, instant) and how (timed, manual), writing the same settings the Settings panel uses. A click with nothing set up arms "represent a counterspell". The pause range stays in Settings.
+   - (b) Considered, not chosen. The dock's button only shows and toggles the armed state. Which bluff and how stay in Settings. With nothing set up, a click opens Settings at the Bluff section.
 5. **Card menus (right-click, a land's mana choices, an ability popover).**
-   - (a) **Recommended.** They stay at the card. They open under the pointer, so there is no travel, and everything after them (targets, costs, payment, confirm) is in the dock.
-   - (b) Clicking a card also lists its actions in the dock, so every button, card actions included, can be pressed in the corner.
+   - (a) **Recommended. Chosen.** They stay at the card. They open under the pointer, so there is no travel, and everything after them (targets, costs, payment, confirm) is in the dock.
+   - (b) Considered, not chosen. Clicking a card also lists its actions in the dock, so every button, card actions included, can be pressed in the corner.
+
+---
+
+## Owner decisions, 2026-10-02
+
+The owner answered the five questions on 2026-10-02. Every answer was the recommended option (a).
+
+1. **The corner.** The dock sits in the screen's true bottom-right corner. The self panel's rail (identity and piles) spans the creature and middle rows only and stops above the dock, so the piles sit higher and the rail scrolls sooner on short panels (§1, §4). It lands in Delivery PR 2, with the dock itself.
+2. **Big pickers.** Scry and its family, search, every card grid, damage assignment, the order kinds, every cost picker, the attack picker, the auto-tap preview and the mulligan hand become sheets that rise out of the dock. Their buttons are in the dock's action bar, the rest of the board stays visible and unblurred, and a sheet can be minimised (§2, §3). It lands in Delivery PR 6. The small prompts are inline in Delivery PR 5.
+3. **The ⋯ menu.** It moves into the dock as a ⋯ button on the toggles row, opening upward, with the sandbox entries, life history, table settings, spawn, the vote launcher and Concede with its confirm. The command bar keeps Lobby, the status, mute, log, settings and the bug button (§1, §7). It lands in Delivery PR 7. Undo comes out of the menu earlier, in Delivery PR 3.
+4. **Bluff options.** The dock's bluff button arms and disarms in one click, and so does `b`. Its `▾` sets which bluff (counterspell, instant) and how (timed, manual), writing the same `gameplay.bluff*` settings the Settings panel writes. A click with nothing set up arms "represent a counterspell". The pause range stays in Settings (§5). It lands in Delivery PR 1.
+5. **Card menus.** The right-click menu, a land's mana choices and the ability popover stay at the card, because they open under the pointer. Everything after them (targets, costs, payment, confirm) is in the dock (§6, Out of scope). No PR moves them. Delivery PRs 4 and 6 move what follows them.
