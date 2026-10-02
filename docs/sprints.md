@@ -3089,7 +3089,7 @@ Planned 2026-09-30 from that day's triage of every open issue, and trimmed on 20
 - [ ] [#1858](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1858) — abilities that trigger on a game state (Deadly Designs, Task Mage Assembly; Bomb Squad)
 - [ ] [#1879](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1879) — a creature that can't attack unless the defending player controls something (Sea Serpent, Zhou Yu); the remainder
 - [ ] [#1729](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1729) — Monarch follow-ups (Palace Jailer, Court of Locthwain)
-- [ ] [#1539](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1539) — becomes-the-target triggers from a trigger's target pick join the batch that targeted (CR 603.3d); moved in from S45 on 2026-10-01
+- [x] [#1539](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1539) — becomes-the-target triggers from a trigger's target pick join the batch that targeted (CR 603.3d); moved in from S45 on 2026-10-01
 
 ### Not in this sprint
 

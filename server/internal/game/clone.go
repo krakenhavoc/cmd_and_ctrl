@@ -718,6 +718,8 @@ func cloneStackItem(s *StackItem) *StackItem {
 	// Plain values, so a fresh backing array is all the isolation an
 	// undo snapshot needs.
 	out.CantBeCountered = copyCounterShieldMarks(s.CantBeCountered)
+	// #1539: a held item's owed "becomes the target" event.
+	out.TargetsAnnouncePending = s.TargetsAnnouncePending
 	// #1223: the triggering event, deep-copied for the same reason
 	// the payload is — an undo that shared the slices inside it
 	// would let the restored game mutate the live one.
