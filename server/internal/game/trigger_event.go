@@ -271,6 +271,12 @@ type TriggerContext struct {
 	// the card that moved and for an ETB is the permanent that
 	// entered. Nil when the event names no object, and when the
 	// object could not be found in any zone.
+	//
+	// A state trigger about one of several objects (#1858, Bomb
+	// Squad's "Whenever a creature has four or more fuse counters on
+	// it") carries Object with no event: it names the creature whose
+	// state triggered the instance, and Fired is false because nothing
+	// happened (state_triggers.go).
 	Object *ObjectSnapshot
 }
 

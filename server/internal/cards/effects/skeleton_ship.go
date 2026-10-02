@@ -25,13 +25,7 @@ func init() {
 			Label:   "{T}: Put a -1/-1 counter on target creature.",
 			Cost:    TapCost(),
 			Targets: TargetCreature("target creature"),
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				if len(item.Targets) == 0 || !ctx.IsTargetLegal(item.Targets[0]) {
-					return nil
-				}
-				return AddCounter{Target: item.Targets[0].ID, Kind: game.CounterMinusOne, N: 1}.Apply(ctx)
-			},
+			Effect:  putACounterOnTheTarget(game.CounterMinusOne),
 		}},
 	})
 }
