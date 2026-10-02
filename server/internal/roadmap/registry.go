@@ -1741,11 +1741,11 @@ var items = []Item{
 	},
 	{
 		Slug: "library-top-type-filters", Name: "Playing artifacts or historic cards from the top of your library", Kind: KindSeam, Status: StatusMissing,
-		Summary:     "Permanents that let you play only some kinds of cards from the top of your library, such as Mystic Forge's artifact and colorless spells or Crystal Skull, Isu Spyglass's historic cards.",
-		Missing:     "Playing from the top of your library works for every card, or for lands, creatures, noncreature spells, or instants and sorceries, but not yet for artifacts, colorless spells or historic cards.",
+		Summary:     "Permanents that let you play only some kinds of cards from the top of your library, such as Mystic Forge's artifact and colorless spells.",
+		Missing:     "Playing from the top of your library works for every card, or for lands, creatures, noncreature spells, instants and sorceries, or historic cards, but not yet for artifacts or colorless spells.",
 		Issue:       1600,
-		Waiting:     []string{"Crystal Skull, Isu Spyglass", "Mystic Forge"},
-		EngineNotes: "cast permission filter: #765's library-top family (see Closed seams) covers both the look (`Spec.LibraryTopVisible`) and the play (`PlayFromTopOfYourLibrary`, Realmwalker, Elven Chorus, Oracle of Mul Daya), but `game.PermissionFilter` is a closed set of flags — lands, nonland, creature, noncreature, instant-or-sorcery, sorcery, a creature type — with no artifact, colorless or historic (CR 700.6) flag. Crystal Skull's \"play historic lands and cast historic spells\" needs a historic flag that admits lands too; Mystic Forge's \"artifact spells and colorless spells\" needs an OR of two. Each is a field on the filter plus a line in `Matches` (the type says it grows a field when a card needs one), and the filter is snapshot data, so the field is additive. Mm'menon, the Right Hand also needs a \"spend only on a spell from anywhere other than your hand\" tag, and The Fourth Doctor a once-each-turn permission. Checked against #765 on 2026-10-01.",
+		Waiting:     []string{"Mystic Forge"},
+		EngineNotes: "cast permission filter: #765's library-top family (see Closed seams) covers both the look (`Spec.LibraryTopVisible`) and the play (`PlayFromTopOfYourLibrary`, Realmwalker, Elven Chorus, Oracle of Mul Daya), but `game.PermissionFilter` is a closed set of flags — lands, nonland, creature, noncreature, instant-or-sorcery, sorcery, a creature type — with no artifact or colorless flag. `HistoricOnly` (CR 700.6, admits lands too) landed with Crystal Skull, Isu Spyglass in #1600; Mystic Forge's \"artifact spells and colorless spells\" needs an OR of two. Each is a field on the filter plus a line in `Matches` (the type says it grows a field when a card needs one), and the filter is snapshot data, so the field is additive. Mm'menon, the Right Hand also needs a \"spend only on a spell from anywhere other than your hand\" tag, and The Fourth Doctor a once-each-turn permission. Checked against #765 on 2026-10-01.",
 	},
 	{
 		// #1729 (from #1728, ADR 0096).
