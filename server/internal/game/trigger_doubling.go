@@ -48,10 +48,22 @@ type doublerRef struct {
 	id   uuid.UUID
 	name string
 }
-type doublerCandidate struct {
-	card     Card
-	lki      Characteristic
-	doublers []TriggerDoubler
+
+// modifierCandidate is one permanent that declares a CR 603.2d doubler,
+// a trigger suppressor (trigger_suppression.go), or both, as one
+// event's harvest sees it.
+type modifierCandidate struct {
+	card        Card
+	lki         Characteristic
+	doublers    []TriggerDoubler
+	suppressors []TriggerSuppressor
+	// live reports that the candidate is on the battlefield as the
+	// event is harvested. A doubler never reads it (ADR 0018 Decision
+	// 3 counts a doubler that leaves in the same event). A suppressor
+	// does, away from a leaves-the-battlefield event: there the game
+	// reads the board AFTER the event (CR 603.10), so a suppressor that
+	// has already left is not there to stop anything.
+	live bool
 }
 
 // triggerIdentityLKI is the non-characteristic identity a trigger needs
@@ -79,7 +91,7 @@ type harvestPass struct {
 	subject    uuid.UUID
 	subjectLKI Characteristic
 	hasSubject bool
-	doublers   []doublerCandidate
+	modifiers  []modifierCandidate
 	scanned    bool
 }
 
@@ -106,10 +118,12 @@ func (g *Game) newHarvestPassLocked(ev Event) harvestPass {
 	entering := ev.Kind == EventETB || ev.Kind == EventTokenCreated || (ev.Kind == EventZoneMove && ev.NewZone == ZoneBattlefield)
 	needsCardSubject := entering || ev.Kind == EventAttack || ev.Kind == EventCast
 	if needsCardSubject && ev.CardID != uuid.Nil {
-		if entering && g.hasTriggerDoublerLocked() {
+		if entering && g.hasTriggerModifierLocked() {
 			// Entry invalidates the layer cache before the harvester runs.
 			// Capture the entering permanent with continuous effects applied:
-			// Mycosynth Lattice makes even a Forest enter as an artifact.
+			// Mycosynth Lattice makes even a Forest enter as an artifact,
+			// and Torpor Orb has to see a land that enters animated as the
+			// creature it is (CR 603.6a).
 			// Exit events above keep their pre-move characteristics instead.
 			g.RecomputeLayersIfStaleLocked()
 		}
@@ -121,15 +135,23 @@ func (g *Game) newHarvestPassLocked(ev Event) harvestPass {
 	return p
 }
 
-// Only materialize entry characteristics when a catalog doubler can use them.
-// Read the printed slot even for a currently silenced permanent: entry can
-// change continuous effects, so the stale cache cannot decide ability removal.
-func (g *Game) hasTriggerDoublerLocked() bool {
-	if g.Battlefield == nil || CatalogTriggerDoublers == nil {
+// Only materialize entry characteristics when a catalog doubler or
+// suppressor can use them. Read the printed slot even for a currently
+// silenced permanent: entry can change continuous effects, so the stale
+// cache cannot decide ability removal.
+func (g *Game) hasTriggerModifierLocked() bool {
+	if g.Battlefield == nil || (CatalogTriggerDoublers == nil && CatalogTriggerSuppressors == nil) {
 		return false
 	}
 	for _, c := range g.Battlefield.Cards {
-		if key := CatalogKey(c); key != "" && len(CatalogTriggerDoublers(key)) > 0 {
+		key := CatalogKey(c)
+		if key == "" {
+			continue
+		}
+		if CatalogTriggerDoublers != nil && len(CatalogTriggerDoublers(key)) > 0 {
+			return true
+		}
+		if CatalogTriggerSuppressors != nil && len(CatalogTriggerSuppressors(key)) > 0 {
 			return true
 		}
 	}
@@ -157,15 +179,15 @@ func (g *Game) triggerDoublersLocked(p *harvestPass, source Card, lki Characteri
 		return nil
 	}
 	if !p.scanned {
-		g.scanTriggerDoublersLocked(p)
+		g.scanTriggerModifiersLocked(p)
 	}
-	if len(p.doublers) == 0 {
+	if len(p.modifiers) == 0 {
 		return nil
 	}
 	decl := ability
 	var out []doublerRef
-	for _, candidate := range p.doublers {
-		if candidate.lki.AbilitiesRemoved {
+	for _, candidate := range p.modifiers {
+		if candidate.lki.AbilitiesRemoved || len(candidate.doublers) == 0 {
 			continue
 		}
 		for _, doubler := range candidate.doublers {
@@ -188,7 +210,12 @@ func (g *Game) triggerDoublersLocked(p *harvestPass, source Card, lki Characteri
 	return out
 }
 
-func (g *Game) scanTriggerDoublersLocked(p *harvestPass) {
+// scanTriggerModifiersLocked collects, once per event, every permanent
+// that declares a doubler or a suppressor. One walk serves both: the
+// suppressors are asked about every match before the doublers are
+// (harvestMatchLocked), so a second walk would double the cost of every
+// event that matches a trigger at all.
+func (g *Game) scanTriggerModifiersLocked(p *harvestPass) {
 	p.scanned = true
 	// A normal harvest only walks the battlefield, whose identities are
 	// unique. The dedupe table is needed only while a simultaneous-exit
@@ -216,8 +243,15 @@ func (g *Game) scanTriggerDoublersLocked(p *harvestPass) {
 		if key == "" {
 			return
 		}
-		doublers := CatalogTriggerDoublers(key)
-		if len(doublers) == 0 {
+		var doublers []TriggerDoubler
+		if CatalogTriggerDoublers != nil {
+			doublers = CatalogTriggerDoublers(key)
+		}
+		var suppressors []TriggerSuppressor
+		if CatalogTriggerSuppressors != nil {
+			suppressors = CatalogTriggerSuppressors(key)
+		}
+		if len(doublers) == 0 && len(suppressors) == 0 {
 			return
 		}
 		// Effective characteristics are comparatively expensive: the normal
@@ -233,7 +267,10 @@ func (g *Game) scanTriggerDoublersLocked(p *harvestPass) {
 		if seen != nil {
 			seen[c.InstanceID] = true
 		}
-		p.doublers = append(p.doublers, doublerCandidate{card: c, lki: lki, doublers: doublers})
+		p.modifiers = append(p.modifiers, modifierCandidate{
+			card: c, lki: lki, doublers: doublers, suppressors: suppressors,
+			live: findCardOnBattlefield(g, c.InstanceID) >= 0,
+		})
 	}
 	// A simultaneous-exit copy wins over a still-live battlefield card with
 	// the same ID: another member of the wipe may already have removed a

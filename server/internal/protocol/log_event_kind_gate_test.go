@@ -64,13 +64,14 @@ const (
 // rows that remain are the ones whose silence survived being read.
 var silentEventKinds = map[string]string{
 	// --- already told, by another line -------------------------------
-	"EventConcede":        "the EventPlayerEliminated that follows it (Label \"concede\") is the one line a concession writes (ADR 0057 Decision 1)",
-	"EventETB":            silentAlreadyToldAsAZoneMove,
-	"EventLTB":            silentAlreadyToldAsAZoneMove,
-	"EventMill":           silentAlreadyToldAsAZoneMove,
-	"EventDiscardCard":    silentAlreadyToldAsAZoneMove,
-	"EventBecomesTarget":  "the cast or activation line already named the spell; targeting is announce-time bookkeeping the stack view carries",
-	"EventBecomesBlocked": "the LogBlock entry for the blocker is the same fact from the other side",
+	"EventDamagePrevented": "never emitted: it is only the context a prevention follow-up body is handed (ADR 0107 §6); the follow-up's own effect is what the table sees",
+	"EventConcede":         "the EventPlayerEliminated that follows it (Label \"concede\") is the one line a concession writes (ADR 0057 Decision 1)",
+	"EventETB":             silentAlreadyToldAsAZoneMove,
+	"EventLTB":             silentAlreadyToldAsAZoneMove,
+	"EventMill":            silentAlreadyToldAsAZoneMove,
+	"EventDiscardCard":     silentAlreadyToldAsAZoneMove,
+	"EventBecomesTarget":   "the cast or activation line already named the spell; targeting is announce-time bookkeeping the stack view carries",
+	"EventBecomesBlocked":  "the LogBlock entry for the blocker is the same fact from the other side",
 	// #1257: this reason was not true when it was written. The
 	// ability's LogResolve carried no card and no label and rendered
 	// as "a card resolved". It now names the ability by its stack

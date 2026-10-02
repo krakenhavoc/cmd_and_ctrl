@@ -1,6 +1,8 @@
 package effects
 
 import (
+	"fmt"
+
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -133,6 +135,13 @@ func checkEmblemSpec(name string, e *EmblemSpec) {
 		panic("effects.Register: " + name + " declares an Emblem with no abilities — CR 114.1 says an emblem has nothing else")
 	}
 	checkActivationTimings(name+" emblem", e.ActivationTimings)
+	// ADR 0107 §3: the stack step gathers statics over spells from the
+	// battlefield only, so one on an emblem would be dead text.
+	for i, s := range e.Static {
+		if s.AffectsSpells {
+			panic(fmt.Sprintf("effects.Register: %s emblem static %d affects spells — only a battlefield permanent's static over spells is applied", name, i))
+		}
+	}
 }
 
 // CreateEmblem is CR 114.5's "you get an emblem". The emblem is the

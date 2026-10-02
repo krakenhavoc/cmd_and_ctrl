@@ -50,10 +50,9 @@ func XCounters(kind string) game.EntryCountersFromCast {
 // Chalice's charge counter per multikick. Kicker and multikicker
 // count together, because no rules text tells them apart.
 //
-// Unused by the catalog today; it is here because it is the second
-// half of what game.CastCounts exists to express, and a card that
-// prints the clause should find the declaration already written
-// rather than reach for the payment record itself.
+// A single kicker is the same clause paid at most once: Vodalian
+// Serpent's "If this creature was kicked, it enters with four +1/+1
+// counters on it" is CountersPerKick(game.CounterPlusOne, 4).
 func CountersPerKick(kind string, per int) game.EntryCountersFromCast {
 	return game.EntryCountersFromCast{
 		Kind:  kind,

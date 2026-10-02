@@ -71,6 +71,9 @@ type CardDef struct {
 	PrintedKeywords            []string
 	Triggered                  []TriggeredAbility
 	TriggerDoublers            []TriggerDoubler
+	// TriggerSuppressors are the "[an event] doesn't cause abilities to
+	// trigger" statics (#1735, trigger_suppression.go).
+	TriggerSuppressors []TriggerSuppressor
 	// ManaTriggers are the CR 605.1b TRIGGERED MANA abilities — the
 	// one trigger kind that never uses the stack (CR 605.4a). Kept
 	// apart from Triggered because nothing on TriggeredAbility applies
@@ -194,6 +197,14 @@ type CardDef struct {
 	ActivationTimings []ActivationTiming
 
 	CantBeCountered bool
+	// CantBeCounteredIf is the CONDITIONAL "this spell can't be
+	// countered" (Banefire's X of 5 or more, Demonfire's hellbent),
+	// judged when something tries to counter the spell. Nil is never.
+	CantBeCounteredIf SpellCondition
+	// SpellDamageCantBePrevented is the spell's own "the damage can't
+	// be prevented" (CR 615.12, ADR 0107 §5), under its condition. Nil
+	// is never; see unpreventable_damage.go.
+	SpellDamageCantBePrevented SpellCondition
 	// SpellsCantBeCountered are this permanent's printed "<these>
 	// spells can't be countered" statics (ADR 0106 §4, #1806) —
 	// Chimil, the Inner Sun. Read from the battlefield through
@@ -218,6 +229,15 @@ type CardDef struct {
 	// CatalogAbilityKey, never from a card's own zone; see
 	// game.CatalogPlayerLifeTotalLocked and ADR 0085 (#1200).
 	PlayerLifeTotalLocked bool
+	// DamageCantBePrevented are this permanent's printed "damage can't
+	// be prevented" statics (CR 615.12, ADR 0107 §5). Read from the
+	// battlefield through CatalogUnpreventableDamage, keyed by
+	// CatalogAbilityKey; see unpreventable_damage.go.
+	DamageCantBePrevented []UnpreventableDamageStatic
+	// CantGainLife are this permanent's printed "can't gain life"
+	// statics (CR 119.7, ADR 0107 §5). Read from the battlefield
+	// through CatalogCantGainLife; see cant_gain_life.go.
+	CantGainLife []CantGainLifeStatic
 	// GameEndGates are this permanent's printed "you can't lose the
 	// game" / "your opponents can't win the game" statics (CR 104.3),
 	// scoped relative to its CONTROLLER. Read from the battlefield
@@ -461,6 +481,12 @@ func init() {
 		}
 		return nil
 	}
+	CatalogTriggerSuppressors = func(key string) []TriggerSuppressor {
+		if d := catalogDef(key); d != nil {
+			return d.TriggerSuppressors
+		}
+		return nil
+	}
 	CatalogAdditionalCost = func(key string) *AdditionalCost {
 		if d := catalogDef(key); d != nil {
 			return d.AdditionalCost
@@ -609,6 +635,18 @@ func init() {
 		d := catalogDef(key)
 		return d != nil && d.CantBeCountered
 	}
+	CatalogCantBeCounteredIf = func(key string) SpellCondition {
+		if d := catalogDef(key); d != nil {
+			return d.CantBeCounteredIf
+		}
+		return nil
+	}
+	CatalogSpellDamageUnpreventable = func(key string) SpellCondition {
+		if d := catalogDef(key); d != nil {
+			return d.SpellDamageCantBePrevented
+		}
+		return nil
+	}
 	CatalogCounterShields = func(key string) []CounterShieldStatic {
 		if d := catalogDef(key); d != nil {
 			return d.SpellsCantBeCountered
@@ -628,6 +666,18 @@ func init() {
 	CatalogPlayerLifeTotalLocked = func(key string) bool {
 		d := catalogDef(key)
 		return d != nil && d.PlayerLifeTotalLocked
+	}
+	CatalogUnpreventableDamage = func(key string) []UnpreventableDamageStatic {
+		if d := catalogDef(key); d != nil {
+			return d.DamageCantBePrevented
+		}
+		return nil
+	}
+	CatalogCantGainLife = func(key string) []CantGainLifeStatic {
+		if d := catalogDef(key); d != nil {
+			return d.CantGainLife
+		}
+		return nil
 	}
 	CatalogGameEndGates = func(key string) []GameEndGate {
 		if d := catalogDef(key); d != nil {

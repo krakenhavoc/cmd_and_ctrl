@@ -204,6 +204,11 @@ func corpusBoards() []corpusBoard {
 		// evolve/grow body — waiting on the stack, carrying the entered
 		// creature on its trigger context.
 		{"evolve_on_stack", corpusEvolveOnStack},
+		// v7, added by #1858 (ADR 0107 §1) as a new file: a CR 603.8
+		// state trigger — a catalog row with a State condition and no
+		// event — waiting on the stack. Its latch is derived from this
+		// item, so the restored table must not trigger it again.
+		{"state_trigger_on_stack", corpusStateTriggerOnStack},
 		// v7, added by #1593: duration copy effects — the becomeCopy mod
 		// carrying its copied values, and the carried durationCopyBase
 		// under a Cytoshaped Clone. Written by #1712, alongside the
@@ -244,7 +249,183 @@ func corpusBoards() []corpusBoard {
 		// on the stack with two marks (StackItem.CantBeCountered), one
 		// from a spent promise and one from Vexing Shusher.
 		{"counter_shields", corpusCounterShields},
+		// v7, added by ADR 0107 PR 3 (#1854) as new files: rebound as
+		// data — a rebound card in exile with its upkeep delayed
+		// trigger queued (body rebound/cast, the exiled object in
+		// Params.Object), the same trigger fired and waiting on the
+		// stack, and the free cast granted after "yes" (a CastPermission
+		// whose LapseOnPass is "exile").
+		{"rebound_waiting", corpusReboundWaiting},
+		{"rebound_on_stack", corpusReboundOnStack},
+		{"rebound_free_cast_grant", corpusReboundFreeCastGrant},
+		// v7, added by ADR 0107 PR 6 (#1853, #1880) as a new file: the
+		// rules gates as data — a resolved Skullcrack's
+		// damageCantBePrevented and cantGainLife turn grants, Flames of
+		// the Blood Hand's gainNoLife replacement, a pinned
+		// damageCantBePrevented + damageCantBeRedirected pair (Whippoorwill's
+		// shape) and a rest-of-the-game cantGainLife on one player.
+		{"rules_gates", corpusRulesGates},
+		// v7, added by ADR 0107 PR 4 (#1854) as a new file: a spell
+		// GIVEN rebound — a ScopedEffect pinned to the spell on the
+		// stack with an addKeywords mod, the record Taigam's trigger
+		// writes, with a Taigam on the battlefield as its source.
+		{"granted_rebound_on_stack", corpusGrantedReboundOnStack},
+		// v7, added by ADR 0107 PR 7 (#1860) as a new file: the next-damage
+		// shield as data — a chosen source with a colour recheck and a
+		// follow-up body protecting a player and their creatures, already
+		// spent in this batch (SpentBatch); a no-choice "creature of the
+		// chosen type" shield; and a shield pinned to one permanent.
+		{"next_damage_shields", corpusNextDamageShields},
 	}
+}
+
+// corpusGrantedReboundOnStack is Lightning Bolt cast from hand and
+// given rebound on the stack by Taigam, Ojutai Master (#1854).
+func corpusGrantedReboundOnStack(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	foe := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	taigam := pushCatalogPermanent(g, me.ID, "Taigam, Ojutai Master", "Legendary Creature — Human Monk", taigamOracle, false)
+	id := castCatalogSpell(t, g, "Lightning Bolt", "Instant", boltOracleCombat,
+		[]game.TargetRef{{Kind: game.TargetPlayer, ID: foe.ID}})
+	var ok bool
+	g.WithWriteLock(func() {
+		ok = g.GrantKeywordsToSpellForEffect(taigam, id, []string{game.KeywordRebound},
+			"Taigam, Ojutai Master — that spell gains rebound")
+	})
+	if !ok {
+		t.Fatal("setup: Lightning Bolt was not given rebound")
+	}
+	return g
+}
+
+// corpusNextDamageShields is ADR 0107 §6's ModPreventNextFromSource in
+// each of its shapes.
+func corpusNextDamageShields(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	dragon := pushBattlefieldCardWithTimestamp(g, corpusCreature(opp.ID, "Shivan Dragon", 5, 5))
+	knight := pushBattlefieldCardWithTimestamp(g, corpusCreature(me.ID, "Knight", 2, 2))
+	g.WithWriteLock(func() {
+		g.RecomputeLayersIfStaleLocked()
+		ref, zone, ok := g.DamageSourceRefLocked(dragon)
+		if !ok {
+			t.Fatal("setup: the dragon is in no zone")
+		}
+		g.PreventNextDamageFromSourceForEffect(game.NextDamageShield{
+			Controller: me.ID, Source: ref, SourceZone: zone, Queries: []game.PermanentQuery{QueryColors("R")},
+			ProtectPlayer: me.ID, ProtectTypes: []string{"creature"}, Then: preventedGainLifeBody,
+			Label: "Shadowbane — prevent the next damage from a source",
+		})
+		g.PreventNextDamageFromSourceForEffect(game.NextDamageShield{
+			Controller: me.ID, ProtectPlayer: me.ID,
+			Queries: []game.PermanentQuery{{Types: []string{"creature"}, Subtypes: []string{"Dragon"}}},
+			Label:   "Circle of Solace — prevent the next damage from a source",
+		})
+		g.PreventNextDamageFromSourceForEffect(game.NextDamageShield{
+			Controller: me.ID, Source: ref, SourceZone: zone, ProtectPermanent: knight,
+			Label: "Charm Peddler — prevent the next damage from a source",
+		})
+		// The first shield takes the dragon's damage to the knight and is
+		// spent for the rest of this batch.
+		if err := g.DealDamageToCreatureForEffect(dragon, knight, 1); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if n := len(g.ScopedEffects); n != 3 {
+		t.Fatalf("setup: %d scoped records, want 3", n)
+	}
+	return g
+}
+
+// corpusReboundWaiting is Staggershock cast from hand, resolved and
+// exiled by rebound, its delayed trigger queued for its controller's
+// next upkeep (#1854).
+func corpusReboundWaiting(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	foe := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	id := castCatalogSpell(t, g, "Staggershock", "Instant", "056c3b7d-b603-40b8-8404-18c2eb7e7129",
+		[]game.TargetRef{{Kind: game.TargetPlayer, ID: foe.ID}})
+	passPriorityAroundTable(t, g)
+	if !g.Exile.Contains(id) || len(g.DelayedTriggers) != 1 {
+		t.Fatalf("setup: exiled %v, delayed triggers %d", g.Exile.Contains(id), len(g.DelayedTriggers))
+	}
+	return g
+}
+
+// corpusReboundOnStack is that trigger fired at the controller's next
+// upkeep and waiting on the stack, a keyed item (#1854).
+func corpusReboundOnStack(t *testing.T) *game.Game {
+	g := corpusReboundWaiting(t)
+	seat := g.Turn.ActiveSeat
+	advanceToUpkeepOf(t, g, (seat+1)%len(g.Seats))
+	advanceToUpkeepOf(t, g, seat)
+	found := false
+	for _, it := range g.PendingTriggers {
+		if it != nil && it.Body == "rebound/cast" {
+			found = true
+		}
+	}
+	for _, it := range g.StackMeta {
+		if it != nil && it.Body == "rebound/cast" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("setup: the rebound trigger is not waiting")
+	}
+	return g
+}
+
+// corpusReboundFreeCastGrant is the offer accepted: the free cast is a
+// per-object CastPermission that closes on its holder's pass and leaves
+// the card in exile (#1854).
+func corpusReboundFreeCastGrant(t *testing.T) *game.Game {
+	g := corpusReboundOnStack(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	for i := 0; i < 8 && latestChoiceOfKind(g, game.PendingChoiceMayCast) == nil; i++ {
+		if err := g.PassPriority(); err != nil {
+			t.Fatalf("PassPriority: %v", err)
+		}
+	}
+	offer := latestChoiceOfKind(g, game.PendingChoiceMayCast)
+	if offer == nil {
+		t.Fatal("setup: no rebound offer")
+	}
+	if err := g.ResolveMayCast(offer.ID, me.ID, true); err != nil {
+		t.Fatalf("ResolveMayCast: %v", err)
+	}
+	granted := false
+	for _, perm := range me.CastPermissions {
+		if perm.LapseOnPass == game.LapseStaysInExile {
+			granted = true
+		}
+	}
+	if !granted {
+		t.Fatal("setup: no rebound grant")
+	}
+	return g
+}
+
+// corpusRulesGates is ADR 0107 §5's four new mod kinds on one board.
+func corpusRulesGates(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	castCatalogSpell(t, g, "Skullcrack", "Instant", pr6SkullcrackOracle, pr6Player(opp.ID))
+	passPriorityAroundTable(t, g)
+	castCatalogSpell(t, g, "Flames of the Blood Hand", "Instant", pr6FlamesOracle, pr6Player(opp.ID))
+	passPriorityAroundTable(t, g)
+	bear := pushBattlefieldCardWithTimestamp(g, corpusCreature(opp.ID, "Grizzly Bears", 2, 2))
+	g.WithWriteLock(func() {
+		g.DamageToCantBePreventedThisTurnForEffect(uuid.Nil, bear, true, "Whippoorwill")
+		g.PlayerCantGainLifeForEffect(uuid.Nil, me.ID, game.IndefiniteDuration(), "Screaming Nemesis")
+	})
+	if n := len(g.ScopedEffects); n != 5 {
+		t.Fatalf("setup: %d scoped records, want 5 (two grants, a replacement, a pinned pair, a rest-of-game)", n)
+	}
+	return g
 }
 
 // corpusCounterShields is ADR 0106 §4's three stored shapes at once.
@@ -1413,6 +1594,24 @@ func corpusEvolveOnStack(t *testing.T) *game.Game {
 	enterCreature(t, g, me, "Grizzly Bears", 2, 2)
 	if it := corpusSettleTrigger(t, g, raptor); it.Body != "evolve/grow" {
 		t.Fatalf("setup: the evolve trigger names body %q, want evolve/grow", it.Body)
+	}
+	return g
+}
+
+// corpusStateTriggerOnStack is a real Emperor Crocodile alone on its
+// controller's side, its "When you control no other creatures, sacrifice
+// this creature" waiting on the stack: an own:0 triggered ref with no
+// trigger context.
+func corpusStateTriggerOnStack(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat].ID
+	croc := corpusCreature(me, "Emperor Crocodile", 5, 5)
+	croc.TypeLine, croc.OracleID = "Creature — Crocodile", stEmperorCrocodile
+	id := pushBattlefieldCardWithTimestamp(g, croc)
+	it := corpusSettleTrigger(t, g, id)
+	corpusRequireTriggeredStamp(t, it, "own:")
+	if it.Trigger != nil {
+		t.Fatalf("setup: a state trigger carries a trigger context %+v; it fired off no event", it.Trigger)
 	}
 	return g
 }

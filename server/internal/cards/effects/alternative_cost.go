@@ -117,6 +117,34 @@ func Flashback(cost string) game.AlternativeCost {
 	}
 }
 
+// Disturb is "Disturb {cost} (You may cast this card from your
+// graveyard transformed for its disturb cost.)" — CR 702.146a, ADR
+// 0107 §4.
+//
+// Flashback's cast path with one more clause: CastsFace 1, so the
+// spell is the card's BACK face (CR 712.11a, 712.8c) and the permanent
+// it resolves into enters back face up (CR 702.146b). It has no
+// exile-on-leaving-the-stack clause, because disturb prints none: the
+// exile is the back face's own "If [this] would be put into a
+// graveyard from anywhere, exile it instead", which the back face's
+// entry declares with DisturbedExile().
+//
+// Declared on the FRONT face's entry (the bare oracle ID), which is
+// where the keyword is printed; Register refuses it on a back face.
+// The card file opens the zone as for flashback:
+//
+//	CastableZones:    []game.ZoneKind{game.ZoneGraveyard},
+//	AlternativeCosts: []game.AlternativeCost{Disturb("{1}{U}")},
+func Disturb(cost string) game.AlternativeCost {
+	return game.AlternativeCost{
+		Key:       "disturb",
+		Label:     "Disturb " + cost,
+		ManaCost:  cost,
+		FromZone:  game.ZoneGraveyard,
+		CastsFace: 1,
+	}
+}
+
 // FlashbackSacrifice is "Flashback—Sacrifice N <permanents>" — a
 // flashback cost with no mana in it at all: Dread Return's "Flashback—
 // Sacrifice three creatures" is

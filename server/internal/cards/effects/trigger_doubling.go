@@ -101,11 +101,19 @@ func isEntering(ev game.Event) bool {
 }
 
 func subjectCard(g *game.Game, q game.TriggerDoublingQuery) game.Card {
+	return eventSubjectCard(g, q.Subject, q.SubjectLKI)
+}
+
+// eventSubjectCard is the event's object built from the characteristics
+// the harvest captured for it: the entering permanent as it is on the
+// battlefield, or the leaving one as it last was. Shared by the doubler
+// and suppressor helpers (trigger_suppression.go).
+func eventSubjectCard(g *game.Game, id uuid.UUID, ch game.Characteristic) game.Card {
 	var fallback game.Card
 	if g != nil {
-		fallback, _ = g.LookupCardForEffect(q.Subject)
+		fallback, _ = g.LookupCardForEffect(id)
 	}
-	return characteristicCard(q.Subject, fallback, q.SubjectLKI)
+	return characteristicCard(id, fallback, ch)
 }
 
 func characteristicCard(id uuid.UUID, fallback game.Card, ch game.Characteristic) game.Card {

@@ -726,6 +726,7 @@
         viewerHasPriority={hasPriority}
         {autopassEnabled}
         {loopNotice}
+        damageCantBePrevented={view.damage_cant_be_prevented ?? []}
         onPassPriority={onPassPriority ?? (() => {})}
         onToggleAutopass={onToggleAutopass ?? (() => {})}
         {readyActions}

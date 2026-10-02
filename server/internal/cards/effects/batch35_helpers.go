@@ -437,6 +437,21 @@ func b35RedirectDamageToChosen(g *game.Game, item *game.StackItem) error {
 	if len(ts) == 0 || (ts[0].Kind == game.TargetCard && ts[0].ID == item.SourceCardID) {
 		return nil
 	}
+	// "If a player is dealt damage this way, they can't gain life for
+	// the rest of the game" (ADR 0107 §5, #1880): a PLAYER target is
+	// damaged through the continuation form, so the grant is written
+	// only when damage was actually dealt — none if it was prevented —
+	// and it is stored on the game, outliving the Nemesis (CR 611.2a).
+	if ts[0].Kind == game.TargetPlayer {
+		player := ts[0].ID
+		return g.DealDamageToPlayerThenForEffect(item.SourceCardID, player, amount, func(g *game.Game, dealt int) error {
+			if dealt > 0 {
+				g.PlayerCantGainLifeForEffect(item.SourceCardID, player, game.IndefiniteDuration(),
+					"Screaming Nemesis — can't gain life for the rest of the game")
+			}
+			return nil
+		})
+	}
 	return DealDamage{Source: item.SourceCardID, Target: ts[0].ID, Amount: amount}.Apply(ctx)
 }
 

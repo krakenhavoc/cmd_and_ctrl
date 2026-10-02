@@ -596,6 +596,12 @@ func (c Card) Effective() Characteristic {
 	for _, kw := range keywordCounterTokens(&c) {
 		ch.Abilities = AppendKeywordAbility(ch.Abilities, kw)
 	}
+	// ADR 0107 §3: and a keyword the stack step gave a spell, the same
+	// list forEachAbilityToken reads, so the stack view shows the
+	// rebound a Cast Through Time gives.
+	for _, kw := range c.stackGranted {
+		ch.Abilities = AppendKeywordAbility(ch.Abilities, kw)
+	}
 	return ch
 }
 

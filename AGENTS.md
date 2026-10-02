@@ -98,7 +98,7 @@ cmd_and_ctrl/
     ├── engine-seams/closed/ # one fragment per closed seam; CI generates engine-seams.md's Closed list from them (#1461)
     ├── adding-cards.md  # the catalog card guide: recipes for cards, mechanics and engine seams (moved out of AGENTS.md §7, #1747)
     ├── sprints.md       # sprint plan
-    └── decisions/       # ADRs (0001 WS library … 0106 five small seams from the S50 re-checks) — see §4 on numbering
+    └── decisions/       # ADRs (0001 WS library … 0107 state triggers, rebound, disturb and damage prevention) — see §4 on numbering
 ```
 
 When you create a new top-level directory, add it here.
@@ -463,6 +463,7 @@ Subsections of [docs/adding-cards.md](docs/adding-cards.md):
   - [Adding a block-rule card (S37+, #750)](docs/adding-cards.md#adding-a-block-rule-card-s37-750)
   - [Adding a triggered ability (S19+)](docs/adding-cards.md#adding-a-triggered-ability-s19)
   - [Adding a triggered MANA ability (#763)](docs/adding-cards.md#adding-a-triggered-mana-ability-763)
+  - [State triggers (ADR 0107, #1858)](docs/adding-cards.md#state-triggers-adr-0107-1858)
   - [Choices made at resolution (#796, #568)](docs/adding-cards.md#choices-made-at-resolution-796-568)
   - [Adding a `PendingChoiceKind` (#730, #794)](docs/adding-cards.md#adding-a-pendingchoicekind-730-794)
   - [Cumulative upkeep (#567, CR 702.24)](docs/adding-cards.md#cumulative-upkeep-567-cr-70224)

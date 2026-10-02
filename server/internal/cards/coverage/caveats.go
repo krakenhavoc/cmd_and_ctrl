@@ -143,6 +143,18 @@ var mechanics = []Mechanic{
 		Adopt:      "Declare Spec.TriggerDoublers using the cause helpers in trigger_doubling.go",
 	},
 	{
+		// #1735: the doubler's sibling, "[an event] doesn't cause
+		// abilities to trigger" (Torpor Orb, Hushbringer, Elesh Norn).
+		Name:    "trigger suppression",
+		Phrases: []string{"trigger suppression", "trigger suppressor", "cause abilities to trigger"},
+		Implements: func(s effects.Spec) bool {
+			return game.CatalogTriggerSuppressors != nil && len(game.CatalogTriggerSuppressors(s.OracleID)) > 0
+		},
+		Evidence:   "game.CatalogTriggerSuppressors(oracleID) declares a suppressor",
+		Confidence: Exact,
+		Adopt:      "Declare Spec.TriggerSuppressors using SuppressesEntering / SuppressesDying in trigger_suppression.go",
+	},
+	{
 		Name:       "flashback",
 		Phrases:    []string{"flashback"},
 		Implements: altCost("flashback"),
@@ -198,6 +210,16 @@ var mechanics = []Mechanic{
 		Evidence:   `game.AlternativeCostByKey(oracleID, "warp") resolves`,
 		Confidence: Exact,
 		Adopt:      `AlternativeCosts: []game.AlternativeCost{Warp("{cost}")} — the exile clause rides the constructor`,
+	},
+	{
+		// ADR 0107 §4 (#1855): CR 702.146, an alternative cost bound to
+		// the graveyard that casts the card's back face.
+		Name:       "disturb",
+		Phrases:    []string{"disturb"},
+		Implements: altCost("disturb"),
+		Evidence:   `game.AlternativeCostByKey(oracleID, "disturb") resolves`,
+		Confidence: Exact,
+		Adopt:      `CastableZones: []game.ZoneKind{game.ZoneGraveyard} plus Disturb("{cost}") on the front face, and DisturbedExile(name) on the back face's "<oracle_id>#1" entry`,
 	},
 	{
 		Name:       "miracle",
@@ -604,6 +626,18 @@ var mechanics = []Mechanic{
 		Evidence:   `game.CatalogPrintedKeywords(oracleID) contains "split second"`,
 		Confidence: Exact,
 		Adopt:      `PrintedKeywords: []string{"split second"} — the engine does the rest`,
+	},
+	{
+		// #1854 (ADR 0107 §3): rebound is a canonicalKeywords token
+		// read off the resolving spell by the stack's graveyard route
+		// (game/rebound.go). Same probe as split second, for the same
+		// reason.
+		Name:       "rebound",
+		Phrases:    []string{"rebound"},
+		Implements: printedKeywordProbe(game.KeywordRebound),
+		Evidence:   `game.CatalogPrintedKeywords(oracleID) contains "rebound"`,
+		Confidence: Exact,
+		Adopt:      `PrintedKeywords: []string{game.KeywordRebound} — the engine does the rest`,
 	},
 }
 

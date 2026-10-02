@@ -193,20 +193,27 @@ func TestGainControlOfSpellRefusals(t *testing.T) {
 	}
 }
 
-// TestAStackPinTakesOnlyAControlMod — the stack step applies layer 2
-// alone, so registration refuses anything else on a spell.
-func TestAStackPinTakesOnlyAControlMod(t *testing.T) {
+// TestAStackPinTakesOnlyWhatTheStackStepApplies — the stack step
+// applies layer 2 and layer-6 keyword grants (ADR 0107 §3), so
+// registration refuses anything else on a spell.
+func TestAStackPinTakesOnlyWhatTheStackStepApplies(t *testing.T) {
 	g := newActiveGame(t)
 	advanceTo(t, g, StepPrecombatMain)
 	item := castSpellForControlTest(t, g, g.Seats[0], "Instant")
+	g.WithWriteLock(func() {
+		if !g.RegisterScopedEffectForEffect(uuid.New(), []AffectedObject{PinStackObject(item.ID, 1)},
+			[]Mod{AddKeywordsMod("flying")}, IndefiniteDuration(), "test") {
+			t.Error("a keyword grant pinned to a spell was not registered")
+		}
+	})
 	defer func() {
 		if recover() == nil {
-			t.Error("a keyword mod pinned to a spell was registered")
+			t.Error("a type mod pinned to a spell was registered")
 		}
 	}()
 	g.WithWriteLock(func() {
 		g.RegisterScopedEffectForEffect(uuid.New(), []AffectedObject{PinStackObject(item.ID, 1)},
-			[]Mod{AddKeywordsMod("flying")}, IndefiniteDuration(), "test")
+			[]Mod{AddTypesMod("Creature")}, IndefiniteDuration(), "test")
 	})
 }
 

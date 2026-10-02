@@ -409,6 +409,12 @@ type Game struct {
 	eventBatch        uint64
 	oncePerBatchFired map[string]uint64
 
+	// preventionFollowUps are the next-damage shields' CR 615.5
+	// additional effects owed for an instance of damage that has not yet
+	// settled — one per shield and batch, with the running total (ADR
+	// 0107 §6, prevent_next_from_source.go). Empty between actions.
+	preventionFollowUps []PreventionFollowUp
+
 	// announcedBlocks and blockedAttackers are what this combat's
 	// block declaration has produced (#830, #715). announcedBlocks
 	// maps blocker -> the attacker its EventBlock named;
@@ -606,6 +612,15 @@ type Game struct {
 	// construction, so Clone / RestoreFrom do not carry it: no
 	// snapshot is ever taken mid-sweep. Added in S23.
 	simultaneousExit []Card
+
+	// stateTriggerHold counts the open sections that the per-event
+	// CR 603.8 state-trigger check skips — combat damage being dealt
+	// and a state-based-action sweep, which the rules see as one event
+	// and the engine emits in pieces (ADR 0107 §1, state_triggers.go).
+	// stateTriggerChecking is the check's re-entrancy guard. Both are
+	// zero between actions, so neither is snapshotted or cloned.
+	stateTriggerHold     int
+	stateTriggerChecking bool
 
 	// enteringTokens holds the tokens whose CR 614 battlefield-entry
 	// window is open and which are therefore in NO zone yet: minted,

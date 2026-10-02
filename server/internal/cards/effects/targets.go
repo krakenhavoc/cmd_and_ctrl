@@ -727,3 +727,10 @@ func Distinct(spec *game.TargetSpec) *game.TargetSpec {
 	}
 	return spec
 }
+
+// ToughnessLE passes when the creature's current toughness is ≤ n —
+// Endangered Armodon's "a creature with toughness 2 or less" (ADR 0107
+// §1). The sibling of ToughnessGE, read the same way.
+func ToughnessLE(n int) CardPredicate {
+	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return c.CurrentToughness() <= n }
+}

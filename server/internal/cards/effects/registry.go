@@ -90,6 +90,7 @@ func Register(spec Spec) {
 		}
 	}
 	for _, t := range spec.Triggered {
+		checkStateTrigger(spec.Name, t)
 		checkFlatClauses(spec.Name, t.Targets)
 		// A trigger announces no X, ever (#1559) — unlike an activated
 		// ability (#1723), there is no cost to check.
@@ -153,6 +154,7 @@ func Register(spec Spec) {
 		// a fixed count is what the announce path, the picker and the
 		// enumerator all read off it.
 		checkSacrificeClause(spec.Name, fmt.Sprintf("alternative cost %q", ac.Key), ac.Sacrifice, false, false, false)
+		checkCastsFace(spec, ac)
 		if ac.FaceDown == nil {
 			continue
 		}
@@ -734,6 +736,20 @@ func shapeOfManaAbility(ma ManaAbility) game.ManaAbilityShape {
 // at boot with the reason.
 func checkStaticZones(card, what string, statics []game.StaticAbility) {
 	for i, s := range statics {
+		// ADR 0107 §3: a static over spells is a layer-6 keyword grant
+		// from the battlefield — the one thing the stack step applies.
+		if s.AffectsSpells {
+			switch {
+			case s.Layer != game.Layer6Ability:
+				panic(fmt.Sprintf("effects.Register: %q %s %d affects spells outside layer 6 — the stack step applies keywords only", card, what, i))
+			case s.AppliesTo == nil || s.Apply == nil:
+				panic(fmt.Sprintf("effects.Register: %q %s %d affects spells but has no AppliesTo or Apply", card, what, i))
+			case len(s.Zones) > 0:
+				panic(fmt.Sprintf("effects.Register: %q %s %d affects spells from a declared zone — only the battlefield's statics over spells are gathered", card, what, i))
+			case s.RemovesAbilities || len(s.GrantAbilities) > 0:
+				panic(fmt.Sprintf("effects.Register: %q %s %d affects spells with a removal or an ability bundle — the stack step applies keywords only", card, what, i))
+			}
+		}
 		for _, zone := range s.Zones {
 			if why := game.StaticZoneUnsupported(zone); why != "" {
 				panic(fmt.Sprintf("effects.Register: %q %s %d functions from %s — %s",
@@ -965,6 +981,40 @@ func zoneDeclared(zones []game.ZoneKind, zone game.ZoneKind) bool {
 		}
 	}
 	return false
+}
+
+// checkCastsFace holds an offer that casts another face (disturb, ADR
+// 0107 §4) to the one shape the cast path reads. Four refusals, each a
+// card file that compiles and then casts something the card does not
+// print:
+//
+//   - a negative face, which names nothing;
+//   - an offer on a BACK face's entry ("<oracle_id>#N"). CR 702.146a
+//     prints disturb on the front face, and the cast path reads the
+//     offer off the card as it sits in its zone, which is front face
+//     up (CR 712.8a) — an offer on the back would never be claimable;
+//   - a face-down cast as well, two answers to what the spell is;
+//   - a target clause of its own. The spell is the back face, and its
+//     clause is the back face entry's (CR 712.8c); a rewrite on the
+//     front face's offer would be read against the wrong face.
+//
+// The card's layout is not visible here (a Spec carries no layout), so
+// "this is a transform card with that face" is the cast path's check:
+// faceForClaimLocked refuses the claim on any other card.
+func checkCastsFace(spec Spec, ac game.AlternativeCost) {
+	if ac.CastsFace == 0 {
+		return
+	}
+	switch {
+	case ac.CastsFace < 0:
+		panic(fmt.Sprintf("effects.Register: %q offers %q casting face %d — a face index is never negative", spec.Name, ac.Key, ac.CastsFace))
+	case strings.Contains(spec.OracleID, "#"):
+		panic(fmt.Sprintf("effects.Register: %q offers %q on a back face's entry — an offer that casts a face is printed on the front face (CR 702.146a) and read off the card in its zone, front face up (CR 712.8a)", spec.Name, ac.Key))
+	case ac.FaceDown != nil:
+		panic(fmt.Sprintf("effects.Register: %q offers %q casting face %d face down — pick one", spec.Name, ac.Key, ac.CastsFace))
+	case ac.Targets != nil || ac.ClearsTargets:
+		panic(fmt.Sprintf("effects.Register: %q offers %q casting face %d with a target rewrite — the spell's clause is that face's own entry's (CR 712.8c)", spec.Name, ac.Key, ac.CastsFace))
+	}
 }
 
 // altCostCardComponents counts an alternative cost's card-shaped

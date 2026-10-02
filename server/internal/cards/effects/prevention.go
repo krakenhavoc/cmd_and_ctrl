@@ -4,13 +4,15 @@ import (
 	"github.com/google/uuid"
 )
 
-// prevention.go — CR 615 damage prevention, the two shapes it comes
-// in and the one piece of state that separates them.
+// prevention.go — CR 615 damage prevention, the three shapes it comes
+// in and the piece of state that separates them.
 //
 // S17 shipped Fog as a proof of concept: a shield that cancels every
 // combat-damage event for the rest of the turn. That is a SHIELD WITH
-// NO CHARGES — it never runs out. S30 added the other half: a shield
-// that absorbs a fixed amount and then stops.
+// NO CHARGES — it never runs out. S30 added the second: a shield that
+// absorbs a fixed amount and then stops (CR 615.7). ADR 0107 §6 added
+// the third: a shield against the next damage from one source, however
+// much it is (CR 615.8) — the Circles of Protection.
 //
 // Both are DATA since ADR 0041 phase 3 tier 3b (#1497): a ScopedEffect
 // record with a replacement-reader mod (game/scoped_replacements.go),
@@ -62,10 +64,10 @@ func (p PreventAllCombatDamageThisTurn) Apply(ctx *Context) error {
 	return nil
 }
 
-// PreventNextDamage is the CHARGED shield (CR 615.8): "prevent the
+// PreventNextDamage is the CHARGED shield (CR 615.7): "prevent the
 // next N damage that would be dealt to <target> this turn".
 //
-// The arithmetic is per CR 615.8 and is not "cancel if N is big
+// The arithmetic is per CR 615.7 and is not "cancel if N is big
 // enough": a 4-point shield facing 6 damage prevents 4 and lets 2
 // through, leaving the shield empty. A 4-point shield facing 3
 // damage prevents all 3 and has 1 left for the next event. Getting
@@ -76,12 +78,11 @@ func (p PreventAllCombatDamageThisTurn) Apply(ctx *Context) error {
 // A shield on a PERMANENT is pinned to that object (CR 400.7): it does
 // not follow a flicker, and it goes away with the permanent.
 //
-// Amount must be at least 1. The other printed form — "the next time
-// a source would deal damage to you this turn, prevent that damage"
-// (the Circle of Protection wording), one use, whole event, whatever
-// its size — is not built: no catalogued card prints it, and ADR 0041
-// P8 adds a kind only with the first card that needs it. An Amount
-// below 1 registers nothing.
+// Amount must be at least 1; an Amount below 1 registers nothing. The
+// other printed form — "the next time a source would deal damage to you
+// this turn, prevent that damage" (the Circle of Protection wording),
+// one use, the whole instance, whatever its size — is
+// PreventNextDamageFromSource below.
 type PreventNextDamage struct {
 	// Target is the player or permanent being shielded. A card ID
 	// and a player ID are the same shape here because

@@ -181,6 +181,12 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 	// covered by the rule rather than by a code review. See
 	// Card.ObjectEpoch and ObjectTallyKey (#936).
 	c.ObjectEpoch++
+	// ADR 0107 §3 / CR 400.7: a keyword the stack step gave a spell
+	// belongs to the spell. The card that leaves the stack is a new
+	// object, and it does not keep the grant. A permanent spell's
+	// pinned grants are handed to the permanent separately (CR
+	// 400.7a, inheritSpellControlLocked).
+	c.stackGranted = nil
 	// ADR 0097 / CR 400.7: the "hasn't been chosen" memory belongs to
 	// the object that is ending, for every source and destination —
 	// the same unconditional forgetting as the epoch above.

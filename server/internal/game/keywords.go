@@ -159,6 +159,15 @@ var canonicalKeywords = map[string]bool{
 	// job is the badge and the ADR 0037 coverage signal, and it must
 	// not arrive before the mechanic does.
 	"madness": true,
+	// disturb (CR 702.146) joins with #1855 (ADR 0107 §4), in the same
+	// change that teaches the engine to honour it: an alternative cost
+	// that casts the card's back face out of its owner's graveyard
+	// (AlternativeCost.CastsFace, faceForClaimLocked), on the stack and
+	// the battlefield back face up. Same reasoning as foretell and
+	// suspend above — the consumer is the card file's offer, not a
+	// table in this file, so the token's job is the badge and the ADR
+	// 0037 coverage signal.
+	"disturb": true,
 	// plot (CR 702.170) joins with #1342, in the same change that
 	// teaches the engine to honour it: the CR 116.2 special action
 	// from hand (SpecialActionPlot, plot.go) and the free later cast
@@ -222,6 +231,14 @@ var canonicalKeywords = map[string]bool{
 	// catalog entry. CUMULATIVE (CR 702.100d: each instance triggers
 	// separately), so AppendKeywordAbility keeps every granted instance.
 	KeywordEvolve: true,
+	// rebound (CR 702.88) joins with #1854 (ADR 0107 §3), in the same
+	// change that teaches the engine to honour it. Its consumer is the
+	// stack's graveyard route (routeStackCardToGraveyardLocked, through
+	// spellRebounds in rebound.go), which reads it off the resolving
+	// spell with HasKeyword, so a deck-imported card works with no
+	// catalog entry. Redundant (CR 702.88c): one instance or several
+	// is one exile and one delayed trigger.
+	KeywordRebound: true,
 	// split second (CR 702.61) joins with #1519, in the same change
 	// that teaches the engine to READ it. The rule itself was built in
 	// S13.1 — CastSpell, both activation paths, the enumerator and the
@@ -423,7 +440,7 @@ func CanonicalKeywords(s string) ([]string, bool) {
 // "trample", "vigilance", "menace", "defender", "haste", "flash",
 // "hexproof", "shroud", "indestructible", "changeling", fear,
 // intimidate, shadow, horsemanship, skulk, infect, wither, prowess, evolve,
-// "split second", and the landwalk tokens ("islandwalk", "nonbasic landwalk", …). Toxic is NOT
+// "split second", rebound, and the landwalk tokens ("islandwalk", "nonbasic landwalk", …). Toxic is NOT
 // asked through here: its token carries an amount, so it is read with
 // ToxicTotal.
 //
@@ -482,6 +499,15 @@ func forEachAbilityToken(c *Card, fn func(token string) bool) {
 			}
 		}
 		return
+	}
+	// ADR 0107 §3, CR 613.1f: a keyword the stack step of the layer
+	// pass gave a SPELL ("that spell gains rebound"). Before the
+	// face-down guard below, because a face-down spell has no text of
+	// its own but can still be given an ability by an effect.
+	for _, a := range c.stackGranted {
+		if !fn(a) {
+			return
+		}
 	}
 	// CR 708.2a, ADR 0069: a face-down permanent has no text and so
 	// no keywords. CatalogKey already answers "" for it, but

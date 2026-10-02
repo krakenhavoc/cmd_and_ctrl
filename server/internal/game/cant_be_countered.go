@@ -69,8 +69,13 @@ func (g *Game) spellCantBeCounteredLocked(spellID uuid.UUID) bool {
 	item := g.StackMeta[spellID]
 	spell := g.spellCardOnStackLocked(spellID)
 
-	// 1. The spell's own printed rider.
+	// 1. The spell's own printed rider — unconditional, or under its
+	// printed condition (Banefire's "if X is 5 or more", Demonfire's
+	// hellbent), judged now.
 	if spell != nil && spellPrintsCantBeCountered(*spell) {
+		return true
+	}
+	if spell != nil && item != nil && g.spellCantBeCounteredIfLocked(*spell, item) {
 		return true
 	}
 	// 2. The mana that paid for it (#1547).
@@ -87,6 +92,31 @@ func (g *Game) spellCantBeCounteredLocked(spellID uuid.UUID) bool {
 	}
 	// 5. The "this turn" grants on Player.Statics.
 	return spell != nil && g.counterShieldGrantedLocked(item, *spell)
+}
+
+// CatalogCantBeCounteredIf returns the condition under which a spell
+// with the given catalog key says "this spell can't be countered" of
+// itself — "If X is 5 or more, this spell can't be countered" (Banefire),
+// "Hellbent — If you have no cards in hand, this spell can't be
+// countered" (Demonfire) — or nil. carddef.go sets it from
+// CardDef.CantBeCounteredIf. The unconditional rider is
+// CatalogCantBeCountered.
+var CatalogCantBeCounteredIf func(key string) SpellCondition
+
+// spellCantBeCounteredIfLocked is source 1's conditional half: the
+// spell's own rider, its condition judged at the moment something tries
+// to counter it (a static ability of the spell, CR 611.3a). Caller must
+// hold g.mu.
+func (g *Game) spellCantBeCounteredIfLocked(spell Card, item *StackItem) bool {
+	if CatalogCantBeCounteredIf == nil {
+		return false
+	}
+	oracle := CatalogKey(spell)
+	if oracle == "" {
+		return false
+	}
+	cond := CatalogCantBeCounteredIf(oracle)
+	return cond != nil && cond(g, item)
 }
 
 // spellCardOnStackLocked is the card a spell on the stack is, or nil.

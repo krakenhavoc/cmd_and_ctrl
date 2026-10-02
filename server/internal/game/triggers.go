@@ -93,8 +93,46 @@ type TriggeredAbility struct {
 	// Kind isn't in this list — a cheap pre-filter that keeps the
 	// per-event walk linear in matching cards rather than total cards.
 	// Empty / nil means "never fires" — declaring a trigger with no
-	// Watches is a programming error and the harvester skips it.
+	// Watches is a programming error and the harvester skips it —
+	// unless State is set, which makes the row a state trigger that
+	// watches no event at all.
 	Watches []EventKind
+
+	// State makes this row a CR 603.8 STATE TRIGGER: "When you control
+	// no Islands, sacrifice this creature", "When there are five or
+	// more plot counters on this enchantment, …". It is a condition
+	// over the board, the source permanent and its controller, and the
+	// ability triggers as soon as the game state matches it — not when
+	// an event happens (CR 603.2's "or game state").
+	//
+	// The engine asks it after every event it emits and in each pass
+	// of the CR 704.3 loop (ADR 0107 §1, owner decision 1), so a state
+	// that holds only for a moment inside a resolution still triggers,
+	// as CR 603.8's own example says. It asks only battlefield
+	// permanents, through TriggersForCard, so a permanent that has lost
+	// its abilities (CR 613.1f) has no state triggers.
+	//
+	// The CR 603.8 latch — "doesn't trigger again until the ability has
+	// resolved, has been countered, or has otherwise left the stack" —
+	// is derived, never stored: the ability is latched while the stack,
+	// the trigger queue, the resolving slot or an open announcement
+	// prompt holds an item of this row from this OBJECT (CR 400.7). See
+	// state_triggers.go.
+	//
+	// A state trigger watches nothing (Register refuses Watches beside
+	// State) and must declare its Effect, so its stack item is keyed
+	// (ADR 0041 P9) and a table with one waiting is a restore point.
+	//
+	// The field is a KEY, not the condition: the condition is a
+	// StateCondition registered under it (RegisterStateCondition), in a
+	// package-level registry no Game reaches. So the declaration a
+	// trigger's resume frame carries holds no new func, and the ADR 0041
+	// closure ratchet gains no route (AGENTS.md §5). The key lives only
+	// on catalog rows, which the running binary rebuilds on restore; it
+	// is never written to a snapshot, because a queued or stacked state
+	// trigger names its ROW (AbilityRef), not its condition. Empty means
+	// "not a state trigger".
+	State string
 
 	// AppliesTo decides whether this specific event triggers this
 	// specific source card. Receives a live pointer to the source on
@@ -509,7 +547,12 @@ func (triggerHarvester) OnEvent(g *Game, ev Event) {
 	// list sees the event exactly once and the first match fires it
 	// and removes it. One hook, one place, no per-card case. See
 	// delayed.go and the 2026-09-18 amendment to ADR 0026.
-	g.fireEventDelayedTriggersLocked(ev)
+	g.fireEventDelayedTriggersLocked(&pass)
+	// ADR 0107 §1, CR 603.8 (owner decision 1): a state trigger
+	// triggers as soon as the game state matches it, so the board this
+	// event left behind is asked too — after every event trigger above
+	// has been harvested. See state_triggers.go.
+	g.stateTriggersAfterEventLocked()
 }
 
 // harvestFromZone is the per-zone scan used for "live" triggers (ETB,
@@ -520,6 +563,12 @@ func (g *Game) harvestFromZone(pass *harvestPass, z *Zone) {
 	ev := pass.ev
 	if z == nil || CatalogTriggers == nil {
 		return
+	}
+	// The battlefield's abilities are a permanent's. The same walk over
+	// an emblem zone (harvestFromEmblemsLocked) is not: CR 114.4.
+	origin := triggerOfNonPermanent
+	if z == g.Battlefield {
+		origin = triggerOfPermanent
 	}
 	for i := range z.Cards {
 		card := &z.Cards[i]
@@ -556,7 +605,7 @@ func (g *Game) harvestFromZone(pass *harvestPass, z *Zone) {
 			if t.AppliesTo != nil && !t.AppliesTo(ev, source, lki, g) {
 				continue
 			}
-			g.harvestMatchLocked(pass, *source, lki, t, false)
+			g.harvestMatchLocked(pass, *source, lki, t, origin)
 		}
 	}
 }
@@ -588,7 +637,7 @@ func (g *Game) harvestCastFromStack(pass *harvestPass) {
 			if t.AppliesTo != nil && !t.AppliesTo(ev, card, lki, g) {
 				continue
 			}
-			g.harvestMatchLocked(pass, *card, lki, t, true)
+			g.harvestMatchLocked(pass, *card, lki, t, triggerOfSpell)
 		}
 		return
 	}
@@ -620,11 +669,19 @@ func (g *Game) dispatchTriggerLocked(ev Event, source Card, lki Characteristic, 
 
 // harvestMatchLocked fixes the additional-instance count at the moment this
 // ability triggered, before prompts or items are queued.
-func (g *Game) harvestMatchLocked(pass *harvestPass, source Card, lki Characteristic, t TriggeredAbility, fromSpell bool) {
+//
+// #1735: a suppressor is asked first (trigger_suppression.go). If the
+// event does not cause this ability to trigger, there is nothing to
+// count: the doublers are not asked, the once-per-batch slot is not
+// spent, and no instance, prompt or target pick is made.
+func (g *Game) harvestMatchLocked(pass *harvestPass, source Card, lki Characteristic, t TriggeredAbility, origin triggerOrigin) {
+	if g.triggerSuppressedLocked(pass, source, lki, &t, origin) {
+		return
+	}
 	if t.OncePerBatch && !g.oncePerBatchAllowsLocked(pass.ev.Batch, source.InstanceID, oncePerBatchKeyLocked(t, pass.ev, &source, g)) {
 		return
 	}
-	extra := g.triggerDoublersLocked(pass, source, lki, t, fromSpell)
+	extra := g.triggerDoublersLocked(pass, source, lki, t, origin == triggerOfSpell)
 	g.dispatchTriggerInstanceLocked(pass.ev, source, lki, t, doublerRef{})
 	for _, d := range extra {
 		g.dispatchTriggerInstanceLocked(pass.ev, source, lki, t, d)
@@ -848,7 +905,7 @@ func (g *Game) harvestLTB(pass *harvestPass) {
 		if t.AppliesTo != nil && !t.AppliesTo(ev, &source, lki, g) {
 			continue
 		}
-		g.harvestMatchLocked(pass, source, lki, t, false)
+		g.harvestMatchLocked(pass, source, lki, t, triggerOfPermanent)
 	}
 }
 

@@ -193,6 +193,16 @@ var carriedFixture = map[string]any{
 	// a key it has no body or condition for, so an invented one would
 	// fail the restore rather than test the carry.
 	"DelayedTrigger.Body": carriedTestBodyKey,
+	// ADR 0107 §6: an owed follow-up names its body the same way, so
+	// its container is built with a registered one.
+	"Game.preventionFollowUps": func(g *Game) any {
+		return []PreventionFollowUp{{
+			Seq: 4747, Batch: 47, Body: carriedTestBodyKey.Key(), Controller: g.Seats[0].ID,
+			Source: uuid.NewSHA1(uuid.Nil, []byte("Game.preventionFollowUps")), Label: "drift-Game.preventionFollowUps",
+			Prevented: 4, DamageSource: uuid.NewSHA1(uuid.Nil, []byte("drift-damage-source")),
+			SourceController: g.Seats[1].ID, SourceColors: []string{"R"}, Target: g.Seats[0].ID, Combat: true,
+		}}
+	},
 	// The two containers holding keyed elements: a generated element
 	// would carry an invented key and be refused.
 	"Game.DelayedTriggers": func(g *Game) any {
@@ -221,6 +231,19 @@ var carriedFixture = map[string]any{
 	"StackItem.Params":          carriedTestParams("StackItem.Params", "Artifact"),
 	"StackItem.Body":            carriedTestBodyKey.Key(),
 	"ScopedEffect.Mods":         []Mod{AddSubtypesMod("drift-ScopedEffect.Mods"), ModifyPTMod(4, 2)},
+	// ADR 0107 §3: a STACK pin may carry only control and keyword mods,
+	// and restore refuses any other (stackPinProblem), so a generated
+	// member with OnStack set would fail the restore under the fixture's
+	// modifyPT rather than test the carry. Every other field is
+	// non-zero; OnStack's own round trip is TestGrantedReboundSurvivesA-
+	// SnapshotRoundTrip and the v7 corpus's stack-pinned boards.
+	"ScopedEffect.Affected": []AffectedObject{{
+		ID:         uuid.NewSHA1(uuid.Nil, []byte("ScopedEffect.Affected/id")),
+		EnteredAt:  4848,
+		Unstamped:  true,
+		Controller: uuid.NewSHA1(uuid.Nil, []byte("ScopedEffect.Affected/controller")),
+		Epoch:      5,
+	}},
 	// #1571: a scope is a closed vocabulary too, refused when unknown.
 	"ScopedEffect.Scope": ScopeOpponentsCreatures,
 	// A duration's kind and condition are closed sets too (#1497

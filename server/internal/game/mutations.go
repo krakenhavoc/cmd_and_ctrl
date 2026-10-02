@@ -680,7 +680,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// grantHasteForCastLocked for the layer-6 grant and its declared
 	// duration simplification.
 	grantsHaste := grant != nil && grant.GrantsHaste
-	face, ok := faceForCastLocked(card, params.Face, grant, playerID)
+	face, ok := faceForCastLocked(card, params.Face, grant, playerID, params.AlternativeCost)
 	if !ok {
 		slog.Warn("cast_spell rejected: face not offered by this card",
 			"card_name", card.Name,
@@ -2979,6 +2979,12 @@ func (g *Game) resolveTopOfStackLocked() error {
 		g.resolveTopAbilityLocked()
 		return nil
 	}
+	// ADR 0107 §3: the spell resolves with the abilities the layer pass
+	// gives it (CR 613.1f), and `top` below is the copy every exit
+	// reads — rebound among them. A grant registered since the last
+	// pass (an ability that resolved just above this spell) has to be
+	// on the card before it is copied. A no-op when nothing changed.
+	g.RecomputeLayersIfStaleLocked()
 	// Top of the stack is the last card in the slice (LIFO).
 	top := g.Stack.Cards[len(g.Stack.Cards)-1]
 	item, ok := g.StackMeta[top.InstanceID]
@@ -3423,7 +3429,7 @@ func (g *Game) resolveTopAbilityLocked() {
 // (sub-PR 3) when every target is illegal on resolve.
 //
 // THE ONE PLACE a spell leaving the stack chooses a destination.
-// Three rules replace the graveyard, and all three decide here rather
+// Four rules replace the graveyard, and all four decide here rather
 // than in the resolution frame, because a spell has exactly one
 // destination and a reader should be able to see the whole contest in
 // one switch:
@@ -3447,21 +3453,35 @@ func (g *Game) resolveTopAbilityLocked() {
 //     fact that tells them apart. Before #988 gave
 //     this helper that fact, the adventure leg had to live one frame
 //     up to get it.
+//   - REBOUND — "if this spell was cast from your hand, instead of
+//     putting it into your graveyard as it resolves, exile it and, at
+//     the beginning of your next upkeep, you may cast this card from
+//     exile" (CR 702.88a, rebound.go, #1854). Resolution only, like
+//     the two above it, and a fact about where the spell was CAST
+//     from, which the item records.
 //
-// `item` is the spell's stack item, because the first two are facts
-// about what was PAID; the third is a fact about the card and reads
-// the face instead.
+// `item` is the spell's stack item, because buyback and flashback are
+// facts about what was PAID and rebound is a fact about where it was
+// cast from; the Adventure is a fact about the card and reads the face
+// instead.
 //
-// PRECEDENCE. Flashback wins over both, because CR 702.34a replaces
-// every exit and the other two replace one of them. Between buyback
-// and the Adventure exile the order is buyback, and that one is a
-// judgement call worth stating: both replace the same "put it into its
-// owner's graveyard as it resolves" event, so CR 616.1 would hand the
-// choice to the spell's controller, and taking buyback honours the
-// mana they actually spent to get the card back. No printed card has
-// any of these pairs — an adventure card prints no buyback and no
-// flashback — so every combination here is written down to be a
-// decision rather than an accident.
+// PRECEDENCE, and the one CHOICE. Flashback wins over the rest,
+// because CR 702.34a replaces every exit and the others replace one of
+// them (and a flashed-back spell was not cast from a hand, so it never
+// has rebound to compete with).
+//
+// Rebound, buyback and the Adventure exile all replace the SAME event,
+// "put it into its owner's graveyard as it resolves", so when two of
+// them apply CR 616.1 gives the choice to the affected object's
+// controller — the spell's — and CR 616.1f then finds the others
+// inapplicable, because the card is no longer going to a graveyard.
+// That is resolutionExitsLocked and chooseResolutionExitLocked
+// (resolution_exits.go, ADR 0107 §3, #1854). No printed card has two
+// of them; a granted rebound (Cast Through Time over a buyback or an
+// Adventure spell) is the first way to meet the choice. Until it, the
+// buyback-and-Adventure pair was settled by a stated judgement call
+// (buyback); it is the controller's choice now, as CR 616.1 says. One
+// applicable exit is applied with no question.
 //
 // Pass nil for the defensive no-StackMeta path, where there is no
 // cost to read, and `resolved` false with it.
@@ -3487,35 +3507,18 @@ func (g *Game) routeStackCardToGraveyardLocked(c Card, item *StackItem, resolved
 		// rule, not by an effect).
 		Cause: MoveCause{Kind: MoveCauseRule},
 	}
-	switch {
-	case altCostExilesFromStack(c, item):
+	if altCostExilesFromStack(c, item) {
 		r.Dst, r.DstOwner, r.Actor = ZoneExile, uuid.Nil, c.Owner
-	case resolved && item != nil &&
-		OptionalCostTimesPaid(c, item.Paid.OptionalCosts, BuybackKey) > 0:
-		// CR 702.27a. Through the SAME exit primitive, so a
-		// bought-back commander still gets its CR 903.9 choice and a
-		// replacement watching the stack exit still sees one.
-		r.Dst = ZoneHand
-	case resolved && castAsAdventure(c):
-		// CR 715.3d, and CR 715.4's permission rides the route's
-		// continuation rather than the next line: a route that paused
-		// on a CR 903.9 prompt finishes later, and the grant has to
-		// land when it does. See adventure.go.
-		//
-		// CR 715.3d names the spell's CONTROLLER twice — "its
-		// controller exiles it" and "that player may play it" — so a
-		// stolen Adventure is the thief's to cast later (ADR 0104,
-		// owner decision 4). The owner stands in only for an item
-		// with no controller, which no cast produces.
-		cardID := c.InstanceID
-		controller := c.Owner
-		if item != nil && item.Controller != uuid.Nil {
-			controller = item.Controller
+	} else if resolved {
+		// The three "as it resolves" exits (resolution_exits.go). Two
+		// or more is CR 616.1's choice, asked of the spell's
+		// controller; the card waits on the stack for the answer.
+		exits := resolutionExitsLocked(c, item)
+		if len(exits) > 1 {
+			return g.chooseResolutionExitLocked(c, item, r, exits)
 		}
-		r.Dst, r.DstOwner, r.Actor = ZoneExile, uuid.Nil, controller
-		r.then = func(g *Game) error {
-			g.grantAdventureCastFromExileLocked(cardID, controller)
-			return nil
+		if len(exits) == 1 {
+			exits[0].apply(&r)
 		}
 	}
 	_, err := g.routeCardToZoneLocked(r)
@@ -4293,6 +4296,12 @@ func (g *Game) runStateChecksLocked() (sbaFired bool) {
 	if g.holdForOpenResolutionLocked() {
 		return false
 	}
+	// ADR 0107 §6, CR 615.5: the instance of damage is over before a
+	// player receives priority, so the next-damage shields' "the damage
+	// prevented this way" runs now, once per shield with the total —
+	// before the state-based actions, so a combat damage step's damage
+	// has all been dealt (CR 510.2) and nothing has died of it yet.
+	g.flushPreventionFollowUpsLocked()
 	// #830 / CR 509.2a: a player is about to receive priority, so the
 	// block declaration is complete. Lock it in first, so the
 	// "becomes blocked" and "blocks" triggers it produces are on
@@ -4318,8 +4327,18 @@ func (g *Game) runStateChecksLocked() (sbaFired bool) {
 		// nothing legal is left. No-op when no pick_target is open,
 		// which is nearly every call. See trigger_target_timing.go.
 		g.refreshTargetChoicesLocked()
+		// ADR 0107 §1: the sweep is CR 704.3's "single event", so the
+		// per-event state-trigger check waits for it to finish, and the
+		// check below reads the board it settled on.
+		release := g.holdStateTriggersLocked()
 		fired, left := g.stateBasedActionsLocked()
+		release()
 		sbaFired = sbaFired || fired
+		// CR 603.8 / CR 704.3: state triggers are asked in every pass,
+		// after the state-based actions and before the waiting triggers
+		// go on the stack. A state no event announced — a continuous
+		// effect that began or ended in a layer pass — is caught here.
+		g.stateTriggersLocked()
 		// #864: belt-and-braces backstop, run every pass so nothing can
 		// leave this function about to hand a seat priority while a
 		// choice sits pending for a chooser this same pass (or an
@@ -8146,6 +8165,11 @@ func (g *Game) participatesInStepLocked(c *Card, firstStrike bool) bool {
 // Caller must hold g.mu.
 func (g *Game) assignAndDealCombatDamageLocked(step string) {
 	firstStrike := step == CombatStepFirstStrike
+	// ADR 0107 §1: combat damage is dealt simultaneously (CR 510.2),
+	// and this loop deals it attacker by attacker. A life total that has
+	// taken half of it is not a game state, so the per-event CR 603.8
+	// check waits until every assignment here has been dealt.
+	defer g.holdStateTriggersLocked()()
 
 	blockersByAttacker := make(map[uuid.UUID][]int, len(g.Battlefield.Cards))
 	// #1706: a blocker that still blocks two or more live attackers

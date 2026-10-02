@@ -134,7 +134,7 @@ const PendingChoiceChooseCards PendingChoiceKind = "choose_cards"
 func isCardSetPickKind(kind PendingChoiceKind) bool {
 	switch kind {
 	case PendingChoiceChooseCards, PendingChoiceUntapChoice, PendingChoiceEntryRevealFromHand,
-		PendingChoiceEntryDiscardFromHand, PendingChoiceEntrySacrifice:
+		PendingChoiceEntryDiscardFromHand, PendingChoiceEntrySacrifice, PendingChoiceChooseSource:
 		return true
 	}
 	return isResolutionPickKind(kind)

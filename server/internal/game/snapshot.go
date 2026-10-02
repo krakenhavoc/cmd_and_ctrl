@@ -392,6 +392,12 @@ type GameSnapshot struct {
 	EventBatch        uint64            `json:"eventBatch,omitempty"`
 	OncePerBatchFired map[string]uint64 `json:"oncePerBatchFired,omitempty"`
 
+	// PreventionFollowUps is Game.preventionFollowUps (ADR 0107 §6): the
+	// CR 615.5 follow-ups owed for an instance of damage a CR 616 prompt
+	// paused half way. Empty on nearly every file. A body key this binary
+	// does not have is refused (ErrUnknownEffectKey).
+	PreventionFollowUps []PreventionFollowUp `json:"preventionFollowUps,omitempty"`
+
 	// ResolutionOpen is Game.resolutionOpen (#1289,
 	// resolution_pause.go): a resolution has begun and the CR 704.3
 	// boundary after it has not run. Read with each choice's
@@ -1515,6 +1521,7 @@ func (g *Game) captureSnapshotLocked() *GameSnapshot {
 		turnSeqPresent:        true,
 	}
 	s.OncePerBatchFired = copyStringUint64Map(g.oncePerBatchFired)
+	s.PreventionFollowUps = clonePreventionFollowUps(g.preventionFollowUps)
 	s.AnnouncedBlocks, s.AnnouncedAlsoBlocks = splitAnnouncedBlocks(g.announcedBlocks)
 	s.BlockedAttackers = copyBoolMap(g.blockedAttackers)
 	s.AnnouncedAttacks = copyBoolMap(g.announcedAttacks)
@@ -2320,6 +2327,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.eventBatch = s.EventBatch
 	g.resolutionOpen = s.ResolutionOpen
 	g.oncePerBatchFired = copyStringUint64Map(s.OncePerBatchFired)
+	g.preventionFollowUps = clonePreventionFollowUps(s.PreventionFollowUps)
 	g.announcedBlocks = joinAnnouncedBlocks(s.AnnouncedBlocks, s.AnnouncedAlsoBlocks)
 	g.blockedAttackers = copyBoolMap(s.BlockedAttackers)
 	g.announcedAttacks = copyBoolMap(s.AnnouncedAttacks)

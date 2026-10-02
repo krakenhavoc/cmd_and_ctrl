@@ -26,12 +26,6 @@ func init() {
 		Targets:          TargetCreature("target creature you control", YouControl()),
 		CastableZones:    []game.ZoneKind{game.ZoneGraveyard},
 		AlternativeCosts: []game.AlternativeCost{Flashback("{3}{U}")},
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			id, ok := b16FirstLegalTargetCard(ctx)
-			if !ok {
-				return nil
-			}
-			return Flicker{Target: id}.Apply(ctx)
-		},
+		OnResolve:        flickerTheTargetToItsOwner,
 	})
 }

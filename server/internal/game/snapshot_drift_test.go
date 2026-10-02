@@ -161,6 +161,8 @@ var gameFields = plan(
 	// trigger or swallow it.
 	"eventBatch", carried, "",
 	"oncePerBatchFired", carried, "",
+	// ADR 0107 §6: owed CR 615.5 follow-ups, plain data.
+	"preventionFollowUps", carried, "",
 	// #1289: a resolution paused on one of its own prompts holds the
 	// CR 704.3 boundary. Carried with each choice's midResolution.
 	"resolutionOpen", carried, "",
@@ -243,6 +245,10 @@ var gameFields = plan(
 	"resolving", dropped, "the CR 707.10 self-copy source (#920); set between actions only for a resolution paused on a prompt, and that prompt's resume frame is counted in ContinuationCensus.ChoiceResumeFrames; it holds a *StackItem, whose Effect is a closure the snapshot could not carry anyway; Clone shares it for undo",
 	"recomputeCount", dropped, "test instrumentation for the layer fast-path, not game state",
 	"simultaneousExit", dropped, "per-sweep scope, defer-cleared; a snapshot is never taken mid-wipe, so it is always empty between mutations",
+	// ADR 0107 §1: the state-trigger check's hold count and re-entrancy
+	// guard. Both are defer-cleared inside one mutation.
+	"stateTriggerHold", dropped, "not game state: it counts the open sections of one mutation the per-event check skips, defer-cleared, so it is zero between actions",
+	"stateTriggerChecking", dropped, "not game state: a re-entrancy guard for one check, defer-cleared, so it is false between actions",
 )
 
 var cardFields = plan(
@@ -456,6 +462,7 @@ var cardFields = plan(
 	"ManaAbilities", rebuilt, "closures; re-looked-up from the catalog by oracle ID, or by TokenKey for a token (#521), and censused only when the catalog cannot return them",
 	"ActivatedAbilities", rebuilt, "same as ManaAbilities",
 	"effective", rebuilt, "layer-engine characteristic cache; restore forces a recompute",
+	"stackGranted", rebuilt, "the keywords the stack step gave a spell (ADR 0107 §3); rebuilt from the ScopedEffect records and battlefield statics by the recompute restore forces",
 )
 
 var playerFields = plan(

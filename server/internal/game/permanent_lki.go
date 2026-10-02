@@ -132,6 +132,15 @@ type PermanentInfo struct {
 	// Game.DelvedCardsForEffect. Nil for a permanent that delved
 	// nothing.
 	Delved []ObjectRef `json:"delved,omitempty"`
+
+	// ChosenColor and NamedTribe are the colour and creature type chosen
+	// for it as it entered (Card.ChosenColor, Card.NamedTribe), as it last
+	// existed: Story Circle's and Circle of Solace's "of the chosen
+	// color/type" still name the choice when the ability resolves after
+	// the enchantment has gone (ADR 0107 §6, CR 608.2h). Empty when none
+	// was chosen.
+	ChosenColor string `json:"chosenColor,omitempty"`
+	NamedTribe  string `json:"namedTribe,omitempty"`
 }
 
 // permanentInfoOf reads a battlefield card into a PermanentInfo. The
@@ -147,6 +156,8 @@ func permanentInfoOf(c *Card) PermanentInfo {
 		AttachedTo:     c.AttachedTo,
 		Tapped:         c.Tapped,
 		Delved:         append([]ObjectRef(nil), c.Provenance.Delved...),
+		ChosenColor:    c.ChosenColor,
+		NamedTribe:     c.NamedTribe,
 	}
 }
 

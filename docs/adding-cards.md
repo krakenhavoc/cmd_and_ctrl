@@ -1009,7 +1009,7 @@ things:
 |---|---|
 | a printed number ("enters with three +1/+1 counters") | `Replacements: []game.ReplacementEffect{b10EntersWithCounters(kind, n, label)}` |
 | a count off the BOARD ("…for each Zombie card in your graveyard") | `Replacements: []game.ReplacementEffect{b19EntersWithCountersCounted(kind, count, label)}` |
-| a fact about the ANNOUNCEMENT (X, times kicked, colours spent) | `EntersWithCountersFromCast: []game.EntryCountersFromCast{XCounters(kind)}` |
+| a fact about the ANNOUNCEMENT (X, times kicked, colours spent, mana spent) | `EntersWithCountersFromCast: []game.EntryCountersFromCast{XCounters(kind)}` |
 
 The first two are ordinary CR 614 self-replacements: everything they
 need is reachable from `(g, src)` while the entry window is open. The
@@ -1022,7 +1022,8 @@ from the `StackItem` that is right there
 ([game/entry_counters.go](../server/internal/game/entry_counters.go)), one
 line after escape's `applyAltCostEntryCountersLocked`, so a card file
 declares arithmetic over `game.CastCounts` — `X`, `Kicked`,
-`ColorsSpent` — and nothing else. Constructors:
+`ColorsSpent`, `ManaSpent` (CR 601.2h's "the amount of mana spent to cast
+it", #1735), `Delved` — and nothing else. Constructors:
 `XCounters(kind)`, `CountersPerKick(kind, per)`,
 `SunburstCounters(kind)` in
 [cards/effects/entry_counters.go](../server/internal/cards/effects/entry_counters.go).
@@ -1418,7 +1419,34 @@ Replacements: []game.ReplacementEffect{
 | "except it enters with an additional loyalty counter" | `v.StartingLoyalty++` — NOT `AddCounterAtETB`; the CR 306.5b stamp refuses to run on a walker that already has loyalty counters |
 | "except it's an Illusion in addition to its other types" | `v.AddSubtype("Illusion")` (CR 707.9b). An ADD: the copied Bear stays a Bear. The SET form ("except it's a 4/4 black Zombie") is `retypedTypeLine` in `token_copy.go`, not this |
 | "except it has '\<ability\>'" | `v.GrantAbility("<card>/<what>")` (CR 707.9a), naming a bundle the card declared in `Spec.Grants` — see below |
+| "except … it has flying" (a KEYWORD) | `v.AddKeyword("flying")` (Mockingbird, Cursed Mirror's haste) |
 | branch on what was copied | `v.HasCardType("Creature")` / `"Planeswalker"` / `v.HasSubtype("Illusion")` |
+
+**A candidate filter that reads the CAST (#1735).** "Any creature on the
+battlefield with mana value less than or equal to the amount of mana spent to
+cast this creature" (Mockingbird) depends on the spell, not the board. Use
+`EntersAsCopyOfFromCast`, whose filter also receives the spell's
+`game.CastCounts`:
+
+```go
+EntersAsCopyOfFromCast("Mockingbird",
+    func(g *game.Game, _ uuid.UUID, self uuid.UUID, cast game.CastCounts) []uuid.UUID {
+        return copyCandidates(g, self, func(c game.Card) bool {
+            mv, ok := g.ManaValueForEffect(c)
+            return c.IsCreature() && ok && mv <= cast.ManaSpent
+        })
+    },
+    func(_ *game.ReplacementEvent, v *game.PrintedValues, _ *game.Game, _ *game.Card) {
+        v.AddSubtype("Bird")
+        v.AddKeyword("flying")
+    }),
+```
+
+The counts come from `game.EntryCastCountsForEffect(ev)`, and they are the
+zero value when the permanent was not cast (reanimated, flickered, put onto
+the battlefield) or when the engine did not charge the cast (strict mana
+off). Both read as "nothing was spent", the weaker answer. So a card like this
+carries the strict-mana caveat every mana-spent reader carries.
 
 **Granting an ability (CR 707.9a, #665).** A granted ability is part
 of the COPIABLE VALUES — a Clone copying a Phantasmal Image gets the
@@ -1592,6 +1620,7 @@ canonicalised forms the engine expects. Canonical tokens:
 | `"prowess"` | Prowess (CR 702.108) — #706, the first TRIGGERED keyword in the table: `TriggersForCard` turns each instance on the effective ability list into one trigger (`game/prowess.go`). Cumulative like toxic, so grant it through `game.AppendKeywordAbility`. Never write a prowess trigger by hand — declare the token ([ADR 0014 amendment 2026-09-24](decisions/0014-combat-keywords.md)) |
 | `"evolve"` | Evolve (CR 702.100) — #1805, the second TRIGGERED keyword, built exactly like prowess: one trigger per instance (`game/evolve.go`), the CR 702.100a comparison made on entry and again on resolution (CR 603.4), and `game.EventEvolved` when a counter lands (CR 702.100b) — "whenever this creature evolves" is `WhenThisEvolves(label, effect)`. Cumulative, so grant it through `KeywordGrant` / `game.AppendKeywordAbility`. A creature whose only text is evolve and other tokens here needs no card file. Never write an evolve trigger by hand ([ADR 0106 §3](decisions/0106-five-small-seams-from-the-s50-rechecks.md#3-evolve-1805)) |
 | `"split second"` | Split second (CR 702.61) — #1519, a SPELL's keyword: `castHasSplitSecond` (`game/split_second.go`) stamps `StackItem.SplitSecond` at announce, and while it is on the stack nobody casts or activates a non-mana ability. Declare it on an instant or sorcery exactly like flash; never pass the sandbox `SplitSecond` cast flag from a card ([ADR 0007 amendment 2026-09-24](decisions/0007-stack-foundation.md)) |
+| `"rebound"` | Rebound (CR 702.88) — #1854, a SPELL's keyword read as it RESOLVES: `spellRebounds` (`game/rebound.go`) exiles a spell cast from its controller's hand instead of putting it into the graveyard, and the upkeep delayed trigger `rebound/cast` offers the free cast. Declare it on an instant or sorcery; the card file writes only the rest of its text. To GIVE a spell rebound (or any keyword) on the stack, use `ThatSpellGains{Keywords}` for "that spell gains …" from a cast trigger, and `SpellsYouControlHave(pred, kw…)` for "… spells you control have …" (a static with `AffectsSpells`, which never reaches a permanent); both are applied by the stack step of the layer pass (`game/spell_keywords.go`) ([ADR 0107 §3](decisions/0107-state-triggers-rebound-disturb-and-damage-prevention.md#3-rebound-1854)) |
 
 **A keyword counter needs no grant** (CR 122.1b, [ADR 0101](decisions/0101-keyword-counters.md)).
 "Put a flying counter on it" is `AddCounter{Target: id, Kind:
@@ -1871,6 +1900,26 @@ creature put onto the battlefield attacking (CR 508.4c) ignore it. The
 card shows a "CAN'T ATTACK <name>" chip. A RESOLVED effect that grants
 it (Elrond of the White Council) has no mod kind yet. See
 `xantcha_sleeper_agent.go` for the printed card.
+
+**"Can't attack unless defending player controls an Island"**
+([ADR 0107 §2](decisions/0107-state-triggers-rebound-disturb-and-damage-prevention.md),
+#1879) is the same list's third form. It names what the DEFENDING player
+must control, as `game.PermanentQuery` data (any of the queries given):
+
+```go
+Static: []game.StaticAbility{CantAttackUnlessDefendingPlayerControls(QuerySubtype("Island"))},               // Sea Serpent
+Static: []game.StaticAbility{CantAttackUnlessDefendingPlayerControls(
+    game.PermanentQuery{Types: []string{"enchantment"}}, game.PermanentQuery{Enchanted: true})},           // Godhunter Octopus
+Static: []game.StaticAbility{CantAttackUnlessDefendingPlayerControls(
+    game.PermanentQuery{Types: []string{"creature"}, Keyword: "flying"})},                                  // Lurking Green Dragon
+```
+
+The engine works out each target's defending player (CR 508.5: the
+player, a planeswalker's controller, a battle's protector), so in
+Commander the creature may attack the opponents who control a match and
+nobody else. The chip names each opponent it can't attack and why ("Bob
+controls no Island"). A condition that is not "controls a permanent"
+(poisoned, the monarch, more creatures than you) is not this field.
 
 [ADR 0045](decisions/0045-combat-restrictions.md) has the
 taxonomy, including what the vocabulary deliberately cannot say:
@@ -3454,7 +3503,7 @@ The `Key` is the wire contract: it rides `cast_spell` as
 `alternative_cost`, lands on `StackItem.AltCost`, and the card's
 `OnResolve` branches on `ctx.PaidAltCost("overload")`. Keys must be
 non-empty and unique per card; `Register` panics otherwise. Only
-overload / evoke / cleave / flashback / warp / escape exist, plus the
+overload / evoke / cleave / flashback / warp / escape / disturb exist, plus the
 non-mana prices below (pitch, pay life, return, and since #1727 a
 sacrifice) —
 spree has no shape yet, and a card carrying it ships without it (say
@@ -3518,6 +3567,41 @@ is a *price* rather than a permission:
   other, and escapes again next time. Copying flashback's constructor
   and swapping the key would ship a card that exiles itself, which is
   not what any escape card does.
+
+**Disturb (#1855, [ADR 0107 §4](decisions/0107-state-triggers-rebound-disturb-and-damage-prevention.md#4-disturb-1855))**
+is flashback's cast path with one more clause: `Disturb("{1}{U}")` sets
+`AlternativeCost.CastsFace: 1`, so the spell is the card's **back
+face** (CR 712.11a) and the permanent enters back face up (CR
+702.146b). The front face's entry declares the offer and the zone; the
+back face's entry (`"<oracle_id>#1"`) is the spell, and declares the
+back face's abilities, its target clause (an Aura's
+`EnchantCreature()`), and its exile line:
+
+```go
+Register(Spec{ // Baithook Angler, the front face
+    OracleID:         baithookAnglerOracleID,
+    CastableZones:    []game.ZoneKind{game.ZoneGraveyard},
+    AlternativeCosts: []game.AlternativeCost{Disturb("{1}{U}")},
+})
+Register(Spec{ // Hook-Haunt Drifter, the back face
+    OracleID:        baithookAnglerOracleID + "#1",
+    PrintedKeywords: []string{"flying"},
+    Replacements:    []game.ReplacementEffect{DisturbedExile("Hook-Haunt Drifter")},
+})
+```
+
+`DisturbedExile` is "If [this] would be put into a graveyard from
+anywhere, exile it instead" (`GraveyardBecomesExile{SelfOnly: true}`).
+Disturb has no `ExileOnLeavingStack`: the exile is the back face's own
+replacement, read only while that face is up (CR 712.8a), so a disturbed
+creature that dies, a disturbed Aura that falls off and a disturbed
+spell that is countered are exiled, while the same card discarded from
+a hand goes to the graveyard and can be disturbed. The offer and the
+zone are judged off the front face and everything else off the back
+(CR 712.11d); the cast's mana value is the front face's (CR 712.8c).
+`Register` refuses a face-casting offer on a back face's entry, and the
+cast path refuses one on any card that is not a `transform` card with
+that face.
 
 **A sacrifice as the price (#1727).** "Flashback—Sacrifice three
 creatures" (Dread Return) and "you may sacrifice two Mountains rather
@@ -4372,6 +4456,59 @@ Tide, Bubbling Muck, left to #663).
 [mana_trigger_cards_test.go](../server/internal/cards/effects/mana_trigger_cards_test.go);
 the engine rules themselves are in
 [mana_trigger_test.go](../server/internal/game/mana_trigger_test.go).
+
+### State triggers (ADR 0107, #1858)
+
+"When you control no Islands, sacrifice this creature", "When there are
+five or more plot counters on this enchantment", "When you have 20 or
+more life, you lose the game" are CR 603.8 **state triggers**: they
+trigger when the game is in a state, not when something happens. Declare
+one with the constructors in
+[state_triggers.go](../server/internal/cards/effects/state_triggers.go):
+
+```go
+Triggered: []game.TriggeredAbility{
+    WhenYouControlNo(QuerySubtype("Island"), "Sea Serpent — sacrifice it", SacrificeThisIfStillOnBattlefield),
+    WhenThisHasAtLeast("plot", 5, "Deadly Designs — …", SacrificeThisThen(then)),
+    WhenState("Transcendence — you lose the game", func(g *game.Game, src *game.Card, you uuid.UUID) bool { … }, Do(LoseTheGame{})),
+}
+```
+
+- `WhenYouControlNo`, `WhenYouControlNoOther`, `WhenThereAreNo` and
+  `WhenYouControlAtLeast` take ADR 0107's `game.PermanentQuery`, the same
+  query the serpents' "can't attack unless defending player controls an
+  Island" reads, so the two halves of a card ask one question.
+  `WhenThisHasAtLeast` / `WhenThisHasNo` are counter thresholds on the
+  source; `WhenState` takes any condition.
+- **Never approximate one with an event trigger** (watching a land
+  leave, a counter go on). That triggers once per event instead of once
+  per state and misses every way the state can arise that the card file
+  did not think of.
+- The engine asks the condition after every event and in each pass of
+  the CR 704.3 loop, and latches the ability while an item of it from the
+  same object is waiting, being announced, on the stack or resolving.
+  The card file writes none of that. Register refuses a state trigger
+  with `Watches`, a `Build`, no `Effect` or a zone other than the
+  battlefield.
+- An intervening "if" (CR 603.4, Veiled Crocodile's "if this permanent
+  is an enchantment") goes in the condition AND is checked again in the
+  effect.
+- A condition that is still true after the ability resolves triggers it
+  again (CR 603.8). Make sure the effect changes the state, or that the
+  card really loops (Darksteel Reactor under an opponent's Platinum
+  Angel does: a loop of mandatory actions, CR 104.4b and 732.4, which the
+  loop breaker of ADR 0055 handles).
+- A condition must be a pure read of the board. It runs on every event
+  while its permanent is on the battlefield.
+- The row carries the condition's KEY, not the condition:
+  `TriggeredAbility.State` names a `game.StateCondition` that the
+  constructors file with `game.RegisterStateCondition` under the row's
+  label (`effects.StateKeyFor`), so the ADR 0041 closure ratchet gains no
+  route. Build the row with a constructor in the `Spec` literal, never in
+  a test body: a second registration of one label panics.
+- In a test, push the permanents a condition needs BEFORE the card: a
+  Task Mage Assembly that enters onto an empty board is sacrificed at
+  once, which is the card.
 
 ### Choices made at resolution (#796, #568)
 
@@ -5382,6 +5519,53 @@ exercise the actual card and check controller restrictions and a negative
 cause, not just the helper predicate. The `OncePerBatch` first-event
 limitation and remaining card wave are tracked in
 [ADR 0018's addendum](decisions/0018-triggers-on-the-stack.md#addendum-2026-09-17-trigger-doubling-cr-6032d--accepted).
+
+**The other direction: a trigger suppressor (#1735).** "Creatures
+entering don't cause abilities to trigger" (Torpor Orb), "… entering or
+dying …" (Hushbringer) and "Permanents entering don't cause abilities of
+permanents your opponents control to trigger" (Elesh Norn, Mother of
+Machines) go in `Spec.TriggerSuppressors`, built from
+[trigger_suppression.go](../server/internal/cards/effects/trigger_suppression.go):
+
+```go
+TriggerSuppressors: []game.TriggerSuppressor{CreaturesEnteringDontTrigger("Torpor Orb")},
+
+dying := SuppressesDying(Creature())          // Hushbringer's second half
+dying.Label = "Hushbringer"
+
+s := OfOpponentsPermanents(SuppressesEntering(nil))   // Elesh Norn
+s.Label = "Elesh Norn, Mother of Machines"
+```
+
+A suppressor is not a replacement effect and not an ability removal.
+The event still happens and the permanents keep their abilities. The
+ability just never triggers, so nothing is queued, asked, targeted or
+counted. The harvest asks the suppressors before the once-per-batch
+guard and before the doublers, so a suppressed ability is never doubled.
+The cause helpers share the doubler's `isEntering` / `isDying`, so
+"entering" means the same thing on both halves of Elesh Norn. The filter
+is judged against the entering permanent as it is on the battlefield,
+or the dying one as it last was. `OfOpponentsPermanents` reads the
+source's controller and skips spells, emblems and cards in other zones,
+because none of them is a permanent.
+
+You don't have to choose which board the static is read from; the engine
+does (CR 603.10). An enters trigger is judged after the event, so a
+suppressor that enters together with the creature applies, including its
+own entry, and one that has already left does not. A dies trigger looks
+back in time, so a Hushbringer that dies in the same wipe still stops
+every death in it. Evoke's sacrifice is the creature's own enters
+trigger, so a suppressor keeps an evoked creature on the battlefield.
+That is correct, and the tests pin it. Replacement effects ("enters
+tapped", "enters with counters") and `AsEnters` choices are not
+triggers, so they are never suppressed. Tests:
+[game/trigger_suppression_test.go](../server/internal/game/trigger_suppression_test.go)
+for the rules and
+[effects/trigger_suppression_test.go](../server/internal/cards/effects/trigger_suppression_test.go)
+for the cards. A card test should check the prompt count as well as
+the outcome, because `passPriorityAroundTable` stops at a prompt, and
+an ordering prompt leaves the board looking suppressed. See
+[ADR 0018's 2026-10-01 amendment](decisions/0018-triggers-on-the-stack.md).
 
 ### Emblems (#623)
 

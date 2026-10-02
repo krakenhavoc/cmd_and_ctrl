@@ -199,7 +199,7 @@ func (g *Game) harvestSimultaneousExitLocked(pass *harvestPass) {
 			if t.AppliesTo != nil && !t.AppliesTo(ev, &card, lki, g) {
 				continue
 			}
-			g.harvestMatchLocked(pass, card, lki, t, false)
+			g.harvestMatchLocked(pass, card, lki, t, triggerOfPermanent)
 		}
 	}
 }
