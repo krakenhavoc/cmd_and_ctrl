@@ -460,7 +460,8 @@ func TestSetMonarchForEffectRefusesAPlayerWhoLeft(t *testing.T) {
 
 // TestMonarchCrownPassesToTheNextPlayerWhenTheActiveMonarchLeaves is
 // CR 725.4's second clause: "If the active player is leaving the game
-// …, the next player in turn order becomes the monarch."
+// …, the next player in turn order who can become the monarch becomes
+// the monarch."
 func TestMonarchCrownPassesToTheNextPlayerWhenTheActiveMonarchLeaves(t *testing.T) {
 	g := newFourPlayerActiveGame(t)
 	active, next := g.Seats[0], g.Seats[1]
