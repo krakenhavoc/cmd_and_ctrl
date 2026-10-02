@@ -646,6 +646,16 @@
               Show opponent hand count
               {#if isFresh("display.showOpponentHandCount")}<span class="saved">✓ saved</span>{/if}
             </label>
+
+            <label>
+              <input
+                type="checkbox"
+                checked={$settings.display.artOnlyCards}
+                onchange={(e) => change("display", "artOnlyCards", e.currentTarget.checked)}
+              />
+              Card art only (hover for the full card) — experimental
+              {#if isFresh("display.artOnlyCards")}<span class="saved">✓ saved</span>{/if}
+            </label>
           {:else if activeTab === "gameplay"}
             <h3>Gameplay</h3>
             <label>

@@ -23,7 +23,7 @@
 
   import type { CardView } from "../../protocol";
   import type { CantAttackChip } from "../../cantAttack";
-  import { cardImageURL } from "../../cardImage";
+  import { cardImageURL, tableImageSize } from "../../cardImage";
   import { cardArt } from "../../cardArt";
   import { showsCardBack } from "../../cardBack";
   import { hoveredCard } from "../../cardTypes";
@@ -115,6 +115,11 @@
     // "small" is the default (~146×204) and is what we use everywhere
     // on the table; the hover zoom overlay requests "normal".
     size?: "small" | "normal";
+    // #1954: draw the art crop instead of the full card (the
+    // experimental "card art only" setting). Set by BattlefieldRow
+    // and by Hand for the viewer's own cards; the hover zoom, stack
+    // and every other Card leave it off.
+    artOnly?: boolean;
     // showManaCost renders the S15 cost-chip overlay bottom-left.
     // Enabled by Hand.svelte for the viewer's own hand so they can
     // see what each spell costs without hover-zooming. Hidden on the
@@ -231,6 +236,7 @@
     legal = NO_LEGAL_ACTIONS,
     legalGate = NO_LEGAL_ACTIONS,
     size = "small",
+    artOnly = false,
     showManaCost = false,
     onActivateManaAbility,
     onRawTap,
@@ -313,7 +319,7 @@
   // played as its land half — or, later, a transformed permanent —
   // shows the side that is actually up without this component
   // knowing faces exist.
-  const imgSrc = $derived(cardImageURL(card, size));
+  const imgSrc = $derived(cardImageURL(card, tableImageSize(card, size, artOnly)));
 
   // Real MTG card back bundled as a static asset under client/public.
   // Two sizes to keep hand/battlefield thumbnails snappy while the
