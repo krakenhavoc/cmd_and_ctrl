@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { emit as tutorialEmit } from "../../tutorialBus";
   // Card is the visual primitive for one Magic card in the new HTML/
   // CSS board. Replaces the Pixi CardTile from client/src/lib/card-tile.ts.
   //
@@ -484,6 +485,7 @@
     ev.preventDefault();
     ev.stopPropagation();
     manaMenuOpen = !manaMenuOpen;
+    if (manaMenuOpen) tutorialEmit("ability-menu-opened");
   }
 
   // ADR 0105 §7 (owner decision 6): a pip is the touch route into the
@@ -508,7 +510,10 @@
       openCardMenu({ card, x: r?.right ?? 0, y: r?.top ?? 0 });
       return;
     }
-    if (hasMenu) manaMenuOpen = true;
+    if (hasMenu) {
+      manaMenuOpen = true;
+      tutorialEmit("ability-menu-opened");
+    }
   }
 
   function handlePipKeydown(ev: KeyboardEvent): void {
