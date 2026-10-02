@@ -46,7 +46,7 @@ func init() {
 			}, func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				for _, id := range cityInABottleVictims(g, item.SourceCardID) {
-					if err := (SacrificePermanent{Target: id}).Apply(ctx); err != nil {
+					if err := (SacrificePermanent{Target: id}).Apply(ctx.asGroupMember()); err != nil {
 						return err
 					}
 				}
