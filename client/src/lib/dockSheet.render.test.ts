@@ -19,7 +19,7 @@ vi.mock("./api", async (orig) => ({
 
 import XCostModal from "./components/board/XCostModal.svelte";
 import DockHarness from "./test/DockHarness.svelte";
-import { _resetForTests as resetDock } from "./dock";
+import { _resetForTests as resetDock, pushDockRequest } from "./dock";
 import { _resetForTests as resetModals, foreignModalOpen, modalOpen } from "./modalLayers";
 import { defaultSettings, settings } from "./settings";
 import type { CardView } from "./protocol";
@@ -163,6 +163,29 @@ describe("a dock sheet (the X picker)", () => {
     flushSync();
     expect(sheetPanel()).not.toBeNull();
     expect(dockDialog()!.querySelector("button.sheet-restore")).toBeNull();
+  });
+
+  it("gives way to a stronger request and comes back with its body", () => {
+    mount();
+    const input = sheetPanel()!.querySelector('input[aria-label="X value"]');
+    expect(input).not.toBeNull();
+    // A pending choice outranks a flow: its request is drawn instead,
+    // and the X picker's body leaves the dock.
+    const choice = pushDockRequest({
+      rank: "choice",
+      label: "Reclamation Sage — destroy target artifact?",
+      primary: { id: "yes", label: "Yes", onPress: () => {} },
+      secondary: [],
+    });
+    flushSync();
+    expect(dockDialog()!.getAttribute("aria-label")).toBe(
+      "Reclamation Sage — destroy target artifact?",
+    );
+    expect(dockRegion()!.querySelector('input[aria-label="X value"]')).toBeNull();
+    choice.close();
+    flushSync();
+    // The same node, back in the sheet.
+    expect(sheetPanel()!.querySelector('input[aria-label="X value"]')).toBe(input);
   });
 
   it("closes with the picker, and next comes back", () => {

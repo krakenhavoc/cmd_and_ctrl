@@ -170,6 +170,14 @@ export interface DockSheetSpec {
   // A new key is a new question: a sheet minimised for the last one
   // comes back up. Defaults to the label.
   key?: string;
+  // Moves the sheet's body (rendered in the picker's own component
+  // tree, by DockSheet) into `host`, the dock's sheet panel, and returns
+  // the undo. The dock calls it while this request is the one it draws.
+  // A body rendered by the dock itself, as a snippet, would update in
+  // the dock's effect tree before the picker's `{#if}` closes it, and
+  // read a prompt that is already gone. Without `attach`, the request's
+  // `body` snippet is drawn in the panel instead.
+  attach?: (host: HTMLElement) => () => void;
 }
 
 // ---- a sheet's buttons (PR 6) ----------------------------------------

@@ -176,7 +176,33 @@
   // of the dock. It can be minimised to its question line; the request
   // stays open, its buttons stay in the bar, and a restore chip takes
   // the prompt area. A new question (a new sheet key) comes back up.
-  const sheetOpen = $derived(!!req?.sheet && !!req.body);
+  const sheetOpen = $derived(!!req?.sheet && (!!req.sheet.attach || !!req.body));
+
+  // The sheet's body is the picker's own DOM (DockSheet renders it in
+  // the picker's component tree), moved into the panel while this
+  // request is the one drawn, and moved back out when it is not.
+  // `attachedFor` says whose body is in the panel now, so focus waits
+  // for it.
+  let attachedFor: string | null = $state(null);
+  function hostSheet(host: HTMLElement, attach: ((h: HTMLElement) => () => void) | undefined) {
+    let current = attach;
+    let undo = current ? current(host) : () => {};
+    attachedFor = currentSheetKey;
+    return {
+      update(next: ((h: HTMLElement) => () => void) | undefined): void {
+        if (next !== current) {
+          undo();
+          current = next;
+          undo = current ? current(host) : () => {};
+        }
+        attachedFor = currentSheetKey;
+      },
+      destroy(): void {
+        undo();
+        attachedFor = null;
+      },
+    };
+  }
   const currentSheetKey = $derived(sheetKey(req));
   let minimisedKey: string | null = $state(null);
   const minimised = $derived(
@@ -215,6 +241,9 @@
       if (!key) sheetFocusedFor = null;
       return;
     }
+    // Wait for the body to be in the panel, so a field it marks
+    // `data-sheet-focus` is there to take focus.
+    if (req?.sheet?.attach && attachedFor !== key) return;
     if (sheetFocusedFor === key) return;
     sheetFocusedFor = key;
     // Never out of a text field the player is typing in elsewhere.
@@ -485,13 +514,14 @@
       tabindex={req.focus === "dialog" ? -1 : undefined}
       bind:this={dialogEl}
     >
-      {#if sheetOpen && req.body}
+      {#if sheetOpen}
         <!-- ADR 0111 §3: the sheet grows up out of the dock, right-
              aligned with it. It is inside the request's dialog, so its
              body and the bar's buttons share one dialog (and one name).
              Minimised, it stays mounted (the picker keeps its scroll
              and its fields) and is hidden; the restore chip below
-             brings it back. -->
+             brings it back. The body is the picker's own DOM, moved in
+             (hostSheet); a request without `attach` draws `body`. -->
         <div
           class="dock-sheet"
           class:minimised
@@ -516,9 +546,13 @@
               onclick={minimise}><Icon name="chevron-down" size={14} /></button
             >
           </header>
-          <div class="sheet-body">
-            {@render req.body()}
-          </div>
+          {#if req.sheet?.attach}
+            <div class="sheet-body" use:hostSheet={req.sheet.attach}></div>
+          {:else if req.body}
+            <div class="sheet-body">
+              {@render req.body()}
+            </div>
+          {/if}
           {#if req.sheet?.count}
             <div class="sheet-foot">
               <span class="prompt-count">{req.sheet.count}</span>

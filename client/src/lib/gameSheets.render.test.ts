@@ -327,6 +327,55 @@ describe("the opening hand, as a dock sheet (decision 2)", () => {
   });
 });
 
+// The e2e scry caught this: in Game.svelte the dock comes BEFORE
+// ChoicePromptModal, so a sheet body the dock rendered as a snippet
+// updated before the modal's `{#if}` closed it, and read the prompt
+// after it was gone (`active.count` of null). The body is the picker's
+// own DOM now, moved into the dock, so it closes with its `{#if}`.
+describe("a pending-choice sheet closing on a new frame (through the Game route)", () => {
+  const scryTable = () =>
+    table({
+      pending_choices: [
+        {
+          id: "scry-1",
+          kind: "scry",
+          chooser: ME,
+          from_player: ME,
+          count: 1,
+          reason: "Scry 1",
+          options: [card("top", "Forest")],
+        },
+      ],
+    } as never);
+
+  it("answers the scry from the bar, then closes cleanly when the prompt goes", async () => {
+    const errors: unknown[] = [];
+    const onError = (e: ErrorEvent) => errors.push(e.error ?? e.message);
+    window.addEventListener("error", onError);
+    try {
+      const c = await mountGame(scryTable());
+      const dlg = expectSheet(c, "Scry 1");
+      click(buttonNamed(dlg, "put Forest on the bottom")!);
+      click(dlg.querySelector<HTMLButtonElement>(".dock-bar .request-primary")!);
+      const sent = FakeSocket.last!.actions("resolve_choice");
+      expect(sent).toHaveLength(1);
+      expect(sent[0].payload?.params).toEqual({
+        choice_id: "scry-1",
+        bottom: ["top"],
+        top_order: [],
+      });
+      // The server drains the prompt.
+      expect(() => snapshot(table())).not.toThrow();
+      expect(dialogNamed(c, "Scry 1")).toBeNull();
+      expect(c.querySelector(".dock-sheet")).toBeNull();
+      expect(dockOf(c).querySelector(".dock-btn.next")).not.toBeNull();
+      expect(errors).toEqual([]);
+    } finally {
+      window.removeEventListener("error", onError);
+    }
+  });
+});
+
 describe("the discard to hand size, as a dock sheet", () => {
   it("opens as a sheet named 'Discard 1 card' with the hand as its grid", async () => {
     const c = await mountGame(discardTable());

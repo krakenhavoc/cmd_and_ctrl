@@ -18,7 +18,8 @@
   //
   // The body stays the picker's: its state, its validation and its
   // handlers live in the component that mounts this, exactly as they
-  // did in its modal. What changes is where it is drawn, and that its
+  // did in its modal, and so does its DOM, which is only MOVED into the
+  // dock's panel (see `attach` below). What changes is where it is drawn, and that its
   // footer is gone: the confirm and cancel are `primary` / `secondary`,
   // and a key presses the one that advertises it (`keyShortcuts:
   // "Enter"` / `"Escape"`) through the dock's one key handler. So the
@@ -31,7 +32,7 @@
   // It also registers a "sheet" modal layer: the global shortcuts stand
   // down while it is open (Space must not pass priority under an open
   // cost picker), and the dock's Enter / Escape do not.
-  import type { Snippet } from "svelte";
+  import { onDestroy, type Snippet } from "svelte";
   import type { DockAction, DockRank, DockRefusal } from "../../dock";
   import DockRequest from "./DockRequest.svelte";
   import ModalLayer from "../ModalLayer.svelte";
@@ -68,16 +69,62 @@
     children,
   }: Props = $props();
 
+  // The body is rendered HERE, in the picker's own component tree, and
+  // its DOM is moved into the dock's sheet panel while this request is
+  // the one the dock draws (`attach`). It is not handed to the dock as a
+  // snippet: a snippet rendered inside ActionDock runs in the dock's
+  // effect tree, which in Game.svelte updates BEFORE the picker's own
+  // `{#if}` tears it down, so a body reading `active.count` threw on the
+  // frame its prompt closed (the scry e2e caught it). Rendered here, the
+  // body lives and dies with the `{#if}` that guards it, exactly as the
+  // modal's did; only its nodes sit in the dock.
+  let home: HTMLElement | null = $state(null);
+  let content: HTMLElement | null = $state(null);
+  //
+  // This is a portal, so it moves one element by hand. That is safe for
+  // the Svelte runtime: it only ever moves `content`, a whole element
+  // whose children Svelte keeps anchored inside it, and puts it back (or
+  // removes it, on destroy) itself; Svelte never inserts beside it.
+  function attach(host: HTMLElement): () => void {
+    const el = content;
+    if (!el) return () => {};
+    host.appendChild(el);
+    return () => {
+      // eslint-disable-next-line svelte/no-dom-manipulating -- the portal above
+      if (el.parentNode === host) home?.appendChild(el);
+    };
+  }
+  // eslint-disable-next-line svelte/no-dom-manipulating -- the portal above
+  onDestroy(() => content?.remove());
+
   const request = $derived({
     rank,
     label,
     primary,
     secondary,
     refusal,
-    body: children,
-    sheet: { title: title ?? label, src, count, width, key: sheetKey },
+    sheet: { title: title ?? label, src, count, width, key: sheetKey, attach },
   });
 </script>
 
 <ModalLayer kind="sheet" />
 <DockRequest {request} />
+<div class="sheet-home" hidden bind:this={home}>
+  <div class="sheet-content" bind:this={content}>
+    {@render children()}
+  </div>
+</div>
+
+<style>
+  .sheet-home {
+    display: none;
+  }
+  /* Moved into the dock's `.sheet-body`; stacks the body as the
+     modal's panel did. */
+  .sheet-content {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-width: 0;
+  }
+</style>
