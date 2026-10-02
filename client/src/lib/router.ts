@@ -60,6 +60,9 @@ export type Route =
   // person holds, with a way back into the open ones. Session-gated;
   // the page itself explains what a guest or admin session is missing.
   | { name: "myGames" }
+  // "My decks" (ADR 0110 section 6): the saved deck library with each
+  // deck's coverage, rename and delete. Session-gated.
+  | { name: "myDecks" }
   // S12.5: /auth/discord/callback (server-side) redirects here with
   // the session details in the URL fragment. App.svelte's effect
   // reads them, installs the session, and navigates onward.
@@ -116,6 +119,8 @@ export function parseHash(hash: string): Route {
     }
     case "my-games":
       return { name: "myGames" };
+    case "decks":
+      return { name: "myDecks" };
     case "games":
       // /games/:id/join?t=<token> → Join
       // /games/:id                → Game

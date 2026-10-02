@@ -89,6 +89,14 @@
           onclick={closeMenu}>My games</a
         >
       {/if}
+      {#if hasLinkedUser}
+        <a
+          href="#/decks"
+          class:current={current("myDecks")}
+          aria-current={current("myDecks") ? "page" : undefined}
+          onclick={closeMenu}>My decks</a
+        >
+      {/if}
       {#if isSignedIn}
         <a
           href="#/catalog"

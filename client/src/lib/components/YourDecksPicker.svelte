@@ -2,7 +2,7 @@
   import { onMount } from "svelte";
   import { fetchMyDecks, seatLibraryDeck, type UploadDeckResponse } from "../api";
   import { LobbyApiError, session, type ApiViolation } from "../session";
-  import { deckSubtitle, isSignedIn, type MyDeckInfo } from "../myDecks";
+  import { coverageLine, deckSubtitle, isSignedIn, type MyDeckInfo } from "../myDecks";
   import Icon from "./Icon.svelte";
 
   // YourDecksPicker is the deck-library half of the deck panel (ADR
@@ -100,6 +100,9 @@
             <span class="body">
               <span class="name">{deck.name}</span>
               <span class="sub">{deckSubtitle(deck)}</span>
+              {#if coverageLine(deck)}
+                <span class="cov">{coverageLine(deck)}</span>
+              {/if}
             </span>
           </label>
         </li>
@@ -182,6 +185,10 @@
   .sub {
     font-size: 11.5px;
     color: var(--fg-dim);
+  }
+  .cov {
+    font-size: 11.5px;
+    color: var(--mint);
   }
   .row-actions {
     display: flex;

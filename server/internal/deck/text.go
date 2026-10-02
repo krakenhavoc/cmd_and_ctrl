@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards"
 )
 
 // ParseText parses a plain-text decklist. The dialect is the union
@@ -180,4 +182,33 @@ func stripCommanderMarker(name string) (string, bool) {
 		}
 	}
 	return name, false
+}
+
+// Text renders a resolved list as the plain-text dialect ParseText
+// reads, so a deck fetched from a link can be stored as a list (ADR
+// 0110 owner decision 7) and re-seated without the network. Copies are
+// grouped by card name in first-seen order.
+func (l *List) Text() string {
+	var b strings.Builder
+	section := func(header string, cs []cards.Card) {
+		if len(cs) == 0 {
+			return
+		}
+		var order []string
+		n := map[string]int{}
+		for _, c := range cs {
+			if n[c.Name] == 0 {
+				order = append(order, c.Name)
+			}
+			n[c.Name]++
+		}
+		b.WriteString(header + "\n")
+		for _, name := range order {
+			fmt.Fprintf(&b, "%d %s\n", n[name], name)
+		}
+	}
+	section("Commander:", l.Commanders)
+	section("Mainboard:", l.Mainboard)
+	section("Sideboard:", l.Sideboard)
+	return b.String()
 }

@@ -14,6 +14,7 @@
   import Game from "./routes/Game.svelte";
   import Catalog from "./routes/Catalog.svelte";
   import MyGames from "./routes/MyGames.svelte";
+  import MyDecks from "./routes/MyDecks.svelte";
   import Home from "./routes/Home.svelte";
   import Roadmap from "./routes/Roadmap.svelte";
   import DeckCheck from "./routes/DeckCheck.svelte";
@@ -142,6 +143,8 @@
   <Catalog />
 {:else if $route.name === "myGames"}
   <MyGames />
+{:else if $route.name === "myDecks"}
+  <MyDecks />
 {:else if $route.name === "join"}
   <Join gameID={$route.gameID} inviteToken={$route.inviteToken} spectator={$route.spectator} />
 {:else if $route.name === "reclaim"}

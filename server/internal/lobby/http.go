@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/google/uuid"
 
@@ -20,7 +21,9 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/auth"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/bugstore"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/catalog"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/deck"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/deckcoverage"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/decklibrary"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/deckrequests"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/discord"
@@ -492,7 +495,17 @@ func Handler(c Config) http.Handler {
 	// Any authenticated role reaches the handler; it 401s itself for a
 	// principal with no UserID (a guest, an admin, or an identified
 	// session from a no-database deployment).
-	mux.Handle("GET /me/decks", auth.Middleware(c.Auth)(handlerFunc(c, myDecks)))
+	//
+	// ADR 0110 section 6 adds the report, rename and delete. Every one
+	// is the caller's own library: a deck that is not theirs is a 404,
+	// so an id reveals nothing. A caller with no UserID is a 403 on the
+	// writes and a 401 on the reads, as GET /me/decks always was. The
+	// reads compute coverage, so all four share a 1/s, burst-5 bucket.
+	libraryLimit := newLimiter(1, 5)
+	mux.Handle("GET /me/decks", libraryLimit.Middleware(auth.Middleware(c.Auth)(handlerFunc(c, myDecks))))
+	mux.Handle("GET /me/decks/{id}/coverage", libraryLimit.Middleware(auth.Middleware(c.Auth)(handlerFunc(c, myDeckCoverage))))
+	mux.Handle("PATCH /me/decks/{id}", libraryLimit.Middleware(auth.Middleware(c.Auth)(handlerFunc(c, renameMyDeck))))
+	mux.Handle("DELETE /me/decks/{id}", libraryLimit.Middleware(auth.Middleware(c.Auth)(handlerFunc(c, deleteMyDeck))))
 
 	// Develop-environment card spawner (ADR 0023). Both routes are
 	// wrapped in requireDevFeature: in production they are 404s, and
@@ -2215,6 +2228,10 @@ type uploadDeckResponse struct {
 	// Distinct names in decklist order, deduped — a deck with four
 	// Lightning Bolts wants to hear about Lightning Bolt once.
 	Unimplemented []string `json:"unimplemented,omitempty"`
+	// LibraryNote is a player sentence when the deck was seated but
+	// could not be saved to the library: today only the 200-deck cap
+	// (decklibrary.ErrLibraryFull, ADR 0110 section 6).
+	LibraryNote string `json:"library_note,omitempty"`
 }
 
 // detectDeckFormat guesses a decklist's format from its first non-
@@ -2454,7 +2471,11 @@ func uploadDeck(c Config, w http.ResponseWriter, r *http.Request) error {
 	// Save to the caller's deck library (ADR 0051 decision 7, S34
 	// sub-PR 5) — see saveToLibrary for exactly when this does
 	// something and the seats.deck_id it leaves behind.
-	libraryDeckID := saveToLibrary(r.Context(), c, p, deckID, format, source, list, commanders)
+	libraryDeckID, libraryErr := saveToLibrary(r.Context(), c, p, deckID, format, source, list, commanders)
+	libraryNote := ""
+	if errors.Is(libraryErr, decklibrary.ErrLibraryFull) {
+		libraryNote = fmt.Sprintf("Your deck library is full (%d decks), so this deck was seated but not saved. Delete one on the Decks page to make room.", decklibrary.MaxDecks)
+	}
 	if serr := c.Lobby.SetSeatDeckID(id, body.PlayerID, libraryDeckID); serr != nil {
 		logDeckLibraryWarning(c, "set seat deck_id failed", serr, "game_id", id, "player_id", body.PlayerID)
 	}
@@ -2467,6 +2488,7 @@ func uploadDeck(c Config, w http.ResponseWriter, r *http.Request) error {
 		Commanders:    commanders,
 		Warnings:      warnings,
 		Unimplemented: game.UnimplementedNames(gameCards),
+		LibraryNote:   libraryNote,
 	})
 }
 
@@ -2482,17 +2504,18 @@ func uploadDeck(c Config, w http.ResponseWriter, r *http.Request) error {
 //     "source" it hands resolveDeckSource is the catalog's TEXT, not
 //     anything the player pasted.
 //   - p.UserID must be non-zero — guests have nowhere to own a row.
-//   - resolvedFormat must be "moxfield" or "text", matching
-//     decks.source_format. A "url" request's source is a link, not
-//     the decklist text decision 7 means by "what the player pasted";
-//     re-seating from it would mean a network call at seat time
-//     rather than a re-parse of stored text, which is not what a
-//     library is for.
+//   - resolvedFormat must be "moxfield", "text" or "url". A "url"
+//     request is saved as the list the fetcher returned, rendered as
+//     text, with the link beside it in decks.source_url (ADR 0110 owner
+//     decision 7), so re-seating it re-parses the stored list and never
+//     calls the network. A link that does not parse as a deck link is
+//     not saved.
 //
 // A save failure is logged and does not fail the request: SetDeck has
 // already installed the deck on the seat by the time this runs, and
 // telling the player their upload failed when it didn't would be
-// worse than a library row they can save again by re-uploading.
+// worse than a library row they can save again by re-uploading. The
+// error is returned so the caller can say so when it is the cap.
 //
 // The update rule (documented on decklibrary.Store.Upsert and in
 // docs/lobby.md): a row already owned by this caller with the same
@@ -2500,28 +2523,40 @@ func uploadDeck(c Config, w http.ResponseWriter, r *http.Request) error {
 // plain-text paste carries no name of its own (deck.ParseText has
 // nowhere to put one), so an empty list.Name falls back to the first
 // commander's name rather than saving a blank row every time.
-func saveToLibrary(ctx context.Context, c Config, p auth.Principal, deckID, format, source string, list *deck.List, commanders []string) string {
+func saveToLibrary(ctx context.Context, c Config, p auth.Principal, deckID, format, source string, list *deck.List, commanders []string) (string, error) {
 	if deckID != "" || p.UserID == uuid.Nil || c.DeckLibrary == nil {
-		return ""
+		return "", nil
 	}
 	resolvedFormat := format
 	if resolvedFormat == "" {
 		resolvedFormat = detectDeckFormat(source)
-	}
-	if resolvedFormat != "text" && resolvedFormat != "moxfield" {
-		return ""
 	}
 	name := list.Name
 	if name == "" {
 		name = libraryFallbackName(list)
 	}
 	cardCount := len(list.Commanders) + len(list.Mainboard)
-	saved, err := c.DeckLibrary.Upsert(ctx, p.UserID, name, resolvedFormat, source, commanders, cardCount)
+	var (
+		saved decklibrary.Deck
+		err   error
+	)
+	switch resolvedFormat {
+	case "text", "moxfield":
+		saved, err = c.DeckLibrary.Upsert(ctx, p.UserID, name, resolvedFormat, source, commanders, cardCount)
+	case "url":
+		ref, perr := deck.ParseDeckURL(strings.TrimSpace(source))
+		if perr != nil {
+			return "", nil
+		}
+		saved, err = c.DeckLibrary.UpsertFromLink(ctx, p.UserID, name, "text", list.Text(), ref.URL(), commanders, cardCount)
+	default:
+		return "", nil
+	}
 	if err != nil {
 		logDeckLibraryWarning(c, "save deck to library failed", err, "user_id", p.UserID)
-		return ""
+		return "", err
 	}
-	return saved.ID.String()
+	return saved.ID.String(), nil
 }
 
 // libraryFallbackName names a deck being saved to the library when
@@ -2639,6 +2674,19 @@ func seatLibraryDeck(c Config, w http.ResponseWriter, r *http.Request) error {
 	})
 }
 
+// myDeckCoverageInfo is a saved deck's coverage on read (ADR 0110
+// section 6): the five ADR 0095 bucket counts by distinct card, the
+// names the index could not resolve, and "N of M play as printed".
+// It is computed per request and never stored.
+type myDeckCoverageInfo struct {
+	Counts  map[deckcoverage.Bucket]int `json:"counts"`
+	Unknown int                         `json:"unknown"`
+	// AsPrinted counts automated plus no_effect cards; Resolved is
+	// every distinct card the report bucketed.
+	AsPrinted int `json:"as_printed"`
+	Resolved  int `json:"resolved"`
+}
+
 // myDeckInfo is one entry in GET /me/decks.
 type myDeckInfo struct {
 	ID         string    `json:"id"`
@@ -2646,6 +2694,12 @@ type myDeckInfo struct {
 	Commanders []string  `json:"commanders"`
 	CardCount  int       `json:"card_count"`
 	UpdatedAt  time.Time `json:"updated_at"`
+	// SourceURL is the link the deck was imported from, absent for a
+	// pasted or uploaded one.
+	SourceURL string `json:"source_url,omitempty"`
+	// Coverage is absent when this server has no card index or the
+	// stored list no longer parses.
+	Coverage *myDeckCoverageInfo `json:"coverage,omitempty"`
 }
 
 // myDecksResponse is the body of GET /me/decks.
@@ -2653,8 +2707,66 @@ type myDecksResponse struct {
 	Decks []myDeckInfo `json:"decks"`
 }
 
+// libraryOwner returns the caller's UserID for a library route, or the
+// refusal: 401 for a read, 403 for a write, from a principal that
+// carries no UserID (a guest, an admin, a no-database deployment).
+func libraryOwner(r *http.Request, write bool) (uuid.UUID, error) {
+	p, ok := auth.PrincipalFromContext(r.Context())
+	if !ok {
+		return uuid.Nil, httpError(http.StatusInternalServerError, "missing principal")
+	}
+	if p.UserID == uuid.Nil {
+		if write {
+			return uuid.Nil, httpError(http.StatusForbidden, "sign-in required")
+		}
+		return uuid.Nil, httpError(http.StatusUnauthorized, "sign-in required")
+	}
+	return p.UserID, nil
+}
+
+// libraryStore is the configured store, or NoStore.
+func (c Config) libraryStore() decklibrary.Store {
+	if c.DeckLibrary == nil {
+		return decklibrary.NoStore{}
+	}
+	return c.DeckLibrary
+}
+
+// libraryDeckEntries re-parses a saved deck's stored source, the same
+// parse a seat takes (ADR 0051 decision 7).
+func libraryDeckEntries(d decklibrary.Deck) ([]deck.Entry, string, error) {
+	switch d.SourceFormat {
+	case "text":
+		e, err := deck.ParseText(d.SourceText)
+		return e, "", err
+	case "moxfield":
+		name, e, err := deck.ParseMoxfield([]byte(d.SourceText))
+		return e, name, err
+	}
+	return nil, "", fmt.Errorf("unknown source format %q", d.SourceFormat)
+}
+
+// libraryDeckReport builds one saved deck's full coverage report with
+// the verdicts the caller already built.
+func libraryDeckReport(c Config, d decklibrary.Deck, verdicts map[string]catalog.Entry) (*deckcoverage.Report, error) {
+	entries, _, err := libraryDeckEntries(d)
+	if err != nil {
+		return nil, err
+	}
+	source := "text"
+	if d.SourceURL != "" {
+		if ref, rerr := deck.ParseDeckURL(d.SourceURL); rerr == nil {
+			source = ref.Source
+		}
+	}
+	return deckcoverage.BuildWith(c.Cards, deckcoverage.Deck{
+		Name: d.Name, Source: source, SourceURL: d.SourceURL, Entries: entries,
+	}, verdicts)
+}
+
 // myDecks handles GET /me/decks: the caller's saved decks (ADR 0051
-// decision 7, S34 sub-PR 5), newest updated first.
+// decision 7, S34 sub-PR 5), newest updated first, each with its
+// coverage computed now (ADR 0110 section 6).
 //
 // 401 for any principal without a UserID — a guest's RolePlayer
 // session, an admin session, or an identified session minted by a
@@ -2663,20 +2775,18 @@ type myDecksResponse struct {
 // nothing partial to show: a UserID-less principal owns no decks by
 // construction (decklibrary.Store.Upsert requires one).
 func myDecks(c Config, w http.ResponseWriter, r *http.Request) error {
-	p, ok := auth.PrincipalFromContext(r.Context())
-	if !ok {
-		return httpError(http.StatusInternalServerError, "missing principal")
-	}
-	if p.UserID == uuid.Nil {
-		return httpError(http.StatusUnauthorized, "sign-in required")
-	}
-	library := c.DeckLibrary
-	if library == nil {
-		library = decklibrary.NoStore{}
-	}
-	decks, err := library.List(r.Context(), p.UserID)
+	owner, err := libraryOwner(r, false)
 	if err != nil {
 		return err
+	}
+	decks, err := c.libraryStore().List(r.Context(), owner)
+	if err != nil {
+		return err
+	}
+	// One catalog.Build for the whole request, shared by every deck.
+	var verdicts map[string]catalog.Entry
+	if c.Cards != nil && len(decks) > 0 {
+		verdicts, _ = deckcoverage.Verdicts(c.Cards)
 	}
 	out := make([]myDeckInfo, 0, len(decks))
 	for _, d := range decks {
@@ -2684,15 +2794,138 @@ func myDecks(c Config, w http.ResponseWriter, r *http.Request) error {
 		if commanders == nil {
 			commanders = []string{}
 		}
-		out = append(out, myDeckInfo{
+		info := myDeckInfo{
 			ID:         d.ID.String(),
 			Name:       d.Name,
 			Commanders: commanders,
 			CardCount:  d.CardCount,
 			UpdatedAt:  d.UpdatedAt,
-		})
+			SourceURL:  d.SourceURL,
+		}
+		if verdicts != nil {
+			if rep, rerr := libraryDeckReport(c, d, verdicts); rerr == nil {
+				n, m := rep.AsPrinted()
+				info.Coverage = &myDeckCoverageInfo{
+					Counts: rep.Counts, Unknown: len(rep.Unknown), AsPrinted: n, Resolved: m,
+				}
+			}
+		}
+		out = append(out, info)
 	}
 	return writeJSON(w, http.StatusOK, myDecksResponse{Decks: out})
+}
+
+// ownedLibraryDeck loads {id} from the path and returns it only when
+// the caller owns it; anything else is a 404, so an id reveals nothing.
+func ownedLibraryDeck(c Config, r *http.Request, owner uuid.UUID) (decklibrary.Deck, error) {
+	id, err := uuid.Parse(r.PathValue("id"))
+	if err != nil {
+		return decklibrary.Deck{}, httpError(http.StatusNotFound, "deck not found")
+	}
+	d, err := c.libraryStore().Get(r.Context(), id)
+	if errors.Is(err, decklibrary.ErrNotFound) || (err == nil && d.OwnerID != owner) {
+		return decklibrary.Deck{}, httpError(http.StatusNotFound, "deck not found")
+	}
+	return d, err
+}
+
+// myDeckCoverage handles GET /me/decks/{id}/coverage: the full ADR 0095
+// report for one saved deck, so the library can offer "Request these
+// cards" through POST /deck-requests.
+func myDeckCoverage(c Config, w http.ResponseWriter, r *http.Request) error {
+	owner, err := libraryOwner(r, false)
+	if err != nil {
+		return err
+	}
+	d, err := ownedLibraryDeck(c, r, owner)
+	if err != nil {
+		return err
+	}
+	if c.Cards == nil {
+		return httpError(http.StatusServiceUnavailable, "the card index is not loaded on this server")
+	}
+	verdicts, err := deckcoverage.Verdicts(c.Cards)
+	if err != nil {
+		return httpError(http.StatusServiceUnavailable, "the card index is not loaded on this server")
+	}
+	rep, err := libraryDeckReport(c, d, verdicts)
+	if err != nil {
+		return httpError(http.StatusUnprocessableEntity, "that saved deck could not be read: "+err.Error())
+	}
+	return writeJSON(w, http.StatusOK, rep)
+}
+
+// maxDeckNameLen bounds a renamed deck's name.
+const maxDeckNameLen = 100
+
+// renameMyDeck handles PATCH /me/decks/{id} with {"name"}: 409 when the
+// caller already has another deck by that name (the upsert rule keys on
+// the name), 404 for a deck that is not theirs.
+func renameMyDeck(c Config, w http.ResponseWriter, r *http.Request) error {
+	owner, err := libraryOwner(r, true)
+	if err != nil {
+		return err
+	}
+	var body struct {
+		Name string `json:"name"`
+	}
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4<<10)).Decode(&body); err != nil {
+		return httpError(http.StatusBadRequest, "invalid JSON body")
+	}
+	name := strings.TrimSpace(body.Name)
+	if name == "" {
+		return httpError(http.StatusBadRequest, "a deck needs a name")
+	}
+	if utf8.RuneCountInString(name) > maxDeckNameLen {
+		return httpError(http.StatusBadRequest, fmt.Sprintf("a deck name is at most %d characters", maxDeckNameLen))
+	}
+	d, err := ownedLibraryDeck(c, r, owner)
+	if err != nil {
+		return err
+	}
+	renamed, err := c.libraryStore().Rename(r.Context(), owner, d.ID, name)
+	switch {
+	case errors.Is(err, decklibrary.ErrNotFound):
+		return httpError(http.StatusNotFound, "deck not found")
+	case errors.Is(err, decklibrary.ErrNameTaken):
+		return httpError(http.StatusConflict, "you already have a deck with that name")
+	case err != nil:
+		return err
+	}
+	return writeJSON(w, http.StatusOK, myDeckInfo{
+		ID: renamed.ID.String(), Name: renamed.Name, Commanders: nonNil(renamed.Commanders),
+		CardCount: renamed.CardCount, UpdatedAt: renamed.UpdatedAt, SourceURL: renamed.SourceURL,
+	})
+}
+
+func nonNil(s []string) []string {
+	if s == nil {
+		return []string{}
+	}
+	return s
+}
+
+// deleteMyDeck handles DELETE /me/decks/{id}. The store nulls
+// seats.deck_id in the same transaction; this also clears the lobby's
+// in-memory copy so a later seat write does not put the dead id back.
+func deleteMyDeck(c Config, w http.ResponseWriter, r *http.Request) error {
+	owner, err := libraryOwner(r, true)
+	if err != nil {
+		return err
+	}
+	d, err := ownedLibraryDeck(c, r, owner)
+	if err != nil {
+		return err
+	}
+	if err := c.libraryStore().Delete(r.Context(), owner, d.ID); err != nil {
+		if errors.Is(err, decklibrary.ErrNotFound) {
+			return httpError(http.StatusNotFound, "deck not found")
+		}
+		return err
+	}
+	c.Lobby.ForgetLibraryDeck(d.ID.String())
+	w.WriteHeader(http.StatusNoContent)
+	return nil
 }
 
 // addBotRequest is the request shape for POST /games/{id}/seats/bot.
