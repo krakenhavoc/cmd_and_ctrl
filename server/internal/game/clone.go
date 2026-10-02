@@ -314,6 +314,9 @@ func (g *Game) cloneLocked() *Game {
 	// swallow the re-done one.
 	out.eventBatch = g.eventBatch
 	out.oncePerBatchFired = copyStringUint64Map(g.oncePerBatchFired)
+	// ADR 0107 §6: owed follow-ups rewind with the shields they belong
+	// to. Copy on write everywhere, so the slice is shared.
+	out.preventionFollowUps = g.preventionFollowUps
 	// #830: the block declaration's announcements rewind with the
 	// declaration. An undo across a re-point that kept them would
 	// swallow the re-done "becomes blocked"; dropping them would
@@ -994,6 +997,7 @@ func (g *Game) RestoreFrom(src *Game) {
 	// cloneLocked.
 	g.eventBatch = src.eventBatch
 	g.oncePerBatchFired = src.oncePerBatchFired
+	g.preventionFollowUps = src.preventionFollowUps
 	// #830 / #859: see cloneLocked — the announcements rewind with
 	// the declarations they describe.
 	g.announcedBlocks = src.announcedBlocks

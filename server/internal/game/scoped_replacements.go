@@ -19,12 +19,16 @@ import (
 // the closure captured), and the Whip of Erebos / unearth redirect
 // ended at cleanup whatever had happened to the creature (#1591).
 //
-// WHAT IT IS NOW. Four mod kinds whose reader is the replacement
-// gather rather than the layer pass (modKindSpec.reader):
+// WHAT IT IS NOW. Mod kinds whose reader is the replacement gather
+// rather than the layer pass (modKindSpec.reader):
 //
 //   - preventCombatDamage — Fog, Holy Day, Tangle, Constant Mists, and
 //     with Player set, Druid's Deliverance;
-//   - preventDamage — Mending Hands' charged shield;
+//   - preventDamage — Mending Hands' charged shield (CR 615.7);
+//   - preventNextFromSource — the Circles of Protection's one-use
+//     shield against the next damage from a source (CR 615.8, ADR 0107
+//     §6, prevent_next_from_source.go);
+//   - gainNoLife — Flames of the Blood Hand (ADR 0107 §5);
 //   - exileInsteadOfLeaving — the Whip's and unearth's redirect,
 //     INDEFINITE and pinned to the returned object, so it lasts exactly
 //     as long as that object is on the battlefield (#1591);
@@ -137,7 +141,7 @@ var (
 // pre-filter the gather applies before it builds anything.
 func scopedReplacementWatches(kind ModKind) []EventKind {
 	switch kind {
-	case ModPreventCombatDamage, ModPreventDamage:
+	case ModPreventCombatDamage, ModPreventDamage, ModPreventNextFromSource:
 		return watchDamage
 	case ModExileInsteadOfLeaving, ModExileInsteadOfGraveyard:
 		return watchZoneMove
@@ -148,7 +152,7 @@ func scopedReplacementWatches(kind ModKind) []EventKind {
 }
 
 // ---------------------------------------------------------------
-// Registration — the only writers of the four kinds
+// Registration — the only writers of these kinds
 // ---------------------------------------------------------------
 
 // PreventCombatDamageThisTurnForEffect is "prevent all combat damage
@@ -163,7 +167,7 @@ func (g *Game) PreventCombatDamageThisTurnForEffect(sourceID, player uuid.UUID, 
 		[]Mod{{Kind: ModPreventCombatDamage, Player: player}}, g.UntilEndOfTurnDuration(), label)
 }
 
-// PreventNextDamageThisTurnForEffect is the charged shield (CR 615.8):
+// PreventNextDamageThisTurnForEffect is the charged shield (CR 615.7):
 // "prevent the next `amount` damage that would be dealt to <target>
 // this turn". `target` is a player or a permanent. A shield on a
 // permanent is pinned to that object (CR 400.7), so it neither follows
@@ -299,7 +303,7 @@ func (g *Game) scopedReplacementsWatchLocked(kind ReplacementEventKind) bool {
 func scopedReplacementEffect(seq int64, mod int, kind ModKind, label string) ReplacementEffect {
 	eff := ReplacementEffect{
 		Watches: scopedReplacementWatches(kind),
-		// CR 615.1a: both damage shields say "prevent", so CR 615.12
+		// CR 615.1a: the three damage shields say "prevent", so CR 615.12
 		// reads them (unpreventable_damage.go). The two exile
 		// redirects and "gains no life instead" are replacements.
 		Prevention: scopedKindPrevents(kind),
@@ -316,7 +320,7 @@ func scopedReplacementEffect(seq int64, mod int, kind ModKind, label string) Rep
 		},
 		Controller: func(_ *ReplacementEvent, g *Game, _ *Card) uuid.UUID {
 			switch kind {
-			case ModPreventCombatDamage, ModPreventDamage:
+			case ModPreventCombatDamage, ModPreventDamage, ModPreventNextFromSource:
 				// CR 616.1 gives the ordering choice to the AFFECTED
 				// player — whoever is being dealt the damage — so a
 				// prevention shield reports no controller (S17's Fog).
@@ -336,7 +340,7 @@ func scopedReplacementEffect(seq int64, mod int, kind ModKind, label string) Rep
 // scopedKindPrevents reports whether a replacement kind is a CR 615
 // prevention effect.
 func scopedKindPrevents(kind ModKind) bool {
-	return kind == ModPreventCombatDamage || kind == ModPreventDamage
+	return kind == ModPreventCombatDamage || kind == ModPreventDamage || kind == ModPreventNextFromSource
 }
 
 // scopedReplacementAppliesLocked is the AppliesTo of each kind. Caller
@@ -375,6 +379,8 @@ func scopedReplacementAppliesLocked(g *Game, e ScopedEffect, m Mod, ev *Replacem
 		// CR 119.10: "if a player would gain life" — a positive change
 		// only. A gain of 0 is no life gain event at all.
 		return ev.Kind == RepEventLife && ev.LifeDelta > 0 && ev.LifePlayer == m.Player
+	case ModPreventNextFromSource:
+		return g.nextFromSourceAppliesLocked(e, m, ev)
 	}
 	return false
 }
@@ -401,8 +407,10 @@ func (g *Game) applyScopedReplacementLocked(e ScopedEffect, mod int, m Mod, ev *
 	switch m.Kind {
 	case ModPreventCombatDamage:
 		ev.Cancel()
+	case ModPreventNextFromSource:
+		g.applyNextFromSourceLocked(e, mod, m, ev)
 	case ModPreventDamage:
-		// CR 615.8's arithmetic, not "cancel if the shield covers any
+		// CR 615.7's arithmetic, not "cancel if the shield covers any
 		// of it": a 4-point shield facing 6 damage prevents 4 and lets
 		// 2 through; facing 3 it prevents all 3 and keeps 1.
 		left := 0

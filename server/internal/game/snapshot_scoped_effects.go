@@ -66,6 +66,12 @@ func (s *GameSnapshot) checkEffectKeys() error {
 			if m.Then != "" && !KnownEffectBody(m.Then) {
 				unknown = append(unknown, "scoped-effect then body "+m.Then)
 			}
+			// ADR 0107 §6: the next-damage shield's fields are part of
+			// what it means, and a source-zone field on another kind is
+			// a newer binary's shape.
+			if problem := nextFromSourceModProblem(m); problem != "" {
+				unknown = append(unknown, problem)
+			}
 		}
 		// ADR 0107 §3: a stack pin may carry only what this binary's
 		// stack step applies (layer 2 control, layer-6 keywords). A
@@ -103,6 +109,12 @@ func (s *GameSnapshot) checkEffectKeys() error {
 			if p != nil && p.Ability != nil {
 				unknown = append(unknown, "delayed-trigger params with an ability ref")
 			}
+		}
+	}
+	// ADR 0107 §6: an owed follow-up names its body as a key.
+	for _, f := range s.PreventionFollowUps {
+		if !KnownEffectBody(f.Body) {
+			unknown = append(unknown, "prevention follow-up body "+f.Body)
 		}
 	}
 	lastKnown := make([]stackItemSnapshot, 0, len(s.LastKnownStack))

@@ -409,6 +409,12 @@ type Game struct {
 	eventBatch        uint64
 	oncePerBatchFired map[string]uint64
 
+	// preventionFollowUps are the next-damage shields' CR 615.5
+	// additional effects owed for an instance of damage that has not yet
+	// settled — one per shield and batch, with the running total (ADR
+	// 0107 §6, prevent_next_from_source.go). Empty between actions.
+	preventionFollowUps []PreventionFollowUp
+
 	// announcedBlocks and blockedAttackers are what this combat's
 	// block declaration has produced (#830, #715). announcedBlocks
 	// maps blocker -> the attacker its EventBlock named;

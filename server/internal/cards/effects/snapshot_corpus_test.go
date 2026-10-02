@@ -270,6 +270,12 @@ func corpusBoards() []corpusBoard {
 		// stack with an addKeywords mod, the record Taigam's trigger
 		// writes, with a Taigam on the battlefield as its source.
 		{"granted_rebound_on_stack", corpusGrantedReboundOnStack},
+		// v7, added by ADR 0107 PR 7 (#1860) as a new file: the next-damage
+		// shield as data — a chosen source with a colour recheck and a
+		// follow-up body protecting a player and their creatures, already
+		// spent in this batch (SpentBatch); a no-choice "creature of the
+		// chosen type" shield; and a shield pinned to one permanent.
+		{"next_damage_shields", corpusNextDamageShields},
 	}
 }
 
@@ -289,6 +295,46 @@ func corpusGrantedReboundOnStack(t *testing.T) *game.Game {
 	})
 	if !ok {
 		t.Fatal("setup: Lightning Bolt was not given rebound")
+	}
+	return g
+}
+
+// corpusNextDamageShields is ADR 0107 §6's ModPreventNextFromSource in
+// each of its shapes.
+func corpusNextDamageShields(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	dragon := pushBattlefieldCardWithTimestamp(g, corpusCreature(opp.ID, "Shivan Dragon", 5, 5))
+	knight := pushBattlefieldCardWithTimestamp(g, corpusCreature(me.ID, "Knight", 2, 2))
+	g.WithWriteLock(func() {
+		g.RecomputeLayersIfStaleLocked()
+		ref, zone, ok := g.DamageSourceRefLocked(dragon)
+		if !ok {
+			t.Fatal("setup: the dragon is in no zone")
+		}
+		g.PreventNextDamageFromSourceForEffect(game.NextDamageShield{
+			Controller: me.ID, Source: ref, SourceZone: zone, Queries: []game.PermanentQuery{QueryColors("R")},
+			ProtectPlayer: me.ID, ProtectTypes: []string{"creature"}, Then: preventedGainLifeBody,
+			Label: "Shadowbane — prevent the next damage from a source",
+		})
+		g.PreventNextDamageFromSourceForEffect(game.NextDamageShield{
+			Controller: me.ID, ProtectPlayer: me.ID,
+			Queries: []game.PermanentQuery{{Types: []string{"creature"}, Subtypes: []string{"Dragon"}}},
+			Label:   "Circle of Solace — prevent the next damage from a source",
+		})
+		g.PreventNextDamageFromSourceForEffect(game.NextDamageShield{
+			Controller: me.ID, Source: ref, SourceZone: zone, ProtectPermanent: knight,
+			Label: "Charm Peddler — prevent the next damage from a source",
+		})
+		// The first shield takes the dragon's damage to the knight and is
+		// spent for the rest of this batch.
+		if err := g.DealDamageToCreatureForEffect(dragon, knight, 1); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if n := len(g.ScopedEffects); n != 3 {
+		t.Fatalf("setup: %d scoped records, want 3", n)
 	}
 	return g
 }

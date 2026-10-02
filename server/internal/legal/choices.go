@@ -548,7 +548,8 @@ func (e *enumerator) choiceMoves() bool {
 		case game.PendingChoiceChooseCards, game.PendingChoiceUntapChoice,
 			game.PendingChoiceEntryRevealFromHand, game.PendingChoiceEntryDiscardFromHand,
 			game.PendingChoiceEntrySacrifice, game.PendingChoiceRevealPick,
-			game.PendingChoiceTheirPermanents, game.PendingChoiceOwnPermanents:
+			game.PendingChoiceTheirPermanents, game.PendingChoiceOwnPermanents,
+			game.PendingChoiceChooseSource:
 			// "Choose N of these cards." The bounds ride on the
 			// choice, and a prompt may also carry a set-level
 			// Validate hook ("discard two unless you discard a
@@ -627,6 +628,10 @@ func (e *enumerator) choiceMoves() bool {
 				// identical "choose Grizzly Bears" lines is a move
 				// list a human reading a bot's log cannot follow.
 				verb = ": choose from " + choiceSeatName(g, c.FromPlayer)
+			case game.PendingChoiceChooseSource:
+				// ADR 0107 §6 decision 4: the model tiers see each
+				// source with its controller (sourceControllerSuffix).
+				verb = ": choose source"
 			}
 			for _, set := range sets {
 				p := base()
@@ -638,6 +643,9 @@ func (e *enumerator) choiceMoves() bool {
 					// battlefield, and only a seat the effect made a
 					// knower may read them (ADR 0033 §3).
 					label += " " + cardNameFor(g, id, e.seat)
+					if c.Kind == game.PendingChoiceChooseSource {
+						label += sourceControllerSuffix(g, id)
+					}
 				}
 				e.addChoice(c, label, p)
 			}
@@ -1396,6 +1404,17 @@ func (e *enumerator) cardNameAnswers(c *game.PendingChoice) []string {
 	return names
 }
 
+// sourceControllerSuffix is a choose_source candidate's controller, for
+// the move label: " (Bob's)". The controller of a permanent, a spell or a
+// card in a public zone is public. Empty when the card cannot be found.
+func sourceControllerSuffix(g *game.Game, id uuid.UUID) string {
+	c := findCardAnywhere(g, id)
+	if c == nil {
+		return ""
+	}
+	return " (" + choiceSeatName(g, c.Controller) + "'s)"
+}
+
 // choiceSeatName names a seat for a prompt label, falling back to
 // "another player" for a seat the table no longer carries. Seat names
 // are public (they are on every GameView), so a label may say one.
@@ -1442,7 +1461,9 @@ func choiceSeatName(g *game.Game, id uuid.UUID) string {
 // the engine's own order back, byte for byte.
 func (e *enumerator) cardSetPickPool(c *game.PendingChoice) []uuid.UUID {
 	switch c.Kind {
-	case game.PendingChoiceTheirPermanents, game.PendingChoiceRevealPick:
+	case game.PendingChoiceTheirPermanents, game.PendingChoiceRevealPick, game.PendingChoiceChooseSource:
+		// choose_source (ADR 0107 §6) asks which source is the threat,
+		// which is OrderTargets' question about somebody else's board.
 		return e.mostValuableFirst(c.ChooseCards)
 	case game.PendingChoiceOwnPermanents, game.PendingChoiceEntryDiscardFromHand, game.PendingChoiceEntrySacrifice:
 		// ADR 0098: a discard or a sacrifice SPENDS what it names, so

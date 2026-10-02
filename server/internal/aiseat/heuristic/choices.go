@@ -47,7 +47,24 @@ const (
 	choiceCoinCall            = "coin_call"
 	choiceEntryController     = "entry_controller"
 	choiceMayCast             = "may_cast"
+	choiceChooseSource        = "choose_source"
 )
+
+// damageSourceThreat ranks a choose_source candidate (ADR 0107 §6
+// decision 4): below zero for the bot's own, above every permanent for an
+// opponent's spell on the stack, and otherwise an opponent's power.
+func (st *state) damageSourceThreat(id string, c *protocol.CardView) float64 {
+	if c == nil {
+		return 0
+	}
+	if c.Controller == st.me {
+		return -1
+	}
+	if _, onStack := st.stack[id]; onStack {
+		return 100 + float64(c.Power)
+	}
+	return 1 + float64(c.Power)
+}
 
 // decideChoice takes the highest-valued answer. Ties go to the lowest
 // index, which is the enumerator's own preference order.
@@ -132,6 +149,17 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 			purpose = ch.ColorPurpose
 		}
 		return st.colorChoiceValue(p.cfg, purpose, cp.Color)
+
+	case choiceChooseSource:
+		// ADR 0107 §6 decision 4: shield against the source most likely
+		// to deal the damage — one an opponent controls, a spell on the
+		// stack first (its damage is coming now), then the permanent
+		// with the most power.
+		var v float64
+		for _, id := range cp.CardIDs {
+			v += st.damageSourceThreat(id, lookup(id))
+		}
+		return v, "shield against the likeliest source"
 
 	case choicePickTarget:
 		targets := cp.Targets

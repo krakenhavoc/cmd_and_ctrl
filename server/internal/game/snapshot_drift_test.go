@@ -161,6 +161,8 @@ var gameFields = plan(
 	// trigger or swallow it.
 	"eventBatch", carried, "",
 	"oncePerBatchFired", carried, "",
+	// ADR 0107 §6: owed CR 615.5 follow-ups, plain data.
+	"preventionFollowUps", carried, "",
 	// #1289: a resolution paused on one of its own prompts holds the
 	// CR 704.3 boundary. Carried with each choice's midResolution.
 	"resolutionOpen", carried, "",
