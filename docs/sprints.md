@@ -99,6 +99,7 @@ planned just-in-time from the S12 pain-point triage.
 | S53     | Faces, zones, and shared payment (ADR first)                         | 7     | [#1910](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1910) | —          | planned     |
 | S54     | Tutorial: a scripted practice game                                   | 7     | [#1911](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1911) | —          | planned     |
 | S55     | Remember me: durable sign-in, account settings, admins and saved setups | 6  | [#1950](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1950) | —          | in progress |
+| S56     | Table UX: one action dock, bottom right                              | 7     | [#1958](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1958) | —          | in progress |
 
 ### How to read the status column
 
@@ -3239,6 +3240,44 @@ From the tracker, [#1950](https://github.com/krakenhavoc/cmd_and_ctrl/issues/195
 ### Status
 
 **In progress.** PRs 1 to 6 have merged; PR 7 (players and setups) is in review.
+
+---
+
+## S56 — Table UX: one action dock, bottom right
+
+**Phase:** 7 · **Goal:** the player never chases the mouse across the screen. Every control a player presses during a turn, and the bluff control, lives in one place at the bottom right of the game screen, per [ADR 0111](decisions/0111-action-dock.md). Tracking issue [#1958](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1958).
+
+Opened 2026-10-02 from the owner's feedback ("any button the player should click should also show in the bottom right as well. Not mousing all over the screen"). The ADR was accepted the same day with option (a) on all five questions. The members are the ADR's seven Delivery PRs.
+
+- [x] ADR 0111: inventory and design of the action dock ([#1962](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1962))
+- [x] PR 1 — bluff, always visible: the split `bluff` button with its `▾` popover, the "nothing set up" rule, the disabled smart-autopass-off state, and the `b` shortcut ([#1969](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1969))
+- [x] PR 2 — the dock, with priority: `ActionDock.svelte` in the bottom-right corner, PhaseDisplay as its header, `next` and Pass turn in its action bar, hold / autopass / bluff in its toggles row, the rail stopping above it, and the phone bar ([#1976](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1976))
+- [x] PR 3 — combat: `lib/dock.ts`, the attack row, No blocks / Done blocking, the combat-selection Cancel, and the one Undo in the toggles row ([#1978](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1978))
+- [x] PR 4 — targeting and payment: Done / Cancel in the action bar, the insufficient-mana prompt, one Enter / Escape handler, and `region "attention"` on the strip ([#1980](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1980))
+- [x] PR 5 — inline choices: the yes/no family, `pay_unless` without picks, coin calls, the loop shortcut, mana and colour picks, short option picks, vote options and the game-over Back to lobby ([#1981](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1981))
+- [x] PR 6 — sheets: `DockSheet.svelte` and the minimise control, every remaining choice kind, the discard to hand size, every cost picker, the attack picker, the auto-tap preview and the mulligan hand ([#1982](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1982))
+- [x] PR 7 — the ⋯ menu in the dock (owner decision 3): the sandbox tools, life history, table settings, spawn, the vote launcher and Concede with its confirm, opening upward from the toggles row; a spectator keeps a smaller one on the command bar. AGENTS.md's "labels are a contract" line, this section, and the ADR's delivery note ([#1983](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1983))
+
+### Exit criteria
+
+From the tracker, [#1958](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1958):
+
+1. ADR 0111 is accepted and every PR in its Delivery table has merged. **Met** once PR 7 merges: the ADR was accepted on 2026-10-02 and PRs 1–6 have merged.
+2. In a normal turn, every button the player must press appears in the bottom-right dock, and so does the bluff control. **Met** on `develop`: `next`, Pass turn, hold, autopass, bluff, Undo, the attack and block rows, targeting, payment, every pending choice and every cost picker are in the dock (PRs 1–6), and the ⋯ menu joins them in PR 7. Card-local menus stay at the card (owner decision 5).
+3. The sprint section in `docs/sprints.md` is written and its index row added. **Met** (this section, with PR 7).
+4. Lands on `main` with the next promotion. Not yet.
+
+### Known follow-ups
+
+Not in this sprint, and recorded so they are not lost:
+
+- [#1977](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1977) — the phone board layout. At 390px the self panel's board is a 39px column. It predates the dock (ADR 0111 left "a phone layout for the board itself" out of scope); the dock itself fits at 390px.
+- PR 4's open nuance: with keyboard focus on a board card during targeting, Enter picks that card rather than pressing Done. `dockKeyFor` never takes Enter from a focused control, so this is the card's own keypress; Done is still one Enter away once focus leaves the card.
+- The `zone-browser.spec.ts` cross-socket flake ([#1468](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1468)): the caster's graveyard pile can read 0 for the 10s default while the admin socket already sees the cards. It passed on retry in PR 6's E2E run and touches nothing the dock moved.
+
+### Status
+
+**In progress.** Every Delivery PR has merged into `develop`, PR 7 with this section. Exit criterion 4 waits on the next promotion to `main`.
 
 ---
 

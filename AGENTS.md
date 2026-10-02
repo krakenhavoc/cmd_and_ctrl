@@ -376,6 +376,7 @@ A restore point written by yesterday's binary has to restore in today's. Three t
 - `npm run check` — `svelte-check` typecheck only
 - `npm run lint` — ESLint + Prettier check
 - `npm run format` — auto-format
+- **Labels are a contract** ([ADR 0076](docs/decisions/0076-tutorial.md) §2.4, [ADR 0111](docs/decisions/0111-action-dock.md) §10). The action dock's and the table's `aria-label`s and dialog names are what the e2e suite selects on and what the tutorial anchors to: `region "actions"`, `region "attention"`, `turn and phase indicator`, `group "priority controls"`, `group "declare attackers"`, `group "declare blockers"`, each dock request's dialog name (`keep or mulligan your hand`, `Discard N card`, `Select target for X`, a trigger's reason), and the button names `next`, `Pass turn`, `Keep hand`, `more actions`. Renaming one is a breaking change: change it only with the specs and tutorial steps that read it, in the same PR, and run the nightly Playwright job on the branch (`gh workflow run "cmd_and_ctrl E2E" --ref <branch>`), because PR CI does not run it.
 
 ---
 
