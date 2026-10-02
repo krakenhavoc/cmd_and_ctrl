@@ -238,6 +238,9 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// ADR 0108 §3: the damage multiplier is a replacement. Its cases
 		// are in multiply_damage_test.go.
 		ModMultiplyDamage: true,
+		// ADR 0109 §4: the land-play gate. Its cases are in
+		// land_play_gate_test.go.
+		ModCantPlayLands: true,
 	}
 	for _, k := range ModKinds() {
 		if !covered[k] {

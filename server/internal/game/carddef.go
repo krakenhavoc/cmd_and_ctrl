@@ -176,6 +176,10 @@ type CardDef struct {
 	// Cage, Rakdos). Read from the battlefield through
 	// CatalogAbilityKey, never from a card's own zone.
 	CastRestrictions []CastRestriction
+	// LandPlayRestrictions are the "can't play lands" statics this
+	// PERMANENT imposes (ADR 0109 §4, #1895). Read from the battlefield
+	// through CatalogAbilityKey, like CastRestrictions.
+	LandPlayRestrictions []LandPlayRestriction
 	// ActivationRestrictions are the "can't be activated" statics
 	// this PERMANENT imposes on other objects' activated abilities
 	// (Cursed Totem, Linvala, Collector Ouphe, Pithing Needle). Read
@@ -603,6 +607,12 @@ func init() {
 	CatalogCastRestrictions = func(key string) []CastRestriction {
 		if d := catalogDef(key); d != nil {
 			return d.CastRestrictions
+		}
+		return nil
+	}
+	CatalogLandPlayRestrictions = func(key string) []LandPlayRestriction {
+		if d := catalogDef(key); d != nil {
+			return d.LandPlayRestrictions
 		}
 		return nil
 	}

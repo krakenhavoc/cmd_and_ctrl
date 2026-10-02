@@ -1166,6 +1166,15 @@ func classifyActionError(err error) (code, message string) {
 		// lands_played_this_turn on the wire carry the numbers.
 		return protocol.CodeBadRequest,
 			"you've already played all the lands you can this turn"
+	case errors.Is(err, game.ErrCantPlayLand):
+		// ADR 0109 §4, CR 101.2: something SAID NO to this land play — a
+		// static on a permanent (Territorial Dispute, City in a Bottle)
+		// or a "this turn" record (Turf Wound). The refusal carries the
+		// printed clause, and the land's `cant_cast` is the same gate's
+		// answer, so the client should never reach this; arriving here
+		// means the board changed between the snapshot and the click.
+		return protocol.CodeBadRequest,
+			"you can't play that land right now — " + strings.TrimPrefix(err.Error(), "game: ")
 	case errors.Is(err, game.ErrCantCast):
 		// #760, ADR 0073 §7: something SAID NO to this cast — a
 		// static on a permanent (Rule of Law, Grafdigger's Cage) or

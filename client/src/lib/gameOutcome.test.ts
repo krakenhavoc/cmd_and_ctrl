@@ -165,4 +165,15 @@ describe("endGateBadges", () => {
     ]);
     expect(playerKeywordBadges([], false, {}).map((b) => b.key)).toEqual([]);
   });
+
+  // ADR 0109 §4 (CR 101.2): "can't play lands" is a badge whose tooltip
+  // is the refusing clause.
+  it("shows can't-play-lands with the clause as its tooltip", () => {
+    const badges = playerKeywordBadges([], false, {
+      cant_play_lands: "Players can't play lands. — Territorial Dispute",
+    });
+    expect(badges.map((b) => b.key)).toEqual(["cant-play-lands"]);
+    expect(badges[0].title).toBe("Players can't play lands. — Territorial Dispute");
+    expect(playerKeywordBadges([], false, { cant_play_lands: "" })).toEqual([]);
+  });
 });
