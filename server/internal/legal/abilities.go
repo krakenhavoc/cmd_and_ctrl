@@ -1553,7 +1553,12 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 		// would silently hide a legal move).
 		if ab.ManaCost != "" {
 			cost, err := g.ManaAbilityManaCostForEffect(e.seat, *source, ab)
-			if err != nil || !e.p.ManaPool.CanPayFor(cost, 0, game.ManaSpendForAbility(*source)) {
+			if err != nil {
+				continue
+			}
+			// #1600: widened as ActivateManaAbility widens it.
+			spend := game.ManaSpendForAbility(*source)
+			if !e.p.ManaPool.CanPayFor(g.CostAsPaidByForEffect(e.seat, spend, cost), 0, spend) {
 				continue
 			}
 		}

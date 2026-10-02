@@ -1508,6 +1508,14 @@ func (e *enumerator) canPayExcluding(
 	spend game.ManaSpendContext,
 	excluded map[uuid.UUID]bool,
 ) bool {
+	// #1600: the cost as this seat may pay it — widened under Chromatic
+	// Orrery's "you may spend mana as though it were mana of any color"
+	// — through the function every engine payment reads it with. Here,
+	// in the one affordability probe the cast, activation, special
+	// action, delve, waterbend and pay-unless moves all ask, so none of
+	// them can offer a payment the engine would refuse or hide one it
+	// would accept.
+	cost = e.g.CostAsPaidByForEffect(e.seat, spend, cost)
 	if e.p.ManaPool.CanPayFor(cost, x, spend) {
 		return true
 	}

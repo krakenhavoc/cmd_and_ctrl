@@ -1751,6 +1751,11 @@ func (g *Game) applyCastCostLocked(p *Player, card Card, params CastSpellParams,
 		})
 		return paid, fmt.Errorf("%w for %s: %w", ErrUnparseableCost, card.Name, err)
 	}
+	// #1600, CR 609.4b: "you may spend mana as though it were mana of
+	// any color" (Chromatic Orrery) widens what may pay the cost — read
+	// here, after convoke and delve have taken their share and before
+	// the Phyrexian strike, exactly as applyAutoTapLocked reads it.
+	cost = g.costAsPaidByLocked(p.ID, ManaSpendForCast(card), cost)
 	// CR 107.4 / CR 601.2b: the Phyrexian symbols the caster announced
 	// they are paying with life leave the mana cost here, and the life
 	// is paid below — after the mana half is known to be payable, so a
@@ -1864,6 +1869,10 @@ func (g *Game) applyAutoTapLocked(p *Player, card Card, params CastSpellParams) 
 	if err != nil {
 		return nil
 	}
+	// #1600: the cost as this caster may pay it — the same widening
+	// applyCastCostLocked will pay under, so the plan funds exactly
+	// what the payment accepts.
+	cost = g.costAsPaidByLocked(p.ID, ManaSpendForCast(card), cost)
 	// The Phyrexian symbols being paid with life are not the
 	// auto-tapper's business: tapping a land for a pip the caster
 	// announced they would pay with 2 life is exactly the stranding
@@ -2521,21 +2530,46 @@ func bookColorRequirement(color string, pending *[]ColorRequirement) {
 // returns its index plus the option that pays it. (-1, "") when none
 // matches. The one copy of the restriction-first instinct
 // pickColorForSlot and bookColorRequirement share.
+//
+// #1600: a widened requirement (AnyMana) admits every option, so it is
+// offered the option it PRINTS when the slot has one — Birds of
+// Paradise makes the {R} an Orrery-widened {R} asked for, not the {W}
+// listed first — and, between two requirements of the same width, the
+// one this slot pays in its printed colour is booked first. Neither
+// changes which slots can pay; both keep the mana the plan makes the
+// mana the card asked for.
 func mostRestrictiveRequirement(options []string, pending []ColorRequirement) (int, string) {
-	best, bestOpt := -1, ""
+	best, bestOpt, bestPrinted := -1, "", false
 	for i := range pending {
 		req := pending[i]
-		for _, opt := range options {
-			if !req.Admits(opt) {
-				continue
-			}
-			if best < 0 || req.width() < pending[best].width() {
-				best, bestOpt = i, opt
-			}
-			break
+		opt, printed, ok := preferredOption(options, req)
+		if !ok {
+			continue
+		}
+		if best < 0 || req.width() < pending[best].width() ||
+			(req.width() == pending[best].width() && printed && !bestPrinted) {
+			best, bestOpt, bestPrinted = i, opt, printed
 		}
 	}
 	return best, bestOpt
+}
+
+// preferredOption is the option of `options` that `req` should be paid
+// with: the first one it prints, else the first one it admits (a
+// widened slot's any mana). printed reports which; ok is false when it
+// admits none.
+func preferredOption(options []string, req ColorRequirement) (opt string, printed, ok bool) {
+	for _, o := range options {
+		if matchColor(o, req.Options) {
+			return o, true, true
+		}
+	}
+	for _, o := range options {
+		if req.Admits(o) {
+			return o, false, true
+		}
+	}
+	return "", false, false
 }
 
 // effectiveCostLocked parses the cost the cast actually owes — the
@@ -6244,12 +6278,15 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 		if perr != nil {
 			return ErrInvalidParam
 		}
-		manaCost = priced
 		// The mana pays an ACTIVATION (CR 602.2b), and the source
 		// permanent's own characteristics are what a restricted
 		// token is tested against — Eldrazi Temple mana can fund a
 		// colorless Eldrazi's ability, not a Signet's.
 		spendCtx := ManaSpendForAbility(*card)
+		// #1600: an Orrery's controller may pay a filter land's {W/U}
+		// with colourless — the same widening the pay step below
+		// spends under, because it spends this manaCost.
+		manaCost = g.costAsPaidByLocked(playerID, spendCtx, priced)
 		if !p.ManaPool.CanPayFor(manaCost, 0, spendCtx) {
 			return &InsufficientManaError{Missing: p.ManaPool.MissingFor(manaCost, 0, spendCtx)}
 		}

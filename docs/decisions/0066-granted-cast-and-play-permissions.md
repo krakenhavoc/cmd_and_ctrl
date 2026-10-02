@@ -2535,3 +2535,136 @@ or planeswalker" clause whose sweep follows the chosen target's
 controller.
 
 Tracker [#885](https://github.com/krakenhavoc/cmd_and_ctrl/issues/885).
+
+---
+
+## Amendment — 2026-10-02 (#1600): a player's "spend mana as though it were mana of any color"
+
+The #1573 and #1589 amendments made "spend mana as though it were mana of
+any color" a property of one PERMISSION: Breeches, Hostage Taker and Gonti
+grant it to cast one spell, and `spendAsThoughAny` folds it in the one cast
+pricer. Three catalogued or catalogue-ready cards print the same words with
+no spell attached:
+
+- **Chromatic Orrery** — "You may spend mana as though it were mana of any
+  color." Its controller, every cost.
+- **Mycosynth Lattice** — "Players may spend mana as though it were mana of
+  any color." Every player, every cost.
+- **Oath of Nissa** — "You may spend mana as though it were mana of any color
+  to cast planeswalker spells." Its controller, one kind of payment.
+
+CR 609.4b: such an effect changes how a player may pay a cost. It does not
+change the cost, and it does not change the mana. The Orrery rulings add the
+two edges that matter here: any mana pays a coloured symbol, colourless
+included, and mana with a "spend this only on …" restriction keeps it.
+Colourless is not a colour (CR 106.1b), so coloured mana still cannot pay a
+`{C}`.
+
+### Decision 1 — a battlefield static, read live, on `Spec.AnyColorSpend`
+
+`game.AnyColorSpendStatic` is `{Label, Whose, Covers}`. `Whose` is the
+controller (`AnyColorSpendYou`) or every player
+(`AnyColorSpendEveryPlayer`). `Covers` is an optional predicate over the
+payment's `ManaSpendContext`; nil covers every payment, and Oath of Nissa's
+reads `Purpose == cast` and the type `Planeswalker`. The card files use three
+constructors (`effects/any_color_spend.go`).
+
+It is DERIVED, the way Leyline of Sanctity's hexproof and Platinum Emperion's
+life lock are. `spendsManaAsAnyColorLocked` walks the battlefield on each
+question, keyed by `CatalogAbilityKey`. Two Orreries compose, one leaving
+cannot revoke the other's grant, an Orrery that loses its abilities grants
+nothing, and nothing is stored, cloned or snapshotted. No card grants it for
+a duration, so there is no stored half.
+
+### Decision 2 — read at the PAYMENT, not in a pricer
+
+A permission belongs to one spell, so the cast pricer is the right home for
+its fold. A player grant covers every cost the player pays, and those costs
+are priced by five functions (the cast pricer, the CR 602 activation pricer,
+the mana-ability pricer, the special-action pricer, the attack-tax pricer)
+and by none at all for a pay-unless. So the grant is read where the cost
+meets the mana. `costAsPaidByLocked(payer, ctx, cost)` is the one reading,
+called once at the top of each payment:
+
+| Payment | Site |
+|---|---|
+| a cast, from the pool | `applyCastCostLocked` |
+| a cast, auto-tapped | `applyAutoTapLocked` |
+| a CR 602 activation, a special action, an attack tax | `payAbilityManaCostLocked` |
+| a mana ability's own mana cost | `ActivateManaAbility` |
+| an attack tax's affordability check | `attackTaxAffordableLocked` |
+| a pay-unless, may-pay or ward payment | `payCostLocked` |
+
+The same function answers every affordability question outside the engine:
+`internal/legal`'s one probe (`canPayExcluding`, which the cast, activation,
+special-action, delve, waterbend and pay-unless moves all ask), its mana-move
+and attack-tax checks, and the auto-tap preview (`costAsPaidForPreview`).
+The view's castability is the enumerator's digest (`legal_actions`), so it
+agrees by construction. Tests pin each pair: the view against the payment,
+the enumerator against dispatch, and the preview against `CastSpell`.
+
+Two consequences follow, and both are deliberate:
+
+- **The price shown stays printed.** No pricer is touched, so `cast_prices`,
+  an ability row's `charged_mana_cost` and the preview's `cost` read
+  `{U}{U}` under an Orrery. That is CR 609.4b's own sentence. The permission
+  fold has always rewritten `cast_prices`, and this amendment leaves that as
+  it is.
+- **The widening comes after convoke, waterbend and delve.** Each payment
+  site reads the cost the pricer already reduced by the taps and the delved
+  cards. A creature tapped for convoke is not mana, so under an Orrery a
+  green creature still cannot convoke a `{U}`. The widening comes BEFORE the
+  Phyrexian strike, as the permission fold does, so a widened `{B/P}` keeps
+  its "or 2 life" half (#1589).
+
+### Decision 3 — widen, don't fold, and pay the printed colour first
+
+The permission fold moves a coloured symbol into the generic demand. For a
+player grant that would make a card worse: the solvers pay generic mana
+colourless-first, so a Firespout cast off an Orrery's colourless and a
+Mountain would spend the colourless on its `{R/G}` and lose the red mode.
+"You MAY spend" never makes a payment worse.
+
+So `widenForAnyColorSpend` marks each coloured requirement
+`ColorRequirement.AnyMana`, the bit #1589 introduced for Phyrexian slots. It
+keeps `Options` and leaves `{C}` and snow alone. Both solvers changed in the
+same way, and they had to change together:
+
+- **The pool solver** (`ManaPool.attemptSpend`, mirrored by `MissingFor`)
+  pays every coloured slot with a token of a colour it PRINTS
+  (`firstPrintedMatch`). A widened slot that finds none joins the generic
+  demand, which any token pays.
+- **The auto-tapper** (`solveColored`) places a widened slot on a source of
+  a printed colour, and otherwise defers it to `recruitGeneric`.
+  `pickMatchingSlot` now matches printed colours only. Deferral is the last
+  branch, so the backtracking tries every printed placement first.
+- **The executor's colour picks** (`mostRestrictiveRequirement`) give a
+  widened slot the option it prints when a multi-colour source has one.
+
+"Payable?" has the same answer as admitting any mana at once: a widened slot
+that is not matched costs one generic, and any mana pays that. Only "with
+what?" changes. The Phyrexian slots a permission widens follow the same
+rule, which is the one visible change outside this seam: a stolen Dismember
+paid out of a pool that holds black mana now spends the black on its
+`{B/P}` rather than whatever token came first. The #1589 tests pass
+unchanged.
+
+### What it does not cover
+
+- **"Spend WHITE mana as though it were mana of any color. You may spend other
+  mana only as though it were colorless mana"** (Celestial Dawn, False Dawn,
+  and the blue forms on Quicksilver Elemental and Grell Philosopher). That is
+  a restriction on which mana widens, and a second restriction on all other
+  mana. Neither card is catalogued.
+- **A grant over one permanent's own abilities** (Manascape Refractor,
+  Agatha's Soul Cauldron, Nathan Drake). `ManaSpendContext` carries the
+  source's characteristics and not its identity, so "this artifact's
+  abilities" has nothing to match. None is catalogued.
+- **Mycosynth Lattice's second line**, "all cards that aren't on the
+  battlefield, spells, and permanents are colorless". Layer 5 could make
+  permanents colourless, but the layer pass does not reach a spell on the
+  stack or a card in another zone, and half of that line is worse than none.
+  It stays the card's one caveat.
+
+Proof cards: Chromatic Orrery and Oath of Nissa (full), Mycosynth Lattice
+(its spend line). Tracker [#887](https://github.com/krakenhavoc/cmd_and_ctrl/issues/887).

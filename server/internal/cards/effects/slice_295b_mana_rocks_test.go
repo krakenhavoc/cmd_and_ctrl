@@ -238,8 +238,8 @@ func TestB295ChromaticOrreryTapsForFiveColorlessAndDrawsPerColorControlled(t *te
 	if !ok {
 		t.Fatal("Chromatic Orrery is registered")
 	}
-	if spec.Completeness != CompletenessCaveats || len(spec.Caveats) == 0 {
-		t.Error("Chromatic Orrery should declare a caveat for the unbuilt any-colour-spend static")
+	if spec.Completeness != CompletenessFull || len(spec.Caveats) != 0 || len(spec.AnyColorSpend) == 0 {
+		t.Errorf("Chromatic Orrery's any-colour spend is built (#1600): Completeness = %v, caveats %v", spec.Completeness, spec.Caveats)
 	}
 }
 
@@ -264,8 +264,8 @@ func TestB295CovetedJewelDrawsThreeOnEntryAndTapsForThreeOfOneColor(t *testing.T
 	if !ok {
 		t.Fatal("Coveted Jewel is registered")
 	}
-	if spec.Completeness != CompletenessCaveats || len(spec.Caveats) == 0 {
-		t.Error("Coveted Jewel should declare a caveat for the unbuilt unblocked-attack steal trigger")
+	if spec.Completeness != CompletenessFull || len(spec.Caveats) != 0 {
+		t.Errorf("Coveted Jewel's steal trigger is built (#1600, coveted_jewel_test.go): Completeness = %v, caveats %v", spec.Completeness, spec.Caveats)
 	}
 }
 
