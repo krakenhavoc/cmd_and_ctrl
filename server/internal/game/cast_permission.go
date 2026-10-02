@@ -494,6 +494,25 @@ type CastPermission struct {
 	// two compose in faceForCastLocked rather than arguing.
 	Faces []int `json:"faces,omitempty"`
 
+	// CastsLeft is how many spells this permission may still open
+	// (#1729). "You may cast A SPELL from among cards exiled with this
+	// enchantment" (Court of Locthwain) and "you may cast a spell from
+	// among those cards" (Locke, Treasure Hunter) are one cast, however
+	// many cards the permission names: CR 611.2c locks the set, and the
+	// first cast that uses the permission spends it.
+	//
+	// ZERO IS NO LIMIT, which is every permission written before the
+	// field existed. A positive count is spent by a cast this
+	// permission was the reason for (consumeLimitedGrantLocked) and the
+	// permission ends when it reaches zero. A cast the card's own text
+	// allowed — a printed flashback out of a graveyard Locke also opened
+	// — does not use it: "If you cast a spell from among the milled
+	// cards using another permission, Locke's effect doesn't apply"
+	// (ruling 2025-06-06). Read on ScopeCards permissions, the only ones
+	// that print it; playing a land is not casting a spell, and every
+	// permission that prints a count is CastOnly.
+	CastsLeft int `json:"castsLeft,omitempty"`
+
 	// --- provenance ------------------------------------------------
 
 	// Source is the card instance whose effect granted this, and
@@ -680,6 +699,11 @@ func (g *Game) GrantCastPermissionForEffect(perm CastPermission) {
 	if perm.Scope != ScopeStanding && len(perm.Cards) == 0 {
 		return
 	}
+	// A negative count is a card file's bug: it could never be spent
+	// down to zero, so it would read as a limit and act as none.
+	if perm.CastsLeft < 0 {
+		return
+	}
 	if perm.Duration == (Duration{}) {
 		// The zero Duration is "until end of turn", unstamped. Stamp
 		// it against the turn the grant is being made in, so the
@@ -847,6 +871,129 @@ func (g *Game) GrantCastPermissionToCardsForEffect(perm CastPermission, cards []
 //
 // Caller must hold g.mu (read or write).
 func (g *Game) CastPermissionForLocked(playerID uuid.UUID, card Card, zone ZoneKind) *CastPermission {
+	return g.CastPermissionForClaimLocked(playerID, card, zone, "")
+}
+
+// CastPermissionForClaimLocked is CastPermissionForLocked for a cast
+// that has named the alternative cost it claims (#1729). Two stored
+// permissions can open the same card, and the caster chooses which one
+// a cast uses: a card exiled by Court of Locthwain may be PLAYED for
+// its cost for as long as it stays exiled, and — on a turn Court's
+// controller was the monarch — cast for free, once, by a second
+// permission over the same cards. CastPermissionForLocked names the
+// first live permission, which is the play permission, so the free one
+// could never be reached by asking it.
+//
+// So a claim picks: a live stored permission whose AltCostKey is
+// `claim` is the one the cast uses. Every other claim, and no claim,
+// gets CastPermissionForLocked's answer. The cast path, its price and
+// its preview all ask this with the claim they were handed, so all
+// three judge the cast under the same permission; CastOffersForLocked
+// lists the other permission's offer so a caster can make the claim.
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) CastPermissionForClaimLocked(playerID uuid.UUID, card Card, zone ZoneKind, claim string) *CastPermission {
+	if claim != "" && zone != ZoneCommand && zone != ZoneHand && !card.PrepareCopy {
+		if p := g.playerByIDLocked(playerID); p != nil {
+			for i := range p.CastPermissions {
+				perm := &p.CastPermissions[i]
+				if perm.AltCostKey != claim || !g.storedPermissionOpensLocked(playerID, perm, card, zone) {
+					continue
+				}
+				out := *perm
+				return &out
+			}
+		}
+	}
+	return g.castPermissionLocked(playerID, card, zone)
+}
+
+// storedPermissionOpensLocked is the test a STORED permission passes to
+// open `card` out of `zone` for playerID: live, covering the card, over
+// a pile it reaches, at a position it allows. CastPermissionForLocked's
+// stored walk and the claim and offer lookups ask the same four
+// questions in the same order.
+//
+// Caller must hold g.mu.
+func (g *Game) storedPermissionOpensLocked(playerID uuid.UUID, perm *CastPermission, card Card, zone ZoneKind) bool {
+	return g.CastPermissionActiveForEffect(perm, playerID) && perm.CoversCard(card, zone) &&
+		permissionReachesPileLocked(playerID, perm, card, zone) &&
+		g.permissionPositionOKLocked(playerID, perm, card)
+}
+
+// otherGrantedOffersLocked lists the stored permissions BESIDES `grant`
+// that open this card and price it under a claimable offer of their own
+// — the second permission CastPermissionForClaimLocked describes. One
+// per key, and never the key `grant` itself offers. Copies.
+//
+// Caller must hold g.mu.
+func (g *Game) otherGrantedOffersLocked(playerID uuid.UUID, card Card, zone ZoneKind, grant *CastPermission) []*CastPermission {
+	if grant == nil || zone == ZoneCommand || zone == ZoneHand || card.PrepareCopy {
+		return nil
+	}
+	p := g.playerByIDLocked(playerID)
+	if p == nil {
+		return nil
+	}
+	var out []*CastPermission
+	seen := map[string]bool{grant.AltCostKey: true}
+	for i := range p.CastPermissions {
+		perm := &p.CastPermissions[i]
+		if perm.AltCostKey == "" || seen[perm.AltCostKey] || !g.storedPermissionOpensLocked(playerID, perm, card, zone) {
+			continue
+		}
+		seen[perm.AltCostKey] = true
+		cp := *perm
+		out = append(out, &cp)
+	}
+	return out
+}
+
+// consumeLimitedGrantLocked spends one use of the limited permission a
+// cast just used (CastsLeft, #1729), and removes it when that was the
+// last. `card` is the card as it was in its source zone, epoch and all
+// — the permission names that object, not the spell it became.
+//
+// The stored permission is found by what the cast was handed: the same
+// source, label and claim, and a count. Allocates a fresh slice for the
+// reason sweepCastPermissionsLocked gives: the backing array is shared
+// with the undo snapshots.
+//
+// Caller must hold g.mu (write).
+func (g *Game) consumeLimitedGrantLocked(holder uuid.UUID, card Card, grant *CastPermission) {
+	if grant == nil || grant.CastsLeft <= 0 {
+		return
+	}
+	p := g.playerByIDLocked(holder)
+	if p == nil || len(p.CastPermissions) == 0 {
+		return
+	}
+	kept := make([]CastPermission, 0, len(p.CastPermissions))
+	spent := false
+	for _, perm := range p.CastPermissions {
+		if !spent && perm.CastsLeft > 0 && perm.Source == grant.Source && perm.Label == grant.Label &&
+			perm.AltCostKey == grant.AltCostKey && perm.CoversCard(card, perm.Zone) {
+			spent = true
+			perm.CastsLeft--
+			if perm.CastsLeft == 0 {
+				continue
+			}
+		}
+		kept = append(kept, perm)
+	}
+	if !spent {
+		return
+	}
+	if len(kept) == 0 {
+		kept = nil
+	}
+	p.CastPermissions = kept
+}
+
+// castPermissionLocked is CastPermissionForLocked's body.
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) castPermissionLocked(playerID uuid.UUID, card Card, zone ZoneKind) *CastPermission {
 	if zone == ZoneCommand {
 		return nil
 	}
@@ -872,21 +1019,16 @@ func (g *Game) CastPermissionForLocked(playerID uuid.UUID, card Card, zone ZoneK
 	// Stored permissions first: a named object beats a standing rule,
 	// because the named one is the narrower statement and is the only
 	// one that can carry a face or a per-instance price.
+	//
+	// #1035: the pile rule is asked of a STORED standing permission
+	// too, not only a derived one (storedPermissionOpensLocked). Both
+	// are "a rule over a zone" and the zone is the holder's own unless
+	// the grant names a seat; Xanathar's until-end-of-turn grant over
+	// one chosen opponent's library is a stored ScopeStanding
+	// permission, and it is the only kind that can name one.
 	for i := range p.CastPermissions {
 		perm := &p.CastPermissions[i]
-		if !g.CastPermissionActiveForEffect(perm, playerID) || !perm.CoversCard(card, zone) {
-			continue
-		}
-		// #1035: the pile rule is asked of a STORED standing
-		// permission too, not only a derived one. Both are "a rule
-		// over a zone" and the zone is the holder's own unless the
-		// grant names a seat; Xanathar's until-end-of-turn grant over
-		// one chosen opponent's library is a stored ScopeStanding
-		// permission, and it is the only kind that can name one.
-		if !permissionReachesPileLocked(playerID, perm, card, zone) {
-			continue
-		}
-		if !g.permissionPositionOKLocked(playerID, perm, card) {
+		if !g.storedPermissionOpensLocked(playerID, perm, card, zone) {
 			continue
 		}
 		out := *perm

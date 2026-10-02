@@ -86,7 +86,11 @@ func (g *Game) leaveGameObjectsLocked(playerID uuid.UUID) {
 	// control of a player who is not in the game. A delayed trigger
 	// they scheduled has no controller to put it on the stack for, and
 	// the elimination event itself may have harvested a trigger of
-	// theirs a moment ago.
+	// theirs a moment ago. An "until" return of theirs is kept (#1729,
+	// CR 610.3): it is a one-shot effect, not a trigger, and the
+	// departure may be what ends it. It runs at the next flush, after
+	// the sweep above has taken their own cards out of exile, so a card
+	// they owned is not put onto the battlefield on its way out.
 	g.dropDelayedTriggersForLocked(playerID)
 	g.dropPendingTriggersForLocked(playerID)
 
@@ -310,9 +314,14 @@ func (g *Game) dropDelayedTriggersForLocked(playerID uuid.UUID) {
 	if len(g.DelayedTriggers) == 0 {
 		return
 	}
-	kept := g.DelayedTriggers[:0]
+	kept := make([]*DelayedTrigger, 0, len(g.DelayedTriggers))
 	for _, d := range g.DelayedTriggers {
-		if d == nil || d.Controller != playerID {
+		// #1729: an "until" return is not a triggered ability (CR
+		// 610.3), so CR 800.4a/d do not take it with its controller.
+		// It is what returns the card when their leaving is the very
+		// event the "until" named — the crown handed on by CR 725.4,
+		// their Hostage Taker leaving the battlefield with them.
+		if d == nil || d.Controller != playerID || d.Until {
 			kept = append(kept, d)
 		}
 	}

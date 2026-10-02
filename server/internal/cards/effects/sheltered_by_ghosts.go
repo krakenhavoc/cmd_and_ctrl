@@ -9,20 +9,23 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 controls until this Aura leaves the battlefield.
 //	 Enchanted creature gets +1/+0 and has lifelink and ward {2}."
 //
-// Ossification's two halves — an entry trigger that exiles and a leave
-// trigger that returns what that exile took, keyed on one shared label
-// (CR 610.3) — with the ward as the Aura's own trigger watching its
-// host becoming a target (WardAttached).
+// Ossification's exile "until this Aura leaves the battlefield"
+// (CR 610.3, ExileUntil): the return is a one-shot effect performed
+// immediately after the Aura leaves, never a trigger on the stack
+// (#1729) — and it still happens if the Aura's owner leaves the game.
+// The ward is the Aura's own trigger watching its host becoming a
+// target (WardAttached).
 //
-// One guard Ossification does not need: the exile is refused unless
-// the Aura is still the same permanent on the battlefield as the
-// trigger resolves (CR 610.3b — an "until" effect whose duration has
-// already ended never starts). Without it an Aura removed in response
-// would exile the permanent for good, because the leave trigger it
-// would have used has already gone by. The object is named on the
-// item's Params, stamped when the trigger is put on the stack.
+// CR 610.3b, and the ruling of 2024-09-20: "If Sheltered by Ghosts
+// leaves the battlefield before its triggered ability resolves, the
+// target permanent won't be exiled at all." ExileUntil reads the Aura
+// as the object it was when the ability triggered.
 //
-// The permanent returns under its OWNER's control (CR 610.3), as a new
+// The leave trigger the card carried before #1729 stays as a legacy
+// row (UntilThisLeavesLegacyReturn), for a card exiled by an older
+// binary.
+//
+// The permanent returns under its OWNER's control (CR 610.3c), as a new
 // object.
 //
 // No simplification.
@@ -42,16 +45,10 @@ func init() {
 				AppliesTo: Self,
 				Targets: TargetPermanent("target nonland permanent an opponent controls",
 					Nonland(), OpponentControls()),
-				Key: shelteredByGhostsExileLabel,
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					item := game.NewTriggeredItem(source, shelteredByGhostsExileLabel)
-					item.Params.Object = game.ObjectRef{ID: source.InstanceID, Epoch: source.ObjectEpoch}
-					return item
-				},
-				Effect: shelteredByGhostsExile,
+				Key:    shelteredByGhostsExileLabel,
+				Effect: exileChosenTargetUntilThisLeaves("Sheltered by Ghosts — the exiled card returns when the Aura leaves the battlefield"),
 			},
-			On(game.EventLTB, Self, "Sheltered by Ghosts — return the exiled card",
-				b41ReturnCardsExiledWithToTheBattlefield(shelteredByGhostsExileLabel)),
+			UntilThisLeavesLegacyReturn("Sheltered by Ghosts — return the exiled card", shelteredByGhostsExileLabel),
 			WardAttached(WardMana("{2}"), "Sheltered by Ghosts — ward {2}"),
 		},
 	})
@@ -60,13 +57,3 @@ func init() {
 // shelteredByGhostsExileLabel is the exile trigger's stack label; the
 // "exiled with" record keys on it, so both halves share the constant.
 const shelteredByGhostsExileLabel = "Sheltered by Ghosts — exile target nonland permanent an opponent controls"
-
-// shelteredByGhostsExile exiles the chosen permanent unless the Aura
-// that asked has already left the battlefield.
-func shelteredByGhostsExile(g *game.Game, item *game.StackItem) error {
-	src, ok := g.LookupCardForEffect(item.Params.Object.ID)
-	if !ok || src.ObjectEpoch != item.Params.Object.Epoch || !onBattlefield(g, src.InstanceID) {
-		return nil
-	}
-	return b27ExileChosenTarget(g, item)
-}

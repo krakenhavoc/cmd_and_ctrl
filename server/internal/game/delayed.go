@@ -216,6 +216,32 @@ type DelayedTrigger struct {
 	// event-conditioned trigger that names none, because every
 	// printed one says "this turn".
 	Duration *Duration
+
+	// --- CR 610.3: an "until" return (#1729, until_return.go) -------
+
+	// Until marks this record as NOT a triggered ability at all: it is
+	// the second one-shot effect of an exile "until" an event, which
+	// CR 610.3 creates "immediately after the specified event". It
+	// never goes on the stack, no trigger suppressor stops it, and it
+	// does not leave with its controller (CR 800.4a/d name triggered
+	// abilities, which this is not). ScheduleUntilReturnForEffect is
+	// the only writer. Its record lives in this queue so it clones,
+	// snapshots and projects with everything else that is still owed.
+	Until bool
+
+	// UntilLeaves is "until <this object> leaves the battlefield": the
+	// return is due once that object (instance AND CR 400.7 epoch) is
+	// no longer on the battlefield, by whatever route — including
+	// leaving the game with its owner, which emits no zone-change event
+	// (ADR 0060) but is still the object leaving the battlefield.
+	// Zero for an event-keyed "until", which uses On and Condition.
+	UntilLeaves ObjectRef
+
+	// Due is an event-keyed "until" whose event has happened and whose
+	// return has not run yet. The return runs at the next flush point
+	// (resolveUntilReturnsLocked), which is before any player receives
+	// priority and before the state-based actions.
+	Due bool
 }
 
 // ScheduleDelayedTriggerForEffect registers a delayed triggered
@@ -240,7 +266,7 @@ func (g *Game) ScheduleDelayedTriggerForEffect(dt DelayedTrigger) uuid.UUID {
 		effectKeyFault(fmt.Sprintf("game: delayed trigger %q has no body — dropped", dt.Label))
 		return uuid.Nil
 	}
-	if dt.At == "" && len(dt.On) == 0 {
+	if dt.At == "" && len(dt.On) == 0 && !(dt.Until && dt.UntilLeaves.ID != uuid.Nil) {
 		return uuid.Nil
 	}
 	if !dt.Params.Filter.Valid() || !dt.CondParams.Filter.Valid() {
@@ -404,6 +430,9 @@ func cloneDelayedTrigger(dt *DelayedTrigger) *DelayedTrigger {
 		Condition:          dt.Condition,
 		CondParams:         cloneEffectParams(dt.CondParams),
 		OptionalQuestion:   dt.OptionalQuestion,
+		Until:              dt.Until,
+		UntilLeaves:        dt.UntilLeaves,
+		Due:                dt.Due,
 	}
 	if dt.Duration != nil {
 		d := *dt.Duration
@@ -479,6 +508,13 @@ func (g *Game) fireEventDelayedTriggersLocked(pass *harvestPass) {
 	var keep, fire []*DelayedTrigger
 	for _, dt := range g.DelayedTriggers {
 		if dt == nil {
+			continue
+		}
+		if dt.Until {
+			// CR 610.3 (#1729): an "until" return is not a triggered
+			// ability, so the harvester never fires one. Its own
+			// listener marks it due (until_return.go).
+			keep = append(keep, dt)
 			continue
 		}
 		if dt.matchesEventLocked(ev, g) && !g.delayedTriggerSuppressedLocked(pass, dt) {

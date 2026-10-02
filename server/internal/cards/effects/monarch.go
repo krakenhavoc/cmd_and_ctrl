@@ -17,8 +17,8 @@ import (
 //	YoureTheMonarch(g, you)                 // the Courts' "if you're the monarch"
 //
 // plus AnOpponentBecameTheMonarch for Knights of the Black Rose and the
-// "until an opponent becomes the monarch" delayed condition Palace
-// Jailer's exile is keyed to (delayed_bodies.go).
+// "until an opponent becomes the monarch" condition Palace Jailer's
+// exile is keyed to (delayed_bodies.go, exile_until.go).
 //
 // # Why a primitive and not a direct call
 //
@@ -114,11 +114,13 @@ func AnOpponentIsTheMonarch(g *game.Game, you uuid.UUID) bool {
 	return g.Monarch != uuid.Nil && g.Monarch != you
 }
 
-// anOpponentBecameTheMonarchSince is the delayed half of Palace
-// Jailer's "until an opponent becomes the monarch": an
-// EventMonarchChanged whose new monarch is somebody other than the
-// delayed trigger's controller (CR 603.7d — the controller of the
-// ability that created it, which is who "an opponent" is relative to).
+// anOpponentBecameTheMonarchSince is the event of Palace Jailer's
+// "until an opponent becomes the monarch": an EventMonarchChanged whose
+// new monarch is somebody other than the record's controller — the
+// controller of the ability that exiled the card, which is who "an
+// opponent" is relative to. Since #1729 the record is a CR 610.3
+// "until" return rather than a delayed trigger; the condition is the
+// same key either way.
 func anOpponentBecameTheMonarchSince(ev game.Event, dt *game.DelayedTrigger, _ *game.Game, _ game.EffectParams) bool {
 	return ev.Kind == game.EventMonarchChanged && ev.Actor != uuid.Nil && ev.Actor != dt.Controller
 }

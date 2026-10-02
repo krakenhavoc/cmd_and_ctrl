@@ -317,6 +317,7 @@ delayedTriggers[].controller	custom(uuid.UUID)
 delayedTriggers[].controllerTurnOnly	bool
 delayedTriggers[].createdSeq	number:int
 delayedTriggers[].createdTurn	number:int
+delayedTriggers[].due	bool
 delayedTriggers[].duration	object
 delayedTriggers[].duration.Condition	number:int
 delayedTriggers[].duration.ExpiresAfterTurnsBegun	number:int
@@ -358,6 +359,10 @@ delayedTriggers[].sourceObject	object
 delayedTriggers[].sourceObject.epoch	number:int
 delayedTriggers[].sourceObject.id	custom(uuid.UUID)
 delayedTriggers[].turnOf	custom(uuid.UUID)
+delayedTriggers[].until	bool
+delayedTriggers[].untilLeaves	object
+delayedTriggers[].untilLeaves.epoch	number:int
+delayedTriggers[].untilLeaves.id	custom(uuid.UUID)
 discardPending	map:array
 discardPending{}	number:int
 drawnThisTurn	map:array
@@ -2097,6 +2102,7 @@ seats[].castPermissions[].cards[]	object
 seats[].castPermissions[].cards[].epoch	number:int
 seats[].castPermissions[].cards[].id	custom(uuid.UUID)
 seats[].castPermissions[].castOnly	bool
+seats[].castPermissions[].castsLeft	number:int
 seats[].castPermissions[].cost	string
 seats[].castPermissions[].discover	object
 seats[].castPermissions[].discover.n	number:int

@@ -1668,23 +1668,21 @@ var items = []Item{
 	},
 	{
 		// #1729 (from #1728, ADR 0096).
-		Slug: "exile-until-an-event", Name: "Exiling a card until something happens", Kind: KindSeam, Status: StatusPartial,
-		Summary:     "Exiling a card until an event happens works, such as until this leaves the battlefield (Ossification, Hostage Taker) or until an opponent becomes the monarch (Palace Jailer).",
-		Missing:     "If the player who exiled the card leaves the game, it stays in exile, even when their leaving is what should bring it back.",
-		Rules:       []string{"610.3", "800.4a"},
+		Slug: "exile-until-an-event", Name: "Exiling a card until something happens", Kind: KindSeam, Status: StatusImplemented,
+		Summary:     "Exiling a card until an event happens, such as until this leaves the battlefield or until an opponent becomes the monarch. The card comes back right after the event, before anyone can respond, and it still comes back if the player who exiled it has left the game.",
+		Rules:       []string{"610.3", "725.4", "800.4a"},
 		Issue:       1729,
 		ADR:         "0096-the-monarch-from-a-card-effect.md",
-		Waiting:     []string{"Palace Jailer"},
-		Examples:    []string{"Ossification", "Hostage Taker"},
-		EngineNotes: "leave-the-game ordering: an \"until\" return is a delayed trigger controlled by the player who controlled the exiling ability, and `leaveGameObjectsLocked` (`game/leave_game.go`) drops that player's delayed and pending triggers (`dropDelayedTriggersForLocked`, `dropPendingTriggersForLocked`, CR 800.4a). The CR 725.4 hand-on runs from the `EventPlayerEliminated` listener just before the sweep, so Palace Jailer's \"until an opponent becomes the monarch\" fires and is then dropped with its controller, and the creature never returns. Every event-keyed \"until\" has the same exposure. Fix shape: let a return that the departure itself satisfies happen before the sweep. Related, and not a card blocker: CR 610.3 makes the return a one-shot effect created immediately after the event, but Palace Jailer, Ossification and Hostage Taker return through a trigger on the stack, which opens a response window. ADR 0096 records both. Re-checked 2026-10-01.",
+		Examples:    []string{"Palace Jailer", "Ossification", "Hostage Taker", "Sheltered by Ghosts"},
+		EngineNotes: "`game.UntilReturn` and `effects.ExileUntil` (`game/until_return.go`, `effects/exile_until.go`, #1729). The return is CR 610.3's second one-shot effect, not a triggered ability: a record in `Game.DelayedTriggers` with `Until` set, made due by its event (`On`/`Condition`, marked by the `untilReturns` listener) or by its object leaving the battlefield (`UntilLeaves`, a structural test, so the owner leaving the game counts though it emits no zone-change event). `resolveUntilReturnsLocked` performs every due return together (CR 610.3d) before the state-based actions and before any player gets priority. `dropDelayedTriggersForLocked` keeps these records when their controller leaves (CR 800.4a/d name triggered abilities). CR 610.3a/b is `UntilEventHappenedForEffect`, asked before the exile. The old leave triggers stay as legacy rows (`UntilThisLeavesLegacyReturn`) that fire only for a card exiled before #1729. Re-checked 2026-10-02.",
 	},
 	{
-		Slug: "one-cast-from-a-set", Name: "Casting one spell from among several cards", Kind: KindSeam, Status: StatusMissing,
-		Summary:     "Effects that let you cast one spell, and only one, from among several cards later in the turn, such as Court of Locthwain's while you're the monarch.",
-		Missing:     "Permission to cast spells from a group of cards can't yet be limited to a single spell, so these cards would let you cast all of them.",
+		Slug: "one-cast-from-a-set", Name: "Casting one spell from among several cards", Kind: KindSeam, Status: StatusImplemented,
+		Summary:     "Effects that let you cast one spell, and only one, from among several cards, such as Court of Locthwain's free cast while you're the monarch.",
+		Rules:       []string{"611.2c"},
 		Issue:       1729,
-		Waiting:     []string{"Court of Locthwain", "Locke, Treasure Hunter"},
-		EngineNotes: "cast permission: a `game.CastPermission` (ADR 0066) opens every card it names until its duration ends. It has no use count, and nothing marks a group of permissions as \"one of these\". Court of Locthwain's monarch clause (\"until end of turn, you may cast a spell from among cards exiled with this enchantment without paying its mana cost\") written as a `{0}` permission over every card it exiled would make every one of them free — stronger than printed. Needs a per-grant or per-group use count that the cast path consumes on the first cast. Locke, Treasure Hunter's \"until end of turn, you may cast a spell from among those cards\" is the same gap without the free cast. Re-checked 2026-10-01.",
+		Examples:    []string{"Court of Locthwain"},
+		EngineNotes: "cast permission: `game.CastPermission.CastsLeft` (#1729) counts the spells a permission may still open; zero is no limit. `consumeLimitedGrantLocked` spends one when the permission is the reason the cast is legal (`castUsesGrantLocked`), so a card's own flashback does not spend it. Two permissions over one card (Court's play permission and its free cast) are chosen between by the claim: `CastPermissionForClaimLocked` picks the stored permission whose `AltCostKey` the cast claims, and `CastOffersForLocked` lists the second permission's offer. Re-checked 2026-10-02.",
 	},
 	{
 		// #1823 (found by ADR 0103 PR 3, #1821).

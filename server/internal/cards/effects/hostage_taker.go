@@ -10,11 +10,22 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 that card for as long as it remains exiled, and mana of any type
 //	 can be spent to cast that spell."
 //
-// "Until this creature leaves the battlefield" is two abilities
-// (CR 610.3), Ossification's shape: the entry trigger exiles, and a
-// leave trigger returns whatever that exile took, read back off the
-// event log through b27ExiledWith on the entry trigger's label. The
-// return is under the card's OWNER's control.
+// "Until this creature leaves the battlefield" is CR 610.3, through
+// ExileUntil (#1729): the entry trigger exiles, and the return is a
+// one-shot effect performed immediately after the Taker leaves — not a
+// trigger on the stack. The rulings of 2017-09-29 say both halves of
+// that: "the exiled card returns to the battlefield immediately after
+// Hostage Taker leaves the battlefield. Nothing happens between the two
+// events, including state-based actions", and if the Taker's owner
+// leaves the game "the exiled card will return to the battlefield under
+// its owner's control. Because the one-shot effect that returns the
+// card isn't an ability that goes on the stack, it won't cease to exist
+// along with the leaving player's spells and abilities on the stack."
+// The return is under the card's OWNER's control (CR 610.3c).
+//
+// The leave trigger the card carried before #1729 stays as a legacy
+// row (UntilThisLeavesLegacyReturn), for a card exiled by an older
+// binary.
 //
 // Three details the printed card depends on:
 //
@@ -29,7 +40,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //     (the text says cast), for as long as the card stays in exile, and
 //     payable with mana of any TYPE (AnyType, #1573), so a {C} in a
 //     stolen card's cost is payable with any mana. A card cast this way
-//     has left exile, so the leave trigger no longer returns it. The
+//     has left exile, so the Taker leaving no longer returns it. The
 //     creature you cast stays yours; you control the spell and the
 //     permanent.
 func init() {
@@ -48,8 +59,7 @@ func init() {
 				Key:    hostageTakerExileLabel,
 				Effect: hostageTakerExile,
 			},
-			On(game.EventLTB, Self, "Hostage Taker — return the exiled card",
-				b41ReturnCardsExiledWithToTheBattlefield(hostageTakerExileLabel)),
+			UntilThisLeavesLegacyReturn("Hostage Taker — return the exiled card", hostageTakerExileLabel),
 		},
 	})
 }
@@ -67,12 +77,17 @@ func hostageTakerExile(g *game.Game, item *game.StackItem) error {
 		if t.Kind != game.TargetCard {
 			continue
 		}
-		return ExileWithPermission{
-			Target:      t.ID,
+		grant := ExileWithPermission{
 			GrantTo:     item.Controller,
 			CastOnly:    true,
 			AnyType:     true,
 			WhileExiled: true,
+		}.permission()
+		return ExileUntil{
+			Target:     t.ID,
+			ThisLeaves: true,
+			Label:      "Hostage Taker — the exiled card returns when Hostage Taker leaves the battlefield",
+			Grant:      &grant,
 		}.Apply(ctx)
 	}
 	return nil
