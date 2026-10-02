@@ -238,6 +238,11 @@ type CardDef struct {
 	// statics (CR 119.7, ADR 0107 §5). Read from the battlefield
 	// through CatalogCantGainLife; see cant_gain_life.go.
 	CantGainLife []CantGainLifeStatic
+	// AnyColorSpend are this permanent's printed "you may spend mana as
+	// though it were mana of any color" statics (CR 609.4b, #1600) —
+	// Chromatic Orrery, Mycosynth Lattice, Oath of Nissa. Read from the
+	// battlefield through CatalogAnyColorSpend; see spend_any_color.go.
+	AnyColorSpend []AnyColorSpendStatic
 	// GameEndGates are this permanent's printed "you can't lose the
 	// game" / "your opponents can't win the game" statics (CR 104.3),
 	// scoped relative to its CONTROLLER. Read from the battlefield
@@ -676,6 +681,12 @@ func init() {
 	CatalogCantGainLife = func(key string) []CantGainLifeStatic {
 		if d := catalogDef(key); d != nil {
 			return d.CantGainLife
+		}
+		return nil
+	}
+	CatalogAnyColorSpend = func(key string) []AnyColorSpendStatic {
+		if d := catalogDef(key); d != nil {
+			return d.AnyColorSpend
 		}
 		return nil
 	}

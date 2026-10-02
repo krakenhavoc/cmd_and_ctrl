@@ -1630,7 +1630,7 @@ func autoTapPreview(c Config, w http.ResponseWriter, r *http.Request) error {
 		// function.
 		total := game.WaterbendReduced(price.Total, xValue, len(params.WaterbendIDs))
 		spend := game.ManaSpendForAbility(price.Source)
-		cost := strikePhyrexianForPreview(g, p.PlayerID, total, spend, phyrexian)
+		cost := costAsPaidForPreview(g, p.PlayerID, total, spend, phyrexian)
 		// #1212: no source wish for an ability. "If mana from a
 		// Treasure was spent to activate this ability" (Forsworn
 		// Paladin, Jetmir's Fixer) is real printed text and is
@@ -1681,7 +1681,7 @@ func autoTapPreview(c Config, w http.ResponseWriter, r *http.Request) error {
 	// the card type, which a modal DFC's two faces need not share
 	// (ADR 0034).
 	spend := game.ManaSpendForCast(price.Card)
-	cost := strikePhyrexianForPreview(g, p.PlayerID, price.Total, spend, phyrexian)
+	cost := costAsPaidForPreview(g, p.PlayerID, price.Total, spend, phyrexian)
 	// The cost string reported back is the one this cast PAYS, not
 	// the one in the card's corner — a flashed-back Think Twice reads
 	// "{2}{U}" and an airbent permanent reads "{2}". The commander tax
@@ -1860,9 +1860,12 @@ func previewTargetsParam(raw string) ([]game.TargetRef, error) {
 	return out, nil
 }
 
-// strikePhyrexianForPreview removes the Phyrexian symbols the caller
-// says they are paying with life, so the preview plans only the mana
-// the announcement still owes (#916).
+// costAsPaidForPreview is the cost the preview plans: widened under the
+// player's "spend mana as though it were mana of any color" grant
+// (#1600, game.CostAsPaidBy — the reading every engine payment makes
+// before its Phyrexian strike), then with the Phyrexian symbols the
+// caller says they are paying with life removed, so the preview plans
+// only the mana the announcement still owes (#916).
 //
 // game.PhyrexianLifePlan is the SAME strike the engine makes, reading
 // the same pool, so the preview and the payment pick the same
@@ -1870,13 +1873,14 @@ func previewTargetsParam(raw string) ([]game.TargetRef, error) {
 // and an over-claim is the announce gate's refusal to make
 // (strikePhyrexianLifeLocked, CR 601.2b / CR 119.4), not a reason to
 // answer a read-only question with a 400.
-func strikePhyrexianForPreview(
+func costAsPaidForPreview(
 	g *game.Game,
 	playerID uuid.UUID,
 	cost game.ParsedCost,
 	spend game.ManaSpendContext,
 	claimed int,
 ) game.ParsedCost {
+	cost = g.CostAsPaidBy(playerID, spend, cost)
 	if claimed <= 0 {
 		return cost
 	}

@@ -547,6 +547,29 @@ whose mana is also restricted (Cavern) declares both. Riders fire only
 on a recorded payment, so every rider card carries the strict-mana
 caveat. See ADR 0040's 2026-09-24 amendment.
 
+**A permanent's "you may spend mana as though it were mana of any
+color" (#1600)** goes in `Spec.AnyColorSpend`, built with the
+constructors in
+[any_color_spend.go](../server/internal/cards/effects/any_color_spend.go):
+
+```go
+AnyColorSpend: YouMaySpendManaAsAnyColor(),                                    // Chromatic Orrery
+AnyColorSpend: PlayersMaySpendManaAsAnyColor(),                                // Mycosynth Lattice
+AnyColorSpend: YouMaySpendManaAsAnyColorToCast("planeswalker spells", "Planeswalker"), // Oath of Nissa
+```
+
+The engine reads it at every payment the covered player makes — spells,
+activated and mana abilities, special actions, attack taxes and
+"unless pays" costs — and nothing else changes: the price the client
+shows stays printed, a `{C}` still needs colourless mana (CR 106.1b),
+and a restricted mana still pays only what its restriction allows. A
+card that grants it for ONE spell ("you may spend mana as though it
+were mana of any color to cast that spell") is a cast permission's
+`AnyColor` instead. "Spend WHITE mana as though it were mana of any
+color" (Celestial Dawn) and a grant over one permanent's own abilities
+(Manascape Refractor) have no shape yet. See ADR 0066's 2026-10-02
+amendment.
+
 For non-mana, non-static activated abilities (planeswalker +1/-1,
 equip, cycling, etc.), wait — see the deferral list below.
 

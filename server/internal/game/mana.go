@@ -220,31 +220,36 @@ func (p ManaPool) attemptSpend(cost ParsedCost, xValue int, ctx ManaSpendContext
 	// the pass that decides whether a cost can be paid at all, and a
 	// colour preference that could steer it into a dead end would
 	// make payability depend on what the spell happens to read.
+	//
+	// A WIDENED slot (AnyMana — a spend grant's, #1589 / #1600) takes
+	// a token of a colour it PRINTS here, like any other slot, and
+	// otherwise joins the generic demand below, which any token pays.
+	// That is the same answer to "payable?" as admitting any token
+	// here, and a better answer to "with what?": the colour the card
+	// asked for is spent when the pool has it, so a grant the player
+	// "may" use never costs a Firespout its red mode.
+	deferred := 0
 	for _, req := range widenedLast(cost.Required) {
-		idx := -1
-		for _, i := range order {
-			if used[i] {
+		idx := firstPrintedMatch(work, used, order, req)
+		if idx < 0 {
+			if req.AnyMana {
+				deferred++
 				continue
 			}
-			if req.Admits(work[i].Color) {
-				idx = i
-				break
-			}
-		}
-		if idx < 0 {
 			return nil, nil, false
 		}
 		used[idx] = true
 	}
 
 	// Step 2 — generic requirement. Total = explicit Generic +
-	// XSlots * xValue. The COLOUR ORDER is the strategy's one job:
+	// XSlots * xValue, plus the widened slots no printed colour paid
+	// (#1600). The COLOUR ORDER is the strategy's one job:
 	// colourless first to preserve colored for the next cast, or —
 	// for a converge / sunburst spell — a colour this payment has
 	// not spent yet, because those cards count colours rather than
 	// mana. Every bucket is walked either way, so the answer to
 	// "payable?" is the same under both.
-	need := cost.Generic + cost.XSlots*xValue
+	need := cost.Generic + cost.XSlots*xValue + deferred
 	if need > 0 && strategy == SpendDistinctColors {
 		// One token at a time, because the question is about the SET
 		// of colours: a bucket loop that emptied {W} before touching
@@ -457,25 +462,24 @@ func (p ManaPool) MissingFor(cost ParsedCost, xValue int, ctx ManaSpendContext) 
 	order := spendOrder(work, ctx)
 	var missing []string
 
+	// attemptSpend's two passes, mirrored: a widened slot no printed
+	// colour paid waits for the generic pass (#1600).
+	var deferred []ColorRequirement
 	for _, req := range widenedLast(cost.Required) {
-		idx := -1
-		for _, i := range order {
-			if used[i] {
+		idx := firstPrintedMatch(work, used, order, req)
+		if idx < 0 {
+			if req.AnyMana {
+				deferred = append(deferred, req)
 				continue
 			}
-			if req.Admits(work[i].Color) {
-				idx = i
-				break
-			}
-		}
-		if idx < 0 {
 			missing = append(missing, "{"+formatRequirement(req)+"}")
 			continue
 		}
 		used[idx] = true
 	}
 
-	need := cost.Generic + cost.XSlots*xValue
+	generic := cost.Generic + cost.XSlots*xValue
+	need := len(deferred) + generic
 	for _, color := range []string{"C", "W", "U", "B", "R", "G"} {
 		if need == 0 {
 			break
@@ -491,11 +495,39 @@ func (p ManaPool) MissingFor(cost ParsedCost, xValue int, ctx ManaSpendContext) 
 			need--
 		}
 	}
+	// The widened slots are paid before the generic, so what is still
+	// owed is the generic and then, past it, the widened slots from the
+	// back — named by their printed symbol, as they were before #1600.
+	if short := need - generic; short > 0 {
+		for _, req := range deferred[len(deferred)-short:] {
+			missing = append(missing, "{"+formatRequirement(req)+"}")
+		}
+		need = generic
+	}
 	for need > 0 {
 		missing = append(missing, "{1}")
 		need--
 	}
 	return missing
+}
+
+// firstPrintedMatch is the token a coloured requirement takes in the
+// pool solver's first pass: the first unused token in `order` whose
+// colour the requirement PRINTS (matchColor over Options), or -1. A
+// widened slot (AnyMana) is asked the same question here; what it
+// admits beyond its printed colours is paid in the generic pass
+// instead (#1600), so the two passes together admit exactly what
+// ColorRequirement.Admits does.
+func firstPrintedMatch(work ManaPool, used []bool, order []int, req ColorRequirement) int {
+	for _, i := range order {
+		if used[i] {
+			continue
+		}
+		if matchColor(work[i].Color, req.Options) {
+			return i
+		}
+	}
+	return -1
 }
 
 // manaSpentEvent builds the EventManaSpent breadcrumb for a payment

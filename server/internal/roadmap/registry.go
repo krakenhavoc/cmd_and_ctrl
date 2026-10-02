@@ -1626,13 +1626,14 @@ var items = []Item{
 	{
 		// #1600's leftovers from the mana-rock slice (295-b, #1596).
 		// Each is its own seam; they share the one issue.
-		Slug: "spend-mana-as-any-color", Name: "Spending mana as though it were any color", Kind: KindSeam, Status: StatusPartial,
-		Summary:     "Effects that let you spend mana as though it were mana of any color or type to cast particular cards work, such as Hostage Taker's and Gonti, Night Minister's.",
-		Missing:     "A permanent that lets you spend mana as though it were any color on everything you pay for, like Chromatic Orrery or Mycosynth Lattice, isn't supported yet.",
+		Slug: "spend-mana-as-any-color", Name: "Spending mana as though it were any color", Kind: KindSeam, Status: StatusImplemented,
+		Summary:     "Effects that let you spend mana as though it were mana of any color work, whether they cover one spell (Hostage Taker, Gonti, Night Minister) or everything a player pays for (Chromatic Orrery, Mycosynth Lattice, Oath of Nissa's planeswalker spells).",
+		Rules:       []string{"609.4b", "106.1b"},
 		Issue:       1600,
-		Waiting:     []string{"Chromatic Orrery", "Mycosynth Lattice"},
-		Examples:    []string{"Hostage Taker", "Gonti, Night Minister"},
-		EngineNotes: "mana payment: the any-colour and any-type folds exist only on a cast permission — `CastPermission.AnyColor` / `AnyType`, applied by `spendAsThoughAny` in the one cast pricer (S21 sub-PR 6, #1573). Nothing reads a STATIC \"you may spend mana as though it were mana of any color\" that covers every cost a player pays, spells and activations alike (CR 609.4b: it changes how a cost may be paid, not the cost and not what was spent). Chromatic Orrery (its controller) and Mycosynth Lattice (every player) ship with caveats for it. The fold would have to reach the activation payment and the auto-tapper as well as the cast pricer. Re-checked 2026-10-01.",
+		ADR:         "0066-granted-cast-and-play-permissions.md",
+		Mechanic:    "spending mana as though it were any color",
+		Examples:    []string{"Chromatic Orrery", "Oath of Nissa"},
+		EngineNotes: "**Shipped** (#1600, ADR 0066's 2026-10-02 amendment): the one-spell form is a cast permission's `AnyColor` / `AnyType`, folded by `spendAsThoughAny` in the cast pricer (S21 sub-PR 6, #1573). The player form is `Spec.AnyColorSpend` (`game.AnyColorSpendStatic`: you or every player, optionally narrowed by `Covers` over the payment's spend context), read off the battlefield by `costAsPaidByLocked` (`game/spend_any_color.go`) at every PAYMENT rather than in a pricer — the cast, its auto-tap, a CR 602 activation / special action / attack tax (`payAbilityManaCostLocked`), a mana ability's mana cost, a pay-unless (`payCostLocked`) — and by `internal/legal`'s one affordability probe and the auto-tap preview, so the price shown stays printed (CR 609.4b). It widens coloured requirements (`ColorRequirement.AnyMana`) instead of folding them, after convoke / waterbend / delve and before the Phyrexian strike; both solvers pay a widened symbol with its printed colour when they can and as generic otherwise. Not covered, and no catalogued card waits on them: \"spend WHITE (or blue) mana as though it were mana of any color\" with \"other mana only as though colorless\" (Celestial Dawn, False Dawn, Quicksilver Elemental, Grell Philosopher), and grants tied to one permanent's own abilities (Manascape Refractor, Agatha's Soul Cauldron, Nathan Drake), whose spend context names no source instance.",
 	},
 	{
 		Slug: "discard-your-hand-cost", Name: "Discarding your hand as a cost", Kind: KindSeam, Status: StatusMissing,

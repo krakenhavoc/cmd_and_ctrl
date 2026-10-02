@@ -9,20 +9,26 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 {5}, {T}: Draw a card for each color among permanents you
 //	 control."
 //
-// The "spend as any color" static is the same clause Mycosynth
-// Lattice already declares unimplemented (its own caveat: "you cannot
-// spend mana as any color") — no engine reader exists for it yet, so
-// this card ships the same gap rather than a new one. The two tap
-// abilities are ordinary.
+// The first line is a player static (CR 609.4b, #1600): the engine
+// reads it at every payment its controller makes — spells, activated
+// and mana abilities, special actions, attack taxes and "unless pays"
+// costs — and lets any mana, the Orrery's own colourless included, pay
+// a coloured symbol. It changes how a cost is paid, not the cost: the
+// prices on the client stay printed, a {C} still needs colourless mana
+// (CR 106.1b), and "spend this mana only on …" still binds. See
+// game/spend_any_color.go.
 //
-// Caveat: "you may spend mana as though it were mana of any color"
-// isn't implemented. The two tap abilities work.
+// The draw counts colours among the controller's permanents as the
+// ability resolves; colourless is not a colour, so an artifact board
+// draws nothing.
+//
+// No simplifications.
 func init() {
 	Register(Spec{
-		OracleID:     "95c3976c-33f3-490b-bfd3-7f1af2fe0416",
-		Name:         "Chromatic Orrery",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"Spending mana as though it were mana of any color isn't implemented — only the two tap abilities work."},
+		OracleID:      "95c3976c-33f3-490b-bfd3-7f1af2fe0416",
+		Name:          "Chromatic Orrery",
+		Completeness:  CompletenessFull,
+		AnyColorSpend: YouMaySpendManaAsAnyColor(),
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},
 			Produced: "{C}{C}{C}{C}{C}",

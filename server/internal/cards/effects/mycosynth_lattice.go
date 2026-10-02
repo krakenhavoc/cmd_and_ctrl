@@ -2,33 +2,39 @@ package effects
 
 import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
-// Mycosynth Lattice — "All permanents are artifacts in addition to
-// their other types." (plus other clauses out of S16 scope, see
-// below.)
+// Mycosynth Lattice — Artifact {6}:
+//
+//	"All permanents are artifacts in addition to their other types.
+//	 All cards that aren't on the battlefield, spells, and permanents
+//	 are colorless.
+//	 Players may spend mana as though it were mana of any color."
 //
 // First S16 Layer-4 catalog card. One static ability that walks
 // every battlefield permanent on each recompute pass and appends
 // "Artifact" to its effective types — idempotent so the printed
 // Forest stays a Forest, just gains the Artifact stamp.
 //
-// Out of scope (deferred to S17 / S18 / S19):
-//   - "All lands are every basic land type." Layer 4 type-add of
-//     Plains/Island/Swamp/Mountain/Forest to every land — needs
-//     the same parser hook but interacts with the S15 mana ability
-//     pipeline. Sub-PR 4 ships only the artifact half.
-//   - "Lands tap for any color." Replacement effect on the basic-
-//     land synthetic mana ability output — S17 territory.
-//   - "Players can't pay anything other than mana." Cost replacement;
-//     S17 territory.
+// The third line is the player static #1600 built for Chromatic
+// Orrery, covering every player rather than the controller: the engine
+// reads it at every payment any player makes (game/spend_any_color.go,
+// CR 609.4b).
 //
-// The S16 sandbox stops at the type-add. The remaining clauses are
-// documented so future implementers don't think they were missed.
+// Out of scope: the second line. Layer 5 can make every PERMANENT
+// colorless, but the layer engine does not recompute a spell on the
+// stack or a card in a hidden zone, so "all cards that aren't on the
+// battlefield, spells, and permanents are colorless" would be half
+// true — permanents colorless, the spell that becomes one coloured on
+// the stack — which is the kind of partial rule a "protection from
+// red" or a "spend this mana only on colorless spells" reads wrongly
+// in both directions. It waits for a colour pass that reaches the
+// stack and the other zones.
 func init() {
 	Register(Spec{
-		OracleID:     "ae1f2ab5-c6a5-4d49-a746-3cb4668bf805",
-		Name:         "Mycosynth Lattice",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"Only the \"all permanents are artifacts\" clause works — nothing is made colorless and you cannot spend mana as any color."},
+		OracleID:      "ae1f2ab5-c6a5-4d49-a746-3cb4668bf805",
+		Name:          "Mycosynth Lattice",
+		Completeness:  CompletenessCaveats,
+		Caveats:       []string{"Nothing is made colorless — cards, spells and permanents keep their colors. The other two lines work."},
+		AnyColorSpend: PlayersMaySpendManaAsAnyColor(),
 		Static: []game.StaticAbility{
 			{
 				Layer: game.Layer4Type,

@@ -3664,6 +3664,12 @@ func (g *Game) declineDepartedChoiceLocked(c *PendingChoice) {
 //
 // Caller must hold g.mu.
 func (g *Game) payCostLocked(p *Player, cost ParsedCost, source uuid.UUID, excluded map[uuid.UUID]bool) bool {
+	// #1600, CR 609.4b: Chromatic Orrery's "you may spend mana as
+	// though it were mana of any color" reaches a ward or a Rhystic
+	// Study tax too — every cost the player pays. A narrowed grant
+	// (Oath of Nissa's planeswalker spells) does not: the zero context
+	// names no spell.
+	cost = g.costAsPaidByLocked(p.ID, ManaSpendContext{}, cost)
 	if !p.ManaPool.CanPay(cost, 0) {
 		plan, ok := g.autoTapLocked(p.ID, cost, 0, excluded)
 		if !ok {

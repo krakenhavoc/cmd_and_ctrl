@@ -155,6 +155,21 @@ var mechanics = []Mechanic{
 		Adopt:      "Declare Spec.TriggerSuppressors using SuppressesEntering / SuppressesDying in trigger_suppression.go",
 	},
 	{
+		// #1600: a permanent's "you may spend mana as though it were
+		// mana of any color" (Chromatic Orrery, Mycosynth Lattice).
+		// Phrased as SPENDING, so a caveat about a mana ability that
+		// "adds one mana of any color" is not read as this.
+		Name: "spending mana as though it were any color",
+		Phrases: []string{
+			"spend mana as though", "spending mana as though",
+			"spend mana as any color", "spend mana as any colour",
+		},
+		Implements: func(s effects.Spec) bool { return len(s.AnyColorSpend) > 0 },
+		Evidence:   "Spec.AnyColorSpend declares a spend static",
+		Confidence: Exact,
+		Adopt:      "AnyColorSpend: YouMaySpendManaAsAnyColor() / PlayersMaySpendManaAsAnyColor() — see any_color_spend.go",
+	},
+	{
 		Name:       "flashback",
 		Phrases:    []string{"flashback"},
 		Implements: altCost("flashback"),

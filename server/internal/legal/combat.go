@@ -126,11 +126,14 @@ func (e *enumerator) combatMoves() {
 				price := g.PriceAttackDeclarationForEffect(decl)
 				autoTap := false
 				if !price.IsFree() {
-					if !e.p.ManaPool.CanPayFor(price.Total, 0, game.ManaSpendContext{}) {
+					// #1600: widened as the engine's tax payment
+					// widens it (payAbilityManaCostLocked).
+					total := e.g.CostAsPaidByForEffect(e.seat, game.ManaSpendContext{}, price.Total)
+					if !e.p.ManaPool.CanPayFor(total, 0, game.ManaSpendContext{}) {
 						// Only the tapper can cover it, so the move
 						// has to say so — and if the tapper cannot
 						// either, the move is not offered at all.
-						if _, ok := e.g.AutoTapForCostForEffectExcluding(e.seat, price.Total, 0, nil); !ok {
+						if _, ok := e.g.AutoTapForCostForEffectExcluding(e.seat, total, 0, nil); !ok {
 							continue
 						}
 						autoTap = true
