@@ -1,6 +1,8 @@
 import {
   authFetch,
+  clearSavedIdentity,
   currentSession,
+  sessionSettled,
   setSession,
   LobbyApiError,
   type ApiViolation,
@@ -411,6 +413,8 @@ export async function mintSeatReclaim(gameID: string, playerID: string): Promise
 // session (that is the whole problem), and a 401 here means "bad
 // ticket", not "your session expired".
 export async function redeemSeatReclaim(gameID: string, ticket: string): Promise<Session> {
+  // Sets the cookie: wait out a renewal in flight (session.ts).
+  await sessionSettled();
   const res = await fetch(`/games/${gameID}/reclaim`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Accept: "application/json" },
@@ -990,6 +994,8 @@ export async function fetchAutoTapPreview(
 // and throw — /logout accepts stale credentials and always returns
 // 204, so there's nothing to interpret from the body.
 export async function logout(): Promise<void> {
+  // A renewal answering after the sign-out would set the cookie again.
+  await sessionSettled();
   const s = currentSession();
   try {
     await fetch("/logout", {
@@ -1001,6 +1007,10 @@ export async function logout(): Promise<void> {
     // Swallow network errors — we still want to drop the local
     // session so the UI recovers.
   }
+  // Signing out signs the person out, not just the session on top: the
+  // signed-in session kept aside behind an admin or ticket session goes
+  // too (ADR 0110 §1 item 6).
+  clearSavedIdentity();
   setSession(null);
 }
 
@@ -1017,6 +1027,7 @@ export async function logout(): Promise<void> {
 // or expired). It bypasses authFetch for the same reason logout does:
 // a 401 here is an answer, not a reason to throw "session expired".
 export async function logoutEverywhere(): Promise<void> {
+  await sessionSettled();
   const s = currentSession();
   const res = await fetch("/logout/everywhere", {
     method: "POST",
@@ -1024,6 +1035,7 @@ export async function logoutEverywhere(): Promise<void> {
     credentials: "same-origin",
   });
   if (res.ok || res.status === 401) {
+    clearSavedIdentity();
     setSession(null);
     return;
   }

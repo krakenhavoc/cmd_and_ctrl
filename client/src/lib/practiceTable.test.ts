@@ -141,6 +141,53 @@ describe("opening the practice table", () => {
 });
 
 describe("leaving the practice table", () => {
+  it("returns a signed-in person to their own session when the one practice replaced has run out (ADR 0110 §1 item 6)", async () => {
+    const m = await load();
+    const later = (ms: number) => new Date(Date.now() + ms).toISOString();
+    const now = new Date().toISOString();
+    const identity: Session = {
+      token: "my-identity",
+      expiresAt: later(30 * 86_400_000),
+      principal: {
+        role: "identified",
+        user_id: "5b0d6a3e-8f7f-4e0e-9b1a-0f3c1d2e4a5b",
+        issued_at: now,
+        expires_at: later(30 * 86_400_000),
+      },
+    };
+    const admin: Session = {
+      token: "admin-tok",
+      expiresAt: later(3_600_000),
+      principal: { role: "admin", issued_at: now, expires_at: later(3_600_000) },
+    };
+    m.setSession(identity);
+    // The admin token over a sign-in keeps the sign-in aside.
+    m.setSession(admin);
+    m.installPracticeExits();
+    m.route.set({ name: "practice" });
+    m.createPracticeTable.mockResolvedValue(PRACTICE);
+    const id = await m.startPractice();
+    m.route.set({ name: "game", gameID: id });
+
+    // The admin session runs out during the tutorial.
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      vi.setSystemTime(Date.now() + 2 * 3_600_000);
+      m.route.set({ name: "lobby" });
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(m.currentSession()?.token).toBe("my-identity");
+    // The leave call is what puts the cookie back, to the sign-in.
+    expect(m.leavePracticeTable).toHaveBeenCalledWith(
+      "practice-game",
+      "practice-token",
+      "my-identity",
+      { keepalive: undefined },
+    );
+  });
+
   it("Leave (a route change) restores the settings and the session, and abandons the table", async () => {
     const m = await openPractice();
     // A change the player made DURING the tutorial, to a setting the
