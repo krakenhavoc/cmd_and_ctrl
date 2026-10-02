@@ -539,7 +539,7 @@ func (r *Runner) step(ctx context.Context) bool {
 			out.index, out.reason = idx, reason
 		}
 		mv := moves[idx]
-		// #628, CR 726: the engine has flagged a trigger loop, so
+		// #628, CR 732: the engine has flagged a trigger loop, so
 		// automatic passing is suspended for the whole table. A bot's
 		// pass is as automatic as a browser's autopass toggle, so the
 		// seat holds instead of feeding the loop another iteration.
@@ -551,7 +551,7 @@ func (r *Runner) step(ctx context.Context) bool {
 		// decision, which is how a bot-only table gets moving again
 		// when it has something else to do.
 		if mv.Kind == legal.KindPass && r.room.Game.AutoPassSuspended() {
-			r.log.Warn("bot holding: automatic passing is suspended by the loop breaker (CR 726)")
+			r.log.Warn("bot holding: automatic passing is suspended by the loop breaker (CR 732)")
 			r.observe(in, out, &mv, 0, false, nil)
 			return true
 		}
@@ -574,7 +574,7 @@ func (r *Runner) step(ctx context.Context) bool {
 		// next turn.
 		if mv.Kind == legal.KindActivate {
 			if n := r.room.Game.CurrentLoopNotice(); n != nil && n.Source == mv.Source {
-				r.log.Warn("bot holding: the loop breaker named this permanent's ability (CR 726)",
+				r.log.Warn("bot holding: the loop breaker named this permanent's ability (CR 732)",
 					"move", mv.Label, "ability", n.Label, "count", n.Count)
 				r.observe(in, out, &mv, 0, false, nil)
 				return true

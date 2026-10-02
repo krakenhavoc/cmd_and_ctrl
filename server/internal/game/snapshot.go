@@ -361,7 +361,7 @@ type GameSnapshot struct {
 	// exhaust ability on the board back.
 	Activations ActivationTally `json:"activations,omitempty"`
 
-	// LoopNotice / LoopThreshold are the CR 726 loop breaker (#628).
+	// LoopNotice / LoopThreshold are the CR 732 loop breaker (#628).
 	// Both carried: a restore that dropped the notice would resume a
 	// table into a live loop with automatic passing back on, and one
 	// that dropped the threshold would silently re-default a game a
@@ -1254,7 +1254,7 @@ type pendingChoiceSnapshot struct {
 	// that forgot them would render a question with no answers.
 	PickOptions []ChoiceOption `json:"pickOptions,omitempty"`
 	ChooseMax   int            `json:"chooseMax,omitempty"`
-	// #804 CR 726 shortcut: which run the answer's allowance attaches
+	// #804 CR 732 shortcut: which run the answer's allowance attaches
 	// to, how many resolutions had happened when it was asked, and
 	// whether this is the turn's second ask.
 	LoopShortcutKey    string `json:"loopShortcutKey,omitempty"`

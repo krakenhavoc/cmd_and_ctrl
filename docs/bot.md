@@ -1859,7 +1859,7 @@ outright
 now sees Crackle at one target for X=1, two for X=2, and so on as far
 as its mana reaches, and never sees the cast that bounces.
 
-**A bot takes one CR 726 shortcut per loop per turn, then stops.** When
+**A bot takes one CR 732 shortcut per loop per turn, then stops.** When
 the loop breaker fires ([ADR 0055](decisions/0055-loop-breaker.md)) the
 repeating ability's controller is asked how many more times it should
 resolve. `internal/legal` offers a bot seat 10 first — and a bot takes

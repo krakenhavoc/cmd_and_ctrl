@@ -1785,7 +1785,7 @@ an upkeep trigger. A step cannot end with objects on the stack, so
 stack is empty and only then moves the cursor. An empty stack is
 unchanged: one move, no pass. The drive stops — cursor where it is, no
 error — on a blocking prompt one of its resolutions raised, on a
-CR 726 loop notice, or on the game ending. A card whose trigger fires
+CR 732 loop notice, or on the game ending. A card whose trigger fires
 in one step and pays off in the next needs nothing for this; write the
 trigger and the turn structure is already right.
 
@@ -2346,7 +2346,7 @@ is the table-wide count; `g.ResolvedThisTurn(source, label)` and
 empty label sums the source's abilities) and are per **object**, not
 per card — a permanent that left the battlefield and came back this
 turn answers zero, because CR 400.7 makes it a new object and the key
-carries `Card.ObjectEpoch` (#936). The CR 726 loop breaker's
+carries `Card.ObjectEpoch` (#936). The CR 732 loop breaker's
 `LoopRun` / `LoopAllowance` share the same (source, label) pair and
 stay per **card**, so a blink loop still trips the threshold; one key,
 two projections, and `TurnTally`'s field comments say which reader
@@ -4767,7 +4767,7 @@ Mana costs only. "Cumulative upkeep—Pay 2 life" (Glacial Chasm) and
 with a payment the pay-or-else prompt cannot parse; they wait for those
 payment shapes rather than being approximated.
 
-### The CR 726 loop breaker (#628)
+### The CR 732 loop breaker (#628)
 
 Two permanents that trigger each other loop forever. The server never
 blocks — one bounded unit of work per pass — but with autopass on for
@@ -4828,7 +4828,7 @@ touch it: answering is a player decision, so the run is cleared and
 found it — without that re-arm, "3 more" would mean 3 + the threshold;
 and this prompt **blocks the table**, which the notice deliberately does
 not, so `notePlayerDecisionLocked` withdraws a stale one rather than
-leaving a wedge. CR 726.4's draw is still not built.
+leaving a wedge. CR 732.4's draw is still not built.
 
 ### Untapping in another player's untap step (#74)
 

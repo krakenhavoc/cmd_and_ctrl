@@ -134,7 +134,7 @@ export function owesAttackRequirement(
 }
 
 // autopassSuspended reports whether the server has told this table to
-// stop passing AUTOMATICALLY (#628, CR 726).
+// stop passing AUTOMATICALLY (#628, CR 732).
 //
 // The engine raises `loop_notice` when one triggered ability has
 // resolved 25 times in a turn with nobody casting, activating,

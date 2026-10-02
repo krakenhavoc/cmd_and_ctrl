@@ -27,7 +27,7 @@ package game
 //
 //  1. a prompt queued is stamped PendingChoice.midResolution, unless it
 //     belongs to putting a triggered ability on the stack or to the
-//     CR 726 loop breaker (choiceBelongsToResolution);
+//     CR 732 loop breaker (choiceBelongsToResolution);
 //  2. runStateChecksLocked does nothing while a resolution function is
 //     still on the Go stack, or while a stamped prompt that blocks the
 //     table is open (holdForOpenResolutionLocked). It holds the whole
@@ -68,7 +68,7 @@ package game
 //     harvested, which can be mid-resolution, but they are answered at
 //     the priority boundary this file is holding. Holding for them
 //     would put the boundary after them, the wrong way round (#809).
-//   - The CR 726 loop shortcut. It is proposed when a resolution is
+//   - The CR 732 loop shortcut. It is proposed when a resolution is
 //     noted, but it is a question about the loop, not a step of the
 //     resolving item.
 //

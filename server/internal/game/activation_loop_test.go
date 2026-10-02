@@ -60,7 +60,7 @@ func activateFree(t *testing.T, g *Game, src uuid.UUID, index int) {
 
 // The headline: a free ability activated over and over, with nothing
 // else decided in between, trips the breaker on the threshold's
-// resolution — and the CR 726 prompt goes to its controller, so a
+// resolution — and the CR 732 prompt goes to its controller, so a
 // bot-only table has an answer rather than a spin.
 func TestRepeatedFreeActivationFiresTheLoopBreaker(t *testing.T) {
 	const threshold = 4
@@ -94,7 +94,7 @@ func TestRepeatedFreeActivationFiresTheLoopBreaker(t *testing.T) {
 	}
 	c := loopShortcutPrompt(g)
 	if c == nil {
-		t.Fatal("no CR 726 shortcut prompt — a bot-only table has nothing to answer and never stops")
+		t.Fatal("no CR 732 shortcut prompt — a bot-only table has nothing to answer and never stops")
 	}
 	if c.Chooser != g.Seats[0].ID {
 		t.Errorf("prompt chooser = %s, want the ability's controller %s", c.Chooser, g.Seats[0].ID)

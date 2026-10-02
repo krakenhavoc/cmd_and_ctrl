@@ -167,7 +167,7 @@ type TurnTally struct {
 	// not handed the trigger's event.
 	CombatDamagedPlayers map[string]int `json:"combatDamagedPlayers,omitempty"`
 	// LoopRun is Resolved restarted at every player decision: the
-	// CR 726 loop breaker's count of how many times one ability has
+	// CR 732 loop breaker's count of how many times one ability has
 	// resolved with nobody casting, activating, answering a prompt
 	// or declaring a creature in between. Reset to nil by
 	// notePlayerDecisionLocked; read by loopSuspectedLocked and
@@ -178,7 +178,7 @@ type TurnTally struct {
 	// and this is the count that must NOT restart when the permanent
 	// leaves and re-enters.
 	LoopRun map[string]int `json:"loopRun,omitempty"`
-	// LoopAllowance is the CR 726 shortcut the loop's controller
+	// LoopAllowance is the CR 732 shortcut the loop's controller
 	// agreed to, keyed like LoopRun (per CARD): how many more resolutions of
 	// that ability the table runs before the breaker asks again.
 	// Written by ResolveLoopShortcut, decremented by
@@ -343,7 +343,7 @@ func (g *Game) AttackedPlayersThisTurn(cardID uuid.UUID) []uuid.UUID {
 //
 // This is the CARD-LEVEL projection of the key, and since #936 it has
 // exactly two readers left — TurnTally.LoopRun and
-// TurnTally.LoopAllowance, the CR 726 loop breaker's pair
+// TurnTally.LoopAllowance, the CR 732 loop breaker's pair
 // (loop_breaker.go) — plus oncePerBatchFired, which compares its
 // entries against the live event batch and so cannot read a stale
 // one (event_batch.go).
@@ -895,7 +895,7 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 			g.TurnTally.Casts = append(g.TurnTally.Casts, ev.CardID)
 		}
 		// #628: the OTHER reason these two share an arm, and until
-		// #1238 the only one — they are decision events for the CR 726
+		// #1238 the only one — they are decision events for the CR 732
 		// loop breaker. Casting a spell and declaring a blocker are
 		// both "a player did something other than pass", which
 		// restarts the loop run.
@@ -971,7 +971,7 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 		// taken here, so the two questions cannot drift apart.
 		g.TurnTally.Resolved[g.objectTallyKeyLocked(ev.Source, ev.Label)]++
 		// #628: the same count, restarted at each player decision, is
-		// the CR 726 loop breaker's input. See loop_breaker.go.
+		// the CR 732 loop breaker's input. See loop_breaker.go.
 		g.noteResolutionForLoopLocked(ev, TallyKey(ev.Source, ev.Label))
 	case EventTrigger:
 		if ev.Source == uuid.Nil {

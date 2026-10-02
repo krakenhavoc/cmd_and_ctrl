@@ -233,7 +233,7 @@ func TestRingsOfBrighthearthDoesNotTriggerOffItsOwnCopy(t *testing.T) {
 	if n := acCountEvents(g, game.EventActivateAbility); n != 1 {
 		t.Fatalf("%d activations announced, want 1 — a copy is created, not activated (CR 707.10a)", n)
 	}
-	// One Rings announcement, too. EventTrigger is also the CR 726
+	// One Rings announcement, too. EventTrigger is also the CR 732
 	// loop breaker's breadcrumb for the activation itself, so count
 	// only the ones carrying the Rings' own label.
 	if n := acCountTriggerAnnouncements(g, "Rings of Brighthearth"); n != 1 {

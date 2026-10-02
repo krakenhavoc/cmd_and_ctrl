@@ -10,7 +10,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
-// loop_notice_view_test.go — the wire half of #628 (CR 726).
+// loop_notice_view_test.go — the wire half of #628 (CR 732).
 //
 // The client's autopass toggle is the thing being suspended, and the
 // only way it learns about the suspension is this field. It is public
@@ -88,7 +88,7 @@ func TestLoopNoticeReachesEverySeat(t *testing.T) {
 	}
 }
 
-// TestLoopShortcutPromptReachesTheWire — #804. The CR 726 prompt rides
+// TestLoopShortcutPromptReachesTheWire — #804. The CR 732 prompt rides
 // the same queue as every other prompt; what is new on the wire is the
 // count it quotes and the ceiling the client's number field needs.
 // Public like the notice beside it: whose question it is, and how long
@@ -134,7 +134,7 @@ func TestLoopShortcutPromptReachesTheWire(t *testing.T) {
 	for _, viewerID := range []string{g.Seats[0].ID.String(), g.Seats[1].ID.String(), ""} {
 		filtered := FilterViewFor(v, viewerID)
 		if len(filtered.PendingChoices) != 1 {
-			t.Errorf("viewer %q lost the CR 726 prompt", viewerID)
+			t.Errorf("viewer %q lost the CR 732 prompt", viewerID)
 			continue
 		}
 		if got := filtered.PendingChoices[0]; got.LoopCount != 25 || got.LoopMaxIterations != game.MaxLoopShortcutIterations {
