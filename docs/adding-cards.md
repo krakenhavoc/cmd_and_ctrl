@@ -1918,8 +1918,28 @@ The engine works out each target's defending player (CR 508.5: the
 player, a planeswalker's controller, a battle's protector), so in
 Commander the creature may attack the opponents who control a match and
 nobody else. The chip names each opponent it can't attack and why ("Bob
-controls no Island"). A condition that is not "controls a permanent"
-(poisoned, the monarch, more creatures than you) is not this field.
+controls no Island").
+
+The other conditions on the defending player (#1879) are their own
+helpers, each a clause on the same restriction:
+
+```go
+Static: []game.StaticAbility{CantAttackUnlessDefendingPlayerIsPoisoned()},                          // Chained Throatseeker
+Static: []game.StaticAbility{CantAttackUnlessDefendingPlayerIsTheMonarch()},                        // Crown-Hunter Hireling
+Static: []game.StaticAbility{CantAttackUnlessDefendingPlayerHasCardsInGraveyard(7)},               // Vantress Gargoyle
+Static: []game.StaticAbility{CantAttackUnlessYouControlMoreThanDefendingPlayer(QueryType("land"))}, // Monstrous Hound
+```
+
+Their "can't block unless" halves are block rules:
+`CantBlockUnless(YouControlMoreThanTheAttackingPlayer(QueryType("creature")), label)`
+(the attacking player is the active player, CR 506.2) or
+`CantBlockUnless(YouHaveCardsInHandAtLeast(4), label)`.
+
+A resolved effect that gives a creature the Island form ("it becomes a
+4/4 Serpent creature with 'This creature can't attack unless defending
+player controls an Island'") adds
+`game.CantAttackUnlessDefenderControlsMod(QuerySubtype("Island"))` to its
+`ScopedEffectFor` mods; see `veiled_serpent.go`.
 
 [ADR 0045](decisions/0045-combat-restrictions.md) has the
 taxonomy, including what the vocabulary deliberately cannot say:

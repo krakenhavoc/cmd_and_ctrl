@@ -67,6 +67,32 @@ import (
 // The board is read live, at declaration, which is the only time CR 508.1c
 // asks. An Island that leaves after attackers are declared changes
 // nothing (CR 506.4a).
+//
+// # The other conditions on the defending player
+//
+// The rest of #1879 is four more clauses of the same shape, each a fact
+// about the target's defending player read live at declaration:
+//
+//   - DefenderMustBePoisoned, "unless defending player is poisoned"
+//     (Chained Throatseeker): one or more poison counters (CR 122.1f);
+//   - DefenderMustBeMonarch, "unless defending player is the monarch"
+//     (Crown-Hunter Hireling, CR 725.1);
+//   - DefenderGraveyardAtLeast, "unless defending player has seven or
+//     more cards in their graveyard" (Vantress Gargoyle);
+//   - ControllerMustControlMore, "unless you control more creatures than
+//     defending player" (Goblin Goon, Mogg Toady; Monstrous Hound's
+//     lands). The "you" is the attacking creature's controller: every
+//     printed one is the creature's own ability.
+//
+// Every clause a restriction sets must hold. A creature that prints two
+// conditions has two restrictions, and both must hold too.
+//
+// A restriction the creature imposes on ITSELF (Source is the creature)
+// is always one of its own abilities: a printed one, or one a resolved
+// effect gave it, as Veiled Serpent's trigger does. So a later "loses
+// all abilities" takes it (CR 613.1f, 613.7), which the layer pass's
+// removal does with dropSelfAttackTargetRestrictions. A restriction
+// another permanent imposes is that permanent's ability and stays.
 
 // AttackTargetRestriction is one CR 508.1c restriction on what one
 // creature may attack. Pure data, so the Characteristic that carries it
@@ -88,6 +114,23 @@ type AttackTargetRestriction struct {
 	// Island" (ADR 0107 §2, #1879). Plain data, so the Characteristic
 	// stays snapshot-safe.
 	DefenderMustControl []PermanentQuery `json:",omitempty"`
+	// DefenderMustBePoisoned forbids attacking any target whose
+	// defending player has no poison counters: "can't attack unless
+	// defending player is poisoned" (CR 122.1f).
+	DefenderMustBePoisoned bool `json:",omitempty"`
+	// DefenderMustBeMonarch forbids attacking any target whose defending
+	// player is not the monarch (CR 725.1).
+	DefenderMustBeMonarch bool `json:",omitempty"`
+	// DefenderGraveyardAtLeast, when above zero, forbids attacking any
+	// target whose defending player has fewer cards than this in their
+	// graveyard.
+	DefenderGraveyardAtLeast int `json:",omitempty"`
+	// ControllerMustControlMore, when set, forbids attacking any target
+	// whose defending player controls at least as many permanents
+	// matching any of these queries as the attacking creature's
+	// controller does: "can't attack unless you control more creatures
+	// than defending player".
+	ControllerMustControlMore []PermanentQuery `json:",omitempty"`
 }
 
 // Equal reports whether r and o are the same restriction. A method rather
@@ -95,7 +138,47 @@ type AttackTargetRestriction struct {
 func (r AttackTargetRestriction) Equal(o AttackTargetRestriction) bool {
 	return r.Source == o.Source && r.SourceName == o.SourceName &&
 		r.NotOwner == o.NotOwner && r.NotOwnersPlaneswalkers == o.NotOwnersPlaneswalkers &&
-		samePermanentQueries(r.DefenderMustControl, o.DefenderMustControl)
+		samePermanentQueries(r.DefenderMustControl, o.DefenderMustControl) &&
+		r.DefenderMustBePoisoned == o.DefenderMustBePoisoned &&
+		r.DefenderMustBeMonarch == o.DefenderMustBeMonarch &&
+		r.DefenderGraveyardAtLeast == o.DefenderGraveyardAtLeast &&
+		samePermanentQueries(r.ControllerMustControlMore, o.ControllerMustControlMore)
+}
+
+// asksOfTheDefender reports whether r has any clause about the target's
+// defending player (CR 508.5), as opposed to only the owner clauses.
+func (r AttackTargetRestriction) asksOfTheDefender() bool {
+	return len(r.DefenderMustControl) > 0 || r.DefenderMustBePoisoned || r.DefenderMustBeMonarch ||
+		r.DefenderGraveyardAtLeast > 0 || len(r.ControllerMustControlMore) > 0
+}
+
+// unmetDefenderClauseLocked is the first of r's defending-player clauses
+// that `defender` does not meet, as the reason a player reads ("Bob
+// controls no Island", "Bob isn't poisoned"), or "" when every clause
+// holds. `you` is the attacking creature's controller, the "you" of
+// "unless you control more creatures than defending player".
+//
+// Caller must hold g.mu with fresh layers.
+func (r AttackTargetRestriction) unmetDefenderClauseLocked(g *Game, you, defender uuid.UUID) string {
+	name := g.playerNameLocked(defender)
+	if len(r.DefenderMustControl) > 0 && !g.controlsMatchingLocked(defender, r.DefenderMustControl) {
+		return name + " controls no " + PermanentQueriesNoun(r.DefenderMustControl)
+	}
+	p := g.playerByIDLocked(defender)
+	if r.DefenderMustBePoisoned && (p == nil || p.Counters[CounterPoison] < 1) {
+		return name + " isn't poisoned"
+	}
+	if r.DefenderMustBeMonarch && g.Monarch != defender {
+		return name + " isn't the monarch"
+	}
+	if n := r.DefenderGraveyardAtLeast; n > 0 && (p == nil || p.Graveyard == nil || p.Graveyard.Size() < n) {
+		return name + " has fewer than " + countWord(n) + " cards in their graveyard"
+	}
+	if qs := r.ControllerMustControlMore; len(qs) > 0 &&
+		g.countMatchingLocked(you, qs) <= g.countMatchingLocked(defender, qs) {
+		return g.playerNameLocked(you) + " doesn't control more " + permanentQueriesPlural(qs) + " than " + name
+	}
+	return ""
 }
 
 // AttackTargetRestrictionError is the refusal a declaration verb
@@ -109,11 +192,13 @@ type AttackTargetRestrictionError struct {
 	AttackerName string
 	// Restriction is the one that refused it.
 	Restriction AttackTargetRestriction
-	// For a DefenderMustControl refusal: TargetName is what was
-	// attacked (a player's or a permanent's name), and DefenderName the
-	// defending player who controls no matching permanent.
+	// For a refusal by a defending-player clause: TargetName is what was
+	// attacked (a player's or a permanent's name), DefenderName the
+	// defending player, and Why the clause they do not meet ("Bob
+	// controls no Island", "Bob isn't poisoned").
 	TargetName   string
 	DefenderName string
+	Why          string
 }
 
 func (e *AttackTargetRestrictionError) Error() string {
@@ -129,8 +214,11 @@ func (e *AttackTargetRestrictionError) Unwrap() error { return ErrIllegalAttackT
 func (e *AttackTargetRestrictionError) Sentence() string {
 	if e.DefenderName != "" {
 		// "Sea Serpent can't attack Bob: Bob controls no Island."
-		s := e.AttackerName + " can't attack " + e.TargetName + ": " +
-			e.DefenderName + " controls no " + PermanentQueriesNoun(e.Restriction.DefenderMustControl)
+		why := e.Why
+		if why == "" {
+			why = e.DefenderName + " controls no " + PermanentQueriesNoun(e.Restriction.DefenderMustControl)
+		}
+		s := e.AttackerName + " can't attack " + e.TargetName + ": " + why
 		if e.Restriction.SourceName != "" && e.Restriction.Source != e.Attacker {
 			s += " (" + e.Restriction.SourceName + ")"
 		}
@@ -151,23 +239,26 @@ func (e *AttackTargetRestrictionError) Sentence() string {
 }
 
 // refuses reports whether r forbids `attacker` attacking `target`, and,
-// for a DefenderMustControl refusal, the defending player who controls
-// nothing it asks for.
+// for a refusal by a defending-player clause, that defending player and
+// the clause they do not meet.
 //
 // Caller must hold g.mu with fresh layers.
-func (r AttackTargetRestriction) refuses(g *Game, attacker *Card, target uuid.UUID) (bool, uuid.UUID) {
+func (r AttackTargetRestriction) refuses(g *Game, attacker *Card, target uuid.UUID) (bool, uuid.UUID, string) {
 	if r.ownerRefuses(g, attacker, target) {
-		return true, uuid.Nil
+		return true, uuid.Nil, ""
 	}
-	if len(r.DefenderMustControl) > 0 {
+	if r.asksOfTheDefender() {
 		// CR 508.5: the player attacked, a planeswalker's controller,
 		// or a battle's protector.
 		defender := g.defendingPlayerForAttackLocked(target)
-		if defender != uuid.Nil && !g.controlsMatchingLocked(defender, r.DefenderMustControl) {
-			return true, defender
+		if defender == uuid.Nil {
+			return false, uuid.Nil, ""
+		}
+		if why := r.unmetDefenderClauseLocked(g, attacker.Controller, defender); why != "" {
+			return true, defender, why
 		}
 	}
-	return false, uuid.Nil
+	return false, uuid.Nil, ""
 }
 
 // ownerRefuses is the two owner clauses (ADR 0106 §2).
@@ -202,7 +293,7 @@ func (g *Game) attackTargetRestrictionRefusalLocked(attacker *Card, target uuid.
 		return nil
 	}
 	for _, r := range attacker.Effective().AttackTargetRestrictions {
-		refused, defender := r.refuses(g, attacker, target)
+		refused, defender, why := r.refuses(g, attacker, target)
 		if !refused {
 			continue
 		}
@@ -213,6 +304,7 @@ func (g *Game) attackTargetRestrictionRefusalLocked(attacker *Card, target uuid.
 		}
 		if defender != uuid.Nil {
 			err.DefenderName = g.playerNameLocked(defender)
+			err.Why = why
 			err.TargetName = err.DefenderName
 			if c := findBattlefieldCard(g, target); c != nil {
 				err.TargetName = c.Effective().Name
@@ -234,20 +326,23 @@ func (g *Game) playerNameLocked(id uuid.UUID) string {
 }
 
 // DefenderRefusal is one opponent a creature can't attack right now under
-// a DefenderMustControl restriction, for the card's chip (ADR 0107 §2
-// decision 3): "can't attack Bob: Bob controls no Island".
+// a restriction with a defending-player clause, for the card's chip (ADR
+// 0107 §2 decision 3): "can't attack Bob: Bob controls no Island".
 type DefenderRefusal struct {
-	// Player is the opponent who controls nothing the restriction asks
-	// for. The refusal covers their planeswalkers and the battles they
-	// protect too (CR 508.5).
+	// Player is the opponent who does not meet the restriction. The
+	// refusal covers their planeswalkers and the battles they protect
+	// too (CR 508.5).
 	Player uuid.UUID
 	// Restriction is the one that refuses them.
 	Restriction AttackTargetRestriction
+	// Why is the clause they do not meet, in a player's words: "Bob
+	// controls no Island", "Bob isn't the monarch".
+	Why string
 }
 
-// DefenderRefusalsForEffect lists, for each DefenderMustControl
-// restriction on `c`, every live opponent of its controller who controls
-// no matching permanent right now. Nil for nearly every card.
+// DefenderRefusalsForEffect lists, for each restriction on `c` with a
+// defending-player clause, every live opponent of its controller who
+// does not meet it right now. Nil for nearly every card.
 //
 // Read-only. Caller must hold g.mu with fresh layers.
 func (g *Game) DefenderRefusalsForEffect(c *Card) []DefenderRefusal {
@@ -256,19 +351,35 @@ func (g *Game) DefenderRefusalsForEffect(c *Card) []DefenderRefusal {
 	}
 	var out []DefenderRefusal
 	for _, r := range c.Effective().AttackTargetRestrictions {
-		if len(r.DefenderMustControl) == 0 {
+		if !r.asksOfTheDefender() {
 			continue
 		}
 		for _, p := range g.Seats {
 			if p == nil || p.Eliminated || p.ID == c.Controller {
 				continue
 			}
-			if !g.controlsMatchingLocked(p.ID, r.DefenderMustControl) {
-				out = append(out, DefenderRefusal{Player: p.ID, Restriction: r})
+			if why := r.unmetDefenderClauseLocked(g, c.Controller, p.ID); why != "" {
+				out = append(out, DefenderRefusal{Player: p.ID, Restriction: r, Why: why})
 			}
 		}
 	}
 	return out
+}
+
+// dropSelfAttackTargetRestrictions removes the restrictions `c` imposes
+// on itself, for a layer-6 "loses all abilities": each is one of its own
+// abilities (CR 613.1f). A restriction another permanent imposes stays.
+func dropSelfAttackTargetRestrictions(ch *Characteristic, c *Card) {
+	if len(ch.AttackTargetRestrictions) == 0 {
+		return
+	}
+	kept := ch.AttackTargetRestrictions[:0:0]
+	for _, r := range ch.AttackTargetRestrictions {
+		if r.Source != c.InstanceID {
+			kept = append(kept, r)
+		}
+	}
+	ch.AttackTargetRestrictions = kept
 }
 
 // canAttackTargetWithLocked reports whether `attacker` may be DECLARED

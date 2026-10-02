@@ -156,6 +156,14 @@ func TestEveryModKindAppliesInItsLayer(t *testing.T) {
 				t.Error("BlocksAnyNumber is not set")
 			}
 		}},
+		// #1879: Veiled Serpent's granted restriction, the printed
+		// static's data.
+		{"cantAttackUnlessDefenderControls", []Mod{CantAttackUnlessDefenderControlsMod(PermanentQuery{Subtypes: []string{"Island"}})}, func(t *testing.T, _, c Characteristic, _ *Game) {
+			if len(c.AttackTargetRestrictions) != 1 ||
+				!samePermanentQueries(c.AttackTargetRestrictions[0].DefenderMustControl, islandQuery) {
+				t.Errorf("attack-target restrictions = %+v, want one asking for an Island", c.AttackTargetRestrictions)
+			}
+		}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -192,6 +200,7 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		ModLoseAllAbilities: true, ModAddRestrictions: true, ModSetBasePower: true,
 		ModSetBaseToughness: true, ModModifyPT: true, ModAddAttackRequirement: true,
 		ModAddBlockRequirement: true, ModAddBlockCapacity: true, ModBlockAnyNumber: true,
+		ModCantAttackUnlessDefenderControls: true,
 		// ADR 0093 PR 4 (#1584): its cases are in scoped_grants_test.go,
 		// because a grant needs a catalog bundle to mean anything.
 		ModGrantAbilities: true,

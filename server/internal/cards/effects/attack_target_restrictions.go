@@ -63,6 +63,39 @@ func CantAttackUnlessDefendingPlayerControls(queries ...game.PermanentQuery) gam
 	return selfAttackTargetRestriction(game.AttackTargetRestriction{DefenderMustControl: queries})
 }
 
+// CantAttackUnlessDefendingPlayerIsPoisoned is "This creature can't
+// attack unless defending player is poisoned" (Chained Throatseeker,
+// #1879): one or more poison counters (CR 122.1f), asked of each
+// target's defending player.
+func CantAttackUnlessDefendingPlayerIsPoisoned() game.StaticAbility {
+	return selfAttackTargetRestriction(game.AttackTargetRestriction{DefenderMustBePoisoned: true})
+}
+
+// CantAttackUnlessDefendingPlayerIsTheMonarch is "This creature can't
+// attack unless defending player is the monarch" (Crown-Hunter
+// Hireling, #1879, CR 725.1). With no monarch it can't attack at all.
+func CantAttackUnlessDefendingPlayerIsTheMonarch() game.StaticAbility {
+	return selfAttackTargetRestriction(game.AttackTargetRestriction{DefenderMustBeMonarch: true})
+}
+
+// CantAttackUnlessDefendingPlayerHasCardsInGraveyard is "This creature
+// can't attack unless defending player has N or more cards in their
+// graveyard" (Vantress Gargoyle's seven, #1879).
+func CantAttackUnlessDefendingPlayerHasCardsInGraveyard(n int) game.StaticAbility {
+	return selfAttackTargetRestriction(game.AttackTargetRestriction{DefenderGraveyardAtLeast: n})
+}
+
+// CantAttackUnlessYouControlMoreThanDefendingPlayer is "This creature
+// can't attack unless you control more <permanents> than defending
+// player" (#1879): Goblin Goon's and Mogg Toady's creatures, Monstrous
+// Hound's lands. "You" is the creature's controller; the counts are of
+// effective characteristics, read at declaration.
+//
+//	Static: []game.StaticAbility{CantAttackUnlessYouControlMoreThanDefendingPlayer(QueryType("creature"))}, // Goblin Goon
+func CantAttackUnlessYouControlMoreThanDefendingPlayer(queries ...game.PermanentQuery) game.StaticAbility {
+	return selfAttackTargetRestriction(game.AttackTargetRestriction{ControllerMustControlMore: queries})
+}
+
 // QuerySubtype is "a permanent with this subtype": an Island, a Mountain.
 func QuerySubtype(subtype string) game.PermanentQuery {
 	return game.PermanentQuery{Subtypes: []string{subtype}}

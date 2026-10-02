@@ -5073,6 +5073,12 @@ type AttackTargetRestrictionView struct {
 	// right now, and it covers that opponent's planeswalkers and the
 	// battles they protect too (CR 508.5), so Planeswalkers is set.
 	Unless string `json:"unless,omitempty"`
+	// Reason is set on every row a defending-player clause adds (#1879):
+	// the clause that player does not meet, in a player's words — "Bob
+	// controls no Island", "Bob isn't poisoned", "Alice doesn't control
+	// more creatures than Bob". The chip's tooltip reads it after the
+	// name. Unless stays for the "controls" rows a client already reads.
+	Reason string `json:"reason,omitempty"`
 }
 
 // viewOfAttackTargetRestrictions projects c's attack-target
@@ -6155,6 +6161,7 @@ func stampDefenderRefusals(g *game.Game, view *ZoneView) {
 				Planeswalkers: true,
 				Source:        r.Restriction.SourceName,
 				Unless:        game.PermanentQueriesNoun(r.Restriction.DefenderMustControl),
+				Reason:        r.Why,
 			})
 		}
 	}

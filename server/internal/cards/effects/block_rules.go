@@ -339,3 +339,48 @@ func (r CantBeBlockedThisTurnExceptBy) Apply(ctx *Context) error {
 		Label:    eotLabel(r.Label, "can't be blocked this turn except by "+r.Text),
 	}.Apply(ctx)
 }
+
+// --- conditional "can't block" (#1879) ---------------------------
+
+// CantBlockUnless — "This creature can't block unless <condition>"
+// (CR 509.1b): while the condition fails, the creature carrying the rule
+// may block no attacker. `cond` is asked of the rule source's
+// controller, the card's "you", live as blockers are declared, and
+// `label` is the clause the player reads after the refusal: "Goblin Goon
+// can't block Grizzly Bears: <label>."
+//
+//	BlockRules: []game.BlockRule{CantBlockUnless(YouControlMoreThanTheAttackingPlayer(QueryType("creature")),
+//	    "it can't block unless its controller controls more creatures than the attacking player")}, // Goblin Goon
+func CantBlockUnless(cond func(g *game.Game, you uuid.UUID) bool, label string) game.BlockRule {
+	self := OnSelf()
+	return game.BlockRule{
+		Reason: game.BlockReasonCantBlockAttacker,
+		Label:  label,
+		Pair: func(g *game.Game, _, blocker, source *game.Card) bool {
+			return self(g, blocker, source) && !cond(g, source.Controller)
+		},
+	}
+}
+
+// YouControlMoreThanTheAttackingPlayer — "you control more <permanents>
+// than attacking player", the condition of Goblin Goon's, Mogg Toady's
+// and Monstrous Hound's "can't block" halves. The attacking player is the
+// active player (CR 506.2). Counts are of effective characteristics.
+func YouControlMoreThanTheAttackingPlayer(queries ...game.PermanentQuery) func(*game.Game, uuid.UUID) bool {
+	return func(g *game.Game, you uuid.UUID) bool {
+		if len(g.Seats) == 0 || g.Turn.ActiveSeat < 0 || g.Turn.ActiveSeat >= len(g.Seats) {
+			return false
+		}
+		attacking := g.Seats[g.Turn.ActiveSeat].ID
+		return g.CountMatchingForEffect(you, queries) > g.CountMatchingForEffect(attacking, queries)
+	}
+}
+
+// YouHaveCardsInHandAtLeast — "you have N or more cards in hand", the
+// condition of Vantress Gargoyle's "can't block" half. A hand's size is
+// public.
+func YouHaveCardsInHandAtLeast(n int) func(*game.Game, uuid.UUID) bool {
+	return func(g *game.Game, you uuid.UUID) bool {
+		return b14HandSize(g, you) >= n
+	}
+}

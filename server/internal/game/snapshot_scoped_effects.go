@@ -72,6 +72,10 @@ func (s *GameSnapshot) checkEffectKeys() error {
 			if problem := nextFromSourceModProblem(m); problem != "" {
 				unknown = append(unknown, problem)
 			}
+			// #1879: a granted attack restriction that asks for nothing.
+			if problem := defenderControlsModProblem(m); problem != "" {
+				unknown = append(unknown, problem)
+			}
 		}
 		// ADR 0107 §3: a stack pin may carry only what this binary's
 		// stack step applies (layer 2 control, layer-6 keywords). A

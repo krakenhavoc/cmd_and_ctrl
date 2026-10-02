@@ -117,6 +117,23 @@ const (
 // kind is.
 const ModGrantAbilities ModKind = "grantAbilities" // layer 6
 
+// ModCantAttackUnlessDefenderControls is "<affected> can't attack unless
+// defending player controls <a permanent>" given by a resolved effect
+// (#1879, ADR 0107 §2): Veiled Serpent's trigger makes it "a 4/4 Serpent
+// creature with 'This creature can't attack unless defending player
+// controls an Island.'" Reads Queries, any of them, at least one.
+//
+// Layer 6, in the record's timestamp slot: the quoted text is an ability
+// the permanent gains (CR 613.1f). It appends the same
+// AttackTargetRestriction the printed static writes
+// (effects.CantAttackUnlessDefendingPlayerControls), attributed to the
+// record's source, so every reader — both declaration verbs, the CR
+// 508.1d search, the enumerator, the chip — is the printed card's. When
+// the source is the affected permanent itself, the restriction is that
+// permanent's own ability, so a later "loses all abilities" takes it
+// (dropSelfAttackTargetRestrictions) and an earlier one does not.
+const ModCantAttackUnlessDefenderControls ModKind = "cantAttackUnlessDefenderControls" // layer 6
+
 // The replacement kinds (ADR 0041 P8, tier 3b, #1497). These are not
 // layer operations: each one is a CR 614 replacement effect a
 // resolving spell or ability created (CR 611.2), read by the
@@ -581,6 +598,8 @@ var modKinds = map[ModKind]modKindSpec{
 	ModBlockAnyNumber:   {layer: Layer6Ability},
 	// #1584, ADR 0093 PR 4
 	ModGrantAbilities: {layer: Layer6Ability},
+	// #1879: Veiled Serpent's granted attack restriction.
+	ModCantAttackUnlessDefenderControls: {layer: Layer6Ability},
 	// Tier 3b (ADR 0041 P8): replacement effects, not layer operations.
 	ModPreventCombatDamage:     {reader: readerReplacement},
 	ModPreventDamage:           {reader: readerReplacement},
@@ -769,6 +788,24 @@ func GrantAbilitiesMod(keys ...string) Mod {
 	return Mod{Kind: ModGrantAbilities, Grants: out}
 }
 
+// CantAttackUnlessDefenderControlsMod is "can't attack unless defending
+// player controls <any of qs>" from a resolved effect (#1879). Reads
+// Queries; registration refuses a mod with none.
+func CantAttackUnlessDefenderControlsMod(qs ...PermanentQuery) Mod {
+	return Mod{Kind: ModCantAttackUnlessDefenderControls, Queries: clonePermanentQueries(qs)}
+}
+
+// defenderControlsModProblem is the registration and restore check for
+// ModCantAttackUnlessDefenderControls: at least one query, since a
+// restriction that asks for nothing would refuse every target. "" when
+// the mod is sound.
+func defenderControlsModProblem(m Mod) string {
+	if m.Kind == ModCantAttackUnlessDefenderControls && len(m.Queries) == 0 {
+		return "a cantAttackUnlessDefenderControls mod names no permanent"
+	}
+	return ""
+}
+
 // SetBasePTMods is "has base power and toughness P/T" — both 7b
 // halves.
 func SetBasePTMods(power, toughness int) []Mod {
@@ -885,6 +922,9 @@ func (g *Game) appendScopedEffectLocked(sourceID uuid.UUID, affected []AffectedO
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
 		if problem := blockCapacityModProblem(m); problem != "" {
+			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
+		}
+		if problem := defenderControlsModProblem(m); problem != "" {
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
 		if r := modKinds[m.Kind].reader; r != readerLayer && r != readerCopy {
@@ -1364,6 +1404,15 @@ func modApply(m Mod) func(*Characteristic, *Card, *Game, *Card) {
 				r.Source, r.SourceName = src.InstanceID, src.Name
 			}
 			ch.AttackRequirements = append(ch.AttackRequirements, r)
+		}
+	case ModCantAttackUnlessDefenderControls:
+		qs := clonePermanentQueries(m.Queries)
+		return func(ch *Characteristic, _ *Card, _ *Game, src *Card) {
+			r := AttackTargetRestriction{DefenderMustControl: qs}
+			if src != nil {
+				r.Source, r.SourceName = src.InstanceID, src.Name
+			}
+			ch.AttackTargetRestrictions = append(ch.AttackTargetRestrictions, r)
 		}
 	case ModAddBlockRequirement:
 		kind := BlockRequirementKind(m.Text)

@@ -2955,6 +2955,10 @@ export interface AttackTargetRestrictionView {
   // controls <X>" row, the X this player controls none of ("Island").
   // The row then names an opponent rather than the owner.
   unless?: string;
+  // #1879: on every row a defending-player clause adds, the clause this
+  // player doesn't meet, in full: "Bob controls no Island", "Bob isn't
+  // poisoned", "Alice doesn't control more creatures than Bob".
+  reason?: string;
 }
 
 export interface ProtectionView {
