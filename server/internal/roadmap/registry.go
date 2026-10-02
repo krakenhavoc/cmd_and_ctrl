@@ -999,9 +999,9 @@ var items = []Item{
 		ADR:     "0103-rooms.md",
 		Missing: "Eight Rooms are not in the catalog, because one of their doors does something the engine can't do yet. The engine plays all of them, so they can be cast and unlocked and only the door text is manual.",
 		Tracked: "#1756",
-		// Walk-In Closet // Forgotten Cellar moved to
-		// exile-instead-of-graveyard-this-turn (#1823), the seam its
-		// door actually waits on.
+		// Walk-In Closet // Forgotten Cellar landed with
+		// exile-instead-of-graveyard-this-turn (#1823, ADR 0108 §4), the
+		// seam its door waited on.
 		Waiting: []string{
 			"Experimental Lab // Staff Room", "Moldering Gym // Weight Room", "Ticket Booth // Tunnel of Hate", "Underwater Tunnel // Slimy Aquarium",
 			"Charred Foyer // Warped Space", "Cramped Vents // Access Maze", "Dazzling Theater // Prop Room", "Secret Arcade // Dusty Parlor",
@@ -1686,14 +1686,14 @@ var items = []Item{
 		EngineNotes: "cast permission: `game.CastPermission.CastsLeft` (#1729) counts the spells a permission may still open; zero is no limit. `consumeLimitedGrantLocked` spends one when the permission is the reason the cast is legal (`castUsesGrantLocked`), so a card's own flashback does not spend it. Two permissions over one card (Court's play permission and its free cast) are chosen between by the claim: `CastPermissionForClaimLocked` picks the stored permission whose `AltCostKey` the cast claims, and `CastOffersForLocked` lists the second permission's offer. Re-checked 2026-10-02.",
 	},
 	{
-		// #1823 (found by ADR 0103 PR 3, #1821).
-		Slug: "exile-instead-of-graveyard-this-turn", Name: "\"If a card would be put into your graveyard this turn, exile it instead\"", Kind: KindSeam, Status: StatusMissing,
+		// #1823 (found by ADR 0103 PR 3, #1821); built by ADR 0108 §4.
+		Slug: "exile-instead-of-graveyard-this-turn", Name: "\"If a card would be put into your graveyard this turn, exile it instead\"", Kind: KindSeam, Status: StatusImplemented,
 		Summary:     "Effects that exile every card that would be put into your graveyard for the rest of the turn, which usually come with permission to play cards from your graveyard, such as Yawgmoth's Will.",
-		Missing:     "This turn-long replacement isn't supported yet, so the cards that pair it with playing from your graveyard are left out rather than made stronger than printed.",
-		Rules:       []string{"614.1a"},
+		Rules:       []string{"614.1a", "616.1", "601.2", "305.1"},
 		Issue:       1823,
-		Waiting:     []string{"Yawgmoth's Will", "Gaea's Will", "Magus of the Will", "Walk-In Closet // Forgotten Cellar"},
-		EngineNotes: "replacement with a duration: `effects.GraveyardBecomesExile` is a standing replacement declared on a card (Leyline of the Void, Valgavoth), and the one scoped replacement that redirects graveyard moves, `ModExileInsteadOfGraveyard` (`ExileInsteadOfGraveyardThisTurnForEffect`, Cosmic Intervention), covers only the controller's PERMANENTS going from the battlefield (`ScopeYourPermanents`). Needed: a ScopedEffect kind (ADR 0060 durations, #755) for one player's graveyard, from ANY zone, until end of turn — including the spell that created it and every spell cast from the graveyard under it. The cast-from-graveyard half alone would be stronger than printed, so the cards wait whole. Walk-In Closet // Forgotten Cellar moved here from the Rooms row: the Room works, and this is its door's only gap. Re-checked 2026-10-01.",
+		ADR:         "0108-turn-scoped-effects-object-history-and-damage-shields.md",
+		Examples:    []string{"Yawgmoth's Will", "Gaea's Will", "Magus of the Will", "Walk-In Closet // Forgotten Cellar"},
+		EngineNotes: "**Shipped** (ADR 0108 §4, PR 3): a `ScopedEffect` kind, `exileInsteadOfYourGraveyard` (`game.ModExileInsteadOfYourGraveyard`, reader `replacement`, scope game, reads `Player`), written by `Game.ExileInsteadOfYourGraveyardThisTurnForEffect` for the rest of the turn. It applies to every move and every discard into that player's graveyard from any zone, the spell that made it included, and never to a token (a token is not a card); the graveyard named is the card's owner's, so a stolen creature that dies still goes to its owner's. The affected object's controller orders it against other replacements (CR 616.1). The paired card-side helper is `effects.GraveyardPlayThisTurn` / `YawgmothsWillThisTurn()`, which writes the replacement and a stored `ScopeStanding` cast permission over the graveyard together so neither half can ship alone; `SpellsOnly` is Forgotten Cellar's spells-without-lands variant. See Closed seams.",
 	},
 	{
 		Slug: "resolution-lki", Name: "Remembering a permanent after it leaves", Kind: KindSeam, Status: StatusImplemented,
