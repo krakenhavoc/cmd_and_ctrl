@@ -1019,6 +1019,16 @@ func (g *Game) BumpLayerVersionForTest() {
 	g.layerVersion.Add(1)
 }
 
+// RunStateChecksForTest runs the CR 704.3 priority boundary (which also
+// runs ADR 0107 §6's owed prevention follow-ups) from outside the
+// package, for a test that deals damage directly rather than through a
+// resolution.
+func (g *Game) RunStateChecksForTest() {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	g.runStateChecksLocked()
+}
+
 // LayerRecomputeCountForTest returns the number of times the layer
 // engine has run a full recompute pass since game start. Used by
 // the fast-path regression test (exit criterion #10).

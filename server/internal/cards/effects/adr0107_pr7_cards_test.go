@@ -88,6 +88,9 @@ func pr7Offers(c *game.PendingChoice, id uuid.UUID) bool {
 // pr7Hit deals `n` damage from `source` to the player `to`. Hits in the
 // same event batch are one instance of damage from a source (CR 615.8);
 // a test that wants a second instance moves the turn on first.
+//
+// It then runs the priority boundary, where the instance is over and the
+// shields' "prevented this way" follow-ups run (CR 615.5).
 func pr7Hit(t *testing.T, g *game.Game, source, to uuid.UUID, n int) {
 	t.Helper()
 	g.WithWriteLock(func() {
@@ -95,6 +98,99 @@ func pr7Hit(t *testing.T, g *game.Game, source, to uuid.UUID, n int) {
 			t.Fatal(err)
 		}
 	})
+	g.RunStateChecksForTest()
+}
+
+// pr7Pridemate puts an Ajani's Pridemate ("Whenever you gain life, put a
+// +1/+1 counter on this creature") on the battlefield for `owner`: one
+// counter per life-gain EVENT.
+func pr7Pridemate(g *game.Game, owner uuid.UUID) uuid.UUID {
+	return pushCatalogPermanent(g, owner, "Ajani's Pridemate", "Creature — Cat Soldier", "95e94dea-5ac0-4d6f-adec-ca147aee861f", false)
+}
+
+func pr7Counters(g *game.Game, id uuid.UUID) int {
+	return findBattlefieldCardForTest(g, id).Counters[game.CounterPlusOne]
+}
+
+// "The damage prevented this way" is the INSTANCE's total (CR 615.5,
+// 615.8): a 5-power trampler blocked by two, under Awe Strike, is three
+// events of combat damage and one instance, so its controller gains 5
+// life in one event — one Pridemate trigger, not three.
+func TestPR7AweStrikeTotalsATramplersSplitDamage(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	pridemate := pr7Pridemate(g, me.ID)
+	trampler := apaPush(g, me.ID, me.ID, game.Card{Name: "Trampler", TypeLine: "Creature — Beast", Power: 5, Toughness: 5,
+		Colors: []string{"G"}, Keywords: []string{"trample"}})
+	b1 := apaPush(g, opp.ID, opp.ID, game.Card{Name: "Blocker One", TypeLine: "Creature — Test", Power: 0, Toughness: 2})
+	b2 := apaPush(g, opp.ID, opp.ID, game.Card{Name: "Blocker Two", TypeLine: "Creature — Test", Power: 0, Toughness: 2})
+	castCatalogSpell(t, g, "Awe Strike", "Instant", pr7AweStrike, []game.TargetRef{{Kind: game.TargetCard, ID: trampler}})
+	passPriorityAroundTable(t, g)
+	advanceTo(t, g, game.StepDeclareAttackers)
+	if err := g.DeclareAttacker(trampler, opp.ID); err != nil {
+		t.Fatal(err)
+	}
+	advanceTo(t, g, game.StepDeclareBlockers)
+	for _, b := range []uuid.UUID{b1, b2} {
+		if err := g.DeclareBlocker(b, trampler); err != nil {
+			t.Fatal(err)
+		}
+	}
+	life, theirs := me.Life, opp.Life
+	advanceTo(t, g, game.StepCombatDamage)
+	for i := 0; i < 4; i++ {
+		var c *game.PendingChoice
+		for _, p := range g.PendingChoices {
+			if p != nil && p.Kind == game.PendingChoiceDamageAssignment {
+				c = p
+			}
+		}
+		if c == nil {
+			break
+		}
+		// Lethal to each 2-toughness blocker (CR 702.19c) and the
+		// rest to the player: three events.
+		entries := []game.DamageAssignmentEntry{{BlockerID: b1, Amount: 2}, {BlockerID: b2, Amount: 2}}
+		if err := g.ResolveDamageAssignment(c.ID, c.Chooser, entries, 1); err != nil {
+			t.Fatalf("assign: %v", err)
+		}
+	}
+	passPriorityAroundTable(t, g)
+	if damageMarkedOn(g, b1) != 0 || damageMarkedOn(g, b2) != 0 || opp.Life != theirs {
+		t.Fatalf("the trampler's damage got through: %d, %d, opponent %d → %d",
+			damageMarkedOn(g, b1), damageMarkedOn(g, b2), theirs, opp.Life)
+	}
+	if me.Life != life+5 {
+		t.Errorf("life %d → %d, want +5", life, me.Life)
+	}
+	if got := pr7Counters(g, pridemate); got != 1 {
+		t.Errorf("Pridemate has %d counters, want 1: one life-gain event", got)
+	}
+}
+
+// The same for a follow-up split across two events of one instance:
+// Reverse Damage gains the total once.
+func TestPR7ReverseDamageGainsOnceForASplitInstance(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	pridemate := pr7Pridemate(g, me.ID)
+	src := pr7Creature(g, opp.ID, "Src", 6, "R")
+	castCatalogSpell(t, g, "Reverse Damage", "Instant", pr7ReverseDamage, nil)
+	passPriorityAroundTable(t, g)
+	pr7Choose(t, g, me.ID, src)
+	life := me.Life
+	g.WithWriteLock(func() {
+		_ = g.DealDamageToPlayerForEffect(src, me.ID, 4)
+		_ = g.DealDamageToPlayerForEffect(src, me.ID, 2)
+	})
+	g.RunStateChecksForTest()
+	passPriorityAroundTable(t, g)
+	if me.Life != life+6 {
+		t.Errorf("life %d → %d, want +6 in one gain", life, me.Life)
+	}
+	if got := pr7Counters(g, pridemate); got != 1 {
+		t.Errorf("Pridemate has %d counters, want 1", got)
+	}
 }
 
 // Every card of the batch is registered with its printed rows.
@@ -344,6 +440,7 @@ func TestPR7ShadowbaneCoversYourCreaturesAndGainsForBlack(t *testing.T) {
 	pr7Choose(t, g, me.ID, src)
 	life := me.Life
 	g.WithWriteLock(func() { _ = g.DealDamageToCreatureForEffect(src, mine, 3) })
+	g.RunStateChecksForTest()
 	if damageMarkedOn(g, mine) != 0 || me.Life != life+3 {
 		t.Errorf("creature %d damage (want 0), life %d → %d (want +3)", damageMarkedOn(g, mine), life, me.Life)
 	}
@@ -467,6 +564,7 @@ func TestPR7FollowUpUnderUnpreventableDamage(t *testing.T) {
 	g.WithWriteLock(func() {
 		_ = g.DealMarkedDamageForEffect(src, nil, me.ID, 4, game.DamageMarks{CantBePrevented: true})
 	})
+	g.RunStateChecksForTest()
 	if me.Life != mine-4 || opp.Life != theirs {
 		t.Fatalf("me %d → %d (want -4), them %d → %d (want unchanged)", mine, me.Life, theirs, opp.Life)
 	}

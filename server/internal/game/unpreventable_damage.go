@@ -54,8 +54,8 @@ import "github.com/google/uuid"
 //
 // "Any additional effects they have will take place": ADR 0107 §6's
 // "the damage prevented this way" follow-up (ModPreventNextFromSource's
-// Then) is queued here with zero prevented, and runs once the event has
-// settled, as it would have after a real prevention
+// Then) is owed here with zero prevented, and runs once for the instance,
+// as it would have after a real prevention
 // (preventionAppliedToUnpreventableLocked).
 //
 // CR 615.13's "whenever damage is prevented" triggers have nothing to

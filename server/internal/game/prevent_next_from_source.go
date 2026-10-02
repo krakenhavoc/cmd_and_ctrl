@@ -58,7 +58,15 @@ import (
 // event batch it was used in (Mod.SpentBatch) and keeps applying to that
 // source for the rest of the batch: the batch is the engine's unit of
 // "at the same time" (event_batch.go, CR 603.2c). A spent record is
-// dropped when play moves on (beginEventBatchLocked).
+// dropped when play moves on (beginEventBatchLocked). Its follow-up is
+// owed for the instance as a whole and runs once, with the total
+// (PreventionFollowUp).
+//
+// KNOWN LIMIT. The batch is wider than an instance in one direction: two
+// separate instances of damage from the same source inside one resolution
+// ("it deals 2 damage to you. Then it deals 2 damage to you") are one
+// batch, so a shield prevents both. No catalogued card deals damage that
+// way.
 
 // ModPreventNextFromSource is "the next time <source> would deal damage
 // [to <protected>] this turn, prevent that damage" (CR 615.8). Reads
@@ -286,8 +294,9 @@ func (g *Game) nextFromSourceProtectsLocked(e ScopedEffect, m Mod, target uuid.U
 
 // applyNextFromSourceLocked is the kind's Replace: the whole event is
 // prevented (CR 615.8, "regardless of how much damage that is"), the
-// shield is marked spent for this instance, and the follow-up is queued
-// on the event to run once it has settled (CR 615.5).
+// shield is marked spent for this instance, and the amount is added to
+// the follow-up owed for the instance, which runs once with the total
+// when the instance has settled (CR 615.5).
 //
 // Caller must hold g.mu (write).
 func (g *Game) applyNextFromSourceLocked(e ScopedEffect, mod int, m Mod, ev *ReplacementEvent) {
@@ -407,89 +416,166 @@ func (q PermanentQuery) matchesCharacteristic(ch *Characteristic) bool {
 // in the catalog prints one.
 const EventDamagePrevented EventKind = "damage_prevented"
 
-// preventionFollowUp is one CR 615.5 additional effect waiting for its
-// damage event to settle. Transient, on the event's tail; never captured.
-type preventionFollowUp struct {
-	body       string
-	controller uuid.UUID
-	source     uuid.UUID
-	label      string
-	trigger    Event
+// PreventionFollowUp is one shield's CR 615.5 additional effect, owed for
+// the instance of damage it prevented and not yet run.
+//
+// ONE PER INSTANCE, NOT PER EVENT. "The damage prevented this way" is the
+// total the shield prevented from that one instance — and the engine
+// opens one damage event per recipient, so a trampler's split damage, a
+// double block or an "each creature" spell is several events. Each event
+// the shield prevents adds to the one entry for (Seq, Batch), and the
+// body runs ONCE with the total when the instance has settled
+// (flushPreventionFollowUpsLocked): Awe Strike against a 5-power trampler
+// blocked by two gains 5 life in one event, not 3 and then 2 (which would
+// trigger "whenever you gain life" twice).
+//
+// Plain data on the Game, carried by the snapshot (a CR 616 prompt can
+// pause the instance half way), rewound by undo with the records.
+type PreventionFollowUp struct {
+	// Seq is the shield record's; Batch the event batch of its instance.
+	Seq   int64  `json:"seq"`
+	Batch uint64 `json:"batch"`
+	// Body is the shield's Then: a registered body key.
+	Body string `json:"body"`
+	// Controller is the shield's controller ("you"); Source the card
+	// whose effect made the shield; Label the record's.
+	Controller uuid.UUID `json:"controller"`
+	Source     uuid.UUID `json:"source"`
+	Label      string    `json:"label,omitempty"`
+	// Prevented is the total prevented so far. Zero is a real total: a
+	// shield applied only to damage that can't be prevented (CR 615.12).
+	Prevented int `json:"prevented,omitempty"`
+	// DamageSource is the source whose damage was prevented, and
+	// SourceController / SourceColors are that source as it was when the
+	// damage would have been dealt (its last-known information). Target
+	// is the first thing it would have been dealt to; Combat says whether
+	// it was combat damage.
+	DamageSource     uuid.UUID `json:"damageSource"`
+	SourceController uuid.UUID `json:"sourceController,omitempty"`
+	SourceColors     []string  `json:"sourceColors,omitempty"`
+	Target           uuid.UUID `json:"target,omitempty"`
+	Combat           bool      `json:"combat,omitempty"`
 }
 
-// queuePreventionFollowUpLocked queues the record's follow-up, if it has
-// one, with `prevented` damage. Zero is a real amount: CR 615.12's
-// prevention effect applied to damage that can't be prevented still has
-// its additional effects, with nothing prevented.
+// queuePreventionFollowUpLocked adds `prevented` to the record's
+// follow-up for this instance, opening one if it has none. Zero is a real
+// amount: CR 615.12's prevention effect applied to damage that can't be
+// prevented still has its additional effects, with nothing prevented —
+// and still only once for the instance.
+//
+// COPY ON WRITE, for the reason every registry here is: an undo clone
+// shares the slice.
 //
 // Caller must hold g.mu (write).
 func (g *Game) queuePreventionFollowUpLocked(e ScopedEffect, m Mod, ev *ReplacementEvent, prevented int) {
 	if m.Then == "" || ev == nil {
 		return
 	}
-	if ev.damageTail == nil {
-		// The default applyResolvedDamageLocked gives a tail-less event.
-		ev.damageTail = &damageTail{kind: damageTailManualMark}
+	batch := g.currentEventBatchLocked()
+	next := append([]PreventionFollowUp(nil), g.preventionFollowUps...)
+	for i := range next {
+		if next[i].Seq == e.Seq && next[i].Batch == batch {
+			next[i].Prevented += prevented
+			g.preventionFollowUps = next
+			return
+		}
 	}
-	f := preventionFollowUp{
-		body:       m.Then,
-		controller: e.Controller,
-		source:     e.Source.ID,
-		label:      e.Label,
-		trigger: Event{
-			Kind:   EventDamagePrevented,
-			Source: ev.DamageSource,
-			Target: ev.DamageTarget,
-			Amount: prevented,
-			Combat: ev.IsCombatDamage,
-		},
+	f := PreventionFollowUp{
+		Seq:          e.Seq,
+		Batch:        batch,
+		Body:         m.Then,
+		Controller:   e.Controller,
+		Source:       e.Source.ID,
+		Label:        e.Label,
+		Prevented:    prevented,
+		DamageSource: ev.DamageSource,
+		Target:       ev.DamageTarget,
+		Combat:       ev.IsCombatDamage,
 	}
 	if lki := ev.SourceLKI; lki != nil {
-		f.trigger.Actor = lki.Controller
-		f.trigger.Colors = copyStrings(lki.Colors)
+		f.SourceController = lki.Controller
+		f.SourceColors = copyStrings(lki.Colors)
 	}
-	t := ev.damageTail
-	// A clone taken for undo shares the slice; append to a clipped copy.
-	t.followUps = append(slices.Clip(t.followUps), f)
+	g.preventionFollowUps = append(next, f)
 }
 
-// runPreventionFollowUpsLocked runs a settled damage event's follow-ups,
-// once each, in the order the shields applied. Each is the rest of its
-// own effect, so an error is logged and the next still runs.
+// flushPreventionFollowUpsLocked runs every owed follow-up once, with its
+// total, in the order the shields first applied, and clears them.
+//
+// WHEN. Once the instance of damage is over: as a player would next
+// receive priority (runStateChecksLocked, before the state-based actions,
+// so a combat damage step's damage is all dealt — CR 510.2 — and nothing
+// has died of it yet), and as play moves on to a new event batch
+// (beginEventBatchLocked), whichever comes first. A follow-up's own
+// damage can meet another shield with a follow-up, so the flush repeats,
+// bounded, until nothing is owed.
 //
 // Caller must hold g.mu (write).
-func (g *Game) runPreventionFollowUpsLocked(ev *ReplacementEvent) {
-	if ev == nil || ev.damageTail == nil || len(ev.damageTail.followUps) == 0 {
+func (g *Game) flushPreventionFollowUpsLocked() {
+	for round := 0; round < 8 && len(g.preventionFollowUps) > 0; round++ {
+		pending := g.preventionFollowUps
+		g.preventionFollowUps = nil
+		for _, f := range pending {
+			g.runPreventionFollowUpLocked(f)
+		}
+	}
+}
+
+// runPreventionFollowUpLocked runs one follow-up body. It is the rest of
+// its own effect, so an error is logged and the next still runs.
+//
+// The body is handed an item the engine builds: Controller "you",
+// SourceCardID the card that made the shield, and a TriggerContext whose
+// event is the prevented damage (EventDamagePrevented); the params carry
+// the total (Amount) and the damage source's controller (Player).
+//
+// Caller must hold g.mu (write).
+func (g *Game) runPreventionFollowUpLocked(f PreventionFollowUp) {
+	fn, ok := lookupBody(f.Body)
+	if !ok {
+		effectKeyFault(fmt.Sprintf("game: prevention follow-up body %q is not registered", f.Body))
 		return
 	}
-	pending := ev.damageTail.followUps
-	ev.damageTail.followUps = nil
-	for _, f := range pending {
-		fn, ok := lookupBody(f.body)
-		if !ok {
-			effectKeyFault(fmt.Sprintf("game: prevention follow-up body %q is not registered", f.body))
-			continue
-		}
-		trig := f.trigger
-		item := &StackItem{
-			ID:           uuid.New(),
-			Kind:         StackItemTriggered,
-			Controller:   f.controller,
-			Owner:        f.controller,
-			SourceCardID: f.source,
-			Label:        f.label,
-			Trigger:      &TriggerContext{Event: trig},
-		}
-		p := EffectParams{Amount: trig.Amount, Player: trig.Actor, Object: ObjectRef{ID: trig.Source}}
-		if err := fn(g, item, p); err != nil {
-			g.EmitEvent(Event{
-				Kind:     EventEffectError,
-				Actor:    f.controller,
-				Source:   f.source,
-				ErrorMsg: "prevention follow-up: " + err.Error(),
-			})
-		}
+	trig := Event{
+		Kind:   EventDamagePrevented,
+		Source: f.DamageSource,
+		Target: f.Target,
+		Amount: f.Prevented,
+		Actor:  f.SourceController,
+		Colors: copyStrings(f.SourceColors),
+		Combat: f.Combat,
 	}
+	item := &StackItem{
+		ID:           uuid.New(),
+		Kind:         StackItemTriggered,
+		Controller:   f.Controller,
+		Owner:        f.Controller,
+		SourceCardID: f.Source,
+		Label:        f.Label,
+		Trigger:      &TriggerContext{Event: trig},
+	}
+	p := EffectParams{Amount: f.Prevented, Player: f.SourceController, Object: ObjectRef{ID: f.DamageSource}}
+	if err := fn(g, item, p); err != nil {
+		g.EmitEvent(Event{
+			Kind:     EventEffectError,
+			Actor:    f.Controller,
+			Source:   f.Source,
+			ErrorMsg: "prevention follow-up: " + err.Error(),
+		})
+	}
+}
+
+// clonePreventionFollowUps deep-copies the owed list for a snapshot.
+func clonePreventionFollowUps(in []PreventionFollowUp) []PreventionFollowUp {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make([]PreventionFollowUp, len(in))
+	for i, f := range in {
+		f.SourceColors = copyStrings(f.SourceColors)
+		out[i] = f
+	}
+	return out
 }
 
 // preventionFollowUpForUnpreventableLocked is CR 615.12 for a shield of

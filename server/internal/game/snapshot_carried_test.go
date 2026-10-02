@@ -193,6 +193,16 @@ var carriedFixture = map[string]any{
 	// a key it has no body or condition for, so an invented one would
 	// fail the restore rather than test the carry.
 	"DelayedTrigger.Body": carriedTestBodyKey,
+	// ADR 0107 §6: an owed follow-up names its body the same way, so
+	// its container is built with a registered one.
+	"Game.preventionFollowUps": func(g *Game) any {
+		return []PreventionFollowUp{{
+			Seq: 4747, Batch: 47, Body: carriedTestBodyKey.Key(), Controller: g.Seats[0].ID,
+			Source: uuid.NewSHA1(uuid.Nil, []byte("Game.preventionFollowUps")), Label: "drift-Game.preventionFollowUps",
+			Prevented: 4, DamageSource: uuid.NewSHA1(uuid.Nil, []byte("drift-damage-source")),
+			SourceController: g.Seats[1].ID, SourceColors: []string{"R"}, Target: g.Seats[0].ID, Combat: true,
+		}}
+	},
 	// The two containers holding keyed elements: a generated element
 	// would carry an invented key and be refused.
 	"Game.DelayedTriggers": func(g *Game) any {

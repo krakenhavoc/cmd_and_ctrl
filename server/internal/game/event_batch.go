@@ -112,6 +112,10 @@ import "github.com/google/uuid"
 //
 // Caller must hold g.mu in write mode.
 func (g *Game) beginEventBatchLocked() {
+	// ADR 0107 §6: the instance of damage the batch held is over, so
+	// the follow-ups it owes run now (CR 615.5), if the priority
+	// boundary has not already run them — in the batch they belong to.
+	g.flushPreventionFollowUpsLocked()
 	g.eventBatch++
 	g.resolving = nil
 	// ADR 0107 §6: a next-damage shield spent in the batch that just

@@ -111,6 +111,12 @@ func (s *GameSnapshot) checkEffectKeys() error {
 			}
 		}
 	}
+	// ADR 0107 §6: an owed follow-up names its body as a key.
+	for _, f := range s.PreventionFollowUps {
+		if !KnownEffectBody(f.Body) {
+			unknown = append(unknown, "prevention follow-up body "+f.Body)
+		}
+	}
 	lastKnown := make([]stackItemSnapshot, 0, len(s.LastKnownStack))
 	for _, e := range s.LastKnownStack {
 		lastKnown = append(lastKnown, e.Item)

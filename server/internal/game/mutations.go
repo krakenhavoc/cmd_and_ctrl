@@ -4296,6 +4296,12 @@ func (g *Game) runStateChecksLocked() (sbaFired bool) {
 	if g.holdForOpenResolutionLocked() {
 		return false
 	}
+	// ADR 0107 §6, CR 615.5: the instance of damage is over before a
+	// player receives priority, so the next-damage shields' "the damage
+	// prevented this way" runs now, once per shield with the total —
+	// before the state-based actions, so a combat damage step's damage
+	// has all been dealt (CR 510.2) and nothing has died of it yet.
+	g.flushPreventionFollowUpsLocked()
 	// #830 / CR 509.2a: a player is about to receive priority, so the
 	// block declaration is complete. Lock it in first, so the
 	// "becomes blocked" and "blocks" triggers it produces are on
