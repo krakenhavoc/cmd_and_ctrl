@@ -124,13 +124,19 @@
   }
 
   // ADR 0111 PR 6: a sheet in the action dock. Enter confirms and
-  // Escape cancels through the dock's one key handler; Enter in the X
-  // field confirms too (the handler stands down in a text field), as
-  // the modal's document listener did.
+  // Escape cancels through the dock's one key handler. The X field has
+  // focus when the sheet opens and the handler stands down in a text
+  // field, so the field answers both keys itself, as the modal's
+  // document listener did.
   function onFieldKey(e: KeyboardEvent): void {
-    if (e.key !== "Enter" || e.shiftKey || e.ctrlKey || e.altKey || e.metaKey) return;
-    e.preventDefault();
-    confirm();
+    if (e.shiftKey || e.ctrlKey || e.altKey || e.metaKey) return;
+    if (e.key === "Enter") {
+      e.preventDefault();
+      confirm();
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      onCancel();
+    }
   }
 </script>
 

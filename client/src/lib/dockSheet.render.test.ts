@@ -129,11 +129,13 @@ describe("a dock sheet (the X picker)", () => {
     expect(calls.cancel).toBe(1);
   });
 
-  it("confirms on Enter in its own field, where the dock's handler stands down", () => {
+  it("answers Enter and Escape in its own field, where the dock's handler stands down", () => {
     const { calls } = mount();
     const input = sheetPanel()!.querySelector<HTMLInputElement>('input[aria-label="X value"]')!;
     pressKey("Enter", input);
     expect(calls.confirm).toEqual([3]);
+    pressKey("Escape", input);
+    expect(calls.cancel).toBe(1);
   });
 
   it("stands the global shortcuts down, but not the dock's keys", () => {
