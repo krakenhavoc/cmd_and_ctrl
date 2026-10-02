@@ -20,6 +20,8 @@ import type { MyGame } from "./myGames";
 import type { MyDeckInfo, MyDecksResponse } from "./myDecks";
 import type { CoverageReport } from "./deckcheck";
 import type { InviteDMResponse, Tablemate } from "./tablemates";
+import type { MySetupResponse, SetupResult } from "./tableSetup";
+import type { LastDeck } from "./lastDeck";
 import type { AutoTapCastParams } from "./castPreview";
 import type { TableSettingsPatch, SpawnZone } from "./tableSettings";
 import type { TableSettingsView, TargetRefView } from "./protocol";
@@ -238,12 +240,54 @@ export async function getGame(id: string): Promise<GameMeta> {
   return (await res.json()) as GameMeta;
 }
 
-export async function createGame(name: string): Promise<GameMeta> {
+// CreateGameResponse mirrors lobby.createGameResponse: the new table's
+// meta, flattened, and what applying the last setup did when it was
+// asked for (ADR 0110 §5 item 2).
+export interface CreateGameResponse extends GameMeta {
+  setup?: SetupResult;
+}
+
+// createGame creates a table (POST /games). Any signed-in person may
+// (ADR 0110 §5 item 4, owner answer 2): a 409 names their open tables
+// when they already have three, and a 429 says they are creating too
+// quickly. `setup: "last"` applies their remembered setup to it.
+export async function createGame(
+  name: string,
+  opts: { setup?: "last" } = {},
+): Promise<CreateGameResponse> {
+  const body: { name: string; setup?: string } = { name };
+  if (opts.setup) body.setup = opts.setup;
   const res = await authFetch("/games", {
     method: "POST",
-    body: JSON.stringify({ name }),
+    body: JSON.stringify(body),
   });
-  return (await res.json()) as GameMeta;
+  return (await res.json()) as CreateGameResponse;
+}
+
+// fetchMySetup reads the caller's remembered table setup (GET
+// /me/setup, ADR 0110 §5 item 1). Signed-in only: gate on
+// myGames.signedInUserID first, as for the other /me/* reads.
+export async function fetchMySetup(): Promise<MySetupResponse> {
+  const res = await authFetch("/me/setup");
+  return (await res.json()) as MySetupResponse;
+}
+
+// applyLastSetup applies the caller's last setup to a lobby table
+// (POST /games/{id}/setup): its host, its creator or an admin.
+export async function applyLastSetup(gameID: string): Promise<SetupResult & { game: GameMeta }> {
+  const res = await authFetch(`/games/${encodeURIComponent(gameID)}/setup`, {
+    method: "POST",
+    body: JSON.stringify({ from: "last" }),
+  });
+  return (await res.json()) as SetupResult & { game: GameMeta };
+}
+
+// fetchLastDeck reads the deck the signed-in caller last seated (GET
+// /me/last-deck, ADR 0110 §5 item 5), or null.
+export async function fetchLastDeck(): Promise<LastDeck | null> {
+  const res = await authFetch("/me/last-deck");
+  const body = (await res.json()) as { last_deck?: LastDeck | null };
+  return body.last_deck ?? null;
 }
 
 // joinGame is the public invite-link flow: call with the invite

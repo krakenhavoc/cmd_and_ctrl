@@ -152,6 +152,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/github"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/lobby"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/roadmap"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/tablesetups"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/users"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/usersettings"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/util/appenv"
@@ -584,6 +585,7 @@ func main() {
 		SessionEvictor:    hub,
 		DeckLibrary:       deckLibrary,
 		UserSettings:      newUserSettingsStore(database),
+		TableSetups:       newTableSetupStore(database),
 		BugReporter:       bugReporter,
 		BugStore:          bugStore,
 		DeckRequestFiler:  deckRequestFiler,
@@ -953,6 +955,17 @@ func newUserSettingsStore(database *db.DB) usersettings.Store {
 		return usersettings.NoStore{}
 	}
 	return usersettings.NewSQLStore(database)
+}
+
+// newTableSetupStore builds the last-setup store (ADR 0110 section 5,
+// migration 0008's table_setups). No database: tablesetups.NoStore,
+// which remembers nothing; with no database no session has a user, so
+// nothing would ask it anyway.
+func newTableSetupStore(database *db.DB) tablesetups.Store {
+	if database == nil {
+		return tablesetups.NoStore{}
+	}
+	return tablesetups.NewSQLStore(database)
 }
 
 // newDeckRequestStore builds ADR 0095's deck-request store (migration
