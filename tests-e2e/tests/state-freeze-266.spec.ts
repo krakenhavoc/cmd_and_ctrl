@@ -87,10 +87,14 @@ test.describe("#266 state freeze", () => {
 
     // Cleanup parks the cursor with PriorityHolder=NoPriority until
     // every owed discard is submitted, so a hand over max size
-    // legitimately blocks the walk. Answer any open prompt.
+    // legitimately blocks the walk. Answer any open prompt. Since ADR
+    // 0111 PR 6 the discard is a sheet in the action dock: its card
+    // grid (`button.card-pick`), its running count (`.prompt-count`) and
+    // its "Discard" button (the action bar's primary) are all inside
+    // the one dialog it opens there, named "Discard N card(s)".
     const answerDiscards = async (): Promise<void> => {
       for (const p of players) {
-        const dialog = p.page.getByRole("dialog", {
+        const dialog = dockOf(p.page).getByRole("dialog", {
           name: /discard \d+ card/i,
         });
         if (!(await dialog.isVisible().catch(() => false))) continue;

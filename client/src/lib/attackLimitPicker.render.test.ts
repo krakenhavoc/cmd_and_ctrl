@@ -6,13 +6,31 @@
 // cap cannot be checked, and confirming sends a declaration the server
 // accepts. The cap is the server's `attack_targets[].attack_limit`; the
 // pure rules behind it are in attackLimit.test.ts.
+//
+// ADR 0111 PR 6: the picker is a sheet in the action dock, so it is
+// mounted beside a real ActionDock (DockHarness); its "Attack with N"
+// is the dock bar's primary.
 
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import AttackDeclarationModal from "./components/board/AttackDeclarationModal.svelte";
+import DockHarness from "./test/DockHarness.svelte";
+import { _resetForTests as resetDock } from "./dock";
+import { _resetForTests as resetModals } from "./modalLayers";
 import type { AttackTargetView, CardView, GameView, PlayerView, ZoneView } from "./protocol";
 import { cleanup, click, render } from "./test/render.svelte";
+import { nameOf } from "./test/dockView";
 
+class FakeObserver {
+  observe(): void {}
+  unobserve(): void {}
+  disconnect(): void {}
+}
+beforeEach(() => {
+  (globalThis as Record<string, unknown>).ResizeObserver ??= FakeObserver;
+  resetDock();
+  resetModals();
+});
 afterEach(cleanup);
 
 function zone(kind: string, owner: string | undefined, cards: CardView[]): ZoneView {
@@ -69,14 +87,18 @@ const ARBITER = "No more than one creature can attack each combat (Silent Arbite
 function mount(view: GameView, limitReason: string | null = null) {
   const confirmed: Array<{ attackers: string[]; locked: string[] }> = [];
   const r = render(
-    AttackDeclarationModal as never,
+    DockHarness as never,
     {
+      component: AttackDeclarationModal,
       view,
-      viewerID: "me",
-      defenderSeatID: "bob",
-      limitReason,
-      onConfirm: (attackers: string[], locked: string[]) => confirmed.push({ attackers, locked }),
-      onCancel: () => {},
+      props: {
+        view,
+        viewerID: "me",
+        defenderSeatID: "bob",
+        limitReason,
+        onConfirm: (attackers: string[], locked: string[]) => confirmed.push({ attackers, locked }),
+        onCancel: () => {},
+      },
     } as never,
   );
   return { container: r.container, confirmed };
@@ -93,7 +115,7 @@ const checked = (c: HTMLElement): string[] =>
     .filter((b) => b.getAttribute("aria-checked") === "true")
     .map((b) => text(b));
 const attackButton = (c: HTMLElement): HTMLButtonElement =>
-  [...c.querySelectorAll<HTMLButtonElement>("button.primary")].find((b) =>
+  [...c.querySelectorAll<HTMLButtonElement>(".dock-bar button.request-primary")].find((b) =>
     text(b).startsWith("Attack with"),
   )!;
 
@@ -113,7 +135,7 @@ describe("AttackDeclarationModal under an attack limit (#1533)", () => {
     expect(a.disabled).toBe(false);
     expect(b.disabled).toBe(true);
     expect(c.disabled).toBe(true);
-    expect(text(attackButton(container))).toBe("Attack with 1");
+    expect(nameOf(attackButton(container))).toBe("Attack with 1");
     expect(attackButton(container).disabled).toBe(false);
   });
 

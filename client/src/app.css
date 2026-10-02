@@ -581,6 +581,10 @@ textarea::placeholder {
   align-items: center;
   gap: 12px;
   width: 100%;
+  /* A row that is an <li> (the auto-tap plan) must not grow past the
+     sheet by its own padding (ADR 0111 PR 6: no horizontal scroll at
+     390px). */
+  box-sizing: border-box;
   padding: 10px 12px;
   border-radius: 10px;
   background: var(--surface-sunken);

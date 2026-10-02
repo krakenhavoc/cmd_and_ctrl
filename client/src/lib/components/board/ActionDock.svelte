@@ -1108,7 +1108,7 @@
     outline: none;
   }
   .dock-sheet:focus-visible {
-    outline: 2px solid color-mix(in srgb, var(--accent) 70%, transparent);
+    outline: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
     outline-offset: 2px;
   }
   @keyframes sheet-up {
@@ -1136,6 +1136,7 @@
     font-size: 16px;
     font-weight: 700;
     letter-spacing: -0.01em;
+    text-transform: none;
     line-height: 1.25;
     color: var(--fg);
     display: flex;

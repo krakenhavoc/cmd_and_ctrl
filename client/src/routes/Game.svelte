@@ -41,9 +41,11 @@
   import GameLogPanel from "../lib/components/board/GameLogPanel.svelte";
   import ActionDock from "../lib/components/board/ActionDock.svelte";
   import DockRequest from "../lib/components/board/DockRequest.svelte";
+  import DockSheet from "../lib/components/board/DockSheet.svelte";
   import { attackRowRequest, blockRequest, combatSelectionRequest } from "../lib/combatDock";
   import { gameOverRequest, inlineRefusal, voteRequest } from "../lib/choiceDock";
   import { insufficientManaRequest, targetingRequest } from "../lib/targetingDock";
+  import { confirmAction } from "../lib/dock";
   import RevealBanner from "../lib/components/board/RevealBanner.svelte";
   import BotFeed from "../lib/components/BotFeed.svelte";
   import Icon from "../lib/components/Icon.svelte";
@@ -1984,17 +1986,22 @@
           onSheet={onDockSheet}
         />
       {/if}
-      {#if viewerNeedsToDecide}
-        <ModalLayer />
-        <div class="mulligan-scrim"></div>
-        <div
-          class="mulligan-dialog"
-          role="dialog"
-          aria-modal="true"
-          aria-label="keep or mulligan your hand"
+      {#if viewerNeedsToDecide && dockShown}
+        <!-- ADR 0111 PR 6 (decision 2): the opening hand is a sheet that
+             grows up out of the dock, with Keep hand (Enter) and
+             Mulligan in its action bar. The dialog keeps its name, "keep
+             or mulligan your hand", and the hand its list. No scrim: the
+             table and the roll call stay readable. -->
+        <DockSheet
+          rank="choice"
+          label="keep or mulligan your hand"
+          title="Your opening hand"
+          width={720}
+          sheetKey={`mulligan:${viewerSeat?.mulligans_taken ?? 0}`}
+          primary={confirmAction("Keep hand", keepHand, { id: "keep" })}
+          secondary={[{ id: "mulligan", label: "Mulligan", onPress: mulliganDecide }]}
         >
-          <header>
-            <h2>Your opening hand</h2>
+          <div class="mulligan-copy">
             {#if openingRoll}
               <p class="opening-roll-copy">
                 <span class="seat-dot" style="background:{seatColor(openingRoll.seat)}"></span>
@@ -2009,7 +2016,7 @@
             {:else}
               <p class="muted">Hand size: {viewerSeat?.hand.count ?? 0}. Keep or mulligan?</p>
             {/if}
-          </header>
+          </div>
           {#if (viewerSeat?.hand.cards.length ?? 0) > 0}
             <div class="mulligan-cards" role="list" aria-label="your opening hand">
               {#each viewerSeat?.hand.cards ?? [] as card (card.instance_id)}
@@ -2024,11 +2031,7 @@
               {/each}
             </div>
           {/if}
-          <div class="mulligan-actions">
-            <button onclick={mulliganDecide}>Mulligan</button>
-            <button class="primary" onclick={keepHand}>Keep hand</button>
-          </div>
-        </div>
+        </DockSheet>
       {/if}
       <DiscardPromptModal snap={view} {viewerID} {sendAction} />
       <!-- lastError too: this modal's backdrop covers the board's
@@ -2729,57 +2732,20 @@
     font-size: 10px;
   }
 
-  /* Give the opening hand the table's width so all seven cards can
-     be read together. On smaller screens only the cards scroll;
-     the heading and keep/mulligan controls stay in view. */
-  .mulligan-scrim {
-    /* Sits under Board's attention strip (z 40) so the opening-hand
-       roll-call stays readable while the table behind it dims. */
-    position: absolute;
-    inset: 0;
-    z-index: 38;
-    background: rgba(11, 10, 9, 0.6);
-    backdrop-filter: blur(2px);
-    -webkit-backdrop-filter: blur(2px);
-  }
-  .mulligan-dialog {
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    transform: translate(-50%, -50%);
-    z-index: 71;
-    width: min(2400px, calc(100% - clamp(24px, 6vw, 160px)));
-    max-height: calc(100% - 96px);
-    padding: clamp(16px, 2vw, 28px);
-    background: var(--surface);
-    border: 1px solid rgba(217, 180, 92, 0.4);
-    border-radius: var(--radius-xl);
-    color: var(--fg);
-    box-shadow: var(--shadow-lg);
-    box-sizing: border-box;
+  /* ADR 0111 PR 6: the opening hand is a dock sheet (DockSheet), so
+     only its body is styled here: the roll line, the count, and the
+     seven cards in one row of a 720px sheet (fewer per row on a phone,
+     scrolling inside the sheet). */
+  .mulligan-copy {
     display: flex;
     flex-direction: column;
-    gap: 18px;
-    overflow: hidden;
+    gap: 4px;
   }
-  .mulligan-dialog header {
-    display: flex;
-    flex-shrink: 0;
-    align-items: baseline;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-  .mulligan-dialog header h2 {
+  .mulligan-copy p {
     margin: 0;
-    font-family: var(--font-display);
-    font-size: clamp(18px, 1.5vw, 24px);
-    font-weight: 700;
+    font-size: 13px;
   }
-  .mulligan-dialog header p {
-    margin: 0;
-    font-size: 14px;
-  }
-  .mulligan-dialog header .opening-roll-copy {
+  .mulligan-copy .opening-roll-copy {
     display: inline-flex;
     align-items: center;
     gap: 6px;
@@ -2790,9 +2756,8 @@
     display: grid;
     grid-template-columns: repeat(7, minmax(0, 1fr));
     grid-auto-rows: max-content;
-    gap: clamp(8px, 1vw, 16px);
+    gap: 8px;
     min-height: 0;
-    overflow-y: auto;
     padding: 2px;
   }
   .mulligan-card {
@@ -2825,46 +2790,9 @@
     color: var(--fg-muted);
     box-sizing: border-box;
   }
-  .mulligan-actions {
-    display: flex;
-    flex-shrink: 0;
-    justify-content: flex-end;
-    gap: 10px;
-  }
-  .mulligan-actions button {
-    min-height: 44px;
-    padding-inline: 20px;
-  }
-
-  @media (max-width: 1279px) {
-    .mulligan-cards {
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-    }
-  }
-  @media (max-width: 767px) {
+  @media (max-width: 599px) {
     .mulligan-cards {
       grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-  }
-  @media (max-width: 599px) {
-    .mulligan-dialog {
-      gap: 12px;
-    }
-    .mulligan-dialog header {
-      gap: 6px;
-    }
-    .mulligan-cards {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-    .mulligan-actions button {
-      flex: 1;
-    }
-  }
-  @media (max-height: 600px) {
-    .mulligan-dialog {
-      max-height: calc(100% - 24px);
-      padding: 12px;
-      gap: 10px;
     }
   }
 
