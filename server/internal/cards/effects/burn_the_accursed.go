@@ -15,11 +15,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // the 2 either. The replacement is the spell's (ADR 0108 §1): the
 // creature is marked whether or not its damage was dealt.
 //
-// No card-specific simplifications. The one engine-wide one, which Arc
-// Trail shares: the two damage events are dealt one after the other
-// rather than at once (game.DealDamageEachThenForEffect says why), which
-// nothing on the board can tell unless a damage replacement pauses for a
-// choice between them.
+// The 5 and the 2 are one damage instance (one printed instruction, CR
+// 615.8, ADR 0108 PR 0), dealt one event after the other as every
+// multi-recipient instruction in the engine is.
+//
+// No simplifications.
 func init() {
 	Register(Spec{
 		OracleID:     "b5aae42b-3fde-4f10-b85e-882c528badef",
@@ -35,10 +35,14 @@ func init() {
 			if !ok {
 				return nil
 			}
-			if err := (DealDamage{Source: ctx.Source(), Target: id, Amount: 5}).Apply(ctx); err != nil {
-				return err
-			}
-			if err := (DealDamage{Source: ctx.Source(), Target: victim.Controller, Amount: 2}).Apply(ctx); err != nil {
+			// One sentence, one damage instance (CR 615.8, ADR 0108 PR 0).
+			err := ctx.Game.DamageInstanceForEffect(func() error {
+				if err := (DealDamage{Source: ctx.Source(), Target: id, Amount: 5}).Apply(ctx); err != nil {
+					return err
+				}
+				return DealDamage{Source: ctx.Source(), Target: victim.Controller, Amount: 2}.Apply(ctx)
+			})
+			if err != nil {
 				return err
 			}
 			return ExileIfItWouldDieThisTurn{Target: id}.Apply(ctx)

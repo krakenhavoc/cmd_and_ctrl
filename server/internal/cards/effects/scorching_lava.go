@@ -24,16 +24,17 @@ func init() {
 		Targets:       TargetAny(),
 		OptionalCosts: []game.AdditionalCost{Kicker("{R}")},
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			for _, t := range ctx.LegalTargets() {
-				if err := (DealDamage{Source: ctx.Source(), Target: t.ID, Amount: 2}).Apply(ctx); err != nil {
-					return err
-				}
-				if !ctx.WasKicked() {
-					return nil
-				}
-				return markCreatureNoRegenExileIfDies(ctx, t.ID)
+			t, ok := firstLegalTarget(ctx)
+			if !ok {
+				return nil
 			}
-			return nil
+			if err := (DealDamage{Source: ctx.Source(), Target: t.ID, Amount: 2}).Apply(ctx); err != nil {
+				return err
+			}
+			if !ctx.WasKicked() {
+				return nil
+			}
+			return markCreatureNoRegenExileIfDies(ctx, t.ID)
 		},
 	})
 }
