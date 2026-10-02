@@ -72,3 +72,5 @@ body prevention/exile-library-top
 body prevention/gain-life-equal
 body prevention/red-damage-source-controller
 body until/return-to-battlefield
+body dies/exile-from-graveyard
+condition dies/the-listed-object

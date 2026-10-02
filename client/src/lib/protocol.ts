@@ -346,6 +346,11 @@ export interface GameView {
   // turn" grants, by their source's name (Skullcrack, Stomp), oldest
   // first. Absent on nearly every turn.
   damage_cant_be_prevented?: string[];
+  // ADR 0108 §1: the live "if a creature would die this turn, exile it
+  // instead" effects over a live set (Flaying Tendrils, Malicious
+  // Eclipse), by their source's name, oldest first. Absent on nearly
+  // every turn.
+  exile_if_creatures_die?: string[];
   // Cleanup-step pause map (S13.4, CR 402.2). Keys are player UUID
   // strings, values are the count each player must discard. Drives
   // DiscardPromptModal. Empty / absent when nobody owes discard.
@@ -2559,6 +2564,13 @@ export interface CardView extends CastSurfaceView {
   // is tapped, all damage is removed from it and it leaves combat.
   // Public state, like damage_marked; omitted when zero.
   regeneration_shields?: number;
+  // ADR 0108 §1: the effects that would exile this permanent instead if
+  // it died now (Lava Coil's "if that creature would die this turn,
+  // exile it instead"), by source name. Public; battlefield only.
+  exiled_if_it_dies?: string[];
+  // ADR 0108 §2 (CR 701.19c): this permanent can't be regenerated this
+  // turn (Incinerate, Whippoorwill). Public; battlefield only.
+  cant_be_regenerated?: boolean;
   // S13.5 visual face-down flag (CR 708 — morph / manifest /
   // mutate-bottom, Necropotence's exile). Distinct from known_by_you:
   // a viewer who doesn't know a face-down card gets it redacted to

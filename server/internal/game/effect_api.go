@@ -907,19 +907,43 @@ func (g *Game) DealMarkedDamageForEffect(source uuid.UUID, obj *ObjectRef, targe
 // that can report a true total. Same trade LoseLifeEachThenForEffect
 // makes, for the same reason.
 func (g *Game) DealDamageEachThenForEffect(source uuid.UUID, targets []uuid.UUID, amount int, then func(g *Game, totalDealt int) error) error {
-	return g.dealDamageEachStepLocked(source, targets, amount, 0, then)
+	return g.dealDamageEachStepLocked(source, targets, amount, 0, nil, then)
+}
+
+// DealDamageEachEachThenForEffect is DealDamageEachThenForEffect with a
+// PER-RECIPIENT continuation as well (ADR 0108 §1 decision 4): `each`
+// runs once for every recipient that was dealt the damage's event, with
+// that recipient and the amount it actually took, as soon as its own
+// CR 614 window has settled — before the next recipient is damaged.
+// "Anger of the Gods deals 3 damage to each creature. If a creature
+// dealt damage this way would die this turn, exile it instead" reads the
+// recipient off `each`. `then`, when set, runs last with the total, as
+// it does for the batch form. A recipient that is gone before its damage
+// is skipped by both, as it is there.
+//
+// Caller must hold g.mu.
+func (g *Game) DealDamageEachEachThenForEffect(source uuid.UUID, targets []uuid.UUID, amount int,
+	each func(g *Game, target uuid.UUID, dealt int) error, then func(g *Game, totalDealt int) error) error {
+	return g.dealDamageEachStepLocked(source, targets, amount, 0, each, then)
 }
 
 // dealDamageEachStepLocked damages the head of `targets` and continues
 // with the tail, carrying the running total forward by value. The empty
 // list is the base case: the batch is done and `then` gets the total.
+// `each`, when set, is told each recipient first.
 //
 // Caller must hold g.mu.
-func (g *Game) dealDamageEachStepLocked(source uuid.UUID, targets []uuid.UUID, amount, dealtSoFar int, then func(g *Game, totalDealt int) error) error {
+func (g *Game) dealDamageEachStepLocked(source uuid.UUID, targets []uuid.UUID, amount, dealtSoFar int,
+	each func(g *Game, target uuid.UUID, dealt int) error, then func(g *Game, totalDealt int) error) error {
 	for len(targets) > 0 {
 		next, rest := targets[0], targets[1:]
 		step := func(g *Game, dealt int) error {
-			return g.dealDamageEachStepLocked(source, rest, amount, dealtSoFar+dealt, then)
+			if each != nil {
+				if err := each(g, next, dealt); err != nil {
+					return err
+				}
+			}
+			return g.dealDamageEachStepLocked(source, rest, amount, dealtSoFar+dealt, each, then)
 		}
 		if p := g.playerByIDLocked(next); p != nil {
 			if p.Eliminated {

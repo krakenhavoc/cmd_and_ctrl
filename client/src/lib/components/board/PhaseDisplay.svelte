@@ -25,7 +25,7 @@
   import { settings } from "../../settings";
   import { effectiveBindings, formatChord, isMacLike } from "../../shortcuts";
   import PhaseIcon from "./PhaseIcon.svelte";
-  import { damageCantBePreventedLine } from "../../turnRules";
+  import { damageCantBePreventedLine, exileIfCreaturesDieLine } from "../../turnRules";
   import { QUIET_ANNOUNCER, announceArrival, type ReadyAnnouncer } from "../../legalActions";
 
   interface Props {
@@ -46,6 +46,7 @@
     // ADR 0107 §5 (CR 615.12): the sources of the live "damage can't
     // be prevented this turn" grants (GameView.damage_cant_be_prevented).
     damageCantBePrevented?: string[];
+    exileIfCreaturesDie?: string[];
     onPassPriority: () => void;
     onToggleAutopass: () => void;
     // ADR 0105 §7 (sub-PR 6): how many of the viewer's cards have a
@@ -64,6 +65,7 @@
     autopassEnabled,
     loopNotice = "",
     damageCantBePrevented = [],
+    exileIfCreaturesDie = [],
     onPassPriority,
     onToggleAutopass,
     readyActions = 0,
@@ -86,6 +88,7 @@
   // declaration) or the turn ends.
   const autopassPaused = $derived(loopNotice !== "");
   const unpreventableLine = $derived(damageCantBePreventedLine(damageCantBePrevented));
+  const exileOnDeathLine = $derived(exileIfCreaturesDieLine(exileIfCreaturesDie));
 
   const activeSeat = $derived(turn.active_seat ?? 0);
   const priorityHeld = $derived((turn.priority_holder ?? -1) >= 0);
@@ -314,6 +317,9 @@
        every Fog and shield at the table does, so the turn says so. -->
   {#if unpreventableLine}
     <div class="row turn-rule" role="status">{unpreventableLine}</div>
+  {/if}
+  {#if exileOnDeathLine}
+    <div class="row turn-rule" role="status">{exileOnDeathLine}</div>
   {/if}
 
   <!-- #628 (CR 726): the loop breaker. Lives directly under the

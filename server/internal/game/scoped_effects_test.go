@@ -229,6 +229,9 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// ADR 0107 §6: the next-damage shield is a replacement. Its
 		// cases are in prevent_next_from_source_test.go.
 		ModPreventNextFromSource: true,
+		// ADR 0108 §1 and §2: a replacement and a rules gate. Their
+		// cases are in exile_if_dies_test.go.
+		ModExileIfWouldDie: true, ModCantBeRegenerated: true,
 	}
 	for _, k := range ModKinds() {
 		if !covered[k] {

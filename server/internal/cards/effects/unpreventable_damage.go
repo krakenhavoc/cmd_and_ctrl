@@ -51,6 +51,15 @@ func SpellThreshold() game.SpellCondition {
 	return func(g *game.Game, item *game.StackItem) bool { return b31GraveyardSize(g, item.Controller) >= 7 }
 }
 
+// SpellHellbent is hellbent's "If you have no cards in hand" (Demonfire),
+// about the spell's controller. A hand's size is public.
+func SpellHellbent() game.SpellCondition {
+	return func(g *game.Game, item *game.StackItem) bool {
+		p := g.PlayerByIDForEffect(item.Controller)
+		return p != nil && (p.Hand == nil || len(p.Hand.Cards) == 0)
+	}
+}
+
 // damageCantBePreventedThen is a spell that opens with "Damage can't be
 // prevented this turn." and then does `rest` (Stomp, Skullcrack's
 // second sentence, Impractical Joke): the grant begins first, so the
