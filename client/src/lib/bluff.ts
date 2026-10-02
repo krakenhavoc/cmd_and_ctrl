@@ -13,8 +13,9 @@
 // widget should say while a bluff is running. Game.svelte owns the
 // timer.
 
-import { type Readable } from "svelte/store";
+import { get, type Readable } from "svelte/store";
 import { guardedWritable } from "./guardedStore";
+import { settings, updateSettings } from "./settings";
 
 // Clamp for the delay bounds. The floor keeps a bluff longer than an
 // automatic pass (which is the whole point); the ceiling keeps a
@@ -56,6 +57,26 @@ export function toggleBluffArmed(): boolean {
     return next;
   });
   return next;
+}
+
+// pressBluff is the one press the bluff button and the `b` key share
+// (ADR 0111 §5). It flips the switch, and when it ARMS with neither
+// kind chosen it also turns on "represent a counterspell", the narrower
+// one, because a switch with no kind behind it does nothing. Returns the
+// new armed state. With smart autopass off it does nothing: bluffing is
+// moot there, since every opponent item stops you anyway.
+export function pressBluff(): boolean {
+  const gp = get(settings).gameplay;
+  if (!gp.smartAutoPass) return get(armed);
+  if (get(armed)) {
+    armed.set(false);
+    return false;
+  }
+  if (!gp.bluffCounterspell && !gp.bluffInstant) {
+    updateSettings("gameplay", "bluffCounterspell", true);
+  }
+  armed.set(true);
+  return true;
 }
 
 // initBluffArmed is the game-mount default.

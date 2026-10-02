@@ -67,6 +67,11 @@ test.describe("board layout", () => {
     await expect(selfBoard.getByRole("button", { name: /library: \d+/ })).toBeVisible();
     await expect(selfBoard.getByLabel(/command zone, \d+ card/)).toBeVisible();
 
+    // ADR 0111 §5: the bluff split button is always on the table, even
+    // on a default install where neither bluff setting is on.
+    await expect(page.getByRole("button", { name: "bluff", exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "bluff options" })).toBeVisible();
+
     // Stack overlay should be hidden when nothing is on the stack.
     await expect(page.getByLabel(/stack: \d+ on the stack/)).toHaveCount(0);
 

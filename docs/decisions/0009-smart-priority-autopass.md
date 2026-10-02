@@ -215,6 +215,13 @@ setting is on, so a player can stop bluffing for the rest of a game without
 opening Settings. The widget shows "bluffing — passes in Ns" or "bluffing —
 click next" to the viewer only.
 
+> **Amended by ADR 0111 §5 (S56 PR 1, #1958):** the bluff button is now always
+> shown, not only when a bluff setting is on. It is a split button: the main
+> part arms and disarms in one click (and so does the `b` key); with neither
+> kind chosen that click also turns on "represent a counterspell". Its `▾` sets
+> which bluff and how, writing the same settings. It is disabled while smart
+> auto-pass is off.
+
 The timed bluff lives in `Game.svelte` and is careful about one thing: it must
 never pass a window that has changed under it.
 

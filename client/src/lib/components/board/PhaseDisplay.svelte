@@ -21,7 +21,8 @@
   import { STEP_IDS, STEP_LABELS, type StepID } from "../../turn";
   import { canManuallyStop, manualStops, toggleManualStop } from "../../priorityStops";
   import { holdPriority, toggleHoldPriority } from "../../holdPriority";
-  import { bluffArmed, bluffStatus, bluffStatusText, toggleBluffArmed } from "../../bluff";
+  import { bluffStatus, bluffStatusText } from "../../bluff";
+  import BluffChip from "./BluffChip.svelte";
   import { settings } from "../../settings";
   import { effectiveBindings, formatChord, isMacLike } from "../../shortcuts";
   import PhaseIcon from "./PhaseIcon.svelte";
@@ -152,12 +153,9 @@
   // Consumed on step transition by the consumer in Game.svelte.
   const pinned = $derived($manualStops);
 
-  // #1307: the bluff switch and the running bluff's line. Only offered
-  // when a bluff setting is on, since the switch does nothing without
-  // one. The countdown ticks twice a second while a timed bluff runs.
-  const bluffConfigured = $derived(
-    $settings.gameplay.bluffCounterspell || $settings.gameplay.bluffInstant,
-  );
+  // #1307: the running bluff's line. (The bluff switch itself is
+  // BluffChip, always shown since ADR 0111.) The countdown ticks twice
+  // a second while a timed bluff runs.
   let now = $state(Date.now());
   $effect(() => {
     const s = $bluffStatus;
@@ -269,20 +267,8 @@
     >
       {$holdPriority ? "hold ✓" : "hold"}
     </button>
-    {#if bluffConfigured}
-      <button
-        type="button"
-        class="action hold bluff"
-        class:on={$bluffArmed}
-        aria-pressed={$bluffArmed}
-        onclick={toggleBluffArmed}
-        title={$bluffArmed
-          ? "bluff ON — when you have no answer, pause anyway so a pause gives nothing away; click to stop bluffing this game"
-          : "bluff OFF — windows you can't answer pass instantly; click to bluff for the rest of this game"}
-      >
-        {$bluffArmed ? "bluff ✓" : "bluff"}
-      </button>
-    {/if}
+    <!-- ADR 0111 §5: always shown, set up or not. -->
+    <BluffChip keyHint={keyHint(keys.toggleBluff)} />
     <button
       type="button"
       class="action autopass"

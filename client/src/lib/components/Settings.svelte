@@ -809,7 +809,8 @@
                 Smart auto-pass passes the moment you have no answer, so a pause tells the table you
                 do. A bluff pauses anyway when you have nothing, and the other players see the same
                 pause either way. Turn bluffing on or off mid-game with the
-                <strong>bluff</strong> button in the phase widget.
+                <strong>bluff</strong> button in the phase widget (always shown, and the
+                <kbd>B</kbd> key does the same). Its <strong>▾</strong> sets the same options as below.
               </p>
               <label>
                 <input
