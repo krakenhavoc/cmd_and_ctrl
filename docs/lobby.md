@@ -12,6 +12,46 @@ live in [ADR 0003 — Auth and lobby architecture](decisions/0003-auth-and-lobby
 
 ---
 
+## Who is an admin (ADR 0110 §3)
+
+Two kinds of session are admins, and every "admin only" or "admin" below
+means either:
+
+- the **shared token**'s session, from `POST /admin/login`
+  (`role: "admin"`); and
+- a **signed-in person on the allowlist**: any session with a `user_id`
+  (identified, player or spectator) whose Discord ID is on
+  `CMDCTRL_DISCORD_ADMIN_USER_IDS`. It is the same list the Discord bot
+  uses for `/c2-end`.
+
+Admin is decided on every request (`Config.isAdmin`) and is never in the
+token, so taking an ID off the list takes effect on the next request.
+The list is read at boot, so in practice that means at the next deploy.
+A session with no `user_id` is never an allowlisted admin. That includes
+a reclaim ticket's session for an admin's seat, which carries the seat's
+Discord ID but no user. `GET /me` reports the answer as `admin`.
+
+An allowlisted person joins tables the ordinary way, as their own Discord
+identity. Their seat session is an admin at every table: it can use the
+admin routes, pass every host-or-admin gate, and open any table's
+WebSocket like the token (see `GET /ws` in
+[protocol.md](protocol.md)).
+
+Three paths exist for the Discord bot calling on other people's behalf,
+and they stay on the **shared token alone** (`isServerCredential`). An
+allowlisted person is a person on these paths:
+
+- the bot's own rate buckets on `POST /deck-coverage` and the per-caller
+  limits;
+- `requester` on `POST /deck-requests`, which files a request in a named
+  member's name;
+- `discord_id` on `POST /games/{id}/invites/dm`, which names a raw
+  snowflake.
+
+Every request an admin-only route lets through is logged at Info as
+`admin action`, with the method and path and either `admin_user_id` (an
+allowlisted person) or `admin_id` (the token). No token is ever logged.
+
 ## Public routes (no credential required)
 
 ### `POST /admin/login`
@@ -479,7 +519,7 @@ again (see `GET /games/{id}`).
 | Status | Reason |
 |---|---|
 | 401 | unauthenticated |
-| 403 | session is not RoleAdmin |
+| 403 | caller is not an admin (see [Who is an admin](#who-is-an-admin-adr-0110-3)) |
 | 400 | empty name |
 
 ### The table host
@@ -1404,7 +1444,7 @@ information included. The shape reflects that:
 
 | Property | What it means |
 |---|---|
-| Admin-only to mint | same `auth.RoleAdmin` gate as `POST /games`. A player seated at the table cannot mint one, not even for their own seat. |
+| Admin-only to mint | same admin gate as `POST /games` (`requireAdmin`). A player seated at the table cannot mint one, not even for their own seat, unless they are an allowlisted admin. |
 | Minted, never derived | 32 bytes from `crypto/rand`. Not a function of the game ID, seat index, player ID or invite token. |
 | Short TTL | 15 minutes (`lobby.ReclaimTTL`), reported in the response as `expires_at` + `ttl_seconds` so the host can see what they handed out. |
 | Single use | redemption consumes it under the lobby mutex; a second presentation is indistinguishable from a forgery. |
@@ -1665,6 +1705,19 @@ the allowlists already follow.
 
 Echo the principal attached to the request. Used by the client for
 bootstrap — "am I still logged in, and as what?"
+
+The principal's fields are at the top level, as they always were, plus
+one computed field, `admin` (ADR 0110 §3 item 4). It is `true` for the
+shared token's session and for a signed-in person on the admin
+allowlist, and `false` otherwise. It is not part of the token. The
+client asks once per installed session that has a `user_id`, and shows
+admin UI to an admin seated at a table exactly as it does to the token.
+The allowlist itself is never served.
+
+```json
+{ "role": "player", "user_id": "<uuid>", "game_id": "<uuid>", "player_id": "<uuid>",
+  "discord_id": "<snowflake>", "issued_at": "…", "expires_at": "…", "admin": true }
+```
 
 ### `GET /me/games`
 

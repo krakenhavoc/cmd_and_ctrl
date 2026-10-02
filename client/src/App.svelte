@@ -26,6 +26,7 @@
   import EnvBadge from "./lib/components/EnvBadge.svelte";
   import { route, navigate } from "./lib/router";
   import { session, sessionFromOAuth, setSession } from "./lib/session";
+  import { loadAdminStatus, needsAdminCheck } from "./lib/admin";
   import { canJoinByCode } from "./lib/myGames";
   import { settings } from "./lib/settings";
   import { applyRootSettings } from "./lib/rootSettings";
@@ -84,6 +85,15 @@
     if (s && r.name === "login" && !canJoinByCode(s)) {
       navigate("#/lobby");
     }
+  });
+
+  // Ask GET /me whether a newly installed signed-in session is an admin
+  // (ADR 0110 §3 item 4): the server's allowlist is not in the token, so
+  // this is the only way the client learns it. Once per session per page
+  // load; the answer lands on the session as `admin` (lib/admin.ts).
+  $effect(() => {
+    const s = $session;
+    if (needsAdminCheck(s)) void loadAdminStatus(s);
   });
 
   // oauth-complete handoff (S12.5). /auth/discord/callback on the

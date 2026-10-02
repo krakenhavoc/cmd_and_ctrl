@@ -232,7 +232,7 @@ func spawnCard(c Config, w http.ResponseWriter, r *http.Request) error {
 	}
 
 	ids, err := c.Lobby.Spawn(gameID, SpawnOptions{
-		Actor:      p.PlayerID,
+		Actor:      actorIn(p, gameID),
 		Controller: playerID,
 		Zone:       zone,
 		Template:   template,
@@ -336,7 +336,7 @@ func requireTableManager(c Config, r *http.Request) (uuid.UUID, error) {
 	if err != nil {
 		return uuid.Nil, err
 	}
-	if !CanManageTable(p, meta) {
+	if !CanManageTable(p, meta, c.isAdmin(p)) {
 		return uuid.Nil, httpError(http.StatusForbidden,
 			"only the table host or the admin may spawn cards")
 	}
