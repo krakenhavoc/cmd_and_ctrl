@@ -2134,6 +2134,7 @@ seats[].castPermissions[].filter	object
 seats[].castPermissions[].filter.creatureOnly	bool
 seats[].castPermissions[].filter.creatureType	string
 seats[].castPermissions[].filter.fromChosenType	bool
+seats[].castPermissions[].filter.historicOnly	bool
 seats[].castPermissions[].filter.instantOrSorceryOnly	bool
 seats[].castPermissions[].filter.landsOnly	bool
 seats[].castPermissions[].filter.nonLandOnly	bool
@@ -3483,6 +3484,7 @@ seats[].statics[].cantBeCountered.filter	object
 seats[].statics[].cantBeCountered.filter.creatureOnly	bool
 seats[].statics[].cantBeCountered.filter.creatureType	string
 seats[].statics[].cantBeCountered.filter.fromChosenType	bool
+seats[].statics[].cantBeCountered.filter.historicOnly	bool
 seats[].statics[].cantBeCountered.filter.instantOrSorceryOnly	bool
 seats[].statics[].cantBeCountered.filter.landsOnly	bool
 seats[].statics[].cantBeCountered.filter.nonLandOnly	bool
@@ -3497,6 +3499,7 @@ seats[].statics[].castBan.filter	object
 seats[].statics[].castBan.filter.creatureOnly	bool
 seats[].statics[].castBan.filter.creatureType	string
 seats[].statics[].castBan.filter.fromChosenType	bool
+seats[].statics[].castBan.filter.historicOnly	bool
 seats[].statics[].castBan.filter.instantOrSorceryOnly	bool
 seats[].statics[].castBan.filter.landsOnly	bool
 seats[].statics[].castBan.filter.nonLandOnly	bool
@@ -3533,6 +3536,7 @@ seats[].statics[].timing.filter	object
 seats[].statics[].timing.filter.creatureOnly	bool
 seats[].statics[].timing.filter.creatureType	string
 seats[].statics[].timing.filter.fromChosenType	bool
+seats[].statics[].timing.filter.historicOnly	bool
 seats[].statics[].timing.filter.instantOrSorceryOnly	bool
 seats[].statics[].timing.filter.landsOnly	bool
 seats[].statics[].timing.filter.nonLandOnly	bool
