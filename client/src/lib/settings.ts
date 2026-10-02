@@ -128,6 +128,12 @@ export interface Settings {
     // behaviour is always-on; this lets a viewer who finds it
     // distracting hide it.
     showOpponentHandCount: boolean;
+    // #1954, EXPERIMENTAL, off by default. Battlefield cards and the
+    // viewer's own hand draw Scryfall's art_crop instead of the full
+    // card; the hover zoom still shows the whole card. The stack,
+    // prompts, catalog, deck views and every face-down card are
+    // untouched. Not in practiceTable's forced list on purpose.
+    artOnlyCards: boolean;
   };
 
   gameplay: {
@@ -359,6 +365,7 @@ export function defaultSettings(): Settings {
       expandStyle: "reflow",
       hoverDelayMs: 300,
       showOpponentHandCount: true,
+      artOnlyCards: false,
     },
     gameplay: {
       confirmExit: true,

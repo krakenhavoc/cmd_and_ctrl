@@ -228,6 +228,15 @@ describe("settings", () => {
     expect(s.shortcuts.bindings).toEqual({ undo: "z" });
   });
 
+  // #1954: experimental, off by default, and it survives a reload.
+  it("artOnlyCards defaults off and persists once turned on", async () => {
+    let m = await freshModule();
+    expect(get(m.settings).display.artOnlyCards).toBe(false);
+    m.updateSettings("display", "artOnlyCards", true);
+    m = await freshModule();
+    expect(get(m.settings).display.artOnlyCards).toBe(true);
+  });
+
   it("v11 keeps an explicit opponentDetail: full across a load", async () => {
     // The escape hatch has to survive a reload, or a player who
     // deliberately went back to full boards gets summaries again on
