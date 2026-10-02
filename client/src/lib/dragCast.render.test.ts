@@ -209,15 +209,25 @@ describe("drag to cast (#1508)", () => {
     expect(preview.calls, "no preview for a card that can't be cast").toBe(0);
   });
 
-  it("a land is not drag-played: red, 'Play lands by clicking', snaps back", () => {
+  it("a land with a legal move drops onto the table like a spell (#1920)", () => {
     const { container, dragged } = mount([forest], snap([move("forest", "land")]));
+    const slot = slotOf(container, "Forest");
+    dragToTable(slot);
+    expect(ghost()?.classList.contains("blocked")).toBe(false);
+    expect(preview.calls, "a land has no mana to preview").toBe(0);
+    pointer("pointerup", window, 10, -200);
+    expect(dragged).toEqual(["forest"]);
+  });
+
+  it("a land with no legal move is red and snaps back with the reason", () => {
+    const { container, dragged } = mount([forest], snap([], 1));
     const slot = slotOf(container, "Forest");
     dragToTable(slot);
     expect(ghost()?.classList.contains("blocked")).toBe(true);
     pointer("pointerup", window, 10, -200);
     expect(dragged).toEqual([]);
     expect(document.body.querySelector("[role='status']")?.textContent).toContain(
-      "Play lands by clicking",
+      "Not your priority",
     );
   });
 
