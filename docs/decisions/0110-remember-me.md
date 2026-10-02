@@ -1,7 +1,7 @@
 # ADR 0110 — Remember me: durable sign-in, account settings, admins and saved setups
 
-**Status:** Proposed · 2026-10-02 · S55 — Remember me: durable sign-in, account settings, admins and saved setups (tracker [#1950](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1950))
-**Owner decisions:** 2026-10-02, five, recorded on #1950 and quoted under [Context](#owner-decisions-2026-10-02). They are binding. This ADR designs them and asks only what they leave open: see [Questions for the owner](#questions-for-the-owner).
+**Status:** Accepted · 2026-10-02 · S55 — Remember me: durable sign-in, account settings, admins and saved setups (tracker [#1950](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1950))
+**Owner decisions:** 2026-10-02, in two rounds. The five tracker decisions on #1950 are quoted under [Context](#owner-decisions-2026-10-02). The owner then answered this ADR's eight questions the same day, each with the recommended option (a): see [Owner decisions, 2026-10-02 (questions)](#owner-decisions-2026-10-02-questions) at the end. The sections and the Delivery plan below are written as decided. The options not chosen are kept as considered options under [Questions for the owner (answered)](#questions-for-the-owner-answered).
 **Numbering:** checked with the AGENTS.md §4 sweep on 2026-10-02. I ran `git fetch --all --prune` and listed `docs/decisions/` on all 35 remote heads: `origin/develop`, `origin/main` and 33 chore, docs, feat, fix, repro and wip branches. The highest number on any of them is 0109 (`0109-rule-gates-land-types-mana-and-cost-components.md`, on `origin/develop`). No branch has 0110, so this ADR takes **0110**.
 **Amends:** [ADR 0051](0051-user-database.md) sub-PR 7's rule that "seat sessions keep `CMDCTRL_SESSION_TTL`, including those minted from an identity session" (§1 below reverses it), and the comment on `discord.Config.AuthorizeURL` that leaves `prompt=none` out on purpose (§2). It also extends [ADR 0051](0051-user-database.md) decision 7 (decks) and decision 8 (tablemates).
 **Builds on:** [ADR 0004](0004-discord-identity.md) (Discord identity, the bot's admin session and allow-lists), [ADR 0044](0044-surviving-a-deploy.md) decision 3 (HMAC sessions, advisory `Revoke`), [ADR 0051](0051-user-database.md) decisions 3, 5, 6, 7 and 8, [ADR 0075](0075-table-settings-and-host-controls.md) (the table host and table settings), [ADR 0076](0076-tutorial.md) §2.2 (the practice table's forced settings and session swap), [ADR 0095](0095-deck-coverage-and-deck-requests.md) (the deck coverage report).
@@ -15,7 +15,7 @@ This ADR was written plan-first. No code changed with it. The changes land in th
 The owner reported on 2026-10-02 that every visit to the site goes through Discord's authorization again. The tracker's diagnosis was right in outline. The audit below, on `origin/develop` at `8e354261`, confirms it and finds three more things the tracker did not name:
 
 - **A signed-in player who has joined one table cannot paste a code for the next one.** `joinByCode` (`server/internal/lobby/http.go`) answers 409 to any session that is not `RoleIdentified`, and the client has nowhere to type a code anyway: `App.svelte` sends a `player` session away from `#/login` to `#/lobby`, and the lobby has no code box. Today the 12-hour expiry hides this, because the player is signed out and signs in again as `identified`. Once seat sessions last 30 days (§1), it becomes a dead end. The fix belongs in the sign-in PR.
-- **Only the admin can create a table on the site.** `POST /games` is `auth.Middleware(c.Auth, auth.RoleAdmin)`, and `Lobby.svelte` shows the create form only to `role === "admin"`. A signed-in player creates a table only through the bot's `/c2-invite`. Owner decision 5's "create flow" therefore does not exist for players yet ([Q2](#questions-for-the-owner)).
+- **Only the admin can create a table on the site.** `POST /games` is `auth.Middleware(c.Auth, auth.RoleAdmin)`, and `Lobby.svelte` shows the create form only to `role === "admin"`. A signed-in player creates a table only through the bot's `/c2-invite`. Owner decision 5's "create flow" therefore does not exist for players yet. [Owner answer 2](#owner-decisions-2026-10-02-questions) opens table creation to every signed-in player (§5 item 4).
 - **Two tracker details were off.** Migration `0007` is taken (`0007_game_outcome.sql`), so S55's schema is `0008`. And tablemates already appear in one flow: `TablematePicker` in the lobby, for a signed-in player seated at the table (`canInviteTablemates`, `client/src/lib/tablemates.ts`). What is missing is the create flow, and the creator who is not seated.
 
 ### Owner decisions, 2026-10-02
@@ -66,7 +66,7 @@ So a signed-in person who joins, spectates, practises or reclaims a seat holds a
 2. **A signed-in spectator stays signed in.** `spectateGame` reads the optional session the way `joinGame` does (`signedInIdentity`) and carries its `UserID` and Discord fields onto the `RoleSpectator` principal. The WS binding already passes `p.UserID`, so eviction reaches it. `signedInUser` and `signedInIdentity` (`mygames_http.go`) accept a spectator session that carries a `UserID`, so `/me/*` keeps working while someone watches a table.
 3. **A signed-in seat can join the next table by code.** `joinByCode` accepts a `RolePlayer` or `RoleSpectator` session with a `UserID` as the person, exactly as `joinGame` already does through `signedInIdentity`. It keeps refusing a guest seat session (409, as today), because a guest has no identity to carry over. In the client, the login page's invite card is offered to any session with a `user_id`, not only to `identified` ones. `App.svelte`'s bounce from `#/login` exempts those sessions, and the lobby header gets a "join with a code" link to it.
 4. **A reclaim ticket keeps its own rule.** `redeemSeatReclaim` carries a user only when the request also carries a valid signed-in session whose `UserID` owns that seat. In that case it is the same thing as `POST /me/games/{id}/session`, and it gets the same rule. Otherwise the ticket is the whole credential, and the session it mints has no user, as today.
-5. **`POST /me/session`, and renewal** ([Q1](#questions-for-the-owner)). A new route sets the cookie to the caller's own credential and returns that session. It requires a `UserID` (403 otherwise). A revoked token fails `Validate` before the handler runs, so it cannot reinstall or renew itself. Under Q1 (a) it also re-issues the principal with a fresh `IdentityTTL` when the session is more than half spent, and the client calls it at load and then hourly. Under Q1 (b) it never extends anything and exists only for item 6. Either way it never touches a session that cannot be revoked.
+5. **`POST /me/session`: renewal on use** ([owner answer 1](#owner-decisions-2026-10-02-questions)). A new route sets the cookie to the caller's own credential and returns that session. When the session is more than half spent, it re-issues the principal with a fresh `IdentityTTL` first. The client calls it at load and then hourly. It requires a `UserID` (403 otherwise), so it never touches a session that cannot be revoked. A revoked token fails `Validate` before the handler runs, so it cannot reinstall or renew itself. Revocation (sign out everywhere, the admin route) is how a renewed session ends.
 6. **The client keeps the person's session aside.** When the client installs a session without a `user_id` over one that has one (the admin token, or a ticket for a seat that is not yours), it moves the old one to `localStorage["cmdctrl.identity"]` first. When the session without a user expires, the client reinstalls the saved one, if it is still good, through `POST /me/session` sent with the saved token as its bearer. The browser has already dropped the expired cookie, so the bearer is the credential the server reads. Then the user is still signed in rather than sent to `#/login`. Signing out or signing out everywhere clears the saved copy. The practice table's own restore (`practiceTable.ts`) is unchanged and runs first.
 7. **`myDecks` answers 403, not 401,** to a session with no user, like the other `/me/*` routes (`signedInUser`, #1154). `authFetch` treats any 401 as an expired session and clears it. The client gates the call today, so this is latent, but a long-lived session makes a stray call more likely.
 
@@ -140,14 +140,14 @@ None.
    A signed-in admin is a person. They keep their own per-user bucket, file requests as themselves, and invite by user ID. The ten middleware lines become `requireAdmin(c, h)`: the auth middleware with any role, then `isAdmin`, else 403. The exported helpers that have no `Config` take the answer as an argument: `CanManageTable(p, meta, admin bool)`, `CanRotateInvites` and `canInviteDM`. A guard test in `internal/lobby` fails if `auth.RoleAdmin` is compared anywhere outside those two functions and `adminLogin`, so a later route has to choose one.
 3. **Removing an ID takes effect at the next request.** Nothing about admin is stored in a token, so a 30-day session never outlives its admin rights. The allowlist is read from the environment, and the environment changes only on a deploy, which restarts the server and drops every socket. So a removal takes effect when the deploy lands, for HTTP and WebSockets alike. Revoking the person's sessions as well is the existing admin route.
 4. **The client learns it from `/me`.** `GET /me` adds a computed `admin: bool` beside the principal. It is not part of the token. The client's admin checks (`Lobby.svelte`'s `isAdmin` and `canManageBots`, `Game.svelte`'s `isAdmin`) move to one helper, `isAdmin(session)`, that reads it. The client fetches `/me` once per installed session.
-5. **WebSockets** ([Q4](#questions-for-the-owner)). Under the recommended answer, `WSAuthorizer` gives an admin capability the same reach as the shared token:
+5. **WebSockets: full parity** ([owner answer 4](#owner-decisions-2026-10-02-questions)). `WSAuthorizer` gives an admin capability the same reach as the shared token, and logs every admin binding at Info with the user ID, the game and the seat bound (if any):
    - A player or spectator session at its own game binds as today, with `Binding.Admin` set.
    - Any user-bearing session that names a different `?game=` takes the admin branch: any game, optionally as any seat.
    - An `identified` session that is admin takes the admin branch instead of being refused.
    - A non-admin is unchanged.
 6. **The shared token stays.** It is how the bot calls the server over loopback, and how an operator gets in with no Discord. Nothing about it changes. `createGame` already stamps `games.created_by` from the caller's `UserID`, so a table an allowlisted user creates is attributed to them, and one the token creates is not.
 7. **Audit.** Every admin-gated route logs `admin_user_id` (or `admin_id` for the token) with the action, at Info.
-8. **Configuration** ([Q3](#questions-for-the-owner)). Under the recommended answer, the server reads the same variable as the bot, `CMDCTRL_DISCORD_ADMIN_USER_IDS`: comma-separated snowflakes, empty or unset meaning no allowlisted admins. A malformed entry fails the boot, because a typo would otherwise silently deny someone. The boot log states the count, never the IDs.
+8. **Configuration: one list** ([owner answer 3](#owner-decisions-2026-10-02-questions)). The server reads the same variable as the bot, `CMDCTRL_DISCORD_ADMIN_USER_IDS`: comma-separated snowflakes, empty or unset meaning no allowlisted admins. A malformed entry fails the boot, because a typo would otherwise silently deny someone. The boot log states the count, never the IDs.
    - **CD** gains "Sync server env (admin allowlist)" on **both** hosts. Each GitHub environment (`dev`, `prod`) has its own value. The step **always** writes the key, empty included, so clearing the variable removes every allowlisted admin.
    - The bot's step gets the same always-write fix for both of its admin keys.
    - Role IDs stay bot-only. The server cannot see guild roles without a member lookup per request, and owner decision 3 names user IDs.
@@ -169,7 +169,7 @@ None. No schema change, no token change, nothing in a snapshot.
 | `audio` | `muted`, `masterVolume`, `effectsVolume`, `musicVolume` | per device: speakers versus headphones |
 | `animations` | `enabled`, `speed`, seven per-effect toggles | `enabled` follows the OS reduced-motion signal at runtime (the `matchMedia` listener), so it is per device. The rest are per person. |
 | `display` | `cardSize`, `handLayout`, `tableLayout`, `opponentDetail`, `expandActivePlayer`, `expandStyle` | per device: they depend on screen size (#956) |
-| `display` | `theme`, `stackStyle`, `hoverDelayMs`, `showOpponentHandCount` | per person |
+| `display` | `theme`, `stackStyle`, `hoverDelayMs`, `showOpponentHandCount`, `artOnlyCards` | per person (`artOnlyCards`, #1954, landed after the owner's answers; it is a taste, not a screen size) |
 | `gameplay` | every field (stops, autopass, strict mana, response categories, bluffs, `adminOverrides`, `showBotReasoning`, `highlightLegalActions`) | per person: this is how they play |
 | `shortcuts` | `enabled`, `bindings` (overrides only) | per person |
 | `accessibility` | `reduceMotion` (follows the OS signal), `textScale` | per device |
@@ -198,13 +198,13 @@ None. No schema change, no token change, nothing in a snapshot.
    - Both use `signedInUser`, so a guest, the admin token and a no-database deployment get 403 (never 401, #1154), and the client treats that as "browser-only".
    - **Validation:** the body is a JSON object of at most 32 KiB and depth 4. `version` is an integer from 1 to 1000. **A PUT whose `version` is below the stored one is refused with 409**, "a newer version of the site saved these settings; reload". Without that rule, a stale tab from a cached service worker would drop the groups it does not know and stamp an older version over a newer client's copy. A client that reads a copy newer than its own `SETTINGS_VERSION` applies it through `migrate` and then stops writing until the page reloads.
    - **Rate limit:** a per-caller bucket of 1 per second with a burst of 5. The client debounces writes by one second.
-3. **What syncs** ([Q5](#questions-for-the-owner)). Under the recommended answer, the per-person rows of the table above sync and the per-device rows never leave the browser. The split is one exported list in `settings.ts` (`SYNCED_FIELDS`), with a test that every field of `Settings` is classified. A new setting cannot ship unclassified.
-4. **Merging at sign-in** ([Q6](#questions-for-the-owner)). When a browser first installs a session with a `user_id`:
+3. **What syncs** ([owner answer 5](#owner-decisions-2026-10-02-questions)). The per-person rows of the table above sync and the per-device rows never leave the browser. The split is one exported list in `settings.ts` (`SYNCED_FIELDS`), with a test that every field of `Settings` is classified. A new setting cannot ship unclassified.
+4. **Merging at sign-in: the account's copy wins** ([owner answer 6](#owner-decisions-2026-10-02-questions)). When a browser first installs a session with a `user_id`:
    - If there is no account copy, the browser's per-person values are uploaded as the first copy.
-   - If there is one, the recommended answer applies it over the browser's per-person values and shows a toast, "Using your account's settings · Keep this browser's instead", for the rest of the visit. Taking that option uploads the browser's values.
+   - If there is one, it is applied over the browser's per-person values, and a toast shows "Using your account's settings · Keep this browser's instead" for the rest of the visit. Taking that option uploads the browser's values.
    - The device's own fields are untouched either way.
    - Signing out leaves the browser holding the last values it had. It does not revert.
-5. **The practice table still restores.** While a practice record exists, the sync layer uploads the settings *as they will be after the restore* (`withSettings(current, record.saved)`), never the forced values. A copy that arrives from the account during practice updates `record.saved` for the forced fields and the live settings for the rest. So the account never sees the tutorial's values, a crash mid-tutorial cannot leave them on the account, and the restore keeps working exactly as ADR 0076 specifies. `tableLayout` and `cardSize` are per device under Q5 (a) and are not synced at all.
+5. **The practice table still restores.** While a practice record exists, the sync layer uploads the settings *as they will be after the restore* (`withSettings(current, record.saved)`), never the forced values. A copy that arrives from the account during practice updates `record.saved` for the forced fields and the live settings for the rest. So the account never sees the tutorial's values, a crash mid-tutorial cannot leave them on the account, and the restore keeps working exactly as ADR 0076 specifies. `tableLayout` and `cardSize` are per device (owner answer 5) and are not synced at all.
 6. **Guests** keep `localStorage` only, unchanged.
 
 ### Migration / snapshot impact
@@ -248,13 +248,13 @@ Migration `0008` (shared with §5 and §6, see [Shared machinery](#shared-machin
    - Right after creation, the creator sees the `TablematePicker` for the new table. The people from the last setup come first, marked "at your last table", and the rest follow in recency order.
    - `canInviteTablemates` also admits the creator (`is_creator`), which the server's `canInviteDM` already allows.
    - The DM route, its limits and its message are unchanged.
-4. **Who may create** ([Q2](#questions-for-the-owner)). Under the recommended answer, `POST /games` opens to any signed-in person: `signedInUser`, or `isAdmin`. It gets a per-caller bucket of 1 per 30 seconds with a burst of 3, and a cap of 3 lobby-state tables per creator. A fourth is a 409 that names the open ones. The lobby shows the create form to any signed-in person.
+4. **Who may create: any signed-in player** ([owner answer 2](#owner-decisions-2026-10-02-questions)). `POST /games` opens to any signed-in person: `signedInUser`, or `isAdmin`. It gets a per-caller bucket of 1 per 30 seconds with a burst of 3, and a cap of 3 lobby-state tables per creator. A fourth is a 409 that names the open ones. The lobby shows the create form to any signed-in person.
 5. **Last deck.** Migration `0008` adds `users.last_deck TEXT`, JSON `{"kind": "library" | "prebuilt", "id": "…"}`. A pre-built pick is not a library row, so `seats.deck_id` cannot record it.
    - It is written whenever a signed-in person seats a deck: an upload saved to the library, a library deck, or a pre-built deck.
    - The lobby's deck panel preselects it. It is never seated automatically, because a seated deck is visible to the table and a stale choice should cost a click, not a mulligan.
    - A library deck that has since been deleted, or a pre-built one that has gone, is simply not preselected.
    - Guests get the same preselection from `localStorage["cmdctrl.lastDeck"]`, pre-built decks only.
-6. **Name** ([Q8](#questions-for-the-owner)). Under the recommended answer, a signed-in seat keeps the Discord display name, as ADR 0051 sub-PR 4 made it. "Remember my name" is for guests: `Join.svelte` and the login page's code box pre-fill the last name a guest typed, from `localStorage["cmdctrl.guestName"]`.
+6. **Name: guests only** ([owner answer 8](#owner-decisions-2026-10-02-questions)). A signed-in seat keeps the Discord display name, as ADR 0051 sub-PR 4 made it. "Remember my name" is for guests: `Join.svelte` and the login page's code box pre-fill the last name a guest typed, from `localStorage["cmdctrl.guestName"]`.
 
 ### Migration / snapshot impact
 
@@ -289,18 +289,18 @@ Migration `0008`. **No snapshot impact.** Applying a setup goes through `UpdateS
    - `DELETE /me/decks/{id}` removes the row. In the same transaction it sets `seats.deck_id` to NULL wherever it pointed there, because `0005` declares the foreign key without `ON DELETE`. The seat's `deck_name` keeps the label for history.
    - `PATCH /me/decks/{id}` with `{name}` renames. A name the owner already uses is a 409, because the upsert rule keys on the name.
    - Both are owner-only. Someone else's deck answers 404, never 403, so an ID reveals nothing.
-4. **Link imports** ([Q7](#questions-for-the-owner)). Under the recommended answer, a `url` upload by a signed-in person saves the list it fetched, in the source format the fetcher returned (Moxfield JSON or text), and migration `0008` adds `decks.source_url TEXT` for the link. Re-seating it re-parses the stored list and never calls the network. Fetching the deck again from its link is a later, explicit button.
+4. **Link imports are saved** ([owner answer 7](#owner-decisions-2026-10-02-questions)). A `url` upload by a signed-in person saves the list it fetched, in the source format the fetcher returned (Moxfield JSON or text), and migration `0008` adds `decks.source_url TEXT` for the link. Re-seating it re-parses the stored list and never calls the network. Fetching the deck again from its link is a later, explicit button.
 5. **A "My decks" page**, `#/decks`, signed-in only. It shows the library with each deck's coverage line, rename, delete, the full report and the request button. The lobby's `YourDecksPicker` shows the same coverage line.
 
 ### Migration / snapshot impact
 
-Migration `0008` (`decks.source_url`, under Q7 (a)). No snapshot impact: a seated deck is the resolved card list it always was.
+Migration `0008` (`decks.source_url`, owner answer 7). No snapshot impact: a seated deck is the resolved card list it always was.
 
 ---
 
 ## Shared machinery
 
-- **One migration, landed first.** Migration `0008_remember_me.sql` holds all of S55's schema: `user_settings`, `table_setups`, `users.last_deck`, and `decks.source_url` under Q7 (a). It lands in one small PR with its store code and tests, before the features that use it. The feature PRs can then run in parallel without fighting over the next migration number.
+- **One migration, landed first.** Migration `0008_remember_me.sql` holds all of S55's schema: `user_settings`, `table_setups`, `users.last_deck` and `decks.source_url`. It lands in one small PR with its store code and tests, before the features that use it. The feature PRs can then run in parallel without fighting over the next migration number.
   - Every column is additive.
   - The two new tables reference `users(id)`.
   - `table_setups.game_id` is deliberately not a foreign key, so deleting a game does not delete someone's setup.
@@ -314,7 +314,7 @@ Migration `0008` (`decks.source_url`, under Q7 (a)). No snapshot impact: a seate
 
 These are the env var edits the implementation PRs make to AGENTS.md §5. The ADR names them here and changes no docs.
 
-- `CMDCTRL_DISCORD_ADMIN_USER_IDS` (Q3 (a)), or a new `CMDCTRL_ADMIN_DISCORD_IDS` (Q3 (b)): the server's admin allowlist. It is documented in the server's env list, and the bot's entry notes that the server reads it too. CD provisions it on both hosts and always writes it.
+- `CMDCTRL_DISCORD_ADMIN_USER_IDS` (owner answer 3): now also the server's admin allowlist. It is documented in the server's env list, and the bot's entry notes that the server reads it too. CD provisions it on both hosts and always writes it.
 - `CMDCTRL_SESSION_TTL`: the doc changes to "guest, admin-token and reclaim-ticket sessions".
 - `CMDCTRL_IDENTITY_TTL`: the doc changes to "every session that carries a user", and states the inheritance rule (§1 item 1) and renewal (§1 item 5).
 
@@ -329,14 +329,14 @@ Each PR carries its tests, its `docs/lobby.md` route docs and its AGENTS.md line
 | PR | What | Needs | Parallel with |
 |---|---|---|---|
 | 1 | **The sign-in fix (bug, first and small).** §1 items 1 to 4 and 7: `issueFor` and the TTL rule on every mint, the signed-in spectator, `joinByCode` and the login page accepting a signed-in seat, the reclaim ticket's matching-user case, and `myDecks` 403. §2 in full: `prompt=none`, the one-shot `consent` retry, "a different Discord account", and the link flow on `consent`. The ADR 0051 sub-PR 7 pointer line. The `docs/sprints.md` S55 section and index row. | — | — |
-| 2 | Renewal and the saved identity (§1 items 5 and 6): `POST /me/session` and the client's renew and reinstall. | PR 1 (same mint files); Q1 | 3, 4 |
-| 3 | Admins (§3): `Config.Admins`, `isAdmin`, `requireAdmin`, the guard test, `/me`'s `admin`, `WSAuthorizer` (Q4), the client's `isAdmin(session)`, the CD step on both hosts, and the bot step's always-write fix. | PR 1; Q3, Q4 | 2, 4 |
-| 4 | Schema: migration `0008` and its store packages (`usersettings`, `tablesetups`, the `users.last_deck` and `decks.source_url` accessors), with migration and store tests. No routes. | — (Q7 decides one column) | 1, 2, 3 |
-| 5 | Settings sync (§4): the `/me/settings` routes, `SYNCED_FIELDS` and its classification test, the client's sync layer and sign-in merge, and the practice-table rule with tests for a forced field never being uploaded and a crash mid-tutorial. | PR 4; Q5, Q6 | 6, 7 |
-| 6 | Saved decks (§6): coverage on read, the per-deck report, delete, rename, link imports (Q7), the 200-deck cap, `#/decks` and the picker's coverage line. | PR 4 | 5, 7 |
-| 7 | Players and setups (§5): capture at start, `POST /games/{id}/setup` and `POST /games`'s `setup`, opening `POST /games` (Q2), tablemates in the create flow and `canInviteTablemates`'s creator case, last deck and guest name pre-fill (Q8). | PR 3 (`isAdmin`), PR 4; Q2, Q8 | 5, 6 |
+| 2 | Renewal on use and the saved identity (§1 items 5 and 6, owner answer 1): `POST /me/session` and the client's renew and reinstall. | PR 1 (same mint files) | 3, 4 |
+| 3 | Admins (§3): `Config.Admins` from `CMDCTRL_DISCORD_ADMIN_USER_IDS` (owner answer 3), `isAdmin` and `isServerCredential`, `requireAdmin`, the guard test, `/me`'s `admin`, `WSAuthorizer` with full parity and its audit log (owner answer 4), the client's `isAdmin(session)`, the CD step that always writes the variable on both hosts, and the bot step's always-write fix. | PR 1 | 2, 4 |
+| 4 | Schema: migration `0008` and its store packages (`usersettings`, `tablesetups`, the `users.last_deck` and `decks.source_url` accessors; `source_url` per owner answer 7), with migration and store tests. No routes. | — | 1, 2, 3 |
+| 5 | Settings sync (§4): the `/me/settings` routes, `SYNCED_FIELDS` and its classification test, the client's sync layer and the account-wins merge with its toast (owner answers 5 and 6), and the practice-table rule with tests for a forced field never being uploaded and a crash mid-tutorial. | PR 4 | 6, 7 |
+| 6 | Saved decks (§6): coverage on read, the per-deck report, delete, rename, saved link imports (owner answer 7), the 200-deck cap, `#/decks` and the picker's coverage line. | PR 4 | 5, 7 |
+| 7 | Players and setups (§5): capture at start, `POST /games/{id}/setup` and `POST /games`'s `setup`, opening `POST /games` to every signed-in player with its caps (owner answer 2), tablemates in the create flow and `canInviteTablemates`'s creator case, last deck, and guest-only name pre-fill (owner answer 8). | PR 3 (`isAdmin`), PR 4 | 5, 6 |
 
-PR 1 goes first and alone: it is the bug the owner reported, it needs no answer to any question below, and it changes no schema. PR 4 has no dependency and can start at once beside PR 1. PRs 2 and 3 start when PR 1 merges, since both edit the mint and auth paths it touches. PRs 5, 6 and 7 start when PR 4 merges, and PR 7 also waits for PR 3. PR 6 and PR 7 both edit the lobby's deck panel (the coverage line and the last-deck preselection), so whichever merges second rebases. That conflict is mechanical.
+PR 1 goes first and alone: it is the bug the owner reported, and it changes no schema. No PR waits on an owner answer any more. PR 4 has no dependency and can start at once beside PR 1. PRs 2 and 3 start when PR 1 merges, since both edit the mint and auth paths it touches. PRs 5, 6 and 7 start when PR 4 merges, and PR 7 also waits for PR 3. PR 6 and PR 7 both edit the lobby's deck panel (the coverage line and the last-deck preselection), so whichever merges second rebases. That conflict is mechanical.
 
 Exit criteria 2 ("still signed in after 12 hours, and a repeat sign-in skips Discord's screen") is met by PR 1 alone, and is checked on cmd-dev with a real Discord account once PR 1 deploys, because Discord's unverified `prompt=none` behaviour (§2) can only be seen there.
 
@@ -344,7 +344,7 @@ Exit criteria 2 ("still signed in after 12 hours, and a repeat sign-in skips Dis
 
 ## Consequences
 
-- A signed-in person stays signed in across tables, spectating, practice and deploys for the identity lifetime, and indefinitely under Q1 (a). Every one of those sessions is revocable.
+- A signed-in person stays signed in across tables, spectating, practice and deploys for as long as they keep playing, because a session renews on use (owner answer 1). Every one of those sessions is revocable.
 - A repeat sign-in is one click with no Discord screen. A first sign-in, and the first after a scope change, still shows Discord's screen once.
 - The owner, and anyone on the allowlist, is an admin without the shared token, from any session. Taking someone off the list takes effect at the next deploy. The token still works, and the bot still uses it.
 - Clearing the bot's admin variables now actually clears them.
@@ -361,13 +361,13 @@ Exit criteria 2 ("still signed in after 12 hours, and a repeat sign-in skips Dis
 - **An account-wide sign-in history, or a list of active sessions** beyond "sign out everywhere".
 - **Refreshing a library deck from its link**, and any deck editor (ADR 0051 decision 7: Moxfield and a text box are the editors).
 - **Moving the pre-built deck picker onto ADR 0095's buckets.** The two coverage shapes agree on the verdicts and differ in grouping. Unifying them changes the picker's wording and is its own small change.
-- **Syncing a guest's settings,** or carrying a guest's browser copy into an account on sign-up beyond Q6's merge.
+- **Syncing a guest's settings,** or carrying a guest's browser copy into an account on sign-up beyond owner answer 6's merge.
 
 ---
 
-## Questions for the owner
+## Questions for the owner (answered)
 
-Each question is a product choice the five owner decisions leave open. (a) is the recommendation each time.
+These are the questions as asked. Each is a product choice the five tracker decisions left open, and (a) was the recommendation each time. The owner's answers follow.
 
 1. **Renewal (§1 item 5).** Decision 1 keeps the identity lifetime, which is 30 days from the Discord sign-in. A regular player would still sign in again about once a month.
    - **(a) Recommended:** renew on use. A signed-in session more than half spent is re-issued for a fresh 30 days (`POST /me/session`), so someone who plays at least every two weeks is never asked again. Revocation (sign out everywhere, the admin route) stays the way to end it, and the renewal route refuses any session without a user.
@@ -393,3 +393,18 @@ Each question is a product choice the five owner decisions leave open. (a) is th
 8. **"My name" for a signed-in person (§5 item 6).** A signed-in seat already takes the Discord display name, and the server ignores a typed name so that the label Discord vouched for cannot be changed.
    - **(a) Recommended:** keep that. "Remember my name" pre-fills the name a guest last typed, in their browser.
    - (b) An account-level seat name. A signed-in person may set a name to sit under in place of their Discord display name, stored on the user and shown on every seat they take. The Discord name is still shown on hover.
+
+---
+
+## Owner decisions, 2026-10-02 (questions)
+
+The owner answered the eight questions on 2026-10-02. Every answer was the recommended option (a).
+
+1. **Renewal.** A signed-in session renews on use. `POST /me/session` re-issues a session more than half spent for a fresh `IdentityTTL`, refuses any session without a user, and the client calls it at load and hourly. Revocation stays the way to end a session (§1 item 5; Delivery PR 2).
+2. **Who may create a table.** Any signed-in player may create a table on the site, capped at 3 open lobby tables per creator and 1 creation per 30 seconds. The creator rotates its invites, DMs tablemates, may `/c2-end` it, and has their setup remembered (§5 item 4; Delivery PR 7).
+3. **The allowlist's source.** One list, `CMDCTRL_DISCORD_ADMIN_USER_IDS`, read by the bot and the server. CD writes it to both hosts on every deploy, always, even when it is empty, so clearing it removes every allowlisted admin. The bot's step gets the same always-write fix (§3 item 8; Delivery PR 3).
+4. **A signed-in admin at a live table.** Full WebSocket parity with the shared token: any game, optionally as any seat, from the person's own session. Every such binding is logged with their user ID (§3 item 5; Delivery PR 3).
+5. **Which settings follow the account.** The per-person and per-device split in §4's table. The device keeps volumes and mute, card size, hand and table layout, opponent detail, the two expansion settings, text scale, and the two settings that follow the OS reduced-motion signal. Everything else syncs. `display.artOnlyCards` (#1954) landed after the answer and is classified per person, with the other display tastes. `SYNCED_FIELDS`' test makes every later setting choose (§4 item 3; Delivery PR 5).
+6. **Signing in on a browser with its own settings.** The account's copy wins. A toast for the rest of the visit offers "Keep this browser's instead", which uploads the browser's values (§4 item 4; Delivery PR 5).
+7. **Decks imported from a link.** They are saved: the list as fetched, with the link in `decks.source_url`. Re-seating never calls the network. Fetching the deck again from its link is a later, explicit button (§6 item 4; Delivery PRs 4 and 6).
+8. **"My name".** A signed-in seat keeps the Discord display name. "Remember my name" pre-fills the name a guest last typed, in their browser only (§5 item 6; Delivery PR 7).
