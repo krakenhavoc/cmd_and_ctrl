@@ -93,7 +93,7 @@ planned just-in-time from the S12 pain-point triage.
 | S47     | Bot seat, round 2: wire it, measure it, sharpen it                   | 7     | [#890](https://github.com/krakenhavoc/cmd_and_ctrl/issues/890) | —          | in progress |
 | S48     | Client robustness and the surfaces that lie                          | 7     | [#891](https://github.com/krakenhavoc/cmd_and_ctrl/issues/891) | —          | in progress |
 | S49     | Operability, CI currency, and the hygiene tail                       | 7     | [#892](https://github.com/krakenhavoc/cmd_and_ctrl/issues/892) | —          | in progress |
-| S50     | Seams from the deck re-checks                                        | 7     | [#1784](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1784) | —        | in progress |
+| S50     | Seams from the deck re-checks                                        | 7     | [#1784](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1784) | —        | **done**    |
 | S51     | Turn-scoped effects, object history, and the rest of the damage shields | 7     | [#1908](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1908) | —          | planned     |
 | S52     | Rule gates, land types, mana and cost components                     | 7     | [#1909](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1909) | —          | planned     |
 | S53     | Faces, zones, and shared payment (ADR first)                         | 7     | [#1910](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1910) | —          | planned     |
@@ -3086,10 +3086,10 @@ Planned 2026-09-18 in the S36–S49 backlog pass over the open issues; the track
 
 Planned 2026-09-30 from that day's triage of every open issue, and trimmed on 2026-10-01 after the triage of all open issues: its other seams moved to S51, S52, S53 and the Backlog milestone, so this sprint now holds only the tail below. ADRs 0098, 0100, 0101 and 0102 were accepted on 2026-09-30 and their implementations have shipped or are shipping (e.g. ADR 0100 sub-PR 4, #1822). Discover (ADR 0099) is tracked on #1112, and turn machinery on #753 (S41).
 
-- [ ] [#1858](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1858) — abilities that trigger on a game state (Deadly Designs, Task Mage Assembly; Bomb Squad)
-- [ ] [#1879](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1879) — a creature that can't attack unless the defending player controls something (Sea Serpent, Zhou Yu); the remainder
-- [ ] [#1729](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1729) — Monarch follow-ups (Palace Jailer, Court of Locthwain)
-- [x] [#1539](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1539) — becomes-the-target triggers from a trigger's target pick join the batch that targeted (CR 603.3d); moved in from S45 on 2026-10-01
+- [x] [#1858](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1858) — abilities that trigger on a game state (Deadly Designs, Task Mage Assembly; Bomb Squad): [#1898](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1898), then [#1922](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1922) for Bomb Squad
+- [x] [#1879](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1879) — a creature that can't attack unless the defending player controls something (Sea Serpent, Zhou Yu): [#1883](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1883), then [#1923](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1923) for Veiled Serpent and six more
+- [x] [#1729](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1729) — Monarch follow-ups (Palace Jailer, Court of Locthwain): [#1925](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1925), with "until" returns as CR 610.3 one-shots
+- [x] [#1539](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1539) — becomes-the-target triggers from a trigger's target pick join the batch that targeted (CR 603.3d); moved in from S45 on 2026-10-01: [#1921](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1921)
 
 ### Not in this sprint
 
@@ -3097,7 +3097,7 @@ Turn-scoped effects, object history and damage shields are S51; rule gates, land
 
 ### Status
 
-**In progress.** Trimmed to its tail on 2026-10-01.
+**Done** (2026-10-02). Every member of the tail is closed, and develop push CI was green on e6ced477. ADRs 0098, 0100, 0101, 0102, 0106 and 0107 shipped in this sprint (0107 reached production with promotion [#1917](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1917)). The tail lands on `main` with the next promotion.
 
 ---
 
