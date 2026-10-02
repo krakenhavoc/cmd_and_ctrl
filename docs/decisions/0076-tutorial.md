@@ -276,3 +276,35 @@ recorded here for the trail:
 **Still open:** which sprint. The owner chose a dedicated sprint carrying all
 six sub-PRs rather than landing the bus early, but the number and the slot are
 not assigned. The tracker is #1073.
+
+## 7. Implementation notes
+
+**Sub-PR 2, the practice table (#1078, S54).** The code moved between this ADR
+and the build, so §2.2 and §3 map onto it as follows:
+
+- **The decks are server-side.** `prebuiltDecks.ts` is now only the picker's
+  types and wording; the pre-built decks live in `server/internal/decks`. The
+  tutorial pair is `decks/tutorial.go` (*First Steps* and *Practice Partner*,
+  both mono-green), kept outside the pickers' registry so neither picker offers
+  them, and held by the same per-deck tests as the four picker decks plus their
+  own: every card `CompletenessFull`, no card that targets, and for the bot no
+  evasion keyword, and — against the Scryfall dump — power three or less and no
+  removal text.
+- **The create route** is `POST /games/practice`, open to any session (the lobby's
+  `POST /games` is admin-only, which a tutorial for new players cannot be). It
+  seats the caller and the bot and **starts the game with the player at seat 0
+  taking turn one**, skipping the opening roll, because §2.1's steps follow the
+  player's first turn.
+- **"No resume" is enforced server-side** as well as by the client: a practice
+  table has no rows in the S34 database and its room writes no restore point,
+  so a restart ends it; one per person (a second replaces the first); at most
+  eight at once; and a table with no commit for 20 minutes is reaped, which is
+  the server's answer to a closed tab that never said so.
+- **The session is swapped and restored as well as the settings.** Opening a
+  practice table mints a player session for its seat, as any join does, which
+  replaces whatever session the player held. Leaving puts that back alongside
+  the four forced settings; `POST /games/{id}/practice/leave` also resets the
+  session cookie, since the server reads the cookie first.
+- **The entry is `#/practice`**, a route that opens a table and moves on to it.
+  No link to it is added here; the lobby offer and Settings' replay (sub-PR 5)
+  point at it.

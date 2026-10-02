@@ -5,6 +5,7 @@
   import { recordClientError } from "../lib/clientErrors";
   import { describeThrown } from "../lib/guardedStore";
   import { navigate } from "../lib/router";
+  import { isPracticeGame } from "../lib/practiceTable";
   import { session } from "../lib/session";
   import { seatColor } from "../lib/colors";
   import DeckUploadForm from "../lib/components/DeckUploadForm.svelte";
@@ -600,7 +601,13 @@
       !viewerEliminated &&
       !gameEnded
     ) {
-      if (!confirm("Leave this game? Your seat stays active — you can rejoin from the lobby.")) {
+      // A practice table has no seat to come back to (ADR 0076 §2.2):
+      // leaving ends it, and lib/practiceTable.ts puts the player's own
+      // settings and session back as the route changes.
+      const question = isPracticeGame(gameID)
+        ? "Leave the practice game? It ends when you leave."
+        : "Leave this game? Your seat stays active — you can rejoin from the lobby.";
+      if (!confirm(question)) {
         return;
       }
     }

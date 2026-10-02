@@ -59,6 +59,10 @@ export interface GameMeta {
   // creator. Lets the creator rotate their own table's invites, same
   // as the admin.
   is_creator?: boolean;
+  // The tutorial's practice table (ADR 0076 §2.2): one seat, one
+  // `random` bot, never listed and never persisted. Mirrors
+  // lobby.GameMeta.Practice.
+  practice?: boolean;
 }
 
 export interface SeatInfo {
@@ -259,6 +263,51 @@ export async function joinGame(
   };
   setSession(s);
   return s;
+}
+
+// createPracticeTable opens the tutorial's practice table (POST
+// /games/practice, ADR 0076 §2.2) and returns its seat's session.
+// Unlike joinGame it does NOT install the session: lib/practiceTable.ts
+// does, after it has recorded the session and settings to put back.
+export async function createPracticeTable(): Promise<Session> {
+  const res = await authFetch("/games/practice", { method: "POST" });
+  const body = (await res.json()) as SessionResponse;
+  return {
+    token: body.token,
+    expiresAt: body.expires_at,
+    principal: body.principal,
+    playerID: body.player_id,
+    gameID: body.game?.id,
+  };
+}
+
+// leavePracticeTable abandons a practice table and has the server put
+// the session cookie back to `restoreToken` (or clear it when that is
+// empty): POST /games/{id}/practice/leave. Both tokens ride the body,
+// so it works whatever the cookie holds at the time.
+//
+// Plain fetch, not authFetch: authFetch would attach whichever session
+// is live, and read a 401 as "sign this tab out". `keepalive` lets the
+// request outlive the page, which is how a closed tab still leaves.
+// Never throws — leaving is best-effort, and the server reaps a table
+// nobody left.
+export async function leavePracticeTable(
+  gameID: string,
+  practiceToken: string,
+  restoreToken: string,
+  opts: { keepalive?: boolean } = {},
+): Promise<void> {
+  try {
+    await fetch(`/games/${encodeURIComponent(gameID)}/practice/leave`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
+      keepalive: opts.keepalive === true,
+      body: JSON.stringify({ practice_token: practiceToken, restore_token: restoreToken }),
+    });
+  } catch {
+    // Best-effort; see above.
+  }
 }
 
 // joinByCode is the login-page flow: the caller holds an invite code

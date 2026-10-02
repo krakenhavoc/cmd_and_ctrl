@@ -2,7 +2,9 @@ package decks
 
 import (
 	"os"
+	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -39,11 +41,11 @@ func TestRealDumpDecksAreLegalCommanderDecks(t *testing.T) {
 	}
 	t.Logf("loaded %d printings", idx.Count())
 
-	for _, d := range All() {
+	for _, d := range everyDeck() {
 		t.Run(d.ID, func(t *testing.T) {
 			// Load runs ParseText → Resolve → oracle-ID check →
 			// Validate, which is the whole pipeline the lobby will run.
-			list, err := Load(idx, d.ID)
+			list, err := d.Load(idx)
 			if err != nil {
 				t.Fatalf("Load: %v", err)
 			}
@@ -120,6 +122,50 @@ func TestRealDumpCoverageMatchesTheOfflineProfile(t *testing.T) {
 		})
 	}
 }
+
+// TestRealDumpTutorialBotDeckIsSlow is ADR 0076 §2.2's "lands and
+// small bodies, no removal, no evasion" against what the cards
+// actually print — the half tutorial_test.go cannot see offline:
+// every spell is a creature, with printed power three or less, and no
+// oracle text that flies, tramples, kills, exiles or deals damage.
+func TestRealDumpTutorialBotDeckIsSlow(t *testing.T) {
+	path := os.Getenv("CMDCTRL_SCRYFALL_DUMP")
+	if path == "" {
+		t.Skip("set CMDCTRL_SCRYFALL_DUMP to run against the real dump")
+	}
+	idx := cards.NewIndex()
+	if _, err := idx.Load(path); err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	list, err := TutorialBot().Load(idx)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	banned := append([]string{"target", "destroy", "exile", "damage", "fight", "can't be blocked"}, botEvasion...)
+	for _, c := range append(list.Commanders, list.Mainboard...) {
+		if strings.Contains(c.TypeLine, "Basic Land") {
+			continue
+		}
+		if !strings.Contains(c.TypeLine, "Creature") {
+			t.Errorf("%s is a %s; the practice bot's deck is lands and creatures", c.Name, c.TypeLine)
+			continue
+		}
+		if p, err := strconv.Atoi(c.Power); err != nil || p > 3 {
+			t.Errorf("%s has power %q; the practice bot's bodies are small (three or less)", c.Name, c.Power)
+		}
+		// Reminder text is dropped first: reach's "(This creature can
+		// block creatures with flying.)" is about a defence, not
+		// evasion.
+		text := strings.ToLower(reminderText.ReplaceAllString(c.OracleText, ""))
+		for _, word := range banned {
+			if strings.Contains(text, word) {
+				t.Errorf("%s says %q: %q", c.Name, word, c.OracleText)
+			}
+		}
+	}
+}
+
+var reminderText = regexp.MustCompile(`\([^)]*\)`)
 
 // identityString normalises a Scryfall color_identity array into the
 // WUBRG-ordered string this package declares.
