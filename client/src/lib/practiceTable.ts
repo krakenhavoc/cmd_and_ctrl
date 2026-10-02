@@ -51,7 +51,7 @@ import { get, type Readable } from "svelte/store";
 import { createPracticeTable, leavePracticeTable } from "./api";
 import { guardedWritable } from "./guardedStore";
 import { navigate, route, type Route } from "./router";
-import { currentSession, setSession, type Session } from "./session";
+import { currentSession, savedIdentity, setSession, type Session } from "./session";
 import { settings, type Settings } from "./settings";
 
 /** The four settings the tutorial forces, as the player had them. */
@@ -323,7 +323,12 @@ export function endPractice(opts: { keepalive?: boolean } = {}): boolean {
 
   const current = currentSession();
   const holdingPractice = current !== null && current.token === rec.practiceToken;
-  const previous = expired(rec.previous, now) ? null : rec.previous;
+  // The session the practice seat replaced, or, when that one has run
+  // out, the signed-in session kept aside behind it (ADR 0110 §1 item
+  // 6: an admin-token session that expired during the tutorial). The
+  // leave call below puts the cookie back to whichever it is, so the
+  // person comes out of the tutorial signed in.
+  const previous = expired(rec.previous, now) ? savedIdentity(now) : rec.previous;
   // What the cookie should hold afterwards: the session this tab
   // ends up with.
   let restoreToken = current?.token ?? "";

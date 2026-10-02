@@ -10,7 +10,7 @@
 // only, never art or oracle text — the same line ADR 0092 drew for
 // GET /roadmap, which is why POST /deck-coverage needs no session.
 
-import { currentSession, setSession } from "./session";
+import { currentSession, dropDeadSession } from "./session";
 
 /** How much of a card's printed text the engine automates. */
 export type CoverageBucket = "manual" | "unreviewed" | "caveats" | "automated" | "no_effect";
@@ -208,7 +208,7 @@ export async function requestDeck(
     // Mirror authFetch: a 401 here is the server's own word that the
     // credential is gone, so clear it and let the page re-render
     // signed-out rather than leaving a stale session in the store.
-    setSession(null);
+    dropDeadSession(s);
   }
   if (res.ok) {
     return (await res.json()) as DeckRequestResponse;

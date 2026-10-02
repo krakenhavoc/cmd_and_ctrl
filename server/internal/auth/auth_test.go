@@ -218,6 +218,43 @@ func TestCredentialFromRequestPrecedence(t *testing.T) {
 	}
 }
 
+// TestCredentialFromCookieOrHeaderIgnoresTheQuery: the reader for a
+// route that sets the cookie never takes a ?token=, which a cross-site
+// form could supply.
+func TestCredentialFromCookieOrHeaderIgnoresTheQuery(t *testing.T) {
+	req := httptest.NewRequest(http.MethodPost, "/x?token=fromquery", nil)
+	req.Header.Set("Authorization", "Bearer fromheader")
+	req.AddCookie(&http.Cookie{Name: SessionCookie, Value: "fromcookie"})
+	if got := CredentialFromCookieOrHeader(req); got != "fromcookie" {
+		t.Errorf("precedence: got %q, want %q", got, "fromcookie")
+	}
+
+	req = httptest.NewRequest(http.MethodPost, "/x?token=fromquery", nil)
+	req.Header.Set("Authorization", "Bearer fromheader")
+	if got := CredentialFromCookieOrHeader(req); got != "fromheader" {
+		t.Errorf("header: got %q, want %q", got, "fromheader")
+	}
+
+	req = httptest.NewRequest(http.MethodPost, "/x?token=fromquery", nil)
+	if got := CredentialFromCookieOrHeader(req); got != "" {
+		t.Errorf("query only: got %q, want empty", got)
+	}
+
+	a := NewMemoryAuthenticator()
+	tok, _, err := a.Issue(context.Background(), Principal{Role: RoleIdentified}, time.Hour)
+	if err != nil {
+		t.Fatal(err)
+	}
+	h := MiddlewareWith(a, CredentialFromCookieOrHeader)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Error("a query-string token reached the handler")
+	}))
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, httptest.NewRequest(http.MethodPost, "/x?token="+tok, nil))
+	if rr.Code != http.StatusUnauthorized {
+		t.Errorf("query-string token: %d, want 401", rr.Code)
+	}
+}
+
 func TestMiddlewareRejectsMissingCredential(t *testing.T) {
 	a := NewMemoryAuthenticator()
 	h := Middleware(a)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

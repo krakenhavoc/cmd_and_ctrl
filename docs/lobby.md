@@ -1815,6 +1815,93 @@ stripped from the embedded `game`.
 
 ---
 
+### `POST /me/session` (ADR 0110 §1 items 5 and 6, S55)
+
+Renewal on use, and the reinstall of a saved identity
+([ADR 0110](decisions/0110-remember-me.md), owner answer 1). It sets the
+session cookie to the caller's own credential and returns that session.
+When the session is **more than half spent** (more than half of the time
+from its `issued_at` to its `expires_at` has passed), the server first
+re-issues it for a fresh `CMDCTRL_IDENTITY_TTL`, and the cookie and the
+response carry the new token.
+
+**Caller:** a signed-in person: an `identified`, `player` or `spectator`
+session with a `user_id`, the same rule as `GET /me/games`. Only those
+sessions can be revoked, so nothing else is renewed or reinstalled.
+
+**Credential:** the session cookie, else `Authorization: Bearer`. A
+`?token=` query parameter is **never** read here, unlike every other
+route. This route sets the cookie from the credential it reads, and a
+cross-site form can put a token in a URL but cannot set a header (and
+`SameSite=Lax` keeps the cookie off a cross-site POST), so the query
+fallback would let another site plant its own session in this one. The
+client's reinstall sends the saved token as a bearer once the session
+that replaced it has expired, when the browser has already dropped that
+cookie.
+
+No body.
+
+**Response 200**: the `sessionResponse` shape (`token`, `expires_at`,
+`principal`, `player_id`), with no embedded `game`, and a `Set-Cookie` for
+`token`.
+
+- **Not yet half spent:** the same token and expiry the caller sent. This
+  is the reinstall.
+- **Renewed:** a new token for the **same principal**. Its role, `user_id`,
+  `game_id`, `player_id`, `name` and `discord_*` fields are unchanged, so a
+  seat session is still that seat and a spectator session still watches
+  that table. Only `issued_at` and `expires_at` are new, and the new
+  session lasts the full `CMDCTRL_IDENTITY_TTL`. The old token is **not**
+  revoked: another tab may still hold it, and it runs out at its own
+  expiry.
+
+Renewal is how a signed-in session outlives its first 30 days. Revocation
+is still the way to end one: a token issued before
+`users.sessions_invalid_before` fails before the handler runs, and a
+revocation that lands while a renewal is being minted refuses the
+renewal rather than handing out a token the revocation missed.
+
+**Rate limit:** a per-person bucket, one call every 6 seconds with a
+burst of 10. The client calls the route at page load, at a session's
+half-life, an hour after a renewal that renewed nothing or failed, and
+when it reinstalls a saved identity.
+
+**Errors**
+
+| Status | Reason |
+|---|---|
+| 401 | no credential (a `?token=` alone counts as none), or one that is invalid, expired or revoked, including a revocation during the renewal |
+| 403 | authenticated but not a signed-in person: the admin token, a guest seat or spectator, a reclaim ticket's session, or any session on a server with no database |
+| 429 | the per-person bucket is spent |
+
+**The client** (`client/src/lib/session.ts`):
+
+- **Renewal.** A session with a `user_id` that is past half its life is
+  renewed at page load and when a timer armed for its half-life fires.
+  A failed renewal is quiet. There is no notice and no sign-out, the
+  session lasts until it expires, and the client asks again an hour
+  later.
+- **The saved identity.** Installing a session with no `user_id` (the
+  admin token, a reclaim ticket for someone else's seat) over a live
+  signed-in session first copies that session to
+  `localStorage["cmdctrl.identity"]`, which only this origin can read.
+  When the session on top ends (its expiry timer, or a 401 for it), the
+  client sends the saved token to this route as its bearer and installs
+  the answer, so the person is still signed in rather than sent to
+  `#/login`. A refused reinstall drops the saved copy and goes to
+  `#/login` as before. Leaving a practice table whose replaced session
+  has run out restores the saved identity through
+  [`POST /games/{id}/practice/leave`](#post-gamesidpracticeleave-adr-0076-s54)'s
+  `restore_token`. Signing out, signing out everywhere, and installing
+  any session with a user clear the saved copy.
+- **The cookie.** Both calls set the cookie when their answer arrives,
+  so a request that mints a session (a join, a reclaim, a sign-out)
+  waits for one in flight rather than race it. An answer for a
+  different principal than the one sent (the cookie, read first, held
+  another tab's seat) is not adopted.
+
+---
+
 ### `GET /me/tablemates` (ADR 0051 decision 8, S34 sub-PR 6)
 
 The people the caller has shared a table with, **most recently shared
@@ -2144,11 +2231,13 @@ keep `CMDCTRL_SESSION_TTL`"). It lives in one function, `issueFor`
 | The new session | Lifetime | Routes |
 |---|---|---|
 | has a `user_id`, and came from a Discord sign-in | `CMDCTRL_IDENTITY_TTL` (30 days by default) | `GET /auth/discord/callback`, all three branches: the login page's identity session, the invite link's seat, and linking Discord to a seat |
+| has a `user_id`, and renews one more than half spent | `CMDCTRL_IDENTITY_TTL` from now, same principal | [`POST /me/session`](#post-mesession-adr-0110-1-items-5-and-6-s55) |
 | has a `user_id`, and came from a signed-in session | **the source session's own `expires_at`**, to the millisecond | `POST /games/{id}/join`, `POST /join`, `POST /games/{id}/spectate`, `POST /me/games/{id}/session`, `POST /games/practice`, and `POST /games/{id}/reclaim` redeemed by the seat's own user |
 | has no `user_id` | `CMDCTRL_SESSION_TTL` (12 hours by default) | guest seats and spectators, `POST /admin/login`, a reclaim ticket on its own |
 
 So joining, watching, practising or reclaiming a seat never shortens a
-sign-in and never extends one. Every session with a `user_id` can be
+sign-in and never extends one. Only a new Discord sign-in, or the
+renewal on use behind `POST /me/session`, extends it. Every session with a `user_id` can be
 revoked (`POST /logout/everywhere`, below), which is what makes the
 long lifetime safe. The `identified` session on a deployment with no
 database has no `user_id` and still lasts `CMDCTRL_IDENTITY_TTL`, as it

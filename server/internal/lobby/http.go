@@ -88,7 +88,12 @@ type Config struct {
 	// from another inherits its expiry (ADR 0110 §1, issueFor). Zero
 	// means identityTTL, 30 days.
 	IdentityTTL time.Duration
-	AllowAnon   bool // allow unauthenticated /games/{id}/join via invite (default: true)
+	// Now is the clock POST /me/session's half-life test reads (ADR
+	// 0110 §1 item 5). Nil means time.Now. Tests set it to move a
+	// session past half its life without waiting; the authenticator
+	// still stamps every token from its own clock.
+	Now       func() time.Time
+	AllowAnon bool // allow unauthenticated /games/{id}/join via invite (default: true)
 	// Cards is the Scryfall index used by the deck-upload endpoint.
 	// When nil, POST /games/{id}/decks returns 503 so a fresh
 	// deployment (no Scryfall dump yet) surfaces a clear "run
@@ -275,6 +280,7 @@ type GameEvictor interface {
 //	GET  /me/settings       — signed in: the caller's account settings
 //	PUT  /me/settings       — signed in: replace them, If-Match: <revision>
 //	GET  /me/tablemates     — signed in: the people you have shared a table with
+//	POST /me/session        — signed in: reinstall the session cookie, renewing it past half-life
 //	POST /logout            — revoke the caller's session server-side
 //	POST /logout/everywhere — withdraw every session the caller's user holds
 //	POST /admin/users/{id}/revoke-sessions — admin: the same, for any user
@@ -514,6 +520,16 @@ func Handler(c Config) http.Handler {
 	// as the rest of /me/*.
 	mux.Handle("GET /me/tablemates", auth.Middleware(c.Auth)(handlerFunc(c, myTablemates)))
 	mux.Handle("POST /me/games/{id}/session", auth.Middleware(c.Auth)(handlerFunc(c, myGameSession)))
+	// Renewal on use and the saved identity's reinstall (ADR 0110 §1
+	// items 5 and 6, session_renew.go). A signed-in person only; the
+	// credential is read from the cookie or the bearer, never ?token=,
+	// because the route sets the cookie from it. The client calls it at
+	// page load, at each session's half-life and when it reinstalls a
+	// saved identity, so a per-person bucket of one call every 6
+	// seconds with a burst of 10 is far above real use: several tabs
+	// loading at once fit in the burst.
+	sessionLimit := newLimiter(1.0/6, 10)
+	mux.Handle("POST /me/session", sessionRenewRoute(c, perCallerLimit(sessionLimit, handlerFunc(c, renewSession))))
 	// The caller's deck library (ADR 0051 decision 7, S34 sub-PR 5).
 	// Any authenticated role reaches the handler; it 401s itself for a
 	// principal with no UserID (a guest, an admin, or an identified

@@ -26,7 +26,9 @@ import (
 //     stay short.
 //   - p carries a UserID and source is nil: IdentityTTL (30 days by
 //     default). Those are the Discord callback's mints, the sign-in
-//     itself.
+//     itself, and POST /me/session's renewal of a session more than
+//     half spent (session_renew.go, ADR 0110 §1 item 5), which is the
+//     only other way a sign-in's lifetime is extended.
 //   - p carries a UserID and source is the signed-in session the caller
 //     presented: source's own ExpiresAt, to the millisecond. A seat
 //     claimed from a sign-in with three days left also has three days
