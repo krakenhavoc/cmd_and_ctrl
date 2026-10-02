@@ -303,6 +303,12 @@ func (e *enumerator) landPlayMove(card game.Card, kind game.ZoneKind, from strin
 	if perm != nil && perm.CastOnly {
 		return
 	}
+	// ADR 0109 §4, CR 101.2: "can't" beats "can". The engine's own gate,
+	// asked before the drop count in castSpellLocked, so a bot is never
+	// offered a land a "players can't play lands" effect refuses.
+	if e.g.LandPlayGateLocked(e.seat, card, kind) != nil {
+		return
+	}
 	label := "Play " + card.Name
 	if kind != game.ZoneHand {
 		label += " from " + from

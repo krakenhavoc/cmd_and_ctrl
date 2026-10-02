@@ -490,6 +490,25 @@ type Spec struct {
 	// Build with the constructors in cast_restriction.go.
 	CastRestrictions []game.CastRestriction
 
+	// LandPlayRestrictions are the "can't play lands" statics this
+	// PERMANENT imposes (ADR 0109 §4, #1895; CR 101.2, 305.1) —
+	// Territorial Dispute's "players can't play lands", Aggressive
+	// Mining's "you can't play lands", City in a Bottle's "players
+	// can't … play lands with a name originally printed in Arabian
+	// Nights". A land play is not a cast, so a CastRestriction does not
+	// reach one; this slot is its twin.
+	//
+	// Read from the BATTLEFIELD through CatalogAbilityKey, like a cast
+	// restriction: a permanent that has lost its abilities stops
+	// restricting and nothing is stored, so the source leaving lifts the
+	// ban on the next query. The same function (Game.LandPlayGateLocked)
+	// is asked by the play itself, the legal-move enumerator and the
+	// view, so a land it refuses is never offered. A "this turn" ban
+	// from a resolved spell is not this slot: use
+	// CantPlayLandsThisTurn. Build with the constructors in
+	// land_play_restriction.go.
+	LandPlayRestrictions []game.LandPlayRestriction
+
 	// ActivationRestrictions are the "can't be activated" statics
 	// this PERMANENT imposes on other objects' activated abilities
 	// (CR 602.5) — Cursed Totem's "activated abilities of creatures

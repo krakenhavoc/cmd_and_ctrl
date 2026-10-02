@@ -63,31 +63,5 @@ func gitrogLandToGraveyard(ev game.Event, source *game.Card, _ game.Characterist
 }
 
 // gitrogUpkeepEffect is "sacrifice The Gitrog Monster unless you
-// sacrifice a land" — a two-way choice when there's a land to offer,
-// and an unconditional self-sacrifice when there is not.
-func gitrogUpkeepEffect(g *game.Game, item *game.StackItem) error {
-	ctx := NewContext(g, item)
-	controller := item.Controller
-	source := item.SourceCardID
-	lands := permanentsControlledByMatching(g, controller, Land())
-	if len(lands) == 0 {
-		return SacrificePermanent{Target: source}.Apply(ctx)
-	}
-	return PickOption{
-		Question: "The Gitrog Monster — sacrifice a land, or sacrifice The Gitrog Monster",
-		Options: []game.ChoiceOption{
-			{Label: "Sacrifice a land"},
-			{Label: "Sacrifice The Gitrog Monster"},
-		},
-		Then: func(ctx *Context, index int) error {
-			if index == 0 {
-				return SacrificeChoice{
-					Player:     controller,
-					Candidates: lands,
-					Question:   "The Gitrog Monster — sacrifice a land",
-				}.Apply(ctx)
-			}
-			return SacrificePermanent{Target: source}.Apply(ctx)
-		},
-	}.Apply(ctx)
-}
+// sacrifice a land" (sacrifice_unless_land.go).
+var gitrogUpkeepEffect = sacrificeThisUnlessYouSacrificeALand("The Gitrog Monster")

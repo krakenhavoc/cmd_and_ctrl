@@ -37,9 +37,11 @@ import "github.com/google/uuid"
 //     by GrantAdditionalLandPlayForEffect and cleared in
 //     onTurnBeganLocked with the other per-turn state.
 //
-// No catalog card declares AdditionalLandPlays yet. The hook exists
-// so that when Exploration and Azusa are written they are a one-line
-// Spec field and not an engine change.
+// Catalog cards declare AdditionalLandPlays through the Spec field
+// (The Gitrog Monster is one); Exploration and Azusa are one-line
+// declarations. All of it is "may": a "can't play lands" effect beats
+// every extra drop (CR 101.2) and is asked first, by LandPlayGateLocked
+// (land_play_gate.go, ADR 0109 §4), at every place a land is played.
 
 // DefaultLandDropsPerTurn is the land plays a player gets in a normal
 // turn (CR 305.2). Raised per player by Player.LandDropsPerTurn, by a
