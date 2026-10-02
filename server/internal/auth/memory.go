@@ -50,13 +50,26 @@ func (m *MemoryAuthenticator) Issue(ctx context.Context, p Principal, ttl time.D
 	if ttl <= 0 {
 		return "", Principal{}, ErrInvalidCredential
 	}
+	now := m.now()
+	return m.store(p, now, now.Add(ttl))
+}
+
+// IssueUntil is Issue with an absolute expiry (see Authenticator).
+func (m *MemoryAuthenticator) IssueUntil(_ context.Context, p Principal, expiresAt time.Time) (string, Principal, error) {
+	now := m.now()
+	if !expiresAt.After(now) {
+		return "", Principal{}, ErrExpiredCredential
+	}
+	return m.store(p, now, expiresAt)
+}
+
+func (m *MemoryAuthenticator) store(p Principal, now, expiresAt time.Time) (string, Principal, error) {
 	tok, err := token.Random(32)
 	if err != nil {
 		return "", Principal{}, err
 	}
-	now := m.now()
 	p.IssuedAt = now
-	p.ExpiresAt = now.Add(ttl)
+	p.ExpiresAt = expiresAt
 
 	m.mu.Lock()
 	m.tokens[tok] = p

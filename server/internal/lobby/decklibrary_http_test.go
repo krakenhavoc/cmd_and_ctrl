@@ -335,8 +335,8 @@ func TestMyDecksAuth(t *testing.T) {
 	joinResp.Body.Close()
 
 	resp = doGet(t, st.srv, "/me/decks", joined.Token)
-	if resp.StatusCode != http.StatusUnauthorized {
-		t.Errorf("guest session: got %d, want 401", resp.StatusCode)
+	if resp.StatusCode != http.StatusForbidden {
+		t.Errorf("guest session: got %d, want 403 (#1154: a 401 signs the browser out)", resp.StatusCode)
 	}
 	resp.Body.Close()
 
@@ -347,8 +347,8 @@ func TestMyDecksAuth(t *testing.T) {
 	adminResp.Body.Close()
 
 	resp = doGet(t, st.srv, "/me/decks", adminSession.Token)
-	if resp.StatusCode != http.StatusUnauthorized {
-		t.Errorf("admin session: got %d, want 401", resp.StatusCode)
+	if resp.StatusCode != http.StatusForbidden {
+		t.Errorf("admin session: got %d, want 403 (#1154: a 401 signs the browser out)", resp.StatusCode)
 	}
 	resp.Body.Close()
 

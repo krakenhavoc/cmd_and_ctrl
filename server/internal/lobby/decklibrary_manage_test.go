@@ -149,8 +149,8 @@ func TestLibraryRoutesRefuseCallersWithoutAUser(t *testing.T) {
 			want         int
 			body         any
 		}{
-			{"GET", "/me/decks", 401, nil},
-			{"GET", "/me/decks/" + id + "/coverage", 401, nil},
+			{"GET", "/me/decks", 403, nil},
+			{"GET", "/me/decks/" + id + "/coverage", 403, nil},
 			{"PATCH", "/me/decks/" + id, 403, map[string]string{"name": "x"}},
 			{"DELETE", "/me/decks/" + id, 403, nil},
 		} {

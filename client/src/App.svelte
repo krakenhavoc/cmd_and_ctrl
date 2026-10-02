@@ -25,6 +25,7 @@
   import EnvBadge from "./lib/components/EnvBadge.svelte";
   import { route, navigate } from "./lib/router";
   import { session, sessionFromOAuth, setSession } from "./lib/session";
+  import { canJoinByCode } from "./lib/myGames";
   import { settings } from "./lib/settings";
   import { applyRootSettings } from "./lib/rootSettings";
   import { armMusicOnFirstGesture } from "./lib/music";
@@ -73,11 +74,13 @@
     // reload-after-login flow doesn't leave you staring at a login
     // form you don't need.
     //
-    // An identity session is the one exception: a Discord sign-in
-    // that hasn't claimed a seat belongs ON the login page, because
-    // that is where the invite-code box lives. Bouncing it to the
-    // lobby would strand the user one step short of a table.
-    if (s && r.name === "login" && s.principal.role !== "identified") {
+    // A signed-in person is the exception (canJoinByCode): a Discord
+    // sign-in that hasn't claimed a seat, or a signed-in player or
+    // spectator heading for their next table, belongs ON the login
+    // page, because that is where the invite-code box lives (ADR 0110
+    // §1 item 3). Bouncing them to the lobby would strand them one
+    // step short of a table.
+    if (s && r.name === "login" && !canJoinByCode(s)) {
       navigate("#/lobby");
     }
   });
