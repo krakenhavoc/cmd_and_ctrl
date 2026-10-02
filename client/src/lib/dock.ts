@@ -1,9 +1,10 @@
 // dock.ts — the action dock's request store (ADR 0111 §1, Delivery PR 3).
 //
 // The dock in the bottom-right corner draws whatever the table is asking
-// the viewer right now. The things that ask (Game.svelte's combat state
-// today; targeting, payment, pending choices and sheets in Delivery
-// PRs 4-6) stop drawing their own buttons. Each one registers a
+// the viewer right now. The things that ask (Game.svelte's combat state,
+// PR 3; targeting and the insufficient-mana prompt, PR 4; pending
+// choices and sheets in Delivery PRs 5-6) stop drawing their own
+// buttons. Each one registers a
 // REQUEST here instead, the way every modal registers a ModalLayer:
 // mount a <DockRequest request={…} /> inside its own `{#if}`, and the
 // request lives exactly as long as that block is on screen.
@@ -59,9 +60,12 @@ export interface DockAction {
   // tooltip and as aria-keyshortcuts, through the same formatter the
   // rest of the dock uses, so a rebound key updates both.
   chord?: string;
-  // A key that works whatever the shortcut settings say (Escape belongs
-  // to the prompt on screen, ADR 0047): its aria-keyshortcuts value,
-  // and the small cap drawn on the button ("Esc", aria-hidden).
+  // A key that works whatever the shortcut settings say (Enter and
+  // Escape belong to the prompt on screen, ADR 0047): its
+  // aria-keyshortcuts value, and the small cap drawn on the button
+  // ("Esc", "⏎", aria-hidden). "Enter" or "Escape" here is also what
+  // the dock's one key handler presses (dockKeyAction below): a key
+  // presses the button that advertises it, and no other.
   keyShortcuts?: string;
   cap?: string;
   // A leading icon. With an empty label, set `ariaLabel`.
@@ -188,6 +192,96 @@ export function pushDockRequest(request: DockRequest): DockHandle {
       });
     },
   };
+}
+
+// ---- the one Enter / Escape handler (ADR 0111 §1, Delivery PR 4) ------
+//
+// Enter presses the open request's primary and Escape its cancel or
+// refusal. A key presses exactly the button that ADVERTISES it, through
+// `keyShortcuts` (its aria-keyshortcuts, and the cap drawn on it): so a
+// request opts each button in, and one that must not take Enter (a
+// yes/no question, PR 5: a stray Enter must not accept an optional
+// effect or pay a cost) simply does not advertise it.
+//
+// It stands down:
+//   - for a step row (the attack row), which does not take the bar —
+//     so Enter never presses `next`, and Escape never touches it;
+//   - while a modal layer is open (lib/modalLayers.ts): a modal's own
+//     keys win, as #1659 fixed for the targeting walk;
+//   - while focus is in a text field, select or contenteditable;
+//   - for Enter on a focused control (a button, a link, a board card):
+//     Enter belongs to the control that has focus. The dock's own
+//     buttons press themselves and stop the key there;
+//   - when something already handled the key (defaultPrevented), with
+//     a modifier held, or mid-composition.
+
+export type DockKey = "Enter" | "Escape";
+
+// The focused element is a text entry: no dock key at all.
+export function isTypingTarget(target: EventTarget | null): boolean {
+  if (!target || typeof (target as Element).closest !== "function") return false;
+  const el = target as HTMLElement;
+  if (el.isContentEditable) return true;
+  return !!el.closest("input, textarea, select, [contenteditable=''], [contenteditable='true']");
+}
+
+// The focused element is a control that answers Enter itself.
+export function isControlTarget(target: EventTarget | null): boolean {
+  if (!target || typeof (target as Element).closest !== "function") return false;
+  return !!(target as Element).closest(
+    "button, a[href], summary, [role='button'], [role='menuitem'], [role='option'], [role='checkbox'], [role='radio'], [role='switch'], [role='tab'], [role='link']",
+  );
+}
+
+// advertises reports whether an action's keyShortcuts names `key`.
+function advertises(a: DockAction | null | undefined, key: DockKey): a is DockAction {
+  return !!a && !a.disabled && (a.keyShortcuts ?? "").split(/\s+/).includes(key);
+}
+
+// dockKeyAction is the action a key presses on `request`, or null.
+// Pure, so the rules are pinned without a DOM.
+export function dockKeyAction(
+  request: DockRequest | null | undefined,
+  key: string,
+): DockAction | null {
+  if (key !== "Enter" && key !== "Escape") return null;
+  if (!request || !takesBar(request)) return null;
+  const ordered =
+    key === "Enter"
+      ? [request.primary, ...(request.secondary ?? [])]
+      : [...(request.secondary ?? []), request.primary];
+  return ordered.find((a) => advertises(a, key)) ?? null;
+}
+
+export interface DockKeyContext {
+  // modalOpen from lib/modalLayers.ts.
+  modalOpen: boolean;
+}
+
+// dockKeyFor is the window handler's whole decision: the action this
+// keydown presses, or null to leave the key alone.
+export function dockKeyFor(
+  e: Pick<
+    KeyboardEvent,
+    | "key"
+    | "target"
+    | "defaultPrevented"
+    | "isComposing"
+    | "shiftKey"
+    | "ctrlKey"
+    | "altKey"
+    | "metaKey"
+  >,
+  request: DockRequest | null | undefined,
+  ctx: DockKeyContext,
+): DockAction | null {
+  if (e.key !== "Enter" && e.key !== "Escape") return null;
+  if (e.defaultPrevented || e.isComposing) return null;
+  if (e.shiftKey || e.ctrlKey || e.altKey || e.metaKey) return null;
+  if (ctx.modalOpen) return null;
+  if (isTypingTarget(e.target)) return null;
+  if (e.key === "Enter" && isControlTarget(e.target)) return null;
+  return dockKeyAction(request, e.key);
 }
 
 // currentDockRequest is the non-reactive read, for call sites outside a

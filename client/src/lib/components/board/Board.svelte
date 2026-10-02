@@ -2395,7 +2395,11 @@
       onTargetStackItem={(item) => completeTargetedCast("card", item.id)}
     />
   {/if}
-  <div class="strip">
+  <!-- ADR 0111 §4 / §10 (PR 4): the attention strip is `region
+       "attention"`, the tutorial's step-9 anchor (ADR 0076 §2.4) and an
+       e2e contract. It keeps what asks nothing: the stack card, the bot
+       feed, reveals, the roll-call and the toasts. -->
+  <div class="strip" role="region" aria-label="attention">
     {#if !laneShowsStack}
       <StackOverlay
         stack={view.stack}

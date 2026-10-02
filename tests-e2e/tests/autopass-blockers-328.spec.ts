@@ -211,12 +211,21 @@ test.describe("#328 autopass skips the blocking window", () => {
       await expect(defender.page.getByRole("button", { name: "next", exact: true })).toHaveCount(0);
       const noBlocks = blockRequest.getByRole("button", { name: "No blocks", exact: true });
       await expect(noBlocks).toBeEnabled();
+      // ADR 0111 PR 4 (owner decision 2026-10-02): ONE click declares
+      // no blocks and lets go of priority, as one click on next did
+      // before PR 3. The client sends finish_blocks, and pass_priority
+      // only after the server accepted it and only if the defender
+      // still holds priority. Here the defender is the last one owing
+      // blocks, so the finish itself hands priority back to the active
+      // player (CR 509.2) and no pass follows. Either way the defender
+      // is not left holding the window after the one click.
       await noBlocks.click();
       await admin.waitFor(
         (v) =>
           v.turn?.step !== "declare_blockers" ||
-          (v.turn?.blocks_declared_seats ?? []).includes(defenderSeat),
-        "No blocks finished the defender's declaration",
+          ((v.turn?.blocks_declared_seats ?? []).includes(defenderSeat) &&
+            v.turn?.priority_holder !== defenderSeat),
+        "one No blocks click finished the declaration and let go of priority",
         20_000,
       );
       // With the declaration done the request closes and next is back.

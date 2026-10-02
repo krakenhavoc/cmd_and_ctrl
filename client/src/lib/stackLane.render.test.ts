@@ -115,6 +115,21 @@ function mountBoard(style: StackStyle, stackItems: StackItemView[]) {
   return { ...r, sent, q };
 }
 
+// ADR 0111 §4 / §10 (Delivery PR 4): the strip the docked stack card
+// lives in is `region "attention"`, the tutorial's step-9 anchor
+// (ADR 0076 §2.4) and an e2e contract (board-layout.spec.ts).
+describe("the attention strip", () => {
+  it('is region "attention", and the docked stack card is in it', () => {
+    const b = mountBoard("compact", [trigger]);
+    // By role: BattlefieldRow also wears a `strip` class (its compact rows).
+    const strip = b.q(".board > .strip");
+    expect(strip?.getAttribute("role")).toBe("region");
+    expect(strip?.getAttribute("aria-label")).toBe("attention");
+    expect(b.container.querySelectorAll('[role="region"][aria-label="attention"]')).toHaveLength(1);
+    expect(strip?.querySelector(".overlay")).not.toBeNull();
+  });
+});
+
 describe("the stack's display style (#1467)", () => {
   it("compact, the default, draws the docked card and no lane", () => {
     const b = mountBoard("compact", [trigger]);

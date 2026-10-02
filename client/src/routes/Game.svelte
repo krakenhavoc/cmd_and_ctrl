@@ -38,15 +38,19 @@
   import ChoicePromptModal from "../lib/components/board/ChoicePromptModal.svelte";
   import AutoTapPreviewModal from "../lib/components/board/AutoTapPreviewModal.svelte";
   import AttackDeclarationModal from "../lib/components/board/AttackDeclarationModal.svelte";
-  import TargetingBanner from "../lib/components/board/TargetingBanner.svelte";
   import GameLogPanel from "../lib/components/board/GameLogPanel.svelte";
   import ActionDock from "../lib/components/board/ActionDock.svelte";
   import DockRequest from "../lib/components/board/DockRequest.svelte";
   import { attackRowRequest, blockRequest, combatSelectionRequest } from "../lib/combatDock";
+  import { insufficientManaRequest, targetingRequest } from "../lib/targetingDock";
   import RevealBanner from "../lib/components/board/RevealBanner.svelte";
   import BotFeed from "../lib/components/BotFeed.svelte";
   import Icon from "../lib/components/Icon.svelte";
-  import { cancel as cancelTargeting, confirm as confirmTargeting } from "../lib/targeting";
+  import {
+    cancel as cancelTargeting,
+    confirm as confirmTargeting,
+    targeting,
+  } from "../lib/targeting";
   import type { ActionType, PlayerView } from "../lib/protocol";
   import { attackersDefendedBy } from "../lib/attackTargets";
   import { stopKeyFor, type StepID } from "../lib/turn";
@@ -89,7 +93,6 @@
   import { registerShortcutHandlers, setShortcutContext } from "../lib/shortcutRuntime";
   import { effectiveBindings, formatChord, isMacLike } from "../lib/shortcuts";
   import ModalLayer from "../lib/components/ModalLayer.svelte";
-  import { modalOpen } from "../lib/modalLayers";
   import { devFeature } from "../lib/env";
   import { gameWSURL } from "../lib/gameURL";
   import { openingRollText, openingRollWinner } from "../lib/startingPlayer";
@@ -511,7 +514,8 @@
     client.sendAction(type, player, params);
   };
 
-  // S15: insufficient-mana override toast. Subscribes to the
+  // S15: insufficient-mana override prompt (a request in the action
+  // dock since ADR 0111 PR 4; it was a strip toast). Subscribes to the
   // GameClient's lastError store; when an `insufficient_mana` frame
   // lands, we capture the missing list + card_id so the override
   // banner can surface "Cast anyway" — clicking re-fires the cast
@@ -565,7 +569,7 @@
   // doubles as the open / closed state — when null, the modal is
   // closed; when set, AutoTapPreviewModal mounts and fetches the
   // preview for that card. The "Auto-tap & cast" button on the
-  // insufficient-mana toast is the canonical entry point; the
+  // insufficient-mana dock request is the canonical entry point; the
   // dismiss button (and ESC inside the modal) closes it.
   let autoTapCardID = $state<string | null>(null);
   // #696: the preview has to price the cast the confirm button will
@@ -1083,11 +1087,54 @@
           .length
       : 0,
   );
+  // Owner decision 2026-10-02 (ADR 0111 PR 4): when the dock's primary
+  // is No blocks and the defender holds priority in this window, one
+  // click declares no blocks AND passes priority, as one click on
+  // `next` did before PR 3 put No blocks in its place. Done blocking,
+  // after blockers are staged, is a separate confirm and does not pass.
+  //
+  // The two actions are sent in order, never together: finish_blocks
+  // first, and pass_priority only once a snapshot shows the server
+  // accepted it (the viewer's declaration is no longer pending). Then
+  // only if the viewer still holds priority: completing the LAST
+  // pending declaration hands priority to the active player (CR 509.2,
+  // 117.3a, block_completion.go), and a pass sent blind would be
+  // refused ("you do not hold priority") or, worse, pass a later window.
+  // The pass is deduped against autopass by the frame's seq
+  // (lastAutoPassedSeq), so the window is passed once. An error frame
+  // answering the finish_blocks calls it off.
+  let noBlocksPass = $state<{ frame: string; seq: number } | null>(null);
   function finishBlocks(): void {
     if (!viewerID) return;
     combatSelection = null;
-    client.sendAction("finish_blocks", viewerID);
+    const declining = viewerStagedBlocks === 0;
+    const holding = viewerHasPriority;
+    const frame = client.sendAction("finish_blocks", viewerID);
+    noBlocksPass = declining && holding && frame ? { frame, seq: $lastSeq } : null;
   }
+  $effect(() => {
+    const p = noBlocksPass;
+    if (!p) return;
+    const err = $lastError;
+    if (err?.replyTo === p.frame) {
+      noBlocksPass = null;
+      return;
+    }
+    const seq = $lastSeq;
+    if (view?.turn?.step !== "declare_blockers") {
+      noBlocksPass = null;
+      return;
+    }
+    // Not answered yet: no newer frame, or a newer one that still has
+    // the declaration open (someone else's action landed first).
+    if (seq <= p.seq || viewerBlocksPending) return;
+    noBlocksPass = null;
+    if (!viewerHasPriority) return;
+    if (view.pending_choices?.some((c) => c.chooser === viewerID)) return;
+    if (seq === lastAutoPassedSeq) return;
+    lastAutoPassedSeq = seq;
+    passPriority();
+  });
 
   function declareBlockTarget(attackerCardID: string): void {
     if (!viewerID || combatSelection?.kind !== "blocker") return;
@@ -1280,6 +1327,43 @@
         )
       : null,
   );
+
+  // ---- Targeting and payment in the action dock (ADR 0111 PR 4) ----
+  // The targeting walk's prompt (Done / Cancel), and the insufficient-
+  // mana prompt (Auto-tap & cast / Cast anyway). lib/targetingDock.ts
+  // builds what the dock draws.
+  const targetingDockRequest = $derived(
+    $targeting
+      ? targetingRequest($targeting, view, {
+          onDone: confirmTargeting,
+          onCancel: cancelTargeting,
+        })
+      : null,
+  );
+  const manaDockRequest = $derived(
+    manaOverride
+      ? insufficientManaRequest(manaOverride.missing, cardNameAnywhere(manaOverride.cardID), {
+          onAutoTap: openAutoTap,
+          onCastAnyway: castAnyway,
+          onCancel: dismissManaOverride,
+        })
+      : null,
+  );
+  // The refused card's name, wherever it is (a hand, the command zone,
+  // a graveyard or exile it is cast from).
+  function cardNameAnywhere(cardID: string): string | undefined {
+    if (!view) return undefined;
+    const zones = [
+      view.battlefield,
+      view.exile,
+      ...view.seats.flatMap((s) => [s.hand, s.command, s.graveyard, s.library]),
+    ];
+    for (const z of zones) {
+      const c = z?.cards?.find((x) => x.instance_id === cardID);
+      if (c) return c.name;
+    }
+    return undefined;
+  }
 
   function fmtTime(d: Date): string {
     if (Number.isNaN(d.getTime())) return "";
@@ -1653,7 +1737,9 @@
                combat hint, opening-hand roll-call, toasts, game end.
                Nothing here pushes the table around. -->
           {#snippet attention()}
-            <TargetingBanner {view} />
+            <!-- ADR 0111 PR 4: the targeting prompt's sentence, Done and
+                 Cancel are the action dock's request; the board still
+                 answers it (highlights, rings, the click that picks). -->
 
             <!-- Bot disclosures. Improvisation announcements always
                  show; per-move reasoning only with the S11.5 "show bot
@@ -1728,29 +1814,10 @@
               </div>
             {/if}
 
-            {#if manaOverride}
-              <div class="att toast mana-override" role="alert" aria-live="polite">
-                <span class="att-label gold">mana</span>
-                <span class="att-text">
-                  <strong>Insufficient mana</strong>
-                  {#if manaOverride.missing.length > 0}
-                    <span class="muted">· missing {manaOverride.missing.join(" ")}</span>
-                  {/if}
-                </span>
-                <button type="button" class="primary att-btn" onclick={openAutoTap}>
-                  Auto-tap & cast
-                </button>
-                <button type="button" class="att-btn" onclick={castAnyway}>Cast anyway</button>
-                <button
-                  type="button"
-                  class="ghost att-close"
-                  onclick={dismissManaOverride}
-                  aria-label="dismiss"
-                >
-                  <Icon name="x" size={12} />
-                </button>
-              </div>
-            {:else if $lastError && !(bulkRefusal && attackRowShown)}
+            <!-- ADR 0111 PR 4: the insufficient-mana prompt (Auto-tap &
+                 cast / Cast anyway) is a request in the action dock
+                 (lib/targetingDock.ts), not a strip toast. -->
+            {#if $lastError && !(manaOverride && dockShown) && !(bulkRefusal && attackRowShown)}
               <!-- A refusal of the last attack-with-all is answered in
                    the dock's attack row (ADR 0111 PR 3) while the row is
                    there; otherwise it is an ordinary rejection. -->
@@ -1852,6 +1919,12 @@
         {/if}
         {#if selectionDockRequest}
           <DockRequest request={selectionDockRequest} />
+        {/if}
+        {#if targetingDockRequest}
+          <DockRequest request={targetingDockRequest} />
+        {/if}
+        {#if manaDockRequest}
+          <DockRequest request={manaDockRequest} />
         {/if}
         <ActionDock
           {view}
@@ -2008,27 +2081,11 @@
       concedeConfirm = false;
       tableSettingsOpen = false;
       spawnerOpen = false;
-      // #1659: a modal open during a cast/targeting flow (mode picker,
-      // X prompt, sacrifice/discard cost, divide damage, alt-cost,
-      // ChoicePromptModal, …) owns Escape while it's on screen — every
-      // one of them registers a layer via ModalLayer (lib/modalLayers.ts).
-      // Without this check, Escape both closes that modal AND cancels
-      // the targeting walk underneath it, which is a second, unwanted
-      // effect of the same keypress.
-      if (!$modalOpen) {
-        cancelTargeting();
-        // ADR 0111 PR 3: the combat selection's Cancel in the dock
-        // advertises Esc, so Escape cancels it.
-        combatSelection = null;
-      }
-    }
-    // S20 sub-PR 5: Enter confirms a multi-target pick list (no-op
-    // for single-target prompts and when fewer than min are picked).
-    // #1659: same modal-precedence rule as Escape above — a modal's
-    // own Enter handler (confirm the mode / X / cost picked) should
-    // not also confirm the targeting walk it's sitting on top of.
-    if (ev.key === "Enter" && !(ev.target instanceof HTMLInputElement) && !$modalOpen) {
-      confirmTargeting();
+      // ADR 0111 PR 4: cancelling the targeting walk or a combat
+      // selection on Escape, and confirming a pick list on Enter, are
+      // the action dock's one Enter / Escape handler now
+      // (ActionDock.svelte, lib/dock.ts dockKeyFor). It keeps #1659's
+      // rule: it stands down while a modal layer is open.
     }
   }}
 />
@@ -2474,8 +2531,8 @@
 
   /* ---- Attention strip rows (rendered inside Board's .strip) ----
      One flat card per live prompt: mono label on the left, text in
-     the middle, actions on the right. Same shell as StackOverlay and
-     TargetingBanner so the column reads as one instrument. */
+     the middle, actions on the right. Same shell as StackOverlay (the
+     stack card) so the column reads as one instrument. */
   .att {
     display: flex;
     align-items: center;
@@ -2562,7 +2619,6 @@
     vertical-align: middle;
     margin-right: 4px;
   }
-  .mana-override,
   .rewind-notice,
   .game-end {
     border-color: rgba(217, 180, 92, 0.45);
