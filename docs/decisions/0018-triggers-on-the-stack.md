@@ -259,7 +259,7 @@ it; answering is one dispatch, and the next window carries the seat's
 whole turn. What changed is only what the *other* seats may do.
 
 **The classification of the kind added since (#804).** `loop_shortcut`,
-the CR 726 shortcut prompt, **blocks**. It is the one entry worth arguing
+the CR 732 shortcut prompt, **blocks**. It is the one entry worth arguing
 about, because ADR 0055 §4 was careful that the loop breaker refuse no
 passes: the shortcut is proposed while the loop's trigger is still on the
 stack, and what the answer decides is how many times that trigger resolves
@@ -408,7 +408,7 @@ nothing and mints no undo entry for a failed dispatch):
 
 - a **blocking prompt** raised by one of the resolutions — this
   section's own rule, now applied to a prompt the verb itself caused;
-- a **CR 726 loop notice** ([ADR 0055](0055-loop-breaker.md)), checked
+- a **CR 732 loop notice** ([ADR 0055](0055-loop-breaker.md)), checked
   AFTER a pass so a standing notice still lets one manual nudge
   through, exactly as the client's "next" button does;
 - the **game ending** under a resolution.

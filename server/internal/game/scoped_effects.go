@@ -169,6 +169,12 @@ const (
 	// before this one, where "can't" stops the gain before any
 	// replacement sees it. Reads Player. Scope ScopeGame.
 	ModGainNoLife ModKind = "gainNoLife"
+	// ModExileInsteadOfYourGraveyard is "if a card would be put into
+	// your graveyard from anywhere this turn, exile that card instead"
+	// (Yawgmoth's Will, ADR 0108 §4, CR 614.1a): a CR 614 replacement on
+	// every zone move and discard into Player's graveyard, a token
+	// excepted (a token is not a card). Reads Player. Scope ScopeGame.
+	ModExileInsteadOfYourGraveyard ModKind = "exileInsteadOfYourGraveyard"
 )
 
 // The rules kinds (ADR 0107 §5, #1853, #1880). Not layer operations and
@@ -607,6 +613,8 @@ var modKinds = map[ModKind]modKindSpec{
 	ModExileInsteadOfGraveyard: {reader: readerReplacement},
 	// ADR 0107 §5 (#1880): Flames of the Blood Hand's replacement.
 	ModGainNoLife: {reader: readerReplacement},
+	// ADR 0108 §4 (#1823): Yawgmoth's Will's replacement.
+	ModExileInsteadOfYourGraveyard: {reader: readerReplacement},
 	// ADR 0107 §6 (#1860): the next damage from a source.
 	ModPreventNextFromSource: {reader: readerReplacement},
 	// ADR 0107 §5 (#1853, #1880): rules gates.

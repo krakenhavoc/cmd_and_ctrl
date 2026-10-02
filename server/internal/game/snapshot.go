@@ -361,7 +361,7 @@ type GameSnapshot struct {
 	// exhaust ability on the board back.
 	Activations ActivationTally `json:"activations,omitempty"`
 
-	// LoopNotice / LoopThreshold are the CR 726 loop breaker (#628).
+	// LoopNotice / LoopThreshold are the CR 732 loop breaker (#628).
 	// Both carried: a restore that dropped the notice would resume a
 	// table into a live loop with automatic passing back on, and one
 	// that dropped the threshold would silently re-default a game a
@@ -574,7 +574,12 @@ type playerSnapshot struct {
 	// "nobody has had a turn yet" — an effect stamped after the
 	// restore still ends on that player's next turn, because the
 	// stamp is taken from the restored value.
-	TurnsBegun         int               `json:"turnsBegun,omitempty"`
+	TurnsBegun int `json:"turnsBegun,omitempty"`
+	// LastTurnAttacks is what this player's creatures attacked during
+	// the last turn they took (ADR 0108 §6, #1882). Additive: a file
+	// written before it restores with none, which reads as "nothing
+	// attacked last turn" until the player's next turn ends.
+	LastTurnAttacks    []AttackRecord    `json:"lastTurnAttacks,omitempty"`
 	Eliminated         bool              `json:"eliminated"`
 	HandKept           bool              `json:"handKept"`
 	MulligansTaken     int               `json:"mulligansTaken"`
@@ -1254,7 +1259,7 @@ type pendingChoiceSnapshot struct {
 	// that forgot them would render a question with no answers.
 	PickOptions []ChoiceOption `json:"pickOptions,omitempty"`
 	ChooseMax   int            `json:"chooseMax,omitempty"`
-	// #804 CR 726 shortcut: which run the answer's allowance attaches
+	// #804 CR 732 shortcut: which run the answer's allowance attaches
 	// to, how many resolutions had happened when it was asked, and
 	// whether this is the turn's second ask.
 	LoopShortcutKey    string `json:"loopShortcutKey,omitempty"`
@@ -1894,6 +1899,7 @@ func snapshotPlayer(p *Player, cen *ContinuationCensus) playerSnapshot {
 		Emblems:            snapshotZone(p.Emblems, cen),
 		CommanderDamage:    copyIntMap(p.CommanderDamage),
 		TurnsBegun:         p.TurnsBegun,
+		LastTurnAttacks:    append([]AttackRecord(nil), p.LastTurnAttacks...),
 		Eliminated:         p.Eliminated,
 		HandKept:           p.HandKept,
 		MulligansTaken:     p.MulligansTaken,
@@ -2717,6 +2723,7 @@ func restorePlayer(p *playerSnapshot) *Player {
 		Command:            restoreZone(p.Command, ZoneCommand),
 		Emblems:            restoreZone(p.Emblems, ZoneCommand),
 		TurnsBegun:         p.TurnsBegun,
+		LastTurnAttacks:    append([]AttackRecord(nil), p.LastTurnAttacks...),
 		Eliminated:         p.Eliminated,
 		HandKept:           p.HandKept,
 		MulligansTaken:     p.MulligansTaken,

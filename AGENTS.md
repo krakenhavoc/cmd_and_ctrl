@@ -467,7 +467,7 @@ Subsections of [docs/adding-cards.md](docs/adding-cards.md):
   - [Choices made at resolution (#796, #568)](docs/adding-cards.md#choices-made-at-resolution-796-568)
   - [Adding a `PendingChoiceKind` (#730, #794)](docs/adding-cards.md#adding-a-pendingchoicekind-730-794)
   - [Cumulative upkeep (#567, CR 702.24)](docs/adding-cards.md#cumulative-upkeep-567-cr-70224)
-  - [The CR 726 loop breaker (#628)](docs/adding-cards.md#the-cr-726-loop-breaker-628)
+  - [The CR 732 loop breaker (#628)](docs/adding-cards.md#the-cr-732-loop-breaker-628)
   - [Untapping in another player's untap step (#74)](docs/adding-cards.md#untapping-in-another-players-untap-step-74)
   - [Phasing (#1199, CR 702.26)](docs/adding-cards.md#phasing-1199-cr-70226)
   - [Adding a preparation card (S46+, ADR 0090)](docs/adding-cards.md#adding-a-preparation-card-s46-adr-0090)

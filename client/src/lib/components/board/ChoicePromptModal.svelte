@@ -626,10 +626,10 @@
     answer({ modes: modePicks });
   }
 
-  // #804 loop_shortcut — CR 726. The loop breaker has fired and this
+  // #804 loop_shortcut — CR 732. The loop breaker has fired and this
   // viewer controls the ability that is repeating, so they get the
   // question paper asks: how many more times? A number, not a yes/no,
-  // because that is what CR 726 lets a player propose — and 0 is a
+  // because that is what CR 732 lets a player propose — and 0 is a
   // real answer ("stop here"), which leaves the table paused exactly
   // where the breaker put it, banner and all.
   const isLoopShortcut = $derived(active?.kind === "loop_shortcut");
@@ -1259,7 +1259,7 @@
       {:else if isLoopShortcut}
         <h2 id="choice-title">
           {active.reason || "This ability keeps resolving"}
-          <span class="prompt-src" aria-hidden="true">shortcut · CR 726</span>
+          <span class="prompt-src" aria-hidden="true">shortcut · CR 732</span>
         </h2>
         <p class="prompt-hint">
           It has resolved {loopCount}
@@ -2057,7 +2057,7 @@
     overflow-y: auto;
     padding: 4px 2px;
   }
-  /* #804 CR 726 shortcut. One number, sitting in the button row with
+  /* #804 CR 732 shortcut. One number, sitting in the button row with
      the two answers it feeds, because the question is "how many" and
      everything else about the prompt is already said above it. */
   .loop-iterations {

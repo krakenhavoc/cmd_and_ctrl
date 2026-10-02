@@ -366,6 +366,29 @@ func blockerKills(b, a *protocol.CardView) bool {
 	return combatDamage(b) >= effectiveToughness(a)
 }
 
+// blockerDies reports whether blocker b, blocking a alone, is killed
+// by a (#1549). It is kills with the first-strike timing kills does
+// not read: a blocker that deals first-strike damage when a does not
+// (CR 510.4, CR 702.7b) and kills a with that damage first takes none
+// back, so it lives. A double striker's first-strike hit is one power
+// (CR 702.4b), not two. If a also has first strike or double strike,
+// both deal damage in the same step and b dies as kills says.
+func blockerDies(a, b *protocol.CardView) bool {
+	if !kills(a, b) {
+		return false
+	}
+	return !(firstStrikes(b) && !firstStrikes(a) && firstStrikeKills(b, a))
+}
+
+// firstStrikeKills reports whether b's damage in the first combat
+// damage step alone kills a: one power, not a double striker's two.
+func firstStrikeKills(b, a *protocol.CardView) bool {
+	if hasKeyword(a, "indestructible") || b.Power <= 0 || protectedFrom(a, b) {
+		return false
+	}
+	return hasKeyword(b, "deathtouch") || b.Power >= effectiveToughness(a)
+}
+
 // combatDamage is all the damage creature c deals in one combat: its
 // power, twice over with double strike.
 func combatDamage(c *protocol.CardView) int {
@@ -398,7 +421,7 @@ func (p *Policy) blockToSurvive(st *state, def *SeatEval, swing, blockers []*pro
 		blockedBy:   map[string][]*protocol.CardView{},
 	}
 	survives := func(a, b *protocol.CardView) bool {
-		return couldBlock(st, def.ID, a, b) && !kills(a, b)
+		return couldBlock(st, def.ID, a, b) && !blockerDies(a, b)
 	}
 	_, blockerOf := matchBlocks(swing, blockers, survives)
 	used := make([]bool, len(blockers))
@@ -470,7 +493,7 @@ func (p *Policy) blockToSurvive(st *state, def *SeatEval, swing, blockers []*pro
 		// of a non-trampler's power, or its share of a trampler's —
 		// and not when it strikes first at a trampler, since that
 		// block is counted as killing the trampler before it deals any.
-		dies := kills(a, b)
+		dies := blockerDies(a, b)
 		if hasKeyword(a, "trample") {
 			need := effectiveToughness(b)
 			if hasKeyword(a, "deathtouch") {

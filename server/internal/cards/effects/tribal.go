@@ -329,7 +329,7 @@ func IsAlsoTheChosenType() game.StaticAbility {
 // of Souls names a PURPOSE (ManaRestrictCast) and so is casts only;
 // this one names none, and a restriction list with no purpose tag is
 // satisfied by either purpose as long as the object being paid for —
-// the spell, or the ability's source permanent (CR 106.6a) — is a
+// the spell, or the ability's source permanent (CR 106.6) — is a
 // creature of the named type. That is exactly the printed sentence,
 // and it is why the disjunction needs no "or" the tag grammar does
 // not have.

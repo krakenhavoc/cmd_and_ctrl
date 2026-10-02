@@ -111,7 +111,7 @@ summoning sick and one that was not does not become so · `NamedTribe`,
 creature that transforms mid-combat stays in combat · every `Game`-side per-object
 registry keyed by instance ID (`LoyaltyActivatedThisTurn`, `announcedAttacks`,
 `announcedBlocks`, `blockedAttackers`, the turn tally's per-object cells, the
-CR 726 loop breaker's run count) · every continuous effect and duration scoped to
+CR 732 loop breaker's run count) · every continuous effect and duration scoped to
 the permanent.
 
 **Not preserved, and each has a rule behind it:**
@@ -410,7 +410,7 @@ Each of these stays on the seam registry's transform row after this ADR lands.
 2. **Meld** (CR 701.42, 712.4–5). Two cards becoming one object is a different
    representation problem — `Card` is one card — and CR 712.4c explicitly says meld
    cards cannot transform, so the verb is already correct about them.
-3. **Day and night** (CR 730). The designation, its turn-based transitions and the
+3. **Day and night** (CR 731). The designation, its turn-based transitions and the
    daybound/nightbound keywords are a turn-machinery change, not a transform one.
    The werewolves wait on it, not on this.
 4. **The Siege grant's existing path is untouched.** `CastPermission.Faces`,

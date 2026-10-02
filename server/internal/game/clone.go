@@ -47,7 +47,7 @@ func (g *Game) cloneLocked() *Game {
 		// an active player who lost mid-resolution.
 		Outcome:               cloneGameOutcome(g.Outcome),
 		ActiveSeatLeftPending: g.ActiveSeatLeftPending,
-		// #628: both halves of the CR 726 breaker. The threshold is
+		// #628: both halves of the CR 732 breaker. The threshold is
 		// configuration and copies by value; the notice is a per-turn
 		// fact an undo must be able to rewind past, so it gets its own
 		// pointer rather than sharing the live one.
@@ -566,6 +566,7 @@ func clonePlayer(p *Player) *Player {
 		Poison:            p.Poison,
 		Energy:            p.Energy,
 		TurnsBegun:        p.TurnsBegun,
+		LastTurnAttacks:   append([]AttackRecord(nil), p.LastTurnAttacks...),
 		Eliminated:        p.Eliminated,
 		HandKept:          p.HandKept,
 		MulligansTaken:    p.MulligansTaken,
@@ -970,7 +971,7 @@ func (g *Game) RestoreFrom(src *Game) {
 	// an undo across the moment the breaker fired left the live notice
 	// exactly as it was — stale in one direction or absent in the
 	// other. #804 makes that visible rather than merely wrong: the
-	// CR 726 prompt rewinds with PendingChoices, and a prompt without
+	// CR 732 prompt rewinds with PendingChoices, and a prompt without
 	// the notice it is asking about is a question about nothing.
 	g.LoopNotice = src.LoopNotice
 	g.LoopThreshold = src.LoopThreshold

@@ -390,7 +390,7 @@ type Card struct {
 	// instance ID, which is the CARD's identity and survives a zone
 	// change. Those that must forget are dropped at the one
 	// battlefield exit (battlefield_exit.go). TurnTally's per-ability
-	// counts could not be, because the CR 726 loop breaker shares
+	// counts could not be, because the CR 732 loop breaker shares
 	// their key and a blink loop would reset its own run every
 	// iteration (#936) — so they are keyed by (instance, epoch)
 	// instead: the returning object reads a key nothing has written,
