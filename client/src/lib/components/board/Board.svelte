@@ -174,6 +174,10 @@
     // board's bottom-right corner, so the viewer's own panel keeps that
     // corner clear. See PlayerPanel's prop of the same name.
     docked?: boolean;
+    // ADR 0076 §2.3 (amended 2026-10-02): the tutorial's coach card sits
+    // over the board's bottom-left corner, so the viewer's own panel keeps
+    // that corner clear too. See PlayerPanel's prop of the same name.
+    coached?: boolean;
     // Game.svelte's live prompts (targeting, combat hint, mulligan
     // roll-call, toasts, game end) render inside the attention strip
     // under the stack card so every "look here" surface shares one
@@ -208,6 +212,7 @@
     onDeclareAttackers,
     disabled = false,
     docked = false,
+    coached = false,
     attention,
     beatsPrimeKey,
     legal = NO_LEGAL_ACTIONS,
@@ -2321,6 +2326,7 @@
               onTargetPlayer={handleTargetPlayer}
               onTargetCard={handleTargetCard}
               docked={docked && pos === "self"}
+              coached={coached && pos === "self"}
               onActivateAbility={handleActivateAbility}
               onManaAbilityCost={handleManaAbilityCost}
               considering={seat.id === consideringSeatID}

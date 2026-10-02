@@ -142,6 +142,40 @@ and **not listed in the lobby**.
   > **Amended by [ADR 0111](0111-action-dock.md) §4 (S56 PR 2, #1958):** it is
   > the action dock (`region "actions"`) that owns the bottom-right corner now.
   > The coach card stays bottom-left for the same reason.
+
+  > **Amended 2026-10-02 (sub-PR 3, #1079):** bottom-left is kept clear by the
+  > layout now; the corner is not simply empty. The coach card publishes its
+  > live size as `--coach-w` / `--coach-h`, the same way the dock publishes
+  > `--dock-w` / `--dock-h`.
+  >
+  > - **Desktop:** while the card shows, the viewer's own panel keeps an
+  >   empty cell that size at the left of its bottom row (`.coach-spacer`,
+  >   the twin of `.dock-spacer`), and the hand centres in what is left.
+  > - **Phone (≤599px):** the card is a strip stacked on the dock bar. The
+  >   play area's bottom padding grows by the strip's height, and the strip
+  >   folds to one line, like the dock's sheets.
+  > - **No tutorial running:** the layout is unchanged. There is no spacer,
+  >   no class and no padding.
+  >
+  > Why: ADR 0111's dock takes the bottom row's right end, and the hand fan
+  > is centred in the rest.
+  >
+  > - At **1280×800** the free strip at the left was about 150px. The
+  >   seven-card fan ran from x 177 to 762, so any readable card covered its
+  >   left two cards and the hand-sort button. The card takes clicks, so it
+  >   would have blocked them.
+  > - At **390×844** there was no free corner at all: the hand sits directly
+  >   on the full-width dock bar.
+  > - At 1920×1080 the corner was free.
+  >
+  > The owner chose this over three alternatives:
+  >
+  > - moving the card to another corner whenever it collides;
+  > - putting the coach inside the dock;
+  > - shipping desktop-only and hiding the tutorial on phones.
+  >
+  > The card is sized for 1280: `clamp(280px, 24vw, 340px)`, about 307px
+  > there. The fan still fits beside it.
 - The scrim is **one element**: a transparent rect with a 9999px spread shadow,
   so the hole is the rect and everything else darkens.
 - The scrim is **`pointer-events: none`**. Dimming is a suggestion, never a
@@ -318,3 +352,31 @@ and the build, so §2.2 and §3 map onto it as follows:
 - **The entry is `#/practice`**, a route that opens a table and moves on to it.
   No link to it is added here; the lobby offer and Settings' replay (sub-PR 5)
   point at it.
+
+**Sub-PR 3, the walking skeleton (#1079, S54).**
+
+- **Where the parts are.**
+  - `client/src/lib/tutorial.ts` is the step machine. It is pure and has
+    the six coach states.
+  - `tutorialAnchor.ts` is the anchor resolver.
+  - `tutorialSteps.ts` is the script. It has steps 1 and 11 only, and
+    sub-PR 4 inserts the nine middle steps between them.
+  - `components/tutorial/` holds `CoachCard.svelte`,
+    `TutorialScrim.svelte` and `TutorialCoach.svelte`.
+  - `Game.svelte` mounts the coach on this tab's practice table only
+    (`practiceTable`).
+- **Anchors are scoped.** Every opponent's panel carries the same
+  `"lands"` and `"creatures"` lists as the viewer's. So a battlefield
+  anchor is `{ label: "lands", within: "your board" }`, the scoping
+  `board-layout.spec.ts` already uses. Step 8 anchors to
+  `region "actions"` and step 9 to `region "attention"` (ADR 0111 §10).
+  Step 7 anchors to `data-instance-id`.
+- **"Missing" includes no area.** An anchor counts as missing when no
+  element matches, or when the elements that match have no area: an empty
+  list is 0px tall.
+  - The step waits 1.5s for the element to render, then advances itself
+    and logs.
+  - An anchor that disappears mid-step is treated the same way.
+- **What the buttons do.** Skip tutorial and Finish hide the coach and
+  leave the player at the practice table, which is still a game. Replay
+  opens a fresh table (`#/practice`).
