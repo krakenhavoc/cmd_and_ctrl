@@ -295,7 +295,51 @@ func corpusBoards() []corpusBoard {
 		// ScopeStanding graveyard cast permission written beside it, with
 		// the Will itself already exiled by its own replacement.
 		{"yawgmoths_will", corpusYawgmothsWill},
+		// v7, added by ADR 0109 PR 1 (#1881) as a new file: CR 305.7
+		// from a resolved effect as data — setBasicLandTypes records
+		// until end of turn (Tidal Warrior), until the land's controller's
+		// next turn (Orcish Farmer), for as long as the source remains
+		// (Gaea's Liege) and indefinitely (Thelonite Monk), and an
+		// addSubtypes Forest in addition to the land's own types
+		// (Navigator's Compass).
+		{"land_types", corpusLandTypes},
 	}
+}
+
+// corpusLandTypes is ADR 0109 §1's setBasicLandTypes kind in each
+// duration the catalog writes it with, made by the cards that write it.
+func corpusLandTypes(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	lands := make([]uuid.UUID, 4)
+	for i := range lands {
+		lands[i] = pushLandFor(g, opp.ID, "Plains", "Basic Land — Plains")
+	}
+	mine := pushLandFor(g, me.ID, "Swamp", "Basic Land — Swamp")
+	// Gaea's Liege is a */* counting your Forests: one keeps it alive.
+	pushLandFor(g, me.ID, "Forest", "Basic Land — Forest")
+	elf := pushBattlefieldCardWithTimestamp(g, game.Card{InstanceID: uuid.New(), Name: "Llanowar Elves",
+		TypeLine: "Creature — Elf Druid", Colors: []string{"G"}, Power: 1, Toughness: 1, Owner: me.ID, Controller: me.ID})
+	activate := func(name, typeLine, oracle string, params game.ActivateAbilityParams) {
+		t.Helper()
+		src := pushCatalogPermanent(g, me.ID, name, typeLine, oracle, false)
+		if err := g.ActivateCatalogAbility(me.ID, src, 0, params); err != nil {
+			t.Fatalf("setup: %s: %v", name, err)
+		}
+		passPriorityAroundTable(t, g)
+	}
+	activate("Tidal Warrior", "Creature — Merfolk Warrior", ltTidalWarriorOracle, game.ActivateAbilityParams{Targets: ltCardTarget(lands[0])})
+	activate("Orcish Farmer", "Creature — Orc", ltOrcishFarmerOracle, game.ActivateAbilityParams{Targets: ltCardTarget(lands[1])})
+	activate("Gaea's Liege", "Creature — Avatar", ltGaeasLiegeOracle, game.ActivateAbilityParams{Targets: ltCardTarget(lands[2])})
+	activate("Thelonite Monk", "Creature — Insect Monk Cleric", ltTheloniteMonkOracle,
+		game.ActivateAbilityParams{Targets: ltCardTarget(lands[3]), SacrificeIDs: []uuid.UUID{elf}})
+	activate("Navigator's Compass", "Artifact", ltNavigatorsCompassOracle, game.ActivateAbilityParams{Targets: ltCardTarget(mine)})
+	answerOptionPick(t, g, me.ID, 4) // Forest
+	if len(g.ScopedEffects) != 5 {
+		t.Fatalf("setup: %d scoped records, want 5", len(g.ScopedEffects))
+	}
+	return g
 }
 
 // corpusExileIfDies is ADR 0108 §1 and §2's two kinds in each of their

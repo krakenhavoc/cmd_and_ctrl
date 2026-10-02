@@ -2544,6 +2544,20 @@ export interface NoUntapView {
   next?: string[];
 }
 
+// One entry of CardView.land_type_effects (ADR 0109 §1): "Island until
+// end of turn — Tidal Warrior".
+export interface LandTypeEffect {
+  // The land types the effect gives ("Island").
+  types: string[];
+  // "In addition to its other types" (CR 205.1b). Absent is CR 305.7's
+  // replacement: the old land types and rules-text abilities are gone.
+  in_addition?: boolean;
+  // The duration in the card's words; absent for an effect with none.
+  until?: string;
+  // The card whose effect it is.
+  source?: string;
+}
+
 export interface CardView extends CastSurfaceView {
   instance_id: string;
   /**
@@ -2598,6 +2612,11 @@ export interface CardView extends CastSurfaceView {
   // ADR 0108 §2 (CR 701.19c): this permanent can't be regenerated this
   // turn (Incinerate, Whippoorwill). Public; battlefield only.
   cant_be_regenerated?: boolean;
+  // ADR 0109 §1: the resolved effects changing this permanent's land
+  // types, oldest first — Tidal Warrior's "becomes an Island until end
+  // of turn", Navigator's Compass's "in addition to its other types".
+  // The type line already shows the result. Public; battlefield only.
+  land_type_effects?: LandTypeEffect[];
   // S13.5 visual face-down flag (CR 708 — morph / manifest /
   // mutate-bottom, Necropotence's exile). Distinct from known_by_you:
   // a viewer who doesn't know a face-down card gets it redacted to

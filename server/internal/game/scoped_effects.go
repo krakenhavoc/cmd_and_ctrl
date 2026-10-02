@@ -134,6 +134,27 @@ const ModGrantAbilities ModKind = "grantAbilities" // layer 6
 // (dropSelfAttackTargetRestrictions) and an earlier one does not.
 const ModCantAttackUnlessDefenderControls ModKind = "cantAttackUnlessDefenderControls" // layer 6
 
+// ModSetBasicLandTypes is CR 305.7 from a resolved effect (ADR 0109 §1,
+// #1881): "target land becomes an Island until end of turn" (Tidal
+// Warrior), "becomes the basic land type of your choice" (Reef Shaman),
+// "all lands become Swamps" (Nightcreep). Reads Subtypes, one or more
+// basic land types.
+//
+// Layer 4 (CR 613.1d) and a removal (CR 613.1f, ADR 0046), exactly as
+// the static form effects.SetsBasicLandType is: the affected land's land
+// types are replaced and every other subtype stays (CR 205.1a,
+// Characteristic.SetLandSubtypes), it loses the abilities its rules text
+// gives it, and an ability another effect granted it survives, because
+// every grant lands in layer 6 (CR 305.7's "this doesn't remove any
+// abilities that were granted to the land by other effects"). Its card
+// types and supertypes are untouched. The new type's mana ability is
+// the intrinsic one, derived from the effective subtypes
+// (intrinsicLandManaAbilities, CR 305.6), so nothing writes it.
+//
+// "In addition to its other types" is not this kind. It takes nothing
+// away (CR 205.1b), and is ModAddSubtypes.
+const ModSetBasicLandTypes ModKind = "setBasicLandTypes" // layer 4
+
 // The replacement kinds (ADR 0041 P8, tier 3b, #1497). These are not
 // layer operations: each one is a CR 614 replacement effect a
 // resolving spell or ability created (CR 611.2), read by the
@@ -633,6 +654,8 @@ var modKinds = map[ModKind]modKindSpec{
 	ModGrantAbilities: {layer: Layer6Ability},
 	// #1879: Veiled Serpent's granted attack restriction.
 	ModCantAttackUnlessDefenderControls: {layer: Layer6Ability},
+	// ADR 0109 §1 (#1881): CR 305.7 from a resolved effect.
+	ModSetBasicLandTypes: {layer: Layer4Type, removes: true},
 	// Tier 3b (ADR 0041 P8): replacement effects, not layer operations.
 	ModPreventCombatDamage:     {reader: readerReplacement},
 	ModPreventDamage:           {reader: readerReplacement},
@@ -702,6 +725,51 @@ func RemoveTypesMod(types ...string) Mod {
 // Subtypes.
 func AddSubtypesMod(subtypes ...string) Mod {
 	return Mod{Kind: ModAddSubtypes, Subtypes: copyStrings(subtypes)}
+}
+
+// SetBasicLandTypesMod is "becomes a Forest" / "becomes the basic land
+// type of your choice" (layer 4, CR 305.7, ADR 0109 §1). Reads
+// Subtypes; registration refuses an empty list or a type that is not
+// one of CR 305.6's five. Each type is written in the rules' spelling
+// ("island" is stored "Island").
+func SetBasicLandTypesMod(types ...string) Mod {
+	out := make([]string, 0, len(types))
+	for _, t := range types {
+		out = append(out, canonicalBasicLandType(t))
+	}
+	return Mod{Kind: ModSetBasicLandTypes, Subtypes: out}
+}
+
+// canonicalBasicLandType is t in CR 305.6's spelling, or t unchanged
+// when it is not a basic land type (so the registration check can name
+// it).
+func canonicalBasicLandType(t string) string {
+	for _, b := range BasicLandTypes {
+		if equalFoldASCII(t, b) {
+			return b
+		}
+	}
+	return t
+}
+
+// landTypesModProblem is the registration and restore check for
+// ModSetBasicLandTypes: at least one type, and every one a basic land
+// type. CR 305.7 is about the basic land types only; "becomes a Gate"
+// is not a thing any card prints, and a record setting one would strip
+// the land's mana ability with nothing to replace it. "" when sound.
+func landTypesModProblem(m Mod) string {
+	if m.Kind != ModSetBasicLandTypes {
+		return ""
+	}
+	if len(m.Subtypes) == 0 {
+		return "a setBasicLandTypes mod names no basic land type"
+	}
+	for _, t := range m.Subtypes {
+		if !IsBasicLandType(t) {
+			return fmt.Sprintf("a setBasicLandTypes mod names %q, which is not a basic land type", t)
+		}
+	}
+	return ""
 }
 
 // AllCreatureTypesMod is "is every creature type" (layer 4,
@@ -964,6 +1032,9 @@ func (g *Game) appendScopedEffectLocked(sourceID uuid.UUID, affected []AffectedO
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
 		if problem := defenderControlsModProblem(m); problem != "" {
+			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
+		}
+		if problem := landTypesModProblem(m); problem != "" {
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
 		if r := modKinds[m.Kind].reader; r != readerLayer && r != readerCopy {
@@ -1392,6 +1463,13 @@ func modApply(m Mod) func(*Characteristic, *Card, *Game, *Card) {
 	case ModAllCreatureTypes:
 		return func(ch *Characteristic, _ *Card, _ *Game, _ *Card) {
 			ch.AllCreatureTypes = true
+		}
+	case ModSetBasicLandTypes:
+		// The engine has already emptied the abilities (removes: true,
+		// ADR 0046); this is the subtype half of CR 305.7.
+		subtypes := m.Subtypes
+		return func(ch *Characteristic, _ *Card, _ *Game, _ *Card) {
+			ch.SetLandSubtypes(subtypes)
 		}
 	case ModSetColors:
 		colors := m.Colors
