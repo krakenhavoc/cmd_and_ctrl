@@ -1,10 +1,10 @@
 # ADR 0109 — Rule gates, land types, mana and cost components
 
-**Status:** Proposed · 2026-10-02 · S52 — Rule gates, land types, mana and cost components (tracker [#1909](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1909))
-**Owner decisions:** pending. Four questions are at the end, under [Questions for the owner](#questions-for-the-owner). Each section below is written as if the recommended option (a) is chosen, and says what changes if it is not.
+**Status:** Accepted · 2026-10-02 · S52 — Rule gates, land types, mana and cost components (tracker [#1909](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1909))
+**Owner decisions:** 2026-10-02. All four questions are answered, each with the recommended option (a). See [Owner decisions](#owner-decisions-2026-10-02) at the end. The sections and the Delivery plan below are written as decided; the options not chosen are kept as considered options.
 **Issues:** group B, land types and durations: [#1881](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1881) (a land that becomes a basic land type for a while), [#1604](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1604) (counter-held durations, "loses all land types", Teferi's Talent), [#1894](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1894) (for as long as you control this and it remains tapped). Group I, rule gates: [#1895](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1895) (players can't play lands), [#1899](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1899) (emblems that stop players casting spells), [#1885](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1885) (cards in graveyards can't be targeted). Group C, cost components and mana: [#1902](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1902) (costs from a library, or onto it), [#1862](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1862) (an ability that reads the card discarded to pay for it), [#1842](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1842) (a target bounded by the counters removed), [#1556](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1556) (riot), [#1552](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1552) (granted mana-spent readers).
 **Numbering:** checked with the AGENTS.md §4 sweep on 2026-10-02. I ran `git fetch --all --prune` and read the `docs/decisions/` file names on all 37 remote heads (`origin/develop`, `origin/main` and 35 chore, docs, feat, fix, repro and wip branches). I also listed every name ever committed on any ref (`git log --all --name-only -- docs/decisions/`) and the files of every open PR. The highest number anywhere is 0108, and no open PR touches `docs/decisions/`. This one takes **0109**.
-**Amends:** [ADR 0063](0063-durations-and-control.md) (§2 and §3 add duration conditions and a conjunction), [ADR 0041](0041-game-persistence.md) Decision P8 (§1, §2 and §4 add `ScopedEffect` kinds), [ADR 0093](0093-abilities-granted-to-other-permanents.md) Decision 10 (granted loyalty abilities and the CR 614.12 look-ahead come into scope, subject to questions 1 and 2), [ADR 0040](0040-mana-pipeline.md) (§11's granted readers) and [ADR 0100](0100-delve-either-or-and-variable-sacrifice-costs.md) (`PaidCost.Discarded` on activated abilities). A pointer line goes into each with the first implementation PR that touches it.
+**Amends:** [ADR 0063](0063-durations-and-control.md) (§2 and §3 add duration conditions and a conjunction), [ADR 0041](0041-game-persistence.md) Decision P8 (§1, §2 and §4 add `ScopedEffect` kinds), [ADR 0093](0093-abilities-granted-to-other-permanents.md) Decision 10 (granted loyalty abilities and the CR 614.12 look-ahead come into scope, owner decisions 1 and 2), [ADR 0040](0040-mana-pipeline.md) (§11's granted readers) and [ADR 0100](0100-delve-either-or-and-variable-sacrifice-costs.md) (`PaidCost.Discarded` on activated abilities). A pointer line goes into each with the first implementation PR that touches it.
 **Builds on:** [ADR 0107](0107-state-triggers-rebound-disturb-and-damage-prevention.md) (state triggers, the stack keyword pass, the rules gates), [ADR 0106](0106-five-small-seams-from-the-s50-rechecks.md) (any-player activation; owner decision 6, a PR lands every card its seam unblocks), [ADR 0102](0102-entering-under-another-players-control.md) (the copy look-ahead in the entry window), [ADR 0066](0066-granted-cast-and-play-permissions.md) (play permissions), [ADR 0058](0058-doesnt-untap.md) (untap holds), [ADR 0057](0057-win-and-lose-by-effect.md) (game-end gates) and [ADR 0033](0033-ai-bot-seat.md) §1 (the legal-move enumerator).
 
 This ADR was written plan-first. No engine code changed with it. The engine and card changes land in the PRs listed under [Delivery](#delivery).
@@ -53,11 +53,17 @@ Every rule was checked against the pinned Comprehensive Rules (`MagicCompRules 2
 | 10 | Riot and unleash | #1556 | 29 + 1 caveat | 29 | 2 | ~27 |
 | 11 | Granted mana-spent readers | #1552 | 10 | 6 + 4 caveats | 3 | ~9 |
 
-About 170 printed cards and about 145 that need nothing else, against the tracker's "about 70 plus riot and the mana-spent readers". The difference is mostly families the issues do not name: the 22 other world permanents (§8), unleash (§10), the group and other-duration forms of §1, and the X-bound targets of §9. Three more groups are outside the table because each needs an owner decision: the four other Talents (question 2, §2), 17 "discard a card at random" costs (question 3, §7), and about 60 cards that already have every shape they need but share a PR's code (question 4). Notes on the counts:
+The table's seams come to about 170 printed cards and about 145 that need nothing else, against the tracker's "about 70 plus riot and the mana-spent readers". The difference is mostly families the issues do not name: the 22 other world permanents (§8), unleash (§10), the group and other-duration forms of §1, and the X-bound targets of §9. The owner's decisions add three groups the table leaves out:
+
+- the four other Talents, with Teferi's Talent's caveat (decision 2, §2): 5 cards;
+- 17 "discard a card at random" costs (decision 3, §7), about 15 of which need nothing else;
+- about 60 cards that already have every shape they need but share a PR's code (decision 4), about 49 of which need nothing else.
+
+**With the decisions, the sprint is about 250 printed cards and about 215 that need nothing else.** Notes on the counts:
 
 - **§1.** 21 cards make one target land a basic land type until end of turn: Deepwood Elder, Dream Thrush, Dreamwinder, Floodchaser, Grixis Illusionist, Jinx, Kavu Recluse, Kukemssa Serpent, Moonbow Illusionist, Mystic Compass, Pixie Illusionist, Reef Shaman, Sea Snidd, Shimmering Mirage, Slimy Kavu, Streambed Aquitects, Tidal Warrior, Tideshaper Mystic, Tundra Kavu, Unstable Frontier and Zombie Trailblazer. The issue's list of 21 has Navigator's Compass instead of Deepwood Elder. Four set the type of a group of lands (Elsewhere Flask, Terraformer, Nightcreep, Vision Charm). Two add types for a turn (Navigator's Compass, Energybending). Six use another duration: "until this creature leaves the battlefield" (Gaea's Liege, Graceful Antelope), "for as long as this creature remains on the battlefield" (Tide Shaper), "until its controller's next untap step" (Orcish Farmer) and indefinitely (Cyclopean Giant, Thelonite Monk).
 - **§2.** 17 cards print "for as long as that \<object\> has a \<kind\> counter on it" on a resolved effect, Ultima included: Aquitect's Will, Aven Mimeomancer, Cyclopean Tomb, Dread Wight, Eluge, Immortal Obligation, Liege of the Tangle, Makeshift Mannequin, Mathas, Minas Morgul, Obsidian Fireheart, Promise of Loyalty, Quicksilver Fountain, Sauron, Dino Devotee, Shield Broker, Ultima and Xolatoyac. Two more statics lose all land types (Lithoform Blight, Alpine Moon). The 28 statics that print "has \<keyword\> as long as it has a counter on it" (the Myojin, Lightwalker) are ordinary conditional statics and are not this seam.
-- **§3.** Five cards print "for as long as you control this and this remains tapped": Seasinger, Helm of Possession, Hivis of the Scale, Rubinia Soulsinger and Willow Satyr. Old Man of the Sea prints "for as long as this creature remains tapped and that creature's power remains less than or equal to this creature's power". Zygon Infiltrator and Braided Net print "for as long as *that* creature remains tapped", about the target. 33 more print the single "for as long as this remains tapped" (question 4).
+- **§3.** Five cards print "for as long as you control this and this remains tapped": Seasinger, Helm of Possession, Hivis of the Scale, Rubinia Soulsinger and Willow Satyr. Old Man of the Sea prints "for as long as this creature remains tapped and that creature's power remains less than or equal to this creature's power". Zygon Infiltrator and Braided Net print "for as long as *that* creature remains tapped", about the target. 33 more print the single "for as long as this remains tapped" (owner decision 4).
 - **§8.** Seven activated abilities read the card their discard cost discarded: Land's Edge, Hisoka, Minamo Sensei, Mercurial Chemister, Moria Scavenger, Necromancer's Stockpile, Slumbering Tora and Volrath the Fallen. 26 Commander-legal permanents have the world supertype. Three are catalogued with the caveat, and 23 are not (Land's Edge is one of them).
 - **§10.** 13 cards print riot and 14 print unleash. Rhythm of the Wild and Spider-Punk grant riot, Tesak grants unleash, and Domri, Chaos Bringer's mana gives a creature spell riot.
 
@@ -100,7 +106,7 @@ One new kind, `setBasicLandTypes`, an on-disk identity inside `scopedEffects`, a
 
 #### Cards
 
-About 30 of 33. The ? cards are Deepwood Elder (X targets from an activated {X}), Vision Charm (the second mode's choice over all land types) and Gaea's Liege, Orcish Farmer and Cyclopean Giant (each for its other text). Dreamwinder, Floodchaser and Kukemssa Serpent, the row's `Waiting` cards, land Full. Under question 4, the 12 static land-type Auras and enchantments that `SetsBasicLandType` already expresses land too: Spreading Seas, Sea's Claim, Evil Presence, Tainted Well, Lingering Mirage, Contaminated Ground, Lush Growth, Convincing Mirage, Phantasmal Terrain, Blood Moon, Harbinger of the Seas and Illusionary Terrain.
+About 30 of 33. The ? cards are Deepwood Elder (X targets from an activated {X}), Vision Charm (the second mode's choice over all land types) and Gaea's Liege, Orcish Farmer and Cyclopean Giant (each for its other text). Dreamwinder, Floodchaser and Kukemssa Serpent, the row's `Waiting` cards, land Full. Under owner decision 4, the 12 static land-type Auras and enchantments that `SetsBasicLandType` already expresses land too: Spreading Seas, Sea's Claim, Evil Presence, Tainted Well, Lingering Mirage, Contaminated Ground, Lush Growth, Convincing Mirage, Phantasmal Terrain, Blood Moon, Harbinger of the Seas and Illusionary Terrain.
 
 ### 2. Counter-held durations, and losing all land types (#1604)
 
@@ -127,7 +133,7 @@ About 30 of 33. The ? cards are Deepwood Elder (X targets from an activated {X})
 1. **The condition.** `WhilePinnedHasCounter` (value 4), with a new `Duration.CounterKind`. It holds while the pinned object (instance and entry stamp) is on the battlefield with at least one counter of that kind. It is checked in `durationConditionHoldsLocked` beside the others.
 2. **The kind.** `loseLandTypes`, layer 4, reads nothing. It removes every subtype for which `IsLandType` is true. The static form, `effects.LosesAllLandTypes(applies)`, serves Lithoform Blight and Alpine Moon.
 3. **Ultima** is one record: `loseLandTypes`, `loseAllAbilities` and the {C} grant, pinned to the land and timed by `WhilePinnedHasCounter{blight}`.
-4. **Granted loyalty abilities** (question 2). ADR 0093 Decision 10's loyalty exclusion is lifted:
+4. **Granted loyalty abilities** (owner decision 2). ADR 0093 Decision 10's loyalty exclusion is lifted:
    - A granted loyalty row is an ordinary granted activated row. It shares the host's CR 606.3 once-per-turn count, because the engine already counts per permanent.
    - The stack item names its grantor. `ActivateCatalogAbility` copies the row's `AbilityOrigin.GrantedBy` onto the item, and `effects.CreateEmblem{}` keys on the grantor when there is one. This is the only place that needs it today.
    - `Register` needs no change, because `checkGrantAbilities` already accepts a loyalty cost. A test asserts that a granted −N can't be activated with fewer than N loyalty counters (CR 606.6).
@@ -143,7 +149,7 @@ About 30 of 33. The ? cards are Deepwood Elder (X targets from an activated {X})
 
 - **Counter-held.** About 14 of the 17. The ? cards are Cyclopean Tomb (its leaves trigger tracks which counters it put), Eluge (a cost reduction that counts flooded lands), Immortal Obligation and Promise of Loyalty (per-player attack restrictions), Quicksilver Fountain (each player targets their own land) and Dread Wight. Dread Wight writes the new condition into an untap hold, so it lands only after PR 2 has reached `main` (Shared machinery 2).
 - **Losing land types.** Ultima, Lithoform Blight and Alpine Moon, all three.
-- **Granted loyalty** (question 2). Teferi's Talent becomes Full, and Elspeth's, Liliana's, Rowan's and Vivien's Talent land. Rowan's Talent copies the ability (Rings of Brighthearth's shape), so it is the ? card.
+- **Granted loyalty** (owner decision 2). Teferi's Talent becomes Full, and Elspeth's, Liliana's, Rowan's and Vivien's Talent land. Rowan's Talent copies the ability (Rings of Brighthearth's shape), so it is the ? card.
 
 ### 3. For as long as you control this and it remains tapped (#1894)
 
@@ -176,7 +182,7 @@ There is one reasonable design.
 
 #### Cards
 
-About 7 of 8: Seasinger, Helm of Possession, Hivis of the Scale, Rubinia Soulsinger, Willow Satyr, Old Man of the Sea and Zygon Infiltrator. Braided Net (craft) is the ? card. Seasinger, the row's `Waiting` card, lands Full. Under question 4, the 33 single-condition "remains tapped" cards land with them (Vedalken Shackles, Endoskeleton, the Couriers, Mana Leech and the rest). About 25 need nothing else. Thran Weaponry waits on echo (ADR 0108 PR 4), and Entrancing Lyre on §9's power bound.
+About 7 of 8: Seasinger, Helm of Possession, Hivis of the Scale, Rubinia Soulsinger, Willow Satyr, Old Man of the Sea and Zygon Infiltrator. Braided Net (craft) is the ? card. Seasinger, the row's `Waiting` card, lands Full. Under owner decision 4, the 33 single-condition "remains tapped" cards land with them (Vedalken Shackles, Endoskeleton, the Couriers, Mana Leech and the rest). About 25 need nothing else. Thran Weaponry waits on echo (ADR 0108 PR 4), and Entrancing Lyre on §9's power bound.
 
 ---
 
@@ -327,7 +333,7 @@ All five: Dennick, Pious Apprentice // Dennick, Pious Apparition (the row's `Wai
    - It is paid through `routeCardToZoneLocked` to the top of the library.
    - The activator still knows the card it put there, so `KnownBy` keeps them.
    - It is not a discard, so it fires no discard trigger and no madness, and it is not `DiscardCost`.
-3. **Discard at random** (question 3). `DiscardCost.Random bool`, a bool on a struct already on the ratchet's list, so no new route. The engine chooses the card with the game's seeded random source when the cost is paid, last (CR 601.2h), and records it on `PaidCost.Discarded`. The client shows a confirm, not a picker, and the enumerator offers one payment.
+3. **Discard at random** (owner decision 3). `DiscardCost.Random bool`, a bool on a struct already on the ratchet's list, so no new route. The engine chooses the card with the game's seeded random source when the cost is paid, last (CR 601.2h), and records it on `PaidCost.Discarded`. The client shows a confirm, not a picker, and the enumerator offers one payment.
 4. **The enumerator, the view and the client.** One payment each: the top N needs a gate only, and the hand card is `cheapestFuelFirst` over the hand. The view stamps a count and a label for each new component, and the client reuses the discard modal for the hand pick with its own heading.
 
 #### Snapshot impact
@@ -337,7 +343,7 @@ None. The library cards ride the existing `Exiled`, and the random discard rides
 #### Cards
 
 - **The 10.** About 9: Penance and Seasoned Tactician (the row's `Waiting` cards, Full), Leashling, Arc-Slogger, Whirling Catapult, Royal Herbalist, Storm Elemental, Phyrexian Devourer and Hidden Retreat. Hidden Retreat's "prevent all damage that would be dealt by target instant or sorcery spell this turn" is ADR 0108 §7's `preventFromSource`, so it lands after ADR 0108 PR 6. Thought Lash is the ? card: its cumulative upkeep exiles from the library, a pay-unless payment ADR 0108 PR 4 does not teach.
-- **Discard at random** (question 3). About 15 of 17: Mage il-Vec, Frenetic Ogre, Canyon Drake, Coral Helm, Meteor Storm, Pardic Swordsmith, Stormbind, Amok, Pyromania, Hell-Bent Raider, Dwarven Strike Force, Draconian Cylix, Ogre Shaman, Pardic Lancer, and Pyromancy and Stormscale Anarch, which read the discarded card through §8. Barbarian Bully ("unless a player has this creature deal 4 damage to them") is the ? card.
+- **Discard at random** (owner decision 3). About 15 of 17: Mage il-Vec, Frenetic Ogre, Canyon Drake, Coral Helm, Meteor Storm, Pardic Swordsmith, Stormbind, Amok, Pyromania, Hell-Bent Raider, Dwarven Strike Force, Draconian Cylix, Ogre Shaman, Pardic Lancer, and Pyromancy and Stormscale Anarch, which read the discarded card through §8. Barbarian Bully ("unless a player has this creature deal 4 damage to them") is the ? card.
 
 ### 8. The card discarded to pay, and the world rule (#1862)
 
@@ -429,9 +435,9 @@ About 8 of 9: Simic Manipulator (the row's `Waiting` card, Full), Quillmane Baku
 - **CR 614.1c, 614.12:** both are entry replacements. Which apply is decided by "the characteristics of the permanent as it would exist on the battlefield", taking into account its own statics and "continuous effects that already exist and would apply to the permanent". So Rhythm of the Wild's grant gives a creature riot as it enters, and a creature entering under Dress Down ("Creatures lose all abilities") has no riot to use. **CR 614.12a:** the choice is made before it enters.
 - **CR 400.7a:** a keyword granted to the creature spell carries onto the permanent (Domri, Chaos Bringer's "it gains riot").
 
-#### Decision (with question 1)
+#### Decision
 
-1. **The look-ahead** (question 1). `entryLookAheadLocked(entering, ev)` computes the entering permanent's layer-4 and layer-6 result as it would exist on the battlefield. It is a dry run of the layer pass over the board plus the entering card, under its would-be controller, with its stack-granted keywords. Nothing is written. It reads keywords (counting instances, for CR 702.136b) and ability removal, and nothing else. The copy look-ahead becomes its first step.
+1. **The look-ahead** (owner decision 1). `entryLookAheadLocked(entering, ev)` computes the entering permanent's layer-4 and layer-6 result as it would exist on the battlefield. It is a dry run of the layer pass over the board plus the entering card, under its would-be controller, with its stack-granted keywords. Nothing is written. It reads keywords (counting instances, for CR 702.136b) and ability removal, and nothing else. The copy look-ahead becomes its first step.
 2. **Keyword-shaped entry replacements.** Riot and unleash join `canonicalKeywords`. The gather adds one entry replacement per instance the look-ahead reports, so printed riot plus Rhythm of the Wild asks twice, and a creature that would enter without abilities is not asked at all.
 3. **The riot question.** A new in-window kind, `entry_riot`, mandatory, with two answers:
    - the counter, which adds one to `EntersWithCounters`;
@@ -443,7 +449,7 @@ About 8 of 9: Simic Manipulator (the row's `Waiting` card, Full), Quillmane Baku
 6. **The bot.** It takes haste when the creature enters during its controller's turn before combat damage and could attack, and the counter otherwise. It always takes the unleash counter unless the creature is its only untapped potential blocker on an opponent's turn.
 7. **What the table sees.** A two-button prompt: "+1/+1 counter" or "Haste". A permanent that took haste shows the keyword chip, labelled "Riot".
 
-If question 1 is answered (b), points 1 and 2 are replaced: printed riot is read off the card's printed keywords, and each grantor carries its own entry replacement in Uncivil Unrest's shape.
+Considered and not chosen (question 1, option b): printed riot read off the card's printed keywords, and each grantor carrying its own entry replacement in Uncivil Unrest's shape.
 
 #### Snapshot impact
 
@@ -485,7 +491,7 @@ None for the readers. A stack-pinned record with a non-indefinite duration is th
 
 #### Cards
 
-About 9 of 10. Lux Artillery, Coin of Mastery and Satoru (the row's `Waiting` cards) lose their caveats. Kalain, Reclusive Painter, Generator Servant, Carnelian Orb of Dragonkind, Tyvar Kell and Freestrider Commando land. Opal Palace's caveat goes. Primeval Spawn is the ? card, for its leaves trigger's free casts. Under question 4, the 15 printed sunburst cards land with the keyword (Engineered Explosives, Pentad Prism, Suntouched Myr, Infused Arrows and the rest).
+About 9 of 10. Lux Artillery, Coin of Mastery and Satoru (the row's `Waiting` cards) lose their caveats. Kalain, Reclusive Painter, Generator Servant, Carnelian Orb of Dragonkind, Tyvar Kell and Freestrider Commando land. Opal Palace's caveat goes. Primeval Spawn is the ? card, for its leaves trigger's free casts. Under owner decision 4, the 15 printed sunburst cards land with the keyword (Engineered Explosives, Pentad Prism, Suntouched Myr, Infused Arrows and the rest).
 
 ---
 
@@ -500,22 +506,22 @@ About 9 of 10. Lux Artillery, Coin of Mastery and Satoru (the row's `Waiting` ca
 
 ## Delivery
 
-Each PR lands its engine change and its cards together, test first. Each flips its registry row to implemented (or partial), adds a closed-seam fragment under `docs/engine-seams/closed/`, moves any card that needs more onto a `Waiting` list with the reason, and adds a registry row for any untracked family it finds. Every PR verifies every card against its full oracle text (ADR 0106 decision 6). The card estimates count only the cards that need nothing else. The bracketed ones depend on a question.
+Each PR lands its engine change and its cards together, test first. Each flips its registry row to implemented (or partial), adds a closed-seam fragment under `docs/engine-seams/closed/`, moves any card that needs more onto a `Waiting` list with the reason, and adds a registry row for any untracked family it finds. Every PR verifies every card against its full oracle text (ADR 0106 decision 6). The card estimates count only the cards that need nothing else, and include the cards owner decisions 2, 3 and 4 add (named in brackets).
 
 | PR | Engine | Cards (est.) | Needs |
 |---|---|---:|---|
-| 1 | §1: CR 205.3i list, `setBasicLandTypes`, the `SetsBasicLandType` fix, `ChooseBasicLandTypeThen`, the chip | ~30 (+ ~11 static land-type cards, Q4) | — |
-| 2 | §3 and §2's condition: `Duration.Also`, `CounterKind`, the three conditions, the restore check on every stored duration | ~7 + ~13 counter-held (+ ~25 single "remains tapped", Q4) | — |
+| 1 | §1: CR 205.3i list, `setBasicLandTypes`, the `SetsBasicLandType` fix, `ChooseBasicLandTypeThen`, the chip | ~41 (~30, and ~11 static land-type cards, decision 4) | — |
+| 2 | §3 and §2's condition: `Duration.Also`, `CounterKind`, the three conditions, the restore check on every stored duration | ~45 (~7, ~13 counter-held, and ~25 single "remains tapped", decision 4) | — |
 | 3 | §2's `loseLandTypes` kind and its static | 3 (Ultima, Lithoform Blight, Alpine Moon) | PR 1, PR 2 |
-| 4 | §2, question 2: granted loyalty abilities, the grantor on the stack item | (5: Teferi's Talent and the four other Talents) | — |
+| 4 | §2, owner decision 2: granted loyalty abilities, the grantor on the stack item | 5 (Teferi's Talent and the four other Talents) | — |
 | 5 | §4: `LandPlayRestrictions`, `cantPlayLands`, `LandPlayGateLocked` at all four callers, the view's reason | ~11 | — |
 | 6 | §5 and §6: the emblem slots and walks, Narset's two keys, `TargetingRestrictions` | ~7 (Narset, Dennick, Ground Seal, Silent Gravestone, Underworld Cerberus …) | Tomik needs PR 5 |
-| 7 | §8 and §9: discards recorded on abilities, `copiedPaidCost`, the world rule and `EntryOrdinal`, the generalised target bound | ~7 + ~12 world + ~8 | — |
-| 8 | §7: `ExileFromLibraryTop`, `PutFromHandOnLibraryTop`, `top_ids`; question 3's `DiscardCost.Random` | ~9 (+ ~15 random-discard cards, Q3) | PR 7 (Pyromancy and Stormscale Anarch read the discard) |
+| 7 | §8 and §9: discards recorded on abilities, `copiedPaidCost`, the world rule and `EntryOrdinal`, the generalised target bound | ~27 (~7 discard readers, ~12 world permanents, ~8 bounded targets) | — |
+| 8 | §7: `ExileFromLibraryTop`, `PutFromHandOnLibraryTop`, `top_ids`; owner decision 3's `DiscardCost.Random` | ~24 (~9, and ~15 random-discard cards, decision 3) | PR 7 (Pyromancy and Stormscale Anarch read the discard) |
 | 9 | §10: the look-ahead, riot and unleash, `entry_riot`, `EntersWithHaste`, the bot arm | ~27 | — (Domri needs PR 10) |
-| 10 | §11: `EntrySpentForEffect`, sunburst as a keyword, spell grants with a duration, Satoru's batch read | ~9 (+ ~13 sunburst cards, Q4) | — (Domri needs PR 9) |
+| 10 | §11: `EntrySpentForEffect`, sunburst as a keyword, spell grants with a duration, Satoru's batch read | ~22 (~9, and ~13 sunburst cards, decision 4) | — (Domri needs PR 9) |
 
-**The tracker's single PR for #1902, #1862 and #1842 is corrected to two.** #1862 and #1842 go together in PR 7: both make a payment fact reach the effect or the targets, neither needs a new wire field, and both touch `activateCatalogAbilityLocked`'s payment block and `itemAnnouncedClauses`. #1902 is PR 8 on its own. It is the only one with a new wire field, a new client picker and a new enumerator arm, and question 3 would double its cards. The two PRs touch the same payment block, so whichever merges second rebases. The conflict is mechanical.
+**The tracker's single PR for #1902, #1862 and #1842 is corrected to two.** #1862 and #1842 go together in PR 7: both make a payment fact reach the effect or the targets, neither needs a new wire field, and both touch `activateCatalogAbilityLocked`'s payment block and `itemAnnouncedClauses`. #1902 is PR 8 on its own. It is the only one with a new wire field, a new client picker and a new enumerator arm, and owner decision 3 more than doubles its cards. The two PRs touch the same payment block, so whichever merges second rebases. The conflict is mechanical.
 
 **Order and parallelism.** PRs 1, 2, 4, 5, 6, 7, 9 and 10 can start at once. PR 3 follows PRs 1 and 2. PR 8 follows PR 7. PR 6 lands Tomik only if PR 5 has merged, and otherwise PR 5 lands it. Domri lands in whichever of PRs 9 and 10 merges second. PRs 1 and 3 both add cases to `modApply` in `scoped_effects.go`, and PRs 2 and 3 both touch `duration.go`. The second to merge rebases. Dread Wight lands in a small follow-up after PR 2 reaches `main` (Shared machinery 2). Cards that wait on S51 land after the S51 PR they need: Thran Weaponry (ADR 0108 PR 4), Hidden Retreat and Gideon of the Trials (ADR 0108 PR 6).
 
@@ -526,7 +532,7 @@ Each PR lands its engine change and its cards together, test first. Each flips i
 - Land plays have a gate, as casting does. Emblems are read by every gate whose `Spec` slot they carry. Cards in a zone can be protected from targeting.
 - An activated ability's payment reaches its effect and its targets as a spell's does, and survives a copy. The world rule is applied.
 - An entering permanent is judged as it would exist on the battlefield. Riot, unleash and sunburst are keywords the engine honours, granted or printed.
-- About 145 more cards need nothing else, and about 70 more depend on questions 2, 3 and 4 (5, about 15 and about 49).
+- About 215 more cards need nothing else: about 145 from the seams, and about 70 from owner decisions 2, 3 and 4 (5, about 15 and about 49).
 
 ## Out of scope
 
@@ -539,7 +545,9 @@ Each PR lands its engine change and its cards together, test first. Each flips i
 
 ---
 
-## Questions for the owner
+## Questions for the owner (answered)
+
+These are the questions as asked. The owner's answers follow.
 
 1. **Riot under a granted or removed ability (§10; CR 614.12).** Rhythm of the Wild grants riot to a creature that is not yet on the battlefield. A creature entering under Dress Down has no abilities to use.
    - **(a) Recommended:** build the CR 614.12 look-ahead. The entry window computes what the permanent would be on the battlefield, from its own statics, the statics already in play and the keywords its spell was granted. Riot, unleash and sunburst entry replacements come from that result. Printed riot plus Rhythm asks twice (CR 702.136b), a creature entering under Dress Down is not asked, and Domri's mana-granted riot works. This is what CR 614.12 says.
@@ -553,3 +561,14 @@ Each PR lands its engine change and its cards together, test first. Each flips i
 4. **Cards that need nothing new but share a PR's code (§1, §3, §11).** About 60 cards already have every shape they need, and each PR touches their helper anyway: the 12 static land-type Auras and enchantments (`SetsBasicLandType`, which PR 1 fixes), the 33 single "for as long as this remains tapped" cards (the duration PR 2 extends), and the 15 printed sunburst cards (which PR 10 moves onto the keyword).
    - **(a) Recommended:** each PR lands the ones that need nothing else, about 49, verified against their full text like the rest. The changed helper is then tested against every card that uses it.
    - (b) The PRs land only the cards their seams unblock, and the families stay on the backlog.
+
+---
+
+## Owner decisions, 2026-10-02
+
+The owner answered the four questions on 2026-10-02. Every answer was the recommended option (a).
+
+1. **Riot under a granted or removed ability.** The entry window builds the CR 614.12 look-ahead, `entryLookAheadLocked`, which computes the entering permanent as it would exist on the battlefield. Riot, unleash and sunburst entry replacements come from that result: printed riot under Rhythm of the Wild asks twice (CR 702.136b), a creature entering under Dress Down is not asked, and Domri's mana-granted riot works. Uncivil Unrest moves onto the keyword grant and loses its caveat (§10 decisions 1 to 5; Delivery PR 9, with sunburst's reading in PR 10).
+2. **Granted loyalty abilities.** ADR 0093 Decision 10's loyalty exclusion is lifted. A granted loyalty row shares the planeswalker's CR 606.3 count, and the stack item carries its grantor, so an emblem it creates is the grantor's. Teferi's Talent becomes Full, and Elspeth's, Liliana's, Rowan's and Vivien's Talent land (§2 decision 4; Delivery PR 4).
+3. **"Discard a card at random" as a cost.** `DiscardCost.Random` is added. The engine picks the card at payment, after every other cost (CR 601.2h), and records it on `PaidCost.Discarded` for §8's readers. About 15 of the 17 cards land (§7 decision 3; Delivery PR 8).
+4. **Cards that need nothing new but share a PR's code.** Each PR lands the cards of its family that need nothing else, about 49 in all, each verified against its full text: about 11 static land-type Auras and enchantments in Delivery PR 1, about 25 single "for as long as this remains tapped" cards in PR 2, and about 13 printed sunburst cards in PR 10 (§1, §3 and §11 Cards).
