@@ -24,17 +24,19 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 func thisDealsDamageToEachCreatureMatchingAndEachPlayer(match CardPredicate, n int) func(g *game.Game, item *game.StackItem) error {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
-		if err := damageEachMatching(ctx, And(Creature(), match), n); err != nil {
-			return err
-		}
-		for _, p := range g.Seats {
-			if p == nil || p.Eliminated {
-				continue
-			}
-			if err := (DealDamage{Source: ctx.Source(), Target: p.ID, Amount: n}).Apply(ctx); err != nil {
+		return ctx.Game.DamageInstanceForEffect(func() error {
+			if err := damageEachMatching(ctx, And(Creature(), match), n); err != nil {
 				return err
 			}
-		}
-		return nil
+			for _, p := range g.Seats {
+				if p == nil || p.Eliminated {
+					continue
+				}
+				if err := (DealDamage{Source: ctx.Source(), Target: p.ID, Amount: n}).Apply(ctx); err != nil {
+					return err
+				}
+			}
+			return nil
+		})
 	}
 }

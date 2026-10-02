@@ -205,6 +205,14 @@ type damageTail struct {
 	sourceUnpreventable bool
 	sourceChecked       bool
 
+	// endsInstance marks the event whose terminal outcome ends its
+	// damage instance (ADR 0108 PR 0): a single damage instruction that
+	// took an instance of its own. runDamageTailLocked ends it, before the
+	// caller's continuation, so the follow-ups owed for it run first
+	// (CR 615.5) and anything the continuation deals is a new instance.
+	// Cleared through the pointer as it runs, like `then`.
+	endsInstance bool
+
 	// then is the CALLER's half of the tail (#807): the rest of the
 	// effect that asked for the damage, run with the amount that
 	// ACTUALLY landed once the CR 614 window has settled it. The exact
@@ -648,7 +656,16 @@ func (g *Game) applyResolvedDamageLocked(ev *ReplacementEvent) error {
 //
 // Caller must hold g.mu.
 func (g *Game) runDamageTailLocked(ev *ReplacementEvent, dealt int) error {
-	if ev == nil || ev.damageTail == nil || ev.damageTail.then == nil {
+	if ev == nil || ev.damageTail == nil {
+		return nil
+	}
+	// ADR 0108 PR 0: a single instruction's instance is over with its
+	// one event.
+	if ev.damageTail.endsInstance {
+		ev.damageTail.endsInstance = false
+		g.endDamageInstanceLocked(ev.DamageInstance)
+	}
+	if ev.damageTail.then == nil {
 		return nil
 	}
 	then := ev.damageTail.then

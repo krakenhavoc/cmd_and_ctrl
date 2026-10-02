@@ -44,12 +44,14 @@ func init() {
 			if share <= 0 {
 				return nil
 			}
-			for _, t := range legal {
-				if err := (DealDamage{Source: ctx.Source(), Target: t.ID, Amount: share}).Apply(ctx); err != nil {
-					return err
+			return ctx.Game.DamageInstanceForEffect(func() error {
+				for _, t := range legal {
+					if err := (DealDamage{Source: ctx.Source(), Target: t.ID, Amount: share}).Apply(ctx); err != nil {
+						return err
+					}
 				}
-			}
-			return nil
+				return nil
+			})
 		},
 	})
 }

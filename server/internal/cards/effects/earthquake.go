@@ -28,18 +28,20 @@ func init() {
 			if x <= 0 {
 				return nil
 			}
-			if err := damageEachMatching(ctx, And(Creature(), WithoutKeyword("flying")), x); err != nil {
-				return err
-			}
-			for _, p := range ctx.Game.Seats {
-				if p == nil || p.Eliminated {
-					continue
-				}
-				if err := (DealDamage{Source: ctx.Source(), Target: p.ID, Amount: x}).Apply(ctx); err != nil {
+			return ctx.Game.DamageInstanceForEffect(func() error {
+				if err := damageEachMatching(ctx, And(Creature(), WithoutKeyword("flying")), x); err != nil {
 					return err
 				}
-			}
-			return nil
+				for _, p := range ctx.Game.Seats {
+					if p == nil || p.Eliminated {
+						continue
+					}
+					if err := (DealDamage{Source: ctx.Source(), Target: p.ID, Amount: x}).Apply(ctx); err != nil {
+						return err
+					}
+				}
+				return nil
+			})
 		},
 	})
 }

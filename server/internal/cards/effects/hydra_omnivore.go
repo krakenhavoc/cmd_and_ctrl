@@ -57,15 +57,17 @@ func init() {
 				// resolution.
 				amount, hit := item.Trigger.Event.Amount, item.Trigger.Event.Target
 				ctx := NewContext(g, item)
-				for _, opp := range ctx.Opponents() {
-					if opp == hit {
-						continue
+				return ctx.Game.DamageInstanceForEffect(func() error {
+					for _, opp := range ctx.Opponents() {
+						if opp == hit {
+							continue
+						}
+						if err := (DealDamage{Source: ctx.Source(), Target: opp, Amount: amount}).Apply(ctx); err != nil {
+							return err
+						}
 					}
-					if err := (DealDamage{Source: ctx.Source(), Target: opp, Amount: amount}).Apply(ctx); err != nil {
-						return err
-					}
-				}
-				return nil
+					return nil
+				})
 			},
 		}},
 	})

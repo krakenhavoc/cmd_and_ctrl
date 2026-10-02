@@ -2947,6 +2947,33 @@ that only deals damage keeps using `DealDamage` / the plain
 change and on a `.Life` / `.DamageMarked` read after a damage call, in
 the same function.
 
+**One printed damage instruction is one damage instance (ADR 0108 PR 0).**
+The engine stamps each `DealDamage…ForEffect` call, and each
+`DealDamageEachThenForEffect` walk, as an instance of its own. That is
+what "it deals 2 damage to you. Then it deals 2 damage to you" needs: two
+instructions, so a "next time" shield prevents only the first (CR 615.8,
+608.2c). But "deals 2 damage to each creature and each player", a fight,
+or "4 damage to the first target and 3 to each other" is ONE instruction
+that the catalog deals with several calls, so wrap the whole sentence in
+one scope:
+
+```go
+return ctx.Game.DamageInstanceForEffect(func() error {
+    for _, c := range MatchingBattlefield(ctx, Creature()) { … DealDamage{…}.Apply(ctx) … }
+    for _, p := range ctx.Game.Seats { … }
+    return nil
+})
+```
+
+Scopes nest, so a helper that loops (`damageEachMatching`) wraps itself
+and joins its caller's scope. Prevention follow-ups and every later
+reader of the instance (ADR 0108 §7–§10) count per instance.
+`damage_instance_guard_test.go` fails on a damage call in a loop outside
+a scope. It cannot see one sentence written as two calls without a loop,
+so wrap those by hand (`b10Fight`, Fear, Fire, Foes!). Two sentences stay
+two instances (Repulsor Blast's teamwork damage, Garruk Relentless's
+fight-back).
+
 **Destroy clears damage only when it lands (#708).** Marked damage is
 removed by the landed outcome of a battlefield exit — not by the
 destroy entry points. A destruction a replacement rewrote

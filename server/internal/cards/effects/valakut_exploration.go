@@ -162,11 +162,13 @@ func valakutExplorationSweep(g *game.Game, item *game.StackItem) error {
 			return nil
 		}
 		ctx := NewContext(g, item)
-		for _, opp := range ctx.Opponents() {
-			if err := g.DealDamageToPlayerForEffect(item.SourceCardID, opp, len(landed)); err != nil {
-				return err
+		return ctx.Game.DamageInstanceForEffect(func() error {
+			for _, opp := range ctx.Opponents() {
+				if err := g.DealDamageToPlayerForEffect(item.SourceCardID, opp, len(landed)); err != nil {
+					return err
+				}
 			}
-		}
-		return nil
+			return nil
+		})
 	})
 }

@@ -74,15 +74,17 @@ func b40Outlaw() CardPredicate {
 // everywhere else.
 func b40PingEachOpponent(n int) func(g *game.Game, controller, source uuid.UUID) error {
 	return func(g *game.Game, controller, source uuid.UUID) error {
-		for _, p := range g.Seats {
-			if p == nil || p.Eliminated || p.ID == controller {
-				continue
+		return g.DamageInstanceForEffect(func() error {
+			for _, p := range g.Seats {
+				if p == nil || p.Eliminated || p.ID == controller {
+					continue
+				}
+				if err := g.DealDamageToPlayerForEffect(source, p.ID, n); err != nil {
+					return err
+				}
 			}
-			if err := g.DealDamageToPlayerForEffect(source, p.ID, n); err != nil {
-				return err
-			}
-		}
-		return nil
+			return nil
+		})
 	}
 }
 
@@ -260,15 +262,17 @@ func b40ChaosSpillover(g *game.Game, item *game.StackItem, hit uuid.UUID, amount
 		return nil
 	}
 	ctx := NewContext(g, item)
-	for _, opp := range ctx.Opponents() {
-		if opp == hit {
-			continue
+	return ctx.Game.DamageInstanceForEffect(func() error {
+		for _, opp := range ctx.Opponents() {
+			if opp == hit {
+				continue
+			}
+			if err := (DealDamage{Source: item.SourceCardID, Target: opp, Amount: amount}).Apply(ctx); err != nil {
+				return err
+			}
 		}
-		if err := (DealDamage{Source: item.SourceCardID, Target: opp, Amount: amount}).Apply(ctx); err != nil {
-			return err
-		}
-	}
-	return nil
+		return nil
+	})
 }
 
 // --- cost predicates -----------------------------------------------

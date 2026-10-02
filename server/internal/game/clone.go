@@ -317,6 +317,14 @@ func (g *Game) cloneLocked() *Game {
 	// ADR 0107 §6: owed follow-ups rewind with the shields they belong
 	// to. Copy on write everywhere, so the slice is shared.
 	out.preventionFollowUps = g.preventionFollowUps
+	// ADR 0108 PR 0: the instance counter rewinds with the records that
+	// name its IDs, and the combat step's instance with the batch it is
+	// keyed on, so a re-done instance can never reuse an ID an undone
+	// record still holds.
+	out.damageInstanceSeq = g.damageInstanceSeq
+	out.openDamageInstance = g.openDamageInstance
+	out.combatDamageInstance = g.combatDamageInstance
+	out.combatDamageInstanceBatch = g.combatDamageInstanceBatch
 	// #830: the block declaration's announcements rewind with the
 	// declaration. An undo across a re-point that kept them would
 	// swallow the re-done "becomes blocked"; dropping them would
@@ -1001,6 +1009,10 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.eventBatch = src.eventBatch
 	g.oncePerBatchFired = src.oncePerBatchFired
 	g.preventionFollowUps = src.preventionFollowUps
+	g.damageInstanceSeq = src.damageInstanceSeq
+	g.openDamageInstance = src.openDamageInstance
+	g.combatDamageInstance = src.combatDamageInstance
+	g.combatDamageInstanceBatch = src.combatDamageInstanceBatch
 	// #830 / #859: see cloneLocked — the announcements rewind with
 	// the declarations they describe.
 	g.announcedBlocks = src.announcedBlocks

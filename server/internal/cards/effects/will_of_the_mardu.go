@@ -42,11 +42,16 @@ func init() {
 				}
 			}
 			if ctx.HasMode(1) {
-				for _, t := range OptionTargets(ctx, 1) {
-					n := b14CreaturesControlled(ctx.Game, ctx.Controller())
-					if err := (DealDamage{Source: ctx.Source(), Target: t.ID, Amount: n}).Apply(ctx); err != nil {
-						return err
+				if err := ctx.Game.DamageInstanceForEffect(func() error {
+					for _, t := range OptionTargets(ctx, 1) {
+						n := b14CreaturesControlled(ctx.Game, ctx.Controller())
+						if err := (DealDamage{Source: ctx.Source(), Target: t.ID, Amount: n}).Apply(ctx); err != nil {
+							return err
+						}
 					}
+					return nil
+				}); err != nil {
+					return err
 				}
 			}
 			return nil

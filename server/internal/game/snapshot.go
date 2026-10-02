@@ -2434,6 +2434,9 @@ func (s *GameSnapshot) restoreGame() *Game {
 	}
 	g.ScopedEffects = deepCopyScopedEffects(s.ScopedEffects)
 	g.scopedEffectSeq = maxScopedEffectSeq(g.ScopedEffects)
+	// ADR 0108 PR 0: the damage-instance counter resumes past every
+	// instance a restored record names.
+	g.damageInstanceSeq = maxNamedDamageInstance(g.ScopedEffects, g.preventionFollowUps)
 	if len(s.DelayedTriggers) > 0 {
 		g.DelayedTriggers = make([]*DelayedTrigger, len(s.DelayedTriggers))
 		for i := range s.DelayedTriggers {

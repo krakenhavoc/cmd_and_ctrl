@@ -63,12 +63,14 @@ func DealDividedDamage(ctx *Context) error {
 		return nil
 	}
 	shares := ctx.Item.Distribution
-	for _, t := range legal {
-		if err := (DealDamage{Source: ctx.Source(), Target: t.ID, Amount: shares[t.ID]}).Apply(ctx); err != nil {
-			return err
+	return ctx.Game.DamageInstanceForEffect(func() error {
+		for _, t := range legal {
+			if err := (DealDamage{Source: ctx.Source(), Target: t.ID, Amount: shares[t.ID]}).Apply(ctx); err != nil {
+				return err
+			}
 		}
-	}
-	return nil
+		return nil
+	})
 }
 
 // PutDividedCounters is the counters twin of DealDividedDamage —
