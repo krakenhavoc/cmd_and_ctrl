@@ -3256,7 +3256,7 @@ Opened 2026-10-02 from the owner's feedback ("any button the player should click
 - [x] PR 4 — targeting and payment: Done / Cancel in the action bar, the insufficient-mana prompt, one Enter / Escape handler, and `region "attention"` on the strip ([#1980](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1980))
 - [x] PR 5 — inline choices: the yes/no family, `pay_unless` without picks, coin calls, the loop shortcut, mana and colour picks, short option picks, vote options and the game-over Back to lobby ([#1981](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1981))
 - [x] PR 6 — sheets: `DockSheet.svelte` and the minimise control, every remaining choice kind, the discard to hand size, every cost picker, the attack picker, the auto-tap preview and the mulligan hand ([#1982](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1982))
-- [x] PR 7 — the ⋯ menu in the dock (owner decision 3): the sandbox tools, life history, table settings, spawn, the vote launcher and Concede with its confirm, opening upward from the toggles row; a spectator keeps a smaller one on the command bar. AGENTS.md's "labels are a contract" line, this section, and the ADR's delivery note (this PR)
+- [x] PR 7 — the ⋯ menu in the dock (owner decision 3): the sandbox tools, life history, table settings, spawn, the vote launcher and Concede with its confirm, opening upward from the toggles row; a spectator keeps a smaller one on the command bar. AGENTS.md's "labels are a contract" line, this section, and the ADR's delivery note ([#1983](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1983))
 
 ### Exit criteria
 

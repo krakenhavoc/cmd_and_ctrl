@@ -379,7 +379,7 @@ PRs 1 and 2 are the owner's two sentences: bluff visible bottom right, and the b
 
 ### Delivery note (2026-10-02)
 
-All seven PRs shipped on 2026-10-02, into `develop`: PR 1 [#1969](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1969), PR 2 [#1976](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1976), PR 3 [#1978](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1978), PR 4 [#1980](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1980), PR 5 [#1981](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1981), PR 6 [#1982](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1982) and PR 7 this PR. The sprint is S56 in [docs/sprints.md](../sprints.md#s56--table-ux-one-action-dock-bottom-right).
+All seven PRs shipped on 2026-10-02, into `develop`: PR 1 [#1969](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1969), PR 2 [#1976](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1976), PR 3 [#1978](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1978), PR 4 [#1980](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1980), PR 5 [#1981](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1981), PR 6 [#1982](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1982) and PR 7 [#1983](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1983). The sprint is S56 in [docs/sprints.md](../sprints.md#s56--table-ux-one-action-dock-bottom-right).
 
 Where PR 7 went past what this ADR wrote down:
 
