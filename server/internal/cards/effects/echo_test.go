@@ -330,6 +330,41 @@ func TestCumulativeUpkeepSacrificeScalesWithAgeCounters(t *testing.T) {
 	}
 }
 
+// EchoX reads its amount as the trigger resolves (the Volcano Hellion
+// ruling: "equal to your life total as the echo triggered ability
+// resolves"), and a negative amount is zero (CR 107.1b).
+func TestEchoXReadsTheAmountOnResolution(t *testing.T) {
+	const oid = "test-echo-x-life-total"
+	// "X is your life total minus three", so a small life total makes the
+	// amount negative without the player losing the game.
+	registerForTest(t, Spec{OracleID: oid, Name: "Test Hellion", Triggered: []game.TriggeredAbility{
+		EchoX("Test Hellion", "your life total minus three", func(ctx *Context) int {
+			return ctx.Game.PlayerByIDForEffect(ctx.Controller()).Life - 3
+		}),
+	}})
+	for _, tc := range []struct {
+		life int
+		want string
+	}{{40, "{37}"}, {1, "{0}"}} {
+		g := newCatalogGame(t)
+		me := g.Seats[1]
+		pushBattlefieldCardWithTimestamp(g, game.Card{InstanceID: uuid.New(), Name: "Test Hellion", OracleID: oid,
+			TypeLine: "Creature — Hellion", Power: 6, Toughness: 5, Owner: me.ID, Controller: me.ID})
+		advanceToUpkeepOf(t, g, 1)
+		// The trigger is on the stack; the life total changes before it
+		// resolves, and the cost is read from the new one.
+		me.Life = tc.life
+		passPriorityAroundTable(t, g)
+		p := echoPrompt(g, me.ID)
+		if p == nil {
+			t.Fatalf("life %d: no echo prompt", tc.life)
+		}
+		if p.PayCost != tc.want {
+			t.Errorf("life %d: echo cost %q, want %q", tc.life, p.PayCost, tc.want)
+		}
+	}
+}
+
 // Phyrexian Soulgorger may be sacrificed to its own cumulative upkeep:
 // it is a creature, and the cost is "Sacrifice a creature".
 func TestCumulativeUpkeepSoulgorgerCountsItself(t *testing.T) {
