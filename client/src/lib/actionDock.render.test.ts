@@ -324,6 +324,20 @@ describe("the layout around the dock", () => {
     expect(spacer).toContain("var(--dock-h, 0px)");
   });
 
+  it("scrolls a short creature row inside its area rather than over the lands", () => {
+    const css = src("src/lib/components/board/PlayerPanel.svelte");
+    const area = rule(css, "  .grid-creatures");
+    expect(area).toContain("min-height: 0");
+    expect(area).toContain("display: flex");
+    expect(area).toContain("flex-direction: column");
+    // The row may shrink below its cards; BattlefieldRow's .row is
+    // overflow: auto, so it scrolls.
+    expect(rule(css, "  .grid-creatures > :global(.row)")).toContain("flex: 0 1 auto");
+    expect(rule(src("src/lib/components/board/BattlefieldRow.svelte"), "  .row")).toContain(
+      "overflow: auto",
+    );
+  });
+
   it("keeps the hover zoom and the log drawer clear of it", () => {
     const zoom = rule(src("src/lib/components/board/HoverZoomOverlay.svelte"), "  .overlay");
     expect(zoom).toContain("max-height: calc(100% - 20px - var(--dock-zoom-clear, 0px))");

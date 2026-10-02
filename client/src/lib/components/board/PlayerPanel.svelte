@@ -919,10 +919,21 @@
   .panel.opponent.flipped.spectator {
     --card-h-max: 240px;
   }
+  /* The creature area is the grid's minmax(0, 1fr) row, so on a short
+     panel it is shorter than one card (whose height floors at 168px).
+     The area is a flex column and the row may shrink, so the row's own
+     overflow: auto scrolls it inside its area instead of the cards
+     painting over the lands below (ADR 0111 PR 2: with the action dock
+     in the bottom row this happens on more screens than before). */
   .grid-creatures {
     grid-area: creatures;
     min-height: 0;
     min-width: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .grid-creatures > :global(.row) {
+    flex: 0 1 auto;
   }
   /* A flipped panel's creature row is its LAST row, and it must sit
      at the bottom of its area — against the middle of the table,
@@ -930,12 +941,7 @@
      lands. The area keeps the leftover height; the row is pushed to
      its far edge. */
   .flipped .grid-creatures {
-    display: flex;
-    flex-direction: column;
     justify-content: flex-end;
-  }
-  .flipped .grid-creatures > :global(.row) {
-    flex: 0 1 auto;
   }
   .grid-middle {
     grid-area: middle;

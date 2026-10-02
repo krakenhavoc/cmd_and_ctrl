@@ -217,7 +217,7 @@
   .phase-display {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 4px;
     min-width: 0;
     color: var(--fg-muted);
     font-size: 0.95em;
@@ -278,7 +278,7 @@
      subtle timeline rather than a noisy icon strip. */
   .track {
     gap: 3px;
-    padding: 3px 0;
+    padding: 2px 0;
     flex-wrap: nowrap;
   }
   .step-icon {

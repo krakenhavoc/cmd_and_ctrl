@@ -267,8 +267,8 @@
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    padding: 10px 12px;
+    gap: 5px;
+    padding: 8px 12px;
     background:
       linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, rgba(0, 0, 0, 0.2) 100%), var(--surface);
     border: 1px solid var(--border);
@@ -406,11 +406,11 @@
   .dock-bar {
     display: flex;
     gap: 8px;
-    padding-top: 6px;
+    padding-top: 5px;
     border-top: 1px solid var(--border);
   }
   .dock-btn {
-    min-height: 34px;
+    min-height: 32px;
     padding: 0 12px;
     border-radius: 7px;
     border: 1px solid var(--border);
