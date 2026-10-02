@@ -170,12 +170,10 @@
     // card affordance into a no-op instead of a click that silently
     // goes nowhere while the connection is down.
     disabled?: boolean;
-    // Priority controls forwarded to the self-panel's PhaseDisplay.
-    autopassEnabled?: boolean;
-    // #628: the CR 726 loop-breaker banner line, empty when quiet.
-    loopNotice?: string;
-    onPassPriority?: () => void;
-    onToggleAutopass?: () => void;
+    // ADR 0111 §4: Game.svelte has mounted the action dock over the
+    // board's bottom-right corner, so the viewer's own panel keeps that
+    // corner clear. See PlayerPanel's prop of the same name.
+    docked?: boolean;
     // Game.svelte's live prompts (targeting, combat hint, mulligan
     // roll-call, toasts, game end) render inside the attention strip
     // under the stack card so every "look here" surface shares one
@@ -209,10 +207,7 @@
     onDeclareBlock,
     onDeclareAttackers,
     disabled = false,
-    autopassEnabled,
-    loopNotice = "",
-    onPassPriority,
-    onToggleAutopass,
+    docked = false,
     attention,
     beatsPrimeKey,
     legal = NO_LEGAL_ACTIONS,
@@ -2325,10 +2320,7 @@
               onDrawCard={handleDrawCard}
               onTargetPlayer={handleTargetPlayer}
               onTargetCard={handleTargetCard}
-              {autopassEnabled}
-              {loopNotice}
-              {onPassPriority}
-              {onToggleAutopass}
+              docked={docked && pos === "self"}
               onActivateAbility={handleActivateAbility}
               onManaAbilityCost={handleManaAbilityCost}
               considering={seat.id === consideringSeatID}
@@ -2401,10 +2393,13 @@
       considering={consideringSeatID !== null && consideringSeatID === prioritySeatID}
       onCounter={counterStackItem}
       onTargetStackItem={(item) => completeTargetedCast("card", item.id)}
-      onPass={onPassPriority}
     />
   {/if}
-  <div class="strip">
+  <!-- ADR 0111 §4 / §10 (PR 4): the attention strip is `region
+       "attention"`, the tutorial's step-9 anchor (ADR 0076 §2.4) and an
+       e2e contract. It keeps what asks nothing: the stack card, the bot
+       feed, reveals, the roll-call and the toasts. -->
+  <div class="strip" role="region" aria-label="attention">
     {#if !laneShowsStack}
       <StackOverlay
         stack={view.stack}
@@ -2420,12 +2415,11 @@
         splitSecondActive={view.split_second_active === true}
         onCounter={counterStackItem}
         onTargetStackItem={(item) => completeTargetedCast("card", item.id)}
-        onPass={onPassPriority}
       />
     {/if}
     {@render attention?.()}
   </div>
-  <VotingPanel {view} {viewerID} sendAction={guardedSendAction} />
+  <VotingPanel {view} {viewerID} sendAction={guardedSendAction} {docked} />
   <SacrificeCostModal
     source={sacrificePrompt?.card ?? null}
     label={sacrificePrompt?.ability.sacrifice_label ?? "a permanent"}

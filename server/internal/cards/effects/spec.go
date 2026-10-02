@@ -931,6 +931,23 @@ type Spec struct {
 	// PlayerCantGainLifeForRestOfGame).
 	CantGainLife []game.CantGainLifeStatic
 
+	// AnyColorSpend declares this permanent's printed "you may spend
+	// mana as though it were mana of any color" statics (CR 609.4b,
+	// #1600, ADR 0066's 2026-10-02 amendment):
+	//
+	//	AnyColorSpend: YouMaySpendManaAsAnyColor(),            // Chromatic Orrery
+	//	AnyColorSpend: PlayersMaySpendManaAsAnyColor(),        // Mycosynth Lattice
+	//	AnyColorSpend: YouMaySpendManaAsAnyColorToCast(        // Oath of Nissa
+	//	    "planeswalker spells", "Planeswalker"),
+	//
+	// Read from the battlefield at every payment through
+	// game.CatalogAnyColorSpend, keyed by CatalogAbilityKey: spells,
+	// activated and mana abilities, special actions, attack taxes and
+	// "unless pays" costs alike. A cast PERMISSION's "spend mana as
+	// though it were mana of any color to cast that spell" (Breeches,
+	// impulse exile) is CastPermission.AnyColor, not this.
+	AnyColorSpend []game.AnyColorSpendStatic
+
 	// GameEndGates declares a printed static "you can't lose the
 	// game" / "your opponents can't win the game" (CR 104.3 —
 	// Platinum Angel, Herald of Eternal Dawn, Abyssal Persecutor).

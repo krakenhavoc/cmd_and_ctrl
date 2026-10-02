@@ -1,6 +1,8 @@
 import {
   authFetch,
+  clearSavedIdentity,
   currentSession,
+  sessionSettled,
   setSession,
   LobbyApiError,
   type ApiViolation,
@@ -15,8 +17,11 @@ import {
 import { redactSecrets } from "./redact";
 import type { PrebuiltDecksResponse } from "./prebuiltDecks";
 import type { MyGame } from "./myGames";
-import type { MyDecksResponse } from "./myDecks";
+import type { MyDeckInfo, MyDecksResponse } from "./myDecks";
+import type { CoverageReport } from "./deckcheck";
 import type { InviteDMResponse, Tablemate } from "./tablemates";
+import type { MySetupResponse, SetupResult } from "./tableSetup";
+import type { LastDeck } from "./lastDeck";
 import type { AutoTapCastParams } from "./castPreview";
 import type { TableSettingsPatch, SpawnZone } from "./tableSettings";
 import type { TableSettingsView, TargetRefView } from "./protocol";
@@ -59,6 +64,10 @@ export interface GameMeta {
   // creator. Lets the creator rotate their own table's invites, same
   // as the admin.
   is_creator?: boolean;
+  // The tutorial's practice table (ADR 0076 §2.2): one seat, one
+  // `random` bot, never listed and never persisted. Mirrors
+  // lobby.GameMeta.Practice.
+  practice?: boolean;
 }
 
 export interface SeatInfo {
@@ -151,6 +160,9 @@ export interface UploadDeckResponse {
   // moment there is to say it: once, before the game, instead of
   // once per surprise mid-combat.
   unimplemented?: string[];
+  // Set when the deck was seated but not saved to the library: today
+  // only the 200-deck cap (ADR 0110 section 6). A player sentence.
+  library_note?: string;
 }
 
 interface SessionResponse {
@@ -228,12 +240,54 @@ export async function getGame(id: string): Promise<GameMeta> {
   return (await res.json()) as GameMeta;
 }
 
-export async function createGame(name: string): Promise<GameMeta> {
+// CreateGameResponse mirrors lobby.createGameResponse: the new table's
+// meta, flattened, and what applying the last setup did when it was
+// asked for (ADR 0110 §5 item 2).
+export interface CreateGameResponse extends GameMeta {
+  setup?: SetupResult;
+}
+
+// createGame creates a table (POST /games). Any signed-in person may
+// (ADR 0110 §5 item 4, owner answer 2): a 409 names their open tables
+// when they already have three, and a 429 says they are creating too
+// quickly. `setup: "last"` applies their remembered setup to it.
+export async function createGame(
+  name: string,
+  opts: { setup?: "last" } = {},
+): Promise<CreateGameResponse> {
+  const body: { name: string; setup?: string } = { name };
+  if (opts.setup) body.setup = opts.setup;
   const res = await authFetch("/games", {
     method: "POST",
-    body: JSON.stringify({ name }),
+    body: JSON.stringify(body),
   });
-  return (await res.json()) as GameMeta;
+  return (await res.json()) as CreateGameResponse;
+}
+
+// fetchMySetup reads the caller's remembered table setup (GET
+// /me/setup, ADR 0110 §5 item 1). Signed-in only: gate on
+// myGames.signedInUserID first, as for the other /me/* reads.
+export async function fetchMySetup(): Promise<MySetupResponse> {
+  const res = await authFetch("/me/setup");
+  return (await res.json()) as MySetupResponse;
+}
+
+// applyLastSetup applies the caller's last setup to a lobby table
+// (POST /games/{id}/setup): its host, its creator or an admin.
+export async function applyLastSetup(gameID: string): Promise<SetupResult & { game: GameMeta }> {
+  const res = await authFetch(`/games/${encodeURIComponent(gameID)}/setup`, {
+    method: "POST",
+    body: JSON.stringify({ from: "last" }),
+  });
+  return (await res.json()) as SetupResult & { game: GameMeta };
+}
+
+// fetchLastDeck reads the deck the signed-in caller last seated (GET
+// /me/last-deck, ADR 0110 §5 item 5), or null.
+export async function fetchLastDeck(): Promise<LastDeck | null> {
+  const res = await authFetch("/me/last-deck");
+  const body = (await res.json()) as { last_deck?: LastDeck | null };
+  return body.last_deck ?? null;
 }
 
 // joinGame is the public invite-link flow: call with the invite
@@ -259,6 +313,51 @@ export async function joinGame(
   };
   setSession(s);
   return s;
+}
+
+// createPracticeTable opens the tutorial's practice table (POST
+// /games/practice, ADR 0076 §2.2) and returns its seat's session.
+// Unlike joinGame it does NOT install the session: lib/practiceTable.ts
+// does, after it has recorded the session and settings to put back.
+export async function createPracticeTable(): Promise<Session> {
+  const res = await authFetch("/games/practice", { method: "POST" });
+  const body = (await res.json()) as SessionResponse;
+  return {
+    token: body.token,
+    expiresAt: body.expires_at,
+    principal: body.principal,
+    playerID: body.player_id,
+    gameID: body.game?.id,
+  };
+}
+
+// leavePracticeTable abandons a practice table and has the server put
+// the session cookie back to `restoreToken` (or clear it when that is
+// empty): POST /games/{id}/practice/leave. Both tokens ride the body,
+// so it works whatever the cookie holds at the time.
+//
+// Plain fetch, not authFetch: authFetch would attach whichever session
+// is live, and read a 401 as "sign this tab out". `keepalive` lets the
+// request outlive the page, which is how a closed tab still leaves.
+// Never throws — leaving is best-effort, and the server reaps a table
+// nobody left.
+export async function leavePracticeTable(
+  gameID: string,
+  practiceToken: string,
+  restoreToken: string,
+  opts: { keepalive?: boolean } = {},
+): Promise<void> {
+  try {
+    await fetch(`/games/${encodeURIComponent(gameID)}/practice/leave`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
+      keepalive: opts.keepalive === true,
+      body: JSON.stringify({ practice_token: practiceToken, restore_token: restoreToken }),
+    });
+  } catch {
+    // Best-effort; see above.
+  }
 }
 
 // joinByCode is the login-page flow: the caller holds an invite code
@@ -362,6 +461,8 @@ export async function mintSeatReclaim(gameID: string, playerID: string): Promise
 // session (that is the whole problem), and a 401 here means "bad
 // ticket", not "your session expired".
 export async function redeemSeatReclaim(gameID: string, ticket: string): Promise<Session> {
+  // Sets the cookie: wait out a renewal in flight (session.ts).
+  await sessionSettled();
   const res = await fetch(`/games/${gameID}/reclaim`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Accept: "application/json" },
@@ -526,6 +627,64 @@ export async function fetchMyDecks(): Promise<MyDecksResponse> {
   return (await res.json()) as MyDecksResponse;
 }
 
+// renameMyDeck renames a saved deck (PATCH /me/decks/{id}). A name the
+// caller already uses is a 409 whose message the page shows as is.
+export async function renameMyDeck(id: string, name: string): Promise<MyDeckInfo> {
+  const res = await authFetch(`/me/decks/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    body: JSON.stringify({ name }),
+  });
+  return (await res.json()) as MyDeckInfo;
+}
+
+// deleteMyDeck removes a saved deck (DELETE /me/decks/{id}); seats that
+// pointed at it lose the link and keep their deck name.
+export async function deleteMyDeck(id: string): Promise<void> {
+  await authFetch(`/me/decks/${encodeURIComponent(id)}`, { method: "DELETE" });
+}
+
+// fetchMyDeckCoverage reads one saved deck's full ADR 0095 report.
+export async function fetchMyDeckCoverage(id: string): Promise<CoverageReport> {
+  const res = await authFetch(`/me/decks/${encodeURIComponent(id)}/coverage`);
+  return (await res.json()) as CoverageReport;
+}
+
+// AccountSettings mirrors lobby.settingsResponse: the signed-in
+// person's account copy of their per-person settings (ADR 0110 §4).
+// revision 0 means there is no copy yet, and then nothing else is set.
+export interface AccountSettings {
+  version?: number;
+  revision: number;
+  settings?: Record<string, unknown>;
+  updated_at?: number;
+}
+
+// fetchAccountSettings is GET /me/settings. A 403 (a guest, the admin
+// token, a server with no database) means "keep settings in this
+// browser"; settingsSync.ts reads it that way.
+export async function fetchAccountSettings(): Promise<AccountSettings> {
+  const res = await authFetch("/me/settings", { cache: "no-store" });
+  return (await res.json()) as AccountSettings;
+}
+
+// putAccountSettings is PUT /me/settings with If-Match: revision. A
+// 412 or 409 rejects with a LobbyApiError whose `body` is the account's
+// current copy. `keepalive` lets a pagehide flush outlive the page.
+export async function putAccountSettings(
+  revision: number,
+  version: number,
+  body: Record<string, unknown>,
+  opts: { keepalive?: boolean } = {},
+): Promise<AccountSettings> {
+  const res = await authFetch("/me/settings", {
+    method: "PUT",
+    headers: { "If-Match": String(revision) },
+    body: JSON.stringify({ version, settings: body }),
+    keepalive: opts.keepalive === true,
+  });
+  return (await res.json()) as AccountSettings;
+}
+
 // seatLibraryDeck installs a deck already in the caller's library
 // (POST /games/{id}/decks/{deck_id}) without re-pasting it. No body:
 // unlike uploadDeck/installPrebuiltDeck, a player session already
@@ -585,12 +744,19 @@ export async function discordAuthEnabled(): Promise<boolean> {
 // A plain href rather than a fetch, for the same reason as the Join
 // page's variant — the server answers with a 302 to Discord, and
 // only a real navigation lands the user on the consent screen.
-export function discordLoginHref(): string {
-  return "/auth/discord/start";
+//
+// The server sends Discord prompt=none (ADR 0110 §2), so a repeat
+// sign-in skips Discord's screen and silently uses whichever Discord
+// account the browser is signed in to. `consent` asks for the screen
+// instead: "Sign in with a different Discord account", since Discord's
+// consent screen has its own account switcher.
+export function discordLoginHref(opts: { consent?: boolean } = {}): string {
+  return opts.consent ? "/auth/discord/start?prompt=consent" : "/auth/discord/start";
 }
 
 // discordLinkHref starts the link round-trip for a seated player (GET
-// /auth/discord/link, S34 sub-PR 4): Discord's consent screen, then back
+// /auth/discord/link, S34 sub-PR 4): Discord's consent screen (always:
+// the server sends prompt=consent for a link, ADR 0110 §2), then back
 // to the same seat, now carrying the account. A navigation, like the
 // other two, and it relies on the session COOKIE — the server binds the
 // round-trip to the browser whose cookie holds the seat. `game` is the
@@ -934,6 +1100,8 @@ export async function fetchAutoTapPreview(
 // and throw — /logout accepts stale credentials and always returns
 // 204, so there's nothing to interpret from the body.
 export async function logout(): Promise<void> {
+  // A renewal answering after the sign-out would set the cookie again.
+  await sessionSettled();
   const s = currentSession();
   try {
     await fetch("/logout", {
@@ -945,6 +1113,10 @@ export async function logout(): Promise<void> {
     // Swallow network errors — we still want to drop the local
     // session so the UI recovers.
   }
+  // Signing out signs the person out, not just the session on top: the
+  // signed-in session kept aside behind an admin or ticket session goes
+  // too (ADR 0110 §1 item 6).
+  clearSavedIdentity();
   setSession(null);
 }
 
@@ -961,6 +1133,7 @@ export async function logout(): Promise<void> {
 // or expired). It bypasses authFetch for the same reason logout does:
 // a 401 here is an answer, not a reason to throw "session expired".
 export async function logoutEverywhere(): Promise<void> {
+  await sessionSettled();
   const s = currentSession();
   const res = await fetch("/logout/everywhere", {
     method: "POST",
@@ -968,6 +1141,7 @@ export async function logoutEverywhere(): Promise<void> {
     credentials: "same-origin",
   });
   if (res.ok || res.status === 401) {
+    clearSavedIdentity();
     setSession(null);
     return;
   }

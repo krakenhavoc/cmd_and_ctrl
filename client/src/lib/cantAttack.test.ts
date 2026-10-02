@@ -71,6 +71,35 @@ describe("cantAttackChip", () => {
     });
   });
 
+  // #1879: the other defending-player conditions carry their reason in
+  // full, and a reason replaces the noun-only sentence.
+  it("says each opponent's reason in full", () => {
+    const chip = cantAttackChip(
+      card("x", [
+        {
+          player: "a",
+          planeswalkers: true,
+          source: "Chained Throatseeker",
+          reason: "Alice isn't poisoned",
+        },
+        {
+          player: "b",
+          planeswalkers: true,
+          source: "Sea Serpent",
+          unless: "Island",
+          reason: "Bob controls no Island",
+        },
+      ]),
+      seats,
+    );
+    expect(chip).toEqual({
+      label: "Alice, Bob",
+      title:
+        "can't attack Alice or planeswalkers Alice controls: Alice isn't poisoned (Chained Throatseeker); " +
+        "can't attack Bob or planeswalkers Bob controls: Bob controls no Island (Sea Serpent)",
+    });
+  });
+
   it("falls back to a neutral name for a seat the frame does not list", () => {
     expect(cantAttackChip(card("x", [{ player: "gone" }]), seats)?.label).toBe("another player");
   });

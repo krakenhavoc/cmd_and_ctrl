@@ -1,6 +1,13 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { get } from "svelte/store";
-import { modalDepth, modalOpen, isModalOpen, pushModalLayer, _resetForTests } from "./modalLayers";
+import {
+  foreignModalOpen,
+  modalDepth,
+  modalOpen,
+  isModalOpen,
+  pushModalLayer,
+  _resetForTests,
+} from "./modalLayers";
 
 describe("modalLayers", () => {
   beforeEach(() => _resetForTests());
@@ -56,5 +63,19 @@ describe("modalLayers", () => {
     off();
     stop();
     expect(seen).toEqual([false, true, false]);
+  });
+
+  // ADR 0111 PR 6: an action-dock sheet stands the shortcuts down, but
+  // not the dock's own Enter / Escape.
+  it("counts a sheet as open, but not as a foreign modal", () => {
+    const sheet = pushModalLayer("sheet");
+    expect(get(modalOpen)).toBe(true);
+    expect(get(foreignModalOpen)).toBe(false);
+    const settingsOver = pushModalLayer();
+    expect(get(foreignModalOpen)).toBe(true);
+    settingsOver();
+    expect(get(foreignModalOpen)).toBe(false);
+    sheet();
+    expect(get(modalOpen)).toBe(false);
   });
 });

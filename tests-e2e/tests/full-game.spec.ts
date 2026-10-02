@@ -84,7 +84,12 @@ test.describe("full game", () => {
     // always Alice. pass_turn jumps to the next seat's untap step. Only
     // the active seat's button is enabled; the other browser sees it
     // disabled. Wait for exactly one of the two to be enabled.
-    const passOf = (p: { page: Page }) => p.page.getByRole("button", { name: "pass turn" });
+    // ADR 0111 PR 2: Pass turn is in the action dock's action bar, and
+    // is rendered disabled (not hidden) for the seat that is not active.
+    const passOf = (p: { page: Page }) =>
+      p.page
+        .getByRole("region", { name: "actions", exact: true })
+        .getByRole("button", { name: "pass turn" });
     const a0 = alice;
     const b0 = bob;
     await expect

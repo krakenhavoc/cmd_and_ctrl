@@ -188,7 +188,7 @@ describe("autopassDecision — guards above every toggle", () => {
     expect(autopassDecision(gates({ owesBlockDecision: true, autopassToggle: true }))).toBe("hold");
   });
 
-  it("holds while the CR 726 loop breaker is up (#628)", () => {
+  it("holds while the CR 732 loop breaker is up (#628)", () => {
     expect(autopassDecision(gates({ loopSuspended: true, autopassToggle: true }))).toBe("hold");
   });
 });

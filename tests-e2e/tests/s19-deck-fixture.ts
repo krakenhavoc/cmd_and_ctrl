@@ -34,7 +34,10 @@ const CASTER_NON_BASICS = [
   "Lightning Bolt",
   "Sol Ring",
   "Glorious Anthem",
-  // S22 — one lone Island among ninety Forests. It is a basic, not
+  // ADR 0111 PR 6 — "When this land enters, scry 1." The one scry the
+  // suite answers, from the action dock's sheet.
+  "Temple of Mystery",
+  // S22 — one lone Island among eighty-nine Forests. It is a basic, not
   // a non-basic, but it belongs in this list because it is a SINGLE
   // copy rather than filler.
   //
@@ -42,7 +45,7 @@ const CASTER_NON_BASICS = [
   // from the outside. The engine used to take the first match in
   // library order; it now asks the searcher which basic they want.
   // A fetched Forest cannot tell those two behaviours apart — there
-  // are ninety of them and library order would produce one anyway.
+  // are eighty-nine of them and library order would produce one anyway.
   // A fetched Island can: it is proof the PICK decided it.
   "Island",
 ];
@@ -52,9 +55,18 @@ const CASTER_NON_BASICS = [
 // double as artifact + enchantment; Plains supplies the land row.
 // Smothering Tithe (sub-PR 6) sits here too: it's the opponent's
 // card so the CASTER is the one taxed on a draw.
-const OPPONENT_NON_BASICS = ["Sol Ring", "Glorious Anthem", "Plains", "Smothering Tithe"];
+const OPPONENT_NON_BASICS = [
+  "Sol Ring",
+  "Glorious Anthem",
+  "Plains",
+  "Smothering Tithe",
+];
 
-function buildDeck(nonBasics: string[], filler: string, fillerCount: number): string {
+function buildDeck(
+  nonBasics: string[],
+  filler: string,
+  fillerCount: number,
+): string {
   const lines: string[] = [];
   lines.push("Commander:");
   lines.push(`1 ${COMMANDER_NAME}`);
@@ -68,13 +80,13 @@ function buildDeck(nonBasics: string[], filler: string, fillerCount: number): st
 }
 
 // makeS19CasterDeck builds the 100-card caster deck. 1 commander +
-// 8 non-basics + 1 Island + 90 Forest = 100 mainboard. Forest is the filler
+// 9 non-basics + 1 Island + 89 Forest = 100 mainboard. Forest is the filler
 // because every S19 caster card has a green color identity (Kenrith
 // is WUBRG so any basic is legal, but Forest is the most thematic
 // for the green-heavy S19 pool — Reclamation Sage / Acidic Slime /
 // Eternal Witness / Solemn Simulacrum).
 export function makeS19CasterDeck(): string {
-  return buildDeck(CASTER_NON_BASICS, "Forest", 90);
+  return buildDeck(CASTER_NON_BASICS, "Forest", 89);
 }
 
 // makeS19OpponentDeck builds the 100-card opponent deck. 1
@@ -99,6 +111,7 @@ export const CARDS = {
   SolRing: "Sol Ring",
   GloriousAnthem: "Glorious Anthem",
   SmotheringTithe: "Smothering Tithe",
+  TempleOfMystery: "Temple of Mystery",
   Treasure: "Treasure",
   Plains: "Plains",
   Forest: "Forest",

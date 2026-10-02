@@ -130,6 +130,13 @@ type GameView struct {
 	// prevented" on Leyline of Punishment) are not listed; the
 	// permanent is on the table for everyone to read.
 	DamageCantBePrevented []string `json:"damage_cant_be_prevented,omitempty"`
+	// ExileIfCreaturesDie lists the live "if a creature would die this
+	// turn, exile it instead" effects over a live set by their source's
+	// name (Flaying Tendrils, Malicious Eclipse; ADR 0108 §1 decision 6),
+	// oldest first — the game banner's line. Public. One pinned to a
+	// single creature is that creature's chip instead
+	// (CardView.ExiledIfItDies).
+	ExileIfCreaturesDie []string `json:"exile_if_creatures_die,omitempty"`
 	// DiscardPending is the cleanup-step pause map (S13.4): keys
 	// are player UUID strings, values are the count each player
 	// must discard. Drives the client's discard-prompt modal.
@@ -205,7 +212,7 @@ type GameView struct {
 	// reveal_frame.go for why that is the design rather than an
 	// omission. Added in S22.
 	Reveals []RevealView `json:"reveals,omitempty"`
-	// LoopNotice is the CR 726 loop breaker's flag: set when the
+	// LoopNotice is the CR 732 loop breaker's flag: set when the
 	// engine has seen the same triggered ability resolve
 	// game.DefaultLoopThreshold times this turn with no player
 	// decision in between, nil otherwise. Its presence is the
@@ -392,6 +399,14 @@ type PendingChoiceView struct {
 	// every other pay-unless.
 	TapCost *TapCostView `json:"tap_cost,omitempty"`
 
+	// PayCards is the non-mana payment of a "pay_unless" (ADR 0108 §5):
+	// "Discard a card", "Sacrifice two lands". PayCost carries those
+	// words. `{apply: true, card_ids: [...]}` pays with exactly
+	// PayCards.Count of PayCards.Options. Options are the chooser's own
+	// hand for a discard, so they are sent to the chooser only. Absent
+	// for a mana payment.
+	PayCards *PayCardsView `json:"pay_cards,omitempty"`
+
 	// AcceptLabel / DeclineLabel populate the "confirm" kind: the
 	// card's own words for the two branches ("Pay 4 life" / "Put it on
 	// top"). Absent means the client renders Yes / No, which is what a
@@ -453,7 +468,7 @@ type PendingChoiceView struct {
 	TopCount int `json:"top_count,omitempty"`
 	TopDepth int `json:"top_depth,omitempty"`
 	// LoopCount / LoopMaxIterations populate the #804 "loop_shortcut"
-	// kind (CR 726): how many times the repeating ability has already
+	// kind (CR 732): how many times the repeating ability has already
 	// resolved this turn, and the ceiling the engine will accept on
 	// the answer. The client renders a number field between 0 and the
 	// max; `reason` carries "<card> — <ability>". Answered with
@@ -1048,6 +1063,21 @@ type TapCostView struct {
 	DemandsX bool `json:"demands_x,omitempty"`
 }
 
+// PayCardsView is a pay-unless prompt's non-mana payment (ADR 0108 §5):
+// what it does, how many cards it takes, and which cards could pay it
+// right now.
+type PayCardsView struct {
+	// Action is "discard" or "sacrifice".
+	Action string `json:"action"`
+	// Count is exactly how many of Options one payment names.
+	Count int `json:"count"`
+	// Options are the instance IDs that could pay: the chooser's hand
+	// for a discard, the permanents of the clause's kind they control
+	// for a sacrifice (in the payment order "Choose for me" uses).
+	// Present-and-empty when there is nothing to pay with.
+	Options []string `json:"options"`
+}
+
 // DelveView is the wire shape of a card's delve (CR 702.66, ADR 0100
 // §4): the graveyard cards the caster may exile, and a hint of how
 // many.
@@ -1619,6 +1649,17 @@ type CardView struct {
 	// it to decide whether removal is worth casting. Cleared at the
 	// cleanup step and on zone exit; omitted when zero. Added in #667.
 	RegenerationShields int `json:"regeneration_shields,omitempty"`
+	// ExiledIfItDies names the effects that would exile this permanent
+	// instead if it died now (ADR 0108 §1 decision 6): Lava Coil's "if
+	// that creature would die this turn, exile it instead", by source
+	// name, oldest first. Public, like the shields above: it changes
+	// what killing the creature does. Battlefield only; omitted when
+	// empty.
+	ExiledIfItDies []string `json:"exiled_if_it_dies,omitempty"`
+	// CantBeRegenerated is true for a permanent that can't be
+	// regenerated this turn (ADR 0108 §2 decision 5, CR 701.19c):
+	// Incinerate's or Whippoorwill's mark. Public; battlefield only.
+	CantBeRegenerated bool `json:"cant_be_regenerated,omitempty"`
 	// FaceDown reflects Card.FaceDown — a card flipped face-down
 	// by morph / manifest / mutate-bottom (CR 708). Distinct from
 	// KnownByYou: a face-down creature is face-down to everyone
@@ -2011,6 +2052,13 @@ type CardView struct {
 	// activated-ability menu's affordance; the server does the real
 	// check.
 	SummoningSick bool `json:"summoning_sick,omitempty"`
+	// EchoDue marks a battlefield permanent whose echo will trigger at
+	// its controller's next upkeep (ADR 0108 §5 decision 5, CR 702.30a):
+	// it came under their control since the beginning of their most
+	// recent upkeep. Derived from two counters, never stored. A
+	// face-down permanent has no echo (CR 708.2), so it never carries
+	// it.
+	EchoDue bool `json:"echo_due,omitempty"`
 	// LoyaltyActivated reports CR 606.3: this planeswalker has
 	// already had a loyalty ability activated this turn, so every
 	// entry in ActivatedAbilities carrying a LoyaltyCost is greyed
@@ -3569,6 +3617,7 @@ func ViewOfGame(g *game.Game) GameView {
 			DelayedTriggers:       viewOfDelayedTriggers(g.DelayedTriggers),
 			SplitSecondActive:     g.SplitSecondActive,
 			DamageCantBePrevented: g.DamageCantBePreventedThisTurnLabels(),
+			ExileIfCreaturesDie:   g.ExileIfCreaturesWouldDieThisTurnLabels(),
 			DiscardPending:        viewOfDiscardPending(g.DiscardPending),
 			PendingChoices:        viewOfPendingChoices(g),
 			LoopNotice:            viewOfLoopNotice(g.LoopNotice),
@@ -3607,6 +3656,7 @@ func ViewOfGame(g *game.Game) GameView {
 		stampZoneAbilities(g, view.Seats, &view.Exile)
 		stampCombatTargets(g, &view)
 		stampNoUntap(g, &view.Battlefield)
+		stampDeathMarks(g, &view.Battlefield)
 		stampDefenderRefusals(g, &view.Battlefield)
 		view.legalBySeat, view.legalActionsBySeat = enumerateLegalMoves(g)
 		// S31 sub-PR 0: the public log resolves card names and knower
@@ -5073,6 +5123,12 @@ type AttackTargetRestrictionView struct {
 	// right now, and it covers that opponent's planeswalkers and the
 	// battles they protect too (CR 508.5), so Planeswalkers is set.
 	Unless string `json:"unless,omitempty"`
+	// Reason is set on every row a defending-player clause adds (#1879):
+	// the clause that player does not meet, in a player's words — "Bob
+	// controls no Island", "Bob isn't poisoned", "Alice doesn't control
+	// more creatures than Bob". The chip's tooltip reads it after the
+	// name. Unless stays for the "controls" rows a client already reads.
+	Reason string `json:"reason,omitempty"`
 }
 
 // viewOfAttackTargetRestrictions projects c's attack-target
@@ -5615,6 +5671,7 @@ func stampActivatedAbilities(g *game.Game, bf *ZoneView) {
 		// permanent, and the declared kinds are hand keywords.
 		c.SpecialActions = viewOfSpecialActions(g, card, controller, game.ZoneBattlefield)
 		c.LoyaltyActivated = g.LoyaltyActivatedThisTurn[instanceID]
+		c.EchoDue = g.EchoDueLocked(&card)
 		stampManaSacrificeOptions(g, card, controller, c.ManaAbilities)
 		stampManaConditions(g, card, controller, c.ManaAbilities, restricted)
 		stampManaIdentity(g, card, controller, c.ManaAbilities)
@@ -6155,8 +6212,26 @@ func stampDefenderRefusals(g *game.Game, view *ZoneView) {
 				Planeswalkers: true,
 				Source:        r.Restriction.SourceName,
 				Unless:        game.PermanentQueriesNoun(r.Restriction.DefenderMustControl),
+				Reason:        r.Why,
 			})
 		}
+	}
+}
+
+// stampDeathMarks is ADR 0108's two chips: "exiled if it dies this turn"
+// and "can't be regenerated this turn", on each battlefield permanent
+// that carries one.
+func stampDeathMarks(g *game.Game, view *ZoneView) {
+	if g == nil || g.Battlefield == nil || view == nil || len(g.ScopedEffects) == 0 {
+		return
+	}
+	for i := range view.Cards {
+		if i >= len(g.Battlefield.Cards) {
+			break
+		}
+		id := g.Battlefield.Cards[i].InstanceID
+		view.Cards[i].ExiledIfItDies = g.ExileIfItWouldDieLabels(id)
+		view.Cards[i].CantBeRegenerated = g.PermanentCantBeRegeneratedForEffect(id)
 	}
 }
 
@@ -6297,6 +6372,17 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 			}
 			v.TapCost = viewOfWaterbend(g, c.Chooser, uuid.Nil, tc, budget)
 		}
+		// ADR 0108 §5: the discard or sacrifice half of a pay-unless.
+		if a := c.PayAction(); a != nil {
+			v.PayCards = &PayCardsView{
+				Action:  string(a.Kind),
+				Count:   a.Count,
+				Options: cardIDStrings(g.PayActionOptionsForEffect(c.Chooser, a)),
+			}
+			if v.PayCards.Options == nil {
+				v.PayCards.Options = []string{}
+			}
+		}
 		if c.Kind == game.PendingChoiceTriggerPrompt || c.Kind == game.PendingChoicePickTarget {
 			doubledBy, doubledByName := c.TriggerDoubler()
 			if doubledBy != uuid.Nil {
@@ -6392,7 +6478,7 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 				v.MayCastCard = c.MayCastCard.String()
 			}
 		}
-		// PendingChoiceLoopShortcut — the CR 726 proposal (#804). The
+		// PendingChoiceLoopShortcut — the CR 732 proposal (#804). The
 		// count is the N in "has resolved N times this turn" and the
 		// max is the ceiling on the client's number field; Reason
 		// already carries "<card> — <ability>". Public, like the
@@ -7256,6 +7342,7 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		DelayedTriggers:       v.DelayedTriggers,
 		SplitSecondActive:     v.SplitSecondActive,
 		DamageCantBePrevented: v.DamageCantBePrevented,
+		ExileIfCreaturesDie:   v.ExileIfCreaturesDie,
 		DiscardPending:        v.DiscardPending,
 		PendingChoices:        filterPendingChoices(v.PendingChoices, isKnower, viewerID),
 		LegalMoves:            legalMovesFor(v.legalBySeat, viewerID),
@@ -7369,6 +7456,16 @@ func filterPendingChoices(src []PendingChoiceView, isKnower func(CardView) bool,
 			out[i].ChooseMin = 0
 			out[i].ChooseMax = 0
 			continue
+		}
+		// ADR 0108 §5: a pay-unless discard's options are the chooser's
+		// hand, as instance IDs — the correlation handle PR #513 is
+		// about. Only the chooser gets them; every seat still sees what
+		// the payment is and how many cards it takes. A sacrifice's
+		// options are public permanents and go to everyone.
+		if c.PayCards != nil && c.PayCards.Action == string(game.PayActionDiscard) && c.Chooser != viewerID {
+			pc := *c.PayCards
+			pc.Options = []string{}
+			out[i].PayCards = &pc
 		}
 		if len(c.Options) > 0 {
 			out[i].Options = redactChoiceCards(c, c.Options, isKnower, viewerID)
@@ -7772,6 +7869,8 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	// "battle". Defense is also just the defense counter, and the
 	// counters map is already gone.
 	out.SummoningSick = false
+	// ADR 0108 §5: "echo due" says the card has echo.
+	out.EchoDue = false
 	out.LoyaltyActivated = false
 	out.Defense = 0
 	out.ProtectorPlayer = ""

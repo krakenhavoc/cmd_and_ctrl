@@ -35,9 +35,13 @@
   // come straight off the server's counter_cost_options, most counters
   // first, and Board skips this modal entirely when there is only one
   // way to pay.
+  //
+  // ADR 0111 PR 6: a sheet in the action dock; Remove and Cancel are
+  // the dock's action bar (Enter / Escape through its one key handler).
 
-  import { onDestroy } from "svelte";
   import type { CardView } from "../../protocol";
+  import { cancelAction, confirmAction } from "../../dock";
+  import DockSheet from "./DockSheet.svelte";
   import {
     counterChoiceKey,
     counterChoices,
@@ -46,7 +50,6 @@
     type CounterChoice,
     type CounterCostShape,
   } from "../../counterCost";
-  import ModalLayer from "../ModalLayer.svelte";
 
   // The cost-shaped subset both ActivatedAbilityView and
   // ManaAbilityView satisfy, plus the index that identifies the row.
@@ -150,100 +153,70 @@
     if (!ready) return;
     onConfirm(picks);
   }
-
-  function handleKey(e: KeyboardEvent): void {
-    if (!card) return;
-    if (e.key === "Enter") {
-      e.preventDefault();
-      confirm();
-    } else if (e.key === "Escape") {
-      e.preventDefault();
-      onCancel();
-    }
-  }
-  $effect(() => {
-    if (!card) return;
-    document.addEventListener("keydown", handleKey);
-    return () => document.removeEventListener("keydown", handleKey);
-  });
-  onDestroy(() => document.removeEventListener("keydown", handleKey));
 </script>
 
 {#if card && ability}
-  <ModalLayer />
-  <div class="prompt-backdrop" role="dialog" aria-modal="true" aria-labelledby="counter-cost-title">
-    <div class="prompt-modal counter-modal">
-      <h2 id="counter-cost-title">
-        {card.name}
-        <span class="prompt-src" aria-hidden="true">remove counters</span>
-      </h2>
-      <p class="prompt-hint">{hint}</p>
-      {#if choices.length === 0}
-        <p class="prompt-hint error">Nothing you control can pay this cost.</p>
-      {:else}
-        <ul class="prompt-options">
-          {#each choices as c (counterChoiceKey(c))}
-            <li>
-              {#if multi}
-                <div class="prompt-opt stepper-row">
-                  <span class="name">{nameOf(c.cardID)}</span>
-                  <span class="note count">
-                    {#if anyKind}{c.kind} ×{c.count}{:else}{c.count} {c.kind}{/if}
-                  </span>
-                  <button
-                    type="button"
-                    class="step"
-                    aria-label="Remove one fewer from {rowOf(c)}"
-                    disabled={(counts[counterChoiceKey(c)] ?? 0) === 0}
-                    onclick={() => bump(c, -1)}>−</button
-                  >
-                  <span class="prompt-num">{counts[counterChoiceKey(c)] ?? 0}</span>
-                  <button
-                    type="button"
-                    class="step"
-                    aria-label="Remove one more from {rowOf(c)}"
-                    disabled={(counts[counterChoiceKey(c)] ?? 0) >= ceilingFor(c)}
-                    onclick={() => bump(c, 1)}>+</button
-                  >
-                </div>
-              {:else}
+  <DockSheet
+    label={card.name}
+    src="remove counters"
+    width={560}
+    sheetKey={`counters:${card.instance_id}:${ability.index}`}
+    count={multi ? goal : undefined}
+    primary={confirmAction("Remove", confirm, { disabled: !ready })}
+    secondary={[cancelAction(onCancel)]}
+  >
+    <p class="prompt-hint">{hint}</p>
+    {#if choices.length === 0}
+      <p class="prompt-hint error">Nothing you control can pay this cost.</p>
+    {:else}
+      <ul class="prompt-options">
+        {#each choices as c (counterChoiceKey(c))}
+          <li>
+            {#if multi}
+              <div class="prompt-opt stepper-row">
+                <span class="name">{nameOf(c.cardID)}</span>
+                <span class="note count">
+                  {#if anyKind}{c.kind} ×{c.count}{:else}{c.count} {c.kind}{/if}
+                </span>
                 <button
                   type="button"
-                  class="prompt-opt"
-                  class:on={chosen === counterChoiceKey(c)}
-                  aria-pressed={chosen === counterChoiceKey(c)}
-                  onclick={() => (chosen = counterChoiceKey(c))}
+                  class="step"
+                  aria-label="Remove one fewer from {rowOf(c)}"
+                  disabled={(counts[counterChoiceKey(c)] ?? 0) === 0}
+                  onclick={() => bump(c, -1)}>−</button
                 >
-                  <span class="prompt-radio" aria-hidden="true"></span>
-                  <span class="name">{nameOf(c.cardID)}</span>
-                  <span class="note count">
-                    {#if anyKind}{c.kind} ×{c.count}{:else}{c.count} {c.kind}{/if}
-                  </span>
-                </button>
-              {/if}
-            </li>
-          {/each}
-        </ul>
-      {/if}
-      <div class="prompt-foot">
-        {#if multi}
-          <span class="prompt-count" class:enough={ready}>{goal}</span>
-        {/if}
-        <button type="button" class="ghost" onclick={onCancel}
-          >Cancel <span class="kbd">Esc</span></button
-        >
-        <button type="button" class="primary" disabled={!ready} onclick={confirm}
-          >Remove <span class="kbd">↵</span></button
-        >
-      </div>
-    </div>
-  </div>
+                <span class="prompt-num">{counts[counterChoiceKey(c)] ?? 0}</span>
+                <button
+                  type="button"
+                  class="step"
+                  aria-label="Remove one more from {rowOf(c)}"
+                  disabled={(counts[counterChoiceKey(c)] ?? 0) >= ceilingFor(c)}
+                  onclick={() => bump(c, 1)}>+</button
+                >
+              </div>
+            {:else}
+              <button
+                type="button"
+                class="prompt-opt"
+                class:on={chosen === counterChoiceKey(c)}
+                aria-pressed={chosen === counterChoiceKey(c)}
+                onclick={() => (chosen = counterChoiceKey(c))}
+              >
+                <span class="prompt-radio" aria-hidden="true"></span>
+                <span class="name">{nameOf(c.cardID)}</span>
+                <span class="note count">
+                  {#if anyKind}{c.kind} ×{c.count}{:else}{c.count} {c.kind}{/if}
+                </span>
+              </button>
+            {/if}
+          </li>
+        {/each}
+      </ul>
+    {/if}
+  </DockSheet>
 {/if}
 
 <style>
-  .counter-modal {
-    width: min(440px, calc(100vw - 32px));
-  }
   .name {
     flex: 1 1 auto;
   }
@@ -267,10 +240,5 @@
   .step:disabled {
     opacity: 0.4;
     cursor: default;
-  }
-  .primary .kbd {
-    color: var(--accent-fg);
-    border-color: rgba(28, 21, 3, 0.35);
-    opacity: 0.8;
   }
 </style>

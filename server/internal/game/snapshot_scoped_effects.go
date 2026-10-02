@@ -72,6 +72,10 @@ func (s *GameSnapshot) checkEffectKeys() error {
 			if problem := nextFromSourceModProblem(m); problem != "" {
 				unknown = append(unknown, problem)
 			}
+			// #1879: a granted attack restriction that asks for nothing.
+			if problem := defenderControlsModProblem(m); problem != "" {
+				unknown = append(unknown, problem)
+			}
 		}
 		// ADR 0107 §3: a stack pin may carry only what this binary's
 		// stack step applies (layer 2 control, layer-6 keywords). A
@@ -225,13 +229,21 @@ func deepCopyScopedEffects(in []ScopedEffect) []ScopedEffect {
 // binary from here on. It is asked only of the current schema because
 // in an OLDER file an unknown key can only be one a bump removed,
 // which is that bump's migration to handle, never a refusal.
+//
+// ADR 0108 PR 0 extends it the same way to an owed prevention follow-up
+// (`preventionFollowUps[]`), for a file of the current schema. The binary
+// before this change does not check that list, so it would restore a
+// follow-up's `instance` by dropping it and grouping the entry by its
+// batch, which it also carries; every binary from here on refuses a
+// follow-up field it does not know.
 func unknownScopedEffectFields(data []byte, schema int) ([]string, error) {
 	var envelope struct {
-		ScopedEffects   []map[string]json.RawMessage `json:"scopedEffects"`
-		DelayedTriggers []map[string]json.RawMessage `json:"delayedTriggers"`
-		StackMeta       []map[string]json.RawMessage `json:"stackMeta"`
-		PendingTriggers []map[string]json.RawMessage `json:"pendingTriggers"`
-		LastKnownStack  []map[string]json.RawMessage `json:"lastKnownStack"`
+		ScopedEffects       []map[string]json.RawMessage `json:"scopedEffects"`
+		DelayedTriggers     []map[string]json.RawMessage `json:"delayedTriggers"`
+		StackMeta           []map[string]json.RawMessage `json:"stackMeta"`
+		PendingTriggers     []map[string]json.RawMessage `json:"pendingTriggers"`
+		LastKnownStack      []map[string]json.RawMessage `json:"lastKnownStack"`
+		PreventionFollowUps []map[string]json.RawMessage `json:"preventionFollowUps"`
 	}
 	if err := json.Unmarshal(data, &envelope); err != nil {
 		return nil, err
@@ -321,6 +333,11 @@ func unknownScopedEffectFields(data []byte, schema int) ([]string, error) {
 			}
 		}
 	}
+	if current {
+		for _, f := range envelope.PreventionFollowUps {
+			check("a prevention follow-up", f, preventionFollowUpJSONKeys)
+		}
+	}
 	for _, e := range envelope.LastKnownStack {
 		if current {
 			check("a lastKnownStack entry", e, lastKnownSpellJSONKeys)
@@ -350,6 +367,8 @@ var (
 	abilityRefJSONKeys     = jsonKeysOf(reflect.TypeOf(AbilityRef{}))
 	stackItemJSONKeys      = jsonKeysOf(reflect.TypeOf(stackItemSnapshot{}))
 	lastKnownSpellJSONKeys = jsonKeysOf(reflect.TypeOf(lastKnownSpellSnapshot{}))
+	// ADR 0108 PR 0: an owed follow-up's fields are checked too.
+	preventionFollowUpJSONKeys = jsonKeysOf(reflect.TypeOf(PreventionFollowUp{}))
 )
 
 // jsonKeysOf is the set of keys encoding/json writes for a struct's

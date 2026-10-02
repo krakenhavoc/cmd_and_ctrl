@@ -76,18 +76,25 @@ test.describe("#266 state freeze", () => {
 
     const players = [alice, bob];
     // PhaseDisplay's step row and turn counter — both read straight
-    // off the snapshot, so they are exactly "the board updated".
+    // off the snapshot, so they are exactly "the board updated". Since
+    // ADR 0111 PR 2 PhaseDisplay is the action dock's header, and the
+    // dock is the only place either class appears.
+    const dockOf = (page: Page) => page.getByRole("region", { name: "actions", exact: true });
     const stepOf = async (page: Page): Promise<string> =>
-      ((await page.locator(".step-label").first().textContent()) ?? "").trim();
+      ((await dockOf(page).locator(".step-label").textContent()) ?? "").trim();
     const turnOf = async (page: Page): Promise<string> =>
-      ((await page.locator(".turn-no").first().textContent()) ?? "").trim();
+      ((await dockOf(page).locator(".turn-no").textContent()) ?? "").trim();
 
     // Cleanup parks the cursor with PriorityHolder=NoPriority until
     // every owed discard is submitted, so a hand over max size
-    // legitimately blocks the walk. Answer any open prompt.
+    // legitimately blocks the walk. Answer any open prompt. Since ADR
+    // 0111 PR 6 the discard is a sheet in the action dock: its card
+    // grid (`button.card-pick`), its running count (`.prompt-count`) and
+    // its "Discard" button (the action bar's primary) are all inside
+    // the one dialog it opens there, named "Discard N card(s)".
     const answerDiscards = async (): Promise<void> => {
       for (const p of players) {
-        const dialog = p.page.getByRole("dialog", {
+        const dialog = dockOf(p.page).getByRole("dialog", {
           name: /discard \d+ card/i,
         });
         if (!(await dialog.isVisible().catch(() => false))) continue;
@@ -158,7 +165,12 @@ test.describe("#266 state freeze", () => {
             exact: true,
           });
           if (await next.isEnabled()) {
-            await next.click().catch(() => {});
+            // Bounded: the seat's own client can auto-pass between
+            // isEnabled() and the click, and an unbounded click then
+            // waits on a disabled button until the test times out
+            // (seen on two E2E runs, 2026-10-02). The poll above
+            // re-reads who holds priority next iteration.
+            await next.click({ timeout: 2_000 }).catch(() => {});
             break;
           }
         }

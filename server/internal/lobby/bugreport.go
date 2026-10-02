@@ -552,7 +552,7 @@ func bugGameLog(c Config, p auth.Principal, bctx *bugReportContext) []byte {
 	if err != nil {
 		return nil
 	}
-	if p.Role != auth.RoleAdmin && p.GameID != id {
+	if !c.isAdmin(p) && p.GameID != id {
 		return nil
 	}
 	room := c.Lobby.RoomOf(id)
@@ -586,7 +586,7 @@ func bugReplaySource(c Config, p auth.Principal, bctx *bugReportContext) string 
 	if err != nil {
 		return ""
 	}
-	if p.Role != auth.RoleAdmin && p.GameID != id {
+	if !c.isAdmin(p) && p.GameID != id {
 		return ""
 	}
 	room := c.Lobby.RoomOf(id)

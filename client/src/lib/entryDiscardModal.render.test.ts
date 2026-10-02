@@ -11,8 +11,9 @@
 
 import { describe, it, expect, afterEach } from "vitest";
 
-import ChoicePromptModal from "./components/board/ChoicePromptModal.svelte";
+import ChoiceDockHarness from "./test/ChoiceDockHarness.svelte";
 import type { ActionType, CardView, GameView } from "./protocol";
+import { nameOf } from "./test/dockView";
 import { render, click, cleanup } from "./test/render.svelte";
 
 afterEach(cleanup);
@@ -51,7 +52,7 @@ const snapWith = (kind: string, min: number, max: number, options: CardView[]): 
 function mount(kind: string, min: number, max: number, options: CardView[]) {
   const sent: { type: ActionType; params?: unknown }[] = [];
   const view = render(
-    ChoicePromptModal as never,
+    ChoiceDockHarness as never,
     {
       snap: snapWith(kind, min, max, options),
       viewerID: "me",
@@ -63,7 +64,7 @@ function mount(kind: string, min: number, max: number, options: CardView[]) {
 }
 
 const buttonNamed = (container: HTMLElement, text: string): HTMLButtonElement | undefined =>
-  [...container.querySelectorAll("button")].find((b) => (b.textContent ?? "").trim() === text);
+  [...container.querySelectorAll("button")].find((b) => nameOf(b) === text);
 
 describe("ChoicePromptModal — entry_discard_from_hand (ADR 0098)", () => {
   const forest = card("f", "Forest", "Basic Land — Forest");

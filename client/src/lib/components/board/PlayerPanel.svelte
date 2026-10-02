@@ -7,13 +7,13 @@
   //   ├──────────────────────┬──────────────────────┤
   //   │  lands               │  enchant / artifact  │
   //   ├─────────────────────────────────────────────┤
-  //   │  ⭕ piles  hand (peek) ……………… phases (self)│
+  //   │  ⭕ piles  hand (peek) ……………… dock cell (self)│
   //   └─────────────────────────────────────────────┘
   //
   // The bottombar is a single flex row: avatar anchors bottom-left,
   // piles immediately beside it, the hand peeks up from the same base-
   // line (top ~55% of each card visible, bottom-clipped at the pile
-  // bottom), and PhaseDisplay floats bottom-right on the viewer's own
+  // bottom), and the action dock (ADR 0111) sits bottom-right over the viewer's own
   // panel. Hovering the self hand lifts the whole fan up over the board
   // to reveal full cards.
   //
@@ -43,7 +43,7 @@
   import { defendingPlayerOf } from "../../attackTargets";
   import { takenFromByCard } from "../../takenFrom";
   import { cantAttackByCard } from "../../cantAttack";
-  import { bucketForBattlefield, isCreature } from "../../cardTypes";
+  import { bucketForBattlefield, isCreature, isLand } from "../../cardTypes";
   import { battlefieldClickIntent } from "../../contextMenu.logic";
   import { canActivateSorcerySpeedAbility } from "../../timing";
   import { manaAbilityNeedsPrompt } from "../../manaAbilityCost";
@@ -61,7 +61,6 @@
   import ExileStrip from "./ExileStrip.svelte";
   import type { CastSourceZone } from "../../targeting";
   import PlayerIdentity from "./PlayerIdentity.svelte";
-  import PhaseDisplay from "./PhaseDisplay.svelte";
   import PromisesRow from "./PromisesRow.svelte";
   import TokenGroupModal from "./TokenGroupModal.svelte";
   import { groupMembersOf } from "../../tokenGroups";
@@ -70,7 +69,6 @@
     NO_COMBAT_RINGS,
     NO_LEGAL_ACTIONS,
     acrossActions,
-    actionableCount,
     attackTargetListed,
     attackTargetOpen,
     combatRings,
@@ -132,14 +130,12 @@
     // #1443: `colors` is the answer the anchored picker already has,
     // carried through the cost pickers into the one action.
     onManaAbilityCost?: (card: CardView, ability: ManaAbilityView, colors?: string[]) => void;
-    // Priority controls forwarded to PhaseDisplay — only the
-    // self panel mounts the widget, so these only matter when
-    // isSelf=true but they're plumbed uniformly for prop typing.
-    autopassEnabled?: boolean;
-    // #628: the CR 726 loop-breaker banner line, empty when quiet.
-    loopNotice?: string;
-    onPassPriority?: () => void;
-    onToggleAutopass?: () => void;
+    // ADR 0111 §4 (owner decision 1): the action dock sits in the
+    // screen's bottom-right corner, over this panel's corner. Set on the
+    // viewer's own panel while the dock is mounted: the rail then stops
+    // above the bottom row, and the bottom row keeps an empty cell the
+    // dock's size (--dock-w × --dock-h) where the dock sits.
+    docked?: boolean;
     // flipped — top-row opponents. The panel keeps its zones in the
     // same grid but reverses the row order (hand at the top edge,
     // creatures toward the table centre) instead of rotating 180°,
@@ -196,10 +192,7 @@
     onDrawCard,
     onTargetPlayer,
     onTargetCard,
-    autopassEnabled = false,
-    loopNotice = "",
-    onPassPriority,
-    onToggleAutopass,
+    docked = false,
     onActivateAbility,
     onManaAbilityCost,
     flipped = false,
@@ -241,10 +234,6 @@
   // only rows the popover lists are any-player rows, and the player
   // who activates one pays its cost (CR 602.1a): the viewer.
   const payerLife = $derived(isSelf ? seat.life : view.seats.find((s) => s.id === viewerID)?.life);
-  // ADR 0105 §7 (sub-PR 6): how many of this seat's cards wear a
-  // highlight, for the phase display's "N actions available". Only the
-  // viewer's own panel mounts the phase display.
-  const readyActions = $derived(isSelf ? actionableCount(rowLegal, view, seat.id) : 0);
 
   // ADR 0105 sub-PR 5: the combat rings. Unlike the pips these reach
   // an opponent's panel, because what the SELECTED creature may be
@@ -608,6 +597,7 @@
   class:opponent={!isSelf}
   class:flipped
   class:spectator
+  class:docked
   role="region"
   aria-label={isSelf ? "your board" : `${seat.name} board`}
 >
@@ -685,7 +675,7 @@
     />
   </div>
   <div class="grid-bottom">
-    <!-- Hand sits inline with the phase widget; its clipped-bottom
+    <!-- Hand sits inline with the dock cell; its clipped-bottom
          line coincides with the panel edge. flex: 1 lets it absorb
          the width the rail freed up. -->
     <div class="hand-zone">
@@ -693,7 +683,9 @@
         hand={seat.hand}
         {isSelf}
         onPlayCard={isSelf ? onPlayCard : undefined}
-        onDragCast={isSelf ? (c) => onPlayCard(c, undefined, undefined, true) : undefined}
+        // #1920: a dragged land goes the click path's way (no strict/auto_tap
+        // stamp: there is nothing to pay), so the action is the same one.
+        onDragCast={isSelf ? (c) => onPlayCard(c, undefined, undefined, !isLand(c)) : undefined}
         onActivateAbility={isSelf ? onActivateAbility : undefined}
         onActivateManaAbility={activateManaAbility}
         {sorcerySpeedBlocked}
@@ -718,24 +710,17 @@
     {#if !isSelf}
       <PromisesRow {view} {viewerID} opponentID={seat.id} {sendAction} />
     {/if}
-    {#if isSelf && view.turn}
-      <PhaseDisplay
-        turn={view.turn}
-        seats={view.seats}
-        mulligansOpen={view.mulligans_open === true}
-        viewerHasPriority={hasPriority}
-        {autopassEnabled}
-        {loopNotice}
-        damageCantBePrevented={view.damage_cant_be_prevented ?? []}
-        onPassPriority={onPassPriority ?? (() => {})}
-        onToggleAutopass={onToggleAutopass ?? (() => {})}
-        {readyActions}
-      />
+    {#if docked}
+      <!-- ADR 0111 §4: the action dock's cell. Empty on purpose — the
+           dock is Game.svelte's, positioned over this exact rectangle,
+           so the hand and the rail can never sit under it. -->
+      <div class="dock-spacer" aria-hidden="true"></div>
     {/if}
   </div>
   <!-- The rail is the player card: identity, floating mana and
-       markers on top, the four piles below. It frees the bottom row
-       for the hand and the phase widget. -->
+       markers on top, the four piles below. On the viewer's own panel
+       it stops above the bottom row, whose right end is the action
+       dock's (ADR 0111 owner decision 1). -->
   <div class="rail">
     <PlayerIdentity
       {seat}
@@ -790,7 +775,7 @@
     /* Sept 2026 redesign: zones on the left, a player rail on the
        right. Creatures on top at full size; the middle band is the
        land piles and the other permanents, one size down; the
-       bottom row is the hand plus (self only) the phase widget.
+       bottom row is the hand plus (self only) the action dock's cell.
        Top-row opponents set `flipped`, which reverses the row order
        instead of rotating the panel.
 
@@ -842,6 +827,36 @@
     border-radius: 14px;
     overflow: hidden;
     position: relative;
+  }
+  /* ADR 0111 §4 (owner decision 1): the action dock owns the screen's
+     bottom-right corner, which is this panel's. The rail spans the
+     creature and middle rows only; the bottom row runs the full width
+     and ends in .dock-spacer, an empty cell the dock's live size. So
+     nothing of the panel sits under the dock at rest, and the piles end
+     above it (the rail scrolls sooner on a short panel). */
+  .panel.docked {
+    grid-template-areas:
+      "creatures rail"
+      "middle    rail"
+      "bottom    bottom";
+  }
+  .dock-spacer {
+    flex: 0 0 var(--dock-w, 0px);
+    height: var(--dock-h, 0px);
+    align-self: flex-end;
+  }
+  /* ADR 0111 §8: on a phone the dock is a bar under the board, not in
+     this corner, so the cell goes and the rail keeps its full height. */
+  @media (max-width: 599px) {
+    .panel.docked {
+      grid-template-areas:
+        "creatures rail"
+        "middle    rail"
+        "bottom    rail";
+    }
+    .dock-spacer {
+      display: none;
+    }
   }
   /* Self panel carries a gold hairline so the row that's yours reads
      without drawing attention from the cards. */
@@ -904,10 +919,21 @@
   .panel.opponent.flipped.spectator {
     --card-h-max: 240px;
   }
+  /* The creature area is the grid's minmax(0, 1fr) row, so on a short
+     panel it is shorter than one card (whose height floors at 168px).
+     The area is a flex column and the row may shrink, so the row's own
+     overflow: auto scrolls it inside its area instead of the cards
+     painting over the lands below (ADR 0111 PR 2: with the action dock
+     in the bottom row this happens on more screens than before). */
   .grid-creatures {
     grid-area: creatures;
     min-height: 0;
     min-width: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .grid-creatures > :global(.row) {
+    flex: 0 1 auto;
   }
   /* A flipped panel's creature row is its LAST row, and it must sit
      at the bottom of its area — against the middle of the table,
@@ -915,12 +941,7 @@
      lands. The area keeps the leftover height; the row is pushed to
      its far edge. */
   .flipped .grid-creatures {
-    display: flex;
-    flex-direction: column;
     justify-content: flex-end;
-  }
-  .flipped .grid-creatures > :global(.row) {
-    flex: 0 1 auto;
   }
   .grid-middle {
     grid-area: middle;

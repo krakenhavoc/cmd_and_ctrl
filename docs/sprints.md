@@ -93,11 +93,13 @@ planned just-in-time from the S12 pain-point triage.
 | S47     | Bot seat, round 2: wire it, measure it, sharpen it                   | 7     | [#890](https://github.com/krakenhavoc/cmd_and_ctrl/issues/890) | —          | in progress |
 | S48     | Client robustness and the surfaces that lie                          | 7     | [#891](https://github.com/krakenhavoc/cmd_and_ctrl/issues/891) | —          | in progress |
 | S49     | Operability, CI currency, and the hygiene tail                       | 7     | [#892](https://github.com/krakenhavoc/cmd_and_ctrl/issues/892) | —          | in progress |
-| S50     | Seams from the deck re-checks                                        | 7     | [#1784](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1784) | —        | in progress |
+| S50     | Seams from the deck re-checks                                        | 7     | [#1784](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1784) | —        | **done**    |
 | S51     | Turn-scoped effects, object history, and the rest of the damage shields | 7     | [#1908](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1908) | —          | planned     |
 | S52     | Rule gates, land types, mana and cost components                     | 7     | [#1909](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1909) | —          | planned     |
 | S53     | Faces, zones, and shared payment (ADR first)                         | 7     | [#1910](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1910) | —          | planned     |
 | S54     | Tutorial: a scripted practice game                                   | 7     | [#1911](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1911) | —          | planned     |
+| S55     | Remember me: durable sign-in, account settings, admins and saved setups | 6  | [#1950](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1950) | —          | in progress |
+| S56     | Table UX: one action dock, bottom right                              | 7     | [#1958](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1958) | —          | in progress |
 
 ### How to read the status column
 
@@ -2790,7 +2792,7 @@ Planned 2026-09-18 in the S36–S49 backlog pass over the open issues; the track
 - [x] [#810](https://github.com/krakenhavoc/cmd_and_ctrl/issues/810) — The bot enumerator offers a free {X} activation at X=0 forever, so a table with Soothsaying can loop…
 - [x] [#619](https://github.com/krakenhavoc/cmd_and_ctrl/issues/619) — Enumerator offers Crackle with Power with X=0 and one target — an X-defined target count the engine…
 - [x] [#794](https://github.com/krakenhavoc/cmd_and_ctrl/issues/794) — legal.anyChoiceOpen blocks on pay_unless too, so bots idle while a human owes a Rhystic tax (stricter…
-- [x] [#804](https://github.com/krakenhavoc/cmd_and_ctrl/issues/804) — CR 726 shortcut prompt: after the loop breaker fires, let the loop's controller run K more iterations…
+- [x] [#804](https://github.com/krakenhavoc/cmd_and_ctrl/issues/804) — CR 732 shortcut prompt: after the loop breaker fires, let the loop's controller run K more iterations…
 - [x] [#769](https://github.com/krakenhavoc/cmd_and_ctrl/issues/769) — Leaving the game (CR 800.4a): a departed player's objects stay on the battlefield and in every zone,…
 - [x] [#877](https://github.com/krakenhavoc/cmd_and_ctrl/issues/877) — ws tests: Game.PlayerByID inside a ReadSnapshot body is a recursive RLock that deadlocks under a…
 
@@ -3086,10 +3088,10 @@ Planned 2026-09-18 in the S36–S49 backlog pass over the open issues; the track
 
 Planned 2026-09-30 from that day's triage of every open issue, and trimmed on 2026-10-01 after the triage of all open issues: its other seams moved to S51, S52, S53 and the Backlog milestone, so this sprint now holds only the tail below. ADRs 0098, 0100, 0101 and 0102 were accepted on 2026-09-30 and their implementations have shipped or are shipping (e.g. ADR 0100 sub-PR 4, #1822). Discover (ADR 0099) is tracked on #1112, and turn machinery on #753 (S41).
 
-- [ ] [#1858](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1858) — abilities that trigger on a game state (Deadly Designs, Task Mage Assembly; Bomb Squad)
-- [ ] [#1879](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1879) — a creature that can't attack unless the defending player controls something (Sea Serpent, Zhou Yu); the remainder
-- [ ] [#1729](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1729) — Monarch follow-ups (Palace Jailer, Court of Locthwain)
-- [ ] [#1539](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1539) — becomes-the-target triggers from a trigger's target pick join the batch that targeted (CR 603.3d); moved in from S45 on 2026-10-01
+- [x] [#1858](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1858) — abilities that trigger on a game state (Deadly Designs, Task Mage Assembly; Bomb Squad): [#1898](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1898), then [#1922](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1922) for Bomb Squad
+- [x] [#1879](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1879) — a creature that can't attack unless the defending player controls something (Sea Serpent, Zhou Yu): [#1883](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1883), then [#1923](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1923) for Veiled Serpent and six more
+- [x] [#1729](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1729) — Monarch follow-ups (Palace Jailer, Court of Locthwain): [#1925](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1925), with "until" returns as CR 610.3 one-shots
+- [x] [#1539](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1539) — becomes-the-target triggers from a trigger's target pick join the batch that targeted (CR 603.3d); moved in from S45 on 2026-10-01: [#1921](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1921)
 
 ### Not in this sprint
 
@@ -3097,7 +3099,7 @@ Turn-scoped effects, object history and damage shields are S51; rule gates, land
 
 ### Status
 
-**In progress.** Trimmed to its tail on 2026-10-01.
+**Done** (2026-10-02). Every member of the tail is closed, and develop push CI was green on e6ced477. ADRs 0098, 0100, 0101, 0102, 0106 and 0107 shipped in this sprint (0107 reached production with promotion [#1917](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1917)). The tail lands on `main` with the next promotion.
 
 ---
 
@@ -3209,6 +3211,73 @@ ADR 0076 called this "its own sprint, number unassigned"; its issues moved here 
 ### Status
 
 **Planned.** Nothing has shipped under this name.
+
+---
+
+## S55 — Remember me: durable sign-in, account settings, admins and saved setups
+
+**Phase:** 6 · **Goal:** a signed-in person stays signed in, skips Discord's screen on a repeat sign-in, and finds their settings, tablemates, last table setup and saved decks waiting, per [ADR 0110](decisions/0110-remember-me.md). Tracking issue [#1950](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1950).
+
+Planned 2026-10-02, when the owner reported that every visit goes through Discord's authorization again and answered the ADR's thirteen decisions (option (a) on all eight questions). The members are the ADR's seven Delivery PRs; the ADR's Delivery table says what each needs and what can run beside it.
+
+- [x] PR 1 — the sign-in fix (bug, first): one TTL rule for every session mint (`issueFor`), a signed-in spectator keeps their user, `POST /join` and the login page accept a signed-in seat, a reclaim by the seat's own user carries it, `GET /me/decks` answers 403, and Discord `prompt=none` with one `consent` retry and "a different Discord account" (ADR 0110 §1 items 1–4 and 7, §2)
+- [x] PR 2 — renewal on use and the saved identity: `POST /me/session` and the client's renew and reinstall (§1 items 5 and 6, owner answer 1)
+- [x] PR 3 — admins: `CMDCTRL_DISCORD_ADMIN_USER_IDS` on the server, `isAdmin` / `isServerCredential`, `/me`'s `admin`, WebSocket parity with an audit log, and CD that always writes the allowlist (§3, owner answers 3 and 4)
+- [x] PR 4 — schema: migration `0008` and its stores, no routes ([#1967](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1967))
+- [x] PR 5 — settings sync: `/me/settings`, `SYNCED_FIELDS`, account-wins merge, and the practice-table rule (§4, owner answers 5 and 6)
+- [x] PR 6 — saved decks: coverage on read, delete, rename, saved link imports, `#/decks` (§6, owner answer 7)
+- [x] PR 7 — players and setups: setup capture and apply, `POST /games` for every signed-in player, tablemates in the create flow, last deck, guest name pre-fill (§5, owner answers 2 and 8)
+
+### Exit criteria
+
+From the tracker, [#1950](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1950):
+
+1. ADR 0110 is accepted and every PR in its Delivery table has merged.
+2. A signed-in player who joins a table is still signed in after 12 hours, and a repeat sign-in skips Discord's screen. PR 1 alone meets it; it is checked on cmd-dev with a real Discord account once PR 1 deploys, because Discord's `prompt=none` behaviour for a first-time user is undocumented.
+3. The sprint section in `docs/sprints.md` is written and its index row added (this section, with PR 1).
+4. Lands on `main` with the next promotion.
+
+### Status
+
+**In progress.** PRs 1 to 6 have merged; PR 7 (players and setups) is in review.
+
+---
+
+## S56 — Table UX: one action dock, bottom right
+
+**Phase:** 7 · **Goal:** the player never chases the mouse across the screen. Every control a player presses during a turn, and the bluff control, lives in one place at the bottom right of the game screen, per [ADR 0111](decisions/0111-action-dock.md). Tracking issue [#1958](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1958).
+
+Opened 2026-10-02 from the owner's feedback ("any button the player should click should also show in the bottom right as well. Not mousing all over the screen"). The ADR was accepted the same day with option (a) on all five questions. The members are the ADR's seven Delivery PRs.
+
+- [x] ADR 0111: inventory and design of the action dock ([#1962](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1962))
+- [x] PR 1 — bluff, always visible: the split `bluff` button with its `▾` popover, the "nothing set up" rule, the disabled smart-autopass-off state, and the `b` shortcut ([#1969](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1969))
+- [x] PR 2 — the dock, with priority: `ActionDock.svelte` in the bottom-right corner, PhaseDisplay as its header, `next` and Pass turn in its action bar, hold / autopass / bluff in its toggles row, the rail stopping above it, and the phone bar ([#1976](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1976))
+- [x] PR 3 — combat: `lib/dock.ts`, the attack row, No blocks / Done blocking, the combat-selection Cancel, and the one Undo in the toggles row ([#1978](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1978))
+- [x] PR 4 — targeting and payment: Done / Cancel in the action bar, the insufficient-mana prompt, one Enter / Escape handler, and `region "attention"` on the strip ([#1980](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1980))
+- [x] PR 5 — inline choices: the yes/no family, `pay_unless` without picks, coin calls, the loop shortcut, mana and colour picks, short option picks, vote options and the game-over Back to lobby ([#1981](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1981))
+- [x] PR 6 — sheets: `DockSheet.svelte` and the minimise control, every remaining choice kind, the discard to hand size, every cost picker, the attack picker, the auto-tap preview and the mulligan hand ([#1982](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1982))
+- [x] PR 7 — the ⋯ menu in the dock (owner decision 3): the sandbox tools, life history, table settings, spawn, the vote launcher and Concede with its confirm, opening upward from the toggles row; a spectator keeps a smaller one on the command bar. AGENTS.md's "labels are a contract" line, this section, and the ADR's delivery note ([#1983](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1983))
+
+### Exit criteria
+
+From the tracker, [#1958](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1958):
+
+1. ADR 0111 is accepted and every PR in its Delivery table has merged. **Met** once PR 7 merges: the ADR was accepted on 2026-10-02 and PRs 1–6 have merged.
+2. In a normal turn, every button the player must press appears in the bottom-right dock, and so does the bluff control. **Met** on `develop`: `next`, Pass turn, hold, autopass, bluff, Undo, the attack and block rows, targeting, payment, every pending choice and every cost picker are in the dock (PRs 1–6), and the ⋯ menu joins them in PR 7. Card-local menus stay at the card (owner decision 5).
+3. The sprint section in `docs/sprints.md` is written and its index row added. **Met** (this section, with PR 7).
+4. Lands on `main` with the next promotion. Not yet.
+
+### Known follow-ups
+
+Not in this sprint, and recorded so they are not lost:
+
+- [#1977](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1977) — the phone board layout. At 390px the self panel's board is a 39px column. It predates the dock (ADR 0111 left "a phone layout for the board itself" out of scope); the dock itself fits at 390px.
+- PR 4's open nuance: with keyboard focus on a board card during targeting, Enter picks that card rather than pressing Done. `dockKeyFor` never takes Enter from a focused control, so this is the card's own keypress; Done is still one Enter away once focus leaves the card.
+- The `zone-browser.spec.ts` cross-socket flake ([#1468](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1468)): the caster's graveyard pile can read 0 for the 10s default while the admin socket already sees the cards. It passed on retry in PR 6's E2E run and touches nothing the dock moved.
+
+### Status
+
+**In progress.** Every Delivery PR has merged into `develop`, PR 7 with this section. Exit criterion 4 waits on the next promotion to `main`.
 
 ---
 

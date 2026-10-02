@@ -259,7 +259,7 @@ it; answering is one dispatch, and the next window carries the seat's
 whole turn. What changed is only what the *other* seats may do.
 
 **The classification of the kind added since (#804).** `loop_shortcut`,
-the CR 726 shortcut prompt, **blocks**. It is the one entry worth arguing
+the CR 732 shortcut prompt, **blocks**. It is the one entry worth arguing
 about, because ADR 0055 §4 was careful that the loop breaker refuse no
 passes: the shortcut is proposed while the loop's trigger is still on the
 stack, and what the answer decides is how many times that trigger resolves
@@ -408,7 +408,7 @@ nothing and mints no undo entry for a failed dispatch):
 
 - a **blocking prompt** raised by one of the resolutions — this
   section's own rule, now applied to a prompt the verb itself caused;
-- a **CR 726 loop notice** ([ADR 0055](0055-loop-breaker.md)), checked
+- a **CR 732 loop notice** ([ADR 0055](0055-loop-breaker.md)), checked
   AFTER a pass so a standing notice still lets one manual nudge
   through, exactly as the client's "next" button does;
 - the **game ending** under a resolution.
@@ -3196,19 +3196,54 @@ client already renders the queue in the stack lane.
   targets. Here the whole batch is still on `PendingTriggers` when
   targets are chosen. No catalogued triggered ability targets a
   triggered ability today.
-- **Becomes-the-target triggers join the batch that targeted.**
-  `finishPickTargetLocked` emits `EventBecomesTarget` when the item
-  joins the queue, so Monk Gyatso's or a ward trigger lands in the
-  same drain. When it shares a controller with the batch, it is
-  offered in that batch's ordering prompt, although CR 603.3 would put
-  it above the whole batch. This predates #1529, which only widens the
-  set of orders it can reach. Tracked in #1539.
+- ~~**Becomes-the-target triggers join the batch that targeted.**~~
+  **Closed by [#1539](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1539)**
+  (see the 2026-10-02 note below). `finishPickTargetLocked` used to
+  emit `EventBecomesTarget` when the item joined the queue, so Monk
+  Gyatso's or a ward trigger landed in the same drain. When it shared
+  a controller with the batch, it was offered in that batch's ordering
+  prompt, although CR 603.3 would put it above the whole batch. This
+  predated #1529, which only widened the set of orders it could reach.
 - The snapshot can't carry a trigger continuation. This is unchanged:
   the census in `snapshot.go` already reports it, and such a snapshot
   is not a full-fidelity restore point. The hold keys on the
   continuation rather than on the prompt kind, so a prompt restored
   without one doesn't hold anything: the batch drains at the next
   boundary, and answering the prompt builds nothing.
+
+### Note 2026-10-02 — becomes-the-target triggers wait for the batch (#1539)
+
+CR 603.3d chooses a triggered ability's targets as it is put on the
+stack, and CR 603.3b puts "abilities that triggered during this
+process" on the stack only after the whole batch is placed and the
+state-based actions are checked again. So a trigger set off by a
+batch-mate's target choice is never part of that batch.
+
+- **The event is owed, not emitted.** `finishPickTargetLocked` sets
+  `StackItem.TargetsAnnouncePending` on the item and queues it. The
+  drain that places the batch (`drainPendingTriggersAPNAPLocked`)
+  emits each placed item's `EventBecomesTarget` once every seat's items
+  are on the stack (`announcePlacedTargetsLocked`), in placement order.
+  What that harvests lands on an emptied queue, and the
+  `runStateChecksLocked` loop places it as the next batch, above the
+  one that targeted, whichever seat controls it.
+- **Both halves of the bug go.** A same-controller watcher is no longer
+  offered in its controller's ordering prompt. A ward on the active
+  player's creature, targeted by a non-active player's trigger, is no
+  longer placed under that trigger by APNAP order.
+- **The manual announce uses the same flag.** `AnnounceTrigger` used to
+  drain, emit and drain again (#974). It now sets the flag, and the
+  drain emits. The result is the same, except when the drain is held,
+  where the old order let the ward join the held batch.
+- **Carried.** A batch held behind its ordering prompt is a restore
+  point, so the flag is in `Clone` and in the snapshot
+  (`targetsAnnouncePending`, additive, shape v7).
+- **Spells, activated abilities and copies are unchanged.** Each one
+  is already on the stack when its event is emitted. What it sets off
+  goes on at the next priority boundary, with any other trigger from
+  the same cast, activation or resolution, which is CR 603.3b's batch
+  for them. A copy's CR 707.10c re-target prompt is a mid-resolution
+  prompt (#1289), so its event is part of the resolution's batch too.
 
 ## Amendment 2026-10-01 — trigger suppression (CR 603.2) · Accepted · S50
 

@@ -667,7 +667,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// nil for hand and the command zone, and nil for a card whose own
 	// text already opens the zone — Gravecrawler and a printed
 	// flashback need no permission and must not be repriced by one.
-	grant := g.CastPermissionForLocked(playerID, card, src.Kind)
+	grant := g.CastPermissionForClaimLocked(playerID, card, src.Kind, params.AlternativeCost)
 	// CR 702.143c, #658. Asked here, of the card as it sits in its
 	// source zone, because the answer stops being readable the moment
 	// the card moves: CR 406.3a turns a foretold card face up as it is
@@ -783,6 +783,12 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// a live miracle grant does not make a hard-cast sorcery an
 	// instant. A no-op for every other zone. See CastPermission.ForClaim.
 	grant = grant.ForClaim(alt)
+	// #1729: a permission good for a set number of spells ("you may
+	// cast A spell from among ...") is spent by a cast it is the reason
+	// for. Decided here, of the card as it sits in its source zone and
+	// under the claim just settled, and spent once the cast is made.
+	spendsGrant := grant != nil && grant.CastsLeft > 0 && g.castUsesGrantLocked(card, src.Kind, alt)
+	grantCard := card
 	// CR 708.4, ADR 0082 decision 2: the whole of "casting a card
 	// face down" is this line, and where it sits is the decision.
 	//
@@ -1687,6 +1693,9 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	if grant != nil && grant.LapseOnPass != "" {
 		g.consumePassClosedGrantLocked(playerID, card)
 	}
+	if spendsGrant {
+		g.consumeLimitedGrantLocked(playerID, grantCard, grant)
+	}
 	// The caster receives priority right after casting (CR 117.3c),
 	// and CR 603.3 puts any cast-triggered abilities (Rhystic Study,
 	// Beast Whisperer) on the stack at that moment — above the
@@ -1742,6 +1751,11 @@ func (g *Game) applyCastCostLocked(p *Player, card Card, params CastSpellParams,
 		})
 		return paid, fmt.Errorf("%w for %s: %w", ErrUnparseableCost, card.Name, err)
 	}
+	// #1600, CR 609.4b: "you may spend mana as though it were mana of
+	// any color" (Chromatic Orrery) widens what may pay the cost — read
+	// here, after convoke and delve have taken their share and before
+	// the Phyrexian strike, exactly as applyAutoTapLocked reads it.
+	cost = g.costAsPaidByLocked(p.ID, ManaSpendForCast(card), cost)
 	// CR 107.4 / CR 601.2b: the Phyrexian symbols the caster announced
 	// they are paying with life leave the mana cost here, and the life
 	// is paid below — after the mana half is known to be payable, so a
@@ -1855,6 +1869,10 @@ func (g *Game) applyAutoTapLocked(p *Player, card Card, params CastSpellParams) 
 	if err != nil {
 		return nil
 	}
+	// #1600: the cost as this caster may pay it — the same widening
+	// applyCastCostLocked will pay under, so the plan funds exactly
+	// what the payment accepts.
+	cost = g.costAsPaidByLocked(p.ID, ManaSpendForCast(card), cost)
 	// The Phyrexian symbols being paid with life are not the
 	// auto-tapper's business: tapping a land for a pip the caster
 	// announced they would pay with 2 life is exactly the stranding
@@ -2512,21 +2530,46 @@ func bookColorRequirement(color string, pending *[]ColorRequirement) {
 // returns its index plus the option that pays it. (-1, "") when none
 // matches. The one copy of the restriction-first instinct
 // pickColorForSlot and bookColorRequirement share.
+//
+// #1600: a widened requirement (AnyMana) admits every option, so it is
+// offered the option it PRINTS when the slot has one — Birds of
+// Paradise makes the {R} an Orrery-widened {R} asked for, not the {W}
+// listed first — and, between two requirements of the same width, the
+// one this slot pays in its printed colour is booked first. Neither
+// changes which slots can pay; both keep the mana the plan makes the
+// mana the card asked for.
 func mostRestrictiveRequirement(options []string, pending []ColorRequirement) (int, string) {
-	best, bestOpt := -1, ""
+	best, bestOpt, bestPrinted := -1, "", false
 	for i := range pending {
 		req := pending[i]
-		for _, opt := range options {
-			if !req.Admits(opt) {
-				continue
-			}
-			if best < 0 || req.width() < pending[best].width() {
-				best, bestOpt = i, opt
-			}
-			break
+		opt, printed, ok := preferredOption(options, req)
+		if !ok {
+			continue
+		}
+		if best < 0 || req.width() < pending[best].width() ||
+			(req.width() == pending[best].width() && printed && !bestPrinted) {
+			best, bestOpt, bestPrinted = i, opt, printed
 		}
 	}
 	return best, bestOpt
+}
+
+// preferredOption is the option of `options` that `req` should be paid
+// with: the first one it prints, else the first one it admits (a
+// widened slot's any mana). printed reports which; ok is false when it
+// admits none.
+func preferredOption(options []string, req ColorRequirement) (opt string, printed, ok bool) {
+	for _, o := range options {
+		if matchColor(o, req.Options) {
+			return o, true, true
+		}
+	}
+	for _, o := range options {
+		if req.Admits(o) {
+			return o, false, true
+		}
+	}
+	return "", false, false
 }
 
 // effectiveCostLocked parses the cost the cast actually owes — the
@@ -2699,7 +2742,7 @@ func (g *Game) printedCostLocked(p *Player, card Card, params CastSpellParams) (
 	// of the precedence would be two chances to disagree about which
 	// cost this cast is paying.
 	srcKind, _ := castZoneFromWire(params.FromZone)
-	grant := g.CastPermissionForLocked(p.ID, card, srcKind)
+	grant := g.CastPermissionForClaimLocked(p.ID, card, srcKind, params.AlternativeCost)
 	alt, err := g.resolveAlternativeCostLocked(card, grant, params.AlternativeCost, nil)
 	if err != nil {
 		return ParsedCost{}, CastCost{}, err
@@ -3815,6 +3858,13 @@ func (g *Game) AnnounceTrigger(playerID, sourceCardID uuid.UUID, params AbilityP
 		Modes:        append([]int(nil), params.Modes...),
 		XValue:       params.XValue,
 		Distribution: cloneDistributionLocked(params.Distribution),
+		// CR 603.3d / 115.3: a manually-announced trigger chooses its
+		// targets as it goes on the stack, same as the harvested kind,
+		// so the drain that places it emits the "becomes the target"
+		// event (#1539) — after the item, and the rest of its batch,
+		// is on the stack, so what the announcement triggers is placed
+		// ABOVE it.
+		TargetsAnnouncePending: len(params.Targets) > 0,
 	})
 	g.EmitEvent(Event{
 		Kind:   EventTrigger,
@@ -3830,25 +3880,15 @@ func (g *Game) AnnounceTrigger(playerID, sourceCardID uuid.UUID, params AbilityP
 	// does next: before #974 a pass round the table found an empty
 	// stack and ADVANCED THE STEP, and the announced trigger landed a
 	// step late.
-	g.runStateChecksLocked()
-	// CR 603.3d / 115.3: a manually-announced trigger chooses its
-	// targets as it goes on the stack, same as the harvested kind —
-	// and it has just gone on the stack, which is why this is after
-	// the drain rather than before it (#974). The catalog activation
-	// and the cast path announce from exactly here too: with the item
-	// already on the stack, so that what the announcement triggers can
-	// be placed ABOVE it.
-	g.emitBecameTargetLocked(playerID, sourceCardID, id, params.Targets)
-	// And the drain every other announce site runs (#968's
-	// ActivateAbility fix, #974's here). The announcer still holds
-	// priority, so CR 603.3b puts what the announcement triggered on
-	// the stack at this boundary: above the announced trigger, which
-	// is where a ward trigger has to be if declining the payment is to
-	// counter anything. Without it the ward trigger waited in
-	// PendingTriggers, and the pass that would have drained it
-	// resolved the announced trigger first (passPriorityLocked
-	// resolves the top of the stack and drains afterwards), so the
-	// counter came too late.
+	//
+	// The same boundary puts what the announcement triggered on the
+	// stack: the drain places the trigger and emits its "becomes the
+	// target" events, and the loop's next pass places a ward trigger
+	// harvested off them above it, which is where it has to be if
+	// declining the payment is to counter anything (#974). Before
+	// #1539 the event was emitted here, after the drain, and a second
+	// sweep placed the ward; a drain held behind an ordering prompt
+	// then let the ward join the batch the announced trigger waited in.
 	g.runStateChecksLocked()
 	return nil
 }
@@ -4302,6 +4342,11 @@ func (g *Game) runStateChecksLocked() (sbaFired bool) {
 	// before the state-based actions, so a combat damage step's damage
 	// has all been dealt (CR 510.2) and nothing has died of it yet.
 	g.flushPreventionFollowUpsLocked()
+	// #1729, CR 610.3: an "until" return is created immediately after
+	// its event, so it is owed before the state-based actions — "nothing
+	// happens between the two events, including state-based actions"
+	// (Hostage Taker ruling, 2017-09-29).
+	g.resolveUntilReturnsLocked()
 	// #830 / CR 509.2a: a player is about to receive priority, so the
 	// block declaration is complete. Lock it in first, so the
 	// "becomes blocked" and "blocks" triggers it produces are on
@@ -4334,6 +4379,16 @@ func (g *Game) runStateChecksLocked() (sbaFired bool) {
 		fired, left := g.stateBasedActionsLocked()
 		release()
 		sbaFired = sbaFired || fired
+		// #1729, CR 610.3: the pass can BE the event — a creature
+		// that died is an object that left the battlefield, and a
+		// player who lost took their objects out of the game and may
+		// have handed on the crown (CR 725.4). The return is owed
+		// before the next pass and before the turn moves on. It is not
+		// a state-based action, so it does not count toward sbaFired
+		// (CR 514.3a reads that), but the loop runs again after it.
+		if g.resolveUntilReturnsLocked() {
+			fired = true
+		}
 		// CR 603.8 / CR 704.3: state triggers are asked in every pass,
 		// after the state-based actions and before the waiting triggers
 		// go on the stack. A state no event announced — a continuous
@@ -4414,6 +4469,13 @@ func (g *Game) sbaLossCauseLocked(p *Player, drew bool) (LossCause, bool) {
 func (g *Game) eliminatePlayerLocked(p *Player) {
 	if !g.leaveGameLocked(p, LossConcede, uuid.Nil) {
 		return
+	}
+	// #1729, CR 610.3: leaving can be the event an "until" waits for
+	// (their Hostage Taker left the battlefield with them; the crown
+	// they wore went to an opponent, CR 725.4). The return happens now,
+	// in the turn they left in, before the rotation below moves play on.
+	if g.survivingSeatsLocked() > 1 {
+		g.resolveUntilReturnsLocked()
 	}
 	g.settleDeparturesLocked()
 }
@@ -5154,6 +5216,13 @@ func (g *Game) markDamageWithKind(source, cardID uuid.UUID, delta int, isCombat 
 			sourceLKI: g.damageSourceLKILocked(source),
 		},
 	}
+	// ADR 0108 PR 0: a combat mark joins the combat damage step's
+	// instance; any other mark is an instruction of its own.
+	if isCombat {
+		ev.DamageInstance = g.combatDamageInstanceLocked()
+	} else {
+		g.stampEffectDamageInstanceLocked(ev, 0)
+	}
 	paused, err := g.damageThroughReplacementsLocked(ev)
 	if err != nil {
 		return err
@@ -5276,16 +5345,42 @@ func (g *Game) drainPendingTriggersAPNAPLocked() bool {
 	// starting Seq; incrementing locally keeps the drain O(triggers)
 	// instead of rescanning StackMeta per placement.
 	seq := g.nextStackSeqLocked()
+	var announce []*StackItem
 	for offset := 0; offset < numSeats; offset++ {
 		seat := (g.Turn.ActiveSeat + offset) % numSeats
 		for _, t := range bySeat[seat] {
 			t.Seq = seq
 			seq++
 			g.StackMeta[t.ID] = t
+			if t.TargetsAnnouncePending {
+				announce = append(announce, t)
+			}
 		}
 	}
 	g.recomputeSplitSecondLocked()
+	g.announcePlacedTargetsLocked(announce)
 	return true
+}
+
+// announcePlacedTargetsLocked emits the CR 115.3 "becomes the target"
+// events a placed batch owes (StackItem.TargetsAnnouncePending, #1539),
+// in placement order, once EVERY item of the batch is on the stack.
+//
+// CR 603.3b: "Then the game once again checks for and performs
+// state-based actions until none are performed, then abilities that
+// triggered during this process go on the stack." A ward or Monk
+// Gyatso trigger harvested here lands on a PendingTriggers the drain
+// has already emptied, so it is the NEXT batch: the caller's
+// runStateChecksLocked loop runs the state-based actions again and
+// puts it on the stack above everything placed here — whichever seat
+// controls it, and outside the targeting player's ordering prompt.
+//
+// Caller must hold g.mu.
+func (g *Game) announcePlacedTargetsLocked(placed []*StackItem) {
+	for _, t := range placed {
+		t.TargetsAnnouncePending = false
+		g.emitBecameTargetLocked(t.Controller, t.SourceCardID, t.ID, t.Targets)
+	}
 }
 
 // seatNeedsTriggerOrder reports whether a seat's batch of pending
@@ -6190,12 +6285,15 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 		if perr != nil {
 			return ErrInvalidParam
 		}
-		manaCost = priced
 		// The mana pays an ACTIVATION (CR 602.2b), and the source
 		// permanent's own characteristics are what a restricted
 		// token is tested against — Eldrazi Temple mana can fund a
 		// colorless Eldrazi's ability, not a Signet's.
 		spendCtx := ManaSpendForAbility(*card)
+		// #1600: an Orrery's controller may pay a filter land's {W/U}
+		// with colourless — the same widening the pay step below
+		// spends under, because it spends this manaCost.
+		manaCost = g.costAsPaidByLocked(playerID, spendCtx, priced)
 		if !p.ManaPool.CanPayFor(manaCost, 0, spendCtx) {
 			return &InsufficientManaError{Missing: p.ManaPool.MissingFor(manaCost, 0, spendCtx)}
 		}
@@ -8414,6 +8512,8 @@ func (g *Game) markCombatDamageOnCardLocked(cardID uuid.UUID, amount int, source
 		// lose both riders. Same reasoning the DamageAssignmentFrame
 		// paths have always used.
 		damageTail: g.combatDamageTailLocked(damageTailPermanent, source, step),
+		// ADR 0108 PR 0, CR 510.2: one instance for the whole step.
+		DamageInstance: g.combatDamageInstanceLocked(),
 	}
 	// S27 (#406): what the damage DOES depends on what the permanent
 	// is — marked on a creature, loyalty off a planeswalker, defense
@@ -8450,6 +8550,9 @@ func (g *Game) markCombatDamageFromFrameLocked(cardID uuid.UUID, amount int, fra
 		// #694: the frame IS the snapshot, so the tail is built from
 		// it rather than from a battlefield lookup.
 		damageTail: damageTailFromFrame(damageTailPermanent, frame),
+		// ADR 0108 PR 0, CR 510.2: the answered prompt's damage is the
+		// step's, so it joins the step's instance.
+		DamageInstance: g.combatDamageInstanceLocked(),
 	}
 	// S27 (#406): same CR 120.3 split the direct path uses. A CR 616
 	// ordering prompt lands the damage through the same tail when it
@@ -8481,6 +8584,8 @@ func (g *Game) markCombatDamageToPlayerFromFrameLocked(playerID uuid.UUID, amoun
 		// attacker may have died to blocker damage before the prompt
 		// resolved.
 		damageTail: damageTailFromFrame(damageTailPlayer, frame),
+		// ADR 0108 PR 0, CR 510.2: the step's instance.
+		DamageInstance: g.combatDamageInstanceLocked(),
 	}
 	// A CR 616 ordering prompt lands the damage through the same tail
 	// when it is answered (#694).
@@ -8511,6 +8616,8 @@ func (g *Game) markCombatDamageToPlayerLocked(playerID, source uuid.UUID, amount
 		// ride on it, and a CR 616 prompt is answered after the rest
 		// of the combat damage has landed.
 		damageTail: g.combatDamageTailLocked(damageTailPlayer, source, step),
+		// ADR 0108 PR 0, CR 510.2: the step's instance.
+		DamageInstance: g.combatDamageInstanceLocked(),
 	}
 	// A CR 616 ordering prompt lands the damage through the same tail
 	// when it is answered (#694). Before that fix the pause dropped the
@@ -9006,6 +9113,9 @@ func (g *Game) SetMonarch(playerID uuid.UUID) error {
 	// the monarch" and re-reads every "as long as you're the monarch"
 	// static exactly as the card would have.
 	g.becomeMonarchLocked(playerID)
+	// #1729: and it ends a Palace Jailer's "until an opponent becomes
+	// the monarch" now (CR 610.3), not at the next priority pass.
+	g.resolveUntilReturnsLocked()
 	return nil
 }
 

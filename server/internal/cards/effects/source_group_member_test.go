@@ -244,9 +244,11 @@ func TestEveryEachLoopReachesItsMembersAsAGroup(t *testing.T) {
 	// Functions that match the shape but whose loop is NOT over the
 	// set the board read produced, keyed "file.go:function" (a FuncLit
 	// is keyed by its enclosing FuncDecl).
-	exempt := map[string]string{
-		"rakdos_charm.go:init": "the loop exiles a graveyard (mode 1); the board read is mode 3's damage, which DealDamage does not ask about",
-	}
+	//
+	// Rakdos Charm was here until ADR 0108 PR 0 moved its mode-3 board
+	// read into a damage-instance scope of its own, where it is judged
+	// apart from mode 1's graveyard loop.
+	exempt := map[string]string{}
 
 	ps := scanPrimitives(t)
 	perPermanent := map[string]bool{}

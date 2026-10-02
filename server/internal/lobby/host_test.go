@@ -232,16 +232,16 @@ func TestCanManageTable(t *testing.T) {
 		{"empty principal", auth.Principal{}, false},
 	}
 	for _, tc := range cases {
-		if got := CanManageTable(tc.p, meta); got != tc.want {
+		if got := CanManageTable(tc.p, meta, Config{}.isAdmin(tc.p)); got != tc.want {
 			t.Errorf("%s: CanManageTable = %v, want %v", tc.name, got, tc.want)
 		}
 	}
 	// No host at all: only the admin.
 	hostless := GameMeta{ID: game1}
-	if CanManageTable(auth.Principal{Role: auth.RolePlayer, GameID: game1}, hostless) {
+	if CanManageTable(auth.Principal{Role: auth.RolePlayer, GameID: game1}, hostless, false) {
 		t.Error("a player with a nil PlayerID manages a hostless table")
 	}
-	if !CanManageTable(auth.Principal{Role: auth.RoleAdmin}, hostless) {
+	if !CanManageTable(auth.Principal{Role: auth.RoleAdmin}, hostless, true) {
 		t.Error("admin cannot manage a hostless table")
 	}
 }

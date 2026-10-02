@@ -41,15 +41,17 @@ func init() {
 					others = append(others, c)
 				}
 			}
-			if err := (DealDamage{Source: item.SourceCardID, Target: t.ID, Amount: ctx.X()}).Apply(ctx); err != nil {
-				return err
-			}
-			for _, c := range others {
-				if err := (DealDamage{Source: item.SourceCardID, Target: c.InstanceID, Amount: 1}).Apply(ctx); err != nil {
+			return ctx.Game.DamageInstanceForEffect(func() error {
+				if err := (DealDamage{Source: item.SourceCardID, Target: t.ID, Amount: ctx.X()}).Apply(ctx); err != nil {
 					return err
 				}
-			}
-			return nil
+				for _, c := range others {
+					if err := (DealDamage{Source: item.SourceCardID, Target: c.InstanceID, Amount: 1}).Apply(ctx); err != nil {
+						return err
+					}
+				}
+				return nil
+			})
 		},
 	})
 }

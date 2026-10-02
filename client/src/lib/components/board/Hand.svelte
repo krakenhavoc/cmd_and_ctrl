@@ -20,12 +20,14 @@
   import { fanAngle, fanLift, handOverlap } from "../../handFan";
   import { play } from "../../sounds";
   import { settings } from "../../settings";
+  import { emit as tutorialEmit } from "../../tutorialBus";
   import { canCastFromHand, type Legality } from "../../timing";
   import {
     NO_LEGAL_ACTIONS,
     NO_PIPS,
     handHasAction,
     hasPips,
+    idleReadyHint,
     readyPips,
     type LegalActions,
   } from "../../legalActions";
@@ -635,6 +637,8 @@
     {/if}
   </div>
 {/if}
+<!-- ADR 0076 §2.5: a pointer-only hover signal for the tutorial; not a control. -->
+<!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
   class="hand"
   class:opponent={!isSelf}
@@ -642,6 +646,7 @@
   class:reordering
   style:--hand-overlap={overlap}
   aria-label={isSelf ? "your hand" : "opponent hand"}
+  onpointerenter={isSelf ? () => tutorialEmit("hand-hovered") : undefined}
 >
   <!-- ADR 0105 §2 (sub-PR 4): a hand card's pips (a star for
        foretell / plot / suspend, a bolt for cycling, a drop for a
@@ -679,6 +684,7 @@
           card={c}
           faceDown={!isSelf && c.known_by_you !== true}
           showManaCost={isSelf}
+          artOnly={isSelf && $settings.display.artOnlyCards}
           priority={isSelf}
           onActivateAbility={isSelf && (c.zone_abilities?.length ?? 0) > 0
             ? (idx) => onActivateAbility?.(c, idx)
@@ -695,6 +701,7 @@
           pips={cPips}
           readyZone="hand"
           ready={isSelf && (legal.castableFrom(c.instance_id, "hand") || hasPips(cPips))}
+          idleHint={isSelf ? idleReadyHint(legal, c.instance_id, "hand") : undefined}
           onClick={isSelf && leg.legal ? () => handleCardClick(c) : undefined}
         />
       </div>

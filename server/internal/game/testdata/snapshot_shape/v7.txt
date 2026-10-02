@@ -57,6 +57,7 @@ battlefield.cards[].colorIdentity	array
 battlefield.cards[].colorIdentity[]	string
 battlefield.cards[].colors	array
 battlefield.cards[].colors[]	string
+battlefield.cards[].controlledSinceUpkeep	number:int
 battlefield.cards[].controller	custom(uuid.UUID)
 battlefield.cards[].counterStampedAt	map:string
 battlefield.cards[].counterStampedAt{}	number:int64
@@ -317,6 +318,7 @@ delayedTriggers[].controller	custom(uuid.UUID)
 delayedTriggers[].controllerTurnOnly	bool
 delayedTriggers[].createdSeq	number:int
 delayedTriggers[].createdTurn	number:int
+delayedTriggers[].due	bool
 delayedTriggers[].duration	object
 delayedTriggers[].duration.Condition	number:int
 delayedTriggers[].duration.ExpiresAfterTurnsBegun	number:int
@@ -358,6 +360,10 @@ delayedTriggers[].sourceObject	object
 delayedTriggers[].sourceObject.epoch	number:int
 delayedTriggers[].sourceObject.id	custom(uuid.UUID)
 delayedTriggers[].turnOf	custom(uuid.UUID)
+delayedTriggers[].until	bool
+delayedTriggers[].untilLeaves	object
+delayedTriggers[].untilLeaves.epoch	number:int
+delayedTriggers[].untilLeaves.id	custom(uuid.UUID)
 discardPending	map:array
 discardPending{}	number:int
 drawnThisTurn	map:array
@@ -447,6 +453,7 @@ exile.cards[].colorIdentity	array
 exile.cards[].colorIdentity[]	string
 exile.cards[].colors	array
 exile.cards[].colors[]	string
+exile.cards[].controlledSinceUpkeep	number:int
 exile.cards[].controller	custom(uuid.UUID)
 exile.cards[].counterStampedAt	map:string
 exile.cards[].counterStampedAt{}	number:int64
@@ -695,6 +702,21 @@ lastKnownBattlefield{}.AttackRequirements[].Source	custom(uuid.UUID)
 lastKnownBattlefield{}.AttackRequirements[].SourceName	string
 lastKnownBattlefield{}.AttackTargetRestrictions	array
 lastKnownBattlefield{}.AttackTargetRestrictions[]	object
+lastKnownBattlefield{}.AttackTargetRestrictions[].ControllerMustControlMore	array
+lastKnownBattlefield{}.AttackTargetRestrictions[].ControllerMustControlMore[]	object
+lastKnownBattlefield{}.AttackTargetRestrictions[].ControllerMustControlMore[].Colors	array
+lastKnownBattlefield{}.AttackTargetRestrictions[].ControllerMustControlMore[].Colors[]	string
+lastKnownBattlefield{}.AttackTargetRestrictions[].ControllerMustControlMore[].Enchanted	bool
+lastKnownBattlefield{}.AttackTargetRestrictions[].ControllerMustControlMore[].Keyword	string
+lastKnownBattlefield{}.AttackTargetRestrictions[].ControllerMustControlMore[].Subtypes	array
+lastKnownBattlefield{}.AttackTargetRestrictions[].ControllerMustControlMore[].Subtypes[]	string
+lastKnownBattlefield{}.AttackTargetRestrictions[].ControllerMustControlMore[].Supertypes	array
+lastKnownBattlefield{}.AttackTargetRestrictions[].ControllerMustControlMore[].Supertypes[]	string
+lastKnownBattlefield{}.AttackTargetRestrictions[].ControllerMustControlMore[].Types	array
+lastKnownBattlefield{}.AttackTargetRestrictions[].ControllerMustControlMore[].Types[]	string
+lastKnownBattlefield{}.AttackTargetRestrictions[].DefenderGraveyardAtLeast	number:int
+lastKnownBattlefield{}.AttackTargetRestrictions[].DefenderMustBeMonarch	bool
+lastKnownBattlefield{}.AttackTargetRestrictions[].DefenderMustBePoisoned	bool
 lastKnownBattlefield{}.AttackTargetRestrictions[].DefenderMustControl	array
 lastKnownBattlefield{}.AttackTargetRestrictions[].DefenderMustControl[]	object
 lastKnownBattlefield{}.AttackTargetRestrictions[].DefenderMustControl[].Colors	array
@@ -767,6 +789,21 @@ lastKnownPermanents{}[].characteristic.AttackRequirements[].Source	custom(uuid.U
 lastKnownPermanents{}[].characteristic.AttackRequirements[].SourceName	string
 lastKnownPermanents{}[].characteristic.AttackTargetRestrictions	array
 lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[]	object
+lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].ControllerMustControlMore	array
+lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].ControllerMustControlMore[]	object
+lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].ControllerMustControlMore[].Colors	array
+lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].ControllerMustControlMore[].Colors[]	string
+lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].ControllerMustControlMore[].Enchanted	bool
+lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].ControllerMustControlMore[].Keyword	string
+lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].ControllerMustControlMore[].Subtypes	array
+lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].ControllerMustControlMore[].Subtypes[]	string
+lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].ControllerMustControlMore[].Supertypes	array
+lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].ControllerMustControlMore[].Supertypes[]	string
+lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].ControllerMustControlMore[].Types	array
+lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].ControllerMustControlMore[].Types[]	string
+lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].DefenderGraveyardAtLeast	number:int
+lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].DefenderMustBeMonarch	bool
+lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].DefenderMustBePoisoned	bool
 lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].DefenderMustControl	array
 lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].DefenderMustControl[]	object
 lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].DefenderMustControl[].Colors	array
@@ -862,6 +899,7 @@ lastKnownStack[].card.colorIdentity	array
 lastKnownStack[].card.colorIdentity[]	string
 lastKnownStack[].card.colors	array
 lastKnownStack[].card.colors[]	string
+lastKnownStack[].card.controlledSinceUpkeep	number:int
 lastKnownStack[].card.controller	custom(uuid.UUID)
 lastKnownStack[].card.counterStampedAt	map:string
 lastKnownStack[].card.counterStampedAt{}	number:int64
@@ -1182,6 +1220,7 @@ lastKnownStack[].item.sourceObject.epoch	number:int
 lastKnownStack[].item.sourceObject.id	custom(uuid.UUID)
 lastKnownStack[].item.splitSecond	bool
 lastKnownStack[].item.targets	array
+lastKnownStack[].item.targetsAnnouncePending	bool
 lastKnownStack[].item.targets[]	object
 lastKnownStack[].item.targets[].ID	custom(uuid.UUID)
 lastKnownStack[].item.targets[].Kind	string
@@ -1331,6 +1370,21 @@ pendingChoices[].damageAssignment.SourceLKI.AttackRequirements[].Source	custom(u
 pendingChoices[].damageAssignment.SourceLKI.AttackRequirements[].SourceName	string
 pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions	array
 pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[]	object
+pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].ControllerMustControlMore	array
+pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].ControllerMustControlMore[]	object
+pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].ControllerMustControlMore[].Colors	array
+pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].ControllerMustControlMore[].Colors[]	string
+pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].ControllerMustControlMore[].Enchanted	bool
+pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].ControllerMustControlMore[].Keyword	string
+pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].ControllerMustControlMore[].Subtypes	array
+pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].ControllerMustControlMore[].Subtypes[]	string
+pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].ControllerMustControlMore[].Supertypes	array
+pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].ControllerMustControlMore[].Supertypes[]	string
+pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].ControllerMustControlMore[].Types	array
+pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].ControllerMustControlMore[].Types[]	string
+pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].DefenderGraveyardAtLeast	number:int
+pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].DefenderMustBeMonarch	bool
+pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].DefenderMustBePoisoned	bool
 pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].DefenderMustControl	array
 pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].DefenderMustControl[]	object
 pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].DefenderMustControl[].Colors	array
@@ -1572,6 +1626,7 @@ pendingTriggers[].sourceObject.epoch	number:int
 pendingTriggers[].sourceObject.id	custom(uuid.UUID)
 pendingTriggers[].splitSecond	bool
 pendingTriggers[].targets	array
+pendingTriggers[].targetsAnnouncePending	bool
 pendingTriggers[].targets[]	object
 pendingTriggers[].targets[].ID	custom(uuid.UUID)
 pendingTriggers[].targets[].Kind	string
@@ -1678,6 +1733,7 @@ phasedOut.cards[].colorIdentity	array
 phasedOut.cards[].colorIdentity[]	string
 phasedOut.cards[].colors	array
 phasedOut.cards[].colors[]	string
+phasedOut.cards[].controlledSinceUpkeep	number:int
 phasedOut.cards[].controller	custom(uuid.UUID)
 phasedOut.cards[].counterStampedAt	map:string
 phasedOut.cards[].counterStampedAt{}	number:int64
@@ -1903,6 +1959,7 @@ preventionFollowUps[].body	string
 preventionFollowUps[].combat	bool
 preventionFollowUps[].controller	custom(uuid.UUID)
 preventionFollowUps[].damageSource	custom(uuid.UUID)
+preventionFollowUps[].instance	number:uint64
 preventionFollowUps[].label	string
 preventionFollowUps[].prevented	number:int
 preventionFollowUps[].seq	number:int64
@@ -2022,6 +2079,7 @@ scopedEffects[].mods[].queries[].Types[]	string
 scopedEffects[].mods[].restrictions	number:uint8
 scopedEffects[].mods[].sourceZone	string
 scopedEffects[].mods[].spentBatch	number:uint64
+scopedEffects[].mods[].spentInstance	number:uint64
 scopedEffects[].mods[].subtypes	array
 scopedEffects[].mods[].subtypes[]	string
 scopedEffects[].mods[].text	string
@@ -2050,6 +2108,7 @@ seats[].castPermissions[].cards[]	object
 seats[].castPermissions[].cards[].epoch	number:int
 seats[].castPermissions[].cards[].id	custom(uuid.UUID)
 seats[].castPermissions[].castOnly	bool
+seats[].castPermissions[].castsLeft	number:int
 seats[].castPermissions[].cost	string
 seats[].castPermissions[].discover	object
 seats[].castPermissions[].discover.n	number:int
@@ -2075,6 +2134,7 @@ seats[].castPermissions[].filter	object
 seats[].castPermissions[].filter.creatureOnly	bool
 seats[].castPermissions[].filter.creatureType	string
 seats[].castPermissions[].filter.fromChosenType	bool
+seats[].castPermissions[].filter.historicOnly	bool
 seats[].castPermissions[].filter.instantOrSorceryOnly	bool
 seats[].castPermissions[].filter.landsOnly	bool
 seats[].castPermissions[].filter.nonLandOnly	bool
@@ -2130,6 +2190,7 @@ seats[].command.cards[].colorIdentity	array
 seats[].command.cards[].colorIdentity[]	string
 seats[].command.cards[].colors	array
 seats[].command.cards[].colors[]	string
+seats[].command.cards[].controlledSinceUpkeep	number:int
 seats[].command.cards[].controller	custom(uuid.UUID)
 seats[].command.cards[].counterStampedAt	map:string
 seats[].command.cards[].counterStampedAt{}	number:int64
@@ -2393,6 +2454,7 @@ seats[].emblems.cards[].colorIdentity	array
 seats[].emblems.cards[].colorIdentity[]	string
 seats[].emblems.cards[].colors	array
 seats[].emblems.cards[].colors[]	string
+seats[].emblems.cards[].controlledSinceUpkeep	number:int
 seats[].emblems.cards[].controller	custom(uuid.UUID)
 seats[].emblems.cards[].counterStampedAt	map:string
 seats[].emblems.cards[].counterStampedAt{}	number:int64
@@ -2646,6 +2708,7 @@ seats[].graveyard.cards[].colorIdentity	array
 seats[].graveyard.cards[].colorIdentity[]	string
 seats[].graveyard.cards[].colors	array
 seats[].graveyard.cards[].colors[]	string
+seats[].graveyard.cards[].controlledSinceUpkeep	number:int
 seats[].graveyard.cards[].controller	custom(uuid.UUID)
 seats[].graveyard.cards[].counterStampedAt	map:string
 seats[].graveyard.cards[].counterStampedAt{}	number:int64
@@ -2898,6 +2961,7 @@ seats[].hand.cards[].colorIdentity	array
 seats[].hand.cards[].colorIdentity[]	string
 seats[].hand.cards[].colors	array
 seats[].hand.cards[].colors[]	string
+seats[].hand.cards[].controlledSinceUpkeep	number:int
 seats[].hand.cards[].controller	custom(uuid.UUID)
 seats[].hand.cards[].counterStampedAt	map:string
 seats[].hand.cards[].counterStampedAt{}	number:int64
@@ -3120,6 +3184,12 @@ seats[].handKept	bool
 seats[].id	custom(uuid.UUID)
 seats[].isBot	bool
 seats[].landDropsPerTurn	number:int
+seats[].lastTurnAttacks	array
+seats[].lastTurnAttacks[]	object
+seats[].lastTurnAttacks[].attacker	custom(uuid.UUID)
+seats[].lastTurnAttacks[].defender	custom(uuid.UUID)
+seats[].lastTurnAttacks[].epoch	number:int
+seats[].lastTurnAttacks[].phaseId	number:int
 seats[].library	object
 seats[].library.cards	array
 seats[].library.cards[]	object
@@ -3154,6 +3224,7 @@ seats[].library.cards[].colorIdentity	array
 seats[].library.cards[].colorIdentity[]	string
 seats[].library.cards[].colors	array
 seats[].library.cards[].colors[]	string
+seats[].library.cards[].controlledSinceUpkeep	number:int
 seats[].library.cards[].controller	custom(uuid.UUID)
 seats[].library.cards[].counterStampedAt	map:string
 seats[].library.cards[].counterStampedAt{}	number:int64
@@ -3413,6 +3484,7 @@ seats[].statics[].cantBeCountered.filter	object
 seats[].statics[].cantBeCountered.filter.creatureOnly	bool
 seats[].statics[].cantBeCountered.filter.creatureType	string
 seats[].statics[].cantBeCountered.filter.fromChosenType	bool
+seats[].statics[].cantBeCountered.filter.historicOnly	bool
 seats[].statics[].cantBeCountered.filter.instantOrSorceryOnly	bool
 seats[].statics[].cantBeCountered.filter.landsOnly	bool
 seats[].statics[].cantBeCountered.filter.nonLandOnly	bool
@@ -3427,6 +3499,7 @@ seats[].statics[].castBan.filter	object
 seats[].statics[].castBan.filter.creatureOnly	bool
 seats[].statics[].castBan.filter.creatureType	string
 seats[].statics[].castBan.filter.fromChosenType	bool
+seats[].statics[].castBan.filter.historicOnly	bool
 seats[].statics[].castBan.filter.instantOrSorceryOnly	bool
 seats[].statics[].castBan.filter.landsOnly	bool
 seats[].statics[].castBan.filter.nonLandOnly	bool
@@ -3463,6 +3536,7 @@ seats[].statics[].timing.filter	object
 seats[].statics[].timing.filter.creatureOnly	bool
 seats[].statics[].timing.filter.creatureType	string
 seats[].statics[].timing.filter.fromChosenType	bool
+seats[].statics[].timing.filter.historicOnly	bool
 seats[].statics[].timing.filter.instantOrSorceryOnly	bool
 seats[].statics[].timing.filter.landsOnly	bool
 seats[].statics[].timing.filter.nonLandOnly	bool
@@ -3473,6 +3547,7 @@ seats[].statics[].timing.label	string
 seats[].statics[].timing.timing	string
 seats[].turnsBegun	number:int
 seats[].undosRemaining	number:int
+seats[].upkeepsBegun	number:int
 settings	object
 settings.allowSpawn	bool
 settings.botPace	string
@@ -3522,6 +3597,7 @@ stack.cards[].colorIdentity	array
 stack.cards[].colorIdentity[]	string
 stack.cards[].colors	array
 stack.cards[].colors[]	string
+stack.cards[].controlledSinceUpkeep	number:int
 stack.cards[].controller	custom(uuid.UUID)
 stack.cards[].counterStampedAt	map:string
 stack.cards[].counterStampedAt{}	number:int64
@@ -3845,6 +3921,7 @@ stackMeta[].sourceObject.epoch	number:int
 stackMeta[].sourceObject.id	custom(uuid.UUID)
 stackMeta[].splitSecond	bool
 stackMeta[].targets	array
+stackMeta[].targetsAnnouncePending	bool
 stackMeta[].targets[]	object
 stackMeta[].targets[].ID	custom(uuid.UUID)
 stackMeta[].targets[].Kind	string

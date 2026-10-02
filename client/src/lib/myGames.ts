@@ -37,15 +37,33 @@ export interface MyGame {
 const NIL_UUID = "00000000-0000-0000-0000-000000000000";
 
 // signedInUserID returns the session's user id when it belongs to a
-// signed-in person: an identity session, or a player session minted
-// from one. Admin, spectator and guest sessions return null, and so
-// does a missing session. This is the gate for every "My games" link.
+// signed-in person: an identity session, or a player or spectator
+// session minted from one (a signed-in spectator keeps their user, ADR
+// 0110 §1 item 2, mirroring the server's signedInUser). Admin and guest
+// sessions return null, and so does a missing session. This is the gate
+// for every "My games" link.
 export function signedInUserID(s: Session | null | undefined): string | null {
   if (!s) return null;
   const { role, user_id: id } = s.principal;
   if (!id || id === NIL_UUID) return null;
-  if (role !== "identified" && role !== "player") return null;
+  if (role !== "identified" && role !== "player" && role !== "spectator") return null;
   return id;
+}
+
+// canJoinByCode reports whether the login page's invite-code box is for
+// this session as a signed-in person: a Discord sign-in that has not
+// claimed a seat yet (with or without a user database behind it), or
+// any session that carries a user (ADR 0110 §1 item 3). The server's
+// POST /join seats such a session as its Discord identity, so a
+// signed-in player at one table can paste the code for the next.
+//
+// It is also App.svelte's exemption from the bounce away from #/login:
+// these sessions belong on the login page when they go there. A guest
+// seat, a guest spectator and the admin token do not — the server would
+// refuse them (409), so they are sent on to the lobby as before.
+export function canJoinByCode(s: Session | null | undefined): boolean {
+  if (!s) return false;
+  return s.principal.role === "identified" || signedInUserID(s) !== null;
 }
 
 // canLinkDiscord decides whether the in-game menu offers "Link

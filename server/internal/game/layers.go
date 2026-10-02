@@ -687,6 +687,10 @@ func (g *Game) applyOneEffectLocked(eff ContinuousEffect, bucketIndex int, st *l
 			// this removal appends to the emptied slice and survives
 			// (CR 613.6), exactly as a granted keyword does.
 			target.effective.GrantedAbilities = nil
+			// #1879: and every attack-target restriction it imposes
+			// on itself, which is one of its own abilities (Veiled
+			// Serpent's granted "can't attack unless …").
+			dropSelfAttackTargetRestrictions(target.effective, target)
 			target.effective.AbilitiesRemoved = true
 			st.recordRemoval(target, bucketIndex)
 		}
@@ -994,6 +998,9 @@ func (g *Game) materialiseControlLocked() []controlChange {
 		})
 		c.Controller = c.effective.Controller
 		c.SummonedThisTurn = true
+		// ADR 0108 §5: a control change is "came under your control"
+		// (CR 702.30a), stamped with the new controller's upkeep count.
+		c.ControlledSinceUpkeep = g.upkeepsBegunForLocked(c.Controller)
 		g.removeFromCombatLocked(c)
 		// #1376: CR 506.4 removes an ATTACKED planeswalker or battle
 		// from combat on a control change too, and its attackers then

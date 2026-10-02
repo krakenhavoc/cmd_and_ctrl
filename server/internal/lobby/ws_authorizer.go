@@ -1,6 +1,7 @@
 package lobby
 
 import (
+	"log/slog"
 	"net/http"
 
 	"github.com/google/uuid"
@@ -18,9 +19,24 @@ import (
 //     and returns the (gameID, playerID) pair the hub should bind to.
 //
 // A RolePlayer principal is locked to exactly the (gameID, playerID)
-// pair minted at join time — it cannot spy on a different game. A
-// RoleAdmin principal is permitted to bind to any game but must
-// supply ?player= explicitly; omitting it yields a spectator view.
+// pair minted at join time — it cannot spy on a different game. An
+// admin is permitted to bind to any game, optionally as any seat
+// (?player=); omitting it yields the admin's omniscient spectator view.
+//
+// "An admin" is isAdminPrincipal: the shared-token session, or a
+// signed-in person on CMDCTRL_DISCORD_ADMIN_USER_IDS (ADR 0110 §3,
+// owner answer 4: full parity with the token). For a signed-in admin:
+//
+//   - A player or spectator session at its own game, asking for no
+//     other seat, binds exactly as it would for anyone, with
+//     Binding.Admin set so the table-host gates know.
+//   - Any other request — a different ?game=, a ?player= that is not
+//     the session's own seat, or an identified session with no seat at
+//     all — takes the admin branch: any game, optionally as any seat.
+//   - A non-admin is unchanged.
+//
+// Every admin binding is logged at Info with who it is (admin_user_id,
+// or admin_id for the token), the game and the seat bound, if any.
 //
 // Every binding also carries the session's UserID and IssuedAt, so a
 // logout-everywhere or an admin revoke can close the sockets that
@@ -30,6 +46,11 @@ import (
 // like an expired one.
 type WSAuthorizer struct {
 	Auth auth.Authenticator
+	// Admins is the same allowlist lobby.Config.Admins holds. Nil is
+	// the empty list: only the shared token is an admin.
+	Admins *AdminList
+	// Log receives the admin-binding audit lines. Nil: none.
+	Log *slog.Logger
 }
 
 // AuthorizeUpgrade implements ws.UpgradeAuthorizer.
@@ -52,7 +73,72 @@ func (a *WSAuthorizer) AuthorizeUpgrade(r *http.Request) (ws.Binding, error) {
 		}
 		requestedGame = id
 	}
+	var requestedPlayer uuid.UUID
+	if raw := q.Get("player"); raw != "" {
+		id, perr := uuid.Parse(raw)
+		if perr != nil {
+			return ws.Binding{}, ws.StatusError(http.StatusBadRequest, "invalid player id")
+		}
+		requestedPlayer = id
+	}
 
+	if isAdminPrincipal(a.Admins, p) {
+		if !isServerCredential(p) && a.ownBinding(p, requestedGame, requestedPlayer) {
+			b, err := bindingFor(p, requestedGame)
+			if err != nil {
+				return ws.Binding{}, err
+			}
+			b.Admin = true
+			a.logAdminBinding(p, b, "own_session")
+			return b, nil
+		}
+		return a.adminBinding(p, requestedGame, requestedPlayer)
+	}
+	return bindingFor(p, requestedGame)
+}
+
+// ownBinding reports whether a signed-in admin's request is just their
+// own session's ordinary binding: a seat or spectator session at its
+// own game (or no ?game= at all), naming no other seat.
+func (a *WSAuthorizer) ownBinding(p auth.Principal, game, player uuid.UUID) bool {
+	if p.GameID == uuid.Nil {
+		return false
+	}
+	if p.Role != auth.RolePlayer && p.Role != auth.RoleSpectator {
+		return false
+	}
+	if game != uuid.Nil && game != p.GameID {
+		return false
+	}
+	return player == uuid.Nil || player == p.PlayerID
+}
+
+// adminBinding is the moderator escape hatch: any game, as the named
+// seat or (uuid.Nil) the omniscient spectator view. Admins are NOT
+// marked read-only — they need to drive state on a player's behalf.
+func (a *WSAuthorizer) adminBinding(p auth.Principal, game, player uuid.UUID) (ws.Binding, error) {
+	if game == uuid.Nil {
+		return ws.Binding{}, ws.StatusError(http.StatusBadRequest, "missing game id")
+	}
+	b := ws.Binding{GameID: game, PlayerID: player, UserID: p.UserID, IssuedAt: p.IssuedAt, Admin: true}
+	a.logAdminBinding(p, b, "any_game")
+	return b, nil
+}
+
+func (a *WSAuthorizer) logAdminBinding(p auth.Principal, b ws.Binding, branch string) {
+	if a.Log == nil {
+		return
+	}
+	seat := ""
+	if b.PlayerID != uuid.Nil {
+		seat = b.PlayerID.String()
+	}
+	a.Log.Info("admin websocket binding",
+		append(adminWho(p), "game_id", b.GameID.String(), "seat", seat, "read_only", b.ReadOnly, "branch", branch)...)
+}
+
+// bindingFor is the non-admin binding for p's own session.
+func bindingFor(p auth.Principal, requestedGame uuid.UUID) (ws.Binding, error) {
 	switch p.Role {
 	case auth.RolePlayer:
 		// Player sessions are minted bound to one game. The query
@@ -64,31 +150,13 @@ func (a *WSAuthorizer) AuthorizeUpgrade(r *http.Request) (ws.Binding, error) {
 		}
 		return ws.Binding{GameID: p.GameID, PlayerID: p.PlayerID, UserID: p.UserID, IssuedAt: p.IssuedAt}, nil
 
-	case auth.RoleAdmin:
-		// Admins bind to whatever game they asked for. ?player= is
-		// optional; uuid.Nil falls back to spectator view. Admins are
-		// NOT marked read-only — they need to drive state on a
-		// player's behalf (the moderator escape hatch).
-		if requestedGame == uuid.Nil {
-			return ws.Binding{}, ws.StatusError(http.StatusBadRequest, "missing game id")
-		}
-		var playerID uuid.UUID
-		if raw := q.Get("player"); raw != "" {
-			id, perr := uuid.Parse(raw)
-			if perr != nil {
-				return ws.Binding{}, ws.StatusError(http.StatusBadRequest, "invalid player id")
-			}
-			playerID = id
-		}
-		return ws.Binding{GameID: requestedGame, PlayerID: playerID, UserID: p.UserID, IssuedAt: p.IssuedAt, Admin: true}, nil
-
 	case auth.RoleSpectator:
 		// Spectator sessions are minted bound to one game (no player).
 		// Same query-string handling as RolePlayer (?game= must match
 		// or be omitted), but the bound playerID is always uuid.Nil
-		// — the hub then treats them like an admin spectator for
-		// visibility filtering, while ReadOnly = true makes the
-		// action-frame gate refuse any mutation frame they send.
+		// — the hub then treats them like a spectator for visibility
+		// filtering, while ReadOnly = true makes the action-frame gate
+		// refuse any mutation frame they send.
 		if requestedGame != uuid.Nil && requestedGame != p.GameID {
 			return ws.Binding{}, ws.StatusError(http.StatusForbidden, "session is not for this game")
 		}

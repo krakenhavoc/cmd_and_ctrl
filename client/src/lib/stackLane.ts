@@ -212,8 +212,6 @@ export interface StackLaneInput {
 export interface StackLaneControls {
   /** Counter an item (counter_spell / counter_ability). */
   counter(item: StackLaneItem): void;
-  /** Pass priority; undefined when the viewer may not pass right now. */
-  pass: (() => void) | undefined;
   /** True when an in-progress targeting prompt may point at this item. */
   targetable(item: StackLaneItem): boolean;
   /** Complete that prompt on this item. */

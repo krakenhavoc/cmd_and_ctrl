@@ -26,11 +26,19 @@ describe("parseHash", () => {
     expect(parseHash("#/deck-check?url=")).toEqual({ name: "deckCheck" });
   });
 
+  it("parses #/practice, the tutorial's practice table (ADR 0076)", () => {
+    expect(parseHash("#/practice")).toEqual({ name: "practice" });
+  });
+
   it("still parses the pre-existing routes", () => {
     expect(parseHash("#/login")).toEqual({ name: "login" });
     expect(parseHash("#/lobby")).toEqual({ name: "lobby" });
     expect(parseHash("#/catalog")).toEqual({ name: "catalog" });
     expect(parseHash("#/my-games")).toEqual({ name: "myGames" });
+  });
+
+  it("parses #/decks, the saved deck library (ADR 0110)", () => {
+    expect(parseHash("#/decks")).toEqual({ name: "myDecks" });
   });
 
   it("carries the catalogue's ?q= search, decoded", () => {

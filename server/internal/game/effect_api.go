@@ -654,14 +654,19 @@ func (g *Game) DealDamageToPlayerForEffect(source, playerID uuid.UUID, amount in
 // dealt and `then` runs with zero (CR 800.4a, #808). The batch form
 // skips both rather than failing on them.
 func (g *Game) DealDamageToPlayerThenForEffect(source, playerID uuid.UUID, amount int, then func(g *Game, dealt int) error) error {
-	return g.dealDamageToPlayerLocked(source, nil, playerID, amount, DamageMarks{}, then)
+	return g.dealDamageToPlayerLocked(source, nil, playerID, amount, DamageMarks{}, 0, then)
 }
 
 // dealDamageToPlayerLocked is DealDamageToPlayerThenForEffect's body,
 // with the source OBJECT when the caller knows it (#1396,
 // DealDamageFromObjectForEffect). obj only changes where the tail reads
 // the source's lifelink from; see effectDamageTailLocked.
-func (g *Game) dealDamageToPlayerLocked(source uuid.UUID, obj *ObjectRef, playerID uuid.UUID, amount int, marks DamageMarks, then func(g *Game, dealt int) error) error {
+//
+// inst is the damage instance the event joins (ADR 0108 PR 0): an Each
+// walk's, carried leg to leg. Zero makes the call its own instruction —
+// the open DamageInstanceForEffect scope's instance, or a new one this
+// event ends.
+func (g *Game) dealDamageToPlayerLocked(source uuid.UUID, obj *ObjectRef, playerID uuid.UUID, amount int, marks DamageMarks, inst DamageInstance, then func(g *Game, dealt int) error) error {
 	if amount <= 0 {
 		// Not an event at all — "deals 0 damage" deals no damage
 		// (CR 120.8) and fires no window. The continuation is still an
@@ -712,6 +717,7 @@ func (g *Game) dealDamageToPlayerLocked(source uuid.UUID, obj *ObjectRef, player
 		// those are combat-damage business.
 		damageTail: g.effectDamageTailLocked(damageTailPlayer, source, obj),
 	}
+	g.stampEffectDamageInstanceLocked(ev, inst)
 	ev.damageTail.marks = marks
 	ev.damageTail.then = then
 	_, err := g.damageThroughReplacementsLocked(ev)
@@ -774,13 +780,13 @@ func (g *Game) DealDamageToCreatureForEffect(source, cardID uuid.UUID, amount in
 // much life" is the sentence this exists for; a card that only deals
 // the damage keeps using DealDamageToCreatureForEffect.
 func (g *Game) DealDamageToCreatureThenForEffect(source, cardID uuid.UUID, amount int, then func(g *Game, dealt int) error) error {
-	return g.dealDamageToPermanentLocked(source, nil, cardID, amount, DamageMarks{}, then)
+	return g.dealDamageToPermanentLocked(source, nil, cardID, amount, DamageMarks{}, 0, then)
 }
 
 // dealDamageToPermanentLocked is DealDamageToCreatureThenForEffect's
 // body, with the source OBJECT when the caller knows it (#1396). The
-// sibling of dealDamageToPlayerLocked.
-func (g *Game) dealDamageToPermanentLocked(source uuid.UUID, obj *ObjectRef, cardID uuid.UUID, amount int, marks DamageMarks, then func(g *Game, dealt int) error) error {
+// sibling of dealDamageToPlayerLocked, with the same `inst`.
+func (g *Game) dealDamageToPermanentLocked(source uuid.UUID, obj *ObjectRef, cardID uuid.UUID, amount int, marks DamageMarks, inst DamageInstance, then func(g *Game, dealt int) error) error {
 	if amount <= 0 {
 		if then != nil {
 			return then(g, 0)
@@ -804,6 +810,7 @@ func (g *Game) dealDamageToPermanentLocked(source uuid.UUID, obj *ObjectRef, car
 		// after the source has died still applies what it dealt with.
 		damageTail: g.effectDamageTailLocked(damageTailPermanent, source, obj),
 	}
+	g.stampEffectDamageInstanceLocked(ev, inst)
 	ev.damageTail.marks = marks
 	ev.damageTail.then = then
 	// Through the permanent-aware tail: a creature marks damage, a
@@ -839,10 +846,10 @@ func (g *Game) dealDamageToPermanentLocked(source uuid.UUID, obj *ObjectRef, car
 // Caller must hold g.mu in write mode.
 func (g *Game) DealDamageFromObjectForEffect(source ObjectRef, target uuid.UUID, amount int) error {
 	if g.playerByIDLocked(target) != nil {
-		return g.dealDamageToPlayerLocked(source.ID, &source, target, amount, DamageMarks{}, nil)
+		return g.dealDamageToPlayerLocked(source.ID, &source, target, amount, DamageMarks{}, 0, nil)
 	}
 	if findBattlefieldCard(g, target) != nil {
-		return g.dealDamageToPermanentLocked(source.ID, &source, target, amount, DamageMarks{}, nil)
+		return g.dealDamageToPermanentLocked(source.ID, &source, target, amount, DamageMarks{}, 0, nil)
 	}
 	return nil
 }
@@ -866,10 +873,10 @@ func (g *Game) DealMarkedDamageForEffect(source uuid.UUID, obj *ObjectRef, targe
 		source = obj.ID
 	}
 	if g.playerByIDLocked(target) != nil {
-		return g.dealDamageToPlayerLocked(source, obj, target, amount, marks, nil)
+		return g.dealDamageToPlayerLocked(source, obj, target, amount, marks, 0, nil)
 	}
 	if findBattlefieldCard(g, target) != nil {
-		return g.dealDamageToPermanentLocked(source, obj, target, amount, marks, nil)
+		return g.dealDamageToPermanentLocked(source, obj, target, amount, marks, 0, nil)
 	}
 	return nil
 }
@@ -906,8 +913,43 @@ func (g *Game) DealMarkedDamageForEffect(source uuid.UUID, obj *ObjectRef, targe
 // side of the prompt is the closer of the two, and it is the only one
 // that can report a true total. Same trade LoseLifeEachThenForEffect
 // makes, for the same reason.
+//
+// ONE INSTANCE (ADR 0108 PR 0). The whole walk is one damage instruction,
+// so every leg's event carries the same DamageInstance, carried leg to leg
+// by value across a pause, and the instance ends at the base case, before
+// `then` (CR 615.5, 615.8).
 func (g *Game) DealDamageEachThenForEffect(source uuid.UUID, targets []uuid.UUID, amount int, then func(g *Game, totalDealt int) error) error {
-	return g.dealDamageEachStepLocked(source, targets, amount, 0, then)
+	inst, owned := g.damageInstructionLocked()
+	return g.dealDamageEachStepLocked(source, targets, amount, 0, damageWalk{inst: inst, owned: owned}, then)
+}
+
+// DealDamageEachEachThenForEffect is DealDamageEachThenForEffect with a
+// PER-RECIPIENT continuation as well (ADR 0108 §1 decision 4): `each`
+// runs once for every recipient that was dealt the damage's event, with
+// that recipient and the amount it actually took, as soon as its own
+// CR 614 window has settled — before the next recipient is damaged.
+// "Anger of the Gods deals 3 damage to each creature. If a creature
+// dealt damage this way would die this turn, exile it instead" reads the
+// recipient off `each`. `then`, when set, runs last with the total, as
+// it does for the batch form. A recipient that is gone before its damage
+// is skipped by both, as it is there. The walk is one damage instance,
+// as the batch form's is.
+//
+// Caller must hold g.mu.
+func (g *Game) DealDamageEachEachThenForEffect(source uuid.UUID, targets []uuid.UUID, amount int,
+	each func(g *Game, target uuid.UUID, dealt int) error, then func(g *Game, totalDealt int) error) error {
+	inst, owned := g.damageInstructionLocked()
+	return g.dealDamageEachStepLocked(source, targets, amount, 0, damageWalk{inst: inst, owned: owned, each: each}, then)
+}
+
+// damageWalk is the instance an Each walk's legs share, and whether the
+// walk ended it (it took it for itself, rather than joining an open
+// scope's). `each`, when set, is told each recipient and what it took
+// (DealDamageEachEachThenForEffect).
+type damageWalk struct {
+	inst  DamageInstance
+	owned bool
+	each  func(g *Game, target uuid.UUID, dealt int) error
 }
 
 // dealDamageEachStepLocked damages the head of `targets` and continues
@@ -915,11 +957,16 @@ func (g *Game) DealDamageEachThenForEffect(source uuid.UUID, targets []uuid.UUID
 // list is the base case: the batch is done and `then` gets the total.
 //
 // Caller must hold g.mu.
-func (g *Game) dealDamageEachStepLocked(source uuid.UUID, targets []uuid.UUID, amount, dealtSoFar int, then func(g *Game, totalDealt int) error) error {
+func (g *Game) dealDamageEachStepLocked(source uuid.UUID, targets []uuid.UUID, amount, dealtSoFar int, walk damageWalk, then func(g *Game, totalDealt int) error) error {
 	for len(targets) > 0 {
 		next, rest := targets[0], targets[1:]
 		step := func(g *Game, dealt int) error {
-			return g.dealDamageEachStepLocked(source, rest, amount, dealtSoFar+dealt, then)
+			if walk.each != nil {
+				if err := walk.each(g, next, dealt); err != nil {
+					return err
+				}
+			}
+			return g.dealDamageEachStepLocked(source, rest, amount, dealtSoFar+dealt, walk, then)
 		}
 		if p := g.playerByIDLocked(next); p != nil {
 			if p.Eliminated {
@@ -928,14 +975,17 @@ func (g *Game) dealDamageEachStepLocked(source uuid.UUID, targets []uuid.UUID, a
 				targets = rest
 				continue
 			}
-			return g.DealDamageToPlayerThenForEffect(source, next, amount, step)
+			return g.dealDamageToPlayerLocked(source, nil, next, amount, DamageMarks{}, walk.inst, step)
 		}
 		if findBattlefieldCard(g, next) != nil {
-			return g.DealDamageToCreatureThenForEffect(source, next, amount, step)
+			return g.dealDamageToPermanentLocked(source, nil, next, amount, DamageMarks{}, walk.inst, step)
 		}
 		// Neither a seated player nor a battlefield permanent: the
 		// target is gone. Skip it and keep the total.
 		targets = rest
+	}
+	if walk.owned {
+		g.endDamageInstanceLocked(walk.inst)
 	}
 	if then == nil {
 		return nil

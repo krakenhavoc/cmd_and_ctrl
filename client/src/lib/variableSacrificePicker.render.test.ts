@@ -11,6 +11,8 @@ import { describe, it, expect, afterEach } from "vitest";
 import SacrificeCostModal from "./components/board/SacrificeCostModal.svelte";
 import type { CardView } from "./protocol";
 import { render, click, cleanup } from "./test/render.svelte";
+import DockHarness from "./test/DockHarness.svelte";
+import { barPrimary } from "./test/dockView";
 
 afterEach(cleanup);
 
@@ -34,27 +36,31 @@ const source = {
 
 function mount(options: CardView[], countIsX = false) {
   const confirmed: string[][] = [];
+  // ADR 0111 PR 6: the picker is a sheet in the action dock, so it is
+  // mounted beside one, and its confirm is the dock bar's primary.
   const view = render(
-    SacrificeCostModal as never,
+    DockHarness as never,
     {
-      source,
-      label: "any number of creatures",
-      options,
-      count: 0,
-      min: 0,
-      countIsX,
-      onConfirm: (ids: string[]) => confirmed.push(ids),
-      onCancel: () => {},
+      component: SacrificeCostModal,
+      props: {
+        source,
+        label: "any number of creatures",
+        options,
+        count: 0,
+        min: 0,
+        countIsX,
+        onConfirm: (ids: string[]) => confirmed.push(ids),
+        onCancel: () => {},
+      },
     } as never,
   );
   return { container: view.container, confirmed };
 }
 
 const rows = (c: HTMLElement): HTMLButtonElement[] => [
-  ...c.querySelectorAll<HTMLButtonElement>(".prompt-options .prompt-opt"),
+  ...c.querySelectorAll<HTMLButtonElement>(".dock-sheet .prompt-options .prompt-opt"),
 ];
-const confirmButton = (c: HTMLElement): HTMLButtonElement =>
-  c.querySelector(".prompt-foot .primary") as HTMLButtonElement;
+const confirmButton = (c: HTMLElement): HTMLButtonElement => barPrimary(c)!;
 
 describe("the any-number sacrifice picker", () => {
   it("confirms with nothing picked", () => {

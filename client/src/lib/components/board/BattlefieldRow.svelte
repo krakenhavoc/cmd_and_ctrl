@@ -13,7 +13,9 @@
   import type { CantAttackChip } from "../../cantAttack";
   import type { CardView } from "../../protocol";
   import Card from "./Card.svelte";
+  import { settings } from "../../settings";
   import { etbPulse } from "../../animations";
+  import { emit as tutorialEmit } from "../../tutorialBus";
   import { rowEntries } from "../../tokenGroups";
   import {
     NO_COMBAT_RINGS,
@@ -241,11 +243,14 @@
   </span>
   <div class="row-cards" role="list" aria-label={label}>
     {#each piles as p (p.key)}
+      <!-- ADR 0076 §2.5: a pointer-only hover signal for the tutorial; not a control. -->
+      <!-- svelte-ignore a11y_no_static_element_interactions -->
       <div
         class="pile"
         class:tapped={p.tapped}
         class:multi={p.cards.length > 1}
         class:group={!!p.group}
+        onpointerenter={p.cards.length > 1 ? () => tutorialEmit("pile-hovered") : undefined}
         title={p.group
           ? `${p.group.members.length} × ${p.cards[0].name} — click to choose which`
           : p.cards.length > 1
@@ -263,6 +268,7 @@
                 {@const aPips = readyPips(legal, a, "battlefield")}
                 <div class="attachment">
                   <Card
+                    artOnly={$settings.display.artOnlyCards}
                     card={a}
                     ready={ringFor(a, aPips)}
                     pips={aPips}
@@ -288,6 +294,7 @@
               {/each}
               <div class="host">
                 <Card
+                  artOnly={$settings.display.artOnlyCards}
                   card={c}
                   ready={ringFor(c, cPips) || cTarget || anyIn(combat.candidates, c, memberIDs)}
                   combatTarget={cTarget}

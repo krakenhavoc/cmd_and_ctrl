@@ -1,6 +1,8 @@
 <script lang="ts">
+  import { onMount } from "svelte";
   import { uploadDeck, type UploadDeckResponse } from "../api";
-  import { LobbyApiError, type ApiViolation } from "../session";
+  import { LobbyApiError, currentSession, type ApiViolation } from "../session";
+  import { loadLastDeck, type LastDeck } from "../lastDeck";
   import Icon from "./Icon.svelte";
   import PrebuiltDeckPicker from "./PrebuiltDeckPicker.svelte";
   import YourDecksPicker from "./YourDecksPicker.svelte";
@@ -44,6 +46,15 @@
 
   const { gameID, playerID, onSuccess }: Props = $props();
 
+  // The deck this player last seated (ADR 0110 §5 item 5): the
+  // account's for a signed-in person, the browser's pre-built pick for
+  // a guest. Each picker PRESELECTS it when it is still in its list;
+  // nothing is seated until the player presses the button.
+  let lastDeck = $state<LastDeck | null>(null);
+  onMount(() => {
+    void loadLastDeck(currentSession()).then((d) => (lastDeck = d));
+  });
+
   let source: string = $state("");
   let busy = $state(false);
   let errorMessage = $state("");
@@ -55,6 +66,8 @@
   // sets expectations, and on a typical Commander deck the list is
   // most of the 100 — worth having, not worth unfurling by default.
   let unimplemented = $state<string[]>([]);
+  // The deck was seated but not saved to the library: the 200-deck cap.
+  let libraryNote = $state("");
 
   function violationLabel(v: ApiViolation): string {
     return v.card ? `${v.card}: ${v.message}` : v.message;
@@ -81,6 +94,7 @@
     warnings = [];
     successMessage = "";
     unimplemented = [];
+    libraryNote = "";
   }
 
   async function submit(): Promise<void> {
@@ -96,6 +110,7 @@
       successMessage = `uploaded ${res.deck_name || "deck"}: ${res.card_count} cards, commander: ${res.commanders.join(", ")}`;
       if (res.warnings && res.warnings.length > 0) warnings = res.warnings;
       if (res.unimplemented && res.unimplemented.length > 0) unimplemented = res.unimplemented;
+      if (res.library_note) libraryNote = res.library_note;
       source = "";
       onSuccess?.(res);
     } catch (err) {
@@ -113,8 +128,8 @@
 </script>
 
 <div class="deck-upload-form">
-  <YourDecksPicker {gameID} {playerID} {onSuccess} />
-  <PrebuiltDeckPicker {gameID} {playerID} {onSuccess} />
+  <YourDecksPicker {gameID} {playerID} {lastDeck} {onSuccess} />
+  <PrebuiltDeckPicker {gameID} {playerID} {lastDeck} {onSuccess} />
   <p class="own-list">
     Or bring your own list — a Moxfield or Archidekt deck URL, a Moxfield JSON export, or a
     plain-text decklist.
@@ -145,6 +160,11 @@
   </div>
   {#if errorMessage}
     <pre class="deck-error">{errorMessage}</pre>
+  {/if}
+  {#if libraryNote}
+    <p class="library-note" role="status">
+      {libraryNote} <a href="#/decks">Open your decks</a>
+    </p>
   {/if}
   {#if violations.length || warnings.length}
     <ul class="viol">
@@ -179,6 +199,14 @@
 </div>
 
 <style>
+  .library-note {
+    margin: 10px 0 0;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border-strong);
+    font-size: 12.5px;
+    color: var(--fg);
+  }
   .own-list {
     margin: 14px 0 0;
     font-size: 12.5px;

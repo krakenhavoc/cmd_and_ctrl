@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { emit as tutorialEmit } from "../../tutorialBus";
   // Card is the visual primitive for one Magic card in the new HTML/
   // CSS board. Replaces the Pixi CardTile from client/src/lib/card-tile.ts.
   //
@@ -22,7 +23,7 @@
 
   import type { CardView } from "../../protocol";
   import type { CantAttackChip } from "../../cantAttack";
-  import { cardImageURL } from "../../cardImage";
+  import { cardImageURL, tableImageSize } from "../../cardImage";
   import { cardArt } from "../../cardArt";
   import { showsCardBack } from "../../cardBack";
   import { hoveredCard } from "../../cardTypes";
@@ -32,6 +33,7 @@
   import { targeting, isLegalCardTarget, isPicked } from "../../targeting";
   import { autoTapHighlight } from "../../dragCast";
   import { noUntapAppliesToController } from "../../noUntap";
+  import { deathMarkBadge } from "../../deathMarks";
   import { openCardMenu } from "../../contextMenu";
   import { menuAbilityRows, specialActionItems, type MenuAction } from "../../contextMenu.logic";
   import CounterPips from "./CounterPips.svelte";
@@ -67,6 +69,11 @@
     // legalActions.ts, and only while highlights are live); the card
     // only draws it.
     ready?: boolean;
+    // #1918: set with `ready` when every cast the card has is legal but
+    // would do nothing right now (legalActions.ts idleReadyHint). The
+    // ring is drawn muted and this, the server's sentence, is the
+    // tooltip. Clicking still casts exactly as a full ring does.
+    idleHint?: string;
     // ADR 0105 sub-PR 5: this card is what the selected creature may be
     // declared against: a planeswalker or battle it may attack, or an
     // attacker it may block. Set with `ready`. An attacker is always
@@ -108,6 +115,11 @@
     // "small" is the default (~146×204) and is what we use everywhere
     // on the table; the hover zoom overlay requests "normal".
     size?: "small" | "normal";
+    // #1954: draw the art crop instead of the full card (the
+    // experimental "card art only" setting). Set by BattlefieldRow
+    // and by Hand for the viewer's own cards; the hover zoom, stack
+    // and every other Card leave it off.
+    artOnly?: boolean;
     // showManaCost renders the S15 cost-chip overlay bottom-left.
     // Enabled by Hand.svelte for the viewer's own hand so they can
     // see what each spell costs without hover-zooming. Hidden on the
@@ -216,6 +228,7 @@
     attacking = false,
     blocking = false,
     ready = false,
+    idleHint,
     combatTarget = false,
     pips = NO_PIPS,
     readyZone = "battlefield",
@@ -223,6 +236,7 @@
     legal = NO_LEGAL_ACTIONS,
     legalGate = NO_LEGAL_ACTIONS,
     size = "small",
+    artOnly = false,
     showManaCost = false,
     onActivateManaAbility,
     onRawTap,
@@ -305,7 +319,7 @@
   // played as its land half — or, later, a transformed permanent —
   // shows the side that is actually up without this component
   // knowing faces exist.
-  const imgSrc = $derived(cardImageURL(card, size));
+  const imgSrc = $derived(cardImageURL(card, tableImageSize(card, size, artOnly)));
 
   // Real MTG card back bundled as a static asset under client/public.
   // Two sizes to keep hand/battlefield thumbnails snappy while the
@@ -328,6 +342,9 @@
   // to it, so the click affordance is withheld here rather than by
   // every parent remembering to withhold it.
   const phasedOut = $derived(card.phased_out === true);
+  // ADR 0108: "exiled if it dies this turn" / "can't be regenerated
+  // this turn" — what killing this permanent does is already decided.
+  const deathMark = $derived(deathMarkBadge(card));
   const interactive = $derived(!!onClick && !phasedOut);
 
   // ADR 0069 — a face-down object the viewer IS allowed to look at:
@@ -484,6 +501,7 @@
     ev.preventDefault();
     ev.stopPropagation();
     manaMenuOpen = !manaMenuOpen;
+    if (manaMenuOpen) tutorialEmit("ability-menu-opened");
   }
 
   // ADR 0105 §7 (owner decision 6): a pip is the touch route into the
@@ -508,7 +526,10 @@
       openCardMenu({ card, x: r?.right ?? 0, y: r?.top ?? 0 });
       return;
     }
-    if (hasMenu) manaMenuOpen = true;
+    if (hasMenu) {
+      manaMenuOpen = true;
+      tutorialEmit("ability-menu-opened");
+    }
   }
 
   function handlePipKeydown(ev: KeyboardEvent): void {
@@ -558,6 +579,7 @@
   class:attacking
   class:blocking
   class:ready
+  class:ready-idle={ready && !!idleHint}
   class:combat-target={combatTarget}
   class:clickable={interactive}
   class:phased-out={phasedOut}
@@ -567,7 +589,11 @@
   role={interactive ? "button" : "img"}
   tabindex={interactive ? 0 : undefined}
   aria-label={accessibleName}
-  title={showBack ? "" : displayName(card)}
+  title={showBack
+    ? ""
+    : ready && idleHint
+      ? `${displayName(card)} — ${idleHint}`
+      : displayName(card)}
   onpointerenter={handleEnter}
   onpointerleave={handleLeave}
   onclick={handleClick}
@@ -641,6 +667,15 @@
         >MUST BLOCK</span
       >
     {/if}
+    {#if card.echo_due}
+      <!-- ADR 0108 §5: its echo triggers at its controller's next upkeep
+           (CR 702.30a). -->
+      <span
+        class="badge echo-due"
+        title="echo due — at its controller's next upkeep, pay its echo cost or sacrifice it"
+        aria-label="echo due">ECHO DUE</span
+      >
+    {/if}
     {#if enchantedPlayer}
       <span
         class="badge curse"
@@ -708,6 +743,11 @@
         REGEN{(card.regeneration_shields ?? 0) > 1 ? ` x${card.regeneration_shields}` : ""}
       </span>
     {/if}
+    {#if deathMark}
+      <span class="badge death-mark" title={deathMark.title} aria-label="death mark"
+        >{deathMark.text}</span
+      >
+    {/if}
     {#if showPT}
       {#if isPlaneswalker}
         <span class="badge loyalty" title={`loyalty ${loyaltyValue}`} aria-label="loyalty">
@@ -756,6 +796,15 @@
     {#if card.must_block}
       <span class="badge must-attack" title="must block this combat" aria-label="must block"
         >MUST BLOCK</span
+      >
+    {/if}
+    {#if card.echo_due}
+      <!-- ADR 0108 §5: its echo triggers at its controller's next upkeep
+           (CR 702.30a). -->
+      <span
+        class="badge echo-due"
+        title="echo due — at its controller's next upkeep, pay its echo cost or sacrifice it"
+        aria-label="echo due">ECHO DUE</span
       >
     {/if}
     {#if enchantedPlayer}
@@ -819,6 +868,11 @@
       >
         REGEN{(card.regeneration_shields ?? 0) > 1 ? ` x${card.regeneration_shields}` : ""}
       </span>
+    {/if}
+    {#if deathMark}
+      <span class="badge death-mark" title={deathMark.title} aria-label="death mark"
+        >{deathMark.text}</span
+      >
     {/if}
     {#if showPT}
       {#if isPlaneswalker}
@@ -1155,6 +1209,19 @@
     background: rgba(60, 0, 0, 0.85);
     border-color: rgba(255, 122, 122, 0.5);
   }
+  .badge.echo-due {
+    /* ADR 0108 §5: above the bottom edge, so a creature that must
+       attack AND owes its echo (Tectonic Fiend) shows both. */
+    top: auto;
+    bottom: 22px;
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    white-space: nowrap;
+    color: #ffd27a;
+    background: rgba(50, 35, 0, 0.85);
+    border-color: rgba(255, 210, 122, 0.5);
+  }
   .badge.no-untap {
     top: 24px;
     left: 50%;
@@ -1271,6 +1338,24 @@
     border-color: rgba(255, 122, 122, 0.5);
     font-size: 11px;
   }
+  .badge.death-mark {
+    /* ADR 0108. Top-centre, one row under WON'T UNTAP: a fact about
+       what happens when the creature dies, like a regeneration shield,
+       in the ash-grey of exile rather than the shield's green. */
+    top: 38px;
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    max-width: calc(100% - 6px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: #e6dfd3;
+    background: rgba(40, 34, 30, 0.9);
+    border-color: rgba(210, 196, 176, 0.55);
+    letter-spacing: 0.01em;
+    font-size: 7px;
+  }
   .badge.regen {
     /* Top-right, clear of the bottom-right damage / P-T stack: a
        shield is a fact about the NEXT destruction, not about the
@@ -1367,6 +1452,17 @@
     border-radius: inherit;
     pointer-events: none;
     box-shadow: inset 0 0 calc(var(--card-w, 80px) * 0.14) var(--ready-glow);
+  }
+  /* #1918: castable, but every cast would do nothing right now (an
+     overloaded Counterflux with no spell to counter). Still ringed,
+     since the cast is legal, but dashed, faint and without the glow,
+     so it does not read as a play worth making. */
+  .card.ready.ready-idle {
+    outline-style: dashed;
+    outline-color: color-mix(in srgb, var(--ready) 45%, transparent);
+  }
+  .card.ready.ready-idle::after {
+    box-shadow: none;
   }
   /* ADR 0105 §2/§7 (#1789): the pips. They sit on the upper-left edge,
      below the top badge row (CMD) and the failed-art pip (22px): that

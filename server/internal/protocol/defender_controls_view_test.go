@@ -2,6 +2,7 @@ package protocol
 
 import (
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -79,6 +80,10 @@ func TestDefenderMustControlReachesTheCardViewAndTheDigest(t *testing.T) {
 	for _, r := range cv.AttackTargetRestrictions {
 		if r.Unless != "Desert" || !r.Planeswalkers || r.Source != "Sea Serpent" {
 			t.Errorf("row = %+v, want a Desert row from Sea Serpent", r)
+		}
+		// #1879: every defending-player row says why, in full.
+		if !strings.HasSuffix(r.Reason, " controls no Desert") {
+			t.Errorf("row reason = %q, want \"<name> controls no Desert\"", r.Reason)
 		}
 		refused = append(refused, r.Player)
 	}

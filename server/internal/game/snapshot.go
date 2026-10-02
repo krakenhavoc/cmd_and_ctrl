@@ -361,7 +361,7 @@ type GameSnapshot struct {
 	// exhaust ability on the board back.
 	Activations ActivationTally `json:"activations,omitempty"`
 
-	// LoopNotice / LoopThreshold are the CR 726 loop breaker (#628).
+	// LoopNotice / LoopThreshold are the CR 732 loop breaker (#628).
 	// Both carried: a restore that dropped the notice would resume a
 	// table into a live loop with automatic passing back on, and one
 	// that dropped the threshold would silently re-default a game a
@@ -574,7 +574,17 @@ type playerSnapshot struct {
 	// "nobody has had a turn yet" — an effect stamped after the
 	// restore still ends on that player's next turn, because the
 	// stamp is taken from the restored value.
-	TurnsBegun         int               `json:"turnsBegun,omitempty"`
+	TurnsBegun int `json:"turnsBegun,omitempty"`
+	// UpkeepsBegun is Player.UpkeepsBegun (ADR 0108 §5): the upkeep
+	// counter echo's "since the beginning of your last upkeep" is
+	// measured in. Absent from every earlier file, which restores as
+	// 0 — no permanent of such a file has an echo stamp to compare.
+	UpkeepsBegun int `json:"upkeepsBegun,omitempty"`
+	// LastTurnAttacks is what this player's creatures attacked during
+	// the last turn they took (ADR 0108 §6, #1882). Additive: a file
+	// written before it restores with none, which reads as "nothing
+	// attacked last turn" until the player's next turn ends.
+	LastTurnAttacks    []AttackRecord    `json:"lastTurnAttacks,omitempty"`
 	Eliminated         bool              `json:"eliminated"`
 	HandKept           bool              `json:"handKept"`
 	MulligansTaken     int               `json:"mulligansTaken"`
@@ -696,23 +706,27 @@ type cardSnapshot struct {
 	// only when a file has no `goads` key (restoreGoads).
 	GoadedBy uuid.UUID `json:"goadedBy"`
 	// Goads is every goad on the card with its end (#1598).
-	Goads                    []goadSnapshot     `json:"goads,omitempty"`
-	DamageMarked             int                `json:"damageMarked"`
-	RegenerationShields      int                `json:"regenerationShields,omitempty"`
-	FaceDown                 bool               `json:"faceDown"`
-	FaceDownKind             FaceDownKind       `json:"faceDownKind,omitempty"`
-	KnownBy                  map[uuid.UUID]bool `json:"knownBy,omitempty"`
-	EnteredBattlefieldAt     int64              `json:"enteredBattlefieldAt"`
-	ObjectEpoch              int                `json:"objectEpoch,omitempty"`
-	SummonedThisTurn         bool               `json:"summonedThisTurn"`
-	MarkedLethalByDeathtouch bool               `json:"markedLethalByDeathtouch"`
-	LostLastCounter          bool               `json:"lostLastCounter,omitempty"`
-	PrintedPTKnown           bool               `json:"printedPTKnown,omitempty"`
-	AttachedTo               TargetRef          `json:"attachedTo,omitempty"`
-	AttachedAt               int64              `json:"attachedAt,omitempty"`
-	BaseController           uuid.UUID          `json:"baseController,omitempty"`
-	FaceDownListed           *FaceDownListing   `json:"faceDownListed,omitempty"`
-	FaceTurnedAt             int64              `json:"faceTurnedAt,omitempty"`
+	Goads                []goadSnapshot     `json:"goads,omitempty"`
+	DamageMarked         int                `json:"damageMarked"`
+	RegenerationShields  int                `json:"regenerationShields,omitempty"`
+	FaceDown             bool               `json:"faceDown"`
+	FaceDownKind         FaceDownKind       `json:"faceDownKind,omitempty"`
+	KnownBy              map[uuid.UUID]bool `json:"knownBy,omitempty"`
+	EnteredBattlefieldAt int64              `json:"enteredBattlefieldAt"`
+	ObjectEpoch          int                `json:"objectEpoch,omitempty"`
+	// ControlledSinceUpkeep is Card.ControlledSinceUpkeep (ADR 0108
+	// §5): echo's "came under your control since your last upkeep".
+	// Absent from every earlier file, which restores as 0.
+	ControlledSinceUpkeep    int              `json:"controlledSinceUpkeep,omitempty"`
+	SummonedThisTurn         bool             `json:"summonedThisTurn"`
+	MarkedLethalByDeathtouch bool             `json:"markedLethalByDeathtouch"`
+	LostLastCounter          bool             `json:"lostLastCounter,omitempty"`
+	PrintedPTKnown           bool             `json:"printedPTKnown,omitempty"`
+	AttachedTo               TargetRef        `json:"attachedTo,omitempty"`
+	AttachedAt               int64            `json:"attachedAt,omitempty"`
+	BaseController           uuid.UUID        `json:"baseController,omitempty"`
+	FaceDownListed           *FaceDownListing `json:"faceDownListed,omitempty"`
+	FaceTurnedAt             int64            `json:"faceTurnedAt,omitempty"`
 	// NamedTribe is the CR 614.12 "as this enters, choose a creature
 	// type" answer (S26). Carried rather than rebuilt: the choice was
 	// made by a player and nothing in the catalog can re-derive it, so
@@ -1072,6 +1086,15 @@ type stackItemSnapshot struct {
 	Ordered       bool         `json:"ordered"`
 	Commutes      bool         `json:"commutes,omitempty"` // #1511
 
+	// TargetsAnnouncePending is StackItem.TargetsAnnouncePending
+	// (#1539): a queued trigger whose targets are chosen and whose
+	// "becomes the target" event the drain still owes. Carried, since a
+	// batch held behind its ordering prompt is a restore point, and a
+	// restore that lost it would place the trigger without ever
+	// triggering the ward it targeted. A binary from before the field
+	// refuses the file (an unknown stack-item key), the rollback case.
+	TargetsAnnouncePending bool `json:"targetsAnnouncePending,omitempty"`
+
 	// CantBeCountered is StackItem.CantBeCountered (ADR 0106 §4,
 	// #1806): the marks that say this spell can't be countered.
 	// Carried, because a restore that lost one would let through a
@@ -1142,6 +1165,15 @@ type delayedTriggerSnapshot struct {
 	Condition        string        `json:"condition,omitempty"`
 	CondParams       *EffectParams `json:"condParams,omitempty"` // nil when zero
 	OptionalQuestion string        `json:"optionalQuestion,omitempty"`
+
+	// #1729, CR 610.3: an "until" return (until_return.go). Additive:
+	// an older binary drops these keys, but every record that sets them
+	// names the "until/return-to-battlefield" body, which that binary
+	// does not have, so it refuses the file (ErrUnknownEffectKey)
+	// rather than restoring the return as a trigger that never fires.
+	Until       bool       `json:"until,omitempty"`
+	UntilLeaves *ObjectRef `json:"untilLeaves,omitempty"`
+	Due         bool       `json:"due,omitempty"`
 }
 
 // pendingChoiceSnapshot mirrors PendingChoice's DATA. Its seven
@@ -1236,7 +1268,7 @@ type pendingChoiceSnapshot struct {
 	// that forgot them would render a question with no answers.
 	PickOptions []ChoiceOption `json:"pickOptions,omitempty"`
 	ChooseMax   int            `json:"chooseMax,omitempty"`
-	// #804 CR 726 shortcut: which run the answer's allowance attaches
+	// #804 CR 732 shortcut: which run the answer's allowance attaches
 	// to, how many resolutions had happened when it was asked, and
 	// whether this is the turn's second ask.
 	LoopShortcutKey    string `json:"loopShortcutKey,omitempty"`
@@ -1812,6 +1844,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		KnownBy:                  copyBoolMap(c.KnownBy),
 		EnteredBattlefieldAt:     c.EnteredBattlefieldAt,
 		ObjectEpoch:              c.ObjectEpoch,
+		ControlledSinceUpkeep:    c.ControlledSinceUpkeep,
 		SummonedThisTurn:         c.SummonedThisTurn,
 		MarkedLethalByDeathtouch: c.MarkedLethalByDeathtouch,
 		LostLastCounter:          c.LostLastCounter,
@@ -1876,6 +1909,8 @@ func snapshotPlayer(p *Player, cen *ContinuationCensus) playerSnapshot {
 		Emblems:            snapshotZone(p.Emblems, cen),
 		CommanderDamage:    copyIntMap(p.CommanderDamage),
 		TurnsBegun:         p.TurnsBegun,
+		UpkeepsBegun:       p.UpkeepsBegun,
+		LastTurnAttacks:    append([]AttackRecord(nil), p.LastTurnAttacks...),
 		Eliminated:         p.Eliminated,
 		HandKept:           p.HandKept,
 		MulligansTaken:     p.MulligansTaken,
@@ -1959,6 +1994,7 @@ func snapshotStackItemAs(s *StackItem, oracleID string, cen *ContinuationCensus)
 		Params:         effectParamsOrNil(s.Params),
 	}
 	out.CantBeCountered = copyCounterShieldMarks(s.CantBeCountered) // ADR 0106 §4 (#1806)
+	out.TargetsAnnouncePending = s.TargetsAnnouncePending           // #1539
 	// ADR 0041 P9 (#1497, tier 4): the census fold. An item is counted
 	// ONCE, whatever it holds, because the question is one question —
 	// can restore rebuild this item — and it has one of two answers:
@@ -2065,6 +2101,9 @@ func snapshotDelayedTrigger(d *DelayedTrigger, cen *ContinuationCensus) delayedT
 		Condition:          d.Condition.key,
 		CondParams:         effectParamsOrNil(d.CondParams),
 		OptionalQuestion:   d.OptionalQuestion,
+		Until:              d.Until,
+		UntilLeaves:        d.UntilLeaves.stamped(),
+		Due:                d.Due,
 	}
 	if d.Duration != nil {
 		dur := *d.Duration
@@ -2406,6 +2445,9 @@ func (s *GameSnapshot) restoreGame() *Game {
 	}
 	g.ScopedEffects = deepCopyScopedEffects(s.ScopedEffects)
 	g.scopedEffectSeq = maxScopedEffectSeq(g.ScopedEffects)
+	// ADR 0108 PR 0: the damage-instance counter resumes past every
+	// instance a restored record names.
+	g.damageInstanceSeq = maxNamedDamageInstance(g.ScopedEffects, g.preventionFollowUps)
 	if len(s.DelayedTriggers) > 0 {
 		g.DelayedTriggers = make([]*DelayedTrigger, len(s.DelayedTriggers))
 		for i := range s.DelayedTriggers {
@@ -2599,6 +2641,7 @@ func restoreCard(c *cardSnapshot) Card {
 		KnownBy:                  copyBoolMap(c.KnownBy),
 		EnteredBattlefieldAt:     c.EnteredBattlefieldAt,
 		ObjectEpoch:              c.ObjectEpoch,
+		ControlledSinceUpkeep:    c.ControlledSinceUpkeep,
 		SummonedThisTurn:         c.SummonedThisTurn,
 		MarkedLethalByDeathtouch: c.MarkedLethalByDeathtouch,
 		LostLastCounter:          c.LostLastCounter,
@@ -2695,6 +2738,8 @@ func restorePlayer(p *playerSnapshot) *Player {
 		Command:            restoreZone(p.Command, ZoneCommand),
 		Emblems:            restoreZone(p.Emblems, ZoneCommand),
 		TurnsBegun:         p.TurnsBegun,
+		UpkeepsBegun:       p.UpkeepsBegun,
+		LastTurnAttacks:    append([]AttackRecord(nil), p.LastTurnAttacks...),
 		Eliminated:         p.Eliminated,
 		HandKept:           p.HandKept,
 		MulligansTaken:     p.MulligansTaken,
@@ -2796,6 +2841,7 @@ func restoreStackItem(s *stackItemSnapshot) (*StackItem, bool) {
 		// the snapshot from being a restore point.
 	}
 	out.CantBeCountered = copyCounterShieldMarks(s.CantBeCountered) // ADR 0106 §4 (#1806)
+	out.TargetsAnnouncePending = s.TargetsAnnouncePending           // #1539
 	if _, ok := catalogBodySlot(s.Body); ok {
 		// A stamped activated or triggered ability (P9): the row gives
 		// back the Effect, the target clause and the mode clause
@@ -2845,6 +2891,9 @@ func restoreDelayedTrigger(d *delayedTriggerSnapshot) *DelayedTrigger {
 		Condition:        ConditionRef{key: d.Condition},
 		CondParams:       effectParamsValue(d.CondParams),
 		OptionalQuestion: d.OptionalQuestion,
+		Until:            d.Until,
+		UntilLeaves:      d.UntilLeaves.value(),
+		Due:              d.Due,
 	}
 	if d.Duration != nil {
 		dur := *d.Duration

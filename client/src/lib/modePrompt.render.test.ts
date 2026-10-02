@@ -14,8 +14,9 @@
 
 import { describe, it, expect, afterEach } from "vitest";
 
-import ChoicePromptModal from "./components/board/ChoicePromptModal.svelte";
+import ChoiceDockHarness from "./test/ChoiceDockHarness.svelte";
 import type { ActionType, GameView, PendingChoiceView } from "./protocol";
+import { barPrimary } from "./test/dockView";
 import { render, click, cleanup } from "./test/render.svelte";
 
 afterEach(cleanup);
@@ -54,7 +55,7 @@ interface Sent {
 function mount(choice: Partial<PendingChoiceView>): { container: HTMLElement; sent: Sent[] } {
   const sent: Sent[] = [];
   const view = render(
-    ChoicePromptModal as never,
+    ChoiceDockHarness as never,
     {
       snap: snapWith(choice),
       viewerID: "me",
@@ -68,8 +69,7 @@ function mount(choice: Partial<PendingChoiceView>): { container: HTMLElement; se
 const optionButtons = (c: HTMLElement): HTMLElement[] =>
   Array.from(c.querySelectorAll(".prompt-options .prompt-opt")) as HTMLElement[];
 
-const primary = (c: HTMLElement): HTMLButtonElement =>
-  c.querySelector(".prompt-foot .primary") as HTMLButtonElement;
+const primary = (c: HTMLElement): HTMLButtonElement => barPrimary(c) as HTMLButtonElement;
 
 describe("ChoicePromptModal — mode_pick (#764, CR 603.3c)", () => {
   it("offers only the bullets the server sent, and answers with their ModeSpec index", () => {

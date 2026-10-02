@@ -34,6 +34,11 @@ export type Route =
   // the "up to about 15 names" summary link here for the full report.
   | { name: "deckCheck"; url?: string }
   | { name: "lobby" }
+  // The tutorial's practice table (ADR 0076 §2.2): opening this route
+  // opens a fresh practice game for the signed-in session and moves on
+  // to it (routes/Practice.svelte, lib/practiceTable.ts). It is the
+  // one door the lobby offer and Settings' replay (sub-PR 5) both use.
+  | { name: "practice" }
   | { name: "join"; gameID: string; inviteToken: string; spectator: boolean }
   // Seat reclaim: an admin-minted, single-use, short-lived link that
   // puts a disconnected player back in their OWN seat at a table that
@@ -55,6 +60,9 @@ export type Route =
   // person holds, with a way back into the open ones. Session-gated;
   // the page itself explains what a guest or admin session is missing.
   | { name: "myGames" }
+  // "My decks" (ADR 0110 section 6): the saved deck library with each
+  // deck's coverage, rename and delete. Session-gated.
+  | { name: "myDecks" }
   // S12.5: /auth/discord/callback (server-side) redirects here with
   // the session details in the URL fragment. App.svelte's effect
   // reads them, installs the session, and navigates onward.
@@ -103,12 +111,16 @@ export function parseHash(hash: string): Route {
     }
     case "lobby":
       return { name: "lobby" };
+    case "practice":
+      return { name: "practice" };
     case "catalog": {
       const q = params.get("q");
       return q ? { name: "catalog", query: q } : { name: "catalog" };
     }
     case "my-games":
       return { name: "myGames" };
+    case "decks":
+      return { name: "myDecks" };
     case "games":
       // /games/:id/join?t=<token> → Join
       // /games/:id                → Game

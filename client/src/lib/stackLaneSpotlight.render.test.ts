@@ -100,7 +100,6 @@ function mount(targetableIDs: Set<string> = new Set()) {
   const targetCalls: StackLaneItem[] = [];
   const controls: StackLaneControls = {
     counter: (item) => counterCalls.push(item),
-    pass: undefined,
     targetable: (item) => targetableIDs.has(item.id),
     target: (item) => targetCalls.push(item),
     hoverEnter: () => {},

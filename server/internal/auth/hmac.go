@@ -183,8 +183,25 @@ func (h *HMACAuthenticator) Issue(_ context.Context, p Principal, ttl time.Durat
 		return "", Principal{}, ErrInvalidCredential
 	}
 	now := h.now().Truncate(time.Millisecond)
+	return h.sealed(p, now, now.Add(ttl).Truncate(time.Millisecond))
+}
+
+// IssueUntil is Issue with an absolute expiry (see Authenticator). The
+// expiry is truncated to the millisecond the claims carry, so a source
+// session's ExpiresAt (already truncated) comes back unchanged.
+func (h *HMACAuthenticator) IssueUntil(_ context.Context, p Principal, expiresAt time.Time) (string, Principal, error) {
+	now := h.now().Truncate(time.Millisecond)
+	exp := expiresAt.UTC().Truncate(time.Millisecond)
+	if !exp.After(now) {
+		return "", Principal{}, ErrExpiredCredential
+	}
+	return h.sealed(p, now, exp)
+}
+
+// sealed stamps the two times onto p, serialises it and signs it.
+func (h *HMACAuthenticator) sealed(p Principal, now, expiresAt time.Time) (string, Principal, error) {
 	p.IssuedAt = now
-	p.ExpiresAt = now.Add(ttl).Truncate(time.Millisecond)
+	p.ExpiresAt = expiresAt
 
 	payload, err := json.Marshal(claimsFor(p))
 	if err != nil {

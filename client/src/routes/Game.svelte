@@ -5,7 +5,9 @@
   import { recordClientError } from "../lib/clientErrors";
   import { describeThrown } from "../lib/guardedStore";
   import { navigate } from "../lib/router";
+  import { isPracticeGame } from "../lib/practiceTable";
   import { session } from "../lib/session";
+  import { isAdmin as isAdminSession } from "../lib/admin";
   import { seatColor } from "../lib/colors";
   import DeckUploadForm from "../lib/components/DeckUploadForm.svelte";
   import BugReportModal from "../lib/components/BugReportModal.svelte";
@@ -19,7 +21,6 @@
   import {
     canManageTable,
     canSpawn,
-    formatUndoCount,
     hasUndoBudget,
     isUnlimitedUndo,
     spawningVisible,
@@ -37,12 +38,24 @@
   import ChoicePromptModal from "../lib/components/board/ChoicePromptModal.svelte";
   import AutoTapPreviewModal from "../lib/components/board/AutoTapPreviewModal.svelte";
   import AttackDeclarationModal from "../lib/components/board/AttackDeclarationModal.svelte";
-  import TargetingBanner from "../lib/components/board/TargetingBanner.svelte";
   import GameLogPanel from "../lib/components/board/GameLogPanel.svelte";
+  import ActionDock from "../lib/components/board/ActionDock.svelte";
+  import DockRequest from "../lib/components/board/DockRequest.svelte";
+  import GameMenu from "../lib/components/board/GameMenu.svelte";
+  import type { GameMenuOptions } from "../lib/gameMenu";
+  import DockSheet from "../lib/components/board/DockSheet.svelte";
+  import { attackRowRequest, blockRequest, combatSelectionRequest } from "../lib/combatDock";
+  import { gameOverRequest, inlineRefusal, voteRequest } from "../lib/choiceDock";
+  import { insufficientManaRequest, targetingRequest } from "../lib/targetingDock";
+  import { confirmAction } from "../lib/dock";
   import RevealBanner from "../lib/components/board/RevealBanner.svelte";
   import BotFeed from "../lib/components/BotFeed.svelte";
   import Icon from "../lib/components/Icon.svelte";
-  import { cancel as cancelTargeting, confirm as confirmTargeting } from "../lib/targeting";
+  import {
+    cancel as cancelTargeting,
+    confirm as confirmTargeting,
+    targeting,
+  } from "../lib/targeting";
   import type { ActionType, PlayerView } from "../lib/protocol";
   import { attackersDefendedBy } from "../lib/attackTargets";
   import { stopKeyFor, type StepID } from "../lib/turn";
@@ -57,30 +70,34 @@
   } from "../lib/priority";
   import { hasPlay, hasResponse, keyWindow, type ResponseCategories } from "../lib/responseWindow";
   import {
-    attackAllLabel,
     attackAllParams,
-    eligibleAt,
-    attackAllTaxLabel,
     attackLimitOn,
-    attackTaxOn,
     blockedSummary,
     bulkAttackRefusal,
-    offersAttackPicker,
     planAttackAll,
-    seatLabel,
     type AttackAllParams,
     type BulkAttackAttempt,
   } from "../lib/attackAll";
   import { hasPassMove, stackEmpty } from "../lib/timing";
   import { consumeManualStop, manualStops } from "../lib/priorityStops";
   import { autopassDecision, isBluff, type AutopassGates } from "../lib/autopassDecision";
-  import { highlightsLive, legalActionsOf, visibleHighlights } from "../lib/legalActions";
-  import { bluffArmed, bluffDelayMs, initBluffArmed, setBluffStatus } from "../lib/bluff";
+  import {
+    actionableCount,
+    highlightsLive,
+    legalActionsOf,
+    visibleHighlights,
+  } from "../lib/legalActions";
+  import {
+    bluffArmed,
+    bluffDelayMs,
+    initBluffArmed,
+    pressBluff,
+    setBluffStatus,
+  } from "../lib/bluff";
   import { holdPriority, ownsEveryStackItem, toggleHoldPriority } from "../lib/holdPriority";
   import { registerShortcutHandlers, setShortcutContext } from "../lib/shortcutRuntime";
   import { effectiveBindings, formatChord, isMacLike } from "../lib/shortcuts";
   import ModalLayer from "../lib/components/ModalLayer.svelte";
-  import { modalOpen } from "../lib/modalLayers";
   import { devFeature } from "../lib/env";
   import { gameWSURL } from "../lib/gameURL";
   import { openingRollText, openingRollWinner } from "../lib/startingPlayer";
@@ -365,7 +382,7 @@
       // #1571: nor a declare-attackers window with a creature the
       // server marks must_attack — the pass would be refused.
       owesAttackRequirement: owesAttackRequirement(view, viewerID),
-      // #628 (CR 726): the server has spotted a trigger loop and
+      // #628 (CR 732): the server has spotted a trigger loop and
       // suspended AUTOMATIC passing for the whole table. The "next"
       // button still passes by hand.
       loopSuspended,
@@ -410,7 +427,7 @@
 
     if (isBluff(verdict)) {
       if (verdict.manual) {
-        // A manual bluff is a hold the phase widget labels; next is
+        // A manual bluff is a hold the action dock labels; next is
         // the pass.
         cancelBluffTimer();
         setBluffStatus({ manual: true });
@@ -502,7 +519,8 @@
     client.sendAction(type, player, params);
   };
 
-  // S15: insufficient-mana override toast. Subscribes to the
+  // S15: insufficient-mana override prompt (a request in the action
+  // dock since ADR 0111 PR 4; it was a strip toast). Subscribes to the
   // GameClient's lastError store; when an `insufficient_mana` frame
   // lands, we capture the missing list + card_id so the override
   // banner can surface "Cast anyway" — clicking re-fires the cast
@@ -556,7 +574,7 @@
   // doubles as the open / closed state — when null, the modal is
   // closed; when set, AutoTapPreviewModal mounts and fetches the
   // preview for that card. The "Auto-tap & cast" button on the
-  // insufficient-mana toast is the canonical entry point; the
+  // insufficient-mana dock request is the canonical entry point; the
   // dismiss button (and ESC inside the modal) closes it.
   let autoTapCardID = $state<string | null>(null);
   // #696: the preview has to price the cast the confirm button will
@@ -600,7 +618,13 @@
       !viewerEliminated &&
       !gameEnded
     ) {
-      if (!confirm("Leave this game? Your seat stays active — you can rejoin from the lobby.")) {
+      // A practice table has no seat to come back to (ADR 0076 §2.2):
+      // leaving ends it, and lib/practiceTable.ts puts the player's own
+      // settings and session back as the route changes.
+      const question = isPracticeGame(gameID)
+        ? "Leave the practice game? It ends when you leave."
+        : "Leave this game? Your seat stays active — you can rejoin from the lobby.";
+      if (!confirm(question)) {
         return;
       }
     }
@@ -630,7 +654,15 @@
   // downstream viewer-action gate (`{#if viewerID}`, `?? undefined`
   // casts, targeting logic) uniformly denies spectators. Cheaper and
   // safer than threading `!isSpectator` through every call site.
-  const viewerID = $derived(sess?.principal.role === "spectator" ? null : (sess?.playerID ?? null));
+  //
+  // A session bound to a DIFFERENT table has no seat here either: an
+  // admin (ADR 0110 §3) may open any table's socket from their own seat
+  // session, and their seat at the other table means nothing at this one.
+  const viewerID = $derived(
+    sess?.principal.role === "spectator" || (sess?.gameID && sess.gameID !== gameID)
+      ? null
+      : (sess?.playerID ?? null),
+  );
   const viewerSeat = $derived(seats.find((s) => s.id === viewerID) ?? null);
   const viewerHasPriority = $derived(viewerID !== null && priorityPlayer?.id === viewerID);
 
@@ -659,7 +691,7 @@
   // seated, so the winner comes from there, and "the one seat left
   // standing" is only the fallback for a view with no outcome.
   const gameEnded = $derived(view?.state === "ended");
-  // #628 (CR 726): the server's loop notice. While it stands, nothing
+  // #628 (CR 732): the server's loop notice. While it stands, nothing
   // on this table passes priority automatically — see the autopass
   // effect above and the banner PhaseDisplay renders under the
   // toggle.
@@ -760,14 +792,13 @@
     client.sendAction("shuffle_library", viewerID);
     play("shuffle");
   }
-  let mulliganTo = $state(7);
   let showLifeHistory = $state(false);
   // S31 sub-PR 0: the public game log drawer. Local to the tab —
   // whether you have the log open is not table state.
   let showGameLog = $state(false);
-  function mulligan(): void {
+  // The ⋯ menu's "Mulligan to N" (lib/gameMenu.ts clamps N).
+  function mulligan(n: number): void {
     if (!viewerID) return;
-    const n = Math.max(0, Math.min(20, Math.floor(mulliganTo)));
     client.sendAction("mulligan", viewerID, { hand_size: n });
     play("shuffle");
   }
@@ -811,11 +842,18 @@
     canDeclareAttackers ? "attack" : canDeclareBlockers ? "block" : "idle",
   );
 
-  const isAdmin = $derived(sess?.principal.role === "admin");
+  // The shared token, or a signed-in person on the server's admin
+  // allowlist — seated at this table or not (ADR 0110 §3, lib/admin.ts).
+  // It drives the admin context menu, the table-manager controls and
+  // the dev tools. A seated admin still plays as their seat: the undo
+  // budget below is waived only for an admin with no seat here, which
+  // is what the server waives it for.
+  const isAdmin = $derived(isAdminSession(sess));
+  const adminUnseated = $derived(isAdmin && viewerID === null);
   // ADR 0075 §2.1: the table's settings belong to its host and to the
   // server admin. The server enforces it; this is what greys the
   // control rather than offering a click that returns an error frame.
-  const canManage = $derived(canManageTable(sess?.principal.role, viewerSeat));
+  const canManage = $derived(canManageTable(sess?.principal.role, viewerSeat, isAdmin));
   // The table's undo budget, and whether it is unlimited. Read off
   // GameView.undo_limit, which mirrors settings.undo_limit.
   const undoLimit = $derived(view?.undo_limit ?? 1);
@@ -823,7 +861,7 @@
   // Whether THIS viewer may press undo now. Not the same question as
   // the limit: an admin bypasses the budget, and an unlimited table
   // reports -1 remaining on every seat.
-  const canSpendUndo = $derived(hasUndoBudget(viewerSeat, isAdmin));
+  const canSpendUndo = $derived(hasUndoBudget(viewerSeat, adminUnseated));
   // The table's house rules (ADR 0075 §2.2). Public — every viewer,
   // spectators included, gets the same object — so this is read
   // without any permission check. `canManage` decides who may TURN a
@@ -832,7 +870,9 @@
   // Both gates the spawn route checks. Offering the entry on only one
   // of them produces a button whose 403 explains a rule we could have
   // shown instead.
-  const spawnAvailable = $derived(canSpawn(sess?.principal.role, viewerSeat, tableSettings));
+  const spawnAvailable = $derived(
+    canSpawn(sess?.principal.role, viewerSeat, tableSettings, isAdmin),
+  );
   // The badge, on the other hand, is for the OPPONENTS: a Treasure
   // that came from nowhere is indistinguishable from a real one, and
   // the table's answer is that everyone can see the switch is on.
@@ -853,6 +893,29 @@
   // not by playerID-being-Nil, so admin spectators (no ?player=)
   // still keep their moderator affordances.
   const isSpectator = $derived(sess?.principal.role === "spectator");
+
+  // ---- The action dock (ADR 0111) ----
+  // Every button a seated player presses to move the game on, in the
+  // screen's bottom-right corner. Never for a spectator, never while the
+  // dev replay scrubber shows a past frame (every control in it acts on
+  // the LIVE game), never before the first snapshot.
+  const dockShown = $derived(!!view && viewerID !== null && !isSpectator && !replaying);
+  // Its live size, published as --dock-w / --dock-h on the route's root
+  // so the self panel (its empty dock cell), the hover zoom and the log
+  // drawer can all keep that rectangle clear (§4).
+  let dockSize = $state({ w: 0, h: 0 });
+  function onDockSize(w: number, h: number): void {
+    if (w !== dockSize.w || h !== dockSize.h) dockSize = { w, h };
+  }
+  // PR 6: an open sheet's width (0 when none), published as --sheet-w
+  // with `.sheet-open`, so the hover zoom moves left of the sheet (§4).
+  let sheetW = $state(0);
+  function onDockSheet(w: number): void {
+    if (w !== sheetW) sheetW = w;
+  }
+  // ADR 0105 §7: how many of the viewer's cards wear a highlight, for
+  // the dock header's "N actions available".
+  const readyActions = $derived(viewerID ? actionableCount(legalHighlights, view, viewerID) : 0);
   const selectedCombatCardID = $derived(combatSelection?.cardID ?? null);
   function handleSelectCombatCard(cardID: string): void {
     if (combatMode === "attack") selectAttacker(cardID);
@@ -886,8 +949,8 @@
   }
   // ---- Attack with all (#318) ----
   // Declaring a wide board one creature at a time is the loudest
-  // ergonomics complaint from live play. The cluster below sits in
-  // the attention strip for the whole declare-attackers step and
+  // ergonomics complaint from live play. The action dock's attack row
+  // (ADR 0111 PR 3) is there for the whole declare-attackers step and
   // offers one button per attackable opponent.
   //
   // "Attack all" is ambiguous at a Commander table, so this never
@@ -938,17 +1001,6 @@
     sendBulkAttack(defenderSeatID, params);
   }
 
-  // ADR 0080 (#1063): the button's tooltip names the CR 508.1a price
-  // as well as the count, so the cost of a wide swing under
-  // Propaganda is legible before the click rather than arriving as a
-  // rejection toast. The price is the server's; nothing here derives
-  // it (#429).
-  function attackAllTitle(opp: PlayerView): string {
-    return [attackAllLabel(attackPlan, opp), attackAllTaxLabel(view, attackPlan, opp.id)]
-      .filter(Boolean)
-      .join(" · ");
-  }
-
   // #1162: the attack-tax subset + lock-a-land picker
   // (AttackDeclarationModal.svelte). `attackPickerDefenderID` doubles
   // as open/closed, matching autoTapCardID's own convention.
@@ -971,13 +1023,10 @@
   // derived read rather than an effect that writes its own dependency,
   // so there is nothing here to loop.
   const bulkRefusal = $derived(bulkAttackRefusal($lastError, lastAttackAllAttempt));
-  const attackTaxRefusalDefenderID = $derived(
-    bulkRefusal?.kind === "tax" ? bulkRefusal.defenderSeatID : null,
-  );
   const attackLimitRefusalDefenderID = $derived(
     bulkRefusal?.kind === "limit" ? bulkRefusal.defenderSeatID : null,
   );
-  // A used-up limit (room 0) leaves nothing to pick; the toast then
+  // A used-up limit (room 0) leaves nothing to pick; the refusal then
   // explains and offers no picker. An unpublished room (null) still
   // offers it: the server refuses an over-full pick again and says so.
   const attackLimitRefusalRoom = $derived(
@@ -1029,12 +1078,10 @@
   // tapped, so clearing declarations afterwards would strand them
   // tapped and not attacking — strictly worse than never having
   // clicked. Because the bulk declare is one room.Apply, a single
-  // undo restores tap state and declarations together. That is why
-  // this button is here rather than only in the ⋯ menu.
-  const canUndoDeclaration = $derived(
-    canDeclareAttackers && attackPlan.declared.length > 0 && canSpendUndo,
-  );
-  function undoDeclaration(): void {
+  // undo restores tap state and declarations together. That undo is
+  // the action dock's one Undo, in its toggles row, a click away for
+  // the whole step (ADR 0111 PR 3).
+  function undo(): void {
     client.sendAction("undo");
   }
 
@@ -1050,11 +1097,54 @@
           .length
       : 0,
   );
+  // Owner decision 2026-10-02 (ADR 0111 PR 4): when the dock's primary
+  // is No blocks and the defender holds priority in this window, one
+  // click declares no blocks AND passes priority, as one click on
+  // `next` did before PR 3 put No blocks in its place. Done blocking,
+  // after blockers are staged, is a separate confirm and does not pass.
+  //
+  // The two actions are sent in order, never together: finish_blocks
+  // first, and pass_priority only once a snapshot shows the server
+  // accepted it (the viewer's declaration is no longer pending). Then
+  // only if the viewer still holds priority: completing the LAST
+  // pending declaration hands priority to the active player (CR 509.2,
+  // 117.3a, block_completion.go), and a pass sent blind would be
+  // refused ("you do not hold priority") or, worse, pass a later window.
+  // The pass is deduped against autopass by the frame's seq
+  // (lastAutoPassedSeq), so the window is passed once. An error frame
+  // answering the finish_blocks calls it off.
+  let noBlocksPass = $state<{ frame: string; seq: number } | null>(null);
   function finishBlocks(): void {
     if (!viewerID) return;
     combatSelection = null;
-    client.sendAction("finish_blocks", viewerID);
+    const declining = viewerStagedBlocks === 0;
+    const holding = viewerHasPriority;
+    const frame = client.sendAction("finish_blocks", viewerID);
+    noBlocksPass = declining && holding && frame ? { frame, seq: $lastSeq } : null;
   }
+  $effect(() => {
+    const p = noBlocksPass;
+    if (!p) return;
+    const err = $lastError;
+    if (err?.replyTo === p.frame) {
+      noBlocksPass = null;
+      return;
+    }
+    const seq = $lastSeq;
+    if (view?.turn?.step !== "declare_blockers") {
+      noBlocksPass = null;
+      return;
+    }
+    // Not answered yet: no newer frame, or a newer one that still has
+    // the declaration open (someone else's action landed first).
+    if (seq <= p.seq || viewerBlocksPending) return;
+    noBlocksPass = null;
+    if (!viewerHasPriority) return;
+    if (view.pending_choices?.some((c) => c.chooser === viewerID)) return;
+    if (seq === lastAutoPassedSeq) return;
+    lastAutoPassedSeq = seq;
+    passPriority();
+  });
 
   function declareBlockTarget(attackerCardID: string): void {
     if (!viewerID || combatSelection?.kind !== "blocker") return;
@@ -1088,30 +1178,12 @@
     play("shuffle");
   }
 
-  // Concede is irreversible — it asks first, in a styled popover
-  // anchored to the command bar rather than window.confirm.
-  let concedeConfirm = $state(false);
-  function requestConcede(): void {
-    if (!viewerID || viewerEliminated || gameEnded) return;
-    menuOpen = false;
-    concedeConfirm = true;
-  }
-  function confirmConcede(): void {
-    concedeConfirm = false;
+  // Concede is irreversible: the ⋯ menu asks first, in a confirm that
+  // opens where the menu was (GameMenu.svelte). This runs once it is
+  // accepted.
+  function concede(): void {
     if (!viewerID || viewerEliminated || gameEnded) return;
     client.sendAction("concede", viewerID);
-  }
-
-  // The ⋯ menu in the command bar holds the sandbox utilities
-  // (draw / untap / shuffle / mulligan / undo) and table actions so
-  // the bar itself stays status + three icon buttons + pass turn.
-  let menuOpen = $state(false);
-  function closeMenu(): void {
-    menuOpen = false;
-  }
-  function viaMenu(fn: () => void): void {
-    menuOpen = false;
-    fn();
   }
 
   // ---- Keyboard shortcuts (ADR 0047) ----
@@ -1140,6 +1212,9 @@
         toggleHoldPriority();
       },
       toggleAutopass,
+      toggleBluff: () => {
+        pressBluff();
+      },
       toggleGameLog: () => (showGameLog = !showGameLog),
       drawCard: draw,
       // Registered so the command bar's speaker icon re-renders; the
@@ -1164,12 +1239,12 @@
       // availability rule treats as "no information" and stays
       // permissive about.
       passLegal: hasPassMove(view),
-      // Admin undo bypasses the caller / budget gates, same as the
-      // ⋯ menu's Undo row.
+      // Admin undo bypasses the caller / budget gates, as the server
+      // does (the dock's Undo reads the same canSpendUndo).
       // null means "no budget gate": an admin bypasses it, and so
       // does an unlimited table, whose seats report -1 remaining —
       // a number the shortcut's `<= 0` test would read as exhausted.
-      undosRemaining: isAdmin || undoUnlimited ? null : (viewerSeat?.undos_remaining ?? 0),
+      undosRemaining: adminUnseated || undoUnlimited ? null : (viewerSeat?.undos_remaining ?? 0),
       attackAllEligible: canDeclareAttackers ? attackPlan.eligible.length : 0,
       attackAllDefenders: canDeclareAttackers ? attackPlan.defenders.length : 0,
     });
@@ -1186,6 +1261,161 @@
     return ` (${formatChord(chord, mac)})`;
   }
 
+  // ---- Combat in the action dock (ADR 0111 PR 3) ----
+  // Each is a request (lib/dock.ts) mounted beside the dock while it
+  // applies; lib/combatDock.ts builds what the dock draws.
+  //
+  // The attack row, for the whole declare-attackers step, so the count
+  // stays live as creatures are declared one by one. It stays after
+  // the last one is declared ("N declared"), and while a refusal of the
+  // last attack-with-all waits for an answer.
+  const attackRowShown = $derived(
+    canDeclareAttackers &&
+      !mulligansOpen &&
+      !gameEnded &&
+      (attackAllReady || attackPlan.declared.length > 0 || bulkRefusal !== null),
+  );
+  const attackDockRequest = $derived(
+    attackRowShown && view
+      ? attackRowRequest({
+          view,
+          plan: attackPlan,
+          ready: attackAllReady,
+          blockedHint: attackBlockedHint,
+          attackAllChord: keys.attackAll,
+          seatColor,
+          onAttackAll: attackAllAt,
+          onChooseAttackers: openAttackPicker,
+          refusal:
+            bulkRefusal && $lastError
+              ? {
+                  kind: bulkRefusal.kind,
+                  message: $lastError.message,
+                  reason: $lastError.reason,
+                  missing: $lastError.missing,
+                  limitRoom: attackLimitRefusalRoom,
+                  onChoose: openAttackPickerFromRefusal,
+                  onDismiss: dismissAttackTaxRefusal,
+                }
+              : null,
+        })
+      : null,
+  );
+  // #1279: a defender still declaring blockers finishes from the dock's
+  // primary, for the whole of their open declaration.
+  const blockDockRequest = $derived(
+    viewerBlocksPending && !mulligansOpen && !gameEnded
+      ? blockRequest(viewerStagedBlocks, finishBlocks)
+      : null,
+  );
+  // The two-click combat flow's hint, with Cancel (and Escape).
+  const selectionDockRequest = $derived(
+    combatSelection && !mulligansOpen
+      ? combatSelectionRequest(
+          combatSelection.kind,
+          cardLabel(combatSelection.cardID).name,
+          () => (combatSelection = null),
+        )
+      : null,
+  );
+
+  // ---- Targeting and payment in the action dock (ADR 0111 PR 4) ----
+  // The targeting walk's prompt (Done / Cancel), and the insufficient-
+  // mana prompt (Auto-tap & cast / Cast anyway). lib/targetingDock.ts
+  // builds what the dock draws.
+  const targetingDockRequest = $derived(
+    $targeting
+      ? targetingRequest($targeting, view, {
+          onDone: confirmTargeting,
+          onCancel: cancelTargeting,
+        })
+      : null,
+  );
+  const manaDockRequest = $derived(
+    manaOverride
+      ? insufficientManaRequest(manaOverride.missing, cardNameAnywhere(manaOverride.cardID), {
+          onAutoTap: openAutoTap,
+          onCastAnyway: castAnyway,
+          onCancel: dismissManaOverride,
+        })
+      : null,
+  );
+  // ---- Inline choices in the action dock (ADR 0111 PR 5) ----
+  // The pending choices themselves are ChoicePromptModal's (it opens
+  // their requests). These two are the table's: an open vote (a `step`
+  // request: it never stops the game, so `next` stays), and, once the
+  // game has ended, Back to lobby as the primary. The game-over banner
+  // stays in the strip.
+  const voteDockRequest = $derived(
+    view?.vote && viewerID
+      ? voteRequest({
+          vote: view.vote,
+          viewerID,
+          seats: view.seats,
+          onCast: (option) => sendAction("cast_vote", { option }, viewerID ?? undefined),
+          onEnd: () => sendAction("end_vote"),
+        })
+      : null,
+  );
+  const gameOverDockRequest = $derived(gameEnded ? gameOverRequest(back) : null);
+
+  // ---- The ⋯ menu (ADR 0111 PR 7, owner decision 3) ----
+  // The sandbox tools, life history, the table, spawn, the vote
+  // launcher, navigation and Concede. A seated player's is the last chip
+  // on the action dock's toggles row and opens upward. A viewer with no
+  // dock (a spectator, an admin with no seat here) keeps a smaller one
+  // on the command bar: life history, the table and navigation, nothing
+  // that acts on a seat. Neither is drawn while the dev replay scrubber
+  // shows a past frame: `view` is history then, and every entry acts on
+  // the LIVE game.
+  const menuOptions = $derived<GameMenuOptions>({
+    seated: dockShown,
+    eliminated: viewerEliminated,
+    gameEnded,
+    drawKey: keyHint(keys.drawCard) ? formatChord(keys.drawCard, mac) : "",
+    drawTitle: `draw a card${keyHint(keys.drawCard)}`,
+    canManage,
+    spawnAvailable,
+    discordLink: canLinkDiscord({
+      role: sess?.principal.role,
+      discordEnabled,
+      isBotSeat: Boolean(viewerSeat?.is_bot),
+    })
+      ? { href: discordLinkHref(gameID), label: linkDiscordLabel(Boolean(viewerSeat?.discord_id)) }
+      : null,
+    myGames: signedInUserID(sess) !== null,
+    voteOpen: !!view?.vote,
+    onDraw: draw,
+    onUntapAll: untapAll,
+    onShuffle: shuffle,
+    onMulligan: mulligan,
+    onLifeHistory: () => (showLifeHistory = true),
+    onTableSettings: () => (tableSettingsOpen = true),
+    onSpawn: () => (spawnerOpen = true),
+    onMyGames: () => navigate("#/my-games"),
+    onBack: back,
+    onConcede: concede,
+    onStartVote: (topic, options) =>
+      sendAction("start_vote", { topic, options }, viewerID ?? undefined),
+  });
+  const barMenuShown = $derived(!!view && !dockShown && !replaying);
+
+  // The refused card's name, wherever it is (a hand, the command zone,
+  // a graveyard or exile it is cast from).
+  function cardNameAnywhere(cardID: string): string | undefined {
+    if (!view) return undefined;
+    const zones = [
+      view.battlefield,
+      view.exile,
+      ...view.seats.flatMap((s) => [s.hand, s.command, s.graveyard, s.library]),
+    ];
+    for (const z of zones) {
+      const c = z?.cards?.find((x) => x.instance_id === cardID);
+      if (c) return c.name;
+    }
+    return undefined;
+  }
+
   function fmtTime(d: Date): string {
     if (Number.isNaN(d.getTime())) return "";
     const hh = String(d.getHours()).padStart(2, "0");
@@ -1194,8 +1424,14 @@
   }
 </script>
 
-<section>
-  <header class="bar">
+<section
+  class:has-dock={dockShown}
+  style:--dock-w={dockShown ? `${dockSize.w}px` : undefined}
+  style:--dock-h={dockShown ? `${dockSize.h}px` : undefined}
+  class:sheet-open={dockShown && sheetW > 0}
+  style:--sheet-w={dockShown && sheetW > 0 ? `${sheetW}px` : undefined}
+>
+  <header class="bar" class:menu-in-bar={barMenuShown}>
     <button class="ghost bar-nav" onclick={back}><Icon name="chevronLeft" size={14} /> Lobby</button
     >
     <span class="bar-sep" aria-hidden="true"></span>
@@ -1221,26 +1457,12 @@
       >
     {/if}
     <span class={`status status-${$status}`} title={`seq ${$lastSeq}`}>
-      <i class="dot" aria-hidden="true"></i>{$status === "session_ended"
-        ? "session ended"
-        : $status}
+      <i class="dot" aria-hidden="true"></i><span class="status-word"
+        >{$status === "session_ended" ? "session ended" : $status}</span
+      >
       <span class="seq">· seq {$lastSeq}</span>
     </span>
-    <!-- Withheld while the dev replay scrubber is showing a past frame:
-         `view` is history then, but every control here still acts on the
-         LIVE game. See the replay-scrubber note in the script block. -->
-    {#if view && viewerID && !replaying}
-      <button
-        class="bar-btn"
-        onclick={passTurn}
-        disabled={!viewerIsActive}
-        title={viewerIsActive
-          ? `skip the rest of your turn${keyHint(keys.passTurn)}`
-          : `${activePlayer?.name ?? "another seat"} is the active player`}
-      >
-        Pass turn
-      </button>
-    {/if}
+    <!-- Pass turn moved to the action dock's action bar (ADR 0111 §7). -->
     <div class="bar-icons">
       <button
         type="button"
@@ -1268,193 +1490,24 @@
         aria-label="open settings"
         onclick={() => openSettings()}><Icon name="gear" size={17} /></button
       >
-      <!-- Same reasoning as "Pass turn" above: the Sandbox entries, undo
-           and concede all mutate the live game, so the menu is withheld
-           while a past frame is on screen. -->
-      {#if view && viewerID && !replaying}
-        <div class="more">
-          <button
-            class="ibtn"
-            class:on={menuOpen}
-            aria-haspopup="menu"
-            aria-expanded={menuOpen}
-            aria-label="more actions"
-            title="sandbox actions and more"
-            onclick={() => (menuOpen = !menuOpen)}><Icon name="more" size={17} /></button
-          >
-          {#if menuOpen}
-            <ModalLayer />
-            <!-- svelte-ignore a11y_click_events_have_key_events -->
-            <!-- svelte-ignore a11y_no_static_element_interactions -->
-            <div class="menu-backdrop" onclick={closeMenu}></div>
-            <div class="menu" role="menu" aria-label="game actions">
-              <div class="menu-h">Sandbox</div>
-              <button
-                class="mi"
-                role="menuitem"
-                onclick={() => viaMenu(draw)}
-                title={`draw a card${keyHint(keys.drawCard)}`}
-              >
-                <Icon name="draw" size={15} /> Draw a card
-                {#if keyHint(keys.drawCard)}<span class="mi-r"
-                    >{formatChord(keys.drawCard, mac)}</span
-                  >{/if}
-              </button>
-              <button class="mi" role="menuitem" onclick={() => viaMenu(untapAll)}>
-                <Icon name="untap" size={15} /> Untap all
-              </button>
-              <button class="mi" role="menuitem" onclick={() => viaMenu(shuffle)}>
-                <Icon name="shuffle" size={15} /> Shuffle library
-              </button>
-              <div class="mi mi-row">
-                <Icon name="hand" size={15} />
-                <span>Mulligan to</span>
-                <input
-                  type="number"
-                  min="0"
-                  max="20"
-                  bind:value={mulliganTo}
-                  aria-label="mulligan hand size"
-                />
-                <button class="sm" onclick={() => viaMenu(mulligan)}>Go</button>
-              </div>
-              <button
-                class="mi"
-                role="menuitem"
-                onclick={() => viaMenu(() => client.sendAction("undo"))}
-                disabled={!canSpendUndo}
-                title={(isAdmin
-                  ? "rewind the most recent action (admin — bypasses caller / budget gates)"
-                  : undoUnlimited
-                    ? "undo your most recent action — this table has no undo limit"
-                    : !canSpendUndo
-                      ? "no undos remaining this turn (refreshes on your next untap)"
-                      : `undo your most recent action — ${formatUndoCount(viewerSeat?.undos_remaining)} left this turn`) +
-                  keyHint(keys.undo)}
-              >
-                <Icon name="undo" size={15} /> Undo
-                {#if !isAdmin && viewerSeat}
-                  <span class="mi-r">{formatUndoCount(viewerSeat.undos_remaining)} left</span>
-                {/if}
-              </button>
-              <button
-                class="mi"
-                role="menuitem"
-                onclick={() => viaMenu(() => (showLifeHistory = true))}
-              >
-                <Icon name="drop" size={15} /> Life history
-              </button>
-              <div class="sep"></div>
-              <div class="menu-h">Table</div>
-              <!-- ADR 0075 §2.5. Open to everyone, because the
-                   settings are public on purpose: how many take-backs
-                   this table allows, and whether a Treasure can
-                   appear from nowhere, are not the host's private
-                   business. The panel disables its own controls for
-                   anyone who is not the host or the admin. It
-                   replaced the stop-gap "Undo limit" row that sub-PR
-                   3 left in the Sandbox section — one setting, one
-                   control. -->
-              <button
-                class="mi"
-                role="menuitem"
-                onclick={() => viaMenu(() => (tableSettingsOpen = true))}
-                title={canManage
-                  ? "the table's house rules — undos, life, commander damage, bot speed, spawning"
-                  : "the table's house rules (only the host can change them)"}
-              >
-                <Icon name="gear" size={15} /> Table settings…
-                {#if !canManage}<span class="mi-r">view</span>{/if}
-              </button>
-              {#if spawnAvailable}
-                <!-- Both of the server's gates, checked together: the
-                     host or admin, AND the table's spawn switch. The
-                     entry is absent rather than disabled when the
-                     switch is off — an always-visible control for a
-                     feature most tables never turn on is clutter, and
-                     the switch itself is one entry above. -->
-                <button
-                  class="mi"
-                  role="menuitem"
-                  onclick={() => viaMenu(() => (spawnerOpen = true))}
-                  title="put a card or a token on the table — announced in the game log, and undoable"
-                >
-                  <Icon name="spark" size={15} /> Spawn a card or token…
-                </button>
-              {/if}
-              {#if bugReportAvailable}
-                <button
-                  class="mi"
-                  role="menuitem"
-                  onclick={() => viaMenu(() => (bugReportOpen = true))}
-                >
-                  <!-- Widened with the kind picker: the same form now
-                       files ideas and questions, and an entry that
-                       only says "bug" is an entry nobody uses to ask
-                       for a feature. -->
-                  <Icon name="bug" size={15} /> Report a bug or idea
-                </button>
-              {/if}
-              {#if canLinkDiscord( { role: sess?.principal.role, discordEnabled, isBotSeat: Boolean(viewerSeat?.is_bot) }, )}
-                <!-- A navigation, not a fetch: the server answers with a
-                     302 to Discord's consent screen and comes back to
-                     this table with the seat linked. -->
-                <a
-                  class="mi"
-                  role="menuitem"
-                  href={discordLinkHref(gameID)}
-                  title="sign in with Discord and put your Discord name and avatar on this seat"
-                >
-                  <Icon name="link" size={15} />
-                  {linkDiscordLabel(Boolean(viewerSeat?.discord_id))}
-                </a>
-              {/if}
-              {#if signedInUserID(sess)}
-                <button
-                  class="mi"
-                  role="menuitem"
-                  onclick={() => viaMenu(() => navigate("#/my-games"))}
-                >
-                  <Icon name="library" size={15} /> My games
-                </button>
-              {/if}
-              <button class="mi" role="menuitem" onclick={() => viaMenu(back)}>
-                <Icon name="chevronLeft" size={15} /> Back to lobby
-              </button>
-              <div class="sep"></div>
-              <button
-                class="mi danger"
-                role="menuitem"
-                onclick={requestConcede}
-                disabled={viewerEliminated || gameEnded}
-                title={viewerEliminated
-                  ? "you are already eliminated"
-                  : gameEnded
-                    ? "the game has ended"
-                    : "concede the game (irreversible)"}
-              >
-                <Icon name="flag" size={15} /> Concede…
-              </button>
-            </div>
-          {/if}
-        </div>
+      <!-- The bug/idea form is also reachable from here, not only the
+           three-dot menu (#1952): the report that asked for it came from
+           somebody who did not look in the menu. Same gate as before. -->
+      {#if bugReportAvailable}
+        <button
+          class="ibtn"
+          title="Report a bug or idea"
+          aria-label="Report a bug or idea"
+          onclick={() => (bugReportOpen = true)}><Icon name="bug" size={17} /></button
+        >
+      {/if}
+      <!-- ADR 0111 PR 7 (owner decision 3): a seated player's ⋯ menu is
+           the action dock's, on its toggles row. A viewer with no dock
+           keeps this one: life history, the table and navigation. -->
+      {#if barMenuShown}
+        <GameMenu {...menuOptions} placement="down" />
       {/if}
     </div>
-    {#if concedeConfirm}
-      <ModalLayer />
-      <div class="confirm" role="dialog" aria-modal="true" aria-label="concede the game?">
-        <div class="confirm-title">Concede the game?</div>
-        <p class="confirm-body">
-          You'll be eliminated and keep watching as a spectator. This can't be undone.
-        </p>
-        <div class="confirm-actions">
-          <button onclick={() => (concedeConfirm = false)}>Keep playing</button>
-          <button class="danger" onclick={confirmConcede}
-            ><Icon name="flag" size={14} /> Concede</button
-          >
-        </div>
-      </div>
-    {/if}
     {#if showLifeHistory}
       <ModalLayer />
       <div class="life-history-popover" id="life-history-popover" role="dialog">
@@ -1577,10 +1630,7 @@
           onDeclareAttack={declareAttackTarget}
           onDeclareBlock={declareBlockTarget}
           onDeclareAttackers={declareGroupAttackers}
-          {autopassEnabled}
-          {loopNotice}
-          onPassPriority={passPriority}
-          onToggleAutopass={toggleAutopass}
+          docked={dockShown}
           {beatsPrimeKey}
           legal={legalHighlights}
           legalGate={legalActions}
@@ -1590,7 +1640,9 @@
                combat hint, opening-hand roll-call, toasts, game end.
                Nothing here pushes the table around. -->
           {#snippet attention()}
-            <TargetingBanner {view} />
+            <!-- ADR 0111 PR 4: the targeting prompt's sentence, Done and
+                 Cancel are the action dock's request; the board still
+                 answers it (highlights, rings, the click that picks). -->
 
             <!-- Bot disclosures. Improvisation announcements always
                  show; per-move reasoning only with the S11.5 "show bot
@@ -1605,168 +1657,9 @@
                  does. -->
             <RevealBanner snap={view} />
 
-            <!-- #318: the attack-with-all cluster. Present for the whole
-                 declare-attackers step so the count stays live as
-                 creatures are declared one by one; it disappears the
-                 moment nothing is left that could attack. -->
-            {#if canDeclareAttackers && !mulligansOpen && !gameEnded && (attackAllReady || canUndoDeclaration)}
-              <div class="att attack-all" aria-label="declare attackers">
-                <span class="att-label danger">
-                  <Icon name="sword" size={12} />
-                  attack
-                </span>
-                <span class="att-text">
-                  {#if attackAllReady}
-                    <strong>{attackPlan.eligible.length}</strong>
-                    ready to attack
-                    {#if attackPlan.declared.length > 0}
-                      <span class="muted">· {attackPlan.declared.length} already declared</span>
-                    {/if}
-                    {#if attackBlockedHint}
-                      <span class="muted">· can't: {attackBlockedHint}</span>
-                    {/if}
-                  {:else}
-                    <strong>{attackPlan.declared.length}</strong>
-                    declared
-                    {#if attackBlockedHint}
-                      <span class="muted">· {attackBlockedHint} can't attack</span>
-                    {/if}
-                  {/if}
-                </span>
-                {#if attackAllReady}
-                  {#if attackPlan.defenders.length === 1}
-                    <button
-                      type="button"
-                      class="primary att-btn"
-                      title={attackAllTitle(attackPlan.defenders[0]) + keyHint(keys.attackAll)}
-                      disabled={eligibleAt(attackPlan, attackPlan.defenders[0].id).length === 0}
-                      onclick={() => attackAllAt(attackPlan.defenders[0].id)}
-                    >
-                      {attackAllLabel(attackPlan, attackPlan.defenders[0])}
-                      {#if attackAllTaxLabel(view, attackPlan, attackPlan.defenders[0].id)}
-                        <span class="muted"
-                          >· {attackAllTaxLabel(view, attackPlan, attackPlan.defenders[0].id)}</span
-                        >
-                      {/if}
-                    </button>
-                    {#if offersAttackPicker(view, attackPlan, attackPlan.defenders[0].id)}
-                      <!-- #1162: the seat can only afford SOME of a wide
-                           swing under a tax — offered up front rather
-                           than only after the full-batch button is
-                           refused. #1533: likewise when a count limit
-                           lets only some of it attack. -->
-                      <button
-                        type="button"
-                        class="ghost att-btn"
-                        title={attackTaxOn(view, attackPlan.defenders[0].id)
-                          ? "pick which attackers to send, and lock a land against the auto-tapper"
-                          : "pick which attackers to send — an effect limits how many can attack"}
-                        onclick={() => openAttackPicker(attackPlan.defenders[0].id)}
-                      >
-                        Choose attackers…
-                      </button>
-                    {/if}
-                  {:else}
-                    <!-- Multi-opponent: one button per seat rather than a
-                         bare "attack all", so the control always says who
-                         gets hit. Nothing here spreads an attack. -->
-                    <span class="att-text all-at">Attack all →</span>
-                    {#each attackPlan.defenders as opp (opp.id)}
-                      <button
-                        type="button"
-                        class="att-btn opp-btn"
-                        title={attackAllTitle(opp)}
-                        disabled={eligibleAt(attackPlan, opp.id).length === 0}
-                        onclick={() => attackAllAt(opp.id)}
-                      >
-                        <span class="seat-dot" style="background:{seatColor(opp.seat)}"></span>
-                        {seatLabel(opp)}
-                        {#if attackTaxOn(view, opp.id)}
-                          <span class="muted">{attackTaxOn(view, opp.id)}</span>
-                        {/if}
-                      </button>
-                      {#if offersAttackPicker(view, attackPlan, opp.id)}
-                        <button
-                          type="button"
-                          class="ghost att-btn"
-                          title={attackTaxOn(view, opp.id)
-                            ? `pick which attackers to send at ${seatLabel(opp)}, and lock a land against the auto-tapper`
-                            : `pick which attackers to send at ${seatLabel(opp)} — an effect limits how many can attack`}
-                          onclick={() => openAttackPicker(opp.id)}
-                          aria-label={`Choose attackers against ${seatLabel(opp)}`}
-                        >
-                          <Icon name="more" size={12} />
-                        </button>
-                      {/if}
-                    {/each}
-                  {/if}
-                {/if}
-                {#if canUndoDeclaration}
-                  <button
-                    type="button"
-                    class="ghost att-btn"
-                    title="take back your last declaration — restores tap state too"
-                    onclick={undoDeclaration}
-                  >
-                    <Icon name="undo" size={12} /> Undo
-                  </button>
-                {/if}
-              </div>
-            {/if}
-
-            <!-- #1279: a defender still declaring blockers can finish
-                 without holding priority. Present for the whole of
-                 their open declaration, so the count stays live as
-                 blocks are staged; gone once it is complete. -->
-            {#if viewerBlocksPending && !mulligansOpen && !gameEnded}
-              <div class="att block-finish" aria-label="declare blockers">
-                <span class="att-label">
-                  <Icon name="sword" size={12} />
-                  block
-                </span>
-                <span class="att-text">
-                  {#if viewerStagedBlocks > 0}
-                    <strong>{viewerStagedBlocks}</strong>
-                    {viewerStagedBlocks === 1 ? "blocker" : "blockers"} declared
-                  {:else}
-                    Choose blockers, or declare none
-                  {/if}
-                </span>
-                <button
-                  type="button"
-                  class="primary att-btn"
-                  title="finish declaring blockers — the attacking player gets priority once every defender is done"
-                  onclick={finishBlocks}
-                >
-                  {viewerStagedBlocks > 0 ? "Done blocking" : "No blocks"}
-                </button>
-              </div>
-            {/if}
-
-            {#if combatSelection && !mulligansOpen}
-              <div class="att combat-hint" role="status" aria-live="polite">
-                <span class="att-label danger">
-                  <Icon name="sword" size={12} />
-                  {combatSelection.kind === "attacker" ? "attack" : "block"}
-                </span>
-                <span class="att-text">
-                  {#if combatSelection.kind === "attacker"}
-                    Attacking with <strong>{cardLabel(combatSelection.cardID).name}</strong> — click an
-                    opponent's seat to commit, or the creature again to cancel.
-                  {:else}
-                    Blocking with <strong>{cardLabel(combatSelection.cardID).name}</strong> — click an
-                    incoming attacker to commit, or the creature again to cancel.
-                  {/if}
-                </span>
-                <button
-                  type="button"
-                  class="ghost att-btn"
-                  onclick={() => (combatSelection = null)}
-                >
-                  Cancel <kbd>Esc</kbd>
-                </button>
-              </div>
-            {/if}
+            <!-- ADR 0111 PR 3: the attack row, the block declaration and
+                 the combat-selection hint are the action dock's
+                 requests now (lib/combatDock.ts), not the strip's. -->
 
             {#if mulligansOpen && !gameEnded}
               <div class="att mulligan-banner" aria-label="opening hand decisions">
@@ -1824,94 +1717,15 @@
               </div>
             {/if}
 
-            {#if manaOverride}
-              <div class="att toast mana-override" role="alert" aria-live="polite">
-                <span class="att-label gold">mana</span>
-                <span class="att-text">
-                  <strong>Insufficient mana</strong>
-                  {#if manaOverride.missing.length > 0}
-                    <span class="muted">· missing {manaOverride.missing.join(" ")}</span>
-                  {/if}
-                </span>
-                <button type="button" class="primary att-btn" onclick={openAutoTap}>
-                  Auto-tap & cast
-                </button>
-                <button type="button" class="att-btn" onclick={castAnyway}>Cast anyway</button>
-                <button
-                  type="button"
-                  class="ghost att-close"
-                  onclick={dismissManaOverride}
-                  aria-label="dismiss"
-                >
-                  <Icon name="x" size={12} />
-                </button>
-              </div>
-            {:else if attackTaxRefusalDefenderID}
-              <!-- #1162: a wide swing refused for want of the CR 508.1a
-                   attack tax (ADR 0080) offers the subset picker
-                   instead of leaving the player to work out a smaller
-                   number and declare it one creature at a time. -->
-              <div class="att toast attack-tax-override" role="alert" aria-live="polite">
-                <span class="att-label gold">attack tax</span>
-                <span class="att-text">
-                  <strong>
-                    {#if $lastError?.reason}
-                      Attacking with all of them costs {$lastError.reason} and you can't pay it
-                    {:else}
-                      You can't pay to attack with all of them
-                    {/if}
-                  </strong>
-                  {#if $lastError?.missing && $lastError.missing.length > 0}
-                    <span class="muted">· missing {$lastError.missing.join(" ")}</span>
-                  {/if}
-                </span>
-                <button type="button" class="primary att-btn" onclick={openAttackPickerFromRefusal}>
-                  Choose attackers…
-                </button>
-                <button
-                  type="button"
-                  class="ghost att-close"
-                  onclick={dismissAttackTaxRefusal}
-                  aria-label="dismiss"
-                >
-                  <Icon name="x" size={12} />
-                </button>
-              </div>
-            {:else if attackLimitRefusalDefenderID}
-              <!-- #1533: a wide swing refused by a CR 508.1c count limit
-                   (Silent Arbiter, Crawlspace — ADR 0045 Decision 45)
-                   offers the same attackers picker, capped at the room
-                   the server publishes. The server's sentence is the
-                   reason, shown verbatim. -->
-              <div class="att toast attack-limit-override" role="alert" aria-live="polite">
-                <span class="att-label gold">attack limit</span>
-                <span class="att-text">
-                  <strong>{$lastError?.message}</strong>
-                  {#if attackLimitRefusalRoom === 0}
-                    <span class="muted">· no more creatures can attack this combat</span>
-                  {/if}
-                </span>
-                {#if attackLimitRefusalRoom !== 0}
-                  <button
-                    type="button"
-                    class="primary att-btn"
-                    onclick={openAttackPickerFromRefusal}
-                  >
-                    {attackLimitRefusalRoom === null
-                      ? "Choose attackers…"
-                      : `Choose up to ${attackLimitRefusalRoom}…`}
-                  </button>
-                {/if}
-                <button
-                  type="button"
-                  class="ghost att-close"
-                  onclick={dismissAttackTaxRefusal}
-                  aria-label="dismiss"
-                >
-                  <Icon name="x" size={12} />
-                </button>
-              </div>
-            {:else if $lastError}
+            <!-- ADR 0111 PR 4: the insufficient-mana prompt (Auto-tap &
+                 cast / Cast anyway) is a request in the action dock
+                 (lib/targetingDock.ts), not a strip toast. -->
+            {#if $lastError && !(manaOverride && dockShown) && !(bulkRefusal && attackRowShown) && $lastError !== $inlineRefusal}
+              <!-- A refusal of the last attack-with-all is answered in
+                   the dock's attack row (ADR 0111 PR 3) while the row is
+                   there; otherwise it is an ordinary rejection. A
+                   refusal of an inline choice's answer is shown in the
+                   dock as "Not accepted" (PR 5), not here as well. -->
               <div class="att toast error" role="alert" aria-live="polite">
                 <span class="att-label danger">rejected</span>
                 <span class="att-text">
@@ -1946,9 +1760,13 @@
                     {gameOver.text}
                   {/if}
                 </span>
-                <button type="button" class="primary att-btn" onclick={back}>
-                  Back to lobby
-                </button>
+                {#if !dockShown}
+                  <!-- ADR 0111 PR 5: with the dock on screen, Back to
+                       lobby is its primary; the banner stays here. -->
+                  <button type="button" class="primary att-btn" onclick={back}>
+                    Back to lobby
+                  </button>
+                {/if}
               </div>
             {:else if viewerEliminated}
               <div class="att eliminated" role="status">
@@ -1996,17 +1814,68 @@
           </div>
         {/snippet}
       </svelte:boundary>
-      {#if viewerNeedsToDecide}
-        <ModalLayer />
-        <div class="mulligan-scrim"></div>
-        <div
-          class="mulligan-dialog"
-          role="dialog"
-          aria-modal="true"
-          aria-label="keep or mulligan your hand"
+      <!-- ADR 0111: the action dock, a sibling of the board in the
+           play area's bottom-right corner. Outside the boundary on
+           purpose: `next` keeps working when the table fails to draw. -->
+      {#if dockShown}
+        <!-- The dock's requests (lib/dock.ts). Each is open for as long
+             as its block is mounted; the dock draws the strongest. -->
+        {#if attackDockRequest}
+          <DockRequest request={attackDockRequest} />
+        {/if}
+        {#if blockDockRequest}
+          <DockRequest request={blockDockRequest} />
+        {/if}
+        {#if selectionDockRequest}
+          <DockRequest request={selectionDockRequest} />
+        {/if}
+        {#if targetingDockRequest}
+          <DockRequest request={targetingDockRequest} />
+        {/if}
+        {#if manaDockRequest}
+          <DockRequest request={manaDockRequest} />
+        {/if}
+        {#if voteDockRequest}
+          <DockRequest request={voteDockRequest} />
+        {/if}
+        {#if gameOverDockRequest}
+          <DockRequest request={gameOverDockRequest} />
+        {/if}
+        <ActionDock
+          {view}
+          {viewerHasPriority}
+          {viewerIsActive}
+          activePlayerName={activePlayer?.name}
+          {autopassEnabled}
+          {loopNotice}
+          {readyActions}
+          onPassPriority={passPriority}
+          onPassTurn={passTurn}
+          onToggleAutopass={toggleAutopass}
+          undosLeft={viewerSeat?.undos_remaining ?? 0}
+          canUndo={canSpendUndo}
+          onUndo={undo}
+          onSize={onDockSize}
+          onSheet={onDockSheet}
+          menu={menuOptions}
+        />
+      {/if}
+      {#if viewerNeedsToDecide && dockShown}
+        <!-- ADR 0111 PR 6 (decision 2): the opening hand is a sheet that
+             grows up out of the dock, with Keep hand (Enter) and
+             Mulligan in its action bar. The dialog keeps its name, "keep
+             or mulligan your hand", and the hand its list. No scrim: the
+             table and the roll call stay readable. -->
+        <DockSheet
+          rank="choice"
+          label="keep or mulligan your hand"
+          title="Your opening hand"
+          width={720}
+          sheetKey={`mulligan:${viewerSeat?.mulligans_taken ?? 0}`}
+          primary={confirmAction("Keep hand", keepHand, { id: "keep" })}
+          secondary={[{ id: "mulligan", label: "Mulligan", onPress: mulliganDecide }]}
         >
-          <header>
-            <h2>Your opening hand</h2>
+          <div class="mulligan-copy">
             {#if openingRoll}
               <p class="opening-roll-copy">
                 <span class="seat-dot" style="background:{seatColor(openingRoll.seat)}"></span>
@@ -2021,7 +1890,7 @@
             {:else}
               <p class="muted">Hand size: {viewerSeat?.hand.count ?? 0}. Keep or mulligan?</p>
             {/if}
-          </header>
+          </div>
           {#if (viewerSeat?.hand.cards.length ?? 0) > 0}
             <div class="mulligan-cards" role="list" aria-label="your opening hand">
               {#each viewerSeat?.hand.cards ?? [] as card (card.instance_id)}
@@ -2036,16 +1905,18 @@
               {/each}
             </div>
           {/if}
-          <div class="mulligan-actions">
-            <button onclick={mulliganDecide}>Mulligan</button>
-            <button class="primary" onclick={keepHand}>Keep hand</button>
-          </div>
-        </div>
+        </DockSheet>
       {/if}
       <DiscardPromptModal snap={view} {viewerID} {sendAction} />
       <!-- lastError too: this modal's backdrop covers the board's
            rejection toast, so it shows a refusal of its own answer. -->
-      <ChoicePromptModal snap={view} {viewerID} {sendAction} lastError={$lastError} />
+      <ChoicePromptModal
+        snap={view}
+        {viewerID}
+        {sendAction}
+        lastError={$lastError}
+        docked={dockShown}
+      />
       <AutoTapPreviewModal
         {gameID}
         snap={view}
@@ -2130,26 +2001,15 @@
 <svelte:window
   onkeydown={(ev: KeyboardEvent) => {
     if (ev.key === "Escape") {
-      menuOpen = false;
-      concedeConfirm = false;
+      // The ⋯ menu and Concede's confirm close themselves
+      // (GameMenu.svelte).
       tableSettingsOpen = false;
       spawnerOpen = false;
-      // #1659: a modal open during a cast/targeting flow (mode picker,
-      // X prompt, sacrifice/discard cost, divide damage, alt-cost,
-      // ChoicePromptModal, …) owns Escape while it's on screen — every
-      // one of them registers a layer via ModalLayer (lib/modalLayers.ts).
-      // Without this check, Escape both closes that modal AND cancels
-      // the targeting walk underneath it, which is a second, unwanted
-      // effect of the same keypress.
-      if (!$modalOpen) cancelTargeting();
-    }
-    // S20 sub-PR 5: Enter confirms a multi-target pick list (no-op
-    // for single-target prompts and when fewer than min are picked).
-    // #1659: same modal-precedence rule as Escape above — a modal's
-    // own Enter handler (confirm the mode / X / cost picked) should
-    // not also confirm the targeting walk it's sitting on top of.
-    if (ev.key === "Enter" && !(ev.target instanceof HTMLInputElement) && !$modalOpen) {
-      confirmTargeting();
+      // ADR 0111 PR 4: cancelling the targeting walk or a combat
+      // selection on Escape, and confirming a pick list on Enter, are
+      // the action dock's one Enter / Escape handler now
+      // (ActionDock.svelte, lib/dock.ts dockKeyFor). It keeps #1659's
+      // rule: it stands down while a modal layer is open.
     }
   }}
 />
@@ -2190,7 +2050,7 @@
     gap: 0.35rem;
     overflow: hidden;
   }
-  /* Command bar: lobby · wordmark · game · status · pass turn · icons.
+  /* Command bar: lobby · wordmark · game · status · icons.
      Sandbox utilities and table actions live behind the ⋯ menu. */
   .bar {
     display: flex;
@@ -2335,15 +2195,41 @@
     border-radius: 999px;
     font-family: var(--font-mono);
   }
-  .bar-btn {
-    height: 30px;
-    padding: 0 12px;
-    font-size: 12.5px;
-  }
   .bar-icons {
     display: flex;
     gap: 2px;
     align-items: center;
+  }
+  /* The bar has one more icon since "Report a bug or idea" moved onto
+     it (#1952). On a phone the wordmark and the seq counter are what
+     give way, so the icons keep their room. (Pass turn moved to the
+     action dock, ADR 0111.) */
+  @media (max-width: 599px) {
+    .bar {
+      gap: 8px;
+      padding: 0 10px;
+    }
+    .wordmark,
+    .bar-sep,
+    .status .seq {
+      display: none;
+    }
+    /* ADR 0111 PR 7: a viewer with no dock (a spectator) keeps the ⋯
+       menu here, and has the "spectating" tag too, so the bar has two
+       more things to fit than a seated player's. The game id and the
+       status word give way for them; the word stays for a screen
+       reader, and the dot keeps its colour. */
+    .bar.menu-in-bar :global(h1.crumb) {
+      display: none;
+    }
+    .bar.menu-in-bar .status-word {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      white-space: nowrap;
+    }
   }
   .ibtn {
     width: 32px;
@@ -2360,136 +2246,48 @@
     background: rgba(255, 255, 255, 0.06);
     border-color: var(--border);
   }
-  .more {
-    position: relative;
-  }
-  .menu-backdrop {
-    position: fixed;
-    inset: 0;
-    z-index: 50;
-  }
-  .menu {
-    position: absolute;
-    right: 0;
-    top: calc(100% + 6px);
-    width: 284px;
-    z-index: 60;
-    background: var(--surface);
-    border: 1px solid var(--border-strong);
-    border-radius: 12px;
-    box-shadow: var(--shadow-lg);
-    padding: 6px;
-    box-sizing: border-box;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-  .menu-h {
-    font-family: var(--font-mono);
-    font-size: 9.5px;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: var(--fg-dim);
-    padding: 8px 10px 4px;
-  }
-  .mi {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    height: 32px;
-    padding: 0 10px;
-    border-radius: 8px;
-    border: 1px solid transparent;
-    background: transparent;
-    color: var(--fg);
-    font-size: 12.5px;
-    font-weight: 500;
-    width: 100%;
-    justify-content: flex-start;
-    text-align: left;
-    box-shadow: none;
-    box-sizing: border-box;
-  }
-  /* "Link Discord" is a navigation, so it is a link styled as a row. */
-  a.mi {
-    text-decoration: none;
-    box-sizing: border-box;
-  }
-  .mi:hover:not(:disabled) {
-    background: rgba(255, 255, 255, 0.06);
-    border-color: transparent;
-  }
-  .mi:disabled {
-    opacity: 0.45;
-  }
-  .mi.danger {
-    color: var(--danger);
-  }
-  .mi-r {
-    margin-left: auto;
-    font-family: var(--font-mono);
-    font-size: 10.5px;
-    color: var(--fg-muted);
-    background: var(--surface-raised);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 2px 6px;
-  }
-  .mi-row {
-    cursor: default;
-  }
-  .mi-row input {
-    width: 44px;
-    padding: 3px 6px;
-    margin: 0 0 0 auto;
-    font-size: 12px;
-    font-family: var(--font-mono);
-    border-radius: 6px;
-  }
-  .mi-row .sm {
-    height: 24px;
-    padding: 0 8px;
-    font-size: 11.5px;
-    border-radius: 6px;
-  }
-  .sep {
-    height: 1px;
-    background: var(--border);
-    margin: 4px 6px;
-  }
-  .confirm {
-    position: absolute;
-    right: 60px;
-    top: calc(100% + 6px);
-    width: 300px;
-    z-index: 60;
-    background: var(--surface);
-    border: 1px solid var(--border-strong);
-    border-radius: 12px;
-    box-shadow: var(--shadow-lg);
-    padding: 14px 14px 12px;
-    box-sizing: border-box;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-  .confirm-title {
-    font-family: var(--font-display);
-    font-size: 15px;
-    font-weight: 700;
-    color: var(--fg);
-  }
-  .confirm-body {
-    margin: 0;
-    font-size: 12.5px;
-    color: var(--fg-muted);
-    line-height: 1.45;
-  }
+  /* The ⋯ menu and Concede's confirm are GameMenu.svelte's (ADR 0111
+     PR 7). The table-settings and spawner dialogs keep this row. */
   .confirm-actions {
     display: flex;
     justify-content: flex-end;
     gap: 6px;
     margin-top: 4px;
+  }
+  /* ADR 0111 §4: what keeps clear of the action dock. The dock
+     publishes its live size (--dock-w / --dock-h, set inline on this
+     element) and sits --dock-inset in from the play area's bottom-right
+     corner, which lines it up with the self panel's content box (board
+     padding 6px + panel border 1px + panel padding 8px). The hover zoom
+     stops above it (--dock-zoom-clear) and so does the log drawer, which
+     is fixed to the viewport and so also counts this element's 0.6rem
+     bottom padding (--dock-log-clear). */
+  section.has-dock {
+    --dock-inset: 15px;
+    --dock-zoom-clear: calc(var(--dock-h, 0px) + var(--dock-inset));
+    --dock-log-clear: calc(0.6rem + var(--dock-inset) + var(--dock-h, 0px) + 6px);
+  }
+  /* PR 6, §4: while a sheet is open the hover zoom moves left of it, so
+     hovering a card in a scry shows its text beside the sheet; it no
+     longer needs to stop above the dock. */
+  section.has-dock.sheet-open {
+    --dock-zoom-clear: 0px;
+    --zoom-right: calc(var(--sheet-w, 0px) + var(--dock-inset) + 10px);
+  }
+  /* §8: on a phone the dock is a full-width bar on the bottom of the
+     play area, and the board ends above it rather than under it. */
+  @media (max-width: 599px) {
+    section.has-dock {
+      --dock-inset: 0px;
+      --dock-zoom-clear: 0px;
+    }
+    /* A phone's sheet is full width: the zoom stays where it is. */
+    section.has-dock.sheet-open {
+      --zoom-right: 10px;
+    }
+    section.has-dock .play-area {
+      padding-bottom: calc(var(--dock-h, 0px) + 6px);
+    }
   }
   .play-area {
     /* Single-column layout since S08.5 removed the chat sidebar.
@@ -2561,8 +2359,8 @@
 
   /* ---- Attention strip rows (rendered inside Board's .strip) ----
      One flat card per live prompt: mono label on the left, text in
-     the middle, actions on the right. Same shell as StackOverlay and
-     TargetingBanner so the column reads as one instrument. */
+     the middle, actions on the right. Same shell as StackOverlay (the
+     stack card) so the column reads as one instrument. */
   .att {
     display: flex;
     align-items: center;
@@ -2613,18 +2411,6 @@
     flex: 1;
     min-width: 0;
   }
-  /* #1533: the limit sentence is the server's and can run long
-     ("… can attack Player 3 each combat (Crawlspace)."). At phone
-     width the text takes the whole first line and the actions wrap
-     under it, rather than squeezing it into a column a word wide. */
-  @media (max-width: 599px) {
-    .attack-limit-override {
-      flex-wrap: wrap;
-    }
-    .attack-limit-override .att-text {
-      flex-basis: calc(100% - 110px);
-    }
-  }
   .att-text strong {
     color: var(--fg);
     font-weight: 700;
@@ -2642,15 +2428,6 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-  }
-  .att-btn kbd {
-    font-family: var(--font-mono);
-    font-size: 9.5px;
-    color: var(--fg-dim);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    padding: 0 4px;
-    line-height: 16px;
   }
   .att-close {
     flex: 0 0 auto;
@@ -2670,33 +2447,11 @@
     vertical-align: middle;
     margin-right: 4px;
   }
-  .combat-hint,
-  .mana-override,
-  .attack-tax-override,
-  .attack-limit-override,
   .rewind-notice,
   .game-end {
     border-color: rgba(217, 180, 92, 0.45);
   }
 
-  /* #318 attack-with-all cluster. Wraps rather than overflowing —
-     a four-player table puts three opponent buttons in the strip and
-     the strip is only ~512px wide. */
-  .attack-all {
-    flex-wrap: wrap;
-    border-color: rgba(255, 122, 122, 0.4);
-  }
-  .attack-all .all-at {
-    flex: 0 0 auto;
-    color: var(--fg-dim);
-    font-family: var(--font-mono);
-    font-size: 10px;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-  }
-  .attack-all .opp-btn {
-    border-color: rgba(255, 122, 122, 0.35);
-  }
   .toast.error,
   .eliminated {
     border-color: rgba(255, 107, 107, 0.4);
@@ -2744,57 +2499,20 @@
     font-size: 10px;
   }
 
-  /* Give the opening hand the table's width so all seven cards can
-     be read together. On smaller screens only the cards scroll;
-     the heading and keep/mulligan controls stay in view. */
-  .mulligan-scrim {
-    /* Sits under Board's attention strip (z 40) so the opening-hand
-       roll-call stays readable while the table behind it dims. */
-    position: absolute;
-    inset: 0;
-    z-index: 38;
-    background: rgba(11, 10, 9, 0.6);
-    backdrop-filter: blur(2px);
-    -webkit-backdrop-filter: blur(2px);
-  }
-  .mulligan-dialog {
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    transform: translate(-50%, -50%);
-    z-index: 71;
-    width: min(2400px, calc(100% - clamp(24px, 6vw, 160px)));
-    max-height: calc(100% - 96px);
-    padding: clamp(16px, 2vw, 28px);
-    background: var(--surface);
-    border: 1px solid rgba(217, 180, 92, 0.4);
-    border-radius: var(--radius-xl);
-    color: var(--fg);
-    box-shadow: var(--shadow-lg);
-    box-sizing: border-box;
+  /* ADR 0111 PR 6: the opening hand is a dock sheet (DockSheet), so
+     only its body is styled here: the roll line, the count, and the
+     seven cards in one row of a 720px sheet (fewer per row on a phone,
+     scrolling inside the sheet). */
+  .mulligan-copy {
     display: flex;
     flex-direction: column;
-    gap: 18px;
-    overflow: hidden;
+    gap: 4px;
   }
-  .mulligan-dialog header {
-    display: flex;
-    flex-shrink: 0;
-    align-items: baseline;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-  .mulligan-dialog header h2 {
+  .mulligan-copy p {
     margin: 0;
-    font-family: var(--font-display);
-    font-size: clamp(18px, 1.5vw, 24px);
-    font-weight: 700;
+    font-size: 13px;
   }
-  .mulligan-dialog header p {
-    margin: 0;
-    font-size: 14px;
-  }
-  .mulligan-dialog header .opening-roll-copy {
+  .mulligan-copy .opening-roll-copy {
     display: inline-flex;
     align-items: center;
     gap: 6px;
@@ -2805,9 +2523,8 @@
     display: grid;
     grid-template-columns: repeat(7, minmax(0, 1fr));
     grid-auto-rows: max-content;
-    gap: clamp(8px, 1vw, 16px);
+    gap: 8px;
     min-height: 0;
-    overflow-y: auto;
     padding: 2px;
   }
   .mulligan-card {
@@ -2840,46 +2557,9 @@
     color: var(--fg-muted);
     box-sizing: border-box;
   }
-  .mulligan-actions {
-    display: flex;
-    flex-shrink: 0;
-    justify-content: flex-end;
-    gap: 10px;
-  }
-  .mulligan-actions button {
-    min-height: 44px;
-    padding-inline: 20px;
-  }
-
-  @media (max-width: 1279px) {
-    .mulligan-cards {
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-    }
-  }
-  @media (max-width: 767px) {
+  @media (max-width: 599px) {
     .mulligan-cards {
       grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-  }
-  @media (max-width: 599px) {
-    .mulligan-dialog {
-      gap: 12px;
-    }
-    .mulligan-dialog header {
-      gap: 6px;
-    }
-    .mulligan-cards {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-    .mulligan-actions button {
-      flex: 1;
-    }
-  }
-  @media (max-height: 600px) {
-    .mulligan-dialog {
-      max-height: calc(100% - 24px);
-      padding: 12px;
-      gap: 10px;
     }
   }
 

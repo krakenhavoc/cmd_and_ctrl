@@ -705,7 +705,7 @@ type PendingChoice struct {
 	mayCastResume *mayCastFrame
 
 	// LoopShortcutKey / LoopShortcutCount / LoopShortcutRepeat carry a
-	// PendingChoiceLoopShortcut's question (#804, CR 726).
+	// PendingChoiceLoopShortcut's question (#804, CR 732).
 	//
 	// Key is the TallyKey(source, label) the answer's allowance
 	// attaches to — the ability that is repeating, named the way the
@@ -890,6 +890,12 @@ type payUnlessFrame struct {
 	// pay-unless, which is nearly all of them. Its Extra names the
 	// part of `cost` the taps may cover; see waterbend_cost.go.
 	tap *TapPermanentsCost
+
+	// action is a non-mana payment — "discard a card", "sacrifice two
+	// lands" (ADR 0108 §5, pay_unless_action.go). Nil for a mana
+	// payment. When set, `cost` is empty and the prompt's PayCost is
+	// the payment's printed words.
+	action *PayAction
 }
 
 // PayTapCost is the waterbend clause of a PendingChoicePayUnless —
@@ -1370,13 +1376,13 @@ func (g *Game) ResolveManaChoice(choiceID, chooserID uuid.UUID, color string) er
 // Resolve* path ends here.
 //
 // #628: answering a prompt is a player decision, so it restarts the
-// CR 726 loop run. The engine's own prune paths call
+// CR 732 loop run. The engine's own prune paths call
 // dropChoiceLocked instead — a choice the engine withdrew is not a
 // decision anybody made, and counting it as one would let a loop
 // that queues and prunes a prompt each iteration run forever.
 //
 // Caller must hold g.mu.
-// The drop comes FIRST. notePlayerDecisionLocked withdraws the CR 726
+// The drop comes FIRST. notePlayerDecisionLocked withdraws the CR 732
 // shortcut prompt (#804) as part of clearing the loop notice, which
 // rewrites g.PendingChoices — and an index into that slice taken
 // before it ran would then name the wrong entry.
@@ -1390,7 +1396,7 @@ func (g *Game) dequeueChoiceLocked(idx int) {
 
 // dropChoiceLocked is the engine WITHDRAWING a prompt nobody answered
 // — a sacrifice choice whose card has left, a stale zone-change
-// prompt, a CR 726 shortcut whose notice was cleared, an option pick
+// prompt, a CR 732 shortcut whose notice was cleared, an option pick
 // with no legal answer left. No player decision is recorded (that is
 // dequeueChoiceLocked's job, above).
 //
@@ -2973,12 +2979,16 @@ func (g *Game) finishPickTargetLocked(f *pickTargetFrame) {
 	item.targetSpec = f.spec
 	item.modeSpec = f.modeSpec
 	item.DoubledBy, item.DoubledByName = f.doubledBy.id, f.doubledBy.name
-	g.queueHarvestedTriggerLocked(item)
 	// CR 603.3d / 115.3: a triggered ability's targets are chosen as
-	// it is put on the stack, which is right here. Emitted after the
-	// queue so a "becomes the target" trigger stacks above the
-	// ability that targeted. Added in S22 for Monk Gyatso.
-	g.emitBecameTargetLocked(item.Controller, item.SourceCardID, item.ID, item.Targets)
+	// it is put on the stack, and that placement is the drain's, not
+	// this answer's: the batch may still be held behind an ordering
+	// prompt or a batch-mate's announcement (#1529). So the "becomes
+	// the target" event is owed, not emitted, and the drain that
+	// places the item emits it. A trigger it sets off then waits for
+	// the whole batch and goes on above it (CR 603.3b), never inside
+	// the batch that targeted (#1539).
+	item.TargetsAnnouncePending = len(item.Targets) > 0
+	g.queueHarvestedTriggerLocked(item)
 	g.runStateChecksLocked()
 }
 
@@ -3216,6 +3226,13 @@ func (g *Game) QueuePayUnlessForEffect(
 	return g.queuePayUnlessLocked(chooser, source, cost, question, onDecline, TurnStep{}, uuid.Nil, nil)
 }
 
+// payUnlessExtras are the parts of a pay-unless only some callers have:
+// a branch for the "yes" (echo's EventEchoPaid) and a non-mana payment.
+type payUnlessExtras struct {
+	onPay  func(g *Game) error
+	action *PayAction
+}
+
 // queuePayUnlessLocked is the one body behind every pay-unless.
 //
 // `owed` is the step the prompt has to be answered in, or the zero
@@ -3233,8 +3250,17 @@ func (g *Game) queuePayUnlessLocked(
 	owed TurnStep,
 	guards uuid.UUID,
 	tap *TapPermanentsCost,
+	extras ...payUnlessExtras,
 ) error {
-	parsed, err := ParseCost(cost)
+	var extra payUnlessExtras
+	if len(extras) > 0 {
+		extra = extras[0]
+	}
+	var parsed ParsedCost
+	var err error
+	if extra.action == nil {
+		parsed, err = ParseCost(cost)
+	}
 	if err != nil {
 		g.EmitEvent(Event{
 			Kind:     EventEffectError,
@@ -3264,7 +3290,9 @@ func (g *Game) queuePayUnlessLocked(
 		payUnlessResume: &payUnlessFrame{
 			cost:      parsed,
 			onDecline: onDecline,
+			onPay:     extra.onPay,
 			tap:       tap,
+			action:    extra.action,
 		},
 	})
 	return nil
@@ -3531,6 +3559,30 @@ func (g *Game) ResolvePayUnless(choiceID, chooserID uuid.UUID, apply bool) error
 //
 // Caller must NOT hold g.mu — this method takes the write lock.
 func (g *Game) ResolvePayUnlessWithTaps(choiceID, chooserID uuid.UUID, apply bool, tapIDs []uuid.UUID) error {
+	return g.resolvePayUnless(choiceID, chooserID, apply, tapIDs, nil)
+}
+
+// ResolvePayUnlessWithCards is ResolvePayUnless for a prompt whose
+// payment is not mana (ADR 0108 §5, pay_unless_action.go): `cardIDs`
+// are the cards the chooser discards or the permanents they sacrifice
+// to pay "discard a card" or "sacrifice two lands".
+//
+// A malformed payment is REFUSED with the prompt left in place, the
+// posture ResolvePayUnlessWithTaps takes for a malformed tap list: card
+// IDs on a mana prompt or on a "Don't pay", the wrong count, a card
+// named twice, or one that cannot pay (not in the hand, not a permanent
+// of the clause's kind the chooser controls). A "Pay" naming nothing
+// when the chooser cannot make the payment at all is a decline, as an
+// unfundable mana "yes" is; naming nothing when they can is refused.
+//
+// Caller must NOT hold g.mu — this method takes the write lock.
+func (g *Game) ResolvePayUnlessWithCards(choiceID, chooserID uuid.UUID, apply bool, cardIDs []uuid.UUID) error {
+	return g.resolvePayUnless(choiceID, chooserID, apply, nil, cardIDs)
+}
+
+// resolvePayUnless is the one body behind the three pay-unless
+// resolvers.
+func (g *Game) resolvePayUnless(choiceID, chooserID uuid.UUID, apply bool, tapIDs, cardIDs []uuid.UUID) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	if g.State != StateActive {
@@ -3563,8 +3615,45 @@ func (g *Game) ResolvePayUnlessWithTaps(choiceID, chooserID uuid.UUID, apply boo
 			return err
 		}
 	}
+	// ADR 0108 §5: a non-mana payment names what it discards or
+	// sacrifices. Validated before the prompt is dequeued, so a refused
+	// answer leaves it to be answered again.
+	var action *PayAction
+	if frame != nil {
+		action = frame.action
+	}
+	if len(cardIDs) > 0 && (!apply || action == nil) {
+		return ErrInvalidParam
+	}
+	payable := false
+	if apply && action != nil {
+		if len(cardIDs) > 0 || len(g.payActionOptionsLocked(chooserID, action)) >= action.Count {
+			if err := g.validatePayActionLocked(chooserID, action, cardIDs); err != nil {
+				return err
+			}
+			payable = true
+		}
+	}
 	g.dequeueChoiceLocked(idx)
 	if frame == nil {
+		return nil
+	}
+	if action != nil {
+		// CR 118.12a: "sacrifice it unless you discard a card" — the
+		// discard is the payment, and the "yes" branch runs once it has
+		// been made. An unpayable "yes" is the decline.
+		if !payable {
+			g.runPayUnlessBranchLocked(choice, chooserID, frame.onDecline)
+			g.runStateChecksLocked()
+			return nil
+		}
+		if err := g.payActionLocked(chooserID, choice.Source, action, cardIDs, func(g *Game) error {
+			g.runPayUnlessBranchLocked(choice, chooserID, frame.onPay)
+			return nil
+		}); err != nil {
+			g.EmitEvent(Event{Kind: EventEffectError, Actor: chooserID, Source: choice.Source, ErrorMsg: err.Error()})
+		}
+		g.runStateChecksLocked()
 		return nil
 	}
 	paid := false
@@ -3585,18 +3674,26 @@ func (g *Game) ResolvePayUnlessWithTaps(choiceID, chooserID uuid.UUID, apply boo
 	if paid {
 		consequence = frame.onPay
 	}
-	if consequence != nil {
-		if err := consequence(g); err != nil {
-			g.EmitEvent(Event{
-				Kind:     EventEffectError,
-				Actor:    chooserID,
-				Source:   choice.Source,
-				ErrorMsg: err.Error(),
-			})
-		}
-	}
+	g.runPayUnlessBranchLocked(choice, chooserID, consequence)
 	g.runStateChecksLocked()
 	return nil
+}
+
+// runPayUnlessBranchLocked runs one branch of an answered pay-unless,
+// surfacing its error on the log rather than refusing an answer that
+// has already been taken. Caller must hold g.mu.
+func (g *Game) runPayUnlessBranchLocked(choice *PendingChoice, chooserID uuid.UUID, branch func(g *Game) error) {
+	if branch == nil {
+		return
+	}
+	if err := branch(g); err != nil {
+		g.EmitEvent(Event{
+			Kind:     EventEffectError,
+			Actor:    chooserID,
+			Source:   choice.Source,
+			ErrorMsg: err.Error(),
+		})
+	}
 }
 
 // declineDepartedChoiceLocked runs the "no" branch of a prompt whose
@@ -3660,6 +3757,12 @@ func (g *Game) declineDepartedChoiceLocked(c *PendingChoice) {
 //
 // Caller must hold g.mu.
 func (g *Game) payCostLocked(p *Player, cost ParsedCost, source uuid.UUID, excluded map[uuid.UUID]bool) bool {
+	// #1600, CR 609.4b: Chromatic Orrery's "you may spend mana as
+	// though it were mana of any color" reaches a ward or a Rhystic
+	// Study tax too — every cost the player pays. A narrowed grant
+	// (Oath of Nissa's planeswalker spells) does not: the zero context
+	// names no spell.
+	cost = g.costAsPaidByLocked(p.ID, ManaSpendContext{}, cost)
 	if !p.ManaPool.CanPay(cost, 0) {
 		plan, ok := g.autoTapLocked(p.ID, cost, 0, excluded)
 		if !ok {

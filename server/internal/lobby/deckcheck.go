@@ -116,7 +116,7 @@ func deckCoverageLimit(c Config, public, admin *ratelimit.Limiter, next http.Han
 	publicNext := public.Middleware(next)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if cred := auth.CredentialFromRequest(r); cred != "" && c.Auth != nil {
-			if p, err := c.Auth.Validate(r.Context(), cred); err == nil && p.Role == auth.RoleAdmin {
+			if p, err := c.Auth.Validate(r.Context(), cred); err == nil && isServerCredential(p) {
 				if !admin.Allow("admin") {
 					w.Header().Set("Content-Type", "application/json")
 					w.Header().Set("Retry-After", "1")
@@ -501,11 +501,12 @@ func (d *deckCheck) request(c Config, w http.ResponseWriter, r *http.Request) er
 	return d.file(r.Context(), c, w, key, requesterKey, who, p, report)
 }
 
-// deckRequesterFor decides who is asking. An admin session is the bot
-// and must name the Discord member; anyone else is asking for
-// themselves and must be signed in with Discord.
+// deckRequesterFor decides who is asking. The shared-token session is
+// the bot and must name the Discord member; anyone else is asking for
+// themselves and must be signed in with Discord. An allowlisted admin
+// is a person here (ADR 0110 §3 item 2) and files as themselves.
 func deckRequesterFor(ctx context.Context, c Config, p auth.Principal, named *deckRequester) (deckRequester, error) {
-	if p.Role == auth.RoleAdmin {
+	if isServerCredential(p) {
 		if named == nil {
 			return deckRequester{}, httpError(http.StatusBadRequest,
 				"an admin session must name the requester: requester {discord_id, display_name}")
@@ -623,7 +624,7 @@ func (d *deckCheck) join(ctx context.Context, c Config, w http.ResponseWriter, e
 func (d *deckCheck) file(ctx context.Context, c Config, w http.ResponseWriter, key, requesterKey string,
 	who deckRequester, p auth.Principal, report *deckcoverage.Report) error {
 	title := deckRequestTitle(report)
-	body := renderDeckRequestIssue(who, p.Role == auth.RoleAdmin, report)
+	body := renderDeckRequestIssue(who, isServerCredential(p), report)
 	url, number, err := fileDeckRequestIssue(ctx, c, title, body)
 	if err != nil {
 		return httpError(http.StatusFailedDependency, fmt.Sprintf("filing the issue failed: %s", err))

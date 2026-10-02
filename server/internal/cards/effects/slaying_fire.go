@@ -36,16 +36,18 @@ func init() {
 			if AdamantSpent(ctx, "R", 3) {
 				damage = 4
 			}
-			for _, ref := range ctx.LegalTargets() {
-				if err := (DealDamage{
-					Source: item.SourceCardID,
-					Target: ref.ID,
-					Amount: damage,
-				}).Apply(ctx); err != nil {
-					return err
+			return ctx.Game.DamageInstanceForEffect(func() error {
+				for _, ref := range ctx.LegalTargets() {
+					if err := (DealDamage{
+						Source: item.SourceCardID,
+						Target: ref.ID,
+						Amount: damage,
+					}).Apply(ctx); err != nil {
+						return err
+					}
 				}
-			}
-			return nil
+				return nil
+			})
 		},
 	})
 }

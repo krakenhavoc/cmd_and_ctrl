@@ -54,6 +54,7 @@ export type ShortcutID =
   | "attackAll"
   | "holdPriority"
   | "toggleAutopass"
+  | "toggleBluff"
   | "toggleGameLog"
   | "drawCard"
   | "toggleMute"
@@ -106,7 +107,7 @@ export const SHORTCUTS: readonly ShortcutDef[] = [
   {
     id: "passPriority",
     label: "Pass priority",
-    hint: "Yield the current priority window — the same as the phase widget's “next”.",
+    hint: "Yield the current priority window — the same as the action dock's “next”.",
     group: "priority",
     defaultBinding: "Space",
     kind: "action",
@@ -136,6 +137,15 @@ export const SHORTCUTS: readonly ShortcutDef[] = [
     hint: "Pass every priority window until you turn it off.",
     group: "priority",
     defaultBinding: "Shift+p",
+    kind: "view",
+    scope: "game",
+  },
+  {
+    id: "toggleBluff",
+    label: "Toggle bluff",
+    hint: "Arm or disarm bluffing: pause on windows you can't answer so a pause gives nothing away. Needs smart auto-pass.",
+    group: "priority",
+    defaultBinding: "b",
     kind: "view",
     scope: "game",
   },
@@ -837,6 +847,22 @@ export function formatChord(chord: string, mac = false): string {
   const label = KEY_LABELS[key] ?? (key.length === 1 ? key.toUpperCase() : key);
   if (mac) return mods.map((m) => MAC_SYMBOLS[m] ?? m).join("") + label;
   return [...mods, label].join("+");
+}
+
+// ariaKeyshortcuts renders a chord for an `aria-keyshortcuts`
+// attribute (ADR 0111 §1: every dock button carries its key). ARIA
+// names modifiers by their KeyboardEvent names ("Control", not
+// "Ctrl") and joins with "+"; a letter is upper-cased as it is printed
+// on the key. "" for a chord that does not parse, so a caller can pass
+// `|| undefined` and leave the attribute off.
+export function ariaKeyshortcuts(chord: string): string {
+  const parsed = parseChord(chord);
+  if (!parsed) return "";
+  const key = keyOfChord(parsed);
+  const head = parsed.slice(0, parsed.length - key.length);
+  const mods = head ? head.slice(0, -1).split("+") : [];
+  const name = (m: string): string => (m === "Ctrl" ? "Control" : m);
+  return [...mods.map(name), key.length === 1 ? key.toUpperCase() : key].join("+");
 }
 
 // isMacLike is the one place this module looks at the host. Separated

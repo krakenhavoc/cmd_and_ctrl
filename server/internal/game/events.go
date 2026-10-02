@@ -648,6 +648,13 @@ const (
 	// sub-PR 5.
 	EventBeginUpkeep EventKind = "begin_upkeep"
 
+	// EventEchoPaid — a permanent's echo cost was paid (CR 702.30a, ADR
+	// 0108 §5). CardID is the permanent, Actor the player who paid, and
+	// Source the permanent too. Emitted once the payment has been made
+	// and before anything else the answer does, so Shah of Naar Isle's
+	// "When this creature's echo cost is paid" sees it.
+	EventEchoPaid EventKind = "echo_paid"
+
 	// EventBeginEndStep — the active player's end step began. Actor
 	// is the active player (whose end step it is). "At the beginning
 	// of your end step" (Thassa, Y'shtola Rhul) gates AppliesTo on
@@ -1114,11 +1121,11 @@ const (
 	// Added in S22.
 	EventRevealCards EventKind = "reveal_cards"
 
-	// EventLoopSuspected — the CR 726 loop breaker fired: the
+	// EventLoopSuspected — the CR 732 loop breaker fired: the
 	// ability named by Source + Label has resolved Amount times this
 	// turn with no player decision in between, and automatic passing
 	// is now suspended for every seat. Actor is the ability's
-	// controller — the player CR 726 would have name how many more
+	// controller — the player CR 732 would have name how many more
 	// iterations to run. Emitted once per run, when Game.LoopNotice
 	// is raised; the flag, not the event, is what the client reads.
 	// Added for #628 (ADR 0055).
@@ -1512,11 +1519,17 @@ const (
 
 // emitBecameTargetLocked fans one EventBecomesTarget out per target
 // slot in `targets`. Called from every site that finishes choosing
-// targets for a spell or ability, and there are six: the cast path,
-// the catalog activation (activated.go), the manual sandbox
-// activation and the manual trigger announce (mutations.go), a
-// trigger's CR 603.3d target pick (pending_choice.go) and a copy's
-// re-target (spell_copy.go). One helper, so a card watching for
+// targets for a spell or ability: the cast path, the catalog
+// activation (activated.go), the manual sandbox activation
+// (mutations.go), a copy's creation (spell_copy.go, ability_copy.go),
+// a change of targets (retarget.go), and — for every triggered
+// ability, harvested or manually announced — the CR 603.3b drain that
+// places it (announcePlacedTargetsLocked, mutations.go, #1539). A
+// trigger's targets are chosen as it is put on the stack, and what
+// that sets off waits for the whole batch to be placed, so its event
+// is owed (StackItem.TargetsAnnouncePending) until the drain places
+// it rather than emitted when its target prompt closes. One helper,
+// so a card watching for
 // "becomes the target" cannot see a different board depending on
 // which verb announced (#968 was the sandbox activation missing).
 //

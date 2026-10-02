@@ -29,20 +29,7 @@ func init() {
 		OracleID:     "a78f981a-bf8a-42a4-b171-d655cc2cc1a2",
 		Name:         "Razorkin Needlehead",
 		Completeness: CompletenessFull,
-		Static: []game.StaticAbility{{
-			Layer: game.Layer6Ability,
-			AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
-				return target.InstanceID == source.InstanceID && isActivePlayer(g, source.Controller)
-			},
-			Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
-				for _, a := range c.Abilities {
-					if a == "first strike" {
-						return
-					}
-				}
-				c.Abilities = append(c.Abilities, "first strike")
-			},
-		}},
+		Static:       []game.StaticAbility{firstStrikeDuringYourTurn()},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventDrawCard},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {

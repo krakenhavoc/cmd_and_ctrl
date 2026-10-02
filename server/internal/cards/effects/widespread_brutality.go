@@ -90,10 +90,12 @@ func widespreadBrutalitySweep(ctx *Context, army uuid.UUID) error {
 			victims = append(victims, c.InstanceID)
 		}
 	}
-	for _, v := range victims {
-		if err := (DealDamage{Source: army, Target: v, Amount: n}).Apply(ctx); err != nil {
-			return err
+	return ctx.Game.DamageInstanceForEffect(func() error {
+		for _, v := range victims {
+			if err := (DealDamage{Source: army, Target: v, Amount: n}).Apply(ctx); err != nil {
+				return err
+			}
 		}
-	}
-	return nil
+		return nil
+	})
 }

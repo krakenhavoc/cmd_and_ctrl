@@ -37,8 +37,11 @@ export function payUnlessAnswer(
   choice: PendingChoiceView,
   apply: boolean,
   tapIDs: string[] = [],
+  cardIDs: string[] = [],
 ): Record<string, unknown> {
   const out: Record<string, unknown> = { choice_id: choice.id, apply };
   if (apply && choice.tap_cost && tapIDs.length > 0) out.tap_ids = [...tapIDs];
+  // ADR 0108 §5: a discard or sacrifice payment names its cards.
+  if (apply && choice.pay_cards && cardIDs.length > 0) out.card_ids = [...cardIDs];
   return out;
 }

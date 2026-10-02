@@ -117,6 +117,23 @@ const (
 // kind is.
 const ModGrantAbilities ModKind = "grantAbilities" // layer 6
 
+// ModCantAttackUnlessDefenderControls is "<affected> can't attack unless
+// defending player controls <a permanent>" given by a resolved effect
+// (#1879, ADR 0107 §2): Veiled Serpent's trigger makes it "a 4/4 Serpent
+// creature with 'This creature can't attack unless defending player
+// controls an Island.'" Reads Queries, any of them, at least one.
+//
+// Layer 6, in the record's timestamp slot: the quoted text is an ability
+// the permanent gains (CR 613.1f). It appends the same
+// AttackTargetRestriction the printed static writes
+// (effects.CantAttackUnlessDefendingPlayerControls), attributed to the
+// record's source, so every reader — both declaration verbs, the CR
+// 508.1d search, the enumerator, the chip — is the printed card's. When
+// the source is the affected permanent itself, the restriction is that
+// permanent's own ability, so a later "loses all abilities" takes it
+// (dropSelfAttackTargetRestrictions) and an earlier one does not.
+const ModCantAttackUnlessDefenderControls ModKind = "cantAttackUnlessDefenderControls" // layer 6
+
 // The replacement kinds (ADR 0041 P8, tier 3b, #1497). These are not
 // layer operations: each one is a CR 614 replacement effect a
 // resolving spell or ability created (CR 611.2), read by the
@@ -152,6 +169,21 @@ const (
 	// before this one, where "can't" stops the gain before any
 	// replacement sees it. Reads Player. Scope ScopeGame.
 	ModGainNoLife ModKind = "gainNoLife"
+	// ModExileIfWouldDie is "if <it> would die this turn, exile it
+	// instead" (ADR 0108 §1, #1886): a CR 614.1a replacement on a move
+	// from the battlefield to a graveyard (CR 700.4), and on nothing
+	// else. Reads nothing. Pinned to one object (ScopeNone, with
+	// PinnedTo the duration: Lava Coil, Disintegrate, Demonfire), or a
+	// live set (CR 611.2c): ScopeCreatures ("If a creature would die
+	// this turn", Flaying Tendrils) or ScopeOpponentsCreatures
+	// (Malicious Eclipse).
+	ModExileIfWouldDie ModKind = "exileIfWouldDie"
+	// ModExileInsteadOfYourGraveyard is "if a card would be put into
+	// your graveyard from anywhere this turn, exile that card instead"
+	// (Yawgmoth's Will, ADR 0108 §4, CR 614.1a): a CR 614 replacement on
+	// every zone move and discard into Player's graveyard, a token
+	// excepted (a token is not a card). Reads Player. Scope ScopeGame.
+	ModExileInsteadOfYourGraveyard ModKind = "exileInsteadOfYourGraveyard"
 )
 
 // The rules kinds (ADR 0107 §5, #1853, #1880). Not layer operations and
@@ -179,6 +211,13 @@ const (
 	// ScopeOpponentsAndTheirCreatures is the record Controller's
 	// opponents (scopeCoversPlayer). Reads Player.
 	ModCantGainLife ModKind = "cantGainLife"
+	// ModCantBeRegenerated is "<that permanent> can't be regenerated
+	// this turn" (ADR 0108 §2, #1887; CR 701.19c): regeneration shields
+	// are not applied to it, and are not used up, and neither is a
+	// static regeneration (CR 701.19b). Pinned to the permanent, with
+	// PinnedTo the duration (CR 400.7, 514.2). Read at one gate,
+	// permanentCantBeRegeneratedLocked (regeneration.go). Reads nothing.
+	ModCantBeRegenerated ModKind = "cantBeRegenerated"
 )
 
 // The block-rule kinds (ADR 0041 P8, tier 3b, #1497). These are not
@@ -287,13 +326,19 @@ const (
 	// names PLAYERS (scopeCoversPlayer); as a permanent predicate it is
 	// ScopeOpponentsCreatures.
 	ScopeOpponentsAndTheirCreatures AffectedScope = "opponentsAndTheirCreatures"
+	// ScopeCreatures is "creatures", every player's, read live (ADR
+	// 0108 §1): Flaying Tendrils' and Malicious Malfunction's "If a
+	// creature would die this turn, exile it instead" reaches a creature
+	// that entered after the spell resolved (CR 611.2c).
+	ScopeCreatures AffectedScope = "creatures"
 )
 
 // KnownAffectedScope reports whether this binary can interpret s.
 func KnownAffectedScope(s AffectedScope) bool {
 	switch s {
 	case ScopeNone, ScopeOpponentsCreatures, ScopeGame, ScopeYourPermanents,
-		ScopeYourCreatures, ScopeCreaturesWithoutFlying, ScopeOpponentsAndTheirCreatures:
+		ScopeYourCreatures, ScopeCreaturesWithoutFlying, ScopeOpponentsAndTheirCreatures,
+		ScopeCreatures:
 		return true
 	}
 	return false
@@ -353,10 +398,15 @@ type Mod struct {
 	// onto the battlefield and a permanent's follows it as it last existed
 	// (CR 609.7a). Queries is the CR 615.9 recheck, any of them. SpentBatch
 	// is the event batch the shield prevented its instance of damage in
-	// (CR 615.8); zero is unspent.
-	SourceZone ZoneKind         `json:"sourceZone,omitempty"`
-	Queries    []PermanentQuery `json:"queries,omitempty"`
-	SpentBatch uint64           `json:"spentBatch,omitempty"`
+	// (CR 615.8); zero is unspent. SpentInstance (ADR 0108 PR 0) is that
+	// instance itself (damage_instance.go): a spent shield keeps applying
+	// to the rest of its instance and to nothing else. Both are written. A
+	// record from before SpentInstance existed has SpentBatch alone and
+	// reads as it did, applying for the rest of that batch.
+	SourceZone    ZoneKind         `json:"sourceZone,omitempty"`
+	Queries       []PermanentQuery `json:"queries,omitempty"`
+	SpentBatch    uint64           `json:"spentBatch,omitempty"`
+	SpentInstance DamageInstance   `json:"spentInstance,omitempty"`
 	// Copy is ModBecomeCopy's copied values (#1593): exactly one entry,
 	// required on that kind and refused on every other. A slice for the
 	// reason Objects is one — every other mod writes nothing, and the
@@ -581,6 +631,8 @@ var modKinds = map[ModKind]modKindSpec{
 	ModBlockAnyNumber:   {layer: Layer6Ability},
 	// #1584, ADR 0093 PR 4
 	ModGrantAbilities: {layer: Layer6Ability},
+	// #1879: Veiled Serpent's granted attack restriction.
+	ModCantAttackUnlessDefenderControls: {layer: Layer6Ability},
 	// Tier 3b (ADR 0041 P8): replacement effects, not layer operations.
 	ModPreventCombatDamage:     {reader: readerReplacement},
 	ModPreventDamage:           {reader: readerReplacement},
@@ -588,12 +640,18 @@ var modKinds = map[ModKind]modKindSpec{
 	ModExileInsteadOfGraveyard: {reader: readerReplacement},
 	// ADR 0107 §5 (#1880): Flames of the Blood Hand's replacement.
 	ModGainNoLife: {reader: readerReplacement},
+	// ADR 0108 §4 (#1823): Yawgmoth's Will's replacement.
+	ModExileInsteadOfYourGraveyard: {reader: readerReplacement},
 	// ADR 0107 §6 (#1860): the next damage from a source.
 	ModPreventNextFromSource: {reader: readerReplacement},
+	// ADR 0108 §1 (#1886): exile instead if it would die this turn.
+	ModExileIfWouldDie: {reader: readerReplacement},
 	// ADR 0107 §5 (#1853, #1880): rules gates.
 	ModDamageCantBePrevented:  {reader: readerRule},
 	ModDamageCantBeRedirected: {reader: readerRule},
 	ModCantGainLife:           {reader: readerRule},
+	// ADR 0108 §2 (#1887): the regeneration gate.
+	ModCantBeRegenerated: {reader: readerRule},
 	// Tier 3b (ADR 0041 P8): block-rule effects, not layer operations.
 	ModCantBeBlockedExceptBy:    {reader: readerBlockRule},
 	ModLimitBlockersPerDefender: {reader: readerBlockRule},
@@ -769,6 +827,24 @@ func GrantAbilitiesMod(keys ...string) Mod {
 	return Mod{Kind: ModGrantAbilities, Grants: out}
 }
 
+// CantAttackUnlessDefenderControlsMod is "can't attack unless defending
+// player controls <any of qs>" from a resolved effect (#1879). Reads
+// Queries; registration refuses a mod with none.
+func CantAttackUnlessDefenderControlsMod(qs ...PermanentQuery) Mod {
+	return Mod{Kind: ModCantAttackUnlessDefenderControls, Queries: clonePermanentQueries(qs)}
+}
+
+// defenderControlsModProblem is the registration and restore check for
+// ModCantAttackUnlessDefenderControls: at least one query, since a
+// restriction that asks for nothing would refuse every target. "" when
+// the mod is sound.
+func defenderControlsModProblem(m Mod) string {
+	if m.Kind == ModCantAttackUnlessDefenderControls && len(m.Queries) == 0 {
+		return "a cantAttackUnlessDefenderControls mod names no permanent"
+	}
+	return ""
+}
+
 // SetBasePTMods is "has base power and toughness P/T" — both 7b
 // halves.
 func SetBasePTMods(power, toughness int) []Mod {
@@ -885,6 +961,9 @@ func (g *Game) appendScopedEffectLocked(sourceID uuid.UUID, affected []AffectedO
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
 		if problem := blockCapacityModProblem(m); problem != "" {
+			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
+		}
+		if problem := defenderControlsModProblem(m); problem != "" {
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
 		if r := modKinds[m.Kind].reader; r != readerLayer && r != readerCopy {
@@ -1197,6 +1276,10 @@ func scopePredicate(scope AffectedScope, controller uuid.UUID) func(*Card, *Game
 		return func(target *Card, _ *Game, _ *Card) bool {
 			return target != nil && target.IsCreature() && !HasKeyword(target, "flying")
 		}
+	case ScopeCreatures:
+		return func(target *Card, _ *Game, _ *Card) bool {
+			return target != nil && target.IsCreature()
+		}
 	}
 	// ScopeGame names no object, so it matches none.
 	return func(*Card, *Game, *Card) bool { return false }
@@ -1364,6 +1447,15 @@ func modApply(m Mod) func(*Characteristic, *Card, *Game, *Card) {
 				r.Source, r.SourceName = src.InstanceID, src.Name
 			}
 			ch.AttackRequirements = append(ch.AttackRequirements, r)
+		}
+	case ModCantAttackUnlessDefenderControls:
+		qs := clonePermanentQueries(m.Queries)
+		return func(ch *Characteristic, _ *Card, _ *Game, src *Card) {
+			r := AttackTargetRestriction{DefenderMustControl: qs}
+			if src != nil {
+				r.Source, r.SourceName = src.InstanceID, src.Name
+			}
+			ch.AttackTargetRestrictions = append(ch.AttackTargetRestrictions, r)
 		}
 	case ModAddBlockRequirement:
 		kind := BlockRequirementKind(m.Text)

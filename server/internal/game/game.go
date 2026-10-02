@@ -290,7 +290,7 @@ type Game struct {
 	// (#1181).
 	Activations ActivationTally
 
-	// LoopNotice is the CR 726 loop breaker's flag: set when the
+	// LoopNotice is the CR 732 loop breaker's flag: set when the
 	// same triggered ability has resolved LoopThreshold times this
 	// turn with no player decision in between, nil otherwise. While
 	// it is set, AUTOMATIC passing is suspended — the client's
@@ -411,9 +411,28 @@ type Game struct {
 
 	// preventionFollowUps are the next-damage shields' CR 615.5
 	// additional effects owed for an instance of damage that has not yet
-	// settled — one per shield and batch, with the running total (ADR
-	// 0107 §6, prevent_next_from_source.go). Empty between actions.
+	// settled — one per shield and instance of damage, with the running
+	// total (ADR 0107 §6, ADR 0108 PR 0; prevent_next_from_source.go).
+	// Empty between actions.
 	preventionFollowUps []PreventionFollowUp
+
+	// damageInstanceSeq is the last DamageInstance handed out (ADR 0108
+	// PR 0, damage_instance.go). Monotone within a running game and
+	// cloned with it. Not serialised: restore sets it to the largest
+	// instance a restored record names (Mod.SpentInstance,
+	// PreventionFollowUp.Instance), as scopedEffectSeq is set.
+	//
+	// openDamageInstance is the instance of the DamageInstanceForEffect
+	// scope that is running, zero outside one: set and cleared inside one
+	// mutation, so it is zero between actions. combatDamageInstance is
+	// the instance of the combat damage step that opened event batch
+	// combatDamageInstanceBatch (CR 510.2). Neither is captured: see
+	// damage_instance.go for what a restore in the middle of a step
+	// means.
+	damageInstanceSeq         uint64
+	openDamageInstance        DamageInstance
+	combatDamageInstance      DamageInstance
+	combatDamageInstanceBatch uint64
 
 	// announcedBlocks and blockedAttackers are what this combat's
 	// block declaration has produced (#830, #715). announcedBlocks
@@ -872,6 +891,11 @@ func NewGame() *Game {
 	// PendingTriggers first — CR 603.3b reorders anything that
 	// actually matters. See monarch.go.
 	g.Listeners = append(g.Listeners, monarchTriggers{})
+	// #1729, CR 610.3: an exile "until" an event ends when the event
+	// happens, and that is a rule rather than a triggered ability — so
+	// it watches the event log on its own, after the monarch's CR 725.4
+	// hand-on has moved the crown. See until_return.go.
+	g.Listeners = append(g.Listeners, untilReturns{})
 	// S17 sub-PR 2: install the CR 903.9 commander-zone built-in
 	// replacement. Refactored from S13.1's inline
 	// applyCommanderZoneReplacementLocked. See
@@ -1303,7 +1327,7 @@ const (
 	// driveStepEnded: the passes emptied the stack and the wrap ended
 	// the step on its own. The cursor has already moved.
 	driveStepEnded
-	// driveHalted: a blocking prompt, a CR 726 loop notice, or the
+	// driveHalted: a blocking prompt, a CR 732 loop notice, or the
 	// game ending stopped the drive with the step still owing
 	// something. The cursor has not moved.
 	driveHalted
@@ -1312,7 +1336,7 @@ const (
 // maxAdvanceStepPasses bounds the CR 117.4 drive. One resolution
 // costs up to one pass per seat, so this is ~256 resolutions at a
 // four-player table — far past anything a step legitimately owes, and
-// past the CR 726 loop breaker's own threshold, which stops the drive
+// past the CR 732 loop breaker's own threshold, which stops the drive
 // long before this does. Hitting it halts the drive with the cursor
 // where it stands; the caller clicks again.
 const maxAdvanceStepPasses = 1024
@@ -1330,7 +1354,7 @@ const maxAdvanceStepPasses = 1024
 //
 // It stops on the three things that stop automatic passing anywhere
 // else in the engine: a prompt addressed to somebody (#730 /
-// ADR 0018 §6), a CR 726 loop notice (ADR 0055 — checked AFTER a
+// ADR 0018 §6), a CR 732 loop notice (ADR 0055 — checked AFTER a
 // pass, so a standing notice still lets one manual nudge through the
 // way the client's "next" button does), and the game ending under a
 // resolution.
@@ -1726,6 +1750,11 @@ func (g *Game) finishStepEntryLocked(canceled bool) {
 		// Upkeep grants priority, so no auto-advance — just emit and
 		// fall through.
 		if g.Turn.ActiveSeat >= 0 && g.Turn.ActiveSeat < len(g.Seats) {
+			// ADR 0108 §5: the upkeep is counted as it begins, BEFORE
+			// the event the "at the beginning of your upkeep" triggers
+			// watch, so echo's intervening if reads this upkeep as the
+			// current one (CR 702.30a, CR 603.4).
+			g.Seats[g.Turn.ActiveSeat].UpkeepsBegun++
 			g.EmitEvent(Event{
 				Kind:  EventBeginUpkeep,
 				Actor: g.Seats[g.Turn.ActiveSeat].ID,

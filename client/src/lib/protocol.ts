@@ -346,6 +346,11 @@ export interface GameView {
   // turn" grants, by their source's name (Skullcrack, Stomp), oldest
   // first. Absent on nearly every turn.
   damage_cant_be_prevented?: string[];
+  // ADR 0108 §1: the live "if a creature would die this turn, exile it
+  // instead" effects over a live set (Flaying Tendrils, Malicious
+  // Eclipse), by their source's name, oldest first. Absent on nearly
+  // every turn.
+  exile_if_creatures_die?: string[];
   // Cleanup-step pause map (S13.4, CR 402.2). Keys are player UUID
   // strings, values are the count each player must discard. Drives
   // DiscardPromptModal. Empty / absent when nobody owes discard.
@@ -391,7 +396,7 @@ export interface GameView {
   // outlives the moment, because the cards usually go straight back
   // into a hidden zone. Render from the printed identity.
   reveals?: RevealView[];
-  // #628 (CR 726): set when the engine has watched the same triggered
+  // #628 (CR 732): set when the engine has watched the same triggered
   // ability resolve 25 times this turn with no player decision in
   // between, absent otherwise. Its presence is an instruction to this
   // client: STOP PASSING AUTOMATICALLY. Priority still rotates and
@@ -444,7 +449,7 @@ export interface GameEndGateView {
   this_turn?: boolean;
 }
 
-// LoopNoticeView is the CR 726 loop breaker's notice. `label` is the
+// LoopNoticeView is the CR 732 loop breaker's notice. `label` is the
 // repeating ability's stack label, which by catalog convention reads
 // "<card> — <what happens>", so it is the whole banner line.
 // Mirrors `protocol.LoopNoticeView`.
@@ -538,6 +543,11 @@ export interface LegalSourceView {
   attack_targets?: string[];
   // Attackers this creature may block, alone or in a group.
   blocks?: string[];
+  // #1918: present only when EVERY cast move for the card carries an
+  // `idle_hint` — castable, but no cast would do anything right now
+  // (an overloaded Counterflux with no spell to counter). The first
+  // such hint; the hand draws a muted ring with it as the tooltip.
+  cast_idle_hint?: string;
 }
 
 export interface LegalMoveView {
@@ -575,6 +585,11 @@ export interface LegalMoveView {
   // stack" from "has some instant". Absent on older servers, which
   // the client treats as a plain instant-speed move.
   targets_stack?: boolean;
+  // #1918: a player-facing sentence on a LEGAL cast that would do
+  // nothing on the board as it stands ("Overloaded, this does nothing
+  // right now: there's no spell you don't control."). Advice, never
+  // sent back; only overload sets it today. Absent promises nothing.
+  idle_hint?: string;
   // What the move charges beyond its mana, in the components `params`
   // cannot name — the ones the engine reads off the ability rather
   // than off the payload. Absent for the overwhelming majority of
@@ -1059,7 +1074,7 @@ export interface PendingChoiceView {
     // S30 coin call: choose heads or tails for the pending flip. A
     // stop answer is offered only when allow_stop is true.
     | "coin_call"
-    // #804 CR 726: the loop breaker has fired and the repeating
+    // #804 CR 732: the loop breaker has fired and the repeating
     // ability's controller is asked how many more times it should
     // resolve. Answered with resolve_choice { iterations }, where 0
     // means "stop here" and leaves the table paused exactly where the
@@ -1168,6 +1183,13 @@ export interface PendingChoiceView {
   // rest is paid from the pool and auto-tap as usual. Absent for
   // every other pay-unless.
   tap_cost?: TapCostView;
+  // ADR 0108 §5: a "pay_unless" whose payment is not mana ("Echo—
+  // Discard a card", "Cumulative upkeep—Sacrifice a land"). pay_cost
+  // carries the payment's words. The "Pay" answer names exactly
+  // `count` of `options` as `card_ids` beside `apply: true`. A
+  // discard's options are the chooser's hand and reach the chooser
+  // only. Absent for a mana payment.
+  pay_cards?: PayCardsView;
   // S22: populated for kind "search_library" — how many of `options`
   // the searcher may take. The minimum is always zero, so the submit
   // button is live from the first render. Absent for every other
@@ -1826,6 +1848,16 @@ export interface DelveView {
   // The budget for the default announcement (this zone, X = 0, nothing
   // tapped). A hint only — the preview's `delve_budget` is the cap.
   max?: number;
+}
+
+// ADR 0108 §5: a pay-unless prompt's non-mana payment. `options` are
+// instance IDs (the chooser's hand for a discard, the permanents of
+// the clause's kind they control for a sacrifice); one payment names
+// exactly `count` of them.
+export interface PayCardsView {
+  action: "discard" | "sacrifice";
+  count: number;
+  options: string[];
 }
 
 export interface TapCostView {
@@ -2559,6 +2591,13 @@ export interface CardView extends CastSurfaceView {
   // is tapped, all damage is removed from it and it leaves combat.
   // Public state, like damage_marked; omitted when zero.
   regeneration_shields?: number;
+  // ADR 0108 §1: the effects that would exile this permanent instead if
+  // it died now (Lava Coil's "if that creature would die this turn,
+  // exile it instead"), by source name. Public; battlefield only.
+  exiled_if_it_dies?: string[];
+  // ADR 0108 §2 (CR 701.19c): this permanent can't be regenerated this
+  // turn (Incinerate, Whippoorwill). Public; battlefield only.
+  cant_be_regenerated?: boolean;
   // S13.5 visual face-down flag (CR 708 — morph / manifest /
   // mutate-bottom, Necropotence's exile). Distinct from known_by_you:
   // a viewer who doesn't know a face-down card gets it redacted to
@@ -2757,6 +2796,10 @@ export interface CardView extends CastSurfaceView {
   // S21 sub-PR 2: CR 302.6 summoning sickness — entered this turn
   // without haste, so it can't attack or pay a {T} cost.
   summoning_sick?: boolean;
+  // ADR 0108 §5: this permanent's echo triggers at its controller's
+  // next upkeep (CR 702.30a). Derived on the server; never set on a
+  // face-down permanent.
+  echo_due?: boolean;
   // CR 606.3: a loyalty ability has already been activated on this
   // planeswalker this turn, so every loyalty row in its menu is
   // greyed until the turn cursor moves on. Before #334 this state
@@ -2955,6 +2998,10 @@ export interface AttackTargetRestrictionView {
   // controls <X>" row, the X this player controls none of ("Island").
   // The row then names an opponent rather than the owner.
   unless?: string;
+  // #1879: on every row a defending-player clause adds, the clause this
+  // player doesn't meet, in full: "Bob controls no Island", "Bob isn't
+  // poisoned", "Alice doesn't control more creatures than Bob".
+  reason?: string;
 }
 
 export interface ProtectionView {

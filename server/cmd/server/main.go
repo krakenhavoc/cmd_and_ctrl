@@ -152,7 +152,9 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/github"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/lobby"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/roadmap"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/tablesetups"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/users"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/usersettings"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/util/appenv"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/util/envflag"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/ws"
@@ -290,10 +292,28 @@ func main() {
 
 	hub := ws.NewHub(log)
 	hub.SetManager(mgr)
-	hub.SetAuthorizer(&lobby.WSAuthorizer{Auth: authenticator})
+	// The admin allowlist (ADR 0110 §3). The same *AdminList goes to the
+	// WebSocket authorizer and the lobby routes, so the two can never
+	// disagree about who is an admin. It needs a database to mean
+	// anything: an allowlisted admin is a signed-in session, and with no
+	// database no session carries a user.
+	switch n := cfg.Admins.Len(); {
+	case n == 0:
+		log.Info("admin allowlist empty; only the shared admin token is an admin", "var", lobby.AdminUserIDsEnv)
+	case database == nil:
+		log.Warn("admin allowlist is set but there is no database, so no session carries a user and the allowlist grants nothing",
+			"var", lobby.AdminUserIDsEnv, "count", n)
+	default:
+		log.Info("admin allowlist loaded", "var", lobby.AdminUserIDsEnv, "count", n)
+	}
+	hub.SetAuthorizer(&lobby.WSAuthorizer{Auth: authenticator, Admins: cfg.Admins, Log: log})
 	// Lobby HTTP mutations (join/deck/start) broadcast through the
 	// hub so clients already on the game page see them immediately.
 	l.SetStateBroadcaster(hub)
+	// A practice table the lobby reaps on its own (idle, or replaced
+	// by the same person's next one) closes its sockets through the
+	// hub, as an operator delete does (ADR 0076 §2.2).
+	l.SetEvictor(hub)
 	// S31: bot seats. The manager starts a runner per bot seat when a
 	// game starts (and when one is restored below) and stops them
 	// when the game is deleted or the process exits; runners
@@ -544,6 +564,7 @@ func main() {
 		Lobby:       l,
 		Auth:        authenticator,
 		AdminToken:  cfg.AdminToken,
+		Admins:      cfg.Admins,
 		SessionTTL:  cfg.SessionTTL,
 		IdentityTTL: cfg.IdentityTTL,
 		Env:         cfg.Env,
@@ -563,6 +584,8 @@ func main() {
 		Revocations:       lobbyRevoker(revocations),
 		SessionEvictor:    hub,
 		DeckLibrary:       deckLibrary,
+		UserSettings:      newUserSettingsStore(database),
+		TableSetups:       newTableSetupStore(database),
 		BugReporter:       bugReporter,
 		BugStore:          bugStore,
 		DeckRequestFiler:  deckRequestFiler,
@@ -638,11 +661,19 @@ type config struct {
 	Addr       string
 	DataDir    string
 	AdminToken string
+	// Admins is the Discord user-ID allowlist from
+	// CMDCTRL_DISCORD_ADMIN_USER_IDS (ADR 0110 §3): a signed-in session
+	// whose Discord ID is on it is an admin, like the shared token.
+	// Empty is a supported state. A malformed entry fails the boot.
+	Admins *lobby.AdminList
+	// SessionTTL is the lifetime of a session with no user: guest
+	// seats and spectators, admin-token and reclaim-ticket sessions
+	// (CMDCTRL_SESSION_TTL). Default 12h.
 	SessionTTL time.Duration
-	// IdentityTTL is the lifetime of the identity-only session a
-	// Discord sign-in mints (CMDCTRL_IDENTITY_TTL, ADR 0051 decision
-	// 3). Default 720h. Seat, spectator and admin sessions keep
-	// SessionTTL.
+	// IdentityTTL is the lifetime of every session that carries a user
+	// (CMDCTRL_IDENTITY_TTL, ADR 0051 decision 3 as widened by ADR
+	// 0110 §1). Default 720h. A Discord sign-in gets all of it; a
+	// session minted from a signed-in one inherits that one's expiry.
 	IdentityTTL time.Duration
 	SeedDemo    bool
 	// AllowedOrigins is the cross-origin hostname allow-list passed to
@@ -808,6 +839,17 @@ func loadConfig(log *slog.Logger) config {
 		}
 	}
 
+	// CMDCTRL_DISCORD_ADMIN_USER_IDS: the same variable the Discord bot
+	// reads for /c2-end (ADR 0110 owner answer 3). A typo fails the boot
+	// rather than silently denying someone. The log carries the count
+	// and never the IDs.
+	admins, aerr := lobby.ParseAdminList(os.Getenv(lobby.AdminUserIDsEnv))
+	if aerr != nil {
+		log.Error("admin allowlist invalid", "err", aerr)
+		os.Exit(1)
+	}
+	c.Admins = admins
+
 	if c.AdminToken == "" {
 		log.Error("CMDCTRL_ADMIN_TOKEN is required — set it to a long random string before starting the server")
 		os.Exit(1)
@@ -902,6 +944,28 @@ func newDeckLibraryStore(database *db.DB) decklibrary.Store {
 		return decklibrary.NoStore{}
 	}
 	return decklibrary.NewSQLStore(database)
+}
+
+// newUserSettingsStore builds the account settings store (ADR 0110
+// section 4, migration 0008). No database means no store, and no
+// principal with a UserID to own a copy, so GET and PUT /me/settings
+// answer 403 and the client keeps its settings in the browser.
+func newUserSettingsStore(database *db.DB) usersettings.Store {
+	if database == nil {
+		return usersettings.NoStore{}
+	}
+	return usersettings.NewSQLStore(database)
+}
+
+// newTableSetupStore builds the last-setup store (ADR 0110 section 5,
+// migration 0008's table_setups). No database: tablesetups.NoStore,
+// which remembers nothing; with no database no session has a user, so
+// nothing would ask it anyway.
+func newTableSetupStore(database *db.DB) tablesetups.Store {
+	if database == nil {
+		return tablesetups.NoStore{}
+	}
+	return tablesetups.NewSQLStore(database)
 }
 
 // newDeckRequestStore builds ADR 0095's deck-request store (migration

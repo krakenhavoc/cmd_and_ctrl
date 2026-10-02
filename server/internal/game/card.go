@@ -390,7 +390,7 @@ type Card struct {
 	// instance ID, which is the CARD's identity and survives a zone
 	// change. Those that must forget are dropped at the one
 	// battlefield exit (battlefield_exit.go). TurnTally's per-ability
-	// counts could not be, because the CR 726 loop breaker shares
+	// counts could not be, because the CR 732 loop breaker shares
 	// their key and a blink loop would reset its own run every
 	// iteration (#936) — so they are keyed by (instance, epoch)
 	// instead: the returning object reads a key nothing has written,
@@ -401,6 +401,21 @@ type Card struct {
 	// and no rule reads the number itself, only whether two readings
 	// of it are equal.
 	ObjectEpoch int
+
+	// ControlledSinceUpkeep is the value of the controller's
+	// Player.UpkeepsBegun when this permanent last came under that
+	// player's control: as it entered the battlefield, and at each
+	// control change the layer pass materialises (ADR 0108 §5, #1888).
+	//
+	// It is the whole of echo's "came under your control since the
+	// beginning of your last upkeep" (CR 702.30a): that holds when
+	// ControlledSinceUpkeep >= UpkeepsBegun - 1, read at the trigger
+	// and again on resolution (CR 603.4) — see
+	// CameUnderControlSinceLastUpkeepForEffect. It counts upkeeps, not
+	// turns, so a skipped upkeep is not a "last upkeep".
+	//
+	// Meaningful on the battlefield only; every entry overwrites it.
+	ControlledSinceUpkeep int
 
 	// SummonedThisTurn and MarkedLethalByDeathtouch live in the bool
 	// block at the end of Card, for alignment.

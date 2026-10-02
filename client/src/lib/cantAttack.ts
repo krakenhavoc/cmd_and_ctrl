@@ -3,7 +3,10 @@
 // card, naming the owner: "CAN'T ATTACK Alice". ADR 0107 §2 (#1879) adds
 // "can't attack unless defending player controls an Island" (Sea
 // Serpent): one row per opponent who controls none right now, and the
-// tooltip says why ("can't attack Bob …: Bob controls no Island").
+// tooltip says why ("can't attack Bob …: Bob controls no Island"). The
+// rest of #1879 adds the other conditions on the defending player
+// (poisoned, the monarch, more creatures than you), each row carrying
+// its reason in full ("Bob isn't poisoned").
 //
 // READ, NOT DERIVED. The chip is drawn from the server's
 // `attack_target_restrictions` on the card view, with the player it
@@ -35,13 +38,18 @@ export function cantAttackChip(
   const rows = card.attack_target_restrictions ?? [];
   if (rows.length === 0) return null;
   const names = new Map((seats ?? []).map((s) => [s.id, s.name]));
-  const byPlayer = new Map<string, { walkers: boolean; sources: string[]; unless: string[] }>();
+  const byPlayer = new Map<
+    string,
+    { walkers: boolean; sources: string[]; unless: string[]; reasons: string[] }
+  >();
   for (const r of rows) {
     if (!r.player) continue;
-    const e = byPlayer.get(r.player) ?? { walkers: false, sources: [], unless: [] };
+    const e = byPlayer.get(r.player) ?? { walkers: false, sources: [], unless: [], reasons: [] };
     e.walkers = e.walkers || !!r.planeswalkers;
     if (r.source && !e.sources.includes(r.source)) e.sources.push(r.source);
-    if (r.unless && !e.unless.includes(r.unless)) e.unless.push(r.unless);
+    if (r.reason) {
+      if (!e.reasons.includes(r.reason)) e.reasons.push(r.reason);
+    } else if (r.unless && !e.unless.includes(r.unless)) e.unless.push(r.unless);
     byPlayer.set(r.player, e);
   }
   if (byPlayer.size === 0) return null;
@@ -52,8 +60,12 @@ export function cantAttackChip(
     labels.push(name);
     let t = `can't attack ${name}`;
     if (e.walkers) t += ` or planeswalkers ${name} controls`;
-    // ADR 0107 §2: why — "Bob controls no Island".
-    if (e.unless.length > 0) t += `: ${name} controls no ${e.unless.join(" or ")}`;
+    // ADR 0107 §2: why — "Bob controls no Island", "Bob isn't
+    // poisoned". A row with a reason says it in full; an older row
+    // carries only the noun.
+    const why = [...e.reasons];
+    if (e.unless.length > 0) why.push(`${name} controls no ${e.unless.join(" or ")}`);
+    if (why.length > 0) t += `: ${why.join("; ")}`;
     if (e.sources.length > 0) t += ` (${e.sources.join(", ")})`;
     titles.push(t);
   }

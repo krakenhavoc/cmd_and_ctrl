@@ -39,7 +39,7 @@ type deckLibraryStack struct {
 	library decklibrary.Store
 }
 
-func newDeckLibraryStack(t *testing.T, idx *cards.Index) *deckLibraryStack {
+func newDeckLibraryStack(t *testing.T, idx *cards.Index, opts ...func(*Config)) *deckLibraryStack {
 	t.Helper()
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
 	mgr := ws.NewRoomManager(log, "")
@@ -63,6 +63,9 @@ func newDeckLibraryStack(t *testing.T, idx *cards.Index) *deckLibraryStack {
 		Cards:       idx,
 		DeckLibrary: library,
 		Log:         log,
+	}
+	for _, o := range opts {
+		o(&cfg)
 	}
 	mux := http.NewServeMux()
 	mux.Handle("/", Handler(cfg))
@@ -332,8 +335,8 @@ func TestMyDecksAuth(t *testing.T) {
 	joinResp.Body.Close()
 
 	resp = doGet(t, st.srv, "/me/decks", joined.Token)
-	if resp.StatusCode != http.StatusUnauthorized {
-		t.Errorf("guest session: got %d, want 401", resp.StatusCode)
+	if resp.StatusCode != http.StatusForbidden {
+		t.Errorf("guest session: got %d, want 403 (#1154: a 401 signs the browser out)", resp.StatusCode)
 	}
 	resp.Body.Close()
 
@@ -344,8 +347,8 @@ func TestMyDecksAuth(t *testing.T) {
 	adminResp.Body.Close()
 
 	resp = doGet(t, st.srv, "/me/decks", adminSession.Token)
-	if resp.StatusCode != http.StatusUnauthorized {
-		t.Errorf("admin session: got %d, want 401", resp.StatusCode)
+	if resp.StatusCode != http.StatusForbidden {
+		t.Errorf("admin session: got %d, want 403 (#1154: a 401 signs the browser out)", resp.StatusCode)
 	}
 	resp.Body.Close()
 
@@ -443,7 +446,7 @@ func TestSaveToLibrarySkipsAPrebuiltCatalogPick(t *testing.T) {
 	list := &deck.List{Name: "", Commanders: []cards.Card{{Name: "Test Commander"}}}
 	p := auth.Principal{Role: auth.RolePlayer, UserID: owner}
 
-	got := saveToLibrary(context.Background(), Config{DeckLibrary: st.library}, p, "izzet-aggro", "text", "1 Test Commander\n", list, []string{"Test Commander"})
+	got, _ := saveToLibrary(context.Background(), Config{DeckLibrary: st.library}, p, "izzet-aggro", "text", "1 Test Commander\n", list, []string{"Test Commander"})
 	if got != "" {
 		t.Errorf("catalog pick: saveToLibrary = %q, want empty", got)
 	}
@@ -453,15 +456,15 @@ func TestSaveToLibrarySkipsAPrebuiltCatalogPick(t *testing.T) {
 	}
 }
 
-func TestSaveToLibrarySkipsURLFormat(t *testing.T) {
+func TestSaveToLibrarySkipsAnUnparseableLink(t *testing.T) {
 	st := newDeckLibraryStack(t, nil)
 	owner := mustLibraryUser(t, st.db, "Alice")
 	list := &deck.List{Name: "URL Deck", Commanders: []cards.Card{{Name: "Test Commander"}}}
 	p := auth.Principal{Role: auth.RolePlayer, UserID: owner}
 
-	got := saveToLibrary(context.Background(), Config{DeckLibrary: st.library}, p, "", "url", "https://moxfield.com/decks/abc", list, []string{"Test Commander"})
+	got, _ := saveToLibrary(context.Background(), Config{DeckLibrary: st.library}, p, "", "url", "https://example.com/not-a-deck", list, []string{"Test Commander"})
 	if got != "" {
-		t.Errorf("url format: saveToLibrary = %q, want empty", got)
+		t.Errorf("unparseable link: saveToLibrary = %q, want empty", got)
 	}
 	decks, err := st.library.List(context.Background(), owner)
 	if err != nil || len(decks) != 0 {
@@ -474,7 +477,7 @@ func TestSaveToLibrarySkipsGuest(t *testing.T) {
 	list := &deck.List{Name: "Guest Deck", Commanders: []cards.Card{{Name: "Test Commander"}}}
 	p := auth.Principal{Role: auth.RolePlayer} // zero UserID
 
-	got := saveToLibrary(context.Background(), Config{DeckLibrary: st.library}, p, "", "text", "1 Test Commander\n", list, []string{"Test Commander"})
+	got, _ := saveToLibrary(context.Background(), Config{DeckLibrary: st.library}, p, "", "text", "1 Test Commander\n", list, []string{"Test Commander"})
 	if got != "" {
 		t.Errorf("guest: saveToLibrary = %q, want empty", got)
 	}
@@ -487,7 +490,7 @@ func TestSaveToLibraryUsesCommanderFallbackName(t *testing.T) {
 	list := &deck.List{Commanders: []cards.Card{{Name: "Krenko, Mob Boss"}}}
 	p := auth.Principal{Role: auth.RolePlayer, UserID: owner}
 
-	got := saveToLibrary(context.Background(), Config{DeckLibrary: st.library}, p, "", "text", "1 Krenko, Mob Boss\n", list, []string{"Krenko, Mob Boss"})
+	got, _ := saveToLibrary(context.Background(), Config{DeckLibrary: st.library}, p, "", "text", "1 Krenko, Mob Boss\n", list, []string{"Krenko, Mob Boss"})
 	if got == "" {
 		t.Fatal("saveToLibrary returned no id")
 	}

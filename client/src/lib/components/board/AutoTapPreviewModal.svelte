@@ -2,7 +2,7 @@
   // S15 sub-PR 5 auto-tap-and-cast preview modal.
   //
   // Opens when the viewer chooses "Auto-tap & cast" from the
-  // insufficient-mana toast (or any future right-click → cast
+  // insufficient-mana request in the action dock (or any future right-click → cast
   // affordance). On mount it fetches `/games/:id/auto-tap-preview`
   // for the chosen card and renders the proposed plan: the ordered
   // list of sources the server would spend, each with what paying
@@ -11,6 +11,10 @@
   // battlefield lookup. Enter confirms
   // (re-fires cast_spell with auto_tap: true); ESC cancels.
   //
+  // ADR 0111 PR 6: a sheet in the action dock, not a modal. Cast is the
+  // bar's primary (Enter) and Cancel its secondary (Escape), through the
+  // dock's one key handler; the document listener this had is gone.
+  //
   // Lock-tap UI: each row in the proposed plan has a "lock" toggle.
   // Clicking it adds the source to the excluded set and re-fetches
   // — letting the player reserve a land for a later cast and watch
@@ -18,12 +22,12 @@
   // satisfy the cost, the modal shows the missing-symbols list and
   // disables the confirm button.
 
-  import { onDestroy } from "svelte";
   import { fetchAutoTapPreview, type AutoTapPreview } from "../../api";
   import { paymentVerb, planRows, planSummary } from "../../autoTapPlan";
   import type { AutoTapCastParams } from "../../castPreview";
   import type { CardView, GameView } from "../../protocol";
-  import ModalLayer from "../ModalLayer.svelte";
+  import { cancelAction, confirmAction } from "../../dock";
+  import DockSheet from "./DockSheet.svelte";
 
   interface Props {
     gameID: string;
@@ -140,112 +144,75 @@
     if (!preview?.ok || loading) return;
     onConfirm(lockedSources.slice());
   }
-
-  // Keyboard-only confirm/cancel. Captured at the document level so
-  // the modal works even when focus has drifted off the buttons —
-  // a reflex-Enter-then-cast flow shouldn't require a tab dance.
-  function handleKey(e: KeyboardEvent): void {
-    if (!cardID) return;
-    if (e.key === "Enter") {
-      e.preventDefault();
-      confirm();
-    } else if (e.key === "Escape") {
-      e.preventDefault();
-      onCancel();
-    }
-  }
-
-  $effect(() => {
-    if (!cardID) return;
-    document.addEventListener("keydown", handleKey);
-    return () => document.removeEventListener("keydown", handleKey);
-  });
-
-  onDestroy(() => {
-    document.removeEventListener("keydown", handleKey);
-  });
 </script>
 
 {#if cardID}
-  <ModalLayer />
-  <div class="prompt-backdrop" role="dialog" aria-modal="true" aria-labelledby="auto-tap-title">
-    <div class="prompt-modal tap-modal">
-      <h2 id="auto-tap-title">
-        Auto-tap & cast
-        {#if preview}
-          <span class="prompt-src" aria-hidden="true">{preview.cost || "no cost"}</span>
-        {/if}
-      </h2>
-      {#if loading && !preview}
-        <p class="prompt-hint">planning…</p>
-      {:else if fetchError}
-        <p class="prompt-hint error">preview failed: {fetchError}</p>
-      {:else if preview}
-        {#if preview.ok}
-          <p class="prompt-hint">
-            {planSummary(rows)} Lock a source to keep it for a later cast.
-          </p>
-          <ul class="prompt-options plan">
-            {#each rows as row (row.id)}
-              <li class="prompt-opt src-row">
-                <span class="card-name">{row.name}</span>
-                <span class="pay-verb" class:gone={row.gone} data-payment={row.payment}
-                  >{paymentVerb(row.payment)}</span
-                >
-                <button
-                  type="button"
-                  class="ghost lock-btn"
-                  onclick={() => toggleLock(row.id)}
-                  title="reserve this source for a later cast"
-                >
-                  lock
-                </button>
-              </li>
-            {/each}
-          </ul>
-        {:else}
-          <p class="prompt-hint error">
-            Insufficient mana
-            {#if preview.missing && preview.missing.length > 0}
-              — missing {preview.missing.join(" ")}
-            {/if}
-          </p>
-        {/if}
-        {#if lockedSources.length > 0}
-          <p class="locked-label">locked sources</p>
-          <ul class="prompt-options locked">
-            {#each lockedCards() as row (row.id)}
-              <li class="prompt-opt src-row on">
-                <span class="card-name">{row.name}</span>
-                <button
-                  type="button"
-                  class="ghost lock-btn"
-                  onclick={() => toggleLock(row.id)}
-                  title="release this source back to the auto-tapper"
-                >
-                  unlock
-                </button>
-              </li>
-            {/each}
-          </ul>
-        {/if}
+  <DockSheet
+    label="Auto-tap & cast"
+    src={preview ? preview.cost || "no cost" : undefined}
+    width={460}
+    sheetKey={`autotap:${cardID}`}
+    primary={confirmAction("Cast", confirm, { disabled: !preview?.ok || loading })}
+    secondary={[cancelAction(onCancel)]}
+  >
+    {#if loading && !preview}
+      <p class="prompt-hint">planning…</p>
+    {:else if fetchError}
+      <p class="prompt-hint error">preview failed: {fetchError}</p>
+    {:else if preview}
+      {#if preview.ok}
+        <p class="prompt-hint">
+          {planSummary(rows)} Lock a source to keep it for a later cast.
+        </p>
+        <ul class="prompt-options plan">
+          {#each rows as row (row.id)}
+            <li class="prompt-opt src-row">
+              <span class="card-name">{row.name}</span>
+              <span class="pay-verb" class:gone={row.gone} data-payment={row.payment}
+                >{paymentVerb(row.payment)}</span
+              >
+              <button
+                type="button"
+                class="ghost lock-btn"
+                onclick={() => toggleLock(row.id)}
+                title="reserve this source for a later cast"
+              >
+                lock
+              </button>
+            </li>
+          {/each}
+        </ul>
+      {:else}
+        <p class="prompt-hint error">
+          Insufficient mana
+          {#if preview.missing && preview.missing.length > 0}
+            — missing {preview.missing.join(" ")}
+          {/if}
+        </p>
       {/if}
-      <div class="prompt-foot">
-        <button type="button" class="ghost" onclick={onCancel}
-          >Cancel <span class="kbd">Esc</span></button
-        >
-        <button type="button" class="primary" onclick={confirm} disabled={!preview?.ok || loading}>
-          Cast <span class="kbd">↵</span>
-        </button>
-      </div>
-    </div>
-  </div>
+      {#if lockedSources.length > 0}
+        <p class="locked-label">locked sources</p>
+        <ul class="prompt-options locked">
+          {#each lockedCards() as row (row.id)}
+            <li class="prompt-opt src-row on">
+              <span class="card-name">{row.name}</span>
+              <button
+                type="button"
+                class="ghost lock-btn"
+                onclick={() => toggleLock(row.id)}
+                title="release this source back to the auto-tapper"
+              >
+                unlock
+              </button>
+            </li>
+          {/each}
+        </ul>
+      {/if}
+    {/if}
+  </DockSheet>
 {/if}
 
 <style>
-  .tap-modal {
-    width: min(460px, calc(100vw - 32px));
-  }
   .src-row {
     justify-content: space-between;
     padding: 6px 6px 6px 12px;
@@ -286,10 +253,5 @@
     text-transform: uppercase;
     color: var(--fg-dim);
     font-weight: 700;
-  }
-  .primary .kbd {
-    color: var(--accent-fg);
-    border-color: rgba(28, 21, 3, 0.35);
-    opacity: 0.8;
   }
 </style>

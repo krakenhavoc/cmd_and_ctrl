@@ -12,16 +12,40 @@
 //
 // Two properties: one button per branch, in the card's printed order,
 // and a click that submits the INDEX.
+//
+// ADR 0111 PR 5: a short option pick (no cards, six options at most,
+// short labels) is answered inline in the action dock; one whose
+// options embed cards is still the modal (a sheet in PR 6).
 
-import { describe, it, expect, afterEach } from "vitest";
+import { describe, it, expect, afterEach, beforeEach } from "vitest";
 
-import ChoicePromptModal from "./components/board/ChoicePromptModal.svelte";
-import type { ActionType, GameView } from "./protocol";
+import ChoiceDockHarness from "./test/ChoiceDockHarness.svelte";
+import { _resetForTests as resetDock } from "./dock";
+import { _resetForTests as resetModals } from "./modalLayers";
+import type { ActionType, CardView, GameView, PickOptionView } from "./protocol";
 import { render, click, cleanup } from "./test/render.svelte";
 
+class FakeObserver {
+  observe(): void {}
+  unobserve(): void {}
+  disconnect(): void {}
+}
+beforeEach(() => {
+  const g = globalThis as Record<string, unknown>;
+  g.ResizeObserver ??= FakeObserver;
+  g.IntersectionObserver ??= FakeObserver;
+  resetDock();
+  resetModals();
+});
 afterEach(cleanup);
 
-const snapWithOptionPick = (): GameView =>
+const HAILFIRE: PickOptionView[] = [
+  { label: "Lose 3 life", life_cost: 3 },
+  { label: "Sacrifice a nonland permanent" },
+  { label: "Discard a card" },
+];
+
+const snapWithOptionPick = (pickOptions: PickOptionView[] = HAILFIRE): GameView =>
   ({
     id: "g",
     state: "active",
@@ -41,11 +65,7 @@ const snapWithOptionPick = (): GameView =>
         chooser: "me",
         from_player: "them",
         reason: "Torment of Hailfire — lose 3 life, or...",
-        pick_options: [
-          { label: "Lose 3 life", life_cost: 3 },
-          { label: "Sacrifice a nonland permanent" },
-          { label: "Discard a card" },
-        ],
+        pick_options: pickOptions,
       },
     ],
   }) as unknown as GameView;
@@ -55,12 +75,15 @@ interface Sent {
   params?: unknown;
 }
 
-function mountOptionPick(): { container: HTMLElement; sent: Sent[] } {
+function mountOptionPick(pickOptions?: PickOptionView[]): {
+  container: HTMLElement;
+  sent: Sent[];
+} {
   const sent: Sent[] = [];
   const view = render(
-    ChoicePromptModal as never,
+    ChoiceDockHarness as never,
     {
-      snap: snapWithOptionPick(),
+      snap: snapWithOptionPick(pickOptions),
       viewerID: "me",
       sendAction: (type: ActionType, params?: unknown) => sent.push({ type, params }),
       lastError: null,
@@ -69,8 +92,13 @@ function mountOptionPick(): { container: HTMLElement; sent: Sent[] } {
   return { container: view.container, sent };
 }
 
+// The dock's dialog, named as the modal was: by the reason.
+const dockDialog = (container: HTMLElement): HTMLElement | null =>
+  container.querySelector<HTMLElement>(
+    'section[aria-label="actions"] [role="dialog"][aria-label="Torment of Hailfire — lose 3 life, or..."]',
+  );
 const optionButtons = (container: HTMLElement): HTMLButtonElement[] => [
-  ...container.querySelectorAll<HTMLButtonElement>("button.pick-option"),
+  ...(dockDialog(container)?.querySelectorAll<HTMLButtonElement>(".dock-row button") ?? []),
 ];
 
 describe("ChoicePromptModal — option_pick (#568)", () => {
@@ -79,8 +107,10 @@ describe("ChoicePromptModal — option_pick (#568)", () => {
     const labels = optionButtons(container).map((b) => b.textContent?.trim());
     expect(labels).toEqual(["Lose 3 life", "Sacrifice a nonland permanent", "Discard a card"]);
     // The card grid is the fallback arm — an option pick must not
-    // land in it, or the answer goes out as card_ids.
+    // land in it, or the answer goes out as card_ids. And it is not a
+    // modal any more.
     expect(container.querySelector(".card-grid")).toBeNull();
+    expect(container.querySelector(".prompt-backdrop")).toBeNull();
   });
 
   it("submits the chosen branch's index", () => {
@@ -108,5 +138,43 @@ describe("ChoicePromptModal — option_pick (#568)", () => {
     const buttons = optionButtons(container);
     expect(buttons[1].querySelector(".pick-cards")).toBeNull();
     expect(buttons[1].disabled).toBe(false);
+  });
+
+  it("draws an option pick whose options embed cards as a dock sheet (PR 6)", () => {
+    // Fact or Fiction's piles: the cards are the point, and they need
+    // room. Not inline: a sheet that grows up out of the dock, in a
+    // dialog of the same name.
+    const card = { instance_id: "c1", name: "Island" } as CardView;
+    const { container, sent } = mountOptionPick([
+      { label: "Pile 1", cards: [card] },
+      { label: "Pile 2", cards: [] },
+    ]);
+    const dlg = dockDialog(container)!;
+    expect(dlg).not.toBeNull();
+    expect(dlg.querySelector(".dock-sheet")).not.toBeNull();
+    expect(optionButtons(container)).toHaveLength(0);
+    expect(container.querySelector(".prompt-backdrop")).toBeNull();
+    const modalButtons = [...dlg.querySelectorAll<HTMLButtonElement>("button.pick-option")];
+    expect(modalButtons).toHaveLength(2);
+    expect(modalButtons[0].querySelector(".pick-cards")).not.toBeNull();
+    click(modalButtons[1]);
+    expect(sent[0].params).toMatchObject({ choice_id: "choice-1", option_index: 1 });
+  });
+
+  it("draws an option pick with more than six options, or a long label, as a sheet", () => {
+    const seven = Array.from({ length: 7 }, (_, i) => ({ label: `Option ${i + 1}` }));
+    const many = mountOptionPick(seven);
+    expect(dockDialog(many.container)?.querySelector(".dock-sheet")).not.toBeNull();
+    expect(optionButtons(many.container)).toHaveLength(0);
+    expect(many.container.querySelectorAll(".dock-sheet button.pick-option")).toHaveLength(7);
+    cleanup();
+    resetDock();
+
+    const long = mountOptionPick([
+      { label: "Fame — its caster gains control of a creature you control until end of turn" },
+      { label: "Fortune — its caster draws a card and creates a Treasure token" },
+    ]);
+    expect(dockDialog(long.container)?.querySelector(".dock-sheet")).not.toBeNull();
+    expect(long.container.querySelectorAll(".dock-sheet button.pick-option")).toHaveLength(2);
   });
 });

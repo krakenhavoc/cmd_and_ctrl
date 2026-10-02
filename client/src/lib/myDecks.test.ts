@@ -1,5 +1,16 @@
-import { describe, expect, it } from "vitest";
-import { deckSubtitle, isSignedIn, ZERO_USER_ID, type MyDeckInfo } from "./myDecks";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { deleteMyDeck, fetchMyDeckCoverage, fetchMyDecks, renameMyDeck } from "./api";
+import { LobbyApiError, sessionFromOAuth, setSession } from "./session";
+import {
+  coverageDetail,
+  coverageLine,
+  deckCheckHref,
+  deckSubtitle,
+  isSignedIn,
+  sourceHost,
+  ZERO_USER_ID,
+  type MyDeckInfo,
+} from "./myDecks";
 
 function deck(partial: Partial<MyDeckInfo>): MyDeckInfo {
   return {
@@ -61,5 +72,115 @@ describe("deckSubtitle", () => {
 
   it("drops blank commander entries", () => {
     expect(deckSubtitle(deck({ commanders: [""], card_count: 100 }))).toBe("100 cards");
+  });
+});
+
+const COVERAGE = {
+  counts: { manual: 3, unreviewed: 5, caveats: 4, automated: 40, no_effect: 38 },
+  unknown: 1,
+  as_printed: 78,
+  resolved: 90,
+};
+
+describe("coverageLine", () => {
+  it("says N of M cards play as printed", () => {
+    expect(coverageLine(deck({ coverage: COVERAGE }))).toBe("78 of 90 cards play as printed");
+  });
+
+  it("is empty with no coverage or nothing resolved, never a wrong number", () => {
+    expect(coverageLine(deck({}))).toBe("");
+    expect(coverageLine(deck({ coverage: { ...COVERAGE, resolved: 0, as_printed: 0 } }))).toBe("");
+  });
+});
+
+describe("coverageDetail", () => {
+  it("names the rest in the report's words and skips zero buckets", () => {
+    expect(coverageDetail(deck({ coverage: COVERAGE }))).toBe(
+      "4 simplified · 5 not checked yet · 3 you resolve by hand · 1 not found",
+    );
+    expect(
+      coverageDetail(
+        deck({
+          coverage: {
+            ...COVERAGE,
+            unknown: 0,
+            counts: { manual: 0, unreviewed: 0, caveats: 0, automated: 1, no_effect: 1 },
+          },
+        }),
+      ),
+    ).toBe("");
+  });
+});
+
+describe("source links", () => {
+  it("shows a short host and links a saved link-deck to the public report", () => {
+    const d = deck({ source_url: "https://www.moxfield.com/decks/abc" });
+    expect(sourceHost(d.source_url)).toBe("moxfield.com");
+    expect(deckCheckHref(d)).toBe(
+      "#/deck-check?url=" + encodeURIComponent("https://www.moxfield.com/decks/abc"),
+    );
+    expect(deckCheckHref(deck({}))).toBe("");
+    expect(sourceHost(undefined)).toBe("");
+  });
+});
+
+describe("library requests", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    setSession(null);
+  });
+
+  function signIn(): void {
+    setSession(sessionFromOAuth({ token: "tok", expiresAt: "2099-01-01T00:00:00Z", userID: "u1" }));
+  }
+
+  it("lists decks with their coverage", async () => {
+    signIn();
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ decks: [deck({ coverage: COVERAGE })] }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const res = await fetchMyDecks();
+    expect(coverageLine(res.decks[0])).toBe("78 of 90 cards play as printed");
+    expect(fetchMock.mock.calls[0][0]).toBe("/me/decks");
+  });
+
+  it("renames with PATCH, deletes with DELETE and reads the report", async () => {
+    signIn();
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ id: "d1", name: "New", commanders: [], card_count: 1, updated_at: "" }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    expect((await renameMyDeck("d1", "New")).name).toBe("New");
+    await deleteMyDeck("d1");
+    await fetchMyDeckCoverage("d1");
+    const calls = fetchMock.mock.calls as [string, RequestInit | undefined][];
+    expect(calls[0][0]).toBe("/me/decks/d1");
+    expect(calls[0][1]?.method).toBe("PATCH");
+    expect(calls[0][1]?.body).toBe(JSON.stringify({ name: "New" }));
+    expect(calls[1][0]).toBe("/me/decks/d1");
+    expect(calls[1][1]?.method).toBe("DELETE");
+    expect(calls[2][0]).toBe("/me/decks/d1/coverage");
+  });
+
+  it("surfaces the server's rename-conflict message", async () => {
+    signIn();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 409,
+        statusText: "Conflict",
+        clone: () => ({ json: async () => ({ error: "you already have a deck with that name" }) }),
+      }),
+    );
+    const err = await renameMyDeck("d1", "Dup").catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(LobbyApiError);
+    expect((err as LobbyApiError).status).toBe(409);
+    expect((err as LobbyApiError).message).toBe("you already have a deck with that name");
   });
 });

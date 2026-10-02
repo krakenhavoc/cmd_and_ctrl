@@ -20,12 +20,15 @@
   //   - It had no notion of choosing the same bullet twice
   //     (CR 700.2d, Mystic Confluence), which is a count per option
   //     rather than a toggle.
+  //
+  // ADR 0111 PR 6: a sheet in the action dock; the confirm and Cancel
+  // are the dock's action bar (Enter / Escape through its one key
+  // handler).
 
-  import Icon from "../Icon.svelte";
-  import { onDestroy } from "svelte";
   import type { CardView, ModeOptionView } from "../../protocol";
   import { modeOptionCastable } from "../../targeting";
-  import ModalLayer from "../ModalLayer.svelte";
+  import { cancelAction, confirmAction } from "../../dock";
+  import DockSheet from "./DockSheet.svelte";
 
   interface Props {
     card: CardView | null;
@@ -106,112 +109,88 @@
     if (!card || !canConfirm) return;
     onConfirm(chosen);
   }
-
-  function handleKey(e: KeyboardEvent): void {
-    if (!card) return;
-    if (e.key === "Enter") {
-      e.preventDefault();
-      confirm();
-    } else if (e.key === "Escape") {
-      e.preventDefault();
-      onCancel();
-    }
-  }
-  $effect(() => {
-    if (!card) return;
-    document.addEventListener("keydown", handleKey);
-    return () => document.removeEventListener("keydown", handleKey);
-  });
-  onDestroy(() => document.removeEventListener("keydown", handleKey));
 </script>
 
 {#if card && spec}
-  <ModalLayer />
-  <div class="prompt-backdrop" role="dialog" aria-modal="true" aria-labelledby="mode-picker-title">
-    <div class="prompt-modal">
-      <h2 id="mode-picker-title">
-        {card.name}
-        <span class="prompt-src" aria-hidden="true">
-          {single
-            ? "choose one"
-            : spec.min === spec.max
-              ? `choose ${spec.max}`
-              : `choose up to ${spec.max}`}
-        </span>
-      </h2>
-      <p class="prompt-hint">
-        {spec.prompt}
-        {#if repeatable}
-          You may choose the same mode more than once.
-        {/if}
-        {#if targetedCount(chosen) > 0}
-          Each chosen mode with a target is picked next, in this order.
-        {/if}
-      </p>
-      <ul class="prompt-options" role={single ? "radiogroup" : "group"}>
-        {#each spec.options as option, i (i)}
-          {@const castable = modeOptionCastable(option)}
-          {@const times = countOf(i)}
-          {@const selected = times > 0}
-          <li>
+  <DockSheet
+    label={card.name}
+    src={single
+      ? "choose one"
+      : spec.min === spec.max
+        ? `choose ${spec.max}`
+        : `choose up to ${spec.max}`}
+    width={560}
+    sheetKey={`modes:${card.instance_id}`}
+    count={single ? undefined : `${count} / ${spec.max} modes`}
+    primary={confirmAction(targetedCount(chosen) > 0 ? "Choose targets" : "Cast", confirm, {
+      disabled: !canConfirm,
+    })}
+    secondary={[cancelAction(onCancel)]}
+  >
+    <p class="prompt-hint">
+      {spec.prompt}
+      {#if repeatable}
+        You may choose the same mode more than once.
+      {/if}
+      {#if targetedCount(chosen) > 0}
+        Each chosen mode with a target is picked next, in this order.
+      {/if}
+    </p>
+    <ul class="prompt-options" role={single ? "radiogroup" : "group"}>
+      {#each spec.options as option, i (i)}
+        {@const castable = modeOptionCastable(option)}
+        {@const times = countOf(i)}
+        {@const selected = times > 0}
+        <li>
+          <button
+            type="button"
+            class="prompt-opt"
+            class:on={selected}
+            class:off={!castable}
+            role={single ? "radio" : "checkbox"}
+            aria-checked={selected}
+            aria-disabled={!castable}
+            onclick={() => toggle(i, option)}
+          >
+            <span class="prompt-radio" aria-hidden="true"></span>
+            <span class="label">{option.label}</span>
+            {#if option.cost}
+              <span class="cost" title={`additional cost ${option.cost}`}>+{option.cost}</span>
+            {/if}
+            {#if repeatable && times > 0}
+              <span class="times">&times;{times}</span>
+            {/if}
+            {#if option.used}
+              <span class="note"
+                >{spec.not_chosen === "this_turn"
+                  ? "already chosen this turn"
+                  : "already chosen"}</span
+              >
+            {:else if !castable}
+              <span class="note">no legal target</span>
+            {/if}
+          </button>
+          {#if repeatable && times > 0}
             <button
               type="button"
-              class="prompt-opt"
-              class:on={selected}
-              class:off={!castable}
-              role={single ? "radio" : "checkbox"}
-              aria-checked={selected}
-              aria-disabled={!castable}
-              onclick={() => toggle(i, option)}
+              class="ghost minus"
+              aria-label={`Take back one ${option.label}`}
+              onclick={() => remove(i)}>&minus;</button
             >
-              <span class="prompt-radio" aria-hidden="true"></span>
-              <span class="label">{option.label}</span>
-              {#if option.cost}
-                <span class="cost" title={`additional cost ${option.cost}`}>+{option.cost}</span>
-              {/if}
-              {#if repeatable && times > 0}
-                <span class="times">&times;{times}</span>
-              {/if}
-              {#if option.used}
-                <span class="note"
-                  >{spec.not_chosen === "this_turn"
-                    ? "already chosen this turn"
-                    : "already chosen"}</span
-                >
-              {:else if !castable}
-                <span class="note">no legal target</span>
-              {/if}
-            </button>
-            {#if repeatable && times > 0}
-              <button
-                type="button"
-                class="ghost minus"
-                aria-label={`Take back one ${option.label}`}
-                onclick={() => remove(i)}>&minus;</button
-              >
-            {/if}
-          </li>
-        {/each}
-      </ul>
-      <div class="prompt-foot">
-        {#if !single}
-          <span class="prompt-count">{count} / {spec.max} modes</span>
-        {/if}
-        {#if extraCosts.length > 0}
-          <span class="cost extra-cost" title="additional cost of the chosen modes"
-            >+{extraCosts.join(" ")}</span
-          >
-        {/if}
-        <button type="button" class="ghost" onclick={onCancel}
-          >Cancel <span class="kbd">Esc</span></button
+          {/if}
+        </li>
+      {/each}
+    </ul>
+    {#if extraCosts.length > 0}
+      <!-- Spree (CR 702.172a): the chosen bullets' own costs, in the
+           order chosen. -->
+      <p class="mode-summary">
+        <span class="cost extra-cost" title="additional cost of the chosen modes"
+          >+{extraCosts.join(" ")}</span
         >
-        <button type="button" class="primary" disabled={!canConfirm} onclick={confirm}>
-          {targetedCount(chosen) > 0 ? "Choose targets" : "Cast"}
-          <Icon name="chevronRight" size={13} />
-        </button>
-      </div>
-    </div>
-  </div>
+      </p>
+    {/if}
+  </DockSheet>
 {/if}
 
 <style>
@@ -235,7 +214,7 @@
     color: var(--fg-dim);
     white-space: nowrap;
   }
-  .extra-cost {
-    margin-right: auto;
+  .mode-summary {
+    margin: 0;
   }
 </style>

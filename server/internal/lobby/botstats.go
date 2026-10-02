@@ -43,7 +43,6 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat"
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/auth"
 )
 
 // BotStats is a narrow extension of BotHost: a bot host that can also
@@ -65,9 +64,8 @@ type BotStats interface {
 const BotStatsRoute = "GET /games/{id}/bot/stats"
 
 // BotStatsHandler is GET /games/{id}/bot/stats, admin-only, wired
-// exactly like every other admin route in Handler
-// (auth.Middleware(c.Auth, auth.RoleAdmin) over the same handlerFunc
-// adapter). It is a standalone http.Handler rather than an inline
+// exactly like every other admin route in Handler (requireAdmin over
+// the same handlerFunc adapter, ADR 0110 §3). It is a standalone http.Handler rather than an inline
 // mux.Handle call in Handler itself so it can be mounted without
 // editing http.go — see the file comment for why that matters right
 // now. Once http.go can safely take the one-line addition, the
@@ -84,7 +82,7 @@ const BotStatsRoute = "GET /games/{id}/bot/stats"
 //
 //	mux.Handle(lobby.BotStatsRoute, lobby.BotStatsHandler(cfg))
 func BotStatsHandler(c Config) http.Handler {
-	return auth.Middleware(c.Auth, auth.RoleAdmin)(handlerFunc(c, botStats))
+	return requireAdmin(c, handlerFunc(c, botStats))
 }
 
 // botSeatStats is one bot seat's line in the response: the runner's

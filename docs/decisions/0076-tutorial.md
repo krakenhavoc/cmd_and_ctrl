@@ -46,6 +46,12 @@ The ones that cannot be deduced from looking at the table:
   in Settings (S13).
 - **The attention strip is where the stack lives**, and Counter and Pass sit on
   its top item rather than anywhere near the cards.
+
+> **Amended by [ADR 0111](0111-action-dock.md) §1 and §7 (S56 PR 2, #1958):** the
+> phase widget is now the header of the action dock, `region "actions"`, in the
+> screen's bottom-right corner, with `next`, Pass turn, `hold`, `autopass` and
+> `bluff` in it. Counter sits on the stack's top item; Pass is the dock's `next`,
+> and the stack card no longer has a Pass or a hold of its own.
 - **Mana is implicit.** Clicking a land taps it; casting auto-taps, and
   `strictMana` is off by default, so a new player never learns they were
   supposed to pay for anything.
@@ -89,8 +95,8 @@ as a list up front.
 | 5 | Tap a land for mana | `[aria-label="lands"]` | `mana_pool.length > 0` | snapshot |
 | 6 | Cast a creature | `[aria-label="your hand"]` | controlled creature count +1 | snapshot |
 | 7 | **Abilities live on right-click** | card instance id | ability menu opened | **event** |
-| 8 | Move the turn along | phase widget | `turn.step` changed | snapshot |
-| 9 | Watch the bot | attention strip | `turn.active_seat` back to you | snapshot |
+| 8 | Move the turn along | `region "actions"` (the action dock, ADR 0111) | `turn.step` changed | snapshot |
+| 9 | Watch the bot | `region "attention"` (the attention strip, ADR 0111 §4) | `turn.active_seat` back to you | snapshot |
 | 10 | Attack | creature row + opponent medallion | a controlled creature has `attacking_target` | snapshot |
 | 11 | That is the whole interface | — | button | button |
 
@@ -132,6 +138,10 @@ and **not listed in the lobby**.
 - The coach card docks **bottom-left**. The phase widget owns bottom-right and
   the attention strip owns the top, so that is the only corner that is free at
   every step.
+
+  > **Amended by [ADR 0111](0111-action-dock.md) §4 (S56 PR 2, #1958):** it is
+  > the action dock (`region "actions"`) that owns the bottom-right corner now.
+  > The coach card stays bottom-left for the same reason.
 - The scrim is **one element**: a transparent rect with a 9999px spread shadow,
   so the hole is the rect and everything else darkens.
 - The scrim is **`pointer-events: none`**. Dimming is a suggestion, never a
@@ -276,3 +286,35 @@ recorded here for the trail:
 **Still open:** which sprint. The owner chose a dedicated sprint carrying all
 six sub-PRs rather than landing the bus early, but the number and the slot are
 not assigned. The tracker is #1073.
+
+## 7. Implementation notes
+
+**Sub-PR 2, the practice table (#1078, S54).** The code moved between this ADR
+and the build, so §2.2 and §3 map onto it as follows:
+
+- **The decks are server-side.** `prebuiltDecks.ts` is now only the picker's
+  types and wording; the pre-built decks live in `server/internal/decks`. The
+  tutorial pair is `decks/tutorial.go` (*First Steps* and *Practice Partner*,
+  both mono-green), kept outside the pickers' registry so neither picker offers
+  them, and held by the same per-deck tests as the four picker decks plus their
+  own: every card `CompletenessFull`, no card that targets, and for the bot no
+  evasion keyword, and — against the Scryfall dump — power three or less and no
+  removal text.
+- **The create route** is `POST /games/practice`, open to any session (the lobby's
+  `POST /games` is admin-only, which a tutorial for new players cannot be). It
+  seats the caller and the bot and **starts the game with the player at seat 0
+  taking turn one**, skipping the opening roll, because §2.1's steps follow the
+  player's first turn.
+- **"No resume" is enforced server-side** as well as by the client: a practice
+  table has no rows in the S34 database and its room writes no restore point,
+  so a restart ends it; one per person (a second replaces the first); at most
+  eight at once; and a table with no commit for 20 minutes is reaped, which is
+  the server's answer to a closed tab that never said so.
+- **The session is swapped and restored as well as the settings.** Opening a
+  practice table mints a player session for its seat, as any join does, which
+  replaces whatever session the player held. Leaving puts that back alongside
+  the four forced settings; `POST /games/{id}/practice/leave` also resets the
+  session cookie, since the server reads the cookie first.
+- **The entry is `#/practice`**, a route that opens a table and moves on to it.
+  No link to it is added here; the lobby offer and Settings' replay (sub-PR 5)
+  point at it.

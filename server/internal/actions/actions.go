@@ -258,10 +258,18 @@ var ErrPlayerCallerMismatch = errors.New("actions: caller may not act on another
 // Decode and the gated action branches in Dispatch validate against
 // it. uuid.Nil means "no seat bound" (admin / spectator) and bypasses
 // per-seat checks — admins may need to act on behalf of any seat.
+//
+// Admin is set by the hub for a connection authenticated as an admin
+// (ws.Binding.Admin: the shared token, or a signed-in person on the
+// admin allowlist, ADR 0110 §3). An admin bound to a seat plays as that
+// seat — Caller is the seat and every per-seat gate applies — except
+// for the sandbox card overrides (overrideCaller), which are the admin
+// context menu's whole point.
 type Action struct {
 	Type   Type
 	Player uuid.UUID
 	Caller uuid.UUID
+	Admin  bool
 	Params json.RawMessage
 }
 
@@ -306,6 +314,20 @@ func requirePriorityHolder(g *game.Game, caller uuid.UUID) error {
 		return ErrNotPriorityHolder
 	}
 	return nil
+}
+
+// overrideCaller is the caller the sandbox card overrides check
+// (move_card, tap and untap, add_counter, sacrifice_permanent,
+// mark_damage, set_battlefield_position): uuid.Nil — "the admin" — for
+// an admin connection, so an admin seated at the table can still drive
+// any card from the admin context menu (ADR 0110 §3, owner requirement
+// of 2026-10-02: an admin plays as their own seat and keeps the admin
+// menu). Every other gate, combat declarations included, reads Caller.
+func overrideCaller(a Action) uuid.UUID {
+	if a.Admin {
+		return uuid.Nil
+	}
+	return a.Caller
 }
 
 // requireCardController verifies that caller is the current controller
@@ -698,7 +720,7 @@ func dispatch(g *game.Game, a Action) error {
 		if err != nil {
 			return fmt.Errorf("move_card dst: %w", err)
 		}
-		if err := requireCardController(g, a.Caller, instanceID); err != nil {
+		if err := requireCardController(g, overrideCaller(a), instanceID); err != nil {
 			return err
 		}
 		// #170: `to_bottom` seats the card at the bottom of the
@@ -721,7 +743,7 @@ func dispatch(g *game.Game, a Action) error {
 		if err != nil {
 			return fmt.Errorf("tap instance_id: %w", err)
 		}
-		if err := requireCardController(g, a.Caller, instanceID); err != nil {
+		if err := requireCardController(g, overrideCaller(a), instanceID); err != nil {
 			return err
 		}
 		return g.TapCard(instanceID, a.Type == TypeTap)
@@ -788,7 +810,7 @@ func dispatch(g *game.Game, a Action) error {
 		if err != nil {
 			return fmt.Errorf("add_counter instance_id: %w", err)
 		}
-		if err := requireCardController(g, a.Caller, instanceID); err != nil {
+		if err := requireCardController(g, overrideCaller(a), instanceID); err != nil {
 			return err
 		}
 		return g.AddCounter(instanceID, p.Name, p.Delta)
@@ -1510,7 +1532,7 @@ func dispatch(g *game.Game, a Action) error {
 			// Added in S22.
 			Graveyard []string `json:"graveyard"`
 			// Iterations answers a PendingChoiceLoopShortcut (#804,
-			// CR 726): how many more times the loop's controller
+			// CR 732): how many more times the loop's controller
 			// wants the repeating ability to resolve before the
 			// engine asks again. Zero — the field's own zero value —
 			// is "stop here", which is why this branch is routed by
@@ -1542,7 +1564,7 @@ func dispatch(g *game.Game, a Action) error {
 		if kind, ok := g.PendingChoiceKindFor(choiceID); ok && kind == game.PendingChoiceCoinCall {
 			return g.ResolveCoinCall(choiceID, a.Player, p.Call)
 		}
-		// #804, CR 726: "resolve it K more times, then stop?" Routed by
+		// #804, CR 732: "resolve it K more times, then stop?" Routed by
 		// kind like the coin call above, because its whole payload is
 		// an integer whose most meaningful value is zero — there is no
 		// presence to route on.
@@ -1737,6 +1759,19 @@ func dispatch(g *game.Game, a Action) error {
 						return fmt.Errorf("resolve_choice tap_ids[%d]: %w", i, err)
 					}
 					tapIDs = append(tapIDs, id)
+				}
+				// ADR 0108 §5: a non-mana payment ("discard a card",
+				// "sacrifice two lands") names what it pays with in
+				// card_ids beside the apply.
+				if len(p.CardIDs) > 0 {
+					if len(tapIDs) > 0 {
+						return game.ErrInvalidParam
+					}
+					cardIDs, err := parseUUIDs(p.CardIDs, "card_ids")
+					if err != nil {
+						return err
+					}
+					return g.ResolvePayUnlessWithCards(choiceID, a.Player, *p.OptionalApply, cardIDs)
 				}
 				return g.ResolvePayUnlessWithTaps(choiceID, a.Player, *p.OptionalApply, tapIDs)
 			case game.PendingChoiceMayCast:
@@ -2077,7 +2112,7 @@ func dispatch(g *game.Game, a Action) error {
 		if err != nil {
 			return fmt.Errorf("sacrifice_permanent instance_id: %w", err)
 		}
-		if err := requireCardController(g, a.Caller, instanceID); err != nil {
+		if err := requireCardController(g, overrideCaller(a), instanceID); err != nil {
 			return err
 		}
 		return g.SacrificePermanent(a.Player, instanceID)
@@ -2099,7 +2134,7 @@ func dispatch(g *game.Game, a Action) error {
 		// resolution flow). Use requireCardController which already
 		// bypasses for admins.
 		if p.Delta > 0 {
-			if err := requireCardController(g, a.Caller, instanceID); err != nil {
+			if err := requireCardController(g, overrideCaller(a), instanceID); err != nil {
 				return err
 			}
 		}
@@ -2143,7 +2178,7 @@ func dispatch(g *game.Game, a Action) error {
 		if err != nil {
 			return fmt.Errorf("set_battlefield_position instance_id: %w", err)
 		}
-		if err := requireCardController(g, a.Caller, instanceID); err != nil {
+		if err := requireCardController(g, overrideCaller(a), instanceID); err != nil {
 			return err
 		}
 		return g.SetBattlefieldPosition(instanceID, p.X, p.Y)

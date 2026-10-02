@@ -39,6 +39,10 @@ func e2Steal(t *testing.T, g *game.Game, id, to uuid.UUID) {
 func e2Destroy(t *testing.T, g *game.Game, id uuid.UUID) {
 	t.Helper()
 	g.WithWriteLock(func() { _ = g.DestroyPermanentForEffect(id) })
+	// The CR 704.3 boundary a destroying resolution ends at, where an
+	// "until" return is owed (CR 610.3, #1729) whether or not anything
+	// reached the stack.
+	g.RunStateChecksForTest()
 	passPriorityAroundTable(t, g)
 }
 

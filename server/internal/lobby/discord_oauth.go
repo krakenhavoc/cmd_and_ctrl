@@ -1,6 +1,7 @@
 package lobby
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -38,6 +39,13 @@ func discordConfig(c Config, w http.ResponseWriter, _ *http.Request) error {
 // Treating it as unbound would silently discard a seat claim the
 // user asked for, and inventing the missing half is not possible.
 //
+// Either flow sends Discord prompt=none (ADR 0110 §2), so a repeat
+// sign-in skips Discord's screen. ?prompt=consent asks for the screen
+// instead: the login page's "Sign in with a different Discord
+// account", since prompt=none silently uses whichever account the
+// browser is signed in to, and the consent screen has Discord's own
+// account switcher. Any other prompt value is a 400.
+//
 // Kept GET rather than POST because users reach this by clicking
 // a plain link (either one the admin pasted into chat or the
 // "Sign in with Discord" button on the Join / Login page, which is
@@ -60,12 +68,21 @@ func discordStart(c Config, w http.ResponseWriter, r *http.Request) error {
 		}
 	}
 
+	prompt := discord.PromptNone
+	switch r.URL.Query().Get("prompt") {
+	case "":
+	case string(discord.PromptConsent):
+		prompt = discord.PromptConsent
+	default:
+		return httpError(http.StatusBadRequest, "prompt must be consent or absent")
+	}
+
 	store := c.discordStore()
-	state, challenge, err := store.Start(gameID, invite)
+	state, challenge, err := store.StartWithPrompt(gameID, invite, prompt)
 	if err != nil {
 		return fmt.Errorf("discord start: %w", err)
 	}
-	http.Redirect(w, r, c.Discord.AuthorizeURL(state, challenge), http.StatusFound)
+	http.Redirect(w, r, c.Discord.AuthorizeURL(state, challenge, prompt), http.StatusFound)
 	return nil
 }
 
@@ -84,13 +101,9 @@ func discordCallback(c Config, w http.ResponseWriter, r *http.Request) error {
 		return httpError(http.StatusServiceUnavailable, "Discord auth is not configured on this server")
 	}
 
-	// Discord can also bounce back with error/error_description
-	// when the user denies consent. Surface as a plain 400 with
-	// the reason so the SPA can show a clear message rather than
-	// leaving the user in limbo.
+	// Discord can also bounce back with error/error_description.
 	if derr := r.URL.Query().Get("error"); derr != "" {
-		return httpError(http.StatusBadRequest,
-			fmt.Sprintf("Discord auth failed: %s (%s)", derr, r.URL.Query().Get("error_description")))
+		return discordCallbackError(c, w, r, derr)
 	}
 
 	state := r.URL.Query().Get("state")
@@ -183,10 +196,9 @@ func discordCallback(c Config, w http.ResponseWriter, r *http.Request) error {
 			DiscordAvatarHash: user.Avatar,
 		}
 		// The long-lived one (ADR 0051 decision 3): CMDCTRL_IDENTITY_TTL,
-		// 30 days by default, where every other session gets
-		// SessionTTL. Handler fills the default, so IdentityTTL is
-		// never zero here.
-		tok, issued, err := c.Auth.Issue(r.Context(), p, c.IdentityTTL)
+		// 30 days by default. A sign-in has no source session, so
+		// issueFor gives it the full identity lifetime.
+		tok, issued, err := issueFor(r.Context(), c, p, nil)
 		if err != nil {
 			return fmt.Errorf("issue session: %w", err)
 		}
@@ -224,7 +236,10 @@ func discordCallback(c Config, w http.ResponseWriter, r *http.Request) error {
 		DiscordGlobalName: user.GlobalName,
 		DiscordAvatarHash: user.Avatar,
 	}
-	tok, issued, err := c.Auth.Issue(r.Context(), p, c.SessionTTL)
+	// A seat claimed by signing in is a sign-in too: the full identity
+	// lifetime when there is a user (ADR 0110 §1), SessionTTL when the
+	// deployment has no database.
+	tok, issued, err := issueFor(r.Context(), c, p, nil)
 	if err != nil {
 		return fmt.Errorf("issue session: %w", err)
 	}
@@ -244,6 +259,46 @@ func discordCallback(c Config, w http.ResponseWriter, r *http.Request) error {
 	frag.Set("expires_at", issued.ExpiresAt.UTC().Format("2006-01-02T15:04:05Z07:00"))
 	setUserIDFragment(frag, u.ID)
 	http.Redirect(w, r, "/#/oauth-complete?"+frag.Encode(), http.StatusFound)
+	return nil
+}
+
+// discordCallbackError handles a callback that carries Discord's
+// `error` instead of a code (ADR 0110 §2 item 2).
+//
+// What Discord does with prompt=none for someone who has never
+// authorized the app is not documented: it may show its screen anyway,
+// or it may come straight back with an error (consent_required,
+// interaction_required, access_denied). So an error on a prompt=none
+// round is not shown. The round's state is consumed, a new round for
+// the same flow is parked with prompt=consent, and the browser goes
+// back to Discord, which shows its screen once. An error on a consent
+// round (the retry included) is a real refusal and is shown as a
+// plain 400 with the reason, as it always was, so the retry happens
+// at most once and can never loop.
+//
+// A state that is missing or has expired is not retried either: there
+// is no flow to repeat, and the error is shown.
+func discordCallbackError(c Config, w http.ResponseWriter, r *http.Request, derr string) error {
+	refused := httpError(http.StatusBadRequest,
+		fmt.Sprintf("Discord auth failed: %s (%s)", derr, r.URL.Query().Get("error_description")))
+	st := r.URL.Query().Get("state")
+	if st == "" {
+		return refused
+	}
+	store := c.discordStore()
+	entry, err := store.Consume(st)
+	if err != nil {
+		return refused
+	}
+	state, challenge, err := store.Retry(entry)
+	if errors.Is(err, discord.ErrNoRetry) {
+		return refused
+	}
+	if err != nil {
+		return fmt.Errorf("discord retry: %w", err)
+	}
+	c.logger().Info("Discord refused a prompt=none sign-in; retrying once with consent", "error", derr)
+	http.Redirect(w, r, c.Discord.AuthorizeURL(state, challenge, discord.PromptConsent), http.StatusFound)
 	return nil
 }
 
@@ -306,11 +361,13 @@ func discordLink(c Config, w http.ResponseWriter, r *http.Request) error {
 		return ErrSeatIsBot
 	}
 
+	// prompt=consent, always (ADR 0110 §2 item 4): this attaches an
+	// account to a seat, so the person sees which account it is.
 	state, challenge, err := c.discordStore().StartLink(p.GameID, p.PlayerID)
 	if err != nil {
 		return fmt.Errorf("discord link start: %w", err)
 	}
-	http.Redirect(w, r, c.Discord.AuthorizeURL(state, challenge), http.StatusFound)
+	http.Redirect(w, r, c.Discord.AuthorizeURL(state, challenge, discord.PromptConsent), http.StatusFound)
 	return nil
 }
 
@@ -352,7 +409,10 @@ func finishDiscordLink(c Config, w http.ResponseWriter, r *http.Request, entry d
 		DiscordGlobalName: user.GlobalName,
 		DiscordAvatarHash: user.Avatar,
 	}
-	tok, issued, err := c.Auth.Issue(r.Context(), p, c.SessionTTL)
+	// The seat's old session was a guest's, or another account's; this
+	// one is a fresh Discord sign-in, so issueFor gives it the identity
+	// lifetime (ADR 0110 §1) rather than anything inherited.
+	tok, issued, err := issueFor(r.Context(), c, p, nil)
 	if err != nil {
 		return fmt.Errorf("issue session: %w", err)
 	}

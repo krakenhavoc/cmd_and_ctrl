@@ -69,17 +69,19 @@ func polukranosBites(g *game.Game, item *game.StackItem) error {
 		return err
 	}
 	self := ctx.Source()
-	for _, t := range ctx.LegalTargets() {
-		if t.Kind != game.TargetCard {
-			continue
+	return ctx.Game.DamageInstanceForEffect(func() error {
+		for _, t := range ctx.LegalTargets() {
+			if t.Kind != game.TargetCard {
+				continue
+			}
+			c, ok := g.LookupCardForEffect(t.ID)
+			if !ok {
+				continue
+			}
+			if err := (DealDamage{Source: t.ID, Target: self, Amount: c.CurrentPower()}).Apply(ctx); err != nil {
+				return err
+			}
 		}
-		c, ok := g.LookupCardForEffect(t.ID)
-		if !ok {
-			continue
-		}
-		if err := (DealDamage{Source: t.ID, Target: self, Amount: c.CurrentPower()}).Apply(ctx); err != nil {
-			return err
-		}
-	}
-	return nil
+		return nil
+	})
 }

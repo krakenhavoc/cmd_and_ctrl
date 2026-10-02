@@ -1,0 +1,396 @@
+// choiceDock.ts — the small pending choices, inline in the action dock
+// (ADR 0111 §2, Delivery PR 5). Pure builders, like combatDock.ts and
+// targetingDock.ts: ChoicePromptModal owns the open prompt, its state
+// and its answer (and so the "Not accepted" refusal), Game.svelte owns
+// the vote and the game's end, and these turn them into the
+// DockRequest the dock draws.
+//
+// INLINE is a question plus at most about six short buttons, or a
+// single number (§2): the yes/no family (trigger_prompt,
+// optional_replacement, confirm, may_cast, entry_pay_life), pay_unless
+// without card or tap picks, coin_call, loop_shortcut, mana_pick,
+// choose_color, option_pick and entry_controller when every option is
+// a short label, and an open vote. Everything else is a sheet (PR 6)
+// and stays in ChoicePromptModal until then.
+//
+// An inline prompt is not a modal: it blurs and blocks nothing, so the
+// board can be read before answering. Its dialog keeps the name the
+// modal had (`reason`, or the modal's fallback heading), because the
+// e2e suite finds a trigger's buttons inside it, and the buttons keep
+// their names: Yes, No, "Pay {2}", "Don't pay", Heads, Tails.
+//
+// Keys. None of these presses on Enter or Escape (§1: "a yes/no
+// question does not take Enter"; a stray Enter must not accept an
+// optional effect or pay a cost, and Escape is no "No"). They answer by
+// the keys they had: Y / N, H / T / S, and 1-9 on the mana symbols.
+// Each button names its key in aria-keyshortcuts and a cap. Focus goes
+// to the dialog, not to the primary, so Enter on a focused "Yes" is not
+// one keypress away when the question appears.
+
+import type { Snippet } from "svelte";
+import { guardedWritable } from "./guardedStore";
+
+import type { DockAction, DockRequest } from "./dock";
+import type { PendingChoiceView, PlayerView, VoteView } from "./protocol";
+import { colorPromptCopy } from "./manaPick";
+import { mayCastCopy } from "./mayCast";
+import { doubledTriggerLabel } from "./triggerDoubling";
+
+// "Short" for an option_pick / entry_controller (ADR 0111 §2: "Inline
+// when every option is a short label; a sheet when an option embeds
+// cards"; "at most about six short buttons"). Six options, none with
+// cards, none longer than this many characters. The catalog's longest
+// inline-worthy label today is "Return an enchantment card from your
+// graveyard to your hand" (59); Seize the Spotlight's "Fame — its caster
+// gains control of a creature you control until end of turn" (75) is a
+// sentence and goes to a sheet.
+export const INLINE_OPTION_MAX = 6;
+export const INLINE_LABEL_MAX = 64;
+
+const YES_NO_KINDS = new Set([
+  "trigger_prompt",
+  "optional_replacement",
+  "confirm",
+  "may_cast",
+  "entry_pay_life",
+]);
+
+// shortOptions reports whether an option_pick / entry_controller fits
+// the dock: 1-6 options, no cards, every label short.
+export function shortOptions(c: Pick<PendingChoiceView, "pick_options">): boolean {
+  const opts = c.pick_options ?? [];
+  if (opts.length === 0 || opts.length > INLINE_OPTION_MAX) return false;
+  return opts.every(
+    (o) => (o.cards?.length ?? 0) === 0 && (o.label ?? "").length <= INLINE_LABEL_MAX,
+  );
+}
+
+// isInlineChoice reports whether a pending choice is answered inline in
+// the dock rather than in ChoicePromptModal.
+export function isInlineChoice(c: PendingChoiceView | null | undefined): boolean {
+  if (!c) return false;
+  if (YES_NO_KINDS.has(c.kind)) return true;
+  switch (c.kind) {
+    case "pay_unless":
+      // With card picks (ADR 0108 §5) or a waterbend tap list (#1311)
+      // the picks need room: a sheet, PR 6.
+      return !c.pay_cards && !c.tap_cost;
+    case "coin_call":
+    case "loop_shortcut":
+    case "mana_pick":
+    case "choose_color":
+      return true;
+    case "option_pick":
+    case "entry_controller":
+      return shortOptions(c);
+    default:
+      return false;
+  }
+}
+
+// What the component knows that a pure builder cannot look up.
+export interface ChoiceDockContext {
+  // The trigger's source card name, wherever it is now ("Triggered
+  // ability" when the viewer cannot see it).
+  sourceName: string;
+  // may_cast: the offered card's name, when it is visible.
+  mayCastCardName?: string;
+  // loop_shortcut: the count in the field, and whether it is legal.
+  loopIterations?: number;
+  loopAnswerable?: boolean;
+  // The kind's own body (the mana symbols, the loop count field).
+  body?: Snippet;
+  // The server's refusal of the last answer to this prompt (#624).
+  rejection?: string | null;
+}
+
+export interface ChoiceDockHandlers {
+  // The yes/no family and pay_unless: { apply }.
+  onAnswer: (apply: boolean) => void;
+  onCoin: (call: "heads" | "tails" | "stop") => void;
+  onOption: (index: number) => void;
+  onLoop: (iterations: number) => void;
+}
+
+// A key the inline prompt answers by itself (ChoicePromptModal's
+// window handler): its aria-keyshortcuts and its cap. Never Enter or
+// Escape, so the dock's one key handler never presses it.
+function keyed(id: string, label: string, key: string, onPress: () => void): DockAction {
+  return { id, label, keyShortcuts: key, cap: key, onPress };
+}
+
+interface Copy {
+  title: string;
+  tag: string;
+  hint?: string;
+  hintWarn?: boolean;
+  detail?: string;
+}
+
+function copyFor(c: PendingChoiceView, ctx: ChoiceDockContext): Copy {
+  const reason = c.reason ?? "";
+  switch (c.kind) {
+    case "optional_replacement":
+      return {
+        title: reason || "Apply replacement?",
+        tag: "replacement",
+        hint: "You (the affected player) decide whether this substitution applies.",
+      };
+    case "trigger_prompt":
+      return {
+        title: reason || `${ctx.sourceName} triggered`,
+        tag: "may",
+        detail: doubledTriggerLabel(c.doubled_by, c.doubled_by_name) ?? undefined,
+        hint:
+          c.no_legal_target === true
+            ? "No legal target — “Yes” passes without effect."
+            : "Fire the ability, or let it pass without effect.",
+        hintWarn: c.no_legal_target === true,
+      };
+    case "may_cast": {
+      const words = mayCastCopy(c.may_cast_keyword, c.accept_label, c.decline_label);
+      return {
+        title: reason || "Cast it without paying its mana cost?",
+        tag: words.source.split(" · ")[0] || "cast",
+        hint:
+          (ctx.mayCastCardName ? `${ctx.mayCastCardName} is exiled face up. ` : "") + words.hint,
+      };
+    }
+    case "entry_pay_life":
+      return {
+        title: reason || `Pay ${c.pay_cost ?? ""} as it enters?`,
+        tag: "as it enters",
+        hint: `Pay ${c.pay_cost ?? "the life"} and it enters untapped; don't, and it enters tapped. Nothing has entered yet.`,
+      };
+    case "confirm":
+      return {
+        title: reason || "Choose one",
+        tag: "choose",
+        hint: "Both answers are legal — a choice between two things the card does. There may be another question after it.",
+      };
+    case "pay_unless":
+      return {
+        title: reason || `${ctx.sourceName} — pay ${c.pay_cost ?? ""}?`,
+        tag: "pay unless",
+        hint: `Pay ${c.pay_cost ?? "the cost"} from your pool (untapped sources auto-tap if it's short), or don't and let ${ctx.sourceName} do its thing.`,
+      };
+    case "coin_call": {
+      const coins = c.coins ?? 1;
+      const wins = c.wins ?? 0;
+      return {
+        title: reason || "Call the flip",
+        tag: "coin flip",
+        hint:
+          `Call heads or tails for ${coins} ${coins === 1 ? "coin" : "coins"}.` +
+          (wins > 0 ? ` You have won ${wins} ${wins === 1 ? "flip" : "flips"} so far.` : ""),
+      };
+    }
+    case "loop_shortcut": {
+      const n = c.loop_count ?? 0;
+      return {
+        title: reason || "This ability keeps resolving",
+        tag: "loop",
+        hint: `It has resolved ${n} ${n === 1 ? "time" : "times"} this turn with nobody doing anything in between. Say how many more times to run it; Stop here leaves auto-pass paused so you can step through by hand.`,
+      };
+    }
+    case "mana_pick":
+      return {
+        title: reason || "Pick a color",
+        tag: "mana",
+        hint:
+          Object.keys(c.color_amounts ?? {}).length > 0
+            ? "Choose one color. All of this mana is added in that color."
+            : "Choose a color to add to your mana pool.",
+      };
+    case "choose_color": {
+      const copy = colorPromptCopy(c.color_purpose);
+      return { title: reason || copy.title, tag: "color", hint: copy.hint };
+    }
+    case "option_pick":
+      return {
+        title: reason || "Choose one",
+        tag: "choose one",
+        hint: "Someone else's spell or ability is asking you. Every option is one you can take.",
+      };
+    case "entry_controller":
+      return {
+        title: reason || "Choose an opponent",
+        tag: "opponent",
+        hint:
+          "It hasn't entered yet: it enters under the control of the opponent you choose. " +
+          (c.control_purpose === "benefit"
+            ? "Whoever you choose will control it and get what it does."
+            : "Whoever you choose will control it and live with what it does."),
+      };
+    default:
+      return { title: reason || "Choose", tag: "choose" };
+  }
+}
+
+// The action bar (and, for an option pick, the row) for each kind.
+function answersFor(
+  c: PendingChoiceView,
+  ctx: ChoiceDockContext,
+  h: ChoiceDockHandlers,
+): Pick<DockRequest, "primary" | "secondary" | "row" | "rowLayout"> {
+  const yes = (label: string) => keyed("yes", label, "Y", () => h.onAnswer(true));
+  const no = (label: string) => keyed("no", label, "N", () => h.onAnswer(false));
+  switch (c.kind) {
+    case "optional_replacement":
+    case "trigger_prompt":
+      return { primary: yes("Yes"), secondary: [no("No")] };
+    case "may_cast": {
+      const words = mayCastCopy(c.may_cast_keyword, c.accept_label, c.decline_label);
+      return { primary: yes(words.accept), secondary: [no(words.decline)] };
+    }
+    case "entry_pay_life":
+      return {
+        primary: yes(`Pay ${c.pay_cost ?? ""}`.trim()),
+        secondary: [no("Enter tapped")],
+      };
+    case "confirm":
+      return {
+        primary: yes(c.accept_label || "Yes"),
+        secondary: [no(c.decline_label || "No")],
+      };
+    case "pay_unless":
+      return {
+        primary: yes(`Pay ${c.pay_cost ?? ""}`.trim()),
+        secondary: [no("Don't pay")],
+      };
+    case "coin_call":
+      return {
+        primary: keyed("tails", "Tails", "T", () => h.onCoin("tails")),
+        secondary: [
+          ...(c.allow_stop === true ? [keyed("stop", "Stop", "S", () => h.onCoin("stop"))] : []),
+          keyed("heads", "Heads", "H", () => h.onCoin("heads")),
+        ],
+      };
+    case "loop_shortcut": {
+      const n = ctx.loopIterations ?? 0;
+      return {
+        primary: {
+          id: "resolve",
+          label: `Resolve ${n} more`,
+          disabled: ctx.loopAnswerable === false,
+          onPress: () => h.onLoop(n),
+        },
+        secondary: [{ id: "stop", label: "Stop here", onPress: () => h.onLoop(0) }],
+      };
+    }
+    case "option_pick":
+    case "entry_controller":
+      // No bar: a click on an option is the answer.
+      return {
+        primary: null,
+        secondary: [],
+        rowLayout: "stack",
+        row: (c.pick_options ?? []).map((o, i) => ({
+          id: `option-${i}`,
+          label: o.label,
+          onPress: () => h.onOption(i),
+        })),
+      };
+    default:
+      // mana_pick, choose_color: the symbols in the body are the answer.
+      return { primary: null, secondary: [] };
+  }
+}
+
+// choiceRequest is the dock request for an inline pending choice.
+export function choiceRequest(
+  c: PendingChoiceView,
+  ctx: ChoiceDockContext,
+  handlers: ChoiceDockHandlers,
+): DockRequest {
+  const copy = copyFor(c, ctx);
+  return {
+    rank: "choice",
+    // The modal's name: its heading, which was the reason (plus a
+    // doubled trigger's note, which was part of the heading too).
+    label: [copy.title, copy.detail].filter(Boolean).join(" "),
+    tag: copy.tag,
+    tone: "gold",
+    question: copy.title,
+    detail: copy.detail,
+    hint: copy.hint,
+    hintWarn: copy.hintWarn,
+    body: ctx.body,
+    refusal: ctx.rejection
+      ? { tag: "Not accepted", text: ctx.rejection, actions: [], tone: "danger" }
+      : null,
+    focus: "dialog",
+    ...answersFor(c, ctx, handlers),
+  };
+}
+
+// inlineRefusal is the server error an inline prompt has claimed as the
+// refusal of its own answer, and is showing as "Not accepted" in the
+// dock. The strip's rejection toast stands down for exactly that error:
+// with the modal's backdrop gone both would be on screen, and both are
+// role="alert", so the refusal would be announced twice. Any other
+// error is still the strip's. ChoicePromptModal sets and clears it.
+export const inlineRefusal = guardedWritable<unknown>(null, "inlineRefusal");
+
+// ---- the vote -------------------------------------------------------------
+//
+// The council's-dilemma vote (VotingPanel's open vote, top centre). It
+// is a `step` request, not a `choice`: a vote never stops the game (the
+// server waits on nobody's ballot and anyone can end it), so `next` and
+// Pass turn stay in the action bar, as they did beside the floating
+// panel, and any choice, flow or block declaration outranks it. Its
+// dialog keeps the panel's name, "open vote"; each option is a button
+// named by its text and its tally, pressed for the viewer's own ballot.
+
+export interface VoteRequestInput {
+  vote: VoteView;
+  viewerID: string | null;
+  seats: Pick<PlayerView, "id" | "name">[];
+  onCast: (optionIndex: number) => void;
+  onEnd: () => void;
+}
+
+export function voteRequest(input: VoteRequestInput): DockRequest {
+  const { vote, viewerID, seats } = input;
+  const counts = new Array(vote.options.length).fill(0) as number[];
+  for (const opt of Object.values(vote.ballots ?? {})) {
+    if (opt >= 0 && opt < counts.length) counts[opt]++;
+  }
+  const mine = viewerID ? (vote.ballots?.[viewerID] ?? null) : null;
+  const initiator = seats.find((s) => s.id === vote.initiator)?.name ?? "?";
+  return {
+    rank: "step",
+    label: "open vote",
+    tag: "vote",
+    tone: "plain",
+    question: vote.topic || "(no topic)",
+    detail: `called by ${initiator}`,
+    row: [
+      ...vote.options.map(
+        (option, i): DockAction => ({
+          id: `vote-${i}`,
+          label: option,
+          note: String(counts[i] ?? 0),
+          pressed: mine === i,
+          emphasis: mine === i,
+          onPress: () => input.onCast(i),
+        }),
+      ),
+      { id: "end-vote", label: "end vote", alignEnd: true, onPress: input.onEnd },
+    ],
+  };
+}
+
+// ---- the game's end ---------------------------------------------------------
+//
+// ADR 0111 §1, rule 4: once the game has ended, Back to lobby is the
+// primary. The banner (who won, and how) stays in the attention strip.
+// No Enter: leaving the table is not a confirm of something picked.
+export function gameOverRequest(onBack: () => void): DockRequest {
+  return {
+    rank: "gameOver",
+    label: "game over",
+    primary: { id: "back", label: "Back to lobby", onPress: onBack },
+    secondary: [],
+  };
+}

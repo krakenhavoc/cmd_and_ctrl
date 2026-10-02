@@ -476,13 +476,20 @@ func (g *Game) autoTapPreferringLocked(
 	// solved last, as the pool solver pays it last — the backtracking
 	// would find the answer either way, but a wildcard tried first
 	// spends the search budget on sources a narrower slot needed.
-	if !solveColored(sources, used, consumed, &plan, widenedLast(cost.Required), 0, &budget) {
+	//
+	// #1600: and a widened slot no source of a colour it prints can
+	// pay is DEFERRED to the generic recruit, exactly as the pool
+	// solver defers it — so the plan and the payment agree on which
+	// widened slots are paid as generic, and the planner never taps
+	// an Orrery's colourless for a {R} a Mountain was there to pay.
+	deferred := 0
+	if !solveColored(sources, used, consumed, &plan, widenedLast(cost.Required), 0, &budget, &deferred) {
 		return nil, false
 	}
 	if budget <= 0 {
 		return nil, false
 	}
-	if !recruitGeneric(sources, used, consumed, &plan, need) {
+	if !recruitGeneric(sources, used, consumed, &plan, need+deferred) {
 		return nil, false
 	}
 	return plan, true
@@ -1533,6 +1540,15 @@ func restrictivenessScore(s tapSource) int {
 // via depth-first backtracking. Returns true on a complete
 // assignment, false on dead-end. The shared budget counter halts
 // pathological searches.
+//
+// A widened requirement (AnyMana — a spend grant's, #1589 / #1600) is
+// placed on a slot of a colour it PRINTS when one is free, and
+// otherwise counted in `deferred` for recruitGeneric to pay out of
+// whatever is left. Any slot pays generic, so that is the same answer
+// to "payable?" as placing it on any slot, and it is the answer the
+// pool solver gives (ManaPool.attemptSpend): the two must agree on
+// which widened slots end up paid as generic, or the plan would make
+// mana the payment then spends differently.
 func solveColored(
 	sources []tapSource,
 	used []bool,
@@ -1541,6 +1557,7 @@ func solveColored(
 	reqs []ColorRequirement,
 	reqIdx int,
 	budget *int,
+	deferred *int,
 ) bool {
 	if *budget <= 0 {
 		return false
@@ -1577,7 +1594,7 @@ func solveColored(
 			*plan = append(*plan, plannedTap{CardID: sources[i].CardID, OneColor: sources[i].OneColor, Ref: sources[i].Ref})
 		}
 		consumed[i]++
-		if solveColored(sources, used, consumed, plan, reqs, reqIdx+1, budget) {
+		if solveColored(sources, used, consumed, plan, reqs, reqIdx+1, budget, deferred) {
 			return true
 		}
 		consumed[i]--
@@ -1586,14 +1603,26 @@ func solveColored(
 			*plan = (*plan)[:len(*plan)-1]
 		}
 	}
+	// #1600: no slot of a printed colour is left for a widened
+	// requirement, so it is paid as generic — the last branch tried,
+	// after every placement on a matching slot.
+	if req.AnyMana {
+		*deferred++
+		if solveColored(sources, used, consumed, plan, reqs, reqIdx+1, budget, deferred) {
+			return true
+		}
+		*deferred--
+	}
 	return false
 }
 
 // pickMatchingSlot returns the index of the first slot in `s`
-// (starting at startIdx — the next un-consumed slot) whose Options
-// the requirement admits (ColorRequirement.Admits — its Options, or
-// any mana for a slot a spend grant widened, #1589). -1 when nothing
-// matches. The
+// (starting at startIdx — the next un-consumed slot) that can make a
+// colour the requirement PRINTS (matchColor over its Options). -1 when
+// nothing matches. A widened requirement (AnyMana, #1589 / #1600) is
+// asked the same question: what it admits beyond its printed colours
+// is paid as generic (solveColored's deferral), never by booking a
+// slot here. The
 // "starting at consumed[i]" convention is fine for the simple
 // uniform-slot case (Sol Ring's two C slots are interchangeable);
 // a richer multi-color mana rock would need a per-slot pick, but
@@ -1602,7 +1631,7 @@ func pickMatchingSlot(s tapSource, startIdx int, req ColorRequirement) int {
 	for i := startIdx; i < len(s.Slots); i++ {
 		slot := s.Slots[i]
 		for _, opt := range slot.Options {
-			if req.Admits(opt) {
+			if matchColor(opt, req.Options) {
 				return i
 			}
 		}

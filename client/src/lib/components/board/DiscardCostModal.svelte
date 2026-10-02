@@ -13,9 +13,13 @@
   // can make a card in your own hand an illegal choice. So this is
   // a plain list rather than the board-click targeting flow, and
   // the same shape as SacrificeCostModal.
-  import { onDestroy } from "svelte";
+  //
+  // ADR 0111 PR 6: a sheet in the action dock; the confirm and Cancel
+  // are the dock's action bar (Enter / Escape through its one key
+  // handler).
   import type { CardView } from "../../protocol";
-  import ModalLayer from "../ModalLayer.svelte";
+  import { cancelAction, confirmAction } from "../../dock";
+  import DockSheet from "./DockSheet.svelte";
 
   interface Props {
     // The spell being cast; null closes the modal.
@@ -87,88 +91,53 @@
     if (!ready) return;
     onConfirm(chosen);
   }
-
-  function handleKey(e: KeyboardEvent): void {
-    if (!card) return;
-    if (e.key === "Enter") {
-      e.preventDefault();
-      confirm();
-    } else if (e.key === "Escape") {
-      e.preventDefault();
-      onCancel();
-    }
-  }
-  $effect(() => {
-    if (!card) return;
-    document.addEventListener("keydown", handleKey);
-    return () => document.removeEventListener("keydown", handleKey);
-  });
-  onDestroy(() => document.removeEventListener("keydown", handleKey));
 </script>
 
 {#if card}
-  <ModalLayer />
-  <div class="prompt-backdrop" role="dialog" aria-modal="true" aria-labelledby="discard-cost-title">
-    <div class="prompt-modal dc-modal">
-      <h2 id="discard-cost-title">
-        {card.name}
-        <span class="prompt-src" aria-hidden="true">{note}</span>
-      </h2>
-      <p class="prompt-hint">{label}</p>
-      {#if short}
-        <p class="prompt-hint error">
-          You need {need} card{need === 1 ? "" : "s"}
-          {where} to pay this cost.
-        </p>
-      {:else}
-        <ul class="prompt-options">
-          {#each options as c (c.instance_id)}
-            <li>
-              <button
-                type="button"
-                class="prompt-opt"
-                class:on={chosen.includes(c.instance_id)}
-                aria-pressed={chosen.includes(c.instance_id)}
-                onclick={() => toggle(c.instance_id)}
-              >
-                <span class="prompt-radio" aria-hidden="true"></span>
-                <span class="name">{c.name}</span>
-                {#if c.mana_cost}
-                  <span class="note cost">{c.mana_cost}</span>
-                {/if}
-              </button>
-            </li>
-          {/each}
-        </ul>
-      {/if}
-      <div class="prompt-foot">
-        {#if need > 1}
-          <span class="prompt-count">{chosen.length} / {need} picked</span>
-        {/if}
-        <button type="button" class="ghost" onclick={onCancel}
-          >Cancel <span class="kbd">Esc</span></button
-        >
-        <button type="button" class="primary" disabled={!ready} onclick={confirm}>
-          {verb} <span class="kbd">↵</span>
-        </button>
-      </div>
-    </div>
-  </div>
+  <DockSheet
+    label={card.name}
+    src={note}
+    width={560}
+    sheetKey={`discardcost:${card.instance_id}:${verb}:${label ?? ""}`}
+    count={need > 1 ? `${chosen.length} / ${need} picked` : undefined}
+    primary={confirmAction(verb, confirm, { disabled: !ready })}
+    secondary={[cancelAction(onCancel)]}
+  >
+    <p class="prompt-hint">{label}</p>
+    {#if short}
+      <p class="prompt-hint error">
+        You need {need} card{need === 1 ? "" : "s"}
+        {where} to pay this cost.
+      </p>
+    {:else}
+      <ul class="prompt-options">
+        {#each options as c (c.instance_id)}
+          <li>
+            <button
+              type="button"
+              class="prompt-opt"
+              class:on={chosen.includes(c.instance_id)}
+              aria-pressed={chosen.includes(c.instance_id)}
+              onclick={() => toggle(c.instance_id)}
+            >
+              <span class="prompt-radio" aria-hidden="true"></span>
+              <span class="name">{c.name}</span>
+              {#if c.mana_cost}
+                <span class="note cost">{c.mana_cost}</span>
+              {/if}
+            </button>
+          </li>
+        {/each}
+      </ul>
+    {/if}
+  </DockSheet>
 {/if}
 
 <style>
-  .dc-modal {
-    width: min(440px, calc(100vw - 32px));
-  }
   .name {
     flex: 1 1 auto;
   }
   .cost {
     font-family: var(--font-mono);
-  }
-  .primary .kbd {
-    color: var(--accent-fg);
-    border-color: rgba(28, 21, 3, 0.35);
-    opacity: 0.8;
   }
 </style>

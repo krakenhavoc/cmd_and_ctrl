@@ -1597,7 +1597,7 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// fires here, against the context the payment was solved under.
 	g.applyManaSpendRidersLocked(item, riderCtx, riderSource)
 	// #628: activating an ability is a player decision, so it
-	// restarts the CR 726 loop run. The announce emits EventTrigger
+	// restarts the CR 732 loop run. The announce emits EventTrigger
 	// rather than an event of its own — the same kind a triggered
 	// ability announces with — so the notch is here rather than in
 	// turnTallyListener, which cannot tell the two apart.
@@ -1862,6 +1862,13 @@ func (g *Game) validateSacrificeCostLocked(playerID, sourceID uuid.UUID, cost Ab
 // one no longer has.
 func (g *Game) payAbilityManaCostLocked(p *Player, sourceID uuid.UUID, sourceName string, cost ParsedCost, params ActivateAbilityParams, spendCtx ManaSpendContext, excluded map[uuid.UUID]bool) (PaidCost, error) {
 	var paid PaidCost
+	// #1600, CR 609.4b: the cost as this player may pay it. Here, at
+	// the top of the one helper a CR 602 activation, a special action
+	// and an attack tax all pay through — after the caller's waterbend
+	// taps, before the Phyrexian strike — so those three read the grant
+	// in one place. (A cast, a mana ability and a pay-unless read it at
+	// their own payment: see spend_any_color.go.)
+	cost = g.costAsPaidByLocked(p.ID, spendCtx, cost)
 	// CR 107.4f / CR 602.2b (#917): the Phyrexian symbols the
 	// activator announced they are paying with life leave the mana
 	// cost here, through the SAME helper the cast path runs, and the

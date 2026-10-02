@@ -10,8 +10,9 @@
   } from "../lib/api";
   import { navigate } from "../lib/router";
   import { LobbyApiError, session } from "../lib/session";
-  import { signedInUserID } from "../lib/myGames";
+  import { canJoinByCode, signedInUserID } from "../lib/myGames";
   import { GUEST_RETURN_ADVICE, SIGNED_IN_RETURN_LINK } from "../lib/joinRecovery";
+  import { loadGuestName, rememberGuestName } from "../lib/guestName";
   import { seatColor } from "../lib/colors";
   import Icon from "../lib/components/Icon.svelte";
   import SiteHeader from "../lib/components/SiteHeader.svelte";
@@ -28,7 +29,10 @@
   }
   const { gameID, inviteToken, spectator }: Props = $props();
 
-  let name = $state("");
+  // A guest's last typed name, pre-filled (ADR 0110 §5 item 6, owner
+  // answer 8). A signed-in person is never asked: their seat takes the
+  // Discord name, so the field is not shown to them at all.
+  let name = $state(loadGuestName());
   let busy = $state(false);
   let error = $state("");
 
@@ -87,11 +91,12 @@
   // A person already signed in with Discord joins as themselves: the
   // server takes the seat's name, avatar and user from the session and
   // ignores a typed name (ADR 0051 sub-PR 4), so the page does not ask
-  // for one. Player invites only — a spectator's label is just a label.
+  // for one. Spectator invites too since ADR 0110 §1 item 2: a signed-in
+  // spectator keeps their user and is labelled with their Discord name,
+  // so a typed chat label would be ignored.
   const signedInAs = $derived.by(() => {
     const s = $session;
-    if (spectator || !s) return null;
-    if (s.principal.role !== "identified" && !signedInUserID(s)) return null;
+    if (!s || !canJoinByCode(s)) return null;
     return s.principal.name || "your Discord account";
   });
 
@@ -106,8 +111,13 @@
     busy = true;
     error = "";
     try {
-      await joinGame(gameID, inviteToken, "");
-      navigate("#/lobby");
+      if (spectator) {
+        await spectateGame(gameID, inviteToken, "");
+        navigate(`#/games/${gameID}`);
+      } else {
+        await joinGame(gameID, inviteToken, "");
+        navigate("#/lobby");
+      }
     } catch (err) {
       error = err instanceof LobbyApiError ? err.message : "join failed";
     } finally {
@@ -123,11 +133,13 @@
     try {
       if (spectator) {
         await spectateGame(gameID, inviteToken, name.trim());
+        rememberGuestName(name);
         // Spectators bypass the lobby (no deck to import, no seat
         // to manage) and land directly on the game route.
         navigate(`#/games/${gameID}`);
       } else {
         await joinGame(gameID, inviteToken, name.trim());
+        rememberGuestName(name);
         // Player flow: lobby first so they can import a deck and
         // see other seats' status before entering the game route.
         navigate("#/lobby");
@@ -259,7 +271,7 @@
       {:else}
         {#if signedInAs}
           <button type="button" class="primary lg" disabled={busy} onclick={joinSignedIn}>
-            {busy ? "…" : `Join as ${signedInAs}`}
+            {busy ? "…" : `${spectator ? "Watch" : "Join"} as ${signedInAs}`}
             <Icon name="chevronRight" size={14} />
           </button>
         {:else}

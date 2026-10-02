@@ -24,10 +24,15 @@ func init() {
 			Cost:  Plus(TapCost(), SacrificeN(1, "a Room", HasSubtype("Room"))),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
-				for _, opp := range ctx.Opponents() {
-					if err := (DealDamage{Source: ctx.Source(), Target: opp, Amount: 2}).Apply(ctx); err != nil {
-						return err
+				if err := ctx.Game.DamageInstanceForEffect(func() error {
+					for _, opp := range ctx.Opponents() {
+						if err := (DealDamage{Source: ctx.Source(), Target: opp, Amount: 2}).Apply(ctx); err != nil {
+							return err
+						}
 					}
+					return nil
+				}); err != nil {
+					return err
 				}
 				return DrawCards{N: 1}.Apply(ctx)
 			},

@@ -648,9 +648,10 @@ func TestPalaceJailerTargetsOnlyAnOpponentsCreature(t *testing.T) {
 	}
 }
 
-// TestPalaceJailerExileSurvivesASnapshotRoundTrip: the release is a
-// keyed delayed trigger, so a table with a creature jailed is a restore
-// point, and the restored game still releases it.
+// TestPalaceJailerExileSurvivesASnapshotRoundTrip: the release is an
+// "until" record (CR 610.3, #1729) — data — so a table with a creature
+// jailed is a restore point, and the restored game still releases it.
+// The controller leaving the game is in until_return_test.go.
 func TestPalaceJailerExileSurvivesASnapshotRoundTrip(t *testing.T) {
 	g := newCatalogGame(t)
 	owner, thief := g.Seats[1], g.Seats[2]
@@ -668,31 +669,8 @@ func TestPalaceJailerExileSurvivesASnapshotRoundTrip(t *testing.T) {
 	}
 }
 
-// TestPalaceJailerControllerLeavingKeepsTheCreatureExiled pins the
-// declared caveat: the Jailer's controller concedes while wearing the
-// crown, CR 725.4 hands it to an opponent of theirs — which is the
-// printed "until" — but the delayed trigger left with its controller
-// (CR 800.4a), so the creature stays exiled. Flip this when the gap
-// closes, and clear the caveat.
-func TestPalaceJailerControllerLeavingKeepsTheCreatureExiled(t *testing.T) {
-	g := newCatalogGame(t)
-	me, owner := g.Seats[0], g.Seats[1]
-	victim := pushVanillaCreature(g, owner.ID, "Their Bear", 2, 2)
-	jailerExile(t, g, victim)
-	if err := g.Concede(me.ID); err != nil {
-		t.Fatalf("Concede: %v", err)
-	}
-	monSettle(t, g)
-	if g.Monarch == uuid.Nil || g.Monarch == me.ID {
-		t.Fatalf("CR 725.4: monarch = %v, want a player still in the game", g.Monarch)
-	}
-	if z := e2Zone(g, victim); z != game.ZoneExile {
-		t.Errorf("the creature is in %q — the caveat has closed; update the card and this test", z)
-	}
-}
-
 // TestPalaceJailerExileSurvivesUndo: Clone / RestoreFrom keeps the
-// delayed trigger and the crown.
+// until record and the crown.
 func TestPalaceJailerExileSurvivesUndo(t *testing.T) {
 	g := newCatalogGame(t)
 	owner, thief := g.Seats[1], g.Seats[2]

@@ -61,6 +61,34 @@ import (
 // A copy of the ability (Strionic Resonator, CR 707.10) is not the
 // ability, and does not latch it.
 //
+// # A state about each of several objects (#1858)
+//
+// Bomb Squad's "Whenever a creature has four or more fuse counters on
+// it, remove all fuse counters from it and destroy it" is a state of
+// ONE creature, and the battlefield can hold several creatures in it at
+// once. The game state that matches the trigger condition is "this
+// creature has four or more fuse counters", so the ability triggers once
+// for each creature in that state, and CR 603.8's "doesn't trigger again
+// until the ability has resolved" is about the instance that creature's
+// state triggered: an instance about one creature waiting on the stack
+// does not stop a second creature reaching four counters from
+// triggering it. Bomb Squad's ruling says the same from the other side:
+// two Bomb Squads both trigger for one creature, because each has the
+// ability.
+//
+// Such a row registers a StateEachCondition (RegisterStateEachCondition)
+// instead of a StateCondition, in the same key namespace. The walk asks
+// it once per battlefield permanent, and each instance it queues carries
+// the permanent it is about as its trigger context's Object
+// (TriggerContext.Object: the ID and the epoch, CR 400.7), with no event
+// kind, since nothing happened. The latch reads that Object too, so it
+// stays derived: the object an instance is about is already snapshot
+// data on every queued and stacked item (its "trigger" key, recorded by
+// the shape guard), and a restored table's waiting instance still
+// latches its creature. The effect reads the creature through
+// effects.Context.TriggeringPermanent, which answers with last-known
+// information once it has gone (CR 608.2h).
+//
 // # What it costs
 //
 // The registry tells the engine which catalog keys carry a state trigger
@@ -89,7 +117,23 @@ type StateCondition func(g *Game, source *Card, controller uuid.UUID) bool
 // the condition is code, and the row carries only its name.
 var stateConditions struct {
 	sync.RWMutex
-	m map[string]StateCondition
+	m map[string]stateConditionEntry
+}
+
+// StateEachCondition is the condition of a state trigger about each of
+// several objects (#1858, Bomb Squad's "Whenever a creature has four or
+// more fuse counters on it"): is `obj`, a permanent on the battlefield,
+// in the printed state? `source` and `controller` are the permanent with
+// the ability and its controller. The same contract as StateCondition: a
+// pure read under g.mu in write mode that MUST NOT call public locking
+// mutators.
+type StateEachCondition func(g *Game, source *Card, controller uuid.UUID, obj *Card) bool
+
+// stateConditionEntry is one registered condition. Exactly one of the
+// two forms is set.
+type stateConditionEntry struct {
+	whole StateCondition
+	each  StateEachCondition
 }
 
 // RegisterStateCondition files `cond` under `key`, for a catalog row to
@@ -104,29 +148,66 @@ var stateConditions struct {
 // has not registered never triggers; the catalog's Register refuses such
 // a row at boot, so that can only be a hand-built test row.
 func RegisterStateCondition(key string, cond StateCondition) {
-	if key == "" {
-		panic("game: a state condition needs a key")
-	}
 	if cond == nil {
 		panic(fmt.Sprintf("game: state condition %q has no function", key))
+	}
+	registerStateConditionEntry(key, stateConditionEntry{whole: cond})
+}
+
+// RegisterStateEachCondition files a condition about each of several
+// objects under `key` (the file comment's "A state about each of several
+// objects"): the row that names it triggers once for each battlefield
+// permanent `cond` accepts. It shares RegisterStateCondition's key
+// namespace and panics.
+func RegisterStateEachCondition(key string, cond StateEachCondition) {
+	if cond == nil {
+		panic(fmt.Sprintf("game: state condition %q has no function", key))
+	}
+	registerStateConditionEntry(key, stateConditionEntry{each: cond})
+}
+
+func registerStateConditionEntry(key string, e stateConditionEntry) {
+	if key == "" {
+		panic("game: a state condition needs a key")
 	}
 	stateConditions.Lock()
 	defer stateConditions.Unlock()
 	if stateConditions.m == nil {
-		stateConditions.m = make(map[string]StateCondition)
+		stateConditions.m = make(map[string]stateConditionEntry)
 	}
 	if _, dup := stateConditions.m[key]; dup {
 		panic(fmt.Sprintf("game: state condition %q is already registered", key))
 	}
-	stateConditions.m[key] = cond
+	stateConditions.m[key] = e
 }
 
-// StateConditionFor is the condition registered under key.
+// StateConditionFor is the condition registered under key, when it is a
+// condition over the board as a whole.
 func StateConditionFor(key string) (StateCondition, bool) {
+	e, _ := stateConditionEntryFor(key)
+	return e.whole, e.whole != nil
+}
+
+// StateEachConditionFor is the condition registered under key, when it
+// is a condition about each of several objects.
+func StateEachConditionFor(key string) (StateEachCondition, bool) {
+	e, _ := stateConditionEntryFor(key)
+	return e.each, e.each != nil
+}
+
+// StateConditionKnown reports whether a condition of either form is
+// registered under key. The catalog's Register refuses a row naming a
+// key that is not.
+func StateConditionKnown(key string) bool {
+	_, ok := stateConditionEntryFor(key)
+	return ok
+}
+
+func stateConditionEntryFor(key string) (stateConditionEntry, bool) {
 	stateConditions.RLock()
 	defer stateConditions.RUnlock()
-	cond, ok := stateConditions.m[key]
-	return cond, ok
+	e, ok := stateConditions.m[key]
+	return e, ok
 }
 
 // noteStateTriggerKey records that key's definition carries a state
@@ -251,6 +332,9 @@ func (g *Game) stateTriggersLocked() {
 	type match struct {
 		source Card
 		t      TriggeredAbility
+		// about is the permanent a per-object instance is about
+		// (StateEachCondition); uuid.Nil for a state of the board.
+		about uuid.UUID
 	}
 	var matches []match
 	for i := range g.Battlefield.Cards {
@@ -262,32 +346,58 @@ func (g *Game) stateTriggersLocked() {
 			if t.State == "" || !TriggerWatchesFromZone(t, ZoneBattlefield) {
 				continue
 			}
-			cond, ok := StateConditionFor(t.State)
-			if !ok || g.stateTriggerLatchedLocked(c, t) {
-				continue
+			e, _ := stateConditionEntryFor(t.State)
+			switch {
+			case e.each != nil:
+				// One instance per permanent in the state, each latched
+				// on its own (the file comment's "A state about each of
+				// several objects").
+				for j := range g.Battlefield.Cards {
+					obj := &g.Battlefield.Cards[j]
+					about := ObjectRef{ID: obj.InstanceID, Epoch: obj.ObjectEpoch}
+					if g.stateTriggerLatchedLocked(c, t, &about) || !e.each(g, c, c.Controller, obj) {
+						continue
+					}
+					matches = append(matches, match{source: *c, t: t, about: obj.InstanceID})
+				}
+			case e.whole != nil:
+				if g.stateTriggerLatchedLocked(c, t, nil) || !e.whole(g, c, c.Controller) {
+					continue
+				}
+				matches = append(matches, match{source: *c, t: t})
 			}
-			if !cond(g, c, c.Controller) {
-				continue
-			}
-			matches = append(matches, match{source: *c, t: t})
 		}
 	}
 	// Dispatched after the walk: a dispatch can open a prompt, and
 	// nothing it does may move the slice the walk was reading.
 	for _, m := range matches {
-		g.dispatchTriggerInstanceLocked(Event{}, m.source, m.source.Effective(), m.t, doublerRef{})
+		// A per-object instance names its permanent the way an event
+		// trigger names the object its event was about, so the context
+		// the dispatch builds carries that object's ID and epoch
+		// (triggerContextLocked) and stampTriggerContext puts it on the
+		// item. The event has no Kind, because nothing happened:
+		// TriggerContext.Fired stays false.
+		g.dispatchTriggerInstanceLocked(Event{CardID: m.about}, m.source, m.source.Effective(), m.t, doublerRef{})
 	}
 }
 
 // stateTriggerLatchedLocked is CR 603.8's "doesn't trigger again until
 // the ability has resolved, has been countered, or has otherwise left
 // the stack", read off the places an item of this row from this object
-// can be (see the file comment). Caller must hold g.mu.
-func (g *Game) stateTriggerLatchedLocked(source *Card, t TriggeredAbility) bool {
+// can be (see the file comment). `about`, when set, is the permanent a
+// per-object instance is about, and only an instance about that same
+// object (CR 400.7) latches it. Caller must hold g.mu.
+func (g *Game) stateTriggerLatchedLocked(source *Card, t TriggeredAbility, about *ObjectRef) bool {
 	obj := ObjectRef{ID: source.InstanceID, Epoch: source.ObjectEpoch}
 	ref := TriggeredAbilityRef(t)
+	isAbout := func(tc *TriggerContext) bool {
+		if about == nil {
+			return true
+		}
+		return tc != nil && tc.Object != nil && tc.Object.Ref() == *about
+	}
 	isThis := func(it *StackItem) bool {
-		if it == nil || it.IsCopy || it.SourceObject != obj {
+		if it == nil || it.IsCopy || it.SourceObject != obj || !isAbout(it.Trigger) {
 			return false
 		}
 		if ref != nil && it.Params.Ability != nil {
@@ -322,11 +432,11 @@ func (g *Game) stateTriggerLatchedLocked(source *Card, t TriggeredAbility) bool 
 			continue
 		}
 		switch {
-		case c.triggerResume != nil && sameRow(c.triggerResume.source, c.triggerResume.ability):
+		case c.triggerResume != nil && sameRow(c.triggerResume.source, c.triggerResume.ability) && isAbout(&c.triggerResume.tc):
 			return true
-		case c.pickTargetResume != nil && sameRow(c.pickTargetResume.source, c.pickTargetResume.ability):
+		case c.pickTargetResume != nil && sameRow(c.pickTargetResume.source, c.pickTargetResume.ability) && isAbout(&c.pickTargetResume.tc):
 			return true
-		case c.modePickResume != nil && sameRow(c.modePickResume.source, c.modePickResume.ability):
+		case c.modePickResume != nil && sameRow(c.modePickResume.source, c.modePickResume.ability) && isAbout(&c.modePickResume.tc):
 			return true
 		}
 	}

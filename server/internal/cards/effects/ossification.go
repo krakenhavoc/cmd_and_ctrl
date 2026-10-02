@@ -14,20 +14,26 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // The reward is that it is one mana cheaper than every other card
 // printed with this text.
 //
-// "Until this Aura leaves the battlefield" is TWO abilities, not one —
-// an entry trigger that exiles, and a leave trigger that returns
-// whatever that exile took. The card is written that way because the
-// rules are: CR 610.3, the exile is a one-shot, and the return is its
-// own triggered ability with its own record.
+// "Until this Aura leaves the battlefield" is CR 610.3: the exile is a
+// one-shot, and the return is a SECOND one-shot created immediately
+// after the Aura leaves — not a triggered ability (#1729). ExileUntil
+// records it, and the engine performs it before anyone gets priority,
+// with no stack in between: destroy the Aura and the permanent is
+// already back when the destroying spell has finished. It returns even
+// if the Aura's owner leaves the game, which takes the Aura off the
+// battlefield with them.
 //
-// That record is the event log, read back through b27ExiledWith on the
-// entry trigger's stack label — which is why the label is a const
-// shared by both halves rather than two string literals. A card that
-// something else moved out of exile in the meantime is not pulled back
-// out of wherever it went, because the newer move closes the older
-// record.
+// CR 610.3b, and the ruling of 2023-02-04: "If Ossification leaves the
+// battlefield before its triggered ability resolves, the target
+// permanent won't be exiled." ExileUntil reads the Aura as the object
+// it was when the ability triggered, so a removal in response leaves
+// the target where it is.
 //
-// The exiled permanent returns under its OWNER's control (CR 610.3),
+// The leave trigger the card carried before #1729 stays as a legacy
+// row (UntilThisLeavesLegacyReturn): it fires only for a card exiled by
+// an older binary, with no record to bring it back.
+//
+// The exiled permanent returns under its OWNER's control (CR 610.3c),
 // not under the Aura controller's: destroying an Ossification on your
 // own Ravenous Chupacabra gives it back to you, and destroying one on
 // an opponent's commander gives it back to them.
@@ -50,14 +56,10 @@ func init() {
 				AppliesTo: b06SelfETB,
 				Targets: TargetPermanent("target creature or planeswalker an opponent controls",
 					b41CreatureOrPlaneswalkerAnOpponentControls()),
-				// b27ExileChosenTarget is Duplicant's body: exile
-				// whatever the pick stamped into the item, if it is
-				// still legal (CR 608.2b).
 				Key:    b41OssificationExileLabel,
-				Effect: b27ExileChosenTarget,
+				Effect: exileChosenTargetUntilThisLeaves("Ossification — the exiled card returns when Ossification leaves the battlefield"),
 			},
-			On(game.EventLTB, Self, "Ossification — return the exiled card",
-				b41ReturnCardsExiledWithToTheBattlefield(b41OssificationExileLabel)),
+			UntilThisLeavesLegacyReturn("Ossification — return the exiled card", b41OssificationExileLabel),
 		},
 	})
 }

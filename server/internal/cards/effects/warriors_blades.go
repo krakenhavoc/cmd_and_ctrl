@@ -44,10 +44,15 @@ func init() {
 // damage source is the Equipment ("it deals"), read off the item.
 func warriorsBladesETB(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	for _, t := range ctx.LegalTargets() {
-		if err := (DealDamage{Source: item.SourceCardID, Target: t.ID, Amount: 3}).Apply(ctx); err != nil {
-			return err
+	if err := ctx.Game.DamageInstanceForEffect(func() error {
+		for _, t := range ctx.LegalTargets() {
+			if err := (DealDamage{Source: item.SourceCardID, Target: t.ID, Amount: 3}).Apply(ctx); err != nil {
+				return err
+			}
 		}
+		return nil
+	}); err != nil {
+		return err
 	}
 	return GainLife{Amount: 3}.Apply(ctx)
 }

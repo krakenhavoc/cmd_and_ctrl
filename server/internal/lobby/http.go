@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/google/uuid"
 
@@ -20,30 +21,37 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/auth"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/bugstore"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/catalog"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/deck"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/deckcoverage"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/decklibrary"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/deckrequests"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/discord"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/tablesetups"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/users"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/usersettings"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/util/appenv"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/util/envflag"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/util/ratelimit"
 )
 
-// sessionTTL controls how long a newly-minted Principal lives in the
-// authenticator. Short enough that leaked cookies rotate out of risk
-// within a day; long enough that a friends' game session doesn't hit
-// "please log in again" mid-match.
+// sessionTTL is the default lifetime of a session with no user: a
+// guest seat, a guest spectator, an admin-token session, a
+// reclaim-ticket session. Those cannot be revoked (ADR 0051 decision
+// 6), so they stay short: leaked cookies rotate out of risk within a
+// day, and a friends' game still doesn't hit "please log in again"
+// mid-match.
 const sessionTTL = 12 * time.Hour
 
-// identityTTL is the default lifetime of a RoleIdentified session, the
-// one the Discord callback mints when no invite is in hand (ADR 0051
-// decision 3: "long TTL (30 days, CMDCTRL_IDENTITY_TTL)"). It is long
-// because it is the credential a browser keeps across games; it is
-// safe to be long because it carries a UserID and so can be revoked
-// (decision 6). Every other session keeps SessionTTL.
+// identityTTL is the default lifetime of every session that carries a
+// user (ADR 0110 §1, widening ADR 0051 decision 3's "long TTL (30 days,
+// CMDCTRL_IDENTITY_TTL)" from the identity-only session to all of
+// them). It is long because it is the credential a browser keeps
+// across games; it is safe to be long because a session with a UserID
+// can be revoked (decision 6). A session minted FROM a signed-in
+// session inherits that session's expiry instead (issueFor).
 const identityTTL = 30 * 24 * time.Hour
 
 // maxDeckBodyBytes caps the payload accepted by POST /games/{id}/decks.
@@ -58,6 +66,11 @@ type Config struct {
 	Lobby      *Lobby
 	Auth       auth.Authenticator
 	AdminToken string // shared admin token; empty disables admin flow
+	// Admins is the Discord user-ID allowlist (CMDCTRL_DISCORD_ADMIN_USER_IDS,
+	// ADR 0110 §3): a signed-in session whose Discord ID is on it is an
+	// admin, exactly like the shared token (isAdmin, admins.go). Nil is
+	// the empty list. main hands the same *AdminList to WSAuthorizer.
+	Admins *AdminList
 	// Env is the deployment identity (prod / dev). The zero value is
 	// the empty string, which IsDev() reports false for — so a Config
 	// built without thinking about it (every existing test) gets
@@ -65,13 +78,23 @@ type Config struct {
 	Env appenv.Env
 	// Features are the dev-only capabilities this deployment exposes.
 	// Always the zero value in production; see package appenv.
-	Features   appenv.Features
+	Features appenv.Features
+	// SessionTTL is the lifetime of a session with no user: guest
+	// seats and spectators, admin-token and reclaim-ticket sessions
+	// (CMDCTRL_SESSION_TTL). Zero means sessionTTL, 12 hours.
 	SessionTTL time.Duration
-	// IdentityTTL is the lifetime of the RoleIdentified session minted
-	// at Discord sign-in (CMDCTRL_IDENTITY_TTL). Zero means identityTTL,
-	// 30 days. Seat, spectator and admin sessions use SessionTTL.
+	// IdentityTTL is the lifetime of a session with a user that has no
+	// source session: a Discord sign-in, in any of its three callback
+	// branches (CMDCTRL_IDENTITY_TTL). A user-bearing session minted
+	// from another inherits its expiry (ADR 0110 §1, issueFor). Zero
+	// means identityTTL, 30 days.
 	IdentityTTL time.Duration
-	AllowAnon   bool // allow unauthenticated /games/{id}/join via invite (default: true)
+	// Now is the clock POST /me/session's half-life test reads (ADR
+	// 0110 §1 item 5). Nil means time.Now. Tests set it to move a
+	// session past half its life without waiting; the authenticator
+	// still stamps every token from its own clock.
+	Now       func() time.Time
+	AllowAnon bool // allow unauthenticated /games/{id}/join via invite (default: true)
 	// Cards is the Scryfall index used by the deck-upload endpoint.
 	// When nil, POST /games/{id}/decks returns 503 so a fresh
 	// deployment (no Scryfall dump yet) surfaces a clear "run
@@ -160,6 +183,21 @@ type Config struct {
 	// need to duplicate.
 	DeckLibrary decklibrary.Store
 
+	// UserSettings is a signed-in person's account copy of their
+	// per-person settings (ADR 0110 section 4, migration 0008), behind
+	// GET and PUT /me/settings. Nil behaves as usersettings.NoStore:
+	// with no database no principal carries a UserID, so both routes
+	// answer 403 before they reach it.
+	UserSettings usersettings.Store
+
+	// TableSetups is each person's last table setup (ADR 0110 section
+	// 5, migration 0008's table_setups): written when a table starts
+	// (startGame), read by GET /me/setup, applied by POST
+	// /games/{id}/setup and POST /games's "setup". Nil behaves as
+	// tablesetups.NoStore: nothing is remembered, and applying one
+	// finds none.
+	TableSetups tablesetups.Store
+
 	// DiscordAvatars is the S12.5 avatar cache. Nil means
 	// /avatars/* returns 503; production wires a cache rooted at
 	// $CMDCTRL_DATA_DIR/avatars so disk-cached images persist
@@ -230,23 +268,31 @@ type GameEvictor interface {
 // Handler returns an http.Handler wired to the v0 lobby REST surface:
 //
 //	POST /admin/login       — exchange the admin token for a session
-//	POST /games             — admin: create a new game (returns invite)
+//	POST /games             — signed in or the admin token: create a new game (returns invite)
 //	GET  /games             — authenticated: list known games
 //	GET  /games/{id}        — authenticated: game metadata
 //	POST /games/{id}/join   — invite + name → session + player_id
 //	GET  /games/{id}/preview?t=<invite> — table name / state / seats for an invite holder
-//	POST /games/{id}/start  — authenticated: transition lobby → active
+//	POST /games/{id}/start  — authenticated: transition lobby → active (captures the setup)
+//	POST /games/{id}/setup  — signed in, host / creator / admin: apply the caller's last setup
 //	POST /games/{id}/archive — admin: retire the table from the listing
 //	DELETE /games/{id}/archive — admin: put it back
 //	POST /games/{id}/seats/{player}/reclaim — admin: mint a seat-reclaim link
 //	POST /games/{id}/reclaim — redeem one: a session for that seat
 //	POST /games/{id}/invites/rotate — admin: revoke + re-mint one invite kind
 //	POST /games/{id}/invites/dm — seated / creator / admin: DM a person the game's invite link
+//	POST /games/practice    — authenticated: open the tutorial's practice table, seated
+//	POST /games/{id}/practice/leave — abandon it and restore the caller's session cookie
 //	GET  /decks             — authenticated: pre-built decks + their engine coverage
 //	POST /games/{id}/decks/{deck_id} — authenticated: seat a library deck without re-pasting
 //	GET  /me                — authenticated: principal echo (for client bootstrap)
 //	GET  /me/decks          — authenticated: the caller's deck library
+//	GET  /me/settings       — signed in: the caller's account settings
+//	PUT  /me/settings       — signed in: replace them, If-Match: <revision>
 //	GET  /me/tablemates     — signed in: the people you have shared a table with
+//	GET  /me/setup          — signed in: the caller's last table setup
+//	GET  /me/last-deck      — signed in: the deck the caller last seated
+//	POST /me/session        — signed in: reinstall the session cookie, renewing it past half-life
 //	POST /logout            — revoke the caller's session server-side
 //	POST /logout/everywhere — withdraw every session the caller's user holds
 //	POST /admin/users/{id}/revoke-sessions — admin: the same, for any user
@@ -333,13 +379,24 @@ func Handler(c Config) http.Handler {
 	// ceiling the endpoint is an unmetered write-to-disk-forever
 	// primitive for anyone holding a session.
 	mux.Handle("GET /avatars/{id}/{hash}", avatarLimit.Middleware(auth.Middleware(c.Auth)(handlerFunc(c, discordAvatar))))
-	mux.Handle("POST /games", auth.Middleware(c.Auth, auth.RoleAdmin)(handlerFunc(c, createGame)))
-	mux.Handle("DELETE /games/{id}", auth.Middleware(c.Auth, auth.RoleAdmin)(handlerFunc(c, deleteGame)))
+	// Creating a table (ADR 0110 §5 item 4, owner answer 2): any
+	// signed-in person, or the shared admin token (the Discord bot's
+	// /c2-invite). Session-gated here and authorised in the handler,
+	// which refuses a guest and any other session with no user (403).
+	// A person is held to MaxOpenTablesPerCreator open tables and one
+	// creation per 30 seconds with a burst of 3 (createLimit, keyed
+	// per caller and spent only by a create that passed every other
+	// check); the shared token is a server credential, not a person,
+	// and is held to neither. It rides the deck bucket as well,
+	// because applying a setup seats decks.
+	createLimit := newLimiter(1.0/30, 3)
+	mux.Handle("POST /games", deckLimit.Middleware(auth.Middleware(c.Auth)(handlerFunc(c, createGameWith(createLimit)))))
+	mux.Handle("DELETE /games/{id}", requireAdmin(c, handlerFunc(c, deleteGame)))
 	// Archive / unarchive: the reversible half of DELETE. Admin-only
 	// on the same gate, because hiding somebody else's table from the
 	// listing is an operator action even though it destroys nothing.
-	mux.Handle("POST /games/{id}/archive", auth.Middleware(c.Auth, auth.RoleAdmin)(handlerFunc(c, archiveGame)))
-	mux.Handle("DELETE /games/{id}/archive", auth.Middleware(c.Auth, auth.RoleAdmin)(handlerFunc(c, unarchiveGame)))
+	mux.Handle("POST /games/{id}/archive", requireAdmin(c, handlerFunc(c, archiveGame)))
+	mux.Handle("DELETE /games/{id}/archive", requireAdmin(c, handlerFunc(c, unarchiveGame)))
 	// Seat reclaim (see reclaim.go). Two halves with deliberately
 	// different gates: minting is ADMIN-ONLY — the ticket is a bearer
 	// credential for one player's seat, hidden information and all —
@@ -348,7 +405,7 @@ func Handler(c Config) http.Handler {
 	// and therefore rides the same brute-force bucket as join and
 	// spectate.
 	mux.Handle("POST /games/{id}/seats/{player}/reclaim",
-		auth.Middleware(c.Auth, auth.RoleAdmin)(handlerFunc(c, mintSeatReclaim)))
+		requireAdmin(c, handlerFunc(c, mintSeatReclaim)))
 	mux.Handle("POST /games/{id}/reclaim", limit.Middleware(handlerFunc(c, redeemSeatReclaim)))
 	// Invite rotation (#1038, ADR 0051 decision 4): revoke a game's
 	// current invite of one kind and mint its replacement, so a link
@@ -392,7 +449,7 @@ func Handler(c Config) http.Handler {
 	// exists so the bot can ask the one question it actually needs
 	// without that identity ever leaving the server.
 	mux.Handle("GET /games/{id}/creator",
-		auth.Middleware(c.Auth, auth.RoleAdmin)(handlerFunc(c, gameCreator)))
+		requireAdmin(c, handlerFunc(c, gameCreator)))
 	mux.Handle("GET /games", auth.Middleware(c.Auth)(handlerFunc(c, listGames)))
 	mux.Handle("GET /games/{id}", auth.Middleware(c.Auth)(handlerFunc(c, getGame)))
 	mux.Handle("POST /games/{id}/start", auth.Middleware(c.Auth)(handlerFunc(c, startGame)))
@@ -439,6 +496,17 @@ func Handler(c Config) http.Handler {
 	// player already seated at the table.
 	mux.Handle("POST /games/{id}/seats/bot", deckLimit.Middleware(auth.Middleware(c.Auth)(handlerFunc(c, addBot))))
 	mux.Handle("DELETE /games/{id}/seats/bot/{player}", auth.Middleware(c.Auth)(handlerFunc(c, removeBot)))
+	// The tutorial's practice table (ADR 0076 §2.2, practice_http.go).
+	// Any session may open one: that is what a tutorial is for. It
+	// installs two decklists, so it rides the deck bucket, and a
+	// per-caller bucket on top keeps one tab from opening tables in a
+	// loop (each one replaces the last, but each costs a deck load and
+	// a bot runner). Leave carries its own tokens in the body and
+	// rides the join bucket, like every other unauthenticated route.
+	practiceLimit := newLimiter(1.0/5, 3)
+	mux.Handle("POST /games/practice",
+		deckLimit.Middleware(auth.Middleware(c.Auth)(perCallerLimit(practiceLimit, handlerFunc(c, createPractice)))))
+	mux.Handle("POST /games/{id}/practice/leave", limit.Middleware(handlerFunc(c, leavePractice)))
 	// #505 part 3: admin-only latency/token readout for every bot seat
 	// at this table. BotStatsHandler wraps its own
 	// auth.Middleware(c.Auth, auth.RoleAdmin) — see botstats.go — so
@@ -475,11 +543,46 @@ func Handler(c Config) http.Handler {
 	// as the rest of /me/*.
 	mux.Handle("GET /me/tablemates", auth.Middleware(c.Auth)(handlerFunc(c, myTablemates)))
 	mux.Handle("POST /me/games/{id}/session", auth.Middleware(c.Auth)(handlerFunc(c, myGameSession)))
+	// Renewal on use and the saved identity's reinstall (ADR 0110 §1
+	// items 5 and 6, session_renew.go). A signed-in person only; the
+	// credential is read from the cookie or the bearer, never ?token=,
+	// because the route sets the cookie from it. The client calls it at
+	// page load, at each session's half-life and when it reinstalls a
+	// saved identity, so a per-person bucket of one call every 6
+	// seconds with a burst of 10 is far above real use: several tabs
+	// loading at once fit in the burst.
+	sessionLimit := newLimiter(1.0/6, 10)
+	mux.Handle("POST /me/session", sessionRenewRoute(c, perCallerLimit(sessionLimit, handlerFunc(c, renewSession))))
 	// The caller's deck library (ADR 0051 decision 7, S34 sub-PR 5).
 	// Any authenticated role reaches the handler; it 401s itself for a
 	// principal with no UserID (a guest, an admin, or an identified
 	// session from a no-database deployment).
-	mux.Handle("GET /me/decks", auth.Middleware(c.Auth)(handlerFunc(c, myDecks)))
+	//
+	// ADR 0110 section 6 adds the report, rename and delete. Every one
+	// is the caller's own library: a deck that is not theirs is a 404,
+	// so an id reveals nothing. A caller that is not a signed-in person is a
+	// 403 on all four (never 401: authFetch signs the browser out). The
+	// reads compute coverage, so all four share a 1/s, burst-5 bucket.
+	libraryLimit := newLimiter(1, 5)
+	mux.Handle("GET /me/decks", libraryLimit.Middleware(auth.Middleware(c.Auth)(handlerFunc(c, myDecks))))
+	mux.Handle("GET /me/decks/{id}/coverage", libraryLimit.Middleware(auth.Middleware(c.Auth)(handlerFunc(c, myDeckCoverage))))
+	mux.Handle("PATCH /me/decks/{id}", libraryLimit.Middleware(auth.Middleware(c.Auth)(handlerFunc(c, renameMyDeck))))
+	mux.Handle("DELETE /me/decks/{id}", libraryLimit.Middleware(auth.Middleware(c.Auth)(handlerFunc(c, deleteMyDeck))))
+	// Account settings (ADR 0110 section 4). Same caller rule as the
+	// rest of /me/*. The write has a per-person bucket, 1 a second
+	// with a burst of 5, which the client's one-second debounce stays
+	// inside. The handler spends a token only on a write that passed
+	// its checks, so a refused request costs nothing.
+	settingsLimit := newLimiter(1, 5)
+	mux.Handle("GET /me/settings", auth.Middleware(c.Auth)(handlerFunc(c, mySettings)))
+	mux.Handle("PUT /me/settings", auth.Middleware(c.Auth)(handlerFunc(c, putMySettings(settingsLimit))))
+	// The last setup and the last deck (ADR 0110 section 5). Same
+	// caller rule as the rest of /me/*: a signed-in person, else 403.
+	// Applying a setup seats bot decks, so it rides the deck bucket,
+	// and is authorised in the handler (canApplySetup).
+	mux.Handle("GET /me/setup", auth.Middleware(c.Auth)(handlerFunc(c, mySetup)))
+	mux.Handle("GET /me/last-deck", auth.Middleware(c.Auth)(handlerFunc(c, myLastDeck)))
+	mux.Handle("POST /games/{id}/setup", deckLimit.Middleware(auth.Middleware(c.Auth)(handlerFunc(c, applySetupRoute))))
 
 	// Develop-environment card spawner (ADR 0023). Both routes are
 	// wrapped in requireDevFeature: in production they are 404s, and
@@ -538,10 +641,10 @@ func Handler(c Config) http.Handler {
 	mux.Handle("GET /bugreport/att/{id}/{name}", bugAttachLimit.Middleware(handlerFunc(c, bugAttachment)))
 	// The pinned replay is the raw unfiltered view — admin only, with
 	// no game-has-ended relaxation (see bugPinnedReplay).
-	mux.Handle("GET /bugreport/{id}/replay", auth.Middleware(c.Auth, auth.RoleAdmin)(handlerFunc(c, bugPinnedReplay)))
+	mux.Handle("GET /bugreport/{id}/replay", requireAdmin(c, handlerFunc(c, bugPinnedReplay)))
 	// The pinned public game log rides the same admin gate as the
 	// replay — the contents are public, the artifact is unfiltered.
-	mux.Handle("GET /bugreport/{id}/gamelog", auth.Middleware(c.Auth, auth.RoleAdmin)(handlerFunc(c, bugPinnedGameLog)))
+	mux.Handle("GET /bugreport/{id}/gamelog", requireAdmin(c, handlerFunc(c, bugPinnedGameLog)))
 	// Logout does not require an authenticated principal — a client
 	// with a stale or revoked token should still be able to clear
 	// browser state without a 401 dead-end. We just revoke whatever
@@ -553,7 +656,7 @@ func Handler(c Config) http.Handler {
 	// else's. /logout/* is its own entry in deploy/Caddyfile's @api
 	// matcher, because Caddy's /logout matches that path exactly.
 	mux.Handle("POST /logout/everywhere", auth.Middleware(c.Auth)(handlerFunc(c, logoutEverywhere)))
-	mux.Handle("POST /admin/users/{id}/revoke-sessions", auth.Middleware(c.Auth, auth.RoleAdmin)(handlerFunc(c, adminRevokeUserSessions)))
+	mux.Handle("POST /admin/users/{id}/revoke-sessions", requireAdmin(c, handlerFunc(c, adminRevokeUserSessions)))
 
 	return mux
 }
@@ -597,10 +700,11 @@ func callerKey(r *http.Request) string {
 	switch {
 	case p.UserID != uuid.Nil:
 		return "user:" + p.UserID.String()
-	case p.Role == auth.RoleAdmin:
+	case isServerCredential(p):
 		// One bucket for the admin credential, shared by the bot and
 		// any operator holding it. That is the point: it is one
-		// credential.
+		// credential. An allowlisted admin is a person and has a user,
+		// so the first case already gave them their own bucket.
 		return "admin"
 	case p.PlayerID != uuid.Nil:
 		return "seat:" + p.PlayerID.String()
@@ -634,8 +738,23 @@ type sessionResponse struct {
 type createGameRequest struct {
 	Name string `json:"name"`
 	// HostDiscordID optionally names the table host by Discord user
-	// ID (ADR 0075 §2.1). /c2-invite sends the invoking user.
+	// ID (ADR 0075 §2.1). /c2-invite sends the invoking user. Only the
+	// shared admin token may name someone; a table a signed-in person
+	// creates names its creator, who hosts it once they sit down.
 	HostDiscordID string `json:"host_discord_id,omitempty"`
+	// Setup, when "last", applies the caller's remembered setup to the
+	// new table (ADR 0110 §5 item 2), exactly as POST
+	// /games/{id}/setup would. Empty applies nothing.
+	Setup string `json:"setup,omitempty"`
+}
+
+// createGameResponse is the new table's meta, flattened, plus what
+// applying a setup did. The meta's fields stay at the top level, so a
+// client that reads POST /games as a GameMeta is unchanged.
+type createGameResponse struct {
+	GameMeta
+	// Setup is present only when the request asked for one.
+	Setup *setupResult `json:"setup,omitempty"`
 }
 
 // transferHostRequest is the body of POST /games/{id}/host.
@@ -692,7 +811,7 @@ func adminLogin(c Config, w http.ResponseWriter, r *http.Request) error {
 		return httpError(http.StatusUnauthorized, "invalid admin token")
 	}
 	p := auth.Principal{Role: auth.RoleAdmin, AdminID: uuid.New(), Name: "admin"}
-	tok, issued, err := c.Auth.Issue(r.Context(), p, c.SessionTTL)
+	tok, issued, err := issueFor(r.Context(), c, p, nil)
 	if err != nil {
 		return err
 	}
@@ -700,26 +819,78 @@ func adminLogin(c Config, w http.ResponseWriter, r *http.Request) error {
 	return writeJSON(w, http.StatusOK, sessionResponse{Token: tok, ExpiresAt: issued.ExpiresAt, Principal: issued})
 }
 
-// createGame (admin-only) creates a new game in the lobby and
-// returns its metadata INCLUDING the invite token. The admin is
-// responsible for distributing the invite out-of-band.
+// createGameWith handles POST /games: create a new table and return
+// its metadata INCLUDING both invite tokens, which the creator shares.
 //
-// games.created_by is the caller's UserID (ADR 0051 decision 2). The
-// route is admin-only, and an admin session carries no UserID, so
-// today that is always NULL; it is read from the principal rather
-// than hard-coded so opening the route to signed-in users later is a
-// change to the middleware line and nothing here.
-func createGame(c Config, w http.ResponseWriter, r *http.Request) error {
-	var body createGameRequest
-	if err := decodeJSON(w, r, &body); err != nil {
-		return err
+// Who may call it (ADR 0110 §5 item 4, owner answer 2):
+//   - the shared admin token (isServerCredential): the Discord bot's
+//     /c2-invite and an operator. Uncapped, and it records no creator,
+//     because a server credential is not a person;
+//   - any signed-in person (isSignedInPerson: an identified, player or
+//     spectator session with a user), allowlisted admins included.
+//     games.created_by is their user, which makes them the table's
+//     creator (rotate its invites, DM tablemates, /c2-end it), and
+//     they are named its host, so they host it once they sit down.
+//     They are held to MaxOpenTablesPerCreator open lobby tables (a
+//     409 naming them) and to limit, 1 per 30 s with a burst of 3 (a
+//     429).
+//
+// Everyone else, a guest seat or spectator with no user, is a 403.
+func createGameWith(limit *ratelimit.Limiter) lobbyHandler {
+	return func(c Config, w http.ResponseWriter, r *http.Request) error {
+		p, ok := auth.PrincipalFromContext(r.Context())
+		if !ok {
+			return httpError(http.StatusInternalServerError, "missing principal")
+		}
+		server := isServerCredential(p)
+		if !server && !isSignedInPerson(p) {
+			return httpError(http.StatusForbidden, "sign in with Discord to create a table")
+		}
+		var body createGameRequest
+		if err := decodeJSON(w, r, &body); err != nil {
+			return err
+		}
+		from := strings.TrimSpace(body.Setup)
+		if from != "" && from != setupFromLast {
+			return httpError(http.StatusBadRequest, fmt.Sprintf("unknown setup %q (want %q)", body.Setup, setupFromLast))
+		}
+
+		var (
+			meta GameMeta
+			err  error
+		)
+		if server {
+			meta, err = c.Lobby.CreateWith(body.Name, p.UserID, body.HostDiscordID)
+		} else {
+			key := callerKey(r)
+			meta, err = c.Lobby.CreateCapped(body.Name, p.UserID, p.DiscordID, MaxOpenTablesPerCreator,
+				func() bool { return limit.Allow(key) })
+			if errors.Is(err, ErrCreateRateLimited) {
+				w.Header().Set("Retry-After", "30")
+			}
+		}
+		if err != nil {
+			return err
+		}
+		if server {
+			logAdminAction(c.Log, "POST /games", p, "game_id", meta.ID.String())
+		} else if c.Log != nil {
+			c.Log.Info("table created", "user_id", p.UserID.String(), "game_id", meta.ID.String())
+		}
+
+		out := createGameResponse{GameMeta: meta}
+		if from == setupFromLast {
+			res := applyLastSetup(r.Context(), c, p, meta.ID)
+			out.Setup = &res
+			// Get carries the plaintext invites too, in the process
+			// that minted them, so the creator still receives both.
+			if fresh, gerr := c.Lobby.Get(meta.ID); gerr == nil {
+				out.GameMeta = fresh
+			}
+		}
+		out.GameMeta = redactMetaFor(p, c.isAdmin(p), meta.ID, out.GameMeta)
+		return writeJSON(w, http.StatusCreated, out)
 	}
-	p, _ := auth.PrincipalFromContext(r.Context())
-	meta, err := c.Lobby.CreateWith(body.Name, p.UserID, body.HostDiscordID)
-	if err != nil {
-		return err
-	}
-	return writeJSON(w, http.StatusCreated, redactMetaFor(p, meta.ID, meta))
 }
 
 // transferHost handles POST /games/{id}/host: hand the table to
@@ -742,7 +913,7 @@ func transferHost(c Config, w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	if !CanManageTable(p, meta) {
+	if !CanManageTable(p, meta, c.isAdmin(p)) {
 		return ErrNotTableManager
 	}
 	if body.PlayerID == uuid.Nil {
@@ -756,7 +927,7 @@ func transferHost(c Config, w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	return writeJSON(w, http.StatusOK, redactMetaFor(p, id, meta))
+	return writeJSON(w, http.StatusOK, redactMetaFor(p, c.isAdmin(p), id, meta))
 }
 
 // updateTableSettings handles PATCH /games/{id}/settings: change the
@@ -789,12 +960,14 @@ func updateTableSettings(c Config, w http.ResponseWriter, r *http.Request) error
 	if err != nil {
 		return err
 	}
-	if !CanManageTable(p, meta) {
+	if !CanManageTable(p, meta, c.isAdmin(p)) {
 		return ErrNotTableManager
 	}
 	// An admin session carries no PlayerID, which is exactly the
-	// uuid.Nil the engine records for "the server admin".
-	settings, err := c.Lobby.UpdateSettings(id, p.PlayerID, patch)
+	// uuid.Nil the engine records for "the server admin". An
+	// allowlisted admin seated at a different table is recorded the
+	// same way, never as their seat over there (actorIn).
+	settings, err := c.Lobby.UpdateSettings(id, actorIn(p, id), patch)
 	if err != nil {
 		return err
 	}
@@ -825,7 +998,11 @@ func joinGame(c Config, w http.ResponseWriter, r *http.Request) error {
 	// user from the session, and body.name is ignored, as on POST
 	// /join. Anyone else, including a session that no longer
 	// validates, joins exactly as before, by name.
-	identity, userID := signedInIdentity(c, r)
+	identity, source := signedInIdentity(c, r)
+	var userID uuid.UUID
+	if source != nil {
+		userID = source.UserID
+	}
 	name := body.Name
 	if identity.Populated() {
 		name = ""
@@ -838,22 +1015,16 @@ func joinGame(c Config, w http.ResponseWriter, r *http.Request) error {
 	// Mint a RolePlayer session bound to (gameID, playerID). The WS
 	// authorizer will cross-check the principal's GameID against the
 	// one on the upgrade request — a player session can't be reused
-	// to spy on a different game.
-	p := auth.Principal{
+	// to spy on a different game. A signed-in joiner's seat session
+	// expires with the session they joined from (ADR 0110 §1).
+	p := withIdentity(auth.Principal{
 		Role:     auth.RolePlayer,
 		UserID:   userID,
 		GameID:   meta.ID,
 		PlayerID: playerID,
 		Name:     body.Name,
-	}
-	if identity.Populated() {
-		p.Name = identity.DisplayName()
-		p.DiscordID = identity.ID
-		p.DiscordUsername = identity.Username
-		p.DiscordGlobalName = identity.GlobalName
-		p.DiscordAvatarHash = identity.AvatarHash
-	}
-	tok, issued, err := c.Auth.Issue(r.Context(), p, c.SessionTTL)
+	}, identity)
+	tok, issued, err := issueFor(r.Context(), c, p, source)
 	if err != nil {
 		return err
 	}
@@ -881,17 +1052,21 @@ func joinGame(c Config, w http.ResponseWriter, r *http.Request) error {
 //
 // Three callers, told apart by the session attached (if any):
 //
-//   - RoleIdentified — a Discord sign-in from the login page. The
-//     seat takes its name and avatar from the session's Discord
-//     identity and `name` in the body is ignored, so the identity
-//     on the seat is the one Discord vouched for rather than
-//     whatever the body claimed.
+//   - A signed-in person: a Discord sign-in from the login page
+//     (RoleIdentified), or a seat or spectator session that carries a
+//     user (ADR 0110 §1 item 3: a signed-in player who is already at
+//     one table pastes the code for the next). The seat takes its name
+//     and avatar from the session's Discord identity and `name` in the
+//     body is ignored, so the identity on the seat is the one Discord
+//     vouched for rather than whatever the body claimed. The new seat
+//     session expires with the session it came from.
 //   - No session — behaves exactly like the classic join and
 //     requires `name`. Manual entry stays first-class: a deploy
 //     with Discord unconfigured still has to work.
-//   - Any other role — refused. An admin or an already-seated
-//     player arriving here is a client bug, and quietly minting
-//     them a second seat is worse than an error.
+//   - Any other session — refused with 409: an admin-token session,
+//     and a guest's seat or spectator session. A guest has no
+//     identity to carry to a second table, and quietly minting them a
+//     second seat under a fresh name is worse than an error.
 //
 // The identity session is deliberately left valid after the swap.
 // It is how the same person joins a second table later without
@@ -914,27 +1089,21 @@ func joinByCode(c Config, w http.ResponseWriter, r *http.Request) error {
 	// name", not like being thrown out.
 	var (
 		identity DiscordIdentity
+		source   *auth.Principal
 		userID   uuid.UUID
 	)
-	if cred := auth.CredentialFromRequest(r); cred != "" {
-		p, verr := c.Auth.Validate(r.Context(), cred)
-		switch {
-		case verr != nil:
-			// Expired or bogus — treat the caller as anonymous.
-		case p.Role == auth.RoleIdentified:
-			// The seat session is minted from the identity session,
-			// so it belongs to the same person (ADR 0051 decision 3).
-			userID = p.UserID
-			identity = DiscordIdentity{
-				ID:         p.DiscordID,
-				Username:   p.DiscordUsername,
-				GlobalName: p.DiscordGlobalName,
-				AvatarHash: p.DiscordAvatarHash,
-			}
-		default:
+	if p, ok := optionalSession(c, r); ok {
+		// An expired or bogus credential is !ok: the caller is
+		// anonymous.
+		if p.Role != auth.RoleIdentified && !isSignedInPerson(p) {
 			return httpError(http.StatusConflict,
 				"this session already belongs to a table — sign out before joining another")
 		}
+		// The seat session is minted from the signed-in session, so
+		// it belongs to the same person (ADR 0051 decision 3).
+		source = &p
+		userID = p.UserID
+		identity = principalIdentity(p)
 	}
 
 	// An empty name lets JoinWithIdentity fall back to the Discord
@@ -949,21 +1118,14 @@ func joinByCode(c Config, w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	p := auth.Principal{
+	p := withIdentity(auth.Principal{
 		Role:     auth.RolePlayer,
 		UserID:   userID,
 		GameID:   meta.ID,
 		PlayerID: playerID,
 		Name:     name,
-	}
-	if identity.Populated() {
-		p.Name = identity.DisplayName()
-		p.DiscordID = identity.ID
-		p.DiscordUsername = identity.Username
-		p.DiscordGlobalName = identity.GlobalName
-		p.DiscordAvatarHash = identity.AvatarHash
-	}
-	tok, issued, err := c.Auth.Issue(r.Context(), p, c.SessionTTL)
+	}, identity)
+	tok, issued, err := issueFor(r.Context(), c, p, source)
 	if err != nil {
 		return err
 	}
@@ -1031,12 +1193,23 @@ func spectateGame(c Config, w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
+	// A signed-in person who watches stays signed in (ADR 0110 §1
+	// item 2): the spectator session carries their user and Discord
+	// identity, so /me/* keeps working, a revocation reaches the
+	// socket, and it expires with the session they came from. Their
+	// label is the Discord display name, as on a seat; a typed name is
+	// for guests. A guest spectator is unchanged.
+	identity, source := signedInIdentity(c, r)
 	p := auth.Principal{
 		Role:   auth.RoleSpectator,
 		GameID: meta.ID,
 		Name:   trimToLimit(body.Name, 40),
 	}
-	tok, issued, err := c.Auth.Issue(r.Context(), p, c.SessionTTL)
+	if source != nil {
+		p.UserID = source.UserID
+		p = withIdentity(p, identity)
+	}
+	tok, issued, err := issueFor(r.Context(), c, p, source)
 	if err != nil {
 		return err
 	}
@@ -1069,11 +1242,12 @@ func listGames(c Config, w http.ResponseWriter, r *http.Request) error {
 		return httpError(http.StatusInternalServerError, "missing principal")
 	}
 	games := c.Lobby.List()
+	admin := c.isAdmin(p)
 	if envflag.Truthy(r.URL.Query().Get("archived")) {
 		games = c.Lobby.ListArchived()
 	}
 	for i := range games {
-		games[i] = redactMetaFor(p, games[i].ID, games[i])
+		games[i] = redactMetaFor(p, admin, games[i].ID, games[i])
 	}
 	return writeJSON(w, http.StatusOK, listResponse{Games: games})
 }
@@ -1095,32 +1269,42 @@ func getGame(c Config, w http.ResponseWriter, r *http.Request) error {
 	if !ok {
 		return httpError(http.StatusInternalServerError, "missing principal")
 	}
-	return writeJSON(w, http.StatusOK, redactMetaFor(p, id, meta))
+	return writeJSON(w, http.StatusOK, redactMetaFor(p, c.isAdmin(p), id, meta))
 }
 
 // redactMetaFor strips what principal p may not read off a game's
 // meta: the invite tokens for anyone outside the table, and both
-// tokens for a spectator. It also turns the raw CreatedBy (#1098)
+// tokens for a spectator, except for an admin and for the game's own
+// creator, who keep them. It also turns the raw CreatedBy (#1098)
 // into the per-viewer IsCreator bit and clears the raw field, so
 // nothing downstream of this ever hands out the creator's identity —
 // only "yes/no, that's you". CreatedBy is already `json:"-"` and so
 // never reaches the wire on its own, but every GameMeta a handler
 // serializes should still pass through here rather than rely on that
 // alone.
-func redactMetaFor(p auth.Principal, id uuid.UUID, meta GameMeta) GameMeta {
-	if p.Role != auth.RoleAdmin && p.GameID != id {
+func redactMetaFor(p auth.Principal, admin bool, id uuid.UUID, meta GameMeta) GameMeta {
+	meta.IsCreator = p.UserID != uuid.Nil && meta.CreatedBy != uuid.Nil && p.UserID == meta.CreatedBy
+	meta.CreatedBy = uuid.Nil
+	// The game's creator keeps both invites wherever they are (ADR
+	// 0110 §5 item 4): sharing them is what a creator is for, and
+	// rotating them (CanRotateInvites) would hand over fresh ones
+	// anyway.
+	if admin || meta.IsCreator {
+		return meta
+	}
+	if p.GameID != id {
 		meta.InviteToken = ""
 		meta.SpectatorInvite = ""
 	}
 	// Spectators specifically never see the player invite (would let
 	// them claim a seat) and shouldn't see the spectator one either —
-	// their session is already proof they have it.
+	// their session is already proof they have it. An admin watching
+	// a table keeps them: an admin may take any seat anyway (ADR 0110
+	// §3 item 5).
 	if p.Role == auth.RoleSpectator {
 		meta.InviteToken = ""
 		meta.SpectatorInvite = ""
 	}
-	meta.IsCreator = p.UserID != uuid.Nil && meta.CreatedBy != uuid.Nil && p.UserID == meta.CreatedBy
-	meta.CreatedBy = uuid.Nil
 	return meta
 }
 
@@ -1242,6 +1426,15 @@ func mintSeatReclaim(c Config, w http.ResponseWriter, r *http.Request) error {
 // redeemer supply a label would make reclaim a way to rename another
 // player. The seat's Discord identity is copied onto the principal so
 // the avatar renders exactly as it did before the disconnect.
+//
+// The ticket is the whole credential, so the session it mints has no
+// user and lives SessionTTL, with one exception (ADR 0110 §1 item 4):
+// when the request ALSO carries a valid signed-in session whose user
+// owns this seat, the redemption is the same thing as POST
+// /me/games/{id}/session, and gets the same session — the user, and
+// the expiry of the session it came from. A signed-in session for
+// anyone else changes nothing: copying a seat's Discord fields never
+// makes the holder that person.
 func redeemSeatReclaim(c Config, w http.ResponseWriter, r *http.Request) error {
 	id, err := gameIDFromPath(r)
 	if err != nil {
@@ -1266,7 +1459,15 @@ func redeemSeatReclaim(c Config, w http.ResponseWriter, r *http.Request) error {
 		DiscordGlobalName: seat.DisplayName,
 		DiscordAvatarHash: seat.DiscordAvatarHash,
 	}
-	tok, issued, err := c.Auth.Issue(r.Context(), p, c.SessionTTL)
+	var source *auth.Principal
+	if sp, ok := optionalSession(c, r); ok && isSignedInPerson(sp) && seat.UserID == sp.UserID.String() {
+		source = &sp
+		p.UserID = sp.UserID
+		if sp.DiscordID != "" && sp.DiscordID == seat.DiscordID {
+			p.DiscordUsername = sp.DiscordUsername
+		}
+	}
+	tok, issued, err := issueFor(r.Context(), c, p, source)
 	if err != nil {
 		return err
 	}
@@ -1325,7 +1526,7 @@ func rotateInvite(c Config, w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	if !CanRotateInvites(p, meta) {
+	if !CanRotateInvites(p, meta, c.isAdmin(p)) {
 		return ErrNotInviteManager
 	}
 	newToken, _, err := c.Lobby.RotateInvite(id, InviteKind(body.Kind))
@@ -1511,11 +1712,14 @@ func autoTapPreview(c Config, w http.ResponseWriter, r *http.Request) error {
 	if !ok {
 		return httpError(http.StatusInternalServerError, "missing principal")
 	}
-	if p.Role != auth.RoleAdmin && p.GameID != id {
-		return httpError(http.StatusForbidden, "not a seat in this game")
-	}
+	// The preview is priced for the caller's own seat at this table, so
+	// it needs one: there is no admin bypass. The shared token has no
+	// seat, and an allowlisted admin's seat is at their own table.
 	if p.Role == auth.RoleSpectator || p.PlayerID == uuid.Nil {
 		return httpError(http.StatusForbidden, "spectators have no auto-tap preview")
+	}
+	if p.GameID != id {
+		return httpError(http.StatusForbidden, "not a seat in this game")
 	}
 	cardIDStr := r.URL.Query().Get("card")
 	if cardIDStr == "" {
@@ -1630,7 +1834,7 @@ func autoTapPreview(c Config, w http.ResponseWriter, r *http.Request) error {
 		// function.
 		total := game.WaterbendReduced(price.Total, xValue, len(params.WaterbendIDs))
 		spend := game.ManaSpendForAbility(price.Source)
-		cost := strikePhyrexianForPreview(g, p.PlayerID, total, spend, phyrexian)
+		cost := costAsPaidForPreview(g, p.PlayerID, total, spend, phyrexian)
 		// #1212: no source wish for an ability. "If mana from a
 		// Treasure was spent to activate this ability" (Forsworn
 		// Paladin, Jetmir's Fixer) is real printed text and is
@@ -1681,7 +1885,7 @@ func autoTapPreview(c Config, w http.ResponseWriter, r *http.Request) error {
 	// the card type, which a modal DFC's two faces need not share
 	// (ADR 0034).
 	spend := game.ManaSpendForCast(price.Card)
-	cost := strikePhyrexianForPreview(g, p.PlayerID, price.Total, spend, phyrexian)
+	cost := costAsPaidForPreview(g, p.PlayerID, price.Total, spend, phyrexian)
 	// The cost string reported back is the one this cast PAYS, not
 	// the one in the card's corner — a flashed-back Think Twice reads
 	// "{2}{U}" and an airbent permanent reads "{2}". The commander tax
@@ -1860,9 +2064,12 @@ func previewTargetsParam(raw string) ([]game.TargetRef, error) {
 	return out, nil
 }
 
-// strikePhyrexianForPreview removes the Phyrexian symbols the caller
-// says they are paying with life, so the preview plans only the mana
-// the announcement still owes (#916).
+// costAsPaidForPreview is the cost the preview plans: widened under the
+// player's "spend mana as though it were mana of any color" grant
+// (#1600, game.CostAsPaidBy — the reading every engine payment makes
+// before its Phyrexian strike), then with the Phyrexian symbols the
+// caller says they are paying with life removed, so the preview plans
+// only the mana the announcement still owes (#916).
 //
 // game.PhyrexianLifePlan is the SAME strike the engine makes, reading
 // the same pool, so the preview and the payment pick the same
@@ -1870,13 +2077,14 @@ func previewTargetsParam(raw string) ([]game.TargetRef, error) {
 // and an over-claim is the announce gate's refusal to make
 // (strikePhyrexianLifeLocked, CR 601.2b / CR 119.4), not a reason to
 // answer a read-only question with a 400.
-func strikePhyrexianForPreview(
+func costAsPaidForPreview(
 	g *game.Game,
 	playerID uuid.UUID,
 	cost game.ParsedCost,
 	spend game.ManaSpendContext,
 	claimed int,
 ) game.ParsedCost {
+	cost = g.CostAsPaidBy(playerID, spend, cost)
 	if claimed <= 0 {
 		return cost
 	}
@@ -2006,14 +2214,15 @@ func downloadReplay(c Config, w http.ResponseWriter, r *http.Request) error {
 	if !ok {
 		return httpError(http.StatusInternalServerError, "missing principal")
 	}
-	if p.Role != auth.RoleAdmin && p.GameID != id {
+	admin := c.isAdmin(p)
+	if !admin && p.GameID != id {
 		return httpError(http.StatusForbidden, "not a seat in this game")
 	}
 	room := c.Lobby.RoomOf(id)
 	if room == nil {
 		return httpError(http.StatusNotFound, "game not found")
 	}
-	if p.Role != auth.RoleAdmin && room.Game.CurrentState() != game.StateEnded {
+	if !admin && room.Game.CurrentState() != game.StateEnded {
 		return httpError(http.StatusForbidden, "replay is available once the game has ended")
 	}
 	path := room.ReplayPath()
@@ -2044,7 +2253,8 @@ func downloadReplay(c Config, w http.ResponseWriter, r *http.Request) error {
 		"Content-Disposition",
 		`attachment; filename="`+id.String()+`.jsonl"`,
 	)
-	if p.Role == auth.RoleAdmin {
+	if admin {
+		logAdminAction(c.Log, "replay download", p, "game_id", id.String())
 		// Verbatim. ServeContent is a zero-copy sendfile path and
 		// brings Range support plus a Content-Length along with it —
 		// worth keeping on the one path that doesn't transform.
@@ -2121,12 +2331,22 @@ func startGame(c Config, w http.ResponseWriter, r *http.Request) error {
 	if !ok {
 		return httpError(http.StatusInternalServerError, "missing principal")
 	}
-	if p.Role != auth.RoleAdmin && p.GameID != id {
+	if !c.isAdmin(p) && p.GameID != id {
 		return httpError(http.StatusForbidden, "not a seat in this game")
+	}
+	before, err := c.Lobby.Get(id)
+	if err != nil {
+		return err
 	}
 	meta, err := c.Lobby.Start(id)
 	if err != nil {
 		return err
+	}
+	// ADR 0110 §5 item 1: the layout is final when the table starts,
+	// so that is when its owner's setup is remembered. Only on the
+	// transition: a repeated start of a running table is a no-op.
+	if before.State == string(game.StateLobby) && meta.State != string(game.StateLobby) {
+		captureSetup(r.Context(), c, p, meta)
 	}
 	return writeJSON(w, http.StatusOK, meta)
 }
@@ -2198,6 +2418,10 @@ type uploadDeckResponse struct {
 	// Distinct names in decklist order, deduped — a deck with four
 	// Lightning Bolts wants to hear about Lightning Bolt once.
 	Unimplemented []string `json:"unimplemented,omitempty"`
+	// LibraryNote is a player sentence when the deck was seated but
+	// could not be saved to the library: today only the 200-deck cap
+	// (decklibrary.ErrLibraryFull, ADR 0110 section 6).
+	LibraryNote string `json:"library_note,omitempty"`
 }
 
 // detectDeckFormat guesses a decklist's format from its first non-
@@ -2354,10 +2578,13 @@ func resolveDeckSource(ctx context.Context, c Config, w http.ResponseWriter, for
 // authoritative game.
 //
 // Authorization:
-//   - RolePlayer sessions may only set their OWN deck (p.PlayerID
-//     must equal body.PlayerID and p.GameID must match the path id).
-//   - RoleAdmin may set any seat's deck (useful for debugging and
-//     for the rare "uploaded the wrong file" case).
+//   - An admin (isAdmin: the shared token or an allowlisted person)
+//     may set any seat's deck (useful for debugging and for the rare
+//     "uploaded the wrong file" case).
+//   - Anyone else must be a RolePlayer session setting their OWN deck
+//     (p.PlayerID must equal body.PlayerID and p.GameID must match the
+//     path id). Before ADR 0110 the check ran only for RolePlayer, so
+//     a spectator or an unseated sign-in fell through to "any seat".
 //
 // On validation failure the endpoint returns 422 with the full
 // violation list so the client can highlight every offending card
@@ -2400,9 +2627,9 @@ func uploadDeck(c Config, w http.ResponseWriter, r *http.Request) error {
 		return httpError(http.StatusBadRequest, "player_id is required")
 	}
 
-	// Role enforcement: players must match their own principal.
-	if p.Role == auth.RolePlayer {
-		if p.GameID != id {
+	// Role enforcement: everyone but an admin must be the seat itself.
+	if !c.isAdmin(p) {
+		if p.Role != auth.RolePlayer || p.GameID != id {
 			return httpError(http.StatusForbidden, "session is not for this game")
 		}
 		if p.PlayerID != body.PlayerID {
@@ -2437,9 +2664,19 @@ func uploadDeck(c Config, w http.ResponseWriter, r *http.Request) error {
 	// Save to the caller's deck library (ADR 0051 decision 7, S34
 	// sub-PR 5) — see saveToLibrary for exactly when this does
 	// something and the seats.deck_id it leaves behind.
-	libraryDeckID := saveToLibrary(r.Context(), c, p, deckID, format, source, list, commanders)
+	libraryDeckID, libraryErr := saveToLibrary(r.Context(), c, p, deckID, format, source, list, commanders)
+	libraryNote := ""
+	if errors.Is(libraryErr, decklibrary.ErrLibraryFull) {
+		libraryNote = fmt.Sprintf("Your deck library is full (%d decks), so this deck was seated but not saved. Delete one on the Decks page to make room.", decklibrary.MaxDecks)
+	}
 	if serr := c.Lobby.SetSeatDeckID(id, body.PlayerID, libraryDeckID); serr != nil {
 		logDeckLibraryWarning(c, "set seat deck_id failed", serr, "game_id", id, "player_id", body.PlayerID)
+	}
+	switch {
+	case deckID != "":
+		recordLastDeck(r.Context(), c, p, id, body.PlayerID, users.LastDeck{Kind: users.LastDeckPrebuilt, ID: deckID})
+	case libraryDeckID != "":
+		recordLastDeck(r.Context(), c, p, id, body.PlayerID, users.LastDeck{Kind: users.LastDeckLibrary, ID: libraryDeckID})
 	}
 
 	return writeJSON(w, http.StatusOK, uploadDeckResponse{
@@ -2450,6 +2687,7 @@ func uploadDeck(c Config, w http.ResponseWriter, r *http.Request) error {
 		Commanders:    commanders,
 		Warnings:      warnings,
 		Unimplemented: game.UnimplementedNames(gameCards),
+		LibraryNote:   libraryNote,
 	})
 }
 
@@ -2465,17 +2703,18 @@ func uploadDeck(c Config, w http.ResponseWriter, r *http.Request) error {
 //     "source" it hands resolveDeckSource is the catalog's TEXT, not
 //     anything the player pasted.
 //   - p.UserID must be non-zero — guests have nowhere to own a row.
-//   - resolvedFormat must be "moxfield" or "text", matching
-//     decks.source_format. A "url" request's source is a link, not
-//     the decklist text decision 7 means by "what the player pasted";
-//     re-seating from it would mean a network call at seat time
-//     rather than a re-parse of stored text, which is not what a
-//     library is for.
+//   - resolvedFormat must be "moxfield", "text" or "url". A "url"
+//     request is saved as the list the fetcher returned, rendered as
+//     text, with the link beside it in decks.source_url (ADR 0110 owner
+//     decision 7), so re-seating it re-parses the stored list and never
+//     calls the network. A link that does not parse as a deck link is
+//     not saved.
 //
 // A save failure is logged and does not fail the request: SetDeck has
 // already installed the deck on the seat by the time this runs, and
 // telling the player their upload failed when it didn't would be
-// worse than a library row they can save again by re-uploading.
+// worse than a library row they can save again by re-uploading. The
+// error is returned so the caller can say so when it is the cap.
 //
 // The update rule (documented on decklibrary.Store.Upsert and in
 // docs/lobby.md): a row already owned by this caller with the same
@@ -2483,28 +2722,40 @@ func uploadDeck(c Config, w http.ResponseWriter, r *http.Request) error {
 // plain-text paste carries no name of its own (deck.ParseText has
 // nowhere to put one), so an empty list.Name falls back to the first
 // commander's name rather than saving a blank row every time.
-func saveToLibrary(ctx context.Context, c Config, p auth.Principal, deckID, format, source string, list *deck.List, commanders []string) string {
+func saveToLibrary(ctx context.Context, c Config, p auth.Principal, deckID, format, source string, list *deck.List, commanders []string) (string, error) {
 	if deckID != "" || p.UserID == uuid.Nil || c.DeckLibrary == nil {
-		return ""
+		return "", nil
 	}
 	resolvedFormat := format
 	if resolvedFormat == "" {
 		resolvedFormat = detectDeckFormat(source)
-	}
-	if resolvedFormat != "text" && resolvedFormat != "moxfield" {
-		return ""
 	}
 	name := list.Name
 	if name == "" {
 		name = libraryFallbackName(list)
 	}
 	cardCount := len(list.Commanders) + len(list.Mainboard)
-	saved, err := c.DeckLibrary.Upsert(ctx, p.UserID, name, resolvedFormat, source, commanders, cardCount)
+	var (
+		saved decklibrary.Deck
+		err   error
+	)
+	switch resolvedFormat {
+	case "text", "moxfield":
+		saved, err = c.DeckLibrary.Upsert(ctx, p.UserID, name, resolvedFormat, source, commanders, cardCount)
+	case "url":
+		ref, perr := deck.ParseDeckURL(strings.TrimSpace(source))
+		if perr != nil {
+			return "", nil
+		}
+		saved, err = c.DeckLibrary.UpsertFromLink(ctx, p.UserID, name, "text", list.Text(), ref.URL(), commanders, cardCount)
+	default:
+		return "", nil
+	}
 	if err != nil {
 		logDeckLibraryWarning(c, "save deck to library failed", err, "user_id", p.UserID)
-		return ""
+		return "", err
 	}
-	return saved.ID.String()
+	return saved.ID.String(), nil
 }
 
 // libraryFallbackName names a deck being saved to the library when
@@ -2606,6 +2857,7 @@ func seatLibraryDeck(c Config, w http.ResponseWriter, r *http.Request) error {
 	if serr := c.Lobby.SetSeatDeckID(id, p.PlayerID, saved.ID.String()); serr != nil {
 		logDeckLibraryWarning(c, "set seat deck_id failed", serr, "game_id", id, "player_id", p.PlayerID)
 	}
+	recordLastDeck(r.Context(), c, p, id, p.PlayerID, users.LastDeck{Kind: users.LastDeckLibrary, ID: saved.ID.String()})
 
 	commanders := make([]string, 0, len(list.Commanders))
 	for _, cc := range list.Commanders {
@@ -2622,6 +2874,19 @@ func seatLibraryDeck(c Config, w http.ResponseWriter, r *http.Request) error {
 	})
 }
 
+// myDeckCoverageInfo is a saved deck's coverage on read (ADR 0110
+// section 6): the five ADR 0095 bucket counts by distinct card, the
+// names the index could not resolve, and "N of M play as printed".
+// It is computed per request and never stored.
+type myDeckCoverageInfo struct {
+	Counts  map[deckcoverage.Bucket]int `json:"counts"`
+	Unknown int                         `json:"unknown"`
+	// AsPrinted counts automated plus no_effect cards; Resolved is
+	// every distinct card the report bucketed.
+	AsPrinted int `json:"as_printed"`
+	Resolved  int `json:"resolved"`
+}
+
 // myDeckInfo is one entry in GET /me/decks.
 type myDeckInfo struct {
 	ID         string    `json:"id"`
@@ -2629,6 +2894,12 @@ type myDeckInfo struct {
 	Commanders []string  `json:"commanders"`
 	CardCount  int       `json:"card_count"`
 	UpdatedAt  time.Time `json:"updated_at"`
+	// SourceURL is the link the deck was imported from, absent for a
+	// pasted or uploaded one.
+	SourceURL string `json:"source_url,omitempty"`
+	// Coverage is absent when this server has no card index or the
+	// stored list no longer parses.
+	Coverage *myDeckCoverageInfo `json:"coverage,omitempty"`
 }
 
 // myDecksResponse is the body of GET /me/decks.
@@ -2636,30 +2907,81 @@ type myDecksResponse struct {
 	Decks []myDeckInfo `json:"decks"`
 }
 
+// libraryOwner returns the caller's UserID for a library route. A
+// session that is not a signed-in person is a 403, never a 401 (#1154,
+// ADR 0110 section 1): authFetch reads a 401 as an expired session and
+// signs the browser out.
+func libraryOwner(r *http.Request) (uuid.UUID, error) {
+	p, err := signedInUser(r)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	return p.UserID, nil
+}
+
+// libraryStore is the configured store, or NoStore.
+func (c Config) libraryStore() decklibrary.Store {
+	if c.DeckLibrary == nil {
+		return decklibrary.NoStore{}
+	}
+	return c.DeckLibrary
+}
+
+// libraryDeckEntries re-parses a saved deck's stored source, the same
+// parse a seat takes (ADR 0051 decision 7).
+func libraryDeckEntries(d decklibrary.Deck) ([]deck.Entry, string, error) {
+	switch d.SourceFormat {
+	case "text":
+		e, err := deck.ParseText(d.SourceText)
+		return e, "", err
+	case "moxfield":
+		name, e, err := deck.ParseMoxfield([]byte(d.SourceText))
+		return e, name, err
+	}
+	return nil, "", fmt.Errorf("unknown source format %q", d.SourceFormat)
+}
+
+// libraryDeckReport builds one saved deck's full coverage report with
+// the verdicts the caller already built.
+func libraryDeckReport(c Config, d decklibrary.Deck, verdicts map[string]catalog.Entry) (*deckcoverage.Report, error) {
+	entries, _, err := libraryDeckEntries(d)
+	if err != nil {
+		return nil, err
+	}
+	source := "text"
+	if d.SourceURL != "" {
+		if ref, rerr := deck.ParseDeckURL(d.SourceURL); rerr == nil {
+			source = ref.Source
+		}
+	}
+	return deckcoverage.BuildWith(c.Cards, deckcoverage.Deck{
+		Name: d.Name, Source: source, SourceURL: d.SourceURL, Entries: entries,
+	}, verdicts)
+}
+
 // myDecks handles GET /me/decks: the caller's saved decks (ADR 0051
-// decision 7, S34 sub-PR 5), newest updated first.
+// decision 7, S34 sub-PR 5), newest updated first, each with its
+// coverage computed now (ADR 0110 section 6).
 //
-// 401 for any principal without a UserID — a guest's RolePlayer
-// session, an admin session, or an identified session minted by a
-// deployment with no database — not only for a missing credential,
-// which auth.Middleware already turns into a 401 on its own. There is
-// nothing partial to show: a UserID-less principal owns no decks by
-// construction (decklibrary.Store.Upsert requires one).
+// 403 for any principal that is not a signed-in person — a guest's
+// RolePlayer session, an admin session, or an identified session
+// minted by a deployment with no database. A missing credential is
+// still auth.Middleware's own 401. There is nothing partial to show: a
+// UserID-less principal owns no decks by construction
+// (decklibrary.Store.Upsert requires one).
 func myDecks(c Config, w http.ResponseWriter, r *http.Request) error {
-	p, ok := auth.PrincipalFromContext(r.Context())
-	if !ok {
-		return httpError(http.StatusInternalServerError, "missing principal")
-	}
-	if p.UserID == uuid.Nil {
-		return httpError(http.StatusUnauthorized, "sign-in required")
-	}
-	library := c.DeckLibrary
-	if library == nil {
-		library = decklibrary.NoStore{}
-	}
-	decks, err := library.List(r.Context(), p.UserID)
+	owner, err := libraryOwner(r)
 	if err != nil {
 		return err
+	}
+	decks, err := c.libraryStore().List(r.Context(), owner)
+	if err != nil {
+		return err
+	}
+	// One catalog.Build for the whole request, shared by every deck.
+	var verdicts map[string]catalog.Entry
+	if c.Cards != nil && len(decks) > 0 {
+		verdicts, _ = deckcoverage.Verdicts(c.Cards)
 	}
 	out := make([]myDeckInfo, 0, len(decks))
 	for _, d := range decks {
@@ -2667,15 +2989,138 @@ func myDecks(c Config, w http.ResponseWriter, r *http.Request) error {
 		if commanders == nil {
 			commanders = []string{}
 		}
-		out = append(out, myDeckInfo{
+		info := myDeckInfo{
 			ID:         d.ID.String(),
 			Name:       d.Name,
 			Commanders: commanders,
 			CardCount:  d.CardCount,
 			UpdatedAt:  d.UpdatedAt,
-		})
+			SourceURL:  d.SourceURL,
+		}
+		if verdicts != nil {
+			if rep, rerr := libraryDeckReport(c, d, verdicts); rerr == nil {
+				n, m := rep.AsPrinted()
+				info.Coverage = &myDeckCoverageInfo{
+					Counts: rep.Counts, Unknown: len(rep.Unknown), AsPrinted: n, Resolved: m,
+				}
+			}
+		}
+		out = append(out, info)
 	}
 	return writeJSON(w, http.StatusOK, myDecksResponse{Decks: out})
+}
+
+// ownedLibraryDeck loads {id} from the path and returns it only when
+// the caller owns it; anything else is a 404, so an id reveals nothing.
+func ownedLibraryDeck(c Config, r *http.Request, owner uuid.UUID) (decklibrary.Deck, error) {
+	id, err := uuid.Parse(r.PathValue("id"))
+	if err != nil {
+		return decklibrary.Deck{}, httpError(http.StatusNotFound, "deck not found")
+	}
+	d, err := c.libraryStore().Get(r.Context(), id)
+	if errors.Is(err, decklibrary.ErrNotFound) || (err == nil && d.OwnerID != owner) {
+		return decklibrary.Deck{}, httpError(http.StatusNotFound, "deck not found")
+	}
+	return d, err
+}
+
+// myDeckCoverage handles GET /me/decks/{id}/coverage: the full ADR 0095
+// report for one saved deck, so the library can offer "Request these
+// cards" through POST /deck-requests.
+func myDeckCoverage(c Config, w http.ResponseWriter, r *http.Request) error {
+	owner, err := libraryOwner(r)
+	if err != nil {
+		return err
+	}
+	d, err := ownedLibraryDeck(c, r, owner)
+	if err != nil {
+		return err
+	}
+	if c.Cards == nil {
+		return httpError(http.StatusServiceUnavailable, "the card index is not loaded on this server")
+	}
+	verdicts, err := deckcoverage.Verdicts(c.Cards)
+	if err != nil {
+		return httpError(http.StatusServiceUnavailable, "the card index is not loaded on this server")
+	}
+	rep, err := libraryDeckReport(c, d, verdicts)
+	if err != nil {
+		return httpError(http.StatusUnprocessableEntity, "that saved deck could not be read: "+err.Error())
+	}
+	return writeJSON(w, http.StatusOK, rep)
+}
+
+// maxDeckNameLen bounds a renamed deck's name.
+const maxDeckNameLen = 100
+
+// renameMyDeck handles PATCH /me/decks/{id} with {"name"}: 409 when the
+// caller already has another deck by that name (the upsert rule keys on
+// the name), 404 for a deck that is not theirs.
+func renameMyDeck(c Config, w http.ResponseWriter, r *http.Request) error {
+	owner, err := libraryOwner(r)
+	if err != nil {
+		return err
+	}
+	var body struct {
+		Name string `json:"name"`
+	}
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4<<10)).Decode(&body); err != nil {
+		return httpError(http.StatusBadRequest, "invalid JSON body")
+	}
+	name := strings.TrimSpace(body.Name)
+	if name == "" {
+		return httpError(http.StatusBadRequest, "a deck needs a name")
+	}
+	if utf8.RuneCountInString(name) > maxDeckNameLen {
+		return httpError(http.StatusBadRequest, fmt.Sprintf("a deck name is at most %d characters", maxDeckNameLen))
+	}
+	d, err := ownedLibraryDeck(c, r, owner)
+	if err != nil {
+		return err
+	}
+	renamed, err := c.libraryStore().Rename(r.Context(), owner, d.ID, name)
+	switch {
+	case errors.Is(err, decklibrary.ErrNotFound):
+		return httpError(http.StatusNotFound, "deck not found")
+	case errors.Is(err, decklibrary.ErrNameTaken):
+		return httpError(http.StatusConflict, "you already have a deck with that name")
+	case err != nil:
+		return err
+	}
+	return writeJSON(w, http.StatusOK, myDeckInfo{
+		ID: renamed.ID.String(), Name: renamed.Name, Commanders: nonNil(renamed.Commanders),
+		CardCount: renamed.CardCount, UpdatedAt: renamed.UpdatedAt, SourceURL: renamed.SourceURL,
+	})
+}
+
+func nonNil(s []string) []string {
+	if s == nil {
+		return []string{}
+	}
+	return s
+}
+
+// deleteMyDeck handles DELETE /me/decks/{id}. The store nulls
+// seats.deck_id in the same transaction; this also clears the lobby's
+// in-memory copy so a later seat write does not put the dead id back.
+func deleteMyDeck(c Config, w http.ResponseWriter, r *http.Request) error {
+	owner, err := libraryOwner(r)
+	if err != nil {
+		return err
+	}
+	d, err := ownedLibraryDeck(c, r, owner)
+	if err != nil {
+		return err
+	}
+	if err := c.libraryStore().Delete(r.Context(), owner, d.ID); err != nil {
+		if errors.Is(err, decklibrary.ErrNotFound) {
+			return httpError(http.StatusNotFound, "deck not found")
+		}
+		return err
+	}
+	c.Lobby.ForgetLibraryDeck(d.ID.String())
+	w.WriteHeader(http.StatusNoContent)
+	return nil
 }
 
 // addBotRequest is the request shape for POST /games/{id}/seats/bot.
@@ -2759,12 +3204,12 @@ func botDeckSource(c Config, body addBotRequest) (format, source, deckID string,
 // is `RolePlayer` with a real PlayerID and not merely a matching
 // GameID. Adding a bot mutates the table; watching does not earn it.
 // Mirrors the gate on autoTapPreview.
-func botSeatAuthorised(r *http.Request, id uuid.UUID) error {
+func botSeatAuthorised(c Config, r *http.Request, id uuid.UUID) error {
 	p, ok := auth.PrincipalFromContext(r.Context())
 	if !ok {
 		return httpError(http.StatusInternalServerError, "missing principal")
 	}
-	if p.Role == auth.RoleAdmin {
+	if c.isAdmin(p) {
 		return nil
 	}
 	if p.GameID != id {
@@ -2840,7 +3285,7 @@ func addBot(c Config, w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	if err := botSeatAuthorised(r, id); err != nil {
+	if err := botSeatAuthorised(c, r, id); err != nil {
 		return err
 	}
 	if r.Body == nil {
@@ -2912,7 +3357,7 @@ func removeBot(c Config, w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	if err := botSeatAuthorised(r, id); err != nil {
+	if err := botSeatAuthorised(c, r, id); err != nil {
 		return err
 	}
 	playerID, err := uuid.Parse(r.PathValue("player"))
@@ -2952,12 +3397,22 @@ func logout(c Config, w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
-func me(_ Config, w http.ResponseWriter, r *http.Request) error {
+func me(c Config, w http.ResponseWriter, r *http.Request) error {
 	p, ok := auth.PrincipalFromContext(r.Context())
 	if !ok {
 		return httpError(http.StatusInternalServerError, "missing principal")
 	}
-	return writeJSON(w, http.StatusOK, p)
+	return writeJSON(w, http.StatusOK, meResponse{Principal: p, Admin: c.isAdmin(p)})
+}
+
+// meResponse is GET /me: the principal, flattened as it always was,
+// plus whether it is an admin right now (ADR 0110 §3 item 4). Admin is
+// computed per request and is not part of the token, so the client
+// learns it here and nowhere else. The allowlist itself is never
+// served.
+type meResponse struct {
+	auth.Principal
+	Admin bool `json:"admin"`
 }
 
 // --- helpers ---
@@ -3144,8 +3599,10 @@ func writeLobbyError(w http.ResponseWriter, err error) {
 		status = http.StatusConflict
 	case errors.Is(err, ErrNotABot), errors.Is(err, ErrUnknownBotTier), errors.Is(err, ErrSeatIsBot):
 		status = http.StatusUnprocessableEntity
-	case errors.Is(err, ErrGameArchived):
+	case errors.Is(err, ErrGameArchived), errors.Is(err, ErrTooManyOpenTables):
 		status = http.StatusConflict
+	case errors.Is(err, ErrCreateRateLimited):
+		status = http.StatusTooManyRequests
 	case errors.Is(err, ErrTooManyReclaims):
 		status = http.StatusTooManyRequests
 	case errors.Is(err, ErrEmptyName), errors.Is(err, ErrInvalidInviteKind):

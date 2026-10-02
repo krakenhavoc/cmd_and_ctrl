@@ -331,10 +331,12 @@ func b10Fight(ctx *Context, a, b uuid.UUID) error {
 		return nil
 	}
 	pa, pb := ca.CurrentPower(), cb.CurrentPower()
-	if err := (DealDamage{Source: a, Target: b, Amount: pa}).Apply(ctx); err != nil {
-		return err
-	}
-	return DealDamage{Source: b, Target: a, Amount: pb}.Apply(ctx)
+	return ctx.Game.DamageInstanceForEffect(func() error {
+		if err := (DealDamage{Source: a, Target: b, Amount: pa}).Apply(ctx); err != nil {
+			return err
+		}
+		return DealDamage{Source: b, Target: a, Amount: pb}.Apply(ctx)
+	})
 }
 
 // b10DestroyAllCreaturesExcept is Mount Doom's "choose up to two
@@ -349,10 +351,12 @@ func b10DestroyAllCreaturesExcept(ctx *Context, keep []uuid.UUID) error {
 // (CR 608.2b — a target that left in response is skipped, the rest
 // are still hit).
 func b10DamageEachLegalTarget(ctx *Context, amount int) error {
-	for _, t := range ctx.LegalTargets() {
-		if err := (DealDamage{Source: ctx.Source(), Target: t.ID, Amount: amount}).Apply(ctx); err != nil {
-			return err
+	return ctx.Game.DamageInstanceForEffect(func() error {
+		for _, t := range ctx.LegalTargets() {
+			if err := (DealDamage{Source: ctx.Source(), Target: t.ID, Amount: amount}).Apply(ctx); err != nil {
+				return err
+			}
 		}
-	}
-	return nil
+		return nil
+	})
 }

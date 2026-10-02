@@ -89,6 +89,47 @@ func TestContractIssueRejectsNonPositiveTTL(t *testing.T) {
 	}
 }
 
+// TestContractIssueUntil is ADR 0110 §1's inheritance rule at the
+// authenticator: a session minted from another expires at the very
+// instant its source does, never later, and a source that has already
+// run out mints nothing.
+func TestContractIssueUntil(t *testing.T) {
+	for name, mk := range contractImpls(t) {
+		t.Run(name, func(t *testing.T) {
+			a := mk()
+			ctx := context.Background()
+			_, source, err := a.Issue(ctx, Principal{Role: RoleIdentified, UserID: uuid.New()}, 72*time.Hour)
+			if err != nil {
+				t.Fatalf("Issue: %v", err)
+			}
+			seat := Principal{Role: RolePlayer, UserID: source.UserID, GameID: uuid.New(), PlayerID: uuid.New()}
+			tok, issued, err := a.IssueUntil(ctx, seat, source.ExpiresAt)
+			if err != nil {
+				t.Fatalf("IssueUntil: %v", err)
+			}
+			if !issued.ExpiresAt.Equal(source.ExpiresAt) {
+				t.Errorf("ExpiresAt %v, want the source's %v", issued.ExpiresAt, source.ExpiresAt)
+			}
+			if issued.IssuedAt.Before(source.IssuedAt) {
+				t.Errorf("IssuedAt %v is before the source's %v; the token must be fresh", issued.IssuedAt, source.IssuedAt)
+			}
+			back, err := a.Validate(ctx, tok)
+			if err != nil {
+				t.Fatalf("Validate: %v", err)
+			}
+			if !back.ExpiresAt.Equal(source.ExpiresAt) || back.PlayerID != seat.PlayerID {
+				t.Errorf("Validate returned %+v", back)
+			}
+
+			for _, past := range []time.Time{time.Now().Add(-time.Second), {}} {
+				if _, _, err := a.IssueUntil(ctx, seat, past); err != ErrExpiredCredential {
+					t.Errorf("IssueUntil(%v): %v, want ErrExpiredCredential", past, err)
+				}
+			}
+		})
+	}
+}
+
 func TestContractRevokeReturnsNil(t *testing.T) {
 	for name, mk := range contractImpls(t) {
 		t.Run(name, func(t *testing.T) {
@@ -174,6 +215,43 @@ func TestCredentialFromRequestPrecedence(t *testing.T) {
 	req = httptest.NewRequest(http.MethodGet, "/x", nil)
 	if got := CredentialFromRequest(req); got != "" {
 		t.Errorf("empty: got %q, want empty", got)
+	}
+}
+
+// TestCredentialFromCookieOrHeaderIgnoresTheQuery: the reader for a
+// route that sets the cookie never takes a ?token=, which a cross-site
+// form could supply.
+func TestCredentialFromCookieOrHeaderIgnoresTheQuery(t *testing.T) {
+	req := httptest.NewRequest(http.MethodPost, "/x?token=fromquery", nil)
+	req.Header.Set("Authorization", "Bearer fromheader")
+	req.AddCookie(&http.Cookie{Name: SessionCookie, Value: "fromcookie"})
+	if got := CredentialFromCookieOrHeader(req); got != "fromcookie" {
+		t.Errorf("precedence: got %q, want %q", got, "fromcookie")
+	}
+
+	req = httptest.NewRequest(http.MethodPost, "/x?token=fromquery", nil)
+	req.Header.Set("Authorization", "Bearer fromheader")
+	if got := CredentialFromCookieOrHeader(req); got != "fromheader" {
+		t.Errorf("header: got %q, want %q", got, "fromheader")
+	}
+
+	req = httptest.NewRequest(http.MethodPost, "/x?token=fromquery", nil)
+	if got := CredentialFromCookieOrHeader(req); got != "" {
+		t.Errorf("query only: got %q, want empty", got)
+	}
+
+	a := NewMemoryAuthenticator()
+	tok, _, err := a.Issue(context.Background(), Principal{Role: RoleIdentified}, time.Hour)
+	if err != nil {
+		t.Fatal(err)
+	}
+	h := MiddlewareWith(a, CredentialFromCookieOrHeader)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Error("a query-string token reached the handler")
+	}))
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, httptest.NewRequest(http.MethodPost, "/x?token="+tok, nil))
+	if rr.Code != http.StatusUnauthorized {
+		t.Errorf("query-string token: %d, want 401", rr.Code)
 	}
 }
 

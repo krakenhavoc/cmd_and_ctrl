@@ -297,12 +297,14 @@ func b11DamageEachCreatureControlledBy(g *game.Game, item *game.StackItem, victi
 			ids = append(ids, c.InstanceID)
 		}
 	}
-	for _, id := range ids {
-		if err := (DealDamage{Source: item.SourceCardID, Target: id, Amount: amount}).Apply(ctx); err != nil {
-			return err
+	return ctx.Game.DamageInstanceForEffect(func() error {
+		for _, id := range ids {
+			if err := (DealDamage{Source: item.SourceCardID, Target: id, Amount: amount}).Apply(ctx); err != nil {
+				return err
+			}
 		}
-	}
-	return nil
+		return nil
+	})
 }
 
 // b11FetchLandTapped is the "search your library for a land card,

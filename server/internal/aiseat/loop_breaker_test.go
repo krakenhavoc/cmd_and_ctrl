@@ -10,7 +10,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
-// loop_breaker_test.go is the bot half of #628 (CR 726).
+// loop_breaker_test.go is the bot half of #628 (CR 732).
 //
 // A bot's pass is as automatic as a browser's autopass toggle, so a
 // table of bots spinning on a real trigger loop is the same runaway
@@ -134,7 +134,7 @@ func busiestResolutionsLocked(g *game.Game) int {
 
 // TestBotsStopPassingWhenTheLoopBreakerFires: two bot seats, a real
 // two-permanent trigger loop, and a threshold of five. The bots pass
-// the loop around until the engine raises the notice, take the CR 726
+// the loop around until the engine raises the notice, take the CR 732
 // shortcut once, and then stop — the room's commit sequence stops
 // moving, which is the whole point. The alternative was a table that
 // spins until the process is killed.
@@ -199,7 +199,7 @@ func TestBotsStopPassingWhenTheLoopBreakerFires(t *testing.T) {
 	})
 
 	// #804 changed what "they stop" looks like, and the change is the
-	// point of the feature. The breaker now comes with a CR 726
+	// point of the feature. The breaker now comes with a CR 732
 	// prompt, so a bot seat that controls the loop answers it rather
 	// than sitting on a question: 10 more iterations the first time it
 	// is asked in a turn, and stop the second time, because the

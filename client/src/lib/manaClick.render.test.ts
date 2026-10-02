@@ -8,14 +8,18 @@
 // away, and that the picker and the mana_pick prompt draw symbols and
 // answer the keyboard.
 
-import { describe, it, expect, afterEach, vi } from "vitest";
+import { describe, it, expect, afterEach, beforeEach, vi } from "vitest";
 import { get } from "svelte/store";
 
 import PlayerPanel from "./components/board/PlayerPanel.svelte";
 import ManaSourcePicker from "./components/board/ManaSourcePicker.svelte";
 import ManaSymbolPicker from "./components/board/ManaSymbolPicker.svelte";
 import ManaPoolPips from "./components/board/ManaPoolPips.svelte";
-import ChoicePromptModal from "./components/board/ChoicePromptModal.svelte";
+// ADR 0111 PR 5: mana_pick is answered inline in the action dock, so
+// the prompt is mounted beside a real dock.
+import ChoiceDockHarness from "./test/ChoiceDockHarness.svelte";
+import { _resetForTests as resetDock } from "./dock";
+import { _resetForTests as resetModals } from "./modalLayers";
 import { closeManaSourcePicker, manaSourcePicker } from "./manaSourcePicker";
 import type { ManaPickOption } from "./manaSource";
 import type { ActionType, CardView, GameView, ManaAbilityView, PlayerView } from "./protocol";
@@ -354,6 +358,17 @@ describe("ManaSymbolPicker", () => {
 });
 
 describe("the mana_pick prompt uses the same picker", () => {
+  beforeEach(() => {
+    const g = globalThis as Record<string, unknown>;
+    g.ResizeObserver ??= class {
+      observe(): void {}
+      unobserve(): void {}
+      disconnect(): void {}
+    };
+    resetDock();
+    resetModals();
+  });
+
   const snap = (colors: string[]): GameView =>
     gameView([], {
       pending_choices: [
@@ -372,7 +387,7 @@ describe("the mana_pick prompt uses the same picker", () => {
   function mountPrompt(colors: string[]) {
     const sent: Sent[] = [];
     const r = render(
-      ChoicePromptModal as never,
+      ChoiceDockHarness as never,
       {
         snap: snap(colors),
         viewerID: ME,
@@ -390,6 +405,13 @@ describe("the mana_pick prompt uses the same picker", () => {
     );
     expect(symbols).toEqual(["G", "U", "W"]);
     expect(container.querySelector(".mana-option")?.getAttribute("title")).toBe("Add Green mana");
+    // In the dock, inside the prompt's dialog, which keeps the name.
+    expect(
+      container
+        .querySelector(".mana-option")
+        ?.closest('section[aria-label="actions"] [role="dialog"]')
+        ?.getAttribute("aria-label"),
+    ).toBe("Birds of Paradise — pick a color");
   });
 
   it("answers with a click", () => {

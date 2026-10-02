@@ -45,7 +45,13 @@ var redactedCardKeys = map[string]bool{
 	// creature with a shield on it is something the table has to be
 	// able to see before deciding whether removal is worth casting.
 	"regeneration_shields": true,
-	"face_down":            true,
+	// ADR 0108: "exiled if it dies this turn" names the effect's
+	// source (Lava Coil), and "can't be regenerated this turn" is a
+	// bit — both facts about what killing the permanent does, like a
+	// shield, and neither says which card it is.
+	"exiled_if_it_dies":   true,
+	"cant_be_regenerated": true,
+	"face_down":           true,
 	// ADR 0069: WHY it is face down is public — everyone can see
 	// that a permanent is a morph and that an exiled card is
 	// foretold. The identity of the card under it is not.
@@ -230,6 +236,8 @@ func everyFieldCardView(owner string, knowers map[string]bool) CardView {
 		IsCommander:         true,
 		DamageMarked:        1,
 		RegenerationShields: 2,
+		ExiledIfItDies:      []string{"Lava Coil"},
+		CantBeRegenerated:   true,
 		FaceDown:            true,
 		// An EXILE kind on purpose: a CR 708.2 permanent kind would
 		// put the public 2/2 body back after the redaction (decision
@@ -274,6 +282,7 @@ func everyFieldCardView(owner string, knowers map[string]bool) CardView {
 		ZoneManaAbilities: []ManaAbilityView{{Index: 0, Label: "Exile this card from your hand: Add {R}", ExileSelf: true, Produced: "{R}"}},
 		SpecialActions:    []SpecialActionView{{Kind: "foretell", Label: "Foretell {2}", Cost: "{2}", Available: true}},
 		SummoningSick:     true,
+		EchoDue:           true,
 		LoyaltyActivated:  true,
 		ClassLevel:        3,
 		Solved:            true,

@@ -128,6 +128,12 @@ export interface Settings {
     // behaviour is always-on; this lets a viewer who finds it
     // distracting hide it.
     showOpponentHandCount: boolean;
+    // #1954, EXPERIMENTAL, off by default. Battlefield cards and the
+    // viewer's own hand draw Scryfall's art_crop instead of the full
+    // card; the hover zoom still shows the whole card. The stack,
+    // prompts, catalog, deck views and every face-down card are
+    // untouched. Not in practiceTable's forced list on purpose.
+    artOnlyCards: boolean;
   };
 
   gameplay: {
@@ -200,7 +206,7 @@ export interface Settings {
     // your own spell. Defaults on — casting is already the
     // decision, so the follow-up click is pure friction. A stack
     // that holds ANY opponent item still stops, and the session
-    // "hold" toggle (holdPriority.ts, surfaced in the phase widget
+    // "hold" toggle (holdPriority.ts, surfaced in the action dock
     // and the stack card) suspends this per-window when you do want
     // to respond to your own spell or trigger. Flip off to restore
     // the pre-#323 "every stack stops" behaviour permanently.
@@ -359,6 +365,7 @@ export function defaultSettings(): Settings {
       expandStyle: "reflow",
       hoverDelayMs: 300,
       showOpponentHandCount: true,
+      artOnlyCards: false,
     },
     gameplay: {
       confirmExit: true,
@@ -430,6 +437,173 @@ export function defaultSettings(): Settings {
       alwaysShowFocus: false,
     },
   };
+}
+
+// --- per-person and per-device fields (ADR 0110 §4, owner answer 5) ---
+//
+// A signed-in person's settings follow them to every browser they sign
+// in on, except the ones that belong to the SCREEN or the machine. The
+// split is decided here, field by field, and nowhere else:
+//
+//   "synced"  per person. Uploaded to the account (PUT /me/settings) and
+//             applied from it at sign-in. How someone plays and what
+//             they like the table to look like.
+//   "device"  per device. Never leaves this browser. Volumes (speakers
+//             versus headphones), anything that depends on screen size
+//             (#956), and the two settings that follow the OS
+//             reduced-motion signal at runtime.
+//
+// The type makes the map exhaustive: a field added to Settings without
+// a line here is a compile error, and settingsSyncFields.test.ts fails
+// too. Nobody can ship a setting without deciding where it lives.
+//
+// The practice table (practiceTable.ts) forces four fields. Two are
+// synced (strictMana, autoPassPriority) and settingsSync.ts never
+// uploads their forced values; two are per device (tableLayout,
+// cardSize) and never upload at all.
+
+export type SettingsGroup = Exclude<keyof Settings, "__version">;
+export type FieldScope = "synced" | "device";
+export type SettingsFieldScopes = {
+  [G in SettingsGroup]: { [K in keyof Settings[G]]-?: FieldScope };
+};
+
+export const SYNCED_FIELDS: Readonly<SettingsFieldScopes> = Object.freeze({
+  audio: {
+    muted: "device",
+    masterVolume: "device",
+    effectsVolume: "device",
+    musicVolume: "device",
+  },
+  animations: {
+    // Follows the OS reduced-motion signal at runtime.
+    enabled: "device",
+    speed: "synced",
+    cardDraw: "synced",
+    cardPlay: "synced",
+    cardTap: "synced",
+    cardUntap: "synced",
+    cardFlip: "synced",
+    particlesEtb: "synced",
+    damagePopups: "synced",
+  },
+  display: {
+    theme: "synced",
+    cardSize: "device",
+    handLayout: "device",
+    tableLayout: "device",
+    stackStyle: "synced",
+    opponentDetail: "device",
+    expandActivePlayer: "device",
+    expandStyle: "device",
+    hoverDelayMs: "synced",
+    showOpponentHandCount: "synced",
+    // #1954: a taste, not a screen size (ADR 0110 owner answer 5).
+    artOnlyCards: "synced",
+  },
+  gameplay: {
+    confirmExit: "synced",
+    autoPassPriority: "synced",
+    stepStops: "synced",
+    strictMana: "synced",
+    smartAutoPass: "synced",
+    respondCounterspells: "synced",
+    respondInstants: "synced",
+    respondAbilities: "synced",
+    respondSpecialActions: "synced",
+    alwaysStopOpponentStack: "synced",
+    bluffCounterspell: "synced",
+    bluffInstant: "synced",
+    bluffMode: "synced",
+    bluffDelayMinMs: "synced",
+    bluffDelayMaxMs: "synced",
+    autoPassOwnStack: "synced",
+    autopassPersistThroughTurns: "synced",
+    adminOverrides: "synced",
+    showBotReasoning: "synced",
+    highlightLegalActions: "synced",
+  },
+  shortcuts: {
+    enabled: "synced",
+    bindings: "synced",
+  },
+  accessibility: {
+    // Follows the OS reduced-motion signal at runtime.
+    reduceMotion: "device",
+    textScale: "device",
+    colorblindPalette: "synced",
+    alwaysShowFocus: "synced",
+  },
+});
+
+/** SyncedSettings is the account's copy: group → synced field → value. */
+export type SyncedSettings = Record<string, Record<string, unknown>>;
+
+/** syncedPaths lists every synced field as [group, key], in map order. */
+export function syncedPaths(): Array<[SettingsGroup, string]> {
+  const out: Array<[SettingsGroup, string]> = [];
+  for (const group of Object.keys(SYNCED_FIELDS) as SettingsGroup[]) {
+    const scopes = SYNCED_FIELDS[group] as Record<string, FieldScope>;
+    for (const key of Object.keys(scopes)) {
+      if (scopes[key] === "synced") out.push([group, key]);
+    }
+  }
+  return out;
+}
+
+/**
+ * syncedSubset is the part of s that goes to the account: every synced
+ * field, deep-copied, grouped as in Settings. Nothing per device.
+ */
+export function syncedSubset(s: Settings): SyncedSettings {
+  const out: SyncedSettings = {};
+  for (const [group, key] of syncedPaths()) {
+    const value = (s[group] as Record<string, unknown>)[key];
+    if (value === undefined) continue;
+    (out[group] ??= {})[key] = JSON.parse(JSON.stringify(value));
+  }
+  return out;
+}
+
+/** canonicalJSON is JSON with object keys sorted, for comparing copies. */
+export function canonicalJSON(v: unknown): string {
+  if (Array.isArray(v)) return `[${v.map(canonicalJSON).join(",")}]`;
+  if (v !== null && typeof v === "object") {
+    const o = v as Record<string, unknown>;
+    return `{${Object.keys(o)
+      .sort()
+      .filter((k) => o[k] !== undefined)
+      .map((k) => `${JSON.stringify(k)}:${canonicalJSON(o[k])}`)
+      .join(",")}}`;
+  }
+  return JSON.stringify(v);
+}
+
+/**
+ * applySyncedCopy returns base with its synced fields replaced by an
+ * account copy written by client version `version`. The copy goes
+ * through migrate, the one schema validator, so a copy from an older or
+ * newer client, or a hand-edited one, comes out in this client's shape.
+ * Per-device fields are base's, always.
+ */
+export function applySyncedCopy(base: Settings, copy: unknown, version: number): Settings {
+  if (!copy || typeof copy !== "object" || Array.isArray(copy)) return base;
+  const migrated = migrate({ ...(copy as object), __version: version });
+  const next: Settings = {
+    ...base,
+    audio: { ...base.audio },
+    animations: { ...base.animations },
+    display: { ...base.display },
+    gameplay: { ...base.gameplay },
+    shortcuts: { ...base.shortcuts },
+    accessibility: { ...base.accessibility },
+  };
+  for (const [group, key] of syncedPaths()) {
+    (next[group] as Record<string, unknown>)[key] = (migrated[group] as Record<string, unknown>)[
+      key
+    ];
+  }
+  return next;
 }
 
 // migrate normalises a stored settings blob into the current schema.

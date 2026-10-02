@@ -4,10 +4,10 @@
   // options, the live tally, and a button to cast / re-cast their
   // ballot. Initiator (or any seated player) can close the vote.
   //
-  // When no vote is open, the panel renders a small "start a vote"
-  // launcher in the corner — a freeform topic + comma-separated
-  // options field. Kept inline with the modal to keep the politics
-  // surface in one place.
+  // ADR 0111 PR 7: the "start a vote" launcher that sat in the board's
+  // top-left corner is "Call a vote…" in the action dock's ⋯ menu now
+  // (GameMenu.svelte). A spectator never had a vote to call: the
+  // launcher needed a seat.
 
   import type { ActionPayload, ActionType, GameView } from "../../protocol";
 
@@ -17,9 +17,14 @@
     view: GameView;
     viewerID: string | null;
     sendAction: ActionSender;
+    // ADR 0111 PR 5: the action dock is on screen. An open vote is then
+    // the dock's (lib/choiceDock.ts voteRequest), so this panel draws
+    // nothing. Without a dock (a spectator) the open vote is drawn here
+    // as before.
+    docked?: boolean;
   }
 
-  const { view, viewerID, sendAction }: Props = $props();
+  const { view, viewerID, sendAction, docked = false }: Props = $props();
 
   const vote = $derived(view.vote ?? null);
 
@@ -44,30 +49,12 @@
     sendAction("end_vote");
   }
 
-  // Launcher state — only relevant when no vote is open.
-  let launcherOpen = $state(false);
-  let topic = $state("");
-  let optionsText = $state("yes, no");
-
-  function startVote(): void {
-    if (!viewerID) return;
-    const options = optionsText
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
-    if (options.length < 2 || !topic.trim()) return;
-    sendAction("start_vote", { topic: topic.trim(), options }, viewerID);
-    topic = "";
-    optionsText = "yes, no";
-    launcherOpen = false;
-  }
-
   function nameOf(playerID: string): string {
     return view.seats.find((s) => s.id === playerID)?.name ?? "?";
   }
 </script>
 
-{#if vote}
+{#if vote && !docked}
   <div class="vote-modal" role="dialog" aria-modal="true" aria-label="open vote">
     <header class="head">
       <span class="badge" aria-hidden="true">vote</span>
@@ -95,43 +82,6 @@
     <footer class="foot">
       <button type="button" class="end" onclick={endVote}>end vote</button>
     </footer>
-  </div>
-{:else}
-  <div class="vote-launcher">
-    {#if launcherOpen}
-      <form
-        class="launcher-form"
-        onsubmit={(e) => {
-          e.preventDefault();
-          startVote();
-        }}
-      >
-        <input
-          type="text"
-          bind:value={topic}
-          placeholder="topic (e.g. 'monarchy?')"
-          aria-label="vote topic"
-        />
-        <input
-          type="text"
-          bind:value={optionsText}
-          placeholder="options, comma-separated"
-          aria-label="vote options"
-        />
-        <button type="submit">start</button>
-        <button type="button" onclick={() => (launcherOpen = false)}>cancel</button>
-      </form>
-    {:else}
-      <button
-        type="button"
-        class="launcher-btn"
-        onclick={() => (launcherOpen = true)}
-        title="call a vote"
-        aria-label="call a vote"
-      >
-        vote ▾
-      </button>
-    {/if}
   </div>
 {/if}
 
@@ -263,91 +213,5 @@
     background: rgba(255, 122, 122, 0.15);
     color: var(--danger);
     border-color: rgba(255, 122, 122, 0.6);
-  }
-
-  .vote-launcher {
-    position: absolute;
-    top: 12px;
-    left: 12px;
-    z-index: 30;
-  }
-  .launcher-btn {
-    background: rgba(13, 20, 36, 0.85);
-    backdrop-filter: blur(6px);
-    border: 1px solid rgba(176, 138, 255, 0.4);
-    color: #b08aff;
-    font-size: 10px;
-    text-transform: uppercase;
-    letter-spacing: 0.14em;
-    font-weight: 700;
-    padding: 5px 12px;
-    border-radius: 999px;
-    cursor: pointer;
-    font-family: inherit;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
-    transition:
-      background 120ms var(--ease),
-      border-color 120ms var(--ease);
-  }
-  .launcher-btn:hover {
-    background: rgba(176, 138, 255, 0.2);
-    border-color: #b08aff;
-    color: #d8c8ff;
-  }
-  .launcher-form {
-    display: flex;
-    gap: 6px;
-    align-items: center;
-    background: linear-gradient(180deg, rgba(19, 26, 44, 0.94) 0%, rgba(8, 12, 24, 0.94) 100%);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(176, 138, 255, 0.5);
-    border-radius: var(--radius);
-    padding: 8px 10px;
-    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.5);
-  }
-  .launcher-form input {
-    background: var(--surface-sunken);
-    border: 1px solid var(--border);
-    color: var(--fg);
-    border-radius: var(--radius-sm);
-    padding: 4px 8px;
-    font: inherit;
-    font-size: 11px;
-    width: 140px;
-  }
-  .launcher-form input:focus {
-    outline: none;
-    border-color: #b08aff;
-    box-shadow: 0 0 0 2px rgba(176, 138, 255, 0.25);
-  }
-  .launcher-form button {
-    background: transparent;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    color: var(--fg-muted);
-    padding: 4px 10px;
-    border-radius: 999px;
-    cursor: pointer;
-    font: inherit;
-    font-size: 10px;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    font-weight: 700;
-    box-shadow: none;
-    transition:
-      background 120ms var(--ease),
-      color 120ms var(--ease),
-      border-color 120ms var(--ease);
-  }
-  .launcher-form button:hover {
-    color: var(--fg);
-    background: rgba(255, 255, 255, 0.06);
-  }
-  .launcher-form button[type="submit"] {
-    color: #b08aff;
-    border-color: rgba(176, 138, 255, 0.6);
-  }
-  .launcher-form button[type="submit"]:hover {
-    background: rgba(176, 138, 255, 0.2);
-    color: #d8c8ff;
   }
 </style>

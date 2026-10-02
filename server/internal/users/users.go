@@ -19,6 +19,7 @@ package users
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -85,6 +86,57 @@ type Store interface {
 	// /c2-end host check: given the Discord user who ran the command,
 	// which users(id) — if any — does games.created_by need to equal.
 	UserIDForDiscord(ctx context.Context, discordID string) (uuid.UUID, error)
+	// LastDeck reads the last deck the user seated (ADR 0110 section
+	// 5, users.last_deck). The zero LastDeck means none has been
+	// recorded. ErrNotFound if there is no such user.
+	LastDeck(ctx context.Context, id uuid.UUID) (LastDeck, error)
+	// SetLastDeck records the deck the user just seated. It refuses a
+	// LastDeck that fails Validate (ErrInvalidLastDeck), and returns
+	// ErrNotFound for an unknown user.
+	SetLastDeck(ctx context.Context, id uuid.UUID, d LastDeck) error
+}
+
+// LastDeck kinds. A pre-built deck is not a decks row, so users.last_deck
+// is JSON naming either, not a foreign key.
+const (
+	LastDeckLibrary  = "library"
+	LastDeckPrebuilt = "prebuilt"
+)
+
+// MaxLastDeckIDLen bounds LastDeck.ID. A uuid is 36 bytes and a
+// pre-built deck's slug is shorter.
+const MaxLastDeckIDLen = 64
+
+// ErrInvalidLastDeck is returned by SetLastDeck for a kind or id it
+// will not store.
+var ErrInvalidLastDeck = errors.New("users: invalid last deck")
+
+// LastDeck is users.last_deck: {"kind": "library" | "prebuilt", "id": "..."}.
+// The zero value means "none".
+type LastDeck struct {
+	Kind string `json:"kind"`
+	ID   string `json:"id"`
+}
+
+// IsZero reports whether no deck is recorded.
+func (d LastDeck) IsZero() bool { return d == LastDeck{} }
+
+// Validate checks a LastDeck is storable: a known kind, and an id that
+// is non-empty and at most MaxLastDeckIDLen bytes. A library id must be
+// a uuid.
+func (d LastDeck) Validate() error {
+	if d.Kind != LastDeckLibrary && d.Kind != LastDeckPrebuilt {
+		return fmt.Errorf("%w: kind %q", ErrInvalidLastDeck, d.Kind)
+	}
+	if d.ID == "" || len(d.ID) > MaxLastDeckIDLen {
+		return fmt.Errorf("%w: id must be 1 to %d bytes", ErrInvalidLastDeck, MaxLastDeckIDLen)
+	}
+	if d.Kind == LastDeckLibrary {
+		if _, err := uuid.Parse(d.ID); err != nil {
+			return fmt.Errorf("%w: a library id is a uuid", ErrInvalidLastDeck)
+		}
+	}
+	return nil
 }
 
 // NoStore is the Store for a deployment with no database. Every
@@ -113,6 +165,16 @@ func (NoStore) DiscordSubject(context.Context, uuid.UUID) (string, error) {
 // as "no", not as an error — see gameCreator's doc comment.
 func (NoStore) UserIDForDiscord(context.Context, string) (uuid.UUID, error) {
 	return uuid.Nil, ErrNotFound
+}
+
+// LastDeck reports ErrNotFound: there are no users without a store.
+func (NoStore) LastDeck(context.Context, uuid.UUID) (LastDeck, error) {
+	return LastDeck{}, ErrNotFound
+}
+
+// SetLastDeck always reports ErrNotFound, like Get.
+func (NoStore) SetLastDeck(context.Context, uuid.UUID, LastDeck) error {
+	return ErrNotFound
 }
 
 // AvatarPath is the same-origin path the client loads a Discord

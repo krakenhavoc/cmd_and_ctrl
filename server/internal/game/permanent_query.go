@@ -134,6 +134,54 @@ func (g *Game) controlsMatchingLocked(player uuid.UUID, qs []PermanentQuery) boo
 	return false
 }
 
+// countMatchingLocked counts the permanents `player` controls on the
+// battlefield that match any of `qs`, each once: "you control more
+// creatures than defending player".
+//
+// Caller must hold g.mu with fresh layers.
+func (g *Game) countMatchingLocked(player uuid.UUID, qs []PermanentQuery) int {
+	if player == uuid.Nil {
+		return 0
+	}
+	n := 0
+	for i := range g.Battlefield.Cards {
+		c := &g.Battlefield.Cards[i]
+		if c.Controller != player {
+			continue
+		}
+		for _, q := range qs {
+			if q.matchesLocked(g, c) {
+				n++
+				break
+			}
+		}
+	}
+	return n
+}
+
+// CountMatchingForEffect is countMatchingLocked for card code: the
+// permanents `player` controls that match any of `qs`. Read-only.
+//
+// Caller must hold g.mu with fresh layers (a block rule's Pair does).
+func (g *Game) CountMatchingForEffect(player uuid.UUID, qs []PermanentQuery) int {
+	return g.countMatchingLocked(player, qs)
+}
+
+// permanentQueriesPlural is PermanentQueriesNoun in the plural, for
+// "more creatures than Bob": each query's head noun takes the "s".
+func permanentQueriesPlural(qs []PermanentQuery) string {
+	parts := make([]string, 0, len(qs))
+	for _, q := range qs {
+		n := q.Noun()
+		if head, tail, ok := strings.Cut(n, " with "); ok {
+			parts = append(parts, head+"s with "+tail)
+		} else {
+			parts = append(parts, n+"s")
+		}
+	}
+	return strings.Join(parts, " or ")
+}
+
 // Noun is the query as a player reads it, without an article: "Island",
 // "snow land", "blue permanent", "creature with flying", "enchanted
 // permanent". It is the chip's and the refusal's wording ("Bob controls no

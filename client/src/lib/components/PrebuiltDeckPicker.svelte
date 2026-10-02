@@ -1,7 +1,9 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { fetchPrebuiltDecks, installPrebuiltDeck, type UploadDeckResponse } from "../api";
-  import { LobbyApiError, type ApiViolation } from "../session";
+  import { LobbyApiError, session, type ApiViolation } from "../session";
+  import { preselectFor, rememberGuestLastDeck, type LastDeck } from "../lastDeck";
+  import { signedInUserID } from "../myGames";
   import {
     deckSubtitle,
     imperfectCardLine,
@@ -27,10 +29,12 @@
   interface Props {
     gameID: string;
     playerID: string;
+    /** The deck to preselect when it is a pre-built deck still offered. */
+    lastDeck?: LastDeck | null;
     onSuccess?: (res: UploadDeckResponse) => void;
   }
 
-  const { gameID, playerID, onSuccess }: Props = $props();
+  const { gameID, playerID, lastDeck = null, onSuccess }: Props = $props();
 
   let decks = $state<PrebuiltDeck[]>([]);
   // null until the probe settles. A server without the route (or a
@@ -45,6 +49,18 @@
   let installed = $state("");
 
   const current = $derived(decks.find((d) => d.id === selected));
+
+  // Preselect the last deck once both the list and the last deck are
+  // in, unless the player has already picked one themselves.
+  let touched = false;
+  $effect(() => {
+    const pick = preselectFor(
+      "prebuilt",
+      decks.map((d) => d.id),
+      lastDeck,
+    );
+    if (pick && !touched) selected = pick;
+  });
   const coverage = $derived(current ? summariseCoverage(current.coverage) : null);
   const imperfect = $derived(current?.coverage.imperfect ?? []);
 
@@ -81,6 +97,9 @@
     try {
       const res = await installPrebuiltDeck(gameID, playerID, selected);
       installed = res.deck_name || current?.name || "deck";
+      // A signed-in person's last deck is recorded by the server; a
+      // guest's lives in this browser (ADR 0110 §5 item 5).
+      if (signedInUserID($session) === null) rememberGuestLastDeck(res.deck_id || selected);
       onSuccess?.(res);
     } catch (err) {
       if (err instanceof LobbyApiError) {
@@ -107,7 +126,13 @@
         {@const cov = summariseCoverage(deck.coverage)}
         <li>
           <label class="deck" class:sel={selected === deck.id}>
-            <input type="radio" name="prebuilt-deck" value={deck.id} bind:group={selected} />
+            <input
+              type="radio"
+              name="prebuilt-deck"
+              value={deck.id}
+              bind:group={selected}
+              onchange={() => (touched = true)}
+            />
             <span class="body">
               <span class="top">
                 <span class="name">{deck.name}</span>

@@ -14,8 +14,8 @@
   //   - the model (lib/stackLane.ts), including the oracle text the
   //     effect summary may read, fetched through the /cards cache;
   //   - where the lane sits (see `measure` below);
-  //   - the header: count, whose priority it is, split second, the
-  //     #323 hold toggle and Pass — wired exactly as StackOverlay's;
+  //   - the header: count, whose priority it is, split second (hold
+  //     and Pass are the action dock's, ADR 0111 §7);
   //   - the controls handed to the design: counter, target a stack
   //     item, and the #322 hover preview (lib/stackHover.ts);
   //   - an aria-live region that reads out the top item's line.
@@ -37,7 +37,6 @@
   import { hoveredCard } from "../../cardTypes";
   import { settings } from "../../settings";
   import { targeting, isLegalCardTarget } from "../../targeting";
-  import { holdPriority, toggleHoldPriority } from "../../holdPriority";
   import { metaFor } from "../../cardMetaCache";
   import Icon from "../Icon.svelte";
   import StackLaneFan from "./StackLaneFan.svelte";
@@ -54,7 +53,6 @@
     considering?: boolean;
     onCounter: (item: StackItemView) => void;
     onTargetStackItem?: (item: StackItemView) => void;
-    onPass?: () => void;
   }
 
   const {
@@ -65,7 +63,6 @@
     considering = false,
     onCounter,
     onTargetStackItem,
-    onPass,
   }: Props = $props();
 
   // A design is a component taking StackLaneStyleProps; adding one is
@@ -145,7 +142,6 @@
 
   const controls: StackLaneControls = $derived({
     counter: (item: StackLaneItem) => onCounter(item.raw),
-    pass: model.priority.viewerHolds && onPass ? onPass : undefined,
     // Only a stack item can be a target; a pending trigger is not on
     // the stack yet.
     targetable: (item: StackLaneItem) =>
@@ -241,32 +237,9 @@
             {/if}
           </span>
         {/if}
-        <span class="spacer"></span>
-        <!-- #323: the same session hold as the phase widget and the
-             docked card. Engaged is --magenta, never gold: gold means
-             priority everywhere on the table. -->
-        <button
-          type="button"
-          class="hold-toggle"
-          class:on={$holdPriority}
-          aria-pressed={$holdPriority}
-          onclick={toggleHoldPriority}
-          title={$holdPriority
-            ? "hold ON — your own spells and triggers keep the cursor so you can respond to them; click to release"
-            : "hold OFF — your own spells and triggers resolve without asking. Click before you cast to keep priority and respond to them"}
-        >
-          {$holdPriority ? "hold ✓" : "hold"}
-        </button>
-        {#if controls.pass && stackCount > 0}
-          <button
-            type="button"
-            class="act primary pass-btn"
-            onclick={controls.pass}
-            title="pass priority — the top item resolves once everyone passes"
-          >
-            Pass <Icon name="chevronRight" size={12} />
-          </button>
-        {/if}
+        <!-- ADR 0111 §7: no hold or Pass on the lane. Both live in the
+             action dock (bottom right), and its `next` is the one pass
+             button. -->
       </header>
       {#if model.summary}
         <p class="summary">{model.summary}</p>
@@ -364,42 +337,6 @@
     letter-spacing: 0.1em;
     text-transform: uppercase;
     font-weight: 700;
-  }
-  .spacer {
-    flex: 1 1 auto;
-  }
-  .hold-toggle {
-    flex: 0 0 auto;
-    font-family: var(--font-mono);
-    font-size: 9px;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--fg-dim);
-    background: transparent;
-    border: 1px solid var(--border);
-    border-radius: 999px;
-    padding: 2px 8px;
-    cursor: pointer;
-  }
-  .hold-toggle:hover {
-    color: var(--fg);
-    border-color: var(--border-strong);
-  }
-  .hold-toggle.on {
-    color: var(--magenta);
-    border-color: color-mix(in srgb, var(--magenta) 55%, transparent);
-    background: color-mix(in srgb, var(--magenta) 16%, transparent);
-    font-weight: 700;
-  }
-  .act {
-    flex: 0 0 auto;
-    height: 30px;
-    padding: 0 12px;
-    font-size: 12px;
-    border-radius: 7px;
-    display: inline-flex;
-    align-items: center;
-    gap: 3px;
   }
   .summary {
     margin: 0;

@@ -209,6 +209,11 @@ func corpusBoards() []corpusBoard {
 		// event — waiting on the stack. Its latch is derived from this
 		// item, so the restored table must not trigger it again.
 		{"state_trigger_on_stack", corpusStateTriggerOnStack},
+		// v7, added by #1858 as a new file: a CR 603.8 state trigger
+		// about one of several objects (Bomb Squad) waiting on the
+		// stack. The creature it is about rides its trigger context,
+		// which is also what the per-object latch reads.
+		{"state_each_trigger_on_stack", corpusStateEachTriggerOnStack},
 		// v7, added by #1593: duration copy effects — the becomeCopy mod
 		// carrying its copied values, and the carried durationCopyBase
 		// under a Cytoshaped Clone. Written by #1712, alongside the
@@ -276,7 +281,63 @@ func corpusBoards() []corpusBoard {
 		// spent in this batch (SpentBatch); a no-choice "creature of the
 		// chosen type" shield; and a shield pinned to one permanent.
 		{"next_damage_shields", corpusNextDamageShields},
+		// v7, added by ADR 0108 PR 1 (#1886, #1887) as a new file: the
+		// turn-scoped death and regeneration marks as data — a pinned
+		// exileIfWouldDie (Lava Coil), the same kind over the live
+		// creatures and opponentsCreatures scopes (Flaying Tendrils,
+		// Malicious Eclipse), a pinned cantBeRegenerated (Incinerate),
+		// and Whippoorwill's "when the creature dies this turn" delayed
+		// trigger waiting on its object.
+		{"exile_if_dies", corpusExileIfDies},
+		// v7, added by ADR 0108 PR 3 (#1823) as a new file: a resolved
+		// Yawgmoth's Will — the exileInsteadOfYourGraveyard record (a
+		// game-wide replacement naming one player) and the stored
+		// ScopeStanding graveyard cast permission written beside it, with
+		// the Will itself already exiled by its own replacement.
+		{"yawgmoths_will", corpusYawgmothsWill},
 	}
+}
+
+// corpusExileIfDies is ADR 0108 §1 and §2's two kinds in each of their
+// shapes, made by the cards that make them.
+func corpusExileIfDies(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	ogre := pushBattlefieldCardWithTimestamp(g, corpusCreature(opp.ID, "Hill Giant", 3, 10))
+	troll := pushBattlefieldCardWithTimestamp(g, corpusCreature(opp.ID, "Troll Ascetic", 3, 10))
+	bear := pushBattlefieldCardWithTimestamp(g, corpusCreature(opp.ID, "Grizzly Bears", 2, 8))
+	castCatalogSpell(t, g, "Lava Coil", "Sorcery", p1LavaCoilOracle, pr6Card(ogre))
+	passPriorityAroundTable(t, g)
+	castCatalogSpell(t, g, "Incinerate", "Instant", p1IncinerateOracle, pr6Card(troll))
+	passPriorityAroundTable(t, g)
+	castCatalogSpell(t, g, "Flaying Tendrils", "Sorcery", p1FlayingOracle, nil)
+	passPriorityAroundTable(t, g)
+	castCatalogSpell(t, g, "Malicious Eclipse", "Sorcery", p1EclipseOracle, nil)
+	passPriorityAroundTable(t, g)
+	bird := pushCatalogPermanent(g, me.ID, "Whippoorwill", "Creature — Bird", p1WhippoorwillOracle, false)
+	if err := g.ActivateCatalogAbility(me.ID, bird, 0, game.ActivateAbilityParams{Targets: pr6Card(bear)}); err != nil {
+		t.Fatalf("setup: Whippoorwill: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if len(g.DelayedTriggers) != 1 {
+		t.Fatalf("setup: %d delayed triggers, want Whippoorwill's", len(g.DelayedTriggers))
+	}
+	return g
+}
+
+// corpusYawgmothsWill is a real Yawgmoth's Will after it resolved.
+func corpusYawgmothsWill(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	pushGraveyardCardTyped(me, "Dead Forest", "Basic Land — Forest")
+	will := castCatalogSpell(t, g, "Yawgmoth's Will", "Sorcery", yawgmothsWillOracle, nil)
+	passPriorityAroundTable(t, g)
+	if !g.Exile.Contains(will) || len(g.ScopedEffects) != 1 || len(me.CastPermissions) != 1 {
+		t.Fatalf("setup: Will exiled=%v, %d scoped records, %d permissions; want exiled, 1 and 1",
+			g.Exile.Contains(will), len(g.ScopedEffects), len(me.CastPermissions))
+	}
+	return g
 }
 
 // corpusGrantedReboundOnStack is Lightning Bolt cast from hand and
@@ -1612,6 +1673,27 @@ func corpusStateTriggerOnStack(t *testing.T) *game.Game {
 	corpusRequireTriggeredStamp(t, it, "own:")
 	if it.Trigger != nil {
 		t.Fatalf("setup: a state trigger carries a trigger context %+v; it fired off no event", it.Trigger)
+	}
+	return g
+}
+
+// corpusStateEachTriggerOnStack is a real Bomb Squad beside a bear with
+// four fuse counters, its "Whenever a creature has four or more fuse
+// counters on it" waiting on the stack: an own: triggered ref whose
+// trigger context names the bear and no event.
+func corpusStateEachTriggerOnStack(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat].ID
+	squad := corpusCreature(me, "Bomb Squad", 1, 1)
+	squad.TypeLine, squad.OracleID = "Creature — Dwarf", bsBombSquad
+	id := pushBattlefieldCardWithTimestamp(g, squad)
+	bear := corpusCreature(me, "Grizzly Bears", 2, 2)
+	bear.Counters = map[string]int{"fuse": 4}
+	bearID := pushBattlefieldCardWithTimestamp(g, bear)
+	it := corpusSettleTrigger(t, g, id)
+	corpusRequireTriggeredStamp(t, it, "own:")
+	if it.Trigger == nil || it.Trigger.Object == nil || it.Trigger.Object.ID != bearID || it.Trigger.Fired() {
+		t.Fatalf("setup: the trigger does not name the bear with no event: %+v", it.Trigger)
 	}
 	return g
 }

@@ -13,8 +13,9 @@
 // widget should say while a bluff is running. Game.svelte owns the
 // timer.
 
-import { type Readable } from "svelte/store";
+import { get, type Readable } from "svelte/store";
 import { guardedWritable } from "./guardedStore";
+import { settings, updateSettings } from "./settings";
 
 // Clamp for the delay bounds. The floor keeps a bluff longer than an
 // automatic pass (which is the whole point); the ceiling keeps a
@@ -40,7 +41,7 @@ export function bluffDelayMs(min: number, max: number, rand: () => number = Math
 
 // bluffArmed is the in-game switch. Session-scoped like hold and the
 // manual pins: it defaults at game mount from the settings (armed if
-// either bluff is on) and the phase widget's bluff button flips it
+// either bluff is on) and the action dock's bluff button flips it
 // for the rest of the game.
 const armed = guardedWritable(false, "bluffArmed");
 export const bluffArmed: Readable<boolean> = { subscribe: armed.subscribe };
@@ -58,12 +59,32 @@ export function toggleBluffArmed(): boolean {
   return next;
 }
 
+// pressBluff is the one press the bluff button and the `b` key share
+// (ADR 0111 §5). It flips the switch, and when it ARMS with neither
+// kind chosen it also turns on "represent a counterspell", the narrower
+// one, because a switch with no kind behind it does nothing. Returns the
+// new armed state. With smart autopass off it does nothing: bluffing is
+// moot there, since every opponent item stops you anyway.
+export function pressBluff(): boolean {
+  const gp = get(settings).gameplay;
+  if (!gp.smartAutoPass) return get(armed);
+  if (get(armed)) {
+    armed.set(false);
+    return false;
+  }
+  if (!gp.bluffCounterspell && !gp.bluffInstant) {
+    updateSettings("gameplay", "bluffCounterspell", true);
+  }
+  armed.set(true);
+  return true;
+}
+
 // initBluffArmed is the game-mount default.
 export function initBluffArmed(g: { bluffCounterspell: boolean; bluffInstant: boolean }): void {
   armed.set(g.bluffCounterspell || g.bluffInstant);
 }
 
-// BluffStatus is what a running bluff looks like to the phase widget:
+// BluffStatus is what a running bluff looks like to the action dock:
 // timed with the wall-clock time it will pass at, or manual.
 export type BluffStatus = { manual: false; passesAt: number } | { manual: true } | null;
 

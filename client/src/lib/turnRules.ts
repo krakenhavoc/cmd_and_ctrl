@@ -8,6 +8,19 @@
  * order they resolved. A source named twice (two Skullcracks) is named
  * once.
  */
+/**
+ * The game banner's line for the live "if a creature would die this turn,
+ * exile it instead" effects over a live set
+ * (GameView.exile_if_creatures_die, ADR 0108 §1): empty when there are
+ * none. A source named twice is named once.
+ */
+export function exileIfCreaturesDieLine(sources: readonly string[] | undefined): string {
+  if (!sources || sources.length === 0) return "";
+  const names = [...new Set(sources.filter((s) => s !== ""))];
+  const rule = "Creatures that would die this turn are exiled instead";
+  return names.length === 0 ? rule : `${rule} — ${names.join(", ")}`;
+}
+
 export function damageCantBePreventedLine(sources: readonly string[] | undefined): string {
   if (!sources || sources.length === 0) return "";
   const names = [...new Set(sources.filter((s) => s !== ""))];

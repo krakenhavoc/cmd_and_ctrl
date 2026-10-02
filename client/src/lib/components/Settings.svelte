@@ -646,6 +646,16 @@
               Show opponent hand count
               {#if isFresh("display.showOpponentHandCount")}<span class="saved">✓ saved</span>{/if}
             </label>
+
+            <label>
+              <input
+                type="checkbox"
+                checked={$settings.display.artOnlyCards}
+                onchange={(e) => change("display", "artOnlyCards", e.currentTarget.checked)}
+              />
+              Card art only (hover for the full card) — experimental
+              {#if isFresh("display.artOnlyCards")}<span class="saved">✓ saved</span>{/if}
+            </label>
           {:else if activeTab === "gameplay"}
             <h3>Gameplay</h3>
             <label>
@@ -692,8 +702,8 @@
               Priority passes for you everywhere except the steps you tick below and, with smart
               auto-pass on, the moments you can actually respond: an opponent's spell or ability on
               the stack, combat once attackers are declared, and an opponent's end step. Click
-              <strong>next</strong> in the phase widget to pass by hand, or click a step icon to stop
-              there once.
+              <strong>next</strong> in the action dock (bottom right) to pass by hand, or click a step
+              icon to stop there once.
             </p>
 
             <fieldset class="step-stops">
@@ -799,7 +809,8 @@
                 Smart auto-pass passes the moment you have no answer, so a pause tells the table you
                 do. A bluff pauses anyway when you have nothing, and the other players see the same
                 pause either way. Turn bluffing on or off mid-game with the
-                <strong>bluff</strong> button in the phase widget.
+                <strong>bluff</strong> button in the action dock (always shown, and the
+                <kbd>B</kbd> key does the same). Its <strong>▾</strong> sets the same options as below.
               </p>
               <label>
                 <input
@@ -881,8 +892,8 @@
               resolve. A stack with <em>anything</em> an opponent put on it still stops for you.
               When you do want to respond to your own spell or trigger (stacking two effects,
               holding up a counter, responding to your own ETB), click <strong>hold</strong> in the
-              phase widget or the stack card <em>before</em> you cast — the pass fires the instant the
-              spell is announced. Turn this off to stop on every stack, always.
+              action dock <em>before</em> you cast — the pass fires the instant the spell is announced.
+              Turn this off to stop on every stack, always.
             </p>
 
             <label class="danger">

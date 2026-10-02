@@ -84,6 +84,9 @@ export interface SnapshotTurn {
   // #328: seat indices that owe a declare-blockers decision. Present
   // only during declare_blockers.
   block_decision_seats?: number[];
+  // #1279: defending seats whose block declaration is finished (with
+  // or without blocks). Present only during declare_blockers.
+  blocks_declared_seats?: number[];
 }
 
 export interface SnapshotView {

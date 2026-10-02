@@ -557,6 +557,8 @@ func stampBattlefieldEntryLocked(g *Game, cardID uuid.UUID) {
 			// unconditionally is what makes all three fall out
 			// with no clear logic on this path.
 			g.Battlefield.Cards[i].SummonedThisTurn = true
+			// ADR 0108 §5: it came under its controller's control now.
+			g.Battlefield.Cards[i].ControlledSinceUpkeep = g.upkeepsBegunForLocked(g.Battlefield.Cards[i].Controller)
 			// New entry => stale effective; let the next recompute
 			// rebuild from the fresh printed baseline.
 			g.Battlefield.Cards[i].effective = nil

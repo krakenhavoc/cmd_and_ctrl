@@ -310,10 +310,15 @@
     position: absolute;
     /* Pin to the top-right corner of the board with a small inset so
        the panel always fits inside the viewport regardless of width. */
-    right: 10px;
+    /* ADR 0111 §4 (PR 6): left of an open dock sheet (Game.svelte sets
+       --zoom-right while one is open). */
+    right: var(--zoom-right, 10px);
     top: 10px;
     width: min(332px, calc(50% - 132px));
-    max-height: calc(100% - 20px);
+    /* ADR 0111 §4: a long card stops above the action dock, which
+       shares this right edge (Game.svelte sets --dock-zoom-clear; 0
+       without a dock and on a phone, where the dock is under the board). */
+    max-height: calc(100% - 20px - var(--dock-zoom-clear, 0px));
     background: color-mix(in srgb, var(--surface) 96%, transparent);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);

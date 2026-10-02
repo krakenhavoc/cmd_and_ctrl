@@ -248,12 +248,14 @@ func b29DamageEachPlayerHalfTheirLife(g *game.Game, item *game.StackItem) error 
 		}
 		hits = append(hits, hit{player: p.ID, amount: p.Life / 2})
 	}
-	for _, h := range hits {
-		if err := (DealDamage{Source: item.SourceCardID, Target: h.player, Amount: h.amount}).Apply(ctx); err != nil {
-			return err
+	return ctx.Game.DamageInstanceForEffect(func() error {
+		for _, h := range hits {
+			if err := (DealDamage{Source: item.SourceCardID, Target: h.player, Amount: h.amount}).Apply(ctx); err != nil {
+				return err
+			}
 		}
-	}
-	return nil
+		return nil
+	})
 }
 
 // b29ExileAttackersThenTheyFetchBasics is Settle the Wreckage: exile

@@ -33,7 +33,7 @@ func TestConfigEnabled(t *testing.T) {
 
 func TestAuthorizeURLShape(t *testing.T) {
 	c := Config{ClientID: "id1", ClientSecret: "sec", RedirectURI: "https://example/cb"}
-	u := c.AuthorizeURL("state-abc", "challenge-xyz")
+	u := c.AuthorizeURL("state-abc", "challenge-xyz", PromptNone)
 
 	parsed, err := url.Parse(u)
 	if err != nil {
@@ -60,6 +60,30 @@ func TestAuthorizeURLShape(t *testing.T) {
 	}
 	if q.Get("code_challenge_method") != "S256" {
 		t.Errorf("code_challenge_method: %q", q.Get("code_challenge_method"))
+	}
+	if q.Get("prompt") != "none" {
+		t.Errorf("prompt: %q, want none (ADR 0110 §2)", q.Get("prompt"))
+	}
+}
+
+// TestAuthorizeURLPrompt: consent is sent as consent, and anything that
+// is not PromptNone (the zero value included) is sent as consent too,
+// Discord's own default, rather than as an empty parameter.
+func TestAuthorizeURLPrompt(t *testing.T) {
+	c := Config{ClientID: "id1", ClientSecret: "sec", RedirectURI: "https://example/cb"}
+	for prompt, want := range map[Prompt]string{
+		PromptNone:    "none",
+		PromptConsent: "consent",
+		"":            "consent",
+		"login":       "consent",
+	} {
+		parsed, err := url.Parse(c.AuthorizeURL("s", "c", prompt))
+		if err != nil {
+			t.Fatalf("parse: %v", err)
+		}
+		if got := parsed.Query().Get("prompt"); got != want {
+			t.Errorf("AuthorizeURL(prompt %q): prompt=%q, want %q", prompt, got, want)
+		}
 	}
 }
 

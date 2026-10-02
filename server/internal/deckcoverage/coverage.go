@@ -94,6 +94,17 @@ type Report struct {
 	Violations []deck.Violation `json:"violations"`
 }
 
+// AsPrinted is how many distinct cards play exactly as printed
+// (automated plus no_effect), and Resolved is how many distinct cards
+// the report bucketed at all. ADR 0110 section 6's "N of M play as
+// printed".
+func (r *Report) AsPrinted() (n, m int) {
+	for _, b := range Buckets {
+		m += r.Counts[b]
+	}
+	return r.Counts[Automated] + r.Counts[NoEffect], m
+}
+
 // Needed reports whether the deck has anything to request: a manual or
 // an unreviewed card (ADR 0095 §3 step 2).
 func (r *Report) Needed() bool {
@@ -132,7 +143,26 @@ func Build(idx *cards.Index, d Deck) (*Report, error) {
 	if idx == nil {
 		return nil, ErrNoIndex
 	}
-	verdicts := catalogVerdicts(idx)
+	return BuildWith(idx, d, catalogVerdicts(idx))
+}
+
+// Verdicts is the catalogue's per-card completeness, built once. A
+// caller reporting on many decks in one request (the deck library's
+// list, ADR 0110 section 6) builds it once and hands it to BuildWith
+// for each, instead of paying a catalog.Build per deck. It is never
+// kept across requests: see catalog.Build on why it is uncached.
+func Verdicts(idx *cards.Index) (map[string]catalog.Entry, error) {
+	if idx == nil {
+		return nil, ErrNoIndex
+	}
+	return catalogVerdicts(idx), nil
+}
+
+// BuildWith is Build with the verdicts supplied by the caller.
+func BuildWith(idx *cards.Index, d Deck, verdicts map[string]catalog.Entry) (*Report, error) {
+	if idx == nil {
+		return nil, ErrNoIndex
+	}
 
 	r := &Report{
 		DeckName:   strings.TrimSpace(d.Name),

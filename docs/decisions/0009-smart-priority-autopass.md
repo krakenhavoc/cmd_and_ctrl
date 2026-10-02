@@ -67,7 +67,7 @@ toggle.
 **Two things deliberately kept above the pin:**
 
 - The guards that are not questions about what the viewer *may* do — an open
-  pending choice, an owed declare-blockers decision (#328), the CR 726 loop
+  pending choice, an owed declare-blockers decision (#328), the CR 732 loop
   breaker ([ADR 0055](0055-loop-breaker.md), #628), mulligans, game over,
   elimination. All of these hold anyway, so the pin changes nothing there.
 - The safety belt (decision 7). Entering the viewer's own `precombat_main`
@@ -214,6 +214,13 @@ a session switch (`bluffArmed`) which starts on at game load when either
 setting is on, so a player can stop bluffing for the rest of a game without
 opening Settings. The widget shows "bluffing — passes in Ns" or "bluffing —
 click next" to the viewer only.
+
+> **Amended by ADR 0111 §5 (S56 PR 1, #1958):** the bluff button is now always
+> shown, not only when a bluff setting is on. It is a split button: the main
+> part arms and disarms in one click (and so does the `b` key); with neither
+> kind chosen that click also turns on "represent a counterspell". Its `▾` sets
+> which bluff and how, writing the same settings. It is disabled while smart
+> auto-pass is off.
 
 The timed bluff lives in `Game.svelte` and is careful about one thing: it must
 never pass a window that has changed under it.

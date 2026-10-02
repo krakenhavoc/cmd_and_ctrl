@@ -11,7 +11,7 @@
 //     pips (sword, shield) are drawing only: hidden from the
 //     accessibility tree, and not buttons;
 //   - a ready popover row's name gains "available";
-//   - the phase display's live region says "N actions available" once
+//   - the action dock header's live region says "N actions available" once
 //     when the decision arrives, not again on a later frame of the same
 //     decision, and again after the decision has ended and come back;
 //   - highlights off say nothing, as they draw nothing.
@@ -22,7 +22,14 @@ vi.mock("./sounds", () => ({ play: () => {} }));
 
 import PlayerPanel from "./components/board/PlayerPanel.svelte";
 import Card from "./components/board/Card.svelte";
-import { legalActionsOf, readyPips, visibleHighlights, type LegalActions } from "./legalActions";
+import ActionDock from "./components/board/ActionDock.svelte";
+import {
+  actionableCount,
+  legalActionsOf,
+  readyPips,
+  visibleHighlights,
+  type LegalActions,
+} from "./legalActions";
 import type {
   ActivatedAbilityView,
   CardView,
@@ -335,6 +342,31 @@ describe("combat: the sword and the shield", () => {
   });
 });
 
+// Since ADR 0111 PR 2 the live region is in the action dock's header,
+// and Game.svelte counts the viewer's ready cards the way the self panel
+// used to: actionableCount over the highlight lookup.
+function mountDock(view: GameView, l: { legal: LegalActions }) {
+  const count = (v: GameView, legal: LegalActions) => actionableCount(legal, v, ME);
+  const r = render(
+    ActionDock as never,
+    {
+      view,
+      viewerHasPriority: true,
+      viewerIsActive: true,
+      autopassEnabled: false,
+      readyActions: count(view, l.legal),
+      onPassPriority: () => {},
+      onPassTurn: () => {},
+      onToggleAutopass: () => {},
+    } as never,
+  );
+  const announced = () =>
+    r.container.querySelector<HTMLElement>("[data-ready-announcer]")?.textContent ?? null;
+  const setFrame = (v: GameView, highlights = true) =>
+    r.setProps({ view: v, readyActions: count(v, lookups(v, highlights).legal) } as never);
+  return { ...r, announced, setFrame };
+}
+
 describe("the live region: 'N actions available', once per arrival", () => {
   // Lightning Bolt, Forest, Twin Engine and Vivi (a drop pip); not the
   // Craw Wurm, and not the Mountain's {T} mana.
@@ -356,18 +388,18 @@ describe("the live region: 'N actions available', once per arrival", () => {
     gameView(board(), { turn: { number: 3, active_seat: 0, priority_holder: 1 } as never });
 
   it("announces when the decision arrives", () => {
-    const p = mountPanel(arrive(), lookups(arrive()));
+    const p = mountDock(arrive(), lookups(arrive()));
     expect(p.announced()).toBe("4 actions available");
   });
 
   it("says nothing new on a later frame of the same decision", () => {
-    const p = mountPanel(arrive(), lookups(arrive()));
+    const p = mountDock(arrive(), lookups(arrive()));
     p.setFrame(later());
     expect(p.announced()).toBe("4 actions available");
   });
 
   it("empties when priority leaves, and announces again when it comes back", () => {
-    const p = mountPanel(gone(), lookups(gone()));
+    const p = mountDock(gone(), lookups(gone()));
     expect(p.announced()).toBe("");
     p.setFrame(arrive());
     expect(p.announced()).toBe("4 actions available");
@@ -378,12 +410,12 @@ describe("the live region: 'N actions available', once per arrival", () => {
   });
 
   it("highlights off, or autopass passing the frame: says nothing", () => {
-    const p = mountPanel(arrive(), lookups(arrive(), false));
+    const p = mountDock(arrive(), lookups(arrive(), false));
     expect(p.announced()).toBe("");
   });
 
   it("is a polite status region", () => {
-    const p = mountPanel(arrive(), lookups(arrive()));
+    const p = mountDock(arrive(), lookups(arrive()));
     const region = p.container.querySelector("[data-ready-announcer]")!;
     expect(region.getAttribute("role")).toBe("status");
     expect(region.getAttribute("aria-live")).toBe("polite");
