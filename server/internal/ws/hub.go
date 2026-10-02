@@ -115,10 +115,13 @@ type Binding struct {
 	ReadOnly bool
 	UserID   uuid.UUID
 	IssuedAt time.Time
-	// Admin marks a connection authenticated as the server admin
-	// (auth.RoleAdmin). An admin may bind to a player's seat, so
-	// PlayerID alone cannot tell an admin from that player; the table
-	// host gates (ADR 0075, Room.CanManageTable) need the difference.
+	// Admin marks a connection authenticated as an admin: the shared
+	// token, or a signed-in person on the admin allowlist (ADR 0110 §3,
+	// lobby.WSAuthorizer decides). An admin may bind to a player's
+	// seat — their own included — so PlayerID alone cannot tell an
+	// admin from that player; the table host gates (ADR 0075,
+	// Room.CanManageTable) and the card overrides
+	// (actions.Action.Admin) need the difference.
 	Admin bool
 }
 
@@ -963,6 +966,9 @@ func (c *Client) handleAction(frame protocol.Frame) {
 	// actually the seat allowed to act. uuid.Nil here means admin or
 	// spectator — gated branches let those through unchanged.
 	action.Caller = c.playerID
+	// An admin connection keeps the admin card overrides even while it
+	// plays as a seat (actions.overrideCaller, ADR 0110 §3).
+	action.Admin = c.admin
 
 	// ADR 0075 §2.3: the table's rules belong to the table's host (and
 	// the server admin), not to whoever thinks of it first. Both verbs

@@ -940,6 +940,70 @@ func TestCardActionRejectsWrongController(t *testing.T) {
 	}
 }
 
+// TestSeatedAdminKeepsTheCardOverrides is ADR 0110 §3 with the owner's
+// requirement of 2026-10-02: an admin connection bound to its own seat
+// (Caller is that seat, Admin is set) still drives any card from the
+// admin context menu — move, tap, counters, position — but plays every
+// other gate as the seat, so it cannot declare someone else's attacker.
+// Without Admin the same seat is refused, as before.
+func TestSeatedAdminKeepsTheCardOverrides(t *testing.T) {
+	overrides := []struct {
+		name   string
+		ty     Type
+		params func(cardID string) json.RawMessage
+	}{
+		{"tap", TypeTap, func(id string) json.RawMessage { return mustJSON(map[string]string{"instance_id": id}) }},
+		{"add_counter", TypeAddCounter, func(id string) json.RawMessage {
+			return mustJSON(map[string]any{"instance_id": id, "name": "+1/+1", "delta": 1})
+		}},
+		{"set_battlefield_position", TypeSetBattlefieldPosition, func(id string) json.RawMessage {
+			return mustJSON(map[string]any{"instance_id": id, "x": 0.5, "y": 0.5})
+		}},
+		{"move_card", TypeMoveCard, func(id string) json.RawMessage {
+			return mustJSON(map[string]any{
+				"src":         map[string]string{"kind": "battlefield"},
+				"dst":         map[string]string{"kind": "exile"},
+				"instance_id": id,
+			})
+		}},
+	}
+	for _, tc := range overrides {
+		t.Run(tc.name, func(t *testing.T) {
+			g := newGame(t)
+			p0, p1 := g.Seats[0], g.Seats[1]
+			cardID := pushCreature(t, g, p0)
+			a, err := Decode(string(tc.ty), "", tc.params(cardID))
+			if err != nil {
+				t.Fatalf("Decode: %v", err)
+			}
+			a.Caller = p1.ID
+			a.Admin = true
+			if err := Dispatch(g, a); err != nil {
+				t.Errorf("seated admin %s on another seat's card: %v", tc.name, err)
+			}
+		})
+	}
+
+	t.Run("declare_attacker stays the seat's", func(t *testing.T) {
+		g := newGame(t)
+		p0, p1 := g.Seats[0], g.Seats[1]
+		cardID := pushCreature(t, g, p0)
+		advanceTo(t, g, game.StepDeclareAttackers)
+		a, err := Decode(string(TypeDeclareAttacker), "", mustJSON(map[string]string{
+			"attacker": cardID,
+			"target":   p1.ID.String(),
+		}))
+		if err != nil {
+			t.Fatalf("Decode: %v", err)
+		}
+		a.Caller = p1.ID
+		a.Admin = true
+		if err := Dispatch(g, a); !errors.Is(err, game.ErrCardCallerMismatch) {
+			t.Errorf("seated admin declaring another seat's attacker: %v, want ErrCardCallerMismatch", err)
+		}
+	})
+}
+
 // TestAdminBypassesCardControllerGate confirms that uuid.Nil callers
 // (admin / spectator sessions) skip the controller gate so a moderator
 // can fix a wedged board state.

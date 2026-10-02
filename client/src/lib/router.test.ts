@@ -37,6 +37,10 @@ describe("parseHash", () => {
     expect(parseHash("#/my-games")).toEqual({ name: "myGames" });
   });
 
+  it("parses #/decks, the saved deck library (ADR 0110)", () => {
+    expect(parseHash("#/decks")).toEqual({ name: "myDecks" });
+  });
+
   it("carries the catalogue's ?q= search, decoded", () => {
     expect(parseHash("#/catalog?q=Sol%20Ring")).toEqual({ name: "catalog", query: "Sol Ring" });
     expect(parseHash("#/catalog?q=Borrowing%20100%2C000%20Arrows")).toEqual({

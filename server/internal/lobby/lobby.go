@@ -264,6 +264,10 @@ type Lobby struct {
 	// practiceLimits bounds the practice tables (practice.go). The
 	// zero value means the defaults; tests shrink them.
 	practiceLimits PracticeLimits
+	// createMu serialises CreateCapped (player_tables.go), so two
+	// creates by one person cannot both pass the open-table cap. It is
+	// taken before l.mu and never while holding it.
+	createMu sync.Mutex
 }
 
 // SetEvictor wires the hub in after construction, for the deletes the
@@ -949,6 +953,22 @@ func (l *Lobby) SetSeatDeckID(gameID, playerID uuid.UUID, deckID string) error {
 		}
 	}
 	return ErrPlayerNotInGame
+}
+
+// ForgetLibraryDeck clears deckID from every seat's in-memory record.
+// The database row is already NULL (decklibrary.Store.Delete does it in
+// its transaction); without this, the next persistSeatsLocked would
+// write the deleted id back into seats.deck_id.
+func (l *Lobby) ForgetLibraryDeck(deckID string) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	for _, entry := range l.games {
+		for i := range entry.meta.Players {
+			if entry.meta.Players[i].DeckID == deckID {
+				entry.meta.Players[i].DeckID = ""
+			}
+		}
+	}
 }
 
 // Start transitions the game from lobby to active. Fails if fewer

@@ -39,20 +39,19 @@ export interface InviteDMResponse {
  * canInviteTablemates reports whether this session should be offered
  * the picker for a given table. It mirrors the server's rule
  * (lobby.canInviteDM) closely enough to keep the UI honest without
- * duplicating it: the admin, or a signed-in person who is seated at
- * this table.
+ * duplicating it: a signed-in person who is seated at this table, or
+ * who created it.
  *
- * The one case it is deliberately more conservative about than the
- * server is "the creator of the game": `games.created_by` is not on
- * the wire, so the client cannot know it. A creator who is not seated
- * still gets a 403-free answer from the server if they call the route
- * by hand; they just are not shown the button. Being shown a button
- * that 403s is the worse failure.
+ * `isCreator` is the table's `is_creator`, which the server computes
+ * per viewer (redactMetaFor, #1098) without ever sending the creator's
+ * identity. A creator who has not sat down yet is exactly who the
+ * create flow offers the picker to (ADR 0110 §5 item 3).
  */
 export function canInviteTablemates(
   s: Session | null | undefined,
   seatedGameID: string | null | undefined,
   gameID: string,
+  isCreator: boolean = false,
 ): boolean {
   if (!s) return false;
   // An admin session is a server credential, not a person: it has no
@@ -63,6 +62,7 @@ export function canInviteTablemates(
   // picker still has nothing to show an admin.
   if (s.principal.role === "admin") return false;
   if (!isSignedIn(s.principal.user_id)) return false;
+  if (isCreator) return true;
   return !!seatedGameID && seatedGameID === gameID;
 }
 

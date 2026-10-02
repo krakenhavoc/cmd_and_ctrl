@@ -10,7 +10,8 @@
   } from "../lib/api";
   import { navigate } from "../lib/router";
   import { canSignOutEverywhere, expiryNotice, LobbyApiError, session } from "../lib/session";
-  import { signedInUserID } from "../lib/myGames";
+  import { canJoinByCode, signedInUserID } from "../lib/myGames";
+  import { loadGuestName, rememberGuestName } from "../lib/guestName";
   import Icon from "../lib/components/Icon.svelte";
 
   // Player-first landing: Discord sign-in and the invite box are
@@ -29,7 +30,10 @@
 
   let token = $state("");
   let invite = $state("");
-  let joinName = $state("");
+  // The name a guest last joined with (ADR 0110 §5 item 6). Only a
+  // guest is asked for one; a signed-in person sits as their Discord
+  // name.
+  let joinName = $state(loadGuestName());
   let error = $state("");
   let busy = $state(false);
   let joining = $state(false);
@@ -46,10 +50,15 @@
     });
   });
 
-  // The signed-in-but-seatless principal, or null. Drives the copy on
-  // the invite card — once we know who you are, the question stops
-  // being "have an invite?" and becomes "which table?".
-  const identity = $derived($session?.principal.role === "identified" ? $session.principal : null);
+  // The signed-in person's principal, or null. Drives the copy on the
+  // invite card — once we know who you are, the question stops being
+  // "have an invite?" and becomes "which table?". That is a Discord
+  // sign-in that has not claimed a seat yet, and also a signed-in
+  // player or spectator already at a table (ADR 0110 §1 item 3): the
+  // server seats the code's table as the same person.
+  const identity = $derived(canJoinByCode($session) ? ($session?.principal ?? null) : null);
+  // Already at a table: the page also offers the way back to it.
+  const seated = $derived(identity !== null && identity.role !== "identified");
 
   // A bare code claims the seat from this page, so it needs a name to
   // put on it — unless Discord already supplied one. A pasted LINK
@@ -121,6 +130,7 @@
     joining = true;
     try {
       await joinByCode(raw, joinName.trim());
+      if (!identity) rememberGuestName(joinName);
       // Lobby first, exactly like the invite-link flow: that is where
       // a player imports a deck and sees the other seats before the
       // table itself (s085 / #43). Going straight to the game route
@@ -167,10 +177,22 @@
         {#if identity}
           <p class="signed-in" role="status">
             Signed in as {identity.name ?? "your Discord account"}.
+            {#if seated}
+              <a class="ghost-link" href="#/lobby">Back to your table</a>
+            {/if}
             {#if signedInUserID($session)}
               <a class="ghost-link" href="#/my-games">See my games</a>
             {/if}
           </p>
+          {#if discordEnabled}
+            <!-- ADR 0110 §2 item 3: a repeat sign-in skips Discord's
+                 screen and uses whichever account the browser is signed
+                 in to. This asks for the screen, which has Discord's own
+                 account switcher. -->
+            <a class="ghost-link switch-account" href={discordLoginHref({ consent: true })}>
+              Sign in with a different Discord account
+            </a>
+          {/if}
           <div class="signout">
             <button type="button" class="ghost" onclick={signOut}>sign out</button>
             {#if canSignOutEverywhere($session)}
@@ -460,6 +482,11 @@
     margin: 0;
     font-size: 12.5px;
     color: var(--fg-muted);
+  }
+  .switch-account {
+    align-self: flex-start;
+    margin-left: -6px;
+    font-size: 12.5px;
   }
   .signout {
     display: flex;

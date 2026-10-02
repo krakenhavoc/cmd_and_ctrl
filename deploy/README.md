@@ -47,13 +47,16 @@ CD is gated `if: env.IS_DEV != 'true'`; do not work around that by hand.
    | `CMDCTRL_DISCORD_GUILD_IDS` | Actions **variable** of the same name, comma-separated guild IDs |
    | `CMDCTRL_ADMIN_TOKEN` | copied on the host from `/etc/cmd_and_ctrl/env` every deploy, so it cannot drift from the server's |
 
-   Two more keys are written the same way, but only when set —
+   Two more keys are written on every deploy —
    `CMDCTRL_DISCORD_ADMIN_USER_IDS` and `CMDCTRL_DISCORD_ADMIN_ROLE_IDS`
    (Actions **variables**, comma-separated snowflakes): who may run
    `/c2-end` (#614). Unlike the four keys above, an unset admin variable
    is not a misconfiguration — `/c2-end` refuses every caller with its
-   own ephemeral message rather than failing open, so this step neither
-   warns nor writes anything for the one left unset.
+   own ephemeral message rather than failing open, so this step does not
+   warn about it. It still writes it, as an empty value, so that clearing
+   the variable clears it here too (ADR 0110 §3 item 8). The user-ID list
+   is also the server's admin allowlist, which a separate step writes to
+   `/etc/cmd_and_ctrl/env` on both hosts.
 
    `CMDCTRL_SERVER_BASE_URL` and `CMDCTRL_CLIENT_BASE_URL` are left to
    their defaults, which are production's values. The step skips while

@@ -14,6 +14,7 @@
   import Game from "./routes/Game.svelte";
   import Catalog from "./routes/Catalog.svelte";
   import MyGames from "./routes/MyGames.svelte";
+  import MyDecks from "./routes/MyDecks.svelte";
   import Home from "./routes/Home.svelte";
   import Roadmap from "./routes/Roadmap.svelte";
   import DeckCheck from "./routes/DeckCheck.svelte";
@@ -21,9 +22,12 @@
   import Settings from "./lib/components/Settings.svelte";
   import ShortcutLayer from "./lib/components/ShortcutLayer.svelte";
   import UpdatePrompt from "./lib/components/UpdatePrompt.svelte";
+  import SettingsSyncToast from "./lib/components/SettingsSyncToast.svelte";
   import EnvBadge from "./lib/components/EnvBadge.svelte";
   import { route, navigate } from "./lib/router";
   import { session, sessionFromOAuth, setSession } from "./lib/session";
+  import { loadAdminStatus, needsAdminCheck } from "./lib/admin";
+  import { canJoinByCode } from "./lib/myGames";
   import { settings } from "./lib/settings";
   import { applyRootSettings } from "./lib/rootSettings";
   import { armMusicOnFirstGesture } from "./lib/music";
@@ -72,13 +76,24 @@
     // reload-after-login flow doesn't leave you staring at a login
     // form you don't need.
     //
-    // An identity session is the one exception: a Discord sign-in
-    // that hasn't claimed a seat belongs ON the login page, because
-    // that is where the invite-code box lives. Bouncing it to the
-    // lobby would strand the user one step short of a table.
-    if (s && r.name === "login" && s.principal.role !== "identified") {
+    // A signed-in person is the exception (canJoinByCode): a Discord
+    // sign-in that hasn't claimed a seat, or a signed-in player or
+    // spectator heading for their next table, belongs ON the login
+    // page, because that is where the invite-code box lives (ADR 0110
+    // §1 item 3). Bouncing them to the lobby would strand them one
+    // step short of a table.
+    if (s && r.name === "login" && !canJoinByCode(s)) {
       navigate("#/lobby");
     }
+  });
+
+  // Ask GET /me whether a newly installed signed-in session is an admin
+  // (ADR 0110 §3 item 4): the server's allowlist is not in the token, so
+  // this is the only way the client learns it. Once per session per page
+  // load; the answer lands on the session as `admin` (lib/admin.ts).
+  $effect(() => {
+    const s = $session;
+    if (needsAdminCheck(s)) void loadAdminStatus(s);
   });
 
   // oauth-complete handoff (S12.5). /auth/discord/callback on the
@@ -142,6 +157,8 @@
   <Catalog />
 {:else if $route.name === "myGames"}
   <MyGames />
+{:else if $route.name === "myDecks"}
+  <MyDecks />
 {:else if $route.name === "join"}
   <Join gameID={$route.gameID} inviteToken={$route.inviteToken} spectator={$route.spectator} />
 {:else if $route.name === "reclaim"}
@@ -179,3 +196,8 @@
      appear on any route, and deliberately non-modal so it never
      interrupts a game. -->
 <UpdatePrompt />
+
+<!-- Account settings (ADR 0110 §4): shown for the rest of the visit
+     after a sign-in applied the account's settings over different ones
+     in this browser, offering this browser's back. -->
+<SettingsSyncToast />

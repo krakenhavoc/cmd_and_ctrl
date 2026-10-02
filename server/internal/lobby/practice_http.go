@@ -126,22 +126,17 @@ func createPractice(c Config, w http.ResponseWriter, r *http.Request) error {
 
 	// The seat's session, minted like a join's: bound to this game and
 	// seat, and carrying the caller's user and Discord identity so the
-	// table shows their avatar and a revocation still reaches it.
-	seat := auth.Principal{
+	// table shows their avatar and a revocation still reaches it. A
+	// signed-in caller's seat expires with the session that opened it
+	// (ADR 0110 §1); anyone else's gets SessionTTL.
+	seat := withIdentity(auth.Principal{
 		Role:     auth.RolePlayer,
 		UserID:   p.UserID,
 		GameID:   meta.ID,
 		PlayerID: playerID,
 		Name:     name,
-	}
-	if identity.Populated() {
-		seat.Name = identity.DisplayName()
-		seat.DiscordID = identity.ID
-		seat.DiscordUsername = identity.Username
-		seat.DiscordGlobalName = identity.GlobalName
-		seat.DiscordAvatarHash = identity.AvatarHash
-	}
-	tok, issued, err := c.Auth.Issue(r.Context(), seat, c.SessionTTL)
+	}, identity)
+	tok, issued, err := issueFor(r.Context(), c, seat, &p)
 	if err != nil {
 		return err
 	}
@@ -226,7 +221,7 @@ func practiceOwner(c Config, p auth.Principal) string {
 		return "user:" + p.UserID.String()
 	case p.DiscordID != "":
 		return "discord:" + p.DiscordID
-	case p.Role == auth.RoleAdmin:
+	case isServerCredential(p):
 		return "admin"
 	case p.Role == auth.RolePlayer && p.PlayerID != uuid.Nil:
 		return "seat:" + p.PlayerID.String()

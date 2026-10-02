@@ -204,7 +204,8 @@ before any ssh.
 | this repo | `CMDCTRL_DISCORD_CLIENT_ID`, `CMDCTRL_DISCORD_CLIENT_SECRET`, `CMDCTRL_GITHUB_TOKEN` | secrets; shared by both hosts |
 | this repo | `CMDCTRL_DISCORD_BOT_TOKEN` | secret; **production only**, written to **both** `bot.env` (the gateway bot) and `/etc/cmd_and_ctrl/env` (the server's DM-invite route — see below). Unset skips the bot env sync with a notice; set turns a host that cannot run the bot into a CD warning (never a failure) |
 | this repo | `CMDCTRL_DISCORD_APP_ID`, `CMDCTRL_DISCORD_GUILD_IDS` | variables; **production only**, written to `bot.env`. The app ID equals the sign-in client ID; guild IDs are comma-separated |
-| this repo | `CMDCTRL_DISCORD_ADMIN_USER_IDS`, `CMDCTRL_DISCORD_ADMIN_ROLE_IDS` | variables; **production only**, written to `bot.env` only when set. Comma-separated snowflakes — who may run `/c2-end` (#614). Unset is supported: `/c2-end` refuses every caller rather than failing open |
+| this repo, or **environments `prod` and `dev`** | `CMDCTRL_DISCORD_ADMIN_USER_IDS` | variable; comma-separated Discord user snowflakes. The **server's admin allowlist** on **both** hosts ([ADR 0110](decisions/0110-remember-me.md) §3), written to `/etc/cmd_and_ctrl/env` on every deploy, **empty included**, by "Sync server env (admin allowlist)", which refuses a malformed value before writing it. On production it is also written to `bot.env`: who may run `/c2-end` (#614). An environment-level value overrides the repo-level one, so the two hosts can differ. Unset is supported: only the shared token is admin, and `/c2-end` refuses every caller rather than failing open |
+| this repo | `CMDCTRL_DISCORD_ADMIN_ROLE_IDS` | variable; **production only**, bot-only, written to `bot.env` on every deploy, empty included. Comma-separated role snowflakes — who may run `/c2-end` (#614) |
 | this repo, **environments `prod` and `dev`** | `CMDCTRL_R2_REPOSITORY` | environment variable, set in each; the restic repository URL for that host's bucket, `s3:https://<account_id>.r2.cloudflarestorage.com/<bucket>`. See [Backups](#backups) |
 | this repo, **environments `prod` and `dev`** | `CMDCTRL_R2_ACCESS_KEY_ID`, `CMDCTRL_R2_SECRET_ACCESS_KEY` | environment secrets, set in each; an R2 API token scoped to that host's bucket. Written to `backup.env` |
 | this repo, **environments `prod` and `dev`** | `CMDCTRL_RESTIC_PASSWORD` | environment secret, set in each; that host's restic repository key. **Never change it once the repository exists**, and keep a copy in the password manager: it is the only way to read a backup if GitHub's copy is lost, since secrets are write-only |
@@ -529,6 +530,28 @@ It costs only the deck-request dedup rows and the per-person request
 history; rolling forward recreates the empty tables. A migration that
 changes an existing table cannot be undone this way — restore
 `db/cmdctrl.backup.sqlite` (or the nightly off-site copy) instead.
+
+Migration 0008 (ADR 0110, "remember me") adds two tables
+(`user_settings`, `table_setups`) and two nullable columns
+(`users.last_deck`, `decks.source_url`), and rebuilds `seats` so that
+`deck_id` is `ON DELETE SET NULL`. An older binary refuses the v8 schema.
+The additions can be undone by hand (SQLite 3.35 or newer for
+`DROP COLUMN`); the `seats` rebuild is harmless to an older binary and
+is left alone, and rolling forward again rebuilds it a second time
+with the same result:
+
+```sh
+sudo systemctl stop cmd-and-ctrl
+sudo sqlite3 /var/lib/cmd_and_ctrl/data/db/cmdctrl.sqlite \
+  "DROP TABLE user_settings; DROP TABLE table_setups; ALTER TABLE users DROP COLUMN last_deck; ALTER TABLE decks DROP COLUMN source_url; DELETE FROM schema_migrations WHERE version = 8;"
+# install the older binary, then:
+sudo systemctl start cmd-and-ctrl
+```
+
+It costs every person's synced settings, remembered table setup, last
+deck and the links saved beside imported decks (the decks themselves
+stay). `TestMigration0008RollbackByHand` runs exactly this sequence and
+then rolls forward.
 
 **Session lifetimes.** A Discord sign-in from the login page mints an
 identity session that lasts `CMDCTRL_IDENTITY_TTL` (default `720h`, 30

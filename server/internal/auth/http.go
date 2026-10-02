@@ -34,6 +34,28 @@ func CredentialFromRequest(r *http.Request) string {
 	return r.URL.Query().Get("token")
 }
 
+// CredentialFromCookieOrHeader is CredentialFromRequest without the
+// ?token= fallback: the session cookie, then `Authorization: Bearer`.
+//
+// A route that SETS the session cookie from the credential it was
+// handed (POST /me/session, ADR 0110 §1 item 5) must use this one. A
+// cross-site form can put anything in a URL's query string but cannot
+// set a header, and SameSite=Lax keeps the cookie off a cross-site POST,
+// so with the query fallback a hostile page could post its own token
+// and plant it in this site's cookie jar: the visitor would then be
+// signed in as the attacker without knowing it.
+func CredentialFromCookieOrHeader(r *http.Request) string {
+	if c, err := r.Cookie(SessionCookie); err == nil && c.Value != "" {
+		return c.Value
+	}
+	if h := r.Header.Get("Authorization"); h != "" {
+		if v, ok := strings.CutPrefix(h, "Bearer "); ok {
+			return v
+		}
+	}
+	return ""
+}
+
 // ctxKey is unexported so outside packages can't populate the
 // principal themselves — the only way to inject a Principal into
 // request context is to pass through Middleware.
@@ -61,13 +83,20 @@ func WithPrincipal(ctx context.Context, p Principal) context.Context {
 // RequireRoles optionally enforces that the authenticated principal's
 // role is in the allowed list. Empty list = any authenticated role.
 func Middleware(a Authenticator, requireRoles ...Role) func(http.Handler) http.Handler {
+	return MiddlewareWith(a, CredentialFromRequest, requireRoles...)
+}
+
+// MiddlewareWith is Middleware reading the credential with credential
+// instead of CredentialFromRequest. Everything else, the status codes
+// and messages included, is the same.
+func MiddlewareWith(a Authenticator, credential func(*http.Request) string, requireRoles ...Role) func(http.Handler) http.Handler {
 	allowed := make(map[Role]struct{}, len(requireRoles))
 	for _, r := range requireRoles {
 		allowed[r] = struct{}{}
 	}
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			cred := CredentialFromRequest(r)
+			cred := credential(r)
 			if cred == "" {
 				writeError(w, http.StatusUnauthorized, "authentication required")
 				return

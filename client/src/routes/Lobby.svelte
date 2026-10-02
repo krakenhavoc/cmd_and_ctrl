@@ -6,6 +6,9 @@
     createGame,
     deleteGame,
     fetchBotOptions,
+    fetchMySetup,
+    getGame,
+    joinGame,
     fetchTableSettings,
     listGames,
     logout as apiLogout,
@@ -24,11 +27,18 @@
   } from "../lib/api";
   import { inviteURL, reclaimURL, spectatorInviteURL, navigate } from "../lib/router";
   import { canSignOutEverywhere, session, LobbyApiError } from "../lib/session";
-  import { signedInUserID } from "../lib/myGames";
+  import { isAdmin as isAdminSession } from "../lib/admin";
+  import { canJoinByCode, signedInUserID } from "../lib/myGames";
   import { openSettings } from "../lib/settings";
   import { seatColor } from "../lib/colors";
   import { avatarURL } from "../lib/api";
   import { canInviteTablemates } from "../lib/tablemates";
+  import {
+    canCreateTables,
+    setupResultMessage,
+    setupSummary,
+    type TableSetup,
+  } from "../lib/tableSetup";
   import type { TableSettingsView } from "../lib/protocol";
   import type { TableSettingsPatch } from "../lib/tableSettings";
   import DeckUploadForm from "../lib/components/DeckUploadForm.svelte";
@@ -37,15 +47,32 @@
   import Icon from "../lib/components/Icon.svelte";
   import SiteHeader from "../lib/components/SiteHeader.svelte";
 
-  // Lobby is the admin + player landing page. Admins see a create-
-  // game form and the invite token for each game they've created;
-  // players see the game they're seated in with a deck-upload panel
-  // for their own seat and a button to jump into the game view once
-  // all seats are ready.
+  // Lobby is the admin + player landing page. Anyone signed in (and
+  // the admin) sees a create-game form and the invite links for each
+  // table they created (ADR 0110 §5 item 4); players see the game
+  // they're seated in with a deck-upload panel for their own seat and
+  // a button to jump into the game view once all seats are ready.
   let games = $state<GameMeta[]>([]);
   let error = $state("");
   let newName = $state("");
   let busy = $state(false);
+
+  // --- creating a table, and the last setup (ADR 0110 §5) ---------
+  //
+  // Any signed-in person may create a table (owner answer 2). Their
+  // last setup (the bots, settings and people of the last table they
+  // created that started) is offered as "use my last setup", which the
+  // server applies to the new table. Right after creating, the new
+  // table opens its tablemate picker, people from the last setup
+  // first.
+  const canCreate = $derived(canCreateTables($session));
+  let lastSetup = $state<TableSetup | null>(null);
+  let useLastSetup = $state(true);
+  // The table this page just created: its tablemate picker starts open.
+  let justCreated = $state<string | null>(null);
+  // What applying the setup did, shown on the new table's card.
+  let createdNote = $state<{ gameID: string; message: string } | null>(null);
+  let seatBusy = $state<string | null>(null);
 
   // Track the freshly-created game's invite tokens client-side — the
   // List endpoint strips both invites, so we remember them per
@@ -88,7 +115,7 @@
   // us from rendering a button that always 403s.
   function canManageBots(g: GameMeta): boolean {
     if (g.state !== "lobby" || !botsOfferable) return false;
-    if ($session?.principal.role === "admin") return true;
+    if (isAdmin) return true;
     return mySeat(g) !== null;
   }
 
@@ -207,16 +234,41 @@
   // reaps the replay JSONL and the restore point along with the
   // table and cannot be undone, so it lives behind the archived view
   // and its own confirmation.
-  const isAdmin = $derived($session?.principal.role === "admin");
+  // The shared token, or a signed-in person on the server's admin
+  // allowlist (ADR 0110 §3, lib/admin.ts). The server decides every
+  // admin route; this only decides what the lobby offers.
+  const isAdmin = $derived(isAdminSession($session));
   let showArchived = $state(false);
   let archived = $state<GameMeta[]>([]);
   let manageBusy = $state(false);
   // The pending confirmation, if any: which table and which action.
   let confirming = $state<{ id: string; kind: "archive" | "delete" } | null>(null);
 
+  // Tables whose invites this page has already asked the server for,
+  // so a creator who reloads gets their links back (GET /games/{id}
+  // serves them to the creator, in the process that minted them) and a
+  // table whose plaintext is gone is not asked about on every poll.
+  const askedInvites = new Set<string>();
+
+  async function loadCreatorInvites(list: GameMeta[]): Promise<void> {
+    for (const g of list) {
+      if (!g.is_creator || recentInvites.has(g.id) || askedInvites.has(g.id)) continue;
+      askedInvites.add(g.id);
+      try {
+        const full = await getGame(g.id);
+        if (full.invite_token) recentInvites.set(g.id, full.invite_token);
+        if (full.spectator_invite) recentSpectatorInvites.set(g.id, full.spectator_invite);
+      } catch {
+        // No links on this card; "new invite link" still works.
+      }
+    }
+  }
+
   async function refresh(): Promise<void> {
     try {
-      games = await listGames();
+      const list = await listGames();
+      await loadCreatorInvites(list);
+      games = list;
       if (isAdmin && showArchived) archived = await listGames({ archived: true });
     } catch (err) {
       error = err instanceof LobbyApiError ? err.message : "list failed";
@@ -300,9 +352,13 @@
     busy = true;
     error = "";
     try {
-      const meta = await createGame(newName.trim());
+      const withSetup = useLastSetup && lastSetup !== null;
+      const meta = await createGame(newName.trim(), withSetup ? { setup: "last" } : {});
       if (meta.invite_token) recentInvites.set(meta.id, meta.invite_token);
       if (meta.spectator_invite) recentSpectatorInvites.set(meta.id, meta.spectator_invite);
+      justCreated = meta.id;
+      const note = setupResultMessage(meta.setup);
+      createdNote = note ? { gameID: meta.id, message: note } : null;
       newName = "";
       await refresh();
     } catch (err) {
@@ -417,6 +473,25 @@
     }
   }
 
+  // takeSeat sits the creator down at their own table, as themselves:
+  // the server takes the seat's name from their Discord sign-in. The
+  // new seat session replaces this page's session, so the page then
+  // shows the table as a seated player would.
+  async function takeSeat(g: GameMeta): Promise<void> {
+    const invite = recentInvites.get(g.id);
+    if (!invite) return;
+    seatBusy = g.id;
+    error = "";
+    try {
+      await joinGame(g.id, invite, "");
+      await refresh();
+    } catch (err) {
+      error = err instanceof LobbyApiError ? err.message : "could not take a seat";
+    } finally {
+      seatBusy = null;
+    }
+  }
+
   function openGame(id: string): void {
     navigate(`#/games/${id}`);
   }
@@ -449,6 +524,15 @@
     return g.players.find((p) => p.player_id === s.playerID) ?? null;
   }
 
+  // startsFromSeat: a seated player who may start this table from the
+  // lobby — its host, or its creator. Any seated player may (the server
+  // allows it); the button is offered to the person running the table
+  // so four seats do not race to press it.
+  function startsFromSeat(g: GameMeta): boolean {
+    const me = mySeat(g);
+    return me !== null && (me.is_host === true || g.is_creator === true);
+  }
+
   // canStart returns true when Start would succeed: at least 2 seats
   // and every seat has uploaded a real deck.
   function canStart(g: GameMeta): boolean {
@@ -465,7 +549,8 @@
     const pending = g.players.filter((p) => !p.deck_uploaded);
     if (pending.length === 1) return `Waiting on ${seatName(pending[0])}'s deck`;
     if (pending.length > 1) return `Waiting on ${pending.length} decks`;
-    return me ? "Waiting for the admin to start" : "";
+    if (me && !startsFromSeat(g)) return "Waiting for the host to start";
+    return "";
   }
 
   function seatName(p: SeatInfo): string {
@@ -501,10 +586,13 @@
   // Players see their own table only (the list endpoint returns
   // every game); admins and spectators see the whole room. Falls
   // back to the full list if the seated game isn't in it.
+  // A player also sees every table they created (ADR 0110 §5 item 4),
+  // so a seated player who opens another table does not lose it.
   const visibleGames = $derived.by(() => {
     const s = $session;
-    if (s?.principal.role !== "player" || !s.gameID) return games;
-    const mine = games.filter((g) => g.id === s.gameID);
+    // An admin sees every table, seated somewhere or not.
+    if (isAdmin || s?.principal.role !== "player" || !s.gameID) return games;
+    const mine = games.filter((g) => g.id === s.gameID || g.is_creator === true);
     return mine.length > 0 ? mine : games;
   });
 
@@ -525,6 +613,13 @@
   const POLL_MS = 5000;
   onMount(() => {
     void refresh();
+    // The last setup, for "use my last setup". Signed-in only; a
+    // failure just leaves the option off.
+    if (signedInUserID($session)) {
+      void fetchMySetup()
+        .then((r) => (lastSetup = r.setup ?? null))
+        .catch(() => undefined);
+    }
     // Best-effort: a server without the bot routes leaves botOptions
     // null and the Add-bot control simply never appears.
     void fetchBotOptions()
@@ -558,6 +653,12 @@
       <!-- ADR 0051 decision 4: every table this person has sat at. -->
       <button class="ghost" onclick={() => navigate("#/my-games")}>my games</button>
     {/if}
+    {#if canJoinByCode($session)}
+      <!-- ADR 0110 §1 item 3: a signed-in seat lasts as long as the
+           sign-in now, so the next table's code goes in the login
+           page's invite box, which seats the same person. -->
+      <button class="ghost" onclick={() => navigate("#/login")}>join with a code</button>
+    {/if}
     <button
       class="ibtn"
       title="settings (press , from anywhere)"
@@ -579,11 +680,22 @@
       <h2 class="title">Tables</h2>
       <p class="sub">{summary}</p>
     </div>
-    {#if $session?.principal.role === "admin"}
+    {#if canCreate}
       <form class="create" onsubmit={onCreate}>
-        <h2 class="panel-h">create game</h2>
-        <input type="text" placeholder="game name" bind:value={newName} />
-        <button type="submit" class="primary" disabled={busy || !newName.trim()}>create</button>
+        <div class="create-row">
+          <h2 class="panel-h">create game</h2>
+          <input type="text" placeholder="game name" aria-label="game name" bind:value={newName} />
+          <button type="submit" class="primary" disabled={busy || !newName.trim()}>create</button>
+        </div>
+        {#if lastSetup}
+          <label class="use-setup">
+            <input type="checkbox" bind:checked={useLastSetup} />
+            <span>
+              Use my last setup
+              <span class="setup-sum">{setupSummary(lastSetup, botDeckName)}</span>
+            </span>
+          </label>
+        {/if}
       </form>
     {/if}
   </div>
@@ -594,7 +706,7 @@
 
   {#if visibleGames.length === 0}
     <p class="muted empty">
-      {#if $session?.principal.role === "admin"}
+      {#if canCreate}
         Create a table, then send the invite link to your pod.
       {:else}
         You're not seated at a table yet — ask for an invite link.
@@ -692,7 +804,7 @@
                      pull the replay any time after the lobby phase, but
                      players get 403 until the game has ended (the JSONL
                      carries unfiltered hidden information mid-game). -->
-                {#if g.state === "ended" || ($session?.principal.role === "admin" && g.state !== "lobby")}
+                {#if g.state === "ended" || (isAdmin && g.state !== "lobby")}
                   {@const url = replayURL(g.id)}
                   {#if url}
                     <a class="btn-link" href={url} download={`${g.id}.jsonl`}>
@@ -710,14 +822,23 @@
                     archive
                   </button>
                 {/if}
-                {#if g.state === "lobby" && seat}
-                  <!-- Seated players wait for the admin; the button goes
+                {#if g.state === "lobby" && g.is_creator && !seat && recentInvites.has(g.id)}
+                  <!-- ADR 0110 §5 item 4: the creator sits down at their
+                       own table, as themselves. -->
+                  <button disabled={seatBusy !== null} onclick={() => takeSeat(g)}>
+                    {seatBusy === g.id ? "…" : "take a seat"}
+                  </button>
+                {/if}
+                {#if g.state === "lobby" && seat && !startsFromSeat(g)}
+                  <!-- Seated players wait for the host; the button goes
                        live once the poll sees the table start. -->
-                  <button class="primary" disabled title="waiting for the admin to start">
+                  <button class="primary" disabled title="waiting for the host to start">
                     enter table <Icon name="chevronRight" size={13} />
                   </button>
                 {:else if g.state === "lobby"}
-                  <button onclick={() => openGame(g.id)}>open table</button>
+                  {#if !seat}
+                    <button onclick={() => openGame(g.id)}>open table</button>
+                  {/if}
                   {#if g.players.length >= 2}
                     <button
                       class="primary"
@@ -1037,12 +1158,18 @@
             <div class="bot-error">{botError}</div>
           {/if}
 
-          {#if g.state === "lobby" && canInviteTablemates($session, $session?.gameID, g.id)}
-            <details class="invite-picker">
+          {#if createdNote?.gameID === g.id}
+            <p class="hint setup-note" role="status">{createdNote.message}</p>
+          {/if}
+
+          {#if g.state === "lobby" && canInviteTablemates($session, $session?.gameID, g.id, g.is_creator === true)}
+            <!-- Open on the table this page just created (ADR 0110 §5
+                 item 3): inviting people is the next thing to do. -->
+            <details class="invite-picker" open={justCreated === g.id}>
               <summary>
                 <span class="panel-h">invite a tablemate</span>
               </summary>
-              <TablematePicker gameID={g.id} />
+              <TablematePicker gameID={g.id} lastTable={lastSetup?.tablemates ?? []} />
             </details>
           {/if}
 
@@ -1273,11 +1400,38 @@
   }
   .create {
     display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-width: 100%;
+  }
+  .create-row {
+    display: flex;
     align-items: center;
     gap: 8px;
+    flex-wrap: wrap;
   }
-  .create input {
+  .use-setup {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    font-size: 12.5px;
+    color: var(--fg);
+    max-width: 420px;
+  }
+  .use-setup input {
+    margin: 2px 0 0;
+  }
+  .setup-sum {
+    display: block;
+    font-size: 11.5px;
+    color: var(--fg-muted);
+  }
+  .setup-note {
+    margin: 8px 0 0;
+  }
+  .create input[type="text"] {
     width: 240px;
+    max-width: 100%;
     margin: 0;
     height: 36px;
     padding: 0 12px;

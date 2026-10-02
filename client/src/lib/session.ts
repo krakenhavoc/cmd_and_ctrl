@@ -1,5 +1,7 @@
 import { get, type Writable } from "svelte/store";
 import { guardedWritable } from "./guardedStore";
+import { signedInUserID } from "./myGames";
+import { navigate, route } from "./router";
 
 // Session is the client-side view of a server-issued Principal.
 // Mirrors auth.Principal in server/internal/auth/auth.go — new
@@ -35,6 +37,12 @@ export interface Session {
   // round-trip.
   playerID?: string;
   gameID?: string;
+  // admin is GET /me's computed answer for a session with a user: true
+  // when the person's Discord ID is on the server's admin allowlist
+  // (ADR 0110 §3). It is not in the token and the server never trusts
+  // it. Absent until /me has answered; read it through lib/admin.ts's
+  // isAdmin, which also covers the shared token's `role: "admin"`.
+  admin?: boolean;
 }
 
 const STORAGE_KEY = "cmdctrl.session";
@@ -74,6 +82,7 @@ function scheduleExpiry(s: Session | null): void {
     clearTimeout(expiryTimer);
     expiryTimer = null;
   }
+  scheduleRenewal(s);
   if (s === null) return;
   const ms = Date.parse(s.expiresAt) - Date.now();
   if (ms <= 0) {
@@ -109,8 +118,280 @@ function onExpiryTimer(s: Session): void {
 
 function expireSession(): void {
   expiryTimer = null;
-  session.set(null);
-  expiryNotice.set("Your session expired — please sign in again.");
+  const dead = get(session);
+  if (dead === null) return;
+  sessionDied(dead, EXPIRED_NOTICE);
+}
+
+const EXPIRED_NOTICE = "Your session expired — please sign in again.";
+
+// --- the saved identity (ADR 0110 §1 item 6) -------------------------
+//
+// A browser holds one session at a time. When it installs a session
+// with no user (the admin token, a reclaim ticket for a seat that is not
+// yours) over a signed-in person's session, it keeps the person's
+// session aside under IDENTITY_KEY first. When the session with no user
+// ends (it expires, or the server answers 401 for it), the saved one is
+// put back through POST /me/session, sent with the saved token as its
+// bearer. The browser has already dropped the expired cookie, so the
+// bearer is the credential the server reads, and the server sets the
+// cookie back to it. The person is still signed in instead of being sent
+// to #/login. Leaving a practice table whose own saved session has gone
+// puts it back the same way (practiceTable.ts's endPractice).
+//
+// localStorage, like the session itself: readable by this origin only.
+// Signing out, or signing out everywhere, clears it (api.ts's logout and
+// logoutEverywhere call clearSavedIdentity). Installing any session with
+// a user clears it too, since that session is now the person's.
+
+export const IDENTITY_KEY = "cmdctrl.identity";
+
+function isExpired(s: Session, now: number = Date.now()): boolean {
+  return !(Date.parse(s.expiresAt) > now);
+}
+
+// savedIdentity returns the signed-in session kept aside, or null when
+// there is none, it is malformed, it has expired, or it is not a
+// person's.
+export function savedIdentity(now: number = Date.now()): Session | null {
+  let raw: string | null = null;
+  try {
+    raw = localStorage.getItem(IDENTITY_KEY);
+  } catch {
+    return null;
+  }
+  if (!raw) return null;
+  try {
+    const s = JSON.parse(raw) as Session;
+    if (typeof s?.token !== "string" || s.token === "" || !s.principal) return null;
+    if (isExpired(s, now) || signedInUserID(s) === null) {
+      clearSavedIdentity();
+      return null;
+    }
+    return s;
+  } catch {
+    return null;
+  }
+}
+
+function saveIdentity(s: Session): void {
+  try {
+    localStorage.setItem(IDENTITY_KEY, JSON.stringify(s));
+  } catch {
+    // Best-effort: without it this browser falls back to #/login when
+    // the session with no user ends, which is what happened before.
+  }
+}
+
+// clearSavedIdentity forgets the session kept aside. Sign-out calls it.
+export function clearSavedIdentity(): void {
+  try {
+    localStorage.removeItem(IDENTITY_KEY);
+  } catch {
+    // Nothing to do.
+  }
+}
+
+// RenewResponse is POST /me/session's body (lobby.sessionResponse).
+interface RenewResponse {
+  token: string;
+  expires_at: string;
+  principal: Session["principal"];
+}
+
+// renewedFrom is `from` with the token and principal the server
+// returned. The principal is the same one with new timestamps, so the
+// seat fields the client stored for `from` still hold.
+function renewedFrom(from: Session, body: RenewResponse): Session {
+  return { ...from, token: body.token, expiresAt: body.expires_at, principal: body.principal };
+}
+
+// postMeSession is POST /me/session with `token` as the bearer: the
+// server sets the cookie to the session it returns, renewed first when
+// more than half spent. Plain fetch, not authFetch: a refusal here is an
+// answer about one token, and must never sign the tab out by itself.
+async function postMeSession(token: string): Promise<RenewResponse> {
+  const res = await fetch("/me/session", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+    credentials: "same-origin",
+  });
+  if (!res.ok) throw new LobbyApiError(res.status, `${res.status} ${res.statusText}`);
+  const body = (await res.json()) as RenewResponse;
+  if (typeof body?.token !== "string" || body.token === "" || !body.principal) {
+    throw new LobbyApiError(500, "malformed session response");
+  }
+  return body;
+}
+
+let reinstalling: Promise<void> | null = null;
+
+// sessionDied handles the end of the session the tab is holding: its
+// expiry timer fired, or the server answered 401 for it. With a saved
+// identity behind a session that had no user, it reinstalls that
+// identity. Otherwise, or when the reinstall fails, it clears the
+// session and shows `notice` on the login page. While the reinstall is
+// in flight the dead session stays in the store, so the router does not
+// flash the login page in between.
+function sessionDied(dead: Session, notice: string): void {
+  const saved = signedInUserID(dead) === null ? savedIdentity() : null;
+  if (saved === null) {
+    session.set(null);
+    if (notice) expiryNotice.set(notice);
+    return;
+  }
+  if (reinstalling !== null) return;
+  reinstalling = (async () => {
+    try {
+      const body = await postMeSession(saved.token);
+      if (get(session) !== dead) return;
+      if (!samePrincipal(body.principal, saved.principal)) {
+        // The cookie still held a live session, and the server read it
+        // before the bearer. It is not the one saved; do not adopt it.
+        throw new Error("the server answered for a different session");
+      }
+      const next = renewedFrom(saved, body);
+      setSession(next);
+      // The dead session's table is not the person's: a seat ticket's
+      // game, or a game the admin token was watching.
+      const r = get(route);
+      if (r.name === "game" && r.gameID !== next.gameID) navigate("#/lobby");
+    } catch (err) {
+      if (err instanceof LobbyApiError && (err.status === 401 || err.status === 403)) {
+        clearSavedIdentity();
+      }
+      if (get(session) === dead) {
+        session.set(null);
+        if (notice) expiryNotice.set(notice);
+      }
+    } finally {
+      reinstalling = null;
+    }
+  })();
+}
+
+// --- renewal on use (ADR 0110 §1 item 5, owner answer 1) -------------
+//
+// The server re-issues a signed-in session more than half spent for a
+// fresh CMDCTRL_IDENTITY_TTL when the client calls POST /me/session. The
+// client calls it when the session it holds passes half its life: at
+// page load if it already has (the store's first subscriber arms the
+// timer with no delay), and otherwise on a timer armed for the half-life
+// beside the expiry timer. The server makes the same test on the same
+// two fields (server/internal/lobby/session_renew.go's halfSpent), so a
+// client clock a little ahead of the server's only costs a no-op answer,
+// and the client asks again an hour later.
+//
+// A failed renewal is quiet: no notice, no sign-out. The session still
+// lasts until it expires, and the client tries again in an hour.
+
+// RENEW_RETRY_MS is how long the client waits to ask again after a
+// renewal that renewed nothing or failed.
+export const RENEW_RETRY_MS = 60 * 60 * 1000;
+
+let renewTimer: ReturnType<typeof setTimeout> | null = null;
+let renewing: Promise<void> | null = null;
+
+// pastHalfLife reports whether more than half of s's lifetime, from
+// its issued_at to its expiry, has passed at now.
+export function pastHalfLife(s: Session, now: number = Date.now()): boolean {
+  const issued = Date.parse(s.principal.issued_at);
+  const expires = Date.parse(s.expiresAt);
+  if (!Number.isFinite(issued) || !Number.isFinite(expires)) return false;
+  return now - issued > (expires - issued) / 2;
+}
+
+function scheduleRenewal(s: Session | null, delay?: number): void {
+  if (renewTimer !== null) {
+    clearTimeout(renewTimer);
+    renewTimer = null;
+  }
+  if (s === null || signedInUserID(s) === null) return;
+  let ms = delay;
+  if (ms === undefined) {
+    const issued = Date.parse(s.principal.issued_at);
+    const expires = Date.parse(s.expiresAt);
+    if (!Number.isFinite(issued) || !Number.isFinite(expires)) return;
+    ms = Math.max(0, issued + (expires - issued) / 2 - Date.now() + 1);
+  }
+  renewTimer = setTimeout(
+    () => {
+      renewTimer = null;
+      if (get(session) !== s) return;
+      if (!pastHalfLife(s)) {
+        scheduleRenewal(s);
+        return;
+      }
+      void renewSession();
+    },
+    Math.min(ms, MAX_TIMER_MS),
+  );
+}
+
+// sessionSettled resolves once no renewal or reinstall is in flight.
+//
+// Both set the session cookie when their answer arrives. A request that
+// mints another session (a join, a reclaim) and is sent while one of
+// them is in flight could have its own cookie overwritten by the later
+// answer, leaving the cookie on the old session while the tab holds the
+// new one. So those requests wait: authFetch does, and so does every
+// plain-fetch mint in api.ts. A renewal is one short request, so the
+// wait is too.
+export async function sessionSettled(): Promise<void> {
+  while (sessionBusy()) {
+    await (renewing ?? reinstalling)?.catch(() => {});
+  }
+}
+
+function sessionBusy(): boolean {
+  return renewing !== null || reinstalling !== null;
+}
+
+const NIL_UUID = "00000000-0000-0000-0000-000000000000";
+
+function idOrNone(id: string | undefined): string {
+  return !id || id === NIL_UUID ? "" : id;
+}
+
+// samePrincipal reports whether a and b name the same session holder:
+// the role, the user, and the game and seat.
+function samePrincipal(a: Session["principal"], b: Session["principal"]): boolean {
+  return (
+    a.role === b.role &&
+    idOrNone(a.user_id) === idOrNone(b.user_id) &&
+    idOrNone(a.game_id) === idOrNone(b.game_id) &&
+    idOrNone(a.player_id) === idOrNone(b.player_id)
+  );
+}
+
+// renewSession asks the server to renew the session the tab is holding
+// (POST /me/session) and installs the answer when it is a new token for
+// the same principal. Never throws and never signs the tab out.
+//
+// The server reads the cookie before the bearer, so a tab whose cookie
+// another tab has since moved to a different session (a seat at another
+// table) gets that session back. It is not this tab's, so it is not
+// installed: the answer is treated as a no-op.
+export function renewSession(): Promise<void> {
+  if (renewing !== null) return renewing;
+  const s = get(session);
+  if (s === null || signedInUserID(s) === null || isExpired(s)) return Promise.resolve();
+  renewing = (async () => {
+    try {
+      const body = await postMeSession(s.token);
+      if (get(session) !== s) return;
+      if (body.token === s.token || !samePrincipal(body.principal, s.principal)) {
+        scheduleRenewal(s, RENEW_RETRY_MS);
+        return;
+      }
+      setSession(renewedFrom(s, body));
+    } catch {
+      if (get(session) === s) scheduleRenewal(s, RENEW_RETRY_MS);
+    } finally {
+      renewing = null;
+    }
+  })();
+  return renewing;
 }
 
 // canSignOutEverywhere reports whether "sign out everywhere" means
@@ -179,8 +460,22 @@ session.subscribe((s) => {
 
 // setSession replaces the current session with s and persists it.
 // Clears any pending expiry notice on a fresh login.
+//
+// It also keeps the saved identity (ADR 0110 §1 item 6): a session with
+// no user installed over a signed-in person's live session moves that
+// session aside first, and a session with a user replaces whatever was
+// aside. Clearing the session (s === null) leaves the saved copy alone;
+// signing out clears it explicitly.
 export function setSession(s: Session | null): void {
-  if (s !== null) expiryNotice.set("");
+  if (s !== null) {
+    expiryNotice.set("");
+    const prev = get(session);
+    if (signedInUserID(s) !== null) {
+      clearSavedIdentity();
+    } else if (prev !== null && signedInUserID(prev) !== null && !isExpired(prev)) {
+      saveIdentity(prev);
+    }
+  }
   session.set(s);
 }
 
@@ -199,6 +494,8 @@ export function currentSession(): Session | null {
 // login page. On every other non-2xx it throws a LobbyApiError with
 // the server's error message.
 export async function authFetch(input: string, init: RequestInit = {}): Promise<Response> {
+  // Only when one is in flight: an idle tab's request goes out at once.
+  if (sessionBusy()) await sessionSettled();
   const s = currentSession();
   const headers = new Headers(init.headers);
   if (s?.token) headers.set("Authorization", `Bearer ${s.token}`);
@@ -211,28 +508,42 @@ export async function authFetch(input: string, init: RequestInit = {}): Promise<
   }
   const res = await fetch(input, { ...init, headers, credentials: "same-origin" });
   if (res.status === 401) {
-    setSession(null);
+    dropDeadSession(s);
     throw new LobbyApiError(401, "session expired");
   }
   if (!res.ok) {
     let message = `${res.status} ${res.statusText}`;
     let violations: ApiViolation[] | undefined;
     let warnings: ApiViolation[] | undefined;
+    let parsed: unknown;
     try {
       const body = (await res.clone().json()) as {
         error?: string;
         violations?: ApiViolation[];
         warnings?: ApiViolation[];
       };
+      parsed = body;
       if (body.error) message = body.error;
       if (Array.isArray(body.violations)) violations = body.violations;
       if (Array.isArray(body.warnings)) warnings = body.warnings;
     } catch {
       // body wasn't JSON — keep the default message
     }
-    throw new LobbyApiError(res.status, message, violations, warnings);
+    throw new LobbyApiError(res.status, message, violations, warnings, parsed);
   }
   return res;
+}
+
+// dropDeadSession is what a 401 means: the server's own word that the
+// session `sent` is gone. The tab's session is dropped or, when it had
+// no user and a saved identity is waiting behind it, swapped for that
+// identity (sessionDied). A session installed while the request was in
+// flight is left alone, because the 401 was about a different token.
+export function dropDeadSession(sent: Session | null): void {
+  const live = get(session);
+  if (live === null) return;
+  if (sent !== null && live.token !== sent.token) return;
+  sessionDied(live, "");
 }
 
 // SessionCheckResult is the answer to "is this session still good, as
@@ -276,6 +587,10 @@ export class LobbyApiError extends Error {
     message: string,
     public violations?: ApiViolation[],
     public warnings?: ApiViolation[],
+    // body is the whole parsed JSON error body, for the refusals that
+    // carry data beside the message: PUT /me/settings' 412 and 409
+    // return the account's current copy (ADR 0110 §4).
+    public body?: unknown,
   ) {
     super(message);
     this.name = "LobbyApiError";

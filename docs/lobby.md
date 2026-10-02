@@ -12,6 +12,46 @@ live in [ADR 0003 — Auth and lobby architecture](decisions/0003-auth-and-lobby
 
 ---
 
+## Who is an admin (ADR 0110 §3)
+
+Two kinds of session are admins, and every "admin only" or "admin" below
+means either:
+
+- the **shared token**'s session, from `POST /admin/login`
+  (`role: "admin"`); and
+- a **signed-in person on the allowlist**: any session with a `user_id`
+  (identified, player or spectator) whose Discord ID is on
+  `CMDCTRL_DISCORD_ADMIN_USER_IDS`. It is the same list the Discord bot
+  uses for `/c2-end`.
+
+Admin is decided on every request (`Config.isAdmin`) and is never in the
+token, so taking an ID off the list takes effect on the next request.
+The list is read at boot, so in practice that means at the next deploy.
+A session with no `user_id` is never an allowlisted admin. That includes
+a reclaim ticket's session for an admin's seat, which carries the seat's
+Discord ID but no user. `GET /me` reports the answer as `admin`.
+
+An allowlisted person joins tables the ordinary way, as their own Discord
+identity. Their seat session is an admin at every table: it can use the
+admin routes, pass every host-or-admin gate, and open any table's
+WebSocket like the token (see `GET /ws` in
+[protocol.md](protocol.md)).
+
+Three paths exist for the Discord bot calling on other people's behalf,
+and they stay on the **shared token alone** (`isServerCredential`). An
+allowlisted person is a person on these paths:
+
+- the bot's own rate buckets on `POST /deck-coverage` and the per-caller
+  limits;
+- `requester` on `POST /deck-requests`, which files a request in a named
+  member's name;
+- `discord_id` on `POST /games/{id}/invites/dm`, which names a raw
+  snowflake.
+
+Every request an admin-only route lets through is logged at Info as
+`admin action`, with the method and path and either `admin_user_id` (an
+allowlisted person) or `admin_id` (the token). No token is ever logged.
+
 ## Public routes (no credential required)
 
 ### `POST /admin/login`
@@ -90,10 +130,17 @@ a signed-in person's session, that person takes the seat as
 themselves: the seat gets the session's Discord name and avatar,
 `seats.user_id` is their users row, `name` in the body is ignored, and
 the minted principal carries `user_id` and the `discord_*` fields. A
-signed-in session is an `identified` one, or a `player` one with a
-non-nil `user_id` (the same person at their next table). Any other
-session, and a credential that no longer validates, joins by `name`
-exactly as before.
+signed-in session is an `identified` one, or a `player` or `spectator`
+one with a non-nil `user_id` (the same person at their next table).
+Any other session, and a credential that no longer validates, joins by
+`name` exactly as before.
+
+**Lifetime** ([ADR 0110](decisions/0110-remember-me.md) §1, S55): a
+signed-in joiner's seat session expires at the same instant as the
+session they joined from, so `expires_at` is that session's, not
+12 hours from now. A guest's seat session lasts `CMDCTRL_SESSION_TTL`
+(12 hours by default). The same rule holds for every route that mints
+a session; see [Session lifetimes](#session-lifetimes-adr-0110-1).
 
 **Errors**
 
@@ -133,16 +180,19 @@ comes from:
 | Session attached | Behaviour |
 |---|---|
 | `identified` (Discord sign-in, no seat yet) | Name and avatar come from the Discord identity; `name` in the body is ignored |
+| `player` or `spectator` with a non-nil `user_id` (a signed-in person already at a table) | The same: they take a seat at the code's table as themselves ([ADR 0110](decisions/0110-remember-me.md) §1 item 3, S55) |
 | none, or a credential that no longer validates | Classic manual join — `name` is required |
-| `player` / `admin` / `spectator` | 409 — that session already belongs somewhere |
+| `admin`, or a guest's `player` / `spectator` (no `user_id`) | 409 — a guest has no identity to carry to a second table, and the admin token is not a person |
 
 **Response 200** — identical to `POST /games/{id}/join`, cookie
 included. On the Discord path the principal also carries `discord_id`,
 `discord_username`, `discord_global_name` and `discord_avatar_hash`,
 and `user_id` is the signed-in person's users row, copied from the
-identity session (S34, [ADR 0051](decisions/0051-user-database.md)
-decision 3). `user_id` is the nil uuid for a guest seat, for admin and
-spectator sessions, and for everyone on a deployment with no database.
+session they joined with (S34, [ADR 0051](decisions/0051-user-database.md)
+decision 3). `user_id` is the nil uuid for a guest seat and for
+everyone on a deployment with no database. A signed-in joiner's seat
+session expires with the session they joined from; a guest's lasts
+`CMDCTRL_SESSION_TTL`.
 
 The identity session stays valid afterwards: it is how the same person
 joins a second table later without signing in to Discord again. On its
@@ -191,6 +241,16 @@ RolePlayer session bound to the seat's `(game_id, player_id)`, with
 the seat's Discord identity copied onto the principal so the avatar
 renders exactly as it did before the disconnect. Both invite tokens
 are stripped from the embedded `game`.
+
+The session it mints has **no `user_id`** and lasts
+`CMDCTRL_SESSION_TTL`: the ticket is the whole credential, and copying
+a seat's Discord fields never makes the holder that person. One
+exception ([ADR 0110](decisions/0110-remember-me.md) §1 item 4, S55):
+when the request **also** carries a valid signed-in session (cookie or
+bearer) whose `user_id` owns this seat, the redemption is the same
+thing as [`POST /me/games/{id}/session`](#post-megamesidsession), and
+the session carries that `user_id` and expires with the session it
+came from. A signed-in session for anyone else changes nothing.
 
 **Errors**
 
@@ -420,21 +480,44 @@ when the card index is not loaded.
 
 ## Authenticated routes
 
-### `POST /games` *(admin only)*
+### `POST /games` *(signed in, or the admin token)*
 
-Create a new game.
+Create a new game. Since [ADR 0110](decisions/0110-remember-me.md) §5 item 4
+(owner answer 2, Delivery PR 7), any signed-in person may create a table, not
+only an admin:
+
+- **A signed-in person** (an identified, player or spectator session that
+  carries a user; allowlisted admins included) becomes the table's
+  **creator** (`games.created_by`). The creator may rotate its invites, DM
+  tablemates its link, and end it with `/c2-end`, and `GET /games` and
+  `GET /games/{id}` mark it `is_creator: true` for them. The table also names
+  its creator as host, so they host it once they sit down, whoever sat first.
+  A person may have at most **3 open tables** (created, unstarted, unarchived)
+  and may create **one table per 30 seconds**, with a burst of 3.
+- **The shared admin token** is the Discord bot's `/c2-invite` and an
+  operator. It is held to neither limit and records no creator, because a
+  server credential is not a person.
+- **Anyone else** (a guest seat or spectator, with no user) is refused with
+  403.
 
 **Request**
 
 ```json
-{ "name": "Friday Night Magic", "host_discord_id": "123456789012345678" }
+{ "name": "Friday Night Magic", "host_discord_id": "123456789012345678", "setup": "last" }
 ```
 
-`host_discord_id` is optional. It names the table host by Discord user ID
-([ADR 0075 §2.1](decisions/0075-table-settings-and-host-controls.md)). The
-Discord bot's `/c2-invite` sends the user who ran it. The ID is held on the
+`host_discord_id` is optional, and only the admin token may send it; a signed-in
+person's table always names its creator. It names the table host by Discord
+user ID ([ADR 0075 §2.1](decisions/0075-table-settings-and-host-controls.md)).
+The Discord bot's `/c2-invite` sends the user who ran it. The ID is held on the
 table, unserved, until that Discord identity claims a seat through the OAuth
 join. That seat then becomes host. See [The table host](#the-table-host).
+
+`setup` is optional. `"last"` applies the caller's last table setup to the new
+table, exactly as [`POST /games/{id}/setup`](#post-gamesidsetup-adr-0110-5)
+would, and the response carries what that did under `setup`. A caller with no
+saved setup still gets the table, with a `setup` that says so. Any other value
+is a 400 and creates nothing.
 
 **Response 201**
 
@@ -446,9 +529,14 @@ join. That seat then becomes host. See [The table host](#the-table-host).
   "invite_token": "<16-byte base64url>",
   "spectator_invite": "<16-byte base64url>",
   "players": [],
-  "state": "lobby"
+  "state": "lobby",
+  "is_creator": true,
+  "setup": { "settings": true, "bots_added": 2, "skipped": [] }
 }
 ```
+
+`setup` is present only when the request asked for one. The meta's fields stay
+at the top level, so a client that reads this response as a game is unchanged.
 
 This response is the one reliable place to get the invite links. The
 server stores only their hashes, so after a restart it cannot show them
@@ -459,8 +547,10 @@ again (see `GET /games/{id}`).
 | Status | Reason |
 |---|---|
 | 401 | unauthenticated |
-| 403 | session is not RoleAdmin |
-| 400 | empty name |
+| 403 | the caller is not a signed-in person and not the admin token |
+| 400 | empty name, or an unknown `setup` |
+| 409 | the caller already has 3 open tables; the message names them. Start one, or end one with `/c2-end` |
+| 429 | the caller created tables too quickly (1 per 30 s, burst 3); `Retry-After: 30` |
 
 ### The table host
 
@@ -772,8 +862,9 @@ finds nothing.
 ### `GET /games/{id}`
 
 Full metadata for a single game. The `invite_token` and
-`spectator_invite` fields are included only for admins and for players
-seated in this specific game.
+`spectator_invite` fields are included only for admins, for players
+seated in this specific game, and for the game's creator wherever they are
+(ADR 0110 §5 item 4).
 
 **They are also absent after a server restart.** Invites are stored
 only as SHA-256 hashes (ADR 0051 decision 4, S34 sub-PR 3). The
@@ -792,6 +883,15 @@ d20, rerolling only tied leaders until one winner remains; that seat takes the
 first turn. The rolls and winner are public in the opening-hand view and game
 log, and use the game's persisted RNG so reconnects and replay agree.
 
+**The start captures a setup** (ADR 0110 §5 item 1). On the transition, the
+server writes one person's last setup: the game's creator's, or, for a table
+with no creator, the person who pressed start, if they are signed in. The
+setup is the table settings as a complete `PATCH /games/{id}/settings` body,
+every bot seat as `{tier, deck_id, name}` in seat order, and the user IDs of
+the other signed-in people who sat there. A layout is final when the table
+starts, so a table that never starts leaves no setup. A failed write is logged
+and never fails the start. See [`GET /me/setup`](#get-mesetup-adr-0110-5).
+
 **Errors**
 
 | Status | Reason |
@@ -799,6 +899,51 @@ log, and use the game's persisted RNG so reconnects and replay agree.
 | 403 | not a seat in this game |
 | 404 | game not found |
 | 409 | not enough players (min 2), or one or more seats haven't uploaded a deck |
+
+### `POST /games/{id}/setup` (ADR 0110 §5)
+
+Apply the caller's last setup to an unstarted table: its settings through the
+same path as `PATCH /games/{id}/settings`, then each bot through the same deck
+pipeline as `POST /games/{id}/seats/bot`, up to the free seats. Rides the deck
+upload rate bucket, since it seats decks.
+
+**Who:** a signed-in person (the setup is theirs) who is the table's host, its
+creator, or an admin.
+
+**Request**
+
+```json
+{ "from": "last" }
+```
+
+**Response 200**
+
+```json
+{
+  "game": { "id": "<game uuid>", "players": [ ... ], "state": "lobby" },
+  "settings": true,
+  "bots_added": 1,
+  "skipped": [
+    { "name": "Smart", "reason": "the \"strong\" tier is not available on this server" },
+    { "name": "Old", "reason": "its deck \"retired-deck\" no longer exists" }
+  ]
+}
+```
+
+What cannot be applied is **skipped and named, never silently downgraded**:
+a tier this server does not offer, a curated deck that no longer exists, a bot
+that played a pasted list (a setup keeps only curated deck IDs), a deck the
+validator now refuses, or no free seat left.
+
+**Errors**
+
+| Status | Reason |
+|---|---|
+| 401 | unauthenticated |
+| 403 | not a signed-in person (a guest, the admin token), or not the table's host, creator or an admin |
+| 400 | `from` is not `"last"` |
+| 404 | game not found, or the caller has no saved setup |
+| 409 | the table has started |
 
 ### `POST /games/{id}/decks`
 
@@ -945,15 +1090,23 @@ re-pasting.
 for a guest (no `user_id`): still installs the deck on the seat and
 nothing else. For a signed-in caller it *additionally*:
 
-- Creates or updates a `decks` row for **`format: "text"` or
-  `"moxfield"` requests only** — not a `deck` (pre-built catalog) pick,
-  which has its own id system and is never a library row, and not
-  `format: "url"`, whose `source` is a link rather than the decklist
-  text the library re-parses later. A URL-based import still installs
-  the deck on the seat; it is just never saved to the library.
+- Creates or updates a `decks` row for **`format: "text"`,
+  `"moxfield"` or `"url"` requests** — not a `deck` (pre-built catalog)
+  pick, which has its own id system and is never a library row. A
+  **link import** (ADR 0110, owner decision 7) is saved as the list the
+  fetcher returned, rendered as plain text (`source_format: "text"`),
+  with the canonical link beside it in `decks.source_url`. Re-seating it
+  re-parses the stored list and never calls the network; fetching it
+  again from the link is a later, explicit action. Saving the same name
+  from pasted text clears the link.
 - Sets the seat's `deck_id` to the saved deck. Any other outcome
-  (a guest, a catalog pick, a URL import, or a failed save) leaves the
+  (a guest, a catalog pick, or a failed save) leaves the
   seat's `deck_id` empty, clearing a previous one if there was one.
+- **The 200-deck cap (ADR 0110 section 6).** A signed-in caller keeps at
+  most 200 decks. The 201st *new* deck is not saved (updating a deck by
+  name is never refused), the upload still succeeds and seats the deck,
+  and the response carries `library_note`, a player sentence saying the
+  library is full and to delete a deck on `#/decks`.
 
 **The update rule:** a caller's existing deck with the **same name**
 is updated in place — `source_text`, `source_format`, `commanders`,
@@ -1376,7 +1529,7 @@ information included. The shape reflects that:
 
 | Property | What it means |
 |---|---|
-| Admin-only to mint | same `auth.RoleAdmin` gate as `POST /games`. A player seated at the table cannot mint one, not even for their own seat. |
+| Admin-only to mint | same admin gate as `POST /games` (`requireAdmin`). A player seated at the table cannot mint one, not even for their own seat, unless they are an allowlisted admin. |
 | Minted, never derived | 32 bytes from `crypto/rand`. Not a function of the game ID, seat index, player ID or invite token. |
 | Short TTL | 15 minutes (`lobby.ReclaimTTL`), reported in the response as `expires_at` + `ttl_seconds` so the host can see what they handed out. |
 | Single use | redemption consumes it under the lobby mutex; a second presentation is indistinguishable from a forgery. |
@@ -1638,6 +1791,19 @@ the allowlists already follow.
 Echo the principal attached to the request. Used by the client for
 bootstrap — "am I still logged in, and as what?"
 
+The principal's fields are at the top level, as they always were, plus
+one computed field, `admin` (ADR 0110 §3 item 4). It is `true` for the
+shared token's session and for a signed-in person on the admin
+allowlist, and `false` otherwise. It is not part of the token. The
+client asks once per installed session that has a `user_id`, and shows
+admin UI to an admin seated at a table exactly as it does to the token.
+The allowlist itself is never served.
+
+```json
+{ "role": "player", "user_id": "<uuid>", "game_id": "<uuid>", "player_id": "<uuid>",
+  "discord_id": "<snowflake>", "issued_at": "…", "expires_at": "…", "admin": true }
+```
+
 ### `GET /me/games`
 
 "My games" ([ADR 0051](decisions/0051-user-database.md) decision 4,
@@ -1646,11 +1812,13 @@ game, **newest game first**. Ended and archived games are included,
 as is a finished game whose table did not survive a restart; the
 `games` and `seats` rows are the record.
 
-Needs a signed-in person: an `identified` session, or a `player`
-session with a non-nil `user_id`. A caller with no credential at all
-gets **401**; an authenticated caller who is not a person gets **403**
-— a guest seat's session, an admin, a spectator, and everyone on a
-deployment with no database (there are no users).
+Needs a signed-in person: an `identified` session, or a `player` or
+`spectator` session with a non-nil `user_id` (a signed-in spectator
+keeps their user since S55, [ADR 0110](decisions/0110-remember-me.md)
+§1 item 2). A caller with no credential at all gets **401**; an
+authenticated caller who is not a person gets **403** — a guest seat's
+or guest spectator's session, an admin, and everyone on a deployment
+with no database (there are no users).
 
 The split matters to the client, not to the server (#1154): the SPA's
 `authFetch` clears the session on **any** 401, so answering 401 to a
@@ -1716,7 +1884,9 @@ Same caller rule as `GET /me/games`. No body.
 **Response 200**: the `sessionResponse` shape `/join` returns, cookie
 included. The principal is bound to the seat's `(game_id, player_id)`
 and carries the caller's `user_id` and the seat's Discord identity.
-Both invite tokens are stripped from the embedded `game`.
+It expires with the caller's session, not 12 hours from now
+([ADR 0110](decisions/0110-remember-me.md) §1). Both invite tokens are
+stripped from the embedded `game`.
 
 **Errors**
 
@@ -1730,6 +1900,93 @@ Both invite tokens are stripped from the embedded `game`.
 
 ---
 
+### `POST /me/session` (ADR 0110 §1 items 5 and 6, S55)
+
+Renewal on use, and the reinstall of a saved identity
+([ADR 0110](decisions/0110-remember-me.md), owner answer 1). It sets the
+session cookie to the caller's own credential and returns that session.
+When the session is **more than half spent** (more than half of the time
+from its `issued_at` to its `expires_at` has passed), the server first
+re-issues it for a fresh `CMDCTRL_IDENTITY_TTL`, and the cookie and the
+response carry the new token.
+
+**Caller:** a signed-in person: an `identified`, `player` or `spectator`
+session with a `user_id`, the same rule as `GET /me/games`. Only those
+sessions can be revoked, so nothing else is renewed or reinstalled.
+
+**Credential:** the session cookie, else `Authorization: Bearer`. A
+`?token=` query parameter is **never** read here, unlike every other
+route. This route sets the cookie from the credential it reads, and a
+cross-site form can put a token in a URL but cannot set a header (and
+`SameSite=Lax` keeps the cookie off a cross-site POST), so the query
+fallback would let another site plant its own session in this one. The
+client's reinstall sends the saved token as a bearer once the session
+that replaced it has expired, when the browser has already dropped that
+cookie.
+
+No body.
+
+**Response 200**: the `sessionResponse` shape (`token`, `expires_at`,
+`principal`, `player_id`), with no embedded `game`, and a `Set-Cookie` for
+`token`.
+
+- **Not yet half spent:** the same token and expiry the caller sent. This
+  is the reinstall.
+- **Renewed:** a new token for the **same principal**. Its role, `user_id`,
+  `game_id`, `player_id`, `name` and `discord_*` fields are unchanged, so a
+  seat session is still that seat and a spectator session still watches
+  that table. Only `issued_at` and `expires_at` are new, and the new
+  session lasts the full `CMDCTRL_IDENTITY_TTL`. The old token is **not**
+  revoked: another tab may still hold it, and it runs out at its own
+  expiry.
+
+Renewal is how a signed-in session outlives its first 30 days. Revocation
+is still the way to end one: a token issued before
+`users.sessions_invalid_before` fails before the handler runs, and a
+revocation that lands while a renewal is being minted refuses the
+renewal rather than handing out a token the revocation missed.
+
+**Rate limit:** a per-person bucket, one call every 6 seconds with a
+burst of 10. The client calls the route at page load, at a session's
+half-life, an hour after a renewal that renewed nothing or failed, and
+when it reinstalls a saved identity.
+
+**Errors**
+
+| Status | Reason |
+|---|---|
+| 401 | no credential (a `?token=` alone counts as none), or one that is invalid, expired or revoked, including a revocation during the renewal |
+| 403 | authenticated but not a signed-in person: the admin token, a guest seat or spectator, a reclaim ticket's session, or any session on a server with no database |
+| 429 | the per-person bucket is spent |
+
+**The client** (`client/src/lib/session.ts`):
+
+- **Renewal.** A session with a `user_id` that is past half its life is
+  renewed at page load and when a timer armed for its half-life fires.
+  A failed renewal is quiet. There is no notice and no sign-out, the
+  session lasts until it expires, and the client asks again an hour
+  later.
+- **The saved identity.** Installing a session with no `user_id` (the
+  admin token, a reclaim ticket for someone else's seat) over a live
+  signed-in session first copies that session to
+  `localStorage["cmdctrl.identity"]`, which only this origin can read.
+  When the session on top ends (its expiry timer, or a 401 for it), the
+  client sends the saved token to this route as its bearer and installs
+  the answer, so the person is still signed in rather than sent to
+  `#/login`. A refused reinstall drops the saved copy and goes to
+  `#/login` as before. Leaving a practice table whose replaced session
+  has run out restores the saved identity through
+  [`POST /games/{id}/practice/leave`](#post-gamesidpracticeleave-adr-0076-s54)'s
+  `restore_token`. Signing out, signing out everywhere, and installing
+  any session with a user clear the saved copy.
+- **The cookie.** Both calls set the cookie when their answer arrives,
+  so a request that mints a session (a join, a reclaim, a sign-out)
+  waits for one in flight rather than race it. An answer for a
+  different principal than the one sent (the cookie, read first, held
+  another tab's seat) is not adopted.
+
+---
+
 ### `GET /me/tablemates` (ADR 0051 decision 8, S34 sub-PR 6)
 
 The people the caller has shared a table with, **most recently shared
@@ -1739,8 +1996,8 @@ no friend requests and no acceptance; if an explicit list is ever
 wanted it is one table on top of this and changes nothing here.
 
 Same caller rule as `GET /me/games` and `GET /me/decks`: a signed-in
-person — an `identified` session, or a `player` session with a
-non-nil `user_id`. No credential is **401**; every other caller is
+person — an `identified` session, or a `player` or `spectator` session
+with a non-nil `user_id`. No credential is **401**; every other caller is
 **403**, including a guest's seat session, an admin (a credential, not
 a person) and everyone on a deployment with no database.
 
@@ -1776,15 +2033,62 @@ guest, a bot, or a Discord seat still waiting on its `users` row.
   lobby you both sat in yesterday is a better suggestion than a game
   you finished a year ago.
 
+### `GET /me/setup` (ADR 0110 §5)
+
+The caller's last table setup, for the create form's "Use my last setup".
+Signed-in only: a guest and the admin token get 403 (never 401, #1154).
+
+```json
+{
+  "setup": {
+    "settings": { "undo_limit": 3, "undo_scope": "own", "starting_life": 40,
+                  "commander_damage": 21, "bot_pace": "normal", "allow_spawn": false },
+    "bots": [ { "tier": "heuristic", "deck_id": "raid-and-ransack", "name": "Bot 1" } ],
+    "tablemates": [ "<user uuid>" ]
+  },
+  "game_id": "<the table it came from>",
+  "updated_at": 1790000000000
+}
+```
+
+`setup` is `null` (and the other fields absent) when the caller has none yet.
+The body is written by the server when a table starts (see
+[`POST /games/{id}/start`](#post-gamesidstart)), never by a client. A setup
+lists the user IDs of the caller's own tablemates, the same class of data
+`GET /me/tablemates` already returns to the same caller; the create flow
+offers those people first, marked "at your last table".
+
+### `GET /me/last-deck` (ADR 0110 §5)
+
+The deck the caller last seated, for the deck panel to **preselect**. It is
+never seated automatically: a seated deck is visible to the table.
+
+```json
+{ "last_deck": { "kind": "library", "id": "<deck uuid>" } }
+```
+
+`kind` is `library` (a `GET /me/decks` row) or `prebuilt` (a `GET /decks` ID).
+`last_deck` is `null` when none is recorded. It is written whenever a signed-in
+person seats a deck at their own seat: a library deck, an upload saved to the
+library, or a pre-built deck. An admin installing somebody else's deck records
+nothing. A deck that has since gone is simply not preselected. Signed-in only
+(403 otherwise). A guest's last pre-built deck is kept in the browser instead
+(`localStorage["cmdctrl.lastDeck"]`), and a guest's last typed name in
+`localStorage["cmdctrl.guestName"]` (owner answer 8: a signed-in seat keeps its
+Discord name and is never asked).
+
 ### `GET /me/decks` (ADR 0051 decision 7, S34 sub-PR 5)
 
 The caller's deck library — see "The deck library" under
 `POST /games/{id}/decks` above for how a row gets there and the update
 rule. Newest updated first.
 
-**401** for any principal with no `user_id` — a guest's `player`
+Same caller rule as `GET /me/games`. No credential is **401**; every
+caller that is not a signed-in person is **403** — a guest's `player`
 session, an admin session, or an `identified` session on a deployment
-with no database — not only for a missing credential. There is
+with no database. Before S55 this was a 401, which the client reads as
+an expired session and signs the browser out
+([ADR 0110](decisions/0110-remember-me.md) §1 item 7, #1154). There is
 nothing partial to show: a `user_id`-less principal owns no decks by
 construction.
 
@@ -1798,7 +2102,14 @@ construction.
       "name": "Atraxa Superfriends",
       "commanders": ["Atraxa, Praetors' Voice"],
       "card_count": 100,
-      "updated_at": "2026-09-19T08:00:00Z"
+      "updated_at": "2026-09-19T08:00:00Z",
+      "source_url": "https://moxfield.com/decks/abc",
+      "coverage": {
+        "counts": { "manual": 3, "unreviewed": 5, "caveats": 4, "automated": 40, "no_effect": 38 },
+        "unknown": 0,
+        "as_printed": 78,
+        "resolved": 90
+      }
     }
   ]
 }
@@ -1806,7 +2117,130 @@ construction.
 
 `source_text` and `source_format` are not included here — this is the
 picker's list, not the re-seat payload; seating reads them server-side
-via `POST /games/{id}/decks/{deck_id}`.
+via `POST /games/{id}/decks/{deck_id}`. `source_url` is absent for a
+pasted deck.
+
+**`coverage` is computed on read, never stored** (ADR 0110 section 6).
+`counts` are [ADR 0095](decisions/0095-deck-coverage-and-deck-requests.md)'s
+five buckets by distinct card. `as_printed` is `automated` plus
+`no_effect`, `resolved` is every distinct card bucketed, and the page
+says "N of M play as printed". The list builds the catalogue verdicts
+once per request and reuses them for every deck. `coverage` is absent
+when the server has no card index or a stored list no longer parses.
+These reads, and the three routes below, share a per-client bucket of 1
+request per second with a burst of 5 (429 past it).
+
+### `GET /me/decks/{id}/coverage` (ADR 0110 section 6)
+
+The full ADR 0095 coverage report for one saved deck (the same body as
+`POST /deck-coverage`), so the library can show the cards behind each
+bucket and offer "Request these cards" through `POST /deck-requests`.
+`403` for a session that is not a signed-in person (never 401, which would sign the browser out); `404` for a deck that is not the caller's or
+does not exist (an id reveals nothing); `422` if the stored list no
+longer parses; `503` with no card index.
+
+### `PATCH /me/decks/{id}` (ADR 0110 section 6)
+
+Body `{"name": "..."}`. Renames the caller's deck without touching its
+`updated_at`. Returns the deck (`myDeckInfo` without coverage). `400`
+for a blank name or one over 100 characters, `403` for a caller with no
+`user_id`, `404` for a deck that is not theirs, `409` when they already
+have another deck by that name (the update rule keys on the name).
+
+### `DELETE /me/decks/{id}` (ADR 0110 section 6)
+
+Removes the caller's deck. In the same transaction every seat that
+pointed at it has `seats.deck_id` set to NULL; the seat keeps its
+`deck_name`. `204` on success; `403` for a caller with no `user_id`;
+`404` for a deck that is not theirs or already gone.
+
+### `GET /me/settings` and `PUT /me/settings` (ADR 0110 §4)
+
+The caller's **account copy of their settings**: the per-person half of
+the client's `Settings`, so they follow a signed-in person to every
+browser they sign in on
+([ADR 0110](decisions/0110-remember-me.md) §4, owner answers 5 and 6).
+Which fields that is is decided in one place, `SYNCED_FIELDS` in
+`client/src/lib/settings.ts`. The per-device fields (volumes and mute,
+card size, hand and table layout, opponent detail, the two expansion
+settings, text scale, and the two that follow the OS reduced-motion
+signal) never leave the browser.
+
+The server checks the body's shape only — a JSON object of at most
+32 KiB and depth 4. It never reads the fields. The client's `migrate`
+is the one schema validator, so a server copy of the schema cannot
+drift from it.
+
+Same caller rule as the rest of `/me/*`: a signed-in person. No
+credential is **401**. Every other caller is **403**, never 401 (#1154):
+a guest's seat or spectator session, the admin token, and everyone on a
+deployment with no database. The client reads 403 as "keep settings in
+this browser". Each caller reads and writes only their own row.
+
+**`GET /me/settings` → 200**
+
+```json
+{
+  "version": 15,
+  "revision": 4,
+  "settings": { "display": { "theme": "dark" }, "gameplay": { "strictMana": false } },
+  "updated_at": 1790000000000
+}
+```
+
+- `version` is the client `SETTINGS_VERSION` that wrote the copy.
+- `revision` goes up by one on every write. It is what `If-Match` names.
+- `updated_at` is Unix milliseconds.
+- A person with no copy yet gets `{"revision": 0}` and nothing else.
+
+Responses carry `Cache-Control: no-store`.
+
+**`PUT /me/settings`**
+
+```
+If-Match: 4
+```
+
+```json
+{ "version": 15, "settings": { "display": { "theme": "light" } } }
+```
+
+`If-Match` is the revision the client last read, or `0` for the first
+copy. A bare integer and a quoted entity tag (`"4"`) are both accepted.
+The body replaces the whole copy. Unknown top-level fields are refused.
+
+| Status | When | Body |
+|---|---|---|
+| 200 | Saved | The new copy, as `GET` returns it |
+| 400 | `If-Match` is not a revision. Or the body is malformed: `settings` missing or not an object, nested deeper than 4, or `version` outside 1–1000 | `{error}` |
+| 409 | `version` is **below** the stored copy's: a stale tab must not stamp an older schema over a newer client's copy | `{error, …}` with the current copy. The error says to reload |
+| 412 | The revision has moved (another tab or device wrote first), or `If-Match: 0` when a copy exists | `{error, …}` with the current copy |
+| 413 | `settings` is over 32 KiB | `{error}` |
+| 428 | No `If-Match` | `{error}` |
+| 429 | Over the per-person bucket: 1 write a second, a burst of 5, shared by all of that person's sessions. Only a write that passed the checks above spends a token. `Retry-After` is set | `{error}` |
+| 503 | The server has no settings store | `{error}` |
+
+The revision is checked before the version, so a stale revision is
+always a 412.
+
+**How the client uses it** (`client/src/lib/settingsSync.ts`):
+
+- It downloads at sign-in and at page load while signed in.
+- It uploads the synced fields one second after the last change.
+- At sign-in the **account's copy wins**. If this browser's values
+  differ, a toast offers "Keep this browser's instead" for the rest of
+  the visit, which uploads them.
+- On a 412 it merges field by field against the copy both sides last
+  agreed on, and then uploads over the new revision. A field only this
+  browser changed keeps this browser's value. Every other field takes
+  the account's.
+- A copy written by a newer client, or a 409, is applied and then this
+  tab stops writing until it reloads.
+- While the tutorial's practice table is open, the four settings it
+  forces are uploaded as the player's own values
+  (`withSettings(current, record.saved)`), never as the forced ones.
+- A failed write never blocks the UI. It is retried with a backoff, and
+  again when the browser comes back online.
 
 ### `POST /deck-requests`
 
@@ -1915,13 +2349,38 @@ apart by it.
 - **424** when GitHub fails while reading the deck's issue, commenting
   or filing (not 502, which Cloudflare replaces with its own page).
 
-## Signing out
+## Session lifetimes (ADR 0110 §1)
 
-Session lifetimes: the identity session a Discord sign-in mints from
-the login page lasts `CMDCTRL_IDENTITY_TTL` (30 days by default). Every
-other session (seat, spectator, admin) lasts `CMDCTRL_SESSION_TTL`
-(12 hours by default). See
-[ADR 0051](decisions/0051-user-database.md) decision 3.
+One rule for every route that mints a session
+([ADR 0110](decisions/0110-remember-me.md) §1, S55, reversing
+[ADR 0051](decisions/0051-user-database.md) sub-PR 7's "seat sessions
+keep `CMDCTRL_SESSION_TTL`"). It lives in one function, `issueFor`
+(`server/internal/lobby/session_ttl.go`):
+
+| The new session | Lifetime | Routes |
+|---|---|---|
+| has a `user_id`, and came from a Discord sign-in | `CMDCTRL_IDENTITY_TTL` (30 days by default) | `GET /auth/discord/callback`, all three branches: the login page's identity session, the invite link's seat, and linking Discord to a seat |
+| has a `user_id`, and renews one more than half spent | `CMDCTRL_IDENTITY_TTL` from now, same principal | [`POST /me/session`](#post-mesession-adr-0110-1-items-5-and-6-s55) |
+| has a `user_id`, and came from a signed-in session | **the source session's own `expires_at`**, to the millisecond | `POST /games/{id}/join`, `POST /join`, `POST /games/{id}/spectate`, `POST /me/games/{id}/session`, `POST /games/practice`, and `POST /games/{id}/reclaim` redeemed by the seat's own user |
+| has no `user_id` | `CMDCTRL_SESSION_TTL` (12 hours by default) | guest seats and spectators, `POST /admin/login`, a reclaim ticket on its own |
+
+So joining, watching, practising or reclaiming a seat never shortens a
+sign-in and never extends one. Only a new Discord sign-in, or the
+renewal on use behind `POST /me/session`, extends it. Every session with a `user_id` can be
+revoked (`POST /logout/everywhere`, below), which is what makes the
+long lifetime safe. The `identified` session on a deployment with no
+database has no `user_id` and still lasts `CMDCTRL_IDENTITY_TTL`, as it
+did before.
+
+**A signed-in spectator keeps their user** (§1 item 2):
+`POST /games/{id}/spectate` with a signed-in session (cookie or bearer)
+mints a `spectator` session that carries the caller's `user_id` and
+`discord_*` fields, labelled with their Discord display name (a typed
+`name` is for guests). `/me/*` keeps answering for it, the WebSocket
+binding carries the user, and signing out everywhere closes it. A
+guest spectator is unchanged.
+
+## Signing out
 
 ### `POST /logout`
 
@@ -1952,7 +2411,7 @@ another one.
 | Status | Reason |
 |---|---|
 | 401 | no session, or one that is already expired or revoked |
-| 403 | the session has no user: admin, guest or spectator, or any session on a server with no database. `POST /logout` is their sign-out |
+| 403 | the session has no user: admin, guest seat or guest spectator, or any session on a server with no database. `POST /logout` is their sign-out |
 | 404 | the user row no longer exists |
 | 503 | the server has a user session but no revocation list (not a production configuration) |
 
@@ -2027,6 +2486,26 @@ state once, exchanges the code, reads `/users/@me` and either claims the
 seat bound to the invite or mints the identity session, then redirects the
 browser to the SPA's `#/oauth-complete?…` fragment.
 
+**`prompt`** ([ADR 0110](decisions/0110-remember-me.md) §2, S55). Both
+flows send Discord `prompt=none`, so a repeat sign-in with the same
+`identify` scope skips Discord's screen. `?prompt=consent` on `start`
+asks for the screen instead: it is the login page's "Sign in with a
+different Discord account", because `prompt=none` silently uses
+whichever account the browser is signed in to, and Discord's consent
+screen has an account switcher. Any other `prompt` value is a **400**.
+
+**The one retry.** What Discord does with `prompt=none` for someone who
+has never authorized the app is undocumented. If the callback comes
+back with `error=…` (for example `consent_required`,
+`interaction_required` or `access_denied`) on a `prompt=none` round, it
+is not shown: the callback consumes that round's state, parks a new
+one for the same flow (the same game and invite, or neither) marked
+`consent`, and answers **302** to Discord with `prompt=consent`. An
+error on a `consent` round, the retry included, is a real refusal and
+answers **400** with Discord's reason, as before. So a sign-in is
+retried at most once and cannot loop. An error with a missing or
+expired state is shown, since there is no flow to repeat.
+
 ### `GET /avatars/{discord_id}/{hash}`
 
 A session is required (any role). The image is served from the server-side
@@ -2052,10 +2531,12 @@ Each entry in a game's `players` (and the lobby's `GET /games`) may carry:
 Link Discord to a seat you already hold (S34 sub-PR 4, carried over
 from S12.5 [#59](https://github.com/krakenhavoc/cmd_and_ctrl/issues/59)).
 A navigation from the in-game menu: the server answers **302** to
-Discord's consent screen, and the callback comes back to the same
-seat. Works in any game state. A guest who signs in mid-game becomes
-that seat's user, and a seat already linked to one Discord account can
-be moved to another.
+Discord's consent screen, always with `prompt=consent` (ADR 0110 §2
+item 4: it attaches an account to a seat, so the person sees which
+account it is), and the callback comes back to the same seat. Works
+in any game state. A guest who signs in mid-game becomes that seat's
+user, and a seat already linked to one Discord account can be moved
+to another.
 
 Needs a `player` session (401 without a session, 403 for any other
 role). Optional `?game=<uuid>`: when present it must be the session's
@@ -2077,7 +2558,8 @@ What the callback then does:
    through the room, so every client at the table gets a state
    broadcast carrying the new name and avatar straight away.
 4. Mints a new `player` session for the same seat, now carrying
-   `user_id` and the `discord_*` fields, sets the cookie, and
+   `user_id` and the `discord_*` fields and lasting
+   `CMDCTRL_IDENTITY_TTL` (it is a sign-in), sets the cookie, and
    redirects to `/#/oauth-complete?token=…&game=…&player_id=…&user_id=…`.
 
 **Errors** (as JSON, like the other callback errors)

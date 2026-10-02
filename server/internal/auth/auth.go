@@ -71,10 +71,11 @@ type Principal struct {
 	Role Role `json:"role"`
 	// UserID is the users-table row this session belongs to (ADR 0051
 	// decision 3). Set on the RoleIdentified session the Discord
-	// callback mints, and carried onto every RolePlayer session minted
-	// from it (the callback's invite flow, and POST /join). Zero for
-	// admin, spectator and guest sessions, and zero for everyone on a
-	// deployment with no database (CMDCTRL_DATA_DIR empty).
+	// callback mints, and carried onto every RolePlayer and
+	// RoleSpectator session minted from it (the callback's invite flow,
+	// POST /join, a signed-in spectator — ADR 0110 §1). Zero for admin
+	// and guest sessions, and zero for everyone on a deployment with
+	// no database (CMDCTRL_DATA_DIR empty).
 	//
 	// UserID is also what makes a session revocable (ADR 0051 decision
 	// 6): WithRevocation refuses a principal whose IssuedAt is at or
@@ -137,12 +138,24 @@ var (
 //   - Validate: given a credential string, return the Principal it
 //     authenticates or one of the sentinel errors above.
 //
+// IssueUntil is Issue with an absolute expiry instead of a lifetime. It
+// exists for ADR 0110 §1's inheritance rule: a session minted from a
+// signed-in person's session (a seat claimed from a sign-in, say)
+// expires at exactly the same instant as the session it came from, so
+// claiming a seat never extends a sign-in. A lifetime computed by the
+// caller would drift from the authenticator's own clock by however long
+// the request took, and could outlive its source by that much.
+//
 // Stateful implementations (MemoryAuthenticator) keep a map of
 // credential→Principal internally. Stateless implementations
 // (HMACAuthenticator) serialise the Principal into the credential
 // itself and verify the signature on Validate.
 type Authenticator interface {
 	Issue(ctx context.Context, p Principal, ttl time.Duration) (credential string, issued Principal, err error)
+	// IssueUntil mints a credential that expires at expiresAt. An
+	// expiresAt that is not after the authenticator's own now is
+	// ErrExpiredCredential: the session it was copied from has run out.
+	IssueUntil(ctx context.Context, p Principal, expiresAt time.Time) (credential string, issued Principal, err error)
 	Validate(ctx context.Context, credential string) (Principal, error)
 
 	// Revoke optionally invalidates a specific credential ahead of its
