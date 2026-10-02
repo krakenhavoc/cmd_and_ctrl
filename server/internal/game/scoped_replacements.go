@@ -32,6 +32,8 @@ import (
 //   - exileInsteadOfLeaving — the Whip's and unearth's redirect,
 //     INDEFINITE and pinned to the returned object, so it lasts exactly
 //     as long as that object is on the battlefield (#1591);
+//   - exileInsteadOfYourGraveyard — Yawgmoth's Will (ADR 0108 §4): every
+//     card moved or discarded into one player's graveyard this turn;
 //   - exileInsteadOfGraveyard — Cosmic Intervention, whose per-card
 //     return is a registered delayed-trigger body named by Mod.Then.
 //
@@ -127,6 +129,10 @@ func replacementModProblem(m Mod) string {
 		if m.Player == uuid.Nil {
 			return "a gainNoLife replacement names no player"
 		}
+	case ModExileInsteadOfYourGraveyard:
+		if m.Player == uuid.Nil {
+			return "an exileInsteadOfYourGraveyard replacement names no player"
+		}
 	}
 	return ""
 }
@@ -135,6 +141,9 @@ var (
 	watchDamage   = []EventKind{EventDealDamage}
 	watchZoneMove = []EventKind{EventZoneMove}
 	watchLife     = []EventKind{EventChangeLife}
+	// watchMoveOrDiscard is "from anywhere": a discard is its own
+	// replacement window (RepEventDiscard, #650), not a RepEventMove.
+	watchMoveOrDiscard = []EventKind{EventZoneMove, EventDiscardCard}
 )
 
 // scopedReplacementWatches is the watch key of a replacement kind — the
@@ -147,6 +156,8 @@ func scopedReplacementWatches(kind ModKind) []EventKind {
 		return watchZoneMove
 	case ModGainNoLife:
 		return watchLife
+	case ModExileInsteadOfYourGraveyard:
+		return watchMoveOrDiscard
 	}
 	return nil
 }
@@ -234,6 +245,22 @@ func (g *Game) ExileInsteadOfGraveyardThisTurnForEffect(sourceID, controller uui
 		[]Mod{{Kind: ModExileInsteadOfGraveyard, Then: then.key}}, g.UntilEndOfTurnDuration(), label)
 }
 
+// ExileInsteadOfYourGraveyardThisTurnForEffect is "if a card would be
+// put into your graveyard from anywhere this turn, exile that card
+// instead" (CR 614.1a, Yawgmoth's Will). `player` is "you" and the
+// graveyard owner the clause names. The record is a game-wide one with
+// no object pinned: it covers a card from any zone, the resolving
+// spell itself included, and a token never (a token is not a card).
+//
+// Caller must hold g.mu (write) — every caller is a resolving effect.
+func (g *Game) ExileInsteadOfYourGraveyardThisTurnForEffect(sourceID, player uuid.UUID, label string) bool {
+	if g.playerByIDLocked(player) == nil {
+		return false
+	}
+	return g.RegisterScopedRuleEffectForEffect(sourceID, ScopeGame, uuid.Nil,
+		[]Mod{{Kind: ModExileInsteadOfYourGraveyard, Player: player}}, g.UntilEndOfTurnDuration(), label)
+}
+
 // ---------------------------------------------------------------
 // The gather adapter
 // ---------------------------------------------------------------
@@ -318,7 +345,7 @@ func scopedReplacementEffect(seq int64, mod int, kind ModKind, label string) Rep
 			}
 			return g.applyScopedReplacementLocked(e, mod, m, ev)
 		},
-		Controller: func(_ *ReplacementEvent, g *Game, _ *Card) uuid.UUID {
+		Controller: func(ev *ReplacementEvent, g *Game, _ *Card) uuid.UUID {
 			switch kind {
 			case ModPreventCombatDamage, ModPreventDamage, ModPreventNextFromSource:
 				// CR 616.1 gives the ordering choice to the AFFECTED
@@ -329,6 +356,14 @@ func scopedReplacementEffect(seq int64, mod int, kind ModKind, label string) Rep
 			e, _, ok := g.scopedReplacementModLocked(seq, mod, kind)
 			if !ok {
 				return uuid.Nil
+			}
+			if kind == ModExileInsteadOfYourGraveyard {
+				// CR 616.1: the affected object's controller orders the
+				// replacements — its owner when it has no controller
+				// (every zone but the battlefield, where the two agree).
+				if c, found := g.LookupCardForEffect(ev.CardID); found {
+					return c.Controller
+				}
 			}
 			return e.Controller
 		},
@@ -375,6 +410,20 @@ func scopedReplacementAppliesLocked(g *Game, e ScopedEffect, m Mod, ev *Replacem
 		}
 		c, ok := g.LookupCardForEffect(ev.CardID)
 		return ok && c.Controller == e.Controller
+	case ModExileInsteadOfYourGraveyard:
+		if (ev.Kind != RepEventMove && ev.Kind != RepEventDiscard) || ev.NewZone != ZoneGraveyard {
+			return false
+		}
+		c, ok := g.LookupCardForEffect(ev.CardID)
+		if !ok || c.IsToken() {
+			return false
+		}
+		// The graveyard a card goes to is its owner's.
+		dest := ev.NewZoneOwner
+		if dest == uuid.Nil {
+			dest = c.Owner
+		}
+		return dest == m.Player
 	case ModGainNoLife:
 		// CR 119.10: "if a player would gain life" — a positive change
 		// only. A gain of 0 is no life gain event at all.
@@ -423,6 +472,9 @@ func (g *Game) applyScopedReplacementLocked(e ScopedEffect, mod int, m Mod, ev *
 		g.setShieldChargeLocked(e.Seq, mod, left)
 	case ModExileInsteadOfLeaving:
 		ev.NewZone = ZoneExile
+	case ModExileInsteadOfYourGraveyard:
+		ev.NewZone = ZoneExile
+		ev.NewZoneOwner = uuid.Nil
 	case ModGainNoLife:
 		// "That player gains no life instead": CR 614.10's null
 		// replacement. No EventChangeLife, so "whenever you gain life"
