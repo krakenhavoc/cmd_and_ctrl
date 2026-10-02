@@ -667,7 +667,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// nil for hand and the command zone, and nil for a card whose own
 	// text already opens the zone — Gravecrawler and a printed
 	// flashback need no permission and must not be repriced by one.
-	grant := g.CastPermissionForLocked(playerID, card, src.Kind)
+	grant := g.CastPermissionForClaimLocked(playerID, card, src.Kind, params.AlternativeCost)
 	// CR 702.143c, #658. Asked here, of the card as it sits in its
 	// source zone, because the answer stops being readable the moment
 	// the card moves: CR 406.3a turns a foretold card face up as it is
@@ -783,6 +783,12 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// a live miracle grant does not make a hard-cast sorcery an
 	// instant. A no-op for every other zone. See CastPermission.ForClaim.
 	grant = grant.ForClaim(alt)
+	// #1729: a permission good for a set number of spells ("you may
+	// cast A spell from among ...") is spent by a cast it is the reason
+	// for. Decided here, of the card as it sits in its source zone and
+	// under the claim just settled, and spent once the cast is made.
+	spendsGrant := grant != nil && grant.CastsLeft > 0 && g.castUsesGrantLocked(card, src.Kind, alt)
+	grantCard := card
 	// CR 708.4, ADR 0082 decision 2: the whole of "casting a card
 	// face down" is this line, and where it sits is the decision.
 	//
@@ -1686,6 +1692,9 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// grant named: the copy was taken before the move bumped its epoch.
 	if grant != nil && grant.LapseOnPass != "" {
 		g.consumePassClosedGrantLocked(playerID, card)
+	}
+	if spendsGrant {
+		g.consumeLimitedGrantLocked(playerID, grantCard, grant)
 	}
 	// The caster receives priority right after casting (CR 117.3c),
 	// and CR 603.3 puts any cast-triggered abilities (Rhystic Study,
@@ -2699,7 +2708,7 @@ func (g *Game) printedCostLocked(p *Player, card Card, params CastSpellParams) (
 	// of the precedence would be two chances to disagree about which
 	// cost this cast is paying.
 	srcKind, _ := castZoneFromWire(params.FromZone)
-	grant := g.CastPermissionForLocked(p.ID, card, srcKind)
+	grant := g.CastPermissionForClaimLocked(p.ID, card, srcKind, params.AlternativeCost)
 	alt, err := g.resolveAlternativeCostLocked(card, grant, params.AlternativeCost, nil)
 	if err != nil {
 		return ParsedCost{}, CastCost{}, err
@@ -4299,6 +4308,11 @@ func (g *Game) runStateChecksLocked() (sbaFired bool) {
 	// before the state-based actions, so a combat damage step's damage
 	// has all been dealt (CR 510.2) and nothing has died of it yet.
 	g.flushPreventionFollowUpsLocked()
+	// #1729, CR 610.3: an "until" return is created immediately after
+	// its event, so it is owed before the state-based actions — "nothing
+	// happens between the two events, including state-based actions"
+	// (Hostage Taker ruling, 2017-09-29).
+	g.resolveUntilReturnsLocked()
 	// #830 / CR 509.2a: a player is about to receive priority, so the
 	// block declaration is complete. Lock it in first, so the
 	// "becomes blocked" and "blocks" triggers it produces are on
@@ -4331,6 +4345,16 @@ func (g *Game) runStateChecksLocked() (sbaFired bool) {
 		fired, left := g.stateBasedActionsLocked()
 		release()
 		sbaFired = sbaFired || fired
+		// #1729, CR 610.3: the pass can BE the event — a creature
+		// that died is an object that left the battlefield, and a
+		// player who lost took their objects out of the game and may
+		// have handed on the crown (CR 725.4). The return is owed
+		// before the next pass and before the turn moves on. It is not
+		// a state-based action, so it does not count toward sbaFired
+		// (CR 514.3a reads that), but the loop runs again after it.
+		if g.resolveUntilReturnsLocked() {
+			fired = true
+		}
 		// CR 603.8 / CR 704.3: state triggers are asked in every pass,
 		// after the state-based actions and before the waiting triggers
 		// go on the stack. A state no event announced — a continuous
@@ -4411,6 +4435,13 @@ func (g *Game) sbaLossCauseLocked(p *Player, drew bool) (LossCause, bool) {
 func (g *Game) eliminatePlayerLocked(p *Player) {
 	if !g.leaveGameLocked(p, LossConcede, uuid.Nil) {
 		return
+	}
+	// #1729, CR 610.3: leaving can be the event an "until" waits for
+	// (their Hostage Taker left the battlefield with them; the crown
+	// they wore went to an opponent, CR 725.4). The return happens now,
+	// in the turn they left in, before the rotation below moves play on.
+	if g.survivingSeatsLocked() > 1 {
+		g.resolveUntilReturnsLocked()
 	}
 	g.settleDeparturesLocked()
 }
@@ -9029,6 +9060,9 @@ func (g *Game) SetMonarch(playerID uuid.UUID) error {
 	// the monarch" and re-reads every "as long as you're the monarch"
 	// static exactly as the card would have.
 	g.becomeMonarchLocked(playerID)
+	// #1729: and it ends a Palace Jailer's "until an opponent becomes
+	// the monarch" now (CR 610.3), not at the next priority pass.
+	g.resolveUntilReturnsLocked()
 	return nil
 }
 

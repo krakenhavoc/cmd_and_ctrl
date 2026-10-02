@@ -116,6 +116,9 @@ func (g *Game) beginEventBatchLocked() {
 	// the follow-ups it owes run now (CR 615.5), if the priority
 	// boundary has not already run them — in the batch they belong to.
 	g.flushPreventionFollowUpsLocked()
+	// #1729, CR 610.3: an "until" return whose event happened in the
+	// batch that is ending is owed before play moves on.
+	g.resolveUntilReturnsLocked()
 	g.eventBatch++
 	g.resolving = nil
 	// ADR 0107 §6: a next-damage shield spent in the batch that just

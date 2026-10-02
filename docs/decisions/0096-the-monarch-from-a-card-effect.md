@@ -157,3 +157,51 @@ holder. No wire change.
   set of cards exiled by one source. `CastPermission.Cost: "{0}"` over that set would let every one
   of them be cast free, which is stronger than printed. It waits on a use-count on a granted
   permission.
+
+
+## Amendment (2026-10-02, [#1729](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1729)): the three open items, closed
+
+All three items under **Open** are built. §6's decision changes: the return is no longer a
+delayed trigger.
+
+**An "until" return is a one-shot effect, not a trigger.** CR 610.3 (September 25, 2026 edition):
+"A second one-shot effect is created immediately after the specified event. This second one-shot
+effect returns the object to its previous zone." The first two open items are the same mistake
+seen from two sides: a delayed trigger used the stack, and it belonged to a controller CR 800.4a
+and 800.4d could take out of the game. The Hostage Taker rulings of 2017-09-29 say both halves:
+"Nothing happens between the two events, including state-based actions", and the return survives
+its owner leaving "because the one-shot effect that returns the card isn't an ability that goes on
+the stack".
+
+So the record is `game.UntilReturn` (`game/until_return.go`), stored in `Game.DelayedTriggers` with
+`Until` set and the `until/return-to-battlefield` body, and never fired by the trigger harvester:
+
+- An event-keyed "until" keeps §6's `On` and `monarch/an-opponent-became`; the `untilReturns`
+  listener marks it due when the event is emitted, with no catalog loaded and past any trigger
+  suppressor.
+- "Until this leaves the battlefield" names the object (`UntilLeaves`) and is due once it is not on
+  the battlefield — a structural test, because leaving the game with its owner emits no zone-change
+  event (ADR 0060) and is still the object leaving the battlefield.
+- `resolveUntilReturnsLocked` performs every due return together (CR 610.3d) before the state-based
+  actions and before any player receives priority, at the CR 704.3 boundary, at the next event
+  batch, after a concession and after the sandbox's manual crown. The rest of a resolving spell
+  runs first; no card in the catalog reads the returned object within the same resolution.
+- `dropDelayedTriggersForLocked` keeps the record when its controller leaves. Palace Jailer's
+  controller conceding while wearing the crown hands it to an opponent at that moment (CR 725.4),
+  and the creature comes back. A controller who leaves without the crown leaves the record in
+  place, and the next opponent of theirs to become the monarch (CR 800.4i) releases it.
+- CR 610.3a/b, asked before the exile (`UntilEventHappenedForEffect`): an opponent who becomes the
+  monarch after the Jailer's ability triggered means nothing is exiled, and an Ossification removed
+  in response exiles nothing — which closes a bug the old leave trigger had, where the card was
+  exiled for good.
+
+`effects.ExileUntil` is the card-side primitive; Palace Jailer, Ossification, Hostage Taker and
+Sheltered by Ghosts use it. Their old leave triggers stay as legacy rows that fire only for a card
+exiled by an older binary, so a restore point from before this change still returns its card and
+no restored card counts an ability as lost. Palace Jailer drops its caveat and is `full`.
+
+**Court of Locthwain** is built on `CastPermission.CastsLeft`: one free-cast permission over the
+CR 611.2c set, spent by the first spell it opens. Every card in the set also holds the play
+permission, so the caster chooses which a cast uses by claiming the free one's alternative cost
+(`CastPermissionForClaimLocked`, `CastOffersForLocked`). Locke, Treasure Hunter lands on the same
+field.

@@ -121,7 +121,9 @@ var (
 
 	// The event condition of "until an opponent becomes the monarch"
 	// (Palace Jailer, #1722): an EventMonarchChanged whose new monarch
-	// is not the trigger's controller.
+	// is not the controller of the ability that exiled the card. Read
+	// by a CR 610.3 "until" return since #1729 (exile_until.go), and by
+	// a delayed trigger a restore point written before it may hold.
 	anOpponentBecameTheMonarchCondition = game.DelayedCondition("monarch/an-opponent-became",
 		anOpponentBecameTheMonarchSince)
 )

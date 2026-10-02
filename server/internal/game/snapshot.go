@@ -1151,6 +1151,15 @@ type delayedTriggerSnapshot struct {
 	Condition        string        `json:"condition,omitempty"`
 	CondParams       *EffectParams `json:"condParams,omitempty"` // nil when zero
 	OptionalQuestion string        `json:"optionalQuestion,omitempty"`
+
+	// #1729, CR 610.3: an "until" return (until_return.go). Additive:
+	// an older binary drops these keys, but every record that sets them
+	// names the "until/return-to-battlefield" body, which that binary
+	// does not have, so it refuses the file (ErrUnknownEffectKey)
+	// rather than restoring the return as a trigger that never fires.
+	Until       bool       `json:"until,omitempty"`
+	UntilLeaves *ObjectRef `json:"untilLeaves,omitempty"`
+	Due         bool       `json:"due,omitempty"`
 }
 
 // pendingChoiceSnapshot mirrors PendingChoice's DATA. Its seven
@@ -2075,6 +2084,9 @@ func snapshotDelayedTrigger(d *DelayedTrigger, cen *ContinuationCensus) delayedT
 		Condition:          d.Condition.key,
 		CondParams:         effectParamsOrNil(d.CondParams),
 		OptionalQuestion:   d.OptionalQuestion,
+		Until:              d.Until,
+		UntilLeaves:        d.UntilLeaves.stamped(),
+		Due:                d.Due,
 	}
 	if d.Duration != nil {
 		dur := *d.Duration
@@ -2856,6 +2868,9 @@ func restoreDelayedTrigger(d *delayedTriggerSnapshot) *DelayedTrigger {
 		Condition:        ConditionRef{key: d.Condition},
 		CondParams:       effectParamsValue(d.CondParams),
 		OptionalQuestion: d.OptionalQuestion,
+		Until:            d.Until,
+		UntilLeaves:      d.UntilLeaves.value(),
+		Due:              d.Due,
 	}
 	if d.Duration != nil {
 		dur := *d.Duration

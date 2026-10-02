@@ -267,12 +267,12 @@ func (g *Game) CastOffersForLocked(playerID uuid.UUID, card Card, zone ZoneKind,
 		out = append(out, nil)
 	}
 	seen := make(map[string]bool, 2)
-	add := func(ac *AlternativeCost) {
+	add := func(ac *AlternativeCost, under *CastPermission) {
 		if ac == nil || ac.Key == "" || seen[ac.Key] {
 			return
 		}
 		seen[ac.Key] = true
-		if g.validateCastPathLocked(card, zone, ac, grant) != nil {
+		if g.validateCastPathLocked(card, zone, ac, under) != nil {
 			return
 		}
 		if !g.AlternativeCostPayableLocked(playerID, card.InstanceID, ac) {
@@ -282,10 +282,37 @@ func (g *Game) CastOffersForLocked(playerID uuid.UUID, card Card, zone ZoneKind,
 	}
 	for _, ac := range AlternativeCostsOfferedFromZone(CatalogKey(card), zone) {
 		offer := ac
-		add(&offer)
+		add(&offer, grant)
 	}
-	add(grant.AlternativeCostFor(card))
+	add(grant.AlternativeCostFor(card), grant)
+	// #1729: a second stored permission over the same card, priced
+	// under an offer of its own (Court of Locthwain's free cast beside
+	// its play permission). Judged under that permission, which is the
+	// one CastPermissionForClaimLocked hands a cast claiming it.
+	for _, other := range g.otherGrantedOffersLocked(playerID, card, zone, grant) {
+		add(other.AlternativeCostFor(card), other)
+	}
 	return out
+}
+
+// castUsesGrantLocked reports whether a cast of `card` out of `srcKind`
+// under `alt` is made BY the permission it was handed, rather than by
+// the card's own text — the question a limited permission (CastsLeft,
+// #1729) is spent on. It is validateCastPathLocked's "the permission is
+// the REASON this cast is legal": exile is opened by nothing else, and
+// a graveyard or a library card that opens the zone itself (a printed
+// flashback, Gravecrawler, an aftermath half) does not need one.
+//
+// Caller must hold g.mu.
+func (g *Game) castUsesGrantLocked(card Card, srcKind ZoneKind, alt *AlternativeCost) bool {
+	switch srcKind {
+	case ZoneHand, ZoneCommand:
+		return false
+	case ZoneExile:
+		return true
+	}
+	aftermathOpens, _ := aftermathZoneRule(card, srcKind)
+	return !aftermathOpens && !CardCastableFromZone(castPathKey(card, alt), srcKind)
 }
 
 // validateCastPathLocked is the S29 gate, widened by ADR 0066: may

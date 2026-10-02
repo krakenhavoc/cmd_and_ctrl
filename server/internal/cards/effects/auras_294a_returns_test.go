@@ -213,7 +213,7 @@ func TestShelteredByGhostsExilesUntilItLeavesAndGrantsLifelinkAndWard(t *testing
 	}
 
 	g.WithWriteLock(func() { _ = g.DestroyPermanentForEffect(aura) })
-	passPriorityAroundTable(t, g)
+	g.RunStateChecksForTest()
 	if namedOnBattlefield(g, "Their Rock", opp.ID) != 1 {
 		t.Error("the exiled permanent did not return under its owner's control when the Aura left")
 	}

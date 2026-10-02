@@ -3761,6 +3761,24 @@ Siege's grant is `Faces: []int{1}` and CR 715.4's Adventure grant is
 `Faces: []int{0}`, which is why it is a list: zero cannot mean both
 "no opinion" and "the front face".
 
+**"A spell from among those cards" (#1729).** `CastsLeft: 1` makes one
+permission over a set good for one spell: the first cast it is the
+reason for spends it (Locke, Treasure Hunter). Zero is no limit. When a
+card already holds a permission and a second one opens it on other
+terms (Court of Locthwain's free cast beside its play permission), give
+the second its own `AltCostKey`: the caster claims it like an
+alternative cost, `CastOffersForLocked` lists it, and a cast that does
+not claim it uses the first.
+
+**"Exile it until …" (#1729, CR 610.3).** Use `effects.ExileUntil`
+(`ThisLeaves: true`, or `On` plus a registered `Condition`), never a
+leaves-the-battlefield trigger or a delayed trigger: the return is a
+one-shot effect performed before anyone gets priority, and it does not
+leave the game with the player who exiled the card. The primitive also
+answers CR 610.3a/b — an "until" whose event has already happened
+exiles nothing. See [palace_jailer.go](../server/internal/cards/effects/palace_jailer.go)
+and [ossification.go](../server/internal/cards/effects/ossification.go).
+
 **Adventure cards (CR 715, #719, ADR 0034 step 6).** A card file writes
 nothing for the lifecycle — the engine owns it
 ([game/adventure.go](../server/internal/game/adventure.go)). What a card

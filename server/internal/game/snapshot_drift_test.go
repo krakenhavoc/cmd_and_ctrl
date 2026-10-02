@@ -687,6 +687,10 @@ var delayedTriggerFields = plan(
 	"Condition", carried, "",
 	"CondParams", carried, "",
 	"OptionalQuestion", carried, "",
+	// #1729, CR 610.3: an "until" return is a record in this queue.
+	"Until", carried, "",
+	"UntilLeaves", carried, "",
+	"Due", carried, "",
 )
 
 var pendingChoiceFields = plan(

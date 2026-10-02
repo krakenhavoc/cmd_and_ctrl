@@ -872,6 +872,11 @@ func NewGame() *Game {
 	// PendingTriggers first — CR 603.3b reorders anything that
 	// actually matters. See monarch.go.
 	g.Listeners = append(g.Listeners, monarchTriggers{})
+	// #1729, CR 610.3: an exile "until" an event ends when the event
+	// happens, and that is a rule rather than a triggered ability — so
+	// it watches the event log on its own, after the monarch's CR 725.4
+	// hand-on has moved the crown. See until_return.go.
+	g.Listeners = append(g.Listeners, untilReturns{})
 	// S17 sub-PR 2: install the CR 903.9 commander-zone built-in
 	// replacement. Refactored from S13.1's inline
 	// applyCommanderZoneReplacementLocked. See

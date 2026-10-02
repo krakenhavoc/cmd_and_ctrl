@@ -1026,7 +1026,9 @@ func TestB41OssificationExilesUntilItLeavesTheBattlefield(t *testing.T) {
 		t.Fatal("the opposing creature is exiled")
 	}
 	g.WithWriteLock(func() { _ = g.DestroyPermanentForEffect(aura) })
-	passPriorityAroundTable(t, g)
+	// CR 610.3 (#1729): the return is a one-shot effect owed at the
+	// next CR 704.3 boundary, with nothing on the stack.
+	g.RunStateChecksForTest()
 	// It comes back as a NEW OBJECT with a fresh instance ID
 	// (CR 400.7), so it is found by name rather than by the ID that
 	// went into exile.
