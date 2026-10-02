@@ -1275,6 +1275,17 @@
         aria-label="open settings"
         onclick={() => openSettings()}><Icon name="gear" size={17} /></button
       >
+      <!-- The bug/idea form is also reachable from here, not only the
+           three-dot menu (#1952): the report that asked for it came from
+           somebody who did not look in the menu. Same gate as before. -->
+      {#if bugReportAvailable}
+        <button
+          class="ibtn"
+          title="Report a bug or idea"
+          aria-label="Report a bug or idea"
+          onclick={() => (bugReportOpen = true)}><Icon name="bug" size={17} /></button
+        >
+      {/if}
       <!-- Same reasoning as "Pass turn" above: the Sandbox entries, undo
            and concede all mutate the live game, so the menu is withheld
            while a past frame is on screen. -->
@@ -1387,19 +1398,6 @@
                   title="put a card or a token on the table — announced in the game log, and undoable"
                 >
                   <Icon name="spark" size={15} /> Spawn a card or token…
-                </button>
-              {/if}
-              {#if bugReportAvailable}
-                <button
-                  class="mi"
-                  role="menuitem"
-                  onclick={() => viaMenu(() => (bugReportOpen = true))}
-                >
-                  <!-- Widened with the kind picker: the same form now
-                       files ideas and questions, and an entry that
-                       only says "bug" is an entry nobody uses to ask
-                       for a feature. -->
-                  <Icon name="bug" size={15} /> Report a bug or idea
                 </button>
               {/if}
               {#if canLinkDiscord( { role: sess?.principal.role, discordEnabled, isBotSeat: Boolean(viewerSeat?.is_bot) }, )}
@@ -2351,6 +2349,20 @@
     display: flex;
     gap: 2px;
     align-items: center;
+  }
+  /* The bar has one more icon since "Report a bug or idea" moved onto
+     it (#1952). On a phone the wordmark and the seq counter are what
+     give way, so the icons and Pass turn keep their room. */
+  @media (max-width: 599px) {
+    .bar {
+      gap: 8px;
+      padding: 0 10px;
+    }
+    .wordmark,
+    .bar-sep,
+    .status .seq {
+      display: none;
+    }
   }
   .ibtn {
     width: 32px;

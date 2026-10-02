@@ -21,15 +21,25 @@ const c = (cx: number, cy: number, r: number, fill = false): IconPrimitive => ({
   fill,
 });
 
-// Eight gear ticks, generated so they stay evenly spaced.
-const gear: IconPrimitive[] = [c(12, 12, 3.2)];
-for (let i = 0; i < 8; i++) {
-  const a = (i * Math.PI) / 4;
-  const x1 = (12 + Math.cos(a) * 6.8).toFixed(2);
-  const y1 = (12 + Math.sin(a) * 6.8).toFixed(2);
-  const x2 = (12 + Math.cos(a) * 9.6).toFixed(2);
-  const y2 = (12 + Math.sin(a) * 9.6).toFixed(2);
-  gear.push(p(`M${x1} ${y1}L${x2} ${y2}`));
+// A cog: eight trapezoid teeth around a round root, with a centre hole.
+// Generated so the teeth stay evenly spaced. (It used to be a circle with
+// eight rays, which read as a sun, i.e. a light/dark toggle: #1952.)
+const gear: IconPrimitive[] = [];
+{
+  const root = 7.2;
+  const tip = 9.8;
+  const pt = (deg: number, r: number) => {
+    const a = (deg * Math.PI) / 180;
+    return `${(12 + Math.cos(a) * r).toFixed(2)} ${(12 + Math.sin(a) * r).toFixed(2)}`;
+  };
+  let d = "";
+  for (let i = 0; i < 8; i++) {
+    const a = i * 45 - 90;
+    d += `${i === 0 ? "M" : "A" + root + " " + root + " 0 0 1 "}${pt(a - 13, root)}`;
+    d += `L${pt(a - 8, tip)}L${pt(a + 8, tip)}L${pt(a + 13, root)}`;
+  }
+  d += `A${root} ${root} 0 0 1 ${pt(-90 - 13, root)}Z`;
+  gear.push(p(d), c(12, 12, 3));
 }
 
 export const ICONS = {
