@@ -76,6 +76,10 @@ func (s *GameSnapshot) checkEffectKeys() error {
 			if problem := defenderControlsModProblem(m); problem != "" {
 				unknown = append(unknown, problem)
 			}
+			// ADR 0109 §1: a land-type set naming no basic land type.
+			if problem := landTypesModProblem(m); problem != "" {
+				unknown = append(unknown, problem)
+			}
 		}
 		// ADR 0107 §3: a stack pin may carry only what this binary's
 		// stack step applies (layer 2 control, layer-6 keywords). A

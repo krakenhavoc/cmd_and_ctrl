@@ -34,6 +34,7 @@
   import { autoTapHighlight } from "../../dragCast";
   import { noUntapAppliesToController } from "../../noUntap";
   import { deathMarkBadge } from "../../deathMarks";
+  import { landTypeBadge } from "../../landTypes";
   import { openCardMenu } from "../../contextMenu";
   import { menuAbilityRows, specialActionItems, type MenuAction } from "../../contextMenu.logic";
   import CounterPips from "./CounterPips.svelte";
@@ -345,6 +346,9 @@
   // ADR 0108: "exiled if it dies this turn" / "can't be regenerated
   // this turn" — what killing this permanent does is already decided.
   const deathMark = $derived(deathMarkBadge(card));
+  // ADR 0109 §1: a resolved effect changed this land's land types
+  // ("Island until end of turn — Tidal Warrior").
+  const landTypeMark = $derived(landTypeBadge(card));
   const interactive = $derived(!!onClick && !phasedOut);
 
   // ADR 0069 — a face-down object the viewer IS allowed to look at:
@@ -748,6 +752,11 @@
         >{deathMark.text}</span
       >
     {/if}
+    {#if landTypeMark}
+      <span class="badge land-type" title={landTypeMark.title} aria-label="land type"
+        >{landTypeMark.text}</span
+      >
+    {/if}
     {#if showPT}
       {#if isPlaneswalker}
         <span class="badge loyalty" title={`loyalty ${loyaltyValue}`} aria-label="loyalty">
@@ -872,6 +881,11 @@
     {#if deathMark}
       <span class="badge death-mark" title={deathMark.title} aria-label="death mark"
         >{deathMark.text}</span
+      >
+    {/if}
+    {#if landTypeMark}
+      <span class="badge land-type" title={landTypeMark.title} aria-label="land type"
+        >{landTypeMark.text}</span
       >
     {/if}
     {#if showPT}
@@ -1353,6 +1367,24 @@
     color: #e6dfd3;
     background: rgba(40, 34, 30, 0.9);
     border-color: rgba(210, 196, 176, 0.55);
+    letter-spacing: 0.01em;
+    font-size: 7px;
+  }
+  .badge.land-type {
+    /* ADR 0109 §1. Top-centre, a row under the death mark: what a
+       resolved effect has made this land for now, in a sea-blue that
+       reads as a temporary overlay rather than a warning. */
+    top: 52px;
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    max-width: calc(100% - 6px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: #d6ecff;
+    background: rgba(12, 38, 64, 0.9);
+    border-color: rgba(120, 180, 230, 0.6);
     letter-spacing: 0.01em;
     font-size: 7px;
   }
