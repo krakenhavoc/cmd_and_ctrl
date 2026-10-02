@@ -52,15 +52,21 @@ export function hasUndoBudget(seat: PlayerView | null, isAdmin: boolean): boolea
 
 /**
  * True when the viewer may change the table's settings — the table
- * host, or the server admin (ADR 0075 §2.1, `lobby.CanManageTable`).
+ * host, or an admin (ADR 0075 §2.1, `lobby.CanManageTable`). `admin` is
+ * lib/admin.ts's isAdmin(session): the shared token, or a signed-in
+ * person on the server's allowlist, seated or not (ADR 0110 §3).
  *
  * This is a mirror of a server-side gate, not the gate itself: the
  * server refuses a non-manager whatever the client renders. It exists
  * so the control is greyed rather than offering a click that comes
  * back as an error frame.
  */
-export function canManageTable(role: PrincipalRole | undefined, seat: PlayerView | null): boolean {
-  if (role === "admin") return true;
+export function canManageTable(
+  role: PrincipalRole | undefined,
+  seat: PlayerView | null,
+  admin: boolean = role === "admin",
+): boolean {
+  if (admin) return true;
   // The role check is not redundant with the seat check. A spectator
   // never matches a seat of its own today, so `viewerSeat` is null
   // for one — but that is a property of how the caller finds the
@@ -235,8 +241,9 @@ export function canSpawn(
   role: PrincipalRole | undefined,
   seat: PlayerView | null,
   settings: TableSettingsView,
+  admin: boolean = role === "admin",
 ): boolean {
-  return canManageTable(role, seat) && settings.allow_spawn;
+  return canManageTable(role, seat, admin) && settings.allow_spawn;
 }
 
 /**

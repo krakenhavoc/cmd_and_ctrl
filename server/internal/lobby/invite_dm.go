@@ -95,7 +95,7 @@ func inviteDM(c Config, w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	if !canInviteDM(p, meta, createdBy) {
+	if !canInviteDM(p, meta, createdBy, c.isAdmin(p)) {
 		return httpError(http.StatusForbidden,
 			"only someone seated at this table, the person who created it, or the admin may send an invite DM")
 	}
@@ -111,7 +111,10 @@ func inviteDM(c Config, w http.ResponseWriter, r *http.Request) error {
 		return httpError(http.StatusBadRequest, "name the person to invite: user_id")
 	case body.UserID != "" && body.DiscordID != "":
 		return httpError(http.StatusBadRequest, "name the person to invite with user_id or discord_id, not both")
-	case body.DiscordID != "" && p.Role != auth.RoleAdmin:
+	case body.DiscordID != "" && !isServerCredential(p):
+		// The bot's path only (ADR 0110 §3 item 2): a raw snowflake from
+		// anyone else is a way to DM a stranger. An allowlisted admin is
+		// a person and names people by user ID like everyone else.
 		return httpError(http.StatusForbidden, "discord_id is admin-only; name the person with user_id")
 	}
 
@@ -220,7 +223,8 @@ func dmSendError(c Config, err error) error {
 }
 
 // canInviteDM is decision 5's caller rule: seated in, or the creator
-// of, the game — or the admin.
+// of, the game — or an admin (admin is Config.isAdmin's answer for p,
+// ADR 0110 §3).
 //
 // "Seated in" is satisfied two ways, because a person and a seat are
 // not the same credential: a player session bound to a seat at THIS
@@ -228,8 +232,8 @@ func dmSendError(c Config, err error) error {
 // (the signed-in person who has an identity session open in another
 // tab). A spectator, a player at a different table, and a signed-in
 // stranger are all refused.
-func canInviteDM(p auth.Principal, meta GameMeta, createdBy string) bool {
-	if p.Role == auth.RoleAdmin {
+func canInviteDM(p auth.Principal, meta GameMeta, createdBy string, admin bool) bool {
+	if admin {
 		return true
 	}
 	if p.Role == auth.RolePlayer && p.GameID == meta.ID && p.PlayerID != uuid.Nil {

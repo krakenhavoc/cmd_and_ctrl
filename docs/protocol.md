@@ -31,6 +31,16 @@ still works against a newer v0 server.
     this. Omitting it for an admin connection yields the admin's
     omniscient debug view; any other seatless connection is a spectator,
     who sees public information only (see below).
+- **Admins** ([ADR 0110](decisions/0110-remember-me.md) §3, owner
+  answer 4) are the shared token's session and any signed-in session
+  whose Discord ID is on `CMDCTRL_DISCORD_ADMIN_USER_IDS` (see
+  [lobby.md](lobby.md#who-is-an-admin-adr-0110-3)). An admin may bind
+  to any `?game=`, optionally as any `?player=`, and is not read-only.
+  A signed-in admin's own seat or spectator session at its own game,
+  asking for no other seat, binds exactly as anyone's would, and the
+  connection is still marked admin for the table-host gates and the card
+  overrides below. Every admin binding is logged at Info with
+  `admin_user_id` (or `admin_id` for the token), the game and the seat.
 
 Upgrade errors surface as HTTP status codes before the WebSocket handshake
 completes:
@@ -428,9 +438,13 @@ the current controller of the named card. (`declare_attackers` and
 foreign creature rejects the whole batch.) A seated player issuing one
 of these actions against a card controlled by a different seat receives
 an `error` frame with `payload.code = "bad_request"` and
-`payload.message = "you do not control that card"`. Admin sessions
-(`role: "admin"`) bypass the gate so a moderator can fix wedged board
-state. `clear_combat` intentionally stays loose — it's the "combat is
+`payload.message = "you do not control that card"`. Admin connections
+bypass the gate so a moderator can fix wedged board state. An admin
+bound to a seat, their own included, keeps the bypass for `tap`,
+`untap`, `move_card`, `add_counter`, `sacrifice_permanent`,
+`mark_damage` and `set_battlefield_position` (the admin context menu's
+overrides), and plays every other gate, the combat declarations
+included, as that seat (ADR 0110 §3). `clear_combat` intentionally stays loose — it's the "combat is
 wedged" escape hatch and any seated player may invoke it.
 
 This was deliberately permissive at S08 to support casual cross-seat

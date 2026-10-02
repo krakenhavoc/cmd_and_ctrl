@@ -221,7 +221,7 @@ func practiceOwner(c Config, p auth.Principal) string {
 		return "user:" + p.UserID.String()
 	case p.DiscordID != "":
 		return "discord:" + p.DiscordID
-	case p.Role == auth.RoleAdmin:
+	case isServerCredential(p):
 		return "admin"
 	case p.Role == auth.RolePlayer && p.PlayerID != uuid.Nil:
 		return "seat:" + p.PlayerID.String()

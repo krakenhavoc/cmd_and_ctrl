@@ -35,6 +35,12 @@ export interface Session {
   // round-trip.
   playerID?: string;
   gameID?: string;
+  // admin is GET /me's computed answer for a session with a user: true
+  // when the person's Discord ID is on the server's admin allowlist
+  // (ADR 0110 §3). It is not in the token and the server never trusts
+  // it. Absent until /me has answered; read it through lib/admin.ts's
+  // isAdmin, which also covers the shared token's `role: "admin"`.
+  admin?: boolean;
 }
 
 const STORAGE_KEY = "cmdctrl.session";

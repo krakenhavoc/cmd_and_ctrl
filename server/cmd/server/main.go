@@ -290,7 +290,21 @@ func main() {
 
 	hub := ws.NewHub(log)
 	hub.SetManager(mgr)
-	hub.SetAuthorizer(&lobby.WSAuthorizer{Auth: authenticator})
+	// The admin allowlist (ADR 0110 §3). The same *AdminList goes to the
+	// WebSocket authorizer and the lobby routes, so the two can never
+	// disagree about who is an admin. It needs a database to mean
+	// anything: an allowlisted admin is a signed-in session, and with no
+	// database no session carries a user.
+	switch n := cfg.Admins.Len(); {
+	case n == 0:
+		log.Info("admin allowlist empty; only the shared admin token is an admin", "var", lobby.AdminUserIDsEnv)
+	case database == nil:
+		log.Warn("admin allowlist is set but there is no database, so no session carries a user and the allowlist grants nothing",
+			"var", lobby.AdminUserIDsEnv, "count", n)
+	default:
+		log.Info("admin allowlist loaded", "var", lobby.AdminUserIDsEnv, "count", n)
+	}
+	hub.SetAuthorizer(&lobby.WSAuthorizer{Auth: authenticator, Admins: cfg.Admins, Log: log})
 	// Lobby HTTP mutations (join/deck/start) broadcast through the
 	// hub so clients already on the game page see them immediately.
 	l.SetStateBroadcaster(hub)
@@ -548,6 +562,7 @@ func main() {
 		Lobby:       l,
 		Auth:        authenticator,
 		AdminToken:  cfg.AdminToken,
+		Admins:      cfg.Admins,
 		SessionTTL:  cfg.SessionTTL,
 		IdentityTTL: cfg.IdentityTTL,
 		Env:         cfg.Env,
@@ -642,6 +657,11 @@ type config struct {
 	Addr       string
 	DataDir    string
 	AdminToken string
+	// Admins is the Discord user-ID allowlist from
+	// CMDCTRL_DISCORD_ADMIN_USER_IDS (ADR 0110 §3): a signed-in session
+	// whose Discord ID is on it is an admin, like the shared token.
+	// Empty is a supported state. A malformed entry fails the boot.
+	Admins *lobby.AdminList
 	// SessionTTL is the lifetime of a session with no user: guest
 	// seats and spectators, admin-token and reclaim-ticket sessions
 	// (CMDCTRL_SESSION_TTL). Default 12h.
@@ -814,6 +834,17 @@ func loadConfig(log *slog.Logger) config {
 			}
 		}
 	}
+
+	// CMDCTRL_DISCORD_ADMIN_USER_IDS: the same variable the Discord bot
+	// reads for /c2-end (ADR 0110 owner answer 3). A typo fails the boot
+	// rather than silently denying someone. The log carries the count
+	// and never the IDs.
+	admins, aerr := lobby.ParseAdminList(os.Getenv(lobby.AdminUserIDsEnv))
+	if aerr != nil {
+		log.Error("admin allowlist invalid", "err", aerr)
+		os.Exit(1)
+	}
+	c.Admins = admins
 
 	if c.AdminToken == "" {
 		log.Error("CMDCTRL_ADMIN_TOKEN is required — set it to a long random string before starting the server")

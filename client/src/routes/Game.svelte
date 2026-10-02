@@ -7,6 +7,7 @@
   import { navigate } from "../lib/router";
   import { isPracticeGame } from "../lib/practiceTable";
   import { session } from "../lib/session";
+  import { isAdmin as isAdminSession } from "../lib/admin";
   import { seatColor } from "../lib/colors";
   import DeckUploadForm from "../lib/components/DeckUploadForm.svelte";
   import BugReportModal from "../lib/components/BugReportModal.svelte";
@@ -637,7 +638,15 @@
   // downstream viewer-action gate (`{#if viewerID}`, `?? undefined`
   // casts, targeting logic) uniformly denies spectators. Cheaper and
   // safer than threading `!isSpectator` through every call site.
-  const viewerID = $derived(sess?.principal.role === "spectator" ? null : (sess?.playerID ?? null));
+  //
+  // A session bound to a DIFFERENT table has no seat here either: an
+  // admin (ADR 0110 §3) may open any table's socket from their own seat
+  // session, and their seat at the other table means nothing at this one.
+  const viewerID = $derived(
+    sess?.principal.role === "spectator" || (sess?.gameID && sess.gameID !== gameID)
+      ? null
+      : (sess?.playerID ?? null),
+  );
   const viewerSeat = $derived(seats.find((s) => s.id === viewerID) ?? null);
   const viewerHasPriority = $derived(viewerID !== null && priorityPlayer?.id === viewerID);
 
@@ -818,11 +827,18 @@
     canDeclareAttackers ? "attack" : canDeclareBlockers ? "block" : "idle",
   );
 
-  const isAdmin = $derived(sess?.principal.role === "admin");
+  // The shared token, or a signed-in person on the server's admin
+  // allowlist — seated at this table or not (ADR 0110 §3, lib/admin.ts).
+  // It drives the admin context menu, the table-manager controls and
+  // the dev tools. A seated admin still plays as their seat: the undo
+  // budget below is waived only for an admin with no seat here, which
+  // is what the server waives it for.
+  const isAdmin = $derived(isAdminSession(sess));
+  const adminUnseated = $derived(isAdmin && viewerID === null);
   // ADR 0075 §2.1: the table's settings belong to its host and to the
   // server admin. The server enforces it; this is what greys the
   // control rather than offering a click that returns an error frame.
-  const canManage = $derived(canManageTable(sess?.principal.role, viewerSeat));
+  const canManage = $derived(canManageTable(sess?.principal.role, viewerSeat, isAdmin));
   // The table's undo budget, and whether it is unlimited. Read off
   // GameView.undo_limit, which mirrors settings.undo_limit.
   const undoLimit = $derived(view?.undo_limit ?? 1);
@@ -830,7 +846,7 @@
   // Whether THIS viewer may press undo now. Not the same question as
   // the limit: an admin bypasses the budget, and an unlimited table
   // reports -1 remaining on every seat.
-  const canSpendUndo = $derived(hasUndoBudget(viewerSeat, isAdmin));
+  const canSpendUndo = $derived(hasUndoBudget(viewerSeat, adminUnseated));
   // The table's house rules (ADR 0075 §2.2). Public — every viewer,
   // spectators included, gets the same object — so this is read
   // without any permission check. `canManage` decides who may TURN a
@@ -839,7 +855,9 @@
   // Both gates the spawn route checks. Offering the entry on only one
   // of them produces a button whose 403 explains a rule we could have
   // shown instead.
-  const spawnAvailable = $derived(canSpawn(sess?.principal.role, viewerSeat, tableSettings));
+  const spawnAvailable = $derived(
+    canSpawn(sess?.principal.role, viewerSeat, tableSettings, isAdmin),
+  );
   // The badge, on the other hand, is for the OPPONENTS: a Treasure
   // that came from nowhere is indistinguishable from a real one, and
   // the table's answer is that everyone can see the switch is on.
@@ -1176,7 +1194,7 @@
       // null means "no budget gate": an admin bypasses it, and so
       // does an unlimited table, whose seats report -1 remaining —
       // a number the shortcut's `<= 0` test would read as exhausted.
-      undosRemaining: isAdmin || undoUnlimited ? null : (viewerSeat?.undos_remaining ?? 0),
+      undosRemaining: adminUnseated || undoUnlimited ? null : (viewerSeat?.undos_remaining ?? 0),
       attackAllEligible: canDeclareAttackers ? attackPlan.eligible.length : 0,
       attackAllDefenders: canDeclareAttackers ? attackPlan.defenders.length : 0,
     });
@@ -1341,7 +1359,7 @@
                 role="menuitem"
                 onclick={() => viaMenu(() => client.sendAction("undo"))}
                 disabled={!canSpendUndo}
-                title={(isAdmin
+                title={(adminUnseated
                   ? "rewind the most recent action (admin — bypasses caller / budget gates)"
                   : undoUnlimited
                     ? "undo your most recent action — this table has no undo limit"
@@ -1351,7 +1369,7 @@
                   keyHint(keys.undo)}
               >
                 <Icon name="undo" size={15} /> Undo
-                {#if !isAdmin && viewerSeat}
+                {#if !adminUnseated && viewerSeat}
                   <span class="mi-r">{formatUndoCount(viewerSeat.undos_remaining)} left</span>
                 {/if}
               </button>

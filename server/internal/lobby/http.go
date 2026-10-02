@@ -61,6 +61,11 @@ type Config struct {
 	Lobby      *Lobby
 	Auth       auth.Authenticator
 	AdminToken string // shared admin token; empty disables admin flow
+	// Admins is the Discord user-ID allowlist (CMDCTRL_DISCORD_ADMIN_USER_IDS,
+	// ADR 0110 §3): a signed-in session whose Discord ID is on it is an
+	// admin, exactly like the shared token (isAdmin, admins.go). Nil is
+	// the empty list. main hands the same *AdminList to WSAuthorizer.
+	Admins *AdminList
 	// Env is the deployment identity (prod / dev). The zero value is
 	// the empty string, which IsDev() reports false for — so a Config
 	// built without thinking about it (every existing test) gets
@@ -343,13 +348,13 @@ func Handler(c Config) http.Handler {
 	// ceiling the endpoint is an unmetered write-to-disk-forever
 	// primitive for anyone holding a session.
 	mux.Handle("GET /avatars/{id}/{hash}", avatarLimit.Middleware(auth.Middleware(c.Auth)(handlerFunc(c, discordAvatar))))
-	mux.Handle("POST /games", auth.Middleware(c.Auth, auth.RoleAdmin)(handlerFunc(c, createGame)))
-	mux.Handle("DELETE /games/{id}", auth.Middleware(c.Auth, auth.RoleAdmin)(handlerFunc(c, deleteGame)))
+	mux.Handle("POST /games", requireAdmin(c, handlerFunc(c, createGame)))
+	mux.Handle("DELETE /games/{id}", requireAdmin(c, handlerFunc(c, deleteGame)))
 	// Archive / unarchive: the reversible half of DELETE. Admin-only
 	// on the same gate, because hiding somebody else's table from the
 	// listing is an operator action even though it destroys nothing.
-	mux.Handle("POST /games/{id}/archive", auth.Middleware(c.Auth, auth.RoleAdmin)(handlerFunc(c, archiveGame)))
-	mux.Handle("DELETE /games/{id}/archive", auth.Middleware(c.Auth, auth.RoleAdmin)(handlerFunc(c, unarchiveGame)))
+	mux.Handle("POST /games/{id}/archive", requireAdmin(c, handlerFunc(c, archiveGame)))
+	mux.Handle("DELETE /games/{id}/archive", requireAdmin(c, handlerFunc(c, unarchiveGame)))
 	// Seat reclaim (see reclaim.go). Two halves with deliberately
 	// different gates: minting is ADMIN-ONLY — the ticket is a bearer
 	// credential for one player's seat, hidden information and all —
@@ -358,7 +363,7 @@ func Handler(c Config) http.Handler {
 	// and therefore rides the same brute-force bucket as join and
 	// spectate.
 	mux.Handle("POST /games/{id}/seats/{player}/reclaim",
-		auth.Middleware(c.Auth, auth.RoleAdmin)(handlerFunc(c, mintSeatReclaim)))
+		requireAdmin(c, handlerFunc(c, mintSeatReclaim)))
 	mux.Handle("POST /games/{id}/reclaim", limit.Middleware(handlerFunc(c, redeemSeatReclaim)))
 	// Invite rotation (#1038, ADR 0051 decision 4): revoke a game's
 	// current invite of one kind and mint its replacement, so a link
@@ -402,7 +407,7 @@ func Handler(c Config) http.Handler {
 	// exists so the bot can ask the one question it actually needs
 	// without that identity ever leaving the server.
 	mux.Handle("GET /games/{id}/creator",
-		auth.Middleware(c.Auth, auth.RoleAdmin)(handlerFunc(c, gameCreator)))
+		requireAdmin(c, handlerFunc(c, gameCreator)))
 	mux.Handle("GET /games", auth.Middleware(c.Auth)(handlerFunc(c, listGames)))
 	mux.Handle("GET /games/{id}", auth.Middleware(c.Auth)(handlerFunc(c, getGame)))
 	mux.Handle("POST /games/{id}/start", auth.Middleware(c.Auth)(handlerFunc(c, startGame)))
@@ -559,10 +564,10 @@ func Handler(c Config) http.Handler {
 	mux.Handle("GET /bugreport/att/{id}/{name}", bugAttachLimit.Middleware(handlerFunc(c, bugAttachment)))
 	// The pinned replay is the raw unfiltered view — admin only, with
 	// no game-has-ended relaxation (see bugPinnedReplay).
-	mux.Handle("GET /bugreport/{id}/replay", auth.Middleware(c.Auth, auth.RoleAdmin)(handlerFunc(c, bugPinnedReplay)))
+	mux.Handle("GET /bugreport/{id}/replay", requireAdmin(c, handlerFunc(c, bugPinnedReplay)))
 	// The pinned public game log rides the same admin gate as the
 	// replay — the contents are public, the artifact is unfiltered.
-	mux.Handle("GET /bugreport/{id}/gamelog", auth.Middleware(c.Auth, auth.RoleAdmin)(handlerFunc(c, bugPinnedGameLog)))
+	mux.Handle("GET /bugreport/{id}/gamelog", requireAdmin(c, handlerFunc(c, bugPinnedGameLog)))
 	// Logout does not require an authenticated principal — a client
 	// with a stale or revoked token should still be able to clear
 	// browser state without a 401 dead-end. We just revoke whatever
@@ -574,7 +579,7 @@ func Handler(c Config) http.Handler {
 	// else's. /logout/* is its own entry in deploy/Caddyfile's @api
 	// matcher, because Caddy's /logout matches that path exactly.
 	mux.Handle("POST /logout/everywhere", auth.Middleware(c.Auth)(handlerFunc(c, logoutEverywhere)))
-	mux.Handle("POST /admin/users/{id}/revoke-sessions", auth.Middleware(c.Auth, auth.RoleAdmin)(handlerFunc(c, adminRevokeUserSessions)))
+	mux.Handle("POST /admin/users/{id}/revoke-sessions", requireAdmin(c, handlerFunc(c, adminRevokeUserSessions)))
 
 	return mux
 }
@@ -618,10 +623,11 @@ func callerKey(r *http.Request) string {
 	switch {
 	case p.UserID != uuid.Nil:
 		return "user:" + p.UserID.String()
-	case p.Role == auth.RoleAdmin:
+	case isServerCredential(p):
 		// One bucket for the admin credential, shared by the bot and
 		// any operator holding it. That is the point: it is one
-		// credential.
+		// credential. An allowlisted admin is a person and has a user,
+		// so the first case already gave them their own bucket.
 		return "admin"
 	case p.PlayerID != uuid.Nil:
 		return "seat:" + p.PlayerID.String()
@@ -740,7 +746,7 @@ func createGame(c Config, w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	return writeJSON(w, http.StatusCreated, redactMetaFor(p, meta.ID, meta))
+	return writeJSON(w, http.StatusCreated, redactMetaFor(p, c.isAdmin(p), meta.ID, meta))
 }
 
 // transferHost handles POST /games/{id}/host: hand the table to
@@ -763,7 +769,7 @@ func transferHost(c Config, w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	if !CanManageTable(p, meta) {
+	if !CanManageTable(p, meta, c.isAdmin(p)) {
 		return ErrNotTableManager
 	}
 	if body.PlayerID == uuid.Nil {
@@ -777,7 +783,7 @@ func transferHost(c Config, w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	return writeJSON(w, http.StatusOK, redactMetaFor(p, id, meta))
+	return writeJSON(w, http.StatusOK, redactMetaFor(p, c.isAdmin(p), id, meta))
 }
 
 // updateTableSettings handles PATCH /games/{id}/settings: change the
@@ -810,12 +816,14 @@ func updateTableSettings(c Config, w http.ResponseWriter, r *http.Request) error
 	if err != nil {
 		return err
 	}
-	if !CanManageTable(p, meta) {
+	if !CanManageTable(p, meta, c.isAdmin(p)) {
 		return ErrNotTableManager
 	}
 	// An admin session carries no PlayerID, which is exactly the
-	// uuid.Nil the engine records for "the server admin".
-	settings, err := c.Lobby.UpdateSettings(id, p.PlayerID, patch)
+	// uuid.Nil the engine records for "the server admin". An
+	// allowlisted admin seated at a different table is recorded the
+	// same way, never as their seat over there (actorIn).
+	settings, err := c.Lobby.UpdateSettings(id, actorIn(p, id), patch)
 	if err != nil {
 		return err
 	}
@@ -1090,11 +1098,12 @@ func listGames(c Config, w http.ResponseWriter, r *http.Request) error {
 		return httpError(http.StatusInternalServerError, "missing principal")
 	}
 	games := c.Lobby.List()
+	admin := c.isAdmin(p)
 	if envflag.Truthy(r.URL.Query().Get("archived")) {
 		games = c.Lobby.ListArchived()
 	}
 	for i := range games {
-		games[i] = redactMetaFor(p, games[i].ID, games[i])
+		games[i] = redactMetaFor(p, admin, games[i].ID, games[i])
 	}
 	return writeJSON(w, http.StatusOK, listResponse{Games: games})
 }
@@ -1116,7 +1125,7 @@ func getGame(c Config, w http.ResponseWriter, r *http.Request) error {
 	if !ok {
 		return httpError(http.StatusInternalServerError, "missing principal")
 	}
-	return writeJSON(w, http.StatusOK, redactMetaFor(p, id, meta))
+	return writeJSON(w, http.StatusOK, redactMetaFor(p, c.isAdmin(p), id, meta))
 }
 
 // redactMetaFor strips what principal p may not read off a game's
@@ -1128,15 +1137,17 @@ func getGame(c Config, w http.ResponseWriter, r *http.Request) error {
 // never reaches the wire on its own, but every GameMeta a handler
 // serializes should still pass through here rather than rely on that
 // alone.
-func redactMetaFor(p auth.Principal, id uuid.UUID, meta GameMeta) GameMeta {
-	if p.Role != auth.RoleAdmin && p.GameID != id {
+func redactMetaFor(p auth.Principal, admin bool, id uuid.UUID, meta GameMeta) GameMeta {
+	if !admin && p.GameID != id {
 		meta.InviteToken = ""
 		meta.SpectatorInvite = ""
 	}
 	// Spectators specifically never see the player invite (would let
 	// them claim a seat) and shouldn't see the spectator one either —
-	// their session is already proof they have it.
-	if p.Role == auth.RoleSpectator {
+	// their session is already proof they have it. An admin watching
+	// a table keeps them: an admin may take any seat anyway (ADR 0110
+	// §3 item 5).
+	if !admin && p.Role == auth.RoleSpectator {
 		meta.InviteToken = ""
 		meta.SpectatorInvite = ""
 	}
@@ -1363,7 +1374,7 @@ func rotateInvite(c Config, w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	if !CanRotateInvites(p, meta) {
+	if !CanRotateInvites(p, meta, c.isAdmin(p)) {
 		return ErrNotInviteManager
 	}
 	newToken, _, err := c.Lobby.RotateInvite(id, InviteKind(body.Kind))
@@ -1549,11 +1560,14 @@ func autoTapPreview(c Config, w http.ResponseWriter, r *http.Request) error {
 	if !ok {
 		return httpError(http.StatusInternalServerError, "missing principal")
 	}
-	if p.Role != auth.RoleAdmin && p.GameID != id {
-		return httpError(http.StatusForbidden, "not a seat in this game")
-	}
+	// The preview is priced for the caller's own seat at this table, so
+	// it needs one: there is no admin bypass. The shared token has no
+	// seat, and an allowlisted admin's seat is at their own table.
 	if p.Role == auth.RoleSpectator || p.PlayerID == uuid.Nil {
 		return httpError(http.StatusForbidden, "spectators have no auto-tap preview")
+	}
+	if p.GameID != id {
+		return httpError(http.StatusForbidden, "not a seat in this game")
 	}
 	cardIDStr := r.URL.Query().Get("card")
 	if cardIDStr == "" {
@@ -2048,14 +2062,15 @@ func downloadReplay(c Config, w http.ResponseWriter, r *http.Request) error {
 	if !ok {
 		return httpError(http.StatusInternalServerError, "missing principal")
 	}
-	if p.Role != auth.RoleAdmin && p.GameID != id {
+	admin := c.isAdmin(p)
+	if !admin && p.GameID != id {
 		return httpError(http.StatusForbidden, "not a seat in this game")
 	}
 	room := c.Lobby.RoomOf(id)
 	if room == nil {
 		return httpError(http.StatusNotFound, "game not found")
 	}
-	if p.Role != auth.RoleAdmin && room.Game.CurrentState() != game.StateEnded {
+	if !admin && room.Game.CurrentState() != game.StateEnded {
 		return httpError(http.StatusForbidden, "replay is available once the game has ended")
 	}
 	path := room.ReplayPath()
@@ -2086,7 +2101,8 @@ func downloadReplay(c Config, w http.ResponseWriter, r *http.Request) error {
 		"Content-Disposition",
 		`attachment; filename="`+id.String()+`.jsonl"`,
 	)
-	if p.Role == auth.RoleAdmin {
+	if admin {
+		logAdminAction(c.Log, "replay download", p, "game_id", id.String())
 		// Verbatim. ServeContent is a zero-copy sendfile path and
 		// brings Range support plus a Content-Length along with it —
 		// worth keeping on the one path that doesn't transform.
@@ -2163,7 +2179,7 @@ func startGame(c Config, w http.ResponseWriter, r *http.Request) error {
 	if !ok {
 		return httpError(http.StatusInternalServerError, "missing principal")
 	}
-	if p.Role != auth.RoleAdmin && p.GameID != id {
+	if !c.isAdmin(p) && p.GameID != id {
 		return httpError(http.StatusForbidden, "not a seat in this game")
 	}
 	meta, err := c.Lobby.Start(id)
@@ -2396,10 +2412,13 @@ func resolveDeckSource(ctx context.Context, c Config, w http.ResponseWriter, for
 // authoritative game.
 //
 // Authorization:
-//   - RolePlayer sessions may only set their OWN deck (p.PlayerID
-//     must equal body.PlayerID and p.GameID must match the path id).
-//   - RoleAdmin may set any seat's deck (useful for debugging and
-//     for the rare "uploaded the wrong file" case).
+//   - An admin (isAdmin: the shared token or an allowlisted person)
+//     may set any seat's deck (useful for debugging and for the rare
+//     "uploaded the wrong file" case).
+//   - Anyone else must be a RolePlayer session setting their OWN deck
+//     (p.PlayerID must equal body.PlayerID and p.GameID must match the
+//     path id). Before ADR 0110 the check ran only for RolePlayer, so
+//     a spectator or an unseated sign-in fell through to "any seat".
 //
 // On validation failure the endpoint returns 422 with the full
 // violation list so the client can highlight every offending card
@@ -2442,9 +2461,9 @@ func uploadDeck(c Config, w http.ResponseWriter, r *http.Request) error {
 		return httpError(http.StatusBadRequest, "player_id is required")
 	}
 
-	// Role enforcement: players must match their own principal.
-	if p.Role == auth.RolePlayer {
-		if p.GameID != id {
+	// Role enforcement: everyone but an admin must be the seat itself.
+	if !c.isAdmin(p) {
+		if p.Role != auth.RolePlayer || p.GameID != id {
 			return httpError(http.StatusForbidden, "session is not for this game")
 		}
 		if p.PlayerID != body.PlayerID {
@@ -2802,12 +2821,12 @@ func botDeckSource(c Config, body addBotRequest) (format, source, deckID string,
 // is `RolePlayer` with a real PlayerID and not merely a matching
 // GameID. Adding a bot mutates the table; watching does not earn it.
 // Mirrors the gate on autoTapPreview.
-func botSeatAuthorised(r *http.Request, id uuid.UUID) error {
+func botSeatAuthorised(c Config, r *http.Request, id uuid.UUID) error {
 	p, ok := auth.PrincipalFromContext(r.Context())
 	if !ok {
 		return httpError(http.StatusInternalServerError, "missing principal")
 	}
-	if p.Role == auth.RoleAdmin {
+	if c.isAdmin(p) {
 		return nil
 	}
 	if p.GameID != id {
@@ -2883,7 +2902,7 @@ func addBot(c Config, w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	if err := botSeatAuthorised(r, id); err != nil {
+	if err := botSeatAuthorised(c, r, id); err != nil {
 		return err
 	}
 	if r.Body == nil {
@@ -2955,7 +2974,7 @@ func removeBot(c Config, w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	if err := botSeatAuthorised(r, id); err != nil {
+	if err := botSeatAuthorised(c, r, id); err != nil {
 		return err
 	}
 	playerID, err := uuid.Parse(r.PathValue("player"))
@@ -2995,12 +3014,22 @@ func logout(c Config, w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
-func me(_ Config, w http.ResponseWriter, r *http.Request) error {
+func me(c Config, w http.ResponseWriter, r *http.Request) error {
 	p, ok := auth.PrincipalFromContext(r.Context())
 	if !ok {
 		return httpError(http.StatusInternalServerError, "missing principal")
 	}
-	return writeJSON(w, http.StatusOK, p)
+	return writeJSON(w, http.StatusOK, meResponse{Principal: p, Admin: c.isAdmin(p)})
+}
+
+// meResponse is GET /me: the principal, flattened as it always was,
+// plus whether it is an admin right now (ADR 0110 §3 item 4). Admin is
+// computed per request and is not part of the token, so the client
+// learns it here and nowhere else. The allowlist itself is never
+// served.
+type meResponse struct {
+	auth.Principal
+	Admin bool `json:"admin"`
 }
 
 // --- helpers ---

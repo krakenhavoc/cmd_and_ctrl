@@ -3,6 +3,7 @@
 // kind of rules that look obvious and are easy to get subtly wrong:
 // which seat a connection renders decides which hand you can see.
 
+import { isAdmin } from "./admin";
 import type { Session } from "./session";
 
 export interface GameWSTargetOpts {
@@ -19,14 +20,15 @@ export interface GameWSTargetOpts {
 // canSwapSeats reports whether seat swapping is meaningful for this
 // session.
 //
-// Only admin sessions. This is not a security decision — the server
-// makes that one, and makes it the safe way round: WSAuthorizer
-// returns the principal's own PlayerID for a RolePlayer session and
-// ignores ?player= entirely, so a player who forged the parameter
-// would simply see their own seat. This function exists so we don't
-// render a control that silently does nothing.
+// Only admin sessions: the shared token, or a signed-in person on the
+// server's admin allowlist (isAdmin, ADR 0110 §3). This is not a
+// security decision — the server makes that one, and makes it the safe
+// way round: WSAuthorizer returns a non-admin player's own PlayerID and
+// ignores ?player= entirely, so a player who forged the parameter would
+// simply see their own seat. This function exists so we don't render a
+// control that silently does nothing.
 export function canSwapSeats(session: Session | null): boolean {
-  return session?.principal.role === "admin";
+  return isAdmin(session);
 }
 
 // gameWSURL builds the connection URL for one seat's view of a game.
@@ -42,6 +44,9 @@ export function canSwapSeats(session: Session | null): boolean {
 // admin who picks a seat therefore gives up the admin bypass on
 // player-scoped actions and gets that seat's real permissions, which
 // is what you want when the point is to test what that seat can do.
+// The one exception is the admin context menu's card overrides (tap,
+// move, counters, position), which an admin connection keeps in any
+// seat, its own included (ADR 0110 §3, server actions.overrideCaller).
 export function gameWSURL(opts: GameWSTargetOpts): string {
   const { baseURL, gameID, session, seatOverride } = opts;
   const params = new URLSearchParams();

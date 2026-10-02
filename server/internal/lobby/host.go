@@ -37,26 +37,24 @@ var ErrHostIneligible = errors.New("lobby: seat cannot host (bot or no longer in
 var ErrNotTableManager = errors.New("lobby: only the table host or the admin may do that")
 
 // CanManageTable is the one "host or admin" predicate (ADR 0075
-// §2.1). True for the server admin, or for a player session bound to
-// this game whose seat is the table's host. meta must be fresh from
+// §2.1). True for an admin (admin is Config.isAdmin's answer for p:
+// the shared token or an allowlisted person, ADR 0110 §3), or for a
+// player session bound to this game whose seat is the table's host. meta must be fresh from
 // Lobby.Get (which resolves the effective host); a spectator, an
 // unseated Discord sign-in, another seat, or the host of a DIFFERENT
 // game is refused.
 //
 // The WebSocket side asks the same question through
 // ws.Room.CanManageTable, which reads the same host.
-func CanManageTable(p auth.Principal, meta GameMeta) bool {
-	switch p.Role {
-	case auth.RoleAdmin:
+func CanManageTable(p auth.Principal, meta GameMeta, admin bool) bool {
+	if admin {
 		return true
-	case auth.RolePlayer:
-		return p.PlayerID != uuid.Nil &&
-			meta.HostPlayerID != uuid.Nil &&
-			p.GameID == meta.ID &&
-			p.PlayerID == meta.HostPlayerID
-	default:
-		return false
 	}
+	return p.Role == auth.RolePlayer &&
+		p.PlayerID != uuid.Nil &&
+		meta.HostPlayerID != uuid.Nil &&
+		p.GameID == meta.ID &&
+		p.PlayerID == meta.HostPlayerID
 }
 
 // syncHostLocked mirrors the room's effective host onto the meta and

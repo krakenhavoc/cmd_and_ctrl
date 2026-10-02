@@ -24,6 +24,7 @@
   } from "../lib/api";
   import { inviteURL, reclaimURL, spectatorInviteURL, navigate } from "../lib/router";
   import { canSignOutEverywhere, session, LobbyApiError } from "../lib/session";
+  import { isAdmin as isAdminSession } from "../lib/admin";
   import { canJoinByCode, signedInUserID } from "../lib/myGames";
   import { openSettings } from "../lib/settings";
   import { seatColor } from "../lib/colors";
@@ -88,7 +89,7 @@
   // us from rendering a button that always 403s.
   function canManageBots(g: GameMeta): boolean {
     if (g.state !== "lobby" || !botsOfferable) return false;
-    if ($session?.principal.role === "admin") return true;
+    if (isAdmin) return true;
     return mySeat(g) !== null;
   }
 
@@ -207,7 +208,10 @@
   // reaps the replay JSONL and the restore point along with the
   // table and cannot be undone, so it lives behind the archived view
   // and its own confirmation.
-  const isAdmin = $derived($session?.principal.role === "admin");
+  // The shared token, or a signed-in person on the server's admin
+  // allowlist (ADR 0110 §3, lib/admin.ts). The server decides every
+  // admin route; this only decides what the lobby offers.
+  const isAdmin = $derived(isAdminSession($session));
   let showArchived = $state(false);
   let archived = $state<GameMeta[]>([]);
   let manageBusy = $state(false);
@@ -503,7 +507,8 @@
   // back to the full list if the seated game isn't in it.
   const visibleGames = $derived.by(() => {
     const s = $session;
-    if (s?.principal.role !== "player" || !s.gameID) return games;
+    // An admin sees every table, seated somewhere or not.
+    if (isAdmin || s?.principal.role !== "player" || !s.gameID) return games;
     const mine = games.filter((g) => g.id === s.gameID);
     return mine.length > 0 ? mine : games;
   });
@@ -585,7 +590,7 @@
       <h2 class="title">Tables</h2>
       <p class="sub">{summary}</p>
     </div>
-    {#if $session?.principal.role === "admin"}
+    {#if isAdmin}
       <form class="create" onsubmit={onCreate}>
         <h2 class="panel-h">create game</h2>
         <input type="text" placeholder="game name" bind:value={newName} />
@@ -600,7 +605,7 @@
 
   {#if visibleGames.length === 0}
     <p class="muted empty">
-      {#if $session?.principal.role === "admin"}
+      {#if isAdmin}
         Create a table, then send the invite link to your pod.
       {:else}
         You're not seated at a table yet — ask for an invite link.
@@ -698,7 +703,7 @@
                      pull the replay any time after the lobby phase, but
                      players get 403 until the game has ended (the JSONL
                      carries unfiltered hidden information mid-game). -->
-                {#if g.state === "ended" || ($session?.principal.role === "admin" && g.state !== "lobby")}
+                {#if g.state === "ended" || (isAdmin && g.state !== "lobby")}
                   {@const url = replayURL(g.id)}
                   {#if url}
                     <a class="btn-link" href={url} download={`${g.id}.jsonl`}>
