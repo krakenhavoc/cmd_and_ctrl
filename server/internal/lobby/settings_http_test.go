@@ -135,6 +135,17 @@ func TestMeSettingsAreTheCallersOwn(t *testing.T) {
 		t.Errorf("same person's seat session: %d %+v", status, got)
 	}
 
+	// So does a signed-in spectator (ADR 0110 §1 widened signedInUser).
+	watching, _, err := s.auth.Issue(context.Background(), auth.Principal{
+		Role: auth.RoleSpectator, GameID: uuid.New(), UserID: me, Name: "Alice",
+	}, time.Hour)
+	if err != nil {
+		t.Fatalf("issue spectator: %v", err)
+	}
+	if status, got := getSettings(t, s, watching); status != http.StatusOK || got.Revision != 1 {
+		t.Errorf("same person spectating: %d %+v", status, got)
+	}
+
 	other := identityToken(t, s.auth, dmTarget(t, s, "d-other", "Other").ID, "d-other", "Other")
 	if status, got := getSettings(t, s, other); status != http.StatusOK || got.Revision != 0 || got.Settings != nil {
 		t.Errorf("another person: %d %+v, want no copy", status, got)
