@@ -206,6 +206,30 @@ func (e *enumerator) choiceMoves() bool {
 			}
 
 		case game.PendingChoicePayUnless:
+			// ADR 0108 §5: a payment that is not mana — "discard a
+			// card", "sacrifice two lands". Each way of paying is a
+			// move naming the cards it pays with; there is none when
+			// the seat cannot pay (CR 118.3), and the decline is
+			// always there.
+			if action := c.PayAction(); action != nil {
+				pool := g.PayActionOptionsForEffect(c.Chooser, action)
+				for _, set := range combinations(pool, action.Count, action.Count, e.opts.MaxExpansionPerSource) {
+					a := true
+					p := base()
+					p.Apply = &a
+					p.CardIDs = idStrings(set)
+					label := reason + ": " + c.PayCost + " —"
+					for _, id := range set {
+						label += " " + cardNameFor(g, id, e.seat)
+					}
+					e.addChoice(c, label, p)
+				}
+				a := false
+				p := base()
+				p.Apply = &a
+				e.addChoice(c, reason+": decline", p)
+				continue
+			}
 			// Paying is only a move if the cost is payable; the engine
 			// would silently treat an unpayable "yes" as a decline.
 			canPay := false

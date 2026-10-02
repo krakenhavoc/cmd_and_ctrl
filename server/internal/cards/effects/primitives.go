@@ -1043,8 +1043,13 @@ type UpkeepPayUnless struct {
 	// controller, which is who the printed clause always means.
 	Chooser uuid.UUID
 
-	// Cost is the printed payment ("{U}", "{3}{U}{U}").
+	// Cost is the printed payment ("{U}", "{3}{U}{U}"). With an Action
+	// it is the payment's words ("Discard a card"), never parsed.
 	Cost string
+
+	// Action is a payment that is not mana: discard N cards or
+	// sacrifice N permanents of a type (ADR 0108 §5). Nil for mana.
+	Action *game.PayAction
 
 	// Question is the prompt header.
 	Question string
@@ -1053,16 +1058,25 @@ type UpkeepPayUnless struct {
 	// game. It runs on "no" and on a "yes" the chooser cannot fund,
 	// exactly as PayUnless's does.
 	OnDecline func(ctx *Context) error
+
+	// OnPay runs once the payment has been made (echo's "echo cost is
+	// paid" event). Optional.
+	OnPay func(ctx *Context) error
 }
 
 func (p UpkeepPayUnless) Apply(ctx *Context) error {
-	return ctx.Game.QueueUpkeepPayUnlessForEffect(game.UpkeepPayUnlessPrompt{
+	prompt := game.UpkeepPayUnlessPrompt{
 		Chooser:   p.Chooser,
 		Source:    ctx.Source(),
 		Cost:      p.Cost,
+		Action:    p.Action,
 		Question:  p.Question,
 		OnDecline: declineAgainstTheSameItem(ctx.Item, p.OnDecline),
-	})
+	}
+	if p.OnPay != nil {
+		prompt.OnPay = declineAgainstTheSameItem(ctx.Item, p.OnPay)
+	}
+	return ctx.Game.QueueUpkeepPayUnlessForEffect(prompt)
 }
 
 // CounterUnlessPaid is "counter <StackID> unless its controller pays

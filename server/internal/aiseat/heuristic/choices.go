@@ -433,6 +433,26 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 		// yes, but not so emphatically that a targeted alternative
 		// in the same window cannot outbid it.
 		if cp.Apply != nil && *cp.Apply {
+			// ADR 0108 §5 decision 6: a payment that discards or
+			// sacrifices is still paid, giving up the least valuable
+			// cards. The tie-break stays above the decline's 0.5.
+			if kind == choicePayUnless && ch != nil && ch.PayCards != nil && len(cp.CardIDs) > 0 {
+				var loss float64
+				for _, id := range cp.CardIDs {
+					c := lookup(id)
+					switch {
+					case c == nil:
+					case ch.PayCards.Action == "sacrifice":
+						loss += st.permanentValue(c)
+					default:
+						loss += st.cardValue(p.cfg, c)
+					}
+				}
+				if loss < 0 {
+					loss = 0
+				}
+				return 1 - 0.4*loss/(1+loss), "pay with the least valuable"
+			}
 			return 1, "yes"
 		}
 		return 0.5, "no"

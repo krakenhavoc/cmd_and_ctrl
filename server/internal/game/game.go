@@ -1750,6 +1750,11 @@ func (g *Game) finishStepEntryLocked(canceled bool) {
 		// Upkeep grants priority, so no auto-advance — just emit and
 		// fall through.
 		if g.Turn.ActiveSeat >= 0 && g.Turn.ActiveSeat < len(g.Seats) {
+			// ADR 0108 §5: the upkeep is counted as it begins, BEFORE
+			// the event the "at the beginning of your upkeep" triggers
+			// watch, so echo's intervening if reads this upkeep as the
+			// current one (CR 702.30a, CR 603.4).
+			g.Seats[g.Turn.ActiveSeat].UpkeepsBegun++
 			g.EmitEvent(Event{
 				Kind:  EventBeginUpkeep,
 				Actor: g.Seats[g.Turn.ActiveSeat].ID,

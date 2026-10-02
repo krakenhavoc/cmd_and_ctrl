@@ -74,8 +74,15 @@ type UpkeepPayUnlessPrompt struct {
 
 	// Cost is the printed payment ("{U}", "{3}{U}{U}", a cumulative
 	// upkeep's cost repeated once per age counter), parsed by
-	// ParseCost and auto-tapped for like any other pay-unless.
+	// ParseCost and auto-tapped for like any other pay-unless. With an
+	// Action it is the payment's words instead ("Discard a card",
+	// "Sacrifice two lands"), shown on the prompt and never parsed.
 	Cost string
+
+	// Action, when set, is a payment that is not mana (ADR 0108 §5,
+	// pay_unless_action.go): discard N cards or sacrifice N permanents
+	// of a type. Nil for a mana payment.
+	Action *PayAction
 
 	// Question is the dialog header.
 	Question string
@@ -84,6 +91,10 @@ type UpkeepPayUnlessPrompt struct {
 	// game. It runs on "no", and on a "yes" the chooser cannot fund,
 	// exactly as it does for an ordinary pay-unless.
 	OnDecline func(g *Game) error
+
+	// OnPay, when set, runs once the payment has been made: echo's
+	// EventEchoPaid (ADR 0108 §5). Nil for every other card.
+	OnPay func(g *Game) error
 }
 
 // QueueUpkeepPayUnlessForEffect queues the CR 118.12 prompt and
@@ -97,8 +108,14 @@ type UpkeepPayUnlessPrompt struct {
 //
 // Caller must hold g.mu. Added in #997.
 func (g *Game) QueueUpkeepPayUnlessForEffect(p UpkeepPayUnlessPrompt) error {
+	var action *PayAction
+	if p.Action != nil {
+		a := *p.Action
+		action = &a
+	}
 	return g.queuePayUnlessLocked(p.Chooser, p.Source, p.Cost, p.Question,
-		p.OnDecline, g.currentTurnStepLocked(), uuid.Nil, nil)
+		p.OnDecline, g.currentTurnStepLocked(), uuid.Nil, nil,
+		payUnlessExtras{onPay: p.OnPay, action: action})
 }
 
 // currentTurnStepLocked freezes the cursor as an anchor a later read

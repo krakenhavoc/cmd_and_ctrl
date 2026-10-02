@@ -621,7 +621,7 @@ var items = []Item{
 	{
 		Slug: "cumulative-upkeep", Name: "Cumulative upkeep", Kind: KindMechanic, Status: StatusPartial,
 		Summary: "At your upkeep a permanent with cumulative upkeep gets an age counter, and you pay its cost once per counter or sacrifice it.",
-		Missing: "Only mana costs work: cumulative upkeep that asks for life or a sacrifice isn't supported yet.",
+		Missing: "Mana, a discard and a sacrifice work as the payment; cumulative upkeep that asks for life, mana added, a counter or another action isn't supported yet.",
 		Rules:   []string{"702.24"},
 		Issue:   567,
 		Printed: printedLine("cumulative upkeep"),
@@ -1198,15 +1198,29 @@ var items = []Item{
 		EngineNotes: "regeneration's CR 701.19c refusal exists only per destroy instruction (`DestroyOptions.CantBeRegenerated`). A turn-long mark pinned to the creature, read by the regeneration shield's AppliesTo, would cover Incinerate and the rest. Whippoorwill also needs a delayed trigger on that creature dying this turn; its damage grant shipped with ADR 0107 PR 6 (`DamageToCantBePreventedThisTurnForEffect`).",
 	},
 	{
-		Slug: "echo", Name: "Echo", Kind: KindSeam, Status: StatusMissing,
-		Summary:     "Echo makes you pay a permanent's echo cost at the beginning of your next upkeep after it comes under your control, or sacrifice it.",
-		Missing:     "Echo isn't implemented, so a permanent with it never asks for its echo cost.",
-		Rules:       []string{"702.30"},
-		Issue:       1888,
-		Tracked:     "#1888 (S50 tracker #1784; found landing ADR 0107 PR 6, #1853)",
+		// ADR 0108 §5 (#1888, Delivery PR 4). Closed; history in
+		// Closed seams.
+		Slug: "echo", Name: "Echo", Kind: KindMechanic, Status: StatusImplemented,
+		Summary:  "Echo makes you pay a permanent's echo cost at the beginning of your next upkeep after it comes under your control, or sacrifice it.",
+		Rules:    []string{"702.30", "603.4", "118.12a"},
+		ADR:      "0108-turn-scoped-effects-object-history-and-damage-shields.md",
+		Mechanic: "echo",
+		Printed:  printedLine("echo"),
+		Phrases:  []string{"echo"},
+		Examples: []string{"Deranged Hermit", "Karmic Guide", "Skizzik Surger"},
+	},
+	{
+		// Found landing ADR 0108 PR 4 (#1888): Volcano Hellion's echo
+		// shipped, its enters trigger did not.
+		Slug: "choose-a-number-on-resolution", Name: "Choosing a number as an ability resolves", Kind: KindSeam, Status: StatusMissing,
+		Summary:     "Effects that let a player choose any number as they resolve, such as Volcano Hellion's \"an amount of damage of your choice\".",
+		Missing:     "A player can't yet choose an arbitrary number while a spell or ability resolves.",
+		Rules:       []string{"608.2d", "107.1b"},
+		Issue:       1941,
+		Tracked:     "#1941 (found landing ADR 0108 PR 4, #1888)",
 		Waiting:     []string{"Volcano Hellion"},
-		Phrases:     []string{"echo"},
-		EngineNotes: "keyword: echo (CR 702.30) is not in `canonicalKeywords`. It is an intervening-if upkeep trigger (CR 603.4) on \"came under your control since the beginning of your last upkeep\" plus a pay-or-sacrifice prompt. Volcano Hellion's echo cost is {X} where X is your life total; its \"The damage can't be prevented\" shipped with ADR 0107 PR 6.",
+		Phrases:     []string{"amount of your choice", "number of your choice"},
+		EngineNotes: "prompt: the only number a resolving effect can ask for today is an option pick over a fixed list (`PendingChoiceOptionPick`) or a mode picked at announce (Expel the Interlopers' caveat); the loop shortcut's integer is its own kind. Volcano Hellion's \"deals an amount of damage of your choice to you and target creature\" is chosen on resolution (CR 608.2d) and has no ceiling, and a capped list is weaker than printed whenever the amount matters past lethal (lifelink, a \"whenever this is dealt damage\" creature). Its echo {X} (X = your life total, read on resolution) shipped with ADR 0108 PR 4 as `effects.EchoX`, and its \"The damage can't be prevented\" with ADR 0107 PR 6. Needs a resolution-time number prompt: a pending-choice kind with a min and an optional max, a number field in the client, and an enumerator that offers a handful of meaningful values.",
 	},
 	{
 		Slug: "damage-as-though-wither", Name: "Damage dealt as though its source had wither or infect", Kind: KindSeam, Status: StatusMissing,

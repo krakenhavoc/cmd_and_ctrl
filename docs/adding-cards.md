@@ -4789,10 +4789,29 @@ Two things that are not obvious:
   would tell the ADR 0037 coverage signal that every cumulative-upkeep
   card is implemented. The cost lives on the `Spec`.
 
-Mana costs only. "Cumulative upkeep—Pay 2 life" (Glacial Chasm) and
-"—Sacrifice a creature" (Phyrexian Soulgorger) are the same trigger
-with a payment the pay-or-else prompt cannot parse; they wait for those
-payment shapes rather than being approximated.
+A discard or a sacrifice is `CumulativeUpkeepPaying(label, payment,
+noun, plural)` with `DiscardPayment(1)` or `SacrificePayment(1, "land",
+"lands", game.PermanentQuery{Types: []string{"land"}})` (ADR 0108 §5):
+with N age counters it asks for N cards or N permanents, chosen and paid
+together or not at all (CR 702.24a). "Cumulative upkeep—Pay 2 life"
+(Glacial Chasm) and the other payments the prompt does not take yet wait
+rather than being approximated.
+
+### Echo (ADR 0108 §5, #1888, CR 702.30)
+
+`Echo(name, cost)` ([echo.go](../server/internal/cards/effects/echo.go))
+goes in `Triggered` beside the card's other triggers:
+`Echo("Goblin Patrol", "{R}")`. A cost that is not mana is
+`EchoPayment(name, DiscardPayment(1))` or `EchoPayment(name,
+SacrificePayment(2, "land", "lands", …))`, and a cost read as the trigger
+resolves is `EchoX(name, where, amount)` (Volcano Hellion's life total).
+The trigger checks "came under your control since the beginning of your
+last upkeep" itself (`game.CameUnderControlSinceLastUpkeepForEffect`)
+when the upkeep begins and again on resolution, asks through
+`UpkeepPayUnless`, sacrifices on a decline, and emits `EventEchoPaid` on a
+payment: "When this creature's echo cost is paid" is
+`WhenEchoIsPaid(label, effect)`. Like cumulative upkeep it is not a
+`canonicalKeywords` token; the trigger carries `game.KeywordEcho`.
 
 ### The CR 732 loop breaker (#628)
 

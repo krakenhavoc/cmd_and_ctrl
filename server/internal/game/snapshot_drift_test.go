@@ -341,6 +341,10 @@ var cardFields = plan(
 	// the one direction this field must not fail in. Listed once: the
 	// row was written twice, and a map keeps the last one.
 	"ObjectEpoch", carried, "",
+	// ADR 0108 §5: echo's "came under your control since the beginning
+	// of your last upkeep". Carried: a restore that dropped it would
+	// charge every echo permanent again, or never.
+	"ControlledSinceUpkeep", carried, "",
 	"SummonedThisTurn", carried, "",
 	"MarkedLethalByDeathtouch", carried, "",
 	// #683: carried — a restore that dropped it would let a 0/0 that
@@ -493,6 +497,9 @@ var playerFields = plan(
 	// every such effect's clock, and a departed seat's skipped turns
 	// are not derivable from the board.
 	"TurnsBegun", carried, "",
+	// ADR 0108 §5: the upkeep counter Card.ControlledSinceUpkeep is
+	// compared against. Carried, for TurnsBegun's reason.
+	"UpkeepsBegun", carried, "",
 	// What the player's creatures attacked during their last turn
 	// (ADR 0108 §6): not derivable from the board.
 	"LastTurnAttacks", carried, "",

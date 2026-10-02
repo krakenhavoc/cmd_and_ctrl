@@ -432,6 +432,27 @@ func WhenThisEntersOrAttacks(label string, effect Effect) game.TriggeredAbility 
 	return OnAny([]game.EventKind{game.EventETB, game.EventAttack}, Self, label, effect)
 }
 
+// WhenThisEntersOrDies — "When ~ enters or dies": one ability, two
+// conditions (Mogg War Marshal, Hunting Moa).
+func WhenThisEntersOrDies(label string, effect Effect) game.TriggeredAbility {
+	return OnAny([]game.EventKind{game.EventETB, game.EventLTB}, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+		return b22SelfEnteredOrDied(ev, source)
+	}, label, effect)
+}
+
+// WhenThisEntersOrLeaves — "When ~ enters or leaves the battlefield":
+// one ability, two conditions; leaving is any exit, not only dying
+// (Subterranean Shambler).
+func WhenThisEntersOrLeaves(label string, effect Effect) game.TriggeredAbility {
+	return OnAny([]game.EventKind{game.EventETB, game.EventLTB}, Self, label, effect)
+}
+
+// WhenThisLeaves — "When ~ leaves the battlefield": any exit, not only
+// dying (Firemaw Kavu).
+func WhenThisLeaves(label string, effect Effect) game.TriggeredAbility {
+	return On(game.EventLTB, Self, label, effect)
+}
+
 // WheneverThisAttacks — "Whenever ~ attacks".
 func WheneverThisAttacks(label string, effect Effect) game.TriggeredAbility {
 	return On(game.EventAttack, ThisAttacked, label, effect)
