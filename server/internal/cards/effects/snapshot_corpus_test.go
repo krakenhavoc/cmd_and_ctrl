@@ -281,7 +281,27 @@ func corpusBoards() []corpusBoard {
 		// spent in this batch (SpentBatch); a no-choice "creature of the
 		// chosen type" shield; and a shield pinned to one permanent.
 		{"next_damage_shields", corpusNextDamageShields},
+		// v7, added by ADR 0108 PR 3 (#1823) as a new file: a resolved
+		// Yawgmoth's Will — the exileInsteadOfYourGraveyard record (a
+		// game-wide replacement naming one player) and the stored
+		// ScopeStanding graveyard cast permission written beside it, with
+		// the Will itself already exiled by its own replacement.
+		{"yawgmoths_will", corpusYawgmothsWill},
 	}
+}
+
+// corpusYawgmothsWill is a real Yawgmoth's Will after it resolved.
+func corpusYawgmothsWill(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	pushGraveyardCardTyped(me, "Dead Forest", "Basic Land — Forest")
+	will := castCatalogSpell(t, g, "Yawgmoth's Will", "Sorcery", yawgmothsWillOracle, nil)
+	passPriorityAroundTable(t, g)
+	if !g.Exile.Contains(will) || len(g.ScopedEffects) != 1 || len(me.CastPermissions) != 1 {
+		t.Fatalf("setup: Will exiled=%v, %d scoped records, %d permissions; want exiled, 1 and 1",
+			g.Exile.Contains(will), len(g.ScopedEffects), len(me.CastPermissions))
+	}
+	return g
 }
 
 // corpusGrantedReboundOnStack is Lightning Bolt cast from hand and
