@@ -1161,9 +1161,14 @@ func TestB38ManaSculptCountersTheTargetSpell(t *testing.T) {
 	if !opp.Graveyard.Contains(victim) {
 		t.Error("a countered spell goes to its owner's graveyard")
 	}
-	// Declared caveat: no mana refund on the next main phase.
+	// No Wizard, and a cast the engine did not charge: no refund is
+	// scheduled. The refund itself is pinned in mana_spent_total_test.go
+	// (#1735).
 	if len(me.ManaPool) != 0 {
-		t.Errorf("the refund is not implemented: pool %v", poolColors(me))
+		t.Errorf("no refund without a Wizard: pool %v", poolColors(me))
+	}
+	if n := len(g.DelayedTriggers); n != 0 {
+		t.Errorf("no Wizard, yet %d refund(s) scheduled", n)
 	}
 }
 

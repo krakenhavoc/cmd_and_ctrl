@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"strconv"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Mana Sculpt — Instant {1}{U}{U} (EDHREC rank 3960):
 //
@@ -10,47 +14,65 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // Mana Drain with a tribal tax: in a Wizard deck it is the best
 // counterspell in the format, and everywhere else it is Counterspell
-// for an extra mana.
-//
-// # Declared simplification (weaker than printed): no refund
+// for an extra mana. It is written as Mana Drain is (mana_drain.go) —
+// the same "your next main phase" step pick, the same delayed refund
+// body — with two differences, both printed.
 //
 // "The amount of MANA SPENT to cast that spell" is not the spell's
 // mana value. The two come apart on every spell that was taxed, made
 // cheaper, cast for an alternative cost, or cast with {X} — a Thalia
 // tax adds to the mana spent and not to the mana value, a convoked
-// spell's tapped creatures spend no mana at all, and Mana Drain's own
-// oracle text was changed to say "mana value" precisely because
-// "mana spent" needs a record nothing keeps.
+// spell's tapped creatures spend no mana at all, and a spell cast
+// without paying its mana cost spent none (CR 601.2h). It is read off
+// the countered spell's own payment record (StackItem.Paid, #761)
+// while the spell is still on the stack and BEFORE CounterTarget runs
+// — the last moment it is findable — through the same
+// ManaSpent.Total() view every mana-spent reader uses. A copy of a
+// spell was not cast and spent nothing (CR 707.10), so it refunds
+// nothing.
 //
-// The engine does not keep that record (#761): mana is deducted from
-// a pool at cast time and nothing attributes the deduction to a stack
-// item afterwards. Guessing with mana value would be a different
-// number, and in the direction that matters — a taxed spell would
-// refund LESS, but a cost-reduced or convoked one would refund MORE
-// than paper does, which is the direction #259 forbids.
+// "If you control a Wizard" is checked as Mana Sculpt resolves, which
+// is when the delayed trigger is created or not. ControlsA reads
+// effective subtypes, so a changeling counts. As with Mana Drain, a
+// spell that can't be countered still pays out.
 //
-// So the refund is dropped entirely and Mana Sculpt ships as a
-// three-mana hard counter. Nothing about the counter is simplified:
-// it is a real counter, the spell goes to its owner's graveyard, and
-// a "can't be countered" spell is still a legal target that the
-// counter simply does nothing to (CR 701.6a).
+// This card used to ship without the refund at all: its comment said
+// the engine kept no record of the mana spent on a spell. #761 built
+// exactly that record; #1735 found the stale caveat.
 //
-// The Wizard condition is not modelled either, because it gates only
-// the clause that is gone.
+// Declared caveat, the one every mana-spent reader in the catalog
+// carries: a spell its caster cast with strict mana off was not
+// charged by the engine (PaidCost.OnPaper), so the amount is unknown
+// and reads as zero — no refund, the weaker-than-printed answer
+// ADR 0068 §3 requires.
 func init() {
 	Register(Spec{
 		OracleID:     "35e2f82e-7ca3-4a92-9134-b7999eef5337",
 		Name:         "Mana Sculpt",
 		Completeness: CompletenessCaveats,
 		Caveats: []string{
-			"The colorless mana refund on your next main phase isn't implemented — Mana Sculpt is a straight counterspell.",
+			"If the countered spell was cast with strict mana off, the game doesn't know how much mana was spent on it, so Mana Sculpt adds no mana for it.",
 		},
 		Targets: TargetSpell("target spell"),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if len(item.Targets) == 0 {
 				return nil
 			}
-			return CounterTarget{StackID: item.Targets[0].ID}.Apply(ctx)
+			stackID := item.Targets[0].ID
+			spent := ctx.Game.StackItemPaidForEffect(stackID).Spent().Total()
+			if err := (CounterTarget{StackID: stackID}).Apply(ctx); err != nil {
+				return err
+			}
+			if spent <= 0 || !ControlsA("Wizard")(ctx.Game, item.Controller) {
+				return nil
+			}
+			return ScheduleDelayedTrigger{
+				At:                 manaDrainNextMainPhaseStep(ctx.Game, item.Controller),
+				ControllerTurnOnly: true,
+				Label:              "Mana Sculpt — add {C} × " + strconv.Itoa(spent),
+				Body:               manaDrainRefundBody,
+				Params:             game.EffectParams{Amount: spent},
+			}.Apply(ctx)
 		},
 	})
 }
