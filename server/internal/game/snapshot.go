@@ -361,7 +361,7 @@ type GameSnapshot struct {
 	// exhaust ability on the board back.
 	Activations ActivationTally `json:"activations,omitempty"`
 
-	// LoopNotice / LoopThreshold are the CR 726 loop breaker (#628).
+	// LoopNotice / LoopThreshold are the CR 732 loop breaker (#628).
 	// Both carried: a restore that dropped the notice would resume a
 	// table into a live loop with automatic passing back on, and one
 	// that dropped the threshold would silently re-default a game a
@@ -579,7 +579,12 @@ type playerSnapshot struct {
 	// counter echo's "since the beginning of your last upkeep" is
 	// measured in. Absent from every earlier file, which restores as
 	// 0 — no permanent of such a file has an echo stamp to compare.
-	UpkeepsBegun       int               `json:"upkeepsBegun,omitempty"`
+	UpkeepsBegun int `json:"upkeepsBegun,omitempty"`
+	// LastTurnAttacks is what this player's creatures attacked during
+	// the last turn they took (ADR 0108 §6, #1882). Additive: a file
+	// written before it restores with none, which reads as "nothing
+	// attacked last turn" until the player's next turn ends.
+	LastTurnAttacks    []AttackRecord    `json:"lastTurnAttacks,omitempty"`
 	Eliminated         bool              `json:"eliminated"`
 	HandKept           bool              `json:"handKept"`
 	MulligansTaken     int               `json:"mulligansTaken"`
@@ -1263,7 +1268,7 @@ type pendingChoiceSnapshot struct {
 	// that forgot them would render a question with no answers.
 	PickOptions []ChoiceOption `json:"pickOptions,omitempty"`
 	ChooseMax   int            `json:"chooseMax,omitempty"`
-	// #804 CR 726 shortcut: which run the answer's allowance attaches
+	// #804 CR 732 shortcut: which run the answer's allowance attaches
 	// to, how many resolutions had happened when it was asked, and
 	// whether this is the turn's second ask.
 	LoopShortcutKey    string `json:"loopShortcutKey,omitempty"`
@@ -1905,6 +1910,7 @@ func snapshotPlayer(p *Player, cen *ContinuationCensus) playerSnapshot {
 		CommanderDamage:    copyIntMap(p.CommanderDamage),
 		TurnsBegun:         p.TurnsBegun,
 		UpkeepsBegun:       p.UpkeepsBegun,
+		LastTurnAttacks:    append([]AttackRecord(nil), p.LastTurnAttacks...),
 		Eliminated:         p.Eliminated,
 		HandKept:           p.HandKept,
 		MulligansTaken:     p.MulligansTaken,
@@ -2439,6 +2445,9 @@ func (s *GameSnapshot) restoreGame() *Game {
 	}
 	g.ScopedEffects = deepCopyScopedEffects(s.ScopedEffects)
 	g.scopedEffectSeq = maxScopedEffectSeq(g.ScopedEffects)
+	// ADR 0108 PR 0: the damage-instance counter resumes past every
+	// instance a restored record names.
+	g.damageInstanceSeq = maxNamedDamageInstance(g.ScopedEffects, g.preventionFollowUps)
 	if len(s.DelayedTriggers) > 0 {
 		g.DelayedTriggers = make([]*DelayedTrigger, len(s.DelayedTriggers))
 		for i := range s.DelayedTriggers {
@@ -2730,6 +2739,7 @@ func restorePlayer(p *playerSnapshot) *Player {
 		Emblems:            restoreZone(p.Emblems, ZoneCommand),
 		TurnsBegun:         p.TurnsBegun,
 		UpkeepsBegun:       p.UpkeepsBegun,
+		LastTurnAttacks:    append([]AttackRecord(nil), p.LastTurnAttacks...),
 		Eliminated:         p.Eliminated,
 		HandKept:           p.HandKept,
 		MulligansTaken:     p.MulligansTaken,

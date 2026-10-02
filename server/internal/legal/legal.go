@@ -126,6 +126,22 @@ type Move struct {
 	// latter is offense that happens to be available right now. See
 	// targetsStackObject.
 	TargetsStack bool `json:"targets_stack,omitempty"`
+
+	// IdleHint is set on a LEGAL cast that would do nothing if it
+	// resolved on the board as it stands, and says why, for the player:
+	// "Overloaded, this does nothing right now: there's no spell you
+	// don't control." (#1918). Advice, like Cost: the move is still
+	// offered and still accepted, because CR 601.2c only asks a spell
+	// for legal targets and an overloaded spell has none (CR 702.96a).
+	//
+	// Deliberately narrow. Only an alternative cost that turns
+	// "target" into "each" sets it (overload, game.AlternativeCost
+	// ClearsTargets), and only when the clause it replaced matches
+	// nothing — read WITHOUT the targeting gate, because "each" is not
+	// targeting (CR 702.96b) and a hexproof creature is still swept.
+	// It is not a general "this move does nothing" detector. See
+	// idleCastHint.
+	IdleHint string `json:"idle_hint,omitempty"`
 }
 
 // MoveCost is the half of a move's price that Params does not carry.

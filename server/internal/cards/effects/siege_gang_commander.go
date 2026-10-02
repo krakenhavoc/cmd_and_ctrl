@@ -32,12 +32,14 @@ func init() {
 			Targets: TargetAny(),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
-				for _, t := range ctx.LegalTargets() {
-					if err := (DealDamage{Source: item.SourceCardID, Target: t.ID, Amount: 2}).Apply(ctx); err != nil {
-						return err
+				return ctx.Game.DamageInstanceForEffect(func() error {
+					for _, t := range ctx.LegalTargets() {
+						if err := (DealDamage{Source: item.SourceCardID, Target: t.ID, Amount: 2}).Apply(ctx); err != nil {
+							return err
+						}
 					}
-				}
-				return nil
+					return nil
+				})
 			},
 		}},
 	})

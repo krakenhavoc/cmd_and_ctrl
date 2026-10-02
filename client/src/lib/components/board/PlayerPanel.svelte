@@ -43,7 +43,7 @@
   import { defendingPlayerOf } from "../../attackTargets";
   import { takenFromByCard } from "../../takenFrom";
   import { cantAttackByCard } from "../../cantAttack";
-  import { bucketForBattlefield, isCreature } from "../../cardTypes";
+  import { bucketForBattlefield, isCreature, isLand } from "../../cardTypes";
   import { battlefieldClickIntent } from "../../contextMenu.logic";
   import { canActivateSorcerySpeedAbility } from "../../timing";
   import { manaAbilityNeedsPrompt } from "../../manaAbilityCost";
@@ -136,7 +136,7 @@
     // self panel mounts the widget, so these only matter when
     // isSelf=true but they're plumbed uniformly for prop typing.
     autopassEnabled?: boolean;
-    // #628: the CR 726 loop-breaker banner line, empty when quiet.
+    // #628: the CR 732 loop-breaker banner line, empty when quiet.
     loopNotice?: string;
     onPassPriority?: () => void;
     onToggleAutopass?: () => void;
@@ -693,7 +693,9 @@
         hand={seat.hand}
         {isSelf}
         onPlayCard={isSelf ? onPlayCard : undefined}
-        onDragCast={isSelf ? (c) => onPlayCard(c, undefined, undefined, true) : undefined}
+        // #1920: a dragged land goes the click path's way (no strict/auto_tap
+        // stamp: there is nothing to pay), so the action is the same one.
+        onDragCast={isSelf ? (c) => onPlayCard(c, undefined, undefined, !isLand(c)) : undefined}
         onActivateAbility={isSelf ? onActivateAbility : undefined}
         onActivateManaAbility={activateManaAbility}
         {sorcerySpeedBlocked}

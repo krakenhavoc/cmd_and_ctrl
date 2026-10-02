@@ -180,12 +180,14 @@ func b21DrainEachOpponentAndGainTheTotal(g *game.Game, item *game.StackItem, n i
 // so nothing is hit twice and a creature that dies later does so at
 // the state-based sweep, as printed.
 func b21DamageEachOpponentAndTheirCreaturesAndWalkers(ctx *Context, n int) error {
-	for _, opp := range ctx.Opponents() {
-		if err := (DealDamage{Source: ctx.Source(), Target: opp, Amount: n}).Apply(ctx); err != nil {
-			return err
+	return ctx.Game.DamageInstanceForEffect(func() error {
+		for _, opp := range ctx.Opponents() {
+			if err := (DealDamage{Source: ctx.Source(), Target: opp, Amount: n}).Apply(ctx); err != nil {
+				return err
+			}
 		}
-	}
-	return damageEachMatching(ctx, And(OpponentControls(), Or(Creature(), Planeswalker())), n)
+		return damageEachMatching(ctx, And(OpponentControls(), Or(Creature(), Planeswalker())), n)
+	})
 }
 
 // b21RevealUntilBasicLandToHand is Hermit Druid's body: reveal cards

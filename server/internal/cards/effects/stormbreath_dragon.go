@@ -31,14 +31,16 @@ func init() {
 
 func stormbreathDamagesByHandSize(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	for _, opp := range ctx.Opponents() {
-		p := g.PlayerByIDForEffect(opp)
-		if p == nil || p.Hand == nil {
-			continue
+	return ctx.Game.DamageInstanceForEffect(func() error {
+		for _, opp := range ctx.Opponents() {
+			p := g.PlayerByIDForEffect(opp)
+			if p == nil || p.Hand == nil {
+				continue
+			}
+			if err := (DealDamage{Source: ctx.Source(), Target: opp, Amount: len(p.Hand.Cards)}).Apply(ctx); err != nil {
+				return err
+			}
 		}
-		if err := (DealDamage{Source: ctx.Source(), Target: opp, Amount: len(p.Hand.Cards)}).Apply(ctx); err != nil {
-			return err
-		}
-	}
-	return nil
+		return nil
+	})
 }

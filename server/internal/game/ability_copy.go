@@ -240,7 +240,7 @@ func (g *Game) createAbilityCopyLocked(item *StackItem, controller uuid.UUID, ta
 	// CR 707.10a, said by omission: no EventActivateAbility and no
 	// EventTrigger. The copy was created, not activated and not
 	// triggered, so "whenever you activate an ability", "whenever an
-	// opponent activates an ability" and the CR 726 loop breaker's
+	// opponent activates an ability" and the CR 732 loop breaker's
 	// player-decision notch all correctly see nothing here.
 	//
 	// EventBecomesTarget still fans out — the copy is an ability and

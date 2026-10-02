@@ -690,7 +690,7 @@ var choiceDepartureDecisions = map[PendingChoiceKind]choiceDepartureRule{
 	// The flip belongs to its flipper, who is named by the frame the
 	// reassignment deliberately does not touch.
 	PendingChoiceCoinCall: {},
-	// CR 726: the allowance is on THEIR loop's tally key.
+	// CR 732: the allowance is on THEIR loop's tally key.
 	PendingChoiceLoopShortcut: {},
 	// untap_choice is CR 502.3's determination, and it is doubly
 	// theirs: the permanents in question are the ones they control

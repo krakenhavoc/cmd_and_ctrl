@@ -43,12 +43,14 @@ func init() {
 					return err
 				}
 			}
-			for _, t := range OptionTargets(ctx, 2) {
-				if err := (DealDamage{Source: item.SourceCardID, Target: t.ID, Amount: 5}).Apply(ctx); err != nil {
-					return err
+			return ctx.Game.DamageInstanceForEffect(func() error {
+				for _, t := range OptionTargets(ctx, 2) {
+					if err := (DealDamage{Source: item.SourceCardID, Target: t.ID, Amount: 5}).Apply(ctx); err != nil {
+						return err
+					}
 				}
-			}
-			return nil
+				return nil
+			})
 		},
 	})
 }

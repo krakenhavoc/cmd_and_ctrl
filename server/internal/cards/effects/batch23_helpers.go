@@ -173,18 +173,20 @@ func b23CreaturesYouControl(g *game.Game, controller uuid.UUID) []uuid.UUID {
 // lethal dies at the state-based sweep, so the end-step sacrifice
 // clause sees an empty board only after the last activation.
 func b23DamageEachCreatureAndEachPlayer(ctx *Context, n int) error {
-	if err := damageEachMatching(ctx, Creature(), n); err != nil {
-		return err
-	}
-	for _, p := range ctx.Game.Seats {
-		if p == nil || p.Eliminated {
-			continue
-		}
-		if err := (DealDamage{Source: ctx.Source(), Target: p.ID, Amount: n}).Apply(ctx); err != nil {
+	return ctx.Game.DamageInstanceForEffect(func() error {
+		if err := damageEachMatching(ctx, Creature(), n); err != nil {
 			return err
 		}
-	}
-	return nil
+		for _, p := range ctx.Game.Seats {
+			if p == nil || p.Eliminated {
+				continue
+			}
+			if err := (DealDamage{Source: ctx.Source(), Target: p.ID, Amount: n}).Apply(ctx); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }
 
 // b23ChargeThenDrawPerCharge is Insight Engine's activation: a

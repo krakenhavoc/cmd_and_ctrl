@@ -705,7 +705,7 @@ type PendingChoice struct {
 	mayCastResume *mayCastFrame
 
 	// LoopShortcutKey / LoopShortcutCount / LoopShortcutRepeat carry a
-	// PendingChoiceLoopShortcut's question (#804, CR 726).
+	// PendingChoiceLoopShortcut's question (#804, CR 732).
 	//
 	// Key is the TallyKey(source, label) the answer's allowance
 	// attaches to — the ability that is repeating, named the way the
@@ -1376,13 +1376,13 @@ func (g *Game) ResolveManaChoice(choiceID, chooserID uuid.UUID, color string) er
 // Resolve* path ends here.
 //
 // #628: answering a prompt is a player decision, so it restarts the
-// CR 726 loop run. The engine's own prune paths call
+// CR 732 loop run. The engine's own prune paths call
 // dropChoiceLocked instead — a choice the engine withdrew is not a
 // decision anybody made, and counting it as one would let a loop
 // that queues and prunes a prompt each iteration run forever.
 //
 // Caller must hold g.mu.
-// The drop comes FIRST. notePlayerDecisionLocked withdraws the CR 726
+// The drop comes FIRST. notePlayerDecisionLocked withdraws the CR 732
 // shortcut prompt (#804) as part of clearing the loop notice, which
 // rewrites g.PendingChoices — and an index into that slice taken
 // before it ran would then name the wrong entry.
@@ -1396,7 +1396,7 @@ func (g *Game) dequeueChoiceLocked(idx int) {
 
 // dropChoiceLocked is the engine WITHDRAWING a prompt nobody answered
 // — a sacrifice choice whose card has left, a stale zone-change
-// prompt, a CR 726 shortcut whose notice was cleared, an option pick
+// prompt, a CR 732 shortcut whose notice was cleared, an option pick
 // with no legal answer left. No player decision is recorded (that is
 // dequeueChoiceLocked's job, above).
 //

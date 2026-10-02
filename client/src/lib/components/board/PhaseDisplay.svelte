@@ -37,7 +37,7 @@
     // always wired to *viewer* state.
     viewerHasPriority: boolean;
     autopassEnabled: boolean;
-    // #628 (CR 726): the loop-breaker banner line the server's
+    // #628 (CR 732): the loop-breaker banner line the server's
     // notice produced, or "" when the table is quiet. While it is
     // non-empty NOTHING passes automatically — the autopass toggle
     // is suspended rather than switched off, so a table that turns
@@ -288,7 +288,7 @@
       aria-pressed={autopassEnabled}
       onclick={onToggleAutopass}
       title={(autopassPaused
-        ? "autopass PAUSED — a loop is resolving (CR 726). Use next to step through it; passing resumes on the next real play"
+        ? "autopass PAUSED — a loop is resolving (CR 732). Use next to step through it; passing resumes on the next real play"
         : autopassEnabled
           ? "autopass ON — every time priority lands on you, it passes; click to turn off, or pin a phase icon to stop at just that step"
           : "autopass OFF — click to pass every priority window (bypasses stops and smart-skip; a pinned phase icon still stops you)") +
@@ -316,7 +316,7 @@
     <div class="row turn-rule" role="status">{unpreventableLine}</div>
   {/if}
 
-  <!-- #628 (CR 726): the loop breaker. Lives directly under the
+  <!-- #628 (CR 732): the loop breaker. Lives directly under the
        toggle it is talking about, because "why has autopass stopped
        working" is the only question this banner answers. -->
   {#if autopassPaused}

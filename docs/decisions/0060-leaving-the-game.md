@@ -374,7 +374,7 @@ pre-#902 behaviour and is safe.
 | `mode_pick` | no | CR 800.4d — the trigger is not put on the stack at all, so there is no mode left to choose. |
 | `choose_protector` | no | CR 310.9, chosen as their battle enters. |
 | `coin_call` | no | The flip belongs to its flipper, whom the untouched frame names. |
-| `loop_shortcut` | no | CR 726 — the allowance is on their loop's tally key. |
+| `loop_shortcut` | no | CR 732 — the allowance is on their loop's tally key. |
 | `confirm` | **yes** | Since #961: `ConfirmPrompt.FromPlayer` records whose material it is about, so gate 3 can tell a self-question from a cross-table one. Every confirm queued today defaults the field to the chooser and is still dropped. |
 | `replacement_order` / `optional_replacement` | no | The CR 616 pair settles its own drop through `finishDroppedReplacementLocked` (#808). |
 

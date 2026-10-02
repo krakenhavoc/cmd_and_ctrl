@@ -1959,6 +1959,7 @@ preventionFollowUps[].body	string
 preventionFollowUps[].combat	bool
 preventionFollowUps[].controller	custom(uuid.UUID)
 preventionFollowUps[].damageSource	custom(uuid.UUID)
+preventionFollowUps[].instance	number:uint64
 preventionFollowUps[].label	string
 preventionFollowUps[].prevented	number:int
 preventionFollowUps[].seq	number:int64
@@ -2078,6 +2079,7 @@ scopedEffects[].mods[].queries[].Types[]	string
 scopedEffects[].mods[].restrictions	number:uint8
 scopedEffects[].mods[].sourceZone	string
 scopedEffects[].mods[].spentBatch	number:uint64
+scopedEffects[].mods[].spentInstance	number:uint64
 scopedEffects[].mods[].subtypes	array
 scopedEffects[].mods[].subtypes[]	string
 scopedEffects[].mods[].text	string
@@ -3181,6 +3183,12 @@ seats[].handKept	bool
 seats[].id	custom(uuid.UUID)
 seats[].isBot	bool
 seats[].landDropsPerTurn	number:int
+seats[].lastTurnAttacks	array
+seats[].lastTurnAttacks[]	object
+seats[].lastTurnAttacks[].attacker	custom(uuid.UUID)
+seats[].lastTurnAttacks[].defender	custom(uuid.UUID)
+seats[].lastTurnAttacks[].epoch	number:int
+seats[].lastTurnAttacks[].phaseId	number:int
 seats[].library	object
 seats[].library.cards	array
 seats[].library.cards[]	object

@@ -125,7 +125,7 @@ store off the card would have multiplied the sites rather than removed them.
 
 So identity is stamped instead: `Card.ObjectEpoch` is an integer `MoveCard`
 increments on every zone change, and `PermissionCardRef` is `{ID, Epoch}`.
-This branch and #973 (the CR 726 loop breaker's per-object tally key) reached
+This branch and #973 (the CR 732 loop breaker's per-object tally key) reached
 for the same field independently and named it the same thing; #973 merged
 first, so the field and its bump are theirs and this ADR is its second
 reader. That two seams converged on it is the argument for it. A

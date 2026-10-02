@@ -304,12 +304,14 @@ func damageEachOpponentThenGainLife(n int) Effect {
 // pirates.
 func damageToEachOpponent(g *game.Game, item *game.StackItem, n int) error {
 	ctx := NewContext(g, item)
-	for _, opp := range ctx.Opponents() {
-		if err := g.DealDamageToPlayerForEffect(ctx.Source(), opp, n); err != nil {
-			return err
+	return ctx.Game.DamageInstanceForEffect(func() error {
+		for _, opp := range ctx.Opponents() {
+			if err := g.DealDamageToPlayerForEffect(ctx.Source(), opp, n); err != nil {
+				return err
+			}
 		}
-	}
-	return nil
+		return nil
+	})
 }
 
 // lootOne draws a card then queues the discard choice — "draw a
@@ -1241,12 +1243,14 @@ func thatPlayerLosesOneLife(g *game.Game, item *game.StackItem) error {
 func sourceDealsDamageToEachLegalTarget(amount int) func(g *game.Game, item *game.StackItem) error {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
-		for _, t := range ctx.LegalTargets() {
-			if err := (DealDamage{Source: item.SourceCardID, Target: t.ID, Amount: amount}).Apply(ctx); err != nil {
-				return err
+		return ctx.Game.DamageInstanceForEffect(func() error {
+			for _, t := range ctx.LegalTargets() {
+				if err := (DealDamage{Source: item.SourceCardID, Target: t.ID, Amount: amount}).Apply(ctx); err != nil {
+					return err
+				}
 			}
-		}
-		return nil
+			return nil
+		})
 	}
 }
 

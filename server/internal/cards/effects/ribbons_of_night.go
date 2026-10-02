@@ -35,14 +35,19 @@ func init() {
 		Caveats:      []string{"With strict mana off, the game doesn't see which mana you spent, so Ribbons of Night never draws the card."},
 		Targets:      TargetCreature("target creature"),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			for _, ref := range ctx.LegalTargets() {
-				if err := (DealDamage{
-					Source: item.SourceCardID,
-					Target: ref.ID,
-					Amount: 4,
-				}).Apply(ctx); err != nil {
-					return err
+			if err := ctx.Game.DamageInstanceForEffect(func() error {
+				for _, ref := range ctx.LegalTargets() {
+					if err := (DealDamage{
+						Source: item.SourceCardID,
+						Target: ref.ID,
+						Amount: 4,
+					}).Apply(ctx); err != nil {
+						return err
+					}
 				}
+				return nil
+			}); err != nil {
+				return err
 			}
 			if err := (GainLife{Player: item.Controller, Amount: 4}).Apply(ctx); err != nil {
 				return err

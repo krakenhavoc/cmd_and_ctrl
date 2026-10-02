@@ -37,20 +37,22 @@ func init() {
 			if power <= 0 {
 				return nil
 			}
-			for _, id := range ctx.CreatureIDs() {
-				if id == source {
-					continue
+			return ctx.Game.DamageInstanceForEffect(func() error {
+				for _, id := range ctx.CreatureIDs() {
+					if id == source {
+						continue
+					}
+					if err := (DealDamage{Source: source, Target: id, Amount: power}).Apply(ctx); err != nil {
+						return err
+					}
 				}
-				if err := (DealDamage{Source: source, Target: id, Amount: power}).Apply(ctx); err != nil {
-					return err
+				for _, opp := range ctx.Opponents() {
+					if err := (DealDamage{Source: source, Target: opp, Amount: power}).Apply(ctx); err != nil {
+						return err
+					}
 				}
-			}
-			for _, opp := range ctx.Opponents() {
-				if err := (DealDamage{Source: source, Target: opp, Amount: power}).Apply(ctx); err != nil {
-					return err
-				}
-			}
-			return nil
+				return nil
+			})
 		},
 	})
 }
