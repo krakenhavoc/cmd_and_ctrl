@@ -7,8 +7,6 @@ package lobby
 import (
 	"net/http"
 
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/auth"
 )
 
@@ -18,10 +16,12 @@ type myGamesResponse struct {
 }
 
 // signedInUser returns the principal on the request if it is a person:
-// an identity session or a player session that carries a UserID. Admin
-// sessions are a server credential, spectator and guest sessions are
-// nobody in particular, and a deployment with no database has no
-// users, so every one of those is refused.
+// an identity, player or spectator session that carries a UserID
+// (isSignedInPerson; the spectator is ADR 0110 §1 item 2, so /me/*
+// keeps working while a signed-in person watches a table). Admin
+// sessions are a server credential, guest sessions are nobody in
+// particular, and a deployment with no database has no users, so
+// every one of those is refused.
 //
 // The refusal is 403, not 401 (#1154). The caller IS authenticated —
 // the credential is valid and unexpired — it is simply not a person,
@@ -35,7 +35,7 @@ func signedInUser(r *http.Request) (auth.Principal, error) {
 	if !ok {
 		return auth.Principal{}, httpError(http.StatusInternalServerError, "missing principal")
 	}
-	if p.UserID == uuid.Nil || (p.Role != auth.RoleIdentified && p.Role != auth.RolePlayer) {
+	if !isSignedInPerson(p) {
 		return auth.Principal{}, httpError(http.StatusForbidden, "this session is not signed in as a person; sign in with Discord to see your games, decks and tablemates")
 	}
 	return p, nil
@@ -95,7 +95,7 @@ func myGameSession(c Config, w http.ResponseWriter, r *http.Request) error {
 	if p.DiscordID != "" && p.DiscordID == seat.DiscordID {
 		np.DiscordUsername = p.DiscordUsername
 	}
-	tok, issued, err := c.Auth.Issue(r.Context(), np, c.SessionTTL)
+	tok, issued, err := issueFor(r.Context(), c, np, &p)
 	if err != nil {
 		return err
 	}
@@ -111,31 +111,26 @@ func myGameSession(c Config, w http.ResponseWriter, r *http.Request) error {
 	})
 }
 
-// signedInIdentity reads an OPTIONAL session off a join request and
-// returns the Discord identity and user to seat, if it belongs to a
-// signed-in person: an identity session, or a player session from a
-// Discord sign-in (the same person at their next table). Anything
-// else, including a credential that does not validate, is the zero
-// identity, and the join goes ahead by name exactly as before.
-func signedInIdentity(c Config, r *http.Request) (DiscordIdentity, uuid.UUID) {
-	cred := auth.CredentialFromRequest(r)
-	if cred == "" {
-		return DiscordIdentity{}, uuid.Nil
+// signedInIdentity reads an OPTIONAL session off a join, spectate or
+// code-join request and returns the Discord identity to seat and the
+// session it came from, if it belongs to a signed-in person: an
+// identity session, or a player or spectator session from a Discord
+// sign-in (the same person at their next table, ADR 0110 §1 items 2
+// and 3). Anything else, including a credential that does not
+// validate, is (zero, nil), and the join goes ahead by name exactly as
+// before.
+//
+// The source is returned so the new session can inherit its expiry
+// (issueFor). Its UserID is the user to seat; it is zero for an
+// identity session on a deployment with no database, which still
+// seats the Discord identity, as it always has.
+func signedInIdentity(c Config, r *http.Request) (DiscordIdentity, *auth.Principal) {
+	p, ok := optionalSession(c, r)
+	if !ok || p.DiscordID == "" {
+		return DiscordIdentity{}, nil
 	}
-	p, err := c.Auth.Validate(r.Context(), cred)
-	if err != nil || p.DiscordID == "" {
-		return DiscordIdentity{}, uuid.Nil
+	if p.Role != auth.RoleIdentified && !isSignedInPerson(p) {
+		return DiscordIdentity{}, nil
 	}
-	switch {
-	case p.Role == auth.RoleIdentified:
-	case p.Role == auth.RolePlayer && p.UserID != uuid.Nil:
-	default:
-		return DiscordIdentity{}, uuid.Nil
-	}
-	return DiscordIdentity{
-		ID:         p.DiscordID,
-		Username:   p.DiscordUsername,
-		GlobalName: p.DiscordGlobalName,
-		AvatarHash: p.DiscordAvatarHash,
-	}, p.UserID
+	return principalIdentity(p), &p
 }

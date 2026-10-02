@@ -24,7 +24,7 @@
   } from "../lib/api";
   import { inviteURL, reclaimURL, spectatorInviteURL, navigate } from "../lib/router";
   import { canSignOutEverywhere, session, LobbyApiError } from "../lib/session";
-  import { signedInUserID } from "../lib/myGames";
+  import { canJoinByCode, signedInUserID } from "../lib/myGames";
   import { openSettings } from "../lib/settings";
   import { seatColor } from "../lib/colors";
   import { avatarURL } from "../lib/api";
@@ -557,6 +557,12 @@
     {#if signedInUserID($session)}
       <!-- ADR 0051 decision 4: every table this person has sat at. -->
       <button class="ghost" onclick={() => navigate("#/my-games")}>my games</button>
+    {/if}
+    {#if canJoinByCode($session)}
+      <!-- ADR 0110 §1 item 3: a signed-in seat lasts as long as the
+           sign-in now, so the next table's code goes in the login
+           page's invite box, which seats the same person. -->
+      <button class="ghost" onclick={() => navigate("#/login")}>join with a code</button>
     {/if}
     <button
       class="ibtn"

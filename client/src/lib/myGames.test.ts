@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { discordLinkHref, fetchMyGames, rejoinMyGame } from "./api";
 import {
+  canJoinByCode,
   canLinkDiscord,
   linkDiscordLabel,
   myGameStatus,
@@ -50,18 +51,40 @@ function game(over: Partial<MyGame> = {}): MyGame {
 }
 
 describe("signedInUserID", () => {
-  it("is the user id for an identity or player session that has one", () => {
+  it("is the user id for an identity, player or spectator session that has one", () => {
     expect(signedInUserID(sessionAs("identified", USER))).toBe(USER);
     expect(signedInUserID(sessionAs("player", USER))).toBe(USER);
+    // ADR 0110 §1 item 2: a signed-in spectator keeps their user.
+    expect(signedInUserID(sessionAs("spectator", USER))).toBe(USER);
   });
 
-  it("is null for guests, admins, spectators and no session", () => {
+  it("is null for guests, admins and no session", () => {
     // A guest's principal spells "no user" as the nil uuid.
     expect(signedInUserID(sessionAs("player", NIL))).toBeNull();
     expect(signedInUserID(sessionAs("player"))).toBeNull();
+    expect(signedInUserID(sessionAs("spectator"))).toBeNull();
     expect(signedInUserID(sessionAs("admin", USER))).toBeNull();
-    expect(signedInUserID(sessionAs("spectator", USER))).toBeNull();
     expect(signedInUserID(null)).toBeNull();
+  });
+});
+
+describe("canJoinByCode", () => {
+  // ADR 0110 §1 item 3: the login page's code box is for any signed-in
+  // person, including one already seated at a table.
+  it("is true for a sign-in, and for a seat or spectator that carries a user", () => {
+    expect(canJoinByCode(sessionAs("identified", USER))).toBe(true);
+    // A Discord sign-in on a server with no user database.
+    expect(canJoinByCode(sessionAs("identified"))).toBe(true);
+    expect(canJoinByCode(sessionAs("player", USER))).toBe(true);
+    expect(canJoinByCode(sessionAs("spectator", USER))).toBe(true);
+  });
+
+  it("is false for guests, the admin token and no session, which the server refuses", () => {
+    expect(canJoinByCode(sessionAs("player", NIL))).toBe(false);
+    expect(canJoinByCode(sessionAs("player"))).toBe(false);
+    expect(canJoinByCode(sessionAs("spectator"))).toBe(false);
+    expect(canJoinByCode(sessionAs("admin"))).toBe(false);
+    expect(canJoinByCode(null)).toBe(false);
   });
 });
 

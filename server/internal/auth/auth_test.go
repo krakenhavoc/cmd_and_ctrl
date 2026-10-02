@@ -89,6 +89,47 @@ func TestContractIssueRejectsNonPositiveTTL(t *testing.T) {
 	}
 }
 
+// TestContractIssueUntil is ADR 0110 §1's inheritance rule at the
+// authenticator: a session minted from another expires at the very
+// instant its source does, never later, and a source that has already
+// run out mints nothing.
+func TestContractIssueUntil(t *testing.T) {
+	for name, mk := range contractImpls(t) {
+		t.Run(name, func(t *testing.T) {
+			a := mk()
+			ctx := context.Background()
+			_, source, err := a.Issue(ctx, Principal{Role: RoleIdentified, UserID: uuid.New()}, 72*time.Hour)
+			if err != nil {
+				t.Fatalf("Issue: %v", err)
+			}
+			seat := Principal{Role: RolePlayer, UserID: source.UserID, GameID: uuid.New(), PlayerID: uuid.New()}
+			tok, issued, err := a.IssueUntil(ctx, seat, source.ExpiresAt)
+			if err != nil {
+				t.Fatalf("IssueUntil: %v", err)
+			}
+			if !issued.ExpiresAt.Equal(source.ExpiresAt) {
+				t.Errorf("ExpiresAt %v, want the source's %v", issued.ExpiresAt, source.ExpiresAt)
+			}
+			if issued.IssuedAt.Before(source.IssuedAt) {
+				t.Errorf("IssuedAt %v is before the source's %v; the token must be fresh", issued.IssuedAt, source.IssuedAt)
+			}
+			back, err := a.Validate(ctx, tok)
+			if err != nil {
+				t.Fatalf("Validate: %v", err)
+			}
+			if !back.ExpiresAt.Equal(source.ExpiresAt) || back.PlayerID != seat.PlayerID {
+				t.Errorf("Validate returned %+v", back)
+			}
+
+			for _, past := range []time.Time{time.Now().Add(-time.Second), {}} {
+				if _, _, err := a.IssueUntil(ctx, seat, past); err != ErrExpiredCredential {
+					t.Errorf("IssueUntil(%v): %v, want ErrExpiredCredential", past, err)
+				}
+			}
+		})
+	}
+}
+
 func TestContractRevokeReturnsNil(t *testing.T) {
 	for name, mk := range contractImpls(t) {
 		t.Run(name, func(t *testing.T) {

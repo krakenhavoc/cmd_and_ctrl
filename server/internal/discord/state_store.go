@@ -32,10 +32,17 @@ import (
 // LinkPlayerID is set, with GameID, for the third shape: an
 // already-seated player attaching a Discord identity to the seat they
 // hold (GET /auth/discord/link, ADR 0051 sub-PR 4). See Link.
+//
+// Prompt is the `prompt` the round-trip's authorize URL was sent with
+// (ADR 0110 §2). The callback reads it to decide whether an `error`
+// from Discord earns the one consent retry: only a PromptNone round
+// does. The zero value is treated as consent, so an entry built
+// without one is never retried.
 type StateEntry struct {
 	GameID       uuid.UUID
 	InviteToken  string
 	LinkPlayerID uuid.UUID
+	Prompt       Prompt
 	CodeVerifier string
 	CreatedAt    time.Time
 }
@@ -100,18 +107,58 @@ var ErrStateNotFound = errors.New("discord: oauth state not found or expired")
 // supplied invite identity, and returns (state, codeChallenge).
 // Caller feeds both into the Discord authorize URL: state becomes
 // the ?state= param, codeChallenge becomes ?code_challenge=.
+//
+// Start is a sign-in, so it parks PromptNone (ADR 0110 §2): a repeat
+// sign-in skips Discord's screen. StartWithPrompt picks the prompt.
 func (s *StateStore) Start(game uuid.UUID, inviteToken string) (state, codeChallenge string, err error) {
-	return s.start(StateEntry{GameID: game, InviteToken: inviteToken})
+	return s.StartWithPrompt(game, inviteToken, PromptNone)
+}
+
+// StartWithPrompt is Start with an explicit prompt: PromptConsent for
+// "sign in with a different Discord account", whose consent screen
+// carries Discord's account switcher.
+func (s *StateStore) StartWithPrompt(game uuid.UUID, inviteToken string, prompt Prompt) (state, codeChallenge string, err error) {
+	return s.start(StateEntry{GameID: game, InviteToken: inviteToken, Prompt: prompt})
 }
 
 // StartLink is Start for the link flow: it parks the seat a player is
 // linking Discord to, and no invite. game and player must both be
 // set; a link with no seat would be an unbound sign-in by mistake.
+//
+// A link always asks for consent (ADR 0110 §2 item 4): it attaches an
+// account to a seat, so the person should see which account it is.
 func (s *StateStore) StartLink(game, player uuid.UUID) (state, codeChallenge string, err error) {
 	if game == uuid.Nil || player == uuid.Nil {
 		return "", "", errors.New("discord: a link round-trip needs a game and a player")
 	}
-	return s.start(StateEntry{GameID: game, LinkPlayerID: player})
+	return s.start(StateEntry{GameID: game, LinkPlayerID: player, Prompt: PromptConsent})
+}
+
+// ErrNoRetry is Retry's refusal: the round-trip was not a PromptNone
+// one, so it has had its consent screen already.
+var ErrNoRetry = errors.New("discord: only a prompt=none round-trip is retried")
+
+// Retry parks a fresh round-trip for the same flow as entry (the same
+// game and invite, the same link, or neither), marked PromptConsent,
+// and returns its state and challenge (ADR 0110 §2 item 2). entry is
+// the one the callback has just consumed for a PromptNone round that
+// Discord answered with an error.
+//
+// The retry happens at most once per sign-in: the new entry is a
+// consent one, and Retry refuses a consent entry (ErrNoRetry), so a
+// second error is shown rather than retried. The new entry gets a new
+// state AND a new PKCE verifier; nothing of the refused round is
+// reused.
+func (s *StateStore) Retry(entry StateEntry) (state, codeChallenge string, err error) {
+	if entry.Prompt != PromptNone {
+		return "", "", ErrNoRetry
+	}
+	return s.start(StateEntry{
+		GameID:       entry.GameID,
+		InviteToken:  entry.InviteToken,
+		LinkPlayerID: entry.LinkPlayerID,
+		Prompt:       PromptConsent,
+	})
 }
 
 func (s *StateStore) start(entry StateEntry) (state, codeChallenge string, err error) {

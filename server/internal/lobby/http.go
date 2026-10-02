@@ -33,18 +33,21 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/util/ratelimit"
 )
 
-// sessionTTL controls how long a newly-minted Principal lives in the
-// authenticator. Short enough that leaked cookies rotate out of risk
-// within a day; long enough that a friends' game session doesn't hit
-// "please log in again" mid-match.
+// sessionTTL is the default lifetime of a session with no user: a
+// guest seat, a guest spectator, an admin-token session, a
+// reclaim-ticket session. Those cannot be revoked (ADR 0051 decision
+// 6), so they stay short: leaked cookies rotate out of risk within a
+// day, and a friends' game still doesn't hit "please log in again"
+// mid-match.
 const sessionTTL = 12 * time.Hour
 
-// identityTTL is the default lifetime of a RoleIdentified session, the
-// one the Discord callback mints when no invite is in hand (ADR 0051
-// decision 3: "long TTL (30 days, CMDCTRL_IDENTITY_TTL)"). It is long
-// because it is the credential a browser keeps across games; it is
-// safe to be long because it carries a UserID and so can be revoked
-// (decision 6). Every other session keeps SessionTTL.
+// identityTTL is the default lifetime of every session that carries a
+// user (ADR 0110 §1, widening ADR 0051 decision 3's "long TTL (30 days,
+// CMDCTRL_IDENTITY_TTL)" from the identity-only session to all of
+// them). It is long because it is the credential a browser keeps
+// across games; it is safe to be long because a session with a UserID
+// can be revoked (decision 6). A session minted FROM a signed-in
+// session inherits that session's expiry instead (issueFor).
 const identityTTL = 30 * 24 * time.Hour
 
 // maxDeckBodyBytes caps the payload accepted by POST /games/{id}/decks.
@@ -66,11 +69,16 @@ type Config struct {
 	Env appenv.Env
 	// Features are the dev-only capabilities this deployment exposes.
 	// Always the zero value in production; see package appenv.
-	Features   appenv.Features
+	Features appenv.Features
+	// SessionTTL is the lifetime of a session with no user: guest
+	// seats and spectators, admin-token and reclaim-ticket sessions
+	// (CMDCTRL_SESSION_TTL). Zero means sessionTTL, 12 hours.
 	SessionTTL time.Duration
-	// IdentityTTL is the lifetime of the RoleIdentified session minted
-	// at Discord sign-in (CMDCTRL_IDENTITY_TTL). Zero means identityTTL,
-	// 30 days. Seat, spectator and admin sessions use SessionTTL.
+	// IdentityTTL is the lifetime of a session with a user that has no
+	// source session: a Discord sign-in, in any of its three callback
+	// branches (CMDCTRL_IDENTITY_TTL). A user-bearing session minted
+	// from another inherits its expiry (ADR 0110 §1, issueFor). Zero
+	// means identityTTL, 30 days.
 	IdentityTTL time.Duration
 	AllowAnon   bool // allow unauthenticated /games/{id}/join via invite (default: true)
 	// Cards is the Scryfall index used by the deck-upload endpoint.
@@ -723,7 +731,7 @@ func adminLogin(c Config, w http.ResponseWriter, r *http.Request) error {
 		return httpError(http.StatusUnauthorized, "invalid admin token")
 	}
 	p := auth.Principal{Role: auth.RoleAdmin, AdminID: uuid.New(), Name: "admin"}
-	tok, issued, err := c.Auth.Issue(r.Context(), p, c.SessionTTL)
+	tok, issued, err := issueFor(r.Context(), c, p, nil)
 	if err != nil {
 		return err
 	}
@@ -856,7 +864,11 @@ func joinGame(c Config, w http.ResponseWriter, r *http.Request) error {
 	// user from the session, and body.name is ignored, as on POST
 	// /join. Anyone else, including a session that no longer
 	// validates, joins exactly as before, by name.
-	identity, userID := signedInIdentity(c, r)
+	identity, source := signedInIdentity(c, r)
+	var userID uuid.UUID
+	if source != nil {
+		userID = source.UserID
+	}
 	name := body.Name
 	if identity.Populated() {
 		name = ""
@@ -869,22 +881,16 @@ func joinGame(c Config, w http.ResponseWriter, r *http.Request) error {
 	// Mint a RolePlayer session bound to (gameID, playerID). The WS
 	// authorizer will cross-check the principal's GameID against the
 	// one on the upgrade request — a player session can't be reused
-	// to spy on a different game.
-	p := auth.Principal{
+	// to spy on a different game. A signed-in joiner's seat session
+	// expires with the session they joined from (ADR 0110 §1).
+	p := withIdentity(auth.Principal{
 		Role:     auth.RolePlayer,
 		UserID:   userID,
 		GameID:   meta.ID,
 		PlayerID: playerID,
 		Name:     body.Name,
-	}
-	if identity.Populated() {
-		p.Name = identity.DisplayName()
-		p.DiscordID = identity.ID
-		p.DiscordUsername = identity.Username
-		p.DiscordGlobalName = identity.GlobalName
-		p.DiscordAvatarHash = identity.AvatarHash
-	}
-	tok, issued, err := c.Auth.Issue(r.Context(), p, c.SessionTTL)
+	}, identity)
+	tok, issued, err := issueFor(r.Context(), c, p, source)
 	if err != nil {
 		return err
 	}
@@ -912,17 +918,21 @@ func joinGame(c Config, w http.ResponseWriter, r *http.Request) error {
 //
 // Three callers, told apart by the session attached (if any):
 //
-//   - RoleIdentified — a Discord sign-in from the login page. The
-//     seat takes its name and avatar from the session's Discord
-//     identity and `name` in the body is ignored, so the identity
-//     on the seat is the one Discord vouched for rather than
-//     whatever the body claimed.
+//   - A signed-in person: a Discord sign-in from the login page
+//     (RoleIdentified), or a seat or spectator session that carries a
+//     user (ADR 0110 §1 item 3: a signed-in player who is already at
+//     one table pastes the code for the next). The seat takes its name
+//     and avatar from the session's Discord identity and `name` in the
+//     body is ignored, so the identity on the seat is the one Discord
+//     vouched for rather than whatever the body claimed. The new seat
+//     session expires with the session it came from.
 //   - No session — behaves exactly like the classic join and
 //     requires `name`. Manual entry stays first-class: a deploy
 //     with Discord unconfigured still has to work.
-//   - Any other role — refused. An admin or an already-seated
-//     player arriving here is a client bug, and quietly minting
-//     them a second seat is worse than an error.
+//   - Any other session — refused with 409: an admin-token session,
+//     and a guest's seat or spectator session. A guest has no
+//     identity to carry to a second table, and quietly minting them a
+//     second seat under a fresh name is worse than an error.
 //
 // The identity session is deliberately left valid after the swap.
 // It is how the same person joins a second table later without
@@ -945,27 +955,21 @@ func joinByCode(c Config, w http.ResponseWriter, r *http.Request) error {
 	// name", not like being thrown out.
 	var (
 		identity DiscordIdentity
+		source   *auth.Principal
 		userID   uuid.UUID
 	)
-	if cred := auth.CredentialFromRequest(r); cred != "" {
-		p, verr := c.Auth.Validate(r.Context(), cred)
-		switch {
-		case verr != nil:
-			// Expired or bogus — treat the caller as anonymous.
-		case p.Role == auth.RoleIdentified:
-			// The seat session is minted from the identity session,
-			// so it belongs to the same person (ADR 0051 decision 3).
-			userID = p.UserID
-			identity = DiscordIdentity{
-				ID:         p.DiscordID,
-				Username:   p.DiscordUsername,
-				GlobalName: p.DiscordGlobalName,
-				AvatarHash: p.DiscordAvatarHash,
-			}
-		default:
+	if p, ok := optionalSession(c, r); ok {
+		// An expired or bogus credential is !ok: the caller is
+		// anonymous.
+		if p.Role != auth.RoleIdentified && !isSignedInPerson(p) {
 			return httpError(http.StatusConflict,
 				"this session already belongs to a table — sign out before joining another")
 		}
+		// The seat session is minted from the signed-in session, so
+		// it belongs to the same person (ADR 0051 decision 3).
+		source = &p
+		userID = p.UserID
+		identity = principalIdentity(p)
 	}
 
 	// An empty name lets JoinWithIdentity fall back to the Discord
@@ -980,21 +984,14 @@ func joinByCode(c Config, w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	p := auth.Principal{
+	p := withIdentity(auth.Principal{
 		Role:     auth.RolePlayer,
 		UserID:   userID,
 		GameID:   meta.ID,
 		PlayerID: playerID,
 		Name:     name,
-	}
-	if identity.Populated() {
-		p.Name = identity.DisplayName()
-		p.DiscordID = identity.ID
-		p.DiscordUsername = identity.Username
-		p.DiscordGlobalName = identity.GlobalName
-		p.DiscordAvatarHash = identity.AvatarHash
-	}
-	tok, issued, err := c.Auth.Issue(r.Context(), p, c.SessionTTL)
+	}, identity)
+	tok, issued, err := issueFor(r.Context(), c, p, source)
 	if err != nil {
 		return err
 	}
@@ -1062,12 +1059,23 @@ func spectateGame(c Config, w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
+	// A signed-in person who watches stays signed in (ADR 0110 §1
+	// item 2): the spectator session carries their user and Discord
+	// identity, so /me/* keeps working, a revocation reaches the
+	// socket, and it expires with the session they came from. Their
+	// label is the Discord display name, as on a seat; a typed name is
+	// for guests. A guest spectator is unchanged.
+	identity, source := signedInIdentity(c, r)
 	p := auth.Principal{
 		Role:   auth.RoleSpectator,
 		GameID: meta.ID,
 		Name:   trimToLimit(body.Name, 40),
 	}
-	tok, issued, err := c.Auth.Issue(r.Context(), p, c.SessionTTL)
+	if source != nil {
+		p.UserID = source.UserID
+		p = withIdentity(p, identity)
+	}
+	tok, issued, err := issueFor(r.Context(), c, p, source)
 	if err != nil {
 		return err
 	}
@@ -1273,6 +1281,15 @@ func mintSeatReclaim(c Config, w http.ResponseWriter, r *http.Request) error {
 // redeemer supply a label would make reclaim a way to rename another
 // player. The seat's Discord identity is copied onto the principal so
 // the avatar renders exactly as it did before the disconnect.
+//
+// The ticket is the whole credential, so the session it mints has no
+// user and lives SessionTTL, with one exception (ADR 0110 §1 item 4):
+// when the request ALSO carries a valid signed-in session whose user
+// owns this seat, the redemption is the same thing as POST
+// /me/games/{id}/session, and gets the same session — the user, and
+// the expiry of the session it came from. A signed-in session for
+// anyone else changes nothing: copying a seat's Discord fields never
+// makes the holder that person.
 func redeemSeatReclaim(c Config, w http.ResponseWriter, r *http.Request) error {
 	id, err := gameIDFromPath(r)
 	if err != nil {
@@ -1297,7 +1314,15 @@ func redeemSeatReclaim(c Config, w http.ResponseWriter, r *http.Request) error {
 		DiscordGlobalName: seat.DisplayName,
 		DiscordAvatarHash: seat.DiscordAvatarHash,
 	}
-	tok, issued, err := c.Auth.Issue(r.Context(), p, c.SessionTTL)
+	var source *auth.Principal
+	if sp, ok := optionalSession(c, r); ok && isSignedInPerson(sp) && seat.UserID == sp.UserID.String() {
+		source = &sp
+		p.UserID = sp.UserID
+		if sp.DiscordID != "" && sp.DiscordID == seat.DiscordID {
+			p.DiscordUsername = sp.DiscordUsername
+		}
+	}
+	tok, issued, err := issueFor(r.Context(), c, p, source)
 	if err != nil {
 		return err
 	}
@@ -2674,19 +2699,20 @@ type myDecksResponse struct {
 // myDecks handles GET /me/decks: the caller's saved decks (ADR 0051
 // decision 7, S34 sub-PR 5), newest updated first.
 //
-// 401 for any principal without a UserID — a guest's RolePlayer
-// session, an admin session, or an identified session minted by a
-// deployment with no database — not only for a missing credential,
-// which auth.Middleware already turns into a 401 on its own. There is
-// nothing partial to show: a UserID-less principal owns no decks by
-// construction (decklibrary.Store.Upsert requires one).
+// 403 for any principal that is not a signed-in person — a guest's
+// RolePlayer session, an admin session, or an identified session
+// minted by a deployment with no database. A missing credential is
+// still auth.Middleware's own 401. There is nothing partial to show: a
+// UserID-less principal owns no decks by construction
+// (decklibrary.Store.Upsert requires one).
 func myDecks(c Config, w http.ResponseWriter, r *http.Request) error {
-	p, ok := auth.PrincipalFromContext(r.Context())
-	if !ok {
-		return httpError(http.StatusInternalServerError, "missing principal")
-	}
-	if p.UserID == uuid.Nil {
-		return httpError(http.StatusUnauthorized, "sign-in required")
+	// 403, not 401, for a session that is not a person, like every
+	// other /me/* route (signedInUser, #1154; ADR 0110 §1 item 7):
+	// authFetch reads a 401 as an expired session and signs the
+	// browser out.
+	p, err := signedInUser(r)
+	if err != nil {
+		return err
 	}
 	library := c.DeckLibrary
 	if library == nil {
