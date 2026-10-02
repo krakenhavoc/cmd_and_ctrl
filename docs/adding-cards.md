@@ -1009,7 +1009,7 @@ things:
 |---|---|
 | a printed number ("enters with three +1/+1 counters") | `Replacements: []game.ReplacementEffect{b10EntersWithCounters(kind, n, label)}` |
 | a count off the BOARD ("…for each Zombie card in your graveyard") | `Replacements: []game.ReplacementEffect{b19EntersWithCountersCounted(kind, count, label)}` |
-| a fact about the ANNOUNCEMENT (X, times kicked, colours spent) | `EntersWithCountersFromCast: []game.EntryCountersFromCast{XCounters(kind)}` |
+| a fact about the ANNOUNCEMENT (X, times kicked, colours spent, mana spent) | `EntersWithCountersFromCast: []game.EntryCountersFromCast{XCounters(kind)}` |
 
 The first two are ordinary CR 614 self-replacements: everything they
 need is reachable from `(g, src)` while the entry window is open. The
@@ -1022,7 +1022,8 @@ from the `StackItem` that is right there
 ([game/entry_counters.go](../server/internal/game/entry_counters.go)), one
 line after escape's `applyAltCostEntryCountersLocked`, so a card file
 declares arithmetic over `game.CastCounts` — `X`, `Kicked`,
-`ColorsSpent` — and nothing else. Constructors:
+`ColorsSpent`, `ManaSpent` (CR 601.2h's "the amount of mana spent to cast
+it", #1735), `Delved` — and nothing else. Constructors:
 `XCounters(kind)`, `CountersPerKick(kind, per)`,
 `SunburstCounters(kind)` in
 [cards/effects/entry_counters.go](../server/internal/cards/effects/entry_counters.go).
@@ -1418,7 +1419,34 @@ Replacements: []game.ReplacementEffect{
 | "except it enters with an additional loyalty counter" | `v.StartingLoyalty++` — NOT `AddCounterAtETB`; the CR 306.5b stamp refuses to run on a walker that already has loyalty counters |
 | "except it's an Illusion in addition to its other types" | `v.AddSubtype("Illusion")` (CR 707.9b). An ADD: the copied Bear stays a Bear. The SET form ("except it's a 4/4 black Zombie") is `retypedTypeLine` in `token_copy.go`, not this |
 | "except it has '\<ability\>'" | `v.GrantAbility("<card>/<what>")` (CR 707.9a), naming a bundle the card declared in `Spec.Grants` — see below |
+| "except … it has flying" (a KEYWORD) | `v.AddKeyword("flying")` (Mockingbird, Cursed Mirror's haste) |
 | branch on what was copied | `v.HasCardType("Creature")` / `"Planeswalker"` / `v.HasSubtype("Illusion")` |
+
+**A candidate filter that reads the CAST (#1735).** "Any creature on the
+battlefield with mana value less than or equal to the amount of mana spent to
+cast this creature" (Mockingbird) depends on the spell, not the board. Use
+`EntersAsCopyOfFromCast`, whose filter also receives the spell's
+`game.CastCounts`:
+
+```go
+EntersAsCopyOfFromCast("Mockingbird",
+    func(g *game.Game, _ uuid.UUID, self uuid.UUID, cast game.CastCounts) []uuid.UUID {
+        return copyCandidates(g, self, func(c game.Card) bool {
+            mv, ok := g.ManaValueForEffect(c)
+            return c.IsCreature() && ok && mv <= cast.ManaSpent
+        })
+    },
+    func(_ *game.ReplacementEvent, v *game.PrintedValues, _ *game.Game, _ *game.Card) {
+        v.AddSubtype("Bird")
+        v.AddKeyword("flying")
+    }),
+```
+
+The counts come from `game.EntryCastCountsForEffect(ev)`, and they are the
+zero value when the permanent was not cast (reanimated, flickered, put onto
+the battlefield) or when the engine did not charge the cast (strict mana
+off). Both read as "nothing was spent", the weaker answer. So a card like this
+carries the strict-mana caveat every mana-spent reader carries.
 
 **Granting an ability (CR 707.9a, #665).** A granted ability is part
 of the COPIABLE VALUES — a Clone copying a Phantasmal Image gets the

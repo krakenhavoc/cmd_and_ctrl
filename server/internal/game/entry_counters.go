@@ -43,10 +43,17 @@ import (
 //  2. ONE VOCABULARY, NAMED. CastCounts is the whole list of things
 //     a CR 614.1c clause is allowed to read off the announcement, and
 //     it is short on purpose: the announced X, the number of times the
-//     spell was kicked, the colours of mana spent on it, and the cards
-//     delve exiled to pay for it (ADR 0100 sub-PR 2). Anything
-//     else a future card needs is a documented field here rather than
-//     a card reaching into PaidCost on its own.
+//     spell was kicked, the colours of mana spent on it, the total
+//     amount of mana spent on it (#1735), and the cards delve exiled
+//     to pay for it (ADR 0100 sub-PR 2). Anything else a future card
+//     needs is a documented field here rather than a card reaching
+//     into PaidCost on its own.
+//
+//     The same vocabulary is what a catalog hook that runs INSIDE the
+//     window and is handed the event may read —
+//     EntryCastCountsForEffect, below. CopySelector.Candidates is the
+//     first such hook (Mockingbird's "with mana value less than or
+//     equal to the amount of mana spent to cast this creature").
 //
 //  3. ONE SEEDING SITE. applyCastEntryCountersLocked runs once, from
 //     the single place a spell's entry event is built, BEFORE the
@@ -82,6 +89,31 @@ type CastCounts struct {
 	// weaker-than-printed answer ADR 0068 §3 requires of every reader
 	// of that record.
 	ColorsSpent int
+
+	// ManaSpent is "the amount of mana spent to cast" the spell
+	// (CR 601.2h, #1735): every mana that left the caster's pool to pay
+	// the total cost CR 601.2f settled — generic, coloured, X, kicker
+	// and any other additional cost paid in mana, the commander tax
+	// and every other increase, after every reduction. Mana from a
+	// Treasure or a ritual is mana like any other.
+	//
+	// What it does NOT count, because none of it is mana: the life a
+	// Phyrexian symbol was paid with (CR 107.4f), creatures convoke
+	// tapped and cards delve exiled (CR 702.51a, CR 702.66a — both pay
+	// for a part of the cost "rather than" mana), and any non-mana
+	// additional cost.
+	//
+	// It is PaidCost.Mana's length, read through the one view
+	// (ManaSpent.Total), not a number of its own: the record already
+	// held the tokens, and a second count is a second chance to
+	// disagree with them. So it inherits the record's two absences.
+	// A cast for no mana — "without paying its mana cost", a {0}
+	// alternative cost, a CR 707.10 copy — is a KNOWN zero. A payment
+	// the engine waived (permissive mode, a strict-mode ForceCast,
+	// PaidCost.OnPaper) is also zero, the weaker-than-printed answer
+	// ADR 0068 §3 requires: "spent nothing we can see" must never
+	// read as "spent enough".
+	ManaSpent int
 
 	// Delved is CR 607.2q's "cards exiled with it" for a spell with
 	// delve (ADR 0100 sub-PR 2): the cards delve exiled to pay for the
@@ -131,11 +163,10 @@ func EntersWithCountersFromCastFor(oracleID string) []EntryCountersFromCast {
 	return CatalogEntersWithCountersFromCast(oracleID)
 }
 
-// castCountsFor reads the three numbers a CR 614.1c clause may use off
-// one resolving announcement. With the Delved line in
-// applyCastEntryCountersLocked, which needs the exile zone and so the
-// game, it is the ONE place the entry pipeline reads the paid-cost
-// record.
+// castCountsFor reads the numbers a CR 614.1c clause may use off one
+// resolving announcement. With the Delved line in castCountsLocked,
+// which needs the exile zone and so the game, it is the ONE place the
+// entry pipeline reads the paid-cost record.
 //
 // `card` is needed alongside the item because "the number of times it
 // was kicked" is positions in the CARD's OptionalCosts slice, and only
@@ -148,7 +179,57 @@ func castCountsFor(card Card, item *StackItem) CastCounts {
 		X:           item.XValue,
 		Kicked:      KickedTimesPaid(card, item.Paid.OptionalCosts),
 		ColorsSpent: item.Paid.ColorsSpentCount(),
+		ManaSpent:   item.Paid.ManaSpentCount(),
 	}
+}
+
+// castCountsLocked is castCountsFor plus the one field that needs the
+// game: the delved cards still in exile as the objects delve put
+// there (CR 607.2q). The single builder of a full CastCounts, shared
+// by the clause seeder below and EntryCastCountsForEffect, so a
+// counter clause and a candidate filter can never read two different
+// answers off one entry.
+//
+// Caller must hold g.mu.
+func (g *Game) castCountsLocked(card Card, item *StackItem) CastCounts {
+	cast := castCountsFor(card, item)
+	if item != nil {
+		cast.Delved = g.DelvedCardsForEffect(item.Paid.Delved)
+	}
+	return cast
+}
+
+// EntryCastCountsForEffect is CastCounts for the spell an entry event
+// is turning into a permanent — the read for a catalog hook that runs
+// INSIDE the CR 614 window and is handed the event rather than
+// declared as an EntryCountersFromCast clause (#1735).
+//
+// CopySelector.Candidates is the first such hook: Mockingbird's "enter
+// as a copy of any creature on the battlefield with mana value less
+// than or equal to the amount of mana spent to cast this creature"
+// filters its candidates on ManaSpent. Both evaluations of the
+// candidate list — the prompt, and the re-check when the answer
+// arrives — see the same figure, because the event carries the
+// resolving item across the pause (ReplacementEvent.stackItem) and the
+// payment record on it never changes after the cast.
+//
+// The zero CastCounts for every entry that is not a resolving spell —
+// a reanimation, a flicker, a library search, a token, a land play —
+// because nothing was cast and nothing was spent: X is 0 (CR 107.3b),
+// and a Mockingbird put onto the battlefield can copy only a creature
+// with mana value 0. The same zero for a nil event.
+//
+// The card is read off the stack, where a resolving permanent spell
+// still is while its entry is open (and while it is paused on a
+// prompt); only the kicker count needs it.
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) EntryCastCountsForEffect(ev *ReplacementEvent) CastCounts {
+	if ev == nil || ev.stackItem == nil {
+		return CastCounts{}
+	}
+	card, _ := g.cardInZoneLocked(g.Stack, ev.CardID)
+	return g.castCountsLocked(card, ev.stackItem)
 }
 
 // applyCastEntryCountersLocked folds a permanent spell's printed
@@ -196,8 +277,7 @@ func (g *Game) applyCastEntryCountersLocked(ev *ReplacementEvent, card Card, ite
 	if len(clauses) == 0 {
 		return
 	}
-	cast := castCountsFor(card, item)
-	cast.Delved = g.DelvedCardsForEffect(item.Paid.Delved)
+	cast := g.castCountsLocked(card, item)
 	for _, clause := range clauses {
 		if clause.Count == nil {
 			continue

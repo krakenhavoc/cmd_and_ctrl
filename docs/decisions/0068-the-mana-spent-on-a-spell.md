@@ -508,3 +508,103 @@ out of scope for the PR that closed the wall (#1312/#1335/#1323 is a
 three-seam PR, not a caveat sweep). Filed as a tech-debt follow-up per
 AGENTS.md §7 (now docs/adding-cards.md)'s "a caveat goes stale the day someone else implements the
 mechanic" rule.
+
+## Amendment (2026-10-02, [#1735](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1735)): the total spent, read inside the entry window
+
+Mockingbird prints "You may have this creature enter as a copy of any creature
+on the battlefield with mana value less than or equal to **the amount of mana
+spent to cast this creature**". It shipped in #1734 as a plain {X}{U} 1/1
+flier, with a caveat that blamed the engine: `CastCounts` carried X, the kicker
+count, `ColorsSpent` and `Delved` but no amount, and `CopySelector.Candidates`
+is handed a `ReplacementEvent` whose resolving stack item is unexported.
+
+### What was actually missing
+
+**Not the record.** §1's `PaidCost.Mana` is the tokens that left the pool, and
+CR 601.2h's "amount of mana spent" is exactly how many there are —
+`ManaSpent.Total()` (A2), already read by Abby, Merciless Soldier and pinned
+by `TestStrictCastRecordsTheManaSpent`. Every way CR 601.2f settles the total
+cost goes through the one pricer before the solver spends against it: the
+alternative-cost swap, the commander tax, an optional or either/or additional
+cost's mana, Spree's per-mode cost, the cost modifiers, and only then the
+convoke / waterbend / delve subtractions (which pay "rather than" mana and so
+spend no tokens). A Phyrexian symbol paid with life is struck from the cost
+before the spend (CR 107.4f), and a free cast prices at `{0}`. A second
+counter on the item would have been a second shape of one fact, the thing A2
+and A4 were written to prevent.
+
+What was missing was the two **reads**:
+
+1. **`CastCounts.ManaSpent`** — the field A4 said `CastCounts` would gain
+   "rather than a card reaching into PaidCost on its own". It is
+   `item.Paid.ManaSpentCount()`, set in `castCountsFor`, the one reader. It
+   inherits §3: a waived payment reads 0, never "enough". A CR 707.10 copy
+   reads a real 0 (A7).
+2. **`Game.EntryCastCountsForEffect(ev)`** — the whole `CastCounts` for the
+   spell an entry event is bringing in, for a hook that runs inside the CR 614
+   window and is handed the EVENT rather than declared as an
+   `EntryCountersFromCast` clause. It reads `ev.stackItem` (the field that
+   already carries the resolving item across a paused entry, ADR 0043 §4) and
+   the card off the stack, where a resolving permanent spell still is. The
+   zero value for every entry that was not a resolving spell — reanimation,
+   flicker, search, token, land play — and for a nil event. The clause seeder
+   and this accessor share `castCountsLocked`, so a counter clause and a
+   candidate filter can never read two answers off one entry.
+
+### Why an accessor and not a new parameter
+
+`CopySelector.Candidates` is `func(ev, g, source)` and is called from two
+places — the prompt and the re-check when the answer arrives. The event is
+the thing that carries the stack item across the pause, so the read needs
+nothing the hook did not already have. Widening the signature would have
+touched every copy card for one card's benefit; a catalog constructor,
+`effects.EntersAsCopyOfFromCast`, hands `CastCounts` to the candidate filter
+instead, and `EntersAsCopyOf` is unchanged.
+
+Both evaluations see the same figure: the payment record never changes after
+the cast, and `cloneReplacementResume` keeps the item pointer, so an undone
+answer re-checks against the same number. (A snapshot taken WHILE the copy
+prompt is open drops the resume frame, as it does for every copy prompt —
+`PendingChoice.replacementResume` is classified `dropped` in
+`snapshot_drift_test.go` and counted in the continuation census; unchanged
+here.)
+
+### Who else reads it
+
+- **Mana Sculpt** read nothing: its caveat said "the engine does not keep
+  that record (#761)" — written after #761 shipped the record. It now counts
+  the target off `StackItemPaidForEffect(...).Spent().Total()` before
+  countering and, with a Wizard, schedules Mana Drain's refund body for that
+  amount at the caster's next main phase.
+- **Not catalogued, now one clause away:** Verazol, the Split Current,
+  Kurbis, Harvest Celebrant, Gyrus, Waker of Corpses, Marath, Will of the
+  Wild and Dyadrine, Synthesis Amalgam ("enters with a +1/+1 counter for each
+  mana spent to cast it") are `EntryCountersFromCast{Count: cast.ManaSpent}`.
+  Each is held for its other text.
+- **#1552 (granted readers):** `EntryCastCountsForEffect` is the read half of
+  a granted entry rider — a replacement on ANOTHER permanent can now see the
+  entering spell's payment, which Lux Artillery's granted sunburst needs. The
+  grant half (the sunburst rides the spell, so it survives the Artillery
+  leaving first) is still that issue's.
+
+### Cards
+
+**Mockingbird** loses its "can't enter as a copy" caveat and keeps the one
+every mana-spent reader carries (with strict mana off the amount is unknown,
+so it can copy only mana value 0). Its except clause is `AddSubtype("Bird")`
+and `AddKeyword("flying")`, copiable values per ADR 0043 decisions 6–8.
+**Mana Sculpt** gains its refund, with the same strict-mana caveat.
+
+### Tests
+
+`server/internal/game/mana_spent_total_test.go`: the entry window's total for
+a plain cast (Treasure mana included), {X}, kicker, a reduction, an increase
+plus the commander tax, a Phyrexian symbol paid with life, a free cast (a
+known zero on the permanent), a waived payment; zero outside a cast; a clone
+and a snapshot round trip with the spell on the stack; and a copy selector
+reading the same figure at the prompt and at the answer.
+`server/internal/cards/effects/mana_spent_total_test.go`: Mockingbird's
+candidates at, under and over the ceiling, the flying Bird it becomes (and a
+Clone of it), decline, reanimated, flickered and permissive (mana value 0
+only); Mana Sculpt's refund (two mana spent on a mana-value-3 spell), no
+Wizard, and a waived payment.

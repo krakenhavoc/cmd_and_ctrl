@@ -68,6 +68,14 @@ type CopySelector struct {
 	// once when the answer arrives, so a creature that left in
 	// response cannot be copied. Returning an empty list means the
 	// permanent simply enters as itself.
+	//
+	// A filter that reads the SPELL the permanent is entering from
+	// asks g.EntryCastCountsForEffect(ev) — Mockingbird's "mana value
+	// less than or equal to the amount of mana spent to cast this
+	// creature" is its ManaSpent (#1735). The event, not the source,
+	// is what carries the resolving stack item, so that read needs no
+	// new parameter here; for an entry that is not a resolving spell
+	// it answers the zero CastCounts.
 	Candidates func(ev *ReplacementEvent, g *Game, source *Card) []uuid.UUID
 
 	// Except applies the card's "except" clause to the values that

@@ -110,7 +110,9 @@ func TestChangelingOutcastCantBlockAndCantBeBlocked(t *testing.T) {
 
 // --- Mockingbird ------------------------------------------------------
 
-func TestMockingbirdIsJustAFlierWithNoCopyChoice(t *testing.T) {
+// The printed baseline. The copy choice — and its "amount of mana
+// spent" ceiling, #1735 — is pinned in mana_spent_total_test.go.
+func TestMockingbirdIsAPrintedFlier(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
 	id := pushBattlefieldCardWithTimestamp(g, game.Card{

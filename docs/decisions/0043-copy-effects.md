@@ -1175,3 +1175,28 @@ an activated ability's target bound to its own announced X. See
 itself: the copy survives the cleanup of the turn it was made on (an
 `UntilEndOfTurn` copy would not) and reverts only once the controller's
 own next turn begins, after every other seat at the table has had one.
+
+## Amendment (2026-10-02, [#1735](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1735)): a candidate filter may read the spell the permanent is entering from
+
+Mockingbird's candidate list is "any creature on the battlefield with mana
+value less than or equal to the amount of mana spent to cast this creature" —
+the first copy filter that depends on the CAST rather than on the board.
+Decision 3's selector already had what it needed: `CopySelector.Candidates`
+is handed the entry event, and decision 4 made that event carry the resolving
+stack item across the pause. What it lacked was a way to read the item, which
+is unexported.
+
+`Game.EntryCastCountsForEffect(ev)` is that read, and it returns
+`game.CastCounts` — the one vocabulary a CR 614.1c clause already uses, now
+with `ManaSpent` — rather than the item itself. The selector's signature is
+unchanged. On the catalog side, `effects.EntersAsCopyOfFromCast` is
+`EntersAsCopyOf` with a candidate filter that also receives the `CastCounts`;
+`EntersAsCopyOf` and every card built on it are untouched. An entry that is
+not a resolving spell (reanimation, flicker, a token) reads the zero value,
+which is what Mockingbird's text says about a Mockingbird that was not cast.
+
+Mockingbird's except clause ("it's a Bird in addition to its other types and
+it has flying") is decisions 6–8's `AddSubtype` and `AddKeyword`, so a Clone
+that copies it is a flying Bird too. The mana half — what "spent" means, and
+why a waived payment reads as zero — is
+[ADR 0068's amendment of the same date](0068-the-mana-spent-on-a-spell.md#amendment-2026-10-02-1735-the-total-spent-read-inside-the-entry-window).

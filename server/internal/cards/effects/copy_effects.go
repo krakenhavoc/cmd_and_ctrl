@@ -46,6 +46,58 @@ func EntersAsCopyOf(
 	candidates func(g *game.Game, controller uuid.UUID, self uuid.UUID) []uuid.UUID,
 	except func(ev *game.ReplacementEvent, v *game.PrintedValues, g *game.Game, source *game.Card),
 ) game.ReplacementEffect {
+	return entersAsCopy(name, func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) []uuid.UUID {
+		controller, self := copyChooserAndSelf(ev, src)
+		return candidates(g, controller, self)
+	}, except)
+}
+
+// EntersAsCopyOfFromCast is EntersAsCopyOf for a candidate filter that
+// reads the SPELL the permanent is entering from (#1735) — Mockingbird's
+// "any creature on the battlefield with mana value less than or equal
+// to the amount of mana spent to cast this creature".
+//
+// `candidates` is handed that spell's game.CastCounts, read through
+// game.EntryCastCountsForEffect off the entry event, so both
+// evaluations (the prompt and the re-check when the answer arrives)
+// see the same announcement. A permanent that was not cast —
+// reanimated, flickered, put onto the battlefield — gets the zero
+// value, which is what the printed cards say about it: nothing was
+// spent to cast it. So does a cast the engine did not charge
+// (permissive mode), the weaker-than-printed answer the mana-spent
+// readers all give (ADR 0068 §3).
+func EntersAsCopyOfFromCast(
+	name string,
+	candidates func(g *game.Game, controller uuid.UUID, self uuid.UUID, cast game.CastCounts) []uuid.UUID,
+	except func(ev *game.ReplacementEvent, v *game.PrintedValues, g *game.Game, source *game.Card),
+) game.ReplacementEffect {
+	return entersAsCopy(name, func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) []uuid.UUID {
+		controller, self := copyChooserAndSelf(ev, src)
+		return candidates(g, controller, self, g.EntryCastCountsForEffect(ev))
+	}, except)
+}
+
+// copyChooserAndSelf is who the candidate filter asks on behalf of and
+// which permanent is entering: the event's actor (the player the
+// permanent enters under) falling back to the source's controller,
+// and the entering card's own ID so it is never offered itself.
+func copyChooserAndSelf(ev *game.ReplacementEvent, src *game.Card) (controller, self uuid.UUID) {
+	if ev != nil {
+		controller = ev.Actor
+		self = ev.CardID
+	}
+	if controller == uuid.Nil && src != nil {
+		controller = src.Controller
+	}
+	return controller, self
+}
+
+// entersAsCopy is the one builder behind both constructors above.
+func entersAsCopy(
+	name string,
+	candidates func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) []uuid.UUID,
+	except func(ev *game.ReplacementEvent, v *game.PrintedValues, g *game.Game, source *game.Card),
+) game.ReplacementEffect {
 	return game.ReplacementEffect{
 		Watches:         []game.EventKind{game.EventZoneMove},
 		SelfReplacement: true,
@@ -60,19 +112,8 @@ func EntersAsCopyOf(
 		// two entry replacements that ask their own question).
 		Controller: EnteringPermanentChooser,
 		CopySelector: &game.CopySelector{
-			Candidates: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) []uuid.UUID {
-				controller := uuid.Nil
-				self := uuid.Nil
-				if ev != nil {
-					controller = ev.Actor
-					self = ev.CardID
-				}
-				if controller == uuid.Nil && src != nil {
-					controller = src.Controller
-				}
-				return candidates(g, controller, self)
-			},
-			Except: except,
+			Candidates: candidates,
+			Except:     except,
 		},
 	}
 }
