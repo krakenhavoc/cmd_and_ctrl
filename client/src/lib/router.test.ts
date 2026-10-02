@@ -26,6 +26,10 @@ describe("parseHash", () => {
     expect(parseHash("#/deck-check?url=")).toEqual({ name: "deckCheck" });
   });
 
+  it("parses #/practice, the tutorial's practice table (ADR 0076)", () => {
+    expect(parseHash("#/practice")).toEqual({ name: "practice" });
+  });
+
   it("still parses the pre-existing routes", () => {
     expect(parseHash("#/login")).toEqual({ name: "login" });
     expect(parseHash("#/lobby")).toEqual({ name: "lobby" });

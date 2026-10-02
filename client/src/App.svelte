@@ -17,6 +17,7 @@
   import Home from "./routes/Home.svelte";
   import Roadmap from "./routes/Roadmap.svelte";
   import DeckCheck from "./routes/DeckCheck.svelte";
+  import Practice from "./routes/Practice.svelte";
   import Settings from "./lib/components/Settings.svelte";
   import ShortcutLayer from "./lib/components/ShortcutLayer.svelte";
   import UpdatePrompt from "./lib/components/UpdatePrompt.svelte";
@@ -135,6 +136,8 @@
   <DeckCheck />
 {:else if $route.name === "lobby"}
   <Lobby />
+{:else if $route.name === "practice"}
+  <Practice />
 {:else if $route.name === "catalog"}
   <Catalog />
 {:else if $route.name === "myGames"}

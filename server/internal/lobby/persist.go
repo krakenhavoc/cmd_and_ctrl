@@ -123,6 +123,9 @@ func gameRecordLocked(entry *gameEntry) GameRecord {
 // small writes over a game's whole lifetime, and deferring it would
 // mean threading a thunk through every call site for no gain.
 func (l *Lobby) persistSeatsLocked(entry *gameEntry) {
+	if entry.practice {
+		return // practice.go: a practice table has no rows
+	}
 	ctx, cancel := storeCtx()
 	defer cancel()
 	if err := l.store.ReplaceSeats(ctx, entry.meta.ID, seatRecords(entry.meta.Players)); err != nil {
@@ -134,6 +137,9 @@ func (l *Lobby) persistSeatsLocked(entry *gameEntry) {
 // lifecycle columns change: Start, archive/unarchive, and whenever
 // syncStateLocked observes a transition.
 func (l *Lobby) persistGameLocked(entry *gameEntry) {
+	if entry.practice {
+		return // practice.go: a practice table has no rows
+	}
 	ctx, cancel := storeCtx()
 	defer cancel()
 	if err := l.store.UpdateGame(ctx, gameRecordLocked(entry)); err != nil {

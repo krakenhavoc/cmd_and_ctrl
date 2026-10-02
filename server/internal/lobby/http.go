@@ -242,6 +242,8 @@ type GameEvictor interface {
 //	POST /games/{id}/reclaim — redeem one: a session for that seat
 //	POST /games/{id}/invites/rotate — admin: revoke + re-mint one invite kind
 //	POST /games/{id}/invites/dm — seated / creator / admin: DM a person the game's invite link
+//	POST /games/practice    — authenticated: open the tutorial's practice table, seated
+//	POST /games/{id}/practice/leave — abandon it and restore the caller's session cookie
 //	GET  /decks             — authenticated: pre-built decks + their engine coverage
 //	POST /games/{id}/decks/{deck_id} — authenticated: seat a library deck without re-pasting
 //	GET  /me                — authenticated: principal echo (for client bootstrap)
@@ -439,6 +441,17 @@ func Handler(c Config) http.Handler {
 	// player already seated at the table.
 	mux.Handle("POST /games/{id}/seats/bot", deckLimit.Middleware(auth.Middleware(c.Auth)(handlerFunc(c, addBot))))
 	mux.Handle("DELETE /games/{id}/seats/bot/{player}", auth.Middleware(c.Auth)(handlerFunc(c, removeBot)))
+	// The tutorial's practice table (ADR 0076 §2.2, practice_http.go).
+	// Any session may open one: that is what a tutorial is for. It
+	// installs two decklists, so it rides the deck bucket, and a
+	// per-caller bucket on top keeps one tab from opening tables in a
+	// loop (each one replaces the last, but each costs a deck load and
+	// a bot runner). Leave carries its own tokens in the body and
+	// rides the join bucket, like every other unauthenticated route.
+	practiceLimit := newLimiter(1.0/5, 3)
+	mux.Handle("POST /games/practice",
+		deckLimit.Middleware(auth.Middleware(c.Auth)(perCallerLimit(practiceLimit, handlerFunc(c, createPractice)))))
+	mux.Handle("POST /games/{id}/practice/leave", limit.Middleware(handlerFunc(c, leavePractice)))
 	// #505 part 3: admin-only latency/token readout for every bot seat
 	// at this table. BotStatsHandler wraps its own
 	// auth.Middleware(c.Auth, auth.RoleAdmin) — see botstats.go — so

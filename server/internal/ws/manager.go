@@ -59,6 +59,24 @@ func (m *RoomManager) Create(g *game.Game) *Room {
 	return r
 }
 
+// CreateEphemeral is Create for a room that writes nothing to disk:
+// no crash dump, no replay log and, above all, no restore point, so a
+// restart never brings it back. It is the tutorial's practice table
+// (ADR 0076 §2.2): there is no resume, so a restore point would only
+// rebuild a table nobody is coming back to, with a bot runner
+// relaunched to play it. Like Create, an existing room with the same
+// game ID is returned unchanged.
+func (m *RoomManager) CreateEphemeral(g *game.Game) *Room {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if existing, ok := m.rooms[g.ID]; ok {
+		return existing
+	}
+	r := NewRoom(g, m.log, "")
+	m.rooms[g.ID] = r
+	return r
+}
+
 // Register inserts a pre-constructed Room into the manager. Used by
 // tests and by any caller that needs a non-default Room configuration.
 // Overwrites any existing room with the same game ID.

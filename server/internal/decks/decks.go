@@ -295,6 +295,14 @@ func Load(idx *cards.Index, id string) (*deck.List, error) {
 	if !ok {
 		return nil, fmt.Errorf("decks: unknown deck %q (have %s)", id, strings.Join(IDs(), ", "))
 	}
+	return d.Load(idx)
+}
+
+// Load is the package-level Load for a Deck already in hand — the
+// tutorial pair (tutorial.go), which Lookup does not see because the
+// pickers must not offer it. Same pipeline, same oracle-ID check.
+func (d Deck) Load(idx *cards.Index) (*deck.List, error) {
+	id := d.ID
 	entries, err := deck.ParseText(d.Decklist())
 	if err != nil {
 		return nil, fmt.Errorf("decks: %s: parse: %w", id, err)
