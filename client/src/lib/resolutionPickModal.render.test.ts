@@ -16,8 +16,9 @@
 
 import { describe, it, expect, afterEach } from "vitest";
 
-import ChoicePromptModal from "./components/board/ChoicePromptModal.svelte";
+import ChoiceDockHarness from "./test/ChoiceDockHarness.svelte";
 import type { ActionType, GameView, PendingChoiceView } from "./protocol";
+import { barButton, barPrimary } from "./test/dockView";
 import { render, click, cleanup } from "./test/render.svelte";
 
 afterEach(cleanup);
@@ -61,7 +62,7 @@ interface Sent {
 function mount(choice: Partial<PendingChoiceView>): { container: HTMLElement; sent: Sent[] } {
   const sent: Sent[] = [];
   const view = render(
-    ChoicePromptModal as never,
+    ChoiceDockHarness as never,
     {
       snap: snapWith(choice),
       viewerID: "me",
@@ -76,8 +77,7 @@ const cardButtons = (container: HTMLElement): HTMLButtonElement[] => [
   ...container.querySelectorAll<HTMLButtonElement>("button.card-pick"),
 ];
 
-const submitButton = (container: HTMLElement): HTMLButtonElement =>
-  container.querySelector<HTMLButtonElement>("button.primary")!;
+const submitButton = (container: HTMLElement): HTMLButtonElement => barPrimary(container)!;
 
 describe("ChoicePromptModal — the three resolution-time picks (#1214)", () => {
   for (const kind of ["reveal_pick", "their_permanents", "own_permanents"] as const) {
@@ -133,10 +133,8 @@ describe("ChoicePromptModal — the three resolution-time picks (#1214)", () => 
       choose_max: 3,
     });
     click(cardButtons(container)[0]);
-    const clear = [...container.querySelectorAll<HTMLButtonElement>(".prompt-foot button")].find(
-      (b) => b.textContent?.trim() === "Clear",
-    );
-    expect(clear).toBeDefined();
+    const clear = barButton("Clear", container);
+    expect(clear).not.toBeNull();
     click(clear!);
     click(submitButton(container));
     expect(sent[0].params).toMatchObject({ choice_id: "choice-1", card_ids: [] });

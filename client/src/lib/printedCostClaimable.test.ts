@@ -20,6 +20,8 @@ import type { ActionType, CardView, GameView } from "./protocol";
 import { printedCostClaimable } from "./targeting";
 import { canCastFromHand } from "./timing";
 import { render, click, cleanup } from "./test/render.svelte";
+import DockHarness from "./test/DockHarness.svelte";
+import { barPrimary } from "./test/dockView";
 
 afterEach(cleanup);
 
@@ -76,22 +78,28 @@ describe("printedCostClaimable — #1012", () => {
 
 function mountPicker(c: CardView) {
   const confirmed: Array<{ key: string | undefined; optional: number[] }> = [];
+  // ADR 0111 PR 6: a sheet in the action dock; Cast is the bar's primary.
   const view = render(
-    AlternativeCostModal as never,
+    DockHarness as never,
     {
-      card: c,
-      onConfirm: (key: string | undefined, optional: number[]) => confirmed.push({ key, optional }),
-      onCancel: () => {},
+      component: AlternativeCostModal,
+      props: {
+        card: c,
+        onConfirm: (key: string | undefined, optional: number[]) =>
+          confirmed.push({ key, optional }),
+        onCancel: () => {},
+      },
     } as never,
   );
   return { container: view.container, confirmed };
 }
 
 const optionNames = (c: HTMLElement): string[] =>
-  [...c.querySelectorAll(".prompt-options .prompt-opt .name")].map((e) => e.textContent ?? "");
+  [...c.querySelectorAll(".dock-sheet .prompt-options .prompt-opt .name")].map(
+    (e) => e.textContent ?? "",
+  );
 
-const confirmButton = (c: HTMLElement): HTMLElement =>
-  c.querySelector(".prompt-foot .primary") as HTMLElement;
+const confirmButton = (c: HTMLElement): HTMLElement => barPrimary(c)!;
 
 describe("the cost picker drops a price the server would refuse — #1012", () => {
   it("offers the printed cost when it is claimable, and confirms it by default", () => {

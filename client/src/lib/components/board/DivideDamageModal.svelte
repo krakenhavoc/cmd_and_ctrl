@@ -12,10 +12,16 @@
   // cast_spell / activate_ability / resolve_choice as the targets, as
   // `distribution`. Cancel returns to the target picker with the picks
   // intact, so a player can change who is hit before dividing again.
+  //
+  // ADR 0111 PR 6: a sheet in the action dock; Confirm and Back are the
+  // dock's action bar. The sheet's request is newer than the target
+  // walk's, so it is the one the dock draws and the one its key handler
+  // answers: Enter confirms the division and Escape goes Back to the
+  // picks, never past them to cancel the whole cast.
 
-  import { onDestroy } from "svelte";
   import { divisionProblem, evenSplit } from "../../targeting";
-  import ModalLayer from "../ModalLayer.svelte";
+  import { cancelAction, confirmAction } from "../../dock";
+  import DockSheet from "./DockSheet.svelte";
 
   interface Props {
     // The spell or ability source, for the title. Null closes the modal.
@@ -62,81 +68,48 @@
     for (const id of ids) out[id] = shares[id];
     onConfirm(out);
   }
-
-  // Enter and Escape stop here: Game.svelte's window handler would
-  // otherwise also confirm the (still open) target walk on Enter, and
-  // cancel the whole cast on Escape rather than going Back to the picks.
-  function handleKey(e: KeyboardEvent): void {
-    if (sourceName === null) return;
-    if (e.key === "Enter") {
-      e.preventDefault();
-      e.stopPropagation();
-      confirm();
-    } else if (e.key === "Escape") {
-      e.preventDefault();
-      e.stopPropagation();
-      onCancel();
-    }
-  }
-  $effect(() => {
-    if (sourceName === null) return;
-    document.addEventListener("keydown", handleKey);
-    return () => document.removeEventListener("keydown", handleKey);
-  });
-  onDestroy(() => document.removeEventListener("keydown", handleKey));
 </script>
 
 {#if sourceName !== null}
-  <ModalLayer />
-  <div class="prompt-backdrop" role="dialog" aria-modal="true" aria-labelledby="divide-title">
-    <div class="prompt-modal divide-modal">
-      <h2 id="divide-title">Divide {upTo ? "up to " : ""}{total} — {sourceName}</h2>
-      <p class="prompt-hint">
-        Assign each target at least 1. The shares must add up to {upTo
-          ? `at most ${total}`
-          : total}.
-      </p>
-      <ul class="rows">
-        {#each targets as t (t.id)}
-          <li class="row">
-            <span class="name">{t.name}</span>
-            <button
-              type="button"
-              class="ghost step"
-              disabled={(shares[t.id] ?? 0) <= 1}
-              onclick={() => step(t.id, -1)}
-              aria-label={`one less to ${t.name}`}>−</button
-            >
-            <output class="count" aria-label={`share for ${t.name}`}>{shares[t.id] ?? 0}</output>
-            <button
-              type="button"
-              class="ghost step"
-              disabled={assigned >= total}
-              onclick={() => step(t.id, 1)}
-              aria-label={`one more to ${t.name}`}>+</button
-            >
-          </li>
-        {/each}
-      </ul>
-      <p class="status" class:bad={problem !== null} aria-live="polite">
-        {problem ?? `${assigned} of ${total} assigned`}
-      </p>
-      <div class="prompt-foot">
-        <button type="button" class="ghost" onclick={onCancel}
-          >Back <span class="kbd">Esc</span></button
-        >
-        <button type="button" class="primary" disabled={problem !== null} onclick={confirm}>
-          Confirm <span class="kbd">↵</span>
-        </button>
-      </div>
-    </div>
-  </div>
+  <DockSheet
+    label={`Divide ${upTo ? "up to " : ""}${total} — ${sourceName}`}
+    width={440}
+    sheetKey={`divide:${total}:${ids.join(",")}`}
+    primary={confirmAction("Confirm", confirm, { disabled: problem !== null })}
+    secondary={[cancelAction(onCancel, "Back")]}
+  >
+    <p class="prompt-hint">
+      Assign each target at least 1. The shares must add up to {upTo ? `at most ${total}` : total}.
+    </p>
+    <ul class="rows">
+      {#each targets as t (t.id)}
+        <li class="row">
+          <span class="name">{t.name}</span>
+          <button
+            type="button"
+            class="ghost step"
+            disabled={(shares[t.id] ?? 0) <= 1}
+            onclick={() => step(t.id, -1)}
+            aria-label={`one less to ${t.name}`}>−</button
+          >
+          <output class="count" aria-label={`share for ${t.name}`}>{shares[t.id] ?? 0}</output>
+          <button
+            type="button"
+            class="ghost step"
+            disabled={assigned >= total}
+            onclick={() => step(t.id, 1)}
+            aria-label={`one more to ${t.name}`}>+</button
+          >
+        </li>
+      {/each}
+    </ul>
+    <p class="status" class:bad={problem !== null} aria-live="polite">
+      {problem ?? `${assigned} of ${total} assigned`}
+    </p>
+  </DockSheet>
 {/if}
 
 <style>
-  .divide-modal {
-    width: min(440px, calc(100vw - 32px));
-  }
   .rows {
     list-style: none;
     margin: 0;
@@ -179,10 +152,5 @@
   }
   .status.bad {
     color: var(--danger);
-  }
-  .primary .kbd {
-    color: var(--accent-fg);
-    border-color: rgba(28, 21, 3, 0.35);
-    opacity: 0.8;
   }
 </style>

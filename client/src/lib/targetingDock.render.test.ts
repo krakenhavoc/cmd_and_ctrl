@@ -475,8 +475,10 @@ describe("insufficient mana in the dock (S15, ADR 0111 PR 4)", () => {
     click(buttons(dockOf(c), "Auto-tap & cast")[0]!);
     flushSync();
     expect(dockOf(c).querySelector('[aria-label="insufficient mana"]')).toBeNull();
-    // The preview is still a centred modal until Delivery PR 6.
-    expect(c.querySelector('[role="dialog"][aria-modal="true"]')).not.toBeNull();
+    // PR 6: the preview is a sheet in the dock, not a centred modal.
+    expect(dockOf(c).querySelector('[role="dialog"][aria-label="Auto-tap & cast"]')).not.toBeNull();
+    expect(dockOf(c).querySelector(".dock-sheet")).not.toBeNull();
+    expect(c.querySelector('[aria-modal="true"]')).toBeNull();
   });
 
   it("Escape cancels it; Enter presses Auto-tap & cast", async () => {
@@ -488,7 +490,7 @@ describe("insufficient mana in the dock (S15, ADR 0111 PR 4)", () => {
     c = await refusedCast();
     keydown("Enter");
     expect(dockOf(c).querySelector('[aria-label="insufficient mana"]')).toBeNull();
-    expect(c.querySelector('[role="dialog"][aria-modal="true"]')).not.toBeNull();
+    expect(dockOf(c).querySelector('[role="dialog"][aria-label="Auto-tap & cast"]')).not.toBeNull();
   });
 });
 

@@ -20,10 +20,14 @@
   // Unlike those two this prompt is OPTIONAL in both directions: you
   // may tap none (and pay the whole cost with mana), and Confirm is
   // always enabled. There is no count to satisfy.
+  //
+  // ADR 0111 PR 6: a sheet in the action dock; the confirm and Cancel
+  // are the dock's action bar (Enter / Escape through its one key
+  // handler).
 
-  import { onDestroy } from "svelte";
   import type { CardView, TapCostView } from "../../protocol";
-  import ModalLayer from "../ModalLayer.svelte";
+  import { cancelAction, confirmAction } from "../../dock";
+  import DockSheet from "./DockSheet.svelte";
 
   interface Props {
     // The spell being cast; null closes the modal.
@@ -74,81 +78,52 @@
   function confirm(): void {
     onConfirm(chosen);
   }
-
-  function handleKey(e: KeyboardEvent): void {
-    if (!card) return;
-    if (e.key === "Enter") {
-      e.preventDefault();
-      confirm();
-    } else if (e.key === "Escape") {
-      e.preventDefault();
-      onCancel();
-    }
-  }
-  $effect(() => {
-    if (!card) return;
-    document.addEventListener("keydown", handleKey);
-    return () => document.removeEventListener("keydown", handleKey);
-  });
-  onDestroy(() => document.removeEventListener("keydown", handleKey));
 </script>
 
 {#if card && cost}
-  <ModalLayer />
-  <div class="prompt-backdrop" role="dialog" aria-modal="true" aria-labelledby="tap-cost-title">
-    <div class="prompt-modal tc-modal">
-      <h2 id="tap-cost-title">
-        {card.name}
-        <span class="prompt-src" aria-hidden="true">{cost.key} · CR 601.2h</span>
-      </h2>
-      <p class="prompt-hint">{label}</p>
-      <p class="prompt-hint sub">{hint}</p>
-      {#if limit === 0}
-        <p class="prompt-hint error">This cost has nothing to pay — tap nothing and continue.</p>
-      {:else if options.length === 0}
-        <p class="prompt-hint error">
-          You control no untapped permanents that can help. Pay the cost with mana instead.
-        </p>
-      {:else}
-        <ul class="prompt-options">
-          {#each options as c (c.instance_id)}
-            <li>
-              <button
-                type="button"
-                class="prompt-opt"
-                class:on={chosen.includes(c.instance_id)}
-                disabled={full && !chosen.includes(c.instance_id)}
-                aria-pressed={chosen.includes(c.instance_id)}
-                onclick={() => toggle(c.instance_id)}
-              >
-                <span class="prompt-radio" aria-hidden="true"></span>
-                <span class="name">{c.name}</span>
-                {#if c.power !== undefined && c.toughness !== undefined}
-                  <span class="note pt">{c.power}/{c.toughness}</span>
-                {/if}
-              </button>
-            </li>
-          {/each}
-        </ul>
-      {/if}
-      <div class="prompt-foot">
-        <span class="prompt-count">{chosen.length} / {limit} tapped</span>
-        <button type="button" class="ghost" onclick={onCancel}
-          >Cancel <span class="kbd">Esc</span></button
-        >
-        <button type="button" class="primary" onclick={confirm}>
-          {chosen.length === 0 ? "Tap nothing" : "Tap"}
-          <span class="kbd">↵</span>
-        </button>
-      </div>
-    </div>
-  </div>
+  <DockSheet
+    label={card.name}
+    src={`${cost.key} · CR 601.2h`}
+    width={560}
+    sheetKey={`tapcost:${card.instance_id}:${cost.key}`}
+    count={`${chosen.length} / ${limit} tapped`}
+    primary={confirmAction(chosen.length === 0 ? "Tap nothing" : "Tap", confirm)}
+    secondary={[cancelAction(onCancel)]}
+  >
+    <p class="prompt-hint">{label}</p>
+    <p class="prompt-hint sub">{hint}</p>
+    {#if limit === 0}
+      <p class="prompt-hint error">This cost has nothing to pay — tap nothing and continue.</p>
+    {:else if options.length === 0}
+      <p class="prompt-hint error">
+        You control no untapped permanents that can help. Pay the cost with mana instead.
+      </p>
+    {:else}
+      <ul class="prompt-options">
+        {#each options as c (c.instance_id)}
+          <li>
+            <button
+              type="button"
+              class="prompt-opt"
+              class:on={chosen.includes(c.instance_id)}
+              disabled={full && !chosen.includes(c.instance_id)}
+              aria-pressed={chosen.includes(c.instance_id)}
+              onclick={() => toggle(c.instance_id)}
+            >
+              <span class="prompt-radio" aria-hidden="true"></span>
+              <span class="name">{c.name}</span>
+              {#if c.power !== undefined && c.toughness !== undefined}
+                <span class="note pt">{c.power}/{c.toughness}</span>
+              {/if}
+            </button>
+          </li>
+        {/each}
+      </ul>
+    {/if}
+  </DockSheet>
 {/if}
 
 <style>
-  .tc-modal {
-    width: min(440px, calc(100vw - 32px));
-  }
   .name {
     flex: 1 1 auto;
   }
@@ -160,10 +135,5 @@
   .sub {
     font-size: 12px;
     color: var(--fg-muted);
-  }
-  .primary .kbd {
-    color: var(--accent-fg);
-    border-color: rgba(28, 21, 3, 0.35);
-    opacity: 0.8;
   }
 </style>

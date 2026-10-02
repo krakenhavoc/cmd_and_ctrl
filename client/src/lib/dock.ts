@@ -2,8 +2,9 @@
 //
 // The dock in the bottom-right corner draws whatever the table is asking
 // the viewer right now. The things that ask (Game.svelte's combat state,
-// PR 3; targeting and the insufficient-mana prompt, PR 4; pending
-// choices and sheets in Delivery PRs 5-6) stop drawing their own
+// PR 3; targeting and the insufficient-mana prompt, PR 4; inline
+// pending choices, PR 5; every big picker as a sheet that grows up out
+// of the dock, PR 6) stop drawing their own
 // buttons. Each one registers a
 // REQUEST here instead, the way every modal registers a ModalLayer:
 // mount a <DockRequest request={…} /> inside its own `{#if}`, and the
@@ -141,6 +142,103 @@ export interface DockRequest {
   // request's dialog itself ("dialog"), so a screen reader still lands
   // on the question and the keys it names (Y / N) answer it.
   focus?: "primary" | "dialog";
+  // ADR 0111 §3 (Delivery PR 6, owner decision 2): the request is a
+  // SHEET. Its `body` needs room (a scry, a card grid, a cost picker,
+  // the mulligan hand), so the dock draws it in a panel that grows up
+  // out of the dock instead of in the prompt area, with a minimise
+  // control on its top edge. Its buttons are still the action bar's.
+  // Use components/board/DockSheet.svelte rather than setting this by
+  // hand: it also registers the sheet's modal layer.
+  sheet?: DockSheetSpec;
+}
+
+export interface DockSheetSpec {
+  // The sheet's heading, and the restore chip's text while it is
+  // minimised. Defaults to the request's label.
+  title?: string;
+  // The small mono source tag beside the heading ("CR 701.22"). It is
+  // aria-hidden, as it was on the modals, so the dialog's name is the
+  // heading alone.
+  src?: string;
+  // The running count under the body ("1 / 2 selected"). Drawn with
+  // the `.prompt-count` class the e2e suite reads.
+  count?: string;
+  // How wide the body wants to be, in px, before the screen caps it
+  // (ADR 0111 §3: "up to min(720px, 100% - 24px)"). Never narrower than
+  // the dock itself. Default 560.
+  width?: number;
+  // A new key is a new question: a sheet minimised for the last one
+  // comes back up. Defaults to the label.
+  key?: string;
+  // Moves the sheet's body (rendered in the picker's own component
+  // tree, by DockSheet) into `host`, the dock's sheet panel, and returns
+  // the undo. The dock calls it while this request is the one it draws.
+  // A body rendered by the dock itself, as a snippet, would update in
+  // the dock's effect tree before the picker's `{#if}` closes it, and
+  // read a prompt that is already gone. Without `attach`, the request's
+  // `body` snippet is drawn in the panel instead.
+  attach?: (host: HTMLElement) => () => void;
+}
+
+// ---- a sheet's buttons (PR 6) ----------------------------------------
+//
+// A sheet's confirm and cancel, the way every picker spells them, so the
+// keys and their caps are the same on every one.
+//
+// confirmAction is a sheet's primary. It takes Enter (ADR 0111 §1:
+// "Enter is for confirms that commit what the player already picked")
+// unless `enter: false`: a confirm that is really a decline ("Fail to
+// find", "Reveal nothing") or a payment ("Pay {2}") must not be one
+// stray Enter away.
+export function confirmAction(
+  label: string,
+  onPress: () => void,
+  opts: { id?: string; disabled?: boolean; enter?: boolean; title?: string } = {},
+): DockAction {
+  const enter = opts.enter ?? true;
+  return {
+    id: opts.id ?? "confirm",
+    label,
+    disabled: opts.disabled,
+    title: opts.title,
+    keyShortcuts: enter ? "Enter" : undefined,
+    cap: enter ? "⏎" : undefined,
+    onPress,
+  };
+}
+
+// cancelAction is a flow's Cancel (a cost picker, the auto-tap
+// preview, the attack picker). It takes Escape. A pending choice has
+// none: the game is waiting on an answer, not on a way out.
+export function cancelAction(onPress: () => void, label = "Cancel"): DockAction {
+  return { id: "cancel", label, keyShortcuts: "Escape", cap: "Esc", onPress };
+}
+
+// The widest a sheet may ask to be (ADR 0111 §3).
+export const SHEET_MAX_WIDTH = 720;
+export const SHEET_DEFAULT_WIDTH = 560;
+
+// sheetKey is what a minimised sheet is remembered by.
+export function sheetKey(request: DockRequest | null | undefined): string | null {
+  if (!request?.sheet) return null;
+  return request.sheet.key ?? request.label;
+}
+
+// sheetWidth is the width a sheet asks for, capped at the ADR's 720px.
+export function sheetWidth(request: DockRequest | null | undefined): number {
+  const w = request?.sheet?.width ?? SHEET_DEFAULT_WIDTH;
+  return Math.max(0, Math.min(SHEET_MAX_WIDTH, w));
+}
+
+// sheetMaxHeight is the tallest a sheet may be over a play area
+// `playH` tall with a dock `dockH` tall under it: 60% of the play area
+// on a desktop, 70% on a phone (§3, §8), and never taller than the room
+// left above the dock. 0 means "not measured" (the CSS fallback holds).
+export function sheetMaxHeight(playH: number, dockH: number, phone: boolean): number {
+  if (!(playH > 0)) return 0;
+  const share = (phone ? 0.7 : 0.6) * playH;
+  const room = playH - dockH - 24;
+  return Math.max(120, Math.floor(Math.min(share, room)));
 }
 
 export interface DockHandle {
@@ -231,7 +329,8 @@ export function pushDockRequest(request: DockRequest): DockHandle {
 //   - for a step row (the attack row), which does not take the bar —
 //     so Enter never presses `next`, and Escape never touches it;
 //   - while a modal layer is open (lib/modalLayers.ts): a modal's own
-//     keys win, as #1659 fixed for the targeting walk;
+//     keys win, as #1659 fixed for the targeting walk. The dock's own
+//     sheets (PR 6) register a "sheet" layer, which does not count;
 //   - while focus is in a text field, select or contenteditable;
 //   - for Enter on a focused control (a button, a link, a board card):
 //     Enter belongs to the control that has focus. The dock's own
@@ -278,7 +377,9 @@ export function dockKeyAction(
 }
 
 export interface DockKeyContext {
-  // modalOpen from lib/modalLayers.ts.
+  // foreignModalOpen from lib/modalLayers.ts: a dialog that is not the
+  // dock's own sheet (PR 6) is on screen. A sheet's layer does not
+  // count, because its Enter and Escape are this handler's.
   modalOpen: boolean;
 }
 

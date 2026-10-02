@@ -8,8 +8,9 @@
 
 import { describe, it, expect, afterEach } from "vitest";
 
-import ChoicePromptModal from "./components/board/ChoicePromptModal.svelte";
+import ChoiceDockHarness from "./test/ChoiceDockHarness.svelte";
 import type { ActionType, GameView } from "./protocol";
+import { nameOf } from "./test/dockView";
 import { render, click, cleanup } from "./test/render.svelte";
 
 afterEach(cleanup);
@@ -63,7 +64,7 @@ interface Sent {
 function mount(placement: "top" | "bottom" | "top_or_bottom", extra: Extra = {}) {
   const sent: Sent[] = [];
   const view = render(
-    ChoicePromptModal as never,
+    ChoiceDockHarness as never,
     {
       snap: snapWith(placement, extra),
       viewerID: "me",
@@ -77,8 +78,7 @@ function mount(placement: "top" | "bottom" | "top_or_bottom", extra: Extra = {})
 const button = (container: HTMLElement, pred: (b: HTMLButtonElement) => boolean) =>
   [...container.querySelectorAll("button")].find(pred);
 
-const done = (container: HTMLElement) =>
-  button(container, (b) => (b.textContent ?? "").trim() === "Done")!;
+const done = (container: HTMLElement) => button(container, (b) => nameOf(b) === "Done")!;
 
 describe("ChoicePromptModal — put_in_library", () => {
   it("a bottom placement shows only the bottom lane and reorders the pile", () => {

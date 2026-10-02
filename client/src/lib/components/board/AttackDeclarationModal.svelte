@@ -42,8 +42,13 @@
   // own sentence when the picker opens from the refusal, a sentence
   // built from the published number otherwise. Tax and limit can apply
   // together, and the picker then shows both.
+  //
+  // ADR 0111 PR 6: a sheet in the action dock (the attack row's "Choose
+  // attackers…" opens it), not a modal. "Attack with N" is the bar's
+  // primary and Cancel its secondary; Escape cancels, as it did, and
+  // Enter now confirms the picked set (ADR 0111 §1: Enter commits what
+  // the player picked), through the dock's one key handler.
 
-  import { onDestroy } from "svelte";
   import type { CardView, GameView } from "../../protocol";
   import {
     attackLimitOn,
@@ -57,7 +62,8 @@
   } from "../../attackAll";
   import { NO_LEGAL_ACTIONS, type LegalActions } from "../../legalActions";
   import { usableManaAbilities } from "../../seatSummary";
-  import ModalLayer from "../ModalLayer.svelte";
+  import { cancelAction, confirmAction } from "../../dock";
+  import DockSheet from "./DockSheet.svelte";
 
   interface Props {
     view: GameView;
@@ -160,127 +166,103 @@
     if (liveSelected.length === 0 || overCap) return;
     onConfirm(liveSelected.slice(), lockedSources.slice());
   }
-
-  function handleKey(e: KeyboardEvent): void {
-    if (!defenderSeatID) return;
-    if (e.key === "Escape") {
-      e.preventDefault();
-      onCancel();
-    }
-  }
-  $effect(() => {
-    if (!defenderSeatID) return;
-    document.addEventListener("keydown", handleKey);
-    return () => document.removeEventListener("keydown", handleKey);
-  });
-  onDestroy(() => document.removeEventListener("keydown", handleKey));
 </script>
 
 {#if defenderSeatID && defender}
-  <ModalLayer />
-  <div class="prompt-backdrop" role="dialog" aria-modal="true" aria-labelledby="attack-pick-title">
-    <div class="prompt-modal">
-      <h2 id="attack-pick-title">
-        Choose attackers
-        <span class="prompt-src" aria-hidden="true">{defenderName}</span>
-      </h2>
-      {#if cap !== null}
-        <!-- #1533: why the picker is capped, in the server's words when
-             it opened from the refusal. -->
-        <p class="limit-reason" role="note">
-          <span class="limit-tag">attack limit</span>
-          <span>{limitReason || attackLimitSentence(cap, defenderName)}</span>
-          {#if limitReason}
-            <span class="limit-cap">Choose up to {cap}.</span>
-          {/if}
-        </p>
-      {/if}
-      <p class="prompt-hint">
-        {#if each}
-          Attacking {defenderName} costs {each} per creature. Pick which ones to send.
-          {#if attackTaxLabelForCount(each, liveSelected.length)}
-            <strong>{attackTaxLabelForCount(each, liveSelected.length)}</strong> for the
-            {liveSelected.length} checked below.
-          {/if}
-        {:else}
-          Pick which creatures to send at {defenderName}.
+  <DockSheet
+    label="Choose attackers"
+    src={defenderName}
+    width={560}
+    sheetKey={`attack:${defenderSeatID}`}
+    count={cap !== null
+      ? `${liveSelected.length} / ${cap} allowed`
+      : `${liveSelected.length} / ${eligible.length} attacking`}
+    primary={confirmAction(`Attack with ${liveSelected.length}`, confirm, {
+      disabled: liveSelected.length === 0 || overCap,
+    })}
+    secondary={[cancelAction(onCancel)]}
+  >
+    {#if cap !== null}
+      <!-- #1533: why the picker is capped, in the server's words when
+           it opened from the refusal. -->
+      <p class="limit-reason" role="note">
+        <span class="limit-tag">attack limit</span>
+        <span>{limitReason || attackLimitSentence(cap, defenderName)}</span>
+        {#if limitReason}
+          <span class="limit-cap">Choose up to {cap}.</span>
         {/if}
       </p>
-      <ul class="prompt-options" role="group" aria-label="attackers">
-        {#each eligible as c (c.instance_id)}
-          {@const on = selected.includes(c.instance_id)}
-          <li>
+    {/if}
+    <p class="prompt-hint">
+      {#if each}
+        Attacking {defenderName} costs {each} per creature. Pick which ones to send.
+        {#if attackTaxLabelForCount(each, liveSelected.length)}
+          <strong>{attackTaxLabelForCount(each, liveSelected.length)}</strong> for the
+          {liveSelected.length} checked below.
+        {/if}
+      {:else}
+        Pick which creatures to send at {defenderName}.
+      {/if}
+    </p>
+    <ul class="prompt-options" role="group" aria-label="attackers">
+      {#each eligible as c (c.instance_id)}
+        {@const on = selected.includes(c.instance_id)}
+        <li>
+          <button
+            type="button"
+            class="prompt-opt"
+            class:on
+            role="checkbox"
+            aria-checked={on}
+            disabled={!on && atCap}
+            onclick={() => toggleAttacker(c.instance_id)}
+          >
+            <span class="prompt-radio" aria-hidden="true"></span>
+            <span class="label">{c.name || "unknown creature"}</span>
+          </button>
+        </li>
+      {/each}
+    </ul>
+    <div class="pick-bulk">
+      <button type="button" class="ghost" onclick={selectAll}
+        >{cap !== null && cap < eligible.length ? "First " + cap : "All"}</button
+      >
+      <button type="button" class="ghost" onclick={selectNone}>None</button>
+    </div>
+    <!-- The lock-a-land toggle only matters when a tax is paid from
+         lands; a picker opened for a limit alone has nothing to pay. -->
+    {#if each && lockCandidates.length > 0}
+      <p class="prompt-hint locked-label">
+        lock a land — reserved sources the auto-tapper won't reach for
+      </p>
+      <ul class="prompt-options plan">
+        {#each lockCandidates as c (c.instance_id)}
+          {@const locked = lockedSources.includes(c.instance_id)}
+          <li class="prompt-opt src-row" class:on={locked}>
+            <span class="card-name">{c.name || "unknown permanent"}</span>
             <button
               type="button"
-              class="prompt-opt"
-              class:on
-              role="checkbox"
-              aria-checked={on}
-              disabled={!on && atCap}
-              onclick={() => toggleAttacker(c.instance_id)}
+              class="ghost lock-btn"
+              onclick={() => toggleLock(c.instance_id)}
+              title={locked
+                ? "release this source back to the auto-tapper"
+                : "reserve this source for a later cast"}
             >
-              <span class="prompt-radio" aria-hidden="true"></span>
-              <span class="label">{c.name || "unknown creature"}</span>
+              {locked ? "unlock" : "lock"}
             </button>
           </li>
         {/each}
       </ul>
-      <div class="prompt-foot">
-        <span class="prompt-count">
-          {#if cap !== null}
-            {liveSelected.length} / {cap} allowed
-          {:else}
-            {liveSelected.length} / {eligible.length} attacking
-          {/if}
-        </span>
-        <button type="button" class="ghost" onclick={selectAll}
-          >{cap !== null && cap < eligible.length ? "First " + cap : "All"}</button
-        >
-        <button type="button" class="ghost" onclick={selectNone}>None</button>
-      </div>
-      <!-- The lock-a-land toggle only matters when a tax is paid from
-           lands; a picker opened for a limit alone has nothing to pay. -->
-      {#if each && lockCandidates.length > 0}
-        <p class="prompt-hint locked-label">
-          lock a land — reserved sources the auto-tapper won't reach for
-        </p>
-        <ul class="prompt-options plan">
-          {#each lockCandidates as c (c.instance_id)}
-            {@const locked = lockedSources.includes(c.instance_id)}
-            <li class="prompt-opt src-row" class:on={locked}>
-              <span class="card-name">{c.name || "unknown permanent"}</span>
-              <button
-                type="button"
-                class="ghost lock-btn"
-                onclick={() => toggleLock(c.instance_id)}
-                title={locked
-                  ? "release this source back to the auto-tapper"
-                  : "reserve this source for a later cast"}
-              >
-                {locked ? "unlock" : "lock"}
-              </button>
-            </li>
-          {/each}
-        </ul>
-      {/if}
-      <div class="prompt-foot">
-        <button type="button" class="ghost" onclick={onCancel}
-          >Cancel <span class="kbd">Esc</span></button
-        >
-        <button
-          type="button"
-          class="primary"
-          onclick={confirm}
-          disabled={liveSelected.length === 0 || overCap}
-        >
-          Attack with {liveSelected.length}
-        </button>
-      </div>
-    </div>
-  </div>
+    {/if}
+  </DockSheet>
 {/if}
 
 <style>
+  .pick-bulk {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+  }
   .limit-reason {
     margin: 0;
     padding: 8px 10px;

@@ -26,7 +26,15 @@ import { get, type Readable } from "svelte/store";
 
 import { guardedDerived, guardedWritable } from "./guardedStore";
 
-const layers = guardedWritable<ReadonlySet<number>>(new Set(), "modalLayers");
+// A layer's kind (ADR 0111 Delivery PR 6). "modal" is every dialog
+// that owns the whole keyboard. "sheet" is an action-dock sheet: it
+// stands the global shortcuts down exactly as a modal does (Space must
+// not pass priority under an open cost picker), but its Enter and
+// Escape are the dock's, so the dock's one key handler does NOT stand
+// down for it. See `foreignModalOpen`.
+export type ModalLayerKind = "modal" | "sheet";
+
+const layers = guardedWritable<ReadonlyMap<number, ModalLayerKind>>(new Map(), "modalLayers");
 
 let nextID = 1;
 
@@ -45,20 +53,27 @@ export const modalOpen: Readable<boolean> = guardedDerived(
   false,
 );
 
+// foreignModalOpen is modalOpen without the action dock's own sheets:
+// "is a dialog that is NOT the dock's on screen?". The dock's Enter /
+// Escape handler reads it, so a sheet's confirm answers Enter while
+// Settings or the bug form opened over it still win their own keys.
+export const foreignModalOpen: Readable<boolean> = guardedDerived(
+  layers,
+  (s) => [...s.values()].some((k) => k !== "sheet"),
+  "foreignModalOpen",
+  false,
+);
+
 // pushModalLayer registers a layer and returns its unregister
 // function. Idempotent on the way out: calling the returned function
 // twice removes the layer once.
-export function pushModalLayer(): () => void {
+export function pushModalLayer(kind: ModalLayerKind = "modal"): () => void {
   const id = nextID++;
-  layers.update((prev) => {
-    const next = new Set(prev);
-    next.add(id);
-    return next;
-  });
+  layers.update((prev) => new Map(prev).set(id, kind));
   return () => {
     layers.update((prev) => {
       if (!prev.has(id)) return prev;
-      const next = new Set(prev);
+      const next = new Map(prev);
       next.delete(id);
       return next;
     });
@@ -73,6 +88,6 @@ export function isModalOpen(): boolean {
 
 // _resetForTests is the vitest teardown hook. Not for prod use.
 export function _resetForTests(): void {
-  layers.set(new Set());
+  layers.set(new Map());
   nextID = 1;
 }

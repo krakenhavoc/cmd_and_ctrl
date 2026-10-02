@@ -8,8 +8,15 @@
   // entry_controller are answered INLINE in the action dock
   // (lib/choiceDock.ts): this component still owns the prompt, its
   // state, its answer and its refusal, and opens a dock request for it
-  // instead of a backdrop. Only the sheet kinds (PR 6) still render
-  // here. Generic counterpart to
+  // instead of a backdrop.
+  //
+  // ADR 0111 Delivery PR 6: and no kind is a modal any more. Every
+  // other kind (the scry family, the card grids and search, the order
+  // kinds, mode_pick, the type and name pickers, pay_unless with card
+  // or tap picks, a long option_pick, damage assignment) is a SHEET that
+  // grows up out of the dock (DockSheet), with its confirm in the dock's
+  // action bar. This component still owns the state, the answer and the
+  // refusal of every kind. Generic counterpart to
   // DiscardPromptModal: that one handles the S13.4 cleanup-specific
   // map where chooser == owner; this one handles the S14+ queue
   // where chooser can differ from the pool owner (Thoughtseize:
@@ -33,6 +40,8 @@
   import { isBoardAnsweredChoice } from "../../boardAnsweredChoice";
   import ModalLayer from "../ModalLayer.svelte";
   import DockRequest from "./DockRequest.svelte";
+  import DockSheet from "./DockSheet.svelte";
+  import { confirmAction, type DockAction } from "../../dock";
   import { onDestroy } from "svelte";
   import { choiceRequest, inlineRefusal, isInlineChoice } from "../../choiceDock";
   import {
@@ -164,9 +173,10 @@
     const hit = rejectionForPrompt(submission, active?.id ?? null, lastError);
     if (hit) {
       rejection = hit;
-      // ADR 0111 PR 5: an inline prompt shows the refusal in the dock,
-      // beside the board, so the strip's toast stands down for it.
-      if (inline && docked) inlineRefusal.set(lastError);
+      // ADR 0111 PR 5 / PR 6: an inline prompt or a sheet shows the
+      // refusal in the dock, beside the board, so the strip's toast
+      // stands down for it.
+      if (docked) inlineRefusal.set(lastError);
     }
   });
   onDestroy(() => inlineRefusal.set(null));
@@ -1106,6 +1116,245 @@
     }));
     answer({ assignments, trample_to_player: trampleToPlayer });
   }
+
+  // ADR 0111 PR 6: every kind that is not inline is a sheet in the
+  // action dock. This is its dialog name (the modal's heading, without
+  // its aria-hidden source tag), the tag, the running count, and the
+  // action bar's buttons. The body is the template's.
+  //
+  // Keys (ADR 0111 §1): Enter presses a confirm that commits what the
+  // player picked (Done, Take, Choose, Deal damage, an order). It never
+  // presses a decline — an empty pick where nothing is a legal answer
+  // ("Fail to find", "Enter as itself", "Reveal nothing", "Don't
+  // discard …") — nor a payment ("Pay {2}", which keeps Y / N, as the
+  // inline pay_unless does). A pending choice has no Escape: the game is
+  // waiting on an answer, not on a way out.
+  interface SheetSpec {
+    label: string;
+    src?: string;
+    count?: string;
+    width: number;
+    primary: DockAction | null;
+    secondary: DockAction[];
+  }
+  const sheet = $derived.by((): SheetSpec | null => {
+    const c = active;
+    if (!c || inline) return null;
+    const s = (n: number | undefined) => (n === 1 ? "" : "s");
+    if (isLookAtTop) {
+      return {
+        label:
+          c.reason ||
+          (isPutInLibrary
+            ? "Put them in your library"
+            : isSurveil
+              ? "Surveil"
+              : isReorderOnly
+                ? "Look at the top"
+                : "Scry"),
+        src: isPutInLibrary
+          ? "CR 401.4"
+          : isReorderOnly
+            ? undefined
+            : isSurveil
+              ? "CR 701.25"
+              : "CR 701.22",
+        count: isBottomOnly
+          ? `${scryBottom.length} on the bottom`
+          : isReorderOnly
+            ? `${scryTop.length} ${isPutInLibrary ? "on top" : "back on top"}`
+            : `${scryTop.length}${topCount > 0 ? ` of ${topCount}` : ""} ${
+                topDepth > 1 ? topLaneLabel.toLowerCase() : "on top"
+              } · ${scryBottom.length} ${isSurveil ? "in the graveyard" : "on the bottom"}`,
+        width: 720,
+        primary: confirmAction("Done", submitScry, {
+          disabled: !canSubmitLookAtTop,
+          title: canSubmitLookAtTop ? undefined : `Keep exactly ${topCount} on top`,
+        }),
+        secondary: [],
+      };
+    }
+    if (isCreatureTypePick) {
+      // A click on a type is the answer (and Enter in the filter takes
+      // the one best match): no bar.
+      return {
+        label: c.reason || "Choose a creature type",
+        src: "as this enters · CR 614.12",
+        width: 560,
+        primary: null,
+        secondary: [],
+      };
+    }
+    if (isCardNamePick) {
+      const typed = nameFilter.trim();
+      return {
+        label: c.reason || "Choose a card name",
+        src: "as this enters · CR 614.12",
+        width: 560,
+        primary: confirmAction(`Name “${typed || "…"}”`, () => pickCardName(nameFilter), {
+          disabled: typed === "",
+        }),
+        secondary: [],
+      };
+    }
+    if (isOptionPick) {
+      return {
+        label: c.reason || "Choose one",
+        src: "choose one · CR 608.2",
+        width: 560,
+        primary: null,
+        secondary: [],
+      };
+    }
+    if (isEntryController) {
+      return {
+        label: c.reason || "Choose an opponent",
+        src: "choose an opponent · CR 614.12a",
+        width: 560,
+        primary: null,
+        secondary: [],
+      };
+    }
+    if (isModePick) {
+      return {
+        label: triggerSourceName(c.source),
+        src: c.reason || "choose one",
+        count: `${modePicks.length} / ${modeMax > 0 ? modeMax : "any"}`,
+        width: 560,
+        primary: confirmAction("Choose", answerModes, { disabled: !canConfirmModes }),
+        secondary: [],
+      };
+    }
+    if (isPayUnless) {
+      // Y / N, as the inline pay_unless: a payment is not one stray
+      // Enter away.
+      return {
+        label: c.reason || `${triggerSourceName(c.source)} — pay ${c.pay_cost ?? ""}?`,
+        src: "pay unless",
+        width: 560,
+        primary: {
+          id: "yes",
+          label: `Pay ${c.pay_cost ?? ""}`.trim(),
+          disabled: payBlocked,
+          keyShortcuts: "Y",
+          cap: "Y",
+          onPress: () => answerOptional(true),
+        },
+        secondary: [
+          {
+            id: "no",
+            label: "Don't pay",
+            keyShortcuts: "N",
+            cap: "N",
+            onPress: () => answerOptional(false),
+          },
+        ],
+      };
+    }
+    if (isDamageAssignment && damageFrame) {
+      return {
+        label: c.reason || "Assign combat damage",
+        src: "CR 510.1c",
+        count: `${assignedTotal} / ${damageFrame.attacker_power} assigned`,
+        width: 560,
+        primary: confirmAction("Deal damage", submitDamageAssignment, {
+          disabled: !canSubmitAssignment,
+        }),
+        secondary: [],
+      };
+    }
+    if (isReplacementOrder || isTriggerOrder) {
+      return {
+        label: c.reason || (isTriggerOrder ? "Order your triggers" : "Order replacement effects"),
+        src: isTriggerOrder ? "CR 603.3b" : "CR 616",
+        count: `${ordered.length} / ${replacementOptions.length} ordered`,
+        width: 560,
+        primary: confirmAction(
+          isTriggerOrder ? "Resolve in this order" : "Apply in this order",
+          submitReplacementOrder,
+          { disabled: ordered.length !== replacementOptions.length },
+        ),
+        secondary: [],
+      };
+    }
+    // The card grid.
+    const none = selected.size === 0;
+    const [label, src] = isSacrifice
+      ? [c.reason || "Sacrifice a permanent", "sacrifice"]
+      : isSearch
+        ? [c.reason || "Search your library", "search · CR 701.23"]
+        : isCopyTarget
+          ? [c.reason || "Enter as a copy of…", "copy · CR 707"]
+          : isUntapChoice
+            ? [c.reason || "Untap step — choose which permanents untap", "untap · CR 502.3"]
+            : isEntryReveal
+              ? [c.reason || "Reveal a card from your hand?", "reveal · CR 614"]
+              : isEntryDiscard
+                ? [c.reason || "Discard a card so it enters?", "discard · CR 614"]
+                : isEntrySacrifice
+                  ? [c.reason || "Sacrifice so it enters", "sacrifice · CR 614"]
+                  : isChooseCards
+                    ? [c.reason || "Choose cards", "choose"]
+                    : isRevealPick
+                      ? [c.reason || "Choose from the revealed cards", "reveal · CR 701.20"]
+                      : isPermanentPick
+                        ? [c.reason || "Choose permanents", "choose · CR 608.2"]
+                        : isChooseSource
+                          ? [c.reason || "Choose a source of damage", "source · CR 609.7a"]
+                          : [
+                              `${c.reason || "Choose"} — pick ${c.count} card${s(c.count)}`,
+                              isSelfSource ? "discard" : "reveal",
+                            ];
+    const verb = isSacrifice
+      ? "Sacrifice"
+      : isSearch
+        ? none
+          ? "Fail to find"
+          : "Take"
+        : isCopyTarget
+          ? none
+            ? "Enter as itself"
+            : "Enter as a copy"
+          : isUntapChoice
+            ? "Untap"
+            : isEntryReveal
+              ? none
+                ? "Reveal nothing"
+                : "Reveal"
+              : isEntryDiscard
+                ? none
+                  ? `Don't discard — put ${enteringCardName(c.source)} into its owner's graveyard`
+                  : "Discard"
+                : isEntrySacrifice
+                  ? "Sacrifice"
+                  : isChooseSource
+                    ? "Choose this source"
+                    : isChooseCards || isRevealPick || isPermanentPick
+                      ? "Choose"
+                      : "Confirm";
+    const clearable = isSearch || isCopyTarget || (isCardSetPick && pickMin === 0);
+    return {
+      label,
+      src,
+      count: `${selected.size} / ${pickMax} selected`,
+      width: 720,
+      // An empty pick where empty is legal is a decline: no Enter.
+      primary: confirmAction(verb, submit, {
+        disabled: !canSubmit,
+        enter: !(none && pickMin === 0),
+      }),
+      secondary: clearable
+        ? [
+            {
+              id: "clear",
+              label: "Clear",
+              disabled: none,
+              onPress: () => (selected = new Set()),
+            },
+          ]
+        : [],
+    };
+  });
 </script>
 
 <!-- ADR 0111 PR 5: the inline kinds' bodies, drawn inside the dock's
@@ -1160,727 +1409,533 @@
     <ModalLayer />
     <DockRequest request={inlineRequest} />
   {/if}
-{:else if open && active}
-  <ModalLayer />
-  <div class="prompt-backdrop" role="dialog" aria-modal="true" aria-labelledby="choice-title">
-    <div class="prompt-modal">
-      {#if isLookAtTop}
-        <h2 id="choice-title">
-          {active.reason ||
-            (isPutInLibrary
-              ? "Put them in your library"
-              : isSurveil
-                ? "Surveil"
-                : isReorderOnly
-                  ? "Look at the top"
-                  : "Scry")}
-          {#if isPutInLibrary}
-            <span class="prompt-src" aria-hidden="true">CR 401.4</span>
-          {:else if !isReorderOnly}
-            <span class="prompt-src" aria-hidden="true"
-              >{isSurveil ? "CR 701.25" : "CR 701.22"}</span
-            >
-          {/if}
-        </h2>
-        <p class="prompt-hint">
-          {#if isBottomOnly}
-            Put them on the bottom of the library in any order — the last one listed is the very
-            bottom card.
-          {:else if isReorderOnly && topDepth > 1}
-            Put them in any order, the first {topLaneLabel.toLowerCase()}.
-          {:else if isReorderOnly}
-            Put them {isPutInLibrary ? "on top" : "back"} in any order — the topmost is {nextDraw}.
-          {:else if topCount > 0}
-            Keep exactly {topCount} on top — the topmost is {nextDraw} — and put the rest on the bottom
-            in any order.
-          {:else if scryTop.length + scryBottom.length === 1 && topDepth > 1}
-            Put it {topLaneLabel.toLowerCase()}, or on the bottom of {ownLibrary
-              ? "your library"
-              : "its owner's library"}.
-          {:else if scryTop.length + scryBottom.length === 1}
-            Keep it on top, or put it {isSurveil
-              ? "into your graveyard"
-              : ownLibrary
-                ? "on the bottom of your library"
-                : "on the bottom of its owner's library"}.
+{:else if open && active && docked && sheet}
+  <!-- ADR 0111 PR 6: every other kind is a sheet that grows up out of
+       the action dock. Its confirm and any secondary are the dock's
+       action bar (sheet.primary / sheet.secondary); its body is here. -->
+  <DockSheet
+    rank="choice"
+    label={sheet.label}
+    src={sheet.src}
+    count={sheet.count}
+    width={sheet.width}
+    sheetKey={active.id}
+    primary={sheet.primary}
+    secondary={sheet.secondary}
+    refusal={rejection
+      ? { tag: "Not accepted", text: rejection.message, actions: [], tone: "danger" }
+      : null}
+  >
+    {#if isLookAtTop}
+      <p class="prompt-hint">
+        {#if isBottomOnly}
+          Put them on the bottom of the library in any order — the last one listed is the very
+          bottom card.
+        {:else if isReorderOnly && topDepth > 1}
+          Put them in any order, the first {topLaneLabel.toLowerCase()}.
+        {:else if isReorderOnly}
+          Put them {isPutInLibrary ? "on top" : "back"} in any order — the topmost is {nextDraw}.
+        {:else if topCount > 0}
+          Keep exactly {topCount} on top — the topmost is {nextDraw} — and put the rest on the bottom
+          in any order.
+        {:else if scryTop.length + scryBottom.length === 1 && topDepth > 1}
+          Put it {topLaneLabel.toLowerCase()}, or on the bottom of {ownLibrary
+            ? "your library"
+            : "its owner's library"}.
+        {:else if scryTop.length + scryBottom.length === 1}
+          Keep it on top, or put it {isSurveil
+            ? "into your graveyard"
+            : ownLibrary
+              ? "on the bottom of your library"
+              : "on the bottom of its owner's library"}.
+        {:else}
+          Keep any of these on top — the topmost is {nextDraw} — and put the rest {isSurveil
+            ? "into your graveyard"
+            : "on the bottom"}.
+        {/if}
+        {isPutInLibrary ? "Nobody else learns the order." : "Only you can see them."}
+      </p>
+      {#if !isBottomOnly}
+        <div class="scry-lane">
+          <h3 class="lane-label">
+            {topLaneLabel} ({scryTop.length}{topCount > 0 ? ` of ${topCount}` : ""})
+          </h3>
+          {#if scryTop.length === 0}
+            <p class="lane-empty">
+              {ownLibrary ? "Nothing — your next draw comes from under these." : "Nothing."}
+            </p>
           {:else}
-            Keep any of these on top — the topmost is {nextDraw} — and put the rest {isSurveil
-              ? "into your graveyard"
-              : "on the bottom"}.
+            <ol class="scry-list">
+              {#each scryTop as id, i (id)}
+                <li>
+                  <span class="prompt-num">{i + 1}</span>
+                  <span class="scry-name">{scryCardName(id)}</span>
+                  <button
+                    type="button"
+                    class="lane-btn"
+                    disabled={i === 0}
+                    title="move closer to the top"
+                    aria-label={`move ${scryCardName(id)} up`}
+                    onclick={() => scryMoveUp(id)}>↑</button
+                  >
+                  {#if !isReorderOnly}
+                    <button
+                      type="button"
+                      class="lane-btn"
+                      onclick={() => scryToBottom(id)}
+                      aria-label={`put ${scryCardName(id)} ${
+                        isSurveil ? "into your graveyard" : "on the bottom"
+                      }`}>To {awayLabel}</button
+                    >
+                  {/if}
+                </li>
+              {/each}
+            </ol>
           {/if}
-          {isPutInLibrary ? "Nobody else learns the order." : "Only you can see them."}
-        </p>
-        {#if !isBottomOnly}
-          <div class="scry-lane">
-            <h3 class="lane-label">
-              {topLaneLabel} ({scryTop.length}{topCount > 0 ? ` of ${topCount}` : ""})
-            </h3>
-            {#if scryTop.length === 0}
-              <p class="lane-empty">
-                {ownLibrary ? "Nothing — your next draw comes from under these." : "Nothing."}
-              </p>
-            {:else}
-              <ol class="scry-list">
-                {#each scryTop as id, i (id)}
-                  <li>
+        </div>
+      {/if}
+      {#if !isReorderOnly}
+        <div class="scry-lane">
+          <h3 class="lane-label">
+            {isSurveil ? "Into your graveyard" : "On the bottom"} ({scryBottom.length})
+          </h3>
+          {#if scryBottom.length === 0}
+            <p class="lane-empty">None.</p>
+          {:else}
+            <ol class="scry-list">
+              {#each scryBottom as id, i (id)}
+                <li>
+                  {#if !isSurveil}
                     <span class="prompt-num">{i + 1}</span>
-                    <span class="scry-name">{scryCardName(id)}</span>
+                  {/if}
+                  <span class="scry-name">{scryCardName(id)}</span>
+                  {#if !isSurveil}
                     <button
                       type="button"
                       class="lane-btn"
                       disabled={i === 0}
-                      title="move closer to the top"
-                      aria-label={`move ${scryCardName(id)} up`}
-                      onclick={() => scryMoveUp(id)}>↑</button
+                      title="move closer to the top of the pile"
+                      aria-label={`move ${scryCardName(id)} up in the bottom pile`}
+                      onclick={() => scryBottomMoveUp(id)}>↑</button
                     >
-                    {#if !isReorderOnly}
-                      <button
-                        type="button"
-                        class="lane-btn"
-                        onclick={() => scryToBottom(id)}
-                        aria-label={`put ${scryCardName(id)} ${
-                          isSurveil ? "into your graveyard" : "on the bottom"
-                        }`}>To {awayLabel}</button
-                      >
-                    {/if}
-                  </li>
-                {/each}
-              </ol>
-            {/if}
-          </div>
-        {/if}
-        {#if !isReorderOnly}
-          <div class="scry-lane">
-            <h3 class="lane-label">
-              {isSurveil ? "Into your graveyard" : "On the bottom"} ({scryBottom.length})
-            </h3>
-            {#if scryBottom.length === 0}
-              <p class="lane-empty">None.</p>
-            {:else}
-              <ol class="scry-list">
-                {#each scryBottom as id, i (id)}
-                  <li>
-                    {#if !isSurveil}
-                      <span class="prompt-num">{i + 1}</span>
-                    {/if}
-                    <span class="scry-name">{scryCardName(id)}</span>
-                    {#if !isSurveil}
-                      <button
-                        type="button"
-                        class="lane-btn"
-                        disabled={i === 0}
-                        title="move closer to the top of the pile"
-                        aria-label={`move ${scryCardName(id)} up in the bottom pile`}
-                        onclick={() => scryBottomMoveUp(id)}>↑</button
-                      >
-                    {/if}
-                    {#if !isBottomOnly}
-                      <button
-                        type="button"
-                        class="lane-btn"
-                        onclick={() => scryToTop(id)}
-                        aria-label={`keep ${scryCardName(id)} on top`}
-                        >{topDepth > 1 ? topLaneLabel : "Keep on top"}</button
-                      >
-                    {/if}
-                  </li>
-                {/each}
-              </ol>
-            {/if}
-          </div>
-        {/if}
-        <div class="card-grid">
-          {#each optionCards as c (c.instance_id)}
-            <div class="card-pick" class:bottomed={scryBottom.includes(c.instance_id)}>
-              <Card card={c} />
-            </div>
-          {/each}
-        </div>
-        <div class="prompt-foot">
-          <span class="prompt-count">
-            {#if isBottomOnly}
-              {scryBottom.length} on the bottom
-            {:else if isReorderOnly}
-              {scryTop.length} {isPutInLibrary ? "on top" : "back on top"}
-            {:else}
-              {scryTop.length}{topCount > 0 ? ` of ${topCount}` : ""}
-              {topDepth > 1 ? topLaneLabel.toLowerCase() : "on top"} · {scryBottom.length}
-              {isSurveil ? "in the graveyard" : "on the bottom"}
-            {/if}
-          </span>
-          <button
-            type="button"
-            class="primary"
-            disabled={!canSubmitLookAtTop}
-            title={canSubmitLookAtTop ? undefined : `Keep exactly ${topCount} on top`}
-            onclick={submitScry}>Done</button
-          >
-        </div>
-      {:else if isCreatureTypePick}
-        <h2 id="choice-title">
-          {active.reason || "Choose a creature type"}
-          <span class="prompt-src" aria-hidden="true">as this enters · CR 614.12</span>
-        </h2>
-        <p class="prompt-hint">
-          The choice is locked in for as long as this permanent stays on the battlefield.
-        </p>
-        <!-- svelte-ignore a11y_autofocus -->
-        <input
-          class="type-filter"
-          type="text"
-          autofocus
-          placeholder="Filter creature types…"
-          aria-label="Filter creature types"
-          bind:value={typeFilter}
-          onkeydown={onTypeFilterKey}
-        />
-        <div class="type-list">
-          {#each filteredTypes as t (t)}
-            <button type="button" class="type-pick" onclick={() => pickCreatureType(t)}>{t}</button>
-          {:else}
-            <p class="prompt-hint warn">No creature type matches “{typeFilter}”.</p>
-          {/each}
-        </div>
-      {:else if isCardNamePick}
-        <h2 id="choice-title">
-          {active.reason || "Choose a card name"}
-          <span class="prompt-src" aria-hidden="true">as this enters · CR 614.12</span>
-        </h2>
-        <p class="prompt-hint">
-          Any card name is legal — type one. The suggestions are the cards everyone can currently
-          see.
-        </p>
-        <!-- svelte-ignore a11y_autofocus -->
-        <input
-          class="type-filter"
-          type="text"
-          autofocus
-          placeholder="Name a card…"
-          aria-label="Name a card"
-          bind:value={nameFilter}
-          onkeydown={onNameFilterKey}
-        />
-        <div class="type-list">
-          {#each filteredNames as n (n)}
-            <button type="button" class="type-pick" onclick={() => pickCardName(n)}>{n}</button>
-          {:else}
-            <p class="prompt-hint">No visible card matches — press Enter to name it anyway.</p>
-          {/each}
-        </div>
-        <div class="prompt-foot">
-          <button
-            type="button"
-            class="primary"
-            disabled={nameFilter.trim() === ""}
-            onclick={() => pickCardName(nameFilter)}
-          >
-            Name “{nameFilter.trim() || "…"}”
-          </button>
-        </div>
-      {:else if isOptionPick}
-        <h2 id="choice-title">
-          {active.reason || "Choose one"}
-          <span class="prompt-src" aria-hidden="true">choose one · CR 608.2</span>
-        </h2>
-        <p class="prompt-hint">
-          Someone else's spell or ability is asking you. Every option listed is one you can take,
-          and the game waits until you pick one.
-        </p>
-        <ul class="pick-options">
-          {#each pickOptions as opt, i (i)}
-            <li>
-              <button type="button" class="pick-option" onclick={() => answerOptionPick(i)}>
-                <span class="pick-label">{opt.label}</span>
-                {#if opt.cards && opt.cards.length > 0}
-                  <span class="pick-cards">
-                    {#each opt.cards as c (c.instance_id)}
-                      <Card card={c} />
-                    {/each}
-                  </span>
-                {/if}
-              </button>
-            </li>
-          {/each}
-        </ul>
-      {:else if isEntryController}
-        <h2 id="choice-title">
-          {active.reason || "Choose an opponent"}
-          <span class="prompt-src" aria-hidden="true">choose an opponent · CR 614.12a</span>
-        </h2>
-        <p class="prompt-hint">
-          It hasn't entered yet: it enters under the control of the opponent you choose.
-          {entryControllerHint}
-        </p>
-        <ul class="pick-options">
-          {#each pickOptions as opt, i (i)}
-            <li>
-              <button type="button" class="pick-option" onclick={() => answerOptionPick(i)}>
-                <span class="pick-label">{opt.label}</span>
-              </button>
-            </li>
-          {/each}
-        </ul>
-      {:else if isModePick}
-        <h2 id="choice-title">
-          {triggerSourceName(active.source)}
-          <span class="prompt-src" aria-hidden="true">{active.reason || "choose one"}</span>
-        </h2>
-        <p class="prompt-hint">
-          The ability is not on the stack until you answer — its mode is chosen as it goes there (CR
-          603.3c), and any targets it asks for come after.
-          {#if modeRepeatable}
-            You may choose the same mode more than once.
-          {/if}
-        </p>
-        <ul class="prompt-options" role={modeSingle ? "radiogroup" : "group"}>
-          {#each modeRows as row (row.idx)}
-            {@const idx = row.idx}
-            {@const times = modeTimes(idx)}
-            <li>
-              <button
-                type="button"
-                class="prompt-opt"
-                class:on={times > 0}
-                role={modeSingle ? "radio" : "checkbox"}
-                aria-checked={times > 0}
-                aria-disabled={row.used}
-                disabled={row.used}
-                onclick={() => {
-                  if (!row.used) toggleMode(idx);
-                }}
-              >
-                <span class="prompt-radio" aria-hidden="true"></span>
-                <span class="mode-label">{row.label}</span>
-                {#if row.used}
-                  <span class="note">{modeUsedNote}</span>
-                {/if}
-                {#if modeRepeatable && times > 0}
-                  <span class="mode-times">&times;{times}</span>
-                {/if}
-              </button>
-            </li>
-          {/each}
-        </ul>
-        <div class="prompt-foot">
-          <span class="prompt-count">{modePicks.length} / {modeMax > 0 ? modeMax : "any"}</span>
-          <button type="button" class="primary" disabled={!canConfirmModes} onclick={answerModes}>
-            Choose
-          </button>
-        </div>
-      {:else if isPayUnless}
-        <h2 id="choice-title">
-          {active.reason || `${triggerSourceName(active.source)} — pay ${active.pay_cost ?? ""}?`}
-          <span class="prompt-src" aria-hidden="true">pay unless</span>
-        </h2>
-        {#if payCards}
-          <p class="prompt-hint">
-            Pay — {active.pay_cost ?? "the cost"} — or don't and let {triggerSourceName(
-              active.source,
-            )} do its thing.
-          </p>
-          {#if !canPayCards(payCards)}
-            <p class="prompt-hint">You don't have enough to pay this.</p>
-          {:else}
-            <p class="prompt-hint sub">{payCardsVerb(payCards)}</p>
-            <ul class="prompt-options">
-              {#each payCardOptions as c (c.instance_id)}
-                <li>
-                  <button
-                    type="button"
-                    class="prompt-opt"
-                    class:on={payCardPicks.includes(c.instance_id)}
-                    disabled={payCardPicks.length >= payCards.count &&
-                      !payCardPicks.includes(c.instance_id)}
-                    aria-pressed={payCardPicks.includes(c.instance_id)}
-                    onclick={() =>
-                      (payCardPicks = togglePayCard(payCards, payCardPicks, c.instance_id))}
-                  >
-                    <span class="prompt-radio" aria-hidden="true"></span>
-                    <span class="name">{c.name}</span>
-                  </button>
+                  {/if}
+                  {#if !isBottomOnly}
+                    <button
+                      type="button"
+                      class="lane-btn"
+                      onclick={() => scryToTop(id)}
+                      aria-label={`keep ${scryCardName(id)} on top`}
+                      >{topDepth > 1 ? topLaneLabel : "Keep on top"}</button
+                    >
+                  {/if}
                 </li>
               {/each}
-            </ul>
-            <p class="prompt-hint sub">{payCardPicks.length} / {payCards.count} chosen</p>
+            </ol>
           {/if}
-        {:else}
-          <!-- A waterbend tap list without card picks (#1311). -->
-          <p class="prompt-hint">
-            Pay {active.pay_cost ?? "the cost"} from your pool (untapped sources auto-tap if it's short),
-            or don't and let {triggerSourceName(active.source)} do its thing.
-          </p>
-        {/if}
-        {#if payTapCost}
-          <p class="prompt-hint sub">
-            {payTapCost.label ?? "Waterbend"}: tap your untapped artifacts and creatures to help —
-            each pays for {"{1}"}. Mana pays the rest.
-          </p>
-          {#if payTapOptions.length === 0}
-            <p class="prompt-hint">You control nothing untapped that can help.</p>
-          {:else}
-            <ul class="prompt-options">
-              {#each payTapOptions as c (c.instance_id)}
-                <li>
-                  <button
-                    type="button"
-                    class="prompt-opt"
-                    class:on={payTaps.includes(c.instance_id)}
-                    disabled={payTaps.length >= payTapLimit && !payTaps.includes(c.instance_id)}
-                    aria-pressed={payTaps.includes(c.instance_id)}
-                    onclick={() => togglePayTap(c.instance_id)}
-                  >
-                    <span class="prompt-radio" aria-hidden="true"></span>
-                    <span class="name">{c.name}</span>
-                  </button>
-                </li>
-              {/each}
-            </ul>
-            <p class="prompt-hint sub">{payTaps.length} / {payTapLimit} tapped</p>
-          {/if}
-        {/if}
-        <div class="prompt-foot">
-          <span class="prompt-count"><span class="kbd">Y</span> / <span class="kbd">N</span></span>
-          <button type="button" onclick={() => answerOptional(false)}>Don't pay</button>
-          <button
-            type="button"
-            class="primary"
-            disabled={payBlocked}
-            onclick={() => answerOptional(true)}
-          >
-            Pay {active.pay_cost ?? ""}
-          </button>
         </div>
-      {:else if isDamageAssignment && damageFrame}
-        <h2 id="choice-title">
-          {active.reason || "Assign combat damage"}
-          <span class="prompt-src" aria-hidden="true">CR 510.1c</span>
-        </h2>
-        {#if damageFrame.blocker_divides}
-          <!-- #1706, CR 510.1d: a blocker dividing its damage among the
-               attackers it blocks — any split that adds up. -->
-          <p class="prompt-hint">
-            <strong>{attackerName(damageFrame.attacker_card_id)}</strong>
-            is blocking {damageFrame.blocker_card_ids.length} creatures. Divide its
-            {damageFrame.attacker_power} damage among them however you like.
-          </p>
+      {/if}
+      <div class="card-grid">
+        {#each optionCards as c (c.instance_id)}
+          <div class="card-pick" class:bottomed={scryBottom.includes(c.instance_id)}>
+            <Card card={c} />
+          </div>
+        {/each}
+      </div>
+    {:else if isCreatureTypePick}
+      <p class="prompt-hint">
+        The choice is locked in for as long as this permanent stays on the battlefield.
+      </p>
+      <input
+        class="type-filter"
+        type="text"
+        data-sheet-focus
+        placeholder="Filter creature types…"
+        aria-label="Filter creature types"
+        bind:value={typeFilter}
+        onkeydown={onTypeFilterKey}
+      />
+      <div class="type-list">
+        {#each filteredTypes as t (t)}
+          <button type="button" class="type-pick" onclick={() => pickCreatureType(t)}>{t}</button>
         {:else}
-          <p class="prompt-hint">
-            <strong>{attackerName(damageFrame.attacker_card_id)}</strong>
-            is blocked by {damageFrame.blocker_card_ids.length} creatures. Order them and divide
-            {damageFrame.attacker_power} damage — earlier blockers must be dealt at-least-lethal before
-            the next gets any.
-            {#if damageFrame.allow_trample}
-              Trample lets leftover damage spill to the defending player.
-            {/if}
-            {#if damageFrame.has_deathtouch}
-              Deathtouch makes 1 damage lethal.
-            {/if}
-          </p>
-        {/if}
-        <ul class="assign-list">
-          {#each blockerOrder as id, i (id)}
-            <li class="assign-row">
-              <div class="assign-order">
-                <button
-                  type="button"
-                  class="reorder-btn"
-                  disabled={i === 0}
-                  onclick={() => moveBlocker(id, -1)}
-                  aria-label={`move ${blockerName(id)} up`}
-                >
-                  ▲
-                </button>
-                <span class="assign-pos">{i + 1}</span>
-                <button
-                  type="button"
-                  class="reorder-btn"
-                  disabled={i === blockerOrder.length - 1}
-                  onclick={() => moveBlocker(id, 1)}
-                  aria-label={`move ${blockerName(id)} down`}
-                >
-                  ▼
-                </button>
-              </div>
-              <span class="assign-name">{blockerName(id)}</span>
-              <label class="assign-input">
-                <span class="sr-only">damage to {blockerName(id)}</span>
-                <input
-                  type="number"
-                  min="0"
-                  max={damageFrame.attacker_power}
-                  value={damageAmounts[id] ?? 0}
-                  oninput={(e) => setDamageAmount(id, (e.currentTarget as HTMLInputElement).value)}
-                />
-              </label>
-            </li>
-          {/each}
-          {#if damageFrame.allow_trample}
-            <li class="assign-row trample">
-              <div class="assign-order"><span class="assign-pos">→</span></div>
-              <span class="assign-name">Defending player (trample)</span>
-              <label class="assign-input">
-                <span class="sr-only">trample damage to defending player</span>
-                <input
-                  type="number"
-                  min="0"
-                  max={damageFrame.attacker_power}
-                  value={trampleToPlayer}
-                  oninput={(e) => setTrampleAmount((e.currentTarget as HTMLInputElement).value)}
-                />
-              </label>
-            </li>
-          {/if}
-        </ul>
-        <div class="prompt-foot">
-          <span class="prompt-count">{assignedTotal} / {damageFrame.attacker_power} assigned</span>
-          <button
-            type="button"
-            class="primary"
-            disabled={!canSubmitAssignment}
-            onclick={submitDamageAssignment}
-          >
-            Deal damage
-          </button>
-        </div>
-      {:else if isReplacementOrder || isTriggerOrder}
-        <h2 id="choice-title">
-          {active.reason || (isTriggerOrder ? "Order your triggers" : "Order replacement effects")}
-          <span class="prompt-src" aria-hidden="true"
-            >{isTriggerOrder ? "CR 603.3b" : "CR 616"}</span
-          >
-        </h2>
-        <p class="prompt-hint">
-          {#if isTriggerOrder}
-            Two or more of your abilities triggered at once. Click them in the order they should
-            resolve — the first you pick resolves first.
-          {:else}
-            Click each effect in the order it should apply. Different orders can produce different
-            results — you choose as the affected player.
-          {/if}
-        </p>
-        <ul class="prompt-options">
-          {#each replacementOptions as opt (opt.id)}
-            {@const pos = positionFor(opt.id)}
-            {@const src = sourceCardName(opt)}
-            <li>
-              <button
-                type="button"
-                class="prompt-opt"
-                class:on={pos > 0}
-                onclick={() => toggleReplacement(opt.id)}
-                aria-pressed={pos > 0}
-                aria-label={`${pos > 0 ? "deselect" : "select"} ${opt.label || "effect"}`}
-              >
-                <span class="prompt-num">{pos > 0 ? pos : "·"}</span>
-                <span class="order-label">
-                  <strong>{opt.label || "Replacement effect"}</strong>
-                  {#if src}<span class="order-src">{src}</span>{/if}
+          <p class="prompt-hint warn">No creature type matches “{typeFilter}”.</p>
+        {/each}
+      </div>
+    {:else if isCardNamePick}
+      <p class="prompt-hint">
+        Any card name is legal — type one. The suggestions are the cards everyone can currently see.
+      </p>
+      <input
+        class="type-filter"
+        type="text"
+        data-sheet-focus
+        placeholder="Name a card…"
+        aria-label="Name a card"
+        bind:value={nameFilter}
+        onkeydown={onNameFilterKey}
+      />
+      <div class="type-list">
+        {#each filteredNames as n (n)}
+          <button type="button" class="type-pick" onclick={() => pickCardName(n)}>{n}</button>
+        {:else}
+          <p class="prompt-hint">No visible card matches — press Enter to name it anyway.</p>
+        {/each}
+      </div>
+    {:else if isOptionPick}
+      <p class="prompt-hint">
+        Someone else's spell or ability is asking you. Every option listed is one you can take, and
+        the game waits until you pick one.
+      </p>
+      <ul class="pick-options">
+        {#each pickOptions as opt, i (i)}
+          <li>
+            <button type="button" class="pick-option" onclick={() => answerOptionPick(i)}>
+              <span class="pick-label">{opt.label}</span>
+              {#if opt.cards && opt.cards.length > 0}
+                <span class="pick-cards">
+                  {#each opt.cards as c (c.instance_id)}
+                    <Card card={c} />
+                  {/each}
                 </span>
-              </button>
-            </li>
-          {/each}
-        </ul>
-        <div class="prompt-foot">
-          <span class="prompt-count">{ordered.length} / {replacementOptions.length} ordered</span>
-          <button
-            type="button"
-            class="primary"
-            disabled={ordered.length !== replacementOptions.length}
-            onclick={submitReplacementOrder}
-          >
-            {isTriggerOrder ? "Resolve in this order" : "Apply in this order"}
-          </button>
-        </div>
-      {:else}
-        <h2 id="choice-title">
-          {#if isSacrifice}
-            {active.reason || "Sacrifice a permanent"}
-            <span class="prompt-src" aria-hidden="true">sacrifice</span>
-          {:else if isSearch}
-            {active.reason || "Search your library"}
-            <span class="prompt-src" aria-hidden="true">search · CR 701.23</span>
-          {:else if isCopyTarget}
-            {active.reason || "Enter as a copy of…"}
-            <span class="prompt-src" aria-hidden="true">copy · CR 707</span>
-          {:else if isUntapChoice}
-            {active.reason || "Untap step — choose which permanents untap"}
-            <span class="prompt-src" aria-hidden="true">untap · CR 502.3</span>
-          {:else if isEntryReveal}
-            {active.reason || "Reveal a card from your hand?"}
-            <span class="prompt-src" aria-hidden="true">reveal · CR 614</span>
-          {:else if isEntryDiscard}
-            {active.reason || "Discard a card so it enters?"}
-            <span class="prompt-src" aria-hidden="true">discard · CR 614</span>
-          {:else if isEntrySacrifice}
-            {active.reason || "Sacrifice so it enters"}
-            <span class="prompt-src" aria-hidden="true">sacrifice · CR 614</span>
-          {:else if isChooseCards}
-            {active.reason || "Choose cards"}
-            <span class="prompt-src" aria-hidden="true">choose</span>
-          {:else if isRevealPick}
-            {active.reason || "Choose from the revealed cards"}
-            <span class="prompt-src" aria-hidden="true">reveal · CR 701.20</span>
-          {:else if isPermanentPick}
-            {active.reason || "Choose permanents"}
-            <span class="prompt-src" aria-hidden="true">choose · CR 608.2</span>
-          {:else if isChooseSource}
-            {active.reason || "Choose a source of damage"}
-            <span class="prompt-src" aria-hidden="true">source · CR 609.7a</span>
-          {:else}
-            {active.reason || "Choose"} — pick {active.count} card{active.count === 1 ? "" : "s"}
-            <span class="prompt-src" aria-hidden="true">{isSelfSource ? "discard" : "reveal"}</span>
-          {/if}
-        </h2>
-        <p class="prompt-hint">
-          {#if isSacrifice}
-            Choose {active.count === 1 ? "a permanent" : `${active.count} permanents`} you control to
-            sacrifice. This isn't optional — {triggerSourceName(active.source)} is making you.
-          {:else if isSearch}
-            {#if pickMax === 1}
-              Take one of these, or none.
-            {:else}
-              Take up to {pickMax} of these, or none.
-            {/if}
-            Only you can see them, and your library is shuffled either way.
-          {:else if isCopyTarget}
-            Pick what it enters as a copy of — it copies the printed card, so counters, damage and
-            other effects don't come across. Or copy nothing and let it enter as itself.
-          {:else if isUntapChoice}
-            {#if pickMin === 0}
-              These don't have to untap. Leave any of them tapped, or untap them all.
-            {:else if pickMin === pickMax}
-              Only {pickMax} of these can untap this turn.
-            {:else}
-              Between {pickMin} and {pickMax} of these can untap this turn; the rest stay tapped.
-            {/if}
-            Nothing else on your board is affected — everything that could untap without a decision already
-            has.
-          {:else if isEntryReveal}
-            Show {pickMax === 1 ? "one of these" : `up to ${pickMax} of these`} to the table and it enters
-            untapped. Revealing costs nothing — the card stays in your hand — but everyone gets to see
-            it, and you may show nothing instead.
-          {:else if isEntryDiscard}
-            Discard one of these and {enteringCardName(active.source)} enters the battlefield. Discard
-            nothing and it goes to its owner's graveyard instead — it never enters.
-          {:else if isEntrySacrifice}
-            Sacrifice {pickMax === 1 ? "one of these" : `${pickMax} of these`} and {enteringCardName(
-              active.source,
-            )} enters the battlefield. This isn't optional.
-          {:else if isChooseCards}
-            {#if pickMin === pickMax}
-              Pick {pickMax} of these.
-            {:else if pickMin === 0}
-              Pick up to {pickMax} of these, or none.
-            {:else}
-              Pick between {pickMin} and {pickMax} of these.
-            {/if}
-            What happens to them is the card's business, and it will tell you next — choosing them costs
-            nothing on its own.
-          {:else if isRevealPick}
-            {#if pickMin === pickMax}
-              Pick {pickMax} of these.
-            {:else if pickMin === 0}
-              Pick any of these, or none.
-            {:else}
-              Pick between {pickMin} and {pickMax} of these.
-            {/if}
-            <strong>{fromName}</strong> revealed them, so the whole table can see them — and what happens
-            to the ones you leave is the card's business.
-          {:else if isTheirPermanents}
-            {#if pickMin === pickMax}
-              Pick {pickMax} of <strong>{fromName}</strong>'s permanents.
-            {:else if pickMin === 0}
-              Pick any of <strong>{fromName}</strong>'s permanents, or none.
-            {:else}
-              Pick between {pickMin} and {pickMax} of <strong>{fromName}</strong>'s permanents.
-            {/if}
-            Nothing here is targeted, so hexproof and shroud don't protect anything from being chosen.
-          {:else if isOwnPermanents}
-            {#if pickMin === pickMax}
-              Pick {pickMax} of your permanents.
-            {:else if pickMin === 0}
-              Pick any number of your permanents, or none.
-            {:else}
-              Pick between {pickMin} and {pickMax} of your permanents.
-            {/if}
-            Nothing here is targeted — the choice is being made now, as the card resolves.
-          {:else if isChooseSource}
-            Pick the source whose next damage this prevents. It isn't targeted, so anything listed
-            can be chosen — a permanent, a spell on the stack, or a card that something on the stack
-            still refers to. If the card names a kind of source, that is checked again when the
-            damage would be dealt.
-          {:else if isSelfSource}
-            Pick {active.count} card{active.count === 1 ? "" : "s"} from your hand to discard.
-          {:else}
-            Pick {active.count} card{active.count === 1 ? "" : "s"} from
-            <strong>{fromName}</strong>'s revealed hand.
-            <strong>{fromName}</strong> will discard your pick{active.count === 1 ? "" : "s"}.
-          {/if}
-        </p>
-        <div class="card-grid">
-          {#each optionCards as c (c.instance_id)}
-            <button
-              type="button"
-              class="card-pick"
-              class:selected={selected.has(c.instance_id)}
-              disabled={!selected.has(c.instance_id) && selected.size >= pickMax}
-              onclick={() => toggle(c.instance_id)}
-              aria-pressed={selected.has(c.instance_id)}
-              aria-label={`select ${c.name || "card"}`}
-            >
-              <Card card={c} />
-              {#if isChooseSource}
-                <span class="source-caption">{damageSourceCaption(snap, c, viewerID)}</span>
               {/if}
             </button>
-          {/each}
-        </div>
-        <div class="prompt-foot">
-          <span class="prompt-count">{selected.size} / {pickMax} selected</span>
-          {#if isSearch || isCopyTarget || (isCardSetPick && pickMin === 0)}
+          </li>
+        {/each}
+      </ul>
+    {:else if isEntryController}
+      <p class="prompt-hint">
+        It hasn't entered yet: it enters under the control of the opponent you choose.
+        {entryControllerHint}
+      </p>
+      <ul class="pick-options">
+        {#each pickOptions as opt, i (i)}
+          <li>
+            <button type="button" class="pick-option" onclick={() => answerOptionPick(i)}>
+              <span class="pick-label">{opt.label}</span>
+            </button>
+          </li>
+        {/each}
+      </ul>
+    {:else if isModePick}
+      <p class="prompt-hint">
+        The ability is not on the stack until you answer — its mode is chosen as it goes there (CR
+        603.3c), and any targets it asks for come after.
+        {#if modeRepeatable}
+          You may choose the same mode more than once.
+        {/if}
+      </p>
+      <ul class="prompt-options" role={modeSingle ? "radiogroup" : "group"}>
+        {#each modeRows as row (row.idx)}
+          {@const idx = row.idx}
+          {@const times = modeTimes(idx)}
+          <li>
             <button
               type="button"
-              onclick={() => (selected = new Set())}
-              disabled={selected.size === 0}
+              class="prompt-opt"
+              class:on={times > 0}
+              role={modeSingle ? "radio" : "checkbox"}
+              aria-checked={times > 0}
+              aria-disabled={row.used}
+              disabled={row.used}
+              onclick={() => {
+                if (!row.used) toggleMode(idx);
+              }}
             >
-              Clear
+              <span class="prompt-radio" aria-hidden="true"></span>
+              <span class="mode-label">{row.label}</span>
+              {#if row.used}
+                <span class="note">{modeUsedNote}</span>
+              {/if}
+              {#if modeRepeatable && times > 0}
+                <span class="mode-times">&times;{times}</span>
+              {/if}
             </button>
-          {/if}
-          <button type="button" class="primary" disabled={!canSubmit} onclick={submit}>
-            {#if isSacrifice}
-              Sacrifice
-            {:else if isSearch}
-              {selected.size === 0 ? "Fail to find" : "Take"}
-            {:else if isCopyTarget}
-              {selected.size === 0 ? "Enter as itself" : "Enter as a copy"}
-            {:else if isUntapChoice}
-              Untap
-            {:else if isEntryReveal}
-              {selected.size === 0 ? "Reveal nothing" : "Reveal"}
-            {:else if isEntryDiscard}
-              {selected.size === 0
-                ? `Don't discard — put ${enteringCardName(active.source)} into its owner's graveyard`
-                : "Discard"}
-            {:else if isEntrySacrifice}
-              Sacrifice
-            {:else if isChooseSource}
-              Choose this source
-            {:else if isChooseCards || isRevealPick || isPermanentPick}
-              Choose
-            {:else}
-              Confirm
-            {/if}
-          </button>
-        </div>
-      {/if}
-      {#if rejection}
-        <p class="prompt-hint error prompt-rejection" role="alert">
-          <span class="rejection-label">Not accepted</span>
-          {rejection.message}
+          </li>
+        {/each}
+      </ul>
+    {:else if isPayUnless}
+      {#if payCards}
+        <p class="prompt-hint">
+          Pay — {active.pay_cost ?? "the cost"} — or don't and let {triggerSourceName(
+            active.source,
+          )} do its thing.
+        </p>
+        {#if !canPayCards(payCards)}
+          <p class="prompt-hint">You don't have enough to pay this.</p>
+        {:else}
+          <p class="prompt-hint sub">{payCardsVerb(payCards)}</p>
+          <ul class="prompt-options">
+            {#each payCardOptions as c (c.instance_id)}
+              <li>
+                <button
+                  type="button"
+                  class="prompt-opt"
+                  class:on={payCardPicks.includes(c.instance_id)}
+                  disabled={payCardPicks.length >= payCards.count &&
+                    !payCardPicks.includes(c.instance_id)}
+                  aria-pressed={payCardPicks.includes(c.instance_id)}
+                  onclick={() =>
+                    (payCardPicks = togglePayCard(payCards, payCardPicks, c.instance_id))}
+                >
+                  <span class="prompt-radio" aria-hidden="true"></span>
+                  <span class="name">{c.name}</span>
+                </button>
+              </li>
+            {/each}
+          </ul>
+          <p class="prompt-hint sub">{payCardPicks.length} / {payCards.count} chosen</p>
+        {/if}
+      {:else}
+        <!-- A waterbend tap list without card picks (#1311). -->
+        <p class="prompt-hint">
+          Pay {active.pay_cost ?? "the cost"} from your pool (untapped sources auto-tap if it's short),
+          or don't and let {triggerSourceName(active.source)} do its thing.
         </p>
       {/if}
-    </div>
-  </div>
+      {#if payTapCost}
+        <p class="prompt-hint sub">
+          {payTapCost.label ?? "Waterbend"}: tap your untapped artifacts and creatures to help —
+          each pays for {"{1}"}. Mana pays the rest.
+        </p>
+        {#if payTapOptions.length === 0}
+          <p class="prompt-hint">You control nothing untapped that can help.</p>
+        {:else}
+          <ul class="prompt-options">
+            {#each payTapOptions as c (c.instance_id)}
+              <li>
+                <button
+                  type="button"
+                  class="prompt-opt"
+                  class:on={payTaps.includes(c.instance_id)}
+                  disabled={payTaps.length >= payTapLimit && !payTaps.includes(c.instance_id)}
+                  aria-pressed={payTaps.includes(c.instance_id)}
+                  onclick={() => togglePayTap(c.instance_id)}
+                >
+                  <span class="prompt-radio" aria-hidden="true"></span>
+                  <span class="name">{c.name}</span>
+                </button>
+              </li>
+            {/each}
+          </ul>
+          <p class="prompt-hint sub">{payTaps.length} / {payTapLimit} tapped</p>
+        {/if}
+      {/if}
+    {:else if isDamageAssignment && damageFrame}
+      {#if damageFrame.blocker_divides}
+        <!-- #1706, CR 510.1d: a blocker dividing its damage among the
+               attackers it blocks — any split that adds up. -->
+        <p class="prompt-hint">
+          <strong>{attackerName(damageFrame.attacker_card_id)}</strong>
+          is blocking {damageFrame.blocker_card_ids.length} creatures. Divide its
+          {damageFrame.attacker_power} damage among them however you like.
+        </p>
+      {:else}
+        <p class="prompt-hint">
+          <strong>{attackerName(damageFrame.attacker_card_id)}</strong>
+          is blocked by {damageFrame.blocker_card_ids.length} creatures. Order them and divide
+          {damageFrame.attacker_power} damage — earlier blockers must be dealt at-least-lethal before
+          the next gets any.
+          {#if damageFrame.allow_trample}
+            Trample lets leftover damage spill to the defending player.
+          {/if}
+          {#if damageFrame.has_deathtouch}
+            Deathtouch makes 1 damage lethal.
+          {/if}
+        </p>
+      {/if}
+      <ul class="assign-list">
+        {#each blockerOrder as id, i (id)}
+          <li class="assign-row">
+            <div class="assign-order">
+              <button
+                type="button"
+                class="reorder-btn"
+                disabled={i === 0}
+                onclick={() => moveBlocker(id, -1)}
+                aria-label={`move ${blockerName(id)} up`}
+              >
+                ▲
+              </button>
+              <span class="assign-pos">{i + 1}</span>
+              <button
+                type="button"
+                class="reorder-btn"
+                disabled={i === blockerOrder.length - 1}
+                onclick={() => moveBlocker(id, 1)}
+                aria-label={`move ${blockerName(id)} down`}
+              >
+                ▼
+              </button>
+            </div>
+            <span class="assign-name">{blockerName(id)}</span>
+            <label class="assign-input">
+              <span class="sr-only">damage to {blockerName(id)}</span>
+              <input
+                type="number"
+                min="0"
+                max={damageFrame.attacker_power}
+                value={damageAmounts[id] ?? 0}
+                oninput={(e) => setDamageAmount(id, (e.currentTarget as HTMLInputElement).value)}
+              />
+            </label>
+          </li>
+        {/each}
+        {#if damageFrame.allow_trample}
+          <li class="assign-row trample">
+            <div class="assign-order"><span class="assign-pos">→</span></div>
+            <span class="assign-name">Defending player (trample)</span>
+            <label class="assign-input">
+              <span class="sr-only">trample damage to defending player</span>
+              <input
+                type="number"
+                min="0"
+                max={damageFrame.attacker_power}
+                value={trampleToPlayer}
+                oninput={(e) => setTrampleAmount((e.currentTarget as HTMLInputElement).value)}
+              />
+            </label>
+          </li>
+        {/if}
+      </ul>
+    {:else if isReplacementOrder || isTriggerOrder}
+      <p class="prompt-hint">
+        {#if isTriggerOrder}
+          Two or more of your abilities triggered at once. Click them in the order they should
+          resolve — the first you pick resolves first.
+        {:else}
+          Click each effect in the order it should apply. Different orders can produce different
+          results — you choose as the affected player.
+        {/if}
+      </p>
+      <ul class="prompt-options">
+        {#each replacementOptions as opt (opt.id)}
+          {@const pos = positionFor(opt.id)}
+          {@const src = sourceCardName(opt)}
+          <li>
+            <button
+              type="button"
+              class="prompt-opt"
+              class:on={pos > 0}
+              onclick={() => toggleReplacement(opt.id)}
+              aria-pressed={pos > 0}
+              aria-label={`${pos > 0 ? "deselect" : "select"} ${opt.label || "effect"}`}
+            >
+              <span class="prompt-num">{pos > 0 ? pos : "·"}</span>
+              <span class="order-label">
+                <strong>{opt.label || "Replacement effect"}</strong>
+                {#if src}<span class="order-src">{src}</span>{/if}
+              </span>
+            </button>
+          </li>
+        {/each}
+      </ul>
+    {:else}
+      <p class="prompt-hint">
+        {#if isSacrifice}
+          Choose {active.count === 1 ? "a permanent" : `${active.count} permanents`} you control to sacrifice.
+          This isn't optional — {triggerSourceName(active.source)} is making you.
+        {:else if isSearch}
+          {#if pickMax === 1}
+            Take one of these, or none.
+          {:else}
+            Take up to {pickMax} of these, or none.
+          {/if}
+          Only you can see them, and your library is shuffled either way.
+        {:else if isCopyTarget}
+          Pick what it enters as a copy of — it copies the printed card, so counters, damage and
+          other effects don't come across. Or copy nothing and let it enter as itself.
+        {:else if isUntapChoice}
+          {#if pickMin === 0}
+            These don't have to untap. Leave any of them tapped, or untap them all.
+          {:else if pickMin === pickMax}
+            Only {pickMax} of these can untap this turn.
+          {:else}
+            Between {pickMin} and {pickMax} of these can untap this turn; the rest stay tapped.
+          {/if}
+          Nothing else on your board is affected — everything that could untap without a decision already
+          has.
+        {:else if isEntryReveal}
+          Show {pickMax === 1 ? "one of these" : `up to ${pickMax} of these`} to the table and it enters
+          untapped. Revealing costs nothing — the card stays in your hand — but everyone gets to see it,
+          and you may show nothing instead.
+        {:else if isEntryDiscard}
+          Discard one of these and {enteringCardName(active.source)} enters the battlefield. Discard nothing
+          and it goes to its owner's graveyard instead — it never enters.
+        {:else if isEntrySacrifice}
+          Sacrifice {pickMax === 1 ? "one of these" : `${pickMax} of these`} and {enteringCardName(
+            active.source,
+          )} enters the battlefield. This isn't optional.
+        {:else if isChooseCards}
+          {#if pickMin === pickMax}
+            Pick {pickMax} of these.
+          {:else if pickMin === 0}
+            Pick up to {pickMax} of these, or none.
+          {:else}
+            Pick between {pickMin} and {pickMax} of these.
+          {/if}
+          What happens to them is the card's business, and it will tell you next — choosing them costs
+          nothing on its own.
+        {:else if isRevealPick}
+          {#if pickMin === pickMax}
+            Pick {pickMax} of these.
+          {:else if pickMin === 0}
+            Pick any of these, or none.
+          {:else}
+            Pick between {pickMin} and {pickMax} of these.
+          {/if}
+          <strong>{fromName}</strong> revealed them, so the whole table can see them — and what happens
+          to the ones you leave is the card's business.
+        {:else if isTheirPermanents}
+          {#if pickMin === pickMax}
+            Pick {pickMax} of <strong>{fromName}</strong>'s permanents.
+          {:else if pickMin === 0}
+            Pick any of <strong>{fromName}</strong>'s permanents, or none.
+          {:else}
+            Pick between {pickMin} and {pickMax} of <strong>{fromName}</strong>'s permanents.
+          {/if}
+          Nothing here is targeted, so hexproof and shroud don't protect anything from being chosen.
+        {:else if isOwnPermanents}
+          {#if pickMin === pickMax}
+            Pick {pickMax} of your permanents.
+          {:else if pickMin === 0}
+            Pick any number of your permanents, or none.
+          {:else}
+            Pick between {pickMin} and {pickMax} of your permanents.
+          {/if}
+          Nothing here is targeted — the choice is being made now, as the card resolves.
+        {:else if isChooseSource}
+          Pick the source whose next damage this prevents. It isn't targeted, so anything listed can
+          be chosen — a permanent, a spell on the stack, or a card that something on the stack still
+          refers to. If the card names a kind of source, that is checked again when the damage would
+          be dealt.
+        {:else if isSelfSource}
+          Pick {active.count} card{active.count === 1 ? "" : "s"} from your hand to discard.
+        {:else}
+          Pick {active.count} card{active.count === 1 ? "" : "s"} from
+          <strong>{fromName}</strong>'s revealed hand.
+          <strong>{fromName}</strong> will discard your pick{active.count === 1 ? "" : "s"}.
+        {/if}
+      </p>
+      <div class="card-grid">
+        {#each optionCards as c (c.instance_id)}
+          <button
+            type="button"
+            class="card-pick"
+            class:selected={selected.has(c.instance_id)}
+            disabled={!selected.has(c.instance_id) && selected.size >= pickMax}
+            onclick={() => toggle(c.instance_id)}
+            aria-pressed={selected.has(c.instance_id)}
+            aria-label={`select ${c.name || "card"}`}
+          >
+            <Card card={c} />
+            {#if isChooseSource}
+              <span class="source-caption">{damageSourceCaption(snap, c, viewerID)}</span>
+            {/if}
+          </button>
+        {/each}
+      </div>
+    {/if}
+  </DockSheet>
 {/if}
 
 <svelte:window onkeydown={handleKey} />
@@ -1897,23 +1952,6 @@
     max-width: 72px;
     min-height: 64px;
     padding: 8px 2px 6px;
-  }
-  /* #624: the server's reason for refusing this prompt's answer. Below
-     the footer, next to the button that was just pressed. */
-  .prompt-rejection {
-    margin: 0;
-    padding: 8px 10px;
-    border-radius: 8px;
-    border: 1px solid color-mix(in srgb, var(--danger) 45%, transparent);
-    background: color-mix(in srgb, var(--danger) 10%, transparent);
-  }
-  .rejection-label {
-    font-family: var(--font-mono);
-    font-size: 10px;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    font-weight: 700;
-    margin-right: 6px;
   }
   .scry-lane {
     margin: 2px 0;

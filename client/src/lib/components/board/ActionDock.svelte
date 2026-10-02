@@ -41,13 +41,31 @@
   // Escape never touches it: `next` is not a request's button. Focus
   // does not move on an ordinary priority frame: that would steal it on
   // every pass.
+  //
+  // PR 6: a request may be a SHEET (owner decision 2): its body is drawn
+  // in a panel that grows up out of the dock, inside the same dialog as
+  // its bar buttons, with a minimise control on its top edge. The rest
+  // of the board stays visible and clickable (no backdrop); focus goes
+  // into the sheet when it opens; minimised, the request stays open and
+  // a restore chip takes the prompt area. The sheet's own modal layer
+  // ("sheet") stands the global shortcuts down but not this handler.
 
   import type { GameView } from "../../protocol";
   import PhaseDisplay from "./PhaseDisplay.svelte";
   import BluffChip from "./BluffChip.svelte";
   import Icon from "../Icon.svelte";
-  import { activeDockRequest, dockKeyFor, takesBar, type DockAction } from "../../dock";
-  import { modalOpen } from "../../modalLayers";
+  import {
+    activeDockRequest,
+    dockKeyFor,
+    isTypingTarget,
+    sheetKey,
+    sheetMaxHeight,
+    sheetWidth,
+    takesBar,
+    type DockAction,
+  } from "../../dock";
+  import { foreignModalOpen } from "../../modalLayers";
+  import { tick } from "svelte";
   import { formatUndoCount, isUnlimitedUndo } from "../../tableSettings";
   import { holdPriority, toggleHoldPriority } from "../../holdPriority";
   import { bluffStatus, bluffStatusText } from "../../bluff";
@@ -79,6 +97,9 @@
     onUndo?: () => void;
     // The dock's live size, for --dock-w / --dock-h (ADR 0111 §4).
     onSize?: (width: number, height: number) => void;
+    // PR 6: the open sheet's width (0 when none is open, or it is
+    // minimised), so the hover zoom can move left of it (§4).
+    onSheet?: (width: number) => void;
   }
 
   const {
@@ -96,6 +117,7 @@
     canUndo = false,
     onUndo = () => {},
     onSize,
+    onSheet,
   }: Props = $props();
 
   // ---- keys --------------------------------------------------------
@@ -140,12 +162,147 @@
 
   // The one Enter / Escape handler (PR 4). The dock's own buttons stop
   // Enter before it gets here.
+  // PR 6: a sheet's own modal layer is not "a modal over the dock", so
+  // the handler reads foreignModalOpen, not modalOpen.
   function onWindowKey(e: KeyboardEvent): void {
-    const a = dockKeyFor(e, req, { modalOpen: $modalOpen });
+    const a = dockKeyFor(e, req, { modalOpen: $foreignModalOpen });
     if (!a) return;
     e.preventDefault();
     a.onPress();
   }
+
+  // ---- sheets (ADR 0111 §3, Delivery PR 6) ------------------------------
+  // A request with `sheet` draws its body in a panel that grows up out
+  // of the dock. It can be minimised to its question line; the request
+  // stays open, its buttons stay in the bar, and a restore chip takes
+  // the prompt area. A new question (a new sheet key) comes back up.
+  const sheetOpen = $derived(!!req?.sheet && (!!req.sheet.attach || !!req.body));
+
+  // The sheet's body is the picker's own DOM (DockSheet renders it in
+  // the picker's component tree), moved into the panel while this
+  // request is the one drawn, and moved back out when it is not.
+  // `attachedFor` says whose body is in the panel now, so focus waits
+  // for it.
+  let attachedFor: string | null = $state(null);
+  function hostSheet(host: HTMLElement, attach: ((h: HTMLElement) => () => void) | undefined) {
+    let current = attach;
+    let undo = current ? current(host) : () => {};
+    attachedFor = currentSheetKey;
+    return {
+      update(next: ((h: HTMLElement) => () => void) | undefined): void {
+        if (next !== current) {
+          undo();
+          current = next;
+          undo = current ? current(host) : () => {};
+        }
+        attachedFor = currentSheetKey;
+      },
+      destroy(): void {
+        undo();
+        attachedFor = null;
+      },
+    };
+  }
+  const currentSheetKey = $derived(sheetKey(req));
+  let minimisedKey: string | null = $state(null);
+  const minimised = $derived(
+    sheetOpen && minimisedKey !== null && minimisedKey === currentSheetKey,
+  );
+  const sheetTitle = $derived(req?.sheet?.title ?? req?.label ?? "");
+  let sheetEl: HTMLElement | null = $state(null);
+  let restoreEl: HTMLButtonElement | null = $state(null);
+
+  async function minimise(): Promise<void> {
+    minimisedKey = currentSheetKey;
+    await tick();
+    restoreEl?.focus();
+  }
+  async function restore(): Promise<void> {
+    minimisedKey = null;
+    await tick();
+    focusIntoSheet();
+  }
+
+  // Focus goes into the sheet when it opens (ADR 0111 PR 6): to the
+  // field or control the body marks `data-sheet-focus` (the creature-
+  // type filter), else to the sheet itself, which is not a control, so
+  // Enter there presses the sheet's confirm through the handler above.
+  function focusIntoSheet(): void {
+    const el = sheetEl;
+    if (!el) return;
+    const target = el.querySelector<HTMLElement>("[data-sheet-focus]") ?? el;
+    target.focus();
+  }
+  let sheetFocusedFor: string | null = null;
+  $effect(() => {
+    const key = currentSheetKey;
+    const el = sheetEl;
+    if (!key || !el) {
+      if (!key) sheetFocusedFor = null;
+      return;
+    }
+    // Wait for the body to be in the panel, so a field it marks
+    // `data-sheet-focus` is there to take focus.
+    if (req?.sheet?.attach && attachedFor !== key) return;
+    if (sheetFocusedFor === key) return;
+    sheetFocusedFor = key;
+    // Never out of a text field the player is typing in elsewhere.
+    const active = document.activeElement;
+    if (active && active !== document.body && !el.contains(active) && isTypingTarget(active)) {
+      return;
+    }
+    focusIntoSheet();
+  });
+
+  // The play area's height, for the sheet's ceiling (60% of it on a
+  // desktop, 70% on a phone, and never past the room above the dock).
+  let playH = $state(0);
+  let dockH = $state(0);
+  let phone = $state(false);
+  $effect(() => {
+    const el = root;
+    if (!el) return;
+    const parent = el.offsetParent as HTMLElement | null;
+    const mq = typeof matchMedia === "function" ? matchMedia("(max-width: 599px)") : null;
+    const read = (): void => {
+      playH = parent?.clientHeight ?? 0;
+      dockH = el.offsetHeight;
+      phone = mq?.matches ?? false;
+    };
+    read();
+    mq?.addEventListener?.("change", read);
+    if (typeof ResizeObserver === "undefined") {
+      return () => mq?.removeEventListener?.("change", read);
+    }
+    const ro = new ResizeObserver(read);
+    if (parent) ro.observe(parent);
+    ro.observe(el);
+    return () => {
+      ro.disconnect();
+      mq?.removeEventListener?.("change", read);
+    };
+  });
+  const sheetMaxH = $derived(sheetMaxHeight(playH, dockH, phone));
+
+  // The open sheet's width, for the hover zoom (§4: it moves left of
+  // an open sheet, so hovering a card in a scry shows it beside it).
+  $effect(() => {
+    const el = sheetEl;
+    if (!onSheet) return;
+    if (!el || !sheetOpen || minimised) {
+      onSheet(0);
+      return;
+    }
+    const report = (): void => onSheet(el.offsetWidth);
+    report();
+    if (typeof ResizeObserver === "undefined") return () => onSheet(0);
+    const ro = new ResizeObserver(report);
+    ro.observe(el);
+    return () => {
+      ro.disconnect();
+      onSheet(0);
+    };
+  });
 
   // ADR 0111 §1, keyboard focus: when a request the game waits on opens
   // (a choice, a block declaration) and focus is on the body, its
@@ -167,7 +324,8 @@
       focusedFor = null;
       return;
     }
-    if (!el || (r.rank !== "choice" && r.rank !== "blocks")) return;
+    // A sheet takes focus into itself instead (below).
+    if (!el || r.sheet || (r.rank !== "choice" && r.rank !== "blocks")) return;
     if (focusedFor === r.label) return;
     focusedFor = r.label;
     const active = document.activeElement;
@@ -356,7 +514,70 @@
       tabindex={req.focus === "dialog" ? -1 : undefined}
       bind:this={dialogEl}
     >
+      {#if sheetOpen}
+        <!-- ADR 0111 §3: the sheet grows up out of the dock, right-
+             aligned with it. It is inside the request's dialog, so its
+             body and the bar's buttons share one dialog (and one name).
+             Minimised, it stays mounted (the picker keeps its scroll
+             and its fields) and is hidden; the restore chip below
+             brings it back. The body is the picker's own DOM, moved in
+             (hostSheet); a request without `attach` draws `body`. -->
+        <div
+          class="dock-sheet"
+          class:minimised
+          hidden={minimised}
+          tabindex="-1"
+          bind:this={sheetEl}
+          style:--sheet-want="{sheetWidth(req)}px"
+          style:max-height={sheetMaxH > 0 ? `${sheetMaxH}px` : undefined}
+        >
+          <header class="sheet-head">
+            <h2 class="sheet-title">
+              {sheetTitle}{#if req.sheet?.src}<span class="prompt-src" aria-hidden="true"
+                  >{req.sheet.src}</span
+                >{/if}
+            </h2>
+            <button
+              type="button"
+              class="sheet-min"
+              aria-label="minimise"
+              aria-expanded="true"
+              title="minimise — fold this down to look at the board; it stays open"
+              onclick={minimise}><Icon name="chevron-down" size={14} /></button
+            >
+          </header>
+          {#if req.sheet?.attach}
+            <div class="sheet-body" use:hostSheet={req.sheet.attach}></div>
+          {:else if req.body}
+            <div class="sheet-body">
+              {@render req.body()}
+            </div>
+          {/if}
+          {#if req.sheet?.count}
+            <div class="sheet-foot">
+              <span class="prompt-count">{req.sheet.count}</span>
+            </div>
+          {/if}
+        </div>
+      {/if}
       <div class="dock-prompt" role={req.group ? "group" : undefined} aria-label={req.group}>
+        {#if sheetOpen && minimised}
+          <!-- The minimised sheet's question line: one click (or Enter
+               on it) brings the sheet back. -->
+          <button
+            type="button"
+            class="sheet-restore"
+            aria-label={`restore: ${sheetTitle}`}
+            aria-expanded="false"
+            title="bring the sheet back up"
+            bind:this={restoreEl}
+            onclick={restore}
+          >
+            <Icon name="chevron-up" size={13} />
+            <span class="restore-title">{sheetTitle}</span>
+            {#if req.sheet?.count}<span class="q-detail">{req.sheet.count}</span>{/if}
+          </button>
+        {/if}
         {#if req.question}
           <div
             class="dock-question"
@@ -373,7 +594,7 @@
         {#if req.hint}
           <p class="dock-hint" class:warn={req.hintWarn}>{req.hint}</p>
         {/if}
-        {#if req.body}
+        {#if req.body && !req.sheet}
           {@render req.body()}
         {/if}
         {#if req.row && req.row.length > 0}
@@ -657,6 +878,15 @@
     max-width: 60%;
     letter-spacing: 0.04em;
   }
+  /* A sheet's verb can be a sentence ("Don't discard — put Mox Diamond
+     into its owner's graveyard"): it wraps rather than clips. */
+  .dock-btn.request-primary,
+  .dock-bar .dock-btn.secondary {
+    white-space: normal;
+    line-height: 1.2;
+    padding-block: 4px;
+    text-align: center;
+  }
   .dock-btn:hover:not(:disabled) {
     background: rgba(255, 255, 255, 0.08);
   }
@@ -876,6 +1106,142 @@
     background: var(--accent-strong);
   }
 
+  /* ADR 0111 §3 (PR 6): a sheet grows up out of the dock, right-aligned
+     with it: as wide as its body asks (--sheet-want, capped at 720px
+     and at the screen less 24px, never narrower than the dock) and as
+     tall as it needs up to 60% of the play area (max-height, set inline
+     from the measured play area; 60vh until it is measured), scrolling
+     inside. A dim edge, not a backdrop: the rest of the board stays
+     visible, unblurred and clickable. It is inside the dock (z 55), so
+     card-local menus, the full-screen modals and the hover zoom stay
+     above it. */
+  .dock-sheet {
+    position: absolute;
+    right: -1px;
+    bottom: calc(100% + 6px);
+    box-sizing: border-box;
+    width: min(var(--sheet-want, 560px), calc(100vw - 24px));
+    min-width: calc(100% + 2px);
+    max-height: 60vh;
+    display: flex;
+    flex-direction: column;
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-lg, 12px);
+    box-shadow:
+      0 0 0 1px rgba(0, 0, 0, 0.35),
+      -18px -6px 40px rgba(0, 0, 0, 0.45),
+      var(--shadow-lg);
+    color: var(--fg);
+    animation: sheet-up 180ms var(--ease);
+  }
+  .dock-sheet[hidden] {
+    display: none;
+  }
+  .dock-sheet:focus {
+    outline: none;
+  }
+  .dock-sheet:focus-visible {
+    outline: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+    outline-offset: 2px;
+  }
+  @keyframes sheet-up {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  .sheet-head {
+    flex: none;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 12px 10px 6px 16px;
+  }
+  .sheet-title {
+    flex: 1 1 auto;
+    min-width: 0;
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    text-transform: none;
+    line-height: 1.25;
+    color: var(--fg);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px 10px;
+  }
+  .sheet-min {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 26px;
+    padding: 0;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--fg-muted);
+    cursor: pointer;
+    box-shadow: none;
+  }
+  .sheet-min:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--fg);
+  }
+  .sheet-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 2px 16px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .sheet-foot {
+    flex: none;
+    padding: 6px 16px 10px;
+    border-top: 1px solid var(--border);
+  }
+  .sheet-restore {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+    min-height: 30px;
+    padding: 4px 10px;
+    border-radius: 7px;
+    border: 1px dashed color-mix(in srgb, var(--accent) 55%, transparent);
+    background: var(--accent-soft);
+    color: var(--accent-strong);
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+    box-shadow: none;
+  }
+  .restore-title {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .sheet-min:focus-visible,
+  .sheet-restore:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
   /* ADR 0111 §8: a phone gets a full-width bar on the bottom of the
      play area, inside the 16px gutter (the section's padding plus 6px).
      .play-area pads its bottom by --dock-h, so the board ends above the
@@ -929,6 +1295,34 @@
       flex: 1 1 50%;
       max-width: none;
       margin-left: 0;
+    }
+    /* §8: three or more secondaries move into a row of their own above
+       the primary, which then takes the full width below them. */
+    .dock-bar:has(.dock-btn.secondary + .dock-btn.secondary + .dock-btn.secondary) {
+      flex-wrap: wrap;
+    }
+    .dock-bar:has(.dock-btn.secondary + .dock-btn.secondary + .dock-btn.secondary)
+      .dock-btn.primary {
+      flex-basis: 100%;
+    }
+    /* §8: a bottom sheet, the dock's full width, up to 70% of the play
+       area (set inline), above the bar. */
+    .dock-sheet {
+      left: -1px;
+      right: -1px;
+      width: auto;
+      min-width: 0;
+      max-height: 70vh;
+      border-radius: 12px 12px 8px 8px;
+    }
+    .sheet-head {
+      padding: 10px 8px 4px 12px;
+    }
+    .sheet-body {
+      padding: 2px 12px 10px;
+    }
+    .sheet-foot {
+      padding: 6px 12px 8px;
     }
   }
 </style>

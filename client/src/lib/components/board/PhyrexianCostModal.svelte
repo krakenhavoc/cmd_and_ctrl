@@ -22,6 +22,9 @@
   // It parses no mana strings: `symbols` comes from the server as
   // `phyrexian_symbols`, because the mana-cost syntax is the server's
   // to read (#787 added a whole symbol family to it).
+  //
+  // ADR 0111 PR 6: a sheet in the action dock; the confirm and Cancel
+  // are the dock's action bar.
 
   import { onDestroy } from "svelte";
   import { fetchAutoTapPreview, type AutoTapPreview } from "../../api";
@@ -33,7 +36,8 @@
     phyrexianLifeCost,
   } from "../../phyrexianLife";
   import type { CardView } from "../../protocol";
-  import ModalLayer from "../ModalLayer.svelte";
+  import { cancelAction, confirmAction } from "../../dock";
+  import DockSheet from "./DockSheet.svelte";
 
   interface Props {
     gameID: string;
@@ -145,15 +149,12 @@
     onConfirm(n);
   }
 
+  // ADR 0111 PR 6: Enter and Escape are the dock's (its one key handler
+  // presses the bar's confirm and Cancel). The arrows still step the
+  // count from anywhere while the sheet is open, as they did.
   function handleKey(e: KeyboardEvent): void {
     if (!card) return;
-    if (e.key === "Enter") {
-      e.preventDefault();
-      confirm();
-    } else if (e.key === "Escape") {
-      e.preventDefault();
-      onCancel();
-    } else if (e.key === "ArrowUp" || e.key === "ArrowRight") {
+    if (e.key === "ArrowUp" || e.key === "ArrowRight") {
       e.preventDefault();
       step(1);
     } else if (e.key === "ArrowDown" || e.key === "ArrowLeft") {
@@ -170,80 +171,63 @@
 </script>
 
 {#if card}
-  <ModalLayer />
-  <div
-    class="prompt-backdrop"
-    role="dialog"
-    aria-modal="true"
-    aria-labelledby="phyrexian-cost-title"
+  <DockSheet
+    label={`Phyrexian mana for ${card.name}`}
+    src={costLabel ?? card.mana_cost ?? ""}
+    width={440}
+    sheetKey={`phyrexian:${card.instance_id}:${abilityIndex ?? "cast"}`}
+    primary={confirmAction(`${confirmVerb}${lifeCost > 0 ? ` for ${lifeCost} life` : ""}`, confirm)}
+    secondary={[cancelAction(onCancel)]}
   >
-    <div class="prompt-modal phyrexian-modal">
-      <h2 id="phyrexian-cost-title">
-        Phyrexian mana for {card.name}
-        <span class="prompt-src" aria-hidden="true">{costLabel ?? card.mana_cost ?? ""}</span>
-      </h2>
-      <p class="prompt-hint">
-        {symbols === 1
-          ? "This cost prints one Phyrexian symbol"
-          : `This cost prints ${symbols} Phyrexian symbols`}
-        — each can be paid with its colour of mana, or with {PhyrexianLifePerSymbol} life. You have {life}
-        life, so you can buy at most {max}.
-      </p>
-      <div class="pay-row">
-        <span class="pay-label">Pay with life</span>
-        <button
-          type="button"
-          class="ghost step"
-          disabled={n <= 0}
-          onclick={() => step(-1)}
-          aria-label="one fewer symbol">−</button
-        >
-        <output class="count" aria-live="polite">{n} of {symbols}</output>
-        <button
-          type="button"
-          class="ghost step"
-          disabled={n >= max}
-          onclick={() => step(1)}
-          aria-label="one more symbol">+</button
-        >
-        <span class="price" class:spending={lifeCost > 0}>
-          {lifeCost === 0 ? "no life" : `${lifeCost} life`}
-        </span>
-      </div>
-      <p class="status" class:ok={preview?.ok === true} class:bad={preview?.ok === false}>
-        {#if loading && !preview}
-          checking the mana half…
-        {:else if preview?.ok}
-          the rest is affordable — auto-tap would use {preview.plan?.length ?? 0} source{(preview
-            .plan?.length ?? 0) === 1
-            ? ""
-            : "s"}
-        {:else if preview}
-          the rest is not affordable
-          {#if preview.missing && preview.missing.length > 0}
-            — missing {preview.missing.join(" ")}
-          {/if}
-        {:else}
-          &nbsp;
-        {/if}
-      </p>
-      <div class="prompt-foot">
-        <button type="button" class="ghost" onclick={onCancel}
-          >Cancel <span class="kbd">Esc</span></button
-        >
-        <button type="button" class="primary" onclick={confirm}>
-          {confirmVerb}{lifeCost > 0 ? ` for ${lifeCost} life` : ""}
-          <span class="kbd">↵</span>
-        </button>
-      </div>
+    <p class="prompt-hint">
+      {symbols === 1
+        ? "This cost prints one Phyrexian symbol"
+        : `This cost prints ${symbols} Phyrexian symbols`}
+      — each can be paid with its colour of mana, or with {PhyrexianLifePerSymbol} life. You have {life}
+      life, so you can buy at most {max}.
+    </p>
+    <div class="pay-row">
+      <span class="pay-label">Pay with life</span>
+      <button
+        type="button"
+        class="ghost step"
+        disabled={n <= 0}
+        onclick={() => step(-1)}
+        aria-label="one fewer symbol">−</button
+      >
+      <output class="count" aria-live="polite">{n} of {symbols}</output>
+      <button
+        type="button"
+        class="ghost step"
+        disabled={n >= max}
+        onclick={() => step(1)}
+        aria-label="one more symbol">+</button
+      >
+      <span class="price" class:spending={lifeCost > 0}>
+        {lifeCost === 0 ? "no life" : `${lifeCost} life`}
+      </span>
     </div>
-  </div>
+    <p class="status" class:ok={preview?.ok === true} class:bad={preview?.ok === false}>
+      {#if loading && !preview}
+        checking the mana half…
+      {:else if preview?.ok}
+        the rest is affordable — auto-tap would use {preview.plan?.length ?? 0} source{(preview.plan
+          ?.length ?? 0) === 1
+          ? ""
+          : "s"}
+      {:else if preview}
+        the rest is not affordable
+        {#if preview.missing && preview.missing.length > 0}
+          — missing {preview.missing.join(" ")}
+        {/if}
+      {:else}
+        &nbsp;
+      {/if}
+    </p>
+  </DockSheet>
 {/if}
 
 <style>
-  .phyrexian-modal {
-    width: min(440px, calc(100vw - 32px));
-  }
   .pay-row {
     display: flex;
     align-items: center;
@@ -287,10 +271,5 @@
   }
   .status.bad {
     color: var(--danger);
-  }
-  .primary .kbd {
-    color: var(--accent-fg);
-    border-color: rgba(28, 21, 3, 0.35);
-    opacity: 0.8;
   }
 </style>

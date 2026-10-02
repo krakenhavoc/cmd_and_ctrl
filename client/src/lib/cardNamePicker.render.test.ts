@@ -14,7 +14,7 @@
 
 import { describe, it, expect, afterEach } from "vitest";
 
-import ChoicePromptModal from "./components/board/ChoicePromptModal.svelte";
+import ChoiceDockHarness from "./test/ChoiceDockHarness.svelte";
 import type { ActionType, GameView } from "./protocol";
 import { render, click, cleanup, flushSync } from "./test/render.svelte";
 
@@ -54,7 +54,7 @@ interface Sent {
 function mountNamePrompt(): { container: HTMLElement; sent: Sent[] } {
   const sent: Sent[] = [];
   const view = render(
-    ChoicePromptModal as never,
+    ChoiceDockHarness as never,
     {
       snap: snapWithNamePrompt(),
       viewerID: "me",

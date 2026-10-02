@@ -13,9 +13,10 @@
 
 import { describe, it, expect, afterEach } from "vitest";
 
-import ChoicePromptModal from "./components/board/ChoicePromptModal.svelte";
+import ChoiceDockHarness from "./test/ChoiceDockHarness.svelte";
 import { damageSourceCaption, damageSourceWhere } from "./damageSource";
 import type { ActionType, CardView, GameView, PendingChoiceView } from "./protocol";
+import { barButton, barPrimary, nameOf } from "./test/dockView";
 import { render, click, cleanup } from "./test/render.svelte";
 
 afterEach(cleanup);
@@ -71,7 +72,7 @@ interface Sent {
 function mount(choice: Partial<PendingChoiceView> = {}): { container: HTMLElement; sent: Sent[] } {
   const sent: Sent[] = [];
   const view = render(
-    ChoicePromptModal as never,
+    ChoiceDockHarness as never,
     {
       snap: snapWith(choice),
       viewerID: "me",
@@ -90,9 +91,9 @@ describe("ChoicePromptModal — choose_source (ADR 0107 §6)", () => {
   it("renders every candidate and submits exactly one as card_ids", () => {
     const { container, sent } = mount();
     expect(cardButtons(container)).toHaveLength(4);
-    const submit = container.querySelector<HTMLButtonElement>("button.primary")!;
+    const submit = barPrimary(container)!;
     expect(submit.disabled).toBe(true);
-    expect(submit.textContent?.trim()).toBe("Choose this source");
+    expect(nameOf(submit)).toBe("Choose this source");
 
     click(cardButtons(container)[1]);
     // One of one: the rest lock out.
@@ -120,10 +121,7 @@ describe("ChoicePromptModal — choose_source (ADR 0107 §6)", () => {
 
   it("offers no Clear button: the floor is one", () => {
     const { container } = mount();
-    const clear = [...container.querySelectorAll<HTMLButtonElement>(".prompt-foot button")].find(
-      (b) => b.textContent?.trim() === "Clear",
-    );
-    expect(clear).toBeUndefined();
+    expect(barButton("Clear", container)).toBeNull();
   });
 });
 

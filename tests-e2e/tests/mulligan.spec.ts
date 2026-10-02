@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { adminLogin, createGame, uploadDeckAs, startGameAs } from "./lobby-api";
 import { makeCommanderDeck } from "./deck-fixture";
 import { joinAsPlayer, closeAll, type JoinedPlayer } from "./players";
@@ -28,7 +28,11 @@ test.describe("opening hand", () => {
     test.slow();
 
     const adminToken = await adminLogin(request);
-    const game = await createGame(request, adminToken, `Mulligan ${Date.now()}`);
+    const game = await createGame(
+      request,
+      adminToken,
+      `Mulligan ${Date.now()}`,
+    );
     expect(game.invite_token).toBeTruthy();
 
     alice = await joinAsPlayer(browser, game.id, game.invite_token!, "Alice");
@@ -39,14 +43,29 @@ test.describe("opening hand", () => {
     await uploadDeckAs(request, adminToken, game.id, bob.playerID, deck);
     await startGameAs(request, adminToken, game.id);
 
-    const aliceDialog = alice.page.getByRole("dialog", { name: /keep or mulligan/i });
-    const bobDialog = bob.page.getByRole("dialog", { name: /keep or mulligan/i });
+    // ADR 0111 PR 6: the opening hand is a sheet that grows up out of
+    // the action dock (region "actions"), and Keep hand / Mulligan are
+    // its action bar. The sheet and the bar are one non-modal dialog,
+    // still named "keep or mulligan your hand", so every button below
+    // is found inside it.
+    const dockOf = (page: Page) =>
+      page.getByRole("region", { name: "actions", exact: true });
+    const aliceDialog = dockOf(alice.page).getByRole("dialog", {
+      name: /keep or mulligan/i,
+    });
+    const bobDialog = dockOf(bob.page).getByRole("dialog", {
+      name: /keep or mulligan/i,
+    });
 
     await expect(aliceDialog).toBeVisible();
     await expect(bobDialog).toBeVisible();
+    // Not a modal: the table behind it is not blocked.
+    await expect(aliceDialog).not.toHaveAttribute("aria-modal", "true");
 
     // The opening hand is shown, not just counted.
-    await expect(aliceDialog.getByRole("list", { name: "your opening hand" })).toBeVisible();
+    await expect(
+      aliceDialog.getByRole("list", { name: "your opening hand" }),
+    ).toBeVisible();
     await expect(aliceDialog.getByRole("listitem")).toHaveCount(7);
     await expect(aliceDialog).toContainText("Hand size: 7");
 
@@ -79,16 +98,25 @@ test.describe("opening hand", () => {
     //      roll call goes away with it. ----
     await aliceDialog.getByRole("button", { name: "Keep hand" }).click();
     await expect(aliceDialog).toHaveCount(0);
-    await expect(alice.page.getByLabel("opening hand decisions")).toHaveCount(0);
+    await expect(alice.page.getByLabel("opening hand decisions")).toHaveCount(
+      0,
+    );
     await expect(bob.page.getByLabel("opening hand decisions")).toHaveCount(0);
 
     // The table is live: the active seat can act. The game rolls for
     // the starting player (#1486), so it is either seat's button.
-    const passButtons = [alice, bob].map((p) => p.page.getByRole("button", { name: "pass turn" }));
+    const passButtons = [alice, bob].map((p) =>
+      p.page.getByRole("button", { name: "pass turn" }),
+    );
     await expect
-      .poll(async () => (await passButtons[0].isEnabled()) || (await passButtons[1].isEnabled()), {
-        timeout: 10_000,
-      })
+      .poll(
+        async () =>
+          (await passButtons[0].isEnabled()) ||
+          (await passButtons[1].isEnabled()),
+        {
+          timeout: 10_000,
+        },
+      )
       .toBe(true);
   });
 });

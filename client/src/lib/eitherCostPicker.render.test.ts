@@ -10,6 +10,8 @@ import { describe, it, expect, afterEach } from "vitest";
 import AlternativeCostModal from "./components/board/AlternativeCostModal.svelte";
 import type { CardView } from "./protocol";
 import { render, click, cleanup } from "./test/render.svelte";
+import DockHarness from "./test/DockHarness.svelte";
+import { barPrimary } from "./test/dockView";
 
 afterEach(cleanup);
 
@@ -32,23 +34,26 @@ function lightningAxe(discardPayable: boolean): CardView {
 
 function mount(c: CardView) {
   const confirmed: Array<number | undefined> = [];
+  // ADR 0111 PR 6: a sheet in the action dock; Cast is the bar's primary.
   const view = render(
-    AlternativeCostModal as never,
+    DockHarness as never,
     {
-      card: c,
-      onConfirm: (_k: string | undefined, _o: number[], _g?: string, branch?: number) =>
-        confirmed.push(branch),
-      onCancel: () => {},
+      component: AlternativeCostModal,
+      props: {
+        card: c,
+        onConfirm: (_k: string | undefined, _o: number[], _g?: string, branch?: number) =>
+          confirmed.push(branch),
+        onCancel: () => {},
+      },
     } as never,
   );
   return { container: view.container, confirmed };
 }
 
 const radios = (c: HTMLElement): HTMLButtonElement[] => [
-  ...c.querySelectorAll<HTMLButtonElement>('[role="radiogroup"] .prompt-opt'),
+  ...c.querySelectorAll<HTMLButtonElement>('.dock-sheet [role="radiogroup"] .prompt-opt'),
 ];
-const confirmButton = (c: HTMLElement): HTMLElement =>
-  c.querySelector(".prompt-foot .primary") as HTMLElement;
+const confirmButton = (c: HTMLElement): HTMLElement => barPrimary(c)!;
 
 describe("the either/or branch radio", () => {
   it("lists every branch and confirms the first payable one by default", () => {

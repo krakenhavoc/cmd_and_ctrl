@@ -512,12 +512,14 @@ test.describe("S19 ETB triggers", () => {
     );
     // 20s for the same reason waitForPickTarget uses it: the admin
     // socket runs ahead of the player's page under runner load.
-    const searchDialog = caster.page.getByRole("dialog", {
+    // ADR 0111 PR 6: the search is a sheet in the action dock; its card
+    // grid and its "Take" (the action bar's primary) share its dialog.
+    const searchDialog = dockOf(caster.page).getByRole("dialog", {
       name: "Solemn Simulacrum — a basic land",
     });
     await expect(searchDialog).toBeVisible({ timeout: 20_000 });
 
-    // Take the Island, not a Forest. Ninety Forests and one Island
+    // Take the Island, not a Forest. Eighty-nine Forests and one Island
     // are on offer; picking the Island is what makes the assertion
     // below a statement about the CHOOSER rather than about deck
     // order. exact:true because "select Island" would otherwise
@@ -540,7 +542,7 @@ test.describe("S19 ETB triggers", () => {
     expect(island?.tapped).toBe(true);
     // The counter-assertion that carries the weight: no Forest came
     // along. A search that ignored the pick would have fetched one,
-    // since Forests outnumber the Island ninety to one.
+    // since Forests outnumber the Island eighty-nine to one.
     expect(findCardOnBattlefield(after, CARDS.Forest)).toBeNull();
     expect(after.pending_choices ?? []).toHaveLength(0);
   });
@@ -718,5 +720,63 @@ test.describe("S19 ETB triggers", () => {
       "Treasure created under the Tithe's controller",
     );
     expect(after.pending_choices ?? []).toHaveLength(0);
+  });
+
+  // ADR 0111 Delivery PR 6: a scry is a sheet that grows up out of the
+  // action dock, not a centred modal. Its lanes are the sheet's body
+  // and its Done is the action bar's primary, all inside one non-modal
+  // dialog named by the prompt ("Scry 1"). It can be minimised to look
+  // at the board and brought back without closing the prompt.
+  test("Temple of Mystery's scry 1 is answered from the dock's sheet", async ({
+    browser,
+    request,
+  }) => {
+    test.slow();
+    setup = await setupS19Game(browser, request);
+    const { admin, caster, opponent } = setup;
+
+    const temple = await seedHandWithCard(admin, caster.playerID, CARDS.TempleOfMystery);
+    // Seeding drains the library; a scry needs a card to look at.
+    await returnToLibrary(admin, caster.playerID, CARDS.Forest, 2);
+    await admin.sendActionAsPlayer(caster.playerID, "move_card", {
+      src: { kind: "hand", owner: caster.playerID },
+      dst: { kind: "battlefield" },
+      instance_id: temple.instance_id,
+    });
+    await admin.waitFor(
+      (v) => triggerOnStack(v, CARDS.TempleOfMystery) !== null,
+      "Temple of Mystery's scry trigger on the stack",
+    );
+    await resolveStack(setup);
+    await admin.waitFor(
+      (v) =>
+        (v.pending_choices ?? []).some((c) => c.kind === "scry" && c.chooser === caster.playerID),
+      "scry prompt queued for the caster",
+    );
+
+    const scry = dockOf(caster.page).getByRole("dialog", { name: "Scry 1" });
+    await expect(scry).toBeVisible({ timeout: 20_000 });
+    await expect(scry).not.toHaveAttribute("aria-modal", "true");
+    await expect(caster.page.locator(".prompt-backdrop")).toHaveCount(0);
+    // Only the chooser is asked.
+    await expect(opponent.page.getByRole("dialog", { name: "Scry 1" })).toHaveCount(0);
+
+    // Minimise: the prompt stays open, folded to a restore chip.
+    await scry.getByRole("button", { name: "minimise" }).click();
+    const restore = scry.getByRole("button", { name: /^restore: /i });
+    await expect(restore).toBeVisible();
+    await expect(scry.getByRole("button", { name: /^Done$/ })).toBeVisible();
+    await restore.click();
+
+    // Put the one card on the bottom, then Done from the action bar.
+    await scry.getByRole("button", { name: /on the bottom$/ }).click();
+    await scry.getByRole("button", { name: /^Done$/ }).click();
+
+    const after = await admin.waitFor(
+      (v) => !(v.pending_choices ?? []).some((c) => c.kind === "scry"),
+      "the scry is answered",
+    );
+    expect(findCardOnBattlefield(after, CARDS.TempleOfMystery)?.tapped).toBe(true);
+    await expect(scry).toHaveCount(0, { timeout: 10_000 });
   });
 });

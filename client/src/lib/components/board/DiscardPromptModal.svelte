@@ -10,10 +10,18 @@
   // Multi-player simultaneous discard (Mindslicer) drains in seat
   // order — only one viewer's modal is open at a time on each
   // client, since viewer != active-seat is read-only.
+  //
+  // ADR 0111 PR 6: a sheet in the action dock, not a modal. Its dialog
+  // keeps the name "Discard N card(s)" and `.prompt-count`, the
+  // `button.card-pick` grid and the "Discard" button stay inside it (the
+  // e2e suite's state-freeze walk answers it by those). Discard is the
+  // bar's primary and takes Enter once the picks add up. There is no
+  // cancel: the discard is owed.
 
   import type { ActionType, GameView } from "../../protocol";
   import Card from "./Card.svelte";
-  import ModalLayer from "../ModalLayer.svelte";
+  import { confirmAction } from "../../dock";
+  import DockSheet from "./DockSheet.svelte";
 
   interface Props {
     snap: GameView;
@@ -77,51 +85,41 @@
 </script>
 
 {#if open}
-  <ModalLayer />
-  <div class="prompt-backdrop" role="dialog" aria-modal="true" aria-labelledby="discard-title">
-    <div class="prompt-modal">
-      <h2 id="discard-title">
-        Discard {owedCount} card{owedCount === 1 ? "" : "s"}
-        <span class="prompt-src" aria-hidden="true">{isCleanupContext ? "cleanup" : "effect"}</span>
-      </h2>
-      <p class="prompt-hint">
-        {#if isCleanupContext}
-          Your hand size exceeds your maximum ({viewerSeat?.max_hand_size ?? 7}). Pick exactly
-          {owedCount} card{owedCount === 1 ? "" : "s"} to send to the graveyard. Cleanup resumes once
-          you submit.
-        {:else}
-          An effect is asking you to discard. Pick {owedCount} card{owedCount === 1 ? "" : "s"} to send
-          to the graveyard.
-        {/if}
-      </p>
-      <div class="card-grid">
-        {#each handCards as c (c.instance_id)}
-          <button
-            type="button"
-            class="card-pick"
-            class:selected={selected.has(c.instance_id)}
-            disabled={!selected.has(c.instance_id) && selected.size >= owedCount}
-            onclick={() => toggle(c.instance_id)}
-            aria-pressed={selected.has(c.instance_id)}
-            aria-label={`select ${c.name}`}
-          >
-            <Card card={c} />
-          </button>
-        {/each}
-      </div>
-      <div class="prompt-foot">
-        <span class="prompt-count">{selected.size} / {owedCount} selected</span>
+  <DockSheet
+    rank="choice"
+    label={`Discard ${owedCount} card${owedCount === 1 ? "" : "s"}`}
+    src={isCleanupContext ? "cleanup" : "effect"}
+    width={720}
+    count={`${selected.size} / ${owedCount} selected`}
+    sheetKey={`discard:${snap.turn.number}`}
+    primary={confirmAction("Discard", submit, { disabled: selected.size !== owedCount })}
+  >
+    <p class="prompt-hint">
+      {#if isCleanupContext}
+        Your hand size exceeds your maximum ({viewerSeat?.max_hand_size ?? 7}). Pick exactly
+        {owedCount} card{owedCount === 1 ? "" : "s"} to send to the graveyard. Cleanup resumes once you
+        submit.
+      {:else}
+        An effect is asking you to discard. Pick {owedCount} card{owedCount === 1 ? "" : "s"} to send
+        to the graveyard.
+      {/if}
+    </p>
+    <div class="card-grid">
+      {#each handCards as c (c.instance_id)}
         <button
           type="button"
-          class="primary"
-          disabled={selected.size !== owedCount}
-          onclick={submit}
+          class="card-pick"
+          class:selected={selected.has(c.instance_id)}
+          disabled={!selected.has(c.instance_id) && selected.size >= owedCount}
+          onclick={() => toggle(c.instance_id)}
+          aria-pressed={selected.has(c.instance_id)}
+          aria-label={`select ${c.name}`}
         >
-          Discard
+          <Card card={c} />
         </button>
-      </div>
+      {/each}
     </div>
-  </div>
+  </DockSheet>
 {/if}
 
 <style>
