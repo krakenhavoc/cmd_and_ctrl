@@ -11,10 +11,10 @@ import "github.com/google/uuid"
 //	725.2. There are two inherent triggered abilities associated with
 //	being the monarch. These triggered abilities have no source and
 //	are controlled by the player who was the monarch at the time the
-//	abilities triggered. The full texts of these abilities are "At the
-//	beginning of the monarch's end step, that player draws a card" and
-//	"Whenever a creature deals combat damage to the monarch, that
-//	creature's controller becomes the monarch."
+//	abilities triggered. This is an exception to rule 113.8. The full
+//	texts of these abilities are "At the beginning of the monarch's
+//	end step, that player draws a card" and "Whenever a creature deals
+//	combat damage to the monarch, its controller becomes the monarch."
 //
 //	725.3. Only one player can be the monarch at a time. As a player
 //	becomes the monarch, the current monarch ceases to be the monarch.
@@ -22,9 +22,12 @@ import "github.com/google/uuid"
 //	725.4. If the monarch leaves the game, the active player becomes
 //	the monarch at the same time as that player leaves the game. If
 //	the active player is leaving the game or if there is no active
-//	player, the next player in turn order becomes the monarch. If no
-//	player still in the game can become the monarch, the game
-//	continues with no monarch.
+//	player, the next player in turn order who can become the monarch
+//	becomes the monarch. If no player still in the game can become
+//	the monarch, the game continues with no monarch.
+//
+// (Quoted from the September 25, 2026 edition, the one AGENTS.md §6
+// pins.)
 //
 // #375: before this file, SetMonarch assigned Game.Monarch and that
 // was the whole mechanic. A player who had the monarchy kept it after
@@ -65,8 +68,8 @@ func (monarchTriggers) OnEvent(g *Game, ev Event) {
 }
 
 // monarchCombatDamageTriggerLocked is CR 725.2's second ability:
-// "whenever a creature deals combat damage to the monarch, that
-// creature's controller becomes the monarch".
+// "whenever a creature deals combat damage to the monarch, its
+// controller becomes the monarch".
 //
 // It reads the event rather than the combat state on purpose. Every
 // path that lands combat damage on a player — unblocked attackers,
