@@ -2973,12 +2973,16 @@ func (g *Game) finishPickTargetLocked(f *pickTargetFrame) {
 	item.targetSpec = f.spec
 	item.modeSpec = f.modeSpec
 	item.DoubledBy, item.DoubledByName = f.doubledBy.id, f.doubledBy.name
-	g.queueHarvestedTriggerLocked(item)
 	// CR 603.3d / 115.3: a triggered ability's targets are chosen as
-	// it is put on the stack, which is right here. Emitted after the
-	// queue so a "becomes the target" trigger stacks above the
-	// ability that targeted. Added in S22 for Monk Gyatso.
-	g.emitBecameTargetLocked(item.Controller, item.SourceCardID, item.ID, item.Targets)
+	// it is put on the stack, and that placement is the drain's, not
+	// this answer's: the batch may still be held behind an ordering
+	// prompt or a batch-mate's announcement (#1529). So the "becomes
+	// the target" event is owed, not emitted, and the drain that
+	// places the item emits it. A trigger it sets off then waits for
+	// the whole batch and goes on above it (CR 603.3b), never inside
+	// the batch that targeted (#1539).
+	item.TargetsAnnouncePending = len(item.Targets) > 0
+	g.queueHarvestedTriggerLocked(item)
 	g.runStateChecksLocked()
 }
 

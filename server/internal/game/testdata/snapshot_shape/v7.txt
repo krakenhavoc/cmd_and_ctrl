@@ -1182,6 +1182,7 @@ lastKnownStack[].item.sourceObject.epoch	number:int
 lastKnownStack[].item.sourceObject.id	custom(uuid.UUID)
 lastKnownStack[].item.splitSecond	bool
 lastKnownStack[].item.targets	array
+lastKnownStack[].item.targetsAnnouncePending	bool
 lastKnownStack[].item.targets[]	object
 lastKnownStack[].item.targets[].ID	custom(uuid.UUID)
 lastKnownStack[].item.targets[].Kind	string
@@ -1572,6 +1573,7 @@ pendingTriggers[].sourceObject.epoch	number:int
 pendingTriggers[].sourceObject.id	custom(uuid.UUID)
 pendingTriggers[].splitSecond	bool
 pendingTriggers[].targets	array
+pendingTriggers[].targetsAnnouncePending	bool
 pendingTriggers[].targets[]	object
 pendingTriggers[].targets[].ID	custom(uuid.UUID)
 pendingTriggers[].targets[].Kind	string
@@ -3845,6 +3847,7 @@ stackMeta[].sourceObject.epoch	number:int
 stackMeta[].sourceObject.id	custom(uuid.UUID)
 stackMeta[].splitSecond	bool
 stackMeta[].targets	array
+stackMeta[].targetsAnnouncePending	bool
 stackMeta[].targets[]	object
 stackMeta[].targets[].ID	custom(uuid.UUID)
 stackMeta[].targets[].Kind	string

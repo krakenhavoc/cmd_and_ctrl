@@ -636,6 +636,9 @@ var stackItemFields = plan(
 	// Carried for Ordered's reason — it is a fact about a pending
 	// item that the restored drain reads.
 	"Commutes", carried, "",
+	// #1539: a held trigger's owed "becomes the target" event.
+	// Carried for Ordered's reason — the restored drain emits it.
+	"TargetsAnnouncePending", carried, "",
 	// #789 / #761: what the announcement paid — the counters
 	// removed, the life, and the mana tokens that left the pool.
 	// Carried, and it has to be: the counters are off the board and

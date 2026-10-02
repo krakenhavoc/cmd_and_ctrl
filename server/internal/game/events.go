@@ -1512,11 +1512,17 @@ const (
 
 // emitBecameTargetLocked fans one EventBecomesTarget out per target
 // slot in `targets`. Called from every site that finishes choosing
-// targets for a spell or ability, and there are six: the cast path,
-// the catalog activation (activated.go), the manual sandbox
-// activation and the manual trigger announce (mutations.go), a
-// trigger's CR 603.3d target pick (pending_choice.go) and a copy's
-// re-target (spell_copy.go). One helper, so a card watching for
+// targets for a spell or ability: the cast path, the catalog
+// activation (activated.go), the manual sandbox activation
+// (mutations.go), a copy's creation (spell_copy.go, ability_copy.go),
+// a change of targets (retarget.go), and — for every triggered
+// ability, harvested or manually announced — the CR 603.3b drain that
+// places it (announcePlacedTargetsLocked, mutations.go, #1539). A
+// trigger's targets are chosen as it is put on the stack, and what
+// that sets off waits for the whole batch to be placed, so its event
+// is owed (StackItem.TargetsAnnouncePending) until the drain places
+// it rather than emitted when its target prompt closes. One helper,
+// so a card watching for
 // "becomes the target" cannot see a different board depending on
 // which verb announced (#968 was the sandbox activation missing).
 //

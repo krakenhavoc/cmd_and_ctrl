@@ -533,6 +533,23 @@ type StackItem struct {
 	// the item is on the stack.
 	Commutes bool
 
+	// TargetsAnnouncePending marks a queued triggered ability whose
+	// targets are chosen but whose CR 115.3 "becomes the target" event
+	// has not been emitted yet (#1539). CR 603.3d chooses a trigger's
+	// targets as it is put on the stack, and a trigger that fires
+	// during that placement waits until the whole CR 603.3b batch is
+	// on the stack. So the event belongs to the drain that PLACES the
+	// item (drainPendingTriggersAPNAPLocked), which emits it and clears
+	// this flag, and never to the moment the target prompt closed: the
+	// batch may still be held behind an ordering prompt or a batch-
+	// mate's announcement, and a trigger harvested then would join the
+	// batch that targeted.
+	//
+	// Carried by Clone and the snapshot like Ordered, because a batch
+	// held behind its ordering prompt is a restore point. Always false
+	// once the item is on the stack.
+	TargetsAnnouncePending bool
+
 	// modeSpec is the ModeSpec an ability item was announced under,
 	// so the CR 608.2b re-check can find the clause list of the mode
 	// OCCURRENCE a TargetRef names. Nil for a spell (looked up by

@@ -3815,6 +3815,13 @@ func (g *Game) AnnounceTrigger(playerID, sourceCardID uuid.UUID, params AbilityP
 		Modes:        append([]int(nil), params.Modes...),
 		XValue:       params.XValue,
 		Distribution: cloneDistributionLocked(params.Distribution),
+		// CR 603.3d / 115.3: a manually-announced trigger chooses its
+		// targets as it goes on the stack, same as the harvested kind,
+		// so the drain that places it emits the "becomes the target"
+		// event (#1539) — after the item, and the rest of its batch,
+		// is on the stack, so what the announcement triggers is placed
+		// ABOVE it.
+		TargetsAnnouncePending: len(params.Targets) > 0,
 	})
 	g.EmitEvent(Event{
 		Kind:   EventTrigger,
@@ -3830,25 +3837,15 @@ func (g *Game) AnnounceTrigger(playerID, sourceCardID uuid.UUID, params AbilityP
 	// does next: before #974 a pass round the table found an empty
 	// stack and ADVANCED THE STEP, and the announced trigger landed a
 	// step late.
-	g.runStateChecksLocked()
-	// CR 603.3d / 115.3: a manually-announced trigger chooses its
-	// targets as it goes on the stack, same as the harvested kind —
-	// and it has just gone on the stack, which is why this is after
-	// the drain rather than before it (#974). The catalog activation
-	// and the cast path announce from exactly here too: with the item
-	// already on the stack, so that what the announcement triggers can
-	// be placed ABOVE it.
-	g.emitBecameTargetLocked(playerID, sourceCardID, id, params.Targets)
-	// And the drain every other announce site runs (#968's
-	// ActivateAbility fix, #974's here). The announcer still holds
-	// priority, so CR 603.3b puts what the announcement triggered on
-	// the stack at this boundary: above the announced trigger, which
-	// is where a ward trigger has to be if declining the payment is to
-	// counter anything. Without it the ward trigger waited in
-	// PendingTriggers, and the pass that would have drained it
-	// resolved the announced trigger first (passPriorityLocked
-	// resolves the top of the stack and drains afterwards), so the
-	// counter came too late.
+	//
+	// The same boundary puts what the announcement triggered on the
+	// stack: the drain places the trigger and emits its "becomes the
+	// target" events, and the loop's next pass places a ward trigger
+	// harvested off them above it, which is where it has to be if
+	// declining the payment is to counter anything (#974). Before
+	// #1539 the event was emitted here, after the drain, and a second
+	// sweep placed the ward; a drain held behind an ordering prompt
+	// then let the ward join the batch the announced trigger waited in.
 	g.runStateChecksLocked()
 	return nil
 }
@@ -5276,16 +5273,42 @@ func (g *Game) drainPendingTriggersAPNAPLocked() bool {
 	// starting Seq; incrementing locally keeps the drain O(triggers)
 	// instead of rescanning StackMeta per placement.
 	seq := g.nextStackSeqLocked()
+	var announce []*StackItem
 	for offset := 0; offset < numSeats; offset++ {
 		seat := (g.Turn.ActiveSeat + offset) % numSeats
 		for _, t := range bySeat[seat] {
 			t.Seq = seq
 			seq++
 			g.StackMeta[t.ID] = t
+			if t.TargetsAnnouncePending {
+				announce = append(announce, t)
+			}
 		}
 	}
 	g.recomputeSplitSecondLocked()
+	g.announcePlacedTargetsLocked(announce)
 	return true
+}
+
+// announcePlacedTargetsLocked emits the CR 115.3 "becomes the target"
+// events a placed batch owes (StackItem.TargetsAnnouncePending, #1539),
+// in placement order, once EVERY item of the batch is on the stack.
+//
+// CR 603.3b: "Then the game once again checks for and performs
+// state-based actions until none are performed, then abilities that
+// triggered during this process go on the stack." A ward or Monk
+// Gyatso trigger harvested here lands on a PendingTriggers the drain
+// has already emptied, so it is the NEXT batch: the caller's
+// runStateChecksLocked loop runs the state-based actions again and
+// puts it on the stack above everything placed here — whichever seat
+// controls it, and outside the targeting player's ordering prompt.
+//
+// Caller must hold g.mu.
+func (g *Game) announcePlacedTargetsLocked(placed []*StackItem) {
+	for _, t := range placed {
+		t.TargetsAnnouncePending = false
+		g.emitBecameTargetLocked(t.Controller, t.SourceCardID, t.ID, t.Targets)
+	}
 }
 
 // seatNeedsTriggerOrder reports whether a seat's batch of pending
