@@ -156,6 +156,15 @@ type Player struct {
 	// seam.
 	TurnsBegun int
 
+	// UpkeepsBegun counts the upkeep steps this player has begun
+	// (ADR 0108 §5, #1888). It goes up by one as the step begins,
+	// before any "at the beginning of your upkeep" trigger is checked,
+	// so a trigger that reads it during its own upkeep reads the
+	// upkeep it is in. A skipped upkeep is never begun and is not
+	// counted (CR 702.30a's "your last upkeep" is the last one you
+	// had). Card.ControlledSinceUpkeep is stamped from it.
+	UpkeepsBegun int
+
 	// Eliminated is set when the player leaves the game: a concession,
 	// a state-based loss or an effect loss (ADR 0057, game_end.go). An
 	// eliminated player still occupies their seat for spectating. The

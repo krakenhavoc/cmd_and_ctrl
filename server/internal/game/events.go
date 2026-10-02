@@ -648,6 +648,13 @@ const (
 	// sub-PR 5.
 	EventBeginUpkeep EventKind = "begin_upkeep"
 
+	// EventEchoPaid — a permanent's echo cost was paid (CR 702.30a, ADR
+	// 0108 §5). CardID is the permanent, Actor the player who paid, and
+	// Source the permanent too. Emitted once the payment has been made
+	// and before anything else the answer does, so Shah of Naar Isle's
+	// "When this creature's echo cost is paid" sees it.
+	EventEchoPaid EventKind = "echo_paid"
+
 	// EventBeginEndStep — the active player's end step began. Actor
 	// is the active player (whose end step it is). "At the beginning
 	// of your end step" (Thassa, Y'shtola Rhul) gates AppliesTo on
