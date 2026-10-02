@@ -22,6 +22,7 @@
   import Settings from "./lib/components/Settings.svelte";
   import ShortcutLayer from "./lib/components/ShortcutLayer.svelte";
   import UpdatePrompt from "./lib/components/UpdatePrompt.svelte";
+  import SettingsSyncToast from "./lib/components/SettingsSyncToast.svelte";
   import EnvBadge from "./lib/components/EnvBadge.svelte";
   import { route, navigate } from "./lib/router";
   import { session, sessionFromOAuth, setSession } from "./lib/session";
@@ -185,3 +186,8 @@
      appear on any route, and deliberately non-modal so it never
      interrupts a game. -->
 <UpdatePrompt />
+
+<!-- Account settings (ADR 0110 §4): shown for the rest of the visit
+     after a sign-in applied the account's settings over different ones
+     in this browser, offering this browser's back. -->
+<SettingsSyncToast />

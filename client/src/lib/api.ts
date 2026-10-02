@@ -601,6 +601,42 @@ export async function fetchMyDeckCoverage(id: string): Promise<CoverageReport> {
   return (await res.json()) as CoverageReport;
 }
 
+// AccountSettings mirrors lobby.settingsResponse: the signed-in
+// person's account copy of their per-person settings (ADR 0110 §4).
+// revision 0 means there is no copy yet, and then nothing else is set.
+export interface AccountSettings {
+  version?: number;
+  revision: number;
+  settings?: Record<string, unknown>;
+  updated_at?: number;
+}
+
+// fetchAccountSettings is GET /me/settings. A 403 (a guest, the admin
+// token, a server with no database) means "keep settings in this
+// browser"; settingsSync.ts reads it that way.
+export async function fetchAccountSettings(): Promise<AccountSettings> {
+  const res = await authFetch("/me/settings", { cache: "no-store" });
+  return (await res.json()) as AccountSettings;
+}
+
+// putAccountSettings is PUT /me/settings with If-Match: revision. A
+// 412 or 409 rejects with a LobbyApiError whose `body` is the account's
+// current copy. `keepalive` lets a pagehide flush outlive the page.
+export async function putAccountSettings(
+  revision: number,
+  version: number,
+  body: Record<string, unknown>,
+  opts: { keepalive?: boolean } = {},
+): Promise<AccountSettings> {
+  const res = await authFetch("/me/settings", {
+    method: "PUT",
+    headers: { "If-Match": String(revision) },
+    body: JSON.stringify({ version, settings: body }),
+    keepalive: opts.keepalive === true,
+  });
+  return (await res.json()) as AccountSettings;
+}
+
 // seatLibraryDeck installs a deck already in the caller's library
 // (POST /games/{id}/decks/{deck_id}) without re-pasting it. No body:
 // unlike uploadDeck/installPrebuiltDeck, a player session already
