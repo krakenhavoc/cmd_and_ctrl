@@ -28,19 +28,21 @@ func init() {
 				TargetPermanent("target artifact or enchantment", Or(Artifact(), Enchantment()))),
 		),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			for _, t := range ctx.LegalTargets() {
-				switch {
-				case ctx.HasMode(0):
-					if err := (DealDamage{Source: ctx.Source(), Target: t.ID, Amount: 3}).Apply(ctx); err != nil {
-						return err
-					}
-				case ctx.HasMode(1):
-					if err := (DestroyTarget{Target: t.ID}).Apply(ctx); err != nil {
-						return err
+			return ctx.Game.DamageInstanceForEffect(func() error {
+				for _, t := range ctx.LegalTargets() {
+					switch {
+					case ctx.HasMode(0):
+						if err := (DealDamage{Source: ctx.Source(), Target: t.ID, Amount: 3}).Apply(ctx); err != nil {
+							return err
+						}
+					case ctx.HasMode(1):
+						if err := (DestroyTarget{Target: t.ID}).Apply(ctx); err != nil {
+							return err
+						}
 					}
 				}
-			}
-			return nil
+				return nil
+			})
 		},
 	})
 }

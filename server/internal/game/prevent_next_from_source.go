@@ -55,22 +55,25 @@ import (
 // once — an attacker with trample, a creature blocked by two, a spell
 // that deals damage to each creature — is several events and ONE
 // instance (CR 615.8). The shield is therefore marked spent with the
-// event batch it was used in (Mod.SpentBatch) and keeps applying to that
-// source for the rest of the batch: the batch is the engine's unit of
-// "at the same time" (event_batch.go, CR 603.2c). A spent record is
-// dropped when play moves on (beginEventBatchLocked). Its follow-up is
-// owed for the instance as a whole and runs once, with the total
+// damage instance it was used in (Mod.SpentInstance, ADR 0108 PR 0,
+// damage_instance.go) and keeps applying to that instance's other events
+// and to nothing else. It also records the event batch (Mod.SpentBatch),
+// which is what drops the spent record when play moves on
+// (beginEventBatchLocked). Its follow-up is owed for the instance as a
+// whole and runs once, with the total, as the instance ends
 // (PreventionFollowUp).
 //
-// KNOWN LIMIT. The batch is wider than an instance in one direction: two
+// ADR 0107 §6 used the batch as the instance, and the batch is wider: two
 // separate instances of damage from the same source inside one resolution
-// ("it deals 2 damage to you. Then it deals 2 damage to you") are one
-// batch, so a shield prevents both. No catalogued card deals damage that
-// way.
+// ("it deals 2 damage to you. Then it deals 2 damage to you") were one
+// batch, and a shield prevented both. ADR 0108 PR 0 fixed that known
+// limit with the instance. A record written before it carries SpentBatch
+// alone and still applies for the rest of that batch.
 
 // ModPreventNextFromSource is "the next time <source> would deal damage
 // [to <protected>] this turn, prevent that damage" (CR 615.8). Reads
-// Objects, SourceZone, Queries, Player, Types, Then and SpentBatch. Scope
+// Objects, SourceZone, Queries, Player, Types, Then, SpentBatch and
+// SpentInstance. Scope
 // ScopeGame for a protected player or none; pinned (ScopeNone) to the
 // protected permanent.
 const ModPreventNextFromSource ModKind = "preventNextFromSource"
@@ -186,7 +189,7 @@ func nextFromSourceModProblem(m Mod) string {
 		// #1879: the granted "can't attack unless defending player
 		// controls" reads Queries too, as what the defender must control.
 		queries := len(m.Queries) != 0 && m.Kind != ModCantAttackUnlessDefenderControls
-		if m.SourceZone != "" || queries || m.SpentBatch != 0 {
+		if m.SourceZone != "" || queries || m.SpentBatch != 0 || m.SpentInstance != 0 {
 			return fmt.Sprintf("mod %q carries a damage-source field only preventNextFromSource reads", m.Kind)
 		}
 		return ""
@@ -220,7 +223,7 @@ func (g *Game) nextFromSourceAppliesLocked(e ScopedEffect, m Mod, ev *Replacemen
 	}
 	// Spent in an earlier instance: CR 615.8's "any subsequent instances
 	// … are dealt normally".
-	if m.SpentBatch != 0 && m.SpentBatch != g.eventBatch {
+	if !nextShieldOpenToLocked(g, m, ev) {
 		return false
 	}
 	if len(m.Objects) == 1 && !g.damageFromChosenSourceLocked(m, ev.DamageSource) {
@@ -305,19 +308,36 @@ func (g *Game) nextFromSourceProtectsLocked(e ScopedEffect, m Mod, target uuid.U
 func (g *Game) applyNextFromSourceLocked(e ScopedEffect, mod int, m Mod, ev *ReplacementEvent) {
 	prevented := ev.DamageAmount
 	ev.Cancel()
-	if m.SpentBatch == 0 {
-		g.markNextShieldSpentLocked(e.Seq, mod, g.currentEventBatchLocked())
+	if m.SpentBatch == 0 && m.SpentInstance == 0 {
+		g.markNextShieldSpentLocked(e.Seq, mod, g.currentEventBatchLocked(), ev.DamageInstance)
 	}
 	g.queuePreventionFollowUpLocked(e, m, ev, prevented)
 }
 
-// markNextShieldSpentLocked records the batch a shield was used in. COPY
-// ON WRITE, setShieldChargeLocked's rule: a clone taken before the damage
-// shares the slice and must keep the unspent shield, so an undo rewinds
-// it.
+// nextShieldOpenToLocked reports whether a next-damage shield may still
+// apply to `ev`: it is unspent, or it was spent by ev's own instance of
+// damage (CR 615.8). A record spent before SpentInstance existed — or by
+// an event built without a stamp — names only its batch, and is open for
+// the rest of that batch, as ADR 0107 §6 read it.
+//
+// Caller must hold g.mu.
+func nextShieldOpenToLocked(g *Game, m Mod, ev *ReplacementEvent) bool {
+	switch {
+	case m.SpentInstance != 0:
+		return ev.DamageInstance == m.SpentInstance
+	case m.SpentBatch != 0:
+		return m.SpentBatch == g.eventBatch
+	}
+	return true
+}
+
+// markNextShieldSpentLocked records the instance (and the batch) a shield
+// was used in. COPY ON WRITE, setShieldChargeLocked's rule: a clone taken
+// before the damage shares the slice and must keep the unspent shield, so
+// an undo rewinds it.
 //
 // Caller must hold g.mu (write).
-func (g *Game) markNextShieldSpentLocked(seq int64, mod int, batch uint64) {
+func (g *Game) markNextShieldSpentLocked(seq int64, mod int, batch uint64, inst DamageInstance) {
 	i, ok := g.scopedEffectIndexBySeqLocked(seq)
 	if !ok {
 		return
@@ -326,13 +346,15 @@ func (g *Game) markNextShieldSpentLocked(seq int64, mod int, batch uint64) {
 	rec := next[i]
 	rec.Mods = cloneMods(rec.Mods)
 	rec.Mods[mod].SpentBatch = batch
+	rec.Mods[mod].SpentInstance = inst
 	next[i] = rec
 	g.ScopedEffects = next
 }
 
 // dropSpentNextShieldsLocked removes the shields spent in an earlier
-// batch: play has moved on, so the instance they prevented is over.
-// Called as a new batch begins. Same fresh-slice rule as every sweep.
+// batch: play has moved on, so the instance they prevented is over (an
+// instance never outlives its batch). Called as a new batch begins. Same
+// fresh-slice rule as every sweep.
 //
 // Caller must hold g.mu (write).
 func (g *Game) dropSpentNextShieldsLocked() {
@@ -426,18 +448,26 @@ const EventDamagePrevented EventKind = "damage_prevented"
 // total the shield prevented from that one instance — and the engine
 // opens one damage event per recipient, so a trampler's split damage, a
 // double block or an "each creature" spell is several events. Each event
-// the shield prevents adds to the one entry for (Seq, Batch), and the
+// the shield prevents adds to the one entry for (Seq, Instance), and the
 // body runs ONCE with the total when the instance has settled
-// (flushPreventionFollowUpsLocked): Awe Strike against a 5-power trampler
-// blocked by two gains 5 life in one event, not 3 and then 2 (which would
-// trigger "whenever you gain life" twice).
+// (flushPreventionFollowUpsForInstanceLocked, and ADR 0107's flush
+// points): Awe Strike against a 5-power trampler blocked by two gains 5
+// life in one event, not 3 and then 2 (which would trigger "whenever you
+// gain life" twice). Two instances are two entries (ADR 0108 PR 0): a
+// shield applied to two separate instructions' unpreventable damage
+// (CR 615.12) runs its follow-up once for each.
 //
-// Plain data on the Game, carried by the snapshot (a CR 616 prompt can
-// pause the instance half way), rewound by undo with the records.
+// Plain data on the Game, carried by the snapshot (a combat damage step's
+// instance is owed until a player would next receive priority), rewound
+// by undo with the records.
 type PreventionFollowUp struct {
 	// Seq is the shield record's; Batch the event batch of its instance.
 	Seq   int64  `json:"seq"`
 	Batch uint64 `json:"batch"`
+	// Instance is the damage instance it is owed for (ADR 0108 PR 0,
+	// damage_instance.go). Zero on an entry written before it existed,
+	// which is grouped by Batch as it was.
+	Instance DamageInstance `json:"instance,omitempty"`
 	// Body is the shield's Then: a registered body key.
 	Body string `json:"body"`
 	// Controller is the shield's controller ("you"); Source the card
@@ -475,9 +505,10 @@ func (g *Game) queuePreventionFollowUpLocked(e ScopedEffect, m Mod, ev *Replacem
 		return
 	}
 	batch := g.currentEventBatchLocked()
+	inst := ev.DamageInstance
 	next := append([]PreventionFollowUp(nil), g.preventionFollowUps...)
 	for i := range next {
-		if next[i].Seq == e.Seq && next[i].Batch == batch {
+		if next[i].Seq == e.Seq && next[i].Instance == inst && (inst != 0 || next[i].Batch == batch) {
 			next[i].Prevented += prevented
 			g.preventionFollowUps = next
 			return
@@ -486,6 +517,7 @@ func (g *Game) queuePreventionFollowUpLocked(e ScopedEffect, m Mod, ev *Replacem
 	f := PreventionFollowUp{
 		Seq:          e.Seq,
 		Batch:        batch,
+		Instance:     inst,
 		Body:         m.Then,
 		Controller:   e.Controller,
 		Source:       e.Source.ID,
@@ -505,13 +537,15 @@ func (g *Game) queuePreventionFollowUpLocked(e ScopedEffect, m Mod, ev *Replacem
 // flushPreventionFollowUpsLocked runs every owed follow-up once, with its
 // total, in the order the shields first applied, and clears them.
 //
-// WHEN. Once the instance of damage is over: as a player would next
-// receive priority (runStateChecksLocked, before the state-based actions,
-// so a combat damage step's damage is all dealt — CR 510.2 — and nothing
-// has died of it yet), and as play moves on to a new event batch
-// (beginEventBatchLocked), whichever comes first. A follow-up's own
-// damage can meet another shield with a follow-up, so the flush repeats,
-// bounded, until nothing is owed.
+// WHEN. Once the instance of damage is over. An instruction's instance
+// runs its own as it ends (flushPreventionFollowUpsForInstanceLocked, ADR
+// 0108 PR 0). This is the catch-all behind it, ADR 0107's two points: as
+// a player would next receive priority (runStateChecksLocked, before the
+// state-based actions, so a combat damage step's damage is all dealt —
+// CR 510.2 — and nothing has died of it yet), and as play moves on to a
+// new event batch (beginEventBatchLocked), whichever comes first. A
+// follow-up's own damage can meet another shield with a follow-up, so the
+// flush repeats, bounded, until nothing is owed.
 //
 // Caller must hold g.mu (write).
 func (g *Game) flushPreventionFollowUpsLocked() {
@@ -521,6 +555,31 @@ func (g *Game) flushPreventionFollowUpsLocked() {
 		for _, f := range pending {
 			g.runPreventionFollowUpLocked(f)
 		}
+	}
+}
+
+// flushPreventionFollowUpsForInstanceLocked runs the follow-ups owed for
+// one instance of damage, as it ends (CR 615.5: "immediately afterward"),
+// and leaves every other entry owed. A follow-up's own damage is a new
+// instance, which runs its own as it ends.
+//
+// Caller must hold g.mu (write).
+func (g *Game) flushPreventionFollowUpsForInstanceLocked(inst DamageInstance) {
+	due := func(f PreventionFollowUp) bool { return f.Instance == inst }
+	if inst == 0 || !slices.ContainsFunc(g.preventionFollowUps, due) {
+		return
+	}
+	var run, kept []PreventionFollowUp
+	for _, f := range g.preventionFollowUps {
+		if due(f) {
+			run = append(run, f)
+		} else {
+			kept = append(kept, f)
+		}
+	}
+	g.preventionFollowUps = kept
+	for _, f := range run {
+		g.runPreventionFollowUpLocked(f)
 	}
 }
 

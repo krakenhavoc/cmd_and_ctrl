@@ -370,10 +370,15 @@ type Mod struct {
 	// onto the battlefield and a permanent's follows it as it last existed
 	// (CR 609.7a). Queries is the CR 615.9 recheck, any of them. SpentBatch
 	// is the event batch the shield prevented its instance of damage in
-	// (CR 615.8); zero is unspent.
-	SourceZone ZoneKind         `json:"sourceZone,omitempty"`
-	Queries    []PermanentQuery `json:"queries,omitempty"`
-	SpentBatch uint64           `json:"spentBatch,omitempty"`
+	// (CR 615.8); zero is unspent. SpentInstance (ADR 0108 PR 0) is that
+	// instance itself (damage_instance.go): a spent shield keeps applying
+	// to the rest of its instance and to nothing else. Both are written. A
+	// record from before SpentInstance existed has SpentBatch alone and
+	// reads as it did, applying for the rest of that batch.
+	SourceZone    ZoneKind         `json:"sourceZone,omitempty"`
+	Queries       []PermanentQuery `json:"queries,omitempty"`
+	SpentBatch    uint64           `json:"spentBatch,omitempty"`
+	SpentInstance DamageInstance   `json:"spentInstance,omitempty"`
 	// Copy is ModBecomeCopy's copied values (#1593): exactly one entry,
 	// required on that kind and refused on every other. A slice for the
 	// reason Objects is one — every other mod writes nothing, and the

@@ -411,9 +411,28 @@ type Game struct {
 
 	// preventionFollowUps are the next-damage shields' CR 615.5
 	// additional effects owed for an instance of damage that has not yet
-	// settled — one per shield and batch, with the running total (ADR
-	// 0107 §6, prevent_next_from_source.go). Empty between actions.
+	// settled — one per shield and instance of damage, with the running
+	// total (ADR 0107 §6, ADR 0108 PR 0; prevent_next_from_source.go).
+	// Empty between actions.
 	preventionFollowUps []PreventionFollowUp
+
+	// damageInstanceSeq is the last DamageInstance handed out (ADR 0108
+	// PR 0, damage_instance.go). Monotone within a running game and
+	// cloned with it. Not serialised: restore sets it to the largest
+	// instance a restored record names (Mod.SpentInstance,
+	// PreventionFollowUp.Instance), as scopedEffectSeq is set.
+	//
+	// openDamageInstance is the instance of the DamageInstanceForEffect
+	// scope that is running, zero outside one: set and cleared inside one
+	// mutation, so it is zero between actions. combatDamageInstance is
+	// the instance of the combat damage step that opened event batch
+	// combatDamageInstanceBatch (CR 510.2). Neither is captured: see
+	// damage_instance.go for what a restore in the middle of a step
+	// means.
+	damageInstanceSeq         uint64
+	openDamageInstance        DamageInstance
+	combatDamageInstance      DamageInstance
+	combatDamageInstanceBatch uint64
 
 	// announcedBlocks and blockedAttackers are what this combat's
 	// block declaration has produced (#830, #715). announcedBlocks

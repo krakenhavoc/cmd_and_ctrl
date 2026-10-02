@@ -85,12 +85,12 @@ func pr7Offers(c *game.PendingChoice, id uuid.UUID) bool {
 	return false
 }
 
-// pr7Hit deals `n` damage from `source` to the player `to`. Hits in the
-// same event batch are one instance of damage from a source (CR 615.8);
-// a test that wants a second instance moves the turn on first.
+// pr7Hit deals `n` damage from `source` to the player `to`. Each call is
+// one damage instruction and so one instance of damage from a source
+// (CR 615.8, ADR 0108 PR 0); the shields' "prevented this way" follow-ups
+// run as it ends (CR 615.5).
 //
-// It then runs the priority boundary, where the instance is over and the
-// shields' "prevented this way" follow-ups run (CR 615.5).
+// It then runs the priority boundary, ADR 0107's catch-all flush point.
 func pr7Hit(t *testing.T, g *game.Game, source, to uuid.UUID, n int) {
 	t.Helper()
 	g.WithWriteLock(func() {
@@ -169,7 +169,10 @@ func TestPR7AweStrikeTotalsATramplersSplitDamage(t *testing.T) {
 }
 
 // The same for a follow-up split across two events of one instance:
-// Reverse Damage gains the total once.
+// Reverse Damage gains the total once. One instance is one damage
+// instruction (ADR 0108 PR 0), so the two events are dealt inside one
+// damage-instance scope; TestPR0ReverseDamageMeetsOnlyTheFirstInstance
+// is the two-instruction case.
 func TestPR7ReverseDamageGainsOnceForASplitInstance(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
@@ -180,8 +183,10 @@ func TestPR7ReverseDamageGainsOnceForASplitInstance(t *testing.T) {
 	pr7Choose(t, g, me.ID, src)
 	life := me.Life
 	g.WithWriteLock(func() {
-		_ = g.DealDamageToPlayerForEffect(src, me.ID, 4)
-		_ = g.DealDamageToPlayerForEffect(src, me.ID, 2)
+		_ = g.DamageInstanceForEffect(func() error {
+			_ = g.DealDamageToPlayerForEffect(src, me.ID, 4)
+			return g.DealDamageToPlayerForEffect(src, me.ID, 2)
+		})
 	})
 	g.RunStateChecksForTest()
 	passPriorityAroundTable(t, g)

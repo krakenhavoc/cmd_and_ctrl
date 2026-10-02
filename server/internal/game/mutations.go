@@ -5216,6 +5216,13 @@ func (g *Game) markDamageWithKind(source, cardID uuid.UUID, delta int, isCombat 
 			sourceLKI: g.damageSourceLKILocked(source),
 		},
 	}
+	// ADR 0108 PR 0: a combat mark joins the combat damage step's
+	// instance; any other mark is an instruction of its own.
+	if isCombat {
+		ev.DamageInstance = g.combatDamageInstanceLocked()
+	} else {
+		g.stampEffectDamageInstanceLocked(ev, 0)
+	}
 	paused, err := g.damageThroughReplacementsLocked(ev)
 	if err != nil {
 		return err
@@ -8505,6 +8512,8 @@ func (g *Game) markCombatDamageOnCardLocked(cardID uuid.UUID, amount int, source
 		// lose both riders. Same reasoning the DamageAssignmentFrame
 		// paths have always used.
 		damageTail: g.combatDamageTailLocked(damageTailPermanent, source, step),
+		// ADR 0108 PR 0, CR 510.2: one instance for the whole step.
+		DamageInstance: g.combatDamageInstanceLocked(),
 	}
 	// S27 (#406): what the damage DOES depends on what the permanent
 	// is — marked on a creature, loyalty off a planeswalker, defense
@@ -8541,6 +8550,9 @@ func (g *Game) markCombatDamageFromFrameLocked(cardID uuid.UUID, amount int, fra
 		// #694: the frame IS the snapshot, so the tail is built from
 		// it rather than from a battlefield lookup.
 		damageTail: damageTailFromFrame(damageTailPermanent, frame),
+		// ADR 0108 PR 0, CR 510.2: the answered prompt's damage is the
+		// step's, so it joins the step's instance.
+		DamageInstance: g.combatDamageInstanceLocked(),
 	}
 	// S27 (#406): same CR 120.3 split the direct path uses. A CR 616
 	// ordering prompt lands the damage through the same tail when it
@@ -8572,6 +8584,8 @@ func (g *Game) markCombatDamageToPlayerFromFrameLocked(playerID uuid.UUID, amoun
 		// attacker may have died to blocker damage before the prompt
 		// resolved.
 		damageTail: damageTailFromFrame(damageTailPlayer, frame),
+		// ADR 0108 PR 0, CR 510.2: the step's instance.
+		DamageInstance: g.combatDamageInstanceLocked(),
 	}
 	// A CR 616 ordering prompt lands the damage through the same tail
 	// when it is answered (#694).
@@ -8602,6 +8616,8 @@ func (g *Game) markCombatDamageToPlayerLocked(playerID, source uuid.UUID, amount
 		// ride on it, and a CR 616 prompt is answered after the rest
 		// of the combat damage has landed.
 		damageTail: g.combatDamageTailLocked(damageTailPlayer, source, step),
+		// ADR 0108 PR 0, CR 510.2: the step's instance.
+		DamageInstance: g.combatDamageInstanceLocked(),
 	}
 	// A CR 616 ordering prompt lands the damage through the same tail
 	// when it is answered (#694). Before that fix the pause dropped the

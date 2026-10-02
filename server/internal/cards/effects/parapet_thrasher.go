@@ -67,15 +67,17 @@ func parapetThrasherTrigger() game.TriggeredAbility {
 		ModeDoing("This creature deals 4 damage to each other opponent.", nil,
 			func(item *game.StackItem, ctx *Context, _ int) error {
 				that := item.Trigger.Event.Target
-				for _, opp := range ctx.Opponents() {
-					if opp == that {
-						continue
+				return ctx.Game.DamageInstanceForEffect(func() error {
+					for _, opp := range ctx.Opponents() {
+						if opp == that {
+							continue
+						}
+						if err := ctx.Game.DealDamageToPlayerForEffect(item.SourceCardID, opp, 4); err != nil {
+							return err
+						}
 					}
-					if err := ctx.Game.DealDamageToPlayerForEffect(item.SourceCardID, opp, 4); err != nil {
-						return err
-					}
-				}
-				return nil
+					return nil
+				})
 			}),
 		ModeDoing("Exile the top card of your library. You may play it this turn.", nil,
 			exileTopCardYouMayPlayThisTurn),

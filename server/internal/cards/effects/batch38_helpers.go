@@ -45,15 +45,17 @@ func b38DamageEachPlayer(ctx *Context, amount int) error {
 	if amount <= 0 {
 		return nil
 	}
-	for _, p := range ctx.Game.Seats {
-		if p == nil || p.Eliminated {
-			continue
+	return ctx.Game.DamageInstanceForEffect(func() error {
+		for _, p := range ctx.Game.Seats {
+			if p == nil || p.Eliminated {
+				continue
+			}
+			if err := (DealDamage{Source: ctx.Source(), Target: p.ID, Amount: amount}).Apply(ctx); err != nil {
+				return err
+			}
 		}
-		if err := (DealDamage{Source: ctx.Source(), Target: p.ID, Amount: amount}).Apply(ctx); err != nil {
-			return err
-		}
-	}
-	return nil
+		return nil
+	})
 }
 
 // --- trigger conditions --------------------------------------------

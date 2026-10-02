@@ -254,12 +254,14 @@ func b26DamageEachPlayerTwiceTheirNonbasicLands(ctx *Context) error {
 		}
 		hits = append(hits, hit{p.ID, 2 * b26NonbasicLandsControlled(ctx.Game, p.ID)})
 	}
-	for _, h := range hits {
-		if err := (DealDamage{Source: ctx.Source(), Target: h.player, Amount: h.amount}).Apply(ctx); err != nil {
-			return err
+	return ctx.Game.DamageInstanceForEffect(func() error {
+		for _, h := range hits {
+			if err := (DealDamage{Source: ctx.Source(), Target: h.player, Amount: h.amount}).Apply(ctx); err != nil {
+				return err
+			}
 		}
-	}
-	return nil
+		return nil
+	})
 }
 
 // b26TuckAttackersTopOrBottomByOwnersChoice is Aetherspouts: every
