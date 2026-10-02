@@ -153,6 +153,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/lobby"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/roadmap"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/users"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/usersettings"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/util/appenv"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/util/envflag"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/ws"
@@ -582,6 +583,7 @@ func main() {
 		Revocations:       lobbyRevoker(revocations),
 		SessionEvictor:    hub,
 		DeckLibrary:       deckLibrary,
+		UserSettings:      newUserSettingsStore(database),
 		BugReporter:       bugReporter,
 		BugStore:          bugStore,
 		DeckRequestFiler:  deckRequestFiler,
@@ -940,6 +942,17 @@ func newDeckLibraryStore(database *db.DB) decklibrary.Store {
 		return decklibrary.NoStore{}
 	}
 	return decklibrary.NewSQLStore(database)
+}
+
+// newUserSettingsStore builds the account settings store (ADR 0110
+// section 4, migration 0008). No database means no store, and no
+// principal with a UserID to own a copy, so GET and PUT /me/settings
+// answer 403 and the client keeps its settings in the browser.
+func newUserSettingsStore(database *db.DB) usersettings.Store {
+	if database == nil {
+		return usersettings.NoStore{}
+	}
+	return usersettings.NewSQLStore(database)
 }
 
 // newDeckRequestStore builds ADR 0095's deck-request store (migration
