@@ -1,6 +1,15 @@
 <script lang="ts">
   // ChoicePromptModal opens when the wire's pending_choices queue
-  // has an entry addressed to the viewer. Generic counterpart to
+  // has an entry addressed to the viewer.
+  //
+  // ADR 0111 Delivery PR 5: the small kinds are not a modal any more.
+  // The yes/no family, pay_unless without picks, coin_call,
+  // loop_shortcut, mana_pick, choose_color and a short option_pick /
+  // entry_controller are answered INLINE in the action dock
+  // (lib/choiceDock.ts): this component still owns the prompt, its
+  // state, its answer and its refusal, and opens a dock request for it
+  // instead of a backdrop. Only the sheet kinds (PR 6) still render
+  // here. Generic counterpart to
   // DiscardPromptModal: that one handles the S13.4 cleanup-specific
   // map where chooser == owner; this one handles the S14+ queue
   // where chooser can differ from the pool owner (Thoughtseize:
@@ -23,14 +32,16 @@
   import Card from "./Card.svelte";
   import { isBoardAnsweredChoice } from "../../boardAnsweredChoice";
   import ModalLayer from "../ModalLayer.svelte";
+  import DockRequest from "./DockRequest.svelte";
+  import { onDestroy } from "svelte";
+  import { choiceRequest, inlineRefusal, isInlineChoice } from "../../choiceDock";
   import {
     rejectionForPrompt,
     type ChoiceRejection,
     type ChoiceSubmission,
     type ServerErrorLike,
   } from "../../choiceRejection";
-  import { doubledTriggerLabel } from "../../triggerDoubling";
-  import { colorButtons, colorPromptAnswerable, colorPromptCopy } from "../../manaPick";
+  import { colorButtons, colorPromptAnswerable } from "../../manaPick";
   import { colorPickOptions } from "../../manaSource";
   import ManaSymbolPicker from "./ManaSymbolPicker.svelte";
   import { payUnlessAnswer, waterbendLimit } from "../../waterbend";
@@ -41,7 +52,6 @@
     payCardsVerb,
     togglePayCard,
   } from "../../payCards";
-  import { mayCastCopy } from "../../mayCast";
   import { damageSourceCaption } from "../../damageSource";
   import { freeCastRequest, mayCastKeywordsThatOpenACast } from "../../freeCastRequest";
 
@@ -54,9 +64,13 @@
     // here instead (#624). Optional so a caller with no error feed
     // still mounts the modal.
     lastError?: ServerErrorLike | null;
+    // ADR 0111 PR 5: the action dock is on screen (Game.svelte's
+    // dockShown). An inline kind is drawn there, so without a dock (the
+    // dev replay scrubber's past frame) it is not drawn at all.
+    docked?: boolean;
   }
 
-  const { snap, viewerID, sendAction, lastError = null }: Props = $props();
+  const { snap, viewerID, sendAction, lastError = null, docked = true }: Props = $props();
 
   // First choice addressed to the viewer. Queue ordering: front of
   // list is "what the chooser sees next." One modal at a time; when
@@ -86,6 +100,8 @@
   });
 
   const open = $derived(active !== null);
+  // ADR 0111 PR 5: answered in the action dock, not in this modal.
+  const inline = $derived(isInlineChoice(active));
 
   // Source player (whose hand the picks come from). Used for the
   // modal header copy.
@@ -131,6 +147,7 @@
       rejection = null;
       submission = null;
       lastChoiceID = nextID;
+      inlineRefusal.set(null);
     }
   });
 
@@ -145,8 +162,14 @@
   // send another answer or the prompt changes.
   $effect(() => {
     const hit = rejectionForPrompt(submission, active?.id ?? null, lastError);
-    if (hit) rejection = hit;
+    if (hit) {
+      rejection = hit;
+      // ADR 0111 PR 5: an inline prompt shows the refusal in the dock,
+      // beside the board, so the strip's toast stands down for it.
+      if (inline && docked) inlineRefusal.set(lastError);
+    }
   });
+  onDestroy(() => inlineRefusal.set(null));
 
   // answer sends a resolve_choice for the open prompt. Every kind's
   // submit goes through here so a refusal of any of them is shown.
@@ -301,7 +324,6 @@
   // per colour (Nyx Lotus's devotion). A colour missing from the map
   // adds one. colorButtons keeps the server's order.
   const colorAmounts = $derived<Record<string, number>>(active?.color_amounts ?? {});
-  const hasColorAmounts = $derived(Object.keys(colorAmounts).length > 0);
   const buttons = $derived(colorButtons(active?.color_options, colorAmounts));
 
   // #742 choose_color branch — "choose a color" (CR 105.4), either as
@@ -316,8 +338,7 @@
   // their Coldsteel Heart will produce or the colour their Wash Out is
   // about to bounce, and those are opposite answers. The button ORDER
   // is the server's — it ranks the options by the same purpose — so
-  // nothing here sorts.
-  const colorCopy = $derived(colorPromptCopy(active?.color_purpose));
+  // nothing here sorts. The words are lib/choiceDock.ts's now (PR 5).
 
   function pickColor(color: string): void {
     if (!active || !viewerID) return;
@@ -529,9 +550,6 @@
       ? snap.exile?.cards?.find((c) => c.instance_id === active.may_cast_card)
       : active?.options?.[0],
   );
-  const mayCastWords = $derived(
-    mayCastCopy(active?.may_cast_keyword, active?.accept_label, active?.decline_label),
-  );
 
   // Shockland entry branch — "as this land enters, you may pay 2
   // life. If you don't, it enters tapped." Same {choice_id, apply}
@@ -553,8 +571,6 @@
   // done anything in between. Nothing extra is needed for that: the
   // queue drains in order and the modal reopens on the next frame.
   const isConfirm = $derived(active?.kind === "confirm");
-  const confirmAccept = $derived(active?.accept_label || "Yes");
-  const confirmDecline = $derived(active?.decline_label || "No");
 
   // #568 option_pick — "choose one of the following", CR 608.2. The
   // prompt an OPPONENT is asked while somebody else's spell resolves:
@@ -655,7 +671,6 @@
   // real answer ("stop here"), which leaves the table paused exactly
   // where the breaker put it, banner and all.
   const isLoopShortcut = $derived(active?.kind === "loop_shortcut");
-  const loopCount = $derived(active?.loop_count ?? 0);
   const loopMax = $derived(active?.loop_max_iterations ?? 1000);
   let loopIterations = $state(10);
   // Re-seed the field whenever a shortcut prompt opens, so a second
@@ -684,8 +699,6 @@
   // in this instruction. A stop button is shown only for effects such
   // as Fiery Gambit that explicitly allow ending a winning chain.
   const isCoinCall = $derived(active?.kind === "coin_call");
-  const coinCount = $derived(active?.coins ?? 1);
-  const coinWins = $derived(active?.wins ?? 0);
   const coinAllowStop = $derived(active?.allow_stop === true);
 
   function answerCoin(call: "heads" | "tails" | "stop"): void {
@@ -865,13 +878,13 @@
   // has no legal target (Reclamation Sage with no opponent artifact,
   // Eternal Witness with an empty graveyard). Until the S20 target
   // picker lands, the auto-targeter silently no-ops in that case —
-  // which reads as a bug. Warn the chooser and relabel "Yes".
-  const noLegalTarget = $derived(active?.no_legal_target === true);
-  const doubledLabel = $derived(doubledTriggerLabel(active?.doubled_by, active?.doubled_by_name));
+  // which reads as a bug. Warn the chooser and relabel "Yes". (The
+  // warning and a doubled trigger's note are lib/choiceDock.ts's now.)
 
   // Y / N answer the yes-no prompts (optional replacement, may-
-  // trigger, pay-unless) from the keyboard; the footer shows the
-  // hint. Ignored while typing in a field.
+  // trigger, pay-unless) from the keyboard; each dock button shows its
+  // key in a cap (the sheet's footer, for pay_unless with picks).
+  // Ignored while typing in a field.
   const isYesNo = $derived(
     isOptionalReplacement ||
       isTriggerPrompt ||
@@ -929,6 +942,37 @@
     }
     answer({ apply });
   }
+
+  // ADR 0111 PR 5: the open prompt as a dock request, when it is one of
+  // the inline kinds. The dock draws it; this component keeps the
+  // answer and its refusal.
+  const inlineRequest = $derived(
+    active && inline
+      ? choiceRequest(
+          active,
+          {
+            sourceName: triggerSourceName(active.source),
+            mayCastCardName: mayCastCard?.name || undefined,
+            loopIterations,
+            loopAnswerable,
+            body: isManaPick
+              ? manaBody
+              : isColorChoice
+                ? colorBody
+                : isLoopShortcut
+                  ? loopBody
+                  : undefined,
+            rejection: rejection?.message ?? null,
+          },
+          {
+            onAnswer: answerOptional,
+            onCoin: answerCoin,
+            onOption: answerOptionPick,
+            onLoop: submitLoopShortcut,
+          },
+        )
+      : null,
+  );
 
   // sourceCardName resolves the source-card display name for a
   // trigger prompt. Walks battlefield + every seated player's
@@ -1064,7 +1108,59 @@
   }
 </script>
 
-{#if open && active}
+<!-- ADR 0111 PR 5: the inline kinds' bodies, drawn inside the dock's
+     prompt area. -->
+{#snippet manaBody()}
+  <!-- #1438: the same symbol picker a click on a multi-ability source
+       opens. No onCancel: the source is already tapped when the server
+       asks. Keys 1-9 pick. -->
+  <div class="dock-mana">
+    <ManaSymbolPicker
+      options={colorPickOptions(buttons, "add")}
+      onPick={(o) => o.color && pickColor(o.color)}
+      label="mana colors"
+    />
+  </div>
+{/snippet}
+{#snippet colorBody()}
+  <div class="dock-mana">
+    <ManaSymbolPicker
+      options={colorPickOptions(buttons, "choose")}
+      onPick={(o) => o.color && pickColor(o.color)}
+      label="colors"
+    />
+  </div>
+{/snippet}
+{#snippet loopBody()}
+  <label class="loop-iterations">
+    <span>More times</span>
+    <input
+      type="number"
+      min="0"
+      max={loopMax}
+      step="1"
+      bind:value={loopIterations}
+      aria-label="How many more times to resolve it"
+      onkeydown={(e) => {
+        // The number typed is the answer: Enter in the field sends it.
+        // (The dock's own Enter stands down while a field has focus.)
+        if (e.key !== "Enter" || !loopAnswerable) return;
+        e.preventDefault();
+        submitLoopShortcut(loopIterations);
+      }}
+    />
+  </label>
+{/snippet}
+
+{#if open && active && inline}
+  {#if docked && inlineRequest}
+    <!-- Not a modal: it blurs and blocks nothing. The layer is for the
+         keys it owns (Y / N, H / T / S, 1-9), so the global shortcuts
+         stand down while it is open, as they did (ADR 0111 §2). -->
+    <ModalLayer />
+    <DockRequest request={inlineRequest} />
+  {/if}
+{:else if open && active}
   <ModalLayer />
   <div class="prompt-backdrop" role="dialog" aria-modal="true" aria-labelledby="choice-title">
     <div class="prompt-modal">
@@ -1220,102 +1316,6 @@
             onclick={submitScry}>Done</button
           >
         </div>
-      {:else if isManaPick}
-        <h2 id="choice-title">
-          {active.reason || "Pick a color"}
-          <span class="prompt-src" aria-hidden="true">mana ability</span>
-        </h2>
-        <p class="prompt-hint">
-          {#if hasColorAmounts}
-            Choose one color. All of this mana is added in that color.
-          {:else}
-            Choose a color to add to your mana pool.
-          {/if}
-        </p>
-        <!-- #1438: the same symbol picker a click on a multi-ability
-             source opens, so Birds, Treasure, Command Tower and an
-             auto-tap colour question all look alike. No onCancel: the
-             source is already tapped when the server asks. -->
-        <ManaSymbolPicker
-          options={colorPickOptions(buttons, "add")}
-          onPick={(o) => o.color && pickColor(o.color)}
-          label="mana colors"
-        />
-      {:else if isColorChoice}
-        <h2 id="choice-title">
-          {active.reason || colorCopy.title}
-          <span class="prompt-src" aria-hidden="true">choose a color · CR 105.4</span>
-        </h2>
-        <!-- The hint is the card's declared purpose put into words
-             (#780 / #986). A prompt with no purpose falls back to the
-             neutral line, because without one the view genuinely does
-             not know whether the colour is remembered on a permanent
-             or used once as a spell resolves. -->
-        <p class="prompt-hint">{colorCopy.hint}</p>
-        <ManaSymbolPicker
-          options={colorPickOptions(buttons, "choose")}
-          onPick={(o) => o.color && pickColor(o.color)}
-          label="colors"
-        />
-      {:else if isCoinCall}
-        <h2 id="choice-title">
-          {active.reason || "Call the flip"}
-          <span class="prompt-src" aria-hidden="true">coin flip</span>
-        </h2>
-        <p class="prompt-hint">
-          Call heads or tails for {coinCount}
-          {coinCount === 1 ? "coin" : "coins"}.
-          {#if coinWins > 0}
-            You have won {coinWins} {coinWins === 1 ? "flip" : "flips"} so far.
-          {/if}
-        </p>
-        <div class="prompt-foot">
-          <span class="prompt-count">
-            <span class="kbd">H</span> heads · <span class="kbd">T</span> tails
-            {#if coinAllowStop}
-              · <span class="kbd">S</span> stop{/if}
-          </span>
-          <button type="button" onclick={() => answerCoin("heads")}>Heads</button>
-          <button type="button" class="primary" onclick={() => answerCoin("tails")}>Tails</button>
-          {#if coinAllowStop}
-            <button type="button" class="ghost" onclick={() => answerCoin("stop")}>Stop</button>
-          {/if}
-        </div>
-      {:else if isLoopShortcut}
-        <h2 id="choice-title">
-          {active.reason || "This ability keeps resolving"}
-          <span class="prompt-src" aria-hidden="true">shortcut · CR 732</span>
-        </h2>
-        <p class="prompt-hint">
-          It has resolved {loopCount}
-          {loopCount === 1 ? "time" : "times"} this turn with nobody doing anything in between. Say how
-          many more times it should resolve and the table will run them without stopping; stop here leaves
-          auto-pass paused so you can step through by hand.
-        </p>
-        <div class="prompt-foot">
-          <label class="loop-iterations">
-            <span>More times</span>
-            <input
-              type="number"
-              min="0"
-              max={loopMax}
-              step="1"
-              bind:value={loopIterations}
-              aria-label="How many more times to resolve it"
-            />
-          </label>
-          <button type="button" class="ghost" onclick={() => submitLoopShortcut(0)}
-            >Stop here</button
-          >
-          <button
-            type="button"
-            class="primary"
-            disabled={!loopAnswerable}
-            onclick={() => submitLoopShortcut(loopIterations)}
-          >
-            Resolve {loopIterations} more
-          </button>
-        </div>
       {:else if isCreatureTypePick}
         <h2 id="choice-title">
           {active.reason || "Choose a creature type"}
@@ -1375,74 +1375,6 @@
             onclick={() => pickCardName(nameFilter)}
           >
             Name “{nameFilter.trim() || "…"}”
-          </button>
-        </div>
-      {:else if isOptionalReplacement}
-        <h2 id="choice-title">
-          {active.reason || "Apply replacement?"}
-          <span class="prompt-src" aria-hidden="true">optional replacement</span>
-        </h2>
-        <p class="prompt-hint">
-          You (the affected player) decide whether this substitution applies.
-        </p>
-        <div class="prompt-foot">
-          <span class="prompt-count"><span class="kbd">Y</span> / <span class="kbd">N</span></span>
-          <button type="button" onclick={() => answerOptional(false)}>No</button>
-          <button type="button" class="primary" onclick={() => answerOptional(true)}>Yes</button>
-        </div>
-      {:else if isTriggerPrompt}
-        <h2 id="choice-title">
-          {active.reason || `${triggerSourceName(active.source)} triggered`}
-          <span class="prompt-src" aria-hidden="true">may trigger · CR 603.5</span>
-          {#if doubledLabel}
-            <span class="prompt-src">{doubledLabel}</span>
-          {/if}
-        </h2>
-        {#if noLegalTarget}
-          <p class="prompt-hint warn">
-            No legal target — “Yes” passes without effect (picker lands in S20).
-          </p>
-        {:else}
-          <p class="prompt-hint">Fire the ability, or let it pass without effect.</p>
-        {/if}
-        <div class="prompt-foot">
-          <span class="prompt-count"><span class="kbd">Y</span> / <span class="kbd">N</span></span>
-          <button type="button" onclick={() => answerOptional(false)}>No</button>
-          <button type="button" class="primary" onclick={() => answerOptional(true)}>Yes</button>
-        </div>
-      {:else if isMayCast}
-        <h2 id="choice-title">
-          {active.reason || "Cast it without paying its mana cost?"}
-          <span class="prompt-src" aria-hidden="true">{mayCastWords.source}</span>
-        </h2>
-        <p class="prompt-hint">
-          {#if mayCastCard}
-            <strong>{mayCastCard.name}</strong> is exiled face up.
-          {/if}
-          {mayCastWords.hint}
-        </p>
-        <div class="prompt-foot">
-          <span class="prompt-count"><span class="kbd">Y</span> / <span class="kbd">N</span></span>
-          <button type="button" onclick={() => answerOptional(false)}>{mayCastWords.decline}</button
-          >
-          <button type="button" class="primary" onclick={() => answerOptional(true)}>
-            {mayCastWords.accept}
-          </button>
-        </div>
-      {:else if isEntryPayLife}
-        <h2 id="choice-title">
-          {active.reason || `Pay ${active.pay_cost ?? ""} as it enters?`}
-          <span class="prompt-src" aria-hidden="true">as this enters · CR 614</span>
-        </h2>
-        <p class="prompt-hint">
-          Pay {active.pay_cost ?? "the life"} and it enters untapped; don't, and it enters tapped. Nothing
-          has entered yet — this choice is part of the entry, not a trigger.
-        </p>
-        <div class="prompt-foot">
-          <span class="prompt-count"><span class="kbd">Y</span> / <span class="kbd">N</span></span>
-          <button type="button" onclick={() => answerOptional(false)}>Enter tapped</button>
-          <button type="button" class="primary" onclick={() => answerOptional(true)}>
-            Pay {active.pay_cost ?? ""}
           </button>
         </div>
       {:else if isOptionPick}
@@ -1535,22 +1467,6 @@
             Choose
           </button>
         </div>
-      {:else if isConfirm}
-        <h2 id="choice-title">
-          {active.reason || "Choose one"}
-          <span class="prompt-src" aria-hidden="true">choose one</span>
-        </h2>
-        <p class="prompt-hint">
-          Both answers are legal — this is a choice between two things the card does, not a
-          yes-or-no. There may be another question after it.
-        </p>
-        <div class="prompt-foot">
-          <span class="prompt-count"><span class="kbd">Y</span> / <span class="kbd">N</span></span>
-          <button type="button" onclick={() => answerOptional(false)}>{confirmDecline}</button>
-          <button type="button" class="primary" onclick={() => answerOptional(true)}>
-            {confirmAccept}
-          </button>
-        </div>
       {:else if isPayUnless}
         <h2 id="choice-title">
           {active.reason || `${triggerSourceName(active.source)} — pay ${active.pay_cost ?? ""}?`}
@@ -1588,6 +1504,7 @@
             <p class="prompt-hint sub">{payCardPicks.length} / {payCards.count} chosen</p>
           {/if}
         {:else}
+          <!-- A waterbend tap list without card picks (#1311). -->
           <p class="prompt-hint">
             Pay {active.pay_cost ?? "the cost"} from your pool (untapped sources auto-tap if it's short),
             or don't and let {triggerSourceName(active.source)} do its thing.
@@ -1969,6 +1886,18 @@
 <svelte:window onkeydown={handleKey} />
 
 <style>
+  /* ADR 0111 PR 5: the mana symbols in the dock's prompt area. Five
+     colours fit one row of the 300-380px dock; a sixth wraps. */
+  .dock-mana :global(.mana-picker) {
+    gap: 5px;
+  }
+  .dock-mana :global(.mana-option) {
+    flex: 1 1 0;
+    min-width: 50px;
+    max-width: 72px;
+    min-height: 64px;
+    padding: 8px 2px 6px;
+  }
   /* #624: the server's reason for refusing this prompt's answer. Below
      the footer, next to the button that was just pressed. */
   .prompt-rejection {

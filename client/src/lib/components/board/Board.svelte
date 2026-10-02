@@ -2419,7 +2419,7 @@
     {/if}
     {@render attention?.()}
   </div>
-  <VotingPanel {view} {viewerID} sendAction={guardedSendAction} />
+  <VotingPanel {view} {viewerID} sendAction={guardedSendAction} {docked} />
   <SacrificeCostModal
     source={sacrificePrompt?.card ?? null}
     label={sacrificePrompt?.ability.sacrifice_label ?? "a permanent"}

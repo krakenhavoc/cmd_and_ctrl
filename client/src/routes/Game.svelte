@@ -42,6 +42,7 @@
   import ActionDock from "../lib/components/board/ActionDock.svelte";
   import DockRequest from "../lib/components/board/DockRequest.svelte";
   import { attackRowRequest, blockRequest, combatSelectionRequest } from "../lib/combatDock";
+  import { gameOverRequest, inlineRefusal, voteRequest } from "../lib/choiceDock";
   import { insufficientManaRequest, targetingRequest } from "../lib/targetingDock";
   import RevealBanner from "../lib/components/board/RevealBanner.svelte";
   import BotFeed from "../lib/components/BotFeed.svelte";
@@ -1349,6 +1350,25 @@
         })
       : null,
   );
+  // ---- Inline choices in the action dock (ADR 0111 PR 5) ----
+  // The pending choices themselves are ChoicePromptModal's (it opens
+  // their requests). These two are the table's: an open vote (a `step`
+  // request: it never stops the game, so `next` stays), and, once the
+  // game has ended, Back to lobby as the primary. The game-over banner
+  // stays in the strip.
+  const voteDockRequest = $derived(
+    view?.vote && viewerID
+      ? voteRequest({
+          vote: view.vote,
+          viewerID,
+          seats: view.seats,
+          onCast: (option) => sendAction("cast_vote", { option }, viewerID ?? undefined),
+          onEnd: () => sendAction("end_vote"),
+        })
+      : null,
+  );
+  const gameOverDockRequest = $derived(gameEnded ? gameOverRequest(back) : null);
+
   // The refused card's name, wherever it is (a hand, the command zone,
   // a graveyard or exile it is cast from).
   function cardNameAnywhere(cardID: string): string | undefined {
@@ -1817,10 +1837,12 @@
             <!-- ADR 0111 PR 4: the insufficient-mana prompt (Auto-tap &
                  cast / Cast anyway) is a request in the action dock
                  (lib/targetingDock.ts), not a strip toast. -->
-            {#if $lastError && !(manaOverride && dockShown) && !(bulkRefusal && attackRowShown)}
+            {#if $lastError && !(manaOverride && dockShown) && !(bulkRefusal && attackRowShown) && $lastError !== $inlineRefusal}
               <!-- A refusal of the last attack-with-all is answered in
                    the dock's attack row (ADR 0111 PR 3) while the row is
-                   there; otherwise it is an ordinary rejection. -->
+                   there; otherwise it is an ordinary rejection. A
+                   refusal of an inline choice's answer is shown in the
+                   dock as "Not accepted" (PR 5), not here as well. -->
               <div class="att toast error" role="alert" aria-live="polite">
                 <span class="att-label danger">rejected</span>
                 <span class="att-text">
@@ -1855,9 +1877,13 @@
                     {gameOver.text}
                   {/if}
                 </span>
-                <button type="button" class="primary att-btn" onclick={back}>
-                  Back to lobby
-                </button>
+                {#if !dockShown}
+                  <!-- ADR 0111 PR 5: with the dock on screen, Back to
+                       lobby is its primary; the banner stays here. -->
+                  <button type="button" class="primary att-btn" onclick={back}>
+                    Back to lobby
+                  </button>
+                {/if}
               </div>
             {:else if viewerEliminated}
               <div class="att eliminated" role="status">
@@ -1926,6 +1952,12 @@
         {#if manaDockRequest}
           <DockRequest request={manaDockRequest} />
         {/if}
+        {#if voteDockRequest}
+          <DockRequest request={voteDockRequest} />
+        {/if}
+        {#if gameOverDockRequest}
+          <DockRequest request={gameOverDockRequest} />
+        {/if}
         <ActionDock
           {view}
           {viewerHasPriority}
@@ -1992,7 +2024,13 @@
       <DiscardPromptModal snap={view} {viewerID} {sendAction} />
       <!-- lastError too: this modal's backdrop covers the board's
            rejection toast, so it shows a refusal of its own answer. -->
-      <ChoicePromptModal snap={view} {viewerID} {sendAction} lastError={$lastError} />
+      <ChoicePromptModal
+        snap={view}
+        {viewerID}
+        {sendAction}
+        lastError={$lastError}
+        docked={dockShown}
+      />
       <AutoTapPreviewModal
         {gameID}
         snap={view}

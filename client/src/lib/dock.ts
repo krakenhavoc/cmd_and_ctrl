@@ -76,6 +76,11 @@ export interface DockAction {
   note?: string;
   // The one emphasised button of a prompt row (not the bar's primary).
   emphasis?: boolean;
+  // A toggle's state, drawn as aria-pressed (a vote's own ballot).
+  pressed?: boolean;
+  // A row button pushed to the row's far end, apart from the options
+  // (a vote's "end vote").
+  alignEnd?: boolean;
 }
 
 // The server refused something the request sent, and the request has
@@ -84,6 +89,9 @@ export interface DockAction {
 export interface DockRefusal {
   tag: string;
   text: string;
+  // gold (the default) for a refusal with an answer to offer; danger
+  // for a bare "Not accepted" (an inline choice's refused answer, #624).
+  tone?: "gold" | "danger";
   detail?: string;
   actions: DockAction[];
   onDismiss?: () => void;
@@ -106,17 +114,33 @@ export interface DockRequest {
   // The question line is a polite live region (a combat selection's
   // hint is announced, as the strip's was).
   live?: boolean;
+  // A muted line under the question: what the answer does (PR 5's
+  // inline choices carry their modal's hint here). `hintWarn` draws it
+  // as a warning (a "may" trigger with no legal target).
+  hint?: string;
+  hintWarn?: boolean;
   // A row of option buttons under the question, with an optional lead
-  // ("Attack all →").
+  // ("Attack all →"). `rowLayout: "stack"` draws one full-width button
+  // per line, for option labels that are sentences (option_pick).
   rowLead?: string;
   row?: DockAction[];
+  rowLayout?: "wrap" | "stack";
   refusal?: DockRefusal | null;
   // The action bar, for a rank that takes it.
   primary?: DockAction | null;
   secondary?: DockAction[];
-  // Reserved for Delivery PRs 5 and 6: an inline choice's own body, or
-  // a sheet's. Drawn in the prompt area, under the question.
+  // An inline choice's own body (PR 5: the mana symbols, the loop
+  // count), or a sheet's (PR 6). Drawn in the prompt area, under the
+  // question.
   body?: Snippet;
+  // ADR 0111 §1, keyboard focus: when a choice or a block declaration
+  // opens and focus is on the body, the dock moves focus to its
+  // primary ("primary", the default) — or, for a question whose
+  // primary must not be one stray Enter away (a yes/no, PR 5: "a stray
+  // Enter must not accept an optional effect or pay a cost"), to the
+  // request's dialog itself ("dialog"), so a screen reader still lands
+  // on the question and the keys it names (Y / N) answer it.
+  focus?: "primary" | "dialog";
 }
 
 export interface DockHandle {

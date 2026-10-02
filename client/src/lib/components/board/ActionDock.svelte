@@ -152,11 +152,17 @@
   // primary takes focus, so a keyboard player answers it at once and a
   // screen reader lands on it. Once per request, and never on an
   // ordinary priority frame: that would steal focus every pass.
+  //
+  // PR 5: a request may ask for its dialog to take focus instead
+  // (`focus: "dialog"`): a yes/no question, whose "Yes" must not be one
+  // stray Enter away. The dialog is focusable for that (tabindex -1)
+  // and is not a control, so Enter on it presses nothing.
   let primaryEl: HTMLButtonElement | null = $state(null);
+  let dialogEl: HTMLElement | null = $state(null);
   let focusedFor: string | null = null;
   $effect(() => {
     const r = req;
-    const el = primaryEl;
+    const el = r?.focus === "dialog" ? dialogEl : primaryEl;
     if (!r) {
       focusedFor = null;
       return;
@@ -322,7 +328,9 @@
       type="button"
       class={cls}
       class:emphasis={a.emphasis}
+      class:align-end={a.alignEnd}
       disabled={a.disabled}
+      aria-pressed={a.pressed}
       aria-label={a.ariaLabel}
       aria-keyshortcuts={actionKeys(a)}
       title={actionTitle(a)}
@@ -340,7 +348,14 @@
   <!-- The open request (lib/dock.ts): one non-modal dialog holding its
        question, its options and, when it takes the bar, its buttons. -->
   {#if req}
-    <div class="dock-request" role="dialog" aria-label={req.label} data-rank={req.rank}>
+    <div
+      class="dock-request"
+      role="dialog"
+      aria-label={req.label}
+      data-rank={req.rank}
+      tabindex={req.focus === "dialog" ? -1 : undefined}
+      bind:this={dialogEl}
+    >
       <div class="dock-prompt" role={req.group ? "group" : undefined} aria-label={req.group}>
         {#if req.question}
           <div
@@ -355,11 +370,14 @@
             >
           </div>
         {/if}
+        {#if req.hint}
+          <p class="dock-hint" class:warn={req.hintWarn}>{req.hint}</p>
+        {/if}
         {#if req.body}
           {@render req.body()}
         {/if}
         {#if req.row && req.row.length > 0}
-          <div class="dock-row">
+          <div class="dock-row" class:stack={req.rowLayout === "stack"}>
             {#if req.rowLead}<span class="row-lead">{req.rowLead}</span>{/if}
             {#each req.row as a (a.id)}
               {@render actionButton(a, "dock-btn row-btn")}
@@ -367,8 +385,8 @@
           </div>
         {/if}
         {#if req.refusal}
-          <div class="dock-refusal" role="alert">
-            <span class="q-tag tone-gold">{req.refusal.tag}</span>
+          <div class="dock-refusal" class:danger={req.refusal.tone === "danger"} role="alert">
+            <span class="q-tag tone-{req.refusal.tone ?? 'gold'}">{req.refusal.tag}</span>
             <span class="q-text"
               ><strong>{req.refusal.text}</strong>{#if req.refusal.detail}<span class="q-detail"
                   >{` · ${req.refusal.detail}`}</span
@@ -390,7 +408,7 @@
           </div>
         {/if}
       </div>
-      {#if reqTakesBar}
+      {#if reqTakesBar && (req.primary || (req.secondary?.length ?? 0) > 0)}
         <!-- The request's own bar: its secondaries left, its one primary
              in the corner. `next` and Pass turn give way until it closes. -->
         <div class="dock-bar">
@@ -768,6 +786,44 @@
     width: 8px;
     height: 8px;
     border-radius: 50%;
+  }
+  /* An inline choice's hint (PR 5): what the answer does. */
+  .dock-hint {
+    margin: 0;
+    font-size: 0.72rem;
+    line-height: 1.35;
+    color: var(--fg-dim);
+  }
+  .dock-hint.warn {
+    color: var(--danger);
+  }
+  .dock-request:focus {
+    outline: none;
+  }
+  .dock-request:focus-visible {
+    outline: 1px solid color-mix(in srgb, var(--accent) 70%, transparent);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+  /* option_pick: one option per line, full width. */
+  .dock-row.stack {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .dock-row.stack .dock-btn.row-btn {
+    justify-content: flex-start;
+    min-height: 30px;
+    padding: 4px 10px;
+  }
+  .dock-btn.align-end {
+    margin-left: auto;
+  }
+  .dock-btn[aria-pressed="true"] {
+    border-color: var(--accent);
+  }
+  .dock-refusal.danger {
+    border-color: color-mix(in srgb, var(--danger) 45%, transparent);
+    background: color-mix(in srgb, var(--danger) 10%, transparent);
   }
   .dock-refusal {
     display: flex;

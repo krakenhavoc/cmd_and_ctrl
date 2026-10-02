@@ -11,13 +11,31 @@
 // that appears silently under a full-screen backdrop is a refusal the
 // player does not know about), and that it appears only once they have
 // answered. All three live in the markup, so they need a DOM.
+//
+// ADR 0111 PR 5: pay_unless without picks is answered inline in the
+// action dock now, so the refusal is drawn in the dock's prompt area,
+// inside the request's dialog. The harness mounts the real dock.
 
-import { describe, it, expect, afterEach } from "vitest";
+import { describe, it, expect, afterEach, beforeEach } from "vitest";
 
-import ChoicePromptModal from "./components/board/ChoicePromptModal.svelte";
+import ChoiceDockHarness from "./test/ChoiceDockHarness.svelte";
+import { _resetForTests as resetDock } from "./dock";
+import { _resetForTests as resetModals } from "./modalLayers";
 import type { ActionType, GameView } from "./protocol";
 import { render, click, cleanup } from "./test/render.svelte";
 
+class FakeObserver {
+  observe(): void {}
+  unobserve(): void {}
+  disconnect(): void {}
+}
+beforeEach(() => {
+  const g = globalThis as Record<string, unknown>;
+  g.ResizeObserver ??= FakeObserver;
+  g.IntersectionObserver ??= FakeObserver;
+  resetDock();
+  resetModals();
+});
 afterEach(cleanup);
 
 // A snapshot with one pay_unless prompt addressed to "me". pay_unless
@@ -61,7 +79,7 @@ function mountPrompt(): {
 } {
   const sent: Sent[] = [];
   const view = render(
-    ChoicePromptModal as never,
+    ChoiceDockHarness as never,
     {
       snap: snapWithPrompt(),
       viewerID: "me",
@@ -79,8 +97,14 @@ describe("ChoicePromptModal — the server's refusal of the open prompt", () => 
   it("renders the prompt for the choice addressed to the viewer", () => {
     const { container } = mountPrompt();
 
-    const title = container.querySelector("#choice-title");
-    expect(title?.textContent).toContain("Pay {2} or Propaganda stops the attack");
+    // The dock's dialog keeps the modal's name: the reason.
+    const dialog = container.querySelector(
+      '[role="dialog"][aria-label="Pay {2} or Propaganda stops the attack"]',
+    );
+    expect(dialog).not.toBeNull();
+    expect(dialog?.closest('section[aria-label="actions"]')).not.toBeNull();
+    // Not a modal: no backdrop.
+    expect(container.querySelector(".prompt-backdrop")).toBeNull();
     // Nothing has been refused yet, so nothing is announced.
     expect(alertText(container)).toBeNull();
   });
@@ -112,8 +136,7 @@ describe("ChoicePromptModal — the server's refusal of the open prompt", () => 
     expect(sent[0].params).toMatchObject({ choice_id: "choice-1", apply: true });
 
     // The server refuses it. The prompt is still open, so the reason
-    // has to be readable here — under the modal's own backdrop the
-    // board's toast is not visible.
+    // has to be readable here, next to the buttons that answer it.
     setProps({
       lastError: { code: "cannot_pay", message: "not enough mana in pool", at: new Date() },
     });
