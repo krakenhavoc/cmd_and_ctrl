@@ -98,6 +98,7 @@ planned just-in-time from the S12 pain-point triage.
 | S52     | Rule gates, land types, mana and cost components                     | 7     | [#1909](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1909) | —          | planned     |
 | S53     | Faces, zones, and shared payment (ADR first)                         | 7     | [#1910](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1910) | —          | planned     |
 | S54     | Tutorial: a scripted practice game                                   | 7     | [#1911](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1911) | —          | planned     |
+| S55     | Remember me: durable sign-in, account settings, admins and saved setups | 6  | [#1950](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1950) | —          | in progress |
 
 ### How to read the status column
 
@@ -3209,6 +3210,35 @@ ADR 0076 called this "its own sprint, number unassigned"; its issues moved here 
 ### Status
 
 **Planned.** Nothing has shipped under this name.
+
+---
+
+## S55 — Remember me: durable sign-in, account settings, admins and saved setups
+
+**Phase:** 6 · **Goal:** a signed-in person stays signed in, skips Discord's screen on a repeat sign-in, and finds their settings, tablemates, last table setup and saved decks waiting, per [ADR 0110](decisions/0110-remember-me.md). Tracking issue [#1950](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1950).
+
+Planned 2026-10-02, when the owner reported that every visit goes through Discord's authorization again and answered the ADR's thirteen decisions (option (a) on all eight questions). The members are the ADR's seven Delivery PRs; the ADR's Delivery table says what each needs and what can run beside it.
+
+- [x] PR 1 — the sign-in fix (bug, first): one TTL rule for every session mint (`issueFor`), a signed-in spectator keeps their user, `POST /join` and the login page accept a signed-in seat, a reclaim by the seat's own user carries it, `GET /me/decks` answers 403, and Discord `prompt=none` with one `consent` retry and "a different Discord account" (ADR 0110 §1 items 1–4 and 7, §2)
+- [ ] PR 2 — renewal on use and the saved identity: `POST /me/session` and the client's renew and reinstall (§1 items 5 and 6, owner answer 1)
+- [ ] PR 3 — admins: `CMDCTRL_DISCORD_ADMIN_USER_IDS` on the server, `isAdmin` / `isServerCredential`, `/me`'s `admin`, WebSocket parity with an audit log, and CD that always writes the allowlist (§3, owner answers 3 and 4)
+- [x] PR 4 — schema: migration `0008` and its stores, no routes ([#1967](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1967))
+- [ ] PR 5 — settings sync: `/me/settings`, `SYNCED_FIELDS`, account-wins merge, and the practice-table rule (§4, owner answers 5 and 6)
+- [ ] PR 6 — saved decks: coverage on read, delete, rename, saved link imports, `#/decks` (§6, owner answer 7)
+- [ ] PR 7 — players and setups: setup capture and apply, `POST /games` for every signed-in player, tablemates in the create flow, last deck, guest name pre-fill (§5, owner answers 2 and 8)
+
+### Exit criteria
+
+From the tracker, [#1950](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1950):
+
+1. ADR 0110 is accepted and every PR in its Delivery table has merged.
+2. A signed-in player who joins a table is still signed in after 12 hours, and a repeat sign-in skips Discord's screen. PR 1 alone meets it; it is checked on cmd-dev with a real Discord account once PR 1 deploys, because Discord's `prompt=none` behaviour for a first-time user is undocumented.
+3. The sprint section in `docs/sprints.md` is written and its index row added (this section, with PR 1).
+4. Lands on `main` with the next promotion.
+
+### Status
+
+**In progress.** PR 4 (schema) has merged; PR 1 is in review.
 
 ---
 

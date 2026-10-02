@@ -56,6 +56,10 @@ func (a *revokingAuthenticator) Issue(ctx context.Context, p Principal, ttl time
 	return a.inner.Issue(ctx, p, ttl)
 }
 
+func (a *revokingAuthenticator) IssueUntil(ctx context.Context, p Principal, expiresAt time.Time) (string, Principal, error) {
+	return a.inner.IssueUntil(ctx, p, expiresAt)
+}
+
 func (a *revokingAuthenticator) Validate(ctx context.Context, credential string) (Principal, error) {
 	p, err := a.inner.Validate(ctx, credential)
 	if err != nil {

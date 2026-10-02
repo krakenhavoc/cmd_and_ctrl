@@ -117,6 +117,61 @@ func TestStateStoreLinkRoundTrip(t *testing.T) {
 	if e.CodeVerifier == "" {
 		t.Error("link entry has no PKCE verifier")
 	}
+	if e.Prompt != PromptConsent {
+		t.Errorf("link entry prompt %q, want consent (ADR 0110 §2 item 4)", e.Prompt)
+	}
+}
+
+// TestStateStorePrompts: a sign-in parks prompt=none, and the caller
+// can ask for consent instead.
+func TestStateStorePrompts(t *testing.T) {
+	s := NewStateStore()
+	st, _, _ := s.Start(uuid.Nil, "")
+	if e, _ := s.Consume(st); e.Prompt != PromptNone {
+		t.Errorf("Start parked prompt %q, want none", e.Prompt)
+	}
+	st, _, _ = s.StartWithPrompt(uuid.Nil, "", PromptConsent)
+	if e, _ := s.Consume(st); e.Prompt != PromptConsent {
+		t.Errorf("StartWithPrompt(consent) parked prompt %q", e.Prompt)
+	}
+}
+
+// TestStateStoreRetryIsOneShot is ADR 0110 §2 item 2: a prompt=none
+// round gets exactly one consent retry, for the same flow, with fresh
+// state and PKCE; the retry itself is never retried.
+func TestStateStoreRetryIsOneShot(t *testing.T) {
+	s := NewStateStore()
+	game := uuid.New()
+	st, ch, _ := s.Start(game, "invite-1")
+	first, err := s.Consume(st)
+	if err != nil {
+		t.Fatalf("Consume: %v", err)
+	}
+
+	st2, ch2, err := s.Retry(first)
+	if err != nil {
+		t.Fatalf("Retry: %v", err)
+	}
+	if st2 == st || ch2 == ch {
+		t.Error("the retry reused the refused round's state or challenge")
+	}
+	second, err := s.Consume(st2)
+	if err != nil {
+		t.Fatalf("Consume retry: %v", err)
+	}
+	if second.Prompt != PromptConsent || second.GameID != game || second.InviteToken != "invite-1" {
+		t.Errorf("retry entry = %+v, want the same invite flow with consent", second)
+	}
+	if second.CodeVerifier == "" || second.CodeVerifier == first.CodeVerifier {
+		t.Error("the retry needs its own PKCE verifier")
+	}
+
+	if _, _, err := s.Retry(second); err != ErrNoRetry {
+		t.Errorf("retrying a consent round: %v, want ErrNoRetry", err)
+	}
+	if _, _, err := s.Retry(StateEntry{}); err != ErrNoRetry {
+		t.Errorf("retrying an entry with no prompt: %v, want ErrNoRetry", err)
+	}
 }
 
 func TestStateStoreLinkNeedsASeat(t *testing.T) {

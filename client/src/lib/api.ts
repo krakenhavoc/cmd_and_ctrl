@@ -634,12 +634,19 @@ export async function discordAuthEnabled(): Promise<boolean> {
 // A plain href rather than a fetch, for the same reason as the Join
 // page's variant — the server answers with a 302 to Discord, and
 // only a real navigation lands the user on the consent screen.
-export function discordLoginHref(): string {
-  return "/auth/discord/start";
+//
+// The server sends Discord prompt=none (ADR 0110 §2), so a repeat
+// sign-in skips Discord's screen and silently uses whichever Discord
+// account the browser is signed in to. `consent` asks for the screen
+// instead: "Sign in with a different Discord account", since Discord's
+// consent screen has its own account switcher.
+export function discordLoginHref(opts: { consent?: boolean } = {}): string {
+  return opts.consent ? "/auth/discord/start?prompt=consent" : "/auth/discord/start";
 }
 
 // discordLinkHref starts the link round-trip for a seated player (GET
-// /auth/discord/link, S34 sub-PR 4): Discord's consent screen, then back
+// /auth/discord/link, S34 sub-PR 4): Discord's consent screen (always:
+// the server sends prompt=consent for a link, ADR 0110 §2), then back
 // to the same seat, now carrying the account. A navigation, like the
 // other two, and it relies on the session COOKIE — the server binds the
 // round-trip to the browser whose cookie holds the seat. `game` is the
