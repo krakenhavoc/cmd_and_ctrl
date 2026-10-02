@@ -69,6 +69,9 @@ export const ICONS = {
   chevronLeft: [p("M15 6l-6 6 6 6")],
   chevronRight: [p("M9 6l6 6-6 6")],
   x: [p("M6 6l12 12"), p("M18 6L6 18")],
+  // ADR 0111 PR 6: an action-dock sheet's minimise and restore.
+  "chevron-down": [p("M6 9l6 6 6-6")],
+  "chevron-up": [p("M6 15l6-6 6 6")],
   check: [p("M5 12l5 5 9-10")],
   link: [
     p("M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1.5 1.5"),

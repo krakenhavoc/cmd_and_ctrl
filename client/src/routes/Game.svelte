@@ -904,6 +904,12 @@
   function onDockSize(w: number, h: number): void {
     if (w !== dockSize.w || h !== dockSize.h) dockSize = { w, h };
   }
+  // PR 6: an open sheet's width (0 when none), published as --sheet-w
+  // with `.sheet-open`, so the hover zoom moves left of the sheet (§4).
+  let sheetW = $state(0);
+  function onDockSheet(w: number): void {
+    if (w !== sheetW) sheetW = w;
+  }
   // ADR 0105 §7: how many of the viewer's cards wear a highlight, for
   // the dock header's "N actions available".
   const readyActions = $derived(viewerID ? actionableCount(legalHighlights, view, viewerID) : 0);
@@ -1397,6 +1403,8 @@
   class:has-dock={dockShown}
   style:--dock-w={dockShown ? `${dockSize.w}px` : undefined}
   style:--dock-h={dockShown ? `${dockSize.h}px` : undefined}
+  class:sheet-open={dockShown && sheetW > 0}
+  style:--sheet-w={dockShown && sheetW > 0 ? `${sheetW}px` : undefined}
 >
   <header class="bar">
     <button class="ghost bar-nav" onclick={back}><Icon name="chevronLeft" size={14} /> Lobby</button
@@ -1973,6 +1981,7 @@
           canUndo={canSpendUndo}
           onUndo={undo}
           onSize={onDockSize}
+          onSheet={onDockSheet}
         />
       {/if}
       {#if viewerNeedsToDecide}
@@ -2488,12 +2497,23 @@
     --dock-zoom-clear: calc(var(--dock-h, 0px) + var(--dock-inset));
     --dock-log-clear: calc(0.6rem + var(--dock-inset) + var(--dock-h, 0px) + 6px);
   }
+  /* PR 6, §4: while a sheet is open the hover zoom moves left of it, so
+     hovering a card in a scry shows its text beside the sheet; it no
+     longer needs to stop above the dock. */
+  section.has-dock.sheet-open {
+    --dock-zoom-clear: 0px;
+    --zoom-right: calc(var(--sheet-w, 0px) + var(--dock-inset) + 10px);
+  }
   /* §8: on a phone the dock is a full-width bar on the bottom of the
      play area, and the board ends above it rather than under it. */
   @media (max-width: 599px) {
     section.has-dock {
       --dock-inset: 0px;
       --dock-zoom-clear: 0px;
+    }
+    /* A phone's sheet is full width: the zoom stays where it is. */
+    section.has-dock.sheet-open {
+      --zoom-right: 10px;
     }
     section.has-dock .play-area {
       padding-bottom: calc(var(--dock-h, 0px) + 6px);

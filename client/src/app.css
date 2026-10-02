@@ -456,7 +456,16 @@ textarea::placeholder {
    mono source tag, one sentence of context, rows of options, and a
    footer with the count on the left and the primary action on the
    right. Components keep their own layout inside; only the shell is
-   global so the family stays identical. */
+   global so the family stays identical.
+
+   ADR 0111 PR 6: no in-game PROMPT uses the backdrop any more. Every
+   picker during play is a sheet that grows up out of the action dock
+   (the `.dock-sheet` shell, ActionDock.svelte, the one place it is
+   drawn), and its body keeps the `.prompt-hint` / `.prompt-src` /
+   `.prompt-options` / `.prompt-opt` / `.prompt-count` family below.
+   The backdrop and `.prompt-modal` remain for the full-screen dialogs
+   that are not about the turn: settings, table settings, the bug
+   report, deck import, spawn and the zone browser. */
 .prompt-backdrop {
   position: fixed;
   inset: 0;

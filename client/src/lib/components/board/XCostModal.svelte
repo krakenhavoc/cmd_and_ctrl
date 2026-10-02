@@ -19,12 +19,12 @@
   // and which floor to respect via `minX`. A second modal would be a
   // second place for the two to drift apart.
 
-  import { onDestroy } from "svelte";
   import { fetchAutoTapPreview, type AutoTapPreview } from "../../api";
   import type { AutoTapCastParams } from "../../castPreview";
   import { xPickerCostNotes } from "../../costNotes";
   import type { CardView } from "../../protocol";
-  import ModalLayer from "../ModalLayer.svelte";
+  import { cancelAction, confirmAction } from "../../dock";
+  import DockSheet from "./DockSheet.svelte";
 
   interface Props {
     gameID: string;
@@ -119,106 +119,90 @@
     onConfirm(x);
   }
 
-  function handleKey(e: KeyboardEvent): void {
-    if (!card) return;
-    if (e.key === "Enter") {
-      e.preventDefault();
-      confirm();
-    } else if (e.key === "Escape") {
-      e.preventDefault();
-      onCancel();
-    }
+  // ADR 0111 PR 6: a sheet in the action dock. Enter confirms and
+  // Escape cancels through the dock's one key handler; Enter in the X
+  // field confirms too (the handler stands down in a text field), as
+  // the modal's document listener did.
+  function onFieldKey(e: KeyboardEvent): void {
+    if (e.key !== "Enter" || e.shiftKey || e.ctrlKey || e.altKey || e.metaKey) return;
+    e.preventDefault();
+    confirm();
   }
-  $effect(() => {
-    if (!card) return;
-    document.addEventListener("keydown", handleKey);
-    return () => document.removeEventListener("keydown", handleKey);
-  });
-  onDestroy(() => document.removeEventListener("keydown", handleKey));
 </script>
 
 {#if card}
-  <ModalLayer />
-  <div class="prompt-backdrop" role="dialog" aria-modal="true" aria-labelledby="x-cost-title">
-    <div class="prompt-modal x-modal">
-      <h2 id="x-cost-title">
-        Choose X for {card.name}
-        <span class="prompt-src" aria-hidden="true">{costLabel ?? card.mana_cost ?? "{X}"}</span>
-      </h2>
-      {#if floor > 0}
-        <!-- "X can't be 0" is a printed floor, not advice: the
-             server refuses an announcement under it outright. -->
-        <p class="prompt-hint">
-          Pick a value for X — this ability's X can't be less than {floor}. The check below reads
-          your untapped sources and says whether auto-tap can pay for it.
-        </p>
-      {:else if card.additional_cost?.demands_x}
-        <!-- S23: Toxic Deluge's X is paid in LIFE, not mana, so the
-             auto-tap line below is about the flat printed cost and
-             says nothing about whether the X itself is affordable.
-             Name the real price instead of letting a green
-             "affordable" imply it covers both. -->
-        <p class="prompt-hint">
-          {card.additional_cost.label ?? "Pay X life"} as an additional cost. You'll pay {x} life.
-        </p>
-      {:else}
-        <p class="prompt-hint">
-          Pick a value for X. The check below reads your untapped sources and says whether auto-tap
-          can pay for it.
-        </p>
-      {/if}
-      <label class="x-row">
-        <span class="x-label">X =</span>
-        <input
-          type="number"
-          min={floor}
-          step="1"
-          value={x}
-          oninput={(e) => clampX((e.currentTarget as HTMLInputElement).value)}
-          aria-label="X value"
-        />
-        <span class="status" class:ok={preview?.ok === true} class:bad={preview?.ok === false}>
-          {#if loading && !preview}
-            checking…
-          {:else if preview?.ok}
-            affordable — auto-tap would use {preview.plan?.length ?? 0} source{(preview.plan
-              ?.length ?? 0) === 1
-              ? ""
-              : "s"}
-          {:else if preview}
-            not affordable
-            {#if preview.missing && preview.missing.length > 0}
-              — missing {preview.missing.join(" ")}
-            {/if}
-          {:else}
-            &nbsp;
+  <DockSheet
+    label={`Choose X for ${card.name}`}
+    src={costLabel ?? card.mana_cost ?? "{X}"}
+    width={440}
+    sheetKey={`x:${card.instance_id}:${abilityIndex ?? "cast"}`}
+    primary={confirmAction(`${confirmVerb} with X = ${x}`, confirm)}
+    secondary={[cancelAction(onCancel)]}
+  >
+    {#if floor > 0}
+      <!-- "X can't be 0" is a printed floor, not advice: the
+           server refuses an announcement under it outright. -->
+      <p class="prompt-hint">
+        Pick a value for X — this ability's X can't be less than {floor}. The check below reads your
+        untapped sources and says whether auto-tap can pay for it.
+      </p>
+    {:else if card.additional_cost?.demands_x}
+      <!-- S23: Toxic Deluge's X is paid in LIFE, not mana, so the
+           auto-tap line below is about the flat printed cost and
+           says nothing about whether the X itself is affordable.
+           Name the real price instead of letting a green
+           "affordable" imply it covers both. -->
+      <p class="prompt-hint">
+        {card.additional_cost.label ?? "Pay X life"} as an additional cost. You'll pay {x} life.
+      </p>
+    {:else}
+      <p class="prompt-hint">
+        Pick a value for X. The check below reads your untapped sources and says whether auto-tap
+        can pay for it.
+      </p>
+    {/if}
+    <label class="x-row">
+      <span class="x-label">X =</span>
+      <input
+        type="number"
+        min={floor}
+        step="1"
+        value={x}
+        oninput={(e) => clampX((e.currentTarget as HTMLInputElement).value)}
+        onkeydown={onFieldKey}
+        aria-label="X value"
+        data-sheet-focus
+      />
+      <span class="status" class:ok={preview?.ok === true} class:bad={preview?.ok === false}>
+        {#if loading && !preview}
+          checking…
+        {:else if preview?.ok}
+          affordable — auto-tap would use {preview.plan?.length ?? 0} source{(preview.plan
+            ?.length ?? 0) === 1
+            ? ""
+            : "s"}
+        {:else if preview}
+          not affordable
+          {#if preview.missing && preview.missing.length > 0}
+            — missing {preview.missing.join(" ")}
           {/if}
-        </span>
-      </label>
-      {#if costNotes.length > 0}
-        <p class="prompt-hint cost-note">
-          Checked at one target.
-          {#each costNotes as note (note)}
-            <span class="cost-clause">{note}</span>
-          {/each}
-        </p>
-      {/if}
-      <div class="prompt-foot">
-        <button type="button" class="ghost" onclick={onCancel}
-          >Cancel <span class="kbd">Esc</span></button
-        >
-        <button type="button" class="primary" onclick={confirm}>
-          {confirmVerb} with X = {x} <span class="kbd">↵</span>
-        </button>
-      </div>
-    </div>
-  </div>
+        {:else}
+          &nbsp;
+        {/if}
+      </span>
+    </label>
+    {#if costNotes.length > 0}
+      <p class="prompt-hint cost-note">
+        Checked at one target.
+        {#each costNotes as note (note)}
+          <span class="cost-clause">{note}</span>
+        {/each}
+      </p>
+    {/if}
+  </DockSheet>
 {/if}
 
 <style>
-  .x-modal {
-    width: min(440px, calc(100vw - 32px));
-  }
   .x-row {
     display: flex;
     align-items: center;
@@ -257,10 +241,5 @@
   .cost-clause {
     display: block;
     font-style: italic;
-  }
-  .primary .kbd {
-    color: var(--accent-fg);
-    border-color: rgba(28, 21, 3, 0.35);
-    opacity: 0.8;
   }
 </style>

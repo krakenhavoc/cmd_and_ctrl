@@ -310,7 +310,9 @@
     position: absolute;
     /* Pin to the top-right corner of the board with a small inset so
        the panel always fits inside the viewport regardless of width. */
-    right: 10px;
+    /* ADR 0111 §4 (PR 6): left of an open dock sheet (Game.svelte sets
+       --zoom-right while one is open). */
+    right: var(--zoom-right, 10px);
     top: 10px;
     width: min(332px, calc(50% - 132px));
     /* ADR 0111 §4: a long card stops above the action dock, which
