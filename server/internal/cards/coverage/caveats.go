@@ -584,6 +584,16 @@ var mechanics = []Mechanic{
 		Adopt:      `Triggered: []game.TriggeredAbility{Cascade()} — or GrantsCascade(label, when) for a permanent that gives it`,
 	},
 	{
+		// ADR 0108 §5 (#1888): effects.Echo and its siblings stamp the
+		// trigger with game.KeywordEcho.
+		Name:       "echo",
+		Phrases:    []string{"echo"},
+		Implements: keywordTrigger(game.KeywordEcho),
+		Evidence:   `a trigger in game.CatalogTriggers(oracleID) is named "echo"`,
+		Confidence: Exact,
+		Adopt:      `Triggered: []game.TriggeredAbility{Echo(name, cost)} — or EchoPayment / EchoX for a non-mana or variable cost, see effects/echo.go`,
+	},
+	{
 		Name:       "storm",
 		Phrases:    []string{"storm"},
 		Implements: keywordTrigger(effects.KeywordStorm),
