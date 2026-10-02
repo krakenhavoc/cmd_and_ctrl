@@ -530,6 +530,28 @@ history; rolling forward recreates the empty tables. A migration that
 changes an existing table cannot be undone this way — restore
 `db/cmdctrl.backup.sqlite` (or the nightly off-site copy) instead.
 
+Migration 0008 (ADR 0110, "remember me") adds two tables
+(`user_settings`, `table_setups`) and two nullable columns
+(`users.last_deck`, `decks.source_url`), and rebuilds `seats` so that
+`deck_id` is `ON DELETE SET NULL`. An older binary refuses the v8 schema.
+The additions can be undone by hand (SQLite 3.35 or newer for
+`DROP COLUMN`); the `seats` rebuild is harmless to an older binary and
+is left alone, and rolling forward again rebuilds it a second time
+with the same result:
+
+```sh
+sudo systemctl stop cmd-and-ctrl
+sudo sqlite3 /var/lib/cmd_and_ctrl/data/db/cmdctrl.sqlite \
+  "DROP TABLE user_settings; DROP TABLE table_setups; ALTER TABLE users DROP COLUMN last_deck; ALTER TABLE decks DROP COLUMN source_url; DELETE FROM schema_migrations WHERE version = 8;"
+# install the older binary, then:
+sudo systemctl start cmd-and-ctrl
+```
+
+It costs every person's synced settings, remembered table setup, last
+deck and the links saved beside imported decks (the decks themselves
+stay). `TestMigration0008RollbackByHand` runs exactly this sequence and
+then rolls forward.
+
 **Session lifetimes.** A Discord sign-in from the login page mints an
 identity session that lasts `CMDCTRL_IDENTITY_TTL` (default `720h`, 30
 days; [ADR 0051](decisions/0051-user-database.md) decision 3). Seat,

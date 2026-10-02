@@ -3,6 +3,7 @@ package users
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -191,6 +192,47 @@ func (s *SQLStore) UserIDForDiscord(ctx context.Context, discordID string) (uuid
 		return uuid.Nil, fmt.Errorf("users: identity user_id is not a uuid: %w", err)
 	}
 	return id, nil
+}
+
+// LastDeck implements Store. A stored value this binary cannot read
+// (a kind a newer one wrote) reads as none rather than an error: it
+// only costs a preselection.
+func (s *SQLStore) LastDeck(ctx context.Context, id uuid.UUID) (LastDeck, error) {
+	var raw sql.NullString
+	err := s.db.QueryRowContext(ctx, `SELECT last_deck FROM users WHERE id = ?`, id.String()).Scan(&raw)
+	if errors.Is(err, sql.ErrNoRows) {
+		return LastDeck{}, ErrNotFound
+	}
+	if err != nil {
+		return LastDeck{}, fmt.Errorf("users: last deck for %s: %w", id, err)
+	}
+	if !raw.Valid {
+		return LastDeck{}, nil
+	}
+	var d LastDeck
+	if err := json.Unmarshal([]byte(raw.String), &d); err != nil || d.Validate() != nil {
+		return LastDeck{}, nil
+	}
+	return d, nil
+}
+
+// SetLastDeck implements Store.
+func (s *SQLStore) SetLastDeck(ctx context.Context, id uuid.UUID, d LastDeck) error {
+	if err := d.Validate(); err != nil {
+		return err
+	}
+	raw, err := json.Marshal(d)
+	if err != nil {
+		return fmt.Errorf("users: marshal last deck: %w", err)
+	}
+	res, err := s.db.ExecContext(ctx, `UPDATE users SET last_deck = ? WHERE id = ?`, string(raw), id.String())
+	if err != nil {
+		return fmt.Errorf("users: set last deck for %s: %w", id, err)
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return ErrNotFound
+	}
+	return nil
 }
 
 // RefreshToken opens the stored refresh token for a Discord identity.
