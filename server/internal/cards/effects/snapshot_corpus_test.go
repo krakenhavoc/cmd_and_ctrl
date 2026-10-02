@@ -281,6 +281,14 @@ func corpusBoards() []corpusBoard {
 		// spent in this batch (SpentBatch); a no-choice "creature of the
 		// chosen type" shield; and a shield pinned to one permanent.
 		{"next_damage_shields", corpusNextDamageShields},
+		// v7, added by ADR 0108 PR 1 (#1886, #1887) as a new file: the
+		// turn-scoped death and regeneration marks as data — a pinned
+		// exileIfWouldDie (Lava Coil), the same kind over the live
+		// creatures and opponentsCreatures scopes (Flaying Tendrils,
+		// Malicious Eclipse), a pinned cantBeRegenerated (Incinerate),
+		// and Whippoorwill's "when the creature dies this turn" delayed
+		// trigger waiting on its object.
+		{"exile_if_dies", corpusExileIfDies},
 		// v7, added by ADR 0108 PR 3 (#1823) as a new file: a resolved
 		// Yawgmoth's Will — the exileInsteadOfYourGraveyard record (a
 		// game-wide replacement naming one player) and the stored
@@ -288,6 +296,34 @@ func corpusBoards() []corpusBoard {
 		// the Will itself already exiled by its own replacement.
 		{"yawgmoths_will", corpusYawgmothsWill},
 	}
+}
+
+// corpusExileIfDies is ADR 0108 §1 and §2's two kinds in each of their
+// shapes, made by the cards that make them.
+func corpusExileIfDies(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	ogre := pushBattlefieldCardWithTimestamp(g, corpusCreature(opp.ID, "Hill Giant", 3, 10))
+	troll := pushBattlefieldCardWithTimestamp(g, corpusCreature(opp.ID, "Troll Ascetic", 3, 10))
+	bear := pushBattlefieldCardWithTimestamp(g, corpusCreature(opp.ID, "Grizzly Bears", 2, 8))
+	castCatalogSpell(t, g, "Lava Coil", "Sorcery", p1LavaCoilOracle, pr6Card(ogre))
+	passPriorityAroundTable(t, g)
+	castCatalogSpell(t, g, "Incinerate", "Instant", p1IncinerateOracle, pr6Card(troll))
+	passPriorityAroundTable(t, g)
+	castCatalogSpell(t, g, "Flaying Tendrils", "Sorcery", p1FlayingOracle, nil)
+	passPriorityAroundTable(t, g)
+	castCatalogSpell(t, g, "Malicious Eclipse", "Sorcery", p1EclipseOracle, nil)
+	passPriorityAroundTable(t, g)
+	bird := pushCatalogPermanent(g, me.ID, "Whippoorwill", "Creature — Bird", p1WhippoorwillOracle, false)
+	if err := g.ActivateCatalogAbility(me.ID, bird, 0, game.ActivateAbilityParams{Targets: pr6Card(bear)}); err != nil {
+		t.Fatalf("setup: Whippoorwill: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if len(g.DelayedTriggers) != 1 {
+		t.Fatalf("setup: %d delayed triggers, want Whippoorwill's", len(g.DelayedTriggers))
+	}
+	return g
 }
 
 // corpusYawgmothsWill is a real Yawgmoth's Will after it resolved.

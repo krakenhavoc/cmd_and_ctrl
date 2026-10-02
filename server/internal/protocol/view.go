@@ -130,6 +130,13 @@ type GameView struct {
 	// prevented" on Leyline of Punishment) are not listed; the
 	// permanent is on the table for everyone to read.
 	DamageCantBePrevented []string `json:"damage_cant_be_prevented,omitempty"`
+	// ExileIfCreaturesDie lists the live "if a creature would die this
+	// turn, exile it instead" effects over a live set by their source's
+	// name (Flaying Tendrils, Malicious Eclipse; ADR 0108 §1 decision 6),
+	// oldest first — the game banner's line. Public. One pinned to a
+	// single creature is that creature's chip instead
+	// (CardView.ExiledIfItDies).
+	ExileIfCreaturesDie []string `json:"exile_if_creatures_die,omitempty"`
 	// DiscardPending is the cleanup-step pause map (S13.4): keys
 	// are player UUID strings, values are the count each player
 	// must discard. Drives the client's discard-prompt modal.
@@ -1642,6 +1649,17 @@ type CardView struct {
 	// it to decide whether removal is worth casting. Cleared at the
 	// cleanup step and on zone exit; omitted when zero. Added in #667.
 	RegenerationShields int `json:"regeneration_shields,omitempty"`
+	// ExiledIfItDies names the effects that would exile this permanent
+	// instead if it died now (ADR 0108 §1 decision 6): Lava Coil's "if
+	// that creature would die this turn, exile it instead", by source
+	// name, oldest first. Public, like the shields above: it changes
+	// what killing the creature does. Battlefield only; omitted when
+	// empty.
+	ExiledIfItDies []string `json:"exiled_if_it_dies,omitempty"`
+	// CantBeRegenerated is true for a permanent that can't be
+	// regenerated this turn (ADR 0108 §2 decision 5, CR 701.19c):
+	// Incinerate's or Whippoorwill's mark. Public; battlefield only.
+	CantBeRegenerated bool `json:"cant_be_regenerated,omitempty"`
 	// FaceDown reflects Card.FaceDown — a card flipped face-down
 	// by morph / manifest / mutate-bottom (CR 708). Distinct from
 	// KnownByYou: a face-down creature is face-down to everyone
@@ -3599,6 +3617,7 @@ func ViewOfGame(g *game.Game) GameView {
 			DelayedTriggers:       viewOfDelayedTriggers(g.DelayedTriggers),
 			SplitSecondActive:     g.SplitSecondActive,
 			DamageCantBePrevented: g.DamageCantBePreventedThisTurnLabels(),
+			ExileIfCreaturesDie:   g.ExileIfCreaturesWouldDieThisTurnLabels(),
 			DiscardPending:        viewOfDiscardPending(g.DiscardPending),
 			PendingChoices:        viewOfPendingChoices(g),
 			LoopNotice:            viewOfLoopNotice(g.LoopNotice),
@@ -3637,6 +3656,7 @@ func ViewOfGame(g *game.Game) GameView {
 		stampZoneAbilities(g, view.Seats, &view.Exile)
 		stampCombatTargets(g, &view)
 		stampNoUntap(g, &view.Battlefield)
+		stampDeathMarks(g, &view.Battlefield)
 		stampDefenderRefusals(g, &view.Battlefield)
 		view.legalBySeat, view.legalActionsBySeat = enumerateLegalMoves(g)
 		// S31 sub-PR 0: the public log resolves card names and knower
@@ -6198,6 +6218,23 @@ func stampDefenderRefusals(g *game.Game, view *ZoneView) {
 	}
 }
 
+// stampDeathMarks is ADR 0108's two chips: "exiled if it dies this turn"
+// and "can't be regenerated this turn", on each battlefield permanent
+// that carries one.
+func stampDeathMarks(g *game.Game, view *ZoneView) {
+	if g == nil || g.Battlefield == nil || view == nil || len(g.ScopedEffects) == 0 {
+		return
+	}
+	for i := range view.Cards {
+		if i >= len(g.Battlefield.Cards) {
+			break
+		}
+		id := g.Battlefield.Cards[i].InstanceID
+		view.Cards[i].ExiledIfItDies = g.ExileIfItWouldDieLabels(id)
+		view.Cards[i].CantBeRegenerated = g.PermanentCantBeRegeneratedForEffect(id)
+	}
+}
+
 func stampNoUntap(g *game.Game, view *ZoneView) {
 	if g == nil || g.Battlefield == nil || view == nil {
 		return
@@ -7305,6 +7342,7 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		DelayedTriggers:       v.DelayedTriggers,
 		SplitSecondActive:     v.SplitSecondActive,
 		DamageCantBePrevented: v.DamageCantBePrevented,
+		ExileIfCreaturesDie:   v.ExileIfCreaturesDie,
 		DiscardPending:        v.DiscardPending,
 		PendingChoices:        filterPendingChoices(v.PendingChoices, isKnower, viewerID),
 		LegalMoves:            legalMovesFor(v.legalBySeat, viewerID),

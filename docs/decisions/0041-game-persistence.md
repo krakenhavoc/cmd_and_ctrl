@@ -1422,6 +1422,12 @@ estimate.
 
 ### Decision P8 — tier 3b: replacements and block rules are `ScopedEffect` kinds
 
+> **Amended by [ADR 0108](0108-turn-scoped-effects-object-history-and-damage-shields.md)** (2026-10-02):
+> its §1 to §4, §7 and §9 add turn-scoped kinds to this vocabulary
+> (`exileIfWouldDie` and `cantBeRegenerated` with the `creatures` scope
+> in its Delivery PR 1, `exileInsteadOfYourGraveyard` in PR 3), each an
+> additive on-disk identity under schema v7.
+
 P5 proposed two new record types, `ScopedReplacement` and
 `ScopedBlockRule`. This amendment proposes new kinds on the existing
 `ScopedEffect` instead. There are three reasons:

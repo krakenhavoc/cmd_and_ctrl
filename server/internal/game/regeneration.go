@@ -170,18 +170,117 @@ func (g *Game) RegenerationShieldsOn(cardID uuid.UUID) int {
 //	                      DESTRUCTION. A sacrifice, a zero-toughness
 //	                      SBA, an exile or a bounce takes the same
 //	                      battlefield exit and is not one.
-//	!ev.CantBeRegenerated CR 701.19c — the destroying effect said no.
-//	                      Gated here rather than inside Replace so
-//	                      the shield is not spent (CR 701.19c).
+//	regenerationRefused   CR 701.19c — the destroying effect said no,
+//	                      or the permanent can't be regenerated this
+//	                      turn (ADR 0108 §2). Gated here rather than
+//	                      inside Replace so the shield is not spent
+//	                      (CR 701.19c).
 //	shields > 0           there is a shield to spend.
 //
 // Caller must hold g.mu.
 func (g *Game) regenerationShieldAppliesLocked(ev *ReplacementEvent) bool {
-	if ev == nil || ev.Kind != RepEventMove || !ev.Destruction || ev.CantBeRegenerated {
+	if ev == nil || ev.Kind != RepEventMove || !ev.Destruction {
 		return false
 	}
 	c := findBattlefieldCard(g, ev.CardID)
-	return c != nil && c.RegenerationShields > 0
+	return c != nil && c.RegenerationShields > 0 && !g.regenerationRefusedLocked(ev, c)
+}
+
+// regenerationRefusedLocked is THE regeneration gate (ADR 0108 §2,
+// CR 701.19c): this destruction may not be replaced by a regeneration,
+// because the destroying instruction said "it can't be regenerated"
+// (ev.CantBeRegenerated) or because the permanent itself has been told
+// it can't be regenerated this turn (a live ModCantBeRegenerated
+// record — Incinerate, Whippoorwill). Every regeneration reads it: the
+// shield built-in above, and every catalog static regeneration through
+// RegenerationAllowedForEffect (CR 701.19b — "If this creature would be
+// destroyed, regenerate it" is a regeneration too). A census test holds
+// the catalog to it (static_regeneration_census_test.go).
+//
+// Caller must hold g.mu.
+func (g *Game) regenerationRefusedLocked(ev *ReplacementEvent, c *Card) bool {
+	return ev.CantBeRegenerated || g.permanentCantBeRegeneratedLocked(c)
+}
+
+// permanentCantBeRegeneratedLocked reports whether a live
+// ModCantBeRegenerated record covers the permanent `c`: pinned to that
+// object (CR 400.7), until cleanup (CR 514.2).
+//
+// Caller must hold g.mu.
+func (g *Game) permanentCantBeRegeneratedLocked(c *Card) bool {
+	if c == nil {
+		return false
+	}
+	for i := range g.ScopedEffects {
+		e := &g.ScopedEffects[i]
+		if e.Scope == ScopeNone && scopedEffectHasMod(e, ModCantBeRegenerated) && affectedPredicate(e.Affected)(c, g, nil) {
+			return true
+		}
+	}
+	return false
+}
+
+// PermanentCantBeRegeneratedForEffect is permanentCantBeRegeneratedLocked
+// by instance ID, for the view's chip (ADR 0108 §2 decision 5). False for
+// a card that is not on the battlefield.
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) PermanentCantBeRegeneratedForEffect(cardID uuid.UUID) bool {
+	return g.permanentCantBeRegeneratedLocked(findBattlefieldCard(g, cardID))
+}
+
+// CantBeRegeneratedThisTurnForEffect is "<that permanent> can't be
+// regenerated this turn" (ADR 0108 §2, #1887; CR 701.19c): Incinerate,
+// Whippoorwill, Furnace Brood. Until cleanup, no regeneration shield on
+// it is applied — and none is used up — and no static regeneration
+// replaces its destruction. Pinned to the object (CR 400.7), so a
+// permanent that is flickered comes back free of it. Registers nothing
+// for a card that is not on the battlefield.
+//
+// Caller must hold g.mu (write).
+func (g *Game) CantBeRegeneratedThisTurnForEffect(sourceID, cardID uuid.UUID, label string) bool {
+	affected := g.PinnedObjectsLocked(cardID)
+	if len(affected) == 0 {
+		return false
+	}
+	return g.appendScopedEffectLocked(sourceID, affected, ScopeNone, uuid.Nil,
+		[]Mod{{Kind: ModCantBeRegenerated}}, g.PinnedTo(g.UntilEndOfTurnDuration(), cardID),
+		label, timeNowUnixNano())
+}
+
+// RegenerationAllowedForEffect is the gate a catalog STATIC regeneration
+// asks in its AppliesTo (CR 701.19b — "If this creature would be
+// destroyed, regenerate it", Clergy of the Holy Nimbus): ev is a
+// destruction of the permanent `cardID`, which is on the battlefield,
+// and nothing says it can't be regenerated (regenerationRefusedLocked).
+// The census test in the catalog fails a replacement that answers a
+// destruction with RegenerateInsteadForEffect without asking this.
+//
+// Caller must hold g.mu.
+func (g *Game) RegenerationAllowedForEffect(ev *ReplacementEvent, cardID uuid.UUID) bool {
+	if ev == nil || ev.Kind != RepEventMove || !ev.Destruction || ev.CardID != cardID {
+		return false
+	}
+	c := findBattlefieldCard(g, cardID)
+	return c != nil && !g.regenerationRefusedLocked(ev, c)
+}
+
+// RegenerateInsteadForEffect is a static regeneration's Replace (CR
+// 701.19b): the destruction is replaced — remove all damage marked on
+// the permanent, its controller taps it, and it is removed from combat
+// — with no shield spent, since a static ability has none. Its AppliesTo
+// must be RegenerationAllowedForEffect.
+//
+// Caller must hold g.mu (write).
+func (g *Game) RegenerateInsteadForEffect(ev *ReplacementEvent) {
+	if ev == nil {
+		return
+	}
+	idx := findCardOnBattlefield(g, ev.CardID)
+	if idx < 0 {
+		return
+	}
+	g.regenerateLocked(ev, &g.Battlefield.Cards[idx])
 }
 
 // applyRegenerationShieldLocked is the built-in's Replace: spend one
@@ -229,6 +328,15 @@ func (g *Game) applyRegenerationShieldLocked(ev *ReplacementEvent) {
 		return
 	}
 	c.RegenerationShields--
+	g.regenerateLocked(ev, c)
+}
+
+// regenerateLocked is what regenerating DOES (CR 701.19a/b), shield or
+// static: the destruction is cancelled, the permanent is tapped, its
+// damage is removed and it leaves combat.
+//
+// Caller must hold g.mu (write).
+func (g *Game) regenerateLocked(ev *ReplacementEvent, c *Card) {
 	ev.Cancel()
 	c.Tapped = true
 	clearBattlefieldDamage(c)

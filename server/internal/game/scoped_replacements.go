@@ -35,7 +35,11 @@ import (
 //   - exileInsteadOfYourGraveyard — Yawgmoth's Will (ADR 0108 §4): every
 //     card moved or discarded into one player's graveyard this turn;
 //   - exileInsteadOfGraveyard — Cosmic Intervention, whose per-card
-//     return is a registered delayed-trigger body named by Mod.Then.
+//     return is a registered delayed-trigger body named by Mod.Then;
+//   - exileIfWouldDie — Lava Coil's and Disintegrate's "if it would die
+//     this turn, exile it instead", pinned to one object, or Flaying
+//     Tendrils' "if a creature would die this turn" over a live scope
+//     (ADR 0108 §1, #1886).
 //
 // The gather adapts each live record into the ReplacementEffect it
 // already consumes, with closures the RUNNING binary builds from the
@@ -152,7 +156,7 @@ func scopedReplacementWatches(kind ModKind) []EventKind {
 	switch kind {
 	case ModPreventCombatDamage, ModPreventDamage, ModPreventNextFromSource:
 		return watchDamage
-	case ModExileInsteadOfLeaving, ModExileInsteadOfGraveyard:
+	case ModExileInsteadOfLeaving, ModExileInsteadOfGraveyard, ModExileIfWouldDie:
 		return watchZoneMove
 	case ModGainNoLife:
 		return watchLife
@@ -245,6 +249,110 @@ func (g *Game) ExileInsteadOfGraveyardThisTurnForEffect(sourceID, controller uui
 		[]Mod{{Kind: ModExileInsteadOfGraveyard, Then: then.key}}, g.UntilEndOfTurnDuration(), label)
 }
 
+// ExileIfItWouldDieThisTurnForEffect is "if that creature would die
+// this turn, exile it instead" on the one permanent `cardID` (ADR 0108
+// §1, #1886; CR 614.1a, 700.4): Lava Coil, Disintegrate, Bleed Dry, and
+// — registered from the damage's continuation — Demonfire's "a creature
+// dealt damage this way". The record is pinned to the object (CR 400.7)
+// and lasts until cleanup (CR 514.2), so a creature that is flickered
+// comes back free of it. `controller` controls the replacement effect;
+// uuid.Nil reads it off the source. Registers nothing for a card that is
+// not on the battlefield.
+//
+// Caller must hold g.mu (write).
+func (g *Game) ExileIfItWouldDieThisTurnForEffect(sourceID, cardID, controller uuid.UUID, label string) bool {
+	affected := g.PinnedObjectsLocked(cardID)
+	if len(affected) == 0 {
+		return false
+	}
+	return g.appendScopedEffectLocked(sourceID, affected, ScopeNone, controller,
+		[]Mod{{Kind: ModExileIfWouldDie}}, g.PinnedTo(g.UntilEndOfTurnDuration(), cardID),
+		label, timeNowUnixNano())
+}
+
+// ExileIfCreaturesWouldDieThisTurnForEffect is "if a creature would die
+// this turn, exile it instead" over a live set (ADR 0108 §1; CR 611.2c:
+// the effect changes no characteristic, so it reaches a creature that
+// was not there when it began): ScopeCreatures for every creature
+// (Flaying Tendrils, Malicious Malfunction), ScopeOpponentsCreatures for
+// "a creature an opponent controls" (Malicious Eclipse), the opponents
+// being `controller`'s. Whether the permanent is a creature, and who
+// controls it, is read as it would die. Reports false, registering
+// nothing, for any other scope.
+//
+// Caller must hold g.mu (write).
+func (g *Game) ExileIfCreaturesWouldDieThisTurnForEffect(sourceID, controller uuid.UUID, scope AffectedScope, label string) bool {
+	if scope != ScopeCreatures && scope != ScopeOpponentsCreatures {
+		return false
+	}
+	return g.RegisterScopedRuleEffectForEffect(sourceID, scope, controller,
+		[]Mod{{Kind: ModExileIfWouldDie}}, g.UntilEndOfTurnDuration(), label)
+}
+
+// exileIfWouldDieAppliesLocked is ModExileIfWouldDie's AppliesTo: a move
+// from the battlefield to a graveyard (CR 700.4's "dies") of a permanent
+// the record covers. The permanent is judged as it is before the move —
+// the window runs while it is still on the battlefield — so a pinned
+// record matches the same object only (CR 400.7) and a scoped one reads
+// its type and controller then.
+//
+// Caller must hold g.mu.
+func exileIfWouldDieAppliesLocked(g *Game, e ScopedEffect, ev *ReplacementEvent) bool {
+	if ev.Kind != RepEventMove || ev.OldZone != ZoneBattlefield || ev.NewZone != ZoneGraveyard {
+		return false
+	}
+	if e.Scope == ScopeNone {
+		return scopedAffectsLiveObjectLocked(g, e, ev.CardID)
+	}
+	c := findBattlefieldCard(g, ev.CardID)
+	return c != nil && scopePredicate(e.Scope, e.Controller)(c, g, nil)
+}
+
+// ExileIfItWouldDieLabels lists the labels of the live records pinned to
+// the permanent `cardID` that would exile it instead if it died now,
+// oldest first — the chip on the permanent (ADR 0108 §1 decision 6). A
+// record over a live scope (Flaying Tendrils) is the game banner's line
+// instead (ExileIfCreaturesWouldDieThisTurnLabels), not a chip on every
+// creature. Empty for nearly every permanent.
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) ExileIfItWouldDieLabels(cardID uuid.UUID) []string {
+	var out []string
+	for i := range g.ScopedEffects {
+		e := &g.ScopedEffects[i]
+		if e.Scope == ScopeNone && scopedEffectHasMod(e, ModExileIfWouldDie) && scopedAffectsLiveObjectLocked(g, *e, cardID) {
+			out = append(out, scopedEffectDisplayName(e))
+		}
+	}
+	return out
+}
+
+// ExileIfCreaturesWouldDieThisTurnLabels lists the live scoped "if a
+// creature would die this turn, exile it instead" records, oldest first
+// — the game banner's line (ADR 0108 §1 decision 6).
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) ExileIfCreaturesWouldDieThisTurnLabels() []string {
+	var out []string
+	for i := range g.ScopedEffects {
+		e := &g.ScopedEffects[i]
+		if e.Scope == ScopeNone || !scopedEffectHasMod(e, ModExileIfWouldDie) {
+			continue
+		}
+		out = append(out, scopedEffectDisplayName(e))
+	}
+	return out
+}
+
+// scopedEffectDisplayName is what the table is shown for a record: the
+// name of the card that made it, or its label.
+func scopedEffectDisplayName(e *ScopedEffect) string {
+	if e.SourceName != "" {
+		return e.SourceName
+	}
+	return e.Label
+}
+
 // ExileInsteadOfYourGraveyardThisTurnForEffect is "if a card would be
 // put into your graveyard from anywhere this turn, exile that card
 // instead" (CR 614.1a, Yawgmoth's Will). `player` is "you" and the
@@ -289,7 +397,17 @@ func (g *Game) gatherScopedReplacementsLocked(ev *ReplacementEvent, applied map[
 			if !scopedReplacementAppliesLocked(g, *e, m, ev) {
 				continue
 			}
-			out = append(out, activeReplacement{effect: scopedReplacementEffect(e.Seq, j, m.Kind, e.Label), id: id})
+			a := activeReplacement{effect: scopedReplacementEffect(e.Seq, j, m.Kind, e.Label), id: id}
+			if m.Kind == ModExileIfWouldDie {
+				// Two "exile it instead" records on one dying creature
+				// (two Lava Coils, whoever cast them) are one
+				// modification: either order exiles it, so CR 616 has
+				// one answer and no prompt is asked (sameModification,
+				// #792). The controller is left out on purpose — it
+				// changes nothing about the result.
+				a.identity = replacementIdentity{card: "scoped:" + string(m.Kind)}
+			}
+			out = append(out, a)
 		}
 	}
 	return out
@@ -428,6 +546,8 @@ func scopedReplacementAppliesLocked(g *Game, e ScopedEffect, m Mod, ev *Replacem
 		// CR 119.10: "if a player would gain life" — a positive change
 		// only. A gain of 0 is no life gain event at all.
 		return ev.Kind == RepEventLife && ev.LifeDelta > 0 && ev.LifePlayer == m.Player
+	case ModExileIfWouldDie:
+		return exileIfWouldDieAppliesLocked(g, e, ev)
 	case ModPreventNextFromSource:
 		return g.nextFromSourceAppliesLocked(e, m, ev)
 	}
@@ -472,7 +592,12 @@ func (g *Game) applyScopedReplacementLocked(e ScopedEffect, mod int, m Mod, ev *
 		g.setShieldChargeLocked(e.Seq, mod, left)
 	case ModExileInsteadOfLeaving:
 		ev.NewZone = ZoneExile
-	case ModExileInsteadOfYourGraveyard:
+	case ModExileIfWouldDie, ModExileInsteadOfYourGraveyard:
+		// "Exile it instead". For exileIfWouldDie the move still leaves
+		// the battlefield, so leaves-the-battlefield triggers see it, but
+		// it is not a death (CR 700.4), so no "dies" trigger does. A
+		// commander may still go to the command zone (CR 903.9a), through
+		// the engine's own path.
 		ev.NewZone = ZoneExile
 		ev.NewZoneOwner = uuid.Nil
 	case ModGainNoLife:

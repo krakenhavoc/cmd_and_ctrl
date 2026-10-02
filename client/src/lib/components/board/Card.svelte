@@ -33,6 +33,7 @@
   import { targeting, isLegalCardTarget, isPicked } from "../../targeting";
   import { autoTapHighlight } from "../../dragCast";
   import { noUntapAppliesToController } from "../../noUntap";
+  import { deathMarkBadge } from "../../deathMarks";
   import { openCardMenu } from "../../contextMenu";
   import { menuAbilityRows, specialActionItems, type MenuAction } from "../../contextMenu.logic";
   import CounterPips from "./CounterPips.svelte";
@@ -335,6 +336,9 @@
   // to it, so the click affordance is withheld here rather than by
   // every parent remembering to withhold it.
   const phasedOut = $derived(card.phased_out === true);
+  // ADR 0108: "exiled if it dies this turn" / "can't be regenerated
+  // this turn" — what killing this permanent does is already decided.
+  const deathMark = $derived(deathMarkBadge(card));
   const interactive = $derived(!!onClick && !phasedOut);
 
   // ADR 0069 — a face-down object the viewer IS allowed to look at:
@@ -733,6 +737,11 @@
         REGEN{(card.regeneration_shields ?? 0) > 1 ? ` x${card.regeneration_shields}` : ""}
       </span>
     {/if}
+    {#if deathMark}
+      <span class="badge death-mark" title={deathMark.title} aria-label="death mark"
+        >{deathMark.text}</span
+      >
+    {/if}
     {#if showPT}
       {#if isPlaneswalker}
         <span class="badge loyalty" title={`loyalty ${loyaltyValue}`} aria-label="loyalty">
@@ -853,6 +862,11 @@
       >
         REGEN{(card.regeneration_shields ?? 0) > 1 ? ` x${card.regeneration_shields}` : ""}
       </span>
+    {/if}
+    {#if deathMark}
+      <span class="badge death-mark" title={deathMark.title} aria-label="death mark"
+        >{deathMark.text}</span
+      >
     {/if}
     {#if showPT}
       {#if isPlaneswalker}
@@ -1317,6 +1331,24 @@
     background: rgba(60, 0, 0, 0.9);
     border-color: rgba(255, 122, 122, 0.5);
     font-size: 11px;
+  }
+  .badge.death-mark {
+    /* ADR 0108. Top-centre, one row under WON'T UNTAP: a fact about
+       what happens when the creature dies, like a regeneration shield,
+       in the ash-grey of exile rather than the shield's green. */
+    top: 38px;
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    max-width: calc(100% - 6px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: #e6dfd3;
+    background: rgba(40, 34, 30, 0.9);
+    border-color: rgba(210, 196, 176, 0.55);
+    letter-spacing: 0.01em;
+    font-size: 7px;
   }
   .badge.regen {
     /* Top-right, clear of the bottom-right damage / P-T stack: a

@@ -169,6 +169,15 @@ const (
 	// before this one, where "can't" stops the gain before any
 	// replacement sees it. Reads Player. Scope ScopeGame.
 	ModGainNoLife ModKind = "gainNoLife"
+	// ModExileIfWouldDie is "if <it> would die this turn, exile it
+	// instead" (ADR 0108 §1, #1886): a CR 614.1a replacement on a move
+	// from the battlefield to a graveyard (CR 700.4), and on nothing
+	// else. Reads nothing. Pinned to one object (ScopeNone, with
+	// PinnedTo the duration: Lava Coil, Disintegrate, Demonfire), or a
+	// live set (CR 611.2c): ScopeCreatures ("If a creature would die
+	// this turn", Flaying Tendrils) or ScopeOpponentsCreatures
+	// (Malicious Eclipse).
+	ModExileIfWouldDie ModKind = "exileIfWouldDie"
 	// ModExileInsteadOfYourGraveyard is "if a card would be put into
 	// your graveyard from anywhere this turn, exile that card instead"
 	// (Yawgmoth's Will, ADR 0108 §4, CR 614.1a): a CR 614 replacement on
@@ -202,6 +211,13 @@ const (
 	// ScopeOpponentsAndTheirCreatures is the record Controller's
 	// opponents (scopeCoversPlayer). Reads Player.
 	ModCantGainLife ModKind = "cantGainLife"
+	// ModCantBeRegenerated is "<that permanent> can't be regenerated
+	// this turn" (ADR 0108 §2, #1887; CR 701.19c): regeneration shields
+	// are not applied to it, and are not used up, and neither is a
+	// static regeneration (CR 701.19b). Pinned to the permanent, with
+	// PinnedTo the duration (CR 400.7, 514.2). Read at one gate,
+	// permanentCantBeRegeneratedLocked (regeneration.go). Reads nothing.
+	ModCantBeRegenerated ModKind = "cantBeRegenerated"
 )
 
 // The block-rule kinds (ADR 0041 P8, tier 3b, #1497). These are not
@@ -310,13 +326,19 @@ const (
 	// names PLAYERS (scopeCoversPlayer); as a permanent predicate it is
 	// ScopeOpponentsCreatures.
 	ScopeOpponentsAndTheirCreatures AffectedScope = "opponentsAndTheirCreatures"
+	// ScopeCreatures is "creatures", every player's, read live (ADR
+	// 0108 §1): Flaying Tendrils' and Malicious Malfunction's "If a
+	// creature would die this turn, exile it instead" reaches a creature
+	// that entered after the spell resolved (CR 611.2c).
+	ScopeCreatures AffectedScope = "creatures"
 )
 
 // KnownAffectedScope reports whether this binary can interpret s.
 func KnownAffectedScope(s AffectedScope) bool {
 	switch s {
 	case ScopeNone, ScopeOpponentsCreatures, ScopeGame, ScopeYourPermanents,
-		ScopeYourCreatures, ScopeCreaturesWithoutFlying, ScopeOpponentsAndTheirCreatures:
+		ScopeYourCreatures, ScopeCreaturesWithoutFlying, ScopeOpponentsAndTheirCreatures,
+		ScopeCreatures:
 		return true
 	}
 	return false
@@ -622,10 +644,14 @@ var modKinds = map[ModKind]modKindSpec{
 	ModExileInsteadOfYourGraveyard: {reader: readerReplacement},
 	// ADR 0107 §6 (#1860): the next damage from a source.
 	ModPreventNextFromSource: {reader: readerReplacement},
+	// ADR 0108 §1 (#1886): exile instead if it would die this turn.
+	ModExileIfWouldDie: {reader: readerReplacement},
 	// ADR 0107 §5 (#1853, #1880): rules gates.
 	ModDamageCantBePrevented:  {reader: readerRule},
 	ModDamageCantBeRedirected: {reader: readerRule},
 	ModCantGainLife:           {reader: readerRule},
+	// ADR 0108 §2 (#1887): the regeneration gate.
+	ModCantBeRegenerated: {reader: readerRule},
 	// Tier 3b (ADR 0041 P8): block-rule effects, not layer operations.
 	ModCantBeBlockedExceptBy:    {reader: readerBlockRule},
 	ModLimitBlockersPerDefender: {reader: readerBlockRule},
@@ -1249,6 +1275,10 @@ func scopePredicate(scope AffectedScope, controller uuid.UUID) func(*Card, *Game
 	case ScopeCreaturesWithoutFlying:
 		return func(target *Card, _ *Game, _ *Card) bool {
 			return target != nil && target.IsCreature() && !HasKeyword(target, "flying")
+		}
+	case ScopeCreatures:
+		return func(target *Card, _ *Game, _ *Card) bool {
+			return target != nil && target.IsCreature()
 		}
 	}
 	// ScopeGame names no object, so it matches none.

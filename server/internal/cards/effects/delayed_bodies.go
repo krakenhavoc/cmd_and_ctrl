@@ -126,6 +126,16 @@ var (
 	// a delayed trigger a restore point written before it may hold.
 	anOpponentBecameTheMonarchCondition = game.DelayedCondition("monarch/an-opponent-became",
 		anOpponentBecameTheMonarchSince)
+
+	// The event condition of "when <the creature> dies this turn"
+	// (Whippoorwill, ADR 0108 §2): an EventLTB of the listed object into
+	// a graveyard. The trigger's duration is pinned to the object, so a
+	// flicker ends it (CR 400.7).
+	theListedObjectDiedCondition = game.DelayedCondition("dies/the-listed-object", theListedObjectDied)
+
+	// "Exile the creature" after it died (Whippoorwill): exile each
+	// listed card that is still in a graveyard (CR 603.7c).
+	exileListedFromGraveyardBody = game.SimpleDelayedBody("dies/exile-from-graveyard", exileListedCardsFromGraveyard)
 )
 
 // maxManaDrainRefund bounds the refund a restored Mana Drain may add. No

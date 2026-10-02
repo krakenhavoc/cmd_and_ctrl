@@ -729,6 +729,7 @@
         {autopassEnabled}
         {loopNotice}
         damageCantBePrevented={view.damage_cant_be_prevented ?? []}
+        exileIfCreaturesDie={view.exile_if_creatures_die ?? []}
         onPassPriority={onPassPriority ?? (() => {})}
         onToggleAutopass={onToggleAutopass ?? (() => {})}
         {readyActions}
