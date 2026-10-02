@@ -67,6 +67,11 @@
     // legalActions.ts, and only while highlights are live); the card
     // only draws it.
     ready?: boolean;
+    // #1918: set with `ready` when every cast the card has is legal but
+    // would do nothing right now (legalActions.ts idleReadyHint). The
+    // ring is drawn muted and this, the server's sentence, is the
+    // tooltip. Clicking still casts exactly as a full ring does.
+    idleHint?: string;
     // ADR 0105 sub-PR 5: this card is what the selected creature may be
     // declared against: a planeswalker or battle it may attack, or an
     // attacker it may block. Set with `ready`. An attacker is always
@@ -216,6 +221,7 @@
     attacking = false,
     blocking = false,
     ready = false,
+    idleHint,
     combatTarget = false,
     pips = NO_PIPS,
     readyZone = "battlefield",
@@ -558,6 +564,7 @@
   class:attacking
   class:blocking
   class:ready
+  class:ready-idle={ready && !!idleHint}
   class:combat-target={combatTarget}
   class:clickable={interactive}
   class:phased-out={phasedOut}
@@ -567,7 +574,11 @@
   role={interactive ? "button" : "img"}
   tabindex={interactive ? 0 : undefined}
   aria-label={accessibleName}
-  title={showBack ? "" : displayName(card)}
+  title={showBack
+    ? ""
+    : ready && idleHint
+      ? `${displayName(card)} — ${idleHint}`
+      : displayName(card)}
   onpointerenter={handleEnter}
   onpointerleave={handleLeave}
   onclick={handleClick}
@@ -1367,6 +1378,17 @@
     border-radius: inherit;
     pointer-events: none;
     box-shadow: inset 0 0 calc(var(--card-w, 80px) * 0.14) var(--ready-glow);
+  }
+  /* #1918: castable, but every cast would do nothing right now (an
+     overloaded Counterflux with no spell to counter). Still ringed,
+     since the cast is legal, but dashed, faint and without the glow,
+     so it does not read as a play worth making. */
+  .card.ready.ready-idle {
+    outline-style: dashed;
+    outline-color: color-mix(in srgb, var(--ready) 45%, transparent);
+  }
+  .card.ready.ready-idle::after {
+    box-shadow: none;
   }
   /* ADR 0105 §2/§7 (#1789): the pips. They sit on the upper-left edge,
      below the top badge row (CMD) and the failed-art pip (22px): that

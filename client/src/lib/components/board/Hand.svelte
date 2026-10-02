@@ -26,6 +26,7 @@
     NO_PIPS,
     handHasAction,
     hasPips,
+    idleReadyHint,
     readyPips,
     type LegalActions,
   } from "../../legalActions";
@@ -695,6 +696,7 @@
           pips={cPips}
           readyZone="hand"
           ready={isSelf && (legal.castableFrom(c.instance_id, "hand") || hasPips(cPips))}
+          idleHint={isSelf ? idleReadyHint(legal, c.instance_id, "hand") : undefined}
           onClick={isSelf && leg.legal ? () => handleCardClick(c) : undefined}
         />
       </div>
