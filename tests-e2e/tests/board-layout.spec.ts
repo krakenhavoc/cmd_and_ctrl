@@ -100,6 +100,14 @@ test.describe("board layout", () => {
     await expect(dock.getByRole("button", { name: "bluff", exact: true })).toBeVisible();
     await expect(dock.getByRole("button", { name: "bluff options" })).toBeVisible();
 
+    // ADR 0111 §4 / §10 (PR 4): the attention strip is region
+    // "attention", the tutorial's step-9 anchor. Asked nothing of the
+    // player here, it is empty but on the page; what it used to ask
+    // (targeting's Done and Cancel, the insufficient-mana prompt) is the
+    // dock's.
+    await expect(page.getByRole("region", { name: "attention", exact: true })).toBeAttached();
+    await expect(page.getByRole("region", { name: "attention", exact: true })).toHaveCount(1);
+
     // Stack overlay should be hidden when nothing is on the stack.
     await expect(page.getByLabel(/stack: \d+ on the stack/)).toHaveCount(0);
 

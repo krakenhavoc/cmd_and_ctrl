@@ -2,7 +2,7 @@
   // S15 sub-PR 5 auto-tap-and-cast preview modal.
   //
   // Opens when the viewer chooses "Auto-tap & cast" from the
-  // insufficient-mana toast (or any future right-click → cast
+  // insufficient-mana request in the action dock (or any future right-click → cast
   // affordance). On mount it fetches `/games/:id/auto-tap-preview`
   // for the chosen card and renders the proposed plan: the ordered
   // list of sources the server would spend, each with what paying

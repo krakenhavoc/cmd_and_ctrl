@@ -200,7 +200,14 @@ export function attackRowRequest(input: AttackRowInput): DockRequest {
 
 // #1279: the viewer is a defender whose declaration is still open.
 // Whatever is staged is the declaration; nothing staged is "no blocks".
+//
+// Enter (ADR 0111 PR 4) presses Done blocking, which commits blocks the
+// player already put down. It does not press No blocks: that declines a
+// window that cannot be got back (#328), and since the owner's
+// 2026-10-02 decision it also passes priority, so it takes a click (or
+// Enter on the button itself once it has focus), never a stray Enter.
 export function blockRequest(staged: number, onFinish: () => void): DockRequest {
+  const done = staged > 0;
   return {
     rank: "blocks",
     label: "declare blockers",
@@ -213,9 +220,12 @@ export function blockRequest(staged: number, onFinish: () => void): DockRequest 
         : "Choose blockers, or declare none",
     primary: {
       id: "finish-blocks",
-      label: staged > 0 ? "Done blocking" : "No blocks",
-      title:
-        "finish declaring blockers — the attacking player gets priority once every defender is done",
+      label: done ? "Done blocking" : "No blocks",
+      title: done
+        ? "finish declaring blockers — the attacking player gets priority once every defender is done"
+        : "declare no blockers — and pass priority, if you hold it",
+      keyShortcuts: done ? "Enter" : undefined,
+      cap: done ? "⏎" : undefined,
       onPress: onFinish,
     },
   };

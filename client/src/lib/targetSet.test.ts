@@ -6,13 +6,14 @@
 // "two target creatures controlled by different players" (Run Away
 // Together). The server ships the rule as keys; the picker greys a
 // candidate whose key a pick already holds, refuses the click, says
-// the rule in the banner, and narrows an X-bounded clause by the X
+// the rule in the dock's targeting prompt (the banner's line until
+// ADR 0111 PR 4), and narrows an X-bounded clause by the X
 // collected in the cost prompts.
 
 import { describe, it, expect, afterEach } from "vitest";
 import { get } from "svelte/store";
 
-import TargetingBanner from "./components/board/TargetingBanner.svelte";
+import { targetingDetail } from "./targetingDock";
 import {
   begin,
   beginChoice,
@@ -24,7 +25,7 @@ import {
   type TargetingState,
 } from "./targeting";
 import type { CardView, PendingChoiceView } from "./protocol";
-import { render, cleanup } from "./test/render.svelte";
+import { cleanup } from "./test/render.svelte";
 
 afterEach(() => {
   targeting.set(null);
@@ -129,10 +130,11 @@ describe("a set rule over the chosen targets (#1559)", () => {
     expect(isLegalCardTarget(t, "z")).toBe(true);
   });
 
-  it("the banner says the rule", () => {
+  it("the dock's prompt says the rule", () => {
     begin(agadeem(), "card_in_graveyard", { xValue: 2 });
-    const { container } = render(TargetingBanner, {});
-    expect(container.textContent).toContain("targets must each have a different mana value");
+    expect(targetingDetail(get(targeting)!)).toContain(
+      "targets must each have a different mana value",
+    );
     cancel();
   });
 });
@@ -220,10 +222,9 @@ describe("a sameness rule over the chosen targets (#1807)", () => {
     expect(isLegalCardTarget(t, "y")).toBe(false);
   });
 
-  it("the banner says the rule", () => {
+  it("the dock's prompt says the rule", () => {
     begin(decompose(), "card_in_graveyard");
-    const { container } = render(TargetingBanner, {});
-    expect(container.textContent).toContain("targets must come from a single graveyard");
+    expect(targetingDetail(get(targeting)!)).toContain("targets must come from a single graveyard");
     cancel();
   });
 });

@@ -690,10 +690,11 @@ export function canConfirm(t: TargetingState): boolean {
   return t.picked.length >= t.min;
 }
 
-// The banner (mounted by Game.svelte) and the cast flow (Board)
-// are separate components; Board registers the handler that turns
-// the pick list into a cast_spell / resolve_choice, and the banner's
-// Done calls confirm().
+// The dock's targeting prompt (lib/targetingDock.ts, opened by
+// Game.svelte; it was TargetingBanner until ADR 0111 PR 4) and the cast
+// flow (Board) are separate components; Board registers the handler
+// that turns the pick list into a cast_spell / resolve_choice, and the
+// dock's Done (or Enter) calls confirm().
 let confirmHandler: (() => void) | null = null;
 export function setConfirmHandler(fn: (() => void) | null): void {
   confirmHandler = fn;

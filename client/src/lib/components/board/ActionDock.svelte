@@ -29,16 +29,25 @@
   // Keys (ADR 0111 §1, ADR 0047): Space is still "pass priority" through
   // the shortcut layer and still defers to a focused button. Enter on a
   // focused action-bar button presses that button and nothing else (it
-  // is stopped here, so the targeting walk's window-level Enter does not
-  // also fire). Enter with focus on the board never presses `next`, and
-  // Escape never touches it. Focus does not move on an ordinary priority
-  // frame: that would steal it on every pass.
+  // is stopped here, so the window handler below does not also fire).
+  //
+  // PR 4: this is the table's ONE Enter / Escape handler for prompts.
+  // Enter presses the open request's primary and Escape its cancel, as
+  // lib/dock.ts's dockKeyFor decides: only a button that advertises the
+  // key, never while a modal layer or a text field has the keyboard,
+  // never Enter on a focused control. It replaced Game.svelte's
+  // window-level targeting Enter / Escape and its combat-selection
+  // Escape. Enter with focus on the board never presses `next`, and
+  // Escape never touches it: `next` is not a request's button. Focus
+  // does not move on an ordinary priority frame: that would steal it on
+  // every pass.
 
   import type { GameView } from "../../protocol";
   import PhaseDisplay from "./PhaseDisplay.svelte";
   import BluffChip from "./BluffChip.svelte";
   import Icon from "../Icon.svelte";
-  import { activeDockRequest, takesBar, type DockAction } from "../../dock";
+  import { activeDockRequest, dockKeyFor, takesBar, type DockAction } from "../../dock";
+  import { modalOpen } from "../../modalLayers";
   import { formatUndoCount, isUnlimitedUndo } from "../../tableSettings";
   import { holdPriority, toggleHoldPriority } from "../../holdPriority";
   import { bluffStatus, bluffStatusText } from "../../bluff";
@@ -129,6 +138,15 @@
     return a.title + (a.chord ? keyHint(a.chord) : "");
   }
 
+  // The one Enter / Escape handler (PR 4). The dock's own buttons stop
+  // Enter before it gets here.
+  function onWindowKey(e: KeyboardEvent): void {
+    const a = dockKeyFor(e, req, { modalOpen: $modalOpen });
+    if (!a) return;
+    e.preventDefault();
+    a.onPress();
+  }
+
   // ADR 0111 §1, keyboard focus: when a request the game waits on opens
   // (a choice, a block declaration) and focus is on the body, its
   // primary takes focus, so a keyboard player answers it at once and a
@@ -196,6 +214,8 @@
   });
 </script>
 
+<svelte:window onkeydown={onWindowKey} />
+
 <section class="action-dock" aria-label="actions" bind:this={root}>
   <div class="dock-head">
     <PhaseDisplay
@@ -234,7 +254,9 @@
     {:else if bluffLine}
       <!-- Only the viewer sees this line. -->
       <span class="bluff-status" role="status">{bluffLine}</span>
-    {:else if hint}
+    {:else if hint && !reqTakesBar}
+      <!-- What `next` will do — not while a request has taken the bar
+           and `next` is not on it. -->
       <span class="pass-hint">{hint}</span>
     {/if}
   </div>
@@ -328,8 +350,7 @@
           >
             {#if req.tag}<span class="q-tag tone-{req.tone ?? 'plain'}">{req.tag}</span>{/if}
             <span class="q-text"
-              >{req.question}{#if req.detail}<span class="q-detail">
-                  · {req.detail}</span
+              >{req.question}{#if req.detail}<span class="q-detail">{` · ${req.detail}`}</span
                 >{/if}</span
             >
           </div>
@@ -349,8 +370,8 @@
           <div class="dock-refusal" role="alert">
             <span class="q-tag tone-gold">{req.refusal.tag}</span>
             <span class="q-text"
-              ><strong>{req.refusal.text}</strong>{#if req.refusal.detail}<span class="q-detail">
-                  · {req.refusal.detail}</span
+              ><strong>{req.refusal.text}</strong>{#if req.refusal.detail}<span class="q-detail"
+                  >{` · ${req.refusal.detail}`}</span
                 >{/if}</span
             >
             <span class="refusal-actions">
@@ -588,6 +609,7 @@
      one gold button on the table (gold = priority everywhere). */
   .dock-bar {
     display: flex;
+    flex-wrap: wrap;
     gap: 8px;
     padding-top: 5px;
     border-top: 1px solid var(--border);
@@ -825,7 +847,10 @@
       color: var(--fg-muted);
       cursor: pointer;
     }
+    /* One row: the secondaries share the left half, the primary the
+       right (§8). */
     .dock-bar {
+      flex-wrap: nowrap;
       gap: 6px;
     }
     .dock-btn {

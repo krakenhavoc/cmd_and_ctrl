@@ -96,7 +96,7 @@ as a list up front.
 | 6 | Cast a creature | `[aria-label="your hand"]` | controlled creature count +1 | snapshot |
 | 7 | **Abilities live on right-click** | card instance id | ability menu opened | **event** |
 | 8 | Move the turn along | `region "actions"` (the action dock, ADR 0111) | `turn.step` changed | snapshot |
-| 9 | Watch the bot | attention strip | `turn.active_seat` back to you | snapshot |
+| 9 | Watch the bot | `region "attention"` (the attention strip, ADR 0111 §4) | `turn.active_seat` back to you | snapshot |
 | 10 | Attack | creature row + opponent medallion | a controlled creature has `attacking_target` | snapshot |
 | 11 | That is the whole interface | — | button | button |
 

@@ -18,7 +18,9 @@
 </script>
 
 <div data-testid="board-stub">
-  <div class="strip" data-testid="strip">{@render attention?.()}</div>
+  <div class="strip" data-testid="strip" role="region" aria-label="attention">
+    {@render attention?.()}
+  </div>
   {#each selectCards as id (id)}
     <button type="button" data-testid={`select-${id}`} onclick={() => onSelectCombatCard?.(id)}
       >select {id}</button
