@@ -196,15 +196,32 @@ test.describe("#328 autopass skips the blocking window", () => {
       ).trim();
       expect(stepLabel).toBe("Declare Blockers");
 
-      // Declining is still legal: an explicit pass moves the game on,
-      // which is what separates "the player chose not to block" from
-      // "the client chose for them".
-      await admin.sendActionAsPlayer(defenderID, "pass_priority", {});
+      // Declining is still legal, and it is the player's own click:
+      // ADR 0111 PR 3 puts "No blocks" in the action dock as the
+      // primary, in place of next and Pass turn, for as long as the
+      // defender owes the declaration. That click is what separates
+      // "the player chose not to block" from "the client chose for
+      // them".
+      const blockRequest = defender.page
+        .getByRole("region", { name: "actions", exact: true })
+        .getByRole("dialog", { name: "declare blockers" });
+      await expect(
+        blockRequest.getByRole("group", { name: "declare blockers" }),
+      ).toContainText("Choose blockers, or declare none");
+      await expect(defender.page.getByRole("button", { name: "next", exact: true })).toHaveCount(0);
+      const noBlocks = blockRequest.getByRole("button", { name: "No blocks", exact: true });
+      await expect(noBlocks).toBeEnabled();
+      await noBlocks.click();
       await admin.waitFor(
-        (v) => v.turn?.step !== "declare_blockers",
-        "an explicit pass still leaves the blocking window",
+        (v) =>
+          v.turn?.step !== "declare_blockers" ||
+          (v.turn?.blocks_declared_seats ?? []).includes(defenderSeat),
+        "No blocks finished the defender's declaration",
         20_000,
       );
+      // With the declaration done the request closes and next is back.
+      await expect(blockRequest).toHaveCount(0);
+      await expect(defender.page.getByRole("button", { name: "next", exact: true })).toHaveCount(1);
       void attacker;
     } finally {
       admin.close();

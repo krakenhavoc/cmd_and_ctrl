@@ -21,7 +21,6 @@
   import {
     canManageTable,
     canSpawn,
-    formatUndoCount,
     hasUndoBudget,
     isUnlimitedUndo,
     spawningVisible,
@@ -42,6 +41,8 @@
   import TargetingBanner from "../lib/components/board/TargetingBanner.svelte";
   import GameLogPanel from "../lib/components/board/GameLogPanel.svelte";
   import ActionDock from "../lib/components/board/ActionDock.svelte";
+  import DockRequest from "../lib/components/board/DockRequest.svelte";
+  import { attackRowRequest, blockRequest, combatSelectionRequest } from "../lib/combatDock";
   import RevealBanner from "../lib/components/board/RevealBanner.svelte";
   import BotFeed from "../lib/components/BotFeed.svelte";
   import Icon from "../lib/components/Icon.svelte";
@@ -60,17 +61,11 @@
   } from "../lib/priority";
   import { hasPlay, hasResponse, keyWindow, type ResponseCategories } from "../lib/responseWindow";
   import {
-    attackAllLabel,
     attackAllParams,
-    eligibleAt,
-    attackAllTaxLabel,
     attackLimitOn,
-    attackTaxOn,
     blockedSummary,
     bulkAttackRefusal,
-    offersAttackPicker,
     planAttackAll,
-    seatLabel,
     type AttackAllParams,
     type BulkAttackAttempt,
   } from "../lib/attackAll";
@@ -940,8 +935,8 @@
   }
   // ---- Attack with all (#318) ----
   // Declaring a wide board one creature at a time is the loudest
-  // ergonomics complaint from live play. The cluster below sits in
-  // the attention strip for the whole declare-attackers step and
+  // ergonomics complaint from live play. The action dock's attack row
+  // (ADR 0111 PR 3) is there for the whole declare-attackers step and
   // offers one button per attackable opponent.
   //
   // "Attack all" is ambiguous at a Commander table, so this never
@@ -992,17 +987,6 @@
     sendBulkAttack(defenderSeatID, params);
   }
 
-  // ADR 0080 (#1063): the button's tooltip names the CR 508.1a price
-  // as well as the count, so the cost of a wide swing under
-  // Propaganda is legible before the click rather than arriving as a
-  // rejection toast. The price is the server's; nothing here derives
-  // it (#429).
-  function attackAllTitle(opp: PlayerView): string {
-    return [attackAllLabel(attackPlan, opp), attackAllTaxLabel(view, attackPlan, opp.id)]
-      .filter(Boolean)
-      .join(" · ");
-  }
-
   // #1162: the attack-tax subset + lock-a-land picker
   // (AttackDeclarationModal.svelte). `attackPickerDefenderID` doubles
   // as open/closed, matching autoTapCardID's own convention.
@@ -1025,13 +1009,10 @@
   // derived read rather than an effect that writes its own dependency,
   // so there is nothing here to loop.
   const bulkRefusal = $derived(bulkAttackRefusal($lastError, lastAttackAllAttempt));
-  const attackTaxRefusalDefenderID = $derived(
-    bulkRefusal?.kind === "tax" ? bulkRefusal.defenderSeatID : null,
-  );
   const attackLimitRefusalDefenderID = $derived(
     bulkRefusal?.kind === "limit" ? bulkRefusal.defenderSeatID : null,
   );
-  // A used-up limit (room 0) leaves nothing to pick; the toast then
+  // A used-up limit (room 0) leaves nothing to pick; the refusal then
   // explains and offers no picker. An unpublished room (null) still
   // offers it: the server refuses an over-full pick again and says so.
   const attackLimitRefusalRoom = $derived(
@@ -1083,12 +1064,10 @@
   // tapped, so clearing declarations afterwards would strand them
   // tapped and not attacking — strictly worse than never having
   // clicked. Because the bulk declare is one room.Apply, a single
-  // undo restores tap state and declarations together. That is why
-  // this button is here rather than only in the ⋯ menu.
-  const canUndoDeclaration = $derived(
-    canDeclareAttackers && attackPlan.declared.length > 0 && canSpendUndo,
-  );
-  function undoDeclaration(): void {
+  // undo restores tap state and declarations together. That undo is
+  // the action dock's one Undo, in its toggles row, a click away for
+  // the whole step (ADR 0111 PR 3).
+  function undo(): void {
     client.sendAction("undo");
   }
 
@@ -1157,8 +1136,8 @@
   }
 
   // The ⋯ menu in the command bar holds the sandbox utilities
-  // (draw / untap / shuffle / mulligan / undo) and table actions so
-  // the bar itself stays status + its icon buttons. Pass turn is the
+  // (draw / untap / shuffle / mulligan) and table actions so the bar
+  // itself stays status + its icon buttons. Pass turn and Undo are the
   // action dock's (ADR 0111 §7).
   let menuOpen = $state(false);
   function closeMenu(): void {
@@ -1222,8 +1201,8 @@
       // availability rule treats as "no information" and stays
       // permissive about.
       passLegal: hasPassMove(view),
-      // Admin undo bypasses the caller / budget gates, same as the
-      // ⋯ menu's Undo row.
+      // Admin undo bypasses the caller / budget gates, as the server
+      // does (the dock's Undo reads the same canSpendUndo).
       // null means "no budget gate": an admin bypasses it, and so
       // does an unlimited table, whose seats report -1 remaining —
       // a number the shortcut's `<= 0` test would read as exhausted.
@@ -1243,6 +1222,64 @@
     if (!$settings.shortcuts.enabled || !chord) return "";
     return ` (${formatChord(chord, mac)})`;
   }
+
+  // ---- Combat in the action dock (ADR 0111 PR 3) ----
+  // Each is a request (lib/dock.ts) mounted beside the dock while it
+  // applies; lib/combatDock.ts builds what the dock draws.
+  //
+  // The attack row, for the whole declare-attackers step, so the count
+  // stays live as creatures are declared one by one. It stays after
+  // the last one is declared ("N declared"), and while a refusal of the
+  // last attack-with-all waits for an answer.
+  const attackRowShown = $derived(
+    canDeclareAttackers &&
+      !mulligansOpen &&
+      !gameEnded &&
+      (attackAllReady || attackPlan.declared.length > 0 || bulkRefusal !== null),
+  );
+  const attackDockRequest = $derived(
+    attackRowShown && view
+      ? attackRowRequest({
+          view,
+          plan: attackPlan,
+          ready: attackAllReady,
+          blockedHint: attackBlockedHint,
+          attackAllChord: keys.attackAll,
+          seatColor,
+          onAttackAll: attackAllAt,
+          onChooseAttackers: openAttackPicker,
+          refusal:
+            bulkRefusal && $lastError
+              ? {
+                  kind: bulkRefusal.kind,
+                  message: $lastError.message,
+                  reason: $lastError.reason,
+                  missing: $lastError.missing,
+                  limitRoom: attackLimitRefusalRoom,
+                  onChoose: openAttackPickerFromRefusal,
+                  onDismiss: dismissAttackTaxRefusal,
+                }
+              : null,
+        })
+      : null,
+  );
+  // #1279: a defender still declaring blockers finishes from the dock's
+  // primary, for the whole of their open declaration.
+  const blockDockRequest = $derived(
+    viewerBlocksPending && !mulligansOpen && !gameEnded
+      ? blockRequest(viewerStagedBlocks, finishBlocks)
+      : null,
+  );
+  // The two-click combat flow's hint, with Cancel (and Escape).
+  const selectionDockRequest = $derived(
+    combatSelection && !mulligansOpen
+      ? combatSelectionRequest(
+          combatSelection.kind,
+          cardLabel(combatSelection.cardID).name,
+          () => (combatSelection = null),
+        )
+      : null,
+  );
 
   function fmtTime(d: Date): string {
     if (Number.isNaN(d.getTime())) return "";
@@ -1378,25 +1415,7 @@
                 />
                 <button class="sm" onclick={() => viaMenu(mulligan)}>Go</button>
               </div>
-              <button
-                class="mi"
-                role="menuitem"
-                onclick={() => viaMenu(() => client.sendAction("undo"))}
-                disabled={!canSpendUndo}
-                title={(adminUnseated
-                  ? "rewind the most recent action (admin — bypasses caller / budget gates)"
-                  : undoUnlimited
-                    ? "undo your most recent action — this table has no undo limit"
-                    : !canSpendUndo
-                      ? "no undos remaining this turn (refreshes on your next untap)"
-                      : `undo your most recent action — ${formatUndoCount(viewerSeat?.undos_remaining)} left this turn`) +
-                  keyHint(keys.undo)}
-              >
-                <Icon name="undo" size={15} /> Undo
-                {#if !adminUnseated && viewerSeat}
-                  <span class="mi-r">{formatUndoCount(viewerSeat.undos_remaining)} left</span>
-                {/if}
-              </button>
+              <!-- Undo is the action dock's, in its toggles row (ADR 0111 PR 3). -->
               <button
                 class="mi"
                 role="menuitem"
@@ -1649,168 +1668,9 @@
                  does. -->
             <RevealBanner snap={view} />
 
-            <!-- #318: the attack-with-all cluster. Present for the whole
-                 declare-attackers step so the count stays live as
-                 creatures are declared one by one; it disappears the
-                 moment nothing is left that could attack. -->
-            {#if canDeclareAttackers && !mulligansOpen && !gameEnded && (attackAllReady || canUndoDeclaration)}
-              <div class="att attack-all" aria-label="declare attackers">
-                <span class="att-label danger">
-                  <Icon name="sword" size={12} />
-                  attack
-                </span>
-                <span class="att-text">
-                  {#if attackAllReady}
-                    <strong>{attackPlan.eligible.length}</strong>
-                    ready to attack
-                    {#if attackPlan.declared.length > 0}
-                      <span class="muted">· {attackPlan.declared.length} already declared</span>
-                    {/if}
-                    {#if attackBlockedHint}
-                      <span class="muted">· can't: {attackBlockedHint}</span>
-                    {/if}
-                  {:else}
-                    <strong>{attackPlan.declared.length}</strong>
-                    declared
-                    {#if attackBlockedHint}
-                      <span class="muted">· {attackBlockedHint} can't attack</span>
-                    {/if}
-                  {/if}
-                </span>
-                {#if attackAllReady}
-                  {#if attackPlan.defenders.length === 1}
-                    <button
-                      type="button"
-                      class="primary att-btn"
-                      title={attackAllTitle(attackPlan.defenders[0]) + keyHint(keys.attackAll)}
-                      disabled={eligibleAt(attackPlan, attackPlan.defenders[0].id).length === 0}
-                      onclick={() => attackAllAt(attackPlan.defenders[0].id)}
-                    >
-                      {attackAllLabel(attackPlan, attackPlan.defenders[0])}
-                      {#if attackAllTaxLabel(view, attackPlan, attackPlan.defenders[0].id)}
-                        <span class="muted"
-                          >· {attackAllTaxLabel(view, attackPlan, attackPlan.defenders[0].id)}</span
-                        >
-                      {/if}
-                    </button>
-                    {#if offersAttackPicker(view, attackPlan, attackPlan.defenders[0].id)}
-                      <!-- #1162: the seat can only afford SOME of a wide
-                           swing under a tax — offered up front rather
-                           than only after the full-batch button is
-                           refused. #1533: likewise when a count limit
-                           lets only some of it attack. -->
-                      <button
-                        type="button"
-                        class="ghost att-btn"
-                        title={attackTaxOn(view, attackPlan.defenders[0].id)
-                          ? "pick which attackers to send, and lock a land against the auto-tapper"
-                          : "pick which attackers to send — an effect limits how many can attack"}
-                        onclick={() => openAttackPicker(attackPlan.defenders[0].id)}
-                      >
-                        Choose attackers…
-                      </button>
-                    {/if}
-                  {:else}
-                    <!-- Multi-opponent: one button per seat rather than a
-                         bare "attack all", so the control always says who
-                         gets hit. Nothing here spreads an attack. -->
-                    <span class="att-text all-at">Attack all →</span>
-                    {#each attackPlan.defenders as opp (opp.id)}
-                      <button
-                        type="button"
-                        class="att-btn opp-btn"
-                        title={attackAllTitle(opp)}
-                        disabled={eligibleAt(attackPlan, opp.id).length === 0}
-                        onclick={() => attackAllAt(opp.id)}
-                      >
-                        <span class="seat-dot" style="background:{seatColor(opp.seat)}"></span>
-                        {seatLabel(opp)}
-                        {#if attackTaxOn(view, opp.id)}
-                          <span class="muted">{attackTaxOn(view, opp.id)}</span>
-                        {/if}
-                      </button>
-                      {#if offersAttackPicker(view, attackPlan, opp.id)}
-                        <button
-                          type="button"
-                          class="ghost att-btn"
-                          title={attackTaxOn(view, opp.id)
-                            ? `pick which attackers to send at ${seatLabel(opp)}, and lock a land against the auto-tapper`
-                            : `pick which attackers to send at ${seatLabel(opp)} — an effect limits how many can attack`}
-                          onclick={() => openAttackPicker(opp.id)}
-                          aria-label={`Choose attackers against ${seatLabel(opp)}`}
-                        >
-                          <Icon name="more" size={12} />
-                        </button>
-                      {/if}
-                    {/each}
-                  {/if}
-                {/if}
-                {#if canUndoDeclaration}
-                  <button
-                    type="button"
-                    class="ghost att-btn"
-                    title="take back your last declaration — restores tap state too"
-                    onclick={undoDeclaration}
-                  >
-                    <Icon name="undo" size={12} /> Undo
-                  </button>
-                {/if}
-              </div>
-            {/if}
-
-            <!-- #1279: a defender still declaring blockers can finish
-                 without holding priority. Present for the whole of
-                 their open declaration, so the count stays live as
-                 blocks are staged; gone once it is complete. -->
-            {#if viewerBlocksPending && !mulligansOpen && !gameEnded}
-              <div class="att block-finish" aria-label="declare blockers">
-                <span class="att-label">
-                  <Icon name="sword" size={12} />
-                  block
-                </span>
-                <span class="att-text">
-                  {#if viewerStagedBlocks > 0}
-                    <strong>{viewerStagedBlocks}</strong>
-                    {viewerStagedBlocks === 1 ? "blocker" : "blockers"} declared
-                  {:else}
-                    Choose blockers, or declare none
-                  {/if}
-                </span>
-                <button
-                  type="button"
-                  class="primary att-btn"
-                  title="finish declaring blockers — the attacking player gets priority once every defender is done"
-                  onclick={finishBlocks}
-                >
-                  {viewerStagedBlocks > 0 ? "Done blocking" : "No blocks"}
-                </button>
-              </div>
-            {/if}
-
-            {#if combatSelection && !mulligansOpen}
-              <div class="att combat-hint" role="status" aria-live="polite">
-                <span class="att-label danger">
-                  <Icon name="sword" size={12} />
-                  {combatSelection.kind === "attacker" ? "attack" : "block"}
-                </span>
-                <span class="att-text">
-                  {#if combatSelection.kind === "attacker"}
-                    Attacking with <strong>{cardLabel(combatSelection.cardID).name}</strong> — click an
-                    opponent's seat to commit, or the creature again to cancel.
-                  {:else}
-                    Blocking with <strong>{cardLabel(combatSelection.cardID).name}</strong> — click an
-                    incoming attacker to commit, or the creature again to cancel.
-                  {/if}
-                </span>
-                <button
-                  type="button"
-                  class="ghost att-btn"
-                  onclick={() => (combatSelection = null)}
-                >
-                  Cancel <kbd>Esc</kbd>
-                </button>
-              </div>
-            {/if}
+            <!-- ADR 0111 PR 3: the attack row, the block declaration and
+                 the combat-selection hint are the action dock's
+                 requests now (lib/combatDock.ts), not the strip's. -->
 
             {#if mulligansOpen && !gameEnded}
               <div class="att mulligan-banner" aria-label="opening hand decisions">
@@ -1890,72 +1750,10 @@
                   <Icon name="x" size={12} />
                 </button>
               </div>
-            {:else if attackTaxRefusalDefenderID}
-              <!-- #1162: a wide swing refused for want of the CR 508.1a
-                   attack tax (ADR 0080) offers the subset picker
-                   instead of leaving the player to work out a smaller
-                   number and declare it one creature at a time. -->
-              <div class="att toast attack-tax-override" role="alert" aria-live="polite">
-                <span class="att-label gold">attack tax</span>
-                <span class="att-text">
-                  <strong>
-                    {#if $lastError?.reason}
-                      Attacking with all of them costs {$lastError.reason} and you can't pay it
-                    {:else}
-                      You can't pay to attack with all of them
-                    {/if}
-                  </strong>
-                  {#if $lastError?.missing && $lastError.missing.length > 0}
-                    <span class="muted">· missing {$lastError.missing.join(" ")}</span>
-                  {/if}
-                </span>
-                <button type="button" class="primary att-btn" onclick={openAttackPickerFromRefusal}>
-                  Choose attackers…
-                </button>
-                <button
-                  type="button"
-                  class="ghost att-close"
-                  onclick={dismissAttackTaxRefusal}
-                  aria-label="dismiss"
-                >
-                  <Icon name="x" size={12} />
-                </button>
-              </div>
-            {:else if attackLimitRefusalDefenderID}
-              <!-- #1533: a wide swing refused by a CR 508.1c count limit
-                   (Silent Arbiter, Crawlspace — ADR 0045 Decision 45)
-                   offers the same attackers picker, capped at the room
-                   the server publishes. The server's sentence is the
-                   reason, shown verbatim. -->
-              <div class="att toast attack-limit-override" role="alert" aria-live="polite">
-                <span class="att-label gold">attack limit</span>
-                <span class="att-text">
-                  <strong>{$lastError?.message}</strong>
-                  {#if attackLimitRefusalRoom === 0}
-                    <span class="muted">· no more creatures can attack this combat</span>
-                  {/if}
-                </span>
-                {#if attackLimitRefusalRoom !== 0}
-                  <button
-                    type="button"
-                    class="primary att-btn"
-                    onclick={openAttackPickerFromRefusal}
-                  >
-                    {attackLimitRefusalRoom === null
-                      ? "Choose attackers…"
-                      : `Choose up to ${attackLimitRefusalRoom}…`}
-                  </button>
-                {/if}
-                <button
-                  type="button"
-                  class="ghost att-close"
-                  onclick={dismissAttackTaxRefusal}
-                  aria-label="dismiss"
-                >
-                  <Icon name="x" size={12} />
-                </button>
-              </div>
-            {:else if $lastError}
+            {:else if $lastError && !(bulkRefusal && attackRowShown)}
+              <!-- A refusal of the last attack-with-all is answered in
+                   the dock's attack row (ADR 0111 PR 3) while the row is
+                   there; otherwise it is an ordinary rejection. -->
               <div class="att toast error" role="alert" aria-live="polite">
                 <span class="att-label danger">rejected</span>
                 <span class="att-text">
@@ -2044,6 +1842,17 @@
            play area's bottom-right corner. Outside the boundary on
            purpose: `next` keeps working when the table fails to draw. -->
       {#if dockShown}
+        <!-- The dock's requests (lib/dock.ts). Each is open for as long
+             as its block is mounted; the dock draws the strongest. -->
+        {#if attackDockRequest}
+          <DockRequest request={attackDockRequest} />
+        {/if}
+        {#if blockDockRequest}
+          <DockRequest request={blockDockRequest} />
+        {/if}
+        {#if selectionDockRequest}
+          <DockRequest request={selectionDockRequest} />
+        {/if}
         <ActionDock
           {view}
           {viewerHasPriority}
@@ -2055,6 +1864,9 @@
           onPassPriority={passPriority}
           onPassTurn={passTurn}
           onToggleAutopass={toggleAutopass}
+          undosLeft={viewerSeat?.undos_remaining ?? 0}
+          canUndo={canSpendUndo}
+          onUndo={undo}
           onSize={onDockSize}
         />
       {/if}
@@ -2203,7 +2015,12 @@
       // Without this check, Escape both closes that modal AND cancels
       // the targeting walk underneath it, which is a second, unwanted
       // effect of the same keypress.
-      if (!$modalOpen) cancelTargeting();
+      if (!$modalOpen) {
+        cancelTargeting();
+        // ADR 0111 PR 3: the combat selection's Cancel in the dock
+        // advertises Esc, so Escape cancels it.
+        combatSelection = null;
+      }
     }
     // S20 sub-PR 5: Enter confirms a multi-target pick list (no-op
     // for single-target prompts and when fewer than min are picked).
@@ -2709,18 +2526,6 @@
     flex: 1;
     min-width: 0;
   }
-  /* #1533: the limit sentence is the server's and can run long
-     ("… can attack Player 3 each combat (Crawlspace)."). At phone
-     width the text takes the whole first line and the actions wrap
-     under it, rather than squeezing it into a column a word wide. */
-  @media (max-width: 599px) {
-    .attack-limit-override {
-      flex-wrap: wrap;
-    }
-    .attack-limit-override .att-text {
-      flex-basis: calc(100% - 110px);
-    }
-  }
   .att-text strong {
     color: var(--fg);
     font-weight: 700;
@@ -2738,15 +2543,6 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-  }
-  .att-btn kbd {
-    font-family: var(--font-mono);
-    font-size: 9.5px;
-    color: var(--fg-dim);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    padding: 0 4px;
-    line-height: 16px;
   }
   .att-close {
     flex: 0 0 auto;
@@ -2766,33 +2562,12 @@
     vertical-align: middle;
     margin-right: 4px;
   }
-  .combat-hint,
   .mana-override,
-  .attack-tax-override,
-  .attack-limit-override,
   .rewind-notice,
   .game-end {
     border-color: rgba(217, 180, 92, 0.45);
   }
 
-  /* #318 attack-with-all cluster. Wraps rather than overflowing —
-     a four-player table puts three opponent buttons in the strip and
-     the strip is only ~512px wide. */
-  .attack-all {
-    flex-wrap: wrap;
-    border-color: rgba(255, 122, 122, 0.4);
-  }
-  .attack-all .all-at {
-    flex: 0 0 auto;
-    color: var(--fg-dim);
-    font-family: var(--font-mono);
-    font-size: 10px;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-  }
-  .attack-all .opp-btn {
-    border-color: rgba(255, 122, 122, 0.35);
-  }
   .toast.error,
   .eliminated {
     border-color: rgba(255, 107, 107, 0.4);

@@ -14,6 +14,9 @@ import { join } from "node:path";
 import ActionDock from "./components/board/ActionDock.svelte";
 import Board from "./components/board/Board.svelte";
 import { _resetForTests as resetBluff } from "./bluff";
+import { _resetForTests as resetDock, pushDockRequest } from "./dock";
+import { attackRowRequest, blockRequest, combatSelectionRequest } from "./combatDock";
+import type { AttackAllPlan } from "./attackAll";
 import { defaultSettings, settings } from "./settings";
 import type { CardView, GameView, PlayerView, TurnView } from "./protocol";
 import { render, click, cleanup, flushSync } from "./test/render.svelte";
@@ -30,6 +33,7 @@ beforeEach(() => {
   g.IntersectionObserver ??= FakeObserver;
   settings.set(defaultSettings());
   resetBluff();
+  resetDock();
 });
 afterEach(cleanup);
 
@@ -136,12 +140,12 @@ describe("ActionDock", () => {
     expect(dock.querySelectorAll(".turn-no")).toHaveLength(1);
     expect(dock.querySelectorAll(".step-label")).toHaveLength(1);
 
-    // The toggles row: hold, autopass, bluff, in that order.
+    // The toggles row: hold, autopass, bluff and the one Undo, in that order.
     const toggles = dock.querySelector('[role="group"][aria-label="priority controls"]')!;
     const names = [...toggles.querySelectorAll("button")].map(
       (b) => b.getAttribute("aria-label") ?? accessibleName(b),
     );
-    expect(names).toEqual(["hold", "autopass", "bluff", "bluff options"]);
+    expect(names).toEqual(["hold", "autopass", "bluff", "bluff options", "Undo (0 left)"]);
     const autopass = toggles.querySelector<HTMLButtonElement>("button.action.autopass")!;
     expect(autopass.getAttribute("aria-pressed")).toBe("false");
 
@@ -272,6 +276,282 @@ describe("ActionDock", () => {
     click(toggle);
     expect(toggle.getAttribute("aria-expanded")).toBe("true");
     expect(d.q(".phase-display")!.classList.contains("track-open")).toBe(true);
+  });
+});
+
+// ADR 0111 PR 3: the one Undo, out of the ⋯ menu and the attack row.
+describe("the dock's one Undo", () => {
+  it("sits last in the toggles row with the count left, and undoes", () => {
+    let undone = 0;
+    const d = mountDock({ undosLeft: 1, canUndo: true, onUndo: () => undone++ });
+    const toggles = d.q('[role="group"][aria-label="priority controls"]')!;
+    const undo = toggles.querySelector<HTMLButtonElement>("button.action.undo")!;
+    expect(toggles.lastElementChild).toBe(undo);
+    expect(undo.getAttribute("aria-label")).toBe("Undo (1 left)");
+    expect(undo.querySelector(".undo-count")?.textContent).toBe("1");
+    expect(undo.disabled).toBe(false);
+    expect(undo.title).toBe("undo your most recent action — 1 left this turn (U)");
+    expect(undo.getAttribute("aria-keyshortcuts")).toBe("U");
+    click(undo);
+    expect(undone).toBe(1);
+  });
+
+  it("is disabled, not hidden, when the budget is spent", () => {
+    const d = mountDock({ undosLeft: 0, canUndo: false });
+    const undo = d.q<HTMLButtonElement>("button.action.undo")!;
+    expect(undo.disabled).toBe(true);
+    expect(undo.getAttribute("aria-label")).toBe("Undo (0 left)");
+    expect(undo.title).toContain("no undos remaining this turn");
+  });
+
+  it("reads ∞ on a table with no undo limit", () => {
+    const d = mountDock({ undosLeft: -1, canUndo: true });
+    const undo = d.q<HTMLButtonElement>("button.action.undo")!;
+    expect(undo.getAttribute("aria-label")).toBe("Undo (no limit)");
+    expect(undo.querySelector(".undo-count")?.textContent).toBe("∞");
+    expect(undo.title).toContain("this table has no undo limit");
+  });
+
+  it("is the only Undo in the dock, whatever request is open", () => {
+    pushDockRequest(attackRowRequest(attackInput()));
+    const d = mountDock({ undosLeft: 1, canUndo: true });
+    const undos = [...d.container.querySelectorAll("button")].filter((b) =>
+      /undo/i.test(b.getAttribute("aria-label") ?? accessibleName(b)),
+    );
+    expect(undos).toHaveLength(1);
+  });
+});
+
+// The attack row's inputs, for a duel: two bears ready, one opponent.
+const bear = (id: string): CardView =>
+  ({
+    instance_id: id,
+    name: "Grizzly Bears",
+    controller: ME,
+    type_line: "Creature — Bear",
+  }) as CardView;
+function attackPlan(over: Partial<AttackAllPlan> = {}): AttackAllPlan {
+  return {
+    eligible: [bear("b1"), bear("b2")],
+    declared: [],
+    blocked: [],
+    defenders: [seat(OPP, "Opp", 1)],
+    targets: {},
+    ...over,
+  };
+}
+const attacks: string[] = [];
+const chosen: string[] = [];
+function attackInput(over: Partial<Parameters<typeof attackRowRequest>[0]> = {}) {
+  return {
+    view: gameView({ turn: turn({ step: "declare_attackers", phase: "combat" }) }),
+    plan: attackPlan(),
+    ready: true,
+    blockedHint: "",
+    attackAllChord: "a",
+    seatColor: () => "#f00",
+    onAttackAll: (id: string) => attacks.push(id),
+    onChooseAttackers: (id: string) => chosen.push(id),
+    ...over,
+  };
+}
+
+// ADR 0111 PR 3: combat's requests, drawn by the dock.
+describe("the dock's requests", () => {
+  beforeEach(() => {
+    attacks.length = 0;
+    chosen.length = 0;
+  });
+
+  const dialog = (c: ParentNode, name: string) =>
+    c.querySelector<HTMLElement>(`[role="dialog"][aria-label="${name}"]`);
+
+  it("draws the attack row in a non-modal dialog, and keeps next and Pass turn", () => {
+    pushDockRequest(
+      attackRowRequest(
+        attackInput({
+          plan: attackPlan({ declared: [bear("b0")] }),
+          blockedHint: "1 tapped",
+        }),
+      ),
+    );
+    const d = mountDock();
+    const dlg = dialog(d.container, "declare attackers")!;
+    expect(dlg).not.toBeNull();
+    expect(dlg.hasAttribute("aria-modal")).toBe(false);
+    // ADR 0111 §10: the attack row is `group "declare attackers"`, with
+    // the honest count and the reason the rest are out.
+    const group = dlg.querySelector<HTMLElement>('[role="group"][aria-label="declare attackers"]')!;
+    expect(group.textContent).toContain("2 ready to attack");
+    expect(group.textContent).toContain("1 already declared");
+    expect(group.textContent).toContain("can't: 1 tapped");
+    // The name the e2e suite matches, unchanged.
+    const all = buttonsNamed(group, "Attack Opp with all 2 creatures")[0]!;
+    expect(all.getAttribute("aria-keyshortcuts")).toBe("A");
+    expect(all.title).toContain("(A)");
+    click(all);
+    expect(attacks).toEqual([OPP]);
+    // A step row does not take the bar: next and Pass turn are still
+    // there, once each, and not inside the request.
+    expect(buttonsNamed(d.container, "next")).toHaveLength(1);
+    expect(buttonsNamed(d.container, "Pass turn")).toHaveLength(1);
+    expect(dlg.contains(buttonsNamed(d.container, "next")[0]!)).toBe(false);
+  });
+
+  it("puts one Attack all button per opponent at a wider table, with the picker where it applies", () => {
+    const view = gameView({
+      seats: [seat(ME, "Me", 0), seat(OPP, "Opp", 1), seat("o2", "Two", 2)],
+      turn: turn({
+        step: "declare_attackers",
+        attack_targets: [{ kind: "player", id: "o2", tax: "{2}" }],
+      } as Partial<TurnView>),
+    });
+    pushDockRequest(
+      attackRowRequest(
+        attackInput({
+          view,
+          plan: attackPlan({ defenders: [seat(OPP, "Opp", 1), seat("o2", "Two", 2)] }),
+        }),
+      ),
+    );
+    const d = mountDock();
+    const group = d.q('[role="group"][aria-label="declare attackers"]')!;
+    expect(group.textContent).toContain("Attack all →");
+    expect(buttonsNamed(group, "Opp")).toHaveLength(1);
+    const choose = group.querySelector<HTMLButtonElement>(
+      'button[aria-label="Choose attackers against Two"]',
+    )!;
+    click(choose);
+    expect(chosen).toEqual(["o2"]);
+  });
+
+  it("answers an attack-tax refusal in the row, with Choose attackers… and dismiss", () => {
+    let picked = 0;
+    let dismissed = 0;
+    pushDockRequest(
+      attackRowRequest(
+        attackInput({
+          refusal: {
+            kind: "tax",
+            message: "attack tax unpaid",
+            reason: "{4}",
+            missing: ["{2}"],
+            limitRoom: null,
+            onChoose: () => picked++,
+            onDismiss: () => dismissed++,
+          },
+        }),
+      ),
+    );
+    const d = mountDock();
+    const alert = d.q('[role="dialog"] [role="alert"]')!;
+    expect(alert.textContent).toContain(
+      "Attacking with all of them costs {4} and you can't pay it",
+    );
+    expect(alert.textContent).toContain("missing {2}");
+    click(buttonsNamed(alert, "Choose attackers…")[0]!);
+    click(alert.querySelector('button[aria-label="dismiss"]')!);
+    expect([picked, dismissed]).toEqual([1, 1]);
+  });
+
+  it("offers Choose up to N… for an attack-limit refusal, and nothing when the limit is used up", () => {
+    const refusal = (limitRoom: number | null) => ({
+      kind: "limit" as const,
+      message: "No more than one creature can attack each combat.",
+      limitRoom,
+      onChoose: () => {},
+      onDismiss: () => {},
+    });
+    const h = pushDockRequest(attackRowRequest(attackInput({ refusal: refusal(1) })));
+    const d = mountDock();
+    const alert = () => d.q('[role="dialog"] [role="alert"]')!;
+    expect(alert().textContent).toContain("No more than one creature can attack each combat.");
+    expect(buttonsNamed(alert(), "Choose up to 1…")).toHaveLength(1);
+    h.update(attackRowRequest(attackInput({ refusal: refusal(0) })));
+    flushSync();
+    expect(alert().textContent).toContain("no more creatures can attack this combat");
+    expect(alert().querySelectorAll("button")).toHaveLength(1); // dismiss only
+  });
+
+  it("makes No blocks the primary, in place of next and Pass turn, and Done blocking once staged", () => {
+    let finished = 0;
+    const h = pushDockRequest(blockRequest(0, () => finished++));
+    const d = mountDock({ viewerHasPriority: true });
+    const dlg = dialog(d.container, "declare blockers")!;
+    expect(
+      dlg.querySelector('[role="group"][aria-label="declare blockers"]')?.textContent,
+    ).toContain("Choose blockers, or declare none");
+    const primary = buttonsNamed(dlg, "No blocks")[0]!;
+    expect(primary.classList.contains("primary")).toBe(true);
+    expect(dlg.querySelector(".dock-bar")?.lastElementChild).toBe(primary);
+    // A stronger request takes the bar: next and Pass turn give way.
+    expect(buttonsNamed(d.container, "next")).toHaveLength(0);
+    expect(buttonsNamed(d.container, "Pass turn")).toHaveLength(0);
+    click(primary);
+    expect(finished).toBe(1);
+
+    h.update(blockRequest(2, () => finished++));
+    flushSync();
+    expect(dlg.textContent).toContain("2 blockers declared");
+    expect(buttonsNamed(dlg, "Done blocking")).toHaveLength(1);
+
+    // It closes; next and Pass turn come back.
+    h.close();
+    flushSync();
+    expect(dialog(d.container, "declare blockers")).toBeNull();
+    expect(buttonsNamed(d.container, "next")).toHaveLength(1);
+    expect(buttonsNamed(d.container, "Pass turn")).toHaveLength(1);
+  });
+
+  it("focuses the blockers primary when it opens and focus is on the body", () => {
+    (document.activeElement as HTMLElement | null)?.blur?.();
+    const d = mountDock();
+    pushDockRequest(blockRequest(0, () => {}));
+    flushSync();
+    expect(document.activeElement).toBe(buttonsNamed(d.container, "No blocks")[0]);
+  });
+
+  it("does not take focus from a control the player is on", () => {
+    const outside = document.createElement("button");
+    document.body.appendChild(outside);
+    outside.focus();
+    const d = mountDock();
+    pushDockRequest(blockRequest(0, () => {}));
+    flushSync();
+    expect(buttonsNamed(d.container, "No blocks")).toHaveLength(1);
+    expect(document.activeElement).toBe(outside);
+    outside.remove();
+  });
+
+  it("draws a combat selection as its hint and Cancel, with no primary", () => {
+    let cancelled = 0;
+    pushDockRequest(combatSelectionRequest("attacker", "Grizzly Bears", () => cancelled++));
+    const d = mountDock();
+    const dlg = dialog(d.container, "attacking with Grizzly Bears")!;
+    const q = dlg.querySelector(".dock-question")!;
+    expect(q.getAttribute("role")).toBe("status");
+    expect(q.getAttribute("aria-live")).toBe("polite");
+    expect(q.textContent).toContain("Attacking with Grizzly Bears — click an opponent's seat");
+    const bar = dlg.querySelector(".dock-bar")!;
+    const cancel = buttonsNamed(bar, "Cancel")[0]!;
+    expect(cancel.classList.contains("secondary")).toBe(true);
+    expect(cancel.getAttribute("aria-keyshortcuts")).toBe("Escape");
+    expect(cancel.querySelector("kbd.cap")?.textContent).toBe("Esc");
+    expect(bar.querySelector(".primary")).toBeNull();
+    expect(buttonsNamed(d.container, "next")).toHaveLength(0);
+    click(cancel);
+    expect(cancelled).toBe(1);
+  });
+
+  it("draws only the strongest request: a selection hides the attack row", () => {
+    pushDockRequest(attackRowRequest(attackInput()));
+    const sel = pushDockRequest(combatSelectionRequest("attacker", "Grizzly Bears", () => {}));
+    const d = mountDock();
+    expect(d.container.querySelectorAll('[role="dialog"]')).toHaveLength(1);
+    expect(dialog(d.container, "declare attackers")).toBeNull();
+    sel.close();
+    flushSync();
+    expect(dialog(d.container, "declare attackers")).not.toBeNull();
   });
 });
 

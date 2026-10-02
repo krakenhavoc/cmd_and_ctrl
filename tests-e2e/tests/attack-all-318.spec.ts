@@ -13,9 +13,10 @@ import {
 // #318 "[in-app] Feature request missing attack all button".
 //
 // The reporter's complaint was ergonomic: declaring a wide board one
-// creature at a time is a chore. The fix is a cluster in the
-// declare-attackers attention strip plus one bulk `declare_attackers`
-// action, and the three things worth guarding end to end are:
+// creature at a time is a chore. The fix is an attack row for the
+// declare-attackers step (the action dock's since ADR 0111 PR 3) plus
+// one bulk `declare_attackers` action, and the three things worth
+// guarding end to end are:
 //
 //   1. one click declares EVERY eligible creature, at the opponent
 //      named on the button (never a spread across the table);
@@ -136,10 +137,13 @@ test.describe("#318 attack with all", () => {
       );
 
       // --- 1 + 2: the honest count, then one click ---------------
-      const cluster = attacker.page.locator(".att.attack-all");
+      // ADR 0111 PR 3: the attack row is in the action dock, as
+      // `group "declare attackers"` inside `region "actions"`.
+      const dock = attacker.page.getByRole("region", { name: "actions", exact: true });
+      const cluster = dock.getByRole("group", { name: "declare attackers" });
       await expect(cluster).toBeVisible({ timeout: 15_000 });
       await expect(cluster).toContainText("3");
-      await expect(cluster, "the cluster must say why the fourth is out").toContainText("1 tapped");
+      await expect(cluster, "the attack row must say why the fourth is out").toContainText("1 tapped");
 
       // Two opponents would render one button per seat; a duel
       // renders the single named button. Either way the control names
@@ -162,8 +166,14 @@ test.describe("#318 attack with all", () => {
       expect(attackersAt(admin.snapshot(), attacker.playerID)).toEqual([]);
 
       // --- 3: one undo reverses the whole declaration ------------
-      const undo = cluster.getByRole("button", { name: /Undo/i });
+      // ADR 0111 PR 3: the declaration's Undo is the dock's one Undo,
+      // in its toggles row, with the count left.
+      const undo = dock.getByRole("group", { name: "priority controls" }).getByRole("button", {
+        name: /^Undo/,
+      });
       await expect(undo).toBeVisible();
+      await expect(undo).toBeEnabled();
+      await expect(attacker.page.getByRole("button", { name: /^Undo/ })).toHaveCount(1);
       await undo.click();
 
       await admin.waitFor(

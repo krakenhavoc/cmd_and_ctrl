@@ -11,10 +11,16 @@
   //   2. Status line — the running bluff, the CR 732 loop notice, or
   //      what `next` will do. Always one row tall, so the dock does not
   //      change height (and move the self panel) on every priority pass.
-  //   3. Toggles row — hold, autopass, bluff (`group "priority controls"`).
-  //   4. Action bar — the secondary on the left, ONE primary on the
-  //      right. Until PR 3 brings requests in, that is always Pass turn
-  //      and `next`.
+  //   3. Toggles row — hold, autopass, bluff and the one Undo, with
+  //      its count (`group "priority controls"`).
+  //   4. Prompt area — the open request (lib/dock.ts, PR 3), if any:
+  //      its question line, its row of options and a refusal it can
+  //      answer, all inside one non-modal `role="dialog"` named as the
+  //      control it replaced was.
+  //   5. Action bar — the secondary on the left, ONE primary on the
+  //      right. Pass turn and `next`, unless a request that takes the
+  //      bar is open (a block declaration, a combat selection): then its
+  //      buttons, inside its dialog, until it closes.
   //
   // `next` and Pass turn are rendered disabled, never hidden, when the
   // viewer cannot press them: the e2e suite reads `isEnabled()` on both
@@ -31,6 +37,9 @@
   import type { GameView } from "../../protocol";
   import PhaseDisplay from "./PhaseDisplay.svelte";
   import BluffChip from "./BluffChip.svelte";
+  import Icon from "../Icon.svelte";
+  import { activeDockRequest, takesBar, type DockAction } from "../../dock";
+  import { formatUndoCount, isUnlimitedUndo } from "../../tableSettings";
   import { holdPriority, toggleHoldPriority } from "../../holdPriority";
   import { bluffStatus, bluffStatusText } from "../../bluff";
   import { settings } from "../../settings";
@@ -53,6 +62,12 @@
     onPassPriority: () => void;
     onPassTurn: () => void;
     onToggleAutopass: () => void;
+    // The one Undo (ADR 0111 §1, PR 3). `undosLeft` is the seat's
+    // undos_remaining (-1 on a table with no limit); `canUndo` is the
+    // server's budget rule as Game.svelte reads it (hasUndoBudget).
+    undosLeft?: number;
+    canUndo?: boolean;
+    onUndo?: () => void;
     // The dock's live size, for --dock-w / --dock-h (ADR 0111 §4).
     onSize?: (width: number, height: number) => void;
   }
@@ -68,6 +83,9 @@
     onPassPriority,
     onPassTurn,
     onToggleAutopass,
+    undosLeft = 0,
+    canUndo = false,
+    onUndo = () => {},
     onSize,
   }: Props = $props();
 
@@ -97,6 +115,51 @@
     e.stopPropagation();
     if (enabled) press();
   }
+
+  // ---- the open request (lib/dock.ts) -----------------------------------
+  const req = $derived($activeDockRequest);
+  const reqTakesBar = $derived(takesBar(req));
+  // A key from the binding map (gated by the shortcut switch), or one
+  // the prompt always owns (Escape).
+  function actionKeys(a: DockAction): string | undefined {
+    return a.keyShortcuts ?? ariaKeys(a.chord ?? "");
+  }
+  function actionTitle(a: DockAction): string | undefined {
+    if (a.title === undefined) return undefined;
+    return a.title + (a.chord ? keyHint(a.chord) : "");
+  }
+
+  // ADR 0111 §1, keyboard focus: when a request the game waits on opens
+  // (a choice, a block declaration) and focus is on the body, its
+  // primary takes focus, so a keyboard player answers it at once and a
+  // screen reader lands on it. Once per request, and never on an
+  // ordinary priority frame: that would steal focus every pass.
+  let primaryEl: HTMLButtonElement | null = $state(null);
+  let focusedFor: string | null = null;
+  $effect(() => {
+    const r = req;
+    const el = primaryEl;
+    if (!r) {
+      focusedFor = null;
+      return;
+    }
+    if (!el || (r.rank !== "choice" && r.rank !== "blocks")) return;
+    if (focusedFor === r.label) return;
+    focusedFor = r.label;
+    const active = document.activeElement;
+    if (!active || active === document.body) el.focus();
+  });
+
+  // ---- the one Undo ------------------------------------------------------
+  const undoUnlimited = $derived(isUnlimitedUndo(undosLeft));
+  const undoCount = $derived(formatUndoCount(undosLeft));
+  const undoTitle = $derived(
+    (undoUnlimited
+      ? "undo your most recent action — this table has no undo limit"
+      : !canUndo
+        ? "no undos remaining this turn (refreshes on your next untap)"
+        : `undo your most recent action — ${undoCount} left this turn`) + keyHint(keys.undo),
+  );
 
   // ---- status line ---------------------------------------------------
   const autopassPaused = $derived(loopNotice !== "");
@@ -214,40 +277,160 @@
     </button>
     <!-- ADR 0111 §5: always shown, set up or not. -->
     <BluffChip keyHint={keyHint(keys.toggleBluff)} keyShortcuts={ariaKeys(keys.toggleBluff)} />
+    <!-- ADR 0111 PR 3: the one Undo, out of the ⋯ menu and the attack
+         row. Disabled, not hidden, when the budget is spent; the server
+         keeps the rules, this only reads them. -->
+    <button
+      type="button"
+      class="action undo"
+      disabled={!canUndo}
+      aria-label={undoUnlimited ? "Undo (no limit)" : `Undo (${undoCount} left)`}
+      aria-keyshortcuts={ariaKeys(keys.undo)}
+      onclick={onUndo}
+      title={undoTitle}
+    >
+      <Icon name="undo" size={13} /><span class="undo-word">Undo</span><span class="undo-count"
+        >{undoCount}</span
+      >
+    </button>
   </div>
+
+  {#snippet actionButton(a: DockAction, cls: string)}
+    <button
+      type="button"
+      class={cls}
+      class:emphasis={a.emphasis}
+      disabled={a.disabled}
+      aria-label={a.ariaLabel}
+      aria-keyshortcuts={actionKeys(a)}
+      title={actionTitle(a)}
+      onclick={a.onPress}
+      onkeydown={(e) => enterPresses(e, !a.disabled, a.onPress)}
+    >
+      {#if a.icon}<Icon name={a.icon} size={12} />{/if}
+      {#if a.seatColor}<span class="seat-dot" style="background:{a.seatColor}"></span>{/if}
+      {a.label}
+      {#if a.note}<span class="note">{a.note}</span>{/if}
+      {#if a.cap}<kbd class="cap" aria-hidden="true">{a.cap}</kbd>{/if}
+    </button>
+  {/snippet}
+
+  <!-- The open request (lib/dock.ts): one non-modal dialog holding its
+       question, its options and, when it takes the bar, its buttons. -->
+  {#if req}
+    <div class="dock-request" role="dialog" aria-label={req.label} data-rank={req.rank}>
+      <div class="dock-prompt" role={req.group ? "group" : undefined} aria-label={req.group}>
+        {#if req.question}
+          <div
+            class="dock-question"
+            role={req.live ? "status" : undefined}
+            aria-live={req.live ? "polite" : undefined}
+          >
+            {#if req.tag}<span class="q-tag tone-{req.tone ?? 'plain'}">{req.tag}</span>{/if}
+            <span class="q-text"
+              >{req.question}{#if req.detail}<span class="q-detail">
+                  · {req.detail}</span
+                >{/if}</span
+            >
+          </div>
+        {/if}
+        {#if req.body}
+          {@render req.body()}
+        {/if}
+        {#if req.row && req.row.length > 0}
+          <div class="dock-row">
+            {#if req.rowLead}<span class="row-lead">{req.rowLead}</span>{/if}
+            {#each req.row as a (a.id)}
+              {@render actionButton(a, "dock-btn row-btn")}
+            {/each}
+          </div>
+        {/if}
+        {#if req.refusal}
+          <div class="dock-refusal" role="alert">
+            <span class="q-tag tone-gold">{req.refusal.tag}</span>
+            <span class="q-text"
+              ><strong>{req.refusal.text}</strong>{#if req.refusal.detail}<span class="q-detail">
+                  · {req.refusal.detail}</span
+                >{/if}</span
+            >
+            <span class="refusal-actions">
+              {#each req.refusal.actions as a (a.id)}
+                {@render actionButton({ ...a, emphasis: true }, "dock-btn row-btn")}
+              {/each}
+              {#if req.refusal.onDismiss}
+                <button
+                  type="button"
+                  class="refusal-close"
+                  aria-label="dismiss"
+                  onclick={req.refusal.onDismiss}><Icon name="x" size={12} /></button
+                >
+              {/if}
+            </span>
+          </div>
+        {/if}
+      </div>
+      {#if reqTakesBar}
+        <!-- The request's own bar: its secondaries left, its one primary
+             in the corner. `next` and Pass turn give way until it closes. -->
+        <div class="dock-bar">
+          {#each req.secondary ?? [] as a (a.id)}
+            {@render actionButton(a, "dock-btn secondary")}
+          {/each}
+          {#if req.primary}
+            {@const p = req.primary}
+            <button
+              type="button"
+              class="dock-btn primary request-primary"
+              bind:this={primaryEl}
+              disabled={p.disabled}
+              aria-label={p.ariaLabel}
+              aria-keyshortcuts={actionKeys(p)}
+              title={actionTitle(p)}
+              onclick={p.onPress}
+              onkeydown={(e) => enterPresses(e, !p.disabled, p.onPress)}
+            >
+              {p.label}{#if p.cap}<kbd class="cap" aria-hidden="true">{p.cap}</kbd>{/if}
+            </button>
+          {/if}
+        </div>
+      {/if}
+    </div>
+  {/if}
 
   <!-- The action bar. Its slots never move: secondary on the left, the
        one primary in the very corner, so the pointer's resting place is
        always the button that moves the game on. -->
-  <div class="dock-bar">
-    <button
-      type="button"
-      class="dock-btn secondary pass-turn"
-      disabled={!viewerIsActive}
-      aria-keyshortcuts={ariaKeys(keys.passTurn)}
-      onclick={onPassTurn}
-      onkeydown={(e) => enterPresses(e, viewerIsActive, onPassTurn)}
-      title={viewerIsActive
-        ? `skip the rest of your turn${keyHint(keys.passTurn)}`
-        : `${activePlayerName} is the active player`}
-    >
-      Pass turn
-    </button>
-    <button
-      type="button"
-      class="dock-btn primary next"
-      class:viewer-priority={viewerHasPriority}
-      disabled={!viewerHasPriority}
-      aria-keyshortcuts={ariaKeys(keys.passPriority)}
-      onclick={onPassPriority}
-      onkeydown={(e) => enterPresses(e, viewerHasPriority, onPassPriority)}
-      title={viewerHasPriority
-        ? `pass priority — rotates to next seat${keyHint(keys.passPriority)}`
-        : "you don't hold priority"}
-    >
-      next{#if nextCap}<kbd class="cap" aria-hidden="true">{nextCap}</kbd>{/if}
-    </button>
-  </div>
+  {#if !reqTakesBar}
+    <div class="dock-bar">
+      <button
+        type="button"
+        class="dock-btn secondary pass-turn"
+        disabled={!viewerIsActive}
+        aria-keyshortcuts={ariaKeys(keys.passTurn)}
+        onclick={onPassTurn}
+        onkeydown={(e) => enterPresses(e, viewerIsActive, onPassTurn)}
+        title={viewerIsActive
+          ? `skip the rest of your turn${keyHint(keys.passTurn)}`
+          : `${activePlayerName} is the active player`}
+      >
+        Pass turn
+      </button>
+      <button
+        type="button"
+        class="dock-btn primary next"
+        class:viewer-priority={viewerHasPriority}
+        disabled={!viewerHasPriority}
+        aria-keyshortcuts={ariaKeys(keys.passPriority)}
+        onclick={onPassPriority}
+        onkeydown={(e) => enterPresses(e, viewerHasPriority, onPassPriority)}
+        title={viewerHasPriority
+          ? `pass priority — rotates to next seat${keyHint(keys.passPriority)}`
+          : "you don't hold priority"}
+      >
+        next{#if nextCap}<kbd class="cap" aria-hidden="true">{nextCap}</kbd>{/if}
+      </button>
+    </div>
+  {/if}
 </section>
 
 <style>
@@ -468,6 +651,153 @@
     letter-spacing: 0;
   }
 
+  /* The one Undo: an icon, the word, and the count left. */
+  .action.undo {
+    flex: 0 1 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+  }
+  .undo-count {
+    font-variant-numeric: tabular-nums;
+    opacity: 0.8;
+  }
+
+  /* The open request (lib/dock.ts). Non-modal: it sits in the dock and
+     blocks nothing on the board. */
+  .dock-request {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    min-width: 0;
+  }
+  .dock-prompt {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    min-width: 0;
+  }
+  .dock-question {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    font-size: 0.8rem;
+    line-height: 1.35;
+    color: var(--fg);
+    min-width: 0;
+  }
+  .q-tag {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.64rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-weight: 700;
+    color: var(--fg-muted);
+  }
+  .q-tag.tone-danger {
+    color: var(--danger);
+  }
+  .q-tag.tone-gold {
+    color: var(--accent-strong);
+  }
+  .q-text {
+    min-width: 0;
+  }
+  .q-detail {
+    color: var(--fg-dim);
+  }
+  .dock-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+  }
+  .row-lead {
+    font-size: 0.75rem;
+    color: var(--fg-muted);
+  }
+  .dock-btn.row-btn {
+    min-height: 28px;
+    padding: 0 10px;
+    font-size: 0.82em;
+    white-space: normal;
+    text-align: left;
+  }
+  /* The row's emphasised option (Attack … with all). Accent outline,
+     not gold fill: gold is the action bar's one primary. */
+  .dock-btn.emphasis {
+    border-color: color-mix(in srgb, var(--accent) 60%, transparent);
+    color: var(--accent-strong);
+    background: var(--accent-soft);
+  }
+  .dock-btn.emphasis:hover:not(:disabled) {
+    background: rgba(217, 180, 92, 0.24);
+  }
+  .note {
+    color: var(--fg-dim);
+    font-weight: 500;
+  }
+  .seat-dot {
+    flex: none;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+  }
+  .dock-refusal {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 6px;
+    padding: 6px 8px;
+    border: 1px solid rgba(217, 180, 92, 0.45);
+    border-radius: 6px;
+    background: rgba(217, 180, 92, 0.08);
+    font-size: 0.78rem;
+    line-height: 1.35;
+    color: var(--fg);
+  }
+  .refusal-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: auto;
+  }
+  .refusal-close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border: none;
+    border-radius: 5px;
+    background: transparent;
+    color: var(--fg-muted);
+    cursor: pointer;
+  }
+  .refusal-close:hover {
+    background: rgba(255, 255, 255, 0.08);
+  }
+  .refusal-close:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  /* A request's primary (No blocks, Done blocking) is the gold button
+     in the corner, as `next` is with priority. */
+  .dock-btn.request-primary:not(:disabled) {
+    background: var(--accent);
+    color: var(--accent-fg);
+    font-weight: 700;
+    border-color: var(--accent-strong);
+  }
+  .dock-btn.request-primary:hover:not(:disabled) {
+    background: var(--accent-strong);
+  }
+
   /* ADR 0111 §8: a phone gets a full-width bar on the bottom of the
      play area, inside the 16px gutter (the section's padding plus 6px).
      .play-area pads its bottom by --dock-h, so the board ends above the
@@ -500,6 +830,14 @@
     }
     .dock-btn {
       min-height: 44px;
+    }
+    .dock-btn.row-btn {
+      min-height: 36px;
+    }
+    /* Four toggles share 358px: Undo becomes an icon chip with its
+       count; its name is its aria-label either way. */
+    .undo-word {
+      display: none;
     }
     /* A phone has no Space bar to advertise. */
     .cap {
