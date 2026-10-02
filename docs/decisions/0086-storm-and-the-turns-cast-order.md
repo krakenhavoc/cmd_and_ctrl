@@ -79,7 +79,7 @@ answer (1)–(3) together:
 - `TurnTally` (`turn_tally.go`, ADR 0059 / #586) counts what has
   happened this turn and slices `EventsThisTurn()` for the filtered
   long tail. Its `EventCast` arm bumps no counter at all today — it is
-  there only as a decision notch for the CR 726 loop breaker
+  there only as a decision notch for the CR 732 loop breaker
   (`turn_tally.go:648`).
 
 The catalog's one existing storm-shaped card, **Thousand-Year

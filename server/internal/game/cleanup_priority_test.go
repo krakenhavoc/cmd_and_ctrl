@@ -197,7 +197,7 @@ func TestTriggerInTheSecondCleanupGivesAThird(t *testing.T) {
 	})
 	// "At the beginning of the cleanup step" — the trigger CR 514.3a
 	// names explicitly. Bounded at two firings so the test ends: a
-	// card that really did this every cleanup would be a CR 726 loop,
+	// card that really did this every cleanup would be a CR 732 loop,
 	// which is ADR 0055's problem and not this one's.
 	fired := 0
 	withCatalogTriggers(t, func(id string) []TriggeredAbility {

@@ -430,7 +430,7 @@ describe("owesAttackRequirement", () => {
   });
 });
 
-// #628 (CR 726) — the loop breaker's client half. The autopass gate
+// #628 (CR 732) — the loop breaker's client half. The autopass gate
 // and the banner both read these two, so they are the only thing
 // between a server that has spotted a loop and a browser that would
 // otherwise keep feeding it.

@@ -67,7 +67,7 @@ toggle.
 **Two things deliberately kept above the pin:**
 
 - The guards that are not questions about what the viewer *may* do — an open
-  pending choice, an owed declare-blockers decision (#328), the CR 726 loop
+  pending choice, an owed declare-blockers decision (#328), the CR 732 loop
   breaker ([ADR 0055](0055-loop-breaker.md), #628), mulligans, game over,
   elimination. All of these hold anyway, so the pin changes nothing there.
 - The safety belt (decision 7). Entering the viewer's own `precombat_main`

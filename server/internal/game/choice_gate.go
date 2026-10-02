@@ -71,7 +71,7 @@ func (e *ChoicePendingError) Unwrap() error { return ErrChoicePending }
 // trigger prompts and ordering, search / choose-cards, scry, surveil,
 // look-at-top, replacement order and optional replacements, creature
 // type, colour choice, copy target, may-cast, mana pick, legend rule,
-// battle protector, entry pay-life, the CR 726 loop shortcut — blocks,
+// battle protector, entry pay-life, the CR 732 loop shortcut — blocks,
 // including any kind added after this comment was written.
 //
 // One kind is classified `false` today:
@@ -212,7 +212,7 @@ var choiceGateDecisions = map[PendingChoiceKind]bool{
 	// prevention shield is created, mid-resolution, and the shield is
 	// the rest of the card: it blocks for option_pick's reason.
 	PendingChoiceChooseSource: true,
-	// #804, CR 726. The one kind whose blocking is worth arguing
+	// #804, CR 732. The one kind whose blocking is worth arguing
 	// about, since ADR 0055 §4 was careful that the loop breaker
 	// refuse no passes. It blocks: the shortcut is proposed while the
 	// loop's trigger is still on the stack, and what the answer

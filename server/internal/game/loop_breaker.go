@@ -2,7 +2,7 @@ package game
 
 import "github.com/google/uuid"
 
-// loop_breaker.go — the CR 726 shortcut, engine side (#628).
+// loop_breaker.go — the CR 732 shortcut, engine side (#628).
 //
 // Replacement loops are capped (ErrReplacementIterationExceeded).
 // Trigger loops were not. A triggered ability goes on the stack and
@@ -14,16 +14,16 @@ import "github.com/google/uuid"
 // pass → resolve → broadcast → autopass → pass, until somebody
 // notices and turns autopass off. The game never ends.
 //
-// CR 726 is the paper answer. Players take a shortcut: the loop's
+// CR 732 is the paper answer. Players take a shortcut: the loop's
 // controller says how many more times it happens and the table skips
 // straight there, and a mandatory loop nobody can stop is a draw
-// (CR 726.4). Both halves need a player to SAY something, so the
+// (CR 732.4). Both halves need a player to SAY something, so the
 // engine's job is to hand priority back to the humans with the
 // loop's trigger still on the stack — not to stop the game, not to
 // refuse the pass.
 //
 // So this file notices, says so, and — since #804 — asks the one
-// question CR 726 says the controller gets to answer. The shortcut
+// question CR 732 says the controller gets to answer. The shortcut
 // half is at the bottom of the file; the detection half is here.
 //
 //   - Detection is the count already on TurnTally. Resolved counts
@@ -87,7 +87,7 @@ type LoopNotice struct {
 	// client puts in the banner.
 	Label string `json:"label"`
 	// Controller is the seat that controls the repeating ability —
-	// the player CR 726 would have name the number of iterations.
+	// the player CR 732 would have name the number of iterations.
 	Controller uuid.UUID `json:"controller,omitempty"`
 	// Count is how many times it has resolved in the current run. It
 	// keeps rising if the table steps the loop on by hand; the
@@ -132,7 +132,7 @@ func (g *Game) noteResolutionForLoopLocked(ev Event, key string) {
 	if !g.loopSuspectedLocked(key) {
 		return
 	}
-	// #804, CR 726. The loop's controller may already have said how
+	// #804, CR 732. The loop's controller may already have said how
 	// many more iterations they want, and while that number is being
 	// counted down there is nothing to tell the table.
 	spent, exhausted := g.spendLoopAllowanceLocked(key)
@@ -181,7 +181,7 @@ func (g *Game) noteResolutionForLoopLocked(ev Event, key string) {
 }
 
 // spendLoopAllowanceLocked charges one resolution of `key` against the
-// CR 726 shortcut its controller agreed to.
+// CR 732 shortcut its controller agreed to.
 //
 //	spent     — an allowance existed and this resolution used one of it.
 //	exhausted — that was the last one: the table has now had exactly
@@ -207,14 +207,14 @@ func (g *Game) spendLoopAllowanceLocked(key string) (spent, exhausted bool) {
 	return true, true
 }
 
-// loopShortcutRunningLocked reports whether any CR 726 shortcut still
+// loopShortcutRunningLocked reports whether any CR 732 shortcut still
 // has iterations left to run. Caller must hold g.mu.
 func (g *Game) loopShortcutRunningLocked() bool {
 	return len(g.TurnTally.LoopAllowance) > 0
 }
 
 // grantLoopShortcutLocked records the shortcut the loop's controller
-// proposed (CR 726): `iterations` more resolutions of `key`, and then
+// proposed (CR 732): `iterations` more resolutions of `key`, and then
 // the same question again.
 //
 // It re-arms LoopRun as well as writing the allowance, and that is the
@@ -269,7 +269,7 @@ func (g *Game) grantLoopShortcutLocked(key string, at, iterations int) {
 // Caller must hold g.mu.
 func (g *Game) notePlayerDecisionLocked() {
 	g.TurnTally.LoopRun = nil
-	// #804: a real decision ends any CR 726 shortcut too. The
+	// #804: a real decision ends any CR 732 shortcut too. The
 	// controller agreed to K more iterations of a loop that nobody was
 	// doing anything about; somebody has now done something, so the
 	// board the number was named against is gone. ResolveLoopShortcut
@@ -301,7 +301,7 @@ func (g *Game) notePlayerDecisionLocked() {
 // and a repeated free activation reaches the threshold in exactly the
 // number of iterations the threshold names.
 //
-// The CR 726 allowance for this key survives with it, for the same
+// The CR 732 allowance for this key survives with it, for the same
 // reason grantLoopShortcutLocked re-arms the run rather than letting
 // the answer reset it: a shortcut its controller agreed to is about
 // this ability, and the activations that spend it must not be what
@@ -327,7 +327,7 @@ func (g *Game) notePlayerActivationLocked(key string) {
 	}
 }
 
-// dropLoopShortcutPromptsLocked withdraws any outstanding CR 726
+// dropLoopShortcutPromptsLocked withdraws any outstanding CR 732
 // shortcut prompt (#804). Called from notePlayerDecisionLocked,
 // because the question it asks — "this loop is going nowhere, how many
 // more times?" — is moot the moment somebody casts, activates,
@@ -351,7 +351,7 @@ func (g *Game) dropLoopShortcutPromptsLocked() {
 	}
 }
 
-// AutoPassSuspended reports whether the CR 726 breaker has paused
+// AutoPassSuspended reports whether the CR 732 breaker has paused
 // automatic passing. Read by the bot runner before it dispatches a
 // pass; the client reads the same fact off GameView.loop_notice.
 func (g *Game) AutoPassSuspended() bool {
@@ -380,13 +380,13 @@ func cloneLoopNotice(n *LoopNotice) *LoopNotice {
 }
 
 // ---------------------------------------------------------------
-// The CR 726 shortcut prompt (#804)
+// The CR 732 shortcut prompt (#804)
 // ---------------------------------------------------------------
 //
 // ADR 0055 §6 deferred this half: the breaker stops the loop and hands
 // priority back, but the table's only ways on were to click through
 // every further iteration by hand or to re-enable autopass and be
-// paused again a threshold later. CR 726 is the conversation paper
+// paused again a threshold later. CR 732 is the conversation paper
 // has instead — the loop's controller says how many more times it
 // happens and the table skips there — and this is that conversation,
 // as one prompt with a number on it.
@@ -394,7 +394,7 @@ func cloneLoopNotice(n *LoopNotice) *LoopNotice {
 // Three things make it work, and each is deliberately small:
 //
 //   - The prompt goes to the CONTROLLER of the ability the notice
-//     names. CR 726 is their proposal to make; nobody else at the
+//     names. CR 732 is their proposal to make; nobody else at the
 //     table knows what the loop is for.
 //   - The answer is an allowance on the tally
 //     (TurnTally.LoopAllowance), not a second detector. The detector
@@ -409,7 +409,7 @@ func cloneLoopNotice(n *LoopNotice) *LoopNotice {
 //     the answer is how many times that trigger resolves next. A table
 //     that passed through the question would answer it by doing.
 
-// PendingChoiceLoopShortcut is the CR 726 shortcut: "<card> —
+// PendingChoiceLoopShortcut is the CR 732 shortcut: "<card> —
 // <ability> has resolved N times this turn. Resolve it K more times,
 // then stop?" Answered with an iteration count, 0 meaning "stop here"
 // — which leaves the notice standing and automatic passing paused,
@@ -420,7 +420,7 @@ func cloneLoopNotice(n *LoopNotice) *LoopNotice {
 const PendingChoiceLoopShortcut PendingChoiceKind = "loop_shortcut"
 
 // MaxLoopShortcutIterations caps the answer. It is a sanity bound on a
-// number a player types, not a rules limit: CR 726 lets a shortcut
+// number a player types, not a rules limit: CR 732 lets a shortcut
 // name any finite number, and a table that wants more than this can
 // answer the prompt again when it comes back. Large enough that
 // nobody legitimately hits it, small enough that a fat-fingered
@@ -434,7 +434,7 @@ const MaxLoopShortcutIterations = 1000
 const DefaultLoopShortcutIterations = 10
 
 // queueLoopShortcutLocked offers the standing notice's controller the
-// CR 726 shortcut. `repeat` says this is the second ask of the turn,
+// CR 732 shortcut. `repeat` says this is the second ask of the turn,
 // which is what lets a bot stop rather than shortcut the same loop
 // forever.
 //
@@ -519,7 +519,7 @@ func (g *Game) ResolveLoopShortcut(choiceID, chooserID uuid.UUID, iterations int
 }
 
 // LoopAllowanceFor reports how many more resolutions of the ability
-// keyed by `key` the table's CR 726 shortcut still covers. Zero when
+// keyed by `key` the table's CR 732 shortcut still covers. Zero when
 // no shortcut is running.
 func (g *Game) LoopAllowanceFor(key string) int {
 	g.mu.RLock()

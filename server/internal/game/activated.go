@@ -1597,7 +1597,7 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// fires here, against the context the payment was solved under.
 	g.applyManaSpendRidersLocked(item, riderCtx, riderSource)
 	// #628: activating an ability is a player decision, so it
-	// restarts the CR 726 loop run. The announce emits EventTrigger
+	// restarts the CR 732 loop run. The announce emits EventTrigger
 	// rather than an event of its own — the same kind a triggered
 	// ability announces with — so the notch is here rather than in
 	// turnTallyListener, which cannot tell the two apart.

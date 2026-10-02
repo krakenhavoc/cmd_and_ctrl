@@ -290,7 +290,7 @@ type Game struct {
 	// (#1181).
 	Activations ActivationTally
 
-	// LoopNotice is the CR 726 loop breaker's flag: set when the
+	// LoopNotice is the CR 732 loop breaker's flag: set when the
 	// same triggered ability has resolved LoopThreshold times this
 	// turn with no player decision in between, nil otherwise. While
 	// it is set, AUTOMATIC passing is suspended — the client's
@@ -1308,7 +1308,7 @@ const (
 	// driveStepEnded: the passes emptied the stack and the wrap ended
 	// the step on its own. The cursor has already moved.
 	driveStepEnded
-	// driveHalted: a blocking prompt, a CR 726 loop notice, or the
+	// driveHalted: a blocking prompt, a CR 732 loop notice, or the
 	// game ending stopped the drive with the step still owing
 	// something. The cursor has not moved.
 	driveHalted
@@ -1317,7 +1317,7 @@ const (
 // maxAdvanceStepPasses bounds the CR 117.4 drive. One resolution
 // costs up to one pass per seat, so this is ~256 resolutions at a
 // four-player table — far past anything a step legitimately owes, and
-// past the CR 726 loop breaker's own threshold, which stops the drive
+// past the CR 732 loop breaker's own threshold, which stops the drive
 // long before this does. Hitting it halts the drive with the cursor
 // where it stands; the caller clicks again.
 const maxAdvanceStepPasses = 1024
@@ -1335,7 +1335,7 @@ const maxAdvanceStepPasses = 1024
 //
 // It stops on the three things that stop automatic passing anywhere
 // else in the engine: a prompt addressed to somebody (#730 /
-// ADR 0018 §6), a CR 726 loop notice (ADR 0055 — checked AFTER a
+// ADR 0018 §6), a CR 732 loop notice (ADR 0055 — checked AFTER a
 // pass, so a standing notice still lets one manual nudge through the
 // way the client's "next" button does), and the game ending under a
 // resolution.

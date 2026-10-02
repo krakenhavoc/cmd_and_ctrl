@@ -1,4 +1,4 @@
-# ADR 0055 — CR 726 loop breaker: the engine detects trigger loops by tally and suspends autopass
+# ADR 0055 — CR 732 loop breaker: the engine detects trigger loops by tally and suspends autopass
 
 **Status:** Accepted · 2026-09-17 · Post-S30 — Rolling deck-driven catalog growth
 **Issue:** [#628](https://github.com/krakenhavoc/cmd_and_ctrl/issues/628)
@@ -21,9 +21,9 @@ network, and the loop becomes a tight
 the event log grows without limit (the sibling issue, #629), and the only
 way out is for somebody to find the autopass toggle mid-flight.
 
-The paper answer is CR 726: players take a shortcut. The loop's controller
+The paper answer is CR 732: players take a shortcut. The loop's controller
 says how many more times it happens and the table skips there, and a
-mandatory loop nobody can stop is a draw (CR 726.4). Both halves need a
+mandatory loop nobody can stop is a draw (CR 732.4). Both halves need a
 player to *say* something. So the engine's job is not to stop the game — it
 is to hand priority back to the humans with the loop's trigger still on the
 stack, and say why.
@@ -95,7 +95,7 @@ would let a loop that queues and prunes a prompt each iteration run forever.
 manual "next" click would clear the notice and four autopassing clients
 would spin the loop straight back up. Leaving the notice standing lets the
 table step the loop through by hand for as long as it likes, getting
-priority back every iteration — which is the CR 726 conversation happening
+priority back every iteration — which is the CR 732 conversation happening
 at human speed.
 
 ### 4. The effect is suspending automatic passing, not stopping the game
@@ -122,16 +122,16 @@ and the room's commit sequence stops. The table is *stopped*, with the
 notice in the game state naming the ability and the count, rather than
 spinning until someone kills the process.
 
-The alternative — a bot answers a CR 726 shortcut prompt with a fixed K and
+The alternative — a bot answers a CR 732 shortcut prompt with a fixed K and
 then stops — needs the shortcut prompt (§6) and a `PendingChoiceKind` case
 in `internal/legal`, and it buys a bot-only table a few more iterations of a
 loop that has no ending. Stopping is the honest answer and it is the one a
 human at the table gets too.
 
-### 6. The CR 726 shortcut prompt is deferred
+### 6. The CR 732 shortcut prompt is deferred
 
 "This loop has resolved N times. Resolve it K more times and stop?" — and
-CR 726.4's draw — are not in this change. A new `PendingChoiceKind` needs a
+CR 732.4's draw — are not in this change. A new `PendingChoiceKind` needs a
 case in `internal/legal/choices.go` or bot seats owing the prompt get an
 empty move list (the #499 / #618 class, flagged on #628 by the S31 audit),
 plus a client modal, plus a bot answer. The breaker is useful without it:
@@ -139,14 +139,14 @@ the loop stops running on its own, priority comes back, and a player can
 break it or concede. The prompt is a follow-up.
 
 **Amendment (2026-09-18, #804): the shortcut prompt is built; §6 is
-closed.** CR 726.4's draw is still not, and stays out of scope — a
+closed.** CR 732.4's draw is still not, and stays out of scope — a
 mandatory loop nobody can stop is a different question from "how many more
 times", and nothing in the catalog makes one.
 
 *The kind.* `PendingChoiceLoopShortcut` (`"loop_shortcut"`), declared in
 `loop_breaker.go` beside the notice that raises it and queued from
 `queueLoopShortcutLocked` at the moment the notice goes up — to the
-**controller** of the ability the notice names, because CR 726 is their
+**controller** of the ability the notice names, because CR 732 is their
 proposal to make. It carries the tally key the answer attaches to, the
 count the notice is quoting, and a `LoopShortcutRepeat` flag (below). The
 prompt is queued only when there is a live, unelminated seat to ask; a loop
@@ -264,7 +264,7 @@ activation cleared the very run its own resolution was about to add to, so
 `LoopRun` never got past 1 and `loopSuspectedLocked` never saw a thing. The
 detector, the threshold, the notice and the tally are untouched: the
 resolution still notches through `turnTallyListener` on `EventResolve`,
-keyed by `TallyKey(source, label)` like everything else. The CR 726
+keyed by `TallyKey(source, label)` like everything else. The CR 732
 allowance for that key survives the activation too, for the same reason
 `grantLoopShortcutLocked` re-arms the run: a shortcut is about one ability,
 and the activations that spend it must not be what cancels it.
@@ -288,7 +288,7 @@ the runner would have gone on feeding it with the notice up.
   rather than choosing a different move.
 
 *Tradeoff.* A human stepping their own activation loop by hand is asked the
-CR 726 question again each time round, where a trigger loop's notice simply
+CR 732 question again each time round, where a trigger loop's notice simply
 stays up. That is the honest consequence of an activation being a real
 decision: it clears the notice, and the next resolution raises it again. A
 player who wants to keep going answers with a number and gets it.
