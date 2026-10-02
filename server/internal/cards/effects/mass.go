@@ -364,16 +364,18 @@ func damageEachMatching(ctx *Context, match CardPredicate, amount int) error {
 	if amount <= 0 {
 		return nil
 	}
-	for _, c := range MatchingBattlefield(ctx, match) {
-		if err := (DealDamage{
-			Source: ctx.Source(),
-			Target: c.InstanceID,
-			Amount: amount,
-		}).Apply(ctx); err != nil {
-			return err
+	return ctx.Game.DamageInstanceForEffect(func() error {
+		for _, c := range MatchingBattlefield(ctx, match) {
+			if err := (DealDamage{
+				Source: ctx.Source(),
+				Target: c.InstanceID,
+				Amount: amount,
+			}).Apply(ctx); err != nil {
+				return err
+			}
 		}
-	}
-	return nil
+		return nil
+	})
 }
 
 // controllersOf tallies how many of `cards` each player controlled,

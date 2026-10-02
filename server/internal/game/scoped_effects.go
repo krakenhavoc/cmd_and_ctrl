@@ -169,6 +169,12 @@ const (
 	// before this one, where "can't" stops the gain before any
 	// replacement sees it. Reads Player. Scope ScopeGame.
 	ModGainNoLife ModKind = "gainNoLife"
+	// ModExileInsteadOfYourGraveyard is "if a card would be put into
+	// your graveyard from anywhere this turn, exile that card instead"
+	// (Yawgmoth's Will, ADR 0108 §4, CR 614.1a): a CR 614 replacement on
+	// every zone move and discard into Player's graveyard, a token
+	// excepted (a token is not a card). Reads Player. Scope ScopeGame.
+	ModExileInsteadOfYourGraveyard ModKind = "exileInsteadOfYourGraveyard"
 )
 
 // The rules kinds (ADR 0107 §5, #1853, #1880). Not layer operations and
@@ -370,10 +376,15 @@ type Mod struct {
 	// onto the battlefield and a permanent's follows it as it last existed
 	// (CR 609.7a). Queries is the CR 615.9 recheck, any of them. SpentBatch
 	// is the event batch the shield prevented its instance of damage in
-	// (CR 615.8); zero is unspent.
-	SourceZone ZoneKind         `json:"sourceZone,omitempty"`
-	Queries    []PermanentQuery `json:"queries,omitempty"`
-	SpentBatch uint64           `json:"spentBatch,omitempty"`
+	// (CR 615.8); zero is unspent. SpentInstance (ADR 0108 PR 0) is that
+	// instance itself (damage_instance.go): a spent shield keeps applying
+	// to the rest of its instance and to nothing else. Both are written. A
+	// record from before SpentInstance existed has SpentBatch alone and
+	// reads as it did, applying for the rest of that batch.
+	SourceZone    ZoneKind         `json:"sourceZone,omitempty"`
+	Queries       []PermanentQuery `json:"queries,omitempty"`
+	SpentBatch    uint64           `json:"spentBatch,omitempty"`
+	SpentInstance DamageInstance   `json:"spentInstance,omitempty"`
 	// Copy is ModBecomeCopy's copied values (#1593): exactly one entry,
 	// required on that kind and refused on every other. A slice for the
 	// reason Objects is one — every other mod writes nothing, and the
@@ -607,6 +618,8 @@ var modKinds = map[ModKind]modKindSpec{
 	ModExileInsteadOfGraveyard: {reader: readerReplacement},
 	// ADR 0107 §5 (#1880): Flames of the Blood Hand's replacement.
 	ModGainNoLife: {reader: readerReplacement},
+	// ADR 0108 §4 (#1823): Yawgmoth's Will's replacement.
+	ModExileInsteadOfYourGraveyard: {reader: readerReplacement},
 	// ADR 0107 §6 (#1860): the next damage from a source.
 	ModPreventNextFromSource: {reader: readerReplacement},
 	// ADR 0107 §5 (#1853, #1880): rules gates.

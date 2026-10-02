@@ -19,15 +19,17 @@ func init() {
 		Targets:      TargetAny().WithCount(2, 2),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			amounts := []int{2, 1}
-			for i, t := range item.Targets {
-				if i >= len(amounts) || !ctx.IsTargetLegal(t) {
-					continue
+			return ctx.Game.DamageInstanceForEffect(func() error {
+				for i, t := range item.Targets {
+					if i >= len(amounts) || !ctx.IsTargetLegal(t) {
+						continue
+					}
+					if err := (DealDamage{Source: ctx.Source(), Target: t.ID, Amount: amounts[i]}).Apply(ctx); err != nil {
+						return err
+					}
 				}
-				if err := (DealDamage{Source: ctx.Source(), Target: t.ID, Amount: amounts[i]}).Apply(ctx); err != nil {
-					return err
-				}
-			}
-			return nil
+				return nil
+			})
 		},
 	})
 }

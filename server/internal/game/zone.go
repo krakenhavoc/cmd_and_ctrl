@@ -315,6 +315,9 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 		// when it mints a new instance ID (resetAsNewObjectLocked).
 		c.EnteredBattlefieldAt = 0
 		c.SummonedThisTurn = false
+		// ADR 0108 §5: so is when it came under its controller's
+		// control; the next entry stamps it afresh.
+		c.ControlledSinceUpkeep = 0
 		// #1271 / CR 613.7f: the face-change timestamp is the
 		// permanent's too, and goes with the entry stamp it competes
 		// with in layerTimestamp.

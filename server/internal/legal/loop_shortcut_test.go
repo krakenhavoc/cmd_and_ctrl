@@ -10,7 +10,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/legal"
 )
 
-// loop_shortcut_test.go — #804, the enumerator's half of the CR 726
+// loop_shortcut_test.go — #804, the enumerator's half of the CR 732
 // shortcut.
 //
 // The answer is a number, so the list here is a handful of numbers
@@ -19,7 +19,7 @@ import (
 // every time, so the SECOND ask of a turn offers one answer — stop —
 // and there is nothing else for any policy to pick. See docs/bot.md.
 
-// queueLoopShortcut puts a CR 726 prompt on `chooser` by hand. The
+// queueLoopShortcut puts a CR 732 prompt on `chooser` by hand. The
 // engine only queues one from inside the breaker; the enumerator does
 // not care where it came from.
 func queueLoopShortcut(g *game.Game, chooser uuid.UUID, repeat bool) uuid.UUID {
@@ -77,7 +77,7 @@ func TestLoopShortcutOffersNumbersToTheLoopsController(t *testing.T) {
 	// A blocking prompt: nobody else gets anything until it is
 	// answered.
 	if other := legal.EnumerateFor(g, them.ID); len(other) != 0 {
-		t.Errorf("another seat was offered %v while the CR 726 prompt was open", labels(other))
+		t.Errorf("another seat was offered %v while the CR 732 prompt was open", labels(other))
 	}
 	dispatchAll(t, g, me.ID, moves)
 }

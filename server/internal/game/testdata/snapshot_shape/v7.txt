@@ -57,6 +57,7 @@ battlefield.cards[].colorIdentity	array
 battlefield.cards[].colorIdentity[]	string
 battlefield.cards[].colors	array
 battlefield.cards[].colors[]	string
+battlefield.cards[].controlledSinceUpkeep	number:int
 battlefield.cards[].controller	custom(uuid.UUID)
 battlefield.cards[].counterStampedAt	map:string
 battlefield.cards[].counterStampedAt{}	number:int64
@@ -452,6 +453,7 @@ exile.cards[].colorIdentity	array
 exile.cards[].colorIdentity[]	string
 exile.cards[].colors	array
 exile.cards[].colors[]	string
+exile.cards[].controlledSinceUpkeep	number:int
 exile.cards[].controller	custom(uuid.UUID)
 exile.cards[].counterStampedAt	map:string
 exile.cards[].counterStampedAt{}	number:int64
@@ -897,6 +899,7 @@ lastKnownStack[].card.colorIdentity	array
 lastKnownStack[].card.colorIdentity[]	string
 lastKnownStack[].card.colors	array
 lastKnownStack[].card.colors[]	string
+lastKnownStack[].card.controlledSinceUpkeep	number:int
 lastKnownStack[].card.controller	custom(uuid.UUID)
 lastKnownStack[].card.counterStampedAt	map:string
 lastKnownStack[].card.counterStampedAt{}	number:int64
@@ -1730,6 +1733,7 @@ phasedOut.cards[].colorIdentity	array
 phasedOut.cards[].colorIdentity[]	string
 phasedOut.cards[].colors	array
 phasedOut.cards[].colors[]	string
+phasedOut.cards[].controlledSinceUpkeep	number:int
 phasedOut.cards[].controller	custom(uuid.UUID)
 phasedOut.cards[].counterStampedAt	map:string
 phasedOut.cards[].counterStampedAt{}	number:int64
@@ -1955,6 +1959,7 @@ preventionFollowUps[].body	string
 preventionFollowUps[].combat	bool
 preventionFollowUps[].controller	custom(uuid.UUID)
 preventionFollowUps[].damageSource	custom(uuid.UUID)
+preventionFollowUps[].instance	number:uint64
 preventionFollowUps[].label	string
 preventionFollowUps[].prevented	number:int
 preventionFollowUps[].seq	number:int64
@@ -2074,6 +2079,7 @@ scopedEffects[].mods[].queries[].Types[]	string
 scopedEffects[].mods[].restrictions	number:uint8
 scopedEffects[].mods[].sourceZone	string
 scopedEffects[].mods[].spentBatch	number:uint64
+scopedEffects[].mods[].spentInstance	number:uint64
 scopedEffects[].mods[].subtypes	array
 scopedEffects[].mods[].subtypes[]	string
 scopedEffects[].mods[].text	string
@@ -2183,6 +2189,7 @@ seats[].command.cards[].colorIdentity	array
 seats[].command.cards[].colorIdentity[]	string
 seats[].command.cards[].colors	array
 seats[].command.cards[].colors[]	string
+seats[].command.cards[].controlledSinceUpkeep	number:int
 seats[].command.cards[].controller	custom(uuid.UUID)
 seats[].command.cards[].counterStampedAt	map:string
 seats[].command.cards[].counterStampedAt{}	number:int64
@@ -2446,6 +2453,7 @@ seats[].emblems.cards[].colorIdentity	array
 seats[].emblems.cards[].colorIdentity[]	string
 seats[].emblems.cards[].colors	array
 seats[].emblems.cards[].colors[]	string
+seats[].emblems.cards[].controlledSinceUpkeep	number:int
 seats[].emblems.cards[].controller	custom(uuid.UUID)
 seats[].emblems.cards[].counterStampedAt	map:string
 seats[].emblems.cards[].counterStampedAt{}	number:int64
@@ -2699,6 +2707,7 @@ seats[].graveyard.cards[].colorIdentity	array
 seats[].graveyard.cards[].colorIdentity[]	string
 seats[].graveyard.cards[].colors	array
 seats[].graveyard.cards[].colors[]	string
+seats[].graveyard.cards[].controlledSinceUpkeep	number:int
 seats[].graveyard.cards[].controller	custom(uuid.UUID)
 seats[].graveyard.cards[].counterStampedAt	map:string
 seats[].graveyard.cards[].counterStampedAt{}	number:int64
@@ -2951,6 +2960,7 @@ seats[].hand.cards[].colorIdentity	array
 seats[].hand.cards[].colorIdentity[]	string
 seats[].hand.cards[].colors	array
 seats[].hand.cards[].colors[]	string
+seats[].hand.cards[].controlledSinceUpkeep	number:int
 seats[].hand.cards[].controller	custom(uuid.UUID)
 seats[].hand.cards[].counterStampedAt	map:string
 seats[].hand.cards[].counterStampedAt{}	number:int64
@@ -3173,6 +3183,12 @@ seats[].handKept	bool
 seats[].id	custom(uuid.UUID)
 seats[].isBot	bool
 seats[].landDropsPerTurn	number:int
+seats[].lastTurnAttacks	array
+seats[].lastTurnAttacks[]	object
+seats[].lastTurnAttacks[].attacker	custom(uuid.UUID)
+seats[].lastTurnAttacks[].defender	custom(uuid.UUID)
+seats[].lastTurnAttacks[].epoch	number:int
+seats[].lastTurnAttacks[].phaseId	number:int
 seats[].library	object
 seats[].library.cards	array
 seats[].library.cards[]	object
@@ -3207,6 +3223,7 @@ seats[].library.cards[].colorIdentity	array
 seats[].library.cards[].colorIdentity[]	string
 seats[].library.cards[].colors	array
 seats[].library.cards[].colors[]	string
+seats[].library.cards[].controlledSinceUpkeep	number:int
 seats[].library.cards[].controller	custom(uuid.UUID)
 seats[].library.cards[].counterStampedAt	map:string
 seats[].library.cards[].counterStampedAt{}	number:int64
@@ -3526,6 +3543,7 @@ seats[].statics[].timing.label	string
 seats[].statics[].timing.timing	string
 seats[].turnsBegun	number:int
 seats[].undosRemaining	number:int
+seats[].upkeepsBegun	number:int
 settings	object
 settings.allowSpawn	bool
 settings.botPace	string
@@ -3575,6 +3593,7 @@ stack.cards[].colorIdentity	array
 stack.cards[].colorIdentity[]	string
 stack.cards[].colors	array
 stack.cards[].colors[]	string
+stack.cards[].controlledSinceUpkeep	number:int
 stack.cards[].controller	custom(uuid.UUID)
 stack.cards[].counterStampedAt	map:string
 stack.cards[].counterStampedAt{}	number:int64

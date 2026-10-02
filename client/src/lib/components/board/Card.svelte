@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { emit as tutorialEmit } from "../../tutorialBus";
   // Card is the visual primitive for one Magic card in the new HTML/
   // CSS board. Replaces the Pixi CardTile from client/src/lib/card-tile.ts.
   //
@@ -67,6 +68,11 @@
     // legalActions.ts, and only while highlights are live); the card
     // only draws it.
     ready?: boolean;
+    // #1918: set with `ready` when every cast the card has is legal but
+    // would do nothing right now (legalActions.ts idleReadyHint). The
+    // ring is drawn muted and this, the server's sentence, is the
+    // tooltip. Clicking still casts exactly as a full ring does.
+    idleHint?: string;
     // ADR 0105 sub-PR 5: this card is what the selected creature may be
     // declared against: a planeswalker or battle it may attack, or an
     // attacker it may block. Set with `ready`. An attacker is always
@@ -216,6 +222,7 @@
     attacking = false,
     blocking = false,
     ready = false,
+    idleHint,
     combatTarget = false,
     pips = NO_PIPS,
     readyZone = "battlefield",
@@ -484,6 +491,7 @@
     ev.preventDefault();
     ev.stopPropagation();
     manaMenuOpen = !manaMenuOpen;
+    if (manaMenuOpen) tutorialEmit("ability-menu-opened");
   }
 
   // ADR 0105 §7 (owner decision 6): a pip is the touch route into the
@@ -508,7 +516,10 @@
       openCardMenu({ card, x: r?.right ?? 0, y: r?.top ?? 0 });
       return;
     }
-    if (hasMenu) manaMenuOpen = true;
+    if (hasMenu) {
+      manaMenuOpen = true;
+      tutorialEmit("ability-menu-opened");
+    }
   }
 
   function handlePipKeydown(ev: KeyboardEvent): void {
@@ -558,6 +569,7 @@
   class:attacking
   class:blocking
   class:ready
+  class:ready-idle={ready && !!idleHint}
   class:combat-target={combatTarget}
   class:clickable={interactive}
   class:phased-out={phasedOut}
@@ -567,7 +579,11 @@
   role={interactive ? "button" : "img"}
   tabindex={interactive ? 0 : undefined}
   aria-label={accessibleName}
-  title={showBack ? "" : displayName(card)}
+  title={showBack
+    ? ""
+    : ready && idleHint
+      ? `${displayName(card)} — ${idleHint}`
+      : displayName(card)}
   onpointerenter={handleEnter}
   onpointerleave={handleLeave}
   onclick={handleClick}
@@ -639,6 +655,15 @@
     {#if card.must_block}
       <span class="badge must-attack" title="must block this combat" aria-label="must block"
         >MUST BLOCK</span
+      >
+    {/if}
+    {#if card.echo_due}
+      <!-- ADR 0108 §5: its echo triggers at its controller's next upkeep
+           (CR 702.30a). -->
+      <span
+        class="badge echo-due"
+        title="echo due — at its controller's next upkeep, pay its echo cost or sacrifice it"
+        aria-label="echo due">ECHO DUE</span
       >
     {/if}
     {#if enchantedPlayer}
@@ -756,6 +781,15 @@
     {#if card.must_block}
       <span class="badge must-attack" title="must block this combat" aria-label="must block"
         >MUST BLOCK</span
+      >
+    {/if}
+    {#if card.echo_due}
+      <!-- ADR 0108 §5: its echo triggers at its controller's next upkeep
+           (CR 702.30a). -->
+      <span
+        class="badge echo-due"
+        title="echo due — at its controller's next upkeep, pay its echo cost or sacrifice it"
+        aria-label="echo due">ECHO DUE</span
       >
     {/if}
     {#if enchantedPlayer}
@@ -1155,6 +1189,19 @@
     background: rgba(60, 0, 0, 0.85);
     border-color: rgba(255, 122, 122, 0.5);
   }
+  .badge.echo-due {
+    /* ADR 0108 §5: above the bottom edge, so a creature that must
+       attack AND owes its echo (Tectonic Fiend) shows both. */
+    top: auto;
+    bottom: 22px;
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    white-space: nowrap;
+    color: #ffd27a;
+    background: rgba(50, 35, 0, 0.85);
+    border-color: rgba(255, 210, 122, 0.5);
+  }
   .badge.no-untap {
     top: 24px;
     left: 50%;
@@ -1367,6 +1414,17 @@
     border-radius: inherit;
     pointer-events: none;
     box-shadow: inset 0 0 calc(var(--card-w, 80px) * 0.14) var(--ready-glow);
+  }
+  /* #1918: castable, but every cast would do nothing right now (an
+     overloaded Counterflux with no spell to counter). Still ringed,
+     since the cast is legal, but dashed, faint and without the glow,
+     so it does not read as a play worth making. */
+  .card.ready.ready-idle {
+    outline-style: dashed;
+    outline-color: color-mix(in srgb, var(--ready) 45%, transparent);
+  }
+  .card.ready.ready-idle::after {
+    box-shadow: none;
   }
   /* ADR 0105 §2/§7 (#1789): the pips. They sit on the upper-left edge,
      below the top badge row (CMD) and the failed-art pip (22px): that

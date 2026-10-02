@@ -7,11 +7,11 @@ import (
 	"github.com/google/uuid"
 )
 
-// loop_shortcut_test.go — #804, CR 726, the half ADR 0055 §6 deferred.
+// loop_shortcut_test.go — #804, CR 732, the half ADR 0055 §6 deferred.
 //
 // The breaker stops a loop and hands priority back. On its own that
 // leaves the table clicking "next" once per iteration, or turning
-// autopass back on to be stopped again a threshold later. CR 726 is
+// autopass back on to be stopped again a threshold later. CR 732 is
 // the conversation paper has instead: the loop's controller names a
 // number of further iterations and the table skips there.
 //
@@ -291,7 +291,7 @@ func TestShortcutPromptSurvivesCloneAndSnapshot(t *testing.T) {
 	if got.LoopShortcutKey != want.LoopShortcutKey ||
 		got.LoopShortcutCount != want.LoopShortcutCount ||
 		got.LoopShortcutRepeat != want.LoopShortcutRepeat {
-		t.Errorf("clone prompt = %+v, want the CR 726 fields of %+v", got, want)
+		t.Errorf("clone prompt = %+v, want the CR 732 fields of %+v", got, want)
 	}
 
 	restored, err := g.CaptureSnapshot().Restore()
@@ -305,7 +305,7 @@ func TestShortcutPromptSurvivesCloneAndSnapshot(t *testing.T) {
 	if got.LoopShortcutKey != want.LoopShortcutKey ||
 		got.LoopShortcutCount != want.LoopShortcutCount ||
 		got.LoopShortcutRepeat != want.LoopShortcutRepeat {
-		t.Errorf("restored prompt = %+v, want the CR 726 fields of %+v", got, want)
+		t.Errorf("restored prompt = %+v, want the CR 732 fields of %+v", got, want)
 	}
 
 	// The allowance too: a restore that dropped it would hand the
@@ -359,7 +359,7 @@ func TestShortcutPromptIsNotQueuedWithoutAControllerToAsk(t *testing.T) {
 	g.WithWriteLock(func() {
 		for i := 0; i < 2; i++ {
 			// Actor uuid.Nil: no seat controls this, so there is
-			// nobody CR 726 would have name a number.
+			// nobody CR 732 would have name a number.
 			g.EmitEvent(Event{Kind: EventResolve, Source: source, Label: label})
 		}
 	})

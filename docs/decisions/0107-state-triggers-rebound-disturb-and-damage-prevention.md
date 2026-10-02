@@ -295,6 +295,8 @@ About 20 of 31, counting Banefire and Bonecrusher Giant dropping their caveats. 
 
 ## 6. The next damage from a source (#1860)
 
+**2026-10-02:** [ADR 0108](0108-turn-scoped-effects-object-history-and-damage-shields.md) group J takes up this section's follow-ups. Its PR 0 made "the next time" spent per damage instance (one damage instruction, or one combat damage step) instead of per event batch, which the shipped shield had used as its instance. Two instructions in one resolution are now two instances.
+
 ### What exists, what is missing
 
 - **Two shield kinds exist.** `ModPreventDamage` is CR 615.7's charged shield ("prevent the next 3 damage"), keyed on the damage target. `ModPreventCombatDamage` is Fog's. Both are scoped-effect records with replacement readers (`scoped_replacements.go`), so a table with one is a restore point.

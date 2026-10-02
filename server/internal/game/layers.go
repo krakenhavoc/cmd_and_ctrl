@@ -998,6 +998,9 @@ func (g *Game) materialiseControlLocked() []controlChange {
 		})
 		c.Controller = c.effective.Controller
 		c.SummonedThisTurn = true
+		// ADR 0108 §5: a control change is "came under your control"
+		// (CR 702.30a), stamped with the new controller's upkeep count.
+		c.ControlledSinceUpkeep = g.upkeepsBegunForLocked(c.Controller)
 		g.removeFromCombatLocked(c)
 		// #1376: CR 506.4 removes an ATTACKED planeswalker or battle
 		// from combat on a control change too, and its attackers then

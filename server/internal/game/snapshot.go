@@ -361,7 +361,7 @@ type GameSnapshot struct {
 	// exhaust ability on the board back.
 	Activations ActivationTally `json:"activations,omitempty"`
 
-	// LoopNotice / LoopThreshold are the CR 726 loop breaker (#628).
+	// LoopNotice / LoopThreshold are the CR 732 loop breaker (#628).
 	// Both carried: a restore that dropped the notice would resume a
 	// table into a live loop with automatic passing back on, and one
 	// that dropped the threshold would silently re-default a game a
@@ -574,7 +574,17 @@ type playerSnapshot struct {
 	// "nobody has had a turn yet" — an effect stamped after the
 	// restore still ends on that player's next turn, because the
 	// stamp is taken from the restored value.
-	TurnsBegun         int               `json:"turnsBegun,omitempty"`
+	TurnsBegun int `json:"turnsBegun,omitempty"`
+	// UpkeepsBegun is Player.UpkeepsBegun (ADR 0108 §5): the upkeep
+	// counter echo's "since the beginning of your last upkeep" is
+	// measured in. Absent from every earlier file, which restores as
+	// 0 — no permanent of such a file has an echo stamp to compare.
+	UpkeepsBegun int `json:"upkeepsBegun,omitempty"`
+	// LastTurnAttacks is what this player's creatures attacked during
+	// the last turn they took (ADR 0108 §6, #1882). Additive: a file
+	// written before it restores with none, which reads as "nothing
+	// attacked last turn" until the player's next turn ends.
+	LastTurnAttacks    []AttackRecord    `json:"lastTurnAttacks,omitempty"`
 	Eliminated         bool              `json:"eliminated"`
 	HandKept           bool              `json:"handKept"`
 	MulligansTaken     int               `json:"mulligansTaken"`
@@ -696,23 +706,27 @@ type cardSnapshot struct {
 	// only when a file has no `goads` key (restoreGoads).
 	GoadedBy uuid.UUID `json:"goadedBy"`
 	// Goads is every goad on the card with its end (#1598).
-	Goads                    []goadSnapshot     `json:"goads,omitempty"`
-	DamageMarked             int                `json:"damageMarked"`
-	RegenerationShields      int                `json:"regenerationShields,omitempty"`
-	FaceDown                 bool               `json:"faceDown"`
-	FaceDownKind             FaceDownKind       `json:"faceDownKind,omitempty"`
-	KnownBy                  map[uuid.UUID]bool `json:"knownBy,omitempty"`
-	EnteredBattlefieldAt     int64              `json:"enteredBattlefieldAt"`
-	ObjectEpoch              int                `json:"objectEpoch,omitempty"`
-	SummonedThisTurn         bool               `json:"summonedThisTurn"`
-	MarkedLethalByDeathtouch bool               `json:"markedLethalByDeathtouch"`
-	LostLastCounter          bool               `json:"lostLastCounter,omitempty"`
-	PrintedPTKnown           bool               `json:"printedPTKnown,omitempty"`
-	AttachedTo               TargetRef          `json:"attachedTo,omitempty"`
-	AttachedAt               int64              `json:"attachedAt,omitempty"`
-	BaseController           uuid.UUID          `json:"baseController,omitempty"`
-	FaceDownListed           *FaceDownListing   `json:"faceDownListed,omitempty"`
-	FaceTurnedAt             int64              `json:"faceTurnedAt,omitempty"`
+	Goads                []goadSnapshot     `json:"goads,omitempty"`
+	DamageMarked         int                `json:"damageMarked"`
+	RegenerationShields  int                `json:"regenerationShields,omitempty"`
+	FaceDown             bool               `json:"faceDown"`
+	FaceDownKind         FaceDownKind       `json:"faceDownKind,omitempty"`
+	KnownBy              map[uuid.UUID]bool `json:"knownBy,omitempty"`
+	EnteredBattlefieldAt int64              `json:"enteredBattlefieldAt"`
+	ObjectEpoch          int                `json:"objectEpoch,omitempty"`
+	// ControlledSinceUpkeep is Card.ControlledSinceUpkeep (ADR 0108
+	// §5): echo's "came under your control since your last upkeep".
+	// Absent from every earlier file, which restores as 0.
+	ControlledSinceUpkeep    int              `json:"controlledSinceUpkeep,omitempty"`
+	SummonedThisTurn         bool             `json:"summonedThisTurn"`
+	MarkedLethalByDeathtouch bool             `json:"markedLethalByDeathtouch"`
+	LostLastCounter          bool             `json:"lostLastCounter,omitempty"`
+	PrintedPTKnown           bool             `json:"printedPTKnown,omitempty"`
+	AttachedTo               TargetRef        `json:"attachedTo,omitempty"`
+	AttachedAt               int64            `json:"attachedAt,omitempty"`
+	BaseController           uuid.UUID        `json:"baseController,omitempty"`
+	FaceDownListed           *FaceDownListing `json:"faceDownListed,omitempty"`
+	FaceTurnedAt             int64            `json:"faceTurnedAt,omitempty"`
 	// NamedTribe is the CR 614.12 "as this enters, choose a creature
 	// type" answer (S26). Carried rather than rebuilt: the choice was
 	// made by a player and nothing in the catalog can re-derive it, so
@@ -1254,7 +1268,7 @@ type pendingChoiceSnapshot struct {
 	// that forgot them would render a question with no answers.
 	PickOptions []ChoiceOption `json:"pickOptions,omitempty"`
 	ChooseMax   int            `json:"chooseMax,omitempty"`
-	// #804 CR 726 shortcut: which run the answer's allowance attaches
+	// #804 CR 732 shortcut: which run the answer's allowance attaches
 	// to, how many resolutions had happened when it was asked, and
 	// whether this is the turn's second ask.
 	LoopShortcutKey    string `json:"loopShortcutKey,omitempty"`
@@ -1830,6 +1844,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		KnownBy:                  copyBoolMap(c.KnownBy),
 		EnteredBattlefieldAt:     c.EnteredBattlefieldAt,
 		ObjectEpoch:              c.ObjectEpoch,
+		ControlledSinceUpkeep:    c.ControlledSinceUpkeep,
 		SummonedThisTurn:         c.SummonedThisTurn,
 		MarkedLethalByDeathtouch: c.MarkedLethalByDeathtouch,
 		LostLastCounter:          c.LostLastCounter,
@@ -1894,6 +1909,8 @@ func snapshotPlayer(p *Player, cen *ContinuationCensus) playerSnapshot {
 		Emblems:            snapshotZone(p.Emblems, cen),
 		CommanderDamage:    copyIntMap(p.CommanderDamage),
 		TurnsBegun:         p.TurnsBegun,
+		UpkeepsBegun:       p.UpkeepsBegun,
+		LastTurnAttacks:    append([]AttackRecord(nil), p.LastTurnAttacks...),
 		Eliminated:         p.Eliminated,
 		HandKept:           p.HandKept,
 		MulligansTaken:     p.MulligansTaken,
@@ -2428,6 +2445,9 @@ func (s *GameSnapshot) restoreGame() *Game {
 	}
 	g.ScopedEffects = deepCopyScopedEffects(s.ScopedEffects)
 	g.scopedEffectSeq = maxScopedEffectSeq(g.ScopedEffects)
+	// ADR 0108 PR 0: the damage-instance counter resumes past every
+	// instance a restored record names.
+	g.damageInstanceSeq = maxNamedDamageInstance(g.ScopedEffects, g.preventionFollowUps)
 	if len(s.DelayedTriggers) > 0 {
 		g.DelayedTriggers = make([]*DelayedTrigger, len(s.DelayedTriggers))
 		for i := range s.DelayedTriggers {
@@ -2621,6 +2641,7 @@ func restoreCard(c *cardSnapshot) Card {
 		KnownBy:                  copyBoolMap(c.KnownBy),
 		EnteredBattlefieldAt:     c.EnteredBattlefieldAt,
 		ObjectEpoch:              c.ObjectEpoch,
+		ControlledSinceUpkeep:    c.ControlledSinceUpkeep,
 		SummonedThisTurn:         c.SummonedThisTurn,
 		MarkedLethalByDeathtouch: c.MarkedLethalByDeathtouch,
 		LostLastCounter:          c.LostLastCounter,
@@ -2717,6 +2738,8 @@ func restorePlayer(p *playerSnapshot) *Player {
 		Command:            restoreZone(p.Command, ZoneCommand),
 		Emblems:            restoreZone(p.Emblems, ZoneCommand),
 		TurnsBegun:         p.TurnsBegun,
+		UpkeepsBegun:       p.UpkeepsBegun,
+		LastTurnAttacks:    append([]AttackRecord(nil), p.LastTurnAttacks...),
 		Eliminated:         p.Eliminated,
 		HandKept:           p.HandKept,
 		MulligansTaken:     p.MulligansTaken,

@@ -1510,7 +1510,7 @@ func dispatch(g *game.Game, a Action) error {
 			// Added in S22.
 			Graveyard []string `json:"graveyard"`
 			// Iterations answers a PendingChoiceLoopShortcut (#804,
-			// CR 726): how many more times the loop's controller
+			// CR 732): how many more times the loop's controller
 			// wants the repeating ability to resolve before the
 			// engine asks again. Zero — the field's own zero value —
 			// is "stop here", which is why this branch is routed by
@@ -1542,7 +1542,7 @@ func dispatch(g *game.Game, a Action) error {
 		if kind, ok := g.PendingChoiceKindFor(choiceID); ok && kind == game.PendingChoiceCoinCall {
 			return g.ResolveCoinCall(choiceID, a.Player, p.Call)
 		}
-		// #804, CR 726: "resolve it K more times, then stop?" Routed by
+		// #804, CR 732: "resolve it K more times, then stop?" Routed by
 		// kind like the coin call above, because its whole payload is
 		// an integer whose most meaningful value is zero — there is no
 		// presence to route on.
@@ -1737,6 +1737,19 @@ func dispatch(g *game.Game, a Action) error {
 						return fmt.Errorf("resolve_choice tap_ids[%d]: %w", i, err)
 					}
 					tapIDs = append(tapIDs, id)
+				}
+				// ADR 0108 §5: a non-mana payment ("discard a card",
+				// "sacrifice two lands") names what it pays with in
+				// card_ids beside the apply.
+				if len(p.CardIDs) > 0 {
+					if len(tapIDs) > 0 {
+						return game.ErrInvalidParam
+					}
+					cardIDs, err := parseUUIDs(p.CardIDs, "card_ids")
+					if err != nil {
+						return err
+					}
+					return g.ResolvePayUnlessWithCards(choiceID, a.Player, *p.OptionalApply, cardIDs)
 				}
 				return g.ResolvePayUnlessWithTaps(choiceID, a.Player, *p.OptionalApply, tapIDs)
 			case game.PendingChoiceMayCast:

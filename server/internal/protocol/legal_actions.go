@@ -134,6 +134,20 @@ type LegalSourceView struct {
 	// Blocks are the attackers this creature may block, alone or as
 	// part of a grouped declaration.
 	Blocks []string `json:"blocks,omitempty"`
+	// CastIdleHint is set when EVERY cast move for the card carries a
+	// legal.Move.IdleHint (#1918): the card is castable, but no cast it
+	// has would do anything right now — an overloaded Counterflux with
+	// no spell to counter. It is the first such move's hint, and the
+	// client draws a muted ring with it as the tooltip. One cast that
+	// would do something (the targeted half, with a target) and it is
+	// absent, so the card highlights as an ordinary castable card.
+	CastIdleHint string `json:"cast_idle_hint,omitempty"`
+}
+
+// idleTally is digestLegalMoves' per-card count behind CastIdleHint.
+type idleTally struct {
+	casts, idle int
+	hint        string
 }
 
 // The move params the digest reads. Each is a subset of the params
@@ -168,6 +182,8 @@ type (
 // whose surfaces read pending_choices — so a quiet frame costs 0 bytes.
 func digestLegalMoves(moves []legal.Move) *LegalActionsView {
 	var out *LegalActionsView
+	// #1918: cast moves per card, and how many of them are idle.
+	var idle map[*LegalSourceView]*idleTally
 	view := func() *LegalActionsView {
 		if out == nil {
 			out = &LegalActionsView{}
@@ -211,6 +227,23 @@ func digestLegalMoves(moves []legal.Move) *LegalActionsView {
 					e.Faces = appendUnique(e.Faces, p.Face)
 				}
 			}
+			if m.Kind == legal.KindCast {
+				if idle == nil {
+					idle = make(map[*LegalSourceView]*idleTally)
+				}
+				tl := idle[e]
+				if tl == nil {
+					tl = &idleTally{}
+					idle[e] = tl
+				}
+				tl.casts++
+				if m.IdleHint != "" {
+					tl.idle++
+					if tl.hint == "" {
+						tl.hint = m.IdleHint
+					}
+				}
+			}
 		case legal.KindActivate:
 			var p digestAbilityParams
 			if json.Unmarshal(m.Params, &p) == nil {
@@ -233,6 +266,11 @@ func digestLegalMoves(moves []legal.Move) *LegalActionsView {
 			}
 		case legal.KindBlock:
 			digestBlockMove(m, e, entry)
+		}
+	}
+	for e, tl := range idle {
+		if tl.idle == tl.casts {
+			e.CastIdleHint = tl.hint
 		}
 	}
 	return out

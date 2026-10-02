@@ -30,19 +30,21 @@ func init() {
 func sunspineLynxEnters(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	nonbasic := NonbasicLand()
-	for _, p := range g.Seats {
-		if p == nil || p.Eliminated {
-			continue
-		}
-		n := 0
-		for _, c := range g.BattlefieldCardsForEffect() {
-			if c.Controller == p.ID && nonbasic(g, item.Controller, c) {
-				n++
+	return ctx.Game.DamageInstanceForEffect(func() error {
+		for _, p := range g.Seats {
+			if p == nil || p.Eliminated {
+				continue
+			}
+			n := 0
+			for _, c := range g.BattlefieldCardsForEffect() {
+				if c.Controller == p.ID && nonbasic(g, item.Controller, c) {
+					n++
+				}
+			}
+			if err := (DealDamage{Source: item.SourceCardID, Target: p.ID, Amount: n}).Apply(ctx); err != nil {
+				return err
 			}
 		}
-		if err := (DealDamage{Source: item.SourceCardID, Target: p.ID, Amount: n}).Apply(ctx); err != nil {
-			return err
-		}
-	}
-	return nil
+		return nil
+	})
 }

@@ -930,6 +930,17 @@ type ReplacementEvent struct {
 	DamageAmount   int
 	IsCombatDamage bool
 
+	// DamageInstance is the instance of damage this event belongs to
+	// (ADR 0108 PR 0, damage_instance.go): every event one damage
+	// instruction or one combat damage step opens carries the same one,
+	// so a reader can tell "at the same time" from "one after the other
+	// inside one resolution" (CR 615.8, 608.2c). Stamped by the engine's
+	// damage entry points as the event is opened; a replacement reads
+	// it and never writes it. It rides the event, so a CR 616 prompt
+	// resumes with it. Zero on an event built by hand, which readers
+	// treat as the ADR 0107 event batch. Transient, never captured.
+	DamageInstance DamageInstance
+
 	// SourceLKI is the damage source's characteristics AS THEY WERE
 	// when the event was created — last-known information, CR 608.2h.
 	// Nil when the source is unknown (a sandbox mark with no source,

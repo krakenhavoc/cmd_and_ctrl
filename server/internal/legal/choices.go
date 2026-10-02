@@ -39,7 +39,7 @@ type choiceParams struct {
 	// is the empty slice, and omitempty would erase it into absent,
 	// which is how the dispatcher tells a surveil from a scry.
 	Graveyard []string `json:"graveyard"`
-	// Iterations answers a loop_shortcut prompt (CR 726): how many
+	// Iterations answers a loop_shortcut prompt (CR 732): how many
 	// more times the loop's controller wants the repeating ability to
 	// resolve. omitempty is safe here where it would be wrong on the
 	// scry keys: the dispatcher routes this kind by the choice's KIND,
@@ -206,6 +206,30 @@ func (e *enumerator) choiceMoves() bool {
 			}
 
 		case game.PendingChoicePayUnless:
+			// ADR 0108 §5: a payment that is not mana — "discard a
+			// card", "sacrifice two lands". Each way of paying is a
+			// move naming the cards it pays with; there is none when
+			// the seat cannot pay (CR 118.3), and the decline is
+			// always there.
+			if action := c.PayAction(); action != nil {
+				pool := g.PayActionOptionsForEffect(c.Chooser, action)
+				for _, set := range combinations(pool, action.Count, action.Count, e.opts.MaxExpansionPerSource) {
+					a := true
+					p := base()
+					p.Apply = &a
+					p.CardIDs = idStrings(set)
+					label := reason + ": " + c.PayCost + " —"
+					for _, id := range set {
+						label += " " + cardNameFor(g, id, e.seat)
+					}
+					e.addChoice(c, label, p)
+				}
+				a := false
+				p := base()
+				p.Apply = &a
+				e.addChoice(c, reason+": decline", p)
+				continue
+			}
 			// Paying is only a move if the cost is payable; the engine
 			// would silently treat an unpayable "yes" as a decline.
 			canPay := false
@@ -908,7 +932,7 @@ func (e *enumerator) choiceMoves() bool {
 			}
 
 		case game.PendingChoiceLoopShortcut:
-			// #804, CR 726. "<card> — <ability> has resolved N times
+			// #804, CR 732. "<card> — <ability> has resolved N times
 			// this turn. Resolve it K more times, then stop?" The
 			// answer is a number, so the enumerator's job is to pick
 			// the handful of numbers worth offering a policy — a human
@@ -1014,7 +1038,7 @@ func modeLabel(c *game.PendingChoice, sel []int) string {
 	return ": " + out
 }
 
-// loopIsSelfActivated reports whether the loop a CR 726 shortcut
+// loopIsSelfActivated reports whether the loop a CR 732 shortcut
 // prompt names is one its controller drives themselves, by activating
 // an ability once per iteration, rather than a trigger loop that runs
 // on its own once it starts (#810).

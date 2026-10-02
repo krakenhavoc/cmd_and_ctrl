@@ -47,7 +47,7 @@ func (g *Game) cloneLocked() *Game {
 		// an active player who lost mid-resolution.
 		Outcome:               cloneGameOutcome(g.Outcome),
 		ActiveSeatLeftPending: g.ActiveSeatLeftPending,
-		// #628: both halves of the CR 726 breaker. The threshold is
+		// #628: both halves of the CR 732 breaker. The threshold is
 		// configuration and copies by value; the notice is a per-turn
 		// fact an undo must be able to rewind past, so it gets its own
 		// pointer rather than sharing the live one.
@@ -317,6 +317,14 @@ func (g *Game) cloneLocked() *Game {
 	// ADR 0107 §6: owed follow-ups rewind with the shields they belong
 	// to. Copy on write everywhere, so the slice is shared.
 	out.preventionFollowUps = g.preventionFollowUps
+	// ADR 0108 PR 0: the instance counter rewinds with the records that
+	// name its IDs, and the combat step's instance with the batch it is
+	// keyed on, so a re-done instance can never reuse an ID an undone
+	// record still holds.
+	out.damageInstanceSeq = g.damageInstanceSeq
+	out.openDamageInstance = g.openDamageInstance
+	out.combatDamageInstance = g.combatDamageInstance
+	out.combatDamageInstanceBatch = g.combatDamageInstanceBatch
 	// #830: the block declaration's announcements rewind with the
 	// declaration. An undo across a re-point that kept them would
 	// swallow the re-done "becomes blocked"; dropping them would
@@ -566,6 +574,8 @@ func clonePlayer(p *Player) *Player {
 		Poison:            p.Poison,
 		Energy:            p.Energy,
 		TurnsBegun:        p.TurnsBegun,
+		UpkeepsBegun:      p.UpkeepsBegun,
+		LastTurnAttacks:   append([]AttackRecord(nil), p.LastTurnAttacks...),
 		Eliminated:        p.Eliminated,
 		HandKept:          p.HandKept,
 		MulligansTaken:    p.MulligansTaken,
@@ -970,7 +980,7 @@ func (g *Game) RestoreFrom(src *Game) {
 	// an undo across the moment the breaker fired left the live notice
 	// exactly as it was — stale in one direction or absent in the
 	// other. #804 makes that visible rather than merely wrong: the
-	// CR 726 prompt rewinds with PendingChoices, and a prompt without
+	// CR 732 prompt rewinds with PendingChoices, and a prompt without
 	// the notice it is asking about is a question about nothing.
 	g.LoopNotice = src.LoopNotice
 	g.LoopThreshold = src.LoopThreshold
@@ -1000,6 +1010,10 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.eventBatch = src.eventBatch
 	g.oncePerBatchFired = src.oncePerBatchFired
 	g.preventionFollowUps = src.preventionFollowUps
+	g.damageInstanceSeq = src.damageInstanceSeq
+	g.openDamageInstance = src.openDamageInstance
+	g.combatDamageInstance = src.combatDamageInstance
+	g.combatDamageInstanceBatch = src.combatDamageInstanceBatch
 	// #830 / #859: see cloneLocked — the announcements rewind with
 	// the declarations they describe.
 	g.announcedBlocks = src.announcedBlocks

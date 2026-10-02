@@ -5,6 +5,7 @@
   import { recordClientError } from "../lib/clientErrors";
   import { describeThrown } from "../lib/guardedStore";
   import { navigate } from "../lib/router";
+  import { isPracticeGame } from "../lib/practiceTable";
   import { session } from "../lib/session";
   import { seatColor } from "../lib/colors";
   import DeckUploadForm from "../lib/components/DeckUploadForm.svelte";
@@ -365,7 +366,7 @@
       // #1571: nor a declare-attackers window with a creature the
       // server marks must_attack — the pass would be refused.
       owesAttackRequirement: owesAttackRequirement(view, viewerID),
-      // #628 (CR 726): the server has spotted a trigger loop and
+      // #628 (CR 732): the server has spotted a trigger loop and
       // suspended AUTOMATIC passing for the whole table. The "next"
       // button still passes by hand.
       loopSuspended,
@@ -600,7 +601,13 @@
       !viewerEliminated &&
       !gameEnded
     ) {
-      if (!confirm("Leave this game? Your seat stays active — you can rejoin from the lobby.")) {
+      // A practice table has no seat to come back to (ADR 0076 §2.2):
+      // leaving ends it, and lib/practiceTable.ts puts the player's own
+      // settings and session back as the route changes.
+      const question = isPracticeGame(gameID)
+        ? "Leave the practice game? It ends when you leave."
+        : "Leave this game? Your seat stays active — you can rejoin from the lobby.";
+      if (!confirm(question)) {
         return;
       }
     }
@@ -659,7 +666,7 @@
   // seated, so the winner comes from there, and "the one seat left
   // standing" is only the fallback for a view with no outcome.
   const gameEnded = $derived(view?.state === "ended");
-  // #628 (CR 726): the server's loop notice. While it stands, nothing
+  // #628 (CR 732): the server's loop notice. While it stands, nothing
   // on this table passes priority automatically — see the autopass
   // effect above and the banner PhaseDisplay renders under the
   // toggle.

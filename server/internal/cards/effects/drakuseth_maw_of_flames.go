@@ -35,19 +35,21 @@ func init() {
 			Key:     "Drakuseth — 4 damage to the first target, 3 to each other",
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
-				for i, t := range item.Targets {
-					if !ctx.IsTargetLegal(t) {
-						continue
+				return ctx.Game.DamageInstanceForEffect(func() error {
+					for i, t := range item.Targets {
+						if !ctx.IsTargetLegal(t) {
+							continue
+						}
+						amount := 3
+						if i == 0 {
+							amount = 4
+						}
+						if err := (DealDamage{Source: item.SourceCardID, Target: t.ID, Amount: amount}).Apply(ctx); err != nil {
+							return err
+						}
 					}
-					amount := 3
-					if i == 0 {
-						amount = 4
-					}
-					if err := (DealDamage{Source: item.SourceCardID, Target: t.ID, Amount: amount}).Apply(ctx); err != nil {
-						return err
-					}
-				}
-				return nil
+					return nil
+				})
 			},
 		}},
 	})

@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"strings"
-
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -54,12 +52,26 @@ import (
 // triggers_common.go takes it; `cost` is the printed cumulative upkeep
 // cost, charged once per age counter.
 //
-// Mana costs only. "Cumulative upkeep—Pay 2 life" (Glacial Chasm) and
-// "Cumulative upkeep—Sacrifice a creature" (Phyrexian Soulgorger) are
-// the same trigger with a different payment, and the engine's
-// pay-or-else prompt parses a mana cost; those cards wait for the
-// life / sacrifice payment shapes rather than being approximated here.
+// A mana cost. "Cumulative upkeep—Sacrifice a land" and "—Discard a
+// card" are CumulativeUpkeepPaying (ADR 0108 §5). "Cumulative upkeep—Pay
+// 2 life" (Glacial Chasm) is the same trigger with a payment the prompt
+// does not take yet, and waits rather than being approximated here.
 func CumulativeUpkeep(label, cost string) game.TriggeredAbility {
+	return CumulativeUpkeepPaying(label, UpkeepPayment{Mana: cost}, "", "")
+}
+
+// CumulativeUpkeepPaying is CumulativeUpkeep for any payment the upkeep
+// prompt takes, including the two that are not mana (ADR 0108 §5, owner
+// decision 3): Polar Kraken's "Cumulative upkeep—Sacrifice a land" is
+//
+//	CumulativeUpkeepPaying(label, SacrificePayment(1, "land", "lands", game.PermanentQuery{Types: []string{"land"}}), "land", "lands")
+//
+// With three age counters that is "Sacrifice three lands", chosen and
+// paid all at once or not at all (CR 702.24a: "either the entire set of
+// costs is paid, or none of them is paid"). `noun` and `plural` name a
+// sacrifice's permanents in the prompt; a mana or discard payment
+// ignores them.
+func CumulativeUpkeepPaying(label string, each UpkeepPayment, noun, plural string) game.TriggeredAbility {
 	return AtYourUpkeep(label, func(g *game.Game, item *game.StackItem) error {
 		source := item.SourceCardID
 		// CR 702.24a's "if this permanent is on the battlefield": a
@@ -82,9 +94,11 @@ func CumulativeUpkeep(label, cost string) game.TriggeredAbility {
 			if age <= 0 {
 				return nil
 			}
+			cost, action := each.times(age, noun, plural).prompt()
 			return UpkeepPayUnless{
 				Chooser:   ctx.Controller(),
-				Cost:      strings.Repeat(cost, age),
+				Cost:      cost,
+				Action:    action,
 				Question:  label,
 				OnDecline: func(ctx *Context) error { return SacrificePermanent{Target: source}.Apply(ctx) },
 			}.Apply(ctx)

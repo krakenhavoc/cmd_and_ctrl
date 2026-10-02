@@ -195,10 +195,10 @@ func TestNextDamageShieldFollowsAPermanentSpellOntoTheBattlefield(t *testing.T) 
 	}
 }
 
-// CR 615.5: the follow-up runs once the instance has settled — at the
-// next priority boundary — with the amount prevented, the shield's
-// controller and source, and the damage source's colours as it dealt the
-// damage.
+// CR 615.5: the follow-up runs "immediately afterward" — as the instance
+// of damage ends (ADR 0108 PR 0), not at the next priority boundary —
+// with the amount prevented, the shield's controller and source, and the
+// damage source's colours as it dealt the damage.
 func TestNextDamageShieldRunsItsFollowUpWithTheAmountPrevented(t *testing.T) {
 	g := newActiveGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
@@ -206,12 +206,8 @@ func TestNextDamageShieldRunsItsFollowUpWithTheAmountPrevented(t *testing.T) {
 	var calls []followUpCall
 	shieldAgainst(t, g, me.ID, src, testFollowUp(&calls))
 	g.WithWriteLock(func() { _ = g.DealDamageToPlayerForEffect(src, me.ID, 4) })
-	if len(calls) != 0 {
-		t.Fatalf("follow-up ran %d times before the instance settled, want 0", len(calls))
-	}
-	g.WithWriteLock(func() { g.runStateChecksLocked() })
 	if len(calls) != 1 {
-		t.Fatalf("follow-up ran %d times, want 1", len(calls))
+		t.Fatalf("follow-up ran %d times as the instance ended, want 1", len(calls))
 	}
 	c := calls[0]
 	if c.amount != 4 || c.controller != me.ID || c.damageFrom != src || len(c.colors) != 1 || c.colors[0] != "R" {
@@ -257,18 +253,19 @@ func TestNextDamageShieldFollowUpRunsOncePerInstance(t *testing.T) {
 	}
 }
 
-// The owed follow-up rides a restore point taken mid-instance (a CR 616
-// prompt can pause one), and the restored game runs it.
+// The owed follow-up rides a restore point taken mid-instance — a combat
+// damage step's instance is owed until a player would next receive
+// priority — and the restored game runs it.
 func TestOwedFollowUpSurvivesARestorePoint(t *testing.T) {
 	g := newActiveGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
 	src := pushColouredCreature(g, opp, "Source", []string{"R"})
 	var calls []followUpCall
 	shieldAgainst(t, g, me.ID, src, testFollowUp(&calls))
-	g.WithWriteLock(func() { _ = g.DealDamageToPlayerForEffect(src, me.ID, 3) })
+	g.WithWriteLock(func() { g.markCombatDamageToPlayerLocked(me.ID, src, 3, CombatStepRegular) })
 	snap := g.CaptureSnapshot()
-	if snap == nil || len(snap.PreventionFollowUps) != 1 {
-		t.Fatalf("snapshot owes %v, want the one follow-up", snap)
+	if snap == nil || len(snap.PreventionFollowUps) != 1 || snap.PreventionFollowUps[0].Instance == 0 {
+		t.Fatalf("snapshot owes %v, want the one follow-up, with its instance", snap)
 	}
 	r, err := snap.RestoreStrict()
 	if err != nil {
@@ -292,10 +289,15 @@ func TestNextDamageShieldUnderUnpreventableDamage(t *testing.T) {
 	start := lifeOf(g, me.ID)
 	g.WithWriteLock(func() {
 		// Two unpreventable events of one instance: still one follow-up.
-		for _, n := range []int{2, 1} {
-			if err := g.DealMarkedDamageForEffect(src, nil, me.ID, n, DamageMarks{CantBePrevented: true}); err != nil {
-				t.Fatal(err)
+		if err := g.DamageInstanceForEffect(func() error {
+			for _, n := range []int{2, 1} {
+				if err := g.DealMarkedDamageForEffect(src, nil, me.ID, n, DamageMarks{CantBePrevented: true}); err != nil {
+					return err
+				}
 			}
+			return nil
+		}); err != nil {
+			t.Fatal(err)
 		}
 		g.runStateChecksLocked()
 	})

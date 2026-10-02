@@ -9,6 +9,12 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/deck"
 )
 
+// everyDeck is every deck the server can seat: the pickers' registry
+// and the tutorial pair (tutorial.go). Every per-deck invariant below
+// walks it, so a deck kept out of the pickers is not kept out of the
+// checks.
+func everyDeck() []Deck { return append(All(), tutorialDecks()...) }
+
 // basicLandNames are the only cards allowed into a pre-built deck without a
 // catalog entry. They have none by design: game.ActivateManaAbility
 // synthesises a basic's mana ability from its type line when no Spec
@@ -28,7 +34,7 @@ var basicLandNames = map[string]bool{
 // sandbox fallback is a thing a HUMAN uses to play the card by hand and
 // a bot has no hands. So this fails the build rather than warning.
 func TestEveryCardResolvesToARegisteredSpec(t *testing.T) {
-	for _, d := range All() {
+	for _, d := range everyDeck() {
 		t.Run(d.ID, func(t *testing.T) {
 			var missing []string
 			for _, c := range d.Cards() {
@@ -57,7 +63,7 @@ func TestEveryCardResolvesToARegisteredSpec(t *testing.T) {
 // disagree passes the coverage test and then resolves to the wrong card
 // — or to nothing — in a real game.
 func TestDeclaredNamesMatchTheCatalog(t *testing.T) {
-	for _, d := range All() {
+	for _, d := range everyDeck() {
 		t.Run(d.ID, func(t *testing.T) {
 			for _, c := range d.Cards() {
 				if c.Basic {
@@ -88,7 +94,7 @@ func TestDeclaredNamesMatchTheCatalog(t *testing.T) {
 // back face is not a card you can put in a decklist, it is a face the
 // engine reaches by casting or transforming.
 func TestNoBackFaceOracleKeys(t *testing.T) {
-	for _, d := range All() {
+	for _, d := range everyDeck() {
 		for _, c := range d.Cards() {
 			if strings.Contains(c.OracleID, "#") {
 				t.Errorf("%s: %s uses a back-face key %q; the front face is what gets cast",
@@ -102,7 +108,7 @@ func TestNoBackFaceOracleKeys(t *testing.T) {
 // checks it too, but only once a Scryfall index has resolved the names,
 // and CI has no dump.
 func TestDeckIsOneHundredCards(t *testing.T) {
-	for _, d := range All() {
+	for _, d := range everyDeck() {
 		if got := d.Size(); got != 100 {
 			t.Errorf("%s: %d cards, want 100", d.ID, got)
 		}
@@ -111,7 +117,7 @@ func TestDeckIsOneHundredCards(t *testing.T) {
 
 // TestSingleton — CR 903.5b. Basic lands are exempt; nothing else is.
 func TestSingleton(t *testing.T) {
-	for _, d := range All() {
+	for _, d := range everyDeck() {
 		t.Run(d.ID, func(t *testing.T) {
 			seen := make(map[string]int, len(d.Mainboard)+1)
 			for _, c := range d.Cards() {
@@ -154,7 +160,7 @@ func TestSingleton(t *testing.T) {
 // a subset of the commander's, and the deck's declared Identity must be
 // exactly the commander's.
 func TestColourIdentity(t *testing.T) {
-	for _, d := range All() {
+	for _, d := range everyDeck() {
 		t.Run(d.ID, func(t *testing.T) {
 			if d.Identity != d.Commander.Identity {
 				t.Fatalf("deck identity %q but commander %s is %q",
@@ -225,7 +231,7 @@ func TestLookupUnknown(t *testing.T) {
 // text deck.ParseText accepts, with the commander in the command zone
 // and 99 cards in the mainboard.
 func TestDecklistParsesAsPlayersUploadsDo(t *testing.T) {
-	for _, d := range All() {
+	for _, d := range everyDeck() {
 		t.Run(d.ID, func(t *testing.T) {
 			entries, err := deck.ParseText(d.Decklist())
 			if err != nil {

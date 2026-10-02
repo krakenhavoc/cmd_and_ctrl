@@ -34,6 +34,13 @@
   import { colorPickOptions } from "../../manaSource";
   import ManaSymbolPicker from "./ManaSymbolPicker.svelte";
   import { payUnlessAnswer, waterbendLimit } from "../../waterbend";
+  import {
+    canPayCards,
+    payCardsOptions,
+    payCardsReady,
+    payCardsVerb,
+    togglePayCard,
+  } from "../../payCards";
   import { mayCastCopy } from "../../mayCast";
   import { damageSourceCaption } from "../../damageSource";
   import { freeCastRequest, mayCastKeywordsThatOpenACast } from "../../freeCastRequest";
@@ -473,8 +480,23 @@
     if (id !== payTapsFor) {
       payTapsFor = id;
       payTaps = [];
+      payCardPicks = [];
     }
   });
+  // ADR 0108 §5: a pay-unless whose payment discards or sacrifices
+  // ("Echo—Discard a card", "Cumulative upkeep—Sacrifice a land")
+  // ships pay_cards; the "Pay" answer names exactly `count` of them.
+  let payCardPicks = $state<string[]>([]);
+  const payCards = $derived(isPayUnless ? (active?.pay_cards ?? null) : null);
+  const payCardOptions = $derived.by((): CardView[] => {
+    if (!payCards) return [];
+    return payCardsOptions(
+      payCards,
+      snap.battlefield?.cards,
+      snap.seats?.find((s) => s.id === viewerID),
+    );
+  });
+  const payBlocked = $derived(payCards !== null && !payCardsReady(payCards, payCardPicks));
   const payTapCost = $derived(isPayUnless ? (active?.tap_cost ?? null) : null);
   const payTapLimit = $derived(payTapCost ? waterbendLimit(payTapCost, undefined) : 0);
   const payTapOptions = $derived.by((): CardView[] => {
@@ -626,10 +648,10 @@
     answer({ modes: modePicks });
   }
 
-  // #804 loop_shortcut — CR 726. The loop breaker has fired and this
+  // #804 loop_shortcut — CR 732. The loop breaker has fired and this
   // viewer controls the ability that is repeating, so they get the
   // question paper asks: how many more times? A number, not a yes/no,
-  // because that is what CR 726 lets a player propose — and 0 is a
+  // because that is what CR 732 lets a player propose — and 0 is a
   // real answer ("stop here"), which leaves the table paused exactly
   // where the breaker put it, banner and all.
   const isLoopShortcut = $derived(active?.kind === "loop_shortcut");
@@ -889,7 +911,10 @@
     if (!active || !viewerID) return;
     // #1311: a waterbend pay-unless names its taps beside the apply.
     if (isPayUnless) {
-      answer(payUnlessAnswer(active, apply, payTaps));
+      // ADR 0108 §5: a discard or sacrifice payment is not a "Pay"
+      // until the picks add up to the count.
+      if (apply && payBlocked) return;
+      answer(payUnlessAnswer(active, apply, payTaps, payCardPicks));
       return;
     }
     // ADR 0099 §7: "Cast it free" hands the card to Board's cast chain
@@ -1259,7 +1284,7 @@
       {:else if isLoopShortcut}
         <h2 id="choice-title">
           {active.reason || "This ability keeps resolving"}
-          <span class="prompt-src" aria-hidden="true">shortcut · CR 726</span>
+          <span class="prompt-src" aria-hidden="true">shortcut · CR 732</span>
         </h2>
         <p class="prompt-hint">
           It has resolved {loopCount}
@@ -1531,10 +1556,43 @@
           {active.reason || `${triggerSourceName(active.source)} — pay ${active.pay_cost ?? ""}?`}
           <span class="prompt-src" aria-hidden="true">pay unless</span>
         </h2>
-        <p class="prompt-hint">
-          Pay {active.pay_cost ?? "the cost"} from your pool (untapped sources auto-tap if it's short),
-          or don't and let {triggerSourceName(active.source)} do its thing.
-        </p>
+        {#if payCards}
+          <p class="prompt-hint">
+            Pay — {active.pay_cost ?? "the cost"} — or don't and let {triggerSourceName(
+              active.source,
+            )} do its thing.
+          </p>
+          {#if !canPayCards(payCards)}
+            <p class="prompt-hint">You don't have enough to pay this.</p>
+          {:else}
+            <p class="prompt-hint sub">{payCardsVerb(payCards)}</p>
+            <ul class="prompt-options">
+              {#each payCardOptions as c (c.instance_id)}
+                <li>
+                  <button
+                    type="button"
+                    class="prompt-opt"
+                    class:on={payCardPicks.includes(c.instance_id)}
+                    disabled={payCardPicks.length >= payCards.count &&
+                      !payCardPicks.includes(c.instance_id)}
+                    aria-pressed={payCardPicks.includes(c.instance_id)}
+                    onclick={() =>
+                      (payCardPicks = togglePayCard(payCards, payCardPicks, c.instance_id))}
+                  >
+                    <span class="prompt-radio" aria-hidden="true"></span>
+                    <span class="name">{c.name}</span>
+                  </button>
+                </li>
+              {/each}
+            </ul>
+            <p class="prompt-hint sub">{payCardPicks.length} / {payCards.count} chosen</p>
+          {/if}
+        {:else}
+          <p class="prompt-hint">
+            Pay {active.pay_cost ?? "the cost"} from your pool (untapped sources auto-tap if it's short),
+            or don't and let {triggerSourceName(active.source)} do its thing.
+          </p>
+        {/if}
         {#if payTapCost}
           <p class="prompt-hint sub">
             {payTapCost.label ?? "Waterbend"}: tap your untapped artifacts and creatures to help —
@@ -1566,7 +1624,12 @@
         <div class="prompt-foot">
           <span class="prompt-count"><span class="kbd">Y</span> / <span class="kbd">N</span></span>
           <button type="button" onclick={() => answerOptional(false)}>Don't pay</button>
-          <button type="button" class="primary" onclick={() => answerOptional(true)}>
+          <button
+            type="button"
+            class="primary"
+            disabled={payBlocked}
+            onclick={() => answerOptional(true)}
+          >
             Pay {active.pay_cost ?? ""}
           </button>
         </div>
@@ -2057,7 +2120,7 @@
     overflow-y: auto;
     padding: 4px 2px;
   }
-  /* #804 CR 726 shortcut. One number, sitting in the button row with
+  /* #804 CR 732 shortcut. One number, sitting in the button row with
      the two answers it feeds, because the question is "how many" and
      everything else about the prompt is already said above it. */
   .loop-iterations {

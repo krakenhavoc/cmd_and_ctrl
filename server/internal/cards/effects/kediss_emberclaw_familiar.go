@@ -38,15 +38,17 @@ func init() {
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				commander, struck, amount := item.Trigger.Event.Source, item.Trigger.Event.Target, item.Trigger.Event.Amount
 				ctx := NewContext(g, item)
-				for _, opp := range ctx.Opponents() {
-					if opp == struck {
-						continue
+				return ctx.Game.DamageInstanceForEffect(func() error {
+					for _, opp := range ctx.Opponents() {
+						if opp == struck {
+							continue
+						}
+						if err := (DealDamage{Source: commander, Target: opp, Amount: amount}).Apply(ctx); err != nil {
+							return err
+						}
 					}
-					if err := (DealDamage{Source: commander, Target: opp, Amount: amount}).Apply(ctx); err != nil {
-						return err
-					}
-				}
-				return nil
+					return nil
+				})
 			},
 		}},
 	})

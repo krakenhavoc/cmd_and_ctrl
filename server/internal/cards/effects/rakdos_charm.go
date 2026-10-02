@@ -54,13 +54,18 @@ func init() {
 				}
 				return DestroyTarget{Target: item.Targets[0].ID}.Apply(ctx)
 			case ctx.HasMode(2):
-				for _, c := range ctx.Game.BattlefieldCardsForEffect() {
-					if !c.IsCreature() {
-						continue
+				if err := ctx.Game.DamageInstanceForEffect(func() error {
+					for _, c := range ctx.Game.BattlefieldCardsForEffect() {
+						if !c.IsCreature() {
+							continue
+						}
+						if err := ctx.Game.DealDamageToPlayerForEffect(c.InstanceID, c.Controller, 1); err != nil {
+							return err
+						}
 					}
-					if err := ctx.Game.DealDamageToPlayerForEffect(c.InstanceID, c.Controller, 1); err != nil {
-						return err
-					}
+					return nil
+				}); err != nil {
+					return err
 				}
 			}
 			return nil

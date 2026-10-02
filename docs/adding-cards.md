@@ -1785,7 +1785,7 @@ an upkeep trigger. A step cannot end with objects on the stack, so
 stack is empty and only then moves the cursor. An empty stack is
 unchanged: one move, no pass. The drive stops — cursor where it is, no
 error — on a blocking prompt one of its resolutions raised, on a
-CR 726 loop notice, or on the game ending. A card whose trigger fires
+CR 732 loop notice, or on the game ending. A card whose trigger fires
 in one step and pays off in the next needs nothing for this; write the
 trigger and the turn structure is already right.
 
@@ -2346,7 +2346,7 @@ is the table-wide count; `g.ResolvedThisTurn(source, label)` and
 empty label sums the source's abilities) and are per **object**, not
 per card — a permanent that left the battlefield and came back this
 turn answers zero, because CR 400.7 makes it a new object and the key
-carries `Card.ObjectEpoch` (#936). The CR 726 loop breaker's
+carries `Card.ObjectEpoch` (#936). The CR 732 loop breaker's
 `LoopRun` / `LoopAllowance` share the same (source, label) pair and
 stay per **card**, so a blink loop still trips the threshold; one key,
 two projections, and `TurnTally`'s field comments say which reader
@@ -2946,6 +2946,33 @@ that only deals damage keeps using `DealDamage` / the plain
 `life_continuation_guard_test.go` fails on a `.Life` read after a life
 change and on a `.Life` / `.DamageMarked` read after a damage call, in
 the same function.
+
+**One printed damage instruction is one damage instance (ADR 0108 PR 0).**
+The engine stamps each `DealDamage…ForEffect` call, and each
+`DealDamageEachThenForEffect` walk, as an instance of its own. That is
+what "it deals 2 damage to you. Then it deals 2 damage to you" needs: two
+instructions, so a "next time" shield prevents only the first (CR 615.8,
+608.2c). But "deals 2 damage to each creature and each player", a fight,
+or "4 damage to the first target and 3 to each other" is ONE instruction
+that the catalog deals with several calls, so wrap the whole sentence in
+one scope:
+
+```go
+return ctx.Game.DamageInstanceForEffect(func() error {
+    for _, c := range MatchingBattlefield(ctx, Creature()) { … DealDamage{…}.Apply(ctx) … }
+    for _, p := range ctx.Game.Seats { … }
+    return nil
+})
+```
+
+Scopes nest, so a helper that loops (`damageEachMatching`) wraps itself
+and joins its caller's scope. Prevention follow-ups and every later
+reader of the instance (ADR 0108 §7–§10) count per instance.
+`damage_instance_guard_test.go` fails on a damage call in a loop outside
+a scope. It cannot see one sentence written as two calls without a loop,
+so wrap those by hand (`b10Fight`, Fear, Fire, Foes!). Two sentences stay
+two instances (Repulsor Blast's teamwork damage, Garruk Relentless's
+fight-back).
 
 **Destroy clears damage only when it lands (#708).** Marked damage is
 removed by the landed outcome of a battlefield exit — not by the
@@ -4762,12 +4789,31 @@ Two things that are not obvious:
   would tell the ADR 0037 coverage signal that every cumulative-upkeep
   card is implemented. The cost lives on the `Spec`.
 
-Mana costs only. "Cumulative upkeep—Pay 2 life" (Glacial Chasm) and
-"—Sacrifice a creature" (Phyrexian Soulgorger) are the same trigger
-with a payment the pay-or-else prompt cannot parse; they wait for those
-payment shapes rather than being approximated.
+A discard or a sacrifice is `CumulativeUpkeepPaying(label, payment,
+noun, plural)` with `DiscardPayment(1)` or `SacrificePayment(1, "land",
+"lands", game.PermanentQuery{Types: []string{"land"}})` (ADR 0108 §5):
+with N age counters it asks for N cards or N permanents, chosen and paid
+together or not at all (CR 702.24a). "Cumulative upkeep—Pay 2 life"
+(Glacial Chasm) and the other payments the prompt does not take yet wait
+rather than being approximated.
 
-### The CR 726 loop breaker (#628)
+### Echo (ADR 0108 §5, #1888, CR 702.30)
+
+`Echo(name, cost)` ([echo.go](../server/internal/cards/effects/echo.go))
+goes in `Triggered` beside the card's other triggers:
+`Echo("Goblin Patrol", "{R}")`. A cost that is not mana is
+`EchoPayment(name, DiscardPayment(1))` or `EchoPayment(name,
+SacrificePayment(2, "land", "lands", …))`, and a cost read as the trigger
+resolves is `EchoX(name, where, amount)` (Volcano Hellion's life total).
+The trigger checks "came under your control since the beginning of your
+last upkeep" itself (`game.CameUnderControlSinceLastUpkeepForEffect`)
+when the upkeep begins and again on resolution, asks through
+`UpkeepPayUnless`, sacrifices on a decline, and emits `EventEchoPaid` on a
+payment: "When this creature's echo cost is paid" is
+`WhenEchoIsPaid(label, effect)`. Like cumulative upkeep it is not a
+`canonicalKeywords` token; the trigger carries `game.KeywordEcho`.
+
+### The CR 732 loop breaker (#628)
 
 Two permanents that trigger each other loop forever. The server never
 blocks — one bounded unit of work per pass — but with autopass on for
@@ -4828,7 +4874,7 @@ touch it: answering is a player decision, so the run is cleared and
 found it — without that re-arm, "3 more" would mean 3 + the threshold;
 and this prompt **blocks the table**, which the notice deliberately does
 not, so `notePlayerDecisionLocked` withdraws a stale one rather than
-leaving a wedge. CR 726.4's draw is still not built.
+leaving a wedge. CR 732.4's draw is still not built.
 
 ### Untapping in another player's untap step (#74)
 

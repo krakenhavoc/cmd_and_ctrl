@@ -253,7 +253,7 @@ The decision is one rule with one enforcement point
    because the rules place them after the resolution: putting a
    triggered ability on the stack (the CR 603.3b order, the CR 603.5
    optional yes/no, the CR 603.3c mode pick and the CR 603.3d target
-   pick, recognised by their resume frames), and the CR 726 loop
+   pick, recognised by their resume frames), and the CR 732 loop
    shortcut. Holding the boundary for a trigger's target pick would
    pick targets before state-based actions, which is the order #809
    fixed. A `pick_target` for a spell copy (CR 707.10c) is part of the

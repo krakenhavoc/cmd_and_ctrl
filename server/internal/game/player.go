@@ -156,6 +156,26 @@ type Player struct {
 	// seam.
 	TurnsBegun int
 
+	// UpkeepsBegun counts the upkeep steps this player has begun
+	// (ADR 0108 §5, #1888). It goes up by one as the step begins,
+	// before any "at the beginning of your upkeep" trigger is checked,
+	// so a trigger that reads it during its own upkeep reads the
+	// upkeep it is in. A skipped upkeep is never begun and is not
+	// counted (CR 702.30a's "your last upkeep" is the last one you
+	// had). Card.ControlledSinceUpkeep is stamped from it.
+	UpkeepsBegun int
+
+	// LastTurnAttacks is every attack this player's creatures declared
+	// during the last turn this player took (ADR 0108 §6, #1882, CR
+	// 508.1): "if it attacked during your last turn" (Goblin Rock Sled,
+	// Giant Turtle, Tangle Kelp), "if a player attacked you during
+	// their last turn" (Avenge, O-Kagachi). It is TurnTally.Attacks of
+	// that turn, copied here as the turn ended and kept until this
+	// player's next turn ends, so it survives the tally's reset. Empty
+	// is a real answer: the last turn had no attacks. Read through
+	// AttackedDuringControllersLastTurn and AttackedYouDuringTheirLastTurn.
+	LastTurnAttacks []AttackRecord
+
 	// Eliminated is set when the player leaves the game: a concession,
 	// a state-based loss or an effect loss (ADR 0057, game_end.go). An
 	// eliminated player still occupies their seat for spectating. The

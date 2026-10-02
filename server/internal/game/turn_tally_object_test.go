@@ -7,7 +7,7 @@ import (
 )
 
 // turn_tally_object_test.go pins #936: the card-facing "only once each
-// turn" tallies are per OBJECT (CR 400.7), and the CR 726 loop
+// turn" tallies are per OBJECT (CR 400.7), and the CR 732 loop
 // breaker that shares their (source, label) pair is still per CARD.
 
 const objectTallyLabel = "Probe — once each turn"

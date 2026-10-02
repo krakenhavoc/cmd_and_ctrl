@@ -15,7 +15,7 @@ package effects
 // a PURPOSE (casts only) where this one does not. Drop that one tag
 // and the remaining pair — "the object is a Creature" and "the object
 // has the named subtype" — is satisfied by a cast OR an activation,
-// because CR 106.6a measures an activation against the ability's
+// because CR 106.6 measures an activation against the ability's
 // SOURCE permanent. That is the printed sentence exactly; see
 // ChosenTypeCastOrActivateManaRestrictions in tribal.go.
 //

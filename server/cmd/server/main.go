@@ -294,6 +294,10 @@ func main() {
 	// Lobby HTTP mutations (join/deck/start) broadcast through the
 	// hub so clients already on the game page see them immediately.
 	l.SetStateBroadcaster(hub)
+	// A practice table the lobby reaps on its own (idle, or replaced
+	// by the same person's next one) closes its sockets through the
+	// hub, as an operator delete does (ADR 0076 §2.2).
+	l.SetEvictor(hub)
 	// S31: bot seats. The manager starts a runner per bot seat when a
 	// game starts (and when one is restored below) and stops them
 	// when the game is deleted or the process exits; runners
