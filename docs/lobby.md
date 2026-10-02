@@ -1808,6 +1808,94 @@ construction.
 picker's list, not the re-seat payload; seating reads them server-side
 via `POST /games/{id}/decks/{deck_id}`.
 
+### `GET /me/settings` and `PUT /me/settings` (ADR 0110 §4)
+
+The caller's **account copy of their settings**: the per-person half of
+the client's `Settings`, so they follow a signed-in person to every
+browser they sign in on
+([ADR 0110](decisions/0110-remember-me.md) §4, owner answers 5 and 6).
+Which fields that is is decided in one place, `SYNCED_FIELDS` in
+`client/src/lib/settings.ts`. The per-device fields (volumes and mute,
+card size, hand and table layout, opponent detail, the two expansion
+settings, text scale, and the two that follow the OS reduced-motion
+signal) never leave the browser.
+
+The server checks the body's shape only — a JSON object of at most
+32 KiB and depth 4. It never reads the fields. The client's `migrate`
+is the one schema validator, so a server copy of the schema cannot
+drift from it.
+
+Same caller rule as the rest of `/me/*`: a signed-in person. No
+credential is **401**. Every other caller is **403**, never 401 (#1154):
+a guest's seat or spectator session, the admin token, and everyone on a
+deployment with no database. The client reads 403 as "keep settings in
+this browser". Each caller reads and writes only their own row.
+
+**`GET /me/settings` → 200**
+
+```json
+{
+  "version": 15,
+  "revision": 4,
+  "settings": { "display": { "theme": "dark" }, "gameplay": { "strictMana": false } },
+  "updated_at": 1790000000000
+}
+```
+
+- `version` is the client `SETTINGS_VERSION` that wrote the copy.
+- `revision` goes up by one on every write. It is what `If-Match` names.
+- `updated_at` is Unix milliseconds.
+- A person with no copy yet gets `{"revision": 0}` and nothing else.
+
+Responses carry `Cache-Control: no-store`.
+
+**`PUT /me/settings`**
+
+```
+If-Match: 4
+```
+
+```json
+{ "version": 15, "settings": { "display": { "theme": "light" } } }
+```
+
+`If-Match` is the revision the client last read, or `0` for the first
+copy. A bare integer and a quoted entity tag (`"4"`) are both accepted.
+The body replaces the whole copy. Unknown top-level fields are refused.
+
+| Status | When | Body |
+|---|---|---|
+| 200 | Saved | The new copy, as `GET` returns it |
+| 400 | `If-Match` is not a revision. Or the body is malformed: `settings` missing or not an object, nested deeper than 4, or `version` outside 1–1000 | `{error}` |
+| 409 | `version` is **below** the stored copy's: a stale tab must not stamp an older schema over a newer client's copy | `{error, …}` with the current copy. The error says to reload |
+| 412 | The revision has moved (another tab or device wrote first), or `If-Match: 0` when a copy exists | `{error, …}` with the current copy |
+| 413 | `settings` is over 32 KiB | `{error}` |
+| 428 | No `If-Match` | `{error}` |
+| 429 | Over the per-person bucket: 1 write a second, a burst of 5, shared by all of that person's sessions. Only a write that passed the checks above spends a token. `Retry-After` is set | `{error}` |
+| 503 | The server has no settings store | `{error}` |
+
+The revision is checked before the version, so a stale revision is
+always a 412.
+
+**How the client uses it** (`client/src/lib/settingsSync.ts`):
+
+- It downloads at sign-in and at page load while signed in.
+- It uploads the synced fields one second after the last change.
+- At sign-in the **account's copy wins**. If this browser's values
+  differ, a toast offers "Keep this browser's instead" for the rest of
+  the visit, which uploads them.
+- On a 412 it merges field by field against the copy both sides last
+  agreed on, and then uploads over the new revision. A field only this
+  browser changed keeps this browser's value. Every other field takes
+  the account's.
+- A copy written by a newer client, or a 409, is applied and then this
+  tab stops writing until it reloads.
+- While the tutorial's practice table is open, the four settings it
+  forces are uploaded as the player's own values
+  (`withSettings(current, record.saved)`), never as the forced ones.
+- A failed write never blocks the UI. It is retried with a backoff, and
+  again when the browser comes back online.
+
 ### `POST /deck-requests`
 
 Ask for a deck's missing cards to be added to the engine
