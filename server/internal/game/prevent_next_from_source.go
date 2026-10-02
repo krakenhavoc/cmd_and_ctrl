@@ -183,7 +183,10 @@ func clonePermanentQueries(qs []PermanentQuery) []PermanentQuery {
 // kind's parameters.
 func nextFromSourceModProblem(m Mod) string {
 	if m.Kind != ModPreventNextFromSource {
-		if m.SourceZone != "" || len(m.Queries) != 0 || m.SpentBatch != 0 {
+		// #1879: the granted "can't attack unless defending player
+		// controls" reads Queries too, as what the defender must control.
+		queries := len(m.Queries) != 0 && m.Kind != ModCantAttackUnlessDefenderControls
+		if m.SourceZone != "" || queries || m.SpentBatch != 0 {
 			return fmt.Sprintf("mod %q carries a damage-source field only preventNextFromSource reads", m.Kind)
 		}
 		return ""

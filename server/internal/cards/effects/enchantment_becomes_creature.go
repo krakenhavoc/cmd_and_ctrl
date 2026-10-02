@@ -33,8 +33,10 @@ func whenStateIfThisIsAnEnchantment(label string, state StateCondition, effect E
 
 // thisEnchantmentBecomesACreature is the effect: the CR 603.4 re-check,
 // then the indefinite type change pinned to this object. The colour is
-// untouched.
-func thisEnchantmentBecomesACreature(subtype string, power, toughness int, label string) Effect {
+// untouched. `with` is what the creature also gains, in the same effect
+// and timestamp (CR 613.6): Veiled Serpent's quoted "can't attack unless
+// defending player controls an Island" (#1879).
+func thisEnchantmentBecomesACreature(subtype string, power, toughness int, label string, with ...game.Mod) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		self := item.SourceCardID
 		if !onBattlefield(g, self) || sourceIsNewObject(g, item) {
@@ -46,13 +48,13 @@ func thisEnchantmentBecomesACreature(subtype string, power, toughness int, label
 		}
 		return ScopedEffectFor{
 			Target: self,
-			Mods: []game.Mod{
+			Mods: append([]game.Mod{
 				game.RemoveTypesMod("Enchantment"),
 				game.AddTypesMod("Creature"),
 				game.AddSubtypesMod(subtype),
 				game.SetBasePowerMod(power),
 				game.SetBaseToughnessMod(toughness),
-			},
+			}, with...),
 			Duration: g.PinnedTo(game.IndefiniteDuration(), self),
 			Label:    label,
 		}.Apply(NewContext(g, item))

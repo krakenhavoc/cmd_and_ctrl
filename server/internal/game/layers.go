@@ -687,6 +687,10 @@ func (g *Game) applyOneEffectLocked(eff ContinuousEffect, bucketIndex int, st *l
 			// this removal appends to the emptied slice and survives
 			// (CR 613.6), exactly as a granted keyword does.
 			target.effective.GrantedAbilities = nil
+			// #1879: and every attack-target restriction it imposes
+			// on itself, which is one of its own abilities (Veiled
+			// Serpent's granted "can't attack unless …").
+			dropSelfAttackTargetRestrictions(target.effective, target)
 			target.effective.AbilitiesRemoved = true
 			st.recordRemoval(target, bucketIndex)
 		}
