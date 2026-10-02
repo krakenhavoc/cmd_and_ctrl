@@ -115,6 +115,34 @@ func WhenThisHasNo(kind string, label string, effect Effect) game.TriggeredAbili
 	}, effect)
 }
 
+// WhenStateEach is the constructor for a state trigger about each of
+// several objects (#1858): "Whenever a creature has four or more fuse
+// counters on it, …". `cond` is asked once for each permanent on the
+// battlefield, and the ability triggers once for each permanent it
+// accepts. CR 603.8's latch is per permanent: an instance about one
+// creature waiting on the stack does not stop the ability triggering for
+// another, and the ability triggers again for the same creature once its
+// instance has left the stack, if that creature is still in the state.
+//
+// The effect reads the permanent through ctx.TriggeringPermanent (live,
+// or by last-known information once it has gone, CR 608.2h) and its
+// object through ctx.Trigger().Object.Ref(). Registered like WhenState:
+// the row carries the key, never the func.
+func WhenStateEach(label string, cond game.StateEachCondition, effect Effect) game.TriggeredAbility {
+	key := StateKeyFor(label)
+	game.RegisterStateEachCondition(key, cond)
+	return game.TriggeredAbility{State: key, Key: label, Effect: effect}
+}
+
+// WheneverACreatureHasAtLeast is "Whenever a creature has N or more
+// <kind> counters on it": Bomb Squad's fuse counters. Any creature on
+// the battlefield, whoever controls it, the source included.
+func WheneverACreatureHasAtLeast(kind string, n int, label string, effect Effect) game.TriggeredAbility {
+	return WhenStateEach(label, func(_ *game.Game, _ *game.Card, _ uuid.UUID, obj *game.Card) bool {
+		return obj.IsCreature() && obj.Counters[kind] >= n
+	}, effect)
+}
+
 // controlsAnyCard reports whether `controller` controls a permanent pred
 // accepts, for a state whose permanents no PermanentQuery describes
 // (Endangered Armodon's "a creature with toughness 2 or less"). pred is
@@ -195,6 +223,5 @@ func checkStateTrigger(name string, t game.TriggeredAbility) {
 }
 
 func stateConditionKnown(key string) bool {
-	_, ok := game.StateConditionFor(key)
-	return ok
+	return game.StateConditionKnown(key)
 }

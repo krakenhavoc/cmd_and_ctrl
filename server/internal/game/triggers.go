@@ -788,8 +788,19 @@ func (g *Game) buildOrPickTriggerLocked(tc TriggerContext, source Card, lki Char
 // would be lies. Empty Watches is the fact rather than a flag: the
 // harvester refuses to fire an ability that declares none, so
 // anything that reaches here with none did not come from an event.
+//
+// The one context stamped with no event is a state trigger's about one
+// of several objects (#1858, Bomb Squad's "Whenever a creature has four
+// or more fuse counters on it"): its Object names the creature, which is
+// both what the effect acts on and what the CR 603.8 latch reads
+// (state_triggers.go).
 func stampTriggerContext(item *StackItem, t TriggeredAbility, tc TriggerContext) {
-	if item == nil || item.Trigger != nil || !tc.Fired() || len(t.Watches) == 0 {
+	if item == nil || item.Trigger != nil {
+		return
+	}
+	fromEvent := tc.Fired() && len(t.Watches) > 0
+	aboutObject := t.State != "" && tc.Object != nil
+	if !fromEvent && !aboutObject {
 		return
 	}
 	item.Trigger = cloneTriggerContext(&tc)

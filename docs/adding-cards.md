@@ -4500,6 +4500,16 @@ Triggered: []game.TriggeredAbility{
   Island" reads, so the two halves of a card ask one question.
   `WhenThisHasAtLeast` / `WhenThisHasNo` are counter thresholds on the
   source; `WhenState` takes any condition.
+- **A state about each of several objects** (Bomb Squad's "Whenever a
+  creature has four or more fuse counters on it, … destroy it") is
+  `WheneverACreatureHasAtLeast(kind, n, label, effect)`, or
+  `WhenStateEach(label, cond, effect)` with a
+  `game.StateEachCondition` asked once per battlefield permanent. The
+  ability triggers once for each permanent in the state, and the latch is
+  per permanent: an instance about one creature waiting on the stack
+  does not stop the ability triggering for another. The effect reads the
+  permanent with `ctx.TriggeringPermanent()` (last-known information once
+  it has gone) and its object with `ctx.Trigger().Object.Ref()`.
 - **Never approximate one with an event trigger** (watching a land
   leave, a counter go on). That triggers once per event instead of once
   per state and misses every way the state can arise that the card file

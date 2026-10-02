@@ -209,6 +209,11 @@ func corpusBoards() []corpusBoard {
 		// event — waiting on the stack. Its latch is derived from this
 		// item, so the restored table must not trigger it again.
 		{"state_trigger_on_stack", corpusStateTriggerOnStack},
+		// v7, added by #1858 as a new file: a CR 603.8 state trigger
+		// about one of several objects (Bomb Squad) waiting on the
+		// stack. The creature it is about rides its trigger context,
+		// which is also what the per-object latch reads.
+		{"state_each_trigger_on_stack", corpusStateEachTriggerOnStack},
 		// v7, added by #1593: duration copy effects — the becomeCopy mod
 		// carrying its copied values, and the carried durationCopyBase
 		// under a Cytoshaped Clone. Written by #1712, alongside the
@@ -1612,6 +1617,27 @@ func corpusStateTriggerOnStack(t *testing.T) *game.Game {
 	corpusRequireTriggeredStamp(t, it, "own:")
 	if it.Trigger != nil {
 		t.Fatalf("setup: a state trigger carries a trigger context %+v; it fired off no event", it.Trigger)
+	}
+	return g
+}
+
+// corpusStateEachTriggerOnStack is a real Bomb Squad beside a bear with
+// four fuse counters, its "Whenever a creature has four or more fuse
+// counters on it" waiting on the stack: an own: triggered ref whose
+// trigger context names the bear and no event.
+func corpusStateEachTriggerOnStack(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat].ID
+	squad := corpusCreature(me, "Bomb Squad", 1, 1)
+	squad.TypeLine, squad.OracleID = "Creature — Dwarf", bsBombSquad
+	id := pushBattlefieldCardWithTimestamp(g, squad)
+	bear := corpusCreature(me, "Grizzly Bears", 2, 2)
+	bear.Counters = map[string]int{"fuse": 4}
+	bearID := pushBattlefieldCardWithTimestamp(g, bear)
+	it := corpusSettleTrigger(t, g, id)
+	corpusRequireTriggeredStamp(t, it, "own:")
+	if it.Trigger == nil || it.Trigger.Object == nil || it.Trigger.Object.ID != bearID || it.Trigger.Fired() {
+		t.Fatalf("setup: the trigger does not name the bear with no event: %+v", it.Trigger)
 	}
 	return g
 }
