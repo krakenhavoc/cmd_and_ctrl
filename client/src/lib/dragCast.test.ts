@@ -10,7 +10,7 @@ import {
   CAST_ZONE_MARGIN_PX,
   DRAG_ACTIVATION_PX,
   IDLE,
-  LAND_DRAG_REASON,
+  LAND_DRAG_FALLBACK_REASON,
   autoTapHighlight,
   cantPayReason,
   clearAutoTapHighlight,
@@ -241,24 +241,42 @@ describe("dragVerdict — the live gold / red answer", () => {
   });
 });
 
-describe("lands are not drag-played", () => {
+describe("lands are drag-played like spells are drag-cast (#1920)", () => {
   const forest = card({ instance_id: "forest", name: "Forest", type_line: "Basic Land — Forest" });
 
-  it("a land is always red with 'Play lands by clicking'", () => {
-    expect(LAND_DRAG_REASON).toBe("Play lands by clicking");
-    expect(dragVerdict(forest, { legal: true }, null)).toEqual({
+  it("a legal land is gold", () => {
+    expect(dragVerdict(forest, { legal: true }, null)).toEqual({ castable: true });
+  });
+
+  it("a land released on the table is handed to the play chain", () => {
+    const verdict = dragVerdict(forest, { legal: true }, null);
+    const { outcome } = run([down(), move(100, 300), up(100, 300, verdict)]);
+    expect(outcome).toEqual({ kind: "cast", cardID: "bolt" });
+  });
+
+  it("a refused land is red with the legality's reason and snaps back", () => {
+    const verdict = dragVerdict(forest, { legal: false, reason: "Not your priority" }, null);
+    expect(verdict).toEqual({ castable: false, reason: "Not your priority" });
+    const { outcome } = run([down(), move(100, 300), up(100, 300, verdict)]);
+    expect(outcome).toEqual({ kind: "snapBack", reason: "Not your priority" });
+  });
+
+  it("a refused land with no reason uses the land wording", () => {
+    expect(dragVerdict(forest, { legal: false }, null)).toEqual({
       castable: false,
-      reason: LAND_DRAG_REASON,
+      reason: LAND_DRAG_FALLBACK_REASON,
     });
   });
 
-  it("so a land dragged onto the table snaps back with that reason", () => {
-    const verdict = dragVerdict(forest, { legal: true }, null);
-    const { outcome } = run([down(), move(100, 300), up(100, 300, verdict)]);
-    expect(outcome).toEqual({ kind: "snapBack", reason: LAND_DRAG_REASON });
+  it("a spell stays gated by the same legality, so the two agree", () => {
+    for (const legal of [true, false]) {
+      expect(dragVerdict(forest, { legal }, null).castable).toBe(
+        dragVerdict(card(), { legal }, null).castable,
+      );
+    }
   });
 
-  it("but a land is still an ordinary click", () => {
+  it("a land is still an ordinary click", () => {
     const verdict = dragVerdict(forest, { legal: true }, null);
     const { outcome } = run([down(), up(100, 650, verdict)]);
     expect(outcome).toEqual({ kind: "click" });
@@ -423,7 +441,7 @@ describe("the reorder band (#1524)", () => {
     expect(outcome.kind).toBe("reorder");
   });
 
-  it("a land can be reordered, but is still not cast by drag", () => {
+  it("a land can be reordered, and is cast by drag when the verdict allows", () => {
     const forest = card({ instance_id: "forest", type_line: "Basic Land — Forest" });
     const verdict = dragVerdict(forest, { legal: true }, null);
     const land = (): DragInput => ({ ...rdown(), cardID: "forest" }) as DragInput;
@@ -434,8 +452,8 @@ describe("the reorder band (#1524)", () => {
       to: 3,
     });
     expect(run([land(), move(450, TABLE_Y), up(450, TABLE_Y, verdict)]).outcome).toEqual({
-      kind: "snapBack",
-      reason: LAND_DRAG_REASON,
+      kind: "cast",
+      cardID: "forest",
     });
   });
 
