@@ -39,14 +39,15 @@ func init() {
 					return g.ShuffleLibraryForEffect(owner)
 				})
 			}
-			for _, t := range ctx.LegalTargets() {
-				if x := ctx.X(); x > 0 {
-					return ctx.Game.DealDamageEachEachThenForEffect(ctx.Source(), []uuid.UUID{t.ID}, x,
-						ExileIfDealtDamageWouldDie(item, false), shuffle)
-				}
-				return shuffle(ctx.Game, 0)
+			t, ok := firstLegalTarget(ctx)
+			if !ok {
+				return nil
 			}
-			return nil
+			if x := ctx.X(); x > 0 {
+				return ctx.Game.DealDamageEachEachThenForEffect(ctx.Source(), []uuid.UUID{t.ID}, x,
+					ExileIfDealtDamageWouldDie(item, false), shuffle)
+			}
+			return shuffle(ctx.Game, 0)
 		},
 	})
 }

@@ -146,6 +146,7 @@ func (n *normalizer) game(v protocol.GameView) protocol.GameView {
 	out.StartingSeat = v.StartingSeat
 	out.SplitSecondActive = v.SplitSecondActive
 	out.DamageCantBePrevented = v.DamageCantBePrevented
+	out.ExileIfCreaturesDie = v.ExileIfCreaturesDie
 	out.DiscardPending = n.idKeyedIntMap(v.DiscardPending)
 	out.LoopNotice = n.loopNotice(v.LoopNotice)
 	out.Outcome = n.outcome(v.Outcome)
@@ -509,6 +510,7 @@ func everyFieldGameViewForNormalizer() protocol.GameView {
 
 		SplitSecondActive:     true,
 		DamageCantBePrevented: []string{"Skullcrack"},
+		ExileIfCreaturesDie:   []string{"Flaying Tendrils"},
 		DiscardPending:        map[string]int{ownerID: 1},
 		PendingChoices: []protocol.PendingChoiceView{{
 			ID: "choice-1", Kind: "choose_cards", Chooser: ownerID, FromPlayer: ownerID, Count: 1,
