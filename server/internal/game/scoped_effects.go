@@ -663,6 +663,9 @@ var modKinds = map[ModKind]modKindSpec{
 	ModExileInsteadOfYourGraveyard: {reader: readerReplacement},
 	// ADR 0107 §6 (#1860): the next damage from a source.
 	ModPreventNextFromSource: {reader: readerReplacement},
+	// ADR 0108 PR 2 (#1890): its combat-only form, a kind of its own so
+	// an older binary refuses it.
+	ModPreventNextCombatFromSource: {reader: readerReplacement},
 	// ADR 0108 §1 (#1886): exile instead if it would die this turn.
 	ModExileIfWouldDie: {reader: readerReplacement},
 	// ADR 0108 §3 (#1890): damage doubled or tripled this turn.
@@ -816,7 +819,7 @@ func blockRequirementModProblem(m Mod) string {
 	if m.Kind != ModAddBlockRequirement {
 		// ADR 0107 §6: the next-damage shield names its chosen source
 		// here (nextFromSourceModProblem checks it).
-		if len(m.Objects) != 0 && m.Kind != ModPreventNextFromSource && m.Kind != ModMultiplyDamage {
+		if len(m.Objects) != 0 && !isNextFromSourceKind(m.Kind) && m.Kind != ModMultiplyDamage {
 			return fmt.Sprintf("mod %q names objects, which only a blocksAttacker requirement reads", m.Kind)
 		}
 		return ""

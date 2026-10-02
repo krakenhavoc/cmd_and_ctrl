@@ -303,6 +303,12 @@ func corpusBoards() []corpusBoard {
 		// turn, Blind Fury's combat-only creature-to-creature, and a
 		// pinned "next time" multiplier already spent by its instance.
 		{"multiply_damage", corpusMultiplyDamage},
+		// v7, added by ADR 0108 PR 2 (#1890) as a new file: Impulsive
+		// Maneuvers' losing flip — a preventNextCombatFromSource shield on
+		// an attacking creature, its own kind so that a binary from before
+		// it refuses the file rather than reading an ordinary next-damage
+		// shield.
+		{"next_combat_damage_shield", corpusNextCombatDamageShield},
 		// v7, added by ADR 0109 PR 5 (#1895) as a new file: a resolved
 		// Turf Wound — the cantPlayLands record (a game-scope rule kind
 		// naming the one banned player) beside a standing Territorial
@@ -310,6 +316,31 @@ func corpusBoards() []corpusBoard {
 		// nothing to the file but the permanent.
 		{"cant_play_lands", corpusCantPlayLands},
 	}
+}
+
+// corpusNextCombatDamageShield is Impulsive Maneuvers on the
+// battlefield and the combat-only next-damage shield its losing flip
+// makes on an attacker.
+func corpusNextCombatDamageShield(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	maneuvers := b12Push(g, me.ID, "Impulsive Maneuvers", "Enchantment", "39a9323d-dddc-42ac-929d-3f4fa7c87567", 0, 0)
+	attacker := pushBattlefieldCardWithTimestamp(g, corpusCreature(me.ID, "Raider", 3, 3))
+	g.WithWriteLock(func() {
+		g.RecomputeLayersIfStaleLocked()
+		ref, zone, ok := g.DamageSourceRefLocked(attacker)
+		if !ok {
+			t.Fatal("setup: the attacker is in no zone")
+		}
+		g.PreventNextDamageFromSourceForEffect(game.NextDamageShield{
+			EffectSource: maneuvers, Controller: me.ID, Source: ref, SourceZone: zone, CombatOnly: true,
+			Label: "Impulsive Maneuvers — prevent the next damage",
+		})
+	})
+	if n := len(g.ScopedEffects); n != 1 || g.ScopedEffects[0].Mods[0].Kind != game.ModPreventNextCombatFromSource {
+		t.Fatalf("setup: %d scoped records, want the one combat-only shield", n)
+	}
+	return g
 }
 
 // corpusMultiplyDamage is ADR 0108 §3's multiplier in each of its shapes.

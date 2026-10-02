@@ -27,7 +27,8 @@ import (
 //   - preventDamage — Mending Hands' charged shield (CR 615.7);
 //   - preventNextFromSource — the Circles of Protection's one-use
 //     shield against the next damage from a source (CR 615.8, ADR 0107
-//     §6, prevent_next_from_source.go);
+//     §6, prevent_next_from_source.go), and its combat-only form,
+//     preventNextCombatFromSource (Impulsive Maneuvers, ADR 0108 PR 2);
 //   - gainNoLife — Flames of the Blood Hand (ADR 0107 §5);
 //   - exileInsteadOfLeaving — the Whip's and unearth's redirect,
 //     INDEFINITE and pinned to the returned object, so it lasts exactly
@@ -158,7 +159,7 @@ var (
 // pre-filter the gather applies before it builds anything.
 func scopedReplacementWatches(kind ModKind) []EventKind {
 	switch kind {
-	case ModPreventCombatDamage, ModPreventDamage, ModPreventNextFromSource, ModMultiplyDamage:
+	case ModPreventCombatDamage, ModPreventDamage, ModPreventNextFromSource, ModPreventNextCombatFromSource, ModMultiplyDamage:
 		return watchDamage
 	case ModExileInsteadOfLeaving, ModExileInsteadOfGraveyard, ModExileIfWouldDie:
 		return watchZoneMove
@@ -477,7 +478,7 @@ func scopedReplacementEffect(seq int64, mod int, kind ModKind, label string) Rep
 		},
 		Controller: func(ev *ReplacementEvent, g *Game, _ *Card) uuid.UUID {
 			switch kind {
-			case ModPreventCombatDamage, ModPreventDamage, ModPreventNextFromSource:
+			case ModPreventCombatDamage, ModPreventDamage, ModPreventNextFromSource, ModPreventNextCombatFromSource:
 				// CR 616.1 gives the ordering choice to the AFFECTED
 				// player — whoever is being dealt the damage — so a
 				// prevention shield reports no controller (S17's Fog).
@@ -505,7 +506,7 @@ func scopedReplacementEffect(seq int64, mod int, kind ModKind, label string) Rep
 // scopedKindPrevents reports whether a replacement kind is a CR 615
 // prevention effect.
 func scopedKindPrevents(kind ModKind) bool {
-	return kind == ModPreventCombatDamage || kind == ModPreventDamage || kind == ModPreventNextFromSource
+	return kind == ModPreventCombatDamage || kind == ModPreventDamage || isNextFromSourceKind(kind)
 }
 
 // scopedReplacementAppliesLocked is the AppliesTo of each kind. Caller
@@ -560,7 +561,7 @@ func scopedReplacementAppliesLocked(g *Game, e ScopedEffect, m Mod, ev *Replacem
 		return ev.Kind == RepEventLife && ev.LifeDelta > 0 && ev.LifePlayer == m.Player
 	case ModExileIfWouldDie:
 		return exileIfWouldDieAppliesLocked(g, e, ev)
-	case ModPreventNextFromSource:
+	case ModPreventNextFromSource, ModPreventNextCombatFromSource:
 		return g.nextFromSourceAppliesLocked(e, m, ev)
 	case ModMultiplyDamage:
 		return g.multiplyDamageAppliesLocked(e, m, ev)
@@ -590,7 +591,7 @@ func (g *Game) applyScopedReplacementLocked(e ScopedEffect, mod int, m Mod, ev *
 	switch m.Kind {
 	case ModPreventCombatDamage:
 		ev.Cancel()
-	case ModPreventNextFromSource:
+	case ModPreventNextFromSource, ModPreventNextCombatFromSource:
 		g.applyNextFromSourceLocked(e, mod, m, ev)
 	case ModMultiplyDamage:
 		g.applyMultiplyDamageLocked(e, mod, m, ev)

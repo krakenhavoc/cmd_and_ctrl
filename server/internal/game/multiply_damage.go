@@ -341,7 +341,7 @@ func spentNextTimeMod(m Mod, batch uint64) bool {
 	if m.SpentBatch == 0 || m.SpentBatch == batch {
 		return false
 	}
-	return m.Kind == ModPreventNextFromSource || (m.Kind == ModMultiplyDamage && m.Next)
+	return isNextFromSourceKind(m.Kind) || (m.Kind == ModMultiplyDamage && m.Next)
 }
 
 // DamageMultiplierLines is the game banner's line for each live

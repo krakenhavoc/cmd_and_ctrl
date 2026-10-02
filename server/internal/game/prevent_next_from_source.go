@@ -72,11 +72,31 @@ import (
 
 // ModPreventNextFromSource is "the next time <source> would deal damage
 // [to <protected>] this turn, prevent that damage" (CR 615.8). Reads
-// Objects, SourceZone, Queries, Player, Types, Then, CombatOnly, SpentBatch
-// and SpentInstance. Scope
+// Objects, SourceZone, Queries, Player, Types, Then, SpentBatch and
+// SpentInstance. Scope
 // ScopeGame for a protected player or none; pinned (ScopeNone) to the
 // protected permanent.
 const ModPreventNextFromSource ModKind = "preventNextFromSource"
+
+// ModPreventNextCombatFromSource is ModPreventNextFromSource for "the
+// next time <source> would deal COMBAT damage this turn, prevent that
+// damage" (Impulsive Maneuvers' losing flip, ADR 0108 PR 2): the same
+// fields, read the same way, and non-combat damage from the source
+// neither meets the shield nor spends it.
+//
+// A kind of its own rather than a combatOnly flag on the older kind, so
+// that a binary from before it REFUSES a restore point holding one
+// (ErrUnknownEffectKey, the file kept): a flag would be a key that binary
+// already decodes and ignores, and it would restore the shield as one
+// that prevents non-combat damage too. Neither kind reads CombatOnly, and
+// both refuse it.
+const ModPreventNextCombatFromSource ModKind = "preventNextCombatFromSource"
+
+// isNextFromSourceKind reports whether k is one of the two next-damage
+// shield kinds.
+func isNextFromSourceKind(k ModKind) bool {
+	return k == ModPreventNextFromSource || k == ModPreventNextCombatFromSource
+}
 
 // NextDamageShield is the queue-side description of a
 // ModPreventNextFromSource record.
@@ -111,7 +131,8 @@ type NextDamageShield struct {
 
 	// CombatOnly is "the next time <source> would deal COMBAT damage"
 	// (Impulsive Maneuvers' losing flip, ADR 0108 §3): non-combat damage
-	// from the source neither meets the shield nor spends it.
+	// from the source neither meets the shield nor spends it. It writes
+	// the ModPreventNextCombatFromSource kind.
 	CombatOnly bool
 
 	// Label is the record's label, shown in a CR 616 ordering prompt.
@@ -136,7 +157,9 @@ func (g *Game) PreventNextDamageFromSourceForEffect(s NextDamageShield) bool {
 		Player:     s.ProtectPlayer,
 		Types:      copyStrings(s.ProtectTypes),
 		Then:       s.Then.key,
-		CombatOnly: s.CombatOnly,
+	}
+	if s.CombatOnly {
+		m.Kind = ModPreventNextCombatFromSource
 	}
 	if s.Source.ID != uuid.Nil {
 		m.Objects = []ObjectRef{s.Source}
@@ -191,7 +214,7 @@ func clonePermanentQueries(qs []PermanentQuery) []PermanentQuery {
 // nextFromSourceModProblem is registration's (and restore's) check on the
 // kind's parameters.
 func nextFromSourceModProblem(m Mod) string {
-	if m.Kind != ModPreventNextFromSource {
+	if !isNextFromSourceKind(m.Kind) {
 		// #1879: the granted "can't attack unless defending player
 		// controls" reads Queries too, as what the defender must control.
 		queries := len(m.Queries) != 0 && m.Kind != ModCantAttackUnlessDefenderControls
@@ -206,6 +229,11 @@ func nextFromSourceModProblem(m Mod) string {
 			return fmt.Sprintf("mod %q carries a damage-source field only preventNextFromSource reads", m.Kind)
 		}
 		return ""
+	}
+	if m.CombatOnly {
+		// The combat-only shield is its own kind, so that an older
+		// binary refuses it; the flag is never written on either.
+		return fmt.Sprintf("a %s shield carries combatOnly; the combat-only shield is %s", m.Kind, ModPreventNextCombatFromSource)
 	}
 	if len(m.Objects) > 1 {
 		return "a preventNextFromSource shield names more than one source"
@@ -236,7 +264,7 @@ func (g *Game) nextFromSourceAppliesLocked(e ScopedEffect, m Mod, ev *Replacemen
 	}
 	// "The next time it would deal combat damage": other damage passes
 	// the shield by, unspent.
-	if m.CombatOnly && !ev.IsCombatDamage {
+	if m.Kind == ModPreventNextCombatFromSource && !ev.IsCombatDamage {
 		return false
 	}
 	// Spent in an earlier instance: CR 615.8's "any subsequent instances
@@ -670,11 +698,12 @@ func (g *Game) preventionFollowUpForUnpreventableLocked(ev *ReplacementEvent, id
 	if !ok {
 		return
 	}
-	e, m, ok := g.scopedReplacementModLocked(seq, mod, ModPreventNextFromSource)
-	if !ok {
+	i, ok := g.scopedEffectIndexBySeqLocked(seq)
+	if !ok || mod < 0 || mod >= len(g.ScopedEffects[i].Mods) || !isNextFromSourceKind(g.ScopedEffects[i].Mods[mod].Kind) {
 		return
 	}
-	g.queuePreventionFollowUpLocked(e, m, ev, 0)
+	e := g.ScopedEffects[i]
+	g.queuePreventionFollowUpLocked(e, e.Mods[mod], ev, 0)
 }
 
 // --- choosing a source (CR 609.7a) ------------------------------------

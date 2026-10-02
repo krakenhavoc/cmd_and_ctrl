@@ -421,8 +421,59 @@ func TestNextDamageShieldCombatOnly(t *testing.T) {
 	if len(g.ScopedEffects) != 1 || g.ScopedEffects[0].Mods[0].SpentInstance != 0 {
 		t.Fatalf("non-combat damage spent the shield: %+v", g.ScopedEffects)
 	}
+	if m := g.ScopedEffects[0].Mods[0]; m.Kind != ModPreventNextCombatFromSource || m.CombatOnly {
+		t.Fatalf("the combat-only shield is %+v; want its own kind and no combatOnly flag", m)
+	}
 	g.WithWriteLock(func() { g.markCombatDamageToPlayerLocked(opp.ID, attacker, 3, CombatStepRegular) })
 	if got := lifeOf(g, opp.ID); got != start-2 {
 		t.Errorf("life %d, want %d: the combat damage is prevented", got, start-2)
+	}
+}
+
+// The combat-only shield is its own kind so that a binary from before
+// it refuses the restore point (ErrUnknownEffectKey) rather than reading
+// it as an ordinary next-damage shield. Here it round-trips, spent state
+// and all; a combatOnly flag on either next-damage kind is refused, so no
+// file can say "combat only" in a way an older binary would ignore.
+func TestCombatOnlyNextDamageShieldSnapshot(t *testing.T) {
+	g := newActiveGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	attacker := pushToughCreature(g, me, "Attacker")
+	g.WithWriteLock(func() {
+		ref, zone, _ := g.DamageSourceRefLocked(attacker)
+		g.PreventNextDamageFromSourceForEffect(NextDamageShield{Controller: me.ID, Source: ref, SourceZone: zone,
+			CombatOnly: true, Label: "Impulsive Maneuvers"})
+	})
+	raw, err := json.Marshal(g.CaptureSnapshot())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(raw), `"kind":"preventNextCombatFromSource"`) || strings.Contains(string(raw), `"combatOnly"`) {
+		t.Fatalf("snapshot does not name the combat-only kind (or carries combatOnly)")
+	}
+	var back GameSnapshot
+	if err := json.Unmarshal(raw, &back); err != nil {
+		t.Fatal(err)
+	}
+	restored, err := back.RestoreStrict()
+	if err != nil {
+		t.Fatalf("restore: %v", err)
+	}
+	start := lifeOf(restored, opp.ID)
+	restored.WithWriteLock(func() { _ = restored.DealDamageToPlayerForEffect(attacker, opp.ID, 2) })
+	restored.WithWriteLock(func() { restored.markCombatDamageToPlayerLocked(opp.ID, attacker, 3, CombatStepRegular) })
+	if got := lifeOf(restored, opp.ID); got != start-2 {
+		t.Errorf("restored shield: life %d, want %d (non-combat dealt, combat prevented)", got, start-2)
+	}
+
+	for _, kind := range []string{"preventNextCombatFromSource", "preventNextFromSource"} {
+		flagged := strings.Replace(string(raw), `"kind":"preventNextCombatFromSource"`, `"kind":"`+kind+`","combatOnly":true`, 1)
+		var bad GameSnapshot
+		if err := json.Unmarshal([]byte(flagged), &bad); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := bad.RestoreStrict(); !errors.Is(err, ErrUnknownEffectKey) {
+			t.Errorf("%s with combatOnly: restore %v, want ErrUnknownEffectKey", kind, err)
+		}
 	}
 }

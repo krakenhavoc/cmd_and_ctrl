@@ -1426,7 +1426,7 @@ estimate.
 > its §1 to §4, §7 and §9 add turn-scoped kinds to this vocabulary
 > (`exileIfWouldDie` and `cantBeRegenerated` with the `creatures` scope
 > in its Delivery PR 1, `multiplyDamage` with the `sources`, `recipients`
-> and `next` mod fields in PR 2, `exileInsteadOfYourGraveyard` in PR 3), each an
+> and `next` mod fields and `preventNextCombatFromSource` in PR 2, `exileInsteadOfYourGraveyard` in PR 3), each an
 > additive on-disk identity under schema v7.
 
 P5 proposed two new record types, `ScopedReplacement` and
