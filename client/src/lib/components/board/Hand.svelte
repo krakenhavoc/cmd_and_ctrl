@@ -684,6 +684,7 @@
           card={c}
           faceDown={!isSelf && c.known_by_you !== true}
           showManaCost={isSelf}
+          artOnly={isSelf && $settings.display.artOnlyCards}
           priority={isSelf}
           onActivateAbility={isSelf && (c.zone_abilities?.length ?? 0) > 0
             ? (idx) => onActivateAbility?.(c, idx)

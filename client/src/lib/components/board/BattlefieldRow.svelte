@@ -13,6 +13,7 @@
   import type { CantAttackChip } from "../../cantAttack";
   import type { CardView } from "../../protocol";
   import Card from "./Card.svelte";
+  import { settings } from "../../settings";
   import { etbPulse } from "../../animations";
   import { emit as tutorialEmit } from "../../tutorialBus";
   import { rowEntries } from "../../tokenGroups";
@@ -267,6 +268,7 @@
                 {@const aPips = readyPips(legal, a, "battlefield")}
                 <div class="attachment">
                   <Card
+                    artOnly={$settings.display.artOnlyCards}
                     card={a}
                     ready={ringFor(a, aPips)}
                     pips={aPips}
@@ -292,6 +294,7 @@
               {/each}
               <div class="host">
                 <Card
+                  artOnly={$settings.display.artOnlyCards}
                   card={c}
                   ready={ringFor(c, cPips) || cTarget || anyIn(combat.candidates, c, memberIDs)}
                   combatTarget={cTarget}

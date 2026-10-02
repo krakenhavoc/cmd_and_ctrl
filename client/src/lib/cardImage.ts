@@ -61,3 +61,21 @@ export function scryfallImageURL(
   const base = `/cards/${scryfallID}/image?size=${size}`;
   return face > 0 ? `${base}&face=${face}` : base;
 }
+
+/**
+ * tableImageSize picks the size a board or hand card requests (#1954).
+ * `artOnly` is the experimental "card art only" setting; it applies to
+ * a face-up card and nothing else, so a face-down card, a card back and
+ * every caller that does not opt in keep `size`. The server answers an
+ * art_crop request for a card with no crop URI with the "normal" image
+ * (cards.ImageURIForFace), so there is no client-side 404 to handle:
+ * the full card appears where the art does not exist.
+ */
+export function tableImageSize(
+  card: Pick<CardView, "face_down"> | null | undefined,
+  size: CardImageSize,
+  artOnly: boolean,
+): CardImageSize {
+  if (!artOnly || card?.face_down) return size;
+  return "art_crop";
+}
