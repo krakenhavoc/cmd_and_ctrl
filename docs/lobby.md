@@ -480,21 +480,44 @@ when the card index is not loaded.
 
 ## Authenticated routes
 
-### `POST /games` *(admin only)*
+### `POST /games` *(signed in, or the admin token)*
 
-Create a new game.
+Create a new game. Since [ADR 0110](decisions/0110-remember-me.md) §5 item 4
+(owner answer 2, Delivery PR 7), any signed-in person may create a table, not
+only an admin:
+
+- **A signed-in person** (an identified, player or spectator session that
+  carries a user; allowlisted admins included) becomes the table's
+  **creator** (`games.created_by`). The creator may rotate its invites, DM
+  tablemates its link, and end it with `/c2-end`, and `GET /games` and
+  `GET /games/{id}` mark it `is_creator: true` for them. The table also names
+  its creator as host, so they host it once they sit down, whoever sat first.
+  A person may have at most **3 open tables** (created, unstarted, unarchived)
+  and may create **one table per 30 seconds**, with a burst of 3.
+- **The shared admin token** is the Discord bot's `/c2-invite` and an
+  operator. It is held to neither limit and records no creator, because a
+  server credential is not a person.
+- **Anyone else** (a guest seat or spectator, with no user) is refused with
+  403.
 
 **Request**
 
 ```json
-{ "name": "Friday Night Magic", "host_discord_id": "123456789012345678" }
+{ "name": "Friday Night Magic", "host_discord_id": "123456789012345678", "setup": "last" }
 ```
 
-`host_discord_id` is optional. It names the table host by Discord user ID
-([ADR 0075 §2.1](decisions/0075-table-settings-and-host-controls.md)). The
-Discord bot's `/c2-invite` sends the user who ran it. The ID is held on the
+`host_discord_id` is optional, and only the admin token may send it; a signed-in
+person's table always names its creator. It names the table host by Discord
+user ID ([ADR 0075 §2.1](decisions/0075-table-settings-and-host-controls.md)).
+The Discord bot's `/c2-invite` sends the user who ran it. The ID is held on the
 table, unserved, until that Discord identity claims a seat through the OAuth
 join. That seat then becomes host. See [The table host](#the-table-host).
+
+`setup` is optional. `"last"` applies the caller's last table setup to the new
+table, exactly as [`POST /games/{id}/setup`](#post-gamesidsetup-adr-0110-5)
+would, and the response carries what that did under `setup`. A caller with no
+saved setup still gets the table, with a `setup` that says so. Any other value
+is a 400 and creates nothing.
 
 **Response 201**
 
@@ -506,9 +529,14 @@ join. That seat then becomes host. See [The table host](#the-table-host).
   "invite_token": "<16-byte base64url>",
   "spectator_invite": "<16-byte base64url>",
   "players": [],
-  "state": "lobby"
+  "state": "lobby",
+  "is_creator": true,
+  "setup": { "settings": true, "bots_added": 2, "skipped": [] }
 }
 ```
+
+`setup` is present only when the request asked for one. The meta's fields stay
+at the top level, so a client that reads this response as a game is unchanged.
 
 This response is the one reliable place to get the invite links. The
 server stores only their hashes, so after a restart it cannot show them
@@ -519,8 +547,10 @@ again (see `GET /games/{id}`).
 | Status | Reason |
 |---|---|
 | 401 | unauthenticated |
-| 403 | caller is not an admin (see [Who is an admin](#who-is-an-admin-adr-0110-3)) |
-| 400 | empty name |
+| 403 | the caller is not a signed-in person and not the admin token |
+| 400 | empty name, or an unknown `setup` |
+| 409 | the caller already has 3 open tables; the message names them. Start one, or end one with `/c2-end` |
+| 429 | the caller created tables too quickly (1 per 30 s, burst 3); `Retry-After: 30` |
 
 ### The table host
 
@@ -832,8 +862,9 @@ finds nothing.
 ### `GET /games/{id}`
 
 Full metadata for a single game. The `invite_token` and
-`spectator_invite` fields are included only for admins and for players
-seated in this specific game.
+`spectator_invite` fields are included only for admins, for players
+seated in this specific game, and for the game's creator wherever they are
+(ADR 0110 §5 item 4).
 
 **They are also absent after a server restart.** Invites are stored
 only as SHA-256 hashes (ADR 0051 decision 4, S34 sub-PR 3). The
@@ -852,6 +883,15 @@ d20, rerolling only tied leaders until one winner remains; that seat takes the
 first turn. The rolls and winner are public in the opening-hand view and game
 log, and use the game's persisted RNG so reconnects and replay agree.
 
+**The start captures a setup** (ADR 0110 §5 item 1). On the transition, the
+server writes one person's last setup: the game's creator's, or, for a table
+with no creator, the person who pressed start, if they are signed in. The
+setup is the table settings as a complete `PATCH /games/{id}/settings` body,
+every bot seat as `{tier, deck_id, name}` in seat order, and the user IDs of
+the other signed-in people who sat there. A layout is final when the table
+starts, so a table that never starts leaves no setup. A failed write is logged
+and never fails the start. See [`GET /me/setup`](#get-mesetup-adr-0110-5).
+
 **Errors**
 
 | Status | Reason |
@@ -859,6 +899,51 @@ log, and use the game's persisted RNG so reconnects and replay agree.
 | 403 | not a seat in this game |
 | 404 | game not found |
 | 409 | not enough players (min 2), or one or more seats haven't uploaded a deck |
+
+### `POST /games/{id}/setup` (ADR 0110 §5)
+
+Apply the caller's last setup to an unstarted table: its settings through the
+same path as `PATCH /games/{id}/settings`, then each bot through the same deck
+pipeline as `POST /games/{id}/seats/bot`, up to the free seats. Rides the deck
+upload rate bucket, since it seats decks.
+
+**Who:** a signed-in person (the setup is theirs) who is the table's host, its
+creator, or an admin.
+
+**Request**
+
+```json
+{ "from": "last" }
+```
+
+**Response 200**
+
+```json
+{
+  "game": { "id": "<game uuid>", "players": [ ... ], "state": "lobby" },
+  "settings": true,
+  "bots_added": 1,
+  "skipped": [
+    { "name": "Smart", "reason": "the \"strong\" tier is not available on this server" },
+    { "name": "Old", "reason": "its deck \"retired-deck\" no longer exists" }
+  ]
+}
+```
+
+What cannot be applied is **skipped and named, never silently downgraded**:
+a tier this server does not offer, a curated deck that no longer exists, a bot
+that played a pasted list (a setup keeps only curated deck IDs), a deck the
+validator now refuses, or no free seat left.
+
+**Errors**
+
+| Status | Reason |
+|---|---|
+| 401 | unauthenticated |
+| 403 | not a signed-in person (a guest, the admin token), or not the table's host, creator or an admin |
+| 400 | `from` is not `"last"` |
+| 404 | game not found, or the caller has no saved setup |
+| 409 | the table has started |
 
 ### `POST /games/{id}/decks`
 
@@ -1947,6 +2032,50 @@ guest, a bot, or a Discord seat still waiting on its `users` row.
   `ended_at` — those are null on a table that never started, and a
   lobby you both sat in yesterday is a better suggestion than a game
   you finished a year ago.
+
+### `GET /me/setup` (ADR 0110 §5)
+
+The caller's last table setup, for the create form's "Use my last setup".
+Signed-in only: a guest and the admin token get 403 (never 401, #1154).
+
+```json
+{
+  "setup": {
+    "settings": { "undo_limit": 3, "undo_scope": "own", "starting_life": 40,
+                  "commander_damage": 21, "bot_pace": "normal", "allow_spawn": false },
+    "bots": [ { "tier": "heuristic", "deck_id": "raid-and-ransack", "name": "Bot 1" } ],
+    "tablemates": [ "<user uuid>" ]
+  },
+  "game_id": "<the table it came from>",
+  "updated_at": 1790000000000
+}
+```
+
+`setup` is `null` (and the other fields absent) when the caller has none yet.
+The body is written by the server when a table starts (see
+[`POST /games/{id}/start`](#post-gamesidstart)), never by a client. A setup
+lists the user IDs of the caller's own tablemates, the same class of data
+`GET /me/tablemates` already returns to the same caller; the create flow
+offers those people first, marked "at your last table".
+
+### `GET /me/last-deck` (ADR 0110 §5)
+
+The deck the caller last seated, for the deck panel to **preselect**. It is
+never seated automatically: a seated deck is visible to the table.
+
+```json
+{ "last_deck": { "kind": "library", "id": "<deck uuid>" } }
+```
+
+`kind` is `library` (a `GET /me/decks` row) or `prebuilt` (a `GET /decks` ID).
+`last_deck` is `null` when none is recorded. It is written whenever a signed-in
+person seats a deck at their own seat: a library deck, an upload saved to the
+library, or a pre-built deck. An admin installing somebody else's deck records
+nothing. A deck that has since gone is simply not preselected. Signed-in only
+(403 otherwise). A guest's last pre-built deck is kept in the browser instead
+(`localStorage["cmdctrl.lastDeck"]`), and a guest's last typed name in
+`localStorage["cmdctrl.guestName"]` (owner answer 8: a signed-in seat keeps its
+Discord name and is never asked).
 
 ### `GET /me/decks` (ADR 0051 decision 7, S34 sub-PR 5)
 

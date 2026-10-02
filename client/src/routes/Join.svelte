@@ -12,6 +12,7 @@
   import { LobbyApiError, session } from "../lib/session";
   import { canJoinByCode, signedInUserID } from "../lib/myGames";
   import { GUEST_RETURN_ADVICE, SIGNED_IN_RETURN_LINK } from "../lib/joinRecovery";
+  import { loadGuestName, rememberGuestName } from "../lib/guestName";
   import { seatColor } from "../lib/colors";
   import Icon from "../lib/components/Icon.svelte";
   import SiteHeader from "../lib/components/SiteHeader.svelte";
@@ -28,7 +29,10 @@
   }
   const { gameID, inviteToken, spectator }: Props = $props();
 
-  let name = $state("");
+  // A guest's last typed name, pre-filled (ADR 0110 §5 item 6, owner
+  // answer 8). A signed-in person is never asked: their seat takes the
+  // Discord name, so the field is not shown to them at all.
+  let name = $state(loadGuestName());
   let busy = $state(false);
   let error = $state("");
 
@@ -129,11 +133,13 @@
     try {
       if (spectator) {
         await spectateGame(gameID, inviteToken, name.trim());
+        rememberGuestName(name);
         // Spectators bypass the lobby (no deck to import, no seat
         // to manage) and land directly on the game route.
         navigate(`#/games/${gameID}`);
       } else {
         await joinGame(gameID, inviteToken, name.trim());
+        rememberGuestName(name);
         // Player flow: lobby first so they can import a deck and
         // see other seats' status before entering the game route.
         navigate("#/lobby");

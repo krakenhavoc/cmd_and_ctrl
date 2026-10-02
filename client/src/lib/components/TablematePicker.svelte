@@ -3,6 +3,7 @@
   import { fetchTablemates, sendInviteDM } from "../api";
   import { LobbyApiError } from "../session";
   import { inviteSentMessage, tablemateSubtitle, type Tablemate } from "../tablemates";
+  import { orderTablemates } from "../tableSetup";
   import Icon from "./Icon.svelte";
 
   // TablematePicker is ADR 0051 decision 8's invite picker (S34
@@ -22,11 +23,16 @@
 
   interface Props {
     gameID: string;
+    /**
+     * User ids of the people at the creator's last table (ADR 0110 §5
+     * item 3): offered first and marked "at your last table".
+     */
+    lastTable?: string[];
     /** Optional hook for the page to note that an invite went out. */
     onSent?: (mate: Tablemate) => void;
   }
 
-  const { gameID, onSent }: Props = $props();
+  const { gameID, lastTable = [], onSent }: Props = $props();
 
   let mates = $state<Tablemate[]>([]);
   let loaded = $state(false);
@@ -36,6 +42,7 @@
   let sent = $state("");
 
   const current = $derived(mates.find((m) => m.user_id === selected));
+  const ordered = $derived(orderTablemates(mates, lastTable));
 
   // One shot on mount: the list is "people I have played with", which
   // cannot change while this panel is open.
@@ -43,7 +50,8 @@
     void fetchTablemates()
       .then((list) => {
         mates = list;
-        if (!selected && mates.length > 0) selected = mates[0].user_id;
+        const first = orderTablemates(list, lastTable)[0];
+        if (!selected && first) selected = first.mate.user_id;
       })
       .catch(() => {
         // Session went stale between render and fetch, or this
@@ -78,7 +86,7 @@
     <p class="lede">Invite someone you have played with — they get this table's link by DM.</p>
 
     <ul class="mates">
-      {#each mates as mate (mate.user_id)}
+      {#each ordered as { mate, atLastTable } (mate.user_id)}
         <li>
           <label class="mate" class:sel={selected === mate.user_id}>
             <input
@@ -91,7 +99,10 @@
               <img class="avatar" src={mate.avatar_url} alt="" width="22" height="22" />
             {/if}
             <span class="body">
-              <span class="name">{mate.display_name}</span>
+              <span class="name"
+                >{mate.display_name}
+                {#if atLastTable}<b class="last">at your last table</b>{/if}</span
+              >
               <span class="sub">{tablemateSubtitle(mate)}</span>
             </span>
           </label>
@@ -115,6 +126,12 @@
 {/if}
 
 <style>
+  .last {
+    margin-left: 6px;
+    font-size: 10.5px;
+    font-weight: 600;
+    color: var(--fg-dim);
+  }
   /* Deliberately the same weight as YourDecksPicker: a short list of
      people, one button, no chrome. */
   .tablemates {

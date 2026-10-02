@@ -3,6 +3,7 @@
   import { fetchMyDecks, seatLibraryDeck, type UploadDeckResponse } from "../api";
   import { LobbyApiError, session, type ApiViolation } from "../session";
   import { coverageLine, deckSubtitle, isSignedIn, type MyDeckInfo } from "../myDecks";
+  import { preselectFor, type LastDeck } from "../lastDeck";
   import Icon from "./Icon.svelte";
 
   // YourDecksPicker is the deck-library half of the deck panel (ADR
@@ -20,10 +21,12 @@
   interface Props {
     gameID: string;
     playerID: string;
+    /** The deck to preselect when it is a library deck still listed. */
+    lastDeck?: LastDeck | null;
     onSuccess?: (res: UploadDeckResponse) => void;
   }
 
-  const { gameID, playerID: _playerID, onSuccess }: Props = $props();
+  const { gameID, playerID: _playerID, lastDeck = null, onSuccess }: Props = $props();
 
   const sess = $derived($session);
   const signedIn = $derived(isSignedIn(sess?.principal.user_id));
@@ -37,6 +40,18 @@
   let seated = $state("");
 
   const current = $derived(decks.find((d) => d.id === selected));
+
+  // Preselect the last deck once both the list and the last deck are
+  // in, unless the player has already picked one themselves.
+  let touched = false;
+  $effect(() => {
+    const pick = preselectFor(
+      "library",
+      decks.map((d) => d.id),
+      lastDeck,
+    );
+    if (pick && !touched) selected = pick;
+  });
 
   // One shot on mount — the library doesn't change while this panel
   // is open (a save happens through the paste box below, in the same
@@ -96,7 +111,13 @@
       {#each decks as deck (deck.id)}
         <li>
           <label class="deck" class:sel={selected === deck.id}>
-            <input type="radio" name="your-deck" value={deck.id} bind:group={selected} />
+            <input
+              type="radio"
+              name="your-deck"
+              value={deck.id}
+              bind:group={selected}
+              onchange={() => (touched = true)}
+            />
             <span class="body">
               <span class="name">{deck.name}</span>
               <span class="sub">{deckSubtitle(deck)}</span>

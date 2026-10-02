@@ -264,6 +264,10 @@ type Lobby struct {
 	// practiceLimits bounds the practice tables (practice.go). The
 	// zero value means the defaults; tests shrink them.
 	practiceLimits PracticeLimits
+	// createMu serialises CreateCapped (player_tables.go), so two
+	// creates by one person cannot both pass the open-table cap. It is
+	// taken before l.mu and never while holding it.
+	createMu sync.Mutex
 }
 
 // SetEvictor wires the hub in after construction, for the deletes the

@@ -11,6 +11,7 @@
   import { navigate } from "../lib/router";
   import { canSignOutEverywhere, expiryNotice, LobbyApiError, session } from "../lib/session";
   import { canJoinByCode, signedInUserID } from "../lib/myGames";
+  import { loadGuestName, rememberGuestName } from "../lib/guestName";
   import Icon from "../lib/components/Icon.svelte";
 
   // Player-first landing: Discord sign-in and the invite box are
@@ -29,7 +30,10 @@
 
   let token = $state("");
   let invite = $state("");
-  let joinName = $state("");
+  // The name a guest last joined with (ADR 0110 §5 item 6). Only a
+  // guest is asked for one; a signed-in person sits as their Discord
+  // name.
+  let joinName = $state(loadGuestName());
   let error = $state("");
   let busy = $state(false);
   let joining = $state(false);
@@ -126,6 +130,7 @@
     joining = true;
     try {
       await joinByCode(raw, joinName.trim());
+      if (!identity) rememberGuestName(joinName);
       // Lobby first, exactly like the invite-link flow: that is where
       // a player imports a deck and sees the other seats before the
       // table itself (s085 / #43). Going straight to the game route

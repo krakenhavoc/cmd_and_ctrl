@@ -1,6 +1,8 @@
 <script lang="ts">
+  import { onMount } from "svelte";
   import { uploadDeck, type UploadDeckResponse } from "../api";
-  import { LobbyApiError, type ApiViolation } from "../session";
+  import { LobbyApiError, currentSession, type ApiViolation } from "../session";
+  import { loadLastDeck, type LastDeck } from "../lastDeck";
   import Icon from "./Icon.svelte";
   import PrebuiltDeckPicker from "./PrebuiltDeckPicker.svelte";
   import YourDecksPicker from "./YourDecksPicker.svelte";
@@ -43,6 +45,15 @@
   }
 
   const { gameID, playerID, onSuccess }: Props = $props();
+
+  // The deck this player last seated (ADR 0110 §5 item 5): the
+  // account's for a signed-in person, the browser's pre-built pick for
+  // a guest. Each picker PRESELECTS it when it is still in its list;
+  // nothing is seated until the player presses the button.
+  let lastDeck = $state<LastDeck | null>(null);
+  onMount(() => {
+    void loadLastDeck(currentSession()).then((d) => (lastDeck = d));
+  });
 
   let source: string = $state("");
   let busy = $state(false);
@@ -117,8 +128,8 @@
 </script>
 
 <div class="deck-upload-form">
-  <YourDecksPicker {gameID} {playerID} {onSuccess} />
-  <PrebuiltDeckPicker {gameID} {playerID} {onSuccess} />
+  <YourDecksPicker {gameID} {playerID} {lastDeck} {onSuccess} />
+  <PrebuiltDeckPicker {gameID} {playerID} {lastDeck} {onSuccess} />
   <p class="own-list">
     Or bring your own list — a Moxfield or Archidekt deck URL, a Moxfield JSON export, or a
     plain-text decklist.

@@ -350,7 +350,8 @@ func TestRequireAdminOnEveryAdminRoute(t *testing.T) {
 		method, path string
 		body         any
 	}{
-		{"POST", "/games", createGameRequest{Name: "made by an admin"}},
+		// POST /games is not here: since ADR 0110 PR 7 any signed-in
+		// person may create a table (player_tables_test.go).
 		{"POST", "/games/" + meta.ID.String() + "/archive", nil},
 		{"DELETE", "/games/" + meta.ID.String() + "/archive", nil},
 		{"POST", "/games/" + meta.ID.String() + "/seats/" + guestPlayer.String() + "/reclaim", nil},
@@ -420,12 +421,17 @@ func TestAdminCreatedTableIsAttributedToThePerson(t *testing.T) {
 func TestAdminRouteRefusedOnceTheIDIsRemoved(t *testing.T) {
 	s := newAdminStack(t, listedDiscordID)
 	listed, _ := s.signedIn(t, listedDiscordID, "Owner")
-	if got := status(t, s.srv, "POST", "/games", listed, createGameRequest{Name: "one"}); got != http.StatusCreated {
-		t.Fatalf("listed create: %d", got)
+	meta, err := s.lobby.Create("someone else's table")
+	if err != nil {
+		t.Fatal(err)
+	}
+	archive := "/games/" + meta.ID.String() + "/archive"
+	if got := status(t, s.srv, "POST", archive, listed, nil); got != http.StatusOK {
+		t.Fatalf("listed archive: %d", got)
 	}
 	s.admins.Replace(nil)
-	if got := status(t, s.srv, "POST", "/games", listed, createGameRequest{Name: "two"}); got != http.StatusForbidden {
-		t.Errorf("create after removal, same token: got %d, want 403", got)
+	if got := status(t, s.srv, "DELETE", archive, listed, nil); got != http.StatusForbidden {
+		t.Errorf("unarchive after removal, same token: got %d, want 403", got)
 	}
 	if got := status(t, s.srv, "GET", "/me", listed, nil); got != http.StatusOK {
 		t.Errorf("/me after removal: %d (the session itself must survive)", got)

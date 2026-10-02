@@ -29,6 +29,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/discord"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/tablesetups"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/users"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/usersettings"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/util/appenv"
@@ -189,6 +190,14 @@ type Config struct {
 	// answer 403 before they reach it.
 	UserSettings usersettings.Store
 
+	// TableSetups is each person's last table setup (ADR 0110 section
+	// 5, migration 0008's table_setups): written when a table starts
+	// (startGame), read by GET /me/setup, applied by POST
+	// /games/{id}/setup and POST /games's "setup". Nil behaves as
+	// tablesetups.NoStore: nothing is remembered, and applying one
+	// finds none.
+	TableSetups tablesetups.Store
+
 	// DiscordAvatars is the S12.5 avatar cache. Nil means
 	// /avatars/* returns 503; production wires a cache rooted at
 	// $CMDCTRL_DATA_DIR/avatars so disk-cached images persist
@@ -259,12 +268,13 @@ type GameEvictor interface {
 // Handler returns an http.Handler wired to the v0 lobby REST surface:
 //
 //	POST /admin/login       — exchange the admin token for a session
-//	POST /games             — admin: create a new game (returns invite)
+//	POST /games             — signed in or the admin token: create a new game (returns invite)
 //	GET  /games             — authenticated: list known games
 //	GET  /games/{id}        — authenticated: game metadata
 //	POST /games/{id}/join   — invite + name → session + player_id
 //	GET  /games/{id}/preview?t=<invite> — table name / state / seats for an invite holder
-//	POST /games/{id}/start  — authenticated: transition lobby → active
+//	POST /games/{id}/start  — authenticated: transition lobby → active (captures the setup)
+//	POST /games/{id}/setup  — signed in, host / creator / admin: apply the caller's last setup
 //	POST /games/{id}/archive — admin: retire the table from the listing
 //	DELETE /games/{id}/archive — admin: put it back
 //	POST /games/{id}/seats/{player}/reclaim — admin: mint a seat-reclaim link
@@ -280,6 +290,8 @@ type GameEvictor interface {
 //	GET  /me/settings       — signed in: the caller's account settings
 //	PUT  /me/settings       — signed in: replace them, If-Match: <revision>
 //	GET  /me/tablemates     — signed in: the people you have shared a table with
+//	GET  /me/setup          — signed in: the caller's last table setup
+//	GET  /me/last-deck      — signed in: the deck the caller last seated
 //	POST /me/session        — signed in: reinstall the session cookie, renewing it past half-life
 //	POST /logout            — revoke the caller's session server-side
 //	POST /logout/everywhere — withdraw every session the caller's user holds
@@ -367,7 +379,18 @@ func Handler(c Config) http.Handler {
 	// ceiling the endpoint is an unmetered write-to-disk-forever
 	// primitive for anyone holding a session.
 	mux.Handle("GET /avatars/{id}/{hash}", avatarLimit.Middleware(auth.Middleware(c.Auth)(handlerFunc(c, discordAvatar))))
-	mux.Handle("POST /games", requireAdmin(c, handlerFunc(c, createGame)))
+	// Creating a table (ADR 0110 §5 item 4, owner answer 2): any
+	// signed-in person, or the shared admin token (the Discord bot's
+	// /c2-invite). Session-gated here and authorised in the handler,
+	// which refuses a guest and any other session with no user (403).
+	// A person is held to MaxOpenTablesPerCreator open tables and one
+	// creation per 30 seconds with a burst of 3 (createLimit, keyed
+	// per caller and spent only by a create that passed every other
+	// check); the shared token is a server credential, not a person,
+	// and is held to neither. It rides the deck bucket as well,
+	// because applying a setup seats decks.
+	createLimit := newLimiter(1.0/30, 3)
+	mux.Handle("POST /games", deckLimit.Middleware(auth.Middleware(c.Auth)(handlerFunc(c, createGameWith(createLimit)))))
 	mux.Handle("DELETE /games/{id}", requireAdmin(c, handlerFunc(c, deleteGame)))
 	// Archive / unarchive: the reversible half of DELETE. Admin-only
 	// on the same gate, because hiding somebody else's table from the
@@ -553,6 +576,13 @@ func Handler(c Config) http.Handler {
 	settingsLimit := newLimiter(1, 5)
 	mux.Handle("GET /me/settings", auth.Middleware(c.Auth)(handlerFunc(c, mySettings)))
 	mux.Handle("PUT /me/settings", auth.Middleware(c.Auth)(handlerFunc(c, putMySettings(settingsLimit))))
+	// The last setup and the last deck (ADR 0110 section 5). Same
+	// caller rule as the rest of /me/*: a signed-in person, else 403.
+	// Applying a setup seats bot decks, so it rides the deck bucket,
+	// and is authorised in the handler (canApplySetup).
+	mux.Handle("GET /me/setup", auth.Middleware(c.Auth)(handlerFunc(c, mySetup)))
+	mux.Handle("GET /me/last-deck", auth.Middleware(c.Auth)(handlerFunc(c, myLastDeck)))
+	mux.Handle("POST /games/{id}/setup", deckLimit.Middleware(auth.Middleware(c.Auth)(handlerFunc(c, applySetupRoute))))
 
 	// Develop-environment card spawner (ADR 0023). Both routes are
 	// wrapped in requireDevFeature: in production they are 404s, and
@@ -708,8 +738,23 @@ type sessionResponse struct {
 type createGameRequest struct {
 	Name string `json:"name"`
 	// HostDiscordID optionally names the table host by Discord user
-	// ID (ADR 0075 §2.1). /c2-invite sends the invoking user.
+	// ID (ADR 0075 §2.1). /c2-invite sends the invoking user. Only the
+	// shared admin token may name someone; a table a signed-in person
+	// creates names its creator, who hosts it once they sit down.
 	HostDiscordID string `json:"host_discord_id,omitempty"`
+	// Setup, when "last", applies the caller's remembered setup to the
+	// new table (ADR 0110 §5 item 2), exactly as POST
+	// /games/{id}/setup would. Empty applies nothing.
+	Setup string `json:"setup,omitempty"`
+}
+
+// createGameResponse is the new table's meta, flattened, plus what
+// applying a setup did. The meta's fields stay at the top level, so a
+// client that reads POST /games as a GameMeta is unchanged.
+type createGameResponse struct {
+	GameMeta
+	// Setup is present only when the request asked for one.
+	Setup *setupResult `json:"setup,omitempty"`
 }
 
 // transferHostRequest is the body of POST /games/{id}/host.
@@ -774,26 +819,78 @@ func adminLogin(c Config, w http.ResponseWriter, r *http.Request) error {
 	return writeJSON(w, http.StatusOK, sessionResponse{Token: tok, ExpiresAt: issued.ExpiresAt, Principal: issued})
 }
 
-// createGame (admin-only) creates a new game in the lobby and
-// returns its metadata INCLUDING the invite token. The admin is
-// responsible for distributing the invite out-of-band.
+// createGameWith handles POST /games: create a new table and return
+// its metadata INCLUDING both invite tokens, which the creator shares.
 //
-// games.created_by is the caller's UserID (ADR 0051 decision 2). The
-// route is admin-only, and an admin session carries no UserID, so
-// today that is always NULL; it is read from the principal rather
-// than hard-coded so opening the route to signed-in users later is a
-// change to the middleware line and nothing here.
-func createGame(c Config, w http.ResponseWriter, r *http.Request) error {
-	var body createGameRequest
-	if err := decodeJSON(w, r, &body); err != nil {
-		return err
+// Who may call it (ADR 0110 §5 item 4, owner answer 2):
+//   - the shared admin token (isServerCredential): the Discord bot's
+//     /c2-invite and an operator. Uncapped, and it records no creator,
+//     because a server credential is not a person;
+//   - any signed-in person (isSignedInPerson: an identified, player or
+//     spectator session with a user), allowlisted admins included.
+//     games.created_by is their user, which makes them the table's
+//     creator (rotate its invites, DM tablemates, /c2-end it), and
+//     they are named its host, so they host it once they sit down.
+//     They are held to MaxOpenTablesPerCreator open lobby tables (a
+//     409 naming them) and to limit, 1 per 30 s with a burst of 3 (a
+//     429).
+//
+// Everyone else, a guest seat or spectator with no user, is a 403.
+func createGameWith(limit *ratelimit.Limiter) lobbyHandler {
+	return func(c Config, w http.ResponseWriter, r *http.Request) error {
+		p, ok := auth.PrincipalFromContext(r.Context())
+		if !ok {
+			return httpError(http.StatusInternalServerError, "missing principal")
+		}
+		server := isServerCredential(p)
+		if !server && !isSignedInPerson(p) {
+			return httpError(http.StatusForbidden, "sign in with Discord to create a table")
+		}
+		var body createGameRequest
+		if err := decodeJSON(w, r, &body); err != nil {
+			return err
+		}
+		from := strings.TrimSpace(body.Setup)
+		if from != "" && from != setupFromLast {
+			return httpError(http.StatusBadRequest, fmt.Sprintf("unknown setup %q (want %q)", body.Setup, setupFromLast))
+		}
+
+		var (
+			meta GameMeta
+			err  error
+		)
+		if server {
+			meta, err = c.Lobby.CreateWith(body.Name, p.UserID, body.HostDiscordID)
+		} else {
+			key := callerKey(r)
+			meta, err = c.Lobby.CreateCapped(body.Name, p.UserID, p.DiscordID, MaxOpenTablesPerCreator,
+				func() bool { return limit.Allow(key) })
+			if errors.Is(err, ErrCreateRateLimited) {
+				w.Header().Set("Retry-After", "30")
+			}
+		}
+		if err != nil {
+			return err
+		}
+		if server {
+			logAdminAction(c.Log, "POST /games", p, "game_id", meta.ID.String())
+		} else if c.Log != nil {
+			c.Log.Info("table created", "user_id", p.UserID.String(), "game_id", meta.ID.String())
+		}
+
+		out := createGameResponse{GameMeta: meta}
+		if from == setupFromLast {
+			res := applyLastSetup(r.Context(), c, p, meta.ID)
+			out.Setup = &res
+			// Get carries the plaintext invites too, in the process
+			// that minted them, so the creator still receives both.
+			if fresh, gerr := c.Lobby.Get(meta.ID); gerr == nil {
+				out.GameMeta = fresh
+			}
+		}
+		out.GameMeta = redactMetaFor(p, c.isAdmin(p), meta.ID, out.GameMeta)
+		return writeJSON(w, http.StatusCreated, out)
 	}
-	p, _ := auth.PrincipalFromContext(r.Context())
-	meta, err := c.Lobby.CreateWith(body.Name, p.UserID, body.HostDiscordID)
-	if err != nil {
-		return err
-	}
-	return writeJSON(w, http.StatusCreated, redactMetaFor(p, c.isAdmin(p), meta.ID, meta))
 }
 
 // transferHost handles POST /games/{id}/host: hand the table to
@@ -1177,7 +1274,8 @@ func getGame(c Config, w http.ResponseWriter, r *http.Request) error {
 
 // redactMetaFor strips what principal p may not read off a game's
 // meta: the invite tokens for anyone outside the table, and both
-// tokens for a spectator. It also turns the raw CreatedBy (#1098)
+// tokens for a spectator, except for an admin and for the game's own
+// creator, who keep them. It also turns the raw CreatedBy (#1098)
 // into the per-viewer IsCreator bit and clears the raw field, so
 // nothing downstream of this ever hands out the creator's identity —
 // only "yes/no, that's you". CreatedBy is already `json:"-"` and so
@@ -1185,7 +1283,16 @@ func getGame(c Config, w http.ResponseWriter, r *http.Request) error {
 // serializes should still pass through here rather than rely on that
 // alone.
 func redactMetaFor(p auth.Principal, admin bool, id uuid.UUID, meta GameMeta) GameMeta {
-	if !admin && p.GameID != id {
+	meta.IsCreator = p.UserID != uuid.Nil && meta.CreatedBy != uuid.Nil && p.UserID == meta.CreatedBy
+	meta.CreatedBy = uuid.Nil
+	// The game's creator keeps both invites wherever they are (ADR
+	// 0110 §5 item 4): sharing them is what a creator is for, and
+	// rotating them (CanRotateInvites) would hand over fresh ones
+	// anyway.
+	if admin || meta.IsCreator {
+		return meta
+	}
+	if p.GameID != id {
 		meta.InviteToken = ""
 		meta.SpectatorInvite = ""
 	}
@@ -1194,12 +1301,10 @@ func redactMetaFor(p auth.Principal, admin bool, id uuid.UUID, meta GameMeta) Ga
 	// their session is already proof they have it. An admin watching
 	// a table keeps them: an admin may take any seat anyway (ADR 0110
 	// §3 item 5).
-	if !admin && p.Role == auth.RoleSpectator {
+	if p.Role == auth.RoleSpectator {
 		meta.InviteToken = ""
 		meta.SpectatorInvite = ""
 	}
-	meta.IsCreator = p.UserID != uuid.Nil && meta.CreatedBy != uuid.Nil && p.UserID == meta.CreatedBy
-	meta.CreatedBy = uuid.Nil
 	return meta
 }
 
@@ -2229,9 +2334,19 @@ func startGame(c Config, w http.ResponseWriter, r *http.Request) error {
 	if !c.isAdmin(p) && p.GameID != id {
 		return httpError(http.StatusForbidden, "not a seat in this game")
 	}
+	before, err := c.Lobby.Get(id)
+	if err != nil {
+		return err
+	}
 	meta, err := c.Lobby.Start(id)
 	if err != nil {
 		return err
+	}
+	// ADR 0110 §5 item 1: the layout is final when the table starts,
+	// so that is when its owner's setup is remembered. Only on the
+	// transition: a repeated start of a running table is a no-op.
+	if before.State == string(game.StateLobby) && meta.State != string(game.StateLobby) {
+		captureSetup(r.Context(), c, p, meta)
 	}
 	return writeJSON(w, http.StatusOK, meta)
 }
@@ -2557,6 +2672,12 @@ func uploadDeck(c Config, w http.ResponseWriter, r *http.Request) error {
 	if serr := c.Lobby.SetSeatDeckID(id, body.PlayerID, libraryDeckID); serr != nil {
 		logDeckLibraryWarning(c, "set seat deck_id failed", serr, "game_id", id, "player_id", body.PlayerID)
 	}
+	switch {
+	case deckID != "":
+		recordLastDeck(r.Context(), c, p, id, body.PlayerID, users.LastDeck{Kind: users.LastDeckPrebuilt, ID: deckID})
+	case libraryDeckID != "":
+		recordLastDeck(r.Context(), c, p, id, body.PlayerID, users.LastDeck{Kind: users.LastDeckLibrary, ID: libraryDeckID})
+	}
 
 	return writeJSON(w, http.StatusOK, uploadDeckResponse{
 		Game:          meta,
@@ -2736,6 +2857,7 @@ func seatLibraryDeck(c Config, w http.ResponseWriter, r *http.Request) error {
 	if serr := c.Lobby.SetSeatDeckID(id, p.PlayerID, saved.ID.String()); serr != nil {
 		logDeckLibraryWarning(c, "set seat deck_id failed", serr, "game_id", id, "player_id", p.PlayerID)
 	}
+	recordLastDeck(r.Context(), c, p, id, p.PlayerID, users.LastDeck{Kind: users.LastDeckLibrary, ID: saved.ID.String()})
 
 	commanders := make([]string, 0, len(list.Commanders))
 	for _, cc := range list.Commanders {
@@ -3477,8 +3599,10 @@ func writeLobbyError(w http.ResponseWriter, err error) {
 		status = http.StatusConflict
 	case errors.Is(err, ErrNotABot), errors.Is(err, ErrUnknownBotTier), errors.Is(err, ErrSeatIsBot):
 		status = http.StatusUnprocessableEntity
-	case errors.Is(err, ErrGameArchived):
+	case errors.Is(err, ErrGameArchived), errors.Is(err, ErrTooManyOpenTables):
 		status = http.StatusConflict
+	case errors.Is(err, ErrCreateRateLimited):
+		status = http.StatusTooManyRequests
 	case errors.Is(err, ErrTooManyReclaims):
 		status = http.StatusTooManyRequests
 	case errors.Is(err, ErrEmptyName), errors.Is(err, ErrInvalidInviteKind):
