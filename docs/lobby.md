@@ -1246,6 +1246,78 @@ numbers. Same authorisation as adding one. Returns the updated
 | 409 | game already started |
 | 422 | the seat is a human, not a bot |
 
+### `POST /games/practice` (ADR 0076, S54)
+
+Open the tutorial's **practice table** for the caller, seated: one
+human seat and one `random`-tier bot, each on its fixed tutorial deck
+(`server/internal/decks/tutorial.go` — *First Steps* for the player,
+*Practice Partner* for the bot). Any session may call it: a guest
+seated at another table, a Discord sign-in, the admin. No body.
+
+The table comes back **already started**, with the player at seat 0
+taking turn one (the tutorial's steps follow the player's first turn,
+so the usual opening roll is skipped). The response is a join's: a
+fresh player session for the seat (`token`, `expires_at`,
+`principal`), the `game` with `practice: true`, and `player_id`. The
+session cookie is set to it. The seat carries the caller's Discord
+identity and user, when the session had them.
+
+A practice table is not like other tables:
+
+- It is **never listed** by `GET /games`, to the admin included, and
+  has no invite, so nobody else can join or watch it. `GET /games/{id}`
+  still answers for it.
+- It is **never persisted**: no `games` / `seats` rows (so it is not in
+  `GET /me/games`), and its room writes no restore point, replay or
+  crash dump. A restart ends it. There is no resume.
+- **One per person.** Opening a second abandons the caller's first
+  (the person is their user, else their Discord identity, else the
+  admin credential, else their seat; a session that is itself a
+  practice seat counts as whoever opened that table).
+- **At most 8 open at once**, across everyone.
+- **Reaped** after 20 minutes without a single commit, or 2 hours in
+  all — the bot runner is stopped and any sockets closed.
+
+| Status | Reason |
+|---|---|
+| 201 | opened; body as above |
+| 401 | no session |
+| 429 | this caller opened practice tables too quickly (or the IP deck bucket is empty) |
+| 503 | no bot host; no card index; the `random` tier is not offered; or all 8 practice tables are in use |
+
+### `POST /games/{id}/practice/leave` (ADR 0076, S54)
+
+Abandon a practice table and put the caller's own session cookie
+back. Called from every exit the tutorial has — Leave, a navigation, a
+closed tab (as a `keepalive` request), and the next page load if that
+one never landed — so it is idempotent and needs no session: the
+credentials are in the body.
+
+```json
+{"practice_token": "<the practice seat's session>", "restore_token": "<the session to put back>"}
+```
+
+- `practice_token` authorises the leave. It must be a player session
+  for this game's human seat. Empty, invalid or expired: nothing is
+  left (the reaper will have the table) and the call still succeeds.
+- `restore_token`, when it validates, becomes the session cookie
+  again; otherwise the cookie is cleared. The server reads the cookie
+  before the `Authorization` header, so this is the only way a client
+  can stop talking as the practice seat.
+
+`Content-Type` must be `application/json` (a cross-site form cannot
+send it, so no other site can use this to plant a cookie). Rides the
+same per-IP bucket as `POST /games/{id}/join`.
+
+| Status | Reason |
+|---|---|
+| 204 | done, or there was nothing left to leave |
+| 400 | malformed body or game id |
+| 403 | `practice_token` is for this game but not its human seat |
+| 409 | `{id}` is a real table, not a practice table |
+| 415 | not `application/json` |
+| 429 | rate-limited |
+
 ### `DELETE /games/{id}` *(admin only)*
 
 **Destroys** a table: the lobby entry, the engine snapshot, the

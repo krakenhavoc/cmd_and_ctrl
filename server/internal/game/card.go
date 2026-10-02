@@ -402,6 +402,21 @@ type Card struct {
 	// of it are equal.
 	ObjectEpoch int
 
+	// ControlledSinceUpkeep is the value of the controller's
+	// Player.UpkeepsBegun when this permanent last came under that
+	// player's control: as it entered the battlefield, and at each
+	// control change the layer pass materialises (ADR 0108 §5, #1888).
+	//
+	// It is the whole of echo's "came under your control since the
+	// beginning of your last upkeep" (CR 702.30a): that holds when
+	// ControlledSinceUpkeep >= UpkeepsBegun - 1, read at the trigger
+	// and again on resolution (CR 603.4) — see
+	// CameUnderControlSinceLastUpkeepForEffect. It counts upkeeps, not
+	// turns, so a skipped upkeep is not a "last upkeep".
+	//
+	// Meaningful on the battlefield only; every entry overwrites it.
+	ControlledSinceUpkeep int
+
 	// SummonedThisTurn and MarkedLethalByDeathtouch live in the bool
 	// block at the end of Card, for alignment.
 

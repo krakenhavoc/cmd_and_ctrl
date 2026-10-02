@@ -282,6 +282,7 @@ func everyFieldCardView(owner string, knowers map[string]bool) CardView {
 		ZoneManaAbilities: []ManaAbilityView{{Index: 0, Label: "Exile this card from your hand: Add {R}", ExileSelf: true, Produced: "{R}"}},
 		SpecialActions:    []SpecialActionView{{Kind: "foretell", Label: "Foretell {2}", Cost: "{2}", Available: true}},
 		SummoningSick:     true,
+		EchoDue:           true,
 		LoyaltyActivated:  true,
 		ClassLevel:        3,
 		Solved:            true,

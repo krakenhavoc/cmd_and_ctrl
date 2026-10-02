@@ -156,6 +156,15 @@ type Player struct {
 	// seam.
 	TurnsBegun int
 
+	// UpkeepsBegun counts the upkeep steps this player has begun
+	// (ADR 0108 §5, #1888). It goes up by one as the step begins,
+	// before any "at the beginning of your upkeep" trigger is checked,
+	// so a trigger that reads it during its own upkeep reads the
+	// upkeep it is in. A skipped upkeep is never begun and is not
+	// counted (CR 702.30a's "your last upkeep" is the last one you
+	// had). Card.ControlledSinceUpkeep is stamped from it.
+	UpkeepsBegun int
+
 	// LastTurnAttacks is every attack this player's creatures declared
 	// during the last turn this player took (ADR 0108 §6, #1882, CR
 	// 508.1): "if it attacked during your last turn" (Goblin Rock Sled,

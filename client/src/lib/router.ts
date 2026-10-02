@@ -34,6 +34,11 @@ export type Route =
   // the "up to about 15 names" summary link here for the full report.
   | { name: "deckCheck"; url?: string }
   | { name: "lobby" }
+  // The tutorial's practice table (ADR 0076 §2.2): opening this route
+  // opens a fresh practice game for the signed-in session and moves on
+  // to it (routes/Practice.svelte, lib/practiceTable.ts). It is the
+  // one door the lobby offer and Settings' replay (sub-PR 5) both use.
+  | { name: "practice" }
   | { name: "join"; gameID: string; inviteToken: string; spectator: boolean }
   // Seat reclaim: an admin-minted, single-use, short-lived link that
   // puts a disconnected player back in their OWN seat at a table that
@@ -103,6 +108,8 @@ export function parseHash(hash: string): Route {
     }
     case "lobby":
       return { name: "lobby" };
+    case "practice":
+      return { name: "practice" };
     case "catalog": {
       const q = params.get("q");
       return q ? { name: "catalog", query: q } : { name: "catalog" };

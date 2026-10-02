@@ -661,6 +661,15 @@
         >MUST BLOCK</span
       >
     {/if}
+    {#if card.echo_due}
+      <!-- ADR 0108 §5: its echo triggers at its controller's next upkeep
+           (CR 702.30a). -->
+      <span
+        class="badge echo-due"
+        title="echo due — at its controller's next upkeep, pay its echo cost or sacrifice it"
+        aria-label="echo due">ECHO DUE</span
+      >
+    {/if}
     {#if enchantedPlayer}
       <span
         class="badge curse"
@@ -781,6 +790,15 @@
     {#if card.must_block}
       <span class="badge must-attack" title="must block this combat" aria-label="must block"
         >MUST BLOCK</span
+      >
+    {/if}
+    {#if card.echo_due}
+      <!-- ADR 0108 §5: its echo triggers at its controller's next upkeep
+           (CR 702.30a). -->
+      <span
+        class="badge echo-due"
+        title="echo due — at its controller's next upkeep, pay its echo cost or sacrifice it"
+        aria-label="echo due">ECHO DUE</span
       >
     {/if}
     {#if enchantedPlayer}
@@ -1184,6 +1202,19 @@
     color: var(--danger);
     background: rgba(60, 0, 0, 0.85);
     border-color: rgba(255, 122, 122, 0.5);
+  }
+  .badge.echo-due {
+    /* ADR 0108 §5: above the bottom edge, so a creature that must
+       attack AND owes its echo (Tectonic Fiend) shows both. */
+    top: auto;
+    bottom: 22px;
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    white-space: nowrap;
+    color: #ffd27a;
+    background: rgba(50, 35, 0, 0.85);
+    border-color: rgba(255, 210, 122, 0.5);
   }
   .badge.no-untap {
     top: 24px;

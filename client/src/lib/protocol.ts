@@ -1183,6 +1183,13 @@ export interface PendingChoiceView {
   // rest is paid from the pool and auto-tap as usual. Absent for
   // every other pay-unless.
   tap_cost?: TapCostView;
+  // ADR 0108 §5: a "pay_unless" whose payment is not mana ("Echo—
+  // Discard a card", "Cumulative upkeep—Sacrifice a land"). pay_cost
+  // carries the payment's words. The "Pay" answer names exactly
+  // `count` of `options` as `card_ids` beside `apply: true`. A
+  // discard's options are the chooser's hand and reach the chooser
+  // only. Absent for a mana payment.
+  pay_cards?: PayCardsView;
   // S22: populated for kind "search_library" — how many of `options`
   // the searcher may take. The minimum is always zero, so the submit
   // button is live from the first render. Absent for every other
@@ -1841,6 +1848,16 @@ export interface DelveView {
   // The budget for the default announcement (this zone, X = 0, nothing
   // tapped). A hint only — the preview's `delve_budget` is the cap.
   max?: number;
+}
+
+// ADR 0108 §5: a pay-unless prompt's non-mana payment. `options` are
+// instance IDs (the chooser's hand for a discard, the permanents of
+// the clause's kind they control for a sacrifice); one payment names
+// exactly `count` of them.
+export interface PayCardsView {
+  action: "discard" | "sacrifice";
+  count: number;
+  options: string[];
 }
 
 export interface TapCostView {
@@ -2779,6 +2796,10 @@ export interface CardView extends CastSurfaceView {
   // S21 sub-PR 2: CR 302.6 summoning sickness — entered this turn
   // without haste, so it can't attack or pay a {T} cost.
   summoning_sick?: boolean;
+  // ADR 0108 §5: this permanent's echo triggers at its controller's
+  // next upkeep (CR 702.30a). Derived on the server; never set on a
+  // face-down permanent.
+  echo_due?: boolean;
   // CR 606.3: a loyalty ability has already been activated on this
   // planeswalker this turn, so every loyalty row in its menu is
   // greyed until the turn cursor moves on. Before #334 this state

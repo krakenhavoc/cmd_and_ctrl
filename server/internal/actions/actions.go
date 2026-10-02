@@ -1738,6 +1738,19 @@ func dispatch(g *game.Game, a Action) error {
 					}
 					tapIDs = append(tapIDs, id)
 				}
+				// ADR 0108 §5: a non-mana payment ("discard a card",
+				// "sacrifice two lands") names what it pays with in
+				// card_ids beside the apply.
+				if len(p.CardIDs) > 0 {
+					if len(tapIDs) > 0 {
+						return game.ErrInvalidParam
+					}
+					cardIDs, err := parseUUIDs(p.CardIDs, "card_ids")
+					if err != nil {
+						return err
+					}
+					return g.ResolvePayUnlessWithCards(choiceID, a.Player, *p.OptionalApply, cardIDs)
+				}
 				return g.ResolvePayUnlessWithTaps(choiceID, a.Player, *p.OptionalApply, tapIDs)
 			case game.PendingChoiceMayCast:
 				// S28 cascade: "you may cast it without paying its

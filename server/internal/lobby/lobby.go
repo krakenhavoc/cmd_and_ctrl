@@ -113,6 +113,12 @@ type GameMeta struct {
 	// Distinct from HostPlayerID (ADR 0075 §2.1): the creator need
 	// not be seated, and a seated host need not be the creator.
 	CreatedBy uuid.UUID `json:"-"`
+
+	// Practice marks the tutorial's practice table (ADR 0076 §2.2,
+	// practice.go): one human seat and one `random` bot, created by
+	// POST /games/practice, never listed and never persisted. The
+	// client reads it to know the table it is on is the tutorial's.
+	Practice bool `json:"practice,omitempty"`
 	// IsCreator reports, for THIS response's viewer only, whether
 	// they created the game (#1098). Computed by redactMetaFor from
 	// CreatedBy and the requesting principal's UserID; never the raw
@@ -249,6 +255,24 @@ type Lobby struct {
 	// only place an invite is validated against — see resolveInvite.
 	// Fixed at construction.
 	store Store
+	// evictor closes the sockets on a game the lobby deletes on its
+	// own initiative — today only a practice table reaped for being
+	// idle or replaced (practice.go). Every operator delete goes
+	// through the HTTP layer, which evicts with Config.Evictor. Set
+	// once at boot via SetEvictor; nil skips the eviction.
+	evictor GameEvictor
+	// practiceLimits bounds the practice tables (practice.go). The
+	// zero value means the defaults; tests shrink them.
+	practiceLimits PracticeLimits
+}
+
+// SetEvictor wires the hub in after construction, for the deletes the
+// lobby makes on its own (a practice table reaped or replaced). Same
+// shape as SetStateBroadcaster.
+func (l *Lobby) SetEvictor(e GameEvictor) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.evictor = e
 }
 
 // SetBotHost wires the bot runner host in after construction.
@@ -310,6 +334,15 @@ type gameEntry struct {
 	// closed when the entry leaves l.games, which ends the watcher.
 	watching bool
 	stop     chan struct{}
+
+	// practice marks the tutorial's practice table (practice.go, ADR
+	// 0076 §2.2): unlisted, never written to the store, reaped when
+	// idle. practiceOwner is who it belongs to for the one-per-person
+	// rule ("" opts out), and practiceHuman is the one human seat —
+	// the only seat allowed to leave it.
+	practice      bool
+	practiceOwner string
+	practiceHuman uuid.UUID
 }
 
 // NewLobby constructs an empty Lobby backed by mgr and an in-memory
@@ -1209,6 +1242,12 @@ func (l *Lobby) list(archived bool) []GameMeta {
 		if e.meta.Archived() != archived {
 			continue
 		}
+		// A practice table is one person's tutorial, not a table
+		// anyone else can sit at (ADR 0076 §2.2): it is never listed,
+		// to the admin included. GET /games/{id} still answers for it.
+		if e.practice {
+			continue
+		}
 		// A game that ended via WS (concede → StateEnded) would
 		// otherwise report "active" here until watchEnd catches up.
 		// Read the live state so the lobby UI can gate ended-only
@@ -1301,13 +1340,19 @@ func (l *Lobby) Delete(id uuid.UUID) error {
 	}()
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	if _, ok := l.games[id]; !ok {
+	entry, ok := l.games[id]
+	if !ok {
 		return ErrGameNotFound
 	}
 	l.dropEntryLocked(id)
 	l.mgr.Delete(id)
 	// Any reclaim link minted for this table dies with it.
 	l.dropReclaimsLocked(id)
+	stopBots = l.bots
+	if entry.practice {
+		// A practice table never had rows or a legacy file.
+		return nil
+	}
 	// Drop the rows too — the game, its seats and its invites — or
 	// the next boot would pair the operator's deleted game with
 	// metadata again, and its invite links would still resolve. The
@@ -1319,7 +1364,6 @@ func (l *Lobby) Delete(id uuid.UUID) error {
 	}
 	cancel()
 	l.removeLegacyMeta(id)
-	stopBots = l.bots
 	return nil
 }
 
