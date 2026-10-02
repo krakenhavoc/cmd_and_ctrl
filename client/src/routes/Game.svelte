@@ -41,6 +41,7 @@
   import AttackDeclarationModal from "../lib/components/board/AttackDeclarationModal.svelte";
   import TargetingBanner from "../lib/components/board/TargetingBanner.svelte";
   import GameLogPanel from "../lib/components/board/GameLogPanel.svelte";
+  import ActionDock from "../lib/components/board/ActionDock.svelte";
   import RevealBanner from "../lib/components/board/RevealBanner.svelte";
   import BotFeed from "../lib/components/BotFeed.svelte";
   import Icon from "../lib/components/Icon.svelte";
@@ -76,7 +77,12 @@
   import { hasPassMove, stackEmpty } from "../lib/timing";
   import { consumeManualStop, manualStops } from "../lib/priorityStops";
   import { autopassDecision, isBluff, type AutopassGates } from "../lib/autopassDecision";
-  import { highlightsLive, legalActionsOf, visibleHighlights } from "../lib/legalActions";
+  import {
+    actionableCount,
+    highlightsLive,
+    legalActionsOf,
+    visibleHighlights,
+  } from "../lib/legalActions";
   import {
     bluffArmed,
     bluffDelayMs,
@@ -418,7 +424,7 @@
 
     if (isBluff(verdict)) {
       if (verdict.manual) {
-        // A manual bluff is a hold the phase widget labels; next is
+        // A manual bluff is a hold the action dock labels; next is
         // the pass.
         cancelBluffTimer();
         setBluffStatus({ manual: true });
@@ -884,6 +890,23 @@
   // not by playerID-being-Nil, so admin spectators (no ?player=)
   // still keep their moderator affordances.
   const isSpectator = $derived(sess?.principal.role === "spectator");
+
+  // ---- The action dock (ADR 0111) ----
+  // Every button a seated player presses to move the game on, in the
+  // screen's bottom-right corner. Never for a spectator, never while the
+  // dev replay scrubber shows a past frame (every control in it acts on
+  // the LIVE game), never before the first snapshot.
+  const dockShown = $derived(!!view && viewerID !== null && !isSpectator && !replaying);
+  // Its live size, published as --dock-w / --dock-h on the route's root
+  // so the self panel (its empty dock cell), the hover zoom and the log
+  // drawer can all keep that rectangle clear (§4).
+  let dockSize = $state({ w: 0, h: 0 });
+  function onDockSize(w: number, h: number): void {
+    if (w !== dockSize.w || h !== dockSize.h) dockSize = { w, h };
+  }
+  // ADR 0105 §7: how many of the viewer's cards wear a highlight, for
+  // the dock header's "N actions available".
+  const readyActions = $derived(viewerID ? actionableCount(legalHighlights, view, viewerID) : 0);
   const selectedCombatCardID = $derived(combatSelection?.cardID ?? null);
   function handleSelectCombatCard(cardID: string): void {
     if (combatMode === "attack") selectAttacker(cardID);
@@ -1135,7 +1158,8 @@
 
   // The ⋯ menu in the command bar holds the sandbox utilities
   // (draw / untap / shuffle / mulligan / undo) and table actions so
-  // the bar itself stays status + three icon buttons + pass turn.
+  // the bar itself stays status + its icon buttons. Pass turn is the
+  // action dock's (ADR 0111 §7).
   let menuOpen = $state(false);
   function closeMenu(): void {
     menuOpen = false;
@@ -1228,7 +1252,11 @@
   }
 </script>
 
-<section>
+<section
+  class:has-dock={dockShown}
+  style:--dock-w={dockShown ? `${dockSize.w}px` : undefined}
+  style:--dock-h={dockShown ? `${dockSize.h}px` : undefined}
+>
   <header class="bar">
     <button class="ghost bar-nav" onclick={back}><Icon name="chevronLeft" size={14} /> Lobby</button
     >
@@ -1260,21 +1288,7 @@
         : $status}
       <span class="seq">· seq {$lastSeq}</span>
     </span>
-    <!-- Withheld while the dev replay scrubber is showing a past frame:
-         `view` is history then, but every control here still acts on the
-         LIVE game. See the replay-scrubber note in the script block. -->
-    {#if view && viewerID && !replaying}
-      <button
-        class="bar-btn"
-        onclick={passTurn}
-        disabled={!viewerIsActive}
-        title={viewerIsActive
-          ? `skip the rest of your turn${keyHint(keys.passTurn)}`
-          : `${activePlayer?.name ?? "another seat"} is the active player`}
-      >
-        Pass turn
-      </button>
-    {/if}
+    <!-- Pass turn moved to the action dock's action bar (ADR 0111 §7). -->
     <div class="bar-icons">
       <button
         type="button"
@@ -1313,9 +1327,10 @@
           onclick={() => (bugReportOpen = true)}><Icon name="bug" size={17} /></button
         >
       {/if}
-      <!-- Same reasoning as "Pass turn" above: the Sandbox entries, undo
-           and concede all mutate the live game, so the menu is withheld
-           while a past frame is on screen. -->
+      <!-- Withheld while the dev replay scrubber is showing a past frame:
+           `view` is history then, but the Sandbox entries, undo and
+           concede all mutate the LIVE game. See the replay-scrubber note
+           in the script block. -->
       {#if view && viewerID && !replaying}
         <div class="more">
           <button
@@ -1609,10 +1624,7 @@
           onDeclareAttack={declareAttackTarget}
           onDeclareBlock={declareBlockTarget}
           onDeclareAttackers={declareGroupAttackers}
-          {autopassEnabled}
-          {loopNotice}
-          onPassPriority={passPriority}
-          onToggleAutopass={toggleAutopass}
+          docked={dockShown}
           {beatsPrimeKey}
           legal={legalHighlights}
           legalGate={legalActions}
@@ -2028,6 +2040,24 @@
           </div>
         {/snippet}
       </svelte:boundary>
+      <!-- ADR 0111: the action dock, a sibling of the board in the
+           play area's bottom-right corner. Outside the boundary on
+           purpose: `next` keeps working when the table fails to draw. -->
+      {#if dockShown}
+        <ActionDock
+          {view}
+          {viewerHasPriority}
+          {viewerIsActive}
+          activePlayerName={activePlayer?.name}
+          {autopassEnabled}
+          {loopNotice}
+          {readyActions}
+          onPassPriority={passPriority}
+          onPassTurn={passTurn}
+          onToggleAutopass={toggleAutopass}
+          onSize={onDockSize}
+        />
+      {/if}
       {#if viewerNeedsToDecide}
         <ModalLayer />
         <div class="mulligan-scrim"></div>
@@ -2222,7 +2252,7 @@
     gap: 0.35rem;
     overflow: hidden;
   }
-  /* Command bar: lobby · wordmark · game · status · pass turn · icons.
+  /* Command bar: lobby · wordmark · game · status · icons.
      Sandbox utilities and table actions live behind the ⋯ menu. */
   .bar {
     display: flex;
@@ -2367,11 +2397,6 @@
     border-radius: 999px;
     font-family: var(--font-mono);
   }
-  .bar-btn {
-    height: 30px;
-    padding: 0 12px;
-    font-size: 12.5px;
-  }
   .bar-icons {
     display: flex;
     gap: 2px;
@@ -2379,7 +2404,8 @@
   }
   /* The bar has one more icon since "Report a bug or idea" moved onto
      it (#1952). On a phone the wordmark and the seq counter are what
-     give way, so the icons and Pass turn keep their room. */
+     give way, so the icons keep their room. (Pass turn moved to the
+     action dock, ADR 0111.) */
   @media (max-width: 599px) {
     .bar {
       gap: 8px;
@@ -2536,6 +2562,30 @@
     justify-content: flex-end;
     gap: 6px;
     margin-top: 4px;
+  }
+  /* ADR 0111 §4: what keeps clear of the action dock. The dock
+     publishes its live size (--dock-w / --dock-h, set inline on this
+     element) and sits --dock-inset in from the play area's bottom-right
+     corner, which lines it up with the self panel's content box (board
+     padding 6px + panel border 1px + panel padding 8px). The hover zoom
+     stops above it (--dock-zoom-clear) and so does the log drawer, which
+     is fixed to the viewport and so also counts this element's 0.6rem
+     bottom padding (--dock-log-clear). */
+  section.has-dock {
+    --dock-inset: 15px;
+    --dock-zoom-clear: calc(var(--dock-h, 0px) + var(--dock-inset));
+    --dock-log-clear: calc(0.6rem + var(--dock-inset) + var(--dock-h, 0px) + 6px);
+  }
+  /* §8: on a phone the dock is a full-width bar on the bottom of the
+     play area, and the board ends above it rather than under it. */
+  @media (max-width: 599px) {
+    section.has-dock {
+      --dock-inset: 0px;
+      --dock-zoom-clear: 0px;
+    }
+    section.has-dock .play-area {
+      padding-bottom: calc(var(--dock-h, 0px) + 6px);
+    }
   }
   .play-area {
     /* Single-column layout since S08.5 removed the chat sidebar.

@@ -102,7 +102,10 @@ test.describe("#328 autopass skips the blocking window", () => {
       // Done now, on the opponent's turn — the S13.6 safety belt
       // clears the toggle on the viewer's own precombat_main, so
       // enabling it during their own turn would just switch off.
-      const autopassBtn = defender.page.locator("button.action.autopass");
+      // ADR 0111 PR 2: autopass is in the action dock's toggles row.
+      const autopassBtn = defender.page
+        .getByRole("region", { name: "actions", exact: true })
+        .locator("button.action.autopass");
       await expect(autopassBtn).toBeVisible({ timeout: 10_000 });
       await autopassBtn.click();
       await expect(autopassBtn).toHaveAttribute("aria-pressed", "true");
@@ -186,7 +189,10 @@ test.describe("#328 autopass skips the blocking window", () => {
 
       // And the defender's board says so too.
       const stepLabel = (
-        (await defender.page.locator(".step-label").first().textContent()) ?? ""
+        (await defender.page
+          .getByRole("region", { name: "actions", exact: true })
+          .locator(".step-label")
+          .textContent()) ?? ""
       ).trim();
       expect(stepLabel).toBe("Declare Blockers");
 

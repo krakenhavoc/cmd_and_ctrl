@@ -97,7 +97,6 @@ const gameView = (stackItems: StackItemView[]): GameView =>
 function mountBoard(style: StackStyle, stackItems: StackItemView[]) {
   updateSettings("display", "stackStyle", style);
   const sent: { type: ActionType; params?: unknown }[] = [];
-  let passes = 0;
   const r = render(
     Board as never,
     {
@@ -110,11 +109,10 @@ function mountBoard(style: StackStyle, stackItems: StackItemView[]) {
       onSelectCombatCard: () => {},
       onDeclareAttack: () => {},
       onDeclareBlock: () => {},
-      onPassPriority: () => passes++,
     } as never,
   );
   const q = (sel: string) => r.container.querySelector<HTMLElement>(sel);
-  return { ...r, sent, passes: () => passes, q };
+  return { ...r, sent, q };
 }
 
 describe("the stack's display style (#1467)", () => {
@@ -179,13 +177,28 @@ describe("the stack's display style (#1467)", () => {
     expect(rule("  .stack-lane")).toContain("pointer-events: auto");
   });
 
-  it("wires Counter and Pass exactly as the docked card does", () => {
+  it("wires Counter exactly as the docked card does", () => {
     const b = mountBoard("spotlight", [trigger]);
     click(b.q(".stack-lane .counter-btn")!);
     expect(b.sent).toEqual([{ type: "counter_ability", params: { instance_id: "trig-1" } }]);
-    click(b.q(".stack-lane .pass-btn")!);
-    expect(b.passes()).toBe(1);
   });
+
+  // ADR 0111 §7 (S56 PR 2): the action dock's `next` is the one pass
+  // button and its hold the one hold. Neither stack surface draws them.
+  it.each(["compact", "fan", "spotlight", "ribbon"] as const)(
+    "the %s stack has no Pass and no hold",
+    (style) => {
+      const b = mountBoard(style, [trigger]);
+      const surface = b.q(style === "compact" ? ".strip .overlay" : ".stack-lane")!;
+      expect(surface).not.toBeNull();
+      expect(surface.querySelector(".pass-btn, .hold-toggle")).toBeNull();
+      const names = [...surface.querySelectorAll("button")].map((x) =>
+        (x.textContent ?? "").trim().toLowerCase(),
+      );
+      expect(names.some((n) => n.startsWith("pass") || n.startsWith("hold"))).toBe(false);
+      expect(names).toContain("counter");
+    },
+  );
 
   it("announces the top item in a polite live region", () => {
     const b = mountBoard("fan", []);

@@ -67,10 +67,33 @@ test.describe("board layout", () => {
     await expect(selfBoard.getByRole("button", { name: /library: \d+/ })).toBeVisible();
     await expect(selfBoard.getByLabel(/command zone, \d+ card/)).toBeVisible();
 
+    // ADR 0111 §1 (PR 2): the action dock, bottom right. Its label is
+    // the tutorial's step-8 anchor (ADR 0076 §2.4) and an e2e contract.
+    // It holds the turn header, the priority toggles and the action bar
+    // with next and Pass turn, each drawn once on the page.
+    const dock = page.getByRole("region", { name: "actions", exact: true });
+    await expect(dock).toBeVisible();
+    await expect(dock.getByLabel("turn and phase indicator")).toBeVisible();
+    await expect(dock.getByRole("group", { name: "priority controls" })).toBeVisible();
+    await expect(dock.getByRole("button", { name: "next", exact: true })).toBeVisible();
+    await expect(dock.getByRole("button", { name: "Pass turn" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "next", exact: true })).toHaveCount(1);
+    await expect(page.getByRole("button", { name: "pass turn" })).toHaveCount(1);
+    // Owner decision 1: the dock is in the screen's bottom-right corner,
+    // and the self panel's rail (its piles) ends above it.
+    const box = (await dock.boundingBox())!;
+    const viewport = page.viewportSize()!;
+    expect(viewport.width - (box.x + box.width)).toBeLessThan(40);
+    expect(viewport.height - (box.y + box.height)).toBeLessThan(40);
+    // The rail is the scroll container the piles live in; on a short
+    // panel the piles scroll inside it rather than slide under the dock.
+    const rail = (await selfBoard.locator(".rail").boundingBox())!;
+    expect(rail.y + rail.height).toBeLessThanOrEqual(box.y + 1);
+
     // ADR 0111 §5: the bluff split button is always on the table, even
     // on a default install where neither bluff setting is on.
-    await expect(page.getByRole("button", { name: "bluff", exact: true })).toBeVisible();
-    await expect(page.getByRole("button", { name: "bluff options" })).toBeVisible();
+    await expect(dock.getByRole("button", { name: "bluff", exact: true })).toBeVisible();
+    await expect(dock.getByRole("button", { name: "bluff options" })).toBeVisible();
 
     // Stack overlay should be hidden when nothing is on the stack.
     await expect(page.getByLabel(/stack: \d+ on the stack/)).toHaveCount(0);

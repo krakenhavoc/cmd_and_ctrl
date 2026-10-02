@@ -117,7 +117,9 @@
     position: fixed;
     top: 45px;
     right: 0;
-    bottom: 0;
+    /* ADR 0111 §4: ends above the action dock, so the log and the dock
+       are both usable (Game.svelte sets --dock-log-clear). */
+    bottom: var(--dock-log-clear, 0px);
     z-index: 30;
     display: flex;
     flex-direction: column;

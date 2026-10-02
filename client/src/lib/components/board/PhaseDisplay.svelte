@@ -1,18 +1,23 @@
 <script lang="ts">
-  // PhaseDisplay is the "Phases Visualized" widget that lives in the
-  // bottom-right of the viewer's own PlayerPanel. It replaces the
-  // global turn-bar strip that used to sit above the board.
+  // PhaseDisplay is the header of the action dock (ADR 0111 §1): the
+  // turn line, the phase track with its one-time pins, the step label,
+  // the turn-rule lines and the ready-actions live region. ActionDock
+  // mounts it, and nothing else does. The buttons that used to sit
+  // under it (next, hold, bluff, autopass) are the dock's own rows now.
   //
-  // Three stacked rows:
-  //   1. Turn number + active player (dot + name)
-  //   2. Phase track — one dot per step in canonical turn order, with the
-  //      current step highlighted. Phase boundaries (beginning /
+  // Two stacked rows:
+  //   1. Turn number + active player (dot + name) … step label
+  //   2. Phase track — one icon per step in canonical turn order, with
+  //      the current step highlighted. Phase boundaries (beginning /
   //      precombat main / combat / postcombat / ending) are separated
   //      by a faint gap so the structure of a turn is visible at a
-  //      glance.
-  //   3. Priority pills — one chip per seat, glowing for the seat
-  //      currently holding priority. Dash when priority is unheld
-  //      (Untap / Cleanup per CR 502.4 / 514.3).
+  //      glance. A priority-granting step can be clicked to pin a stop.
+  //   The step label ends the turn line, with "no priority" during
+  //   Untap / Cleanup (CR 502.4 / 514.3).
+  //
+  // `.turn-no` and `.step-label` are read by the e2e suite with
+  // `.first()`, so this must stay the only element on the page with
+  // either class.
 
   import type { PlayerView, TurnView } from "../../protocol";
   import { seatColor } from "../../colors";
@@ -20,11 +25,6 @@
   import { getAvatarColor } from "../../avatarColor";
   import { STEP_IDS, STEP_LABELS, type StepID } from "../../turn";
   import { canManuallyStop, manualStops, toggleManualStop } from "../../priorityStops";
-  import { holdPriority, toggleHoldPriority } from "../../holdPriority";
-  import { bluffStatus, bluffStatusText } from "../../bluff";
-  import BluffChip from "./BluffChip.svelte";
-  import { settings } from "../../settings";
-  import { effectiveBindings, formatChord, isMacLike } from "../../shortcuts";
   import PhaseIcon from "./PhaseIcon.svelte";
   import { damageCantBePreventedLine, exileIfCreaturesDieLine } from "../../turnRules";
   import { QUIET_ANNOUNCER, announceArrival, type ReadyAnnouncer } from "../../legalActions";
@@ -33,43 +33,29 @@
     turn: TurnView;
     seats: PlayerView[];
     mulligansOpen: boolean;
-    // Priority controls — only rendered on the viewer's own panel
-    // (PlayerPanel gates the mount with `isSelf`), so these are
-    // always wired to *viewer* state.
-    viewerHasPriority: boolean;
-    autopassEnabled: boolean;
-    // #628 (CR 732): the loop-breaker banner line the server's
-    // notice produced, or "" when the table is quiet. While it is
-    // non-empty NOTHING passes automatically — the autopass toggle
-    // is suspended rather than switched off, so a table that turns
-    // it on mid-loop is not surprised when it comes back.
-    loopNotice?: string;
     // ADR 0107 §5 (CR 615.12): the sources of the live "damage can't
     // be prevented this turn" grants (GameView.damage_cant_be_prevented).
     damageCantBePrevented?: string[];
     exileIfCreaturesDie?: string[];
-    onPassPriority: () => void;
-    onToggleAutopass: () => void;
     // ADR 0105 §7 (sub-PR 6): how many of the viewer's cards have a
     // highlighted action on this frame (legalActions.ts
     // actionableCount over the HIGHLIGHT lookup, so 0 while highlights
     // are off or autopass is about to pass). The live region below
     // says it once, when a decision arrives.
     readyActions?: number;
+    // ADR 0111 §8: at phone width the track is folded away until the
+    // dock's ▴ opens it. Ignored above 600px, where it always shows.
+    trackOpen?: boolean;
   }
 
   const {
     turn,
     seats,
     mulligansOpen,
-    viewerHasPriority,
-    autopassEnabled,
-    loopNotice = "",
     damageCantBePrevented = [],
     exileIfCreaturesDie = [],
-    onPassPriority,
-    onToggleAutopass,
     readyActions = 0,
+    trackOpen = false,
   }: Props = $props();
 
   // ADR 0105 §7: "N actions available", once per arrival. The
@@ -83,11 +69,6 @@
     readyLine = announcer.text;
   });
 
-  // The toggle reads "paused" rather than "off": the player's intent
-  // is untouched and it resumes the moment somebody makes a real
-  // decision (a cast, an activation, an answered prompt, a
-  // declaration) or the turn ends.
-  const autopassPaused = $derived(loopNotice !== "");
   const unpreventableLine = $derived(damageCantBePreventedLine(damageCantBePrevented));
   const exileOnDeathLine = $derived(exileIfCreaturesDieLine(exileIfCreaturesDie));
 
@@ -103,18 +84,6 @@
     if (seat === undefined) return null;
     return seats[seat]?.name ?? `seat ${seat}`;
   });
-
-  // Key hints for the three priority buttons (ADR 0047). Read from
-  // the same binding map the dispatcher uses — imported directly
-  // rather than prop-drilled through Board → PlayerPanel, the way
-  // this component already imports holdPriority — so a rebound key
-  // updates the tooltip and a hint can never advertise a dead key.
-  const mac = isMacLike();
-  const keys = $derived(effectiveBindings($settings.shortcuts.bindings));
-  function keyHint(chord: string): string {
-    if (!$settings.shortcuts.enabled || !chord) return "";
-    return ` (${formatChord(chord, mac)})`;
-  }
 
   // Phase-group boundaries: a faint separator between groups of steps
   // makes the five MTG phases (beginning / precombat main / combat /
@@ -153,18 +122,6 @@
   // Consumed on step transition by the consumer in Game.svelte.
   const pinned = $derived($manualStops);
 
-  // #1307: the running bluff's line. (The bluff switch itself is
-  // BluffChip, always shown since ADR 0111.) The countdown ticks twice
-  // a second while a timed bluff runs.
-  let now = $state(Date.now());
-  $effect(() => {
-    const s = $bluffStatus;
-    if (!s || s.manual) return;
-    now = Date.now();
-    const id = setInterval(() => (now = Date.now()), 500);
-    return () => clearInterval(id);
-  });
-  const bluffLine = $derived(bluffStatusText($bluffStatus, now));
   function onIconClick(id: StepID): void {
     if (!canManuallyStop(id)) return;
     toggleManualStop(id);
@@ -173,6 +130,7 @@
 
 <div
   class="phase-display"
+  class:track-open={trackOpen}
   aria-label="turn and phase indicator"
   style:--active-player-color={activeColor}
 >
@@ -193,9 +151,22 @@
         Next: {nextExtra} (extra)
       </span>
     {/if}
+    <!-- The step label shares the turn line, which keeps the dock one
+         row shorter (and the self panel's rows one row taller). -->
+    <span class="step-label">
+      {stepLabel}
+      {#if !priorityHeld && !mulligansOpen}
+        <span
+          class="no-priority"
+          title={`no player holds priority during ${stepLabel} (turn-based actions auto-fire)`}
+        >
+          · no priority
+        </span>
+      {/if}
+    </span>
   </div>
 
-  <div class="row track" aria-label="phase track">
+  <div class="row track" id="dock-phase-track" aria-label="phase track">
     {#each STEP_IDS as id, i (id)}
       {#if BOUNDARIES.has(i)}
         <span class="track-gap" aria-hidden="true"></span>
@@ -223,74 +194,6 @@
     {/each}
   </div>
 
-  <div class="row step-label">
-    {stepLabel}
-    {#if !priorityHeld && !mulligansOpen}
-      <span
-        class="no-priority"
-        title={`no player holds priority during ${stepLabel} (turn-based actions auto-fire)`}
-      >
-        · no priority
-      </span>
-    {/if}
-  </div>
-
-  <div class="row actions" role="group" aria-label="priority controls">
-    <button
-      type="button"
-      class="action next"
-      class:viewer-priority={viewerHasPriority}
-      disabled={!viewerHasPriority}
-      onclick={onPassPriority}
-      title={viewerHasPriority
-        ? `pass priority — rotates to next seat${keyHint(keys.passPriority)}`
-        : "you don't hold priority"}
-    >
-      next
-    </button>
-    <!-- #323: the escape hatch for "I DO want to respond to my own
-         spell". Lives next to `next` because it has to be clickable
-         BEFORE the cast — once the spell is announced the client
-         auto-passes on the following snapshot and there is no moment
-         left to interrupt. Sticky until clicked off, so `hold ✓` is
-         exactly the pre-#323 behaviour: every stack stops. -->
-    <button
-      type="button"
-      class="action hold"
-      class:on={$holdPriority}
-      aria-pressed={$holdPriority}
-      onclick={toggleHoldPriority}
-      title={($holdPriority
-        ? "hold ON — your own spells and triggers keep the cursor so you can respond to them; click to release"
-        : "hold OFF — your own spells and triggers resolve without asking. Click before you cast to keep priority and respond to them") +
-        keyHint(keys.holdPriority)}
-    >
-      {$holdPriority ? "hold ✓" : "hold"}
-    </button>
-    <!-- ADR 0111 §5: always shown, set up or not. -->
-    <BluffChip keyHint={keyHint(keys.toggleBluff)} />
-    <button
-      type="button"
-      class="action autopass"
-      class:on={autopassEnabled && !autopassPaused}
-      class:paused={autopassPaused}
-      aria-pressed={autopassEnabled}
-      onclick={onToggleAutopass}
-      title={(autopassPaused
-        ? "autopass PAUSED — a loop is resolving (CR 732). Use next to step through it; passing resumes on the next real play"
-        : autopassEnabled
-          ? "autopass ON — every time priority lands on you, it passes; click to turn off, or pin a phase icon to stop at just that step"
-          : "autopass OFF — click to pass every priority window (bypasses stops and smart-skip; a pinned phase icon still stops you)") +
-        keyHint(keys.toggleAutopass)}
-    >
-      {autopassPaused ? "autopass ⏸" : autopassEnabled ? "autopass ✓" : "autopass"}
-    </button>
-  </div>
-
-  {#if bluffLine}
-    <div class="row bluff-status" role="status">{bluffLine}</div>
-  {/if}
-
   <!-- ADR 0105 §7 (#1789): the spoken half of the ready highlights.
        Always mounted, so a screen reader is already listening when the
        line arrives; empty between decisions, so the same line is news
@@ -307,33 +210,17 @@
   {#if exileOnDeathLine}
     <div class="row turn-rule" role="status">{exileOnDeathLine}</div>
   {/if}
-
-  <!-- #628 (CR 732): the loop breaker. Lives directly under the
-       toggle it is talking about, because "why has autopass stopped
-       working" is the only question this banner answers. -->
-  {#if autopassPaused}
-    <div class="row loop-notice" role="status" aria-live="polite">
-      <span class="loop-label">loop detected</span>
-      <span class="loop-text">{loopNotice} Autopass paused.</span>
-    </div>
-  {/if}
 </div>
 
 <style>
+  /* The dock draws the box; the header is its top section. */
   .phase-display {
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    padding: 12px 14px;
-    min-width: 220px;
-    max-width: 300px;
-    background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, rgba(0, 0, 0, 0.2) 100%), var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
+    gap: 4px;
+    min-width: 0;
     color: var(--fg-muted);
     font-size: 0.95em;
-    box-shadow: var(--shadow-sm);
   }
   .row {
     display: flex;
@@ -342,7 +229,7 @@
     flex-wrap: wrap;
   }
   .summary {
-    justify-content: space-between;
+    justify-content: flex-start;
   }
   .extra-turn,
   .next-extra {
@@ -381,7 +268,7 @@
     white-space: nowrap;
     font-weight: 600;
     color: var(--fg);
-    max-width: 10ch;
+    max-width: 14ch;
   }
 
   /* Phase track — one pictogram per step, with a faint gap at each
@@ -391,7 +278,7 @@
      subtle timeline rather than a noisy icon strip. */
   .track {
     gap: 3px;
-    padding: 3px 0;
+    padding: 2px 0;
     flex-wrap: nowrap;
   }
   .step-icon {
@@ -463,6 +350,8 @@
     flex: 0 0 auto;
   }
   .step-label {
+    margin-left: auto;
+    white-space: nowrap;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.06em;
@@ -477,119 +366,9 @@
     text-transform: none;
     cursor: help;
   }
-
-  /* Priority controls inside the box — two buttons split the row
-     evenly so the panel reads as a self-contained widget. The pass
-     button is the one gold primary on the table (gold = priority
-     everywhere: avatar ring, this button); autopass-engaged is the
-     soft gold fill. */
-  .actions {
-    gap: 6px;
-    margin-top: 2px;
-  }
-  .action {
-    /* basis auto (not 0) since #323 added a third button: the row
-       sizes each label to its own text and shares the slack, so
-       "autopass ✓" can't get squeezed narrower than it reads. The
-       row wraps rather than clipping if the panel is at its 220px
-       floor. */
-    flex: 1 1 auto;
-    min-width: 0;
-    white-space: nowrap;
-    padding: 4px 8px;
-    border-radius: 6px;
-    border: 1px solid var(--border);
-    background: rgba(255, 255, 255, 0.04);
-    color: var(--fg);
-    font-size: 0.85em;
-    font-weight: 600;
-    letter-spacing: 0.02em;
-    cursor: pointer;
-    transition:
-      background 140ms var(--ease),
-      border-color 140ms var(--ease),
-      opacity 140ms var(--ease);
-  }
-  .action:hover:not(:disabled) {
-    background: rgba(255, 255, 255, 0.08);
-    border-color: color-mix(in srgb, var(--border) 60%, white 40%);
-  }
-  .action:disabled {
-    opacity: 0.45;
-    cursor: not-allowed;
-  }
-  .action.next.viewer-priority {
-    background: var(--accent);
-    color: var(--accent-fg);
-    font-weight: 700;
-    border-color: var(--accent-strong);
-  }
-  .action.next.viewer-priority:hover:not(:disabled) {
-    background: var(--accent-strong);
-    border-color: var(--accent-strong);
-  }
-  /* Hold engaged reads in the "user override" colour rather than
-     gold — gold is priority everywhere on the table and hold isn't
-     priority, it's a standing instruction about it. */
-  .action.hold.on {
-    background: color-mix(in srgb, var(--magenta) 18%, transparent);
-    color: var(--magenta);
-    font-weight: 700;
-    border-color: color-mix(in srgb, var(--magenta) 55%, transparent);
-  }
-  .action.hold.on:hover:not(:disabled) {
-    background: color-mix(in srgb, var(--magenta) 28%, transparent);
-    border-color: var(--magenta);
-  }
-  .action.autopass.on {
-    background: var(--accent-soft);
-    color: var(--accent-strong);
-    font-weight: 700;
-    border-color: rgba(217, 180, 92, 0.55);
-  }
-  .action.autopass.on:hover:not(:disabled) {
-    background: rgba(217, 180, 92, 0.24);
-    border-color: var(--accent);
-  }
-  /* #628: suspended, not switched off — a distinct look from both
-     `on` (gold) and `off` (flat), so a player can tell "the server
-     is holding this" from "I turned it off". */
-  .action.autopass.paused {
-    background: rgba(255, 107, 107, 0.14);
-    border-color: rgba(255, 107, 107, 0.5);
-    color: var(--danger);
-    font-weight: 700;
-  }
-  /* Only the viewer sees this line; it is a reminder, so it stays quiet. */
-  .bluff-status {
-    font-size: 0.72rem;
-    color: var(--magenta);
-    opacity: 0.85;
-  }
   .turn-rule {
     font-size: 0.72rem;
     color: var(--danger);
-    opacity: 0.9;
-  }
-  .loop-notice {
-    align-items: flex-start;
-    gap: 6px;
-    padding: 6px 8px;
-    border: 1px solid rgba(255, 107, 107, 0.45);
-    border-radius: 6px;
-    background: rgba(255, 107, 107, 0.1);
-    line-height: 1.35;
-  }
-  .loop-label {
-    flex: none;
-    font-size: 0.66rem;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    font-weight: 700;
-    color: var(--danger);
-  }
-  .loop-text {
-    font-size: 0.72rem;
     opacity: 0.9;
   }
   .sr-only {
@@ -602,5 +381,13 @@
     clip: rect(0, 0, 0, 0);
     white-space: nowrap;
     border: 0;
+  }
+
+  /* ADR 0111 §8: at phone width the header folds to one line
+     (T7 · Alice · DECLARE BLOCKERS) and the dock's ▴ opens the track. */
+  @media (max-width: 599px) {
+    .phase-display:not(.track-open) .track {
+      display: none;
+    }
   }
 </style>

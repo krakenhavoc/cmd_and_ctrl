@@ -25,7 +25,7 @@
 // behaviour needs a hatch that is reachable BEFORE the auto-pass
 // fires — by the time the snapshot lands there is no moment left to
 // click in. `holdPriority` is that hatch: a session-scoped toggle
-// wired to a visible button in the phase widget (always on screen)
+// wired to a visible button in the action dock (always on screen)
 // and in the stack card's header (on screen exactly while the stack
 // is live). While it is on, the pre-#323 behaviour is restored
 // verbatim — every stack stops.

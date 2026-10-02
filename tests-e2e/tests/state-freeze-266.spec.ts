@@ -76,11 +76,14 @@ test.describe("#266 state freeze", () => {
 
     const players = [alice, bob];
     // PhaseDisplay's step row and turn counter — both read straight
-    // off the snapshot, so they are exactly "the board updated".
+    // off the snapshot, so they are exactly "the board updated". Since
+    // ADR 0111 PR 2 PhaseDisplay is the action dock's header, and the
+    // dock is the only place either class appears.
+    const dockOf = (page: Page) => page.getByRole("region", { name: "actions", exact: true });
     const stepOf = async (page: Page): Promise<string> =>
-      ((await page.locator(".step-label").first().textContent()) ?? "").trim();
+      ((await dockOf(page).locator(".step-label").textContent()) ?? "").trim();
     const turnOf = async (page: Page): Promise<string> =>
-      ((await page.locator(".turn-no").first().textContent()) ?? "").trim();
+      ((await dockOf(page).locator(".turn-no").textContent()) ?? "").trim();
 
     // Cleanup parks the cursor with PriorityHolder=NoPriority until
     // every owed discard is submitted, so a hand over max size

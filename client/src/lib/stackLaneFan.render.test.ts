@@ -181,7 +181,6 @@ function fakeControls(targetable = false) {
   };
   const controls: StackLaneControls = {
     counter: (it: StackLaneItem) => calls.counter.push(it.id),
-    pass: undefined,
     targetable: () => targetable,
     target: (it: StackLaneItem) => calls.target.push(it.id),
     hoverEnter: (it: StackLaneItem) => calls.enter.push(it.id),
@@ -306,7 +305,6 @@ describe("the fan's arrows, on a real board", () => {
         onSelectCombatCard: () => {},
         onDeclareAttack: () => {},
         onDeclareBlock: () => {},
-        onPassPriority: () => {},
       } as never,
     );
     const q = (sel: string) => r.container.querySelector<HTMLElement>(sel);

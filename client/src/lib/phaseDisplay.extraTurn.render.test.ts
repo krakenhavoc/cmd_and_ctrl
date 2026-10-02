@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
 //
 // phaseDisplay.extraTurn.render.test.ts — ADR 0059 Decision 11 (#753).
+// PhaseDisplay is the action dock's header since ADR 0111 PR 2; it is
+// mounted on its own here because the turn line is all this tests.
 // "T{n}" stays the round on an extra turn (owner decision 1), so the
 // extra turn is MARKED instead, and a queued extra turn names who takes
 // it next.
@@ -25,10 +27,6 @@ function mount(turn: TurnView) {
       turn,
       seats,
       mulligansOpen: false,
-      viewerHasPriority: false,
-      autopassEnabled: false,
-      onPassPriority: () => {},
-      onToggleAutopass: () => {},
     } as never,
   ).container;
 }
