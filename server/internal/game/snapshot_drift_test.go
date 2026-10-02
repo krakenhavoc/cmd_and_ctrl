@@ -493,6 +493,9 @@ var playerFields = plan(
 	// every such effect's clock, and a departed seat's skipped turns
 	// are not derivable from the board.
 	"TurnsBegun", carried, "",
+	// What the player's creatures attacked during their last turn
+	// (ADR 0108 §6): not derivable from the board.
+	"LastTurnAttacks", carried, "",
 	"Eliminated", carried, "",
 	"HandKept", carried, "",
 	"MulligansTaken", carried, "",

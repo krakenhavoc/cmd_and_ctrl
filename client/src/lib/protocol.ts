@@ -538,6 +538,11 @@ export interface LegalSourceView {
   attack_targets?: string[];
   // Attackers this creature may block, alone or in a group.
   blocks?: string[];
+  // #1918: present only when EVERY cast move for the card carries an
+  // `idle_hint` — castable, but no cast would do anything right now
+  // (an overloaded Counterflux with no spell to counter). The first
+  // such hint; the hand draws a muted ring with it as the tooltip.
+  cast_idle_hint?: string;
 }
 
 export interface LegalMoveView {
@@ -575,6 +580,11 @@ export interface LegalMoveView {
   // stack" from "has some instant". Absent on older servers, which
   // the client treats as a plain instant-speed move.
   targets_stack?: boolean;
+  // #1918: a player-facing sentence on a LEGAL cast that would do
+  // nothing on the board as it stands ("Overloaded, this does nothing
+  // right now: there's no spell you don't control."). Advice, never
+  // sent back; only overload sets it today. Absent promises nothing.
+  idle_hint?: string;
   // What the move charges beyond its mana, in the components `params`
   // cannot name — the ones the engine reads off the ability rather
   // than off the payload. Absent for the overwhelming majority of

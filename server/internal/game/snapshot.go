@@ -574,7 +574,12 @@ type playerSnapshot struct {
 	// "nobody has had a turn yet" — an effect stamped after the
 	// restore still ends on that player's next turn, because the
 	// stamp is taken from the restored value.
-	TurnsBegun         int               `json:"turnsBegun,omitempty"`
+	TurnsBegun int `json:"turnsBegun,omitempty"`
+	// LastTurnAttacks is what this player's creatures attacked during
+	// the last turn they took (ADR 0108 §6, #1882). Additive: a file
+	// written before it restores with none, which reads as "nothing
+	// attacked last turn" until the player's next turn ends.
+	LastTurnAttacks    []AttackRecord    `json:"lastTurnAttacks,omitempty"`
 	Eliminated         bool              `json:"eliminated"`
 	HandKept           bool              `json:"handKept"`
 	MulligansTaken     int               `json:"mulligansTaken"`
@@ -1894,6 +1899,7 @@ func snapshotPlayer(p *Player, cen *ContinuationCensus) playerSnapshot {
 		Emblems:            snapshotZone(p.Emblems, cen),
 		CommanderDamage:    copyIntMap(p.CommanderDamage),
 		TurnsBegun:         p.TurnsBegun,
+		LastTurnAttacks:    append([]AttackRecord(nil), p.LastTurnAttacks...),
 		Eliminated:         p.Eliminated,
 		HandKept:           p.HandKept,
 		MulligansTaken:     p.MulligansTaken,
@@ -2720,6 +2726,7 @@ func restorePlayer(p *playerSnapshot) *Player {
 		Command:            restoreZone(p.Command, ZoneCommand),
 		Emblems:            restoreZone(p.Emblems, ZoneCommand),
 		TurnsBegun:         p.TurnsBegun,
+		LastTurnAttacks:    append([]AttackRecord(nil), p.LastTurnAttacks...),
 		Eliminated:         p.Eliminated,
 		HandKept:           p.HandKept,
 		MulligansTaken:     p.MulligansTaken,

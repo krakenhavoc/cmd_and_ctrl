@@ -72,6 +72,13 @@ export interface LegalActions {
    * whose zone the wire did not name counts for any zone.
    */
   castableFrom(cardID: string, zone: ReadyZone): boolean;
+  /**
+   * #1918: the server's hint when EVERY cast the card has would do
+   * nothing right now (an overloaded Counterflux with no spell to
+   * counter). Undefined when any cast would do something, or none is
+   * idle. The casts are still legal; this only explains them.
+   */
+  castIdleHint(cardID: string): string | undefined;
   /** ADR 0093 refs of the card's live activated-ability rows. */
   readyAbilityRefs(cardID: string): readonly string[];
   /** Refs of the card's live mana-ability rows. */
@@ -112,6 +119,7 @@ interface Acc {
   faces: number[];
   attack_targets: string[];
   blocks: string[];
+  cast_idle_hint?: string;
 }
 
 function push<T>(list: T[], v: T | undefined | null): void {
@@ -147,6 +155,8 @@ function fromMoves(moves: readonly LegalMoveView[]): Map<string, LegalSourceView
     }
     return e;
   };
+  // #1918: per card, its cast moves, how many are idle, the first hint.
+  const idle = new Map<Acc, { casts: number; idle: number; hint?: string }>();
   for (const m of moves) {
     if (m.kind === "pass" || m.kind === "choice" || m.kind === "mulligan") continue;
     const source = m.source;
@@ -159,7 +169,16 @@ function fromMoves(moves: readonly LegalMoveView[]): Map<string, LegalSourceView
       case "cast":
       case "land":
         push(e.zones, str(p.from_zone));
-        if (m.kind === "cast") push(e.faces, typeof p.face === "number" ? p.face : 0);
+        if (m.kind === "cast") {
+          push(e.faces, typeof p.face === "number" ? p.face : 0);
+          let tl = idle.get(e);
+          if (!tl) idle.set(e, (tl = { casts: 0, idle: 0 }));
+          tl.casts++;
+          if (m.idle_hint) {
+            tl.idle++;
+            tl.hint ??= m.idle_hint;
+          }
+        }
         break;
       case "activate":
         push(e.abilities, str(p.ref));
@@ -197,6 +216,13 @@ function fromMoves(moves: readonly LegalMoveView[]): Map<string, LegalSourceView
       }
     }
   }
+  // The server's rule: the hint only when EVERY cast is idle. The wire
+  // cap keeps one move per (source, kind, targets_stack), so a capped
+  // list can drop a live cast; the digest, which is uncapped, is the
+  // answer whenever the server sends it.
+  for (const [e, tl] of idle) {
+    if (tl.idle === tl.casts && tl.hint) e.cast_idle_hint = tl.hint;
+  }
   return out as unknown as Map<string, LegalSourceView>;
 }
 
@@ -232,6 +258,7 @@ function lookup(
       const zones = e.zones ?? [];
       return zones.length === 0 || zones.includes(zone);
     },
+    castIdleHint: (id) => get(id)?.cast_idle_hint || undefined,
     readyAbilityRefs: (id) => get(id)?.abilities ?? NONE,
     readyManaRefs: (id) => get(id)?.mana_abilities ?? NONE,
     readySpecialActions: (id) => get(id)?.special_actions ?? NONE,
@@ -340,6 +367,7 @@ export function acrossActions(
     isReady: (id) => abilities(id).length > 0,
     kinds: (id) => (abilities(id).length > 0 ? ACTIVATE : NO_KINDS),
     castableFrom: () => false,
+    castIdleHint: () => undefined,
     readyAbilityRefs: abilities,
     readyManaRefs: () => NONE,
     readySpecialActions: () => NONE,
@@ -722,7 +750,12 @@ export function readyPhrases(
   };
   if (legal.castableFrom(id, zone)) {
     const kinds = legal.kinds(id);
-    if (kinds.includes("cast")) add("castable");
+    // #1918: the muted ring says why it is muted, aloud as well.
+    const idle = idleReadyHint(legal, id, zone);
+    if (idle) {
+      const why = idle.replace(/\.$/, "");
+      add(`castable, but ${why.charAt(0).toLowerCase()}${why.slice(1)}`);
+    } else if (kinds.includes("cast")) add("castable");
     if (kinds.includes("land")) add("playable land");
   }
   if (legal.readyAbilityRefs(id).length > 0) add("has an ability you can activate");
@@ -735,6 +768,39 @@ export function readyPhrases(
   if (!card.attacking_target && legal.canAttack(id)) add("can attack");
   if (!card.blocking_target && legal.blockableAttackers(id).length > 0) add("can block");
   return out;
+}
+
+/**
+ * idleReadyHint is #1918's muted ring: the server's hint when the card
+ * is ready in `zone` ONLY because it may be cast there, and every cast
+ * it has would do nothing right now (an overloaded Counterflux with no
+ * spell to counter). The card still draws a ring, because the cast is
+ * legal, but a muted one with this as its tooltip, so it doesn't look
+ * like a play worth making.
+ *
+ * Undefined, and an ordinary ring, the moment the card has anything
+ * else: a cast that would do something (the server leaves
+ * `cast_idle_hint` off then), a land play, a live ability, a mana
+ * ability or a special action. Nothing here judges the board; the hint
+ * is the server's, and so is the "every cast" rule.
+ */
+export function idleReadyHint(
+  legal: LegalActions,
+  cardID: string,
+  zone: ReadyZone,
+): string | undefined {
+  if (!legal.castableFrom(cardID, zone)) return undefined;
+  const hint = legal.castIdleHint(cardID);
+  if (!hint) return undefined;
+  if (legal.kinds(cardID).some((k) => k !== "cast")) return undefined;
+  if (
+    legal.readyAbilityRefs(cardID).length > 0 ||
+    legal.readyManaRefs(cardID).length > 0 ||
+    legal.readySpecialActions(cardID).length > 0
+  ) {
+    return undefined;
+  }
+  return hint;
 }
 
 /**

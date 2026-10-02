@@ -3175,6 +3175,12 @@ seats[].handKept	bool
 seats[].id	custom(uuid.UUID)
 seats[].isBot	bool
 seats[].landDropsPerTurn	number:int
+seats[].lastTurnAttacks	array
+seats[].lastTurnAttacks[]	object
+seats[].lastTurnAttacks[].attacker	custom(uuid.UUID)
+seats[].lastTurnAttacks[].defender	custom(uuid.UUID)
+seats[].lastTurnAttacks[].epoch	number:int
+seats[].lastTurnAttacks[].phaseId	number:int
 seats[].library	object
 seats[].library.cards	array
 seats[].library.cards[]	object

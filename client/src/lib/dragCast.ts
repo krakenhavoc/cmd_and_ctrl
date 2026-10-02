@@ -58,13 +58,11 @@ export const CAST_ZONE_MARGIN_PX = 60;
 // a red card snaps back.
 export const SNAP_REASON_MS = 2200;
 
-// LAND_DRAG_REASON is what a dragged land says (owner decision 5: lands
-// are not drag-played for now). The land still enters the drag — so the
-// player sees why nothing happened rather than a card that will not
-// move — and snaps back when released on the table. Inside the hand's
-// band it reorders like any other card (#1524): only CASTING a land by
-// drag is refused.
-export const LAND_DRAG_REASON = "Play lands by clicking";
+// LAND_DRAG_FALLBACK_REASON words a refused land drop that carries no
+// reason of its own (#1920). Lands are drag-played like spells are
+// drag-cast: the verdict is the same Legality the hand's click path
+// uses, which reads the server's "land" moves.
+export const LAND_DRAG_FALLBACK_REASON = "Can't play a land now";
 
 export type DragPhase = "idle" | "pressed" | "dragging";
 
@@ -331,7 +329,12 @@ export function dragVerdict(
   legality: Legality,
   preview: AutoTapPreview | null | undefined,
 ): Verdict {
-  if (isLand(card)) return { castable: false, reason: LAND_DRAG_REASON };
+  // #1920: a land drops like a spell, but it has no mana to preview.
+  if (isLand(card)) {
+    return legality.legal
+      ? { castable: true }
+      : { castable: false, reason: legality.reason ?? LAND_DRAG_FALLBACK_REASON };
+  }
   if (!legality.legal) return { castable: false, reason: legality.reason ?? "Can't cast now" };
   if (preview && !preview.ok && previewDecidesMana(card)) {
     return { castable: false, reason: cantPayReason(preview) };
@@ -340,7 +343,7 @@ export function dragVerdict(
 }
 
 // wantsPreview: is an auto-tap preview worth fetching for this drag?
-// Not for a land (it never casts) and not for a card the legality check
+// Not for a land (nothing to pay) and not for a card the legality check
 // already refused (it will snap back whatever the mana says).
 export function wantsPreview(card: CardView, legality: Legality): boolean {
   return !isLand(card) && legality.legal;

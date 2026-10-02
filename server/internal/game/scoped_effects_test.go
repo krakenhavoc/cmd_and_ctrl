@@ -229,6 +229,9 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// ADR 0107 §6: the next-damage shield is a replacement. Its
 		// cases are in prevent_next_from_source_test.go.
 		ModPreventNextFromSource: true,
+		// ADR 0108 §4: Yawgmoth's Will's replacement. Its cases are in
+		// scoped_exile_your_graveyard_test.go.
+		ModExileInsteadOfYourGraveyard: true,
 	}
 	for _, k := range ModKinds() {
 		if !covered[k] {
