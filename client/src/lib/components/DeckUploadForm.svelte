@@ -55,6 +55,8 @@
   // sets expectations, and on a typical Commander deck the list is
   // most of the 100 — worth having, not worth unfurling by default.
   let unimplemented = $state<string[]>([]);
+  // The deck was seated but not saved to the library: the 200-deck cap.
+  let libraryNote = $state("");
 
   function violationLabel(v: ApiViolation): string {
     return v.card ? `${v.card}: ${v.message}` : v.message;
@@ -81,6 +83,7 @@
     warnings = [];
     successMessage = "";
     unimplemented = [];
+    libraryNote = "";
   }
 
   async function submit(): Promise<void> {
@@ -96,6 +99,7 @@
       successMessage = `uploaded ${res.deck_name || "deck"}: ${res.card_count} cards, commander: ${res.commanders.join(", ")}`;
       if (res.warnings && res.warnings.length > 0) warnings = res.warnings;
       if (res.unimplemented && res.unimplemented.length > 0) unimplemented = res.unimplemented;
+      if (res.library_note) libraryNote = res.library_note;
       source = "";
       onSuccess?.(res);
     } catch (err) {
@@ -146,6 +150,11 @@
   {#if errorMessage}
     <pre class="deck-error">{errorMessage}</pre>
   {/if}
+  {#if libraryNote}
+    <p class="library-note" role="status">
+      {libraryNote} <a href="#/decks">Open your decks</a>
+    </p>
+  {/if}
   {#if violations.length || warnings.length}
     <ul class="viol">
       {#each violations as v (v.code + (v.card ?? "") + v.message)}
@@ -179,6 +188,14 @@
 </div>
 
 <style>
+  .library-note {
+    margin: 10px 0 0;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border-strong);
+    font-size: 12.5px;
+    color: var(--fg);
+  }
   .own-list {
     margin: 14px 0 0;
     font-size: 12.5px;
