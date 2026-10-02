@@ -39,18 +39,15 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // LoseAllAbilities() — a DECLARATION (RemovesAbilities: true), never
 // something an Apply closure does by hand.
 //
-// (c) THE ABILITY IT GRANTS. This is the blocker. The chosen
-// permanents gain "{T}, Sacrifice this artifact: Add one mana of any
-// color" — a MANA ability given to another permanent by a continuous
-// effect. Mana abilities are read out of the catalog by the
-// permanent's OWN oracle ID (game.CatalogManaAbilities via
-// CatalogAbilityKey); Characteristic carries granted KEYWORDS as
-// strings and has nowhere to put an ability with a cost and a
-// production. That is the "Ability granted to another permanent" seam
-// (#754). Since ADR 0093 a STATIC can grant one (Chromatic Lantern,
-// Cryptolith Rite, Gemhide Sliver and friends ship on it), but this
-// grant is made by a resolving ability for a duration, which is the
-// ADR's PR 4 and still has no shape.
+// (c) THE ABILITY IT GRANTS. The chosen permanents gain "{T},
+// Sacrifice this artifact: Add one mana of any color" — a MANA ability
+// given to another permanent by a continuous effect. This used to be
+// the blocker (#754) and is not any more: ADR 0093 lets a static grant
+// one (Chromatic Lantern, Cryptolith Rite, Gemhide Sliver), and its
+// PR 4 (#1584, shipped in #1603) lets a resolving ability grant one for
+// a duration, as effects.GrantAbilitiesFor. What is still needed here
+// is a registered bundle holding the Treasure mana ability, and the
+// card has not been rebuilt on it yet.
 //
 // # Why there is no partial
 //
@@ -61,9 +58,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // not one: "for as long as this creature remains on the battlefield"
 // is CR 611.2b and has had a shape since #755 / ADR 0063
 // (DurationWhileSourceRemains + ScopedEffectFor with a Match,
-// the same machinery Sower of Temptation uses). So the trigger is one
-// engine seam away, not three, and the file is written so that when
-// #754 lands the whole ability can be added in one place.
+// the same machinery Sower of Temptation uses). With the grant (c)
+// built, the one gap left is the per-player target clause (a), and
+// the file is written so that when it lands the whole ability can be
+// added in one place.
 func init() {
 	Register(Spec{
 		OracleID:     "2452be47-cc23-47f7-a3a1-fec900bb0119",
