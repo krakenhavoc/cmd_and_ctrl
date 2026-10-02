@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { CARDS } from "./s19-deck-fixture";
 import {
   adminMoveByName,
@@ -18,7 +18,7 @@ import {
 // S19 trigger e2e suite. Each test spins up a fresh 2-player game
 // (≈10s setup) and exercises one S19 trigger end-to-end through the
 // real WS path: admin moves a card onto the battlefield, the trigger
-// harvester fires, the chooser's browser sees the modal (or doesn't,
+// harvester fires, the chooser's browser sees the prompt (or doesn't,
 // for mandatory triggers), and the test asserts on the resulting
 // snapshot.
 //
@@ -33,6 +33,15 @@ import {
 // priority. Each test asserts the trigger is waiting there, then
 // resolves it through the players' own "next" buttons via
 // resolveStack before asserting on the effect.
+//
+// ADR 0111 Delivery PR 5: a trigger's yes/no and a pay-unless are not a
+// centred modal any more. They are answered inline in the action dock
+// (region "actions"), inside one non-modal dialog that keeps the
+// modal's name (the prompt's reason). The buttons keep their names
+// (Yes, No, "Pay {2}", "Don't pay"), and are found inside the dock, so
+// a copy anywhere else on the page would not be clicked by mistake.
+// The "absent on the opponent's page" checks stay page-wide.
+const dockOf = (page: Page) => page.getByRole("region", { name: "actions", exact: true });
 
 // waitForPickTarget resolves once a pick_target prompt is queued for
 // `chooser` (S20 sub-PR 2 — targeted triggers ask for their target on
@@ -190,13 +199,16 @@ test.describe("S19 ETB triggers", () => {
     // server's Question copy) rather than a bare page-wide text
     // scan: that also matched the stack overlay and the targeting
     // banner, and it raced the WS delta on a 5s budget.
-    await expect(caster.page.getByRole("dialog", { name: /Reclamation Sage —/i })).toBeVisible({ timeout: 20_000 });
+    await expect(dockOf(caster.page).getByRole("dialog", { name: /Reclamation Sage —/i })).toBeVisible({ timeout: 20_000 });
     await expect(opponent.page.getByRole("dialog", { name: /Reclamation Sage —/i })).toHaveCount(
       0,
     );
 
     // Click "Yes" in the caster's dialog.
-    await caster.page.getByRole("button", { name: /^Yes$/ }).click();
+    await dockOf(caster.page)
+      .getByRole("dialog", { name: /Reclamation Sage —/i })
+      .getByRole("button", { name: /^Yes$/ })
+      .click();
 
     // S20: "Yes" asks WHICH artifact or enchantment. The caster's
     // board enters targeting mode; the Sol Ring is a legal target
@@ -254,7 +266,7 @@ test.describe("S19 ETB triggers", () => {
       "trigger prompt queued",
     );
 
-    await caster.page.getByRole("button", { name: /^No$/ }).click();
+    await dockOf(caster.page).getByRole("button", { name: /^No$/ }).click();
 
     const after = await admin.waitFor(
       (v) => (v.pending_choices ?? []).length === 0,
@@ -339,9 +351,12 @@ test.describe("S19 ETB triggers", () => {
       "Eternal Witness prompt queued",
     );
 
-    await expect(caster.page.getByRole("dialog", { name: /Eternal Witness —/i })).toBeVisible({ timeout: 20_000 });
+    await expect(dockOf(caster.page).getByRole("dialog", { name: /Eternal Witness —/i })).toBeVisible({ timeout: 20_000 });
 
-    await caster.page.getByRole("button", { name: /^Yes$/ }).click();
+    await dockOf(caster.page)
+      .getByRole("dialog", { name: /Eternal Witness —/i })
+      .getByRole("button", { name: /^Yes$/ })
+      .click();
 
     // S20: pick the card — open the caster's own graveyard browser
     // and click the Bolt.
@@ -403,7 +418,7 @@ test.describe("S19 ETB triggers", () => {
       "prompt queued",
     );
 
-    await caster.page.getByRole("button", { name: /^No$/ }).click();
+    await dockOf(caster.page).getByRole("button", { name: /^No$/ }).click();
 
     const after = await admin.waitFor(
       (v) => (v.pending_choices ?? []).length === 0,
@@ -464,11 +479,12 @@ test.describe("S19 ETB triggers", () => {
     // are TWO dialogs whose accessible name starts "Solemn
     // Simulacrum —", and getByRole's name match is a substring by
     // default, so a loose pattern here would match either one.
-    await expect(
-      caster.page.getByRole("dialog", { name: "Solemn Simulacrum — search for a basic land?" }),
-    ).toBeVisible({ timeout: 20_000 });
+    const solemnPrompt = dockOf(caster.page).getByRole("dialog", {
+      name: "Solemn Simulacrum — search for a basic land?",
+    });
+    await expect(solemnPrompt).toBeVisible({ timeout: 20_000 });
 
-    await caster.page.getByRole("button", { name: /^Yes$/ }).click();
+    await solemnPrompt.getByRole("button", { name: /^Yes$/ }).click();
 
     const staged = await admin.waitFor(
       (v) =>
@@ -558,7 +574,7 @@ test.describe("S19 ETB triggers", () => {
     );
     const libraryAtPrompt = playerByID(promptView, caster.playerID).library.count;
 
-    await caster.page.getByRole("button", { name: /^No$/ }).click();
+    await dockOf(caster.page).getByRole("button", { name: /^No$/ }).click();
 
     const after = await admin.waitFor(
       (v) => (v.pending_choices ?? []).length === 0,
@@ -605,8 +621,8 @@ test.describe("S19 ETB triggers", () => {
     // Caster sees the dialog with Yes/No buttons; opponent has no
     // trigger dialog at all (the only legitimate dialog they could
     // see is mulligan, which has long since closed).
-    await expect(caster.page.getByRole("button", { name: /^Yes$/ })).toBeVisible({ timeout: 20_000 });
-    await expect(caster.page.getByRole("button", { name: /^No$/ })).toBeVisible({ timeout: 20_000 });
+    await expect(dockOf(caster.page).getByRole("button", { name: /^Yes$/ })).toBeVisible({ timeout: 20_000 });
+    await expect(dockOf(caster.page).getByRole("button", { name: /^No$/ })).toBeVisible({ timeout: 20_000 });
     await expect(opponent.page.getByRole("dialog", { name: /Reclamation Sage —/i })).toHaveCount(
       0,
     );
@@ -640,12 +656,11 @@ test.describe("S19 ETB triggers", () => {
     // Server-side Question text from the Spec.
     expect(prompt?.reason).toMatch(/Solemn Simulacrum.*basic land/i);
 
-    // Client-side modal should render the same text — proves the
+    // The dock's prompt should render the same text — proves the
     // wire shape's `reason` field flows through to the dialog
-    // without truncation or escape errors. The modal's <h2> IS its
-    // aria-labelledby target, so the reason is the dialog's
-    // accessible name.
-    await expect(caster.page.getByRole("dialog", { name: prompt!.reason! })).toBeVisible({ timeout: 20_000 });
+    // without truncation or escape errors. The reason is the dock
+    // request's dialog name (ADR 0111 PR 5), as it was the modal's.
+    await expect(dockOf(caster.page).getByRole("dialog", { name: prompt!.reason! })).toBeVisible({ timeout: 20_000 });
   });
 
   // S19 sub-PR 6: pay-unless. The opponent's Smothering Tithe taxes
@@ -690,10 +705,10 @@ test.describe("S19 ETB triggers", () => {
     expect(prompt?.pay_cost).toBe("{2}");
 
     // Caster's browser shows the pay dialog; the opponent's doesn't.
-    await expect(caster.page.getByRole("button", { name: /^Pay \{2\}$/ })).toBeVisible({ timeout: 20_000 });
+    await expect(dockOf(caster.page).getByRole("button", { name: /^Pay \{2\}$/ })).toBeVisible({ timeout: 20_000 });
     await expect(opponent.page.getByRole("button", { name: /^Pay \{2\}$/ })).toHaveCount(0);
 
-    await caster.page.getByRole("button", { name: /^Don't pay$/ }).click();
+    await dockOf(caster.page).getByRole("button", { name: /^Don't pay$/ }).click();
 
     const after = await admin.waitFor(
       (v) => {

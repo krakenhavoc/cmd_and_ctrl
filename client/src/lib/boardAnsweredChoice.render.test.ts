@@ -9,14 +9,28 @@
 // and every OTHER choice owed to the viewer must still reach it — even
 // when a board-answered one is queued ahead of it.
 
-import { describe, it, expect, afterEach } from "vitest";
+import { describe, it, expect, afterEach, beforeEach } from "vitest";
 
-import ChoicePromptModal from "./components/board/ChoicePromptModal.svelte";
+// ADR 0111 PR 5: the small kinds (pay_unless here) open in the action
+// dock, so the prompt is mounted beside a real dock.
+import ChoiceDockHarness from "./test/ChoiceDockHarness.svelte";
+import { _resetForTests as resetDock } from "./dock";
+import { _resetForTests as resetModals } from "./modalLayers";
 import { isBoardAnsweredChoice } from "./boardAnsweredChoice";
 import type { ActionType, GameView } from "./protocol";
 import { render, cleanup } from "./test/render.svelte";
 
 afterEach(cleanup);
+beforeEach(() => {
+  const g = globalThis as Record<string, unknown>;
+  g.ResizeObserver ??= class {
+    observe(): void {}
+    unobserve(): void {}
+    disconnect(): void {}
+  };
+  resetDock();
+  resetModals();
+});
 
 const legendRule = {
   id: "legend-1",
@@ -57,7 +71,7 @@ const snapWith = (choices: unknown[]): GameView =>
 
 function mount(choices: unknown[]): HTMLElement {
   return render(
-    ChoicePromptModal as never,
+    ChoiceDockHarness as never,
     {
       snap: snapWith(choices),
       viewerID: "me",
@@ -90,7 +104,10 @@ describe("choices answered on the board", () => {
 
   it("still opens the next owed choice when a board-answered one is ahead of it", () => {
     const container = mount([legendRule, payUnless]);
-    const title = container.querySelector("#choice-title");
-    expect(title?.textContent).toContain("Pay {2} or Propaganda stops the attack");
+    expect(
+      container.querySelector(
+        '[role="dialog"][aria-label="Pay {2} or Propaganda stops the attack"]',
+      ),
+    ).not.toBeNull();
   });
 });

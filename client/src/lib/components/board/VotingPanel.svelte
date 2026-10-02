@@ -17,9 +17,15 @@
     view: GameView;
     viewerID: string | null;
     sendAction: ActionSender;
+    // ADR 0111 PR 5: the action dock is on screen. An open vote is then
+    // the dock's (lib/choiceDock.ts voteRequest), so this panel draws
+    // nothing while one is open; the launcher stays until PR 7 moves it
+    // into the dock's ⋯ menu. Without a dock (a spectator) the panel is
+    // drawn as before.
+    docked?: boolean;
   }
 
-  const { view, viewerID, sendAction }: Props = $props();
+  const { view, viewerID, sendAction, docked = false }: Props = $props();
 
   const vote = $derived(view.vote ?? null);
 
@@ -67,7 +73,9 @@
   }
 </script>
 
-{#if vote}
+{#if vote && docked}
+  <!-- The open vote is in the action dock. -->
+{:else if vote}
   <div class="vote-modal" role="dialog" aria-modal="true" aria-label="open vote">
     <header class="head">
       <span class="badge" aria-hidden="true">vote</span>
