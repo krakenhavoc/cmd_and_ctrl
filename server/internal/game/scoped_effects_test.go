@@ -232,6 +232,9 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// ADR 0108 §1 and §2: a replacement and a rules gate. Their
 		// cases are in exile_if_dies_test.go.
 		ModExileIfWouldDie: true, ModCantBeRegenerated: true,
+		// ADR 0108 §4: Yawgmoth's Will's replacement. Its cases are in
+		// scoped_exile_your_graveyard_test.go.
+		ModExileInsteadOfYourGraveyard: true,
 	}
 	for _, k := range ModKinds() {
 		if !covered[k] {

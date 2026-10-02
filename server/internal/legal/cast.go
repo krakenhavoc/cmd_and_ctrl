@@ -1306,6 +1306,9 @@ func (e *enumerator) castMoveEmitter(
 	branch *int,
 	paying *game.AdditionalCost,
 ) castEmitter {
+	// #1918: fixed for the whole expansion — it reads the offer and the
+	// board, never the targets (a cast it applies to has none).
+	idle := e.idleCastHint(card, offer, chosen)
 	return func(altPaid []uuid.UUID, modes []int, targets []game.TargetRef, setX, phyLife int, dist map[uuid.UUID]int, discards, sacs, delve []uuid.UUID) {
 		label := "Cast " + card.Name
 		switch from {
@@ -1366,6 +1369,7 @@ func (e *enumerator) castMoveEmitter(
 			// per ANNOUNCEMENT, not per card, so only the modes that
 			// actually chose a stack target come back flagged.
 			TargetsStack: targetsStackObject(g, targets),
+			IdleHint:     idle,
 			Params: mustJSON(castParams{
 				InstanceID:      card.InstanceID.String(),
 				FromZone:        from,
@@ -1393,6 +1397,47 @@ func (e *enumerator) castMoveEmitter(
 			}),
 		})
 	}
+}
+
+// idleCastHint is Move.IdleHint for a cast under `offer` (#1918): the
+// player-facing reason an overloaded spell would do nothing right now,
+// or "" when it would do something, or when the cast is not one this
+// asks about.
+//
+// Only an offer that DELETES the target clause is asked about — the
+// one shape where the engine knows exactly what the spell would touch
+// without being told: CR 702.96a turns "target X" into "each X", so the
+// set is the clause's own filter. And it is read without the targeting
+// gate (SpecCandidatesForEffect, not LegalTargetsForEffect): "each" is
+// not targeting (CR 702.96b), so a hexproof or shrouded permanent, or
+// one with protection, is still something an overloaded Cyclonic Rift
+// returns. The clause is the one the cast would have announced without
+// the offer, after any optional cost that swaps it (ADR 0089 §3), as
+// castMovesPayingOptional reads it.
+//
+// Caller holds g.mu, as for the rest of the enumeration.
+func (e *enumerator) idleCastHint(card game.Card, offer *game.AlternativeCost, chosen []int) string {
+	if !offer.Clears() {
+		return ""
+	}
+	key := game.CatalogKey(card)
+	spec := game.TargetSpecUnderOptionalCosts(game.TargetSpecFor(key), game.OptionalCostsFor(key), chosen)
+	if spec == nil {
+		return ""
+	}
+	lt := e.g.SpecCandidatesForEffect(e.seat, spec)
+	if len(lt.Players)+len(lt.Cards) > 0 {
+		return ""
+	}
+	how := "Cast this way"
+	if offer.Key == "overload" {
+		how = "Overloaded"
+	}
+	what := "there's nothing for it to affect."
+	if noun, ok := strings.CutPrefix(spec.Label, "target "); ok && noun != "" {
+		what = "there's no " + noun + "."
+	}
+	return how + ", this does nothing right now: " + what
 }
 
 // distributionWire is a division on the wire: target id string →
