@@ -52,10 +52,11 @@ import "github.com/google/uuid"
 // (CR 702.16e is a prevention effect). A replacement that is not a
 // prevention effect — a doubler, a redirection — is untouched.
 //
-// "Any additional effects they have will take place": no prevention
-// effect in this engine has one yet. ADR 0107 §6's "the damage
-// prevented this way" follow-up is the first, and it runs here with
-// zero prevented when it lands (preventionAppliedToUnpreventableLocked).
+// "Any additional effects they have will take place": ADR 0107 §6's
+// "the damage prevented this way" follow-up (ModPreventNextFromSource's
+// Then) is queued here with zero prevented, and runs once the event has
+// settled, as it would have after a real prevention
+// (preventionAppliedToUnpreventableLocked).
 //
 // CR 615.13's "whenever damage is prevented" triggers have nothing to
 // see either: nothing was prevented, and the engine emits no prevention
@@ -352,13 +353,16 @@ func (g *Game) settleUnpreventableLocked(ev *ReplacementEvent, applicable []acti
 }
 
 // preventionAppliedToUnpreventableLocked is where CR 615.12's "any
-// additional effects they have will take place" runs, with nothing
-// prevented. No prevention effect in this engine has an additional
-// effect yet, so it does nothing; ADR 0107 §6's "the damage prevented
-// this way" follow-up is the first that will.
+// additional effects they have will take place" happens, with nothing
+// prevented. The one prevention effect with an additional effect is ADR
+// 0107 §6's next-damage shield, whose "the damage prevented this way"
+// follow-up is queued with zero; the shield itself is not used up
+// (CR 609.7b: a shield that prevents no damage isn't).
 //
-// Caller must hold g.mu.
-func (g *Game) preventionAppliedToUnpreventableLocked(*ReplacementEvent, activeReplacement) {}
+// Caller must hold g.mu (write).
+func (g *Game) preventionAppliedToUnpreventableLocked(ev *ReplacementEvent, a activeReplacement) {
+	g.preventionFollowUpForUnpreventableLocked(ev, a.id)
+}
 
 // --- the rule grants (source 4) -------------------------------------
 

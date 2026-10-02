@@ -217,6 +217,9 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// unpreventable_damage_test.go and cant_gain_life_test.go.
 		ModDamageCantBePrevented: true, ModDamageCantBeRedirected: true,
 		ModCantGainLife: true, ModGainNoLife: true,
+		// ADR 0107 §6: the next-damage shield is a replacement. Its
+		// cases are in prevent_next_from_source_test.go.
+		ModPreventNextFromSource: true,
 	}
 	for _, k := range ModKinds() {
 		if !covered[k] {

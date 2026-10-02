@@ -208,6 +208,10 @@ var choiceGateDecisions = map[PendingChoiceKind]bool{
 	PendingChoiceRevealPick:      true,
 	PendingChoiceTheirPermanents: true,
 	PendingChoiceOwnPermanents:   true,
+	// ADR 0107 §6, CR 609.7a. "Choose a source" is asked as a
+	// prevention shield is created, mid-resolution, and the shield is
+	// the rest of the card: it blocks for option_pick's reason.
+	PendingChoiceChooseSource: true,
 	// #804, CR 726. The one kind whose blocking is worth arguing
 	// about, since ADR 0055 §4 was careful that the loop breaker
 	// refuse no passes. It blocks: the shortcut is proposed while the

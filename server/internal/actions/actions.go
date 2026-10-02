@@ -1870,6 +1870,10 @@ func dispatch(g *game.Game, a Action) error {
 				// #1214: "sacrifice any number of lands" — the
 				// untargeted self-choice, whose floor really is zero.
 				return g.ResolveOwnPermanents(choiceID, a.Player, ids)
+			case game.PendingChoiceChooseSource:
+				// ADR 0107 §6, CR 609.7a: "a source of your choice" —
+				// exactly one, from the prompt's candidates.
+				return g.ResolveChooseSource(choiceID, a.Player, ids)
 			case game.PendingChoiceCopyTarget:
 				// "You may have this enter as a copy of ..." — an
 				// EMPTY list is the decline, exactly as it is for

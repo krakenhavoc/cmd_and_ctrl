@@ -530,6 +530,30 @@ Permanents that *cannot* untap — held by a "doesn't untap" static or a
 options. A chosen permanent with a stun counter still spends the
 counter instead of untapping (CR 122.1d).
 
+### `choose_source` — "a source of your choice" (ADR 0107 §6, #1860, CR 609.7a)
+
+`pending_choices` may carry `kind: "choose_source"`. It is asked as a
+damage-prevention shield is made — "The next time a red source of your
+choice would deal damage to you this turn, prevent that damage"
+(Circle of Protection: Red, Deflecting Palm) — and the rest of the card
+waits on it, so it blocks the table.
+
+It carries and is answered exactly like `choose_cards` with a floor and
+ceiling of one: `options[]` are the candidates, `choose_min` and
+`choose_max` are both `1`, and `resolve_choice { choice_id, card_ids:
+[id] }` names the source. The candidates are everything CR 609.7a
+allows that has the card's property ("a red source"): permanents,
+spells on the stack, face-up cards in a command zone, and cards in a
+graveyard or exile that an item on the stack, a waiting prevention or
+replacement effect or a waiting delayed trigger refers to. A card in a
+hand or a library is never offered. All of them are public, so the
+options and the bounds reach every seat. The client captions each one
+with its controller and its zone.
+
+The property is checked again when the source would deal the damage
+(CR 615.9): if it no longer matches, the damage is dealt and the shield
+is not used up.
+
 ### `entry_reveal_from_hand` — a card choice inside an entry replacement (#1198, CR 614.1c)
 
 `pending_choices` may carry `kind: "entry_reveal_from_hand"`. It is the

@@ -64,3 +64,10 @@ body gift-of-immortality/return-aura
 body evolve/grow
 body rebound/cast
 body dorothea/sacrifice-at-end-of-combat
+body new-way-forward/prevented
+body new-way-forward/strike-back
+body prevention/black-gain-life
+body prevention/damage-source-controller
+body prevention/exile-library-top
+body prevention/gain-life-equal
+body prevention/red-damage-source-controller

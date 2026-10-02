@@ -1041,6 +1041,14 @@ export interface PendingChoiceView {
     // sibling of a target clause, and the one of the three whose floor
     // is routinely zero.
     | "own_permanents"
+    // ADR 0107 §6 (#1860), CR 609.7a: "a source of your choice" — the
+    // Circles of Protection, Deflecting Palm. Exactly one of `options`,
+    // answered with {choice_id, card_ids: [id]}, on the same grid. The
+    // candidates span zones (permanents, spells on the stack, face-up
+    // command-zone cards, and graveyard or exile cards something on the
+    // stack still refers to), all public, so the options reach every
+    // seat.
+    | "choose_source"
     // #742: "choose a color" (CR 105.4) — as a permanent enters
     // (Coldsteel Heart, the Thriving lands; the answer is remembered on
     // the permanent) or while a spell resolves (Wash Out). color_options
@@ -1207,8 +1215,9 @@ export interface PendingChoiceView {
   // that needs to reason about the price rather than print it.
   life_cost?: number;
   // #74: populated for kinds "choose_cards", "untap_choice",
-  // "entry_reveal_from_hand" and #1214's three resolution-time picks
-  // ("reveal_pick", "their_permanents", "own_permanents") — how few
+  // "entry_reveal_from_hand", #1214's three resolution-time picks
+  // ("reveal_pick", "their_permanents", "own_permanents") and ADR 0107's
+  // "choose_source" (one of one) — how few
   // and how many of `options` the chooser must pick. Absent for every
   // other kind, and (for the two kinds whose candidates are cards in a
   // hand — choose_cards and entry_reveal_from_hand) absent for

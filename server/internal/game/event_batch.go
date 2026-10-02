@@ -114,6 +114,9 @@ import "github.com/google/uuid"
 func (g *Game) beginEventBatchLocked() {
 	g.eventBatch++
 	g.resolving = nil
+	// ADR 0107 §6: a next-damage shield spent in the batch that just
+	// ended has prevented its instance of damage (CR 615.8).
+	g.dropSpentNextShieldsLocked()
 }
 
 // currentEventBatchLocked is the batch EmitEvent stamps. The counter

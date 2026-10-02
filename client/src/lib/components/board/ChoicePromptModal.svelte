@@ -35,6 +35,7 @@
   import ManaSymbolPicker from "./ManaSymbolPicker.svelte";
   import { payUnlessAnswer, waterbendLimit } from "../../waterbend";
   import { mayCastCopy } from "../../mayCast";
+  import { damageSourceCaption } from "../../damageSource";
   import { freeCastRequest, mayCastKeywordsThatOpenACast } from "../../freeCastRequest";
 
   interface Props {
@@ -230,6 +231,10 @@
   const isTheirPermanents = $derived(active?.kind === "their_permanents");
   const isOwnPermanents = $derived(active?.kind === "own_permanents");
   const isPermanentPick = $derived(isTheirPermanents || isOwnPermanents);
+  // ADR 0107 §6, CR 609.7a: "a source of your choice". One card, from
+  // several zones, so each candidate is captioned with whose it is and
+  // where it is (damageSource.ts).
+  const isChooseSource = $derived(active?.kind === "choose_source");
   // The kinds that share the bounded card-set grid.
   const isCardSetPick = $derived(
     isChooseCards ||
@@ -238,7 +243,8 @@
       isEntryDiscard ||
       isEntrySacrifice ||
       isRevealPick ||
-      isPermanentPick,
+      isPermanentPick ||
+      isChooseSource,
   );
 
   // How many cards this prompt accepts, and how few it will settle
@@ -1737,6 +1743,9 @@
           {:else if isPermanentPick}
             {active.reason || "Choose permanents"}
             <span class="prompt-src" aria-hidden="true">choose · CR 608.2</span>
+          {:else if isChooseSource}
+            {active.reason || "Choose a source of damage"}
+            <span class="prompt-src" aria-hidden="true">source · CR 609.7a</span>
           {:else}
             {active.reason || "Choose"} — pick {active.count} card{active.count === 1 ? "" : "s"}
             <span class="prompt-src" aria-hidden="true">{isSelfSource ? "discard" : "reveal"}</span>
@@ -1815,6 +1824,11 @@
               Pick between {pickMin} and {pickMax} of your permanents.
             {/if}
             Nothing here is targeted — the choice is being made now, as the card resolves.
+          {:else if isChooseSource}
+            Pick the source whose next damage this prevents. It isn't targeted, so anything listed
+            can be chosen — a permanent, a spell on the stack, or a card that something on the stack
+            still refers to. If the card names a kind of source, that is checked again when the
+            damage would be dealt.
           {:else if isSelfSource}
             Pick {active.count} card{active.count === 1 ? "" : "s"} from your hand to discard.
           {:else}
@@ -1835,6 +1849,9 @@
               aria-label={`select ${c.name || "card"}`}
             >
               <Card card={c} />
+              {#if isChooseSource}
+                <span class="source-caption">{damageSourceCaption(snap, c, viewerID)}</span>
+              {/if}
             </button>
           {/each}
         </div>
@@ -1866,6 +1883,8 @@
                 : "Discard"}
             {:else if isEntrySacrifice}
               Sacrifice
+            {:else if isChooseSource}
+              Choose this source
             {:else if isChooseCards || isRevealPick || isPermanentPick}
               Choose
             {:else}
@@ -2007,6 +2026,15 @@
   .card-pick:disabled {
     opacity: 0.4;
     cursor: not-allowed;
+  }
+  /* ADR 0107 §6: whose a candidate source is, and where. */
+  .source-caption {
+    display: block;
+    margin-top: 4px;
+    font-size: 11px;
+    line-height: 1.3;
+    color: var(--fg-muted);
+    text-align: center;
   }
   /* S26 creature-type picker. The list is the whole CR 205.3m
      vocabulary, so it scrolls inside a fixed box rather than growing

@@ -814,6 +814,7 @@ lastKnownPermanents{}[].characteristic.Supertypes[]	string
 lastKnownPermanents{}[].characteristic.Toughness	number:int
 lastKnownPermanents{}[].characteristic.Types	array
 lastKnownPermanents{}[].characteristic.Types[]	string
+lastKnownPermanents{}[].chosenColor	string
 lastKnownPermanents{}[].controller	custom(uuid.UUID)
 lastKnownPermanents{}[].counters	map:string
 lastKnownPermanents{}[].counters{}	number:int
@@ -823,6 +824,7 @@ lastKnownPermanents{}[].delved[].epoch	number:int
 lastKnownPermanents{}[].delved[].id	custom(uuid.UUID)
 lastKnownPermanents{}[].epoch	number:int
 lastKnownPermanents{}[].left	bool
+lastKnownPermanents{}[].namedTribe	string
 lastKnownPermanents{}[].power	number:int
 lastKnownPermanents{}[].tapped	bool
 lastKnownPermanents{}[].toughness	number:int
@@ -1990,7 +1992,21 @@ scopedEffects[].mods[].objects[].epoch	number:int
 scopedEffects[].mods[].objects[].id	custom(uuid.UUID)
 scopedEffects[].mods[].player	custom(uuid.UUID)
 scopedEffects[].mods[].power	number:int
+scopedEffects[].mods[].queries	array
+scopedEffects[].mods[].queries[]	object
+scopedEffects[].mods[].queries[].Colors	array
+scopedEffects[].mods[].queries[].Colors[]	string
+scopedEffects[].mods[].queries[].Enchanted	bool
+scopedEffects[].mods[].queries[].Keyword	string
+scopedEffects[].mods[].queries[].Subtypes	array
+scopedEffects[].mods[].queries[].Subtypes[]	string
+scopedEffects[].mods[].queries[].Supertypes	array
+scopedEffects[].mods[].queries[].Supertypes[]	string
+scopedEffects[].mods[].queries[].Types	array
+scopedEffects[].mods[].queries[].Types[]	string
 scopedEffects[].mods[].restrictions	number:uint8
+scopedEffects[].mods[].sourceZone	string
+scopedEffects[].mods[].spentBatch	number:uint64
 scopedEffects[].mods[].subtypes	array
 scopedEffects[].mods[].subtypes[]	string
 scopedEffects[].mods[].text	string

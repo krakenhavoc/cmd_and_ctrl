@@ -130,7 +130,7 @@ const (
 	// Player. Scope ScopeGame.
 	ModPreventCombatDamage ModKind = "preventCombatDamage"
 	// ModPreventDamage is "prevent the next N damage that would be
-	// dealt to <target> this turn" (Mending Hands, CR 615.8). Reads
+	// dealt to <target> this turn" (Mending Hands, CR 615.7). Reads
 	// Amount, the charge LEFT (at least 1), and CombatOnly. A pinned
 	// object, or ScopeGame plus Player for a player.
 	ModPreventDamage ModKind = "preventDamage"
@@ -327,21 +327,36 @@ type Mod struct {
 	CombatOnly bool `json:"combatOnly,omitempty"`
 	// Then is ModExileInsteadOfGraveyard's delayed-trigger body key: a
 	// registered BodyRef's key, scheduled at the next end step for each
-	// card the replacement redirects. A restore point naming a body
-	// this binary has not registered is refused (ErrUnknownEffectKey).
+	// card the replacement redirects. On ModPreventNextFromSource it is
+	// the CR 615.5 follow-up body, run with the damage prevented. A
+	// restore point naming a body this binary has not registered is
+	// refused (ErrUnknownEffectKey).
 	Then string `json:"then,omitempty"`
 	// Text is ModCantBeBlockedExceptBy's printed parameter — "creatures
 	// with haste", "Spirits" — read by the refusal sentence
 	// (BlockRule.Label).
 	Text string `json:"text,omitempty"`
-	// Objects are the objects a mod names — today only the one
-	// attacking object a "blocksAttacker" block requirement names
-	// (#1684; BlocksAttackerMod), Provoke's "block IT". Required (one
-	// entry) on that kind and refused on every other mod. A slice, so
+	// Objects are the objects a mod names — the one attacking object a
+	// "blocksAttacker" block requirement names (#1684;
+	// BlocksAttackerMod), Provoke's "block IT", and the chosen source of
+	// a ModPreventNextFromSource shield (ADR 0107 §6). Required (one
+	// entry) on blocksAttacker, at most one on the shield, and refused
+	// on every other mod. A slice, so
 	// every other mod writes nothing and the record stays plain data
 	// (ADR 0041 P1); an older binary refuses a file carrying one
 	// (ADR 0041 P4), which the unknown kind already guarantees.
 	Objects []ObjectRef `json:"objects,omitempty"`
+	// SourceZone, Queries and SpentBatch are ModPreventNextFromSource's
+	// (ADR 0107 §6, #1860; prevent_next_from_source.go), refused on every
+	// other kind. SourceZone is the zone the chosen source (Objects[0])
+	// was in when it was chosen, so a permanent spell's shield follows it
+	// onto the battlefield and a permanent's follows it as it last existed
+	// (CR 609.7a). Queries is the CR 615.9 recheck, any of them. SpentBatch
+	// is the event batch the shield prevented its instance of damage in
+	// (CR 615.8); zero is unspent.
+	SourceZone ZoneKind         `json:"sourceZone,omitempty"`
+	Queries    []PermanentQuery `json:"queries,omitempty"`
+	SpentBatch uint64           `json:"spentBatch,omitempty"`
 	// Copy is ModBecomeCopy's copied values (#1593): exactly one entry,
 	// required on that kind and refused on every other. A slice for the
 	// reason Objects is one — every other mod writes nothing, and the
@@ -573,6 +588,8 @@ var modKinds = map[ModKind]modKindSpec{
 	ModExileInsteadOfGraveyard: {reader: readerReplacement},
 	// ADR 0107 §5 (#1880): Flames of the Blood Hand's replacement.
 	ModGainNoLife: {reader: readerReplacement},
+	// ADR 0107 §6 (#1860): the next damage from a source.
+	ModPreventNextFromSource: {reader: readerReplacement},
 	// ADR 0107 §5 (#1853, #1880): rules gates.
 	ModDamageCantBePrevented:  {reader: readerRule},
 	ModDamageCantBeRedirected: {reader: readerRule},
@@ -716,7 +733,9 @@ func blockCapacityModProblem(m Mod) string {
 // when the kind names one. "" when the mod is sound.
 func blockRequirementModProblem(m Mod) string {
 	if m.Kind != ModAddBlockRequirement {
-		if len(m.Objects) != 0 {
+		// ADR 0107 §6: the next-damage shield names its chosen source
+		// here (nextFromSourceModProblem checks it).
+		if len(m.Objects) != 0 && m.Kind != ModPreventNextFromSource {
 			return fmt.Sprintf("mod %q names objects, which only a blocksAttacker requirement reads", m.Kind)
 		}
 		return ""
@@ -853,6 +872,9 @@ func (g *Game) appendScopedEffectLocked(sourceID uuid.UUID, affected []AffectedO
 		if problem := replacementModProblem(m); problem != "" {
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
+		if problem := nextFromSourceModProblem(m); problem != "" {
+			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
+		}
 		if problem := blockRuleModProblem(m); problem != "" {
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
@@ -910,6 +932,7 @@ func cloneMods(mods []Mod) []Mod {
 		m.Keywords = copyStrings(m.Keywords)
 		m.Grants = copyStrings(m.Grants)
 		m.Objects = append([]ObjectRef(nil), m.Objects...)
+		m.Queries = clonePermanentQueries(m.Queries)
 		m.Copy = clonePrintedValuesSlice(m.Copy)
 		out[i] = m
 	}

@@ -205,6 +205,13 @@ type damageTail struct {
 	sourceUnpreventable bool
 	sourceChecked       bool
 
+	// followUps are the CR 615.5 additional effects of the prevention
+	// shields that applied to this event — "you gain life equal to the
+	// damage prevented this way" (ADR 0107 §6) — queued by the shield's
+	// Replace and run once the event has settled, before `then`
+	// (runDamageTailLocked). Transient, never captured.
+	followUps []preventionFollowUp
+
 	// then is the CALLER's half of the tail (#807): the rest of the
 	// effect that asked for the damage, run with the amount that
 	// ACTUALLY landed once the CR 614 window has settled it. The exact
@@ -648,6 +655,10 @@ func (g *Game) applyResolvedDamageLocked(ev *ReplacementEvent) error {
 //
 // Caller must hold g.mu.
 func (g *Game) runDamageTailLocked(ev *ReplacementEvent, dealt int) error {
+	// CR 615.5: a prevention effect's additional effect "takes place
+	// immediately afterward" — after the prevention, so before the rest
+	// of whatever dealt the damage carries on.
+	g.runPreventionFollowUpsLocked(ev)
 	if ev == nil || ev.damageTail == nil || ev.damageTail.then == nil {
 		return nil
 	}

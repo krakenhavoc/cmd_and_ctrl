@@ -634,10 +634,15 @@ var choiceDepartureDecisions = map[PendingChoiceKind]choiceDepartureRule{
 	// once you are gone. Never reassigned; the drop still settles its
 	// leg, for sacrifice's reason one row up.
 	PendingChoiceOwnPermanents: {onDrop: dropDefault},
-	PendingChoiceLegendRule:    {},
-	PendingChoiceScry:          {},
-	PendingChoiceSurveil:       {},
-	PendingChoiceLookAtTop:     {},
+	// ADR 0107 §6. A choose_source is the shield's controller choosing
+	// for their own shield, which CR 800.4a ends with them; nothing is
+	// reassigned. The drop settles with no source, so the shield is
+	// simply never made and the rest of the card finishes.
+	PendingChoiceChooseSource: {onDrop: dropDefault},
+	PendingChoiceLegendRule:   {},
+	PendingChoiceScry:         {},
+	PendingChoiceSurveil:      {},
+	PendingChoiceLookAtTop:    {},
 	// ADR 0088. Most printed choosers own the pile, and CR 800.4a
 	// takes it out of the game with them; the cards stay where the
 	// effect left them. #1298 added three whose chooser does NOT own
