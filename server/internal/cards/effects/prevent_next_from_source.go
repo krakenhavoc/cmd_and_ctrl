@@ -99,6 +99,10 @@ type PreventNextDamageFromSource struct {
 	// prevented. Zero is none.
 	Then game.BodyRef
 
+	// CombatOnly is "the next time <source> would deal combat damage"
+	// (Impulsive Maneuvers): other damage passes it by, unspent.
+	CombatOnly bool
+
 	// Question is the source prompt's header; Label the shield's. Both
 	// default to the card's name.
 	Question string
@@ -135,6 +139,7 @@ func (p PreventNextDamageFromSource) Apply(ctx *Context) error {
 		Controller:   ctx.Controller(),
 		Queries:      p.Queries,
 		Then:         p.Then,
+		CombatOnly:   p.CombatOnly,
 		Label:        label,
 	}
 	if !p.protect(ctx, &shield) {

@@ -1391,6 +1391,33 @@ destroy instruction's rider and the turn's mark. "When that creature dies
 this turn, exile it" (Whippoorwill) is a delayed trigger, not a
 replacement: `ExileWhenItDiesThisTurn`.
 
+**"It deals double (triple) that damage instead" from a resolving spell
+or ability** ([ADR 0108](decisions/0108-turn-scoped-effects-object-history-and-damage-shields.md)
+§3, #1890). A static doubler on a permanent (Angrath's Marauders,
+Furnace of Rath) is still an ordinary `Spec.Replacements` entry. One a
+spell or ability creates for the rest of the turn is a `ScopedEffect`
+kind, `multiplyDamage`, written with `MultiplyDamage`
+(`server/internal/cards/effects/multiply_damage.go`):
+
+```go
+MultiplyDamage{Factor: 2, Sources: game.DamageSourcesYours}                      // Insult
+MultiplyDamage{Factor: 3, Sources: game.DamageSourcesYours,
+    Recipients: game.DamageRecipientsOpponentsAndTheirPermanents}                // Isengard Unleashed
+MultiplyDamage{Factor: 2, Recipients: game.DamageRecipientsPlayerAndTheirPermanents,
+    Player: damagedPlayer, UntilYourNextTurn: true}                              // Lightning, Army of One
+MultiplyDamage{Factor: 2, Sources: game.DamageSourcesCreatures,
+    Recipients: game.DamageRecipientsCreatures, CombatOnly: true}                // Blind Fury
+MultiplyDamage{Factor: 2, From: id, Next: true}       // "the next time that source would deal damage"
+NextTimeFlip{Source: ref, SourceZone: zone}           // Desperate Gambit's win-double / lose-prevent
+```
+
+"A source you control" and the recipients are read as the damage would
+be dealt (CR 611.2c), through the source's last-known information. It is
+a replacement, not a prevention effect, so "damage can't be prevented"
+never stops it. `Next` is one instance of damage (CR 615.8), spent the
+way `PreventNextDamageFromSource` is. "Choose a source you control" is
+`ChooseSourcePrompt.Controller`.
+
 ### "Enters under the control of an opponent of your choice" (ADR 0102, #1759)
 
 Captive Audience, Pendant of Prosperity, Abby, Merciless Soldier and

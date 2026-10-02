@@ -407,6 +407,17 @@ type Mod struct {
 	Queries       []PermanentQuery `json:"queries,omitempty"`
 	SpentBatch    uint64           `json:"spentBatch,omitempty"`
 	SpentInstance DamageInstance   `json:"spentInstance,omitempty"`
+	// Sources, Recipients and Next are ModMultiplyDamage's (ADR 0108 §3,
+	// #1890; multiply_damage.go), refused on every other kind. Sources is
+	// "a source you control" / "a creature" when no one source is named;
+	// Recipients is "to an opponent", "to a creature" and the rest (with
+	// Player for "that player and their permanents"); Next is "the next
+	// time", spent per instance through SpentBatch and SpentInstance as a
+	// next-damage shield is. A closed vocabulary each: restore refuses a
+	// value this binary does not know.
+	Sources    DamageSources    `json:"sources,omitempty"`
+	Recipients DamageRecipients `json:"recipients,omitempty"`
+	Next       bool             `json:"next,omitempty"`
 	// Copy is ModBecomeCopy's copied values (#1593): exactly one entry,
 	// required on that kind and refused on every other. A slice for the
 	// reason Objects is one — every other mod writes nothing, and the
@@ -646,6 +657,8 @@ var modKinds = map[ModKind]modKindSpec{
 	ModPreventNextFromSource: {reader: readerReplacement},
 	// ADR 0108 §1 (#1886): exile instead if it would die this turn.
 	ModExileIfWouldDie: {reader: readerReplacement},
+	// ADR 0108 §3 (#1890): damage doubled or tripled this turn.
+	ModMultiplyDamage: {reader: readerReplacement},
 	// ADR 0107 §5 (#1853, #1880): rules gates.
 	ModDamageCantBePrevented:  {reader: readerRule},
 	ModDamageCantBeRedirected: {reader: readerRule},
@@ -793,7 +806,7 @@ func blockRequirementModProblem(m Mod) string {
 	if m.Kind != ModAddBlockRequirement {
 		// ADR 0107 §6: the next-damage shield names its chosen source
 		// here (nextFromSourceModProblem checks it).
-		if len(m.Objects) != 0 && m.Kind != ModPreventNextFromSource {
+		if len(m.Objects) != 0 && m.Kind != ModPreventNextFromSource && m.Kind != ModMultiplyDamage {
 			return fmt.Sprintf("mod %q names objects, which only a blocksAttacker requirement reads", m.Kind)
 		}
 		return ""
@@ -949,6 +962,9 @@ func (g *Game) appendScopedEffectLocked(sourceID uuid.UUID, affected []AffectedO
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
 		if problem := nextFromSourceModProblem(m); problem != "" {
+			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
+		}
+		if problem := multiplyDamageModProblem(m); problem != "" {
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
 		if problem := blockRuleModProblem(m); problem != "" {

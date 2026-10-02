@@ -52,13 +52,16 @@ const (
 
 // damageSourceThreat ranks a choose_source candidate (ADR 0107 §6
 // decision 4): below zero for the bot's own, above every permanent for an
-// opponent's spell on the stack, and otherwise an opponent's power.
+// opponent's spell on the stack, and otherwise an opponent's power. Its own
+// sources are ranked by power among themselves, still below any
+// opponent's, so a prompt that offers only the bot's own (Desperate
+// Gambit's "a source you control", ADR 0108 §3) picks its hardest hitter.
 func (st *state) damageSourceThreat(id string, c *protocol.CardView) float64 {
 	if c == nil {
 		return 0
 	}
 	if c.Controller == st.me {
-		return -1
+		return -1 + float64(c.Power)/1000
 	}
 	if _, onStack := st.stack[id]; onStack {
 		return 100 + float64(c.Power)

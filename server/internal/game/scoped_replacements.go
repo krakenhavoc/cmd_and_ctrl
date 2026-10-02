@@ -39,7 +39,11 @@ import (
 //   - exileIfWouldDie — Lava Coil's and Disintegrate's "if it would die
 //     this turn, exile it instead", pinned to one object, or Flaying
 //     Tendrils' "if a creature would die this turn" over a live scope
-//     (ADR 0108 §1, #1886).
+//     (ADR 0108 §1, #1886);
+//   - multiplyDamage — Insult's "if a source you control would deal
+//     damage this turn, it deals double that damage instead", Isengard
+//     Unleashed's triple and the "next time" doublers (ADR 0108 §3,
+//     #1890, multiply_damage.go).
 //
 // The gather adapts each live record into the ReplacementEffect it
 // already consumes, with closures the RUNNING binary builds from the
@@ -154,7 +158,7 @@ var (
 // pre-filter the gather applies before it builds anything.
 func scopedReplacementWatches(kind ModKind) []EventKind {
 	switch kind {
-	case ModPreventCombatDamage, ModPreventDamage, ModPreventNextFromSource:
+	case ModPreventCombatDamage, ModPreventDamage, ModPreventNextFromSource, ModMultiplyDamage:
 		return watchDamage
 	case ModExileInsteadOfLeaving, ModExileInsteadOfGraveyard, ModExileIfWouldDie:
 		return watchZoneMove
@@ -398,6 +402,14 @@ func (g *Game) gatherScopedReplacementsLocked(ev *ReplacementEvent, applied map[
 				continue
 			}
 			a := activeReplacement{effect: scopedReplacementEffect(e.Seq, j, m.Kind, e.Label), id: id}
+			if m.Kind == ModMultiplyDamage {
+				// Two multipliers on one event (two Insults, an Insult and
+				// an Isengard) commute — ×2×3 is ×3×2 — so CR 616 has one
+				// answer and no order is asked between them (the Insult //
+				// Injury ruling: two Insults are ×4). Beside a prevention
+				// shield or a static doubler the order is still asked.
+				a.identity = replacementIdentity{card: "scoped:" + string(m.Kind)}
+			}
 			if m.Kind == ModExileIfWouldDie {
 				// Two "exile it instead" records on one dying creature
 				// (two Lava Coils, whoever cast them) are one
@@ -550,6 +562,8 @@ func scopedReplacementAppliesLocked(g *Game, e ScopedEffect, m Mod, ev *Replacem
 		return exileIfWouldDieAppliesLocked(g, e, ev)
 	case ModPreventNextFromSource:
 		return g.nextFromSourceAppliesLocked(e, m, ev)
+	case ModMultiplyDamage:
+		return g.multiplyDamageAppliesLocked(e, m, ev)
 	}
 	return false
 }
@@ -578,6 +592,8 @@ func (g *Game) applyScopedReplacementLocked(e ScopedEffect, mod int, m Mod, ev *
 		ev.Cancel()
 	case ModPreventNextFromSource:
 		g.applyNextFromSourceLocked(e, mod, m, ev)
+	case ModMultiplyDamage:
+		g.applyMultiplyDamageLocked(e, mod, m, ev)
 	case ModPreventDamage:
 		// CR 615.7's arithmetic, not "cancel if the shield covers any
 		// of it": a 4-point shield facing 6 damage prevents 4 and lets

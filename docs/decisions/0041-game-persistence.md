@@ -1425,7 +1425,8 @@ estimate.
 > **Amended by [ADR 0108](0108-turn-scoped-effects-object-history-and-damage-shields.md)** (2026-10-02):
 > its §1 to §4, §7 and §9 add turn-scoped kinds to this vocabulary
 > (`exileIfWouldDie` and `cantBeRegenerated` with the `creatures` scope
-> in its Delivery PR 1, `exileInsteadOfYourGraveyard` in PR 3), each an
+> in its Delivery PR 1, `multiplyDamage` with the `sources`, `recipients`
+> and `next` mod fields in PR 2, `exileInsteadOfYourGraveyard` in PR 3), each an
 > additive on-disk identity under schema v7.
 
 P5 proposed two new record types, `ScopedReplacement` and

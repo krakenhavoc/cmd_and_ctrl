@@ -396,6 +396,7 @@
       mulligansOpen={view.mulligans_open === true}
       damageCantBePrevented={view.damage_cant_be_prevented ?? []}
       exileIfCreaturesDie={view.exile_if_creatures_die ?? []}
+      damageMultipliers={view.damage_multipliers ?? []}
       {readyActions}
       {trackOpen}
     />

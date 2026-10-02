@@ -295,7 +295,58 @@ func corpusBoards() []corpusBoard {
 		// ScopeStanding graveyard cast permission written beside it, with
 		// the Will itself already exiled by its own replacement.
 		{"yawgmoths_will", corpusYawgmothsWill},
+		// v7, added by ADR 0108 PR 2 (#1890) as a new file: the
+		// multiplyDamage kind in each of its shapes — Insult's "your
+		// sources" (a resolved Insult, beside its can't-be-prevented
+		// grant), Isengard's triple to opponents and their permanents,
+		// Lightning's "that player and their permanents" until your next
+		// turn, Blind Fury's combat-only creature-to-creature, and a
+		// pinned "next time" multiplier already spent by its instance.
+		{"multiply_damage", corpusMultiplyDamage},
 	}
+}
+
+// corpusMultiplyDamage is ADR 0108 §3's multiplier in each of its shapes.
+func corpusMultiplyDamage(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	castCatalogSpell(t, g, "Insult", "Sorcery", "47543892-4d60-4c6b-a6a4-69b9172af01e", nil)
+	passPriorityAroundTable(t, g)
+	gambler := pushBattlefieldCardWithTimestamp(g, corpusCreature(me.ID, "Gambler", 2, 2))
+	g.WithWriteLock(func() {
+		g.RecomputeLayersIfStaleLocked()
+		g.MultiplyDamageForEffect(game.DamageMultiplier{Controller: me.ID, Factor: 3, Sources: game.DamageSourcesYours,
+			Recipients: game.DamageRecipientsOpponentsAndTheirPermanents, Label: "Isengard Unleashed"})
+		g.MultiplyDamageForEffect(game.DamageMultiplier{Controller: me.ID, Factor: 2,
+			Recipients: game.DamageRecipientsPlayerAndTheirPermanents, Player: opp.ID, UntilNextTurnOf: me.ID,
+			Label: "Lightning, Army of One — Stagger"})
+		g.MultiplyDamageForEffect(game.DamageMultiplier{Controller: me.ID, Factor: 2, Sources: game.DamageSourcesCreatures,
+			Recipients: game.DamageRecipientsCreatures, CombatOnly: true, Label: "Blind Fury"})
+		ref, zone, ok := g.DamageSourceRefLocked(gambler)
+		if !ok {
+			t.Fatal("setup: the gambler is in no zone")
+		}
+		g.MultiplyDamageForEffect(game.DamageMultiplier{Controller: me.ID, Factor: 2, Source: ref, SourceZone: zone,
+			Next: true, Label: "Desperate Gambit — double the next damage"})
+		// The next-time multiplier doubles the gambler's damage and is
+		// spent for the rest of this batch.
+		if err := g.DealDamageToPlayerForEffect(gambler, opp.ID, 1); err != nil {
+			t.Fatal(err)
+		}
+	})
+	n := 0
+	for _, e := range g.ScopedEffects {
+		for _, m := range e.Mods {
+			if m.Kind == game.ModMultiplyDamage {
+				n++
+			}
+		}
+	}
+	if n != 5 {
+		t.Fatalf("setup: %d multipliers, want 5", n)
+	}
+	return g
 }
 
 // corpusExileIfDies is ADR 0108 §1 and §2's two kinds in each of their
