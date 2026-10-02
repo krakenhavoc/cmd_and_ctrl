@@ -152,6 +152,9 @@ func (g *Game) beginNextTurnLocked() {
 	if n == 0 {
 		return
 	}
+	// ADR 0108 §6: the turn that is ending is its player's last turn
+	// from here on. Before g.Turn and the tally are replaced.
+	g.recordLastTurnAttacksLocked()
 	if et, ok := g.popExtraTurnLocked(); ok {
 		g.Turn = Turn{
 			Seq:            g.Turn.Seq + 1,
