@@ -547,7 +547,7 @@ func (triggerHarvester) OnEvent(g *Game, ev Event) {
 	// list sees the event exactly once and the first match fires it
 	// and removes it. One hook, one place, no per-card case. See
 	// delayed.go and the 2026-09-18 amendment to ADR 0026.
-	g.fireEventDelayedTriggersLocked(ev)
+	g.fireEventDelayedTriggersLocked(&pass)
 	// ADR 0107 §1, CR 603.8 (owner decision 1): a state trigger
 	// triggers as soon as the game state matches it, so the board this
 	// event left behind is asked too — after every event trigger above
@@ -563,6 +563,12 @@ func (g *Game) harvestFromZone(pass *harvestPass, z *Zone) {
 	ev := pass.ev
 	if z == nil || CatalogTriggers == nil {
 		return
+	}
+	// The battlefield's abilities are a permanent's. The same walk over
+	// an emblem zone (harvestFromEmblemsLocked) is not: CR 114.4.
+	origin := triggerOfNonPermanent
+	if z == g.Battlefield {
+		origin = triggerOfPermanent
 	}
 	for i := range z.Cards {
 		card := &z.Cards[i]
@@ -599,7 +605,7 @@ func (g *Game) harvestFromZone(pass *harvestPass, z *Zone) {
 			if t.AppliesTo != nil && !t.AppliesTo(ev, source, lki, g) {
 				continue
 			}
-			g.harvestMatchLocked(pass, *source, lki, t, false)
+			g.harvestMatchLocked(pass, *source, lki, t, origin)
 		}
 	}
 }
@@ -631,7 +637,7 @@ func (g *Game) harvestCastFromStack(pass *harvestPass) {
 			if t.AppliesTo != nil && !t.AppliesTo(ev, card, lki, g) {
 				continue
 			}
-			g.harvestMatchLocked(pass, *card, lki, t, true)
+			g.harvestMatchLocked(pass, *card, lki, t, triggerOfSpell)
 		}
 		return
 	}
@@ -663,11 +669,19 @@ func (g *Game) dispatchTriggerLocked(ev Event, source Card, lki Characteristic, 
 
 // harvestMatchLocked fixes the additional-instance count at the moment this
 // ability triggered, before prompts or items are queued.
-func (g *Game) harvestMatchLocked(pass *harvestPass, source Card, lki Characteristic, t TriggeredAbility, fromSpell bool) {
+//
+// #1735: a suppressor is asked first (trigger_suppression.go). If the
+// event does not cause this ability to trigger, there is nothing to
+// count: the doublers are not asked, the once-per-batch slot is not
+// spent, and no instance, prompt or target pick is made.
+func (g *Game) harvestMatchLocked(pass *harvestPass, source Card, lki Characteristic, t TriggeredAbility, origin triggerOrigin) {
+	if g.triggerSuppressedLocked(pass, source, lki, &t, origin) {
+		return
+	}
 	if t.OncePerBatch && !g.oncePerBatchAllowsLocked(pass.ev.Batch, source.InstanceID, oncePerBatchKeyLocked(t, pass.ev, &source, g)) {
 		return
 	}
-	extra := g.triggerDoublersLocked(pass, source, lki, t, fromSpell)
+	extra := g.triggerDoublersLocked(pass, source, lki, t, origin == triggerOfSpell)
 	g.dispatchTriggerInstanceLocked(pass.ev, source, lki, t, doublerRef{})
 	for _, d := range extra {
 		g.dispatchTriggerInstanceLocked(pass.ev, source, lki, t, d)
@@ -891,7 +905,7 @@ func (g *Game) harvestLTB(pass *harvestPass) {
 		if t.AppliesTo != nil && !t.AppliesTo(ev, &source, lki, g) {
 			continue
 		}
-		g.harvestMatchLocked(pass, source, lki, t, false)
+		g.harvestMatchLocked(pass, source, lki, t, triggerOfPermanent)
 	}
 }
 

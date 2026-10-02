@@ -954,6 +954,10 @@ func (g *Game) queueAltCostEntryTriggerLocked(card Card, item *StackItem) {
 	pass := g.newHarvestPassLocked(Event{Kind: EventETB, Actor: item.Controller, CardID: card.InstanceID})
 	// ADR 0041 P9 (#1497, tier 4): evoke's sacrifice has no catalog
 	// row, so its item is keyed directly.
+	//
+	// It is the permanent's own enters-the-battlefield ability (CR
+	// 702.74a), so a trigger suppressor stops it as it stops any other
+	// (#1735). A creature evoked under Torpor Orb stays on the battlefield.
 	controller, cardID := item.Controller, card.InstanceID
 	g.harvestMatchLocked(&pass, card, card.Effective(), TriggeredAbility{Key: label, Build: func(_ Event, _ *Card, _ Characteristic, _ *Game) *StackItem {
 		return &StackItem{
@@ -962,7 +966,7 @@ func (g *Game) queueAltCostEntryTriggerLocked(card Card, item *StackItem) {
 			Body:   evokeSacrificeBody.Key(),
 			Effect: bodyEffect(evokeSacrificeBody.Key(), EffectParams{}),
 		}
-	}}, false)
+	}}, triggerOfPermanent)
 }
 
 // evokeSacrificeBody is "evoke/sacrifice" (ADR 0041 P9, #1497, tier 4):

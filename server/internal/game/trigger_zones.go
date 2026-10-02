@@ -267,7 +267,7 @@ func (g *Game) harvestFromDeclaredZone(pass *harvestPass, z *Zone, kind ZoneKind
 			if t.AppliesTo != nil && !t.AppliesTo(ev, &source, lki, g) {
 				continue
 			}
-			g.harvestMatchLocked(pass, source, lki, t, false)
+			g.harvestMatchLocked(pass, source, lki, t, triggerOfNonPermanent)
 		}
 	}
 }

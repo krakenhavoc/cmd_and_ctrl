@@ -146,6 +146,7 @@ func buildDef(spec Spec) *game.CardDef {
 		Triggered:                  spec.Triggered,
 		ManaTriggers:               spec.ManaTriggers,
 		TriggerDoublers:            spec.TriggerDoublers,
+		TriggerSuppressors:         spec.TriggerSuppressors,
 		AdditionalCost:             spec.AdditionalCost,
 		OptionalCosts:              spec.OptionalCosts,
 		AlternativeCosts:           spec.AlternativeCosts,
