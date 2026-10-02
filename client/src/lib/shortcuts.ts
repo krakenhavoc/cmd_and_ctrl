@@ -54,6 +54,7 @@ export type ShortcutID =
   | "attackAll"
   | "holdPriority"
   | "toggleAutopass"
+  | "toggleBluff"
   | "toggleGameLog"
   | "drawCard"
   | "toggleMute"
@@ -136,6 +137,15 @@ export const SHORTCUTS: readonly ShortcutDef[] = [
     hint: "Pass every priority window until you turn it off.",
     group: "priority",
     defaultBinding: "Shift+p",
+    kind: "view",
+    scope: "game",
+  },
+  {
+    id: "toggleBluff",
+    label: "Toggle bluff",
+    hint: "Arm or disarm bluffing: pause on windows you can't answer so a pause gives nothing away. Needs smart auto-pass.",
+    group: "priority",
+    defaultBinding: "b",
     kind: "view",
     scope: "game",
   },

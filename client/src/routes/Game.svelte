@@ -77,7 +77,13 @@
   import { consumeManualStop, manualStops } from "../lib/priorityStops";
   import { autopassDecision, isBluff, type AutopassGates } from "../lib/autopassDecision";
   import { highlightsLive, legalActionsOf, visibleHighlights } from "../lib/legalActions";
-  import { bluffArmed, bluffDelayMs, initBluffArmed, setBluffStatus } from "../lib/bluff";
+  import {
+    bluffArmed,
+    bluffDelayMs,
+    initBluffArmed,
+    pressBluff,
+    setBluffStatus,
+  } from "../lib/bluff";
   import { holdPriority, ownsEveryStackItem, toggleHoldPriority } from "../lib/holdPriority";
   import { registerShortcutHandlers, setShortcutContext } from "../lib/shortcutRuntime";
   import { effectiveBindings, formatChord, isMacLike } from "../lib/shortcuts";
@@ -1165,6 +1171,9 @@
         toggleHoldPriority();
       },
       toggleAutopass,
+      toggleBluff: () => {
+        pressBluff();
+      },
       toggleGameLog: () => (showGameLog = !showGameLog),
       drawCard: draw,
       // Registered so the command bar's speaker icon re-renders; the
