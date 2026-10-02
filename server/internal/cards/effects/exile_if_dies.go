@@ -187,6 +187,16 @@ func AllThen(thens ...RecipientThen) RecipientThen {
 
 // --- the shared card bodies ------------------------------------------
 
+// firstLegalTarget is the spell's one target if it is still legal
+// (CR 608.2b): a player or a card, whichever the clause allows.
+func firstLegalTarget(ctx *Context) (game.TargetRef, bool) {
+	ts := ctx.LegalTargets()
+	if len(ts) == 0 {
+		return game.TargetRef{}, false
+	}
+	return ts[0], true
+}
+
 // damageFirstTargetExileIfItDies is "~ deals N damage to target creature
 // [or planeswalker]. If that creature [or planeswalker] would die this
 // turn, exile it instead." (Lava Coil, Magma Spray, Scorching
@@ -224,10 +234,11 @@ func xAmount() func(*game.StackItem, *Context) int {
 // Yamabushi's Flame and the rest).
 func damageAnyTargetExileIfDealtDies(amount func(item *game.StackItem, ctx *Context) int, permanents bool) func(item *game.StackItem, ctx *Context) error {
 	return func(item *game.StackItem, ctx *Context) error {
-		for _, t := range ctx.LegalTargets() {
-			return DealDamageThen(ctx, t.ID, amount(item, ctx), ExileIfDealtDamageWouldDie(item, permanents))
+		t, ok := firstLegalTarget(ctx)
+		if !ok {
+			return nil
 		}
-		return nil
+		return DealDamageThen(ctx, t.ID, amount(item, ctx), ExileIfDealtDamageWouldDie(item, permanents))
 	}
 }
 
@@ -239,13 +250,14 @@ func damageAnyTargetExileIfDealtDies(amount func(item *game.StackItem, ctx *Cont
 // ruling). A player or a noncreature permanent is only dealt damage.
 func damageThenIfCreatureNoRegenExileIfDies(amount func(item *game.StackItem, ctx *Context) int) func(item *game.StackItem, ctx *Context) error {
 	return func(item *game.StackItem, ctx *Context) error {
-		for _, t := range ctx.LegalTargets() {
-			if err := (DealDamage{Source: ctx.Source(), Target: t.ID, Amount: amount(item, ctx)}).Apply(ctx); err != nil {
-				return err
-			}
-			return markCreatureNoRegenExileIfDies(ctx, t.ID)
+		t, ok := firstLegalTarget(ctx)
+		if !ok {
+			return nil
 		}
-		return nil
+		if err := (DealDamage{Source: ctx.Source(), Target: t.ID, Amount: amount(item, ctx)}).Apply(ctx); err != nil {
+			return err
+		}
+		return markCreatureNoRegenExileIfDies(ctx, t.ID)
 	}
 }
 
@@ -270,10 +282,11 @@ func markCreatureNoRegenExileIfDies(ctx *Context, id uuid.UUID) error {
 // (Incinerate, Jaya Ballard's second ability).
 func damageAnyTargetNoRegenIfDealt(amount func(item *game.StackItem, ctx *Context) int) func(item *game.StackItem, ctx *Context) error {
 	return func(item *game.StackItem, ctx *Context) error {
-		for _, t := range ctx.LegalTargets() {
-			return DealDamageThen(ctx, t.ID, amount(item, ctx), CantBeRegeneratedIfDealtDamage(item))
+		t, ok := firstLegalTarget(ctx)
+		if !ok {
+			return nil
 		}
-		return nil
+		return DealDamageThen(ctx, t.ID, amount(item, ctx), CantBeRegeneratedIfDealtDamage(item))
 	}
 }
 

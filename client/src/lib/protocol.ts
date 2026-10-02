@@ -396,7 +396,7 @@ export interface GameView {
   // outlives the moment, because the cards usually go straight back
   // into a hidden zone. Render from the printed identity.
   reveals?: RevealView[];
-  // #628 (CR 726): set when the engine has watched the same triggered
+  // #628 (CR 732): set when the engine has watched the same triggered
   // ability resolve 25 times this turn with no player decision in
   // between, absent otherwise. Its presence is an instruction to this
   // client: STOP PASSING AUTOMATICALLY. Priority still rotates and
@@ -449,7 +449,7 @@ export interface GameEndGateView {
   this_turn?: boolean;
 }
 
-// LoopNoticeView is the CR 726 loop breaker's notice. `label` is the
+// LoopNoticeView is the CR 732 loop breaker's notice. `label` is the
 // repeating ability's stack label, which by catalog convention reads
 // "<card> — <what happens>", so it is the whole banner line.
 // Mirrors `protocol.LoopNoticeView`.
@@ -1074,7 +1074,7 @@ export interface PendingChoiceView {
     // S30 coin call: choose heads or tails for the pending flip. A
     // stop answer is offered only when allow_stop is true.
     | "coin_call"
-    // #804 CR 726: the loop breaker has fired and the repeating
+    // #804 CR 732: the loop breaker has fired and the repeating
     // ability's controller is asked how many more times it should
     // resolve. Answered with resolve_choice { iterations }, where 0
     // means "stop here" and leaves the table paused exactly where the

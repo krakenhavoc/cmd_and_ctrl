@@ -136,7 +136,7 @@
     // self panel mounts the widget, so these only matter when
     // isSelf=true but they're plumbed uniformly for prop typing.
     autopassEnabled?: boolean;
-    // #628: the CR 726 loop-breaker banner line, empty when quiet.
+    // #628: the CR 732 loop-breaker banner line, empty when quiet.
     loopNotice?: string;
     onPassPriority?: () => void;
     onToggleAutopass?: () => void;

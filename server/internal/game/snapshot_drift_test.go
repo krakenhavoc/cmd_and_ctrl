@@ -127,7 +127,7 @@ var gameFields = plan(
 	// that dropped it would give every exhaust ability on the board a
 	// second use.
 	"Activations", carried, "",
-	// #628 CR 726 loop breaker. Carried for the same reason the
+	// #628 CR 732 loop breaker. Carried for the same reason the
 	// per-turn tallies are: a restore mid-loop that forgot the notice
 	// would come back with automatic passing live again, and the
 	// threshold is configuration a restore must not silently
@@ -163,6 +163,11 @@ var gameFields = plan(
 	"oncePerBatchFired", carried, "",
 	// ADR 0107 §6: owed CR 615.5 follow-ups, plain data.
 	"preventionFollowUps", carried, "",
+	// ADR 0108 PR 0: the damage instance (damage_instance.go).
+	"damageInstanceSeq", rebuilt, "the last DamageInstance handed out; restore sets it to the largest instance a carried record names (Mod.SpentInstance, PreventionFollowUp.Instance)",
+	"openDamageInstance", dropped, "not game state: the running DamageInstanceForEffect scope, set and defer-cleared inside one mutation, so it is zero between actions",
+	"combatDamageInstance", rebuilt, "a transient stamp (ADR 0108 owner decision 4): the next combat damage event of a restored game takes a new instance; a step restored half dealt gives its rest a new one, and only a source whose damage straddles the restore could tell",
+	"combatDamageInstanceBatch", rebuilt, "the event batch combatDamageInstance belongs to; retaken with it",
 	// #1289: a resolution paused on one of its own prompts holds the
 	// CR 704.3 boundary. Carried with each choice's midResolution.
 	"resolutionOpen", carried, "",
@@ -811,7 +816,7 @@ var pendingChoiceFields = plan(
 	// options ARE the prompt, and a restored game that forgot them
 	// would put a question with no answers in front of a seat.
 	"PickOptions", carried, "",
-	// #804's CR 726 shortcut prompt. Carried for the reason
+	// #804's CR 732 shortcut prompt. Carried for the reason
 	// LoopNotice is: the key is the only way back to the run the
 	// answer is about, and a restored game that forgot it would put a
 	// question about nothing in front of the loop's controller — or,

@@ -107,15 +107,17 @@ func init() {
 // because by the time a player has answered the scry prompt the
 // ability that queued it has left the stack.
 func saheeliPingEachOpponent(g *game.Game, controller, source uuid.UUID) error {
-	for _, p := range g.Seats {
-		if p == nil || p.Eliminated || p.ID == controller {
-			continue
+	return g.DamageInstanceForEffect(func() error {
+		for _, p := range g.Seats {
+			if p == nil || p.Eliminated || p.ID == controller {
+				continue
+			}
+			if err := g.DealDamageToPlayerForEffect(source, p.ID, 1); err != nil {
+				return err
+			}
 		}
-		if err := g.DealDamageToPlayerForEffect(source, p.ID, 1); err != nil {
-			return err
-		}
-	}
-	return nil
+		return nil
+	})
 }
 
 // saheeliHastyArtifactCopy is the −2. Package-level so the ability's

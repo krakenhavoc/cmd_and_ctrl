@@ -71,6 +71,16 @@ type damageStep struct {
 // sentence whose amounts differ. A recipient that has gone is skipped
 // and the rest are still dealt their damage.
 func dealDamageStepsThen(ctx *Context, steps []damageStep, then RecipientThen) error {
+	// One printed sentence is one damage instance (CR 615.8, ADR 0108
+	// PR 0): every step joins the scope opened here.
+	return ctx.Game.DamageInstanceForEffect(func() error {
+		return dealDamageStepChain(ctx, steps, then)
+	})
+}
+
+// dealDamageStepChain deals the head step and continues with the rest
+// from its continuation, once the head's damage has settled.
+func dealDamageStepChain(ctx *Context, steps []damageStep, then RecipientThen) error {
 	if len(steps) == 0 {
 		return nil
 	}
@@ -78,7 +88,7 @@ func dealDamageStepsThen(ctx *Context, steps []damageStep, then RecipientThen) e
 	head, rest := steps[0], steps[1:]
 	return ctx.Game.DealDamageEachEachThenForEffect(ctx.Source(), []uuid.UUID{head.Target}, head.Amount, then,
 		func(g *game.Game, _ int) error {
-			return dealDamageStepsThen(NewContext(g, item), rest, then)
+			return dealDamageStepChain(NewContext(g, item), rest, then)
 		})
 }
 

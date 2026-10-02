@@ -210,7 +210,7 @@ func ManaSpendForCast(c Card) ManaSpendContext {
 }
 
 // ManaSpendForAbility builds the spend context for activating an
-// ability whose source permanent is `c`. CR 106.6a: "activate
+// ability whose source permanent is `c`. CR 106.6: "activate
 // abilities of colorless Eldrazi" restricts on the SOURCE's
 // characteristics, not on what the ability does.
 func ManaSpendForAbility(c Card) ManaSpendContext {

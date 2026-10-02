@@ -253,7 +253,7 @@ func TestAdvanceStepStopsAtAPromptTheDriveItselfRaises(t *testing.T) {
 	}
 }
 
-// TestAdvanceStepStopsOnALoopNotice — the CR 726 breaker suspends
+// TestAdvanceStepStopsOnALoopNotice — the CR 732 breaker suspends
 // AUTOMATIC passing (ADR 0055), and a drive is automatic passing on
 // the whole table's behalf. The notice ends it where it stands, so a
 // two-permanent loop cannot spin the drive to its bound.

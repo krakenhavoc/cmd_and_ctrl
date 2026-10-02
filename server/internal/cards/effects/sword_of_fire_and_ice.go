@@ -56,10 +56,15 @@ func init() {
 			Key:     "Sword of Fire and Ice — 2 damage, draw a card",
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
-				for _, t := range ctx.LegalTargets() {
-					if err := (DealDamage{Target: t.ID, Amount: 2, Source: item.SourceCardID}.Apply(ctx)); err != nil {
-						return err
+				if err := ctx.Game.DamageInstanceForEffect(func() error {
+					for _, t := range ctx.LegalTargets() {
+						if err := (DealDamage{Target: t.ID, Amount: 2, Source: item.SourceCardID}.Apply(ctx)); err != nil {
+							return err
+						}
 					}
+					return nil
+				}); err != nil {
+					return err
 				}
 				// The draw is not conditional on the damage
 				// landing — "and you draw a card" is a

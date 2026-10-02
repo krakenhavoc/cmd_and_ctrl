@@ -97,10 +97,12 @@ func akroanWarTappedCreaturesHitThemselves(g *game.Game, item *game.StackItem) e
 		}
 	}
 	ctx := NewContext(g, item)
-	for _, h := range hits {
-		if err := (DealDamage{Source: h.id, Target: h.id, Amount: h.power}).Apply(ctx); err != nil {
-			return err
+	return ctx.Game.DamageInstanceForEffect(func() error {
+		for _, h := range hits {
+			if err := (DealDamage{Source: h.id, Target: h.id, Amount: h.power}).Apply(ctx); err != nil {
+				return err
+			}
 		}
-	}
-	return nil
+		return nil
+	})
 }

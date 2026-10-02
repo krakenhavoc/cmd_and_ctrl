@@ -212,7 +212,7 @@ type GameView struct {
 	// reveal_frame.go for why that is the design rather than an
 	// omission. Added in S22.
 	Reveals []RevealView `json:"reveals,omitempty"`
-	// LoopNotice is the CR 726 loop breaker's flag: set when the
+	// LoopNotice is the CR 732 loop breaker's flag: set when the
 	// engine has seen the same triggered ability resolve
 	// game.DefaultLoopThreshold times this turn with no player
 	// decision in between, nil otherwise. Its presence is the
@@ -460,7 +460,7 @@ type PendingChoiceView struct {
 	TopCount int `json:"top_count,omitempty"`
 	TopDepth int `json:"top_depth,omitempty"`
 	// LoopCount / LoopMaxIterations populate the #804 "loop_shortcut"
-	// kind (CR 726): how many times the repeating ability has already
+	// kind (CR 732): how many times the repeating ability has already
 	// resolved this turn, and the ceiling the engine will accept on
 	// the answer. The client renders a number field between 0 and the
 	// max; `reason` carries "<card> — <ability>". Answered with
@@ -6436,7 +6436,7 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 				v.MayCastCard = c.MayCastCard.String()
 			}
 		}
-		// PendingChoiceLoopShortcut — the CR 726 proposal (#804). The
+		// PendingChoiceLoopShortcut — the CR 732 proposal (#804). The
 		// count is the N in "has resolved N times this turn" and the
 		// max is the ceiling on the client's number field; Reason
 		// already carries "<card> — <ability>". Public, like the

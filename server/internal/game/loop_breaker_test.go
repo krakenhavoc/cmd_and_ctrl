@@ -8,7 +8,7 @@ import (
 )
 
 // loop_breaker_test.go drives a REAL two-permanent trigger loop
-// through the real priority loop (#628, CR 726).
+// through the real priority loop (#628, CR 732).
 //
 // The pair is the one the issue describes: two permanents that each
 // make a token off the other's token entering. Seeding one token
@@ -114,7 +114,7 @@ func passAroundOnce(t *testing.T, g *Game) {
 
 // passUntilLoopNotice passes around the table until the breaker fires,
 // and stops there. Since #804 it has to stop there: the notice comes
-// with a CR 726 shortcut prompt, and that prompt blocks the table
+// with a CR 732 shortcut prompt, and that prompt blocks the table
 // until the loop's controller answers it.
 func passUntilLoopNotice(t *testing.T, g *Game) {
 	t.Helper()
@@ -129,7 +129,7 @@ func passUntilLoopNotice(t *testing.T, g *Game) {
 	t.Fatal("the loop breaker never fired")
 }
 
-// loopShortcutPrompt returns the outstanding CR 726 prompt, or nil.
+// loopShortcutPrompt returns the outstanding CR 732 prompt, or nil.
 func loopShortcutPrompt(g *Game) *PendingChoice {
 	for _, c := range g.PendingChoices {
 		if c != nil && c.Kind == PendingChoiceLoopShortcut {
@@ -139,12 +139,12 @@ func loopShortcutPrompt(g *Game) *PendingChoice {
 	return nil
 }
 
-// answerLoopShortcut answers the outstanding CR 726 prompt with K.
+// answerLoopShortcut answers the outstanding CR 732 prompt with K.
 func answerLoopShortcut(t *testing.T, g *Game, iterations int) {
 	t.Helper()
 	c := loopShortcutPrompt(g)
 	if c == nil {
-		t.Fatal("no CR 726 shortcut prompt to answer")
+		t.Fatal("no CR 732 shortcut prompt to answer")
 	}
 	if err := g.ResolveLoopShortcut(c.ID, c.Chooser, iterations); err != nil {
 		t.Fatalf("ResolveLoopShortcut(%d): %v", iterations, err)
@@ -228,7 +228,7 @@ func TestLoopBreakerStopsAutomaticPassingNotTheGame(t *testing.T) {
 	// table, and only until it is answered. See ADR 0055's 2026-09-18
 	// amendment for why this prompt blocks where the notice does not.
 	if err := g.PassPriority(); !errors.Is(err, ErrChoicePending) {
-		t.Fatalf("PassPriority with the CR 726 prompt open = %v, want ErrChoicePending", err)
+		t.Fatalf("PassPriority with the CR 732 prompt open = %v, want ErrChoicePending", err)
 	}
 	answerLoopShortcut(t, g, 0)
 	if g.LoopNotice == nil {
@@ -291,7 +291,7 @@ func TestAnsweredPromptClearsTheLoopNotice(t *testing.T) {
 	// about. It blocks the table, so a stale one is not a stale
 	// question — it is a game nobody can move on.
 	if c := loopShortcutPrompt(g); c != nil {
-		t.Errorf("the CR 726 prompt outlived its notice: %+v", c)
+		t.Errorf("the CR 732 prompt outlived its notice: %+v", c)
 	}
 	if _, err := g.AdvanceStep(); err != nil {
 		t.Errorf("AdvanceStep after the decision: %v", err)
