@@ -2032,6 +2032,53 @@ never offered (#544). It pays through the same
 `payAbilityManaCostLocked` an activated ability uses, so `ManaTrigger`
 fires for the taps and nothing about mana is duplicated.
 
+### "Players can't play lands" (ADR 0109 §4, #1895)
+
+A land play is a special action, not a cast (CR 305.1, CR 116.2a), so a
+`CastRestriction` never reaches one. "Players can't play lands" has its
+own slot and its own gate, `Game.LandPlayGateLocked(player, card,
+fromZone)`, asked BEFORE the land-drop count (CR 101.2: "can't" beats
+"can", so an extra drop does not lift it).
+
+```go
+LandPlayRestrictions: []game.LandPlayRestriction{
+    PlayersCantPlayLands("Players can't play lands."),                  // Territorial Dispute
+    YouCantPlayLands("You can't play lands."),                          // Aggressive Mining
+    CantPlayLandsNamed("…Arabian Nights…", game.IsArabianNightsName),   // City in a Bottle
+    OpponentsCantPlayLandsFrom("…", game.ZoneGraveyard),                // Tomik
+    OpponentsWithMoreLandsCantPlayLands("…"),                           // Ward of Bones
+},
+```
+
+- The constructors are in
+  [land_play_restriction.go](../server/internal/cards/effects/land_play_restriction.go).
+  A card with a shape none of them names writes a
+  `game.LandPlayRestriction{Label, Forbids func(game.LandPlayQuery) bool}`
+  literal (Rock Jockey, Experimental Frenzy). `LandPlayQuery` carries the
+  game, the land card (the face being played), the player, the source
+  permanent and the zone the land comes from. "You" is the SOURCE's
+  controller, not the player playing.
+- Read from the battlefield through `CatalogAbilityKey`, like a cast
+  restriction, so nothing is stored and the source leaving lifts the ban.
+  `Register` refuses a restriction with no `Label` or no `Forbids`.
+- **A ban from a resolved spell or ability** ("target player can't play
+  lands this turn": Turf Wound, Solfatara, Pardic Miner, Moonhold) is not
+  this slot. Its source is gone the moment it resolves, so it is stored:
+  `CantPlayLandsThisTurn{}.Apply(ctx)` writes a `ModCantPlayLands`
+  ScopedEffect on each legal player target, swept at cleanup (CR 514.2).
+- **The gate has four callers, and a fifth must join them, never copy
+  it:** the land branch of `castSpellLocked`, the land play a resolution
+  instructs (`CanPlayLandDuringResolutionForEffect`, CR 305.2a), the
+  legal-move enumerator's `landPlayMove`, and the view (`castStampsFor`
+  stamps the refusing clause on the land's `cant_cast`; `castableNow` asks
+  the gate for a land in a graveyard, exile or a library top). Grep for
+  `LandPlayGateLocked` before adding a land-play path.
+- A "can't cast" half of the same card (City in a Bottle's, Ward of
+  Bones's, Experimental Frenzy's) is an ordinary `CastRestrictions` entry
+  beside it.
+- "A land with a name originally printed in Arabian Nights" is
+  `game.IsArabianNightsName` (CR 206.3a's list).
+
 ### "Spells you control can't be countered" (ADR 0106, #1806)
 
 Three different statements, three different slots:
