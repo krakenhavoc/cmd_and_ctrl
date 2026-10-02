@@ -21,11 +21,14 @@
   //     never apply and the list is a plain roster of your own
   //     untapped creatures rather than the board-click targeting
   //     flow — the same shape as SacrificeCostModal.
+  //
+  // ADR 0111 PR 6: a sheet in the action dock; Crew and Cancel are the
+  // dock's action bar (Enter / Escape through its one key handler).
 
-  import { onDestroy } from "svelte";
   import type { ActivatedAbilityView, CardView } from "../../protocol";
   import { crewAvailablePower, crewPower, crewSatisfied } from "../../crew";
-  import ModalLayer from "../ModalLayer.svelte";
+  import { cancelAction, confirmAction } from "../../dock";
+  import DockSheet from "./DockSheet.svelte";
 
   interface Props {
     // The Vehicle being crewed; null closes the modal.
@@ -98,82 +101,53 @@
     if (!enough) return;
     onConfirm(chosen);
   }
-
-  function handleKey(e: KeyboardEvent): void {
-    if (!open) return;
-    if (e.key === "Enter") {
-      e.preventDefault();
-      confirm();
-    } else if (e.key === "Escape") {
-      e.preventDefault();
-      onCancel();
-    }
-  }
-  $effect(() => {
-    if (!open) return;
-    document.addEventListener("keydown", handleKey);
-    return () => document.removeEventListener("keydown", handleKey);
-  });
-  onDestroy(() => document.removeEventListener("keydown", handleKey));
 </script>
 
 {#if open && card}
-  <ModalLayer />
-  <div class="prompt-backdrop" role="dialog" aria-modal="true" aria-labelledby="crew-cost-title">
-    <div class="prompt-modal crew-modal">
-      <h2 id="crew-cost-title">
-        {card.name}
-        <span class="prompt-src" aria-hidden="true">{keyword} {need} · {rule}</span>
-      </h2>
-      <p class="prompt-hint">
-        Tap any number of untapped creatures you control with total power {need} or more.
+  <DockSheet
+    label={card.name}
+    src={`${keyword} ${need} · ${rule}`}
+    width={560}
+    sheetKey={`crew:${card.instance_id}:${ability?.index ?? keyword}`}
+    count={`${total} / ${need} power`}
+    primary={confirmAction(keyword === "Crew" ? "Crew" : "Tap", confirm, { disabled: !enough })}
+    secondary={[cancelAction(onCancel)]}
+  >
+    <p class="prompt-hint">
+      Tap any number of untapped creatures you control with total power {need} or more.
+    </p>
+    {#if options.length === 0}
+      <p class="prompt-hint error">You control no untapped creatures to tap.</p>
+    {:else if available < need}
+      <p class="prompt-hint error">
+        Your untapped creatures total {available} power — not enough for {keyword.toLowerCase()}
+        {need}.
       </p>
-      {#if options.length === 0}
-        <p class="prompt-hint error">You control no untapped creatures to tap.</p>
-      {:else if available < need}
-        <p class="prompt-hint error">
-          Your untapped creatures total {available} power — not enough for {keyword.toLowerCase()}
-          {need}.
-        </p>
-      {:else}
-        <ul class="prompt-options">
-          {#each options as c (c.instance_id)}
-            <li>
-              <button
-                type="button"
-                class="prompt-opt"
-                class:on={chosen.includes(c.instance_id)}
-                aria-pressed={chosen.includes(c.instance_id)}
-                onclick={() => toggle(c.instance_id)}
-              >
-                <span class="prompt-radio" aria-hidden="true"></span>
-                <span class="name">{c.name}</span>
-                {#if c.power !== undefined && c.toughness !== undefined}
-                  <span class="note pt">{c.power}/{c.toughness}</span>
-                {/if}
-              </button>
-            </li>
-          {/each}
-        </ul>
-      {/if}
-      <div class="prompt-foot">
-        <span class="prompt-count" class:enough>{total} / {need} power</span>
-        <button type="button" class="ghost" onclick={onCancel}
-          >Cancel <span class="kbd">Esc</span></button
-        >
-        <button type="button" class="primary" disabled={!enough} onclick={confirm}>
-          {keyword === "Crew" ? "Crew" : "Tap"}
-          <span class="kbd">↵</span>
-        </button>
-      </div>
-    </div>
-  </div>
+    {:else}
+      <ul class="prompt-options">
+        {#each options as c (c.instance_id)}
+          <li>
+            <button
+              type="button"
+              class="prompt-opt"
+              class:on={chosen.includes(c.instance_id)}
+              aria-pressed={chosen.includes(c.instance_id)}
+              onclick={() => toggle(c.instance_id)}
+            >
+              <span class="prompt-radio" aria-hidden="true"></span>
+              <span class="name">{c.name}</span>
+              {#if c.power !== undefined && c.toughness !== undefined}
+                <span class="note pt">{c.power}/{c.toughness}</span>
+              {/if}
+            </button>
+          </li>
+        {/each}
+      </ul>
+    {/if}
+  </DockSheet>
 {/if}
 
 <style>
-  .crew-modal {
-    width: min(440px, calc(100vw - 32px));
-  }
   .name {
     flex: 1 1 auto;
   }
@@ -181,13 +155,5 @@
     font-family: var(--font-mono);
     font-size: 12px;
     color: var(--fg-muted);
-  }
-  .prompt-count.enough {
-    color: var(--accent);
-  }
-  .primary .kbd {
-    color: var(--accent-fg);
-    border-color: rgba(28, 21, 3, 0.35);
-    opacity: 0.8;
   }
 </style>

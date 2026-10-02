@@ -18,6 +18,10 @@
   // the same picker, told which ability to price via `abilityIndex`
   // and which floor to respect via `minX`. A second modal would be a
   // second place for the two to drift apart.
+  //
+  // ADR 0111 PR 6: a sheet in the action dock. The confirm and Cancel
+  // are the dock's action bar (Enter / Escape through its one key
+  // handler); Enter in the X field confirms too.
 
   import { fetchAutoTapPreview, type AutoTapPreview } from "../../api";
   import type { AutoTapCastParams } from "../../castPreview";

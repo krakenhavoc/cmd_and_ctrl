@@ -19,6 +19,8 @@ import type { CardView, GameView, PlayerView, ZoneView } from "./protocol";
 import { doorRows, unlockParams, unlockPrice, unlockRequest } from "./roomDoors";
 import { applyCastChoices } from "./targeting";
 import { cleanup, click, render } from "./test/render.svelte";
+import DockHarness from "./test/DockHarness.svelte";
+import { barPrimary } from "./test/dockView";
 
 afterEach(() => {
   cleanup();
@@ -206,16 +208,24 @@ describe("split faces", () => {
 describe("FacePickerModal", () => {
   it("lists the fused cast and confirms it as fused", () => {
     const got: Array<[number, boolean]> = [];
-    const r = render(FacePickerModal, {
-      card: fuseCard(),
-      onConfirm: (face: number, fused: boolean) => got.push([face, fused]),
-      onCancel: () => {},
-    });
-    const opts = r.container.querySelectorAll("button.face-opt");
+    // ADR 0111 PR 6: a sheet in the action dock; the confirm is the
+    // dock bar's primary.
+    const r = render(
+      DockHarness as never,
+      {
+        component: FacePickerModal,
+        props: {
+          card: fuseCard(),
+          onConfirm: (face: number, fused: boolean) => got.push([face, fused]),
+          onCancel: () => {},
+        },
+      } as never,
+    );
+    const opts = r.container.querySelectorAll(".dock-sheet button.face-opt");
     expect(opts).toHaveLength(3);
     expect(opts[2].classList.contains("fused")).toBe(true);
     click(opts[2] as HTMLElement);
-    click(r.container.querySelector("button.primary") as HTMLElement);
+    click(barPrimary(r.container)!);
     expect(got).toEqual([[0, true]]);
   });
 });

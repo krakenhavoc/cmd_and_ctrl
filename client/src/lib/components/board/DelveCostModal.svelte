@@ -14,13 +14,17 @@
   // fills the budget from the front of the server's payment order
   // (lands first, then cards with no graveyard cast surface) and never
   // confirms for the player — ADR 0100 owner decision 2.
+  //
+  // ADR 0111 PR 6: a sheet in the action dock; the confirm and Cancel
+  // are the dock's action bar (Enter / Escape through its one key
+  // handler).
 
-  import { onDestroy } from "svelte";
   import { fetchAutoTapPreview, type AutoTapPreview } from "../../api";
   import type { AutoTapCastParams } from "../../castPreview";
   import { chooseDelveForMe, delveLimit, delveOptionIDs } from "../../delve";
   import type { CardView } from "../../protocol";
-  import ModalLayer from "../ModalLayer.svelte";
+  import { cancelAction, confirmAction } from "../../dock";
+  import DockSheet from "./DockSheet.svelte";
 
   interface Props {
     gameID: string;
@@ -96,84 +100,55 @@
   function confirm(): void {
     onConfirm(chosen.slice(0, limit));
   }
-
-  function handleKey(e: KeyboardEvent): void {
-    if (!card) return;
-    if (e.key === "Enter") {
-      e.preventDefault();
-      confirm();
-    } else if (e.key === "Escape") {
-      e.preventDefault();
-      onCancel();
-    }
-  }
-  $effect(() => {
-    if (!card) return;
-    document.addEventListener("keydown", handleKey);
-    return () => document.removeEventListener("keydown", handleKey);
-  });
-  onDestroy(() => document.removeEventListener("keydown", handleKey));
 </script>
 
 {#if card}
-  <ModalLayer />
-  <div class="prompt-backdrop" role="dialog" aria-modal="true" aria-labelledby="delve-cost-title">
-    <div class="prompt-modal dv-modal">
-      <h2 id="delve-cost-title">
-        {card.name}
-        <span class="prompt-src" aria-hidden="true">delve · CR 702.66</span>
-      </h2>
-      <p class="prompt-hint">Delve</p>
-      <p class="prompt-hint sub">
-        Each card you exile from your graveyard pays for {"{1}"} of the generic mana.
+  <DockSheet
+    label={card.name}
+    src="delve · CR 702.66"
+    width={560}
+    sheetKey={`delve:${card.instance_id}`}
+    count={`${chosen.length} / ${limit} exiled`}
+    primary={confirmAction(chosen.length === 0 ? "Exile nothing" : "Exile", confirm)}
+    secondary={[
+      ...(limit > 0 ? [{ id: "choose-for-me", label: "Choose for me", onPress: chooseForMe }] : []),
+      cancelAction(onCancel),
+    ]}
+  >
+    <p class="prompt-hint">Delve</p>
+    <p class="prompt-hint sub">
+      Each card you exile from your graveyard pays for {"{1}"} of the generic mana.
+    </p>
+    {#if limit === 0}
+      <p class="prompt-hint error">
+        There is no generic mana left to delve — exile nothing and continue.
       </p>
-      {#if limit === 0}
-        <p class="prompt-hint error">
-          There is no generic mana left to delve — exile nothing and continue.
-        </p>
-      {:else}
-        <ul class="prompt-options">
-          {#each options as c (c.instance_id)}
-            <li>
-              <button
-                type="button"
-                class="prompt-opt"
-                class:on={chosen.includes(c.instance_id)}
-                disabled={full && !chosen.includes(c.instance_id)}
-                aria-pressed={chosen.includes(c.instance_id)}
-                onclick={() => toggle(c.instance_id)}
-              >
-                <span class="prompt-radio" aria-hidden="true"></span>
-                <span class="name">{c.name}</span>
-                {#if c.type_line}
-                  <span class="note">{c.type_line}</span>
-                {/if}
-              </button>
-            </li>
-          {/each}
-        </ul>
-      {/if}
-      <div class="prompt-foot">
-        <span class="prompt-count">{chosen.length} / {limit} exiled</span>
-        {#if limit > 0}
-          <button type="button" class="ghost" onclick={chooseForMe}>Choose for me</button>
-        {/if}
-        <button type="button" class="ghost" onclick={onCancel}
-          >Cancel <span class="kbd">Esc</span></button
-        >
-        <button type="button" class="primary" onclick={confirm}>
-          {chosen.length === 0 ? "Exile nothing" : "Exile"}
-          <span class="kbd">↵</span>
-        </button>
-      </div>
-    </div>
-  </div>
+    {:else}
+      <ul class="prompt-options">
+        {#each options as c (c.instance_id)}
+          <li>
+            <button
+              type="button"
+              class="prompt-opt"
+              class:on={chosen.includes(c.instance_id)}
+              disabled={full && !chosen.includes(c.instance_id)}
+              aria-pressed={chosen.includes(c.instance_id)}
+              onclick={() => toggle(c.instance_id)}
+            >
+              <span class="prompt-radio" aria-hidden="true"></span>
+              <span class="name">{c.name}</span>
+              {#if c.type_line}
+                <span class="note">{c.type_line}</span>
+              {/if}
+            </button>
+          </li>
+        {/each}
+      </ul>
+    {/if}
+  </DockSheet>
 {/if}
 
 <style>
-  .dv-modal {
-    width: min(440px, calc(100vw - 32px));
-  }
   .name {
     flex: 1 1 auto;
   }
@@ -184,10 +159,5 @@
   .sub {
     font-size: 12px;
     color: var(--fg-muted);
-  }
-  .primary .kbd {
-    color: var(--accent-fg);
-    border-color: rgba(28, 21, 3, 0.35);
-    opacity: 0.8;
   }
 </style>

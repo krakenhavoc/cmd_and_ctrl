@@ -12,6 +12,7 @@ import { describe, it, expect, afterEach } from "vitest";
 import ModePickerModal from "./components/board/ModePickerModal.svelte";
 import type { CardView } from "./protocol";
 import { render, click, cleanup } from "./test/render.svelte";
+import DockHarness from "./test/DockHarness.svelte";
 
 afterEach(cleanup);
 
@@ -38,18 +39,26 @@ function threeStepsAhead(): CardView {
 }
 
 const optionButtons = (c: HTMLElement): HTMLElement[] =>
-  Array.from(c.querySelectorAll(".prompt-options .prompt-opt")) as HTMLElement[];
+  Array.from(c.querySelectorAll(".dock-sheet .prompt-options .prompt-opt")) as HTMLElement[];
 
-describe("ModePickerModal — Spree's per-mode cost (CR 702.172a)", () => {
-  it("shows each bullet's own additional cost beside its label", () => {
-    const { container } = render(
-      ModePickerModal as never,
-      {
+// ADR 0111 PR 6: the picker is a sheet in the action dock.
+function mountPicker() {
+  return render(
+    DockHarness as never,
+    {
+      component: ModePickerModal,
+      props: {
         card: threeStepsAhead(),
         onConfirm: () => {},
         onCancel: () => {},
-      } as never,
-    );
+      },
+    } as never,
+  );
+}
+
+describe("ModePickerModal — Spree's per-mode cost (CR 702.172a)", () => {
+  it("shows each bullet's own additional cost beside its label", () => {
+    const { container } = mountPicker();
 
     const opts = optionButtons(container);
     expect(opts.length).toBe(3);
@@ -58,15 +67,8 @@ describe("ModePickerModal — Spree's per-mode cost (CR 702.172a)", () => {
     expect(opts[2].querySelector(".cost")?.textContent).toBe("+{2}");
   });
 
-  it("summarises the chosen bullets' costs beside Confirm, in the order chosen", () => {
-    const { container } = render(
-      ModePickerModal as never,
-      {
-        card: threeStepsAhead(),
-        onConfirm: () => {},
-        onCancel: () => {},
-      } as never,
-    );
+  it("summarises the chosen bullets' costs in the sheet, in the order chosen", () => {
+    const { container } = mountPicker();
 
     // Nothing chosen yet: no summary.
     expect(container.querySelector(".extra-cost")).toBeNull();

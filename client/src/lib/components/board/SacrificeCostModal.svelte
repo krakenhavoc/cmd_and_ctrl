@@ -17,8 +17,10 @@
   // first, then lower mana value, then the ability's own source), so
   // the button picks what the bots would. It never confirms for the
   // player: they can change the picks before pressing Sacrifice.
+  //
+  // ADR 0111 PR 6: a sheet in the action dock; Sacrifice and Cancel are
+  // the dock's action bar (Enter / Escape through its one key handler).
 
-  import { onDestroy } from "svelte";
   import type { CardView } from "../../protocol";
   import {
     canConfirmSacrificeRange,
@@ -29,7 +31,8 @@
     toggleSacrificePickInRange,
   } from "../../sacrificeCost";
   import type { SacrificeRange } from "../../sacrificeCost";
-  import ModalLayer from "../ModalLayer.svelte";
+  import { cancelAction, confirmAction, type DockAction } from "../../dock";
+  import DockSheet from "./DockSheet.svelte";
 
   interface Props {
     // The ability's source, for the heading.
@@ -118,94 +121,74 @@
     onConfirm([...chosen]);
   }
 
-  function handleKey(e: KeyboardEvent): void {
-    if (!source) return;
-    if (e.key === "Enter") {
-      e.preventDefault();
-      confirm();
-    } else if (e.key === "Escape") {
-      e.preventDefault();
-      onCancel();
-    }
-  }
-  $effect(() => {
-    if (!source) return;
-    document.addEventListener("keydown", handleKey);
-    return () => document.removeEventListener("keydown", handleKey);
-  });
-  onDestroy(() => document.removeEventListener("keydown", handleKey));
+  const secondary = $derived<DockAction[]>([
+    ...(chooseForMeButton.shown
+      ? [
+          {
+            id: "choose-for-me",
+            label: "Choose for me",
+            title: "Tokens first, then the lowest mana value. You still confirm.",
+            disabled: chooseForMeButton.disabled,
+            onPress: chooseForMe,
+          },
+        ]
+      : []),
+    cancelAction(onCancel),
+  ]);
 </script>
 
 {#if source}
-  <ModalLayer />
-  <div class="prompt-backdrop" role="dialog" aria-modal="true" aria-labelledby="sac-title">
-    <div class="prompt-modal sac-modal">
-      <h2 id="sac-title">
-        {source.name}
-        <span class="prompt-src" aria-hidden="true">additional cost</span>
-      </h2>
-      <p class="prompt-hint">{verb} {label} to pay for this ability.</p>
-      {#if countIsX}
-        <p class="prompt-hint">The number you pick is X.</p>
-      {:else if range.min === 0 && options.length > 0}
-        <p class="prompt-hint">Pick as many as you like, or none.</p>
+  <DockSheet
+    label={source.name}
+    src="additional cost"
+    width={560}
+    sheetKey={`sac:${source.instance_id}:${verb}:${label}`}
+    count={chooseForMeButton.shown
+      ? `${chosen.length} / ${range.max > 0 ? range.max : `${range.min}+`} picked`
+      : undefined}
+    primary={confirmAction(verb, confirm, { disabled: !ready })}
+    {secondary}
+  >
+    <p class="prompt-hint">{verb} {label} to pay for this ability.</p>
+    {#if countIsX}
+      <p class="prompt-hint">The number you pick is X.</p>
+    {:else if range.min === 0 && options.length > 0}
+      <p class="prompt-hint">Pick as many as you like, or none.</p>
+    {/if}
+    {#if options.length === 0}
+      <p class="prompt-hint error">Nothing you control can pay this cost.</p>
+    {:else}
+      {#if short}
+        <p class="prompt-hint error">
+          You control {options.length} of the {range.min} permanents this cost needs.
+        </p>
       {/if}
-      {#if options.length === 0}
-        <p class="prompt-hint error">Nothing you control can pay this cost.</p>
-      {:else}
-        {#if short}
-          <p class="prompt-hint error">
-            You control {options.length} of the {range.min} permanents this cost needs.
-          </p>
-        {/if}
-        <ul class="prompt-options">
-          {#each options as c (c.instance_id)}
-            {@const on = chosen.includes(c.instance_id)}
-            <li>
-              <button
-                type="button"
-                class="prompt-opt"
-                class:on
-                aria-pressed={on}
-                disabled={!on && ceiling > 1 && chosen.length >= ceiling}
-                onclick={() => pick(c.instance_id)}
-              >
-                <span class="prompt-radio" aria-hidden="true"></span>
-                <span class="name">{c.name}</span>
-                {#if c.power !== undefined && c.toughness !== undefined}
-                  <span class="note pt">{c.power}/{c.toughness}</span>
-                {/if}
-              </button>
-            </li>
-          {/each}
-        </ul>
-      {/if}
-      <div class="prompt-foot">
-        {#if chooseForMeButton.shown}
-          <span class="prompt-count" aria-live="polite"
-            >{chosen.length} / {range.max > 0 ? range.max : `${range.min}+`} picked</span
-          >
-          <button
-            type="button"
-            class="ghost"
-            disabled={chooseForMeButton.disabled}
-            title="Tokens first, then the lowest mana value. You still confirm."
-            onclick={chooseForMe}>Choose for me</button
-          >
-        {/if}
-        <button type="button" class="ghost" onclick={onCancel}
-          >Cancel <span class="kbd">Esc</span></button
-        >
-        <button type="button" class="primary" disabled={!ready} onclick={confirm}>{verb}</button>
-      </div>
-    </div>
-  </div>
+      <ul class="prompt-options">
+        {#each options as c (c.instance_id)}
+          {@const on = chosen.includes(c.instance_id)}
+          <li>
+            <button
+              type="button"
+              class="prompt-opt"
+              class:on
+              aria-pressed={on}
+              disabled={!on && ceiling > 1 && chosen.length >= ceiling}
+              onclick={() => pick(c.instance_id)}
+            >
+              <span class="prompt-radio" aria-hidden="true"></span>
+              <span class="name">{c.name}</span>
+              {#if c.power !== undefined && c.toughness !== undefined}
+                <span class="note pt">{c.power}/{c.toughness}</span>
+              {/if}
+            </button>
+          </li>
+        {/each}
+      </ul>
+    {/if}
+  </DockSheet>
 {/if}
 
 <style>
-  .sac-modal {
-    width: min(440px, calc(100vw - 32px));
-  }
   .name {
     flex: 1 1 auto;
   }

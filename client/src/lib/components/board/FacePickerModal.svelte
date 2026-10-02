@@ -16,6 +16,9 @@
   // physical card, and "the land one" is how players actually think
   // about it — a text list of two type lines is the wrong affordance
   // for a decision the printed card makes visually.
+  //
+  // ADR 0111 PR 6: a sheet in the action dock; the confirm and Cancel
+  // are the dock's action bar.
   import { onDestroy } from "svelte";
   import type { CardView } from "../../protocol";
   import { cardImageURL } from "../../cardImage";
@@ -28,7 +31,8 @@
     faceOptions,
   } from "../../faces";
   import { hasSatisfiableTargets } from "../../timing";
-  import ModalLayer from "../ModalLayer.svelte";
+  import { cancelAction, confirmAction } from "../../dock";
+  import DockSheet from "./DockSheet.svelte";
 
   interface Props {
     // The card being played; null closes the modal. Only ever
@@ -87,15 +91,12 @@
     onConfirm(opt.face, opt.fused);
   }
 
+  // ADR 0111 PR 6: Enter and Escape are the dock's (its one key handler
+  // presses the bar's confirm and Cancel). The arrows and 1-9 still pick
+  // a face from anywhere while the sheet is open, as they did.
   function handleKey(e: KeyboardEvent): void {
     if (!card) return;
-    if (e.key === "Enter") {
-      e.preventDefault();
-      confirm();
-    } else if (e.key === "Escape") {
-      e.preventDefault();
-      onCancel();
-    } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+    if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
       e.preventDefault();
       chosen = Math.max(0, chosen - 1);
     } else if (e.key === "ArrowRight" || e.key === "ArrowDown") {
@@ -139,65 +140,52 @@
 </script>
 
 {#if card && options.length > 1}
-  <ModalLayer />
-  <div class="prompt-backdrop" role="dialog" aria-modal="true" aria-labelledby="face-title">
-    <div class="prompt-modal face-modal">
-      <h2 id="face-title">
-        {displayName(card)}
-        <span class="prompt-src" aria-hidden="true">{provenance}</span>
-      </h2>
-      <p class="prompt-hint">Which half are you playing?</p>
-      <ul class="face-options">
-        {#each options as opt, i (opt.fused ? "fused" : opt.face)}
-          {@const art = cardImageURL(card, "normal", opt.face)}
-          <li>
-            <button
-              type="button"
-              class="face-opt"
-              class:on={chosen === i}
-              class:fused={opt.fused}
-              aria-pressed={chosen === i}
-              onclick={() => (chosen = i)}
-              ondblclick={() => {
-                chosen = i;
-                confirm();
-              }}
+  <DockSheet
+    label={displayName(card)}
+    src={provenance}
+    width={560}
+    sheetKey={`face:${card.instance_id}`}
+    primary={confirmAction(`${verb} ${options[chosen]?.view.name ?? ""}`.trim(), confirm)}
+    secondary={[cancelAction(onCancel)]}
+  >
+    <p class="prompt-hint">Which half are you playing?</p>
+    <ul class="face-options">
+      {#each options as opt, i (opt.fused ? "fused" : opt.face)}
+        {@const art = cardImageURL(card, "normal", opt.face)}
+        <li>
+          <button
+            type="button"
+            class="face-opt"
+            class:on={chosen === i}
+            class:fused={opt.fused}
+            aria-pressed={chosen === i}
+            onclick={() => (chosen = i)}
+            ondblclick={() => {
+              chosen = i;
+              confirm();
+            }}
+          >
+            {#if art}
+              <img class="face-art" src={art} alt="" use:cardArt={art} />
+            {:else}
+              <div class="face-art face-art-blank" aria-hidden="true"></div>
+            {/if}
+            <span class="face-name">{opt.view.name}</span>
+            <span class="face-type"
+              >{opt.fused ? "both halves (fuse)" : (opt.view.type_line ?? "")}</span
             >
-              {#if art}
-                <img class="face-art" src={art} alt="" use:cardArt={art} />
-              {:else}
-                <div class="face-art face-art-blank" aria-hidden="true"></div>
-              {/if}
-              <span class="face-name">{opt.view.name}</span>
-              <span class="face-type"
-                >{opt.fused ? "both halves (fuse)" : (opt.view.type_line ?? "")}</span
-              >
-              <span class="face-cost">{opt.view.mana_cost || "—"}</span>
-            </button>
-          </li>
-        {/each}
-      </ul>
-      {#if !options[chosen]?.fused && card.faces?.[options[chosen]?.face ?? 0]?.oracle_text}
-        <p class="face-text">{card.faces?.[options[chosen]?.face ?? 0]?.oracle_text}</p>
-      {/if}
-      <div class="prompt-foot">
-        <button type="button" class="ghost" onclick={onCancel}
-          >Cancel <span class="kbd">Esc</span></button
-        >
-        <button type="button" class="primary" onclick={confirm}>
-          {verb}
-          {options[chosen]?.view.name ?? ""} <span class="kbd">↵</span>
-        </button>
-      </div>
-    </div>
-  </div>
+            <span class="face-cost">{opt.view.mana_cost || "—"}</span>
+          </button>
+        </li>
+      {/each}
+    </ul>
+    {#if !options[chosen]?.fused && card.faces?.[options[chosen]?.face ?? 0]?.oracle_text}
+      <p class="face-text">{card.faces?.[options[chosen]?.face ?? 0]?.oracle_text}</p>
+    {/if}
+  </DockSheet>
 {/if}
 
 <style>
-  .face-modal {
-    width: min(560px, calc(100vw - 32px));
-  }
-
   .face-options {
     display: flex;
     gap: 12px;
@@ -282,11 +270,5 @@
     white-space: pre-wrap;
     max-height: 8em;
     overflow-y: auto;
-  }
-
-  .primary .kbd {
-    color: var(--accent-fg);
-    border-color: rgba(28, 21, 3, 0.35);
-    opacity: 0.8;
   }
 </style>
