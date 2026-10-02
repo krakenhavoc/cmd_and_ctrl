@@ -246,6 +246,9 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// ADR 0108 §4: Yawgmoth's Will's replacement. Its cases are in
 		// scoped_exile_your_graveyard_test.go.
 		ModExileInsteadOfYourGraveyard: true,
+		// ADR 0109 §4: the land-play gate. Its cases are in
+		// land_play_gate_test.go.
+		ModCantPlayLands: true,
 	}
 	for _, k := range ModKinds() {
 		if !covered[k] {

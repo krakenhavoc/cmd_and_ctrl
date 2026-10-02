@@ -295,6 +295,12 @@ func corpusBoards() []corpusBoard {
 		// ScopeStanding graveyard cast permission written beside it, with
 		// the Will itself already exiled by its own replacement.
 		{"yawgmoths_will", corpusYawgmothsWill},
+		// v7, added by ADR 0109 PR 5 (#1895) as a new file: a resolved
+		// Turf Wound — the cantPlayLands record (a game-scope rule kind
+		// naming the one banned player) beside a standing Territorial
+		// Dispute, whose land-play restriction is catalog data and so adds
+		// nothing to the file but the permanent.
+		{"cant_play_lands", corpusCantPlayLands},
 		// v7, added by ADR 0109 PR 1 (#1881) as a new file: CR 305.7
 		// from a resolved effect as data — setBasicLandTypes records
 		// until end of turn (Tidal Warrior), until the land's controller's
@@ -529,6 +535,21 @@ func corpusRulesGates(t *testing.T) *game.Game {
 	})
 	if n := len(g.ScopedEffects); n != 5 {
 		t.Fatalf("setup: %d scoped records, want 5 (two grants, a replacement, a pinned pair, a rest-of-game)", n)
+	}
+	return g
+}
+
+// corpusCantPlayLands is ADR 0109 §4's one stored shape: Turf Wound
+// resolved on the opponent, so a cantPlayLands record names them.
+func corpusCantPlayLands(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	pushCatalogPermanent(g, me.ID, "Territorial Dispute", "Enchantment", lpTerritorialDisputeOracle, false)
+	castCatalogSpell(t, g, "Turf Wound", "Instant", lpTurfWoundOracle, pr6Player(opp.ID))
+	passPriorityAroundTable(t, g)
+	if n := len(g.ScopedEffects); n != 1 || g.ScopedEffects[0].Mods[0].Kind != game.ModCantPlayLands {
+		t.Fatalf("setup: scoped records = %+v, want one cantPlayLands", g.ScopedEffects)
 	}
 	return g
 }

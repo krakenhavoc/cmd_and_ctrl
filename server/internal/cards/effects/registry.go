@@ -319,6 +319,15 @@ func Register(spec Spec) {
 			panic(fmt.Sprintf("effects.Register: %q cast restriction %q forbids nothing", spec.Name, r.Label))
 		}
 	}
+	// ADR 0109 §4: the same two checks for the land-play twin.
+	for i, r := range spec.LandPlayRestrictions {
+		if r.Label == "" {
+			panic(fmt.Sprintf("effects.Register: %q land-play restriction %d has no printed Label — the refusal carries it to the client", spec.Name, i))
+		}
+		if r.Forbids == nil {
+			panic(fmt.Sprintf("effects.Register: %q land-play restriction %q forbids nothing", spec.Name, r.Label))
+		}
+	}
 	// #1210, ADR 0073's amendment of 2026-09-22: the same two checks
 	// for the activation twin, and for the same reason — the Label is
 	// what the greyed ability row shows the player, and a restriction

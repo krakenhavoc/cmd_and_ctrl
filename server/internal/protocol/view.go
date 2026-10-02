@@ -1458,6 +1458,16 @@ type PlayerView struct {
 	// what every lifelinker and Soul Warden at the table does.
 	CantGainLife bool `json:"cant_gain_life,omitempty"`
 
+	// CantPlayLands is the clause that stops this player playing ANY
+	// land from their hand right now ("Players can't play lands —
+	// Territorial Dispute", "You can't play lands this turn — Turf
+	// Wound"), or empty (ADR 0109 §4, CR 101.2). Public, for
+	// CantGainLife's reasons: it changes what the whole table may
+	// expect of this seat. A ban that names particular lands (City in a
+	// Bottle) or a zone other than the hand says nothing here; the land's
+	// own `cant_cast` carries those.
+	CantPlayLands string `json:"cant_play_lands,omitempty"`
+
 	// CantLose lists the causes that can't make this player lose the
 	// game right now ("life", "empty_draw", "poison",
 	// "commander_damage", "effect") — all five under a Platinum Angel.
@@ -4805,6 +4815,17 @@ func castStampsFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, kind
 			out.CantCast = cantCastReason(err)
 		}
 	}
+	// ADR 0109 §4: a LAND asks the land-play gate instead (CR 305.1: a
+	// play is not a cast), the function castSpellLocked and the
+	// enumerator call, and the clause that refuses it rides the same
+	// `cant_cast` field, so the client's tooltip says "Players can't play
+	// lands — Territorial Dispute" with no new field. castableNow reads
+	// the same gate for a land in a graveyard, exile or a library top.
+	if haveLive && live.IsLand() {
+		if err := g.LandPlayGateLocked(caster, live, kind); err != nil {
+			out.CantCast = cantPlayLandReason(err)
+		}
+	}
 	// #916: the ceiling on the cast's `phyrexian_life`. Read off the
 	// EFFECTIVE cost — the commander tax is generic and cost
 	// modifiers add generic, so the two agree today, and reading the
@@ -4994,6 +5015,11 @@ func castableNow(g *game.Game, caster uuid.UUID, card game.Card, kind game.ZoneK
 	}
 	if card.IsLand() {
 		if grant != nil && grant.CastOnly {
+			return false
+		}
+		// ADR 0109 §4: "can't" beats "can" — the land-play gate, before
+		// the window and the drop.
+		if g.LandPlayGateLocked(caster, card, kind) != nil {
 			return false
 		}
 		return g.LandPlayOpenForEffect(caster)
@@ -7017,6 +7043,7 @@ func viewOfPlayer(g *game.Game, p *game.Player) PlayerView {
 		Keywords:            g.PlayerAbilitiesForEffect(p),
 		LifeTotalLocked:     g.PlayerLifeTotalCantChangeLocked(p),
 		CantGainLife:        g.PlayerCantGainLifeLocked(p),
+		CantPlayLands:       g.LandPlayBanFor(p.ID),
 		CantLose:            lossCauseStrings(g.CantLoseCausesForEffect(p)),
 		CantWin:             g.CantWinForEffect(p),
 		EndGates:            viewOfGameEndGates(g.GameEndGatesForEffect(p)),
@@ -8447,6 +8474,18 @@ func cantCastReason(err error) string {
 		return cant.Reason
 	}
 	return "An effect prevents casting this spell."
+}
+
+// cantPlayLandReason is the clause behind a refused land play, for the
+// client's grey-out tooltip. The fallback should be unreachable —
+// LandPlayGateLocked only returns a *CantPlayLandError — but an empty
+// tooltip would look like a client bug.
+func cantPlayLandReason(err error) string {
+	var cant *game.CantPlayLandError
+	if errors.As(err, &cant) && cant.Reason != "" {
+		return cant.Reason
+	}
+	return "An effect prevents playing this land."
 }
 
 // grantedCast answers "may this viewer cast this card out of this

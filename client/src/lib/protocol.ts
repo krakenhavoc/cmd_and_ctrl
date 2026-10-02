@@ -1589,6 +1589,12 @@ export interface PlayerView {
   // static (Leyline of Punishment), a turn grant (Skullcrack) or the
   // rest of the game (Screaming Nemesis). Absent when false.
   cant_gain_life?: boolean;
+  // ADR 0109 §4 (CR 101.2): the clause that stops this seat playing ANY
+  // land from its hand right now ("Players can't play lands — Territorial
+  // Dispute", "You can't play lands this turn — Turf Wound"). Absent when
+  // nothing does. A ban that names particular lands (City in a Bottle)
+  // rides on the land's own `cant_cast` instead.
+  cant_play_lands?: string;
   // ADR 0057 (#749, CR 104.3): the "can't lose the game" / "can't win
   // the game" gates on this seat. `cant_lose` lists the causes that
   // can't make this player lose right now ("life", "empty_draw",

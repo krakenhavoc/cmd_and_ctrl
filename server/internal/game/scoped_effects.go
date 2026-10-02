@@ -232,6 +232,14 @@ const (
 	// ScopeOpponentsAndTheirCreatures is the record Controller's
 	// opponents (scopeCoversPlayer). Reads Player.
 	ModCantGainLife ModKind = "cantGainLife"
+	// ModCantPlayLands is "<player> can't play lands this turn" (ADR
+	// 0109 §4, #1895; CR 101.2, CR 305.1): Turf Wound's, Solfatara's,
+	// Pardic Miner's and Moonhold's "target player …". Scope ScopeGame
+	// with Player set to the one banned player. Read by
+	// LandPlayGateLocked, which every land play, the enumerator and the
+	// view ask. A ScopedEffect and not a CastBanRule kind so that an older
+	// binary refuses the file instead of banning nothing. Reads Player.
+	ModCantPlayLands ModKind = "cantPlayLands"
 	// ModCantBeRegenerated is "<that permanent> can't be regenerated
 	// this turn" (ADR 0108 §2, #1887; CR 701.19c): regeneration shields
 	// are not applied to it, and are not used up, and neither is a
@@ -673,6 +681,8 @@ var modKinds = map[ModKind]modKindSpec{
 	ModDamageCantBePrevented:  {reader: readerRule},
 	ModDamageCantBeRedirected: {reader: readerRule},
 	ModCantGainLife:           {reader: readerRule},
+	// ADR 0109 §4 (#1895): the land-play gate.
+	ModCantPlayLands: {reader: readerRule},
 	// ADR 0108 §2 (#1887): the regeneration gate.
 	ModCantBeRegenerated: {reader: readerRule},
 	// Tier 3b (ADR 0041 P8): block-rule effects, not layer operations.

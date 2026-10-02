@@ -1251,6 +1251,19 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		// so it needs no second check.
 		//
 		// The allowance is not a literal 1 — see land_drops.go.
+		//
+		// ADR 0109 §4, CR 101.2: "can't" beats "can", so a "players
+		// can't play lands" effect is asked BEFORE the drop count, and an
+		// extra drop does not lift it. The same gate the enumerator and
+		// the view ask (land_play_gate.go).
+		if err := g.LandPlayGateLocked(playerID, card, src.Kind); err != nil {
+			slog.Warn("cast_spell rejected: an effect forbids playing this land",
+				"card_name", card.Name,
+				"oracle_id", card.OracleID,
+				"reason", err.Error(),
+			)
+			return err
+		}
 		if g.LandDropsRemainingLocked(playerID) <= 0 {
 			slog.Warn("cast_spell rejected: no land plays left this turn",
 				"card_name", card.Name,
