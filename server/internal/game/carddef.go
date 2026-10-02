@@ -71,6 +71,9 @@ type CardDef struct {
 	PrintedKeywords            []string
 	Triggered                  []TriggeredAbility
 	TriggerDoublers            []TriggerDoubler
+	// TriggerSuppressors are the "[an event] doesn't cause abilities to
+	// trigger" statics (#1735, trigger_suppression.go).
+	TriggerSuppressors []TriggerSuppressor
 	// ManaTriggers are the CR 605.1b TRIGGERED MANA abilities — the
 	// one trigger kind that never uses the stack (CR 605.4a). Kept
 	// apart from Triggered because nothing on TriggeredAbility applies
@@ -475,6 +478,12 @@ func init() {
 	CatalogTriggerDoublers = func(key string) []TriggerDoubler {
 		if d := catalogDef(key); d != nil {
 			return d.TriggerDoublers
+		}
+		return nil
+	}
+	CatalogTriggerSuppressors = func(key string) []TriggerSuppressor {
+		if d := catalogDef(key); d != nil {
+			return d.TriggerSuppressors
 		}
 		return nil
 	}

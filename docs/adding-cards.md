@@ -5492,6 +5492,53 @@ cause, not just the helper predicate. The `OncePerBatch` first-event
 limitation and remaining card wave are tracked in
 [ADR 0018's addendum](decisions/0018-triggers-on-the-stack.md#addendum-2026-09-17-trigger-doubling-cr-6032d--accepted).
 
+**The other direction: a trigger suppressor (#1735).** "Creatures
+entering don't cause abilities to trigger" (Torpor Orb), "… entering or
+dying …" (Hushbringer) and "Permanents entering don't cause abilities of
+permanents your opponents control to trigger" (Elesh Norn, Mother of
+Machines) go in `Spec.TriggerSuppressors`, built from
+[trigger_suppression.go](../server/internal/cards/effects/trigger_suppression.go):
+
+```go
+TriggerSuppressors: []game.TriggerSuppressor{CreaturesEnteringDontTrigger("Torpor Orb")},
+
+dying := SuppressesDying(Creature())          // Hushbringer's second half
+dying.Label = "Hushbringer"
+
+s := OfOpponentsPermanents(SuppressesEntering(nil))   // Elesh Norn
+s.Label = "Elesh Norn, Mother of Machines"
+```
+
+A suppressor is not a replacement effect and not an ability removal.
+The event still happens and the permanents keep their abilities. The
+ability just never triggers, so nothing is queued, asked, targeted or
+counted. The harvest asks the suppressors before the once-per-batch
+guard and before the doublers, so a suppressed ability is never doubled.
+The cause helpers share the doubler's `isEntering` / `isDying`, so
+"entering" means the same thing on both halves of Elesh Norn. The filter
+is judged against the entering permanent as it is on the battlefield,
+or the dying one as it last was. `OfOpponentsPermanents` reads the
+source's controller and skips spells, emblems and cards in other zones,
+because none of them is a permanent.
+
+You don't have to choose which board the static is read from; the engine
+does (CR 603.10). An enters trigger is judged after the event, so a
+suppressor that enters together with the creature applies, including its
+own entry, and one that has already left does not. A dies trigger looks
+back in time, so a Hushbringer that dies in the same wipe still stops
+every death in it. Evoke's sacrifice is the creature's own enters
+trigger, so a suppressor keeps an evoked creature on the battlefield.
+That is correct, and the tests pin it. Replacement effects ("enters
+tapped", "enters with counters") and `AsEnters` choices are not
+triggers, so they are never suppressed. Tests:
+[game/trigger_suppression_test.go](../server/internal/game/trigger_suppression_test.go)
+for the rules and
+[effects/trigger_suppression_test.go](../server/internal/cards/effects/trigger_suppression_test.go)
+for the cards. A card test should check the prompt count as well as
+the outcome, because `passPriorityAroundTable` stops at a prompt, and
+an ordering prompt leaves the board looking suppressed. See
+[ADR 0018's 2026-10-01 amendment](decisions/0018-triggers-on-the-stack.md).
+
 ### Emblems (#623)
 
 "You get an emblem with [ability]" (CR 114) is one `Spec` slot plus a

@@ -296,6 +296,15 @@ type Spec struct {
 	// time; the catalog only declares the card's printed condition.
 	TriggerDoublers []game.TriggerDoubler
 
+	// TriggerSuppressors are the statics that say an event "doesn't
+	// cause abilities to trigger" (CR 603.2): Torpor Orb, Hushbringer,
+	// Elesh Norn, Mother of Machines. They are the doubler's sibling,
+	// asked first at the same harvest point, and a suppressed ability
+	// is never queued, prompted or doubled. Build them with
+	// SuppressesEntering / SuppressesDying / OfOpponentsPermanents in
+	// trigger_suppression.go. #1735.
+	TriggerSuppressors []game.TriggerSuppressor
+
 	// Modes is the S20 sub-PR 4 modal-spell clause ("Choose one —").
 	// Each option carries its oracle bullet and, when the bullet
 	// targets, its own TargetSpec; the engine derives the cast's

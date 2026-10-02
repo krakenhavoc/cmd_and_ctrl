@@ -237,7 +237,7 @@ func Harness(label string, cost game.AbilityCost) ActivatedAbility {
 // that TestEveryAnchorWordGateIsOffered could not tell switches
 // anything on.
 func specDesignations(spec Spec) []game.Designation {
-	out := make([]game.Designation, 0, len(spec.Static)+len(spec.Triggered)+len(spec.Activated)+len(spec.CostModifiers)+len(spec.GatedCastPermissions)+len(spec.TriggerDoublers))
+	out := make([]game.Designation, 0, len(spec.Static)+len(spec.Triggered)+len(spec.Activated)+len(spec.CostModifiers)+len(spec.GatedCastPermissions)+len(spec.TriggerDoublers)+len(spec.TriggerSuppressors))
 	for _, a := range spec.Static {
 		out = append(out, a.ActiveWhen)
 	}
@@ -252,6 +252,9 @@ func specDesignations(spec Spec) []game.Designation {
 	}
 	for _, d := range spec.TriggerDoublers {
 		out = append(out, d.ActiveWhen)
+	}
+	for _, s := range spec.TriggerSuppressors {
+		out = append(out, s.ActiveWhen)
 	}
 	for _, p := range spec.GatedCastPermissions {
 		out = append(out, p.ActiveWhen)

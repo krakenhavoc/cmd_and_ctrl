@@ -463,17 +463,25 @@ func (g *Game) activePlayerIDLocked() uuid.UUID {
 // which re-enters the listener chain, and a listener reading a queue
 // that still held already-fired entries would see them twice.
 //
+// #1735: a match that a trigger suppressor stops did not trigger (CR
+// 603.2), so the "next time" the trigger is waiting for has not come
+// yet. It stays queued. Hushbringer and an earthbent land that dies is
+// the case on develop: the land does not come back, and the trigger
+// waits for an event that can no longer happen, until the duration it
+// is pinned to drops it.
+//
 // Caller must hold g.mu in write mode.
-func (g *Game) fireEventDelayedTriggersLocked(ev Event) {
+func (g *Game) fireEventDelayedTriggersLocked(pass *harvestPass) {
 	if len(g.DelayedTriggers) == 0 {
 		return
 	}
+	ev := pass.ev
 	var keep, fire []*DelayedTrigger
 	for _, dt := range g.DelayedTriggers {
 		if dt == nil {
 			continue
 		}
-		if dt.matchesEventLocked(ev, g) {
+		if dt.matchesEventLocked(ev, g) && !g.delayedTriggerSuppressedLocked(pass, dt) {
 			fire = append(fire, dt)
 			continue
 		}

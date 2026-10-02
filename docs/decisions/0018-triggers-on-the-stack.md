@@ -3209,3 +3209,175 @@ client already renders the queue in the stack lane.
   continuation rather than on the prompt kind, so a prompt restored
   without one doesn't hold anything: the batch drains at the next
   boundary, and answering the prompt builds nothing.
+
+## Amendment 2026-10-01 — trigger suppression (CR 603.2) · Accepted · S50
+
+Issue [#1735](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1735)
+(the Elesh Norn item). The doubling addendum's Decision 7 left room for
+this at the same point in `harvestMatchLocked`, and said why: "a
+suppressor makes the count zero before the doublers are asked".
+
+### What was missing
+
+"Creatures entering don't cause abilities to trigger" (Torpor Orb,
+Hushwing Gryff, Tocatli Honor Guard), Hushbringer's "… entering or
+dying …", and the third paragraph of Elesh Norn, Mother of Machines:
+"Permanents entering don't cause abilities of permanents your opponents
+control to trigger." `TriggerDoubler` can only add instances. Nothing
+else in the engine could stop a trigger, and neither of the obvious
+neighbours fits:
+
+- It is **not a replacement effect** (CR 614). The event still happens:
+  the creature enters, the token is created, the creature dies. Nothing
+  is replaced, so there is no CR 616 ordering and nothing a replacement
+  could watch.
+- It is **not an ability removal** (CR 613.1f). The permanents keep
+  their abilities, and the same ability still triggers on any event the
+  static does not name. Its own entry is what stops it, not its source.
+  So `AbilitiesRemoved` and `LoseAllAbilities` don't fit either.
+
+It is a static that changes whether an event triggers an ability at all
+(CR 603.2).
+
+### Decision
+
+**`Spec.TriggerSuppressors []game.TriggerSuppressor`, the doubler's
+sibling, asked first at the harvest.** `game/trigger_suppression.go`:
+
+```go
+type TriggerSuppressor struct {
+	Label      string
+	Suppresses func(g *Game, q TriggerSuppressionQuery) bool
+	ActiveWhen Designation // ADR 0071, as on TriggerDoubler
+}
+```
+
+`TriggerSuppressionQuery` is `TriggerDoublingQuery` with two changes:
+the static's card is the `Suppressor`, and `SourceIsPermanent` replaces
+`FromSpell`. The suppressor cards' wording ("abilities of permanents
+your opponents control") is about the object the ability belongs to.
+`harvestMatchLocked` now takes a `triggerOrigin` instead of `fromSpell`:
+a permanent (the battlefield walk, `harvestLTB`, the simultaneous-exit
+pass, evoke's sacrifice), a spell (`FromStack`), or neither (an
+emblem's ability, a card's ability that works from another zone, CR
+113.6). The doubler reads one bit of it, as before.
+
+**The order is the composition rule.** `harvestMatchLocked` asks the
+suppressors first, then the once-per-batch guard, then the doublers:
+
+- **A suppressed ability is not doubled.** Elesh Norn doubles an ability
+  that a permanent entering "causes to trigger", and this one did not
+  trigger. With an Elesh Norn on each side of the table, each player's
+  enters triggers are stopped by the other player's, and nothing is
+  left for either to double. Nothing triggers at all.
+- **A suppressed match does not spend a once-per-batch slot.** A
+  "whenever one or more artifacts and/or creatures enter" under Torpor
+  Orb, with a creature and then an artifact entering together, triggers
+  once, for the artifact. Asking after the guard would have spent the
+  slot on the creature and then dropped the artifact.
+- **Nothing is made**: no instance, no "you may" prompt, no target
+  prompt, no `EventTrigger`, no `TurnTally.Triggered` count. CR 603.3d
+  and the prompts never see it.
+
+**One candidate list for both.** `scanTriggerDoublersLocked` became
+`scanTriggerModifiersLocked`. The per-event candidate is now a
+`modifierCandidate` carrying both slices and a `live` bit. The scan is
+still lazy and still runs once per event that matched anything, so a
+game with no suppressor pays one length check per candidate.
+`hasTriggerModifierLocked` (formerly `hasTriggerDoublerLocked`) also
+catches the layers up for an entering subject when a suppressor is on
+the battlefield. Torpor Orb has to see a land that enters animated as
+the creature it is.
+
+### Which board is asked
+
+CR 603.10 answers it. This is the rule the PR chose for a suppressor
+that enters or leaves at the same time as the event:
+
+- **Away from a leaves-the-battlefield event**, the board is the one
+  immediately after the event. A suppressor that enters with the
+  permanent applies: Torpor Orb and a creature flickered together, and
+  Elesh Norn's own entry for both of her paragraphs (the doubler
+  addendum already counted that half). A suppressor that has already
+  left does not apply. That includes a member of an open simultaneous
+  exit that has moved to its owner's graveyard. That copy is visible
+  to the doubler and is not on the post-event board, which is what
+  `modifierCandidate.live` records. A suppressor that is still on the
+  battlefield when the entry is announced has already stopped the
+  trigger, even if it leaves later in the same resolution.
+- **A leaves-the-battlefield ability looks back in time** (CR 603.10a).
+  The candidates are the ones the doubler already reads for that event:
+  the open batch's pre-move copies and the leaving permanent's
+  last-known information. A Hushbringer that dies in the same wipe as
+  the creatures still stops their dies triggers, and its own death
+  triggers nothing.
+
+### Scope
+
+Every harvest site goes through `harvestMatchLocked`, so every
+event-caused triggered ability is covered: the battlefield, emblems,
+declared zones, `FromStack`, `harvestLTB`, the simultaneous-exit pass,
+and evoke's sacrifice. **Evoke's sacrifice is the creature's own enters
+trigger** (CR 702.74a), so under Torpor Orb an evoked creature stays,
+and under an opponent's Elesh Norn so does an evoked creature of yours.
+That is the printed interaction, and the card tests pin it.
+
+**Event-conditioned delayed triggers are covered too.** Torpor Orb's
+text makes no exception for a delayed ability. `fireEventDelayedTriggersLocked`
+now takes the harvest pass and keeps a suppressed match queued, because
+the "next time" it waits for has not come. Its source is the permanent
+that created it, if that permanent is still on the battlefield (CR
+603.7e). The case on develop: an earthbent land that dies under
+Hushbringer does not come back.
+
+Not covered, because no suppressor's event can cause them: reflexive
+triggers (caused by a resolution), state triggers (CR 603.8: a game
+state, not an event), triggered mana abilities, the manual
+`AnnounceTrigger` button, and `WardSuppressions` (#1560). Ward
+suppression is scoped to the warded permanent, not to an event, and
+stays where it is.
+
+The cause helpers (`SuppressesEntering`, `SuppressesDying`) use the
+doubler's own `isEntering` / `isDying`. So "entering" includes token
+creation (CR 701.7a) and an `EventZoneMove` onto the battlefield, and a
+"leaves the battlefield" ability is stopped when the creature died,
+exactly as Decision 6 counts it for the doubler. Replacement effects
+("enters tapped", "enters with counters") and `AsEnters` choices are
+never triggers, so they are never suppressed. That is the rulings'
+"replacement effects are unaffected".
+
+**No wire, snapshot or bot change.** A suppressed ability leaves nothing
+to attribute. Nothing is stored: the answer is computed per event from
+the battlefield. The enumerator sees fewer prompts of kinds it already
+answers.
+
+### Rejected
+
+- **A negative doubler count.** It would read the suppression as "minus
+  one instance", which goes wrong under two suppressors or a doubler,
+  and it would still have to sit in front of the once-per-batch guard.
+  That is a separate slot in all but name.
+- **A check inside each card's `AppliesTo`**, the way the ward
+  suppression is read. Every enters- and dies-trigger in the catalog
+  would have to remember to ask, and the evoke sacrifice has no
+  `AppliesTo` at all.
+
+### Cards
+
+Torpor Orb, Hushwing Gryff, Tocatli Honor Guard, Doorkeeper Thrull
+("Artifacts and creatures entering …", `SuppressesEntering(Or(Artifact(),
+Creature()))`) and Hushbringer ship `full`. Elesh Norn, Mother of
+Machines loses its caveat and goes `full`. That is every card the
+seam row's waiting list named for this item.
+The roadmap's "Stopping abilities" row narrows to the scoped ability
+removal (Dress Down, Tishana's Tidebinder), and "trigger suppression"
+joins the coverage table's mechanic probes beside trigger doubling.
+
+### Still not covered
+
+- **A suppressor that is not about entering or dying.** No catalogued
+  card needs one yet. The query already carries the event and the
+  subject, so one would be a new cause helper, not an engine change.
+- The doubler's `OncePerBatch` first-event limitation (Decision 4) is
+  unchanged. A suppressor cannot make it worse: a suppressed first
+  member no longer spends the slot.

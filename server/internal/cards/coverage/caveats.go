@@ -143,6 +143,18 @@ var mechanics = []Mechanic{
 		Adopt:      "Declare Spec.TriggerDoublers using the cause helpers in trigger_doubling.go",
 	},
 	{
+		// #1735: the doubler's sibling, "[an event] doesn't cause
+		// abilities to trigger" (Torpor Orb, Hushbringer, Elesh Norn).
+		Name:    "trigger suppression",
+		Phrases: []string{"trigger suppression", "trigger suppressor", "cause abilities to trigger"},
+		Implements: func(s effects.Spec) bool {
+			return game.CatalogTriggerSuppressors != nil && len(game.CatalogTriggerSuppressors(s.OracleID)) > 0
+		},
+		Evidence:   "game.CatalogTriggerSuppressors(oracleID) declares a suppressor",
+		Confidence: Exact,
+		Adopt:      "Declare Spec.TriggerSuppressors using SuppressesEntering / SuppressesDying in trigger_suppression.go",
+	},
+	{
 		Name:       "flashback",
 		Phrases:    []string{"flashback"},
 		Implements: altCost("flashback"),
