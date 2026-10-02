@@ -75,6 +75,11 @@ test.describe("board layout", () => {
     await expect(dock).toBeVisible();
     await expect(dock.getByLabel("turn and phase indicator")).toBeVisible();
     await expect(dock.getByRole("group", { name: "priority controls" })).toBeVisible();
+    // ADR 0111 PR 3: the one Undo, in the toggles row with its count.
+    await expect(
+      dock.getByRole("group", { name: "priority controls" }).getByRole("button", { name: /^Undo/ }),
+    ).toBeVisible();
+    await expect(page.getByRole("button", { name: /^Undo/ })).toHaveCount(1);
     await expect(dock.getByRole("button", { name: "next", exact: true })).toBeVisible();
     await expect(dock.getByRole("button", { name: "Pass turn" })).toBeVisible();
     await expect(page.getByRole("button", { name: "next", exact: true })).toHaveCount(1);

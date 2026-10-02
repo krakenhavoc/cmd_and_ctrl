@@ -161,7 +161,12 @@ test.describe("#266 state freeze", () => {
             exact: true,
           });
           if (await next.isEnabled()) {
-            await next.click().catch(() => {});
+            // Bounded: the seat's own client can auto-pass between
+            // isEnabled() and the click, and an unbounded click then
+            // waits on a disabled button until the test times out
+            // (seen on two E2E runs, 2026-10-02). The poll above
+            // re-reads who holds priority next iteration.
+            await next.click({ timeout: 2_000 }).catch(() => {});
             break;
           }
         }
