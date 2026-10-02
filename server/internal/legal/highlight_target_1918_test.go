@@ -32,6 +32,8 @@ type castProbe1918 struct {
 	AlternativeCost string            `json:"alternative_cost"`
 	Modes           []int             `json:"modes"`
 	Targets         []json.RawMessage `json:"targets"`
+	// IdleHint is the move's own field, not a param.
+	IdleHint string `json:"-"`
 }
 
 func castsOf1918(t *testing.T, moves []legal.Move, src uuid.UUID) []castProbe1918 {
@@ -45,6 +47,7 @@ func castsOf1918(t *testing.T, moves []legal.Move, src uuid.UUID) []castProbe191
 		if err := json.Unmarshal(m.Params, &p); err != nil {
 			t.Fatal(err)
 		}
+		p.IdleHint = m.IdleHint
 		out = append(out, p)
 	}
 	return out
@@ -99,7 +102,128 @@ func TestCounterspellsWithAnEmptyStack(t *testing.T) {
 	}
 	got := castsOf1918(t, moves, flux)
 	if len(got) != 1 || got[0].AlternativeCost != "overload" || len(got[0].Targets) != 0 {
-		t.Errorf("want exactly the overloaded Counterflux with no target, got %+v", got)
+		t.Fatalf("want exactly the overloaded Counterflux with no target, got %+v", got)
+	}
+	// The cast stays legal, but the player is told it would do nothing.
+	const want = "Overloaded, this does nothing right now: there's no spell you don't control."
+	if got[0].IdleHint != want {
+		t.Errorf("overloaded Counterflux on an empty stack: idle hint %q, want %q", got[0].IdleHint, want)
+	}
+}
+
+// With an opponent's spell on the stack both Counterflux casts are
+// offered and neither is idle: the targeted one has its target, and the
+// overloaded one has a spell to counter.
+func TestCounterfluxNotIdleWithAnOpponentsSpell(t *testing.T) {
+	g := newTable(t)
+	active := g.Seats[g.Turn.ActiveSeat]
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%4]
+	clearHand(active)
+	clearHand(opp)
+	bolt := handCard(active, game.Card{Name: "Lightning Bolt", TypeLine: "Instant", ManaCost: "{R}", OracleID: oracleLightningBolt})
+	flux := handCard(opp, game.Card{Name: "Counterflux", TypeLine: "Instant", ManaCost: "{U}{U}{R}", OracleID: oracleCounterflux})
+	battlefieldCard(g, active, basic("Mountain", "Mountain"))
+	for i := 0; i < 3; i++ {
+		battlefieldCard(g, opp, basic("Island", "Island"))
+	}
+	battlefieldCard(g, opp, basic("Mountain", "Mountain"))
+	advanceTo(t, g, game.StepPrecombatMain)
+	if err := g.CastSpell(active.ID, bolt, game.CastSpellParams{
+		Targets: []game.TargetRef{{Kind: game.TargetPlayer, ID: opp.ID}},
+		Strict:  true, AutoTap: true,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := g.PassPriority(); err != nil {
+		t.Fatal(err)
+	}
+
+	moves := legal.EnumerateFor(g, opp.ID)
+	dispatchAll(t, g, opp.ID, moves)
+	got := castsOf1918(t, moves, flux)
+	var targeted, overloaded int
+	for _, c := range got {
+		if c.IdleHint != "" {
+			t.Errorf("Counterflux cast %+v is marked idle with the Bolt on the stack", c)
+		}
+		if c.AlternativeCost == "overload" {
+			overloaded++
+		} else if len(c.Targets) == 1 {
+			targeted++
+		}
+	}
+	if targeted != 1 || overloaded != 1 {
+		t.Errorf("want one targeted and one overloaded Counterflux, got %+v", got)
+	}
+}
+
+// Only the caster's own spell on the stack: "you don't control" leaves
+// the overloaded Counterflux nothing to counter, so it is idle, and the
+// targeted cast has no target and is not offered at all.
+func TestCounterfluxIdleOverItsCastersOwnSpell(t *testing.T) {
+	g := newTable(t)
+	active := g.Seats[g.Turn.ActiveSeat]
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%4]
+	clearHand(active)
+	bolt := handCard(active, game.Card{Name: "Lightning Bolt", TypeLine: "Instant", ManaCost: "{R}", OracleID: oracleLightningBolt})
+	flux := handCard(active, game.Card{Name: "Counterflux", TypeLine: "Instant", ManaCost: "{U}{U}{R}", OracleID: oracleCounterflux})
+	for i := 0; i < 3; i++ {
+		battlefieldCard(g, active, basic("Island", "Island"))
+	}
+	for i := 0; i < 2; i++ {
+		battlefieldCard(g, active, basic("Mountain", "Mountain"))
+	}
+	advanceTo(t, g, game.StepPrecombatMain)
+	if err := g.CastSpell(active.ID, bolt, game.CastSpellParams{
+		Targets: []game.TargetRef{{Kind: game.TargetPlayer, ID: opp.ID}},
+		Strict:  true, AutoTap: true,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	moves := legal.EnumerateFor(g, active.ID)
+	dispatchAll(t, g, active.ID, moves)
+	got := castsOf1918(t, moves, flux)
+	if len(got) != 1 || got[0].AlternativeCost != "overload" || got[0].IdleHint == "" {
+		t.Errorf("want only the overloaded Counterflux, marked idle, got %+v", got)
+	}
+}
+
+// Cyclonic Rift overloaded is "return each nonland permanent you don't
+// control". With no such permanent it is idle. A hexproof creature an
+// opponent controls can't be targeted, so the targeted cast is still not
+// offered, but overload doesn't target (CR 702.96b) and would bounce it,
+// so the overloaded cast is not idle.
+func TestCyclonicRiftIdleOnlyWithNothingToBounce(t *testing.T) {
+	g := newTable(t)
+	active := g.Seats[g.Turn.ActiveSeat]
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%4]
+	clearHand(active)
+	rift := handCard(active, game.Card{Name: "Cyclonic Rift", TypeLine: "Instant", ManaCost: "{1}{U}", OracleID: oracleCyclonicRift})
+	for i := 0; i < 7; i++ {
+		battlefieldCard(g, active, basic("Island", "Island"))
+	}
+	battlefieldCard(g, opp, basic("Forest", "Forest"))
+	battlefieldCard(g, active, creature("My Bear", "{1}{G}", 2, 2))
+	advanceTo(t, g, game.StepPrecombatMain)
+
+	moves := legal.EnumerateFor(g, active.ID)
+	dispatchAll(t, g, active.ID, moves)
+	got := castsOf1918(t, moves, rift)
+	const want = "Overloaded, this does nothing right now: there's no nonland permanent you don't control."
+	if len(got) != 1 || got[0].AlternativeCost != "overload" || got[0].IdleHint != want {
+		t.Fatalf("no opposing nonland permanent: want only the overloaded Rift with hint %q, got %+v", want, got)
+	}
+
+	battlefieldCard(g, opp, protectedCreature("Slippery Bogle", "{G/U}", "hexproof"))
+	moves = legal.EnumerateFor(g, active.ID)
+	dispatchAll(t, g, active.ID, moves)
+	got = castsOf1918(t, moves, rift)
+	if len(got) != 1 || got[0].AlternativeCost != "overload" {
+		t.Fatalf("hexproof Bogle only: want only the overloaded Rift, got %+v", got)
+	}
+	if got[0].IdleHint != "" {
+		t.Errorf("overloaded Rift would bounce the hexproof Bogle, but is marked idle: %q", got[0].IdleHint)
 	}
 }
 
