@@ -3,9 +3,9 @@
   // (Board.svelte's .strip column). Each item is one compact row —
   // 40×56 thumb, title, caster → targets — so a deep stack still
   // reads top-down without covering the table. The top item (next
-  // to resolve) carries a gold ring; when the viewer holds priority
-  // it also carries Counter + Pass, the one deliberate duplication
-  // of the phase widget's "next".
+  // to resolve) carries a gold ring. Every item carries Counter; Pass
+  // and hold are the action dock's (ADR 0111 §7), so nothing here
+  // duplicates its `next`.
   //
   // Items stack top-to-bottom with the top of the visual stack
   // (most-recently-cast, resolves first) at the top of the overlay.
@@ -42,7 +42,6 @@
   import { targeting, isLegalCardTarget } from "../../targeting";
   import { hoveredCard } from "../../cardTypes";
   import { settings } from "../../settings";
-  import { holdPriority, toggleHoldPriority } from "../../holdPriority";
   import { buildStackLane, type StackLaneItem } from "../../stackLane";
   import { createStackHover } from "../../stackHover";
 
@@ -68,8 +67,6 @@
     // has decided is "considering a response" — a public-timing
     // read, never a hint about whether they actually have one.
     priorityHolderConsidering?: boolean;
-    // Pass priority from the strip (same handler as the phase widget).
-    onPass?: () => void;
   }
 
   const {
@@ -85,7 +82,6 @@
     onTargetStackItem,
     priorityHolderName = null,
     priorityHolderConsidering = false,
-    onPass,
   }: Props = $props();
 
   // The docked card never says "your", so it needs no viewer; the
@@ -162,25 +158,8 @@
           {/if}
         </span>
       {/if}
-      <!-- #323: the same session hold as the phase widget's button,
-           mirrored here because this card is on screen exactly when
-           the stack is live — the moment the reporter is in when
-           they want to change their mind. Armed, your own spells and
-           triggers keep the cursor instead of auto-passing; it has
-           to be armed before the cast, since the pass fires on the
-           next snapshot. -->
-      <button
-        type="button"
-        class="hold-toggle"
-        class:on={$holdPriority}
-        aria-pressed={$holdPriority}
-        onclick={toggleHoldPriority}
-        title={$holdPriority
-          ? "hold ON — your own spells and triggers keep the cursor so you can respond to them; click to release"
-          : "hold OFF — your own spells and triggers resolve without asking. Click before you cast to keep priority and respond to them"}
-      >
-        {$holdPriority ? "hold ✓" : "hold"}
-      </button>
+      <!-- ADR 0111 §7: no hold or Pass here. Both live in the action
+           dock (bottom right), and its `next` is the one pass button. -->
     </header>
     <div class="items">
       {#each displayItems as item, i (item.id)}
@@ -260,16 +239,6 @@
           >
             Counter
           </button>
-          {#if i === 0 && viewerHasPriority && onPass}
-            <button
-              type="button"
-              class="act primary pass-btn"
-              onclick={onPass}
-              title="pass priority — the top item resolves once everyone passes"
-            >
-              Pass <Icon name="chevronRight" size={12} />
-            </button>
-          {/if}
         </div>
       {/each}
     </div>
@@ -346,38 +315,6 @@
   .hint :global(svg) {
     vertical-align: -2px;
     margin-right: 4px;
-  }
-  /* #323 hold toggle — the mono micro-chip vocabulary the rest of
-     this card already uses for `.chip`, sized to sit on the header
-     baseline. Engaged uses --magenta (a standing user instruction),
-     never gold: gold means priority everywhere on the table. */
-  .hold-toggle {
-    flex: 0 0 auto;
-    margin-left: auto;
-    font-family: var(--font-mono);
-    font-size: 9px;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--fg-dim);
-    background: transparent;
-    border: 1px solid var(--border);
-    border-radius: 999px;
-    padding: 2px 8px;
-    cursor: pointer;
-    transition:
-      color 120ms var(--ease),
-      border-color 120ms var(--ease),
-      background 120ms var(--ease);
-  }
-  .hold-toggle:hover {
-    color: var(--fg);
-    border-color: var(--border-strong);
-  }
-  .hold-toggle.on {
-    color: var(--magenta);
-    border-color: color-mix(in srgb, var(--magenta) 55%, transparent);
-    background: color-mix(in srgb, var(--magenta) 16%, transparent);
-    font-weight: 700;
   }
   .hint.split-second {
     color: var(--danger);

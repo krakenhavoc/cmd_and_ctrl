@@ -206,7 +206,7 @@ export interface Settings {
     // your own spell. Defaults on — casting is already the
     // decision, so the follow-up click is pure friction. A stack
     // that holds ANY opponent item still stops, and the session
-    // "hold" toggle (holdPriority.ts, surfaced in the phase widget
+    // "hold" toggle (holdPriority.ts, surfaced in the action dock
     // and the stack card) suspends this per-window when you do want
     // to respond to your own spell or trigger. Flip off to restore
     // the pre-#323 "every stack stops" behaviour permanently.

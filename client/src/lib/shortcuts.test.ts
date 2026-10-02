@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   SHORTCUTS,
   SHORTCUT_IDS,
+  ariaKeyshortcuts,
   GROUP_ORDER,
   GROUP_LABELS,
   RESERVED_CHORDS,
@@ -200,6 +201,22 @@ describe("parseChord", () => {
     expect(parseChord("+")).toBe("+");
     expect(parseChord("Ctrl++")).toBe("Ctrl++");
     expect(keyOfChord("Ctrl++")).toBe("+");
+  });
+});
+
+// ADR 0111 §1: every action-dock button carries its key.
+describe("ariaKeyshortcuts", () => {
+  it("names keys and modifiers the way aria-keyshortcuts does", () => {
+    expect(ariaKeyshortcuts("Space")).toBe("Space");
+    expect(ariaKeyshortcuts("t")).toBe("T");
+    expect(ariaKeyshortcuts("Shift+p")).toBe("Shift+P");
+    expect(ariaKeyshortcuts("Ctrl+Alt+k")).toBe("Control+Alt+K");
+    expect(ariaKeyshortcuts(",")).toBe(",");
+  });
+
+  it("is empty for a chord that does not parse", () => {
+    expect(ariaKeyshortcuts("")).toBe("");
+    expect(ariaKeyshortcuts("Hyper+x")).toBe("");
   });
 });
 

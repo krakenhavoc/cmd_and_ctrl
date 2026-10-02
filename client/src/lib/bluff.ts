@@ -41,7 +41,7 @@ export function bluffDelayMs(min: number, max: number, rand: () => number = Math
 
 // bluffArmed is the in-game switch. Session-scoped like hold and the
 // manual pins: it defaults at game mount from the settings (armed if
-// either bluff is on) and the phase widget's bluff button flips it
+// either bluff is on) and the action dock's bluff button flips it
 // for the rest of the game.
 const armed = guardedWritable(false, "bluffArmed");
 export const bluffArmed: Readable<boolean> = { subscribe: armed.subscribe };
@@ -84,7 +84,7 @@ export function initBluffArmed(g: { bluffCounterspell: boolean; bluffInstant: bo
   armed.set(g.bluffCounterspell || g.bluffInstant);
 }
 
-// BluffStatus is what a running bluff looks like to the phase widget:
+// BluffStatus is what a running bluff looks like to the action dock:
 // timed with the wall-clock time it will pass at, or manual.
 export type BluffStatus = { manual: false; passesAt: number } | { manual: true } | null;
 

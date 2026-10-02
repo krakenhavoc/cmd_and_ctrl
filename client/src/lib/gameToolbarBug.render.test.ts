@@ -158,3 +158,37 @@ describe("Report a bug or idea on the game toolbar", () => {
     expect(items.some((i) => /bug or idea/i.test(i.textContent ?? ""))).toBe(false);
   });
 });
+
+// ADR 0111 PR 2: Pass turn left the command bar for the action dock,
+// which Game mounts beside the board, in the play area.
+describe("the command bar and the action dock", () => {
+  it("has no Pass turn on the toolbar; the dock in the play area has it, disabled", async () => {
+    stubConfig(false);
+    const c = await mountGame();
+    const bar = c.querySelector("header.bar")!;
+    expect(
+      [...bar.querySelectorAll("button")].some((b) => /pass turn/i.test(b.textContent ?? "")),
+    ).toBe(false);
+    // The icons keep their order: mute, log, settings, then the ⋯ menu.
+    const icons = [...bar.querySelectorAll(".bar-icons > button, .bar-icons > .more > button")];
+    expect(icons.map((b) => b.getAttribute("aria-label"))).toEqual([
+      "mute sound effects",
+      "open game log",
+      "open settings",
+      "more actions",
+    ]);
+
+    const dock = c.querySelector<HTMLElement>('.play-area > section[aria-label="actions"]');
+    expect(dock, "the dock should be a child of the play area").toBeTruthy();
+    const passTurn = [...dock!.querySelectorAll("button")].find(
+      (b) => b.textContent?.trim() === "Pass turn",
+    );
+    expect(passTurn?.disabled).toBe(true);
+
+    // It publishes its size where the board, the zoom and the log drawer
+    // can all read it.
+    const root = c.querySelector<HTMLElement>("section.has-dock")!;
+    expect(root.style.getPropertyValue("--dock-w")).toMatch(/px$/);
+    expect(root.style.getPropertyValue("--dock-h")).toMatch(/px$/);
+  });
+});

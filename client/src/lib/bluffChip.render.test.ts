@@ -9,10 +9,10 @@ import { describe, it, expect, afterEach, beforeEach } from "vitest";
 import { get } from "svelte/store";
 import { flushSync } from "svelte";
 
-import PhaseDisplay from "./components/board/PhaseDisplay.svelte";
+import ActionDock from "./components/board/ActionDock.svelte";
 import { bluffArmed, _resetForTests as resetBluff, setBluffArmed } from "./bluff";
 import { defaultSettings, settings } from "./settings";
-import type { PlayerView, TurnView } from "./protocol";
+import type { GameView, PlayerView, TurnView } from "./protocol";
 import { render, cleanup } from "./test/render.svelte";
 
 beforeEach(() => {
@@ -35,16 +35,17 @@ const turn: TurnView = {
   step: "precombat_main",
 };
 
+// ADR 0111 PR 2: the chip lives in the action dock's toggles row.
 function mount() {
   return render(
-    PhaseDisplay as never,
+    ActionDock as never,
     {
-      turn,
-      seats,
-      mulligansOpen: false,
+      view: { turn, seats, mulligans_open: false } as unknown as GameView,
       viewerHasPriority: true,
+      viewerIsActive: true,
       autopassEnabled: false,
       onPassPriority: () => {},
+      onPassTurn: () => {},
       onToggleAutopass: () => {},
     } as never,
   ).container;

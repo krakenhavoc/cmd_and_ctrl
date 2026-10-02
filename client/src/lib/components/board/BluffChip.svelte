@@ -13,10 +13,12 @@
   import { openSettings, settings, updateSettings } from "../../settings";
 
   interface Props {
-    // " (b)" or "", from PhaseDisplay's key-hint helper.
+    // " (b)" or "", from the action dock's key-hint helper.
     keyHint?: string;
+    // The same key for aria-keyshortcuts ("B"), or undefined.
+    keyShortcuts?: string;
   }
-  const { keyHint = "" }: Props = $props();
+  const { keyHint = "", keyShortcuts }: Props = $props();
 
   const gp = $derived($settings.gameplay);
   const enabled = $derived(gp.smartAutoPass);
@@ -63,6 +65,7 @@
       class="action hold bluff bluff-main"
       class:on={$bluffArmed && enabled}
       aria-pressed={$bluffArmed}
+      aria-keyshortcuts={enabled ? keyShortcuts : undefined}
       disabled={!enabled}
       onclick={pressBluff}
       {title}
@@ -142,8 +145,8 @@
     min-width: 0;
   }
   /* The two halves share one outline: the main part keeps the row's
-     button look, the caret is a narrow tail. The base .action rules live
-     in PhaseDisplay; these are the chip's own. */
+     button look, the caret is a narrow tail. The toggles row's .action rules
+     live in ActionDock; these are the chip's own. */
   .action {
     flex: 1 1 auto;
     min-width: 0;
@@ -199,6 +202,7 @@
     gap: 6px;
     min-width: 200px;
     max-width: min(260px, calc(100vw - 32px));
+    color: var(--fg);
     padding: 8px 10px;
     border: 1px solid var(--border);
     border-radius: 8px;

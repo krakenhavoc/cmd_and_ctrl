@@ -46,6 +46,12 @@ The ones that cannot be deduced from looking at the table:
   in Settings (S13).
 - **The attention strip is where the stack lives**, and Counter and Pass sit on
   its top item rather than anywhere near the cards.
+
+> **Amended by [ADR 0111](0111-action-dock.md) §1 and §7 (S56 PR 2, #1958):** the
+> phase widget is now the header of the action dock, `region "actions"`, in the
+> screen's bottom-right corner, with `next`, Pass turn, `hold`, `autopass` and
+> `bluff` in it. Counter sits on the stack's top item; Pass is the dock's `next`,
+> and the stack card no longer has a Pass or a hold of its own.
 - **Mana is implicit.** Clicking a land taps it; casting auto-taps, and
   `strictMana` is off by default, so a new player never learns they were
   supposed to pay for anything.
@@ -89,7 +95,7 @@ as a list up front.
 | 5 | Tap a land for mana | `[aria-label="lands"]` | `mana_pool.length > 0` | snapshot |
 | 6 | Cast a creature | `[aria-label="your hand"]` | controlled creature count +1 | snapshot |
 | 7 | **Abilities live on right-click** | card instance id | ability menu opened | **event** |
-| 8 | Move the turn along | phase widget | `turn.step` changed | snapshot |
+| 8 | Move the turn along | `region "actions"` (the action dock, ADR 0111) | `turn.step` changed | snapshot |
 | 9 | Watch the bot | attention strip | `turn.active_seat` back to you | snapshot |
 | 10 | Attack | creature row + opponent medallion | a controlled creature has `attacking_target` | snapshot |
 | 11 | That is the whole interface | — | button | button |
@@ -132,6 +138,10 @@ and **not listed in the lobby**.
 - The coach card docks **bottom-left**. The phase widget owns bottom-right and
   the attention strip owns the top, so that is the only corner that is free at
   every step.
+
+  > **Amended by [ADR 0111](0111-action-dock.md) §4 (S56 PR 2, #1958):** it is
+  > the action dock (`region "actions"`) that owns the bottom-right corner now.
+  > The coach card stays bottom-left for the same reason.
 - The scrim is **one element**: a transparent rect with a 9999px spread shadow,
   so the hole is the rect and everything else darkens.
 - The scrim is **`pointer-events: none`**. Dimming is a suggestion, never a
