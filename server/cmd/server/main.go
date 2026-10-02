@@ -642,11 +642,14 @@ type config struct {
 	Addr       string
 	DataDir    string
 	AdminToken string
+	// SessionTTL is the lifetime of a session with no user: guest
+	// seats and spectators, admin-token and reclaim-ticket sessions
+	// (CMDCTRL_SESSION_TTL). Default 12h.
 	SessionTTL time.Duration
-	// IdentityTTL is the lifetime of the identity-only session a
-	// Discord sign-in mints (CMDCTRL_IDENTITY_TTL, ADR 0051 decision
-	// 3). Default 720h. Seat, spectator and admin sessions keep
-	// SessionTTL.
+	// IdentityTTL is the lifetime of every session that carries a user
+	// (CMDCTRL_IDENTITY_TTL, ADR 0051 decision 3 as widened by ADR
+	// 0110 §1). Default 720h. A Discord sign-in gets all of it; a
+	// session minted from a signed-in one inherits that one's expiry.
 	IdentityTTL time.Duration
 	SeedDemo    bool
 	// AllowedOrigins is the cross-origin hostname allow-list passed to

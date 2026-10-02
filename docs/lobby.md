@@ -90,10 +90,17 @@ a signed-in person's session, that person takes the seat as
 themselves: the seat gets the session's Discord name and avatar,
 `seats.user_id` is their users row, `name` in the body is ignored, and
 the minted principal carries `user_id` and the `discord_*` fields. A
-signed-in session is an `identified` one, or a `player` one with a
-non-nil `user_id` (the same person at their next table). Any other
-session, and a credential that no longer validates, joins by `name`
-exactly as before.
+signed-in session is an `identified` one, or a `player` or `spectator`
+one with a non-nil `user_id` (the same person at their next table).
+Any other session, and a credential that no longer validates, joins by
+`name` exactly as before.
+
+**Lifetime** ([ADR 0110](decisions/0110-remember-me.md) §1, S55): a
+signed-in joiner's seat session expires at the same instant as the
+session they joined from, so `expires_at` is that session's, not
+12 hours from now. A guest's seat session lasts `CMDCTRL_SESSION_TTL`
+(12 hours by default). The same rule holds for every route that mints
+a session; see [Session lifetimes](#session-lifetimes-adr-0110-1).
 
 **Errors**
 
@@ -133,16 +140,19 @@ comes from:
 | Session attached | Behaviour |
 |---|---|
 | `identified` (Discord sign-in, no seat yet) | Name and avatar come from the Discord identity; `name` in the body is ignored |
+| `player` or `spectator` with a non-nil `user_id` (a signed-in person already at a table) | The same: they take a seat at the code's table as themselves ([ADR 0110](decisions/0110-remember-me.md) §1 item 3, S55) |
 | none, or a credential that no longer validates | Classic manual join — `name` is required |
-| `player` / `admin` / `spectator` | 409 — that session already belongs somewhere |
+| `admin`, or a guest's `player` / `spectator` (no `user_id`) | 409 — a guest has no identity to carry to a second table, and the admin token is not a person |
 
 **Response 200** — identical to `POST /games/{id}/join`, cookie
 included. On the Discord path the principal also carries `discord_id`,
 `discord_username`, `discord_global_name` and `discord_avatar_hash`,
 and `user_id` is the signed-in person's users row, copied from the
-identity session (S34, [ADR 0051](decisions/0051-user-database.md)
-decision 3). `user_id` is the nil uuid for a guest seat, for admin and
-spectator sessions, and for everyone on a deployment with no database.
+session they joined with (S34, [ADR 0051](decisions/0051-user-database.md)
+decision 3). `user_id` is the nil uuid for a guest seat and for
+everyone on a deployment with no database. A signed-in joiner's seat
+session expires with the session they joined from; a guest's lasts
+`CMDCTRL_SESSION_TTL`.
 
 The identity session stays valid afterwards: it is how the same person
 joins a second table later without signing in to Discord again. On its
@@ -191,6 +201,16 @@ RolePlayer session bound to the seat's `(game_id, player_id)`, with
 the seat's Discord identity copied onto the principal so the avatar
 renders exactly as it did before the disconnect. Both invite tokens
 are stripped from the embedded `game`.
+
+The session it mints has **no `user_id`** and lasts
+`CMDCTRL_SESSION_TTL`: the ticket is the whole credential, and copying
+a seat's Discord fields never makes the holder that person. One
+exception ([ADR 0110](decisions/0110-remember-me.md) §1 item 4, S55):
+when the request **also** carries a valid signed-in session (cookie or
+bearer) whose `user_id` owns this seat, the redemption is the same
+thing as [`POST /me/games/{id}/session`](#post-megamesidsession), and
+the session carries that `user_id` and expires with the session it
+came from. A signed-in session for anyone else changes nothing.
 
 **Errors**
 
@@ -1646,11 +1666,13 @@ game, **newest game first**. Ended and archived games are included,
 as is a finished game whose table did not survive a restart; the
 `games` and `seats` rows are the record.
 
-Needs a signed-in person: an `identified` session, or a `player`
-session with a non-nil `user_id`. A caller with no credential at all
-gets **401**; an authenticated caller who is not a person gets **403**
-— a guest seat's session, an admin, a spectator, and everyone on a
-deployment with no database (there are no users).
+Needs a signed-in person: an `identified` session, or a `player` or
+`spectator` session with a non-nil `user_id` (a signed-in spectator
+keeps their user since S55, [ADR 0110](decisions/0110-remember-me.md)
+§1 item 2). A caller with no credential at all gets **401**; an
+authenticated caller who is not a person gets **403** — a guest seat's
+or guest spectator's session, an admin, and everyone on a deployment
+with no database (there are no users).
 
 The split matters to the client, not to the server (#1154): the SPA's
 `authFetch` clears the session on **any** 401, so answering 401 to a
@@ -1716,7 +1738,9 @@ Same caller rule as `GET /me/games`. No body.
 **Response 200**: the `sessionResponse` shape `/join` returns, cookie
 included. The principal is bound to the seat's `(game_id, player_id)`
 and carries the caller's `user_id` and the seat's Discord identity.
-Both invite tokens are stripped from the embedded `game`.
+It expires with the caller's session, not 12 hours from now
+([ADR 0110](decisions/0110-remember-me.md) §1). Both invite tokens are
+stripped from the embedded `game`.
 
 **Errors**
 
@@ -1739,8 +1763,8 @@ no friend requests and no acceptance; if an explicit list is ever
 wanted it is one table on top of this and changes nothing here.
 
 Same caller rule as `GET /me/games` and `GET /me/decks`: a signed-in
-person — an `identified` session, or a `player` session with a
-non-nil `user_id`. No credential is **401**; every other caller is
+person — an `identified` session, or a `player` or `spectator` session
+with a non-nil `user_id`. No credential is **401**; every other caller is
 **403**, including a guest's seat session, an admin (a credential, not
 a person) and everyone on a deployment with no database.
 
@@ -1782,9 +1806,12 @@ The caller's deck library — see "The deck library" under
 `POST /games/{id}/decks` above for how a row gets there and the update
 rule. Newest updated first.
 
-**401** for any principal with no `user_id` — a guest's `player`
+Same caller rule as `GET /me/games`. No credential is **401**; every
+caller that is not a signed-in person is **403** — a guest's `player`
 session, an admin session, or an `identified` session on a deployment
-with no database — not only for a missing credential. There is
+with no database. Before S55 this was a 401, which the client reads as
+an expired session and signs the browser out
+([ADR 0110](decisions/0110-remember-me.md) §1 item 7, #1154). There is
 nothing partial to show: a `user_id`-less principal owns no decks by
 construction.
 
@@ -1915,13 +1942,36 @@ apart by it.
 - **424** when GitHub fails while reading the deck's issue, commenting
   or filing (not 502, which Cloudflare replaces with its own page).
 
-## Signing out
+## Session lifetimes (ADR 0110 §1)
 
-Session lifetimes: the identity session a Discord sign-in mints from
-the login page lasts `CMDCTRL_IDENTITY_TTL` (30 days by default). Every
-other session (seat, spectator, admin) lasts `CMDCTRL_SESSION_TTL`
-(12 hours by default). See
-[ADR 0051](decisions/0051-user-database.md) decision 3.
+One rule for every route that mints a session
+([ADR 0110](decisions/0110-remember-me.md) §1, S55, reversing
+[ADR 0051](decisions/0051-user-database.md) sub-PR 7's "seat sessions
+keep `CMDCTRL_SESSION_TTL`"). It lives in one function, `issueFor`
+(`server/internal/lobby/session_ttl.go`):
+
+| The new session | Lifetime | Routes |
+|---|---|---|
+| has a `user_id`, and came from a Discord sign-in | `CMDCTRL_IDENTITY_TTL` (30 days by default) | `GET /auth/discord/callback`, all three branches: the login page's identity session, the invite link's seat, and linking Discord to a seat |
+| has a `user_id`, and came from a signed-in session | **the source session's own `expires_at`**, to the millisecond | `POST /games/{id}/join`, `POST /join`, `POST /games/{id}/spectate`, `POST /me/games/{id}/session`, `POST /games/practice`, and `POST /games/{id}/reclaim` redeemed by the seat's own user |
+| has no `user_id` | `CMDCTRL_SESSION_TTL` (12 hours by default) | guest seats and spectators, `POST /admin/login`, a reclaim ticket on its own |
+
+So joining, watching, practising or reclaiming a seat never shortens a
+sign-in and never extends one. Every session with a `user_id` can be
+revoked (`POST /logout/everywhere`, below), which is what makes the
+long lifetime safe. The `identified` session on a deployment with no
+database has no `user_id` and still lasts `CMDCTRL_IDENTITY_TTL`, as it
+did before.
+
+**A signed-in spectator keeps their user** (§1 item 2):
+`POST /games/{id}/spectate` with a signed-in session (cookie or bearer)
+mints a `spectator` session that carries the caller's `user_id` and
+`discord_*` fields, labelled with their Discord display name (a typed
+`name` is for guests). `/me/*` keeps answering for it, the WebSocket
+binding carries the user, and signing out everywhere closes it. A
+guest spectator is unchanged.
+
+## Signing out
 
 ### `POST /logout`
 
@@ -1952,7 +2002,7 @@ another one.
 | Status | Reason |
 |---|---|
 | 401 | no session, or one that is already expired or revoked |
-| 403 | the session has no user: admin, guest or spectator, or any session on a server with no database. `POST /logout` is their sign-out |
+| 403 | the session has no user: admin, guest seat or guest spectator, or any session on a server with no database. `POST /logout` is their sign-out |
 | 404 | the user row no longer exists |
 | 503 | the server has a user session but no revocation list (not a production configuration) |
 
@@ -2027,6 +2077,26 @@ state once, exchanges the code, reads `/users/@me` and either claims the
 seat bound to the invite or mints the identity session, then redirects the
 browser to the SPA's `#/oauth-complete?…` fragment.
 
+**`prompt`** ([ADR 0110](decisions/0110-remember-me.md) §2, S55). Both
+flows send Discord `prompt=none`, so a repeat sign-in with the same
+`identify` scope skips Discord's screen. `?prompt=consent` on `start`
+asks for the screen instead: it is the login page's "Sign in with a
+different Discord account", because `prompt=none` silently uses
+whichever account the browser is signed in to, and Discord's consent
+screen has an account switcher. Any other `prompt` value is a **400**.
+
+**The one retry.** What Discord does with `prompt=none` for someone who
+has never authorized the app is undocumented. If the callback comes
+back with `error=…` (for example `consent_required`,
+`interaction_required` or `access_denied`) on a `prompt=none` round, it
+is not shown: the callback consumes that round's state, parks a new
+one for the same flow (the same game and invite, or neither) marked
+`consent`, and answers **302** to Discord with `prompt=consent`. An
+error on a `consent` round, the retry included, is a real refusal and
+answers **400** with Discord's reason, as before. So a sign-in is
+retried at most once and cannot loop. An error with a missing or
+expired state is shown, since there is no flow to repeat.
+
 ### `GET /avatars/{discord_id}/{hash}`
 
 A session is required (any role). The image is served from the server-side
@@ -2052,10 +2122,12 @@ Each entry in a game's `players` (and the lobby's `GET /games`) may carry:
 Link Discord to a seat you already hold (S34 sub-PR 4, carried over
 from S12.5 [#59](https://github.com/krakenhavoc/cmd_and_ctrl/issues/59)).
 A navigation from the in-game menu: the server answers **302** to
-Discord's consent screen, and the callback comes back to the same
-seat. Works in any game state. A guest who signs in mid-game becomes
-that seat's user, and a seat already linked to one Discord account can
-be moved to another.
+Discord's consent screen, always with `prompt=consent` (ADR 0110 §2
+item 4: it attaches an account to a seat, so the person sees which
+account it is), and the callback comes back to the same seat. Works
+in any game state. A guest who signs in mid-game becomes that seat's
+user, and a seat already linked to one Discord account can be moved
+to another.
 
 Needs a `player` session (401 without a session, 403 for any other
 role). Optional `?game=<uuid>`: when present it must be the session's
@@ -2077,7 +2149,8 @@ What the callback then does:
    through the room, so every client at the table gets a state
    broadcast carrying the new name and avatar straight away.
 4. Mints a new `player` session for the same seat, now carrying
-   `user_id` and the `discord_*` fields, sets the cookie, and
+   `user_id` and the `discord_*` fields and lasting
+   `CMDCTRL_IDENTITY_TTL` (it is a sign-in), sets the cookie, and
    redirects to `/#/oauth-complete?token=…&game=…&player_id=…&user_id=…`.
 
 **Errors** (as JSON, like the other callback errors)

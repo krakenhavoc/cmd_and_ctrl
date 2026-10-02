@@ -578,6 +578,17 @@ unclaimed.
   session by `POST /join` or by the callback's invite flow, and so do
   spectator and admin sessions. The session cookie's `Expires` follows
   the token.
+
+  **Amended 2026-10-02 by [ADR 0110](0110-remember-me.md) §1 (S55,
+  Delivery PR 1):** this rule is reversed. Every session that carries
+  a `UserID` now gets the identity lifetime: the three Discord callback
+  mints get `CMDCTRL_IDENTITY_TTL`, and a session minted from a
+  signed-in session (`POST /join`, `POST /games/{id}/join`,
+  `POST /games/{id}/spectate`, `POST /me/games/{id}/session`,
+  `POST /games/practice`, a reclaim redeemed by the seat's own user)
+  inherits that session's expiry. Only sessions with no user (guests,
+  the admin token, a bare reclaim ticket) keep `CMDCTRL_SESSION_TTL`.
+  The rule is `issueFor` in `server/internal/lobby/session_ttl.go`.
 - **The client did not drop long sessions at 12 hours, but it did at
   about 23 days.** It stores whatever `expires_at` the server hands it.
   Its expiry timer, though, clamped the `setTimeout` delay to 2·10⁹ ms

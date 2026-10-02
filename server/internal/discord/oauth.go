@@ -34,16 +34,40 @@ const discordScopes = "identify"
 // leaves `scope` out.
 const RequestedScopes = discordScopes
 
+// Prompt is the authorize URL's `prompt` parameter (ADR 0110 §2).
+type Prompt string
+
+const (
+	// PromptNone skips Discord's authorization screen for a user who
+	// has already authorized this application with the requested
+	// scopes, and sends them straight back to the redirect URI. Both
+	// sign-in flows (login page and invite link) use it, so a repeat
+	// sign-in is one click.
+	PromptNone Prompt = "none"
+	// PromptConsent always shows the screen. It is what Discord does
+	// when the parameter is left out. Used by the link flow, by "sign
+	// in with a different Discord account", and by the one retry a
+	// refused PromptNone round gets.
+	PromptConsent Prompt = "consent"
+)
+
 // AuthorizeURL builds the URL the client should be redirected to.
 // state + codeChallenge come from StateStore.Start; the caller
 // handles the HTTP 302 themselves so they can attach cookies /
 // set response headers as needed.
 //
-// prompt=none would skip Discord's consent screen on repeat
-// sign-ins, but we leave it out — requesting consent every time
-// makes the "scope of access" transparent to users who might not
-// remember granting it.
-func (c Config) AuthorizeURL(state, codeChallenge string) string {
+// prompt is always sent (ADR 0110 §2, reversing the old rule of
+// leaving it out so that consent was asked every time). The scope
+// stays `identify`, so the screen PromptNone skips is one that only
+// ever asked for the username and avatar. What Discord does with
+// PromptNone for a user who never authorized the app is not
+// documented; the callback covers either answer by retrying once with
+// PromptConsent (lobby.discordCallback, StateStore.Retry). An empty
+// prompt is sent as consent, Discord's own default.
+func (c Config) AuthorizeURL(state, codeChallenge string, prompt Prompt) string {
+	if prompt != PromptNone {
+		prompt = PromptConsent
+	}
 	q := url.Values{}
 	q.Set("response_type", "code")
 	q.Set("client_id", c.ClientID)
@@ -52,6 +76,7 @@ func (c Config) AuthorizeURL(state, codeChallenge string) string {
 	q.Set("state", state)
 	q.Set("code_challenge", codeChallenge)
 	q.Set("code_challenge_method", "S256")
+	q.Set("prompt", string(prompt))
 	return authorizeEndpoint + "?" + q.Encode()
 }
 

@@ -381,63 +381,6 @@ func TestRevokedSessionCannotOpenAWebSocket(t *testing.T) {
 	}
 }
 
-// TestSessionTTLSelection is decision 3: the identity-only session a
-// Discord sign-in mints lives IdentityTTL (30 days by default); every
-// session minted from it, and every other session, lives SessionTTL.
-func TestSessionTTLSelection(t *testing.T) {
-	lifetime := func(t *testing.T, a auth.Authenticator, tok string) time.Duration {
-		t.Helper()
-		p := mustValidate(t, a, tok)
-		return p.ExpiresAt.Sub(p.IssuedAt)
-	}
-
-	t.Run("defaults", func(t *testing.T) {
-		s := newRevocationStack(t, nil)
-		idTok := signInAs(t, s, "alice")
-		if got := lifetime(t, s.auth, idTok); got != 30*24*time.Hour {
-			t.Errorf("identity session lives %v, want 720h", got)
-		}
-		meta, _ := s.lobby.Create("FNM")
-		resp := postJSON(t, s.srv, "/join", idTok, map[string]string{"invite_token": meta.InviteToken})
-		var joined struct {
-			Token string `json:"token"`
-		}
-		_ = json.NewDecoder(resp.Body).Decode(&joined)
-		resp.Body.Close()
-		if got := lifetime(t, s.auth, joined.Token); got != 12*time.Hour {
-			t.Errorf("seat session from /join lives %v, want the 12h session TTL", got)
-		}
-		if got := lifetime(t, s.auth, adminToken(t, s.srv)); got != 12*time.Hour {
-			t.Errorf("admin session lives %v, want 12h", got)
-		}
-	})
-
-	t.Run("configured", func(t *testing.T) {
-		s := newRevocationStack(t, func(c *Config) {
-			c.SessionTTL = 2 * time.Hour
-			c.IdentityTTL = 7 * 24 * time.Hour
-		})
-		if got := lifetime(t, s.auth, signInAs(t, s, "alice")); got != 7*24*time.Hour {
-			t.Errorf("identity session lives %v, want 168h", got)
-		}
-
-		// The invite-link flow claims a seat in the callback itself:
-		// that is a seat session, so SessionTTL.
-		meta, _ := s.lobby.Create("FNM")
-		st, _, err := s.state.Start(meta.ID, meta.InviteToken)
-		if err != nil {
-			t.Fatalf("Start: %v", err)
-		}
-		frag := fragmentParams(t, followOneRedirect(t, s.srv, "/auth/discord/callback?state="+st+"&code=code-3"))
-		if got := lifetime(t, s.auth, frag.Get("token")); got != 2*time.Hour {
-			t.Errorf("invite-flow seat session lives %v, want 2h", got)
-		}
-		if got := lifetime(t, s.auth, guestSeatToken(t, s.srv, s.lobby)); got != 2*time.Hour {
-			t.Errorf("guest seat session lives %v, want 2h", got)
-		}
-	})
-}
-
 // TestOAuthFragmentCarriesTheUserID: the client builds its principal
 // from the fragment, and user_id is what tells it "sign out everywhere"
 // will work.
