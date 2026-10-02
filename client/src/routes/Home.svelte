@@ -64,6 +64,12 @@
       needsSession: hasLinkedUser ? undefined : "Sign in first",
     },
     {
+      title: "My decks",
+      href: hasLinkedUser ? "#/decks" : "#/login",
+      description: "Your saved decks, how much of each plays as printed, rename and delete.",
+      needsSession: hasLinkedUser ? undefined : "Sign in first",
+    },
+    {
       title: "Join with an invite",
       href: "#/login",
       description: "Have a code or a link from a friend? Enter it here.",

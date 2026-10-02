@@ -965,15 +965,23 @@ re-pasting.
 for a guest (no `user_id`): still installs the deck on the seat and
 nothing else. For a signed-in caller it *additionally*:
 
-- Creates or updates a `decks` row for **`format: "text"` or
-  `"moxfield"` requests only** — not a `deck` (pre-built catalog) pick,
-  which has its own id system and is never a library row, and not
-  `format: "url"`, whose `source` is a link rather than the decklist
-  text the library re-parses later. A URL-based import still installs
-  the deck on the seat; it is just never saved to the library.
+- Creates or updates a `decks` row for **`format: "text"`,
+  `"moxfield"` or `"url"` requests** — not a `deck` (pre-built catalog)
+  pick, which has its own id system and is never a library row. A
+  **link import** (ADR 0110, owner decision 7) is saved as the list the
+  fetcher returned, rendered as plain text (`source_format: "text"`),
+  with the canonical link beside it in `decks.source_url`. Re-seating it
+  re-parses the stored list and never calls the network; fetching it
+  again from the link is a later, explicit action. Saving the same name
+  from pasted text clears the link.
 - Sets the seat's `deck_id` to the saved deck. Any other outcome
-  (a guest, a catalog pick, a URL import, or a failed save) leaves the
+  (a guest, a catalog pick, or a failed save) leaves the
   seat's `deck_id` empty, clearing a previous one if there was one.
+- **The 200-deck cap (ADR 0110 section 6).** A signed-in caller keeps at
+  most 200 decks. The 201st *new* deck is not saved (updating a deck by
+  name is never refused), the upload still succeeds and seats the deck,
+  and the response carries `library_note`, a player sentence saying the
+  library is full and to delete a deck on `#/decks`.
 
 **The update rule:** a caller's existing deck with the **same name**
 is updated in place — `source_text`, `source_format`, `commanders`,
@@ -1912,7 +1920,14 @@ construction.
       "name": "Atraxa Superfriends",
       "commanders": ["Atraxa, Praetors' Voice"],
       "card_count": 100,
-      "updated_at": "2026-09-19T08:00:00Z"
+      "updated_at": "2026-09-19T08:00:00Z",
+      "source_url": "https://moxfield.com/decks/abc",
+      "coverage": {
+        "counts": { "manual": 3, "unreviewed": 5, "caveats": 4, "automated": 40, "no_effect": 38 },
+        "unknown": 0,
+        "as_printed": 78,
+        "resolved": 90
+      }
     }
   ]
 }
@@ -1920,7 +1935,42 @@ construction.
 
 `source_text` and `source_format` are not included here — this is the
 picker's list, not the re-seat payload; seating reads them server-side
-via `POST /games/{id}/decks/{deck_id}`.
+via `POST /games/{id}/decks/{deck_id}`. `source_url` is absent for a
+pasted deck.
+
+**`coverage` is computed on read, never stored** (ADR 0110 section 6).
+`counts` are [ADR 0095](decisions/0095-deck-coverage-and-deck-requests.md)'s
+five buckets by distinct card. `as_printed` is `automated` plus
+`no_effect`, `resolved` is every distinct card bucketed, and the page
+says "N of M play as printed". The list builds the catalogue verdicts
+once per request and reuses them for every deck. `coverage` is absent
+when the server has no card index or a stored list no longer parses.
+These reads, and the three routes below, share a per-client bucket of 1
+request per second with a burst of 5 (429 past it).
+
+### `GET /me/decks/{id}/coverage` (ADR 0110 section 6)
+
+The full ADR 0095 coverage report for one saved deck (the same body as
+`POST /deck-coverage`), so the library can show the cards behind each
+bucket and offer "Request these cards" through `POST /deck-requests`.
+`403` for a session that is not a signed-in person (never 401, which would sign the browser out); `404` for a deck that is not the caller's or
+does not exist (an id reveals nothing); `422` if the stored list no
+longer parses; `503` with no card index.
+
+### `PATCH /me/decks/{id}` (ADR 0110 section 6)
+
+Body `{"name": "..."}`. Renames the caller's deck without touching its
+`updated_at`. Returns the deck (`myDeckInfo` without coverage). `400`
+for a blank name or one over 100 characters, `403` for a caller with no
+`user_id`, `404` for a deck that is not theirs, `409` when they already
+have another deck by that name (the update rule keys on the name).
+
+### `DELETE /me/decks/{id}` (ADR 0110 section 6)
+
+Removes the caller's deck. In the same transaction every seat that
+pointed at it has `seats.deck_id` set to NULL; the seat keeps its
+`deck_name`. `204` on success; `403` for a caller with no `user_id`;
+`404` for a deck that is not theirs or already gone.
 
 ### `GET /me/settings` and `PUT /me/settings` (ADR 0110 §4)
 

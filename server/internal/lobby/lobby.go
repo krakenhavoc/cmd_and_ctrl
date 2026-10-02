@@ -951,6 +951,22 @@ func (l *Lobby) SetSeatDeckID(gameID, playerID uuid.UUID, deckID string) error {
 	return ErrPlayerNotInGame
 }
 
+// ForgetLibraryDeck clears deckID from every seat's in-memory record.
+// The database row is already NULL (decklibrary.Store.Delete does it in
+// its transaction); without this, the next persistSeatsLocked would
+// write the deleted id back into seats.deck_id.
+func (l *Lobby) ForgetLibraryDeck(deckID string) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	for _, entry := range l.games {
+		for i := range entry.meta.Players {
+			if entry.meta.Players[i].DeckID == deckID {
+				entry.meta.Players[i].DeckID = ""
+			}
+		}
+	}
+}
+
 // Start transitions the game from lobby to active. Fails if fewer
 // than game.MinPlayers are seated, or if any seat still holds the
 // placeholder deck from join time (S05 adds ErrDeckNotUploaded so

@@ -17,7 +17,8 @@ import {
 import { redactSecrets } from "./redact";
 import type { PrebuiltDecksResponse } from "./prebuiltDecks";
 import type { MyGame } from "./myGames";
-import type { MyDecksResponse } from "./myDecks";
+import type { MyDeckInfo, MyDecksResponse } from "./myDecks";
+import type { CoverageReport } from "./deckcheck";
 import type { InviteDMResponse, Tablemate } from "./tablemates";
 import type { AutoTapCastParams } from "./castPreview";
 import type { TableSettingsPatch, SpawnZone } from "./tableSettings";
@@ -157,6 +158,9 @@ export interface UploadDeckResponse {
   // moment there is to say it: once, before the game, instead of
   // once per surprise mid-combat.
   unimplemented?: string[];
+  // Set when the deck was seated but not saved to the library: today
+  // only the 200-deck cap (ADR 0110 section 6). A player sentence.
+  library_note?: string;
 }
 
 interface SessionResponse {
@@ -577,6 +581,28 @@ export async function installPrebuiltDeck(
 export async function fetchMyDecks(): Promise<MyDecksResponse> {
   const res = await authFetch("/me/decks");
   return (await res.json()) as MyDecksResponse;
+}
+
+// renameMyDeck renames a saved deck (PATCH /me/decks/{id}). A name the
+// caller already uses is a 409 whose message the page shows as is.
+export async function renameMyDeck(id: string, name: string): Promise<MyDeckInfo> {
+  const res = await authFetch(`/me/decks/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    body: JSON.stringify({ name }),
+  });
+  return (await res.json()) as MyDeckInfo;
+}
+
+// deleteMyDeck removes a saved deck (DELETE /me/decks/{id}); seats that
+// pointed at it lose the link and keep their deck name.
+export async function deleteMyDeck(id: string): Promise<void> {
+  await authFetch(`/me/decks/${encodeURIComponent(id)}`, { method: "DELETE" });
+}
+
+// fetchMyDeckCoverage reads one saved deck's full ADR 0095 report.
+export async function fetchMyDeckCoverage(id: string): Promise<CoverageReport> {
+  const res = await authFetch(`/me/decks/${encodeURIComponent(id)}/coverage`);
+  return (await res.json()) as CoverageReport;
 }
 
 // AccountSettings mirrors lobby.settingsResponse: the signed-in
