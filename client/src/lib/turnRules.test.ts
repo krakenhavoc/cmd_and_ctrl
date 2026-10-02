@@ -8,7 +8,9 @@ describe("exileIfCreaturesDieLine", () => {
   });
 
   it("names the sources once each, in order", () => {
-    expect(exileIfCreaturesDieLine(["Flaying Tendrils", "Malicious Eclipse", "Flaying Tendrils"])).toBe(
+    expect(
+      exileIfCreaturesDieLine(["Flaying Tendrils", "Malicious Eclipse", "Flaying Tendrils"]),
+    ).toBe(
       "Creatures that would die this turn are exiled instead — Flaying Tendrils, Malicious Eclipse",
     );
   });

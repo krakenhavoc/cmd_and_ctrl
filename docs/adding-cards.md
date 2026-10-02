@@ -1358,6 +1358,39 @@ declared `Destruction` flag — `destroyRoute` sets it,
 tags each doomed permanent with the rule that doomed it
 (`doomedPermanent`, `server/internal/game/simultaneous.go`).
 
+**"Can't be regenerated this turn" and "if it would die this turn,
+exile it instead"** ([ADR 0108](decisions/0108-turn-scoped-effects-object-history-and-damage-shields.md)
+§1 and §2, #1886, #1887). Both are `ScopedEffect` kinds pinned to the
+object until cleanup (`cantBeRegenerated`, `exileIfWouldDie`), and the
+vocabulary is `server/internal/cards/effects/exile_if_dies.go`. Pick the
+form by the printed wording, because the two do different things when
+the damage is prevented:
+
+```go
+// "If that creature would die this turn" / "If it's a creature, …" — the spell's
+// effect, registered whatever the damage did (the Disintegrate ruling):
+ExileIfItWouldDieThisTurn{Target: id}
+CantBeRegeneratedThisTurn{Target: id}
+OnResolve: damageFirstTargetExileIfItDies(fixedAmount(4))        // Lava Coil
+OnResolve: damageThenIfCreatureNoRegenExileIfDies(xAmount())    // Disintegrate
+// "a creature [permanent] dealt damage this way" — only on a recipient that took > 0:
+DealDamageThen(ctx, id, n, ExileIfDealtDamageWouldDie(item, false))  // Demonfire
+DealDamageToEachThen(ctx, ids, n, CantBeRegeneratedIfDealtDamage(item)) // Flamebreak
+OnResolve: damageAnyTargetExileIfDealtDies(fixedAmount(3), false) // Annihilating Fire
+// "If a creature [an opponent controls] would die this turn" — a live set:
+ExileIfCreaturesWouldDieThisTurn{OpponentsOnly: true}            // Malicious Eclipse
+```
+
+The per-recipient continuation is `game.DealDamageEachEachThenForEffect`.
+A static regeneration ("If this creature would be destroyed, regenerate
+it", CR 701.19b) is `RegenerateIfThisWouldBeDestroyed()`
+(`static_regeneration.go`); `TestEveryRegenerationAsksTheGate` fails any
+replacement that regenerates without asking
+`game.RegenerationAllowedForEffect`, the one gate that reads both a
+destroy instruction's rider and the turn's mark. "When that creature dies
+this turn, exile it" (Whippoorwill) is a delayed trigger, not a
+replacement: `ExileWhenItDiesThisTurn`.
+
 ### "Enters under the control of an opponent of your choice" (ADR 0102, #1759)
 
 Captive Audience, Pendant of Prosperity, Abby, Merciless Soldier and

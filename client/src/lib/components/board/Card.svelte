@@ -729,7 +729,9 @@
       </span>
     {/if}
     {#if deathMark}
-      <span class="badge death-mark" title={deathMark.title} aria-label="death mark">{deathMark.text}</span>
+      <span class="badge death-mark" title={deathMark.title} aria-label="death mark"
+        >{deathMark.text}</span
+      >
     {/if}
     {#if showPT}
       {#if isPlaneswalker}
@@ -844,7 +846,9 @@
       </span>
     {/if}
     {#if deathMark}
-      <span class="badge death-mark" title={deathMark.title} aria-label="death mark">{deathMark.text}</span>
+      <span class="badge death-mark" title={deathMark.title} aria-label="death mark"
+        >{deathMark.text}</span
+      >
     {/if}
     {#if showPT}
       {#if isPlaneswalker}
