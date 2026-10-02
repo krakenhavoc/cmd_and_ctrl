@@ -14,6 +14,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/db"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/discord"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/users"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/usersettings"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/ws"
 )
 
@@ -59,6 +60,7 @@ func newUserStackWith(t *testing.T, sealer *users.Sealer, configure func(*Config
 		c.Lobby = NewLobbyWithStore(ws.NewRoomManager(quietLogger(), ""), NewSQLStore(d))
 		c.Auth = a
 		c.Users = us
+		c.UserSettings = usersettings.NewSQLStore(d)
 		if configure != nil {
 			configure(c)
 		}

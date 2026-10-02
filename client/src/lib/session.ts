@@ -509,19 +509,21 @@ export async function authFetch(input: string, init: RequestInit = {}): Promise<
     let message = `${res.status} ${res.statusText}`;
     let violations: ApiViolation[] | undefined;
     let warnings: ApiViolation[] | undefined;
+    let parsed: unknown;
     try {
       const body = (await res.clone().json()) as {
         error?: string;
         violations?: ApiViolation[];
         warnings?: ApiViolation[];
       };
+      parsed = body;
       if (body.error) message = body.error;
       if (Array.isArray(body.violations)) violations = body.violations;
       if (Array.isArray(body.warnings)) warnings = body.warnings;
     } catch {
       // body wasn't JSON — keep the default message
     }
-    throw new LobbyApiError(res.status, message, violations, warnings);
+    throw new LobbyApiError(res.status, message, violations, warnings, parsed);
   }
   return res;
 }
@@ -579,6 +581,10 @@ export class LobbyApiError extends Error {
     message: string,
     public violations?: ApiViolation[],
     public warnings?: ApiViolation[],
+    // body is the whole parsed JSON error body, for the refusals that
+    // carry data beside the message: PUT /me/settings' 412 and 409
+    // return the account's current copy (ADR 0110 §4).
+    public body?: unknown,
   ) {
     super(message);
     this.name = "LobbyApiError";

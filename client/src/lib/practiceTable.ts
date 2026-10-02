@@ -222,6 +222,33 @@ export function isPracticeGame(gameID: string): boolean {
   return active !== null && active.gameID === gameID;
 }
 
+/**
+ * practiceSaved is the player's own values for the four forced
+ * settings while a practice record exists — this tab's, or another
+ * tab's on disk (they share localStorage, so this tab's settings carry
+ * the forced values too) — and null otherwise. settingsSync.ts uploads
+ * `withSettings(current, practiceSaved())`, so the account never sees
+ * the tutorial's values (ADR 0110 §4 item 5).
+ */
+export function practiceSaved(): SavedSettings | null {
+  const rec = active ?? readRecord();
+  return rec === null ? null : { ...rec.saved };
+}
+
+/**
+ * updatePracticeSaved replaces what the restore will write back. A copy
+ * that arrives from the account during the tutorial lands here for the
+ * forced fields, so the restore puts the account's values back rather
+ * than the ones the player had when the tutorial opened.
+ */
+export function updatePracticeSaved(saved: SavedSettings): void {
+  const rec = active ?? readRecord();
+  if (rec === null) return;
+  const next: PracticeRecord = { ...rec, saved: { ...saved } };
+  if (active !== null) active = next;
+  writeRecord(next);
+}
+
 function own(rec: PracticeRecord): void {
   active = rec;
   store.set({ gameID: rec.gameID });

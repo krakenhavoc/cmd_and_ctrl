@@ -27,6 +27,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/users"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/usersettings"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/util/appenv"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/util/envflag"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/util/ratelimit"
@@ -173,6 +174,13 @@ type Config struct {
 	// need to duplicate.
 	DeckLibrary decklibrary.Store
 
+	// UserSettings is a signed-in person's account copy of their
+	// per-person settings (ADR 0110 section 4, migration 0008), behind
+	// GET and PUT /me/settings. Nil behaves as usersettings.NoStore:
+	// with no database no principal carries a UserID, so both routes
+	// answer 403 before they reach it.
+	UserSettings usersettings.Store
+
 	// DiscordAvatars is the S12.5 avatar cache. Nil means
 	// /avatars/* returns 503; production wires a cache rooted at
 	// $CMDCTRL_DATA_DIR/avatars so disk-cached images persist
@@ -261,6 +269,8 @@ type GameEvictor interface {
 //	POST /games/{id}/decks/{deck_id} — authenticated: seat a library deck without re-pasting
 //	GET  /me                — authenticated: principal echo (for client bootstrap)
 //	GET  /me/decks          — authenticated: the caller's deck library
+//	GET  /me/settings       — signed in: the caller's account settings
+//	PUT  /me/settings       — signed in: replace them, If-Match: <revision>
 //	GET  /me/tablemates     — signed in: the people you have shared a table with
 //	POST /me/session        — signed in: reinstall the session cookie, renewing it past half-life
 //	POST /logout            — revoke the caller's session server-side
@@ -517,6 +527,14 @@ func Handler(c Config) http.Handler {
 	// principal with no UserID (a guest, an admin, or an identified
 	// session from a no-database deployment).
 	mux.Handle("GET /me/decks", auth.Middleware(c.Auth)(handlerFunc(c, myDecks)))
+	// Account settings (ADR 0110 section 4). Same caller rule as the
+	// rest of /me/*. The write has a per-person bucket, 1 a second
+	// with a burst of 5, which the client's one-second debounce stays
+	// inside. The handler spends a token only on a write that passed
+	// its checks, so a refused request costs nothing.
+	settingsLimit := newLimiter(1, 5)
+	mux.Handle("GET /me/settings", auth.Middleware(c.Auth)(handlerFunc(c, mySettings)))
+	mux.Handle("PUT /me/settings", auth.Middleware(c.Auth)(handlerFunc(c, putMySettings(settingsLimit))))
 
 	// Develop-environment card spawner (ADR 0023). Both routes are
 	// wrapped in requireDevFeature: in production they are 404s, and
