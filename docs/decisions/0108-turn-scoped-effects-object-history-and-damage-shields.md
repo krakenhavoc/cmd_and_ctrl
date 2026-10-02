@@ -1,13 +1,13 @@
 # ADR 0108 — Turn-scoped effects, object history and the rest of the damage shields
 
-**Status:** Proposed · 2026-10-02 · S51 — Turn-scoped effects, object history, and the rest of the damage shields (tracker [#1908](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1908))
-**Owner decisions:** pending. Four questions are listed under [Open questions for the owner](#open-questions-for-the-owner). The sections below are written with the recommended answer to each, and say where a different answer changes them.
+**Status:** Accepted · 2026-10-02 · S51 — Turn-scoped effects, object history, and the rest of the damage shields (tracker [#1908](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1908))
+**Owner decisions:** 2026-10-02. All four questions are answered, each with the recommended option (a). See [Owner decisions](#owner-decisions-2026-10-02) at the end. The sections and the Delivery plan below are written as decided; the options not chosen are kept as considered options.
 **Issues:** group A, turn-scoped `ScopedEffect` kinds: [#1886](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1886) (exile instead if it would die this turn), [#1887](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1887) (can't be regenerated this turn), [#1890](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1890) (damage doubled or tripled this turn), [#1823](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1823) (exile instead of your graveyard this turn). Group H, per-object history: [#1888](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1888) (echo), [#1882](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1882) (what a creature did during your last turn). Group J, the ADR 0107 §6 follow-ups: [#1904](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1904) (shields against a chosen source that are not one-use), [#1906](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1906) (a static prevention effect with an additional effect), [#1905](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1905) (damage from a chosen source dealt to something else instead), [#1889](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1889) (damage dealt as though its source had wither or infect).
 **Numbering:** checked with the AGENTS.md §4 sweep on 2026-10-02. I ran `git fetch --all --prune` and read the `docs/decisions/` file names on all 36 remote heads (`origin/develop`, `origin/main` and 34 chore, docs, feat, fix, repro and wip branches). I also listed every name ever committed on any ref (`git log --all --name-only -- docs/decisions/`) and the files of every open PR. The highest number anywhere is 0107, and the only open PR touching `docs/decisions/` is the 2026-10-02 promotion (#1917), which adds no ADR. This one takes **0108**.
-**Amends:** [ADR 0041](0041-game-persistence.md) Decision P8: §1, §2, §3, §4, §7 and §9 add `ScopedEffect` kinds, and this ADR is the single P8 amendment the tracker asks for. It also takes up [ADR 0107](0107-state-triggers-rebound-disturb-and-damage-prevention.md) §6: §7 to §10 are the follow-ups that section left open. When this ADR is accepted, a pointer line goes into ADR 0041 P8 and ADR 0107 §6.
+**Amends:** [ADR 0041](0041-game-persistence.md) Decision P8: §1, §2, §3, §4, §7 and §9 add `ScopedEffect` kinds, and this ADR is the single P8 amendment the tracker asks for. It also takes up [ADR 0107](0107-state-triggers-rebound-disturb-and-damage-prevention.md) §6: §7 to §10 are the follow-ups that section left open. A pointer line goes into ADR 0041 P8 and ADR 0107 §6 with the first implementation PR.
 **Builds on:** [ADR 0107](0107-state-triggers-rebound-disturb-and-damage-prevention.md) (§5's prevention flag and rules gates, §6's source shield, `choose_source` and follow-up queue), [ADR 0063](0063-durations-and-control.md) (durations), [ADR 0059](0059-turn-machinery.md) Decision 8 (the attack record), [ADR 0056](0056-infect-wither-toxic.md) (damage results), [ADR 0018](0018-triggers-on-the-stack.md) §6 (pay-unless) and [ADR 0033](0033-ai-bot-seat.md) §1 (the legal-move enumerator).
 
-This ADR was written plan-first. No engine code changes with it. The engine and card changes land in the PRs listed under [Delivery](#delivery).
+This ADR was written plan-first. No engine code changed with it. The engine and card changes land in the PRs listed under [Delivery](#delivery).
 
 ---
 
@@ -32,21 +32,21 @@ The seams doc runs stale, and so did two claims in the issues. Both are correcte
 | 2 | Can't be regenerated this turn | #1887 | 18 (4 shared with §1) | 18 | 1 | ~12 more |
 | 3 | Damage doubled or tripled this turn | #1890 | 10 | 10 | 3 | ~8 |
 | 4 | Exile instead of your graveyard this turn | #1823 | 4 | 4 | 4 | 4 |
-| 5 | Echo | #1888 | 51 | 51 | 1 | ~46 (~49 with Q3) |
+| 5 | Echo, and three non-mana cumulative upkeeps | #1888 | 51 + 3 | 54 | 1 | ~49 + 3 |
 | 6 | What happened during your last turn | #1882 | 6 | 6 | 2 | ~5 |
 | 7 | Prevention shields that are not one-use | #1904 | 13 + ~78 | ~91 | 13 | ~10 + ~55 |
-| 8 | A static prevention effect with an additional effect | #1906 | 32 | 32 | 2 | ~29 (+~8 with Q2) |
-| 9 | Damage from a chosen source dealt to something else | #1905 | 14 | 14 | 14 | ~11 |
+| 8 | A prevention effect with an additional effect | #1906 | 32 + 8 | 40 | 2 | ~29 + ~8 |
+| 9 | Damage from a chosen source dealt to something else | #1905 | 14 | 14 | 14 | ~13 |
 | 10 | Damage dealt as though its source had wither or infect | #1889 | 2 | 2 | 2 | 2 |
 
-About 285 printed cards and about 235 that need nothing else. Notes on the counts:
+About 295 printed cards and about 250 that need nothing else. Notes on the counts:
 
 - **§1.** Spikefield Hazard // Spikefield Cave is catalogued for its land back face only (`mdfc_lands.go`), so its front face, the spell, is manual today and lands here. Four cards print both §1 and §2: Carbonize, Disintegrate, Scorching Lava and Runesword. That is why §1 and §2 are one PR.
 - **§3.** The ten are the doublers and triplers created by a resolving spell or ability: Blind Fury; Desperate Gambit; Goblin Goliath; Impulsive Maneuvers; Insult // Injury; Isengard Unleashed; Jeska, Thrice Reborn; Lightning, Army of One; Overblaze; and Quest for Pure Flame. The 30 static doublers (Furnace of Rath, Gisela and the rest) are ordinary `Spec` replacements and are not this seam.
-- **§5.** 50 cards carry the Echo keyword, and Volcano Hellion prints "has echo {X}" without it. Three echo costs are not mana: Deepcavern Imp and Rakdos Headliner ("Discard a card") and Skizzik Surger ("Sacrifice two lands"). Q3 is about them.
+- **§5.** 50 cards carry the Echo keyword, and Volcano Hellion prints "has echo {X}" without it. Three echo costs are not mana: Deepcavern Imp and Rakdos Headliner ("Discard a card") and Skizzik Surger ("Sacrifice two lands"). Owner decision 3 lands them, and with them the three cumulative upkeeps that print the same payments (Polar Kraken, Vexing Sphinx, Phyrexian Soulgorger).
 - **§6.** Three cards ask what one creature did (Giant Turtle, Goblin Rock Sled, Tangle Kelp) and three ask whether a player attacked you (Avenge; O-Kagachi, Vengeful Kami; Weathered Sentinels). Arboria, Marchesa's back face and Premature Burial print "last turn" about other things and are not counted.
 - **§7.** The 13 are the registry row's `Waiting` list. The same kind also covers two families the issue does not name: about 42 cards that prevent all the damage one *object* would deal this turn (Maze of Ith, Kor Haven, Dromoka's Command, Fend Off, Safeguard), and about 36 that prevent all damage dealt to a recipient this turn (Indestructible Aura, Shielded Passage, Safe Passage, Endure, Brace for Impact). None of them is catalogued. They need no engine change beyond §7's kind, so ADR 0106 decision 6 puts them in §7's card PR.
-- **§8.** The issue lists 14. The full family is 32. The rest are the seven Phantom creatures, the six "prevent that damage and remove that many +1/+1 counters" creatures (Polukranos, Unchained, Protean Hydra, Ugin's Conjurant, Undergrowth Champion, Oathsworn Knight, Unbreathing Horde), Magma Pummeler, Angel of Suffering, Khârn the Betrayer, The Mindskinner and Weeping Angel. Every one is a prevention static whose additional effect CR 615.12 must still run.
+- **§8.** The issue lists 14. The full family is 32. The rest are the seven Phantom creatures, the six "prevent that damage and remove that many +1/+1 counters" creatures (Polukranos, Unchained, Protean Hydra, Ugin's Conjurant, Undergrowth Champion, Oathsworn Knight, Unbreathing Horde), Magma Pummeler, Angel of Suffering, Khârn the Betrayer, The Mindskinner and Weeping Angel. Every one is a prevention static whose additional effect CR 615.12 must still run. Owner decision 2 adds the eight existing scoped shields with a follow-up (Test of Faith, Temper, Candles' Glow and the rest).
 - **§9.** About 60 more printed cards redirect damage without a chosen source (Pariah, Palisade Giant, the en-Kor creatures, Martyrdom). §9 builds the redirection mechanics they all need, so its PR checks each one and lands those that need nothing more.
 
 ---
@@ -201,7 +201,7 @@ There is one reasonable design.
 1. **The fact.** `Player.UpkeepsBegun int` goes up by one as that player's upkeep begins, before any "at the beginning of your upkeep" trigger is checked. `Card.ControlledSinceUpkeep int` is set to the controller's `UpkeepsBegun` whenever the permanent comes under that player's control: as it enters, and at each control change in the layer pass's control step.
 2. **The condition.** "Came under your control since the beginning of your last upkeep" is `ControlledSinceUpkeep >= UpkeepsBegun - 1`, read at the trigger and again at resolution. It counts *upkeeps*, not turns, so a skipped upkeep is not a "last upkeep", and a permanent that entered in the untap step is charged once, at the upkeep that follows.
 3. **The constructor.** `effects.Echo(cost)` builds the upkeep trigger, with the cost as a function of the board at resolution (Volcano Hellion's {X}). Declining sacrifices it (CR 118.12a). Paying emits `EventEchoPaid`, which is what Shah of Naar Isle's "When this creature's echo cost is paid" watches.
-4. **Non-mana echo costs** (Q3). Under (a), the pay-unless prompt learns "Discard a card" and "Sacrifice N lands" as payments.
+4. **Non-mana costs** (owner decision 3). The pay-unless prompt learns two payments besides mana: "discard N cards" and "sacrifice N permanents of a type". Each is a cost paid on resolution (CR 118.12a), chosen by the payer, and an unpayable one is declined. `effects.Echo` and `effects.CumulativeUpkeep` both accept them, so Polar Kraken ("Sacrifice a land"), Vexing Sphinx ("Discard a card") and Phyrexian Soulgorger ("Sacrifice a creature") land in the same PR. The enumerator offers the payer's legal picks through the existing card-set payload.
 5. **What the table sees.** An "Echo due" marker on a permanent whose echo will trigger at its controller's next upkeep. It is derived from the two counters and never stored.
 6. **The bot.** The heuristic pays when it can afford to and declines otherwise.
 
@@ -211,7 +211,7 @@ Two additive fields (`Player.UpkeepsBegun`, `Card.ControlledSinceUpkeep`) under 
 
 #### Cards
 
-About 46 of 51, or about 49 with Q3 (a). Volcano Hellion, the row's `Waiting` card, lands Full.
+About 49 of 51, plus the three cumulative upkeep cards. Volcano Hellion, the row's `Waiting` card, lands Full.
 
 ### 6. What happened during your last turn (#1882)
 
@@ -253,10 +253,15 @@ ADR 0107 §6 shipped `ModPreventNextFromSource`: a source pin (CR 400.7, with `S
 
 ### Shared machinery: the damage instance
 
-Three of the four sections, and Q1 and Q4, ask the same question: which damage events happen at the same time? The engine opens one event per (source, recipient), and ADR 0107 used the event batch as its stand-in for "at the same time". It admits the batch is too wide: "it deals 2 damage to you. Then it deals 2 damage to you" is one batch, so the next-damage shield prevents both.
+Three of the four sections, and owner decisions 1 and 4, turn on the same question: which damage events happen at the same time? The engine opens one event per (source, recipient), and ADR 0107 used the event batch as its stand-in for "at the same time". It admits the batch is too wide: "it deals 2 damage to you. Then it deals 2 damage to you" is one batch, so the next-damage shield prevents both.
 
-- **Under Q4 (a)**, each damage instruction (one `DealDamage…` call, including each `…Each…` walk) and each combat damage step stamps a `DamageInstance` ID on every event it opens. That ID is the unit for §7's split choice (Q1), §8's follow-up granularity and §10's life check. It also retires ADR 0107 §6's known limit. The ID is transient: no damage instance outlives a priority boundary except through a CR 616 pause, and the pause's resume frame already carries the event.
-- **Under Q4 (b)**, the event batch stays the unit everywhere, and the known limit stays.
+Owner decision 4 answers it with a `DamageInstance` ID:
+
+1. **The stamp.** Each damage instruction (one `DealDamage…` call, including the whole of an `…Each…` walk) and each combat damage step takes the next ID from a game counter and stamps it on every damage event it opens. It rides the event and its tail, so a CR 616 pause resumes with the instance it was opened in. The stamp itself is transient, never captured.
+2. **The readers.** The ID is the unit for §7's `divide_shield` (decision 1), for §8's one application per recipient or per source (the Phantom Centaur and Nine Lives rulings), for §10's life check (the Phyrexian Unlife ruling), and for "the next time" on every kind (`preventNextFromSource`, and the `Next` field of `multiplyDamage` and `redirectDamage`).
+3. **ADR 0107 §6's known limit is fixed.** `preventNextFromSource` is spent per instance rather than per event batch, so "it deals 2 damage to you. Then it deals 2 damage to you" inside one resolution is two instances, and a next-damage shield prevents only the first. The follow-up queue groups by instance as well. The flush points stay where ADR 0107 put them, and the queue also flushes as an instance ends.
+4. **What reaches a snapshot.** Only the references: a new `Mod.SpentInstance` on a spent "next time" record, and a new `PreventionFollowUp.Instance`. Both are additive. The counter is not a top-level key. It is cloned with the game, and restore sets it to the largest instance a restored record names, as it does `scopedEffectSeq`. `SpentBatch` and `Batch` stay readable, so a file written before reads as it did. The PR checks that an older v7 binary refuses a file carrying either new field, as ADR 0107 PR 3 checked for stack pins.
+5. **Where it lands.** In its own PR, PR 0, before every PR that reads it (see Delivery).
 
 ### 7. Prevention shields that are not one-use (#1904)
 
@@ -267,7 +272,7 @@ Three of the four sections, and Q1 and Q4, ask the same question: which damage e
 
 #### The rules
 
-- **CR 615.1a, 615.7:** a charged shield prevents each 1 damage until it is reduced to 0. "If damage would be dealt to the shielded permanent or player by two or more applicable sources at the same time, the player or the controller of the permanent chooses which damage the shield prevents." Q1 is about that sentence.
+- **CR 615.1a, 615.7:** a charged shield prevents each 1 damage until it is reduced to 0. "If damage would be dealt to the shielded permanent or player by two or more applicable sources at the same time, the player or the controller of the permanent chooses which damage the shield prevents." Owner decision 1 makes that a prompt.
 - **CR 615.9, 609.7b:** a property shield rechecks its source's properties as the damage would be dealt.
 - **CR 107.1a:** a fractional result is rounded the way the card says.
 - **CR 615.13:** "Some triggered abilities trigger when damage that would be dealt is prevented. Such an ability triggers each time a prevention effect is applied to one or more simultaneous damage events." That is Samite Ministration's "Whenever damage from a black or red source is prevented this way this turn".
@@ -279,7 +284,7 @@ Three of the four sections, and Q1 and Q4, ask the same question: which damage e
 3. **Overlap with `preventDamage`.** A charged shield with no source stays `preventDamage`. Register refuses a `preventFromSource` with an `Amount` and no source, so the two kinds never describe the same shield.
 4. **Dark Sphere.** A new `Mod.Half` on `preventNextFromSource`: it prevents half the instance's damage, rounded down as printed (CR 107.1a). It is still spent by that instance.
 5. **Samite Ministration** is a follow-up `Then` that, when the prevented source was black or red, puts a triggered item on the stack with the amount. That is New Way Forward's reflexive-trigger shape, already shipped. It runs once per application to simultaneous events, as CR 615.13 says, because the follow-up queue already groups by instance.
-6. **The split choice** (Q1). Under (a), when one instance of damage would meet a charged shield (`preventDamage`, `preventFromSource` with an `Amount`, or §9's charged redirection) across two or more events, and the charge is less than their total, the protected player divides the charge before any of those events is applied. This is a new pending choice, `divide_shield`, on the existing distribution payload. The heuristic shields the player first, then the creature closest to lethal. Under (b), the charge is spent in event order, as `preventDamage` does today.
+6. **The split choice** (owner decision 1). When one damage instance would meet a charged shield across two or more events, and the charge is less than their total, the protected player divides the charge among those events before any of them is applied. It covers every charged shield: the existing `preventDamage` (Mending Hands), `preventFromSource` with an `Amount`, and §9's charged redirection (Harm's Way, Shining Shoal). This is a new pending choice, `divide_shield`, on the existing distribution payload. When the charge covers the total, nothing is asked. The heuristic shields the player first, then the creature closest to lethal. The choice is made before the events are applied, which needs the instance's events known up front, so it builds on PR 0.
 
 #### Cards
 
@@ -308,7 +313,7 @@ Three of the four sections, and Q1 and Q4, ask the same question: which damage e
 3. **The amount.** The apply loop records the event's amount before the `Replace` and after it (all of it when the event is cancelled), and queues the difference as the follow-up's `Prevented`. The `Replace` itself only prevents. A census test fails a `Prevention` static whose `Replace` changes anything but the event.
 4. **CR 615.12.** `preventionAppliedToUnpreventableLocked` queues a static's follow-up with zero, exactly as it does a scoped shield's.
 5. **The queue.** `PreventionFollowUp` gains the static's identity: the source object (instance and epoch), the replacement's slot, and the per-unit key (recipient or damage source). This is additive. `Seq` stays zero for a static.
-6. **Q2.** Under (a), the existing scoped kinds `preventDamage` and `preventCombatDamage` read `Then` as well. Test of Faith, Temper, Candles' Glow, Inkshield and the rest of that family land.
+6. **The existing scoped shields** (owner decision 2). `preventDamage` and `preventCombatDamage` read `Then` as well, through the same queue and the same instance key as the scoped `preventNextFromSource`. Every scoped prevention kind then carries its CR 615.5 additional effect the same way, and its CR 615.12 zero-prevented run too.
 
 #### Snapshot impact
 
@@ -316,7 +321,7 @@ Additive fields on `PreventionFollowUp`, recorded with `-update-shape`. `Then` a
 
 #### Cards
 
-About 29 of 32. The ? cards are Hostility, Purity and Vigor (the Incarnations' "shuffle it into its owner's library"), Khârn the Betrayer (a control change as an additional effect), Weeping Angel and Jared Carthalion. Immortal Coil and Nine Lives, the row's `Waiting` cards, land Full. With Q2 (a), about 8 more: Acolyte's Reward, Candles' Glow, Inkshield, Sacred Boon, Scars of the Veteran, Temper, Test of Faith and Vengeful Archon.
+About 29 of 32. The ? cards are Hostility, Purity and Vigor (the Incarnations' "shuffle it into its owner's library"), Khârn the Betrayer (a control change as an additional effect), Weeping Angel and Jared Carthalion. Immortal Coil and Nine Lives, the row's `Waiting` cards, land Full. Owner decision 2 adds about 8 more: Acolyte's Reward, Candles' Glow, Inkshield, Sacred Boon, Scars of the Veteran, Temper, Test of Faith and Vengeful Archon.
 
 ### 9. Damage from a chosen source dealt to something else (#1905)
 
@@ -330,7 +335,7 @@ About 29 of 32. The ? cards are Hostility, Purity and Vigor (the Incarnations' "
 - **CR 614.9:** a redirection replaces damage dealt to one recipient with the same damage dealt to another. "If one of those permanents is no longer on the battlefield when the damage would be redirected, or is no longer a battle, creature, or planeswalker … the effect does nothing. If damage would be redirected to or from a player who has left the game, the effect does nothing."
 - **CR 614.5, 616.1f, 616.2:** the modified event can meet effects that now apply (the new recipient's protection, a shield on it), and the redirection does not apply to its own result again.
 - **CR 120.4b:** results are processed after replacements and prevention, so the redirected damage keeps its source's deathtouch, lifelink, infect and wither and, in combat, stays combat damage. A commander's redirected combat damage counts toward the new recipient's CR 903.10a total.
-- **The Harm's Way ruling:** "If the chosen source would simultaneously deal damage to multiple permanents you control … Harm's Way will redirect just 2 of that damage. … You choose which 2 damage is redirected." That is Q1 again.
+- **The Harm's Way ruling:** "If the chosen source would simultaneously deal damage to multiple permanents you control … Harm's Way will redirect just 2 of that damage. … You choose which 2 damage is redirected." Owner decision 1's `divide_shield` covers it.
 
 #### Decision
 
@@ -346,7 +351,7 @@ About 29 of 32. The ? cards are Hostility, Purity and Vigor (the Incarnations' "
 
 #### Cards
 
-About 11 of 14. Nova Pentacle ("target creature of an opponent's choice") and Shaman en-Kor are ? cards, and so is Harm's Way under Q1 (b), because "you choose which 2 damage" would not be honoured. The PR checks the other ~60 redirection cards and lands those that need only the primitive.
+About 13 of 14. Nova Pentacle ("target creature of an opponent's choice") and Shaman en-Kor are the ? cards. Harm's Way and Shining Shoal land with `divide_shield` (owner decision 1). The PR checks the other ~60 redirection cards and lands those that need only the primitive.
 
 ### 10. Damage dealt as though its source had wither or infect (#1889)
 
@@ -363,7 +368,7 @@ The damage results (`DamageResultSource{Infect, Wither, ToxicTotal}`) are snapsh
 #### Decision
 
 1. **The gate.** `damageResultAsThoughLocked(ev)` ORs `Wither` or `Infect` into the tail's result as the damage lands. It asks the battlefield statics `Spec.DamageAsThough{Wither, Infect, ToYou, WhileAtOrBelowZeroLife}`, dropped when `CatalogAbilityKey` answers empty.
-2. **Unlife's condition** is read against the player's life total as the damage instance began (Q4).
+2. **Unlife's condition** is read once per damage instance, against the player's life total as the instance began (owner decision 4), so simultaneous damage that takes you from a positive total to 0 or less is all life loss, as the ruling says.
 3. **Nothing else changes.** A "whenever a creature with infect deals damage" trigger does not see it, because the source still lacks the ability.
 
 #### Cards
@@ -374,8 +379,8 @@ Both: Everlasting Torment and Phyrexian Unlife. Their other lines shipped with A
 
 - Two new kinds (`preventFromSource`, `redirectDamage`) and four new `Mod` fields (`Half`, `Next` if §3 has not landed, `To`, `ToSourceController`), on-disk identities under v7, refused by older binaries with `ErrUnknownEffectKey`. One fixture per new kind and per charged split goes into `v7/`.
 - `PreventionFollowUp` gains additive fields (§8).
-- `divide_shield` (Q1 a) is an ordinary pending choice.
-- The `DamageInstance` ID (Q4 a) is transient and is never captured.
+- `divide_shield` (owner decision 1) is an ordinary pending choice.
+- The `DamageInstance` stamp is transient. Only `Mod.SpentInstance` and `PreventionFollowUp.Instance` name an instance, and restore derives the counter from them (Shared machinery, owner decision 4).
 - No new closure route. `ReplacementEffect.Then` is a string, and `redirectDamageEventLocked` is engine code, not state.
 
 ---
@@ -383,7 +388,7 @@ Both: Everlasting Torment and Phyrexian Unlife. Their other lines shipped with A
 ## Shared machinery
 
 - **One source vocabulary.** `Objects` + `SourceZone` + `Queries` mean the same on `preventNextFromSource`, `preventFromSource`, `redirectDamage` and `multiplyDamage`, and `damageFromChosenSourceLocked` (CR 400.7, 609.7a) is the one reading of them. So a permanent spell chosen as a source covers the permanent it becomes, on every kind.
-- **One spend rule.** "The next time" is spent per instance on every kind (`SpentBatch`, or the instance ID under Q4 a). A charge is copy-on-write on every kind.
+- **One spend rule.** "The next time" is spent per damage instance on every kind (`SpentInstance`). A charge is copy-on-write on every kind, and divided by `divide_shield` when it meets several events of one instance.
 - **The enumerator.** Every new prompt (`divide_shield`, and §3's narrowed `choose_source`) is a pending choice with the shared payloads, so `internal/legal` and the client's card grid and distribution UI apply. ADR 0033 §1 holds.
 - **The client.** Every new record gets a chip on the object it pins or a line on the game banner. The ADR 0107 §5 banner line is the model.
 
@@ -393,18 +398,19 @@ Each PR lands its engine change and its cards together, test first. Each flips i
 
 | PR | Engine | Cards (est.) | Needs |
 |---|---|---:|---|
+| 0 | The damage instance: the stamp, the counter, `Mod.SpentInstance`, `PreventionFollowUp.Instance`; `preventNextFromSource` and the follow-up queue move onto it (ADR 0107 §6's known limit) | none new; the 0107 §6 shield cards are re-tested | — |
 | 1 | §1 + §2: `exileIfWouldDie`, `cantBeRegenerated`, `ScopeCreatures`, the per-recipient damage continuation, the regeneration gate and its census | ~66 (Demonfire, Whippoorwill, Lava Coil, Disintegrate, Incinerate, Anger of the Gods …) | — |
-| 2 | §3: `multiplyDamage`, `Sources`, `Recipients`, `Next`, the controller filter on `choose_source` | ~8 (Insult // Injury, Isengard Unleashed, Desperate Gambit …) | — |
+| 2 | §3: `multiplyDamage`, `Sources`, `Recipients`, `Next`, the controller filter on `choose_source` | ~8 (Insult // Injury, Isengard Unleashed, Desperate Gambit …) | PR 0 (`Next`) |
 | 3 | §4: `exileInsteadOfYourGraveyard` and the paired helper | 4 (Yawgmoth's Will, Gaea's Will, Magus of the Will, Walk-In Closet // Forgotten Cellar) | — |
-| 4 | §5: `UpkeepsBegun`, `ControlledSinceUpkeep`, `effects.Echo`, `EventEchoPaid`, the marker; Q3 (a)'s payments | ~46 (~49 with Q3 a), plus Polar Kraken, Vexing Sphinx and Phyrexian Soulgorger under Q3 (a) | — |
+| 4 | §5: `UpkeepsBegun`, `ControlledSinceUpkeep`, `effects.Echo`, `EventEchoPaid`, the marker; the pay-unless prompt's "discard N" and "sacrifice N permanents of a type" payments (owner decision 3) | ~49 echo cards, plus Polar Kraken, Vexing Sphinx and Phyrexian Soulgorger | — |
 | 5 | §6: `Player.LastTurnAttacks` and its two readers | ~5 (Goblin Rock Sled, Giant Turtle, Tangle Kelp, Avenge, O-Kagachi) | — |
-| 6 | §7 engine: `preventFromSource`, `Half`, the damage instance (Q4 a) and `divide_shield` (Q1 a) | ~10 (the 13 members) | — |
+| 6 | §7 engine: `preventFromSource`, `Half`, and `divide_shield` for every charged shield, `preventDamage` included (owner decision 1) | ~10 (the 13 members) | PR 0 |
 | 7 | §7 cards: the object-source and recipient families | ~55 (Maze of Ith, Kor Haven, Dromoka's Command, Indestructible Aura …) | PR 6 |
-| 8 | §8: `ReplacementEffect.Then` / `ThenPer`, the queue's static key, the apply-loop amount and its census; Q2 (a) | ~29 (+~8 with Q2 a) (Immortal Coil, Nine Lives, the Phantoms, Polukranos …) | PR 6 |
-| 9 | §9: `redirectDamageEventLocked`, `redirectDamage`, `To`, `ToSourceController` | ~11 of the 14, plus the other redirection cards that need nothing else | PR 6 (the split choice, the instance) |
-| 10 | §10: `Spec.DamageAsThough` and its gate | 2 (Everlasting Torment, Phyrexian Unlife) | PR 6 (Q4 a) |
+| 8 | §8: `ReplacementEffect.Then` / `ThenPer`, the queue's static key, the apply-loop amount and its census; `Then` on `preventDamage` and `preventCombatDamage` (owner decision 2) | ~29 statics (Immortal Coil, Nine Lives, the Phantoms, Polukranos …), plus ~8 scoped shields (Test of Faith, Temper, Candles' Glow …) | PR 0, PR 6 |
+| 9 | §9: `redirectDamageEventLocked`, `redirectDamage`, `To`, `ToSourceController` | ~13 of the 14, plus the other redirection cards that need nothing else | PR 0, PR 6 (`divide_shield`) |
+| 10 | §10: `Spec.DamageAsThough` and its gate | 2 (Everlasting Torment, Phyrexian Unlife) | PR 0 |
 
-PRs 1 to 6 touch different code and can go in parallel. PRs 1, 2 and 3 each add cases to the same switches in `scoped_replacements.go` and `scoped_effects.go`, so whichever merges second rebases, but that conflict is mechanical. In group J, PR 6 goes first, as the tracker orders. PRs 7, 8, 9 and 10 then follow PR 6 and can go in parallel with each other. PR 8 and PR 9 both touch the apply loop in `unpreventable_damage.go`, so the second rebases. The tracker's order (#1904, #1906, #1905, #1889) is the merge order if they conflict.
+PR 0 introduces the damage instance and goes first: it is small, it lands no cards of its own, and PRs 2, 6, 8, 9 and 10 read it. PRs 1, 3, 4 and 5 do not need it and can start at once, in parallel with PR 0. PR 2 starts after PR 0, or starts at once and rebases onto it before review. PRs 1, 2 and 3 each add cases to the same switches in `scoped_replacements.go` and `scoped_effects.go`, so whichever merges second rebases, but that conflict is mechanical. In group J, PR 6 goes next, as the tracker orders. It is the first PR that reads the instance and the one that adds `divide_shield`. PR 7 follows PR 6. PRs 8 and 9 follow PR 6, and PR 10 needs only PR 0; the three can go in parallel with each other. PR 8 and PR 9 both touch the apply loop in `unpreventable_damage.go`, so the second rebases. The tracker's order (#1904, #1906, #1905, #1889) is the merge order if they conflict.
 
 ## Consequences
 
@@ -412,7 +418,8 @@ PRs 1 to 6 touch different code and can go in parallel. PRs 1, 2 and 3 each add 
 - A redirection is honoured all the way through the damage tail, and one function does it.
 - A prevention static can have an additional effect, and CR 615.12 runs it.
 - The engine remembers two facts across a turn boundary: when a permanent came under its controller's control, measured in upkeeps, and what each player attacked with during their last turn.
-- Under Q4 (a), "at the same time" for damage is the damage instance, not the event batch, and ADR 0107 §6's known limit is gone.
+- "At the same time" for damage is the damage instance, not the event batch, and ADR 0107 §6's known limit is gone.
+- A charged shield or redirection that meets several simultaneous events is divided by the player who is protected, as CR 615.7 says, on every charged kind.
 
 ## Out of scope
 
@@ -423,7 +430,9 @@ PRs 1 to 6 touch different code and can go in parallel. PRs 1, 2 and 3 each add 
 
 ---
 
-## Open questions for the owner
+## Questions for the owner (answered)
+
+These are the questions as asked. The owner's answers follow.
 
 1. **A charged shield that meets several damage events at once (§7, §9; CR 615.7, the Harm's Way ruling).** "Prevent the next 3 damage" and "the next 2 damage … is dealt to any target instead" can meet damage to several recipients, or from several sources, at the same time.
    - **(a) Recommended:** the protected player divides the charge among those events, in a new `divide_shield` prompt asked before any of them is applied, and only when the charge is less than their total. It applies to every charged shield, including the existing `preventDamage` (Mending Hands). This is what CR 615.7 says ("the player or the controller of the permanent chooses which damage the shield prevents") and what the Harm's Way ruling says ("You choose which 2 damage is redirected").
@@ -437,3 +446,14 @@ PRs 1 to 6 touch different code and can go in parallel. PRs 1, 2 and 3 each add 
 4. **What "at the same time" means for damage (Shared machinery, §8, §10).** The engine has no unit narrower than the event batch, and a whole resolution is one batch.
    - **(a) Recommended:** each damage instruction and each combat damage step stamps a transient `DamageInstance` ID on the events it opens. That ID is the unit for Q1's split, for §8's one-counter-per-application rule (the Phantom Centaur ruling), and for Phyrexian Unlife reading your life once per instance (its ruling). It also fixes ADR 0107 §6's known limit, where two separate instances inside one resolution spend one next-damage shield.
    - (b) Keep the event batch. It is less work, and two separate damage instructions in one resolution stay one instance: a Phantom loses one counter for both, a next-damage shield prevents both, and Phyrexian Unlife reads your life once for both.
+
+---
+
+## Owner decisions, 2026-10-02
+
+The owner answered the four questions on 2026-10-02. Every answer was the recommended option (a).
+
+1. **A charged shield that meets several damage events at once.** The protected player divides the charge through a new `divide_shield` prompt, asked only when the charge is less than the total of the events it meets. It applies to every charged shield, including the existing `preventDamage`, `preventFromSource` with an `Amount`, and §9's charged redirection (§7 decision 6; Delivery PR 6).
+2. **"Prevented this way" on the existing scoped shields.** `preventDamage` and `preventCombatDamage` read `Then` in Delivery PR 8, and the eight existing shields with a follow-up land: Acolyte's Reward, Candles' Glow, Inkshield, Sacred Boon, Scars of the Veteran, Temper, Test of Faith and Vengeful Archon (§8 decision 6).
+3. **Non-mana echo costs.** Delivery PR 4 teaches the pay-unless prompt "discard N cards" and "sacrifice N permanents of a type" as payments. Deepcavern Imp, Rakdos Headliner and Skizzik Surger land, and so do the cumulative upkeep cards with the same payments: Polar Kraken, Vexing Sphinx and Phyrexian Soulgorger (§5 decision 4).
+4. **What "at the same time" means for damage.** Each damage instruction and each combat damage step stamps a transient `DamageInstance` ID on the events it opens. It is the unit for decision 1's split, §8's follow-up granularity, §10's life check and every "next time" spend, and it fixes ADR 0107 §6's known limit. It lands in Delivery PR 0, before every PR that reads it (Shared machinery, the damage instance).
