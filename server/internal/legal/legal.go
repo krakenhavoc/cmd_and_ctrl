@@ -216,6 +216,28 @@ type MoveCost struct {
 	// engine charges and concatenates ("{2}{2}" for two taxes), and a
 	// policy that only wants the size reads its generic total.
 	Mana string `json:"mana,omitempty"`
+
+	// Hand is how many cards a "Discard your hand" cost (#1600) throws
+	// away if the move is made now — Lion's Eye Diamond, Null Brooch,
+	// Slate of Ancestry. Every other discard names its cards in
+	// `params.discard_ids`; this one names none (the engine refuses
+	// ids for it), so without this field a policy would read the
+	// whole hand as free. Zero for an empty hand, which pays the cost.
+	Hand int `json:"hand,omitempty"`
+}
+
+// withHandDiscard adds a "Discard your hand" count to a (possibly nil)
+// MoveCost. Nil stays nil for zero cards.
+func withHandDiscard(c *MoveCost, n int) *MoveCost {
+	if n <= 0 {
+		return c
+	}
+	out := MoveCost{}
+	if c != nil {
+		out = *c
+	}
+	out.Hand = n
+	return &out
 }
 
 // CounterPrice is one counter-removal component of a move's cost.

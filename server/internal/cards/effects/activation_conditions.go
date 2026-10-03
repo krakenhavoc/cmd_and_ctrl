@@ -278,3 +278,28 @@ func OncePerTurnActivation(label string) ActivationCondition {
 		return g.ActivatedThisTurn(source, label) == 0
 	}
 }
+
+// OnlyAsAnInstant — "Activate only as an instant" on a MANA ability
+// (#1600): Lion's Eye Diamond, Diamond Lion. True only while the
+// activator could cast an instant (CR 602.5e, CR 117.1a: any time they
+// have priority), which is never in the middle of casting a spell or of a
+// resolution — the windows CR 605.3a otherwise opens to every mana
+// ability. See game.InstantWindowOpenForEffect for what the window is
+// and why it is the legal enumerator's own reading of "may act now".
+//
+// Mana abilities only. A CR 602 ability is instant-speed already
+// (CR 117.1b) and the dispatcher holds it to priority, so on one this
+// would say nothing new.
+//
+// The auto-tapper is the other half of "never mid-cast", and it is NOT
+// this closure's: the planner runs inside a cast, while the caster
+// holds priority, so the window reads open there. What keeps both
+// printed cards out of every plan is their "Discard your hand" — the
+// auto-tapper refuses any discard component (autoTapAbilityAccepts).
+// A future card that printed the restriction beside a cost the planner
+// accepts would need the planner taught about it first.
+func OnlyAsAnInstant() ActivationCondition {
+	return func(g *game.Game, controller, _ uuid.UUID) bool {
+		return g.InstantWindowOpenForEffect(controller)
+	}
+}
