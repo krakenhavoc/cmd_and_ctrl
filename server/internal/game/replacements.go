@@ -1282,6 +1282,32 @@ type ReplacementEffect struct {
 	// damage today; the flag is here so the first one says so.
 	RedirectsDamage bool
 
+	// Then is a prevention static's CR 615.5 additional effect (ADR 0108
+	// §8, #1906): a registered body, run after the prevention with what
+	// it prevented — Nine Lives's incarnation counter, Immortal Coil's
+	// "exile a card from your graveyard for each 1 damage prevented this
+	// way", a Phantom's "remove a +1/+1 counter". The zero BodyRef is
+	// none. Catalog data, never a closure, and never captured.
+	//
+	// It requires Prevention (effects.Register refuses it otherwise),
+	// and its Replace may only prevent: the apply loop measures the
+	// event before and after Replace and owes the difference
+	// (prevention_then.go), and CR 615.12 owes it with nothing prevented
+	// when the damage can't be prevented. TestPreventionStaticsOnlyPrevent
+	// (cards/effects) fails a Prevention static whose Replace does
+	// anything but change the event.
+	Then BodyRef
+
+	// ThenPer is the unit Then runs once per, within one damage
+	// instance (ADR 0108 §8 decision 2), and is required with Then.
+	// The printed subject picks it: "if damage would be dealt to X" is
+	// one application per RECIPIENT (the Phantoms: blocked by three
+	// creatures, one +1/+1 counter is removed), "if a source would deal
+	// damage to X" one per SOURCE (Nine Lives: "if more than one source
+	// deals damage to you at once … put that many incarnation
+	// counters").
+	ThenPer PreventionUnit
+
 	// PromptQuestion is the text rendered in the yes/no Optional
 	// prompt. Short — fits in a modal header. Defaults to Label
 	// when empty.
@@ -1603,14 +1629,7 @@ func (g *Game) applyReplacementsLocked(ev *ReplacementEvent) (*ReplacementEvent,
 		}
 		// Mandatory: fire Replace inline and iterate.
 		g.replacementsAppliedThisEvent[ev.ID][chosen.id] = true
-		if chosen.effect.Replace != nil {
-			if err := chosen.effect.Replace(ev, g, chosen.source); err != nil {
-				g.EmitEvent(Event{
-					Kind:     EventEffectError,
-					ErrorMsg: err.Error(),
-				})
-			}
-		}
+		g.runReplaceLocked(ev, chosen)
 	}
 	// Iteration cap exceeded — bug. Emit diagnostic and let the
 	// event through as-is so the game doesn't wedge.
@@ -1826,11 +1845,7 @@ func (g *Game) applyFirstGatheredLocked(ev *ReplacementEvent, applicable []activ
 		g.settleEntryControllerByDefaultLocked(ev, chosen)
 		return
 	}
-	if chosen.effect.Replace != nil {
-		if err := chosen.effect.Replace(ev, g, chosen.source); err != nil {
-			g.EmitEvent(Event{Kind: EventEffectError, ErrorMsg: err.Error()})
-		}
-	}
+	g.runReplaceLocked(ev, chosen)
 }
 
 // skipQuestionsLocked drops the gathered replacements that would ask

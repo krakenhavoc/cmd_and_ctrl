@@ -1430,6 +1430,43 @@ never stops it. `Next` is one instance of damage (CR 615.8), spent the
 way `PreventNextDamageFromSource` is. "Choose a source you control" is
 `ChooseSourcePrompt.Controller`.
 
+**A prevention effect that does something with what it prevented**
+([ADR 0108](decisions/0108-turn-scoped-effects-object-history-and-damage-shields.md)
+§8 and owner decision 2, #1906). The additional effect (CR 615.5) is
+never written inside `Replace`: under damage that can't be prevented
+`Replace` is not run at all, and CR 615.12 says the additional effect
+still happens. Declare it as `Then` (a registered body) and let the
+engine owe it, once per damage instance, with what was prevented. A
+static says what one application is per with `ThenPer`, and the
+constructor IS the printed subject, so the choice can't be forgotten
+(`server/internal/cards/effects/prevention_static.go`):
+
+```go
+// "If damage would be dealt to this creature, prevent that damage. Remove a +1/+1 counter" —
+// once per RECIPIENT: blocked by three, one counter comes off (the Phantoms).
+PreventDamageDealtTo(PreventionStatic{To: ToThisCreature, Then: removeACounterFromThisBody, Label: …})
+// "If a source would deal damage to you, prevent that damage and put an incarnation counter" —
+// once per SOURCE: three attackers, three counters (Nine Lives).
+PreventDamageASourceWouldDeal(PreventionStatic{To: ToYou, Then: nineLivesCounterBody, Label: …})
+// Gates and filters: Damage: CombatDamage, From: FromACreature(), While: WhileItHasAPlusOneCounter.
+
+// The scoped shields carry it too:
+PreventNextDamage{Target: id, Amount: 3, Then: countersOnItPerPreventedBody}    // Test of Faith
+PreventNextDamage{Target: you, Amount: x, Then: dealThatMuchToTheChosenTargetBody, To: player} // Vengeful Archon
+PreventAllCombatDamageThisTurn{Player: you, Then: …}                            // Inkshield
+```
+
+A body is handed two amounts, and the card's words pick one. "The damage
+prevented this way" is the params' `Amount`, zero under CR 615.12
+(Phyrexian Hydra puts on no -1/-1 counter). "That damage" / "that many"
+is `thatDamage(item)`, the damage the effect was applied to, which
+CR 615.12 still counts (Polukranos still removes that many counters).
+"This creature" in a static's body is `followUpThis(g, item)` (the
+object whose static it is, CR 400.7); "that creature" (the recipient) is
+`followUpRecipient`. Register refuses `Then` without `Prevention` and
+`Then` without `ThenPer`, and `TestPreventionStaticsOnlyPrevent` fails a
+prevention static whose `Replace` does anything but change the event.
+
 ### "Enters under the control of an opponent of your choice" (ADR 0102, #1759)
 
 Captive Audience, Pendant of Prosperity, Abby, Merciless Soldier and

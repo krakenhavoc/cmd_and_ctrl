@@ -421,8 +421,10 @@ type Mod struct {
 	CombatOnly bool `json:"combatOnly,omitempty"`
 	// Then is ModExileInsteadOfGraveyard's delayed-trigger body key: a
 	// registered BodyRef's key, scheduled at the next end step for each
-	// card the replacement redirects. On ModPreventNextFromSource it is
-	// the CR 615.5 follow-up body, run with the damage prevented. A
+	// card the replacement redirects. On every prevention kind
+	// (ModPreventNextFromSource, ModPreventFromSource and, since ADR 0108
+	// PR 8, ModPreventDamage and ModPreventCombatDamage) it is the CR
+	// 615.5 follow-up body, run with the damage prevented. A
 	// restore point naming a body this binary has not registered is
 	// refused (ErrUnknownEffectKey).
 	Then string `json:"then,omitempty"`
@@ -440,6 +442,14 @@ type Mod struct {
 	// (ADR 0041 P1); an older binary refuses a file carrying one
 	// (ADR 0041 P4), which the unknown kind already guarantees.
 	Objects []ObjectRef `json:"objects,omitempty"`
+	// To is the one object a prevention shield's follow-up deals its
+	// damage to (ADR 0108 PR 8): Acolyte's Reward's second target,
+	// Vengeful Archon's player, chosen as the shield was made and pinned
+	// to the object it was (CR 400.7), so a creature that left is gone
+	// and the follow-up deals nothing (the rulings). At most one entry,
+	// read only with Then on a prevention kind and refused on every other
+	// mod (followUpModProblem). A slice for the reason Objects is one.
+	To []ObjectRef `json:"to,omitempty"`
 	// SourceZone, Queries and SpentBatch are ModPreventNextFromSource's
 	// (ADR 0107 §6, #1860; prevent_next_from_source.go), refused on every
 	// other kind. SourceZone is the zone the chosen source (Objects[0])
@@ -1100,6 +1110,9 @@ func (g *Game) appendScopedEffectLocked(sourceID uuid.UUID, affected []AffectedO
 		if problem := landTypesModProblem(m); problem != "" {
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
+		if problem := followUpModProblem(m); problem != "" {
+			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
+		}
 		if r := modKinds[m.Kind].reader; r != readerLayer && r != readerCopy {
 			named = true
 		}
@@ -1150,6 +1163,7 @@ func cloneMods(mods []Mod) []Mod {
 		m.Keywords = copyStrings(m.Keywords)
 		m.Grants = copyStrings(m.Grants)
 		m.Objects = append([]ObjectRef(nil), m.Objects...)
+		m.To = append([]ObjectRef(nil), m.To...)
 		m.Queries = clonePermanentQueries(m.Queries)
 		m.Copy = clonePrintedValuesSlice(m.Copy)
 		out[i] = m

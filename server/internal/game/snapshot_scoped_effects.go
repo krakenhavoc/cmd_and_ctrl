@@ -86,6 +86,11 @@ func (s *GameSnapshot) checkEffectKeys() error {
 			if problem := landTypesModProblem(m); problem != "" {
 				unknown = append(unknown, problem)
 			}
+			// ADR 0108 PR 8: a follow-up's recipient on a mod that has
+			// no follow-up to deal it is a newer binary's shape.
+			if problem := followUpModProblem(m); problem != "" {
+				unknown = append(unknown, problem)
+			}
 		}
 		// ADR 0107 §3: a stack pin may carry only what this binary's
 		// stack step applies (layer 2 control, layer-6 keywords). A
