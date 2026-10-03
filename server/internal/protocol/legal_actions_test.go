@@ -56,7 +56,24 @@ func ownersOf(g *game.Game) map[string][]uuid.UUID {
 // pointed at the next seat: the one frame shape on which TWO seats owe
 // a decision at once (the active seat holds priority; the defender
 // owes a block declaration, #328).
+//
+// #1501 parks priority while a defender declares, so a live table
+// reaches this shape only from a restore point written before #1501
+// mid-step (or with a player who became a defending player after the
+// step began). The projection must still keep the two digests apart,
+// so the table is built in that shape: priority is handed back to the
+// active seat after the step parks it. blockersParked is the live
+// shape.
 func blockersTable(t *testing.T) (g *game.Game, active, defender *game.Player, attacker uuid.UUID) {
+	t.Helper()
+	g, active, defender, attacker = blockersParked(t)
+	g.WithWriteLock(func() { g.Turn.PriorityHolder = g.Turn.ActiveSeat })
+	return g, active, defender, attacker
+}
+
+// blockersParked is blockersTable as a live table has it since #1501:
+// priority parked (NoPriority) while the defender declares.
+func blockersParked(t *testing.T) (g *game.Game, active, defender *game.Player, attacker uuid.UUID) {
 	t.Helper()
 	g = busyTable(t, 3)
 	active = g.Seats[g.Turn.ActiveSeat]
@@ -98,6 +115,32 @@ func TestLegalActionsOwnSeatOnly(t *testing.T) {
 				t.Errorf("seat %s owes no decision but received a digest with %d sources", p.Name, len(v.LegalActions.Sources))
 			}
 			assertDigestIsOwn(t, v.LegalActions, p.ID, owners)
+		}
+	})
+	t.Run("parked for the block declaration", func(t *testing.T) {
+		// #1501: nobody holds priority while the defender declares, so
+		// the active seat has nothing to decide and gets no digest; the
+		// defender's names its block candidates and no pass, and its
+		// move list carries finish_blocks — the move that has no card,
+		// so no digest entry.
+		g, active, defender, _ := blockersParked(t)
+		if g.Turn.PriorityHolder != game.NoPriority {
+			t.Fatalf("setup: priority should be parked, holder %d", g.Turn.PriorityHolder)
+		}
+		owners := ownersOf(g)
+		if av := ViewOfGameFor(g, active.ID.String()); av.LegalActions != nil {
+			t.Errorf("the active seat got a digest with %d sources while priority is parked", len(av.LegalActions.Sources))
+		}
+		dv := ViewOfGameFor(g, defender.ID.String())
+		if dv.LegalActions == nil {
+			t.Fatal("the declaring defender got no digest")
+		}
+		assertDigestIsOwn(t, dv.LegalActions, defender.ID, owners)
+		if dv.LegalActions.Pass {
+			t.Error("the declaring defender's digest offers a pass; nobody holds priority")
+		}
+		if !slices.ContainsFunc(dv.LegalMoves, func(m LegalMoveView) bool { return m.Kind == legal.KindFinishBlocks }) {
+			t.Error("the declaring defender's moves carry no finish_blocks")
 		}
 	})
 	t.Run("two seats deciding at once", func(t *testing.T) {

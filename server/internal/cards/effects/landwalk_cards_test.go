@@ -89,9 +89,22 @@ func TestLordOfAtlantisIslandwalkIsEnforced(t *testing.T) {
 			t.Fatalf("exile the Lord: %v", err)
 		}
 	})
-	if r := blockRefusal(t, g, bear, merfolk); r != "" {
-		t.Errorf("the Lord is gone, so islandwalk is too, but the block was refused: %q", r)
+	// #1501: the defender had no legal block as the step began, so
+	// their declaration completed then — "declared, none" — and a block
+	// now is late, whatever the Lord's leaving changed.
+	if r := blockRefusal(t, g, bear, merfolk); r != game.BlockReasonBlocksDeclared {
+		t.Errorf("a block after the declaration completed: reason %q, want blocks_declared", r)
 	}
+	// What the Lord's leaving changes is the PAIR: islandwalk no longer
+	// refuses it.
+	g.WithWriteLock(func() {
+		g.RecomputeLayersIfStaleLocked()
+		atk, _ := g.LookupCardForEffect(merfolk)
+		blk, _ := g.LookupCardForEffect(bear)
+		if r := g.BlockPairRefusalLocked(&atk, &blk); !r.Legal() {
+			t.Errorf("the Lord is gone, so islandwalk is too, but the pair is refused: %q", r.Reason)
+		}
+	})
 }
 
 // TestLandwalkLordsGrantTheirLandwalk — Elvish Champion's forestwalk and

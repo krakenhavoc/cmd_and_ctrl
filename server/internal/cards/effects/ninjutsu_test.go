@@ -273,6 +273,50 @@ func TestNinjutsuWaitsForTheDefenderToFinishDeclaring(t *testing.T) {
 	}
 }
 
+// #1501, CR 509.1 / 509.1h: the ninja arrives after its defending
+// player has declared blockers, so it cannot be blocked — the
+// declaration is over. The defender has an untapped Wall that could
+// block it on any other board; the engine refuses the late block
+// (blocks_declared), where before #1501 it took it as a sandbox
+// allowance and "a ninja can't be blocked" was a table convention.
+func TestANinjaThatArrivesAfterTheDeclarationCannotBeBlocked(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	attacker := b12Creature(g, me.ID, "Sneaky Rat", "Creature — Rat", 1, 1)
+	wall := b12Creature(g, opp.ID, "Wall", "Creature — Wall", 0, 4)
+	ninja := pushNinjaToHand(me, "Ninja of the Deep Hours", "Creature — Human Ninja", ninjaOfTheDeepHoursOracle, 2, 2)
+	declareAttack(t, g, opp.ID, attacker)
+	advanceTo(t, g, game.StepDeclareBlockers)
+	if err := g.AddManaForEffect(me.ID, uuid.Nil, "{U}{U}"); err != nil {
+		t.Fatalf("AddManaForEffect: %v", err)
+	}
+	if err := g.FinishBlocks(opp.ID); err != nil { // declared, none
+		t.Fatalf("FinishBlocks: %v", err)
+	}
+	if err := g.ActivateCatalogAbility(me.ID, ninja, 0, game.ActivateAbilityParams{
+		ReturnIDs: []uuid.UUID{attacker},
+	}); err != nil {
+		t.Fatalf("activate ninjutsu: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if c, ok := g.LookupCardForEffect(ninja); !ok || c.AttackingTarget != opp.ID {
+		t.Fatal("setup: the ninja is not on the battlefield attacking the defender")
+	}
+
+	var br *game.BlockRefusedError
+	if err := g.DeclareBlocker(wall, ninja); !errors.As(err, &br) || br.Reason != game.BlockReasonBlocksDeclared {
+		t.Fatalf("blocking the ninja after the declaration: %v, want blocks_declared", err)
+	}
+	if g.SeatOwesBlockDecision(opp.ID) {
+		t.Error("the declared defender is told they owe a block decision on the ninja")
+	}
+	life := opp.Life
+	advanceTo(t, g, game.StepCombatDamage)
+	if got := life - opp.Life; got != 2 {
+		t.Errorf("defender lost %d life, want 2 — the ninja connects unblocked", got)
+	}
+}
+
 // The ninja is unblocked when it arrives, so it connects in the combat
 // damage step — and Ninja of the Deep Hours' own trigger draws.
 func TestNinjaOfTheDeepHoursConnectsAndDraws(t *testing.T) {

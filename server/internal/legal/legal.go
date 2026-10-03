@@ -52,6 +52,16 @@ const (
 	// policy that prices "what does this put on the stack" must be
 	// able to tell them apart. ADR 0062 Decision 4.
 	KindSpecialAction Kind = "special_action"
+	// KindFinishBlocks is a defending player's "done declaring
+	// blockers" (finish_blocks, CR 509.1). Its own kind rather than a
+	// pass, because it is not one: since #1501 nobody holds priority
+	// while a defender is declaring, so this is how a defender — a bot
+	// included — finishes, and a client must not read it as "the
+	// viewer may pass priority". Offered only while the seat's
+	// declaration is pending, and marked AlwaysLegal: it is the
+	// declaration's unconditional answer, so a seat whose policy
+	// declines every block still has a move that ends the declaration.
+	KindFinishBlocks Kind = "finish_blocks"
 )
 
 // Wire action types this package emits. Kept as strings rather than
@@ -71,6 +81,7 @@ const (
 	// two TypeDeclareBlocker moves because the first would be
 	// refused for too_few_blockers.
 	TypeDeclareBlockers  = "declare_blockers"
+	TypeFinishBlocks     = "finish_blocks"
 	TypeResolveChoice    = "resolve_choice"
 	TypeKeepHand         = "keep_hand"
 	TypeMulligan         = "mulligan"
@@ -508,9 +519,10 @@ func enumerateLocked(g *game.Game, seat uuid.UUID, opts Options) []Move {
 		e.manaMoves()
 	}
 	// Combat declarations are not priority-gated in the engine
-	// (declare_attacker / declare_blocker only check the step and the
-	// card's controller), and a defender must be able to block while
-	// the active player still holds priority — see ADR 0033 §2.
+	// (declare_attacker / declare_blocker / finish_blocks only check the
+	// step and the card's controller), and a defender declares while
+	// nobody holds priority — it is parked until the declaration is
+	// over (#1501) — see ADR 0033 §2.
 	e.combatMoves()
 	return e.out
 }

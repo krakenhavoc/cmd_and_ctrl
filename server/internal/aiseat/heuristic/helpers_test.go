@@ -208,6 +208,12 @@ func passMove(seat int) legal.Move {
 	return legal.Move{Type: legal.TypePassPriority, Player: seatID(seat), Kind: legal.KindPass, Label: "Pass priority"}
 }
 
+// finishBlocksMove is a declaring defender's "done" (#1501), shaped as
+// the enumerator offers it.
+func finishBlocksMove(seat int) legal.Move {
+	return legal.Move{Type: legal.TypeFinishBlocks, Player: seatID(seat), Kind: legal.KindFinishBlocks, Label: "No blocks", AlwaysLegal: true}
+}
+
 func landMove(t *testing.T, seat int, id string) legal.Move {
 	return legal.Move{
 		Type: legal.TypeCastSpell, Player: seatID(seat), Kind: legal.KindLand,

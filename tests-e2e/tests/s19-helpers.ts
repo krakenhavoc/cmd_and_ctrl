@@ -87,6 +87,9 @@ export interface SnapshotTurn {
   // #1279: defending seats whose block declaration is finished (with
   // or without blocks). Present only during declare_blockers.
   blocks_declared_seats?: number[];
+  // #1279: defending seats still declaring. While any is, #1501 parks
+  // priority (priority_holder -1). Present only during declare_blockers.
+  block_pending_seats?: number[];
 }
 
 export interface SnapshotView {

@@ -7,10 +7,10 @@ import "github.com/google/uuid"
 //
 // The gap. CR 509.1 makes declaring blockers one turn-based action,
 // taken as the step begins and before anyone receives priority. This
-// engine keeps the sandbox's shape instead — entering the step hands
-// the ACTIVE player priority, and a defender's block verbs are accepted
-// while that window is open (blockers.go's header, #328) — so until
-// this file nothing marked the declaration done. An empty blocked
+// engine used to keep the sandbox's shape instead — entering the step
+// handed the ACTIVE player priority, and a defender's block verbs were
+// accepted while that window was open (blockers.go's header, #328) — so
+// until this file nothing marked the declaration done. An empty blocked
 // record meant "this defender chose not to block" and "this defender
 // has not been asked yet" alike, and every reader that cared guessed:
 // ninjutsu read an attacker as unblocked the instant the step began,
@@ -25,8 +25,9 @@ import "github.com/google/uuid"
 //     "declared, none", with nothing to ask (autoCompleteBlockDeclarationsLocked);
 //  2. the defender sends finish_blocks (FinishBlocks) — the explicit
 //     "done blocking" / "no blocks" button, which needs no priority;
-//  3. the defender PASSES PRIORITY in the step — how a table that
-//     blocks by hand has always said "done", and still does;
+//  3. the defender PASSES PRIORITY in the step — the manual table's
+//     "done", for the one case a pending defender can still hold
+//     priority (see below);
 //  4. the cursor leaves the step (the priority wrap, AdvanceStep) with
 //     the defender still pending — completed as whatever is staged,
 //     because the step cannot end on an unfinished turn-based action.
@@ -40,14 +41,31 @@ import "github.com/google/uuid"
 // ACTIVE player receives priority (CR 117.3a), which is the window a
 // ninjutsu player is owed and the sandbox used to skip.
 //
-// What stays permissive. A defender's block verbs are NOT refused after
-// their declaration completes — a table that blocks by hand and passes
-// a beat early can still put the block down, and #830's "a second
-// blocker added after the lock-in announces its own block" still
-// holds. What changes is that nothing OFFERS a block after completion:
-// the option generator (blockOptionsLocked) answers empty for a
-// declared defender, so the enumerator, the bot and the #328 signal all
-// stop asking. The ADR records this as a sandbox allowance, not a rule.
+// Nobody has priority before the declaration (#1501). As the step
+// begins, once (1) has run, priority is PARKED — Turn.PriorityHolder is
+// NoPriority — while any defender is still declaring
+// (beginBlockDeclarationLocked). Nobody can cast, activate or pass; a
+// defender declares with the block verbs and finishes with
+// finish_blocks, and the last one to finish hands the active player
+// priority, as above. The cleanup step's discard parks priority the
+// same way (cleanup.go). Everything that can leave the table parked
+// with nobody left to wait for hands priority on: completion point 4
+// (completeAllBlockDeclarationsLocked), a pending defender conceding
+// (Concede), and — for every other path, a sandbox clear_combat or a
+// mana ability that sacrificed the last attacker — the dispatcher's
+// SettleBlockDeclaration after each action. Point (3) remains for a
+// pending defender who holds priority anyway: a restore point written
+// before #1501 mid-step, or a player who became a defending player
+// after the step began.
+//
+// And a declaration that is complete is complete (#1501). The block
+// verbs refuse a block from a defender whose declaration is done
+// (blocks_declared, checkBlockRestrictionsLocked), so a ninja that
+// entered attacking after the declaration cannot be blocked — an
+// engine fact, where #1279 left it a table convention and recorded the
+// late block as a sandbox allowance. The option generator
+// (blockOptionsLocked) already answered empty for a declared defender;
+// the verb now agrees with it.
 
 // BlockDeclarationStatus is where one defending player's CR 509.1
 // block declaration stands (#1279).
@@ -125,9 +143,10 @@ func (g *Game) BlockDeclarationSeatsLocked() (pending, declared []int) {
 // nothing has declared no blocks.
 //
 // Needs no priority — the declaration is a turn-based action, not
-// something a player does with priority, and a defender must be able
-// to finish while the active player still holds it (the same reason
-// declare_blocker is not priority-gated, ADR 0033 §2).
+// something a player does with priority, and since #1501 nobody holds
+// priority while it is being made (the same reason declare_blocker is
+// not priority-gated, ADR 0033 §2). It is how a defender finishes: the
+// last one to finish hands the active player priority.
 //
 // Errors: ErrGameNotActive, ErrWrongStep outside declare_blockers, a
 // *ChoicePendingError while a blocking prompt is open (#730, the gate a
@@ -339,6 +358,11 @@ func (g *Game) completeBlockDeclarationLocked(seat uuid.UUID) bool {
 // declaration, in APNAP order — completion point 4, run as the cursor
 // leaves the step. Reports whether it completed any.
 //
+// #1501: priority parked for the declaration comes back to the active
+// player here, so AdvanceStep's CR 117.4 drive has a holder to pass
+// from. The callers run their own boundary (state checks, the trigger
+// drain); this only names who holds priority across it.
+//
 // Caller must hold g.mu in write mode.
 func (g *Game) completeAllBlockDeclarationsLocked() bool {
 	if g.Turn.Step != StepDeclareBlockers {
@@ -350,14 +374,34 @@ func (g *Game) completeAllBlockDeclarationsLocked() bool {
 			completed = true
 		}
 	}
+	g.unparkBlockPriorityLocked()
 	return completed
+}
+
+// beginBlockDeclarationLocked is the declare-blockers step's turn-based
+// action as the step begins (CR 509.1), run by the step-entry hook:
+// completion point 1 for every defender with nothing to decide, and
+// then — #1501 — priority PARKED while anyone is still declaring.
+// Nobody receives priority until the declaration is over; the last
+// defender's finish_blocks hands it to the active player
+// (closeBlockDeclarationIfCompleteLocked). With every defender already
+// complete (none of them had a legal block) the active player keeps
+// the priority the cursor gave them, exactly as before.
+//
+// Caller must hold g.mu in write mode, with fresh layers.
+func (g *Game) beginBlockDeclarationLocked() {
+	g.autoCompleteBlockDeclarationsLocked()
+	if !g.allBlockDeclarationsCompleteLocked() {
+		g.Turn.PriorityHolder = NoPriority
+	}
 }
 
 // autoCompleteBlockDeclarationsLocked is completion point 1, run as the
 // declare-blockers step begins: every defending player with no legal
 // block has declared none. There is nothing to ask them, so there is no
 // reason for ninjutsu, an "attacks and isn't blocked" trigger or the
-// bot's grace to wait on them.
+// bot's grace to wait on them — and, since #1501, no reason for the
+// table to wait on them before anyone receives priority.
 //
 // Layers must be fresh (the option generator reads evasion off the
 // effective characteristics); finishStepEntryLocked guarantees it.
@@ -371,14 +415,65 @@ func (g *Game) autoCompleteBlockDeclarationsLocked() {
 	}
 }
 
+// blockPriorityParkedLocked reports whether priority is parked for the
+// block declaration (#1501): the game is running, the cursor is in
+// declare_blockers, and nobody holds priority. The only way into that
+// state is beginBlockDeclarationLocked.
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) blockPriorityParkedLocked() bool {
+	return g.State == StateActive && g.Turn.Step == StepDeclareBlockers && g.Turn.PriorityHolder == NoPriority
+}
+
+// unparkBlockPriorityLocked hands parked priority to the active player
+// once nobody is left declaring. It moves the holder and nothing else:
+// the caller runs whatever boundary it owes.
+//
+// Caller must hold g.mu in write mode.
+func (g *Game) unparkBlockPriorityLocked() {
+	if g.blockPriorityParkedLocked() && g.allBlockDeclarationsCompleteLocked() {
+		g.Turn.PriorityHolder = g.Turn.ActiveSeat
+	}
+}
+
+// SettleBlockDeclaration ends a block declaration that has nobody left
+// to wait for while priority is still parked for it (#1501), with the
+// same boundary the last finish_blocks runs: state-based actions, the
+// trigger drain, and priority to the active player. A no-op in every
+// other state, and cheap: the parked check is three field reads.
+//
+// The dispatcher calls it after every action (actions.Dispatch), beside
+// SettleResolution. The engine's own paths out of a parked step settle
+// themselves — FinishBlocks, Concede, AdvanceStep — so this is the
+// belt for the rest: a sandbox clear_combat, a manual move of the last
+// attacker, a mana ability whose sacrifice cost took it. Any of those
+// can leave no defending player pending, and a parked step with nobody
+// declaring would hold the table with no move for anyone.
+func (g *Game) SettleBlockDeclaration() {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	g.settleBlockDeclarationLocked()
+}
+
+// settleBlockDeclarationLocked is SettleBlockDeclaration under the
+// caller's lock.
+//
+// Caller must hold g.mu in write mode.
+func (g *Game) settleBlockDeclarationLocked() {
+	if g.blockPriorityParkedLocked() {
+		g.closeBlockDeclarationIfCompleteLocked()
+	}
+}
+
 // closeBlockDeclarationIfCompleteLocked ends the CR 509.1 turn-based
 // action once every defender has declared: CR 509.2's triggers go on
 // the stack at the priority boundary (runStateChecksLocked), and the
 // ACTIVE player receives priority (CR 117.3a). Reports whether it did.
 //
-// Called after a completion by pass or by finish_blocks. Not after
-// completion point 4 — that one is the step ending, and the callers
-// there run their own boundary.
+// Called after a completion by pass or by finish_blocks, and by
+// settleBlockDeclarationLocked when priority is parked with nobody
+// left declaring (#1501). Not after completion point 4 — that one is
+// the step ending, and the callers there run their own boundary.
 //
 // Caller must hold g.mu in write mode.
 func (g *Game) closeBlockDeclarationIfCompleteLocked() bool {

@@ -44,7 +44,6 @@ func multiBlockPush(g *game.Game, owner *game.Player, name, oracle string, power
 func driveMultiBlockCombat(t *testing.T, g *game.Game, pol aiseat.Policy) (most int, divided bool) {
 	t.Helper()
 	advanceToStep(t, g, game.StepDeclareAttackers)
-	declined := map[uuid.UUID]bool{}
 	for step := 0; step < 200; step++ {
 		switch g.Turn.Step {
 		case game.StepDeclareAttackers, game.StepDeclareBlockers,
@@ -65,21 +64,15 @@ func driveMultiBlockCombat(t *testing.T, g *game.Game, pol aiseat.Policy) (most 
 				break
 			}
 		}
+		choosing := seat != uuid.Nil
+		declaring := false
 		if seat == uuid.Nil && g.Turn.Step == game.StepDeclareBlockers {
-			for _, p := range g.Seats {
-				if declined[p.ID] || p.ID == g.Seats[g.Turn.ActiveSeat].ID {
-					continue
-				}
-				if hasKind(legal.EnumerateFor(g, p.ID), legal.KindBlock) {
-					seat = p.ID
-					break
-				}
-			}
+			seat = declaringDefender(g)
+			declaring = seat != uuid.Nil
 		}
-		holder := seat == uuid.Nil
-		if holder {
+		if seat == uuid.Nil {
 			if g.Turn.PriorityHolder == game.NoPriority {
-				t.Fatalf("step %d: nobody holds priority in %s", step, g.Turn.Step)
+				t.Fatalf("step %d: nobody holds priority in %s, and nobody is declaring", step, g.Turn.Step)
 			}
 			seat = g.Seats[g.Turn.PriorityHolder].ID
 		}
@@ -96,11 +89,10 @@ func driveMultiBlockCombat(t *testing.T, g *game.Game, pol aiseat.Policy) (most 
 			t.Fatalf("step %d: policy: %v", step, err)
 		}
 		if d.Index == aiseat.Decline {
-			if holder || len(g.PendingChoices) > 0 {
+			if choosing || len(g.PendingChoices) > 0 {
 				t.Fatalf("step %d: a seat that owes the table a decision declined in %s", step, g.Turn.Step)
 			}
-			declined[seat] = true
-			continue
+			d.Index = declineAnswer(t, step, declaring, moves)
 		}
 		if d.Index < 0 || d.Index >= len(moves) {
 			t.Fatalf("step %d: index %d of %d", step, d.Index, len(moves))

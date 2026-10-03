@@ -53,14 +53,13 @@ func TestLureMovesAgreeWithTheEngine(t *testing.T) {
 		}
 	}
 	advanceTo(t, g, game.StepDeclareBlockers)
-	if err := g.PassPriority(); err != nil {
-		t.Fatalf("active player's pass: %v", err)
-	}
 
+	// #1501: priority is parked while the defender declares, so the
+	// declaration's "done" is finish_blocks, not a pass.
 	moves := legal.EnumerateFor(g, def.ID)
 	dispatchAll(t, g, def.ID, moves)
-	if countKind(moves, legal.KindPass) != 0 {
-		t.Fatalf("pass offered while the Lure is owed: %v", labels(moves))
+	if n := countKind(moves, legal.KindPass) + countKind(moves, legal.KindFinishBlocks); n != 0 {
+		t.Fatalf("pass or finish offered while the Lure is owed: %v", labels(moves))
 	}
 	var required *legal.Move
 	for i, m := range moves {
@@ -107,11 +106,11 @@ func TestLureMovesAgreeWithTheEngine(t *testing.T) {
 	if err := g.Clone().DeclareBlocker(walls[0], plain); !errors.Is(err, game.ErrIllegalBlock) {
 		t.Errorf("engine accepted the withheld block on the plain attacker: %v", err)
 	}
-	if err := g.Clone().PassPriority(); !errors.Is(err, game.ErrIllegalBlock) {
-		t.Errorf("engine accepted the withheld pass: %v", err)
+	if err := g.Clone().FinishBlocks(def.ID); !errors.Is(err, game.ErrIllegalBlock) {
+		t.Errorf("engine accepted the withheld finish: %v", err)
 	}
 
-	// Take the required move; the pass comes back.
+	// Take the required move; the finish comes back.
 	decls := make([]game.BlockDeclaration, 0, len(walls))
 	for _, w := range walls {
 		decls = append(decls, game.BlockDeclaration{Blocker: w, Attacker: lured})
@@ -121,13 +120,14 @@ func TestLureMovesAgreeWithTheEngine(t *testing.T) {
 	}
 	moves = legal.EnumerateFor(g, def.ID)
 	dispatchAll(t, g, def.ID, moves)
-	if countKind(moves, legal.KindPass) != 1 {
-		t.Errorf("pass not offered once the Lure is obeyed: %v", labels(moves))
+	if countKind(moves, legal.KindFinishBlocks) != 1 {
+		t.Errorf("finish not offered once the Lure is obeyed: %v", labels(moves))
 	}
 }
 
 // TestNoBlockRequirementLeavesTheMovesAlone — an unaffected table:
-// the defender is offered a pass, and no move is AlwaysLegal but it.
+// the defender is offered finish_blocks (#1501: priority is parked while
+// they declare, so there is no pass), and no move is AlwaysLegal but it.
 func TestNoBlockRequirementLeavesTheMovesAlone(t *testing.T) {
 	g := newTable(t)
 	me := g.Seats[g.Turn.ActiveSeat]
@@ -141,15 +141,12 @@ func TestNoBlockRequirementLeavesTheMovesAlone(t *testing.T) {
 		t.Fatal(err)
 	}
 	advanceTo(t, g, game.StepDeclareBlockers)
-	if err := g.PassPriority(); err != nil {
-		t.Fatal(err)
-	}
 	moves := legal.EnumerateFor(g, def.ID)
-	if countKind(moves, legal.KindPass) != 1 {
-		t.Fatalf("pass not offered: %v", labels(moves))
+	if countKind(moves, legal.KindFinishBlocks) != 1 || countKind(moves, legal.KindPass) != 0 {
+		t.Fatalf("want finish_blocks and no pass: %v", labels(moves))
 	}
 	for _, m := range moves {
-		if m.AlwaysLegal && m.Kind != legal.KindPass {
+		if m.AlwaysLegal && m.Kind != legal.KindFinishBlocks {
 			t.Errorf("an unaffected table has an AlwaysLegal %q", m.Label)
 		}
 	}

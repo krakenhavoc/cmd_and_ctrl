@@ -50,10 +50,9 @@ func followupTable(t *testing.T, mods ...game.Mod) (g *game.Game, def *game.Play
 			t.Fatal(err)
 		}
 	}
+	// #1501: the defender declares with priority parked; there is no
+	// active player's pass to hand it over.
 	advanceTo(t, g, game.StepDeclareBlockers)
-	if err := g.PassPriority(); err != nil {
-		t.Fatalf("active player's pass: %v", err)
-	}
 	return g, def, wall, atks
 }
 
@@ -81,16 +80,18 @@ func TestTurnScopedCapacityMovesAgreeWithTheEngine(t *testing.T) {
 }
 
 // TestBlocksEachAttackerMovesAgreeWithTheEngine — Blaze of Glory's
-// record: the pass is withheld, the required move puts the wall on all
-// three attackers, and once it is taken the pass comes back.
+// record: the finish is withheld (#1501: finish_blocks is the
+// declaration's "done" now that priority is parked while the defender
+// declares), the required move puts the wall on all three attackers,
+// and once it is taken the finish comes back.
 func TestBlocksEachAttackerMovesAgreeWithTheEngine(t *testing.T) {
 	g, def, wall, atks := followupTable(t, game.BlockAnyNumberMod(),
 		game.AddBlockRequirementMod(game.BlockRequirementBlocksEach))
 
 	moves := legal.EnumerateFor(g, def.ID)
 	dispatchAll(t, g, def.ID, moves)
-	if countKind(moves, legal.KindPass) != 0 {
-		t.Fatalf("pass offered while the wall owes blocks: %v", labels(moves))
+	if n := countKind(moves, legal.KindPass) + countKind(moves, legal.KindFinishBlocks); n != 0 {
+		t.Fatalf("pass or finish offered while the wall owes blocks: %v", labels(moves))
 	}
 	var required *legal.Move
 	for i, m := range moves {
@@ -121,8 +122,8 @@ func TestBlocksEachAttackerMovesAgreeWithTheEngine(t *testing.T) {
 			t.Fatalf("required blocks %+v leave the wall off %s", set.Blocks, a)
 		}
 	}
-	if err := g.Clone().PassPriority(); !errors.Is(err, game.ErrIllegalBlock) {
-		t.Errorf("engine accepted the withheld pass: %v", err)
+	if err := g.Clone().FinishBlocks(def.ID); !errors.Is(err, game.ErrIllegalBlock) {
+		t.Errorf("engine accepted the withheld finish: %v", err)
 	}
 
 	decls := make([]game.BlockDeclaration, 0, len(atks))
@@ -134,7 +135,7 @@ func TestBlocksEachAttackerMovesAgreeWithTheEngine(t *testing.T) {
 	}
 	moves = legal.EnumerateFor(g, def.ID)
 	dispatchAll(t, g, def.ID, moves)
-	if countKind(moves, legal.KindPass) != 1 {
-		t.Errorf("pass not offered once every attacker is blocked: %v", labels(moves))
+	if countKind(moves, legal.KindFinishBlocks) != 1 {
+		t.Errorf("finish not offered once every attacker is blocked: %v", labels(moves))
 	}
 }

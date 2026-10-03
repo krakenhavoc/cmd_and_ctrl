@@ -40,9 +40,16 @@ const NEXT_STEP: Partial<Record<StepID, StepID | "next_turn">> = {
  * when there is nothing to say: the viewer does not hold priority, the
  * opening hands are still being decided, or the step is one the client
  * does not know.
+ *
+ * #1501: one window is worth a line without priority. While defenders
+ * declare blockers nobody holds priority (CR 509.1 takes the
+ * declaration first), `next` is greyed for everyone, and the line says
+ * who the table is waiting on. A defender still declaring has the
+ * block request in the action bar instead, which hides this line.
  */
 export function passHint(view: GameView | null | undefined, viewerHasPriority: boolean): string {
-  if (!view || !viewerHasPriority || view.mulligans_open === true) return "";
+  if (!view || view.mulligans_open === true) return "";
+  if (!viewerHasPriority) return blockWaitHint(view);
 
   const top = topOfStackName(view);
   if (top) return `passing lets ${top} resolve`;
@@ -53,6 +60,22 @@ export function passHint(view: GameView | null | undefined, viewerHasPriority: b
   if (!next) return "";
   if (next === "next_turn") return "passing ends the turn";
   return `passing moves to ${STEP_LABELS[next]}`;
+}
+
+// blockWaitHint names the defenders still declaring blockers while
+// priority is parked for them (#1501), or "" in every other window.
+function blockWaitHint(view: GameView): string {
+  const turn = view.turn;
+  if (turn?.step !== "declare_blockers" || (turn.priority_holder ?? -1) >= 0) return "";
+  const names = (turn.block_pending_seats ?? [])
+    .map((i) => view.seats?.[i]?.name)
+    .filter((n): n is string => !!n);
+  if (names.length === 0) return "";
+  const who =
+    names.length === 1
+      ? names[0]
+      : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+  return `waiting for ${who} to declare blockers`;
 }
 
 function topOfStackName(view: GameView): string {

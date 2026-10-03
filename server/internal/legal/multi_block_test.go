@@ -83,10 +83,8 @@ func TestMultiBlockMovesAgreeWithTheEngine(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	// #1501: the defender declares with priority parked.
 	advanceTo(t, g, game.StepDeclareBlockers)
-	if err := g.PassPriority(); err != nil {
-		t.Fatalf("active player's pass: %v", err)
-	}
 
 	step := func(want ...uuid.UUID) {
 		t.Helper()
@@ -140,10 +138,8 @@ func TestAnyNumberBlockerIsOfferedEveryAttacker(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	// #1501: the defender declares with priority parked.
 	advanceTo(t, g, game.StepDeclareBlockers)
-	if err := g.PassPriority(); err != nil {
-		t.Fatal(err)
-	}
 	for i, atk := range atks {
 		moves := legal.EnumerateFor(g, def.ID)
 		dispatchAll(t, g, def.ID, moves)

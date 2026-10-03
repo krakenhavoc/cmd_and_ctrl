@@ -138,6 +138,12 @@ func passPriorityAroundTable(t *testing.T, g *game.Game) {
 		if stackFullyEmpty(g) {
 			return
 		}
+		// #1501: nobody can pass while priority is parked for a block
+		// declaration; the defenders finish first, as a table would.
+		finishBlockDeclarations(t, g)
+		if stackFullyEmpty(g) {
+			return
+		}
 		if err := g.PassPriority(); err != nil {
 			if errors.Is(err, game.ErrChoicePending) {
 				return
@@ -180,9 +186,18 @@ func lockInAttacks(t *testing.T, g *game.Game) {
 // passes around the table until the wrap locks the step's staged
 // declaration in. One implementation because it is one boundary —
 // PassPriority commits whichever declaration is staged.
+//
+// #1501: in a declare-blockers step parked for the block declaration
+// nobody holds priority, so every defender still declaring finishes
+// first (finish_blocks) — that IS the lock-in — and the passes carry
+// on from the active player, who receives priority once the last
+// declaration is complete.
 func lockInCombatDeclaration(t *testing.T, g *game.Game) {
 	t.Helper()
 	step := g.Turn.Step
+	if finishBlockDeclarations(t, g) && !stackFullyEmpty(g) {
+		return
+	}
 	for i := 0; i < len(g.Seats)+1; i++ {
 		if err := g.PassPriority(); err != nil {
 			if errors.Is(err, game.ErrChoicePending) {
@@ -194,6 +209,31 @@ func lockInCombatDeclaration(t *testing.T, g *game.Game) {
 			return
 		}
 	}
+}
+
+// finishBlockDeclarations sends finish_blocks for every defender still
+// declaring blockers while priority is parked for them (#1501), as a
+// table would click "Done blocking", and reports whether it finished
+// any. A no-op in every other state.
+func finishBlockDeclarations(t *testing.T, g *game.Game) bool {
+	t.Helper()
+	if g.Turn.Step != game.StepDeclareBlockers || g.Turn.PriorityHolder != game.NoPriority {
+		return false
+	}
+	finished := false
+	for _, s := range g.Seats {
+		if s == nil || g.BlockDeclarationStatusOf(s.ID) != game.BlockDeclarationPending {
+			continue
+		}
+		if err := g.FinishBlocks(s.ID); err != nil {
+			if errors.Is(err, game.ErrChoicePending) {
+				return finished
+			}
+			t.Fatalf("FinishBlocks for %s: %v", s.Name, err)
+		}
+		finished = true
+	}
+	return finished
 }
 
 // stackFullyEmpty reports whether nothing is on or headed for the
