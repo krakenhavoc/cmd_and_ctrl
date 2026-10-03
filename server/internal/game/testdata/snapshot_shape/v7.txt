@@ -2076,6 +2076,7 @@ scopedEffects[].mods[].grants[]	string
 scopedEffects[].mods[].keywords	array
 scopedEffects[].mods[].keywords[]	string
 scopedEffects[].mods[].kind	string
+scopedEffects[].mods[].next	bool
 scopedEffects[].mods[].objects	array
 scopedEffects[].mods[].objects[]	object
 scopedEffects[].mods[].objects[].epoch	number:int
@@ -2094,8 +2095,10 @@ scopedEffects[].mods[].queries[].Supertypes	array
 scopedEffects[].mods[].queries[].Supertypes[]	string
 scopedEffects[].mods[].queries[].Types	array
 scopedEffects[].mods[].queries[].Types[]	string
+scopedEffects[].mods[].recipients	string
 scopedEffects[].mods[].restrictions	number:uint8
 scopedEffects[].mods[].sourceZone	string
+scopedEffects[].mods[].sources	string
 scopedEffects[].mods[].spentBatch	number:uint64
 scopedEffects[].mods[].spentInstance	number:uint64
 scopedEffects[].mods[].subtypes	array

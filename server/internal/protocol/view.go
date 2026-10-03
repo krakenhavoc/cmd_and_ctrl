@@ -137,6 +137,13 @@ type GameView struct {
 	// single creature is that creature's chip instead
 	// (CardView.ExiledIfItDies).
 	ExileIfCreaturesDie []string `json:"exile_if_creatures_die,omitempty"`
+	// DamageMultipliers is one line per live "it deals double (triple)
+	// that damage instead" effect a resolved spell or ability made (ADR
+	// 0108 §3 decision 4), oldest first — the game banner's lines:
+	// "Alice's sources deal double damage this turn — Insult". Public.
+	// Battlefield statics that say the same (Furnace of Rath) are not
+	// listed.
+	DamageMultipliers []string `json:"damage_multipliers,omitempty"`
 	// DiscardPending is the cleanup-step pause map (S13.4): keys
 	// are player UUID strings, values are the count each player
 	// must discard. Drives the client's discard-prompt modal.
@@ -3652,6 +3659,7 @@ func ViewOfGame(g *game.Game) GameView {
 			SplitSecondActive:     g.SplitSecondActive,
 			DamageCantBePrevented: g.DamageCantBePreventedThisTurnLabels(),
 			ExileIfCreaturesDie:   g.ExileIfCreaturesWouldDieThisTurnLabels(),
+			DamageMultipliers:     g.DamageMultiplierLines(),
 			DiscardPending:        viewOfDiscardPending(g.DiscardPending),
 			PendingChoices:        viewOfPendingChoices(g),
 			LoopNotice:            viewOfLoopNotice(g.LoopNotice),
@@ -7416,6 +7424,7 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		SplitSecondActive:     v.SplitSecondActive,
 		DamageCantBePrevented: v.DamageCantBePrevented,
 		ExileIfCreaturesDie:   v.ExileIfCreaturesDie,
+		DamageMultipliers:     v.DamageMultipliers,
 		DiscardPending:        v.DiscardPending,
 		PendingChoices:        filterPendingChoices(v.PendingChoices, isKnower, viewerID),
 		LegalMoves:            legalMovesFor(v.legalBySeat, viewerID),

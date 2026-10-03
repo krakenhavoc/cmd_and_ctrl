@@ -1,5 +1,21 @@
 import { describe, expect, it } from "vitest";
-import { damageCantBePreventedLine, exileIfCreaturesDieLine } from "./turnRules";
+import {
+  damageCantBePreventedLine,
+  damageMultiplierLines,
+  exileIfCreaturesDieLine,
+} from "./turnRules";
+
+describe("damageMultiplierLines", () => {
+  it("is empty when no multiplier is live", () => {
+    expect(damageMultiplierLines(undefined)).toEqual([]);
+    expect(damageMultiplierLines([])).toEqual([]);
+  });
+
+  it("keeps every line in order, repeats included, and drops blanks", () => {
+    const insult = "Alice's sources deal double damage this turn — Insult";
+    expect(damageMultiplierLines([insult, "", insult])).toEqual([insult, insult]);
+  });
+});
 
 describe("exileIfCreaturesDieLine", () => {
   it("is empty when no effect is live", () => {

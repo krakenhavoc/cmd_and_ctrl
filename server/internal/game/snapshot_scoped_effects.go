@@ -72,6 +72,12 @@ func (s *GameSnapshot) checkEffectKeys() error {
 			if problem := nextFromSourceModProblem(m); problem != "" {
 				unknown = append(unknown, problem)
 			}
+			// ADR 0108 §3: a multiplier's vocabulary (Sources,
+			// Recipients) is as much a key as its kind, and its fields
+			// on another kind are a newer binary's shape.
+			if problem := multiplyDamageModProblem(m); problem != "" {
+				unknown = append(unknown, problem)
+			}
 			// #1879: a granted attack restriction that asks for nothing.
 			if problem := defenderControlsModProblem(m); problem != "" {
 				unknown = append(unknown, problem)
