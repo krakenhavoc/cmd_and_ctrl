@@ -7,7 +7,14 @@
   import { navigate } from "../lib/router";
   import { isPracticeGame, practiceTable } from "../lib/practiceTable";
   import { session } from "../lib/session";
-  import { isAdmin as isAdminSession } from "../lib/admin";
+  import {
+    adminChipFor,
+    adminNotice,
+    afterAdminModeChanged,
+    isAdmin as isAdminSession,
+    PLAYER_MODE_NOT_YOURS,
+    switchAdminMode,
+  } from "../lib/admin";
   import { seatColor } from "../lib/colors";
   import DeckUploadForm from "../lib/components/DeckUploadForm.svelte";
   import BugReportModal from "../lib/components/BugReportModal.svelte";
@@ -154,6 +161,20 @@
     client.setURL(wsURL);
     client.connect();
     return () => client.disconnect();
+  });
+
+  // A 4001 "admin mode changed" close (ADR 0112 §2 item 5): ask /me
+  // first, then reconnect with the binding this session may now hold,
+  // or go to the Lobby when the one it held needs admin mode (another
+  // seat, the seatless view, a table that isn't yours). Never a blind
+  // redial, which the server would refuse forever (lib/ws.ts).
+  client.setAdminModeHandler(async () => {
+    const verdict = await afterAdminModeChanged(gameID);
+    if (verdict === "leave") {
+      adminNotice.set(PLAYER_MODE_NOT_YOURS);
+      navigate("#/lobby");
+    }
+    return verdict;
   });
 
   // Dev tools (ADR 0023). Every tool is gated inside DevDock on its
@@ -1383,6 +1404,24 @@
   // that acts on a seat. Neither is drawn while the dev replay scrubber
   // shows a past frame: `view` is history then, and every entry acts on
   // the LIVE game.
+  // The admin switch (ADR 0112 §2 item 9). The table has no header, so
+  // an allowlisted person switches here. The server then closes this
+  // socket with 4001 and the handler above brings it back with the
+  // binding the new mode allows. A refusal shows the server's message.
+  const adminChip = $derived(adminChipFor(sess));
+  async function toggleAdminMode(): Promise<void> {
+    if (adminChip?.kind !== "switch") return;
+    try {
+      await switchAdminMode(!adminChip.on);
+    } catch (err) {
+      lastError.set({
+        code: "admin_mode",
+        message: err instanceof Error ? err.message : "could not switch admin mode",
+        at: new Date(),
+      });
+    }
+  }
+
   const menuOptions = $derived<GameMenuOptions>({
     seated: dockShown,
     eliminated: viewerEliminated,
@@ -1399,6 +1438,8 @@
       ? { href: discordLinkHref(gameID), label: linkDiscordLabel(Boolean(viewerSeat?.discord_id)) }
       : null,
     myGames: signedInUserID(sess) !== null,
+    adminMode: adminChip?.kind === "switch" ? { on: adminChip.on } : null,
+    onAdminMode: () => void toggleAdminMode(),
     voteOpen: !!view?.vote,
     onDraw: draw,
     onUntapAll: untapAll,
