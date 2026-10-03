@@ -373,6 +373,8 @@ func (g *Game) cloneLocked() *Game {
 	// when it was taken.
 	out.ScopedEffects = cloneScopedEffects(g.ScopedEffects)
 	out.scopedEffectSeq = g.scopedEffectSeq
+	out.entryOrdinalSeq = g.entryOrdinalSeq
+	out.entryOrdinalShared = g.entryOrdinalShared
 	// CR 603.10 LKI snapshots (S19). Values are Characteristic copies
 	// that are never mutated after being stored, so a per-entry value
 	// copy is sufficient. Usually empty — entries live only for the
@@ -1028,6 +1030,8 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.BuiltinReplacements = src.BuiltinReplacements
 	g.ScopedEffects = src.ScopedEffects
 	g.scopedEffectSeq = src.scopedEffectSeq
+	g.entryOrdinalSeq = src.entryOrdinalSeq
+	g.entryOrdinalShared = src.entryOrdinalShared
 	g.lastKnownBattlefield = src.lastKnownBattlefield
 	g.lastKnownTriggerIdentity = src.lastKnownTriggerIdentity
 	g.lastKnownCounters = src.lastKnownCounters
