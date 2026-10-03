@@ -351,6 +351,11 @@ export interface GameView {
   // Eclipse), by their source's name, oldest first. Absent on nearly
   // every turn.
   exile_if_creatures_die?: string[];
+  // ADR 0108 §3: one line per live "it deals double (triple) that damage
+  // instead" effect a resolved spell or ability made (Insult, Isengard
+  // Unleashed, Lightning's Stagger), oldest first, already worded for the
+  // banner. Absent on nearly every turn.
+  damage_multipliers?: string[];
   // Cleanup-step pause map (S13.4, CR 402.2). Keys are player UUID
   // strings, values are the count each player must discard. Drives
   // DiscardPromptModal. Empty / absent when nobody owes discard.
