@@ -455,3 +455,64 @@ describe("switching at the table", () => {
     expect(get(adminNotice)).toBe("");
   });
 });
+
+describe("the admin-mode marker on the account button", () => {
+  const btn = (c: HTMLElement) =>
+    c.querySelector<HTMLButtonElement>('button[aria-controls="account-menu"]')!;
+
+  it("shows a dot, and 'admin mode on' in the name and tooltip, in admin mode", () => {
+    session.set(person(adminMode));
+    const { container } = render(SiteHeader as never, {} as never);
+    const b = btn(container);
+    expect(b.querySelector(".admin-dot")).not.toBeNull();
+    expect(b.getAttribute("aria-label")).toMatch(/^account menu: Owner.*admin mode on/);
+    expect(b.getAttribute("title")).toMatch(/admin mode on/);
+  });
+
+  it("shows nothing in player mode", () => {
+    session.set(person(playerMode));
+    const { container } = render(SiteHeader as never, {} as never);
+    const b = btn(container);
+    expect(b.querySelector(".admin-dot")).toBeNull();
+    expect(b.getAttribute("aria-label")).toBe("account menu: Owner");
+    expect(b.getAttribute("title")).toBeNull();
+  });
+
+  it("shows nothing for a non-admin", () => {
+    session.set(person({ admin: false, admin_allowed: false }));
+    const { container } = render(SiteHeader as never, {} as never);
+    expect(btn(container).querySelector(".admin-dot")).toBeNull();
+    expect(btn(container).getAttribute("aria-label")).toBe("account menu: Owner");
+  });
+
+  it("shows it for the token session", () => {
+    const s = person({ role: "admin" });
+    s.principal.user_id = undefined;
+    session.set(s);
+    const { container } = render(SiteHeader as never, {} as never);
+    const b = btn(container);
+    expect(b.querySelector(".admin-dot")).not.toBeNull();
+    expect(b.getAttribute("aria-label")).toMatch(/^account menu: .*admin mode on/);
+  });
+
+  it("goes away without a reload when admin mode is switched off", async () => {
+    session.set(person(adminMode));
+    const { container } = render(SiteHeader as never, {} as never);
+    expect(btn(container).querySelector(".admin-dot")).not.toBeNull();
+    session.set(person(playerMode));
+    await settle();
+    expect(btn(container).querySelector(".admin-dot")).toBeNull();
+    expect(btn(container).getAttribute("aria-label")).toBe("account menu: Owner");
+  });
+
+  it("goes away when admin mode lapses", async () => {
+    session.set(person({ ...adminMode, admin_mode_ends_at: Date.now() + 1000 }));
+    const { container } = render(SiteHeader as never, {} as never);
+    expect(btn(container).querySelector(".admin-dot")).not.toBeNull();
+    // The lapse timer (App.svelte) rewrites the session when it fires.
+    vi.setSystemTime(Date.now() + 2000);
+    session.update((x) => (x ? { ...x } : x));
+    await settle();
+    expect(btn(container).querySelector(".admin-dot")).toBeNull();
+  });
+});

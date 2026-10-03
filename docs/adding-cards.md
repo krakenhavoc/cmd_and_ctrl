@@ -508,10 +508,27 @@ charge counters for a deliberate click.
 **Reading the mana that paid (#761).** A spell that counts the mana
 spent on it reads `effects.Context`, beside `PaidAltCost`:
 `ctx.ColorsSpentCount()` (converge, CR 702.86),
-`SunburstCounters(kind)` in `OnResolve` (sunburst, CR 702.44),
 `AdamantSpent(ctx, "R", 3)` (adamant), and `ctx.NoManaSpent()` — or
 `NoManaWasSpentToCast(g, spellID)` from a cast trigger — for "if no
-mana was spent to cast it".
+mana was spent to cast it". Sunburst (CR 702.44) is a KEYWORD since
+ADR 0109 §11 (#1552): declare `PrintedKeywords:
+[]string{game.KeywordSunburst}` and the engine counts it on the
+resolving spell. A spell can be given it (`ThatSpellGains{Keywords:
+[]string{game.KeywordSunburst}}`, Lux Artillery), and each instance
+counts (CR 702.44d).
+
+**Reading ANOTHER spell's payment as it enters (ADR 0109 §11).** A
+replacement on any permanent reads the entering spell's spend with
+`g.EntrySpentForEffect(ev)` — a `game.ManaSpent`, so
+`.CountFrom(game.ManaSourceArtifact)` is Coin of Mastery and `.None()`
+is "if it wasn't cast or no mana was spent to cast it" (an entry that
+was not a cast reads as a known nothing). The shapes are
+`CreaturesYouControlEnterWithCountersPerManaFrom` and
+`SelfEntersWithCountersIfNoManaSpent` in `effects/mana_spent_entry.go`.
+A spend rider that gives the SPELL a keyword is
+`SpentSpellGains(keywords, untilEndOfTurn, when...)` (Generator Servant),
+and one whose counter count is read as the creature enters is
+`SpentEntersWithCountersCounted` (Opal Palace).
 
 A converge or sunburst card must ALSO set `Spec.WantsDistinctColors`,
 which makes the cast gate pay the generic half of the cost with colours
@@ -1059,9 +1076,9 @@ line after escape's `applyAltCostEntryCountersLocked`, so a card file
 declares arithmetic over `game.CastCounts` — `X`, `Kicked`,
 `ColorsSpent`, `ManaSpent` (CR 601.2h's "the amount of mana spent to cast
 it", #1735), `Delved` — and nothing else. Constructors:
-`XCounters(kind)`, `CountersPerKick(kind, per)`,
-`SunburstCounters(kind)` in
+`XCounters(kind)`, `CountersPerKick(kind, per)`, `CountersPerDelved(kind, match)` in
 [cards/effects/entry_counters.go](../server/internal/cards/effects/entry_counters.go).
+Sunburst is not one of them any more: it is a keyword (ADR 0109 §11).
 Never build a `game.EntryCountersFromCast` by hand, for the reason
 `mana_spent.go` gives: a card says what the card says and never
 reaches for the payment record itself.
@@ -1714,6 +1731,8 @@ canonicalised forms the engine expects. Canonical tokens:
 | `"toxic N"` | Toxic (CR 702.164) — #748, N extra poison on combat damage to a player. Numbered AND cumulative: read it with `game.ToxicTotal`, never `HasKeyword`, and grant it through `game.AppendKeywordAbility` so a second instance adds up ([ADR 0056](decisions/0056-infect-wither-toxic.md)) |
 | `"prowess"` | Prowess (CR 702.108) — #706, the first TRIGGERED keyword in the table: `TriggersForCard` turns each instance on the effective ability list into one trigger (`game/prowess.go`). Cumulative like toxic, so grant it through `game.AppendKeywordAbility`. Never write a prowess trigger by hand — declare the token ([ADR 0014 amendment 2026-09-24](decisions/0014-combat-keywords.md)) |
 | `"evolve"` | Evolve (CR 702.100) — #1805, the second TRIGGERED keyword, built exactly like prowess: one trigger per instance (`game/evolve.go`), the CR 702.100a comparison made on entry and again on resolution (CR 603.4), and `game.EventEvolved` when a counter lands (CR 702.100b) — "whenever this creature evolves" is `WhenThisEvolves(label, effect)`. Cumulative, so grant it through `KeywordGrant` / `game.AppendKeywordAbility`. A creature whose only text is evolve and other tokens here needs no card file. Never write an evolve trigger by hand ([ADR 0106 §3](decisions/0106-five-small-seams-from-the-s50-rechecks.md#3-evolve-1805)) |
+| `"riot"` | Riot (CR 702.136) — #1556, an ENTRY keyword: the entry look-ahead (`game/entry_lookahead.go`) reads the permanent as it would exist on the battlefield (CR 614.12) and the gather asks one `entry_riot` question per instance (`game/riot.go`) — a +1/+1 counter or haste. Cumulative (CR 702.136b), so grant it through `KeywordGrant` / `game.AppendKeywordAbility`; a printed riot and Rhythm of the Wild's ask twice. Never write a riot replacement by hand ([ADR 0109 §10](decisions/0109-rule-gates-land-types-mana-and-cost-components.md#10-riot-and-unleash-1556)) |
+| `"unleash"` | Unleash (CR 702.98) — #1556, riot's sibling: one optional "enter with an additional +1/+1 counter" per instance through the same look-ahead, and "can't block as long as it has a +1/+1 counter on it" folded into the restrictions after the layer pass (`foldUnleashLocked`). Cumulative (CR 113.2c). A creature whose only text is riot or unleash and other tokens here needs no card file |
 | `"split second"` | Split second (CR 702.61) — #1519, a SPELL's keyword: `castHasSplitSecond` (`game/split_second.go`) stamps `StackItem.SplitSecond` at announce, and while it is on the stack nobody casts or activates a non-mana ability. Declare it on an instant or sorcery exactly like flash; never pass the sandbox `SplitSecond` cast flag from a card ([ADR 0007 amendment 2026-09-24](decisions/0007-stack-foundation.md)) |
 | `"rebound"` | Rebound (CR 702.88) — #1854, a SPELL's keyword read as it RESOLVES: `spellRebounds` (`game/rebound.go`) exiles a spell cast from its controller's hand instead of putting it into the graveyard, and the upkeep delayed trigger `rebound/cast` offers the free cast. Declare it on an instant or sorcery; the card file writes only the rest of its text. To GIVE a spell rebound (or any keyword) on the stack, use `ThatSpellGains{Keywords}` for "that spell gains …" from a cast trigger, and `SpellsYouControlHave(pred, kw…)` for "… spells you control have …" (a static with `AffectsSpells`, which never reaches a permanent); both are applied by the stack step of the layer pass (`game/spell_keywords.go`) ([ADR 0107 §3](decisions/0107-state-triggers-rebound-disturb-and-damage-prevention.md#3-rebound-1854)) |
 
@@ -2117,6 +2136,42 @@ LandPlayRestrictions: []game.LandPlayRestriction{
   beside it.
 - "A land with a name originally printed in Arabian Nights" is
   `game.IsArabianNightsName` (CR 206.3a's list).
+
+### "Cards in graveyards can't be targeted" (ADR 0109 §6, #1885)
+
+A rule that stops spells and abilities targeting the cards in a whole
+ZONE is not a keyword on those cards: it is a static of some other
+permanent. It has its own slot, read live at the engine's two targeting
+choke points, so a refused card is never offered, can't be announced
+(CR 601.2c), and makes a spell already aimed at it lose that target at
+resolution (CR 608.2b).
+
+```go
+TargetingRestrictions: []game.TargetingRestriction{
+    CardsInGraveyardsCantBeTargeted("Cards in graveyards can't be the targets of spells or abilities."), // Ground Seal
+    OpponentsCantTarget("Lands on the battlefield and land cards in graveyards can't be the targets of spells or abilities your opponents control.",
+        Land(), game.ZoneBattlefield, game.ZoneGraveyard),                                          // Tomik
+},
+```
+
+- The constructors are in
+  [targeting_restriction.go](../server/internal/cards/effects/targeting_restriction.go).
+  A shape neither names writes a
+  `game.TargetingRestriction{Label, Zones, Forbids func(game.TargetingQuery) bool}`
+  literal. `TargetingQuery` carries the game, the candidate card as it
+  stands in its zone, the zone, the controller of the spell or ability
+  choosing the target, and the source permanent. `Register` refuses a
+  restriction with no `Label`, no `Forbids` or no `Zones`.
+- Only TARGETING is refused. A cost (delve, "exile a card from a
+  graveyard") and a "choose" that is not a target (CR 115.10a) are not, so
+  never use this slot for a rule about costs.
+- Read from the battlefield through `CatalogAbilityKey`, with nothing
+  stored: the source leaving lifts it, and a source that lost its
+  abilities restricts nothing. Don't add a check of your own anywhere
+  else; `canBeTargetedByLocked` (`game/keywords.go`) is the one place.
+- A restriction about graveyards is listed on
+  `GameView.graveyard_target_bans`, which the graveyard viewer shows as a
+  banner.
 
 ### "Spells you control can't be countered" (ADR 0106, #1806)
 
@@ -5918,6 +5973,16 @@ Three things to know:
   the label and text read from the catalog on every projection. The
   board draws chips beside the player identity; the command-zone pile
   stays commander-only.
+- **An emblem's rule gates** (ADR 0109 §5, #1899) are the `EmblemSpec`
+  slots `CastRestrictions`, `LandPlayRestrictions`, `GameEndGates` and
+  `UntapCaps`: the `Spec` slots of the same names, built by the same
+  constructors. The cast gate, the land-play gate, the game-end gates and
+  the untap caps each walk every seat's emblems beside the battlefield,
+  with the emblem as the source, so `OpponentsCantCast(…)` on Narset
+  Transcendent's emblem binds the emblem owner's opponents (CR 114.2).
+  Never write an emblem's "can't" as a `CastBanRule` granted to each
+  opponent: that record is invisible on the board, frozen when it is
+  made, and does not end when the emblem's owner leaves (CR 800.4a).
 
 ### Designations: Class levels, solved Cases, station thresholds (#757, #759)
 

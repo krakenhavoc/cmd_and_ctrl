@@ -101,6 +101,7 @@ func everyFieldGameView(ownerID, oppID string) GameView {
 		ExileIfCreaturesDie:   []string{"Flaying Tendrils"},
 		DamageShields:         []string{"Pay No Heed (Goblin Guide)"},
 		DamageMultipliers:     []string{"P1's sources deal double damage this turn — Insult"},
+		GraveyardTargetBans:   []string{"Cards in graveyards can't be the targets of spells or abilities. — Ground Seal"},
 		DiscardPending:        map[string]int{ownerID: 1},
 		PendingChoices: []PendingChoiceView{{
 			ID: "choice-1", Kind: "choose_cards", Chooser: ownerID, FromPlayer: ownerID, Count: 1,

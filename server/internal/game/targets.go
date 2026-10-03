@@ -721,11 +721,17 @@ func (g *Game) specMatchesLocked(src TargetSource, spec *TargetSpec, targeting b
 			out.Players = append(out.Players, p.ID)
 		}
 	}
+	// ADR 0109 §6: the restrictions about a zone, gathered once for the
+	// whole walk rather than once per candidate.
+	var restrictions targetingRestrictions
+	if targeting && len(spec.Zones) > 0 {
+		restrictions = g.activeTargetingRestrictionsLocked()
+	}
 	for _, zk := range spec.Zones {
 		for _, z := range g.zonesOfKindLocked(zk) {
 			for i := range z.Cards {
 				c := z.Cards[i]
-				if targeting && !g.canBeTargetedByLocked(&c, zk, src) {
+				if targeting && !g.canBeTargetedWithLocked(restrictions, &c, zk, src) {
 					continue
 				}
 				if spec.excludesSource(src, c.InstanceID) {

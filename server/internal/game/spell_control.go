@@ -383,7 +383,7 @@ func (g *Game) repinSpellControlLocked(spellID uuid.UUID, stackEpoch int, perman
 		}
 		out[i].Affected = append([]AffectedObject(nil), pins...)
 		out[i].Mods = cloneMods(out[i].Mods)
-		out[i].Duration = g.PinnedToEpoch(IndefiniteDuration(), permanentID)
+		out[i].Duration = g.PinnedToEpoch(unpinnedDuration(out[i].Duration), permanentID)
 		moved = true
 	}
 	if !moved {
@@ -391,6 +391,21 @@ func (g *Game) repinSpellControlLocked(spellID uuid.UUID, stackEpoch int, perman
 	}
 	g.ScopedEffects = out
 	g.layerVersion.Add(1)
+}
+
+// unpinnedDuration is `d` with its pin to the spell taken off, so the
+// record can be pinned to the permanent instead (CR 400.7a) without
+// losing the duration it was given (ADR 0109 §11 decision 3): a
+// keyword a spell gained "until end of turn" is the permanent's until
+// end of turn. Every other field — the kind, the player, the turn it
+// expires after — is kept.
+func unpinnedDuration(d Duration) Duration {
+	d.Pinned = uuid.Nil
+	d.PinnedEnteredAt = 0
+	d.PinnedUnstamped = false
+	d.PinnedOnStack = false
+	d.PinnedEpoch = 0
+	return d
 }
 
 // spellControlRecordsLocked returns value copies of every record
@@ -435,7 +450,7 @@ func (g *Game) adoptSpellControlLocked(records []ScopedEffect, permanentID, base
 	out = append(out, g.ScopedEffects...)
 	for _, e := range records {
 		e.Affected = append([]AffectedObject(nil), pins...)
-		e.Duration = g.PinnedTo(IndefiniteDuration(), permanentID)
+		e.Duration = g.PinnedTo(unpinnedDuration(e.Duration), permanentID)
 		out = append(out, e)
 	}
 	g.ScopedEffects = out

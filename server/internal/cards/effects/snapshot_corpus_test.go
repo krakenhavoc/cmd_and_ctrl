@@ -338,6 +338,13 @@ func corpusBoards() []corpusBoard {
 		// long as that creature has a shadow counter on it",
 		// WhilePinnedHasCounter with its CounterKind).
 		{"durations", corpusDurations},
+		// v7, added by ADR 0109 PR 6 (#1899) as a new file: Narset
+		// Transcendent's −2 waiting — a delayed trigger naming the
+		// condition key cast/you-next-cast-from-hand and the body key
+		// rebound/the-spell-you-just-cast — and Narset's emblem on its
+		// owner's seat, whose cast restriction is catalog data and so adds
+		// nothing to the file but the emblem.
+		{"narset_emblem_and_rebound_waiting", corpusNarset},
 		// v7, added by ADR 0109 PR 3 (#1604) as a new file: the
 		// loseLandTypes kind, in Ultima, Origin of Oblivion's record
 		// (loses all land types and abilities and has "{T}: Add {C}"
@@ -348,6 +355,13 @@ func corpusBoards() []corpusBoard {
 		// carrying its grantor (Teferi's Talent's −12, stackMeta's
 		// grantedBy).
 		{"granted_loyalty_on_stack", corpusGrantedLoyaltyOnStack},
+		// v7, added by ADR 0109 PR 10 (#1552) as a new file: the two new
+		// spend-rider shapes waiting in a pool (Generator Servant's
+		// spell_gains {C}{C}, Opal Palace's counted {G}), Solar Array's
+		// "when you next cast an artifact spell" delayed trigger, and a
+		// Dragon that kept the haste-until-end-of-turn its spell was given
+		// (a record re-pinned to the permanent with its duration).
+		{"granted_mana_spent_readers", corpusGrantedManaSpentReaders},
 		// v7, added by ADR 0108 PR 7 (#1904) as a new file: the
 		// recipient and to-and-by shields as data — Energy Arc's one
 		// to-and-by record over two creatures (Mod.AndDealtBy, an
@@ -376,6 +390,46 @@ func corpusToAndByShields(t *testing.T) *game.Game {
 	passPriorityAroundTable(t, g)
 	if n := pr7aShields(g); n != 3 {
 		t.Fatalf("setup: %d preventFromSource records, want 3", n)
+	}
+	return g
+}
+
+// corpusGrantedManaSpentReaders is ADR 0109 §11's data, made by the cards
+// that write it.
+func corpusGrantedManaSpentReaders(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	advanceToMain(t, g)
+	orb := pushCatalogPermanent(g, me.ID, "Carnelian Orb of Dragonkind", "Artifact", gmrCarnelianOrbOracle, false)
+	activateManaFor(t, g, me.ID, orb, 0, game.ManaAbilityParams{})
+	dragon := castFromHandForTest(t, g, me, "Test Dragon", "Creature — Dragon", "{R}", "", game.CastSpellParams{Strict: true})
+	passPriorityAroundTable(t, g)
+	if !g.Battlefield.Contains(dragon) {
+		t.Fatal("setup: the Dragon did not resolve")
+	}
+	servant := pushCatalogPermanent(g, me.ID, "Generator Servant", "Creature — Elemental", gmrGeneratorServantOracle, false)
+	activateManaFor(t, g, me.ID, servant, 0, game.ManaAbilityParams{})
+	palace := pushCatalogPermanent(g, me.ID, "Opal Palace", "Land", gmrOpalPalaceOracle, false)
+	floatForTest(g, me, "C")
+	activateManaFor(t, g, me.ID, palace, 1, game.ManaAbilityParams{Colors: []string{"G"}})
+	array := pushCatalogPermanent(g, me.ID, "Solar Array", "Artifact", gmrSolarArrayOracle, false)
+	activateManaFor(t, g, me.ID, array, 0, game.ManaAbilityParams{Colors: []string{"W"}})
+	return g
+}
+
+// corpusNarset is ADR 0109 §5's stored shapes, made by the card: the −2
+// resolved (its delayed trigger waiting for the next instant or sorcery
+// cast from hand) and the −9 resolved from a second Narset (its emblem).
+func corpusNarset(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	toMain(t, g)
+	waiting := pushCatalogWalker(g, me.ID, "Narset Transcendent", narsetOracle, 6)
+	b16Activate(t, g, me.ID, waiting, 1, game.ActivateAbilityParams{})
+	ultimate := pushCatalogWalker(g, me.ID, "Narset Transcendent", narsetOracle, 9)
+	b16Activate(t, g, me.ID, ultimate, 2, game.ActivateAbilityParams{})
+	if len(g.DelayedTriggers) != 1 || me.Emblems == nil || len(me.Emblems.Cards) != 1 {
+		t.Fatalf("setup: %d delayed triggers and an emblem zone %v, want one of each", len(g.DelayedTriggers), me.Emblems)
 	}
 	return g
 }
@@ -646,7 +700,7 @@ func corpusGrantedReboundOnStack(t *testing.T) *game.Game {
 		[]game.TargetRef{{Kind: game.TargetPlayer, ID: foe.ID}})
 	var ok bool
 	g.WithWriteLock(func() {
-		ok = g.GrantKeywordsToSpellForEffect(taigam, id, []string{game.KeywordRebound},
+		ok = g.GrantKeywordsToSpellForEffect(taigam, id, []string{game.KeywordRebound}, game.IndefiniteDuration(),
 			"Taigam, Ojutai Master — that spell gains rebound")
 	})
 	if !ok {

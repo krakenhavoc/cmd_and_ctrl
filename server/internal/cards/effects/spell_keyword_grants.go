@@ -54,8 +54,16 @@ func SpellsYouControlHave(spell CardPredicate, keywords ...string) game.StaticAb
 // object on the stack. A spell countered or resolved before the trigger
 // resolves is given nothing: the card in its new zone is a new object
 // (CR 400.7), and the spell the ability named no longer exists.
+//
+// A permanent spell hands what it gained to the permanent it becomes
+// (CR 400.7a) — Lux Artillery's "it gains sunburst" is read as the
+// permanent enters — and UntilEndOfTurn carries "until end of turn"
+// with it (ADR 0109 §11 decision 3): Tyvar Kell's emblem gives an Elf
+// spell haste until end of turn, and the creature it becomes keeps the
+// haste for the rest of that turn and no longer.
 type ThatSpellGains struct {
-	Keywords []string
+	Keywords       []string
+	UntilEndOfTurn bool
 }
 
 func (a ThatSpellGains) Apply(ctx *Context) error {
@@ -67,7 +75,28 @@ func (a ThatSpellGains) Apply(ctx *Context) error {
 	if ctx.Item != nil && ctx.Item.Label != "" {
 		label = ctx.Item.Label
 	}
-	ctx.Game.GrantKeywordsToSpellForEffect(ctx.Source(), spell, a.Keywords, label)
+	d := game.IndefiniteDuration()
+	if a.UntilEndOfTurn {
+		d = ctx.Game.UntilEndOfTurnDuration()
+	}
+	ctx.Game.GrantKeywordsToSpellForEffect(ctx.Source(), spell, a.Keywords, d, label)
+	return nil
+}
+
+// thatSpellYouJustCastGainsSunburst is the body of "when you next cast
+// an artifact spell this turn, that spell gains sunburst" (Solar Array):
+// the spell the delayed trigger fired on rides the item's payload, and
+// it gains sunburst for as long as it is that object on the stack and
+// then as the permanent it becomes (CR 400.7a). A spell countered in
+// response gains nothing.
+func thatSpellYouJustCastGainsSunburst(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	cast := ctx.PayloadCards()
+	if len(cast) == 0 {
+		return nil
+	}
+	g.GrantKeywordsToSpellForEffect(item.SourceCardID, cast[0], []string{game.KeywordSunburst},
+		game.IndefiniteDuration(), item.Label)
 	return nil
 }
 

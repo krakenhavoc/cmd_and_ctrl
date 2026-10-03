@@ -238,6 +238,12 @@ The devcontainer installs Go, Node, and the GitHub CLI. Ports 3000, 5173, and
 8080 are forwarded. (The Java/Maven features remain installed for now but are
 unused — they can be removed in a later cleanup PR.)
 
+### Go without a local toolchain
+
+The workstation has no local Go. `scripts/go-docker.sh` is THE way to run it: `scripts/go-docker.sh test ./internal/roadmap/...`, `vet`, `lint`, `go <args>`, `prune` (no arguments prints usage). It mounts the repo, uses `golang:1.22` (`golang:1.24` for golangci-lint), passes the exit status through (never pipe it through `tail`), and cleans the build cache first when it passes `CMDCTRL_GOCACHE_MAX_GB` (default 15). `make -C server docker-test docker-lint` wrap it.
+
+**Never create any other cache volume**, and never hand-write a `docker run` for Go. The only three are `cmdctrl-gomod`, `cmdctrl-gobuild` and `cmdctrl-golangci`; per-PR volumes filled the Docker partition at 178 GB (#2035).
+
 ### Top-level
 - `make help` — list targets
 - `make server-dev` — run the Go server on :8080
@@ -463,6 +469,7 @@ Subsections of [docs/adding-cards.md](docs/adding-cards.md):
   - [Adding a combat-keyword card (S18+)](docs/adding-cards.md#adding-a-combat-keyword-card-s18)
   - [Adding a "can't" card (S24+)](docs/adding-cards.md#adding-a-cant-card-s24)
   - ["Players can't play lands" (ADR 0109 §4, #1895)](docs/adding-cards.md#players-cant-play-lands-adr-0109-4-1895)
+  - ["Cards in graveyards can't be targeted" (ADR 0109 §6, #1885)](docs/adding-cards.md#cards-in-graveyards-cant-be-targeted-adr-0109-6-1885)
   - ["Spells you control can't be countered" (ADR 0106, #1806)](docs/adding-cards.md#spells-you-control-cant-be-countered-adr-0106-1806)
   - [Attaching, and an ability whose source has gone (#812)](docs/adding-cards.md#attaching-and-an-ability-whose-source-has-gone-812)
   - [Adding a block-rule card (S37+, #750)](docs/adding-cards.md#adding-a-block-rule-card-s37-750)

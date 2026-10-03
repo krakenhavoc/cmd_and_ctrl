@@ -93,7 +93,11 @@ type DamageInstance uint64
 // Caller must hold g.mu (write).
 func (g *Game) nextDamageInstanceLocked() DamageInstance {
 	g.damageInstanceSeq++
-	return DamageInstance(g.damageInstanceSeq)
+	inst := DamageInstance(g.damageInstanceSeq)
+	// ADR 0108 §10: the life totals the instance began with, for
+	// Phyrexian Unlife's once-per-instance read (damage_as_though.go).
+	g.recordDamageInstanceLifeLocked(inst)
+	return inst
 }
 
 // damageInstructionLocked is the instance a damage instruction's events

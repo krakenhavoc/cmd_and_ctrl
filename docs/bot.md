@@ -288,6 +288,15 @@ offers only sets the engine accepts (the cap solver runs inside
 in a step where nobody holds priority, so a seat with no answer here
 would stop the game outright rather than merely stall its own turn.
 
+**Riot and unleash (`entry_riot`, and `optional_replacement` with
+`entry_keyword: "unleash"`, ADR 0109 §10).** Riot takes haste when the
+creature enters during the bot's own turn before attackers are declared
+and could attack (it has no defender), and the +1/+1 counter otherwise.
+Unleash always takes the counter, unless it is an opponent's turn and the
+entering creature would be the bot's only untapped creature, which a
+counter would stop from blocking (CR 702.98a). See
+`aiseat/heuristic/riot.go`.
+
 **Whom to give it to (`entry_controller`, ADR 0102, CR 614.12a).** "This
 enters under the control of an opponent of your choice" is offered as
 one answer per opponent. The heuristic reads the prompt's

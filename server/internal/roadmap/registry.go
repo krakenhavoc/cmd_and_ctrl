@@ -774,17 +774,32 @@ var items = []Item{
 		EngineNotes: "**static and attached grants of mana, activated and triggered abilities ship (ADR 0093 PRs 1-3), with the client's picker (#1567).** A layer-6 static declares `StaticAbility.GrantAbilities` (card side: `effects.GrantAbilities`, `TribalAbilityGrant`, `GrantAbilitiesToAttached`) naming an `effects.AbilityGrant` bundle; the recipient carries `Characteristic.GrantedAbilities`, `CatalogAbilityKey` composes own + layered grants, the ability readers return own + intrinsic + granted with a stable `ref` per row, and the auto-tapper offers every acceptable ability of a permanent as mutually exclusive candidates with a creature's granted mana in the last-resort tier. Granted triggers are harvested from the host, whose controller controls them; a granted dies trigger fires from last-known information (`AbilityKeyFromLKI`) in a single death and in a wipe; and the ETB harvest catches the layers up first, so a creature entering under a grant has it (CR 603.6a). Shipped on Cryptolith Rite, Chromatic Lantern, Gemhide, Manaweft and Necrotic Sliver, Rishkar, Jaheira, Insidious Roots, Great Divide Guide, The World Tree, Paradise Mantle, Squirrel Nest, Springleaf Parade and Thornbite Staff; Dionus and Agent of the Iron Throne moved off their source-side approximations. **Duration grants ship (ADR 0093 PR 4, #1584):** a resolving spell or ability grants a bundle through the `grantAbilities` mod of ADR 0041 phase 3's ScopedEffect record (card side: `effects.GrantAbilitiesFor`, or `game.GrantAbilitiesMod` inside a `ScopedEffectFor`), pinned at resolution (CR 611.2c), timed by an ADR 0063 `Duration`, adapted into the same layer-6 declaration a static makes, and persisted as data, so a table holding one is still a restore point; a restore point naming an unregistered bundle is refused (`ErrUnknownEffectKey`). Shipped on Feign Death, Fake Your Own Death, Malakir Rebirth, Retraction Helix and Urza's Saga (an indefinite self-grant pinned to the Saga). **Counter-held durations ship (ADR 0109 §2, PR 2):** `game.WhilePinnedHasCounter` (4) with `Duration.CounterKind` holds while the pinned permanent is on the battlefield as the same object with a counter of that kind, and ends for good when the last one goes (CR 611.2b); `game.ForAsLongAsPinnedHasCounterDuration` answers \"never starts\". Card side (`effects/counter_held.go`): `CounterThenWhileItHasIt`, `GrantWhileItHasCounter` and `FloodTargetLand`. Shipped on Aquitect's Will, Xolatoyac, Aven Mimeomancer, Liege of the Tangle, Minas Morgul, and the granted abilities of Makeshift Mannequin, Mathas and Obsidian Fireheart. **Losing all land types ships (ADR 0109 §2, PR 3):** the layer-4 `ScopedEffect` kind `loseLandTypes` (`game.LoseLandTypesMod`, reads nothing) and its static form `effects.LosesAllLandTypes` both call `Characteristic.LoseLandTypes`, which removes every CR 205.3i land type and keeps every other subtype (CR 205.1a); it removes no ability by itself, and the basic land types' intrinsic mana abilities go with the types (CR 305.6). \"Loses all abilities and has …\" is the same effect's layer-6 half (`game.LoseAllAbilitiesMod` plus a grant in one record, or `effects.LosesAllAbilitiesAndHas`). Ultima, Origin of Oblivion writes all three into one record timed by `WhilePinnedHasCounter{blight}`; Lithoform Blight and Alpine Moon use the statics, and Alpine Moon reads its chosen name with `game.PermanentHasName` (the face that is up). The land-type chip lists a `loseLandTypes` record with what the same effect took and gave. **Granted loyalty abilities ship (ADR 0109 §2, owner decision 2, PR 4):** a bundle row with a `LoyaltyCost` is an ordinary granted activated row on the planeswalker, so CR 606.3's once-per-turn count and CR 606.6's counter check are the walker's; `ActivateCatalogAbility` stamps the row's grantor on the stack item (`StackItem.GrantedBy`, carried by snapshots and by a CR 707.10 copy), `effects.CreateEmblem` files the emblem under the grantor's key (CR 114.2), and `EventActivateAbility` carries a `Loyalty` bit for \"whenever you activate a loyalty ability of enchanted planeswalker\" (`effects.WheneverYouActivateALoyaltyAbilityOfEnchanted`). Shipped on Teferi's, Elspeth's, Liliana's, Rowan's and Vivien's Talent. Shield Broker waits on shield counters (#2000). Dread Wight writes the counter-held condition into an untap hold, so it lands only after PR 2 reaches main (ADR 0109 Shared machinery 2). Held for their other text, each with no seam row of its own yet: Sauron, Dino Devotee (\"it's a green Dinosaur\" sets the creature types), Eluge (\"costs {U} (or {1}) less\"), Immortal Obligation (a goad for as long as the counter stays), Promise of Loyalty (each player chooses a creature, and \"can't attack you\"), Quicksilver Fountain (a target the upkeep's player chooses) and Cyclopean Tomb (which lands its own counters went on).",
 	},
 	{
-		Slug: "riot", Name: "Riot", Kind: KindSeam, Status: StatusMissing,
-		Summary:     "Riot lets a creature enter with a +1/+1 counter or with haste, its controller's choice.",
-		Missing:     "Riot isn't implemented yet, so a creature with it gets neither the counter nor haste.",
-		Issue:       1556,
-		Tracked:     "#1556 (moved off #754 by ADR 0093)",
-		Waiting:     []string{"Rhythm of the Wild", "Spider-Punk"},
-		Phrases:     []string{"riot"},
-		Rules:       []string{"702.136a"},
-		ADR:         "0093-abilities-granted-to-other-permanents.md",
-		Unblocks:    1,
-		EngineNotes: "primitive: riot (CR 702.136a) is a keyword with a CR 614.12 \"as this enters\" choice, and no such keyword exists — it is not in `canonicalKeywords`. Rhythm of the Wild was listed under abilities-granted-to-other-permanents, but ADR 0093's audit found it misattributed: GRANTING a keyword already works (a layer-6 keyword grant); what is missing is riot itself, plus the CR 614.12 look-ahead for \"abilities it would have on the battlefield\" as it enters. Re-checked 2026-09-24. Spider-Punk (moved here from the cant-be-countered-grant row by ADR 0106 PR 3) needs riot first and two more statics after it: \"Spells and abilities can't be countered\" (the spell half is a battlefield static the counter gate already reads; nothing gates countering an ABILITY) and \"Damage can't be prevented\", which shipped with ADR 0107 PR 6 (`Spec.DamageCantBePrevented`).",
+		Slug: "modular", Name: "Modular", Kind: KindSeam, Status: StatusMissing,
+		Summary:     "Modular lets an artifact creature enter with +1/+1 counters and, when it dies, move those counters onto another artifact creature.",
+		Missing:     "Modular isn't implemented yet, so a creature with it enters without its counters and passes nothing on when it dies.",
+		Rules:       []string{"702.43"},
+		Issue:       2012,
+		Waiting:     []string{"Arcbound Slasher"},
+		Phrases:     []string{"modular"},
+		EngineNotes: "primitive: modular (CR 702.43a) is two abilities, an entry with N +1/+1 counters and a dies trigger that moves one counter per +1/+1 counter the permanent had onto target artifact creature; CR 702.43b makes each instance work separately. Neither half exists: `modular` is not in `canonicalKeywords`. The likely shape is an engine-derived keyword like riot (ADR 0109 §10): the counters as one entry replacement per instance through the entry look-ahead, and the dies trigger reading last-known counters (`LastKnownCountersForEffect`, CR 603.10a). Arcbound Slasher's riot already works (#1556). Found landing the riot cards.",
+	},
+	{
+		Slug: "player-hexproof-during-your-turn", Name: "\"You have hexproof\" only during your turn", Kind: KindSeam, Status: StatusMissing,
+		Summary:     "Permanents that give you hexproof only some of the time, such as Gruul Spellbreaker during your turn.",
+		Missing:     "A permanent can't yet give you hexproof only during your turn.",
+		Rules:       []string{"702.11c"},
+		Issue:       2013,
+		Waiting:     []string{"Gruul Spellbreaker"},
+		EngineNotes: "player statics: `Spec.PlayerKeywords` (read through `game.CatalogPlayerKeywords`, `game/player_statics.go`) is unconditional, so \"during your turn, you … have hexproof\" (CR 702.11c) has no spelling. The creature's own half is an ordinary conditional layer-6 grant. The likely shape is a condition on the player-keyword declaration, read at the same targeting query, so the static stays derived. Gruul Spellbreaker's riot already works (#1556). Found landing the riot cards.",
+	},
+	{
+		Slug: "abilities-cant-be-countered", Name: "Abilities that can't be countered", Kind: KindSeam, Status: StatusMissing,
+		Summary:     "Permanents that stop abilities from being countered as well as spells, such as Spider-Punk.",
+		Missing:     "Abilities can still be countered while a permanent says they can't be.",
+		Rules:       []string{"701.6a"},
+		Issue:       2014,
+		Waiting:     []string{"Spider-Punk"},
+		EngineNotes: "rules gate: countering an ability removes it from the stack (CR 701.6a), and nothing asks whether it may. The spell half is `spellCantBeCounteredLocked` (`game/cant_be_countered.go`, ADR 0106 §4); the likely shape is the same gate asked for an ability item. Spider-Punk's riot and \"Other Spiders you control have riot\" work (ADR 0109 PR 9, #1556), and \"Damage can't be prevented\" shipped with ADR 0107 PR 6; this is the card's last gap. Split off the riot row when riot closed.",
 	},
 	{
 		Slug: "all-activated-abilities-of", Name: "Having another card's activated abilities", Kind: KindSeam, Status: StatusMissing,
@@ -835,19 +850,17 @@ var items = []Item{
 		Phrases:  []string{"win the game", "wins the game", "can't lose the game"},
 	},
 	{
-		Slug: "mana-spend-riders", Name: "Mana that does something when it's spent", Kind: KindSeam, Status: StatusPartial,
-		Summary:  "Cards that read the mana spent on a spell work: converge, sunburst, adamant, \"if it was paid with Treasure\", and mana that does something when it's spent — Cavern of Souls, Pyromancer's Goggles, Hall of the Bandit Lord.",
-		Missing:  "Other permanents can't yet grant a spell something based on the mana spent on it: Lux Artillery's granted sunburst and Coin of Mastery's extra counters. Satoru, the Infiltrator doesn't yet count a creature cast without spending mana.",
-		Issue:    1552,
-		Tracked:  "#761 (record shipped), #1212 (source snapshot + entry-side read shipped), #1547 (spend riders shipped); granted readers open in #1552; the total spent at entry (Mockingbird) shipped in #1735",
-		ADR:      "0040-mana-pipeline.md",
-		Unblocks: 0,
-		Waiting: []string{
-			"Lux Artillery", "Satoru, the Infiltrator", "Coin of Mastery",
-		},
+		// #1552 (ADR 0109 §11, PR 10): the granted readers. Closed;
+		// history in Closed seams.
+		Slug: "mana-spend-riders", Name: "Mana that does something when it's spent", Kind: KindSeam, Status: StatusImplemented,
+		Summary:          "Cards that read the mana spent on a spell work: converge, sunburst, adamant, \"if it was paid with Treasure\", mana that does something when it's spent, such as Cavern of Souls, Pyromancer's Goggles and Generator Servant, and permanents that read the mana spent on another spell, such as Coin of Mastery, Lux Artillery and Satoru, the Infiltrator.",
+		Rules:            []string{"400.7d", "702.44", "603.4", "614.1c"},
+		Issue:            1552,
+		Tracked:          "#761 (record), #1212 (source snapshot), #1547 (spend riders), #1735 (the total spent at entry), #1552 (granted readers, ADR 0109 §11)",
+		ADR:              "0109-rule-gates-land-types-mana-and-cost-components.md",
 		Phrases:          []string{"which mana you spent", "spend its mana", "mana spent"},
 		NoCatalogExample: "Every catalogued card that reads spent mana carries the strict-mana caveat, so none is listed as fully automated yet.",
-		EngineNotes:      "primitive: **the record shipped in #761** — `StackItem.Paid` carries the tokens that paid, and converge, sunburst, adamant and \"if no mana was spent\" all read it (see Closed seams). **The SOURCE snapshot shipped in #1212** — `ManaToken.SourceKinds`, carried onto the permanent by `Card.Provenance` (CR 400.7d) and read through `game.ManaSpent`. **SPEND RIDERS shipped in #1547** (ADR 0040 amendment 2026-09-24): `ManaToken.Riders []ManaSpendRider` — data (kind, a spend filter in the restriction vocabulary, a production id), copied from `ManaAbilityShape.SpendRiders` at mint (through `PendingChoice.ManaRiders` for a pick), fired by `applyManaSpendRidersLocked` where a payment becomes a stack object (cast and activation, manual and auto-tap alike) and stamped `Applied` on `StackItem.Paid.Mana`. Readers: `spellCantBeCounteredLocked` (Cavern of Souls, Delighted Halfling, Boseiju), `applyCastEntryCountersLocked` (Biophagus), a layer-6 gather over `Card.Provenance` (Hall of the Bandit Lord), and trigger riders queued at the spend from a key registry (Pyromancer's Goggles, Scaled Nurturer, Path of Ancestry). Still missing: a rider GRANTED by another permanent over someone else's cast — Lux Artillery's sunburst, Coin of Mastery's per-artifact-mana counters — and Satoru's \"no mana was spent to cast them\" read on an entering creature. Not catalogued and one small step away: Opal Palace (an entry rider whose count reads the command-zone tally and whose filter is \"your commander\") and Generator Servant (haste until end of turn, a duration the haste rider does not carry). **The TOTAL spent, read as the permanent enters, shipped in #1735** (see Closed seams): `game.CastCounts.ManaSpent` is the record's own `Total()`, and `Game.EntryCastCountsForEffect(ev)` hands the whole `CastCounts` to a hook that runs inside the CR 614 window and is given the event (Mockingbird's copy candidates). It is also the READ half of a granted entry rider: a replacement on another permanent can now see the entering spell's payment, though Lux Artillery's grant still needs the sunburst to ride the spell rather than the Artillery (#1552). Not catalogued and now one `EntersWithCountersFromCast` clause away: Verazol, the Split Current, Kurbis, Harvest Celebrant, Gyrus, Waker of Corpses, Marath, Will of the Wild and Dyadrine, Synthesis Amalgam (\"enters with a +1/+1 counter for each mana spent to cast it\"), each held for its other text.",
+		EngineNotes:      "**Shipped** (#761, #1212, #1547, #1735, and ADR 0109 §11 for the granted readers, #1552). `StackItem.Paid.Mana` is the tokens that paid, each with the source kinds snapshotted when it was made, read through `game.ManaSpent` on the item or, after entry, on `Card.Provenance` (CR 400.7d). Inside the CR 614 entry window a replacement on ANY permanent reads the entering spell's spend with `Game.EntrySpentForEffect(ev)` (Coin of Mastery, Kalain, Freestrider Commando). Sunburst is a keyword counted on the permanent as it would enter (`applySunburstLocked`, through the CR 614.12 entry look-ahead), so a granted instance counts (Lux Artillery, Solar Array) and an ability-removing effect leaves none. A keyword given to a spell keeps its duration on the permanent (`GrantKeywordsToSpellForEffect` takes a `Duration`). Spend riders gained `spell_gains` (a keyword grant to the spell at the spend, Generator Servant, Carnelian Orb, and Domri, Chaos Bringer's riot, whose +1 is a loyalty ability adding mana with `AddManaOptions.Riders`) and a counted enters-with-counters rider (`ManaSpendRider.Count`, Opal Palace), and restore refuses a rider kind or count key it cannot read. Satoru reads the whole event batch as a CR 603.4 intervening if. See Closed seams.",
 	},
 	{
 		Slug: "tap-another-permanent-cost", Name: "Tapping your other permanents as a cost", Kind: KindSeam, Status: StatusImplemented,
@@ -1113,6 +1126,28 @@ var items = []Item{
 		Examples: []string{"Dinosaur Egg", "Tyranid Prime", "Renegade Krasis"},
 	},
 	{
+		Slug: "riot", Name: "Riot", Kind: KindKeyword, Status: StatusImplemented,
+		Summary:  "A creature with riot enters with your choice of a +1/+1 counter or haste, once for each instance of riot it has, including riot another permanent gives it.",
+		Rules:    []string{"702.136", "614.12"},
+		Issue:    1556,
+		ADR:      "0109-rule-gates-land-types-mana-and-cost-components.md",
+		Keywords: []string{game.KeywordRiot},
+		Mechanic: "riot",
+		Printed:  printedKeyword("riot"),
+		Examples: []string{"Gruul Beastmaster", "Skarrgan Hellkite", "Ravager Wurm"},
+	},
+	{
+		Slug: "unleash", Name: "Unleash", Kind: KindKeyword, Status: StatusImplemented,
+		Summary:  "A creature with unleash may enter with a +1/+1 counter, and can't block as long as it has a +1/+1 counter on it.",
+		Rules:    []string{"702.98", "614.12"},
+		Issue:    1556,
+		ADR:      "0109-rule-gates-land-types-mana-and-cost-components.md",
+		Keywords: []string{game.KeywordUnleash},
+		Mechanic: "unleash",
+		Printed:  printedKeyword("unleash"),
+		Examples: []string{"Exava, Rakdos Blood Witch", "Chaos Imps", "Hellhole Flailer"},
+	},
+	{
 		Slug: "trigger-per-counter", Name: "Triggers once for each counter", Kind: KindSeam, Status: StatusMissing,
 		Summary:     "Abilities that say \"whenever a counter is put on\" a permanent trigger once for each counter, so two counters at once are two triggers.",
 		Missing:     "An ability that triggers for each counter put on a permanent can't trigger more than once for one placement yet.",
@@ -1293,15 +1328,16 @@ var items = []Item{
 		EngineNotes: "prompt: the only number a resolving effect can ask for today is an option pick over a fixed list (`PendingChoiceOptionPick`) or a mode picked at announce (Expel the Interlopers' caveat); the loop shortcut's integer is its own kind. Volcano Hellion's \"deals an amount of damage of your choice to you and target creature\" is chosen on resolution (CR 608.2d) and has no ceiling, and a capped list is weaker than printed whenever the amount matters past lethal (lifelink, a \"whenever this is dealt damage\" creature). Its echo {X} (X = your life total, read on resolution) shipped with ADR 0108 PR 4 as `effects.EchoX`, and its \"The damage can't be prevented\" with ADR 0107 PR 6. Needs a resolution-time number prompt: a pending-choice kind with a min and an optional max, a number field in the client, and an enumerator that offers a handful of meaningful values.",
 	},
 	{
-		Slug: "damage-as-though-wither", Name: "Damage dealt as though its source had wither or infect", Kind: KindSeam, Status: StatusMissing,
+		// #1889; built by ADR 0108 §10 (PR 10).
+		Slug: "damage-as-though-wither", Name: "Damage dealt as though its source had wither or infect", Kind: KindSeam, Status: StatusImplemented,
 		Summary:     "Statics that change how every source's damage is dealt, such as Everlasting Torment's \"All damage is dealt as though its source had wither\".",
-		Missing:     "Wither and infect work only as a source's own keywords; a static can't yet make all damage act as though its source had them.",
-		Rules:       []string{"120.3", "702.80", "702.90"},
+		Rules:       []string{"120.3b", "120.3d", "120.4c", "609.4", "613.11", "702.80a", "702.90b", "702.90c"},
 		Issue:       1889,
+		ADR:         "0108-turn-scoped-effects-object-history-and-damage-shields.md",
 		Tracked:     "#1889 (S50 tracker #1784; found landing ADR 0107 PR 6, #1853)",
-		Waiting:     []string{"Everlasting Torment", "Phyrexian Unlife"},
+		Examples:    []string{"Everlasting Torment", "Phyrexian Unlife"},
 		Phrases:     []string{"as though its source had"},
-		EngineNotes: "damage results are snapshotted off the source onto the event's tail (`damageTail.result`, ADR 0056 Decision 2). A battlefield static read as the tail is built would cover both cards. Everlasting Torment's other two lines (players can't gain life; damage can't be prevented) shipped with ADR 0107 PR 6.",
+		EngineNotes: "**Shipped** (ADR 0108 §10, PR 10): a battlefield static, `Spec.DamageAsThough` (`game.DamageAsThoughStatic{Wither, Infect, ToYou, WhileAtOrBelowZeroLife}`, `game/damage_as_though.go`), read through `game.CatalogDamageAsThough` keyed by `CatalogAbilityKey`. One gate, `damageResultAsThoughLocked`, ORs it into the tail's own result (`damageTail.result`, ADR 0056 Decision 2) as the damage lands, in the two landing functions only, so prevention, multipliers and every other damage replacement have already settled the amount (CR 120.4b before 120.4c): a prevented point gives no counter and a doubled hit gives twice the counters. The source gains no ability (CR 609.4). Phyrexian Unlife's \"as long as you have 0 or less life\" is read once per damage instance, against the life total its controller had as the instance began (owner decision 4): `nextDamageInstanceLocked` records every seat's life (`Game.damageInstanceLives`, transient, cloned, never captured). Card helpers: `effects.AllDamageAsThoughWither`, `effects.DamageToYouAsThoughInfectAtOrBelowZeroLife`. See Closed seams.",
 	},
 	{
 		// #1890; built by ADR 0108 §3 (PR 2).
@@ -1332,6 +1368,19 @@ var items = []Item{
 		Examples: []string{"Staggershock", "Ephemerate", "Distortion Strike"},
 	},
 	{
+		// #1552 (ADR 0109 §11 decision 2): sunburst is a keyword read off
+		// the resolving stack card (game/entry_counters.go).
+		Slug: "sunburst", Name: "Sunburst", Kind: KindKeyword, Status: StatusPartial,
+		Summary:          "Sunburst gives a permanent a +1/+1 counter, or a charge counter if it isn't a creature, for each color of mana spent to cast it, whether it prints sunburst or its spell was given it by Lux Artillery or Solar Array.",
+		Missing:          "With strict mana off, the game doesn't track which mana you spent, so a sunburst permanent enters with no counters.",
+		Rules:            []string{"702.44"},
+		Issue:            761,
+		ADR:              "0109-rule-gates-land-types-mana-and-cost-components.md",
+		Keywords:         []string{game.KeywordSunburst},
+		Printed:          printedKeyword("sunburst"),
+		NoCatalogExample: "Every catalogued sunburst card carries the strict-mana caveat, so none is listed as fully automated.",
+	},
+	{
 		// #1854 (ADR 0107 §3 decision 5, PR 4): the stack step of the
 		// layer pass is layers 2 and 6, keywords only
 		// (game/spell_keywords.go). Closed; history in Closed seams.
@@ -1344,14 +1393,19 @@ var items = []Item{
 		EngineNotes: "layer pass: the stack step (`stackControlPassLocked`, then `stackKeywordPassLocked` in `game/spell_keywords.go`) is layers 2 and 6, keywords only. A ScopedEffect pinned to a spell may carry `addKeywords` (`GrantKeywordsToSpellForEffect`, `effects.ThatSpellGains`), and a battlefield static declared `StaticAbility.AffectsSpells` (`effects.SpellsYouControlHave`) is applied to spells and never to permanents. Both land on `Card.stackGranted`, which `HasKeyword` reads, so the resolution's rebound check needed no change. Rebound, buyback and an Adventure's exile meeting on one spell ask its controller (CR 616.1, `game/resolution_exits.go`). See Closed seams.",
 	},
 	{
-		Slug: "emblem-cast-restrictions", Name: "Emblems that stop players casting spells", Kind: KindSeam, Status: StatusMissing,
-		Summary:     "Emblems with a \"can't cast\" ability, such as \"Your opponents can't cast noncreature spells\".",
-		Missing:     "An emblem can't stop anyone casting spells yet, so a planeswalker whose emblem does that can't be added.",
-		Rules:       []string{"114.4", "101.2"},
-		Issue:       1899,
-		Tracked:     "#1899 (S50 tracker #1784; found by ADR 0107 PR 4)",
-		Waiting:     []string{"Narset Transcendent"},
-		EngineNotes: "cast gate: `CastGateLocked` (`game/cast_gate.go`) collects \"can't cast\" statics from battlefield permanents (`CastRestrictionsForCard`) and from the spell's own condition, and `effects.EmblemSpec` has no `CastRestrictions` slot, so an emblem's restriction would be dead text. Narset Transcendent's other abilities are expressible: the +1 is Herald's Horn's look-at-the-top reveal, and the −2 is a \"when you next cast … from your hand\" delayed trigger whose body gives the spell rebound through the granted-rebound seam.",
+		// #1899 (ADR 0109 §5, PR 6): an emblem is read by every rule gate
+		// whose slot it carries. Closed; history in Closed seams.
+		Slug: "emblem-cast-restrictions", Name: "Emblems that stop players casting spells", Kind: KindSeam, Status: StatusImplemented,
+		Summary: "Emblems with a rule that limits players, such as \"Your opponents can't cast noncreature spells\" or \"Your opponents can't untap more than two permanents during their untap steps\".",
+		Rules:   []string{"114.4", "114.2", "101.2", "800.4a"},
+		Issue:   1899,
+		ADR:     "0109-rule-gates-land-types-mana-and-cost-components.md",
+		Probe: func(s effects.Spec) bool {
+			return s.Emblem != nil && (len(s.Emblem.CastRestrictions) > 0 || len(s.Emblem.LandPlayRestrictions) > 0 ||
+				len(s.Emblem.GameEndGates) > 0 || len(s.Emblem.UntapCaps) > 0)
+		},
+		Examples:    []string{"Narset Transcendent", "Dovin Baan", "Gideon of the Trials"},
+		EngineNotes: "**Shipped** (ADR 0109 §5, PR 6): `effects.EmblemSpec` carries `CastRestrictions`, `LandPlayRestrictions`, `GameEndGates` and `UntapCaps`, the `Spec` slots of the same names and the same Register guards, copied onto the emblem's `CardDef`. Each gate walks every seat's emblems beside the battlefield (`Game.forEachEmblemLocked`, CR 114.4) with the emblem as the source, so \"your opponents\" is the emblem's owner's (CR 114.2): `CastGateLocked`, `LandPlayGateLocked`, `forEachGameEndGateLocked` and `activeUntapCapsLocked`. The callers needed no change, because each walk is inside the one function the action, the legal-move enumerator and the view already share. Re-verified against the code: Narset's emblem is NOT a `CastBanRule`. That shape can say the words (`PermissionFilter.NoncreatureOnly`), but it is a `PlayerStatic` stored on each banned player, invisible on the board, frozen at creation, and nothing ends it when the emblem's owner leaves (CR 800.4a sweeps the leaver's emblems, not the statics they wrote onto others). Narset's −2 adds two delayed-trigger keys, `cast/you-next-cast-from-hand` and `rebound/the-spell-you-just-cast`. Gideon of the Trials' emblem is a `GameEndGates` entry with a `While` read off the emblem (its owner controls a Gideon planeswalker); his +1 is ADR 0108 PR 6's `preventFromSource` with `UntilYourNextTurn`.",
 	},
 	{
 		Slug: "return-transformed", Name: "Returning a card to the battlefield transformed", Kind: KindSeam, Status: StatusMissing,
@@ -1374,15 +1428,16 @@ var items = []Item{
 		Examples: []string{"Malevolent Hermit", "Drogskol Infantry", "Baithook Angler"},
 	},
 	{
-		Slug: "graveyard-cards-cant-be-targeted", Name: "Cards in graveyards can't be targeted", Kind: KindSeam, Status: StatusMissing,
-		Summary:     "A permanent that stops every card in every graveyard from being the target of spells and abilities.",
-		Missing:     "Nothing yet stops spells and abilities from targeting cards in graveyards.",
-		Rules:       []string{"601.2c"},
+		// #1885 (ADR 0109 §6, PR 6). Closed; history in Closed seams.
+		Slug: "graveyard-cards-cant-be-targeted", Name: "Cards in graveyards can't be targeted", Kind: KindSeam, Status: StatusImplemented,
+		Summary:     "Permanents that stop cards in a zone from being the targets of spells and abilities, such as \"Cards in graveyards can't be the targets of spells or abilities\".",
+		Rules:       []string{"601.2c", "608.2b", "101.2", "115.10a"},
 		Issue:       1885,
-		Tracked:     "#1885 (S50 tracker #1784; found by ADR 0107 PR 5)",
-		Waiting:     []string{"Dennick, Pious Apprentice // Dennick, Pious Apparition", "Tomik, Distinguished Advokist"},
+		ADR:         "0109-rule-gates-land-types-mana-and-cost-components.md",
+		Probe:       func(s effects.Spec) bool { return len(s.TargetingRestrictions) > 0 },
 		Phrases:     []string{"cards in graveyards can't be the targets"},
-		EngineNotes: "Dennick, Pious Apprentice's \"Cards in graveyards can't be the targets of spells or abilities\" is a table-wide rule about a ZONE, and the targeting check (`CanBeTargetedBy` / `canBeTargetedByLocked`) reads only the object's own hexproof, shroud and protection. It needs a battlefield static read at the announce gate, the CR 608.2b re-check, the legal-move enumerator and the view's legal-target sets. Dennick's back face needs nothing new, and disturb shipped in ADR 0107 PR 5 (#1855).",
+		Examples:    []string{"Ground Seal", "Tomik, Distinguished Advokist"},
+		EngineNotes: "**Shipped** (ADR 0109 §6, PR 6): `Spec.TargetingRestrictions` (`game.TargetingRestriction{Label, Zones, Forbids(TargetingQuery), ActiveWhen}`, `game/targeting_restriction.go`, constructors `CardsInGraveyardsCantBeTargeted` and `OpponentsCantTarget` in `effects/targeting_restriction.go`) is read live off the battlefield through `CatalogAbilityKey`, with no state. `canBeTargetedByLocked` asks it before its battlefield guard, so the two targeting choke points in `game/targets.go` carry it: `specMatchesLocked` (the legal set the view and the legal-move enumerator read; it gathers the restrictions once per walk) and `specMatchLocked` (the CR 601.2c announce gate and the CR 608.2b resolution re-check). A cost or a non-targeting choice passes `targeting=false` and is never refused (CR 115.10a). `GameView.graveyard_target_bans` names each live restriction about graveyards for the graveyard viewer's banner. The exported, game-less `CanBeTargetedBy` honours none.",
 	},
 	{
 		Slug: "more-than-meets-the-eye", Name: "More Than Meets the Eye and convert", Kind: KindSeam, Status: StatusMissing,
@@ -1605,6 +1660,16 @@ var items = []Item{
 		EngineNotes: "Worms of the Earth's \"Lands can't enter the battlefield\" is a prohibition on a zone change, not a land play (CR 305.4: putting a land onto the battlefield is not playing it), so `LandPlayGateLocked` does not reach a fetched, reanimated or flickered land. It needs a gate on the CR 614 entry window. Its first line (\"Players can't play lands\") is the shipped land-play gate, and its upkeep clause is an any-player choice.",
 	},
 	{
+		Slug: "budgeted-free-casts", Name: "Free casts with a total mana value budget", Kind: KindSeam, Status: StatusMissing,
+		Summary:     "Effects that let you cast any number of spells for free as long as their total mana value stays under a limit, such as Primeval Spawn's.",
+		Missing:     "Free casts can't share one total mana value limit yet, so a card that offers them that way can't be added.",
+		Rules:       []string{"601.2", "608.2g", "202.3"},
+		Issue:       2017,
+		Tracked:     "#2017 (found landing ADR 0109 PR 10, #1552)",
+		Waiting:     []string{"Primeval Spawn"},
+		EngineNotes: "cast permission: `GrantCastPermissionOverCardForEffect` grants one independent free cast per card (Improvisation Capstone), and `game.CastPermission` has nothing that ties several grants to one running mana-value total, so a grant per exiled card would let Primeval Spawn's controller cast all ten. A likely shape is a permission group with a budget each cast through it spends, read by the cast gate and the enumerator (ADR 0033 §1), ending with the resolving ability's cast window (CR 608.2g). Primeval Spawn's first line ships with ADR 0109 PR 10: `Game.EntrySpentForEffect(ev).None()` inside the entry window.",
+	},
+	{
 		Slug: "ignore-an-effect-until-end-of-turn", Name: "Ignoring an effect by sacrificing a permanent", Kind: KindSeam, Status: StatusMissing,
 		Summary:     "A restriction its victim may switch off for the rest of the turn by sacrificing a permanent, such as Damping Engine's.",
 		Missing:     "A player can't choose to ignore a restriction placed on them for the rest of the turn, so Damping Engine can't offer its sacrifice.",
@@ -1678,14 +1743,14 @@ var items = []Item{
 	},
 	{
 		Slug: "planeswalker-becomes-creature", Name: "A planeswalker that becomes a creature", Kind: KindSeam, Status: StatusMissing,
-		Summary: "Planeswalkers that become creatures while staying planeswalkers, such as Gideon of the Trials' \"Until end of turn, Gideon becomes a 4/4 Human Soldier creature with indestructible that's still a planeswalker\".",
+		Summary: "Planeswalkers that become creatures while staying planeswalkers, such as Gideon Jura's \"Until end of turn, Gideon Jura becomes a 6/6 Human Soldier creature that's still a planeswalker\".",
 		Missing: "A planeswalker can't also be a creature: damage to it and the rules that remove it from the battlefield aren't checked for both at once.",
 		Rules:   []string{"120.3c", "120.3e", "704.5g", "704.5i"},
 		Issue:   2046,
 		Tracked: "#2046 (found landing ADR 0108 PR 7, #1904)",
-		Waiting: []string{"Gideon of the Trials", "Gideon Jura", "Gideon, Ally of Zendikar", "Gideon, Champion of Justice",
+		Waiting: []string{"Gideon Jura", "Gideon, Ally of Zendikar", "Gideon, Champion of Justice",
 			"Gideon, Martial Paragon", "Gideon, the Oathsworn", "Gideon Blackblade", "Kytheon, Hero of Akros // Gideon, Battle-Forged"},
-		EngineNotes: "permanent that is two card types with two damage results: damage to a creature planeswalker removes loyalty (CR 120.3c) and is marked (CR 120.3e), and both state-based actions apply (CR 704.5g, 704.5i); `stateBasedActionsLocked` checks the creature rules first and `continue`s past the planeswalker rule for any creature. No catalog card makes a planeswalker a creature, so nothing exercises the damage tail, combat or the state-based actions for one. The \"prevent all damage that would be dealt to him this turn\" half is `ModPreventFromSource` pinned to the planeswalker (ADR 0108 PR 7, #1904).",
+		EngineNotes: "permanent that is two card types with two damage results: damage to a creature planeswalker removes loyalty (CR 120.3c) and is marked (CR 120.3e), and both state-based actions apply (CR 704.5g, 704.5i); `stateBasedActionsLocked` checks the creature rules first and `continue`s past the planeswalker rule for any creature. No catalog card makes a planeswalker a creature, so nothing exercises the damage tail, combat or the state-based actions for one. The \"prevent all damage that would be dealt to him this turn\" half is `ModPreventFromSource` pinned to the planeswalker (ADR 0108 PR 7, #1904). Gideon of the Trials shipped with ADR 0109 PR 6 on the strength of that shield: damage to him is prevented, so the gap shows only under damage that can't be prevented (CR 615.12).",
 	},
 	{
 		Slug: "damage-prevented-triggers", Name: "\"Whenever damage is prevented\"", Kind: KindSeam, Status: StatusMissing,
@@ -1735,7 +1800,7 @@ var items = []Item{
 		ADR:         "0108-turn-scoped-effects-object-history-and-damage-shields.md",
 		Printed:     `(?i)\bprevent (all|the next \w+) (combat )?damage\b[^.]*\bsource of your choice\b|\bprevent half that damage\b`,
 		Examples:    []string{"Pay No Heed", "Healing Grace", "Dark Sphere"},
-		EngineNotes: "**Shipped** (ADR 0108 §7, owner decision 1, Delivery PR 6): `ModPreventFromSource` (`game/prevent_from_source.go`) is a scoped prevention kind, plain data, reading the source fields `ModPreventNextFromSource` reads (`Objects` and `SourceZone`, a chosen or targeted source pinned as an object, CR 400.7 / 609.7a; `Queries`, the CR 615.9 recheck), the protected player, permanent or nothing, `CombatOnly`, `Then` (the CR 615.5 follow-up, once per damage instance, CR 615.13) and `Amount`: 0 is all damage this turn and the shield is never spent; N is CR 615.7's charge, replaced copy-on-write as it is spent. A charged shield with neither a source nor a property stays `ModPreventDamage`. `Mod.Half` on `ModPreventNextFromSource` is Dark Sphere's \"prevent half that damage, rounded down\" (CR 107.1a); half of 1 is none, and a shield that prevents nothing is not used up (CR 609.7b). **`divide_shield`** (`game/divide_shield.go`, owner decision 1): when a charged shield (`ModPreventDamage` or a charged `ModPreventFromSource`; `chargedShieldCharge` is the one list, for §9's charged redirection to join) meets two or more events of one damage instance and their total is more than its charge, the protected player divides the charge before any of them is dealt, through `PendingChoiceDivideShield` on resolve_choice's `distribution` payload; nothing is asked when the charge covers them. The events are collected first: an Each walk is asked about before its first leg; a `DamageInstanceForEffect` scope stages the events a charged shield could meet and deals them as it ends; a combat damage step stages all of its damage while a charged shield is live and deals it at once (CR 510.2); a CR 510.1c assignment answer is its own group. Unpreventable events are not offered (CR 615.12). The division is plain data, spent as the events land; the prompt blocks the table, a departed chooser's prompt settles in the engine's order (`dropSettle`), the heuristic shields the player first and then the creature closest to dying, and the client answers it in the action dock. Helpers: `effects.PreventDamageFromChosenSource`, `PreventDamageFromSource{From: …, CombatOnly: …}` (Hidden Retreat's targeted spell), `.Charged(n)`, and the follow-up body `prevention/black-or-red-gain-life-trigger`. **The recipient and to-and-by families shipped** (ADR 0108 Delivery PR 7): \"prevent all [combat] damage that would be dealt to and dealt by <it>\" (Maze of Ith) is ONE prevention effect, so it is one `ModPreventFromSource` record with `Mod.AndDealtBy`: the record's pinned objects are both what it protects and the sources it stops, so an event between two of them meets one effect (CR 614.5) and a damage instance is one application (CR 615.13); registration and restore refuse it beside a source, a property, a player or a charge, and on every other kind. `DamageShield.ProtectPermanents` puts several protected permanents in one record (Redeem's \"up to two target creatures\", Energy Arc's \"those creatures\", Mutational Advantage's \"those permanents\"). Helpers: `effects.ShieldTheTargetPermanents`, `ShieldObjects`, `ShieldYouAndYourPermanents(types…)`, `ShieldYouAndPermanentsYouControl`, `toAndByShield`, `untapAttackerToAndByRow`, `toAndByThisRow`, `untilYourNextTurnToAndByRow`, `shieldTargetRow`, `shieldThis`, the `heroic` cast trigger and the follow-up body `prevention/plus-one-counters-on-recipient`. Moved to other rows: Gideon of the Trials and the other Gideons (#2046, a planeswalker that is also a creature), Selfless Squire (#2047, a trigger on prevented damage), Oketra's Avenger (#2048, exert), Enshrouding Mist (#2049, renown), You Look Upon the Tarrasque (#2050, a block requirement on only your opponents' creatures), Goblin Snowman (#1863, \"target creature it's blocking\"), Glyph of Destruction (#2027, \"until end of combat\") and the recipient sets the record can't name, such as Forfend's \"to creatures\" and Divine Light's \"to creatures you control\" (#2045). Consulate Surveillance waits on paying energy as a cost (#1995), and Refraction Trap on #1905 (its follow-up deals damage to the spell's target, which the shield has to carry). See Closed seams.",
+		EngineNotes: "**Shipped** (ADR 0108 §7, owner decision 1, Delivery PR 6): `ModPreventFromSource` (`game/prevent_from_source.go`) is a scoped prevention kind, plain data, reading the source fields `ModPreventNextFromSource` reads (`Objects` and `SourceZone`, a chosen or targeted source pinned as an object, CR 400.7 / 609.7a; `Queries`, the CR 615.9 recheck), the protected player, permanent or nothing, `CombatOnly`, `Then` (the CR 615.5 follow-up, once per damage instance, CR 615.13) and `Amount`: 0 is all damage this turn and the shield is never spent; N is CR 615.7's charge, replaced copy-on-write as it is spent. A charged shield with neither a source nor a property stays `ModPreventDamage`. `Mod.Half` on `ModPreventNextFromSource` is Dark Sphere's \"prevent half that damage, rounded down\" (CR 107.1a); half of 1 is none, and a shield that prevents nothing is not used up (CR 609.7b). **`divide_shield`** (`game/divide_shield.go`, owner decision 1): when a charged shield (`ModPreventDamage` or a charged `ModPreventFromSource`; `chargedShieldCharge` is the one list, for §9's charged redirection to join) meets two or more events of one damage instance and their total is more than its charge, the protected player divides the charge before any of them is dealt, through `PendingChoiceDivideShield` on resolve_choice's `distribution` payload; nothing is asked when the charge covers them. The events are collected first: an Each walk is asked about before its first leg; a `DamageInstanceForEffect` scope stages the events a charged shield could meet and deals them as it ends; a combat damage step stages all of its damage while a charged shield is live and deals it at once (CR 510.2); a CR 510.1c assignment answer is its own group. Unpreventable events are not offered (CR 615.12). The division is plain data, spent as the events land; the prompt blocks the table, a departed chooser's prompt settles in the engine's order (`dropSettle`), the heuristic shields the player first and then the creature closest to dying, and the client answers it in the action dock. Helpers: `effects.PreventDamageFromChosenSource`, `PreventDamageFromSource{From: …, CombatOnly: …}` (Hidden Retreat's targeted spell), `.Charged(n)`, and the follow-up body `prevention/black-or-red-gain-life-trigger`. **The recipient and to-and-by families shipped** (ADR 0108 Delivery PR 7): \"prevent all [combat] damage that would be dealt to and dealt by <it>\" (Maze of Ith) is ONE prevention effect, so it is one `ModPreventFromSource` record with `Mod.AndDealtBy`: the record's pinned objects are both what it protects and the sources it stops, so an event between two of them meets one effect (CR 614.5) and a damage instance is one application (CR 615.13); registration and restore refuse it beside a source, a property, a player or a charge, and on every other kind. `DamageShield.ProtectPermanents` puts several protected permanents in one record (Redeem's \"up to two target creatures\", Energy Arc's \"those creatures\", Mutational Advantage's \"those permanents\"). Helpers: `effects.ShieldTheTargetPermanents`, `ShieldObjects`, `ShieldYouAndYourPermanents(types…)`, `ShieldYouAndPermanentsYouControl`, `toAndByShield`, `untapAttackerToAndByRow`, `toAndByThisRow`, `untilYourNextTurnToAndByRow`, `shieldTargetRow`, `shieldThis`, the `heroic` cast trigger and the follow-up body `prevention/plus-one-counters-on-recipient`. Moved to other rows: Gideon Jura and the other Gideons that become creatures (#2046, a planeswalker that is also a creature), Selfless Squire (#2047, a trigger on prevented damage), Oketra's Avenger (#2048, exert), Enshrouding Mist (#2049, renown), You Look Upon the Tarrasque (#2050, a block requirement on only your opponents' creatures), Goblin Snowman (#1863, \"target creature it's blocking\"), Glyph of Destruction (#2027, \"until end of combat\") and the recipient sets the record can't name, such as Forfend's \"to creatures\" and Divine Light's \"to creatures you control\" (#2045). Consulate Surveillance waits on paying energy as a cost (#1995), and Refraction Trap on #1905 (its follow-up deals damage to the spell's target, which the shield has to carry). See Closed seams.",
 	},
 	{
 		Slug: "pay-energy-cost", Name: "Paying energy as a cost", Kind: KindSeam, Status: StatusMissing,

@@ -151,6 +151,16 @@ type GameView struct {
 	// Battlefield statics that say the same (Furnace of Rath) are not
 	// listed.
 	DamageMultipliers []string `json:"damage_multipliers,omitempty"`
+	// GraveyardTargetBans is one line per live static that stops cards
+	// in graveyards being targeted (ADR 0109 §6, #1885; CR 601.2c),
+	// worded for the graveyard viewer's banner: the printed clause and
+	// the card that prints it — "Cards in graveyards can't be the targets
+	// of spells or abilities. — Ground Seal". It names the clause, not a
+	// verdict: Tomik's applies only to land cards and only to his
+	// opponents' spells, and its line says so in his words. The legal
+	// target sets already leave out every card a restriction refuses.
+	// Public and identical for every viewer.
+	GraveyardTargetBans []string `json:"graveyard_target_bans,omitempty"`
 	// DiscardPending is the cleanup-step pause map (S13.4): keys
 	// are player UUID strings, values are the count each player
 	// must discard. Drives the client's discard-prompt modal.
@@ -332,6 +342,13 @@ type PendingChoiceView struct {
 	// seats themselves ride PickOptions, each with its Player set.
 	// Absent on every other kind.
 	ControlPurpose string `json:"control_purpose,omitempty"`
+
+	// EntryKeyword names the entry keyword an "entry_riot" or
+	// "optional_replacement" prompt is asking about — "riot" or
+	// "unleash" (ADR 0109 §10) — so the client can word the question
+	// and a policy can tell unleash's "may" from any other.
+	// The entering card rides Source. Absent on every other prompt.
+	EntryKeyword string `json:"entry_keyword,omitempty"`
 
 	// TradeFor populates a "trigger_prompt" whose "yes" TRADES the
 	// source for the object the trigger is about (ADR 0104): Perplexing
@@ -1747,6 +1764,10 @@ type CardView struct {
 	// regenerated this turn (ADR 0108 §2 decision 5, CR 701.19c):
 	// Incinerate's or Whippoorwill's mark. Public; battlefield only.
 	CantBeRegenerated bool `json:"cant_be_regenerated,omitempty"`
+	// RiotHaste is true for a permanent whose haste came from its own
+	// riot (CR 702.136a, ADR 0109 §10 decision 7): the client labels
+	// its haste chip "Riot". Public; battlefield only.
+	RiotHaste bool `json:"riot_haste,omitempty"`
 	// LandTypeEffects are the resolved effects changing this
 	// permanent's land types, oldest first (ADR 0109 §1 decision 7):
 	// Tidal Warrior's "becomes an Island until end of turn", Navigator's
@@ -3763,6 +3784,7 @@ func ViewOfGame(g *game.Game) GameView {
 			ExileIfCreaturesDie:   g.ExileIfCreaturesWouldDieThisTurnLabels(),
 			DamageShields:         g.DamageShieldLabels(),
 			DamageMultipliers:     g.DamageMultiplierLines(),
+			GraveyardTargetBans:   graveyardTargetBanLines(g),
 			DiscardPending:        viewOfDiscardPending(g.DiscardPending),
 			PendingChoices:        viewOfPendingChoices(g),
 			LoopNotice:            viewOfLoopNotice(g.LoopNotice),
@@ -6404,7 +6426,8 @@ func stampDefenderRefusals(g *game.Game, view *ZoneView) {
 
 // stampDeathMarks is ADR 0108's two chips: "exiled if it dies this turn"
 // and "can't be regenerated this turn", on each battlefield permanent
-// that carries one.
+// that carries one — and ADR 0109 §10's riot haste, the third chip a
+// resolved record on the permanent puts there.
 func stampDeathMarks(g *game.Game, view *ZoneView) {
 	if g == nil || g.Battlefield == nil || view == nil || len(g.ScopedEffects) == 0 {
 		return
@@ -6416,6 +6439,7 @@ func stampDeathMarks(g *game.Game, view *ZoneView) {
 		id := g.Battlefield.Cards[i].InstanceID
 		view.Cards[i].ExiledIfItDies = g.ExileIfItWouldDieLabels(id)
 		view.Cards[i].CantBeRegenerated = g.PermanentCantBeRegeneratedForEffect(id)
+		view.Cards[i].RiotHaste = g.RiotHasteForEffect(id)
 	}
 }
 
@@ -6765,6 +6789,15 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 		}
 		if c.Kind == game.PendingChoiceEntryController {
 			v.ControlPurpose = string(c.ControlPurpose)
+		}
+		// ADR 0109 §10: riot's two answers, and which keyword a riot or
+		// unleash question is about.
+		if c.Kind == game.PendingChoiceEntryRiot {
+			v.AcceptLabel = c.AcceptLabel
+			v.DeclineLabel = c.DeclineLabel
+		}
+		if (c.Kind == game.PendingChoiceEntryRiot || c.Kind == game.PendingChoiceOptionalReplacement) && len(c.ReplacementEffectIDs) == 1 {
+			v.EntryKeyword = game.EntryKeywordOfReplacement(c.ReplacementEffectIDs[0])
 		}
 		// PendingChoiceModePick — #764, CR 603.3c: a modal trigger's
 		// bullets, chosen as the ability is put on the stack. Public
@@ -7561,6 +7594,7 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		ExileIfCreaturesDie:   v.ExileIfCreaturesDie,
 		DamageShields:         v.DamageShields,
 		DamageMultipliers:     v.DamageMultipliers,
+		GraveyardTargetBans:   v.GraveyardTargetBans,
 		DiscardPending:        v.DiscardPending,
 		PendingChoices:        filterPendingChoices(v.PendingChoices, isKnower, viewerID),
 		LegalMoves:            legalMovesFor(v.legalBySeat, viewerID),
@@ -7966,6 +8000,9 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	out.IsCommander = false
 	out.ManaCost = ""
 	out.Abilities = nil
+	// ADR 0109 §10: "its haste came from riot" says the card has riot,
+	// which names it as loudly as the ability list does.
+	out.RiotHaste = false
 	// #662: the parsed half of Abilities. "Protection from Demons"
 	// names a card as loudly as the raw token does, and clearing one
 	// without the other would put the leak back.
@@ -8619,6 +8656,22 @@ func cantCastReason(err error) string {
 		return cant.Reason
 	}
 	return "An effect prevents casting this spell."
+}
+
+// graveyardTargetBanLines is GameView.graveyard_target_bans: one line
+// per live restriction about graveyards (ADR 0109 §6), the printed
+// clause and the card that prints it. Nil when there is none, which is
+// nearly every frame. Caller holds the read lock with fresh layers.
+func graveyardTargetBanLines(g *game.Game) []string {
+	var out []string
+	for _, b := range g.TargetingBansForZoneForEffect(game.ZoneGraveyard) {
+		line := b.Label
+		if b.SourceName != "" {
+			line += " — " + b.SourceName
+		}
+		out = append(out, line)
+	}
+	return out
 }
 
 // cantPlayLandReason is the clause behind a refused land play, for the
