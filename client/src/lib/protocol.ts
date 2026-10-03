@@ -365,6 +365,11 @@ export interface GameView {
   // Unleashed, Lightning's Stagger), oldest first, already worded for the
   // banner. Absent on nearly every turn.
   damage_multipliers?: string[];
+  // ADR 0108 §9: one line per live "that damage is dealt to <something>
+  // instead" effect a resolved spell or ability made (Beacon of Destiny,
+  // Harm's Way, Kor Chant), oldest first, already worded for the banner.
+  // Absent on nearly every turn.
+  damage_redirections?: string[];
   // ADR 0109 §6 (CR 601.2c): one line per live static that stops cards in
   // graveyards being targeted, the printed clause and its card ("Cards in
   // graveyards can't be the targets of spells or abilities. — Ground

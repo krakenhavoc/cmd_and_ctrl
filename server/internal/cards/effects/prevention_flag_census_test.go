@@ -24,8 +24,12 @@ import (
 // and whose Replace cancels the event or rewrites its amount, unless it
 // DECLARES what it is: `Prevention:` (true for a prevention effect,
 // false for one that is not, such as "deals damage equal to its power
-// instead") or `RedirectsDamage: true`. A Replace that rewrites the
-// damage's TARGET must declare RedirectsDamage.
+// instead") or `RedirectsDamage: true`. A Replace that redirects the
+// damage — through game.RedirectDamageEventForEffect, the one primitive
+// (ADR 0108 §9) — must declare RedirectsDamage, and a Replace that writes
+// DamageTarget by hand fails outright: the primitive rewrites the
+// recipient and the damage tail together, and does nothing when CR 614.9
+// says so.
 //
 // What it cannot see: a Replace that hands off to a function in another
 // file. The engine's scoped shields do that, and declare the flag from
@@ -84,12 +88,15 @@ func damageReplacementProblems(t *testing.T, dir string) []string {
 		if body == nil {
 			return
 		}
-		changesAmount, redirects := inspectReplace(body)
+		changesAmount, redirects, writesTarget := inspectReplace(body)
 		where := fset.Position(lit.Pos()).String()
+		if writesTarget {
+			problems = append(problems, where+": a damage replacement writes DamageTarget by hand; redirect through RedirectDamageEventForEffect (ADR 0108 §9)")
+		}
 		_, declaresPrevention := keys["Prevention"]
 		_, declaresRedirect := keys["RedirectsDamage"]
 		if redirects && !declaresRedirect {
-			problems = append(problems, where+": a damage replacement that rewrites DamageTarget must declare RedirectsDamage: true")
+			problems = append(problems, where+": a damage replacement that redirects the damage must declare RedirectsDamage: true")
 		}
 		if changesAmount && !declaresPrevention && !declaresRedirect {
 			problems = append(problems, where+": a damage replacement that cancels or rewrites the amount must declare Prevention (CR 615.1a, 615.12) or RedirectsDamage")
@@ -163,14 +170,17 @@ func replaceBody(e ast.Expr, funcs map[string]*ast.FuncDecl) *ast.BlockStmt {
 
 // inspectReplace reports whether a Replace body cancels the event or
 // writes its amount other than by multiplying or adding (a doubler or a
-// +2 is plainly not a prevention effect), and whether it writes the
-// target.
-func inspectReplace(body *ast.BlockStmt) (changesAmount, redirects bool) {
+// +2 is plainly not a prevention effect), whether it redirects the damage
+// through the primitive, and whether it writes the target by hand.
+func inspectReplace(body *ast.BlockStmt) (changesAmount, redirects, writesTarget bool) {
 	ast.Inspect(body, func(n ast.Node) bool {
 		switch x := n.(type) {
 		case *ast.CallExpr:
 			if sel, ok := x.Fun.(*ast.SelectorExpr); ok && sel.Sel.Name == "Cancel" && len(x.Args) == 0 {
 				changesAmount = true
+			}
+			if sel, ok := x.Fun.(*ast.SelectorExpr); ok && sel.Sel.Name == "RedirectDamageEventForEffect" {
+				redirects = true
 			}
 		case *ast.AssignStmt:
 			for _, lhs := range x.Lhs {
@@ -184,7 +194,7 @@ func inspectReplace(body *ast.BlockStmt) (changesAmount, redirects bool) {
 						changesAmount = true
 					}
 				case "DamageTarget":
-					redirects = true
+					writesTarget = true
 				}
 			}
 		case *ast.IncDecStmt:
@@ -194,5 +204,5 @@ func inspectReplace(body *ast.BlockStmt) (changesAmount, redirects bool) {
 		}
 		return true
 	})
-	return changesAmount, redirects
+	return changesAmount, redirects, writesTarget
 }

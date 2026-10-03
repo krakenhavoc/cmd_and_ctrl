@@ -265,6 +265,9 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// ADR 0108 §3: the damage multiplier is a replacement. Its cases
 		// are in multiply_damage_test.go.
 		ModMultiplyDamage: true,
+		// ADR 0108 §9: the redirection is a replacement. Its cases are in
+		// redirect_damage_test.go.
+		ModRedirectDamage: true,
 		// ADR 0108 PR 2: the combat-only next-damage shield. Its cases
 		// are in multiply_damage_test.go.
 		ModPreventNextCombatFromSource: true,

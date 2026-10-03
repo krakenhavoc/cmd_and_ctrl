@@ -61,6 +61,11 @@ type PreventDamageFromSource struct {
 
 	// Then is the CR 615.5 follow-up. Zero is none.
 	Then game.BodyRef
+	// thenTo is the target clause whose answer the follow-up deals its
+	// damage to (Refraction Trap's "any target", ADR 0108 §9), when
+	// hasThenTo is set. Set with DealingTo.
+	thenTo    int
+	hasThenTo bool
 
 	// UntilYourNextTurn is "until your next turn" (Gideon of the
 	// Trials); false is "this turn".
@@ -88,6 +93,15 @@ func (p PreventDamageFromSource) Charged(n int) PreventDamageFromSource {
 // WithThen returns the shield with a CR 615.5 follow-up.
 func (p PreventDamageFromSource) WithThen(then game.BodyRef) PreventDamageFromSource {
 	p.Then = then
+	return p
+}
+
+// DealingTo returns the shield with its follow-up dealing its damage to
+// the target that answered clause i, chosen as the spell was cast
+// (Refraction Trap, ADR 0108 §9). A target that is illegal as the shield
+// resolves leaves the follow-up nothing to deal its damage to.
+func (p PreventDamageFromSource) DealingTo(clause int) PreventDamageFromSource {
+	p.thenTo, p.hasThenTo = clause, true
 	return p
 }
 
@@ -143,6 +157,11 @@ func (p PreventDamageFromSource) Apply(ctx *Context) error {
 		Then:              p.Then,
 		UntilYourNextTurn: p.UntilYourNextTurn,
 		Label:             label,
+	}
+	if p.hasThenTo {
+		if t, ok := ctx.ClauseTarget(p.thenTo); ok && (t.Kind == game.TargetCard || t.Kind == game.TargetPlayer) {
+			shield.To = t.ID
+		}
 	}
 	pick := shieldSourcePick{Choose: p.Choose, FromThis: p.FromThis, From: p.From, Queries: p.Queries, Question: p.Question}
 	return pick.resolve(ctx, registerSourceShield(shield))

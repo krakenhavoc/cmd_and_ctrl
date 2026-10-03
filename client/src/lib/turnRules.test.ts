@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   damageCantBePreventedLine,
   damageMultiplierLines,
+  damageRedirectionLines,
   damageShieldsLine,
   exileIfCreaturesDieLine,
 } from "./turnRules";
@@ -15,6 +16,21 @@ describe("damageMultiplierLines", () => {
   it("keeps every line in order, repeats included, and drops blanks", () => {
     const insult = "Alice's sources deal double damage this turn — Insult";
     expect(damageMultiplierLines([insult, "", insult])).toEqual([insult, insult]);
+  });
+});
+
+describe("damageRedirectionLines", () => {
+  it("is empty when no redirection is live", () => {
+    expect(damageRedirectionLines(undefined)).toEqual([]);
+    expect(damageRedirectionLines([])).toEqual([]);
+  });
+
+  it("keeps every line in order, repeats included, and drops blanks", () => {
+    const beacon =
+      "Damage to Alice from Goblin Guide is dealt to Beacon of Destiny instead, the next time — Beacon of Destiny";
+    const harm =
+      "Damage to Bob and their permanents is dealt to Carol instead, the next 2 — Harm's Way";
+    expect(damageRedirectionLines([beacon, " ", harm, beacon])).toEqual([beacon, harm, beacon]);
   });
 });
 

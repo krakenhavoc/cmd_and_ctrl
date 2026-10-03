@@ -151,6 +151,14 @@ type GameView struct {
 	// Battlefield statics that say the same (Furnace of Rath) are not
 	// listed.
 	DamageMultipliers []string `json:"damage_multipliers,omitempty"`
+	// DamageRedirections is one line per live "that damage is dealt to
+	// <something> instead" effect a resolved spell or ability made (ADR
+	// 0108 §9), oldest first — the game banner's lines: "Damage to Alice
+	// from Goblin Guide is dealt to Beacon of Destiny instead, the next
+	// time — Beacon of Destiny". Public: the source and the destination
+	// are announced as the effect is made. Battlefield statics that say
+	// the same (Pariah) are not listed.
+	DamageRedirections []string `json:"damage_redirections,omitempty"`
 	// GraveyardTargetBans is one line per live static that stops cards
 	// in graveyards being targeted (ADR 0109 §6, #1885; CR 601.2c),
 	// worded for the graveyard viewer's banner: the printed clause and
@@ -3784,6 +3792,7 @@ func ViewOfGame(g *game.Game) GameView {
 			ExileIfCreaturesDie:   g.ExileIfCreaturesWouldDieThisTurnLabels(),
 			DamageShields:         g.DamageShieldLabels(),
 			DamageMultipliers:     g.DamageMultiplierLines(),
+			DamageRedirections:    g.DamageRedirectionLines(),
 			GraveyardTargetBans:   graveyardTargetBanLines(g),
 			DiscardPending:        viewOfDiscardPending(g.DiscardPending),
 			PendingChoices:        viewOfPendingChoices(g),
@@ -7594,6 +7603,7 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		ExileIfCreaturesDie:   v.ExileIfCreaturesDie,
 		DamageShields:         v.DamageShields,
 		DamageMultipliers:     v.DamageMultipliers,
+		DamageRedirections:    v.DamageRedirections,
 		GraveyardTargetBans:   v.GraveyardTargetBans,
 		DiscardPending:        v.DiscardPending,
 		PendingChoices:        filterPendingChoices(v.PendingChoices, isKnower, viewerID),

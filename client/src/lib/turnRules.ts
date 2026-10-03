@@ -26,6 +26,18 @@ export function damageMultiplierLines(lines: readonly string[] | undefined): str
   return lines.filter((l) => l.trim() !== "");
 }
 
+/**
+ * The game banner's lines for the live damage redirections
+ * (GameView.damage_redirections, ADR 0108 §9): the server words each one
+ * ("Damage to Alice from Goblin Guide is dealt to Beacon of Destiny
+ * instead, the next time — Beacon of Destiny"), oldest first; this drops
+ * blanks. A repeated line is kept: two redirections are two effects.
+ */
+export function damageRedirectionLines(lines: readonly string[] | undefined): string[] {
+  if (!lines) return [];
+  return lines.filter((l) => l.trim() !== "");
+}
+
 export function exileIfCreaturesDieLine(sources: readonly string[] | undefined): string {
   if (!sources || sources.length === 0) return "";
   const names = [...new Set(sources.filter((s) => s !== ""))];

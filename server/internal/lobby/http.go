@@ -637,14 +637,19 @@ func Handler(c Config) http.Handler {
 	//
 	// POST /deck-requests needs a session and rides the ordinary IP
 	// bucket; its real limit is three asks per requester per 24 h,
-	// counted in the database.
+	// counted in the database. An admin (ADR 0112 §2: allowlisted and
+	// in admin mode) skips both (#2052). The bot's call spends the IP
+	// bucket in the handler, once it knows which member it speaks for,
+	// and skips it only when that member is an admin
+	// (deckRequestIPLimit, deckRequestExempt).
 	deckChecks := newDeckCheck()
 	deckCoveragePublic := newLimiter(1.0/10, 3)
 	deckCoverageAdmin := newLimiter(1, 10)
 	mux.Handle("POST /deck-coverage",
 		deckCoverageLimit(c, deckCoveragePublic, deckCoverageAdmin, handlerFunc(c, deckChecks.coverage)))
+	deckChecks.requestLimit = limit
 	mux.Handle("POST /deck-requests",
-		limit.Middleware(auth.Middleware(c.Auth)(handlerFunc(c, deckChecks.request))))
+		deckRequestIPLimit(c, limit, auth.Middleware(c.Auth)(handlerFunc(c, deckChecks.request))))
 	// ADR 0112 §3 item 4: saving a checked deck. It rides the
 	// /me/decks* bucket like the rest of the library, and a link the
 	// check's cache does not hold also spends one token from the public

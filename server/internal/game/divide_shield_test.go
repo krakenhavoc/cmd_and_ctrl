@@ -338,7 +338,7 @@ func TestDivideShieldChooserLeaving(t *testing.T) {
 // Every field of damageTail but the continuation and the instance flag is
 // carried by a staged event, so staging an event cannot drop a rider.
 func TestStagedDamageCarriesTheWholeTail(t *testing.T) {
-	notStaged := map[string]bool{"then": true, "endsInstance": true, "released": true}
+	notStaged := map[string]bool{"then": true, "endsInstance": true, "released": true, "redirected": true}
 	staged := map[string]bool{}
 	st := reflect.TypeOf(stagedDamage{})
 	for i := 0; i < st.NumField(); i++ {

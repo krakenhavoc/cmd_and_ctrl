@@ -29,6 +29,7 @@
   import {
     damageCantBePreventedLine,
     damageMultiplierLines,
+    damageRedirectionLines,
     damageShieldsLine,
     exileIfCreaturesDieLine,
   } from "../../turnRules";
@@ -47,6 +48,9 @@
     // ADR 0108 §3: the live damage multipliers' banner lines
     // (GameView.damage_multipliers).
     damageMultipliers?: string[];
+    // ADR 0108 §9: the live damage redirections' banner lines
+    // (GameView.damage_redirections).
+    damageRedirections?: string[];
     // ADR 0105 §7 (sub-PR 6): how many of the viewer's cards have a
     // highlighted action on this frame (legalActions.ts
     // actionableCount over the HIGHLIGHT lookup, so 0 while highlights
@@ -66,6 +70,7 @@
     exileIfCreaturesDie = [],
     damageShields = [],
     damageMultipliers = [],
+    damageRedirections = [],
     readyActions = 0,
     trackOpen = false,
   }: Props = $props();
@@ -85,6 +90,7 @@
   const exileOnDeathLine = $derived(exileIfCreaturesDieLine(exileIfCreaturesDie));
   const shieldsLine = $derived(damageShieldsLine(damageShields));
   const multiplierLines = $derived(damageMultiplierLines(damageMultipliers));
+  const redirectionLines = $derived(damageRedirectionLines(damageRedirections));
 
   const activeSeat = $derived(turn.active_seat ?? 0);
   const priorityHeld = $derived((turn.priority_holder ?? -1) >= 0);
@@ -228,6 +234,9 @@
     <div class="row turn-rule" role="status">{shieldsLine}</div>
   {/if}
   {#each multiplierLines as line, i (i)}
+    <div class="row turn-rule" role="status">{line}</div>
+  {/each}
+  {#each redirectionLines as line, i (i)}
     <div class="row turn-rule" role="status">{line}</div>
   {/each}
 </div>

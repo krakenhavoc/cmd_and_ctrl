@@ -587,6 +587,194 @@ func TestDeckRequestIsRateLimitedPerRequester(t *testing.T) {
 	}
 }
 
+// --- #2052: an admin is not rate-limited -----------------------------
+
+const (
+	deckAdminSnowflake  = "777777777777777777"
+	deckPlayerSnowflake = "888888888888888888"
+)
+
+// newAdminDeckStack is newDeckStack with the real rate limiters and an
+// allowlist naming deckAdminSnowflake. It returns the admin modes, so a
+// test can switch a person's admin mode on and off.
+func newAdminDeckStack(t *testing.T) (*deckStack, *users.AdminModes) {
+	t.Helper()
+	admins, modes, _ := newTestAdmins(t, deckAdminSnowflake)
+	s := newDeckStack(t, false, func(c *Config) { c.Admins = admins })
+	return s, modes
+}
+
+// fillAsks records the day's three asks for a requester.
+func (s *deckStack) fillAsks(t *testing.T, snowflake string) {
+	t.Helper()
+	now := time.Now().UTC()
+	for i, key := range []string{"moxfield:a", "moxfield:b", "archidekt:1"} {
+		if err := s.store.RecordAsk(context.Background(), key, "discord:"+snowflake, now.Add(-time.Duration(3-i)*time.Hour)); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func (s *deckStack) userFor(t *testing.T, snowflake string) uuid.UUID {
+	t.Helper()
+	id, err := s.users.UserIDForDiscord(context.Background(), snowflake)
+	if err != nil {
+		t.Fatalf("UserIDForDiscord(%s): %v", snowflake, err)
+	}
+	return id
+}
+
+func (s *deckStack) asks(t *testing.T, snowflake string) int {
+	t.Helper()
+	asks, err := s.store.AsksSince(context.Background(), "discord:"+snowflake, time.Time{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return len(asks)
+}
+
+// ipLimited reports whether a 429 came from the per-IP bucket rather
+// than the three-asks limit.
+func ipLimited(code int, raw string) bool {
+	return code == http.StatusTooManyRequests && strings.Contains(raw, `"too many requests"`)
+}
+
+// An allowlisted person in admin mode skips both limits: the day's
+// three asks and the per-IP bucket. Their asks are still recorded and
+// still deduplicated onto the deck's one issue. Switched back to player
+// mode, they are limited like anyone else.
+func TestDeckRequestAdminModeIsNotRateLimited(t *testing.T) {
+	s, modes := newAdminDeckStack(t)
+	tok := s.discordUser(t, deckAdminSnowflake, "Owner")
+	user := s.userFor(t, deckAdminSnowflake)
+	s.fillAsks(t, deckAdminSnowflake)
+	modeOn(t, modes, user)
+
+	// More requests than the IP bucket's burst of five, all at once.
+	for i := 0; i < 8; i++ {
+		code, out, raw := s.request(t, tok, map[string]string{"url": needyDeckURL})
+		want := http.StatusOK
+		if i == 0 {
+			want = http.StatusCreated
+		}
+		if code != want {
+			t.Fatalf("request %d in admin mode: %d %s", i+1, code, raw)
+		}
+		if i > 0 && (out.Status != deckRequestJoined || out.IssueNumber != 1 || !out.AlreadyRequested) {
+			t.Errorf("request %d did not join the deck's one issue: %s", i+1, raw)
+		}
+	}
+	if issues, comments := s.filer.snapshot(); len(issues) != 1 || len(comments) != 0 {
+		t.Errorf("%d issues and %d comments, want one issue and no comments", len(issues), len(comments))
+	}
+	if row, err := s.store.Lookup(context.Background(), "moxfield:needy01"); err != nil || row.IssueNumber != 1 {
+		t.Errorf("row = %+v, %v", row, err)
+	}
+	if n := s.asks(t, deckAdminSnowflake); n != 4 {
+		t.Errorf("%d asks recorded, want the three earlier ones and this one", n)
+	}
+
+	// Player mode: the three-asks limit, then the per-IP bucket.
+	if _, err := modes.Set(context.Background(), user, false); err != nil {
+		t.Fatal(err)
+	}
+	code, out, raw := s.request(t, tok, map[string]string{"url": cleanDeckURL})
+	if code != http.StatusTooManyRequests || out.Status != deckRequestRateLimited {
+		t.Fatalf("player mode: %d %s", code, raw)
+	}
+	sawIP := false
+	for i := 0; i < 10 && !sawIP; i++ {
+		code, _, raw := s.request(t, tok, map[string]string{"url": cleanDeckURL})
+		sawIP = ipLimited(code, raw)
+	}
+	if !sawIP {
+		t.Error("player mode never met the per-IP bucket")
+	}
+}
+
+// A non-admin, and an allowlisted person in player mode, meet the
+// three-asks limit; the allowlist alone is not admin.
+func TestDeckRequestPlayerModeIsRateLimited(t *testing.T) {
+	s, _ := newAdminDeckStack(t)
+	for _, who := range []struct{ snowflake, name string }{
+		{deckPlayerSnowflake, "a non-admin"},
+		{deckAdminSnowflake, "an allowlisted person in player mode"},
+	} {
+		tok := s.discordUser(t, who.snowflake, "Someone")
+		s.fillAsks(t, who.snowflake)
+		code, out, raw := s.request(t, tok, map[string]string{"url": needyDeckURL})
+		if code != http.StatusTooManyRequests || out.Status != deckRequestRateLimited {
+			t.Errorf("%s: %d %s", who.name, code, raw)
+		}
+	}
+	if issues, _ := s.filer.snapshot(); len(issues) != 0 {
+		t.Errorf("%d issues filed over the limit", len(issues))
+	}
+}
+
+// Through the bot, the member it names decides: a member whose own
+// account is allowlisted and in admin mode skips both limits; anyone
+// else is limited, although the bot's session is itself the admin
+// token.
+func TestDeckRequestFromTheBotExemptsOnlyAnAdminMember(t *testing.T) {
+	s, modes := newAdminDeckStack(t)
+	bot := s.adminToken(t)
+	s.discordUser(t, deckAdminSnowflake, "Owner")
+	s.discordUser(t, deckPlayerSnowflake, "Player")
+	const strangerSnowflake = "999999999999999999" // never signed in
+	for _, id := range []string{deckAdminSnowflake, deckPlayerSnowflake, strangerSnowflake} {
+		s.fillAsks(t, id)
+	}
+	ask := func(snowflake, name string) (int, deckRequestResponse, string) {
+		return s.request(t, bot, map[string]any{
+			"url": needyDeckURL, "requester": map[string]string{"discord_id": snowflake, "display_name": name},
+		})
+	}
+
+	// The allowlisted member in player mode is limited.
+	if code, out, raw := ask(deckAdminSnowflake, "Owner"); code != http.StatusTooManyRequests || out.Status != deckRequestRateLimited {
+		t.Fatalf("allowlisted member in player mode: %d %s", code, raw)
+	}
+
+	// In admin mode they are not, past the IP bucket's burst too.
+	modeOn(t, modes, s.userFor(t, deckAdminSnowflake))
+	for i := 0; i < 8; i++ {
+		code, _, raw := ask(deckAdminSnowflake, "Owner")
+		if code != http.StatusCreated && code != http.StatusOK {
+			t.Fatalf("admin member, request %d: %d %s", i+1, code, raw)
+		}
+	}
+	if n := s.asks(t, deckAdminSnowflake); n != 4 {
+		t.Errorf("%d asks recorded for the admin member, want 4", n)
+	}
+	if issues, _ := s.filer.snapshot(); len(issues) != 1 {
+		t.Errorf("%d issues, want 1", len(issues))
+	}
+
+	// Members who are not admins are limited, the bot's own admin
+	// status notwithstanding: first by the three asks, then by the
+	// per-IP bucket the bot's calls spend for them.
+	for _, m := range []struct{ snowflake, name string }{
+		{deckPlayerSnowflake, "a member who is not an admin"},
+		{strangerSnowflake, "a member with no account"},
+	} {
+		if code, out, raw := ask(m.snowflake, "Member"); code != http.StatusTooManyRequests || out.Status != deckRequestRateLimited {
+			t.Errorf("%s: %d %s", m.name, code, raw)
+		}
+	}
+	sawIP := false
+	for i := 0; i < 10 && !sawIP; i++ {
+		code, _, raw := ask(deckPlayerSnowflake, "Player")
+		sawIP = ipLimited(code, raw)
+	}
+	if !sawIP {
+		t.Error("the bot's calls for a non-admin member never met the per-IP bucket")
+	}
+	if n := s.asks(t, deckPlayerSnowflake); n != 3 {
+		t.Errorf("%d asks recorded for the limited member, want the three earlier ones", n)
+	}
+}
+
 func TestDeckRequestNothingToAdd(t *testing.T) {
 	s := newDeckStack(t, true, nil)
 	tok := s.discordUser(t, "111", "Alice")

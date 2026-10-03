@@ -32,6 +32,8 @@ import (
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/auth"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/deck"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/deckrequests"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/users"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/ws"
 )
@@ -588,15 +590,16 @@ func TestAllowlistAndModeAreAskedOnlyInAdminsGo(t *testing.T) {
 // as they are (ADR 0112 §2, "Kept on purpose"). Each count is how many
 // times the function asks.
 var keptServerCredentialSites = map[string]int{
-	"deckCoverageLimit": 1, // the bot's own coverage bucket
-	"deckRequesterFor":  1, // filing a deck request in a named member's name
-	"file":              1, // file: the issue's "filed by the bot" flag
-	"request":           1, // deck_id on POST /deck-requests is a person's library; the token is refused (ADR 0112 PR 2, #2001)
-	"callerKey":         1, // the per-caller limits' shared admin bucket
-	"createGameWith":    1, // the token creates tables with no creator and no open-table cap
-	"practiceOwner":     1, // the token's practice table
-	"inviteDM":          1, // naming a raw Discord snowflake
-	"AuthorizeUpgrade":  1, // the token never has an own binding
+	"deckCoverageLimit":  1, // the bot's own coverage bucket
+	"deckRequesterFor":   1, // filing a deck request in a named member's name
+	"deckRequestIPLimit": 1, // the bot's deck request spends the IP bucket in the handler, for its named member (#2052)
+	"file":               1, // file: the issue's "filed by the bot" flag
+	"request":            1, // deck_id on POST /deck-requests is a person's library; the token is refused (ADR 0112 PR 2, #2001)
+	"callerKey":          1, // the per-caller limits' shared admin bucket
+	"createGameWith":     1, // the token creates tables with no creator and no open-table cap
+	"practiceOwner":      1, // the token's practice table
+	"inviteDM":           1, // naming a raw Discord snowflake
+	"AuthorizeUpgrade":   1, // the token never has an own binding
 }
 
 // TestServerCredentialSitesAreAllKept: every isServerCredential site is
@@ -889,13 +892,23 @@ func (fx *probeFixture) tablePath(rest string) string {
 func newProbeFixture(t *testing.T, idx *cards.Index, caller sameAnswerCaller, session string) *probeFixture {
 	t.Helper()
 	host := newFakeBotHost()
+	user := uuid.New()
 	// A replay directory, so bugReplaySource has a replay to offer.
 	s := newAdminStackIn(t, t.TempDir(), idx, func(c *Config) {
 		c.Lobby.SetBotHost(host)
 		c.Bots = host
 		c.BotDecks = fakeDeckSource{}
+		// POST /deck-requests: the caller's account has its Discord
+		// identity, has already asked three times today, and no deck
+		// link reaches the network.
+		c.Users = probeUsers{subjects: map[uuid.UUID]string{user: caller.discordID}}
+		c.DeckRequests = fullDeckRequests{}
+		c.DeckRequestFiler = &fakeFiler{issues: map[int]*fakeIssue{}}
+		c.FetchDeck = func(context.Context, string) (string, []deck.Entry, error) {
+			return "", nil, fmt.Errorf("%w: moxfield", deck.ErrDeckNotFound)
+		}
 	}, listedDiscordID)
-	fx := &probeFixture{s: s, user: uuid.New()}
+	fx := &probeFixture{s: s, user: user}
 	var err error
 	if fx.table, err = s.lobby.Create("their table"); err != nil {
 		t.Fatal(err)
@@ -934,6 +947,30 @@ func newProbeFixture(t *testing.T, idx *cards.Index, caller sameAnswerCaller, se
 		s.adminModeOn(t, fx.user)
 	}
 	return fx
+}
+
+// probeUsers is a user store that knows only the probe caller's Discord
+// identity, which is all POST /deck-requests asks of it. Everything
+// else answers as a deployment with no database does.
+type probeUsers struct {
+	users.NoStore
+	subjects map[uuid.UUID]string
+}
+
+func (u probeUsers) DiscordSubject(_ context.Context, id uuid.UUID) (string, error) {
+	if s, ok := u.subjects[id]; ok {
+		return s, nil
+	}
+	return "", users.ErrNotFound
+}
+
+// fullDeckRequests is a deck-request store in which every requester has
+// already used the day's three asks.
+type fullDeckRequests struct{ deckrequests.NoStore }
+
+func (fullDeckRequests) AsksSince(_ context.Context, _ string, since time.Time) ([]time.Time, error) {
+	at := since.Add(time.Hour)
+	return []time.Time{at, at, at}, nil
 }
 
 // label names an id from the fixture, so bindings compare across stacks.
@@ -1051,6 +1088,12 @@ func sameAnswerProbes() []sameAnswerProbe {
 		})},
 		{"POST /games/{id}/invites/dm", []string{"inviteDM"}, true, httpProbe("POST", "/games/{id}/invites/dm", func(*probeFixture) any {
 			return dmInviteRequest{UserID: uuid.New().String()}
+		})},
+		// #2052: an admin is not rate-limited on deck requests. The
+		// caller has used the day's three asks, so anyone else is a 429;
+		// admin mode gets past it to the (failing) deck fetch.
+		{"POST /deck-requests", []string{"deckRequestExempt"}, true, httpProbe("POST", "/deck-requests", func(*probeFixture) any {
+			return map[string]string{"url": "https://moxfield.com/decks/probe01"}
 		})},
 		// The bug report's attachments, asked directly: a report from
 		// one table must not pull another table's log or replay.

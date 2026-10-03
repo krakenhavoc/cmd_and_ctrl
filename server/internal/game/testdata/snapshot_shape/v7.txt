@@ -2152,6 +2152,7 @@ scopedEffects[].mods[].subtypes[]	string
 scopedEffects[].mods[].text	string
 scopedEffects[].mods[].then	string
 scopedEffects[].mods[].to	array
+scopedEffects[].mods[].toSourceController	bool
 scopedEffects[].mods[].to[]	object
 scopedEffects[].mods[].to[].epoch	number:int
 scopedEffects[].mods[].to[].id	custom(uuid.UUID)
@@ -3683,6 +3684,7 @@ spellsCastThisTurn	map:array
 spellsCastThisTurn{}	object
 spellsCastThisTurn{}.Noncreature	number:int
 spellsCastThisTurn{}.Total	number:int
+spellsCastThisTurn{}.instantSorceryColors	string
 splitSecondActive	bool
 stack	object
 stack.cards	array

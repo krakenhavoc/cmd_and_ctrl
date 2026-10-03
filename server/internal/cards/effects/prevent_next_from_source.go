@@ -42,6 +42,7 @@ type ShieldTarget struct {
 	// ShieldYouAndYourPermanents' card types.
 	ids       []uuid.UUID
 	permTypes []string
+	clause    int
 }
 
 // types is a copy of the card types "you and <those> you control"
@@ -63,6 +64,10 @@ const (
 	shieldYouAndYourPermanentsOf
 	shieldTheTargetPermanents
 	shieldObjects
+	// ADR 0108 PR 9: the redirection's "target clause i" and "this
+	// creature".
+	shieldClause
+	shieldThisObject
 )
 
 var (
@@ -84,6 +89,16 @@ var (
 	// (Kithkin Armor; CR 608.2h).
 	ShieldEnchantedCreature = ShieldTarget{kind: shieldEnchanted}
 )
+
+// ShieldThis is "to this creature": the object the ability came from, as
+// it is now. A source that left and came back is a new object, and is
+// not shielded (CR 400.7).
+var ShieldThis = ShieldTarget{kind: shieldThisObject}
+
+// ShieldClause protects the target that answered clause i ("target
+// creature you control" of Kor Chant's two). A target that is illegal as
+// the effect resolves leaves nothing to shield (CR 608.2b).
+func ShieldClause(i int) ShieldTarget { return ShieldTarget{kind: shieldClause, clause: i} }
 
 // ShieldObject protects one named player or permanent.
 func ShieldObject(id uuid.UUID) ShieldTarget { return ShieldTarget{kind: shieldObject, id: id} }
@@ -293,6 +308,19 @@ func (p PreventNextDamageFromSource) protect(ctx *Context, s *game.NextDamageShi
 		// Several permanents: only PreventDamageFromSource reads these
 		// (protectMany); a next-damage shield protects one thing.
 		return false
+	case shieldClause:
+		t, ok := ctx.ClauseTarget(p.Protect.clause)
+		if !ok || (t.Kind != game.TargetCard && t.Kind != game.TargetPlayer) {
+			return false
+		}
+		return one(t.ID)
+	case shieldThisObject:
+		src := ctx.Source()
+		if src == uuid.Nil || ctx.isNewSourceObjectAsThis(src) {
+			return false
+		}
+		s.ProtectPermanent = src
+		return true
 	}
 	return true
 }

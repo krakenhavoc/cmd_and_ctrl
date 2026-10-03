@@ -194,7 +194,10 @@ func (g *Game) MultiplyDamageForEffect(d DamageMultiplier) bool {
 // kind (a newer binary's shape). "" when the mod is sound.
 func multiplyDamageModProblem(m Mod) string {
 	if m.Kind != ModMultiplyDamage {
-		if m.Sources != "" || m.Recipients != "" || m.Next {
+		// ADR 0108 §9: a redirection reads Next and Recipients too, with
+		// the same meaning (redirectDamageModProblem checks them).
+		redirect := m.Kind == ModRedirectDamage
+		if m.Sources != "" || (m.Recipients != "" && !redirect) || (m.Next && !redirect) {
 			return fmt.Sprintf("mod %q carries a field only multiplyDamage reads", m.Kind)
 		}
 		return ""
@@ -341,7 +344,7 @@ func spentNextTimeMod(m Mod, batch uint64) bool {
 	if m.SpentBatch == 0 || m.SpentBatch == batch {
 		return false
 	}
-	return isNextFromSourceKind(m.Kind) || (m.Kind == ModMultiplyDamage && m.Next)
+	return isNextFromSourceKind(m.Kind) || ((m.Kind == ModMultiplyDamage || m.Kind == ModRedirectDamage) && m.Next)
 }
 
 // DamageMultiplierLines is the game banner's line for each live
