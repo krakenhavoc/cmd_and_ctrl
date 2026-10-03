@@ -434,6 +434,17 @@ type Game struct {
 	combatDamageInstance      DamageInstance
 	combatDamageInstanceBatch uint64
 
+	// shieldDivisions are the CR 615.7 divisions protected players have
+	// made of charged shields among one damage instance's events (ADR
+	// 0108 §7 decision 6, divide_shield.go), spent as those events land
+	// and dropped as the instance ends. Plain data, copy on write.
+	//
+	// damageStage is the open group of one instance's events being
+	// collected for such a division: set and cleared inside one
+	// mutation, so it is nil between actions.
+	shieldDivisions []ShieldDivision
+	damageStage     *damageStage
+
 	// announcedBlocks and blockedAttackers are what this combat's
 	// block declaration has produced (#830, #715). announcedBlocks
 	// maps blocker -> the attacker its EventBlock named;

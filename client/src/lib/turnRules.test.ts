@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   damageCantBePreventedLine,
   damageMultiplierLines,
+  damageShieldsLine,
   exileIfCreaturesDieLine,
 } from "./turnRules";
 
@@ -49,5 +50,24 @@ describe("damageCantBePreventedLine", () => {
 
   it("still states the rule when the sources are unnamed", () => {
     expect(damageCantBePreventedLine([""])).toBe("Damage can't be prevented this turn");
+  });
+});
+
+describe("damageShieldsLine", () => {
+  it("is empty when no shield is live", () => {
+    expect(damageShieldsLine(undefined)).toBe("");
+    expect(damageShieldsLine([])).toBe("");
+  });
+
+  it("names each shield and its source once, in order", () => {
+    expect(
+      damageShieldsLine([
+        "Pay No Heed (Goblin Guide)",
+        "Healing Grace (Lightning Bolt) — 3 left",
+        "Pay No Heed (Goblin Guide)",
+      ]),
+    ).toBe(
+      "Damage prevented this turn — Pay No Heed (Goblin Guide), Healing Grace (Lightning Bolt) — 3 left",
+    );
   });
 });

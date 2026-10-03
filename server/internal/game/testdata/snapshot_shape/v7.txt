@@ -2082,6 +2082,7 @@ scopedEffects[].mods[].copy[].TypeLine	string
 scopedEffects[].mods[].copy[].VariableToughness	bool
 scopedEffects[].mods[].grants	array
 scopedEffects[].mods[].grants[]	string
+scopedEffects[].mods[].half	bool
 scopedEffects[].mods[].keywords	array
 scopedEffects[].mods[].keywords[]	string
 scopedEffects[].mods[].kind	string
