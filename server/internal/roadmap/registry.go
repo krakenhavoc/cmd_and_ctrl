@@ -1328,15 +1328,16 @@ var items = []Item{
 		EngineNotes: "prompt: the only number a resolving effect can ask for today is an option pick over a fixed list (`PendingChoiceOptionPick`) or a mode picked at announce (Expel the Interlopers' caveat); the loop shortcut's integer is its own kind. Volcano Hellion's \"deals an amount of damage of your choice to you and target creature\" is chosen on resolution (CR 608.2d) and has no ceiling, and a capped list is weaker than printed whenever the amount matters past lethal (lifelink, a \"whenever this is dealt damage\" creature). Its echo {X} (X = your life total, read on resolution) shipped with ADR 0108 PR 4 as `effects.EchoX`, and its \"The damage can't be prevented\" with ADR 0107 PR 6. Needs a resolution-time number prompt: a pending-choice kind with a min and an optional max, a number field in the client, and an enumerator that offers a handful of meaningful values.",
 	},
 	{
-		Slug: "damage-as-though-wither", Name: "Damage dealt as though its source had wither or infect", Kind: KindSeam, Status: StatusMissing,
+		// #1889; built by ADR 0108 §10 (PR 10).
+		Slug: "damage-as-though-wither", Name: "Damage dealt as though its source had wither or infect", Kind: KindSeam, Status: StatusImplemented,
 		Summary:     "Statics that change how every source's damage is dealt, such as Everlasting Torment's \"All damage is dealt as though its source had wither\".",
-		Missing:     "Wither and infect work only as a source's own keywords; a static can't yet make all damage act as though its source had them.",
-		Rules:       []string{"120.3", "702.80", "702.90"},
+		Rules:       []string{"120.3b", "120.3d", "120.4c", "609.4", "613.11", "702.80a", "702.90b", "702.90c"},
 		Issue:       1889,
+		ADR:         "0108-turn-scoped-effects-object-history-and-damage-shields.md",
 		Tracked:     "#1889 (S50 tracker #1784; found landing ADR 0107 PR 6, #1853)",
-		Waiting:     []string{"Everlasting Torment", "Phyrexian Unlife"},
+		Examples:    []string{"Everlasting Torment", "Phyrexian Unlife"},
 		Phrases:     []string{"as though its source had"},
-		EngineNotes: "damage results are snapshotted off the source onto the event's tail (`damageTail.result`, ADR 0056 Decision 2). A battlefield static read as the tail is built would cover both cards. Everlasting Torment's other two lines (players can't gain life; damage can't be prevented) shipped with ADR 0107 PR 6.",
+		EngineNotes: "**Shipped** (ADR 0108 §10, PR 10): a battlefield static, `Spec.DamageAsThough` (`game.DamageAsThoughStatic{Wither, Infect, ToYou, WhileAtOrBelowZeroLife}`, `game/damage_as_though.go`), read through `game.CatalogDamageAsThough` keyed by `CatalogAbilityKey`. One gate, `damageResultAsThoughLocked`, ORs it into the tail's own result (`damageTail.result`, ADR 0056 Decision 2) as the damage lands, in the two landing functions only, so prevention, multipliers and every other damage replacement have already settled the amount (CR 120.4b before 120.4c): a prevented point gives no counter and a doubled hit gives twice the counters. The source gains no ability (CR 609.4). Phyrexian Unlife's \"as long as you have 0 or less life\" is read once per damage instance, against the life total its controller had as the instance began (owner decision 4): `nextDamageInstanceLocked` records every seat's life (`Game.damageInstanceLives`, transient, cloned, never captured). Card helpers: `effects.AllDamageAsThoughWither`, `effects.DamageToYouAsThoughInfectAtOrBelowZeroLife`. See Closed seams.",
 	},
 	{
 		// #1890; built by ADR 0108 §3 (PR 2).

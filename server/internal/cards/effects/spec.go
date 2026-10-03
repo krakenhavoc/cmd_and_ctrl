@@ -969,6 +969,18 @@ type Spec struct {
 	// PlayerCantGainLifeForRestOfGame).
 	CantGainLife []game.CantGainLifeStatic
 
+	// DamageAsThough declares this permanent's printed "damage is dealt
+	// as though its source had wither / infect" statics (CR 120.3, 609.4,
+	// ADR 0108 §10):
+	//
+	//	DamageAsThough: AllDamageAsThoughWither(),                    // Everlasting Torment
+	//	DamageAsThough: DamageToYouAsThoughInfectAtOrBelowZeroLife(), // Phyrexian Unlife
+	//
+	// Read from the battlefield through game.CatalogDamageAsThough, keyed
+	// by CatalogAbilityKey, as each damage event lands. The source gains
+	// no ability (CR 609.4).
+	DamageAsThough []game.DamageAsThoughStatic
+
 	// AnyColorSpend declares this permanent's printed "you may spend
 	// mana as though it were mana of any color" statics (CR 609.4b,
 	// #1600, ADR 0066's 2026-10-02 amendment):

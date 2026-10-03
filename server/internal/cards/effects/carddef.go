@@ -179,6 +179,7 @@ func buildDef(spec Spec) *game.CardDef {
 		PlayerLifeTotalLocked:      spec.PlayerLifeTotalLocked,
 		DamageCantBePrevented:      spec.DamageCantBePrevented,
 		CantGainLife:               spec.CantGainLife,
+		DamageAsThough:             spec.DamageAsThough,
 		AnyColorSpend:              spec.AnyColorSpend,
 		GameEndGates:               spec.GameEndGates,
 		WantsDistinctColors:        spec.WantsDistinctColors,

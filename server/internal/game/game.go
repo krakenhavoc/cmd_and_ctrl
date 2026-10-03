@@ -434,6 +434,13 @@ type Game struct {
 	combatDamageInstance      DamageInstance
 	combatDamageInstanceBatch uint64
 
+	// damageInstanceLives is every seat's life total as each of the
+	// newest damage instances began (ADR 0108 §10, damage_as_though.go):
+	// Phyrexian Unlife's "as long as you have 0 or less life" is read
+	// against it, once per instance. Transient like the stamp it is keyed
+	// on, cloned with the game, never captured. Copy on write.
+	damageInstanceLives []damageInstanceLife
+
 	// shieldDivisions are the CR 615.7 divisions protected players have
 	// made of charged shields among one damage instance's events (ADR
 	// 0108 §7 decision 6, divide_shield.go), spent as those events land

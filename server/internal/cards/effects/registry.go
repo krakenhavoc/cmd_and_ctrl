@@ -324,6 +324,17 @@ func Register(spec Spec) {
 	// ADR 0109 §6: and for a targeting restriction, which must also say
 	// which zone it is about.
 	checkTargetingRestrictions(spec.Name, spec.TargetingRestrictions)
+	// ADR 0108 §10: a "dealt as though its source had" static names what
+	// the source is treated as having, and wither is about creatures only
+	// (CR 702.80a), so it can't be narrowed to damage dealt to a player.
+	for i, s := range spec.DamageAsThough {
+		if !s.Wither && !s.Infect {
+			panic(fmt.Sprintf("effects.Register: %q damage-as-though static %d gives the source neither wither nor infect", spec.Name, i))
+		}
+		if s.ToYou && !s.Infect {
+			panic(fmt.Sprintf("effects.Register: %q damage-as-though static %d is wither on damage dealt to a player, which changes nothing (CR 702.80a)", spec.Name, i))
+		}
+	}
 	// #1210, ADR 0073's amendment of 2026-09-22: the same two checks
 	// for the activation twin, and for the same reason — the Label is
 	// what the greyed ability row shows the player, and a restriction
