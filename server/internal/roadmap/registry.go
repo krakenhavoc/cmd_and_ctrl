@@ -1795,12 +1795,16 @@ var items = []Item{
 		EngineNotes: "**Shipped** (#1600, ADR 0066's 2026-10-02 amendment): the one-spell form is a cast permission's `AnyColor` / `AnyType`, folded by `spendAsThoughAny` in the cast pricer (S21 sub-PR 6, #1573). The player form is `Spec.AnyColorSpend` (`game.AnyColorSpendStatic`: you or every player, optionally narrowed by `Covers` over the payment's spend context), read off the battlefield by `costAsPaidByLocked` (`game/spend_any_color.go`) at every PAYMENT rather than in a pricer — the cast, its auto-tap, a CR 602 activation / special action / attack tax (`payAbilityManaCostLocked`), a mana ability's mana cost, a pay-unless (`payCostLocked`) — and by `internal/legal`'s one affordability probe and the auto-tap preview, so the price shown stays printed (CR 609.4b). It widens coloured requirements (`ColorRequirement.AnyMana`) instead of folding them, after convoke / waterbend / delve and before the Phyrexian strike; both solvers pay a widened symbol with its printed colour when they can and as generic otherwise. Not covered, and no catalogued card waits on them: \"spend WHITE (or blue) mana as though it were mana of any color\" with \"other mana only as though colorless\" (Celestial Dawn, False Dawn, Quicksilver Elemental, Grell Philosopher), and grants tied to one permanent's own abilities (Manascape Refractor, Agatha's Soul Cauldron, Nathan Drake), whose spend context names no source instance.",
 	},
 	{
-		Slug: "discard-your-hand-cost", Name: "Discarding your hand as a cost", Kind: KindSeam, Status: StatusMissing,
-		Summary:     "Costs that discard your whole hand, such as Lion's Eye Diamond's.",
-		Missing:     "A cost can discard a set number of cards, but not your whole hand.",
+		// #1600 (ADR 0020's 2026-10-02 amendment). Closed; history in
+		// Closed seams.
+		Slug: "discard-your-hand-cost", Name: "Discarding your hand as a cost", Kind: KindSeam, Status: StatusImplemented,
+		Summary:     "Costs that discard your whole hand, such as Lion's Eye Diamond's and Null Brooch's. An empty hand pays them.",
+		Rules:       []string{"118.3", "602.2b", "602.5e", "605.3a"},
 		Issue:       1600,
-		Waiting:     []string{"Lion's Eye Diamond", "Diamond Lion", "Null Brooch", "Slate of Ancestry"},
-		EngineNotes: "cost component: `game.DiscardCost` (#1213, owned by both `AbilityCost.DiscardCards` and `ManaAbilityCost.DiscardCards`) demands a fixed N of at least one, which `effects.Register` enforces. \"Discard your hand\" is every card in hand, needs no pick, and can be paid with an empty hand, so it is an all-cards form of the component rather than a count. The mana-ability half (Lion's Eye Diamond, Diamond Lion) must also stay out of the auto-tapper's plans. Bomat Courier, Kyren Archive, Connecting the Dots, Reverberating Summons and Subira, Tulzidi Caravanner print the same cost and were not checked for other gaps. Re-checked 2026-10-01.",
+		ADR:         "0020-activated-abilities.md",
+		Probe:       declaresDiscardYourHand,
+		Examples:    []string{"Lion's Eye Diamond", "Null Brooch"},
+		EngineNotes: "**Shipped** (#1600, ADR 0020's 2026-10-02 amendment): `game.DiscardCost.Hand`, built by `effects.DiscardYourHand()`, on both owners of the component (`AbilityCost.DiscardCards`, `ManaAbilityCost.DiscardCards`). `validateDiscardCostLocked` reads the whole hand, refuses `discard_ids` for it, and pays an empty hand as nothing; the cards leave through the one discard door with cause cost. No options are stamped, so the client opens no picker and the enumerator sends no ids. A mana ability's \"Activate only as an instant\" is `effects.OnlyAsAnInstant()` over `Game.InstantWindowOpenForEffect`; the auto-tapper refuses every discard component. Not covered: \"As an additional cost to cast this spell, … discard your hand\" (Kaervek's Spite, which also sacrifices every permanent). Bomat Courier, Kyren Archive, Connecting the Dots, Reverberating Summons, Subira, Tulzidi Caravanner, Tarrian's Journal and Flamewar print the cost beside something else and are not catalogued.",
 	},
 	{
 		Slug: "costs-only-some-mana-can-pay", Name: "Costs that only some mana can pay", Kind: KindSeam, Status: StatusMissing,

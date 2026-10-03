@@ -414,6 +414,25 @@ func DiscardAtRandom(n int, label string) game.AbilityCost {
 	return game.AbilityCost{DiscardCards: &game.DiscardCost{N: n, Label: label, Random: true}}
 }
 
+// DiscardYourHand is "Discard your hand" as a cost (#1600, ADR 0020's
+// 2026-10-02 amendment) — Null Brooch's "{2}, {T}, Discard your hand:",
+// Slate of Ancestry's "{4}, {T}, Discard your hand:". Every card in the
+// activator's hand goes when the cost is paid; nothing is named, so the
+// client shows no picker and the bot sends no `discard_ids`. An empty
+// hand pays it (CR 118.3).
+//
+// A mana ability takes the same clause off the returned cost —
+// Lion's Eye Diamond's
+//
+//	ManaAbilityCost{Sacrifice: true, DiscardCards: DiscardYourHand().DiscardCards}
+//
+// — exactly as DiscardACard reaches Skirge Familiar. Register refuses a
+// hand clause beside another component that spends a hand card: the
+// hand is gone by then, so such a cost could never be paid.
+func DiscardYourHand() game.AbilityCost {
+	return game.AbilityCost{DiscardCards: &game.DiscardCost{Hand: true, Label: "your hand"}}
+}
+
 // PutACardFromHandOnTop is "Put a card from your hand on top of your
 // library" as a cost (ADR 0109 §7, #1902) — Penance, Leashling, Hidden
 // Retreat. The activator names the card at announce (`top_ids`).

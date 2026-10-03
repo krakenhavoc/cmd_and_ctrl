@@ -131,6 +131,14 @@ func (p *Policy) costValue(st *state, src *protocol.CardView, c legal.MoveCost) 
 		// planeswalker's loyalty. Priced against THAT permanent.
 		v -= st.w.counterRemovalValue(st.bf[cp.CardID.String()], cp.Counter, cp.N)
 	}
+	// #1600: "Discard your hand" (Lion's Eye Diamond, Null Brooch,
+	// Slate of Ancestry). The params name none of the cards, so the
+	// count is the whole price, at what a card in hand is worth to the
+	// evaluation — the weight a cast already pays for leaving the hand.
+	// An empty hand costs nothing, which is how the cards are played.
+	if c.Hand > 0 {
+		v -= st.w.Hand * float64(c.Hand)
+	}
 	return v, false
 }
 

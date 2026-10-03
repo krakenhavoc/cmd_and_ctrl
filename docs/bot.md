@@ -1849,6 +1849,21 @@ life that would leave it below 10 (`phyrexianLifeFloor`, the default
 `DangerLife`). The random tier picks among the legal moves like any
 other.
 
+**"Discard your hand" is priced by the hand it throws away.** Lion's
+Eye Diamond, Diamond Lion, Null Brooch and Slate of Ancestry
+([#1600](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1600)) pay
+with every card in hand, so the move names none of them: the engine
+refuses `discard_ids` for the clause. `Move.Cost.Hand` carries the
+count instead (the activator's hand, less the source if it is in that
+hand), and the label says `discarding your hand (N cards)`. The
+heuristic charges `Weights.Hand` per card, the price a cast already
+pays for leaving the hand, so Slate of Ancestry with seven cards in
+hand ranks well below the same activation with an empty one, and an
+empty hand costs nothing. Lion's Eye Diamond and Diamond Lion are only
+offered while the seat could cast an instant: holding priority, owing
+no prompt, with no prompt stopping the table. The auto-tapper never
+cracks one to pay for a cast.
+
 **A spell whose target count is X is offered with X equal to the
 number of targets it picks.** Crackle with Power deals five times X
 damage to each of up to X targets, so the count and the announcement
