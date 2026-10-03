@@ -123,6 +123,10 @@ type DamageShield struct {
 
 	// Then is the CR 615.5 follow-up, run with the amount prevented.
 	Then BodyRef
+	// To is the player or permanent the follow-up deals its damage to,
+	// chosen as the shield was made (Refraction Trap's "any target", ADR
+	// 0108 §9); uuid.Nil is none. Pinned to the object it is now.
+	To uuid.UUID
 
 	// UntilYourNextTurn is Gideon of the Trials' "until your next turn"
 	// (CR 611.2b), "you" being Controller. False is "this turn" (CR
@@ -169,6 +173,7 @@ func (g *Game) PreventDamageFromSourceThisTurnForEffect(s DamageShield) bool {
 	} else {
 		m.SourceZone = ""
 	}
+	ShieldFollowUp{Body: s.Then, To: s.To}.mod(g, &m)
 	label := s.Label
 	if label == "" {
 		label = "prevent damage from a source this turn"

@@ -242,6 +242,12 @@ func nextFromSourceModProblem(m Mod) string {
 		if m.Kind == ModMultiplyDamage {
 			sourced = false
 		}
+		// ADR 0108 §9: a redirection reads the one source vocabulary
+		// (Objects, SourceZone, Queries) and the "next time" spend
+		// (redirectDamageModProblem checks it).
+		if m.Kind == ModRedirectDamage {
+			sourced, queries = false, false
+		}
 		if sourced || queries || m.Half || m.AndDealtBy {
 			return fmt.Sprintf("mod %q carries a damage-source field only preventNextFromSource reads", m.Kind)
 		}
@@ -1069,6 +1075,11 @@ func (g *Game) referredToObjectsLocked() []uuid.UUID {
 			}
 			replacement = true
 			for _, o := range m.Objects {
+				out = append(out, o.ID)
+			}
+			// A follow-up's or a redirection's destination is referred
+			// to by the effect as well (ADR 0108 §9).
+			for _, o := range m.To {
 				out = append(out, o.ID)
 			}
 		}

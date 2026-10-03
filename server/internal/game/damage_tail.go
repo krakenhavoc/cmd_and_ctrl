@@ -218,6 +218,15 @@ type damageTail struct {
 	// divided, and is dealt now, never staged again.
 	released bool
 
+	// redirected is the damage charged redirections split off this event
+	// (ADR 0108 §9, redirect_damage.go): "the next 2 damage … is dealt to
+	// any target instead" meeting 5 leaves 3 here and carries 2 to be
+	// dealt to the destination as their own event when this one ends,
+	// with what was already applied to it (CR 614.5). Set inside the
+	// CR 614 window, so an event is never staged with any; cleared
+	// through the pointer as the parts are dealt, like `then`.
+	redirected []redirectedDamage
+
 	// then is the CALLER's half of the tail (#807): the rest of the
 	// effect that asked for the damage, run with the amount that
 	// ACTUALLY landed once the CR 614 window has settled it. The exact
@@ -678,6 +687,11 @@ func (g *Game) applyResolvedDamageLocked(ev *ReplacementEvent) error {
 func (g *Game) runDamageTailLocked(ev *ReplacementEvent, dealt int) error {
 	if ev == nil || ev.damageTail == nil {
 		return nil
+	}
+	// ADR 0108 §9: the damage a charged redirection split off is dealt
+	// with the event it came from, as part of the same instance.
+	if len(ev.damageTail.redirected) > 0 {
+		g.dealRedirectedDamageLocked(ev)
 	}
 	// ADR 0108 PR 0: a single instruction's instance is over with its
 	// one event.

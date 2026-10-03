@@ -1296,8 +1296,16 @@ type ReplacementEffect struct {
 	// permanent or player" (Lava Burst, Whippoorwill) does: while an
 	// event can't be redirected (damageCantBeRedirectedLocked), a
 	// redirection is applied without running its Replace, exactly as a
-	// prevention effect is under CR 615.12. No catalog card redirects
-	// damage today; the flag is here so the first one says so.
+	// prevention effect is under CR 615.12.
+	//
+	// ADR 0108 §9: a redirection's Replace changes the recipient only
+	// through RedirectDamageEventForEffect (redirect_damage.go), which
+	// rewrites the target and the damage tail together and does nothing
+	// when CR 614.9 says so; TestDamageReplacementsDeclareWhetherTheyPrevent
+	// fails a Replace that writes DamageTarget by hand, and one that calls
+	// the primitive without declaring this. A redirection has no shared
+	// identity (catalogReplacementIdentity): two copies write two
+	// different objects into the event, so they are ordered, not merged.
 	RedirectsDamage bool
 
 	// Then is a prevention static's CR 615.5 additional effect (ADR 0108
@@ -1416,6 +1424,20 @@ type replacementIdentity struct {
 // is "unidentified", which never matches anything — including
 // another zero value.
 func (r replacementIdentity) known() bool { return r.card != "" }
+
+// catalogReplacementIdentity is a catalog replacement's identity — or the
+// zero identity for a REDIRECTION (ADR 0108 §9). "All damage that would be
+// dealt to you is dealt to enchanted creature instead" writes its own
+// object's creature into the event, so two Pariahs on two creatures are
+// two different modifications, and the affected player orders them
+// (CR 616.1). The zero identity never matches, so sameModification never
+// collapses them.
+func catalogReplacementIdentity(eff ReplacementEffect, key string, slot int, controller uuid.UUID) replacementIdentity {
+	if eff.RedirectsDamage {
+		return replacementIdentity{}
+	}
+	return replacementIdentity{card: key, slot: slot, controller: controller}
+}
 
 // encodeCatalogReplacementID mints the per-instance ID for slot
 // `slot` of the catalog card at battlefield index `cardIdx`: the two
@@ -2083,7 +2105,7 @@ func (g *Game) gatherActiveReplacementsLocked(ev *ReplacementEvent) []activeRepl
 					effect:   eff,
 					source:   card,
 					id:       id,
-					identity: replacementIdentity{card: key, slot: repIdx, controller: card.Controller},
+					identity: catalogReplacementIdentity(eff, key, repIdx, card.Controller),
 				})
 			}
 		}

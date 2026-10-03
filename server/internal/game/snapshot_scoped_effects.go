@@ -91,6 +91,12 @@ func (s *GameSnapshot) checkEffectKeys() error {
 			if problem := followUpModProblem(m); problem != "" {
 				unknown = append(unknown, problem)
 			}
+			// ADR 0108 §9: a redirection's destination is part of what it
+			// means, and toSourceController on another kind is a newer
+			// binary's shape.
+			if problem := redirectDamageModProblem(m); problem != "" {
+				unknown = append(unknown, problem)
+			}
 		}
 		// ADR 0107 §3: a stack pin may carry only what this binary's
 		// stack step applies (layer 2 control, layer-6 keywords). A

@@ -50,7 +50,13 @@ import (
 //   - multiplyDamage — Insult's "if a source you control would deal
 //     damage this turn, it deals double that damage instead", Isengard
 //     Unleashed's triple and the "next time" doublers (ADR 0108 §3,
-//     #1890, multiply_damage.go).
+//     #1890, multiply_damage.go);
+//   - redirectDamage — Beacon of Destiny's "the next time a source of
+//     your choice would deal damage to you this turn, that damage is
+//     dealt to this creature instead", Harm's Way's charged "next 2" and
+//     Kor Chant's "all damage … this turn" (ADR 0108 §9, #1905,
+//     redirect_damage.go). A charged one is divided as a charged shield
+//     is (divide_shield.go).
 //
 // The gather adapts each live record into the ReplacementEffect it
 // already consumes, with closures the RUNNING binary builds from the
@@ -169,7 +175,7 @@ var (
 func scopedReplacementWatches(kind ModKind) []EventKind {
 	switch kind {
 	case ModPreventCombatDamage, ModPreventDamage, ModPreventNextFromSource, ModPreventNextCombatFromSource, ModMultiplyDamage,
-		ModPreventFromSource:
+		ModPreventFromSource, ModRedirectDamage:
 		return watchDamage
 	case ModExileInsteadOfLeaving, ModExileInsteadOfGraveyard, ModExileIfWouldDie:
 		return watchZoneMove
@@ -475,6 +481,13 @@ func (g *Game) gatherScopedReplacementsLocked(ev *ReplacementEvent, applied map[
 				continue
 			}
 			a := activeReplacement{effect: scopedReplacementEffect(e.Seq, j, m.Kind, e.Label), id: id}
+			if m.Kind == ModRedirectDamage {
+				// ADR 0108 §9: a redirection declares itself one, so
+				// "can't be dealt instead" stops it (settleUnpreventable
+				// Locked). Eye for an Eye's shape deals nothing instead
+				// (§9 decision 3) and does not.
+				a.effect.RedirectsDamage = redirectsAnywhere(m)
+			}
 			if m.Kind == ModMultiplyDamage {
 				// Two multipliers on one event (two Insults, an Insult and
 				// an Isengard) commute — ×2×3 is ×3×2 — so CR 616 has one
@@ -551,10 +564,11 @@ func scopedReplacementEffect(seq int64, mod int, kind ModKind, label string) Rep
 		Controller: func(ev *ReplacementEvent, g *Game, _ *Card) uuid.UUID {
 			switch kind {
 			case ModPreventCombatDamage, ModPreventDamage, ModPreventNextFromSource, ModPreventNextCombatFromSource,
-				ModPreventFromSource:
+				ModPreventFromSource, ModRedirectDamage:
 				// CR 616.1 gives the ordering choice to the AFFECTED
 				// player — whoever is being dealt the damage — so a
-				// prevention shield reports no controller (S17's Fog).
+				// prevention shield or a redirection reports no
+				// controller (S17's Fog).
 				return uuid.Nil
 			}
 			e, _, ok := g.scopedReplacementModLocked(seq, mod, kind)
@@ -655,6 +669,8 @@ func scopedReplacementMeetsLocked(g *Game, e ScopedEffect, m Mod, ev *Replacemen
 		return g.fromSourceMeetsLocked(e, m, ev)
 	case ModMultiplyDamage:
 		return g.multiplyDamageAppliesLocked(e, m, ev)
+	case ModRedirectDamage:
+		return g.redirectDamageAppliesLocked(e, m, ev)
 	}
 	return false
 }
@@ -691,6 +707,8 @@ func (g *Game) applyScopedReplacementLocked(e ScopedEffect, mod int, m Mod, ev *
 		g.applyFromSourceLocked(e, mod, m, ev)
 	case ModMultiplyDamage:
 		g.applyMultiplyDamageLocked(e, mod, m, ev)
+	case ModRedirectDamage:
+		g.applyRedirectDamageLocked(e, mod, m, ev)
 	case ModPreventDamage:
 		// CR 615.7's arithmetic, not "cancel if the shield covers any
 		// of it": a 4-point shield facing 6 damage prevents 4 and lets

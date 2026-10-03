@@ -1269,10 +1269,14 @@ listed. Nothing to declare — but it does mean one thing is now on you:
 **if your `Replace` writes its own source into the event** ("that
 damage is dealt to *this* creature instead", "put the counter on
 *this* creature instead"), two copies of your card are *not*
-interchangeable and collapsing them would be wrong. No catalog card
-does this yet; if yours is the first, say so on the PR rather than
-shipping it quietly — the fix is a declared flag in the `PureCancel`
-mould. See [ADR 0013 §5a](decisions/0013-replacement-effects.md).
+interchangeable and collapsing them would be wrong. A redirection that
+declares `RedirectsDamage` is handled for you (ADR 0108 §9): the gather
+gives it no shared identity (`catalogReplacementIdentity`), so two
+Pariahs are ordered. Any other `Replace` that writes its own source into
+the event ("put the counter on *this* creature instead") is not; if yours
+is the first, say so on the PR rather than shipping it quietly — the fix
+is a declared flag in the `PureCancel` mould. See
+[ADR 0013 §5a](decisions/0013-replacement-effects.md).
 
 **A `may` is always offered, however many effects share the window.**
 `Optional: true` queues a yes/no prompt for the effect's
@@ -3227,7 +3231,42 @@ call to learn what it did — a CR 616 pause defers it the same way. Use a
 `…ThenForEffect` continuation (`DealDamageThen`) instead. Source shields
 against a chosen or named source are `PreventDamageFromChosenSource(…)`,
 `PreventDamageFromSource{From: …}` and `.Charged(n)`
-(`effects/prevent_from_source.go`).
+(`effects/prevent_from_source.go`); `.DealingTo(i)` carries a follow-up's
+target clause onto the shield (Refraction Trap).
+
+**Damage dealt to something else instead (ADR 0108 §9, #1905).** A
+redirection is a replacement (CR 614.9), not a prevention effect: "can't
+be prevented" leaves it alone, and "can't be dealt instead" (Lava Burst,
+Whippoorwill) stops it. Never write `ev.DamageTarget` in a `Replace` —
+`TestDamageReplacementsDeclareWhetherTheyPrevent` fails it. Call
+`g.RedirectDamageEventForEffect(ev, to)`, which rewrites the recipient and
+the damage tail together and does nothing when CR 614.9 says so, and
+declare `RedirectsDamage: true`. In practice:
+
+- a resolving spell or ability's redirection is one
+  `effects.RedirectDamage{…}` (`effects/redirect_damage.go`): the source as
+  on every shield (`Choose`, `FromThis`, `From`, `Queries`), what it
+  protects (a `ShieldTarget` — `ShieldYou`, `ShieldYouAndPermanentsYouControl`,
+  `ShieldThis`, `ShieldClause(i)`, `ShieldTheTarget`,
+  `ShieldEnchantedCreature`; `AlsoYou` for "this creature and/or you";
+  `Opponents` for "to an opponent"), how long (`Next`, `Amount` — a
+  charge, divided by `divide_shield` and split off an event it covers
+  only part of — or neither, all turn), `CombatOnly`, and a `RedirectTo`
+  (`RedirectToThis`, `RedirectToYou`, `RedirectToSourceController`,
+  `RedirectToClause(i)`, `RedirectToEnchanted`, `RedirectToObject(id)`).
+  `redirectRow` and `redirectSpell` wrap it; `enKorRow` is the en-Kor
+  cycle's "{0}: the next 1 damage … is dealt to target creature you
+  control instead";
+- a static one ("All damage that would be dealt to you is dealt to
+  enchanted creature instead") is `staticRedirection(label,
+  redirectWhere{applies, to})`, with `redirectYourDamageToAttached` and
+  `redirectYourDamageToThis` for the common two. Its `AppliesTo` asks
+  `CanRedirectDamageForEffect`, so a redirection that would do nothing is
+  never offered in a CR 616 ordering prompt;
+- Eye for an Eye's "instead that source deals that much damage to you
+  and Eye for an Eye deals that much damage to that source's controller"
+  is a `RedirectDamage` with no `To` and a `Then`: nothing is dealt
+  instead, and the follow-up gets the amount.
 
 **One printed prevention effect is one record (ADR 0108 Delivery PR 7).**
 "Prevent all combat damage that would be dealt to and dealt by that

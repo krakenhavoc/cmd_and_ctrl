@@ -132,9 +132,11 @@ func (g *Game) oweStaticFollowUpLocked(ev *ReplacementEvent, a activeReplacement
 
 // followUpModProblem is registration's and restore's check on Mod.To: at
 // most one object, a real one, and only on a prevention shield with a
-// follow-up to deal its damage. "" when it is sound.
+// follow-up to deal its damage — or on a redirection, whose destination
+// it is (ADR 0108 §9; redirectDamageModProblem checks that kind). "" when
+// it is sound.
 func followUpModProblem(m Mod) string {
-	if len(m.To) == 0 {
+	if len(m.To) == 0 || m.Kind == ModRedirectDamage {
 		return ""
 	}
 	if len(m.To) > 1 {
