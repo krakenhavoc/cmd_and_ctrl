@@ -83,6 +83,17 @@ func (c *Characteristic) SetLandSubtypes(types []string) {
 	c.Subtypes = kept
 }
 
+// LoseLandTypes is "loses all land types" (ADR 0109 §2, #1604): every
+// subtype that is one of CR 205.3i's land types goes, and every other
+// subtype stays (CR 205.1a). SetLandSubtypes with nothing to set. The
+// card types, the supertypes and the abilities are untouched; the
+// intrinsic mana abilities go with the basic land types they come from
+// (CR 305.6). Ultima's record (ModLoseLandTypes), Lithoform Blight's and
+// Alpine Moon's static (effects.LosesAllLandTypes).
+func (c *Characteristic) LoseLandTypes() {
+	c.SetLandSubtypes(nil)
+}
+
 // LandTypeEffect is one resolved effect changing a permanent's land
 // types, as the table is shown it (ADR 0109 §1 decision 7): "Island
 // until end of turn — Tidal Warrior". The view stamps one per live
@@ -94,6 +105,18 @@ type LandTypeEffect struct {
 	// InAddition is "in addition to its other types" (ModAddSubtypes,
 	// CR 205.1b): the land keeps what it had.
 	InAddition bool
+	// LosesAll is "loses all land types" (ModLoseLandTypes, ADR 0109
+	// §2): the land has none of its own left. Types is empty.
+	LosesAll bool
+	// LosesAbilities is the same effect's "and abilities"
+	// (ModLoseAllAbilities in the record that removes the land types).
+	// A CR 305.7 set takes the rules-text abilities too, but says so by
+	// being a set, so this is false for one.
+	LosesAbilities bool
+	// Gains are the texts of the abilities the same effect gives the
+	// land ("{T}: Add {C}."), in the record's order: Ultima's "and has
+	// '{T}: Add {C}.'"
+	Gains []string
 	// Until is the duration in words ("until end of turn"), or "" for
 	// an effect with none (CR 611.2a).
 	Until string
@@ -101,11 +124,13 @@ type LandTypeEffect struct {
 	Source string
 }
 
-// LandTypeEffectsForEffect lists the live resolved effects that set or
-// add a land type on the permanent `cardID`, oldest first: every
-// setBasicLandTypes record, and every addSubtypes record that adds a
+// LandTypeEffectsForEffect lists the live resolved effects that set,
+// add or remove a land type on the permanent `cardID`, oldest first:
+// every setBasicLandTypes record, every addSubtypes record that adds a
 // land type (Navigator's Compass, Sealock Monster, The Legend of
-// Kyoshi). A static ability's type change (Spreading Seas, Blood Moon)
+// Kyoshi), and every loseLandTypes record (Ultima, with the rest of
+// its effect: the abilities lost and the one gained). A static
+// ability's type change (Spreading Seas, Blood Moon, Lithoform Blight)
 // is not listed: its source is on the battlefield, and the attachment
 // or the card says it.
 //
@@ -117,8 +142,8 @@ func (g *Game) LandTypeEffectsForEffect(cardID uuid.UUID) []LandTypeEffect {
 		if e.Scope != ScopeNone {
 			continue
 		}
-		var types []string
-		inAddition := false
+		var types, gains []string
+		inAddition, losesAll, losesAbilities := false, false, false
 		for _, m := range e.Mods {
 			switch m.Kind {
 			case ModSetBasicLandTypes:
@@ -130,17 +155,33 @@ func (g *Game) LandTypeEffectsForEffect(cardID uuid.UUID) []LandTypeEffect {
 						inAddition = true
 					}
 				}
+			case ModLoseLandTypes:
+				losesAll = true
+			case ModLoseAllAbilities:
+				losesAbilities = true
+			case ModGrantAbilities:
+				for _, k := range m.Grants {
+					if text := GrantTextFor(k); text != "" {
+						gains = append(gains, text)
+					}
+				}
 			}
 		}
-		if len(types) == 0 || !scopedAffectsLiveObjectLocked(g, *e, cardID) {
+		if (len(types) == 0 && !losesAll) || !scopedAffectsLiveObjectLocked(g, *e, cardID) {
 			continue
 		}
-		out = append(out, LandTypeEffect{
+		effect := LandTypeEffect{
 			Types:      types,
 			InAddition: inAddition,
 			Until:      g.durationPhraseLocked(e.Duration, e.SourceName),
 			Source:     scopedEffectDisplayName(e),
-		})
+		}
+		if losesAll {
+			// The rest of the same effect, so the chip reads as the card
+			// prints it: "no land types, no abilities, '{T}: Add {C}.'"
+			effect.LosesAll, effect.LosesAbilities, effect.Gains = true, losesAbilities, gains
+		}
+		out = append(out, effect)
 	}
 	return out
 }

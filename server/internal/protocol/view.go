@@ -2350,6 +2350,15 @@ type LandTypeEffectView struct {
 	// land keeps its own. False is CR 305.7's replacement: its old land
 	// types and its rules-text abilities are gone.
 	InAddition bool `json:"in_addition,omitempty"`
+	// LosesAll is "loses all land types" (ADR 0109 §2): Ultima's
+	// blight. Types is empty.
+	LosesAll bool `json:"loses_all,omitempty"`
+	// LosesAbilities is the same effect's "and abilities"; set only
+	// with LosesAll.
+	LosesAbilities bool `json:"loses_abilities,omitempty"`
+	// Gains are the texts of the abilities the same effect gives it
+	// ("{T}: Add {C}."); set only with LosesAll.
+	Gains []string `json:"gains,omitempty"`
 	// Until is the duration in the card's words ("until end of turn",
 	// "until Bob's next turn"); absent for an effect with none.
 	Until string `json:"until,omitempty"`
@@ -6340,10 +6349,15 @@ func stampLandTypeEffects(g *game.Game, view *ZoneView) {
 		}
 		for _, e := range g.LandTypeEffectsForEffect(g.Battlefield.Cards[i].InstanceID) {
 			view.Cards[i].LandTypeEffects = append(view.Cards[i].LandTypeEffects, LandTypeEffectView{
-				Types:      append([]string(nil), e.Types...),
-				InAddition: e.InAddition,
-				Until:      e.Until,
-				Source:     e.Source,
+				// Never null on the wire: a "loses all land types" entry
+				// has no types and says so with loses_all.
+				Types:          append([]string{}, e.Types...),
+				InAddition:     e.InAddition,
+				LosesAll:       e.LosesAll,
+				LosesAbilities: e.LosesAbilities,
+				Gains:          append([]string(nil), e.Gains...),
+				Until:          e.Until,
+				Source:         e.Source,
 			})
 		}
 	}

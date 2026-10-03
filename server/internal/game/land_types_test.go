@@ -184,3 +184,96 @@ func TestLandTypeEffectsNameTheRecordsOnAPermanent(t *testing.T) {
 		t.Errorf("an unaffected land lists %+v", none)
 	}
 }
+
+// landProducedForTest is what the permanent's mana abilities add.
+func landProducedForTest(g *Game, id uuid.UUID) []string {
+	var land Card
+	g.WithWriteLock(func() {
+		g.RecomputeLayersIfStaleLocked()
+		if c, ok := g.battlefieldCardLocked(id); ok {
+			land = *c
+		}
+	})
+	var produced []string
+	for _, ab := range ManaAbilitiesForCard(land) {
+		produced = append(produced, ab.Produced)
+	}
+	return produced
+}
+
+// TestLoseLandTypesTakesEveryLandTypeAndNothingElse is ADR 0109 §2's
+// kind (CR 205.3i, 613.1d): every land type goes, every other subtype
+// stays, the card types and abilities are untouched, and with no land
+// type left the land has no intrinsic mana ability (CR 305.6).
+func TestLoseLandTypesTakesEveryLandTypeAndNothingElse(t *testing.T) {
+	g := newActiveGame(t)
+	me := g.Seats[0]
+	arbor := pushScopedTestLand(g, me.ID, "Dryad Arbor", "Land Creature — Forest Dryad")
+	tower := pushScopedTestLand(g, me.ID, "Urza's Tower", "Land — Urza's Tower")
+	registerScopedEffectForTest(t, g, arbor, []Mod{LoseLandTypesMod()}, IndefiniteDuration())
+	registerScopedEffectForTest(t, g, tower, []Mod{LoseLandTypesMod()}, IndefiniteDuration())
+
+	c := scopedEffectChar(t, g, arbor)
+	if !reflect.DeepEqual(c.Subtypes, []string{"Dryad"}) {
+		t.Errorf("Dryad Arbor: subtypes = %v, want [Dryad]", c.Subtypes)
+	}
+	if !typeListHas(c.Types, "Land") || !typeListHas(c.Types, "Creature") {
+		t.Errorf("Dryad Arbor: types = %v, want Land Creature untouched", c.Types)
+	}
+	if c.AbilitiesRemoved || !reflect.DeepEqual(c.Abilities, []string{"hexproof"}) {
+		t.Errorf("Dryad Arbor: abilities = %v (removed %v), want its hexproof: losing land types is not CR 305.7",
+			c.Abilities, c.AbilitiesRemoved)
+	}
+	if got := landProducedForTest(g, arbor); len(got) != 0 {
+		t.Errorf("Dryad Arbor with no land type taps for %v, want nothing", got)
+	}
+	if got := scopedEffectChar(t, g, tower).Subtypes; len(got) != 0 {
+		t.Errorf("Urza's Tower: subtypes = %v, want none", got)
+	}
+}
+
+// TestLoseLandTypesAndAbilitiesWhileItHasACounter is Ultima's record
+// without its grant (the grant needs a catalog bundle; the card test has
+// it): no land types and no abilities for as long as the land has a
+// blight counter, and both back the moment the last one goes (CR
+// 611.2b).
+func TestLoseLandTypesAndAbilitiesWhileItHasACounter(t *testing.T) {
+	g := newActiveGame(t)
+	me := g.Seats[0]
+	forest := pushScopedTestLand(g, me.ID, "Forest", "Basic Land — Forest")
+	g.WithWriteLock(func() {
+		if err := g.AddCounterForEffect(forest, "blight", 1); err != nil {
+			t.Fatalf("AddCounterForEffect: %v", err)
+		}
+		d, ok := g.ForAsLongAsPinnedHasCounterDuration(forest, "blight")
+		if !ok {
+			t.Fatal("the duration never started")
+		}
+		g.RegisterScopedEffectForEffect(uuid.Nil, g.PinnedObjectsLocked(forest),
+			[]Mod{LoseLandTypesMod(), LoseAllAbilitiesMod()}, d, "Ultima")
+	})
+	c := scopedEffectChar(t, g, forest)
+	if len(c.Subtypes) != 0 || !c.AbilitiesRemoved || len(c.Abilities) != 0 {
+		t.Fatalf("with a blight counter: subtypes %v, abilities %v (removed %v), want none of either",
+			c.Subtypes, c.Abilities, c.AbilitiesRemoved)
+	}
+	if got := landProducedForTest(g, forest); len(got) != 0 {
+		t.Errorf("with a blight counter the Forest taps for %v, want nothing", got)
+	}
+	var effects []LandTypeEffect
+	g.WithWriteLock(func() { effects = g.LandTypeEffectsForEffect(forest) })
+	want := []LandTypeEffect{{LosesAll: true, LosesAbilities: true,
+		Until: "for as long as it has a blight counter on it", Source: "Ultima"}}
+	if !reflect.DeepEqual(effects, want) {
+		t.Errorf("land type effects = %+v, want %+v", effects, want)
+	}
+
+	g.WithWriteLock(func() { _ = g.AddCounterForEffect(forest, "blight", -1) })
+	c = scopedEffectChar(t, g, forest)
+	if !reflect.DeepEqual(c.Subtypes, []string{"Forest"}) || c.AbilitiesRemoved {
+		t.Errorf("the counter went: subtypes %v (abilities removed %v), want the Forest back", c.Subtypes, c.AbilitiesRemoved)
+	}
+	if got := landProducedForTest(g, forest); !reflect.DeepEqual(got, []string{"{G}"}) {
+		t.Errorf("the counter went: taps for %v, want {G}", got)
+	}
+}

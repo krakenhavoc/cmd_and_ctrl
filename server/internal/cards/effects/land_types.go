@@ -265,3 +265,59 @@ func EnchantedLandIsTheChosenType() []game.StaticAbility {
 	}
 	return out
 }
+
+// ---------------------------------------------------------------
+// "Loses all land types" (ADR 0109 §2, #1604)
+// ---------------------------------------------------------------
+//
+//	"Enchanted land loses all land types and abilities and has
+//	 '{T}: Add {C}' and '{T}, Pay 1 life: Add one mana of any
+//	 color.'"                                       Lithoform Blight
+//	"Lands your opponents control with the chosen name lose all land
+//	 types and abilities, and they gain '{T}: Add one mana of any
+//	 color.'"                                            Alpine Moon
+//
+// Every printed use is one sentence in three layers, and each layer is
+// a separate StaticAbility, declared in the order the card prints them
+// (the shape Imprisoned in the Moon uses):
+//
+//   - layer 4: LosesAllLandTypes. Every CR 205.3i land type goes and
+//     every other subtype stays (CR 205.1a), so a Dryad Arbor keeps
+//     its Dryad. This is NOT CR 305.7, which is about setting a basic
+//     land type: it takes no ability by itself. What it does take is
+//     the intrinsic mana ability of each basic land type the land had
+//     (CR 305.6), because that is derived from the effective subtypes.
+//   - layer 6: LosesAllAbilitiesAndHas. "Loses all abilities" is the
+//     CR 613.1f removal, and the abilities it "has" are the same
+//     effect's grant, written after the removal empties the list (ADR
+//     0093 Decision 3), so the granted mana abilities are all the land
+//     has. Unlike CR 305.7's layer-4 removal, a layer-6 removal also
+//     takes an ability another effect granted earlier (CR 613.7).
+//
+// The resolved-effect form is the record game.LoseLandTypesMod (Ultima,
+// Origin of Oblivion), with game.LoseAllAbilitiesMod and a grant in the
+// same record.
+
+// LosesAllLandTypes is the layer-4 static "<affected> loses all land
+// types" over every permanent `applies` matches.
+func LosesAllLandTypes(applies func(target *game.Card, g *game.Game, source *game.Card) bool) game.StaticAbility {
+	return game.StaticAbility{
+		Layer:     game.Layer4Type,
+		AppliesTo: applies,
+		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
+			c.LoseLandTypes()
+		},
+	}
+}
+
+// LosesAllAbilitiesAndHas is the layer-6 half, "loses all abilities and
+// has '<ability>'": LoseAllAbilities over `applies`, with the named
+// ability bundles (Spec.Grants) as the same effect's grant. It keeps
+// LoseAllAbilities' ContinuesAfterRemoval, because every printed use is
+// one sentence with a layer-4 change (CR 613.6).
+func LosesAllAbilitiesAndHas(applies func(target *game.Card, g *game.Game, source *game.Card) bool, keys ...string) game.StaticAbility {
+	s := LoseAllAbilities()
+	s.AppliesTo = applies
+	s.GrantAbilities = append([]string(nil), keys...)
+	return s
+}

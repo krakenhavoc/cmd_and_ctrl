@@ -2576,6 +2576,12 @@ export interface LandTypeEffect {
   // "In addition to its other types" (CR 205.1b). Absent is CR 305.7's
   // replacement: the old land types and rules-text abilities are gone.
   in_addition?: boolean;
+  // ADR 0109 §2: "loses all land types" (Ultima's blight); types is
+  // empty. With it, loses_abilities is the same effect's "and
+  // abilities" and gains the texts of the abilities it gives.
+  loses_all?: boolean;
+  loses_abilities?: boolean;
+  gains?: string[];
   // The duration in the card's words; absent for an effect with none.
   until?: string;
   // The card whose effect it is.

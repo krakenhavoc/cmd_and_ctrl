@@ -41,6 +41,26 @@ describe("the land-type badge", () => {
     expect(badge?.getAttribute("title")).toBe("Island until end of turn — Tidal Warrior");
   });
 
+  it("shows a land that lost all its land types", () => {
+    const { container } = mount(
+      forest({
+        type_line: "Basic Land",
+        land_type_effects: [
+          {
+            types: [],
+            loses_all: true,
+            loses_abilities: true,
+            gains: ["{T}: Add {C}."],
+            until: "for as long as it has a blight counter on it",
+            source: "Ultima, Origin of Oblivion",
+          },
+        ],
+      }),
+    );
+    const badge = container.querySelector(".badge.land-type");
+    expect(badge?.textContent?.trim()).toBe("NO LAND TYPES");
+  });
+
   it("is absent on a land nothing has changed", () => {
     const { container } = mount(forest());
     expect(container.querySelector(".badge.land-type")).toBeNull();
