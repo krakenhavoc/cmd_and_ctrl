@@ -391,6 +391,27 @@ type ManaAbilityShape struct {
 	// planner makes none.
 	ExileCards *ExileCost
 
+	// ExilePermanents is an "Exile a creature you control" component of
+	// the activation cost (#1600) — Food Chain's "Exile a creature you
+	// control: Add X mana of any one color, where X is 1 plus the exiled
+	// creature's mana value." The activator names the permanents in
+	// ManaAbilityParams.ExilePermanentIDs.
+	//
+	// The SAME game.ExilePermanentsCost AbilityCost.ExilePermanents
+	// carries (exile_permanent_cost.go), with the same walk, validator
+	// and payer. The exiled permanents are recorded on the PaidCost
+	// handed to ProducedForPaid, which is how "the exiled creature's
+	// mana value" is answered (read as it last existed on the
+	// battlefield, LastKnownPermanentForEffect).
+	//
+	// Not a sacrifice: nothing dies and no EventSacrifice fires. The
+	// leaves-the-battlefield triggers it queues are drained on the way
+	// out, with the mana already in the pool (CR 605.3a).
+	//
+	// The AUTO-TAPPER never plans an ability that has one: which
+	// permanent to exile is a decision, and the planner makes none.
+	ExilePermanents *ExilePermanentsCost
+
 	// ExileSelf exiles the SOURCE CARD out of the zone the ability
 	// was activated from, as part of the activation cost (#1228):
 	//

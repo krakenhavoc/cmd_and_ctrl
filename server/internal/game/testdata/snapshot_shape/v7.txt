@@ -881,6 +881,7 @@ lastKnownPermanents{}[].delved[].epoch	number:int
 lastKnownPermanents{}[].delved[].id	custom(uuid.UUID)
 lastKnownPermanents{}[].epoch	number:int
 lastKnownPermanents{}[].left	bool
+lastKnownPermanents{}[].manaValue	number:int
 lastKnownPermanents{}[].namedTribe	string
 lastKnownPermanents{}[].power	number:int
 lastKnownPermanents{}[].tapped	bool

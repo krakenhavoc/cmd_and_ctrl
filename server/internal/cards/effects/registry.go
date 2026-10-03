@@ -2,6 +2,7 @@ package effects
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -490,6 +491,7 @@ func Register(spec Spec) {
 		checkCounterCost(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.RemoveCounters, ab.Cost.AddCounter)
 		checkSacrificeClause(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.SacrificeOther, true, true, false)
 		checkReturnClause(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.ReturnToHand)
+		checkExilePermanentsClause(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.ExilePermanents)
 		checkTapOthersClause(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.TapOthers, true)
 		// #660: a discard clause that discards nothing would make
 		// the ability free, the way a zero-counter cost would — unless
@@ -609,6 +611,7 @@ func Register(spec Spec) {
 				spec.Name, i))
 		}
 		checkExileCardsClause(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.ExileCards)
+		checkExilePermanentsClause(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.ExilePermanents)
 		if ma.Cost.Mana != "" {
 			if _, err := game.ParseCost(ma.Cost.Mana); err != nil {
 				panic(fmt.Sprintf("effects.Register: %q mana ability %d declares an unparseable mana cost %q: %v",
@@ -1016,6 +1019,27 @@ func checkReturnClause(card, where string, rc *game.ReturnToHandCost) {
 		panic(fmt.Sprintf("effects.Register: %q %s lets one permanent pay a return twice (AllowSame)", card, where))
 	case rc.Filter.Players:
 		panic(fmt.Sprintf("effects.Register: %q %s admits players — a return clause matches permanents only", card, where))
+	}
+}
+
+// checkExilePermanentsClause is checkReturnClause for the
+// exile-a-permanent component (#1600), on both owners: a count below
+// one would make the ability free (game.ExilePermanentsCost.Empty treats
+// it as inert so the engine can ask without a guard, and a catalog
+// declaration cannot be allowed to turn that into a free ability), and
+// a card type that is not a permanent's would match nothing, leaving a
+// card that registers, looks complete and can never be activated.
+func checkExilePermanentsClause(card, where string, ec *game.ExilePermanentsCost) {
+	if ec == nil {
+		return
+	}
+	if ec.Count < 1 || ec.Label == "" {
+		panic(fmt.Sprintf("effects.Register: %q %s exiles %d permanents you control with label %q — an exile-a-permanent cost exiles at least one and prints its clause (ExileAPermanentYouControl)",
+			card, where, ec.Count, ec.Label))
+	}
+	if ec.CardType != "" && !slices.Contains(game.PermanentCardTypes, strings.ToLower(ec.CardType)) {
+		panic(fmt.Sprintf("effects.Register: %q %s exiles a %q you control — not a permanent card type (game.PermanentCardTypes)",
+			card, where, ec.CardType))
 	}
 }
 

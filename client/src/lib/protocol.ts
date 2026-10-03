@@ -2155,6 +2155,15 @@ export interface ActivatedAbilityView {
   // the cost cannot be paid (CR 118.3) and the server refuses.
   return_label?: string;
   return_options?: LegalTargetsView;
+  // #1600: an "Exile a creature you control" cost (The Soul Stone's
+  // harness, Altar of Bhaal, City of Shadows). `return_options` one
+  // destination over: the clause as printed and the permanents that
+  // could pay right now, in payment order, min / max the clause's count.
+  // The picks ride activate_ability as `exile_permanent_ids` — NOT
+  // `exile_ids`, which names cards in a hand or a graveyard. An absent
+  // or short list means the cost cannot be paid (CR 118.3).
+  exile_permanent_label?: string;
+  exile_permanent_options?: LegalTargetsView;
   // #1310: the CR 701.67 clause of a "Waterbend {N}:" cost (Aang,
   // Swift Savior; Katara, Water Tribe's Hope), in the same TapCostView
   // shape a hand card's convoke / waterbend ships as `tap_cost`, so
@@ -3212,6 +3221,11 @@ export interface ManaAbilityView {
   // ability no X announcement, so `count_from_x` is never set here.
   tap_others_label?: string;
   tap_others_options?: LegalTargetsView;
+  // #1600: "Exile a creature you control" on a mana ability (Food
+  // Chain). Same fields as ActivatedAbilityView's; the answer rides
+  // activate_mana_ability as `exile_permanent_ids`.
+  exile_permanent_label?: string;
+  exile_permanent_options?: LegalTargetsView;
   // #1213: a "Discard N cards" component on a MANA ability — Skirge
   // Familiar's "Discard a card: Add {B}". Exactly the three fields
   // ActivatedAbilityView carries under exactly the same names,

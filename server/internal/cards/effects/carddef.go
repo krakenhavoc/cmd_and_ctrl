@@ -82,6 +82,7 @@ func manaShapes(in []ManaAbility) []game.ManaAbilityShape {
 			AddCounter:                a.Cost.AddCounter,
 			DiscardCards:              a.Cost.DiscardCards,
 			ExileCards:                a.Cost.ExileCards,
+			ExilePermanents:           a.Cost.ExilePermanents,
 			Produced:                  a.Produced,
 			Label:                     a.Label,
 			Exhaust:                   a.Exhaust,

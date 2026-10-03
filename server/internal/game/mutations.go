@@ -6054,6 +6054,12 @@ type ManaAbilityParams struct {
 	// sends none.
 	ExileIDs []uuid.UUID
 
+	// ExilePermanentIDs names the permanents paying an ExilePermanents
+	// component (#1600) — Food Chain's "Exile a creature you control",
+	// with exactly the meaning ActivateAbilityParams.ExilePermanentIDs
+	// gives them. On the wire as `exile_permanent_ids`.
+	ExilePermanentIDs []uuid.UUID
+
 	// Colors names, up front, the colour each PICKING slot of the
 	// output adds (#1443): one entry per entry of
 	// ManaAbilityColorOptions, in output order — a painland's "{R|W}"
@@ -6294,6 +6300,14 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 	if err := g.validateManaExileSelfCostLocked(srcZone, ab); err != nil {
 		return err
 	}
+	// #1600: the exile-a-permanent component (Food Chain), validated by
+	// the SAME function the CR 602 path uses, against the sacrifices
+	// (the source among them when the cost sacrifices it) — one
+	// permanent pays one component (CR 118.3).
+	if err := g.validateExilePermanentsCostLocked(playerID, cardID, ab.ExilePermanents, params.ExilePermanentIDs,
+		movedSourceAlso(cardID, ab.ExileSelf, sacrifices)); err != nil {
+		return err
+	}
 	// CR 118.3, as on the activated path: a cost that prints both
 	// {T} and "tap another untapped creature you control" (Jaspera
 	// Sentinel) has already spent the source, so naming it here
@@ -6357,6 +6371,9 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 	if ab.ExileSelf {
 		moving = append(moving, cardID)
 	}
+	// #1600: a commander exiled to Food Chain is offered the command
+	// zone here, before anything is paid.
+	moving = append(moving, params.ExilePermanentIDs...)
 	// #1427: every permanent the cost TAPS — the source's {T} and
 	// the tap-another picks.
 	tapping := append([]uuid.UUID(nil), params.TapIDs...)
@@ -6524,6 +6541,23 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 		needStateChecks = true
 	}
 	paid.Sacrificed = len(sacrifices)
+	// #1600: the exile-a-permanent component, beside the sacrifices and
+	// for the same reason: it moves permanents, so it goes after the
+	// tap and the counters, and `card` may no longer point at the
+	// source afterwards (a removal shifts the battlefield slice).
+	// Recorded on the paid-cost record, which is how Food Chain's
+	// ProducedForPaid finds "the exiled creature". The leaves-triggers
+	// it queues wait for the state-check pass on the way out, so they
+	// reach the stack with the mana already in the pool (CR 605.3a).
+	if len(params.ExilePermanentIDs) > 0 {
+		exiledPermanents, err := g.payExilePermanentsCostLocked(playerID, cardID, params.ExilePermanentIDs, params.commanderAnswers)
+		if err != nil {
+			return err
+		}
+		paid.Exiled = append(paid.Exiled, exiledPermanents...)
+		card = nil
+		needStateChecks = true
+	}
 	// #1213: the discard component, LAST — it moves cards out of the
 	// hand, and it goes through the ONE discard helper with cause
 	// cost, so EventDiscardCard still fires per card, the CR 614

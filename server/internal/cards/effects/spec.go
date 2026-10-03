@@ -1851,6 +1851,24 @@ type ManaAbilityCost struct {
 	// exile is a decision, and the planner makes none.
 	ExileCards *game.ExileCost
 
+	// ExilePermanents is an "Exile a creature you control" component of
+	// the activation cost (#1600) — Food Chain's "Exile a creature you
+	// control: Add X mana of any one color, where X is 1 plus the
+	// exiled creature's mana value." Build it with the same constructor
+	// an activated ability's cost uses, reading the component off the
+	// returned AbilityCost:
+	//
+	//	ExileACreatureYouControl().ExilePermanents
+	//
+	// One game.ExilePermanentsCost with two owners. Not a sacrifice:
+	// nothing dies. The exiled permanents ride the paid-cost record to
+	// ProducedForPaid (paid.Exiled), and "the exiled creature's mana
+	// value" is LastKnownPermanentForEffect(id).ManaValue.
+	//
+	// The auto-tapper never plans a source that has one: which
+	// permanent to exile is a decision, and the planner makes none.
+	ExilePermanents *game.ExilePermanentsCost
+
 	// ExileSelf exiles the card that has the ability, out of the zone
 	// the ability functions from, as the activation cost (#1228):
 	//

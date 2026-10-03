@@ -2958,3 +2958,133 @@ Ancestry**, all `full`.
   paragraph and `client/src/lib/protocol.ts`'s `MoveCost` interface do not list
   the new advice-only field yet; the client reads no move cost, and the field is
   `omitempty`. Both list it since #2015.
+
+## Amendment (2026-10-03, [#1600](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1600)): "Exile a creature you control" as a cost
+
+**Sprint:** S44 — Mana and cost components. Tracker [#887](https://github.com/krakenhavoc/cmd_and_ctrl/issues/887).
+Decisions 49–51 are the 2026-10-02 amendment above; this one starts at 52.
+
+### Context
+
+```
+The Soul Stone     {6}{B}, {T}, Exile a creature you control: Harness The Soul Stone.
+Altar of Bhaal     {2}{B}, {T}, Exile a creature you control: Return target creature
+                   card from your graveyard to the battlefield. Activate only as a sorcery.
+City of Shadows    {T}, Exile a creature you control: Put a storage counter on this land.
+Food Chain         Exile a creature you control: Add X mana of any one color, where X is
+                   1 plus the exiled creature's mana value. Spend this mana only to cast
+                   creature spells.
+```
+
+The engine could exile the source (`ExileSelf`, Decisions 25 and 45) and cards
+in the activator's hand or graveyard (`ExileCost`, #1283 / #1297), but not
+another permanent the activator controls. The #1404 amendment named the gap
+under "Still out of scope". The Soul Stone was the last open item on #1600, and
+its harness and ∞ trigger were already buildable (harness shipped with The Mind
+Stone).
+
+### Decision 52: `ExilePermanentsCost` — the return clause one destination over, on both owners
+
+`game.ExilePermanentsCost{Count, CardType, ExcludeSource, Label}`
+(`exile_permanent_cost.go`) is carried by `AbilityCost.ExilePermanents` and
+`ManaAbilityShape.ExilePermanents` (`effects.ManaAbilityCost.ExilePermanents`),
+built with `effects.ExileACreatureYouControl()` or
+`effects.ExileAPermanentYouControl(label, cardType)` and composed with `Plus`.
+It is the picking problem `SacrificeOther` and `ReturnToHandCost` already
+solve: the activator's own permanents, matching the clause, exactly `Count`,
+each once. One candidate walk (`ExilePermanentsOptionsForEffect`) is read by the
+view, the enumerator and the validator (#544).
+
+**The clause is data, not a `TargetSpec`.** Every printed clause the component
+covers is "a <card type> you control", so `CardType` is one permanent card type
+(CR 110.4), read off the permanent's current types (`Card.HasCardType`): an
+animated land is a creature you may exile, and a creature an effect turned into
+a noncreature artifact is not. A `TargetSpec` would have put its predicate
+closures within `Game`'s reach, three new routes that ADR 0041's closure
+ratchet (`closure_fields_test.go`) refuses to admit without raising a ceiling
+it says must only fall. `effects.Register` refuses a count below one, a missing
+label and a card type that is not a permanent's
+(`checkExilePermanentsClause`). Curie, Emergent Intelligence's "another
+nontoken artifact creature" is the first clause a card type cannot say. When
+that card is built, it adds a field here.
+
+**Validation** (`validateExilePermanentsCostLocked`) runs with every other
+component, before anything is paid: ids for an ability without the component
+are refused, the count must be exact, each permanent may be named once, none
+may also be moved by another component of the same payment (the sacrifices,
+with the source among them for a sacrifice-this cost, the returns, and the
+source for an exile-this cost; CR 118.3), and each must be on the battlefield,
+yours (`ErrCardCallerMismatch`) and of the type (`ErrIllegalTarget`, the code
+the sacrifice and return clauses use). A tapped permanent is a legal pick, and
+a hexproof one too: paying a cost does not target (CR 601.2h).
+
+### Decision 53: an exile, not a sacrifice, paid through the one exit
+
+`payExilePermanentsCostLocked` routes each permanent to exile through
+`routeCardToZoneLocked` with cause cost and `MustSettleNow`. That is #1404's
+battlefield exit, so:
+
+- **Leaves-the-battlefield triggers fire, dies and sacrifice triggers do not.**
+  No `EventSacrifice` is emitted and the card goes to exile, so Zulaport
+  Cutthroat, Juri and Blood Artist do not see it, and Circuit Mender's "When
+  this creature leaves the battlefield" does.
+- **A commander is asked first.** The ids join the payment's `moving` list on
+  both paths, so `askCostCommanderLocked` (#1397) parks the announcement on
+  the owner's CR 903.9 question with nothing paid. The answer re-runs it, and
+  the move carries the answer. Either way the cost is paid; a commander sent to
+  the command zone still pays for Food Chain's mana.
+- **Ordering.** On a CR 602 ability the exile is paid with the returns, after
+  every component that needs the source where it was and before the stack item
+  is built, so its triggers resolve above the ability (CR 603.3b). On a mana
+  ability it is paid beside the sacrifices and its triggers wait for the
+  state-check pass on the way out, so they reach the stack with the mana
+  already in the pool (CR 605.3a, the Ashnod's Altar posture).
+- **The record.** The exiled permanents join `PaidCost.Exiled`, after any cards
+  an `ExileCards` component exiled, on both paths. A mana ability's
+  `ProducedForPaid` reads them there. `PermanentInfo.ManaValue` (the CR 608.2h
+  record `rememberDepartingPermanentLocked` writes at every battlefield exit,
+  additive in snapshot schema v7) is the permanent's mana value as it last
+  existed: a copy effect's cost while it was a copy, and zero face down
+  (CR 708.2a). That is how Food Chain reads "the exiled creature's mana value"
+  after the creature has left.
+
+### Decision 54: the planner never pays it, and the bot prices it
+
+The auto-tapper refuses a mana ability with the component in all three of its
+pickers (`autoTapAbilityAccepts`, `autoTapFreeOncePerTurn`,
+`autoManaExileAbilityFor`): which creature to give up is a decision, the bar
+the discard and exile-a-card components already fail.
+`ActivationAutoTapExclusions` adds the named permanents, for the sacrifice's
+#1242 reason. A sacrifice-for-mana creature named to the exile could otherwise
+be cracked for the ability's mana first. Excluding one that merely taps for
+mana is the weaker-than-printed direction (CR 601.2g before 601.2h would allow
+it), and the player can float that mana by hand.
+
+The enumerator offers one move per creature, out of the engine's walk and in
+the sacrifice payment order (cheapest to keep first), crossed with any return
+payment and never pairing a permanent with itself across components
+(`permanentCostPairs`). The heuristic charges an exiled permanent
+`permanentValue`, as it charges a sacrificed one. The view stamps
+`exile_permanent_label` / `exile_permanent_options` on both ability views. The
+client asks right after the return pick (CR 602 abilities) or first among the
+permanent picks (mana abilities), through `SacrificeCostModal` with the verb
+"Exile", and greys the row when the list is short.
+
+### Cards
+
+**The Soul Stone**, **Food Chain**, **City of Shadows** and **Altar of Bhaal //
+Bone Offering**, all `full`.
+
+### Still out of scope
+
+- **The casting-cost form.** Lunar Hatchling's "Escape—{4}{G}{U}, Exile a land
+  you control, Exile five other cards from your graveyard" has two card-shaped
+  payments, and an `AlternativeCost` carries at most one.
+- **A variable count.** Fabrication Foundry's "Exile one or more other
+  artifacts you control with total mana value X" is an announcement, like the
+  variable sacrifice (#1213).
+- **Craft** (CR 702.167): "Exile a creature you control or a creature card from
+  your graveyard" spans two zones in one clause.
+- **Curie, Emergent Intelligence**: "another nontoken artifact creature" needs
+  a nontoken field, and its effect ("becomes a copy of the exiled creature")
+  needs a seam of its own.

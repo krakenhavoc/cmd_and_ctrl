@@ -56,15 +56,9 @@ func init() {
 			},
 		},
 		Activated: []ActivatedAbility{{
-			Label: "{1}, {T}: Put a storage counter on this land.",
-			Cost:  Plus(ManaCost("{1}"), TapCost()),
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				return AddCounter{
-					Target: item.SourceCardID,
-					Kind:   game.CounterStorage,
-					N:      1,
-				}.Apply(NewContext(g, item))
-			},
+			Label:  "{1}, {T}: Put a storage counter on this land.",
+			Cost:   Plus(ManaCost("{1}"), TapCost()),
+			Effect: putStorageCounterOnThis,
 		}},
 	})
 }

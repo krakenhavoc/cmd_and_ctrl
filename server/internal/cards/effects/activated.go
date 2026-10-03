@@ -260,6 +260,13 @@ func Plus(costs ...game.AbilityCost) game.AbilityCost {
 		if c.ExileCards != nil {
 			out.ExileCards = c.ExileCards
 		}
+		// #1600: and the exile-a-permanent component. A composed
+		// "{6}{B}, {T}, Exile a creature you control" that dropped the
+		// exile would harness The Soul Stone for mana alone — stronger
+		// than printed, the #259 direction.
+		if c.ExilePermanents != nil {
+			out.ExilePermanents = c.ExilePermanents
+		}
 		// ADR 0109 §7 (#1902): and the two library components. A
 		// composed "{3}, Exile the top four cards of your library"
 		// that dropped its exile would be a Seasoned Tactician shield
@@ -362,6 +369,52 @@ func ReturnNToHand(n int, label string, preds ...CardPredicate) game.AbilityCost
 		Filter: TargetPermanent(label, preds...),
 		Label:  label,
 	}}
+}
+
+// ExileAPermanentYouControl is "Exile a <card type> you control" as a
+// COST (#1600):
+//
+//	ExileAPermanentYouControl("a land you control", "land")
+//
+// `cardType` is one permanent card type (game.PermanentCardTypes), read
+// off the permanent's current types; empty is "a permanent you
+// control". The clause is DATA rather than a predicate — see
+// game.ExilePermanentsCost for why — and Register refuses any other
+// value. The label is the clause as printed, without the verb; the
+// client shows it in the picker, and the activator names the permanent
+// at announce (CR 602.2b). It does not target, so a hexproof creature
+// you control pays it, and "you control" is the engine's rule rather
+// than something the card file has to say.
+//
+// The source is a legal pick when it has the card type. No catalog
+// card prints "another" on this clause yet; the first one sets the
+// component's ExcludeSource.
+//
+// A MANA ability takes the component off the returned cost —
+// Food Chain's
+//
+//	ManaAbilityCost{ExilePermanents: ExileACreatureYouControl().ExilePermanents}
+//
+// — exactly as SacrificeACreature reaches Ashnod's Altar.
+//
+// This is NOT a sacrifice (nothing dies, no "whenever you sacrifice"),
+// NOT ExileThis (which exiles the source), and NOT ExileFromGraveyard /
+// ExileFromHand (which exile cards out of a pile).
+func ExileAPermanentYouControl(label, cardType string) game.AbilityCost {
+	return game.AbilityCost{ExilePermanents: &game.ExilePermanentsCost{
+		Count:    1,
+		CardType: cardType,
+		Label:    label,
+	}}
+}
+
+// ExileACreatureYouControl is "Exile a creature you control" — The
+// Soul Stone's harness, Altar of Bhaal, City of Shadows, Food Chain.
+// The type is read off the permanent's current characteristics, so an
+// animated land is a creature you may exile and a creature turned into
+// a noncreature artifact is not.
+func ExileACreatureYouControl() game.AbilityCost {
+	return ExileAPermanentYouControl("a creature you control", "creature")
 }
 
 // ExileThis is the "Exile this <permanent/card>" cost component, and

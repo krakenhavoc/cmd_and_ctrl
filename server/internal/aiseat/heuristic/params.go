@@ -62,7 +62,11 @@ type activateParams struct {
 	// hand" cost spends (#1297) — the same resource escape's exiled
 	// graveyard is, priced the same way.
 	ExileIDs []string `json:"exile_ids"`
-	XValue   int      `json:"x_value"`
+	// ExilePermanentIDs are the permanents an "Exile a creature you
+	// control" cost spends (#1600) — gone from the board exactly as a
+	// sacrificed one is, and priced the same way.
+	ExilePermanentIDs []string `json:"exile_permanent_ids"`
+	XValue            int      `json:"x_value"`
 }
 
 type specialActionParams struct {

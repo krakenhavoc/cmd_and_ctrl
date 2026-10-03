@@ -415,6 +415,7 @@ Mana abilities can carry cost components beyond `{T}`:
 | Discard a card | `ManaAbilityCost{DiscardCards: DiscardACard().DiscardCards}` | Skirge Familiar |
 | Exile a card from your hand | `ManaAbilityCost{ExileCards: ExileACardFromHand()}` | Cadaverous Bloom (#1283) |
 | Exile this card from your hand | `ExileFromHandForMana("{R}")` (zone + cost together) | the Spirit Guides (#1228) |
+| Exile a creature you control | `ManaAbilityCost{ExilePermanents: ExileACreatureYouControl().ExilePermanents}` | Food Chain (#1600) |
 
 "Exile a card from your hand" is NOT a discard with a different
 destination: the card leaves through the one exit primitive, fires no
@@ -2664,6 +2665,23 @@ announce (`exile_ids`); they are exiled, not discarded, and the effect
 reads which ones through `ctx.Exiled()` (Holistic Wisdom). Not
 `ExileThis()`, which is the SOURCE. A variable count ("Exile X cards")
 has no shape yet.
+
+**"Exile a creature you control" (#1600):** `ExileACreatureYouControl()`,
+or `ExileAPermanentYouControl(label, preds...)` for another clause,
+composed with `Plus` — The Soul Stone's harness is
+`Plus(ManaCost("{6}{B}"), TapCost(), ExileACreatureYouControl())`, and a
+mana ability takes the component off it (Food Chain:
+`ManaAbilityCost{ExilePermanents: ExileACreatureYouControl().ExilePermanents}`).
+The activator names the permanent at announce (`exile_permanent_ids`);
+it is the battlefield sibling of the return-to-hand cost, not a
+sacrifice: leaves-the-battlefield triggers fire, dies and sacrifice
+triggers do not, and a commander is offered the command zone before
+anything is paid. The exiled permanents are on `ctx.Exiled()` (and on a
+mana ability's `paid.Exiled`); read "the exiled creature's mana value"
+with `g.LastKnownPermanentForEffect(id).ManaValue`, as it last existed
+on the battlefield. The auto-tapper never uses a mana ability with it.
+A variable count ("one or more other artifacts with total mana value
+X") and craft's two-zone clause have no shape yet.
 
 **Library costs and random discards (ADR 0109 §7, #1902):**
 `ExileTopOfLibrary(n)` is "Exile the top N cards of your library"
