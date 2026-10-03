@@ -390,6 +390,10 @@ func corpusMultiplyDamage(t *testing.T) *game.Game {
 	}
 	if n != 5 {
 		t.Fatalf("setup: %d multipliers, want 5", n)
+	}
+	return g
+}
+
 // corpusLandTypes is ADR 0109 §1's setBasicLandTypes kind in each
 // duration the catalog writes it with, made by the cards that write it.
 func corpusLandTypes(t *testing.T) *game.Game {
