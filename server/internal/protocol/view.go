@@ -1512,6 +1512,16 @@ type PlayerView struct {
 	// what every lifelinker and Soul Warden at the table does.
 	CantGainLife bool `json:"cant_gain_life,omitempty"`
 
+	// CantPlayLands is the clause that stops this player playing ANY
+	// land from their hand right now ("Players can't play lands —
+	// Territorial Dispute", "You can't play lands this turn — Turf
+	// Wound"), or empty (ADR 0109 §4, CR 101.2). Public, for
+	// CantGainLife's reasons: it changes what the whole table may
+	// expect of this seat. A ban that names particular lands (City in a
+	// Bottle) or a zone other than the hand says nothing here; the land's
+	// own `cant_cast` carries those.
+	CantPlayLands string `json:"cant_play_lands,omitempty"`
+
 	// CantLose lists the causes that can't make this player lose the
 	// game right now ("life", "empty_draw", "poison",
 	// "commander_damage", "effect") — all five under a Platinum Angel.
@@ -1714,6 +1724,14 @@ type CardView struct {
 	// regenerated this turn (ADR 0108 §2 decision 5, CR 701.19c):
 	// Incinerate's or Whippoorwill's mark. Public; battlefield only.
 	CantBeRegenerated bool `json:"cant_be_regenerated,omitempty"`
+	// LandTypeEffects are the resolved effects changing this
+	// permanent's land types, oldest first (ADR 0109 §1 decision 7):
+	// Tidal Warrior's "becomes an Island until end of turn", Navigator's
+	// Compass's "in addition to its other types". The type line shows
+	// the result; this says why and for how long. A static type change
+	// (Spreading Seas, Blood Moon) is not listed. Public; battlefield
+	// only; omitted when empty.
+	LandTypeEffects []LandTypeEffectView `json:"land_type_effects,omitempty"`
 	// FaceDown reflects Card.FaceDown — a card flipped face-down
 	// by morph / manifest / mutate-bottom (CR 708). Distinct from
 	// KnownByYou: a face-down creature is face-down to everyone
@@ -2354,6 +2372,22 @@ type CardView struct {
 // untap step RIGHT NOW: an UntapStepRestriction applies to it, or
 // (#1313) a live "for as long as" hold does. Next lists one-shot
 // next-untap-step markers only; a hold is not a "next step" statement.
+// LandTypeEffectView is one entry of CardView.LandTypeEffects: "Island
+// until end of turn — Tidal Warrior".
+type LandTypeEffectView struct {
+	// Types are the land types the effect gives ("Island").
+	Types []string `json:"types"`
+	// InAddition is "in addition to its other types" (CR 205.1b): the
+	// land keeps its own. False is CR 305.7's replacement: its old land
+	// types and its rules-text abilities are gone.
+	InAddition bool `json:"in_addition,omitempty"`
+	// Until is the duration in the card's words ("until end of turn",
+	// "until Bob's next turn"); absent for an effect with none.
+	Until string `json:"until,omitempty"`
+	// Source names the card whose effect it is.
+	Source string `json:"source,omitempty"`
+}
+
 type NoUntapView struct {
 	Static bool     `json:"static,omitempty"`
 	Next   []string `json:"next,omitempty"`
@@ -3712,6 +3746,7 @@ func ViewOfGame(g *game.Game) GameView {
 		stampCombatTargets(g, &view)
 		stampNoUntap(g, &view.Battlefield)
 		stampDeathMarks(g, &view.Battlefield)
+		stampLandTypeEffects(g, &view.Battlefield)
 		stampDefenderRefusals(g, &view.Battlefield)
 		view.legalBySeat, view.legalActionsBySeat = enumerateLegalMoves(g)
 		// S31 sub-PR 0: the public log resolves card names and knower
@@ -4835,6 +4870,17 @@ func castStampsFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, kind
 			out.CantCast = cantCastReason(err)
 		}
 	}
+	// ADR 0109 §4: a LAND asks the land-play gate instead (CR 305.1: a
+	// play is not a cast), the function castSpellLocked and the
+	// enumerator call, and the clause that refuses it rides the same
+	// `cant_cast` field, so the client's tooltip says "Players can't play
+	// lands — Territorial Dispute" with no new field. castableNow reads
+	// the same gate for a land in a graveyard, exile or a library top.
+	if haveLive && live.IsLand() {
+		if err := g.LandPlayGateLocked(caster, live, kind); err != nil {
+			out.CantCast = cantPlayLandReason(err)
+		}
+	}
 	// #916: the ceiling on the cast's `phyrexian_life`. Read off the
 	// EFFECTIVE cost — the commander tax is generic and cost
 	// modifiers add generic, so the two agree today, and reading the
@@ -5024,6 +5070,11 @@ func castableNow(g *game.Game, caster uuid.UUID, card game.Card, kind game.ZoneK
 	}
 	if card.IsLand() {
 		if grant != nil && grant.CastOnly {
+			return false
+		}
+		// ADR 0109 §4: "can't" beats "can" — the land-play gate, before
+		// the window and the drop.
+		if g.LandPlayGateLocked(caster, card, kind) != nil {
 			return false
 		}
 		return g.LandPlayOpenForEffect(caster)
@@ -6290,6 +6341,27 @@ func stampDeathMarks(g *game.Game, view *ZoneView) {
 	}
 }
 
+// stampLandTypeEffects is ADR 0109 §1's chip: the resolved effects
+// setting or adding a land type on each battlefield permanent.
+func stampLandTypeEffects(g *game.Game, view *ZoneView) {
+	if g == nil || g.Battlefield == nil || view == nil || len(g.ScopedEffects) == 0 {
+		return
+	}
+	for i := range view.Cards {
+		if i >= len(g.Battlefield.Cards) {
+			break
+		}
+		for _, e := range g.LandTypeEffectsForEffect(g.Battlefield.Cards[i].InstanceID) {
+			view.Cards[i].LandTypeEffects = append(view.Cards[i].LandTypeEffects, LandTypeEffectView{
+				Types:      append([]string(nil), e.Types...),
+				InAddition: e.InAddition,
+				Until:      e.Until,
+				Source:     e.Source,
+			})
+		}
+	}
+}
+
 func stampNoUntap(g *game.Game, view *ZoneView) {
 	if g == nil || g.Battlefield == nil || view == nil {
 		return
@@ -7031,6 +7103,7 @@ func viewOfPlayer(g *game.Game, p *game.Player) PlayerView {
 		Keywords:            g.PlayerAbilitiesForEffect(p),
 		LifeTotalLocked:     g.PlayerLifeTotalCantChangeLocked(p),
 		CantGainLife:        g.PlayerCantGainLifeLocked(p),
+		CantPlayLands:       g.LandPlayBanFor(p.ID),
 		CantLose:            lossCauseStrings(g.CantLoseCausesForEffect(p)),
 		CantWin:             g.CantWinForEffect(p),
 		EndGates:            viewOfGameEndGates(g.GameEndGatesForEffect(p)),
@@ -8462,6 +8535,18 @@ func cantCastReason(err error) string {
 		return cant.Reason
 	}
 	return "An effect prevents casting this spell."
+}
+
+// cantPlayLandReason is the clause behind a refused land play, for the
+// client's grey-out tooltip. The fallback should be unreachable —
+// LandPlayGateLocked only returns a *CantPlayLandError — but an empty
+// tooltip would look like a client bug.
+func cantPlayLandReason(err error) string {
+	var cant *game.CantPlayLandError
+	if errors.As(err, &cant) && cant.Reason != "" {
+		return cant.Reason
+	}
+	return "An effect prevents playing this land."
 }
 
 // grantedCast answers "may this viewer cast this card out of this

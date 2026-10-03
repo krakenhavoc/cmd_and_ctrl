@@ -51,7 +51,11 @@ var redactedCardKeys = map[string]bool{
 	// shield, and neither says which card it is.
 	"exiled_if_it_dies":   true,
 	"cant_be_regenerated": true,
-	"face_down":           true,
+	// ADR 0109 §1: a resolved effect's land-type change names the
+	// effect's source and its duration, facts about the object and not
+	// about which card it is (and a face-down permanent is no land).
+	"land_type_effects": true,
+	"face_down":         true,
 	// ADR 0069: WHY it is face down is public — everyone can see
 	// that a permanent is a morph and that an exiled card is
 	// foretold. The identity of the card under it is not.
@@ -238,6 +242,7 @@ func everyFieldCardView(owner string, knowers map[string]bool) CardView {
 		RegenerationShields: 2,
 		ExiledIfItDies:      []string{"Lava Coil"},
 		CantBeRegenerated:   true,
+		LandTypeEffects:     []LandTypeEffectView{{Types: []string{"Island"}, Until: "until end of turn", Source: "Tidal Warrior"}},
 		FaceDown:            true,
 		// An EXILE kind on purpose: a CR 708.2 permanent kind would
 		// put the public 2/2 body back after the redaction (decision

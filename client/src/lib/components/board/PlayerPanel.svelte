@@ -136,6 +136,13 @@
     // above the bottom row, and the bottom row keeps an empty cell the
     // dock's size (--dock-w × --dock-h) where the dock sits.
     docked?: boolean;
+    // ADR 0076 §2.3 (amended 2026-10-02): the tutorial's coach card sits
+    // in the screen's bottom-left corner, over this panel's. Set on the
+    // viewer's own panel while the card shows: the bottom row then keeps
+    // an empty cell the card's size (--coach-w × --coach-h) at its left,
+    // so the hand centres in what is left and nothing sits under the card.
+    // Unset — every game that is not the tutorial — the panel is unchanged.
+    coached?: boolean;
     // flipped — top-row opponents. The panel keeps its zones in the
     // same grid but reverses the row order (hand at the top edge,
     // creatures toward the table centre) instead of rotating 180°,
@@ -193,6 +200,7 @@
     onTargetPlayer,
     onTargetCard,
     docked = false,
+    coached = false,
     onActivateAbility,
     onManaAbilityCost,
     flipped = false,
@@ -675,6 +683,12 @@
     />
   </div>
   <div class="grid-bottom">
+    {#if coached}
+      <!-- ADR 0076 §2.3: the coach card's cell. Empty on purpose, like
+           .dock-spacer — the card is Game.svelte's, positioned over this
+           exact rectangle. -->
+      <div class="coach-spacer" aria-hidden="true"></div>
+    {/if}
     <!-- Hand sits inline with the dock cell; its clipped-bottom
          line coincides with the panel edge. flex: 1 lets it absorb
          the width the rail freed up. -->
@@ -845,6 +859,11 @@
     height: var(--dock-h, 0px);
     align-self: flex-end;
   }
+  .coach-spacer {
+    flex: 0 0 var(--coach-w, 0px);
+    height: var(--coach-h, 0px);
+    align-self: flex-end;
+  }
   /* ADR 0111 §8: on a phone the dock is a bar under the board, not in
      this corner, so the cell goes and the rail keeps its full height. */
   @media (max-width: 599px) {
@@ -854,7 +873,8 @@
         "middle    rail"
         "bottom    rail";
     }
-    .dock-spacer {
+    .dock-spacer,
+    .coach-spacer {
       display: none;
     }
   }

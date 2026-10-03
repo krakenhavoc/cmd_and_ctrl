@@ -221,9 +221,10 @@ func (e *CantCastError) Unwrap() error { return ErrCantCast }
 // restriction reads the announcement today.
 //
 // A land PLAY is not a cast (CR 305.1, CR 116.2a) and is not gated
-// here. CastSpell's land branch runs after this call and is untouched
-// by it, because every restriction the catalog can express is written
-// about casting.
+// here: CastSpell's land branch skips this call, because every
+// restriction written about casting is written about casting. "Players
+// can't play lands" has its own gate, LandPlayGateLocked
+// (land_play_gate.go, ADR 0109 §4), asked at the land branch instead.
 //
 // Caller must hold g.mu (read or write).
 func (g *Game) CastGateLocked(caster uuid.UUID, card Card, zone ZoneKind, params CastSpellParams) error {

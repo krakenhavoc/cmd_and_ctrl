@@ -295,6 +295,20 @@ func corpusBoards() []corpusBoard {
 		// ScopeStanding graveyard cast permission written beside it, with
 		// the Will itself already exiled by its own replacement.
 		{"yawgmoths_will", corpusYawgmothsWill},
+		// v7, added by ADR 0109 PR 5 (#1895) as a new file: a resolved
+		// Turf Wound — the cantPlayLands record (a game-scope rule kind
+		// naming the one banned player) beside a standing Territorial
+		// Dispute, whose land-play restriction is catalog data and so adds
+		// nothing to the file but the permanent.
+		{"cant_play_lands", corpusCantPlayLands},
+		// v7, added by ADR 0109 PR 1 (#1881) as a new file: CR 305.7
+		// from a resolved effect as data — setBasicLandTypes records
+		// until end of turn (Tidal Warrior), until the land's controller's
+		// next turn (Orcish Farmer), for as long as the source remains
+		// (Gaea's Liege) and indefinitely (Thelonite Monk), and an
+		// addSubtypes Forest in addition to the land's own types
+		// (Navigator's Compass).
+		{"land_types", corpusLandTypes},
 		// v7, added by ADR 0108 PR 6 (#1904) as a new file: the shields
 		// against a source that are not one-use as data — Samite
 		// Ministration's all-turn preventFromSource with a follow-up, a
@@ -304,6 +318,42 @@ func corpusBoards() []corpusBoard {
 		// (Mod.Half on preventNextFromSource).
 		{"source_shields", corpusSourceShields},
 	}
+}
+
+// corpusLandTypes is ADR 0109 §1's setBasicLandTypes kind in each
+// duration the catalog writes it with, made by the cards that write it.
+func corpusLandTypes(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	lands := make([]uuid.UUID, 4)
+	for i := range lands {
+		lands[i] = pushLandFor(g, opp.ID, "Plains", "Basic Land — Plains")
+	}
+	mine := pushLandFor(g, me.ID, "Swamp", "Basic Land — Swamp")
+	// Gaea's Liege is a */* counting your Forests: one keeps it alive.
+	pushLandFor(g, me.ID, "Forest", "Basic Land — Forest")
+	elf := pushBattlefieldCardWithTimestamp(g, game.Card{InstanceID: uuid.New(), Name: "Llanowar Elves",
+		TypeLine: "Creature — Elf Druid", Colors: []string{"G"}, Power: 1, Toughness: 1, Owner: me.ID, Controller: me.ID})
+	activate := func(name, typeLine, oracle string, params game.ActivateAbilityParams) {
+		t.Helper()
+		src := pushCatalogPermanent(g, me.ID, name, typeLine, oracle, false)
+		if err := g.ActivateCatalogAbility(me.ID, src, 0, params); err != nil {
+			t.Fatalf("setup: %s: %v", name, err)
+		}
+		passPriorityAroundTable(t, g)
+	}
+	activate("Tidal Warrior", "Creature — Merfolk Warrior", ltTidalWarriorOracle, game.ActivateAbilityParams{Targets: ltCardTarget(lands[0])})
+	activate("Orcish Farmer", "Creature — Orc", ltOrcishFarmerOracle, game.ActivateAbilityParams{Targets: ltCardTarget(lands[1])})
+	activate("Gaea's Liege", "Creature — Avatar", ltGaeasLiegeOracle, game.ActivateAbilityParams{Targets: ltCardTarget(lands[2])})
+	activate("Thelonite Monk", "Creature — Insect Monk Cleric", ltTheloniteMonkOracle,
+		game.ActivateAbilityParams{Targets: ltCardTarget(lands[3]), SacrificeIDs: []uuid.UUID{elf}})
+	activate("Navigator's Compass", "Artifact", ltNavigatorsCompassOracle, game.ActivateAbilityParams{Targets: ltCardTarget(mine)})
+	answerOptionPick(t, g, me.ID, 4) // Forest
+	if len(g.ScopedEffects) != 5 {
+		t.Fatalf("setup: %d scoped records, want 5", len(g.ScopedEffects))
+	}
+	return g
 }
 
 // corpusSourceShields is ADR 0108 §7's ModPreventFromSource in each of
@@ -541,6 +591,21 @@ func corpusRulesGates(t *testing.T) *game.Game {
 	})
 	if n := len(g.ScopedEffects); n != 5 {
 		t.Fatalf("setup: %d scoped records, want 5 (two grants, a replacement, a pinned pair, a rest-of-game)", n)
+	}
+	return g
+}
+
+// corpusCantPlayLands is ADR 0109 §4's one stored shape: Turf Wound
+// resolved on the opponent, so a cantPlayLands record names them.
+func corpusCantPlayLands(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	pushCatalogPermanent(g, me.ID, "Territorial Dispute", "Enchantment", lpTerritorialDisputeOracle, false)
+	castCatalogSpell(t, g, "Turf Wound", "Instant", lpTurfWoundOracle, pr6Player(opp.ID))
+	passPriorityAroundTable(t, g)
+	if n := len(g.ScopedEffects); n != 1 || g.ScopedEffects[0].Mods[0].Kind != game.ModCantPlayLands {
+		t.Fatalf("setup: scoped records = %+v, want one cantPlayLands", g.ScopedEffects)
 	}
 	return g
 }
