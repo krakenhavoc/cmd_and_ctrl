@@ -713,7 +713,12 @@ type cardSnapshot struct {
 	FaceDownKind         FaceDownKind       `json:"faceDownKind,omitempty"`
 	KnownBy              map[uuid.UUID]bool `json:"knownBy,omitempty"`
 	EnteredBattlefieldAt int64              `json:"enteredBattlefieldAt"`
-	ObjectEpoch          int                `json:"objectEpoch,omitempty"`
+	// EntryOrdinal is Card.EntryOrdinal (ADR 0109 §8): the order of
+	// battlefield entries the world rule reads. Absent from every
+	// earlier file, which restores it as 0; the world rule orders such
+	// permanents by enteredBattlefieldAt (entry_ordinal.go).
+	EntryOrdinal int64 `json:"entryOrdinal,omitempty"`
+	ObjectEpoch  int   `json:"objectEpoch,omitempty"`
 	// ControlledSinceUpkeep is Card.ControlledSinceUpkeep (ADR 0108
 	// §5): echo's "came under your control since your last upkeep".
 	// Absent from every earlier file, which restores as 0.
@@ -1843,6 +1848,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		FaceTurnedAt:             c.FaceTurnedAt,
 		KnownBy:                  copyBoolMap(c.KnownBy),
 		EnteredBattlefieldAt:     c.EnteredBattlefieldAt,
+		EntryOrdinal:             c.EntryOrdinal,
 		ObjectEpoch:              c.ObjectEpoch,
 		ControlledSinceUpkeep:    c.ControlledSinceUpkeep,
 		SummonedThisTurn:         c.SummonedThisTurn,
@@ -2445,6 +2451,10 @@ func (s *GameSnapshot) restoreGame() *Game {
 	}
 	g.ScopedEffects = deepCopyScopedEffects(s.ScopedEffects)
 	g.scopedEffectSeq = maxScopedEffectSeq(g.ScopedEffects)
+	// ADR 0109 §8: the entry-ordinal counter resumes past every
+	// restored permanent's ordinal, and an older file's permanents get
+	// theirs from their entry stamps.
+	g.restoreEntryOrdinalsLocked()
 	// ADR 0108 PR 0: the damage-instance counter resumes past every
 	// instance a restored record names.
 	g.damageInstanceSeq = maxNamedDamageInstance(g.ScopedEffects, g.preventionFollowUps)
@@ -2640,6 +2650,7 @@ func restoreCard(c *cardSnapshot) Card {
 		FaceTurnedAt:             c.FaceTurnedAt,
 		KnownBy:                  copyBoolMap(c.KnownBy),
 		EnteredBattlefieldAt:     c.EnteredBattlefieldAt,
+		EntryOrdinal:             c.EntryOrdinal,
 		ObjectEpoch:              c.ObjectEpoch,
 		ControlledSinceUpkeep:    c.ControlledSinceUpkeep,
 		SummonedThisTurn:         c.SummonedThisTurn,

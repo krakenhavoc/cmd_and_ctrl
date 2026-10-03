@@ -439,11 +439,44 @@ type TargetSpec struct {
 	// "exactly" are different clauses, never one card's.
 	ManaValueEqualsX bool
 
-	// xBound is the announced X once an announcement has bound
-	// ManaValueAtMostX or ManaValueEqualsX; xBoundSet says whether it
-	// has. Unexported and never set on a catalog spec — only on the
-	// value copies AnnouncedClauses hands out — so the shared
-	// declaration is never mutated.
+	// PowerAtMostX and ToughnessAtMostX are "with power X or less" and
+	// "with toughness X or less" (ADR 0109 §9, #1842): the same
+	// announced-X bound as ManaValueAtMostX, on another statistic.
+	// Killing Glare and Minamo Sightbender bound power by a mana {X},
+	// Aryel by the Knights her cost taps, Ruthless Technomancer by the
+	// artifacts his cost sacrifices, and Finale of Eternity toughness
+	// by its {X}. Power and toughness are read as CR 208.1 has them —
+	// layers and counters, the same numbers combat uses — at announce
+	// and again at the CR 608.2b re-check, so a creature pumped past
+	// the bound in response is an illegal target when the ability
+	// resolves.
+	//
+	// At most one of the four statistic flags is set on a clause;
+	// effects.Register refuses two, because no printed clause bounds
+	// two statistics by one X.
+	PowerAtMostX     bool
+	ToughnessAtMostX bool
+
+	// BoundByCountersRemoved switches the bound's INPUT from the
+	// announced X to the number of counters the activation's cost
+	// removed (PaidCost.CountersRemoved): Simic Manipulator's "power
+	// less than or equal to the number of +1/+1 counters removed this
+	// way" and Quillmane Baku's "mana value X or less", X being the ki
+	// counters removed. CR 602.2b orders the payment's announcement
+	// (CR 601.2b) before the targets (CR 601.2c), so the count is
+	// known when the first pick is judged, and the stack item carries
+	// it for the re-check (CR 400.7j: the effect finds what the cost
+	// moved). Meaningless without one of the statistic flags above, and
+	// legal only on an activated ability whose cost removes a VARIABLE
+	// number of counters — effects.Register refuses it anywhere else.
+	BoundByCountersRemoved bool
+
+	// xBound is the bound's value once an announcement has bound the
+	// clause — the announced X, or the counters removed when
+	// BoundByCountersRemoved says so; xBoundSet says whether it has.
+	// Unexported and never set on a catalog spec — only on the value
+	// copies AnnouncedClauses hands out — so the shared declaration is
+	// never mutated.
 	xBound    int
 	xBoundSet bool
 
@@ -558,6 +591,29 @@ func (s *TargetSpec) WithManaValueAtMostX() *TargetSpec {
 // WithCount does.
 func (s *TargetSpec) WithManaValueEqualsX() *TargetSpec {
 	s.ManaValueEqualsX = true
+	return s
+}
+
+// WithPowerAtMostX marks the clause "with power X or less" (ADR 0109
+// §9). Mutates and returns the receiver, as WithCount does.
+func (s *TargetSpec) WithPowerAtMostX() *TargetSpec {
+	s.PowerAtMostX = true
+	return s
+}
+
+// WithToughnessAtMostX marks the clause "with toughness X or less"
+// (ADR 0109 §9, Finale of Eternity). Mutates and returns the receiver.
+func (s *TargetSpec) WithToughnessAtMostX() *TargetSpec {
+	s.ToughnessAtMostX = true
+	return s
+}
+
+// BoundByTheCountersRemoved reads the clause's X bound off the
+// counters the activation's cost removed rather than an announced X
+// (ADR 0109 §9, Simic Manipulator). Chain it after the statistic's
+// own With…X call. Mutates and returns the receiver.
+func (s *TargetSpec) BoundByTheCountersRemoved() *TargetSpec {
+	s.BoundByCountersRemoved = true
 	return s
 }
 

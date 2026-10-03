@@ -2531,6 +2531,20 @@ reads which ones through `ctx.Exiled()` (Holistic Wisdom). Not
 `ExileThis()`, which is the SOURCE. A variable count ("Exile X cards")
 has no shape yet.
 
+**A target bounded by X (#1559, #1723, ADR 0109 §9):** the bound is
+a flag on the clause, never a predicate, because a predicate cannot see
+the announcement. `WithManaValueAtMostX()`, `WithManaValueEqualsX()`,
+`WithPowerAtMostX()` and `WithToughnessAtMostX()` read the X the
+announcement chose — a mana `{X}` (Killing Glare, Minamo Sightbender),
+or the count a variable sacrifice or tap names (Ruthless Technomancer,
+Aryel). Chain `.BoundByTheCountersRemoved()` after one of them when the
+X is "the number of counters removed this way" (Simic Manipulator,
+Quillmane Baku, with `RemoveCountersXFromThis`). The engine binds the
+bound before the targets are judged, re-checks it at resolution, ships
+each candidate's value so the client narrows the superset, and filters
+the bot's moves per payment. `effects.Register` refuses a bound with
+nothing to bind it to, and two statistics on one clause.
+
 **An `{X}` in the cost:** put it in the mana component, read it back
 with `ctx.X()`, and declare `XMatters: true` on the Spec (#810). The
 engine still derives "this ability prompts for X" from the cost
@@ -2566,9 +2580,12 @@ slot a cast writes, so `ctx.X()` is the same accessor an X spell's
 X Treasures" is a fact about the announcement rather than about how
 much mana is around at resolution.
 
-X lives in the MANA component and nowhere else. A cost with a
-variable COUNT — Ruthless Technomancer's "Sacrifice X artifacts" —
-is a different seam and is still open.
+X lives in the MANA component, or in a cost with a variable COUNT:
+Ruthless Technomancer's "Sacrifice X artifacts" is `SacrificeX` (ADR
+0100) and Aryel's "Tap X untapped Knights you control" is `TapXUntapped`
+(#1421). The count the activator names IS the announced X, read with
+`ctx.X()` like any other, and `effects.Register` refuses a cost that
+puts X in two places.
 
 **A Phyrexian symbol in the cost (#787):** `{W/P}` and CR 107.4's ten
 hybrid Phyrexian symbols (`{W/U/P}` … `{G/U/P}`) are ONE
@@ -5975,6 +5992,16 @@ the activator names at announce (`discard_ids`), like a sacrifice cost's.
 Both pay through the one discard helper with cause COST, so every
 discard payoff sees them and none of them can pause (CR 601.2h /
 602.2b).
+
+"The discarded card" of an activated ability (Land's Edge's "if the
+discarded card was a land card", Volrath's "the discarded card's mana
+value") is `ctx.DiscardedCard()` / `ctx.DiscardedManaValue()` (ADR 0109
+§8, #1862). The payer records every card a discard component moved,
+cycling's own card first, on `PaidCost.Discarded`, as the spell path
+does, and a CR 707.10 copy of the ability carries the record (with the
+cards it exiled, the count it sacrificed and what it returned
+attacking). A missing card reads as "no card": the conditional part
+does nothing and the X is zero.
 
 `effects.Register` panics at boot on a non-battlefield ability that
 declares a tap, sacrifice-this, crew or loyalty component: none of them

@@ -55,10 +55,12 @@ func Register(spec Spec) {
 				panic(fmt.Sprintf("effects.Register: %q mode %d has no label — the bullet is the whole of what the picker shows", spec.Name, i))
 			}
 			checkFlatClauses(spec.Name, o.Targets)
+			checkSpellXBound(spec.Name, o.Targets)
 			checkModeCost(spec.Name, "mode", i, o.Cost, true)
 		}
 	}
 	checkFlatClauses(spec.Name, spec.Targets)
+	checkSpellXBound(spec.Name, spec.Targets)
 	checkExhaustAbilities(spec)
 	checkPlayerKeywords(spec)
 	for _, a := range spec.Activated {
@@ -68,10 +70,15 @@ func Register(spec Spec) {
 		// the Multifarious's "{X}: ... with mana value X". Still
 		// refused when the cost has none: the flag would be a bound
 		// nothing on the wire ever sets.
-		checkNoXBound(spec.Name, "an activated ability's", a.Targets, a.Cost.DemandsX())
+		//
+		// ADR 0109 §9: a clause bounded by the counters removed needs a
+		// cost that removes a VARIABLE number of them — a fixed count
+		// is the printed number, and no printed card bounds by one.
+		counted := a.Cost.RemoveCounters != nil && a.Cost.RemoveCounters.Variable
+		checkNoXBound(spec.Name, "an activated ability's", a.Targets, a.Cost.DemandsX(), counted)
 		if a.Modes != nil {
 			for _, o := range a.Modes.Options {
-				checkNoXBound(spec.Name, "an activated mode's", o.Targets, a.Cost.DemandsX())
+				checkNoXBound(spec.Name, "an activated mode's", o.Targets, a.Cost.DemandsX(), counted)
 			}
 		}
 		if a.Modes != nil {
@@ -94,11 +101,11 @@ func Register(spec Spec) {
 		checkFlatClauses(spec.Name, t.Targets)
 		// A trigger announces no X, ever (#1559) — unlike an activated
 		// ability (#1723), there is no cost to check.
-		checkNoXBound(spec.Name, "a trigger's", t.Targets, false)
+		checkNoXBound(spec.Name, "a trigger's", t.Targets, false, false)
 		checkNoDivideX(spec.Name, "a trigger's", t.Targets)
 		if t.Modes != nil {
 			for _, o := range t.Modes.Options {
-				checkNoXBound(spec.Name, "a trigger mode's", o.Targets, false)
+				checkNoXBound(spec.Name, "a trigger mode's", o.Targets, false, false)
 				checkNoDivideX(spec.Name, "a trigger mode's", o.Targets)
 			}
 		}
@@ -1105,6 +1112,22 @@ func checkFlatClauses(name string, spec *game.TargetSpec) {
 		if c := spec.Clause(i); c.ManaValueAtMostX && c.ManaValueEqualsX {
 			panic(fmt.Sprintf("effects.Register: %q target clause %d sets both ManaValueAtMostX and ManaValueEqualsX", name, i))
 		}
+		// ADR 0109 §9: one statistic per bound — no printed clause
+		// bounds two by one X — and a counters-removed input bounds
+		// nothing without one.
+		c := spec.Clause(i)
+		stats := 0
+		for _, set := range []bool{c.ManaValueAtMostX || c.ManaValueEqualsX, c.PowerAtMostX, c.ToughnessAtMostX} {
+			if set {
+				stats++
+			}
+		}
+		if stats > 1 {
+			panic(fmt.Sprintf("effects.Register: %q target clause %d bounds more than one statistic by X", name, i))
+		}
+		if c.BoundByCountersRemoved && stats == 0 {
+			panic(fmt.Sprintf("effects.Register: %q target clause %d reads the counters removed but bounds no statistic — chain BoundByTheCountersRemoved after WithPowerAtMostX or its siblings", name, i))
+		}
 	}
 }
 
@@ -1149,25 +1172,47 @@ func checkNoDivideX(name, owner string, spec *game.TargetSpec) {
 	}
 }
 
-// checkNoXBound refuses an X-bound target clause (ManaValueAtMostX or
-// ManaValueEqualsX) on an owner that announces no X the engine can
-// bind it to (#1559, #1723). `xAvailable` is the caller's answer to
-// "does this owner announce an X": always true for a spell (no call
-// site checks one — a spell's Targets is never passed here at all),
+// checkNoXBound refuses an X-bound target clause (mana value, power or
+// toughness against X) on an owner that announces nothing the engine
+// can bind it to (#1559, #1723, ADR 0109 §9). `xAvailable` is the
+// caller's answer to "does this owner announce an X":
 // `a.Cost.DemandsX()` for an activated ability (CR 602.2b's X is that
-// ability's own cost, not the spell path's), and always false for a
-// trigger, which announces none.
-func checkNoXBound(name, owner string, spec *game.TargetSpec, xAvailable bool) {
-	if xAvailable {
-		return
-	}
+// ability's own cost) and always false for a trigger, which announces
+// none. `countersAvailable` is whether its cost removes a variable
+// number of counters, the input a BoundByCountersRemoved clause reads.
+// A spell's own clauses are checked by checkSpellXBound.
+func checkNoXBound(name, owner string, spec *game.TargetSpec, xAvailable, countersAvailable bool) {
 	for i := 0; i < spec.ClauseCount(); i++ {
 		c := spec.Clause(i)
+		if !c.ManaValueAtMostX && !c.ManaValueEqualsX && !c.PowerAtMostX && !c.ToughnessAtMostX {
+			continue
+		}
+		if c.BoundByCountersRemoved {
+			if !countersAvailable {
+				panic(fmt.Sprintf("effects.Register: %q bounds %s target clause %d by the counters removed — %s removes no variable number of counters", name, owner, i, owner))
+			}
+			continue
+		}
+		if xAvailable {
+			continue
+		}
 		switch {
 		case c.ManaValueAtMostX:
 			panic(fmt.Sprintf("effects.Register: %q declares \"mana value X or less\" on %s target clause %d — %s announces no X", name, owner, i, owner))
 		case c.ManaValueEqualsX:
 			panic(fmt.Sprintf("effects.Register: %q declares \"mana value X\" on %s target clause %d — %s announces no X", name, owner, i, owner))
+		default:
+			panic(fmt.Sprintf("effects.Register: %q bounds a statistic by X on %s target clause %d — %s announces no X", name, owner, i, owner))
+		}
+	}
+}
+
+// checkSpellXBound refuses a spell clause bounded by the counters
+// removed (ADR 0109 §9): a spell's cost removes none.
+func checkSpellXBound(name string, spec *game.TargetSpec) {
+	for i := 0; i < spec.ClauseCount(); i++ {
+		if spec.Clause(i).BoundByCountersRemoved {
+			panic(fmt.Sprintf("effects.Register: %q bounds spell target clause %d by the counters removed — a spell removes none", name, i))
 		}
 	}
 }
