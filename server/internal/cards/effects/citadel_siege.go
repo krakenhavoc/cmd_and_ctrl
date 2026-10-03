@@ -38,7 +38,7 @@ func init() {
 				TargetCreature("target creature you control", YouControl()))),
 			WhenChosen("Dragons", Targeting(
 				On(game.EventStepBegan, AllOf(StepBegan(game.StepBeginCombat, false), ByAnOpponent),
-					"Citadel Siege — tap target creature that player controls", citadelSiegeTap),
+					"Citadel Siege — tap target creature that player controls", tapTheFirstLegalTarget),
 				TargetCreature("target creature that player controls", controlledByTheActivePlayer()))),
 		},
 	})
@@ -56,15 +56,6 @@ func citadelSiegeCounters(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	for _, t := range ctx.LegalTargets() {
 		return AddCounter{Target: t.ID, Kind: "+1/+1", N: 2}.Apply(ctx)
-	}
-	return nil
-}
-
-// citadelSiegeTap is the Dragons body.
-func citadelSiegeTap(g *game.Game, item *game.StackItem) error {
-	ctx := NewContext(g, item)
-	for _, t := range ctx.LegalTargets() {
-		return TapTarget{Target: t.ID}.Apply(ctx)
 	}
 	return nil
 }

@@ -624,6 +624,10 @@ var items = []Item{
 		Missing: "Mana, a discard and a sacrifice work as the payment; cumulative upkeep that asks for life, mana added, a counter or another action isn't supported yet.",
 		Rules:   []string{"702.24"},
 		Issue:   567,
+		// ADR 0109 §7 (#1902): Thought Lash's activated "Exile the top
+		// card of your library" cost shipped; its cumulative upkeep is
+		// that exile as a pay-or-sacrifice payment.
+		Waiting: []string{"Thought Lash"},
 		Printed: printedLine("cumulative upkeep"),
 		Phrases: []string{"cumulative upkeep"},
 	},
@@ -1635,14 +1639,14 @@ var items = []Item{
 		EngineNotes: "**Shipped** (ADR 0107 §6, owner decisions 4 and 6, PR 7): `ModPreventNextFromSource` (`game/prevent_next_from_source.go`) is a scoped prevention kind, plain data, so a table holding one is a restore point. It pins the source (`Mod.Objects`, an `ObjectRef` plus `SourceZone`, CR 400.7: a chosen permanent spell covers the permanent it becomes, CR 609.7a, and a chosen permanent that left covers its damage as it last existed), the protected player (with `Types` for \"you and/or creatures you control\"), a pinned permanent or nothing, the CR 615.9 recheck (`Queries`, any of them, read off the source's last-known information as the damage would be dealt; a failed recheck neither prevents nor uses the shield up, CR 609.7b) and a follow-up body (`Then`). The shield prevents the next INSTANCE of damage from its source (CR 615.8): the engine opens one event per recipient, so it is marked spent with the damage instance it was used in (`SpentInstance`, ADR 0108 PR 0: one damage instruction or one combat damage step; it was the event batch until then, which made two instructions in one resolution one instance) and keeps applying to that instance's other events, then is dropped as play moves on. The follow-up is the instance's total (CR 615.5): every event the shield prevents adds to one owed entry per instance (`Game.preventionFollowUps`, carried by the snapshot), run once with the total, the source's controller and its colours as the instance ends, or at the latest at the next priority boundary, before the state-based actions, or as a new event batch begins; under damage that can't be prevented it runs once with zero and the shield is kept (CR 615.12). `choose_source` (`PendingChoiceChooseSource`, a card-set pick) offers everything CR 609.7a allows: permanents, spells, face-up command-zone cards, and the objects stack items, scoped replacement records and delayed triggers refer to, in public zones (`DamageSourceCandidatesLocked`). The heuristic answers with an opponent's spell on the stack, then the opponent's source with the most power; the move label names each source's controller for the model tiers; the client captions each candidate with whose it is and where. Helpers: `effects.PreventNextDamageFromChosenSource`, `PreventNextDamageFromThis`, `PreventNextDamageFromSource{From: …}` and `{Queries: …}` (no choice), `ShieldYou`/`ShieldTheTarget`/`ShieldYouAndYourCreatures`/`ShieldEnchantedCreature`/`ShieldAnything`, and the follow-up bodies (`prevention/gain-life-equal` and the rest). Desperate Gambit shipped with #1890 (ADR 0108 PR 2, which also added its combat-only form, the kind `preventNextCombatFromSource`, for Impulsive Maneuvers). Penance and Seasoned Tactician wait on #1902, Rhystic Circle on #1903, and Immortal Coil and Nine Lives on #1906 (a static's follow-up). The not-one-use and redirecting shields against a chosen source are #1904 and #1905. See Closed seams.",
 	},
 	{
-		Slug: "library-and-hand-to-library-costs", Name: "Activation costs from your library, or onto it", Kind: KindSeam, Status: StatusMissing,
-		Summary:     "Activated abilities whose cost puts a card from your hand on top of your library, or exiles cards from the top of your library, such as Penance and Seasoned Tactician.",
-		Missing:     "An ability's cost can't yet put a card from your hand on top of your library, or exile cards from your library.",
-		Rules:       []string{"602.2b", "118.3"},
+		Slug: "library-and-hand-to-library-costs", Name: "Activation costs from your library, onto it, or discarded at random", Kind: KindSeam, Status: StatusImplemented,
+		Summary:     "Activated abilities whose cost puts a card from your hand on top of your library, exiles cards from the top of your library, or discards cards at random, such as Penance, Seasoned Tactician and Pyromancy.",
+		Rules:       []string{"602.2b", "601.2h", "118.3", "701.9b", "400.7j"},
 		Issue:       1902,
 		Tracked:     "#1902 (S50 tracker #1784; found landing ADR 0107 PR 7, #1860)",
-		Waiting:     []string{"Penance", "Seasoned Tactician"},
-		EngineNotes: "cost component: `game.AbilityCost` discards, exiles from a hand or a graveyard (`ExileCards`), sacrifices, taps and removes counters, but has no component that moves a card from the activator's hand to the top of their library (Penance, Leashling, Hidden Retreat) or exiles the top N cards of their library (Seasoned Tactician, Arc-Slogger, Whirling Catapult). Both cards' shields shipped with ADR 0107 PR 7 (#1860); the cost is all that is left.",
+		ADR:         "0109-rule-gates-land-types-mana-and-cost-components.md",
+		Examples:    []string{"Penance", "Seasoned Tactician", "Pyromancy", "Phyrexian Devourer"},
+		EngineNotes: "**Shipped** (ADR 0109 §7 and owner decision 3, PR 8): three cost components, validated with the others and paid in `activateCatalogAbilityLocked` (`game/library_cost.go`). `AbilityCost.PutFromHandOnLibraryTop` names its card at announce in `top_ids` (`ActivateAbilityParams.TopIDs`): a card in the activator's hand, never the source and never one the same payment discards or exiles (CR 118.3); it goes to the top of their library through the exit primitive and the activator keeps knowing it; it is not a discard. `AbilityCost.ExileFromLibraryTop` chooses nothing: a library of fewer than N cards refuses the activation (`ErrCantPayLibraryCost`), and the top N are exiled last and recorded on `PaidCost.Exiled`, top first (CR 400.7j). `DiscardCost.Random` is \"discard N cards at random\" (CR 701.9b): the engine draws the cards from the hand the other components leave, once per announcement and carried on it (so a commander drawn is offered CR 903.9a before anything is paid and the re-made announcement discards the same card), discards them last (CR 601.2h) through the one discard door, and appends them to `PaidCost.Discarded` for ADR 0109 §8's readers; a short hand refuses (`ErrCantPayRandomDiscard`). The three moves are asked CR 903.9 like every cost move (#1397). `effects.Register` refuses a random discard with a predicate or on a mana ability, and both library components on one cost. The view stamps `top_cost_n` / `top_cost_label` / `top_cost_options` (the hand, private to the activator), `library_exile_cost_n` and `discard_cost_random`; the enumerator offers one payment (the put's card is `cheapestFuelFirst` over the hand) and gates the other two; the client asks the put with the discard picker and confirms the other two. **Still open:** Hidden Retreat waits on ADR 0108 PR 6's `preventFromSource` (#1904), Thought Lash's cumulative upkeep is paid from the library (`cumulative-upkeep`), and Barbarian Bully's \"unless a player has this creature deal 4 damage to them\" is an offer to every player (#1903).",
 	},
 	{
 		Slug: "unless-any-player-pays", Name: "\"Unless any player pays\"", Kind: KindSeam, Status: StatusMissing,
@@ -1651,8 +1655,8 @@ var items = []Item{
 		Rules:       []string{"101.4"},
 		Issue:       1903,
 		Tracked:     "#1903 (S50 tracker #1784; found landing ADR 0107 PR 7, #1860)",
-		Waiting:     []string{"Rhystic Circle"},
-		EngineNotes: "prompt: the pay-unless prompt (`PendingChoicePayUnless`, Rhystic Study) asks one named player. \"Unless any player pays\" needs the offer made to every player in APNAP order (CR 101.4) and the effect to happen only if nobody pays. 13 Commander-legal cards print it, none catalogued. Rhystic Circle's shield shipped with ADR 0107 PR 7 (#1860).",
+		Waiting:     []string{"Barbarian Bully", "Rhystic Circle"},
+		EngineNotes: "prompt: the pay-unless prompt (`PendingChoicePayUnless`, Rhystic Study) asks one named player. \"Unless any player pays\" needs the offer made to every player in APNAP order (CR 101.4) and the effect to happen only if nobody pays. 13 Commander-legal cards print it, none catalogued. Rhystic Circle's shield shipped with ADR 0107 PR 7 (#1860). Barbarian Bully's \"gets +2/+2 until end of turn unless a player has this creature deal 4 damage to them\" is the same offer with damage as the payment; its random-discard cost shipped with ADR 0109 PR 8 (#1902).",
 	},
 	{
 		Slug: "all-damage-from-a-chosen-source", Name: "Shields against a chosen source that are not one-use", Kind: KindSeam, Status: StatusMissing,
@@ -1661,7 +1665,7 @@ var items = []Item{
 		Rules:   []string{"615.1", "615.7", "609.7a"},
 		Issue:   1904,
 		Tracked: "#1904 (S50 tracker #1784; found landing ADR 0107 PR 7, #1860)",
-		Waiting: []string{"Auriok Replica", "Burrenton Forge-Tender", "Consulate Surveillance", "Dark Sphere", "Healing Grace",
+		Waiting: []string{"Auriok Replica", "Burrenton Forge-Tender", "Consulate Surveillance", "Dark Sphere", "Healing Grace", "Hidden Retreat",
 			"Mourner's Shield", "Pay No Heed", "Prahv, Spires of Order", "Protective Sphere", "Refraction Trap", "Rith's Charm",
 			"Samite Ministration", "Shieldmage Advocate"},
 		EngineNotes: "scoped prevention kind: `ModPreventNextFromSource` (ADR 0107 PR 7, #1860) has the source choice, the pin, the CR 615.9 recheck and the follow-up. It is spent by the first instance. \"Prevent all damage a source of your choice would deal this turn\" is the same shield never spent; Healing Grace and Refraction Trap are CR 615.7's charge on a source-keyed shield; Dark Sphere prevents half, rounded down. Samite Ministration's \"Whenever damage from a black or red source is prevented this way this turn\" is a triggered ability, and Protective Sphere reads the colours of the mana spent on its activation.",

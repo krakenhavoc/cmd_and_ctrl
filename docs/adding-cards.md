@@ -2531,6 +2531,20 @@ reads which ones through `ctx.Exiled()` (Holistic Wisdom). Not
 `ExileThis()`, which is the SOURCE. A variable count ("Exile X cards")
 has no shape yet.
 
+**Library costs and random discards (ADR 0109 §7, #1902):**
+`ExileTopOfLibrary(n)` is "Exile the top N cards of your library"
+(Seasoned Tactician, Arc-Slogger) — nothing to pick, a short library
+refuses the activation, and `ctx.Exiled()` reads the cards top first
+(Phyrexian Devourer's "the exiled card's mana value").
+`PutACardFromHandOnTop()` is "Put a card from your hand on top of your
+library" (Penance, Leashling) — the activator names the card at
+announce (`top_ids`); it is not a discard. `DiscardAtRandom(n, label)`
+is "Discard N cards at random" (Pyromancy, Meteor Storm) — the engine
+draws the cards, paid after every other cost (CR 601.2h), and
+`ctx.DiscardedCard()` reads them like any discard. Compose each with
+`Plus`. Register refuses a random discard with a predicate and both
+library components on one cost.
+
 **A target bounded by X (#1559, #1723, ADR 0109 §9):** the bound is
 a flag on the clause, never a predicate, because a predicate cannot see
 the announcement. `WithManaValueAtMostX()`, `WithManaValueEqualsX()`,

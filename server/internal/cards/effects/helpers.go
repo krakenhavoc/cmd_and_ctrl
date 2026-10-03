@@ -1342,3 +1342,26 @@ func protectionFromAChosenColorForTheTarget(name string) func(item *game.StackIt
 		return nil
 	}
 }
+
+// tapTheFirstLegalTarget is "Tap target <permanent>" as an ability's
+// whole effect: the first target still legal as it resolves (CR
+// 608.2b). Citadel Siege's Dragons mode and Storm Elemental share it.
+func tapTheFirstLegalTarget(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	for _, t := range ctx.LegalTargets() {
+		return TapTarget{Target: t.ID}.Apply(ctx)
+	}
+	return nil
+}
+
+// returnThisPermanentToOwnersHand is "Return this <permanent> to its
+// owner's hand" as an ability's whole effect. It reads the source as
+// the object the ability came from (CR 400.7): one that left and came
+// back in response is a new object and stays where it is. Quicksilver
+// Wall and Leashling share it.
+func returnThisPermanentToOwnersHand(g *game.Game, item *game.StackItem) error {
+	if !sourceIsStillThisPermanent(g, item) {
+		return nil
+	}
+	return BounceToHand{Target: item.SourceCardID}.Apply(NewContext(g, item))
+}
