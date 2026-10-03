@@ -932,9 +932,11 @@
   // ---- The tutorial's coach card (ADR 0076 §2.3, #1079) ----
   // Mounted on this tab's practice table only, beside the dock (it needs
   // the dock's live size on a phone, where it stacks on the dock bar).
-  // Its live size goes out as --coach-w / --coach-h, which the viewer's
-  // own panel turns into an empty cell at the left of its bottom row,
-  // so nothing of the board sits under the card. While it is hidden
+  // Its live size goes out as --coach-w / --coach-h. On a desktop the
+  // viewer's own panel turns the width into an empty cell at the left
+  // of its bottom row, so the hand never sits under the card; the cell
+  // takes no height, so the battlefield rows keep theirs (#1081
+  // follow-up). On a phone the height pads the play area. While it is hidden
   // (Skip tutorial, Finish) or on any other table its size is 0 and the
   // layout is exactly what it is without a tutorial.
   const coachMounted = $derived(dockShown && $practiceTable?.gameID === gameID);
@@ -1920,7 +1922,7 @@
           menu={menuOptions}
         />
         {#if coachMounted}
-          <TutorialCoach {view} {viewerID} onSize={onCoachSize} />
+          <TutorialCoach {view} {viewerID} onSize={onCoachSize} autopass={autopassEnabled} />
         {/if}
       {/if}
       {#if viewerNeedsToDecide && dockShown}

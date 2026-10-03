@@ -97,6 +97,17 @@ export interface StepContext {
   viewerID: string | null;
   /** The bus event that prompted this check, if one did. */
   event: TutorialEvent | null;
+  /** This tab's own client state, for the one step that teaches it. */
+  client?: ClientState;
+}
+
+/**
+ * Client-side state a step can read, because it never reaches the wire.
+ * Only the dock's autopass toggle (Game.svelte's session state), which
+ * step 9 teaches. Like the bus (§2.5), it is not a place for more.
+ */
+export interface ClientState {
+  autopass: boolean;
 }
 
 /** A step's anchor: fixed, or read off the board as it is now. */
@@ -190,6 +201,8 @@ export interface TutorialRun extends Readable<TutorialSnapshot> {
   close(): void;
   /** The game moved, or the bus spoke: check the current step. */
   observe(view: GameView | null, event?: TutorialEvent | null): void;
+  /** This tab's client state changed: check the step. */
+  observeClient(client: ClientState): void;
   /** The current step's anchor cannot be found: advance and log. */
   anchorMissing(stepID: string): void;
   /** The pointer rested on a hover step's anchor long enough. */
@@ -210,6 +223,7 @@ export interface RunOptions {
   /** Where "advanced itself" is logged. Defaults to console.warn. */
   log?: (msg: string) => void;
   hintAfterMs?: number;
+  client?: ClientState;
 }
 
 /** coachStateFor is the card's state for a step, before hint and recovery. */
@@ -270,6 +284,7 @@ export function createTutorialRun(steps: TutorialStep[], opts: RunOptions): Tuto
   let visible = true;
   let start: GameView | null = opts.view ?? null;
   let latest: GameView | null = opts.view ?? null;
+  let client: ClientState = opts.client ?? { autopass: false };
   let hintTimer: ReturnType<typeof setTimeout> | null = null;
   let stepTimer: ReturnType<typeof setTimeout> | null = null;
   let detour: Detour | null = null;
@@ -282,6 +297,7 @@ export function createTutorialRun(steps: TutorialStep[], opts: RunOptions): Tuto
     start,
     viewerID: opts.viewerID,
     event,
+    client,
   });
 
   function clearTimers(): void {
@@ -382,6 +398,11 @@ export function createTutorialRun(steps: TutorialStep[], opts: RunOptions): Tuto
       clearTimers();
       visible = false;
       publish();
+    },
+    observeClient(c) {
+      if (c.autopass === client.autopass) return;
+      client = c;
+      check(null);
     },
     observe(view, event = null) {
       latest = view;

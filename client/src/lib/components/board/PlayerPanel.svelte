@@ -859,10 +859,18 @@
     height: var(--dock-h, 0px);
     align-self: flex-end;
   }
+  /* ADR 0076 §2.3 (amended again, #1081 follow-up): the coach's cell
+     takes WIDTH from the bottom row only, never height. It stretches to
+     whatever height the hand and the dock's cell already give the row,
+     so the battlefield rows above keep every pixel they have without a
+     tutorial. The card is taller than the row, so it rises past the
+     row's top edge over the battlefield's left margin, which is empty:
+     both battlefield rows centre their cards. Giving the cell the card's
+     height instead cost the creature row 40px at 1280×800 and at
+     1920×1080, nearly a third of it at 1280. */
   .coach-spacer {
     flex: 0 0 var(--coach-w, 0px);
-    height: var(--coach-h, 0px);
-    align-self: flex-end;
+    align-self: stretch;
   }
   /* ADR 0111 §8: on a phone the dock is a bar under the board, not in
      this corner, so the cell goes and the rail keeps its full height. */
