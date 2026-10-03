@@ -355,7 +355,37 @@ func corpusBoards() []corpusBoard {
 		// carrying its grantor (Teferi's Talent's −12, stackMeta's
 		// grantedBy).
 		{"granted_loyalty_on_stack", corpusGrantedLoyaltyOnStack},
+		// v7, added by ADR 0109 PR 10 (#1552) as a new file: the two new
+		// spend-rider shapes waiting in a pool (Generator Servant's
+		// spell_gains {C}{C}, Opal Palace's counted {G}), Solar Array's
+		// "when you next cast an artifact spell" delayed trigger, and a
+		// Dragon that kept the haste-until-end-of-turn its spell was given
+		// (a record re-pinned to the permanent with its duration).
+		{"granted_mana_spent_readers", corpusGrantedManaSpentReaders},
 	}
+}
+
+// corpusGrantedManaSpentReaders is ADR 0109 §11's data, made by the cards
+// that write it.
+func corpusGrantedManaSpentReaders(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	advanceToMain(t, g)
+	orb := pushCatalogPermanent(g, me.ID, "Carnelian Orb of Dragonkind", "Artifact", gmrCarnelianOrbOracle, false)
+	activateManaFor(t, g, me.ID, orb, 0, game.ManaAbilityParams{})
+	dragon := castFromHandForTest(t, g, me, "Test Dragon", "Creature — Dragon", "{R}", "", game.CastSpellParams{Strict: true})
+	passPriorityAroundTable(t, g)
+	if !g.Battlefield.Contains(dragon) {
+		t.Fatal("setup: the Dragon did not resolve")
+	}
+	servant := pushCatalogPermanent(g, me.ID, "Generator Servant", "Creature — Elemental", gmrGeneratorServantOracle, false)
+	activateManaFor(t, g, me.ID, servant, 0, game.ManaAbilityParams{})
+	palace := pushCatalogPermanent(g, me.ID, "Opal Palace", "Land", gmrOpalPalaceOracle, false)
+	floatForTest(g, me, "C")
+	activateManaFor(t, g, me.ID, palace, 1, game.ManaAbilityParams{Colors: []string{"G"}})
+	array := pushCatalogPermanent(g, me.ID, "Solar Array", "Artifact", gmrSolarArrayOracle, false)
+	activateManaFor(t, g, me.ID, array, 0, game.ManaAbilityParams{Colors: []string{"W"}})
+	return g
 }
 
 // corpusNarset is ADR 0109 §5's stored shapes, made by the card: the −2
@@ -641,7 +671,7 @@ func corpusGrantedReboundOnStack(t *testing.T) *game.Game {
 		[]game.TargetRef{{Kind: game.TargetPlayer, ID: foe.ID}})
 	var ok bool
 	g.WithWriteLock(func() {
-		ok = g.GrantKeywordsToSpellForEffect(taigam, id, []string{game.KeywordRebound},
+		ok = g.GrantKeywordsToSpellForEffect(taigam, id, []string{game.KeywordRebound}, game.IndefiniteDuration(),
 			"Taigam, Ojutai Master — that spell gains rebound")
 	})
 	if !ok {

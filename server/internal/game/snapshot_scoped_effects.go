@@ -103,6 +103,10 @@ func (s *GameSnapshot) checkEffectKeys() error {
 	// a player static's, an untap hold's — is one this binary can read,
 	// or the file is refused (snapshot_durations.go).
 	unknown = append(unknown, s.unknownDurations()...)
+	// ADR 0109 §11: a mana spend rider's kind, and a counted rider's
+	// count key, are keys too — wherever a token is carried
+	// (snapshot_mana_riders.go).
+	unknown = append(unknown, s.unknownManaRiders()...)
 	for _, d := range s.DelayedTriggers {
 		if d.Body != "" && !KnownEffectBody(d.Body) {
 			unknown = append(unknown, "delayed-trigger body "+d.Body)

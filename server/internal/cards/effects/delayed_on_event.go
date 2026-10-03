@@ -163,7 +163,7 @@ func reboundTheSpellYouJustCast(g *game.Game, item *game.StackItem) error {
 	if item.Label != "" {
 		label = item.Label
 	}
-	g.GrantKeywordsToSpellForEffect(ctx.Source(), cast[0], []string{game.KeywordRebound}, label)
+	g.GrantKeywordsToSpellForEffect(ctx.Source(), cast[0], []string{game.KeywordRebound}, game.IndefiniteDuration(), label)
 	return nil
 }
 

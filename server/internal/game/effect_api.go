@@ -3545,6 +3545,15 @@ type AddManaOptions struct {
 	// prompt that cannot carry them, and minting it unrestricted would be
 	// stronger than printed, so that combination is ErrInvalidParam.
 	Restrictions []string
+
+	// Riders are the spend riders the minted mana carries (#1547) —
+	// Domri, Chaos Bringer's "+1: Add {R} or {G}. If that mana is spent
+	// on a creature spell, it gains riot" (ADR 0109 §11). A loyalty
+	// ability that adds mana is not a mana ability (CR 605.1a), so its
+	// rider rides an effect's mana rather than ManaAbilityShape's. A
+	// pick carries them on the queued PendingChoice, as a mana
+	// ability's pick does.
+	Riders []ManaSpendRider
 }
 
 // AddManaWithOptionsForEffect is AddManaForEffect with options.
@@ -3557,7 +3566,7 @@ func (g *Game) AddManaWithOptionsForEffect(playerID, source uuid.UUID, produced 
 	if p == nil || p.Eliminated {
 		return nil
 	}
-	return g.addManaSlotsLocked(p, source, produced, opts.NarrowToCommanderIdentity, opts.Restrictions, nil, addManaReason)
+	return g.addManaSlotsLocked(p, source, produced, opts.NarrowToCommanderIdentity, opts.Restrictions, opts.Riders, nil, addManaReason)
 }
 
 // addManaSlotsLocked is the one slot walk behind every "an effect adds
@@ -3586,6 +3595,7 @@ func (g *Game) addManaSlotsLocked(
 	produced string,
 	narrow bool,
 	restrictions []string,
+	riders []ManaSpendRider,
 	pending *[]ColorRequirement,
 	reason func(ProducedManaEntry) string,
 ) error {
@@ -3628,7 +3638,7 @@ func (g *Game) addManaSlotsLocked(
 			// own output (ADR 0074), and neither taps a permanent for
 			// mana, so neither is doubled by Mana Reflection. That is
 			// what the card says, not a simplification.
-			g.produceManaLocked(p, source, []string{colorOptions[0]}, restrictions, nil, srcKinds, false, pending)
+			g.produceManaLocked(p, source, []string{colorOptions[0]}, restrictions, riders, srcKinds, false, pending)
 			continue
 		}
 		if len(restrictions) > 0 {
@@ -3644,7 +3654,7 @@ func (g *Game) addManaSlotsLocked(
 			for k := 1; k < slot.AmountFor(color); k++ {
 				bookColorRequirement(color, pending)
 			}
-			g.produceManaLocked(p, source, repeatColor(color, slot.AmountFor(color)), nil, nil, srcKinds, false, pending)
+			g.produceManaLocked(p, source, repeatColor(color, slot.AmountFor(color)), nil, riders, srcKinds, false, pending)
 			continue
 		}
 		g.QueueChoiceForEffect(PendingChoice{
@@ -3657,6 +3667,7 @@ func (g *Game) addManaSlotsLocked(
 			ColorOptions:    colorOptions,
 			ManaAmounts:     copyManaAmounts(slot.Amounts),
 			ManaSourceKinds: srcKinds,
+			ManaRiders:      copyManaRiders(riders),
 		})
 	}
 	return nil

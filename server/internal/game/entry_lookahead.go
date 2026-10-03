@@ -48,6 +48,10 @@ var entryLookAheadNamespace = uuid.MustParse("1556e0a1-7a11-4c0a-8d0e-0000000015
 type entryLookAhead struct {
 	riot    int
 	unleash int
+	// sunburst (ADR 0109 §11, owner decision 1): a granted instance
+	// counts (Lux Artillery's grant to the spell, carried by CR 400.7a),
+	// and a permanent entering under Dress Down has none.
+	sunburst int
 }
 
 // entryLookAheadCache is one entry event's memo of its look-ahead,
@@ -93,6 +97,8 @@ func (g *Game) entryLookAheadLocked(ev *ReplacementEvent) entryLookAhead {
 				result.riot++
 			case KeywordUnleash:
 				result.unleash++
+			case KeywordSunburst:
+				result.sunburst++
 			}
 		}
 	}

@@ -850,19 +850,17 @@ var items = []Item{
 		Phrases:  []string{"win the game", "wins the game", "can't lose the game"},
 	},
 	{
-		Slug: "mana-spend-riders", Name: "Mana that does something when it's spent", Kind: KindSeam, Status: StatusPartial,
-		Summary:  "Cards that read the mana spent on a spell work: converge, sunburst, adamant, \"if it was paid with Treasure\", and mana that does something when it's spent — Cavern of Souls, Pyromancer's Goggles, Hall of the Bandit Lord.",
-		Missing:  "Other permanents can't yet grant a spell something based on the mana spent on it: Lux Artillery's granted sunburst and Coin of Mastery's extra counters. Satoru, the Infiltrator doesn't yet count a creature cast without spending mana.",
-		Issue:    1552,
-		Tracked:  "#761 (record shipped), #1212 (source snapshot + entry-side read shipped), #1547 (spend riders shipped); granted readers open in #1552; the total spent at entry (Mockingbird) shipped in #1735",
-		ADR:      "0040-mana-pipeline.md",
-		Unblocks: 0,
-		Waiting: []string{
-			"Lux Artillery", "Satoru, the Infiltrator", "Coin of Mastery", "Domri, Chaos Bringer",
-		},
+		// #1552 (ADR 0109 §11, PR 10): the granted readers. Closed;
+		// history in Closed seams.
+		Slug: "mana-spend-riders", Name: "Mana that does something when it's spent", Kind: KindSeam, Status: StatusImplemented,
+		Summary:          "Cards that read the mana spent on a spell work: converge, sunburst, adamant, \"if it was paid with Treasure\", mana that does something when it's spent, such as Cavern of Souls, Pyromancer's Goggles and Generator Servant, and permanents that read the mana spent on another spell, such as Coin of Mastery, Lux Artillery and Satoru, the Infiltrator.",
+		Rules:            []string{"400.7d", "702.44", "603.4", "614.1c"},
+		Issue:            1552,
+		Tracked:          "#761 (record), #1212 (source snapshot), #1547 (spend riders), #1735 (the total spent at entry), #1552 (granted readers, ADR 0109 §11)",
+		ADR:              "0109-rule-gates-land-types-mana-and-cost-components.md",
 		Phrases:          []string{"which mana you spent", "spend its mana", "mana spent"},
 		NoCatalogExample: "Every catalogued card that reads spent mana carries the strict-mana caveat, so none is listed as fully automated yet.",
-		EngineNotes:      "primitive: **the record shipped in #761** — `StackItem.Paid` carries the tokens that paid, and converge, sunburst, adamant and \"if no mana was spent\" all read it (see Closed seams). **The SOURCE snapshot shipped in #1212** — `ManaToken.SourceKinds`, carried onto the permanent by `Card.Provenance` (CR 400.7d) and read through `game.ManaSpent`. **SPEND RIDERS shipped in #1547** (ADR 0040 amendment 2026-09-24): `ManaToken.Riders []ManaSpendRider` — data (kind, a spend filter in the restriction vocabulary, a production id), copied from `ManaAbilityShape.SpendRiders` at mint (through `PendingChoice.ManaRiders` for a pick), fired by `applyManaSpendRidersLocked` where a payment becomes a stack object (cast and activation, manual and auto-tap alike) and stamped `Applied` on `StackItem.Paid.Mana`. Readers: `spellCantBeCounteredLocked` (Cavern of Souls, Delighted Halfling, Boseiju), `applyCastEntryCountersLocked` (Biophagus), a layer-6 gather over `Card.Provenance` (Hall of the Bandit Lord), and trigger riders queued at the spend from a key registry (Pyromancer's Goggles, Scaled Nurturer, Path of Ancestry). Still missing: a rider GRANTED by another permanent over someone else's cast — Lux Artillery's sunburst, Coin of Mastery's per-artifact-mana counters — and Satoru's \"no mana was spent to cast them\" read on an entering creature. Not catalogued and one small step away: Opal Palace (an entry rider whose count reads the command-zone tally and whose filter is \"your commander\") and Generator Servant (haste until end of turn, a duration the haste rider does not carry). **The TOTAL spent, read as the permanent enters, shipped in #1735** (see Closed seams): `game.CastCounts.ManaSpent` is the record's own `Total()`, and `Game.EntryCastCountsForEffect(ev)` hands the whole `CastCounts` to a hook that runs inside the CR 614 window and is given the event (Mockingbird's copy candidates). It is also the READ half of a granted entry rider: a replacement on another permanent can now see the entering spell's payment, though Lux Artillery's grant still needs the sunburst to ride the spell rather than the Artillery (#1552). Not catalogued and now one `EntersWithCountersFromCast` clause away: Verazol, the Split Current, Kurbis, Harvest Celebrant, Gyrus, Waker of Corpses, Marath, Will of the Wild and Dyadrine, Synthesis Amalgam (\"enters with a +1/+1 counter for each mana spent to cast it\"), each held for its other text. Domri, Chaos Bringer's +1 (\"If that mana is spent on a creature spell, it gains riot\") needs a spend rider that GRANTS a keyword to the spell (ADR 0109 §11, PR 10); riot itself, read off the spell as it enters through the entry look-ahead (CR 400.7a), shipped in ADR 0109 PR 9 (#1556).",
+		EngineNotes:      "**Shipped** (#761, #1212, #1547, #1735, and ADR 0109 §11 for the granted readers, #1552). `StackItem.Paid.Mana` is the tokens that paid, each with the source kinds snapshotted when it was made, read through `game.ManaSpent` on the item or, after entry, on `Card.Provenance` (CR 400.7d). Inside the CR 614 entry window a replacement on ANY permanent reads the entering spell's spend with `Game.EntrySpentForEffect(ev)` (Coin of Mastery, Kalain, Freestrider Commando). Sunburst is a keyword counted on the permanent as it would enter (`applySunburstLocked`, through the CR 614.12 entry look-ahead), so a granted instance counts (Lux Artillery, Solar Array) and an ability-removing effect leaves none. A keyword given to a spell keeps its duration on the permanent (`GrantKeywordsToSpellForEffect` takes a `Duration`). Spend riders gained `spell_gains` (a keyword grant to the spell at the spend, Generator Servant, Carnelian Orb, and Domri, Chaos Bringer's riot, whose +1 is a loyalty ability adding mana with `AddManaOptions.Riders`) and a counted enters-with-counters rider (`ManaSpendRider.Count`, Opal Palace), and restore refuses a rider kind or count key it cannot read. Satoru reads the whole event batch as a CR 603.4 intervening if. See Closed seams.",
 	},
 	{
 		Slug: "tap-another-permanent-cost", Name: "Tapping your other permanents as a cost", Kind: KindSeam, Status: StatusImplemented,
@@ -1369,6 +1367,19 @@ var items = []Item{
 		Examples: []string{"Staggershock", "Ephemerate", "Distortion Strike"},
 	},
 	{
+		// #1552 (ADR 0109 §11 decision 2): sunburst is a keyword read off
+		// the resolving stack card (game/entry_counters.go).
+		Slug: "sunburst", Name: "Sunburst", Kind: KindKeyword, Status: StatusPartial,
+		Summary:          "Sunburst gives a permanent a +1/+1 counter, or a charge counter if it isn't a creature, for each color of mana spent to cast it, whether it prints sunburst or its spell was given it by Lux Artillery or Solar Array.",
+		Missing:          "With strict mana off, the game doesn't track which mana you spent, so a sunburst permanent enters with no counters.",
+		Rules:            []string{"702.44"},
+		Issue:            761,
+		ADR:              "0109-rule-gates-land-types-mana-and-cost-components.md",
+		Keywords:         []string{game.KeywordSunburst},
+		Printed:          printedKeyword("sunburst"),
+		NoCatalogExample: "Every catalogued sunburst card carries the strict-mana caveat, so none is listed as fully automated.",
+	},
+	{
 		// #1854 (ADR 0107 §3 decision 5, PR 4): the stack step of the
 		// layer pass is layers 2 and 6, keywords only
 		// (game/spell_keywords.go). Closed; history in Closed seams.
@@ -1646,6 +1657,16 @@ var items = []Item{
 		Tracked:     "#1985 (S52 tracker #1909; found landing ADR 0109 PR 5, #1895)",
 		Waiting:     []string{"Worms of the Earth"},
 		EngineNotes: "Worms of the Earth's \"Lands can't enter the battlefield\" is a prohibition on a zone change, not a land play (CR 305.4: putting a land onto the battlefield is not playing it), so `LandPlayGateLocked` does not reach a fetched, reanimated or flickered land. It needs a gate on the CR 614 entry window. Its first line (\"Players can't play lands\") is the shipped land-play gate, and its upkeep clause is an any-player choice.",
+	},
+	{
+		Slug: "budgeted-free-casts", Name: "Free casts with a total mana value budget", Kind: KindSeam, Status: StatusMissing,
+		Summary:     "Effects that let you cast any number of spells for free as long as their total mana value stays under a limit, such as Primeval Spawn's.",
+		Missing:     "Free casts can't share one total mana value limit yet, so a card that offers them that way can't be added.",
+		Rules:       []string{"601.2", "608.2g", "202.3"},
+		Issue:       2017,
+		Tracked:     "#2017 (found landing ADR 0109 PR 10, #1552)",
+		Waiting:     []string{"Primeval Spawn"},
+		EngineNotes: "cast permission: `GrantCastPermissionOverCardForEffect` grants one independent free cast per card (Improvisation Capstone), and `game.CastPermission` has nothing that ties several grants to one running mana-value total, so a grant per exiled card would let Primeval Spawn's controller cast all ten. A likely shape is a permission group with a budget each cast through it spends, read by the cast gate and the enumerator (ADR 0033 §1), ending with the resolving ability's cast window (CR 608.2g). Primeval Spawn's first line ships with ADR 0109 PR 10: `Game.EntrySpentForEffect(ev).None()` inside the entry window.",
 	},
 	{
 		Slug: "ignore-an-effect-until-end-of-turn", Name: "Ignoring an effect by sacrificing a permanent", Kind: KindSeam, Status: StatusMissing,

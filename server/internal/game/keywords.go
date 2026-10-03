@@ -239,6 +239,16 @@ var canonicalKeywords = map[string]bool{
 	// catalog entry. Redundant (CR 702.88c): one instance or several
 	// is one exile and one delayed trigger.
 	KeywordRebound: true,
+	// sunburst (CR 702.44) joins with #1552 (ADR 0109 §11 decision 2),
+	// in the same change that teaches the engine to honour it as a
+	// keyword. Its consumer is applySunburstLocked (entry_counters.go),
+	// which counts the instances on the RESOLVING stack card — printed,
+	// deck-imported, or given to the spell on the stack (Lux Artillery,
+	// Solar Array) — and seeds the counters onto the entry event before
+	// the CR 614 window opens. CUMULATIVE (CR 702.44d: each instance
+	// works separately), so a printed sunburst under Lux Artillery
+	// counts the colours twice.
+	KeywordSunburst: true,
 	// split second (CR 702.61) joins with #1519, in the same change
 	// that teaches the engine to READ it. The rule itself was built in
 	// S13.1 — CastSpell, both activation paths, the enumerator and the
@@ -467,7 +477,7 @@ func CanonicalKeywords(s string) ([]string, bool) {
 // "trample", "vigilance", "menace", "defender", "haste", "flash",
 // "hexproof", "shroud", "indestructible", "changeling", fear,
 // intimidate, shadow, horsemanship, skulk, infect, wither, prowess, evolve,
-// "split second", rebound, and the landwalk tokens ("islandwalk", "nonbasic landwalk", …). Toxic is NOT
+// "split second", rebound, sunburst, and the landwalk tokens ("islandwalk", "nonbasic landwalk", …). Toxic is NOT
 // asked through here: its token carries an amount, so it is read with
 // ToxicTotal.
 //

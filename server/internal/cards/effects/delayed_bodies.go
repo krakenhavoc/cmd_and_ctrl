@@ -147,6 +147,10 @@ var (
 	// "Exile the creature" after it died (Whippoorwill): exile each
 	// listed card that is still in a graveyard (CR 603.7c).
 	exileListedFromGraveyardBody = game.SimpleDelayedBody("dies/exile-from-graveyard", exileListedCardsFromGraveyard)
+
+	// "That spell gains sunburst" for the spell an event-conditioned
+	// trigger fired on (Solar Array, ADR 0109 §11).
+	thatSpellGainsSunburstBody = game.SimpleDelayedBody("sunburst/that-spell-gains", thatSpellYouJustCastGainsSunburst)
 )
 
 // maxManaDrainRefund bounds the refund a restored Mana Drain may add. No

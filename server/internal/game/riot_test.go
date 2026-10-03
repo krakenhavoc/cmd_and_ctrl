@@ -273,7 +273,7 @@ func TestRiotGrantedToTheSpellIsAsked(t *testing.T) {
 		t.Fatalf("cast: %v", err)
 	}
 	g.WithWriteLock(func() {
-		if !g.GrantKeywordsToSpellForEffect(uuid.Nil, id, []string{KeywordRiot}, "test: it gains riot") {
+		if !g.GrantKeywordsToSpellForEffect(uuid.Nil, id, []string{KeywordRiot}, IndefiniteDuration(), "test: it gains riot") {
 			t.Fatal("the grant to the spell was refused")
 		}
 	})

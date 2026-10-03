@@ -8,39 +8,31 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 on it for each mana from an artifact source spent to cast it.
 //	 {T}: Create a Treasure token."
 //
-// The Treasure ability ships as an ordinary CR 602 activation. The
-// headline does not, and it is blocked twice over rather than once.
+// The headline is a CR 614.1c replacement on the Coin that applies to
+// another creature's entry (ADR 0109 §11, #1552). It reads the entering
+// spell's payment inside the entry window (game.EntrySpentForEffect),
+// and each mana knows whether its source was an artifact from the
+// moment it was made (#1212), so a Treasure the caster sacrificed to
+// pay still counts. A creature that was not cast entered with nothing
+// spent and gets no counter.
 //
-// WHAT IS MISSING. A CR 614.1c "enters with N counters" clause reads
-// the announcement through game.CastCounts, and that struct is short
-// on purpose: the announced X, the number of times the spell was
-// kicked, and the number of distinct colours of mana spent. It
-// carries no record of what PRODUCED each mana. game.ManaToken keeps
-// the source permanent's instance ID, and game.PaidCost keeps the
-// tokens that paid, but the source's TYPES are not snapshotted, so a
-// Treasure or a Lotus Petal that was sacrificed to pay is a source ID
-// that no longer resolves to anything — and a Treasure is the most
-// common artifact mana at the table. That is the open "mana-spent-to-
-// cast record" seam (#761 shipped the record; the source-type
-// snapshot for Kalain-style riders is the part still open).
+// The Treasure ability is an ordinary CR 602 activation, and its
+// Treasure is the artifact source the first half wants.
 //
-// The second blocker is the shape, not the data. This clause is a
-// rider Coin of Mastery hangs on OTHER creature spells its controller
-// casts — the counters have to be added to somebody else's entry,
-// from a permanent that is not that spell's source. The catalog can
-// only declare the clause on the card that prints it
-// (Spec.EntersWithCountersFromCast). That is the same granted-rider
-// gap Lux Artillery waits on.
-//
-// Weaker than printed, never stronger: the ability that IS here
-// creates one Treasure and nothing else happens.
+// One declared simplification, the paid-cost record's: with strict
+// mana off the engine never saw what paid, so no counters (ADR 0068
+// §3).
 func init() {
 	Register(Spec{
 		OracleID:     "d78518ee-df79-48d1-b9d5-4f968b441899",
 		Name:         "Coin of Mastery",
 		Completeness: CompletenessCaveats,
 		Caveats: []string{
-			"Your creatures do not get the extra +1/+1 counters for mana spent from artifacts — only the Treasure ability works.",
+			"With strict mana off, the game doesn't track which mana you spent, so your creatures get no extra +1/+1 counters.",
+		},
+		Replacements: []game.ReplacementEffect{
+			CreaturesYouControlEnterWithCountersPerManaFrom(
+				"Coin of Mastery: a +1/+1 counter for each mana from an artifact source", game.ManaSourceArtifact, false),
 		},
 		Activated: []ActivatedAbility{{
 			Label: "{T}: Create a Treasure token.",

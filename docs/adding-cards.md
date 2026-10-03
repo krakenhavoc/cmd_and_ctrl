@@ -508,10 +508,27 @@ charge counters for a deliberate click.
 **Reading the mana that paid (#761).** A spell that counts the mana
 spent on it reads `effects.Context`, beside `PaidAltCost`:
 `ctx.ColorsSpentCount()` (converge, CR 702.86),
-`SunburstCounters(kind)` in `OnResolve` (sunburst, CR 702.44),
 `AdamantSpent(ctx, "R", 3)` (adamant), and `ctx.NoManaSpent()` — or
 `NoManaWasSpentToCast(g, spellID)` from a cast trigger — for "if no
-mana was spent to cast it".
+mana was spent to cast it". Sunburst (CR 702.44) is a KEYWORD since
+ADR 0109 §11 (#1552): declare `PrintedKeywords:
+[]string{game.KeywordSunburst}` and the engine counts it on the
+resolving spell. A spell can be given it (`ThatSpellGains{Keywords:
+[]string{game.KeywordSunburst}}`, Lux Artillery), and each instance
+counts (CR 702.44d).
+
+**Reading ANOTHER spell's payment as it enters (ADR 0109 §11).** A
+replacement on any permanent reads the entering spell's spend with
+`g.EntrySpentForEffect(ev)` — a `game.ManaSpent`, so
+`.CountFrom(game.ManaSourceArtifact)` is Coin of Mastery and `.None()`
+is "if it wasn't cast or no mana was spent to cast it" (an entry that
+was not a cast reads as a known nothing). The shapes are
+`CreaturesYouControlEnterWithCountersPerManaFrom` and
+`SelfEntersWithCountersIfNoManaSpent` in `effects/mana_spent_entry.go`.
+A spend rider that gives the SPELL a keyword is
+`SpentSpellGains(keywords, untilEndOfTurn, when...)` (Generator Servant),
+and one whose counter count is read as the creature enters is
+`SpentEntersWithCountersCounted` (Opal Palace).
 
 A converge or sunburst card must ALSO set `Spec.WantsDistinctColors`,
 which makes the cast gate pay the generic half of the cost with colours
@@ -1059,9 +1076,9 @@ line after escape's `applyAltCostEntryCountersLocked`, so a card file
 declares arithmetic over `game.CastCounts` — `X`, `Kicked`,
 `ColorsSpent`, `ManaSpent` (CR 601.2h's "the amount of mana spent to cast
 it", #1735), `Delved` — and nothing else. Constructors:
-`XCounters(kind)`, `CountersPerKick(kind, per)`,
-`SunburstCounters(kind)` in
+`XCounters(kind)`, `CountersPerKick(kind, per)`, `CountersPerDelved(kind, match)` in
 [cards/effects/entry_counters.go](../server/internal/cards/effects/entry_counters.go).
+Sunburst is not one of them any more: it is a keyword (ADR 0109 §11).
 Never build a `game.EntryCountersFromCast` by hand, for the reason
 `mana_spent.go` gives: a card says what the card says and never
 reaches for the payment record itself.

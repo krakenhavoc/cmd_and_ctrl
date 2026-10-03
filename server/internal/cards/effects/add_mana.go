@@ -44,6 +44,12 @@ type AddMana struct {
 	// Restrictions is "spend this mana only to …" (game.ManaRestrict*),
 	// for fixed-colour output. Smoky Lounge.
 	Restrictions []string
+
+	// Riders are the spend riders the mana carries (ADR 0109 §11):
+	// Domri, Chaos Bringer's "If that mana is spent on a creature spell,
+	// it gains riot". Build them with the mana_spend_rider.go
+	// constructors.
+	Riders []game.ManaSpendRider
 }
 
 func (a AddMana) Apply(ctx *Context) error {
@@ -55,5 +61,5 @@ func (a AddMana) Apply(ctx *Context) error {
 		player = ctx.Controller()
 	}
 	return ctx.Game.AddManaWithOptionsForEffect(player, ctx.Source(), a.Produced,
-		game.AddManaOptions{NarrowToCommanderIdentity: a.NarrowToCommanderIdentity, Restrictions: a.Restrictions})
+		game.AddManaOptions{NarrowToCommanderIdentity: a.NarrowToCommanderIdentity, Restrictions: a.Restrictions, Riders: a.Riders})
 }

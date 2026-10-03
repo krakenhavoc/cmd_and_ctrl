@@ -23,6 +23,11 @@ import (
 //	"that creature enters with an additional
 //	 +1/+1 counter on it"                           SpentEntersWithCounters
 //	"when that mana is spent to cast …, <effect>"   WhenManaSpent
+//	"if that mana is spent on a creature spell,
+//	 it gains haste until end of turn"              SpentSpellGains
+//	"if you spend this mana to cast your commander,
+//	 it enters with a number of additional +1/+1
+//	 counters on it equal to …"                     SpentEntersWithCountersCounted
 //
 // A rider's filter decides whether it FIRES, never whether the mana
 // may pay — that is the ability's Restrictions, which some rider cards
@@ -82,6 +87,43 @@ func WhenManaSpent(key string, t game.ManaSpendTrigger, when ...string) game.Man
 	return game.ManaSpendRider{Kind: game.ManaRiderTrigger, Trigger: key, When: when}
 }
 
+// SpentSpellGains is "if that mana is spent on a <spell>, it gains
+// <keywords> [until end of turn]" — Generator Servant's and Carnelian
+// Orb of Dragonkind's haste until end of turn, Domri, Chaos Bringer's
+// riot (ADR 0109 §11 decision 3). Unlike SpentCreatureGainsHaste, the
+// grant is an effect on the SPELL, made at the spend: the stack keyword
+// pass applies it, and the permanent the spell becomes keeps it for the
+// stated duration (CR 400.7a). `when` is the spend filter; pass
+// game.ManaRestrictCast at least, because only a spell can gain one.
+func SpentSpellGains(keywords []string, untilEndOfTurn bool, when ...string) game.ManaSpendRider {
+	return game.ManaSpendRider{
+		Kind:           game.ManaRiderSpellGains,
+		Keywords:       append([]string(nil), keywords...),
+		UntilEndOfTurn: untilEndOfTurn,
+		When:           when,
+	}
+}
+
+// SpentEntersWithCountersCounted is SpentEntersWithCounters whose number
+// is counted as the creature enters rather than printed — Opal Palace's
+// "it enters with a number of additional +1/+1 counters on it equal to
+// the number of times it's been cast from the command zone this game"
+// (ADR 0109 §11 decision 5).
+//
+// `key` names the count in the engine's registry and must be unique in
+// the catalog — the card's name is the convention. The token carries the
+// key, not the closure. This constructor registers `c` under it, so it
+// must run exactly once, from the card's init.
+func SpentEntersWithCountersCounted(kind, key string, c game.ManaRiderCount, when ...string) game.ManaSpendRider {
+	game.RegisterManaRiderCount(key, c)
+	return game.ManaSpendRider{
+		Kind:        game.ManaRiderEntersWithCounters,
+		CounterKind: kind,
+		Count:       key,
+		When:        when,
+	}
+}
+
 // validateManaSpendRider is Register's check on one declared rider: a
 // rider that names a kind the engine does not read, a counter rider with
 // no counters, or a trigger nobody registered would all ship a card that
@@ -90,8 +132,23 @@ func validateManaSpendRider(r game.ManaSpendRider) error {
 	switch r.Kind {
 	case game.ManaRiderCantBeCountered, game.ManaRiderHaste:
 	case game.ManaRiderEntersWithCounters:
+		if r.Count != "" {
+			if _, ok := game.ManaRiderCountFor(r.Count); !ok || r.CounterKind == "" || r.Counters != 0 {
+				return fmt.Errorf("a counted enters-with-counters spend rider names count %q, which is not registered, or carries a printed count too — build it with SpentEntersWithCountersCounted", r.Count)
+			}
+			break
+		}
 		if r.CounterKind == "" || r.Counters <= 0 {
 			return fmt.Errorf("an enters-with-counters spend rider needs a counter kind and a positive count")
+		}
+	case game.ManaRiderSpellGains:
+		if len(r.Keywords) == 0 {
+			return fmt.Errorf("a spell-gains spend rider names no keyword")
+		}
+		for _, kw := range r.Keywords {
+			if _, ok := game.CanonicalKeyword(kw); !ok {
+				return fmt.Errorf("a spell-gains spend rider names %q, which is not a keyword the engine enforces", kw)
+			}
 		}
 	case game.ManaRiderTrigger:
 		if _, ok := game.ManaSpendTriggerFor(r.Trigger); !ok {
