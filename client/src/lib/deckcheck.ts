@@ -1,5 +1,5 @@
 // deckcheck.ts — the public deck coverage checker: types, fetch, and
-// the pure grouping/formatting the #/deck-check page renders.
+// the pure grouping/formatting the #/decks page renders.
 //
 // Mirrors server/internal/deckcoverage's wire shapes for POST
 // /deck-coverage and POST /deck-requests (ADR 0095 §5, docs/lobby.md).
@@ -70,6 +70,13 @@ export interface CoverageReport {
 }
 
 export type DeckCheckRequest = { url: string } | { text: string };
+
+/**
+ * What POST /deck-requests takes: the checked link or list, or one of
+ * the caller's own saved decks by id (ADR 0112 §3 item 5), so every
+ * library deck can ask for its missing cards, a pasted one included.
+ */
+export type DeckRequestInput = DeckCheckRequest | { deck_id: string };
 
 /**
  * DeckCheckError is thrown by both checkDeck and requestDeck for any
@@ -179,8 +186,10 @@ export interface DeckRequestResponse {
 /**
  * requestDeck files or joins a deck request (POST /deck-requests) for
  * a link or a pasted list — the same `{url}` or `{text}` the check was
- * made with. A pasted list is deduplicated server-side by a hash of its
- * resolved cards (ADR 0095, amendment 2026-09-25). Needs a session with a Discord identity —
+ * made with — or for a saved deck, `{deck_id}` (ADR 0112 §3 item 5). A
+ * pasted list is deduplicated server-side by a hash of its resolved
+ * cards (ADR 0095, amendment 2026-09-25), and a saved deck keys as its
+ * link when it has one. Needs a session with a Discord identity —
  * the caller should gate the button on canRequestCards + a signed-in
  * Discord session and let the server's 403 be the final word.
  *
@@ -191,7 +200,7 @@ export interface DeckRequestResponse {
  * IP limiter's bare shape and throws, same as checkDeck.
  */
 export async function requestDeck(
-  req: DeckCheckRequest,
+  req: DeckRequestInput,
   signal?: AbortSignal,
 ): Promise<DeckRequestResponse> {
   const s = currentSession();

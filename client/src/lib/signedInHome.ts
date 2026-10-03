@@ -1,4 +1,5 @@
 import type { GameMeta } from "./api";
+import { isDecksReturn } from "./decksPage";
 import { canJoinByCode } from "./myGames";
 import type { Route } from "./router";
 import type { Session } from "./session";
@@ -26,9 +27,11 @@ const PUBLIC_ROUTES: ReadonlySet<Route["name"]> = new Set<Route["name"]>([
   // art or anything else session-gated.
   "home",
   "roadmap",
-  // The deck coverage checker (ADR 0095 §5): public for the same reason
-  // the roadmap is, and the Discord bot links straight here.
-  "deckCheck",
+  // The one decks page (ADR 0112 §3 item 1), and its #/deck-check
+  // alias: a signed-out visitor can check a deck, for the same reason
+  // the roadmap is public, and the Discord bot links straight here.
+  // The library on it shows only to a signed-in person.
+  "decks",
 ]);
 
 // isPublicRoute reports whether a signed-out visitor may open r.
@@ -64,9 +67,13 @@ export function routeRedirect(r: Route, s: Session | null): string | null {
 // oauthCompleteTarget is where a session installed from the Discord
 // callback goes: the invite flow (a claimed seat) to its table, and the
 // login-page flow (an identity-only session) to the Lobby, the
-// signed-in home.
-export function oauthCompleteTarget(s: Session): string {
+// signed-in home, or back to the decks page when that is where the
+// sign-in started (ADR 0112 §3 item 7). `afterSignIn` is the route the
+// decks page stored (decksPage.takeAfterSignIn), and it is followed
+// only if it parses as the decks page.
+export function oauthCompleteTarget(s: Session, afterSignIn?: string | null): string {
   if (s.principal.role === "player" && s.gameID) return `#/games/${s.gameID}`;
+  if (isDecksReturn(afterSignIn)) return afterSignIn;
   return "#/lobby";
 }
 
