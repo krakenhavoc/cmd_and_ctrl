@@ -69,7 +69,7 @@ func TestExileInsteadOfYourGraveyardIgnoresTokens(t *testing.T) {
 		e := g.ScopedEffects[0]
 		for id, want := range map[uuid.UUID]bool{card: true, token: false} {
 			ev := &ReplacementEvent{Kind: RepEventMove, CardID: id, OldZone: ZoneBattlefield, NewZone: ZoneGraveyard, NewZoneOwner: me.ID}
-			if got := scopedReplacementAppliesLocked(g, e, e.Mods[0], ev); got != want {
+			if got := scopedReplacementAppliesLocked(g, e, 0, e.Mods[0], ev); got != want {
 				t.Errorf("applies to %s = %v, want %v (a token is not a card)", id, got, want)
 			}
 		}

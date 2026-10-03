@@ -3007,6 +3007,19 @@ so wrap those by hand (`b10Fight`, Fear, Fire, Foes!). Two sentences stay
 two instances (Repulsor Blast's teamwork damage, Garruk Relentless's
 fight-back).
 
+**A charged shield is divided among an instance's events (ADR 0108 §7,
+owner decision 1).** While a charged shield ("prevent the next 3
+damage", `preventDamage` or a charged `preventFromSource`) is live, a
+scope holds back the fire-and-forget damage calls the shield could meet
+and deals them as the scope ends, once the protected player has said
+which of it the shield prevents (`divide_shield`, CR 615.7). So inside
+a scope, never read the board straight after a fire-and-forget damage
+call to learn what it did — a CR 616 pause defers it the same way. Use a
+`…ThenForEffect` continuation (`DealDamageThen`) instead. Source shields
+against a chosen or named source are `PreventDamageFromChosenSource(…)`,
+`PreventDamageFromSource{From: …}` and `.Charged(n)`
+(`effects/prevent_from_source.go`).
+
 **Destroy clears damage only when it lands (#708).** Marked damage is
 removed by the landed outcome of a battlefield exit — not by the
 destroy entry points. A destruction a replacement rewrote

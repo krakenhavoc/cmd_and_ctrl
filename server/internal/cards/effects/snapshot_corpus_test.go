@@ -295,7 +295,63 @@ func corpusBoards() []corpusBoard {
 		// ScopeStanding graveyard cast permission written beside it, with
 		// the Will itself already exiled by its own replacement.
 		{"yawgmoths_will", corpusYawgmothsWill},
+		// v7, added by ADR 0108 PR 6 (#1904) as a new file: the shields
+		// against a source that are not one-use as data — Samite
+		// Ministration's all-turn preventFromSource with a follow-up, a
+		// charged one (Healing Grace) already partly spent, a
+		// combat-only one pinned to a protected creature, Prismatic
+		// Strands' property-only shape, and Dark Sphere's half shield
+		// (Mod.Half on preventNextFromSource).
+		{"source_shields", corpusSourceShields},
 	}
+}
+
+// corpusSourceShields is ADR 0108 §7's ModPreventFromSource in each of
+// its shapes, and Dark Sphere's half shield.
+func corpusSourceShields(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	dragon := pushBattlefieldCardWithTimestamp(g, corpusCreature(opp.ID, "Shivan Dragon", 5, 5))
+	knight := pushBattlefieldCardWithTimestamp(g, corpusCreature(me.ID, "Knight", 2, 2))
+	g.WithWriteLock(func() {
+		g.RecomputeLayersIfStaleLocked()
+		ref, zone, ok := g.DamageSourceRefLocked(dragon)
+		if !ok {
+			t.Fatal("setup: the dragon is in no zone")
+		}
+		g.PreventDamageFromSourceThisTurnForEffect(game.DamageShield{
+			Controller: me.ID, Source: ref, SourceZone: zone, ProtectPlayer: me.ID,
+			Then:  preventedBlackOrRedTriggerBody,
+			Label: "Samite Ministration — prevent damage from a source this turn",
+		})
+		g.PreventDamageFromSourceThisTurnForEffect(game.DamageShield{
+			Controller: me.ID, Source: ref, SourceZone: zone, ProtectPlayer: me.ID,
+			ProtectTypes: []string{"creature"}, Amount: 3,
+			Label: "Healing Grace — prevent damage from a source this turn",
+		})
+		g.PreventDamageFromSourceThisTurnForEffect(game.DamageShield{
+			Controller: me.ID, Source: ref, SourceZone: zone, ProtectPermanent: knight, CombatOnly: true,
+			Label: "Maze — prevent damage from a source this turn",
+		})
+		g.PreventDamageFromSourceThisTurnForEffect(game.DamageShield{
+			Controller: me.ID, Queries: []game.PermanentQuery{QueryColors("B"), QueryColors("R")},
+			Label: "Prismatic Strands — prevent damage from a source this turn",
+		})
+		g.PreventNextDamageFromSourceForEffect(game.NextDamageShield{
+			Controller: me.ID, Source: ref, SourceZone: zone, ProtectPlayer: me.ID, Half: true,
+			Label: "Dark Sphere — prevent the next damage from a source",
+		})
+		// The charged shield takes 1 of the dragon's damage to the
+		// knight (the all-turn shield protects only me), leaving 2.
+		if err := g.DealDamageToCreatureForEffect(dragon, knight, 1); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if n := len(g.ScopedEffects); n != 5 {
+		t.Fatalf("setup: %d scoped records, want 5", n)
+	}
+	return g
 }
 
 // corpusExileIfDies is ADR 0108 §1 and §2's two kinds in each of their

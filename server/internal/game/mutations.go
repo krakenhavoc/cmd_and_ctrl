@@ -8268,6 +8268,16 @@ func (g *Game) assignAndDealCombatDamageLocked(step string) {
 	// taken half of it is not a game state, so the per-event CR 603.8
 	// check waits until every assignment here has been dealt.
 	defer g.holdStateTriggersLocked()()
+	// ADR 0108 §7 decision 6, CR 615.7: while a charged shield is live,
+	// the step's damage is collected and dealt all at once as the loop
+	// ends, once each shield it meets more of than it can cover has
+	// been divided by the player it protects (divide_shield.go). A
+	// deferred call runs before the state-trigger hold is released.
+	if g.anyChargedShieldLocked() {
+		if prev, staged := g.openDamageStageLocked(g.combatDamageInstanceLocked(), true, false); staged {
+			defer g.closeDamageStageLocked(prev)
+		}
+	}
 
 	blockersByAttacker := make(map[uuid.UUID][]int, len(g.Battlefield.Cards))
 	// #1706: a blocker that still blocks two or more live attackers

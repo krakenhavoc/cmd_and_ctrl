@@ -72,8 +72,9 @@ import (
 
 // ModPreventNextFromSource is "the next time <source> would deal damage
 // [to <protected>] this turn, prevent that damage" (CR 615.8). Reads
-// Objects, SourceZone, Queries, Player, Types, Then, SpentBatch and
-// SpentInstance. Scope
+// Objects, SourceZone, Queries, Player, Types, Then, Half, SpentBatch
+// and SpentInstance. Half (ADR 0108 §7 decision 4, Dark Sphere) prevents
+// half of each event's damage, rounded down, rather than all of it. Scope
 // ScopeGame for a protected player or none; pinned (ScopeNone) to the
 // protected permanent.
 const ModPreventNextFromSource ModKind = "preventNextFromSource"
@@ -109,6 +110,10 @@ type NextDamageShield struct {
 	// Zero is none.
 	Then BodyRef
 
+	// Half is "prevent half that damage, rounded down" (Dark Sphere,
+	// ADR 0108 §7 decision 4; CR 107.1a).
+	Half bool
+
 	// Label is the record's label, shown in a CR 616 ordering prompt.
 	Label string
 }
@@ -131,6 +136,7 @@ func (g *Game) PreventNextDamageFromSourceForEffect(s NextDamageShield) bool {
 		Player:     s.ProtectPlayer,
 		Types:      copyStrings(s.ProtectTypes),
 		Then:       s.Then.key,
+		Half:       s.Half,
 	}
 	if s.Source.ID != uuid.Nil {
 		m.Objects = []ObjectRef{s.Source}
@@ -185,11 +191,16 @@ func clonePermanentQueries(qs []PermanentQuery) []PermanentQuery {
 // nextFromSourceModProblem is registration's (and restore's) check on the
 // kind's parameters.
 func nextFromSourceModProblem(m Mod) string {
+	if m.Kind == ModPreventFromSource {
+		// ADR 0108 §7: the not-one-use shield reads the same source
+		// fields (prevent_from_source.go).
+		return fromSourceModProblem(m)
+	}
 	if m.Kind != ModPreventNextFromSource {
 		// #1879: the granted "can't attack unless defending player
 		// controls" reads Queries too, as what the defender must control.
 		queries := len(m.Queries) != 0 && m.Kind != ModCantAttackUnlessDefenderControls
-		if m.SourceZone != "" || queries || m.SpentBatch != 0 || m.SpentInstance != 0 {
+		if m.SourceZone != "" || queries || m.SpentBatch != 0 || m.SpentInstance != 0 || m.Half {
 			return fmt.Sprintf("mod %q carries a damage-source field only preventNextFromSource reads", m.Kind)
 		}
 		return ""
@@ -224,6 +235,12 @@ func (g *Game) nextFromSourceAppliesLocked(e ScopedEffect, m Mod, ev *Replacemen
 	// Spent in an earlier instance: CR 615.8's "any subsequent instances
 	// … are dealt normally".
 	if !nextShieldOpenToLocked(g, m, ev) {
+		return false
+	}
+	// ADR 0108 §7 decision 4, CR 107.1a: half of 1 damage, rounded down,
+	// is none. A shield that would prevent nothing is not applied, and so
+	// is not used up (CR 609.7b).
+	if m.Half && ev.DamageAmount/2 == 0 {
 		return false
 	}
 	if len(m.Objects) == 1 && !g.damageFromChosenSourceLocked(m, ev.DamageSource) {
@@ -307,7 +324,14 @@ func (g *Game) nextFromSourceProtectsLocked(e ScopedEffect, m Mod, target uuid.U
 // Caller must hold g.mu (write).
 func (g *Game) applyNextFromSourceLocked(e ScopedEffect, mod int, m Mod, ev *ReplacementEvent) {
 	prevented := ev.DamageAmount
-	ev.Cancel()
+	if m.Half {
+		// Dark Sphere (ADR 0108 §7 decision 4): "prevent half that
+		// damage, rounded down" (CR 107.1a). Still spent by its instance.
+		prevented = ev.DamageAmount / 2
+		ev.DamageAmount -= prevented
+	} else {
+		ev.Cancel()
+	}
 	if m.SpentBatch == 0 && m.SpentInstance == 0 {
 		g.markNextShieldSpentLocked(e.Seq, mod, g.currentEventBatchLocked(), ev.DamageInstance)
 	}
@@ -653,7 +677,11 @@ func (g *Game) preventionFollowUpForUnpreventableLocked(ev *ReplacementEvent, id
 	}
 	e, m, ok := g.scopedReplacementModLocked(seq, mod, ModPreventNextFromSource)
 	if !ok {
-		return
+		// ADR 0108 §7: the not-one-use shield's follow-up runs the same
+		// way, and its charge is not reduced (CR 615.12).
+		if e, m, ok = g.scopedReplacementModLocked(seq, mod, ModPreventFromSource); !ok {
+			return
+		}
 	}
 	g.queuePreventionFollowUpLocked(e, m, ev, 0)
 }

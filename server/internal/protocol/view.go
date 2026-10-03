@@ -137,6 +137,13 @@ type GameView struct {
 	// single creature is that creature's chip instead
 	// (CardView.ExiledIfItDies).
 	ExileIfCreaturesDie []string `json:"exile_if_creatures_die,omitempty"`
+	// DamageShields lists the live "prevent all damage a source of your
+	// choice would deal this turn" shields and their charged siblings
+	// (ADR 0108 §7), oldest first, as "<card> (<source>)" with "— N
+	// left" on a charged one — the game banner's line. Public: the
+	// chosen source is announced as the shield is made. Empty on nearly
+	// every turn.
+	DamageShields []string `json:"damage_shields,omitempty"`
 	// DiscardPending is the cleanup-step pause map (S13.4): keys
 	// are player UUID strings, values are the count each player
 	// must discard. Drives the client's discard-prompt modal.
@@ -360,6 +367,11 @@ type PendingChoiceView struct {
 	// ordered blocker list (CR 510.1c). Absent for non-assignment
 	// choices. Added in S18 sub-PR 3.
 	DamageAssignment *DamageAssignmentView `json:"damage_assignment,omitempty"`
+
+	// DivideShield populates the ADR 0108 §7 "divide_shield" kind: a
+	// charged prevention shield the protected player divides among the
+	// damage events of one instance (CR 615.7).
+	DivideShield *DivideShieldView `json:"divide_shield,omitempty"`
 
 	// TriggerOptions populates the S19 "trigger_order" kind: one
 	// entry per pending trigger the chooser is ordering (CR
@@ -1114,6 +1126,48 @@ type DamageAssignmentView struct {
 	// controller divides its damage among them as they choose — no
 	// order to keep and no trample.
 	BlockerDivides bool `json:"blocker_divides,omitempty"`
+}
+
+// DivideShieldView is the wire shape of a divide_shield prompt (ADR 0108
+// §7 decision 6, CR 615.7): the shield's label, the charge to divide,
+// and one entry per damage event it meets. The answer is resolve_choice
+// with `distribution: {entry id: share}`, the shares adding up to
+// `charge` and none above its entry's `amount`.
+type DivideShieldView struct {
+	Label   string                  `json:"label,omitempty"`
+	Charge  int                     `json:"charge"`
+	Entries []DivideShieldEntryView `json:"entries"`
+}
+
+// DivideShieldEntryView is one damage event a divided shield meets:
+// `source` would deal `amount` to `target` (a player when
+// target_is_player).
+type DivideShieldEntryView struct {
+	ID             string `json:"id"`
+	SourceID       string `json:"source_id"`
+	SourceName     string `json:"source_name,omitempty"`
+	TargetID       string `json:"target_id"`
+	TargetName     string `json:"target_name,omitempty"`
+	TargetIsPlayer bool   `json:"target_is_player,omitempty"`
+	Amount         int    `json:"amount"`
+	Combat         bool   `json:"combat,omitempty"`
+}
+
+func divideShieldView(p *game.DivideShieldPrompt) *DivideShieldView {
+	v := &DivideShieldView{Label: p.Label, Charge: p.Charge, Entries: make([]DivideShieldEntryView, 0, len(p.Entries))}
+	for _, en := range p.Entries {
+		v.Entries = append(v.Entries, DivideShieldEntryView{
+			ID:             en.ID.String(),
+			SourceID:       en.Source.String(),
+			SourceName:     en.SourceName,
+			TargetID:       en.Target.String(),
+			TargetName:     en.TargetName,
+			TargetIsPlayer: en.TargetIsPlayer,
+			Amount:         en.Amount,
+			Combat:         en.Combat,
+		})
+	}
+	return v
 }
 
 // ReplacementOptionView is one entry in a PendingChoiceView's
@@ -3618,6 +3672,7 @@ func ViewOfGame(g *game.Game) GameView {
 			SplitSecondActive:     g.SplitSecondActive,
 			DamageCantBePrevented: g.DamageCantBePreventedThisTurnLabels(),
 			ExileIfCreaturesDie:   g.ExileIfCreaturesWouldDieThisTurnLabels(),
+			DamageShields:         g.DamageShieldLabels(),
 			DiscardPending:        viewOfDiscardPending(g.DiscardPending),
 			PendingChoices:        viewOfPendingChoices(g),
 			LoopNotice:            viewOfLoopNotice(g.LoopNotice),
@@ -6704,6 +6759,11 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 				BlockerDivides: frame.BlockerDivides,
 			}
 		}
+		// ADR 0108 §7: divide_shield — the shield's charge and the
+		// damage events it meets, answered with a distribution.
+		if c.Kind == game.PendingChoiceDivideShield && c.DivideShield != nil {
+			v.DivideShield = divideShieldView(c.DivideShield)
+		}
 		out = append(out, v)
 	}
 	if len(out) == 0 {
@@ -7343,6 +7403,7 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		SplitSecondActive:     v.SplitSecondActive,
 		DamageCantBePrevented: v.DamageCantBePrevented,
 		ExileIfCreaturesDie:   v.ExileIfCreaturesDie,
+		DamageShields:         v.DamageShields,
 		DiscardPending:        v.DiscardPending,
 		PendingChoices:        filterPendingChoices(v.PendingChoices, isKnower, viewerID),
 		LegalMoves:            legalMovesFor(v.legalBySeat, viewerID),

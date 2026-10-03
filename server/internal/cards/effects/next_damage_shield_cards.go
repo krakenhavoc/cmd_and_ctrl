@@ -8,8 +8,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // prints. Append-only, so the clone gate never sees the same body twice.
 
 // nextDamageShieldRow is an activated ability whose whole effect is a
-// next-damage shield.
-func nextDamageShieldRow(label string, cost game.AbilityCost, targets *game.TargetSpec, shield PreventNextDamageFromSource) ActivatedAbility {
+// shield — a next-damage shield, or (ADR 0108 §7, sourceShieldRow) a
+// shield that is not one-use.
+func nextDamageShieldRow(label string, cost game.AbilityCost, targets *game.TargetSpec, shield Applier) ActivatedAbility {
 	return ActivatedAbility{
 		Label:   label,
 		Cost:    cost,

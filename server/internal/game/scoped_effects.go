@@ -407,6 +407,11 @@ type Mod struct {
 	Queries       []PermanentQuery `json:"queries,omitempty"`
 	SpentBatch    uint64           `json:"spentBatch,omitempty"`
 	SpentInstance DamageInstance   `json:"spentInstance,omitempty"`
+	// Half is ModPreventNextFromSource's "prevent half that damage,
+	// rounded down" (ADR 0108 §7 decision 4, Dark Sphere; CR 107.1a),
+	// refused on every other kind. ModPreventFromSource (ADR 0108 §7)
+	// reads Objects, SourceZone and Queries too, with the same meaning.
+	Half bool `json:"half,omitempty"`
 	// Copy is ModBecomeCopy's copied values (#1593): exactly one entry,
 	// required on that kind and refused on every other. A slice for the
 	// reason Objects is one — every other mod writes nothing, and the
@@ -644,6 +649,8 @@ var modKinds = map[ModKind]modKindSpec{
 	ModExileInsteadOfYourGraveyard: {reader: readerReplacement},
 	// ADR 0107 §6 (#1860): the next damage from a source.
 	ModPreventNextFromSource: {reader: readerReplacement},
+	// ADR 0108 §7 (#1904): a shield against a source that is not one-use.
+	ModPreventFromSource: {reader: readerReplacement},
 	// ADR 0108 §1 (#1886): exile instead if it would die this turn.
 	ModExileIfWouldDie: {reader: readerReplacement},
 	// ADR 0107 §5 (#1853, #1880): rules gates.
@@ -793,7 +800,7 @@ func blockRequirementModProblem(m Mod) string {
 	if m.Kind != ModAddBlockRequirement {
 		// ADR 0107 §6: the next-damage shield names its chosen source
 		// here (nextFromSourceModProblem checks it).
-		if len(m.Objects) != 0 && m.Kind != ModPreventNextFromSource {
+		if len(m.Objects) != 0 && m.Kind != ModPreventNextFromSource && m.Kind != ModPreventFromSource {
 			return fmt.Sprintf("mod %q names objects, which only a blocksAttacker requirement reads", m.Kind)
 		}
 		return ""

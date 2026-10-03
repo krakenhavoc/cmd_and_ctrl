@@ -1590,6 +1590,16 @@ func dispatch(g *game.Game, a Action) error {
 		if kind, ok := g.PendingChoiceKindFor(choiceID); ok && kind == game.PendingChoiceModePick {
 			return g.ResolveModePick(choiceID, a.Player, p.Modes)
 		}
+		// ADR 0108 §7, CR 615.7: "divide this shield among the damage".
+		// The distribution payload a divided pick_target answer uses,
+		// keyed by the prompt's entry IDs, routed by kind.
+		if kind, ok := g.PendingChoiceKindFor(choiceID); ok && kind == game.PendingChoiceDivideShield {
+			dist, err := parseDistribution(p.Distribution)
+			if err != nil {
+				return fmt.Errorf("resolve_choice %w", err)
+			}
+			return g.ResolveDivideShield(choiceID, a.Player, dist)
+		}
 		if p.Color != "" {
 			// #742: route by kind. A "choose a color" answer sent to
 			// ResolveManaChoice would be refused (wrong kind), and a
