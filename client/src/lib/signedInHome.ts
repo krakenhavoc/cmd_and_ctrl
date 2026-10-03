@@ -1,4 +1,6 @@
+import { isAdminAllowed } from "./admin";
 import type { GameMeta } from "./api";
+import { isDecksReturn } from "./decksPage";
 import { canJoinByCode } from "./myGames";
 import type { Route } from "./router";
 import type { Session } from "./session";
@@ -26,9 +28,11 @@ const PUBLIC_ROUTES: ReadonlySet<Route["name"]> = new Set<Route["name"]>([
   // art or anything else session-gated.
   "home",
   "roadmap",
-  // The deck coverage checker (ADR 0095 §5): public for the same reason
-  // the roadmap is, and the Discord bot links straight here.
-  "deckCheck",
+  // The one decks page (ADR 0112 §3 item 1), and its #/deck-check
+  // alias: a signed-out visitor can check a deck, for the same reason
+  // the roadmap is public, and the Discord bot links straight here.
+  // The library on it shows only to a signed-in person.
+  "decks",
 ]);
 
 // isPublicRoute reports whether a signed-out visitor may open r.
@@ -46,10 +50,11 @@ export function isPublicRoute(r: Route): boolean {
 //     table. An expired session is cleared before this runs, so that
 //     visitor stays on #/login and sees the expiry notice.
 //   - #/admin is the shared token's page (§2 item 8). The token's own
-//     session has no use for it and goes to the Lobby; every other
-//     session sees the token form, which says it replaces this
-//     browser's session. (An allowlisted person also goes to the Lobby,
-//     where the Admin chip is; that needs /me's admin_allowed.)
+//     session has no use for it and goes to the Lobby, and so does an
+//     allowlisted person, in either mode, once /me has said so
+//     (`admin_allowed`): their switch is the Admin chip in the header.
+//     Every other session sees the token form, which says it replaces
+//     this browser's session.
 //
 // Invite, spectator and reclaim links and both shapes of the Discord
 // round trip are public and never redirected, whatever the browser
@@ -57,16 +62,22 @@ export function isPublicRoute(r: Route): boolean {
 export function routeRedirect(r: Route, s: Session | null): string | null {
   if (!s) return isPublicRoute(r) ? null : "#/login";
   if (r.name === "login") return "#/lobby";
-  if (r.name === "adminLogin" && s.principal.role === "admin") return "#/lobby";
+  if (r.name === "adminLogin" && (s.principal.role === "admin" || isAdminAllowed(s))) {
+    return "#/lobby";
+  }
   return null;
 }
 
 // oauthCompleteTarget is where a session installed from the Discord
 // callback goes: the invite flow (a claimed seat) to its table, and the
 // login-page flow (an identity-only session) to the Lobby, the
-// signed-in home.
-export function oauthCompleteTarget(s: Session): string {
+// signed-in home, or back to the decks page when that is where the
+// sign-in started (ADR 0112 §3 item 7). `afterSignIn` is the route the
+// decks page stored (decksPage.takeAfterSignIn), and it is followed
+// only if it parses as the decks page.
+export function oauthCompleteTarget(s: Session, afterSignIn?: string | null): string {
   if (s.principal.role === "player" && s.gameID) return `#/games/${s.gameID}`;
+  if (isDecksReturn(afterSignIn)) return afterSignIn;
   return "#/lobby";
 }
 

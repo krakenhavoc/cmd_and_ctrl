@@ -9,9 +9,9 @@
   // Session-aware: Lobby and Catalog need any session, "My games"
   // needs one tied to a Discord user — a guest or admin session would
   // otherwise land on a page that can only tell them to sign in.
-  // Roadmap, Deck check and Home are public (ADR 0095 §5 adds the
-  // second of those), so a signed-out visitor still sees all three
-  // plus Sign in.
+  // Decks, Roadmap and Home are public (ADR 0112 §3 made Decks, which
+  // took in ADR 0095's deck check, the one decks page), so a signed-out
+  // visitor still sees all three plus Sign in.
   //
   // Not shown on Game — the board has its own command bar, and a
   // second row of chrome above it would just eat table space.
@@ -33,6 +33,7 @@
   } from "../api";
   import { openSettings } from "../settings";
   import Icon from "./Icon.svelte";
+  import AdminChip from "./AdminChip.svelte";
 
   let menuOpen = $state(false);
   let accountOpen = $state(false);
@@ -175,14 +176,14 @@
           onclick={closeMenu}>My games</a
         >
       {/if}
-      {#if hasLinkedUser}
-        <a
-          href="#/decks"
-          class:current={current("myDecks")}
-          aria-current={current("myDecks") ? "page" : undefined}
-          onclick={closeMenu}>My decks</a
-        >
-      {/if}
+      <!-- One public "Decks" link (ADR 0112 §3 item 2): the deck check
+           and the library are one page, and anyone may check a deck. -->
+      <a
+        href="#/decks"
+        class:current={current("decks")}
+        aria-current={current("decks") ? "page" : undefined}
+        onclick={closeMenu}>Decks</a
+      >
       {#if isSignedIn}
         <a
           href="#/catalog"
@@ -196,12 +197,6 @@
         class:current={current("roadmap")}
         aria-current={current("roadmap") ? "page" : undefined}
         onclick={closeMenu}>Roadmap</a
-      >
-      <a
-        href="#/deck-check"
-        class:current={current("deckCheck")}
-        aria-current={current("deckCheck") ? "page" : undefined}
-        onclick={closeMenu}>Deck check</a
       >
       <a
         href="#/home"
@@ -231,9 +226,10 @@
               <span class="acct-name">{whoAmI}</span>
               <span class="acct-kind">{accountKind}</span>
             </div>
-            <!-- ADR 0112 §2 item 9 (Delivery PR 4): the Admin chip, or the
-                 token's static "Admin token" badge, goes here, first in
-                 the menu. Nothing renders in this slot until then. -->
+            <!-- ADR 0112 §2 item 9: the Admin chip for an allowlisted
+                 person, or the token's static "Admin token" badge, first
+                 in the menu. Renders nothing for anyone else. -->
+            <AdminChip />
             <button type="button" class="acct-item" onclick={settings}>
               <Icon name="gear" size={14} /> Settings
             </button>

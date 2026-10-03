@@ -338,7 +338,27 @@ func corpusBoards() []corpusBoard {
 		// long as that creature has a shadow counter on it",
 		// WhilePinnedHasCounter with its CounterKind).
 		{"durations", corpusDurations},
+		// v7, added by ADR 0109 PR 3 (#1604) as a new file: the
+		// loseLandTypes kind, in Ultima, Origin of Oblivion's record
+		// (loses all land types and abilities and has "{T}: Add {C}"
+		// for as long as the land has a blight counter on it).
+		{"lose_land_types", corpusLoseLandTypes},
 	}
+}
+
+// corpusLoseLandTypes is ADR 0109 §2's loseLandTypes kind, made by the
+// card that writes it: Ultima attacks and blights a land.
+func corpusLoseLandTypes(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	land := pushLandFor(g, opp.ID, "Forest", "Basic Land — Forest")
+	llAttackWithUltima(t, g, me.ID, opp.ID, land)
+	advanceTo(t, g, game.StepPostcombatMain)
+	if len(g.ScopedEffects) != 1 {
+		t.Fatalf("setup: %d scoped records, want 1", len(g.ScopedEffects))
+	}
+	return g
 }
 
 // corpusDurations is ADR 0109's new duration fields, made by the cards

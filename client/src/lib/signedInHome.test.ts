@@ -44,6 +44,11 @@ function sess(
     gameID,
     playerID: role === "player" ? "p1" : undefined,
     admin: opts.admin,
+    // What /me says about an allowlisted person (ADR 0112 §2 item 9),
+    // here in admin mode.
+    ...(opts.admin
+      ? { admin_allowed: true, admin_mode: true, admin_mode_ends_at: Date.now() + 86_400_000 }
+      : {}),
   };
 }
 
@@ -78,6 +83,16 @@ describe("routeRedirect: Login is for signed-out visitors only (§1 item 1)", ()
   it("sends a signed-out visitor on a gated route to #/login", () => {
     for (const hash of ["#/lobby", "#/games/g1", "#/catalog", "#/my-games", "#/practice"]) {
       expect(routeRedirect(parseHash(hash), null)).toBe("#/login");
+    }
+  });
+
+  // ADR 0112 §3 item 1: #/decks is public, and so is its #/deck-check
+  // alias (the bot links there). A signed-out visitor can check a deck.
+  it("keeps a signed-out visitor on the decks page and its alias", () => {
+    for (const hash of ["#/decks", "#/decks?url=x", "#/deck-check", "#/deck-check?url=x"]) {
+      const r = parseHash(hash);
+      expect(isPublicRoute(r)).toBe(true);
+      expect(routeRedirect(r, null)).toBeNull();
     }
   });
 
@@ -140,11 +155,30 @@ describe("routeRedirect: #/admin (§2 item 8, the sessions told apart without /m
     expect(routeRedirect(admin, sess("admin"))).toBe("#/lobby");
   });
 
+  it("sends an allowlisted person to the Lobby, where the chip is, in either mode", () => {
+    const inAdminMode = sess("player", USER, { admin: true });
+    expect(routeRedirect(admin, inAdminMode)).toBe("#/lobby");
+    const inPlayerMode = {
+      ...sess("identified", USER),
+      admin: false,
+      admin_allowed: true,
+      admin_mode: false,
+    };
+    expect(routeRedirect(admin, inPlayerMode)).toBe("#/lobby");
+    // Before /me has answered, the person is not known to be on the
+    // list, and sees the form until it does.
+    expect(routeRedirect(admin, sess("identified", USER))).toBeNull();
+  });
+
   it("shows the token form to any other session", () => {
-    for (const [, s] of SESSIONS) {
-      if (s === null || s.principal.role === "admin") continue;
+    for (const [name, s] of SESSIONS) {
+      if (s === null || s.principal.role === "admin" || name === "allowlisted admin person") {
+        continue;
+      }
       expect(routeRedirect(admin, s)).toBeNull();
     }
+    // A stray admin_allowed on a session with no user is not a person.
+    expect(routeRedirect(admin, { ...sess("player", NIL), admin_allowed: true })).toBeNull();
   });
 });
 
@@ -157,6 +191,24 @@ describe("oauthCompleteTarget (§1 item 2)", () => {
   it("takes the login-page flow to the Lobby, not back to Login", () => {
     expect(oauthCompleteTarget(sess("identified", USER))).toBe("#/lobby");
     expect(oauthCompleteTarget(sess("identified"))).toBe("#/lobby");
+  });
+
+  // §3 item 7: signing in from the decks page brings you back to it.
+  it("takes the login-page flow back to the decks page it was saved from", () => {
+    expect(oauthCompleteTarget(sess("identified", USER), "#/decks")).toBe("#/decks");
+    expect(oauthCompleteTarget(sess("identified", USER), "#/decks?url=x")).toBe("#/decks?url=x");
+    expect(oauthCompleteTarget(sess("identified", USER), null)).toBe("#/lobby");
+  });
+
+  it("never follows a return route that is not the decks page", () => {
+    for (const bad of ["#/lobby", "#/games/g1", "https://evil.example/", "#/nowhere", ""]) {
+      expect(oauthCompleteTarget(sess("identified", USER), bad)).toBe("#/lobby");
+    }
+  });
+
+  it("the invite flow goes to its table even with a return route saved", () => {
+    const s = sess("player", USER, { gameID: "g2" });
+    expect(oauthCompleteTarget(s, "#/decks")).toBe("#/games/g2");
   });
 });
 

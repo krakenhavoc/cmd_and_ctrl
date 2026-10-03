@@ -18,7 +18,8 @@ import { redactSecrets } from "./redact";
 import type { PrebuiltDecksResponse } from "./prebuiltDecks";
 import type { MyGame } from "./myGames";
 import type { MyDeckInfo, MyDecksResponse } from "./myDecks";
-import type { CoverageReport } from "./deckcheck";
+import type { CoverageReport, DeckCheckRequest } from "./deckcheck";
+import type { SaveDeckResponse } from "./decksPage";
 import type { InviteDMResponse, Tablemate } from "./tablemates";
 import type { MySetupResponse, SetupResult } from "./tableSetup";
 import type { LastDeck } from "./lastDeck";
@@ -641,6 +642,25 @@ export async function renameMyDeck(id: string, name: string): Promise<MyDeckInfo
 // pointed at it lose the link and keep their deck name.
 export async function deleteMyDeck(id: string): Promise<void> {
   await authFetch(`/me/decks/${encodeURIComponent(id)}`, { method: "DELETE" });
+}
+
+// saveMyDeck saves a checked deck to the caller's library (POST
+// /me/decks, ADR 0112 §3 item 4): the same `{url}` or `{text}` the
+// check was made with, and the name from the page's field. 201 is a new
+// deck and 200 a replaced one; the body says which. A refusal throws a
+// LobbyApiError whose message the page shows as is: the 409 when the
+// library is full (code "library_full"), the 429 when the fetch limit
+// is spent, a fetch failure with its Moxfield `paste_list` hint.
+//
+// The check itself never calls this (owner answer 2): saving is always
+// the explicit button.
+export async function saveMyDeck(req: DeckCheckRequest, name: string): Promise<SaveDeckResponse> {
+  const n = name.trim();
+  const res = await authFetch("/me/decks", {
+    method: "POST",
+    body: JSON.stringify(n ? { ...req, name: n } : req),
+  });
+  return (await res.json()) as SaveDeckResponse;
 }
 
 // fetchMyDeckCoverage reads one saved deck's full ADR 0095 report.

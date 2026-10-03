@@ -50,6 +50,35 @@ describe("landTypeBadge", () => {
   });
 });
 
+describe("a land that lost all its land types (ADR 0109 §2)", () => {
+  it("says what the effect took and gave, and for how long", () => {
+    expect(
+      landTypeBadge({
+        land_type_effects: [
+          {
+            types: [],
+            loses_all: true,
+            loses_abilities: true,
+            gains: ["{T}: Add {C}."],
+            until: "for as long as it has a blight counter on it",
+            source: "Ultima, Origin of Oblivion",
+          },
+        ],
+      }),
+    ).toEqual({
+      text: "NO LAND TYPES",
+      title:
+        'No land types, no abilities, "{T}: Add {C}." for as long as it has a blight counter on it — Ultima, Origin of Oblivion',
+    });
+  });
+
+  it("names only the land types when the effect takes nothing else", () => {
+    expect(landTypeEffectLine({ types: [], loses_all: true, source: "Test" })).toBe(
+      "No land types — Test",
+    );
+  });
+});
+
 describe("landTypeEffectLine", () => {
   it("joins three types the way a card prints them", () => {
     expect(landTypeEffectLine({ types: ["Mountain", "Forest", "Plains"] })).toBe(

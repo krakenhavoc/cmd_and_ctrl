@@ -155,6 +155,26 @@ const ModCantAttackUnlessDefenderControls ModKind = "cantAttackUnlessDefenderCon
 // away (CR 205.1b), and is ModAddSubtypes.
 const ModSetBasicLandTypes ModKind = "setBasicLandTypes" // layer 4
 
+// ModLoseLandTypes is "loses all land types" from a resolved effect
+// (ADR 0109 §2, #1604): Ultima, Origin of Oblivion's "For as long as
+// that land has a blight counter on it, it loses all land types and
+// abilities and has '{T}: Add {C}.'" Reads nothing.
+//
+// Layer 4 (CR 613.1d): every subtype that is one of CR 205.3i's land
+// types goes, and every other subtype stays (a Dryad Arbor keeps its
+// Dryad, CR 205.1a). It is NOT a CR 613.1f removal: losing land types
+// is not CR 305.7, which is about SETTING a basic land type, so the
+// land keeps its abilities unless the same effect also says it loses
+// them, and that half is ModLoseAllAbilities in layer 6. What it does
+// take is the intrinsic mana ability each basic land type gives (CR
+// 305.6), because that is derived from the effective subtypes
+// (intrinsicLandManaAbilities). Card types and supertypes are untouched:
+// a basic land stays basic.
+//
+// The static form, for Lithoform Blight and Alpine Moon, is
+// effects.LosesAllLandTypes; both call Characteristic.LoseLandTypes.
+const ModLoseLandTypes ModKind = "loseLandTypes" // layer 4
+
 // The replacement kinds (ADR 0041 P8, tier 3b, #1497). These are not
 // layer operations: each one is a CR 614 replacement effect a
 // resolving spell or ability created (CR 611.2), read by the
@@ -680,6 +700,8 @@ var modKinds = map[ModKind]modKindSpec{
 	ModCantAttackUnlessDefenderControls: {layer: Layer6Ability},
 	// ADR 0109 §1 (#1881): CR 305.7 from a resolved effect.
 	ModSetBasicLandTypes: {layer: Layer4Type, removes: true},
+	// ADR 0109 §2 (#1604): "loses all land types", Ultima's.
+	ModLoseLandTypes: {layer: Layer4Type},
 	// Tier 3b (ADR 0041 P8): replacement effects, not layer operations.
 	ModPreventCombatDamage:     {reader: readerReplacement},
 	ModPreventDamage:           {reader: readerReplacement},
@@ -804,6 +826,11 @@ func landTypesModProblem(m Mod) string {
 	}
 	return ""
 }
+
+// LoseLandTypesMod is "loses all land types" (layer 4, ADR 0109 §2):
+// every CR 205.3i land type goes, every other subtype stays, and no
+// ability is removed. Reads nothing.
+func LoseLandTypesMod() Mod { return Mod{Kind: ModLoseLandTypes} }
 
 // AllCreatureTypesMod is "is every creature type" (layer 4,
 // Characteristic.AllCreatureTypes).
@@ -1511,6 +1538,10 @@ func modApply(m Mod) func(*Characteristic, *Card, *Game, *Card) {
 		subtypes := m.Subtypes
 		return func(ch *Characteristic, _ *Card, _ *Game, _ *Card) {
 			ch.SetLandSubtypes(subtypes)
+		}
+	case ModLoseLandTypes:
+		return func(ch *Characteristic, _ *Card, _ *Game, _ *Card) {
+			ch.LoseLandTypes()
 		}
 	case ModSetColors:
 		colors := m.Colors

@@ -88,6 +88,36 @@ func TestCardNameMatchesAsksEveryFace(t *testing.T) {
 	}
 }
 
+// TestPermanentHasNameAsksOnlyTheFaceThatIsUp is the reader Alpine
+// Moon's chosen name needs (ADR 0109 §2): a modal double-faced land
+// played as its land face has that face's name and not the instant's
+// (CR 712.8f), so naming the instant, which is not a land card name
+// (CR 201.4a, 201.4d), does not reach it. A face-down permanent has no
+// name (CR 708.2a).
+func TestPermanentHasNameAsksOnlyTheFaceThatIsUp(t *testing.T) {
+	c := Card{
+		Name:       "Valakut Stoneforge",
+		Faces:      []Face{{Name: "Valakut Awakening"}, {Name: "Valakut Stoneforge"}},
+		ActiveFace: 1,
+	}
+	if !PermanentHasName(c, " valakut stoneforge ") {
+		t.Error("the land face that is up does not have its own name")
+	}
+	if PermanentHasName(c, "Valakut Awakening") {
+		t.Error("the land face has the name of the face that is down")
+	}
+	if !CardNameMatches(c, "Valakut Awakening") {
+		t.Error("CardNameMatches stopped asking every face")
+	}
+	if PermanentHasName(c, "") {
+		t.Error("an empty name matched")
+	}
+	down := Card{Name: "Valakut Stoneforge", FaceDown: true, TypeLine: "Land"}
+	if PermanentHasName(down, "Valakut Stoneforge") {
+		t.Error("a face-down permanent has a name")
+	}
+}
+
 // TestAChosenNameSurvivesACloneAndIsClearedOnTheWayOut pins both ends
 // of the lifecycle: the undo snapshot carries the answer (nothing can
 // re-derive a player's free text), and CR 400.7 clears it, so a
