@@ -101,7 +101,7 @@ func (g *Game) GrantLifeTotalLockForEffect(player uuid.UUID, label string, sourc
 	if p == nil {
 		return
 	}
-	if d == (Duration{}) {
+	if d.IsZero() {
 		d = g.UntilEndOfTurnDuration()
 	}
 	p.Statics = append(p.Statics, PlayerStatic{

@@ -7,7 +7,9 @@
   // monarch/initiative toggles, damage floaters, mana pool pips.
   //
   // The avatar wrapper carries data-seat-id so CombatArrows can anchor
-  // attack arrows on it (see CombatArrows.svelte:161).
+  // attack arrows on it (see CombatArrows.svelte:161). The tutorial's
+  // step 10 spotlights the bot's portrait by it too (tutorialSteps.ts,
+  // ADR 0076 §2.4), so keep it on the element a player clicks to attack.
 
   import type { ActionPayload, ActionType, PlayerView } from "../../protocol";
   import { seatColor } from "../../colors";

@@ -520,7 +520,8 @@ func TestEveryDurationKindAndConditionIsKnown(t *testing.T) {
 		}
 	}
 	for _, c := range []DurationCondition{WhileSourceOnBattlefield, WhileYouControlSource,
-		WhileYouControlSourceOnceItLands, WhileSourceRemainsTapped} {
+		WhileYouControlSourceOnceItLands, WhileSourceRemainsTapped, WhilePinnedHasCounter,
+		WhilePinnedRemainsTapped, WhilePinnedPowerAtMostSource} {
 		if !c.Known() {
 			t.Errorf("duration condition %d is not Known — is it after durationConditionEnd?", c)
 		}
@@ -547,7 +548,7 @@ func TestAnUnknownFieldOnARecordIsRefused(t *testing.T) {
 		"record":   func(rec map[string]any) { rec["fromTheFuture"] = true },
 		"affected": func(rec map[string]any) { rec["affected"].([]any)[0].(map[string]any)["phaseTag"] = 1 },
 		"mod":      func(rec map[string]any) { rec["mods"].([]any)[0].(map[string]any)["counterKind"] = "blight" },
-		"duration": func(rec map[string]any) { rec["duration"].(map[string]any)["CounterKind"] = "blight" },
+		"duration": func(rec map[string]any) { rec["duration"].(map[string]any)["Unless"] = "blight" },
 	}
 	for name, corrupt := range cases {
 		t.Run(name, func(t *testing.T) {

@@ -50,17 +50,17 @@ export function signedInUserID(s: Session | null | undefined): string | null {
   return id;
 }
 
-// canJoinByCode reports whether the login page's invite-code box is for
-// this session as a signed-in person: a Discord sign-in that has not
-// claimed a seat yet (with or without a user database behind it), or
-// any session that carries a user (ADR 0110 §1 item 3). The server's
-// POST /join seats such a session as its Discord identity, so a
-// signed-in player at one table can paste the code for the next.
+// canJoinByCode reports whether this session may join a table by code
+// as a signed-in person: a Discord sign-in that has not claimed a seat
+// yet (with or without a user database behind it), or any session that
+// carries a user (ADR 0110 §1 item 3). The server's POST /join seats
+// such a session as its Discord identity, so a signed-in player at one
+// table can paste the code for the next. A guest seat, a guest
+// spectator and the admin token cannot (the server answers 409).
 //
-// It is also App.svelte's exemption from the bounce away from #/login:
-// these sessions belong on the login page when they go there. A guest
-// seat, a guest spectator and the admin token do not — the server would
-// refuse them (409), so they are sent on to the lobby as before.
+// It is no longer a routing exemption (ADR 0112 §1 item 1): every
+// session on #/login goes to the Lobby, whose "Join a table" card asks
+// this (lib/signedInHome.ts's joinBoxFor).
 export function canJoinByCode(s: Session | null | undefined): boolean {
   if (!s) return false;
   return s.principal.role === "identified" || signedInUserID(s) !== null;

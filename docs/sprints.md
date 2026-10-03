@@ -100,6 +100,7 @@ planned just-in-time from the S12 pain-point triage.
 | S54     | Tutorial: a scripted practice game                                   | 7     | [#1911](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1911) | —          | planned     |
 | S55     | Remember me: durable sign-in, account settings, admins and saved setups | 6  | [#1950](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1950) | —          | in progress |
 | S56     | Table UX: one action dock, bottom right                              | 7     | [#1958](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1958) | —          | in progress |
+| S57     | Signed-in home, player mode, and one decks page                      | 7     | [#1992](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1992) | —          | in progress |
 
 ### How to read the status column
 
@@ -3278,6 +3279,35 @@ Not in this sprint, and recorded so they are not lost:
 ### Status
 
 **In progress.** Every Delivery PR has merged into `develop`, PR 7 with this section. Exit criterion 4 waits on the next promotion to `main`.
+
+---
+
+## S57 — Signed-in home, player mode, and one decks page
+
+**Phase:** 7 · **Goal:** a signed-in person lands on the Lobby with a menu, an allowlisted admin plays as an ordinary player until they choose admin mode, and one decks page checks, requests and saves a deck, per [ADR 0112](decisions/0112-signed-in-home-player-mode-and-one-decks-page.md). Tracking issue [#1992](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1992).
+
+Opened 2026-10-02 from the owner's report on prod after the S55/S56 promotion ([#1984](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1984)): a signed-in person with no seat has no menu, an admin has no way to play as a player, and "my decks" is empty. The owner made three decisions on #1992 and answered the ADR's four questions the same day, option (a) each time. The members are the ADR's five Delivery PRs.
+
+- [x] ADR 0112: signed-in home, player mode, and one decks page ([#1994](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1994))
+- [ ] PR 1 — server, player mode (§2): migration `0009` (`users.admin_mode_at`) and `users.AdminModes`, whose boot load fails closed; `Admins`, `isAllowlisted` and the mode term in `isAdminPrincipal`, with the guard's second rule; `PUT /me/admin-mode`; `/me`'s `admin_allowed`, `admin_mode` and `admin_mode_ends_at`; the 12-hour lapse and its once-a-minute sweeper; `Hub.RebindUserSessions` with close 4001; sign-out-everywhere and the admin's revoke ending admin mode; and the same-answer test over every admin call site
+- [ ] PR 2 — server, decks (§3 items 4, 5 and 8): `POST /me/decks`, `deck_id` on `POST /deck-requests`, and `saveToLibrary`'s own-seat guard
+- [ ] PR 3 — client, the signed-in home (§1): Login for signed-out visitors only, the header's account menu, the Lobby's Join card, "your tables" and empty state
+- [ ] PR 4 — client, the Admin chip (§2 items 8 and 9): the chip and the in-game menu item, `/me`'s new fields, re-asking `/me` on a switch, on 4001 and on visibility, and the "Admin token" badge
+- [ ] PR 5 — client, one decks page (§3): `#/decks` public with check, report, request, save and library, the `#/deck-check` alias, and the pre-built section
+
+### Exit criteria
+
+From the tracker, [#1992](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1992):
+
+1. ADR 0112 is accepted and every PR in its Delivery table has merged. The ADR was accepted on 2026-10-02.
+2. On cmd-dev, with a real allowlisted Discord account, once PR 4 deploys: sign in and land on the Lobby with the header; start in player mode; open a table and see no admin menu; switch to admin mode at the table and see the socket reconnect with the admin menu; switch back.
+3. On cmd-dev, once PR 5 deploys: check a pasted deck while signed out, sign in, come back to the same deck, save it and request its missing cards.
+4. The sprint section in `docs/sprints.md` is written and its index row added (this section, with PR 1).
+5. Lands on `main` with the next promotion. PR 1 alone puts every allowlisted admin in player mode with no chip to switch, so it should not be promoted without PR 4.
+
+### Status
+
+**In progress.** The ADR has merged; PRs 1, 2 and 3 are being built in parallel.
 
 ---
 

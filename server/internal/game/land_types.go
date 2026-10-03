@@ -1,6 +1,10 @@
 package game
 
-import "github.com/google/uuid"
+import (
+	"strings"
+
+	"github.com/google/uuid"
+)
 
 // land_types.go is CR 205.3i's list of land types, and the one subtype
 // operation that needs it: CR 305.7's "sets a land's subtype to one or
@@ -155,17 +159,52 @@ func (g *Game) durationPhraseLocked(d Duration, sourceName string) string {
 	case UntilYourNextTurn:
 		return "until " + g.playerNameLocked(d.Player) + "'s next turn"
 	case ForAsLongAs:
-		if sourceName == "" {
-			return ""
+		// ADR 0109 §2 and §3: every condition of the conjunction, joined
+		// as the card prints them ("for as long as you control Seasinger
+		// and Seasinger remains tapped").
+		var parts []string
+		for _, c := range d.conditions() {
+			p := conditionPhrase(c, d.CounterKind, sourceName)
+			if p == "" {
+				return ""
+			}
+			parts = append(parts, p)
 		}
-		switch d.Condition {
-		case WhileSourceOnBattlefield:
-			return "for as long as " + sourceName + " remains on the battlefield"
-		case WhileYouControlSource:
-			return "for as long as you control " + sourceName
-		case WhileSourceRemainsTapped:
-			return "for as long as " + sourceName + " remains tapped"
-		}
+		return "for as long as " + strings.Join(parts, " and ")
 	}
 	return ""
+}
+
+// conditionPhrase is one ForAsLongAs condition in words, or "" when it
+// has none (a condition about the source with no source name).
+func conditionPhrase(c DurationCondition, counterKind, sourceName string) string {
+	switch c {
+	case WhilePinnedHasCounter:
+		return "it has " + counterArticle(counterKind) + " counter on it"
+	case WhilePinnedRemainsTapped:
+		return "that permanent remains tapped"
+	}
+	if sourceName == "" {
+		return ""
+	}
+	switch c {
+	case WhileSourceOnBattlefield:
+		return sourceName + " remains on the battlefield"
+	case WhileYouControlSource:
+		return "you control " + sourceName
+	case WhileSourceRemainsTapped:
+		return sourceName + " remains tapped"
+	case WhilePinnedPowerAtMostSource:
+		return "its power remains at most " + sourceName + "'s"
+	}
+	return ""
+}
+
+// counterArticle is "a flood", "an awakening": the counter's kind with
+// the article a card prints before it.
+func counterArticle(kind string) string {
+	if kind != "" && strings.ContainsRune("aeiou", rune(kind[0])) {
+		return "an " + kind
+	}
+	return "a " + kind
 }

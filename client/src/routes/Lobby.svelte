@@ -7,13 +7,14 @@
     deleteGame,
     fetchBotOptions,
     fetchMySetup,
+    fetchMyGames,
     getGame,
+    joinByCode,
     joinGame,
     fetchTableSettings,
     listGames,
-    logout as apiLogout,
-    logoutEverywhere as apiLogoutEverywhere,
     mintSeatReclaim,
+    rejoinMyGame,
     removeBotSeat,
     replayURL,
     patchTableSettings,
@@ -26,10 +27,10 @@
     type SeatInfo,
   } from "../lib/api";
   import { inviteURL, reclaimURL, spectatorInviteURL, navigate } from "../lib/router";
-  import { canSignOutEverywhere, session, LobbyApiError } from "../lib/session";
+  import { session, LobbyApiError } from "../lib/session";
   import { isAdmin as isAdminSession } from "../lib/admin";
-  import { canJoinByCode, signedInUserID } from "../lib/myGames";
-  import { openSettings } from "../lib/settings";
+  import { signedInUserID } from "../lib/myGames";
+  import { GUEST_CODE_MESSAGE, inviteHash, joinBoxFor, myTables } from "../lib/signedInHome";
   import { seatColor } from "../lib/colors";
   import { avatarURL } from "../lib/api";
   import { canInviteTablemates } from "../lib/tablemates";
@@ -47,11 +48,14 @@
   import Icon from "../lib/components/Icon.svelte";
   import SiteHeader from "../lib/components/SiteHeader.svelte";
 
-  // Lobby is the admin + player landing page. Anyone signed in (and
-  // the admin) sees a create-game form and the invite links for each
-  // table they created (ADR 0110 §5 item 4); players see the game
-  // they're seated in with a deck-upload panel for their own seat and
-  // a button to jump into the game view once all seats are ready.
+  // Lobby is the signed-in home (ADR 0112 §1): every session lands
+  // here, under the site header and its account menu. At the top, a
+  // "Join a table" card (a code or a link for a signed-in person, a
+  // link for a guest, none for the admin token) beside the create form
+  // (any signed-in person, and the admin). Under them, the tables:
+  // a signed-in person's own (myTables), every table for an admin.
+  // Each table shows its seats, the deck-upload panel for your own
+  // seat, and the way into the game once all seats are ready.
   let games = $state<GameMeta[]>([]);
   let error = $state("");
   let newName = $state("");
@@ -66,6 +70,98 @@
   // table opens its tablemate picker, people from the last setup
   // first.
   const canCreate = $derived(canCreateTables($session));
+
+  // --- joining a table (ADR 0112 §1 item 3) ------------------------
+  //
+  // The box that used to be on the login page. A pasted link opens its
+  // Join page, whoever is asking. A bare code is posted to POST /join
+  // only by a signed-in person, whom the server seats as their Discord
+  // identity; a guest is told before anything is sent, since the server
+  // refuses a guest's code (409).
+  const joinBox = $derived(joinBoxFor($session));
+  let joinInput = $state("");
+  let joining = $state(false);
+  let joinError = $state("");
+
+  async function onJoin(e: SubmitEvent): Promise<void> {
+    e.preventDefault();
+    joinError = "";
+    const raw = joinInput.trim();
+    if (!raw) return;
+    const hash = inviteHash(raw);
+    if (hash) {
+      navigate(hash);
+      return;
+    }
+    if (joinBox !== "code") {
+      joinError = GUEST_CODE_MESSAGE;
+      return;
+    }
+    joining = true;
+    try {
+      // The new seat session replaces this page's session, so the list
+      // below shows the new table with its deck panel, as the old
+      // login-page flow did once it landed here.
+      await joinByCode(raw);
+      joinInput = "";
+      await refresh();
+    } catch (err) {
+      joinError = err instanceof LobbyApiError ? err.message : "could not join with that code";
+    } finally {
+      joining = false;
+    }
+  }
+
+  // --- your tables (ADR 0112 §1 item 6, owner answer 3) -------------
+  //
+  // The open tables where this person holds a seat through ANOTHER
+  // session: GET /me/games entries with a `rejoin` path, by game id. A
+  // table there that this session is not bound to gets an "Open" button,
+  // which trades this session for that seat's (POST /me/games/{id}/
+  // session) and then opens it.
+  let rejoinPaths = $state<Map<string, string>>(new Map());
+  const rejoinable = $derived(new Set(rejoinPaths.keys()));
+  let opening = $state<string | null>(null);
+
+  async function loadMyGames(): Promise<void> {
+    if (!signedInUserID($session)) {
+      rejoinPaths = new Map();
+      return;
+    }
+    try {
+      const mine = await fetchMyGames();
+      const next = new Map<string, string>();
+      for (const g of mine) if (g.rejoin) next.set(g.id, g.rejoin);
+      rejoinPaths = next;
+    } catch {
+      // Keep what we had: a failed read must not hide a table, and the
+      // list below still shows this session's own and created tables.
+    }
+  }
+
+  // rejoinsHere: a table where this person holds a seat that this
+  // session is not bound to.
+  function rejoinsHere(g: GameMeta): boolean {
+    return rejoinable.has(g.id) && $session?.gameID !== g.id;
+  }
+
+  async function openMine(g: GameMeta): Promise<void> {
+    const path = rejoinPaths.get(g.id);
+    if (!path || opening) return;
+    opening = g.id;
+    error = "";
+    try {
+      await rejoinMyGame(path);
+      // A table still in the lobby opens here, where the deck is
+      // imported; one underway opens on the board (as My games does).
+      if (g.state === "lobby") await refresh();
+      else navigate(`#/games/${g.id}`);
+    } catch (err) {
+      error = err instanceof LobbyApiError ? err.message : "couldn't open that table";
+    } finally {
+      opening = null;
+    }
+  }
   let lastSetup = $state<TableSetup | null>(null);
   let useLastSetup = $state(true);
   // The table this page just created: its tablemate picker starts open.
@@ -266,7 +362,7 @@
 
   async function refresh(): Promise<void> {
     try {
-      const list = await listGames();
+      const [list] = await Promise.all([listGames(), loadMyGames()]);
       await loadCreatorInvites(list);
       games = list;
       if (isAdmin && showArchived) archived = await listGames({ archived: true });
@@ -496,25 +592,6 @@
     navigate(`#/games/${id}`);
   }
 
-  async function logout(): Promise<void> {
-    await apiLogout();
-    navigate("#/login");
-  }
-
-  // Sign out everywhere (ADR 0051 decision 6): every browser this
-  // Discord account is signed in on, this one included. Offered only
-  // for a session tied to a user; a failure stays on the page so the
-  // player knows their other browsers are still signed in.
-  async function logoutEverywhere(): Promise<void> {
-    error = "";
-    try {
-      await apiLogoutEverywhere();
-      navigate("#/login");
-    } catch (err) {
-      error = err instanceof LobbyApiError ? err.message : "could not sign out everywhere";
-    }
-  }
-
   // mySeat returns the seat this user occupies in game g, or null if
   // the session isn't bound to a seat in g (admin viewing someone
   // else's game, or a RolePlayer viewing a different game entirely).
@@ -583,18 +660,10 @@
     return `${d}d ago`;
   }
 
-  // Players see their own table only (the list endpoint returns
-  // every game); admins and spectators see the whole room. Falls
-  // back to the full list if the seated game isn't in it.
-  // A player also sees every table they created (ADR 0110 §5 item 4),
-  // so a seated player who opens another table does not lose it.
-  const visibleGames = $derived.by(() => {
-    const s = $session;
-    // An admin sees every table, seated somewhere or not.
-    if (isAdmin || s?.principal.role !== "player" || !s.gameID) return games;
-    const mine = games.filter((g) => g.id === s.gameID || g.is_creator === true);
-    return mine.length > 0 ? mine : games;
-  });
+  // What the list shows (lib/signedInHome.ts's myTables): every table
+  // for an admin, a signed-in person's own tables, and a guest's view
+  // as it always was.
+  const visibleGames = $derived(myTables(games, $session, { admin: isAdmin, rejoinable }));
 
   const summary = $derived.by(() => {
     const list = visibleGames;
@@ -632,86 +701,108 @@
   });
 </script>
 
-<!-- Site nav (#1386, ADR 0092's dual-portal experiment) sits above the
-     lobby's own command bar, which keeps its session chip, settings
-     gear and sign-out controls for now — the two overlap on purpose
-     until the owner picks one. -->
+<!-- The site header is the Lobby's only chrome (ADR 0112 §1 item 4):
+     its account menu took over the command bar's session chip, settings
+     and sign-out controls. -->
 <SiteHeader />
 
 <section class="lobby">
-  <header class="bar">
-    <span class="wordmark" aria-hidden="true"><i></i>CMD &amp; CTRL</span>
-    <h1 class="crumb" aria-label="cmd_and_ctrl · lobby"><b>/</b> Tables</h1>
-    <span class="bar-spacer"></span>
-    <span class="uchip">
-      {#if $session?.principal.name && $session.principal.name !== $session.principal.role}
-        {$session.principal.name}
-      {/if}
-      <b>{$session?.principal.role}</b>
-    </span>
-    {#if signedInUserID($session)}
-      <!-- ADR 0051 decision 4: every table this person has sat at. -->
-      <button class="ghost" onclick={() => navigate("#/my-games")}>my games</button>
-    {/if}
-    {#if canJoinByCode($session)}
-      <!-- ADR 0110 §1 item 3: a signed-in seat lasts as long as the
-           sign-in now, so the next table's code goes in the login
-           page's invite box, which seats the same person. -->
-      <button class="ghost" onclick={() => navigate("#/login")}>join with a code</button>
-    {/if}
-    <button
-      class="ibtn"
-      title="settings (press , from anywhere)"
-      aria-label="open settings"
-      onclick={() => openSettings()}><Icon name="gear" size={17} /></button
-    >
-    <button class="ghost" onclick={logout}>log out</button>
-    {#if canSignOutEverywhere($session)}
-      <button
-        class="ghost"
-        title="sign out of every browser signed in with this Discord account"
-        onclick={logoutEverywhere}>log out everywhere</button
-      >
-    {/if}
-  </header>
-
   <div class="head">
     <div>
-      <h2 class="title">Tables</h2>
+      <h1 class="title" aria-label="cmd_and_ctrl · lobby">Tables</h1>
       <p class="sub">{summary}</p>
     </div>
-    {#if canCreate}
-      <form class="create" onsubmit={onCreate}>
-        <div class="create-row">
-          <h2 class="panel-h">create game</h2>
-          <input type="text" placeholder="game name" aria-label="game name" bind:value={newName} />
-          <button type="submit" class="primary" disabled={busy || !newName.trim()}>create</button>
-        </div>
-        {#if lastSetup}
-          <label class="use-setup">
-            <input type="checkbox" bind:checked={useLastSetup} />
-            <span>
-              Use my last setup
-              <span class="setup-sum">{setupSummary(lastSetup, botDeckName)}</span>
-            </span>
-          </label>
-        {/if}
-      </form>
-    {/if}
   </div>
+
+  {#if joinBox !== "none" || canCreate}
+    <!-- Join first: on a narrow screen the two cards stack, and joining
+         is what most people arrive to do. -->
+    <div class="starts">
+      {#if joinBox !== "none"}
+        <form class="start-card" onsubmit={onJoin}>
+          <h2 class="panel-h">join a table</h2>
+          <div class="create-row">
+            <input
+              class="mono"
+              type="text"
+              placeholder={joinBox === "code" ? "invite code or link" : "invite link"}
+              aria-label={joinBox === "code" ? "invite code or link" : "invite link"}
+              bind:value={joinInput}
+            />
+            <button type="submit" class="primary" disabled={joining || !joinInput.trim()}>
+              {joining ? "…" : "join"}
+            </button>
+          </div>
+          <p class="start-help">
+            {#if joinBox === "code"}
+              Paste the code from your pod's invite, or the whole link. You sit as your Discord
+              name. A spectator link opens the table read-only.
+            {:else}
+              Paste the whole invite link. A spectator link opens the table read-only.
+            {/if}
+          </p>
+          {#if joinError}
+            <p class="error" role="alert">{joinError}</p>
+          {/if}
+        </form>
+      {/if}
+      {#if canCreate}
+        <form class="start-card create" onsubmit={onCreate}>
+          <h2 class="panel-h">create game</h2>
+          <div class="create-row">
+            <input
+              type="text"
+              placeholder="game name"
+              aria-label="game name"
+              bind:value={newName}
+            />
+            <button type="submit" class="primary" disabled={busy || !newName.trim()}>create</button>
+          </div>
+          {#if lastSetup}
+            <label class="use-setup">
+              <input type="checkbox" bind:checked={useLastSetup} />
+              <span>
+                Use my last setup
+                <span class="setup-sum">{setupSummary(lastSetup, botDeckName)}</span>
+              </span>
+            </label>
+          {/if}
+        </form>
+      {/if}
+    </div>
+  {/if}
 
   {#if error}
     <p class="error">{error}</p>
   {/if}
 
   {#if visibleGames.length === 0}
-    <p class="muted empty">
-      {#if canCreate}
-        Create a table, then send the invite link to your pod.
-      {:else}
-        You're not seated at a table yet — ask for an invite link.
-      {/if}
-    </p>
+    {#if joinBox === "code"}
+      <!-- ADR 0112 §1 item 7: a signed-in person with no tables. -->
+      <div class="empty-card">
+        <p>
+          You're not at a table yet. Paste an invite code above, or create a table and invite your
+          pod.
+        </p>
+        <div class="empty-links">
+          <a class="btn-link" href="#/practice"
+            ><Icon name="robot" size={13} /> Practice against bots</a
+          >
+          <a class="btn-link" href="#/decks"><Icon name="library" size={13} /> Check a deck</a>
+          {#if signedInUserID($session)}
+            <a class="btn-link" href="#/my-games"><Icon name="scroll" size={13} /> My games</a>
+          {/if}
+        </div>
+      </div>
+    {:else}
+      <p class="muted empty">
+        {#if canCreate}
+          Create a table, then send the invite link to your pod.
+        {:else}
+          You're not seated at a table yet — ask for an invite link.
+        {/if}
+      </p>
+    {/if}
   {:else}
     <ul class="games">
       {#each visibleGames as g (g.id)}
@@ -822,14 +913,29 @@
                     archive
                   </button>
                 {/if}
-                {#if g.state === "lobby" && g.is_creator && !seat && recentInvites.has(g.id)}
+                {#if rejoinsHere(g)}
+                  <!-- ADR 0112 §1 item 6: a seat this person holds through
+                       another session. Opening it trades this session for
+                       that seat's. -->
+                  <button
+                    class="primary"
+                    disabled={opening !== null}
+                    title="open your seat at this table"
+                    onclick={() => openMine(g)}
+                  >
+                    {opening === g.id ? "…" : "Open"}
+                    <Icon name="chevronRight" size={13} />
+                  </button>
+                {:else if g.state === "lobby" && g.is_creator && !seat && recentInvites.has(g.id)}
                   <!-- ADR 0110 §5 item 4: the creator sits down at their
                        own table, as themselves. -->
                   <button disabled={seatBusy !== null} onclick={() => takeSeat(g)}>
                     {seatBusy === g.id ? "…" : "take a seat"}
                   </button>
                 {/if}
-                {#if g.state === "lobby" && seat && !startsFromSeat(g)}
+                {#if rejoinsHere(g)}
+                  <!-- Open (above) is the only way in. -->
+                {:else if g.state === "lobby" && seat && !startsFromSeat(g)}
                   <!-- Seated players wait for the host; the button goes
                        live once the poll sees the table start. -->
                   <button class="primary" disabled title="waiting for the host to start">
@@ -1281,92 +1387,6 @@
     flex-direction: column;
     gap: 18px;
   }
-  /* Same command bar as the game route, minus the game controls. */
-  .bar {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    height: 44px;
-    /* Only the sides bleed now — SiteHeader already occupies the top
-       gap #app's padding used to leave for this bar alone. */
-    margin: 0 -1.5rem 8px;
-    padding: 0 14px;
-    background: var(--bg-1);
-    border-bottom: 1px solid var(--border);
-  }
-  .wordmark {
-    font-family: var(--font-display);
-    font-weight: 800;
-    font-size: 14px;
-    letter-spacing: 0.18em;
-    color: var(--fg);
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-  }
-  .wordmark i {
-    display: inline-block;
-    width: 14px;
-    height: 14px;
-    border: 2px solid var(--gold);
-    transform: rotate(45deg);
-    border-radius: 3px;
-    box-sizing: border-box;
-  }
-  h1.crumb {
-    margin: 0;
-    font-family: var(--font-ui);
-    font-size: 13px;
-    font-weight: 500;
-    letter-spacing: 0;
-    color: var(--fg-muted);
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-  }
-  .crumb b {
-    color: var(--fg-dim);
-    font-weight: 400;
-  }
-  .bar-spacer {
-    flex: 1;
-  }
-  .uchip {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    height: 30px;
-    padding: 0 10px;
-    border-radius: 999px;
-    border: 1px solid var(--border);
-    background: var(--surface);
-    font-size: 12.5px;
-    font-weight: 600;
-    color: var(--fg);
-  }
-  .uchip b {
-    font-family: var(--font-mono);
-    font-size: 9.5px;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--gold-strong);
-    font-weight: 700;
-  }
-  .ibtn {
-    width: 32px;
-    height: 32px;
-    padding: 0;
-    border-radius: 8px;
-    border: 1px solid transparent;
-    background: transparent;
-    color: var(--fg-muted);
-  }
-  .ibtn:hover {
-    color: var(--fg);
-    background: rgba(255, 255, 255, 0.06);
-    border-color: var(--border);
-  }
-
   .head {
     display: flex;
     align-items: flex-end;
@@ -1374,7 +1394,7 @@
     gap: 20px;
     flex-wrap: wrap;
   }
-  h2.title {
+  h1.title {
     margin: 0;
     font-family: var(--font-display);
     font-size: 26px;
@@ -1398,17 +1418,50 @@
     color: var(--fg-dim);
     font-weight: 600;
   }
-  .create {
+  /* The two start cards (ADR 0112 §1 item 3): join and create, side by
+     side, stacking join-first on a narrow screen. */
+  .starts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
+    gap: 12px;
+  }
+  .start-card {
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    max-width: 100%;
+    gap: 8px;
+    min-width: 0;
+    padding: 14px 16px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .start-help {
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--fg-muted);
   }
   .create-row {
     display: flex;
     align-items: center;
     gap: 8px;
-    flex-wrap: wrap;
+  }
+  .create-row input[type="text"] {
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+    height: 36px;
+    padding: 0 12px;
+    box-sizing: border-box;
+    font-size: 13px;
+  }
+  .create-row input.mono {
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+  }
+  .create-row button {
+    height: 36px;
+    flex: 0 0 auto;
   }
   .use-setup {
     display: flex;
@@ -1429,18 +1482,6 @@
   .setup-note {
     margin: 8px 0 0;
   }
-  .create input[type="text"] {
-    width: 240px;
-    max-width: 100%;
-    margin: 0;
-    height: 36px;
-    padding: 0 12px;
-    box-sizing: border-box;
-    font-size: 13px;
-  }
-  .create button {
-    height: 36px;
-  }
   .error {
     color: var(--danger);
     margin: 0;
@@ -1452,6 +1493,25 @@
   .empty {
     margin: 12px 0;
     font-size: 13.5px;
+  }
+  /* A signed-in person's empty Lobby (ADR 0112 §1 item 7). */
+  .empty-card {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 18px 20px;
+    border-radius: 12px;
+    border: 1px dashed var(--border-strong);
+  }
+  .empty-card p {
+    margin: 0;
+    font-size: 13.5px;
+    color: var(--fg);
+  }
+  .empty-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
   }
 
   .games {

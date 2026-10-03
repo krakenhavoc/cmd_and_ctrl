@@ -1,8 +1,11 @@
 // tutorialAnchor.ts — resolving a tutorial step's anchor to the rect the
 // scrim's hole covers (ADR 0076 §2.4, #1079).
 //
-// An anchor is an aria-label the e2e suite already asserts on, or a card's
-// instance id (Card.svelte's data-instance-id). That is deliberate: those
+// An anchor is an aria-label the e2e suite already asserts on, a card's
+// instance id (Card.svelte's data-instance-id), or a seat's portrait
+// (PlayerIdentity's data-seat-id, which CombatArrows already reads; the
+// portrait's own label changes with the life total, so it cannot be the
+// anchor). That is deliberate: those
 // labels are a user-facing contract (AGENTS.md §5), so a refactor that
 // renames one breaks board-layout.spec.ts before it breaks a new
 // player's first session.
@@ -30,6 +33,9 @@ function esc(s: string): string {
 export function resolveAnchor(a: Anchor, root: ParentNode = document): Element | null {
   if ("cardID" in a) {
     return root.querySelector(`[data-instance-id="${esc(a.cardID)}"]`);
+  }
+  if ("seatID" in a) {
+    return root.querySelector(`[data-seat-id="${esc(a.seatID)}"]`);
   }
   let scope: ParentNode = root;
   if (a.within !== undefined) {

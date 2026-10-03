@@ -75,6 +75,12 @@ type Store interface {
 	// UpsertFromLink is Upsert for a deck imported from a link: the
 	// list as fetched, with the link beside it.
 	UpsertFromLink(ctx context.Context, owner uuid.UUID, name, sourceFormat, sourceText, sourceURL string, commanders []string, cardCount int) (Deck, error)
+	// Save is UpsertFromLink that also reports which way it went:
+	// replaced is true when owner already had a deck by that name and
+	// it was updated in place, false when a new deck was inserted. An
+	// empty sourceURL clears the link, as Upsert does. POST /me/decks
+	// answers {deck, replaced} with it (ADR 0112 §3 item 4).
+	Save(ctx context.Context, owner uuid.UUID, name, sourceFormat, sourceText, sourceURL string, commanders []string, cardCount int) (d Deck, replaced bool, err error)
 	// Count is how many decks owner has.
 	Count(ctx context.Context, owner uuid.UUID) (int, error)
 	// Delete removes owner's deck. In the same transaction it sets
@@ -108,6 +114,11 @@ func (NoStore) Upsert(context.Context, uuid.UUID, string, string, string, []stri
 // UpsertFromLink always fails, like Upsert.
 func (NoStore) UpsertFromLink(context.Context, uuid.UUID, string, string, string, string, []string, int) (Deck, error) {
 	return Deck{}, errors.New("decklibrary: no store configured")
+}
+
+// Save always fails, like Upsert.
+func (NoStore) Save(context.Context, uuid.UUID, string, string, string, string, []string, int) (Deck, bool, error) {
+	return Deck{}, false, errors.New("decklibrary: no store configured")
 }
 
 // Count is always 0.
