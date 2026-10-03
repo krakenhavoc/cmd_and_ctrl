@@ -1,3 +1,4 @@
+import { isAdminAllowed } from "./admin";
 import type { GameMeta } from "./api";
 import { isDecksReturn } from "./decksPage";
 import { canJoinByCode } from "./myGames";
@@ -49,10 +50,11 @@ export function isPublicRoute(r: Route): boolean {
 //     table. An expired session is cleared before this runs, so that
 //     visitor stays on #/login and sees the expiry notice.
 //   - #/admin is the shared token's page (§2 item 8). The token's own
-//     session has no use for it and goes to the Lobby; every other
-//     session sees the token form, which says it replaces this
-//     browser's session. (An allowlisted person also goes to the Lobby,
-//     where the Admin chip is; that needs /me's admin_allowed.)
+//     session has no use for it and goes to the Lobby, and so does an
+//     allowlisted person, in either mode, once /me has said so
+//     (`admin_allowed`): their switch is the Admin chip in the header.
+//     Every other session sees the token form, which says it replaces
+//     this browser's session.
 //
 // Invite, spectator and reclaim links and both shapes of the Discord
 // round trip are public and never redirected, whatever the browser
@@ -60,7 +62,9 @@ export function isPublicRoute(r: Route): boolean {
 export function routeRedirect(r: Route, s: Session | null): string | null {
   if (!s) return isPublicRoute(r) ? null : "#/login";
   if (r.name === "login") return "#/lobby";
-  if (r.name === "adminLogin" && s.principal.role === "admin") return "#/lobby";
+  if (r.name === "adminLogin" && (s.principal.role === "admin" || isAdminAllowed(s))) {
+    return "#/lobby";
+  }
   return null;
 }
 

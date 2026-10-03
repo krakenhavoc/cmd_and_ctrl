@@ -28,7 +28,7 @@
   } from "../lib/api";
   import { inviteURL, reclaimURL, spectatorInviteURL, navigate } from "../lib/router";
   import { session, LobbyApiError } from "../lib/session";
-  import { isAdmin as isAdminSession } from "../lib/admin";
+  import { adminNotice, isAdmin as isAdminSession } from "../lib/admin";
   import { signedInUserID } from "../lib/myGames";
   import { GUEST_CODE_MESSAGE, inviteHash, joinBoxFor, myTables } from "../lib/signedInHome";
   import { seatColor } from "../lib/colors";
@@ -699,6 +699,16 @@
     }, POLL_MS);
     return () => clearInterval(t);
   });
+
+  // A table sent us here (ADR 0112 §2 item 5): its connection needed
+  // admin mode, which is off now. Shown once, then dismissed.
+  let modeNotice = $state("");
+  $effect(() => {
+    const n = $adminNotice;
+    if (!n) return;
+    modeNotice = n;
+    adminNotice.set("");
+  });
 </script>
 
 <!-- The site header is the Lobby's only chrome (ADR 0112 §1 item 4):
@@ -713,6 +723,13 @@
       <p class="sub">{summary}</p>
     </div>
   </div>
+
+  {#if modeNotice}
+    <div class="mode-notice" role="status">
+      <span>{modeNotice}</span>
+      <button type="button" class="ghost" onclick={() => (modeNotice = "")}>dismiss</button>
+    </div>
+  {/if}
 
   {#if joinBox !== "none" || canCreate}
     <!-- Join first: on a narrow screen the two cards stack, and joining
@@ -1481,6 +1498,19 @@
   }
   .setup-note {
     margin: 8px 0 0;
+  }
+  .mode-notice {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 0 0 16px;
+    padding: 10px 14px;
+    border: 1px solid var(--border-strong);
+    border-left: 3px solid var(--accent);
+    border-radius: var(--radius);
+    background: var(--surface);
+    font-size: 13.5px;
   }
   .error {
     color: var(--danger);
