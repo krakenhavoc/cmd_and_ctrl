@@ -33,9 +33,14 @@ import "github.com/google/uuid"
 //     (ADR 0063 durations) and #1195 / #1200 / #1316 made the one home
 //     for a statement about a player with a duration.
 //
-// Emblems (#623) would be a third source; the gate type keeps While
-// for Gideon of the Trials' emblem, and the reader gains a loop when
-// that card is catalogued.
+// A third source is an EMBLEM (ADR 0109 §5, #1899): an emblem's
+// abilities function in the command zone (CR 114.4), so
+// EmblemSpec.GameEndGates is read like a permanent's, with the emblem
+// as the source and its owner as "you" (CR 114.2). Gideon of the
+// Trials' "As long as you control a Gideon planeswalker, you can't lose
+// the game and your opponents can't win the game" is a gate with a
+// While read off the emblem. An emblem leaves only with its owner
+// (CR 800.4a), so nothing is stored.
 
 // GateScope names who a gate applies to, relative to the player it
 // belongs to: the controller of the permanent that prints it, or the
@@ -63,7 +68,7 @@ const (
 //	{Scope: GateOpponents, CantWin: true}
 //
 // and Abyssal Persecutor the mirror image. A gate is plain data apart
-// from While, which only a battlefield static may set.
+// from While, which only a static (a permanent's or an emblem's) may set.
 type GameEndGate struct {
 	Scope    GateScope `json:"scope"`
 	CantLose bool      `json:"cantLose,omitempty"`
@@ -72,7 +77,7 @@ type GameEndGate struct {
 	// LossConcede. Phyrexian Unlife would be []LossCause{LossLife}; no
 	// catalogued card narrows it yet.
 	Causes []LossCause `json:"causes,omitempty"`
-	// While is a battlefield static's condition, read at every check.
+	// While is a static's condition (a permanent's or an emblem's), read at every check.
 	// Nil means always. Never stored (a granted gate refuses one), so
 	// it never reaches a snapshot.
 	While func(g *Game, source Card) bool `json:"-"`
@@ -194,7 +199,7 @@ type GameEndGateSource struct {
 }
 
 // forEachGameEndGateLocked walks every gate that applies to player p,
-// battlefield statics first and granted gates after, until fn returns
+// battlefield statics first, then emblems, then granted gates, until fn returns
 // false. `source` is the gate's object; `name` its attribution;
 // `granted` is true for a stored gate.
 //
@@ -207,31 +212,48 @@ func (g *Game) forEachGameEndGateLocked(p *Player, fn func(gate GameEndGate, sou
 	if p == nil {
 		return
 	}
-	if CatalogGameEndGates != nil && g.Battlefield != nil {
-		for i := range g.Battlefield.Cards {
-			c := &g.Battlefield.Cards[i]
-			key := CatalogAbilityKey(*c)
-			if key == "" {
+	// walk reports false once fn has asked to stop.
+	walk := func(c *Card) bool {
+		key := CatalogAbilityKey(*c)
+		if key == "" {
+			return true
+		}
+		gates := CatalogGameEndGates(key)
+		if len(gates) == 0 {
+			return true
+		}
+		if owner := g.playerByIDLocked(c.Controller); owner == nil || owner.Eliminated {
+			return true
+		}
+		for _, gate := range gates {
+			if !gate.appliesTo(c.Controller, p.ID) {
 				continue
 			}
-			gates := CatalogGameEndGates(key)
-			if len(gates) == 0 {
+			if gate.While != nil && !gate.While(g, *c) {
 				continue
 			}
-			if owner := g.playerByIDLocked(c.Controller); owner == nil || owner.Eliminated {
-				continue
+			if !fn(gate, c.InstanceID, c.Name, false) {
+				return false
 			}
-			for _, gate := range gates {
-				if !gate.appliesTo(c.Controller, p.ID) {
-					continue
-				}
-				if gate.While != nil && !gate.While(g, *c) {
-					continue
-				}
-				if !fn(gate, c.InstanceID, c.Name, false) {
+		}
+		return true
+	}
+	if CatalogGameEndGates != nil {
+		if g.Battlefield != nil {
+			for i := range g.Battlefield.Cards {
+				if !walk(&g.Battlefield.Cards[i]) {
 					return
 				}
 			}
+		}
+		// ADR 0109 §5: the emblems (CR 114.4), after the battlefield.
+		stopped := false
+		g.forEachEmblemLocked(func(c *Card) bool {
+			stopped = !walk(c)
+			return !stopped
+		})
+		if stopped {
+			return
 		}
 	}
 	for _, q := range g.Seats {

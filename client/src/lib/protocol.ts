@@ -356,6 +356,12 @@ export interface GameView {
   // Unleashed, Lightning's Stagger), oldest first, already worded for the
   // banner. Absent on nearly every turn.
   damage_multipliers?: string[];
+  // ADR 0109 §6 (CR 601.2c): one line per live static that stops cards in
+  // graveyards being targeted, the printed clause and its card ("Cards in
+  // graveyards can't be the targets of spells or abilities. — Ground
+  // Seal"). The graveyard viewer shows them as a banner; the legal target
+  // sets already leave the refused cards out. Absent on nearly every turn.
+  graveyard_target_bans?: string[];
   // Cleanup-step pause map (S13.4, CR 402.2). Keys are player UUID
   // strings, values are the count each player must discard. Drives
   // DiscardPromptModal. Empty / absent when nobody owes discard.

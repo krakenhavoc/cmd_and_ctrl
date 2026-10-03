@@ -148,6 +148,7 @@ func (n *normalizer) game(v protocol.GameView) protocol.GameView {
 	out.DamageCantBePrevented = v.DamageCantBePrevented
 	out.ExileIfCreaturesDie = v.ExileIfCreaturesDie
 	out.DamageMultipliers = v.DamageMultipliers
+	out.GraveyardTargetBans = v.GraveyardTargetBans
 	out.DiscardPending = n.idKeyedIntMap(v.DiscardPending)
 	out.LoopNotice = n.loopNotice(v.LoopNotice)
 	out.Outcome = n.outcome(v.Outcome)
@@ -513,6 +514,7 @@ func everyFieldGameViewForNormalizer() protocol.GameView {
 		DamageCantBePrevented: []string{"Skullcrack"},
 		ExileIfCreaturesDie:   []string{"Flaying Tendrils"},
 		DamageMultipliers:     []string{"P1's sources deal double damage this turn — Insult"},
+		GraveyardTargetBans:   []string{"Cards in graveyards can't be the targets of spells or abilities. — Ground Seal"},
 		DiscardPending:        map[string]int{ownerID: 1},
 		PendingChoices: []protocol.PendingChoiceView{{
 			ID: "choice-1", Kind: "choose_cards", Chooser: ownerID, FromPlayer: ownerID, Count: 1,

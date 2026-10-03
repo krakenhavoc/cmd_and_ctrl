@@ -144,6 +144,16 @@ type GameView struct {
 	// Battlefield statics that say the same (Furnace of Rath) are not
 	// listed.
 	DamageMultipliers []string `json:"damage_multipliers,omitempty"`
+	// GraveyardTargetBans is one line per live static that stops cards
+	// in graveyards being targeted (ADR 0109 §6, #1885; CR 601.2c),
+	// worded for the graveyard viewer's banner: the printed clause and
+	// the card that prints it — "Cards in graveyards can't be the targets
+	// of spells or abilities. — Ground Seal". It names the clause, not a
+	// verdict: Tomik's applies only to land cards and only to his
+	// opponents' spells, and its line says so in his words. The legal
+	// target sets already leave out every card a restriction refuses.
+	// Public and identical for every viewer.
+	GraveyardTargetBans []string `json:"graveyard_target_bans,omitempty"`
 	// DiscardPending is the cleanup-step pause map (S13.4): keys
 	// are player UUID strings, values are the count each player
 	// must discard. Drives the client's discard-prompt modal.
@@ -3676,6 +3686,7 @@ func ViewOfGame(g *game.Game) GameView {
 			DamageCantBePrevented: g.DamageCantBePreventedThisTurnLabels(),
 			ExileIfCreaturesDie:   g.ExileIfCreaturesWouldDieThisTurnLabels(),
 			DamageMultipliers:     g.DamageMultiplierLines(),
+			GraveyardTargetBans:   graveyardTargetBanLines(g),
 			DiscardPending:        viewOfDiscardPending(g.DiscardPending),
 			PendingChoices:        viewOfPendingChoices(g),
 			LoopNotice:            viewOfLoopNotice(g.LoopNotice),
@@ -7459,6 +7470,7 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		DamageCantBePrevented: v.DamageCantBePrevented,
 		ExileIfCreaturesDie:   v.ExileIfCreaturesDie,
 		DamageMultipliers:     v.DamageMultipliers,
+		GraveyardTargetBans:   v.GraveyardTargetBans,
 		DiscardPending:        v.DiscardPending,
 		PendingChoices:        filterPendingChoices(v.PendingChoices, isKnower, viewerID),
 		LegalMoves:            legalMovesFor(v.legalBySeat, viewerID),
@@ -8517,6 +8529,22 @@ func cantCastReason(err error) string {
 		return cant.Reason
 	}
 	return "An effect prevents casting this spell."
+}
+
+// graveyardTargetBanLines is GameView.graveyard_target_bans: one line
+// per live restriction about graveyards (ADR 0109 §6), the printed
+// clause and the card that prints it. Nil when there is none, which is
+// nearly every frame. Caller holds the read lock with fresh layers.
+func graveyardTargetBanLines(g *game.Game) []string {
+	var out []string
+	for _, b := range g.TargetingBansForZoneForEffect(game.ZoneGraveyard) {
+		line := b.Label
+		if b.SourceName != "" {
+			line += " — " + b.SourceName
+		}
+		out = append(out, line)
+	}
+	return out
 }
 
 // cantPlayLandReason is the clause behind a refused land play, for the

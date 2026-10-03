@@ -2106,6 +2106,42 @@ LandPlayRestrictions: []game.LandPlayRestriction{
 - "A land with a name originally printed in Arabian Nights" is
   `game.IsArabianNightsName` (CR 206.3a's list).
 
+### "Cards in graveyards can't be targeted" (ADR 0109 §6, #1885)
+
+A rule that stops spells and abilities targeting the cards in a whole
+ZONE is not a keyword on those cards: it is a static of some other
+permanent. It has its own slot, read live at the engine's two targeting
+choke points, so a refused card is never offered, can't be announced
+(CR 601.2c), and makes a spell already aimed at it lose that target at
+resolution (CR 608.2b).
+
+```go
+TargetingRestrictions: []game.TargetingRestriction{
+    CardsInGraveyardsCantBeTargeted("Cards in graveyards can't be the targets of spells or abilities."), // Ground Seal
+    OpponentsCantTarget("Lands on the battlefield and land cards in graveyards can't be the targets of spells or abilities your opponents control.",
+        Land(), game.ZoneBattlefield, game.ZoneGraveyard),                                          // Tomik
+},
+```
+
+- The constructors are in
+  [targeting_restriction.go](../server/internal/cards/effects/targeting_restriction.go).
+  A shape neither names writes a
+  `game.TargetingRestriction{Label, Zones, Forbids func(game.TargetingQuery) bool}`
+  literal. `TargetingQuery` carries the game, the candidate card as it
+  stands in its zone, the zone, the controller of the spell or ability
+  choosing the target, and the source permanent. `Register` refuses a
+  restriction with no `Label`, no `Forbids` or no `Zones`.
+- Only TARGETING is refused. A cost (delve, "exile a card from a
+  graveyard") and a "choose" that is not a target (CR 115.10a) are not, so
+  never use this slot for a rule about costs.
+- Read from the battlefield through `CatalogAbilityKey`, with nothing
+  stored: the source leaving lifts it, and a source that lost its
+  abilities restricts nothing. Don't add a check of your own anywhere
+  else; `canBeTargetedByLocked` (`game/keywords.go`) is the one place.
+- A restriction about graveyards is listed on
+  `GameView.graveyard_target_bans`, which the graveyard viewer shows as a
+  banner.
+
 ### "Spells you control can't be countered" (ADR 0106, #1806)
 
 Three different statements, three different slots:
@@ -5867,6 +5903,16 @@ Three things to know:
   the label and text read from the catalog on every projection. The
   board draws chips beside the player identity; the command-zone pile
   stays commander-only.
+- **An emblem's rule gates** (ADR 0109 §5, #1899) are the `EmblemSpec`
+  slots `CastRestrictions`, `LandPlayRestrictions`, `GameEndGates` and
+  `UntapCaps`: the `Spec` slots of the same names, built by the same
+  constructors. The cast gate, the land-play gate, the game-end gates and
+  the untap caps each walk every seat's emblems beside the battlefield,
+  with the emblem as the source, so `OpponentsCantCast(…)` on Narset
+  Transcendent's emblem binds the emblem owner's opponents (CR 114.2).
+  Never write an emblem's "can't" as a `CastBanRule` granted to each
+  opponent: that record is invisible on the board, frozen when it is
+  made, and does not end when the emblem's owner leaves (CR 800.4a).
 
 ### Designations: Class levels, solved Cases, station thresholds (#757, #759)
 

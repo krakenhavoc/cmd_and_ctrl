@@ -78,10 +78,10 @@ type EmblemSpec struct {
 	// uses the stack, which is why they are not Triggered entries —
 	// see game/untap.go and game/draw_step.go for the argument.
 	//
-	// At least one of Static, Triggered, UntapStep or DrawStep must
-	// be non-empty — an emblem with no abilities has no
-	// characteristics at all and would be an object nothing can
-	// observe.
+	// At least one ability slot (these two, Static, Triggered,
+	// ActivationTimings or one of the rule gates below) must be
+	// non-empty — an emblem with no abilities has no characteristics
+	// at all and would be an object nothing can observe.
 	UntapStep []game.UntapStepPermission
 	DrawStep  []game.DrawStepPermission
 
@@ -99,6 +99,27 @@ type EmblemSpec struct {
 	// (CR 114.2) — exactly as it is the permanent's controller on
 	// Leonin Shikari.
 	ActivationTimings []game.ActivationTiming
+
+	// CastRestrictions, LandPlayRestrictions, GameEndGates and UntapCaps
+	// are the emblem's rule gates (ADR 0109 §5, #1899): the Spec slots of
+	// the same names one zone over, built by the same constructors and
+	// checked by the same Register guards. Each gate that reads the Spec
+	// slot also walks every seat's emblems (CR 114.4), with the emblem
+	// as the source, so "your opponents" is the emblem's owner's
+	// opponents (CR 114.2):
+	//
+	//	CastRestrictions      Narset Transcendent's "Your opponents can't
+	//	                      cast noncreature spells" (the cast gate)
+	//	LandPlayRestrictions  the land-play gate; no printed emblem yet
+	//	GameEndGates          Gideon of the Trials' "you can't lose the
+	//	                      game and your opponents can't win the game"
+	//	UntapCaps             Dovin Baan's "Your opponents can't untap
+	//	                      more than two permanents during their untap
+	//	                      steps"
+	CastRestrictions     []game.CastRestriction
+	LandPlayRestrictions []game.LandPlayRestriction
+	GameEndGates         []game.GameEndGate
+	UntapCaps            []game.UntapCap
 }
 
 // buildEmblemDef projects an EmblemSpec into the CardDef the engine
@@ -113,7 +134,13 @@ func buildEmblemDef(e EmblemSpec) *game.CardDef {
 		UntapStep:         e.UntapStep,
 		DrawStep:          e.DrawStep,
 		ActivationTimings: e.ActivationTimings,
-		Emblem:            &game.EmblemDef{Label: e.Label, Text: e.Text},
+		// ADR 0109 §5: the rule gates, which the gates read off this def
+		// through the same catalog hooks a permanent's go through.
+		CastRestrictions:     e.CastRestrictions,
+		LandPlayRestrictions: e.LandPlayRestrictions,
+		GameEndGates:         e.GameEndGates,
+		UntapCaps:            e.UntapCaps,
+		Emblem:               &game.EmblemDef{Label: e.Label, Text: e.Text},
 	}
 }
 
@@ -131,10 +158,13 @@ func checkEmblemSpec(name string, e *EmblemSpec) {
 		panic("effects.Register: " + name + " declares an Emblem with no Text — a player reading the chip learns nothing")
 	}
 	if len(e.Static) == 0 && len(e.Triggered) == 0 && len(e.UntapStep) == 0 && len(e.DrawStep) == 0 &&
-		len(e.ActivationTimings) == 0 {
+		len(e.ActivationTimings) == 0 && len(e.CastRestrictions) == 0 && len(e.LandPlayRestrictions) == 0 &&
+		len(e.GameEndGates) == 0 && len(e.UntapCaps) == 0 {
 		panic("effects.Register: " + name + " declares an Emblem with no abilities — CR 114.1 says an emblem has nothing else")
 	}
 	checkActivationTimings(name+" emblem", e.ActivationTimings)
+	checkCastRestrictions(name+" emblem", e.CastRestrictions)
+	checkLandPlayRestrictions(name+" emblem", e.LandPlayRestrictions)
 	// ADR 0107 §3: the stack step gathers statics over spells from the
 	// battlefield only, so one on an emblem would be dead text.
 	for i, s := range e.Static {
