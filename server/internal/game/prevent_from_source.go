@@ -220,6 +220,7 @@ func (g *Game) fromSourceMeetsLocked(e ScopedEffect, m Mod, ev *ReplacementEvent
 //
 // Caller must hold g.mu (write).
 func (g *Game) applyFromSourceLocked(e ScopedEffect, mod int, m Mod, ev *ReplacementEvent) {
+	damage := ev.DamageAmount
 	var prevented int
 	if m.Amount > 0 {
 		prevented = g.applyChargedShieldLocked(e, mod, m, ev)
@@ -227,7 +228,7 @@ func (g *Game) applyFromSourceLocked(e ScopedEffect, mod int, m Mod, ev *Replace
 		prevented = ev.DamageAmount
 		ev.Cancel()
 	}
-	g.queuePreventionFollowUpLocked(e, m, ev, prevented)
+	g.queuePreventionFollowUpLocked(e, m, ev, prevented, damage)
 }
 
 // DamageShieldLabels lists the live preventFromSource shields for the

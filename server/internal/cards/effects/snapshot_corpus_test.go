@@ -362,7 +362,42 @@ func corpusBoards() []corpusBoard {
 		// Dragon that kept the haste-until-end-of-turn its spell was given
 		// (a record re-pinned to the permanent with its duration).
 		{"granted_mana_spent_readers", corpusGrantedManaSpentReaders},
+		// v7, added by ADR 0108 PR 8 (#1906) as a new file: the scoped
+		// shields' CR 615.5 follow-ups (owner decision 2) as data — Test
+		// of Faith's charged shield with its Then, partly spent; Vengeful
+		// Archon's, whose follow-up deals its damage to a chosen player
+		// (Mod.To); and a combat shield with a follow-up (Inkshield's
+		// shape).
+		{"shield_follow_ups", corpusShieldFollowUps},
 	}
+}
+
+// corpusShieldFollowUps is ADR 0108 owner decision 2: preventDamage and
+// preventCombatDamage carrying Then, and Mod.To.
+func corpusShieldFollowUps(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	dragon := pushBattlefieldCardWithTimestamp(g, corpusCreature(opp.ID, "Shivan Dragon", 5, 5))
+	knight := pushBattlefieldCardWithTimestamp(g, corpusCreature(me.ID, "Knight", 2, 4))
+	g.WithWriteLock(func() {
+		g.RecomputeLayersIfStaleLocked()
+		g.PreventNextDamageThenThisTurnForEffect(uuid.Nil, knight, 3, false,
+			game.ShieldFollowUp{Controller: me.ID, Body: countersOnItPerPreventedBody}, "Test of Faith — prevent the next 3 damage")
+		g.PreventNextDamageThenThisTurnForEffect(uuid.Nil, me.ID, 4, false,
+			game.ShieldFollowUp{Controller: me.ID, Body: dealThatMuchToTheChosenTargetBody, To: opp.ID}, "Vengeful Archon — prevent the next 4 damage")
+		g.PreventCombatDamageThenThisTurnForEffect(uuid.Nil, me.ID,
+			game.ShieldFollowUp{Controller: me.ID, Body: shieldGainLifeEqualBody}, "prevent all combat damage that would be dealt to you this turn")
+		// Test of Faith's shield takes 1 of the dragon's damage, leaving 2,
+		// and its follow-up puts the counter on.
+		if err := g.DealDamageToCreatureForEffect(dragon, knight, 1); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if n := len(g.ScopedEffects); n != 3 {
+		t.Fatalf("setup: %d scoped records, want 3", n)
+	}
+	return g
 }
 
 // corpusGrantedManaSpentReaders is ADR 0109 §11's data, made by the cards

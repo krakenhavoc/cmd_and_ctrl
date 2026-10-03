@@ -52,11 +52,12 @@ import "github.com/google/uuid"
 // (CR 702.16e is a prevention effect). A replacement that is not a
 // prevention effect — a doubler, a redirection — is untouched.
 //
-// "Any additional effects they have will take place": ADR 0107 §6's
-// "the damage prevented this way" follow-up (ModPreventNextFromSource's
-// Then) is owed here with zero prevented, and runs once for the instance,
-// as it would have after a real prevention
-// (preventionAppliedToUnpreventableLocked).
+// "Any additional effects they have will take place": every scoped
+// shield's follow-up (its Mod.Then, ADR 0107 §6 and ADR 0108 owner
+// decision 2) and every prevention static's (ReplacementEffect.Then, ADR
+// 0108 §8, prevention_then.go) is owed here with zero prevented, and runs
+// once for its unit and instance, as it would have after a real
+// prevention (preventionAppliedToUnpreventableLocked).
 //
 // CR 615.13's "whenever damage is prevented" triggers have nothing to
 // see either: nothing was prevented, and the engine emits no prevention
@@ -344,7 +345,9 @@ func (g *Game) settleUnpreventableLocked(ev *ReplacementEvent, applicable []acti
 	for _, a := range applicable {
 		if (unpreventable && a.effect.Prevention) || (noRedirect && a.effect.RedirectsDamage) {
 			g.replacementsAppliedThisEvent[ev.ID][a.id] = true
-			g.preventionAppliedToUnpreventableLocked(ev, a)
+			if unpreventable && a.effect.Prevention {
+				g.preventionAppliedToUnpreventableLocked(ev, a)
+			}
 			continue
 		}
 		out = append(out, a)
@@ -354,13 +357,18 @@ func (g *Game) settleUnpreventableLocked(ev *ReplacementEvent, applicable []acti
 
 // preventionAppliedToUnpreventableLocked is where CR 615.12's "any
 // additional effects they have will take place" happens, with nothing
-// prevented. The one prevention effect with an additional effect is ADR
-// 0107 §6's next-damage shield, whose "the damage prevented this way"
-// follow-up is queued with zero; the shield itself is not used up
-// (CR 609.7b: a shield that prevents no damage isn't).
+// prevented. A scoped shield's follow-up (ADR 0107 §6, ADR 0108 owner
+// decision 2) and a prevention static's (ADR 0108 §8, prevention_then.go)
+// are both owed with zero prevented and the whole event as "that damage";
+// a shield itself is not used up (CR 609.7b: a shield that prevents no
+// damage isn't).
 //
 // Caller must hold g.mu (write).
 func (g *Game) preventionAppliedToUnpreventableLocked(ev *ReplacementEvent, a activeReplacement) {
+	if a.source != nil {
+		g.oweStaticFollowUpLocked(ev, a, 0, ev.DamageAmount)
+		return
+	}
 	g.preventionFollowUpForUnpreventableLocked(ev, a.id)
 }
 

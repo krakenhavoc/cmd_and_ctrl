@@ -628,7 +628,9 @@ func TestNoCardActsOnItsOwnSourceThroughAGameMutatorWithoutAsking(t *testing.T) 
 	}
 	// SourcePermanent answers the same question: its Left is true for a
 	// source that left and came back (#1418).
-	asks := map[string]bool{"sourceIsNewObject": true, "isNewSourceObject": true, "isNewSourceObjectAsThis": true, "b09SourceStillOnBattlefield": true, "SourcePermanent": true}
+	// followUpThis (prevention_static.go) is SourcePermanent for a
+	// prevention follow-up, refusing a source that has Left.
+	asks := map[string]bool{"sourceIsNewObject": true, "isNewSourceObject": true, "isNewSourceObjectAsThis": true, "b09SourceStillOnBattlefield": true, "SourcePermanent": true, "followUpThis": true}
 	// A SPELL moving itself — "Exile Teferi's Protection" — is not a
 	// permanent's ability; a spell item is never judged.
 	spells := map[string]bool{
