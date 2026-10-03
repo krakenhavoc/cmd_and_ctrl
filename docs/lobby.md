@@ -58,6 +58,22 @@ allowlisted person) or `admin_id` (the token). No token is ever logged.
 
 Exchange the shared admin token for an admin session.
 
+**In the client, the token's form is on `#/admin` only**
+([ADR 0112](decisions/0112-signed-in-home-player-mode-and-one-decks-page.md)
+§2 item 8, S57). `#/login` is for signed-out visitors and has no token
+form or link to one; operators open `#/admin` directly. What `#/admin`
+shows:
+
+| Browser holds | `#/admin` |
+|---|---|
+| no session | the token form |
+| the token's own session | goes to `#/lobby` |
+| any other session (a signed-in person, a guest seat, a spectator) | the token form, with a note that it replaces this browser's session. A signed-in person's session is set aside and comes back when the token's session ends ([ADR 0110](decisions/0110-remember-me.md) §1 item 6). |
+
+Every session that opens `#/login` goes to `#/lobby`, the signed-in
+home, where the "Join a table" card and the header's account menu are
+(ADR 0112 §1).
+
 **Request**
 
 ```json
@@ -2489,7 +2505,7 @@ browser to the SPA's `#/oauth-complete?…` fragment.
 **`prompt`** ([ADR 0110](decisions/0110-remember-me.md) §2, S55). Both
 flows send Discord `prompt=none`, so a repeat sign-in with the same
 `identify` scope skips Discord's screen. `?prompt=consent` on `start`
-asks for the screen instead: it is the login page's "Sign in with a
+asks for the screen instead: it is the header account menu's "Sign in with a
 different Discord account", because `prompt=none` silently uses
 whichever account the browser is signed in to, and Discord's consent
 screen has an account switcher. Any other `prompt` value is a **400**.

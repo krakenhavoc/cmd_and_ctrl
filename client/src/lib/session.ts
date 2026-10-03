@@ -398,9 +398,12 @@ export function renewSession(): Promise<void> {
 // anything for s: only a session tied to a user (user_id) can be
 // revoked server-side (POST /logout/everywhere, ADR 0051 decision 6).
 // A guest, admin or spectator session, or any session on a server with
-// no user database, gets the plain sign-out only.
+// no user database, gets the plain sign-out only. A guest's principal
+// spells "no user" as the nil uuid, so this asks signedInUserID rather
+// than whether the field is set (ADR 0112 §1 item 4 puts this in the
+// header, where every guest sees it).
 export function canSignOutEverywhere(s: Session | null): boolean {
-  return Boolean(s?.principal.user_id);
+  return signedInUserID(s) !== null;
 }
 
 // OAuthFragment is what the server's Discord callback puts in the
