@@ -147,6 +147,7 @@ func (n *normalizer) game(v protocol.GameView) protocol.GameView {
 	out.SplitSecondActive = v.SplitSecondActive
 	out.DamageCantBePrevented = v.DamageCantBePrevented
 	out.ExileIfCreaturesDie = v.ExileIfCreaturesDie
+	out.DamageShields = v.DamageShields
 	out.DamageMultipliers = v.DamageMultipliers
 	out.GraveyardTargetBans = v.GraveyardTargetBans
 	out.DiscardPending = n.idKeyedIntMap(v.DiscardPending)
@@ -513,6 +514,7 @@ func everyFieldGameViewForNormalizer() protocol.GameView {
 		SplitSecondActive:     true,
 		DamageCantBePrevented: []string{"Skullcrack"},
 		ExileIfCreaturesDie:   []string{"Flaying Tendrils"},
+		DamageShields:         []string{"Pay No Heed (Goblin Guide)"},
 		DamageMultipliers:     []string{"P1's sources deal double damage this turn — Insult"},
 		GraveyardTargetBans:   []string{"Cards in graveyards can't be the targets of spells or abilities. — Ground Seal"},
 		DiscardPending:        map[string]int{ownerID: 1},

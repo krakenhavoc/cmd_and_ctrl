@@ -25,7 +25,7 @@
   import EnvBadge from "./lib/components/EnvBadge.svelte";
   import { route, navigate } from "./lib/router";
   import { session, sessionFromOAuth, setSession } from "./lib/session";
-  import { loadAdminStatus, needsAdminCheck } from "./lib/admin";
+  import { armAdminLapse, loadAdminStatus, needsAdminCheck, onVisibleAgain } from "./lib/admin";
   import { oauthCompleteTarget, routeRedirect } from "./lib/signedInHome";
   import { takeAfterSignIn } from "./lib/decksPage";
   import { settings } from "./lib/settings";
@@ -64,6 +64,18 @@
   $effect(() => {
     const s = $session;
     if (needsAdminCheck(s)) void loadAdminStatus(s);
+  });
+
+  // Admin mode lapses 12 hours after it was switched on (ADR 0112 §2,
+  // owner answer 1). The lapse timer follows the installed session's
+  // end time, and a hidden tab that becomes visible asks /me again, so
+  // a switch made in another tab or on another device is caught up.
+  $effect(() => {
+    armAdminLapse($session);
+  });
+  $effect(() => {
+    document.addEventListener("visibilitychange", onVisibleAgain);
+    return () => document.removeEventListener("visibilitychange", onVisibleAgain);
   });
 
   // oauth-complete handoff (S12.5). /auth/discord/callback on the

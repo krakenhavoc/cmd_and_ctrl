@@ -24,6 +24,7 @@ const (
 	silentGravestoneOracle   = "803815c5-12be-48b3-a101-f416c1ef9b7b"
 	underworldCerberusOracle = "a36c2b76-d595-42ba-b8c2-bb8f02639981"
 	regrowthOracle           = "e6e4a8bd-5c40-4654-8de1-0da9afed90fd"
+	gideonOfTheTrialsOracle  = "a9bbaad7-c016-4908-a6a7-2c26112a6bf6"
 )
 
 // a109p6Seats is the active seat and the next one.
@@ -507,5 +508,101 @@ func TestTomikProtectsLandsAndGraveyardLands(t *testing.T) {
 	}
 	if fromHand != nil || mine != nil {
 		t.Errorf("Tomik refused a land play from hand (%v) or his controller's (%v)", fromHand, mine)
+	}
+}
+
+// --- §5: Gideon of the Trials -----------------------------------------
+
+// The +1: all damage the target would deal is prevented, until Gideon's
+// controller's next turn; another source's damage is not.
+func TestGideonOfTheTrialsPlusOnePreventsTheTargetsDamage(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := a109p6Seats(g)
+	gideon := a109p6Walker(t, g, me, "Gideon of the Trials", gideonOfTheTrialsOracle, 3)
+	bear := pushCatalogPermanent(g, opp.ID, "Bear", "Creature — Bear", "", false)
+	wolf := pushCatalogPermanent(g, opp.ID, "Wolf", "Creature — Wolf", "", false)
+	b16Activate(t, g, me.ID, gideon, 0, game.ActivateAbilityParams{
+		Targets: []game.TargetRef{{Kind: game.TargetCard, ID: bear}},
+	})
+	life := me.Life
+	g.WithWriteLock(func() { _ = g.DealDamageToPlayerForEffect(bear, me.ID, 3) })
+	if me.Life != life {
+		t.Errorf("the targeted permanent's damage was dealt: life %d → %d", life, me.Life)
+	}
+	g.WithWriteLock(func() { _ = g.DealDamageToPlayerForEffect(wolf, me.ID, 2) })
+	if me.Life != life-2 {
+		t.Errorf("another source's damage: life %d → %d, want -2", life, me.Life)
+	}
+	if got := loyaltyCount(g, gideon); got != 4 {
+		t.Errorf("loyalty = %d, want 4", got)
+	}
+	// Until your next turn (CR 611.2b): still there on the opponent's
+	// turn, gone once Gideon's controller's next turn has begun.
+	mySeat := g.Turn.ActiveSeat
+	advanceToUpkeepOf(t, g, (mySeat+1)%len(g.Seats))
+	before := me.Life
+	g.WithWriteLock(func() { _ = g.DealDamageToPlayerForEffect(bear, me.ID, 3) })
+	if me.Life != before {
+		t.Errorf("the shield ended before Gideon's controller's next turn: life %d → %d", before, me.Life)
+	}
+	advanceToUpkeepOf(t, g, mySeat)
+	before = me.Life
+	g.WithWriteLock(func() { _ = g.DealDamageToPlayerForEffect(bear, me.ID, 3) })
+	if me.Life != before-3 {
+		t.Errorf("the shield outlived Gideon's controller's next turn: life %d → %d", before, me.Life)
+	}
+}
+
+// The first 0: Gideon is a 4/4 Human Soldier creature with
+// indestructible that is still a planeswalker, and damage to him is
+// prevented, so he loses no loyalty.
+func TestGideonOfTheTrialsAnimatesAndIsShielded(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := a109p6Seats(g)
+	gideon := a109p6Walker(t, g, me, "Gideon of the Trials", gideonOfTheTrialsOracle, 3)
+	bear := pushCatalogPermanent(g, opp.ID, "Bear", "Creature — Bear", "", false)
+	b16Activate(t, g, me.ID, gideon, 1, game.ActivateAbilityParams{})
+	c, ok := battlefieldCard(g, gideon)
+	if !ok {
+		t.Fatal("Gideon left the battlefield")
+	}
+	eff := c.Effective()
+	if !c.IsCreature() || !c.IsPlaneswalker() || eff.Power != 4 || eff.Toughness != 4 ||
+		!c.HasSubtype("Human") || !c.HasSubtype("Soldier") || !game.HasKeyword(&c, "indestructible") {
+		t.Errorf("Gideon after the 0 = %v %v %d/%d %v, want a 4/4 Human Soldier creature planeswalker with indestructible",
+			eff.Types, eff.Subtypes, eff.Power, eff.Toughness, eff.Abilities)
+	}
+	g.WithWriteLock(func() { _ = g.DealDamageToCreatureForEffect(bear, gideon, 3) })
+	if got := loyaltyCount(g, gideon); got != 3 {
+		t.Errorf("loyalty after 3 damage = %d, want 3 (prevented)", got)
+	}
+	if c, _ := battlefieldCard(g, gideon); c.DamageMarked != 0 {
+		t.Errorf("Gideon has %d damage marked, want 0", c.DamageMarked)
+	}
+}
+
+// The emblem: while its owner controls a Gideon planeswalker they can't
+// lose and their opponents can't win; without one, both again can.
+func TestGideonOfTheTrialsEmblemHoldsWhileYouControlAGideon(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := a109p6Seats(g)
+	gideon := a109p6Walker(t, g, me, "Gideon of the Trials", gideonOfTheTrialsOracle, 3)
+	b16Activate(t, g, me.ID, gideon, 2, game.ActivateAbilityParams{})
+	if me.Emblems == nil || len(me.Emblems.Cards) != 1 {
+		t.Fatal("the second 0 made no emblem")
+	}
+	gated := func() (cantLose []game.LossCause, oppCantWin bool) {
+		g.WithWriteLock(func() {
+			cantLose = g.CantLoseCausesForEffect(me)
+			oppCantWin = g.CantWinForEffect(opp)
+		})
+		return
+	}
+	if cantLose, oppCantWin := gated(); len(cantLose) == 0 || !oppCantWin {
+		t.Errorf("with a Gideon: can't lose to %v, opponent can't win = %v; want both gated", cantLose, oppCantWin)
+	}
+	g.WithWriteLock(func() { _ = g.ExileCardForEffect(gideon) })
+	if cantLose, oppCantWin := gated(); len(cantLose) != 0 || oppCantWin {
+		t.Errorf("with no Gideon: can't lose to %v, opponent can't win = %v; want neither", cantLose, oppCantWin)
 	}
 }

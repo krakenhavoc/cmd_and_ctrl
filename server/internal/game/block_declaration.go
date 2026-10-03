@@ -71,14 +71,15 @@ type blockEntry struct {
 // card is missing from the battlefield, ErrNotACreature for a
 // non-creature blocker, and a *BlockRefusedError (which wraps
 // ErrIllegalBlock) for a refused pair, a refused count OR a broken
-// whole-combat limit (declaration_limit, #1507). Idempotent:
-// re-declaring a pairing that is already stored changes nothing and
-// is not re-judged.
+// whole-combat limit (declaration_limit, #1507) — and, since #1501, a
+// blocks_declared refusal for a block by a player whose declaration is
+// already complete (CR 509.1). Idempotent: re-declaring a pairing that
+// is already stored changes nothing and is not re-judged.
 //
 // Like DeclareBlocker, this verb only STAGES the pairings (#830).
 // Nothing is announced until commitBlockDeclarationLocked locks the
-// declaration in at the first priority boundary inside the step, so
-// a defender may still revise it — and every revision goes through
+// declaration in when the defender's declaration completes (#1279),
+// so a defender may still revise it — and every revision goes through
 // this same validator, which is what keeps the stored declaration
 // legal at every moment, not just at the end.
 //
@@ -256,6 +257,9 @@ func (g *Game) checkBlockRestrictionsLocked(base blockAssignment, decls []BlockD
 		}
 		touched = append(touched, id)
 	}
+	// late is the #1501 refusal for a new pairing by a defender whose
+	// declaration is complete, held back until the rest has passed.
+	var late *BlockRefusedError
 	for _, d := range decls {
 		// The attacker is looked up first so a declaration naming a
 		// missing attacker reports that, as the per-pair verb always
@@ -288,6 +292,22 @@ func (g *Game) checkBlockRestrictionsLocked(base blockAssignment, decls []BlockD
 		if !base.has(d.Blocker, d.Attacker) {
 			if r := g.blockDefenderRefusalLocked(attacker, blocker); !r.Legal() {
 				return nil, nil, g.blockRefusedErrorLocked(attacker, blocker, r)
+			}
+			// #1501 / CR 509.1: and that player is still DECLARING. A
+			// defender whose declaration is complete has made it; a
+			// block arriving afterwards — a ninja that entered
+			// attacking after the declaration, a pass sent a beat
+			// early — is not part of it. Noted here, after
+			// not_defending so the player named is the attack's
+			// defending player, and returned only once every other
+			// check has passed: a block that is illegal anyway is
+			// refused for what is wrong with it. A defender with no
+			// legal block completed as the step began without doing
+			// anything, and "it has flying" tells them more than "you
+			// have finished declaring" would.
+			if late == nil && g.blocksDeclared[blocker.Controller] {
+				late = g.blockRefusedErrorLocked(attacker, blocker,
+					BlockRefusal{Reason: BlockReasonBlocksDeclared, Source: blocker.InstanceID})
 			}
 		}
 		// CR 509.1b, per pair: restrictions, evasion keywords and the
@@ -347,6 +367,10 @@ func (g *Game) checkBlockRestrictionsLocked(base blockAssignment, decls []BlockD
 	// rather than a combat-wide one about something else.
 	if err := g.blockLimitRefusalLocked(base, after, decls); err != nil {
 		return nil, nil, err
+	}
+	// #1501: a legal block, but too late.
+	if late != nil {
+		return nil, nil, late
 	}
 	return entries, after, nil
 }
@@ -491,10 +515,10 @@ func (g *Game) blockOptionsLocked(seat uuid.UUID, perAttackerCap, maxTotal int) 
 		return nil
 	}
 	// #1279: a defender whose declaration is complete is offered
-	// nothing more. The verb still takes a late block (the sandbox
-	// allowance ADR 0045 Decision 38 records), but the enumerator, the
-	// bot and the #328 auto-pass signal stop asking — "has this seat
-	// still got a block to make" is now "is this seat still declaring".
+	// nothing more — "has this seat still got a block to make" is "is
+	// this seat still declaring". Since #1501 the verb agrees and
+	// refuses a late block (blocks_declared), so the enumerator, the
+	// bot and the #328 auto-pass signal never offer one it would take.
 	if g.blocksDeclared[seat] {
 		return nil
 	}

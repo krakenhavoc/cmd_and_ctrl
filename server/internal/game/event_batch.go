@@ -124,6 +124,9 @@ func (g *Game) beginEventBatchLocked() {
 	// ADR 0107 §6: a next-damage shield spent in the batch that just
 	// ended has prevented its instance of damage (CR 615.8).
 	g.dropSpentNextShieldsLocked()
+	// ADR 0108 §7: so have the divided shields' instances, unless one is
+	// still waiting on its prompt.
+	g.dropShieldDivisionsLocked(0)
 }
 
 // currentEventBatchLocked is the batch EmitEvent stamps. The counter

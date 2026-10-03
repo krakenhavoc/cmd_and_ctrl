@@ -307,6 +307,13 @@ func requirePriorityHolder(g *game.Game, caller uuid.UUID) error {
 		return nil
 	}
 	if snap.Turn.PriorityHolder < 0 || snap.Turn.PriorityHolder >= len(snap.Seats) {
+		// #1501 / CR 509.1: priority PARKED for a block declaration
+		// is held by nobody, so nobody may cast, activate or pass
+		// before the defenders have declared. The other NoPriority
+		// steps (untap, cleanup) keep the old pass-through.
+		if snap.Turn.PriorityHolder == game.NoPriority && snap.Turn.Step == game.StepDeclareBlockers {
+			return ErrNotPriorityHolder
+		}
 		return nil
 	}
 	holder := snap.Seats[snap.Turn.PriorityHolder]
@@ -441,9 +448,14 @@ var playerScopedActions = map[Type]struct{}{
 // and the trigger drain before anyone acts again. Most answer paths
 // run that boundary themselves. SettleResolution is the backstop for
 // the ones that do not, and a no-op otherwise.
+//
+// #1501: SettleBlockDeclaration is the same backstop for a block
+// declaration whose priority is parked with nobody left declaring — a
+// sandbox verb that took the last attacker out of combat, say.
 func Dispatch(g *game.Game, a Action) error {
 	err := dispatch(g, a)
 	g.SettleResolution()
+	g.SettleBlockDeclaration()
 	return err
 }
 
@@ -1603,6 +1615,16 @@ func dispatch(g *game.Game, a Action) error {
 		// for the same reason the two above are.
 		if kind, ok := g.PendingChoiceKindFor(choiceID); ok && kind == game.PendingChoiceModePick {
 			return g.ResolveModePick(choiceID, a.Player, p.Modes)
+		}
+		// ADR 0108 §7, CR 615.7: "divide this shield among the damage".
+		// The distribution payload a divided pick_target answer uses,
+		// keyed by the prompt's entry IDs, routed by kind.
+		if kind, ok := g.PendingChoiceKindFor(choiceID); ok && kind == game.PendingChoiceDivideShield {
+			dist, err := parseDistribution(p.Distribution)
+			if err != nil {
+				return fmt.Errorf("resolve_choice %w", err)
+			}
+			return g.ResolveDivideShield(choiceID, a.Player, dist)
 		}
 		if p.Color != "" {
 			// #742: route by kind. A "choose a color" answer sent to

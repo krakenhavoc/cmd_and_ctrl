@@ -163,12 +163,15 @@ test.describe("#328 autopass skips the blocking window", () => {
         "server must flag the defender as owing a block decision",
       ).toContain(defenderSeat);
 
-      // Hand priority to the defender. This is the moment that failed:
-      // their client fired pass_priority within a couple of ms.
-      await passAsAttacker("declare_blockers");
+      // #1501 (CR 509.1): the declaration comes BEFORE anyone has
+      // priority, so the step parks it (priority_holder -1) while the
+      // defender declares. There is no pass for anyone to send — the
+      // attacker's included — and nothing for an autopass to fire.
       await admin.waitFor(
-        (v) => v.turn?.priority_holder === defenderSeat,
-        "priority reached the defender in declare_blockers",
+        (v) =>
+          v.turn?.priority_holder === -1 &&
+          (v.turn?.block_pending_seats ?? []).includes(defenderSeat),
+        "priority parked while the defender declares blockers",
         20_000,
       );
 
@@ -183,18 +186,21 @@ test.describe("#328 autopass skips the blocking window", () => {
         "the defender's blocking window was auto-passed — #328",
       ).toBe("declare_blockers");
       expect(
-        settled.turn?.priority_holder,
-        "the defender must still hold priority to declare blockers",
-      ).toBe(defenderSeat);
+        settled.turn?.block_pending_seats ?? [],
+        "the defender must still be declaring blockers",
+      ).toContain(defenderSeat);
 
-      // And the defender's board says so too.
+      // And the defender's board says so too — including that nobody
+      // holds priority while the declaration is being made (#1501).
       const stepLabel = (
         (await defender.page
           .getByRole("region", { name: "actions", exact: true })
           .locator(".step-label")
           .textContent()) ?? ""
-      ).trim();
-      expect(stepLabel).toBe("Declare Blockers");
+      )
+        .replace(/\s+/g, " ")
+        .trim();
+      expect(stepLabel).toBe("Declare Blockers · no priority");
 
       // Declining is still legal, and it is the player's own click:
       // ADR 0111 PR 3 puts "No blocks" in the action dock as the
@@ -212,20 +218,19 @@ test.describe("#328 autopass skips the blocking window", () => {
       const noBlocks = blockRequest.getByRole("button", { name: "No blocks", exact: true });
       await expect(noBlocks).toBeEnabled();
       // ADR 0111 PR 4 (owner decision 2026-10-02): ONE click declares
-      // no blocks and lets go of priority, as one click on next did
-      // before PR 3. The client sends finish_blocks, and pass_priority
-      // only after the server accepted it and only if the defender
-      // still holds priority. Here the defender is the last one owing
-      // blocks, so the finish itself hands priority back to the active
-      // player (CR 509.2) and no pass follows. Either way the defender
-      // is not left holding the window after the one click.
+      // no blocks, and passes too if the defender holds priority. Since
+      // #1501 a declaring defender never does, so the client sends
+      // finish_blocks alone; the defender is the last one owing blocks,
+      // so the finish itself hands priority to the active player
+      // (CR 509.2). Either way the defender is not left holding the
+      // window after the one click.
       await noBlocks.click();
       await admin.waitFor(
         (v) =>
           v.turn?.step !== "declare_blockers" ||
           ((v.turn?.blocks_declared_seats ?? []).includes(defenderSeat) &&
-            v.turn?.priority_holder !== defenderSeat),
-        "one No blocks click finished the declaration and let go of priority",
+            v.turn?.priority_holder === attackerSeat),
+        "one No blocks click finished the declaration and the attacker got priority",
         20_000,
       );
       // With the declaration done the request closes and next is back.

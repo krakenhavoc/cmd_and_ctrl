@@ -7546,7 +7546,9 @@ func (g *Game) passPriorityLocked() error {
 	// action is over: its triggers go on the stack and the ACTIVE
 	// player receives priority (CR 509.2, 117.3a), rather than the
 	// rotation carrying on as if the attacker had already had its
-	// post-declaration window.
+	// post-declaration window. #1501: priority is parked while anyone
+	// is declaring, so this is the rare case of a pending defender who
+	// holds priority anyway (block_completion.go's header).
 	if g.Turn.Step == StepDeclareBlockers {
 		if h := g.Turn.PriorityHolder; h >= 0 && h < numSeats && g.Seats[h] != nil {
 			// #1597 / CR 509.1c: and so it is the declaration's
@@ -8305,6 +8307,16 @@ func (g *Game) assignAndDealCombatDamageLocked(step string) {
 	// taken half of it is not a game state, so the per-event CR 603.8
 	// check waits until every assignment here has been dealt.
 	defer g.holdStateTriggersLocked()()
+	// ADR 0108 §7 decision 6, CR 615.7: while a charged shield is live,
+	// the step's damage is collected and dealt all at once as the loop
+	// ends, once each shield it meets more of than it can cover has
+	// been divided by the player it protects (divide_shield.go). A
+	// deferred call runs before the state-trigger hold is released.
+	if g.anyChargedShieldLocked() {
+		if prev, staged := g.openDamageStageLocked(g.combatDamageInstanceLocked(), true, false); staged {
+			defer g.closeDamageStageLocked(prev)
+		}
+	}
 
 	blockersByAttacker := make(map[uuid.UUID][]int, len(g.Battlefield.Cards))
 	// #1706: a blocker that still blocks two or more live attackers
@@ -8758,6 +8770,10 @@ func (g *Game) Concede(playerID uuid.UUID) error {
 	if heldForAnnouncement && g.State == StateActive && !g.triggerAnnouncementOpenLocked() {
 		g.runStateChecksLocked()
 	}
+	// #1501: and for a block declaration. A defender who leaves while
+	// priority is parked for their declaration was the one the table
+	// was waiting on; if nobody else is, the declaration is over.
+	g.settleBlockDeclarationLocked()
 	return nil
 }
 

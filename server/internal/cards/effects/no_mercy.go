@@ -24,14 +24,8 @@ func init() {
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b13CreatureDealtDamageToYou(ev, source, g)
 			},
-			Key: "No Mercy — destroy the creature that damaged you",
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				attacker := item.Trigger.Event.Source
-				if z := g.FindCardZoneForEffect(attacker); z == nil || z.Kind != game.ZoneBattlefield {
-					return nil
-				}
-				return DestroyTarget{Target: attacker}.Apply(NewContext(g, item))
-			},
+			Key:    "No Mercy — destroy the creature that damaged you",
+			Effect: destroyTheCreatureThatDealtTheDamage,
 		}},
 	})
 }

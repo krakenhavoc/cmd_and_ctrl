@@ -99,6 +99,7 @@ func everyFieldGameView(ownerID, oppID string) GameView {
 		SplitSecondActive:     true,
 		DamageCantBePrevented: []string{"Skullcrack"},
 		ExileIfCreaturesDie:   []string{"Flaying Tendrils"},
+		DamageShields:         []string{"Pay No Heed (Goblin Guide)"},
 		DamageMultipliers:     []string{"P1's sources deal double damage this turn — Insult"},
 		GraveyardTargetBans:   []string{"Cards in graveyards can't be the targets of spells or abilities. — Ground Seal"},
 		DiscardPending:        map[string]int{ownerID: 1},

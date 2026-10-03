@@ -179,6 +179,10 @@ func TestBlockRuleStopsWhenItsSourceLeaves(t *testing.T) {
 	lord := pushCombatant(t, g, g.Seats[0], "Champion of Lambholt", 4, 4)
 	attacker := pushCombatant(t, g, g.Seats[0], "Grizzly Bears", 2, 2)
 	blocker := pushCombatant(t, g, g.Seats[1], "Small Blocker", 1, 4)
+	// #1501: a creature the rule lets block keeps the defender's
+	// declaration open; with no legal block at all it would complete
+	// as the step begins, and a later block would be refused as late.
+	pushCombatant(t, g, g.Seats[1], "Big Blocker", 5, 5)
 	carryBlockRule(t, g, lord)
 	declareAttacks(t, g, attacker)
 

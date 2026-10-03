@@ -53,14 +53,13 @@ func TestProvokeMovesAgreeWithTheEngine(t *testing.T) {
 		}
 	}
 	advanceTo(t, g, game.StepDeclareBlockers)
-	if err := g.PassPriority(); err != nil {
-		t.Fatalf("active player's pass: %v", err)
-	}
 
+	// #1501: priority is parked while the defender declares, so the
+	// declaration's "done" is finish_blocks, not a pass.
 	moves := legal.EnumerateFor(g, def.ID)
 	dispatchAll(t, g, def.ID, moves)
-	if countKind(moves, legal.KindPass) != 0 {
-		t.Fatalf("pass offered while the provoked block is owed: %v", labels(moves))
+	if n := countKind(moves, legal.KindPass) + countKind(moves, legal.KindFinishBlocks); n != 0 {
+		t.Fatalf("pass or finish offered while the provoked block is owed: %v", labels(moves))
 	}
 	var required *legal.Move
 	for i, m := range moves {
@@ -97,15 +96,15 @@ func TestProvokeMovesAgreeWithTheEngine(t *testing.T) {
 	if err := g.Clone().DeclareBlocker(provoked, plain); !errors.Is(err, game.ErrIllegalBlock) {
 		t.Errorf("engine accepted the withheld block on the other attacker: %v", err)
 	}
-	if err := g.Clone().PassPriority(); !errors.Is(err, game.ErrIllegalBlock) {
-		t.Errorf("engine accepted the withheld pass: %v", err)
+	if err := g.Clone().FinishBlocks(def.ID); !errors.Is(err, game.ErrIllegalBlock) {
+		t.Errorf("engine accepted the withheld finish: %v", err)
 	}
 	if err := g.DeclareBlocker(provoked, provoker); err != nil {
 		t.Fatal(err)
 	}
 	moves = legal.EnumerateFor(g, def.ID)
 	dispatchAll(t, g, def.ID, moves)
-	if countKind(moves, legal.KindPass) != 1 {
-		t.Errorf("pass not offered once the provoked block is made: %v", labels(moves))
+	if countKind(moves, legal.KindFinishBlocks) != 1 {
+		t.Errorf("finish not offered once the provoked block is made: %v", labels(moves))
 	}
 }

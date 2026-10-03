@@ -33,6 +33,7 @@
   } from "../api";
   import { openSettings } from "../settings";
   import Icon from "./Icon.svelte";
+  import AdminChip from "./AdminChip.svelte";
 
   let menuOpen = $state(false);
   let accountOpen = $state(false);
@@ -225,9 +226,10 @@
               <span class="acct-name">{whoAmI}</span>
               <span class="acct-kind">{accountKind}</span>
             </div>
-            <!-- ADR 0112 §2 item 9 (Delivery PR 4): the Admin chip, or the
-                 token's static "Admin token" badge, goes here, first in
-                 the menu. Nothing renders in this slot until then. -->
+            <!-- ADR 0112 §2 item 9: the Admin chip for an allowlisted
+                 person, or the token's static "Admin token" badge, first
+                 in the menu. Renders nothing for anyone else. -->
+            <AdminChip />
             <button type="button" class="acct-item" onclick={settings}>
               <Icon name="gear" size={14} /> Settings
             </button>

@@ -2643,12 +2643,14 @@ they finish); the wire in `blockers_view_test.go`; dispatch in
   posture and would make "a ninja cannot be blocked" an engine fact rather
   than a table convention; it is a one-line gate in `declareBlockersLocked`
   when someone wants it, and it would retire #830's late-block paths.
+  *Closed by #1501 (Decision 68, amendment of 2026-10-03).*
 - **Priority at the step's start.** The active player still receives priority
   on entry, before any declaration, which CR 509.1 does not give them. Parking
   priority (`NoPriority`) until every defender has declared would be exact, but
   it would make `pass_priority` unavailable to the defenders who use it to
   finish and would need a bot move kind for `finish_blocks`; the priority
   return above gives the active player the window that matters without either.
+  *Closed by #1501 (Decisions 69-70, amendment of 2026-10-03).*
 - **A log line for "declares no blockers"**, above. *Closed by #1500: a
   `no_blocks` log kind, narrated from `EventBlockersDeclared` only when
   `Amount == 0` — the declaration's blocks stay on the `block` lines, which
@@ -4373,3 +4375,207 @@ All are `full`:
 - **The bot's attack-side estimates** (`aiseat/heuristic/trample.go`,
   `unblockedPower`) still assume one attacker per blocker. That is weaker
   play, not an illegal move.
+
+---
+
+## Amendment (2026-10-03, [#1501](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1501)): the declaration comes before priority, and a finished declaration is finished
+
+Decision 38's "What this does NOT decide" kept two sandbox allowances on
+purpose: a defender could still block by hand after their declaration was
+complete, and the active player still received priority as the declare
+blockers step began, before anyone had declared. This amendment retires both.
+Decisions 1–67 stand; Decision 38's "What stays permissive" paragraph and its
+completion point 3 are narrowed as below. Sprint S37 (combat correctness),
+tracker [#880](https://github.com/krakenhavoc/cmd_and_ctrl/issues/880).
+
+### The rule
+
+- **CR 509.1.** Declaring blockers is the turn-based action the step begins
+  with. In Commander every defending player declares for themselves (CR 802.4a
+  — a defending player blocks only creatures attacking them, a planeswalker
+  they control or a battle they protect).
+- **CR 117.3a.** The active player receives priority at the beginning of a
+  step only after its turn-based actions are done. Nobody has priority while
+  blockers are being declared.
+- **CR 509.1h.** An attacking creature with no blockers declared for it is
+  unblocked, and stays so. A creature put onto the battlefield attacking after
+  the declaration (ninjutsu) was never part of it, so it can't be blocked.
+
+### Decision 68: a finished declaration refuses a late block
+
+`checkBlockRestrictionsLocked` refuses a NEW pairing whose blocker's controller
+has already completed their declaration (`Game.blocksDeclared`), with a new
+reason, **`blocks_declared`** (`BlockReasonBlocksDeclared`, `block_legality.go`).
+Three details:
+
+- **Last, not first.** The refusal is noted when the entry is checked (after
+  `not_defending`, so the player it names is the attack's defending player)
+  and returned only after every other check passes. A block that is illegal
+  anyway reports what is wrong with it. That matters for the commonest late
+  block: a defender with no legal block completes "declared, none" as the step
+  begins (Decision 38's completion point 1) without doing anything, and
+  "it has flying" tells them more than "you have finished declaring".
+- **A standing pairing is not re-judged**, as before. Repeating a block the
+  declaration already holds is still a no-op success, so a duplicated frame
+  is harmless.
+- **The sentence is about the player:** "You have already finished declaring
+  blockers this combat." to the defender, "P2 has already finished declaring
+  blockers this combat." to anyone else.
+
+The option generator already answered empty for a declared defender
+(Decision 38), so the enumerator, the bot and the #328 signal offered nothing
+the verb now refuses. #830's "a late block announces its own block" has no
+caller any more. The lock-in at the top of `runStateChecksLocked` stays as a
+belt. "A ninja that entered attacking after the declaration can't be blocked"
+is now an engine fact.
+
+### Decision 69: priority is parked while anyone is declaring
+
+As the step begins, after completion point 1, `beginBlockDeclarationLocked`
+(`block_completion.go`, called from the step-entry hook's `StepDeclareBlockers`
+case) sets `Turn.PriorityHolder = NoPriority` if any defending player is still
+declaring. This is the cleanup step's discard parking (`cleanup.go`) applied to
+another turn-based action. While parked:
+
+- nobody can pass, cast, activate or take a special action. The engine's
+  `PassPriority` answers `ErrNoPriority`, and the dispatcher's
+  `requirePriorityHolder` refuses a seated caller with `ErrNotPriorityHolder`
+  in this one parked step. It used to wave every caller through whenever
+  nobody held priority; untap and cleanup keep that pass-through.
+- a defender declares with the block verbs and finishes with `finish_blocks`.
+  Neither was ever priority-gated.
+- the last completion hands the active player priority, after state-based
+  actions and the trigger drain (`closeBlockDeclarationIfCompleteLocked`,
+  unchanged). That is the post-block window ninjutsu is activated in, now the
+  only window the active player gets in the step before the defenders' passes.
+
+Every path that can leave the table parked with nobody left to wait on hands
+priority on:
+
+| Path | Where |
+|---|---|
+| The last `finish_blocks` | `FinishBlocks` → `closeBlockDeclarationIfCompleteLocked` |
+| The cursor leaving the step (completion point 4) | `completeAllBlockDeclarationsLocked` unparks before AdvanceStep's CR 117.4 drive, which passes from the active player |
+| A declaring defender conceding | `Concede` → `settleBlockDeclarationLocked` |
+| Anything else that removes the last pending defender (a sandbox `clear_combat`, a hand-moved attacker, a mana ability whose sacrifice took the attacker) | `actions.Dispatch` → `Game.SettleBlockDeclaration`, beside `SettleResolution` |
+
+A defender with nothing to block with is never waited on: completion point 1
+has declared none for them, and when every defender is in that position the
+step does not park at all. A disconnected defender stalls the step exactly as
+a disconnected priority holder stalls any other. The way out is the same:
+`advance_step`, which any seated player may send, completes every pending
+declaration as whatever is staged.
+
+**Completion point 3 survives, narrowed.** A declaring defender's
+`pass_priority` still completes their declaration, but a live table no longer
+gives a pending defender priority. Two shapes still reach it: a restore point
+written before this change mid-step (the active player holding priority with a
+defender pending), and a player who became a defending player after the step
+began (an attack reselected onto them). Both play as #1279 left them. The
+bot's block grace (`Runner.shouldHoldForBlockers`) is kept for the same two
+shapes. In the parked flow it has nothing to hold for.
+
+Undo needs nothing new: `Turn.PriorityHolder` rides `Clone` / `RestoreFrom`
+and the snapshot as it always has, so undoing a finish comes back parked with
+the defender pending, and undoing past the step's start comes back with the
+active player holding priority in declare attackers.
+
+### Decision 70: `finish_blocks` is a legal move, always legal
+
+Without priority a defender has no pass, so the enumerator offers
+**`finish_blocks`** as its own kind (`legal.KindFinishBlocks`, `combat.go`
+`finishBlocksMove`): to a seat whose declaration is pending and that owes no
+CR 509.1c requirement. It is labelled "No blocks", or "Done blocking" once a
+block is staged, carries no card and no params, and is marked **AlwaysLegal**.
+FinishBlocks is idempotent, and nothing another seat can do while priority is
+parked makes it refuse. AlwaysLegal is what keeps a bot defender from holding
+the table: the runner turns a policy's decline into the window's always-legal
+answer (#544, #1571), so a defender whose policy wants no block still finishes.
+While a requirement is owed the finish is withheld, exactly as the pass was,
+and the required blocks are the AlwaysLegal move (#1597).
+
+It is a new kind, not a pass, on purpose. The wire's `legal_actions.pass` and
+the client's response-window predicates read `pass` as "the viewer may pass
+priority", which a declaring defender may not. The heuristic prices it as the
+pass it stands in for (`payoffOf`, and `decideGeneral` falls back to it when
+there is no pass). The legal-actions digest skips it, since it has no source.
+The client already had the affordance: #1279's action-dock block request ("No
+blocks" / "Done blocking", ADR 0111 PR 3) sends `finish_blocks`. Its one-click
+"No blocks + pass" now only finishes, because the defender never holds
+priority while pending. The dock's status line, which said nothing to a viewer
+without priority, now names who the table is waiting on: "waiting for Bob to
+declare blockers" (`dockHint.ts`).
+
+### Tests
+
+- `game/block_completion_test.go`:
+  - Priority is parked until the defender declares: a pass before the
+    declaration is `ErrNoPriority`, the finish hands the active player
+    priority in the step, and that post-block window passes to the defender
+    rather than ending the step.
+  - Parked for two defenders (`TestSecondOfTwoDefendersClosesTheDeclaration`)
+    and three (`TestThirdOfThreeDefendersClosesTheDeclaration`). Only the last
+    finish moves priority.
+  - A defender with nothing to block with is not waited on. Alone, there is no
+    parking. Beside a defender who is declaring, only that one is waited on.
+  - The legacy shape: a pending defender holding priority completes by
+    passing.
+  - A late block is refused with `blocks_declared`, stores and announces
+    nothing, and reads correctly to both viewers. A late block that is illegal
+    anyway reports its own reason (`flying`).
+  - A creature put onto the battlefield attacking after the declaration
+    cannot be blocked: no option, no #328 signal, the verb refuses, and it
+    connects.
+  - A declaring defender conceding unparks priority. `SettleBlockDeclaration`
+    is a no-op while someone declares and unparks after `ClearCombat`.
+  - Undo across the parked step, both ways.
+- `game/block_declaration_test.go`: the lock-in happens at the defender's
+  finish, and a re-point after the lock-in is refused, while undo back across
+  the lock-in reopens it. `block_defender_test.go`: a set repeating a standing
+  pairing beside a late new one is refused for the new one, not re-judged for
+  the standing one.
+- `cards/effects/ninjutsu_test.go`: Ninja of the Deep Hours, ninjutsu'd in
+  after the defender declared none, cannot be blocked by an untapped Wall and
+  connects.
+- `legal/finish_blocks_test.go`: the move's shape and lifecycle (offered only
+  while pending, AlwaysLegal, never to the active seat, gone once declared,
+  dispatch hands the active player priority). At a four-seat table with a free
+  defender, a Lure'd one and one with nothing, every declaring seat always
+  has an AlwaysLegal move, and taking them seat by seat ends the declaration.
+  The Lure, provoke and blocks-each move tests now withhold `finish_blocks`
+  where they withheld the pass.
+- `actions/declare_blockers_test.go`: every seated pass is refused while
+  parked, the defender still blocks and finishes, and the active player then
+  passes. `clear_combat` while parked is settled by `Dispatch`.
+- `aiseat`: a defender bot whose policy declines everything still finishes its
+  declaration (`TestDefenderBotThatDeclinesStillFinishesItsDeclaration`). The
+  heuristic finishes when nothing is worth blocking and still blocks when
+  something is. The combat drivers ask a declaring defender before the priority
+  holder, and turn its decline into the always-legal answer the way the runner
+  does. The block-grace tests build the legacy shape they cover.
+- `protocol/legal_actions_test.go`: while parked, the active seat gets no
+  digest, and the defender's has no pass and its moves carry `finish_blocks`.
+  The two-deciders gate builds the legacy shape.
+- Client: `dockHint.test.ts` (the waiting line). The regenerated
+  `legal_actions_agreement.json` fixture carries the parked frame.
+- e2e (`autopass-blockers-328.spec.ts`): the defender's window holds with
+  priority parked, and one "No blocks" click finishes and hands the attacker
+  priority.
+
+### What this does NOT decide
+
+- **A player who becomes a defending player after the step began** (an attack
+  reselected onto them, #1343) is still asked to declare, though the
+  declaration happened before they were defending. That is the legacy shape
+  above. Closing it needs a "the declaration as a whole is over" record beside
+  `blocksDeclared` ([#2021](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2021)).
+- **Triggers that wait in the parked step.** Triggers drained at the step's
+  entry ("at the beginning of the declare blockers step", or one a completion
+  point 1 declaration set off) go on the stack while priority is parked and
+  resolve after the declaration, below the triggers the later declarations
+  produce. The rules put them all on the stack together the next time a player
+  would receive priority, in APNAP order (CR 603.3b). The difference is the
+  order within one controller's batch, and no card in the catalog reads it.
+- **A disconnected defender** still holds the step until someone sends
+  `advance_step`. A per-seat timeout belongs to the table-pacing work, not to
+  the rules.
