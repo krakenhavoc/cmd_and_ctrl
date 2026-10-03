@@ -1387,6 +1387,20 @@ type Event struct {
 	// the fact is reliably knowable. Added for #1184.
 	Exhaust bool `json:"exhaust,omitempty"`
 
+	// Loyalty marks an EventActivateAbility whose ability is a loyalty
+	// ability — one with a loyalty symbol in its cost (CR 606.2),
+	// printed or granted (ADR 0109 §2). "Whenever you activate a loyalty
+	// ability of enchanted planeswalker" (Elspeth's Talent, Rowan's
+	// Talent) reads it. A bit on the event for Exhaust's reason: by the
+	// time a watcher runs, the row may have been renumbered or the grant
+	// that gave it may be gone, and the announcement is the one moment
+	// the fact is plainly knowable. False on every other event.
+	//
+	// Read only as the trigger is harvested, never at resolution, so a
+	// binary that drops the key from a restored trigger's event loses
+	// nothing it acts on.
+	Loyalty bool `json:"loyalty,omitempty"`
+
 	// CombatStep names which combat damage step dealt a combat
 	// EventDealDamage: CombatStepFirstStrike or CombatStepRegular
 	// (CR 510.4 — when a creature has first strike or double strike

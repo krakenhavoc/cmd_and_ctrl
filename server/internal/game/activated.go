@@ -1686,6 +1686,9 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		// say so. See StackItem.SourceEpoch.
 		SourceEpoch:  g.cardObjectEpochLocked(cardID),
 		SourceObject: sourceObject,
+		// ADR 0109 §2, owner decision 2: the object that granted this
+		// row, uuid.Nil for the source's own. See StackItem.GrantedBy.
+		GrantedBy:    origins.At(index).GrantedBy,
 		Label:        ab.Label,
 		Targets:      append([]TargetRef(nil), params.Targets...),
 		Modes:        append([]int(nil), params.Modes...),
@@ -1777,6 +1780,11 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		StackItemID: itemID,
 		Label:       ab.Label,
 		Exhaust:     ab.Exhaust,
+		// ADR 0109 §2: "whenever you activate a loyalty ability of
+		// enchanted planeswalker" (Elspeth's and Rowan's Talents). A
+		// loyalty ability is one with a loyalty symbol in its cost
+		// (CR 606.2), granted or printed.
+		Loyalty: ab.Cost.Loyalty != nil,
 		// ADR 0106 §1 decision 6: the permanent's controller, set only
 		// when somebody else activated its "Any player may activate"
 		// row — the log's "Bob activated Alice's Xantcha". Read before

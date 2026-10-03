@@ -202,6 +202,25 @@ type StackItem struct {
 	// ID is the "stamped" bit, since epoch zero is a real epoch.
 	SourceObject ObjectRef
 
+	// GrantedBy is the object that GRANTED this ability, for an
+	// activated ability of a layer-6 grant (ADR 0093; ADR 0109 §2,
+	// owner decision 2): the Aura whose "Enchanted planeswalker has
+	// '…'" put the row on SourceCardID. uuid.Nil for an object's own
+	// ability, for every trigger and for every spell.
+	//
+	// The source is still the permanent that HAS the ability — it pays
+	// the loyalty, and "you" is its controller — but some of the text a
+	// granted ability carries is the grantor's. CR 114.2: "[Player] gets
+	// an emblem with [ability]" is an emblem with the granted text, which
+	// is Teferi's Talent's printing and not the planeswalker's, so the
+	// emblem is filed under the grantor's catalog key
+	// (effects.CreateEmblem reads this field through Context.Grantor).
+	//
+	// Stamped at the announce from the row's AbilityOrigin, because the
+	// grant may be gone by resolution (the Aura destroyed in response),
+	// and carried by a CR 707.10 copy, which copies the text.
+	GrantedBy uuid.UUID
+
 	// Label is a free-text caller-provided string for ability items
 	// ("Goblin Bombardment damage", "Counterspell ETB"). Empty for
 	// spells (the card name is sufficient labeling).

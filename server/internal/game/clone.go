@@ -688,6 +688,7 @@ func cloneStackItem(s *StackItem) *StackItem {
 		SourceCardID:   s.SourceCardID,
 		SourceEpoch:    s.SourceEpoch,
 		SourceObject:   s.SourceObject,
+		GrantedBy:      s.GrantedBy,
 		Label:          s.Label,
 		DoubledBy:      s.DoubledBy,
 		DoubledByName:  s.DoubledByName,

@@ -65,6 +65,18 @@ func (c *Context) Source() uuid.UUID {
 	return c.Item.SourceCardID
 }
 
+// Grantor returns the object that granted the resolving ability, for
+// an activated ability a layer-6 grant put on its source (ADR 0109 §2,
+// owner decision 2) — Teferi's Talent, for the −12 it gives the
+// planeswalker it enchants. uuid.Nil for a source's own ability, a
+// trigger or a spell. See game.StackItem.GrantedBy.
+func (c *Context) Grantor() uuid.UUID {
+	if c.Item == nil {
+		return uuid.Nil
+	}
+	return c.Item.GrantedBy
+}
+
 // X returns the announce-time value of X for the current stack
 // item (0 when the spell has no X or none was announced). The cost
 // engine already charged X·generic at cast time; effects read it

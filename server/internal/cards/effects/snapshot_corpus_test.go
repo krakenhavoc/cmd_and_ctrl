@@ -335,7 +335,31 @@ func corpusBoards() []corpusBoard {
 		// (loses all land types and abilities and has "{T}: Add {C}"
 		// for as long as the land has a blight counter on it).
 		{"lose_land_types", corpusLoseLandTypes},
+		// v7, added by ADR 0109 PR 4 (#1604) as a new file: a granted
+		// loyalty ability on the stack, named by its grant ref and
+		// carrying its grantor (Teferi's Talent's −12, stackMeta's
+		// grantedBy).
+		{"granted_loyalty_on_stack", corpusGrantedLoyaltyOnStack},
 	}
+}
+
+// corpusGrantedLoyaltyOnStack is Teferi's Talent's granted −12,
+// activated on the planeswalker it enchants and waiting on the stack:
+// a grant ref, and the Talent as the item's grantor.
+func corpusGrantedLoyaltyOnStack(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	toMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat].ID
+	walker := talentWalker(g, me, 13)
+	talent := talentOn(g, me, "Teferi's Talent", teferisTalentOracle, walker)
+	idx, ref := grantedLoyaltyRow(t, g, walker, "−12")
+	if err := g.ActivateCatalogAbility(me, walker, idx, game.ActivateAbilityParams{Ref: ref}); err != nil {
+		t.Fatalf("setup: activate the granted −12: %v", err)
+	}
+	if it := talentStackItem(g, walker); it == nil || it.GrantedBy != talent {
+		t.Fatalf("setup: the −12 is not on the stack with its grantor: %+v", it)
+	}
+	return g
 }
 
 // corpusLoseLandTypes is ADR 0109 §2's loseLandTypes kind, made by the

@@ -217,6 +217,10 @@ func (g *Game) createAbilityCopyLocked(item *StackItem, controller uuid.UUID, ta
 		SourceCardID: item.SourceCardID,
 		SourceEpoch:  item.SourceEpoch,
 		SourceObject: item.SourceObject,
+		// ADR 0109 §2: a copy of a granted ability copies its text, and
+		// the text is the grantor's — a copied Teferi's Talent −12 still
+		// makes the Talent's emblem (CR 707.10, CR 114.2).
+		GrantedBy:    item.GrantedBy,
 		Label:        item.Label,
 		Targets:      append([]TargetRef(nil), targets...),
 		Payload:      append([]TargetRef(nil), item.Payload...),
