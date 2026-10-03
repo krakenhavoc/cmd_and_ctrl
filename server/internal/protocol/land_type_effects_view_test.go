@@ -46,3 +46,40 @@ func TestLandTypeEffectsAreStampedOnThePermanent(t *testing.T) {
 		}
 	}
 }
+
+// TestLandTypeLossIsStampedOnThePermanent is ADR 0109 §2 decision 5:
+// Ultima's blighted land says it has no land types and no abilities, for
+// as long as it has the counter, and the wire carries an empty types
+// list rather than null.
+func TestLandTypeLossIsStampedOnThePermanent(t *testing.T) {
+	g := buildActiveGame(t)
+	owner, other := g.Seats[0], g.Seats[1]
+	land, source := uuid.New(), uuid.New()
+	g.WithWriteLock(func() {
+		g.Battlefield.PushTop(game.Card{InstanceID: source, Name: "Ultima, Origin of Oblivion", TypeLine: "Legendary Creature — God",
+			Owner: owner.ID, Controller: owner.ID})
+		g.Battlefield.PushTop(game.Card{InstanceID: land, Name: "Forest", TypeLine: "Basic Land — Forest",
+			Owner: other.ID, Controller: other.ID})
+		if err := g.AddCounterForEffect(land, "blight", 1); err != nil {
+			t.Fatalf("AddCounterForEffect: %v", err)
+		}
+		d, ok := g.ForAsLongAsPinnedHasCounterDuration(land, "blight")
+		if !ok {
+			t.Fatal("the duration never started")
+		}
+		g.RegisterScopedEffectForEffect(source, g.PinnedObjectsLocked(land),
+			[]game.Mod{game.LoseLandTypesMod(), game.LoseAllAbilitiesMod()}, d, "Ultima — blight")
+	})
+	v := ViewOfGameFor(g, other.ID.String())
+	var got []LandTypeEffectView
+	for _, c := range v.Battlefield.Cards {
+		if c.InstanceID == land.String() {
+			got = c.LandTypeEffects
+		}
+	}
+	want := []LandTypeEffectView{{Types: []string{}, LosesAll: true, LosesAbilities: true,
+		Until: "for as long as it has a blight counter on it", Source: "Ultima, Origin of Oblivion"}}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("land_type_effects = %+v, want %+v", got, want)
+	}
+}

@@ -77,6 +77,17 @@ func TestEveryModKindAppliesInItsLayer(t *testing.T) {
 				t.Errorf("abilities = %v (removed %v), want the layer-6 trample over a layer-4 removal", c.Abilities, c.AbilitiesRemoved)
 			}
 		}},
+		// ADR 0109 §2: "loses all land types" takes the Forest a layer-4
+		// add gave the Bear, keeps its creature type, and takes no
+		// ability (land_types_test.go has the land).
+		{"loseLandTypes", []Mod{AddSubtypesMod("Forest"), AddKeywordsMod("trample"), LoseLandTypesMod()}, func(t *testing.T, _, c Characteristic, _ *Game) {
+			if !reflect.DeepEqual(c.Subtypes, []string{"Bear"}) {
+				t.Errorf("subtypes = %v, want [Bear]", c.Subtypes)
+			}
+			if c.AbilitiesRemoved || !reflect.DeepEqual(c.Abilities, []string{"trample"}) {
+				t.Errorf("abilities = %v (removed %v), want trample and no removal", c.Abilities, c.AbilitiesRemoved)
+			}
+		}},
 		{"allCreatureTypes", []Mod{AllCreatureTypesMod()}, func(t *testing.T, _, c Characteristic, _ *Game) {
 			if !c.AllCreatureTypes {
 				t.Error("AllCreatureTypes is not set")
@@ -212,6 +223,7 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		ModAddBlockRequirement: true, ModAddBlockCapacity: true, ModBlockAnyNumber: true,
 		ModCantAttackUnlessDefenderControls: true,
 		ModSetBasicLandTypes:                true,
+		ModLoseLandTypes:                    true,
 		// ADR 0093 PR 4 (#1584): its cases are in scoped_grants_test.go,
 		// because a grant needs a catalog bundle to mean anything.
 		ModGrantAbilities: true,
