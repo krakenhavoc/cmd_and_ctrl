@@ -21,6 +21,7 @@ import (
 	"net/http/httptest"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -29,6 +30,7 @@ import (
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/auth"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/users"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/ws"
 )
 
@@ -44,9 +46,11 @@ type adminStack struct {
 	lobby  *Lobby
 	auth   auth.Authenticator
 	admins *AdminList
+	modes  *users.AdminModes
 	log    *syncBuffer
 	cfg    Config
 	wsAuth *WSAuthorizer
+	hub    *ws.Hub
 }
 
 func newAdminStack(t *testing.T, ids ...string) *adminStack {
@@ -56,30 +60,112 @@ func newAdminStack(t *testing.T, ids ...string) *adminStack {
 
 func newAdminStackWithCards(t *testing.T, idx *cards.Index, ids ...string) *adminStack {
 	t.Helper()
+	return newAdminStackWith(t, idx, nil, ids...)
+}
+
+// newAdminStackWith is newAdminStackWithCards with a hook to finish the
+// Config before the handler is built.
+func newAdminStackWith(t *testing.T, idx *cards.Index, configure func(*Config), ids ...string) *adminStack {
+	t.Helper()
+	return newAdminStackIn(t, "", idx, configure, ids...)
+}
+
+// newAdminStackIn is newAdminStackWith whose rooms write their replays
+// under dumpDir ("" writes none).
+func newAdminStackIn(t *testing.T, dumpDir string, idx *cards.Index, configure func(*Config), ids ...string) *adminStack {
+	t.Helper()
 	logBuf := &syncBuffer{}
 	log := slog.New(slog.NewTextHandler(logBuf, nil))
-	mgr := ws.NewRoomManager(slog.New(slog.NewTextHandler(io.Discard, nil)), "")
+	mgr := ws.NewRoomManager(slog.New(slog.NewTextHandler(io.Discard, nil)), dumpDir)
 	l := NewLobby(mgr)
 	a := auth.NewMemoryAuthenticator()
-	admins := NewAdminList(ids...)
+	admins, modes, list := newTestAdmins(t, ids...)
 	hub := ws.NewHub(slog.New(slog.NewTextHandler(io.Discard, nil)))
 	hub.SetManager(mgr)
 	wsAuth := &WSAuthorizer{Auth: a, Admins: admins, Log: log}
 	hub.SetAuthorizer(wsAuth)
 	cfg := Config{
-		Lobby:      l,
-		Auth:       a,
-		AdminToken: "shared-admin-token",
-		Admins:     admins,
-		Log:        log,
-		Cards:      idx,
+		Lobby:        l,
+		Auth:         a,
+		AdminToken:   "shared-admin-token",
+		Admins:       admins,
+		AdminSockets: hub,
+		Log:          log,
+		Cards:        idx,
+	}
+	if configure != nil {
+		configure(&cfg)
 	}
 	mux := http.NewServeMux()
 	mux.Handle("/", Handler(cfg))
 	mux.HandleFunc("GET /ws", hub.ServeWS)
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
-	return &adminStack{srv: srv, lobby: l, auth: a, admins: admins, log: logBuf, cfg: cfg, wsAuth: wsAuth}
+	return &adminStack{srv: srv, lobby: l, auth: a, admins: list, modes: modes, log: logBuf, cfg: cfg, wsAuth: wsAuth, hub: hub}
+}
+
+// memAdminModeStore is users.AdminModeStore in memory, for the stacks
+// here, which have no database. Every user exists.
+type memAdminModeStore struct {
+	mu   sync.Mutex
+	rows map[uuid.UUID]time.Time
+}
+
+func (m *memAdminModeStore) AdminModesOn(context.Context) (map[uuid.UUID]time.Time, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	out := map[uuid.UUID]time.Time{}
+	for id, at := range m.rows {
+		out[id] = at
+	}
+	return out, nil
+}
+
+func (m *memAdminModeStore) SetAdminMode(_ context.Context, id uuid.UUID, at time.Time) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if at.IsZero() {
+		delete(m.rows, id)
+	} else {
+		m.rows[id] = at
+	}
+	return nil
+}
+
+func (m *memAdminModeStore) ClearAdminModeIfAt(_ context.Context, id uuid.UUID, at time.Time) (bool, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if cur, ok := m.rows[id]; ok && cur.Equal(at) {
+		delete(m.rows, id)
+		return true, nil
+	}
+	return false, nil
+}
+
+// newTestAdmins is the allowlist ids with an empty set of admin modes:
+// every listed person starts in player mode, as in production.
+func newTestAdmins(t *testing.T, ids ...string) (*Admins, *users.AdminModes, *AdminList) {
+	t.Helper()
+	modes, err := users.NewAdminModes(context.Background(), &memAdminModeStore{rows: map[uuid.UUID]time.Time{}})
+	if err != nil {
+		t.Fatalf("NewAdminModes: %v", err)
+	}
+	list := NewAdminList(ids...)
+	return NewAdmins(list, modes), modes, list
+}
+
+// modeOn switches user's admin mode on, as PUT /me/admin-mode would.
+func modeOn(t *testing.T, modes *users.AdminModes, user uuid.UUID) {
+	t.Helper()
+	if _, err := modes.Set(context.Background(), user, true); err != nil {
+		t.Fatalf("admin mode on: %v", err)
+	}
+}
+
+// adminModeOn is modeOn for the stack's own modes.
+func (s *adminStack) adminModeOn(t *testing.T, user uuid.UUID) {
+	t.Helper()
+	modeOn(t, s.modes, user)
 }
 
 // issue mints p directly; the role and fields are the test's choice.
@@ -155,26 +241,38 @@ func status(t *testing.T, srv *httptest.Server, method, path, token string, body
 // --- the predicates -------------------------------------------------
 
 func TestIsAdminTruthTable(t *testing.T) {
-	c := Config{Admins: NewAdminList(listedDiscordID)}
-	user := uuid.New()
+	admins, modes, _ := newTestAdmins(t, listedDiscordID)
+	c := Config{Admins: admins}
+	user := uuid.New()     // allowlisted, admin mode on
+	player := uuid.New()   // allowlisted, player mode (the default)
+	stranger := uuid.New() // not on the list, admin mode "on" anyway
+	modeOn(t, modes, user)
+	modeOn(t, modes, stranger)
 	game := uuid.New()
 	cases := []struct {
-		name   string
-		p      auth.Principal
-		admin  bool
-		server bool
+		name        string
+		p           auth.Principal
+		admin       bool
+		server      bool
+		allowlisted bool
 	}{
-		{"shared token", auth.Principal{Role: auth.RoleAdmin, AdminID: uuid.New()}, true, true},
-		{"allowlisted identified", auth.Principal{Role: auth.RoleIdentified, UserID: user, DiscordID: listedDiscordID}, true, false},
-		{"allowlisted seat", auth.Principal{Role: auth.RolePlayer, UserID: user, GameID: game, PlayerID: uuid.New(), DiscordID: listedDiscordID}, true, false},
-		{"allowlisted spectator", auth.Principal{Role: auth.RoleSpectator, UserID: user, GameID: game, DiscordID: listedDiscordID}, true, false},
-		{"unlisted signed-in", auth.Principal{Role: auth.RoleIdentified, UserID: user, DiscordID: unlistedDiscordID}, false, false},
+		{"shared token", auth.Principal{Role: auth.RoleAdmin, AdminID: uuid.New()}, true, true, false},
+		{"allowlisted identified, admin mode", auth.Principal{Role: auth.RoleIdentified, UserID: user, DiscordID: listedDiscordID}, true, false, true},
+		{"allowlisted seat, admin mode", auth.Principal{Role: auth.RolePlayer, UserID: user, GameID: game, PlayerID: uuid.New(), DiscordID: listedDiscordID}, true, false, true},
+		{"allowlisted spectator, admin mode", auth.Principal{Role: auth.RoleSpectator, UserID: user, GameID: game, DiscordID: listedDiscordID}, true, false, true},
+		// ADR 0112 §2: on the list but in player mode is not an admin.
+		{"allowlisted identified, player mode", auth.Principal{Role: auth.RoleIdentified, UserID: player, DiscordID: listedDiscordID}, false, false, true},
+		{"allowlisted seat, player mode", auth.Principal{Role: auth.RolePlayer, UserID: player, GameID: game, PlayerID: uuid.New(), DiscordID: listedDiscordID}, false, false, true},
+		{"allowlisted spectator, player mode", auth.Principal{Role: auth.RoleSpectator, UserID: player, GameID: game, DiscordID: listedDiscordID}, false, false, true},
+		{"unlisted signed-in", auth.Principal{Role: auth.RoleIdentified, UserID: user, DiscordID: unlistedDiscordID}, false, false, false},
+		// A mode row for someone not on the list confers nothing.
+		{"unlisted signed-in with a mode row", auth.Principal{Role: auth.RoleIdentified, UserID: stranger, DiscordID: unlistedDiscordID}, false, false, false},
 		// redeemSeatReclaim copies the seat's DiscordID onto a session
 		// with no user: a ticket for an admin's seat is not admin.
-		{"reclaim ticket for a listed seat", auth.Principal{Role: auth.RolePlayer, GameID: game, PlayerID: uuid.New(), DiscordID: listedDiscordID}, false, false},
-		{"user with no Discord ID", auth.Principal{Role: auth.RoleIdentified, UserID: user}, false, false},
-		{"guest seat", auth.Principal{Role: auth.RolePlayer, GameID: game, PlayerID: uuid.New(), Name: "Guest"}, false, false},
-		{"empty principal", auth.Principal{}, false, false},
+		{"reclaim ticket for a listed seat", auth.Principal{Role: auth.RolePlayer, GameID: game, PlayerID: uuid.New(), DiscordID: listedDiscordID}, false, false, false},
+		{"user with no Discord ID", auth.Principal{Role: auth.RoleIdentified, UserID: user}, false, false, false},
+		{"guest seat", auth.Principal{Role: auth.RolePlayer, GameID: game, PlayerID: uuid.New(), Name: "Guest"}, false, false, false},
+		{"empty principal", auth.Principal{}, false, false, false},
 	}
 	for _, tc := range cases {
 		if got := c.isAdmin(tc.p); got != tc.admin {
@@ -182,6 +280,9 @@ func TestIsAdminTruthTable(t *testing.T) {
 		}
 		if got := isServerCredential(tc.p); got != tc.server {
 			t.Errorf("%s: isServerCredential = %v, want %v", tc.name, got, tc.server)
+		}
+		if got := isAllowlisted(c.Admins, tc.p); got != tc.allowlisted {
+			t.Errorf("%s: isAllowlisted = %v, want %v", tc.name, got, tc.allowlisted)
 		}
 	}
 
@@ -193,19 +294,30 @@ func TestIsAdminTruthTable(t *testing.T) {
 	if !none.isAdmin(auth.Principal{Role: auth.RoleAdmin}) {
 		t.Error("a nil allowlist stopped the shared token being admin")
 	}
+	// A list with no modes (no user database, or a failed load handed
+	// back nothing): everyone on it is in player mode.
+	listOnly := Config{Admins: NewAdmins(NewAdminList(listedDiscordID), nil)}
+	if listOnly.isAdmin(auth.Principal{Role: auth.RoleIdentified, UserID: user, DiscordID: listedDiscordID}) {
+		t.Error("an allowlist with no admin modes made a signed-in user admin")
+	}
+	if !listOnly.isAdmin(auth.Principal{Role: auth.RoleAdmin}) {
+		t.Error("no admin modes stopped the shared token being admin")
+	}
 }
 
 func TestIsAdminFollowsTheListBetweenRequests(t *testing.T) {
-	c := Config{Admins: NewAdminList(listedDiscordID)}
+	admins, modes, list := newTestAdmins(t, listedDiscordID)
+	c := Config{Admins: admins}
 	p := auth.Principal{Role: auth.RoleIdentified, UserID: uuid.New(), DiscordID: listedDiscordID}
+	modeOn(t, modes, p.UserID)
 	if !c.isAdmin(p) {
-		t.Fatal("listed user is not admin")
+		t.Fatal("listed user in admin mode is not admin")
 	}
-	c.Admins.Replace(nil)
+	list.Replace(nil)
 	if c.isAdmin(p) {
 		t.Error("the same principal is still admin after its ID was removed")
 	}
-	c.Admins.Replace([]string{listedDiscordID})
+	list.Replace([]string{listedDiscordID})
 	if !c.isAdmin(p) {
 		t.Error("re-adding the ID did not restore admin")
 	}
@@ -330,7 +442,9 @@ func isAdminLiteral(e ast.Expr) bool {
 func TestRequireAdminOnEveryAdminRoute(t *testing.T) {
 	s := newAdminStack(t, listedDiscordID)
 	token := s.adminToken(t)
-	listed, _ := s.signedIn(t, listedDiscordID, "Owner")
+	listed, listedUser := s.signedIn(t, listedDiscordID, "Owner")
+	s.adminModeOn(t, listedUser)
+	playerMode, _ := s.signedIn(t, listedDiscordID, "Owner, playing")
 	unlisted, _ := s.signedIn(t, unlistedDiscordID, "Stranger")
 
 	meta, err := s.lobby.Create("route table")
@@ -371,6 +485,7 @@ func TestRequireAdminOnEveryAdminRoute(t *testing.T) {
 		{"guest seat", guest, http.StatusForbidden},
 		{"unlisted signed-in", unlisted, http.StatusForbidden},
 		{"reclaim ticket with a listed Discord ID", reclaim, http.StatusForbidden},
+		{"allowlisted, player mode", playerMode, http.StatusForbidden},
 	}
 	for _, rt := range routes {
 		for _, who := range refused {
@@ -378,7 +493,7 @@ func TestRequireAdminOnEveryAdminRoute(t *testing.T) {
 				t.Errorf("%s %s as %s: got %d, want %d", rt.method, rt.path, who.name, got, who.want)
 			}
 		}
-		for _, who := range []struct{ name, token string }{{"allowlisted", listed}, {"shared token", token}} {
+		for _, who := range []struct{ name, token string }{{"allowlisted, admin mode", listed}, {"shared token", token}} {
 			got := status(t, s.srv, rt.method, rt.path, who.token, rt.body)
 			if got == http.StatusUnauthorized || got == http.StatusForbidden {
 				t.Errorf("%s %s as %s: got %d, want the handler's answer", rt.method, rt.path, who.name, got)
@@ -420,7 +535,8 @@ func TestAdminCreatedTableIsAttributedToThePerson(t *testing.T) {
 
 func TestAdminRouteRefusedOnceTheIDIsRemoved(t *testing.T) {
 	s := newAdminStack(t, listedDiscordID)
-	listed, _ := s.signedIn(t, listedDiscordID, "Owner")
+	listed, user := s.signedIn(t, listedDiscordID, "Owner")
+	s.adminModeOn(t, user)
 	meta, err := s.lobby.Create("someone else's table")
 	if err != nil {
 		t.Fatal(err)
@@ -441,8 +557,11 @@ func TestAdminRouteRefusedOnceTheIDIsRemoved(t *testing.T) {
 // --- the bot-only paths stay on the token ---------------------------
 
 func TestServerCredentialPathsStayTokenOnly(t *testing.T) {
-	c := Config{Admins: NewAdminList(listedDiscordID)}
+	admins, modes, _ := newTestAdmins(t, listedDiscordID)
+	c := Config{Admins: admins}
 	listed := auth.Principal{Role: auth.RoleIdentified, UserID: uuid.New(), DiscordID: listedDiscordID}
+	// In admin mode: even then, the bot's own paths stay the token's.
+	modeOn(t, modes, listed.UserID)
 	token := auth.Principal{Role: auth.RoleAdmin, AdminID: uuid.New()}
 
 	t.Run("callerKey", func(t *testing.T) {
@@ -482,7 +601,8 @@ func TestServerCredentialPathsStayTokenOnly(t *testing.T) {
 
 	t.Run("deck coverage bucket", func(t *testing.T) {
 		s := newAdminStack(t, listedDiscordID)
-		listedTok, _ := s.signedIn(t, listedDiscordID, "Owner")
+		listedTok, listedUser := s.signedIn(t, listedDiscordID, "Owner")
+		s.adminModeOn(t, listedUser)
 		adminTok := s.adminToken(t)
 		body := deckCoverageRequest{Text: "1 Sol Ring"}
 		// The public bucket is a burst of 3: the fourth call from the
@@ -503,7 +623,8 @@ func TestServerCredentialPathsStayTokenOnly(t *testing.T) {
 
 	t.Run("raw snowflake DM", func(t *testing.T) {
 		s := newAdminStack(t, listedDiscordID)
-		listedTok, _ := s.signedIn(t, listedDiscordID, "Owner")
+		listedTok, listedUser := s.signedIn(t, listedDiscordID, "Owner")
+		s.adminModeOn(t, listedUser)
 		meta, err := s.lobby.Create("dm table")
 		if err != nil {
 			t.Fatal(err)
@@ -528,16 +649,19 @@ func TestServerCredentialPathsStayTokenOnly(t *testing.T) {
 func TestMeReportsAdmin(t *testing.T) {
 	s := newAdminStack(t, listedDiscordID)
 	listed, user := s.signedIn(t, listedDiscordID, "Owner")
+	s.adminModeOn(t, user)
+	playerMode, _ := s.signedIn(t, listedDiscordID, "Owner, playing")
 	unlisted, _ := s.signedIn(t, unlistedDiscordID, "Stranger")
 	reclaim := s.issue(t, auth.Principal{Role: auth.RolePlayer, GameID: uuid.New(), PlayerID: uuid.New(), DiscordID: listedDiscordID})
 	cases := []struct {
-		name, token string
-		want        bool
+		name, token           string
+		want, allowed, inMode bool
 	}{
-		{"shared token", s.adminToken(t), true},
-		{"allowlisted", listed, true},
-		{"unlisted", unlisted, false},
-		{"reclaim ticket with a listed Discord ID", reclaim, false},
+		{"shared token", s.adminToken(t), true, false, false},
+		{"allowlisted, admin mode", listed, true, true, true},
+		{"allowlisted, player mode", playerMode, false, true, false},
+		{"unlisted", unlisted, false, false, false},
+		{"reclaim ticket with a listed Discord ID", reclaim, false, false, false},
 	}
 	for _, tc := range cases {
 		resp := doGet(t, s.srv, "/me", tc.token)
@@ -549,6 +673,15 @@ func TestMeReportsAdmin(t *testing.T) {
 		}
 		if got, _ := body["admin"].(bool); got != tc.want {
 			t.Errorf("%s: /me admin = %v, want %v", tc.name, body["admin"], tc.want)
+		}
+		if got, ok := body["admin_allowed"].(bool); !ok || got != tc.allowed {
+			t.Errorf("%s: /me admin_allowed = %v, want %v", tc.name, body["admin_allowed"], tc.allowed)
+		}
+		if got, ok := body["admin_mode"].(bool); !ok || got != tc.inMode {
+			t.Errorf("%s: /me admin_mode = %v, want %v", tc.name, body["admin_mode"], tc.inMode)
+		}
+		if _, ok := body["admin_mode_ends_at"]; ok != tc.inMode {
+			t.Errorf("%s: /me admin_mode_ends_at present = %v, want %v", tc.name, ok, tc.inMode)
 		}
 		if _, ok := body["role"]; !ok {
 			t.Errorf("%s: /me no longer carries the principal's fields: %v", tc.name, body)
@@ -607,6 +740,7 @@ func TestWSAdminParityForAnAllowlistedUser(t *testing.T) {
 	gameA, gameB := uuid.New(), uuid.New()
 	seatA, seatB := uuid.New(), uuid.New()
 	user := uuid.New()
+	s.adminModeOn(t, user)
 	identified := s.issue(t, auth.Principal{Role: auth.RoleIdentified, UserID: user, DiscordID: listedDiscordID})
 	seated := s.issue(t, auth.Principal{Role: auth.RolePlayer, UserID: user, GameID: gameA, PlayerID: seatA, DiscordID: listedDiscordID})
 	watching := s.issue(t, auth.Principal{Role: auth.RoleSpectator, UserID: user, GameID: gameA, DiscordID: listedDiscordID})
@@ -661,6 +795,7 @@ func TestWSUnlistedUserIsRefusedAndRemovalTakesEffect(t *testing.T) {
 	unlistedSeat := s.issue(t, auth.Principal{Role: auth.RolePlayer, UserID: uuid.New(), GameID: gameA, PlayerID: seatA, DiscordID: unlistedDiscordID})
 	reclaim := s.issue(t, auth.Principal{Role: auth.RolePlayer, GameID: gameA, PlayerID: seatA, DiscordID: listedDiscordID})
 	listedSeat := s.issue(t, auth.Principal{Role: auth.RolePlayer, UserID: user, GameID: gameA, PlayerID: seatA, DiscordID: listedDiscordID})
+	s.adminModeOn(t, user)
 
 	for _, tc := range []struct{ name, token, query string }{
 		{"unlisted identified", unlistedIdentified, "game=" + gameB.String()},
@@ -706,6 +841,7 @@ func TestWSUnlistedUserIsRefusedAndRemovalTakesEffect(t *testing.T) {
 func TestAllowlistedUserSitsAsThemselvesAndIsAdmin(t *testing.T) {
 	s := newAdminStack(t, listedDiscordID)
 	listed, user := s.signedIn(t, listedDiscordID, "Owner")
+	s.adminModeOn(t, user)
 	unlisted, _ := s.signedIn(t, unlistedDiscordID, "Stranger")
 
 	byLink, err := s.lobby.Create("joined by link")
@@ -818,7 +954,8 @@ func TestAllowlistedUserSitsAsThemselvesAndIsAdmin(t *testing.T) {
 // at a table it has never heard of.
 func TestAllowlistedSeatManagesAnyTable(t *testing.T) {
 	s := newAdminStack(t, listedDiscordID)
-	listed, _ := s.signedIn(t, listedDiscordID, "Owner")
+	listed, user := s.signedIn(t, listedDiscordID, "Owner")
+	s.adminModeOn(t, user)
 	mine, err := s.lobby.Create("mine")
 	if err != nil {
 		t.Fatal(err)
@@ -879,12 +1016,14 @@ func TestUploadDeckAnySeatIsAdminOnly(t *testing.T) {
 
 	spectator := s.issue(t, auth.Principal{Role: auth.RoleSpectator, GameID: meta.ID, Name: "watcher"})
 	unlisted, _ := s.signedIn(t, unlistedDiscordID, "Stranger")
-	for _, who := range []struct{ name, token string }{{"spectator", spectator}, {"unlisted sign-in", unlisted}} {
+	playerMode, _ := s.signedIn(t, listedDiscordID, "Owner, playing")
+	for _, who := range []struct{ name, token string }{{"spectator", spectator}, {"unlisted sign-in", unlisted}, {"allowlisted, player mode", playerMode}} {
 		if got := status(t, s.srv, "POST", path, who.token, body); got != http.StatusForbidden {
 			t.Errorf("%s setting Alice's deck: %d, want 403", who.name, got)
 		}
 	}
-	listed, _ := s.signedIn(t, listedDiscordID, "Owner")
+	listed, listedUser := s.signedIn(t, listedDiscordID, "Owner")
+	s.adminModeOn(t, listedUser)
 	if got := status(t, s.srv, "POST", path, listed, body); got != http.StatusOK {
 		t.Errorf("allowlisted admin setting Alice's deck: %d, want 200", got)
 	}

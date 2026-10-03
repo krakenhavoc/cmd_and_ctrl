@@ -12,17 +12,17 @@ live in [ADR 0003 — Auth and lobby architecture](decisions/0003-auth-and-lobby
 
 ---
 
-## Who is an admin (ADR 0110 §3)
+## Who is an admin (ADR 0110 §3, ADR 0112 §2)
 
 Two kinds of session are admins, and every "admin only" or "admin" below
 means either:
 
 - the **shared token**'s session, from `POST /admin/login`
   (`role: "admin"`); and
-- a **signed-in person on the allowlist**: any session with a `user_id`
-  (identified, player or spectator) whose Discord ID is on
-  `CMDCTRL_DISCORD_ADMIN_USER_IDS`. It is the same list the Discord bot
-  uses for `/c2-end`.
+- a **signed-in person on the allowlist, in admin mode**: any session
+  with a `user_id` (identified, player or spectator) whose Discord ID is
+  on `CMDCTRL_DISCORD_ADMIN_USER_IDS`, while that person has admin mode
+  on. It is the same list the Discord bot uses for `/c2-end`.
 
 Admin is decided on every request (`Config.isAdmin`) and is never in the
 token, so taking an ID off the list takes effect on the next request.
@@ -31,10 +31,40 @@ A session with no `user_id` is never an allowlisted admin. That includes
 a reclaim ticket's session for an admin's seat, which carries the seat's
 Discord ID but no user. `GET /me` reports the answer as `admin`.
 
+**Player mode** ([ADR 0112](decisions/0112-signed-in-home-player-mode-and-one-decks-page.md)
+§2). Being on the list makes a person *able* to be an admin. Each
+allowlisted person is in **player mode** until they switch admin mode on
+with [`PUT /me/admin-mode`](#put-meadmin-mode-adr-0112-2), and it starts
+off: every person on the list was in player mode the first time this
+deployed. In player mode every route and gate below answers exactly as it
+does for a signed-in person who is not on the list. The only extra things
+they have are the switch and `admin_allowed` on `GET /me`.
+
+- **Admin mode lasts 12 hours**, like `sudo`. A request after that sees
+  player mode, and a sweep once a minute clears the mode and closes the
+  person's admin WebSockets. Switching on again restarts the 12 hours.
+- It belongs to the **person**, not the session: a switch reaches every
+  tab and device at its next request, and nothing in any token changes.
+- A switch, or a lapse, closes each of the person's WebSockets whose
+  admin bit is now wrong with close code **4001**, reason `admin mode
+  changed`. The client asks `GET /me` and reconnects, and the upgrade
+  binds it again with the new answer. In player mode that is their own
+  seat or spectator session and nothing else.
+- [`POST /logout/everywhere`](#post-logouteverywhere) and
+  [`POST /admin/users/{id}/revoke-sessions`](#post-adminusersidrevoke-sessions-admin-only)
+  also end admin mode.
+- A failure fails closed. If the server cannot load the modes at boot, it
+  logs an ERROR and starts with everyone in player mode.
+- With no database there are no users, so no allowlisted admins and no
+  mode.
+
+Player mode is not a defence against a stolen session: whoever holds the
+session can switch admin mode back on. Revocation is that defence.
+
 An allowlisted person joins tables the ordinary way, as their own Discord
-identity. Their seat session is an admin at every table: it can use the
-admin routes, pass every host-or-admin gate, and open any table's
-WebSocket like the token (see `GET /ws` in
+identity. In admin mode their seat session is an admin at every table: it
+can use the admin routes, pass every host-or-admin gate, and open any
+table's WebSocket like the token (see `GET /ws` in
 [protocol.md](protocol.md)).
 
 Three paths exist for the Discord bot calling on other people's behalf,
@@ -1816,17 +1846,72 @@ Echo the principal attached to the request. Used by the client for
 bootstrap — "am I still logged in, and as what?"
 
 The principal's fields are at the top level, as they always were, plus
-one computed field, `admin` (ADR 0110 §3 item 4). It is `true` for the
-shared token's session and for a signed-in person on the admin
-allowlist, and `false` otherwise. It is not part of the token. The
-client asks once per installed session that has a `user_id`, and shows
-admin UI to an admin seated at a table exactly as it does to the token.
-The allowlist itself is never served.
+computed fields that are not part of the token:
+
+| Field | Meaning |
+|---|---|
+| `admin` | The effective answer (ADR 0110 §3 item 4): `true` for the shared token's session and for an allowlisted person **in admin mode**, `false` otherwise, player mode included. Every admin control in the client reads this. |
+| `admin_allowed` | `true` when this person is on the allowlist and so may switch admin mode on, in either mode ([ADR 0112](decisions/0112-signed-in-home-player-mode-and-one-decks-page.md) §2 item 9). Persons only: `false` for the shared token. |
+| `admin_mode` | `true` while this person has admin mode on. |
+| `admin_mode_ends_at` | When admin mode lapses, in Unix milliseconds. Present only while `admin_mode` is `true`. |
+
+The client asks once per installed session that has a `user_id`, and
+shows admin UI to an admin seated at a table exactly as it does to the
+token. `/me` tells a person only about themselves: the allowlist itself
+is never served.
 
 ```json
 { "role": "player", "user_id": "<uuid>", "game_id": "<uuid>", "player_id": "<uuid>",
-  "discord_id": "<snowflake>", "issued_at": "…", "expires_at": "…", "admin": true }
+  "discord_id": "<snowflake>", "issued_at": "…", "expires_at": "…",
+  "admin": true, "admin_allowed": true, "admin_mode": true, "admin_mode_ends_at": 1759480800000 }
 ```
+
+### `PUT /me/admin-mode` (ADR 0112 §2)
+
+Switch the caller's admin mode on or off. **Allowlisted persons only**: a
+session with a `user_id` whose Discord ID is on
+`CMDCTRL_DISCORD_ADMIN_USER_IDS`, in either mode. See
+[Who is an admin](#who-is-an-admin-adr-0110-3-adr-0112-2).
+
+**Request**
+
+```json
+{ "on": true }
+```
+
+- `{"on": true}` switches admin mode on for 12 hours. Sent while it is
+  already on, it restarts the 12 hours, which is how an admin extends it.
+- `{"on": false}` switches it off. Sent while it is already off, it is a
+  no-op that answers 200.
+
+The switch is written to the database first and then takes effect on the
+person's next request, from any session. The person's WebSockets whose
+admin bit is now wrong are closed with **4001** `admin mode changed`, so
+they reconnect with the new answer.
+
+**Response 200**
+
+```json
+{ "admin": true, "admin_mode": true, "admin_mode_ends_at": 1759480800000 }
+```
+
+`admin` is the effective answer, as on `GET /me`. `admin_mode_ends_at`
+is in Unix milliseconds and present only while admin mode is on.
+
+**Errors**
+
+| Status | Reason |
+|---|---|
+| 400 | the body is not `{"on": true}` or `{"on": false}` |
+| 401 | no session, or an expired or revoked one |
+| 403 | `not an admin`: anyone not on the allowlist, a guest, a reclaim ticket's session, and the shared token, which has no mode to switch |
+| 404 | the user row no longer exists |
+| 429 | more than one switch every 2 seconds per person, after a burst of 5 |
+| 500 | the switch could not be saved. A failed switch on leaves player mode; a failed switch off is player mode in this process anyway |
+| 503 | the server has no user database |
+
+Every switch is logged at Info as `admin mode on` or `admin mode off`,
+with `admin_user_id`; a lapse is logged as `admin mode lapsed`.
 
 ### `GET /me/games`
 
@@ -2510,8 +2595,9 @@ expires. Always **204**.
 Requires a session **with a user**: a Discord sign-in, or a seat
 claimed from one. Withdraws every session that user holds, in every
 browser, including the caller's. It sets `users.sessions_invalid_before`
-to now, closes the user's open game WebSockets, and clears the cookie
-([ADR 0051](decisions/0051-user-database.md) decision 6). From then on,
+to now, ends their admin mode if it was on (in the same statement, ADR
+0112 §2 item 7), closes the user's open game WebSockets, and clears the
+cookie ([ADR 0051](decisions/0051-user-database.md) decision 6). From then on,
 any token of theirs issued at or before that instant fails with
 `401 {"error":"session revoked"}`, on every route and on the WS upgrade.
 A new Discord sign-in works straight away.
@@ -2533,8 +2619,8 @@ another one.
 ### `POST /admin/users/{id}/revoke-sessions` *(admin only)*
 
 ADR 0051's "admin remove-user". It does what the name says and nothing
-more: the same revocation as `/logout/everywhere`, for the user `{id}`.
-Every row stays: the user, identities, seats, games and decks. The
+more: the same revocation as `/logout/everywhere`, for the user `{id}`,
+including the end of their admin mode. Every row stays: the user, identities, seats, games and decks. The
 person can sign in with Discord again. Admin sessions have no user and
 are unaffected, including the caller's.
 

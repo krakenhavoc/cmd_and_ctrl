@@ -1498,6 +1498,51 @@ func (h *Hub) EvictUserSessions(userID uuid.UUID, before time.Time) int {
 	return len(victims)
 }
 
+// AdminModeChangedCode and AdminModeChangedReason are the close frame
+// RebindUserSessions sends (ADR 0112 §2 item 5). 4001 is in the range
+// RFC 6455 leaves to applications, and any code other than 1000 is
+// non-terminal on the client: it asks GET /me, then reconnects, and the
+// upgrade runs again with the new answer.
+const (
+	AdminModeChangedCode   = 4001
+	AdminModeChangedReason = "admin mode changed"
+)
+
+// RebindUserSessions closes every connection of userID whose admin bit
+// differs from admin, with close code 4001, and returns how many it
+// closed. The lobby calls it when the person switches admin mode, and
+// the sweeper when admin mode lapses.
+//
+// The bit is never flipped on a live connection. A seatless admin
+// binding is writable, so flipping it to false in place would leave a
+// seatless, writable, non-admin socket whose caller (uuid.Nil) the
+// engine reads as "bypass the seat checks": that would fail open.
+// Closing it makes the client dial again, and AuthorizeUpgrade decides
+// the new binding from scratch. uuid.Nil (no user) closes nothing.
+func (h *Hub) RebindUserSessions(userID uuid.UUID, admin bool) int {
+	if userID == uuid.Nil {
+		return 0
+	}
+	h.mu.RLock()
+	victims := make([]*Client, 0)
+	for c := range h.clients {
+		if c.userID == userID && c.admin != admin {
+			victims = append(victims, c)
+		}
+	}
+	h.mu.RUnlock()
+
+	for _, c := range victims {
+		_ = c.conn.WriteControl(
+			websocket.CloseMessage,
+			websocket.FormatCloseMessage(AdminModeChangedCode, AdminModeChangedReason),
+			time.Now().Add(writeWait),
+		)
+		_ = c.conn.Close()
+	}
+	return len(victims)
+}
+
 // closeGracePeriod bounds how long Shutdown waits, per client, after a
 // successful close-frame write before it forces the connection shut.
 //
