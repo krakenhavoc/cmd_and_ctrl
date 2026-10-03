@@ -74,6 +74,8 @@
     isHovering?: (el: Element) => boolean;
     /** A hover step on a device that cannot hover gives up after this. */
     touchHoverStepMs?: number;
+    /** The dock's autopass toggle (Game.svelte's session state), for step 9. */
+    autopass?: boolean;
   }
 
   const {
@@ -88,15 +90,22 @@
     canHover = typeof matchMedia === "function" ? matchMedia("(hover: hover)").matches : true,
     isHovering = (el: Element) => el.matches(":hover"),
     touchHoverStepMs = TOUCH_HOVER_STEP_MS,
+    autopass = false,
   }: Props = $props();
 
-  const run = untrack(() => createTutorialRun(steps, { viewerID, view, log }));
+  const run = untrack(() =>
+    createTutorialRun(steps, { viewerID, view, log, client: { autopass } }),
+  );
   let snap = $state(run.current());
   const unsubRun = run.subscribe((s) => (snap = s));
 
   // The game moved: check the step.
   $effect(() => {
     run.observe(view);
+  });
+  // The autopass toggle never reaches the wire; step 9 reads it here.
+  $effect(() => {
+    run.observeClient({ autopass });
   });
   // A hover or a card-local menu: the three things the snapshot cannot
   // see (ADR 0076 §2.5). On a device with no hover, a hover step's own
@@ -203,7 +212,7 @@
   const hint = $derived(
     snap.detour ? "" : copyText(recovering ? snap.step.recover?.hint : snap.step.hint, copyCtx),
   );
-  const status = $derived(statusText(snap.step, { ...run.context(), view }));
+  const status = $derived(statusText(snap.step, { ...run.context(), view, client: { autopass } }));
 
   // ---- Placement ----
   // The phone strip can fold to one line; a desktop card cannot, so a

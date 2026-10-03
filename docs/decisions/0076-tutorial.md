@@ -176,6 +176,21 @@ and **not listed in the lobby**.
   >
   > The card is sized for 1280: `clamp(280px, 24vw, 340px)`, about 307px
   > there. The fan still fits beside it.
+
+  > **Amended 2026-10-02 (#1081 follow-up):** the desktop cell takes the
+  > card's **width** from the bottom row and no height. It stretches to the
+  > row the hand and the dock's cell already make.
+  >
+  > - Taking the card's height as well made the bottom row as tall as the
+  >   card, about 194px against the dock's 154px. The battlefield rows paid
+  >   for it: the creature row lost 40px at both 1280×800 (128px to 88px)
+  >   and 1920×1080 (260px to 220px).
+  > - The card is now taller than the row and rises above it on the left.
+  >   That is over the battlefield's left margin, which is empty because
+  >   both battlefield rows centre their cards.
+  > - `tests-e2e/tests/tutorial-layout.spec.ts` measures it on a practice
+  >   table at both sizes. Every row is the same height with the coach up as
+  >   with it gone, and the hand starts right of the card.
 - The scrim is **one element**: a transparent rect with a 9999px spread shadow,
   so the hole is the rect and everything else darkens.
 - The scrim is **`pointer-events: none`**. Dimming is a suggestion, never a
@@ -404,9 +419,22 @@ and the build, so §2.2 and §3 map onto it as follows:
     until they pass. It also gives them priority at every step of the
     bot's turn, so the bot's turn waits on them.
     - Step 6 detours to "Now let it resolve".
-    - Step 9 tells the player to press `next` whenever it lights up, and
-      its status line reads "Waiting for you" while it does.
-    - Step 9 still advances on its own after 90 seconds (§3).
+    - Step 9 teaches the dock's autopass toggle (the owner's choice,
+      2026-10-02, over a step that asks for `next` at every pause). It
+      spotlights the toggle, and completes once autopass is on and the
+      bot's turn is running by itself. Step 10 then watches the bot's turn
+      ("Watch the bot play", spotlighting the bot's board) until it is
+      the player's own.
+    - Autopass is session state, not the forced `autoPassPriority`
+      setting, which it leaves alone. Steps 3 and 6 come before it.
+    - Its safety belt clears the toggle when the player's own main phase
+      comes round (`autopassDecision.ts` rule 2). Turned on there, it
+      clears at once, so step 9 detours out of the main phase first.
+    - Step 10 finds the toggle off, unless the player has set autopass
+      to outlive their main phase (`autopassPersistThroughTurns`, not
+      forced). Then step 10 asks them to switch it off before combat.
+    - Step 9 still advances on its own after 90 seconds (§3), and gives
+      up when the bot's turn has been pressed through by hand.
   - On turn one the player has one land, and one Forest is not a pile.
     Step 4 completes on a 600ms rest on the lands row, pile or not. Its
     hint says the next Forest joins this one.
@@ -414,10 +442,15 @@ and the build, so §2.2 and §3 map onto it as follows:
     move list still leaves out a spell the player cannot pay for, and the
     hand dims it. Step 6's copy points at the lit cards. When no creature
     in hand is castable, the step gives up and logs.
-  - At 1280×800 the coach's cell shrinks the viewer's creature row to
-    about 45px, from about 100px without the coach. A creature there is a
-    sliver under the lands row. So step 7 points at a land with a menu
-    first, then at the newest creature with one.
+  - The coach's cell squeezed the viewer's creature row. §2.3's second
+    amendment fixed the layout, so step 7 points at the newest creature
+    with a menu again, then at a permanent with one.
+  - A creature card can still be taller than its row on a short panel,
+    and the row scrolls. The hole goes round the part of an anchor its
+    scrolling ancestors show.
+  - Step 1 said "Mana is not enforced". It now says what the table does:
+    the hand offers only what your mana could pay for, but a cast spends
+    your pool and waives the rest, so lands never need tapping first.
 - **Hover is timed on the anchor.** The bus says the pointer arrived, not
   that it stayed, and a pointer crossing the hand on its way to the dock
   is not reading it.
