@@ -108,6 +108,20 @@ type AbilityCost struct {
 	// means no mana component.
 	Mana string
 
+	// SpendOnly is the ability's printed "spend only <colour> mana"
+	// clause (#1600, spend_only.go) — Throne of Eldraine's "Spend only
+	// mana of the chosen color to activate this ability", Crypt Rats'
+	// "Spend only black mana on X". Nil means any mana pays Mana,
+	// which is every other ability.
+	//
+	// The pricer resolves it against the source and stamps it on the
+	// ParsedCost it returns (AbilityManaCostForTargetsForEffect), so
+	// the activation, the legal-move enumerator and the auto-tap
+	// preview all receive it with the price and fold it at the one
+	// place each already reads how a cost may be paid. Build it with
+	// effects.SpendOnlyManaOfTheChosenColor / effects.SpendOnlyOnX.
+	SpendOnly *ManaSpendOnly
+
 	// Life is a life payment (CR 119.4). Paying life is legal at any
 	// total above the payment; the SBA loop handles the rest.
 	Life int
@@ -1998,7 +2012,12 @@ func (g *Game) payAbilityManaCostLocked(p *Player, sourceID uuid.UUID, sourceNam
 	// taps, before the Phyrexian strike — so those three read the grant
 	// in one place. (A cast, a mana ability and a pay-unless read it at
 	// their own payment: see spend_any_color.go.)
-	cost = g.costAsPaidByLocked(p.ID, spendCtx, cost)
+	//
+	// #1600: and the ability's own "spend only <colour> mana" clause
+	// (spend_only.go), folded first, for this announcement's X. The
+	// cost has no XSlots after the fold when the clause is "on X", so
+	// the `x` below multiplies nothing that was already counted.
+	cost = g.costAsPaidByLocked(p.ID, spendCtx, cost, params.XValue)
 	// CR 107.4f / CR 602.2b (#917): the Phyrexian symbols the
 	// activator announced they are paying with life leave the mana
 	// cost here, through the SAME helper the cast path runs, and the

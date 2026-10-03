@@ -449,7 +449,7 @@ func (g *Game) attackTaxAffordableLocked(payer uuid.UUID, price AttackTaxPrice, 
 	// #1600: widened as payAbilityManaCostLocked will widen it, then
 	// the Phyrexian symbols the player said they would pay with life
 	// leave the mana cost, exactly as the payer strikes them.
-	cost = g.costAsPaidByLocked(payer, ManaSpendContext{}, cost)
+	cost = g.costAsPaidByLocked(payer, ManaSpendContext{}, cost, 0)
 	cost, _ = PhyrexianLifePlan(cost, p.ManaPool, ManaSpendContext{}, params.PhyrexianLife)
 	if p.ManaPool.CanPayFor(cost, 0, ManaSpendContext{}) {
 		return nil

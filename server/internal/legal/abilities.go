@@ -1625,7 +1625,7 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 			}
 			// #1600: widened as ActivateManaAbility widens it.
 			spend := game.ManaSpendForAbility(*source)
-			if !e.p.ManaPool.CanPayFor(g.CostAsPaidByForEffect(e.seat, spend, cost), 0, spend) {
+			if !e.p.ManaPool.CanPayFor(g.CostAsPaidByForEffect(e.seat, spend, cost, 0), 0, spend) {
 				continue
 			}
 		}

@@ -93,6 +93,19 @@ const (
 	// and refuses a cast of anything else. Tags AND and every other tag
 	// is positive, so the clause cannot be spelled as two of them.
 	ManaRestrictNotNonartifactSpell = "not:nonartifact-spell"
+	// ManaRestrictMonocolored permits the token only when the object
+	// being paid for is exactly one colour (CR 105.2a) — Throne of
+	// Eldraine's "spend this mana only to cast monocolored spells of
+	// that color" (#1600), which pairs it with ManaRestrictColor. A
+	// hybrid spell is every colour of its hybrid symbols (CR 202.2d),
+	// so a {W/U} spell is multicolored and refused; a colourless one
+	// is no colour and refused too.
+	ManaRestrictMonocolored = "monocolored"
+	// ManaRestrictMulticolored permits the token only when the object
+	// being paid for is two or more colours (CR 105.2b) — Pillar of
+	// the Paruns' and Obsidian Obelisk's "spend this mana only to cast
+	// a multicolored spell" (#1600).
+	ManaRestrictMulticolored = "multicolored"
 )
 
 // ManaRestrictType builds a "the object has this card type" tag —
@@ -277,6 +290,13 @@ func (ctx ManaSpendContext) matchesRestriction(r string) bool {
 		// either — refuse rather than read "no colours" as
 		// "colorless".
 		return ctx.Purpose != SpendPurposeUnknown && len(ctx.Colors) == 0
+	case ManaRestrictMonocolored:
+		// #1600, CR 105.2a. The same unknown-purpose refusal as
+		// colorless: no object, no colour count.
+		return ctx.Purpose != SpendPurposeUnknown && distinctColorCount(ctx.Colors) == 1
+	case ManaRestrictMulticolored:
+		// #1600, CR 105.2b.
+		return ctx.Purpose != SpendPurposeUnknown && distinctColorCount(ctx.Colors) >= 2
 	}
 	key, value, ok := strings.Cut(r, ":")
 	if !ok || value == "" || ctx.Purpose == SpendPurposeUnknown {
@@ -346,6 +366,24 @@ func copyRestrictions(rs []string) []string {
 		return nil
 	}
 	return append([]string(nil), rs...)
+}
+
+// distinctColorCount is how many of the five colours `colors` names,
+// each counted once and in any case — the "monocolored" / "multicolored"
+// question (CR 105.2a–b). Anything that is not W, U, B, R or G is not
+// a colour and is not counted.
+func distinctColorCount(colors []string) int {
+	seen := 0
+	var have [5]bool
+	for _, c := range colors {
+		i := strings.Index("WUBRG", strings.ToUpper(c))
+		if len(c) != 1 || i < 0 || have[i] {
+			continue
+		}
+		have[i] = true
+		seen++
+	}
+	return seen
 }
 
 // containsFold is a case-insensitive membership test. Type lines come

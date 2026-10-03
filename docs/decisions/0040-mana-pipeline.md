@@ -1092,3 +1092,118 @@ shape with one more field each and are not catalogued.
 > kind or a count key the binary cannot read (`snapshot_mana_riders.go`), so
 > the next rider kind is refused by every binary from this one on (Delivery
 > PR 10, #1552).
+
+## Amendment — 2026-10-03 (#1600): costs that say which mana pays them, and mana for one-colour or gold spells
+
+**The gap.** §2 made a spend restriction data on the TOKEN: where the mana may
+go. Nothing on a COST could say which mana may pay it, so Throne of Eldraine's
+"{3}, {T}: Draw two cards. Spend only mana of the chosen color to activate this
+ability", Crypt Rats' "{X}: … Spend only black mana on X" and Crimson
+Hellkite's red twin had no home. And the tag vocabulary had `color:X` but no
+"monocolored", so Throne's own mana ("Spend this mana only to cast monocolored
+spells of that color") would have admitted a gold spell of that colour, and
+Pillar of the Paruns' "only to cast a multicolored spell" had no tag at all.
+
+### Decision 1 — the cost clause is data on `AbilityCost`, resolved by the pricer
+
+`AbilityCost.SpendOnly *ManaSpendOnly` (`game/spend_only.go`): `Colors`
+(uppercase WUBRG), `ChosenColor` ("of the chosen color", read off the source's
+`Card.ChosenColor`, #742) and `XOnly` ("on X"). Data, not a func, for §2's
+reasons and because the ADR 0041 closure ratchet admits no new func-typed route
+from `Game`. Cards build it with `effects.SpendOnlyManaOfTheChosenColor()` and
+`effects.SpendOnlyOnX(colors...)`, composed with `Plus`; `Register` refuses a
+clause with no mana to restrict, "on X" with no {X}, no colour, a non-colour,
+and a clause beside a waterbend cost (which part of a restricted cost a tap
+pays is a question no printed card asks).
+
+The one ability pricer, `AbilityManaCostForTargetsForEffect` (#1184), resolves
+the clause against the source and stamps it on the `ParsedCost` it returns
+(`ParsedCost.SpendOnly`), after the cost modifiers, so a tax is restricted with
+the rest of "the cost to activate this ability". Every reader of an ability's
+price already gets it from that function — the activation, `internal/legal`,
+the view's row and the auto-tap preview — so the clause travels with the price
+and no caller has to remember it.
+
+`String()` and the mana value ignore it. The cost is still {3}: the row shows
+{3}, a reducer eats its generic, a Trinisphere floor reads 3.
+
+### Decision 2 — FOLD it into coloured symbols at the one place payment is read
+
+"Spend only white mana on {3}" pays exactly like {W}{W}{W}. So instead of
+teaching the pool solver, the auto-tapper, the plan executor and the
+missing-mana breakdown a new rule one by one — the #1927 lesson is that four
+readers of one rule drift — the restricted part is FOLDED into coloured
+requirements (`ParsedCost.foldSpendOnly`) before any of them sees the cost, and
+each already pays a coloured requirement correctly. The whole-cost form folds
+the generic and narrows each coloured symbol to the colours it shares with the
+clause; "on X" folds `XSlots × X` and nothing else.
+
+The fold lives in `costAsPaidByLocked` — the function #1600's any-colour
+amendment (ADR 0066, 2026-10-02) already made THE reading of "how may this
+player pay this cost", called at the top of every payment and every
+affordability probe. It now takes the announced X, because "on X" restricts
+`XSlots × X` mana; the compiler found every caller. So the CR 602 activation
+and its auto-tap (`payAbilityManaCostLocked`), `internal/legal`'s one probe
+(`canPayExcluding`, which the activation moves and their X search ask) and the
+auto-tap preview (`costAsPaidForPreview`) fold it identically, and the view's
+`legal_actions` — the enumerator's digest — agrees by construction. The
+agreement test asks one board all three (`TestThroneOfEldraineViewBotAndPaymentAgree`).
+
+A symbol no colour may pay — "the chosen color" with no colour chosen, or a
+`{B}` tax on a white-only cost — is given the option `"none"`, which no mana
+has. That is the weaker direction every chosen-colour reader takes.
+
+### Decision 3 — under "spend mana as though it were any color", any mana pays it
+
+The fold runs BEFORE the any-colour widening, in the same function, so the
+folded symbols widen like a printed `{W}`. That is the rules answer. CR 609.4b:
+an "as though it were mana of any color" effect "affects only how the player
+may pay a cost. It doesn't change that cost, and it doesn't change what mana was
+actually spent". "Spend only mana of the chosen color to activate this ability"
+is a rule about how the cost may be paid. The Celestial Dawn rulings
+(2004-10-04) say it in as many words: white mana spent as though it were
+another colour may pay "an ability that can only be activated by spending
+another color of mana", and only "a spell or ability [that] checks the actual
+color of the mana … can tell the difference". Nothing in Throne's, Crypt Rats'
+or the Hellkite's text checks the actual colour spent, so under Chromatic Orrery
+any mana pays them — real mana of the colour first, since the solvers try a
+widened symbol's printed colour before anything else. A `"none"` symbol is not
+widened: with no chosen colour there is no colour to spend anything as though
+it were.
+
+The MANA side is the opposite case and keeps binding: "spend this mana only to
+cast …" is a restriction on the mana, which CR 609.4b does not touch (the
+Mycosynth Lattice ruling: the Lattice "doesn't remove restrictions on the
+mana"; ADR 0066's amendment). So under the Orrery the Throne's draw takes any
+mana and its four mana still casts only monocolored spells of the chosen colour.
+
+### Decision 4 — `monocolored` and `multicolored` tags
+
+`ManaRestrictMonocolored` (exactly one colour, CR 105.2a) and
+`ManaRestrictMulticolored` (two or more, CR 105.2b), counted over the spend
+context's colours, distinct and case-blind. A hybrid spell is every colour of
+its hybrid symbols (CR 202.2d), so it is multicolored; a colourless object is
+neither; an object-less payment (`SpendPurposeUnknown`) is neither, as for
+`colorless`. Throne's mana is `[cast, monocolored, color:<chosen>]`
+(`effects.MonocoloredSpellsOfTheChosenColor()`), Pillar of the Paruns' and
+Obsidian Obelisk's `[cast, multicolored]`. Both tags ride the token, so the
+snapshot already carries them.
+
+### What it does not cover
+
+- **The same clause on a SPELL** — Drain Life's and Consume Spirit's "Spend
+  only black mana on X", Soul Burn's "black and/or red". The fold would pay it
+  (`costAsPaidByLocked` already receives the cast's X), but nothing stamps a
+  spell's cost, and delve (CR 702.66a pays generic) and convoke would each need
+  a reading of which part of the cost the clause covers.
+- **Restrictions by SOURCE** — "Spend only mana produced by basic lands /
+  creatures to cast this spell" (Imperiosaur, Myr Superion) and Security Rhox's
+  Treasure-only alternative cost. `ManaToken.SourceKinds` (#1212) records the
+  source; no cost reads it.
+- **Emblazoned Golem's** "Spend only colored mana on X. No more than one mana of
+  each color may be spent this way" — a distinct-colours cap.
+
+Proof cards: Throne of Eldraine, Crypt Rats, Crimson Hellkite, Pillar of the
+Paruns, Obsidian Obelisk (all full). Atalya, Samite Master's modal "{X}, {T}"
+ability is writable with `SpendOnlyOnX("W")` and is not catalogued. Tracker
+[#887](https://github.com/krakenhavoc/cmd_and_ctrl/issues/887).
