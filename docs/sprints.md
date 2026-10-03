@@ -94,12 +94,13 @@ planned just-in-time from the S12 pain-point triage.
 | S48     | Client robustness and the surfaces that lie                          | 7     | [#891](https://github.com/krakenhavoc/cmd_and_ctrl/issues/891) | —          | in progress |
 | S49     | Operability, CI currency, and the hygiene tail                       | 7     | [#892](https://github.com/krakenhavoc/cmd_and_ctrl/issues/892) | —          | in progress |
 | S50     | Seams from the deck re-checks                                        | 7     | [#1784](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1784) | —        | **done**    |
-| S51     | Turn-scoped effects, object history, and the rest of the damage shields | 7     | [#1908](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1908) | —          | planned     |
-| S52     | Rule gates, land types, mana and cost components                     | 7     | [#1909](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1909) | —          | planned     |
+| S51     | Turn-scoped effects, object history, and the rest of the damage shields | 7     | [#1908](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1908) | —          | in progress |
+| S52     | Rule gates, land types, mana and cost components                     | 7     | [#1909](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1909) | —          | in progress |
 | S53     | Faces, zones, and shared payment (ADR first)                         | 7     | [#1910](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1910) | —          | planned     |
-| S54     | Tutorial: a scripted practice game                                   | 7     | [#1911](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1911) | —          | planned     |
-| S55     | Remember me: durable sign-in, account settings, admins and saved setups | 6  | [#1950](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1950) | —          | in progress |
-| S56     | Table UX: one action dock, bottom right                              | 7     | [#1958](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1958) | —          | in progress |
+| S54     | Tutorial: a scripted practice game                                   | 7     | [#1911](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1911) | —          | in progress |
+| S55     | Remember me: durable sign-in, account settings, admins and saved setups | 6  | [#1950](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1950) | —          | **done**    |
+| S56     | Table UX: one action dock, bottom right                              | 7     | [#1958](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1958) | —          | **done**    |
+| S57     | Signed-in home, player mode, and one decks page                      | 7     | [#1992](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1992) | —          | in progress |
 
 ### How to read the status column
 
@@ -3128,7 +3129,7 @@ The S50 tail finishes in S50. S52 and S53 hold the other seam groups.
 
 ### Status
 
-**Planned.** Nothing has shipped under this name.
+**In progress.** [ADR 0108](decisions/0108-turn-scoped-effects-object-history-and-damage-shields.md) is accepted. Delivery PRs 0 ([#1938](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1938)), 1 ([#1949](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1949)), 2 ([#1991](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1991)), 3 ([#1930](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1930)), 4 ([#1942](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1942)), 5 ([#1931](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1931)) and 6 ([#1996](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1996)) have merged into `develop`. PRs 7, 8 and 10 are being built; PR 9 follows PR 8.
 
 ---
 
@@ -3159,7 +3160,7 @@ S51 holds turn-scoped effects, object history and damage shields; S53 holds face
 
 ### Status
 
-**Planned.** Nothing has shipped under this name.
+**In progress.** [ADR 0109](decisions/0109-rule-gates-land-types-mana-and-cost-components.md) is accepted. Delivery PRs 1 ([#1993](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1993)), 2 ([#1999](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1999)), 3 ([#2009](https://github.com/krakenhavoc/cmd_and_ctrl/pull/2009)), 4 ([#2011](https://github.com/krakenhavoc/cmd_and_ctrl/pull/2011)), 5 ([#1988](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1988)), 7 ([#1998](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1998)) and 8 ([#2007](https://github.com/krakenhavoc/cmd_and_ctrl/pull/2007)) have merged into `develop`; PRs 6, 9 and 10 are in review. Dread Wight waits for PR 2 to reach `main`.
 
 ---
 
@@ -3210,7 +3211,7 @@ ADR 0076 called this "its own sprint, number unassigned"; its issues moved here 
 
 ### Status
 
-**Planned.** Nothing has shipped under this name.
+**In progress.** Sub-PRs 1 ([#1933](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1933)), 2 ([#1940](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1940)), 3 ([#1990](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1990)) and 4 ([#2002](https://github.com/krakenhavoc/cmd_and_ctrl/pull/2002), with the follow-up [#2005](https://github.com/krakenhavoc/cmd_and_ctrl/pull/2005): step 9 teaches autopass, owner's choice 2026-10-02) have merged into `develop`. Sub-PR 5 (entry) waits on its owner decision; sub-PR 6 (the e2e walk) is last. The step copy written in sub-PR 4 still needs comparing against the tutorial canvas.
 
 ---
 
@@ -3239,7 +3240,7 @@ From the tracker, [#1950](https://github.com/krakenhavoc/cmd_and_ctrl/issues/195
 
 ### Status
 
-**In progress.** PRs 1 to 6 have merged; PR 7 (players and setups) is in review.
+**Done.** Every Delivery PR merged into `develop` on 2026-10-02, and the sprint reached `main` with the promotion [#1984](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1984) the same day (prod deploy green, migration 0008 applied). Tracker #1950 is closed.
 
 ---
 
@@ -3277,7 +3278,36 @@ Not in this sprint, and recorded so they are not lost:
 
 ### Status
 
-**In progress.** Every Delivery PR has merged into `develop`, PR 7 with this section. Exit criterion 4 waits on the next promotion to `main`.
+**Done.** Every Delivery PR merged into `develop` on 2026-10-02, and the sprint reached `main` with the promotion [#1984](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1984) the same day. Tracker #1958 is closed; the follow-ups above stay open on their own.
+
+---
+
+## S57 — Signed-in home, player mode, and one decks page
+
+**Phase:** 7 · **Goal:** a signed-in person lands on the Lobby with a menu, an allowlisted admin plays as an ordinary player until they choose admin mode, and one decks page checks, requests and saves a deck, per [ADR 0112](decisions/0112-signed-in-home-player-mode-and-one-decks-page.md). Tracking issue [#1992](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1992).
+
+Opened 2026-10-02 from the owner's report on prod after the S55/S56 promotion ([#1984](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1984)): a signed-in person with no seat has no menu, an admin has no way to play as a player, and "my decks" is empty. The owner made three decisions on #1992 and answered the ADR's four questions the same day, option (a) each time. The members are the ADR's five Delivery PRs.
+
+- [x] ADR 0112: signed-in home, player mode, and one decks page ([#1994](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1994))
+- [x] PR 1 — server, player mode (§2): migration `0009` (`users.admin_mode_at`) and `users.AdminModes`, whose boot load fails closed; `Admins`, `isAllowlisted` and the mode term in `isAdminPrincipal`, with the guard's second rule; `PUT /me/admin-mode`; `/me`'s `admin_allowed`, `admin_mode` and `admin_mode_ends_at`; the 12-hour lapse and its once-a-minute sweeper; `Hub.RebindUserSessions` with close 4001; sign-out-everywhere and the admin's revoke ending admin mode; and the same-answer test over every admin call site ([#2004](https://github.com/krakenhavoc/cmd_and_ctrl/pull/2004))
+- [x] PR 2 — server, decks (§3 items 4, 5 and 8): `POST /me/decks`, `deck_id` on `POST /deck-requests`, and `saveToLibrary`'s own-seat guard ([#2001](https://github.com/krakenhavoc/cmd_and_ctrl/pull/2001))
+- [x] PR 3 — client, the signed-in home (§1): Login for signed-out visitors only, the header's account menu, the Lobby's Join card, "your tables" and empty state ([#2003](https://github.com/krakenhavoc/cmd_and_ctrl/pull/2003))
+- [x] PR 4 — client, the Admin chip (§2 items 8 and 9): the chip and the in-game menu item, `/me`'s new fields, re-asking `/me` on a switch, on 4001 and on visibility, and the "Admin token" badge ([#2008](https://github.com/krakenhavoc/cmd_and_ctrl/pull/2008))
+- [x] PR 5 — client, one decks page (§3): `#/decks` public with check, report, request, save and library, the `#/deck-check` alias, and the pre-built section ([#2006](https://github.com/krakenhavoc/cmd_and_ctrl/pull/2006))
+
+### Exit criteria
+
+From the tracker, [#1992](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1992):
+
+1. ADR 0112 is accepted and every PR in its Delivery table has merged. The ADR was accepted on 2026-10-02.
+2. On cmd-dev, with a real allowlisted Discord account, once PR 4 deploys: sign in and land on the Lobby with the header; start in player mode; open a table and see no admin menu; switch to admin mode at the table and see the socket reconnect with the admin menu; switch back.
+3. On cmd-dev, once PR 5 deploys: check a pasted deck while signed out, sign in, come back to the same deck, save it and request its missing cards.
+4. The sprint section in `docs/sprints.md` is written and its index row added (this section, with PR 1).
+5. Lands on `main` with the next promotion. PR 1 alone puts every allowlisted admin in player mode with no chip to switch, so it should not be promoted without PR 4.
+
+### Status
+
+**In progress.** Every Delivery PR has merged into `develop` (2026-10-02/03), with one follow-up: the account button shows a marker while admin mode is on ([#2024](https://github.com/krakenhavoc/cmd_and_ctrl/pull/2024), owner's choice). Exit criteria 2 and 3 are the owner's checks on cmd-dev; 5 waits on the next promotion, which now carries PRs 1 and 4 together.
 
 ---
 

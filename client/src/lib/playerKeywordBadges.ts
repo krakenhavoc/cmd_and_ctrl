@@ -171,6 +171,12 @@ export interface SeatCantGainLife {
   cant_gain_life?: boolean;
 }
 
+// ADR 0109 §4 (CR 101.2): "can't play lands" on a seat. The clause is the
+// tooltip, so the table can see which card says no.
+export interface SeatCantPlayLands {
+  cant_play_lands?: string;
+}
+
 const CANT_GAIN_LIFE_BADGE: PlayerKeywordBadge = {
   key: "cant-gain-life",
   short: "NO GAIN",
@@ -187,7 +193,7 @@ const CANT_GAIN_LIFE_BADGE: PlayerKeywordBadge = {
 export function playerKeywordBadges(
   keywords?: string[],
   lifeTotalLocked?: boolean,
-  endGates?: SeatEndGates & SeatCounterShields & SeatCantGainLife,
+  endGates?: SeatEndGates & SeatCounterShields & SeatCantGainLife & SeatCantPlayLands,
 ): PlayerKeywordBadge[] {
   const seen = new Set<string>();
   const badges: PlayerKeywordBadge[] = [];
@@ -231,6 +237,14 @@ export function playerKeywordBadges(
   // A locked total already says "no gain"; a second badge would only
   // repeat it.
   else if (endGates?.cant_gain_life) badges.push(CANT_GAIN_LIFE_BADGE);
+  if (endGates?.cant_play_lands) {
+    badges.push({
+      key: "cant-play-lands",
+      short: "NO LANDS",
+      title: endGates.cant_play_lands,
+      kind: "protection",
+    });
+  }
   badges.push(...endGateBadges(endGates));
   badges.push(...counterShieldBadges(endGates));
   return badges;

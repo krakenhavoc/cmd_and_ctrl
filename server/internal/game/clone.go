@@ -325,6 +325,13 @@ func (g *Game) cloneLocked() *Game {
 	out.openDamageInstance = g.openDamageInstance
 	out.combatDamageInstance = g.combatDamageInstance
 	out.combatDamageInstanceBatch = g.combatDamageInstanceBatch
+	// ADR 0108 §10: the life totals the instances began with rewind with
+	// the counter. Copy on write, so the slice is shared.
+	out.damageInstanceLives = g.damageInstanceLives
+	// ADR 0108 §7: a division rewinds with the shield it divides. Copy
+	// on write, so the slice is shared.
+	out.shieldDivisions = g.shieldDivisions
+	out.damageStage = cloneDamageStage(g.damageStage)
 	// #830: the block declaration's announcements rewind with the
 	// declaration. An undo across a re-point that kept them would
 	// swallow the re-done "becomes blocked"; dropping them would
@@ -373,6 +380,8 @@ func (g *Game) cloneLocked() *Game {
 	// when it was taken.
 	out.ScopedEffects = cloneScopedEffects(g.ScopedEffects)
 	out.scopedEffectSeq = g.scopedEffectSeq
+	out.entryOrdinalSeq = g.entryOrdinalSeq
+	out.entryOrdinalShared = g.entryOrdinalShared
 	// CR 603.10 LKI snapshots (S19). Values are Characteristic copies
 	// that are never mutated after being stored, so a per-entry value
 	// copy is sufficient. Usually empty — entries live only for the
@@ -686,6 +695,7 @@ func cloneStackItem(s *StackItem) *StackItem {
 		SourceCardID:   s.SourceCardID,
 		SourceEpoch:    s.SourceEpoch,
 		SourceObject:   s.SourceObject,
+		GrantedBy:      s.GrantedBy,
 		Label:          s.Label,
 		DoubledBy:      s.DoubledBy,
 		DoubledByName:  s.DoubledByName,
@@ -1014,6 +1024,9 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.openDamageInstance = src.openDamageInstance
 	g.combatDamageInstance = src.combatDamageInstance
 	g.combatDamageInstanceBatch = src.combatDamageInstanceBatch
+	g.damageInstanceLives = src.damageInstanceLives
+	g.shieldDivisions = src.shieldDivisions
+	g.damageStage = cloneDamageStage(src.damageStage)
 	// #830 / #859: see cloneLocked — the announcements rewind with
 	// the declarations they describe.
 	g.announcedBlocks = src.announcedBlocks
@@ -1028,6 +1041,8 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.BuiltinReplacements = src.BuiltinReplacements
 	g.ScopedEffects = src.ScopedEffects
 	g.scopedEffectSeq = src.scopedEffectSeq
+	g.entryOrdinalSeq = src.entryOrdinalSeq
+	g.entryOrdinalShared = src.entryOrdinalShared
 	g.lastKnownBattlefield = src.lastKnownBattlefield
 	g.lastKnownTriggerIdentity = src.lastKnownTriggerIdentity
 	g.lastKnownCounters = src.lastKnownCounters

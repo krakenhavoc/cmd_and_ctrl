@@ -68,6 +68,10 @@ export type TargetingMode =
 export interface CastChoices {
   // S20 sub-PR 3: the announced X for an {X} spell.
   xValue?: number;
+  // ADR 0109 §9: how many counters the activation's cost is removing —
+  // the X a clause bounded by "the counters removed this way" reads
+  // (`x_from_counters_removed`). Set only on an ability's walk.
+  countersRemoved?: number;
   // S21 sub-PR 5: instance IDs paid to a "discard a card" additional
   // cost.
   discardIDs?: string[];
@@ -524,17 +528,41 @@ export function distributionOf(t: TargetingState): Record<string, number> | unde
 }
 
 // withinX narrows an X-bounded clause's cards ("with mana value X or
-// less", #1559) to the ones the announced X admits. The server built
-// the legal set before X was chosen, exactly as it does for
-// count_from_x, so the bound is applied here from the mana values it
-// shipped; a card with no entry has an unreadable cost and meets no
-// bound. Every other clause passes through untouched.
-function withinX(lt: LegalTargetsView, choices?: CastChoices): string[] {
+// less", #1559; "with mana value X", "with power X or less", "with
+// toughness X or less", ADR 0109 §9) to the ones the announcement
+// admits. The server built the legal set before X was chosen, exactly
+// as it does for count_from_x, so the bound is applied here from the
+// values it shipped; a card with no entry meets no bound. The X is the
+// announced one, or the counters the activation is removing when the
+// clause says so. Every other clause passes through untouched.
+export function withinX(lt: LegalTargetsView, choices?: CastChoices): string[] {
   const cards = lt.cards ?? [];
-  if (!lt.mana_value_at_most_x) return cards;
-  const x = choices?.xValue ?? 0;
-  const mvs = lt.mana_values ?? {};
-  return cards.filter((id) => mvs[id] !== undefined && mvs[id] <= x);
+  let values: Record<string, number> | undefined;
+  if (lt.mana_value_at_most_x || lt.mana_value_equals_x) values = lt.mana_values;
+  else if (lt.power_at_most_x) values = lt.powers;
+  else if (lt.toughness_at_most_x) values = lt.toughnesses;
+  else return cards;
+  const x = lt.x_from_counters_removed ? (choices?.countersRemoved ?? 0) : (choices?.xValue ?? 0);
+  const vals = values ?? {};
+  const exact = lt.mana_value_equals_x === true;
+  return cards.filter((id) => vals[id] !== undefined && (exact ? vals[id] === x : vals[id] <= x));
+}
+
+// countersRemovedOf is how many counters an activation's counter
+// payment removes (ADR 0109 §9): the per-permanent counts it sends, or
+// the printed count once per permanent when it sends none. Zero with no
+// counter component.
+export function countersRemovedOf(
+  counter: CounterPayment | undefined,
+  printedN: number | undefined,
+): number {
+  if (!counter) return 0;
+  if (counter.counter_counts && counter.counter_counts.length > 0) {
+    return counter.counter_counts.reduce((a, b) => a + b, 0);
+  }
+  const n = printedN ?? 0;
+  const sources = counter.counter_source_ids?.length ?? (n > 0 ? 1 : 0);
+  return n * Math.max(sources, 1);
 }
 
 // openWalk builds the state for the FIRST step of a walk. Extra
@@ -1209,15 +1237,21 @@ export function beginForAbility(
   // rather than silently landing on 0 — the two call sites used to
   // drop it on the floor, which is invisible until a card exercises
   // both mechanics at once.
+  // ADR 0109 §9: the counters this payment removes, for a clause
+  // bounded by them (Simic Manipulator). Known here: the counter picker
+  // ran before the targeting walk, as CR 602.2b orders it.
+  const choices: CastChoices = {};
+  if (xValue !== undefined) choices.xValue = xValue;
+  if (counter) choices.countersRemoved = countersRemovedOf(counter, ability.counter_cost_n);
   const steps =
     modes && modes.length > 0
-      ? abilityModeSteps(ability, modes, xValue)
+      ? abilityModeSteps(ability, modes, xValue, choices.countersRemoved)
       : stepsFor(
           (ability.target_mode || "any") as TargetingMode,
           ability.legal_targets,
           ability.clauses,
           0,
-          xValue !== undefined ? { xValue } : undefined,
+          Object.keys(choices).length > 0 ? choices : undefined,
         );
   targeting.set(
     openWalk(card, steps, {
@@ -1245,10 +1279,12 @@ export function abilityModeSteps(
   ability: ActivatedAbilityView,
   modes: number[],
   xValue?: number,
+  countersRemoved?: number,
 ): TargetStep[] {
   const options = ability.modes?.options ?? [];
   const out: TargetStep[] = [];
-  const choices = xValue !== undefined ? { xValue } : undefined;
+  const choices =
+    xValue !== undefined || countersRemoved !== undefined ? { xValue, countersRemoved } : undefined;
   modes.forEach((optionIndex, occurrence) => {
     const option = options[optionIndex];
     if (!option?.legal_targets && !option?.clauses?.length) return;

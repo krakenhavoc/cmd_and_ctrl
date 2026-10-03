@@ -57,15 +57,18 @@ export function owesBlockDecision(
 
 // blockDeclarationPending reports whether the viewer is a defending
 // player whose block declaration is still open (#1279). The engine
-// completes a defender's declaration when they pass priority, when
-// they send finish_blocks, or — with nothing to block with — as the
-// step begins; until then the attacker they face is neither blocked
-// nor unblocked, and nothing that waits on the declaration (ninjutsu,
-// "attacks and isn't blocked") can happen.
+// completes a defender's declaration when they send finish_blocks, or
+// — with nothing to block with — as the step begins; until then the
+// attacker they face is neither blocked nor unblocked, and nothing that
+// waits on the declaration (ninjutsu, "attacks and isn't blocked") can
+// happen.
 //
 // Unlike owesBlockDecision this stays true for a defender with no
 // legal block left: they still have to say they are done, and the
-// "Done blocking" button is how they say it without holding priority.
+// "Done blocking" button is how they say it. Since #1501 nobody holds
+// priority while a defender declares (CR 509.1), so that button is the
+// ONLY way they say it; the last defender to finish hands the active
+// player priority.
 export function blockDeclarationPending(
   snap: GameView | null | undefined,
   viewerID: string | null,

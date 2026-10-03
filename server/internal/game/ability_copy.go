@@ -185,7 +185,8 @@ func (g *Game) abilitySourceCardLocked(item *StackItem) Card {
 //     zero value, and that zero is a real answer rather than a gap
 //     (#761): NoManaSpent is true of a copy and should be. The rest
 //     of the record — counters removed or added, life paid, the
-//     optional costs chosen — DOES travel, because those are what the
+//     optional costs chosen, and since ADR 0109 §8 every object the
+//     cost discarded, exiled, sacrificed or returned — DOES travel, because those are what the
 //     resolution reads back as facts about the announcement ("for
 //     each counter removed this way"), the same argument #664 makes
 //     for carrying OptionalCosts onto a spell copy. A copy that
@@ -216,6 +217,10 @@ func (g *Game) createAbilityCopyLocked(item *StackItem, controller uuid.UUID, ta
 		SourceCardID: item.SourceCardID,
 		SourceEpoch:  item.SourceEpoch,
 		SourceObject: item.SourceObject,
+		// ADR 0109 §2: a copy of a granted ability copies its text, and
+		// the text is the grantor's — a copied Teferi's Talent −12 still
+		// makes the Talent's emblem (CR 707.10, CR 114.2).
+		GrantedBy:    item.GrantedBy,
 		Label:        item.Label,
 		Targets:      append([]TargetRef(nil), targets...),
 		Payload:      append([]TargetRef(nil), item.Payload...),
@@ -273,6 +278,19 @@ func copiedPaidCost(p PaidCost) PaidCost {
 		// rewrite of one record never reaches the other through a
 		// shared backing array; both are rewritten, independently.
 		TappedOthers: append([]PaidTap(nil), p.TappedOthers...),
+		// ADR 0109 §8: every other object the original's cost moved,
+		// for the same CR 707.10 reason — "if an effect of the copy
+		// refers to objects used to pay its costs, it uses the objects
+		// used to pay the costs of the original". A copied Land's Edge
+		// ability asks about the card the original discarded, a copied
+		// Holistic Wisdom about the card it exiled, a copied Radiant
+		// Lotus counts the artifacts it sacrificed, and a copied
+		// ninjutsu reads what the returned creature was attacking.
+		// Their own slices, so neither record can reach the other's.
+		Discarded:         append([]uuid.UUID(nil), p.Discarded...),
+		Exiled:            append([]uuid.UUID(nil), p.Exiled...),
+		Sacrificed:        p.Sacrificed,
+		ReturnedAttacking: p.ReturnedAttacking,
 	}
 }
 

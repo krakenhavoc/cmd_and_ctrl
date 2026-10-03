@@ -131,8 +131,16 @@
   import AltCostPaymentModal from "./AltCostPaymentModal.svelte";
   import ModePickerModal from "./ModePickerModal.svelte";
   import DiscardCostModal from "./DiscardCostModal.svelte";
+  import CostConfirmModal from "./CostConfirmModal.svelte";
   import { manaAbilityNeedsPrompt, manaTapPayment } from "../../manaAbilityCost";
   import { exileCostNote, exileCostOptionCards, exileCostWhere } from "../../exileCost";
+  import {
+    costConfirmLines,
+    costConfirmNote,
+    needsCostConfirm,
+    randomDiscardPool,
+    topCostNote,
+  } from "../../libraryCost";
   import AlternativeCostModal from "./AlternativeCostModal.svelte";
   import FacePickerModal from "./FacePickerModal.svelte";
   import { cardAsFace, cardAsFused, faceOptions, needsFacePicker } from "../../faces";
@@ -174,6 +182,10 @@
     // board's bottom-right corner, so the viewer's own panel keeps that
     // corner clear. See PlayerPanel's prop of the same name.
     docked?: boolean;
+    // ADR 0076 §2.3 (amended 2026-10-02): the tutorial's coach card sits
+    // over the board's bottom-left corner, so the viewer's own panel keeps
+    // that corner clear too. See PlayerPanel's prop of the same name.
+    coached?: boolean;
     // Game.svelte's live prompts (targeting, combat hint, mulligan
     // roll-call, toasts, game end) render inside the attention strip
     // under the stack card so every "look here" surface shares one
@@ -208,6 +220,7 @@
     onDeclareAttackers,
     disabled = false,
     docked = false,
+    coached = false,
     attention,
     beatsPrimeKey,
     legal = NO_LEGAL_ACTIONS,
@@ -1176,6 +1189,8 @@
       // discard picks. Their own field — an exiled card is not
       // discarded — and omitted when the cost has no such component.
       if (abilityExileIDs.length > 0) params.exile_ids = abilityExileIDs;
+      // ADR 0109 §7: the card put on top of the library, likewise.
+      if (abilityTopIDs.length > 0) params.top_ids = abilityTopIDs;
       if (state.ability.xValue !== undefined) params.x_value = state.ability.xValue;
       // #916, CR 107.4f: announced with the rest of the cost, before
       // these targets, and sent in the same message.
@@ -1191,6 +1206,7 @@
       abilityWaterbendIDs = undefined;
       abilityDiscardIDs = [];
       abilityExileIDs = [];
+      abilityTopIDs = [];
       abilityReturnIDs = [];
       abilityTapIDs = [];
       abilitySacrificeX = undefined;
@@ -1394,6 +1410,45 @@
     );
   });
 
+  // ADR 0109 §7 (#1902): "Put a card from your hand on top of your
+  // library" (Penance, Leashling), asked after the exile pick — the
+  // order the engine validates in — with the discard picker. Carried on
+  // the side for the reason the discard picks are.
+  let abilityTopPrompt = $state<{
+    card: CardView;
+    ability: ActivatedAbilityView;
+  } | null>(null);
+  let abilityTopIDs: string[] = [];
+
+  const abilityTopOptions = $derived.by(() => {
+    const p = abilityTopPrompt;
+    if (!p || !viewerID) return [];
+    const ids = new Set(p.ability.top_cost_options ?? []);
+    const me = view.seats.find((s) => s.id === viewerID);
+    return (me?.hand.cards ?? []).filter((c) => ids.has(c.instance_id));
+  });
+
+  // ADR 0109 §7 and owner decision 3: the costs with nothing to pick —
+  // "Discard a card at random" and "Exile the top N cards of your
+  // library" — are confirmed once the card picks are made, so the
+  // confirm can count the hand those picks leave.
+  let abilityCostConfirmPrompt = $state<{
+    card: CardView;
+    ability: ActivatedAbilityView;
+  } | null>(null);
+
+  const abilityCostConfirmLines = $derived.by(() => {
+    const p = abilityCostConfirmPrompt;
+    if (!p || !viewerID) return [];
+    const me = view.seats.find((s) => s.id === viewerID);
+    const hand = randomDiscardPool(me, p.card.instance_id, [
+      ...abilityDiscardIDs,
+      ...abilityExileIDs,
+      ...abilityTopIDs,
+    ]);
+    return costConfirmLines(p.ability, hand, me?.library.count ?? 0);
+  });
+
   // #660: a card in hand projects its abilities on `zone_abilities`
   // and a permanent on `activated_abilities` — never both, because
   // the server filters by the zone the card is in (CR 113.6). One
@@ -1428,7 +1483,9 @@
     // Skipped when the hand holds exactly the cards the clause
     // demands: a modal with one possible answer is a worse version of
     // no modal.
-    if (ability.discard_cost_n) {
+    // ADR 0109 §7: a random discard names nothing — it is confirmed
+    // below, with the library exile, rather than picked here.
+    if (ability.discard_cost_n && !ability.discard_cost_random) {
       const options = ability.discard_cost_options ?? [];
       if (options.length > ability.discard_cost_n) {
         abilityDiscardPrompt = { card, ability };
@@ -1472,14 +1529,61 @@
   }
 
   // afterAbilityExileCost is the rest of the announce chain once the
-  // card-shaped costs are answered: the return, sacrifice and crew
-  // pickers, the counter cost, then X and targeting.
+  // exile pick is made: the put-on-top pick, the confirm for the costs
+  // with nothing to pick (ADR 0109 §7), then afterAbilityCardCosts.
   function afterAbilityExileCost(
     card: CardView,
     ability: ActivatedAbilityView,
     exileIDs: string[],
   ): void {
     abilityExileIDs = exileIDs;
+    // ADR 0109 §7: the card put on top of the library, skipped the same
+    // way when the hand holds exactly what the clause demands.
+    if (ability.top_cost_n) {
+      const options = ability.top_cost_options ?? [];
+      if (options.length > ability.top_cost_n) {
+        abilityTopPrompt = { card, ability };
+        return;
+      }
+      afterAbilityTopCost(card, ability, options);
+      return;
+    }
+    afterAbilityTopCost(card, ability, []);
+  }
+
+  function confirmAbilityTopCost(ids: string[]): void {
+    const p = abilityTopPrompt;
+    abilityTopPrompt = null;
+    if (!p) return;
+    afterAbilityTopCost(p.card, p.ability, ids);
+  }
+
+  // afterAbilityTopCost confirms the costs with nothing to pick, then
+  // goes on to the permanent-naming picks.
+  function afterAbilityTopCost(
+    card: CardView,
+    ability: ActivatedAbilityView,
+    topIDs: string[],
+  ): void {
+    abilityTopIDs = topIDs;
+    if (needsCostConfirm(ability)) {
+      abilityCostConfirmPrompt = { card, ability };
+      return;
+    }
+    afterAbilityCardCosts(card, ability);
+  }
+
+  function confirmAbilityCostConfirm(): void {
+    const p = abilityCostConfirmPrompt;
+    abilityCostConfirmPrompt = null;
+    if (!p) return;
+    afterAbilityCardCosts(p.card, p.ability);
+  }
+
+  // afterAbilityCardCosts is the rest of the announce chain once every
+  // card-shaped cost is answered: the return, tap, sacrifice and crew
+  // pickers, the counter cost, then X and targeting.
+  function afterAbilityCardCosts(card: CardView, ability: ActivatedAbilityView): void {
     // #1213: the return-to-hand pick, in the same place the sacrifice
     // pick sits — both are announce-time cost choices (CR 602.2b) and
     // both name permanents. Skipped when the board offers exactly the
@@ -1966,9 +2070,12 @@
     }
     // #1297: the exile picks, on their own field, omitted when none.
     if (abilityExileIDs.length > 0) params.exile_ids = abilityExileIDs;
+    // ADR 0109 §7: the card put on top of the library, likewise.
+    if (abilityTopIDs.length > 0) params.top_ids = abilityTopIDs;
     abilityWaterbendIDs = undefined;
     abilityDiscardIDs = [];
     abilityExileIDs = [];
+    abilityTopIDs = [];
     abilityReturnIDs = [];
     abilityTapIDs = [];
     abilitySacrificeX = undefined;
@@ -2321,6 +2428,7 @@
               onTargetPlayer={handleTargetPlayer}
               onTargetCard={handleTargetCard}
               docked={docked && pos === "self"}
+              coached={coached && pos === "self"}
               onActivateAbility={handleActivateAbility}
               onManaAbilityCost={handleManaAbilityCost}
               considering={seat.id === consideringSeatID}
@@ -2553,6 +2661,39 @@
     onConfirm={confirmAbilityExileCost}
     onCancel={() => {
       abilityExilePrompt = null;
+      abilityExileIDs = [];
+      abilityDiscardIDs = [];
+    }}
+  />
+  <!-- ADR 0109 §7 (#1902): "Put a card from your hand on top of your
+       library" (Penance, Leashling). The discard picker with its own
+       verb and small print; the answer rides top_ids. -->
+  <DiscardCostModal
+    card={abilityTopPrompt?.card ?? null}
+    options={abilityTopOptions}
+    need={abilityTopPrompt?.ability.top_cost_n}
+    label={abilityTopPrompt?.ability.top_cost_label}
+    verb="Put on top"
+    note={topCostNote}
+    onConfirm={confirmAbilityTopCost}
+    onCancel={() => {
+      abilityTopPrompt = null;
+      abilityTopIDs = [];
+      abilityExileIDs = [];
+      abilityDiscardIDs = [];
+    }}
+  />
+  <!-- ADR 0109 §7 and owner decision 3: "Discard a card at random" and
+       "Exile the top N cards of your library" have nothing to pick, so
+       they are confirmed rather than picked. -->
+  <CostConfirmModal
+    card={abilityCostConfirmPrompt?.card ?? null}
+    lines={abilityCostConfirmLines}
+    note={abilityCostConfirmPrompt ? costConfirmNote(abilityCostConfirmPrompt.ability) : undefined}
+    onConfirm={confirmAbilityCostConfirm}
+    onCancel={() => {
+      abilityCostConfirmPrompt = null;
+      abilityTopIDs = [];
       abilityExileIDs = [];
       abilityDiscardIDs = [];
     }}

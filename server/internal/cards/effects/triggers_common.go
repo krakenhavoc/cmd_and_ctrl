@@ -257,6 +257,45 @@ func ThisBecameTapped(ev game.Event, source *game.Card, _ game.Characteristic, _
 	return false
 }
 
+// EnchantedPermanentBecameTapped — "whenever enchanted land becomes
+// tapped" (CR 701.26a; Contaminated Ground), for any reason: for mana,
+// by an effect, or by attacking, which taps without an EventTapCard (so
+// watch game.EventTapCard and game.EventAttack, as ThisBecameTapped
+// does). `source` is the Aura.
+func EnchantedPermanentBecameTapped(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	if source.AttachedTo.Kind != game.TargetCard || ev.CardID != source.AttachedTo.ID {
+		return false
+	}
+	switch ev.Kind {
+	case game.EventTapCard:
+		return true
+	case game.EventAttack:
+		c, ok := g.LookupCardForEffect(ev.CardID)
+		return ok && c.Tapped
+	}
+	return false
+}
+
+// EnchantedPermanentsControllerLosesLife is "its controller loses N
+// life", said of the permanent whose event fired the trigger
+// (Contaminated Ground's enchanted land): the controller it has as the
+// trigger resolves. A loss of life, not damage (CR 119.3).
+func EnchantedPermanentsControllerLosesLife(n int) Effect {
+	return func(g *game.Game, item *game.StackItem) error {
+		if item.Trigger == nil {
+			return nil
+		}
+		c, ok := g.LookupCardForEffect(item.Trigger.Event.CardID)
+		if !ok {
+			return nil
+		}
+		if p := g.PlayerByIDForEffect(c.Controller); p == nil || p.Eliminated {
+			return nil
+		}
+		return g.ChangePlayerLifeForEffect(item.SourceCardID, c.Controller, -n)
+	}
+}
+
 // YouCastYourSecondSpellEachTurn — "Whenever you cast your second
 // spell each turn" (Breeches, the Blastmaker; Avatar Yangchen). The
 // cast path bumps the per-turn tally BEFORE it emits EventCast, so a
@@ -935,4 +974,15 @@ func permanentYouControlWasPutIntoAGraveyard(ev game.Event, source *game.Card, g
 		}
 	}
 	return false
+}
+
+// ThisDealtDamageToAnOpponent — the source dealt damage, combat or
+// not, to one of its controller's opponents (Thalakos Dreamsower,
+// Looter il-Kor's wording).
+func ThisDealtDamageToAnOpponent(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	if ev.Kind != game.EventDealDamage || ev.Source != source.InstanceID || ev.Amount <= 0 {
+		return false
+	}
+	p := g.PlayerByIDForEffect(ev.Target)
+	return p != nil && p.ID != source.Controller
 }

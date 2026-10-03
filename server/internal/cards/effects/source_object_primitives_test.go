@@ -628,7 +628,9 @@ func TestNoCardActsOnItsOwnSourceThroughAGameMutatorWithoutAsking(t *testing.T) 
 	}
 	// SourcePermanent answers the same question: its Left is true for a
 	// source that left and came back (#1418).
-	asks := map[string]bool{"sourceIsNewObject": true, "isNewSourceObject": true, "isNewSourceObjectAsThis": true, "b09SourceStillOnBattlefield": true, "SourcePermanent": true}
+	// followUpThis (prevention_static.go) is SourcePermanent for a
+	// prevention follow-up, refusing a source that has Left.
+	asks := map[string]bool{"sourceIsNewObject": true, "isNewSourceObject": true, "isNewSourceObjectAsThis": true, "b09SourceStillOnBattlefield": true, "SourcePermanent": true, "followUpThis": true}
 	// A SPELL moving itself — "Exile Teferi's Protection" — is not a
 	// permanent's ability; a spell item is never judged.
 	spells := map[string]bool{
@@ -638,6 +640,8 @@ func TestNoCardActsOnItsOwnSourceThroughAGameMutatorWithoutAsking(t *testing.T) 
 		"bound_determined.go": true, // Bound's "Exile this card." (ADR 0106 PR 3)
 		// Restorative Burst, the sorcery back face: "Exile Restorative Burst."
 		"pestilent_cauldron.go": true,
+		// "Exile Morningtide's Light." (ADR 0108 PR 7, #1904)
+		"morningtides_light.go": true,
 	}
 	isSelf := func(e ast.Expr) bool {
 		s := exprString(e)

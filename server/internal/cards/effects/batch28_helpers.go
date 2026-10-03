@@ -170,7 +170,7 @@ func b28GraveyardHasCreatureCardOfSubtype(g *game.Game, player uuid.UUID, subtyp
 
 // b28PermanentsYouControlEnterWithACounter is "each <match> you
 // control enters with an additional +1/+1 counter on it" — Dragonstorm
-// Globe's Dragons, Uncivil Unrest's riot on nontoken creatures — as a
+// Globe's Dragons — as a
 // CR 614 replacement on the entry of a permanent under the source's
 // controller's control. Renata's shape (b27OtherCreaturesYouControlEnterWithACounter)
 // with the "what enters" test as a parameter; `match` receives the

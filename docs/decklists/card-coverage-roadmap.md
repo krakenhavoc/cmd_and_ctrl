@@ -142,11 +142,11 @@ registry disagree.
 
 | Measured | Count |
 |---|---:|
-| Registry keys (`len(effects.All())`) | **3520** |
-| — whole cards (bare `oracle_id`) | **3406** |
-| — back faces (`<oracle_id>#1`) | 114 |
-| Declared `full` | 3203 |
-| Declared `caveats` | 263 |
+| Registry keys (`len(effects.All())`) | **3897** |
+| — whole cards (bare `oracle_id`) | **3781** |
+| — back faces (`<oracle_id>#1`) | 116 |
+| Declared `full` | 3556 |
+| Declared `caveats` | 287 |
 | Declared `unreviewed` | 54 |
 
 A back face is usually half a card: the modal-DFC land cycle registers
@@ -695,9 +695,11 @@ equal to the number of charge counters".
 
 Two neighbouring seams stayed open, and it is worth saying which:
 
-- **A variable-count sacrifice cost.** Ruthless Technomancer's
+- **A variable-count sacrifice cost.** ~~Ruthless Technomancer's
   "Sacrifice X artifacts" is an X that is not in the mana component;
-  `AbilityCost.SacrificeOther` still names exactly one permanent.
+  `AbilityCost.SacrificeOther` still names exactly one permanent.~~
+  **Closed by ADR 0100 (`SacrificeX`); the card's "power X or less"
+  target landed with ADR 0109 PR 7 (#1842).**
 - **A mill replacement.** ~~Bruvac still cannot be written~~
   **Closed by #569, S39.** The reason had already moved once:
   `MillToZoneForEffect` routes every card through the CR 614 pipeline

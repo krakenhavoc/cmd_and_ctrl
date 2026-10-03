@@ -3,6 +3,7 @@ package game
 import (
 	"errors"
 	"log/slog"
+	"slices"
 	"strconv"
 
 	"github.com/google/uuid"
@@ -920,7 +921,27 @@ func (g *Game) DealMarkedDamageForEffect(source uuid.UUID, obj *ObjectRef, targe
 // `then` (CR 615.5, 615.8).
 func (g *Game) DealDamageEachThenForEffect(source uuid.UUID, targets []uuid.UUID, amount int, then func(g *Game, totalDealt int) error) error {
 	inst, owned := g.damageInstructionLocked()
-	return g.dealDamageEachStepLocked(source, targets, amount, 0, damageWalk{inst: inst, owned: owned}, then)
+	return g.startDamageWalkLocked(source, targets, amount, damageWalk{inst: inst, owned: owned}, then)
+}
+
+// startDamageWalkLocked starts an Each walk. A charged shield its legs
+// would meet more of than it can cover is divided first (ADR 0108 §7
+// decision 6, CR 615.7), and the walk starts once the protected player
+// has answered (divide_shield.go).
+//
+// Caller must hold g.mu.
+func (g *Game) startDamageWalkLocked(source uuid.UUID, targets []uuid.UUID, amount int, walk damageWalk, then func(g *Game, totalDealt int) error) error {
+	needs := g.shieldDivisionNeedsLocked(g.walkDivisionEventsLocked(source, targets, amount, walk.inst))
+	if len(needs) == 0 {
+		return g.dealDamageEachStepLocked(source, targets, amount, 0, walk, then)
+	}
+	return g.askShieldDivisionsLocked(needs, resumeDamageWalk(source, slices.Clone(targets), amount, walk, then))
+}
+
+// resumeDamageWalk is a divided walk's start, once the division is made.
+// A package-level constructor capturing the walk's arguments.
+func resumeDamageWalk(source uuid.UUID, targets []uuid.UUID, amount int, walk damageWalk, then func(g *Game, totalDealt int) error) func(*Game) error {
+	return func(g *Game) error { return g.dealDamageEachStepLocked(source, targets, amount, 0, walk, then) }
 }
 
 // DealDamageEachEachThenForEffect is DealDamageEachThenForEffect with a
@@ -939,7 +960,7 @@ func (g *Game) DealDamageEachThenForEffect(source uuid.UUID, targets []uuid.UUID
 func (g *Game) DealDamageEachEachThenForEffect(source uuid.UUID, targets []uuid.UUID, amount int,
 	each func(g *Game, target uuid.UUID, dealt int) error, then func(g *Game, totalDealt int) error) error {
 	inst, owned := g.damageInstructionLocked()
-	return g.dealDamageEachStepLocked(source, targets, amount, 0, damageWalk{inst: inst, owned: owned, each: each}, then)
+	return g.startDamageWalkLocked(source, targets, amount, damageWalk{inst: inst, owned: owned, each: each}, then)
 }
 
 // damageWalk is the instance an Each walk's legs share, and whether the
@@ -3524,6 +3545,15 @@ type AddManaOptions struct {
 	// prompt that cannot carry them, and minting it unrestricted would be
 	// stronger than printed, so that combination is ErrInvalidParam.
 	Restrictions []string
+
+	// Riders are the spend riders the minted mana carries (#1547) —
+	// Domri, Chaos Bringer's "+1: Add {R} or {G}. If that mana is spent
+	// on a creature spell, it gains riot" (ADR 0109 §11). A loyalty
+	// ability that adds mana is not a mana ability (CR 605.1a), so its
+	// rider rides an effect's mana rather than ManaAbilityShape's. A
+	// pick carries them on the queued PendingChoice, as a mana
+	// ability's pick does.
+	Riders []ManaSpendRider
 }
 
 // AddManaWithOptionsForEffect is AddManaForEffect with options.
@@ -3536,7 +3566,7 @@ func (g *Game) AddManaWithOptionsForEffect(playerID, source uuid.UUID, produced 
 	if p == nil || p.Eliminated {
 		return nil
 	}
-	return g.addManaSlotsLocked(p, source, produced, opts.NarrowToCommanderIdentity, opts.Restrictions, nil, addManaReason)
+	return g.addManaSlotsLocked(p, source, produced, opts.NarrowToCommanderIdentity, opts.Restrictions, opts.Riders, nil, addManaReason)
 }
 
 // addManaSlotsLocked is the one slot walk behind every "an effect adds
@@ -3565,6 +3595,7 @@ func (g *Game) addManaSlotsLocked(
 	produced string,
 	narrow bool,
 	restrictions []string,
+	riders []ManaSpendRider,
 	pending *[]ColorRequirement,
 	reason func(ProducedManaEntry) string,
 ) error {
@@ -3607,7 +3638,7 @@ func (g *Game) addManaSlotsLocked(
 			// own output (ADR 0074), and neither taps a permanent for
 			// mana, so neither is doubled by Mana Reflection. That is
 			// what the card says, not a simplification.
-			g.produceManaLocked(p, source, []string{colorOptions[0]}, restrictions, nil, srcKinds, false, pending)
+			g.produceManaLocked(p, source, []string{colorOptions[0]}, restrictions, riders, srcKinds, false, pending)
 			continue
 		}
 		if len(restrictions) > 0 {
@@ -3623,7 +3654,7 @@ func (g *Game) addManaSlotsLocked(
 			for k := 1; k < slot.AmountFor(color); k++ {
 				bookColorRequirement(color, pending)
 			}
-			g.produceManaLocked(p, source, repeatColor(color, slot.AmountFor(color)), nil, nil, srcKinds, false, pending)
+			g.produceManaLocked(p, source, repeatColor(color, slot.AmountFor(color)), nil, riders, srcKinds, false, pending)
 			continue
 		}
 		g.QueueChoiceForEffect(PendingChoice{
@@ -3636,6 +3667,7 @@ func (g *Game) addManaSlotsLocked(
 			ColorOptions:    colorOptions,
 			ManaAmounts:     copyManaAmounts(slot.Amounts),
 			ManaSourceKinds: srcKinds,
+			ManaRiders:      copyManaRiders(riders),
 		})
 	}
 	return nil

@@ -31,6 +31,8 @@
     ActionType,
     CardView,
     DamageAssignmentView,
+    DivideShieldEntryView,
+    DivideShieldView,
     GameView,
     PendingChoiceView,
     PickOptionView,
@@ -569,6 +571,12 @@
   // at yet and the prompt has to say the card's name itself.
   const isEntryPayLife = $derived(active?.kind === "entry_pay_life");
 
+  // ADR 0109 §10 riot — "a +1/+1 counter, or haste?", asked before the
+  // permanent enters. The same {choice_id, apply} payload: apply takes
+  // the counter. Answered from the keyboard with C and H rather than Y
+  // and N, because neither answer is a "no".
+  const isEntryRiot = $derived(active?.kind === "entry_riot");
+
   // #74 confirm — the chained-choice two-way prompt, "do A, or do B."
   // Same {choice_id, apply} payload as the other yes/no kinds; the
   // server routes to ResolveConfirm by kind, and the card supplies
@@ -920,6 +928,16 @@
       }
       return;
     }
+    if (isEntryRiot) {
+      if (e.key === "c" || e.key === "C") {
+        e.preventDefault();
+        answerOptional(true);
+      } else if (e.key === "h" || e.key === "H") {
+        e.preventDefault();
+        answerOptional(false);
+      }
+      return;
+    }
     if (!isYesNo) return;
     if (e.key === "y" || e.key === "Y") {
       e.preventDefault();
@@ -1117,6 +1135,49 @@
     answer({ assignments, trample_to_player: trampleToPlayer });
   }
 
+  // ADR 0108 §7 divide_shield — CR 615.7: a charged shield ("prevent
+  // the next 3 damage") meets more damage at once than it can cover,
+  // and the protected player chooses which of it the shield prevents.
+  // One number per damage event, 0..its amount, adding up to the charge.
+  const isDivideShield = $derived(active?.kind === "divide_shield");
+  const divideFrame = $derived<DivideShieldView | null>(active?.divide_shield ?? null);
+  let divideShares = $state<Record<string, number>>({});
+
+  // Reset on a new prompt, the damage-assignment branch's last-id
+  // pattern.
+  let lastDivideChoiceID: string | null = null;
+  $effect(() => {
+    const nextID = active?.id ?? null;
+    if (nextID === lastDivideChoiceID) return;
+    lastDivideChoiceID = nextID;
+    if (!divideFrame) return;
+    const next: Record<string, number> = {};
+    for (const e of divideFrame.entries) next[e.id] = 0;
+    divideShares = next;
+  });
+
+  const dividedTotal = $derived(
+    divideFrame ? divideFrame.entries.reduce((acc, e) => acc + (divideShares[e.id] ?? 0), 0) : 0,
+  );
+  const canSubmitDivide = $derived(divideFrame !== null && dividedTotal === divideFrame.charge);
+
+  function setDivideShare(id: string, raw: string, max: number): void {
+    const n = Math.min(max, Math.max(0, Math.floor(Number(raw) || 0)));
+    divideShares = { ...divideShares, [id]: n };
+  }
+
+  function divideTargetName(e: DivideShieldEntryView): string {
+    if (e.target_id === viewerID) return "you";
+    return e.target_name || e.target_id.slice(0, 8);
+  }
+
+  function submitDivideShield(): void {
+    if (!active || !viewerID || !divideFrame || !canSubmitDivide) return;
+    const distribution: Record<string, number> = {};
+    for (const e of divideFrame.entries) distribution[e.id] = divideShares[e.id] ?? 0;
+    answer({ distribution });
+  }
+
   // ADR 0111 PR 6: every kind that is not inline is a sheet in the
   // action dock. This is its dialog name (the modal's heading, without
   // its aria-hidden source tag), the tag, the running count, and the
@@ -1259,6 +1320,19 @@
         width: 560,
         primary: confirmAction("Deal damage", submitDamageAssignment, {
           disabled: !canSubmitAssignment,
+        }),
+        secondary: [],
+      };
+    }
+    if (isDivideShield && divideFrame) {
+      return {
+        label: c.reason || `Divide ${divideFrame.label ?? "the shield"}`,
+        src: "CR 615.7",
+        count: `${dividedTotal} / ${divideFrame.charge} prevented`,
+        width: 560,
+        primary: confirmAction("Prevent", submitDivideShield, {
+          disabled: !canSubmitDivide,
+          title: canSubmitDivide ? undefined : `Prevent exactly ${divideFrame.charge}`,
         }),
         secondary: [],
       };
@@ -1796,6 +1870,36 @@
             </label>
           </li>
         {/if}
+      </ul>
+    {:else if isDivideShield && divideFrame}
+      <!-- ADR 0108 §7, CR 615.7: which of this damage the shield
+           prevents. Each row is one damage event; the shares add up to
+           the shield's charge. -->
+      <p class="prompt-hint">
+        {divideFrame.label ?? "The shield"} can prevent {divideFrame.charge} of this damage, all dealt
+        at the same time. Choose how much of each to prevent.
+      </p>
+      <ul class="assign-list">
+        {#each divideFrame.entries as e (e.id)}
+          <li class="assign-row">
+            <span class="assign-name">
+              {e.source_name || "A source"} → {divideTargetName(e)}: {e.amount}{e.combat
+                ? " combat"
+                : ""} damage
+            </span>
+            <label class="assign-input">
+              <span class="sr-only">damage to prevent of {e.amount} to {divideTargetName(e)}</span>
+              <input
+                type="number"
+                min="0"
+                max={e.amount}
+                value={divideShares[e.id] ?? 0}
+                oninput={(ev) =>
+                  setDivideShare(e.id, (ev.currentTarget as HTMLInputElement).value, e.amount)}
+              />
+            </label>
+          </li>
+        {/each}
       </ul>
     {:else if isReplacementOrder || isTriggerOrder}
       <p class="prompt-hint">

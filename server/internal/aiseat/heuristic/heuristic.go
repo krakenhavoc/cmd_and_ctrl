@@ -502,7 +502,7 @@ func (p *Policy) decideGeneral(ctx context.Context, st *state, moves []legal.Mov
 		if i%16 == 0 && ctx.Err() != nil {
 			break
 		}
-		if moves[i].Kind == legal.KindPass {
+		if moves[i].Kind == legal.KindPass || moves[i].Kind == legal.KindFinishBlocks {
 			continue
 		}
 		v, reason := p.valueOf(st, moves[i])
@@ -515,6 +515,12 @@ func (p *Policy) decideGeneral(ctx context.Context, st *state, moves []legal.Mov
 		threshold = p.cfg.InstantThreshold
 	}
 	passIdx := indexOfKind(moves, legal.KindPass)
+	if passIdx < 0 {
+		// #1501: a defender declaring blockers holds no priority, and
+		// its "nothing worth doing" is finishing the declaration —
+		// the pass it stands in for.
+		passIdx = indexOfKind(moves, legal.KindFinishBlocks)
+	}
 	if best >= 0 && bestVal > threshold {
 		return aiseat.Decision{Index: best, Reason: fmt.Sprintf("%s (+%.2f)", bestReason, bestVal)}
 	}

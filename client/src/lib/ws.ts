@@ -163,6 +163,23 @@ export function isTerminalClose(code: number): boolean {
   return code === CLOSE_NORMAL;
 }
 
+// CLOSE_ADMIN_MODE_CHANGED is the server's close when a person's admin
+// mode was switched (or lapsed) and this socket's admin bit is now wrong
+// (ADR 0112 §2 item 5, hub.RebindUserSessions). It is not terminal, but
+// it is not an ordinary drop either: redialling the same binding blind
+// can ask for one only an admin may hold (another seat, the seatless
+// unfiltered view), the server refuses that upgrade, the browser sees
+// only a 1006, and the ladder retries it forever. So the client asks
+// GET /me first, through the handler setAdminModeHandler installs, and
+// then reconnects, or leaves for the Lobby when its binding was
+// admin-only.
+export const CLOSE_ADMIN_MODE_CHANGED = 4001;
+
+// AdminModeHandler is that handler: "reconnect" dials now, "leave"
+// stops for good, and "retry" (GET /me did not answer) waits a rung of
+// the backoff ladder and asks again, never dialling in between.
+export type AdminModeHandler = () => Promise<"reconnect" | "leave" | "retry">;
+
 // SESSION_TOKEN_PARAM is the query parameter that carries the session
 // token on a WS upgrade — browsers cannot set headers on a WebSocket
 // handshake, so gameURL.ts bakes it into the URL.
@@ -312,6 +329,11 @@ export class GameClient {
   // probe.
   private sessionCheckDone = false;
   private sessionCheckInFlight = false;
+  // adminModeHandler is consulted after a 4001 close, and adminRecheck
+  // is set from that close until the next successful open: while it is
+  // set, every rung of the ladder asks the handler before it dials.
+  private adminModeHandler: AdminModeHandler | null = null;
+  private adminRecheck = false;
   // actionsSent counts action frames that left the socket. A timed
   // bluff (#1307) reads it to tell whether the viewer did anything
   // while it was waiting, whichever of the many send paths they used.
@@ -325,6 +347,13 @@ export class GameClient {
   private recordFrames = false;
 
   constructor(private url: string) {}
+
+  // setAdminModeHandler installs what a 4001 close asks before the
+  // client dials again (CLOSE_ADMIN_MODE_CHANGED). With none, a 4001 is
+  // an ordinary drop, as it was before ADR 0112.
+  setAdminModeHandler(fn: AdminModeHandler | null): void {
+    this.adminModeHandler = fn;
+  }
 
   // setFrameRecording turns raw frame capture on or off. Callers are
   // responsible for only enabling it when the server reports the
@@ -466,6 +495,12 @@ export class GameClient {
         return;
       }
       this.append("info", `socket closed (${ev.code}${ev.reason ? `: ${ev.reason}` : ""})`);
+      if (ev.code === CLOSE_ADMIN_MODE_CHANGED && this.adminModeHandler) {
+        this.adminRecheck = true;
+        this.status.set("reconnecting");
+        this.recheckAdminMode();
+        return;
+      }
       this.scheduleReconnect();
     });
 
@@ -488,8 +523,48 @@ export class GameClient {
       // A deliberate connect() may have raced the timer; don't stack
       // a second socket on top of it.
       if (this.socket) return;
+      if (this.adminRecheck) {
+        this.recheckAdminMode();
+        return;
+      }
       this.open();
     }, delay);
+  }
+
+  // recheckAdminMode asks the 4001 handler, then acts on its verdict
+  // (CLOSE_ADMIN_MODE_CHANGED). A verdict that comes back after the
+  // world moved on (a deliberate connect() or disconnect(), or a socket
+  // already open) is dropped, as the dead-session probe's is.
+  private recheckAdminMode(): void {
+    const handler = this.adminModeHandler;
+    if (!handler) {
+      this.adminRecheck = false;
+      this.open();
+      return;
+    }
+    const generation = this.reconnectGeneration;
+    void handler()
+      .catch(() => "retry" as const)
+      .then((verdict) => {
+        if (generation !== this.reconnectGeneration || this.socket || !this.adminRecheck) return;
+        if (verdict === "leave") {
+          this.adminRecheck = false;
+          this.cancelReconnect();
+          this.append(
+            "info",
+            "admin mode changed: this connection needs admin mode; not reconnecting",
+          );
+          this.status.set("disconnected");
+          return;
+        }
+        if (verdict === "retry") {
+          this.append("info", "admin mode changed: could not ask the server yet");
+          this.scheduleReconnect();
+          return;
+        }
+        this.append("info", "admin mode changed: reconnecting");
+        this.open();
+      });
   }
 
   // maybeCheckDeadSession fires the #1475 probe once a streak of
@@ -546,6 +621,7 @@ export class GameClient {
     this.reconnectAttempt.set(0);
     this.sessionCheckDone = false;
     this.sessionCheckInFlight = false;
+    this.adminRecheck = false;
     this.reconnectGeneration += 1;
   }
 

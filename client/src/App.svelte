@@ -3,9 +3,9 @@
   // component under src/routes; this file just picks the right one
   // based on the current `route` and the presence of a session.
   //
-  // The routing rules are intentionally small: most unauthenticated
-  // routes redirect to /login. The one public route is /games/:id/join,
-  // which is how new players onboard via an invite link.
+  // The routing rules are intentionally small, and live in
+  // lib/signedInHome.ts: most unauthenticated routes redirect to
+  // /login, and a session on /login goes to the Lobby.
 
   import Login from "./routes/Login.svelte";
   import Lobby from "./routes/Lobby.svelte";
@@ -14,10 +14,9 @@
   import Game from "./routes/Game.svelte";
   import Catalog from "./routes/Catalog.svelte";
   import MyGames from "./routes/MyGames.svelte";
-  import MyDecks from "./routes/MyDecks.svelte";
+  import Decks from "./routes/Decks.svelte";
   import Home from "./routes/Home.svelte";
   import Roadmap from "./routes/Roadmap.svelte";
-  import DeckCheck from "./routes/DeckCheck.svelte";
   import Practice from "./routes/Practice.svelte";
   import Settings from "./lib/components/Settings.svelte";
   import ShortcutLayer from "./lib/components/ShortcutLayer.svelte";
@@ -26,8 +25,9 @@
   import EnvBadge from "./lib/components/EnvBadge.svelte";
   import { route, navigate } from "./lib/router";
   import { session, sessionFromOAuth, setSession } from "./lib/session";
-  import { loadAdminStatus, needsAdminCheck } from "./lib/admin";
-  import { canJoinByCode } from "./lib/myGames";
+  import { armAdminLapse, loadAdminStatus, needsAdminCheck, onVisibleAgain } from "./lib/admin";
+  import { oauthCompleteTarget, routeRedirect } from "./lib/signedInHome";
+  import { takeAfterSignIn } from "./lib/decksPage";
   import { settings } from "./lib/settings";
   import { applyRootSettings } from "./lib/rootSettings";
   import { armMusicOnFirstGesture } from "./lib/music";
@@ -47,44 +47,14 @@
 
   // Enforce the auth gate as a side effect of routing. Running this
   // inside $effect ensures it re-evaluates on hash change + session
-  // change without manual subscription plumbing.
+  // change without manual subscription plumbing. The rules live in
+  // lib/signedInHome.ts (ADR 0112 §1): a signed-out visitor on a gated
+  // route goes to #/login, and every session on #/login goes to the
+  // Lobby, the signed-in home. Invite, spectator and reclaim links and
+  // the Discord round trip are public and never redirected.
   $effect(() => {
-    const r = $route;
-    const s = $session;
-    const isPublic =
-      r.name === "login" ||
-      r.name === "adminLogin" ||
-      r.name === "join" ||
-      // The whole point of a reclaim link is that the holder has no
-      // session yet — gating it behind one would bounce them to the
-      // login page they cannot get past.
-      r.name === "reclaim" ||
-      r.name === "oauthComplete" ||
-      // The site portal and the public roadmap (#1386): neither shows
-      // card art or anything else session-gated, so a signed-out
-      // visitor should be able to reach both from a cold link.
-      r.name === "home" ||
-      r.name === "roadmap" ||
-      // The deck coverage checker (ADR 0095 §5): public for the same
-      // reason the roadmap is — no art, no oracle text, and the
-      // Discord bot's reply links straight here for the full report.
-      r.name === "deckCheck";
-    if (!s && !isPublic) {
-      navigate("#/login");
-    }
-    // Landed on login with a live session? Kick to the lobby so the
-    // reload-after-login flow doesn't leave you staring at a login
-    // form you don't need.
-    //
-    // A signed-in person is the exception (canJoinByCode): a Discord
-    // sign-in that hasn't claimed a seat, or a signed-in player or
-    // spectator heading for their next table, belongs ON the login
-    // page, because that is where the invite-code box lives (ADR 0110
-    // §1 item 3). Bouncing them to the lobby would strand them one
-    // step short of a table.
-    if (s && r.name === "login" && !canJoinByCode(s)) {
-      navigate("#/lobby");
-    }
+    const to = routeRedirect($route, $session);
+    if (to) navigate(to);
   });
 
   // Ask GET /me whether a newly installed signed-in session is an admin
@@ -96,6 +66,18 @@
     if (needsAdminCheck(s)) void loadAdminStatus(s);
   });
 
+  // Admin mode lapses 12 hours after it was switched on (ADR 0112 §2,
+  // owner answer 1). The lapse timer follows the installed session's
+  // end time, and a hidden tab that becomes visible asks /me again, so
+  // a switch made in another tab or on another device is caught up.
+  $effect(() => {
+    armAdminLapse($session);
+  });
+  $effect(() => {
+    document.addEventListener("visibilitychange", onVisibleAgain);
+    return () => document.removeEventListener("visibilitychange", onVisibleAgain);
+  });
+
   // oauth-complete handoff (S12.5). /auth/discord/callback on the
   // server 302s here with the session in the URL fragment. Install
   // it and move on; the fragment doesn't survive the navigate, and
@@ -103,8 +85,10 @@
   //
   // The fragment's shape says which flow this was. With game +
   // player_id the seat is already claimed, so go to the table. With
-  // neither, this is an identity-only session from the login page —
-  // land back on login, where the invite-code box is waiting.
+  // neither, this is an identity-only session from the login page,
+  // which lands on the Lobby with its join box (ADR 0112 §1 item 2), or
+  // back on the decks page when the sign-in started there (§3 item 7).
+  // takeAfterSignIn reads and clears that stored route either way.
   $effect(() => {
     const r = $route;
     if (r.name !== "oauthComplete") return;
@@ -114,7 +98,7 @@
     // it was handed.
     const s = sessionFromOAuth(r);
     setSession(s);
-    navigate(s.principal.role === "player" ? `#/games/${r.gameID}` : "#/login");
+    navigate(oauthCompleteTarget(s, takeAfterSignIn()));
   });
 
   // Apply the subset of settings that hang off :root as CSS
@@ -147,8 +131,8 @@
   <Home />
 {:else if $route.name === "roadmap"}
   <Roadmap />
-{:else if $route.name === "deckCheck"}
-  <DeckCheck />
+{:else if $route.name === "decks"}
+  <Decks />
 {:else if $route.name === "lobby"}
   <Lobby />
 {:else if $route.name === "practice"}
@@ -157,8 +141,6 @@
   <Catalog />
 {:else if $route.name === "myGames"}
   <MyGames />
-{:else if $route.name === "myDecks"}
-  <MyDecks />
 {:else if $route.name === "join"}
   <Join gameID={$route.gameID} inviteToken={$route.inviteToken} spectator={$route.spectator} />
 {:else if $route.name === "reclaim"}

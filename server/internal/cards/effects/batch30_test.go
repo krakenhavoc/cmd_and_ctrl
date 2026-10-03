@@ -46,7 +46,6 @@ const (
 	b30ExtractFromDarknessOracle    = "e597d8a1-3bbc-4001-b642-f4421447970f"
 	b30DocksideChefOracle           = "fed12a16-8920-403c-be63-0601a9d864b0"
 	b30GrimGuardianOracle           = "c1f1babf-13d0-4fc4-b192-127d2d5db7f1"
-	b30UltimaSkipOracle             = "baa337ce-edc6-4ee5-a898-68e9dbb4ab93"
 	b30ChainOfSmogSkipOracle        = "ea14c26b-bf2f-48b4-b879-6e63069ded1f"
 	b30ZimoneParadoxSculptorSkipOID = "9dd674a7-becf-4106-b53f-bca88426d92d"
 )
@@ -172,13 +171,13 @@ func TestBatch30CardsAreRegistered(t *testing.T) {
 			t.Errorf("oracle %s registered as %q, want %q", oracle, spec.Name, name)
 		}
 	}
-	// The two declared skips must NOT be registered — each needs a
-	// seam the engine does not have, and a spec would ship the card
-	// stronger than printed or as something other than itself.
-	// Gemhide Sliver came off this list with ADR 0093 and ships in
-	// gemhide_sliver.go.
+	// The declared skip must NOT be registered — it needs a seam the
+	// engine does not have, and a spec would ship the card stronger
+	// than printed or as something other than itself. Gemhide Sliver
+	// came off this list with ADR 0093 and ships in gemhide_sliver.go;
+	// Ultima, Origin of Oblivion came off it with ADR 0109 PR 3 and
+	// ships in ultima_origin_of_oblivion.go.
 	for _, skipped := range []string{
-		b30UltimaSkipOracle,             // a land losing all types and abilities and gaining a mana ability; a tap-for-{C} rider
 		b30ZimoneParadoxSculptorSkipOID, // a beginning-of-combat trigger event
 	} {
 		if _, ok := Lookup(skipped); ok {
@@ -845,17 +844,18 @@ func TestB30SatoruDrawsWhenCreaturesArriveUncast(t *testing.T) {
 		t.Fatalf("a cast Satoru draws nothing: %d → %d", hand, me.Hand.Size())
 	}
 	assertKeywords(t, g, satoru, "menace")
+	// ADR 0109 §11: Satoru reads the whole event batch (CR 603.2c), and a
+	// direct engine call outside a resolution shares the batch of the
+	// last one — so each arrival below happens in a step of its own, as
+	// it would in play, rather than alongside Satoru's own cast.
+	batch01AdvanceToStepOf(t, g, 0, game.StepBeginCombat)
 	dead := b17GraveyardCard(me, "Dead Bear", "Creature — Bear", "{1}{G}")
 	b30Reanimate(t, g, dead, me.ID)
 	passPriorityAroundTable(t, g)
 	if me.Hand.Size() != hand+1 {
 		t.Errorf("a reanimated creature was not cast: draw: %d → %d", hand, me.Hand.Size())
 	}
-	castCatalogSpell(t, g, "Cast Bear", "Creature — Bear", "", nil)
-	passPriorityAroundTable(t, g)
-	if me.Hand.Size() != hand+1 {
-		t.Errorf("a cast creature draws nothing: %d", me.Hand.Size())
-	}
+	batch01AdvanceToStepOf(t, g, 0, game.StepEndCombat)
 	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(me.ID, RedGoblinToken(), 2) })
 	passPriorityAroundTable(t, g)
 	if me.Hand.Size() != hand+1 {
@@ -867,19 +867,29 @@ func TestB30SatoruDrawsWhenCreaturesArriveUncast(t *testing.T) {
 	if me.Hand.Size() != hand+1 {
 		t.Errorf("an opponent's reanimation draws nothing: %d", me.Hand.Size())
 	}
+	// A creature cast with its payment unrecorded (strict mana off) is
+	// not known to have cost nothing, and draws nothing.
+	batch01AdvanceToStepOf(t, g, 0, game.StepPostcombatMain)
+	castCatalogSpell(t, g, "Cast Bear", "Creature — Bear", "", nil)
+	passPriorityAroundTable(t, g)
+	if me.Hand.Size() != hand+1 {
+		t.Errorf("a cast creature draws nothing: %d", me.Hand.Size())
+	}
 	// Satoru itself arriving uncast draws.
+	batch01AdvanceToStepOf(t, g, 0, game.StepEnd)
 	g.WithWriteLock(func() { _ = g.BounceToHandForEffect(satoru) })
 	me.Hand.Remove(satoru)
 	me.Graveyard.PushTop(game.Card{InstanceID: satoru, Name: "Satoru, the Infiltrator", TypeLine: "Legendary Creature — Human Ninja Rogue",
 		OracleID: b30SatoruOracle, Owner: me.ID, Controller: me.ID})
 	hand = me.Hand.Size()
 	b30Reanimate(t, g, satoru, me.ID)
+	g.RunStateChecksForTest()
 	passPriorityAroundTable(t, g)
 	if me.Hand.Size() != hand+1 {
 		t.Errorf("a reanimated Satoru draws for itself: %d → %d", hand, me.Hand.Size())
 	}
 	if spec, _ := Lookup(b30SatoruOracle); spec.Completeness != CompletenessCaveats {
-		t.Error("the no-mana-spent half is a declared gap")
+		t.Error("the strict-mana half is a declared gap")
 	}
 }
 
@@ -1004,6 +1014,11 @@ func TestB30SavvyHunterMakesFoodOnAttackAndOnBlock(t *testing.T) {
 	if err := g.DeclareAttacker(raider, me.ID); err != nil {
 		t.Fatalf("DeclareAttacker: %v", err)
 	}
+	// The Hunter is still tapped from its own attack, and a tapped
+	// creature can't block (CR 509.1a). #1501: with no legal block the
+	// defender's declaration would complete as the step began and the
+	// block below be refused as late, so it untaps first.
+	g.WithWriteLock(func() { _ = g.UntapTargetForEffect(hunter) })
 	advanceTo(t, g, game.StepDeclareBlockers)
 	if err := g.DeclareBlocker(hunter, raider); err != nil {
 		t.Fatalf("DeclareBlocker: %v", err)

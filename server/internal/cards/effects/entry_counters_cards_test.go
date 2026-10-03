@@ -87,12 +87,12 @@ func TestXEntryCounterCardsEnterWithTheirCounters(t *testing.T) {
 	}
 }
 
-// Etched Oracle is the fourteenth card in the slot — the same clause
-// counting colours of mana spent instead of X (CR 702.44a). Its proof
-// is TestEtchedOracleEntersWithSunburstCountersAndDrawsThree in
+// Etched Oracle was the fourteenth card in the slot until ADR 0109 §11
+// (#1552) made sunburst a keyword the engine reads off the resolving
+// spell (game/entry_counters.go, applySunburstLocked). Its proof is
+// still TestEtchedOracleEntersWithSunburstCountersAndDrawsThree in
 // counter_costs_and_mana_spent_test.go, which needs a strict payment
-// to have colours to count and was already asserting the counters are
-// on the permanent when it lands.
+// to have colours to count.
 
 // Not one of the fourteen still tells players the counters go on a
 // beat before the permanent enters. #412's lesson: a caveat goes stale

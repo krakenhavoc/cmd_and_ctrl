@@ -396,6 +396,9 @@
       mulligansOpen={view.mulligans_open === true}
       damageCantBePrevented={view.damage_cant_be_prevented ?? []}
       exileIfCreaturesDie={view.exile_if_creatures_die ?? []}
+      damageShields={view.damage_shields ?? []}
+      damageMultipliers={view.damage_multipliers ?? []}
+      damageRedirections={view.damage_redirections ?? []}
       {readyActions}
       {trackOpen}
     />
@@ -452,11 +455,15 @@
     >
       {$holdPriority ? "hold ✓" : "hold"}
     </button>
+    <!-- The label is fixed and the state is aria-pressed: "autopass" is
+         the tutorial's step-9 anchor (ADR 0076 §2.4), so it must not
+         change with the ✓ and ⏸ the visible text carries. -->
     <button
       type="button"
       class="action autopass"
       class:on={autopassEnabled && !autopassPaused}
       class:paused={autopassPaused}
+      aria-label="autopass"
       aria-pressed={autopassEnabled}
       aria-keyshortcuts={ariaKeys(keys.toggleAutopass)}
       onclick={onToggleAutopass}

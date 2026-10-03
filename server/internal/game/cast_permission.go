@@ -713,7 +713,7 @@ func (g *Game) GrantCastPermissionForEffect(perm CastPermission) {
 	if perm.CastsLeft < 0 {
 		return
 	}
-	if perm.Duration == (Duration{}) {
+	if perm.Duration.IsZero() {
 		// The zero Duration is "until end of turn", unstamped. Stamp
 		// it against the turn the grant is being made in, so the
 		// window is a fact about this turn rather than about whichever

@@ -142,6 +142,9 @@ func TestAViewBlindActiveBotStillHoldsForBlockers(t *testing.T) {
 	if _, err := g.AdvanceStep(); err != nil {
 		t.Fatal(err)
 	}
+	// #1501: the grace's shape — the active player holding priority
+	// while the defender declares — is a pre-#1501 restore point now.
+	activeHoldsPriorityWhileDefenderDeclares(t, g)
 	// The random seat's only move is the pass, so whatever it draws it
 	// is deciding to pass — which is the move the grace holds.
 	if moves := legal.EnumerateFor(g, bot.ID); len(moves) != 1 || moves[0].Kind != legal.KindPass {

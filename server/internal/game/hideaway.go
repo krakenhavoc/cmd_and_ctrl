@@ -170,6 +170,12 @@ func (g *Game) CanPlayLandDuringResolutionForEffect(playerID, cardID uuid.UUID) 
 	if !ok || !card.IsLand() {
 		return false
 	}
+	// ADR 0109 §4, CR 101.2 and CR 305.2a: a land played while a spell
+	// resolves is still a land play, so "players can't play lands" stops
+	// it too. The one gate the cast path, the enumerator and the view ask.
+	if g.LandPlayGateLocked(playerID, card, src.Kind) != nil {
+		return false
+	}
 	return g.activePlayerIDLocked() == playerID && g.LandDropsRemainingLocked(playerID) > 0
 }
 

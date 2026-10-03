@@ -295,7 +295,401 @@ func corpusBoards() []corpusBoard {
 		// ScopeStanding graveyard cast permission written beside it, with
 		// the Will itself already exiled by its own replacement.
 		{"yawgmoths_will", corpusYawgmothsWill},
+		// v7, added by ADR 0108 PR 2 (#1890) as a new file: the
+		// multiplyDamage kind in each of its shapes — Insult's "your
+		// sources" (a resolved Insult, beside its can't-be-prevented
+		// grant), Isengard's triple to opponents and their permanents,
+		// Lightning's "that player and their permanents" until your next
+		// turn, Blind Fury's combat-only creature-to-creature, and a
+		// pinned "next time" multiplier already spent by its instance.
+		{"multiply_damage", corpusMultiplyDamage},
+		// v7, added by ADR 0108 PR 2 (#1890) as a new file: Impulsive
+		// Maneuvers' losing flip — a preventNextCombatFromSource shield on
+		// an attacking creature, its own kind so that a binary from before
+		// it refuses the file rather than reading an ordinary next-damage
+		// shield.
+		{"next_combat_damage_shield", corpusNextCombatDamageShield},
+		// v7, added by ADR 0109 PR 5 (#1895) as a new file: a resolved
+		// Turf Wound — the cantPlayLands record (a game-scope rule kind
+		// naming the one banned player) beside a standing Territorial
+		// Dispute, whose land-play restriction is catalog data and so adds
+		// nothing to the file but the permanent.
+		{"cant_play_lands", corpusCantPlayLands},
+		// v7, added by ADR 0109 PR 1 (#1881) as a new file: CR 305.7
+		// from a resolved effect as data — setBasicLandTypes records
+		// until end of turn (Tidal Warrior), until the land's controller's
+		// next turn (Orcish Farmer), for as long as the source remains
+		// (Gaea's Liege) and indefinitely (Thelonite Monk), and an
+		// addSubtypes Forest in addition to the land's own types
+		// (Navigator's Compass).
+		{"land_types", corpusLandTypes},
+		// v7, added by ADR 0108 PR 6 (#1904) as a new file: the shields
+		// against a source that are not one-use as data — Samite
+		// Ministration's all-turn preventFromSource with a follow-up, a
+		// charged one (Healing Grace) already partly spent, a
+		// combat-only one pinned to a protected creature, Prismatic
+		// Strands' property-only shape, and Dark Sphere's half shield
+		// (Mod.Half on preventNextFromSource).
+		{"source_shields", corpusSourceShields},
+		// v7, added by ADR 0109 PR 2 (#1894, #1604) as a new file: a
+		// duration with two conditions (Seasinger's "for as long as you
+		// control this creature and this creature remains tapped",
+		// Duration.Also) and a counter-held one (Minas Morgul's "for as
+		// long as that creature has a shadow counter on it",
+		// WhilePinnedHasCounter with its CounterKind).
+		{"durations", corpusDurations},
+		// v7, added by ADR 0109 PR 6 (#1899) as a new file: Narset
+		// Transcendent's −2 waiting — a delayed trigger naming the
+		// condition key cast/you-next-cast-from-hand and the body key
+		// rebound/the-spell-you-just-cast — and Narset's emblem on its
+		// owner's seat, whose cast restriction is catalog data and so adds
+		// nothing to the file but the emblem.
+		{"narset_emblem_and_rebound_waiting", corpusNarset},
+		// v7, added by ADR 0109 PR 3 (#1604) as a new file: the
+		// loseLandTypes kind, in Ultima, Origin of Oblivion's record
+		// (loses all land types and abilities and has "{T}: Add {C}"
+		// for as long as the land has a blight counter on it).
+		{"lose_land_types", corpusLoseLandTypes},
+		// v7, added by ADR 0109 PR 4 (#1604) as a new file: a granted
+		// loyalty ability on the stack, named by its grant ref and
+		// carrying its grantor (Teferi's Talent's −12, stackMeta's
+		// grantedBy).
+		{"granted_loyalty_on_stack", corpusGrantedLoyaltyOnStack},
+		// v7, added by ADR 0109 PR 10 (#1552) as a new file: the two new
+		// spend-rider shapes waiting in a pool (Generator Servant's
+		// spell_gains {C}{C}, Opal Palace's counted {G}), Solar Array's
+		// "when you next cast an artifact spell" delayed trigger, and a
+		// Dragon that kept the haste-until-end-of-turn its spell was given
+		// (a record re-pinned to the permanent with its duration).
+		{"granted_mana_spent_readers", corpusGrantedManaSpentReaders},
+		// v7, added by ADR 0108 PR 8 (#1906) as a new file: the scoped
+		// shields' CR 615.5 follow-ups (owner decision 2) as data — Test
+		// of Faith's charged shield with its Then, partly spent; Vengeful
+		// Archon's, whose follow-up deals its damage to a chosen player
+		// (Mod.To); and a combat shield with a follow-up (Inkshield's
+		// shape).
+		{"shield_follow_ups", corpusShieldFollowUps},
+		// v7, added by ADR 0108 PR 7 (#1904) as a new file: the
+		// recipient and to-and-by shields as data — Energy Arc's one
+		// to-and-by record over two creatures (Mod.AndDealtBy, an
+		// affected set of two), Redeem's one record protecting two, and
+		// Brace for Impact's pinned shield with its counters follow-up.
+		{"to_and_by_shields", corpusToAndByShields},
+		// v7, added by ADR 0108 PR 9 (#1905) as a new file: the
+		// redirectDamage kind in each of its shapes — Beacon of Destiny's
+		// "next time" from a chosen source to a permanent, spent by an
+		// instance; Harm's Way's charge, partly spent, to a player;
+		// Reflect Damage's toSourceController; Eye for an Eye's follow-up
+		// with no destination; Glarecaster's pinned permanent beside its
+		// player; Soltari Guerrillas' opponents — Refraction Trap's
+		// charged source shield carrying its follow-up's target (Mod.To),
+		// and the turn's red instant in the cast tally.
+		{"redirections", corpusRedirections},
 	}
+}
+
+// corpusToAndByShields is ADR 0108 Delivery PR 7's shapes, made by the
+// cards that make them.
+func corpusToAndByShields(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	a := pushBattlefieldCardWithTimestamp(g, corpusCreature(me.ID, "Grizzly Bears", 2, 2))
+	b := pushBattlefieldCardWithTimestamp(g, corpusCreature(opp.ID, "Hill Giant", 3, 3))
+	c := pushBattlefieldCardWithTimestamp(g, corpusCreature(me.ID, "Knight", 2, 2))
+	gold := pushBattlefieldCardWithTimestamp(g, corpusCreature(me.ID, "Gold Knight", 2, 2))
+	findBattlefieldCardForTest(g, gold).Colors = []string{"W", "U"}
+	castCatalogSpell(t, g, "Energy Arc", "Instant", pr7aEnergyArc, []game.TargetRef{pr7aCard(a), pr7aCard(b)})
+	passPriorityAroundTable(t, g)
+	castCatalogSpell(t, g, "Redeem", "Instant", pr7aRedeem, []game.TargetRef{pr7aCard(a), pr7aCard(c)})
+	passPriorityAroundTable(t, g)
+	castCatalogSpell(t, g, "Brace for Impact", "Instant", pr7aBraceForImpact, []game.TargetRef{pr7aCard(gold)})
+	passPriorityAroundTable(t, g)
+	if n := pr7aShields(g); n != 3 {
+		t.Fatalf("setup: %d preventFromSource records, want 3", n)
+	}
+	return g
+}
+
+// corpusShieldFollowUps is ADR 0108 owner decision 2: preventDamage and
+// preventCombatDamage carrying Then, and Mod.To.
+func corpusShieldFollowUps(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	dragon := pushBattlefieldCardWithTimestamp(g, corpusCreature(opp.ID, "Shivan Dragon", 5, 5))
+	knight := pushBattlefieldCardWithTimestamp(g, corpusCreature(me.ID, "Knight", 2, 4))
+	g.WithWriteLock(func() {
+		g.RecomputeLayersIfStaleLocked()
+		g.PreventNextDamageThenThisTurnForEffect(uuid.Nil, knight, 3, false,
+			game.ShieldFollowUp{Controller: me.ID, Body: countersOnItPerPreventedBody}, "Test of Faith — prevent the next 3 damage")
+		g.PreventNextDamageThenThisTurnForEffect(uuid.Nil, me.ID, 4, false,
+			game.ShieldFollowUp{Controller: me.ID, Body: dealThatMuchToTheChosenTargetBody, To: opp.ID}, "Vengeful Archon — prevent the next 4 damage")
+		g.PreventCombatDamageThenThisTurnForEffect(uuid.Nil, me.ID,
+			game.ShieldFollowUp{Controller: me.ID, Body: shieldGainLifeEqualBody}, "prevent all combat damage that would be dealt to you this turn")
+		// Test of Faith's shield takes 1 of the dragon's damage, leaving 2,
+		// and its follow-up puts the counter on.
+		if err := g.DealDamageToCreatureForEffect(dragon, knight, 1); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if n := len(g.ScopedEffects); n != 3 {
+		t.Fatalf("setup: %d scoped records, want 3", n)
+	}
+	return g
+}
+
+// corpusGrantedManaSpentReaders is ADR 0109 §11's data, made by the cards
+// that write it.
+func corpusGrantedManaSpentReaders(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	advanceToMain(t, g)
+	orb := pushCatalogPermanent(g, me.ID, "Carnelian Orb of Dragonkind", "Artifact", gmrCarnelianOrbOracle, false)
+	activateManaFor(t, g, me.ID, orb, 0, game.ManaAbilityParams{})
+	dragon := castFromHandForTest(t, g, me, "Test Dragon", "Creature — Dragon", "{R}", "", game.CastSpellParams{Strict: true})
+	passPriorityAroundTable(t, g)
+	if !g.Battlefield.Contains(dragon) {
+		t.Fatal("setup: the Dragon did not resolve")
+	}
+	servant := pushCatalogPermanent(g, me.ID, "Generator Servant", "Creature — Elemental", gmrGeneratorServantOracle, false)
+	activateManaFor(t, g, me.ID, servant, 0, game.ManaAbilityParams{})
+	palace := pushCatalogPermanent(g, me.ID, "Opal Palace", "Land", gmrOpalPalaceOracle, false)
+	floatForTest(g, me, "C")
+	activateManaFor(t, g, me.ID, palace, 1, game.ManaAbilityParams{Colors: []string{"G"}})
+	array := pushCatalogPermanent(g, me.ID, "Solar Array", "Artifact", gmrSolarArrayOracle, false)
+	activateManaFor(t, g, me.ID, array, 0, game.ManaAbilityParams{Colors: []string{"W"}})
+	return g
+}
+
+// corpusNarset is ADR 0109 §5's stored shapes, made by the card: the −2
+// resolved (its delayed trigger waiting for the next instant or sorcery
+// cast from hand) and the −9 resolved from a second Narset (its emblem).
+func corpusNarset(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	toMain(t, g)
+	waiting := pushCatalogWalker(g, me.ID, "Narset Transcendent", narsetOracle, 6)
+	b16Activate(t, g, me.ID, waiting, 1, game.ActivateAbilityParams{})
+	ultimate := pushCatalogWalker(g, me.ID, "Narset Transcendent", narsetOracle, 9)
+	b16Activate(t, g, me.ID, ultimate, 2, game.ActivateAbilityParams{})
+	if len(g.DelayedTriggers) != 1 || me.Emblems == nil || len(me.Emblems.Cards) != 1 {
+		t.Fatalf("setup: %d delayed triggers and an emblem zone %v, want one of each", len(g.DelayedTriggers), me.Emblems)
+	}
+	return g
+}
+
+// corpusGrantedLoyaltyOnStack is Teferi's Talent's granted −12,
+// activated on the planeswalker it enchants and waiting on the stack:
+// a grant ref, and the Talent as the item's grantor.
+func corpusGrantedLoyaltyOnStack(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	toMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat].ID
+	walker := talentWalker(g, me, 13)
+	talent := talentOn(g, me, "Teferi's Talent", teferisTalentOracle, walker)
+	idx, ref := grantedLoyaltyRow(t, g, walker, "−12")
+	if err := g.ActivateCatalogAbility(me, walker, idx, game.ActivateAbilityParams{Ref: ref}); err != nil {
+		t.Fatalf("setup: activate the granted −12: %v", err)
+	}
+	if it := talentStackItem(g, walker); it == nil || it.GrantedBy != talent {
+		t.Fatalf("setup: the −12 is not on the stack with its grantor: %+v", it)
+	}
+	return g
+}
+
+// corpusLoseLandTypes is ADR 0109 §2's loseLandTypes kind, made by the
+// card that writes it: Ultima attacks and blights a land.
+func corpusLoseLandTypes(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	land := pushLandFor(g, opp.ID, "Forest", "Basic Land — Forest")
+	llAttackWithUltima(t, g, me.ID, opp.ID, land)
+	advanceTo(t, g, game.StepPostcombatMain)
+	if len(g.ScopedEffects) != 1 {
+		t.Fatalf("setup: %d scoped records, want 1", len(g.ScopedEffects))
+	}
+	return g
+}
+
+// corpusDurations is ADR 0109's new duration fields, made by the cards
+// that write them.
+func corpusDurations(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	pushLandFor(g, me.ID, "Island", "Basic Land — Island") // or Seasinger's state trigger sacrifices it
+	pushLandFor(g, opp.ID, "Island", "Basic Land — Island")
+	seasinger := pushCatalogPermanent(g, me.ID, "Seasinger", "Creature — Merfolk", rtSeasingerOracle, false)
+	victim := ctrlPushCreature(g, opp.ID, "Bear")
+	if err := g.ActivateCatalogAbility(me.ID, seasinger, 0, game.ActivateAbilityParams{Targets: ltCardTarget(victim)}); err != nil {
+		t.Fatalf("setup: Seasinger: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	morgul := pushCatalogPermanent(g, me.ID, "Minas Morgul, Dark Fortress", "Legendary Land", rtMinasMorgulOracle, false)
+	mine := ctrlPushCreature(g, me.ID, "Wolf")
+	b06AddMana(me, "B", "C", "C", "C")
+	if err := g.ActivateCatalogAbility(me.ID, morgul, 0, game.ActivateAbilityParams{Targets: ltCardTarget(mine)}); err != nil {
+		t.Fatalf("setup: Minas Morgul: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if len(g.ScopedEffects) != 2 {
+		t.Fatalf("setup: %d scoped records, want 2", len(g.ScopedEffects))
+	}
+	return g
+}
+
+// corpusNextCombatDamageShield is Impulsive Maneuvers on the
+// battlefield and the combat-only next-damage shield its losing flip
+// makes on an attacker.
+func corpusNextCombatDamageShield(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	maneuvers := b12Push(g, me.ID, "Impulsive Maneuvers", "Enchantment", "39a9323d-dddc-42ac-929d-3f4fa7c87567", 0, 0)
+	attacker := pushBattlefieldCardWithTimestamp(g, corpusCreature(me.ID, "Raider", 3, 3))
+	g.WithWriteLock(func() {
+		g.RecomputeLayersIfStaleLocked()
+		ref, zone, ok := g.DamageSourceRefLocked(attacker)
+		if !ok {
+			t.Fatal("setup: the attacker is in no zone")
+		}
+		g.PreventNextDamageFromSourceForEffect(game.NextDamageShield{
+			EffectSource: maneuvers, Controller: me.ID, Source: ref, SourceZone: zone, CombatOnly: true,
+			Label: "Impulsive Maneuvers — prevent the next damage",
+		})
+	})
+	if n := len(g.ScopedEffects); n != 1 || g.ScopedEffects[0].Mods[0].Kind != game.ModPreventNextCombatFromSource {
+		t.Fatalf("setup: %d scoped records, want the one combat-only shield", n)
+	}
+	return g
+}
+
+// corpusMultiplyDamage is ADR 0108 §3's multiplier in each of its shapes.
+func corpusMultiplyDamage(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	castCatalogSpell(t, g, "Insult", "Sorcery", "47543892-4d60-4c6b-a6a4-69b9172af01e", nil)
+	passPriorityAroundTable(t, g)
+	gambler := pushBattlefieldCardWithTimestamp(g, corpusCreature(me.ID, "Gambler", 2, 2))
+	g.WithWriteLock(func() {
+		g.RecomputeLayersIfStaleLocked()
+		g.MultiplyDamageForEffect(game.DamageMultiplier{Controller: me.ID, Factor: 3, Sources: game.DamageSourcesYours,
+			Recipients: game.DamageRecipientsOpponentsAndTheirPermanents, Label: "Isengard Unleashed"})
+		g.MultiplyDamageForEffect(game.DamageMultiplier{Controller: me.ID, Factor: 2,
+			Recipients: game.DamageRecipientsPlayerAndTheirPermanents, Player: opp.ID, UntilNextTurnOf: me.ID,
+			Label: "Lightning, Army of One — Stagger"})
+		g.MultiplyDamageForEffect(game.DamageMultiplier{Controller: me.ID, Factor: 2, Sources: game.DamageSourcesCreatures,
+			Recipients: game.DamageRecipientsCreatures, CombatOnly: true, Label: "Blind Fury"})
+		ref, zone, ok := g.DamageSourceRefLocked(gambler)
+		if !ok {
+			t.Fatal("setup: the gambler is in no zone")
+		}
+		g.MultiplyDamageForEffect(game.DamageMultiplier{Controller: me.ID, Factor: 2, Source: ref, SourceZone: zone,
+			Next: true, Label: "Desperate Gambit — double the next damage"})
+		// The next-time multiplier doubles the gambler's damage and is
+		// spent for the rest of this batch.
+		if err := g.DealDamageToPlayerForEffect(gambler, opp.ID, 1); err != nil {
+			t.Fatal(err)
+		}
+	})
+	n := 0
+	for _, e := range g.ScopedEffects {
+		for _, m := range e.Mods {
+			if m.Kind == game.ModMultiplyDamage {
+				n++
+			}
+		}
+	}
+	if n != 5 {
+		t.Fatalf("setup: %d multipliers, want 5", n)
+	}
+	return g
+}
+
+// corpusLandTypes is ADR 0109 §1's setBasicLandTypes kind in each
+// duration the catalog writes it with, made by the cards that write it.
+func corpusLandTypes(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	lands := make([]uuid.UUID, 4)
+	for i := range lands {
+		lands[i] = pushLandFor(g, opp.ID, "Plains", "Basic Land — Plains")
+	}
+	mine := pushLandFor(g, me.ID, "Swamp", "Basic Land — Swamp")
+	// Gaea's Liege is a */* counting your Forests: one keeps it alive.
+	pushLandFor(g, me.ID, "Forest", "Basic Land — Forest")
+	elf := pushBattlefieldCardWithTimestamp(g, game.Card{InstanceID: uuid.New(), Name: "Llanowar Elves",
+		TypeLine: "Creature — Elf Druid", Colors: []string{"G"}, Power: 1, Toughness: 1, Owner: me.ID, Controller: me.ID})
+	activate := func(name, typeLine, oracle string, params game.ActivateAbilityParams) {
+		t.Helper()
+		src := pushCatalogPermanent(g, me.ID, name, typeLine, oracle, false)
+		if err := g.ActivateCatalogAbility(me.ID, src, 0, params); err != nil {
+			t.Fatalf("setup: %s: %v", name, err)
+		}
+		passPriorityAroundTable(t, g)
+	}
+	activate("Tidal Warrior", "Creature — Merfolk Warrior", ltTidalWarriorOracle, game.ActivateAbilityParams{Targets: ltCardTarget(lands[0])})
+	activate("Orcish Farmer", "Creature — Orc", ltOrcishFarmerOracle, game.ActivateAbilityParams{Targets: ltCardTarget(lands[1])})
+	activate("Gaea's Liege", "Creature — Avatar", ltGaeasLiegeOracle, game.ActivateAbilityParams{Targets: ltCardTarget(lands[2])})
+	activate("Thelonite Monk", "Creature — Insect Monk Cleric", ltTheloniteMonkOracle,
+		game.ActivateAbilityParams{Targets: ltCardTarget(lands[3]), SacrificeIDs: []uuid.UUID{elf}})
+	activate("Navigator's Compass", "Artifact", ltNavigatorsCompassOracle, game.ActivateAbilityParams{Targets: ltCardTarget(mine)})
+	answerOptionPick(t, g, me.ID, 4) // Forest
+	if len(g.ScopedEffects) != 5 {
+		t.Fatalf("setup: %d scoped records, want 5", len(g.ScopedEffects))
+	}
+	return g
+}
+
+// corpusSourceShields is ADR 0108 §7's ModPreventFromSource in each of
+// its shapes, and Dark Sphere's half shield.
+func corpusSourceShields(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	dragon := pushBattlefieldCardWithTimestamp(g, corpusCreature(opp.ID, "Shivan Dragon", 5, 5))
+	knight := pushBattlefieldCardWithTimestamp(g, corpusCreature(me.ID, "Knight", 2, 2))
+	g.WithWriteLock(func() {
+		g.RecomputeLayersIfStaleLocked()
+		ref, zone, ok := g.DamageSourceRefLocked(dragon)
+		if !ok {
+			t.Fatal("setup: the dragon is in no zone")
+		}
+		g.PreventDamageFromSourceThisTurnForEffect(game.DamageShield{
+			Controller: me.ID, Source: ref, SourceZone: zone, ProtectPlayer: me.ID,
+			Then:  preventedBlackOrRedTriggerBody,
+			Label: "Samite Ministration — prevent damage from a source this turn",
+		})
+		g.PreventDamageFromSourceThisTurnForEffect(game.DamageShield{
+			Controller: me.ID, Source: ref, SourceZone: zone, ProtectPlayer: me.ID,
+			ProtectTypes: []string{"creature"}, Amount: 3,
+			Label: "Healing Grace — prevent damage from a source this turn",
+		})
+		g.PreventDamageFromSourceThisTurnForEffect(game.DamageShield{
+			Controller: me.ID, Source: ref, SourceZone: zone, ProtectPermanent: knight, CombatOnly: true,
+			Label: "Maze — prevent damage from a source this turn",
+		})
+		g.PreventDamageFromSourceThisTurnForEffect(game.DamageShield{
+			Controller: me.ID, Queries: []game.PermanentQuery{QueryColors("B"), QueryColors("R")},
+			Label: "Prismatic Strands — prevent damage from a source this turn",
+		})
+		g.PreventNextDamageFromSourceForEffect(game.NextDamageShield{
+			Controller: me.ID, Source: ref, SourceZone: zone, ProtectPlayer: me.ID, Half: true,
+			Label: "Dark Sphere — prevent the next damage from a source",
+		})
+		// The charged shield takes 1 of the dragon's damage to the
+		// knight (the all-turn shield protects only me), leaving 2.
+		if err := g.DealDamageToCreatureForEffect(dragon, knight, 1); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if n := len(g.ScopedEffects); n != 5 {
+		t.Fatalf("setup: %d scoped records, want 5", n)
+	}
+	return g
 }
 
 // corpusExileIfDies is ADR 0108 §1 and §2's two kinds in each of their
@@ -351,7 +745,7 @@ func corpusGrantedReboundOnStack(t *testing.T) *game.Game {
 		[]game.TargetRef{{Kind: game.TargetPlayer, ID: foe.ID}})
 	var ok bool
 	g.WithWriteLock(func() {
-		ok = g.GrantKeywordsToSpellForEffect(taigam, id, []string{game.KeywordRebound},
+		ok = g.GrantKeywordsToSpellForEffect(taigam, id, []string{game.KeywordRebound}, game.IndefiniteDuration(),
 			"Taigam, Ojutai Master — that spell gains rebound")
 	})
 	if !ok {
@@ -485,6 +879,21 @@ func corpusRulesGates(t *testing.T) *game.Game {
 	})
 	if n := len(g.ScopedEffects); n != 5 {
 		t.Fatalf("setup: %d scoped records, want 5 (two grants, a replacement, a pinned pair, a rest-of-game)", n)
+	}
+	return g
+}
+
+// corpusCantPlayLands is ADR 0109 §4's one stored shape: Turf Wound
+// resolved on the opponent, so a cantPlayLands record names them.
+func corpusCantPlayLands(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	pushCatalogPermanent(g, me.ID, "Territorial Dispute", "Enchantment", lpTerritorialDisputeOracle, false)
+	castCatalogSpell(t, g, "Turf Wound", "Instant", lpTurfWoundOracle, pr6Player(opp.ID))
+	passPriorityAroundTable(t, g)
+	if n := len(g.ScopedEffects); n != 1 || g.ScopedEffects[0].Mods[0].Kind != game.ModCantPlayLands {
+		t.Fatalf("setup: scoped records = %+v, want one cantPlayLands", g.ScopedEffects)
 	}
 	return g
 }
@@ -2253,4 +2662,73 @@ func TestCorpusSubsetSeesARename(t *testing.T) {
 	if len(diffs) != 1 || !strings.Contains(diffs[0], ".cards[0].counters") {
 		t.Fatalf("diffs = %v, want exactly the renamed key", diffs)
 	}
+}
+
+// corpusRedirections is ADR 0108 §9's data, every shape of it. Each
+// record names its own source, so the two deals that spend Beacon of
+// Destiny's and Harm's Way's meet one record each.
+func corpusRedirections(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	dragon := pushBattlefieldCardWithTimestamp(g, corpusCreature(opp.ID, "Shivan Dragon", 5, 5))
+	goblin := pushBattlefieldCardWithTimestamp(g, corpusCreature(opp.ID, "Goblin", 1, 1))
+	mage := pushBattlefieldCardWithTimestamp(g, corpusCreature(opp.ID, "Mage", 1, 1))
+	ogre := pushBattlefieldCardWithTimestamp(g, corpusCreature(opp.ID, "Ogre", 3, 3))
+	beacon := pushBattlefieldCardWithTimestamp(g, corpusCreature(me.ID, "Beacon of Destiny", 1, 9))
+	glare := pushBattlefieldCardWithTimestamp(g, corpusCreature(me.ID, "Glarecaster", 3, 3))
+	g.WithWriteLock(func() {
+		g.RecomputeLayersIfStaleLocked()
+		pin := func(id uuid.UUID) (game.ObjectRef, game.ZoneKind) {
+			ref, zone, ok := g.DamageSourceRefLocked(id)
+			if !ok {
+				t.Fatal("setup: a source is in no zone")
+			}
+			return ref, zone
+		}
+		register := func(r game.DamageRedirection) {
+			if !g.RedirectDamageThisTurnForEffect(r) {
+				t.Fatalf("setup: %s registered nothing", r.Label)
+			}
+		}
+		dragonRef, dragonZone := pin(dragon)
+		register(game.DamageRedirection{Controller: me.ID, Source: dragonRef, SourceZone: dragonZone,
+			ProtectPlayer: me.ID, Next: true, To: beacon, Label: "Beacon of Destiny"})
+		// The dragon's 2 to me is dealt to the Beacon, and its record is
+		// spent by that instance.
+		if err := g.DealDamageToPlayerForEffect(dragon, me.ID, 2); err != nil {
+			t.Fatal(err)
+		}
+		goblinRef, goblinZone := pin(goblin)
+		register(game.DamageRedirection{Controller: me.ID, Source: goblinRef, SourceZone: goblinZone,
+			ProtectPlayer: me.ID, ProtectTypes: []string{"creature", "planeswalker", "battle"}, Amount: 3,
+			To: opp.ID, Label: "Harm's Way"})
+		// The goblin's 1 to the Beacon is dealt to the opponent: 2 left.
+		if err := g.DealDamageToCreatureForEffect(goblin, beacon, 1); err != nil {
+			t.Fatal(err)
+		}
+		mageRef, mageZone := pin(mage)
+		register(game.DamageRedirection{Controller: me.ID, Source: mageRef, SourceZone: mageZone,
+			Next: true, ToSourceController: true, Label: "Reflect Damage"})
+		ogreRef, ogreZone := pin(ogre)
+		register(game.DamageRedirection{Controller: me.ID, Source: ogreRef, SourceZone: ogreZone,
+			ProtectPlayer: me.ID, Next: true, Then: thatMuchToTheSourcesControllerBody, Label: "Eye for an Eye"})
+		register(game.DamageRedirection{Controller: me.ID, ProtectPermanent: glare, ProtectPlayer: me.ID,
+			Next: true, To: opp.ID, Label: "Glarecaster"})
+		register(game.DamageRedirection{Controller: me.ID, Source: dragonRef, SourceZone: dragonZone,
+			ProtectRecipients: game.DamageRecipientsOpponents, CombatOnly: true, Next: true, To: glare,
+			Label: "Soltari Guerrillas"})
+		g.PreventDamageFromSourceThisTurnForEffect(game.DamageShield{
+			Controller: me.ID, Source: dragonRef, SourceZone: dragonZone, ProtectPlayer: me.ID, Amount: 3,
+			Then: dealThatMuchToTheChosenTargetBody, To: opp.ID, Label: "Refraction Trap",
+		})
+		g.SpellsCastThisTurn = map[uuid.UUID]game.CastTally{opp.ID: {Total: 1, Noncreature: 1, InstantSorceryColors: "R"}}
+	})
+	if n := len(g.ScopedEffects); n != 7 {
+		t.Fatalf("setup: %d scoped records, want 7", n)
+	}
+	if c := findBattlefieldCardForTest(g, beacon); c == nil || c.DamageMarked != 2 {
+		t.Fatal("setup: the dragon's damage was not dealt to the Beacon")
+	}
+	return g
 }

@@ -67,10 +67,16 @@ type Config struct {
 	Auth       auth.Authenticator
 	AdminToken string // shared admin token; empty disables admin flow
 	// Admins is the Discord user-ID allowlist (CMDCTRL_DISCORD_ADMIN_USER_IDS,
-	// ADR 0110 §3): a signed-in session whose Discord ID is on it is an
-	// admin, exactly like the shared token (isAdmin, admins.go). Nil is
-	// the empty list. main hands the same *AdminList to WSAuthorizer.
-	Admins *AdminList
+	// ADR 0110 §3) and each allowlisted person's admin mode (ADR 0112
+	// §2): a signed-in session whose Discord ID is on the list is an
+	// admin, exactly like the shared token, while that person has admin
+	// mode on (isAdmin, admins.go). Nil is the empty list. main hands
+	// the same *Admins to WSAuthorizer.
+	Admins *Admins
+	// AdminSockets closes a person's WebSockets whose admin bit a switch
+	// of admin mode made wrong (ADR 0112 §2 item 5); *ws.Hub. Nil leaves
+	// them as they are until they next reconnect.
+	AdminSockets AdminModeRebinder
 	// Env is the deployment identity (prod / dev). The zero value is
 	// the empty string, which IsDev() reports false for — so a Config
 	// built without thinking about it (every existing test) gets
@@ -286,7 +292,9 @@ type GameEvictor interface {
 //	GET  /decks             — authenticated: pre-built decks + their engine coverage
 //	POST /games/{id}/decks/{deck_id} — authenticated: seat a library deck without re-pasting
 //	GET  /me                — authenticated: principal echo (for client bootstrap)
+//	PUT  /me/admin-mode     — allowlisted person: switch admin mode on or off
 //	GET  /me/decks          — authenticated: the caller's deck library
+//	POST /me/decks          — signed in: save a checked deck (a link or a pasted list) to it
 //	GET  /me/settings       — signed in: the caller's account settings
 //	PUT  /me/settings       — signed in: replace them, If-Match: <revision>
 //	GET  /me/tablemates     — signed in: the people you have shared a table with
@@ -532,6 +540,12 @@ func Handler(c Config) http.Handler {
 	// API_PATH, or it 404s in production only.
 	mux.Handle("GET /decks", auth.Middleware(c.Auth)(handlerFunc(c, prebuiltDecks)))
 	mux.Handle("GET /me", auth.Middleware(c.Auth)(handlerFunc(c, me)))
+	// Admin mode (ADR 0112 §2 item 3): an allowlisted person switches
+	// it on or off; anyone else is a 403. A per-person bucket of one
+	// switch every 2 seconds with a burst of 5: a switch closes the
+	// person's sockets, so a loop of them would be a reconnect storm.
+	adminModeLimit := newLimiter(0.5, 5)
+	mux.Handle("PUT /me/admin-mode", auth.Middleware(c.Auth)(perCallerLimit(adminModeLimit, handlerFunc(c, putAdminMode))))
 	// "My games" and seat reclaim by user (ADR 0051 decisions 3 and 4,
 	// S34 sub-PR 4). Session-gated here; the handlers then require a
 	// UserID on it, since the answer is a person's, not a seat's.
@@ -623,14 +637,26 @@ func Handler(c Config) http.Handler {
 	//
 	// POST /deck-requests needs a session and rides the ordinary IP
 	// bucket; its real limit is three asks per requester per 24 h,
-	// counted in the database.
+	// counted in the database. An admin (ADR 0112 §2: allowlisted and
+	// in admin mode) skips both (#2052). The bot's call spends the IP
+	// bucket in the handler, once it knows which member it speaks for,
+	// and skips it only when that member is an admin
+	// (deckRequestIPLimit, deckRequestExempt).
 	deckChecks := newDeckCheck()
 	deckCoveragePublic := newLimiter(1.0/10, 3)
 	deckCoverageAdmin := newLimiter(1, 10)
 	mux.Handle("POST /deck-coverage",
 		deckCoverageLimit(c, deckCoveragePublic, deckCoverageAdmin, handlerFunc(c, deckChecks.coverage)))
+	deckChecks.requestLimit = limit
 	mux.Handle("POST /deck-requests",
-		limit.Middleware(auth.Middleware(c.Auth)(handlerFunc(c, deckChecks.request))))
+		deckRequestIPLimit(c, limit, auth.Middleware(c.Auth)(handlerFunc(c, deckChecks.request))))
+	// ADR 0112 §3 item 4: saving a checked deck. It rides the
+	// /me/decks* bucket like the rest of the library, and a link the
+	// check's cache does not hold also spends one token from the public
+	// checker's per-IP bucket before it is fetched (deckCheck.fetchLimit),
+	// so saving cannot get around the fetch limit.
+	deckChecks.fetchLimit = deckCoveragePublic
+	mux.Handle("POST /me/decks", libraryLimit.Middleware(auth.Middleware(c.Auth)(handlerFunc(c, deckChecks.saveDeck))))
 
 	mux.Handle("GET /bugreport/config", handlerFunc(c, bugReportConfig))
 	mux.Handle("POST /bugreport", bugLimit.Middleware(auth.Middleware(c.Auth)(handlerFunc(c, bugReport))))
@@ -2664,7 +2690,7 @@ func uploadDeck(c Config, w http.ResponseWriter, r *http.Request) error {
 	// Save to the caller's deck library (ADR 0051 decision 7, S34
 	// sub-PR 5) — see saveToLibrary for exactly when this does
 	// something and the seats.deck_id it leaves behind.
-	libraryDeckID, libraryErr := saveToLibrary(r.Context(), c, p, deckID, format, source, list, commanders)
+	libraryDeckID, libraryErr := saveToLibrary(r.Context(), c, p, id, body.PlayerID, deckID, format, source, list, commanders)
 	libraryNote := ""
 	if errors.Is(libraryErr, decklibrary.ErrLibraryFull) {
 		libraryNote = fmt.Sprintf("Your deck library is full (%d decks), so this deck was seated but not saved. Delete one on the Decks page to make room.", decklibrary.MaxDecks)
@@ -2696,13 +2722,17 @@ func uploadDeck(c Config, w http.ResponseWriter, r *http.Request) error {
 // library deck id the seat should now be linked to — "" when nothing
 // was saved.
 //
-// Only three things gate a save, all deliberate:
+// Only four things gate a save, all deliberate:
 //
 //   - deckID must be "" — a pre-built catalog pick (uploadDeckRequest.
 //     Deck) has its own id system and is never a library row; the
 //     "source" it hands resolveDeckSource is the catalog's TEXT, not
 //     anything the player pasted.
 //   - p.UserID must be non-zero — guests have nowhere to own a row.
+//   - the seat (gameID, playerID) must be the caller's own — the guard
+//     recordLastDeck has (ADR 0112 §3 item 8). An admin setting someone
+//     else's deck seats it and saves nothing: it is not their deck. The
+//     person whose seat it is can save it from the decks page.
 //   - resolvedFormat must be "moxfield", "text" or "url". A "url"
 //     request is saved as the list the fetcher returned, rendered as
 //     text, with the link beside it in decks.source_url (ADR 0110 owner
@@ -2722,8 +2752,11 @@ func uploadDeck(c Config, w http.ResponseWriter, r *http.Request) error {
 // plain-text paste carries no name of its own (deck.ParseText has
 // nowhere to put one), so an empty list.Name falls back to the first
 // commander's name rather than saving a blank row every time.
-func saveToLibrary(ctx context.Context, c Config, p auth.Principal, deckID, format, source string, list *deck.List, commanders []string) (string, error) {
+func saveToLibrary(ctx context.Context, c Config, p auth.Principal, gameID, playerID uuid.UUID, deckID, format, source string, list *deck.List, commanders []string) (string, error) {
 	if deckID != "" || p.UserID == uuid.Nil || c.DeckLibrary == nil {
+		return "", nil
+	}
+	if p.GameID != gameID || p.PlayerID != playerID {
 		return "", nil
 	}
 	resolvedFormat := format
@@ -2928,23 +2961,23 @@ func (c Config) libraryStore() decklibrary.Store {
 }
 
 // libraryDeckEntries re-parses a saved deck's stored source, the same
-// parse a seat takes (ADR 0051 decision 7).
-func libraryDeckEntries(d decklibrary.Deck) ([]deck.Entry, string, error) {
+// parse a seat takes (ADR 0051 decision 7). The library's own name is
+// the deck's name, so a Moxfield export's embedded one is not returned.
+func libraryDeckEntries(d decklibrary.Deck) ([]deck.Entry, error) {
 	switch d.SourceFormat {
 	case "text":
-		e, err := deck.ParseText(d.SourceText)
-		return e, "", err
+		return deck.ParseText(d.SourceText)
 	case "moxfield":
-		name, e, err := deck.ParseMoxfield([]byte(d.SourceText))
-		return e, name, err
+		_, e, err := deck.ParseMoxfield([]byte(d.SourceText))
+		return e, err
 	}
-	return nil, "", fmt.Errorf("unknown source format %q", d.SourceFormat)
+	return nil, fmt.Errorf("unknown source format %q", d.SourceFormat)
 }
 
 // libraryDeckReport builds one saved deck's full coverage report with
 // the verdicts the caller already built.
 func libraryDeckReport(c Config, d decklibrary.Deck, verdicts map[string]catalog.Entry) (*deckcoverage.Report, error) {
-	entries, _, err := libraryDeckEntries(d)
+	entries, err := libraryDeckEntries(d)
 	if err != nil {
 		return nil, err
 	}
@@ -2985,39 +3018,48 @@ func myDecks(c Config, w http.ResponseWriter, r *http.Request) error {
 	}
 	out := make([]myDeckInfo, 0, len(decks))
 	for _, d := range decks {
-		commanders := d.Commanders
-		if commanders == nil {
-			commanders = []string{}
-		}
-		info := myDeckInfo{
-			ID:         d.ID.String(),
-			Name:       d.Name,
-			Commanders: commanders,
-			CardCount:  d.CardCount,
-			UpdatedAt:  d.UpdatedAt,
-			SourceURL:  d.SourceURL,
-		}
-		if verdicts != nil {
-			if rep, rerr := libraryDeckReport(c, d, verdicts); rerr == nil {
-				n, m := rep.AsPrinted()
-				info.Coverage = &myDeckCoverageInfo{
-					Counts: rep.Counts, Unknown: len(rep.Unknown), AsPrinted: n, Resolved: m,
-				}
-			}
-		}
-		out = append(out, info)
+		out = append(out, libraryDeckInfo(c, d, verdicts))
 	}
 	return writeJSON(w, http.StatusOK, myDecksResponse{Decks: out})
+}
+
+// libraryDeckInfo is one GET /me/decks entry: the deck, with its
+// coverage when verdicts is not nil and the stored list still parses.
+// POST /me/decks answers with the same entry.
+func libraryDeckInfo(c Config, d decklibrary.Deck, verdicts map[string]catalog.Entry) myDeckInfo {
+	info := myDeckInfo{
+		ID:         d.ID.String(),
+		Name:       d.Name,
+		Commanders: nonNil(d.Commanders),
+		CardCount:  d.CardCount,
+		UpdatedAt:  d.UpdatedAt,
+		SourceURL:  d.SourceURL,
+	}
+	if verdicts != nil {
+		if rep, rerr := libraryDeckReport(c, d, verdicts); rerr == nil {
+			n, m := rep.AsPrinted()
+			info.Coverage = &myDeckCoverageInfo{
+				Counts: rep.Counts, Unknown: len(rep.Unknown), AsPrinted: n, Resolved: m,
+			}
+		}
+	}
+	return info
 }
 
 // ownedLibraryDeck loads {id} from the path and returns it only when
 // the caller owns it; anything else is a 404, so an id reveals nothing.
 func ownedLibraryDeck(c Config, r *http.Request, owner uuid.UUID) (decklibrary.Deck, error) {
-	id, err := uuid.Parse(r.PathValue("id"))
+	return ownedLibraryDeckByID(r.Context(), c, owner, r.PathValue("id"))
+}
+
+// ownedLibraryDeckByID is ownedLibraryDeck for an id that did not come
+// from the path (POST /deck-requests' deck_id).
+func ownedLibraryDeckByID(ctx context.Context, c Config, owner uuid.UUID, rawID string) (decklibrary.Deck, error) {
+	id, err := uuid.Parse(rawID)
 	if err != nil {
 		return decklibrary.Deck{}, httpError(http.StatusNotFound, "deck not found")
 	}
-	d, err := c.libraryStore().Get(r.Context(), id)
+	d, err := c.libraryStore().Get(ctx, id)
 	if errors.Is(err, decklibrary.ErrNotFound) || (err == nil && d.OwnerID != owner) {
 		return decklibrary.Deck{}, httpError(http.StatusNotFound, "deck not found")
 	}
@@ -3402,7 +3444,14 @@ func me(c Config, w http.ResponseWriter, r *http.Request) error {
 	if !ok {
 		return httpError(http.StatusInternalServerError, "missing principal")
 	}
-	return writeJSON(w, http.StatusOK, meResponse{Principal: p, Admin: c.isAdmin(p)})
+	mode := c.adminModeOf(p)
+	return writeJSON(w, http.StatusOK, meResponse{
+		Principal:       p,
+		Admin:           mode.Admin,
+		AdminAllowed:    isAllowlisted(c.Admins, p),
+		AdminMode:       mode.AdminMode,
+		AdminModeEndsAt: mode.AdminModeEndsAt,
+	})
 }
 
 // meResponse is GET /me: the principal, flattened as it always was,
@@ -3410,9 +3459,19 @@ func me(c Config, w http.ResponseWriter, r *http.Request) error {
 // computed per request and is not part of the token, so the client
 // learns it here and nowhere else. The allowlist itself is never
 // served.
+//
+// ADR 0112 §2 item 9 adds the mode. Admin stays the effective answer,
+// so every client control that reads it follows the mode. AdminAllowed
+// is whether this person may switch admin mode on (on the allowlist;
+// persons only, never the shared token). AdminMode is whether it is on,
+// and AdminModeEndsAt is when it lapses, in Unix milliseconds, present
+// only while it is on.
 type meResponse struct {
 	auth.Principal
-	Admin bool `json:"admin"`
+	Admin           bool  `json:"admin"`
+	AdminAllowed    bool  `json:"admin_allowed"`
+	AdminMode       bool  `json:"admin_mode"`
+	AdminModeEndsAt int64 `json:"admin_mode_ends_at,omitempty"`
 }
 
 // --- helpers ---

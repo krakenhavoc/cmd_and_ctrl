@@ -1285,6 +1285,16 @@ func (g *Game) autoTapAbilityAccepts(asker uuid.UUID, source Card, a ManaAbility
 	// never offered, and WHICH card is a decision the planner
 	// makes none of. A hand-clicked Skirge Familiar is a mana
 	// source; an auto-tapped one is not.
+	//
+	// #1600: "Discard your hand" asks no WHICH, and is refused all
+	// the same — on two further grounds. Throwing away a hand to pay
+	// for a spell is a resource the player never agreed to spend,
+	// even when the hand is empty and the price is nothing. And both
+	// printed cards (Lion's Eye Diamond, Diamond Lion) say "Activate
+	// only as an instant": the planner runs in the middle of a cast,
+	// which is exactly where they may not be activated, and it cannot
+	// read that out of their Condition closure. This line is the
+	// whole of what keeps them out of a plan.
 	if a.DiscardCards != nil {
 		return false
 	}

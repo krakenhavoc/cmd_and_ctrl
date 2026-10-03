@@ -155,24 +155,6 @@ func TestMaxPerTurnBanReadsTheSameTallyTheStaticRestrictionDoes(t *testing.T) {
 	}
 }
 
-// --- the fast negative --------------------------------------------------
-
-// TestAnyCastRestrictionsForEffectSeesAGrantedBan is the enumerator's
-// and the view's fast negative, extended to the new registry: a table
-// with nothing on the battlefield but a live granted ban must not
-// answer false.
-func TestAnyCastRestrictionsForEffectSeesAGrantedBan(t *testing.T) {
-	g := newFourPlayerActiveGame(t)
-	me := g.Seats[0]
-	if g.AnyCastRestrictionsForEffect() {
-		t.Fatal("an empty table already answers true")
-	}
-	banOpponentOutright(g, me, "", g.UntilEndOfTurnDuration())
-	if !g.AnyCastRestrictionsForEffect() {
-		t.Error("a live granted ban was not seen")
-	}
-}
-
 // --- the duration ---------------------------------------------------
 
 // TestCastBanEndsAsYourNextTurnBegins mirrors the life-lock boundary
@@ -250,7 +232,7 @@ func TestCastBanSurvivesCloneUndoAndSnapshot(t *testing.T) {
 	if len(got) != 1 || got[0].CastBan.Kind != CastBanOutright {
 		t.Fatalf("the clone holds %+v, want one cast ban", got)
 	}
-	if got[0].Duration != window {
+	if !got[0].Duration.Equal(window) {
 		t.Errorf("the clone's duration is %+v, want %+v", got[0].Duration, window)
 	}
 

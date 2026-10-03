@@ -288,6 +288,15 @@ offers only sets the engine accepts (the cap solver runs inside
 in a step where nobody holds priority, so a seat with no answer here
 would stop the game outright rather than merely stall its own turn.
 
+**Riot and unleash (`entry_riot`, and `optional_replacement` with
+`entry_keyword: "unleash"`, ADR 0109 §10).** Riot takes haste when the
+creature enters during the bot's own turn before attackers are declared
+and could attack (it has no defender), and the +1/+1 counter otherwise.
+Unleash always takes the counter, unless it is an opponent's turn and the
+entering creature would be the bot's only untapped creature, which a
+counter would stop from blocking (CR 702.98a). See
+`aiseat/heuristic/riot.go`.
+
 **Whom to give it to (`entry_controller`, ADR 0102, CR 614.12a).** "This
 enters under the control of an opponent of your choice" is offered as
 one answer per opponent. The heuristic reads the prompt's
@@ -990,7 +999,13 @@ completes each defender's declaration explicitly — their own pass, a
 priority back after the last one ([ADR 0045](decisions/0045-combat-restrictions.md)
 Decision 38), so no block is lost either way; the grace only saves the
 extra round of passes. It still defaults to production's value, so a
-run matches what a live table does.
+run matches what a live table does. Since #1501 it almost never has
+anything to hold for: nobody holds priority while a defender is
+declaring (CR 509.1), so an attacking bot has no pass to hold until the
+declarations are in. A declaring bot defender finishes with the
+`finish_blocks` move, which the enumerator offers as always-legal, so
+a defender whose policy wants no block still ends its declaration
+rather than sleeping on it.
 
 #### Lockstep runs (#1503)
 
@@ -1848,6 +1863,21 @@ mana payment scores higher. The heuristic also never pays Phyrexian
 life that would leave it below 10 (`phyrexianLifeFloor`, the default
 `DangerLife`). The random tier picks among the legal moves like any
 other.
+
+**"Discard your hand" is priced by the hand it throws away.** Lion's
+Eye Diamond, Diamond Lion, Null Brooch and Slate of Ancestry
+([#1600](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1600)) pay
+with every card in hand, so the move names none of them: the engine
+refuses `discard_ids` for the clause. `Move.Cost.Hand` carries the
+count instead (the activator's hand, less the source if it is in that
+hand), and the label says `discarding your hand (N cards)`. The
+heuristic charges `Weights.Hand` per card, the price a cast already
+pays for leaving the hand, so Slate of Ancestry with seven cards in
+hand ranks well below the same activation with an empty one, and an
+empty hand costs nothing. Lion's Eye Diamond and Diamond Lion are only
+offered while the seat could cast an instant: holding priority, owing
+no prompt, with no prompt stopping the table. The auto-tapper never
+cracks one to pay for a cast.
 
 **A spell whose target count is X is offered with X equal to the
 number of targets it picks.** Crackle with Power deals five times X

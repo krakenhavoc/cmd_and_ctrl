@@ -28,8 +28,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // and an infinite one.
 //
 // Teferi's Talent's Aura grants the enchanted planeswalker a −12 that
-// makes this same emblem; see teferis_talent.go for why that card
-// cannot reach it yet, and why the emblem is built by a function.
+// makes the same emblem under the Talent's name (ADR 0109 §2), which is
+// why the emblem is built by a function.
 //
 // THE +1 is LookAtTopThenTakeOneRestOnBottom, Impulse's sentence at
 // two cards: a LOOK (only Teferi's controller learns the cards), one
@@ -53,7 +53,7 @@ func init() {
 		// The fallback for tokens, fixtures and the dev spawner; an
 		// imported deck reads printed loyalty (ADR 0032 §1).
 		StartingLoyalty: 5,
-		Emblem:          teferiTemporalArchmageEmblem(),
+		Emblem:          loyaltyAtInstantSpeedEmblem("Teferi, Temporal Archmage emblem"),
 		Activated: []ActivatedAbility{
 			{
 				Label: "+1: Look at the top two cards of your library. Put one of them into your hand and the other on the bottom of your library.",
@@ -86,15 +86,16 @@ func init() {
 	})
 }
 
-// teferiTemporalArchmageEmblem is the emblem, built fresh per caller
-// so that Teferi's Talent, the day it can grant its −12, declares the
-// same emblem without the two Specs sharing a slice. "On any player's
-// turn" is not a clause of its own — see
+// loyaltyAtInstantSpeedEmblem is the emblem, built fresh per caller so
+// that Teferi's Talent declares the same emblem without the two Specs
+// sharing a slice. The label is the card that makes it: an emblem has
+// no name (CR 114.3), and the one a player reads says whose it is.
+// "On any player's turn" is not a clause of its own — see
 // ThisSourcesLoyaltyAbilitiesAtInstantSpeed.
-func teferiTemporalArchmageEmblem() *EmblemSpec {
+func loyaltyAtInstantSpeedEmblem(label string) *EmblemSpec {
 	const text = "You may activate loyalty abilities of planeswalkers you control on any player's turn any time you could cast an instant."
 	return &EmblemSpec{
-		Label: "Teferi, Temporal Archmage emblem",
+		Label: label,
 		Text:  text,
 		ActivationTimings: []game.ActivationTiming{
 			LoyaltyAbilitiesOfYourPlaneswalkersAtInstantSpeed(text),

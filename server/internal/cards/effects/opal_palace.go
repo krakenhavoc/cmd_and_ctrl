@@ -1,5 +1,11 @@
 package effects
 
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
+
 // Opal Palace — Land:
 //
 //	"{T}: Add {C}.
@@ -14,19 +20,24 @@ package effects
 // identity exactly as Arcane Signet does (NarrowToCommanderIdentity),
 // with the Signet cycle's {1} mana cost added on top of the tap.
 //
-// S49 sandbox simplification: the bonus +1/+1 counters aren't
-// implemented. A mana-spend rider can make a creature enter with a
-// FIXED number of extra counters (Biophagus), but this one scales
-// with how many times your commander has already been cast from the
-// command zone this game — a count the rider machinery has no slot
-// for. Casting your commander with this land's mana still works; it
-// just enters without the bonus counters.
+// The bonus is a spend rider whose number is counted as the commander
+// ENTERS (ADR 0109 §11 decision 5, #1552): a counted enters-with-
+// counters rider, its count registered under the card's name. "Your
+// commander" is the rider's condition, checked at the spend against the
+// spell the mana paid for; the count is that commander's command-zone
+// cast tally (CR 903.8's commander tax counter), which includes the
+// cast being paid for when it came from the command zone. Cast from
+// anywhere else, the commander still gets the counters for its earlier
+// command-zone casts, as printed.
+//
+// One declared simplification, the rider's: with strict mana off the
+// engine never spends the pool, so no rider fires (ADR 0068 §3).
 func init() {
 	Register(Spec{
 		OracleID:     "aa6723a2-75da-49f5-a1ba-cbfa82c55301",
 		Name:         "Opal Palace",
 		Completeness: CompletenessCaveats,
-		Caveats:      []string{"When you spend this land's colored mana to cast your commander, it doesn't get the extra +1/+1 counters for past casts from the command zone — that count has no cost/rider shape yet."},
+		Caveats:      []string{"With strict mana off, the game doesn't see which mana you spent, so your commander gets no extra +1/+1 counters."},
 		ManaAbilities: []ManaAbility{
 			{
 				Cost:     ManaAbilityCost{Tap: true},
@@ -38,7 +49,29 @@ func init() {
 				Produced:                  "{W|U|B|R|G}",
 				Label:                     "{1}, {T}: Add one mana of any color in your commander's color identity",
 				NarrowToCommanderIdentity: true,
+				SpendRiders: []game.ManaSpendRider{
+					SpentEntersWithCountersCounted(game.CounterPlusOne, "Opal Palace", game.ManaRiderCount{
+						Condition: opalPalaceYourCommander,
+						Count:     opalPalaceCommandZoneCasts,
+					}, ManaRestrictCast),
+				},
 			},
 		},
 	})
+}
+
+// opalPalaceYourCommander is "to cast your commander": the spell is a
+// commander its caster owns.
+func opalPalaceYourCommander(_ *game.Game, controller uuid.UUID, spell game.Card) bool {
+	return spell.IsCommander && spell.Owner == controller
+}
+
+// opalPalaceCommandZoneCasts is "the number of times it's been cast
+// from the command zone this game" — the commander tax tally.
+func opalPalaceCommandZoneCasts(g *game.Game, controller uuid.UUID, entering game.Card) int {
+	p := g.PlayerByIDForEffect(controller)
+	if p == nil {
+		return 0
+	}
+	return p.CommanderCasts[entering.InstanceID]
 }

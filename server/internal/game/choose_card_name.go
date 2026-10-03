@@ -134,14 +134,16 @@ func (g *Game) ResolveCardNameChoice(choiceID, chooserID uuid.UUID, name string)
 
 	if i := findCardOnBattlefield(g, choice.Source); i >= 0 {
 		g.Battlefield.Cards[i].ChosenName = chosen
-		// The layer version is NOT bumped, and that is the one place
-		// this differs from NamedTribe. A named tribe is an AppliesTo
-		// input to its permanent's static abilities, so the layer
-		// engine's cached resolution has to be invalidated when it
-		// lands. A chosen NAME is not: the one reader is the
-		// activation gate, which is asked fresh at every announce and
-		// caches nothing — the same argument choose_player.go makes
-		// for protection.
+		// The chosen name is an AppliesTo input to a static ability
+		// since Alpine Moon (ADR 0109 §2): "Lands your opponents
+		// control with the chosen name lose all land types and
+		// abilities". The layer engine caches its resolution until
+		// something invalidates it, and nothing else in this path
+		// emits an event the layer listener watches, so the bump is
+		// explicit, as it is for a named tribe. The activation gate
+		// (Pithing Needle) is asked fresh at every announce and needs
+		// none.
+		g.layerVersion.Add(1)
 	}
 	g.EmitEvent(Event{
 		Kind:   EventCardNameChosen,
@@ -201,6 +203,29 @@ func CardNameMatches(c Card, named string) bool {
 		}
 	}
 	return false
+}
+
+// PermanentHasName reports whether the permanent `c` has the name
+// `named` right now: its effective name, which is the name of the face
+// that is up (CR 712.8d-f) after any copy effect, compared the way
+// CardNameMatches compares (case-insensitive on trimmed strings). A
+// face-down permanent has no name (CR 708.2a).
+//
+// It is the reader for a chosen name with characteristics, where
+// CardNameMatches' every-face walk would be too wide. Alpine Moon
+// names "a nonbasic land card name" (CR 201.4a), and the face a name
+// may be chosen from is judged by that face's own characteristics (CR
+// 201.4d). Naming the instant front face of a modal double-faced land
+// is not a legal choice, so it must not reach the land face that is up;
+// naming the land face itself is, and does. Inside a layer pass this
+// reads the name the pass has computed so far, so a copy effect (layer
+// 1) is already in it.
+func PermanentHasName(c Card, named string) bool {
+	want := strings.TrimSpace(named)
+	if want == "" || c.FaceDown {
+		return false
+	}
+	return strings.EqualFold(strings.TrimSpace(c.Effective().Name), want)
 }
 
 // PublicCardNamesLocked is the suggestion list the "choose a card

@@ -1166,6 +1166,15 @@ func classifyActionError(err error) (code, message string) {
 		// lands_played_this_turn on the wire carry the numbers.
 		return protocol.CodeBadRequest,
 			"you've already played all the lands you can this turn"
+	case errors.Is(err, game.ErrCantPlayLand):
+		// ADR 0109 §4, CR 101.2: something SAID NO to this land play — a
+		// static on a permanent (Territorial Dispute, City in a Bottle)
+		// or a "this turn" record (Turf Wound). The refusal carries the
+		// printed clause, and the land's `cant_cast` is the same gate's
+		// answer, so the client should never reach this; arriving here
+		// means the board changed between the snapshot and the click.
+		return protocol.CodeBadRequest,
+			"you can't play that land right now — " + strings.TrimPrefix(err.Error(), "game: ")
 	case errors.Is(err, game.ErrCantCast):
 		// #760, ADR 0073 §7: something SAID NO to this cast — a
 		// static on a permanent (Rule of Law, Grafdigger's Cage) or
@@ -1482,6 +1491,51 @@ func (h *Hub) EvictUserSessions(userID uuid.UUID, before time.Time) int {
 		_ = c.conn.WriteControl(
 			websocket.CloseMessage,
 			websocket.FormatCloseMessage(websocket.CloseNormalClosure, SessionRevokedReason),
+			time.Now().Add(writeWait),
+		)
+		_ = c.conn.Close()
+	}
+	return len(victims)
+}
+
+// AdminModeChangedCode and AdminModeChangedReason are the close frame
+// RebindUserSessions sends (ADR 0112 §2 item 5). 4001 is in the range
+// RFC 6455 leaves to applications, and any code other than 1000 is
+// non-terminal on the client: it asks GET /me, then reconnects, and the
+// upgrade runs again with the new answer.
+const (
+	AdminModeChangedCode   = 4001
+	AdminModeChangedReason = "admin mode changed"
+)
+
+// RebindUserSessions closes every connection of userID whose admin bit
+// differs from admin, with close code 4001, and returns how many it
+// closed. The lobby calls it when the person switches admin mode, and
+// the sweeper when admin mode lapses.
+//
+// The bit is never flipped on a live connection. A seatless admin
+// binding is writable, so flipping it to false in place would leave a
+// seatless, writable, non-admin socket whose caller (uuid.Nil) the
+// engine reads as "bypass the seat checks": that would fail open.
+// Closing it makes the client dial again, and AuthorizeUpgrade decides
+// the new binding from scratch. uuid.Nil (no user) closes nothing.
+func (h *Hub) RebindUserSessions(userID uuid.UUID, admin bool) int {
+	if userID == uuid.Nil {
+		return 0
+	}
+	h.mu.RLock()
+	victims := make([]*Client, 0)
+	for c := range h.clients {
+		if c.userID == userID && c.admin != admin {
+			victims = append(victims, c)
+		}
+	}
+	h.mu.RUnlock()
+
+	for _, c := range victims {
+		_ = c.conn.WriteControl(
+			websocket.CloseMessage,
+			websocket.FormatCloseMessage(AdminModeChangedCode, AdminModeChangedReason),
 			time.Now().Add(writeWait),
 		)
 		_ = c.conn.Close()

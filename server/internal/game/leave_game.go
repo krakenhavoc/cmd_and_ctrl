@@ -443,6 +443,13 @@ const (
 	// sentence after the choice never runs. The two QUEUE-time paths
 	// into the same kind were already careful about exactly this.
 	dropDefault
+	// dropSettle — the question ends and what it was holding up is
+	// owed to the TABLE, not to any card: divide_shield (ADR 0108 §7)
+	// holds an instance's damage events, some of them dealt to other
+	// players. The drop divides the shield in the engine's order and
+	// deals the damage, whoever left — there is no object gate, because
+	// the damage is not the departed player's text to finish.
+	dropSettle
 )
 
 // choiceDepartureDecisions classifies every PendingChoiceKind against
@@ -607,6 +614,10 @@ var choiceDepartureDecisions = map[PendingChoiceKind]choiceDepartureRule{
 	// drop action of its own. An OFFERED seat leaving is the other
 	// case, and pruneDepartedSeatOptionsLocked handles it.
 	PendingChoiceEntryController: {},
+	// entry_riot (ADR 0109 §10) is the departed player's OWN entering
+	// permanent, which leaves the game with them (CR 800.4a), and its
+	// frame rides replacementResume like entry_controller's.
+	PendingChoiceEntryRiot: {},
 	// ADR 0098's two siblings take the same row for the same reason:
 	// the discard or the sacrifice is the "unless" of the departed
 	// player's own entering permanent, and the hand or the permanents
@@ -648,6 +659,12 @@ var choiceDepartureDecisions = map[PendingChoiceKind]choiceDepartureRule{
 	// reassigned. The drop settles with no source, so the shield is
 	// simply never made and the rest of the card finishes.
 	PendingChoiceChooseSource: {onDrop: dropDefault},
+	// ADR 0108 §7. A divide_shield is the protected player's, and the
+	// shield was protecting them or their permanents, which CR 800.4a
+	// takes with them: nothing is reassigned. But the instance's other
+	// events are other players' damage, so the drop settles: the
+	// engine's order, and everything is dealt.
+	PendingChoiceDivideShield: {onDrop: dropSettle},
 	PendingChoiceLegendRule:   {},
 	PendingChoiceScry:         {},
 	PendingChoiceSurveil:      {},
@@ -870,6 +887,8 @@ func (g *Game) departedChoiceActionAllowedLocked(c *PendingChoice) bool {
 	case dropDefault:
 		_, ok := g.choiceObjectSurvivesLocked(c)
 		return ok
+	case dropSettle:
+		return true
 	}
 	return false
 }

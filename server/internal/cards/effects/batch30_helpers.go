@@ -153,25 +153,6 @@ func b30SelfOrAnotherEnchantmentYouControlEntered(ev game.Event, source *game.Ca
 	return ok && c.IsEnchantment()
 }
 
-// b30NontokenCreatureYouControlEnteredUncast is Satoru's condition:
-// the source itself or another nontoken creature entered under the
-// source's controller's control, and it was NOT cast — it arrived
-// from somewhere other than the stack (a reanimation, a flicker, a
-// "put onto the battlefield"). "One or more" is the caller's dedup.
-//
-// The printed "or no mana was spent to cast them" half is not read:
-// the engine records a mana spend only under strict-mode casts, so
-// a permissive-mode cast paid on paper and a genuinely free cast
-// look the same from the log, and counting both would ship the
-// card stronger. Declared on the card.
-func b30NontokenCreatureYouControlEnteredUncast(ev game.Event, source *game.Card, g *game.Game) bool {
-	c, ok := enteredUnderYourControl(ev, source, g, false)
-	if !ok || !c.IsCreature() || IsToken(c) {
-		return false
-	}
-	return !b16EnteredFromStack(g, c.InstanceID)
-}
-
 // b30YourEndStepAndYouGainedAndLostLifeThisTurn is Lunar
 // Convocation's second intervening-if at announce: the source's
 // controller's end step began and they both gained and lost life

@@ -106,7 +106,7 @@ func (l *Limiter) sweepLocked(now time.Time) {
 // into the proxy's single bucket).
 func (l *Limiter) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !l.Allow(keyFor(r)) {
+		if !l.AllowRequest(r) {
 			w.Header().Set("Content-Type", "application/json")
 			w.Header().Set("Retry-After", "1")
 			w.WriteHeader(http.StatusTooManyRequests)
@@ -115,6 +115,15 @@ func (l *Limiter) Middleware(next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+// AllowRequest is Allow keyed the way Middleware keys a request: by
+// client IP. It lets a handler spend a token from a bucket that guards
+// another route, only on the path that needs it (POST /me/decks spends
+// one of POST /deck-coverage's tokens only when it must fetch a deck,
+// ADR 0112 §3 item 4).
+func (l *Limiter) AllowRequest(r *http.Request) bool {
+	return l.Allow(keyFor(r))
 }
 
 // keyFor extracts a stable per-client key from the request. Host-only

@@ -67,6 +67,27 @@ func TestEveryModKindAppliesInItsLayer(t *testing.T) {
 				t.Errorf("subtypes = %v, want Orc added to Bear", c.Subtypes)
 			}
 		}},
+		// ADR 0109 §1: CR 305.7 on the Bear, which keeps its creature
+		// type and loses its abilities (land_types_test.go has the land).
+		{"setBasicLandTypes", []Mod{AddKeywordsMod("trample"), SetBasicLandTypesMod("Forest")}, func(t *testing.T, _, c Characteristic, _ *Game) {
+			if !reflect.DeepEqual(c.Subtypes, []string{"Bear", "Forest"}) {
+				t.Errorf("subtypes = %v, want [Bear Forest]", c.Subtypes)
+			}
+			if !c.AbilitiesRemoved || !reflect.DeepEqual(c.Abilities, []string{"trample"}) {
+				t.Errorf("abilities = %v (removed %v), want the layer-6 trample over a layer-4 removal", c.Abilities, c.AbilitiesRemoved)
+			}
+		}},
+		// ADR 0109 §2: "loses all land types" takes the Forest a layer-4
+		// add gave the Bear, keeps its creature type, and takes no
+		// ability (land_types_test.go has the land).
+		{"loseLandTypes", []Mod{AddSubtypesMod("Forest"), AddKeywordsMod("trample"), LoseLandTypesMod()}, func(t *testing.T, _, c Characteristic, _ *Game) {
+			if !reflect.DeepEqual(c.Subtypes, []string{"Bear"}) {
+				t.Errorf("subtypes = %v, want [Bear]", c.Subtypes)
+			}
+			if c.AbilitiesRemoved || !reflect.DeepEqual(c.Abilities, []string{"trample"}) {
+				t.Errorf("abilities = %v (removed %v), want trample and no removal", c.Abilities, c.AbilitiesRemoved)
+			}
+		}},
 		{"allCreatureTypes", []Mod{AllCreatureTypesMod()}, func(t *testing.T, _, c Characteristic, _ *Game) {
 			if !c.AllCreatureTypes {
 				t.Error("AllCreatureTypes is not set")
@@ -201,6 +222,8 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		ModSetBaseToughness: true, ModModifyPT: true, ModAddAttackRequirement: true,
 		ModAddBlockRequirement: true, ModAddBlockCapacity: true, ModBlockAnyNumber: true,
 		ModCantAttackUnlessDefenderControls: true,
+		ModSetBasicLandTypes:                true,
+		ModLoseLandTypes:                    true,
 		// ADR 0093 PR 4 (#1584): its cases are in scoped_grants_test.go,
 		// because a grant needs a catalog bundle to mean anything.
 		ModGrantAbilities: true,
@@ -229,12 +252,28 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// ADR 0107 §6: the next-damage shield is a replacement. Its
 		// cases are in prevent_next_from_source_test.go.
 		ModPreventNextFromSource: true,
+		// ADR 0108 §7: the not-one-use shield is a replacement. Its
+		// cases are in prevent_from_source_test.go and
+		// divide_shield_test.go.
+		ModPreventFromSource: true,
 		// ADR 0108 §1 and §2: a replacement and a rules gate. Their
 		// cases are in exile_if_dies_test.go.
 		ModExileIfWouldDie: true, ModCantBeRegenerated: true,
 		// ADR 0108 §4: Yawgmoth's Will's replacement. Its cases are in
 		// scoped_exile_your_graveyard_test.go.
 		ModExileInsteadOfYourGraveyard: true,
+		// ADR 0108 §3: the damage multiplier is a replacement. Its cases
+		// are in multiply_damage_test.go.
+		ModMultiplyDamage: true,
+		// ADR 0108 §9: the redirection is a replacement. Its cases are in
+		// redirect_damage_test.go.
+		ModRedirectDamage: true,
+		// ADR 0108 PR 2: the combat-only next-damage shield. Its cases
+		// are in multiply_damage_test.go.
+		ModPreventNextCombatFromSource: true,
+		// ADR 0109 §4: the land-play gate. Its cases are in
+		// land_play_gate_test.go.
+		ModCantPlayLands: true,
 	}
 	for _, k := range ModKinds() {
 		if !covered[k] {
@@ -500,7 +539,8 @@ func TestEveryDurationKindAndConditionIsKnown(t *testing.T) {
 		}
 	}
 	for _, c := range []DurationCondition{WhileSourceOnBattlefield, WhileYouControlSource,
-		WhileYouControlSourceOnceItLands, WhileSourceRemainsTapped} {
+		WhileYouControlSourceOnceItLands, WhileSourceRemainsTapped, WhilePinnedHasCounter,
+		WhilePinnedRemainsTapped, WhilePinnedPowerAtMostSource} {
 		if !c.Known() {
 			t.Errorf("duration condition %d is not Known — is it after durationConditionEnd?", c)
 		}
@@ -527,7 +567,7 @@ func TestAnUnknownFieldOnARecordIsRefused(t *testing.T) {
 		"record":   func(rec map[string]any) { rec["fromTheFuture"] = true },
 		"affected": func(rec map[string]any) { rec["affected"].([]any)[0].(map[string]any)["phaseTag"] = 1 },
 		"mod":      func(rec map[string]any) { rec["mods"].([]any)[0].(map[string]any)["counterKind"] = "blight" },
-		"duration": func(rec map[string]any) { rec["duration"].(map[string]any)["CounterKind"] = "blight" },
+		"duration": func(rec map[string]any) { rec["duration"].(map[string]any)["Unless"] = "blight" },
 	}
 	for name, corrupt := range cases {
 		t.Run(name, func(t *testing.T) {

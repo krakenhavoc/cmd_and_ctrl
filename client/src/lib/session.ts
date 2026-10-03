@@ -39,10 +39,20 @@ export interface Session {
   gameID?: string;
   // admin is GET /me's computed answer for a session with a user: true
   // when the person's Discord ID is on the server's admin allowlist
-  // (ADR 0110 §3). It is not in the token and the server never trusts
-  // it. Absent until /me has answered; read it through lib/admin.ts's
-  // isAdmin, which also covers the shared token's `role: "admin"`.
+  // (ADR 0110 §3) and they have admin mode on (ADR 0112 §2). None of
+  // these four fields is in the token, and the server never trusts
+  // them. Absent until /me has answered; read them through lib/admin.ts
+  // (isAdmin, which also covers the shared token's `role: "admin"`, and
+  // treats a lapsed mode as off; isAdminAllowed; adminChipFor).
   admin?: boolean;
+  // admin_allowed: on the allowlist, so this person may switch admin
+  // mode on, in either mode (ADR 0112 §2 item 9).
+  admin_allowed?: boolean;
+  // admin_mode: admin mode is on. admin_mode_ends_at: when it lapses,
+  // in Unix milliseconds (12 hours after it was switched on, owner
+  // answer 1); present only while it is on.
+  admin_mode?: boolean;
+  admin_mode_ends_at?: number;
 }
 
 const STORAGE_KEY = "cmdctrl.session";
@@ -398,9 +408,12 @@ export function renewSession(): Promise<void> {
 // anything for s: only a session tied to a user (user_id) can be
 // revoked server-side (POST /logout/everywhere, ADR 0051 decision 6).
 // A guest, admin or spectator session, or any session on a server with
-// no user database, gets the plain sign-out only.
+// no user database, gets the plain sign-out only. A guest's principal
+// spells "no user" as the nil uuid, so this asks signedInUserID rather
+// than whether the field is set (ADR 0112 §1 item 4 puts this in the
+// header, where every guest sees it).
 export function canSignOutEverywhere(s: Session | null): boolean {
-  return Boolean(s?.principal.user_id);
+  return signedInUserID(s) !== null;
 }
 
 // OAuthFragment is what the server's Discord callback puts in the

@@ -429,7 +429,7 @@ var mechanics = []Mechanic{
 		},
 		Evidence:   "the spec declares WantsDistinctColors, the colour-spreading payment #761 added",
 		Confidence: Exact,
-		Adopt:      `WantsDistinctColors: true plus ctx.ColorsSpentCount() (converge) or SunburstCounters(kind) in OnResolve — see effects/mana_spent.go`,
+		Adopt:      `WantsDistinctColors: true plus ctx.ColorsSpentCount() (converge) or PrintedKeywords: []string{game.KeywordSunburst} (sunburst, a keyword since ADR 0109 §11) — see effects/mana_spent.go`,
 	},
 	{
 		// #761's other reader, and a Heuristic one because there is
@@ -637,6 +637,25 @@ var mechanics = []Mechanic{
 		Evidence:   `game.CatalogPrintedKeywords(oracleID) contains "evolve"`,
 		Confidence: Exact,
 		Adopt:      `PrintedKeywords: []string{game.KeywordEvolve} — the engine does the rest`,
+	},
+	{
+		// #1556 (ADR 0109 §10): riot and unleash are canonicalKeywords
+		// tokens whose entry replacements the engine derives from the
+		// CR 614.12 look-ahead (game/riot.go). Same probe as evolve.
+		Name:       "riot",
+		Phrases:    []string{"riot"},
+		Implements: printedKeywordProbe(game.KeywordRiot),
+		Evidence:   `game.CatalogPrintedKeywords(oracleID) contains "riot"`,
+		Confidence: Exact,
+		Adopt:      `PrintedKeywords: []string{game.KeywordRiot} — the engine does the rest`,
+	},
+	{
+		Name:       "unleash",
+		Phrases:    []string{"unleash"},
+		Implements: printedKeywordProbe(game.KeywordUnleash),
+		Evidence:   `game.CatalogPrintedKeywords(oracleID) contains "unleash"`,
+		Confidence: Exact,
+		Adopt:      `PrintedKeywords: []string{game.KeywordUnleash} — the engine does the rest`,
 	},
 	{
 		// #1519: split second is a canonicalKeywords token read off

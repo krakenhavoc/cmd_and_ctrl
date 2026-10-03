@@ -119,6 +119,10 @@ export const BLOCK_REFUSAL_REASONS = [
   // two. Only a creature that can block more than one is ever refused
   // this; an ordinary blocker's second block re-points it.
   "blocker_capacity",
+  // #1501 (CR 509.1): the blocker's controller has already finished
+  // declaring blockers this combat — a late block, such as one on a
+  // ninja that entered attacking after the declaration.
+  "blocks_declared",
 ] as const;
 export type BlockRefusalReason = (typeof BLOCK_REFUSAL_REASONS)[number];
 
@@ -351,6 +355,27 @@ export interface GameView {
   // Eclipse), by their source's name, oldest first. Absent on nearly
   // every turn.
   exile_if_creatures_die?: string[];
+  // ADR 0108 §7: the live "prevent all damage a source of your choice
+  // would deal this turn" shields and their charged siblings, as
+  // "<card> (<source>)" with "— N left" on a charged one, oldest first.
+  // Absent on nearly every turn.
+  damage_shields?: string[];
+  // ADR 0108 §3: one line per live "it deals double (triple) that damage
+  // instead" effect a resolved spell or ability made (Insult, Isengard
+  // Unleashed, Lightning's Stagger), oldest first, already worded for the
+  // banner. Absent on nearly every turn.
+  damage_multipliers?: string[];
+  // ADR 0108 §9: one line per live "that damage is dealt to <something>
+  // instead" effect a resolved spell or ability made (Beacon of Destiny,
+  // Harm's Way, Kor Chant), oldest first, already worded for the banner.
+  // Absent on nearly every turn.
+  damage_redirections?: string[];
+  // ADR 0109 §6 (CR 601.2c): one line per live static that stops cards in
+  // graveyards being targeted, the printed clause and its card ("Cards in
+  // graveyards can't be the targets of spells or abilities. — Ground
+  // Seal"). The graveyard viewer shows them as a banner; the legal target
+  // sets already leave the refused cards out. Absent on nearly every turn.
+  graveyard_target_bans?: string[];
   // Cleanup-step pause map (S13.4, CR 402.2). Keys are player UUID
   // strings, values are the count each player must discard. Drives
   // DiscardPromptModal. Empty / absent when nobody owes discard.
@@ -564,7 +589,11 @@ export interface LegalMoveView {
     | "block"
     | "choice"
     | "mulligan"
-    | "special_action";
+    | "special_action"
+    // #1501: a declaring defender's finish_blocks ("No blocks" /
+    // "Done blocking"). Not a pass: nobody holds priority while a
+    // defender declares. Carries no card.
+    | "finish_blocks";
   label: string;
   // Instance ID of the card the move is about, when there is one.
   // Moves with no card (pass_priority, keep_hand, mulligan) carry the
@@ -1022,6 +1051,12 @@ export interface PendingChoiceView {
     // control_purpose says whether the permanent hurts or helps the
     // seat that receives it.
     | "entry_controller"
+    // ADR 0109 §10, CR 702.136a: riot's "a +1/+1 counter, or haste?",
+    // asked before the permanent enters. The {choice_id, apply} payload
+    // of the yes/no kinds: apply true takes the counter, false haste.
+    // Mandatory — both answers are always accepted. accept_label and
+    // decline_label name the two; source is the entering card.
+    | "entry_riot"
     // ADR 0098: Mox Diamond's "if this would enter, you may discard a
     // land card instead. If you don't, put it into its owner's
     // graveyard." The reveal's payload and bounds, and — like it — the
@@ -1064,6 +1099,13 @@ export interface PendingChoiceView {
     // stack still refers to), all public, so the options reach every
     // seat.
     | "choose_source"
+    // ADR 0108 §7 (#1904), CR 615.7: a charged prevention shield ("the
+    // next 3 damage") that meets several damage events at once, more
+    // than it can cover — the protected player divides the charge among
+    // them before any is dealt. `divide_shield` carries the charge and
+    // the events; answered with {choice_id, distribution: {entry id:
+    // share}}, the shares adding up to the charge.
+    | "divide_shield"
     // #742: "choose a color" (CR 105.4) — as a permanent enters
     // (Coldsteel Heart, the Thriving lands; the answer is remembered on
     // the permanent) or while a spell resolves (Wash Out). color_options
@@ -1123,6 +1165,10 @@ export interface PendingChoiceView {
   // entering permanent away does to the seat that receives it. The
   // picker reads it only for its wording.
   control_purpose?: "harm" | "benefit" | string;
+  // ADR 0109 §10: on an "entry_riot" or "optional_replacement" prompt,
+  // the entry keyword it asks about — "riot" or "unleash". Absent on
+  // every other prompt, and on a "may" that is not unleash's.
+  entry_keyword?: "riot" | "unleash" | string;
   // ADR 0104: on a "trigger_prompt" whose yes TRADES the source for a
   // spell (Perplexing Chimera) — that spell's instance ID. The client
   // does not read it; the bot weighs the trade with it.
@@ -1162,6 +1208,8 @@ export interface PendingChoiceView {
   // is set) and submits resolve_choice with
   // { assignments: [{blocker_id, amount}, ...], trample_to_player }.
   damage_assignment?: DamageAssignmentView;
+  // ADR 0108 §7: populated for kind "divide_shield".
+  divide_shield?: DivideShieldView;
   // S19 follow-up: populated for kind "trigger_prompt" — true when
   // the optional trigger has no legal target and answering "Yes"
   // will pass without effect (Reclamation Sage with no opponent
@@ -1329,6 +1377,28 @@ export interface ReplacementOptionView {
 // blockers (respecting at-least-lethal-in-order) and, if
 // allow_trample, can overflow leftover to the defending player.
 // Added in S18 sub-PR 3.
+// ADR 0108 §7 (#1904), CR 615.7: a divide_shield prompt. `charge` is
+// what the shield has left; each entry is one damage event it meets —
+// `source_name` would deal `amount` to `target_name` (a player when
+// target_is_player). The answer gives each entry 0..amount, adding up
+// to `charge`.
+export interface DivideShieldView {
+  label?: string;
+  charge: number;
+  entries: DivideShieldEntryView[];
+}
+
+export interface DivideShieldEntryView {
+  id: string;
+  source_id: string;
+  source_name?: string;
+  target_id: string;
+  target_name?: string;
+  target_is_player?: boolean;
+  amount: number;
+  combat?: boolean;
+}
+
 export interface DamageAssignmentView {
   attacker_card_id: string;
   blocker_card_ids: string[];
@@ -1589,6 +1659,12 @@ export interface PlayerView {
   // static (Leyline of Punishment), a turn grant (Skullcrack) or the
   // rest of the game (Screaming Nemesis). Absent when false.
   cant_gain_life?: boolean;
+  // ADR 0109 §4 (CR 101.2): the clause that stops this seat playing ANY
+  // land from its hand right now ("Players can't play lands — Territorial
+  // Dispute", "You can't play lands this turn — Turf Wound"). Absent when
+  // nothing does. A ban that names particular lands (City in a Bottle)
+  // rides on the land's own `cant_cast` instead.
+  cant_play_lands?: string;
   // ADR 0057 (#749, CR 104.3): the "can't lose the game" / "can't win
   // the game" gates on this seat. `cant_lose` lists the causes that
   // can't make this player lose right now ("life", "empty_draw",
@@ -2107,6 +2183,21 @@ export interface ActivatedAbilityView {
   discard_cost_n?: number;
   discard_cost_label?: string;
   discard_cost_options?: string[];
+  // ADR 0109 §7, owner decision 3: the discard is "at random"
+  // (Pyromancy, Meteor Storm). The engine draws the cards; there are no
+  // `discard_cost_options` and nothing is sent, so the client confirms
+  // the cost instead of opening the picker.
+  discard_cost_random?: boolean;
+  // ADR 0109 §7 (#1902): "Put a card from your hand on top of your
+  // library" (Penance, Leashling). The count, the clause as printed and
+  // the cards in the viewer's hand that could pay; the picks ride
+  // activate_ability as `top_ids`.
+  top_cost_n?: number;
+  top_cost_label?: string;
+  top_cost_options?: string[];
+  // ADR 0109 §7: "Exile the top N cards of your library" (Seasoned
+  // Tactician, Arc-Slogger). Nothing to pick or send; confirmed.
+  library_exile_cost_n?: number;
   // #1297: an "Exile N cards from your graveyard" / "… from your hand"
   // component — Grim Lavamancer's "Exile two cards from your graveyard",
   // Holistic Wisdom's "Exile a card from your hand". The mana ability's
@@ -2299,6 +2390,19 @@ export interface LegalTargetsView {
   // and a card with no entry (an unreadable cost) meets no bound.
   mana_value_at_most_x?: boolean;
   mana_values?: Record<string, number>;
+  // ADR 0109 §9: the rest of the X bounds, on the same superset rule.
+  // `mana_value_equals_x` narrows from `mana_values` by an EXACT match
+  // (Lazav); `power_at_most_x` and `toughness_at_most_x` narrow from
+  // `powers` and `toughnesses`. With `x_from_counters_removed` the X is
+  // the number of counters the activation's cost is removing (Simic
+  // Manipulator), not the one collected in the X prompt. A card with no
+  // entry in the map meets no bound.
+  mana_value_equals_x?: boolean;
+  power_at_most_x?: boolean;
+  toughness_at_most_x?: boolean;
+  x_from_counters_removed?: boolean;
+  powers?: Record<string, number>;
+  toughnesses?: Record<string, number>;
   // #1563, CR 601.2d: the clause's effect is "divided as you choose"
   // among its picks. The picker asks for a share per pick once a step
   // has two or more — each at least 1, summing to the amount — and
@@ -2544,6 +2648,26 @@ export interface NoUntapView {
   next?: string[];
 }
 
+// One entry of CardView.land_type_effects (ADR 0109 §1): "Island until
+// end of turn — Tidal Warrior".
+export interface LandTypeEffect {
+  // The land types the effect gives ("Island").
+  types: string[];
+  // "In addition to its other types" (CR 205.1b). Absent is CR 305.7's
+  // replacement: the old land types and rules-text abilities are gone.
+  in_addition?: boolean;
+  // ADR 0109 §2: "loses all land types" (Ultima's blight); types is
+  // empty. With it, loses_abilities is the same effect's "and
+  // abilities" and gains the texts of the abilities it gives.
+  loses_all?: boolean;
+  loses_abilities?: boolean;
+  gains?: string[];
+  // The duration in the card's words; absent for an effect with none.
+  until?: string;
+  // The card whose effect it is.
+  source?: string;
+}
+
 export interface CardView extends CastSurfaceView {
   instance_id: string;
   /**
@@ -2598,6 +2722,15 @@ export interface CardView extends CastSurfaceView {
   // ADR 0108 §2 (CR 701.19c): this permanent can't be regenerated this
   // turn (Incinerate, Whippoorwill). Public; battlefield only.
   cant_be_regenerated?: boolean;
+  // ADR 0109 §10 (CR 702.136a): this permanent's haste came from its
+  // own riot, so its haste chip is labelled "Riot". Public;
+  // battlefield only.
+  riot_haste?: boolean;
+  // ADR 0109 §1: the resolved effects changing this permanent's land
+  // types, oldest first — Tidal Warrior's "becomes an Island until end
+  // of turn", Navigator's Compass's "in addition to its other types".
+  // The type line already shows the result. Public; battlefield only.
+  land_type_effects?: LandTypeEffect[];
   // S13.5 visual face-down flag (CR 708 — morph / manifest /
   // mutate-bottom, Necropotence's exile). Distinct from known_by_you:
   // a viewer who doesn't know a face-down card gets it redacted to

@@ -38,7 +38,16 @@ import (
 type ShieldTarget struct {
 	kind shieldKind
 	id   uuid.UUID
+	// ids are ShieldObjects' permanents; permTypes are
+	// ShieldYouAndYourPermanents' card types.
+	ids       []uuid.UUID
+	permTypes []string
+	clause    int
 }
+
+// types is a copy of the card types "you and <those> you control"
+// names.
+func (t ShieldTarget) types() []string { return append([]string(nil), t.permTypes...) }
 
 type shieldKind uint8
 
@@ -49,6 +58,16 @@ const (
 	shieldTheTarget
 	shieldEnchanted
 	shieldObject
+	// ADR 0108 Delivery PR 7: the recipient families. The two below
+	// protect several permanents in one record, so only the not-one-use
+	// shield (PreventDamageFromSource) reads them.
+	shieldYouAndYourPermanentsOf
+	shieldTheTargetPermanents
+	shieldObjects
+	// ADR 0108 PR 9: the redirection's "target clause i" and "this
+	// creature".
+	shieldClause
+	shieldThisObject
 )
 
 var (
@@ -70,6 +89,16 @@ var (
 	// (Kithkin Armor; CR 608.2h).
 	ShieldEnchantedCreature = ShieldTarget{kind: shieldEnchanted}
 )
+
+// ShieldThis is "to this creature": the object the ability came from, as
+// it is now. A source that left and came back is a new object, and is
+// not shielded (CR 400.7).
+var ShieldThis = ShieldTarget{kind: shieldThisObject}
+
+// ShieldClause protects the target that answered clause i ("target
+// creature you control" of Kor Chant's two). A target that is illegal as
+// the effect resolves leaves nothing to shield (CR 608.2b).
+func ShieldClause(i int) ShieldTarget { return ShieldTarget{kind: shieldClause, clause: i} }
 
 // ShieldObject protects one named player or permanent.
 func ShieldObject(id uuid.UUID) ShieldTarget { return ShieldTarget{kind: shieldObject, id: id} }
@@ -99,6 +128,13 @@ type PreventNextDamageFromSource struct {
 	// prevented. Zero is none.
 	Then game.BodyRef
 
+	// Half is Dark Sphere's "prevent half that damage, rounded down"
+	// (ADR 0108 §7 decision 4).
+	Half bool
+	// CombatOnly is "the next time <source> would deal combat damage"
+	// (Impulsive Maneuvers): other damage passes it by, unspent.
+	CombatOnly bool
+
 	// Question is the source prompt's header; Label the shield's. Both
 	// default to the card's name.
 	Question string
@@ -125,7 +161,6 @@ func (p PreventNextDamageFromSource) WithThen(then game.BodyRef) PreventNextDama
 }
 
 func (p PreventNextDamageFromSource) Apply(ctx *Context) error {
-	g := ctx.Game
 	label := p.Label
 	if label == "" {
 		label = shieldSourceName(ctx) + " — prevent the next damage from a source"
@@ -135,40 +170,77 @@ func (p PreventNextDamageFromSource) Apply(ctx *Context) error {
 		Controller:   ctx.Controller(),
 		Queries:      p.Queries,
 		Then:         p.Then,
+		Half:         p.Half,
+		CombatOnly:   p.CombatOnly,
 		Label:        label,
 	}
 	if !p.protect(ctx, &shield) {
 		return nil
 	}
+	return p.pick().resolve(ctx, registerChosenShield(shield))
+}
+
+// pick is the shield's "which source" half.
+func (p PreventNextDamageFromSource) pick() shieldSourcePick {
+	return shieldSourcePick{Choose: p.Choose, FromThis: p.FromThis, From: p.From, Queries: p.Queries, Question: p.Question}
+}
+
+// shieldSourcePick is the "which source" half every shield against a
+// source shares (ADR 0107 §6, ADR 0108 §7): this object, a named object,
+// "a source of your choice" (CR 609.7a), or none — any source with the
+// queried properties.
+type shieldSourcePick struct {
+	Choose   bool
+	FromThis bool
+	From     uuid.UUID
+	Queries  []game.PermanentQuery
+	Question string
+}
+
+// resolve pins the source and hands it to `register` — at once, or once
+// the controller has chosen. A choice that finds no source (no legal
+// candidate, a chooser who left) makes no shield (CR 609.7a).
+func (s shieldSourcePick) resolve(ctx *Context, register func(*game.Game, game.ObjectRef, game.ZoneKind) error) error {
+	g := ctx.Game
 	switch {
-	case p.FromThis:
+	case s.FromThis:
 		ref, ok := ctx.SourceRef()
 		if !ok {
 			return nil
 		}
-		shield.Source, shield.SourceZone = ref, game.ZoneBattlefield
-	case p.From != uuid.Nil:
-		ref, zone, ok := g.DamageSourceRefLocked(p.From)
+		return register(g, ref, game.ZoneBattlefield)
+	case s.From != uuid.Nil:
+		ref, zone, ok := g.DamageSourceRefLocked(s.From)
 		if !ok {
 			return nil
 		}
-		shield.Source, shield.SourceZone = ref, zone
-	case p.Choose:
-		question := p.Question
+		return register(g, ref, zone)
+	case s.Choose:
+		question := s.Question
 		if question == "" {
 			question = shieldSourceName(ctx) + " — choose a source of damage"
 		}
 		_, err := g.ChooseDamageSourceThenForEffect(game.ChooseSourcePrompt{
-			Chooser:  shield.Controller,
-			Source:   shield.EffectSource,
+			Chooser:  ctx.Controller(),
+			Source:   ctx.Source(),
 			Question: question,
-			Queries:  p.Queries,
-			Then:     registerChosenShield(shield),
+			Queries:  s.Queries,
+			Then:     registerPickedSource(register),
 		})
 		return err
 	}
-	g.PreventNextDamageFromSourceForEffect(shield)
-	return nil
+	return register(g, game.ObjectRef{}, "")
+}
+
+// registerPickedSource is a choose_source continuation: no source chosen
+// is no shield.
+func registerPickedSource(register func(*game.Game, game.ObjectRef, game.ZoneKind) error) func(*game.Game, game.ObjectRef, game.ZoneKind) error {
+	return func(g *game.Game, ref game.ObjectRef, zone game.ZoneKind) error {
+		if ref.ID == uuid.Nil {
+			return nil
+		}
+		return register(g, ref, zone)
+	}
 }
 
 // shieldSourceName is the card making the shield, for its labels.
@@ -179,17 +251,13 @@ func shieldSourceName(ctx *Context) string {
 	return "Shield"
 }
 
-// registerChosenShield finishes a shield once its source is chosen. It
-// captures the shield's plain description and nothing else.
+// registerChosenShield finishes a next-damage shield once its source is
+// pinned. It captures the shield's plain description and nothing else.
 func registerChosenShield(shield game.NextDamageShield) func(*game.Game, game.ObjectRef, game.ZoneKind) error {
 	return func(g *game.Game, ref game.ObjectRef, zone game.ZoneKind) error {
-		if ref.ID == uuid.Nil {
-			// No legal source, or a chooser who left: CR 609.7a, the
-			// shield is never made.
-			return nil
-		}
-		shield.Source, shield.SourceZone = ref, zone
-		g.PreventNextDamageFromSourceForEffect(shield)
+		s := shield
+		s.Source, s.SourceZone = ref, zone
+		g.PreventNextDamageFromSourceForEffect(s)
 		return nil
 	}
 }
@@ -233,6 +301,26 @@ func (p PreventNextDamageFromSource) protect(ctx *Context, s *game.NextDamageShi
 		return one(info.AttachedTo.ID)
 	case shieldObject:
 		return one(p.Protect.id)
+	case shieldYouAndYourPermanentsOf:
+		s.ProtectPlayer = s.Controller
+		s.ProtectTypes = p.Protect.types()
+	case shieldTheTargetPermanents, shieldObjects:
+		// Several permanents: only PreventDamageFromSource reads these
+		// (protectMany); a next-damage shield protects one thing.
+		return false
+	case shieldClause:
+		t, ok := ctx.ClauseTarget(p.Protect.clause)
+		if !ok || (t.Kind != game.TargetCard && t.Kind != game.TargetPlayer) {
+			return false
+		}
+		return one(t.ID)
+	case shieldThisObject:
+		src := ctx.Source()
+		if src == uuid.Nil || ctx.isNewSourceObjectAsThis(src) {
+			return false
+		}
+		s.ProtectPermanent = src
+		return true
 	}
 	return true
 }

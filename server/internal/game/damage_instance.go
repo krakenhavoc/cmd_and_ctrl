@@ -93,7 +93,11 @@ type DamageInstance uint64
 // Caller must hold g.mu (write).
 func (g *Game) nextDamageInstanceLocked() DamageInstance {
 	g.damageInstanceSeq++
-	return DamageInstance(g.damageInstanceSeq)
+	inst := DamageInstance(g.damageInstanceSeq)
+	// ADR 0108 §10: the life totals the instance began with, for
+	// Phyrexian Unlife's once-per-instance read (damage_as_though.go).
+	g.recordDamageInstanceLifeLocked(inst)
+	return inst
 }
 
 // damageInstructionLocked is the instance a damage instruction's events
@@ -173,8 +177,15 @@ func (g *Game) DamageInstanceForEffect(fn func() error) error {
 	}
 	inst := g.nextDamageInstanceLocked()
 	g.openDamageInstance = inst
+	// ADR 0108 §7: while a charged shield is live, the events it could
+	// meet are staged and dealt as the scope ends, once the shield has
+	// been divided among them (divide_shield.go).
+	prev, staged := g.openDamageStageLocked(inst, false, true)
 	defer func() {
 		g.openDamageInstance = 0
+		if staged {
+			g.closeDamageStageLocked(prev)
+		}
 		g.endDamageInstanceLocked(inst)
 	}()
 	return fn()
@@ -193,14 +204,21 @@ func (g *Game) endDamageInstanceLocked(inst DamageInstance) {
 		return
 	}
 	g.flushPreventionFollowUpsForInstanceLocked(inst)
+	// ADR 0108 §7: its events have all landed, so its shield divisions
+	// are spent.
+	g.dropShieldDivisionsLocked(inst)
 }
 
 // damageInstancePausedLocked reports whether a damage event of `inst` is
-// held by an open CR 616 prompt.
+// held by an open CR 616 prompt, or waits on a divide_shield prompt
+// (divide_shield.go) asked for it.
 //
 // Caller must hold g.mu.
 func (g *Game) damageInstancePausedLocked(inst DamageInstance) bool {
 	for _, c := range g.PendingChoices {
+		if c != nil && c.DivideShield != nil && c.DivideShield.inst == inst {
+			return true
+		}
 		if c == nil || c.replacementResume == nil || c.replacementResume.ev == nil {
 			continue
 		}

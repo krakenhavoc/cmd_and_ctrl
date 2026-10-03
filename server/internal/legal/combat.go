@@ -32,10 +32,11 @@ type blocksParams struct {
 	Blocks []blockParams `json:"blocks"`
 }
 
-// combatMoves enumerates per-creature attack and block declarations.
-// Neither is priority-gated in the engine — the step and the card's
-// controller are the whole check — so a defending seat can block
-// while the active player still holds priority.
+// combatMoves enumerates per-creature attack and block declarations,
+// and a pending defender's finish_blocks. None is priority-gated in the
+// engine — the step and the card's controller are the whole check — so
+// a defending seat declares while priority is parked for the
+// declaration (#1501).
 //
 // Attack and block sets are combinatorial; a policy composes a full
 // declaration from these per-creature moves, re-enumerating after
@@ -258,7 +259,48 @@ func (e *enumerator) combatMoves() {
 				Params: mustJSON(set),
 			})
 		}
+		if m, ok := finishBlocksMove(g, e.seat); ok {
+			e.add(m)
+		}
 	}
+}
+
+// finishBlocksMove is a pending defender's finish_blocks (#1501): "done
+// blocking" with blocks staged, "no blocks" without. Priority is parked
+// while anyone is declaring, so there is no pass to say it with, and a
+// seat offered only block moves would have no way to end its
+// declaration — a bot that wanted none of them would sleep and hold
+// the table.
+//
+// Not offered while a CR 509.1c requirement is owed (#1597): the engine
+// refuses the finish then, exactly as it refuses the pass, and the
+// required blocks are offered as one AlwaysLegal move instead. Not
+// offered to a seat whose declaration is complete, nor to one that is
+// not defending. Marked AlwaysLegal: nothing another seat can do while
+// priority is parked makes the engine refuse it (FinishBlocks is
+// idempotent), so it is where an automated defender goes when its
+// preferred block keeps bouncing.
+//
+// Caller holds the enumerator's read lock.
+func finishBlocksMove(g *game.Game, seat uuid.UUID) (Move, bool) {
+	if g.BlockDeclarationStatusLocked(seat) != game.BlockDeclarationPending || blockRequirementOwed(g, seat) {
+		return Move{}, false
+	}
+	label := "No blocks"
+	for i := range g.Battlefield.Cards {
+		c := &g.Battlefield.Cards[i]
+		if c.Controller == seat && c.BlockingTarget != uuid.Nil {
+			label = "Done blocking"
+			break
+		}
+	}
+	return Move{
+		Type:        TypeFinishBlocks,
+		Player:      seat,
+		Kind:        KindFinishBlocks,
+		Label:       label,
+		AlwaysLegal: true,
+	}, true
 }
 
 // attackRequirementOwed reports whether `seat` is the active player in

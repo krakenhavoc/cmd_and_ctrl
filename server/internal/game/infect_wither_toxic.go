@@ -170,7 +170,7 @@ func AppendKeywordAbility(abilities []string, kw string) []string {
 }
 
 // KeywordIsCumulative reports whether repeating this token means
-// something: prowess and evolve, by name, and toxic (CR 702.164b), which is
+// something: prowess, evolve, riot and unleash, by name, and toxic (CR 702.164b), which is
 // recognised by its grammar rather than by a second table, so a
 // `toxic 2` that nothing has taught this file about still counts
 // twice when it is granted twice.
@@ -192,6 +192,20 @@ func KeywordIsCumulative(kw string) bool {
 	}
 	// Evolve (CR 702.100d, #1805): the same sentence, the same answer.
 	if kw == KeywordEvolve {
+		return true
+	}
+	// Riot (CR 702.136b, #1556): "If a permanent has multiple instances
+	// of riot, each works separately" — two instances are two choices.
+	// Unleash has no rule of its own on the point, so CR 113.2c's
+	// general one applies: "each instance functions independently", and
+	// each is its own "you may have it enter with an additional +1/+1
+	// counter".
+	if kw == KeywordRiot || kw == KeywordUnleash {
+		return true
+	}
+	// Sunburst (CR 702.44d, #1552): "if an object has multiple
+	// instances of sunburst, each one works separately".
+	if kw == KeywordSunburst {
 		return true
 	}
 	_, ok := ToxicValue(kw)

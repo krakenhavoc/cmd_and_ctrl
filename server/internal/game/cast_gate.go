@@ -53,6 +53,10 @@ import (
 // than anything on the battlefield, because a resolved spell that
 // grants the ban is gone (often exiled by its own text) a moment after
 // it resolves and has no battlefield presence left to be the duration.
+//
+// ADR 0109 §5 (#1899) added an EMBLEM as a second home for source 1: an
+// emblem's CastRestrictions are read exactly as a permanent's, with the
+// emblem as the source (CR 114.4).
 
 // CastQuery is everything a cast restriction may look at. Passed by
 // value for the reason CostQuery is: a restriction is consulted
@@ -221,9 +225,10 @@ func (e *CantCastError) Unwrap() error { return ErrCantCast }
 // restriction reads the announcement today.
 //
 // A land PLAY is not a cast (CR 305.1, CR 116.2a) and is not gated
-// here. CastSpell's land branch runs after this call and is untouched
-// by it, because every restriction the catalog can express is written
-// about casting.
+// here: CastSpell's land branch skips this call, because every
+// restriction written about casting is written about casting. "Players
+// can't play lands" has its own gate, LandPlayGateLocked
+// (land_play_gate.go, ADR 0109 §4), asked at the land branch instead.
 //
 // Caller must hold g.mu (read or write).
 func (g *Game) CastGateLocked(caster uuid.UUID, card Card, zone ZoneKind, params CastSpellParams) error {
@@ -238,18 +243,43 @@ func (g *Game) CastGateLocked(caster uuid.UUID, card Card, zone ZoneKind, params
 	// card's own permission to exist, and it is the cheaper check on
 	// the overwhelmingly common board where nothing restricts
 	// anything.
-	if g.Battlefield != nil && CatalogCastRestrictions != nil {
-		for i := range g.Battlefield.Cards {
-			src := g.Battlefield.Cards[i]
-			for _, r := range CastRestrictionsForCard(src) {
-				if r.Forbids == nil {
-					continue
-				}
-				q.Source = src
-				if r.Forbids(q) {
-					return &CantCastError{Reason: r.Label, Source: src.InstanceID}
+	refusedBy := func(src Card) *CantCastError {
+		for _, r := range CastRestrictionsForCard(src) {
+			if r.Forbids == nil {
+				continue
+			}
+			q.Source = src
+			if r.Forbids(q) {
+				return &CantCastError{Reason: r.Label, Source: src.InstanceID}
+			}
+		}
+		return nil
+	}
+	if CatalogCastRestrictions != nil {
+		if g.Battlefield != nil {
+			for i := range g.Battlefield.Cards {
+				if err := refusedBy(g.Battlefield.Cards[i]); err != nil {
+					return err
 				}
 			}
+		}
+		// ADR 0109 §5 (#1899): an emblem's "can't cast" — Narset
+		// Transcendent's "Your opponents can't cast noncreature spells".
+		// CR 114.4 runs an emblem's abilities in the command zone, so the
+		// emblem is a second home for the same static, read the same way
+		// with the emblem as the source. It is NOT a CastBanRule written
+		// onto each opponent: that would be a frozen per-player record the
+		// board never shows, and CR 800.4a would not end it when the
+		// emblem's owner leaves, because nothing sweeps the statics a
+		// departing player wrote onto others. The emblem leaves with its
+		// owner, so its presence is the duration.
+		var refused *CantCastError
+		g.forEachEmblemLocked(func(src *Card) bool {
+			refused = refusedBy(*src)
+			return refused == nil
+		})
+		if refused != nil {
+			return refused
 		}
 	}
 	// Then the per-player GRANTED bans (#1316): a resolved spell's
@@ -272,29 +302,4 @@ func (g *Game) CastGateLocked(caster uuid.UUID, card Card, zone ZoneKind, params
 		return &CantCastError{Reason: CastConditionLabelFor(card)}
 	}
 	return nil
-}
-
-// AnyCastRestrictionsForEffect reports whether anything restricts
-// casting at all — a static on the battlefield, or a granted ban
-// (#1316) stored on any seat. The fast negative the view and the
-// enumerator take before walking a zone card by card — in almost
-// every game nothing restricts anything, and the gate is otherwise
-// pure cost on a hand of seven.
-//
-// Deliberately ignores the spell's own condition: that is a per-card
-// read the caller is already doing when it looks the card up.
-//
-// Caller must hold g.mu (read or write).
-func (g *Game) AnyCastRestrictionsForEffect() bool {
-	if g == nil {
-		return false
-	}
-	if g.Battlefield != nil && CatalogCastRestrictions != nil {
-		for i := range g.Battlefield.Cards {
-			if len(CastRestrictionsForCard(g.Battlefield.Cards[i])) > 0 {
-				return true
-			}
-		}
-	}
-	return g.anyLiveCastBanForEffect()
 }

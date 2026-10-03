@@ -14,7 +14,8 @@ import "github.com/google/uuid"
 //   - AbilityCost.DiscardCards — "Discard a card" (Cryptbreaker),
 //     "Discard a creature card" (Fauna Shaman, Survival of the
 //     Fittest, Tortured Existence). The activator names the cards at
-//     announce.
+//     announce. Its `Hand` form (#1600) is "Discard your hand"
+//     (Lion's Eye Diamond, Null Brooch): every card, nothing named.
 //
 // Both pay through discardCardsLocked with DiscardCauseCost, the ONE
 // discard path (#799) with the cause #856 gave it. That is what makes
@@ -30,7 +31,8 @@ type DiscardCost struct {
 	// N is how many cards the clause demands. At least one;
 	// effects.Register refuses a zero or negative count, because a
 	// component that costs nothing is a card-file mistake rather
-	// than a free ability.
+	// than a free ability. The one exception is the Hand form below,
+	// whose count is the hand and whose N is always 0.
 	N int
 
 	// Label is the clause as printed, without the verb — "a creature
@@ -52,12 +54,62 @@ type DiscardCost struct {
 	// sits in the hand: printed characteristics, no layers (a card
 	// in a hand has none).
 	Match func(Card) bool
+
+	// Random is "Discard N cards at random" (ADR 0109 §7, owner
+	// decision 3; CR 701.9b) — Pyromancy, Mage il-Vec, Meteor Storm's
+	// two. The activator chooses nothing: the engine draws the cards
+	// from the game's keyed random source when the cost is paid, after
+	// every other cost (CR 601.2h), and records them on
+	// PaidCost.Discarded beside any other discard, so "the discarded
+	// card" (Pyromancy, Stormscale Anarch) reads them (ADR 0109 §8).
+	//
+	// A random clause takes no `discard_ids` and stamps no options;
+	// the client shows a confirm rather than a picker. Every printed
+	// clause discards "a card" or "two cards", so effects.Register
+	// refuses one with a Match, and refuses it on a mana ability,
+	// which no printed card has. See library_cost.go.
+	Random bool
+
+	// Hand is "Discard your hand" (#1600, ADR 0020's 2026-10-02
+	// amendment) — Lion's Eye Diamond's and Diamond Lion's mana
+	// abilities, Null Brooch's and Slate of Ancestry's CR 602 ones.
+	// The clause names EVERY card in the activator's hand, so:
+	//
+	//   - N is 0 and is never read. The count is whatever the hand
+	//     holds when the cost is paid, and zero is a legal payment
+	//     (CR 118.3: a cost is unpayable only when the resources to
+	//     pay it fully are missing, and discarding every card of an
+	//     empty hand is paying it fully).
+	//   - there is no choice, so no `discard_ids`, no options stamped
+	//     on the view and no picker: validateDiscardCostLocked reads
+	//     the hand itself, and refuses ids sent for it.
+	//   - Match and Random are meaningless beside it, and
+	//     effects.Register refuses either, as it refuses a hand clause
+	//     beside any other component that would spend a hand card
+	//     (the hand is gone; CR 118.3 makes such a cost unpayable).
+	//
+	// The cards still leave through the ONE discard door with
+	// DiscardCauseCost, so EventDiscardCard fires per card, the CR 614
+	// window runs over every exit (madness), and they are recorded on
+	// PaidCost.Discarded like any other cost discard.
+	//
+	// Build it with effects.DiscardYourHand, never by hand.
+	Hand bool
+}
+
+// DiscardsHand reports whether this is the "Discard your hand" form.
+// Nil-safe.
+func (d *DiscardCost) DiscardsHand() bool {
+	return d != nil && d.Hand
 }
 
 // Matches reports whether `c` could pay this clause. Nil-safe on the
-// predicate: a clause with no predicate takes any card.
+// predicate: a clause with no predicate takes any card. A random
+// clause is never paid with a named card, so it matches none, and
+// neither does a "Discard your hand" clause (#1600): it names no card,
+// it takes them all.
 func (d *DiscardCost) Matches(c Card) bool {
-	if d == nil {
+	if d == nil || d.Random || d.Hand {
 		return false
 	}
 	if d.Match == nil {
@@ -81,7 +133,9 @@ func (d *DiscardCost) Matches(c Card) bool {
 // CounterCostOptionsForEffect next door: both of its callers — the
 // view's assembly pass and the legal enumerator — run inside one.
 func (g *Game) DiscardCostOptionsForEffect(playerID, sourceID uuid.UUID, cost *DiscardCost) []uuid.UUID {
-	if cost == nil || cost.N <= 0 {
+	// A random clause and a "Discard your hand" clause (#1600) offer
+	// nothing to pick: the engine chooses the cards in both.
+	if cost == nil || cost.N <= 0 || cost.Random || cost.Hand {
 		return nil
 	}
 	p := g.playerByIDLocked(playerID)
@@ -118,6 +172,9 @@ func (g *Game) DiscardCostOptionsForEffect(playerID, sourceID uuid.UUID, cost *D
 //   - Exactly cost.N ids for a DiscardCards clause, each distinct,
 //     each in the activator's hand, each matching the clause, and
 //     none of them the source of a hand activation.
+//   - No ids for a "Discard your hand" clause (#1600): the answer is
+//     the whole hand, read here, and an empty hand is a payment of
+//     nothing rather than a refusal.
 //   - Ids arriving for a cost with no discard component are rejected
 //     rather than ignored, exactly as an unexpected sacrifice_ids is:
 //     a client that sends them is confused about which ability it is
@@ -132,7 +189,10 @@ func (g *Game) validateDiscardCostLocked(playerID, sourceID uuid.UUID, srcZone Z
 		}
 		out = append(out, sourceID)
 	}
-	if cost.DiscardCards == nil {
+	// ADR 0109 §7: a random clause names nothing — the engine draws
+	// its cards (randomDiscardsLocked) — so ids for it are refused as
+	// ids for no clause are.
+	if cost.DiscardCards == nil || cost.DiscardCards.Random {
 		if len(chosen) > 0 {
 			return nil, ErrInvalidParam
 		}
@@ -141,6 +201,34 @@ func (g *Game) validateDiscardCostLocked(playerID, sourceID uuid.UUID, srcZone Z
 	p := g.playerByIDLocked(playerID)
 	if p == nil {
 		return nil, ErrPlayerNotFound
+	}
+	// #1600: "Discard your hand" names nothing either, for the
+	// opposite reason — it takes every card, so there is nothing to
+	// choose and ids for it are refused as a random clause's are.
+	// Every card in the hand as it stands now, in hand order, and
+	// none at all for an empty hand (CR 118.3: zero cards is the whole
+	// of an empty hand, so the cost is paid in full).
+	//
+	// The source is skipped when the ability is activated from a hand
+	// — it is either being paid by DiscardSelf already (above, so it
+	// is not named twice) or not a card this clause can see. No
+	// printed card has either combination; the skip keeps the list a
+	// set of distinct cards whatever a card file declares.
+	if cost.DiscardCards.Hand {
+		if len(chosen) > 0 {
+			return nil, ErrInvalidParam
+		}
+		if p.Hand == nil {
+			return out, nil
+		}
+		for i := range p.Hand.Cards {
+			id := p.Hand.Cards[i].InstanceID
+			if srcZone == ZoneHand && id == sourceID {
+				continue
+			}
+			out = append(out, id)
+		}
+		return out, nil
 	}
 	if len(chosen) != cost.DiscardCards.N {
 		return nil, ErrInvalidParam

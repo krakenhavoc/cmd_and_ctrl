@@ -5,9 +5,16 @@
   import { recordClientError } from "../lib/clientErrors";
   import { describeThrown } from "../lib/guardedStore";
   import { navigate } from "../lib/router";
-  import { isPracticeGame } from "../lib/practiceTable";
+  import { isPracticeGame, practiceTable } from "../lib/practiceTable";
   import { session } from "../lib/session";
-  import { isAdmin as isAdminSession } from "../lib/admin";
+  import {
+    adminChipFor,
+    adminNotice,
+    afterAdminModeChanged,
+    isAdmin as isAdminSession,
+    PLAYER_MODE_NOT_YOURS,
+    switchAdminMode,
+  } from "../lib/admin";
   import { seatColor } from "../lib/colors";
   import DeckUploadForm from "../lib/components/DeckUploadForm.svelte";
   import BugReportModal from "../lib/components/BugReportModal.svelte";
@@ -40,6 +47,7 @@
   import AttackDeclarationModal from "../lib/components/board/AttackDeclarationModal.svelte";
   import GameLogPanel from "../lib/components/board/GameLogPanel.svelte";
   import ActionDock from "../lib/components/board/ActionDock.svelte";
+  import TutorialCoach from "../lib/components/tutorial/TutorialCoach.svelte";
   import DockRequest from "../lib/components/board/DockRequest.svelte";
   import GameMenu from "../lib/components/board/GameMenu.svelte";
   import type { GameMenuOptions } from "../lib/gameMenu";
@@ -153,6 +161,20 @@
     client.setURL(wsURL);
     client.connect();
     return () => client.disconnect();
+  });
+
+  // A 4001 "admin mode changed" close (ADR 0112 §2 item 5): ask /me
+  // first, then reconnect with the binding this session may now hold,
+  // or go to the Lobby when the one it held needs admin mode (another
+  // seat, the seatless view, a table that isn't yours). Never a blind
+  // redial, which the server would refuse forever (lib/ws.ts).
+  client.setAdminModeHandler(async () => {
+    const verdict = await afterAdminModeChanged(gameID);
+    if (verdict === "leave") {
+      adminNotice.set(PLAYER_MODE_NOT_YOURS);
+      navigate("#/lobby");
+    }
+    return verdict;
   });
 
   // Dev tools (ADR 0023). Every tool is gated inside DevDock on its
@@ -907,6 +929,22 @@
   function onDockSize(w: number, h: number): void {
     if (w !== dockSize.w || h !== dockSize.h) dockSize = { w, h };
   }
+  // ---- The tutorial's coach card (ADR 0076 §2.3, #1079) ----
+  // Mounted on this tab's practice table only, beside the dock (it needs
+  // the dock's live size on a phone, where it stacks on the dock bar).
+  // Its live size goes out as --coach-w / --coach-h. On a desktop the
+  // viewer's own panel turns the width into an empty cell at the left
+  // of its bottom row, so the hand never sits under the card; the cell
+  // takes no height, so the battlefield rows keep theirs (#1081
+  // follow-up). On a phone the height pads the play area. While it is hidden
+  // (Skip tutorial, Finish) or on any other table its size is 0 and the
+  // layout is exactly what it is without a tutorial.
+  const coachMounted = $derived(dockShown && $practiceTable?.gameID === gameID);
+  let coachSize = $state({ w: 0, h: 0 });
+  function onCoachSize(w: number, h: number): void {
+    if (w !== coachSize.w || h !== coachSize.h) coachSize = { w, h };
+  }
+  const coachShown = $derived(coachMounted && coachSize.w > 0);
   // PR 6: an open sheet's width (0 when none), published as --sheet-w
   // with `.sheet-open`, so the hover zoom moves left of the sheet (§4).
   let sheetW = $state(0);
@@ -1086,10 +1124,9 @@
   }
 
   // #1279: the viewer is a defender whose block declaration is still
-  // open. The engine completes it when they pass priority, but a
-  // defender does not hold priority while the active player does —
-  // this is how they say "done" from there. Whatever they have staged
-  // is the declaration; nothing staged is "no blocks".
+  // open. Since #1501 nobody holds priority while a defender declares
+  // (CR 509.1), so this is how they say "done". Whatever they have
+  // staged is the declaration; nothing staged is "no blocks".
   const viewerBlocksPending = $derived(blockDeclarationPending(view, viewerID));
   const viewerStagedBlocks = $derived(
     viewerID && view
@@ -1102,6 +1139,9 @@
   // click declares no blocks AND passes priority, as one click on
   // `next` did before PR 3 put No blocks in its place. Done blocking,
   // after blockers are staged, is a separate confirm and does not pass.
+  // #1501: priority is parked while a defender declares, so the pass
+  // half only fires for a defender who holds priority anyway (a table
+  // restored from before #1501 mid-step).
   //
   // The two actions are sent in order, never together: finish_blocks
   // first, and pass_priority only once a snapshot shows the server
@@ -1368,6 +1408,24 @@
   // that acts on a seat. Neither is drawn while the dev replay scrubber
   // shows a past frame: `view` is history then, and every entry acts on
   // the LIVE game.
+  // The admin switch (ADR 0112 §2 item 9). The table has no header, so
+  // an allowlisted person switches here. The server then closes this
+  // socket with 4001 and the handler above brings it back with the
+  // binding the new mode allows. A refusal shows the server's message.
+  const adminChip = $derived(adminChipFor(sess));
+  async function toggleAdminMode(): Promise<void> {
+    if (adminChip?.kind !== "switch") return;
+    try {
+      await switchAdminMode(!adminChip.on);
+    } catch (err) {
+      lastError.set({
+        code: "admin_mode",
+        message: err instanceof Error ? err.message : "could not switch admin mode",
+        at: new Date(),
+      });
+    }
+  }
+
   const menuOptions = $derived<GameMenuOptions>({
     seated: dockShown,
     eliminated: viewerEliminated,
@@ -1384,6 +1442,8 @@
       ? { href: discordLinkHref(gameID), label: linkDiscordLabel(Boolean(viewerSeat?.discord_id)) }
       : null,
     myGames: signedInUserID(sess) !== null,
+    adminMode: adminChip?.kind === "switch" ? { on: adminChip.on } : null,
+    onAdminMode: () => void toggleAdminMode(),
     voteOpen: !!view?.vote,
     onDraw: draw,
     onUntapAll: untapAll,
@@ -1428,6 +1488,9 @@
   class:has-dock={dockShown}
   style:--dock-w={dockShown ? `${dockSize.w}px` : undefined}
   style:--dock-h={dockShown ? `${dockSize.h}px` : undefined}
+  class:has-coach={coachShown}
+  style:--coach-w={coachShown ? `${coachSize.w}px` : undefined}
+  style:--coach-h={coachShown ? `${coachSize.h}px` : undefined}
   class:sheet-open={dockShown && sheetW > 0}
   style:--sheet-w={dockShown && sheetW > 0 ? `${sheetW}px` : undefined}
 >
@@ -1631,6 +1694,7 @@
           onDeclareBlock={declareBlockTarget}
           onDeclareAttackers={declareGroupAttackers}
           docked={dockShown}
+          coached={coachShown}
           {beatsPrimeKey}
           legal={legalHighlights}
           legalGate={legalActions}
@@ -1859,6 +1923,9 @@
           onSheet={onDockSheet}
           menu={menuOptions}
         />
+        {#if coachMounted}
+          <TutorialCoach {view} {viewerID} onSize={onCoachSize} autopass={autopassEnabled} />
+        {/if}
       {/if}
       {#if viewerNeedsToDecide && dockShown}
         <!-- ADR 0111 PR 6 (decision 2): the opening hand is a sheet that
@@ -2287,6 +2354,11 @@
     }
     section.has-dock .play-area {
       padding-bottom: calc(var(--dock-h, 0px) + 6px);
+    }
+    /* ADR 0076 §2.3 (amended 2026-10-02): the tutorial's coach strip
+       stacks on the dock bar, so the board ends above both. */
+    section.has-dock.has-coach .play-area {
+      padding-bottom: calc(var(--dock-h, 0px) + var(--coach-h, 0px) + 12px);
     }
   }
   .play-area {

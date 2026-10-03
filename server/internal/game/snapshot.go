@@ -536,7 +536,11 @@ func (s *GameSnapshot) UnmarshalJSON(data []byte) error {
 	if err != nil {
 		return err
 	}
-	s.unknownEffectFields = fields
+	durationFields, err := unknownDurationFields(data)
+	if err != nil {
+		return err
+	}
+	s.unknownEffectFields = append(fields, durationFields...)
 	return nil
 }
 
@@ -713,7 +717,12 @@ type cardSnapshot struct {
 	FaceDownKind         FaceDownKind       `json:"faceDownKind,omitempty"`
 	KnownBy              map[uuid.UUID]bool `json:"knownBy,omitempty"`
 	EnteredBattlefieldAt int64              `json:"enteredBattlefieldAt"`
-	ObjectEpoch          int                `json:"objectEpoch,omitempty"`
+	// EntryOrdinal is Card.EntryOrdinal (ADR 0109 §8): the order of
+	// battlefield entries the world rule reads. Absent from every
+	// earlier file, which restores it as 0; the world rule orders such
+	// permanents by enteredBattlefieldAt (entry_ordinal.go).
+	EntryOrdinal int64 `json:"entryOrdinal,omitempty"`
+	ObjectEpoch  int   `json:"objectEpoch,omitempty"`
 	// ControlledSinceUpkeep is Card.ControlledSinceUpkeep (ADR 0108
 	// §5): echo's "came under your control since your last upkeep".
 	// Absent from every earlier file, which restores as 0.
@@ -1046,16 +1055,22 @@ type stackItemSnapshot struct {
 	// BaseController is StackItem.BaseController (ADR 0104): the
 	// player a stolen spell reverts to. Omitted when zero, which is
 	// every item nothing ever took.
-	BaseController uuid.UUID   `json:"baseController,omitempty"`
-	Owner          uuid.UUID   `json:"owner"`
-	SourceCardID   uuid.UUID   `json:"sourceCardId"`
-	SourceEpoch    int         `json:"sourceEpoch,omitempty"`
-	SourceObject   *ObjectRef  `json:"sourceObject,omitempty"` // #1418; nil = unstamped
-	Label          string      `json:"label,omitempty"`
-	DoubledBy      uuid.UUID   `json:"doubledBy,omitempty"`
-	DoubledByName  string      `json:"doubledByName,omitempty"`
-	Targets        []TargetRef `json:"targets,omitempty"`
-	Payload        []TargetRef `json:"payload,omitempty"`
+	BaseController uuid.UUID  `json:"baseController,omitempty"`
+	Owner          uuid.UUID  `json:"owner"`
+	SourceCardID   uuid.UUID  `json:"sourceCardId"`
+	SourceEpoch    int        `json:"sourceEpoch,omitempty"`
+	SourceObject   *ObjectRef `json:"sourceObject,omitempty"` // #1418; nil = unstamped
+	// GrantedBy is StackItem.GrantedBy (ADR 0109 §2): the object that
+	// granted an activated ability. A pointer so it is omitted for every
+	// item that has no grantor — nearly all of them — and a binary that
+	// predates it refuses only a file that holds a granted ability on the
+	// stack (an unknown stack-item key), the rollback case.
+	GrantedBy     *uuid.UUID  `json:"grantedBy,omitempty"`
+	Label         string      `json:"label,omitempty"`
+	DoubledBy     uuid.UUID   `json:"doubledBy,omitempty"`
+	DoubledByName string      `json:"doubledByName,omitempty"`
+	Targets       []TargetRef `json:"targets,omitempty"`
+	Payload       []TargetRef `json:"payload,omitempty"`
 	// Trigger is the triggering event (#1223). Carried, and it has
 	// to be: a targeted trigger waiting on its CR 603.3d prompt is a
 	// restorable snapshot, and a restore that lost the event would
@@ -1843,6 +1858,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		FaceTurnedAt:             c.FaceTurnedAt,
 		KnownBy:                  copyBoolMap(c.KnownBy),
 		EnteredBattlefieldAt:     c.EnteredBattlefieldAt,
+		EntryOrdinal:             c.EntryOrdinal,
 		ObjectEpoch:              c.ObjectEpoch,
 		ControlledSinceUpkeep:    c.ControlledSinceUpkeep,
 		SummonedThisTurn:         c.SummonedThisTurn,
@@ -1964,6 +1980,7 @@ func snapshotStackItemAs(s *StackItem, oracleID string, cen *ContinuationCensus)
 		SourceCardID:   s.SourceCardID,
 		SourceEpoch:    s.SourceEpoch,
 		SourceObject:   s.SourceObject.stamped(),
+		GrantedBy:      uuidPtrOrNil(s.GrantedBy),
 		Label:          s.Label,
 		DoubledBy:      s.DoubledBy,
 		DoubledByName:  s.DoubledByName,
@@ -2445,6 +2462,10 @@ func (s *GameSnapshot) restoreGame() *Game {
 	}
 	g.ScopedEffects = deepCopyScopedEffects(s.ScopedEffects)
 	g.scopedEffectSeq = maxScopedEffectSeq(g.ScopedEffects)
+	// ADR 0109 §8: the entry-ordinal counter resumes past every
+	// restored permanent's ordinal, and an older file's permanents get
+	// theirs from their entry stamps.
+	g.restoreEntryOrdinalsLocked()
 	// ADR 0108 PR 0: the damage-instance counter resumes past every
 	// instance a restored record names.
 	g.damageInstanceSeq = maxNamedDamageInstance(g.ScopedEffects, g.preventionFollowUps)
@@ -2640,6 +2661,7 @@ func restoreCard(c *cardSnapshot) Card {
 		FaceTurnedAt:             c.FaceTurnedAt,
 		KnownBy:                  copyBoolMap(c.KnownBy),
 		EnteredBattlefieldAt:     c.EnteredBattlefieldAt,
+		EntryOrdinal:             c.EntryOrdinal,
 		ObjectEpoch:              c.ObjectEpoch,
 		ControlledSinceUpkeep:    c.ControlledSinceUpkeep,
 		SummonedThisTurn:         c.SummonedThisTurn,
@@ -2810,6 +2832,7 @@ func restoreStackItem(s *stackItemSnapshot) (*StackItem, bool) {
 		SourceCardID:   s.SourceCardID,
 		SourceEpoch:    s.SourceEpoch,
 		SourceObject:   s.SourceObject.value(),
+		GrantedBy:      uuidOrNil(s.GrantedBy),
 		Label:          s.Label,
 		DoubledBy:      s.DoubledBy,
 		DoubledByName:  s.DoubledByName,

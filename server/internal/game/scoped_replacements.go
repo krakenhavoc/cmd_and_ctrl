@@ -27,7 +27,14 @@ import (
 //   - preventDamage — Mending Hands' charged shield (CR 615.7);
 //   - preventNextFromSource — the Circles of Protection's one-use
 //     shield against the next damage from a source (CR 615.8, ADR 0107
-//     §6, prevent_next_from_source.go);
+//     §6, prevent_next_from_source.go), and its combat-only form,
+//     preventNextCombatFromSource (Impulsive Maneuvers, ADR 0108 PR 2);
+//   - preventFromSource — Pay No Heed's "all damage a source of your
+//     choice would deal this turn" and Healing Grace's charged "next 3
+//     damage … by a source of your choice" (ADR 0108 §7,
+//     prevent_from_source.go). A charged shield that meets several
+//     events of one damage instance is divided by its protected player
+//     (divide_shield.go), and so is preventDamage;
 //   - gainNoLife — Flames of the Blood Hand (ADR 0107 §5);
 //   - exileInsteadOfLeaving — the Whip's and unearth's redirect,
 //     INDEFINITE and pinned to the returned object, so it lasts exactly
@@ -39,7 +46,17 @@ import (
 //   - exileIfWouldDie — Lava Coil's and Disintegrate's "if it would die
 //     this turn, exile it instead", pinned to one object, or Flaying
 //     Tendrils' "if a creature would die this turn" over a live scope
-//     (ADR 0108 §1, #1886).
+//     (ADR 0108 §1, #1886);
+//   - multiplyDamage — Insult's "if a source you control would deal
+//     damage this turn, it deals double that damage instead", Isengard
+//     Unleashed's triple and the "next time" doublers (ADR 0108 §3,
+//     #1890, multiply_damage.go);
+//   - redirectDamage — Beacon of Destiny's "the next time a source of
+//     your choice would deal damage to you this turn, that damage is
+//     dealt to this creature instead", Harm's Way's charged "next 2" and
+//     Kor Chant's "all damage … this turn" (ADR 0108 §9, #1905,
+//     redirect_damage.go). A charged one is divided as a charged shield
+//     is (divide_shield.go).
 //
 // The gather adapts each live record into the ReplacementEffect it
 // already consumes, with closures the RUNNING binary builds from the
@@ -121,9 +138,12 @@ func (g *Game) scopedReplacementModLocked(seq int64, mod int, kind ModKind) (Sco
 // below, and a bad parameter is a programming error in it.
 func replacementModProblem(m Mod) string {
 	switch m.Kind {
-	case ModPreventDamage:
-		if m.Amount < 1 {
+	case ModPreventDamage, ModPreventCombatDamage:
+		if m.Kind == ModPreventDamage && m.Amount < 1 {
 			return fmt.Sprintf("a preventDamage shield needs a charge of at least 1, got %d", m.Amount)
+		}
+		if m.Then != "" && !KnownEffectBody(m.Then) {
+			return fmt.Sprintf("%s names follow-up body %q, which is not registered", m.Kind, m.Then)
 		}
 	case ModExileInsteadOfGraveyard:
 		if m.Then == "" || !KnownEffectBody(m.Then) {
@@ -154,7 +174,8 @@ var (
 // pre-filter the gather applies before it builds anything.
 func scopedReplacementWatches(kind ModKind) []EventKind {
 	switch kind {
-	case ModPreventCombatDamage, ModPreventDamage, ModPreventNextFromSource:
+	case ModPreventCombatDamage, ModPreventDamage, ModPreventNextFromSource, ModPreventNextCombatFromSource, ModMultiplyDamage,
+		ModPreventFromSource, ModRedirectDamage:
 		return watchDamage
 	case ModExileInsteadOfLeaving, ModExileInsteadOfGraveyard, ModExileIfWouldDie:
 		return watchZoneMove
@@ -178,8 +199,59 @@ func scopedReplacementWatches(kind ModKind) []EventKind {
 //
 // Caller must hold g.mu (write) — every caller is a resolving effect.
 func (g *Game) PreventCombatDamageThisTurnForEffect(sourceID, player uuid.UUID, label string) bool {
-	return g.RegisterScopedRuleEffectForEffect(sourceID, ScopeGame, uuid.Nil,
-		[]Mod{{Kind: ModPreventCombatDamage, Player: player}}, g.UntilEndOfTurnDuration(), label)
+	return g.PreventCombatDamageThenThisTurnForEffect(sourceID, player, ShieldFollowUp{}, label)
+}
+
+// ShieldFollowUp is a ModPreventDamage or ModPreventCombatDamage shield's
+// CR 615.5 additional effect (ADR 0108 owner decision 2): "you gain life
+// equal to the damage prevented this way" (Candles' Glow), "for each 1
+// damage prevented this way, put a +1/+1 counter on that creature" (Test
+// of Faith), "deals that much damage to any target" (Acolyte's Reward).
+// It is owed once per shield and damage instance, through the queue every
+// prevention follow-up shares (PreventionFollowUp), and under damage that
+// can't be prevented it runs with nothing prevented (CR 615.12). The zero
+// value is no follow-up.
+type ShieldFollowUp struct {
+	// Controller is "you": the follow-up's controller.
+	Controller uuid.UUID
+	// Body is the follow-up, a registered body.
+	Body BodyRef
+	// To is the player or permanent the follow-up deals its damage to,
+	// chosen as the shield was made; uuid.Nil is none. A permanent is
+	// pinned to the object it is now (CR 400.7).
+	To uuid.UUID
+}
+
+// mod writes the follow-up onto a shield's mod. A To naming a permanent
+// that is not on the battlefield is left off: the shield is still made,
+// and its follow-up has nothing to deal damage to.
+//
+// Caller must hold g.mu.
+func (f ShieldFollowUp) mod(g *Game, m *Mod) {
+	m.Then = f.Body.key
+	if f.Body.key == "" || f.To == uuid.Nil {
+		return
+	}
+	if g.playerByIDLocked(f.To) != nil {
+		m.To = []ObjectRef{{ID: f.To}}
+		return
+	}
+	if c := findBattlefieldCard(g, f.To); c != nil {
+		m.To = []ObjectRef{{ID: f.To, Epoch: c.ObjectEpoch}}
+	}
+}
+
+// PreventCombatDamageThenThisTurnForEffect is PreventCombatDamageThisTurn
+// with a CR 615.5 follow-up (Inkshield: "For each 1 damage prevented this
+// way, create a 2/1 … Inkling"). The record's controller is the
+// follow-up's.
+//
+// Caller must hold g.mu (write).
+func (g *Game) PreventCombatDamageThenThisTurnForEffect(sourceID, player uuid.UUID, then ShieldFollowUp, label string) bool {
+	m := Mod{Kind: ModPreventCombatDamage, Player: player}
+	then.mod(g, &m)
+	return g.RegisterScopedRuleEffectForEffect(sourceID, ScopeGame, then.Controller,
+		[]Mod{m}, g.UntilEndOfTurnDuration(), label)
 }
 
 // PreventNextDamageThisTurnForEffect is the charged shield (CR 615.7):
@@ -191,20 +263,31 @@ func (g *Game) PreventCombatDamageThisTurnForEffect(sourceID, player uuid.UUID, 
 //
 // Caller must hold g.mu (write).
 func (g *Game) PreventNextDamageThisTurnForEffect(sourceID, target uuid.UUID, amount int, combatOnly bool, label string) bool {
+	return g.PreventNextDamageThenThisTurnForEffect(sourceID, target, amount, combatOnly, ShieldFollowUp{}, label)
+}
+
+// PreventNextDamageThenThisTurnForEffect is PreventNextDamageThisTurn
+// with a CR 615.5 follow-up, owed with what the charge prevented from
+// each damage instance (Test of Faith, Temper, Sacred Boon, Vengeful
+// Archon). The record's controller is the follow-up's.
+//
+// Caller must hold g.mu (write).
+func (g *Game) PreventNextDamageThenThisTurnForEffect(sourceID, target uuid.UUID, amount int, combatOnly bool, then ShieldFollowUp, label string) bool {
 	if target == uuid.Nil || amount < 1 {
 		return false
 	}
 	m := Mod{Kind: ModPreventDamage, Amount: amount, CombatOnly: combatOnly}
+	then.mod(g, &m)
 	d := g.UntilEndOfTurnDuration()
 	if g.playerByIDLocked(target) != nil {
 		m.Player = target
-		return g.RegisterScopedRuleEffectForEffect(sourceID, ScopeGame, uuid.Nil, []Mod{m}, d, label)
+		return g.RegisterScopedRuleEffectForEffect(sourceID, ScopeGame, then.Controller, []Mod{m}, d, label)
 	}
 	affected := g.PinnedObjectsLocked(target)
 	if len(affected) == 0 {
 		return false
 	}
-	return g.appendScopedEffectLocked(sourceID, affected, ScopeNone, uuid.Nil, []Mod{m},
+	return g.appendScopedEffectLocked(sourceID, affected, ScopeNone, then.Controller, []Mod{m},
 		g.PinnedTo(d, target), label, timeNowUnixNano())
 }
 
@@ -394,10 +477,25 @@ func (g *Game) gatherScopedReplacementsLocked(ev *ReplacementEvent, applied map[
 			if !ok || applied[id] {
 				continue
 			}
-			if !scopedReplacementAppliesLocked(g, *e, m, ev) {
+			if !scopedReplacementAppliesLocked(g, *e, j, m, ev) {
 				continue
 			}
 			a := activeReplacement{effect: scopedReplacementEffect(e.Seq, j, m.Kind, e.Label), id: id}
+			if m.Kind == ModRedirectDamage {
+				// ADR 0108 §9: a redirection declares itself one, so
+				// "can't be dealt instead" stops it (settleUnpreventable
+				// Locked). Eye for an Eye's shape deals nothing instead
+				// (§9 decision 3) and does not.
+				a.effect.RedirectsDamage = redirectsAnywhere(m)
+			}
+			if m.Kind == ModMultiplyDamage {
+				// Two multipliers on one event (two Insults, an Insult and
+				// an Isengard) commute — ×2×3 is ×3×2 — so CR 616 has one
+				// answer and no order is asked between them (the Insult //
+				// Injury ruling: two Insults are ×4). Beside a prevention
+				// shield or a static doubler the order is still asked.
+				a.identity = replacementIdentity{card: "scoped:" + string(m.Kind)}
+			}
 			if m.Kind == ModExileIfWouldDie {
 				// Two "exile it instead" records on one dying creature
 				// (two Lava Coils, whoever cast them) are one
@@ -454,7 +552,7 @@ func scopedReplacementEffect(seq int64, mod int, kind ModKind, label string) Rep
 		Prevention: scopedKindPrevents(kind),
 		AppliesTo: func(ev *ReplacementEvent, g *Game, _ *Card) bool {
 			e, m, ok := g.scopedReplacementModLocked(seq, mod, kind)
-			return ok && scopedReplacementAppliesLocked(g, e, m, ev)
+			return ok && scopedReplacementAppliesLocked(g, e, mod, m, ev)
 		},
 		Replace: func(ev *ReplacementEvent, g *Game, _ *Card) error {
 			e, m, ok := g.scopedReplacementModLocked(seq, mod, kind)
@@ -465,10 +563,12 @@ func scopedReplacementEffect(seq int64, mod int, kind ModKind, label string) Rep
 		},
 		Controller: func(ev *ReplacementEvent, g *Game, _ *Card) uuid.UUID {
 			switch kind {
-			case ModPreventCombatDamage, ModPreventDamage, ModPreventNextFromSource:
+			case ModPreventCombatDamage, ModPreventDamage, ModPreventNextFromSource, ModPreventNextCombatFromSource,
+				ModPreventFromSource, ModRedirectDamage:
 				// CR 616.1 gives the ordering choice to the AFFECTED
 				// player — whoever is being dealt the damage — so a
-				// prevention shield reports no controller (S17's Fog).
+				// prevention shield or a redirection reports no
+				// controller (S17's Fog).
 				return uuid.Nil
 			}
 			e, _, ok := g.scopedReplacementModLocked(seq, mod, kind)
@@ -493,12 +593,27 @@ func scopedReplacementEffect(seq int64, mod int, kind ModKind, label string) Rep
 // scopedKindPrevents reports whether a replacement kind is a CR 615
 // prevention effect.
 func scopedKindPrevents(kind ModKind) bool {
-	return kind == ModPreventCombatDamage || kind == ModPreventDamage || kind == ModPreventNextFromSource
+	return kind == ModPreventCombatDamage || kind == ModPreventDamage || preventsFromASource(kind)
 }
 
-// scopedReplacementAppliesLocked is the AppliesTo of each kind. Caller
+// scopedReplacementAppliesLocked is the AppliesTo of mod `mod` of record
+// e: the kind's own test (scopedReplacementMeetsLocked) and, for a
+// CR 615.7 charged shield, the division its protected player made when
+// it met several events of one damage instance (divide_shield.go).
+// Caller must hold g.mu.
+func scopedReplacementAppliesLocked(g *Game, e ScopedEffect, mod int, m Mod, ev *ReplacementEvent) bool {
+	if !scopedReplacementMeetsLocked(g, e, m, ev) {
+		return false
+	}
+	if _, charged := chargedShieldCharge(m); charged {
+		return g.chargedShieldOpenToLocked(e.Seq, mod, ev)
+	}
+	return true
+}
+
+// scopedReplacementMeetsLocked is each kind's own applicability. Caller
 // must hold g.mu.
-func scopedReplacementAppliesLocked(g *Game, e ScopedEffect, m Mod, ev *ReplacementEvent) bool {
+func scopedReplacementMeetsLocked(g *Game, e ScopedEffect, m Mod, ev *ReplacementEvent) bool {
 	switch m.Kind {
 	case ModPreventCombatDamage:
 		// Non-combat damage is untouched: ReplacementEvent.IsCombatDamage
@@ -548,8 +663,14 @@ func scopedReplacementAppliesLocked(g *Game, e ScopedEffect, m Mod, ev *Replacem
 		return ev.Kind == RepEventLife && ev.LifeDelta > 0 && ev.LifePlayer == m.Player
 	case ModExileIfWouldDie:
 		return exileIfWouldDieAppliesLocked(g, e, ev)
-	case ModPreventNextFromSource:
+	case ModPreventNextFromSource, ModPreventNextCombatFromSource:
 		return g.nextFromSourceAppliesLocked(e, m, ev)
+	case ModPreventFromSource:
+		return g.fromSourceMeetsLocked(e, m, ev)
+	case ModMultiplyDamage:
+		return g.multiplyDamageAppliesLocked(e, m, ev)
+	case ModRedirectDamage:
+		return g.redirectDamageAppliesLocked(e, m, ev)
 	}
 	return false
 }
@@ -575,21 +696,30 @@ func scopedAffectsLiveObjectLocked(g *Game, e ScopedEffect, id uuid.UUID) bool {
 func (g *Game) applyScopedReplacementLocked(e ScopedEffect, mod int, m Mod, ev *ReplacementEvent) error {
 	switch m.Kind {
 	case ModPreventCombatDamage:
+		// ADR 0108 owner decision 2: the follow-up (Inkshield) is owed
+		// with the whole event.
+		damage := ev.DamageAmount
 		ev.Cancel()
-	case ModPreventNextFromSource:
+		g.queuePreventionFollowUpLocked(e, m, ev, damage, damage)
+	case ModPreventNextFromSource, ModPreventNextCombatFromSource:
 		g.applyNextFromSourceLocked(e, mod, m, ev)
+	case ModPreventFromSource:
+		g.applyFromSourceLocked(e, mod, m, ev)
+	case ModMultiplyDamage:
+		g.applyMultiplyDamageLocked(e, mod, m, ev)
+	case ModRedirectDamage:
+		g.applyRedirectDamageLocked(e, mod, m, ev)
 	case ModPreventDamage:
 		// CR 615.7's arithmetic, not "cancel if the shield covers any
 		// of it": a 4-point shield facing 6 damage prevents 4 and lets
-		// 2 through; facing 3 it prevents all 3 and keeps 1.
-		left := 0
-		if ev.DamageAmount <= m.Amount {
-			left = m.Amount - ev.DamageAmount
-			ev.Cancel()
-		} else {
-			ev.DamageAmount -= m.Amount
-		}
-		g.setShieldChargeLocked(e.Seq, mod, left)
+		// 2 through; facing 3 it prevents all 3 and keeps 1 — or, when
+		// the protected player divided it among one instance's events
+		// (ADR 0108 owner decision 1), the share they gave this one. Its
+		// follow-up (ADR 0108 owner decision 2) is owed with what the
+		// charge prevented, out of the damage the event carried.
+		damage := ev.DamageAmount
+		prevented := g.applyChargedShieldLocked(e, mod, m, ev)
+		g.queuePreventionFollowUpLocked(e, m, ev, prevented, damage)
 	case ModExileInsteadOfLeaving:
 		ev.NewZone = ZoneExile
 	case ModExileIfWouldDie, ModExileInsteadOfYourGraveyard:

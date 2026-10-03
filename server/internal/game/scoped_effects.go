@@ -134,6 +134,47 @@ const ModGrantAbilities ModKind = "grantAbilities" // layer 6
 // (dropSelfAttackTargetRestrictions) and an earlier one does not.
 const ModCantAttackUnlessDefenderControls ModKind = "cantAttackUnlessDefenderControls" // layer 6
 
+// ModSetBasicLandTypes is CR 305.7 from a resolved effect (ADR 0109 §1,
+// #1881): "target land becomes an Island until end of turn" (Tidal
+// Warrior), "becomes the basic land type of your choice" (Reef Shaman),
+// "all lands become Swamps" (Nightcreep). Reads Subtypes, one or more
+// basic land types.
+//
+// Layer 4 (CR 613.1d) and a removal (CR 613.1f, ADR 0046), exactly as
+// the static form effects.SetsBasicLandType is: the affected land's land
+// types are replaced and every other subtype stays (CR 205.1a,
+// Characteristic.SetLandSubtypes), it loses the abilities its rules text
+// gives it, and an ability another effect granted it survives, because
+// every grant lands in layer 6 (CR 305.7's "this doesn't remove any
+// abilities that were granted to the land by other effects"). Its card
+// types and supertypes are untouched. The new type's mana ability is
+// the intrinsic one, derived from the effective subtypes
+// (intrinsicLandManaAbilities, CR 305.6), so nothing writes it.
+//
+// "In addition to its other types" is not this kind. It takes nothing
+// away (CR 205.1b), and is ModAddSubtypes.
+const ModSetBasicLandTypes ModKind = "setBasicLandTypes" // layer 4
+
+// ModLoseLandTypes is "loses all land types" from a resolved effect
+// (ADR 0109 §2, #1604): Ultima, Origin of Oblivion's "For as long as
+// that land has a blight counter on it, it loses all land types and
+// abilities and has '{T}: Add {C}.'" Reads nothing.
+//
+// Layer 4 (CR 613.1d): every subtype that is one of CR 205.3i's land
+// types goes, and every other subtype stays (a Dryad Arbor keeps its
+// Dryad, CR 205.1a). It is NOT a CR 613.1f removal: losing land types
+// is not CR 305.7, which is about SETTING a basic land type, so the
+// land keeps its abilities unless the same effect also says it loses
+// them, and that half is ModLoseAllAbilities in layer 6. What it does
+// take is the intrinsic mana ability each basic land type gives (CR
+// 305.6), because that is derived from the effective subtypes
+// (intrinsicLandManaAbilities). Card types and supertypes are untouched:
+// a basic land stays basic.
+//
+// The static form, for Lithoform Blight and Alpine Moon, is
+// effects.LosesAllLandTypes; both call Characteristic.LoseLandTypes.
+const ModLoseLandTypes ModKind = "loseLandTypes" // layer 4
+
 // The replacement kinds (ADR 0041 P8, tier 3b, #1497). These are not
 // layer operations: each one is a CR 614 replacement effect a
 // resolving spell or ability created (CR 611.2), read by the
@@ -211,6 +252,14 @@ const (
 	// ScopeOpponentsAndTheirCreatures is the record Controller's
 	// opponents (scopeCoversPlayer). Reads Player.
 	ModCantGainLife ModKind = "cantGainLife"
+	// ModCantPlayLands is "<player> can't play lands this turn" (ADR
+	// 0109 §4, #1895; CR 101.2, CR 305.1): Turf Wound's, Solfatara's,
+	// Pardic Miner's and Moonhold's "target player …". Scope ScopeGame
+	// with Player set to the one banned player. Read by
+	// LandPlayGateLocked, which every land play, the enumerator and the
+	// view ask. A ScopedEffect and not a CastBanRule kind so that an older
+	// binary refuses the file instead of banning nothing. Reads Player.
+	ModCantPlayLands ModKind = "cantPlayLands"
 	// ModCantBeRegenerated is "<that permanent> can't be regenerated
 	// this turn" (ADR 0108 §2, #1887; CR 701.19c): regeneration shields
 	// are not applied to it, and are not used up, and neither is a
@@ -372,8 +421,10 @@ type Mod struct {
 	CombatOnly bool `json:"combatOnly,omitempty"`
 	// Then is ModExileInsteadOfGraveyard's delayed-trigger body key: a
 	// registered BodyRef's key, scheduled at the next end step for each
-	// card the replacement redirects. On ModPreventNextFromSource it is
-	// the CR 615.5 follow-up body, run with the damage prevented. A
+	// card the replacement redirects. On every prevention kind
+	// (ModPreventNextFromSource, ModPreventFromSource and, since ADR 0108
+	// PR 8, ModPreventDamage and ModPreventCombatDamage) it is the CR
+	// 615.5 follow-up body, run with the damage prevented. A
 	// restore point naming a body this binary has not registered is
 	// refused (ErrUnknownEffectKey).
 	Then string `json:"then,omitempty"`
@@ -391,6 +442,25 @@ type Mod struct {
 	// (ADR 0041 P1); an older binary refuses a file carrying one
 	// (ADR 0041 P4), which the unknown kind already guarantees.
 	Objects []ObjectRef `json:"objects,omitempty"`
+	// To is the one object a prevention shield's follow-up deals its
+	// damage to (ADR 0108 PR 8): Acolyte's Reward's second target,
+	// Vengeful Archon's player, chosen as the shield was made and pinned
+	// to the object it was (CR 400.7), so a creature that left is gone
+	// and the follow-up deals nothing (the rulings). At most one entry,
+	// read only with Then on a prevention kind and refused on every other
+	// mod (followUpModProblem). A slice for the reason Objects is one.
+	//
+	// On ModRedirectDamage (ADR 0108 §9, redirect_damage.go) it is where
+	// the damage is dealt instead: Beacon of Destiny's "this creature",
+	// Harm's Way's "any target", pinned the same way, so a creature that
+	// has left is gone and the redirection does nothing (CR 614.9).
+	To []ObjectRef `json:"to,omitempty"`
+	// ToSourceController is ModRedirectDamage's other destination (ADR
+	// 0108 §9): "that damage is dealt to that source's controller
+	// instead" (Reflect Damage, Aegis of Honor), the controller read off
+	// the source's last-known information as the damage would be dealt.
+	// Refused on every other kind, and beside To (redirectDamageModProblem).
+	ToSourceController bool `json:"toSourceController,omitempty"`
 	// SourceZone, Queries and SpentBatch are ModPreventNextFromSource's
 	// (ADR 0107 §6, #1860; prevent_next_from_source.go), refused on every
 	// other kind. SourceZone is the zone the chosen source (Objects[0])
@@ -407,6 +477,32 @@ type Mod struct {
 	Queries       []PermanentQuery `json:"queries,omitempty"`
 	SpentBatch    uint64           `json:"spentBatch,omitempty"`
 	SpentInstance DamageInstance   `json:"spentInstance,omitempty"`
+	// Half is ModPreventNextFromSource's "prevent half that damage,
+	// rounded down" (ADR 0108 §7 decision 4, Dark Sphere; CR 107.1a),
+	// refused on every other kind. ModPreventFromSource (ADR 0108 §7)
+	// reads Objects, SourceZone and Queries too, with the same meaning.
+	Half bool `json:"half,omitempty"`
+	// AndDealtBy is ModPreventFromSource's "dealt to and dealt by" (ADR
+	// 0108 Delivery PR 7, #1904): the record's pinned objects are both
+	// what the shield protects and the sources whose damage it prevents.
+	// "Prevent all combat damage that would be dealt to and dealt by that
+	// creature" (Maze of Ith) is one prevention effect, so it is one
+	// record and one mod: it gets one opportunity at an event (CR 614.5)
+	// and is applied once to a damage instance's simultaneous events
+	// (CR 615.13). Refused on every other kind, and on a preventFromSource
+	// that also names a source, a property, a player or a charge.
+	AndDealtBy bool `json:"andDealtBy,omitempty"`
+	// Sources, Recipients and Next are ModMultiplyDamage's (ADR 0108 §3,
+	// #1890; multiply_damage.go), refused on every other kind. Sources is
+	// "a source you control" / "a creature" when no one source is named;
+	// Recipients is "to an opponent", "to a creature" and the rest (with
+	// Player for "that player and their permanents"); Next is "the next
+	// time", spent per instance through SpentBatch and SpentInstance as a
+	// next-damage shield is. A closed vocabulary each: restore refuses a
+	// value this binary does not know.
+	Sources    DamageSources    `json:"sources,omitempty"`
+	Recipients DamageRecipients `json:"recipients,omitempty"`
+	Next       bool             `json:"next,omitempty"`
 	// Copy is ModBecomeCopy's copied values (#1593): exactly one entry,
 	// required on that kind and refused on every other. A slice for the
 	// reason Objects is one — every other mod writes nothing, and the
@@ -633,6 +729,10 @@ var modKinds = map[ModKind]modKindSpec{
 	ModGrantAbilities: {layer: Layer6Ability},
 	// #1879: Veiled Serpent's granted attack restriction.
 	ModCantAttackUnlessDefenderControls: {layer: Layer6Ability},
+	// ADR 0109 §1 (#1881): CR 305.7 from a resolved effect.
+	ModSetBasicLandTypes: {layer: Layer4Type, removes: true},
+	// ADR 0109 §2 (#1604): "loses all land types", Ultima's.
+	ModLoseLandTypes: {layer: Layer4Type},
 	// Tier 3b (ADR 0041 P8): replacement effects, not layer operations.
 	ModPreventCombatDamage:     {reader: readerReplacement},
 	ModPreventDamage:           {reader: readerReplacement},
@@ -644,12 +744,23 @@ var modKinds = map[ModKind]modKindSpec{
 	ModExileInsteadOfYourGraveyard: {reader: readerReplacement},
 	// ADR 0107 §6 (#1860): the next damage from a source.
 	ModPreventNextFromSource: {reader: readerReplacement},
+	// ADR 0108 §7 (#1904): a shield against a source that is not one-use.
+	ModPreventFromSource: {reader: readerReplacement},
+	// ADR 0108 PR 2 (#1890): its combat-only form, a kind of its own so
+	// an older binary refuses it.
+	ModPreventNextCombatFromSource: {reader: readerReplacement},
 	// ADR 0108 §1 (#1886): exile instead if it would die this turn.
 	ModExileIfWouldDie: {reader: readerReplacement},
+	// ADR 0108 §3 (#1890): damage doubled or tripled this turn.
+	ModMultiplyDamage: {reader: readerReplacement},
+	// ADR 0108 §9 (#1905): damage dealt to something else instead.
+	ModRedirectDamage: {reader: readerReplacement},
 	// ADR 0107 §5 (#1853, #1880): rules gates.
 	ModDamageCantBePrevented:  {reader: readerRule},
 	ModDamageCantBeRedirected: {reader: readerRule},
 	ModCantGainLife:           {reader: readerRule},
+	// ADR 0109 §4 (#1895): the land-play gate.
+	ModCantPlayLands: {reader: readerRule},
 	// ADR 0108 §2 (#1887): the regeneration gate.
 	ModCantBeRegenerated: {reader: readerRule},
 	// Tier 3b (ADR 0041 P8): block-rule effects, not layer operations.
@@ -703,6 +814,56 @@ func RemoveTypesMod(types ...string) Mod {
 func AddSubtypesMod(subtypes ...string) Mod {
 	return Mod{Kind: ModAddSubtypes, Subtypes: copyStrings(subtypes)}
 }
+
+// SetBasicLandTypesMod is "becomes a Forest" / "becomes the basic land
+// type of your choice" (layer 4, CR 305.7, ADR 0109 §1). Reads
+// Subtypes; registration refuses an empty list or a type that is not
+// one of CR 305.6's five. Each type is written in the rules' spelling
+// ("island" is stored "Island").
+func SetBasicLandTypesMod(types ...string) Mod {
+	out := make([]string, 0, len(types))
+	for _, t := range types {
+		out = append(out, canonicalBasicLandType(t))
+	}
+	return Mod{Kind: ModSetBasicLandTypes, Subtypes: out}
+}
+
+// canonicalBasicLandType is t in CR 305.6's spelling, or t unchanged
+// when it is not a basic land type (so the registration check can name
+// it).
+func canonicalBasicLandType(t string) string {
+	for _, b := range BasicLandTypes {
+		if equalFoldASCII(t, b) {
+			return b
+		}
+	}
+	return t
+}
+
+// landTypesModProblem is the registration and restore check for
+// ModSetBasicLandTypes: at least one type, and every one a basic land
+// type. CR 305.7 is about the basic land types only; "becomes a Gate"
+// is not a thing any card prints, and a record setting one would strip
+// the land's mana ability with nothing to replace it. "" when sound.
+func landTypesModProblem(m Mod) string {
+	if m.Kind != ModSetBasicLandTypes {
+		return ""
+	}
+	if len(m.Subtypes) == 0 {
+		return "a setBasicLandTypes mod names no basic land type"
+	}
+	for _, t := range m.Subtypes {
+		if !IsBasicLandType(t) {
+			return fmt.Sprintf("a setBasicLandTypes mod names %q, which is not a basic land type", t)
+		}
+	}
+	return ""
+}
+
+// LoseLandTypesMod is "loses all land types" (layer 4, ADR 0109 §2):
+// every CR 205.3i land type goes, every other subtype stays, and no
+// ability is removed. Reads nothing.
+func LoseLandTypesMod() Mod { return Mod{Kind: ModLoseLandTypes} }
 
 // AllCreatureTypesMod is "is every creature type" (layer 4,
 // Characteristic.AllCreatureTypes).
@@ -793,7 +954,8 @@ func blockRequirementModProblem(m Mod) string {
 	if m.Kind != ModAddBlockRequirement {
 		// ADR 0107 §6: the next-damage shield names its chosen source
 		// here (nextFromSourceModProblem checks it).
-		if len(m.Objects) != 0 && m.Kind != ModPreventNextFromSource {
+		if len(m.Objects) != 0 && !isNextFromSourceKind(m.Kind) && m.Kind != ModMultiplyDamage && m.Kind != ModPreventFromSource &&
+			m.Kind != ModRedirectDamage {
 			return fmt.Sprintf("mod %q names objects, which only a blocksAttacker requirement reads", m.Kind)
 		}
 		return ""
@@ -951,6 +1113,9 @@ func (g *Game) appendScopedEffectLocked(sourceID uuid.UUID, affected []AffectedO
 		if problem := nextFromSourceModProblem(m); problem != "" {
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
+		if problem := multiplyDamageModProblem(m); problem != "" {
+			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
+		}
 		if problem := blockRuleModProblem(m); problem != "" {
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
@@ -966,12 +1131,26 @@ func (g *Game) appendScopedEffectLocked(sourceID uuid.UUID, affected []AffectedO
 		if problem := defenderControlsModProblem(m); problem != "" {
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
+		if problem := landTypesModProblem(m); problem != "" {
+			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
+		}
+		if problem := followUpModProblem(m); problem != "" {
+			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
+		}
+		if problem := redirectDamageModProblem(m); problem != "" {
+			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
+		}
 		if r := modKinds[m.Kind].reader; r != readerLayer && r != readerCopy {
 			named = true
 		}
 	}
 	if problem := stackPinProblem(affected, mods); problem != "" {
 		panic(fmt.Sprintf("game: scoped effect %q %s", label, problem))
+	}
+	// ADR 0109 Shared machinery 2: a duration restore would refuse is a
+	// programming error at registration, caught by the first test.
+	if problem := d.Problem(); problem != "" {
+		panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 	}
 	e := ScopedEffect{
 		Affected:  append([]AffectedObject(nil), affected...),
@@ -1011,6 +1190,7 @@ func cloneMods(mods []Mod) []Mod {
 		m.Keywords = copyStrings(m.Keywords)
 		m.Grants = copyStrings(m.Grants)
 		m.Objects = append([]ObjectRef(nil), m.Objects...)
+		m.To = append([]ObjectRef(nil), m.To...)
 		m.Queries = clonePermanentQueries(m.Queries)
 		m.Copy = clonePrintedValuesSlice(m.Copy)
 		out[i] = m
@@ -1392,6 +1572,17 @@ func modApply(m Mod) func(*Characteristic, *Card, *Game, *Card) {
 	case ModAllCreatureTypes:
 		return func(ch *Characteristic, _ *Card, _ *Game, _ *Card) {
 			ch.AllCreatureTypes = true
+		}
+	case ModSetBasicLandTypes:
+		// The engine has already emptied the abilities (removes: true,
+		// ADR 0046); this is the subtype half of CR 305.7.
+		subtypes := m.Subtypes
+		return func(ch *Characteristic, _ *Card, _ *Game, _ *Card) {
+			ch.SetLandSubtypes(subtypes)
+		}
+	case ModLoseLandTypes:
+		return func(ch *Characteristic, _ *Card, _ *Game, _ *Card) {
+			ch.LoseLandTypes()
 		}
 	case ModSetColors:
 		colors := m.Colors

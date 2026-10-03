@@ -260,6 +260,16 @@ func Plus(costs ...game.AbilityCost) game.AbilityCost {
 		if c.ExileCards != nil {
 			out.ExileCards = c.ExileCards
 		}
+		// ADR 0109 §7 (#1902): and the two library components. A
+		// composed "{3}, Exile the top four cards of your library"
+		// that dropped its exile would be a Seasoned Tactician shield
+		// for {3} alone.
+		if c.PutFromHandOnLibraryTop != 0 {
+			out.PutFromHandOnLibraryTop = c.PutFromHandOnLibraryTop
+		}
+		if c.ExileFromLibraryTop != 0 {
+			out.ExileFromLibraryTop = c.ExileFromLibraryTop
+		}
 	}
 	return out
 }
@@ -284,6 +294,19 @@ func TapAnotherUntapped(label string, preds ...CardPredicate) game.AbilityCost {
 		Filter:        TargetPermanent(label, preds...),
 		ExcludeSource: true,
 		Label:         label,
+	}}
+}
+
+// TapAnUntapped is "Tap an untapped <permanent> you control" as a COST
+// with no "another": the source pays it with itself when the predicates
+// admit it (Zombie Trailblazer's "Tap an untapped Zombie you control").
+// Like TapAnotherUntapped it is not the {T} symbol (CR 302.6), so a
+// permanent that arrived this turn may pay it, and it does not target.
+func TapAnUntapped(label string, preds ...CardPredicate) game.AbilityCost {
+	return game.AbilityCost{TapOthers: &game.TapOthersCost{
+		Count:  1,
+		Filter: TargetPermanent(label, preds...),
+		Label:  label,
 	}}
 }
 
@@ -378,6 +401,52 @@ func DiscardCardsMatching(n int, label string, match func(game.Card) bool) game.
 // DiscardN(2, "two cards").
 func DiscardN(n int, label string) game.AbilityCost {
 	return DiscardCardsMatching(n, label, nil)
+}
+
+// DiscardAtRandom is "Discard N cards at random" as a cost (ADR 0109
+// §7, owner decision 3; CR 701.9b) — Pyromancy's "{3}, Discard a card
+// at random:", Meteor Storm's "Discard two cards at random". The
+// activator chooses nothing: the engine draws the cards when the cost
+// is paid, after every other cost (CR 601.2h), and the effect reads
+// them with ctx.DiscardedCard(). The label is the clause as printed,
+// without the verb ("a card at random").
+func DiscardAtRandom(n int, label string) game.AbilityCost {
+	return game.AbilityCost{DiscardCards: &game.DiscardCost{N: n, Label: label, Random: true}}
+}
+
+// DiscardYourHand is "Discard your hand" as a cost (#1600, ADR 0020's
+// 2026-10-02 amendment) — Null Brooch's "{2}, {T}, Discard your hand:",
+// Slate of Ancestry's "{4}, {T}, Discard your hand:". Every card in the
+// activator's hand goes when the cost is paid; nothing is named, so the
+// client shows no picker and the bot sends no `discard_ids`. An empty
+// hand pays it (CR 118.3).
+//
+// A mana ability takes the same clause off the returned cost —
+// Lion's Eye Diamond's
+//
+//	ManaAbilityCost{Sacrifice: true, DiscardCards: DiscardYourHand().DiscardCards}
+//
+// — exactly as DiscardACard reaches Skirge Familiar. Register refuses a
+// hand clause beside another component that spends a hand card: the
+// hand is gone by then, so such a cost could never be paid.
+func DiscardYourHand() game.AbilityCost {
+	return game.AbilityCost{DiscardCards: &game.DiscardCost{Hand: true, Label: "your hand"}}
+}
+
+// PutACardFromHandOnTop is "Put a card from your hand on top of your
+// library" as a cost (ADR 0109 §7, #1902) — Penance, Leashling, Hidden
+// Retreat. The activator names the card at announce (`top_ids`).
+func PutACardFromHandOnTop() game.AbilityCost {
+	return game.AbilityCost{PutFromHandOnLibraryTop: 1}
+}
+
+// ExileTopOfLibrary is "Exile the top N cards of your library" as a
+// cost (ADR 0109 §7, #1902) — Seasoned Tactician's four, Arc-Slogger's
+// ten, Royal Herbalist's one. Nothing to choose; a library of fewer
+// than N cards can't pay it (CR 118.3). The effect reads the cards
+// with ctx.Exiled(), top first.
+func ExileTopOfLibrary(n int) game.AbilityCost {
+	return game.AbilityCost{ExileFromLibraryTop: n}
 }
 
 // ExileCardsFromHand is "Exile N <kind> cards from your hand" as a

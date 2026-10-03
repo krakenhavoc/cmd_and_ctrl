@@ -1425,7 +1425,15 @@ estimate.
 > **Amended by [ADR 0108](0108-turn-scoped-effects-object-history-and-damage-shields.md)** (2026-10-02):
 > its §1 to §4, §7 and §9 add turn-scoped kinds to this vocabulary
 > (`exileIfWouldDie` and `cantBeRegenerated` with the `creatures` scope
-> in its Delivery PR 1, `exileInsteadOfYourGraveyard` in PR 3), each an
+> in its Delivery PR 1, `multiplyDamage` with the `sources`, `recipients`
+> and `next` mod fields and `preventNextCombatFromSource` in PR 2, `exileInsteadOfYourGraveyard` in PR 3), each an
+> additive on-disk identity under schema v7.
+
+> **Amended by [ADR 0109](0109-rule-gates-land-types-mana-and-cost-components.md)** (2026-10-02):
+> its §1, §2 and §4 add kinds to this vocabulary (`setBasicLandTypes`, a
+> layer-4 type set with a CR 613.1f removal, in its Delivery PR 1,
+> `loseLandTypes`, a layer-4 removal of the land types that removes no
+> ability, in PR 3, and `cantPlayLands`, a rules gate, in PR 5), each an
 > additive on-disk identity under schema v7.
 
 P5 proposed two new record types, `ScopedReplacement` and

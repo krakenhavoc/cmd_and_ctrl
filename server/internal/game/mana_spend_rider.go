@@ -2,6 +2,7 @@ package game
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/google/uuid"
@@ -108,7 +109,35 @@ const (
 	// triggered ability (CR 603.2) whose effect is registered under
 	// Trigger.
 	ManaRiderTrigger ManaRiderKind = "trigger"
+
+	// ManaRiderSpellGains — "if that mana is spent on a creature spell,
+	// it gains haste until end of turn" (Generator Servant, Carnelian
+	// Orb of Dragonkind), and "it gains riot" (Domri, Chaos Bringer).
+	// ADR 0109 §11 decision 3: unlike ManaRiderHaste, which is read off
+	// the permanent's provenance for as long as it is that object, this
+	// one ACTS at the spend. It gives the SPELL the keywords in
+	// Keywords — an ability-adding effect on the spell (CR 613.1f),
+	// written as a ScopedEffect pinned to it through
+	// GrantKeywordsToSpellForEffect — lasting until end of turn when
+	// UntilEndOfTurn is set and indefinitely otherwise. A permanent
+	// spell hands the record to the permanent it becomes (CR 400.7a),
+	// duration and all. Meaningful on a spell only.
+	ManaRiderSpellGains ManaRiderKind = "spell_gains"
 )
+
+// KnownManaRiderKind reports whether this binary reads a rider of
+// `kind`. A token in a pool, a pick, a stack item's payment record or a
+// permanent's provenance naming any other kind was written by a newer
+// binary, and restore refuses it (ErrUnknownEffectKey) rather than
+// spending the mana as if the rider were not there.
+func KnownManaRiderKind(kind ManaRiderKind) bool {
+	switch kind {
+	case ManaRiderCantBeCountered, ManaRiderHaste, ManaRiderEntersWithCounters,
+		ManaRiderTrigger, ManaRiderSpellGains:
+		return true
+	}
+	return false
+}
 
 // ManaSpendRider is one "when this mana is spent" instruction riding on a
 // ManaToken. Pure data: see the file comment.
@@ -131,6 +160,21 @@ type ManaSpendRider struct {
 	// CounterKind and Counters are ManaRiderEntersWithCounters' payload.
 	CounterKind string `json:"counterKind,omitempty"`
 	Counters    int    `json:"counters,omitempty"`
+
+	// Count, when set, is the registry key (RegisterManaRiderCount) of
+	// a ManaRiderEntersWithCounters rider whose number is not printed
+	// but counted as the creature enters — Opal Palace's "a number of
+	// additional +1/+1 counters on it equal to the number of times it's
+	// been cast from the command zone this game" (ADR 0109 §11
+	// decision 5). Counters is then unused. The key rides the token and
+	// the snapshot; the function is rebuilt by the binary, exactly as a
+	// trigger rider's is.
+	Count string `json:"count,omitempty"`
+
+	// Keywords and UntilEndOfTurn are ManaRiderSpellGains' payload:
+	// what the spell gains, and for how long.
+	Keywords       []string `json:"keywords,omitempty"`
+	UntilEndOfTurn bool     `json:"untilEndOfTurn,omitempty"`
 
 	// Trigger is ManaRiderTrigger's registry key (RegisterManaSpendTrigger).
 	Trigger string `json:"trigger,omitempty"`
@@ -214,6 +258,62 @@ func ManaSpendTriggerFor(key string) (ManaSpendTrigger, bool) {
 	return t, ok
 }
 
+// ManaRiderCount is the code half of a counted ManaRiderEntersWithCounters
+// rider (ManaSpendRider.Count): Opal Palace's "if you spend this mana to
+// cast your commander, it enters with a number of additional +1/+1
+// counters on it equal to the number of times it's been cast from the
+// command zone this game". Registered once per card at init
+// (RegisterManaRiderCount) and looked up by key, so the token never
+// holds a closure.
+type ManaRiderCount struct {
+	// Condition narrows the filter where the tag vocabulary cannot say
+	// it — "your commander". Evaluated at the spend, against the spell
+	// paid for, exactly as ManaSpendTrigger.Condition is; nil means the
+	// When tags are the whole filter.
+	//
+	// Runs under g.mu held for write; read-only.
+	Condition func(g *Game, controller uuid.UUID, paidFor Card) bool
+
+	// Count is the number of counters, read as the permanent ENTERS
+	// (CR 614.1c): `controller` is the player who spent the mana and
+	// `entering` the resolving spell's card. Zero or less adds none.
+	//
+	// Runs under g.mu held for write; read-only.
+	Count func(g *Game, controller uuid.UUID, entering Card) int
+}
+
+var manaRiderCounts = struct {
+	sync.RWMutex
+	byKey map[string]ManaRiderCount
+}{byKey: map[string]ManaRiderCount{}}
+
+// RegisterManaRiderCount registers the code half of a counted
+// enters-with-counters rider under `key`. Called from catalog init;
+// panics on an empty key, a nil Count or a duplicate, for the reasons
+// RegisterManaSpendTrigger gives.
+func RegisterManaRiderCount(key string, c ManaRiderCount) {
+	if key == "" {
+		panic("game: RegisterManaRiderCount with an empty key")
+	}
+	if c.Count == nil {
+		panic(fmt.Sprintf("game: mana rider count %q has no Count", key))
+	}
+	manaRiderCounts.Lock()
+	defer manaRiderCounts.Unlock()
+	if _, dup := manaRiderCounts.byKey[key]; dup {
+		panic(fmt.Sprintf("game: mana rider count %q registered twice", key))
+	}
+	manaRiderCounts.byKey[key] = c
+}
+
+// ManaRiderCountFor returns the registered count for `key`.
+func ManaRiderCountFor(key string) (ManaRiderCount, bool) {
+	manaRiderCounts.RLock()
+	defer manaRiderCounts.RUnlock()
+	c, ok := manaRiderCounts.byKey[key]
+	return c, ok
+}
+
 // manaRiderDispatchBody is "mana-rider/dispatch" (ADR 0041 P9, #1497,
 // tier 4): the one tier-2 body every mana-spend-rider trigger's item
 // carries, re-deriving the per-card ManaSpendTrigger from Params.Name —
@@ -243,6 +343,7 @@ func copyManaRiders(rs []ManaSpendRider) []ManaSpendRider {
 	for i, r := range rs {
 		out[i] = r
 		out[i].When = copyRestrictions(r.When)
+		out[i].Keywords = copyRestrictions(r.Keywords)
 	}
 	return out
 }
@@ -355,9 +456,64 @@ func (g *Game) applyManaSpendRidersLocked(item *StackItem, ctx ManaSpendContext,
 				})
 				continue
 			}
+			if r.Kind == ManaRiderEntersWithCounters && r.Count != "" {
+				c, ok := ManaRiderCountFor(r.Count)
+				if !ok {
+					// A key this binary does not know. Weaker than
+					// printed, as for an unknown trigger key.
+					continue
+				}
+				if c.Condition != nil && !c.Condition(g, item.Controller, paidFor) {
+					continue
+				}
+			}
+			if r.Kind == ManaRiderSpellGains {
+				// One production is one "that mana": a doubled {C}{C}
+				// from one Generator Servant gives the spell haste
+				// once. The grant is the effect, so it happens here,
+				// at the spend (ADR 0109 §11 decision 3).
+				if r.Production != uuid.Nil {
+					seen := fired[r.Production]
+					if seen == nil {
+						seen = map[string]bool{}
+						fired[r.Production] = seen
+					}
+					if seen[string(ManaRiderSpellGains)] {
+						r.Applied = true
+						continue
+					}
+					seen[string(ManaRiderSpellGains)] = true
+				}
+				r.Applied = true
+				g.manaRiderSpellGainsLocked(tok.Source, item, paidFor, *r)
+				continue
+			}
 			r.Applied = true
 		}
 	}
+}
+
+// manaRiderSpellGainsLocked gives the spell `paidFor` the rider's
+// keywords — "it gains haste until end of turn". An ability-adding
+// effect on a spell (CR 613.1f) from the mana ability that made the
+// mana, written through the same call "that spell gains rebound" uses,
+// so it is data, the stack keyword pass applies it, and a permanent
+// spell hands it to the permanent with its duration (CR 400.7a).
+//
+// Nothing for an ability: "on a creature spell" never admits one, and
+// GrantKeywordsToSpellForEffect refuses anything that is not a spell.
+//
+// Caller must hold g.mu (write).
+func (g *Game) manaRiderSpellGainsLocked(source uuid.UUID, item *StackItem, paidFor Card, r ManaSpendRider) {
+	if item == nil || item.Kind != StackItemSpell || len(r.Keywords) == 0 {
+		return
+	}
+	d := IndefiniteDuration()
+	if r.UntilEndOfTurn {
+		d = g.UntilEndOfTurnDuration()
+	}
+	label := "that spell gains " + strings.Join(r.Keywords, ", ")
+	g.GrantKeywordsToSpellForEffect(source, paidFor.InstanceID, r.Keywords, d, label)
 }
 
 // ridersApplied reports whether any token that paid for `item` carries an
@@ -381,17 +537,34 @@ func (item *StackItem) SpellCantBeCounteredByMana() bool {
 	return item != nil && item.Kind == StackItemSpell && ridersApplied(item.Paid.Mana, ManaRiderCantBeCountered)
 }
 
-// riderEntryCounters folds the applied ManaRiderEntersWithCounters riders
-// on `item`'s payment into the entry event — one grant per production,
-// so a doubled Biophagus {G} is still one additional counter.
-func riderEntryCounters(ev *ReplacementEvent, item *StackItem) {
+// riderEntryCountersLocked folds the applied ManaRiderEntersWithCounters
+// riders on `item`'s payment into the entry event — one grant per
+// production, so a doubled Biophagus {G} is still one additional
+// counter. A counted rider (Opal Palace, ManaSpendRider.Count) is
+// counted here, as the permanent enters; a key this binary does not
+// register adds nothing.
+//
+// Caller must hold g.mu (write).
+func (g *Game) riderEntryCountersLocked(ev *ReplacementEvent, item *StackItem) {
 	if ev == nil || item == nil {
 		return
 	}
 	seen := map[uuid.UUID]bool{}
 	for _, t := range item.Paid.Mana {
 		for _, r := range t.Riders {
-			if !r.Applied || r.Kind != ManaRiderEntersWithCounters || r.CounterKind == "" || r.Counters <= 0 {
+			if !r.Applied || r.Kind != ManaRiderEntersWithCounters || r.CounterKind == "" {
+				continue
+			}
+			n := r.Counters
+			if r.Count != "" {
+				c, ok := ManaRiderCountFor(r.Count)
+				if !ok {
+					continue
+				}
+				entering, _ := g.cardInZoneLocked(g.Stack, ev.CardID)
+				n = c.Count(g, item.Controller, entering)
+			}
+			if n <= 0 {
 				continue
 			}
 			if r.Production != uuid.Nil {
@@ -400,7 +573,7 @@ func riderEntryCounters(ev *ReplacementEvent, item *StackItem) {
 				}
 				seen[r.Production] = true
 			}
-			ev.AddCounterAtETB(r.CounterKind, r.Counters)
+			ev.AddCounterAtETB(r.CounterKind, n)
 		}
 	}
 }

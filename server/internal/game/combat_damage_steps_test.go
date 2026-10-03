@@ -93,17 +93,40 @@ func declareAttacks(t *testing.T, g *Game, attackers ...uuid.UUID) {
 // until the cursor reaches `want`. Every pass resolves whatever the
 // previous step put on the stack, so this is the path a real game
 // takes between the two combat damage steps.
+//
+// #1501: in a declare-blockers step whose priority is parked for the
+// block declaration nobody can pass, so every defender still declaring
+// finishes first (finish_blocks, as a table of humans would click
+// "Done blocking"), with whatever they have staged.
 func passUntilStep(t *testing.T, g *Game, want Step) {
 	t.Helper()
 	for range 32 {
 		if g.Turn.Step == want {
 			return
 		}
+		finishPendingBlockDeclarations(t, g)
 		if err := g.PassPriority(); err != nil {
 			t.Fatalf("PassPriority toward %s: %v", want, err)
 		}
 	}
 	t.Fatalf("never reached %s by passing priority (at %s)", want, g.Turn.Step)
+}
+
+// finishPendingBlockDeclarations sends finish_blocks for every defender
+// still declaring blockers while priority is parked for them (#1501).
+// A no-op in every other state.
+func finishPendingBlockDeclarations(t *testing.T, g *Game) {
+	t.Helper()
+	if g.Turn.Step != StepDeclareBlockers || g.Turn.PriorityHolder != NoPriority {
+		return
+	}
+	var pending []int
+	g.WithWriteLock(func() { pending, _ = g.BlockDeclarationSeatsLocked() })
+	for _, i := range pending {
+		if err := g.FinishBlocks(g.Seats[i].ID); err != nil {
+			t.Fatalf("FinishBlocks for seat %d: %v", i, err)
+		}
+	}
 }
 
 // stepBeganSeq returns the Seq of the one EventStepBegan for `step`,

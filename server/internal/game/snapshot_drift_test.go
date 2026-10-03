@@ -168,6 +168,11 @@ var gameFields = plan(
 	"openDamageInstance", dropped, "not game state: the running DamageInstanceForEffect scope, set and defer-cleared inside one mutation, so it is zero between actions",
 	"combatDamageInstance", rebuilt, "a transient stamp (ADR 0108 owner decision 4): the next combat damage event of a restored game takes a new instance; a step restored half dealt gives its rest a new one, and only a source whose damage straddles the restore could tell",
 	"combatDamageInstanceBatch", rebuilt, "the event batch combatDamageInstance belongs to; retaken with it",
+	// ADR 0108 §10: the life totals each damage instance began with.
+	"damageInstanceLives", rebuilt, "keyed on the transient instance stamp, which no restored event carries: every instance of a restored game is new and records its own life totals as it begins, and a lookup that finds no record reads the live total (damage_as_though.go)",
+	// ADR 0108 §7: the divide_shield machinery (divide_shield.go).
+	"shieldDivisions", dropped, "restores empty: a CR 615.7 division is written as its prompt is answered and spent by the events it divides, which land in that action or wait on a CR 616 prompt (not a restore point); an entry left after its events have landed names a finished instance, so a restore that starts with none changes nothing",
+	"damageStage", dropped, "not game state: an instance's events collected for a division, opened and closed inside one mutation, so it is nil between actions",
 	// #1289: a resolution paused on one of its own prompts holds the
 	// CR 704.3 boundary. Carried with each choice's midResolution.
 	"resolutionOpen", carried, "",
@@ -242,6 +247,9 @@ var gameFields = plan(
 	"ScopedEffects", carried, "GameSnapshot.ScopedEffects — ADR 0041 phase 3's data record for a continuous effect with a duration (#1497)",
 	"scopedEffectMemo", rebuilt, "the layer-pass adapter's memo over ScopedEffects (#1558); a restored game's first recompute builds it",
 	"scopedEffectSeq", rebuilt, "the last ScopedEffect.Seq handed out (ADR 0041 P8); restore sets it to the largest Seq the carried records hold",
+	// ADR 0109 §8: the world rule's entry order (entry_ordinal.go).
+	"entryOrdinalSeq", rebuilt, "the last Card.EntryOrdinal handed out; restore sets it to the largest ordinal a carried permanent holds",
+	"entryOrdinalShared", dropped, "not game state: the ordinal one simultaneous entry is announcing its cards under, set and cleared inside one mutation, so it is zero between actions",
 	"testReplacements", dropped, "test-only injection slot; production has no path to it",
 	"replacementsAppliedThisEvent", dropped, "non-empty between actions only for an event paused on a replacement prompt, and that prompt's resume frame is counted in ContinuationCensus.ChoiceResumeFrames; Clone deep-copies it for undo (#808)",
 	"nextReplacementEventID", dropped, "mints keys for the map above, which restores empty",
@@ -328,6 +336,8 @@ var cardFields = plan(
 	"FaceTurnedAt", carried, "",
 	"KnownBy", carried, "",
 	"EnteredBattlefieldAt", carried, "",
+	// ADR 0109 §8: the entry order the world rule reads (CR 704.5k).
+	"EntryOrdinal", carried, "",
 	// #936 / CR 400.7: the object's serial number, and the epoch half
 	// of every per-object tally key. Carried, not rebuilt — nothing
 	// can re-derive how many times a card has changed zones, and a
@@ -594,6 +604,10 @@ var stackItemFields = plan(
 	// included — the object "this" names. Carried for SourceEpoch's
 	// reason: it is a reading of a card that has since moved.
 	"SourceObject", carried, "",
+	// ADR 0109 §2: the object that granted an activated ability, so a
+	// restored Teferi's Talent −12 still makes the Talent's emblem.
+	// Carried: the grant may be gone from the restored board.
+	"GrantedBy", carried, "",
 	"Label", carried, "",
 	"DoubledBy", carried, "",
 	"DoubledByName", carried, "",
@@ -745,6 +759,7 @@ var pendingChoiceFields = plan(
 	"ManaTapped", carried, "",
 	"ReplacementEffectIDs", carried, "",
 	"DamageAssignment", carried, "",
+	"DivideShield", dropped, "ADR 0108 §7: a divide_shield prompt always carries a confirmResume frame, so a table holding one is not a restore point (ContinuationCensus.ChoiceResumeFrames)",
 	"NoLegalTarget", carried, "",
 	"PickTargetPlayers", carried, "",
 	"PickTargetCards", carried, "",

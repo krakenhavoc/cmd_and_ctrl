@@ -307,6 +307,13 @@ func requirePriorityHolder(g *game.Game, caller uuid.UUID) error {
 		return nil
 	}
 	if snap.Turn.PriorityHolder < 0 || snap.Turn.PriorityHolder >= len(snap.Seats) {
+		// #1501 / CR 509.1: priority PARKED for a block declaration
+		// is held by nobody, so nobody may cast, activate or pass
+		// before the defenders have declared. The other NoPriority
+		// steps (untap, cleanup) keep the old pass-through.
+		if snap.Turn.PriorityHolder == game.NoPriority && snap.Turn.Step == game.StepDeclareBlockers {
+			return ErrNotPriorityHolder
+		}
 		return nil
 	}
 	holder := snap.Seats[snap.Turn.PriorityHolder]
@@ -441,9 +448,14 @@ var playerScopedActions = map[Type]struct{}{
 // and the trigger drain before anyone acts again. Most answer paths
 // run that boundary themselves. SettleResolution is the backstop for
 // the ones that do not, and a no-op otherwise.
+//
+// #1501: SettleBlockDeclaration is the same backstop for a block
+// declaration whose priority is parked with nobody left declaring — a
+// sandbox verb that took the last attacker out of combat, say.
 func Dispatch(g *game.Game, a Action) error {
 	err := dispatch(g, a)
 	g.SettleResolution()
+	g.SettleBlockDeclaration()
 	return err
 }
 
@@ -1240,6 +1252,11 @@ func dispatch(g *game.Game, a Action) error {
 			// Its own field, as on activate_mana_ability (#1283):
 			// an exiled card is not discarded.
 			ExileIDs []string `json:"exile_ids,omitempty"`
+			// ADR 0109 §7 (#1902) — top_ids names the cards paid to
+			// a "Put a card from your hand on top of your library"
+			// cost (Penance, Leashling). Its own field: the card is
+			// neither discarded nor exiled.
+			TopIDs []string `json:"top_ids,omitempty"`
 			// #1213 — return_ids names the permanents paid to a
 			// "Return a permanent you control to its owner's hand"
 			// cost (Quirion Ranger, Master Transmuter, Meloku).
@@ -1324,6 +1341,14 @@ func dispatch(g *game.Game, a Action) error {
 				}
 				exileIDs = append(exileIDs, id)
 			}
+			topIDs := make([]uuid.UUID, 0, len(p.TopIDs))
+			for _, raw := range p.TopIDs {
+				id, err := uuid.Parse(raw)
+				if err != nil {
+					return fmt.Errorf("activate_ability top_ids: %w", err)
+				}
+				topIDs = append(topIDs, id)
+			}
 			returnIDs := make([]uuid.UUID, 0, len(p.ReturnIDs))
 			for _, raw := range p.ReturnIDs {
 				id, err := uuid.Parse(raw)
@@ -1363,6 +1388,7 @@ func dispatch(g *game.Game, a Action) error {
 				CounterKinds:     p.CounterKinds,
 				DiscardIDs:       discardIDs,
 				ExileIDs:         exileIDs,
+				TopIDs:           topIDs,
 				ReturnIDs:        returnIDs,
 				WaterbendIDs:     waterbendIDs,
 				Targets:          refs,
@@ -1590,6 +1616,16 @@ func dispatch(g *game.Game, a Action) error {
 		if kind, ok := g.PendingChoiceKindFor(choiceID); ok && kind == game.PendingChoiceModePick {
 			return g.ResolveModePick(choiceID, a.Player, p.Modes)
 		}
+		// ADR 0108 §7, CR 615.7: "divide this shield among the damage".
+		// The distribution payload a divided pick_target answer uses,
+		// keyed by the prompt's entry IDs, routed by kind.
+		if kind, ok := g.PendingChoiceKindFor(choiceID); ok && kind == game.PendingChoiceDivideShield {
+			dist, err := parseDistribution(p.Distribution)
+			if err != nil {
+				return fmt.Errorf("resolve_choice %w", err)
+			}
+			return g.ResolveDivideShield(choiceID, a.Player, dist)
+		}
 		if p.Color != "" {
 			// #742: route by kind. A "choose a color" answer sent to
 			// ResolveManaChoice would be refused (wrong kind), and a
@@ -1791,6 +1827,11 @@ func dispatch(g *game.Game, a Action) error {
 				// apply means "I pay", and paying is what keeps the
 				// permanent from entering tapped.
 				return g.ResolveEntryPayLife(choiceID, a.Player, *p.OptionalApply)
+			case game.PendingChoiceEntryRiot:
+				// Riot (CR 702.136a, ADR 0109 §10): apply takes the
+				// +1/+1 counter ("you may"), and not applying takes
+				// haste ("if you don't").
+				return g.ResolveEntryRiot(choiceID, a.Player, *p.OptionalApply)
 			default:
 				return g.ResolveOptionalReplacement(choiceID, a.Player, *p.OptionalApply)
 			}

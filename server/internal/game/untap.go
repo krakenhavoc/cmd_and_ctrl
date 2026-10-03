@@ -328,7 +328,7 @@ func (g *Game) HoldUntappedForEffect(cardID uuid.UUID, d Duration) error {
 		return nil
 	}
 	for _, skip := range c.NextUntapSkips {
-		if skip.While != nil && skip.Player == uuid.Nil && *skip.While == d {
+		if skip.While != nil && skip.Player == uuid.Nil && skip.While.Equal(d) {
 			return nil
 		}
 	}

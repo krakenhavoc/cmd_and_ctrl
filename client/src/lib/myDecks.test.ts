@@ -1,10 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { deleteMyDeck, fetchMyDeckCoverage, fetchMyDecks, renameMyDeck } from "./api";
+import { deleteMyDeck, fetchMyDeckCoverage, fetchMyDecks, renameMyDeck, saveMyDeck } from "./api";
 import { LobbyApiError, sessionFromOAuth, setSession } from "./session";
 import {
   coverageDetail,
   coverageLine,
-  deckCheckHref,
   deckSubtitle,
   isSignedIn,
   sourceHost,
@@ -113,13 +112,9 @@ describe("coverageDetail", () => {
 });
 
 describe("source links", () => {
-  it("shows a short host and links a saved link-deck to the public report", () => {
+  it("shows a short host for a saved link-deck", () => {
     const d = deck({ source_url: "https://www.moxfield.com/decks/abc" });
     expect(sourceHost(d.source_url)).toBe("moxfield.com");
-    expect(deckCheckHref(d)).toBe(
-      "#/deck-check?url=" + encodeURIComponent("https://www.moxfield.com/decks/abc"),
-    );
-    expect(deckCheckHref(deck({}))).toBe("");
     expect(sourceHost(undefined)).toBe("");
   });
 });
@@ -165,6 +160,49 @@ describe("library requests", () => {
     expect(calls[1][0]).toBe("/me/decks/d1");
     expect(calls[1][1]?.method).toBe("DELETE");
     expect(calls[2][0]).toBe("/me/decks/d1/coverage");
+  });
+
+  // ADR 0112 §3 item 4: POST /me/decks, the decks page's explicit save.
+  it("saves a checked link or list with its name, and leaves an empty name to the server", async () => {
+    signIn();
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 201,
+      json: async () => ({ deck: deck({ name: "Weekend" }), replaced: false }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const res = await saveMyDeck({ url: "https://archidekt.com/decks/42" }, "  Weekend ");
+    expect(res).toEqual({ deck: deck({ name: "Weekend" }), replaced: false });
+    await saveMyDeck({ text: "1 Sol Ring" }, "   ");
+    const calls = fetchMock.mock.calls as [string, RequestInit][];
+    expect(calls[0][0]).toBe("/me/decks");
+    expect(calls[0][1].method).toBe("POST");
+    expect(JSON.parse(calls[0][1].body as string)).toEqual({
+      url: "https://archidekt.com/decks/42",
+      name: "Weekend",
+    });
+    expect(JSON.parse(calls[1][1].body as string)).toEqual({ text: "1 Sol Ring" });
+  });
+
+  it("surfaces the full-library 409 as the server words it", async () => {
+    signIn();
+    const body = {
+      error: "Your deck library is full (200 decks). Delete one below to save this one.",
+      code: "library_full",
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 409,
+        statusText: "Conflict",
+        clone: () => ({ json: async () => body }),
+      }),
+    );
+    const err = await saveMyDeck({ text: "1 Sol Ring" }, "x").catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(LobbyApiError);
+    expect((err as LobbyApiError).status).toBe(409);
+    expect((err as LobbyApiError).message).toBe(body.error);
   });
 
   it("surfaces the server's rename-conflict message", async () => {

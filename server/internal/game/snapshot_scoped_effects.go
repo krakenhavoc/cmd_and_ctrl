@@ -72,8 +72,29 @@ func (s *GameSnapshot) checkEffectKeys() error {
 			if problem := nextFromSourceModProblem(m); problem != "" {
 				unknown = append(unknown, problem)
 			}
+			// ADR 0108 §3: a multiplier's vocabulary (Sources,
+			// Recipients) is as much a key as its kind, and its fields
+			// on another kind are a newer binary's shape.
+			if problem := multiplyDamageModProblem(m); problem != "" {
+				unknown = append(unknown, problem)
+			}
 			// #1879: a granted attack restriction that asks for nothing.
 			if problem := defenderControlsModProblem(m); problem != "" {
+				unknown = append(unknown, problem)
+			}
+			// ADR 0109 §1: a land-type set naming no basic land type.
+			if problem := landTypesModProblem(m); problem != "" {
+				unknown = append(unknown, problem)
+			}
+			// ADR 0108 PR 8: a follow-up's recipient on a mod that has
+			// no follow-up to deal it is a newer binary's shape.
+			if problem := followUpModProblem(m); problem != "" {
+				unknown = append(unknown, problem)
+			}
+			// ADR 0108 §9: a redirection's destination is part of what it
+			// means, and toSourceController on another kind is a newer
+			// binary's shape.
+			if problem := redirectDamageModProblem(m); problem != "" {
 				unknown = append(unknown, problem)
 			}
 		}
@@ -87,16 +108,17 @@ func (s *GameSnapshot) checkEffectKeys() error {
 		if !KnownAffectedScope(e.Scope) {
 			unknown = append(unknown, "scoped-effect scope "+string(e.Scope))
 		}
-		if !e.Duration.Known() {
-			unknown = append(unknown, fmt.Sprintf("scoped-effect duration kind %d / condition %d",
-				e.Duration.Kind, e.Duration.Condition))
-		}
 	}
+	// ADR 0109 Shared machinery 2: every stored duration, wherever it
+	// is — a scoped effect's, a delayed trigger's, a cast permission's,
+	// a player static's, an untap hold's — is one this binary can read,
+	// or the file is refused (snapshot_durations.go).
+	unknown = append(unknown, s.unknownDurations()...)
+	// ADR 0109 §11: a mana spend rider's kind, and a counted rider's
+	// count key, are keys too — wherever a token is carried
+	// (snapshot_mana_riders.go).
+	unknown = append(unknown, s.unknownManaRiders()...)
 	for _, d := range s.DelayedTriggers {
-		if d.Duration != nil && !d.Duration.Known() {
-			unknown = append(unknown, fmt.Sprintf("delayed-trigger duration kind %d / condition %d",
-				d.Duration.Kind, d.Duration.Condition))
-		}
 		if d.Body != "" && !KnownEffectBody(d.Body) {
 			unknown = append(unknown, "delayed-trigger body "+d.Body)
 		}
@@ -216,8 +238,9 @@ func deepCopyScopedEffects(in []ScopedEffect) []ScopedEffect {
 // future body reads. So it is refused (ErrUnknownEffectKey), never
 // dropped. ADR 0041 P4.
 //
-// Covered: a scopedEffects record, its affected members, its mods and
-// its duration (tier 1); and — #1568 review — every EffectParams a
+// Covered: a scopedEffects record, its affected members and its mods
+// (tier 1) — its duration, like every other stored duration, is
+// unknownDurationFields' (ADR 0109 Shared machinery 2); and — #1568 review — every EffectParams a
 // delayed trigger or a stack item carries (`params`, `condParams`),
 // down through its `filter`, its `object` and — tier 4 — its `ability`.
 //
@@ -305,9 +328,6 @@ func unknownScopedEffectFields(data []byte, schema int) ([]string, error) {
 			return nil, err
 		}
 		if err := nested("a mod", rec["mods"], modJSONKeys, true); err != nil {
-			return nil, err
-		}
-		if err := nested("a duration", rec["duration"], durationJSONKeys, false); err != nil {
 			return nil, err
 		}
 	}

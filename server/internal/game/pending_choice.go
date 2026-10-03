@@ -457,6 +457,13 @@ type PendingChoice struct {
 	// PendingChoiceView.DamageAssignment. Added in S18 sub-PR 3.
 	DamageAssignment *DamageAssignmentFrame
 
+	// DivideShield is the payload of a PendingChoiceDivideShield (ADR
+	// 0108 §7 decision 6, divide_shield.go): the charged shield, its
+	// charge and the damage events it meets. Wire-serialised via
+	// PendingChoiceView.DivideShield. Never captured: the prompt always
+	// carries a confirmResume frame.
+	DivideShield *DivideShieldPrompt
+
 	// NoLegalTarget marks a PendingChoiceTriggerPrompt whose effect
 	// has no legal target / will pass without effect if the chooser
 	// answers "Yes" (e.g. Reclamation Sage with no opponent artifact,
@@ -1469,6 +1476,8 @@ func (g *Game) runChoiceDropActionLocked(c *PendingChoice) {
 		g.declineDepartedChoiceLocked(c)
 	case dropDefault:
 		g.defaultDroppedChoiceLocked(c)
+	case dropSettle:
+		g.settleDroppedDivideShieldLocked(c)
 	}
 }
 
@@ -1665,6 +1674,11 @@ func (g *Game) queueOptionalReplacementPromptLocked(ev *ReplacementEvent, chosen
 			applicable: []activeReplacement{chosen},
 		},
 	}
+	if chosen.effect.entryKeyword != "" && chosen.source != nil {
+		// Unleash (#1556): the question is about the entering card, so
+		// the prompt names it, as entry_riot's does.
+		choice.Source = chosen.source.InstanceID
+	}
 	g.QueueChoiceForEffect(choice)
 }
 
@@ -1782,10 +1796,8 @@ func (g *Game) ResolveOptionalReplacement(choiceID, chooserID uuid.UUID, apply b
 	// re-evaluate this effect again for this event (CR 614.5: the
 	// decision is once per event).
 	g.replacementsAppliedThisEvent[ev.ID][chosen.id] = true
-	if apply && chosen.effect.Replace != nil {
-		if err := chosen.effect.Replace(ev, g, chosen.source); err != nil {
-			g.EmitEvent(Event{Kind: EventEffectError, ErrorMsg: err.Error()})
-		}
+	if apply {
+		g.runReplaceLocked(ev, chosen)
 	}
 
 	// Re-enter the apply-loop for any newly-applicable effects.
@@ -2102,11 +2114,7 @@ func (g *Game) ResolveReplacementOrder(choiceID, chooserID uuid.UUID, ordered []
 			continue
 		}
 		g.replacementsAppliedThisEvent[ev.ID][chosen.id] = true
-		if chosen.effect.Replace != nil {
-			if err := chosen.effect.Replace(ev, g, chosen.source); err != nil {
-				g.EmitEvent(Event{Kind: EventEffectError, ErrorMsg: err.Error()})
-			}
-		}
+		g.runReplaceLocked(ev, chosen)
 	}
 
 	// Resume the apply-loop to pick up any newly-applicable effects
@@ -2761,6 +2769,15 @@ func (g *Game) ResolveDamageAssignment(
 	// looking up HasKeyword on the attacker at resume time would
 	// miss deathtouch / lifelink. The frame captured those at
 	// queue time.
+	//
+	// ADR 0108 §7: the assigned damage is one group of the step's
+	// instance, collected while a charged shield is live so the shield
+	// can be divided among it before any lands (divide_shield.go).
+	var prevStage *damageStage
+	staged := false
+	if g.anyChargedShieldLocked() {
+		prevStage, staged = g.openDamageStageLocked(g.combatDamageInstanceLocked(), true, false)
+	}
 	for _, e := range ordered {
 		if e.Amount <= 0 {
 			continue
@@ -2800,6 +2817,9 @@ func (g *Game) ResolveDamageAssignment(
 		if defenderID != uuid.Nil {
 			g.markCombatDamageToPlayerFromFrameLocked(defenderID, trampleToPlayer, frame)
 		}
+	}
+	if staged {
+		g.closeDamageStageLocked(prevStage)
 	}
 	// Blockers also deal their power back (simultaneous damage —
 	// CR 510.1d). The attacker loop in assignAndDealCombatDamageLocked

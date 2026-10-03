@@ -535,7 +535,7 @@ func TestLifeLockSurvivesCloneUndoAndSnapshot(t *testing.T) {
 	if len(got) != 1 || !got[0].LifeTotalLocked {
 		t.Fatalf("the clone holds %+v, want one life-total lock", got)
 	}
-	if got[0].Duration != window {
+	if !got[0].Duration.Equal(window) {
 		t.Errorf("the clone's duration is %+v, want %+v", got[0].Duration, window)
 	}
 

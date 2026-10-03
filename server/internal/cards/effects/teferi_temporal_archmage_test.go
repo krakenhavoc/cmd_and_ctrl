@@ -230,19 +230,3 @@ func TestTeferisTalentAddsLoyaltyWhenYouDraw(t *testing.T) {
 		t.Errorf("an opponent's draw moved the loyalty: got %d, want 6", got)
 	}
 }
-
-// The granted −12 is the seam this card still waits on, and the
-// catalog says so rather than shipping a walker with an ability the
-// engine cannot give it.
-func TestTeferisTalentDeclaresTheMissingGrant(t *testing.T) {
-	spec, ok := Lookup(teferisTalentOracle)
-	if !ok {
-		t.Fatal("Teferi's Talent is not registered")
-	}
-	if spec.Completeness != CompletenessCaveats || len(spec.Caveats) != 1 {
-		t.Fatalf("completeness %v, caveats %v — want one caveat naming the −12", spec.Completeness, spec.Caveats)
-	}
-	if spec.Emblem != nil {
-		t.Error("Teferi's Talent declares an emblem nothing can create")
-	}
-}

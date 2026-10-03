@@ -137,6 +137,38 @@ type GameView struct {
 	// single creature is that creature's chip instead
 	// (CardView.ExiledIfItDies).
 	ExileIfCreaturesDie []string `json:"exile_if_creatures_die,omitempty"`
+	// DamageShields lists the live "prevent all damage a source of your
+	// choice would deal this turn" shields and their charged siblings
+	// (ADR 0108 §7), oldest first, as "<card> (<source>)" with "— N
+	// left" on a charged one — the game banner's line. Public: the
+	// chosen source is announced as the shield is made. Empty on nearly
+	// every turn.
+	DamageShields []string `json:"damage_shields,omitempty"`
+	// DamageMultipliers is one line per live "it deals double (triple)
+	// that damage instead" effect a resolved spell or ability made (ADR
+	// 0108 §3 decision 4), oldest first — the game banner's lines:
+	// "Alice's sources deal double damage this turn — Insult". Public.
+	// Battlefield statics that say the same (Furnace of Rath) are not
+	// listed.
+	DamageMultipliers []string `json:"damage_multipliers,omitempty"`
+	// DamageRedirections is one line per live "that damage is dealt to
+	// <something> instead" effect a resolved spell or ability made (ADR
+	// 0108 §9), oldest first — the game banner's lines: "Damage to Alice
+	// from Goblin Guide is dealt to Beacon of Destiny instead, the next
+	// time — Beacon of Destiny". Public: the source and the destination
+	// are announced as the effect is made. Battlefield statics that say
+	// the same (Pariah) are not listed.
+	DamageRedirections []string `json:"damage_redirections,omitempty"`
+	// GraveyardTargetBans is one line per live static that stops cards
+	// in graveyards being targeted (ADR 0109 §6, #1885; CR 601.2c),
+	// worded for the graveyard viewer's banner: the printed clause and
+	// the card that prints it — "Cards in graveyards can't be the targets
+	// of spells or abilities. — Ground Seal". It names the clause, not a
+	// verdict: Tomik's applies only to land cards and only to his
+	// opponents' spells, and its line says so in his words. The legal
+	// target sets already leave out every card a restriction refuses.
+	// Public and identical for every viewer.
+	GraveyardTargetBans []string `json:"graveyard_target_bans,omitempty"`
 	// DiscardPending is the cleanup-step pause map (S13.4): keys
 	// are player UUID strings, values are the count each player
 	// must discard. Drives the client's discard-prompt modal.
@@ -319,6 +351,13 @@ type PendingChoiceView struct {
 	// Absent on every other kind.
 	ControlPurpose string `json:"control_purpose,omitempty"`
 
+	// EntryKeyword names the entry keyword an "entry_riot" or
+	// "optional_replacement" prompt is asking about — "riot" or
+	// "unleash" (ADR 0109 §10) — so the client can word the question
+	// and a policy can tell unleash's "may" from any other.
+	// The entering card rides Source. Absent on every other prompt.
+	EntryKeyword string `json:"entry_keyword,omitempty"`
+
 	// TradeFor populates a "trigger_prompt" whose "yes" TRADES the
 	// source for the object the trigger is about (ADR 0104): Perplexing
 	// Chimera's "you may exchange control of this creature and that
@@ -360,6 +399,11 @@ type PendingChoiceView struct {
 	// ordered blocker list (CR 510.1c). Absent for non-assignment
 	// choices. Added in S18 sub-PR 3.
 	DamageAssignment *DamageAssignmentView `json:"damage_assignment,omitempty"`
+
+	// DivideShield populates the ADR 0108 §7 "divide_shield" kind: a
+	// charged prevention shield the protected player divides among the
+	// damage events of one instance (CR 615.7).
+	DivideShield *DivideShieldView `json:"divide_shield,omitempty"`
 
 	// TriggerOptions populates the S19 "trigger_order" kind: one
 	// entry per pending trigger the chooser is ordering (CR
@@ -597,6 +641,22 @@ type LegalTargetsView struct {
 	// (an unreadable cost) meets no bound.
 	ManaValueAtMostX bool           `json:"mana_value_at_most_x,omitempty"`
 	ManaValues       map[string]int `json:"mana_values,omitempty"`
+
+	// The rest of the X bounds (ADR 0109 §9), on the same superset
+	// rule as ManaValueAtMostX. ManaValueEqualsX is "with mana value X"
+	// (Lazav), narrowed from ManaValues by an EXACT match.
+	// PowerAtMostX and ToughnessAtMostX narrow from Powers and
+	// Toughnesses — the candidates' power and toughness as the engine
+	// reads them now, layers and counters included. XFromCountersRemoved
+	// says the X is not the one collected in the X prompt but the number
+	// of counters the activation's cost is removing (Simic Manipulator,
+	// Quillmane Baku). A card with no entry in its map meets no bound.
+	ManaValueEqualsX     bool           `json:"mana_value_equals_x,omitempty"`
+	PowerAtMostX         bool           `json:"power_at_most_x,omitempty"`
+	ToughnessAtMostX     bool           `json:"toughness_at_most_x,omitempty"`
+	XFromCountersRemoved bool           `json:"x_from_counters_removed,omitempty"`
+	Powers               map[string]int `json:"powers,omitempty"`
+	Toughnesses          map[string]int `json:"toughnesses,omitempty"`
 
 	// Divide marks a clause whose effect is "divided as you choose
 	// among" its picks (#1563, CR 601.2d) — Fury's 4 damage,
@@ -1116,6 +1176,48 @@ type DamageAssignmentView struct {
 	BlockerDivides bool `json:"blocker_divides,omitempty"`
 }
 
+// DivideShieldView is the wire shape of a divide_shield prompt (ADR 0108
+// §7 decision 6, CR 615.7): the shield's label, the charge to divide,
+// and one entry per damage event it meets. The answer is resolve_choice
+// with `distribution: {entry id: share}`, the shares adding up to
+// `charge` and none above its entry's `amount`.
+type DivideShieldView struct {
+	Label   string                  `json:"label,omitempty"`
+	Charge  int                     `json:"charge"`
+	Entries []DivideShieldEntryView `json:"entries"`
+}
+
+// DivideShieldEntryView is one damage event a divided shield meets:
+// `source` would deal `amount` to `target` (a player when
+// target_is_player).
+type DivideShieldEntryView struct {
+	ID             string `json:"id"`
+	SourceID       string `json:"source_id"`
+	SourceName     string `json:"source_name,omitempty"`
+	TargetID       string `json:"target_id"`
+	TargetName     string `json:"target_name,omitempty"`
+	TargetIsPlayer bool   `json:"target_is_player,omitempty"`
+	Amount         int    `json:"amount"`
+	Combat         bool   `json:"combat,omitempty"`
+}
+
+func divideShieldView(p *game.DivideShieldPrompt) *DivideShieldView {
+	v := &DivideShieldView{Label: p.Label, Charge: p.Charge, Entries: make([]DivideShieldEntryView, 0, len(p.Entries))}
+	for _, en := range p.Entries {
+		v.Entries = append(v.Entries, DivideShieldEntryView{
+			ID:             en.ID.String(),
+			SourceID:       en.Source.String(),
+			SourceName:     en.SourceName,
+			TargetID:       en.Target.String(),
+			TargetName:     en.TargetName,
+			TargetIsPlayer: en.TargetIsPlayer,
+			Amount:         en.Amount,
+			Combat:         en.Combat,
+		})
+	}
+	return v
+}
+
 // ReplacementOptionView is one entry in a PendingChoiceView's
 // ReplacementOptions slice — the wire shape of one CR 616 order-
 // prompt candidate. ID is the server-side ReplacementEffectID
@@ -1458,6 +1560,16 @@ type PlayerView struct {
 	// what every lifelinker and Soul Warden at the table does.
 	CantGainLife bool `json:"cant_gain_life,omitempty"`
 
+	// CantPlayLands is the clause that stops this player playing ANY
+	// land from their hand right now ("Players can't play lands —
+	// Territorial Dispute", "You can't play lands this turn — Turf
+	// Wound"), or empty (ADR 0109 §4, CR 101.2). Public, for
+	// CantGainLife's reasons: it changes what the whole table may
+	// expect of this seat. A ban that names particular lands (City in a
+	// Bottle) or a zone other than the hand says nothing here; the land's
+	// own `cant_cast` carries those.
+	CantPlayLands string `json:"cant_play_lands,omitempty"`
+
 	// CantLose lists the causes that can't make this player lose the
 	// game right now ("life", "empty_draw", "poison",
 	// "commander_damage", "effect") — all five under a Platinum Angel.
@@ -1660,6 +1772,18 @@ type CardView struct {
 	// regenerated this turn (ADR 0108 §2 decision 5, CR 701.19c):
 	// Incinerate's or Whippoorwill's mark. Public; battlefield only.
 	CantBeRegenerated bool `json:"cant_be_regenerated,omitempty"`
+	// RiotHaste is true for a permanent whose haste came from its own
+	// riot (CR 702.136a, ADR 0109 §10 decision 7): the client labels
+	// its haste chip "Riot". Public; battlefield only.
+	RiotHaste bool `json:"riot_haste,omitempty"`
+	// LandTypeEffects are the resolved effects changing this
+	// permanent's land types, oldest first (ADR 0109 §1 decision 7):
+	// Tidal Warrior's "becomes an Island until end of turn", Navigator's
+	// Compass's "in addition to its other types". The type line shows
+	// the result; this says why and for how long. A static type change
+	// (Spreading Seas, Blood Moon) is not listed. Public; battlefield
+	// only; omitted when empty.
+	LandTypeEffects []LandTypeEffectView `json:"land_type_effects,omitempty"`
 	// FaceDown reflects Card.FaceDown — a card flipped face-down
 	// by morph / manifest / mutate-bottom (CR 708). Distinct from
 	// KnownByYou: a face-down creature is face-down to everyone
@@ -2300,6 +2424,31 @@ type CardView struct {
 // untap step RIGHT NOW: an UntapStepRestriction applies to it, or
 // (#1313) a live "for as long as" hold does. Next lists one-shot
 // next-untap-step markers only; a hold is not a "next step" statement.
+// LandTypeEffectView is one entry of CardView.LandTypeEffects: "Island
+// until end of turn — Tidal Warrior".
+type LandTypeEffectView struct {
+	// Types are the land types the effect gives ("Island").
+	Types []string `json:"types"`
+	// InAddition is "in addition to its other types" (CR 205.1b): the
+	// land keeps its own. False is CR 305.7's replacement: its old land
+	// types and its rules-text abilities are gone.
+	InAddition bool `json:"in_addition,omitempty"`
+	// LosesAll is "loses all land types" (ADR 0109 §2): Ultima's
+	// blight. Types is empty.
+	LosesAll bool `json:"loses_all,omitempty"`
+	// LosesAbilities is the same effect's "and abilities"; set only
+	// with LosesAll.
+	LosesAbilities bool `json:"loses_abilities,omitempty"`
+	// Gains are the texts of the abilities the same effect gives it
+	// ("{T}: Add {C}."); set only with LosesAll.
+	Gains []string `json:"gains,omitempty"`
+	// Until is the duration in the card's words ("until end of turn",
+	// "until Bob's next turn"); absent for an effect with none.
+	Until string `json:"until,omitempty"`
+	// Source names the card whose effect it is.
+	Source string `json:"source,omitempty"`
+}
+
 type NoUntapView struct {
 	Static bool     `json:"static,omitempty"`
 	Next   []string `json:"next,omitempty"`
@@ -2978,6 +3127,29 @@ type ActivatedAbilityView struct {
 	DiscardCostN       int      `json:"discard_cost_n,omitempty"`
 	DiscardCostLabel   string   `json:"discard_cost_label,omitempty"`
 	DiscardCostOptions []string `json:"discard_cost_options,omitempty"`
+	// DiscardCostRandom marks the discard component as "at random"
+	// (ADR 0109 §7, owner decision 3) — Pyromancy's "Discard a card at
+	// random". The activator chooses nothing, so DiscardCostOptions is
+	// never stamped beside it and no `discard_ids` is sent: the client
+	// shows a confirm naming the cost instead of a picker, and the
+	// engine draws the cards as it pays (CR 701.9b, CR 601.2h).
+	DiscardCostRandom bool `json:"discard_cost_random,omitempty"`
+	// TopCostN / Label / Options describe a "Put a card from your hand
+	// on top of your library" cost component (ADR 0109 §7, #1902) —
+	// Penance, Leashling. TopCostN is the count and marks the
+	// component; TopCostOptions is every card in the activator's hand
+	// but the source, in hand order (private to the activator, like
+	// DiscardCostOptions). The picks go back as `top_ids`, and the
+	// client skips its picker when the options number exactly
+	// TopCostN.
+	TopCostN       int      `json:"top_cost_n,omitempty"`
+	TopCostLabel   string   `json:"top_cost_label,omitempty"`
+	TopCostOptions []string `json:"top_cost_options,omitempty"`
+	// LibraryExileCostN is an "Exile the top N cards of your library"
+	// cost component (ADR 0109 §7, #1902) — Seasoned Tactician's four,
+	// Arc-Slogger's ten. Nothing to choose; the client confirms it,
+	// and a library of fewer cards can't pay it (CR 118.3).
+	LibraryExileCostN int `json:"library_exile_cost_n,omitempty"`
 	// ExileCostN / Label / Options / Zone describe an "Exile N cards
 	// from your graveyard" or "… from your hand" cost component
 	// (#1297): Grim Lavamancer's "Exile two cards from your
@@ -3618,6 +3790,10 @@ func ViewOfGame(g *game.Game) GameView {
 			SplitSecondActive:     g.SplitSecondActive,
 			DamageCantBePrevented: g.DamageCantBePreventedThisTurnLabels(),
 			ExileIfCreaturesDie:   g.ExileIfCreaturesWouldDieThisTurnLabels(),
+			DamageShields:         g.DamageShieldLabels(),
+			DamageMultipliers:     g.DamageMultiplierLines(),
+			DamageRedirections:    g.DamageRedirectionLines(),
+			GraveyardTargetBans:   graveyardTargetBanLines(g),
 			DiscardPending:        viewOfDiscardPending(g.DiscardPending),
 			PendingChoices:        viewOfPendingChoices(g),
 			LoopNotice:            viewOfLoopNotice(g.LoopNotice),
@@ -3657,6 +3833,7 @@ func ViewOfGame(g *game.Game) GameView {
 		stampCombatTargets(g, &view)
 		stampNoUntap(g, &view.Battlefield)
 		stampDeathMarks(g, &view.Battlefield)
+		stampLandTypeEffects(g, &view.Battlefield)
 		stampDefenderRefusals(g, &view.Battlefield)
 		view.legalBySeat, view.legalActionsBySeat = enumerateLegalMoves(g)
 		// S31 sub-PR 0: the public log resolves card names and knower
@@ -4439,6 +4616,10 @@ func publicActivatedAbilityRow(v ActivatedAbilityView) (out ActivatedAbilityView
 	// viewer may have seen in another zone.
 	private = len(v.DiscardCostOptions) > 0
 	v.DiscardCostOptions = nil
+	// ADR 0109 §7: "Put a card from your hand on top of your library"
+	// (Penance) lists the controller's whole hand, the same leak.
+	private = private || len(v.TopCostOptions) > 0
+	v.TopCostOptions = nil
 	// #1297's "Exile N cards from your hand" (Holistic Wisdom): the
 	// same leak one verb over. The graveyard form (Grim Lavamancer,
 	// Moorland Haunt) lists cards in a pile every viewer may read and
@@ -4780,6 +4961,17 @@ func castStampsFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, kind
 			out.CantCast = cantCastReason(err)
 		}
 	}
+	// ADR 0109 §4: a LAND asks the land-play gate instead (CR 305.1: a
+	// play is not a cast), the function castSpellLocked and the
+	// enumerator call, and the clause that refuses it rides the same
+	// `cant_cast` field, so the client's tooltip says "Players can't play
+	// lands — Territorial Dispute" with no new field. castableNow reads
+	// the same gate for a land in a graveyard, exile or a library top.
+	if haveLive && live.IsLand() {
+		if err := g.LandPlayGateLocked(caster, live, kind); err != nil {
+			out.CantCast = cantPlayLandReason(err)
+		}
+	}
 	// #916: the ceiling on the cast's `phyrexian_life`. Read off the
 	// EFFECTIVE cost — the commander tax is generic and cost
 	// modifiers add generic, so the two agree today, and reading the
@@ -4969,6 +5161,11 @@ func castableNow(g *game.Game, caster uuid.UUID, card game.Card, kind game.ZoneK
 	}
 	if card.IsLand() {
 		if grant != nil && grant.CastOnly {
+			return false
+		}
+		// ADR 0109 §4: "can't" beats "can" — the land-play gate, before
+		// the window and the drop.
+		if g.LandPlayGateLocked(caster, card, kind) != nil {
 			return false
 		}
 		return g.LandPlayOpenForEffect(caster)
@@ -5199,14 +5396,32 @@ func stampTargetSetRule(g *game.Game, v *LegalTargetsView, cards []uuid.UUID, sp
 	if s := spec.Same; s != nil {
 		v.Same = setRuleView(s.Label, g.TargetSamenessKeysForEffect(spec, cards))
 	}
-	if spec.ManaValueAtMostX {
-		v.ManaValueAtMostX = true
-		if mvs := g.ManaValuesForEffect(cards); len(mvs) > 0 {
-			v.ManaValues = make(map[string]int, len(mvs))
-			for id, mv := range mvs {
-				v.ManaValues[id.String()] = mv
-			}
-		}
+	// #1559, ADR 0109 §9: the X bound and the values the client
+	// narrows the superset with.
+	stat := game.BoundStatisticForEffect(spec)
+	if stat == "" {
+		return
+	}
+	v.ManaValueAtMostX = spec.ManaValueAtMostX
+	v.ManaValueEqualsX = spec.ManaValueEqualsX
+	v.PowerAtMostX = spec.PowerAtMostX
+	v.ToughnessAtMostX = spec.ToughnessAtMostX
+	v.XFromCountersRemoved = spec.BoundByCountersRemoved
+	vals := g.BoundValuesForEffect(spec, cards)
+	if len(vals) == 0 {
+		return
+	}
+	wire := make(map[string]int, len(vals))
+	for id, n := range vals {
+		wire[id.String()] = n
+	}
+	switch stat {
+	case game.BoundStatManaValue:
+		v.ManaValues = wire
+	case game.BoundStatPower:
+		v.Powers = wire
+	case game.BoundStatToughness:
+		v.Toughnesses = wire
 	}
 }
 
@@ -6220,7 +6435,8 @@ func stampDefenderRefusals(g *game.Game, view *ZoneView) {
 
 // stampDeathMarks is ADR 0108's two chips: "exiled if it dies this turn"
 // and "can't be regenerated this turn", on each battlefield permanent
-// that carries one.
+// that carries one — and ADR 0109 §10's riot haste, the third chip a
+// resolved record on the permanent puts there.
 func stampDeathMarks(g *game.Game, view *ZoneView) {
 	if g == nil || g.Battlefield == nil || view == nil || len(g.ScopedEffects) == 0 {
 		return
@@ -6232,6 +6448,33 @@ func stampDeathMarks(g *game.Game, view *ZoneView) {
 		id := g.Battlefield.Cards[i].InstanceID
 		view.Cards[i].ExiledIfItDies = g.ExileIfItWouldDieLabels(id)
 		view.Cards[i].CantBeRegenerated = g.PermanentCantBeRegeneratedForEffect(id)
+		view.Cards[i].RiotHaste = g.RiotHasteForEffect(id)
+	}
+}
+
+// stampLandTypeEffects is ADR 0109 §1's chip: the resolved effects
+// setting or adding a land type on each battlefield permanent.
+func stampLandTypeEffects(g *game.Game, view *ZoneView) {
+	if g == nil || g.Battlefield == nil || view == nil || len(g.ScopedEffects) == 0 {
+		return
+	}
+	for i := range view.Cards {
+		if i >= len(g.Battlefield.Cards) {
+			break
+		}
+		for _, e := range g.LandTypeEffectsForEffect(g.Battlefield.Cards[i].InstanceID) {
+			view.Cards[i].LandTypeEffects = append(view.Cards[i].LandTypeEffects, LandTypeEffectView{
+				// Never null on the wire: a "loses all land types" entry
+				// has no types and says so with loses_all.
+				Types:          append([]string{}, e.Types...),
+				InAddition:     e.InAddition,
+				LosesAll:       e.LosesAll,
+				LosesAbilities: e.LosesAbilities,
+				Gains:          append([]string(nil), e.Gains...),
+				Until:          e.Until,
+				Source:         e.Source,
+			})
+		}
 	}
 }
 
@@ -6556,6 +6799,15 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 		if c.Kind == game.PendingChoiceEntryController {
 			v.ControlPurpose = string(c.ControlPurpose)
 		}
+		// ADR 0109 §10: riot's two answers, and which keyword a riot or
+		// unleash question is about.
+		if c.Kind == game.PendingChoiceEntryRiot {
+			v.AcceptLabel = c.AcceptLabel
+			v.DeclineLabel = c.DeclineLabel
+		}
+		if (c.Kind == game.PendingChoiceEntryRiot || c.Kind == game.PendingChoiceOptionalReplacement) && len(c.ReplacementEffectIDs) == 1 {
+			v.EntryKeyword = game.EntryKeywordOfReplacement(c.ReplacementEffectIDs[0])
+		}
 		// PendingChoiceModePick — #764, CR 603.3c: a modal trigger's
 		// bullets, chosen as the ability is put on the stack. Public
 		// information the moment it is asked (the card's text is
@@ -6703,6 +6955,11 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 				HasDeathtouch:  frame.HasDeathtouch,
 				BlockerDivides: frame.BlockerDivides,
 			}
+		}
+		// ADR 0108 §7: divide_shield — the shield's charge and the
+		// damage events it meets, answered with a distribution.
+		if c.Kind == game.PendingChoiceDivideShield && c.DivideShield != nil {
+			v.DivideShield = divideShieldView(c.DivideShield)
 		}
 		out = append(out, v)
 	}
@@ -6971,6 +7228,7 @@ func viewOfPlayer(g *game.Game, p *game.Player) PlayerView {
 		Keywords:            g.PlayerAbilitiesForEffect(p),
 		LifeTotalLocked:     g.PlayerLifeTotalCantChangeLocked(p),
 		CantGainLife:        g.PlayerCantGainLifeLocked(p),
+		CantPlayLands:       g.LandPlayBanFor(p.ID),
 		CantLose:            lossCauseStrings(g.CantLoseCausesForEffect(p)),
 		CantWin:             g.CantWinForEffect(p),
 		EndGates:            viewOfGameEndGates(g.GameEndGatesForEffect(p)),
@@ -7343,6 +7601,10 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		SplitSecondActive:     v.SplitSecondActive,
 		DamageCantBePrevented: v.DamageCantBePrevented,
 		ExileIfCreaturesDie:   v.ExileIfCreaturesDie,
+		DamageShields:         v.DamageShields,
+		DamageMultipliers:     v.DamageMultipliers,
+		DamageRedirections:    v.DamageRedirections,
+		GraveyardTargetBans:   v.GraveyardTargetBans,
 		DiscardPending:        v.DiscardPending,
 		PendingChoices:        filterPendingChoices(v.PendingChoices, isKnower, viewerID),
 		LegalMoves:            legalMovesFor(v.legalBySeat, viewerID),
@@ -7748,6 +8010,9 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	out.IsCommander = false
 	out.ManaCost = ""
 	out.Abilities = nil
+	// ADR 0109 §10: "its haste came from riot" says the card has riot,
+	// which names it as loudly as the ability list does.
+	out.RiotHaste = false
 	// #662: the parsed half of Abilities. "Protection from Demons"
 	// names a card as loudly as the raw token does, and clearing one
 	// without the other would put the leak back.
@@ -8403,6 +8668,34 @@ func cantCastReason(err error) string {
 	return "An effect prevents casting this spell."
 }
 
+// graveyardTargetBanLines is GameView.graveyard_target_bans: one line
+// per live restriction about graveyards (ADR 0109 §6), the printed
+// clause and the card that prints it. Nil when there is none, which is
+// nearly every frame. Caller holds the read lock with fresh layers.
+func graveyardTargetBanLines(g *game.Game) []string {
+	var out []string
+	for _, b := range g.TargetingBansForZoneForEffect(game.ZoneGraveyard) {
+		line := b.Label
+		if b.SourceName != "" {
+			line += " — " + b.SourceName
+		}
+		out = append(out, line)
+	}
+	return out
+}
+
+// cantPlayLandReason is the clause behind a refused land play, for the
+// client's grey-out tooltip. The fallback should be unreachable —
+// LandPlayGateLocked only returns a *CantPlayLandError — but an empty
+// tooltip would look like a client bug.
+func cantPlayLandReason(err error) string {
+	var cant *game.CantPlayLandError
+	if errors.As(err, &cant) && cant.Reason != "" {
+		return cant.Reason
+	}
+	return "An effect prevents playing this land."
+}
+
 // grantedCast answers "may this viewer cast this card out of this
 // zone": the permission, or nil.
 //
@@ -8703,8 +8996,19 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 		if dc := a.Cost.DiscardCards; dc != nil && dc.N > 0 {
 			v.DiscardCostN = dc.N
 			v.DiscardCostLabel = dc.Label
+			// ADR 0109 §7: a random clause has nothing to pick, so it
+			// stamps the flag and no options.
+			v.DiscardCostRandom = dc.Random
 			v.DiscardCostOptions = cardIDStrings(g.DiscardCostOptionsForEffect(caster, c.InstanceID, dc))
 		}
+		// ADR 0109 §7 (#1902): the two library components, off the
+		// walk the engine validates against.
+		if n := a.Cost.PutFromHandOnLibraryTop; n > 0 {
+			v.TopCostN = n
+			v.TopCostLabel = topCostLabel(n)
+			v.TopCostOptions = cardIDStrings(g.PutOnTopCostOptionsForEffect(caster, c.InstanceID, n))
+		}
+		v.LibraryExileCostN = a.Cost.ExileFromLibraryTop
 		// #1297: the exile-N-cards component, off the walk the engine
 		// validates against — the mana view's four fields, one ability
 		// kind over.
@@ -9288,4 +9592,15 @@ func viewOfUpcoming(g *game.Game) []PlannedStepView {
 		out[i] = PlannedStepView{Step: string(p.Step), PhaseID: p.PhaseID}
 	}
 	return out
+}
+
+// topCostLabel is a PutFromHandOnLibraryTop component's clause as
+// printed, without the verb — "a card from your hand on top of your
+// library" (ADR 0109 §7). Every printed clause puts one card; a count
+// above one is spelled as a number.
+func topCostLabel(n int) string {
+	if n == 1 {
+		return "a card from your hand on top of your library"
+	}
+	return fmt.Sprintf("%d cards from your hand on top of your library", n)
 }

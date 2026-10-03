@@ -52,13 +52,16 @@ const (
 
 // damageSourceThreat ranks a choose_source candidate (ADR 0107 §6
 // decision 4): below zero for the bot's own, above every permanent for an
-// opponent's spell on the stack, and otherwise an opponent's power.
+// opponent's spell on the stack, and otherwise an opponent's power. Its own
+// sources are ranked by power among themselves, still below any
+// opponent's, so a prompt that offers only the bot's own (Desperate
+// Gambit's "a source you control", ADR 0108 §3) picks its hardest hitter.
 func (st *state) damageSourceThreat(id string, c *protocol.CardView) float64 {
 	if c == nil {
 		return 0
 	}
 	if c.Controller == st.me {
-		return -1
+		return -1 + float64(c.Power)/1000
 	}
 	if _, onStack := st.stack[id]; onStack {
 		return 100 + float64(c.Power)
@@ -119,6 +122,8 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 	switch kind {
 	case choiceEntryController:
 		return st.entryControllerValue(ch, cp.OptionIndex)
+	case choiceEntryRiot:
+		return st.riotValue(ch, cp.Apply)
 	case choiceDamageAssignment:
 		// The enumerator offers exactly one canonical split: the
 		// prefix-lethal one a player makes almost every time.
@@ -416,6 +421,10 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 		return 0, "coin: other call"
 
 	case choiceTriggerPrompt, choiceOptionalReplacement, choiceEntryPayLife, choicePayUnless:
+		// ADR 0109 §10: unleash's "may" has its own rule (riot.go).
+		if kind == choiceOptionalReplacement && ch != nil && ch.EntryKeyword == "unleash" {
+			return st.unleashValue(ch, cp.Apply)
+		}
 		// ADR 0104 (owner decision 8): a "yes" that TRADES the source
 		// for a spell — Perplexing Chimera — is taken only when the
 		// spell is worth the creature: mana value 5 or more, or a

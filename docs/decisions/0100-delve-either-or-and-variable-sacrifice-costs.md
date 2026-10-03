@@ -154,6 +154,13 @@ Two alternatives were rejected:
 
 **The discard record (owner decision 6).** Sub-PR 3 also adds `PaidCost.Discarded []uuid.UUID` (`discarded,omitempty`): the cards the additional cost discarded, in the order named, filled by `payAdditionalCostLocked` for a branch's discard and for a plain `DiscardCost` alike. The reader is `ctx.Discarded()`. It takes Grab the Prize (#1732, row 5): "if the discarded card wasn't a land card". The cards are read in the graveyard by instance ID, for the reason `PaidCost.Exiled` gives; a card that has since left the graveyard is read from its last-known record, because the printed clause asks about the card that was discarded, not about where it is now.
 
+> **Amended by [ADR 0109](0109-rule-gates-land-types-mana-and-cost-components.md)** (2026-10-02):
+> its §8 has the activated-ability payer record its discards on the same
+> `PaidCost.Discarded` (cycling's "Discard this card" included), read
+> through `Context.DiscardedCard`, and has a CR 707.10 copy of an ability
+> carry it with `Exiled`, `Sacrificed` and `ReturnedAttacking` (Delivery
+> PR 7, #1862).
+
 ### 3. A variable sacrifice count on a cast: one variable clause, and it takes the whole list
 
 The #1213 amendment solved the count for an ability. It left casts out because of the width problem described above. The fix is a rule, not a new wire shape:

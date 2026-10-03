@@ -147,7 +147,9 @@ func TestMigration0008SetupSurvivesItsGame(t *testing.T) {
 // docs/environments.md leaves a database that rolls forward cleanly.
 func TestMigration0008RollbackByHand(t *testing.T) {
 	ctx := context.Background()
-	d := openAtVersion(t, 0)
+	// At exactly v8: the rollback is from v8 to v7, and a later
+	// migration's version row would otherwise keep MAX(version) above 7.
+	d := openAtVersion(t, 8)
 
 	// An older binary refuses a v8 database outright, by the generic
 	// rule TestOpenSchemaTooNewRefuses pins (current > maxKnown), so the

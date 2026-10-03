@@ -7,7 +7,7 @@
 //
 // INLINE is a question plus at most about six short buttons, or a
 // single number (§2): the yes/no family (trigger_prompt,
-// optional_replacement, confirm, may_cast, entry_pay_life), pay_unless
+// optional_replacement, confirm, may_cast, entry_pay_life, entry_riot), pay_unless
 // without card or tap picks, coin_call, loop_shortcut, mana_pick,
 // choose_color, option_pick and entry_controller when every option is
 // a short label, and an open vote. Everything else is a sheet (PR 6)
@@ -53,6 +53,7 @@ const YES_NO_KINDS = new Set([
   "confirm",
   "may_cast",
   "entry_pay_life",
+  "entry_riot",
 ]);
 
 // shortOptions reports whether an option_pick / entry_controller fits
@@ -131,10 +132,23 @@ function copyFor(c: PendingChoiceView, ctx: ChoiceDockContext): Copy {
   const reason = c.reason ?? "";
   switch (c.kind) {
     case "optional_replacement":
+      if (c.entry_keyword === "unleash") {
+        return {
+          title: reason || "Unleash — enter with a +1/+1 counter?",
+          tag: "unleash",
+          hint: "It hasn't entered yet. With the counter it can't block for as long as it has one; without it, it enters plain.",
+        };
+      }
       return {
         title: reason || "Apply replacement?",
         tag: "replacement",
         hint: "You (the affected player) decide whether this substitution applies.",
+      };
+    case "entry_riot":
+      return {
+        title: reason || "Riot — a +1/+1 counter or haste?",
+        tag: "riot",
+        hint: "It hasn't entered yet: it enters with a +1/+1 counter, or with haste so it can attack this turn.",
       };
     case "trigger_prompt":
       return {
@@ -247,6 +261,13 @@ function answersFor(
       return {
         primary: yes(`Pay ${c.pay_cost ?? ""}`.trim()),
         secondary: [no("Enter tapped")],
+      };
+    case "entry_riot":
+      // Riot is a choice between two things, not a yes/no, so its keys
+      // are the answers' initials: C for the counter, H for haste.
+      return {
+        primary: keyed("yes", c.accept_label || "+1/+1 counter", "C", () => h.onAnswer(true)),
+        secondary: [keyed("no", c.decline_label || "Haste", "H", () => h.onAnswer(false))],
       };
     case "confirm":
       return {

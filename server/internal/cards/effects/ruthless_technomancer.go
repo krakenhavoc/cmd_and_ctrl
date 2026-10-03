@@ -33,22 +33,19 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // move OFF the battlefield; only where it went was replaced), and a
 // sacrifice the window cancelled outright pays nothing.
 //
-// Two sandbox simplifications, declared, both weaker than printed:
+// The reanimation (ADR 0109 §9, #1842): "Sacrifice X artifacts" is the
+// variable sacrifice cost (SacrificeX, ADR 0100), whose count IS the
+// announced X (CR 107.3a), with "X can't be 0" as its floor (MinX).
+// The target's "power X or less" reads that X, before the target is
+// chosen (CR 602.2b, 601.2c) and again as the ability resolves
+// (CR 608.2b). A card in a graveyard has its printed power.
 //
-//   - The creature is chosen when the trigger goes on the stack, not
-//     on resolution (Springbloom's caveat): an opponent who removes
-//     it in response fizzles the trigger, where printed you would
-//     pick another. A second Technomancer cannot be chosen — the
-//     "another" is by name, the same read Noxious Gearhulk uses.
-//   - The activated ability is not implemented, and the reason
-//     narrowed when the "X on an activated ability" seam landed.
-//     AbilityCost DOES carry an {X} now, and the target's "power X
-//     or less" could read it off the stack item — but this card's X
-//     is not in the mana component. "Sacrifice X artifacts" is a
-//     sacrifice cost with a VARIABLE COUNT, and
-//     AbilityCost.SacrificeOther still names exactly one permanent.
-//     That is the remaining gap; nothing is charged for nothing, so
-//     the ability is simply absent.
+// One sandbox simplification, declared, weaker than printed: the
+// creature is chosen when the trigger goes on the stack, not on
+// resolution (Springbloom's caveat): an opponent who removes it in
+// response fizzles the trigger, where printed you would pick another.
+// A second Technomancer cannot be chosen — the "another" is by name,
+// the same read Noxious Gearhulk uses.
 func init() {
 	Register(Spec{
 		OracleID:     "4e58ad76-37c7-4531-b207-6890b39a2679",
@@ -56,7 +53,6 @@ func init() {
 		Completeness: CompletenessCaveats,
 		Caveats: []string{
 			"You pick the creature to sacrifice when the enter trigger goes on the stack rather than on resolution, so opponents can respond to the choice.",
-			"The reanimation ability isn't implemented — you can't sacrifice X artifacts to return a creature card from your graveyard.",
 		},
 		Triggered: []game.TriggeredAbility{{
 			Watches:        []game.EventKind{game.EventETB},
@@ -91,6 +87,21 @@ func init() {
 						return CreateToken{Controller: controller, Template: TreasureToken(), N: power}.Apply(ctx)
 					},
 				}.Apply(ctx)
+			},
+		}},
+		Activated: []ActivatedAbility{{
+			Label: "{2}{B}, Sacrifice X artifacts: Return target creature card with power X or less from your graveyard to the battlefield. X can't be 0.",
+			Cost:  Plus(ManaCost("{2}{B}"), SacrificeX("X artifacts", Artifact()), MinX(1)),
+			Targets: TargetCardInGraveyard("target creature card with power X or less from your graveyard", Creature(), YouOwn()).
+				WithPowerAtMostX(),
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				ctx := NewContext(g, item)
+				for _, t := range ctx.LegalTargets() {
+					if t.Kind == game.TargetCard {
+						return ReturnFromGraveyard{Target: t.ID, Dest: game.ZoneBattlefield, Controller: item.Controller}.Apply(ctx)
+					}
+				}
+				return nil
 			},
 		}},
 	})

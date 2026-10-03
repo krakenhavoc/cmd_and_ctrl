@@ -3,6 +3,7 @@ package decklibrary
 import (
 	"context"
 	"errors"
+	"strconv"
 	"testing"
 	"time"
 
@@ -276,5 +277,58 @@ func TestNoStoreBehavesAsNoDecksForAnybody(t *testing.T) {
 	decks, err := s.List(context.Background(), uuid.New())
 	if err != nil || len(decks) != 0 {
 		t.Errorf("NoStore.List: got %v, %v, want (nil, nil)", decks, err)
+	}
+}
+
+// Save is Upsert that says which way it went (ADR 0112 §3 item 4): the
+// decks page answers {deck, replaced}, because a save under a name the
+// person already uses replaces that deck.
+func TestSaveReportsWhetherItReplaced(t *testing.T) {
+	s, d := openStore(t)
+	owner := mustUser(t, d, "Alice")
+	ctx := context.Background()
+	// One clock for every save: replaced must not depend on time passing.
+	clock(s, time.UnixMilli(1_700_000_000_000).UTC())
+
+	first, replaced, err := s.Save(ctx, owner, "Atraxa", "text", "v1", "", []string{"Atraxa"}, 100)
+	if err != nil || replaced {
+		t.Fatalf("first Save: replaced=%v err=%v", replaced, err)
+	}
+	second, replaced, err := s.Save(ctx, owner, "Atraxa", "text", "v2", "https://moxfield.com/decks/abc", []string{"Atraxa"}, 99)
+	if err != nil || !replaced {
+		t.Fatalf("second Save: replaced=%v err=%v", replaced, err)
+	}
+	if second.ID != first.ID || second.SourceText != "v2" || second.SourceURL != "https://moxfield.com/decks/abc" || second.CardCount != 99 {
+		t.Errorf("second = %+v", second)
+	}
+	if _, replaced, err := s.Save(ctx, owner, "Krenko", "text", "v1", "", nil, 100); err != nil || replaced {
+		t.Errorf("another name: replaced=%v err=%v", replaced, err)
+	}
+	if n, _ := s.Count(ctx, owner); n != 2 {
+		t.Errorf("count = %d, want 2", n)
+	}
+}
+
+// At the cap a new name is refused and a replacement is not.
+func TestSaveAtTheCap(t *testing.T) {
+	s, d := openStore(t)
+	owner := mustUser(t, d, "Alice")
+	ctx := context.Background()
+	for i := range MaxDecks {
+		if _, _, err := s.Save(ctx, owner, "Deck "+strconv.Itoa(i), "text", "x", "", nil, 100); err != nil {
+			t.Fatalf("save %d: %v", i, err)
+		}
+	}
+	if _, _, err := s.Save(ctx, owner, "One too many", "text", "x", "", nil, 100); !errors.Is(err, ErrLibraryFull) {
+		t.Errorf("past the cap: err = %v, want ErrLibraryFull", err)
+	}
+	if _, replaced, err := s.Save(ctx, owner, "Deck 7", "text", "y", "", nil, 100); err != nil || !replaced {
+		t.Errorf("replacing at the cap: replaced=%v err=%v", replaced, err)
+	}
+}
+
+func TestNoStoreSaveFails(t *testing.T) {
+	if _, _, err := (NoStore{}).Save(context.Background(), uuid.New(), "Deck", "text", "x", "", nil, 100); err == nil {
+		t.Error("NoStore.Save: want an error")
 	}
 }

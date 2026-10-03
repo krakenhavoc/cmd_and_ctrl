@@ -508,10 +508,27 @@ charge counters for a deliberate click.
 **Reading the mana that paid (#761).** A spell that counts the mana
 spent on it reads `effects.Context`, beside `PaidAltCost`:
 `ctx.ColorsSpentCount()` (converge, CR 702.86),
-`SunburstCounters(kind)` in `OnResolve` (sunburst, CR 702.44),
 `AdamantSpent(ctx, "R", 3)` (adamant), and `ctx.NoManaSpent()` — or
 `NoManaWasSpentToCast(g, spellID)` from a cast trigger — for "if no
-mana was spent to cast it".
+mana was spent to cast it". Sunburst (CR 702.44) is a KEYWORD since
+ADR 0109 §11 (#1552): declare `PrintedKeywords:
+[]string{game.KeywordSunburst}` and the engine counts it on the
+resolving spell. A spell can be given it (`ThatSpellGains{Keywords:
+[]string{game.KeywordSunburst}}`, Lux Artillery), and each instance
+counts (CR 702.44d).
+
+**Reading ANOTHER spell's payment as it enters (ADR 0109 §11).** A
+replacement on any permanent reads the entering spell's spend with
+`g.EntrySpentForEffect(ev)` — a `game.ManaSpent`, so
+`.CountFrom(game.ManaSourceArtifact)` is Coin of Mastery and `.None()`
+is "if it wasn't cast or no mana was spent to cast it" (an entry that
+was not a cast reads as a known nothing). The shapes are
+`CreaturesYouControlEnterWithCountersPerManaFrom` and
+`SelfEntersWithCountersIfNoManaSpent` in `effects/mana_spent_entry.go`.
+A spend rider that gives the SPELL a keyword is
+`SpentSpellGains(keywords, untilEndOfTurn, when...)` (Generator Servant),
+and one whose counter count is read as the creature enters is
+`SpentEntersWithCountersCounted` (Opal Palace).
 
 A converge or sunburst card must ALSO set `Spec.WantsDistinctColors`,
 which makes the cast gate pay the generic half of the cost with colours
@@ -742,8 +759,20 @@ naming an unregistered bundle is refused with `ErrUnknownEffectKey`. A
 "return it to the battlefield tapped [with a counter]" dies trigger is
 `returnThisCreatureFromGraveyard`. See `feign_death.go`,
 `fake_your_own_death.go`, `retraction_helix.go` and `urzas_saga.go`.
-Still no shape: a duration that lasts "for as long as it has a <kind>
-counter on it" (Ultima, Origin of Oblivion).
+"For as long as it has a <kind> counter on it" is a counter-held
+`Duration` (`GrantWhileItHasCounter`, ADR 0109 §2).
+
+A granted LOYALTY ability ("Enchanted planeswalker has '[−12]: …'",
+the Talents; ADR 0109 §2) is a bundle row with a `LoyaltyCost`, granted
+with `GrantAbilitiesToAttached` like any other. Nothing else to
+declare: the row is the planeswalker's, so CR 606.3's once-per-turn
+count and CR 606.6's counter check are the walker's, shared with its
+own loyalty abilities. "You get an emblem" in a granted ability is the
+GRANTOR's emblem: declare the `Emblem` on the grantor's Spec and write
+`CreateEmblem{}`, which reads the stack item's `GrantedBy`. "Whenever you
+activate a loyalty ability of enchanted planeswalker" is
+`WheneverYouActivateALoyaltyAbilityOfEnchanted`. See `teferis_talent.go`
+and `enchanted_planeswalker.go`.
 
 ### Abilities any player may activate (ADR 0106, #1793)
 
@@ -1047,9 +1076,9 @@ line after escape's `applyAltCostEntryCountersLocked`, so a card file
 declares arithmetic over `game.CastCounts` — `X`, `Kicked`,
 `ColorsSpent`, `ManaSpent` (CR 601.2h's "the amount of mana spent to cast
 it", #1735), `Delved` — and nothing else. Constructors:
-`XCounters(kind)`, `CountersPerKick(kind, per)`,
-`SunburstCounters(kind)` in
+`XCounters(kind)`, `CountersPerKick(kind, per)`, `CountersPerDelved(kind, match)` in
 [cards/effects/entry_counters.go](../server/internal/cards/effects/entry_counters.go).
+Sunburst is not one of them any more: it is a keyword (ADR 0109 §11).
 Never build a `game.EntryCountersFromCast` by hand, for the reason
 `mana_spent.go` gives: a card says what the card says and never
 reaches for the payment record itself.
@@ -1240,10 +1269,14 @@ listed. Nothing to declare — but it does mean one thing is now on you:
 **if your `Replace` writes its own source into the event** ("that
 damage is dealt to *this* creature instead", "put the counter on
 *this* creature instead"), two copies of your card are *not*
-interchangeable and collapsing them would be wrong. No catalog card
-does this yet; if yours is the first, say so on the PR rather than
-shipping it quietly — the fix is a declared flag in the `PureCancel`
-mould. See [ADR 0013 §5a](decisions/0013-replacement-effects.md).
+interchangeable and collapsing them would be wrong. A redirection that
+declares `RedirectsDamage` is handled for you (ADR 0108 §9): the gather
+gives it no shared identity (`catalogReplacementIdentity`), so two
+Pariahs are ordered. Any other `Replace` that writes its own source into
+the event ("put the counter on *this* creature instead") is not; if yours
+is the first, say so on the PR rather than shipping it quietly — the fix
+is a declared flag in the `PureCancel` mould. See
+[ADR 0013 §5a](decisions/0013-replacement-effects.md).
 
 **A `may` is always offered, however many effects share the window.**
 `Optional: true` queues a yes/no prompt for the effect's
@@ -1390,6 +1423,70 @@ replacement that regenerates without asking
 destroy instruction's rider and the turn's mark. "When that creature dies
 this turn, exile it" (Whippoorwill) is a delayed trigger, not a
 replacement: `ExileWhenItDiesThisTurn`.
+
+**"It deals double (triple) that damage instead" from a resolving spell
+or ability** ([ADR 0108](decisions/0108-turn-scoped-effects-object-history-and-damage-shields.md)
+§3, #1890). A static doubler on a permanent (Angrath's Marauders,
+Furnace of Rath) is still an ordinary `Spec.Replacements` entry. One a
+spell or ability creates for the rest of the turn is a `ScopedEffect`
+kind, `multiplyDamage`, written with `MultiplyDamage`
+(`server/internal/cards/effects/multiply_damage.go`):
+
+```go
+MultiplyDamage{Factor: 2, Sources: game.DamageSourcesYours}                      // Insult
+MultiplyDamage{Factor: 3, Sources: game.DamageSourcesYours,
+    Recipients: game.DamageRecipientsOpponentsAndTheirPermanents}                // Isengard Unleashed
+MultiplyDamage{Factor: 2, Recipients: game.DamageRecipientsPlayerAndTheirPermanents,
+    Player: damagedPlayer, UntilYourNextTurn: true}                              // Lightning, Army of One
+MultiplyDamage{Factor: 2, Sources: game.DamageSourcesCreatures,
+    Recipients: game.DamageRecipientsCreatures, CombatOnly: true}                // Blind Fury
+MultiplyDamage{Factor: 2, From: id, Next: true}       // "the next time that source would deal damage"
+NextTimeFlip{Source: ref, SourceZone: zone}           // Desperate Gambit's win-double / lose-prevent
+```
+
+"A source you control" and the recipients are read as the damage would
+be dealt (CR 611.2c), through the source's last-known information. It is
+a replacement, not a prevention effect, so "damage can't be prevented"
+never stops it. `Next` is one instance of damage (CR 615.8), spent the
+way `PreventNextDamageFromSource` is. "Choose a source you control" is
+`ChooseSourcePrompt.Controller`.
+
+**A prevention effect that does something with what it prevented**
+([ADR 0108](decisions/0108-turn-scoped-effects-object-history-and-damage-shields.md)
+§8 and owner decision 2, #1906). The additional effect (CR 615.5) is
+never written inside `Replace`: under damage that can't be prevented
+`Replace` is not run at all, and CR 615.12 says the additional effect
+still happens. Declare it as `Then` (a registered body) and let the
+engine owe it, once per damage instance, with what was prevented. A
+static says what one application is per with `ThenPer`, and the
+constructor IS the printed subject, so the choice can't be forgotten
+(`server/internal/cards/effects/prevention_static.go`):
+
+```go
+// "If damage would be dealt to this creature, prevent that damage. Remove a +1/+1 counter" —
+// once per RECIPIENT: blocked by three, one counter comes off (the Phantoms).
+PreventDamageDealtTo(PreventionStatic{To: ToThisCreature, Then: removeACounterFromThisBody, Label: …})
+// "If a source would deal damage to you, prevent that damage and put an incarnation counter" —
+// once per SOURCE: three attackers, three counters (Nine Lives).
+PreventDamageASourceWouldDeal(PreventionStatic{To: ToYou, Then: nineLivesCounterBody, Label: …})
+// Gates and filters: Damage: CombatDamage, From: FromACreature(), While: WhileItHasAPlusOneCounter.
+
+// The scoped shields carry it too:
+PreventNextDamage{Target: id, Amount: 3, Then: countersOnItPerPreventedBody}    // Test of Faith
+PreventNextDamage{Target: you, Amount: x, Then: dealThatMuchToTheChosenTargetBody, To: player} // Vengeful Archon
+PreventAllCombatDamageThisTurn{Player: you, Then: …}                            // Inkshield
+```
+
+A body is handed two amounts, and the card's words pick one. "The damage
+prevented this way" is the params' `Amount`, zero under CR 615.12
+(Phyrexian Hydra puts on no -1/-1 counter). "That damage" / "that many"
+is `thatDamage(item)`, the damage the effect was applied to, which
+CR 615.12 still counts (Polukranos still removes that many counters).
+"This creature" in a static's body is `followUpThis(g, item)` (the
+object whose static it is, CR 400.7); "that creature" (the recipient) is
+`followUpRecipient`. Register refuses `Then` without `Prevention` and
+`Then` without `ThenPer`, and `TestPreventionStaticsOnlyPrevent` fails a
+prevention static whose `Replace` does anything but change the event.
 
 ### "Enters under the control of an opponent of your choice" (ADR 0102, #1759)
 
@@ -1675,6 +1772,8 @@ canonicalised forms the engine expects. Canonical tokens:
 | `"toxic N"` | Toxic (CR 702.164) — #748, N extra poison on combat damage to a player. Numbered AND cumulative: read it with `game.ToxicTotal`, never `HasKeyword`, and grant it through `game.AppendKeywordAbility` so a second instance adds up ([ADR 0056](decisions/0056-infect-wither-toxic.md)) |
 | `"prowess"` | Prowess (CR 702.108) — #706, the first TRIGGERED keyword in the table: `TriggersForCard` turns each instance on the effective ability list into one trigger (`game/prowess.go`). Cumulative like toxic, so grant it through `game.AppendKeywordAbility`. Never write a prowess trigger by hand — declare the token ([ADR 0014 amendment 2026-09-24](decisions/0014-combat-keywords.md)) |
 | `"evolve"` | Evolve (CR 702.100) — #1805, the second TRIGGERED keyword, built exactly like prowess: one trigger per instance (`game/evolve.go`), the CR 702.100a comparison made on entry and again on resolution (CR 603.4), and `game.EventEvolved` when a counter lands (CR 702.100b) — "whenever this creature evolves" is `WhenThisEvolves(label, effect)`. Cumulative, so grant it through `KeywordGrant` / `game.AppendKeywordAbility`. A creature whose only text is evolve and other tokens here needs no card file. Never write an evolve trigger by hand ([ADR 0106 §3](decisions/0106-five-small-seams-from-the-s50-rechecks.md#3-evolve-1805)) |
+| `"riot"` | Riot (CR 702.136) — #1556, an ENTRY keyword: the entry look-ahead (`game/entry_lookahead.go`) reads the permanent as it would exist on the battlefield (CR 614.12) and the gather asks one `entry_riot` question per instance (`game/riot.go`) — a +1/+1 counter or haste. Cumulative (CR 702.136b), so grant it through `KeywordGrant` / `game.AppendKeywordAbility`; a printed riot and Rhythm of the Wild's ask twice. Never write a riot replacement by hand ([ADR 0109 §10](decisions/0109-rule-gates-land-types-mana-and-cost-components.md#10-riot-and-unleash-1556)) |
+| `"unleash"` | Unleash (CR 702.98) — #1556, riot's sibling: one optional "enter with an additional +1/+1 counter" per instance through the same look-ahead, and "can't block as long as it has a +1/+1 counter on it" folded into the restrictions after the layer pass (`foldUnleashLocked`). Cumulative (CR 113.2c). A creature whose only text is riot or unleash and other tokens here needs no card file |
 | `"split second"` | Split second (CR 702.61) — #1519, a SPELL's keyword: `castHasSplitSecond` (`game/split_second.go`) stamps `StackItem.SplitSecond` at announce, and while it is on the stack nobody casts or activates a non-mana ability. Declare it on an instant or sorcery exactly like flash; never pass the sandbox `SplitSecond` cast flag from a card ([ADR 0007 amendment 2026-09-24](decisions/0007-stack-foundation.md)) |
 | `"rebound"` | Rebound (CR 702.88) — #1854, a SPELL's keyword read as it RESOLVES: `spellRebounds` (`game/rebound.go`) exiles a spell cast from its controller's hand instead of putting it into the graveyard, and the upkeep delayed trigger `rebound/cast` offers the free cast. Declare it on an instant or sorcery; the card file writes only the rest of its text. To GIVE a spell rebound (or any keyword) on the stack, use `ThatSpellGains{Keywords}` for "that spell gains …" from a cast trigger, and `SpellsYouControlHave(pred, kw…)` for "… spells you control have …" (a static with `AffectsSpells`, which never reaches a permanent); both are applied by the stack step of the layer pass (`game/spell_keywords.go`) ([ADR 0107 §3](decisions/0107-state-triggers-rebound-disturb-and-damage-prevention.md#3-rebound-1854)) |
 
@@ -2031,6 +2130,89 @@ it at CR 508.1a before anything is staged, ALL OR NOTHING, and
 never offered (#544). It pays through the same
 `payAbilityManaCostLocked` an activated ability uses, so `ManaTrigger`
 fires for the taps and nothing about mana is duplicated.
+
+### "Players can't play lands" (ADR 0109 §4, #1895)
+
+A land play is a special action, not a cast (CR 305.1, CR 116.2a), so a
+`CastRestriction` never reaches one. "Players can't play lands" has its
+own slot and its own gate, `Game.LandPlayGateLocked(player, card,
+fromZone)`, asked BEFORE the land-drop count (CR 101.2: "can't" beats
+"can", so an extra drop does not lift it).
+
+```go
+LandPlayRestrictions: []game.LandPlayRestriction{
+    PlayersCantPlayLands("Players can't play lands."),                  // Territorial Dispute
+    YouCantPlayLands("You can't play lands."),                          // Aggressive Mining
+    CantPlayLandsNamed("…Arabian Nights…", game.IsArabianNightsName),   // City in a Bottle
+    OpponentsCantPlayLandsFrom("…", game.ZoneGraveyard),                // Tomik
+    OpponentsWithMoreLandsCantPlayLands("…"),                           // Ward of Bones
+},
+```
+
+- The constructors are in
+  [land_play_restriction.go](../server/internal/cards/effects/land_play_restriction.go).
+  A card with a shape none of them names writes a
+  `game.LandPlayRestriction{Label, Forbids func(game.LandPlayQuery) bool}`
+  literal (Rock Jockey, Experimental Frenzy). `LandPlayQuery` carries the
+  game, the land card (the face being played), the player, the source
+  permanent and the zone the land comes from. "You" is the SOURCE's
+  controller, not the player playing.
+- Read from the battlefield through `CatalogAbilityKey`, like a cast
+  restriction, so nothing is stored and the source leaving lifts the ban.
+  `Register` refuses a restriction with no `Label` or no `Forbids`.
+- **A ban from a resolved spell or ability** ("target player can't play
+  lands this turn": Turf Wound, Solfatara, Pardic Miner, Moonhold) is not
+  this slot. Its source is gone the moment it resolves, so it is stored:
+  `CantPlayLandsThisTurn{}.Apply(ctx)` writes a `ModCantPlayLands`
+  ScopedEffect on each legal player target, swept at cleanup (CR 514.2).
+- **The gate has four callers, and a fifth must join them, never copy
+  it:** the land branch of `castSpellLocked`, the land play a resolution
+  instructs (`CanPlayLandDuringResolutionForEffect`, CR 305.2a), the
+  legal-move enumerator's `landPlayMove`, and the view (`castStampsFor`
+  stamps the refusing clause on the land's `cant_cast`; `castableNow` asks
+  the gate for a land in a graveyard, exile or a library top). Grep for
+  `LandPlayGateLocked` before adding a land-play path.
+- A "can't cast" half of the same card (City in a Bottle's, Ward of
+  Bones's, Experimental Frenzy's) is an ordinary `CastRestrictions` entry
+  beside it.
+- "A land with a name originally printed in Arabian Nights" is
+  `game.IsArabianNightsName` (CR 206.3a's list).
+
+### "Cards in graveyards can't be targeted" (ADR 0109 §6, #1885)
+
+A rule that stops spells and abilities targeting the cards in a whole
+ZONE is not a keyword on those cards: it is a static of some other
+permanent. It has its own slot, read live at the engine's two targeting
+choke points, so a refused card is never offered, can't be announced
+(CR 601.2c), and makes a spell already aimed at it lose that target at
+resolution (CR 608.2b).
+
+```go
+TargetingRestrictions: []game.TargetingRestriction{
+    CardsInGraveyardsCantBeTargeted("Cards in graveyards can't be the targets of spells or abilities."), // Ground Seal
+    OpponentsCantTarget("Lands on the battlefield and land cards in graveyards can't be the targets of spells or abilities your opponents control.",
+        Land(), game.ZoneBattlefield, game.ZoneGraveyard),                                          // Tomik
+},
+```
+
+- The constructors are in
+  [targeting_restriction.go](../server/internal/cards/effects/targeting_restriction.go).
+  A shape neither names writes a
+  `game.TargetingRestriction{Label, Zones, Forbids func(game.TargetingQuery) bool}`
+  literal. `TargetingQuery` carries the game, the candidate card as it
+  stands in its zone, the zone, the controller of the spell or ability
+  choosing the target, and the source permanent. `Register` refuses a
+  restriction with no `Label`, no `Forbids` or no `Zones`.
+- Only TARGETING is refused. A cost (delve, "exile a card from a
+  graveyard") and a "choose" that is not a target (CR 115.10a) are not, so
+  never use this slot for a rule about costs.
+- Read from the battlefield through `CatalogAbilityKey`, with nothing
+  stored: the source leaving lifts it, and a source that lost its
+  abilities restricts nothing. Don't add a check of your own anywhere
+  else; `canBeTargetedByLocked` (`game/keywords.go`) is the one place.
+- A restriction about graveyards is listed on
+  `GameView.graveyard_target_bans`, which the graveyard viewer shows as a
+  banner.
 
 ### "Spells you control can't be countered" (ADR 0106, #1806)
 
@@ -2457,6 +2639,34 @@ reads which ones through `ctx.Exiled()` (Holistic Wisdom). Not
 `ExileThis()`, which is the SOURCE. A variable count ("Exile X cards")
 has no shape yet.
 
+**Library costs and random discards (ADR 0109 §7, #1902):**
+`ExileTopOfLibrary(n)` is "Exile the top N cards of your library"
+(Seasoned Tactician, Arc-Slogger) — nothing to pick, a short library
+refuses the activation, and `ctx.Exiled()` reads the cards top first
+(Phyrexian Devourer's "the exiled card's mana value").
+`PutACardFromHandOnTop()` is "Put a card from your hand on top of your
+library" (Penance, Leashling) — the activator names the card at
+announce (`top_ids`); it is not a discard. `DiscardAtRandom(n, label)`
+is "Discard N cards at random" (Pyromancy, Meteor Storm) — the engine
+draws the cards, paid after every other cost (CR 601.2h), and
+`ctx.DiscardedCard()` reads them like any discard. Compose each with
+`Plus`. Register refuses a random discard with a predicate and both
+library components on one cost.
+
+**A target bounded by X (#1559, #1723, ADR 0109 §9):** the bound is
+a flag on the clause, never a predicate, because a predicate cannot see
+the announcement. `WithManaValueAtMostX()`, `WithManaValueEqualsX()`,
+`WithPowerAtMostX()` and `WithToughnessAtMostX()` read the X the
+announcement chose — a mana `{X}` (Killing Glare, Minamo Sightbender),
+or the count a variable sacrifice or tap names (Ruthless Technomancer,
+Aryel). Chain `.BoundByTheCountersRemoved()` after one of them when the
+X is "the number of counters removed this way" (Simic Manipulator,
+Quillmane Baku, with `RemoveCountersXFromThis`). The engine binds the
+bound before the targets are judged, re-checks it at resolution, ships
+each candidate's value so the client narrows the superset, and filters
+the bot's moves per payment. `effects.Register` refuses a bound with
+nothing to bind it to, and two statistics on one clause.
+
 **An `{X}` in the cost:** put it in the mana component, read it back
 with `ctx.X()`, and declare `XMatters: true` on the Spec (#810). The
 engine still derives "this ability prompts for X" from the cost
@@ -2492,9 +2702,12 @@ slot a cast writes, so `ctx.X()` is the same accessor an X spell's
 X Treasures" is a fact about the announcement rather than about how
 much mana is around at resolution.
 
-X lives in the MANA component and nowhere else. A cost with a
-variable COUNT — Ruthless Technomancer's "Sacrifice X artifacts" —
-is a different seam and is still open.
+X lives in the MANA component, or in a cost with a variable COUNT:
+Ruthless Technomancer's "Sacrifice X artifacts" is `SacrificeX` (ADR
+0100) and Aryel's "Tap X untapped Knights you control" is `TapXUntapped`
+(#1421). The count the activator names IS the announced X, read with
+`ctx.X()` like any other, and `effects.Register` refuses a cost that
+puts X in two places.
 
 **A Phyrexian symbol in the cost (#787):** `{W/P}` and CR 107.4's ten
 hybrid Phyrexian symbols (`{W/U/P}` … `{G/U/P}`) are ONE
@@ -3006,6 +3219,66 @@ a scope. It cannot see one sentence written as two calls without a loop,
 so wrap those by hand (`b10Fight`, Fear, Fire, Foes!). Two sentences stay
 two instances (Repulsor Blast's teamwork damage, Garruk Relentless's
 fight-back).
+
+**A charged shield is divided among an instance's events (ADR 0108 §7,
+owner decision 1).** While a charged shield ("prevent the next 3
+damage", `preventDamage` or a charged `preventFromSource`) is live, a
+scope holds back the fire-and-forget damage calls the shield could meet
+and deals them as the scope ends, once the protected player has said
+which of it the shield prevents (`divide_shield`, CR 615.7). So inside
+a scope, never read the board straight after a fire-and-forget damage
+call to learn what it did — a CR 616 pause defers it the same way. Use a
+`…ThenForEffect` continuation (`DealDamageThen`) instead. Source shields
+against a chosen or named source are `PreventDamageFromChosenSource(…)`,
+`PreventDamageFromSource{From: …}` and `.Charged(n)`
+(`effects/prevent_from_source.go`); `.DealingTo(i)` carries a follow-up's
+target clause onto the shield (Refraction Trap).
+
+**Damage dealt to something else instead (ADR 0108 §9, #1905).** A
+redirection is a replacement (CR 614.9), not a prevention effect: "can't
+be prevented" leaves it alone, and "can't be dealt instead" (Lava Burst,
+Whippoorwill) stops it. Never write `ev.DamageTarget` in a `Replace` —
+`TestDamageReplacementsDeclareWhetherTheyPrevent` fails it. Call
+`g.RedirectDamageEventForEffect(ev, to)`, which rewrites the recipient and
+the damage tail together and does nothing when CR 614.9 says so, and
+declare `RedirectsDamage: true`. In practice:
+
+- a resolving spell or ability's redirection is one
+  `effects.RedirectDamage{…}` (`effects/redirect_damage.go`): the source as
+  on every shield (`Choose`, `FromThis`, `From`, `Queries`), what it
+  protects (a `ShieldTarget` — `ShieldYou`, `ShieldYouAndPermanentsYouControl`,
+  `ShieldThis`, `ShieldClause(i)`, `ShieldTheTarget`,
+  `ShieldEnchantedCreature`; `AlsoYou` for "this creature and/or you";
+  `Opponents` for "to an opponent"), how long (`Next`, `Amount` — a
+  charge, divided by `divide_shield` and split off an event it covers
+  only part of — or neither, all turn), `CombatOnly`, and a `RedirectTo`
+  (`RedirectToThis`, `RedirectToYou`, `RedirectToSourceController`,
+  `RedirectToClause(i)`, `RedirectToEnchanted`, `RedirectToObject(id)`).
+  `redirectRow` and `redirectSpell` wrap it; `enKorRow` is the en-Kor
+  cycle's "{0}: the next 1 damage … is dealt to target creature you
+  control instead";
+- a static one ("All damage that would be dealt to you is dealt to
+  enchanted creature instead") is `staticRedirection(label,
+  redirectWhere{applies, to})`, with `redirectYourDamageToAttached` and
+  `redirectYourDamageToThis` for the common two. Its `AppliesTo` asks
+  `CanRedirectDamageForEffect`, so a redirection that would do nothing is
+  never offered in a CR 616 ordering prompt;
+- Eye for an Eye's "instead that source deals that much damage to you
+  and Eye for an Eye deals that much damage to that source's controller"
+  is a `RedirectDamage` with no `To` and a `Then`: nothing is dealt
+  instead, and the follow-up gets the amount.
+
+**One printed prevention effect is one record (ADR 0108 Delivery PR 7).**
+"Prevent all combat damage that would be dealt to and dealt by that
+creature" (Maze of Ith) is `toAndByShield(protect, combatOnly)`, one
+record with `Mod.AndDealtBy`, never a shield "to" plus a shield "by":
+two records would be two effects, each with its own chance at an event
+between two pinned creatures (CR 614.5) and its own "whenever damage is
+prevented" application (CR 615.13). Several protected permanents in one
+sentence ("up to two target creatures", "those creatures") are one
+record too: `Protect: ShieldTheTargetPermanents` or `ShieldObjects(ids…)`.
+"You and permanents you control" is `ShieldYouAndPermanentsYouControl`.
+The rows and helpers are in `effects/shield_families_recipient.go`.
 
 **Destroy clears damage only when it lands (#708).** Marked damage is
 removed by the landed outcome of a battlefield exit — not by the
@@ -5776,6 +6049,16 @@ Three things to know:
   the label and text read from the catalog on every projection. The
   board draws chips beside the player identity; the command-zone pile
   stays commander-only.
+- **An emblem's rule gates** (ADR 0109 §5, #1899) are the `EmblemSpec`
+  slots `CastRestrictions`, `LandPlayRestrictions`, `GameEndGates` and
+  `UntapCaps`: the `Spec` slots of the same names, built by the same
+  constructors. The cast gate, the land-play gate, the game-end gates and
+  the untap caps each walk every seat's emblems beside the battlefield,
+  with the emblem as the source, so `OpponentsCantCast(…)` on Narset
+  Transcendent's emblem binds the emblem owner's opponents (CR 114.2).
+  Never write an emblem's "can't" as a `CastBanRule` granted to each
+  opponent: that record is invisible on the board, frozen when it is
+  made, and does not end when the emblem's owner leaves (CR 800.4a).
 
 ### Designations: Class levels, solved Cases, station thresholds (#757, #759)
 
@@ -5901,6 +6184,16 @@ the activator names at announce (`discard_ids`), like a sacrifice cost's.
 Both pay through the one discard helper with cause COST, so every
 discard payoff sees them and none of them can pause (CR 601.2h /
 602.2b).
+
+"The discarded card" of an activated ability (Land's Edge's "if the
+discarded card was a land card", Volrath's "the discarded card's mana
+value") is `ctx.DiscardedCard()` / `ctx.DiscardedManaValue()` (ADR 0109
+§8, #1862). The payer records every card a discard component moved,
+cycling's own card first, on `PaidCost.Discarded`, as the spell path
+does, and a CR 707.10 copy of the ability carries the record (with the
+cards it exiled, the count it sacrificed and what it returned
+attacking). A missing card reads as "no card": the conditional part
+does nothing and the X is zero.
 
 `effects.Register` panics at boot on a non-battlefield ability that
 declares a tap, sacrifice-this, crew or loyalty component: none of them

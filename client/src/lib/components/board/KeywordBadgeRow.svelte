@@ -53,6 +53,9 @@
     // #662, CR 702.16. The qualities the SERVER parsed; the client
     // owns no protection grammar.
     protection?: ProtectionView[];
+    // ADR 0109 §10: the permanent's haste came from its own riot, so
+    // the haste chip says so.
+    riotHaste?: boolean;
   }
 
   const {
@@ -62,6 +65,7 @@
     chosenOption,
     chosenName,
     protection = [],
+    riotHaste = false,
   }: Props = $props();
 
   const chosen = $derived(
@@ -104,9 +108,12 @@
     shroud: "Shroud",
     infect: "Infect",
     wither: "Wither",
+    riot: "Riot",
+    unleash: "Unleash",
   };
 
   function labelFor(kw: string): string {
+    if (kw === "haste" && riotHaste) return "Riot: haste";
     return KEYWORD_LONG[kw] ?? kw;
   }
 

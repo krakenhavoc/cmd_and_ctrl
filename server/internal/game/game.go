@@ -3,6 +3,8 @@ package game
 import (
 	"errors"
 	"math/rand/v2"
+	"slices"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -434,6 +436,24 @@ type Game struct {
 	combatDamageInstance      DamageInstance
 	combatDamageInstanceBatch uint64
 
+	// damageInstanceLives is every seat's life total as each of the
+	// newest damage instances began (ADR 0108 §10, damage_as_though.go):
+	// Phyrexian Unlife's "as long as you have 0 or less life" is read
+	// against it, once per instance. Transient like the stamp it is keyed
+	// on, cloned with the game, never captured. Copy on write.
+	damageInstanceLives []damageInstanceLife
+
+	// shieldDivisions are the CR 615.7 divisions protected players have
+	// made of charged shields among one damage instance's events (ADR
+	// 0108 §7 decision 6, divide_shield.go), spent as those events land
+	// and dropped as the instance ends. Plain data, copy on write.
+	//
+	// damageStage is the open group of one instance's events being
+	// collected for such a division: set and cleared inside one
+	// mutation, so it is nil between actions.
+	shieldDivisions []ShieldDivision
+	damageStage     *damageStage
+
 	// announcedBlocks and blockedAttackers are what this combat's
 	// block declaration has produced (#830, #715). announcedBlocks
 	// maps blocker -> the attacker its EventBlock named;
@@ -800,6 +820,17 @@ type Game struct {
 	// records carry, which is all uniqueness needs, because nothing
 	// that outlives a restore (no prompt does) holds an older one.
 	scopedEffectSeq int64
+
+	// entryOrdinalSeq is the last Card.EntryOrdinal handed out (ADR
+	// 0109 §8), and entryOrdinalShared the one a simultaneous entry in
+	// progress is handing to every card it puts onto the battlefield
+	// (zero when none is). Monotone within a running game and cloned
+	// with it. Not serialised: restore sets the counter to the largest
+	// ordinal any restored card carries, as it does scopedEffectSeq,
+	// and no restore point is ever taken in the middle of an entry, so
+	// the shared one is always zero there. See entry_ordinal.go.
+	entryOrdinalSeq    int64
+	entryOrdinalShared int64
 
 	// testReplacements is the test-only replacement injection slot
 	// populated by RegisterReplacementForTest. Unexported so
@@ -1484,6 +1515,33 @@ func (g *Game) LandsPlayedThisTurnFor(playerID uuid.UUID) int {
 type CastTally struct {
 	Total       int
 	Noncreature int
+	// InstantSorceryColors is the colours of the instant and sorcery
+	// spells the player cast this turn, as a set of colour letters in
+	// WUBRG order ("UR"): Refraction Trap's "if an opponent cast a red
+	// instant or sorcery spell this turn" (ADR 0108 §9). Read as each
+	// spell became cast, off the spell on the stack (CR 601.2i), so a
+	// spell cast face down is colourless. Read through
+	// CastInstantOrSorceryOfColor.
+	InstantSorceryColors string `json:"instantSorceryColors,omitempty"`
+}
+
+// CastInstantOrSorceryOfColor reports whether the tally includes an
+// instant or sorcery spell of the colour `letter` ("R").
+func (t CastTally) CastInstantOrSorceryOfColor(letter string) bool {
+	return letter != "" && strings.Contains(t.InstantSorceryColors, letter)
+}
+
+// withInstantSorceryColors adds a cast instant or sorcery spell's
+// colours to the set, kept in WUBRG order.
+func (t CastTally) withInstantSorceryColors(colors []string) CastTally {
+	var b strings.Builder
+	for _, l := range []string{"W", "U", "B", "R", "G"} {
+		if strings.Contains(t.InstantSorceryColors, l) || slices.Contains(colors, l) {
+			b.WriteString(l)
+		}
+	}
+	t.InstantSorceryColors = b.String()
+	return t
 }
 
 // CastTallyFor returns p's tally for the current turn (zero value
@@ -1709,8 +1767,10 @@ func (g *Game) finishStepEntryLocked(canceled bool) {
 		// and nothing that waits on it (ninjutsu, "attacks and isn't
 		// blocked", the bot's block grace) waits for a pass that means
 		// nothing. A defender with a block to make stays pending; see
-		// block_completion.go for how they finish.
-		g.autoCompleteBlockDeclarationsLocked()
+		// block_completion.go for how they finish. #1501: and while
+		// one is, nobody has priority — it is parked until the last
+		// declaration completes.
+		g.beginBlockDeclarationLocked()
 	case StepPrecombatMain:
 		// S27 / CR 714.3: "after your draw step, put a lore counter
 		// on each Saga you control" is a turn-based action performed

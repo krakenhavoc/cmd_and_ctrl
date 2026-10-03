@@ -199,7 +199,9 @@ type ReplacementEffectID uint64
 // into it — see encodeCatalogReplacementID.
 //
 //	1                     .. selfReplacementIDBase  catalog (battlefield card × slot)
-//	selfReplacementIDBase   .. scopedReplacementIDBase  a card replacing its own entry, by slot
+//	selfReplacementIDBase   .. scopedReplacementIDBase  a card replacing its own entry, by slot,
+//	                                                    then riot and unleash by instance
+//	                                                    (entryKeywordReplacementID, riot.go)
 //	scopedReplacementIDBase .. testReplacementIDBase    a ScopedEffect's replacement mod, by Seq × mod
 //	testReplacementIDBase   .. builtinReplacementIDBase  test-injected, by index
 //	builtinReplacementIDBase ..                     built-ins (commander zone), by index
@@ -438,6 +440,22 @@ type ReplacementEvent struct {
 	// meaningful when NewZone == ZoneBattlefield, and ignored for a
 	// permanent with no prepare spell (CR 722.3a).
 	EntersPrepared bool
+
+	// EntersWithHaste is riot's "if you don't, it gains haste" (CR
+	// 702.136a, ADR 0109 §10): set by the haste answer to an entry_riot
+	// question and read by every battlefield landing, which gives the
+	// permanent an indefinite haste record pinned to it once its entry
+	// has been stamped and before EventETB (grantRiotHasteLocked). Rides
+	// the event for EntersTapped's reason. Only meaningful when NewZone
+	// == ZoneBattlefield. Haste is redundant (CR 702.10d), so two riots
+	// answered "haste" are one record.
+	EntersWithHaste bool
+
+	// lookAhead caches the CR 614.12 look-ahead for this entry
+	// (entry_lookahead.go), so the gather, which runs once per pass of
+	// the apply-loop, does not run a dry layer pass every time. It is
+	// keyed on what can change the answer mid-window.
+	lookAhead *entryLookAheadCache
 
 	// EntersUnlocked is CR 709.5d's designation for a Room spell that
 	// resolves (ADR 0103): the door of the half that was cast, seeded
@@ -1278,9 +1296,43 @@ type ReplacementEffect struct {
 	// permanent or player" (Lava Burst, Whippoorwill) does: while an
 	// event can't be redirected (damageCantBeRedirectedLocked), a
 	// redirection is applied without running its Replace, exactly as a
-	// prevention effect is under CR 615.12. No catalog card redirects
-	// damage today; the flag is here so the first one says so.
+	// prevention effect is under CR 615.12.
+	//
+	// ADR 0108 §9: a redirection's Replace changes the recipient only
+	// through RedirectDamageEventForEffect (redirect_damage.go), which
+	// rewrites the target and the damage tail together and does nothing
+	// when CR 614.9 says so; TestDamageReplacementsDeclareWhetherTheyPrevent
+	// fails a Replace that writes DamageTarget by hand, and one that calls
+	// the primitive without declaring this. A redirection has no shared
+	// identity (catalogReplacementIdentity): two copies write two
+	// different objects into the event, so they are ordered, not merged.
 	RedirectsDamage bool
+
+	// Then is a prevention static's CR 615.5 additional effect (ADR 0108
+	// §8, #1906): a registered body, run after the prevention with what
+	// it prevented — Nine Lives's incarnation counter, Immortal Coil's
+	// "exile a card from your graveyard for each 1 damage prevented this
+	// way", a Phantom's "remove a +1/+1 counter". The zero BodyRef is
+	// none. Catalog data, never a closure, and never captured.
+	//
+	// It requires Prevention (effects.Register refuses it otherwise),
+	// and its Replace may only prevent: the apply loop measures the
+	// event before and after Replace and owes the difference
+	// (prevention_then.go), and CR 615.12 owes it with nothing prevented
+	// when the damage can't be prevented. TestPreventionStaticsOnlyPrevent
+	// (cards/effects) fails a Prevention static whose Replace does
+	// anything but change the event.
+	Then BodyRef
+
+	// ThenPer is the unit Then runs once per, within one damage
+	// instance (ADR 0108 §8 decision 2), and is required with Then.
+	// The printed subject picks it: "if damage would be dealt to X" is
+	// one application per RECIPIENT (the Phantoms: blocked by three
+	// creatures, one +1/+1 counter is removed), "if a source would deal
+	// damage to X" one per SOURCE (Nine Lives: "if more than one source
+	// deals damage to you at once … put that many incarnation
+	// counters").
+	ThenPer PreventionUnit
 
 	// PromptQuestion is the text rendered in the yes/no Optional
 	// prompt. Short — fits in a modal header. Defaults to Label
@@ -1291,6 +1343,13 @@ type ReplacementEffect struct {
 	// ("Doubling Season: double counters"). Kept server-side so
 	// the wire carries it; no localisation yet.
 	Label string
+
+	// entryKeyword names the keyword an engine-derived entry
+	// replacement stands for — KeywordRiot or KeywordUnleash (ADR 0109
+	// §10, riot.go). Empty for every catalog, scoped and built-in
+	// replacement. Unexported: the catalog grants the KEYWORD, and the
+	// gather derives the replacement from the entry look-ahead.
+	entryKeyword string
 
 	// commanderZone marks the CR 903.9 built-in
 	// (commanderZoneReplacement) so the gather can honour an answer
@@ -1365,6 +1424,20 @@ type replacementIdentity struct {
 // is "unidentified", which never matches anything — including
 // another zero value.
 func (r replacementIdentity) known() bool { return r.card != "" }
+
+// catalogReplacementIdentity is a catalog replacement's identity — or the
+// zero identity for a REDIRECTION (ADR 0108 §9). "All damage that would be
+// dealt to you is dealt to enchanted creature instead" writes its own
+// object's creature into the event, so two Pariahs on two creatures are
+// two different modifications, and the affected player orders them
+// (CR 616.1). The zero identity never matches, so sameModification never
+// collapses them.
+func catalogReplacementIdentity(eff ReplacementEffect, key string, slot int, controller uuid.UUID) replacementIdentity {
+	if eff.RedirectsDamage {
+		return replacementIdentity{}
+	}
+	return replacementIdentity{card: key, slot: slot, controller: controller}
+}
 
 // encodeCatalogReplacementID mints the per-instance ID for slot
 // `slot` of the catalog card at battlefield index `cardIdx`: the two
@@ -1512,6 +1585,14 @@ func (g *Game) applyReplacementsLocked(ev *ReplacementEvent) (*ReplacementEvent,
 		// only those are candidates on this pass. The rest are gathered
 		// again afterwards, against the new controller (CR 616.1f).
 		applicable = entryControlTier(applicable)
+		// CR 702.136b (#1556): instances of one entry keyword — a
+		// printed riot and Rhythm of the Wild's — each work
+		// separately, and which is asked first changes nothing. The
+		// first is asked alone, and the rest are gathered again
+		// afterwards, as #792 does for two copies of one effect.
+		if len(applicable) > 1 && sameEntryKeyword(applicable) {
+			applicable = applicable[:1]
+		}
 		if len(applicable) > 1 {
 			// CR 616: affected player picks order. Queue a prompt
 			// and stash the resume frame; caller returns without
@@ -1603,14 +1684,7 @@ func (g *Game) applyReplacementsLocked(ev *ReplacementEvent) (*ReplacementEvent,
 		}
 		// Mandatory: fire Replace inline and iterate.
 		g.replacementsAppliedThisEvent[ev.ID][chosen.id] = true
-		if chosen.effect.Replace != nil {
-			if err := chosen.effect.Replace(ev, g, chosen.source); err != nil {
-				g.EmitEvent(Event{
-					Kind:     EventEffectError,
-					ErrorMsg: err.Error(),
-				})
-			}
-		}
+		g.runReplaceLocked(ev, chosen)
 	}
 	// Iteration cap exceeded — bug. Emit diagnostic and let the
 	// event through as-is so the game doesn't wedge.
@@ -1715,7 +1789,8 @@ func sameModification(applicable []activeReplacement) bool {
 // prompt; the guard is here so a future one fails loudly by prompting
 // rather than quietly by deciding.
 func asksItsOwnQuestion(e ReplacementEffect) bool {
-	return e.Optional || e.EntryLifeCost > 0 || e.EntryCardChoice != nil || e.CopySelector != nil
+	return e.Optional || e.EntryLifeCost > 0 || e.EntryCardChoice != nil || e.CopySelector != nil ||
+		e.entryKeyword == KeywordRiot
 }
 
 // declineIsReplace reports that this effect's Replace IS the "you
@@ -1729,8 +1804,14 @@ func asksItsOwnQuestion(e ReplacementEffect) bool {
 // NOT applying is weaker, so such a window skips them. For these two,
 // not applying would be the STRONGER branch — a free untapped
 // shockland, a free Mox — so the window runs Replace instead.
+//
+// Riot (ADR 0109 §10 decision 3) is the third: its Replace is the
+// counter, and an entry that cannot ask takes the counter, the default
+// entry_controller takes for the same situation. Riot is mandatory —
+// one of its two outcomes always happens — so skipping it would be a
+// third outcome the card never prints.
 func declineIsReplace(e ReplacementEffect) bool {
-	return e.EntryLifeCost > 0 || e.EntryCardChoice != nil
+	return e.EntryLifeCost > 0 || e.EntryCardChoice != nil || e.entryKeyword == KeywordRiot
 }
 
 // skipOwnQuestionLocked settles an effect that asks its own question
@@ -1780,6 +1861,9 @@ func (g *Game) offerOwnQuestionLocked(ev *ReplacementEvent, chosen activeReplace
 		// "You may reveal / discard …", "sacrifice … instead" —
 		// entry_card_choice.go.
 		return g.offerEntryCardChoiceLocked(ev, chosen), true
+	case chosen.effect.entryKeyword == KeywordRiot:
+		// Riot's counter or haste (CR 702.136a) — riot.go.
+		return g.offerEntryRiotLocked(ev, chosen), true
 	case chosen.effect.Optional:
 		// A "may" (#847) — the owner decides each time. The two cases
 		// that decline it inline — a chooser who has left, an event
@@ -1826,11 +1910,7 @@ func (g *Game) applyFirstGatheredLocked(ev *ReplacementEvent, applicable []activ
 		g.settleEntryControllerByDefaultLocked(ev, chosen)
 		return
 	}
-	if chosen.effect.Replace != nil {
-		if err := chosen.effect.Replace(ev, g, chosen.source); err != nil {
-			g.EmitEvent(Event{Kind: EventEffectError, ErrorMsg: err.Error()})
-		}
-	}
+	g.runReplaceLocked(ev, chosen)
 }
 
 // skipQuestionsLocked drops the gathered replacements that would ask
@@ -2025,7 +2105,7 @@ func (g *Game) gatherActiveReplacementsLocked(ev *ReplacementEvent) []activeRepl
 					effect:   eff,
 					source:   card,
 					id:       id,
-					identity: replacementIdentity{card: key, slot: repIdx, controller: card.Controller},
+					identity: catalogReplacementIdentity(eff, key, repIdx, card.Controller),
 				})
 			}
 		}
@@ -2141,6 +2221,13 @@ func (g *Game) gatherActiveReplacementsLocked(ev *ReplacementEvent) []activeRepl
 		}
 	}
 
+	// Keyword entry replacements — riot and unleash (ADR 0109 §10),
+	// one per instance the CR 614.12 look-ahead finds on the entering
+	// permanent as it would exist on the battlefield. Outside the block
+	// above because a keyword needs no catalog entry: the deck importer
+	// stamps a printed riot on the card itself.
+	out = g.gatherEntryKeywordReplacementsLocked(ev, applied, out)
+
 	// Scoped replacements — the replacement mods of ScopedEffect
 	// records (ADR 0041 P8, tier 3b): Fog, a prevention shield, the
 	// Whip's redirect, Cosmic Intervention. IDs are minted from each
@@ -2207,7 +2294,11 @@ func (g *Game) ReplacementOptionMetaForEffect(id ReplacementEffectID) (string, u
 	if !ok {
 		// Below the catalog range (zero) or in the self-replacement
 		// range, which names a card that is not on the battlefield
-		// and so has no slot to look up here.
+		// and so has no slot to look up here — but a keyword entry
+		// replacement is named by its keyword (riot.go).
+		if kw := EntryKeywordOfReplacement(id); kw != "" {
+			return entryKeywordLabel(kw), uuid.UUID{}
+		}
 		return "", uuid.UUID{}
 	}
 	if cardIdx >= len(g.Battlefield.Cards) {

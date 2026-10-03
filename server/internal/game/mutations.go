@@ -1251,6 +1251,19 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		// so it needs no second check.
 		//
 		// The allowance is not a literal 1 — see land_drops.go.
+		//
+		// ADR 0109 §4, CR 101.2: "can't" beats "can", so a "players
+		// can't play lands" effect is asked BEFORE the drop count, and an
+		// extra drop does not lift it. The same gate the enumerator and
+		// the view ask (land_play_gate.go).
+		if err := g.LandPlayGateLocked(playerID, card, src.Kind); err != nil {
+			slog.Warn("cast_spell rejected: an effect forbids playing this land",
+				"card_name", card.Name,
+				"oracle_id", card.OracleID,
+				"reason", err.Error(),
+			)
+			return err
+		}
 		if g.LandDropsRemainingLocked(playerID) <= 0 {
 			slog.Warn("cast_spell rejected: no land plays left this turn",
 				"card_name", card.Name,
@@ -1645,6 +1658,16 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	tally.Total++
 	if !card.IsCreature() {
 		tally.Noncreature++
+	}
+	// ADR 0108 §9: the colours of the instants and sorceries cast this
+	// turn (Refraction Trap), read off the spell as it is on the stack.
+	for i := range g.Stack.Cards {
+		if sc := &g.Stack.Cards[i]; sc.InstanceID == cardID {
+			if ch := SourceCharacteristics(sc); characteristicHasType(ch, "Instant") || characteristicHasType(ch, "Sorcery") {
+				tally = tally.withInstantSorceryColors(ch.Colors)
+			}
+			break
+		}
 	}
 	g.SpellsCastThisTurn[playerID] = tally
 	// CR 722.3c / 601.2i (ADR 0090): "that permanent loses the prepared
@@ -3978,6 +4001,11 @@ func clearKnownInZoneLocked(zone *Zone) {
 //     sacrificed by its controller (the SBA half; the lore-counter
 //     advance trigger lands in S14+ with the effect catalog)
 //
+// Supertype SBAs (ADR 0109 §8):
+//   - 704.5k: the world rule — of two or more world permanents, all
+//     but the most recent entrant go to their owners' graveyards, and
+//     all of them on a tie (entry_ordinal.go)
+//
 // Existence SBAs (#596):
 //   - 704.5d: a token in any zone other than the battlefield ceases
 //     to exist — see token_existence.go
@@ -4207,6 +4235,25 @@ func (g *Game) stateBasedActionsLocked() (fired, left bool) {
 				doomed = append(doomed, doomedPermanent{id: c.InstanceID})
 			}
 			continue
+		}
+	}
+	// 704.5k (ADR 0109 §8) — the world rule. Not a choice, so it joins
+	// the doomed set and leaves in the same simultaneous event as
+	// everything else this pass puts into a graveyard (CR 704.3): every
+	// world permanent but the most recent entrant, and all of them on a
+	// tie. It is not destruction, so indestructible and regeneration do
+	// nothing to it. A world permanent already doomed above (a world
+	// creature with lethal damage) is not listed twice.
+	for _, id := range g.worldRuleDoomedLocked() {
+		listed := false
+		for _, d := range doomed {
+			if d.id == id {
+				listed = true
+				break
+			}
+		}
+		if !listed {
+			doomed = append(doomed, doomedPermanent{id: id})
 		}
 	}
 	// S27 / CR 310.12b: a battle at zero defense is DEFEATED, and the
@@ -7509,7 +7556,9 @@ func (g *Game) passPriorityLocked() error {
 	// action is over: its triggers go on the stack and the ACTIVE
 	// player receives priority (CR 509.2, 117.3a), rather than the
 	// rotation carrying on as if the attacker had already had its
-	// post-declaration window.
+	// post-declaration window. #1501: priority is parked while anyone
+	// is declaring, so this is the rare case of a pending defender who
+	// holds priority anyway (block_completion.go's header).
 	if g.Turn.Step == StepDeclareBlockers {
 		if h := g.Turn.PriorityHolder; h >= 0 && h < numSeats && g.Seats[h] != nil {
 			// #1597 / CR 509.1c: and so it is the declaration's
@@ -8268,6 +8317,16 @@ func (g *Game) assignAndDealCombatDamageLocked(step string) {
 	// taken half of it is not a game state, so the per-event CR 603.8
 	// check waits until every assignment here has been dealt.
 	defer g.holdStateTriggersLocked()()
+	// ADR 0108 §7 decision 6, CR 615.7: while a charged shield is live,
+	// the step's damage is collected and dealt all at once as the loop
+	// ends, once each shield it meets more of than it can cover has
+	// been divided by the player it protects (divide_shield.go). A
+	// deferred call runs before the state-trigger hold is released.
+	if g.anyChargedShieldLocked() {
+		if prev, staged := g.openDamageStageLocked(g.combatDamageInstanceLocked(), true, false); staged {
+			defer g.closeDamageStageLocked(prev)
+		}
+	}
 
 	blockersByAttacker := make(map[uuid.UUID][]int, len(g.Battlefield.Cards))
 	// #1706: a blocker that still blocks two or more live attackers
@@ -8721,6 +8780,10 @@ func (g *Game) Concede(playerID uuid.UUID) error {
 	if heldForAnnouncement && g.State == StateActive && !g.triggerAnnouncementOpenLocked() {
 		g.runStateChecksLocked()
 	}
+	// #1501: and for a block declaration. A defender who leaves while
+	// priority is parked for their declaration was the one the table
+	// was waiting on; if nobody else is, the declaration is over.
+	g.settleBlockDeclarationLocked()
 	return nil
 }
 

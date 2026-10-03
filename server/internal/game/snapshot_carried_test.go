@@ -584,6 +584,34 @@ func generateNonZero(rt reflect.Type, seed string, depth int) (reflect.Value, er
 		return reflect.ValueOf(uuid.NewSHA1(uuid.Nil, []byte(seed))), nil
 	case timeType:
 		return reflect.ValueOf(time.Date(2026, time.September, 19, 12, 0, 0, 0, time.UTC)), nil
+	case riderType:
+		// ADR 0109 §11: restore refuses a rider kind, or a count key,
+		// this binary does not read, wherever a token is carried. A
+		// readable rider with every field non-zero instead.
+		return reflect.ValueOf(ManaSpendRider{
+			Kind: ManaRiderEntersWithCounters, When: []string{"drift-" + seed},
+			CounterKind: "drift-" + seed, Counters: 3, Count: carriedTestRiderCount,
+			Keywords: []string{"drift-" + seed}, UntilEndOfTurn: true,
+			Trigger:    "drift-" + seed,
+			Production: uuid.NewSHA1(uuid.Nil, []byte(seed+"/production")), Applied: true,
+		}), nil
+	case durationType:
+		// ADR 0109 Shared machinery 2: restore refuses a duration it
+		// cannot read wherever it is stored (an untap hold's, a cast
+		// permission's, a player static's), so an invented 4242 kind
+		// would fail the restore rather than test the carry. A readable
+		// duration with every field non-zero instead, the new
+		// conjunction and counter kind included.
+		return reflect.ValueOf(Duration{
+			Kind: ForAsLongAs, Condition: WhilePinnedHasCounter, CounterKind: "drift-" + seed,
+			Also:                []DurationCondition{WhileSourceRemainsTapped},
+			Player:              uuid.NewSHA1(uuid.Nil, []byte(seed+"/player")),
+			ExpiresAtTurnsBegun: 11, ExpiresAfterTurnsBegun: 10,
+			Source:          uuid.NewSHA1(uuid.Nil, []byte(seed+"/source")),
+			SourceEnteredAt: 4949,
+			Pinned:          uuid.NewSHA1(uuid.Nil, []byte(seed+"/pinned")),
+			PinnedEnteredAt: 5050, PinnedUnstamped: true, PinnedOnStack: true, PinnedEpoch: 6,
+		}), nil
 	}
 	out := reflect.New(rt).Elem()
 	switch rt.Kind() {
@@ -783,6 +811,18 @@ var (
 	carriedTestBodyKey      = testBody(func(*Game, *StackItem) error { return nil })
 	carriedTestConditionKey = testCondition(func(Event, *DelayedTrigger, *Game) bool { return false })
 )
+
+// carriedTestRiderCount is the counted-rider key the carried probes use
+// for ManaSpendRider.Count (ADR 0109 §11): restore refuses a count key
+// this binary does not register, so an invented one would fail the
+// restore rather than test the carry.
+const carriedTestRiderCount = "test-carried-rider-count"
+
+func init() {
+	RegisterManaRiderCount(carriedTestRiderCount, ManaRiderCount{
+		Count: func(*Game, uuid.UUID, Card) int { return 0 },
+	})
+}
 
 // carriedTestParams is a fully populated EffectParams whose filter is
 // valid, for the carried probes.

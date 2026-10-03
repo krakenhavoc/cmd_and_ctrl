@@ -36,6 +36,14 @@ drafted in parallel for replaceable token creation and discard, and
 
 Line references are to `origin/develop` at `2a0a46bd`.
 
+> **Amended by [ADR 0109](0109-rule-gates-land-types-mana-and-cost-components.md)** (2026-10-02):
+> its §2 and §3 add three `ForAsLongAs` conditions about the PINNED
+> object (`WhilePinnedHasCounter` with `Duration.CounterKind`,
+> `WhilePinnedRemainsTapped`, `WhilePinnedPowerAtMostSource`) and a
+> conjunction (`Duration.Also`), all read by the one expiry function;
+> its Shared machinery 2 refuses on restore any stored duration this
+> binary cannot read. Delivery PR 2.
+
 ---
 
 ## Context

@@ -213,6 +213,20 @@ type damageTail struct {
 	// Cleared through the pointer as it runs, like `then`.
 	endsInstance bool
 
+	// released marks an event rebuilt from a staged one (divide_shield.go,
+	// ADR 0108 §7): it was collected once so a charged shield could be
+	// divided, and is dealt now, never staged again.
+	released bool
+
+	// redirected is the damage charged redirections split off this event
+	// (ADR 0108 §9, redirect_damage.go): "the next 2 damage … is dealt to
+	// any target instead" meeting 5 leaves 3 here and carries 2 to be
+	// dealt to the destination as their own event when this one ends,
+	// with what was already applied to it (CR 614.5). Set inside the
+	// CR 614 window, so an event is never staged with any; cleared
+	// through the pointer as the parts are dealt, like `then`.
+	redirected []redirectedDamage
+
 	// then is the CALLER's half of the tail (#807): the rest of the
 	// effect that asked for the damage, run with the amount that
 	// ACTUALLY landed once the CR 614 window has settled it. The exact
@@ -545,18 +559,13 @@ func (g *Game) damageThroughReplacementsLocked(ev *ReplacementEvent) (paused boo
 	if ev == nil {
 		return false, nil
 	}
-	// #662: the ONE place the source's last-known information moves
-	// from the tail (where every entry point already snapshots it,
-	// alongside deathtouch and lifelink) onto the event the CR 614
-	// pipeline sees. CR 702.16e's built-in reads it there.
-	if ev.SourceLKI == nil && ev.damageTail != nil {
-		ev.SourceLKI = ev.damageTail.sourceLKI
-	}
-	// ADR 0107 §5: the source's own "can't be prevented" static is
-	// last-known information too, read as the event is opened.
-	if t := ev.damageTail; t != nil && !t.sourceChecked {
-		t.sourceChecked = true
-		t.sourceUnpreventable = g.sourceDamageCantBePreventedLocked(ev.DamageSource)
+	g.prepareDamageEventLocked(ev)
+	// ADR 0108 §7: an event of an instance whose charged shield may have
+	// to be divided waits for the rest of the instance and the division
+	// (divide_shield.go). It is dealt when the group closes, as a paused
+	// event is dealt when its prompt is answered.
+	if g.stageDamageEventLocked(ev) {
+		return true, nil
 	}
 	out, err := g.applyReplacementsLocked(ev)
 	if errors.Is(err, errReplacementPending) {
@@ -580,6 +589,26 @@ func (g *Game) damageThroughReplacementsLocked(ev *ReplacementEvent) (paused boo
 		return false, g.runDamageTailLocked(ev, 0)
 	}
 	return false, g.applyResolvedDamageLocked(out)
+}
+
+// prepareDamageEventLocked reads what a damage event carries of its source
+// as it is opened, before any replacement sees it. Idempotent.
+//
+// Caller must hold g.mu.
+func (g *Game) prepareDamageEventLocked(ev *ReplacementEvent) {
+	// #662: the ONE place the source's last-known information moves
+	// from the tail (where every entry point already snapshots it,
+	// alongside deathtouch and lifelink) onto the event the CR 614
+	// pipeline sees. CR 702.16e's built-in reads it there.
+	if ev.SourceLKI == nil && ev.damageTail != nil {
+		ev.SourceLKI = ev.damageTail.sourceLKI
+	}
+	// ADR 0107 §5: the source's own "can't be prevented" static is
+	// last-known information too, read as the event is opened.
+	if t := ev.damageTail; t != nil && !t.sourceChecked {
+		t.sourceChecked = true
+		t.sourceUnpreventable = g.sourceDamageCantBePreventedLocked(ev.DamageSource)
+	}
 }
 
 // applyResolvedDamageLocked performs the underlying mutation for a
@@ -658,6 +687,11 @@ func (g *Game) applyResolvedDamageLocked(ev *ReplacementEvent) error {
 func (g *Game) runDamageTailLocked(ev *ReplacementEvent, dealt int) error {
 	if ev == nil || ev.damageTail == nil {
 		return nil
+	}
+	// ADR 0108 §9: the damage a charged redirection split off is dealt
+	// with the event it came from, as part of the same instance.
+	if len(ev.damageTail.redirected) > 0 {
+		g.dealRedirectedDamageLocked(ev)
 	}
 	// ADR 0108 PR 0: a single instruction's instance is over with its
 	// one event.
@@ -762,7 +796,11 @@ func (g *Game) applyResolvedDamageToPlayerLocked(ev *ReplacementEvent, t *damage
 	// the damage amount — because the damage is still dealt; only its
 	// result differs. Infect damage changes no life total, so no
 	// "whenever a player loses life" trigger sees it.
-	poison, lifeLoss := t.result.DamageToPlayer(ev.DamageAmount, t.combat)
+	//
+	// ADR 0108 §10: a battlefield static can make the damage dealt as
+	// though its source had infect (Phyrexian Unlife), read as it lands
+	// (damage_as_though.go).
+	poison, lifeLoss := g.damageResultAsThoughLocked(ev, t).DamageToPlayer(ev.DamageAmount, t.combat)
 	loseLife := lifeLoss > 0 && !g.playerLifeTotalCantChangeLocked(p)
 	if t.combat {
 		if loseLife {
@@ -805,7 +843,10 @@ func (g *Game) applyResolvedDamageToPermanentLocked(ev *ReplacementEvent, t *dam
 		// "whenever ~ is dealt damage" trigger must not see it.
 		return 0, nil
 	}
-	ok, minusOne := g.applyDamageToPermanentLocked(ev.DamageTarget, ev.DamageAmount, t)
+	// ADR 0108 §10: a battlefield static can make the damage dealt as
+	// though its source had wither (Everlasting Torment), read as it
+	// lands (damage_as_though.go).
+	ok, minusOne := g.applyDamageToPermanentLocked(ev.DamageTarget, ev.DamageAmount, t, g.damageResultAsThoughLocked(ev, t))
 	if !ok {
 		return 0, ErrCardNotFound
 	}

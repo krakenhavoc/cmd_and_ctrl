@@ -1,6 +1,7 @@
 package game
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/google/uuid"
@@ -189,27 +190,38 @@ func TestBlockDeclarationIsOneEventBatch(t *testing.T) {
 	}
 }
 
-// TestBlockDeclarationLocksInOnPriorityWrap — the production path
-// through PassPriority. Priority passing all the way around is the
-// declaration being complete (CR 509.1), and the engine announces it
-// there rather than a step later.
-func TestBlockDeclarationLocksInOnPriorityWrap(t *testing.T) {
+// TestBlockDeclarationLocksInWhenTheDefenderFinishes — the production
+// path. Priority is parked while the defender declares (#1501), so
+// their finish_blocks is the declaration being complete (CR 509.1): the
+// engine announces it there, before anyone has priority, and the active
+// player then receives priority with the blocks already on record.
+func TestBlockDeclarationLocksInWhenTheDefenderFinishes(t *testing.T) {
 	g := newActiveGame(t)
 	attackerA, _, blockerX, _ := blockSetup(t, g)
 
+	if g.Turn.PriorityHolder != NoPriority {
+		t.Fatalf("priority is parked while the defender declares; holder %d", g.Turn.PriorityHolder)
+	}
 	if err := g.DeclareBlocker(blockerX, attackerA); err != nil {
 		t.Fatalf("DeclareBlocker: %v", err)
 	}
-	for i := 0; i < len(g.Seats); i++ {
-		if g.Turn.Step != StepDeclareBlockers {
-			break
-		}
-		if err := g.PassPriority(); err != nil {
-			t.Fatalf("PassPriority: %v", err)
-		}
+	if n := len(blockDeclEvents(g, EventBecomesBlocked, attackerA)); n != 0 {
+		t.Fatalf("a staged block announces nothing before the finish: %d events", n)
+	}
+	if err := g.FinishBlocks(g.Seats[1].ID); err != nil {
+		t.Fatalf("FinishBlocks: %v", err)
 	}
 	if n := len(blockDeclEvents(g, EventBecomesBlocked, attackerA)); n != 1 {
-		t.Fatalf("the priority wrap locks the declaration in: %d becomes-blocked events", n)
+		t.Fatalf("the finish locks the declaration in: %d becomes-blocked events", n)
+	}
+	if g.Turn.Step != StepDeclareBlockers || g.Turn.PriorityHolder != g.Turn.ActiveSeat {
+		t.Fatalf("after the declaration the active player gets priority in the step: %s, holder %d", g.Turn.Step, g.Turn.PriorityHolder)
+	}
+	// And the table's passes from there end the step with nothing new
+	// to announce.
+	passUntilStep(t, g, StepCombatDamage)
+	if n := len(blockDeclEvents(g, EventBecomesBlocked, attackerA)); n != 1 {
+		t.Fatalf("the declaration is announced once: %d becomes-blocked events", n)
 	}
 }
 
@@ -269,23 +281,38 @@ func TestBlockAnnouncementsRewindWithUndo(t *testing.T) {
 		t.Fatalf("B was never declared against: %d events", n)
 	}
 
-	// Undo of a re-point made AFTER the lock-in. The announcements
-	// rewind with the log, so re-locking announces nothing new.
+	// #1501: AFTER the lock-in the declaration is complete, and a
+	// re-point is a late block — refused, and nothing moves.
 	announced := g.Clone()
+	var br *BlockRefusedError
+	if err := g.DeclareBlocker(blockerX, attackerB); !errors.As(err, &br) || br.Reason != BlockReasonBlocksDeclared {
+		t.Fatalf("a re-point after the lock-in: %v, want blocks_declared", err)
+	}
+	if findCard(g, blockerX).BlockingTarget != attackerA {
+		t.Fatal("the refused re-point moved the blocker")
+	}
+	// Undo back across the lock-in reopens the declaration: the
+	// re-point is taken again, and the lock-in announces B once.
+	g.WithWriteLock(func() { g.RestoreFrom(staged) })
 	if err := g.DeclareBlocker(blockerX, attackerB); err != nil {
-		t.Fatalf("re-point: %v", err)
+		t.Fatalf("re-point after undoing the lock-in: %v", err)
 	}
 	lockInBlockDeclaration(t, g)
 	if n := len(blockDeclEvents(g, EventBecomesBlocked, attackerB)); n != 1 {
-		t.Fatalf("the post-lock-in re-point announces B once: %d events", n)
+		t.Fatalf("the re-point announces B once: %d events", n)
 	}
+	if n := len(blockDeclEvents(g, EventBecomesBlocked, attackerA)); n != 0 {
+		t.Fatalf("A was not blocked in this branch: %d events", n)
+	}
+	// Redo to the announced state: the announcements come back with
+	// the log, so re-locking announces nothing new.
 	g.WithWriteLock(func() { g.RestoreFrom(announced) })
 	lockInBlockDeclaration(t, g)
 	if n := len(blockDeclEvents(g, EventBlock, blockerX)); n != 1 {
-		t.Errorf("the undone announcement is not replayed: %d block events", n)
+		t.Errorf("the restored announcement is not replayed: %d block events", n)
 	}
 	if n := len(blockDeclEvents(g, EventBecomesBlocked, attackerA)); n != 1 {
-		t.Errorf("A is still blocked exactly once after the undo: %d events", n)
+		t.Errorf("A is still blocked exactly once after the restore: %d events", n)
 	}
 }
 
