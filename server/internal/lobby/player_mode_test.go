@@ -582,6 +582,65 @@ func TestAllowlistAndModeAreAskedOnlyInAdminsGo(t *testing.T) {
 	}
 }
 
+// keptServerCredentialSites are the functions that ask
+// isServerCredential, "is this the shared token": the bot's own paths,
+// which a person never takes in either mode, so player mode leaves them
+// as they are (ADR 0112 §2, "Kept on purpose"). Each count is how many
+// times the function asks.
+var keptServerCredentialSites = map[string]int{
+	"deckCoverageLimit": 1, // the bot's own coverage bucket
+	"deckRequesterFor":  1, // filing a deck request in a named member's name
+	"file":              1, // file: the issue's "filed by the bot" flag
+	"request":           1, // deck_id on POST /deck-requests is a person's library; the token is refused (ADR 0112 PR 2, #2001)
+	"callerKey":         1, // the per-caller limits' shared admin bucket
+	"createGameWith":    1, // the token creates tables with no creator and no open-table cap
+	"practiceOwner":     1, // the token's practice table
+	"inviteDM":          1, // naming a raw Discord snowflake
+	"AuthorizeUpgrade":  1, // the token never has an own binding
+}
+
+// TestServerCredentialSitesAreAllKept: every isServerCredential site is
+// one of the kept bot paths above. A new one fails here until it is
+// classified: either it is the token's own path and joins the list, or
+// it is an admin decision and must ask isAdmin instead, which puts it in
+// the same-answer table.
+func TestServerCredentialSitesAreAllKept(t *testing.T) {
+	fset := token.NewFileSet()
+	pkgs, err := parser.ParseDir(fset, ".", func(fi fs.FileInfo) bool { return !strings.HasSuffix(fi.Name(), "_test.go") }, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := map[string]int{}
+	for _, pkg := range pkgs {
+		for _, f := range pkg.Files {
+			for _, decl := range f.Decls {
+				fd, ok := decl.(*ast.FuncDecl)
+				if !ok || fd.Body == nil || fd.Name.Name == "isAdminPrincipal" {
+					continue
+				}
+				ast.Inspect(fd.Body, func(n ast.Node) bool {
+					if call, ok := n.(*ast.CallExpr); ok {
+						if id, ok := call.Fun.(*ast.Ident); ok && id.Name == "isServerCredential" {
+							got[fd.Name.Name]++
+						}
+					}
+					return true
+				})
+			}
+		}
+	}
+	for fn, n := range got {
+		if keptServerCredentialSites[fn] != n {
+			t.Errorf("%s asks isServerCredential %d times; keptServerCredentialSites says %d. Classify it: a path only the shared token takes joins the list, an admin decision asks isAdmin (ADR 0112 §2)", fn, n, keptServerCredentialSites[fn])
+		}
+	}
+	for fn, n := range keptServerCredentialSites {
+		if got[fn] == 0 {
+			t.Errorf("keptServerCredentialSites lists %s (%d), which no longer asks isServerCredential", fn, n)
+		}
+	}
+}
+
 // isAllowlisted answers "may this person switch admin mode on", never
 // "is this an admin". Only the predicate, the switch and /me ask it.
 func TestIsAllowlistedIsAskedOnlyByTheSwitchAndMe(t *testing.T) {
