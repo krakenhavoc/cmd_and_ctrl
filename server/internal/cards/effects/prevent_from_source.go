@@ -57,6 +57,10 @@ type PreventDamageFromSource struct {
 	// Then is the CR 615.5 follow-up. Zero is none.
 	Then game.BodyRef
 
+	// UntilYourNextTurn is "until your next turn" (Gideon of the
+	// Trials); false is "this turn".
+	UntilYourNextTurn bool
+
 	// Question is the source prompt's header; Label the shield's. Both
 	// default to the card's name.
 	Question string
@@ -102,8 +106,9 @@ func (p PreventDamageFromSource) Apply(ctx *Context) error {
 		ProtectPermanent: protected.ProtectPermanent,
 		CombatOnly:       p.CombatOnly,
 		Amount:           p.Amount,
-		Then:             p.Then,
-		Label:            label,
+		Then:              p.Then,
+		UntilYourNextTurn: p.UntilYourNextTurn,
+		Label:             label,
 	}
 	pick := shieldSourcePick{Choose: p.Choose, FromThis: p.FromThis, From: p.From, Queries: p.Queries, Question: p.Question}
 	return pick.resolve(ctx, registerSourceShield(shield))

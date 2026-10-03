@@ -104,12 +104,18 @@ type DamageShield struct {
 	// Then is the CR 615.5 follow-up, run with the amount prevented.
 	Then BodyRef
 
+	// UntilYourNextTurn is Gideon of the Trials' "until your next turn"
+	// (CR 611.2b), "you" being Controller. False is "this turn" (CR
+	// 514.2), which every other printed member says.
+	UntilYourNextTurn bool
+
 	// Label is the record's label.
 	Label string
 }
 
 // PreventDamageFromSourceThisTurnForEffect registers the shield until
-// cleanup (CR 514.2: every printed member says "this turn"). Reports
+// cleanup (CR 514.2: "this turn"), or until its controller's next turn
+// begins with UntilYourNextTurn (CR 611.2b, Gideon of the Trials). Reports
 // whether a record was written: nothing is registered for a charged
 // shield with neither a source nor a property, a negative charge, or a
 // protected permanent that is not on the battlefield.
@@ -139,6 +145,9 @@ func (g *Game) PreventDamageFromSourceThisTurnForEffect(s DamageShield) bool {
 		label = "prevent damage from a source this turn"
 	}
 	d := g.UntilEndOfTurnDuration()
+	if s.UntilYourNextTurn {
+		d = g.UntilYourNextTurnDuration(s.Controller)
+	}
 	if s.ProtectPermanent != uuid.Nil {
 		affected := g.PinnedObjectsLocked(s.ProtectPermanent)
 		if len(affected) == 0 {
