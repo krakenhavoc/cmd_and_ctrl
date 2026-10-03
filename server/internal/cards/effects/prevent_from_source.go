@@ -50,6 +50,11 @@ type PreventDamageFromSource struct {
 	// CombatOnly is "all combat damage".
 	CombatOnly bool
 
+	// AndDealtBy is "dealt to and dealt by" (Maze of Ith): the protected
+	// permanents are also the sources the shield stops, in one record.
+	// It names no other source (ADR 0108 Delivery PR 7).
+	AndDealtBy bool
+
 	// Amount is "the next N damage" (CR 615.7); zero is all damage this
 	// turn.
 	Amount int
@@ -92,9 +97,37 @@ func (p PreventDamageFromSource) Apply(ctx *Context) error {
 		label = shieldSourceName(ctx) + " — prevent damage from a source this turn"
 	}
 	// What the shield protects is read exactly as the next-damage
-	// shield reads it.
+	// shield reads it, or, for several permanents in one record, by
+	// protectMany (ADR 0108 Delivery PR 7).
 	protected := game.NextDamageShield{Controller: ctx.Controller()}
-	if !(PreventNextDamageFromSource{Protect: p.Protect}).protect(ctx, &protected) {
+	var many []uuid.UUID
+	switch p.Protect.kind {
+	case shieldTheTargetPermanents, shieldObjects:
+		if many = p.Protect.protectMany(ctx); len(many) == 0 {
+			return nil
+		}
+	default:
+		if !(PreventNextDamageFromSource{Protect: p.Protect}).protect(ctx, &protected) {
+			return nil
+		}
+	}
+	if p.AndDealtBy {
+		// "Dealt to and dealt by" names the protected permanents as the
+		// sources too, and nothing else.
+		if protected.ProtectPermanent == uuid.Nil && len(many) == 0 {
+			return nil
+		}
+		ctx.Game.PreventDamageFromSourceThisTurnForEffect(game.DamageShield{
+			EffectSource:      ctx.Source(),
+			Controller:        ctx.Controller(),
+			ProtectPermanent:  protected.ProtectPermanent,
+			ProtectPermanents: many,
+			AndDealtBy:        true,
+			CombatOnly:        p.CombatOnly,
+			Then:              p.Then,
+			UntilYourNextTurn: p.UntilYourNextTurn,
+			Label:             label,
+		})
 		return nil
 	}
 	shield := game.DamageShield{
@@ -104,6 +137,7 @@ func (p PreventDamageFromSource) Apply(ctx *Context) error {
 		ProtectPlayer:     protected.ProtectPlayer,
 		ProtectTypes:      protected.ProtectTypes,
 		ProtectPermanent:  protected.ProtectPermanent,
+		ProtectPermanents: many,
 		CombatOnly:        p.CombatOnly,
 		Amount:            p.Amount,
 		Then:              p.Then,

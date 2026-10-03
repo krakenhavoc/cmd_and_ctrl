@@ -1796,10 +1796,8 @@ func (g *Game) ResolveOptionalReplacement(choiceID, chooserID uuid.UUID, apply b
 	// re-evaluate this effect again for this event (CR 614.5: the
 	// decision is once per event).
 	g.replacementsAppliedThisEvent[ev.ID][chosen.id] = true
-	if apply && chosen.effect.Replace != nil {
-		if err := chosen.effect.Replace(ev, g, chosen.source); err != nil {
-			g.EmitEvent(Event{Kind: EventEffectError, ErrorMsg: err.Error()})
-		}
+	if apply {
+		g.runReplaceLocked(ev, chosen)
 	}
 
 	// Re-enter the apply-loop for any newly-applicable effects.
@@ -2116,11 +2114,7 @@ func (g *Game) ResolveReplacementOrder(choiceID, chooserID uuid.UUID, ordered []
 			continue
 		}
 		g.replacementsAppliedThisEvent[ev.ID][chosen.id] = true
-		if chosen.effect.Replace != nil {
-			if err := chosen.effect.Replace(ev, g, chosen.source); err != nil {
-				g.EmitEvent(Event{Kind: EventEffectError, ErrorMsg: err.Error()})
-			}
-		}
+		g.runReplaceLocked(ev, chosen)
 	}
 
 	// Resume the apply-loop to pick up any newly-applicable effects

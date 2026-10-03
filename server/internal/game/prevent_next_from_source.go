@@ -242,10 +242,13 @@ func nextFromSourceModProblem(m Mod) string {
 		if m.Kind == ModMultiplyDamage {
 			sourced = false
 		}
-		if sourced || queries || m.Half {
+		if sourced || queries || m.Half || m.AndDealtBy {
 			return fmt.Sprintf("mod %q carries a damage-source field only preventNextFromSource reads", m.Kind)
 		}
 		return ""
+	}
+	if m.AndDealtBy {
+		return fmt.Sprintf("a %s shield carries andDealtBy, which only preventFromSource reads", m.Kind)
 	}
 	if m.CombatOnly {
 		// The combat-only shield is its own kind, so that an older
@@ -375,6 +378,7 @@ func (g *Game) nextFromSourceProtectsLocked(e ScopedEffect, m Mod, target uuid.U
 //
 // Caller must hold g.mu (write).
 func (g *Game) applyNextFromSourceLocked(e ScopedEffect, mod int, m Mod, ev *ReplacementEvent) {
+	damage := ev.DamageAmount
 	prevented := ev.DamageAmount
 	if m.Half {
 		// Dark Sphere (ADR 0108 §7 decision 4): "prevent half that
@@ -387,7 +391,7 @@ func (g *Game) applyNextFromSourceLocked(e ScopedEffect, mod int, m Mod, ev *Rep
 	if m.SpentBatch == 0 && m.SpentInstance == 0 {
 		g.markNextShieldSpentLocked(e.Seq, mod, g.currentEventBatchLocked(), ev.DamageInstance)
 	}
-	g.queuePreventionFollowUpLocked(e, m, ev, prevented)
+	g.queuePreventionFollowUpLocked(e, m, ev, prevented, damage)
 }
 
 // nextShieldOpenToLocked reports whether a next-damage shield may still
@@ -511,34 +515,48 @@ func (q PermanentQuery) matchesCharacteristic(ch *Characteristic) bool {
 
 // EventDamagePrevented is the kind of the TriggerContext a prevention
 // follow-up body is handed: Source is the damage source, Target what it
-// would have been dealt to, Amount how much was prevented, Actor the
-// source's controller and Colors the source's colours, all as they were
-// when the damage would have been dealt. It is never emitted: CR 615.13's
-// "whenever damage is prevented" triggers are not modelled, and no card
-// in the catalog prints one.
+// would have been dealt to, Amount the damage the prevention effect was
+// applied to ("that damage", "that many"), Actor the source's controller
+// and Colors the source's colours, all as they were when the damage would
+// have been dealt. How much of it was PREVENTED ("prevented this way") is
+// the params' Amount. The two differ when the damage couldn't be prevented
+// (CR 615.12: Polukranos still removes "that many" counters, Phyrexian
+// Hydra puts on none "for each 1 damage prevented this way") and when a
+// charge covered part of it. It is never emitted: CR 615.13's "whenever
+// damage is prevented" triggers are not modelled, and no card in the
+// catalog prints one.
 const EventDamagePrevented EventKind = "damage_prevented"
 
-// PreventionFollowUp is one shield's CR 615.5 additional effect, owed for
-// the instance of damage it prevented and not yet run.
+// PreventionFollowUp is one prevention effect's CR 615.5 additional
+// effect, owed for the instance of damage it was applied to and not yet
+// run.
 //
 // ONE PER INSTANCE, NOT PER EVENT. "The damage prevented this way" is the
-// total the shield prevented from that one instance — and the engine
+// total the effect prevented from that one instance — and the engine
 // opens one damage event per recipient, so a trampler's split damage, a
 // double block or an "each creature" spell is several events. Each event
-// the shield prevents adds to the one entry for (Seq, Instance), and the
-// body runs ONCE with the total when the instance has settled
-// (flushPreventionFollowUpsForInstanceLocked, and ADR 0107's flush
-// points): Awe Strike against a 5-power trampler blocked by two gains 5
-// life in one event, not 3 and then 2 (which would trigger "whenever you
-// gain life" twice). Two instances are two entries (ADR 0108 PR 0): a
-// shield applied to two separate instructions' unpreventable damage
-// (CR 615.12) runs its follow-up once for each.
+// the effect is applied to adds to the one entry for its key and
+// instance, and the body runs ONCE with the total when the instance has
+// settled (flushPreventionFollowUpsForInstanceLocked, and ADR 0107's
+// flush points): Awe Strike against a 5-power trampler blocked by two
+// gains 5 life in one event, not 3 and then 2 (which would trigger
+// "whenever you gain life" twice). Two instances are two entries (ADR
+// 0108 PR 0): a shield applied to two separate instructions'
+// unpreventable damage (CR 615.12) runs its follow-up once for each.
+//
+// THE KEY. A scoped shield's entry is keyed on its record (Seq). A
+// static's (ADR 0108 §8, Static) is keyed on the object whose static it
+// is (Source and Epoch, CR 400.7), the replacement's slot on its card, and
+// the unit its printed subject names (Unit, ReplacementEffect.ThenPer):
+// the recipient for "if damage would be dealt to X", the damage source for
+// "if a source would deal damage to X".
 //
 // Plain data on the Game, carried by the snapshot (a combat damage step's
 // instance is owed until a player would next receive priority), rewound
 // by undo with the records.
 type PreventionFollowUp struct {
 	// Seq is the shield record's; Batch the event batch of its instance.
+	// Seq is zero on a static's entry.
 	Seq   int64  `json:"seq"`
 	Batch uint64 `json:"batch"`
 	// Instance is the damage instance it is owed for (ADR 0108 PR 0,
@@ -552,9 +570,22 @@ type PreventionFollowUp struct {
 	Controller uuid.UUID `json:"controller"`
 	Source     uuid.UUID `json:"source"`
 	Label      string    `json:"label,omitempty"`
+	// Static marks a prevention STATIC's entry (ADR 0108 §8): Source is
+	// the permanent whose static ability it is, Epoch the object it was
+	// (CR 400.7), Slot the replacement's index in its catalog entry, and
+	// Unit the recipient or the damage source its ThenPer names. All
+	// four are zero on a scoped shield's entry.
+	Static bool      `json:"static,omitempty"`
+	Epoch  int       `json:"epoch,omitempty"`
+	Slot   int       `json:"slot,omitempty"`
+	Unit   uuid.UUID `json:"unit,omitempty"`
 	// Prevented is the total prevented so far. Zero is a real total: a
 	// shield applied only to damage that can't be prevented (CR 615.12).
 	Prevented int `json:"prevented,omitempty"`
+	// Damage is the total damage the effect was applied to ("that
+	// damage"): what Prevented is, plus what got through — all of it
+	// under CR 615.12, the excess past a charge otherwise (ADR 0108 PR 8).
+	Damage int `json:"damage,omitempty"`
 	// DamageSource is the source whose damage was prevented, and
 	// SourceController / SourceColors are that source as it was when the
 	// damage would have been dealt (its last-known information). Target
@@ -565,41 +596,37 @@ type PreventionFollowUp struct {
 	SourceColors     []string  `json:"sourceColors,omitempty"`
 	Target           uuid.UUID `json:"target,omitempty"`
 	Combat           bool      `json:"combat,omitempty"`
+	// To and ToEpoch are the object the follow-up deals its damage to,
+	// chosen as the shield was made (Mod.To: Acolyte's Reward's second
+	// target, Vengeful Archon's player). Zero is none.
+	To      uuid.UUID `json:"to,omitempty"`
+	ToEpoch int       `json:"toEpoch,omitempty"`
 }
 
-// queuePreventionFollowUpLocked adds `prevented` to the record's
-// follow-up for this instance, opening one if it has none. Zero is a real
-// amount: CR 615.12's prevention effect applied to damage that can't be
-// prevented still has its additional effects, with nothing prevented —
-// and still only once for the instance.
-//
-// COPY ON WRITE, for the reason every registry here is: an undo clone
-// shares the slice.
-//
-// Caller must hold g.mu (write).
-func (g *Game) queuePreventionFollowUpLocked(e ScopedEffect, m Mod, ev *ReplacementEvent, prevented int) {
-	if m.Then == "" || ev == nil {
-		return
+// owes reports whether two entries are the same owed follow-up: one
+// effect, one unit, one instance.
+func (f PreventionFollowUp) owes(o PreventionFollowUp) bool {
+	if f.Instance != o.Instance || (f.Instance == 0 && f.Batch != o.Batch) {
+		return false
 	}
-	batch := g.currentEventBatchLocked()
-	inst := ev.DamageInstance
-	next := append([]PreventionFollowUp(nil), g.preventionFollowUps...)
-	for i := range next {
-		if next[i].Seq == e.Seq && next[i].Instance == inst && (inst != 0 || next[i].Batch == batch) {
-			next[i].Prevented += prevented
-			g.preventionFollowUps = next
-			return
-		}
+	if f.Static || o.Static {
+		return f.Static && o.Static && f.Source == o.Source && f.Epoch == o.Epoch && f.Slot == o.Slot && f.Unit == o.Unit
 	}
+	return f.Seq == o.Seq
+}
+
+// newPreventionFollowUpLocked is an entry for one application to `ev`,
+// with what it prevented and the damage it was applied to; the caller
+// fills in the effect's identity.
+//
+// Caller must hold g.mu.
+func (g *Game) newPreventionFollowUpLocked(ev *ReplacementEvent, body string, prevented, damage int) PreventionFollowUp {
 	f := PreventionFollowUp{
-		Seq:          e.Seq,
-		Batch:        batch,
-		Instance:     inst,
-		Body:         m.Then,
-		Controller:   e.Controller,
-		Source:       e.Source.ID,
-		Label:        e.Label,
+		Batch:        g.currentEventBatchLocked(),
+		Instance:     ev.DamageInstance,
+		Body:         body,
 		Prevented:    prevented,
+		Damage:       damage,
 		DamageSource: ev.DamageSource,
 		Target:       ev.DamageTarget,
 		Combat:       ev.IsCombatDamage,
@@ -608,7 +635,50 @@ func (g *Game) queuePreventionFollowUpLocked(e ScopedEffect, m Mod, ev *Replacem
 		f.SourceController = lki.Controller
 		f.SourceColors = copyStrings(lki.Colors)
 	}
+	return f
+}
+
+// owePreventionFollowUpLocked adds `f` to the entry it is the same owed
+// follow-up as, or opens one. Zero is a real amount: CR 615.12's
+// prevention effect applied to damage that can't be prevented still has
+// its additional effects, with nothing prevented — and still only once
+// for the unit and instance.
+//
+// COPY ON WRITE, for the reason every registry here is: an undo clone
+// shares the slice.
+//
+// Caller must hold g.mu (write).
+func (g *Game) owePreventionFollowUpLocked(f PreventionFollowUp) {
+	next := append([]PreventionFollowUp(nil), g.preventionFollowUps...)
+	for i := range next {
+		if next[i].owes(f) {
+			next[i].Prevented += f.Prevented
+			next[i].Damage += f.Damage
+			g.preventionFollowUps = next
+			return
+		}
+	}
 	g.preventionFollowUps = append(next, f)
+}
+
+// queuePreventionFollowUpLocked owes a scoped shield's follow-up for one
+// application to `ev`: `prevented` of the `damage` the event carried as
+// the shield met it.
+//
+// Caller must hold g.mu (write).
+func (g *Game) queuePreventionFollowUpLocked(e ScopedEffect, m Mod, ev *ReplacementEvent, prevented, damage int) {
+	if m.Then == "" || ev == nil {
+		return
+	}
+	f := g.newPreventionFollowUpLocked(ev, m.Then, prevented, damage)
+	f.Seq = e.Seq
+	f.Controller = e.Controller
+	f.Source = e.Source.ID
+	f.Label = e.Label
+	if len(m.To) == 1 {
+		f.To, f.ToEpoch = m.To[0].ID, m.To[0].Epoch
+	}
+	g.owePreventionFollowUpLocked(f)
 }
 
 // flushPreventionFollowUpsLocked runs every owed follow-up once, with its
@@ -664,9 +734,13 @@ func (g *Game) flushPreventionFollowUpsForInstanceLocked(inst DamageInstance) {
 // its own effect, so an error is logged and the next still runs.
 //
 // The body is handed an item the engine builds: Controller "you",
-// SourceCardID the card that made the shield, and a TriggerContext whose
-// event is the prevented damage (EventDamagePrevented); the params carry
-// the total (Amount) and the damage source's controller (Player).
+// SourceCardID the card that made the shield (for a static, the permanent
+// whose ability it is, named as the object it was by SourceObject), the
+// object the follow-up deals its damage to as its one target (Mod.To,
+// when it is still that object), and a TriggerContext whose event is the
+// damage the effect was applied to (EventDamagePrevented); the params
+// carry the total prevented (Amount) and the damage source's controller
+// (Player).
 //
 // Caller must hold g.mu (write).
 func (g *Game) runPreventionFollowUpLocked(f PreventionFollowUp) {
@@ -675,11 +749,14 @@ func (g *Game) runPreventionFollowUpLocked(f PreventionFollowUp) {
 		effectKeyFault(fmt.Sprintf("game: prevention follow-up body %q is not registered", f.Body))
 		return
 	}
+	// An entry from before Damage existed was only ever a scoped
+	// shield's, whose body read Prevented alone.
+	damage := max(f.Damage, f.Prevented)
 	trig := Event{
 		Kind:   EventDamagePrevented,
 		Source: f.DamageSource,
 		Target: f.Target,
-		Amount: f.Prevented,
+		Amount: damage,
 		Actor:  f.SourceController,
 		Colors: copyStrings(f.SourceColors),
 		Combat: f.Combat,
@@ -693,6 +770,12 @@ func (g *Game) runPreventionFollowUpLocked(f PreventionFollowUp) {
 		Label:        f.Label,
 		Trigger:      &TriggerContext{Event: trig},
 	}
+	if f.Static {
+		item.SourceObject = ObjectRef{ID: f.Source, Epoch: f.Epoch}
+	}
+	if to, ok := g.followUpRecipientLocked(f); ok {
+		item.Targets = []TargetRef{to}
+	}
 	p := EffectParams{Amount: f.Prevented, Player: f.SourceController, Object: ObjectRef{ID: f.DamageSource}}
 	if err := fn(g, item, p); err != nil {
 		g.EmitEvent(Event{
@@ -702,6 +785,28 @@ func (g *Game) runPreventionFollowUpLocked(f PreventionFollowUp) {
 			ErrorMsg: "prevention follow-up: " + err.Error(),
 		})
 	}
+}
+
+// followUpRecipientLocked is the follow-up's To as a target, while it is
+// still what was chosen: a player still in the game, or the same
+// permanent object (CR 400.7). Its legality as a TARGET is not checked
+// again — the shield's spell or ability did that as it resolved (the
+// Acolyte's Reward and Vengeful Archon rulings) — only whether there is
+// still something to deal the damage to.
+//
+// Caller must hold g.mu.
+func (g *Game) followUpRecipientLocked(f PreventionFollowUp) (TargetRef, bool) {
+	if f.To == uuid.Nil {
+		return TargetRef{}, false
+	}
+	if p := g.playerByIDLocked(f.To); p != nil {
+		return TargetRef{Kind: TargetPlayer, ID: f.To}, !p.Eliminated
+	}
+	c := findBattlefieldCard(g, f.To)
+	if c == nil || c.ObjectEpoch != f.ToEpoch {
+		return TargetRef{}, false
+	}
+	return TargetRef{Kind: TargetCard, ID: f.To}, true
 }
 
 // clonePreventionFollowUps deep-copies the owed list for a snapshot.
@@ -717,10 +822,12 @@ func clonePreventionFollowUps(in []PreventionFollowUp) []PreventionFollowUp {
 	return out
 }
 
-// preventionFollowUpForUnpreventableLocked is CR 615.12 for a shield of
-// this kind: applied to damage that can't be prevented, it prevents
-// nothing and is not used up (CR 609.7b), and its additional effect still
-// happens, with zero prevented.
+// preventionFollowUpForUnpreventableLocked is CR 615.12 for a scoped
+// shield: applied to damage that can't be prevented, it prevents nothing
+// and is not used up (CR 609.7b), and its additional effect still
+// happens, with zero prevented and the whole event as "that damage".
+// Every scoped prevention kind reads Then (ADR 0108 owner decision 2),
+// and a charge is not reduced (CR 615.12).
 //
 // Caller must hold g.mu (write).
 func (g *Game) preventionFollowUpForUnpreventableLocked(ev *ReplacementEvent, id ReplacementEffectID) {
@@ -729,13 +836,11 @@ func (g *Game) preventionFollowUpForUnpreventableLocked(ev *ReplacementEvent, id
 		return
 	}
 	i, ok := g.scopedEffectIndexBySeqLocked(seq)
-	// ADR 0108 §7: the not-one-use shield's follow-up runs the same way,
-	// and its charge is not reduced (CR 615.12).
-	if !ok || mod < 0 || mod >= len(g.ScopedEffects[i].Mods) || !preventsFromASource(g.ScopedEffects[i].Mods[mod].Kind) {
+	if !ok || mod < 0 || mod >= len(g.ScopedEffects[i].Mods) || !scopedKindPrevents(g.ScopedEffects[i].Mods[mod].Kind) {
 		return
 	}
 	e := g.ScopedEffects[i]
-	g.queuePreventionFollowUpLocked(e, e.Mods[mod], ev, 0)
+	g.queuePreventionFollowUpLocked(e, e.Mods[mod], ev, 0, ev.DamageAmount)
 }
 
 // --- choosing a source (CR 609.7a) ------------------------------------

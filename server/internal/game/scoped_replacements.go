@@ -132,9 +132,12 @@ func (g *Game) scopedReplacementModLocked(seq int64, mod int, kind ModKind) (Sco
 // below, and a bad parameter is a programming error in it.
 func replacementModProblem(m Mod) string {
 	switch m.Kind {
-	case ModPreventDamage:
-		if m.Amount < 1 {
+	case ModPreventDamage, ModPreventCombatDamage:
+		if m.Kind == ModPreventDamage && m.Amount < 1 {
 			return fmt.Sprintf("a preventDamage shield needs a charge of at least 1, got %d", m.Amount)
+		}
+		if m.Then != "" && !KnownEffectBody(m.Then) {
+			return fmt.Sprintf("%s names follow-up body %q, which is not registered", m.Kind, m.Then)
 		}
 	case ModExileInsteadOfGraveyard:
 		if m.Then == "" || !KnownEffectBody(m.Then) {
@@ -190,8 +193,59 @@ func scopedReplacementWatches(kind ModKind) []EventKind {
 //
 // Caller must hold g.mu (write) — every caller is a resolving effect.
 func (g *Game) PreventCombatDamageThisTurnForEffect(sourceID, player uuid.UUID, label string) bool {
-	return g.RegisterScopedRuleEffectForEffect(sourceID, ScopeGame, uuid.Nil,
-		[]Mod{{Kind: ModPreventCombatDamage, Player: player}}, g.UntilEndOfTurnDuration(), label)
+	return g.PreventCombatDamageThenThisTurnForEffect(sourceID, player, ShieldFollowUp{}, label)
+}
+
+// ShieldFollowUp is a ModPreventDamage or ModPreventCombatDamage shield's
+// CR 615.5 additional effect (ADR 0108 owner decision 2): "you gain life
+// equal to the damage prevented this way" (Candles' Glow), "for each 1
+// damage prevented this way, put a +1/+1 counter on that creature" (Test
+// of Faith), "deals that much damage to any target" (Acolyte's Reward).
+// It is owed once per shield and damage instance, through the queue every
+// prevention follow-up shares (PreventionFollowUp), and under damage that
+// can't be prevented it runs with nothing prevented (CR 615.12). The zero
+// value is no follow-up.
+type ShieldFollowUp struct {
+	// Controller is "you": the follow-up's controller.
+	Controller uuid.UUID
+	// Body is the follow-up, a registered body.
+	Body BodyRef
+	// To is the player or permanent the follow-up deals its damage to,
+	// chosen as the shield was made; uuid.Nil is none. A permanent is
+	// pinned to the object it is now (CR 400.7).
+	To uuid.UUID
+}
+
+// mod writes the follow-up onto a shield's mod. A To naming a permanent
+// that is not on the battlefield is left off: the shield is still made,
+// and its follow-up has nothing to deal damage to.
+//
+// Caller must hold g.mu.
+func (f ShieldFollowUp) mod(g *Game, m *Mod) {
+	m.Then = f.Body.key
+	if f.Body.key == "" || f.To == uuid.Nil {
+		return
+	}
+	if g.playerByIDLocked(f.To) != nil {
+		m.To = []ObjectRef{{ID: f.To}}
+		return
+	}
+	if c := findBattlefieldCard(g, f.To); c != nil {
+		m.To = []ObjectRef{{ID: f.To, Epoch: c.ObjectEpoch}}
+	}
+}
+
+// PreventCombatDamageThenThisTurnForEffect is PreventCombatDamageThisTurn
+// with a CR 615.5 follow-up (Inkshield: "For each 1 damage prevented this
+// way, create a 2/1 … Inkling"). The record's controller is the
+// follow-up's.
+//
+// Caller must hold g.mu (write).
+func (g *Game) PreventCombatDamageThenThisTurnForEffect(sourceID, player uuid.UUID, then ShieldFollowUp, label string) bool {
+	m := Mod{Kind: ModPreventCombatDamage, Player: player}
+	then.mod(g, &m)
+	return g.RegisterScopedRuleEffectForEffect(sourceID, ScopeGame, then.Controller,
+		[]Mod{m}, g.UntilEndOfTurnDuration(), label)
 }
 
 // PreventNextDamageThisTurnForEffect is the charged shield (CR 615.7):
@@ -203,20 +257,31 @@ func (g *Game) PreventCombatDamageThisTurnForEffect(sourceID, player uuid.UUID, 
 //
 // Caller must hold g.mu (write).
 func (g *Game) PreventNextDamageThisTurnForEffect(sourceID, target uuid.UUID, amount int, combatOnly bool, label string) bool {
+	return g.PreventNextDamageThenThisTurnForEffect(sourceID, target, amount, combatOnly, ShieldFollowUp{}, label)
+}
+
+// PreventNextDamageThenThisTurnForEffect is PreventNextDamageThisTurn
+// with a CR 615.5 follow-up, owed with what the charge prevented from
+// each damage instance (Test of Faith, Temper, Sacred Boon, Vengeful
+// Archon). The record's controller is the follow-up's.
+//
+// Caller must hold g.mu (write).
+func (g *Game) PreventNextDamageThenThisTurnForEffect(sourceID, target uuid.UUID, amount int, combatOnly bool, then ShieldFollowUp, label string) bool {
 	if target == uuid.Nil || amount < 1 {
 		return false
 	}
 	m := Mod{Kind: ModPreventDamage, Amount: amount, CombatOnly: combatOnly}
+	then.mod(g, &m)
 	d := g.UntilEndOfTurnDuration()
 	if g.playerByIDLocked(target) != nil {
 		m.Player = target
-		return g.RegisterScopedRuleEffectForEffect(sourceID, ScopeGame, uuid.Nil, []Mod{m}, d, label)
+		return g.RegisterScopedRuleEffectForEffect(sourceID, ScopeGame, then.Controller, []Mod{m}, d, label)
 	}
 	affected := g.PinnedObjectsLocked(target)
 	if len(affected) == 0 {
 		return false
 	}
-	return g.appendScopedEffectLocked(sourceID, affected, ScopeNone, uuid.Nil, []Mod{m},
+	return g.appendScopedEffectLocked(sourceID, affected, ScopeNone, then.Controller, []Mod{m},
 		g.PinnedTo(d, target), label, timeNowUnixNano())
 }
 
@@ -615,7 +680,11 @@ func scopedAffectsLiveObjectLocked(g *Game, e ScopedEffect, id uuid.UUID) bool {
 func (g *Game) applyScopedReplacementLocked(e ScopedEffect, mod int, m Mod, ev *ReplacementEvent) error {
 	switch m.Kind {
 	case ModPreventCombatDamage:
+		// ADR 0108 owner decision 2: the follow-up (Inkshield) is owed
+		// with the whole event.
+		damage := ev.DamageAmount
 		ev.Cancel()
+		g.queuePreventionFollowUpLocked(e, m, ev, damage, damage)
 	case ModPreventNextFromSource, ModPreventNextCombatFromSource:
 		g.applyNextFromSourceLocked(e, mod, m, ev)
 	case ModPreventFromSource:
@@ -627,8 +696,12 @@ func (g *Game) applyScopedReplacementLocked(e ScopedEffect, mod int, m Mod, ev *
 		// of it": a 4-point shield facing 6 damage prevents 4 and lets
 		// 2 through; facing 3 it prevents all 3 and keeps 1 — or, when
 		// the protected player divided it among one instance's events
-		// (ADR 0108 owner decision 1), the share they gave this one.
-		g.applyChargedShieldLocked(e, mod, m, ev)
+		// (ADR 0108 owner decision 1), the share they gave this one. Its
+		// follow-up (ADR 0108 owner decision 2) is owed with what the
+		// charge prevented, out of the damage the event carried.
+		damage := ev.DamageAmount
+		prevented := g.applyChargedShieldLocked(e, mod, m, ev)
+		g.queuePreventionFollowUpLocked(e, m, ev, prevented, damage)
 	case ModExileInsteadOfLeaving:
 		ev.NewZone = ZoneExile
 	case ModExileIfWouldDie, ModExileInsteadOfYourGraveyard:

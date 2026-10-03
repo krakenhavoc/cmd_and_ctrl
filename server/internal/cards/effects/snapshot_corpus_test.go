@@ -362,7 +362,71 @@ func corpusBoards() []corpusBoard {
 		// Dragon that kept the haste-until-end-of-turn its spell was given
 		// (a record re-pinned to the permanent with its duration).
 		{"granted_mana_spent_readers", corpusGrantedManaSpentReaders},
+		// v7, added by ADR 0108 PR 8 (#1906) as a new file: the scoped
+		// shields' CR 615.5 follow-ups (owner decision 2) as data — Test
+		// of Faith's charged shield with its Then, partly spent; Vengeful
+		// Archon's, whose follow-up deals its damage to a chosen player
+		// (Mod.To); and a combat shield with a follow-up (Inkshield's
+		// shape).
+		{"shield_follow_ups", corpusShieldFollowUps},
+		// v7, added by ADR 0108 PR 7 (#1904) as a new file: the
+		// recipient and to-and-by shields as data — Energy Arc's one
+		// to-and-by record over two creatures (Mod.AndDealtBy, an
+		// affected set of two), Redeem's one record protecting two, and
+		// Brace for Impact's pinned shield with its counters follow-up.
+		{"to_and_by_shields", corpusToAndByShields},
 	}
+}
+
+// corpusToAndByShields is ADR 0108 Delivery PR 7's shapes, made by the
+// cards that make them.
+func corpusToAndByShields(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	a := pushBattlefieldCardWithTimestamp(g, corpusCreature(me.ID, "Grizzly Bears", 2, 2))
+	b := pushBattlefieldCardWithTimestamp(g, corpusCreature(opp.ID, "Hill Giant", 3, 3))
+	c := pushBattlefieldCardWithTimestamp(g, corpusCreature(me.ID, "Knight", 2, 2))
+	gold := pushBattlefieldCardWithTimestamp(g, corpusCreature(me.ID, "Gold Knight", 2, 2))
+	findBattlefieldCardForTest(g, gold).Colors = []string{"W", "U"}
+	castCatalogSpell(t, g, "Energy Arc", "Instant", pr7aEnergyArc, []game.TargetRef{pr7aCard(a), pr7aCard(b)})
+	passPriorityAroundTable(t, g)
+	castCatalogSpell(t, g, "Redeem", "Instant", pr7aRedeem, []game.TargetRef{pr7aCard(a), pr7aCard(c)})
+	passPriorityAroundTable(t, g)
+	castCatalogSpell(t, g, "Brace for Impact", "Instant", pr7aBraceForImpact, []game.TargetRef{pr7aCard(gold)})
+	passPriorityAroundTable(t, g)
+	if n := pr7aShields(g); n != 3 {
+		t.Fatalf("setup: %d preventFromSource records, want 3", n)
+	}
+	return g
+}
+
+// corpusShieldFollowUps is ADR 0108 owner decision 2: preventDamage and
+// preventCombatDamage carrying Then, and Mod.To.
+func corpusShieldFollowUps(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	dragon := pushBattlefieldCardWithTimestamp(g, corpusCreature(opp.ID, "Shivan Dragon", 5, 5))
+	knight := pushBattlefieldCardWithTimestamp(g, corpusCreature(me.ID, "Knight", 2, 4))
+	g.WithWriteLock(func() {
+		g.RecomputeLayersIfStaleLocked()
+		g.PreventNextDamageThenThisTurnForEffect(uuid.Nil, knight, 3, false,
+			game.ShieldFollowUp{Controller: me.ID, Body: countersOnItPerPreventedBody}, "Test of Faith — prevent the next 3 damage")
+		g.PreventNextDamageThenThisTurnForEffect(uuid.Nil, me.ID, 4, false,
+			game.ShieldFollowUp{Controller: me.ID, Body: dealThatMuchToTheChosenTargetBody, To: opp.ID}, "Vengeful Archon — prevent the next 4 damage")
+		g.PreventCombatDamageThenThisTurnForEffect(uuid.Nil, me.ID,
+			game.ShieldFollowUp{Controller: me.ID, Body: shieldGainLifeEqualBody}, "prevent all combat damage that would be dealt to you this turn")
+		// Test of Faith's shield takes 1 of the dragon's damage, leaving 2,
+		// and its follow-up puts the counter on.
+		if err := g.DealDamageToCreatureForEffect(dragon, knight, 1); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if n := len(g.ScopedEffects); n != 3 {
+		t.Fatalf("setup: %d scoped records, want 3", n)
+	}
+	return g
 }
 
 // corpusGrantedManaSpentReaders is ADR 0109 §11's data, made by the cards
