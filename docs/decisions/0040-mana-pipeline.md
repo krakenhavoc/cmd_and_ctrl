@@ -1079,3 +1079,16 @@ Artillery's sunburst, Coin of Mastery's per-artifact-mana counters — and
 Satoru's "no mana was spent to cast them". Opal Palace (a count read off the
 command-zone tally) and Generator Servant (haste until end of turn) fit this
 shape with one more field each and are not catalogued.
+
+> **Amended by [ADR 0109](0109-rule-gates-land-types-mana-and-cost-components.md)** (2026-10-02):
+> its §11 closes #1552. A replacement on any permanent reads the entering
+> spell's spend with `Game.EntrySpentForEffect(ev)`; sunburst is a keyword
+> counted on the resolving stack card, so a granted instance counts; a
+> keyword given to a spell keeps its duration on the permanent; and the
+> rider gains two shapes, `spell_gains` (a keyword grant to the spell at the
+> spend, `Keywords` and `UntilEndOfTurn`) and a counted enters-with-counters
+> rider (`Count`, a registry key, Opal Palace); an effect's mana carries riders
+> through `AddManaOptions.Riders` (Domri, Chaos Bringer's +1). Restore now refuses a rider
+> kind or a count key the binary cannot read (`snapshot_mana_riders.go`), so
+> the next rider kind is refused by every binary from this one on (Delivery
+> PR 10, #1552).

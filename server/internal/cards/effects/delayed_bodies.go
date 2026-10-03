@@ -119,6 +119,17 @@ var (
 	// passes CondParams.Filter.
 	youNextCastCondition = game.DelayedCondition("cast/you-next-cast", youNextCast)
 
+	// The same, narrowed to a cast FROM YOUR HAND — "when you next cast
+	// an instant or sorcery spell from your hand this turn" (Narset
+	// Transcendent's −2, ADR 0109 §5): an EventCast whose OldZone is the
+	// caster's hand.
+	youNextCastFromHandCondition = game.DelayedCondition("cast/you-next-cast-from-hand", youNextCastFromHand)
+
+	// "It gains rebound": the spell the event-conditioned trigger fired
+	// on gains rebound while it is still that spell (Narset
+	// Transcendent's −2, ADR 0109 §5).
+	reboundTheSpellBody = game.SimpleDelayedBody("rebound/the-spell-you-just-cast", reboundTheSpellYouJustCast)
+
 	// The event condition of "until an opponent becomes the monarch"
 	// (Palace Jailer, #1722): an EventMonarchChanged whose new monarch
 	// is not the controller of the ability that exiled the card. Read
@@ -136,6 +147,10 @@ var (
 	// "Exile the creature" after it died (Whippoorwill): exile each
 	// listed card that is still in a graveyard (CR 603.7c).
 	exileListedFromGraveyardBody = game.SimpleDelayedBody("dies/exile-from-graveyard", exileListedCardsFromGraveyard)
+
+	// "That spell gains sunburst" for the spell an event-conditioned
+	// trigger fired on (Solar Array, ADR 0109 §11).
+	thatSpellGainsSunburstBody = game.SimpleDelayedBody("sunburst/that-spell-gains", thatSpellYouJustCastGainsSunburst)
 )
 
 // maxManaDrainRefund bounds the refund a restored Mana Drain may add. No

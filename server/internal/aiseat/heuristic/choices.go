@@ -122,6 +122,8 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 	switch kind {
 	case choiceEntryController:
 		return st.entryControllerValue(ch, cp.OptionIndex)
+	case choiceEntryRiot:
+		return st.riotValue(ch, cp.Apply)
 	case choiceDamageAssignment:
 		// The enumerator offers exactly one canonical split: the
 		// prefix-lethal one a player makes almost every time.
@@ -419,6 +421,10 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 		return 0, "coin: other call"
 
 	case choiceTriggerPrompt, choiceOptionalReplacement, choiceEntryPayLife, choicePayUnless:
+		// ADR 0109 §10: unleash's "may" has its own rule (riot.go).
+		if kind == choiceOptionalReplacement && ch != nil && ch.EntryKeyword == "unleash" {
+			return st.unleashValue(ch, cp.Apply)
+		}
 		// ADR 0104 (owner decision 8): a "yes" that TRADES the source
 		// for a spell — Perplexing Chimera — is taken only when the
 		// spell is worth the creature: mana value 5 or more, or a

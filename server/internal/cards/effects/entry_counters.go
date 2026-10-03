@@ -60,29 +60,6 @@ func CountersPerKick(kind string, per int) game.EntryCountersFromCast {
 	}
 }
 
-// SunburstCounters is sunburst (CR 702.44a): "this permanent enters
-// with a +1/+1 counter on it for each color of mana spent to cast it"
-// — a +1/+1 counter for a creature, a charge counter for a
-// non-creature artifact (CR 702.44b).
-//
-// DECLARED SIMPLIFICATION, and it is the only one left: a payment the
-// engine did not take (permissive mode, a strict-mode override) claims
-// no colours, so the permanent enters with no counters at all. That is
-// ADR 0068 §3's rule for every reader of the paid-cost record —
-// unknown answers weaker than printed — and a card that declares this
-// says so in its Caveats.
-//
-// Pair it with Spec.WantsDistinctColors, which is what makes the cast
-// gate spread the payment across colours rather than paying
-// colourless-first; without that a sunburst creature cast off five
-// lands into a wide pool would routinely enter smaller than it should.
-func SunburstCounters(kind string) game.EntryCountersFromCast {
-	return game.EntryCountersFromCast{
-		Kind:  kind,
-		Count: func(cast game.CastCounts) int { return cast.ColorsSpent },
-	}
-}
-
 // CountersPerDelved is "this permanent enters with a <kind> counter on
 // it for each <kind of> card exiled with it", where "exiled with it"
 // is CR 607.2q's link to the cards delve exiled to pay for the spell

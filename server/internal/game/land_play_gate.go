@@ -32,7 +32,10 @@ import (
 //     on purpose: an older binary does not check CastBanKind on restore
 //     and would quietly ban nothing, while it refuses an unknown mod kind
 //     with ErrUnknownEffectKey.
-//  3. (ADR 0109 §5, later) an emblem's restriction.
+//  3. AN EMBLEM'S RESTRICTION (ADR 0109 §5): source 1 one zone over.
+//     An emblem's abilities function in the command zone (CR 114.4), so
+//     EmblemSpec.LandPlayRestrictions is read with the emblem as the
+//     source. It leaves only with its owner (CR 800.4a).
 //
 // FOUR CALLERS, ONE FUNCTION, and that is the whole point (ADR 0033 §1):
 //
@@ -137,22 +140,41 @@ func (e *CantPlayLandError) Unwrap() error { return ErrCantPlayLand }
 // Caller must hold g.mu (read or write).
 func (g *Game) LandPlayGateLocked(player uuid.UUID, card Card, fromZone ZoneKind) error {
 	q := LandPlayQuery{Game: g, Card: card, Player: player, FromZone: fromZone}
-	if g.Battlefield != nil && CatalogLandPlayRestrictions != nil {
-		for i := range g.Battlefield.Cards {
-			src := g.Battlefield.Cards[i]
-			for _, r := range LandPlayRestrictionsForCard(src) {
-				if r.Forbids == nil {
-					continue
+	refusedBy := func(src Card) *CantPlayLandError {
+		for _, r := range LandPlayRestrictionsForCard(src) {
+			if r.Forbids == nil {
+				continue
+			}
+			q.Source = src
+			if r.Forbids(q) {
+				reason := r.Label
+				if src.Name != "" {
+					reason += " — " + src.Name
 				}
-				q.Source = src
-				if r.Forbids(q) {
-					reason := r.Label
-					if src.Name != "" {
-						reason += " — " + src.Name
-					}
-					return &CantPlayLandError{Reason: reason, Source: src.InstanceID}
+				return &CantPlayLandError{Reason: reason, Source: src.InstanceID}
+			}
+		}
+		return nil
+	}
+	if CatalogLandPlayRestrictions != nil {
+		if g.Battlefield != nil {
+			for i := range g.Battlefield.Cards {
+				if err := refusedBy(g.Battlefield.Cards[i]); err != nil {
+					return err
 				}
 			}
+		}
+		// ADR 0109 §5: an emblem's land-play restriction, read as a
+		// permanent's is, with the emblem as the source (CR 114.4). No
+		// printed emblem says "can't play lands" yet; the slot is here so
+		// the first one is a Spec field, not an engine change.
+		var refused *CantPlayLandError
+		g.forEachEmblemLocked(func(src *Card) bool {
+			refused = refusedBy(*src)
+			return refused == nil
+		})
+		if refused != nil {
+			return refused
 		}
 	}
 	// The stored "this turn" records (Turf Wound and its kin).

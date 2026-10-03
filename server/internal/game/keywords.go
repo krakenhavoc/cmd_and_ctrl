@@ -239,6 +239,16 @@ var canonicalKeywords = map[string]bool{
 	// catalog entry. Redundant (CR 702.88c): one instance or several
 	// is one exile and one delayed trigger.
 	KeywordRebound: true,
+	// sunburst (CR 702.44) joins with #1552 (ADR 0109 §11 decision 2),
+	// in the same change that teaches the engine to honour it as a
+	// keyword. Its consumer is applySunburstLocked (entry_counters.go),
+	// which counts the instances on the RESOLVING stack card — printed,
+	// deck-imported, or given to the spell on the stack (Lux Artillery,
+	// Solar Array) — and seeds the counters onto the entry event before
+	// the CR 614 window opens. CUMULATIVE (CR 702.44d: each instance
+	// works separately), so a printed sunburst under Lux Artillery
+	// counts the colours twice.
+	KeywordSunburst: true,
 	// split second (CR 702.61) joins with #1519, in the same change
 	// that teaches the engine to READ it. The rule itself was built in
 	// S13.1 — CastSpell, both activation paths, the enumerator and the
@@ -249,6 +259,19 @@ var canonicalKeywords = map[string]bool{
 	// spell's keyword, so it is read off the card as it is cast, never
 	// off a layer-6 list: nothing in print grants it.
 	KeywordSplitSecond: true,
+	// riot (CR 702.136) and unleash (CR 702.98) join with #1556 (ADR
+	// 0109 §10), in the same change that teaches the engine to honour
+	// them. Both are entry replacements, so their consumer is the CR
+	// 614 window: the entry look-ahead (entry_lookahead.go) computes the
+	// entering permanent as it would exist on the battlefield (CR
+	// 614.12) and the gather derives one replacement per instance it
+	// reports (riot.go). Unleash's second half, "can't block as long as
+	// it has a +1/+1 counter on it", is folded into the restrictions
+	// after the layer pass (foldUnleashLocked). Both are CUMULATIVE
+	// (CR 702.136b; CR 113.2c for unleash), so a printed instance and a
+	// granted one are two questions.
+	KeywordRiot:    true,
+	KeywordUnleash: true,
 }
 
 // KeywordChangeling is the canonical token for changeling (CR
@@ -311,17 +334,31 @@ const KeywordChangeling = "changeling"
 // wraps this reports that separately.
 //
 // This exported form has no game, so it honours no "as though it
-// didn't have hexproof" waiver (#1560). The engine's own targeting
-// paths call canBeTargetedByLocked, which does.
+// didn't have hexproof" waiver (#1560) and no restriction about a zone
+// (ADR 0109 §6). The engine's own targeting paths call
+// canBeTargetedByLocked, which does both.
 func CanBeTargetedBy(c *Card, zone ZoneKind, src TargetSource) bool {
 	return canBeTargetedBy(nil, c, zone, src)
 }
 
 // canBeTargetedByLocked is CanBeTargetedBy as the targeting choke
 // point in targets.go asks it: with the game, so a static on the
-// battlefield may waive hexproof (hexproof_bypass.go, #1560). Caller
-// must hold g.mu with fresh layers.
+// battlefield may waive hexproof (hexproof_bypass.go, #1560) or forbid
+// targeting a whole zone (targeting_restriction.go, ADR 0109 §6).
+// Caller must hold g.mu with fresh layers.
 func (g *Game) canBeTargetedByLocked(c *Card, zone ZoneKind, src TargetSource) bool {
+	return g.canBeTargetedWithLocked(g.activeTargetingRestrictionsLocked(), c, zone, src)
+}
+
+// canBeTargetedWithLocked is canBeTargetedByLocked with the live
+// targeting restrictions already gathered, for a walk that asks about a
+// whole zone. The restriction is asked BEFORE the battlefield guard in
+// canBeTargetedBy, because a rule about a graveyard is about a card the
+// object's own keywords never reach (CR 601.2c, 101.2).
+func (g *Game) canBeTargetedWithLocked(rs targetingRestrictions, c *Card, zone ZoneKind, src TargetSource) bool {
+	if rs.refuses(g, c, zone, src) {
+		return false
+	}
 	return canBeTargetedBy(g, c, zone, src)
 }
 
@@ -440,7 +477,7 @@ func CanonicalKeywords(s string) ([]string, bool) {
 // "trample", "vigilance", "menace", "defender", "haste", "flash",
 // "hexproof", "shroud", "indestructible", "changeling", fear,
 // intimidate, shadow, horsemanship, skulk, infect, wither, prowess, evolve,
-// "split second", rebound, and the landwalk tokens ("islandwalk", "nonbasic landwalk", …). Toxic is NOT
+// "split second", rebound, sunburst, and the landwalk tokens ("islandwalk", "nonbasic landwalk", …). Toxic is NOT
 // asked through here: its token carries an amount, so it is read with
 // ToxicTotal.
 //
