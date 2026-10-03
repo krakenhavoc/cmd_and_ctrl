@@ -1,7 +1,7 @@
 # ADR 0112 — Signed-in home, player mode, and one decks page
 
-**Status:** Proposed · 2026-10-02 · S57 — Signed-in home, player mode, and one decks page (tracker [#1992](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1992))
-**Owner decisions:** 2026-10-02, the three on #1992, quoted under [Context](#owner-decisions-2026-10-02). They are binding. The product choices they leave open are the four [Questions for the owner](#questions-for-the-owner) at the end, each with a recommended option. Where a section depends on an answer it says so, and is written for the recommended one.
+**Status:** Accepted · 2026-10-02 · S57 — Signed-in home, player mode, and one decks page (tracker [#1992](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1992))
+**Owner decisions:** 2026-10-02, the three on #1992, quoted under [Context](#owner-decisions-2026-10-02). They are binding. The owner then answered this ADR's four questions the same day, each with the recommended option (a): see [Owner decisions, 2026-10-02 (questions)](#owner-decisions-2026-10-02-questions) at the end. The sections and the Delivery plan below are written as decided. The options not chosen are kept as considered options under [Questions for the owner (answered)](#questions-for-the-owner-answered).
 **Numbering:** checked with the AGENTS.md §4 sweep on 2026-10-02. I ran `git fetch --all --prune` and listed `docs/decisions/` on all 37 remote heads: `origin/develop`, `origin/main` and 35 chore, docs, feat, fix, repro and wip branches. The highest number on any of them is 0111 (`0111-action-dock.md`). No branch has 0112, and no open PR adds an ADR, so this ADR takes **0112**.
 **Amends:** [ADR 0110](0110-remember-me.md) §1 item 3 (the code box moves from the login page to the lobby, and `App.svelte`'s bounce loses its exemption), §3 items 1, 4 and 5 (an allowlisted person is an admin only in admin mode; `/me` reports both; WebSocket parity holds in admin mode only), §6 item 5 (`#/decks` becomes public and takes in the deck check). [ADR 0095](0095-deck-coverage-and-deck-requests.md) §5 (`#/deck-check` becomes an alias of `#/decks`). [ADR 0092](0092-public-roadmap-and-site-portal.md) decision 5: for a signed-in person the header is the portal, and `#/home` stays as the public site map.
 **Builds on:** [ADR 0044](0044-surviving-a-deploy.md) decision 3 (HMAC sessions, advisory `Revoke`), [ADR 0051](0051-user-database.md) decisions 3, 6 and 7 (sessions, revocation, the deck library), [ADR 0095](0095-deck-coverage-and-deck-requests.md) (the coverage report and deck requests), [ADR 0110](0110-remember-me.md) (durable sign-in, the admin allowlist, saved decks).
@@ -80,7 +80,7 @@ Quoted from #1992:
 
    The lobby's own command bar goes. Its page title stays. The login page loses the whole signed-in card, because no signed-in session reaches it any more.
 5. **The header's wordmark goes to `#/lobby` for a session and to `#/home` without one.** Its links become Lobby, My games, Decks, Catalog, Roadmap and Home (§3 item 2 merges the two deck links). `#/home` stays the public site map. ADR 0092 decision 5 asked the owner to pick between the header and `#/home`. Owner decision 1 picks the header for a signed-in person, and `#/home` remains for visitors.
-6. **What the Lobby lists for a signed-in person** ([question 3](#questions-for-the-owner), written for (a)). A signed-in person who is not an admin in admin mode sees **their tables**. These are the session's own table, every table they created (`is_creator`), and every open table where they hold a seat: the `GET /me/games` entries that have a `rejoin` path. A table they hold a seat at through a different session shows an "Open" button, which calls that `rejoin` (`POST /me/games/{id}/session`) and then opens the table. An admin in admin mode, and the admin token, see every table, as today. A guest keeps today's view. This filter is presentation: `GET /games` is unchanged, and it never serves an invite to a caller who may not have it (`redactMetaFor`).
+6. **What the Lobby lists for a signed-in person** ([owner answer 3](#owner-decisions-2026-10-02-questions)). A signed-in person who is not an admin in admin mode sees **their tables**. These are the session's own table, every table they created (`is_creator`), and every open table where they hold a seat: the `GET /me/games` entries that have a `rejoin` path. A table they hold a seat at through a different session shows an "Open" button, which calls that `rejoin` (`POST /me/games/{id}/session`) and then opens the table. An admin in admin mode, and the admin token, see every table, as today. A guest keeps today's view. This filter is presentation: `GET /games` is unchanged, and it never serves an invite to a caller who may not have it (`redactMetaFor`).
 7. **A signed-in person with no tables** sees the Join and Create cards at the top (S55 PR 7, #1975, let every signed-in player create a table), and under them one empty-state card: "You're not at a table yet. Paste an invite code above, or create a table and invite your pod." It has three links: "Practice against bots" (`#/practice`), "Check a deck" (`#/decks`) and "My games" (past tables).
 
 ### Migration / snapshot impact
@@ -117,6 +117,7 @@ Three places were considered:
    - A new `users.AdminModes` keeps the rows with `admin_mode_at > 0` in memory, loaded at boot. It is written through on every switch: the database first, then the map. This mirrors `users.Revocations`.
    - **If the boot load fails,** the server starts with an empty map and logs an ERROR. Every allowlisted person is then in player mode until they switch again. This is deliberately not `newRevocations`' exit: there, the safe failure is to refuse to run, and here, the safe failure is fewer admins.
    - With no user database there are no users, so no allowlisted admins and no mode. That is a supported state, as in ADR 0110 §3.
+   - **Admin mode lasts 12 hours, like `sudo`** ([owner answer 1](#owner-decisions-2026-10-02-questions)). It ends `AdminModeTTL` (12 hours, the default length of a non-person session, `CMDCTRL_SESSION_TTL`) after `admin_mode_at`. `AdminModes.On(userID, now)` is false from that moment, so HTTP sees the lapse at the next request with no write needed. A sweeper runs once a minute: for every lapsed row it sets `admin_mode_at` to 0, drops it from the map, logs `admin mode lapsed` with `admin_user_id`, and calls `Hub.RebindUserSessions(userID, false)` (item 5), so the admin menu goes away at the table too. A lapse found while the server was down is swept on the first tick after boot.
 2. **One predicate, one more term.**
 
    ```go
@@ -138,8 +139,8 @@ Three places were considered:
 3. **The switch: `PUT /me/admin-mode`**, with body `{"on": true|false}`.
    - **Caller:** `signedInUser`, and then `isAllowlisted`. Anything else is a 403: "not an admin". The token gets 403 too, because it has no mode to switch.
    - **Effect:** it writes `admin_mode_at` (now, or 0), updates the map, and then rebinds the person's sockets (item 5).
-   - **Response:** `{admin, admin_mode, admin_mode_ends_at?}`. `admin_mode_ends_at` is present only under [question 1](#questions-for-the-owner)'s option (a).
-   - **Limit:** a per-caller bucket of 1 per 2 seconds with a burst of 5. Repeating a switch to the mode the person is already in is a no-op that answers 200.
+   - **Response:** `{admin, admin_mode, admin_mode_ends_at}`. `admin_mode_ends_at` is the Unix millisecond time admin mode lapses, present only while it is on.
+   - **Limit:** a per-caller bucket of 1 per 2 seconds with a burst of 5. Switching on while already on restarts the 12 hours, which is how an admin extends it. Switching off while already off is a no-op that answers 200.
    - **Audit:** every switch is logged at Info as `admin mode on` or `admin mode off`, with `admin_user_id`.
 4. **HTTP: the next request sees it.** In player mode, `isAdmin(p)` is false for that person, so they get exactly what a non-admin signed-in person gets. The only extra thing they may do is switch back. [What player mode drops](#what-player-mode-drops) lists every call site.
 5. **WebSockets: a switch closes the sockets whose admin bit is now wrong.**
@@ -158,10 +159,10 @@ Three places were considered:
      - the token session itself: `#/lobby`;
      - any other session (a non-admin person, a guest): the token form, with a note that it replaces this browser's session. A session with a user is set aside and restored when the token's session ends (ADR 0110 §1 item 6).
 9. **The client.**
-   - **`GET /me`** adds `admin_allowed` (on the allowlist, persons only), `admin_mode` and, under question 1 (a), `admin_mode_ends_at`. `admin` stays the effective answer. `isAdmin(session)` keeps reading `admin`, so every admin control already follows the mode.
-   - **The Admin chip** sits in the header's account area (§1 item 4), for a session with `admin_allowed`. It is a toggle button (`aria-pressed`). "Admin" on the accent colour means admin mode is on; "Player" in muted outline means player mode. The tooltip names the other mode. A click sends `PUT /me/admin-mode` and updates the session from the answer. A refused switch leaves the chip as it was and shows the server's message.
+   - **`GET /me`** adds `admin_allowed` (on the allowlist, persons only), `admin_mode` and `admin_mode_ends_at`. `admin` stays the effective answer. `isAdmin(session)` keeps reading `admin`, so every admin control already follows the mode.
+   - **The Admin chip** sits in the header's account area (§1 item 4), for a session with `admin_allowed`. It is a toggle button (`aria-pressed`). "Admin" on the accent colour means admin mode is on, and the chip shows when it ends ("Admin · until 23:40"); "Player" in muted outline means player mode. The tooltip names the other mode. A click sends `PUT /me/admin-mode` and updates the session from the answer. A refused switch leaves the chip as it was and shows the server's message.
    - **The table has no header** (ADR 0092), so the in-game menu (ADR 0111 PR 7) gets "Switch to admin mode" or "Switch to player mode" for the same sessions.
-   - **The client asks `/me` again** after a switch, on a 4001 close, and when a hidden tab becomes visible. That way a second tab or device catches up, and the server stays the gate: a stale `true` only shows a control whose click is refused (ADR 0110 §3 item 4).
+   - **The client asks `/me` again** after a switch, on a 4001 close, when a hidden tab becomes visible, and when `admin_mode_ends_at` passes. That way a second tab or device catches up, and the server stays the gate: a stale `true` only shows a control whose click is refused (ADR 0110 §3 item 4).
    - **The admin token** shows a static "Admin token" badge in place of the chip. To play as a person, sign out of the token, which restores the saved Discord session if there is one.
 10. **The Discord bot is unchanged.** `/c2-end` keeps its own allowlist check (`server/internal/bot/config.go`) and calls the server with the token. Player mode is a mode of the site. A Discord command is a deliberate operator act in another app, and the bot cannot see a site session.
 11. **Player mode is not a defence against a stolen session.** Whoever holds an allowlisted person's session can switch admin mode back on. Revocation (item 7, ADR 0051 decision 6) is the defence against theft. Player mode is how an admin plays fairly, and how they avoid using admin powers by accident. Asking for a fresh Discord sign-in before admin mode turns on is [out of scope](#out-of-scope).
@@ -250,7 +251,7 @@ Migration `0009_admin_mode.sql`: `ALTER TABLE users ADD COLUMN admin_mode_at INT
    2. **The report:** "N of M cards play as printed" (ADR 0110 §6 item 2), with ADR 0095's five buckets underneath. The check page and the library now use the same wording.
    3. **Actions** under the report: **Request missing cards** (shown when the report has `manual` or `unreviewed` cards), and **Save to my decks**, with a name field filled with the deck's name or its first commander.
    4. **Your decks:** the library, as `MyDecks.svelte` shows it today, with rename, delete, the report and a request button on every deck (item 5).
-   5. **Pre-built decks:** under [question 4](#questions-for-the-owner) (a), the curated decks from `GET /decks`, each with its "as printed" line. They are read-only, and never copied into the library.
+   5. **Pre-built decks** ([owner answer 4](#owner-decisions-2026-10-02-questions)): the curated decks from `GET /decks`, each with its "as printed" line. They are read-only, and never copied into the library.
 2. **Routes and links.**
    - `#/decks` is the page. `#/decks?url=<link>` fills in the link and runs the check, as `#/deck-check?url=` does today.
    - `#/deck-check` and `#/deck-check?url=<link>` parse to the same route, permanently, so every link the bot has already posted keeps working. A router test pins both. The bot does not change.
@@ -276,7 +277,7 @@ Migration `0009_admin_mode.sql`: `ALTER TABLE users ADD COLUMN admin_mode_at INT
    - The server re-parses the stored list and keys it the way the original would have been keyed: a deck with a `source_url` keys as that link (`moxfield:<id>`, `archidekt:<id>`), so it joins the same issue as a request made from the link, and any other deck keys as its list (`list:<hash>`).
    - The token's `requester` path does not accept `deck_id`, because the bot has no library.
    - Every library deck gets the button, not only link decks.
-6. **Save and request are separate buttons,** and neither does the other's job. A request never saves, a save never files, and each has its own limit: three asks per 24 hours, and the 200-deck cap. A check by itself writes nothing ([question 2](#questions-for-the-owner) (a)).
+6. **Save and request are separate buttons,** and neither does the other's job. A request never saves, a save never files, and each has its own limit: three asks per 24 hours, and the 200-deck cap. A check by itself writes nothing, and saving is always the explicit button ([owner answer 2](#owner-decisions-2026-10-02-questions)).
 7. **Signing in from the page brings you back to it.** Before a signed-out visitor follows "Sign in with Discord", the page stores the route in `sessionStorage["cmdctrl.afterSignIn"]`, and a pasted list in `sessionStorage["cmdctrl.afterSignIn.text"]`. `oauthComplete`'s login-page branch navigates there instead of `#/lobby` and clears both keys.
    - The value is accepted only if it parses as the `decks` route, so a stored value can never send the browser anywhere else.
    - It is client-only. The server's OAuth state carries nothing new.
@@ -314,13 +315,13 @@ Each PR carries its own tests, its `docs/lobby.md` route docs and its AGENTS.md 
 
 | PR | What | Needs | Parallel with |
 |---|---|---|---|
-| 1 | **Server: player mode** (§2). Migration `0009` and `users.AdminModes` (boot load that fails closed, write-through); `Admins`, `isAllowlisted`, the mode term in `isAdminPrincipal`, and the guard test's second rule; `PUT /me/admin-mode` with its bucket and audit line; `/me`'s `admin_allowed`, `admin_mode` (and `admin_mode_ends_at`, plus the lapse sweeper, under question 1 (a)); `Hub.RebindUserSessions` with close 4001; `RevokeAll` clearing the mode; the same-answer test across every admin route. Docs: the two `docs/lobby.md` entries, the AGENTS.md endpoint and `CMDCTRL_DISCORD_ADMIN_USER_IDS` lines, and the S57 section and index row in `docs/sprints.md`. | — | 2, 3 |
+| 1 | **Server: player mode** (§2). Migration `0009` and `users.AdminModes` (boot load that fails closed, write-through); `Admins`, `isAllowlisted`, the mode term in `isAdminPrincipal`, and the guard test's second rule; `PUT /me/admin-mode` with its bucket and audit line; `/me`'s `admin_allowed`, `admin_mode` and `admin_mode_ends_at`; the 12-hour lapse and its once-a-minute sweeper (owner answer 1); `Hub.RebindUserSessions` with close 4001; `RevokeAll` clearing the mode; the same-answer test across every admin route. Docs: the two `docs/lobby.md` entries, the AGENTS.md endpoint and `CMDCTRL_DISCORD_ADMIN_USER_IDS` lines, and the S57 section and index row in `docs/sprints.md`. | — | 2, 3 |
 | 2 | **Server: decks** (§3 items 4, 5 and 8). `POST /me/decks`, with the deck-check cache keeping entries and the fetch-token rule; `deck_id` on `POST /deck-requests`; `saveToLibrary`'s own-seat guard. Docs: `docs/lobby.md` and the AGENTS.md endpoint line. | — | 1, 3 |
-| 3 | **Client: the signed-in home** (§1). `App.svelte` routing and the identity branch of `oauthComplete`; the login page reduced to Discord sign-in and the code box, without the token card; `#/admin`'s rules for the sessions it can tell apart without `/me`; the header's account menu and wordmark; the lobby's Join card, "your tables" (question 3), the empty state and the removed command bar; Home's cards. Updates the e2e specs that use the login page. | — | 1, 2 |
+| 3 | **Client: the signed-in home** (§1). `App.svelte` routing and the identity branch of `oauthComplete`; the login page reduced to Discord sign-in and the code box, without the token card; `#/admin`'s rules for the sessions it can tell apart without `/me`; the header's account menu and wordmark; the lobby's Join card, "your tables" (owner answer 3), the empty state and the removed command bar; Home's cards. Updates the e2e specs that use the login page. | — | 1, 2 |
 | 4 | **Client: the Admin chip** (§2 items 8 and 9). The chip and the in-game menu item; `/me`'s new fields in `lib/admin.ts`, with re-asking on switch, on 4001 and on visibility; the 4001 handling in `ws.ts`; `#/admin` sending an allowlisted person to the lobby; the "Admin token" badge. | 1, 3 | 5 |
-| 5 | **Client: one decks page** (§3). `#/decks` public, with check, report, request, save and library; the `#/deck-check` alias and its router test; the request button on every library deck; the sign-in return route; the pre-built section (question 4); one "Decks" link in the header and on Home. | 2 | 4 |
+| 5 | **Client: one decks page** (§3). `#/decks` public, with check, report, request, save and library; the `#/deck-check` alias and its router test; the request button on every library deck; the sign-in return route; the pre-built section (owner answer 4); the explicit save button (owner answer 2); one "Decks" link in the header and on Home. | 2 | 4 |
 
-PRs 1, 2 and 3 start at once: they share no files. PR 4 waits for PR 1 (the route and `/me`'s fields) and PR 3 (the header's account menu). PR 5 waits for PR 2. PR 5 also edits the header's links and Home's cards, which PR 3 edits, so whichever of them merges second rebases. That conflict is mechanical. No PR needs the owner's answers to start, except as noted: question 1 decides whether PR 1 has the sweeper, question 3 decides PR 3's table list, and questions 2 and 4 decide two parts of PR 5.
+PRs 1, 2 and 3 start at once: they share no files. PR 4 waits for PR 1 (the route and `/me`'s fields) and PR 3 (the header's account menu). PR 5 waits for PR 2. PR 5 also edits the header's links and Home's cards, which PR 3 edits, so whichever of them merges second rebases. That conflict is mechanical. No PR waits on an owner answer any more.
 
 Exit check, on cmd-dev once PR 4 deploys, with a real allowlisted Discord account: sign in and land on the Lobby with the header; start in player mode; open a table and see no admin menu; switch to admin mode at the table and see the socket reconnect with the admin menu; switch back. Then, once PR 5 deploys: check a pasted deck while signed out, sign in, come back to the same deck, save it and request its missing cards.
 
@@ -329,7 +330,7 @@ Exit check, on cmd-dev once PR 4 deploys, with a real allowlisted Discord accoun
 ## Consequences
 
 - A signed-in person always has the header and its menu, and lands on the Lobby. The code box is where they already are.
-- **Every allowlisted admin, the owner included, is in player mode after the deploy,** until they click the chip. An admin who plays at a table sees what the other players see unless they choose otherwise, and the chip always says which mode they are in.
+- **Every allowlisted admin, the owner included, is in player mode after the deploy,** until they click the chip, and admin mode then lasts 12 hours at a time. An admin who plays at a table sees what the other players see unless they choose otherwise, and the chip always says which mode they are in.
 - A switch reaches every tab and device of the person at the next request, and every open socket within a reconnect. No token changes.
 - The shared token works exactly as before. The bot is unchanged.
 - One page checks, requests and saves a deck, and every library deck can ask for its missing cards. The bot's links keep working.
@@ -346,9 +347,9 @@ Exit check, on cmd-dev once PR 4 deploys, with a real allowlisted Discord accoun
 
 ---
 
-## Questions for the owner
+## Questions for the owner (answered)
 
-Each is a product choice the three decisions on #1992 leave open. **(a) is recommended each time.**
+These are the questions as asked. Each is a product choice the three decisions on #1992 left open, and (a) was the recommendation each time. The owner's answers follow.
 
 1. **How long admin mode lasts (§2 items 1 and 3).** Admin mode is off by default, and the chip turns it on.
    - **(a) Recommended:** it switches itself off 12 hours after it was turned on (the length of a non-person session, `CMDCTRL_SESSION_TTL`'s default), like `sudo`. The chip shows when it ends. A sweeper once a minute ends lapsed modes and closes those sockets with 4001, so the admin menu goes away at the table too. An admin who forgets to switch back is a player again by the next game night.
@@ -363,3 +364,14 @@ Each is a product choice the three decisions on #1992 leave open. **(a) is recom
    - **(a) Recommended:** the decks page lists the pre-built decks in their own read-only section, with each one's "as printed" line from `GET /decks`. They are never copied, so a curated deck that is edited later never leaves a stale copy behind.
    - (b) Seating a pre-built deck saves a copy of its list to your library, like an upload. The copy then drifts from the curated deck as it is edited.
    - (c) Neither. Pre-built decks stay in the lobby's picker only.
+
+---
+
+## Owner decisions, 2026-10-02 (questions)
+
+The owner answered the four questions on 2026-10-02. Every answer was the recommended option (a).
+
+1. **How long admin mode lasts.** It switches itself off 12 hours after it is turned on, like `sudo`. The chip shows when it ends, and a once-a-minute sweeper ends lapsed modes and closes those sockets with 4001, so the admin menu goes away at the table too (§2 items 1, 3 and 9; Delivery PRs 1 and 4).
+2. **Saving a checked deck.** Checking a deck never saves it. "Save to my decks" is a separate, explicit button (§3 items 1 and 6; Delivery PR 5).
+3. **What the Lobby lists.** When admin mode is off, the Lobby lists only the person's own tables: the ones they sit at, watch or created, with "Open" for a seat held through another session. Admin mode and the token see every table (§1 item 6; Delivery PR 3).
+4. **Pre-built decks on the decks page.** They get their own read-only section, with each one's "as printed" line, and are never copied into the library (§3 item 1; Delivery PR 5).
