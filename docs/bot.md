@@ -990,7 +990,13 @@ completes each defender's declaration explicitly — their own pass, a
 priority back after the last one ([ADR 0045](decisions/0045-combat-restrictions.md)
 Decision 38), so no block is lost either way; the grace only saves the
 extra round of passes. It still defaults to production's value, so a
-run matches what a live table does.
+run matches what a live table does. Since #1501 it almost never has
+anything to hold for: nobody holds priority while a defender is
+declaring (CR 509.1), so an attacking bot has no pass to hold until the
+declarations are in. A declaring bot defender finishes with the
+`finish_blocks` move, which the enumerator offers as always-legal, so
+a defender whose policy wants no block still ends its declaration
+rather than sleeping on it.
 
 #### Lockstep runs (#1503)
 

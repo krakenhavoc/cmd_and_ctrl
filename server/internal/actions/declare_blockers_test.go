@@ -186,3 +186,80 @@ func TestDispatchFinishBlocks(t *testing.T) {
 		t.Errorf("status %q, want declared", got)
 	}
 }
+
+// #1501 / CR 509.1: priority is parked while a defender declares, so a
+// seated player's priority-gated verbs are refused — nobody holds it.
+// The defender's own block verbs and finish_blocks are not gated, and
+// finishing hands the active player priority.
+func TestDispatchRefusesPriorityVerbsWhileBlockersAreDeclared(t *testing.T) {
+	g, attacker, blockers := menaceCombat(t)
+	act, def := g.Seats[0].ID, g.Seats[1].ID
+	if g.Turn.PriorityHolder != game.NoPriority {
+		t.Fatalf("setup: priority parked, holder %d", g.Turn.PriorityHolder)
+	}
+	for _, seat := range []uuid.UUID{act, def} {
+		pass := mustAction(t, TypePassPriority, nil)
+		pass.Caller = seat
+		if err := Dispatch(g, pass); !errors.Is(err, ErrNotPriorityHolder) {
+			t.Errorf("seat %s passing before the declaration: %v, want ErrNotPriorityHolder", seat, err)
+		}
+		// A trick before blocks is exactly what CR 509.1 rules out.
+		// The engine's CastSpell has no priority check of its own (the
+		// sandbox keeps that at this layer), so this is the gate.
+		trick := game.NewCard("Trick", seat)
+		trick.TypeLine = "Instant"
+		g.PlayerByID(seat).Hand.PushTop(trick)
+		cast, err := Decode(string(TypeCastSpell), seat.String(), params(t, map[string]string{"instance_id": trick.InstanceID.String()}))
+		if err != nil {
+			t.Fatal(err)
+		}
+		cast.Caller = seat
+		if err := Dispatch(g, cast); !errors.Is(err, ErrNotPriorityHolder) {
+			t.Errorf("seat %s casting before the declaration: %v, want ErrNotPriorityHolder", seat, err)
+		}
+	}
+	set := mustAction(t, TypeDeclareBlockers, blockSetParams(t,
+		blockerEntry{Blocker: blockers[0], Attacker: attacker},
+		blockerEntry{Blocker: blockers[1], Attacker: attacker},
+	))
+	set.Caller = def
+	if err := Dispatch(g, set); err != nil {
+		t.Fatalf("the defender's block while priority is parked: %v", err)
+	}
+	fin, err := Decode(string(TypeFinishBlocks), def.String(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fin.Caller = def
+	if err := Dispatch(g, fin); err != nil {
+		t.Fatalf("finish_blocks: %v", err)
+	}
+	if g.Turn.PriorityHolder != g.Turn.ActiveSeat {
+		t.Fatalf("after the declaration the active player holds priority; holder %d", g.Turn.PriorityHolder)
+	}
+	pass := mustAction(t, TypePassPriority, nil)
+	pass.Caller = act
+	if err := Dispatch(g, pass); err != nil {
+		t.Fatalf("the active player's post-block pass: %v", err)
+	}
+}
+
+// #1501: Dispatch settles a parked step nobody is declaring in any
+// more. clear_combat (a sandbox verb) takes every attacker out of
+// combat, so the defender stops being a defending player; without the
+// settle the step would sit with no priority holder and no move for
+// anyone.
+func TestDispatchSettlesAParkedStepWithNobodyDeclaring(t *testing.T) {
+	g, _, _ := menaceCombat(t)
+	if g.Turn.PriorityHolder != game.NoPriority {
+		t.Fatalf("setup: priority parked, holder %d", g.Turn.PriorityHolder)
+	}
+	clear := mustAction(t, TypeClearCombat, nil)
+	clear.Caller = g.Seats[0].ID
+	if err := Dispatch(g, clear); err != nil {
+		t.Fatalf("clear_combat: %v", err)
+	}
+	if g.Turn.Step != game.StepDeclareBlockers || g.Turn.PriorityHolder != g.Turn.ActiveSeat {
+		t.Fatalf("after clearing combat the active player holds priority: %s, holder %d", g.Turn.Step, g.Turn.PriorityHolder)
+	}
+}

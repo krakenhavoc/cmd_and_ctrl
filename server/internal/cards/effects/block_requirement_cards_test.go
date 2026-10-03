@@ -34,8 +34,14 @@ func reqCreature(g *game.Game, owner uuid.UUID, name, oracle string, p, t int, k
 }
 
 // reqToBlockers declares `attackers` against the next seat, walks into
-// declare_blockers and passes the active player's priority, so the next
+// declare_blockers and hands the defender priority, so the next
 // PassPriority is the defender's. Returns the defender.
+//
+// #1501: priority is parked while a defender declares, so the hand-over
+// is the defenderHoldsPriority shape rather than the active player's
+// pass. The defender's pass is the same CR 509.1c checkpoint as
+// finish_blocks (game.blockCheckpointLocked); the game package's
+// block_requirements tests pin all three completion paths.
 func reqToBlockers(t *testing.T, g *game.Game, attackers ...uuid.UUID) *game.Player {
 	t.Helper()
 	seat := g.Turn.ActiveSeat
@@ -51,13 +57,32 @@ func reqToBlockers(t *testing.T, g *game.Game, attackers ...uuid.UUID) *game.Pla
 			t.Fatalf("AdvanceStep to declare blockers: %v", err)
 		}
 	}
-	if err := g.PassPriority(); err != nil {
-		t.Fatalf("active player's pass: %v", err)
-	}
-	if g.Seats[g.Turn.PriorityHolder].ID != opp.ID {
-		t.Fatalf("priority is with seat %d, want the defender", g.Turn.PriorityHolder)
-	}
+	defenderHoldsPriority(t, g, opp.ID)
 	return opp
+}
+
+// defenderHoldsPriority builds the one shape in which a defender still
+// declaring blockers holds priority (#1501: a restore point written
+// before priority was parked for the declaration, or a player who became
+// a defending player after the step began), so the next PassPriority is
+// theirs and runs the declaration's checkpoint. The step must be parked
+// for the declaration, which is what entering it with a pending defender
+// does now.
+func defenderHoldsPriority(t *testing.T, g *game.Game, defender uuid.UUID) {
+	t.Helper()
+	if g.Turn.PriorityHolder != game.NoPriority {
+		t.Fatalf("priority holder %d, want it parked for the declaration", g.Turn.PriorityHolder)
+	}
+	idx := -1
+	for i, s := range g.Seats {
+		if s != nil && s.ID == defender {
+			idx = i
+		}
+	}
+	if idx < 0 {
+		t.Fatalf("no seat for the defender %s", defender)
+	}
+	g.WithWriteLock(func() { g.Turn.PriorityHolder = idx })
 }
 
 // reqRefusal asserts err is a block_requirement refusal and returns it.

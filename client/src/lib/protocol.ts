@@ -119,6 +119,10 @@ export const BLOCK_REFUSAL_REASONS = [
   // two. Only a creature that can block more than one is ever refused
   // this; an ordinary blocker's second block re-points it.
   "blocker_capacity",
+  // #1501 (CR 509.1): the blocker's controller has already finished
+  // declaring blockers this combat — a late block, such as one on a
+  // ninja that entered attacking after the declaration.
+  "blocks_declared",
 ] as const;
 export type BlockRefusalReason = (typeof BLOCK_REFUSAL_REASONS)[number];
 
@@ -569,7 +573,11 @@ export interface LegalMoveView {
     | "block"
     | "choice"
     | "mulligan"
-    | "special_action";
+    | "special_action"
+    // #1501: a declaring defender's finish_blocks ("No blocks" /
+    // "Done blocking"). Not a pass: nobody holds priority while a
+    // defender declares. Carries no card.
+    | "finish_blocks";
   label: string;
   // Instance ID of the card the move is about, when there is one.
   // Moves with no card (pass_priority, keep_hand, mulligan) carry the

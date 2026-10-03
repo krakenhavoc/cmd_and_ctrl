@@ -63,8 +63,10 @@ func attackAndTrigger(t *testing.T, g *game.Game, attackers ...uuid.UUID) *game.
 }
 
 // onToBlockers walks from a settled declare-attackers step into
-// declare blockers and passes the active player's priority, so the next
-// PassPriority is the defender's.
+// declare blockers and hands the defender (the next seat, as
+// attackAndTrigger attacks it) priority, so the next PassPriority is
+// theirs — defenderHoldsPriority, since #1501 parks priority while a
+// defender declares.
 func onToBlockers(t *testing.T, g *game.Game) {
 	t.Helper()
 	for g.Turn.Step != game.StepDeclareBlockers {
@@ -72,9 +74,7 @@ func onToBlockers(t *testing.T, g *game.Game) {
 			t.Fatalf("AdvanceStep to declare blockers: %v", err)
 		}
 	}
-	if err := g.PassPriority(); err != nil {
-		t.Fatalf("active player's pass: %v", err)
-	}
+	defenderHoldsPriority(t, g, g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)].ID)
 }
 
 func blocksAttackerRecords(g *game.Game) []game.Mod {

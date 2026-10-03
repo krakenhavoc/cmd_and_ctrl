@@ -105,9 +105,11 @@ func TestWallOfFrostMarksTheAttackerThatItBlocks(t *testing.T) {
 	if err := g.DeclareBlocker(wall, attacker); err != nil {
 		t.Fatalf("DeclareBlocker: %v", err)
 	}
-	// Block assignments are staged until the declaration locks in at
-	// the priority wrap (#830). Stop when the trigger is queued, before
+	// Block assignments are staged until the declaration locks in
+	// (#830) — since #1501, when the defender finishes, priority being
+	// parked until then. Stop when the trigger is queued, before
 	// another round of passes would resolve it.
+	finishBlockDeclarations(t, g)
 	for i := 0; i < len(g.Seats) && !hasTriggerFor(g, wall); i++ {
 		if err := g.PassPriority(); err != nil {
 			t.Fatalf("lock in blocks: %v", err)

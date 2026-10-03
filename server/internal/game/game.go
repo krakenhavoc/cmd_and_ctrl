@@ -1720,8 +1720,10 @@ func (g *Game) finishStepEntryLocked(canceled bool) {
 		// and nothing that waits on it (ninjutsu, "attacks and isn't
 		// blocked", the bot's block grace) waits for a pass that means
 		// nothing. A defender with a block to make stays pending; see
-		// block_completion.go for how they finish.
-		g.autoCompleteBlockDeclarationsLocked()
+		// block_completion.go for how they finish. #1501: and while
+		// one is, nobody has priority — it is parked until the last
+		// declaration completes.
+		g.beginBlockDeclarationLocked()
 	case StepPrecombatMain:
 		// S27 / CR 714.3: "after your draw step, put a lore counter
 		// on each Saga you control" is a turn-based action performed

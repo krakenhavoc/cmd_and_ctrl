@@ -236,6 +236,11 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 	case legal.KindPass:
 		return 0, "pass"
 
+	case legal.KindFinishBlocks:
+		// #1501: a defender's "done declaring blockers", priced as
+		// the pass it stands in for.
+		return 0, "done blocking"
+
 	case legal.KindLand:
 		// A land drop is free, once a turn, and almost never wrong.
 		// It is priced above every ordinary cast so the bot plays its

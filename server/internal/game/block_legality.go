@@ -138,6 +138,19 @@ const (
 	// reasons it comes from the declaration verbs, never from
 	// BlockPairRefusalLocked. #1706.
 	BlockReasonBlockerCapacity BlockReason = "blocker_capacity"
+
+	// BlockReasonBlocksDeclared — the blocker's controller has already
+	// FINISHED declaring blockers this combat (CR 509.1, #1501). The
+	// declaration is one turn-based action, so a block that arrives
+	// after its player said "done" — by finish_blocks, by passing, or
+	// by having no legal block as the step began — is not part of it.
+	// Before #1501 the verb took such a block as a sandbox allowance
+	// (ADR 0045 Decision 38), which left "a ninja that entered
+	// attacking after the declaration can't be blocked" a table
+	// convention rather than an engine fact. Like the count reasons it
+	// comes only from the declaration verbs; the option generator never
+	// offers a declared defender anything. Defender names the player.
+	BlockReasonBlocksDeclared BlockReason = "blocks_declared"
 )
 
 // BlockReasons lists every reason the engine can return today, in the
@@ -164,6 +177,7 @@ func BlockReasons() []BlockReason {
 		BlockReasonDeclarationLimit,
 		BlockReasonRequirement,
 		BlockReasonBlockerCapacity,
+		BlockReasonBlocksDeclared,
 	}
 }
 
@@ -457,6 +471,16 @@ func (e *BlockRefusedError) Sentence(viewer uuid.UUID) string {
 		// #1706. About the blocker and a number, like the count
 		// reasons are about the attacker and one.
 		return blocker + " can't block more than " + blockerCountPhrase(e.N) + " each combat."
+	case BlockReasonBlocksDeclared:
+		// #1501. About the player, not the pair: their declaration is
+		// over, whichever creatures the late block names.
+		switch {
+		case e.Defender != uuid.Nil && e.Defender == viewer:
+			return "You have already finished declaring blockers this combat."
+		case e.DefenderName != "":
+			return e.DefenderName + " has already finished declaring blockers this combat."
+		}
+		return "Blockers have already been declared this combat."
 	}
 	return blocker + " can't block " + attacker + "."
 }

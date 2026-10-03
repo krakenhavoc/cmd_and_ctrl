@@ -244,18 +244,27 @@ func TestBlockAfterAReselectFollowsTheNewDefender(t *testing.T) {
 	}
 
 	// The standing block is not re-judged: repeating it is a no-op
-	// success, alone and inside a set with a new legal pairing.
+	// success.
 	if err := g.DeclareBlocker(oldBlocker, attacker); err != nil {
 		t.Errorf("repeating the standing block: %v", err)
 	}
-	if err := g.DeclareBlockers([]BlockDeclaration{
+	// #1501: beside a new pairing from seat 1 the set is refused — but
+	// for the NEW pairing, which is late (seat 1 has finished
+	// declaring), not for the standing one, which a re-judge would
+	// call not_defending now that the attacker is pointed at seat 2.
+	err := g.DeclareBlockers([]BlockDeclaration{
 		{Blocker: oldBlocker, Attacker: attacker},
 		{Blocker: oldSecond, Attacker: other},
-	}); err != nil {
-		t.Errorf("a set repeating the standing block beside a legal new one: %v", err)
+	})
+	var br *BlockRefusedError
+	if !errors.As(err, &br) || br.Reason != BlockReasonBlocksDeclared || br.Blocker != oldSecond {
+		t.Errorf("a set repeating the standing block beside a late new one: %v, want blocks_declared naming the new blocker", err)
 	}
 	if c := findCard(g, oldBlocker); c.BlockingTarget != attacker {
 		t.Errorf("the standing block moved: blocking %v", c.BlockingTarget)
+	}
+	if c := findCard(g, oldSecond); c.BlockingTarget != uuid.Nil {
+		t.Errorf("the refused set stored its late pairing: blocking %v", c.BlockingTarget)
 	}
 
 	// A NEW pairing from the old defender is refused.

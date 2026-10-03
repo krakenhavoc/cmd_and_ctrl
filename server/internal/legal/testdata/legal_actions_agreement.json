@@ -1715,7 +1715,7 @@
         "seq": 1,
         "number": 1,
         "active_seat": 0,
-        "priority_holder": 0,
+        "priority_holder": -1,
         "phase": "combat",
         "step": "declare_blockers",
         "phase_id": 3,
@@ -1786,6 +1786,14 @@
           "kind": "block",
           "label": "Block Hill Giant with Bear Cub",
           "source": "0000002f-0000-4000-8000-000000000000"
+        },
+        {
+          "type": "finish_blocks",
+          "player": "00000025-0000-4000-8000-000000000000",
+          "kind": "finish_blocks",
+          "label": "No blocks",
+          "source": "00000000-0000-0000-0000-000000000000",
+          "always_legal": true
         }
       ],
       "legal_actions": {

@@ -28,11 +28,13 @@ import "github.com/google/uuid"
 //
 // #1279 added the piece this header used to say was missing: a
 // COMPLETION POINT for each defending player's declaration
-// (block_completion.go). The step still grants the active player
-// priority on entry, but "the defender chose not to block" and "the
+// (block_completion.go). "The defender chose not to block" and "the
 // defender has not acted yet" are now two different states, and the
 // signal below stops holding for a defender whose declaration is
-// complete.
+// complete. #1501 finished the job: the step no longer grants anyone
+// priority on entry while a defender is still declaring (CR 509.1 —
+// the declaration comes first), and a block after a defender's
+// declaration is complete is refused.
 
 // BlockerEligible reports whether card b could be declared as a
 // blocker by `seat` right now, ignoring which attacker it would be
@@ -177,9 +179,10 @@ func (g *Game) SeatsOwingBlockDecisionLocked() []int {
 // pass priority, send finish_blocks, or the cursor leaves the step —
 // AdvanceStep and PassPriority's wrap complete every pending defender
 // first, so the lock-in always happens INSIDE declare_blockers. The
-// lock-in still sits at the top of runStateChecksLocked, where it
-// announces blocks a defender adds AFTER completing (the sandbox's late
-// block); a pending defender's staged blocks wait for them.
+// lock-in still sits at the top of runStateChecksLocked as a belt; a
+// pending defender's staged blocks wait for them. It no longer has a
+// late block to announce: since #1501 the verb refuses a block from a
+// defender whose declaration is complete (blocks_declared).
 //
 // commitBlockDeclarationLocked is the one place block-declaration
 // triggers are harvested from: it emits the events, and the ordinary
