@@ -244,6 +244,41 @@ func costCommanderCases() []costCommanderCase {
 				}, manaInPool}
 		}},
 
+		// --- exile a permanent you control (#1600) ----------------------
+		{"ability: exile a creature you control (The Soul Stone)", func(t *testing.T, g *Game, cmd bool) costCommanderSetup {
+			advanceTo(t, g, StepPrecombatMain)
+			me := g.Seats[0]
+			src := abilitySource(g, me, AbilityCost{ExilePermanents: creatureExileCost()})
+			id := seedCostCard(g.Battlefield, me.ID, me.ID, cmd, nil)
+			return costCommanderSetup{0, id, battlefieldZone, exileZone,
+				func(g *Game) error {
+					return g.ActivateCatalogAbility(g.Seats[0].ID, src, 0, ActivateAbilityParams{ExilePermanentIDs: []uuid.UUID{id}})
+				}, oneAbilityOnStack}
+		}},
+		{"ability: exile a STOLEN commander you control", func(t *testing.T, g *Game, cmd bool) costCommanderSetup {
+			advanceTo(t, g, StepPrecombatMain)
+			me, opp := g.Seats[0], g.Seats[1]
+			src := abilitySource(g, me, AbilityCost{ExilePermanents: creatureExileCost()})
+			id := seedCostCard(g.Battlefield, opp.ID, me.ID, cmd, nil)
+			return costCommanderSetup{1, id, battlefieldZone, exileZone,
+				func(g *Game) error {
+					return g.ActivateCatalogAbility(g.Seats[0].ID, src, 0, ActivateAbilityParams{ExilePermanentIDs: []uuid.UUID{id}})
+				}, oneAbilityOnStack}
+		}},
+		{"mana ability: exile a creature you control (Food Chain)", func(t *testing.T, g *Game, cmd bool) costCommanderSetup {
+			me := g.Seats[0]
+			src := manaSource(g, me, ManaAbilityShape{
+				ExilePermanents: creatureExileCost(),
+				Produced:        "{G}{G}",
+				Label:           "Exile a creature you control: Add {G}{G}",
+			})
+			id := seedCostCard(g.Battlefield, me.ID, me.ID, cmd, nil)
+			return costCommanderSetup{0, id, battlefieldZone, exileZone,
+				func(g *Game) error {
+					return g.ActivateManaAbility(g.Seats[0].ID, src, 0, ManaAbilityParams{ExilePermanentIDs: []uuid.UUID{id}})
+				}, manaInPool}
+		}},
+
 		// --- sacrifice (paused mid-payment before #1397) ------------------
 		{"ability: sacrifice a STOLEN commander", func(t *testing.T, g *Game, cmd bool) costCommanderSetup {
 			advanceTo(t, g, StepPrecombatMain)

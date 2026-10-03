@@ -141,6 +141,24 @@ type PermanentInfo struct {
 	// was chosen.
 	ChosenColor string `json:"chosenColor,omitempty"`
 	NamedTribe  string `json:"namedTribe,omitempty"`
+
+	// ManaValue is the permanent's mana value as it last existed on the
+	// battlefield (#1600): Food Chain's "1 plus the exiled creature's
+	// mana value". Read off the card's mana cost while it was a
+	// permanent, so a Clone copying a six-drop is six (a copy effect
+	// rewrites the cost, CR 707.2, and leaving the battlefield undoes
+	// it), and a face-down permanent, which has no mana cost, is zero.
+	// A token that is no copy has no mana cost either, and is zero.
+	ManaValue int `json:"manaValue,omitempty"`
+}
+
+// permanentManaValue is PermanentInfo.ManaValue's reading of a
+// battlefield card.
+func permanentManaValue(c *Card) int {
+	if c.FaceDown {
+		return 0
+	}
+	return c.ManaValue()
 }
 
 // permanentInfoOf reads a battlefield card into a PermanentInfo. The
@@ -158,6 +176,7 @@ func permanentInfoOf(c *Card) PermanentInfo {
 		Delved:         append([]ObjectRef(nil), c.Provenance.Delved...),
 		ChosenColor:    c.ChosenColor,
 		NamedTribe:     c.NamedTribe,
+		ManaValue:      permanentManaValue(c),
 	}
 }
 

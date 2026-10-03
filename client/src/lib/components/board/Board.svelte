@@ -132,7 +132,11 @@
   import ModePickerModal from "./ModePickerModal.svelte";
   import DiscardCostModal from "./DiscardCostModal.svelte";
   import CostConfirmModal from "./CostConfirmModal.svelte";
-  import { manaAbilityNeedsPrompt, manaTapPayment } from "../../manaAbilityCost";
+  import {
+    manaAbilityNeedsPrompt,
+    manaExilePermanentPayment,
+    manaTapPayment,
+  } from "../../manaAbilityCost";
   import { exileCostNote, exileCostOptionCards, exileCostWhere } from "../../exileCost";
   import {
     costConfirmLines,
@@ -1185,6 +1189,11 @@
         ...state.ability.counter,
         targets,
       };
+      // #1600: the exile-a-permanent picks (Altar of Bhaal), omitted
+      // when the cost has no such component.
+      if (abilityExilePermanentIDs.length > 0) {
+        params.exile_permanent_ids = abilityExilePermanentIDs;
+      }
       // #1297: the exile-N-cards picks, made at announce with the
       // discard picks. Their own field — an exiled card is not
       // discarded — and omitted when the cost has no such component.
@@ -1208,6 +1217,7 @@
       abilityExileIDs = [];
       abilityTopIDs = [];
       abilityReturnIDs = [];
+      abilityExilePermanentIDs = [];
       abilityTapIDs = [];
       abilitySacrificeX = undefined;
       abilityTapX = undefined;
@@ -1274,6 +1284,36 @@
     const p = abilityReturnPrompt;
     if (!p) return [];
     return orderSacrificeOptions(view.battlefield.cards, p.ability.return_options?.cards);
+  });
+
+  // #1600: "Exile a creature you control" as a cost (The Soul Stone's
+  // harness, Altar of Bhaal, City of Shadows) — the return pick one
+  // destination over, asked right after it, through the same picker
+  // with the verb "Exile". Its own field on the wire,
+  // `exile_permanent_ids`, because `exile_ids` names cards in a pile.
+  let abilityExilePermanentPrompt = $state<{
+    card: CardView;
+    ability: ActivatedAbilityView;
+  } | null>(null);
+  let abilityExilePermanentIDs: string[] = [];
+
+  const abilityExilePermanentOptions = $derived.by(() => {
+    const p = abilityExilePermanentPrompt;
+    if (!p) return [];
+    return orderSacrificeOptions(view.battlefield.cards, p.ability.exile_permanent_options?.cards);
+  });
+
+  // #1600: the same component on a MANA ability (Food Chain).
+  let manaExilePermanentPrompt = $state<{
+    card: CardView;
+    ability: ManaAbilityView;
+  } | null>(null);
+  let manaExilePermanentIDs: string[] = [];
+
+  const manaExilePermanentOptions = $derived.by(() => {
+    const p = manaExilePermanentPrompt;
+    if (!p) return [];
+    return orderSacrificeOptions(view.battlefield.cards, p.ability.exile_permanent_options?.cards);
   });
 
   // #759: "Tap another untapped creature you control" as a cost — the
@@ -1601,7 +1641,33 @@
     } else {
       abilityReturnIDs = [];
     }
+    askAbilityExilePermanentCost(card, ability);
+  }
+
+  // #1600: the exile-a-permanent pick, after the return pick and for
+  // the same reason, skipped the same way when the board offers exactly
+  // the permanents the clause demands.
+  function askAbilityExilePermanentCost(card: CardView, ability: ActivatedAbilityView): void {
+    if (ability.exile_permanent_options) {
+      const options = ability.exile_permanent_options.cards ?? [];
+      const need = ability.exile_permanent_options.max ?? ability.exile_permanent_options.min ?? 1;
+      if (options.length > need) {
+        abilityExilePermanentPrompt = { card, ability };
+        return;
+      }
+      abilityExilePermanentIDs = options;
+    } else {
+      abilityExilePermanentIDs = [];
+    }
     askAbilityTapCost(card, ability);
+  }
+
+  function confirmAbilityExilePermanentCost(ids: string[]): void {
+    const p = abilityExilePermanentPrompt;
+    abilityExilePermanentPrompt = null;
+    if (!p) return;
+    abilityExilePermanentIDs = ids;
+    askAbilityTapCost(p.card, p.ability);
   }
 
   // #759: the tap-another pick, then the rest of the chain.
@@ -1657,7 +1723,7 @@
     abilityReturnPrompt = null;
     if (!p) return;
     abilityReturnIDs = ids;
-    askAbilityTapCost(p.card, p.ability);
+    askAbilityExilePermanentCost(p.card, p.ability);
   }
 
   function askCounterCost(
@@ -1772,8 +1838,34 @@
   }
 
   // The rest of the mana-ability chain once the card-shaped costs are
-  // answered: tap-another, sacrifice, then the counter cost.
+  // answered: exile-a-permanent, tap-another, sacrifice, then the
+  // counter cost.
   function afterManaCardCosts(card: CardView, ability: ManaAbilityView): void {
+    // #1600: Food Chain's "Exile a creature you control", skipped when
+    // the board offers exactly the permanents the clause demands.
+    if (ability.exile_permanent_options) {
+      const options = ability.exile_permanent_options.cards ?? [];
+      const need = ability.exile_permanent_options.max ?? ability.exile_permanent_options.min ?? 1;
+      if (options.length > need) {
+        manaExilePermanentPrompt = { card, ability };
+        return;
+      }
+      manaExilePermanentIDs = options;
+    } else {
+      manaExilePermanentIDs = [];
+    }
+    askManaTapCost(card, ability);
+  }
+
+  function confirmManaExilePermanentCost(ids: string[]): void {
+    const p = manaExilePermanentPrompt;
+    manaExilePermanentPrompt = null;
+    if (!p) return;
+    manaExilePermanentIDs = ids;
+    askManaTapCost(p.card, p.ability);
+  }
+
+  function askManaTapCost(card: CardView, ability: ManaAbilityView): void {
     if (ability.tap_others_options) {
       const options = ability.tap_others_options.cards ?? [];
       const need = ability.tap_others_options.max ?? ability.tap_others_options.min ?? 1;
@@ -1897,6 +1989,8 @@
         ...(manaDiscardIDs.length > 0 ? { discard_ids: manaDiscardIDs } : {}),
         // #1283: the same posture — absent unless the ability exiles.
         ...(manaExileIDs.length > 0 ? { exile_ids: manaExileIDs } : {}),
+        // #1600: and the permanents an exile-a-permanent cost names.
+        ...manaExilePermanentPayment(manaExilePermanentIDs),
         ...counter,
         // #1443: absent unless the picker named a colour.
         ...manaColorParams(manaColors),
@@ -1909,6 +2003,7 @@
   function resetManaCostPayment(): void {
     manaDiscardIDs = [];
     manaExileIDs = [];
+    manaExilePermanentIDs = [];
     manaTapIDs = [];
     manaColors = [];
   }
@@ -2070,6 +2165,10 @@
     }
     // #1297: the exile picks, on their own field, omitted when none.
     if (abilityExileIDs.length > 0) params.exile_ids = abilityExileIDs;
+    // #1600: the exiled permanents, likewise.
+    if (abilityExilePermanentIDs.length > 0) {
+      params.exile_permanent_ids = abilityExilePermanentIDs;
+    }
     // ADR 0109 §7: the card put on top of the library, likewise.
     if (abilityTopIDs.length > 0) params.top_ids = abilityTopIDs;
     abilityWaterbendIDs = undefined;
@@ -2077,6 +2176,7 @@
     abilityExileIDs = [];
     abilityTopIDs = [];
     abilityReturnIDs = [];
+    abilityExilePermanentIDs = [];
     abilityTapIDs = [];
     abilitySacrificeX = undefined;
     abilityTapX = undefined;
@@ -2741,6 +2841,35 @@
     onCancel={() => {
       abilityReturnPrompt = null;
       abilityReturnIDs = [];
+    }}
+  />
+  <!-- #1600: "Exile a creature you control" as a cost (The Soul Stone,
+       Altar of Bhaal, City of Shadows). The sacrifice picker with the
+       verb "Exile"; the answer rides exile_permanent_ids. -->
+  <SacrificeCostModal
+    source={abilityExilePermanentPrompt?.card ?? null}
+    label={abilityExilePermanentPrompt?.ability.exile_permanent_label ?? "a creature you control"}
+    options={abilityExilePermanentOptions}
+    count={abilityExilePermanentPrompt?.ability.exile_permanent_options?.max ?? 1}
+    verb="Exile"
+    onConfirm={confirmAbilityExilePermanentCost}
+    onCancel={() => {
+      abilityExilePermanentPrompt = null;
+      abilityExilePermanentIDs = [];
+      abilityReturnIDs = [];
+    }}
+  />
+  <!-- #1600: the same picker for Food Chain's mana ability. -->
+  <SacrificeCostModal
+    source={manaExilePermanentPrompt?.card ?? null}
+    label={manaExilePermanentPrompt?.ability.exile_permanent_label ?? "a creature you control"}
+    options={manaExilePermanentOptions}
+    count={manaExilePermanentPrompt?.ability.exile_permanent_options?.max ?? 1}
+    verb="Exile"
+    onConfirm={confirmManaExilePermanentCost}
+    onCancel={() => {
+      manaExilePermanentPrompt = null;
+      resetManaCostPayment();
     }}
   />
   <!-- #759: station's "Tap another untapped creature you control".

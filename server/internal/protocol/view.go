@@ -3190,6 +3190,22 @@ type ActivatedAbilityView struct {
 	// control is on this list.
 	ReturnLabel   string            `json:"return_label,omitempty"`
 	ReturnOptions *LegalTargetsView `json:"return_options,omitempty"`
+	// ExilePermanentLabel / ExilePermanentOptions describe an "Exile a
+	// creature you control" cost component (#1600) — The Soul Stone's
+	// harness, Altar of Bhaal, City of Shadows. ReturnLabel /
+	// ReturnOptions one destination over: the same LegalTargetsView with
+	// min and max the clause's count, the permanents that could pay right
+	// now in payment order (game.ExilePermanentsOptionsForEffect), so the
+	// client reuses the sacrifice picker with the verb "Exile". The
+	// chosen permanents go back as `exile_permanent_ids`. Absent when the
+	// cost has no such component; present with too few cards means the
+	// cost cannot be paid (CR 118.3).
+	//
+	// NOT the exile_cost_* fields, which name CARDS in a hand or a
+	// graveyard, and NOT a target list: a hexproof creature you control
+	// is on it (CR 601.2h).
+	ExilePermanentLabel   string            `json:"exile_permanent_label,omitempty"`
+	ExilePermanentOptions *LegalTargetsView `json:"exile_permanent_options,omitempty"`
 	// Waterbend is the CR 701.67 clause of a "Waterbend {N}:" cost
 	// (#1310) — Aang, Swift Savior, Katara, Water Tribe's Hope — in
 	// the SAME TapCostView shape a hand card's convoke / waterbend
@@ -3436,6 +3452,13 @@ type ManaAbilityView struct {
 	// Tap picker and sends the answer as activate_mana_ability.tap_ids.
 	TapOthersLabel   string            `json:"tap_others_label,omitempty"`
 	TapOthersOptions *LegalTargetsView `json:"tap_others_options,omitempty"`
+	// ExilePermanentLabel / ExilePermanentOptions are the mana-ability
+	// half of #1600's exile-a-permanent component — Food Chain's "Exile
+	// a creature you control". Same wire names and option shape as
+	// ActivatedAbilityView, so the client reuses the one picker and sends
+	// the answer as activate_mana_ability.exile_permanent_ids.
+	ExilePermanentLabel   string            `json:"exile_permanent_label,omitempty"`
+	ExilePermanentOptions *LegalTargetsView `json:"exile_permanent_options,omitempty"`
 	// LifeCost is a "Pay N life" component of the activation cost —
 	// Mana Confluence's "{T}, Pay 1 life:". Advisory, exactly like
 	// ActivatedAbilityView.LifeCost: the client renders the cost
@@ -6563,6 +6586,12 @@ func stampManaSacrificeOptions(g *game.Game, card game.Card, controller uuid.UUI
 			views[i].TapOthersLabel = tc.Label
 			views[i].TapOthersOptions = tapOthersCostOptions(g, controller, card.InstanceID, tc, raw[i].TapCost)
 		}
+		// #1600: the exile-a-permanent component (Food Chain), off the
+		// walk the engine validates against.
+		if ec := raw[i].ExilePermanents; !ec.Empty() {
+			views[i].ExilePermanentLabel = ec.Label
+			views[i].ExilePermanentOptions = exilePermanentCostOptions(g, controller, card.InstanceID, ec)
+		}
 		// #1213: the same three fields the activated view carries,
 		// off the same walk, so the client's picker is one component
 		// for both ability kinds.
@@ -9024,6 +9053,12 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 			v.ReturnLabel = rc.Label
 			v.ReturnOptions = returnCostOptions(g, caster, c.InstanceID, rc)
 		}
+		// #1600: the exile-a-permanent component, the return's sibling,
+		// stamped from the same kind of walk.
+		if ec := a.Cost.ExilePermanents; !ec.Empty() {
+			v.ExilePermanentLabel = ec.Label
+			v.ExilePermanentOptions = exilePermanentCostOptions(g, caster, c.InstanceID, ec)
+		}
 		// #1310: the waterbend clause, sized against the same priced
 		// cost the activation path charges. X is not announced yet,
 		// so a Waterbend {X} ships Max 0 and DemandsX and the client
@@ -9293,6 +9328,25 @@ func returnCostOptions(g *game.Game, controller, sourceID uuid.UUID, rc *game.Re
 	}
 	ids := g.ReturnToHandOptionsForEffect(controller, sourceID, rc)
 	out := &LegalTargetsView{Min: rc.Count, Max: rc.Count}
+	for _, id := range g.SacrificePaymentOrderForEffect(ids, sourceID) {
+		out.Cards = append(out.Cards, id.String())
+	}
+	return out
+}
+
+// exilePermanentCostOptions is returnCostOptions one destination over
+// (#1600): the permanents that could pay an exile-a-permanent cost
+// right now, in payment order, min and max both the clause's count. The
+// walk is the engine's own (ExilePermanentsOptionsForEffect), so an
+// option offered here is one validateExilePermanentsCostLocked accepts.
+//
+// Caller must hold g.mu.
+func exilePermanentCostOptions(g *game.Game, controller, sourceID uuid.UUID, ec *game.ExilePermanentsCost) *LegalTargetsView {
+	if ec.Empty() {
+		return nil
+	}
+	ids := g.ExilePermanentsOptionsForEffect(controller, sourceID, ec)
+	out := &LegalTargetsView{Min: ec.Count, Max: ec.Count}
 	for _, id := range g.SacrificePaymentOrderForEffect(ids, sourceID) {
 		out.Cards = append(out.Cards, id.String())
 	}

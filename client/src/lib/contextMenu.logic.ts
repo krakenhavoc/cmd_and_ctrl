@@ -505,6 +505,10 @@ export interface AbilityCost {
   // before.
   return_label?: string;
   return_options?: { players?: string[]; cards?: string[]; min?: number; max?: number };
+  // #1600: an exile-a-permanent cost ("Exile a creature you control"),
+  // greyed on the same terms as the return cost.
+  exile_permanent_label?: string;
+  exile_permanent_options?: { players?: string[]; cards?: string[]; min?: number; max?: number };
   // #759: a tap-another cost (station). Greyed on the same terms as
   // the return cost: fewer untapped creatures than the clause needs.
   tap_others_label?: string;
@@ -654,6 +658,19 @@ export function returnShortfall(opts: ReturnOptionsShape | undefined, label?: st
   return `nothing to return (${label ?? "a permanent you control"})`;
 }
 
+// exilePermanentShortfall is returnShortfall one destination over
+// (#1600): "Exile a creature you control" with no creature of yours to
+// exile cannot be paid (CR 118.3).
+export function exilePermanentShortfall(
+  opts: ReturnOptionsShape | undefined,
+  label?: string,
+): string {
+  if (!opts) return "";
+  const have = opts.cards?.length ?? 0;
+  if (have >= (opts.min ?? 1)) return "";
+  return `nothing to exile (${label ?? "a creature you control"})`;
+}
+
 // tapOthersShortfall is returnShortfall for a tap-another cost (#759):
 // the reason it can't be paid right now, or "" when it can. The
 // server's option list already excludes tapped creatures, other
@@ -714,6 +731,9 @@ export function abilityBlocked(
   // #1213: the same question one verb over.
   const returned = returnShortfall(a.return_options, a.return_label);
   if (returned) return returned;
+  // #1600: and one destination over.
+  const exiled = exilePermanentShortfall(a.exile_permanent_options, a.exile_permanent_label);
+  if (exiled) return exiled;
   // #759: and the tap-another cost.
   const tapOthers = tapOthersShortfall(a.tap_others_options, a.tap_others_label);
   if (tapOthers) return tapOthers;

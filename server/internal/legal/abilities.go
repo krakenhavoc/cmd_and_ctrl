@@ -54,6 +54,10 @@ type activateParams struct {
 	// control to its owner's hand" cost. Omitted for every ability
 	// that does not print the clause.
 	ReturnIDs []string `json:"return_ids,omitempty"`
+	// #1600: the permanents paid to an "Exile a creature you control"
+	// cost (The Soul Stone's harness). Omitted for every ability that
+	// does not print the clause.
+	ExilePermanentIDs []string `json:"exile_permanent_ids,omitempty"`
 	// #1310: the permanents tapped to pay part of a "Waterbend {N}"
 	// cost (CR 701.67a). Omitted when the payment taps none.
 	WaterbendIDs []string `json:"waterbend_ids,omitempty"`
@@ -381,6 +385,19 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 				continue
 			}
 		}
+		// #1600: an "Exile a creature you control" cost (The Soul
+		// Stone's harness), solved as the return above is — one move per
+		// candidate, cheapest-to-keep first — and folded into the same
+		// loop, never pairing a permanent with itself across the two
+		// components or with a sacrifice (CR 118.3). Nothing payable
+		// means no move at all (#544).
+		permanentSets := [][]uuid.UUID{nil}
+		if ec := ab.Cost.ExilePermanents; !ec.Empty() {
+			permanentSets = e.exilePermanentPayments(g.ExilePermanentsOptionsForEffect(e.seat, source.InstanceID, ec), ec, source.InstanceID)
+			if len(permanentSets) == 0 {
+				continue
+			}
+		}
 		// #759: a "Tap another untapped creature you control" cost
 		// (station). One move per creature for the one-permanent
 		// clause, so the policy — not the enumerator — decides which
@@ -624,7 +641,8 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 						game.WithAutoTapExclusions(abilityExcluded, sacs, discardIDs, exileIDs, topIDs)) {
 					continue
 				}
-				for _, rets := range returnSets {
+				for _, moved := range permanentCostPairs(returnSets, permanentSets, sacs, source.InstanceID, ab.Cost) {
+					rets, perms := moved.returned, moved.exiled
 					for _, taps := range tapSets {
 						tapXValue := xValue
 						if game.TapOthersCountFromX(ab.Cost.TapOthers) {
@@ -634,10 +652,11 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 						// permanents — the auto-tapper will not spend a
 						// creature the payment has already named, so a
 						// mana creature that is both the tap and the mana
-						// is a move the engine refuses.
-						if ab.Cost.Mana != "" && len(taps) > 0 &&
+						// is a move the engine refuses. #1600: and for the
+						// exiled permanents (ActivationAutoTapExclusions).
+						if ab.Cost.Mana != "" && (len(taps) > 0 || len(perms) > 0) &&
 							!e.payableExcluding(abilityMana, tapXValue, phyrexianLife, game.ManaSpendForAbility(*source),
-								game.WithAutoTapExclusions(abilityExcluded, sacs, discardIDs, exileIDs, topIDs, taps)) {
+								game.WithAutoTapExclusions(abilityExcluded, sacs, discardIDs, exileIDs, topIDs, taps, perms)) {
 							continue
 						}
 						// #1563: the division this activation announces
@@ -673,6 +692,7 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 							}
 							label += sacrificeLabel(g, sacs)
 							label += returnLabel(g, rets)
+							label += exileLabel(g, perms)
 							label += tapLabel(g, taps)
 							label += randomDiscardLabel(ab.Cost)
 							handN := e.handDiscardCount(ab.Cost.DiscardCards, source.InstanceID)
@@ -706,28 +726,29 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 								// is flagged on its own.
 								TargetsStack: targetsStackObject(g, targets),
 								Params: mustJSON(activateParams{
-									SourceCardID:     source.InstanceID.String(),
-									AbilityIndex:     idx,
-									Ref:              origins.Ref(idx),
-									Targets:          wireTargets(targets),
-									Modes:            ann.modes,
-									SacrificeIDs:     idStrings(sacs),
-									CrewIDs:          idStrings(crewIDs),
-									CounterSourceIDs: cc.wireIDs(),
-									CounterCounts:    cc.wireCounts(),
-									CounterKind:      cc.wireKind(),
-									CounterKinds:     cc.wireKinds(),
-									DiscardIDs:       idStrings(discardIDs),
-									ExileIDs:         idStrings(exileIDs),
-									TopIDs:           idStrings(topIDs),
-									ReturnIDs:        idStrings(rets),
-									WaterbendIDs:     idStrings(waterbendIDs),
-									TapIDs:           idStrings(taps),
-									XValue:           tapXValue,
-									Distribution:     distributionWire(dist),
-									PhyrexianLife:    phyrexianLife,
-									Strict:           true,
-									AutoTap:          true,
+									SourceCardID:      source.InstanceID.String(),
+									AbilityIndex:      idx,
+									Ref:               origins.Ref(idx),
+									Targets:           wireTargets(targets),
+									Modes:             ann.modes,
+									SacrificeIDs:      idStrings(sacs),
+									CrewIDs:           idStrings(crewIDs),
+									CounterSourceIDs:  cc.wireIDs(),
+									CounterCounts:     cc.wireCounts(),
+									CounterKind:       cc.wireKind(),
+									CounterKinds:      cc.wireKinds(),
+									DiscardIDs:        idStrings(discardIDs),
+									ExileIDs:          idStrings(exileIDs),
+									TopIDs:            idStrings(topIDs),
+									ReturnIDs:         idStrings(rets),
+									ExilePermanentIDs: idStrings(perms),
+									WaterbendIDs:      idStrings(waterbendIDs),
+									TapIDs:            idStrings(taps),
+									XValue:            tapXValue,
+									Distribution:      distributionWire(dist),
+									PhyrexianLife:     phyrexianLife,
+									Strict:            true,
+									AutoTap:           true,
 								}),
 							})
 						}
@@ -924,6 +945,72 @@ func (e *enumerator) returnPayments(pool []uuid.UUID, rc *game.ReturnToHandCost,
 	return combinations(ordered, 1, 1, e.opts.MaxExpansionPerSource)
 }
 
+// exilePermanentPayments is returnPayments one destination over
+// (#1600): one move per candidate for the one-permanent clause every
+// printed card has ("Exile a creature you control"), cheapest to keep
+// first, and the first Count of that order for a larger one. Nil when
+// the pool cannot reach the count, so the ability is not offered (#544).
+func (e *enumerator) exilePermanentPayments(pool []uuid.UUID, ec *game.ExilePermanentsCost, sourceID uuid.UUID) [][]uuid.UUID {
+	if ec.Empty() || len(pool) < ec.Count {
+		return nil
+	}
+	ordered := e.g.SacrificePaymentOrderForEffect(e.cheapestFuelFirst(pool), sourceID)
+	if ec.Count > 1 {
+		return [][]uuid.UUID{ordered[:ec.Count]}
+	}
+	return combinations(ordered, 1, 1, e.opts.MaxExpansionPerSource)
+}
+
+// permanentCostPair is one payment of an ability's permanent-MOVING
+// components besides the sacrifice: the permanents a return-to-hand
+// clause names and the permanents an exile-a-permanent clause names.
+type permanentCostPair struct {
+	returned, exiled []uuid.UUID
+}
+
+// permanentCostPairs crosses the return payments with the exile
+// payments (#1600), dropping every pair the engine refuses
+// (validateExilePermanentsCostLocked): an exiled permanent that is also
+// returned, also sacrificed, or is the source when the cost already
+// sacrifices or exiles it — one permanent pays one component (CR 118.3).
+// Each list is [nil] when the ability has no such component, so an
+// ability with neither yields the one empty pair and the loop it feeds
+// runs exactly as it did before.
+func permanentCostPairs(returnSets, exileSets [][]uuid.UUID, sacs []uuid.UUID, sourceID uuid.UUID, cost game.AbilityCost) []permanentCostPair {
+	spent := make(map[uuid.UUID]bool, len(sacs)+1)
+	for _, id := range sacs {
+		spent[id] = true
+	}
+	if cost.SacrificeSelf || cost.ExileSelf {
+		spent[sourceID] = true
+	}
+	var out []permanentCostPair
+	for _, rets := range returnSets {
+		for _, exs := range exileSets {
+			if overlapsAny(exs, rets, spent) {
+				continue
+			}
+			out = append(out, permanentCostPair{returned: rets, exiled: exs})
+		}
+	}
+	return out
+}
+
+// overlapsAny reports whether any of `ids` is in `other` or in `spent`.
+func overlapsAny(ids, other []uuid.UUID, spent map[uuid.UUID]bool) bool {
+	for _, id := range ids {
+		if spent[id] {
+			return true
+		}
+		for _, o := range other {
+			if o == id {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // tapOthersPayments turns a TapOthers clause's candidate pool into the
 // payments the enumerator offers (#759) — returnPayments one verb
 // over: one move per candidate for the one-permanent clause station
@@ -1017,6 +1104,19 @@ func sacrificeLabel(g *game.Game, ids []uuid.UUID) string {
 		names[i] = cardName(g, id)
 	}
 	return " (sacrificing " + strings.Join(names, ", ") + ")"
+}
+
+// exileLabel is sacrificeLabel one verb over (#1600): the permanents
+// an "Exile a creature you control" cost names.
+func exileLabel(g *game.Game, ids []uuid.UUID) string {
+	if len(ids) == 0 {
+		return ""
+	}
+	names := make([]string, len(ids))
+	for i, id := range ids {
+		names[i] = cardName(g, id)
+	}
+	return " (exiling " + strings.Join(names, ", ") + ")"
 }
 
 // returnLabel is sacrificeLabel one verb over (#1213).
@@ -1471,6 +1571,9 @@ type manaParams struct {
 	// #1283: Cadaverous Bloom's "Exile a card from your hand" — its
 	// own field, because an exiled card is not discarded.
 	ExileIDs []string `json:"exile_ids,omitempty"`
+	// #1600: Food Chain's "Exile a creature you control" — the field
+	// activateParams carries under the same name.
+	ExilePermanentIDs []string `json:"exile_permanent_ids,omitempty"`
 }
 
 // manaMoves enumerates mana abilities on the seat's permanents and —
@@ -1652,6 +1755,16 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 				continue
 			}
 		}
+		// #1600: an "Exile a creature you control" cost (Food Chain),
+		// one move per candidate out of the engine's own walk, as the
+		// CR 602 path offers it. Nothing payable means no move (#544).
+		exileSets := [][]uuid.UUID{nil}
+		if ec := ab.ExilePermanents; !ec.Empty() {
+			exileSets = e.exilePermanentPayments(g.ExilePermanentsOptionsForEffect(e.seat, source.InstanceID, ec), ec, source.InstanceID)
+			if len(exileSets) == 0 {
+				continue
+			}
+		}
 		// #1213: a "Discard N cards" cost on a mana ability
 		// (Skirge Familiar). Solved exactly as the activated
 		// path solves its own — ONE payment, the cheapest set in
@@ -1693,48 +1806,57 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 			continue
 		}
 		for _, sacs := range sacrificeSets {
-			for _, taps := range tapSets {
-				for _, cc := range counterChoices {
-					label := source.Name + ": " + ab.Label
-					if ab.Label == "" {
-						label = source.Name + ": add " + ab.Produced
+			// #1600: the exile picks, minus any the sacrifice already
+			// took (the source among them for a sacrifice-this cost) —
+			// the pairs validateExilePermanentsCostLocked refuses.
+			for _, moved := range permanentCostPairs([][]uuid.UUID{nil}, exileSets, sacs, source.InstanceID,
+				game.AbilityCost{SacrificeSelf: ab.SacrificeCost, ExileSelf: ab.ExileSelf}) {
+				exiles := moved.exiled
+				for _, taps := range tapSets {
+					for _, cc := range counterChoices {
+						label := source.Name + ": " + ab.Label
+						if ab.Label == "" {
+							label = source.Name + ": add " + ab.Produced
+						}
+						label += sacrificeLabel(g, sacs)
+						label += exileLabel(g, exiles)
+						label += tapLabel(g, taps)
+						label += cc.label(g)
+						handN := e.handDiscardCount(ab.DiscardCards, source.InstanceID)
+						label += handDiscardLabel(ab.DiscardCards, handN)
+						// Mana Confluence's "Pay 1 life" is the same
+						// invisible cost an activated ability's is (#74),
+						// and so is a charge counter: the params name the
+						// permanent but never the price. #1600: and so is
+						// Lion's Eye Diamond's hand.
+						cost := moveCost(ab.LifeCost, 0)
+						for _, price := range cc.prices() {
+							cost = withCounterPrice(cost, price)
+						}
+						cost = withHandDiscard(cost, handN)
+						e.add(Move{
+							Type:   TypeActivateManaAbility,
+							Player: e.seat,
+							Kind:   KindMana,
+							Label:  label,
+							Source: source.InstanceID,
+							Cost:   cost,
+							Params: mustJSON(manaParams{
+								CardID:            source.InstanceID.String(),
+								AbilityIndex:      idx,
+								Ref:               origins.Ref(idx),
+								SacrificeIDs:      idStrings(sacs),
+								TapIDs:            idStrings(taps),
+								CounterSourceIDs:  cc.wireIDs(),
+								CounterCounts:     cc.wireCounts(),
+								CounterKind:       cc.wireKind(),
+								CounterKinds:      cc.wireKinds(),
+								DiscardIDs:        idStrings(manaDiscardIDs),
+								ExileIDs:          idStrings(manaExileIDs),
+								ExilePermanentIDs: idStrings(exiles),
+							}),
+						})
 					}
-					label += sacrificeLabel(g, sacs)
-					label += tapLabel(g, taps)
-					label += cc.label(g)
-					handN := e.handDiscardCount(ab.DiscardCards, source.InstanceID)
-					label += handDiscardLabel(ab.DiscardCards, handN)
-					// Mana Confluence's "Pay 1 life" is the same
-					// invisible cost an activated ability's is (#74),
-					// and so is a charge counter: the params name the
-					// permanent but never the price. #1600: and so is
-					// Lion's Eye Diamond's hand.
-					cost := moveCost(ab.LifeCost, 0)
-					for _, price := range cc.prices() {
-						cost = withCounterPrice(cost, price)
-					}
-					cost = withHandDiscard(cost, handN)
-					e.add(Move{
-						Type:   TypeActivateManaAbility,
-						Player: e.seat,
-						Kind:   KindMana,
-						Label:  label,
-						Source: source.InstanceID,
-						Cost:   cost,
-						Params: mustJSON(manaParams{
-							CardID:           source.InstanceID.String(),
-							AbilityIndex:     idx,
-							Ref:              origins.Ref(idx),
-							SacrificeIDs:     idStrings(sacs),
-							TapIDs:           idStrings(taps),
-							CounterSourceIDs: cc.wireIDs(),
-							CounterCounts:    cc.wireCounts(),
-							CounterKind:      cc.wireKind(),
-							CounterKinds:     cc.wireKinds(),
-							DiscardIDs:       idStrings(manaDiscardIDs),
-							ExileIDs:         idStrings(manaExileIDs),
-						}),
-					})
 				}
 			}
 		}

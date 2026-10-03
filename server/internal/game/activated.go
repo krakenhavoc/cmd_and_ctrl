@@ -336,6 +336,22 @@ type AbilityCost struct {
 	// drops its `source` pointer afterwards exactly as it does after
 	// a sacrifice.
 	ReturnToHand *ReturnToHandCost
+
+	// ExilePermanents exiles permanents the activator controls as part
+	// of the cost (#1600) — The Soul Stone's "{6}{B}, {T}, Exile a
+	// creature you control: Harness The Soul Stone", Altar of Bhaal's
+	// and City of Shadows'. Nil means no such component. See
+	// ExilePermanentsCost in exile_permanent_cost.go.
+	//
+	// ReturnToHand one destination over, sharing its candidate walk and
+	// validator, and named at announce the same way, in
+	// ActivateAbilityParams.ExilePermanentIDs. Paid with the returns,
+	// BEFORE the ability is on the stack, so the leaves-the-battlefield
+	// triggers it queues resolve above the ability (CR 603.3b). Not a
+	// sacrifice — no EventSacrifice, and nothing dies — and not
+	// ExileCards, which exiles cards out of a hand or a graveyard.
+	ExilePermanents *ExilePermanentsCost
+
 	// ExileSelf exiles the SOURCE CARD from the zone the ability was
 	// activated from, as part of the cost — scavenge's "Exile this
 	// card from your graveyard" (CR 702.96a), embalm's and
@@ -861,6 +877,18 @@ type ActivateAbilityParams struct {
 	// already opens for those, not a new one.
 	ReturnIDs []uuid.UUID
 
+	// ExilePermanentIDs names the permanents paid to an ExilePermanents
+	// cost (#1600): exactly the clause's Count, each once, each on the
+	// battlefield under the activator's control, each matched by the
+	// clause, and none also sacrificed or returned by the same payment
+	// (CR 118.3).
+	//
+	// On the wire as `exile_permanent_ids`. Its own field rather than
+	// `exile_ids`, which names CARDS in a hand or a graveyard: an
+	// ability could print both clauses, and the two are validated
+	// against different zones.
+	ExilePermanentIDs []uuid.UUID
+
 	// CounterKind is the kind a "remove a counter" cost of ANY kind
 	// removes (Fain, the Broker), chosen at announce with the
 	// permanent. Optional for a cost that prints its kind — if sent,
@@ -1255,6 +1283,16 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	if err := g.validateReturnToHandCostLocked(playerID, cardID, ab.Cost.ReturnToHand, params.ReturnIDs); err != nil {
 		return err
 	}
+	// #1600: the exile-a-permanent component, the return's sibling one
+	// destination over. Validated against every other component that
+	// MOVES a permanent — the sacrifices (the source among them when
+	// the cost sacrifices it), the returns, and the source when the
+	// cost exiles it — because one permanent pays one component
+	// (CR 118.3).
+	if err := g.validateExilePermanentsCostLocked(playerID, cardID, ab.Cost.ExilePermanents, params.ExilePermanentIDs,
+		movedSourceAlso(cardID, ab.Cost.ExileSelf, sacrifices, params.ReturnIDs)); err != nil {
+		return err
+	}
 	// #1310, CR 701.67: the waterbend taps. The budget is measured
 	// against the PRICED mana — the same number the payment below
 	// charges — so a discount that has already removed generic mana
@@ -1415,6 +1453,10 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// the answer makes it again, and the payment below then settles
 	// with the answer on each move. See cost_commander_choice.go.
 	moving := append(append(append(append([]uuid.UUID(nil), sacrifices...), params.ReturnIDs...), discards...), exiles...)
+	// #1600: and the permanents the exile-a-permanent component moves —
+	// a commander exiled to The Soul Stone's harness is offered the
+	// command zone (CR 903.9a) before anything is paid.
+	moving = append(moving, params.ExilePermanentIDs...)
 	// ADR 0109 §7: and the cards the library components move — the
 	// hand card put on top (CR 903.9b), the top cards exiled and the
 	// cards discarded at random (CR 903.9a).
@@ -1606,6 +1648,16 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// carries no combat state. Ninjutsu's entry reads it back through
 	// Context.ReturnedAttacking(); see PaidCost.ReturnedAttacking.
 	paid.ReturnedAttacking = returnedAttacking
+	// #1600: the exile-a-permanent component, beside the returns and for
+	// the same reasons — it moves permanents, so it goes after every
+	// component that needs the source where it was, and before the stack
+	// item is built so the leaves-triggers it queues sit ABOVE the
+	// ability (CR 603.3b). Not a sacrifice: no EventSacrifice, and
+	// nothing dies.
+	exiledPermanents, err := g.payExilePermanentsCostLocked(playerID, cardID, params.ExilePermanentIDs, params.commanderAnswers)
+	if err != nil {
+		return err
+	}
 	source = nil
 	// Discards last (#660). They move cards out of the hand, which
 	// invalidates `source` for a DiscardSelf cost, and they go
@@ -1643,6 +1695,9 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		return err
 	}
 	paid.Exiled = exiles
+	// #1600: and the permanents the exile-a-permanent component exiled,
+	// after the cards — "the exiled creature" is found the same way.
+	paid.Exiled = append(paid.Exiled, exiledPermanents...)
 	// ADR 0109 §7 (#1902): the hand card put on top of the library,
 	// with the other card-moving components. Not a discard and not an
 	// exile, and nothing reads it afterwards, so it is not recorded.
