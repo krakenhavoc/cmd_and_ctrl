@@ -242,6 +242,7 @@ func everyFieldCardView(owner string, knowers map[string]bool) CardView {
 		RegenerationShields: 2,
 		ExiledIfItDies:      []string{"Lava Coil"},
 		CantBeRegenerated:   true,
+		RiotHaste:           true,
 		LandTypeEffects:     []LandTypeEffectView{{Types: []string{"Island"}, Until: "until end of turn", Source: "Tidal Warrior"}},
 		FaceDown:            true,
 		// An EXILE kind on purpose: a CR 708.2 permanent kind would

@@ -607,6 +607,10 @@ var choiceDepartureDecisions = map[PendingChoiceKind]choiceDepartureRule{
 	// drop action of its own. An OFFERED seat leaving is the other
 	// case, and pruneDepartedSeatOptionsLocked handles it.
 	PendingChoiceEntryController: {},
+	// entry_riot (ADR 0109 §10) is the departed player's OWN entering
+	// permanent, which leaves the game with them (CR 800.4a), and its
+	// frame rides replacementResume like entry_controller's.
+	PendingChoiceEntryRiot: {},
 	// ADR 0098's two siblings take the same row for the same reason:
 	// the discard or the sacrifice is the "unless" of the departed
 	// player's own entering permanent, and the hand or the permanents

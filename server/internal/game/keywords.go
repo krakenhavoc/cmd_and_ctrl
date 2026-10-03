@@ -249,6 +249,19 @@ var canonicalKeywords = map[string]bool{
 	// spell's keyword, so it is read off the card as it is cast, never
 	// off a layer-6 list: nothing in print grants it.
 	KeywordSplitSecond: true,
+	// riot (CR 702.136) and unleash (CR 702.98) join with #1556 (ADR
+	// 0109 §10), in the same change that teaches the engine to honour
+	// them. Both are entry replacements, so their consumer is the CR
+	// 614 window: the entry look-ahead (entry_lookahead.go) computes the
+	// entering permanent as it would exist on the battlefield (CR
+	// 614.12) and the gather derives one replacement per instance it
+	// reports (riot.go). Unleash's second half, "can't block as long as
+	// it has a +1/+1 counter on it", is folded into the restrictions
+	// after the layer pass (foldUnleashLocked). Both are CUMULATIVE
+	// (CR 702.136b; CR 113.2c for unleash), so a printed instance and a
+	// granted one are two questions.
+	KeywordRiot:    true,
+	KeywordUnleash: true,
 }
 
 // KeywordChangeling is the canonical token for changeling (CR

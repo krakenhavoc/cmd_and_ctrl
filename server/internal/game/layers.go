@@ -913,6 +913,15 @@ func (g *Game) recomputeLayersLocked() {
 // layerPassLocked runs one complete CR 613 application over the
 // battlefield. Caller must hold g.mu in write mode.
 func (g *Game) layerPassLocked() {
+	g.layerPassWithLocked(nil)
+}
+
+// layerPassWithLocked is the pass with `extra` effects applied beside
+// the gathered ones, in their timestamp places. The real pass has none;
+// the entry look-ahead (entry_lookahead.go) passes the records pinned to
+// a resolving spell, which CR 400.7a carries onto the permanent it
+// becomes.
+func (g *Game) layerPassWithLocked(extra []ContinuousEffect) {
 	if g.Battlefield != nil {
 		for i := range g.Battlefield.Cards {
 			c := &g.Battlefield.Cards[i]
@@ -932,6 +941,9 @@ func (g *Game) layerPassLocked() {
 		}
 	}
 	effects := g.activeStaticAbilitiesLocked()
+	if len(extra) > 0 {
+		effects = append(effects[:len(effects):len(effects)], extra...)
+	}
 	st := newLayerPassState(effects)
 	for i, b := range layerOrder {
 		g.applyLayerLocked(effects, b.Layer, b.SubLayer, b.has7Sub, i, st)
@@ -944,6 +956,9 @@ func (g *Game) layerPassLocked() {
 	// #1650: a restriction over a live rule reads the finished
 	// characteristics, so it is applied once every layer has run.
 	g.foldRuleScopedRestrictionsLocked()
+	// CR 702.98a (#1556): unleash's "can't block as long as it has a
+	// +1/+1 counter on it", read off the finished ability list.
+	g.foldUnleashLocked()
 }
 
 // materialiseControlLocked copies layer 2's output back onto

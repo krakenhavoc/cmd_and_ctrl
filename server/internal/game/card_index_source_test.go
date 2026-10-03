@@ -111,6 +111,8 @@ func TestZoneCardsAreWrittenOnlyAtKnownPoints(t *testing.T) {
 		"ReplaceDeck":                "lobby only: empties the seat's library and command zone before the new deck goes in",
 		"Mulligan":                   "empties the hand whose cards it has just pushed onto the library, one by one",
 		"removeObjectsOwnedByLocked": "CR 800.4a: filters a leaving player's cards out of each zone",
+		// A dry run that puts the slice back before it returns.
+		"entryCharacteristicsLocked": "the CR 614.12 look-ahead (ADR 0109 §10): a copy of the battlefield slice plus the entering card under a look-ahead ID no zone holds, put back before it returns",
 	}
 	// Other types in the package have a Cards field too. The check is
 	// syntactic, so they are listed here by function, with the type.

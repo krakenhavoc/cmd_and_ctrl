@@ -1665,6 +1665,11 @@ func (g *Game) queueOptionalReplacementPromptLocked(ev *ReplacementEvent, chosen
 			applicable: []activeReplacement{chosen},
 		},
 	}
+	if chosen.effect.entryKeyword != "" && chosen.source != nil {
+		// Unleash (#1556): the question is about the entering card, so
+		// the prompt names it, as entry_riot's does.
+		choice.Source = chosen.source.InstanceID
+	}
 	g.QueueChoiceForEffect(choice)
 }
 

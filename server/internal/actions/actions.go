@@ -1805,6 +1805,11 @@ func dispatch(g *game.Game, a Action) error {
 				// apply means "I pay", and paying is what keeps the
 				// permanent from entering tapped.
 				return g.ResolveEntryPayLife(choiceID, a.Player, *p.OptionalApply)
+			case game.PendingChoiceEntryRiot:
+				// Riot (CR 702.136a, ADR 0109 §10): apply takes the
+				// +1/+1 counter ("you may"), and not applying takes
+				// haste ("if you don't").
+				return g.ResolveEntryRiot(choiceID, a.Player, *p.OptionalApply)
 			default:
 				return g.ResolveOptionalReplacement(choiceID, a.Player, *p.OptionalApply)
 			}

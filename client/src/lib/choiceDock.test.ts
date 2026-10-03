@@ -41,6 +41,7 @@ describe("isInlineChoice", () => {
       "confirm",
       "may_cast",
       "entry_pay_life",
+      "entry_riot",
       "pay_unless",
       "coin_call",
       "loop_shortcut",
@@ -141,6 +142,7 @@ describe("choiceRequest", () => {
       { kind: "confirm" },
       { kind: "may_cast" },
       { kind: "entry_pay_life", pay_cost: "2 life" },
+      { kind: "entry_riot" },
       { kind: "pay_unless", pay_cost: "{2}" },
       { kind: "coin_call", allow_stop: true },
       { kind: "loop_shortcut" },
@@ -172,6 +174,41 @@ describe("choiceRequest", () => {
     r.primary!.onPress();
     r.secondary![0].onPress();
     expect(h.onAnswer.mock.calls).toEqual([[true], [false]]);
+  });
+
+  // ADR 0109 §10: riot's two answers are a counter and haste, keyed C
+  // and H, and the counter is the apply.
+  it("asks riot as a counter or haste, keyed C and H", () => {
+    const h = handlers();
+    const r = choiceRequest(
+      choice({
+        kind: "entry_riot",
+        reason: "Riot — Zhur-Taa Goblin enters with your choice of a +1/+1 counter or haste",
+        accept_label: "+1/+1 counter",
+        decline_label: "Haste",
+        entry_keyword: "riot",
+      }),
+      { sourceName: "x" },
+      h,
+    );
+    expect(r.question).toContain("Zhur-Taa Goblin");
+    expect(r.tag).toBe("riot");
+    expect([r.primary?.label, r.primary?.keyShortcuts]).toEqual(["+1/+1 counter", "C"]);
+    expect(r.secondary?.map((a) => [a.label, a.keyShortcuts])).toEqual([["Haste", "H"]]);
+    r.primary!.onPress();
+    r.secondary![0].onPress();
+    expect(h.onAnswer.mock.calls).toEqual([[true], [false]]);
+  });
+
+  it("words unleash's may as unleash, and keeps Yes and No", () => {
+    const r = choiceRequest(
+      choice({ kind: "optional_replacement", entry_keyword: "unleash" }),
+      { sourceName: "x" },
+      handlers(),
+    );
+    expect(r.tag).toBe("unleash");
+    expect(r.hint).toContain("can't block");
+    expect(r.primary?.label).toBe("Yes");
   });
 
   it("carries a refusal as Not accepted", () => {

@@ -702,6 +702,19 @@ func (e *enumerator) choiceMoves() bool {
 				e.addChoice(c, reason+": "+verb, p)
 			}
 
+		case game.PendingChoiceEntryRiot:
+			// Riot (CR 702.136a, ADR 0109 §10): a +1/+1 counter or
+			// haste. Mandatory and both always accepted, so the
+			// counter — the answer an entry that cannot ask takes — is
+			// the always-legal one.
+			counter, haste := true, false
+			p := base()
+			p.Apply = &counter
+			e.addAlwaysLegalChoice(c, reason+": a +1/+1 counter", p)
+			p = base()
+			p.Apply = &haste
+			e.addChoice(c, reason+": haste", p)
+
 		case game.PendingChoiceScry:
 			cards := c.ScryCards
 			all := idStrings(cards)
