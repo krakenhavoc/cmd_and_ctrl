@@ -325,6 +325,9 @@ func (g *Game) cloneLocked() *Game {
 	out.openDamageInstance = g.openDamageInstance
 	out.combatDamageInstance = g.combatDamageInstance
 	out.combatDamageInstanceBatch = g.combatDamageInstanceBatch
+	// ADR 0108 §10: the life totals the instances began with rewind with
+	// the counter. Copy on write, so the slice is shared.
+	out.damageInstanceLives = g.damageInstanceLives
 	// ADR 0108 §7: a division rewinds with the shield it divides. Copy
 	// on write, so the slice is shared.
 	out.shieldDivisions = g.shieldDivisions
@@ -1021,6 +1024,7 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.openDamageInstance = src.openDamageInstance
 	g.combatDamageInstance = src.combatDamageInstance
 	g.combatDamageInstanceBatch = src.combatDamageInstanceBatch
+	g.damageInstanceLives = src.damageInstanceLives
 	g.shieldDivisions = src.shieldDivisions
 	g.damageStage = cloneDamageStage(src.damageStage)
 	// #830 / #859: see cloneLocked — the announcements rewind with

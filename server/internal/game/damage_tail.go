@@ -782,7 +782,11 @@ func (g *Game) applyResolvedDamageToPlayerLocked(ev *ReplacementEvent, t *damage
 	// the damage amount — because the damage is still dealt; only its
 	// result differs. Infect damage changes no life total, so no
 	// "whenever a player loses life" trigger sees it.
-	poison, lifeLoss := t.result.DamageToPlayer(ev.DamageAmount, t.combat)
+	//
+	// ADR 0108 §10: a battlefield static can make the damage dealt as
+	// though its source had infect (Phyrexian Unlife), read as it lands
+	// (damage_as_though.go).
+	poison, lifeLoss := g.damageResultAsThoughLocked(ev, t).DamageToPlayer(ev.DamageAmount, t.combat)
 	loseLife := lifeLoss > 0 && !g.playerLifeTotalCantChangeLocked(p)
 	if t.combat {
 		if loseLife {
@@ -825,7 +829,10 @@ func (g *Game) applyResolvedDamageToPermanentLocked(ev *ReplacementEvent, t *dam
 		// "whenever ~ is dealt damage" trigger must not see it.
 		return 0, nil
 	}
-	ok, minusOne := g.applyDamageToPermanentLocked(ev.DamageTarget, ev.DamageAmount, t)
+	// ADR 0108 §10: a battlefield static can make the damage dealt as
+	// though its source had wither (Everlasting Torment), read as it
+	// lands (damage_as_though.go).
+	ok, minusOne := g.applyDamageToPermanentLocked(ev.DamageTarget, ev.DamageAmount, t, g.damageResultAsThoughLocked(ev, t))
 	if !ok {
 		return 0, ErrCardNotFound
 	}

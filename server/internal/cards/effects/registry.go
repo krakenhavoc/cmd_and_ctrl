@@ -326,6 +326,17 @@ func Register(spec Spec) {
 			panic(fmt.Sprintf("effects.Register: %q cast restriction %q forbids nothing", spec.Name, r.Label))
 		}
 	}
+	// ADR 0108 §10: a "dealt as though its source had" static names what
+	// the source is treated as having, and wither is about creatures only
+	// (CR 702.80a), so it can't be narrowed to damage dealt to a player.
+	for i, s := range spec.DamageAsThough {
+		if !s.Wither && !s.Infect {
+			panic(fmt.Sprintf("effects.Register: %q damage-as-though static %d gives the source neither wither nor infect", spec.Name, i))
+		}
+		if s.ToYou && !s.Infect {
+			panic(fmt.Sprintf("effects.Register: %q damage-as-though static %d is wither on damage dealt to a player, which changes nothing (CR 702.80a)", spec.Name, i))
+		}
+	}
 	// ADR 0109 §4: the same two checks for the land-play twin.
 	for i, r := range spec.LandPlayRestrictions {
 		if r.Label == "" {

@@ -242,6 +242,11 @@ type CardDef struct {
 	// statics (CR 119.7, ADR 0107 §5). Read from the battlefield
 	// through CatalogCantGainLife; see cant_gain_life.go.
 	CantGainLife []CantGainLifeStatic
+	// DamageAsThough are this permanent's printed "damage is dealt as
+	// though its source had wither / infect" statics (ADR 0108 §10). Read
+	// from the battlefield through CatalogDamageAsThough, keyed by
+	// CatalogAbilityKey; see damage_as_though.go.
+	DamageAsThough []DamageAsThoughStatic
 	// AnyColorSpend are this permanent's printed "you may spend mana as
 	// though it were mana of any color" statics (CR 609.4b, #1600) —
 	// Chromatic Orrery, Mycosynth Lattice, Oath of Nissa. Read from the
@@ -691,6 +696,12 @@ func init() {
 	CatalogCantGainLife = func(key string) []CantGainLifeStatic {
 		if d := catalogDef(key); d != nil {
 			return d.CantGainLife
+		}
+		return nil
+	}
+	CatalogDamageAsThough = func(key string) []DamageAsThoughStatic {
+		if d := catalogDef(key); d != nil {
+			return d.DamageAsThough
 		}
 		return nil
 	}
