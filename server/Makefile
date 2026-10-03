@@ -1,4 +1,4 @@
-.PHONY: all build build-bot build-boteval run dev dev-skip-validation test vet lint fmt fmt-check tidy clean
+.PHONY: docker-test docker-lint all buildbuild-bot build-boteval run dev dev-skip-validation test vet lint fmt fmt-check tidy clean
 
 BINARY := bin/cmd_and_ctrl-server
 BOT_BINARY := bin/cmd_and_ctrl-bot
@@ -79,6 +79,13 @@ GOLANGCI_LINT := github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8
 
 lint:
 	go run $(GOLANGCI_LINT) run $(PKGS)
+
+# No local Go? The same checks through the shared-cache Docker wrapper (#2035).
+docker-test:
+	../scripts/go-docker.sh test $(PKGS)
+
+docker-lint:
+	../scripts/go-docker.sh lint $(PKGS)
 
 tidy:
 	go mod tidy
