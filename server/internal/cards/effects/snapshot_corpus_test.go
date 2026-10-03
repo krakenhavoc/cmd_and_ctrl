@@ -338,6 +338,13 @@ func corpusBoards() []corpusBoard {
 		// long as that creature has a shadow counter on it",
 		// WhilePinnedHasCounter with its CounterKind).
 		{"durations", corpusDurations},
+		// v7, added by ADR 0109 PR 6 (#1899) as a new file: Narset
+		// Transcendent's −2 waiting — a delayed trigger naming the
+		// condition key cast/you-next-cast-from-hand and the body key
+		// rebound/the-spell-you-just-cast — and Narset's emblem on its
+		// owner's seat, whose cast restriction is catalog data and so adds
+		// nothing to the file but the emblem.
+		{"narset_emblem_and_rebound_waiting", corpusNarset},
 		// v7, added by ADR 0109 PR 3 (#1604) as a new file: the
 		// loseLandTypes kind, in Ultima, Origin of Oblivion's record
 		// (loses all land types and abilities and has "{T}: Add {C}"
@@ -378,6 +385,23 @@ func corpusGrantedManaSpentReaders(t *testing.T) *game.Game {
 	activateManaFor(t, g, me.ID, palace, 1, game.ManaAbilityParams{Colors: []string{"G"}})
 	array := pushCatalogPermanent(g, me.ID, "Solar Array", "Artifact", gmrSolarArrayOracle, false)
 	activateManaFor(t, g, me.ID, array, 0, game.ManaAbilityParams{Colors: []string{"W"}})
+	return g
+}
+
+// corpusNarset is ADR 0109 §5's stored shapes, made by the card: the −2
+// resolved (its delayed trigger waiting for the next instant or sorcery
+// cast from hand) and the −9 resolved from a second Narset (its emblem).
+func corpusNarset(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	toMain(t, g)
+	waiting := pushCatalogWalker(g, me.ID, "Narset Transcendent", narsetOracle, 6)
+	b16Activate(t, g, me.ID, waiting, 1, game.ActivateAbilityParams{})
+	ultimate := pushCatalogWalker(g, me.ID, "Narset Transcendent", narsetOracle, 9)
+	b16Activate(t, g, me.ID, ultimate, 2, game.ActivateAbilityParams{})
+	if len(g.DelayedTriggers) != 1 || me.Emblems == nil || len(me.Emblems.Cards) != 1 {
+		t.Fatalf("setup: %d delayed triggers and an emblem zone %v, want one of each", len(g.DelayedTriggers), me.Emblems)
+	}
 	return g
 }
 
