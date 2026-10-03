@@ -82,7 +82,9 @@ allowlisted person is a person on these paths:
 - the bot's own rate buckets on `POST /deck-coverage` and the per-caller
   limits;
 - `requester` on `POST /deck-requests`, which files a request in a named
-  member's name;
+  member's name. The token's own admin status does not lift that
+  member's rate limits: only the member's own account, allowlisted and
+  in admin mode, does ([#2052](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2052));
 - `discord_id` on `POST /games/{id}/invites/dm`, which names a raw
   snowflake.
 
@@ -2499,7 +2501,19 @@ deck.
    and counted in the database (`deck_request_asks`) so a deploy does
    not reset it. Over the limit is **429** `rate_limited`, decided
    before the deck is fetched. Only an ask that reaches GitHub (an
-   issue filed, or a comment added) counts.
+   issue filed, or a comment added) counts. The route also rides the
+   ordinary per-IP bucket (1/s, burst 5); the bot's calls spend it in
+   the handler, for the member they name.
+
+   **An admin is not rate-limited** ([#2052](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2052)):
+   when the requester is an admin by the rule in [Who is an admin](#who-is-an-admin-adr-0110-3-adr-0112-2)
+   (allowlisted and in admin mode), neither limit applies. A person in
+   player mode is limited like everyone else. Through the bot, the
+   **named member** decides: they are exempt only if their own account
+   (looked up by Discord ID) is allowlisted and in admin mode. The
+   bot's admin session exempts nobody it speaks for. An admin's asks
+   are still recorded, and deduplication is unchanged: the same deck
+   still joins the same issue.
 2. **The report.** The deck is fetched (or the list parsed, or the
    saved deck's stored list read) and
    bucketed exactly as `POST /deck-coverage` does it, from the same

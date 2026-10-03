@@ -98,6 +98,12 @@ type deckCheck struct {
 	// (ADR 0112 §3 item 4). Nil spends nothing (tests that build a
 	// deckCheck by hand).
 	fetchLimit *ratelimit.Limiter
+	// requestLimit is the per-IP bucket POST /deck-requests rides. The
+	// route's middleware spends it for a person who is not an admin
+	// (deckRequestIPLimit); for the bot, whose requester is only known
+	// once the body is read, request spends it unless the named member
+	// is an admin (#2052). Nil spends nothing.
+	requestLimit *ratelimit.Limiter
 }
 
 // checkedDeck is what a check learned about one deck: the report, and
@@ -150,6 +156,60 @@ func deckCoverageLimit(c Config, public, admin *ratelimit.Limiter, next http.Han
 		}
 		publicNext.ServeHTTP(w, r)
 	})
+}
+
+// deckRequestIPLimit applies POST /deck-requests' per-IP bucket, except
+// to an admin (#2052): a signed-in person whom deckRequestExempt calls
+// an admin (allowlisted and in admin mode) spends nothing. A person in
+// player mode spends it like everyone else.
+//
+// The shared token is the bot, which speaks for a named member, so its
+// own admin status exempts nobody: its request goes through unspent
+// here, and request spends the same bucket once it knows who the member
+// is, unless that member is an admin themselves. A missing or invalid
+// credential spends the bucket and then meets auth.Middleware's 401, as
+// before.
+func deckRequestIPLimit(c Config, ip *ratelimit.Limiter, next http.Handler) http.Handler {
+	limited := ip.Middleware(next)
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if cred := auth.CredentialFromRequest(r); cred != "" && c.Auth != nil {
+			if p, err := c.Auth.Validate(r.Context(), cred); err == nil {
+				if bot := isServerCredential(p); bot || deckRequestExempt(r.Context(), c, p, bot, deckRequester{}) {
+					next.ServeHTTP(w, r)
+					return
+				}
+			}
+		}
+		limited.ServeHTTP(w, r)
+	})
+}
+
+// deckRequestExempt reports whether a deck request skips both limits,
+// the per-IP bucket and the three asks per 24 hours (#2052): when the
+// person asking is an admin by ADR 0112 §2's rule (isAdmin).
+//
+// For a signed-in person that is their own session. For the bot (bot
+// is true: p is the shared token) it is the member named in who: that
+// member's own account, looked up by Discord ID and asked as a
+// signed-in person would be, so they are exempt only while allowlisted
+// and in admin mode. The token's own admin status never counts here, or
+// every member the bot speaks for would go unlimited. A member with no
+// account, or a lookup that fails, is limited.
+func deckRequestExempt(ctx context.Context, c Config, p auth.Principal, bot bool, who deckRequester) bool {
+	if !bot {
+		return c.isAdmin(p)
+	}
+	if who.DiscordID == "" {
+		return false
+	}
+	id, err := c.userStore().UserIDForDiscord(ctx, who.DiscordID)
+	if err != nil {
+		if !errors.Is(err, users.ErrNotFound) {
+			c.logger().Error("deck request: looking up the requester's account failed; limiting them", "err", err)
+		}
+		return false
+	}
+	return c.isAdmin(auth.Principal{Role: auth.RoleIdentified, UserID: id, DiscordID: who.DiscordID})
 }
 
 func (d *deckCheck) coverage(c Config, w http.ResponseWriter, r *http.Request) error {
@@ -476,10 +536,21 @@ func (d *deckCheck) request(c Config, w http.ResponseWriter, r *http.Request) er
 	if err != nil {
 		return err
 	}
-	if body.DeckID != "" && isServerCredential(p) {
+	bot := isServerCredential(p)
+	if body.DeckID != "" && bot {
 		// The bot has no library: its requester path takes a link or a
 		// list (ADR 0112 §3 item 5).
 		return httpError(http.StatusBadRequest, "deck_id names a signed-in person's own saved deck; send url or text")
+	}
+	// An admin skips both limits (#2052). For the bot, the member it
+	// names decides, and the per-IP bucket deckRequestIPLimit left
+	// unspent is spent here unless that member is an admin.
+	exempt := deckRequestExempt(r.Context(), c, p, bot, who)
+	if exempt {
+		logAdminAction(c.Log, "POST /deck-requests without rate limits", p, "for_named_member", bot)
+	} else if bot && d.requestLimit != nil && !d.requestLimit.AllowRequest(r) {
+		w.Header().Set("Retry-After", "1")
+		return httpError(http.StatusTooManyRequests, "too many requests")
 	}
 	if c.Cards == nil {
 		return httpError(http.StatusServiceUnavailable, "the card index is not loaded on this server")
@@ -516,9 +587,12 @@ func (d *deckCheck) request(c Config, w http.ResponseWriter, r *http.Request) er
 	requesterKey := "discord:" + who.DiscordID
 
 	// Refuse an over-limit ask before fetching anything; checked again
-	// under the lock, where it is authoritative.
-	if limited, err := d.rateLimited(r.Context(), c, w, requesterKey); limited || err != nil {
-		return err
+	// under the lock, where it is authoritative. An admin's asks are
+	// still recorded, but never counted against them.
+	if !exempt {
+		if limited, err := d.rateLimited(r.Context(), c, w, requesterKey); limited || err != nil {
+			return err
+		}
 	}
 
 	var report *deckcoverage.Report
@@ -545,8 +619,10 @@ func (d *deckCheck) request(c Config, w http.ResponseWriter, r *http.Request) er
 
 	d.fileMu.Lock()
 	defer d.fileMu.Unlock()
-	if limited, err := d.rateLimited(r.Context(), c, w, requesterKey); limited || err != nil {
-		return err
+	if !exempt {
+		if limited, err := d.rateLimited(r.Context(), c, w, requesterKey); limited || err != nil {
+			return err
+		}
 	}
 
 	existing, err := c.DeckRequests.Lookup(r.Context(), key)
