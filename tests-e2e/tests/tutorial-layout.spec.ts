@@ -55,7 +55,11 @@ for (const size of [
     const context = await browser.newContext({ viewport: size });
     const page = await context.newPage();
     try {
-      await page.goto("/#/login");
+      await page.goto("/");
+      await page.evaluate(() => localStorage.removeItem("cmdctrl.session"));
+      // The token form lives on #/admin only (ADR 0112 §2 item 8);
+      // #/login is the signed-out visitor page.
+      await page.goto("/#/admin");
       await page.getByPlaceholder("admin token").fill(ADMIN_TOKEN);
       await page.getByRole("button", { name: "log in" }).click();
       await expect(page).toHaveURL(/#\/lobby$/);
