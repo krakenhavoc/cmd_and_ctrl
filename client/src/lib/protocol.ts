@@ -637,6 +637,12 @@ export interface MoveCost {
   // server only offers a cost the seat can meet. Note that "payable"
   // includes paying your last point, which is legal and lethal.
   life?: number;
+  // #1677: the part of `life` that pays Phyrexian mana symbols
+  // instead of mana (CR 107.4c). Already INCLUDED in `life`, and in
+  // life points: 2 per symbol, where `params.phyrexian_life` counts
+  // symbols. Broken out because it buys nothing — the same move at
+  // a different price — so it is no evidence of what the move does.
+  phyrexian_life?: number;
   // A loyalty ability's counter delta (CR 606.4), signed as printed:
   // +1 adds one, -3 removes three.
   loyalty?: number;
