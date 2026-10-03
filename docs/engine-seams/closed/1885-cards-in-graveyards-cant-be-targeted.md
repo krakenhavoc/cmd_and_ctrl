@@ -1,0 +1,6 @@
+---
+title: "Cards in graveyards can't be targeted"
+date: 2026-10-02
+issues: [1885]
+---
+**Cards in graveyards can't be targeted** (#1885, [ADR 0109](decisions/0109-rule-gates-land-types-mana-and-cost-components.md) §6, PR 6) — the targeting check read only an object's own shroud, hexproof and protection, and returned "legal" at once for anything off the battlefield, so a rule about a whole ZONE had nowhere to live. `Spec.TargetingRestrictions` (`game.TargetingRestriction{Label, Zones, Forbids(TargetingQuery), ActiveWhen}`) is read live off the battlefield through `CatalogAbilityKey` and asked by `canBeTargetedByLocked` before its battlefield guard, so the two targeting choke points carry it: the legal-target walk the view and the legal-move enumerator read, and the announce (CR 601.2c) and resolution (CR 608.2b) checks. A spell aimed at a graveyard card when a restriction arrives loses that target. A cost, or a choice that is not a target, is never refused (CR 115.10a). `GameView.graveyard_target_bans` names each live restriction for the graveyard viewer's banner. **Cards:** Ground Seal, Silent Gravestone, Underworld Cerberus, Dennick, Pious Apprentice // Dennick, Pious Apparition, and Tomik, Distinguished Advokist, whose other sentence is the land-play gate of ADR 0109 PR 5 (all Full).

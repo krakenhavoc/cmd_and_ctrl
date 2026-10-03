@@ -365,6 +365,12 @@ export interface GameView {
   // Unleashed, Lightning's Stagger), oldest first, already worded for the
   // banner. Absent on nearly every turn.
   damage_multipliers?: string[];
+  // ADR 0109 §6 (CR 601.2c): one line per live static that stops cards in
+  // graveyards being targeted, the printed clause and its card ("Cards in
+  // graveyards can't be the targets of spells or abilities. — Ground
+  // Seal"). The graveyard viewer shows them as a banner; the legal target
+  // sets already leave the refused cards out. Absent on nearly every turn.
+  graveyard_target_bans?: string[];
   // Cleanup-step pause map (S13.4, CR 402.2). Keys are player UUID
   // strings, values are the count each player must discard. Drives
   // DiscardPromptModal. Empty / absent when nobody owes discard.
@@ -1040,6 +1046,12 @@ export interface PendingChoiceView {
     // control_purpose says whether the permanent hurts or helps the
     // seat that receives it.
     | "entry_controller"
+    // ADR 0109 §10, CR 702.136a: riot's "a +1/+1 counter, or haste?",
+    // asked before the permanent enters. The {choice_id, apply} payload
+    // of the yes/no kinds: apply true takes the counter, false haste.
+    // Mandatory — both answers are always accepted. accept_label and
+    // decline_label name the two; source is the entering card.
+    | "entry_riot"
     // ADR 0098: Mox Diamond's "if this would enter, you may discard a
     // land card instead. If you don't, put it into its owner's
     // graveyard." The reveal's payload and bounds, and — like it — the
@@ -1148,6 +1160,10 @@ export interface PendingChoiceView {
   // entering permanent away does to the seat that receives it. The
   // picker reads it only for its wording.
   control_purpose?: "harm" | "benefit" | string;
+  // ADR 0109 §10: on an "entry_riot" or "optional_replacement" prompt,
+  // the entry keyword it asks about — "riot" or "unleash". Absent on
+  // every other prompt, and on a "may" that is not unleash's.
+  entry_keyword?: "riot" | "unleash" | string;
   // ADR 0104: on a "trigger_prompt" whose yes TRADES the source for a
   // spell (Perplexing Chimera) — that spell's instance ID. The client
   // does not read it; the bot weighs the trade with it.
@@ -2701,6 +2717,10 @@ export interface CardView extends CastSurfaceView {
   // ADR 0108 §2 (CR 701.19c): this permanent can't be regenerated this
   // turn (Incinerate, Whippoorwill). Public; battlefield only.
   cant_be_regenerated?: boolean;
+  // ADR 0109 §10 (CR 702.136a): this permanent's haste came from its
+  // own riot, so its haste chip is labelled "Riot". Public;
+  // battlefield only.
+  riot_haste?: boolean;
   // ADR 0109 §1: the resolved effects changing this permanent's land
   // types, oldest first — Tidal Warrior's "becomes an Island until end
   // of turn", Navigator's Compass's "in addition to its other types".

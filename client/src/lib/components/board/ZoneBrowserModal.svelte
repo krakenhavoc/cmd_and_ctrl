@@ -29,6 +29,7 @@
     grantedFaceIndex,
     impulseActionLabel,
     impulseGrantFor,
+    zoneTargetBans,
   } from "../../zoneBrowser.logic";
   import { printedCostClaimable, type CastSourceZone } from "../../targeting";
   import ModalLayer from "../ModalLayer.svelte";
@@ -137,6 +138,10 @@
   // they clicked on. The filter lives in zoneBrowser.logic.ts so
   // vitest can exercise it without rendering the component.
   const zoneCards = $derived<CardView[]>(cardsForZone(view, zoneKind, ownerSeat.id));
+  // ADR 0109 §6: "Cards in graveyards can't be the targets of spells or
+  // abilities — Ground Seal". Explains why nothing here lights up as a
+  // target; the server's legal sets already leave the cards out.
+  const targetBans = $derived<string[]>(zoneTargetBans(view, zoneKind));
 
   // zoneLabel and zoneDescription drive the header copy.
   const zoneLabel = $derived.by(() => {
@@ -371,6 +376,9 @@
         bind:value={query}
       />
     </div>
+    {#each targetBans as ban (ban)}
+      <p class="zb-ban" role="note">{ban}</p>
+    {/each}
     {#if zoneCards.length === 0}
       <p class="empty">No cards in this zone.</p>
     {:else if shown.length === 0}
@@ -590,6 +598,13 @@
     color: var(--fg-muted);
     font-size: 13px;
     margin: 4px 0 0;
+  }
+  .zb-ban {
+    color: var(--fg-muted);
+    font-size: 12px;
+    margin: 0;
+    padding: 4px 8px;
+    border-left: 2px solid var(--fg-dim);
   }
   .grid {
     list-style: none;

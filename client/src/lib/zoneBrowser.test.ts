@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { CardView, GameView, PlayerView, ZoneView } from "./protocol";
-import { buildMovePayload, canManageZone, cardsForZone } from "./zoneBrowser.logic";
+import { buildMovePayload, canManageZone, cardsForZone, zoneTargetBans } from "./zoneBrowser.logic";
 
 // Tiny builders keep each test's setup near where the expectations
 // live. We only populate the fields the logic under test reads so
@@ -167,5 +167,23 @@ describe("buildMovePayload", () => {
     // guards before calling — but belt-and-braces: pass "" which
     // canManageZone treats as "no viewer" via the !viewerID check.
     expect(buildMovePayload("graveyard", "a", "", c, "hand")).toBeNull();
+  });
+});
+
+// ADR 0109 §6 (CR 601.2c): a graveyard a static stops spells and
+// abilities targeting carries the server's lines as a banner; no other
+// zone does.
+describe("zoneTargetBans", () => {
+  const line = "Cards in graveyards can't be the targets of spells or abilities. — Ground Seal";
+
+  it("shows the graveyard's bans in the graveyard only", () => {
+    const v = { ...view([seat("a", "Alice", [], [])]), graveyard_target_bans: [line] };
+    expect(zoneTargetBans(v, "graveyard")).toEqual([line]);
+    expect(zoneTargetBans(v, "exile")).toEqual([]);
+    expect(zoneTargetBans(v, "stack")).toEqual([]);
+  });
+
+  it("is empty when nothing restricts targeting", () => {
+    expect(zoneTargetBans(view([seat("a", "Alice", [], [])]), "graveyard")).toEqual([]);
   });
 });

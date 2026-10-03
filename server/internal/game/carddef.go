@@ -133,7 +133,14 @@ type CardDef struct {
 	// and ADR 0038's amendment of 2026-09-27 (#1560).
 	HexproofBypasses []HexproofBypass
 	WardSuppressions []WardSuppression
-	CastableZones    []ZoneKind
+	// TargetingRestrictions are this permanent's "<these> can't be the
+	// targets of spells or abilities" statics about a ZONE rather than
+	// about itself (ADR 0109 §6, #1885) — Ground Seal's "cards in
+	// graveyards", Tomik's "lands on the battlefield and land cards in
+	// graveyards … your opponents control". Read from the battlefield
+	// through CatalogAbilityKey; see targeting_restriction.go.
+	TargetingRestrictions []TargetingRestriction
+	CastableZones         []ZoneKind
 
 	// SpecialActions are the CR 116.2 special actions the card offers
 	// from its owner's hand — foretell (CR 702.143a) and suspend
@@ -618,6 +625,12 @@ func init() {
 	CatalogLandPlayRestrictions = func(key string) []LandPlayRestriction {
 		if d := catalogDef(key); d != nil {
 			return d.LandPlayRestrictions
+		}
+		return nil
+	}
+	CatalogTargetingRestrictions = func(key string) []TargetingRestriction {
+		if d := catalogDef(key); d != nil {
+			return d.TargetingRestrictions
 		}
 		return nil
 	}

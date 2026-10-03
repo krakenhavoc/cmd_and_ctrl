@@ -289,16 +289,21 @@ type boundUntapOptOut struct {
 // `activePlayer`'s untap step. One walk of the battlefield, through
 // CatalogAbilityKey so a Winter Orb that has lost its abilities caps
 // nothing. Caller must hold g.mu in write mode.
+//
+// ADR 0109 §5: an emblem's caps are gathered too, with the emblem as the
+// source (CR 114.4) — Dovin Baan's "Your opponents can't untap more than
+// two permanents during their untap steps", whose Applies reads the
+// emblem's controller. The emblem pointer is into p.Emblems.Cards, valid
+// for the same step.
 func (g *Game) activeUntapCapsLocked(activePlayer uuid.UUID) []boundUntapCap {
-	if g.Battlefield == nil || CatalogUntapCaps == nil {
+	if CatalogUntapCaps == nil {
 		return nil
 	}
 	var out []boundUntapCap
-	for i := range g.Battlefield.Cards {
-		source := &g.Battlefield.Cards[i]
+	gather := func(source *Card) bool {
 		key := CatalogAbilityKey(*source)
 		if key == "" {
-			continue
+			return true
 		}
 		for _, c := range CatalogUntapCaps(key) {
 			if c.Max <= 0 {
@@ -309,7 +314,14 @@ func (g *Game) activeUntapCapsLocked(activePlayer uuid.UUID) []boundUntapCap {
 			}
 			out = append(out, boundUntapCap{cap: c, source: source})
 		}
+		return true
 	}
+	if g.Battlefield != nil {
+		for i := range g.Battlefield.Cards {
+			gather(&g.Battlefield.Cards[i])
+		}
+	}
+	g.forEachEmblemLocked(gather)
 	return out
 }
 
