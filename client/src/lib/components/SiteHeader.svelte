@@ -9,9 +9,9 @@
   // Session-aware: Lobby and Catalog need any session, "My games"
   // needs one tied to a Discord user — a guest or admin session would
   // otherwise land on a page that can only tell them to sign in.
-  // Roadmap, Deck check and Home are public (ADR 0095 §5 adds the
-  // second of those), so a signed-out visitor still sees all three
-  // plus Sign in.
+  // Decks, Roadmap and Home are public (ADR 0112 §3 made Decks, which
+  // took in ADR 0095's deck check, the one decks page), so a signed-out
+  // visitor still sees all three plus Sign in.
   //
   // Not shown on Game — the board has its own command bar, and a
   // second row of chrome above it would just eat table space.
@@ -176,14 +176,14 @@
           onclick={closeMenu}>My games</a
         >
       {/if}
-      {#if hasLinkedUser}
-        <a
-          href="#/decks"
-          class:current={current("myDecks")}
-          aria-current={current("myDecks") ? "page" : undefined}
-          onclick={closeMenu}>My decks</a
-        >
-      {/if}
+      <!-- One public "Decks" link (ADR 0112 §3 item 2): the deck check
+           and the library are one page, and anyone may check a deck. -->
+      <a
+        href="#/decks"
+        class:current={current("decks")}
+        aria-current={current("decks") ? "page" : undefined}
+        onclick={closeMenu}>Decks</a
+      >
       {#if isSignedIn}
         <a
           href="#/catalog"
@@ -197,12 +197,6 @@
         class:current={current("roadmap")}
         aria-current={current("roadmap") ? "page" : undefined}
         onclick={closeMenu}>Roadmap</a
-      >
-      <a
-        href="#/deck-check"
-        class:current={current("deckCheck")}
-        aria-current={current("deckCheck") ? "page" : undefined}
-        onclick={closeMenu}>Deck check</a
       >
       <a
         href="#/home"

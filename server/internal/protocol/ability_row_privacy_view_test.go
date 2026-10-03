@@ -98,9 +98,16 @@ var activatedRowScopes = map[string]rowScope{
 	// #1297's exile-N-cards clause: its printed count and words, and
 	// the pile it names.
 	"ExileCostN": rowPublic, "ExileCostLabel": rowPublic, "ExileCostZone": rowPublic,
+	// ADR 0109 §7: the printed random flag, the printed counts of the
+	// two library components and the put's words.
+	"DiscardCostRandom": rowPublic, "TopCostN": rowPublic, "TopCostLabel": rowPublic,
+	"LibraryExileCostN": rowPublic,
 	// #1369: the cards in the controller's HAND that could pay.
 	"DiscardCostOptions": rowHiddenZone,
 	"ExileCostOptions":   rowHiddenUnlessGraveyard,
+	// ADR 0109 §7: the hand again, for "Put a card from your hand on
+	// top of your library".
+	"TopCostOptions": rowHiddenZone,
 }
 
 // manaRowScopes is activatedRowScopes for ManaAbilityView.
@@ -339,6 +346,23 @@ func seatFaunaShaman(g *game.Game, owner uuid.UUID) uuid.UUID {
 	return id
 }
 
+// seatPenance puts a permanent whose activated cost is ADR 0109 §7's
+// "Put a card from your hand on top of your library" (Penance) onto
+// the battlefield under `owner`. Its options are the whole hand.
+func seatPenance(g *game.Game, owner uuid.UUID) uuid.UUID {
+	id := uuid.New()
+	g.Battlefield.PushTop(game.Card{
+		InstanceID: id, Name: "Penance", TypeLine: "Enchantment",
+		OracleID: "00000000-0000-0000-0000-000000001902",
+		Owner:    owner, Controller: owner,
+		ActivatedAbilities: []game.ActivatedAbilityShape{{
+			Label: "Put a card from your hand on top of your library: Prevent the next damage",
+			Cost:  game.AbilityCost{PutFromHandOnLibraryTop: 1},
+		}},
+	})
+	return id
+}
+
 // privacyFixture is one table: seat 0 controls Fauna Shaman (the
 // filtered activated clause), Skirge Familiar (a mana discard) and
 // Cadaverous Bloom (a mana exile from hand), and holds two creature
@@ -347,6 +371,7 @@ type privacyFixture struct {
 	g                     *game.Game
 	me, opp               *game.Player
 	shaman, skirge, bloom uuid.UUID
+	penance               uuid.UUID
 	creatures, hand       []string
 }
 
@@ -359,6 +384,7 @@ func newPrivacyFixture(t *testing.T) privacyFixture {
 		f.shaman = seatFaunaShaman(g, f.me.ID)
 		f.skirge = seatDiscardManaSource(g, f.me.ID, &game.DiscardCost{N: 1, Label: "a card"})
 		f.bloom = seatExileManaSource(g, f.me.ID, &game.ExileCost{N: 1, Label: "a card"})
+		f.penance = seatPenance(g, f.me.ID)
 		a := handCardFor(f.me, "Hidden Bear", "Creature — Bear")
 		b := handCardFor(f.me, "Hidden Elk", "Creature — Elk")
 		c := handCardFor(f.me, "Hidden Bolt", "Instant")
@@ -417,6 +443,14 @@ func TestHandCostOptionsReachTheControllerAlone(t *testing.T) {
 			},
 			want: f.hand,
 		},
+		{
+			name: "activated_abilities[0].top_cost_options (Penance)", src: f.penance,
+			read: func(c CardView) (int, string, []string) {
+				a := c.ActivatedAbilities[0]
+				return a.TopCostN, a.TopCostLabel, a.TopCostOptions
+			},
+			want: f.hand,
+		},
 	}
 	for _, fd := range fields {
 		t.Run(fd.name, func(t *testing.T) {
@@ -458,7 +492,7 @@ func TestHandCostOptionsReachTheControllerAlone(t *testing.T) {
 func TestNoHandCardIDReachesAnotherFrame(t *testing.T) {
 	f := newPrivacyFixture(t)
 	// Make every permanent known to both seats, as a real entry would.
-	for _, id := range []uuid.UUID{f.shaman, f.skirge, f.bloom} {
+	for _, id := range []uuid.UUID{f.shaman, f.skirge, f.bloom, f.penance} {
 		frameCard(t, f.g, "", id)
 	}
 	zoneJSON := func(viewer string) string {

@@ -116,8 +116,3 @@ export function sourceHost(url: string | undefined): string {
     return url;
   }
 }
-
-/** deckCheckHref links a saved link-deck to the public full report. */
-export function deckCheckHref(deck: MyDeckInfo): string {
-  return deck.source_url ? `#/deck-check?url=${encodeURIComponent(deck.source_url)}` : "";
-}

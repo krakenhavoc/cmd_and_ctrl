@@ -86,6 +86,16 @@ describe("routeRedirect: Login is for signed-out visitors only (§1 item 1)", ()
     }
   });
 
+  // ADR 0112 §3 item 1: #/decks is public, and so is its #/deck-check
+  // alias (the bot links there). A signed-out visitor can check a deck.
+  it("keeps a signed-out visitor on the decks page and its alias", () => {
+    for (const hash of ["#/decks", "#/decks?url=x", "#/deck-check", "#/deck-check?url=x"]) {
+      const r = parseHash(hash);
+      expect(isPublicRoute(r)).toBe(true);
+      expect(routeRedirect(r, null)).toBeNull();
+    }
+  });
+
   it("leaves a session on a gated route alone", () => {
     for (const [, s] of SESSIONS) {
       if (s === null) continue;
@@ -181,6 +191,24 @@ describe("oauthCompleteTarget (§1 item 2)", () => {
   it("takes the login-page flow to the Lobby, not back to Login", () => {
     expect(oauthCompleteTarget(sess("identified", USER))).toBe("#/lobby");
     expect(oauthCompleteTarget(sess("identified"))).toBe("#/lobby");
+  });
+
+  // §3 item 7: signing in from the decks page brings you back to it.
+  it("takes the login-page flow back to the decks page it was saved from", () => {
+    expect(oauthCompleteTarget(sess("identified", USER), "#/decks")).toBe("#/decks");
+    expect(oauthCompleteTarget(sess("identified", USER), "#/decks?url=x")).toBe("#/decks?url=x");
+    expect(oauthCompleteTarget(sess("identified", USER), null)).toBe("#/lobby");
+  });
+
+  it("never follows a return route that is not the decks page", () => {
+    for (const bad of ["#/lobby", "#/games/g1", "https://evil.example/", "#/nowhere", ""]) {
+      expect(oauthCompleteTarget(sess("identified", USER), bad)).toBe("#/lobby");
+    }
+  });
+
+  it("the invite flow goes to its table even with a return route saved", () => {
+    const s = sess("player", USER, { gameID: "g2" });
+    expect(oauthCompleteTarget(s, "#/decks")).toBe("#/games/g2");
   });
 });
 

@@ -3035,6 +3035,29 @@ type ActivatedAbilityView struct {
 	DiscardCostN       int      `json:"discard_cost_n,omitempty"`
 	DiscardCostLabel   string   `json:"discard_cost_label,omitempty"`
 	DiscardCostOptions []string `json:"discard_cost_options,omitempty"`
+	// DiscardCostRandom marks the discard component as "at random"
+	// (ADR 0109 §7, owner decision 3) — Pyromancy's "Discard a card at
+	// random". The activator chooses nothing, so DiscardCostOptions is
+	// never stamped beside it and no `discard_ids` is sent: the client
+	// shows a confirm naming the cost instead of a picker, and the
+	// engine draws the cards as it pays (CR 701.9b, CR 601.2h).
+	DiscardCostRandom bool `json:"discard_cost_random,omitempty"`
+	// TopCostN / Label / Options describe a "Put a card from your hand
+	// on top of your library" cost component (ADR 0109 §7, #1902) —
+	// Penance, Leashling. TopCostN is the count and marks the
+	// component; TopCostOptions is every card in the activator's hand
+	// but the source, in hand order (private to the activator, like
+	// DiscardCostOptions). The picks go back as `top_ids`, and the
+	// client skips its picker when the options number exactly
+	// TopCostN.
+	TopCostN       int      `json:"top_cost_n,omitempty"`
+	TopCostLabel   string   `json:"top_cost_label,omitempty"`
+	TopCostOptions []string `json:"top_cost_options,omitempty"`
+	// LibraryExileCostN is an "Exile the top N cards of your library"
+	// cost component (ADR 0109 §7, #1902) — Seasoned Tactician's four,
+	// Arc-Slogger's ten. Nothing to choose; the client confirms it,
+	// and a library of fewer cards can't pay it (CR 118.3).
+	LibraryExileCostN int `json:"library_exile_cost_n,omitempty"`
 	// ExileCostN / Label / Options / Zone describe an "Exile N cards
 	// from your graveyard" or "… from your hand" cost component
 	// (#1297): Grim Lavamancer's "Exile two cards from your
@@ -4498,6 +4521,10 @@ func publicActivatedAbilityRow(v ActivatedAbilityView) (out ActivatedAbilityView
 	// viewer may have seen in another zone.
 	private = len(v.DiscardCostOptions) > 0
 	v.DiscardCostOptions = nil
+	// ADR 0109 §7: "Put a card from your hand on top of your library"
+	// (Penance) lists the controller's whole hand, the same leak.
+	private = private || len(v.TopCostOptions) > 0
+	v.TopCostOptions = nil
 	// #1297's "Exile N cards from your hand" (Holistic Wisdom): the
 	// same leak one verb over. The graveyard form (Grim Lavamancer,
 	// Moorland Haunt) lists cards in a pile every viewer may read and
@@ -8831,8 +8858,19 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 		if dc := a.Cost.DiscardCards; dc != nil && dc.N > 0 {
 			v.DiscardCostN = dc.N
 			v.DiscardCostLabel = dc.Label
+			// ADR 0109 §7: a random clause has nothing to pick, so it
+			// stamps the flag and no options.
+			v.DiscardCostRandom = dc.Random
 			v.DiscardCostOptions = cardIDStrings(g.DiscardCostOptionsForEffect(caster, c.InstanceID, dc))
 		}
+		// ADR 0109 §7 (#1902): the two library components, off the
+		// walk the engine validates against.
+		if n := a.Cost.PutFromHandOnLibraryTop; n > 0 {
+			v.TopCostN = n
+			v.TopCostLabel = topCostLabel(n)
+			v.TopCostOptions = cardIDStrings(g.PutOnTopCostOptionsForEffect(caster, c.InstanceID, n))
+		}
+		v.LibraryExileCostN = a.Cost.ExileFromLibraryTop
 		// #1297: the exile-N-cards component, off the walk the engine
 		// validates against — the mana view's four fields, one ability
 		// kind over.
@@ -9416,4 +9454,15 @@ func viewOfUpcoming(g *game.Game) []PlannedStepView {
 		out[i] = PlannedStepView{Step: string(p.Step), PhaseID: p.PhaseID}
 	}
 	return out
+}
+
+// topCostLabel is a PutFromHandOnLibraryTop component's clause as
+// printed, without the verb — "a card from your hand on top of your
+// library" (ADR 0109 §7). Every printed clause puts one card; a count
+// above one is spelled as a number.
+func topCostLabel(n int) string {
+	if n == 1 {
+		return "a card from your hand on top of your library"
+	}
+	return fmt.Sprintf("%d cards from your hand on top of your library", n)
 }

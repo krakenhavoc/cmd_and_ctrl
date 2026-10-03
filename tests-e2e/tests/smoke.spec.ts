@@ -48,6 +48,26 @@ test("unauthenticated game route redirects to login", async ({ page }) => {
   await expect(page).toHaveURL(/#\/login$/);
 });
 
+test("the decks page is public, and #/deck-check opens it", async ({ page }) => {
+  // ADR 0112 §3: one decks page, public, with "Decks" as the header's
+  // only deck link. #/deck-check is a permanent alias because the
+  // Discord bot's /c2-deck-check replies link there.
+  for (const hash of ["/#/decks", "/#/deck-check"]) {
+    await page.goto(hash);
+    await expect(page).not.toHaveURL(/#\/login$/);
+    await expect(page.getByRole("heading", { name: "Decks", level: 1 })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Check a deck" })).toBeVisible();
+    await expect(page.getByLabel("deck link")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Check this deck" })).toBeVisible();
+    // Signed out, the library is one line asking for Discord.
+    await expect(page.getByText("Saved decks are kept for your Discord account.")).toBeVisible();
+  }
+  const nav = page.getByRole("navigation", { name: "Site" });
+  await expect(nav.getByRole("link", { name: "Decks" })).toHaveAttribute("href", "#/decks");
+  await expect(nav.getByRole("link", { name: "Deck check" })).toHaveCount(0);
+  await expect(nav.getByRole("link", { name: "My decks" })).toHaveCount(0);
+});
+
 test("invite link route is public", async ({ page }) => {
   // Even without a session, the join view is reachable via invite —
   // this is how new players onboard. The invite token is invalid, so

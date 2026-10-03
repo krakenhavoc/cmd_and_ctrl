@@ -2118,6 +2118,21 @@ export interface ActivatedAbilityView {
   discard_cost_n?: number;
   discard_cost_label?: string;
   discard_cost_options?: string[];
+  // ADR 0109 §7, owner decision 3: the discard is "at random"
+  // (Pyromancy, Meteor Storm). The engine draws the cards; there are no
+  // `discard_cost_options` and nothing is sent, so the client confirms
+  // the cost instead of opening the picker.
+  discard_cost_random?: boolean;
+  // ADR 0109 §7 (#1902): "Put a card from your hand on top of your
+  // library" (Penance, Leashling). The count, the clause as printed and
+  // the cards in the viewer's hand that could pay; the picks ride
+  // activate_ability as `top_ids`.
+  top_cost_n?: number;
+  top_cost_label?: string;
+  top_cost_options?: string[];
+  // ADR 0109 §7: "Exile the top N cards of your library" (Seasoned
+  // Tactician, Arc-Slogger). Nothing to pick or send; confirmed.
+  library_exile_cost_n?: number;
   // #1297: an "Exile N cards from your graveyard" / "… from your hand"
   // component — Grim Lavamancer's "Exile two cards from your graveyard",
   // Holistic Wisdom's "Exile a card from your hand". The mana ability's
