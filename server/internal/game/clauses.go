@@ -104,8 +104,11 @@ func (g *Game) itemAnnouncedClauses(item *StackItem) []AnnouncedClause {
 	}
 	steps := AnnouncedClauses(spec, ms, item.Modes)
 	// #1559: an X-bounded clause is re-checked under the X the item
-	// was announced with, which is the one it was validated under.
-	bindStepsX(steps, item.XValue)
+	// was announced with, which is the one it was validated under. ADR
+	// 0109 §9: a clause bounded by the counters removed reads them off
+	// the item's payment record (CR 608.2b), which a CR 707.10 copy
+	// carries too.
+	bindStepsBound(steps, AnnouncedBound{X: item.XValue, CountersRemoved: item.Paid.CountersRemoved})
 	return steps
 }
 

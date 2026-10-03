@@ -3991,6 +3991,11 @@ func clearKnownInZoneLocked(zone *Zone) {
 //     sacrificed by its controller (the SBA half; the lore-counter
 //     advance trigger lands in S14+ with the effect catalog)
 //
+// Supertype SBAs (ADR 0109 §8):
+//   - 704.5k: the world rule — of two or more world permanents, all
+//     but the most recent entrant go to their owners' graveyards, and
+//     all of them on a tie (entry_ordinal.go)
+//
 // Existence SBAs (#596):
 //   - 704.5d: a token in any zone other than the battlefield ceases
 //     to exist — see token_existence.go
@@ -4220,6 +4225,25 @@ func (g *Game) stateBasedActionsLocked() (fired, left bool) {
 				doomed = append(doomed, doomedPermanent{id: c.InstanceID})
 			}
 			continue
+		}
+	}
+	// 704.5k (ADR 0109 §8) — the world rule. Not a choice, so it joins
+	// the doomed set and leaves in the same simultaneous event as
+	// everything else this pass puts into a graveyard (CR 704.3): every
+	// world permanent but the most recent entrant, and all of them on a
+	// tie. It is not destruction, so indestructible and regeneration do
+	// nothing to it. A world permanent already doomed above (a world
+	// creature with lethal damage) is not listed twice.
+	for _, id := range g.worldRuleDoomedLocked() {
+		listed := false
+		for _, d := range doomed {
+			if d.id == id {
+				listed = true
+				break
+			}
+		}
+		if !listed {
+			doomed = append(doomed, doomedPermanent{id: id})
 		}
 	}
 	// S27 / CR 310.12b: a battle at zero defense is DEFEATED, and the

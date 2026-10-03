@@ -598,6 +598,22 @@ type LegalTargetsView struct {
 	ManaValueAtMostX bool           `json:"mana_value_at_most_x,omitempty"`
 	ManaValues       map[string]int `json:"mana_values,omitempty"`
 
+	// The rest of the X bounds (ADR 0109 §9), on the same superset
+	// rule as ManaValueAtMostX. ManaValueEqualsX is "with mana value X"
+	// (Lazav), narrowed from ManaValues by an EXACT match.
+	// PowerAtMostX and ToughnessAtMostX narrow from Powers and
+	// Toughnesses — the candidates' power and toughness as the engine
+	// reads them now, layers and counters included. XFromCountersRemoved
+	// says the X is not the one collected in the X prompt but the number
+	// of counters the activation's cost is removing (Simic Manipulator,
+	// Quillmane Baku). A card with no entry in its map meets no bound.
+	ManaValueEqualsX     bool           `json:"mana_value_equals_x,omitempty"`
+	PowerAtMostX         bool           `json:"power_at_most_x,omitempty"`
+	ToughnessAtMostX     bool           `json:"toughness_at_most_x,omitempty"`
+	XFromCountersRemoved bool           `json:"x_from_counters_removed,omitempty"`
+	Powers               map[string]int `json:"powers,omitempty"`
+	Toughnesses          map[string]int `json:"toughnesses,omitempty"`
+
 	// Divide marks a clause whose effect is "divided as you choose
 	// among" its picks (#1563, CR 601.2d) — Fury's 4 damage,
 	// Shatterskull Smashing's X. The picker asks for a share per pick
@@ -5250,14 +5266,32 @@ func stampTargetSetRule(g *game.Game, v *LegalTargetsView, cards []uuid.UUID, sp
 	if s := spec.Same; s != nil {
 		v.Same = setRuleView(s.Label, g.TargetSamenessKeysForEffect(spec, cards))
 	}
-	if spec.ManaValueAtMostX {
-		v.ManaValueAtMostX = true
-		if mvs := g.ManaValuesForEffect(cards); len(mvs) > 0 {
-			v.ManaValues = make(map[string]int, len(mvs))
-			for id, mv := range mvs {
-				v.ManaValues[id.String()] = mv
-			}
-		}
+	// #1559, ADR 0109 §9: the X bound and the values the client
+	// narrows the superset with.
+	stat := game.BoundStatisticForEffect(spec)
+	if stat == "" {
+		return
+	}
+	v.ManaValueAtMostX = spec.ManaValueAtMostX
+	v.ManaValueEqualsX = spec.ManaValueEqualsX
+	v.PowerAtMostX = spec.PowerAtMostX
+	v.ToughnessAtMostX = spec.ToughnessAtMostX
+	v.XFromCountersRemoved = spec.BoundByCountersRemoved
+	vals := g.BoundValuesForEffect(spec, cards)
+	if len(vals) == 0 {
+		return
+	}
+	wire := make(map[string]int, len(vals))
+	for id, n := range vals {
+		wire[id.String()] = n
+	}
+	switch stat {
+	case game.BoundStatManaValue:
+		v.ManaValues = wire
+	case game.BoundStatPower:
+		v.Powers = wire
+	case game.BoundStatToughness:
+		v.Toughnesses = wire
 	}
 }
 

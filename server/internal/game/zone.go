@@ -314,6 +314,7 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 		// stamped together, and the same pair the exile return zeroes
 		// when it mints a new instance ID (resetAsNewObjectLocked).
 		c.EnteredBattlefieldAt = 0
+		c.EntryOrdinal = 0
 		c.SummonedThisTurn = false
 		// ADR 0108 §5: so is when it came under its controller's
 		// control; the next entry stamps it afresh.

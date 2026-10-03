@@ -440,9 +440,14 @@ func (g *Game) landEntryBatchLocked(b *entryBatch) error {
 			g.setControllerInZoneLocked(m.cardID, m.from, m.priorController)
 		}
 	}
+	// ADR 0109 §8: one simultaneous entry is ONE entry for the world
+	// rule's "shortest amount of time" (CR 704.5k) — every card it
+	// announces shares an ordinal.
+	release := g.beginSimultaneousEntryLocked()
 	for _, l := range landings {
 		g.announceEntryLocked(l)
 	}
+	release()
 	for _, l := range landings {
 		g.runEntryHooksLocked(l)
 	}

@@ -2305,6 +2305,19 @@ export interface LegalTargetsView {
   // and a card with no entry (an unreadable cost) meets no bound.
   mana_value_at_most_x?: boolean;
   mana_values?: Record<string, number>;
+  // ADR 0109 §9: the rest of the X bounds, on the same superset rule.
+  // `mana_value_equals_x` narrows from `mana_values` by an EXACT match
+  // (Lazav); `power_at_most_x` and `toughness_at_most_x` narrow from
+  // `powers` and `toughnesses`. With `x_from_counters_removed` the X is
+  // the number of counters the activation's cost is removing (Simic
+  // Manipulator), not the one collected in the X prompt. A card with no
+  // entry in the map meets no bound.
+  mana_value_equals_x?: boolean;
+  power_at_most_x?: boolean;
+  toughness_at_most_x?: boolean;
+  x_from_counters_removed?: boolean;
+  powers?: Record<string, number>;
+  toughnesses?: Record<string, number>;
   // #1563, CR 601.2d: the clause's effect is "divided as you choose"
   // among its picks. The picker asks for a share per pick once a step
   // has two or more — each at least 1, summing to the amount — and
