@@ -52,12 +52,28 @@ type DiscardCost struct {
 	// sits in the hand: printed characteristics, no layers (a card
 	// in a hand has none).
 	Match func(Card) bool
+
+	// Random is "Discard N cards at random" (ADR 0109 §7, owner
+	// decision 3; CR 701.9b) — Pyromancy, Mage il-Vec, Meteor Storm's
+	// two. The activator chooses nothing: the engine draws the cards
+	// from the game's keyed random source when the cost is paid, after
+	// every other cost (CR 601.2h), and records them on
+	// PaidCost.Discarded beside any other discard, so "the discarded
+	// card" (Pyromancy, Stormscale Anarch) reads them (ADR 0109 §8).
+	//
+	// A random clause takes no `discard_ids` and stamps no options;
+	// the client shows a confirm rather than a picker. Every printed
+	// clause discards "a card" or "two cards", so effects.Register
+	// refuses one with a Match, and refuses it on a mana ability,
+	// which no printed card has. See library_cost.go.
+	Random bool
 }
 
 // Matches reports whether `c` could pay this clause. Nil-safe on the
-// predicate: a clause with no predicate takes any card.
+// predicate: a clause with no predicate takes any card. A random
+// clause is never paid with a named card, so it matches none.
 func (d *DiscardCost) Matches(c Card) bool {
-	if d == nil {
+	if d == nil || d.Random {
 		return false
 	}
 	if d.Match == nil {
@@ -81,7 +97,7 @@ func (d *DiscardCost) Matches(c Card) bool {
 // CounterCostOptionsForEffect next door: both of its callers — the
 // view's assembly pass and the legal enumerator — run inside one.
 func (g *Game) DiscardCostOptionsForEffect(playerID, sourceID uuid.UUID, cost *DiscardCost) []uuid.UUID {
-	if cost == nil || cost.N <= 0 {
+	if cost == nil || cost.N <= 0 || cost.Random {
 		return nil
 	}
 	p := g.playerByIDLocked(playerID)
@@ -132,7 +148,10 @@ func (g *Game) validateDiscardCostLocked(playerID, sourceID uuid.UUID, srcZone Z
 		}
 		out = append(out, sourceID)
 	}
-	if cost.DiscardCards == nil {
+	// ADR 0109 §7: a random clause names nothing — the engine draws
+	// its cards (randomDiscardsLocked) — so ids for it are refused as
+	// ids for no clause are.
+	if cost.DiscardCards == nil || cost.DiscardCards.Random {
 		if len(chosen) > 0 {
 			return nil, ErrInvalidParam
 		}

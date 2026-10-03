@@ -52,7 +52,7 @@
     {
       title: "Lobby",
       href: "#/lobby",
-      description: "Every table in play — create one, or jump back into yours.",
+      description: "Your tables — create one, join one, or jump back into yours.",
       needsSession: isSignedIn ? undefined : "Sign in first",
     },
     {
@@ -70,8 +70,10 @@
       needsSession: hasLinkedUser ? undefined : "Sign in first",
     },
     {
+      // The join box is on the Lobby for any session (ADR 0112 §1
+      // item 3), and on the sign-in page for a visitor.
       title: "Join with an invite",
-      href: "#/login",
+      href: isSignedIn ? "#/lobby" : "#/login",
       description: "Have a code or a link from a friend? Enter it here.",
     },
   ]);

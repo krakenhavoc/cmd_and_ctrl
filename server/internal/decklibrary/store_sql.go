@@ -42,29 +42,35 @@ func (s *SQLStore) Upsert(ctx context.Context, owner uuid.UUID, name, sourceForm
 
 // UpsertFromLink implements Store. See Upsert.
 func (s *SQLStore) UpsertFromLink(ctx context.Context, owner uuid.UUID, name, sourceFormat, sourceText, sourceURL string, commanders []string, cardCount int) (Deck, error) {
-	if owner == uuid.Nil {
-		return Deck{}, errors.New("decklibrary: owner is required")
-	}
-	if name == "" {
-		return Deck{}, errors.New("decklibrary: name is required")
-	}
-	d, err := s.upsert(ctx, owner, name, sourceFormat, sourceText, sourceURL, commanders, cardCount)
-	if err != nil && (isConstraint(err) || isBusy(err)) {
-		d, err = s.upsert(ctx, owner, name, sourceFormat, sourceText, sourceURL, commanders, cardCount)
-	}
+	d, _, err := s.Save(ctx, owner, name, sourceFormat, sourceText, sourceURL, commanders, cardCount)
 	return d, err
 }
 
-func (s *SQLStore) upsert(ctx context.Context, owner uuid.UUID, name, sourceFormat, sourceText, sourceURL string, commanders []string, cardCount int) (Deck, error) {
+// Save implements Store. See Upsert for the update rule and the retry.
+func (s *SQLStore) Save(ctx context.Context, owner uuid.UUID, name, sourceFormat, sourceText, sourceURL string, commanders []string, cardCount int) (Deck, bool, error) {
+	if owner == uuid.Nil {
+		return Deck{}, false, errors.New("decklibrary: owner is required")
+	}
+	if name == "" {
+		return Deck{}, false, errors.New("decklibrary: name is required")
+	}
+	d, replaced, err := s.upsert(ctx, owner, name, sourceFormat, sourceText, sourceURL, commanders, cardCount)
+	if err != nil && (isConstraint(err) || isBusy(err)) {
+		d, replaced, err = s.upsert(ctx, owner, name, sourceFormat, sourceText, sourceURL, commanders, cardCount)
+	}
+	return d, replaced, err
+}
+
+func (s *SQLStore) upsert(ctx context.Context, owner uuid.UUID, name, sourceFormat, sourceText, sourceURL string, commanders []string, cardCount int) (Deck, bool, error) {
 	commandersJSON, err := json.Marshal(commanders)
 	if err != nil {
-		return Deck{}, fmt.Errorf("decklibrary: marshal commanders: %w", err)
+		return Deck{}, false, fmt.Errorf("decklibrary: marshal commanders: %w", err)
 	}
 	nowMs := s.now().Truncate(time.Millisecond).UnixMilli()
 
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
-		return Deck{}, err
+		return Deck{}, false, err
 	}
 	defer func() { _ = tx.Rollback() }()
 
@@ -77,49 +83,53 @@ func (s *SQLStore) upsert(ctx context.Context, owner uuid.UUID, name, sourceForm
 	var newest int64
 	if err := tx.QueryRowContext(ctx,
 		`SELECT COALESCE(MAX(updated_at), 0) FROM decks WHERE owner_id = ?`, owner.String()).Scan(&newest); err != nil {
-		return Deck{}, fmt.Errorf("decklibrary: newest stamp: %w", err)
+		return Deck{}, false, fmt.Errorf("decklibrary: newest stamp: %w", err)
 	}
 	if nowMs <= newest {
 		nowMs = newest + 1
 	}
 
-	var id string
+	var (
+		id       string
+		replaced bool
+	)
 	err = tx.QueryRowContext(ctx,
 		`SELECT id FROM decks WHERE owner_id = ? AND name = ?`, owner.String(), name).Scan(&id)
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
 		var have int
 		if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM decks WHERE owner_id = ?`, owner.String()).Scan(&have); err != nil {
-			return Deck{}, fmt.Errorf("decklibrary: count: %w", err)
+			return Deck{}, false, fmt.Errorf("decklibrary: count: %w", err)
 		}
 		if have >= MaxDecks {
-			return Deck{}, ErrLibraryFull
+			return Deck{}, false, ErrLibraryFull
 		}
 		id = uuid.New().String()
 		if _, err := tx.ExecContext(ctx,
 			`INSERT INTO decks (id, owner_id, name, source_format, source_text, source_url, commanders, card_count, created_at, updated_at)
 			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			id, owner.String(), name, sourceFormat, sourceText, nullString(sourceURL), string(commandersJSON), cardCount, nowMs, nowMs); err != nil {
-			return Deck{}, fmt.Errorf("decklibrary: insert: %w", err)
+			return Deck{}, false, fmt.Errorf("decklibrary: insert: %w", err)
 		}
 	case err != nil:
-		return Deck{}, fmt.Errorf("decklibrary: find existing: %w", err)
+		return Deck{}, false, fmt.Errorf("decklibrary: find existing: %w", err)
 	default:
+		replaced = true
 		if _, err := tx.ExecContext(ctx,
 			`UPDATE decks SET source_format = ?, source_text = ?, source_url = ?, commanders = ?, card_count = ?, updated_at = ? WHERE id = ?`,
 			sourceFormat, sourceText, nullString(sourceURL), string(commandersJSON), cardCount, nowMs, id); err != nil {
-			return Deck{}, fmt.Errorf("decklibrary: update: %w", err)
+			return Deck{}, false, fmt.Errorf("decklibrary: update: %w", err)
 		}
 	}
 
 	deck, err := getDeck(ctx, tx, id)
 	if err != nil {
-		return Deck{}, err
+		return Deck{}, false, err
 	}
 	if err := tx.Commit(); err != nil {
-		return Deck{}, err
+		return Deck{}, false, err
 	}
-	return deck, nil
+	return deck, replaced, nil
 }
 
 // Get implements Store.

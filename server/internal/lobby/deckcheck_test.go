@@ -21,6 +21,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/auth"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/deck"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/deckcoverage"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/decklibrary"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/deckrequests"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/discord"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/github"
@@ -136,6 +137,7 @@ type deckStack struct {
 	auth   auth.Authenticator
 	users  *users.SQLStore
 	store  *deckrequests.SQLStore
+	lib    *decklibrary.SQLStore
 	filer  *fakeFiler
 	source *fakeDeckLinks
 	tc     deckcoverage.TestingCards
@@ -155,6 +157,7 @@ func newDeckStack(t *testing.T, relax bool, configure func(*Config)) *deckStack 
 		auth:  auth.NewMemoryAuthenticator(),
 		users: users.NewSQLStore(d, nil),
 		store: deckrequests.NewSQLStore(d),
+		lib:   decklibrary.NewSQLStore(d),
 		filer: &fakeFiler{issues: map[int]*fakeIssue{}},
 		source: &fakeDeckLinks{
 			decks: map[string]fakeDeck{
@@ -186,6 +189,7 @@ func newDeckStack(t *testing.T, relax bool, configure func(*Config)) *deckStack 
 		Users:            s.users,
 		DeckRequests:     s.store,
 		DeckRequestFiler: s.filer,
+		DeckLibrary:      s.lib,
 		FetchDeck:        s.source.fetch,
 		Log:              quietLogger(),
 	}
@@ -861,8 +865,9 @@ func TestDeckReportCacheExpires(t *testing.T) {
 	c := newDeckReportCache(10*time.Minute, 2, func() time.Time { return now })
 	r1, r2, r3 := &deckcoverage.Report{DeckName: "1"}, &deckcoverage.Report{DeckName: "2"}, &deckcoverage.Report{DeckName: "3"}
 
-	c.put("a", r1)
-	if got, ok := c.get("a"); !ok || got != r1 {
+	entries := []deck.Entry{{Name: "Forest", Count: 1}}
+	c.put("a", checkedDeck{report: r1, name: "One", entries: entries})
+	if got, ok := c.get("a"); !ok || got.report != r1 || got.name != "One" || len(got.entries) != 1 {
 		t.Fatal("fresh entry missed")
 	}
 	now = now.Add(10 * time.Minute)
@@ -870,10 +875,10 @@ func TestDeckReportCacheExpires(t *testing.T) {
 		t.Error("entry served at its TTL")
 	}
 
-	c.put("a", r1)
+	c.put("a", checkedDeck{report: r1})
 	now = now.Add(time.Minute)
-	c.put("b", r2)
-	c.put("c", r3) // full: evicts the entry closest to expiring, "a"
+	c.put("b", checkedDeck{report: r2})
+	c.put("c", checkedDeck{report: r3}) // full: evicts the entry closest to expiring, "a"
 	if _, ok := c.get("a"); ok {
 		t.Error("a full cache kept its oldest entry")
 	}

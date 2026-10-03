@@ -584,6 +584,23 @@ func generateNonZero(rt reflect.Type, seed string, depth int) (reflect.Value, er
 		return reflect.ValueOf(uuid.NewSHA1(uuid.Nil, []byte(seed))), nil
 	case timeType:
 		return reflect.ValueOf(time.Date(2026, time.September, 19, 12, 0, 0, 0, time.UTC)), nil
+	case durationType:
+		// ADR 0109 Shared machinery 2: restore refuses a duration it
+		// cannot read wherever it is stored (an untap hold's, a cast
+		// permission's, a player static's), so an invented 4242 kind
+		// would fail the restore rather than test the carry. A readable
+		// duration with every field non-zero instead, the new
+		// conjunction and counter kind included.
+		return reflect.ValueOf(Duration{
+			Kind: ForAsLongAs, Condition: WhilePinnedHasCounter, CounterKind: "drift-" + seed,
+			Also:                []DurationCondition{WhileSourceRemainsTapped},
+			Player:              uuid.NewSHA1(uuid.Nil, []byte(seed+"/player")),
+			ExpiresAtTurnsBegun: 11, ExpiresAfterTurnsBegun: 10,
+			Source:          uuid.NewSHA1(uuid.Nil, []byte(seed+"/source")),
+			SourceEnteredAt: 4949,
+			Pinned:          uuid.NewSHA1(uuid.Nil, []byte(seed+"/pinned")),
+			PinnedEnteredAt: 5050, PinnedUnstamped: true, PinnedOnStack: true, PinnedEpoch: 6,
+		}), nil
 	}
 	out := reflect.New(rt).Elem()
 	switch rt.Kind() {

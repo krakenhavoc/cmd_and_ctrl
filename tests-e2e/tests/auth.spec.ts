@@ -1,20 +1,23 @@
 import { expect, test } from "@playwright/test";
 import { ADMIN_TOKEN } from "./env";
 
+// The shared admin token signs in on #/admin, its only page (ADR 0112
+// §2 item 8). #/login is for signed-out visitors and has no token form;
+// every session that lands on it is sent to the Lobby (§1 item 1).
 test.describe("admin login", () => {
   test.beforeEach(async ({ page }) => {
     // Start every test from a clean session so the lobby redirect
     // doesn't skip us past the login form.
     await page.goto("/");
     await page.evaluate(() => localStorage.removeItem("cmdctrl.session"));
-    await page.goto("/#/login");
+    await page.goto("/#/admin");
   });
 
   test("wrong token surfaces a visible error", async ({ page }) => {
     await page.getByPlaceholder("admin token").fill("not-the-real-token-but-long");
     await page.getByRole("button", { name: "log in" }).click();
     await expect(page.getByRole("alert")).toBeVisible();
-    // We stay on the login page — no redirect to lobby.
+    // We stay on the admin page — no redirect to lobby.
     await expect(page).not.toHaveURL(/#\/lobby/);
   });
 
@@ -25,6 +28,9 @@ test.describe("admin login", () => {
     await expect(page.getByRole("heading", { name: /cmd_and_ctrl · lobby/ })).toBeVisible();
     // Admin-only UI surfaces — create-game form should be present.
     await expect(page.getByRole("heading", { name: "create game" })).toBeVisible();
+    // The token is not a person, so the Lobby offers it no join box.
+    await expect(page.getByLabel("invite code or link")).toHaveCount(0);
+    await expect(page.getByLabel("invite link")).toHaveCount(0);
   });
 
   test("session persists across reload", async ({ page }) => {
@@ -33,24 +39,52 @@ test.describe("admin login", () => {
     await expect(page).toHaveURL(/#\/lobby$/);
 
     await page.reload();
-    // App.svelte's auth gate kicks /login → /lobby when a session is
-    // live. We should land on the lobby without seeing the login form.
     await expect(page).toHaveURL(/#\/lobby$/);
     await expect(page.getByRole("heading", { name: "create game" })).toBeVisible();
   });
 
-  test("logout clears the session", async ({ page }) => {
+  test("a session on #/login or #/admin goes to the lobby", async ({ page }) => {
     await page.getByPlaceholder("admin token").fill(ADMIN_TOKEN);
     await page.getByRole("button", { name: "log in" }).click();
     await expect(page).toHaveURL(/#\/lobby$/);
 
-    await page.getByRole("button", { name: "log out", exact: true }).click();
+    await page.goto("/#/login");
+    await expect(page).toHaveURL(/#\/lobby$/);
+    await page.goto("/#/admin");
+    await expect(page).toHaveURL(/#\/lobby$/);
+  });
+
+  test("the wordmark goes to the lobby for a session", async ({ page }) => {
+    await page.getByPlaceholder("admin token").fill(ADMIN_TOKEN);
+    await page.getByRole("button", { name: "log in" }).click();
+    await expect(page).toHaveURL(/#\/lobby$/);
+
+    await page.goto("/#/roadmap");
+    await page.getByRole("link", { name: "cmd_and_ctrl home" }).click();
+    await expect(page).toHaveURL(/#\/lobby$/);
+  });
+
+  test("signing out from the account menu clears the session", async ({ page }) => {
+    await page.getByPlaceholder("admin token").fill(ADMIN_TOKEN);
+    await page.getByRole("button", { name: "log in" }).click();
+    await expect(page).toHaveURL(/#\/lobby$/);
+
+    await page.getByRole("button", { name: /^account menu/ }).click();
+    await page.getByRole("button", { name: "Sign out", exact: true }).click();
     await expect(page).toHaveURL(/#\/login$/);
 
     // Visiting the lobby directly should now redirect us back to
     // login — the session is truly gone.
     await page.goto("/#/lobby");
     await expect(page).toHaveURL(/#\/login$/);
+  });
+});
+
+test.describe("signed-out login page", () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto("/");
+    await page.evaluate(() => localStorage.removeItem("cmdctrl.session"));
+    await page.goto("/#/login");
   });
 
   test("pasting a full invite URL navigates to the join view", async ({ page }) => {

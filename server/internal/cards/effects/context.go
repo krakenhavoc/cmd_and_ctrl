@@ -412,6 +412,38 @@ func (c *Context) Discarded() []uuid.UUID {
 	return append([]uuid.UUID(nil), c.Paid().Discarded...)
 }
 
+// DiscardedCard is "the discarded card" of an activated ability whose
+// cost discards one (ADR 0109 §8, CR 400.7j): Land's Edge's "if the
+// discarded card was a land card", Volrath the Fallen's "the
+// discarded card's mana value". The first card the cost discarded, as
+// it is now wherever the discard put it — the graveyard, or exile
+// under madness. ok is false when the cost discarded nothing or the
+// card can no longer be found, which every reader treats as "no
+// card": the conditional part does nothing and an X reads zero.
+func (c *Context) DiscardedCard() (game.Card, bool) {
+	d := c.Paid().Discarded
+	if len(d) == 0 || c.Game == nil {
+		return game.Card{}, false
+	}
+	return c.Game.LookupCardForEffect(d[0])
+}
+
+// DiscardedManaValue is the mana value of "the discarded card" (ADR
+// 0109 §8) — Hisoka's comparison, Mercurial Chemister's damage,
+// Slumbering Tora's size. Zero when there is no such card or its cost
+// cannot be read: nothing was discarded with a value to read.
+func (c *Context) DiscardedManaValue() int {
+	card, ok := c.DiscardedCard()
+	if !ok {
+		return 0
+	}
+	mv, ok := c.Game.ManaValueForEffect(card)
+	if !ok {
+		return 0
+	}
+	return mv
+}
+
 // WasKicked is CR 702.33's "if this spell was kicked" — the read a
 // kicked spell's own resolution branches on, the same shape
 // PaidAltCost gives an overloaded one:

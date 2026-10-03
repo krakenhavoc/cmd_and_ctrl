@@ -104,6 +104,7 @@ battlefield.cards[].durationCopyBase.Toughness	number:int
 battlefield.cards[].durationCopyBase.TypeLine	string
 battlefield.cards[].durationCopyBase.VariableToughness	bool
 battlefield.cards[].enteredBattlefieldAt	number:int64
+battlefield.cards[].entryOrdinal	number:int64
 battlefield.cards[].faceDown	bool
 battlefield.cards[].faceDownKind	string
 battlefield.cards[].faceDownListed	object
@@ -163,7 +164,10 @@ battlefield.cards[].nextUntapSkips	array
 battlefield.cards[].nextUntapSkips[]	object
 battlefield.cards[].nextUntapSkips[].player	custom(uuid.UUID)
 battlefield.cards[].nextUntapSkips[].while	object
+battlefield.cards[].nextUntapSkips[].while.Also	array
+battlefield.cards[].nextUntapSkips[].while.Also[]	number:int
 battlefield.cards[].nextUntapSkips[].while.Condition	number:int
+battlefield.cards[].nextUntapSkips[].while.CounterKind	string
 battlefield.cards[].nextUntapSkips[].while.ExpiresAfterTurnsBegun	number:int
 battlefield.cards[].nextUntapSkips[].while.ExpiresAtTurnsBegun	number:int
 battlefield.cards[].nextUntapSkips[].while.Kind	number:int
@@ -320,7 +324,10 @@ delayedTriggers[].createdSeq	number:int
 delayedTriggers[].createdTurn	number:int
 delayedTriggers[].due	bool
 delayedTriggers[].duration	object
+delayedTriggers[].duration.Also	array
+delayedTriggers[].duration.Also[]	number:int
 delayedTriggers[].duration.Condition	number:int
+delayedTriggers[].duration.CounterKind	string
 delayedTriggers[].duration.ExpiresAfterTurnsBegun	number:int
 delayedTriggers[].duration.ExpiresAtTurnsBegun	number:int
 delayedTriggers[].duration.Kind	number:int
@@ -500,6 +507,7 @@ exile.cards[].durationCopyBase.Toughness	number:int
 exile.cards[].durationCopyBase.TypeLine	string
 exile.cards[].durationCopyBase.VariableToughness	bool
 exile.cards[].enteredBattlefieldAt	number:int64
+exile.cards[].entryOrdinal	number:int64
 exile.cards[].faceDown	bool
 exile.cards[].faceDownKind	string
 exile.cards[].faceDownListed	object
@@ -559,7 +567,10 @@ exile.cards[].nextUntapSkips	array
 exile.cards[].nextUntapSkips[]	object
 exile.cards[].nextUntapSkips[].player	custom(uuid.UUID)
 exile.cards[].nextUntapSkips[].while	object
+exile.cards[].nextUntapSkips[].while.Also	array
+exile.cards[].nextUntapSkips[].while.Also[]	number:int
 exile.cards[].nextUntapSkips[].while.Condition	number:int
+exile.cards[].nextUntapSkips[].while.CounterKind	string
 exile.cards[].nextUntapSkips[].while.ExpiresAfterTurnsBegun	number:int
 exile.cards[].nextUntapSkips[].while.ExpiresAtTurnsBegun	number:int
 exile.cards[].nextUntapSkips[].while.Kind	number:int
@@ -946,6 +957,7 @@ lastKnownStack[].card.durationCopyBase.Toughness	number:int
 lastKnownStack[].card.durationCopyBase.TypeLine	string
 lastKnownStack[].card.durationCopyBase.VariableToughness	bool
 lastKnownStack[].card.enteredBattlefieldAt	number:int64
+lastKnownStack[].card.entryOrdinal	number:int64
 lastKnownStack[].card.faceDown	bool
 lastKnownStack[].card.faceDownKind	string
 lastKnownStack[].card.faceDownListed	object
@@ -1005,7 +1017,10 @@ lastKnownStack[].card.nextUntapSkips	array
 lastKnownStack[].card.nextUntapSkips[]	object
 lastKnownStack[].card.nextUntapSkips[].player	custom(uuid.UUID)
 lastKnownStack[].card.nextUntapSkips[].while	object
+lastKnownStack[].card.nextUntapSkips[].while.Also	array
+lastKnownStack[].card.nextUntapSkips[].while.Also[]	number:int
 lastKnownStack[].card.nextUntapSkips[].while.Condition	number:int
+lastKnownStack[].card.nextUntapSkips[].while.CounterKind	string
 lastKnownStack[].card.nextUntapSkips[].while.ExpiresAfterTurnsBegun	number:int
 lastKnownStack[].card.nextUntapSkips[].while.ExpiresAtTurnsBegun	number:int
 lastKnownStack[].card.nextUntapSkips[].while.Kind	number:int
@@ -1780,6 +1795,7 @@ phasedOut.cards[].durationCopyBase.Toughness	number:int
 phasedOut.cards[].durationCopyBase.TypeLine	string
 phasedOut.cards[].durationCopyBase.VariableToughness	bool
 phasedOut.cards[].enteredBattlefieldAt	number:int64
+phasedOut.cards[].entryOrdinal	number:int64
 phasedOut.cards[].faceDown	bool
 phasedOut.cards[].faceDownKind	string
 phasedOut.cards[].faceDownListed	object
@@ -1839,7 +1855,10 @@ phasedOut.cards[].nextUntapSkips	array
 phasedOut.cards[].nextUntapSkips[]	object
 phasedOut.cards[].nextUntapSkips[].player	custom(uuid.UUID)
 phasedOut.cards[].nextUntapSkips[].while	object
+phasedOut.cards[].nextUntapSkips[].while.Also	array
+phasedOut.cards[].nextUntapSkips[].while.Also[]	number:int
 phasedOut.cards[].nextUntapSkips[].while.Condition	number:int
+phasedOut.cards[].nextUntapSkips[].while.CounterKind	string
 phasedOut.cards[].nextUntapSkips[].while.ExpiresAfterTurnsBegun	number:int
 phasedOut.cards[].nextUntapSkips[].while.ExpiresAtTurnsBegun	number:int
 phasedOut.cards[].nextUntapSkips[].while.Kind	number:int
@@ -1994,7 +2013,10 @@ scopedEffects[].affected[].onStack	bool
 scopedEffects[].affected[].unstamped	bool
 scopedEffects[].controller	custom(uuid.UUID)
 scopedEffects[].duration	object
+scopedEffects[].duration.Also	array
+scopedEffects[].duration.Also[]	number:int
 scopedEffects[].duration.Condition	number:int
+scopedEffects[].duration.CounterKind	string
 scopedEffects[].duration.ExpiresAfterTurnsBegun	number:int
 scopedEffects[].duration.ExpiresAtTurnsBegun	number:int
 scopedEffects[].duration.Kind	number:int
@@ -2059,6 +2081,7 @@ scopedEffects[].mods[].half	bool
 scopedEffects[].mods[].keywords	array
 scopedEffects[].mods[].keywords[]	string
 scopedEffects[].mods[].kind	string
+scopedEffects[].mods[].next	bool
 scopedEffects[].mods[].objects	array
 scopedEffects[].mods[].objects[]	object
 scopedEffects[].mods[].objects[].epoch	number:int
@@ -2077,8 +2100,10 @@ scopedEffects[].mods[].queries[].Supertypes	array
 scopedEffects[].mods[].queries[].Supertypes[]	string
 scopedEffects[].mods[].queries[].Types	array
 scopedEffects[].mods[].queries[].Types[]	string
+scopedEffects[].mods[].recipients	string
 scopedEffects[].mods[].restrictions	number:uint8
 scopedEffects[].mods[].sourceZone	string
+scopedEffects[].mods[].sources	string
 scopedEffects[].mods[].spentBatch	number:uint64
 scopedEffects[].mods[].spentInstance	number:uint64
 scopedEffects[].mods[].subtypes	array
@@ -2115,7 +2140,10 @@ seats[].castPermissions[].discover	object
 seats[].castPermissions[].discover.n	number:int
 seats[].castPermissions[].discover.source	custom(uuid.UUID)
 seats[].castPermissions[].duration	object
+seats[].castPermissions[].duration.Also	array
+seats[].castPermissions[].duration.Also[]	number:int
 seats[].castPermissions[].duration.Condition	number:int
+seats[].castPermissions[].duration.CounterKind	string
 seats[].castPermissions[].duration.ExpiresAfterTurnsBegun	number:int
 seats[].castPermissions[].duration.ExpiresAtTurnsBegun	number:int
 seats[].castPermissions[].duration.Kind	number:int
@@ -2238,6 +2266,7 @@ seats[].command.cards[].durationCopyBase.Toughness	number:int
 seats[].command.cards[].durationCopyBase.TypeLine	string
 seats[].command.cards[].durationCopyBase.VariableToughness	bool
 seats[].command.cards[].enteredBattlefieldAt	number:int64
+seats[].command.cards[].entryOrdinal	number:int64
 seats[].command.cards[].faceDown	bool
 seats[].command.cards[].faceDownKind	string
 seats[].command.cards[].faceDownListed	object
@@ -2297,7 +2326,10 @@ seats[].command.cards[].nextUntapSkips	array
 seats[].command.cards[].nextUntapSkips[]	object
 seats[].command.cards[].nextUntapSkips[].player	custom(uuid.UUID)
 seats[].command.cards[].nextUntapSkips[].while	object
+seats[].command.cards[].nextUntapSkips[].while.Also	array
+seats[].command.cards[].nextUntapSkips[].while.Also[]	number:int
 seats[].command.cards[].nextUntapSkips[].while.Condition	number:int
+seats[].command.cards[].nextUntapSkips[].while.CounterKind	string
 seats[].command.cards[].nextUntapSkips[].while.ExpiresAfterTurnsBegun	number:int
 seats[].command.cards[].nextUntapSkips[].while.ExpiresAtTurnsBegun	number:int
 seats[].command.cards[].nextUntapSkips[].while.Kind	number:int
@@ -2502,6 +2534,7 @@ seats[].emblems.cards[].durationCopyBase.Toughness	number:int
 seats[].emblems.cards[].durationCopyBase.TypeLine	string
 seats[].emblems.cards[].durationCopyBase.VariableToughness	bool
 seats[].emblems.cards[].enteredBattlefieldAt	number:int64
+seats[].emblems.cards[].entryOrdinal	number:int64
 seats[].emblems.cards[].faceDown	bool
 seats[].emblems.cards[].faceDownKind	string
 seats[].emblems.cards[].faceDownListed	object
@@ -2561,7 +2594,10 @@ seats[].emblems.cards[].nextUntapSkips	array
 seats[].emblems.cards[].nextUntapSkips[]	object
 seats[].emblems.cards[].nextUntapSkips[].player	custom(uuid.UUID)
 seats[].emblems.cards[].nextUntapSkips[].while	object
+seats[].emblems.cards[].nextUntapSkips[].while.Also	array
+seats[].emblems.cards[].nextUntapSkips[].while.Also[]	number:int
 seats[].emblems.cards[].nextUntapSkips[].while.Condition	number:int
+seats[].emblems.cards[].nextUntapSkips[].while.CounterKind	string
 seats[].emblems.cards[].nextUntapSkips[].while.ExpiresAfterTurnsBegun	number:int
 seats[].emblems.cards[].nextUntapSkips[].while.ExpiresAtTurnsBegun	number:int
 seats[].emblems.cards[].nextUntapSkips[].while.Kind	number:int
@@ -2756,6 +2792,7 @@ seats[].graveyard.cards[].durationCopyBase.Toughness	number:int
 seats[].graveyard.cards[].durationCopyBase.TypeLine	string
 seats[].graveyard.cards[].durationCopyBase.VariableToughness	bool
 seats[].graveyard.cards[].enteredBattlefieldAt	number:int64
+seats[].graveyard.cards[].entryOrdinal	number:int64
 seats[].graveyard.cards[].faceDown	bool
 seats[].graveyard.cards[].faceDownKind	string
 seats[].graveyard.cards[].faceDownListed	object
@@ -2815,7 +2852,10 @@ seats[].graveyard.cards[].nextUntapSkips	array
 seats[].graveyard.cards[].nextUntapSkips[]	object
 seats[].graveyard.cards[].nextUntapSkips[].player	custom(uuid.UUID)
 seats[].graveyard.cards[].nextUntapSkips[].while	object
+seats[].graveyard.cards[].nextUntapSkips[].while.Also	array
+seats[].graveyard.cards[].nextUntapSkips[].while.Also[]	number:int
 seats[].graveyard.cards[].nextUntapSkips[].while.Condition	number:int
+seats[].graveyard.cards[].nextUntapSkips[].while.CounterKind	string
 seats[].graveyard.cards[].nextUntapSkips[].while.ExpiresAfterTurnsBegun	number:int
 seats[].graveyard.cards[].nextUntapSkips[].while.ExpiresAtTurnsBegun	number:int
 seats[].graveyard.cards[].nextUntapSkips[].while.Kind	number:int
@@ -3009,6 +3049,7 @@ seats[].hand.cards[].durationCopyBase.Toughness	number:int
 seats[].hand.cards[].durationCopyBase.TypeLine	string
 seats[].hand.cards[].durationCopyBase.VariableToughness	bool
 seats[].hand.cards[].enteredBattlefieldAt	number:int64
+seats[].hand.cards[].entryOrdinal	number:int64
 seats[].hand.cards[].faceDown	bool
 seats[].hand.cards[].faceDownKind	string
 seats[].hand.cards[].faceDownListed	object
@@ -3068,7 +3109,10 @@ seats[].hand.cards[].nextUntapSkips	array
 seats[].hand.cards[].nextUntapSkips[]	object
 seats[].hand.cards[].nextUntapSkips[].player	custom(uuid.UUID)
 seats[].hand.cards[].nextUntapSkips[].while	object
+seats[].hand.cards[].nextUntapSkips[].while.Also	array
+seats[].hand.cards[].nextUntapSkips[].while.Also[]	number:int
 seats[].hand.cards[].nextUntapSkips[].while.Condition	number:int
+seats[].hand.cards[].nextUntapSkips[].while.CounterKind	string
 seats[].hand.cards[].nextUntapSkips[].while.ExpiresAfterTurnsBegun	number:int
 seats[].hand.cards[].nextUntapSkips[].while.ExpiresAtTurnsBegun	number:int
 seats[].hand.cards[].nextUntapSkips[].while.Kind	number:int
@@ -3272,6 +3316,7 @@ seats[].library.cards[].durationCopyBase.Toughness	number:int
 seats[].library.cards[].durationCopyBase.TypeLine	string
 seats[].library.cards[].durationCopyBase.VariableToughness	bool
 seats[].library.cards[].enteredBattlefieldAt	number:int64
+seats[].library.cards[].entryOrdinal	number:int64
 seats[].library.cards[].faceDown	bool
 seats[].library.cards[].faceDownKind	string
 seats[].library.cards[].faceDownListed	object
@@ -3331,7 +3376,10 @@ seats[].library.cards[].nextUntapSkips	array
 seats[].library.cards[].nextUntapSkips[]	object
 seats[].library.cards[].nextUntapSkips[].player	custom(uuid.UUID)
 seats[].library.cards[].nextUntapSkips[].while	object
+seats[].library.cards[].nextUntapSkips[].while.Also	array
+seats[].library.cards[].nextUntapSkips[].while.Also[]	number:int
 seats[].library.cards[].nextUntapSkips[].while.Condition	number:int
+seats[].library.cards[].nextUntapSkips[].while.CounterKind	string
 seats[].library.cards[].nextUntapSkips[].while.ExpiresAfterTurnsBegun	number:int
 seats[].library.cards[].nextUntapSkips[].while.ExpiresAtTurnsBegun	number:int
 seats[].library.cards[].nextUntapSkips[].while.Kind	number:int
@@ -3509,7 +3557,10 @@ seats[].statics[].castBan.filter.sorceryOnly	bool
 seats[].statics[].castBan.kind	string
 seats[].statics[].castBan.maxPerTurn	number:int
 seats[].statics[].duration	object
+seats[].statics[].duration.Also	array
+seats[].statics[].duration.Also[]	number:int
 seats[].statics[].duration.Condition	number:int
+seats[].statics[].duration.CounterKind	string
 seats[].statics[].duration.ExpiresAfterTurnsBegun	number:int
 seats[].statics[].duration.ExpiresAtTurnsBegun	number:int
 seats[].statics[].duration.Kind	number:int
@@ -3645,6 +3696,7 @@ stack.cards[].durationCopyBase.Toughness	number:int
 stack.cards[].durationCopyBase.TypeLine	string
 stack.cards[].durationCopyBase.VariableToughness	bool
 stack.cards[].enteredBattlefieldAt	number:int64
+stack.cards[].entryOrdinal	number:int64
 stack.cards[].faceDown	bool
 stack.cards[].faceDownKind	string
 stack.cards[].faceDownListed	object
@@ -3704,7 +3756,10 @@ stack.cards[].nextUntapSkips	array
 stack.cards[].nextUntapSkips[]	object
 stack.cards[].nextUntapSkips[].player	custom(uuid.UUID)
 stack.cards[].nextUntapSkips[].while	object
+stack.cards[].nextUntapSkips[].while.Also	array
+stack.cards[].nextUntapSkips[].while.Also[]	number:int
 stack.cards[].nextUntapSkips[].while.Condition	number:int
+stack.cards[].nextUntapSkips[].while.CounterKind	string
 stack.cards[].nextUntapSkips[].while.ExpiresAfterTurnsBegun	number:int
 stack.cards[].nextUntapSkips[].while.ExpiresAtTurnsBegun	number:int
 stack.cards[].nextUntapSkips[].while.Kind	number:int

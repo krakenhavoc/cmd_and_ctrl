@@ -27,16 +27,6 @@ func openDivideShield(g *Game) *PendingChoice {
 	return out
 }
 
-// pushToughCreature is a 2/5 that survives the damage these tests deal.
-func pushToughCreature(g *Game, owner *Player, name string) uuid.UUID {
-	c := NewCard(name, owner.ID)
-	c.TypeLine = "Creature — Test"
-	c.Power, c.Toughness = 2, 5
-	c.Colors = []string{"G"}
-	g.Battlefield.PushTop(c)
-	return c.InstanceID
-}
-
 // shareFor is a distribution giving each entry, by source, its share.
 func shareFor(c *PendingChoice, bySourceOrTarget map[uuid.UUID]int) map[uuid.UUID]int {
 	out := map[uuid.UUID]int{}

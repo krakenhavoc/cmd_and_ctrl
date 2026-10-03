@@ -53,6 +53,13 @@ const (
 	// Shapesharer. "Your" is the ability's controller, so Apply reads
 	// it off ctx.Controller() rather than a field on this struct.
 	CopyUntilYourNextTurn
+
+	// CopyWhileOfRemainsTapped is "for as long as that creature remains
+	// tapped" (ADR 0109 §3, Zygon Infiltrator): the copy lasts while Of,
+	// the object copied, stays tapped on the battlefield as the same
+	// object. The duration is pinned to Of, not to the permanent that
+	// becomes the copy, and never starts if Of is untapped or gone.
+	CopyWhileOfRemainsTapped
 )
 
 // BecomeCopy makes each of Targets a copy of Of.
@@ -123,6 +130,11 @@ func (b BecomeCopy) Apply(ctx *Context) error {
 		d = game.IndefiniteDuration()
 	case CopyUntilYourNextTurn:
 		d = ctx.Game.UntilYourNextTurnDuration(ctx.Controller())
+	case CopyWhileOfRemainsTapped:
+		var ok bool
+		if d, ok = ctx.Game.ForAsLongAsPinnedTappedDuration(b.Of); !ok {
+			return nil // CR 611.2b: it never starts
+		}
 	default:
 		d = ctx.Game.UntilEndOfTurnDuration()
 	}

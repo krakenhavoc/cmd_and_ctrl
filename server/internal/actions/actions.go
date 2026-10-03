@@ -1240,6 +1240,11 @@ func dispatch(g *game.Game, a Action) error {
 			// Its own field, as on activate_mana_ability (#1283):
 			// an exiled card is not discarded.
 			ExileIDs []string `json:"exile_ids,omitempty"`
+			// ADR 0109 §7 (#1902) — top_ids names the cards paid to
+			// a "Put a card from your hand on top of your library"
+			// cost (Penance, Leashling). Its own field: the card is
+			// neither discarded nor exiled.
+			TopIDs []string `json:"top_ids,omitempty"`
 			// #1213 — return_ids names the permanents paid to a
 			// "Return a permanent you control to its owner's hand"
 			// cost (Quirion Ranger, Master Transmuter, Meloku).
@@ -1324,6 +1329,14 @@ func dispatch(g *game.Game, a Action) error {
 				}
 				exileIDs = append(exileIDs, id)
 			}
+			topIDs := make([]uuid.UUID, 0, len(p.TopIDs))
+			for _, raw := range p.TopIDs {
+				id, err := uuid.Parse(raw)
+				if err != nil {
+					return fmt.Errorf("activate_ability top_ids: %w", err)
+				}
+				topIDs = append(topIDs, id)
+			}
 			returnIDs := make([]uuid.UUID, 0, len(p.ReturnIDs))
 			for _, raw := range p.ReturnIDs {
 				id, err := uuid.Parse(raw)
@@ -1363,6 +1376,7 @@ func dispatch(g *game.Game, a Action) error {
 				CounterKinds:     p.CounterKinds,
 				DiscardIDs:       discardIDs,
 				ExileIDs:         exileIDs,
+				TopIDs:           topIDs,
 				ReturnIDs:        returnIDs,
 				WaterbendIDs:     waterbendIDs,
 				Targets:          refs,

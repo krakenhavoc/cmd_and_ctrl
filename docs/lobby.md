@@ -12,17 +12,17 @@ live in [ADR 0003 — Auth and lobby architecture](decisions/0003-auth-and-lobby
 
 ---
 
-## Who is an admin (ADR 0110 §3)
+## Who is an admin (ADR 0110 §3, ADR 0112 §2)
 
 Two kinds of session are admins, and every "admin only" or "admin" below
 means either:
 
 - the **shared token**'s session, from `POST /admin/login`
   (`role: "admin"`); and
-- a **signed-in person on the allowlist**: any session with a `user_id`
-  (identified, player or spectator) whose Discord ID is on
-  `CMDCTRL_DISCORD_ADMIN_USER_IDS`. It is the same list the Discord bot
-  uses for `/c2-end`.
+- a **signed-in person on the allowlist, in admin mode**: any session
+  with a `user_id` (identified, player or spectator) whose Discord ID is
+  on `CMDCTRL_DISCORD_ADMIN_USER_IDS`, while that person has admin mode
+  on. It is the same list the Discord bot uses for `/c2-end`.
 
 Admin is decided on every request (`Config.isAdmin`) and is never in the
 token, so taking an ID off the list takes effect on the next request.
@@ -31,10 +31,40 @@ A session with no `user_id` is never an allowlisted admin. That includes
 a reclaim ticket's session for an admin's seat, which carries the seat's
 Discord ID but no user. `GET /me` reports the answer as `admin`.
 
+**Player mode** ([ADR 0112](decisions/0112-signed-in-home-player-mode-and-one-decks-page.md)
+§2). Being on the list makes a person *able* to be an admin. Each
+allowlisted person is in **player mode** until they switch admin mode on
+with [`PUT /me/admin-mode`](#put-meadmin-mode-adr-0112-2), and it starts
+off: every person on the list was in player mode the first time this
+deployed. In player mode every route and gate below answers exactly as it
+does for a signed-in person who is not on the list. The only extra things
+they have are the switch and `admin_allowed` on `GET /me`.
+
+- **Admin mode lasts 12 hours**, like `sudo`. A request after that sees
+  player mode, and a sweep once a minute clears the mode and closes the
+  person's admin WebSockets. Switching on again restarts the 12 hours.
+- It belongs to the **person**, not the session: a switch reaches every
+  tab and device at its next request, and nothing in any token changes.
+- A switch, or a lapse, closes each of the person's WebSockets whose
+  admin bit is now wrong with close code **4001**, reason `admin mode
+  changed`. The client asks `GET /me` and reconnects, and the upgrade
+  binds it again with the new answer. In player mode that is their own
+  seat or spectator session and nothing else.
+- [`POST /logout/everywhere`](#post-logouteverywhere) and
+  [`POST /admin/users/{id}/revoke-sessions`](#post-adminusersidrevoke-sessions-admin-only)
+  also end admin mode.
+- A failure fails closed. If the server cannot load the modes at boot, it
+  logs an ERROR and starts with everyone in player mode.
+- With no database there are no users, so no allowlisted admins and no
+  mode.
+
+Player mode is not a defence against a stolen session: whoever holds the
+session can switch admin mode back on. Revocation is that defence.
+
 An allowlisted person joins tables the ordinary way, as their own Discord
-identity. Their seat session is an admin at every table: it can use the
-admin routes, pass every host-or-admin gate, and open any table's
-WebSocket like the token (see `GET /ws` in
+identity. In admin mode their seat session is an admin at every table: it
+can use the admin routes, pass every host-or-admin gate, and open any
+table's WebSocket like the token (see `GET /ws` in
 [protocol.md](protocol.md)).
 
 Three paths exist for the Discord bot calling on other people's behalf,
@@ -57,6 +87,22 @@ allowlisted person) or `admin_id` (the token). No token is ever logged.
 ### `POST /admin/login`
 
 Exchange the shared admin token for an admin session.
+
+**In the client, the token's form is on `#/admin` only**
+([ADR 0112](decisions/0112-signed-in-home-player-mode-and-one-decks-page.md)
+§2 item 8, S57). `#/login` is for signed-out visitors and has no token
+form or link to one; operators open `#/admin` directly. What `#/admin`
+shows:
+
+| Browser holds | `#/admin` |
+|---|---|
+| no session | the token form |
+| the token's own session | goes to `#/lobby` |
+| any other session (a signed-in person, a guest seat, a spectator) | the token form, with a note that it replaces this browser's session. A signed-in person's session is set aside and comes back when the token's session ends ([ADR 0110](decisions/0110-remember-me.md) §1 item 6). |
+
+Every session that opens `#/login` goes to `#/lobby`, the signed-in
+home, where the "Join a table" card and the header's account menu are
+(ADR 0112 §1).
 
 **Request**
 
@@ -1099,9 +1145,17 @@ nothing else. For a signed-in caller it *additionally*:
   re-parses the stored list and never calls the network; fetching it
   again from the link is a later, explicit action. Saving the same name
   from pasted text clears the link.
+- **Saves only a deck the caller seats at their own seat** ([ADR
+  0112](decisions/0112-signed-in-home-player-mode-and-one-decks-page.md)
+  §3 item 8): the session's game and seat must be the path's game and
+  the body's `player_id`, the rule `GET /me/last-deck` already has. An
+  admin setting someone else's deck seats it and saves nothing to the
+  admin's library. The person whose seat it is can save it from the
+  decks page (`POST /me/decks`).
 - Sets the seat's `deck_id` to the saved deck. Any other outcome
-  (a guest, a catalog pick, or a failed save) leaves the
-  seat's `deck_id` empty, clearing a previous one if there was one.
+  (a guest, a catalog pick, someone else's seat, or a failed save)
+  leaves the seat's `deck_id` empty, clearing a previous one if there
+  was one.
 - **The 200-deck cap (ADR 0110 section 6).** A signed-in caller keeps at
   most 200 decks. The 201st *new* deck is not saved (updating a deck by
   name is never refused), the upload still succeeds and seats the deck,
@@ -1792,17 +1846,72 @@ Echo the principal attached to the request. Used by the client for
 bootstrap — "am I still logged in, and as what?"
 
 The principal's fields are at the top level, as they always were, plus
-one computed field, `admin` (ADR 0110 §3 item 4). It is `true` for the
-shared token's session and for a signed-in person on the admin
-allowlist, and `false` otherwise. It is not part of the token. The
-client asks once per installed session that has a `user_id`, and shows
-admin UI to an admin seated at a table exactly as it does to the token.
-The allowlist itself is never served.
+computed fields that are not part of the token:
+
+| Field | Meaning |
+|---|---|
+| `admin` | The effective answer (ADR 0110 §3 item 4): `true` for the shared token's session and for an allowlisted person **in admin mode**, `false` otherwise, player mode included. Every admin control in the client reads this. |
+| `admin_allowed` | `true` when this person is on the allowlist and so may switch admin mode on, in either mode ([ADR 0112](decisions/0112-signed-in-home-player-mode-and-one-decks-page.md) §2 item 9). Persons only: `false` for the shared token. |
+| `admin_mode` | `true` while this person has admin mode on. |
+| `admin_mode_ends_at` | When admin mode lapses, in Unix milliseconds. Present only while `admin_mode` is `true`. |
+
+The client asks once per installed session that has a `user_id`, and
+shows admin UI to an admin seated at a table exactly as it does to the
+token. `/me` tells a person only about themselves: the allowlist itself
+is never served.
 
 ```json
 { "role": "player", "user_id": "<uuid>", "game_id": "<uuid>", "player_id": "<uuid>",
-  "discord_id": "<snowflake>", "issued_at": "…", "expires_at": "…", "admin": true }
+  "discord_id": "<snowflake>", "issued_at": "…", "expires_at": "…",
+  "admin": true, "admin_allowed": true, "admin_mode": true, "admin_mode_ends_at": 1759480800000 }
 ```
+
+### `PUT /me/admin-mode` (ADR 0112 §2)
+
+Switch the caller's admin mode on or off. **Allowlisted persons only**: a
+session with a `user_id` whose Discord ID is on
+`CMDCTRL_DISCORD_ADMIN_USER_IDS`, in either mode. See
+[Who is an admin](#who-is-an-admin-adr-0110-3-adr-0112-2).
+
+**Request**
+
+```json
+{ "on": true }
+```
+
+- `{"on": true}` switches admin mode on for 12 hours. Sent while it is
+  already on, it restarts the 12 hours, which is how an admin extends it.
+- `{"on": false}` switches it off. Sent while it is already off, it is a
+  no-op that answers 200.
+
+The switch is written to the database first and then takes effect on the
+person's next request, from any session. The person's WebSockets whose
+admin bit is now wrong are closed with **4001** `admin mode changed`, so
+they reconnect with the new answer.
+
+**Response 200**
+
+```json
+{ "admin": true, "admin_mode": true, "admin_mode_ends_at": 1759480800000 }
+```
+
+`admin` is the effective answer, as on `GET /me`. `admin_mode_ends_at`
+is in Unix milliseconds and present only while admin mode is on.
+
+**Errors**
+
+| Status | Reason |
+|---|---|
+| 400 | the body is not `{"on": true}` or `{"on": false}` |
+| 401 | no session, or an expired or revoked one |
+| 403 | `not an admin`: anyone not on the allowlist, a guest, a reclaim ticket's session, and the shared token, which has no mode to switch |
+| 404 | the user row no longer exists |
+| 429 | more than one switch every 2 seconds per person, after a burst of 5 |
+| 500 | the switch could not be saved. A failed switch on leaves player mode; a failed switch off is player mode in this process anyway |
+| 503 | the server has no user database |
+
+Every switch is logged at Info as `admin mode on` or `admin mode off`,
+with `admin_user_id`; a lapse is logged as `admin mode lapsed`.
 
 ### `GET /me/games`
 
@@ -2127,8 +2236,80 @@ five buckets by distinct card. `as_printed` is `automated` plus
 says "N of M play as printed". The list builds the catalogue verdicts
 once per request and reuses them for every deck. `coverage` is absent
 when the server has no card index or a stored list no longer parses.
-These reads, and the three routes below, share a per-client bucket of 1
+These reads, and the four routes below, share a per-client bucket of 1
 request per second with a burst of 5 (429 past it).
+
+### `POST /me/decks` (ADR 0112 §3 item 4)
+
+Save a checked deck to the caller's library, from the decks page. A
+check writes nothing; saving is always this explicit call, and it never
+files a request (`POST /deck-requests` is its own button with its own
+limit).
+
+**Request**
+
+```json
+{ "url": "https://archidekt.com/decks/424242", "name": "Weekend deck" }
+{ "text": "1 Atraxa, Praetors' Voice *CMDR*\n1 Sol Ring\n..." }
+```
+
+Exactly one of `url` and `text` (400 for neither or both); `name` is
+optional.
+
+- **A pasted list** is read the way `POST /deck-coverage` reads one and
+  saved as pasted (`source_format: "text"`, no `source_url`).
+- **A link** is saved as the list the server fetched, rendered as plain
+  text, with the canonical link in `source_url`: the same row an import
+  at a table writes. Seating it or requesting its cards later re-reads
+  the stored list and never calls the network. The deck check's
+  ten-minute cache keeps the fetched list beside the report, so a save
+  after a check fetches nothing. A link the cache does not hold first
+  spends one token from `POST /deck-coverage`'s per-IP bucket (1 per
+  10 s, burst 3), then fetches, so saving cannot get around the fetch
+  limit. With the bucket empty the answer is **429**
+  `{"error": "…"}` with `Retry-After: 10`, and nothing is fetched. A
+  fetch failure answers with `POST /deck-coverage`'s error table,
+  including the Moxfield `paste_list` hint.
+- **The name** is `name`, trimmed, at most 100 characters (400 past
+  it). Without one: the deck site's name for a link, then the first
+  commander, then "Untitled deck".
+- **Nothing is validated against Commander rules here**, and names the
+  card index cannot resolve are kept: the check showed both, the
+  library's `coverage.unknown` counts the names, and seating the deck
+  runs the full parse, resolve and validate pipeline as it always does
+  (`POST /games/{id}/decks/{deck_id}`, 422 with the violations).
+- **The update rule is the library's own:** a deck the caller already
+  has by that name is replaced in place (same `id`), and the answer
+  says so. A pasted list saved over a link deck clears the link.
+
+**Response:** **201** for a new deck, **200** for a replaced one:
+
+```json
+{
+  "deck": { "id": "<uuid>", "name": "Weekend deck", "commanders": ["…"], "card_count": 100,
+            "updated_at": "…", "source_url": "https://archidekt.com/decks/424242",
+            "coverage": { "counts": { "manual": 1, "…": 0 }, "unknown": 0, "as_printed": 78, "resolved": 90 } },
+  "replaced": false
+}
+```
+
+`deck` is the `GET /me/decks` entry, coverage included.
+
+**Errors**
+
+- **401** with no credential. **403** for any caller that is not a
+  signed-in person: a guest seat or spectator, the admin token, or an
+  `identified` session with no database (never 401, which would sign
+  the browser out).
+- **409** `{"error": "Your deck library is full (200 decks). Delete one
+  below to save this one.", "code": "library_full"}` for a new name
+  past the 200-deck cap. Replacing a deck is never refused.
+- **400** for a body that is not one of the shapes above, a list over
+  the length cap, or a link that is not a Moxfield or Archidekt deck.
+- **503** with no card index.
+
+The route rides the `/me/decks*` bucket (1 request per second, burst 5,
+per client).
 
 ### `GET /me/decks/{id}/coverage` (ADR 0110 section 6)
 
@@ -2269,17 +2450,33 @@ with no Discord identity, is 403.
 ```json
 { "url": "https://moxfield.com/decks/AbC123" }
 { "text": "1 Atraxa, Praetors' Voice *CMDR*\n1 Sol Ring\n..." }
+{ "deck_id": "<uuid>" }
 { "url": "https://moxfield.com/decks/AbC123",
   "requester": { "discord_id": "123456789012345678", "display_name": "Alice" } }
 ```
 
-Exactly one of `url` and `text` (400 for neither or both). A pasted list
+Exactly one of `url`, `text` and `deck_id` (400 for none or more than
+one). A pasted list
 is deduplicated by its list key (`deck_key`, see `POST /deck-coverage`),
 so the same deck pasted from two exports joins one issue, and the same
 cards under another commander file another. Since the [2026-09-25
 amendment](decisions/0095-deck-coverage-and-deck-requests.md#amendment-2026-09-25-requests-from-a-pasted-list):
 Moxfield blocks this server, so pasting is a Moxfield player's only
 route.
+
+**`deck_id`** ([ADR
+0112](decisions/0112-signed-in-home-player-mode-and-one-decks-page.md)
+§3 item 5) is one of the caller's own saved decks (`GET /me/decks`),
+so every library deck can ask for its missing cards. A deck that is not
+theirs, or does not exist, is **404**, as on the other `/me/decks`
+routes. The stored list is re-read, never fetched, and keyed the way
+the original would have been: a deck with a `source_url` keys as that
+link (`moxfield:<id>`, `archidekt:<id>`), so it joins the issue a
+request from the link filed, and any other deck keys as its list
+(`list:<hash>`). The admin token's `requester` path does not take
+`deck_id` (**400**): the bot has no library. Everything below (the
+limit, the outcomes, the issue) is the same whichever input named the
+deck.
 
 **What it does**, in order:
 
@@ -2289,9 +2486,12 @@ route.
    not reset it. Over the limit is **429** `rate_limited`, decided
    before the deck is fetched. Only an ask that reaches GitHub (an
    issue filed, or a comment added) counts.
-2. **The report.** The deck is fetched (or the list parsed) and
+2. **The report.** The deck is fetched (or the list parsed, or the
+   saved deck's stored list read) and
    bucketed exactly as `POST /deck-coverage` does it, from the same
-   10-minute cache. A fetch failure answers with that route's error
+   10-minute cache (a saved deck with a link is built from its stored
+   list instead, so the cache never holds a stale copy under the
+   link's key). A fetch failure answers with that route's error
    table, the Moxfield hint included.
 3. **Nothing to add.** No `manual` and no `unreviewed` card: no issue,
    **200** `nothing_to_add`, with the report (its caveated cards
@@ -2395,8 +2595,9 @@ expires. Always **204**.
 Requires a session **with a user**: a Discord sign-in, or a seat
 claimed from one. Withdraws every session that user holds, in every
 browser, including the caller's. It sets `users.sessions_invalid_before`
-to now, closes the user's open game WebSockets, and clears the cookie
-([ADR 0051](decisions/0051-user-database.md) decision 6). From then on,
+to now, ends their admin mode if it was on (in the same statement, ADR
+0112 §2 item 7), closes the user's open game WebSockets, and clears the
+cookie ([ADR 0051](decisions/0051-user-database.md) decision 6). From then on,
 any token of theirs issued at or before that instant fails with
 `401 {"error":"session revoked"}`, on every route and on the WS upgrade.
 A new Discord sign-in works straight away.
@@ -2418,8 +2619,8 @@ another one.
 ### `POST /admin/users/{id}/revoke-sessions` *(admin only)*
 
 ADR 0051's "admin remove-user". It does what the name says and nothing
-more: the same revocation as `/logout/everywhere`, for the user `{id}`.
-Every row stays: the user, identities, seats, games and decks. The
+more: the same revocation as `/logout/everywhere`, for the user `{id}`,
+including the end of their admin mode. Every row stays: the user, identities, seats, games and decks. The
 person can sign in with Discord again. Admin sessions have no user and
 are unaffected, including the caller's.
 
@@ -2489,7 +2690,7 @@ browser to the SPA's `#/oauth-complete?…` fragment.
 **`prompt`** ([ADR 0110](decisions/0110-remember-me.md) §2, S55). Both
 flows send Discord `prompt=none`, so a repeat sign-in with the same
 `identify` scope skips Discord's screen. `?prompt=consent` on `start`
-asks for the screen instead: it is the login page's "Sign in with a
+asks for the screen instead: it is the header account menu's "Sign in with a
 different Discord account", because `prompt=none` silently uses
 whichever account the browser is signed in to, and Discord's consent
 screen has an account switcher. Any other `prompt` value is a **400**.

@@ -27,7 +27,8 @@ import (
 //   - preventDamage — Mending Hands' charged shield (CR 615.7);
 //   - preventNextFromSource — the Circles of Protection's one-use
 //     shield against the next damage from a source (CR 615.8, ADR 0107
-//     §6, prevent_next_from_source.go);
+//     §6, prevent_next_from_source.go), and its combat-only form,
+//     preventNextCombatFromSource (Impulsive Maneuvers, ADR 0108 PR 2);
 //   - preventFromSource — Pay No Heed's "all damage a source of your
 //     choice would deal this turn" and Healing Grace's charged "next 3
 //     damage … by a source of your choice" (ADR 0108 §7,
@@ -45,7 +46,11 @@ import (
 //   - exileIfWouldDie — Lava Coil's and Disintegrate's "if it would die
 //     this turn, exile it instead", pinned to one object, or Flaying
 //     Tendrils' "if a creature would die this turn" over a live scope
-//     (ADR 0108 §1, #1886).
+//     (ADR 0108 §1, #1886);
+//   - multiplyDamage — Insult's "if a source you control would deal
+//     damage this turn, it deals double that damage instead", Isengard
+//     Unleashed's triple and the "next time" doublers (ADR 0108 §3,
+//     #1890, multiply_damage.go).
 //
 // The gather adapts each live record into the ReplacementEffect it
 // already consumes, with closures the RUNNING binary builds from the
@@ -160,7 +165,8 @@ var (
 // pre-filter the gather applies before it builds anything.
 func scopedReplacementWatches(kind ModKind) []EventKind {
 	switch kind {
-	case ModPreventCombatDamage, ModPreventDamage, ModPreventNextFromSource, ModPreventFromSource:
+	case ModPreventCombatDamage, ModPreventDamage, ModPreventNextFromSource, ModPreventNextCombatFromSource, ModMultiplyDamage,
+		ModPreventFromSource:
 		return watchDamage
 	case ModExileInsteadOfLeaving, ModExileInsteadOfGraveyard, ModExileIfWouldDie:
 		return watchZoneMove
@@ -404,6 +410,14 @@ func (g *Game) gatherScopedReplacementsLocked(ev *ReplacementEvent, applied map[
 				continue
 			}
 			a := activeReplacement{effect: scopedReplacementEffect(e.Seq, j, m.Kind, e.Label), id: id}
+			if m.Kind == ModMultiplyDamage {
+				// Two multipliers on one event (two Insults, an Insult and
+				// an Isengard) commute — ×2×3 is ×3×2 — so CR 616 has one
+				// answer and no order is asked between them (the Insult //
+				// Injury ruling: two Insults are ×4). Beside a prevention
+				// shield or a static doubler the order is still asked.
+				a.identity = replacementIdentity{card: "scoped:" + string(m.Kind)}
+			}
 			if m.Kind == ModExileIfWouldDie {
 				// Two "exile it instead" records on one dying creature
 				// (two Lava Coils, whoever cast them) are one
@@ -471,7 +485,8 @@ func scopedReplacementEffect(seq int64, mod int, kind ModKind, label string) Rep
 		},
 		Controller: func(ev *ReplacementEvent, g *Game, _ *Card) uuid.UUID {
 			switch kind {
-			case ModPreventCombatDamage, ModPreventDamage, ModPreventNextFromSource, ModPreventFromSource:
+			case ModPreventCombatDamage, ModPreventDamage, ModPreventNextFromSource, ModPreventNextCombatFromSource,
+				ModPreventFromSource:
 				// CR 616.1 gives the ordering choice to the AFFECTED
 				// player — whoever is being dealt the damage — so a
 				// prevention shield reports no controller (S17's Fog).
@@ -499,8 +514,7 @@ func scopedReplacementEffect(seq int64, mod int, kind ModKind, label string) Rep
 // scopedKindPrevents reports whether a replacement kind is a CR 615
 // prevention effect.
 func scopedKindPrevents(kind ModKind) bool {
-	return kind == ModPreventCombatDamage || kind == ModPreventDamage || kind == ModPreventNextFromSource ||
-		kind == ModPreventFromSource
+	return kind == ModPreventCombatDamage || kind == ModPreventDamage || preventsFromASource(kind)
 }
 
 // scopedReplacementAppliesLocked is the AppliesTo of mod `mod` of record
@@ -570,10 +584,12 @@ func scopedReplacementMeetsLocked(g *Game, e ScopedEffect, m Mod, ev *Replacemen
 		return ev.Kind == RepEventLife && ev.LifeDelta > 0 && ev.LifePlayer == m.Player
 	case ModExileIfWouldDie:
 		return exileIfWouldDieAppliesLocked(g, e, ev)
-	case ModPreventNextFromSource:
+	case ModPreventNextFromSource, ModPreventNextCombatFromSource:
 		return g.nextFromSourceAppliesLocked(e, m, ev)
 	case ModPreventFromSource:
 		return g.fromSourceMeetsLocked(e, m, ev)
+	case ModMultiplyDamage:
+		return g.multiplyDamageAppliesLocked(e, m, ev)
 	}
 	return false
 }
@@ -600,10 +616,12 @@ func (g *Game) applyScopedReplacementLocked(e ScopedEffect, mod int, m Mod, ev *
 	switch m.Kind {
 	case ModPreventCombatDamage:
 		ev.Cancel()
-	case ModPreventNextFromSource:
+	case ModPreventNextFromSource, ModPreventNextCombatFromSource:
 		g.applyNextFromSourceLocked(e, mod, m, ev)
 	case ModPreventFromSource:
 		g.applyFromSourceLocked(e, mod, m, ev)
+	case ModMultiplyDamage:
+		g.applyMultiplyDamageLocked(e, mod, m, ev)
 	case ModPreventDamage:
 		// CR 615.7's arithmetic, not "cancel if the shield covers any
 		// of it": a 4-point shield facing 6 damage prevents 4 and lets

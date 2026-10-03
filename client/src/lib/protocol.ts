@@ -356,6 +356,11 @@ export interface GameView {
   // "<card> (<source>)" with "— N left" on a charged one, oldest first.
   // Absent on nearly every turn.
   damage_shields?: string[];
+  // ADR 0108 §3: one line per live "it deals double (triple) that damage
+  // instead" effect a resolved spell or ability made (Insult, Isengard
+  // Unleashed, Lightning's Stagger), oldest first, already worded for the
+  // banner. Absent on nearly every turn.
+  damage_multipliers?: string[];
   // Cleanup-step pause map (S13.4, CR 402.2). Keys are player UUID
   // strings, values are the count each player must discard. Drives
   // DiscardPromptModal. Empty / absent when nobody owes discard.
@@ -2149,6 +2154,21 @@ export interface ActivatedAbilityView {
   discard_cost_n?: number;
   discard_cost_label?: string;
   discard_cost_options?: string[];
+  // ADR 0109 §7, owner decision 3: the discard is "at random"
+  // (Pyromancy, Meteor Storm). The engine draws the cards; there are no
+  // `discard_cost_options` and nothing is sent, so the client confirms
+  // the cost instead of opening the picker.
+  discard_cost_random?: boolean;
+  // ADR 0109 §7 (#1902): "Put a card from your hand on top of your
+  // library" (Penance, Leashling). The count, the clause as printed and
+  // the cards in the viewer's hand that could pay; the picks ride
+  // activate_ability as `top_ids`.
+  top_cost_n?: number;
+  top_cost_label?: string;
+  top_cost_options?: string[];
+  // ADR 0109 §7: "Exile the top N cards of your library" (Seasoned
+  // Tactician, Arc-Slogger). Nothing to pick or send; confirmed.
+  library_exile_cost_n?: number;
   // #1297: an "Exile N cards from your graveyard" / "… from your hand"
   // component — Grim Lavamancer's "Exile two cards from your graveyard",
   // Holistic Wisdom's "Exile a card from your hand". The mana ability's
@@ -2341,6 +2361,19 @@ export interface LegalTargetsView {
   // and a card with no entry (an unreadable cost) meets no bound.
   mana_value_at_most_x?: boolean;
   mana_values?: Record<string, number>;
+  // ADR 0109 §9: the rest of the X bounds, on the same superset rule.
+  // `mana_value_equals_x` narrows from `mana_values` by an EXACT match
+  // (Lazav); `power_at_most_x` and `toughness_at_most_x` narrow from
+  // `powers` and `toughnesses`. With `x_from_counters_removed` the X is
+  // the number of counters the activation's cost is removing (Simic
+  // Manipulator), not the one collected in the X prompt. A card with no
+  // entry in the map meets no bound.
+  mana_value_equals_x?: boolean;
+  power_at_most_x?: boolean;
+  toughness_at_most_x?: boolean;
+  x_from_counters_removed?: boolean;
+  powers?: Record<string, number>;
+  toughnesses?: Record<string, number>;
   // #1563, CR 601.2d: the clause's effect is "divided as you choose"
   // among its picks. The picker asks for a share per pick once a step
   // has two or more — each at least 1, summing to the amount — and

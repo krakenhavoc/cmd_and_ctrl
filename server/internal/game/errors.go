@@ -497,6 +497,14 @@ var (
 	// stops it having counters put on it, and the refusal has to
 	// happen before anything else is paid. Added for #789.
 	ErrCantPayCounterCost = errors.New("game: that permanent can't have those counters put on it")
+	// ErrCantPayLibraryCost is returned when an "Exile the top N
+	// cards of your library" cost meets a library of fewer than N
+	// cards (CR 118.3). ADR 0109 §7, #1902.
+	ErrCantPayLibraryCost = errors.New("game: not enough cards in your library to pay that cost")
+	// ErrCantPayRandomDiscard is returned when a "Discard N cards at
+	// random" cost meets a hand that can't supply N cards (CR 118.3).
+	// ADR 0109 §7, owner decision 3.
+	ErrCantPayRandomDiscard = errors.New("game: not enough cards in your hand to discard at random")
 
 	// ErrSpecialActionNotOffered is returned by PerformSpecialAction
 	// when the named card does not offer that CR 116.2 special action

@@ -14,6 +14,18 @@
  * (GameView.exile_if_creatures_die, ADR 0108 §1): empty when there are
  * none. A source named twice is named once.
  */
+/**
+ * The game banner's lines for the live damage multipliers
+ * (GameView.damage_multipliers, ADR 0108 §3): the server words each one
+ * ("Alice's sources deal double damage this turn — Insult"), oldest
+ * first; this drops blanks. A repeated line is kept: two Insults are two
+ * doublings, ×4, and the table should see both.
+ */
+export function damageMultiplierLines(lines: readonly string[] | undefined): string[] {
+  if (!lines) return [];
+  return lines.filter((l) => l.trim() !== "");
+}
+
 export function exileIfCreaturesDieLine(sources: readonly string[] | undefined): string {
   if (!sources || sources.length === 0) return "";
   const names = [...new Set(sources.filter((s) => s !== ""))];

@@ -370,6 +370,38 @@ type AbilityCost struct {
 	// was, and recorded on PaidCost.Exiled so an effect that reads
 	// "the exiled card" (Holistic Wisdom, Dread Defiler) finds it.
 	ExileCards *ExileCost
+
+	// PutFromHandOnLibraryTop is "Put a card from your hand on top of
+	// your library" as a cost (ADR 0109 §7, #1902) — Penance,
+	// Leashling, Hidden Retreat. The count of cards; zero means no
+	// such component. Every printed clause says "a card", so there is
+	// no predicate and no func, and the ADR 0041 closure ratchet gains
+	// no route.
+	//
+	// The activator names the cards in ActivateAbilityParams.TopIDs
+	// (`top_ids`) at announce (CR 602.2b): cards in their hand, never
+	// the source and never a card the same payment discards or exiles
+	// (CR 118.3). Paid with the discards, through the one exit
+	// primitive, to the top of the activator's library; the activator
+	// keeps knowing the card. It is not a discard, so it fires no
+	// discard trigger and madness never sees it. See library_cost.go.
+	PutFromHandOnLibraryTop int
+
+	// ExileFromLibraryTop is "Exile the top N cards of your library"
+	// as a cost (ADR 0109 §7, #1902) — Seasoned Tactician's four,
+	// Arc-Slogger's ten, Phyrexian Devourer's one. Zero means no such
+	// component. There is nothing to choose, so it rides no params or
+	// wire field.
+	//
+	// CR 118.3: a library of fewer than N cards can't pay it, and the
+	// activation is refused. CR 601.2h: a cost that moves objects from
+	// the library to a public zone is paid after every other cost, so
+	// it is paid last, with a random discard. The cards are recorded
+	// on PaidCost.Exiled, top first, so an effect that reads "the
+	// exiled card" finds it (CR 400.7j). effects.Register refuses it
+	// beside PutFromHandOnLibraryTop, which no printed card has: the
+	// put would change which cards are on top. See library_cost.go.
+	ExileFromLibraryTop int
 }
 
 // DemandsX reports whether the ability's mana component contains
@@ -796,6 +828,14 @@ type ActivateAbilityParams struct {
 	// the same split activate_mana_ability made in #1283.
 	ExileIDs []uuid.UUID
 
+	// TopIDs names the cards paid to a PutFromHandOnLibraryTop cost
+	// (ADR 0109 §7, #1902): exactly the clause's count, each once,
+	// each in the activator's hand, never the source and never a card
+	// also named in DiscardIDs or ExileIDs (CR 118.3). On the wire as
+	// `top_ids`. Its own field because the card is neither discarded
+	// nor exiled.
+	TopIDs []uuid.UUID
+
 	// ReturnIDs names the permanents paid to a ReturnToHand cost
 	// (#1213): exactly the clause's Count, each once, each on the
 	// battlefield under the activator's control and each matched by
@@ -896,6 +936,14 @@ type ActivateAbilityParams struct {
 	// for somebody else's commander: only the parked announcement's
 	// resume sets it.
 	commanderAnswers map[uuid.UUID]bool
+
+	// randomDiscards is the draw a "Discard a card at random" cost made
+	// for this announcement (ADR 0109 §7, owner decision 3). Unexported
+	// for the same reason: no payload may choose a random card. Set by
+	// the first run of the announcement, so a run parked on a CR 903.9
+	// question and made again discards the same cards rather than
+	// drawing new ones. See randomDiscardsLocked.
+	randomDiscards []uuid.UUID
 }
 
 // ActivateCatalogAbility activates ability `index` on a permanent
@@ -1245,6 +1293,23 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	if err != nil {
 		return err
 	}
+	// ADR 0109 §7 (#1902): "Put a card from your hand on top of your
+	// library" (Penance, Leashling), named at announce beside the
+	// discard and exile picks and never one of them (CR 118.3).
+	handSpent := append(append([]uuid.UUID(nil), discards...), exiles...)
+	tops, err := g.validatePutOnTopCostLocked(playerID, cardID, ab.Cost.PutFromHandOnLibraryTop, params.TopIDs, handSpent)
+	if err != nil {
+		return err
+	}
+	handSpent = append(handSpent, tops...)
+	// ADR 0109 §7: "Exile the top N cards of your library" (Seasoned
+	// Tactician, Arc-Slogger). Nothing to choose; the cards are read
+	// here so the CR 903.9 gate below can ask about them, and a short
+	// library refuses the activation (CR 118.3).
+	libraryExiles, err := g.libraryExileCostCardsLocked(playerID, ab.Cost.ExileFromLibraryTop)
+	if err != nil {
+		return err
+	}
 	// #1221: the discard component's sibling one zone over —
 	// scavenge's and embalm's "Exile this card from your graveyard",
 	// and since #1404 Perpetual Timepiece's "Exile this artifact" off
@@ -1292,8 +1357,10 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	}
 	xSteps := resolveStepCountsFromX(steps, params.XValue)
 	// #1559: "with mana value X or less" — X is announced before
-	// targets (CR 601.2b / 602.2b), so the bound is known here.
-	bindStepsX(steps, params.XValue)
+	// targets (CR 601.2b / 602.2b), so the bound is known here. ADR
+	// 0109 §9: and so is the number of counters the cost removes,
+	// validated above, which Simic Manipulator's power bound reads.
+	bindStepsBound(steps, AnnouncedBound{X: params.XValue, CountersRemoved: counters.total})
 	// #1657: a divided amount read off the board, fixed at activation.
 	g.bindDivideAmountsLocked(steps, DivideAmountArgs{Controller: playerID, Source: cardID})
 	params.Targets = assignAnnouncedSlots(steps, params.Targets)
@@ -1316,12 +1383,28 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	}
 	params.Distribution = dist
 
+	// ADR 0109 §7, owner decision 3 (CR 701.9b): "Discard a card at
+	// random". Drawn here, after everything else is validated, out of
+	// the hand the other components leave — the hand CR 601.2h pays it
+	// from — and carried on the announcement, so a run parked on the
+	// CR 903.9 question below discards the same cards when it is made
+	// again. See randomDiscardsLocked.
+	randoms, err := g.randomDiscardsLocked(playerID, cardID, ab.Cost.RandomDiscardCount(), params.randomDiscards, handSpent)
+	if err != nil {
+		return err
+	}
+	params.randomDiscards = randoms
+
 	// #1397: every card this payment is about to move, asked about
 	// BEFORE anything is paid. A commander among them whose owner has
 	// not answered CR 903.9 parks the announcement on that question;
 	// the answer makes it again, and the payment below then settles
 	// with the answer on each move. See cost_commander_choice.go.
 	moving := append(append(append(append([]uuid.UUID(nil), sacrifices...), params.ReturnIDs...), discards...), exiles...)
+	// ADR 0109 §7: and the cards the library components move — the
+	// hand card put on top (CR 903.9b), the top cards exiled and the
+	// cards discarded at random (CR 903.9a).
+	moving = append(append(append(moving, tops...), libraryExiles...), randoms...)
 	if ab.Cost.ExileSelf {
 		moving = append(moving, cardID)
 	}
@@ -1525,6 +1608,17 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	if err := g.payAbilityDiscardsLocked(playerID, cardID, ab, discards, params.commanderAnswers); err != nil {
 		return err
 	}
+	// ADR 0109 §8 (#1862), CR 400.7j: "the discarded card" — Land's
+	// Edge's "if the discarded card was a land card", Volrath's "the
+	// discarded card's mana value". Recorded as the spell path records
+	// an additional cost's discards (PaidCost.Discarded), in the order
+	// named: cycling's "Discard this card" first when the cost prints
+	// it, then the cards the activator named. The cards keep their
+	// instance IDs wherever the discard put them (a madness card is in
+	// exile), so an effect finds them with LookupCardForEffect.
+	if len(discards) > 0 {
+		paid.Discarded = append([]uuid.UUID(nil), discards...)
+	}
 	// #1297: the exile-N-cards component, beside the discards and for
 	// the same reason — it moves cards, never the source. The one exit
 	// primitive with MustSettleNow (exile_cost.go), not the discard
@@ -1535,6 +1629,12 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		return err
 	}
 	paid.Exiled = exiles
+	// ADR 0109 §7 (#1902): the hand card put on top of the library,
+	// with the other card-moving components. Not a discard and not an
+	// exile, and nothing reads it afterwards, so it is not recorded.
+	if err := g.payPutOnTopCostLocked(playerID, cardID, tops, params.commanderAnswers); err != nil {
+		return err
+	}
 	// #1221: and the exile-this half. Last of all, because it moves
 	// the source out of the zone it was activated from and the effect
 	// that follows reads it back out of exile. From the battlefield
@@ -1545,6 +1645,28 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	if err := g.payAbilityExileSelfLocked(playerID, cardID, ab, params.commanderAnswers); err != nil {
 		return err
 	}
+	// ADR 0109 §7, CR 601.2h: the costs "that involve random elements
+	// or moving objects from the library to a public zone" are paid
+	// after all the others. The random discard goes through the one
+	// discard door with cause cost, so discard triggers and madness see
+	// it, and joins PaidCost.Discarded for "the discarded card"
+	// (Pyromancy, Stormscale Anarch; CR 400.7j). The library exile
+	// joins PaidCost.Exiled, top first, for "the exiled card"
+	// (Phyrexian Devourer, Storm Elemental).
+	if len(randoms) > 0 {
+		if err := g.discardCardsLocked(playerID, randoms, discardOptions{
+			cause:            DiscardCauseCost,
+			source:           cardID,
+			commanderAnswers: params.commanderAnswers,
+		}); err != nil {
+			return err
+		}
+		paid.Discarded = append(paid.Discarded, randoms...)
+	}
+	if err := g.payLibraryExileCostLocked(playerID, cardID, libraryExiles, params.commanderAnswers); err != nil {
+		return err
+	}
+	paid.Exiled = append(paid.Exiled, libraryExiles...)
 
 	// --- announce -----------------------------------------------
 	itemID := uuid.New()

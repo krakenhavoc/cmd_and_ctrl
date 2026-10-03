@@ -441,6 +441,17 @@ type Mod struct {
 	// refused on every other kind. ModPreventFromSource (ADR 0108 §7)
 	// reads Objects, SourceZone and Queries too, with the same meaning.
 	Half bool `json:"half,omitempty"`
+	// Sources, Recipients and Next are ModMultiplyDamage's (ADR 0108 §3,
+	// #1890; multiply_damage.go), refused on every other kind. Sources is
+	// "a source you control" / "a creature" when no one source is named;
+	// Recipients is "to an opponent", "to a creature" and the rest (with
+	// Player for "that player and their permanents"); Next is "the next
+	// time", spent per instance through SpentBatch and SpentInstance as a
+	// next-damage shield is. A closed vocabulary each: restore refuses a
+	// value this binary does not know.
+	Sources    DamageSources    `json:"sources,omitempty"`
+	Recipients DamageRecipients `json:"recipients,omitempty"`
+	Next       bool             `json:"next,omitempty"`
 	// Copy is ModBecomeCopy's copied values (#1593): exactly one entry,
 	// required on that kind and refused on every other. A slice for the
 	// reason Objects is one — every other mod writes nothing, and the
@@ -682,8 +693,13 @@ var modKinds = map[ModKind]modKindSpec{
 	ModPreventNextFromSource: {reader: readerReplacement},
 	// ADR 0108 §7 (#1904): a shield against a source that is not one-use.
 	ModPreventFromSource: {reader: readerReplacement},
+	// ADR 0108 PR 2 (#1890): its combat-only form, a kind of its own so
+	// an older binary refuses it.
+	ModPreventNextCombatFromSource: {reader: readerReplacement},
 	// ADR 0108 §1 (#1886): exile instead if it would die this turn.
 	ModExileIfWouldDie: {reader: readerReplacement},
+	// ADR 0108 §3 (#1890): damage doubled or tripled this turn.
+	ModMultiplyDamage: {reader: readerReplacement},
 	// ADR 0107 §5 (#1853, #1880): rules gates.
 	ModDamageCantBePrevented:  {reader: readerRule},
 	ModDamageCantBeRedirected: {reader: readerRule},
@@ -878,7 +894,7 @@ func blockRequirementModProblem(m Mod) string {
 	if m.Kind != ModAddBlockRequirement {
 		// ADR 0107 §6: the next-damage shield names its chosen source
 		// here (nextFromSourceModProblem checks it).
-		if len(m.Objects) != 0 && m.Kind != ModPreventNextFromSource && m.Kind != ModPreventFromSource {
+		if len(m.Objects) != 0 && !isNextFromSourceKind(m.Kind) && m.Kind != ModMultiplyDamage && m.Kind != ModPreventFromSource {
 			return fmt.Sprintf("mod %q names objects, which only a blocksAttacker requirement reads", m.Kind)
 		}
 		return ""
@@ -1036,6 +1052,9 @@ func (g *Game) appendScopedEffectLocked(sourceID uuid.UUID, affected []AffectedO
 		if problem := nextFromSourceModProblem(m); problem != "" {
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
+		if problem := multiplyDamageModProblem(m); problem != "" {
+			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
+		}
 		if problem := blockRuleModProblem(m); problem != "" {
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
@@ -1060,6 +1079,11 @@ func (g *Game) appendScopedEffectLocked(sourceID uuid.UUID, affected []AffectedO
 	}
 	if problem := stackPinProblem(affected, mods); problem != "" {
 		panic(fmt.Sprintf("game: scoped effect %q %s", label, problem))
+	}
+	// ADR 0109 Shared machinery 2: a duration restore would refuse is a
+	// programming error at registration, caught by the first test.
+	if problem := d.Problem(); problem != "" {
+		panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 	}
 	e := ScopedEffect{
 		Affected:  append([]AffectedObject(nil), affected...),

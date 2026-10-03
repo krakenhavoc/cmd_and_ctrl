@@ -812,6 +812,17 @@ type Game struct {
 	// that outlives a restore (no prompt does) holds an older one.
 	scopedEffectSeq int64
 
+	// entryOrdinalSeq is the last Card.EntryOrdinal handed out (ADR
+	// 0109 §8), and entryOrdinalShared the one a simultaneous entry in
+	// progress is handing to every card it puts onto the battlefield
+	// (zero when none is). Monotone within a running game and cloned
+	// with it. Not serialised: restore sets the counter to the largest
+	// ordinal any restored card carries, as it does scopedEffectSeq,
+	// and no restore point is ever taken in the middle of an entry, so
+	// the shared one is always zero there. See entry_ordinal.go.
+	entryOrdinalSeq    int64
+	entryOrdinalShared int64
+
 	// testReplacements is the test-only replacement injection slot
 	// populated by RegisterReplacementForTest. Unexported so
 	// production code has no path to it. Walked after built-ins +

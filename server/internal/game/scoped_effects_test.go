@@ -250,6 +250,12 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// ADR 0108 §4: Yawgmoth's Will's replacement. Its cases are in
 		// scoped_exile_your_graveyard_test.go.
 		ModExileInsteadOfYourGraveyard: true,
+		// ADR 0108 §3: the damage multiplier is a replacement. Its cases
+		// are in multiply_damage_test.go.
+		ModMultiplyDamage: true,
+		// ADR 0108 PR 2: the combat-only next-damage shield. Its cases
+		// are in multiply_damage_test.go.
+		ModPreventNextCombatFromSource: true,
 		// ADR 0109 §4: the land-play gate. Its cases are in
 		// land_play_gate_test.go.
 		ModCantPlayLands: true,
@@ -518,7 +524,8 @@ func TestEveryDurationKindAndConditionIsKnown(t *testing.T) {
 		}
 	}
 	for _, c := range []DurationCondition{WhileSourceOnBattlefield, WhileYouControlSource,
-		WhileYouControlSourceOnceItLands, WhileSourceRemainsTapped} {
+		WhileYouControlSourceOnceItLands, WhileSourceRemainsTapped, WhilePinnedHasCounter,
+		WhilePinnedRemainsTapped, WhilePinnedPowerAtMostSource} {
 		if !c.Known() {
 			t.Errorf("duration condition %d is not Known — is it after durationConditionEnd?", c)
 		}
@@ -545,7 +552,7 @@ func TestAnUnknownFieldOnARecordIsRefused(t *testing.T) {
 		"record":   func(rec map[string]any) { rec["fromTheFuture"] = true },
 		"affected": func(rec map[string]any) { rec["affected"].([]any)[0].(map[string]any)["phaseTag"] = 1 },
 		"mod":      func(rec map[string]any) { rec["mods"].([]any)[0].(map[string]any)["counterKind"] = "blight" },
-		"duration": func(rec map[string]any) { rec["duration"].(map[string]any)["CounterKind"] = "blight" },
+		"duration": func(rec map[string]any) { rec["duration"].(map[string]any)["Unless"] = "blight" },
 	}
 	for name, corrupt := range cases {
 		t.Run(name, func(t *testing.T) {

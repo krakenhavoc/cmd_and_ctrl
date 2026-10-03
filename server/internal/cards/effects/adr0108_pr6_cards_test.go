@@ -311,3 +311,34 @@ func TestADR0108PR6MournersShieldImprintsAColour(t *testing.T) {
 		t.Fatalf("life %d, want %d", me.Life, life)
 	}
 }
+
+// Hidden Retreat pays its library cost and prevents all of the targeted
+// spell's damage, with no source prompt.
+func TestADR0108PR6HiddenRetreatShieldsAgainstTheSpell(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	retreat := pushCatalogPermanent(g, me.ID, "Hidden Retreat", "Enchantment", "a116329a-343e-4f10-a122-38bf8b5ac2c8", false)
+	card := p7Hand(me, "Card", "Sorcery", "{R}")
+	bolt := castCatalogSpell(t, g, "Lightning Bolt", "Instant", "4457ed35-7c10-48c8-9776-456485fdf070",
+		[]game.TargetRef{{Kind: game.TargetPlayer, ID: opp.ID}})
+	life := opp.Life
+	if err := g.ActivateCatalogAbility(me.ID, retreat, 0, game.ActivateAbilityParams{
+		TopIDs:  []uuid.UUID{card},
+		Targets: []game.TargetRef{{Kind: game.TargetCard, ID: bolt}},
+	}); err != nil {
+		t.Fatalf("Hidden Retreat: %v", err)
+	}
+	if top, _ := me.Library.Top(); top.InstanceID != card {
+		t.Error("the cost's card is not on top of the library")
+	}
+	passPriorityAroundTable(t, g)
+	passPriorityAroundTable(t, g)
+	for _, c := range g.PendingChoices {
+		if c != nil && c.Kind == game.PendingChoiceChooseSource {
+			t.Fatal("a targeted source asks no choose_source")
+		}
+	}
+	if opp.Life != life {
+		t.Fatalf("opponent at %d, want %d: the Bolt's damage is prevented", opp.Life, life)
+	}
+}

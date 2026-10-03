@@ -102,6 +102,9 @@ type PreventNextDamageFromSource struct {
 	// Half is Dark Sphere's "prevent half that damage, rounded down"
 	// (ADR 0108 §7 decision 4).
 	Half bool
+	// CombatOnly is "the next time <source> would deal combat damage"
+	// (Impulsive Maneuvers): other damage passes it by, unspent.
+	CombatOnly bool
 
 	// Question is the source prompt's header; Label the shield's. Both
 	// default to the card's name.
@@ -139,6 +142,7 @@ func (p PreventNextDamageFromSource) Apply(ctx *Context) error {
 		Queries:      p.Queries,
 		Then:         p.Then,
 		Half:         p.Half,
+		CombatOnly:   p.CombatOnly,
 		Label:        label,
 	}
 	if !p.protect(ctx, &shield) {

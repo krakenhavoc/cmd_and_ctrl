@@ -120,44 +120,122 @@ func (s *TargetSameness) keyOf(c Card) (string, bool) {
 	return "", false
 }
 
-// hasXBound reports whether a clause carries either X-bound flag
-// (#1723): ManaValueAtMostX ("X or less") or ManaValueEqualsX
-// ("exactly X"). The two share one bind-and-recheck mechanism and
-// differ only in the comparison xBoundAdmits makes.
-func hasXBound(s *TargetSpec) bool {
-	return s != nil && (s.ManaValueAtMostX || s.ManaValueEqualsX)
+// AnnouncedBound is what an announcement can bind an X-bounded target
+// clause to (ADR 0109 §9, #1842): the X it announced (CR 107.3a — a
+// mana {X}, or the count a variable sacrifice or tap names) and the
+// counters its cost removed (PaidCost.CountersRemoved). A clause reads
+// one of the two, by TargetSpec.BoundByCountersRemoved. A spell's
+// announcement has no counter removal, and leaves the second zero.
+type AnnouncedBound struct {
+	X               int
+	CountersRemoved int
 }
 
-// xBoundAdmits applies ManaValueAtMostX / ManaValueEqualsX to a
-// candidate card: true when the clause has no bound, or the bound is
-// not yet known (a hand snapshot, built before X is announced), or
-// the card's mana value meets the bound — at most X, or exactly X.
-// A card whose cost cannot be read does not meet a bound it might not
-// meet — Card.ParsedManaValue's rule.
-func (s *TargetSpec) xBoundAdmits(c Card) bool {
-	if s == nil || !hasXBound(s) || !s.xBoundSet {
-		return true
+// valueFor is the number the clause `s` is bounded by under this
+// announcement.
+func (b AnnouncedBound) valueFor(s *TargetSpec) int {
+	if s.BoundByCountersRemoved {
+		return b.CountersRemoved
 	}
-	mv, ok := c.ParsedManaValue()
+	return b.X
+}
+
+// hasXBound reports whether a clause carries an X-bound statistic
+// (#1723, ADR 0109 §9): mana value X or less, mana value exactly X,
+// power X or less, or toughness X or less. They share one
+// bind-and-recheck mechanism and differ only in the statistic and the
+// comparison boundAdmits makes.
+func hasXBound(s *TargetSpec) bool {
+	return s != nil && (s.ManaValueAtMostX || s.ManaValueEqualsX || s.PowerAtMostX || s.ToughnessAtMostX)
+}
+
+// boundStatistic is the statistic the clause bounds, or "" for an
+// unbounded clause: "mana_value", "power" or "toughness". The wire's
+// name for it, so the view and the engine say the same word.
+func boundStatistic(s *TargetSpec) string {
+	switch {
+	case s == nil:
+		return ""
+	case s.ManaValueAtMostX || s.ManaValueEqualsX:
+		return BoundStatManaValue
+	case s.PowerAtMostX:
+		return BoundStatPower
+	case s.ToughnessAtMostX:
+		return BoundStatToughness
+	}
+	return ""
+}
+
+// The statistics an X bound can read (ADR 0109 §9).
+const (
+	BoundStatManaValue = "mana_value"
+	BoundStatPower     = "power"
+	BoundStatToughness = "toughness"
+)
+
+// BoundStatisticForEffect is boundStatistic for the view: which number
+// the client narrows a bounded clause's superset by. Pure.
+func BoundStatisticForEffect(s *TargetSpec) string { return boundStatistic(s) }
+
+// boundStatValue is the candidate's value of the clause's statistic,
+// and false when the card has none the engine can read — an
+// unreadable cost meets no mana-value bound (Card.ParsedManaValue's
+// rule). Power and toughness are CR 208.1's: layers and every P/T
+// counter, not clamped, the numbers PowerLE and ToughnessLE read.
+func boundStatValue(s *TargetSpec, c Card) (int, bool) {
+	switch boundStatistic(s) {
+	case BoundStatManaValue:
+		return c.ParsedManaValue()
+	case BoundStatPower:
+		return c.PowerForComparison(), true
+	case BoundStatToughness:
+		return c.CurrentToughness(), true
+	}
+	return 0, false
+}
+
+// boundAdmitsAt applies the clause's bound at `bound` to a candidate:
+// at most `bound`, or exactly it for ManaValueEqualsX.
+func boundAdmitsAt(s *TargetSpec, c Card, bound int) bool {
+	v, ok := boundStatValue(s, c)
 	if !ok {
 		return false
 	}
 	if s.ManaValueEqualsX {
-		return mv == s.xBound
+		return v == bound
 	}
-	return mv <= s.xBound
+	return v <= bound
 }
 
-// bindStepsX writes the announced X onto every X-bounded step of an
-// announcement. The steps hold clause COPIES (AnnouncedClauses), so
-// the catalog's shared declaration is never touched — the same
-// reasoning resolveStepCountsFromX gives for CountFromX.
-func bindStepsX(steps []AnnouncedClause, x int) {
+// xBoundAdmits applies the clause's X bound to a candidate card: true
+// when the clause has no bound, or the bound is not yet known (a hand
+// snapshot, built before X is announced or the counters are chosen),
+// or the card's statistic meets it.
+func (s *TargetSpec) xBoundAdmits(c Card) bool {
+	if s == nil || !hasXBound(s) || !s.xBoundSet {
+		return true
+	}
+	return boundAdmitsAt(s, c, s.xBound)
+}
+
+// bindStepsBound writes the announcement's bound onto every
+// X-bounded step — the announced X, or the counters removed for a
+// clause that reads those. The steps hold clause COPIES
+// (AnnouncedClauses), so the catalog's shared declaration is never
+// touched — the same reasoning resolveStepCountsFromX gives for
+// CountFromX.
+func bindStepsBound(steps []AnnouncedClause, b AnnouncedBound) {
 	for i := range steps {
-		if hasXBound(&steps[i].Clause) {
-			steps[i].Clause.xBound, steps[i].Clause.xBoundSet = x, true
+		if c := &steps[i].Clause; hasXBound(c) {
+			c.xBound, c.xBoundSet = b.valueFor(c), true
 		}
 	}
+}
+
+// bindStepsX is bindStepsBound for an announcement with no counter
+// removal — a spell's (#1559).
+func bindStepsX(steps []AnnouncedClause, x int) {
+	bindStepsBound(steps, AnnouncedBound{X: x})
 }
 
 // BindStepsXForEffect is bindStepsX for the bot's enumerator, which
@@ -169,10 +247,22 @@ func BindStepsXForEffect(steps []AnnouncedClause, x int) {
 }
 
 // StepsBoundByX reports whether any step's legality depends on the
-// announced X through ManaValueAtMostX or ManaValueEqualsX. Pure.
+// announcement through an X bound. Pure.
 func StepsBoundByX(steps []AnnouncedClause) bool {
 	for i := range steps {
 		if hasXBound(&steps[i].Clause) {
+			return true
+		}
+	}
+	return false
+}
+
+// StepsBoundByCountersRemoved reports whether any step's bound reads
+// the counters the activation removes rather than its X (ADR 0109
+// §9). Pure.
+func StepsBoundByCountersRemoved(steps []AnnouncedClause) bool {
+	for i := range steps {
+		if c := &steps[i].Clause; hasXBound(c) && c.BoundByCountersRemoved {
 			return true
 		}
 	}
@@ -261,19 +351,21 @@ func (g *Game) TargetSamenessKeysForEffect(spec *TargetSpec, ids []uuid.UUID) ma
 	return out
 }
 
-// ManaValuesForEffect is each card's mana value, for the view to ship
-// beside an X-bounded clause's legal set so the client can narrow it
-// by the X it collected. A card whose cost cannot be read is absent —
-// it meets no bound (xBoundAdmits). Caller must hold g.mu.
-func (g *Game) ManaValuesForEffect(ids []uuid.UUID) map[uuid.UUID]int {
+// BoundValuesForEffect is each card's value of the clause's bounded
+// statistic (ADR 0109 §9) — mana value, power or toughness — for the
+// view to ship beside a bounded clause's legal set, so the client can
+// narrow it by the X it collected or the counters it is removing. A
+// card the statistic cannot be read for is absent; it meets no bound.
+// Caller must hold g.mu.
+func (g *Game) BoundValuesForEffect(spec *TargetSpec, ids []uuid.UUID) map[uuid.UUID]int {
 	out := make(map[uuid.UUID]int, len(ids))
 	for _, id := range ids {
 		c := g.findCardByIDLocked(id)
 		if c == nil {
 			continue
 		}
-		if mv, ok := c.ParsedManaValue(); ok {
-			out[id] = mv
+		if v, ok := boundStatValue(spec, *c); ok {
+			out[id] = v
 		}
 	}
 	return out
@@ -522,13 +614,26 @@ func (g *Game) withoutSetRuleConflictsLocked(clause *TargetClause, lt LegalTarge
 }
 
 // TargetsWithinXForEffect reports whether every pick that answers an
-// X-bounded step ("with mana value X or less" / "with mana value X")
-// meets that bound at x (#1559, #1723) — the enumerator's re-check for
-// a set it priced at an X other than the one it bound the steps to.
-// Picks of other steps pass.
+// X-bounded step meets that bound at x (#1559, #1723) — the
+// enumerator's re-check for a set it priced at an X other than the one
+// it bound the steps to. Picks of other steps pass. An announcement
+// with no counter removal; see TargetsWithinBoundForEffect.
 //
 // Caller must hold g.mu.
 func (g *Game) TargetsWithinXForEffect(steps []AnnouncedClause, targets []TargetRef, x int) bool {
+	return g.TargetsWithinBoundForEffect(steps, targets, AnnouncedBound{X: x})
+}
+
+// TargetsWithinBoundForEffect reports whether every pick that answers
+// an X-bounded step meets that step's bound under `b` — the announced
+// X, or the counters removed, whichever the clause reads (ADR 0109
+// §9). The enumerator's filter for a set it built against the unbound
+// superset: one per counter payment for Simic Manipulator, one per
+// sacrifice or tap count for Ruthless Technomancer and Aryel. Picks of
+// other steps pass.
+//
+// Caller must hold g.mu.
+func (g *Game) TargetsWithinBoundForEffect(steps []AnnouncedClause, targets []TargetRef, b AnnouncedBound) bool {
 	for _, t := range targets {
 		if t.Kind != TargetCard {
 			continue
@@ -539,20 +644,7 @@ func (g *Game) TargetsWithinXForEffect(steps []AnnouncedClause, targets []Target
 				continue
 			}
 			c := g.findCardByIDLocked(t.ID)
-			if c == nil {
-				return false
-			}
-			mv, ok := c.ParsedManaValue()
-			if !ok {
-				return false
-			}
-			if clause.ManaValueEqualsX {
-				if mv != x {
-					return false
-				}
-				continue
-			}
-			if mv > x {
+			if c == nil || !boundAdmitsAt(clause, *c, b.valueFor(clause)) {
 				return false
 			}
 		}

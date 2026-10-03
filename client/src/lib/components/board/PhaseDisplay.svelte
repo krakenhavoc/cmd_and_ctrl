@@ -28,6 +28,7 @@
   import PhaseIcon from "./PhaseIcon.svelte";
   import {
     damageCantBePreventedLine,
+    damageMultiplierLines,
     damageShieldsLine,
     exileIfCreaturesDieLine,
   } from "../../turnRules";
@@ -43,6 +44,9 @@
     exileIfCreaturesDie?: string[];
     // ADR 0108 §7: the live source shields (GameView.damage_shields).
     damageShields?: string[];
+    // ADR 0108 §3: the live damage multipliers' banner lines
+    // (GameView.damage_multipliers).
+    damageMultipliers?: string[];
     // ADR 0105 §7 (sub-PR 6): how many of the viewer's cards have a
     // highlighted action on this frame (legalActions.ts
     // actionableCount over the HIGHLIGHT lookup, so 0 while highlights
@@ -61,6 +65,7 @@
     damageCantBePrevented = [],
     exileIfCreaturesDie = [],
     damageShields = [],
+    damageMultipliers = [],
     readyActions = 0,
     trackOpen = false,
   }: Props = $props();
@@ -79,6 +84,7 @@
   const unpreventableLine = $derived(damageCantBePreventedLine(damageCantBePrevented));
   const exileOnDeathLine = $derived(exileIfCreaturesDieLine(exileIfCreaturesDie));
   const shieldsLine = $derived(damageShieldsLine(damageShields));
+  const multiplierLines = $derived(damageMultiplierLines(damageMultipliers));
 
   const activeSeat = $derived(turn.active_seat ?? 0);
   const priorityHeld = $derived((turn.priority_holder ?? -1) >= 0);
@@ -221,6 +227,9 @@
   {#if shieldsLine}
     <div class="row turn-rule" role="status">{shieldsLine}</div>
   {/if}
+  {#each multiplierLines as line, i (i)}
+    <div class="row turn-rule" role="status">{line}</div>
+  {/each}
 </div>
 
 <style>

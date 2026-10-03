@@ -93,10 +93,15 @@ func AbilityAutoTapExclusions(sourceID uuid.UUID, cost AbilityCost, tapIDs, sacr
 // ?ability= branch, so the plan the preview shows is the plan the
 // payment makes. The preview used to exclude only the lock-tap
 // reservations and could plan the ability's own {T} source for mana.
+//
+// ADR 0109 §7: and the hand cards put on top of the library or drawn
+// for a random discard. A Spirit Guide named to Penance's cost, or
+// drawn for Pyromancy's, is the payment and can't also be exiled for
+// mana (CR 118.3), exactly as one named to a discard can't.
 func ActivationAutoTapExclusions(sourceID uuid.UUID, cost AbilityCost, params ActivateAbilityParams) map[uuid.UUID]bool {
 	return WithAutoTapExclusions(
 		AbilityAutoTapExclusions(sourceID, cost, params.TapIDs, params.SacrificeIDs, params.DiscardIDs, params.ExileIDs),
-		params.WaterbendIDs)
+		params.WaterbendIDs, params.TopIDs, params.randomDiscards)
 }
 
 // WithAutoTapExclusions returns `base` plus `ids`, copying rather than

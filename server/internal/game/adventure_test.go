@@ -154,7 +154,7 @@ func TestAdventureSpellExilesOnResolutionWithTheGrant(t *testing.T) {
 	if perm.Zone != ZoneExile {
 		t.Errorf("grant zone = %q, want exile", perm.Zone)
 	}
-	if perm.Duration != WhileInZoneDuration() {
+	if !perm.Duration.Equal(WhileInZoneDuration()) {
 		t.Errorf(`grant duration = %+v; CR 715.4 is "for as long as it `+
 			`remains exiled", so the grant must not expire this turn`, perm.Duration)
 	}
@@ -503,7 +503,7 @@ func TestAdventureGrantSurvivesASnapshotRoundTrip(t *testing.T) {
 
 	_, restored := roundTrip(t, g)
 	perm := adventureGrantFor(restored, id)
-	if !perm.Granted() || perm.Duration != WhileInZoneDuration() || perm.Zone != ZoneExile {
+	if !perm.Granted() || !perm.Duration.Equal(WhileInZoneDuration()) || perm.Zone != ZoneExile {
 		t.Fatalf("restored grant = %+v, want the unbounded exile grant", perm)
 	}
 	if face, ok := perm.NamedFace(); !ok || face != 0 {

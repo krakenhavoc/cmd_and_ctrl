@@ -46,6 +46,10 @@ type activateParams struct {
 	// graveyard" / "Exile a card from your hand" cost. Its own field,
 	// because an exiled card is not discarded.
 	ExileIDs []string `json:"exile_ids,omitempty"`
+	// ADR 0109 §7 (#1902): the cards paid to a "Put a card from your
+	// hand on top of your library" cost. Its own field, because the
+	// card is neither discarded nor exiled.
+	TopIDs []string `json:"top_ids,omitempty"`
 	// #1213: the permanents paid to a "Return a permanent you
 	// control to its owner's hand" cost. Omitted for every ability
 	// that does not print the clause.
@@ -426,7 +430,8 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 		// excluded (an ability activated from hand cannot pay
 		// itself). Nothing payable means no move at all — #544.
 		var discardIDs []uuid.UUID
-		if dc := ab.Cost.DiscardCards; dc != nil {
+		// ADR 0109 §7: a random clause names nothing; its gate is below.
+		if dc := ab.Cost.DiscardCards; dc != nil && !dc.Random {
 			opts := g.DiscardCostOptionsForEffect(e.seat, source.InstanceID, dc)
 			if len(opts) < dc.N {
 				continue
@@ -443,6 +448,28 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 		// has none. Nothing payable means no move at all — #544.
 		exileIDs, ok := e.exileCardsPayment(ab.Cost.ExileCards, source.InstanceID, discardIDs)
 		if !ok {
+			continue
+		}
+		// ADR 0109 §7 (#1902): "Put a card from your hand on top of
+		// your library", solved as the discard is — ONE payment, the
+		// card the seat would miss least, out of the engine's own walk
+		// and never a card the discard or exile took (CR 118.3).
+		handTaken := append(append([]uuid.UUID(nil), discardIDs...), exileIDs...)
+		topIDs, ok := e.topCardsPayment(ab.Cost.PutFromHandOnLibraryTop, source.InstanceID, handTaken)
+		if !ok {
+			continue
+		}
+		handTaken = append(handTaken, topIDs...)
+		// ADR 0109 §7: the two components with nothing to choose are
+		// gates only. "Exile the top N cards of your library" needs N
+		// cards there, and "Discard N cards at random" needs N cards
+		// left in hand after the other components (CR 118.3) — the same
+		// predicates the engine refuses on, so nothing offered bounces
+		// (#544).
+		if !g.LibraryExileCostPayableForEffect(e.seat, ab.Cost.ExileFromLibraryTop) {
+			continue
+		}
+		if n := ab.Cost.RandomDiscardCount(); n > 0 && len(g.RandomDiscardPoolForEffect(e.seat, source.InstanceID, handTaken)) < n {
 			continue
 		}
 		budget := e.opts.MaxExpansionPerSource
@@ -465,6 +492,14 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 			// overwhelming majority, which reads pay.xValue exactly as
 			// before.
 			xValue int
+			// bounded marks an announcement whose steps carry an X
+			// bound the enumerator built UNBOUND (ADR 0109 §9): the
+			// bound's input is a payment chosen further in — the
+			// counters removed, or the count a variable sacrifice or
+			// tap names — so each (payment, targets) pair is judged in
+			// the innermost loop, through the engine's own
+			// TargetsWithinBoundForEffect.
+			bounded bool
 		}
 		var announcements []announcement
 		for _, modes := range modeSets {
@@ -486,13 +521,28 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 				// count ladders (variableSacrificePayments and
 				// friends) already do for a cost's X.
 				//
-				// Only the plain mana-{X} shape is supported: an
-				// ability whose PRICE reads its targets, or whose X is
-				// announced by a sacrifice/tap count rather than mana,
-				// has no catalog card combining that with an X-bound
-				// target yet, so it is left unenumerated rather than
-				// guessed at.
-				if perTarget || ab.Cost.XSlots() == 0 {
+				// ADR 0109 §9: a bound whose input is NOT a mana {X} —
+				// the counters removed (Simic Manipulator), or the X a
+				// variable sacrifice or tap announces (Ruthless
+				// Technomancer, Aryel) — is a dimension of the payment
+				// loops below rather than of this one. Its sets are
+				// built against the unbound superset and filtered per
+				// payment there. Every such printed bound is "or less",
+				// so the largest payment admits the most.
+				if game.StepsBoundByCountersRemoved(steps) || ab.Cost.XSlots() == 0 {
+					if !game.StepsBoundByCountersRemoved(steps) &&
+						!game.SacrificeCountFromX(ab.Cost.SacrificeOther) && !game.TapOthersCountFromX(ab.Cost.TapOthers) {
+						continue
+					}
+					for _, ts := range e.legalStepSets(abilitySrc, steps, budget) {
+						announcements = append(announcements, announcement{modes: modes, targets: ts, steps: steps, xValue: -1, bounded: true})
+					}
+					continue
+				}
+				// A price that reads its targets has no catalog card
+				// combining it with an X-bound target yet, so it is
+				// left unenumerated rather than guessed at.
+				if perTarget {
 					continue
 				}
 				floor := enumeratedXFloor(game.CatalogAbilityKey(*source), ab.Cost.FloorX())
@@ -569,9 +619,9 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 				// has to hold with these named too. An Eldrazi Spawn
 				// that is both the sacrifice and the mana is a move the
 				// engine refuses; offering it is #544.
-				if ab.Cost.Mana != "" && (len(sacs) > 0 || len(discardIDs) > 0 || len(exileIDs) > 0) &&
+				if ab.Cost.Mana != "" && (len(sacs) > 0 || len(discardIDs) > 0 || len(exileIDs) > 0 || len(topIDs) > 0) &&
 					!e.payableExcluding(abilityMana, xValue, phyrexianLife, game.ManaSpendForAbility(*source),
-						game.WithAutoTapExclusions(abilityExcluded, sacs, discardIDs, exileIDs)) {
+						game.WithAutoTapExclusions(abilityExcluded, sacs, discardIDs, exileIDs, topIDs)) {
 					continue
 				}
 				for _, rets := range returnSets {
@@ -587,7 +637,7 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 						// is a move the engine refuses.
 						if ab.Cost.Mana != "" && len(taps) > 0 &&
 							!e.payableExcluding(abilityMana, tapXValue, phyrexianLife, game.ManaSpendForAbility(*source),
-								game.WithAutoTapExclusions(abilityExcluded, sacs, discardIDs, exileIDs, taps)) {
+								game.WithAutoTapExclusions(abilityExcluded, sacs, discardIDs, exileIDs, topIDs, taps)) {
 							continue
 						}
 						// #1563: the division this activation announces
@@ -599,6 +649,15 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 						for _, cc := range counterChoices {
 							if budget <= 0 {
 								break
+							}
+							// ADR 0109 §9: the bound this payment sets —
+							// the counters it removes, or the X its
+							// sacrifice or tap count announces. A pair
+							// the engine would refuse is never offered
+							// (#544), and costs no budget.
+							if ann.bounded && !g.TargetsWithinBoundForEffect(ann.steps, targets,
+								game.AnnouncedBound{X: tapXValue, CountersRemoved: cc.total}) {
+								continue
 							}
 							budget--
 							label := abilityMoveLabel(g, source, e.seat, ab.Label)
@@ -615,6 +674,7 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 							label += sacrificeLabel(g, sacs)
 							label += returnLabel(g, rets)
 							label += tapLabel(g, taps)
+							label += randomDiscardLabel(ab.Cost)
 							label += cc.label(g)
 							label += targetLabel(g, targets)
 							// #74: the life on the Move is what the
@@ -653,6 +713,7 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 									CounterKinds:     cc.wireKinds(),
 									DiscardIDs:       idStrings(discardIDs),
 									ExileIDs:         idStrings(exileIDs),
+									TopIDs:           idStrings(topIDs),
 									ReturnIDs:        idStrings(rets),
 									WaterbendIDs:     idStrings(waterbendIDs),
 									TapIDs:           idStrings(taps),
@@ -1668,6 +1729,53 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 			}
 		}
 	}
+}
+
+// topCardsPayment solves a PutFromHandOnLibraryTop cost component (ADR
+// 0109 §7, #1902) into ONE payment: n cards out of the engine's own
+// candidate walk (PutOnTopCostOptionsForEffect — the list the view
+// stamps and the validator accepts, #544), skipping any card another
+// component of the same payment names (`taken`, CR 118.3), cheapest to
+// keep first when the seat has an opinion (cheapestFuelFirst) and hand
+// order when it has none. A card put on top is drawn again, so it is
+// not lost; the policy still prices which card it would rather not hold.
+//
+// n <= 0 is a payment of nothing and ok. ok is false when the hand
+// can't cover the count, which means the ability is not offered.
+func (e *enumerator) topCardsPayment(n int, sourceID uuid.UUID, taken []uuid.UUID) ([]uuid.UUID, bool) {
+	if n <= 0 {
+		return nil, true
+	}
+	skip := make(map[uuid.UUID]bool, len(taken))
+	for _, id := range taken {
+		skip[id] = true
+	}
+	var out []uuid.UUID
+	for _, id := range e.cheapestFuelFirst(e.g.PutOnTopCostOptionsForEffect(e.seat, sourceID, n)) {
+		if len(out) == n {
+			break
+		}
+		if !skip[id] {
+			out = append(out, id)
+		}
+	}
+	if len(out) < n {
+		return nil, false
+	}
+	return out, true
+}
+
+// randomDiscardLabel says a move's cost discards at random (ADR 0109
+// §7), so a model tier reading the label knows which cards it is
+// spending is not its choice. Empty for every other cost.
+func randomDiscardLabel(cost game.AbilityCost) string {
+	switch n := cost.RandomDiscardCount(); {
+	case n == 1:
+		return " discarding a card at random"
+	case n > 1:
+		return fmt.Sprintf(" discarding %d cards at random", n)
+	}
+	return ""
 }
 
 // exileCardsPayment solves an ExileCards cost component (#1283, #1297)
