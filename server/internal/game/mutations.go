@@ -1659,6 +1659,16 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	if !card.IsCreature() {
 		tally.Noncreature++
 	}
+	// ADR 0108 §9: the colours of the instants and sorceries cast this
+	// turn (Refraction Trap), read off the spell as it is on the stack.
+	for i := range g.Stack.Cards {
+		if sc := &g.Stack.Cards[i]; sc.InstanceID == cardID {
+			if ch := SourceCharacteristics(sc); characteristicHasType(ch, "Instant") || characteristicHasType(ch, "Sorcery") {
+				tally = tally.withInstantSorceryColors(ch.Colors)
+			}
+			break
+		}
+	}
 	g.SpellsCastThisTurn[playerID] = tally
 	// CR 722.3c / 601.2i (ADR 0090): "that permanent loses the prepared
 	// designation at the time the spell becomes cast" — here, with

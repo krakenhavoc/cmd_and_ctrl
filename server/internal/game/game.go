@@ -3,6 +3,8 @@ package game
 import (
 	"errors"
 	"math/rand/v2"
+	"slices"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -1513,6 +1515,33 @@ func (g *Game) LandsPlayedThisTurnFor(playerID uuid.UUID) int {
 type CastTally struct {
 	Total       int
 	Noncreature int
+	// InstantSorceryColors is the colours of the instant and sorcery
+	// spells the player cast this turn, as a set of colour letters in
+	// WUBRG order ("UR"): Refraction Trap's "if an opponent cast a red
+	// instant or sorcery spell this turn" (ADR 0108 §9). Read as each
+	// spell became cast, off the spell on the stack (CR 601.2i), so a
+	// spell cast face down is colourless. Read through
+	// CastInstantOrSorceryOfColor.
+	InstantSorceryColors string `json:"instantSorceryColors,omitempty"`
+}
+
+// CastInstantOrSorceryOfColor reports whether the tally includes an
+// instant or sorcery spell of the colour `letter` ("R").
+func (t CastTally) CastInstantOrSorceryOfColor(letter string) bool {
+	return letter != "" && strings.Contains(t.InstantSorceryColors, letter)
+}
+
+// withInstantSorceryColors adds a cast instant or sorcery spell's
+// colours to the set, kept in WUBRG order.
+func (t CastTally) withInstantSorceryColors(colors []string) CastTally {
+	var b strings.Builder
+	for _, l := range []string{"W", "U", "B", "R", "G"} {
+		if strings.Contains(t.InstantSorceryColors, l) || slices.Contains(colors, l) {
+			b.WriteString(l)
+		}
+	}
+	t.InstantSorceryColors = b.String()
+	return t
 }
 
 // CastTallyFor returns p's tally for the current turn (zero value

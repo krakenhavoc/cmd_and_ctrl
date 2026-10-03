@@ -449,7 +449,18 @@ type Mod struct {
 	// and the follow-up deals nothing (the rulings). At most one entry,
 	// read only with Then on a prevention kind and refused on every other
 	// mod (followUpModProblem). A slice for the reason Objects is one.
+	//
+	// On ModRedirectDamage (ADR 0108 §9, redirect_damage.go) it is where
+	// the damage is dealt instead: Beacon of Destiny's "this creature",
+	// Harm's Way's "any target", pinned the same way, so a creature that
+	// has left is gone and the redirection does nothing (CR 614.9).
 	To []ObjectRef `json:"to,omitempty"`
+	// ToSourceController is ModRedirectDamage's other destination (ADR
+	// 0108 §9): "that damage is dealt to that source's controller
+	// instead" (Reflect Damage, Aegis of Honor), the controller read off
+	// the source's last-known information as the damage would be dealt.
+	// Refused on every other kind, and beside To (redirectDamageModProblem).
+	ToSourceController bool `json:"toSourceController,omitempty"`
 	// SourceZone, Queries and SpentBatch are ModPreventNextFromSource's
 	// (ADR 0107 §6, #1860; prevent_next_from_source.go), refused on every
 	// other kind. SourceZone is the zone the chosen source (Objects[0])
@@ -742,6 +753,8 @@ var modKinds = map[ModKind]modKindSpec{
 	ModExileIfWouldDie: {reader: readerReplacement},
 	// ADR 0108 §3 (#1890): damage doubled or tripled this turn.
 	ModMultiplyDamage: {reader: readerReplacement},
+	// ADR 0108 §9 (#1905): damage dealt to something else instead.
+	ModRedirectDamage: {reader: readerReplacement},
 	// ADR 0107 §5 (#1853, #1880): rules gates.
 	ModDamageCantBePrevented:  {reader: readerRule},
 	ModDamageCantBeRedirected: {reader: readerRule},
@@ -941,7 +954,8 @@ func blockRequirementModProblem(m Mod) string {
 	if m.Kind != ModAddBlockRequirement {
 		// ADR 0107 §6: the next-damage shield names its chosen source
 		// here (nextFromSourceModProblem checks it).
-		if len(m.Objects) != 0 && !isNextFromSourceKind(m.Kind) && m.Kind != ModMultiplyDamage && m.Kind != ModPreventFromSource {
+		if len(m.Objects) != 0 && !isNextFromSourceKind(m.Kind) && m.Kind != ModMultiplyDamage && m.Kind != ModPreventFromSource &&
+			m.Kind != ModRedirectDamage {
 			return fmt.Sprintf("mod %q names objects, which only a blocksAttacker requirement reads", m.Kind)
 		}
 		return ""
@@ -1121,6 +1135,9 @@ func (g *Game) appendScopedEffectLocked(sourceID uuid.UUID, affected []AffectedO
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
 		if problem := followUpModProblem(m); problem != "" {
+			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
+		}
+		if problem := redirectDamageModProblem(m); problem != "" {
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
 		if r := modKinds[m.Kind].reader; r != readerLayer && r != readerCopy {

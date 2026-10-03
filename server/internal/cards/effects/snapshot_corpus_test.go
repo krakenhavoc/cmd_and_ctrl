@@ -375,6 +375,16 @@ func corpusBoards() []corpusBoard {
 		// affected set of two), Redeem's one record protecting two, and
 		// Brace for Impact's pinned shield with its counters follow-up.
 		{"to_and_by_shields", corpusToAndByShields},
+		// v7, added by ADR 0108 PR 9 (#1905) as a new file: the
+		// redirectDamage kind in each of its shapes — Beacon of Destiny's
+		// "next time" from a chosen source to a permanent, spent by an
+		// instance; Harm's Way's charge, partly spent, to a player;
+		// Reflect Damage's toSourceController; Eye for an Eye's follow-up
+		// with no destination; Glarecaster's pinned permanent beside its
+		// player; Soltari Guerrillas' opponents — Refraction Trap's
+		// charged source shield carrying its follow-up's target (Mod.To),
+		// and the turn's red instant in the cast tally.
+		{"redirections", corpusRedirections},
 	}
 }
 
@@ -2652,4 +2662,73 @@ func TestCorpusSubsetSeesARename(t *testing.T) {
 	if len(diffs) != 1 || !strings.Contains(diffs[0], ".cards[0].counters") {
 		t.Fatalf("diffs = %v, want exactly the renamed key", diffs)
 	}
+}
+
+// corpusRedirections is ADR 0108 §9's data, every shape of it. Each
+// record names its own source, so the two deals that spend Beacon of
+// Destiny's and Harm's Way's meet one record each.
+func corpusRedirections(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	dragon := pushBattlefieldCardWithTimestamp(g, corpusCreature(opp.ID, "Shivan Dragon", 5, 5))
+	goblin := pushBattlefieldCardWithTimestamp(g, corpusCreature(opp.ID, "Goblin", 1, 1))
+	mage := pushBattlefieldCardWithTimestamp(g, corpusCreature(opp.ID, "Mage", 1, 1))
+	ogre := pushBattlefieldCardWithTimestamp(g, corpusCreature(opp.ID, "Ogre", 3, 3))
+	beacon := pushBattlefieldCardWithTimestamp(g, corpusCreature(me.ID, "Beacon of Destiny", 1, 9))
+	glare := pushBattlefieldCardWithTimestamp(g, corpusCreature(me.ID, "Glarecaster", 3, 3))
+	g.WithWriteLock(func() {
+		g.RecomputeLayersIfStaleLocked()
+		pin := func(id uuid.UUID) (game.ObjectRef, game.ZoneKind) {
+			ref, zone, ok := g.DamageSourceRefLocked(id)
+			if !ok {
+				t.Fatal("setup: a source is in no zone")
+			}
+			return ref, zone
+		}
+		register := func(r game.DamageRedirection) {
+			if !g.RedirectDamageThisTurnForEffect(r) {
+				t.Fatalf("setup: %s registered nothing", r.Label)
+			}
+		}
+		dragonRef, dragonZone := pin(dragon)
+		register(game.DamageRedirection{Controller: me.ID, Source: dragonRef, SourceZone: dragonZone,
+			ProtectPlayer: me.ID, Next: true, To: beacon, Label: "Beacon of Destiny"})
+		// The dragon's 2 to me is dealt to the Beacon, and its record is
+		// spent by that instance.
+		if err := g.DealDamageToPlayerForEffect(dragon, me.ID, 2); err != nil {
+			t.Fatal(err)
+		}
+		goblinRef, goblinZone := pin(goblin)
+		register(game.DamageRedirection{Controller: me.ID, Source: goblinRef, SourceZone: goblinZone,
+			ProtectPlayer: me.ID, ProtectTypes: []string{"creature", "planeswalker", "battle"}, Amount: 3,
+			To: opp.ID, Label: "Harm's Way"})
+		// The goblin's 1 to the Beacon is dealt to the opponent: 2 left.
+		if err := g.DealDamageToCreatureForEffect(goblin, beacon, 1); err != nil {
+			t.Fatal(err)
+		}
+		mageRef, mageZone := pin(mage)
+		register(game.DamageRedirection{Controller: me.ID, Source: mageRef, SourceZone: mageZone,
+			Next: true, ToSourceController: true, Label: "Reflect Damage"})
+		ogreRef, ogreZone := pin(ogre)
+		register(game.DamageRedirection{Controller: me.ID, Source: ogreRef, SourceZone: ogreZone,
+			ProtectPlayer: me.ID, Next: true, Then: thatMuchToTheSourcesControllerBody, Label: "Eye for an Eye"})
+		register(game.DamageRedirection{Controller: me.ID, ProtectPermanent: glare, ProtectPlayer: me.ID,
+			Next: true, To: opp.ID, Label: "Glarecaster"})
+		register(game.DamageRedirection{Controller: me.ID, Source: dragonRef, SourceZone: dragonZone,
+			ProtectRecipients: game.DamageRecipientsOpponents, CombatOnly: true, Next: true, To: glare,
+			Label: "Soltari Guerrillas"})
+		g.PreventDamageFromSourceThisTurnForEffect(game.DamageShield{
+			Controller: me.ID, Source: dragonRef, SourceZone: dragonZone, ProtectPlayer: me.ID, Amount: 3,
+			Then: dealThatMuchToTheChosenTargetBody, To: opp.ID, Label: "Refraction Trap",
+		})
+		g.SpellsCastThisTurn = map[uuid.UUID]game.CastTally{opp.ID: {Total: 1, Noncreature: 1, InstantSorceryColors: "R"}}
+	})
+	if n := len(g.ScopedEffects); n != 7 {
+		t.Fatalf("setup: %d scoped records, want 7", n)
+	}
+	if c := findBattlefieldCardForTest(g, beacon); c == nil || c.DamageMarked != 2 {
+		t.Fatal("setup: the dragon's damage was not dealt to the Beacon")
+	}
+	return g
 }

@@ -20,9 +20,9 @@ import (
 //
 // WHAT IS CHARGED. Every shield whose Replace spends a CR 615.7 charge:
 // ModPreventDamage (Mending Hands) and ModPreventFromSource with an
-// Amount (Healing Grace). chargedShieldCharge is the one list; a later
-// charged kind (§9's redirectDamage with an Amount) is one more case
-// there, and the rest of this file serves it unchanged.
+// Amount (Healing Grace), and ModRedirectDamage with an Amount (Harm's
+// Way, ADR 0108 §9). chargedShieldCharge is the one list; the rest of this
+// file serves every kind on it unchanged.
 //
 // WHEN IT IS ASKED. Only when the shield meets two or more events of the
 // instance and their total is more than the charge left. When the charge
@@ -86,6 +86,10 @@ func chargedShieldCharge(m Mod) (int, bool) {
 	switch m.Kind {
 	case ModPreventDamage, ModPreventFromSource:
 		return m.Amount, m.Amount > 0
+	case ModRedirectDamage:
+		// ADR 0108 §9: "the next 2 damage … is dealt to any target
+		// instead" (Harm's Way), divided as the ruling says.
+		return m.Amount, m.Amount > 0 && redirectsAnywhere(m)
 	}
 	return 0, false
 }
@@ -155,11 +159,7 @@ func (g *Game) chargedShieldOpenToLocked(seq int64, mod int, ev *ReplacementEven
 //
 // Caller must hold g.mu (write).
 func (g *Game) applyChargedShieldLocked(e ScopedEffect, mod int, m Mod, ev *ReplacementEvent) int {
-	limit := m.Amount
-	if share, divided := g.divisionShareLocked(e.Seq, mod, ev); divided {
-		limit = min(limit, share)
-	}
-	prevented := min(limit, ev.DamageAmount)
+	prevented := g.spendChargeLocked(e, mod, m, ev)
 	if prevented <= 0 {
 		return 0
 	}
@@ -168,9 +168,27 @@ func (g *Game) applyChargedShieldLocked(e ScopedEffect, mod int, m Mod, ev *Repl
 	} else {
 		ev.DamageAmount -= prevented
 	}
-	g.setShieldChargeLocked(e.Seq, mod, m.Amount-prevented)
-	g.spendDivisionLocked(e.Seq, mod, ev, prevented)
 	return prevented
+}
+
+// spendChargeLocked is how much of the event a charged shield takes — as
+// much as the charge, and the share when the shield was divided, allow —
+// with the charge and the share reduced by it. The caller does with that
+// much what its kind does: prevent it, or redirect it (ADR 0108 §9).
+//
+// Caller must hold g.mu (write).
+func (g *Game) spendChargeLocked(e ScopedEffect, mod int, m Mod, ev *ReplacementEvent) int {
+	limit := m.Amount
+	if share, divided := g.divisionShareLocked(e.Seq, mod, ev); divided {
+		limit = min(limit, share)
+	}
+	n := min(limit, ev.DamageAmount)
+	if n <= 0 {
+		return 0
+	}
+	g.setShieldChargeLocked(e.Seq, mod, m.Amount-n)
+	g.spendDivisionLocked(e.Seq, mod, ev, n)
+	return n
 }
 
 // spendDivisionLocked takes `n` off the event's share. COPY ON WRITE, the
@@ -455,8 +473,17 @@ type divideNeed struct {
 	chooser uuid.UUID
 	source  uuid.UUID
 	label   string
+	verb    string
 	charge  int
 	entries []DivideShieldEntry
+}
+
+// divideVerb is what the prompt calls dividing the charge of a kind.
+func divideVerb(k ModKind) string {
+	if k == ModRedirectDamage {
+		return "redirection"
+	}
+	return "prevention"
 }
 
 // shieldDivisionNeedsLocked lists the live charged shields that meet two
@@ -490,7 +517,14 @@ func (g *Game) shieldDivisionNeedsLocked(evs []*ReplacementEvent) []divideNeed {
 				if ev.DamageAmount <= 0 || ev.DamageInstance != inst || !scopedReplacementMeetsLocked(g, e, m, ev) {
 					continue
 				}
-				if g.damageUnpreventableLocked(ev) {
+				// CR 615.12: a prevention shield prevents none of an
+				// unpreventable event; a redirection redirects none of an
+				// event that can't be dealt instead (ADR 0108 §9).
+				if m.Kind == ModRedirectDamage {
+					if g.damageCantBeRedirectedLocked(ev) {
+						continue
+					}
+				} else if g.damageUnpreventableLocked(ev) {
 					continue
 				}
 				total += ev.DamageAmount
@@ -508,6 +542,7 @@ func (g *Game) shieldDivisionNeedsLocked(evs []*ReplacementEvent) []divideNeed {
 			needs = append(needs, divideNeed{
 				seq:     e.Seq,
 				mod:     j,
+				verb:    divideVerb(m.Kind),
 				inst:    inst,
 				chooser: g.divideShieldChooserLocked(e, entries),
 				source:  e.Source.ID,
@@ -677,7 +712,7 @@ func (g *Game) askShieldDivisionsLocked(needs []divideNeed, land func(*Game) err
 			Chooser:      n.chooser,
 			FromPlayer:   n.chooser,
 			Source:       n.source,
-			Reason:       fmt.Sprintf("%s — divide %d prevention among the damage", n.label, n.charge),
+			Reason:       fmt.Sprintf("%s — divide %d %s among the damage", n.label, n.charge, n.verb),
 			DivideShield: prompt,
 			confirmResume: &confirmFrame{
 				onAccept:  continueShieldDivisions(rest, land),

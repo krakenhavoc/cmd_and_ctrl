@@ -398,6 +398,7 @@
       exileIfCreaturesDie={view.exile_if_creatures_die ?? []}
       damageShields={view.damage_shields ?? []}
       damageMultipliers={view.damage_multipliers ?? []}
+      damageRedirections={view.damage_redirections ?? []}
       {readyActions}
       {trackOpen}
     />
