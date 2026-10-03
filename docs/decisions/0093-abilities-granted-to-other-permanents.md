@@ -421,6 +421,9 @@ names a key no card registered, or if a layer-6 grant names a bundle with a `Sta
   no bundle key. This needs its own ADR. PR 1 moves Marvin to a seam of its own.
 - **Granted triggered MANA abilities** (CR 605.1b on a recipient) and **granted loyalty abilities**.
   `AbilityGrant` gets no `ManaTriggers` slot. No card on the Waiting list needs either.
+  *Lifted for loyalty abilities by [ADR 0109](0109-rule-gates-land-types-mana-and-cost-components.md)
+  §2, owner decision 2 (2026-10-02): a granted loyalty row shares its host's CR 606.3 count, and its
+  stack item names its grantor (`StackItem.GrantedBy`), so an emblem it creates is the grantor's.*
 - **Grants to cards off the battlefield** ("creature cards in your graveyard have …"). Cast
   permissions are ADR 0066's; anything else waits for a card.
 - **Grants to players.** Player keywords are ADR 0072's.

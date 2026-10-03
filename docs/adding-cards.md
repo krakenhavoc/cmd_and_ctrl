@@ -742,8 +742,20 @@ naming an unregistered bundle is refused with `ErrUnknownEffectKey`. A
 "return it to the battlefield tapped [with a counter]" dies trigger is
 `returnThisCreatureFromGraveyard`. See `feign_death.go`,
 `fake_your_own_death.go`, `retraction_helix.go` and `urzas_saga.go`.
-Still no shape: a duration that lasts "for as long as it has a <kind>
-counter on it" (Ultima, Origin of Oblivion).
+"For as long as it has a <kind> counter on it" is a counter-held
+`Duration` (`GrantWhileItHasCounter`, ADR 0109 §2).
+
+A granted LOYALTY ability ("Enchanted planeswalker has '[−12]: …'",
+the Talents; ADR 0109 §2) is a bundle row with a `LoyaltyCost`, granted
+with `GrantAbilitiesToAttached` like any other. Nothing else to
+declare: the row is the planeswalker's, so CR 606.3's once-per-turn
+count and CR 606.6's counter check are the walker's, shared with its
+own loyalty abilities. "You get an emblem" in a granted ability is the
+GRANTOR's emblem: declare the `Emblem` on the grantor's Spec and write
+`CreateEmblem{}`, which reads the stack item's `GrantedBy`. "Whenever you
+activate a loyalty ability of enchanted planeswalker" is
+`WheneverYouActivateALoyaltyAbilityOfEnchanted`. See `teferis_talent.go`
+and `enchanted_planeswalker.go`.
 
 ### Abilities any player may activate (ADR 0106, #1793)
 

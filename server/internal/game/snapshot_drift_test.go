@@ -599,6 +599,10 @@ var stackItemFields = plan(
 	// included — the object "this" names. Carried for SourceEpoch's
 	// reason: it is a reading of a card that has since moved.
 	"SourceObject", carried, "",
+	// ADR 0109 §2: the object that granted an activated ability, so a
+	// restored Teferi's Talent −12 still makes the Talent's emblem.
+	// Carried: the grant may be gone from the restored board.
+	"GrantedBy", carried, "",
 	"Label", carried, "",
 	"DoubledBy", carried, "",
 	"DoubledByName", carried, "",
