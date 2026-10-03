@@ -465,6 +465,14 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 			// overwhelming majority, which reads pay.xValue exactly as
 			// before.
 			xValue int
+			// bounded marks an announcement whose steps carry an X
+			// bound the enumerator built UNBOUND (ADR 0109 §9): the
+			// bound's input is a payment chosen further in — the
+			// counters removed, or the count a variable sacrifice or
+			// tap names — so each (payment, targets) pair is judged in
+			// the innermost loop, through the engine's own
+			// TargetsWithinBoundForEffect.
+			bounded bool
 		}
 		var announcements []announcement
 		for _, modes := range modeSets {
@@ -486,13 +494,28 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 				// count ladders (variableSacrificePayments and
 				// friends) already do for a cost's X.
 				//
-				// Only the plain mana-{X} shape is supported: an
-				// ability whose PRICE reads its targets, or whose X is
-				// announced by a sacrifice/tap count rather than mana,
-				// has no catalog card combining that with an X-bound
-				// target yet, so it is left unenumerated rather than
-				// guessed at.
-				if perTarget || ab.Cost.XSlots() == 0 {
+				// ADR 0109 §9: a bound whose input is NOT a mana {X} —
+				// the counters removed (Simic Manipulator), or the X a
+				// variable sacrifice or tap announces (Ruthless
+				// Technomancer, Aryel) — is a dimension of the payment
+				// loops below rather than of this one. Its sets are
+				// built against the unbound superset and filtered per
+				// payment there. Every such printed bound is "or less",
+				// so the largest payment admits the most.
+				if game.StepsBoundByCountersRemoved(steps) || ab.Cost.XSlots() == 0 {
+					if !game.StepsBoundByCountersRemoved(steps) &&
+						!game.SacrificeCountFromX(ab.Cost.SacrificeOther) && !game.TapOthersCountFromX(ab.Cost.TapOthers) {
+						continue
+					}
+					for _, ts := range e.legalStepSets(abilitySrc, steps, budget) {
+						announcements = append(announcements, announcement{modes: modes, targets: ts, steps: steps, xValue: -1, bounded: true})
+					}
+					continue
+				}
+				// A price that reads its targets has no catalog card
+				// combining it with an X-bound target yet, so it is
+				// left unenumerated rather than guessed at.
+				if perTarget {
 					continue
 				}
 				floor := enumeratedXFloor(game.CatalogAbilityKey(*source), ab.Cost.FloorX())
@@ -599,6 +622,15 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 						for _, cc := range counterChoices {
 							if budget <= 0 {
 								break
+							}
+							// ADR 0109 §9: the bound this payment sets —
+							// the counters it removes, or the X its
+							// sacrifice or tap count announces. A pair
+							// the engine would refuse is never offered
+							// (#544), and costs no budget.
+							if ann.bounded && !g.TargetsWithinBoundForEffect(ann.steps, targets,
+								game.AnnouncedBound{X: tapXValue, CountersRemoved: cc.total}) {
+								continue
 							}
 							budget--
 							label := abilityMoveLabel(g, source, e.seat, ab.Label)

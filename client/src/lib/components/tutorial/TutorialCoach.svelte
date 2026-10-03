@@ -12,7 +12,9 @@
   //      that lifts on hover, a row that re-centres). An anchor that is
   //      missing for ANCHOR_GRACE_MS (it gets a moment to render) makes
   //      the step advance itself and log. A tutorial never waits on an
-  //      element that is not there.
+  //      element that is not there. The same poll times a hover step's
+  //      rest (steps 2 and 4, "hover ≥ 600ms"), and reads an anchor
+  //      that comes off the board (step 7's card) afresh each tick.
   //   3. Placement. The card docks bottom-left (§2.3, amended
   //      2026-10-02). It publishes its live size through `onSize`, and
   //      Game.svelte turns that into --coach-w / --coach-h: on a desktop
@@ -32,15 +34,17 @@
   import {
     ANCHOR_GRACE_MS,
     POLL_MS,
+    TOUCH_HOVER_STEP_MS,
     TUTORIAL_STEP_COUNT,
-    anchorsOf,
     copyText,
     createTutorialRun,
+    spotAnchors,
     spotlit,
+    statusText,
     type CopyContext,
     type TutorialStep,
   } from "../../tutorial";
-  import { anchorRect, sameRect, type AnchorRect } from "../../tutorialAnchor";
+  import { anchorRect, resolveAnchor, sameRect, type AnchorRect } from "../../tutorialAnchor";
   import { TUTORIAL_STEPS } from "../../tutorialSteps";
   import { settings } from "../../settings";
   import { effectiveBindings, formatChord, isMacLike } from "../../shortcuts";
@@ -61,6 +65,15 @@
     anchorGraceMs?: number;
     /** Where self-advances are logged. Defaults to console.warn. */
     log?: (msg: string) => void;
+    /**
+     * Whether this device has a pointer that hovers. Defaults to the
+     * `(hover: hover)` media query; true where there is no matchMedia.
+     */
+    canHover?: boolean;
+    /** Whether the pointer is over an element. Defaults to `:hover`. */
+    isHovering?: (el: Element) => boolean;
+    /** A hover step on a device that cannot hover gives up after this. */
+    touchHoverStepMs?: number;
   }
 
   const {
@@ -72,6 +85,9 @@
     pollMs = POLL_MS,
     anchorGraceMs = ANCHOR_GRACE_MS,
     log,
+    canHover = typeof matchMedia === "function" ? matchMedia("(hover: hover)").matches : true,
+    isHovering = (el: Element) => el.matches(":hover"),
+    touchHoverStepMs = TOUCH_HOVER_STEP_MS,
   }: Props = $props();
 
   const run = untrack(() => createTutorialRun(steps, { viewerID, view, log }));
@@ -83,8 +99,31 @@
     run.observe(view);
   });
   // A hover or a card-local menu: the three things the snapshot cannot
-  // see (ADR 0076 §2.5).
-  const unsubBus = onTutorialEvent((e) => run.observe(view, e));
+  // see (ADR 0076 §2.5). On a device with no hover, a hover step's own
+  // event is the whole gesture (a touch on the hand or a pile); with a
+  // mouse the step waits for the pointer to rest (below).
+  const unsubBus = onTutorialEvent((e) => {
+    const step = run.current().step;
+    if (!canHover && step.hover?.event === e) run.hovered(step.id);
+    run.observe(view, e);
+  });
+
+  // A hover step on a touch screen has no hover to teach and may have no
+  // event to wait for (one Forest is not a pile), so it gives up after a
+  // read rather than wait on something that cannot happen (§2.4).
+  // Derived, so a republish of the same step (a hint, a detour) does
+  // not restart the timer.
+  const currentStep = $derived(snap.step);
+  const shown = $derived(snap.visible);
+  $effect(() => {
+    const step = currentStep;
+    if (canHover || !step.hover || !shown) return;
+    const t = setTimeout(
+      () => run.advance(step.id, "cannot be hovered on this device"),
+      touchHoverStepMs,
+    );
+    return () => clearTimeout(t);
+  });
 
   onDestroy(() => {
     unsubBus();
@@ -96,15 +135,26 @@
   let rect: AnchorRect | null = $state(null);
   $effect(() => {
     const step = snap.step;
+    const detour = snap.detour;
     const lit = snap.visible && spotlit(snap.coach);
-    const anchors = anchorsOf(step);
-    if (!lit || anchors.length === 0) {
+    // A step with no anchor at all (none in the script) points at
+    // nothing. One whose anchor is read off the board is measured every
+    // tick, and naming nothing then is a missing anchor.
+    if (!lit || (step.anchor === undefined && !detour?.anchor)) {
       rect = null;
       return;
     }
+    // A hover step completes once the pointer has rested on its anchor
+    // for step.hover.ms (§2.1). Measured here, on the poll that already
+    // reads the anchor: the bus says when the pointer arrives, but not
+    // that it stayed, and a pointer crossing the hand on its way to the
+    // dock is not reading it. Not while a detour points elsewhere.
+    const dwell = canHover && !detour ? step.hover : undefined;
+    let hoverSince: number | null = null;
     let missingSince: number | null = null;
     const measure = (): void => {
-      const r = anchorRect(anchors);
+      const anchors = spotAnchors(step, detour, run.context());
+      const r = anchors.length > 0 ? anchorRect(anchors) : null;
       if (r === null) {
         rect = null;
         const now = Date.now();
@@ -113,6 +163,16 @@
         return;
       }
       missingSince = null;
+      if (dwell) {
+        const over = anchors.some((a) => {
+          const el = resolveAnchor(a);
+          return !!el && isHovering(el);
+        });
+        const now = Date.now();
+        if (!over) hoverSince = null;
+        else if (hoverSince === null) hoverSince = now;
+        else if (now - hoverSince >= dwell.ms) run.hovered(step.id);
+      }
       if (
         !sameRect(
           r,
@@ -131,13 +191,19 @@
   const copyCtx: CopyContext = $derived({
     helpKey: keys.toggleHelp ? formatChord(keys.toggleHelp, isMacLike()) : "",
     settingsKey: keys.openSettings ? formatChord(keys.openSettings, isMacLike()) : "",
+    nextKey: keys.passPriority ? formatChord(keys.passPriority, isMacLike()) : "",
   });
+  // What the card says, strongest first: a detour (what to do before
+  // the step can happen), then the recovered copy, then the step's own.
   const recovering = $derived(snap.coach === "recovered" && !!snap.step.recover);
-  const title = $derived(
-    copyText(recovering ? snap.step.recover?.title : snap.step.title, copyCtx),
+  const said = $derived(snap.detour ?? (recovering ? snap.step.recover : undefined) ?? snap.step);
+  const title = $derived(copyText(said.title, copyCtx));
+  const body = $derived(copyText(said.body, copyCtx));
+  // A detour has no hint: it already says what to do.
+  const hint = $derived(
+    snap.detour ? "" : copyText(recovering ? snap.step.recover?.hint : snap.step.hint, copyCtx),
   );
-  const body = $derived(copyText(recovering ? snap.step.recover?.body : snap.step.body, copyCtx));
-  const hint = $derived(copyText(recovering ? snap.step.recover?.hint : snap.step.hint, copyCtx));
+  const status = $derived(statusText(snap.step, { ...run.context(), view }));
 
   // ---- Placement ----
   // The phone strip can fold to one line; a desktop card cannot, so a
@@ -194,7 +260,7 @@
       {title}
       {body}
       {hint}
-      status={snap.step.status}
+      {status}
       {minimised}
       onStart={() => run.start()}
       onSkipTutorial={() => run.close()}
