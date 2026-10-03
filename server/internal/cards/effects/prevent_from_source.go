@@ -98,14 +98,14 @@ func (p PreventDamageFromSource) Apply(ctx *Context) error {
 		return nil
 	}
 	shield := game.DamageShield{
-		EffectSource:     ctx.Source(),
-		Controller:       ctx.Controller(),
-		Queries:          p.Queries,
-		ProtectPlayer:    protected.ProtectPlayer,
-		ProtectTypes:     protected.ProtectTypes,
-		ProtectPermanent: protected.ProtectPermanent,
-		CombatOnly:       p.CombatOnly,
-		Amount:           p.Amount,
+		EffectSource:      ctx.Source(),
+		Controller:        ctx.Controller(),
+		Queries:           p.Queries,
+		ProtectPlayer:     protected.ProtectPlayer,
+		ProtectTypes:      protected.ProtectTypes,
+		ProtectPermanent:  protected.ProtectPermanent,
+		CombatOnly:        p.CombatOnly,
+		Amount:            p.Amount,
 		Then:              p.Then,
 		UntilYourNextTurn: p.UntilYourNextTurn,
 		Label:             label,
