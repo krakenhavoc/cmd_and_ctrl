@@ -2957,4 +2957,4 @@ Ancestry**, all `full`.
 - **`hand` on the wire's `MoveCost` mirror.** `docs/protocol.md`'s `cost`
   paragraph and `client/src/lib/protocol.ts`'s `MoveCost` interface do not list
   the new advice-only field yet; the client reads no move cost, and the field is
-  `omitempty`.
+  `omitempty`. Both list it since #2015.

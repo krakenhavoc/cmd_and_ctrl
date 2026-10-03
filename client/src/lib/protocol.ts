@@ -651,6 +651,13 @@ export interface MoveCost {
   // attack has no printed cost, so without this a consumer prices an
   // attack under Ghostly Prison exactly like a free one.
   mana?: string;
+  // #1600: how many cards a "Discard your hand" cost throws away if
+  // the move is made now — Lion's Eye Diamond, Null Brooch, Slate of
+  // Ancestry. Every other discard names its cards in
+  // `params.discard_ids`; this one names none, so without it the
+  // whole hand reads as free. Absent for an empty hand, which pays
+  // the cost.
+  hand?: number;
 }
 
 // LogKind mirrors `protocol.LogKind` server-side. Coarser than the
