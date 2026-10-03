@@ -25,6 +25,7 @@
   import Icon from "../Icon.svelte";
   import ModalLayer from "../ModalLayer.svelte";
   import { clampMulligan, concedeTitle, parseVote, type GameMenuOptions } from "../../gameMenu";
+  import { adminChipTitle, adminSwitchLabel } from "../../admin";
 
   type Props = GameMenuOptions & {
     // "up": the dock's chip. "down": the command bar's icon.
@@ -252,6 +253,21 @@
       {#if props.myGames}
         <button class="mi" role="menuitem" onclick={via(props.onMyGames)}>
           <Icon name="library" size={15} /> My games
+        </button>
+      {/if}
+      {#if props.adminMode && props.onAdminMode}
+        <!-- ADR 0112 §2 item 9: the header's Admin chip, here because the
+             table has no header. The connection reconnects with the
+             new mode's binding (a 4001 from the server). -->
+        <button
+          class="mi"
+          role="menuitem"
+          onclick={via(props.onAdminMode)}
+          title={adminChipTitle(props.adminMode.on)}
+        >
+          <Icon name="bolt" size={15} />
+          {adminSwitchLabel(props.adminMode.on)}
+          <span class="mi-r">{props.adminMode.on ? "admin" : "player"}</span>
         </button>
       {/if}
       <button class="mi" role="menuitem" onclick={via(props.onBack)}>

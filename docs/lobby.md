@@ -49,7 +49,15 @@ they have are the switch and `admin_allowed` on `GET /me`.
   admin bit is now wrong with close code **4001**, reason `admin mode
   changed`. The client asks `GET /me` and reconnects, and the upgrade
   binds it again with the new answer. In player mode that is their own
-  seat or spectator session and nothing else.
+  seat or spectator session and nothing else. When the connection it
+  held needs admin mode (the seatless view, another seat, a table that
+  isn't theirs), the client does not redial; it goes to the Lobby with
+  "Player mode is on; this table isn't yours."
+- **In the client** the switch is the Admin chip in the header's account
+  menu: "Admin · until 23:40" on the accent colour while admin mode is
+  on, "Player" in a muted outline while it is off. At a table, which has
+  no header, the same switch is in the ⋯ menu. The shared token shows a
+  static "Admin token" badge instead.
 - [`POST /logout/everywhere`](#post-logouteverywhere) and
   [`POST /admin/users/{id}/revoke-sessions`](#post-adminusersidrevoke-sessions-admin-only)
   also end admin mode.
@@ -98,7 +106,8 @@ shows:
 |---|---|
 | no session | the token form |
 | the token's own session | goes to `#/lobby` |
-| any other session (a signed-in person, a guest seat, a spectator) | the token form, with a note that it replaces this browser's session. A signed-in person's session is set aside and comes back when the token's session ends ([ADR 0110](decisions/0110-remember-me.md) §1 item 6). |
+| an allowlisted person, in either mode (once `GET /me` has said `admin_allowed`) | goes to `#/lobby`, where the Admin chip is in the header's account menu |
+| any other session (a signed-in person not on the list, a guest seat, a spectator) | the token form, with a note that it replaces this browser's session. A signed-in person's session is set aside and comes back when the token's session ends ([ADR 0110](decisions/0110-remember-me.md) §1 item 6). |
 
 Every session that opens `#/login` goes to `#/lobby`, the signed-in
 home, where the "Join a table" card and the header's account menu are
@@ -1859,7 +1868,10 @@ computed fields that are not part of the token:
 
 The client asks once per installed session that has a `user_id`, and
 shows admin UI to an admin seated at a table exactly as it does to the
-token. `/me` tells a person only about themselves: the allowlist itself
+token. It asks again after a 4001 close, when a hidden tab becomes
+visible (for an allowlisted person), and when `admin_mode_ends_at`
+passes; a switch takes its answer from `PUT /me/admin-mode`. It reads a
+mode whose end time has passed as off without waiting for the answer. `/me` tells a person only about themselves: the allowlist itself
 is never served.
 
 ```json

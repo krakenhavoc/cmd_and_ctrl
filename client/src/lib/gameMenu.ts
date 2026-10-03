@@ -35,6 +35,11 @@ export interface GameMenuOptions {
   discordLink?: { href: string; label: string } | null;
   // A signed-in identity: "My games".
   myGames: boolean;
+  // ADR 0112 §2 item 9: an allowlisted person's admin switch, which
+  // the table has no header to hold. `on` is whether admin mode is on
+  // now; null for everyone else (the token included: it has no mode).
+  adminMode?: { on: boolean } | null;
+  onAdminMode?: () => void;
   // An open vote is the dock's request (ADR 0111 PR 5), so the launcher
   // stands down while one is open.
   voteOpen: boolean;

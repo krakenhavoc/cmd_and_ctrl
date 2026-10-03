@@ -44,6 +44,11 @@ function sess(
     gameID,
     playerID: role === "player" ? "p1" : undefined,
     admin: opts.admin,
+    // What /me says about an allowlisted person (ADR 0112 §2 item 9),
+    // here in admin mode.
+    ...(opts.admin
+      ? { admin_allowed: true, admin_mode: true, admin_mode_ends_at: Date.now() + 86_400_000 }
+      : {}),
   };
 }
 
@@ -150,11 +155,30 @@ describe("routeRedirect: #/admin (§2 item 8, the sessions told apart without /m
     expect(routeRedirect(admin, sess("admin"))).toBe("#/lobby");
   });
 
+  it("sends an allowlisted person to the Lobby, where the chip is, in either mode", () => {
+    const inAdminMode = sess("player", USER, { admin: true });
+    expect(routeRedirect(admin, inAdminMode)).toBe("#/lobby");
+    const inPlayerMode = {
+      ...sess("identified", USER),
+      admin: false,
+      admin_allowed: true,
+      admin_mode: false,
+    };
+    expect(routeRedirect(admin, inPlayerMode)).toBe("#/lobby");
+    // Before /me has answered, the person is not known to be on the
+    // list, and sees the form until it does.
+    expect(routeRedirect(admin, sess("identified", USER))).toBeNull();
+  });
+
   it("shows the token form to any other session", () => {
-    for (const [, s] of SESSIONS) {
-      if (s === null || s.principal.role === "admin") continue;
+    for (const [name, s] of SESSIONS) {
+      if (s === null || s.principal.role === "admin" || name === "allowlisted admin person") {
+        continue;
+      }
       expect(routeRedirect(admin, s)).toBeNull();
     }
+    // A stray admin_allowed on a session with no user is not a person.
+    expect(routeRedirect(admin, { ...sess("player", NIL), admin_allowed: true })).toBeNull();
   });
 });
 
