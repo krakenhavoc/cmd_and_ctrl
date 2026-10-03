@@ -638,6 +638,8 @@ func TestNoCardActsOnItsOwnSourceThroughAGameMutatorWithoutAsking(t *testing.T) 
 		"bound_determined.go": true, // Bound's "Exile this card." (ADR 0106 PR 3)
 		// Restorative Burst, the sorcery back face: "Exile Restorative Burst."
 		"pestilent_cauldron.go": true,
+		// "Exile Morningtide's Light." (ADR 0108 PR 7, #1904)
+		"morningtides_light.go": true,
 	}
 	isSelf := func(e ast.Expr) bool {
 		s := exprString(e)

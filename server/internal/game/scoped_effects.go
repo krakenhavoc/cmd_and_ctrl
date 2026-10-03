@@ -461,6 +461,16 @@ type Mod struct {
 	// refused on every other kind. ModPreventFromSource (ADR 0108 §7)
 	// reads Objects, SourceZone and Queries too, with the same meaning.
 	Half bool `json:"half,omitempty"`
+	// AndDealtBy is ModPreventFromSource's "dealt to and dealt by" (ADR
+	// 0108 Delivery PR 7, #1904): the record's pinned objects are both
+	// what the shield protects and the sources whose damage it prevents.
+	// "Prevent all combat damage that would be dealt to and dealt by that
+	// creature" (Maze of Ith) is one prevention effect, so it is one
+	// record and one mod: it gets one opportunity at an event (CR 614.5)
+	// and is applied once to a damage instance's simultaneous events
+	// (CR 615.13). Refused on every other kind, and on a preventFromSource
+	// that also names a source, a property, a player or a charge.
+	AndDealtBy bool `json:"andDealtBy,omitempty"`
 	// Sources, Recipients and Next are ModMultiplyDamage's (ADR 0108 §3,
 	// #1890; multiply_damage.go), refused on every other kind. Sources is
 	// "a source you control" / "a creature" when no one source is named;
