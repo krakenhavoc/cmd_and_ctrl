@@ -34,6 +34,7 @@
   import { openSettings } from "../settings";
   import Icon from "./Icon.svelte";
   import AdminChip from "./AdminChip.svelte";
+  import { isAdmin } from "../admin";
 
   let menuOpen = $state(false);
   let accountOpen = $state(false);
@@ -72,6 +73,13 @@
     if (role === "identified" || hasLinkedUser) return "signed in with Discord";
     return role === "spectator" ? "guest spectator" : "guest seat";
   });
+
+  // ADR 0112 follow-up (#1992): admin mode is visible on the button
+  // itself, so it can be seen without opening the menu. isAdmin is true
+  // for the token and for an allowlisted person whose mode is on; the
+  // lapse timer in lib/admin.ts clears it on the same store.
+  const adminOn = $derived(isAdmin($session));
+  const acctLabel = $derived(`account menu: ${whoAmI}${adminOn ? " (admin mode on)" : ""}`);
 
   // The wordmark is the way home: the Lobby for a session, the public
   // site map without one (ADR 0112 §1 item 5).
@@ -214,9 +222,12 @@
           aria-haspopup="true"
           aria-expanded={accountOpen}
           aria-controls="account-menu"
-          aria-label={`account menu: ${whoAmI}`}
+          class:admin-on={adminOn}
+          aria-label={acctLabel}
+          title={adminOn ? "admin mode on" : undefined}
           onclick={toggleAccount}
         >
+          {#if adminOn}<span class="admin-dot" aria-hidden="true"></span>{/if}
           <span class="who">{whoAmI}</span>
           <span class="caret" class:open={accountOpen}><Icon name="chevronRight" size={12} /></span>
         </button>
@@ -366,6 +377,17 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
+  }
+  .acct-btn.admin-on {
+    border-color: var(--accent);
+  }
+  .admin-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 0 2px var(--accent-soft);
+    flex: none;
   }
   .caret {
     display: inline-flex;
