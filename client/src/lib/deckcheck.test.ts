@@ -275,6 +275,19 @@ describe("requestDeck", () => {
     expect(JSON.parse(init.body as string)).toEqual({ text: "1 Sol Ring" });
   });
 
+  it("sends a saved deck as {deck_id} (ADR 0112 §3 item 5)", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ status: "joined", issue_number: 1702, report: report() }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    await requestDeck({ deck_id: "d1" });
+    const [path, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(path).toBe("/deck-requests");
+    expect(JSON.parse(init.body as string)).toEqual({ deck_id: "d1" });
+  });
+
   it("returns rate_limited as a normal outcome, not a throw", async () => {
     vi.stubGlobal(
       "fetch",

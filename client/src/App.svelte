@@ -14,10 +14,9 @@
   import Game from "./routes/Game.svelte";
   import Catalog from "./routes/Catalog.svelte";
   import MyGames from "./routes/MyGames.svelte";
-  import MyDecks from "./routes/MyDecks.svelte";
+  import Decks from "./routes/Decks.svelte";
   import Home from "./routes/Home.svelte";
   import Roadmap from "./routes/Roadmap.svelte";
-  import DeckCheck from "./routes/DeckCheck.svelte";
   import Practice from "./routes/Practice.svelte";
   import Settings from "./lib/components/Settings.svelte";
   import ShortcutLayer from "./lib/components/ShortcutLayer.svelte";
@@ -28,6 +27,7 @@
   import { session, sessionFromOAuth, setSession } from "./lib/session";
   import { loadAdminStatus, needsAdminCheck } from "./lib/admin";
   import { oauthCompleteTarget, routeRedirect } from "./lib/signedInHome";
+  import { takeAfterSignIn } from "./lib/decksPage";
   import { settings } from "./lib/settings";
   import { applyRootSettings } from "./lib/rootSettings";
   import { armMusicOnFirstGesture } from "./lib/music";
@@ -74,7 +74,9 @@
   // The fragment's shape says which flow this was. With game +
   // player_id the seat is already claimed, so go to the table. With
   // neither, this is an identity-only session from the login page,
-  // which lands on the Lobby with its join box (ADR 0112 §1 item 2).
+  // which lands on the Lobby with its join box (ADR 0112 §1 item 2), or
+  // back on the decks page when the sign-in started there (§3 item 7).
+  // takeAfterSignIn reads and clears that stored route either way.
   $effect(() => {
     const r = $route;
     if (r.name !== "oauthComplete") return;
@@ -84,7 +86,7 @@
     // it was handed.
     const s = sessionFromOAuth(r);
     setSession(s);
-    navigate(oauthCompleteTarget(s));
+    navigate(oauthCompleteTarget(s, takeAfterSignIn()));
   });
 
   // Apply the subset of settings that hang off :root as CSS
@@ -117,8 +119,8 @@
   <Home />
 {:else if $route.name === "roadmap"}
   <Roadmap />
-{:else if $route.name === "deckCheck"}
-  <DeckCheck />
+{:else if $route.name === "decks"}
+  <Decks />
 {:else if $route.name === "lobby"}
   <Lobby />
 {:else if $route.name === "practice"}
@@ -127,8 +129,6 @@
   <Catalog />
 {:else if $route.name === "myGames"}
   <MyGames />
-{:else if $route.name === "myDecks"}
-  <MyDecks />
 {:else if $route.name === "join"}
   <Join gameID={$route.gameID} inviteToken={$route.inviteToken} spectator={$route.spectator} />
 {:else if $route.name === "reclaim"}

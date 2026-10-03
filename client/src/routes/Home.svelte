@@ -64,12 +64,6 @@
       needsSession: hasLinkedUser ? undefined : "Sign in first",
     },
     {
-      title: "My decks",
-      href: hasLinkedUser ? "#/decks" : "#/login",
-      description: "Your saved decks, how much of each plays as printed, rename and delete.",
-      needsSession: hasLinkedUser ? undefined : "Sign in first",
-    },
-    {
       // The join box is on the Lobby for any session (ADR 0112 §1
       // item 3), and on the sign-in page for a visitor.
       title: "Join with an invite",
@@ -91,9 +85,13 @@
       description: "What's implemented, what's partial, what's missing, and what's next.",
     },
     {
-      title: "Deck check",
-      href: "#/deck-check",
-      description: "See how much of your deck the engine automates, and request what's missing.",
+      // The one decks page (ADR 0112 §3): the deck check and the saved
+      // library together. Public: anyone may check a deck, and signing
+      // in from the page brings you back to it.
+      title: "Decks",
+      href: "#/decks",
+      description:
+        "Check how much of a deck plays as printed, request what's missing, and keep the decks you play.",
     },
   ]);
 
