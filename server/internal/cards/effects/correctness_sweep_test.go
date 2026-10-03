@@ -2,6 +2,7 @@ package effects
 
 import (
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -90,6 +91,65 @@ func TestHerdHeirloomGrantsTrampleAndADrawTriggerToAPowerFourCreature(t *testing
 	}
 	if me.Hand.Size() != hand+1 {
 		t.Errorf("hand %d -> %d, want +1 from the granted combat-damage trigger", hand, me.Hand.Size())
+	}
+}
+
+// "Spend this mana only to cast a creature spell" pays a creature
+// SPELL and not a creature's activated ability (#2059). Before the fix
+// the restriction was the type tag alone, which ManaSpendForAbility
+// also satisfies when the ability's source is a creature — so the
+// Heirloom's black paid Crypt Rats' {X}.
+func TestHerdHeirloomManaCastsCreatureSpellsButNeverPaysACreaturesAbility(t *testing.T) {
+	g, me, _ := spendTable(t)
+	rock := pushCatalogPermanent(g, me.ID, "Herd Heirloom", "Artifact", herdHeirloomOracle, false)
+	rats := pushCatalogPermanent(g, me.ID, "Crypt Rats", "Creature — Rat", cryptRatsOracle, false)
+
+	if err := g.ActivateManaAbility(me.ID, rock, 0, game.ManaAbilityParams{Colors: []string{"B"}}); err != nil {
+		t.Fatalf("tap the Heirloom for {B}: %v", err)
+	}
+	cost, _ := game.ParseCost("{B}")
+	ratsCard, _ := battlefieldCard(g, rats)
+	if me.ManaPool.CanPayFor(cost, 0, game.ManaSpendForAbility(ratsCard)) {
+		t.Error("Herd Heirloom mana pays a creature's activated ability — stronger than printed")
+	}
+	refusedForMana(t, g.ActivateCatalogAbility(me.ID, rats, 0, game.ActivateAbilityParams{Strict: true, XValue: 1}),
+		"Herd Heirloom's {B} for Crypt Rats' {X}")
+
+	zombie := handSpell(me, "Black Creature", "Creature — Zombie", "{B}")
+	if err := g.CastSpell(me.ID, zombie, game.CastSpellParams{Strict: true}); err != nil {
+		t.Fatalf("Herd Heirloom's {B} for a creature spell: %v", err)
+	}
+}
+
+// The #2059 guard: a mana ability whose restriction names a property
+// of the OBJECT (a type, subtype, supertype or colour) must also name
+// the PURPOSE — tags AND, and the object tags alone match an
+// activation whose source has that property as readily as a spell. The
+// one card that legitimately names no purpose prints both: Eldrazi
+// Temple's "cast colorless Eldrazi spells or activate abilities of
+// colorless Eldrazi". RestrictionsFunc lists (Cavern of Souls, Throne
+// of Eldraine) are built per game and checked by their own card tests.
+func TestRestrictedManaNamingAnObjectPropertyAlsoNamesAPurpose(t *testing.T) {
+	castOrActivate := map[string]bool{"Eldrazi Temple": true}
+	objectTag := func(tag string) bool {
+		for _, p := range []string{"type:", "subtype:", "supertype:", "color:"} {
+			if strings.HasPrefix(tag, p) {
+				return true
+			}
+		}
+		return tag == game.ManaRestrictColorless || tag == game.ManaRestrictMonocolored || tag == game.ManaRestrictMulticolored
+	}
+	for _, spec := range All() {
+		for i, m := range spec.ManaAbilities {
+			names, purpose := false, false
+			for _, tag := range m.Restrictions {
+				names = names || objectTag(tag)
+				purpose = purpose || strings.HasPrefix(tag, "purpose:") || strings.HasPrefix(tag, "anyof:")
+			}
+			if names && !purpose && !castOrActivate[spec.Name] {
+				t.Errorf("%s mana ability %d restricts %v with no purpose tag — add ManaRestrictCast (or ManaRestrictActivate)", spec.Name, i, m.Restrictions)
+			}
+		}
 	}
 }
 

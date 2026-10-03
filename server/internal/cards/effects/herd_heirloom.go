@@ -11,8 +11,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 damage to a player, draw a card.'"
 //
 // The mana ability is Ancient Ziggurat's restricted-spend shape
-// (ManaRestrictType("Creature")) with a full colour pipe instead of a
-// fixed colour.
+// (ManaRestrictCast + ManaRestrictType("Creature")) with a full colour
+// pipe instead of a fixed colour. Both tags, because they AND: the type
+// tag alone also matches an ACTIVATION whose source is a creature
+// (ManaSpendForAbility reads the source's types), and "only to cast a
+// creature spell" does not pay a creature's ability (#2059).
 //
 // The second ability is a duration grant (ADR 0093 PR 4, #1584): the
 // target gains trample and a catalog bundle carrying the draw trigger,
@@ -32,7 +35,7 @@ func init() {
 		ManaAbilities: []ManaAbility{{
 			Cost:         ManaAbilityCost{Tap: true},
 			Produced:     "{W|U|B|R|G}",
-			Restrictions: []string{ManaRestrictType("Creature")},
+			Restrictions: []string{ManaRestrictCast, ManaRestrictType("Creature")},
 			Label:        "Add one mana of any color. Spend this mana only to cast a creature spell",
 		}},
 		Grants: []AbilityGrant{{
