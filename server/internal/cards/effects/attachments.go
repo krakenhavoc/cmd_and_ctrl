@@ -480,7 +480,11 @@ func untapAllLandsControlledBy(g *game.Game, controller uuid.UUID, ctx *Context)
 // CR 305.7 is three clauses and this is all three:
 //
 //   - the permanent's old land types go and the named basic land
-//     types replace them — the type SET, so game.SetSubtypes;
+//     types replace them, and every OTHER subtype stays (CR 205.1a:
+//     "replaces any existing subtypes from the appropriate set"), so
+//     game.Characteristic.SetLandSubtypes. A Dryad Arbor under Magus
+//     of the Moon is a Mountain Dryad (ADR 0109 §1 decision 3; until
+//     then this called SetSubtypes and the Dryad went too);
 //   - it loses the abilities generated from its rules text —
 //     RemovesAbilities, and crucially in LAYER 4, because that is
 //     where the type change is;
@@ -503,7 +507,14 @@ func untapAllLandsControlledBy(g *game.Game, controller uuid.UUID, ctx *Context)
 // `types` is the whole card-type line the effect writes ("Land" for
 // Song, which replaces artifact, creature and planeswalker; nil for
 // Magus of the Moon, which changes only the subtypes of permanents
-// that are lands already).
+// that are lands already). When it is set, the subtypes that belonged
+// to the card types it takes away go with them (CR 205.1a: "If an
+// object's card type is removed, the subtypes correlated with that
+// card type will remain if they are also the subtypes of a card type
+// the object currently has; otherwise, they are also removed"). The
+// only card type any printed card writes here is a lone "Land", so
+// what is left is the land types, which the type set then replaces:
+// a Song'd Llanowar Elves is a Forest, not a Forest Elf Druid.
 func SetsBasicLandType(applies func(target *game.Card, g *game.Game, source *game.Card) bool, types []string, subtypes []string) game.StaticAbility {
 	return game.StaticAbility{
 		Layer:            game.Layer4Type,
@@ -512,8 +523,9 @@ func SetsBasicLandType(applies func(target *game.Card, g *game.Game, source *gam
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
 			if len(types) > 0 {
 				c.Types = append([]string(nil), types...)
+				c.SetSubtypes(nil)
 			}
-			c.SetSubtypes(subtypes)
+			c.SetLandSubtypes(subtypes)
 		},
 	}
 }

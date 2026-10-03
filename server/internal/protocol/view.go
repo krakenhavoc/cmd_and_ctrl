@@ -1677,6 +1677,14 @@ type CardView struct {
 	// regenerated this turn (ADR 0108 §2 decision 5, CR 701.19c):
 	// Incinerate's or Whippoorwill's mark. Public; battlefield only.
 	CantBeRegenerated bool `json:"cant_be_regenerated,omitempty"`
+	// LandTypeEffects are the resolved effects changing this
+	// permanent's land types, oldest first (ADR 0109 §1 decision 7):
+	// Tidal Warrior's "becomes an Island until end of turn", Navigator's
+	// Compass's "in addition to its other types". The type line shows
+	// the result; this says why and for how long. A static type change
+	// (Spreading Seas, Blood Moon) is not listed. Public; battlefield
+	// only; omitted when empty.
+	LandTypeEffects []LandTypeEffectView `json:"land_type_effects,omitempty"`
 	// FaceDown reflects Card.FaceDown — a card flipped face-down
 	// by morph / manifest / mutate-bottom (CR 708). Distinct from
 	// KnownByYou: a face-down creature is face-down to everyone
@@ -2317,6 +2325,22 @@ type CardView struct {
 // untap step RIGHT NOW: an UntapStepRestriction applies to it, or
 // (#1313) a live "for as long as" hold does. Next lists one-shot
 // next-untap-step markers only; a hold is not a "next step" statement.
+// LandTypeEffectView is one entry of CardView.LandTypeEffects: "Island
+// until end of turn — Tidal Warrior".
+type LandTypeEffectView struct {
+	// Types are the land types the effect gives ("Island").
+	Types []string `json:"types"`
+	// InAddition is "in addition to its other types" (CR 205.1b): the
+	// land keeps its own. False is CR 305.7's replacement: its old land
+	// types and its rules-text abilities are gone.
+	InAddition bool `json:"in_addition,omitempty"`
+	// Until is the duration in the card's words ("until end of turn",
+	// "until Bob's next turn"); absent for an effect with none.
+	Until string `json:"until,omitempty"`
+	// Source names the card whose effect it is.
+	Source string `json:"source,omitempty"`
+}
+
 type NoUntapView struct {
 	Static bool     `json:"static,omitempty"`
 	Next   []string `json:"next,omitempty"`
@@ -3675,6 +3699,7 @@ func ViewOfGame(g *game.Game) GameView {
 		stampCombatTargets(g, &view)
 		stampNoUntap(g, &view.Battlefield)
 		stampDeathMarks(g, &view.Battlefield)
+		stampLandTypeEffects(g, &view.Battlefield)
 		stampDefenderRefusals(g, &view.Battlefield)
 		view.legalBySeat, view.legalActionsBySeat = enumerateLegalMoves(g)
 		// S31 sub-PR 0: the public log resolves card names and knower
@@ -6266,6 +6291,27 @@ func stampDeathMarks(g *game.Game, view *ZoneView) {
 		id := g.Battlefield.Cards[i].InstanceID
 		view.Cards[i].ExiledIfItDies = g.ExileIfItWouldDieLabels(id)
 		view.Cards[i].CantBeRegenerated = g.PermanentCantBeRegeneratedForEffect(id)
+	}
+}
+
+// stampLandTypeEffects is ADR 0109 §1's chip: the resolved effects
+// setting or adding a land type on each battlefield permanent.
+func stampLandTypeEffects(g *game.Game, view *ZoneView) {
+	if g == nil || g.Battlefield == nil || view == nil || len(g.ScopedEffects) == 0 {
+		return
+	}
+	for i := range view.Cards {
+		if i >= len(g.Battlefield.Cards) {
+			break
+		}
+		for _, e := range g.LandTypeEffectsForEffect(g.Battlefield.Cards[i].InstanceID) {
+			view.Cards[i].LandTypeEffects = append(view.Cards[i].LandTypeEffects, LandTypeEffectView{
+				Types:      append([]string(nil), e.Types...),
+				InAddition: e.InAddition,
+				Until:      e.Until,
+				Source:     e.Source,
+			})
+		}
 	}
 }
 

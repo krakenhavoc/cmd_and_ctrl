@@ -287,6 +287,19 @@ func TapAnotherUntapped(label string, preds ...CardPredicate) game.AbilityCost {
 	}}
 }
 
+// TapAnUntapped is "Tap an untapped <permanent> you control" as a COST
+// with no "another": the source pays it with itself when the predicates
+// admit it (Zombie Trailblazer's "Tap an untapped Zombie you control").
+// Like TapAnotherUntapped it is not the {T} symbol (CR 302.6), so a
+// permanent that arrived this turn may pay it, and it does not target.
+func TapAnUntapped(label string, preds ...CardPredicate) game.AbilityCost {
+	return game.AbilityCost{TapOthers: &game.TapOthersCost{
+		Count:  1,
+		Filter: TargetPermanent(label, preds...),
+		Label:  label,
+	}}
+}
+
 // TapXUntapped is "Tap X untapped <permanents> you control" as a
 // cost (#1421). The picked count is the activation's announced X;
 // there is no {X} mana symbol and therefore no extra mana demand.

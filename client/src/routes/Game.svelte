@@ -5,7 +5,7 @@
   import { recordClientError } from "../lib/clientErrors";
   import { describeThrown } from "../lib/guardedStore";
   import { navigate } from "../lib/router";
-  import { isPracticeGame } from "../lib/practiceTable";
+  import { isPracticeGame, practiceTable } from "../lib/practiceTable";
   import { session } from "../lib/session";
   import { isAdmin as isAdminSession } from "../lib/admin";
   import { seatColor } from "../lib/colors";
@@ -40,6 +40,7 @@
   import AttackDeclarationModal from "../lib/components/board/AttackDeclarationModal.svelte";
   import GameLogPanel from "../lib/components/board/GameLogPanel.svelte";
   import ActionDock from "../lib/components/board/ActionDock.svelte";
+  import TutorialCoach from "../lib/components/tutorial/TutorialCoach.svelte";
   import DockRequest from "../lib/components/board/DockRequest.svelte";
   import GameMenu from "../lib/components/board/GameMenu.svelte";
   import type { GameMenuOptions } from "../lib/gameMenu";
@@ -907,6 +908,20 @@
   function onDockSize(w: number, h: number): void {
     if (w !== dockSize.w || h !== dockSize.h) dockSize = { w, h };
   }
+  // ---- The tutorial's coach card (ADR 0076 §2.3, #1079) ----
+  // Mounted on this tab's practice table only, beside the dock (it needs
+  // the dock's live size on a phone, where it stacks on the dock bar).
+  // Its live size goes out as --coach-w / --coach-h, which the viewer's
+  // own panel turns into an empty cell at the left of its bottom row,
+  // so nothing of the board sits under the card. While it is hidden
+  // (Skip tutorial, Finish) or on any other table its size is 0 and the
+  // layout is exactly what it is without a tutorial.
+  const coachMounted = $derived(dockShown && $practiceTable?.gameID === gameID);
+  let coachSize = $state({ w: 0, h: 0 });
+  function onCoachSize(w: number, h: number): void {
+    if (w !== coachSize.w || h !== coachSize.h) coachSize = { w, h };
+  }
+  const coachShown = $derived(coachMounted && coachSize.w > 0);
   // PR 6: an open sheet's width (0 when none), published as --sheet-w
   // with `.sheet-open`, so the hover zoom moves left of the sheet (§4).
   let sheetW = $state(0);
@@ -1428,6 +1443,9 @@
   class:has-dock={dockShown}
   style:--dock-w={dockShown ? `${dockSize.w}px` : undefined}
   style:--dock-h={dockShown ? `${dockSize.h}px` : undefined}
+  class:has-coach={coachShown}
+  style:--coach-w={coachShown ? `${coachSize.w}px` : undefined}
+  style:--coach-h={coachShown ? `${coachSize.h}px` : undefined}
   class:sheet-open={dockShown && sheetW > 0}
   style:--sheet-w={dockShown && sheetW > 0 ? `${sheetW}px` : undefined}
 >
@@ -1631,6 +1649,7 @@
           onDeclareBlock={declareBlockTarget}
           onDeclareAttackers={declareGroupAttackers}
           docked={dockShown}
+          coached={coachShown}
           {beatsPrimeKey}
           legal={legalHighlights}
           legalGate={legalActions}
@@ -1859,6 +1878,9 @@
           onSheet={onDockSheet}
           menu={menuOptions}
         />
+        {#if coachMounted}
+          <TutorialCoach {view} {viewerID} onSize={onCoachSize} />
+        {/if}
       {/if}
       {#if viewerNeedsToDecide && dockShown}
         <!-- ADR 0111 PR 6 (decision 2): the opening hand is a sheet that
@@ -2287,6 +2309,11 @@
     }
     section.has-dock .play-area {
       padding-bottom: calc(var(--dock-h, 0px) + 6px);
+    }
+    /* ADR 0076 §2.3 (amended 2026-10-02): the tutorial's coach strip
+       stacks on the dock bar, so the board ends above both. */
+    section.has-dock.has-coach .play-area {
+      padding-bottom: calc(var(--dock-h, 0px) + var(--coach-h, 0px) + 12px);
     }
   }
   .play-area {
