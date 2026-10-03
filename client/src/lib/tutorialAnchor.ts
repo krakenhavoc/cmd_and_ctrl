@@ -60,8 +60,8 @@ export function anchorRect(anchors: Anchor[], root: ParentNode = document): Anch
   for (const a of anchors) {
     const el = resolveAnchor(a, root);
     if (!el) continue;
-    const box = el.getBoundingClientRect();
-    if (box.width <= 0 || box.height <= 0) continue;
+    const box = visibleBox(el);
+    if (!box) continue;
     l = Math.min(l, box.left);
     t = Math.min(t, box.top);
     r = Math.max(r, box.right);
@@ -69,6 +69,42 @@ export function anchorRect(anchors: Anchor[], root: ParentNode = document): Anch
   }
   if (l === Infinity) return null;
   return { left: l, top: t, width: r - l, height: b - t };
+}
+
+const CLIPS = new Set(["hidden", "clip", "auto", "scroll"]);
+
+/**
+ * visibleBox is the part of an element its scrolling or clipping
+ * ancestors let show, or null when none of it shows. A creature card
+ * is taller than the creature row on a short panel, and the row
+ * scrolls; the hole goes round the part of the card a player can see
+ * and click, not the part scrolled out under the lands.
+ */
+function visibleBox(
+  el: Element,
+): { left: number; top: number; right: number; bottom: number } | null {
+  const box = el.getBoundingClientRect();
+  let { left, top, right, bottom } = box;
+  if (box.width <= 0 || box.height <= 0) return null;
+  for (let p = el.parentElement; p; p = p.parentElement) {
+    const cs = getComputedStyle(p);
+    // The longhands, or the shorthand where an engine leaves them empty.
+    const [ox, oy = ox] = (cs.overflow || "").split(/\s+/);
+    const cx = CLIPS.has(cs.overflowX || ox);
+    const cy = CLIPS.has(cs.overflowY || oy);
+    if (!cx && !cy) continue;
+    const pb = p.getBoundingClientRect();
+    if (cx) {
+      left = Math.max(left, pb.left);
+      right = Math.min(right, pb.right);
+    }
+    if (cy) {
+      top = Math.max(top, pb.top);
+      bottom = Math.min(bottom, pb.bottom);
+    }
+  }
+  if (right <= left || bottom <= top) return null;
+  return { left, top, right, bottom };
 }
 
 /** sameRect compares two rects to the half pixel, to skip no-op updates. */
