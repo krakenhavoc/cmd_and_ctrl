@@ -22,16 +22,15 @@ import (
 // ability triggered — the spell may be countered before it resolves.
 // All three are life LOSS, not damage.
 //
-// Sandbox simplification, declared: the WORLD supertype's world rule
-// (CR 704.5k — when two world permanents are on the battlefield, all
-// but the newest go to the graveyard) is not modelled, the gap Caverns
-// of Despair and Concordant Crossroads already declare.
+// A world permanent: the world rule (CR 704.5k, ADR 0109 §8) puts it
+// into its owner's graveyard when a newer one enters.
+//
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID:     "b9e61e68-9dc8-4295-95dc-dd66a0907c8c",
 		Name:         "Forsaken Wastes",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The world rule isn't applied — it isn't put into the graveyard when another world enchantment enters."},
+		Completeness: CompletenessFull,
 		CantGainLife: PlayersCantGainLife(),
 		Triggered: []game.TriggeredAbility{
 			On(game.EventBeginUpkeep, func(ev game.Event, _ *game.Card, _ game.Characteristic, _ *game.Game) bool {

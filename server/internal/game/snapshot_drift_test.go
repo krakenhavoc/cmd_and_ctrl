@@ -242,6 +242,9 @@ var gameFields = plan(
 	"ScopedEffects", carried, "GameSnapshot.ScopedEffects — ADR 0041 phase 3's data record for a continuous effect with a duration (#1497)",
 	"scopedEffectMemo", rebuilt, "the layer-pass adapter's memo over ScopedEffects (#1558); a restored game's first recompute builds it",
 	"scopedEffectSeq", rebuilt, "the last ScopedEffect.Seq handed out (ADR 0041 P8); restore sets it to the largest Seq the carried records hold",
+	// ADR 0109 §8: the world rule's entry order (entry_ordinal.go).
+	"entryOrdinalSeq", rebuilt, "the last Card.EntryOrdinal handed out; restore sets it to the largest ordinal a carried permanent holds",
+	"entryOrdinalShared", dropped, "not game state: the ordinal one simultaneous entry is announcing its cards under, set and cleared inside one mutation, so it is zero between actions",
 	"testReplacements", dropped, "test-only injection slot; production has no path to it",
 	"replacementsAppliedThisEvent", dropped, "non-empty between actions only for an event paused on a replacement prompt, and that prompt's resume frame is counted in ContinuationCensus.ChoiceResumeFrames; Clone deep-copies it for undo (#808)",
 	"nextReplacementEventID", dropped, "mints keys for the map above, which restores empty",
@@ -328,6 +331,8 @@ var cardFields = plan(
 	"FaceTurnedAt", carried, "",
 	"KnownBy", carried, "",
 	"EnteredBattlefieldAt", carried, "",
+	// ADR 0109 §8: the entry order the world rule reads (CR 704.5k).
+	"EntryOrdinal", carried, "",
 	// #936 / CR 400.7: the object's serial number, and the epoch half
 	// of every per-object tally key. Carried, not rebuilt — nothing
 	// can re-derive how many times a card has changed zones, and a

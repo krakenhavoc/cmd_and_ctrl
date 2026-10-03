@@ -377,6 +377,25 @@ type Card struct {
 	// game's lifetime. Added in S16 sub-PR 3.
 	EnteredBattlefieldAt int64
 
+	// EntryOrdinal orders battlefield ENTRIES (ADR 0109 §8): taken
+	// from Game.entryOrdinalSeq once per move that puts permanents onto
+	// the battlefield, so every card one simultaneous entry puts there
+	// shares it (a Replenish) and every later entry has a strictly
+	// larger one. EnteredBattlefieldAt cannot answer that question — it
+	// is a wall clock, neither unique nor shared by a simultaneous
+	// move.
+	//
+	// Its reader is the world rule (CR 704.5k): the world permanent
+	// that has had the supertype for the shortest time is the one that
+	// entered most recently, since nothing grants the supertype, and a
+	// tie for it puts them all into their owners' graveyards. Zeroed
+	// when the permanent leaves, with EnteredBattlefieldAt. Zero on the
+	// battlefield means "never stamped": a permanent restored from a
+	// file written before the field existed, which the world rule then
+	// orders by EnteredBattlefieldAt, or a test fixture pushed straight
+	// onto the slice.
+	EntryOrdinal int64
+
 	// ObjectEpoch counts how many times this card has changed zones,
 	// and so is the identity of the OBJECT rather than of the card
 	// (CR 400.7: "an object that moves from one zone to another

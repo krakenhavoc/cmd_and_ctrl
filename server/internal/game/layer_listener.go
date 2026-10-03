@@ -545,6 +545,10 @@ func stampBattlefieldEntryLocked(g *Game, cardID uuid.UUID) {
 	for i := range g.Battlefield.Cards {
 		if g.Battlefield.Cards[i].InstanceID == cardID {
 			g.Battlefield.Cards[i].EnteredBattlefieldAt = now
+			// ADR 0109 §8: the entry's ordinal — shared by every card
+			// of one simultaneous entry, larger than every earlier
+			// one. The world rule reads it (CR 704.5k).
+			g.Battlefield.Cards[i].EntryOrdinal = g.entryOrdinalForStampLocked()
 			// S18 sub-PR 2: every battlefield entry is stamped
 			// unconditionally. This flag is a bare "entered this
 			// turn" marker, NOT the verdict — both the creature

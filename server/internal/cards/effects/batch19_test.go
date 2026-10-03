@@ -485,8 +485,10 @@ func TestB19RuthlessTechnomancerTradesACreatureForTreasures(t *testing.T) {
 	if !g.Battlefield.Contains(bear) || b16CountNamed(g, "Treasure") != 5 {
 		t.Error("declining sacrifices nothing and makes nothing")
 	}
-	if spec, _ := Lookup(b19RuthlessTechnomancerOracle); spec.Completeness != CompletenessCaveats || len(spec.Activated) != 0 {
-		t.Error("the omitted reanimation ability must be declared")
+	// ADR 0109 §9: the reanimation ability is registered now; only the
+	// enter trigger's caveat remains.
+	if spec, _ := Lookup(b19RuthlessTechnomancerOracle); spec.Completeness != CompletenessCaveats || len(spec.Activated) != 1 || len(spec.Caveats) != 1 {
+		t.Error("the reanimation ability is registered and only the trigger's caveat remains")
 	}
 }
 

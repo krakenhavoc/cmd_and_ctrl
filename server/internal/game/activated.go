@@ -1292,8 +1292,10 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	}
 	xSteps := resolveStepCountsFromX(steps, params.XValue)
 	// #1559: "with mana value X or less" — X is announced before
-	// targets (CR 601.2b / 602.2b), so the bound is known here.
-	bindStepsX(steps, params.XValue)
+	// targets (CR 601.2b / 602.2b), so the bound is known here. ADR
+	// 0109 §9: and so is the number of counters the cost removes,
+	// validated above, which Simic Manipulator's power bound reads.
+	bindStepsBound(steps, AnnouncedBound{X: params.XValue, CountersRemoved: counters.total})
 	// #1657: a divided amount read off the board, fixed at activation.
 	g.bindDivideAmountsLocked(steps, DivideAmountArgs{Controller: playerID, Source: cardID})
 	params.Targets = assignAnnouncedSlots(steps, params.Targets)
@@ -1524,6 +1526,17 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// is where CR 702.29c says it is.
 	if err := g.payAbilityDiscardsLocked(playerID, cardID, ab, discards, params.commanderAnswers); err != nil {
 		return err
+	}
+	// ADR 0109 §8 (#1862), CR 400.7j: "the discarded card" — Land's
+	// Edge's "if the discarded card was a land card", Volrath's "the
+	// discarded card's mana value". Recorded as the spell path records
+	// an additional cost's discards (PaidCost.Discarded), in the order
+	// named: cycling's "Discard this card" first when the cost prints
+	// it, then the cards the activator named. The cards keep their
+	// instance IDs wherever the discard put them (a madness card is in
+	// exile), so an effect finds them with LookupCardForEffect.
+	if len(discards) > 0 {
+		paid.Discarded = append([]uuid.UUID(nil), discards...)
 	}
 	// #1297: the exile-N-cards component, beside the discards and for
 	// the same reason — it moves cards, never the source. The one exit
