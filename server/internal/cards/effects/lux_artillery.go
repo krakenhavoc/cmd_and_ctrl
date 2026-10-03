@@ -20,21 +20,28 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // stops the damage. The Artillery is the damage source, so a
 // Fog-class shield stops it.
 //
-// SANDBOX SIMPLIFICATION — the sunburst grant is NOT implemented.
-// Sunburst counts the colours of mana spent to cast the spell, and
-// the cost engine discards the tokens it pays with and reports
-// nothing about their colours — the same missing seam that keeps
-// Scaled Nurturer's rider and converge out of the catalog. An
-// artifact creature cast with the Artillery out enters with no
-// sunburst counters. Weaker than printed, never stronger: the
-// end-step half, the card's payoff, is whole.
+// The sunburst half (ADR 0109 §11, #1552) is a cast trigger that gives
+// the SPELL sunburst on the stack (ThatSpellGains). The spell carries it
+// onto the permanent (CR 400.7a), and the engine counts it as the
+// permanent enters, like a printed one: an Etched Oracle cast under the
+// Artillery has two instances and counts the colours twice
+// (CR 702.44d). A spell countered before the trigger resolves gains
+// nothing.
+//
+// The grant arrives AFTER the spell's costs are paid, so the payment is
+// not spread across colours for it — correct, because the colours are
+// already spent by then. The one declared simplification is the
+// paid-cost record's: with strict mana off the engine never saw what
+// paid, so the spell counts no colours (ADR 0068 §3).
 func init() {
 	Register(Spec{
 		OracleID:     "cbd76b22-d04e-48e7-bcab-c7f5466d67d8",
 		Name:         "Lux Artillery",
 		Completeness: CompletenessCaveats,
-		Caveats:      []string{"Artifact creature spells you cast don't gain sunburst — only the end-step 10 damage at thirty counters works."},
+		Caveats:      []string{"With strict mana off, the game doesn't track which mana you spent, so the artifact creatures you cast get no counters from it."},
 		Triggered: []game.TriggeredAbility{
+			WheneverYouCast(And(Artifact(), Creature()), "Lux Artillery — it gains sunburst",
+				Do(ThatSpellGains{Keywords: []string{game.KeywordSunburst}})),
 			On(game.EventBeginEndStep, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b35EndStepAndThirtyCounters(ev, source, g)
 			}, "Lux Artillery — 10 damage to each opponent", b35TenDamageToEachOpponentIfThirtyCounters),

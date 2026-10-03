@@ -14,13 +14,14 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // paid (#761), and the draw ability spends the counters it made
 // (#625's self form, now on a card that can actually make four).
 //
-// Sunburst (CR 702.44a) is SunburstCounters, and since #1002 it is a
-// CR 614.1c entry clause like Hangarback Walker's X rather than an
-// OnResolve: the engine seeds it onto the entry event off the
-// resolving stack item, so the counters are part of the ENTRY. They
-// are on the permanent before EventETB, a doubler applies, and a
-// "whenever one or more counters are put on a permanent you control"
-// payoff sees them.
+// Sunburst (CR 702.44a) is a keyword since ADR 0109 §11 (#1552): the
+// engine counts the instances on the resolving spell and seeds the
+// counters onto the entry event off the resolving stack item, so the
+// counters are part of the ENTRY. They are on the permanent before
+// EventETB, a doubler applies, and a "whenever one or more counters are
+// put on a permanent you control" payoff sees them. A second instance —
+// Lux Artillery's "it gains sunburst" — counts the colours again
+// (CR 702.44d).
 //
 // One declared simplification is left, and it is the paid-cost
 // record's rather than the entry's: with strict mana off the engine
@@ -42,9 +43,7 @@ func init() {
 		Completeness:        CompletenessCaveats,
 		Caveats:             []string{"With strict mana off, the game doesn't track which mana you spent, so it enters with no counters at all."},
 		WantsDistinctColors: true,
-		EntersWithCountersFromCast: []game.EntryCountersFromCast{
-			SunburstCounters(game.CounterPlusOne),
-		},
+		PrintedKeywords:     []string{game.KeywordSunburst},
 		Activated: []ActivatedAbility{{
 			Label: "{1}, Remove four +1/+1 counters from this creature: Target player draws three cards.",
 			Cost: Plus(

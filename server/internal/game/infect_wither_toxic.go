@@ -194,6 +194,11 @@ func KeywordIsCumulative(kw string) bool {
 	if kw == KeywordEvolve {
 		return true
 	}
+	// Sunburst (CR 702.44d, #1552): "if an object has multiple
+	// instances of sunburst, each one works separately".
+	if kw == KeywordSunburst {
+		return true
+	}
 	_, ok := ToxicValue(kw)
 	return ok
 }

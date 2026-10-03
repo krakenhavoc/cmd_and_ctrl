@@ -429,7 +429,7 @@ var mechanics = []Mechanic{
 		},
 		Evidence:   "the spec declares WantsDistinctColors, the colour-spreading payment #761 added",
 		Confidence: Exact,
-		Adopt:      `WantsDistinctColors: true plus ctx.ColorsSpentCount() (converge) or SunburstCounters(kind) in OnResolve — see effects/mana_spent.go`,
+		Adopt:      `WantsDistinctColors: true plus ctx.ColorsSpentCount() (converge) or PrintedKeywords: []string{game.KeywordSunburst} (sunburst, a keyword since ADR 0109 §11) — see effects/mana_spent.go`,
 	},
 	{
 		// #761's other reader, and a Heuristic one because there is

@@ -171,13 +171,21 @@ func spellStaticIsLiveLocked(g *Game) bool {
 }
 
 // GrantKeywordsToSpellForEffect gives the spell `spellID` on the stack
-// the keywords named, for as long as it is that object on the stack —
-// "that spell gains rebound" (Taigam, Ojutai Master; Ojer Pakpatiq,
-// Deepest Epoch). An ability-adding effect from a resolving ability
-// (CR 611.2, 613.1f), written as a ScopedEffect pinned to the spell:
-// data, so it survives a restore point, and its duration ends when the
-// object leaves the stack (CR 400.7). A permanent spell hands it to the
-// permanent it becomes (CR 400.7a, inheritSpellControlLocked).
+// the keywords named, for the duration `d`, and for no longer than it is
+// that object on the stack — "that spell gains rebound" (Taigam, Ojutai
+// Master; Ojer Pakpatiq, Deepest Epoch), "it gains sunburst" (Lux
+// Artillery), "it gains haste until end of turn" (Tyvar Kell's emblem,
+// Generator Servant's mana). An ability-adding effect (CR 611.2,
+// 613.1f), written as a ScopedEffect pinned to the spell: data, so it
+// survives a restore point, and it ends when the object leaves the stack
+// (CR 400.7) or when `d` does, whichever is first.
+//
+// A permanent spell hands it to the permanent it becomes (CR 400.7a,
+// inheritSpellControlLocked), and the duration goes with it (ADR 0109
+// §11 decision 3): "haste until end of turn" on the spell is haste until
+// end of turn on the creature, and an indefinite grant lasts as long as
+// the permanent does. Pass IndefiniteDuration() for a grant that names
+// no duration.
 //
 // Reports false, registering nothing, when `spellID` is not a spell on
 // the stack — it resolved or was countered before the granting ability
@@ -188,7 +196,7 @@ func spellStaticIsLiveLocked(g *Game) bool {
 //
 // Caller must hold g.mu (write). Effects call it from inside the
 // resolution frame, which already holds it.
-func (g *Game) GrantKeywordsToSpellForEffect(sourceID, spellID uuid.UUID, keywords []string, label string) bool {
+func (g *Game) GrantKeywordsToSpellForEffect(sourceID, spellID uuid.UUID, keywords []string, d Duration, label string) bool {
 	if len(keywords) == 0 {
 		return false
 	}
@@ -199,7 +207,7 @@ func (g *Game) GrantKeywordsToSpellForEffect(sourceID, spellID uuid.UUID, keywor
 	if !g.registerScopedEffectLocked(sourceID,
 		[]AffectedObject{PinStackObject(spellID, card.ObjectEpoch)},
 		[]Mod{AddKeywordsMod(keywords...)},
-		g.PinnedToStack(IndefiniteDuration(), spellID), label, timeNowUnixNano()) {
+		g.PinnedToStack(d, spellID), label, timeNowUnixNano()) {
 		return false
 	}
 	g.RecomputeLayersIfStaleLocked()

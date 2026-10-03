@@ -83,7 +83,7 @@ func grantRebound(t *testing.T, g *Game, spell uuid.UUID) bool {
 	t.Helper()
 	var ok bool
 	g.WithWriteLock(func() {
-		ok = g.GrantKeywordsToSpellForEffect(uuid.New(), spell, []string{KeywordRebound}, "test — that spell gains rebound")
+		ok = g.GrantKeywordsToSpellForEffect(uuid.New(), spell, []string{KeywordRebound}, IndefiniteDuration(), "test — that spell gains rebound")
 	})
 	return ok
 }
@@ -408,7 +408,7 @@ func TestAKeywordGivenToAPermanentSpellCarriesOntoThePermanent(t *testing.T) {
 	advanceTo(t, g, StepPrecombatMain)
 	item := castSpellForControlTest(t, g, me, "Creature — Bear")
 	g.WithWriteLock(func() {
-		if !g.GrantKeywordsToSpellForEffect(uuid.New(), item.ID, []string{"flying"}, "test — that spell gains flying") {
+		if !g.GrantKeywordsToSpellForEffect(uuid.New(), item.ID, []string{"flying"}, IndefiniteDuration(), "test — that spell gains flying") {
 			t.Fatal("GrantKeywordsToSpellForEffect refused a creature spell")
 		}
 	})

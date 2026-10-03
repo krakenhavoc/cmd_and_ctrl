@@ -844,17 +844,18 @@ func TestB30SatoruDrawsWhenCreaturesArriveUncast(t *testing.T) {
 		t.Fatalf("a cast Satoru draws nothing: %d → %d", hand, me.Hand.Size())
 	}
 	assertKeywords(t, g, satoru, "menace")
+	// ADR 0109 §11: Satoru reads the whole event batch (CR 603.2c), and a
+	// direct engine call outside a resolution shares the batch of the
+	// last one — so each arrival below happens in a step of its own, as
+	// it would in play, rather than alongside Satoru's own cast.
+	batch01AdvanceToStepOf(t, g, 0, game.StepBeginCombat)
 	dead := b17GraveyardCard(me, "Dead Bear", "Creature — Bear", "{1}{G}")
 	b30Reanimate(t, g, dead, me.ID)
 	passPriorityAroundTable(t, g)
 	if me.Hand.Size() != hand+1 {
 		t.Errorf("a reanimated creature was not cast: draw: %d → %d", hand, me.Hand.Size())
 	}
-	castCatalogSpell(t, g, "Cast Bear", "Creature — Bear", "", nil)
-	passPriorityAroundTable(t, g)
-	if me.Hand.Size() != hand+1 {
-		t.Errorf("a cast creature draws nothing: %d", me.Hand.Size())
-	}
+	batch01AdvanceToStepOf(t, g, 0, game.StepEndCombat)
 	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(me.ID, RedGoblinToken(), 2) })
 	passPriorityAroundTable(t, g)
 	if me.Hand.Size() != hand+1 {
@@ -866,19 +867,29 @@ func TestB30SatoruDrawsWhenCreaturesArriveUncast(t *testing.T) {
 	if me.Hand.Size() != hand+1 {
 		t.Errorf("an opponent's reanimation draws nothing: %d", me.Hand.Size())
 	}
+	// A creature cast with its payment unrecorded (strict mana off) is
+	// not known to have cost nothing, and draws nothing.
+	batch01AdvanceToStepOf(t, g, 0, game.StepPostcombatMain)
+	castCatalogSpell(t, g, "Cast Bear", "Creature — Bear", "", nil)
+	passPriorityAroundTable(t, g)
+	if me.Hand.Size() != hand+1 {
+		t.Errorf("a cast creature draws nothing: %d", me.Hand.Size())
+	}
 	// Satoru itself arriving uncast draws.
+	batch01AdvanceToStepOf(t, g, 0, game.StepEnd)
 	g.WithWriteLock(func() { _ = g.BounceToHandForEffect(satoru) })
 	me.Hand.Remove(satoru)
 	me.Graveyard.PushTop(game.Card{InstanceID: satoru, Name: "Satoru, the Infiltrator", TypeLine: "Legendary Creature — Human Ninja Rogue",
 		OracleID: b30SatoruOracle, Owner: me.ID, Controller: me.ID})
 	hand = me.Hand.Size()
 	b30Reanimate(t, g, satoru, me.ID)
+	g.RunStateChecksForTest()
 	passPriorityAroundTable(t, g)
 	if me.Hand.Size() != hand+1 {
 		t.Errorf("a reanimated Satoru draws for itself: %d → %d", hand, me.Hand.Size())
 	}
 	if spec, _ := Lookup(b30SatoruOracle); spec.Completeness != CompletenessCaveats {
-		t.Error("the no-mana-spent half is a declared gap")
+		t.Error("the strict-mana half is a declared gap")
 	}
 }
 
