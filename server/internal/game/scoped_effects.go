@@ -1073,6 +1073,11 @@ func (g *Game) appendScopedEffectLocked(sourceID uuid.UUID, affected []AffectedO
 	if problem := stackPinProblem(affected, mods); problem != "" {
 		panic(fmt.Sprintf("game: scoped effect %q %s", label, problem))
 	}
+	// ADR 0109 Shared machinery 2: a duration restore would refuse is a
+	// programming error at registration, caught by the first test.
+	if problem := d.Problem(); problem != "" {
+		panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
+	}
 	e := ScopedEffect{
 		Affected:  append([]AffectedObject(nil), affected...),
 		Scope:     scope,

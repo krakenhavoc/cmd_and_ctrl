@@ -90,7 +90,7 @@ func (s GrantAbilitiesFor) Apply(ctx *Context) error {
 		return fmt.Errorf("effects: GrantAbilitiesFor %q names no ability bundle", s.Label)
 	}
 	d := s.Duration
-	if d == (game.Duration{}) {
+	if d.IsZero() {
 		d = DurationUntilEndOfTurn(ctx)
 	}
 	mods := make([]game.Mod, 0, len(s.Also)+1)

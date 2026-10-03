@@ -875,6 +875,15 @@ func (g *Game) recomputeLayersLocked() {
 	// layer inputs, so this does not touch the layer version.
 	g.sweepUntapHoldsLocked()
 	g.lastResolvedVersion.Store(g.layerVersion.Load())
+	// ADR 0109 §3: a duration that compares powers (Old Man of the Sea)
+	// reads this pass's OUTPUT, which the sweep at the top of it could
+	// not see. When one has stopped holding, the version is bumped AFTER
+	// the store, so the next read runs a pass whose sweep ends it — the
+	// same "bump after the store" the attack rewrite below uses. That
+	// pass finds the record gone and settles.
+	if g.powerConditionsFailLocked() {
+		g.layerVersion.Add(1)
+	}
 	// #1387 (ADR 0045 Decision 37): CR 506.4's type clause. An
 	// attacked permanent this pass left as neither a planeswalker nor
 	// a battle is removed from combat, and its attackers attack nothing

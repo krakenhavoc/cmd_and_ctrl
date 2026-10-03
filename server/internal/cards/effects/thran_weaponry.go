@@ -27,8 +27,8 @@ func init() {
 			Cost:  Plus(ManaCost("{2}"), TapCost()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
-				d, ok := g.ForAsLongAsSourceTappedDuration(ctx.Source())
-				if !ok || ctx.isNewSourceObjectAsThis(ctx.Source()) {
+				d, ok := DurationWhileThisRemainsTapped(ctx)
+				if !ok {
 					return nil
 				}
 				return ScopedEffectFor{

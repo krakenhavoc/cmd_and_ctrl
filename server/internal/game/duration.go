@@ -1,6 +1,11 @@
 package game
 
-import "github.com/google/uuid"
+import (
+	"fmt"
+	"reflect"
+
+	"github.com/google/uuid"
+)
 
 // duration.go is the CR 611.2 duration model (ADR 0063, #755).
 //
@@ -169,6 +174,32 @@ const (
 	// into snapshot files.
 	WhileSourceRemainsTapped
 
+	// WhilePinnedHasCounter — "for as long as that <object> has a
+	// <kind> counter on it" (ADR 0109 §2, #1604): Aquitect's Will's
+	// flood counter, Shield Broker's shield counter. It reads the
+	// PINNED object, not the source: the pinned permanent must still be
+	// on the battlefield as the same object (CR 400.7) with at least one
+	// counter of Duration.CounterKind. The layer listener bumps the
+	// layer version on EventCounterPlaced, which also fires on removal,
+	// so the next sweep sees the last counter go. Once it has gone the
+	// effect is over for good (CR 611.2b), even if a counter of that
+	// kind is put on the permanent again later.
+	WhilePinnedHasCounter
+
+	// WhilePinnedRemainsTapped — "for as long as that creature remains
+	// tapped" (ADR 0109 §3, #1894): Zygon Infiltrator's copy lasts while
+	// the creature it tapped stays tapped. WhileSourceRemainsTapped
+	// about the pinned object instead of the source.
+	WhilePinnedRemainsTapped
+
+	// WhilePinnedPowerAtMostSource — "and that creature's power remains
+	// less than or equal to this creature's power" (ADR 0109 §3, Old Man
+	// of the Sea). Both powers are read live, from the layer pass, and
+	// the source must still be the object the duration names. The
+	// recompute re-checks it after every pass, because a power change is
+	// a layer OUTPUT that nothing else re-sweeps (powerConditionsFailLocked).
+	WhilePinnedPowerAtMostSource
+
 	// durationConditionEnd is a sentinel, not a condition. Keep it
 	// LAST, for the reason durationKindEnd gives: an unknown condition
 	// would otherwise fall through to a bare "source on battlefield".
@@ -178,11 +209,106 @@ const (
 // Known reports whether this binary can interpret c.
 func (c DurationCondition) Known() bool { return c >= 0 && c < durationConditionEnd }
 
+// readsPin reports whether c is about the pinned object, so a duration
+// using it must name one.
+func (c DurationCondition) readsPin() bool {
+	return c == WhilePinnedHasCounter || c == WhilePinnedRemainsTapped || c == WhilePinnedPowerAtMostSource
+}
+
 // Known reports whether this binary can interpret the duration: its
-// kind and its condition. The condition is checked whatever the kind,
+// kind, its condition and every condition joined to it, and the fields
+// those conditions read. The condition is checked whatever the kind,
 // because its zero value is a known condition and a non-zero one came
 // from somewhere.
-func (d Duration) Known() bool { return d.Kind.Known() && d.Condition.Known() }
+//
+// It is the restore check for every stored duration (ADR 0109 Shared
+// machinery 2), so it fails CLOSED: a duration this binary would read
+// differently from the binary that wrote it is unknown, not restored
+// with a field ignored. See Problem.
+func (d Duration) Known() bool { return d.Problem() == "" }
+
+// Problem says why this binary cannot interpret d, or "" when it can.
+//
+//   - An unknown kind or condition is a newer binary's vocabulary.
+//   - Also (ADR 0109 §3) is read only by ForAsLongAs; on any other kind
+//     this binary would ignore it, which is the effect outliving a
+//     condition the writer meant it to have.
+//   - CounterKind is read only by WhilePinnedHasCounter, and that
+//     condition is meaningless without one.
+//   - A condition about the pinned object needs a pin.
+func (d Duration) Problem() string {
+	if !d.Kind.Known() {
+		return fmt.Sprintf("duration kind %d", d.Kind)
+	}
+	if !d.Condition.Known() {
+		return fmt.Sprintf("duration condition %d", d.Condition)
+	}
+	for _, c := range d.Also {
+		if !c.Known() {
+			return fmt.Sprintf("duration condition %d joined by Also", c)
+		}
+	}
+	if d.Kind != ForAsLongAs {
+		if len(d.Also) > 0 {
+			return fmt.Sprintf("Also on a %s duration", d.Kind)
+		}
+		if d.CounterKind != "" {
+			return fmt.Sprintf("CounterKind %q on a %s duration", d.CounterKind, d.Kind)
+		}
+		return ""
+	}
+	counter, pin := false, false
+	for _, c := range d.conditions() {
+		counter = counter || c == WhilePinnedHasCounter
+		pin = pin || c.readsPin()
+	}
+	switch {
+	case counter && d.CounterKind == "":
+		return "a counter-held duration names no counter kind"
+	case !counter && d.CounterKind != "":
+		return fmt.Sprintf("CounterKind %q with no counter-held condition", d.CounterKind)
+	case pin && d.Pinned == uuid.Nil:
+		return "a duration about the pinned object names no pin"
+	}
+	return ""
+}
+
+// conditions is Condition followed by every condition in Also: the
+// conjunction a ForAsLongAs duration holds while (CR 611.2b).
+func (d Duration) conditions() []DurationCondition {
+	return append([]DurationCondition{d.Condition}, d.Also...)
+}
+
+// And returns a copy of d that also lasts only while each of `conds`
+// holds (ADR 0109 §3): "for as long as you control this creature AND
+// this creature remains tapped". Only meaningful on a ForAsLongAs
+// duration; Problem refuses it on any other kind. The receiver's Also
+// is never written through, because a Duration is shared by value with
+// every undo snapshot.
+func (d Duration) And(conds ...DurationCondition) Duration {
+	if len(conds) == 0 {
+		return d
+	}
+	d.Also = append(append([]DurationCondition(nil), d.Also...), conds...)
+	return d
+}
+
+// IsZero reports whether d is the zero Duration — "until end of turn"
+// with no stamp, which several callers read as "no duration given".
+func (d Duration) IsZero() bool { return d.Equal(Duration{}) }
+
+// Equal reports whether two durations are the same duration. A Duration
+// is not comparable with == since Also is a slice.
+// An empty Also and a nil one are the same conjunction.
+func (d Duration) Equal(o Duration) bool {
+	if len(d.Also) == 0 {
+		d.Also = nil
+	}
+	if len(o.Also) == 0 {
+		o.Also = nil
+	}
+	return reflect.DeepEqual(d, o)
+}
 
 // Duration is how long one continuous effect lasts. The zero value is
 // "until end of turn" with no stamp, which the sweep treats as ending
@@ -274,6 +400,24 @@ type Duration struct {
 	// PinObjectByEpoch on the duration side.
 	PinnedOnStack bool `json:"PinnedOnStack,omitempty"`
 	PinnedEpoch   int  `json:"PinnedEpoch,omitempty"`
+
+	// CounterKind is the counter a WhilePinnedHasCounter duration
+	// watches ("flood", "shield"; ADR 0109 §2). Empty for every other
+	// duration, and omitted then, so every duration written before it
+	// reads the same. A binary before it refuses a record carrying it:
+	// the unknown-field scan names it, and Known refuses the condition.
+	CounterKind string `json:"CounterKind,omitempty"`
+
+	// Also is the rest of a conjunction (ADR 0109 §3, CR 611.2b): a
+	// ForAsLongAs duration lasts while Condition AND every condition
+	// listed here hold, and ends the moment any one of them stops.
+	// Seasinger's "for as long as you control this creature and this
+	// creature remains tapped" is WhileYouControlSource with
+	// WhileSourceRemainsTapped here. A list rather than a combined
+	// condition per pair, because each card prints a different pair.
+	// Omitted when empty. IMMUTABLE once registered, like the rest of
+	// the value: build it with And, which never writes through.
+	Also []DurationCondition `json:"Also,omitempty"`
 }
 
 // PinnedToEpoch is PinnedTo for a permanent named by its ObjectEpoch
@@ -418,6 +562,77 @@ func (g *Game) ForAsLongAsSourceTappedDuration(source uuid.UUID) (Duration, bool
 	}, true
 }
 
+// ForAsLongAsYouControlAndSourceTappedDuration is "for as long as you
+// control ~ and ~ remains tapped" (ADR 0109 §3, #1894): Seasinger,
+// Rubinia Soulsinger, Willow Satyr, Hivis of the Scale, Helm of
+// Possession. WhileYouControlSource joined with WhileSourceRemainsTapped;
+// the effect ends the moment either stops (CR 611.2b). Returns false,
+// so the caller registers nothing, when either half is already false.
+//
+// Caller must hold g.mu.
+func (g *Game) ForAsLongAsYouControlAndSourceTappedDuration(source, player uuid.UUID) (Duration, bool) {
+	d, ok := g.ForAsLongAsYouControlDuration(source, player)
+	if !ok {
+		return Duration{}, false
+	}
+	if c, _ := g.battlefieldCardLocked(source); !c.Tapped {
+		return Duration{}, false
+	}
+	return d.And(WhileSourceRemainsTapped), true
+}
+
+// ForAsLongAsPinnedHasCounterDuration is "for as long as that <object>
+// has a <kind> counter on it" (ADR 0109 §2, #1604), pinned to `object`
+// as the object it is now (CR 400.7). Returns false when `object` is
+// not on the battlefield or has no such counter: the duration never
+// starts (CR 611.2b), so the caller registers nothing. A card puts the
+// counter first and builds the duration second, in the order it prints.
+//
+// Caller must hold g.mu.
+func (g *Game) ForAsLongAsPinnedHasCounterDuration(object uuid.UUID, kind string) (Duration, bool) {
+	c, ok := g.battlefieldCardLocked(object)
+	if !ok || kind == "" || c.Counters[kind] <= 0 {
+		return Duration{}, false
+	}
+	return g.PinnedTo(Duration{Kind: ForAsLongAs, Condition: WhilePinnedHasCounter, CounterKind: kind}, object), true
+}
+
+// ForAsLongAsPinnedTappedDuration is "for as long as that creature
+// remains tapped" (ADR 0109 §3): Zygon Infiltrator, about the creature
+// it tapped. Pinned to `object`; false, so nothing is registered, when
+// `object` is not on the battlefield or is untapped.
+//
+// Caller must hold g.mu.
+func (g *Game) ForAsLongAsPinnedTappedDuration(object uuid.UUID) (Duration, bool) {
+	c, ok := g.battlefieldCardLocked(object)
+	if !ok || !c.Tapped {
+		return Duration{}, false
+	}
+	return g.PinnedTo(Duration{Kind: ForAsLongAs, Condition: WhilePinnedRemainsTapped}, object), true
+}
+
+// ForAsLongAsSourceTappedAndPowerAtMostDuration is Old Man of the Sea's
+// "for as long as this creature remains tapped and that creature's
+// power remains less than or equal to this creature's power" (ADR 0109
+// §3): WhileSourceRemainsTapped joined with WhilePinnedPowerAtMostSource,
+// pinned to `object`. False when either half is already false.
+//
+// Caller must hold g.mu.
+func (g *Game) ForAsLongAsSourceTappedAndPowerAtMostDuration(source, object uuid.UUID) (Duration, bool) {
+	d, ok := g.ForAsLongAsSourceTappedDuration(source)
+	if !ok {
+		return Duration{}, false
+	}
+	if _, ok := g.battlefieldCardLocked(object); !ok {
+		return Duration{}, false
+	}
+	d = g.PinnedTo(d.And(WhilePinnedPowerAtMostSource), object)
+	if !g.durationConditionHoldsLocked(d) {
+		return Duration{}, false
+	}
+	return d, true
+}
+
 // UntilYouLoseControlOfDuration is "until that player loses control
 // of it" (CR 611.2b, and CR 702.62a's haste), for an effect created
 // while `source` is still a spell on the stack. See
@@ -521,10 +736,104 @@ func (g *Game) durationExpiredLocked(d Duration, endOfTurn bool) bool {
 	return false
 }
 
-// durationConditionHoldsLocked re-runs a ForAsLongAs condition against
-// the board as the previous layer pass left it. Caller must hold g.mu.
+// durationConditionHoldsLocked re-runs a ForAsLongAs duration's
+// conditions against the board as the previous layer pass left it:
+// Condition and every condition in Also, all of which must hold
+// (CR 611.2b; ADR 0109 §3). Caller must hold g.mu.
 func (g *Game) durationConditionHoldsLocked(d Duration) bool {
-	if d.Condition == WhileYouControlSourceOnceItLands {
+	for _, c := range d.conditions() {
+		if !g.conditionHoldsLocked(d, c) {
+			return false
+		}
+	}
+	return true
+}
+
+// conditionHoldsLocked is one condition of d's conjunction. An unknown
+// condition never holds: restore refuses one before it can get here,
+// and failing closed ends the effect rather than keeping it forever.
+//
+// Caller must hold g.mu.
+func (g *Game) conditionHoldsLocked(d Duration, cond DurationCondition) bool {
+	switch cond {
+	case WhilePinnedHasCounter:
+		c, ok := g.pinnedOnBattlefieldLocked(d)
+		return ok && d.CounterKind != "" && c.Counters[d.CounterKind] > 0
+	case WhilePinnedRemainsTapped:
+		c, ok := g.pinnedOnBattlefieldLocked(d)
+		return ok && c.Tapped
+	case WhilePinnedPowerAtMostSource:
+		c, ok := g.pinnedOnBattlefieldLocked(d)
+		if !ok {
+			return false
+		}
+		src, ok := g.battlefieldCardLocked(d.Source)
+		if !ok || src.EnteredBattlefieldAt != d.SourceEnteredAt {
+			return false
+		}
+		return c.CurrentPower() <= src.CurrentPower()
+	case WhileSourceOnBattlefield, WhileYouControlSource, WhileYouControlSourceOnceItLands, WhileSourceRemainsTapped:
+		return g.sourceConditionHoldsLocked(d, cond)
+	}
+	return false
+}
+
+// pinnedOnBattlefieldLocked is the pinned object of d, if it is on the
+// battlefield as the object the pin names (CR 400.7). Unlike the pin's
+// own garbage collection it does not look among the phased-out: a
+// condition about a permanent ends when it phases out (CR 702.26f).
+//
+// Caller must hold g.mu.
+func (g *Game) pinnedOnBattlefieldLocked(d Duration) (*Card, bool) {
+	if d.Pinned == uuid.Nil || d.PinnedOnStack {
+		return nil, false
+	}
+	c, ok := g.battlefieldCardLocked(d.Pinned)
+	if !ok {
+		return nil, false
+	}
+	if d.PinnedEpoch > 0 && d.PinnedEnteredAt == 0 && !d.PinnedUnstamped {
+		return c, c.ObjectEpoch == d.PinnedEpoch
+	}
+	return c, entryMatches(d.PinnedEnteredAt, d.PinnedUnstamped, c.EnteredBattlefieldAt)
+}
+
+// powerConditionsFailLocked reports whether a scoped effect whose
+// duration compares powers (WhilePinnedPowerAtMostSource) no longer
+// holds. Power is a layer OUTPUT: the sweep at the top of a recompute
+// reads the previous pass, so a pass that lowers the source's power, or
+// raises the pinned creature's, would otherwise leave the effect in
+// place until something unrelated bumped the layer version. The
+// recompute asks this after its pass and bumps the version when it
+// says true, so the next read ends the effect.
+//
+// Caller must hold g.mu.
+func (g *Game) powerConditionsFailLocked() bool {
+	for _, e := range g.ScopedEffects {
+		if e.Duration.Kind != ForAsLongAs {
+			continue
+		}
+		for _, c := range e.Duration.conditions() {
+			if c == WhilePinnedPowerAtMostSource && !g.conditionHoldsLocked(e.Duration, c) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// DurationHoldsForEffect reports whether d is still running: the
+// question a card asks of a duration it has just built from parts,
+// because CR 611.2b says an effect whose duration has already ended as
+// it would begin never begins. Caller must hold g.mu.
+func (g *Game) DurationHoldsForEffect(d Duration) bool {
+	return !g.durationExpiredLocked(d, false)
+}
+
+// sourceConditionHoldsLocked is the four conditions about the source.
+// Caller must hold g.mu.
+func (g *Game) sourceConditionHoldsLocked(d Duration, cond DurationCondition) bool {
+	if cond == WhileYouControlSourceOnceItLands {
 		// #990: the object may not be a permanent yet. On the stack
 		// the condition holds (the effect has not started applying to
 		// anything), on the battlefield it is the ordinary control
@@ -541,10 +850,10 @@ func (g *Game) durationConditionHoldsLocked(d Duration) bool {
 	if !ok || c.EnteredBattlefieldAt != d.SourceEnteredAt {
 		return false
 	}
-	if d.Condition == WhileYouControlSource && c.Controller != d.Player {
+	if cond == WhileYouControlSource && c.Controller != d.Player {
 		return false
 	}
-	if d.Condition == WhileSourceRemainsTapped && !c.Tapped {
+	if cond == WhileSourceRemainsTapped && !c.Tapped {
 		return false
 	}
 	return true

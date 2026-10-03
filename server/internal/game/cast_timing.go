@@ -206,7 +206,7 @@ func (g *Game) GrantCastTimingForEffect(player uuid.UUID, rule CastTimingRule, l
 	if p == nil {
 		return
 	}
-	if d == (Duration{}) {
+	if d.IsZero() {
 		d = g.UntilEndOfTurnDuration()
 	}
 	// Declaration-only fields are cleared on the way in: a stored

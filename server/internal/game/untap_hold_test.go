@@ -184,7 +184,7 @@ func TestUntapHoldCloneSnapshotAndZoneReset(t *testing.T) {
 
 	clone := g.Clone()
 	g.WithWriteLock(func() { g.RestoreFrom(clone) })
-	if got := cardByIDForUntapTest(g, target).NextUntapSkips; len(got) != 1 || got[0].While == nil || *got[0].While != want {
+	if got := cardByIDForUntapTest(g, target).NextUntapSkips; len(got) != 1 || got[0].While == nil || !got[0].While.Equal(want) {
 		t.Fatalf("RestoreFrom hold = %#v", got)
 	}
 
@@ -202,7 +202,7 @@ func TestUntapHoldCloneSnapshotAndZoneReset(t *testing.T) {
 	}
 	restored.WithWriteLock(func() {
 		held := cardByIDForUntapTest(restored, target)
-		if len(held.NextUntapSkips) != 1 || held.NextUntapSkips[0].While == nil || *held.NextUntapSkips[0].While != want {
+		if len(held.NextUntapSkips) != 1 || held.NextUntapSkips[0].While == nil || !held.NextUntapSkips[0].While.Equal(want) {
 			t.Fatalf("snapshot-restored hold = %#v", held.NextUntapSkips)
 		}
 		restored.performUntapStepLocked(b.Seat)

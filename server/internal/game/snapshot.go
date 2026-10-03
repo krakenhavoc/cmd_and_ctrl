@@ -536,7 +536,11 @@ func (s *GameSnapshot) UnmarshalJSON(data []byte) error {
 	if err != nil {
 		return err
 	}
-	s.unknownEffectFields = fields
+	durationFields, err := unknownDurationFields(data)
+	if err != nil {
+		return err
+	}
+	s.unknownEffectFields = append(fields, durationFields...)
 	return nil
 }
 
