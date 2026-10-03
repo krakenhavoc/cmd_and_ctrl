@@ -1099,9 +1099,17 @@ nothing else. For a signed-in caller it *additionally*:
   re-parses the stored list and never calls the network; fetching it
   again from the link is a later, explicit action. Saving the same name
   from pasted text clears the link.
+- **Saves only a deck the caller seats at their own seat** ([ADR
+  0112](decisions/0112-signed-in-home-player-mode-and-one-decks-page.md)
+  §3 item 8): the session's game and seat must be the path's game and
+  the body's `player_id`, the rule `GET /me/last-deck` already has. An
+  admin setting someone else's deck seats it and saves nothing to the
+  admin's library. The person whose seat it is can save it from the
+  decks page (`POST /me/decks`).
 - Sets the seat's `deck_id` to the saved deck. Any other outcome
-  (a guest, a catalog pick, or a failed save) leaves the
-  seat's `deck_id` empty, clearing a previous one if there was one.
+  (a guest, a catalog pick, someone else's seat, or a failed save)
+  leaves the seat's `deck_id` empty, clearing a previous one if there
+  was one.
 - **The 200-deck cap (ADR 0110 section 6).** A signed-in caller keeps at
   most 200 decks. The 201st *new* deck is not saved (updating a deck by
   name is never refused), the upload still succeeds and seats the deck,
@@ -2127,8 +2135,80 @@ five buckets by distinct card. `as_printed` is `automated` plus
 says "N of M play as printed". The list builds the catalogue verdicts
 once per request and reuses them for every deck. `coverage` is absent
 when the server has no card index or a stored list no longer parses.
-These reads, and the three routes below, share a per-client bucket of 1
+These reads, and the four routes below, share a per-client bucket of 1
 request per second with a burst of 5 (429 past it).
+
+### `POST /me/decks` (ADR 0112 §3 item 4)
+
+Save a checked deck to the caller's library, from the decks page. A
+check writes nothing; saving is always this explicit call, and it never
+files a request (`POST /deck-requests` is its own button with its own
+limit).
+
+**Request**
+
+```json
+{ "url": "https://archidekt.com/decks/424242", "name": "Weekend deck" }
+{ "text": "1 Atraxa, Praetors' Voice *CMDR*\n1 Sol Ring\n..." }
+```
+
+Exactly one of `url` and `text` (400 for neither or both); `name` is
+optional.
+
+- **A pasted list** is read the way `POST /deck-coverage` reads one and
+  saved as pasted (`source_format: "text"`, no `source_url`).
+- **A link** is saved as the list the server fetched, rendered as plain
+  text, with the canonical link in `source_url`: the same row an import
+  at a table writes. Seating it or requesting its cards later re-reads
+  the stored list and never calls the network. The deck check's
+  ten-minute cache keeps the fetched list beside the report, so a save
+  after a check fetches nothing. A link the cache does not hold first
+  spends one token from `POST /deck-coverage`'s per-IP bucket (1 per
+  10 s, burst 3), then fetches, so saving cannot get around the fetch
+  limit. With the bucket empty the answer is **429**
+  `{"error": "…"}` with `Retry-After: 10`, and nothing is fetched. A
+  fetch failure answers with `POST /deck-coverage`'s error table,
+  including the Moxfield `paste_list` hint.
+- **The name** is `name`, trimmed, at most 100 characters (400 past
+  it). Without one: the deck site's name for a link, then the first
+  commander, then "Untitled deck".
+- **Nothing is validated against Commander rules here**, and names the
+  card index cannot resolve are kept: the check showed both, the
+  library's `coverage.unknown` counts the names, and seating the deck
+  runs the full parse, resolve and validate pipeline as it always does
+  (`POST /games/{id}/decks/{deck_id}`, 422 with the violations).
+- **The update rule is the library's own:** a deck the caller already
+  has by that name is replaced in place (same `id`), and the answer
+  says so. A pasted list saved over a link deck clears the link.
+
+**Response:** **201** for a new deck, **200** for a replaced one:
+
+```json
+{
+  "deck": { "id": "<uuid>", "name": "Weekend deck", "commanders": ["…"], "card_count": 100,
+            "updated_at": "…", "source_url": "https://archidekt.com/decks/424242",
+            "coverage": { "counts": { "manual": 1, "…": 0 }, "unknown": 0, "as_printed": 78, "resolved": 90 } },
+  "replaced": false
+}
+```
+
+`deck` is the `GET /me/decks` entry, coverage included.
+
+**Errors**
+
+- **401** with no credential. **403** for any caller that is not a
+  signed-in person: a guest seat or spectator, the admin token, or an
+  `identified` session with no database (never 401, which would sign
+  the browser out).
+- **409** `{"error": "Your deck library is full (200 decks). Delete one
+  below to save this one.", "code": "library_full"}` for a new name
+  past the 200-deck cap. Replacing a deck is never refused.
+- **400** for a body that is not one of the shapes above, a list over
+  the length cap, or a link that is not a Moxfield or Archidekt deck.
+- **503** with no card index.
+
+The route rides the `/me/decks*` bucket (1 request per second, burst 5,
+per client).
 
 ### `GET /me/decks/{id}/coverage` (ADR 0110 section 6)
 
@@ -2269,17 +2349,33 @@ with no Discord identity, is 403.
 ```json
 { "url": "https://moxfield.com/decks/AbC123" }
 { "text": "1 Atraxa, Praetors' Voice *CMDR*\n1 Sol Ring\n..." }
+{ "deck_id": "<uuid>" }
 { "url": "https://moxfield.com/decks/AbC123",
   "requester": { "discord_id": "123456789012345678", "display_name": "Alice" } }
 ```
 
-Exactly one of `url` and `text` (400 for neither or both). A pasted list
+Exactly one of `url`, `text` and `deck_id` (400 for none or more than
+one). A pasted list
 is deduplicated by its list key (`deck_key`, see `POST /deck-coverage`),
 so the same deck pasted from two exports joins one issue, and the same
 cards under another commander file another. Since the [2026-09-25
 amendment](decisions/0095-deck-coverage-and-deck-requests.md#amendment-2026-09-25-requests-from-a-pasted-list):
 Moxfield blocks this server, so pasting is a Moxfield player's only
 route.
+
+**`deck_id`** ([ADR
+0112](decisions/0112-signed-in-home-player-mode-and-one-decks-page.md)
+§3 item 5) is one of the caller's own saved decks (`GET /me/decks`),
+so every library deck can ask for its missing cards. A deck that is not
+theirs, or does not exist, is **404**, as on the other `/me/decks`
+routes. The stored list is re-read, never fetched, and keyed the way
+the original would have been: a deck with a `source_url` keys as that
+link (`moxfield:<id>`, `archidekt:<id>`), so it joins the issue a
+request from the link filed, and any other deck keys as its list
+(`list:<hash>`). The admin token's `requester` path does not take
+`deck_id` (**400**): the bot has no library. Everything below (the
+limit, the outcomes, the issue) is the same whichever input named the
+deck.
 
 **What it does**, in order:
 
@@ -2289,9 +2385,12 @@ route.
    not reset it. Over the limit is **429** `rate_limited`, decided
    before the deck is fetched. Only an ask that reaches GitHub (an
    issue filed, or a comment added) counts.
-2. **The report.** The deck is fetched (or the list parsed) and
+2. **The report.** The deck is fetched (or the list parsed, or the
+   saved deck's stored list read) and
    bucketed exactly as `POST /deck-coverage` does it, from the same
-   10-minute cache. A fetch failure answers with that route's error
+   10-minute cache (a saved deck with a link is built from its stored
+   list instead, so the cache never holds a stale copy under the
+   link's key). A fetch failure answers with that route's error
    table, the Moxfield hint included.
 3. **Nothing to add.** No `manual` and no `unreviewed` card: no issue,
    **200** `nothing_to_add`, with the report (its caveated cards

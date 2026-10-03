@@ -446,7 +446,7 @@ func TestSaveToLibrarySkipsAPrebuiltCatalogPick(t *testing.T) {
 	list := &deck.List{Name: "", Commanders: []cards.Card{{Name: "Test Commander"}}}
 	p := auth.Principal{Role: auth.RolePlayer, UserID: owner}
 
-	got, _ := saveToLibrary(context.Background(), Config{DeckLibrary: st.library}, p, "izzet-aggro", "text", "1 Test Commander\n", list, []string{"Test Commander"})
+	got, _ := saveToLibrary(context.Background(), Config{DeckLibrary: st.library}, p, p.GameID, p.PlayerID, "izzet-aggro", "text", "1 Test Commander\n", list, []string{"Test Commander"})
 	if got != "" {
 		t.Errorf("catalog pick: saveToLibrary = %q, want empty", got)
 	}
@@ -462,7 +462,7 @@ func TestSaveToLibrarySkipsAnUnparseableLink(t *testing.T) {
 	list := &deck.List{Name: "URL Deck", Commanders: []cards.Card{{Name: "Test Commander"}}}
 	p := auth.Principal{Role: auth.RolePlayer, UserID: owner}
 
-	got, _ := saveToLibrary(context.Background(), Config{DeckLibrary: st.library}, p, "", "url", "https://example.com/not-a-deck", list, []string{"Test Commander"})
+	got, _ := saveToLibrary(context.Background(), Config{DeckLibrary: st.library}, p, p.GameID, p.PlayerID, "", "url", "https://example.com/not-a-deck", list, []string{"Test Commander"})
 	if got != "" {
 		t.Errorf("unparseable link: saveToLibrary = %q, want empty", got)
 	}
@@ -477,7 +477,7 @@ func TestSaveToLibrarySkipsGuest(t *testing.T) {
 	list := &deck.List{Name: "Guest Deck", Commanders: []cards.Card{{Name: "Test Commander"}}}
 	p := auth.Principal{Role: auth.RolePlayer} // zero UserID
 
-	got, _ := saveToLibrary(context.Background(), Config{DeckLibrary: st.library}, p, "", "text", "1 Test Commander\n", list, []string{"Test Commander"})
+	got, _ := saveToLibrary(context.Background(), Config{DeckLibrary: st.library}, p, p.GameID, p.PlayerID, "", "text", "1 Test Commander\n", list, []string{"Test Commander"})
 	if got != "" {
 		t.Errorf("guest: saveToLibrary = %q, want empty", got)
 	}
@@ -490,7 +490,7 @@ func TestSaveToLibraryUsesCommanderFallbackName(t *testing.T) {
 	list := &deck.List{Commanders: []cards.Card{{Name: "Krenko, Mob Boss"}}}
 	p := auth.Principal{Role: auth.RolePlayer, UserID: owner}
 
-	got, _ := saveToLibrary(context.Background(), Config{DeckLibrary: st.library}, p, "", "text", "1 Krenko, Mob Boss\n", list, []string{"Krenko, Mob Boss"})
+	got, _ := saveToLibrary(context.Background(), Config{DeckLibrary: st.library}, p, p.GameID, p.PlayerID, "", "text", "1 Krenko, Mob Boss\n", list, []string{"Krenko, Mob Boss"})
 	if got == "" {
 		t.Fatal("saveToLibrary returned no id")
 	}

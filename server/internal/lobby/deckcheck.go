@@ -92,7 +92,27 @@ type deckCheck struct {
 	// lock is the whole concurrency story.
 	fileMu sync.Mutex
 	now    func() time.Time
+	// fetchLimit is POST /deck-coverage's per-IP bucket. POST /me/decks
+	// spends one of its tokens when a save has to fetch a deck the
+	// cache does not hold, so saving cannot get around the fetch limit
+	// (ADR 0112 §3 item 4). Nil spends nothing (tests that build a
+	// deckCheck by hand).
+	fetchLimit *ratelimit.Limiter
 }
+
+// checkedDeck is what a check learned about one deck: the report, and
+// the deck it was built from (its name and the fetched or parsed
+// entries). The cache keeps all three, so saving a deck after checking
+// it fetches nothing (ADR 0112 §3 item 4).
+type checkedDeck struct {
+	report  *deckcoverage.Report
+	name    string
+	entries []deck.Entry
+}
+
+// errFetchLimited is deckForURL's answer when the deck is not cached
+// and the caller's spend refused a fetch.
+var errFetchLimited = errors.New("deck check: fetch limit reached")
 
 func newDeckCheck() *deckCheck {
 	now := func() time.Time { return time.Now().UTC() }
@@ -179,6 +199,12 @@ func parseList(c Config, text string) (parsedList, error) {
 	if err != nil {
 		return parsedList{}, httpError(http.StatusBadRequest, "could not read that list: "+err.Error())
 	}
+	return keyList(c, entries)
+}
+
+// keyList derives a list's deck key from entries already read: a
+// pasted list's, or a saved deck's stored list (ADR 0112 §3 item 5).
+func keyList(c Config, entries []deck.Entry) (parsedList, error) {
 	key, err := deckcoverage.ListKey(c.Cards, entries)
 	switch {
 	case errors.Is(err, deckcoverage.ErrNoIndex):
@@ -204,14 +230,14 @@ func (d *deckCheck) reportForText(c Config, text string) (*deckcoverage.Report, 
 }
 
 func (d *deckCheck) reportForList(c Config, list parsedList) (*deckcoverage.Report, error) {
-	if r, ok := d.cache.get(list.key); ok {
-		return r, nil
+	if e, ok := d.cache.get(list.key); ok {
+		return e.report, nil
 	}
 	r, err := buildReport(c, deckcoverage.Deck{Source: "text", DeckKey: list.key, Entries: list.entries})
 	if err != nil {
 		return nil, err
 	}
-	d.cache.put(list.key, r)
+	d.cache.put(list.key, checkedDeck{report: r, entries: list.entries})
 	return r, nil
 }
 
@@ -220,16 +246,27 @@ func (d *deckCheck) reportForList(c Config, list parsedList) (*deckcoverage.Repo
 // The fetch always goes to the deck's canonical URL, so the fetcher
 // never sees a caller's query string.
 func (d *deckCheck) reportForURL(ctx context.Context, c Config, rawURL string) (*deckcoverage.Report, error) {
+	e, err := d.deckForURL(ctx, c, rawURL, nil)
+	return e.report, err
+}
+
+// deckForURL is reportForURL with the deck behind the report. spend,
+// when not nil, is asked once before a fetch, and only on a cache
+// miss; a false answer is errFetchLimited and nothing is fetched.
+func (d *deckCheck) deckForURL(ctx context.Context, c Config, rawURL string, spend func() bool) (checkedDeck, error) {
 	ref, err := deck.ParseDeckURL(rawURL)
 	if err != nil {
-		return nil, newDeckFetchError(rawURL, err)
+		return checkedDeck{}, newDeckFetchError(rawURL, err)
 	}
-	if r, ok := d.cache.get(ref.Key()); ok {
-		return r, nil
+	if e, ok := d.cache.get(ref.Key()); ok {
+		return e, nil
+	}
+	if spend != nil && !spend() {
+		return checkedDeck{}, errFetchLimited
 	}
 	name, entries, err := c.deckFetcher()(ctx, ref.URL())
 	if err != nil {
-		return nil, newDeckFetchError(rawURL, err)
+		return checkedDeck{}, newDeckFetchError(rawURL, err)
 	}
 	r, err := buildReport(c, deckcoverage.Deck{
 		Name:      name,
@@ -239,10 +276,11 @@ func (d *deckCheck) reportForURL(ctx context.Context, c Config, rawURL string) (
 		Entries:   entries,
 	})
 	if err != nil {
-		return nil, err
+		return checkedDeck{}, err
 	}
-	d.cache.put(ref.Key(), r)
-	return r, nil
+	e := checkedDeck{report: r, name: name, entries: entries}
+	d.cache.put(ref.Key(), e)
+	return e, nil
 }
 
 func buildReport(c Config, d deckcoverage.Deck) (*deckcoverage.Report, error) {
@@ -363,10 +401,12 @@ func writeDeckFetchError(w http.ResponseWriter, err error) error {
 // --- POST /deck-requests ---
 
 type deckRequestBody struct {
-	// URL is a Moxfield or Archidekt link; Text is a pasted list.
-	// Exactly one of them (ADR 0095, amendment 2026-09-25).
+	// URL is a Moxfield or Archidekt link; Text is a pasted list
+	// (ADR 0095, amendment 2026-09-25); DeckID is one of the caller's
+	// own saved decks (ADR 0112 §3 item 5). Exactly one of them.
 	URL       string         `json:"url,omitempty"`
 	Text      string         `json:"text,omitempty"`
+	DeckID    string         `json:"deck_id,omitempty"`
 	Requester *deckRequester `json:"requester,omitempty"`
 }
 
@@ -418,17 +458,28 @@ func (d *deckCheck) request(c Config, w http.ResponseWriter, r *http.Request) er
 	if err := decodeJSON(w, r, &body); err != nil {
 		return err
 	}
-	body.URL, body.Text = strings.TrimSpace(body.URL), strings.TrimSpace(body.Text)
+	body.URL, body.Text, body.DeckID = strings.TrimSpace(body.URL), strings.TrimSpace(body.Text), strings.TrimSpace(body.DeckID)
+	inputs := 0
+	for _, s := range []string{body.URL, body.Text, body.DeckID} {
+		if s != "" {
+			inputs++
+		}
+	}
 	switch {
-	case body.URL == "" && body.Text == "":
+	case inputs == 0:
 		return httpError(http.StatusBadRequest,
-			"send the deck's Moxfield or Archidekt link as url, or a pasted list as text")
-	case body.URL != "" && body.Text != "":
-		return httpError(http.StatusBadRequest, "send url or text, not both")
+			"send the deck's Moxfield or Archidekt link as url, a pasted list as text, or one of your saved decks as deck_id")
+	case inputs > 1:
+		return httpError(http.StatusBadRequest, "send one of url, text or deck_id")
 	}
 	who, err := deckRequesterFor(r.Context(), c, p, body.Requester)
 	if err != nil {
 		return err
+	}
+	if body.DeckID != "" && isServerCredential(p) {
+		// The bot has no library: its requester path takes a link or a
+		// list (ADR 0112 §3 item 5).
+		return httpError(http.StatusBadRequest, "deck_id names a signed-in person's own saved deck; send url or text")
 	}
 	if c.Cards == nil {
 		return httpError(http.StatusServiceUnavailable, "the card index is not loaded on this server")
@@ -437,22 +488,30 @@ func (d *deckCheck) request(c Config, w http.ResponseWriter, r *http.Request) er
 	// The deck key: the link's deck ID, or the pasted list's hash. A
 	// list is parsed and keyed before the limit, because that is cheap
 	// and touches nothing outside this process; a link is not fetched
-	// until the limit has passed.
+	// until the limit has passed. A saved deck is read from the
+	// library here too, which is as cheap.
 	var (
-		key  string
-		list parsedList
+		key   string
+		list  parsedList
+		saved *savedDeckRequest
 	)
-	if body.URL != "" {
+	switch {
+	case body.URL != "":
 		ref, err := deck.ParseDeckURL(body.URL)
 		if err != nil {
 			return writeDeckFetchError(w, newDeckFetchError(body.URL, err))
 		}
 		key = ref.Key()
-	} else {
+	case body.Text != "":
 		if list, err = parseList(c, body.Text); err != nil {
 			return err
 		}
 		key = list.key
+	default:
+		if saved, err = savedDeckForRequest(r.Context(), c, p.UserID, body.DeckID); err != nil {
+			return err
+		}
+		key, list = saved.key, saved.list
 	}
 	requesterKey := "discord:" + who.DiscordID
 
@@ -463,9 +522,18 @@ func (d *deckCheck) request(c Config, w http.ResponseWriter, r *http.Request) er
 	}
 
 	var report *deckcoverage.Report
-	if body.URL != "" {
+	switch {
+	case body.URL != "":
 		report, err = d.reportForURL(r.Context(), c, body.URL)
-	} else {
+	case saved != nil && saved.link != nil:
+		report, err = buildReport(c, deckcoverage.Deck{
+			Name:      saved.deck.Name,
+			Source:    saved.link.Source,
+			SourceURL: saved.link.URL(),
+			DeckKey:   key,
+			Entries:   saved.entries,
+		})
+	default:
 		report, err = d.reportForList(c, list)
 	}
 	if err != nil {
@@ -864,9 +932,10 @@ func renderDeckRequestComment(who deckRequester, r *deckcoverage.Report) string 
 
 // --- the report cache ---
 
-// deckReportCache holds reports by deck key for a fixed TTL, bounded
-// in size. A cached *Report is shared between responses and never
-// modified after Build returns it.
+// deckReportCache holds checked decks by deck key for a fixed TTL,
+// bounded in size: the report, and the name and entries it was built
+// from. A cached report and entry slice are shared between requests
+// and never modified after they are put.
 type deckReportCache struct {
 	mu      sync.Mutex
 	ttl     time.Duration
@@ -876,7 +945,7 @@ type deckReportCache struct {
 }
 
 type deckReportEntry struct {
-	report  *deckcoverage.Report
+	deck    checkedDeck
 	expires time.Time
 }
 
@@ -884,21 +953,21 @@ func newDeckReportCache(ttl time.Duration, max int, now func() time.Time) *deckR
 	return &deckReportCache{ttl: ttl, max: max, now: now, entries: map[string]deckReportEntry{}}
 }
 
-func (c *deckReportCache) get(key string) (*deckcoverage.Report, bool) {
+func (c *deckReportCache) get(key string) (checkedDeck, bool) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	e, ok := c.entries[key]
 	if !ok {
-		return nil, false
+		return checkedDeck{}, false
 	}
 	if !c.now().Before(e.expires) {
 		delete(c.entries, key)
-		return nil, false
+		return checkedDeck{}, false
 	}
-	return e.report, true
+	return e.deck, true
 }
 
-func (c *deckReportCache) put(key string, r *deckcoverage.Report) {
+func (c *deckReportCache) put(key string, d checkedDeck) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	now := c.now()
@@ -920,5 +989,5 @@ func (c *deckReportCache) put(key string, r *deckcoverage.Report) {
 			delete(c.entries, oldestKey)
 		}
 	}
-	c.entries[key] = deckReportEntry{report: r, expires: now.Add(c.ttl)}
+	c.entries[key] = deckReportEntry{deck: d, expires: now.Add(c.ttl)}
 }
