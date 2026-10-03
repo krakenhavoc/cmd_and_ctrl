@@ -260,6 +260,16 @@ func Plus(costs ...game.AbilityCost) game.AbilityCost {
 		if c.ExileCards != nil {
 			out.ExileCards = c.ExileCards
 		}
+		// ADR 0109 §7 (#1902): and the two library components. A
+		// composed "{3}, Exile the top four cards of your library"
+		// that dropped its exile would be a Seasoned Tactician shield
+		// for {3} alone.
+		if c.PutFromHandOnLibraryTop != 0 {
+			out.PutFromHandOnLibraryTop = c.PutFromHandOnLibraryTop
+		}
+		if c.ExileFromLibraryTop != 0 {
+			out.ExileFromLibraryTop = c.ExileFromLibraryTop
+		}
 	}
 	return out
 }
@@ -391,6 +401,33 @@ func DiscardCardsMatching(n int, label string, match func(game.Card) bool) game.
 // DiscardN(2, "two cards").
 func DiscardN(n int, label string) game.AbilityCost {
 	return DiscardCardsMatching(n, label, nil)
+}
+
+// DiscardAtRandom is "Discard N cards at random" as a cost (ADR 0109
+// §7, owner decision 3; CR 701.9b) — Pyromancy's "{3}, Discard a card
+// at random:", Meteor Storm's "Discard two cards at random". The
+// activator chooses nothing: the engine draws the cards when the cost
+// is paid, after every other cost (CR 601.2h), and the effect reads
+// them with ctx.DiscardedCard(). The label is the clause as printed,
+// without the verb ("a card at random").
+func DiscardAtRandom(n int, label string) game.AbilityCost {
+	return game.AbilityCost{DiscardCards: &game.DiscardCost{N: n, Label: label, Random: true}}
+}
+
+// PutACardFromHandOnTop is "Put a card from your hand on top of your
+// library" as a cost (ADR 0109 §7, #1902) — Penance, Leashling, Hidden
+// Retreat. The activator names the card at announce (`top_ids`).
+func PutACardFromHandOnTop() game.AbilityCost {
+	return game.AbilityCost{PutFromHandOnLibraryTop: 1}
+}
+
+// ExileTopOfLibrary is "Exile the top N cards of your library" as a
+// cost (ADR 0109 §7, #1902) — Seasoned Tactician's four, Arc-Slogger's
+// ten, Royal Herbalist's one. Nothing to choose; a library of fewer
+// than N cards can't pay it (CR 118.3). The effect reads the cards
+// with ctx.Exiled(), top first.
+func ExileTopOfLibrary(n int) game.AbilityCost {
+	return game.AbilityCost{ExileFromLibraryTop: n}
 }
 
 // ExileCardsFromHand is "Exile N <kind> cards from your hand" as a

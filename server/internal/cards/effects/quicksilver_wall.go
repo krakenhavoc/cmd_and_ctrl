@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // Quicksilver Wall — Creature — Wall {2}{U}, 1/6:
 //
 //	"Defender (This creature can't attack.)
@@ -30,12 +28,7 @@ func init() {
 			Label:     "{4}: Return this creature to its owner's hand. Any player may activate this ability.",
 			Cost:      ManaCost("{4}"),
 			AnyPlayer: true,
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				if !sourceIsStillThisPermanent(g, item) {
-					return nil
-				}
-				return BounceToHand{Target: item.SourceCardID}.Apply(NewContext(g, item))
-			},
+			Effect:    returnThisPermanentToOwnersHand,
 		}},
 	})
 }
