@@ -663,6 +663,39 @@ There is no prompt when the choice is forced: with one eligible opponent
 pause uses the first opponent in turn order after the chooser. An
 offered seat that leaves the game comes off the open prompt.
 
+### `entry_riot` — riot's counter or haste (ADR 0109 §10, CR 702.136a)
+
+`pending_choices` may carry `kind: "entry_riot"`. It is riot's "You may
+have this permanent enter with an additional +1/+1 counter on it. If you
+don't, it gains haste", asked of the would-be controller before the
+permanent enters (CR 614.12a). `source` is the entering card,
+`entry_keyword` is `"riot"`, and `accept_label` / `decline_label` name
+the two answers ("+1/+1 counter", "Haste").
+
+- **The answer is `resolve_choice { choice_id, apply }`**, the payload
+  of the yes/no kinds: `apply: true` takes the counter, `apply: false`
+  takes haste. Riot is mandatory, so both answers are always accepted
+  and there is no third.
+- **One prompt per instance.** Which riots apply is read off the
+  permanent as it would exist on the battlefield (CR 614.12), so a
+  creature with printed riot under Rhythm of the Wild is asked twice
+  (CR 702.136b), and one entering under an effect that removes its
+  abilities is not asked at all.
+- **The haste is shown.** A permanent that took haste carries
+  `CardView.riot_haste: true` (omitempty, public, battlefield only,
+  cleared by the face-down redaction like the ability list), and the
+  client labels its haste chip "Riot".
+
+An entry that cannot pause takes the counter. Like every prompt that
+pauses an entry, it blocks the table.
+
+**Unleash** (CR 702.98a) is asked through the existing
+`optional_replacement` prompt — "you may have this permanent enter with
+an additional +1/+1 counter on it" — with `entry_keyword: "unleash"` and
+`source` the entering card. Its other half, "can't block as long as it
+has a +1/+1 counter on it", is an ordinary can't-block restriction the
+block gate reads.
+
 ### `retarget` — changing a spell's or ability's target (#1196, CR 115.7)
 
 `pending_choices` may carry `kind: "retarget"`. It is the prompt behind

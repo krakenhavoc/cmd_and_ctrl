@@ -333,6 +333,13 @@ type PendingChoiceView struct {
 	// Absent on every other kind.
 	ControlPurpose string `json:"control_purpose,omitempty"`
 
+	// EntryKeyword names the entry keyword an "entry_riot" or
+	// "optional_replacement" prompt is asking about — "riot" or
+	// "unleash" (ADR 0109 §10) — so the client can word the question
+	// and a policy can tell unleash's "may" from any other.
+	// The entering card rides Source. Absent on every other prompt.
+	EntryKeyword string `json:"entry_keyword,omitempty"`
+
 	// TradeFor populates a "trigger_prompt" whose "yes" TRADES the
 	// source for the object the trigger is about (ADR 0104): Perplexing
 	// Chimera's "you may exchange control of this creature and that
@@ -1747,6 +1754,10 @@ type CardView struct {
 	// regenerated this turn (ADR 0108 §2 decision 5, CR 701.19c):
 	// Incinerate's or Whippoorwill's mark. Public; battlefield only.
 	CantBeRegenerated bool `json:"cant_be_regenerated,omitempty"`
+	// RiotHaste is true for a permanent whose haste came from its own
+	// riot (CR 702.136a, ADR 0109 §10 decision 7): the client labels
+	// its haste chip "Riot". Public; battlefield only.
+	RiotHaste bool `json:"riot_haste,omitempty"`
 	// LandTypeEffects are the resolved effects changing this
 	// permanent's land types, oldest first (ADR 0109 §1 decision 7):
 	// Tidal Warrior's "becomes an Island until end of turn", Navigator's
@@ -6404,7 +6415,8 @@ func stampDefenderRefusals(g *game.Game, view *ZoneView) {
 
 // stampDeathMarks is ADR 0108's two chips: "exiled if it dies this turn"
 // and "can't be regenerated this turn", on each battlefield permanent
-// that carries one.
+// that carries one — and ADR 0109 §10's riot haste, the third chip a
+// resolved record on the permanent puts there.
 func stampDeathMarks(g *game.Game, view *ZoneView) {
 	if g == nil || g.Battlefield == nil || view == nil || len(g.ScopedEffects) == 0 {
 		return
@@ -6416,6 +6428,7 @@ func stampDeathMarks(g *game.Game, view *ZoneView) {
 		id := g.Battlefield.Cards[i].InstanceID
 		view.Cards[i].ExiledIfItDies = g.ExileIfItWouldDieLabels(id)
 		view.Cards[i].CantBeRegenerated = g.PermanentCantBeRegeneratedForEffect(id)
+		view.Cards[i].RiotHaste = g.RiotHasteForEffect(id)
 	}
 }
 
@@ -6765,6 +6778,15 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 		}
 		if c.Kind == game.PendingChoiceEntryController {
 			v.ControlPurpose = string(c.ControlPurpose)
+		}
+		// ADR 0109 §10: riot's two answers, and which keyword a riot or
+		// unleash question is about.
+		if c.Kind == game.PendingChoiceEntryRiot {
+			v.AcceptLabel = c.AcceptLabel
+			v.DeclineLabel = c.DeclineLabel
+		}
+		if (c.Kind == game.PendingChoiceEntryRiot || c.Kind == game.PendingChoiceOptionalReplacement) && len(c.ReplacementEffectIDs) == 1 {
+			v.EntryKeyword = game.EntryKeywordOfReplacement(c.ReplacementEffectIDs[0])
 		}
 		// PendingChoiceModePick — #764, CR 603.3c: a modal trigger's
 		// bullets, chosen as the ability is put on the stack. Public
@@ -7966,6 +7988,9 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	out.IsCommander = false
 	out.ManaCost = ""
 	out.Abilities = nil
+	// ADR 0109 §10: "its haste came from riot" says the card has riot,
+	// which names it as loudly as the ability list does.
+	out.RiotHaste = false
 	// #662: the parsed half of Abilities. "Protection from Demons"
 	// names a card as loudly as the raw token does, and clearing one
 	// without the other would put the leak back.

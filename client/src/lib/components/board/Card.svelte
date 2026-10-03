@@ -732,6 +732,7 @@
       chosenOption={card.chosen_option}
       chosenName={card.chosen_name}
       protection={card.protection}
+      riotHaste={card.riot_haste}
     />
     {#if (card.damage_marked ?? 0) > 0}
       <span class="badge damage" title={`${card.damage_marked} damage marked`} aria-label="damage">
@@ -863,6 +864,7 @@
       chosenOption={card.chosen_option}
       chosenName={card.chosen_name}
       protection={card.protection}
+      riotHaste={card.riot_haste}
     />
     {#if (card.damage_marked ?? 0) > 0}
       <span class="badge damage" title={`${card.damage_marked} damage marked`} aria-label="damage">
