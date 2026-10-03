@@ -190,14 +190,17 @@ test.describe("#328 autopass skips the blocking window", () => {
         "the defender must still be declaring blockers",
       ).toContain(defenderSeat);
 
-      // And the defender's board says so too.
+      // And the defender's board says so too — including that nobody
+      // holds priority while the declaration is being made (#1501).
       const stepLabel = (
         (await defender.page
           .getByRole("region", { name: "actions", exact: true })
           .locator(".step-label")
           .textContent()) ?? ""
-      ).trim();
-      expect(stepLabel).toBe("Declare Blockers");
+      )
+        .replace(/\s+/g, " ")
+        .trim();
+      expect(stepLabel).toBe("Declare Blockers · no priority");
 
       // Declining is still legal, and it is the player's own click:
       // ADR 0111 PR 3 puts "No blocks" in the action dock as the
