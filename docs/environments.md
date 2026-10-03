@@ -562,8 +562,8 @@ to override one, then restart the service.
 
 **Signing someone out.** A session that belongs to a user can be
 withdrawn (ADR 0051 decision 6). That is every Discord sign-in, and every
-seat claimed from one. The player can do it themselves with **log out
-everywhere** in the lobby, or **sign out everywhere** on the login page.
+seat claimed from one. The player can do it themselves with **Sign out
+everywhere** in the header's account menu (the button with their name).
 An admin can do it for anyone:
 
 ```sh

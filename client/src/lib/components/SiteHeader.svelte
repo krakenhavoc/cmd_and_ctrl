@@ -2,13 +2,12 @@
   // SiteHeader — the shared site nav (#1386, ADR 0092's dual-portal
   // experiment). One of two competing entries into the app; the other
   // is the #/home sitemap page. The owner will pick between them once
-  // both exist, so this stays deliberately small: a wordmark, six
-  // links, and a sign in/out control, reusing the session store and
-  // the existing logout path rather than inventing either.
+  // both exist, so this stays deliberately small: a wordmark, the
+  // links, and an account control, reusing the session store and the
+  // existing logout paths rather than inventing either.
   //
   // Session-aware: Lobby and Catalog need any session, "My games"
-  // needs one tied to a Discord user (the same gate Lobby's own "my
-  // games" button already uses) — a guest or admin session would
+  // needs one tied to a Discord user — a guest or admin session would
   // otherwise land on a page that can only tell them to sign in.
   // Roadmap, Deck check and Home are public (ADR 0095 §5 adds the
   // second of those), so a signed-out visitor still sees all three
@@ -16,20 +15,45 @@
   //
   // Not shown on Game — the board has its own command bar, and a
   // second row of chrome above it would just eat table space.
+  //
+  // For a signed-in person the header is the portal (ADR 0112 §1 items
+  // 4 and 5): the wordmark goes to the Lobby, the signed-in home, and
+  // the account controls that used to live on the Lobby's own command
+  // bar and the login page's signed-in card are one menu, opened from
+  // the button that shows the person's name.
+  import { onMount } from "svelte";
   import { route, navigate } from "../router";
-  import { session } from "../session";
+  import { canSignOutEverywhere, LobbyApiError, session } from "../session";
   import { signedInUserID } from "../myGames";
-  import { logout as apiLogout } from "../api";
+  import {
+    discordAuthEnabled,
+    discordLoginHref,
+    logout as apiLogout,
+    logoutEverywhere as apiLogoutEverywhere,
+  } from "../api";
+  import { openSettings } from "../settings";
   import Icon from "./Icon.svelte";
 
   let menuOpen = $state(false);
+  let accountOpen = $state(false);
+  let accountError = $state("");
+  let accountEl = $state<HTMLElement | null>(null);
 
   const isSignedIn = $derived($session !== null);
   const hasLinkedUser = $derived(signedInUserID($session) !== null);
 
+  // "Sign in with a different Discord account" needs Discord sign-in on
+  // this server. Probed once, and only for a session that could use it.
+  let discordEnabled = $state(false);
+  onMount(() => {
+    if (!hasLinkedUser) return;
+    void discordAuthEnabled().then((on) => {
+      discordEnabled = on;
+    });
+  });
+
   // Prefer the person's Discord display name; fall back to the
-  // session's role (guest / admin / spectator) when there isn't one —
-  // the same rule Lobby's own header chip uses.
+  // session's role (guest / admin / spectator) when there isn't one.
   const whoAmI = $derived.by(() => {
     const s = $session;
     if (!s) return "";
@@ -37,24 +61,86 @@
     return name && name !== role ? name : role;
   });
 
+  // What kind of session this is, in a player's words: the line under
+  // the name in the account menu. It replaces the Lobby's old role chip.
+  const accountKind = $derived.by(() => {
+    const s = $session;
+    if (!s) return "";
+    const { role } = s.principal;
+    if (role === "admin") return "admin token";
+    if (role === "identified" || hasLinkedUser) return "signed in with Discord";
+    return role === "spectator" ? "guest spectator" : "guest seat";
+  });
+
+  // The wordmark is the way home: the Lobby for a session, the public
+  // site map without one (ADR 0112 §1 item 5).
+  const homeHref = $derived(isSignedIn ? "#/lobby" : "#/home");
+
   function closeMenu(): void {
     menuOpen = false;
+  }
+
+  function closeAccount(): void {
+    accountOpen = false;
+  }
+
+  function toggleAccount(): void {
+    accountError = "";
+    accountOpen = !accountOpen;
+    if (accountOpen) menuOpen = false;
+  }
+
+  // Escape closes the account menu and hands focus back to its button;
+  // a click anywhere outside it closes it too.
+  function onWindowKey(e: KeyboardEvent): void {
+    if (e.key !== "Escape" || !accountOpen) return;
+    closeAccount();
+    accountEl?.querySelector<HTMLButtonElement>(".acct-btn")?.focus();
+  }
+
+  function onWindowClick(e: MouseEvent): void {
+    if (!accountOpen || !accountEl) return;
+    if (e.target instanceof Node && accountEl.contains(e.target)) return;
+    closeAccount();
   }
 
   function current(name: string): boolean {
     return $route.name === name;
   }
 
+  function settings(): void {
+    closeAccount();
+    openSettings();
+  }
+
   async function signOut(): Promise<void> {
     closeMenu();
+    closeAccount();
     await apiLogout();
     navigate("#/login");
   }
+
+  // Sign out everywhere (ADR 0051 decision 6): every browser this
+  // Discord account is signed in on, this one included. A failure stays
+  // in the menu, so the person knows their other browsers are still
+  // signed in.
+  async function signOutEverywhere(): Promise<void> {
+    accountError = "";
+    try {
+      await apiLogoutEverywhere();
+      closeAccount();
+      navigate("#/login");
+    } catch (err) {
+      accountError = err instanceof LobbyApiError ? err.message : "could not sign out everywhere";
+    }
+  }
 </script>
+
+<svelte:window onkeydown={onWindowKey} onclick={onWindowClick} />
 
 <header class="site-header">
   <div class="row">
-    <a class="wordmark" href="#/home" aria-label="cmd_and_ctrl home" onclick={closeMenu}>
+    <a class="wordmark" href={homeHref} aria-label="cmd_and_ctrl home" onclick={closeMenu}>
       <i></i>CMD &amp; CTRL
     </a>
 
@@ -125,10 +211,56 @@
       >
     </nav>
 
-    <div class="account">
+    <div class="account" bind:this={accountEl}>
       {#if isSignedIn}
-        <span class="who">{whoAmI}</span>
-        <button type="button" class="ghost sm" onclick={signOut}>Sign out</button>
+        <button
+          type="button"
+          class="ghost sm acct-btn"
+          aria-haspopup="true"
+          aria-expanded={accountOpen}
+          aria-controls="account-menu"
+          aria-label={`account menu: ${whoAmI}`}
+          onclick={toggleAccount}
+        >
+          <span class="who">{whoAmI}</span>
+          <span class="caret" class:open={accountOpen}><Icon name="chevronRight" size={12} /></span>
+        </button>
+        {#if accountOpen}
+          <div class="acct-menu" id="account-menu" role="group" aria-label="account">
+            <div class="acct-id">
+              <span class="acct-name">{whoAmI}</span>
+              <span class="acct-kind">{accountKind}</span>
+            </div>
+            <!-- ADR 0112 §2 item 9 (Delivery PR 4): the Admin chip, or the
+                 token's static "Admin token" badge, goes here, first in
+                 the menu. Nothing renders in this slot until then. -->
+            <button type="button" class="acct-item" onclick={settings}>
+              <Icon name="gear" size={14} /> Settings
+            </button>
+            {#if discordEnabled && hasLinkedUser}
+              <!-- ADR 0110 §2 item 3: a repeat sign-in skips Discord's
+                   screen and uses whichever account the browser is
+                   signed in to. This asks for the screen, which has
+                   Discord's own account switcher. -->
+              <a class="acct-item" href={discordLoginHref({ consent: true })}>
+                Sign in with a different Discord account
+              </a>
+            {/if}
+            <div class="acct-sep" aria-hidden="true"></div>
+            <button type="button" class="acct-item" onclick={signOut}>Sign out</button>
+            {#if canSignOutEverywhere($session)}
+              <button
+                type="button"
+                class="acct-item"
+                title="sign out of every browser signed in with this Discord account"
+                onclick={signOutEverywhere}>Sign out everywhere</button
+              >
+            {/if}
+            {#if accountError}
+              <p class="acct-error" role="alert">{accountError}</p>
+            {/if}
+          </div>
+        {/if}
       {:else}
         <a class="ghost-link" href="#/login">Sign in</a>
       {/if}
@@ -213,6 +345,7 @@
   }
 
   .account {
+    position: relative;
     display: flex;
     align-items: center;
     gap: 10px;
@@ -222,7 +355,7 @@
     font-family: var(--font-mono);
     font-size: 11px;
     letter-spacing: 0.04em;
-    color: var(--fg-dim);
+    color: var(--fg-muted);
     white-space: nowrap;
     max-width: 22ch;
     overflow: hidden;
@@ -232,6 +365,93 @@
     height: 28px;
     padding: 0 10px;
     font-size: 11.5px;
+  }
+  .acct-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .caret {
+    display: inline-flex;
+    color: var(--fg-dim);
+    transform: rotate(90deg);
+    transition: transform 120ms ease;
+  }
+  .caret.open {
+    transform: rotate(-90deg);
+  }
+  /* The account menu drops from the name button, right-aligned with
+     it, over whatever page is underneath. */
+  .acct-menu {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    z-index: 40;
+    min-width: 240px;
+    max-width: calc(100vw - 28px);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 6px;
+    border-radius: 12px;
+    border: 1px solid var(--border-strong);
+    background: var(--surface-raised);
+    box-shadow: var(--shadow-lg);
+  }
+  .acct-id {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 8px 10px 10px;
+    margin-bottom: 4px;
+    border-bottom: 1px solid var(--border);
+  }
+  .acct-name {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--fg);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .acct-kind {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    letter-spacing: 0.06em;
+    color: var(--fg-dim);
+  }
+  .acct-item {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 8px;
+    width: 100%;
+    min-height: 34px;
+    padding: 0 10px;
+    border: 0;
+    border-radius: var(--radius);
+    background: transparent;
+    color: var(--fg);
+    font-size: 12.5px;
+    font-weight: 600;
+    text-align: left;
+    text-decoration: none;
+    box-sizing: border-box;
+    cursor: pointer;
+  }
+  .acct-item:hover,
+  .acct-item:focus-visible {
+    background: var(--surface-hover);
+  }
+  .acct-sep {
+    height: 1px;
+    margin: 4px 6px;
+    background: var(--border);
+  }
+  .acct-error {
+    margin: 4px 10px 6px;
+    font-size: 12px;
+    color: var(--danger);
   }
   .ghost-link {
     display: inline-flex;
@@ -255,6 +475,10 @@
   @media (max-width: 700px) {
     .menu-toggle {
       display: inline-flex;
+      /* After the account control, at the far right: the two used to
+         split the free space and leave the toggle mid-row. */
+      order: 3;
+      margin-left: 0;
     }
     .site-nav {
       display: none;

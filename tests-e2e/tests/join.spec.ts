@@ -80,6 +80,18 @@ test.describe("invite → join", () => {
     );
     expect(session?.principal.role).toBe("player");
     expect(session?.gameID).toBe(game.id);
+
+    // ADR 0112 §1: Login is for signed-out visitors, so the seated guest
+    // is sent back to the Lobby, whose join box takes a link only. A
+    // bare code is answered there before anything is sent (the server
+    // would refuse a guest's code with 409).
+    await page.goto("/#/login");
+    await expect(page).toHaveURL(/#\/lobby$/);
+    await expect(page.getByLabel("invite code or link")).toHaveCount(0);
+    await page.getByLabel("invite link").fill("some-other-code");
+    await page.getByRole("button", { name: "join", exact: true }).click();
+    await expect(page.getByRole("alert")).toContainText("This browser is seated as a guest.");
+    await expect(page).toHaveURL(/#\/lobby$/);
   });
 
   test("empty player name keeps the join button disabled", async ({ page, request }) => {

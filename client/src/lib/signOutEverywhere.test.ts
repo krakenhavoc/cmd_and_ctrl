@@ -44,6 +44,18 @@ describe("canSignOutEverywhere", () => {
       principal: { role: "admin", issued_at: "", expires_at: "2099-01-01T00:00:00Z" },
     };
     expect(canSignOutEverywhere(admin)).toBe(false);
+    // A guest seat's principal carries the nil uuid, which is no user.
+    const guest: Session = {
+      token: "g",
+      expiresAt: "2099-01-01T00:00:00Z",
+      principal: {
+        role: "player",
+        user_id: "00000000-0000-0000-0000-000000000000",
+        issued_at: "",
+        expires_at: "2099-01-01T00:00:00Z",
+      },
+    };
+    expect(canSignOutEverywhere(guest)).toBe(false);
   });
 });
 

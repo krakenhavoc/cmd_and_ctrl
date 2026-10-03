@@ -1,20 +1,23 @@
 // @vitest-environment jsdom
 //
-// ADR 0110 Delivery PR 1, the sign-in fix, on the client: the login page
-// offers its code box to a signed-in person who is already at a table,
-// joins the next table by code as that person, offers "Sign in with a
-// different Discord account" (prompt=consent), and a seat session that
-// lasts as long as the sign-in is not dropped at 12 hours.
+// ADR 0110 Delivery PR 1, the sign-in fix, on the client: a signed-in
+// person joins the next table by code as that person, "Sign in with a
+// different Discord account" asks Discord for its account screen
+// (prompt=consent), and a seat session that lasts as long as the sign-in
+// is not dropped at 12 hours.
+//
+// The code box and the different-account link for a signed-in person
+// moved off the login page in ADR 0112 PR 3, to the Lobby's "Join a
+// table" card and the header's account menu; signedInHome.render.test.ts
+// covers them there.
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import Login from "../routes/Login.svelte";
 import { discordLoginHref, joinByCode } from "./api";
 import { MAX_TIMER_MS, currentSession, setSession, type Session } from "./session";
-import { cleanup, flushSync, render } from "./test/render.svelte";
+import { cleanup } from "./test/render.svelte";
 
 const USER = "5b0d6a3e-8f7f-4e0e-9b1a-0f3c1d2e4a5b";
-const NIL = "00000000-0000-0000-0000-000000000000";
 const DAY = 24 * 60 * 60 * 1000;
 
 function sessionAs(role: Session["principal"]["role"], userID?: string, name = "Alice"): Session {
@@ -84,12 +87,6 @@ function stubServer(): void {
   );
 }
 
-async function settle(): Promise<void> {
-  for (let i = 0; i < 5; i++) await Promise.resolve();
-  await new Promise((r) => setTimeout(r, 0));
-  flushSync();
-}
-
 beforeEach(() => {
   posted = [];
   location.hash = "#/login";
@@ -105,55 +102,6 @@ describe("discordLoginHref", () => {
   it("starts a plain sign-in, or one that asks Discord for its account screen", () => {
     expect(discordLoginHref()).toBe("/auth/discord/start");
     expect(discordLoginHref({ consent: true })).toBe("/auth/discord/start?prompt=consent");
-  });
-});
-
-describe("Login page for a signed-in person", () => {
-  it("offers the code box, the way back and a different account to a signed-in seat", async () => {
-    setSession(sessionAs("player", USER));
-    stubServer();
-    const { container } = render(Login as never, {} as never);
-    await settle();
-
-    expect(container.textContent).toMatch(/Join a table/);
-    expect(container.textContent).toMatch(/Signed in as Alice/);
-    // A signed-in seat needs no name for a code: the server seats the
-    // Discord identity.
-    const input = container.querySelector<HTMLInputElement>(
-      'input[aria-label="invite code or link"]',
-    );
-    expect(input).not.toBeNull();
-    input!.value = "abc123";
-    input!.dispatchEvent(new Event("input", { bubbles: true }));
-    flushSync();
-    expect(container.querySelector('input[aria-label="your name"]')).toBeNull();
-
-    expect(container.querySelector('a[href="#/lobby"]')?.textContent).toMatch(/Back to your table/);
-    const other = [...container.querySelectorAll("a")].find((a) =>
-      /different Discord account/.test(a.textContent ?? ""),
-    );
-    expect(other?.getAttribute("href")).toBe("/auth/discord/start?prompt=consent");
-    // The plain sign-in button is for people who are not signed in.
-    expect(container.textContent).not.toMatch(/Continue with Discord/);
-  });
-
-  it("offers the different-account link to a fresh sign-in too, without the way back", async () => {
-    setSession(sessionAs("identified", USER));
-    stubServer();
-    const { container } = render(Login as never, {} as never);
-    await settle();
-    expect(container.textContent).toMatch(/different Discord account/);
-    expect(container.querySelector('a[href="#/lobby"]')).toBeNull();
-  });
-
-  it("treats a guest seat as signed out: Discord sign-in, and a name for a code", async () => {
-    setSession(sessionAs("player", NIL, "Guest"));
-    stubServer();
-    const { container } = render(Login as never, {} as never);
-    await settle();
-    expect(container.textContent).toMatch(/Continue with Discord/);
-    expect(container.textContent).toMatch(/Have an invite\?/);
-    expect(container.textContent).not.toMatch(/different Discord account/);
   });
 });
 
