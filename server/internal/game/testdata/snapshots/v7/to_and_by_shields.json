@@ -1814,7 +1814,7 @@
           {
             "kind": "preventFromSource",
             "player": "00000000-0000-0000-0000-000000000000",
-            "then": "prevention/plus-one-counters-on-recipient"
+            "then": "prevention/counters-on-it-per-prevented"
           }
         ],
         "source": {

@@ -633,6 +633,16 @@ func Register(spec Spec) {
 		panic(fmt.Sprintf("effects.Register: %q declares %d replacement effects — the ID scheme reserves %d slots per card (game.MaxCatalogReplacementSlots)",
 			spec.Name, n, game.MaxCatalogReplacementSlots))
 	}
+	// ADR 0108 §8 (#1906): a replacement's additional effect (Then) is a
+	// prevention effect's (CR 615.5), so it requires Prevention, and its
+	// unit (ThenPer) is required with it — the printed subject picks it,
+	// and a forgotten one would run once per recipient on a card whose
+	// text says once per source.
+	for i, r := range spec.Replacements {
+		if problem := replacementThenProblem(r); problem != "" {
+			panic(fmt.Sprintf("effects.Register: %q replacement %d: %s", spec.Name, i, problem))
+		}
+	}
 	// #925: a triggered ability may declare the zone it watches from
 	// (CR 113.6). A zone the harvest does not walk would be a
 	// declaration the engine silently ignored — the card would

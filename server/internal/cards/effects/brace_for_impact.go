@@ -22,7 +22,7 @@ func init() {
 		Targets:      TargetCreature("target multicolored creature", Multicolored()),
 		OnResolve: sourceShieldSpell(PreventDamageFromSource{
 			Protect: ShieldTheTarget,
-			Then:    preventedPlusOneCountersOnRecipientBody,
+			Then:    countersOnItPerPreventedBody,
 		}),
 	})
 }

@@ -2,6 +2,8 @@ package effects
 
 import (
 	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
 // prevention.go — CR 615 damage prevention, the three shapes it comes
@@ -53,6 +55,11 @@ type PreventAllCombatDamageThisTurn struct {
 	// Label is the CR 616 ordering-prompt copy, shown when two
 	// replacements race for the same event.
 	Label string
+
+	// Then is the CR 615.5 additional effect, run once per damage
+	// instance with what was prevented (Inkshield; ADR 0108 owner
+	// decision 2). Zero is none.
+	Then game.BodyRef
 }
 
 func (p PreventAllCombatDamageThisTurn) Apply(ctx *Context) error {
@@ -60,7 +67,8 @@ func (p PreventAllCombatDamageThisTurn) Apply(ctx *Context) error {
 	if label == "" {
 		label = "prevent all combat damage this turn"
 	}
-	ctx.Game.PreventCombatDamageThisTurnForEffect(ctx.Source(), p.Player, label)
+	then := game.ShieldFollowUp{Controller: ctx.Controller(), Body: p.Then}
+	ctx.Game.PreventCombatDamageThenThisTurnForEffect(ctx.Source(), p.Player, then, label)
 	return nil
 }
 
@@ -99,6 +107,16 @@ type PreventNextDamage struct {
 	CombatOnly bool
 
 	Label string
+
+	// Then is the CR 615.5 additional effect, run once per damage
+	// instance with what the charge prevented (Test of Faith, Candles'
+	// Glow; ADR 0108 owner decision 2). Zero is none.
+	Then game.BodyRef
+
+	// To is the player or permanent Then deals its damage to, chosen as
+	// the spell or ability was put on the stack (Acolyte's Reward's
+	// second target, Vengeful Archon's player). uuid.Nil is none.
+	To uuid.UUID
 }
 
 func (p PreventNextDamage) Apply(ctx *Context) error {
@@ -109,6 +127,7 @@ func (p PreventNextDamage) Apply(ctx *Context) error {
 	if label == "" {
 		label = "prevent damage"
 	}
-	ctx.Game.PreventNextDamageThisTurnForEffect(ctx.Source(), p.Target, p.Amount, p.CombatOnly, label)
+	then := game.ShieldFollowUp{Controller: ctx.Controller(), Body: p.Then, To: p.To}
+	ctx.Game.PreventNextDamageThenThisTurnForEffect(ctx.Source(), p.Target, p.Amount, p.CombatOnly, then, label)
 	return nil
 }

@@ -2,6 +2,7 @@ package game
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/google/uuid"
 )
@@ -299,6 +300,31 @@ func (g *Game) ScheduleDelayedTriggerForEffect(dt DelayedTrigger) uuid.UUID {
 	}
 	g.DelayedTriggers = append(g.DelayedTriggers, &queued)
 	return queued.ID
+}
+
+// ScheduleOrJoinDelayedTriggerForEffect schedules dt, or — when a delayed
+// trigger from the same source, with the same body, step, label and
+// cards, is still waiting to fire — adds dt.Params.Amount to that one
+// instead and returns its ID.
+//
+// It is how an amount counted over time reaches ONE delayed trigger: "At
+// the beginning of the next end step, put a +0/+1 counter on that creature
+// for each 1 damage prevented this way" (Sacred Boon, Scars of the
+// Veteran) is one delayed triggered ability, and a shield that prevents
+// damage twice before the end step adds to it rather than scheduling a
+// second (ADR 0108 PR 8).
+//
+// Caller must hold g.mu (write).
+func (g *Game) ScheduleOrJoinDelayedTriggerForEffect(dt DelayedTrigger) uuid.UUID {
+	for _, d := range g.DelayedTriggers {
+		if d == nil || d.SourceCardID != dt.SourceCardID || d.Body != dt.Body || d.At != dt.At ||
+			d.Label != dt.Label || len(d.On) != 0 || !slices.Equal(d.Cards, dt.Cards) {
+			continue
+		}
+		d.Params.Amount += dt.Params.Amount
+		return d.ID
+	}
+	return g.ScheduleDelayedTriggerForEffect(dt)
 }
 
 // delayedSourceObjectLocked is the object a delayed trigger scheduled

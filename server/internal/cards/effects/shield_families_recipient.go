@@ -230,22 +230,3 @@ func returnExiledCardsToOwnersTapped(g *game.Game, item *game.StackItem) error {
 	}
 	return ReturnFromExileTogether{Targets: ids, Tapped: true}.Apply(NewContext(g, item))
 }
-
-// --- the follow-ups (CR 615.5) ----------------------------------------
-
-// "For each 1 damage prevented this way, put a +1/+1 counter on that
-// creature" (Brace for Impact): the creature the shield protects, which
-// is the prevented damage's recipient. A creature that has left the
-// battlefield gets nothing.
-var preventedPlusOneCountersOnRecipientBody = game.DelayedBody("prevention/plus-one-counters-on-recipient", preventedPlusOneCountersOnRecipient)
-
-func preventedPlusOneCountersOnRecipient(g *game.Game, item *game.StackItem, p game.EffectParams) error {
-	if p.Amount <= 0 || item == nil || item.Trigger == nil {
-		return nil
-	}
-	target := item.Trigger.Event.Target
-	if target == uuid.Nil || !onBattlefield(g, target) {
-		return nil
-	}
-	return g.AddCounterForEffect(target, game.CounterPlusOne, p.Amount)
-}
