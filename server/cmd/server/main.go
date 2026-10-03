@@ -289,14 +289,22 @@ func main() {
 	if revocations != nil {
 		authenticator = auth.WithRevocation(authenticator, revocations)
 	}
+	// Admin mode (ADR 0112 §2): an allowlisted person is an admin only
+	// while they have switched admin mode on, for 12 hours at a time.
+	// Loaded once here and written through on every switch. A failed
+	// load is logged and the server boots with everyone in player mode:
+	// the safe failure is fewer admins. Signing out everywhere ends it.
+	adminModes := newAdminModes(ctx, log, userStore)
+	revocations.EndAdminModeOnRevoke(adminModes)
+	admins := lobby.NewAdmins(cfg.Admins, adminModes)
 
 	hub := ws.NewHub(log)
 	hub.SetManager(mgr)
-	// The admin allowlist (ADR 0110 §3). The same *AdminList goes to the
-	// WebSocket authorizer and the lobby routes, so the two can never
-	// disagree about who is an admin. It needs a database to mean
-	// anything: an allowlisted admin is a signed-in session, and with no
-	// database no session carries a user.
+	// The admin allowlist (ADR 0110 §3) and admin modes (ADR 0112 §2).
+	// The same *Admins goes to the WebSocket authorizer and the lobby
+	// routes, so the two can never disagree about who is an admin. It
+	// needs a database to mean anything: an allowlisted admin is a
+	// signed-in session, and with no database no session carries a user.
 	switch n := cfg.Admins.Len(); {
 	case n == 0:
 		log.Info("admin allowlist empty; only the shared admin token is an admin", "var", lobby.AdminUserIDsEnv)
@@ -306,7 +314,12 @@ func main() {
 	default:
 		log.Info("admin allowlist loaded", "var", lobby.AdminUserIDsEnv, "count", n)
 	}
-	hub.SetAuthorizer(&lobby.WSAuthorizer{Auth: authenticator, Admins: cfg.Admins, Log: log})
+	hub.SetAuthorizer(&lobby.WSAuthorizer{Auth: authenticator, Admins: admins, Log: log})
+	// Admin mode lapses 12 hours after it is switched on. HTTP sees the
+	// lapse at the next request; this sweep, once a minute, clears the
+	// row and closes the person's admin sockets with 4001 so the admin
+	// menu goes away at the table too.
+	go lobby.RunAdminModeSweeper(ctx, admins, hub, log, lobby.AdminModeSweepInterval)
 	// Lobby HTTP mutations (join/deck/start) broadcast through the
 	// hub so clients already on the game page see them immediately.
 	l.SetStateBroadcaster(hub)
@@ -564,7 +577,7 @@ func main() {
 		Lobby:       l,
 		Auth:        authenticator,
 		AdminToken:  cfg.AdminToken,
-		Admins:      cfg.Admins,
+		Admins:      admins,
 		SessionTTL:  cfg.SessionTTL,
 		IdentityTTL: cfg.IdentityTTL,
 		Env:         cfg.Env,
@@ -583,6 +596,7 @@ func main() {
 		Users:             userStore,
 		Revocations:       lobbyRevoker(revocations),
 		SessionEvictor:    hub,
+		AdminSockets:      hub,
 		DeckLibrary:       deckLibrary,
 		UserSettings:      newUserSettingsStore(database),
 		TableSetups:       newTableSetupStore(database),
@@ -924,6 +938,23 @@ func newRevocations(ctx context.Context, log *slog.Logger, store users.Store) *u
 		os.Exit(1)
 	}
 	return r
+}
+
+// newAdminModes loads every admin mode (ADR 0112 §2) when there is a
+// user database. Unlike newRevocations, a load that fails does not stop
+// the boot: it is logged at ERROR and the server starts with nobody in
+// admin mode, because the safe failure here is fewer admins. Returns
+// nil with no database: there are no users, so no allowlisted admins.
+func newAdminModes(ctx context.Context, log *slog.Logger, store users.Store) *users.AdminModes {
+	sq, ok := store.(*users.SQLStore)
+	if !ok {
+		return nil
+	}
+	m, err := users.NewAdminModes(ctx, sq)
+	if err != nil {
+		log.Error("admin modes could not be loaded; every allowlisted person is in player mode until they switch admin mode on again", "err", err)
+	}
+	return m
 }
 
 // lobbyRevoker keeps a nil *users.Revocations a nil interface, so the

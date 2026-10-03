@@ -204,7 +204,7 @@ before any ssh.
 | this repo | `CMDCTRL_DISCORD_CLIENT_ID`, `CMDCTRL_DISCORD_CLIENT_SECRET`, `CMDCTRL_GITHUB_TOKEN` | secrets; shared by both hosts |
 | this repo | `CMDCTRL_DISCORD_BOT_TOKEN` | secret; **production only**, written to **both** `bot.env` (the gateway bot) and `/etc/cmd_and_ctrl/env` (the server's DM-invite route — see below). Unset skips the bot env sync with a notice; set turns a host that cannot run the bot into a CD warning (never a failure) |
 | this repo | `CMDCTRL_DISCORD_APP_ID`, `CMDCTRL_DISCORD_GUILD_IDS` | variables; **production only**, written to `bot.env`. The app ID equals the sign-in client ID; guild IDs are comma-separated |
-| this repo, or **environments `prod` and `dev`** | `CMDCTRL_DISCORD_ADMIN_USER_IDS` | variable; comma-separated Discord user snowflakes. The **server's admin allowlist** on **both** hosts ([ADR 0110](decisions/0110-remember-me.md) §3), written to `/etc/cmd_and_ctrl/env` on every deploy, **empty included**, by "Sync server env (admin allowlist)", which refuses a malformed value before writing it. On production it is also written to `bot.env`: who may run `/c2-end` (#614). An environment-level value overrides the repo-level one, so the two hosts can differ. Unset is supported: only the shared token is admin, and `/c2-end` refuses every caller rather than failing open |
+| this repo, or **environments `prod` and `dev`** | `CMDCTRL_DISCORD_ADMIN_USER_IDS` | variable; comma-separated Discord user snowflakes. The **server's admin allowlist** on **both** hosts ([ADR 0110](decisions/0110-remember-me.md) §3; a listed person is an admin only while they have admin mode on, [ADR 0112](decisions/0112-signed-in-home-player-mode-and-one-decks-page.md) §2), written to `/etc/cmd_and_ctrl/env` on every deploy, **empty included**, by "Sync server env (admin allowlist)", which refuses a malformed value before writing it. On production it is also written to `bot.env`: who may run `/c2-end` (#614). An environment-level value overrides the repo-level one, so the two hosts can differ. Unset is supported: only the shared token is admin, and `/c2-end` refuses every caller rather than failing open |
 | this repo | `CMDCTRL_DISCORD_ADMIN_ROLE_IDS` | variable; **production only**, bot-only, written to `bot.env` on every deploy, empty included. Comma-separated role snowflakes — who may run `/c2-end` (#614) |
 | this repo, **environments `prod` and `dev`** | `CMDCTRL_R2_REPOSITORY` | environment variable, set in each; the restic repository URL for that host's bucket, `s3:https://<account_id>.r2.cloudflarestorage.com/<bucket>`. See [Backups](#backups) |
 | this repo, **environments `prod` and `dev`** | `CMDCTRL_R2_ACCESS_KEY_ID`, `CMDCTRL_R2_SECRET_ACCESS_KEY` | environment secrets, set in each; an R2 API token scoped to that host's bucket. Written to `backup.env` |
@@ -552,6 +552,24 @@ It costs every person's synced settings, remembered table setup, last
 deck and the links saved beside imported decks (the decks themselves
 stay). `TestMigration0008RollbackByHand` runs exactly this sequence and
 then rolls forward.
+
+Migration 0009 (ADR 0112, player mode) adds one column,
+`users.admin_mode_at` (`INTEGER NOT NULL DEFAULT 0`). An older binary
+refuses the v9 schema. Drop the column by hand (SQLite 3.35 or newer):
+
+```sh
+sudo systemctl stop cmd-and-ctrl
+sudo sqlite3 /var/lib/cmd_and_ctrl/data/db/cmdctrl.sqlite \
+  "ALTER TABLE users DROP COLUMN admin_mode_at; DELETE FROM schema_migrations WHERE version = 9;"
+# install the older binary, then:
+sudo systemctl start cmd-and-ctrl
+```
+
+It costs only who had admin mode on. The older binary treats every
+allowlisted person as an admin on every request, as before ADR 0112.
+Rolling forward again recreates the column at 0, so everyone starts in
+player mode. `TestMigration0009RollbackByHand` runs exactly this
+sequence and then rolls forward.
 
 **Session lifetimes.** A Discord sign-in from the login page mints an
 identity session that lasts `CMDCTRL_IDENTITY_TTL` (default `720h`, 30
