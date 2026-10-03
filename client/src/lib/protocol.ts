@@ -638,7 +638,7 @@ export interface MoveCost {
   // includes paying your last point, which is legal and lethal.
   life?: number;
   // #1677: the part of `life` that pays Phyrexian mana symbols
-  // instead of mana (CR 107.4c). Already INCLUDED in `life`, and in
+  // instead of mana (CR 107.4f). Already INCLUDED in `life`, and in
   // life points: 2 per symbol, where `params.phyrexian_life` counts
   // symbols. Broken out because it buys nothing — the same move at
   // a different price — so it is no evidence of what the move does.
