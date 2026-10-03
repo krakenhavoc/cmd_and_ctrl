@@ -74,14 +74,19 @@ func chainOfVaporBounce(ctx *Context) error {
 	return BounceToHand{
 		Target: t.ID,
 		Then: func(ctx *Context, _ bool) error {
-			return chainOfVaporAsk(ctx, controller)
+			return chainSacrificeALandToCopy(ctx, controller, "Chain of Vapor")
 		},
 	}.Apply(ctx)
 }
 
-// chainOfVaporAsk is the chain's first question, put to the bounced
-// permanent's controller once the return has settled.
-func chainOfVaporAsk(ctx *Context, controller uuid.UUID) error {
+// chainSacrificeALandToCopy is the chain's first question, put to the
+// bounced permanent's controller once the return has settled: "that
+// permanent's controller may sacrifice a land of their choice. If the
+// player does, they may copy this spell and may choose a new target for
+// that copy." Chain of Silence (ADR 0108 PR 7b, #1904) prints the same
+// sentences about the shielded creature's controller; `name` is the card
+// asking.
+func chainSacrificeALandToCopy(ctx *Context, controller uuid.UUID, name string) error {
 	if controller == uuid.Nil {
 		return nil
 	}
@@ -92,12 +97,12 @@ func chainOfVaporAsk(ctx *Context, controller uuid.UUID) error {
 	}
 	return MayChoice{
 		Player:   controller,
-		Question: "Chain of Vapor — sacrifice a land? (if you do, you may copy this spell)",
-		OnYes:    chainOfVaporSacrifice(controller),
+		Question: name + " — sacrifice a land? (if you do, you may copy this spell)",
+		OnYes:    chainSacrificeLand(controller, name),
 	}.Apply(ctx)
 }
 
-// chainOfVaporSacrifice is the yes branch: they pick the land, and the
+// chainSacrificeLand is the yes branch: they pick the land, and the
 // copy question follows once it has actually gone.
 //
 // A package-level function closing over one scalar — the
@@ -105,24 +110,24 @@ func chainOfVaporAsk(ctx *Context, controller uuid.UUID) error {
 // it against the restored game. The candidate list is recomputed at
 // this point rather than captured, because the board can change
 // between the question and the answer.
-func chainOfVaporSacrifice(player uuid.UUID) func(ctx *Context) error {
+func chainSacrificeLand(player uuid.UUID, name string) func(ctx *Context) error {
 	return func(ctx *Context) error {
 		return SacrificeChoice{
 			Player:     player,
 			Candidates: landsControlledByPlayer(ctx.Game, player),
-			Question:   "Chain of Vapor — sacrifice a land",
-			Then:       chainOfVaporMayCopy(player),
+			Question:   name + " — sacrifice a land",
+			Then:       chainMayCopy(player, name),
 		}.Apply(ctx)
 	}
 }
 
-// chainOfVaporMayCopy is "they may copy this spell and may choose a
-// new target for that copy" (CR 707.10, 707.10b).
-func chainOfVaporMayCopy(player uuid.UUID) func(ctx *Context) error {
+// chainMayCopy is "they may copy this spell and may choose a new target
+// for that copy" (CR 707.10, 707.10b).
+func chainMayCopy(player uuid.UUID, name string) func(ctx *Context) error {
 	return func(ctx *Context) error {
 		return MayChoice{
 			Player:   player,
-			Question: "Chain of Vapor — copy it? (you may choose a new target for the copy)",
+			Question: name + " — copy it? (you may choose a new target for the copy)",
 			OnYes:    copyThisSpellFor(player),
 		}.Apply(ctx)
 	}

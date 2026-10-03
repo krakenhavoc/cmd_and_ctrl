@@ -42,7 +42,7 @@ func init() {
 					TargetCreature("target creature you control", YouControl()),
 					TargetCreature("target creature you don't control", OpponentControls()),
 				),
-				inscriptionOfAbundanceFight),
+				FightTheModesTargets),
 		).AnyNumberIf(WasKicked),
 	})
 }
@@ -65,27 +65,4 @@ func inscriptionOfAbundanceLife(_ *game.StackItem, ctx *Context, occ int) error 
 	}
 	ctx.Game.RecomputeLayersIfStaleLocked()
 	return GainLife{Player: t.ID, Amount: b42GreatestPowerControlledBy(ctx.Game, t.ID)}.Apply(ctx)
-}
-
-// inscriptionOfAbundanceFight is the third bullet: this occurrence's
-// slot-0 pick fights its slot-1 pick, and only while both are still
-// legal targets (CR 608.2b).
-func inscriptionOfAbundanceFight(_ *game.StackItem, ctx *Context, occ int) error {
-	var mine, theirs game.TargetRef
-	var haveMine, haveTheirs bool
-	for _, t := range ctx.ModeTargets(occ) {
-		if !ctx.IsTargetLegal(t) || t.Kind != game.TargetCard {
-			continue
-		}
-		switch t.Slot {
-		case 0:
-			mine, haveMine = t, true
-		case 1:
-			theirs, haveTheirs = t, true
-		}
-	}
-	if !haveMine || !haveTheirs {
-		return nil
-	}
-	return b10Fight(ctx, mine.ID, theirs.ID)
 }

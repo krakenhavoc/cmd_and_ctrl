@@ -284,3 +284,29 @@ func DealXDamageToModesTarget(item *game.StackItem, ctx *Context, occ int) error
 	}
 	return DealDamage{Source: item.SourceCardID, Target: t.ID, Amount: ctx.X()}.Apply(ctx)
 }
+
+// FightTheModesTargets is "target creature you control fights target
+// creature you don't control" as a modal bullet's body, the bullet's
+// target statement being two clauses: this occurrence's slot-0 pick
+// fights its slot-1 pick, and only while both are still legal targets
+// (CR 608.2b, 701.14b). Inscription of Abundance's third bullet and
+// Dromoka's Command's fourth (ADR 0108 PR 7b).
+func FightTheModesTargets(_ *game.StackItem, ctx *Context, occ int) error {
+	var mine, theirs game.TargetRef
+	var haveMine, haveTheirs bool
+	for _, t := range ctx.ModeTargets(occ) {
+		if !ctx.IsTargetLegal(t) || t.Kind != game.TargetCard {
+			continue
+		}
+		switch t.Slot {
+		case 0:
+			mine, haveMine = t, true
+		case 1:
+			theirs, haveTheirs = t, true
+		}
+	}
+	if !haveMine || !haveTheirs {
+		return nil
+	}
+	return b10Fight(ctx, mine.ID, theirs.ID)
+}
