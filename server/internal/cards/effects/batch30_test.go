@@ -46,7 +46,6 @@ const (
 	b30ExtractFromDarknessOracle    = "e597d8a1-3bbc-4001-b642-f4421447970f"
 	b30DocksideChefOracle           = "fed12a16-8920-403c-be63-0601a9d864b0"
 	b30GrimGuardianOracle           = "c1f1babf-13d0-4fc4-b192-127d2d5db7f1"
-	b30UltimaSkipOracle             = "baa337ce-edc6-4ee5-a898-68e9dbb4ab93"
 	b30ChainOfSmogSkipOracle        = "ea14c26b-bf2f-48b4-b879-6e63069ded1f"
 	b30ZimoneParadoxSculptorSkipOID = "9dd674a7-becf-4106-b53f-bca88426d92d"
 )
@@ -172,13 +171,13 @@ func TestBatch30CardsAreRegistered(t *testing.T) {
 			t.Errorf("oracle %s registered as %q, want %q", oracle, spec.Name, name)
 		}
 	}
-	// The two declared skips must NOT be registered — each needs a
-	// seam the engine does not have, and a spec would ship the card
-	// stronger than printed or as something other than itself.
-	// Gemhide Sliver came off this list with ADR 0093 and ships in
-	// gemhide_sliver.go.
+	// The declared skip must NOT be registered — it needs a seam the
+	// engine does not have, and a spec would ship the card stronger
+	// than printed or as something other than itself. Gemhide Sliver
+	// came off this list with ADR 0093 and ships in gemhide_sliver.go;
+	// Ultima, Origin of Oblivion came off it with ADR 0109 PR 3 and
+	// ships in ultima_origin_of_oblivion.go.
 	for _, skipped := range []string{
-		b30UltimaSkipOracle,             // a land losing all types and abilities and gaining a mana ability; a tap-for-{C} rider
 		b30ZimoneParadoxSculptorSkipOID, // a beginning-of-combat trigger event
 	} {
 		if _, ok := Lookup(skipped); ok {

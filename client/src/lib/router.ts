@@ -23,16 +23,20 @@ export type Route =
   // Public like /catalog was meant to be closed — see ADR 0092 for why
   // this one is the opposite call.
   | { name: "roadmap" }
-  // The public deck coverage checker (ADR 0095 §5, PR 3 of the same
-  // plan): how much of a decklist the engine automates, plus a
-  // "Request these cards" filing button for a signed-in Discord
-  // session. Public like the roadmap — the body carries names, oracle
-  // IDs and caveat sentences, never art or oracle text.
+  // The one decks page (ADR 0112 §3): check a deck by link or paste,
+  // its coverage report, "Request missing cards", "Save to my decks",
+  // the saved library and the pre-built decks. Public like the roadmap:
+  // the report carries names, oracle IDs and caveat sentences, never
+  // art or oracle text, and the library shows only to its owner.
   //
-  // `url` is #/deck-check?url=<link>, which pre-fills the link field
-  // and runs the check on load. The bot's `/c2-deck-check` reply and
-  // the "up to about 15 names" summary link here for the full report.
-  | { name: "deckCheck"; url?: string }
+  // `url` is #/decks?url=<link>, which pre-fills the link field and
+  // runs the check on load.
+  //
+  // #/deck-check (ADR 0095 §5's page) parses to this same route,
+  // permanently: the Discord bot's `/c2-deck-check` replies link
+  // #/deck-check?url=<link> for the full report, and every reply
+  // already posted must keep working. router.test.ts pins it.
+  | { name: "decks"; url?: string }
   | { name: "lobby" }
   // The tutorial's practice table (ADR 0076 §2.2): opening this route
   // opens a fresh practice game for the signed-in session and moves on
@@ -60,9 +64,6 @@ export type Route =
   // person holds, with a way back into the open ones. Session-gated;
   // the page itself explains what a guest or admin session is missing.
   | { name: "myGames" }
-  // "My decks" (ADR 0110 section 6): the saved deck library with each
-  // deck's coverage, rename and delete. Session-gated.
-  | { name: "myDecks" }
   // S12.5: /auth/discord/callback (server-side) redirects here with
   // the session details in the URL fragment. App.svelte's effect
   // reads them, installs the session, and navigates onward.
@@ -105,9 +106,11 @@ export function parseHash(hash: string): Route {
       return { name: "home" };
     case "roadmap":
       return { name: "roadmap" };
+    // #/deck-check is a permanent alias of #/decks (see the Route type).
+    case "decks":
     case "deck-check": {
       const u = params.get("url");
-      return u ? { name: "deckCheck", url: u } : { name: "deckCheck" };
+      return u ? { name: "decks", url: u } : { name: "decks" };
     }
     case "lobby":
       return { name: "lobby" };
@@ -119,8 +122,6 @@ export function parseHash(hash: string): Route {
     }
     case "my-games":
       return { name: "myGames" };
-    case "decks":
-      return { name: "myDecks" };
     case "games":
       // /games/:id/join?t=<token> → Join
       // /games/:id                → Game

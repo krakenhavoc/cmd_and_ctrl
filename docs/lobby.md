@@ -388,7 +388,9 @@ once. `Cache-Control: public, max-age=300`, the same as `/catalog`.
 
 The deck coverage checker ([ADR 0095](decisions/0095-deck-coverage-and-deck-requests.md)
 §1–§2): how much of a decklist the engine automates. The site's
-`#/deck-check` page and the bot's `/c2-deck-check` both render this
+decks page (`#/decks`, [ADR 0112](decisions/0112-signed-in-home-player-mode-and-one-decks-page.md)
+§3, which `#/deck-check` and `#/deck-check?url=` still open, because
+the bot links there) and the bot's `/c2-deck-check` both render this
 response. No session is needed.
 
 **Request** — exactly one of:

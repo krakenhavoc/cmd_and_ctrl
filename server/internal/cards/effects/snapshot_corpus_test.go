@@ -337,6 +337,11 @@ func corpusBoards() []corpusBoard {
 		// owner's seat, whose cast restriction is catalog data and so adds
 		// nothing to the file but the emblem.
 		{"narset_emblem_and_rebound_waiting", corpusNarset},
+		// v7, added by ADR 0109 PR 3 (#1604) as a new file: the
+		// loseLandTypes kind, in Ultima, Origin of Oblivion's record
+		// (loses all land types and abilities and has "{T}: Add {C}"
+		// for as long as the land has a blight counter on it).
+		{"lose_land_types", corpusLoseLandTypes},
 	}
 }
 
@@ -353,6 +358,21 @@ func corpusNarset(t *testing.T) *game.Game {
 	b16Activate(t, g, me.ID, ultimate, 2, game.ActivateAbilityParams{})
 	if len(g.DelayedTriggers) != 1 || me.Emblems == nil || len(me.Emblems.Cards) != 1 {
 		t.Fatalf("setup: %d delayed triggers and an emblem zone %v, want one of each", len(g.DelayedTriggers), me.Emblems)
+	}
+	return g
+}
+
+// corpusLoseLandTypes is ADR 0109 §2's loseLandTypes kind, made by the
+// card that writes it: Ultima attacks and blights a land.
+func corpusLoseLandTypes(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	land := pushLandFor(g, opp.ID, "Forest", "Basic Land — Forest")
+	llAttackWithUltima(t, g, me.ID, opp.ID, land)
+	advanceTo(t, g, game.StepPostcombatMain)
+	if len(g.ScopedEffects) != 1 {
+		t.Fatalf("setup: %d scoped records, want 1", len(g.ScopedEffects))
 	}
 	return g
 }
