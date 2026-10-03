@@ -8,7 +8,9 @@ import {
   anchorsOf,
   copyText,
   createTutorialRun,
+  spotAnchors,
   spotlit,
+  statusText,
   type CoachState,
   type TutorialStep,
 } from "./tutorial";
@@ -39,12 +41,10 @@ const action = (over: Partial<TutorialStep> = {}): TutorialStep => ({
 
 const script = (...middle: TutorialStep[]) => [WELCOME, ...middle, HANDOFF];
 
-describe("the skeleton script", () => {
-  it("is steps 1 and 11, opening and done, with the canvas's copy", () => {
-    expect(TUTORIAL_STEPS.map((s) => [s.n, s.kind])).toEqual([
-      [1, "opening"],
-      [11, "done"],
-    ]);
+describe("the script's two button steps", () => {
+  it("opens with step 1 and closes with step 11, with the canvas's copy", () => {
+    expect([TUTORIAL_STEPS[0], TUTORIAL_STEPS.at(-1)]).toEqual([WELCOME, HANDOFF]);
+    expect([WELCOME.n, WELCOME.kind, HANDOFF.n, HANDOFF.kind]).toEqual([1, "opening", 11, "done"]);
     expect(TUTORIAL_STEP_COUNT).toBe(11);
     expect(copyText(WELCOME.title, { helpKey: "?", settingsKey: "," })).toBe(
       "A five-minute practice game",
@@ -66,7 +66,7 @@ describe("the skeleton script", () => {
 
 describe("createTutorialRun", () => {
   it("opens on step 1 and Start goes to the next step", () => {
-    const run = createTutorialRun(TUTORIAL_STEPS, { viewerID: "me" });
+    const run = createTutorialRun(script(), { viewerID: "me" });
     expect(run.current()).toMatchObject({ index: 0, coach: "opening", visible: true });
     run.start();
     expect(run.current()).toMatchObject({ index: 1, coach: "done", visible: true });
@@ -189,12 +189,139 @@ describe("createTutorialRun", () => {
   });
 
   it("publishes every change to subscribers", () => {
-    const run = createTutorialRun(TUTORIAL_STEPS, { viewerID: "me" });
+    const run = createTutorialRun(script(), { viewerID: "me" });
     const seen: CoachState[] = [];
     const off = run.subscribe((s) => seen.push(s.coach));
     run.start();
     off();
     expect(seen).toEqual(["opening", "done"]);
+  });
+});
+
+// Sub-PR 4 (#1081): what the nine middle steps added to the machine.
+describe("detours, cannot, hover and advance", () => {
+  const detour = { id: "to-main", title: "First, your main phase", body: "Press next." };
+
+  it("shows a detour while the board needs one, and drops it once it does not", () => {
+    const step = action({
+      done: (c) => turnOf(c.view) === 9,
+      first: (c) => (turnOf(c.view) < 3 ? detour : null),
+    });
+    const run = createTutorialRun(script(step), { viewerID: "me", view: v(1) });
+    const seen: Array<string | null> = [];
+    run.subscribe((s) => seen.push(s.detour?.id ?? null));
+    run.start();
+    expect(run.current()).toMatchObject({ coach: "action", detour: { id: "to-main" } });
+    // The same detour again is not republished.
+    const before = seen.length;
+    run.observe(v(2));
+    expect(seen.length).toBe(before);
+    run.observe(v(3));
+    expect(run.current().detour).toBeNull();
+    expect(run.current().step.id).toBe("act");
+    run.observe(v(9));
+    expect(run.current().step.id).toBe("handoff");
+  });
+
+  it("starts each step with no detour", () => {
+    const run = createTutorialRun(script(action({ first: () => detour }), action({ id: "b" })), {
+      viewerID: "me",
+    });
+    run.start();
+    expect(run.current().detour?.id).toBe("to-main");
+    run.skipStep();
+    expect(run.current()).toMatchObject({ step: { id: "b" }, detour: null });
+  });
+
+  it("advances a step the board cannot produce, and logs why", () => {
+    const log = vi.fn();
+    const step = action({ cannot: (c) => (turnOf(c.view) === 4 ? "no land in hand" : null) });
+    const run = createTutorialRun(script(step), { viewerID: "me", log });
+    run.start();
+    expect(run.current().step.id).toBe("act");
+    run.observe(v(4));
+    expect(run.current().step.id).toBe("handoff");
+    expect(log).toHaveBeenCalledWith(
+      "tutorial: step act cannot happen (no land in hand); advancing",
+    );
+  });
+
+  it("checks done before cannot: a step that just completed is not 'cannot'", () => {
+    const log = vi.fn();
+    const step = action({ done: () => true, cannot: () => "nothing left" });
+    const run = createTutorialRun(script(step), { viewerID: "me", log });
+    run.start();
+    expect(run.current().step.id).toBe("handoff");
+    expect(log).not.toHaveBeenCalled();
+  });
+
+  it("completes a hover step on hovered(), and nothing else on it", () => {
+    const hover = action({ id: "h", hover: { ms: 600, event: "hand-hovered" } });
+    const run = createTutorialRun(script(action(), hover), { viewerID: "me" });
+    run.start();
+    // Not a hover step: hovered() does nothing.
+    run.hovered("act");
+    expect(run.current().step.id).toBe("act");
+    run.skipStep();
+    run.hovered("act");
+    expect(run.current().step.id).toBe("h");
+    run.hovered("h");
+    expect(run.current().step.id).toBe("handoff");
+  });
+
+  it("advance() moves on from the current step only, logs, and never past the end", () => {
+    const log = vi.fn();
+    const run = createTutorialRun(script(action()), { viewerID: "me", log });
+    run.start();
+    run.advance("welcome", "stale");
+    expect(run.current().step.id).toBe("act");
+    run.advance("act", "cannot be hovered on this device");
+    expect(run.current().step.id).toBe("handoff");
+    expect(log).toHaveBeenCalledWith(
+      "tutorial: step act cannot be hovered on this device; advancing",
+    );
+    run.advance("handoff", "done");
+    expect(run.current()).toMatchObject({ step: HANDOFF, visible: true });
+  });
+
+  it("lets an action step carry a timeout too", () => {
+    const log = vi.fn();
+    const run = createTutorialRun(script(action({ timeoutMs: 5_000 })), { viewerID: "me", log });
+    run.start();
+    vi.advanceTimersByTime(4_999);
+    expect(run.current().step.id).toBe("act");
+    vi.advanceTimersByTime(1);
+    expect(run.current().step.id).toBe("handoff");
+    expect(log).toHaveBeenCalledWith(expect.stringMatching(/act timed out/));
+  });
+
+  it("hands anchors, statuses and predicates the board as it is now", () => {
+    const step = action({
+      anchor: (c) => (turnOf(c.view) > 1 ? { cardID: `c${turnOf(c.view)}` } : null),
+      status: (c) => `turn ${turnOf(c.view)}`,
+    });
+    const run = createTutorialRun(script(step), { viewerID: "me", view: v(1) });
+    run.start();
+    expect(anchorsOf(step, run.context())).toEqual([]);
+    expect(statusText(step, run.context())).toBe("turn 1");
+    run.observe(v(2));
+    expect(anchorsOf(step, run.context())).toEqual([{ cardID: "c2" }]);
+    expect(run.context()).toMatchObject({ viewerID: "me", event: null });
+    expect(turnOf(run.context().start)).toBe(1);
+    // A computed anchor with no board names nothing.
+    expect(anchorsOf(step)).toEqual([]);
+  });
+
+  it("spotlights a detour's own anchor, else the step's", () => {
+    const step = action();
+    expect(spotAnchors(step, null)).toEqual([{ label: "lands", within: "your board" }]);
+    expect(spotAnchors(step, { ...detour, anchor: { label: "actions" } })).toEqual([
+      { label: "actions" },
+    ]);
+    expect(spotAnchors(step, detour)).toEqual([{ label: "lands", within: "your board" }]);
+    expect(statusText(action(), { view: null, start: null, viewerID: null, event: null })).toBe(
+      undefined,
+    );
   });
 });
 

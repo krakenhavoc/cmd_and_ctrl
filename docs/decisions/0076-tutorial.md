@@ -380,3 +380,51 @@ and the build, so §2.2 and §3 map onto it as follows:
 - **What the buttons do.** Skip tutorial and Finish hide the coach and
   leave the player at the practice table, which is still a game. Replay
   opens a fresh table (`#/practice`).
+
+**Sub-PR 4, the nine middle steps (#1081, S54).**
+
+- **Where they are.** Steps 2–10 are in `tutorialSteps.ts`, each with its
+  copy, anchor and predicate. The step machine gained five optional
+  fields; steps 1 and 11 use none of them.
+  - `first`, a detour. While the board does not allow the step yet, the
+    card says what to do first and points at it. It never blocks.
+  - `cannot`. The board can no longer produce the step's action, so the
+    step advances itself and logs, as for a missing anchor (§2.4).
+  - `hover`, for steps 2 and 4 (below).
+  - An anchor or a status line computed from the board.
+  - A timeout on an action step, not only on a watch step.
+- **The copy follows today's client.** Undo is in the dock beside
+  autopass (ADR 0111 PR 3), not in the ⋯ menu.
+- **What the practice table does that §2.1 did not foresee.**
+  - The game opens in the player's upkeep. With `autoPassPriority` forced
+    off (§2.2), nothing moves until they press `next`. A land and a
+    creature need a main phase, so steps 3 and 6 open on a detour,
+    "First, your main phase", that points at the dock.
+  - The same forced setting holds the player's own spell on the stack
+    until they pass. It also gives them priority at every step of the
+    bot's turn, so the bot's turn waits on them.
+    - Step 6 detours to "Now let it resolve".
+    - Step 9 tells the player to press `next` whenever it lights up, and
+      its status line reads "Waiting for you" while it does.
+    - Step 9 still advances on its own after 90 seconds (§3).
+  - On turn one the player has one land, and one Forest is not a pile.
+    Step 4 completes on a 600ms rest on the lands row, pile or not. Its
+    hint says the next Forest joins this one.
+  - `strictMana` off does not mean every spell can be cast. The server's
+    move list still leaves out a spell the player cannot pay for, and the
+    hand dims it. Step 6's copy points at the lit cards. When no creature
+    in hand is castable, the step gives up and logs.
+  - At 1280×800 the coach's cell shrinks the viewer's creature row to
+    about 45px, from about 100px without the coach. A creature there is a
+    sliver under the lands row. So step 7 points at a land with a menu
+    first, then at the newest creature with one.
+- **Hover is timed on the anchor.** The bus says the pointer arrived, not
+  that it stayed, and a pointer crossing the hand on its way to the dock
+  is not reading it.
+  - The coach checks `:hover` on the step's anchor on the poll that
+    already measures it, and completes the step after 600ms of rest.
+  - On a device with no hover, the step's bus event is the whole
+    gesture. A step with no event to wait for moves on after 12 seconds.
+- **Step 10's opponent anchor is the portrait's `data-seat-id`**, the
+  attribute CombatArrows already anchors to. The portrait's aria-label
+  carries the life total, so it cannot be the anchor.

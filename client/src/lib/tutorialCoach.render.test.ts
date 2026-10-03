@@ -17,7 +17,7 @@ import { HANDOFF, WELCOME } from "./tutorialSteps";
 import { anchorRect, resolveAnchor } from "./tutorialAnchor";
 import { emit } from "./tutorialBus";
 import { defaultSettings, settings } from "./settings";
-import { render, click, cleanup, flushSync } from "./test/render.svelte";
+import { render, click, cleanup, flushSync, type Rendered } from "./test/render.svelte";
 import type { GameView, PlayerView } from "./protocol";
 
 vi.mock("./sounds", () => ({ play: () => {} }));
@@ -325,6 +325,176 @@ describe("TutorialCoach", () => {
     click(button(m.container, "Skip step")!);
     expect(m.container.textContent).toContain("That is the whole interface");
     expect(m.log).not.toHaveBeenCalled();
+  });
+});
+
+// Sub-PR 4 (#1081): what the coach does for the nine middle steps.
+describe("TutorialCoach: the middle steps", () => {
+  const rest: TutorialStep = {
+    id: "read-hand",
+    n: 2,
+    kind: "action",
+    title: "Read your hand",
+    body: "Rest the pointer on a card.",
+    anchor: { label: "your hand" },
+    hover: { ms: 600, event: "hand-hovered" },
+  };
+  const view = { id: "g", seats: [], turn: { seq: 1 } } as unknown as GameView;
+
+  function mount(steps: TutorialStep[], extra: Record<string, unknown> = {}) {
+    const log = vi.fn();
+    const r = render(
+      TutorialCoach as never,
+      { view, viewerID: "me", steps, log, onSize: () => {}, ...extra } as never,
+    ) as unknown as Rendered<Record<string, unknown>>;
+    click(button(r.container, "Start")!);
+    return { ...r, log };
+  }
+  const handEl = () => {
+    document.body.insertAdjacentHTML("beforeend", '<div aria-label="your hand" id="hand"></div>');
+    place(document.getElementById("hand")!, 340, 670, 570, 112);
+  };
+  const on = (m: { container: HTMLElement }, text: string) =>
+    m.container.textContent?.includes(text);
+
+  it("completes a hover step once the pointer has rested on the anchor for 600ms", () => {
+    vi.useFakeTimers();
+    handEl();
+    let over = false;
+    const m = mount([WELCOME, rest, HANDOFF], { canHover: true, isHovering: () => over });
+    // The bus saying the pointer arrived is not a rest: a pointer
+    // crossing the hand on its way to the dock fires it too.
+    emit("hand-hovered");
+    flushSync();
+    expect(on(m, "Read your hand")).toBe(true);
+    over = true;
+    vi.advanceTimersByTime(400);
+    over = false;
+    vi.advanceTimersByTime(200);
+    flushSync();
+    expect(on(m, "Read your hand")).toBe(true);
+    // Rest again: the clock started over when the pointer left.
+    over = true;
+    vi.advanceTimersByTime(500);
+    flushSync();
+    expect(on(m, "Read your hand")).toBe(true);
+    vi.advanceTimersByTime(300);
+    flushSync();
+    expect(on(m, "That is the whole interface")).toBe(true);
+    expect(m.log).not.toHaveBeenCalled();
+  });
+
+  it("takes the step's own event as the whole gesture on a device with no hover", () => {
+    vi.useFakeTimers();
+    handEl();
+    const m = mount([WELCOME, rest, HANDOFF], { canHover: false, isHovering: () => false });
+    emit("pile-hovered");
+    flushSync();
+    expect(on(m, "Read your hand")).toBe(true);
+    emit("hand-hovered");
+    flushSync();
+    expect(on(m, "That is the whole interface")).toBe(true);
+  });
+
+  it("moves a hover step on after a read on a device with no hover, and logs it", () => {
+    vi.useFakeTimers();
+    handEl();
+    const m = mount([WELCOME, rest, HANDOFF], { canHover: false, touchHoverStepMs: 5_000 });
+    vi.advanceTimersByTime(4_900);
+    flushSync();
+    expect(on(m, "Read your hand")).toBe(true);
+    vi.advanceTimersByTime(200);
+    flushSync();
+    expect(on(m, "That is the whole interface")).toBe(true);
+    expect(m.log).toHaveBeenCalledWith(
+      "tutorial: step read-hand cannot be hovered on this device; advancing",
+    );
+  });
+
+  it("shows a detour's copy and spotlights what it names, then the step's own", () => {
+    vi.useFakeTimers();
+    handEl();
+    document.body.insertAdjacentHTML(
+      "beforeend",
+      '<section aria-label="actions" id="dock"></section>',
+    );
+    place(document.getElementById("dock")!, 920, 620, 330, 150);
+    let upkeep = true;
+    const land: TutorialStep = {
+      id: "play-land",
+      n: 3,
+      kind: "action",
+      title: "Play a land",
+      body: "Click a Forest in your hand.",
+      hint: "A land waits for your main phase.",
+      anchor: { label: "your hand" },
+      done: (c) => c.event === "ability-menu-opened",
+      first: () =>
+        upkeep
+          ? {
+              id: "to-main",
+              title: "First, your main phase",
+              body: (k) => `Press next (${k.nextKey}) until it reads Main.`,
+              anchor: { label: "actions" },
+            }
+          : null,
+    };
+    const m = mount([WELCOME, land, HANDOFF]);
+    expect(on(m, "First, your main phase")).toBe(true);
+    // The player's own binding for `next`: Space by default.
+    expect(on(m, "Press next (Space) until it reads Main.")).toBe(true);
+    expect(document.querySelector<HTMLElement>(".tutorial-scrim")!.style.left).toBe("914px");
+    // A detour says what to do already: no hint over it.
+    vi.advanceTimersByTime(25_000);
+    flushSync();
+    expect(m.container.querySelector(".coach-hint")).toBeNull();
+    upkeep = false;
+    m.setProps({ view: { ...view, turn: { seq: 1, step: "precombat_main" } } });
+    vi.advanceTimersByTime(200);
+    flushSync();
+    expect(on(m, "Play a land")).toBe(true);
+    expect(document.querySelector<HTMLElement>(".tutorial-scrim")!.style.left).toBe("334px");
+  });
+
+  it("spotlights a card read off the board, and moves on when there is none", () => {
+    vi.useFakeTimers();
+    document.body.insertAdjacentHTML("beforeend", '<div data-instance-id="elf-7" id="elf"></div>');
+    place(document.getElementById("elf")!, 500, 400, 90, 125);
+    let pick: string | null = "elf-7";
+    const card: TutorialStep = {
+      id: "right-click",
+      n: 7,
+      kind: "action",
+      title: "Abilities live on right-click",
+      body: "Right-click this one.",
+      anchor: (c) => (c.view && pick ? { cardID: pick } : null),
+      done: (c) => c.event === "ability-menu-opened",
+    };
+    const m = mount([WELCOME, card, HANDOFF]);
+    expect(document.querySelector<HTMLElement>(".tutorial-scrim")!.style.left).toBe("494px");
+    pick = null;
+    vi.advanceTimersByTime(ANCHOR_GRACE_MS + POLL_MS * 2);
+    flushSync();
+    expect(on(m, "That is the whole interface")).toBe(true);
+    expect(m.log).toHaveBeenCalledWith(
+      "tutorial: step right-click has no anchor on the page; advancing",
+    );
+  });
+
+  it("draws a status line read off the board", () => {
+    const watch: TutorialStep = {
+      id: "watch-bot",
+      n: 9,
+      kind: "watch",
+      title: "The bot takes its turn",
+      body: "Watch the strip.",
+      status: (c) => ((c.view?.turn as { seq: number }).seq === 2 ? "Waiting for you" : undefined),
+      done: () => false,
+    };
+    const m = mount([WELCOME, watch, HANDOFF]);
+    expect(m.container.querySelector(".coach-status")?.textContent).toContain("Bot is thinking");
+    m.setProps({ view: { ...view, turn: { seq: 2 } } });
+    expect(m.container.querySelector(".coach-status")?.textContent).toContain("Waiting for you");
   });
 });
 
