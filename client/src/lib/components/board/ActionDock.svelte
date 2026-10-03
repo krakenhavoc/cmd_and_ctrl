@@ -453,11 +453,15 @@
     >
       {$holdPriority ? "hold ✓" : "hold"}
     </button>
+    <!-- The label is fixed and the state is aria-pressed: "autopass" is
+         the tutorial's step-9 anchor (ADR 0076 §2.4), so it must not
+         change with the ✓ and ⏸ the visible text carries. -->
     <button
       type="button"
       class="action autopass"
       class:on={autopassEnabled && !autopassPaused}
       class:paused={autopassPaused}
+      aria-label="autopass"
       aria-pressed={autopassEnabled}
       aria-keyshortcuts={ariaKeys(keys.toggleAutopass)}
       onclick={onToggleAutopass}

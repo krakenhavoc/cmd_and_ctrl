@@ -64,9 +64,9 @@
     }
   }
 
-  // Where "back" goes: the lobby for a seated session, the sign-in page
-  // (with its invite box) for an identity-only one.
-  const backHref = $derived($session?.principal.role === "player" ? "#/lobby" : "#/login");
+  // Where "back" goes: the Lobby, the signed-in home with its join box
+  // (ADR 0112 §1), for any session; the sign-in page without one.
+  const backHref = $derived($session ? "#/lobby" : "#/login");
 </script>
 
 <SiteHeader />

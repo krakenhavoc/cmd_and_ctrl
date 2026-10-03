@@ -6,7 +6,8 @@ test.describe("lobby — admin flow", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/");
     await page.evaluate(() => localStorage.removeItem("cmdctrl.session"));
-    await page.goto("/#/login");
+    // The token form lives on #/admin only (ADR 0112 §2 item 8).
+    await page.goto("/#/admin");
     await page.getByPlaceholder("admin token").fill(ADMIN_TOKEN);
     await page.getByRole("button", { name: "log in" }).click();
     await expect(page).toHaveURL(/#\/lobby$/);

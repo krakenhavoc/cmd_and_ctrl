@@ -185,6 +185,27 @@ describe("the anchor resolver", () => {
       height: 110,
     });
   });
+
+  it("finds a seat's portrait, and cuts a card to what its scrolling row shows", () => {
+    document.body.innerHTML = `
+      <div data-seat-id="bot" id="bot"></div>
+      <div role="list" aria-label="creatures" id="row" style="overflow: auto">
+        <div data-instance-id="c-2" id="tall"></div></div>`;
+    expect(resolveAnchor({ seatID: "bot" })?.id).toBe("bot");
+    // A creature card taller than the creature row: the row scrolls,
+    // and the hole goes round the part a player can see and click.
+    place(document.getElementById("row")!, 0, 300, 1000, 100);
+    place(document.getElementById("tall")!, 500, 310, 120, 168);
+    expect(anchorRect([{ cardID: "c-2" }])).toEqual({
+      left: 500,
+      top: 310,
+      width: 120,
+      height: 90,
+    });
+    // Scrolled out of sight entirely: missing.
+    place(document.getElementById("tall")!, 500, 420, 120, 168);
+    expect(anchorRect([{ cardID: "c-2" }])).toBeNull();
+  });
 });
 
 describe("TutorialCoach", () => {
@@ -496,6 +517,22 @@ describe("TutorialCoach: the middle steps", () => {
     m.setProps({ view: { ...view, turn: { seq: 2 } } });
     expect(m.container.querySelector(".coach-status")?.textContent).toContain("Waiting for you");
   });
+
+  it("hands the dock's autopass toggle to the step, which the wire never carries", () => {
+    const toggle: TutorialStep = {
+      id: "watch-bot",
+      n: 9,
+      kind: "action",
+      title: "Let the bot play",
+      body: "Turn on autopass.",
+      status: (c) => (c.client?.autopass ? "Autopass is on" : undefined),
+      done: () => false,
+    };
+    const m = mount([WELCOME, toggle, HANDOFF], { autopass: false });
+    expect(m.container.querySelector(".coach-status")?.textContent).toContain("Waiting for you");
+    m.setProps({ autopass: true });
+    expect(m.container.querySelector(".coach-status")?.textContent).toContain("Autopass is on");
+  });
 });
 
 // jsdom applies no component CSS, so the rules that make the scrim a
@@ -604,11 +641,15 @@ describe("the coach card's cell in the self panel", () => {
     expect(mountBoard(false).querySelector(".coach-spacer")).toBeNull();
   });
 
-  it("is sized from --coach-w / --coach-h, and goes on a phone", () => {
+  it("takes the card's width from the hand row and no height, and goes on a phone", () => {
     const panel = src("src/lib/components/board/PlayerPanel.svelte");
     const spacer = rule(panel, "  .coach-spacer");
     expect(spacer).toContain("flex: 0 0 var(--coach-w, 0px)");
-    expect(spacer).toContain("height: var(--coach-h, 0px)");
+    // #1081 follow-up: it stretches to the row the hand and the dock
+    // already make, so the battlefield rows keep their height. The e2e
+    // spec tutorial-layout.spec.ts measures it on a real table.
+    expect(spacer).toContain("align-self: stretch");
+    expect(spacer).not.toContain("height");
     const phone = panel.slice(panel.indexOf("@media (max-width: 599px)"));
     expect(phone.slice(0, phone.indexOf("display: none"))).toContain(".coach-spacer");
     // The play area grows by the strip only under .has-coach, which
