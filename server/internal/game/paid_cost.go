@@ -130,6 +130,11 @@ type PaidCost struct {
 	// this way"; Dread Defiler: "the exiled card's power"). Nil when
 	// the cost exiled nothing, which is almost every payment.
 	//
+	// ADR 0109 §7 (#1902): an ExileFromLibraryTop component's cards
+	// follow, top first — Phyrexian Devourer's "the exiled card's mana
+	// value", Storm Elemental's "if the exiled card is a snow land".
+	// No printed cost has both components.
+	//
 	// A LIST of instance IDs rather than a count, because every reader
 	// printed so far asks about the card itself, and the card is still
 	// findable: it is in exile, by the same instance ID, because the
@@ -227,6 +232,10 @@ type PaidCost struct {
 	// copy keeps the list — "if an effect of the copy refers to objects
 	// used to pay its costs, it uses the objects used to pay the costs
 	// of the original spell".
+	//
+	// On an activated ability (ADR 0109 §8) it is every card the cost
+	// discarded, and since §7 a random discard's cards follow the named
+	// ones (Pyromancy's "the mana value of the discarded card").
 	Discarded []uuid.UUID `json:"discarded,omitempty"`
 }
 

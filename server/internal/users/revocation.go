@@ -60,6 +60,20 @@ type Revocations struct {
 
 	mu     sync.RWMutex
 	before map[uuid.UUID]time.Time
+
+	// modes is told when RevokeAll ends someone's admin mode (ADR 0112
+	// §2 item 7). Nil: nothing to tell.
+	modes *AdminModes
+}
+
+// EndAdminModeOnRevoke makes RevokeAll drop the revoked user from
+// modes' cache. The database half needs no wiring: InvalidateSessions
+// zeroes admin_mode_at in the statement that moves the watermark. main
+// calls this once, at boot, before either is shared.
+func (r *Revocations) EndAdminModeOnRevoke(modes *AdminModes) {
+	if r != nil {
+		r.modes = modes
+	}
 }
 
 // NewRevocations loads every watermark from store. An error here should
@@ -97,6 +111,11 @@ func (r *Revocations) Revoked(userID uuid.UUID, issuedAt time.Time) bool {
 // watermark stored, in milliseconds like every other *_at column.
 // Sessions issued after it validate as normal, so the user can sign in
 // again straight away. ErrNotFound for an unknown user.
+//
+// It also ends the user's admin mode (ADR 0112 §2 item 7): the same
+// statement zeroes admin_mode_at, and the AdminModes cache drops them,
+// so a person who believes a session leaked gets player mode back with
+// the revocation.
 func (r *Revocations) RevokeAll(ctx context.Context, userID uuid.UUID) (time.Time, error) {
 	at := r.now().Truncate(time.Millisecond)
 	stored, err := r.store.InvalidateSessions(ctx, userID, at)
@@ -106,6 +125,7 @@ func (r *Revocations) RevokeAll(ctx context.Context, userID uuid.UUID) (time.Tim
 	r.mu.Lock()
 	r.before[userID] = stored
 	r.mu.Unlock()
+	r.modes.forget(userID)
 	return stored, nil
 }
 
@@ -139,11 +159,12 @@ func (s *SQLStore) SessionWatermarks(ctx context.Context) (map[uuid.UUID]time.Ti
 
 // InvalidateSessions implements WatermarkStore. MAX keeps the watermark
 // monotonic, so two revocations racing each other cannot un-revoke
-// anything.
+// anything. The same statement ends the user's admin mode (ADR 0112 §2
+// item 7), so the two can never be half applied.
 func (s *SQLStore) InvalidateSessions(ctx context.Context, id uuid.UUID, at time.Time) (time.Time, error) {
 	var ms int64
 	err := s.db.QueryRowContext(ctx,
-		`UPDATE users SET sessions_invalid_before = MAX(sessions_invalid_before, ?) WHERE id = ?
+		`UPDATE users SET sessions_invalid_before = MAX(sessions_invalid_before, ?), admin_mode_at = 0 WHERE id = ?
 		 RETURNING sessions_invalid_before`,
 		at.UnixMilli(), id.String()).Scan(&ms)
 	if errors.Is(err, sql.ErrNoRows) {

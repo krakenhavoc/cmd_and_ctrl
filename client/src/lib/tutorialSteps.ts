@@ -12,7 +12,7 @@
 //   lands / creatures              { label: "lands", within: "your board" }
 //                                  (every opponent's panel has the same lists)
 //   the action dock                { label: "actions" }
-//   the attention strip            { label: "attention" }
+//   step 9, the autopass toggle    { label: "autopass", within: "actions" }
 //   step 7, one card               { cardID }  (Card's data-instance-id)
 //   step 10, the bot's portrait    { seatID }  (PlayerIdentity's data-seat-id)
 //
@@ -24,8 +24,10 @@
 //     `next`. A land and a creature wait for a main phase, so steps 3
 //     and 6 carry a detour that says so and points at the dock.
 //   - With autoPassPriority off, a spell the player casts waits on the
-//     stack until they press `next`, and the bot's turn waits on them at
-//     every step. Step 6's detour and step 9's copy say so.
+//     stack until they press `next` (step 6's detour says so), and the
+//     bot's turn waits on them at every step. Step 9 teaches the dock's
+//     autopass toggle for that (the owner's choice), and step 10 watches
+//     the bot's turn while autopass runs it.
 //   - On turn one the player has one land, and a single land is not a
 //     pile. Step 4 completes on resting the pointer on the lands row
 //     whether or not a pile has formed yet, and its copy says the next
@@ -34,8 +36,6 @@
 //     move list leaves out what the player cannot pay for, and the hand
 //     dims it. Step 6 points at the lit cards, and gives up when no
 //     creature in hand is castable.
-//   - The coach's cell squeezes the creature row at 1280×800, so step 7
-//     points at a land before a creature (abilityCardID).
 
 import type { Anchor, CopyContext, Detour, StepContext, TutorialStep } from "./tutorial";
 import type { CardView, GameView, PlayerView } from "./protocol";
@@ -46,9 +46,10 @@ const HAND: Anchor = { label: "your hand" };
 const LANDS: Anchor = { label: "lands", within: "your board" };
 const CREATURES: Anchor = { label: "creatures", within: "your board" };
 const DOCK: Anchor = { label: "actions" };
-const STRIP: Anchor = { label: "attention" };
+const AUTOPASS: Anchor = { label: "autopass", within: "actions" };
 
 const MAIN_STEPS = new Set(["precombat_main", "postcombat_main"]);
+const EARLY_STEPS = new Set(["untap", "upkeep", "draw", "precombat_main"]);
 const BEFORE_ATTACKS = new Set(["untap", "upkeep", "draw", "precombat_main", "begin_combat"]);
 
 const isA = (c: CardView, type: string): boolean => (c.type_line ?? "").includes(type);
@@ -95,26 +96,20 @@ function sorcerySpeed(c: StepContext): boolean {
 }
 
 /**
- * abilityCardID picks step 7's card: one of the viewer's lands with a
- * menu, untapped first, else their newest creature with one, else
- * anything with one. Null when nothing has a menu, which makes the
- * step's anchor missing and the step advance itself.
- *
- * A land before a mana creature, though the deck's mana creatures were
- * put there for this step: at 1280×800 the self panel's creature row is
- * about 45px tall while the coach card shows, so a creature is a sliver
- * under the lands row, and the lands row shows its whole card. The menu
- * a Forest opens teaches the same gesture.
+ * abilityCardID picks step 7's card: the viewer's newest creature with
+ * something behind right-click (the deck's mana creatures are there for
+ * this step), else an untapped permanent with a menu, else anything
+ * with one: a tapped Forest still opens its menu. Null when nothing has
+ * a menu, which makes the step's anchor missing and the step advance
+ * itself.
  */
 export function abilityCardID(v: GameView | null, viewerID: string | null): string | null {
   const withMenu = permanentsOf(v, viewerID).filter(
     (c) => (c.mana_abilities?.length ?? 0) > 0 || (c.activated_abilities?.length ?? 0) > 0,
   );
-  const lands = withMenu.filter((c) => isA(c, "Land"));
   const pick =
-    lands.find((c) => !c.tapped) ??
-    lands[0] ??
     [...withMenu].reverse().find((c) => isA(c, "Creature")) ??
+    withMenu.find((c) => !c.tapped) ??
     withMenu[0];
   return pick?.instance_id ?? null;
 }
@@ -162,7 +157,11 @@ export const WELCOME: TutorialStep = {
   n: 1,
   kind: "opening",
   title: "A five-minute practice game",
-  body: "You are seated against a practice bot. Mana is not enforced and you can undo, so nothing here can go wrong.",
+  // What the table does with mana (strictMana off, manaEnforcement.ts):
+  // the hand offers only what your mana could pay for, the server's move
+  // list being strict, but a cast spends what is in your pool and waives
+  // the rest, so lands never have to be tapped first.
+  body: "You are seated against a practice bot. You can cast whatever your lands could pay for without tapping them first, and you can undo, so nothing here can go wrong.",
 };
 
 export const READ_HAND: TutorialStep = {
@@ -310,28 +309,55 @@ export const MOVE_ALONG: TutorialStep = {
     (c.view.turn.step !== c.start.turn.step || c.view.turn.seq !== c.start.turn.seq),
 };
 
-/** How long step 9 waits on the bot's turn before moving on regardless (§3). */
+/** How long step 9 waits for autopass and the bot's turn before moving on regardless (§3). */
 export const WATCH_TIMEOUT_MS = 90_000;
 
+/** Is the dock's autopass toggle on? */
+const autopassOn = (c: StepContext): boolean => c.client?.autopass === true;
+
+/**
+ * Step 9 teaches the autopass toggle (the owner's choice, 2026-10-02):
+ * the practice table forces autoPassPriority off, so without it the
+ * bot's turn waits on the player at every step. The toggle is session
+ * state, separate from that setting, and its safety belt switches it off
+ * when the player's own main phase comes round (autopassDecision.ts
+ * rule 2), so step 10 finds it off and the forced setting untouched.
+ */
 export const WATCH_BOT: TutorialStep = {
   id: "watch-bot",
   n: 9,
-  kind: "watch",
-  title: "The bot takes its turn",
-  body: (k) =>
-    `Finish your turn and the bot plays its own; what it casts shows at the top. Whenever next lights up, press it${k.nextKey ? ` (${k.nextKey})` : ""} to let the bot carry on.`,
-  anchor: STRIP,
-  status: (c) => {
-    const me = seatOf(c.view, c.viewerID);
-    if (!me || !c.view) return undefined;
-    if (c.view.turn.priority_holder === me.seat) return "Waiting for you";
-    return undefined;
-  },
+  kind: "action",
+  title: "Let the bot play",
+  body: "Turn on autopass in the dock. It passes for you, so the bot plays its turn while you watch.",
+  hint: "Autopass switches itself off when your next main phase comes round, so it never skips your turn.",
+  anchor: AUTOPASS,
+  status: (c) => (autopassOn(c) ? "Autopass is on" : undefined),
   done: (c) => {
     const me = seatOf(c.view, c.viewerID);
-    if (!me || !c.view || !c.start) return false;
-    // Back to you: your turn, and not the turn the step began in.
-    return c.view.turn.active_seat === me.seat && c.view.turn.seq !== c.start.turn.seq;
+    // Autopass on, and the bot's turn running by itself.
+    return !!me && !!c.view && autopassOn(c) && c.view.turn.active_seat !== me.seat;
+  },
+  first: (c) => {
+    // The safety belt clears the toggle the moment it is switched on in
+    // the viewer's own first main phase, so it cannot be taught there.
+    if (myTurn(c) && c.view?.turn.step === "precombat_main" && !autopassOn(c)) {
+      return {
+        id: "leave-main",
+        title: "First, leave your main phase",
+        body: (k) =>
+          `Autopass switches itself off in your own main phase. ${PressNext(k)} once, then turn it on.`,
+        anchor: DOCK,
+      };
+    }
+    return null;
+  },
+  cannot: (c) => {
+    const me = seatOf(c.view, c.viewerID);
+    if (!me || !c.view || !c.start) return null;
+    // Pressed through the bot's whole turn by hand: the moment has gone.
+    return c.view.turn.active_seat === me.seat && c.view.turn.seq !== c.start.turn.seq
+      ? "the bot's turn is over"
+      : null;
   },
   timeoutMs: WATCH_TIMEOUT_MS,
 };
@@ -350,6 +376,16 @@ export const ATTACK: TutorialStep = {
   done: (c) => permanentsOf(c.view, c.viewerID).some((p) => !!p.attacking_target),
   first: (c) => {
     if (!c.view) return null;
+    if (!myTurn(c) && autopassOn(c)) {
+      // Step 9 hands over here as soon as the bot's turn is running.
+      const opp = opponentOf(c.view, c.viewerID);
+      return {
+        id: "watch-bot",
+        title: "Watch the bot play",
+        body: "Autopass is passing for you while the bot takes its turn. It hands back at your main phase.",
+        anchor: opp ? { label: `${opp.name} board` } : DOCK,
+      };
+    }
     if (!myTurn(c)) {
       return {
         id: "await-turn",
@@ -359,6 +395,16 @@ export const ATTACK: TutorialStep = {
       };
     }
     const step = c.view.turn.step;
+    // Autopass outliving the main phase (the player's own
+    // autopassPersistThroughTurns) would pass the whole turn, combat too.
+    if (autopassOn(c) && !EARLY_STEPS.has(step)) {
+      return {
+        id: "autopass-off",
+        title: "First, autopass off",
+        body: "Autopass would pass your whole turn, combat included. Click it off in the dock.",
+        anchor: AUTOPASS,
+      };
+    }
     if (BEFORE_ATTACKS.has(step)) {
       return {
         id: "to-combat",

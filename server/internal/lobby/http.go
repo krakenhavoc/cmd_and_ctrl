@@ -67,10 +67,16 @@ type Config struct {
 	Auth       auth.Authenticator
 	AdminToken string // shared admin token; empty disables admin flow
 	// Admins is the Discord user-ID allowlist (CMDCTRL_DISCORD_ADMIN_USER_IDS,
-	// ADR 0110 §3): a signed-in session whose Discord ID is on it is an
-	// admin, exactly like the shared token (isAdmin, admins.go). Nil is
-	// the empty list. main hands the same *AdminList to WSAuthorizer.
-	Admins *AdminList
+	// ADR 0110 §3) and each allowlisted person's admin mode (ADR 0112
+	// §2): a signed-in session whose Discord ID is on the list is an
+	// admin, exactly like the shared token, while that person has admin
+	// mode on (isAdmin, admins.go). Nil is the empty list. main hands
+	// the same *Admins to WSAuthorizer.
+	Admins *Admins
+	// AdminSockets closes a person's WebSockets whose admin bit a switch
+	// of admin mode made wrong (ADR 0112 §2 item 5); *ws.Hub. Nil leaves
+	// them as they are until they next reconnect.
+	AdminSockets AdminModeRebinder
 	// Env is the deployment identity (prod / dev). The zero value is
 	// the empty string, which IsDev() reports false for — so a Config
 	// built without thinking about it (every existing test) gets
@@ -286,6 +292,7 @@ type GameEvictor interface {
 //	GET  /decks             — authenticated: pre-built decks + their engine coverage
 //	POST /games/{id}/decks/{deck_id} — authenticated: seat a library deck without re-pasting
 //	GET  /me                — authenticated: principal echo (for client bootstrap)
+//	PUT  /me/admin-mode     — allowlisted person: switch admin mode on or off
 //	GET  /me/decks          — authenticated: the caller's deck library
 //	POST /me/decks          — signed in: save a checked deck (a link or a pasted list) to it
 //	GET  /me/settings       — signed in: the caller's account settings
@@ -533,6 +540,12 @@ func Handler(c Config) http.Handler {
 	// API_PATH, or it 404s in production only.
 	mux.Handle("GET /decks", auth.Middleware(c.Auth)(handlerFunc(c, prebuiltDecks)))
 	mux.Handle("GET /me", auth.Middleware(c.Auth)(handlerFunc(c, me)))
+	// Admin mode (ADR 0112 §2 item 3): an allowlisted person switches
+	// it on or off; anyone else is a 403. A per-person bucket of one
+	// switch every 2 seconds with a burst of 5: a switch closes the
+	// person's sockets, so a loop of them would be a reconnect storm.
+	adminModeLimit := newLimiter(0.5, 5)
+	mux.Handle("PUT /me/admin-mode", auth.Middleware(c.Auth)(perCallerLimit(adminModeLimit, handlerFunc(c, putAdminMode))))
 	// "My games" and seat reclaim by user (ADR 0051 decisions 3 and 4,
 	// S34 sub-PR 4). Session-gated here; the handlers then require a
 	// UserID on it, since the answer is a person's, not a seat's.
@@ -3426,7 +3439,14 @@ func me(c Config, w http.ResponseWriter, r *http.Request) error {
 	if !ok {
 		return httpError(http.StatusInternalServerError, "missing principal")
 	}
-	return writeJSON(w, http.StatusOK, meResponse{Principal: p, Admin: c.isAdmin(p)})
+	mode := c.adminModeOf(p)
+	return writeJSON(w, http.StatusOK, meResponse{
+		Principal:       p,
+		Admin:           mode.Admin,
+		AdminAllowed:    isAllowlisted(c.Admins, p),
+		AdminMode:       mode.AdminMode,
+		AdminModeEndsAt: mode.AdminModeEndsAt,
+	})
 }
 
 // meResponse is GET /me: the principal, flattened as it always was,
@@ -3434,9 +3454,19 @@ func me(c Config, w http.ResponseWriter, r *http.Request) error {
 // computed per request and is not part of the token, so the client
 // learns it here and nowhere else. The allowlist itself is never
 // served.
+//
+// ADR 0112 §2 item 9 adds the mode. Admin stays the effective answer,
+// so every client control that reads it follows the mode. AdminAllowed
+// is whether this person may switch admin mode on (on the allowlist;
+// persons only, never the shared token). AdminMode is whether it is on,
+// and AdminModeEndsAt is when it lapses, in Unix milliseconds, present
+// only while it is on.
 type meResponse struct {
 	auth.Principal
-	Admin bool `json:"admin"`
+	Admin           bool  `json:"admin"`
+	AdminAllowed    bool  `json:"admin_allowed"`
+	AdminMode       bool  `json:"admin_mode"`
+	AdminModeEndsAt int64 `json:"admin_mode_ends_at,omitempty"`
 }
 
 // --- helpers ---

@@ -1,28 +1,27 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import {
-    adminLogin,
-    discordAuthEnabled,
-    discordLoginHref,
-    joinByCode,
-    logout,
-    logoutEverywhere,
-  } from "../lib/api";
+  import { adminLogin, discordAuthEnabled, discordLoginHref, joinByCode } from "../lib/api";
   import { navigate } from "../lib/router";
-  import { canSignOutEverywhere, expiryNotice, LobbyApiError, session } from "../lib/session";
-  import { canJoinByCode, signedInUserID } from "../lib/myGames";
+  import { expiryNotice, LobbyApiError, session } from "../lib/session";
+  import { signedInUserID } from "../lib/myGames";
+  import { inviteHash } from "../lib/signedInHome";
   import { loadGuestName, rememberGuestName } from "../lib/guestName";
   import Icon from "../lib/components/Icon.svelte";
 
-  // Player-first landing: Discord sign-in and the invite box are
-  // what a friend sees; the admin token form sits under them (the
-  // #/admin route leads with it instead — `admin` prop).
+  // Login is for signed-out visitors (ADR 0112 §1): Discord sign-in
+  // and the invite box, nothing else. The router sends every session
+  // on #/login to the Lobby, which is the signed-in home and has its
+  // own "Join a table" card and the header's account menu.
   //
   // Two ways in, meeting at the same input. Signing in with Discord
-  // mints an identity-only session and returns here to collect a
-  // code, which the server resolves to a table. A pasted invite link
-  // already names its table, so it goes straight to the Join page
-  // and the flow that has always handled it.
+  // mints an identity-only session and lands on the Lobby. A pasted
+  // invite link already names its table, so it goes straight to the
+  // Join page; a bare code joins here as a guest, by name.
+  //
+  // #/admin (`admin`) is the shared token's page, and the only place
+  // its form appears (§2 item 8). The token's own session never sees
+  // it (the router sends it to the Lobby); any other session does, and
+  // is told the token replaces it.
   interface Props {
     admin?: boolean;
   }
@@ -30,14 +29,11 @@
 
   let token = $state("");
   let invite = $state("");
-  // The name a guest last joined with (ADR 0110 §5 item 6). Only a
-  // guest is asked for one; a signed-in person sits as their Discord
-  // name.
+  // The name a guest last joined with (ADR 0110 §5 item 6).
   let joinName = $state(loadGuestName());
   let error = $state("");
   let busy = $state(false);
   let joining = $state(false);
-  let signOutError = $state("");
 
   // discordEnabled gates the sign-in button. Probed once from
   // /auth/discord/config: a deploy without the three CMDCTRL_DISCORD_*
@@ -45,46 +41,22 @@
   // posture as Join.svelte.
   let discordEnabled = $state(false);
   onMount(() => {
+    if (admin) return;
     void discordAuthEnabled().then((on) => {
       discordEnabled = on;
     });
   });
 
-  // The signed-in person's principal, or null. Drives the copy on the
-  // invite card — once we know who you are, the question stops being
-  // "have an invite?" and becomes "which table?". That is a Discord
-  // sign-in that has not claimed a seat yet, and also a signed-in
-  // player or spectator already at a table (ADR 0110 §1 item 3): the
-  // server seats the code's table as the same person.
-  const identity = $derived(canJoinByCode($session) ? ($session?.principal ?? null) : null);
-  // Already at a table: the page also offers the way back to it.
-  const seated = $derived(identity !== null && identity.role !== "identified");
-
   // A bare code claims the seat from this page, so it needs a name to
-  // put on it — unless Discord already supplied one. A pasted LINK
-  // doesn't: it hands off to the Join page, which has its own name
-  // field. Without this the manual path would post an empty name and
-  // take a 400 the user could do nothing about.
-  const needsName = $derived(!identity && invite.trim() !== "" && inviteHash(invite.trim()) === "");
+  // put on it. A pasted LINK doesn't: it hands off to the Join page,
+  // which has its own name field.
+  const needsName = $derived(invite.trim() !== "" && inviteHash(invite.trim()) === "");
 
-  // A Discord sign-in now lasts 30 days (ADR 0051 decision 3), so the
-  // login page, where an identity session lives until it joins a
-  // table, needs its own way out. "Everywhere" also signs out every
-  // other browser this account is signed in on (decision 6); it is
-  // offered only when the server can do that (canSignOutEverywhere).
-  async function signOut(): Promise<void> {
-    signOutError = "";
-    await logout();
-  }
-
-  async function signOutEverywhere(): Promise<void> {
-    signOutError = "";
-    try {
-      await logoutEverywhere();
-    } catch (err) {
-      signOutError = err instanceof LobbyApiError ? err.message : "could not sign out everywhere";
-    }
-  }
+  // #/admin with a session in hand: the token's session replaces it. A
+  // signed-in person's session is set aside, not lost (ADR 0110 §1
+  // item 6), and comes back when the token's session ends.
+  const replaces = $derived(admin && $session !== null);
+  const setsAside = $derived(signedInUserID($session) !== null);
 
   async function submit(e: SubmitEvent): Promise<void> {
     e.preventDefault();
@@ -97,19 +69,6 @@
       error = err instanceof LobbyApiError ? err.message : "login failed";
     } finally {
       busy = false;
-    }
-  }
-
-  // inviteHash pulls the #/games/…/join?t=… fragment out of a pasted
-  // invite URL. Returns "" for a bare code, which is the signal to
-  // ask the server which table the code belongs to instead.
-  function inviteHash(raw: string): string {
-    if (raw.startsWith("#")) return raw;
-    if (!/^https?:\/\//i.test(raw)) return "";
-    try {
-      return new URL(raw).hash;
-    } catch {
-      return "";
     }
   }
 
@@ -130,11 +89,10 @@
     joining = true;
     try {
       await joinByCode(raw, joinName.trim());
-      if (!identity) rememberGuestName(joinName);
+      rememberGuestName(joinName);
       // Lobby first, exactly like the invite-link flow: that is where
       // a player imports a deck and sees the other seats before the
-      // table itself (s085 / #43). Going straight to the game route
-      // would skip the deck upload.
+      // table itself (s085 / #43).
       navigate("#/lobby");
     } catch (err) {
       error = err instanceof LobbyApiError ? err.message : "could not join with that code";
@@ -159,55 +117,60 @@
       <p class="notice" role="status"><Icon name="undo" size={14} /> {$expiryNotice}</p>
     {/if}
 
-    {#if !admin}
-      {#if discordEnabled && !identity}
+    {#if admin}
+      <div class="card">
+        <h2>Admin log in</h2>
+        <form class="frow" onsubmit={submit}>
+          <input
+            class="mono"
+            type="password"
+            placeholder="admin token"
+            bind:value={token}
+            autocomplete="current-password"
+            required
+          />
+          <button type="submit" class="primary lg" disabled={busy || !token}>
+            {busy ? "…" : "log in"}
+          </button>
+        </form>
+        <p class="help">
+          The shared admin token from <span class="mono">CMDCTRL_ADMIN_TOKEN</span>. Players never
+          need this — they arrive through an invite link.
+        </p>
+        {#if replaces}
+          <p class="help replaces" role="note">
+            Logging in with the token replaces this browser's session.
+            {#if setsAside}
+              Your Discord sign-in is set aside, and comes back when the token's session ends.
+            {/if}
+          </p>
+        {/if}
+        {#if error}
+          <p class="error" role="alert">{error}</p>
+        {/if}
+      </div>
+
+      <p class="foot">
+        <a class="ghost-link" href={$session ? "#/lobby" : "#/login"}
+          ><Icon name="chevronLeft" size={12} /> Back</a
+        >
+      </p>
+    {:else}
+      {#if discordEnabled}
         <div class="card">
           <h2>Sign in</h2>
           <a class="primary lg discord-btn" href={discordLoginHref()}>
             Continue with Discord <Icon name="chevronRight" size={14} />
           </a>
           <p class="help">
-            Your Discord name and avatar become your seat. You'll enter an invite code next.
+            Your Discord name and avatar become your seat, and your tables, games and decks follow
+            you to any device.
           </p>
         </div>
       {/if}
 
       <div class="card">
-        <h2>{identity ? "Join a table" : "Have an invite?"}</h2>
-        {#if identity}
-          <p class="signed-in" role="status">
-            Signed in as {identity.name ?? "your Discord account"}.
-            {#if seated}
-              <a class="ghost-link" href="#/lobby">Back to your table</a>
-            {/if}
-            {#if signedInUserID($session)}
-              <a class="ghost-link" href="#/my-games">See my games</a>
-            {/if}
-          </p>
-          {#if discordEnabled}
-            <!-- ADR 0110 §2 item 3: a repeat sign-in skips Discord's
-                 screen and uses whichever account the browser is signed
-                 in to. This asks for the screen, which has Discord's own
-                 account switcher. -->
-            <a class="ghost-link switch-account" href={discordLoginHref({ consent: true })}>
-              Sign in with a different Discord account
-            </a>
-          {/if}
-          <div class="signout">
-            <button type="button" class="ghost" onclick={signOut}>sign out</button>
-            {#if canSignOutEverywhere($session)}
-              <button
-                type="button"
-                class="ghost"
-                title="sign out of every browser signed in with this Discord account"
-                onclick={signOutEverywhere}>sign out everywhere</button
-              >
-            {/if}
-          </div>
-          {#if signOutError}
-            <p class="error" role="alert">{signOutError}</p>
-          {/if}
-        {/if}
+        <h2>Have an invite?</h2>
         <form class="fcol" onsubmit={submitInvite}>
           <div class="frow">
             <input
@@ -239,60 +202,29 @@
           Paste the code from your pod's invite, or the whole link — both work. A spectator link
           opens the table read-only.
         </p>
+        {#if error}
+          <p class="error" role="alert">{error}</p>
+        {/if}
       </div>
+
+      <!-- A link to the card catalogue. The catalogue needs a session
+           (main.go mounts it behind auth.Middleware), so a signed-out
+           visitor who follows it is sent back here to sign in first. -->
+      <p class="foot">
+        <a class="ghost-link" href="#/catalog">
+          <Icon name="library" size={12} /> See which cards the engine plays
+        </a>
+      </p>
+
+      <!-- #1386: the login layout is one centred brand column, and a
+           full SiteHeader would fight it — a small link to the site
+           portal instead of the shared nav. -->
+      <p class="foot">
+        <a class="ghost-link" href="#/home">
+          <Icon name="link" size={12} /> Site map
+        </a>
+      </p>
     {/if}
-
-    <div class="card" class:secondary={!admin}>
-      <h2>Admin log in</h2>
-      <form class="frow" onsubmit={submit}>
-        <input
-          class="mono"
-          type="password"
-          placeholder="admin token"
-          bind:value={token}
-          autocomplete="current-password"
-          required
-        />
-        <button type="submit" class="primary lg" disabled={busy || !token}>
-          {busy ? "…" : "log in"}
-        </button>
-      </form>
-      {#if admin}
-        <p class="help">
-          The shared admin token from <span class="mono">CMDCTRL_ADMIN_TOKEN</span>. Players never
-          need this — they arrive through an invite link.
-        </p>
-      {/if}
-      {#if error}
-        <p class="error" role="alert">{error}</p>
-      {/if}
-    </div>
-
-    <p class="foot">
-      {#if admin}
-        <a class="ghost-link" href="#/login"><Icon name="chevronLeft" size={12} /> Back</a>
-      {:else}
-        Players never need a token — they arrive through an invite link.
-      {/if}
-    </p>
-
-    <!-- A link to the card catalogue. The catalogue needs a session
-         (main.go mounts it behind auth.Middleware), so a signed-out
-         visitor who follows it is sent back here to sign in first. -->
-    <p class="foot">
-      <a class="ghost-link" href="#/catalog">
-        <Icon name="library" size={12} /> See which cards the engine plays
-      </a>
-    </p>
-
-    <!-- #1386: the login layout is one centred brand column, and a
-         full SiteHeader would fight it — a small link to the site
-         portal instead of the shared nav. -->
-    <p class="foot">
-      <a class="ghost-link" href="#/home">
-        <Icon name="link" size={12} /> Site map
-      </a>
-    </p>
   </div>
 </section>
 
@@ -401,13 +333,6 @@
     gap: 14px;
     box-shadow: var(--shadow-lg);
   }
-  .card.secondary {
-    background: transparent;
-    border-color: var(--border);
-    box-shadow: none;
-    padding: 16px 20px;
-    gap: 10px;
-  }
   .card h2 {
     margin: 0;
     font-family: var(--font-display);
@@ -416,10 +341,6 @@
     color: var(--fg);
     text-transform: none;
     letter-spacing: -0.01em;
-  }
-  .card.secondary h2 {
-    font-size: 14px;
-    color: var(--fg-muted);
   }
   .frow {
     display: flex;
@@ -478,21 +399,6 @@
   .discord-btn:hover {
     background: #4752c4;
   }
-  .signed-in {
-    margin: 0;
-    font-size: 12.5px;
-    color: var(--fg-muted);
-  }
-  .switch-account {
-    align-self: flex-start;
-    margin-left: -6px;
-    font-size: 12.5px;
-  }
-  .signout {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-  }
   .help {
     margin: 0;
     font-size: 12px;
@@ -514,6 +420,10 @@
     border: 1px solid rgba(217, 180, 92, 0.4);
     color: var(--gold-strong);
     font-size: 12.5px;
+  }
+  .replaces {
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
   }
   .error {
     margin: 0;

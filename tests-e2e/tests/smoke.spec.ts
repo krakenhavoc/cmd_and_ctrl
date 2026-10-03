@@ -7,7 +7,8 @@ import { expect, test } from "@playwright/test";
 //
 // Selector note: #244 ("art-forward dark redesign") rewrote the entry
 // pages. The wordmark is now "CMD & CTRL" and the admin panel heading
-// is "Admin log in"; the placeholders and button labels survived. The
+// (on #/admin only, since ADR 0112) is "Admin log in"; the
+// placeholders and button labels survived. The
 // assertions below deliberately lean on roles + form labels rather
 // than the decorative copy around them.
 
@@ -19,10 +20,9 @@ test("landing page renders the player-first entry", async ({ page }) => {
   // no CMDCTRL_DISCORD_* values, so that button stays hidden.)
   await expect(page.getByRole("heading", { name: "Have an invite?" })).toBeVisible();
   await expect(page.getByLabel("invite code or link")).toBeVisible();
-  // …with the admin token form under it.
-  await expect(page.getByRole("heading", { name: "Admin log in" })).toBeVisible();
-  await expect(page.getByPlaceholder("admin token")).toBeVisible();
-  await expect(page.getByRole("button", { name: "log in" })).toBeDisabled();
+  // No token form: it lives on #/admin only (ADR 0112 §2 item 8).
+  await expect(page.getByRole("heading", { name: "Admin log in" })).toHaveCount(0);
+  await expect(page.getByPlaceholder("admin token")).toHaveCount(0);
 });
 
 test("#/admin leads with the token form and hides the invite paste", async ({ page }) => {
@@ -40,7 +40,7 @@ test("unauthenticated lobby redirects to login", async ({ page }) => {
   // App.svelte's auth gate should bounce us back to #/login.
   await page.goto("/#/lobby");
   await expect(page).toHaveURL(/#\/login$/);
-  await expect(page.getByRole("heading", { name: "Admin log in" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Have an invite?" })).toBeVisible();
 });
 
 test("unauthenticated game route redirects to login", async ({ page }) => {

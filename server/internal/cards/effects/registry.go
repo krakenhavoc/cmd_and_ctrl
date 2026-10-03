@@ -486,6 +486,9 @@ func Register(spec Spec) {
 			panic(fmt.Sprintf("effects.Register: %q ability %d discards %d cards — a discard cost discards at least one",
 				spec.Name, i, dc.N))
 		}
+		// ADR 0109 §7: the random discard and the two library
+		// components (checkLibraryCosts).
+		checkLibraryCosts(spec.Name, i, ab.Cost)
 		// #1297: the exile-N-cards component, held to the rules its
 		// mana owner is held to (checkExileCardsClause).
 		checkExileCardsClause(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.ExileCards)
@@ -586,6 +589,13 @@ func Register(spec Spec) {
 		if dc := ma.Cost.DiscardCards; dc != nil && dc.N <= 0 {
 			panic(fmt.Sprintf("effects.Register: %q mana ability %d discards %d cards — a discard cost discards at least one",
 				spec.Name, i, dc.N))
+		}
+		// ADR 0109 §7: a random discard is a CR 602 component only. No
+		// printed mana ability discards at random, and the mana payer
+		// never draws one, so the ability would be free.
+		if dc := ma.Cost.DiscardCards; dc != nil && dc.Random {
+			panic(fmt.Sprintf("effects.Register: %q mana ability %d discards at random — only an activated ability's cost can",
+				spec.Name, i))
 		}
 		checkExileCardsClause(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.ExileCards)
 		if ma.Cost.Mana != "" {
@@ -1447,6 +1457,39 @@ func checkAbilityWaterbend(name string, i int, cost game.AbilityCost) {
 	if err != nil || cost.Mana == "" || clause.Generic > mana.Generic || clause.XSlots > mana.XSlots {
 		panic(fmt.Sprintf("effects.Register: %q ability %d waterbends %q but its mana component %q does not contain it — CR 701.67b lets the taps pay only mana the ability charges",
 			name, i, wb.Extra, cost.Mana))
+	}
+}
+
+// checkLibraryCosts is the boot-time refusal for ADR 0109 §7's three
+// components (#1902, owner decision 3):
+//
+//   - a negative count on either library component is a card-file
+//     mistake (zero is "no such component");
+//   - both library components on one cost are refused: the put would
+//     change which cards the exile takes, and no printed card has both;
+//   - a random discard with a predicate is refused: every printed
+//     clause discards "a card" or "two cards", and a random draw from
+//     a filtered hand is not a rule anything prints;
+//   - a random discard beside the card the ability is activated from
+//     being discarded (cycling) is refused for the same reason.
+func checkLibraryCosts(name string, i int, cost game.AbilityCost) {
+	if cost.PutFromHandOnLibraryTop < 0 || cost.ExileFromLibraryTop < 0 {
+		panic(fmt.Sprintf("effects.Register: %q ability %d declares a negative library cost (%d on top, %d exiled)",
+			name, i, cost.PutFromHandOnLibraryTop, cost.ExileFromLibraryTop))
+	}
+	if cost.PutFromHandOnLibraryTop > 0 && cost.ExileFromLibraryTop > 0 {
+		panic(fmt.Sprintf("effects.Register: %q ability %d both puts a card on top of the library and exiles the top of it — no printed cost does both",
+			name, i))
+	}
+	if dc := cost.DiscardCards; dc != nil && dc.Random {
+		if dc.Match != nil {
+			panic(fmt.Sprintf("effects.Register: %q ability %d discards at random with a predicate — a random discard takes any card",
+				name, i))
+		}
+		if cost.DiscardSelf {
+			panic(fmt.Sprintf("effects.Register: %q ability %d discards itself and discards at random — no printed cost does both",
+				name, i))
+		}
 	}
 }
 

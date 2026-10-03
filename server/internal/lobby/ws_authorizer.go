@@ -24,8 +24,13 @@ import (
 // (?player=); omitting it yields the admin's omniscient spectator view.
 //
 // "An admin" is isAdminPrincipal: the shared-token session, or a
-// signed-in person on CMDCTRL_DISCORD_ADMIN_USER_IDS (ADR 0110 §3,
-// owner answer 4: full parity with the token). For a signed-in admin:
+// signed-in person on CMDCTRL_DISCORD_ADMIN_USER_IDS who is in admin
+// mode (ADR 0110 §3, owner answer 4: full parity with the token; ADR
+// 0112 §2: only in admin mode). An allowlisted person in player mode is
+// a non-admin here, binding only their own seat or spectator session.
+// A switch of mode closes the sockets it made wrong with 4001
+// (ws.Hub.RebindUserSessions), and the reconnect lands here again. For
+// a signed-in admin:
 //
 //   - A player or spectator session at its own game, asking for no
 //     other seat, binds exactly as it would for anyone, with
@@ -46,9 +51,9 @@ import (
 // like an expired one.
 type WSAuthorizer struct {
 	Auth auth.Authenticator
-	// Admins is the same allowlist lobby.Config.Admins holds. Nil is
-	// the empty list: only the shared token is an admin.
-	Admins *AdminList
+	// Admins is the same allowlist and admin modes lobby.Config.Admins
+	// holds. Nil is the empty list: only the shared token is an admin.
+	Admins *Admins
 	// Log receives the admin-binding audit lines. Nil: none.
 	Log *slog.Logger
 }

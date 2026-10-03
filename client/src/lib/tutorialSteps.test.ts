@@ -118,12 +118,19 @@ function board(b: Board = {}): GameView {
   } as unknown as GameView;
 }
 
-const ctx = (view: GameView | null, start: GameView | null = view, event = null): StepContext => ({
+const ctx = (
+  view: GameView | null,
+  start: GameView | null = view,
+  event = null,
+  autopass = false,
+): StepContext => ({
   view,
   start,
   viewerID: ME,
   event,
+  client: { autopass },
 });
+const auto = (view: GameView | null, start: GameView | null = view) => ctx(view, start, null, true);
 
 describe("the script", () => {
   it("is eleven steps in ADR 0076 §2.1's order, ids and kinds", () => {
@@ -137,7 +144,7 @@ describe("the script", () => {
       [6, "cast-creature", "action"],
       [7, "right-click", "action"],
       [8, "move-along", "action"],
-      [9, "watch-bot", "watch"],
+      [9, "watch-bot", "action"],
       [10, "attack", "action"],
       [11, "handoff", "done"],
     ]);
@@ -164,7 +171,7 @@ describe("the script", () => {
     expect(anchorsOf(TAP_LAND, ctx(v))).toEqual([{ label: "lands", within: "your board" }]);
     expect(anchorsOf(CAST_CREATURE, ctx(v))).toEqual([{ label: "your hand" }]);
     expect(anchorsOf(MOVE_ALONG, ctx(v))).toEqual([{ label: "actions" }]);
-    expect(anchorsOf(WATCH_BOT, ctx(v))).toEqual([{ label: "attention" }]);
+    expect(anchorsOf(WATCH_BOT, ctx(v))).toEqual([{ label: "autopass", within: "actions" }]);
     expect(anchorsOf(ATTACK, ctx(v))).toEqual([
       { label: "creatures", within: "your board" },
       { seatID: BOT },
@@ -176,8 +183,11 @@ describe("the script", () => {
       "The dock's next button moves the game on a step, and so does Space. Pass turn skips to the end of your turn.",
     );
     expect(copyText(MOVE_ALONG.body, noKeys)).not.toContain("so does");
-    expect(copyText(WATCH_BOT.body, keys)).toContain("press it (Space) to let the bot carry on");
-    expect(copyText(WATCH_BOT.body, noKeys)).toContain("press it to let the bot carry on");
+    const leave = WATCH_BOT.first!(ctx(board()))!;
+    expect(copyText(leave.body, keys)).toBe(
+      "Autopass switches itself off in your own main phase. Press next (Space) once, then turn it on.",
+    );
+    expect(copyText(leave.body, noKeys)).toContain("Press next once");
   });
 
   it("never sends the player to the ⋯ menu for Undo: it is on the dock's row now", () => {
@@ -326,15 +336,15 @@ describe("step 6: cast a creature", () => {
 });
 
 describe("step 7: abilities live on right-click", () => {
-  it("points at a land with a menu, untapped first, else your newest creature with one", () => {
+  it("points at your newest creature with a menu, else an untapped land, else any", () => {
     const f1 = forest({ tapped: true });
     const f2 = forest();
     const e1 = elves();
     const e2 = elves();
     const w = walker();
-    expect(abilityCardID(board({ mine: [f1, f2, e1, w] }), ME)).toBe(f2.instance_id);
-    expect(abilityCardID(board({ mine: [f1, e1, w] }), ME)).toBe(f1.instance_id);
-    expect(abilityCardID(board({ mine: [e1, e2, w] }), ME)).toBe(e2.instance_id);
+    expect(abilityCardID(board({ mine: [f1, f2, e1, e2, w] }), ME)).toBe(e2.instance_id);
+    expect(abilityCardID(board({ mine: [f1, f2, w] }), ME)).toBe(f2.instance_id);
+    expect(abilityCardID(board({ mine: [f1, w] }), ME)).toBe(f1.instance_id);
     // The bot's permanents are never the anchor.
     expect(abilityCardID(board({ mine: [w], theirs: [elves()] }), ME)).toBeNull();
     expect(anchorsOf(RIGHT_CLICK, ctx(board({ mine: [f2] })))).toEqual([
@@ -370,27 +380,36 @@ describe("step 8: move the turn along", () => {
   });
 });
 
-describe("step 9: watch the bot", () => {
-  it("completes when the turn is back to you, not the one it began in", () => {
+describe("step 9: let the bot play (autopass)", () => {
+  it("completes once autopass is on and the bot's turn is running by itself", () => {
     const mine = board({ step: "begin_combat", seq: 1 });
-    expect(WATCH_BOT.done!(ctx(mine, mine))).toBe(false);
-    expect(WATCH_BOT.done!(ctx(board({ seq: 2, active: 1 }), mine))).toBe(false);
-    expect(WATCH_BOT.done!(ctx(board({ seq: 3, active: 0, step: "upkeep" }), mine))).toBe(true);
-    // Begun on the bot's turn, your next turn is the end.
-    const theirs = board({ seq: 2, active: 1 });
-    expect(WATCH_BOT.done!(ctx(board({ seq: 3, step: "upkeep" }), theirs))).toBe(true);
+    const theirs = board({ seq: 2, active: 1, priority: 1 });
+    expect(WATCH_BOT.done!(ctx(mine))).toBe(false);
+    // Switched on in your own turn: it passes the rest of it for you.
+    expect(WATCH_BOT.done!(auto(mine))).toBe(false);
+    expect(WATCH_BOT.done!(ctx(theirs, mine))).toBe(false);
+    expect(WATCH_BOT.done!(auto(theirs, mine))).toBe(true);
   });
 
-  it("times out so a stalled bot never wedges it", () => {
+  it("detours out of your own main phase, where the safety belt clears the toggle", () => {
+    expect(WATCH_BOT.first!(ctx(board({ step: "precombat_main" })))?.id).toBe("leave-main");
+    expect(WATCH_BOT.first!(ctx(board({ step: "begin_combat" })))).toBeNull();
+    expect(WATCH_BOT.first!(ctx(board({ step: "postcombat_main" })))).toBeNull();
+    expect(WATCH_BOT.first!(ctx(board({ seq: 2, active: 1 })))).toBeNull();
+  });
+
+  it("gives up once the bot's turn has been pressed through by hand", () => {
+    const mine = board({ step: "begin_combat", seq: 1 });
+    expect(WATCH_BOT.cannot!(ctx(board({ seq: 2, active: 1 }), mine))).toBeNull();
+    expect(WATCH_BOT.cannot!(ctx(board({ seq: 3, step: "upkeep" }), mine))).toBe(
+      "the bot's turn is over",
+    );
+  });
+
+  it("times out so a stalled bot never wedges it, and says when autopass is on", () => {
     expect(WATCH_BOT.timeoutMs).toBe(WATCH_TIMEOUT_MS);
-  });
-
-  it("says when the bot's turn is waiting on you", () => {
-    const waiting = board({ seq: 2, active: 1, priority: 0 });
-    const thinking = board({ seq: 2, active: 1, priority: 1 });
-    expect(statusText(WATCH_BOT, ctx(waiting))).toBe("Waiting for you");
-    // Undefined: the card's default for a watch step, "Bot is thinking".
-    expect(statusText(WATCH_BOT, ctx(thinking))).toBeUndefined();
+    expect(statusText(WATCH_BOT, auto(board()))).toBe("Autopass is on");
+    expect(statusText(WATCH_BOT, ctx(board()))).toBeUndefined();
   });
 });
 
@@ -424,6 +443,25 @@ describe("step 10: attack", () => {
     expect(copyText(d.body, keys)).toBe(
       "Press next (Space) in the dock until it reads Declare Attackers.",
     );
+  });
+
+  it("watches the bot's turn while autopass runs it", () => {
+    const d = ATTACK.first!(auto(board({ seq: 2, active: 1, mine: [ready()] })))!;
+    expect(d.id).toBe("watch-bot");
+    expect(d.anchor).toEqual({ label: "Practice Bot board" });
+    expect(copyText(d.body, keys)).toMatch(/It hands back at your main phase/);
+  });
+
+  it("asks for autopass off when it outlives your main phase", () => {
+    const id = (b: Board) => ATTACK.first!(auto(board({ mine: [ready()], ...b })))?.id ?? null;
+    // The safety belt's own window: upkeep and draw pass, main clears it.
+    expect(id({ step: "upkeep" })).toBe("to-combat");
+    expect(id({ step: "precombat_main" })).toBe("to-combat");
+    // autopassPersistThroughTurns: it would pass the whole turn.
+    const d = ATTACK.first!(auto(board({ step: "begin_combat", mine: [ready()] })))!;
+    expect(d.id).toBe("autopass-off");
+    expect(d.anchor).toEqual({ label: "autopass", within: "actions" });
+    expect(id({ step: "declare_attackers" })).toBe("autopass-off");
   });
 
   it("cannot happen with no creature on your board", () => {
@@ -478,18 +516,26 @@ describe("a whole tutorial", () => {
     };
     move(resolved);
     expect(at()).toBe("right-click");
-    // The Forest, whose whole card the lands row shows.
-    expect(anchorsOf(run.current().step, run.context())).toEqual([{ cardID: f.instance_id }]);
+    // The creature just cast: the deck's mana creatures are there for this step.
+    expect(anchorsOf(run.current().step, run.context())).toEqual([{ cardID: e.instance_id }]);
     run.observe(view, "ability-menu-opened");
     expect(at()).toBe("move-along");
     move({ ...resolved, step: "begin_combat" });
     expect(at()).toBe("watch-bot");
-    expect(run.current().coach).toBe("watch");
+    expect(run.current().coach).toBe("action");
+    // The player turns autopass on: it passes the rest of their turn.
+    run.observeClient({ autopass: true });
+    expect(at()).toBe("watch-bot");
     move({ ...resolved, step: "end" });
     move({ seq: 2, active: 1, step: "upkeep", mine: [f, e], hand: [hand[1], hand[3]] });
-    expect(at()).toBe("watch-bot");
-    move({ seq: 3, active: 0, step: "upkeep", mine: [f, e], hand: [hand[1], hand[3]] });
+    // The bot's turn is running by itself: step 10 watches it.
     expect(at()).toBe("attack");
+    expect(run.current().detour?.id).toBe("watch-bot");
+    move({ seq: 3, active: 0, step: "upkeep", mine: [f, e], hand: [hand[1], hand[3]] });
+    expect(run.current().detour?.id).toBe("to-combat");
+    // The safety belt clears the toggle at the player's main phase.
+    move({ seq: 3, active: 0, step: "precombat_main", mine: [f, e], hand: [hand[1], hand[3]] });
+    run.observeClient({ autopass: false });
     expect(run.current().detour?.id).toBe("to-combat");
     move({ seq: 3, step: "declare_attackers", mine: [f, e], hand: [hand[1], hand[3]] });
     expect(run.current().detour).toBeNull();
