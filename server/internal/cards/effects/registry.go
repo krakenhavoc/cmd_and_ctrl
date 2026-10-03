@@ -318,21 +318,21 @@ func Register(spec Spec) {
 	if (spec.CastCondition == nil) != (spec.CastConditionLabel == "") {
 		panic(fmt.Sprintf("effects.Register: %q declares a CastCondition without its printed CastConditionLabel, or the label without the condition", spec.Name))
 	}
-	for i, r := range spec.CastRestrictions {
-		if r.Label == "" {
-			panic(fmt.Sprintf("effects.Register: %q cast restriction %d has no printed Label — the refusal carries it to the client", spec.Name, i))
-		}
-		if r.Forbids == nil {
-			panic(fmt.Sprintf("effects.Register: %q cast restriction %q forbids nothing", spec.Name, r.Label))
-		}
-	}
+	checkCastRestrictions(spec.Name, spec.CastRestrictions)
 	// ADR 0109 §4: the same two checks for the land-play twin.
-	for i, r := range spec.LandPlayRestrictions {
-		if r.Label == "" {
-			panic(fmt.Sprintf("effects.Register: %q land-play restriction %d has no printed Label — the refusal carries it to the client", spec.Name, i))
+	checkLandPlayRestrictions(spec.Name, spec.LandPlayRestrictions)
+	// ADR 0109 §6: and for a targeting restriction, which must also say
+	// which zone it is about.
+	checkTargetingRestrictions(spec.Name, spec.TargetingRestrictions)
+	// ADR 0108 §10: a "dealt as though its source had" static names what
+	// the source is treated as having, and wither is about creatures only
+	// (CR 702.80a), so it can't be narrowed to damage dealt to a player.
+	for i, s := range spec.DamageAsThough {
+		if !s.Wither && !s.Infect {
+			panic(fmt.Sprintf("effects.Register: %q damage-as-though static %d gives the source neither wither nor infect", spec.Name, i))
 		}
-		if r.Forbids == nil {
-			panic(fmt.Sprintf("effects.Register: %q land-play restriction %q forbids nothing", spec.Name, r.Label))
+		if s.ToYou && !s.Infect {
+			panic(fmt.Sprintf("effects.Register: %q damage-as-though static %d is wither on damage dealt to a player, which changes nothing (CR 702.80a)", spec.Name, i))
 		}
 	}
 	// #1210, ADR 0073's amendment of 2026-09-22: the same two checks
@@ -808,6 +808,45 @@ func checkActivationTimings(card string, timings []game.ActivationTiming) {
 		if t.Covers == nil {
 			panic(fmt.Sprintf("effects.Register: %q activation timing %q covers nothing", card, t.Label))
 		}
+	}
+}
+
+// checkCastRestrictions, checkLandPlayRestrictions and
+// checkTargetingRestrictions are ADR 0073 §7's guard and its ADR 0109
+// twins, shared by a Spec's slot and an EmblemSpec's (ADR 0109 §5) so the
+// two homes cannot drift in what they refuse: a restriction with no
+// printed Label produces a refusal the client cannot explain, and one
+// with no Forbids claims to refuse and refuses nothing. `card` names the
+// declarer in the panic.
+func checkCastRestrictions(card string, rs []game.CastRestriction) {
+	for _, r := range rs {
+		checkRestriction(card, "cast", r.Label, r.Forbids == nil)
+	}
+}
+
+func checkLandPlayRestrictions(card string, rs []game.LandPlayRestriction) {
+	for _, r := range rs {
+		checkRestriction(card, "land-play", r.Label, r.Forbids == nil)
+	}
+}
+
+// checkTargetingRestrictions also refuses a restriction about no zone,
+// which the targeting check would never ask.
+func checkTargetingRestrictions(card string, rs []game.TargetingRestriction) {
+	for _, r := range rs {
+		checkRestriction(card, "targeting", r.Label, r.Forbids == nil)
+		if len(r.Zones) == 0 {
+			panic(fmt.Sprintf("effects.Register: %q targeting restriction %q is about no zone", card, r.Label))
+		}
+	}
+}
+
+func checkRestriction(card, kind, label string, forbidsNothing bool) {
+	if label == "" {
+		panic(fmt.Sprintf("effects.Register: %q %s restriction has no printed Label — the refusal carries it to the client", card, kind))
+	}
+	if forbidsNothing {
+		panic(fmt.Sprintf("effects.Register: %q %s restriction %q forbids nothing", card, kind, label))
 	}
 }
 

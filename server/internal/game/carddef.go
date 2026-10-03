@@ -133,7 +133,14 @@ type CardDef struct {
 	// and ADR 0038's amendment of 2026-09-27 (#1560).
 	HexproofBypasses []HexproofBypass
 	WardSuppressions []WardSuppression
-	CastableZones    []ZoneKind
+	// TargetingRestrictions are this permanent's "<these> can't be the
+	// targets of spells or abilities" statics about a ZONE rather than
+	// about itself (ADR 0109 §6, #1885) — Ground Seal's "cards in
+	// graveyards", Tomik's "lands on the battlefield and land cards in
+	// graveyards … your opponents control". Read from the battlefield
+	// through CatalogAbilityKey; see targeting_restriction.go.
+	TargetingRestrictions []TargetingRestriction
+	CastableZones         []ZoneKind
 
 	// SpecialActions are the CR 116.2 special actions the card offers
 	// from its owner's hand — foretell (CR 702.143a) and suspend
@@ -242,6 +249,11 @@ type CardDef struct {
 	// statics (CR 119.7, ADR 0107 §5). Read from the battlefield
 	// through CatalogCantGainLife; see cant_gain_life.go.
 	CantGainLife []CantGainLifeStatic
+	// DamageAsThough are this permanent's printed "damage is dealt as
+	// though its source had wither / infect" statics (ADR 0108 §10). Read
+	// from the battlefield through CatalogDamageAsThough, keyed by
+	// CatalogAbilityKey; see damage_as_though.go.
+	DamageAsThough []DamageAsThoughStatic
 	// AnyColorSpend are this permanent's printed "you may spend mana as
 	// though it were mana of any color" statics (CR 609.4b, #1600) —
 	// Chromatic Orrery, Mycosynth Lattice, Oath of Nissa. Read from the
@@ -616,6 +628,12 @@ func init() {
 		}
 		return nil
 	}
+	CatalogTargetingRestrictions = func(key string) []TargetingRestriction {
+		if d := catalogDef(key); d != nil {
+			return d.TargetingRestrictions
+		}
+		return nil
+	}
 	CatalogUntapStepPermissions = func(key string) []UntapStepPermission {
 		if d := catalogDef(key); d != nil {
 			return d.UntapStep
@@ -691,6 +709,12 @@ func init() {
 	CatalogCantGainLife = func(key string) []CantGainLifeStatic {
 		if d := catalogDef(key); d != nil {
 			return d.CantGainLife
+		}
+		return nil
+	}
+	CatalogDamageAsThough = func(key string) []DamageAsThoughStatic {
+		if d := catalogDef(key); d != nil {
+			return d.DamageAsThough
 		}
 		return nil
 	}

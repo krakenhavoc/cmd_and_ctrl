@@ -76,6 +76,9 @@ body dies/exile-from-graveyard
 condition dies/the-listed-object
 body prevention/black-or-red-gain-life-trigger
 body prevention/gain-life-trigger
+body rebound/the-spell-you-just-cast
+condition cast/you-next-cast-from-hand
+body sunburst/that-spell-gains
 body angel-of-suffering/mill-twice
 body gloom-surgeon/exile-that-many
 body immortal-coil/exile-per-prevented

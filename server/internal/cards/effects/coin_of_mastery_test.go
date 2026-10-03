@@ -10,8 +10,9 @@ import (
 
 const coinOfMasteryOracle = "d78518ee-df79-48d1-b9d5-4f968b441899"
 
-// The half that ships: {T} makes a Treasure. The headline does not,
-// and the caveat is what says so on the catalogue page.
+// {T} makes a Treasure. The headline — counters per artifact mana — is
+// pinned in granted_mana_spent_readers_test.go (ADR 0109 §11); the one
+// caveat left is the strict-mana one every reader of spent mana carries.
 func TestCoinOfMasteryTapsForATreasureAndDeclaresItsGap(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
@@ -34,9 +35,9 @@ func TestCoinOfMasteryTapsForATreasureAndDeclaresItsGap(t *testing.T) {
 	if !ok || spec.Completeness != CompletenessCaveats || len(spec.Caveats) != 1 {
 		t.Fatalf("Coin of Mastery ships with exactly one caveat: %v / %v", spec.Completeness, spec.Caveats)
 	}
-	// The counters rider is not declared anywhere: no entry-counter
-	// clause, no replacement, no static.
-	if spec.EntersWithCountersFromCast != nil || spec.Replacements != nil || spec.Static != nil {
-		t.Error("the +1/+1 counter rider is deferred, not half-declared")
+	// The counters are a replacement on the Coin over another
+	// creature's entry, and nothing else.
+	if spec.EntersWithCountersFromCast != nil || len(spec.Replacements) != 1 || spec.Static != nil {
+		t.Error("the +1/+1 counter rider is one replacement on the Coin")
 	}
 }

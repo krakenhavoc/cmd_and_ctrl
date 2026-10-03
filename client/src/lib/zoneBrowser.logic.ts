@@ -26,6 +26,16 @@ export function cardsForZone(view: GameView, zoneKind: BrowsableZone, ownerID: s
   return [];
 }
 
+// zoneTargetBans is the banner the browser shows over a zone that a
+// static stops spells and abilities targeting (ADR 0109 §6, CR 601.2c):
+// the server's `graveyard_target_bans` lines for a graveyard, nothing for
+// any other zone. The server already leaves the refused cards out of
+// every legal target set, so this explains, and gates nothing.
+export function zoneTargetBans(view: GameView, zoneKind: BrowsableZone): string[] {
+  if (zoneKind !== "graveyard") return [];
+  return view.graveyard_target_bans ?? [];
+}
+
 // canManageZone tells the UI whether the viewer may invoke owner
 // actions on cards in this zone. Stack is view-only (cards on the
 // stack have their own counter/resolve flow via StackOverlay).

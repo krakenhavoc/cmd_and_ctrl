@@ -571,6 +571,12 @@
   // at yet and the prompt has to say the card's name itself.
   const isEntryPayLife = $derived(active?.kind === "entry_pay_life");
 
+  // ADR 0109 §10 riot — "a +1/+1 counter, or haste?", asked before the
+  // permanent enters. The same {choice_id, apply} payload: apply takes
+  // the counter. Answered from the keyboard with C and H rather than Y
+  // and N, because neither answer is a "no".
+  const isEntryRiot = $derived(active?.kind === "entry_riot");
+
   // #74 confirm — the chained-choice two-way prompt, "do A, or do B."
   // Same {choice_id, apply} payload as the other yes/no kinds; the
   // server routes to ResolveConfirm by kind, and the card supplies
@@ -919,6 +925,16 @@
       } else if (coinAllowStop && (e.key === "s" || e.key === "S")) {
         e.preventDefault();
         answerCoin("stop");
+      }
+      return;
+    }
+    if (isEntryRiot) {
+      if (e.key === "c" || e.key === "C") {
+        e.preventDefault();
+        answerOptional(true);
+      } else if (e.key === "h" || e.key === "H") {
+        e.preventDefault();
+        answerOptional(false);
       }
       return;
     }

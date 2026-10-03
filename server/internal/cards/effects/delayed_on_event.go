@@ -129,6 +129,44 @@ func youNextCast(ev game.Event, dt *game.DelayedTrigger, g *game.Game, p game.Ef
 	return ok && p.Filter.Matches(c)
 }
 
+// WhenYouNextCastFromHand is WhenYouNextCast for "when you next cast a
+// <spell> spell FROM YOUR HAND this turn" (Narset Transcendent's −2). A
+// cast from exile, a graveyard or the command zone does not fire it, and
+// does not use it up: CR 603.7b ends a delayed trigger the first time it
+// TRIGGERS, and a cast that does not match its condition is not one.
+func WhenYouNextCastFromHand(label string, spell game.CastFilter, body game.BodyRef) DelayedOnEvent {
+	d := WhenYouNextCast(label, spell, body)
+	d.Condition = youNextCastFromHandCondition
+	return d
+}
+
+// youNextCastFromHand is youNextCast whose EventCast left the caster's
+// hand (CR 601.2a: the event's OldZone is where the spell was cast from).
+func youNextCastFromHand(ev game.Event, dt *game.DelayedTrigger, g *game.Game, p game.EffectParams) bool {
+	return ev.OldZone == game.ZoneHand && youNextCast(ev, dt, g, p)
+}
+
+// reboundTheSpellYouJustCast gives the spell the triggering event named
+// rebound (CR 702.88a). The spell rides on the item as its payload,
+// because a delayed trigger's item has no Trigger for ThatSpellGains to
+// read. A spell that left the stack before the trigger resolved gains
+// nothing (CR 603.7c: an object no longer in the zone the ability
+// expects is not affected), and GrantKeywordsToSpellForEffect refuses
+// anything that is not still that spell on the stack.
+func reboundTheSpellYouJustCast(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	cast := ctx.PayloadCards()
+	if len(cast) == 0 {
+		return nil
+	}
+	label := "it gains rebound"
+	if item.Label != "" {
+		label = item.Label
+	}
+	g.GrantKeywordsToSpellForEffect(ctx.Source(), cast[0], []string{game.KeywordRebound}, game.IndefiniteDuration(), label)
+	return nil
+}
+
 // copyTheSpellYouJustCast is the whole effect of the "when you next
 // cast … copy that spell" family. "That spell" is the one the
 // triggering event named, which rides on the item as its payload — so

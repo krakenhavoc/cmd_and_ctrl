@@ -16,11 +16,12 @@ import (
 // and never reaches for the record itself.
 //
 // Sunburst is the one that is NOT here. CR 702.44a is an "enters with
-// counters" clause, so since #1002 it is declared as one —
-// SunburstCounters in entry_counters.go — and the engine reads the
-// paid-cost record off the resolving stack item while the CR 614 entry
-// window is open, rather than the card reading it a beat earlier in
-// OnResolve.
+// counters" keyword, so since ADR 0109 §11 (#1552) a card declares it
+// as one — PrintedKeywords: []string{game.KeywordSunburst} — and the
+// engine counts its instances on the resolving spell and reads the
+// paid-cost record off the stack item while the CR 614 entry window is
+// open (game/entry_counters.go, applySunburstLocked). A spell can be
+// GIVEN sunburst (ThatSpellGains, Lux Artillery) the same way.
 //
 // The one rule they all inherit, from ADR 0068 §3: a payment the
 // engine WAIVED (permissive mode, a strict-mode override) answers

@@ -236,6 +236,35 @@ func (g *Game) emblemContinuousEffectsLocked() []ContinuousEffect {
 	return out
 }
 
+// forEachEmblemLocked calls fn with every emblem of every seat, in seat
+// order and creation order, until fn returns false. It is the emblem
+// walk the rule gates share (ADR 0109 §5): the cast gate, the land-play
+// gate, the game-end gates and the untap caps each read an emblem as a
+// second source beside the battlefield, because CR 114.4 says an
+// emblem's abilities function in the command zone. The emblem is the
+// source, so "your opponents" is read off its controller, which is its
+// owner and never changes (CR 114.2).
+//
+// A player who left the game has no emblems to walk: CR 800.4a took
+// them with the player (leave_game.go sweeps p.Emblems).
+//
+// The pointer is into p.Emblems.Cards and is valid for one walk under
+// the lock the caller holds.
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) forEachEmblemLocked(fn func(src *Card) bool) {
+	for _, p := range g.Seats {
+		if p == nil || p.Emblems == nil {
+			continue
+		}
+		for i := range p.Emblems.Cards {
+			if !fn(&p.Emblems.Cards[i]) {
+				return
+			}
+		}
+	}
+}
+
 // harvestFromEmblemsLocked is the emblem half of the trigger
 // harvester's walk. It is harvestFromZone over each seat's emblem
 // zone, which is all an emblem's triggered ability needs: the harvest

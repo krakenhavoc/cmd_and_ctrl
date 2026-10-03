@@ -34,7 +34,7 @@ import (
 // THE SHAPE, in three decisions.
 //
 //  1. THE CATALOG DECLARES, THE ENGINE READS. A card says what it
-//     says — XCounters("+1/+1"), SunburstCounters("+1/+1") — and the
+//     says — XCounters("+1/+1"), CountersPerKick("charge", 1) — and the
 //     count is a pure function of CastCounts. The catalog never
 //     touches a StackItem for this, which is what the old comment in
 //     cards/effects/mana_spent.go said would be needed and is the
@@ -232,6 +232,77 @@ func (g *Game) EntryCastCountsForEffect(ev *ReplacementEvent) CastCounts {
 	return g.castCountsLocked(card, ev.stackItem)
 }
 
+// EntrySpentForEffect is the whole spend of the spell an entry event
+// is turning into a permanent (ADR 0109 §11 decision 1, #1552): the
+// same ManaSpent view a resolving spell reads off its own stack item
+// and a permanent reads off its Provenance (CR 400.7d), handed to a
+// replacement that runs INSIDE the CR 614 window — including one on
+// ANOTHER permanent.
+//
+// CastCounts is the short, named list a printed clause may read off
+// its own announcement. This is the other reader: a replacement on
+// Coin of Mastery asking how much of a creature's mana came from an
+// artifact source (CountFrom(ManaSourceArtifact)), Kalain asking how
+// much came from a Treasure, and "if it wasn't cast or no mana was
+// spent to cast it" (None) on Freestrider Commando and Primeval
+// Spawn. One view, so every question about spent mana is still
+// answered in one file (mana_spent.go).
+//
+// The zero ManaSpent — "nothing was spent, and that is known" — for
+// every entry that is not a resolving spell: a reanimation, a
+// flicker, a token, a land play. Nothing was cast, so nothing was
+// spent, and None answers true, which is exactly what "if it wasn't
+// cast or no mana was spent" needs. A CR 707.10 copy of a permanent
+// spell is the same zero (it was not cast). A waived payment (strict
+// mana off) is unknown: every count is zero and None is false, the
+// weaker answer ADR 0068 §3 requires. The same zero for a nil event.
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) EntrySpentForEffect(ev *ReplacementEvent) ManaSpent {
+	if ev == nil || ev.stackItem == nil {
+		return ManaSpent{}
+	}
+	return ev.stackItem.Paid.Spent()
+}
+
+// KeywordSunburst is CR 702.44's token in canonicalKeywords.
+const KeywordSunburst = "sunburst"
+
+// applySunburstLocked seeds CR 702.44a's counters onto the entry event:
+// for each instance of sunburst, one counter per colour of mana spent
+// to cast the spell — a +1/+1 counter if the object is entering as a
+// creature "ignoring any type-changing effects that would affect it",
+// a charge counter otherwise. So the creature test reads the PRINTED
+// type line, not the layered one.
+//
+// The instances are the permanent's as it would exist on the
+// battlefield (CR 614.12, ADR 0109 owner decision 1), from the entry
+// look-ahead (entry_lookahead.go): its printed and deck-imported
+// sunburst, the ones an effect gave the SPELL (Lux Artillery, Solar
+// Array — CR 400.7a carries them onto the permanent), each counted
+// separately (CR 702.44d), and none at all when it would enter under
+// an ability-removing effect such as Dress Down.
+//
+// CR 702.44b: only for an object entering from the stack as a resolving
+// spell, and only if coloured mana was spent. The caller passes the
+// resolving item; a payment the engine waived (strict mana off) claims
+// no colours and adds nothing (ADR 0068 §3).
+func (g *Game) applySunburstLocked(ev *ReplacementEvent, card Card, item *StackItem) {
+	instances := g.entryLookAheadLocked(ev).sunburst
+	if instances == 0 {
+		return
+	}
+	colors := item.Paid.ColorsSpentCount()
+	if colors <= 0 {
+		return
+	}
+	kind := CounterCharge
+	if _, types, _ := ParseTypeLine(card.TypeLine); containsKeyword(types, "Creature") {
+		kind = CounterPlusOne
+	}
+	ev.AddCounterAtETB(kind, instances*colors)
+}
+
 // applyCastEntryCountersLocked folds a permanent spell's printed
 // "this permanent enters with N counters on it" (CR 614.1c) into its
 // ENTRY event, before the CR 614 pipeline runs.
@@ -272,7 +343,12 @@ func (g *Game) applyCastEntryCountersLocked(ev *ReplacementEvent, card Card, ite
 	// (Biophagus) — a spend rider on the mana that paid, seeded in the
 	// same place and for the same reason as the card's own clause, so
 	// the two compose and Doubling Season sees both.
-	riderEntryCounters(ev, item)
+	g.riderEntryCountersLocked(ev, item)
+	// ADR 0109 §11 decision 2 and owner decision 1: sunburst is a
+	// keyword, counted on the permanent the entry look-ahead says this
+	// would be, so a granted instance counts like a printed one, each
+	// separately (CR 702.44d), and an ability-removing effect leaves none.
+	g.applySunburstLocked(ev, card, item)
 	clauses := EntersWithCountersFromCastFor(CatalogKey(card))
 	if len(clauses) == 0 {
 		return

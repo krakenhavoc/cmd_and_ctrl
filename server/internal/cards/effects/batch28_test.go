@@ -328,6 +328,10 @@ func TestB28UncivilUnrestRiotCounterAndDoubledDamage(t *testing.T) {
 	b12Push(g, me.ID, "Uncivil Unrest", "Enchantment", b28UncivilUnrestOracle, 0, 0)
 	bear := castCatalogSpell(t, g, "Riot Bear", "Creature — Bear", "", nil)
 	passPriorityAroundTable(t, g)
+	// ADR 0109 §10: riot is asked as the creature enters; take the
+	// counter the second ability wants.
+	answerRiotFor(t, g, true)
+	passPriorityAroundTable(t, g)
 	if got := counterCount(g, bear, "+1/+1"); got != 1 {
 		t.Errorf("riot: a nontoken creature enters with a +1/+1 counter: %d", got)
 	}

@@ -275,7 +275,7 @@ func (g *Game) addTriggeredManaLocked(playerID, source uuid.UUID, label, produce
 		}
 		return addManaReason(slot)
 	}
-	if err := g.addManaSlotsLocked(p, source, produced, false, nil, pending, reason); err != nil {
+	if err := g.addManaSlotsLocked(p, source, produced, false, nil, nil, pending, reason); err != nil {
 		g.EmitEvent(Event{
 			Kind:     EventEffectError,
 			Actor:    playerID,

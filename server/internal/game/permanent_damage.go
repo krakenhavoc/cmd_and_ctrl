@@ -51,8 +51,10 @@ import "github.com/google/uuid"
 // what keeps Fog and the prevention shields in one place.
 //
 // It takes the damage TAIL — the source as it was when the event was
-// created — because two of the source's keywords change what the
-// damage does to a creature:
+// created — and the RESULT the damage lands with: the tail's own, with
+// any "dealt as though its source had" static ORed in (ADR 0108 §10,
+// damageResultAsThoughLocked). Two of the source's keywords change what
+// the damage does to a creature:
 //
 //   - deathtouch marks the CR 702.2b lethal flag. It is about damage
 //     DEALT, not marked, so it is set whether the damage is marked or
@@ -72,7 +74,7 @@ import "github.com/google/uuid"
 // Returns ok=false when the card is not on the battlefield.
 //
 // Caller must hold g.mu.
-func (g *Game) applyDamageToPermanentLocked(cardID uuid.UUID, amount int, t *damageTail) (ok bool, minusOneCounters int) {
+func (g *Game) applyDamageToPermanentLocked(cardID uuid.UUID, amount int, t *damageTail, result DamageResultSource) (ok bool, minusOneCounters int) {
 	if amount <= 0 {
 		return false, 0
 	}
@@ -96,7 +98,7 @@ func (g *Game) applyDamageToPermanentLocked(cardID uuid.UUID, amount int, t *dam
 
 	if isCreature {
 		// CR 120.3d / 120.3e: counters or marked damage, never both.
-		counters, marked := t.result.DamageToCreature(amount)
+		counters, marked := result.DamageToCreature(amount)
 		c.DamageMarked += marked
 		minusOneCounters = counters
 		if t.deathtouch {
