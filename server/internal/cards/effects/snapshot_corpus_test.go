@@ -323,6 +323,14 @@ func corpusBoards() []corpusBoard {
 		// addSubtypes Forest in addition to the land's own types
 		// (Navigator's Compass).
 		{"land_types", corpusLandTypes},
+		// v7, added by ADR 0108 PR 6 (#1904) as a new file: the shields
+		// against a source that are not one-use as data — Samite
+		// Ministration's all-turn preventFromSource with a follow-up, a
+		// charged one (Healing Grace) already partly spent, a
+		// combat-only one pinned to a protected creature, Prismatic
+		// Strands' property-only shape, and Dark Sphere's half shield
+		// (Mod.Half on preventNextFromSource).
+		{"source_shields", corpusSourceShields},
 		// v7, added by ADR 0109 PR 2 (#1894, #1604) as a new file: a
 		// duration with two conditions (Seasinger's "for as long as you
 		// control this creature and this creature remains tapped",
@@ -335,7 +343,31 @@ func corpusBoards() []corpusBoard {
 		// (loses all land types and abilities and has "{T}: Add {C}"
 		// for as long as the land has a blight counter on it).
 		{"lose_land_types", corpusLoseLandTypes},
+		// v7, added by ADR 0109 PR 4 (#1604) as a new file: a granted
+		// loyalty ability on the stack, named by its grant ref and
+		// carrying its grantor (Teferi's Talent's −12, stackMeta's
+		// grantedBy).
+		{"granted_loyalty_on_stack", corpusGrantedLoyaltyOnStack},
 	}
+}
+
+// corpusGrantedLoyaltyOnStack is Teferi's Talent's granted −12,
+// activated on the planeswalker it enchants and waiting on the stack:
+// a grant ref, and the Talent as the item's grantor.
+func corpusGrantedLoyaltyOnStack(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	toMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat].ID
+	walker := talentWalker(g, me, 13)
+	talent := talentOn(g, me, "Teferi's Talent", teferisTalentOracle, walker)
+	idx, ref := grantedLoyaltyRow(t, g, walker, "−12")
+	if err := g.ActivateCatalogAbility(me, walker, idx, game.ActivateAbilityParams{Ref: ref}); err != nil {
+		t.Fatalf("setup: activate the granted −12: %v", err)
+	}
+	if it := talentStackItem(g, walker); it == nil || it.GrantedBy != talent {
+		t.Fatalf("setup: the −12 is not on the stack with its grantor: %+v", it)
+	}
+	return g
 }
 
 // corpusLoseLandTypes is ADR 0109 §2's loseLandTypes kind, made by the
@@ -480,6 +512,54 @@ func corpusLandTypes(t *testing.T) *game.Game {
 	answerOptionPick(t, g, me.ID, 4) // Forest
 	if len(g.ScopedEffects) != 5 {
 		t.Fatalf("setup: %d scoped records, want 5", len(g.ScopedEffects))
+	}
+	return g
+}
+
+// corpusSourceShields is ADR 0108 §7's ModPreventFromSource in each of
+// its shapes, and Dark Sphere's half shield.
+func corpusSourceShields(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	dragon := pushBattlefieldCardWithTimestamp(g, corpusCreature(opp.ID, "Shivan Dragon", 5, 5))
+	knight := pushBattlefieldCardWithTimestamp(g, corpusCreature(me.ID, "Knight", 2, 2))
+	g.WithWriteLock(func() {
+		g.RecomputeLayersIfStaleLocked()
+		ref, zone, ok := g.DamageSourceRefLocked(dragon)
+		if !ok {
+			t.Fatal("setup: the dragon is in no zone")
+		}
+		g.PreventDamageFromSourceThisTurnForEffect(game.DamageShield{
+			Controller: me.ID, Source: ref, SourceZone: zone, ProtectPlayer: me.ID,
+			Then:  preventedBlackOrRedTriggerBody,
+			Label: "Samite Ministration — prevent damage from a source this turn",
+		})
+		g.PreventDamageFromSourceThisTurnForEffect(game.DamageShield{
+			Controller: me.ID, Source: ref, SourceZone: zone, ProtectPlayer: me.ID,
+			ProtectTypes: []string{"creature"}, Amount: 3,
+			Label: "Healing Grace — prevent damage from a source this turn",
+		})
+		g.PreventDamageFromSourceThisTurnForEffect(game.DamageShield{
+			Controller: me.ID, Source: ref, SourceZone: zone, ProtectPermanent: knight, CombatOnly: true,
+			Label: "Maze — prevent damage from a source this turn",
+		})
+		g.PreventDamageFromSourceThisTurnForEffect(game.DamageShield{
+			Controller: me.ID, Queries: []game.PermanentQuery{QueryColors("B"), QueryColors("R")},
+			Label: "Prismatic Strands — prevent damage from a source this turn",
+		})
+		g.PreventNextDamageFromSourceForEffect(game.NextDamageShield{
+			Controller: me.ID, Source: ref, SourceZone: zone, ProtectPlayer: me.ID, Half: true,
+			Label: "Dark Sphere — prevent the next damage from a source",
+		})
+		// The charged shield takes 1 of the dragon's damage to the
+		// knight (the all-turn shield protects only me), leaving 2.
+		if err := g.DealDamageToCreatureForEffect(dragon, knight, 1); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if n := len(g.ScopedEffects); n != 5 {
+		t.Fatalf("setup: %d scoped records, want 5", n)
 	}
 	return g
 }

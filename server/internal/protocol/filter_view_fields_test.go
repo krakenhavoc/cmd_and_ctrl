@@ -99,6 +99,7 @@ func everyFieldGameView(ownerID, oppID string) GameView {
 		SplitSecondActive:     true,
 		DamageCantBePrevented: []string{"Skullcrack"},
 		ExileIfCreaturesDie:   []string{"Flaying Tendrils"},
+		DamageShields:         []string{"Pay No Heed (Goblin Guide)"},
 		DamageMultipliers:     []string{"P1's sources deal double damage this turn — Insult"},
 		DiscardPending:        map[string]int{ownerID: 1},
 		PendingChoices: []PendingChoiceView{{

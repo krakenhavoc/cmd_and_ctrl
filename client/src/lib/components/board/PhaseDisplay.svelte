@@ -29,6 +29,7 @@
   import {
     damageCantBePreventedLine,
     damageMultiplierLines,
+    damageShieldsLine,
     exileIfCreaturesDieLine,
   } from "../../turnRules";
   import { QUIET_ANNOUNCER, announceArrival, type ReadyAnnouncer } from "../../legalActions";
@@ -41,6 +42,8 @@
     // be prevented this turn" grants (GameView.damage_cant_be_prevented).
     damageCantBePrevented?: string[];
     exileIfCreaturesDie?: string[];
+    // ADR 0108 §7: the live source shields (GameView.damage_shields).
+    damageShields?: string[];
     // ADR 0108 §3: the live damage multipliers' banner lines
     // (GameView.damage_multipliers).
     damageMultipliers?: string[];
@@ -61,6 +64,7 @@
     mulligansOpen,
     damageCantBePrevented = [],
     exileIfCreaturesDie = [],
+    damageShields = [],
     damageMultipliers = [],
     readyActions = 0,
     trackOpen = false,
@@ -79,6 +83,7 @@
 
   const unpreventableLine = $derived(damageCantBePreventedLine(damageCantBePrevented));
   const exileOnDeathLine = $derived(exileIfCreaturesDieLine(exileIfCreaturesDie));
+  const shieldsLine = $derived(damageShieldsLine(damageShields));
   const multiplierLines = $derived(damageMultiplierLines(damageMultipliers));
 
   const activeSeat = $derived(turn.active_seat ?? 0);
@@ -218,6 +223,9 @@
   {/if}
   {#if exileOnDeathLine}
     <div class="row turn-rule" role="status">{exileOnDeathLine}</div>
+  {/if}
+  {#if shieldsLine}
+    <div class="row turn-rule" role="status">{shieldsLine}</div>
   {/if}
   {#each multiplierLines as line, i (i)}
     <div class="row turn-rule" role="status">{line}</div>

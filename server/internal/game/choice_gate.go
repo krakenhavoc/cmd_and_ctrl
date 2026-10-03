@@ -212,6 +212,11 @@ var choiceGateDecisions = map[PendingChoiceKind]bool{
 	// prevention shield is created, mid-resolution, and the shield is
 	// the rest of the card: it blocks for option_pick's reason.
 	PendingChoiceChooseSource: true,
+	// ADR 0108 §7, CR 615.7. "Divide this shield among the damage" holds
+	// an instance's damage events, which are dealt once it is answered:
+	// a table that could walk past the question would be dealing the
+	// damage by doing.
+	PendingChoiceDivideShield: true,
 	// #804, CR 732. The one kind whose blocking is worth arguing
 	// about, since ADR 0055 §4 was careful that the loop breaker
 	// refuse no passes. It blocks: the shortcut is proposed while the

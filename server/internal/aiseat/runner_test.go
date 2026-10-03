@@ -692,10 +692,26 @@ func describeChoicesLocked(g *game.Game) string {
 	return b.String()
 }
 
+// activeHoldsPriorityWhileDefenderDeclares builds the one shape the
+// block grace still has to cover (#1501): the active player holding
+// priority while a defender is still declaring. A live table parks
+// priority instead, so it reaches this shape only from a restore point
+// written before #1501 mid-step, or with a player who became a
+// defending player after the step began. Called with the step parked.
+func activeHoldsPriorityWhileDefenderDeclares(t *testing.T, g *game.Game) {
+	t.Helper()
+	if g.Turn.PriorityHolder != game.NoPriority {
+		t.Fatalf("setup: priority should be parked for the declaration, holder %d", g.Turn.PriorityHolder)
+	}
+	g.WithWriteLock(func() { g.Turn.PriorityHolder = g.Turn.ActiveSeat })
+}
+
 // TestActiveBotHoldsPassForBlockers: with a grace configured, the
 // active bot does not pass out of declare_blockers while a defender
 // still has a legal block; once the defender has blocked (or has
-// nothing to block with) the pass goes through promptly.
+// nothing to block with) the pass goes through promptly. Since #1501
+// this is the pre-#1501 restore-point shape — a live table parks
+// priority — see activeHoldsPriorityWhileDefenderDeclares.
 func TestActiveBotHoldsPassForBlockers(t *testing.T) {
 	room := newRoom(t, 2, 9)
 	g := room.Game
@@ -725,6 +741,7 @@ func TestActiveBotHoldsPassForBlockers(t *testing.T) {
 	if g.Turn.Step != game.StepDeclareBlockers {
 		t.Fatalf("at %s", g.Turn.Step)
 	}
+	activeHoldsPriorityWhileDefenderDeclares(t, g)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	grace := 2 * time.Second
@@ -792,6 +809,7 @@ func TestActiveBotBlockGraceEndsWhenTheDefenderFinishes(t *testing.T) {
 	if g.Turn.Step != game.StepDeclareBlockers {
 		t.Fatalf("at %s", g.Turn.Step)
 	}
+	activeHoldsPriorityWhileDefenderDeclares(t, g)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	grace := 3 * time.Second
@@ -821,6 +839,62 @@ func TestActiveBotBlockGraceEndsWhenTheDefenderFinishes(t *testing.T) {
 	})
 	if el := time.Since(finished); el > grace/2 {
 		t.Errorf("pass took %v after finish_blocks; the hold should end when the declaration completes", el)
+	}
+}
+
+// declinesEverything is a policy that wants no move at all.
+type declinesEverything struct{}
+
+func (declinesEverything) Name() string { return "declines-everything" }
+func (declinesEverything) Decide(context.Context, aiseat.Input) (aiseat.Decision, error) {
+	return aiseat.Decision{Index: aiseat.Decline, Reason: "nothing this policy wants"}, nil
+}
+
+// TestDefenderBotThatDeclinesStillFinishesItsDeclaration is #1501's
+// stall guard on a live runner. Priority is parked while a defender
+// declares, so a bot defender has no pass to fall back on; one whose
+// policy declines every block still finishes — the runner turns the
+// decline into finish_blocks, the declaration's always-legal answer —
+// and the active player receives priority. Without that move this seat
+// would sleep with the declaration open and hold the table, since
+// nobody else has a move either.
+func TestDefenderBotThatDeclinesStillFinishesItsDeclaration(t *testing.T) {
+	room := newRoom(t, 2, 9)
+	g := room.Game
+	att, def := g.Seats[0], g.Seats[1]
+	for _, p := range g.Seats {
+		if err := g.KeepHand(p.ID); err != nil {
+			t.Fatal(err)
+		}
+	}
+	atk := uuid.New()
+	g.Battlefield.PushTop(game.Card{InstanceID: atk, Name: "Attacker", TypeLine: "Creature — Bear", Power: 2, Toughness: 2, Owner: att.ID, Controller: att.ID})
+	g.Battlefield.PushTop(game.Card{InstanceID: uuid.New(), Name: "Blocker", TypeLine: "Creature — Bear", Power: 2, Toughness: 2, Owner: def.ID, Controller: def.ID})
+	for g.Turn.Step != game.StepDeclareAttackers {
+		if _, err := g.AdvanceStep(); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := g.DeclareAttacker(atk, def.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := g.AdvanceStep(); err != nil {
+		t.Fatal(err)
+	}
+	if g.Turn.Step != game.StepDeclareBlockers || g.Turn.PriorityHolder != game.NoPriority {
+		t.Fatalf("setup: parked in declare_blockers; at %s, holder %d", g.Turn.Step, g.Turn.PriorityHolder)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	aiseat.Start(ctx, room, def.ID, declinesEverything{}, aiseat.Config{}, nil, testLogger())
+	waitFor(t, "the defender bot to finish declaring", func() bool {
+		return g.BlockDeclarationStatusOf(def.ID) == game.BlockDeclarationDeclared
+	})
+	snap := g.Snapshot()
+	if snap.Turn.Step != game.StepDeclareBlockers || snap.Turn.PriorityHolder != snap.Turn.ActiveSeat {
+		t.Fatalf("after the bot's declaration the active player holds priority in the step: %s, holder %d",
+			snap.Turn.Step, snap.Turn.PriorityHolder)
 	}
 }
 

@@ -131,6 +131,14 @@ func (p *Policy) costValue(st *state, src *protocol.CardView, c legal.MoveCost) 
 		// planeswalker's loyalty. Priced against THAT permanent.
 		v -= st.w.counterRemovalValue(st.bf[cp.CardID.String()], cp.Counter, cp.N)
 	}
+	// #1600: "Discard your hand" (Lion's Eye Diamond, Null Brooch,
+	// Slate of Ancestry). The params name none of the cards, so the
+	// count is the whole price, at what a card in hand is worth to the
+	// evaluation — the weight a cast already pays for leaving the hand.
+	// An empty hand costs nothing, which is how the cards are played.
+	if c.Hand > 0 {
+		v -= st.w.Hand * float64(c.Hand)
+	}
 	return v, false
 }
 
@@ -227,6 +235,11 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 	switch m.Kind {
 	case legal.KindPass:
 		return 0, "pass"
+
+	case legal.KindFinishBlocks:
+		// #1501: a defender's "done declaring blockers", priced as
+		// the pass it stands in for.
+		return 0, "done blocking"
 
 	case legal.KindLand:
 		// A land drop is free, once a turn, and almost never wrong.

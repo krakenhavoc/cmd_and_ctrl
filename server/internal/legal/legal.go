@@ -52,6 +52,16 @@ const (
 	// policy that prices "what does this put on the stack" must be
 	// able to tell them apart. ADR 0062 Decision 4.
 	KindSpecialAction Kind = "special_action"
+	// KindFinishBlocks is a defending player's "done declaring
+	// blockers" (finish_blocks, CR 509.1). Its own kind rather than a
+	// pass, because it is not one: since #1501 nobody holds priority
+	// while a defender is declaring, so this is how a defender — a bot
+	// included — finishes, and a client must not read it as "the
+	// viewer may pass priority". Offered only while the seat's
+	// declaration is pending, and marked AlwaysLegal: it is the
+	// declaration's unconditional answer, so a seat whose policy
+	// declines every block still has a move that ends the declaration.
+	KindFinishBlocks Kind = "finish_blocks"
 )
 
 // Wire action types this package emits. Kept as strings rather than
@@ -71,6 +81,7 @@ const (
 	// two TypeDeclareBlocker moves because the first would be
 	// refused for too_few_blockers.
 	TypeDeclareBlockers  = "declare_blockers"
+	TypeFinishBlocks     = "finish_blocks"
 	TypeResolveChoice    = "resolve_choice"
 	TypeKeepHand         = "keep_hand"
 	TypeMulligan         = "mulligan"
@@ -216,6 +227,28 @@ type MoveCost struct {
 	// engine charges and concatenates ("{2}{2}" for two taxes), and a
 	// policy that only wants the size reads its generic total.
 	Mana string `json:"mana,omitempty"`
+
+	// Hand is how many cards a "Discard your hand" cost (#1600) throws
+	// away if the move is made now — Lion's Eye Diamond, Null Brooch,
+	// Slate of Ancestry. Every other discard names its cards in
+	// `params.discard_ids`; this one names none (the engine refuses
+	// ids for it), so without this field a policy would read the
+	// whole hand as free. Zero for an empty hand, which pays the cost.
+	Hand int `json:"hand,omitempty"`
+}
+
+// withHandDiscard adds a "Discard your hand" count to a (possibly nil)
+// MoveCost. Nil stays nil for zero cards.
+func withHandDiscard(c *MoveCost, n int) *MoveCost {
+	if n <= 0 {
+		return c
+	}
+	out := MoveCost{}
+	if c != nil {
+		out = *c
+	}
+	out.Hand = n
+	return &out
 }
 
 // CounterPrice is one counter-removal component of a move's cost.
@@ -486,9 +519,10 @@ func enumerateLocked(g *game.Game, seat uuid.UUID, opts Options) []Move {
 		e.manaMoves()
 	}
 	// Combat declarations are not priority-gated in the engine
-	// (declare_attacker / declare_blocker only check the step and the
-	// card's controller), and a defender must be able to block while
-	// the active player still holds priority — see ADR 0033 §2.
+	// (declare_attacker / declare_blocker / finish_blocks only check the
+	// step and the card's controller), and a defender declares while
+	// nobody holds priority — it is parked until the declaration is
+	// over (#1501) — see ADR 0033 §2.
 	e.combatMoves()
 	return e.out
 }

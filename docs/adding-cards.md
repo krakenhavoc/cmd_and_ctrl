@@ -742,8 +742,20 @@ naming an unregistered bundle is refused with `ErrUnknownEffectKey`. A
 "return it to the battlefield tapped [with a counter]" dies trigger is
 `returnThisCreatureFromGraveyard`. See `feign_death.go`,
 `fake_your_own_death.go`, `retraction_helix.go` and `urzas_saga.go`.
-Still no shape: a duration that lasts "for as long as it has a <kind>
-counter on it" (Ultima, Origin of Oblivion).
+"For as long as it has a <kind> counter on it" is a counter-held
+`Duration` (`GrantWhileItHasCounter`, ADR 0109 §2).
+
+A granted LOYALTY ability ("Enchanted planeswalker has '[−12]: …'",
+the Talents; ADR 0109 §2) is a bundle row with a `LoyaltyCost`, granted
+with `GrantAbilitiesToAttached` like any other. Nothing else to
+declare: the row is the planeswalker's, so CR 606.3's once-per-turn
+count and CR 606.6's counter check are the walker's, shared with its
+own loyalty abilities. "You get an emblem" in a granted ability is the
+GRANTOR's emblem: declare the `Emblem` on the grantor's Spec and write
+`CreateEmblem{}`, which reads the stack item's `GrantedBy`. "Whenever you
+activate a loyalty ability of enchanted planeswalker" is
+`WheneverYouActivateALoyaltyAbilityOfEnchanted`. See `teferis_talent.go`
+and `enchanted_planeswalker.go`.
 
 ### Abilities any player may activate (ADR 0106, #1793)
 
@@ -3113,6 +3125,19 @@ a scope. It cannot see one sentence written as two calls without a loop,
 so wrap those by hand (`b10Fight`, Fear, Fire, Foes!). Two sentences stay
 two instances (Repulsor Blast's teamwork damage, Garruk Relentless's
 fight-back).
+
+**A charged shield is divided among an instance's events (ADR 0108 §7,
+owner decision 1).** While a charged shield ("prevent the next 3
+damage", `preventDamage` or a charged `preventFromSource`) is live, a
+scope holds back the fire-and-forget damage calls the shield could meet
+and deals them as the scope ends, once the protected player has said
+which of it the shield prevents (`divide_shield`, CR 615.7). So inside
+a scope, never read the board straight after a fire-and-forget damage
+call to learn what it did — a CR 616 pause defers it the same way. Use a
+`…ThenForEffect` continuation (`DealDamageThen`) instead. Source shields
+against a chosen or named source are `PreventDamageFromChosenSource(…)`,
+`PreventDamageFromSource{From: …}` and `.Charged(n)`
+(`effects/prevent_from_source.go`).
 
 **Destroy clears damage only when it lands (#708).** Marked damage is
 removed by the landed outcome of a battlefield exit — not by the

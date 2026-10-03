@@ -272,6 +272,25 @@ func (e *enumerator) choiceMoves() bool {
 				e.addChoice(c, reason+": assign combat damage", m)
 			}
 
+		// ADR 0108 §7 decision 6, CR 615.7: divide a charged shield
+		// among one instance's damage. Two answers: the protective one
+		// first (the player, then the creatures closest to dying), and
+		// the engine's order, which is always legal.
+		case game.PendingChoiceDivideShield:
+			p := c.DivideShield
+			if p == nil {
+				continue
+			}
+			def := game.DefaultShieldDivision(p)
+			if prot := e.protectiveShieldDivision(p); !sameShieldDivision(prot, def) {
+				m := base()
+				m.Distribution = distributionWire(prot)
+				e.addChoice(c, reason+": "+shieldDivisionLabel(p, prot), m)
+			}
+			m := base()
+			m.Distribution = distributionWire(def)
+			e.addAlwaysLegalChoice(c, reason+": "+shieldDivisionLabel(p, def), m)
+
 		// S27's two non-targeting prompts answer with exactly the
 		// pick_target payload — a single {kind, id} ref out of a
 		// server-computed set, min 1 max 1 — and actions.go routes
@@ -1235,6 +1254,88 @@ func canonicalOrders(n int) [][]int {
 		rev[i] = n - 1 - i
 	}
 	return [][]int{id, rev}
+}
+
+// protectiveShieldDivision is the division a player protecting
+// themselves makes (ADR 0108 §7 decision 6): the damage to the player
+// first, then to each creature that would die of its event, the one that
+// needs the least to survive first, given just enough to survive; what
+// is left goes to the rest in the order the events were opened. It
+// always adds up to the charge, so the engine accepts it.
+func (e *enumerator) protectiveShieldDivision(p *game.DivideShieldPrompt) map[uuid.UUID]int {
+	out := make(map[uuid.UUID]int, len(p.Entries))
+	left := p.Charge
+	give := func(id uuid.UUID, want, cap int) {
+		n := min(want, cap-out[id], left)
+		if n > 0 {
+			out[id] += n
+			left -= n
+		}
+	}
+	type dying struct {
+		id   uuid.UUID
+		need int
+		cap  int
+	}
+	var creatures []dying
+	for _, en := range p.Entries {
+		if en.TargetIsPlayer {
+			give(en.ID, en.Amount, en.Amount)
+			continue
+		}
+		if c := findBattlefield(e.g, en.Target); c != nil && c.IsCreature() {
+			if need := en.Amount - (c.CurrentToughness() - c.DamageMarked) + 1; need > 0 {
+				creatures = append(creatures, dying{id: en.ID, need: need, cap: en.Amount})
+			}
+		}
+	}
+	sort.SliceStable(creatures, func(i, j int) bool { return creatures[i].need < creatures[j].need })
+	for _, d := range creatures {
+		if d.need <= left {
+			give(d.id, d.need, d.cap)
+		}
+	}
+	for _, en := range p.Entries {
+		give(en.ID, en.Amount, en.Amount)
+	}
+	return out
+}
+
+// sameShieldDivision reports whether two divisions give every entry the
+// same share.
+func sameShieldDivision(a, b map[uuid.UUID]int) bool {
+	for id, n := range a {
+		if b[id] != n {
+			return false
+		}
+	}
+	for id, n := range b {
+		if a[id] != n {
+			return false
+		}
+	}
+	return true
+}
+
+// shieldDivisionLabel says what a division prevents: "3 of Goblin
+// Guide's to you, 1 of Pyroclasm's to Grizzly Bears".
+func shieldDivisionLabel(p *game.DivideShieldPrompt, dist map[uuid.UUID]int) string {
+	var parts []string
+	for _, en := range p.Entries {
+		n := dist[en.ID]
+		if n == 0 {
+			continue
+		}
+		to := en.TargetName
+		if en.TargetIsPlayer {
+			to = "player " + to
+		}
+		parts = append(parts, fmt.Sprintf("%d of %s's to %s", n, en.SourceName, to))
+	}
+	if len(parts) == 0 {
+		return "prevent nothing"
+	}
+	return "prevent " + strings.Join(parts, ", ")
 }
 
 // canonicalDamageAssignment builds the one split the prefix-lethal

@@ -2821,3 +2821,140 @@ enchantment. It is one pinned, indefinite ScopedEffect record.
   The server refuses the activation and the enumerator never offers it, but the
   row stays clickable. This predates #1594 (Greed's "Pay 2 life" at 1 life
   behaves the same way).
+
+## Amendment (2026-10-02, [#1600](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1600)): "Discard your hand" as a cost, and "Activate only as an instant" on a mana ability
+
+**Sprint:** S44 — Mana and cost components. Tracker [#887](https://github.com/krakenhavoc/cmd_and_ctrl/issues/887).
+Decisions 47–48 are the #1594 amendment above; this one starts at 49.
+
+### Context
+
+```
+Lion's Eye Diamond  Discard your hand, Sacrifice this artifact: Add three mana of
+                    any one color. Activate only as an instant.
+Diamond Lion        {T}, Discard your hand, Sacrifice this creature: Add three mana
+                    of any one color. Activate only as an instant.
+Null Brooch         {2}, {T}, Discard your hand: Counter target noncreature spell.
+Slate of Ancestry   {4}, {T}, Discard your hand: Draw a card for each creature you
+                    control.
+```
+
+`game.DiscardCost` (#660, given a mana-ability owner by #1213) is a COUNT: "N
+cards, matching this", named by the activator, with `effects.Register` refusing
+N below one because a clause that discards nothing would make the ability free.
+"Discard your hand" is not a count. It takes every card the activator holds,
+there is nothing to choose, and an empty hand pays it: CR 118.3 makes a cost
+unpayable only when the resources to pay it fully are missing, and discarding
+every card of an empty hand is paying it fully. Slice 295-b (#1596) skipped
+Lion's Eye Diamond for it, and the `discard-your-hand-cost` seam row listed the
+other three.
+
+The two mana-ability cards add a second gap. CR 605.3a lets a mana ability be
+activated "whenever they have priority, whenever they are casting a spell or
+activating an ability that requires a mana payment, or whenever a rule or effect
+asks for a mana payment, even if it's in the middle of casting or resolving".
+CR 602.5e: "Activate only as an instant" means "the player must follow the
+timing rules for casting an instant spell", and CR 117.1a's rule is "any time
+they have priority". The rulings say what that buys: Lion's Eye Diamond's
+(2004-10-04) "it can only be activated at times when you can cast an instant",
+and Diamond Lion's (2021-06-18) "you can't activate the ability intending to use
+the mana to cast a spell from your hand". It is still a mana ability (CR 605.3b:
+no stack, no response).
+
+### Decision 49: `DiscardCost.Hand` — the all-cards form of the one component
+
+`game.DiscardCost` gains `Hand bool`, built by `effects.DiscardYourHand()` (an
+`AbilityCost`, so `Plus` composes it and a mana ability reads
+`DiscardYourHand().DiscardCards`, exactly as `DiscardACard` reaches Skirge
+Familiar). A field and not a new component, because both owners already carry a
+`*game.DiscardCost` through every reader — the validator, the payer, the options
+walk, the view, the enumerator, the auto-tapper — and every one of them already
+pays a discard through the one door with cause cost. A second component would
+have been a second validator with its own opinion about madness and CR 903.9.
+
+- **Validation** (`validateDiscardCostLocked`): the hand form refuses any
+  `discard_ids` (as the random form does) and returns the activator's hand as it
+  stands, in hand order, skipping the source of a hand activation. An empty hand
+  returns nothing and is a payment.
+- **Payment** is unchanged. On a mana ability the discard is the last component
+  before the exile-this; on a CR 602 ability it is paid with the other
+  card-moving components at announce, so a discard trigger lands on the stack
+  above the ability and resolves first, and the cards are recorded on
+  `PaidCost.Discarded`. Discard triggers fire per card, madness exiles and
+  offers, and Library of Leng (effects only) does not replace a cost discard.
+  A mana ability's triggers wait for the state-check pass on the way out, so
+  they reach the stack after the mana is in the pool (CR 603.3, CR 117.5).
+- **The wire** carries nothing for it. `DiscardCostOptionsForEffect` returns no
+  options and the view's `discard_cost_n > 0` gates stamp nothing, so the client
+  opens no picker and sends no ids. The ability's label prints the clause.
+- **Register** (`checkDiscardClause`, `discard_hand_cost.go`, shared by both
+  owners) refuses a hand clause with a count, a predicate or "at random", and
+  beside any component that spends a card from the hand (cycling's "Discard this
+  card", "Exile a card from your hand", "Put a card from your hand on top of your
+  library", a Spirit Guide's exile-this). The hand is gone by then, so such a
+  cost could never be paid; no printed card has one.
+
+### Decision 50: "Activate only as an instant" is a Condition over the enumerator's own window
+
+`effects.OnlyAsAnInstant()` is an ordinary mana-ability `Condition` over
+`Game.InstantWindowOpenForEffect(player)`: the game is running, the mulligan
+window is shut, the player holds priority, owes no prompt, and no prompt that
+stops the table is open. That is the legal enumerator's existing reading of
+"this seat may act now" (`enumerateLocked`), written once in the game package.
+A Condition and not a new `ManaAbility` field because "Keep any other 'activate
+only …' clause in Condition" is the documented home (Vivi's `DuringYourTurn`),
+and because every reader already asks it: the click path (`ErrConditionNotMet`,
+before anything is paid), the enumerator, the view's `condition_unmet` (so the
+client greys the row while another seat holds priority) and the auto-tapper's
+executor.
+
+The engine has no window in which a player clicks mana abilities while a spell
+is half-cast; a cast arrives whole. So "never mid-cast" is two facts:
+
+1. **The auto-tapper never plans the ability.** It runs inside a cast while the
+   caster holds priority, so the window reads open there, and it cannot read a
+   timing rule out of a closure. What keeps both printed cards out of every plan
+   is their discard: `autoTapAbilityAccepts` refuses any discard component, the
+   hand form included even with an empty hand (throwing a hand away to pay for a
+   spell is a resource nobody agreed to spend). Every printed mana ability with
+   the restriction has the discard, so this is complete; a future card that
+   printed the restriction beside a plannable cost would need the planner taught
+   first.
+2. **A hand-click is refused in every pause**: a pay-unless tax (the classic
+   illegal play, paying Mana Leak with a cracked Diamond), a colour pick still
+   open (so a second Diamond waits for the first to finish resolving), a CR 903.9
+   answer that parked a cast, anyone's blocking prompt.
+
+Split second does not close the window (CR 702.61b stops abilities that aren't
+mana abilities, and this one is).
+
+### Decision 51: the bot sees the hand it throws away
+
+The enumerator offers the activation with no `discard_ids`, and since the params
+cannot name the price, `legal.MoveCost.Hand` carries the count (the hand, less
+the source if it is in that hand) and the label says `discarding your hand (N
+cards)`. The heuristic charges `Weights.Hand` per card in `costValue`, the price
+a cast already pays for leaving the hand. Without it, Slate of Ancestry would
+read as free and a bot would discard seven cards to draw two.
+
+### Cards
+
+**Lion's Eye Diamond**, **Diamond Lion**, **Null Brooch** and **Slate of
+Ancestry**, all `full`.
+
+### Still out of scope
+
+- **"As an additional cost to cast this spell, … discard your hand."** The cast
+  path's `AdditionalCost.DiscardCards` is a plain count, not a
+  `*game.DiscardCost`, so it does not inherit the hand form, and the only printed
+  card is Kaervek's Spite, whose cost also sacrifices every permanent you control
+  (a component nothing has).
+- **The other printed carriers**: Bomat Courier, Kyren Archive and Connecting the
+  Dots (cards exiled with the permanent), Reverberating Summons (becomes a Monk
+  until end of turn), Subira, Tulzidi Caravanner (an until-end-of-turn trigger),
+  Tarrian's Journal (transform) and Flamewar (intel counters). The cost works for
+  each; the rest of each card was not checked.
+- **`hand` on the wire's `MoveCost` mirror.** `docs/protocol.md`'s `cost`
+  paragraph and `client/src/lib/protocol.ts`'s `MoveCost` interface do not list
+  the new advice-only field yet; the client reads no move cost, and the field is
+  `omitempty`.

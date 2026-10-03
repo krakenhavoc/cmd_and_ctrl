@@ -168,6 +168,9 @@ var gameFields = plan(
 	"openDamageInstance", dropped, "not game state: the running DamageInstanceForEffect scope, set and defer-cleared inside one mutation, so it is zero between actions",
 	"combatDamageInstance", rebuilt, "a transient stamp (ADR 0108 owner decision 4): the next combat damage event of a restored game takes a new instance; a step restored half dealt gives its rest a new one, and only a source whose damage straddles the restore could tell",
 	"combatDamageInstanceBatch", rebuilt, "the event batch combatDamageInstance belongs to; retaken with it",
+	// ADR 0108 §7: the divide_shield machinery (divide_shield.go).
+	"shieldDivisions", dropped, "restores empty: a CR 615.7 division is written as its prompt is answered and spent by the events it divides, which land in that action or wait on a CR 616 prompt (not a restore point); an entry left after its events have landed names a finished instance, so a restore that starts with none changes nothing",
+	"damageStage", dropped, "not game state: an instance's events collected for a division, opened and closed inside one mutation, so it is nil between actions",
 	// #1289: a resolution paused on one of its own prompts holds the
 	// CR 704.3 boundary. Carried with each choice's midResolution.
 	"resolutionOpen", carried, "",
@@ -599,6 +602,10 @@ var stackItemFields = plan(
 	// included — the object "this" names. Carried for SourceEpoch's
 	// reason: it is a reading of a card that has since moved.
 	"SourceObject", carried, "",
+	// ADR 0109 §2: the object that granted an activated ability, so a
+	// restored Teferi's Talent −12 still makes the Talent's emblem.
+	// Carried: the grant may be gone from the restored board.
+	"GrantedBy", carried, "",
 	"Label", carried, "",
 	"DoubledBy", carried, "",
 	"DoubledByName", carried, "",
@@ -750,6 +757,7 @@ var pendingChoiceFields = plan(
 	"ManaTapped", carried, "",
 	"ReplacementEffectIDs", carried, "",
 	"DamageAssignment", carried, "",
+	"DivideShield", dropped, "ADR 0108 §7: a divide_shield prompt always carries a confirmResume frame, so a table holding one is not a restore point (ContinuationCensus.ChoiceResumeFrames)",
 	"NoLegalTarget", carried, "",
 	"PickTargetPlayers", carried, "",
 	"PickTargetCards", carried, "",

@@ -80,6 +80,42 @@ func hasKind(moves []legal.Move, k legal.Kind) bool {
 	return false
 }
 
+// declaringDefender returns a defending seat still declaring blockers —
+// one offered a block or finish_blocks — or uuid.Nil. Since #1501
+// priority is parked while one is, so the drivers ask them before the
+// priority holder, as the runner's wake-up does: every seat with moves
+// acts.
+func declaringDefender(g *game.Game) uuid.UUID {
+	active := g.Seats[g.Turn.ActiveSeat].ID
+	for _, p := range g.Seats {
+		if p.ID == active || p.Eliminated {
+			continue
+		}
+		moves := legal.EnumerateFor(g, p.ID)
+		if hasKind(moves, legal.KindBlock) || hasKind(moves, legal.KindFinishBlocks) {
+			return p.ID
+		}
+	}
+	return uuid.Nil
+}
+
+// declineAnswer is what the runner does with a decline (Runner.decide):
+// a seat holding priority, or one declaring blockers while priority is
+// parked for it (#1501), takes its always-legal answer — the pass, or
+// finish_blocks — because a decline that slept would hold the table.
+// Fails when there is none, which is the #544 wedge.
+func declineAnswer(t *testing.T, step int, declaring bool, moves []legal.Move) int {
+	t.Helper()
+	if !declaring {
+		t.Fatalf("step %d: the priority holder declined", step)
+	}
+	si := aiseat.SafeIndex(moves)
+	if si < 0 {
+		t.Fatalf("step %d: a declaring defender declined with no always-legal answer — the #544 wedge: %v", step, moves)
+	}
+	return si
+}
+
 // combatTally is the most creatures seen attacking, attacking one
 // target, blocking, and blocking for one seat, at any point of the
 // drive.
@@ -105,7 +141,6 @@ func driveOneCombatWatching(t *testing.T, g *game.Game, pol aiseat.Policy, watch
 	t.Helper()
 	advanceToStep(t, g, game.StepDeclareAttackers)
 	tally := combatTally{perDefender: map[uuid.UUID]int{}, blockersBy: map[uuid.UUID]int{}}
-	declined := map[uuid.UUID]bool{}
 	for step := 0; step < 120; step++ {
 		switch g.Turn.Step {
 		case game.StepDeclareAttackers, game.StepDeclareBlockers,
@@ -120,19 +155,12 @@ func driveOneCombatWatching(t *testing.T, g *game.Game, pol aiseat.Policy, watch
 
 		seat := uuid.Nil
 		if g.Turn.Step == game.StepDeclareBlockers {
-			for _, p := range g.Seats {
-				if declined[p.ID] || p.ID == g.Seats[g.Turn.ActiveSeat].ID {
-					continue
-				}
-				if hasKind(legal.EnumerateFor(g, p.ID), legal.KindBlock) {
-					seat = p.ID
-					break
-				}
-			}
+			seat = declaringDefender(g)
 		}
+		declaring := seat != uuid.Nil
 		if seat == uuid.Nil {
 			if g.Turn.PriorityHolder == game.NoPriority {
-				t.Fatalf("step %d: nobody holds priority in %s", step, g.Turn.Step)
+				t.Fatalf("step %d: nobody holds priority in %s, and nobody is declaring", step, g.Turn.Step)
 			}
 			seat = g.Seats[g.Turn.PriorityHolder].ID
 		}
@@ -149,11 +177,7 @@ func driveOneCombatWatching(t *testing.T, g *game.Game, pol aiseat.Policy, watch
 			t.Fatalf("step %d: policy: %v", step, err)
 		}
 		if d.Index == aiseat.Decline {
-			if seat == g.Seats[g.Turn.PriorityHolder].ID {
-				t.Fatalf("step %d: the priority holder declined in %s", step, g.Turn.Step)
-			}
-			declined[seat] = true
-			continue
+			d.Index = declineAnswer(t, step, declaring, moves)
 		}
 		if d.Index < 0 || d.Index >= len(moves) {
 			t.Fatalf("step %d: index %d of %d", step, d.Index, len(moves))

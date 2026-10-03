@@ -109,8 +109,10 @@ export function classifyMove(
       return m.kind === "cast" ? "instant" : "ability";
     case "special_action":
       return "special";
+    // #1501: finishing a block declaration is part of the declaration.
     case "attack":
     case "block":
+    case "finish_blocks":
       return "declaration";
     default:
       return "other";

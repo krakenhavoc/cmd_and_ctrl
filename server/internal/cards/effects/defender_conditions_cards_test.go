@@ -166,6 +166,11 @@ func TestMonstrousHoundBlocksOnlyWithMoreLands(t *testing.T) {
 	b12Permanent(g, attacker.ID, "Mountain", "Basic Land — Mountain")
 	hound := b12Push(g, defender.ID, "Monstrous Hound", "Creature — Dog", monstrousHoundOracle, 4, 4)
 	b12Permanent(g, defender.ID, "Mountain", "Basic Land — Mountain")
+	// #1501: a creature that can block keeps the defender's declaration
+	// open while the land count changes under it; with no legal block
+	// at all it would complete as the step began, and the block below
+	// would be refused as late.
+	b12Creature(g, defender.ID, "Elf", "Creature — Elf", 1, 1)
 	brAttack(t, g, bear)
 
 	brRefusal(t, g.Clone().DeclareBlocker(hound, bear), game.BlockReasonCantBlockAttacker)
@@ -210,6 +215,9 @@ func TestVantressGargoyle(t *testing.T) {
 		for len(defender.Hand.Cards) < 3 {
 			defender.Hand.PushTop(game.Card{InstanceID: uuid.New(), Name: "Card", Owner: defender.ID, Controller: defender.ID})
 		}
+		// #1501: a creature that can block keeps the declaration open
+		// while the hand grows under it (see Monstrous Hound above).
+		b12Creature(g, defender.ID, "Elf", "Creature — Elf", 1, 1)
 		brAttack(t, g, bear)
 		brRefusal(t, g.Clone().DeclareBlocker(gargoyle, bear), game.BlockReasonCantBlockAttacker)
 		defender.Hand.PushTop(game.Card{InstanceID: uuid.New(), Name: "Card", Owner: defender.ID, Controller: defender.ID})
