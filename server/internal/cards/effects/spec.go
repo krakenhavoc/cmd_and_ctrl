@@ -509,6 +509,25 @@ type Spec struct {
 	// land_play_restriction.go.
 	LandPlayRestrictions []game.LandPlayRestriction
 
+	// TargetingRestrictions are the "<these> can't be the targets of
+	// spells or abilities" statics this PERMANENT imposes on a whole
+	// ZONE (ADR 0109 §6, #1885; CR 601.2c, 608.2b, 101.2) — Ground
+	// Seal's "Cards in graveyards can't be the targets of spells or
+	// abilities", Tomik's "Lands on the battlefield and land cards in
+	// graveyards can't be the targets of spells or abilities your
+	// opponents control". Not the object's own shroud or hexproof, which
+	// are keywords: a rule about a zone is a static of some other
+	// permanent.
+	//
+	// Read from the BATTLEFIELD through CatalogAbilityKey, live, at the
+	// two targeting choke points (the legal-target walk the view and the
+	// enumerator read, and the announce and resolution checks), so a
+	// card it refuses is never offered, a spell aimed at one can't be
+	// cast, and one already aimed at one fizzles. A cost or a "choose"
+	// that is not "target" is not refused. Build with the constructors
+	// in targeting_restriction.go.
+	TargetingRestrictions []game.TargetingRestriction
+
 	// ActivationRestrictions are the "can't be activated" statics
 	// this PERMANENT imposes on other objects' activated abilities
 	// (CR 602.5) — Cursed Totem's "activated abilities of creatures

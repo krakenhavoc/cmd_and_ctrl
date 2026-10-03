@@ -6,14 +6,13 @@ import "github.com/google/uuid"
 // a CAST RESTRICTION created by a RESOLVING SPELL, with a CR 611.2
 // duration.
 //
-// cast_gate.go's CastGateLocked already answers "may this player cast
-// this spell at all" from two sources — a static on a permanent
+// cast_gate.go's CastGateLocked answered "may this player cast this
+// spell at all" from two sources — a static on a permanent
 // (CastRestriction) and the spell's own condition (CastConditionFor) —
-// and its own doc comment names the gap this file closes: "BANS WITH A
-// DURATION. Silence's 'this turn' and Reflector Mage's 'until your
-// next turn' want the turn-scoped and permanent-duration registries...
-// A third source slots into castRestrictionsLocked without changing
-// this function's signature; that is the extension point."
+// and named the gap this file closes: a ban with a DURATION, Silence's
+// "this turn" and Reflector Mage's "until your next turn". This file is
+// the gate's third source. (ADR 0109 §5 later gave the first source a
+// second home, an emblem; that is cast_gate.go's, not this file's.)
 //
 // A permanent's printed ban needs no duration: the source's continued
 // presence on the battlefield already IS the duration, which is
@@ -26,11 +25,11 @@ import "github.com/google/uuid"
 // payload on PlayerStatic, told apart from the other three by its own
 // presence bit rather than by a discriminator field.
 //
-// ONE READ, THREE CALLERS FOR FREE. Unlike CastTimingRule and
-// LifeTotalLocked, a cast ban has no read of its own to add at three
-// call sites — CastGateLocked already IS that one read, and it already
-// has exactly three callers (CastSpell, legal.castMovesForCard,
-// protocol.stampLegalTargets/castStampsFor). Extending CastGateLocked's
+// ONE READ, EVERY CALLER FOR FREE. Unlike CastTimingRule and
+// LifeTotalLocked, a cast ban has no read of its own to add at each
+// call site — CastGateLocked already IS that one read, and its callers
+// (castSpellLocked, legal's cast enumeration, protocol's castStampsFor)
+// already ask it. Extending CastGateLocked's
 // insides is extending all three at once, and the wire needs no new
 // field either: `cant_cast` already means "an effect prevents this
 // cast", stamped from CastGateLocked's own error, so a card silenced by
@@ -206,28 +205,4 @@ func (g *Game) castBanForbidsLocked(playerID uuid.UUID, card Card, zone ZoneKind
 		}
 	}
 	return "", uuid.Nil, false
-}
-
-// anyLiveCastBanForEffect reports whether ANY seat is carrying a live
-// granted cast ban right now — the fast negative
-// AnyCastRestrictionsForEffect takes before it has to know WHICH
-// player or WHICH card, mirrored from that function's own battlefield
-// walk one registry over.
-//
-// Caller must hold g.mu (read or write).
-func (g *Game) anyLiveCastBanForEffect() bool {
-	for _, p := range g.Seats {
-		if p == nil {
-			continue
-		}
-		for _, s := range p.Statics {
-			if s.CastBan.Kind == CastBanNone {
-				continue
-			}
-			if !g.durationExpiredLocked(s.Duration, false) {
-				return true
-			}
-		}
-	}
-	return false
 }

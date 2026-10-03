@@ -324,17 +324,31 @@ const KeywordChangeling = "changeling"
 // wraps this reports that separately.
 //
 // This exported form has no game, so it honours no "as though it
-// didn't have hexproof" waiver (#1560). The engine's own targeting
-// paths call canBeTargetedByLocked, which does.
+// didn't have hexproof" waiver (#1560) and no restriction about a zone
+// (ADR 0109 §6). The engine's own targeting paths call
+// canBeTargetedByLocked, which does both.
 func CanBeTargetedBy(c *Card, zone ZoneKind, src TargetSource) bool {
 	return canBeTargetedBy(nil, c, zone, src)
 }
 
 // canBeTargetedByLocked is CanBeTargetedBy as the targeting choke
 // point in targets.go asks it: with the game, so a static on the
-// battlefield may waive hexproof (hexproof_bypass.go, #1560). Caller
-// must hold g.mu with fresh layers.
+// battlefield may waive hexproof (hexproof_bypass.go, #1560) or forbid
+// targeting a whole zone (targeting_restriction.go, ADR 0109 §6).
+// Caller must hold g.mu with fresh layers.
 func (g *Game) canBeTargetedByLocked(c *Card, zone ZoneKind, src TargetSource) bool {
+	return g.canBeTargetedWithLocked(g.activeTargetingRestrictionsLocked(), c, zone, src)
+}
+
+// canBeTargetedWithLocked is canBeTargetedByLocked with the live
+// targeting restrictions already gathered, for a walk that asks about a
+// whole zone. The restriction is asked BEFORE the battlefield guard in
+// canBeTargetedBy, because a rule about a graveyard is about a card the
+// object's own keywords never reach (CR 601.2c, 101.2).
+func (g *Game) canBeTargetedWithLocked(rs targetingRestrictions, c *Card, zone ZoneKind, src TargetSource) bool {
+	if rs.refuses(g, c, zone, src) {
+		return false
+	}
 	return canBeTargetedBy(g, c, zone, src)
 }
 

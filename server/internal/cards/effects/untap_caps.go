@@ -64,3 +64,16 @@ func mayChooseNotToUntapSelf(label string) game.UntapOptOut {
 		},
 	}
 }
+
+// opponentsCantUntapMoreThan is "Your opponents can't untap more than N
+// <kind> during their untap steps" — Dovin Baan's emblem (ADR 0109 §5).
+// The cap binds only an untap step whose active player is not the
+// source's controller; for an emblem the source is the emblem, so "your"
+// is its owner (CR 114.2), who never changes.
+func opponentsCantUntapMoreThan(label string, n int, match CardPredicate) game.UntapCap {
+	out := cantUntapMoreThan(label, n, match)
+	out.Applies = func(_ *game.Game, source *game.Card, activePlayer uuid.UUID) bool {
+		return source != nil && source.Controller != activePlayer
+	}
+	return out
+}

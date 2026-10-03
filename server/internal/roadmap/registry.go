@@ -1381,14 +1381,19 @@ var items = []Item{
 		EngineNotes: "layer pass: the stack step (`stackControlPassLocked`, then `stackKeywordPassLocked` in `game/spell_keywords.go`) is layers 2 and 6, keywords only. A ScopedEffect pinned to a spell may carry `addKeywords` (`GrantKeywordsToSpellForEffect`, `effects.ThatSpellGains`), and a battlefield static declared `StaticAbility.AffectsSpells` (`effects.SpellsYouControlHave`) is applied to spells and never to permanents. Both land on `Card.stackGranted`, which `HasKeyword` reads, so the resolution's rebound check needed no change. Rebound, buyback and an Adventure's exile meeting on one spell ask its controller (CR 616.1, `game/resolution_exits.go`). See Closed seams.",
 	},
 	{
-		Slug: "emblem-cast-restrictions", Name: "Emblems that stop players casting spells", Kind: KindSeam, Status: StatusMissing,
-		Summary:     "Emblems with a \"can't cast\" ability, such as \"Your opponents can't cast noncreature spells\".",
-		Missing:     "An emblem can't stop anyone casting spells yet, so a planeswalker whose emblem does that can't be added.",
-		Rules:       []string{"114.4", "101.2"},
-		Issue:       1899,
-		Tracked:     "#1899 (S50 tracker #1784; found by ADR 0107 PR 4)",
-		Waiting:     []string{"Narset Transcendent"},
-		EngineNotes: "cast gate: `CastGateLocked` (`game/cast_gate.go`) collects \"can't cast\" statics from battlefield permanents (`CastRestrictionsForCard`) and from the spell's own condition, and `effects.EmblemSpec` has no `CastRestrictions` slot, so an emblem's restriction would be dead text. Narset Transcendent's other abilities are expressible: the +1 is Herald's Horn's look-at-the-top reveal, and the −2 is a \"when you next cast … from your hand\" delayed trigger whose body gives the spell rebound through the granted-rebound seam.",
+		// #1899 (ADR 0109 §5, PR 6): an emblem is read by every rule gate
+		// whose slot it carries. Closed; history in Closed seams.
+		Slug: "emblem-cast-restrictions", Name: "Emblems that stop players casting spells", Kind: KindSeam, Status: StatusImplemented,
+		Summary: "Emblems with a rule that limits players, such as \"Your opponents can't cast noncreature spells\" or \"Your opponents can't untap more than two permanents during their untap steps\".",
+		Rules:   []string{"114.4", "114.2", "101.2", "800.4a"},
+		Issue:   1899,
+		ADR:     "0109-rule-gates-land-types-mana-and-cost-components.md",
+		Probe: func(s effects.Spec) bool {
+			return s.Emblem != nil && (len(s.Emblem.CastRestrictions) > 0 || len(s.Emblem.LandPlayRestrictions) > 0 ||
+				len(s.Emblem.GameEndGates) > 0 || len(s.Emblem.UntapCaps) > 0)
+		},
+		Examples:    []string{"Narset Transcendent", "Dovin Baan", "Gideon of the Trials"},
+		EngineNotes: "**Shipped** (ADR 0109 §5, PR 6): `effects.EmblemSpec` carries `CastRestrictions`, `LandPlayRestrictions`, `GameEndGates` and `UntapCaps`, the `Spec` slots of the same names and the same Register guards, copied onto the emblem's `CardDef`. Each gate walks every seat's emblems beside the battlefield (`Game.forEachEmblemLocked`, CR 114.4) with the emblem as the source, so \"your opponents\" is the emblem's owner's (CR 114.2): `CastGateLocked`, `LandPlayGateLocked`, `forEachGameEndGateLocked` and `activeUntapCapsLocked`. The callers needed no change, because each walk is inside the one function the action, the legal-move enumerator and the view already share. Re-verified against the code: Narset's emblem is NOT a `CastBanRule`. That shape can say the words (`PermissionFilter.NoncreatureOnly`), but it is a `PlayerStatic` stored on each banned player, invisible on the board, frozen at creation, and nothing ends it when the emblem's owner leaves (CR 800.4a sweeps the leaver's emblems, not the statics they wrote onto others). Narset's −2 adds two delayed-trigger keys, `cast/you-next-cast-from-hand` and `rebound/the-spell-you-just-cast`. Gideon of the Trials' emblem is a `GameEndGates` entry with a `While` read off the emblem (its owner controls a Gideon planeswalker); his +1 is ADR 0108 PR 6's `preventFromSource` with `UntilYourNextTurn`.",
 	},
 	{
 		Slug: "return-transformed", Name: "Returning a card to the battlefield transformed", Kind: KindSeam, Status: StatusMissing,
@@ -1411,15 +1416,16 @@ var items = []Item{
 		Examples: []string{"Malevolent Hermit", "Drogskol Infantry", "Baithook Angler"},
 	},
 	{
-		Slug: "graveyard-cards-cant-be-targeted", Name: "Cards in graveyards can't be targeted", Kind: KindSeam, Status: StatusMissing,
-		Summary:     "A permanent that stops every card in every graveyard from being the target of spells and abilities.",
-		Missing:     "Nothing yet stops spells and abilities from targeting cards in graveyards.",
-		Rules:       []string{"601.2c"},
+		// #1885 (ADR 0109 §6, PR 6). Closed; history in Closed seams.
+		Slug: "graveyard-cards-cant-be-targeted", Name: "Cards in graveyards can't be targeted", Kind: KindSeam, Status: StatusImplemented,
+		Summary:     "Permanents that stop cards in a zone from being the targets of spells and abilities, such as \"Cards in graveyards can't be the targets of spells or abilities\".",
+		Rules:       []string{"601.2c", "608.2b", "101.2", "115.10a"},
 		Issue:       1885,
-		Tracked:     "#1885 (S50 tracker #1784; found by ADR 0107 PR 5)",
-		Waiting:     []string{"Dennick, Pious Apprentice // Dennick, Pious Apparition", "Tomik, Distinguished Advokist"},
+		ADR:         "0109-rule-gates-land-types-mana-and-cost-components.md",
+		Probe:       func(s effects.Spec) bool { return len(s.TargetingRestrictions) > 0 },
 		Phrases:     []string{"cards in graveyards can't be the targets"},
-		EngineNotes: "Dennick, Pious Apprentice's \"Cards in graveyards can't be the targets of spells or abilities\" is a table-wide rule about a ZONE, and the targeting check (`CanBeTargetedBy` / `canBeTargetedByLocked`) reads only the object's own hexproof, shroud and protection. It needs a battlefield static read at the announce gate, the CR 608.2b re-check, the legal-move enumerator and the view's legal-target sets. Dennick's back face needs nothing new, and disturb shipped in ADR 0107 PR 5 (#1855).",
+		Examples:    []string{"Ground Seal", "Tomik, Distinguished Advokist"},
+		EngineNotes: "**Shipped** (ADR 0109 §6, PR 6): `Spec.TargetingRestrictions` (`game.TargetingRestriction{Label, Zones, Forbids(TargetingQuery), ActiveWhen}`, `game/targeting_restriction.go`, constructors `CardsInGraveyardsCantBeTargeted` and `OpponentsCantTarget` in `effects/targeting_restriction.go`) is read live off the battlefield through `CatalogAbilityKey`, with no state. `canBeTargetedByLocked` asks it before its battlefield guard, so the two targeting choke points in `game/targets.go` carry it: `specMatchesLocked` (the legal set the view and the legal-move enumerator read; it gathers the restrictions once per walk) and `specMatchLocked` (the CR 601.2c announce gate and the CR 608.2b resolution re-check). A cost or a non-targeting choice passes `targeting=false` and is never refused (CR 115.10a). `GameView.graveyard_target_bans` names each live restriction about graveyards for the graveyard viewer's banner. The exported, game-less `CanBeTargetedBy` honours none.",
 	},
 	{
 		Slug: "more-than-meets-the-eye", Name: "More Than Meets the Eye and convert", Kind: KindSeam, Status: StatusMissing,
