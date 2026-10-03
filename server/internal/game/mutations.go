@@ -1778,7 +1778,7 @@ func (g *Game) applyCastCostLocked(p *Player, card Card, params CastSpellParams,
 	// any color" (Chromatic Orrery) widens what may pay the cost — read
 	// here, after convoke and delve have taken their share and before
 	// the Phyrexian strike, exactly as applyAutoTapLocked reads it.
-	cost = g.costAsPaidByLocked(p.ID, ManaSpendForCast(card), cost)
+	cost = g.costAsPaidByLocked(p.ID, ManaSpendForCast(card), cost, params.XValue)
 	// CR 107.4 / CR 601.2b: the Phyrexian symbols the caster announced
 	// they are paying with life leave the mana cost here, and the life
 	// is paid below — after the mana half is known to be payable, so a
@@ -1895,7 +1895,7 @@ func (g *Game) applyAutoTapLocked(p *Player, card Card, params CastSpellParams) 
 	// #1600: the cost as this caster may pay it — the same widening
 	// applyCastCostLocked will pay under, so the plan funds exactly
 	// what the payment accepts.
-	cost = g.costAsPaidByLocked(p.ID, ManaSpendForCast(card), cost)
+	cost = g.costAsPaidByLocked(p.ID, ManaSpendForCast(card), cost, params.XValue)
 	// The Phyrexian symbols being paid with life are not the
 	// auto-tapper's business: tapping a land for a pip the caster
 	// announced they would pay with 2 life is exactly the stranding
@@ -6340,7 +6340,7 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 		// #1600: an Orrery's controller may pay a filter land's {W/U}
 		// with colourless — the same widening the pay step below
 		// spends under, because it spends this manaCost.
-		manaCost = g.costAsPaidByLocked(playerID, spendCtx, priced)
+		manaCost = g.costAsPaidByLocked(playerID, spendCtx, priced, 0)
 		if !p.ManaPool.CanPayFor(manaCost, 0, spendCtx) {
 			return &InsufficientManaError{Missing: p.ManaPool.MissingFor(manaCost, 0, spendCtx)}
 		}

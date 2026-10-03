@@ -60,6 +60,12 @@ const (
 	// ManaRestrictNotNonartifactSpell — "can't be spent to cast a
 	// nonartifact spell" (Powerstone).
 	ManaRestrictNotNonartifactSpell = game.ManaRestrictNotNonartifactSpell
+	// ManaRestrictMonocolored — spend only on an object of exactly one
+	// colour (Throne of Eldraine, with ManaRestrictColor; #1600).
+	ManaRestrictMonocolored = game.ManaRestrictMonocolored
+	// ManaRestrictMulticolored — spend only on an object of two or more
+	// colours (Pillar of the Paruns, Obsidian Obelisk; #1600).
+	ManaRestrictMulticolored = game.ManaRestrictMulticolored
 )
 
 // ManaRestrictType restricts a token to objects with the named card

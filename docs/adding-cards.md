@@ -587,6 +587,32 @@ color" (Celestial Dawn) and a grant over one permanent's own abilities
 (Manascape Refractor) have no shape yet. See ADR 0066's 2026-10-02
 amendment.
 
+**Mana only some spells may use, and costs only some mana may pay
+(#1600).** Mana restricted to spells of exactly one colour, or of two or
+more, carries the tags `ManaRestrictMonocolored` / `ManaRestrictMulticolored`
+beside `ManaRestrictCast`; a hybrid spell is multicolored (CR 202.2d). A
+COST that says which mana pays it is a cost component, composed with
+`Plus` beside the mana it restricts — the constructors are in
+[spend_only.go](../server/internal/cards/effects/spend_only.go):
+
+```go
+Restrictions:     []string{ManaRestrictCast, ManaRestrictMulticolored},           // Pillar of the Paruns
+RestrictionsFunc: MonocoloredSpellsOfTheChosenColor(),                           // Throne of Eldraine's mana
+ProducedFunc:     ProducedChosenColorAmount(4),                                  // "Add four mana of the chosen color"
+Cost: Plus(ManaCost("{3}"), TapCost(), SpendOnlyManaOfTheChosenColor()),        // Throne of Eldraine's draw
+Cost: Plus(ManaCost("{X}"), SpendOnlyOnX("B")),                                  // Crypt Rats
+```
+
+The price shown stays printed; the engine folds the clause into coloured
+symbols wherever a payment or an affordability check reads the cost, so the
+auto-tapper, the bot and the view all agree with the payment. Under
+Chromatic Orrery any mana pays such a COST (CR 609.4b), while a mana
+RESTRICTION still binds. The clause works on activated abilities only:
+"Spend only black mana on X" on a SPELL (Drain Life), "Spend only mana
+produced by basic lands" (Imperiosaur) and Emblazoned Golem's
+one-of-each-colour cap have no shape yet. See ADR 0040's 2026-10-03
+amendment.
+
 For non-mana, non-static activated abilities (planeswalker +1/-1,
 equip, cycling, etc.), wait — see the deferral list below.
 

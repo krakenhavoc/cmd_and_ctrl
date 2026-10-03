@@ -2668,3 +2668,10 @@ unchanged.
 
 Proof cards: Chromatic Orrery and Oath of Nissa (full), Mycosynth Lattice
 (its spend line). Tracker [#887](https://github.com/krakenhavoc/cmd_and_ctrl/issues/887).
+
+> **Extended by [ADR 0040](0040-mana-pipeline.md)'s 2026-10-03 amendment**
+> (#1600): `costAsPaidByLocked` now takes the announced X and first FOLDS a
+> cost's own "spend only <colour> mana" clause (Throne of Eldraine, Crypt Rats)
+> into coloured symbols, then widens. So the grant reaches those symbols as it
+> reaches a printed `{W}` — CR 609.4b, and the Celestial Dawn rulings — and the
+> sites listed in Decision 2 read both in one call.

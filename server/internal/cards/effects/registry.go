@@ -579,6 +579,8 @@ func Register(spec Spec) {
 			panic(fmt.Sprintf("effects.Register: %q ability %d sets MinX %d but its cost %q has no {X} — a floor on a variable that cannot vary makes the ability unactivatable",
 				spec.Name, i, ab.Cost.MinX, ab.Cost.Mana))
 		}
+		// #1600: a "spend only <colour> mana" clause (spend_only.go).
+		checkSpendOnlyClause(spec.Name, i, ab.Cost)
 	}
 	for i, ma := range spec.ManaAbilities {
 		// #1213: `false` — a mana ability has no stack item and no

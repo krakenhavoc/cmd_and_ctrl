@@ -3782,7 +3782,7 @@ func (g *Game) payCostLocked(p *Player, cost ParsedCost, source uuid.UUID, exclu
 	// Study tax too — every cost the player pays. A narrowed grant
 	// (Oath of Nissa's planeswalker spells) does not: the zero context
 	// names no spell.
-	cost = g.costAsPaidByLocked(p.ID, ManaSpendContext{}, cost)
+	cost = g.costAsPaidByLocked(p.ID, ManaSpendContext{}, cost, 0)
 	if !p.ManaPool.CanPay(cost, 0) {
 		plan, ok := g.autoTapLocked(p.ID, cost, 0, excluded)
 		if !ok {

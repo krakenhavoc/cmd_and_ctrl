@@ -781,7 +781,17 @@ func (g *Game) AbilityManaCostForTargetsForEffect(activator uuid.UUID, source Ca
 		// off the {T}-only abilities that are most of the catalog.
 		return base, nil
 	}
-	return g.applyCostModifiersLocked(base, g.abilityCostQueryLocked(activator, source, zone, ab, targets))
+	priced, err := g.applyCostModifiersLocked(base, g.abilityCostQueryLocked(activator, source, zone, ab, targets))
+	if err != nil {
+		return ParsedCost{}, err
+	}
+	// #1600: "Spend only mana of the chosen color to activate this
+	// ability" — resolved against THIS source and stamped AFTER the
+	// modifiers, so a tax a modifier added is restricted with the rest
+	// ("to activate this ability" is the whole cost) and the price the
+	// row shows is still the one printed (spend_only.go).
+	priced.SpendOnly = ab.Cost.SpendOnly.ResolveFor(source)
+	return priced, nil
 }
 
 // ActivationPrice is PriceActivation's answer: the source and the

@@ -270,6 +270,13 @@ func Plus(costs ...game.AbilityCost) game.AbilityCost {
 		if c.ExileFromLibraryTop != 0 {
 			out.ExileFromLibraryTop = c.ExileFromLibraryTop
 		}
+		// #1600: and the "spend only <colour> mana" clause. A composed
+		// "{3}, {T}, spend only mana of the chosen color" that dropped
+		// it would be a Throne of Eldraine that draws off any three
+		// mana — stronger than printed, the #259 direction.
+		if c.SpendOnly != nil {
+			out.SpendOnly = c.SpendOnly
+		}
 	}
 	return out
 }

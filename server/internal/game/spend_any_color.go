@@ -127,13 +127,15 @@ func (g *Game) SpendsManaAsAnyColorForEffect(payer uuid.UUID, ctx ManaSpendConte
 // with its Options kept so the solvers still prefer the colour printed.
 // A {C} (or a snow {S}, which the engine pays as colourless) is left
 // alone: coloured mana cannot pay it (CR 106.1b), and widening it would
-// let a Mountain pay Thought-Knot Seer's {C}. Generic and {X} need no
+// let a Mountain pay Thought-Knot Seer's {C}. So is a symbol a
+// spend-only fold left with no colour at all (spend_only.go): there is
+// no colour to spend mana as though it were. Generic and {X} need no
 // widening. Idempotent, and it returns `cost` itself when there is
 // nothing to widen.
 func widenForAnyColorSpend(cost ParsedCost) ParsedCost {
 	need := false
 	for _, r := range cost.Required {
-		if !r.AnyMana && !requiresColorless(r) {
+		if !r.AnyMana && !requiresColorless(r) && !unpayableByAnyMana(r) {
 			need = true
 			break
 		}
@@ -144,7 +146,7 @@ func widenForAnyColorSpend(cost ParsedCost) ParsedCost {
 	out := cost
 	out.Required = make([]ColorRequirement, len(cost.Required))
 	for i, r := range cost.Required {
-		if !requiresColorless(r) {
+		if !requiresColorless(r) && !unpayableByAnyMana(r) {
 			r.AnyMana = true
 		}
 		out.Required[i] = r
@@ -153,16 +155,25 @@ func widenForAnyColorSpend(cost ParsedCost) ParsedCost {
 }
 
 // costAsPaidByLocked is `cost` as `payer` may pay it for the payment
-// `ctx` describes: widened under a player-scoped spend grant, the
-// argument itself otherwise. THE one reading — see the file comment
+// `ctx` describes, with `x` the announced X: first the cost's own
+// "spend only …" restriction folded into the symbols it allows
+// (spend_only.go — it needs X, because "on X" restricts XSlots*x
+// mana), then widened under a player-scoped spend grant. The argument
+// itself when neither applies. THE one reading — see the file comment
 // for where it is called and why there.
+//
+// The order is the rule: CR 609.4b's grant changes how a cost may be
+// paid, and "spend only white mana" is a rule about how it may be paid,
+// so the grant reaches the folded symbols exactly as it reaches a
+// printed {W} (spend_only.go's file comment cites the rulings).
 //
 // A cost with no coloured requirement returns at once, before the
 // battlefield walk: the enumerator asks this once per candidate, and
 // most of what it prices is generic.
 //
 // Caller must hold g.mu (read or write).
-func (g *Game) costAsPaidByLocked(payer uuid.UUID, ctx ManaSpendContext, cost ParsedCost) ParsedCost {
+func (g *Game) costAsPaidByLocked(payer uuid.UUID, ctx ManaSpendContext, cost ParsedCost, x int) ParsedCost {
+	cost = cost.foldSpendOnly(x)
 	if len(cost.Required) == 0 || !g.spendsManaAsAnyColorLocked(payer, ctx) {
 		return cost
 	}
@@ -172,8 +183,8 @@ func (g *Game) costAsPaidByLocked(payer uuid.UUID, ctx ManaSpendContext, cost Pa
 // CostAsPaidByForEffect is costAsPaidByLocked for a caller that already
 // holds g.mu — internal/legal's affordability probe, which runs inside
 // ReadSnapshot and must solve the cost the payment will solve.
-func (g *Game) CostAsPaidByForEffect(payer uuid.UUID, ctx ManaSpendContext, cost ParsedCost) ParsedCost {
-	return g.costAsPaidByLocked(payer, ctx, cost)
+func (g *Game) CostAsPaidByForEffect(payer uuid.UUID, ctx ManaSpendContext, cost ParsedCost, x int) ParsedCost {
+	return g.costAsPaidByLocked(payer, ctx, cost, x)
 }
 
 // CostAsPaidBy is costAsPaidByLocked under the read lock, for the
@@ -181,10 +192,10 @@ func (g *Game) CostAsPaidByForEffect(payer uuid.UUID, ctx ManaSpendContext, cost
 // it shows are the ones the payment will make.
 //
 // Callers must NOT hold g.mu.
-func (g *Game) CostAsPaidBy(payer uuid.UUID, ctx ManaSpendContext, cost ParsedCost) ParsedCost {
+func (g *Game) CostAsPaidBy(payer uuid.UUID, ctx ManaSpendContext, cost ParsedCost, x int) ParsedCost {
 	out := cost
 	g.ReadSnapshot(func() {
-		out = g.costAsPaidByLocked(payer, ctx, cost)
+		out = g.costAsPaidByLocked(payer, ctx, cost, x)
 	})
 	return out
 }
