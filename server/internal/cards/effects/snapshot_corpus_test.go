@@ -369,7 +369,36 @@ func corpusBoards() []corpusBoard {
 		// (Mod.To); and a combat shield with a follow-up (Inkshield's
 		// shape).
 		{"shield_follow_ups", corpusShieldFollowUps},
+		// v7, added by ADR 0108 PR 7 (#1904) as a new file: the
+		// recipient and to-and-by shields as data — Energy Arc's one
+		// to-and-by record over two creatures (Mod.AndDealtBy, an
+		// affected set of two), Redeem's one record protecting two, and
+		// Brace for Impact's pinned shield with its counters follow-up.
+		{"to_and_by_shields", corpusToAndByShields},
 	}
+}
+
+// corpusToAndByShields is ADR 0108 Delivery PR 7's shapes, made by the
+// cards that make them.
+func corpusToAndByShields(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	a := pushBattlefieldCardWithTimestamp(g, corpusCreature(me.ID, "Grizzly Bears", 2, 2))
+	b := pushBattlefieldCardWithTimestamp(g, corpusCreature(opp.ID, "Hill Giant", 3, 3))
+	c := pushBattlefieldCardWithTimestamp(g, corpusCreature(me.ID, "Knight", 2, 2))
+	gold := pushBattlefieldCardWithTimestamp(g, corpusCreature(me.ID, "Gold Knight", 2, 2))
+	findBattlefieldCardForTest(g, gold).Colors = []string{"W", "U"}
+	castCatalogSpell(t, g, "Energy Arc", "Instant", pr7aEnergyArc, []game.TargetRef{pr7aCard(a), pr7aCard(b)})
+	passPriorityAroundTable(t, g)
+	castCatalogSpell(t, g, "Redeem", "Instant", pr7aRedeem, []game.TargetRef{pr7aCard(a), pr7aCard(c)})
+	passPriorityAroundTable(t, g)
+	castCatalogSpell(t, g, "Brace for Impact", "Instant", pr7aBraceForImpact, []game.TargetRef{pr7aCard(gold)})
+	passPriorityAroundTable(t, g)
+	if n := pr7aShields(g); n != 3 {
+		t.Fatalf("setup: %d preventFromSource records, want 3", n)
+	}
+	return g
 }
 
 // corpusShieldFollowUps is ADR 0108 owner decision 2: preventDamage and

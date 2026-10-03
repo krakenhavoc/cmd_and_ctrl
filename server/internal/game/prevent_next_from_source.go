@@ -242,10 +242,13 @@ func nextFromSourceModProblem(m Mod) string {
 		if m.Kind == ModMultiplyDamage {
 			sourced = false
 		}
-		if sourced || queries || m.Half {
+		if sourced || queries || m.Half || m.AndDealtBy {
 			return fmt.Sprintf("mod %q carries a damage-source field only preventNextFromSource reads", m.Kind)
 		}
 		return ""
+	}
+	if m.AndDealtBy {
+		return fmt.Sprintf("a %s shield carries andDealtBy, which only preventFromSource reads", m.Kind)
 	}
 	if m.CombatOnly {
 		// The combat-only shield is its own kind, so that an older

@@ -2072,6 +2072,7 @@ scopedEffects[].label	string
 scopedEffects[].mods	array
 scopedEffects[].mods[]	object
 scopedEffects[].mods[].amount	number:int
+scopedEffects[].mods[].andDealtBy	bool
 scopedEffects[].mods[].colors	array
 scopedEffects[].mods[].colors[]	string
 scopedEffects[].mods[].combatOnly	bool

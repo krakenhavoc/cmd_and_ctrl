@@ -58,9 +58,16 @@ import (
 // 3).
 //
 // "Prevent all combat damage that would be dealt to and dealt by that
-// creature" is two shields from one resolution (one protecting the
-// creature, one naming it as the source), so CR 616 sees each as the
-// prevention effect it is.
+// creature" (Maze of Ith) is ONE prevention effect, so it is one record
+// with one mod (ADR 0108 Delivery PR 7): the creature is pinned as the
+// record's affected object and Mod.AndDealtBy makes the pin name both
+// what the shield protects and the source it stops. Two records would be
+// two effects: an event from one pinned creature to another would meet
+// both, against CR 614.5's one opportunity per event, and a "whenever
+// damage is prevented" trigger would see two applications to one
+// instance where CR 615.13 sees one. The affected set may hold several
+// objects ("those creatures", Energy Arc; "up to two target creatures",
+// Redeem), still one effect.
 
 // ModPreventFromSource is "prevent all [combat] damage [<source>] would
 // deal [to <protected>] this turn" (Amount 0), or "prevent the next N
@@ -94,6 +101,19 @@ type DamageShield struct {
 	ProtectTypes     []string
 	ProtectPermanent uuid.UUID
 
+	// ProtectPermanents are more protected permanents beside
+	// ProtectPermanent, all of them in the one record: "up to two target
+	// creatures" (Redeem), "those permanents" (Mutational Advantage). The
+	// set is fixed as the shield is made (CR 611.2c), and each member is
+	// pinned as the object it is now (CR 400.7).
+	ProtectPermanents []uuid.UUID
+
+	// AndDealtBy is "dealt to and dealt by": the protected permanents are
+	// also the sources whose damage the shield prevents (Maze of Ith). It
+	// needs a protected permanent and refuses a source, a property, a
+	// player and a charge.
+	AndDealtBy bool
+
 	// CombatOnly narrows the shield to combat damage.
 	CombatOnly bool
 
@@ -125,6 +145,14 @@ func (g *Game) PreventDamageFromSourceThisTurnForEffect(s DamageShield) bool {
 	if s.Amount < 0 || (s.Amount > 0 && s.Source.ID == uuid.Nil && len(s.Queries) == 0) {
 		return false
 	}
+	protected := s.ProtectPermanents
+	if s.ProtectPermanent != uuid.Nil {
+		protected = append([]uuid.UUID{s.ProtectPermanent}, s.ProtectPermanents...)
+	}
+	if s.AndDealtBy && (len(protected) == 0 || s.Source.ID != uuid.Nil || len(s.Queries) > 0 ||
+		s.ProtectPlayer != uuid.Nil || s.Amount != 0) {
+		return false
+	}
 	m := Mod{
 		Kind:       ModPreventFromSource,
 		SourceZone: s.SourceZone,
@@ -134,6 +162,7 @@ func (g *Game) PreventDamageFromSourceThisTurnForEffect(s DamageShield) bool {
 		CombatOnly: s.CombatOnly,
 		Amount:     s.Amount,
 		Then:       s.Then.key,
+		AndDealtBy: s.AndDealtBy,
 	}
 	if s.Source.ID != uuid.Nil {
 		m.Objects = []ObjectRef{s.Source}
@@ -148,13 +177,19 @@ func (g *Game) PreventDamageFromSourceThisTurnForEffect(s DamageShield) bool {
 	if s.UntilYourNextTurn {
 		d = g.UntilYourNextTurnDuration(s.Controller)
 	}
-	if s.ProtectPermanent != uuid.Nil {
-		affected := g.PinnedObjectsLocked(s.ProtectPermanent)
+	if len(protected) > 0 {
+		affected := g.PinnedObjectsLocked(protected...)
 		if len(affected) == 0 {
 			return false
 		}
+		// One protected permanent: the record ends as that object does.
+		// Several: each member stops matching as it stops being the
+		// object it was (CR 400.7), and the record lasts its duration.
+		if len(affected) == 1 {
+			d = g.PinnedTo(d, affected[0].ID)
+		}
 		return g.appendScopedEffectLocked(s.EffectSource, affected, ScopeNone, s.Controller, []Mod{m},
-			g.PinnedTo(d, s.ProtectPermanent), label, timeNowUnixNano())
+			d, label, timeNowUnixNano())
 	}
 	return g.RegisterScopedRuleEffectForEffect(s.EffectSource, ScopeGame, s.Controller, []Mod{m}, d, label)
 }
@@ -185,6 +220,9 @@ func fromSourceModProblem(m Mod) string {
 	if m.SpentBatch != 0 || m.SpentInstance != 0 || m.Half {
 		return "a preventFromSource shield carries a next-time field (spentBatch, spentInstance or half)"
 	}
+	if m.AndDealtBy && (len(m.Objects) != 0 || len(m.Queries) != 0 || m.Player != uuid.Nil || len(m.Types) != 0 || m.Amount != 0) {
+		return "a to-and-by preventFromSource shield names a source, a property, a player or a charge; its pinned objects are both"
+	}
 	if m.Then != "" && !KnownEffectBody(m.Then) {
 		return fmt.Sprintf("preventFromSource names follow-up body %q, which is not registered", m.Then)
 	}
@@ -203,6 +241,13 @@ func (g *Game) fromSourceMeetsLocked(e ScopedEffect, m Mod, ev *ReplacementEvent
 	}
 	if m.CombatOnly && !ev.IsCombatDamage {
 		return false
+	}
+	if m.AndDealtBy {
+		// "Dealt to and dealt by": a pinned object on either end of the
+		// event. A record that is not pinned has no objects, and meets
+		// nothing.
+		return scopedAffectsLiveObjectLocked(g, e, ev.DamageTarget) ||
+			scopedAffectsLiveObjectLocked(g, e, ev.DamageSource)
 	}
 	if len(m.Objects) == 1 && !g.damageFromChosenSourceLocked(m, ev.DamageSource) {
 		return false

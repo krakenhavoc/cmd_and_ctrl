@@ -38,7 +38,15 @@ import (
 type ShieldTarget struct {
 	kind shieldKind
 	id   uuid.UUID
+	// ids are ShieldObjects' permanents; permTypes are
+	// ShieldYouAndYourPermanents' card types.
+	ids       []uuid.UUID
+	permTypes []string
 }
+
+// types is a copy of the card types "you and <those> you control"
+// names.
+func (t ShieldTarget) types() []string { return append([]string(nil), t.permTypes...) }
 
 type shieldKind uint8
 
@@ -49,6 +57,12 @@ const (
 	shieldTheTarget
 	shieldEnchanted
 	shieldObject
+	// ADR 0108 Delivery PR 7: the recipient families. The two below
+	// protect several permanents in one record, so only the not-one-use
+	// shield (PreventDamageFromSource) reads them.
+	shieldYouAndYourPermanentsOf
+	shieldTheTargetPermanents
+	shieldObjects
 )
 
 var (
@@ -272,6 +286,13 @@ func (p PreventNextDamageFromSource) protect(ctx *Context, s *game.NextDamageShi
 		return one(info.AttachedTo.ID)
 	case shieldObject:
 		return one(p.Protect.id)
+	case shieldYouAndYourPermanentsOf:
+		s.ProtectPlayer = s.Controller
+		s.ProtectTypes = p.Protect.types()
+	case shieldTheTargetPermanents, shieldObjects:
+		// Several permanents: only PreventDamageFromSource reads these
+		// (protectMany); a next-damage shield protects one thing.
+		return false
 	}
 	return true
 }

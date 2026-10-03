@@ -3229,6 +3229,18 @@ against a chosen or named source are `PreventDamageFromChosenSource(…)`,
 `PreventDamageFromSource{From: …}` and `.Charged(n)`
 (`effects/prevent_from_source.go`).
 
+**One printed prevention effect is one record (ADR 0108 Delivery PR 7).**
+"Prevent all combat damage that would be dealt to and dealt by that
+creature" (Maze of Ith) is `toAndByShield(protect, combatOnly)`, one
+record with `Mod.AndDealtBy`, never a shield "to" plus a shield "by":
+two records would be two effects, each with its own chance at an event
+between two pinned creatures (CR 614.5) and its own "whenever damage is
+prevented" application (CR 615.13). Several protected permanents in one
+sentence ("up to two target creatures", "those creatures") are one
+record too: `Protect: ShieldTheTargetPermanents` or `ShieldObjects(ids…)`.
+"You and permanents you control" is `ShieldYouAndPermanentsYouControl`.
+The rows and helpers are in `effects/shield_families_recipient.go`.
+
 **Destroy clears damage only when it lands (#708).** Marked damage is
 removed by the landed outcome of a battlefield exit — not by the
 destroy entry points. A destruction a replacement rewrote
